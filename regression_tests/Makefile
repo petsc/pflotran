@@ -41,14 +41,20 @@ STANDARD_CFG = \
 	default/543/543.cfg \
 	default/anisothermal/anisothermal.cfg \
 	default/column/column.cfg \
+	default/eos/eos.cfg \
+	default/materials/materials.cfg \
+	default/materials/soil_compressibility/soil_compressibility.cfg \
 	default/infiltrometer/infiltrometer.cfg \
 	default/condition/condition.cfg \
 	default/multicontinuum/multicontinuum.cfg \
+	default/scco2/mphase/mphase.cfg \
+	default/scco2/flash2/flash2.cfg \
 	ngee/ngee.cfg \
 	shortcourse/1D_Calcite/calcite.cfg \
 	shortcourse/1D_variably_saturated_flow/vsat_flow.cfg \
 	shortcourse/regional_doublet/regional_doublet.cfg \
-	shortcourse/copper_leaching/cu_leaching.cfg
+	shortcourse/copper_leaching/cu_leaching.cfg \
+	wipp/nuts/nuts.cfg
 
 ifneq ($(strip $(PARMETIS_LIB)),)
 	STANDARD_CFG += \
@@ -68,12 +74,16 @@ GEOCHEMISTRY_CFG = \
 	default/multicontinuum/multicontinuum.cfg \
 	ngee/ngee.cfg \
 	shortcourse/1D_Calcite/calcite.cfg \
-	shortcourse/copper_leaching/cu_leaching.cfg
+	shortcourse/copper_leaching/cu_leaching.cfg \
+	wipp/nuts/nuts.cfg
 
 FLOW_CFG = \
 	default/543/543.cfg \
 	default/condition/condition.cfg \
+	default/eos/eos.cfg \
 	default/infiltrometer/infiltrometer.cfg \
+	default/scco2/mphase/mphase.cfg \
+	default/scco2/flash2/flash2.cfg \
 	shortcourse/1D_variably_saturated_flow/vsat_flow.cfg \
 	shortcourse/copper_leaching/cu_leaching.cfg
 

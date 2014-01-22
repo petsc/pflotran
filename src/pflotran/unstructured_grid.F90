@@ -57,13 +57,14 @@ module Unstructured_Grid_module
 contains
 
 ! ************************************************************************** !
-!
-! UGridRead: Reads an unstructured grid
-! author: Glenn Hammond
-! date: 09/30/09
-!
-! ************************************************************************** !
+
 subroutine UGridRead(unstructured_grid,filename,option)
+  ! 
+  ! Reads an unstructured grid
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/30/09
+  ! 
 
   use Input_Aux_module
   use Option_module
@@ -284,15 +285,17 @@ subroutine UGridRead(unstructured_grid,filename,option)
 end subroutine UGridRead
 
 
-! ************************************************************************** !
-!
-! UGridRead: Reads an unstructured grid
-! author: Gautam Bisht
-! date: 01/09/2012
-!
-! ************************************************************************** !
 #ifdef SURFACE_FLOW
+
+! ************************************************************************** !
+
 subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
+  ! 
+  ! UGridRead: Reads an unstructured grid
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 01/09/2012
+  ! 
 
   use Input_Aux_module
   use Option_module
@@ -571,15 +574,16 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
 end subroutine UGridReadSurfGrid
 
 #if defined(PETSC_HAVE_HDF5)
+
 ! ************************************************************************** !
-!> This routine reads unstructured grid from HDF5 for surface mesh.
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 06/01/12
-! ************************************************************************** !
+
 subroutine UGridReadHDF5SurfGrid(unstructured_grid,filename,option)
+  ! 
+  ! This routine reads unstructured grid from HDF5 for surface mesh.
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 06/01/12
+  ! 
 
 #if defined(PETSC_HAVE_HDF5)
   use hdf5
@@ -852,14 +856,16 @@ end subroutine UGridReadHDF5SurfGrid
 !SURFACE_FLOW
 
 #if defined(PETSC_HAVE_HDF5)
+
 ! ************************************************************************** !
-!
-! UGridReadHDF5: Reads an unstructured grid from HDF5
-! author: Gautam Bisht
-! date: 04/25/11
-!
-! ************************************************************************** !
+
 subroutine UGridReadHDF5(unstructured_grid,filename,option)
+  ! 
+  ! Reads an unstructured grid from HDF5
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 04/25/11
+  ! 
 
 #if defined(PETSC_HAVE_HDF5)
   use hdf5
@@ -1126,18 +1132,17 @@ end subroutine UGridReadHDF5
 #endif
 ! End PETSC_HAVE_HDF5
 
-! ************************************************************************** !
-!
-! UGridReadHDF5PIOLib: Reads an unstructured grid from HDF5
-! author: Gautam Bisht
-! date: 05/13/11
-!
-! ************************************************************************** !
 #if defined(SCORPIO)
+
+! ************************************************************************** !
 
 subroutine UGridReadHDF5PIOLib(unstructured_grid, filename, &
                                           option)
-
+!
+! UGridReadHDF5PIOLib: Reads an unstructured grid from HDF5
+! Author: Gautam Bisht
+! Date: 05/13/11
+!
 #if defined(PETSC_HAVE_HDF5)
   use hdf5
 #endif
@@ -1231,13 +1236,14 @@ end subroutine UGridReadHDF5PIOLib
 #endif
 
 ! ************************************************************************** !
-!
-! UGridDecompose: Decomposes an unstructured grid across ranks
-! author: Glenn Hammond
-! date: 09/30/09
-!
-! ************************************************************************** !
+
 subroutine UGridDecompose(unstructured_grid,option)
+  ! 
+  ! Decomposes an unstructured grid across ranks
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/30/09
+  ! 
   
   use Option_module
   use Utility_module, only: reallocateIntArray, SearchOrderedArray
@@ -1863,15 +1869,16 @@ subroutine UGridDecompose(unstructured_grid,option)
 end subroutine UGridDecompose
 
 ! ************************************************************************** !
-!
-! UGridComputeInternConnect: computes internal connectivity of an
-!                            unstructured grid
-! author: Glenn Hammond
-! date: 10/21/09
-!
-! ************************************************************************** !
+
 function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
-                                   scatter_ltol,option)
+                                   option)
+  ! 
+  ! computes internal connectivity of an
+  ! unstructured grid
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/21/09
+  ! 
 
   use Connection_module
   use Option_module
@@ -1883,7 +1890,6 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   type(option_type) :: option
   PetscReal :: grid_x(*), grid_y(*), grid_z(*)
   type(unstructured_grid_type) :: unstructured_grid
-  VecScatter :: scatter_ltol 
 
   type(connection_set_type), pointer :: connections
   PetscInt :: nconn, iconn
@@ -2515,14 +2521,15 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
 end function UGridComputeInternConnect
 
 ! ************************************************************************** !
-!
-! UGridPopulateConnection: Computes details of connection (area, dist, etc)
-! author: Gautam Bisht
-! date: 10/30/09
-!
-! ************************************************************************** !
+
 subroutine UGridPopulateConnection(unstructured_grid, connection, iface_cell, &
                                    iconn, ghosted_id, option)
+  ! 
+  ! Computes details of connection (area, dist, etc)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 10/30/09
+  ! 
 
   use Connection_module
   use Utility_module, only : DotProduct
@@ -2619,17 +2626,17 @@ subroutine UGridPopulateConnection(unstructured_grid, connection, iface_cell, &
 end subroutine UGridPopulateConnection
 
 ! ************************************************************************** !
-!
-! UGridComputeCoord: Computes coordinates in x,y,z of unstructured grid cells
-! author: Glenn Hammond
-! date: 10/30/09
-! 11/2/10 Major rewrite to extend coordinates to ghost cells SP and GEH 
-!
-! ************************************************************************** !
+
 subroutine UGridComputeCoord(unstructured_grid,option, &
-                             scatter_ltol, & 
                              grid_x,grid_y,grid_z, &
                              x_min,x_max,y_min,y_max,z_min,z_max)
+  ! 
+  ! Computes coordinates in x,y,z of unstructured grid cells
+  ! 11/2/10 Major rewrite to extend coordinates to ghost cells SP and GEH
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/30/09
+  ! 
 
   use Option_module
   
@@ -2637,7 +2644,6 @@ subroutine UGridComputeCoord(unstructured_grid,option, &
 
   type(unstructured_grid_type) :: unstructured_grid
   type(option_type) :: option
-  VecScatter :: scatter_ltol 
   PetscReal :: grid_x(:), grid_y(:), grid_z(:)
   PetscReal :: x_min, x_max, y_min, y_max, z_min, z_max
 
@@ -2683,13 +2689,14 @@ subroutine UGridComputeCoord(unstructured_grid,option, &
 end subroutine UGridComputeCoord
 
 ! ************************************************************************** !
-!
-! UGridComputeVolumes: Computes volume of unstructured grid cells
-! author: Glenn Hammond
-! date: 11/06/09
-!
-! ************************************************************************** !
+
 subroutine UGridComputeVolumes(unstructured_grid,option,volume)
+  ! 
+  ! Computes volume of unstructured grid cells
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/06/09
+  ! 
 
   use Option_module
   
@@ -2731,13 +2738,14 @@ subroutine UGridComputeVolumes(unstructured_grid,option,volume)
 end subroutine UGridComputeVolumes
 
 ! ************************************************************************** !
-!
-! UGridComputeAreas: Computes area of unstructured grid cells
-! author: Gautam Bisht
-! date: 03/07/2012
-!
-! ************************************************************************** !
+
 subroutine UGridComputeAreas(unstructured_grid,option,area)
+  ! 
+  ! Computes area of unstructured grid cells
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 03/07/2012
+  ! 
 
   use Option_module
   
@@ -2783,19 +2791,18 @@ subroutine UGridComputeAreas(unstructured_grid,option,area)
 end subroutine UGridComputeAreas
 
 ! ************************************************************************** !
-!
-! UGridComputeQuality: Computes quality of unstructured grid cells
-!
-! geh: Yes, this is very primitive as mesh quality can be based on any 
-!      number of metrics (e.g., see http://cubit.sandia.gov/help-version8/
-!      Chapter_5/Mesh_Quality_Assessment.html).  However, the current edge
-!      length-based formula gives a ballpark estimate.
-!
-! author: Glenn Hammond
-! date: 01/17/12
-!
-! ************************************************************************** !
+
 subroutine UGridComputeQuality(unstructured_grid,option)
+  ! 
+  ! Computes quality of unstructured grid cells
+  ! geh: Yes, this is very primitive as mesh quality can be based on any
+  ! number of metrics (e.g., see http://cubit.sandia.gov/help-version8/
+  ! Chapter_5/Mesh_Quality_Assessment.html).  However, the current edge
+  ! length-based formula gives a ballpark estimate.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/17/12
+  ! 
 
   use Option_module
   
@@ -2861,15 +2868,16 @@ subroutine UGridComputeQuality(unstructured_grid,option)
 end subroutine UGridComputeQuality
 
 ! ************************************************************************** !
-!
-! UGridEnsureRightHandRule: Rearranges order of vertices within each cell
-!                           so that when the right hand rule is applied to a
-!                           face, the thumb points away from the centroid
-! author: Glenn Hammond
-! date: 10/24/11
-!
-! ************************************************************************** !
+
 subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nG2A,nl2G,option)
+  ! 
+  ! Rearranges order of vertices within each cell
+  ! so that when the right hand rule is applied to a
+  ! face, the thumb points away from the centroid
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/24/11
+  ! 
 
   use Option_module
   use Utility_module, only : DotProduct, CrossProduct
@@ -2996,13 +3004,14 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nG2A,nl2G,option)
 end subroutine UGridEnsureRightHandRule
 
 ! ************************************************************************** !
-!
-! UGridGetCellFromPoint: Returns the cell that encompasses a point in space
-! author: Glenn Hammond
-! date: 10/24/09
-!
-! ************************************************************************** !
+
 subroutine UGridGetCellFromPoint(x,y,z,unstructured_grid,option,icell)
+  ! 
+  ! Returns the cell that encompasses a point in space
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/24/09
+  ! 
 
   use Option_module
 
@@ -3071,15 +3080,16 @@ subroutine UGridGetCellFromPoint(x,y,z,unstructured_grid,option,icell)
 end subroutine UGridGetCellFromPoint
 
 ! ************************************************************************** !
-!
-! UGridGetCellsInRectangle: Returns the cell that encompasses a point in space
-! author: Glenn Hammond
-! date: 10/24/09
-!
-! ************************************************************************** !
+
 subroutine UGridGetCellsInRectangle(x_min,x_max,y_min,y_max,z_min,z_max, &
                                     unstructured_grid,option,num_cells, &
                                     cell_ids,cell_face_ids)
+  ! 
+  ! Returns the cell that encompasses a point in space
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/24/09
+  ! 
   use Option_module
   use Utility_module, only : reallocateIntArray
   
@@ -3170,15 +3180,16 @@ subroutine UGridGetCellsInRectangle(x_min,x_max,y_min,y_max,z_min,z_max, &
 end subroutine UGridGetCellsInRectangle
 
 ! ************************************************************************** !
-!
-! UGridMapSideSet: Maps a global boundary side set to the faces of local 
-!                  ghosted cells
-! author: Glenn Hammond
-! date: 12/16/11
-!
-! ************************************************************************** !
+
 subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
                            region_name,option,cell_ids,face_ids)
+  ! 
+  ! Maps a global boundary side set to the faces of local
+  ! ghosted cells
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/16/11
+  ! 
 
   use Option_module
 
@@ -3487,16 +3498,17 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
 end subroutine UGridMapSideSet
 
 ! ************************************************************************** !
-!
-! UGridMapBoundFacesInPolVol: Maps all global boundary cell faces within a 
-!                             polygonal volume to a region
-! author: Glenn Hammond
-! date: 12/16/11
-!
-! ************************************************************************** !
+
 subroutine UGridMapBoundFacesInPolVol(unstructured_grid,polygonal_volume, &
                                       region_name,option, &
                                       cell_ids,face_ids)
+  ! 
+  ! Maps all global boundary cell faces within a
+  ! polygonal volume to a region
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/16/11
+  ! 
   use Option_module
   use Geometry_module
 
@@ -3597,13 +3609,14 @@ subroutine UGridMapBoundFacesInPolVol(unstructured_grid,polygonal_volume, &
 end subroutine UGridMapBoundFacesInPolVol
 
 ! ************************************************************************** !
-!
-! UGridGetBoundaryFaces: Returns an array of ids for cell faces on boundary
-! author: Glenn Hammond
-! date: 01/12/12
-!
-! ************************************************************************** !
+
 subroutine UGridGetBoundaryFaces(unstructured_grid,option,boundary_faces)
+  ! 
+  ! Returns an array of ids for cell faces on boundary
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/12
+  ! 
 
   use Option_module
 
@@ -3661,20 +3674,20 @@ subroutine UGridGetBoundaryFaces(unstructured_grid,option,boundary_faces)
 end subroutine UGridGetBoundaryFaces
 
 ! ************************************************************************** !
-!> This routine will update the mesh to accomodate larger stencil width.
-!!  -1) Stencil support will be increased by one cell at a time.
-!!  -2) Find updated list of local+ghost cells (Note: Only the list of
-!!    ghost cells get updated).
-!!  -3) Find the 'new' ghost cells from the updated list found in (2)
-!!  -4) Lastly update the mesh
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 09/17/12
-! ************************************************************************** !
+
 subroutine UGridGrowStencilSupport(unstructured_grid,stencil_width, &
                                    ghosted_level,option)
+  ! 
+  ! This routine will update the mesh to accomodate larger stencil width.
+  ! -1) Stencil support will be increased by one cell at a time.
+  ! -2) Find updated list of local+ghost cells (Note: Only the list of
+  ! ghost cells get updated).
+  ! -3) Find the 'new' ghost cells from the updated list found in (2)
+  ! -4) Lastly update the mesh
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 09/17/12
+  ! 
 
   use Option_module
 
@@ -3910,24 +3923,23 @@ subroutine UGridGrowStencilSupport(unstructured_grid,stencil_width, &
 end subroutine UGridGrowStencilSupport
 
 ! ************************************************************************** !
-!> This routine finds the cells that are required on a given processor, if
-!! stencil width is increased by one.
-!!  - It used the same algorithm used in UGridMapSidesets, but instead of a
-!!    matrix-vector product, matrix-matrix product is used in this subroutine.
-!!  - Returns a list of natural ids of all cells (local+ghost)
-!!
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 09/17/12
-! ************************************************************************** !
+
 subroutine UGridFindCellIDsAfterGrowingStencilWidthByOne(Mat_vert_to_cell, &
                                       Mat_proc_to_vert, &
                                       Vec_cids_local, &
                                       cids_new, &
                                       ngmax_new, &
                                       option)
+  ! 
+  ! This routine finds the cells that are required on a given processor, if
+  ! stencil width is increased by one.
+  ! - It used the same algorithm used in UGridMapSidesets, but instead of a
+  ! matrix-vector product, matrix-matrix product is used in this subroutine.
+  ! - Returns a list of natural ids of all cells (local+ghost)
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 09/17/12
+  ! 
 
   use Option_module
 
@@ -3982,7 +3994,7 @@ subroutine UGridFindCellIDsAfterGrowingStencilWidthByOne(Mat_vert_to_cell, &
   
   ! Perform a matrix-matrix multiplication
   call MatMatMult(Mat_vert_to_cell,Mat_proc_to_vert, &
-                    MAT_INITIAL_MATRIX,PETSC_DEFAULT_DOUBLE_PRECISION,Mat_proc_to_cell,ierr)
+                    MAT_INITIAL_MATRIX,PETSC_DEFAULT_REAL,Mat_proc_to_cell,ierr)
 
   ! Transpose of the result gives: cell ids that are needed after growing stencil
   ! width by one
@@ -4071,17 +4083,7 @@ subroutine UGridFindCellIDsAfterGrowingStencilWidthByOne(Mat_vert_to_cell, &
 end subroutine UGridFindCellIDsAfterGrowingStencilWidthByOne
 
 ! ************************************************************************** !
-!> This routine finds new ghosts cells needed to be saved on a local processor
-!! after stencil width is increased.
-!!  - Returns the natural index of new ghosts cells.
-!!  - Also, returns the PETSc index of new ghosts cells. (Required for creating
-!!    gather/scater contexts in UGridCreateUGDM)
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 09/17/12
-! ************************************************************************** !
+
 subroutine UGridFindNewGhostCellIDsAfterGrowingStencilWidth(unstructured_grid, &
                       cids_new, &
                       ngmax_new, &
@@ -4089,6 +4091,16 @@ subroutine UGridFindNewGhostCellIDsAfterGrowingStencilWidth(unstructured_grid, &
                       ghost_cids_new_petsc, &
                       nghost_new, &
                       option)
+  ! 
+  ! This routine finds new ghosts cells needed to be saved on a local processor
+  ! after stencil width is increased.
+  ! - Returns the natural index of new ghosts cells.
+  ! - Also, returns the PETSc index of new ghosts cells. (Required for creating
+  ! gather/scater contexts in UGridCreateUGDM)
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 09/17/12
+  ! 
               
   use Option_module
 
@@ -4318,15 +4330,15 @@ subroutine UGridFindNewGhostCellIDsAfterGrowingStencilWidth(unstructured_grid, &
 end subroutine UGridFindNewGhostCellIDsAfterGrowingStencilWidth
 
 ! ************************************************************************** !
-!> This routine updates the mesh after additional ghost cells have be found
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 09/17/12
-! ************************************************************************** !
+
 subroutine UGridUpdateMeshAfterGrowingStencilWidth(unstructured_grid, &
               ghost_cids_new,ghost_cids_new_petsc,nghost_new,option)
+  ! 
+  ! This routine updates the mesh after additional ghost cells have be found
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 09/17/12
+  ! 
 
 
   use Option_module

@@ -21,13 +21,14 @@ module Init_module
 contains
 
 ! ************************************************************************** !
-!
-! Init: Initializes pflotran
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 subroutine Init(simulation)
+  ! 
+  ! Initializes pflotran
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   use Simulation_module
   use Option_module
@@ -40,7 +41,6 @@ subroutine Init(simulation)
   use Field_module
   use Connection_module   
   use Coupler_module
-  use General_Grid_module
   use Debug_module
   use Convergence_module
   use Waypoint_module
@@ -69,7 +69,9 @@ subroutine Init(simulation)
   
   use Global_module
   use Variables_module
-  use Water_EOS_module
+  
+  use EOS_module
+  use EOS_Water_module
 !  use Utility_module
   use Output_module
   use Output_Aux_module
@@ -120,7 +122,7 @@ subroutine Init(simulation)
   PetscInt :: flowortranpc    
   PetscErrorCode :: ierr
   PCSide:: pcside
-  PetscReal :: r1, r2, r3, r4, r5, r6
+  PetscReal :: dum1
   PetscReal :: min_value
   SNESLineSearch :: linesearch
 #ifdef SURFACE_FLOW
@@ -162,6 +164,9 @@ subroutine Init(simulation)
   
   nullify(flow_solver)
   nullify(tran_solver)
+
+  ! sets pointers to EOS procedures
+  call EOSInit()
   
   if (OptionPrintToScreen(option)) then
     temp_int = 6
@@ -275,11 +280,12 @@ subroutine Init(simulation)
   ! initialize reference density
   if (option%reference_water_density < 1.d-40) then
 #ifndef DONT_USE_WATEOS
-    call wateos(option%reference_temperature,option%reference_pressure, &
-                option%reference_water_density,r1,r2,r3,r4,r5,r6, &
-                option%scale,ierr)
+    call EOSWaterDensity(option%reference_temperature, &
+                         option%reference_pressure, &
+                         option%reference_water_density, &
+                         dum1,option%scale, ierr)    
 #else
-    call density(option%reference_temperature,option%reference_pressure, &
+    call EOSWaterdensity(option%reference_temperature,option%reference_pressure, &
                  option%reference_water_density)
 #endif                 
   endif
@@ -639,7 +645,7 @@ subroutine Init(simulation)
       geomech_solver%Jpre_mat_type = geomech_solver%J_mat_type
     endif
     call GeomechDiscretizationCreateJacobian(geomech_realization% &
-                                             discretization,NGEODOF, &
+                                             geomech_discretization,NGEODOF, &
                                              geomech_solver%Jpre_mat_type, &
                                              geomech_solver%Jpre,option)
 
@@ -808,6 +814,9 @@ subroutine Init(simulation)
   call RealizationProcessConditions(realization)
   call RealProcessFluidProperties(realization)
   call assignMaterialPropToRegions(realization)
+  ! assignVolumesToMaterialAuxVars() must be called after 
+  ! assignMaterialPropToRegions() where the Material object is created 
+  call assignVolumesToMaterialAuxVars(realization)
   if(realization%discretization%lsm_flux_method) &
     call GridComputeMinv(realization%discretization%grid, &
                          realization%discretization%stencil_width,option)
@@ -819,13 +828,6 @@ subroutine Init(simulation)
     call printMsg(option,"  Finished setting up TRAN Realization ")  
   endif
   call RealizationPrintCouplers(realization)
-  ! should we still support this
-  if (option%use_generalized_grid) then 
-    call printMsg(option,'Reading structured grid from hdf5')
-    if (.not.associated(patch%imat)) &
-      allocate(patch%imat(grid%ngmax))  ! allocate material id array
-    call ReadStructuredGridHDF5(realization)
-  endif
   call PetscLogEventEnd(logging%event_setup,ierr)
   if (.not.option%steady_state) then
     ! add waypoints associated with boundary conditions, source/sinks etc. to list
@@ -999,9 +1001,15 @@ subroutine Init(simulation)
     output_variable => OutputVariableCreate('Volume',OUTPUT_DISCRETE,'', &
                                             VOLUME)
     output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
-    output_variable%iformat = 0 ! integer
+    output_variable%iformat = 0 ! double
     call OutputVariableAddToList( &
            realization%output_option%output_variable_list,output_variable)
+  endif
+
+  if (realization%output_option%print_tortuosity) then
+    call OutputVariableAddToList( &
+                              realization%output_option%output_variable_list, &
+                              'Tortuosity',OUTPUT_GENERIC,'-',TORTUOSITY)
   endif
 
   ! write material ids
@@ -1193,10 +1201,16 @@ subroutine Init(simulation)
 
 #ifdef GEOMECH
   if (option%ngeomechdof > 0) then
-    if (option%geomech_subsurf_coupling /= 0) &
+    if (option%geomech_subsurf_coupling /= 0) then
+      call GeomechCreateGeomechSubsurfVec(simulation%realization, &
+                                          simulation%geomech_realization)
+      call GeomechCreateSubsurfStressStrainVec(simulation%realization, &
+                                               simulation%geomech_realization)
+
       call GeomechRealizMapSubsurfGeomechGrid(simulation%realization, &
                                               simulation%geomech_realization, &
                                               option)
+    endif
     call GeomechRealizLocalizeRegions(simulation%geomech_realization)
     call GeomechRealizPassFieldPtrToPatch(simulation%geomech_realization)
     call GeomechRealizProcessMatProp(simulation%geomech_realization)
@@ -1217,9 +1231,6 @@ subroutine Init(simulation)
     ! Initial condition is not needed, hence CondControlAssignFlowInitCondGeomech
     ! is not needed, at this point.
     call GeomechForceUpdateAuxVars(simulation%geomech_realization)
-    if (option%geomech_subsurf_coupling /= 0) &
-      call GeomechCreateGeomechSubsurfVec(simulation%realization, &
-                                          simulation%geomech_realization)
   endif
 #endif
 
@@ -1230,13 +1241,14 @@ subroutine Init(simulation)
 end subroutine Init
 
 ! ************************************************************************** !
-!
-! InitReadInputFilenames: Reads filenames for multi-simulation runs
-! author: Glenn Hammond
-! date: 08/11/09
-!
-! ************************************************************************** !
+
 subroutine InitReadInputFilenames(option,filenames)
+  ! 
+  ! Reads filenames for multi-simulation runs
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/11/09
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -1297,13 +1309,14 @@ subroutine InitReadInputFilenames(option,filenames)
 end subroutine InitReadInputFilenames
 
 ! ************************************************************************** !
-!
-! InitReadRequiredCardsFromInput: Reads pflow input file
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 subroutine InitReadRequiredCardsFromInput(realization)
+  ! 
+  ! Reads pflow input file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   use Option_module
   use Discretization_module
@@ -1443,13 +1456,14 @@ subroutine InitReadRequiredCardsFromInput(realization)
 end subroutine InitReadRequiredCardsFromInput
 
 ! ************************************************************************** !
-!
-! InitReadInput: Reads pflow input file
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 subroutine InitReadInput(simulation)
+  ! 
+  ! Reads pflow input file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   use Simulation_module
   use Option_module
@@ -1487,6 +1501,7 @@ subroutine InitReadInput(simulation)
   use Output_Aux_module
   use Output_Tecplot_module
   use Mass_Transfer_module
+  use EOS_module
   
 #ifdef SURFACE_FLOW
   use Surface_Flow_module
@@ -1620,6 +1635,43 @@ subroutine InitReadInput(simulation)
 
 !....................
       case ('MODE')
+         call InputReadWord(input, option, word, PETSC_FALSE)
+         call StringToUpper(word)
+         if ('TH' == trim(word) .or. 'THC' == trim(word)) then
+            call InputReadWord(input, option, word, PETSC_TRUE)
+            call InputErrorMsg(input, option, 'th(c) freezing mode', 'mode th(c)')
+            call StringToUpper(word)
+            if ('FREEZING' == trim(word)) then
+               option%use_th_freezing = PETSC_TRUE
+               option%io_buffer = ' TH(C): using FREEZING submode!'
+               call printMsg(option)
+            else if ('NO_FREEZING' == trim(word)) then
+               option%use_th_freezing = PETSC_FALSE
+               option%io_buffer = ' TH(C): using NO_FREEZING submode!'
+               call printMsg(option)
+            else
+               ! NOTE(bja, 2013-12) use_th_freezing defaults to false, can skip this....
+               option%io_buffer = ' TH(C): must specify FREEZING or NO_FREEZING submode!'
+               call printErrMsg(option)
+            endif
+         endif  
+        
+!....................
+      case ('ICE_MODEL')
+        call InputReadWord(input,option,word,PETSC_FALSE)
+        call StringToUpper(word)
+        select case (trim(word))
+          case ('PAINTER_EXPLICIT')
+            option%ice_model = PAINTER_EXPLICIT
+          case ('PAINTER_KARRA_IMPLICIT')
+            option%ice_model = PAINTER_KARRA_IMPLICIT
+          case ('PAINTER_KARRA_EXPLICIT')
+            option%ice_model = PAINTER_KARRA_EXPLICIT
+          case default
+            option%io_buffer = 'Cannot identify the specificed ice model.' // &
+             'Specify PAINTER_EXPLICIT or PAINTER_KARRA_IMPLICIT' // &
+             ' or PAINTER_KARRA_EXPLICIT.'
+          end select
 
 !....................
       case ('GRID')
@@ -1689,11 +1741,6 @@ subroutine InitReadInput(simulation)
         call InputReadDouble(input,option,option%dcmxe)
         call InputErrorMsg(input,option,'dcmxe','MAX_CHANGE')
         
-!....................
-      case ('GENERALIZED_GRID')
-        option%use_generalized_grid = PETSC_TRUE
-        call InputReadWord(input,option,option%generalized_grid,PETSC_TRUE)
-
 !....................
       case ('PROC')
       
@@ -1807,7 +1854,7 @@ subroutine InitReadInput(simulation)
         call StrataRead(strata,input,option)
         call RealizationAddStrata(realization,strata)
         nullify(strata)
-        
+
 !.....................
       case ('DATASET')
         nullify(dataset)
@@ -1874,7 +1921,7 @@ subroutine InitReadInput(simulation)
 
       case('MULTIPLE_CONTINUUM')
         option%use_mc = PETSC_TRUE
-        
+      
 !......................
 
       case('UPDATE_FLOW_PERMEABILITY')
@@ -1972,7 +2019,64 @@ subroutine InitReadInput(simulation)
       case ('CHECKPOINT')
         option%checkpoint_flag = PETSC_TRUE
         call InputReadInt(input,option,option%checkpoint_frequency)
-        call InputErrorMsg(input,option,'CHECKPOINT','Checkpoint frequency') 
+
+        if (input%ierr == 1) then
+          option%checkpoint_frequency = 0
+          do
+            call InputReadPflotranString(input,option)
+            call InputReadStringErrorMsg(input,option,card)
+            if (InputCheckExit(input,option)) exit
+
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputErrorMsg(input,option,'keyword','CHECKPOINT')
+            call StringToUpper(word)
+
+            select case(trim(word))
+              case ('PERIODIC')
+                call InputReadWord(input,option,word,PETSC_TRUE)
+                call InputErrorMsg(input,option,'time increment', &
+                                   'OUTPUT,PERIODIC')
+                call StringToUpper(word)
+
+                select case(trim(word))
+                  case('TIME')
+                    call InputReadDouble(input,option,temp_real)
+                    call InputErrorMsg(input,option,'time increment', &
+                                       'CHECKPOINT,PERIODIC,TIME')
+                    call InputReadWord(input,option,word,PETSC_TRUE)
+                    call InputErrorMsg(input,option,'time increment units', &
+                                       'CHECKPOINT,PERIODIC,TIME')
+                    units_conversion = UnitsConvertToInternal(word,option)
+                    output_option%periodic_checkpoint_time_incr = temp_real* &
+                                                              units_conversion
+                  case('TIMESTEP')
+                    call InputReadInt(input,option,option%checkpoint_frequency)
+                    call InputErrorMsg(input,option,'timestep increment', &
+                                       'CHECKPOINT,PERIODIC,TIMESTEP')
+                  case default
+                    option%io_buffer = 'Keyword: ' // trim(word) // &
+                                       ' not recognized in CHECKPOINT,PERIODIC.'
+                    call printErrMsg(option)
+                end select
+              case default
+                option%io_buffer = 'Keyword: ' // trim(word) // &
+                                   ' not recognized in CHECKPOINT.'
+                call printErrMsg(option)
+            end select
+          enddo
+          if (output_option%periodic_checkpoint_time_incr /= 0.d0 .and. &
+              option%checkpoint_frequency /= 0) then
+            option%io_buffer = 'Both TIME and TIMESTEP cannot be specified ' // &
+              'for CHECKPOINT,PERIODIC.'
+            call printErrMsg(option)
+          endif
+          if (output_option%periodic_checkpoint_time_incr == 0.d0 .and. &
+              option%checkpoint_frequency == 0) then
+            option%io_buffer = 'Either, TIME and TIMESTEP need to be specified ' // &
+              'for CHECKPOINT,PERIODIC.'
+            call printErrMsg(option)
+          endif
+        endif
 
 !......................
 
@@ -2090,6 +2194,10 @@ subroutine InitReadInput(simulation)
         
 !....................
 
+      case ('EOS')
+        call EOSRead(input,option)
+!....................
+
       case ('SATURATION_FUNCTION')
       
         saturation_function => SaturationFunctionCreate(option)
@@ -2190,6 +2298,8 @@ subroutine InitReadInput(simulation)
               output_option%print_permeability = PETSC_TRUE
             case('POROSITY')
               output_option%print_porosity = PETSC_TRUE
+            case('TORTUOSITY')
+              output_option%print_tortuosity = PETSC_TRUE
             case('MASS_BALANCE')
               option%compute_mass_balance_new = PETSC_TRUE
             case('PRINT_COLUMN_IDS')
@@ -2499,15 +2609,8 @@ subroutine InitReadInput(simulation)
            option%store_flowrate = PETSC_TRUE
           endif
           if (associated(grid%unstructured_grid%explicit_grid)) then
-#ifndef STORE_FLOWRATES
-            option%io_buffer='To output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE, '// &
-              'compile with -DSTORE_FLOWRATES'
-            call printErrMsg(option)
-#endif
-            output_option%print_explicit_flowrate = mass_flowrate
-          else
             option%io_buffer='Output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE ' // &
-              'only available in HDF5 format for implicit grid' 
+              'not supported for explicit unstructured grid.'
             call printErrMsg(option)
           endif
         
@@ -2652,13 +2755,14 @@ subroutine InitReadInput(simulation)
 end subroutine InitReadInput
 
 ! ************************************************************************** !
-!
-! setFlowMode: Sets the flow mode (richards, vadose, mph, etc.)
-! author: Glenn Hammond
-! date: 10/26/07
-!
-! ************************************************************************** !
+
 subroutine setFlowMode(option)
+  ! 
+  ! Sets the flow mode (richards, vadose, mph, etc.)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/07
+  ! 
 
   use Option_module
   use String_module
@@ -2750,14 +2854,15 @@ subroutine setFlowMode(option)
 end subroutine setFlowMode
 
 ! ************************************************************************** !
-!
-! assignMaterialPropToRegions: Assigns material properties to 
-!                                    associated regions in the model
-! author: Glenn Hammond
-! date: 11/02/07
-!
-! ************************************************************************** !
+
 subroutine assignMaterialPropToRegions(realization)
+  ! 
+  ! Assigns material properties to
+  ! associated regions in the model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/02/07
+  ! 
 
   use Realization_class
   use Discretization_module
@@ -2768,6 +2873,11 @@ subroutine assignMaterialPropToRegions(realization)
   use Grid_module
   use Field_module
   use Patch_module
+  use Material_Aux_class
+  use Variables_module, only : PERMEABILITY_X, PERMEABILITY_Y, &
+                               PERMEABILITY_Z, PERMEABILITY_XY, &
+                               PERMEABILITY_YZ, PERMEABILITY_XZ, &
+                               TORTUOSITY, POROSITY
   
   use HDF5_module
 
@@ -2790,17 +2900,19 @@ subroutine assignMaterialPropToRegions(realization)
   
   PetscInt :: icell, local_id, ghosted_id, natural_id, material_id
   PetscInt :: istart, iend
+  PetscInt :: i
   character(len=MAXSTRINGLENGTH) :: group_name
   character(len=MAXSTRINGLENGTH) :: dataset_name
   PetscErrorCode :: ierr
   
   type(option_type), pointer :: option
-  type(grid_type), pointer :: grid
   type(discretization_type), pointer :: discretization
+  type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(strata_type), pointer :: strata
   type(patch_type), pointer :: patch  
   type(patch_type), pointer :: cur_patch
+  class(material_auxvar_type), pointer :: material_auxvars(:)
 
   type(material_property_type), pointer :: material_property, null_material_property
   type(region_type), pointer :: region
@@ -2811,18 +2923,32 @@ subroutine assignMaterialPropToRegions(realization)
   patch => realization%patch
   field => realization%field
 
+  ! initialize material auxiliary indices
+  call MaterialInitAuxIndices(realization%material_property_array,option)
+  
   ! loop over all patches and allocation material id arrays
   cur_patch => realization%patch_list%first
   do
     if (.not.associated(cur_patch)) exit
+    grid => cur_patch%grid
     if (.not.associated(cur_patch%imat)) then
-      allocate(cur_patch%imat(cur_patch%grid%ngmax))
+      allocate(cur_patch%imat(grid%ngmax))
       ! initialize to "unset"
       cur_patch%imat = -999
       ! also allocate saturation function id
-      allocate(cur_patch%sat_func_id(cur_patch%grid%ngmax))
+      allocate(cur_patch%sat_func_id(grid%ngmax))
       cur_patch%sat_func_id = -999
     endif
+    
+    cur_patch%aux%Material => MaterialAuxCreate()
+    allocate(material_auxvars(grid%ngmax))
+    do ghosted_id = 1, grid%ngmax
+      call MaterialAuxVarInit(material_auxvars(ghosted_id),option)
+    enddo
+    cur_patch%aux%Material%num_aux = grid%ngmax
+    cur_patch%aux%Material%auxvars => material_auxvars
+    nullify(material_auxvars)
+    
     cur_patch => cur_patch%next
   enddo
 
@@ -2895,11 +3021,18 @@ subroutine assignMaterialPropToRegions(realization)
         call VecGetArrayF90(field%perm0_xy,perm_xy_p,ierr)
         call VecGetArrayF90(field%perm0_yz,perm_yz_p,ierr)
       endif
-      call VecGetArrayF90(field%perm_pow,perm_pow_p,ierr)
     endif
     call VecGetArrayF90(field%porosity0,por0_p,ierr)
     call VecGetArrayF90(field%tortuosity0,tor0_p,ierr)
         
+    !geh: remove
+    if (option%iflowmode == RICHARDS_MODE .or. &
+        option%iflowmode == NULL_MODE) then
+      material_auxvars => cur_patch%aux%Material%auxvars
+    else
+      nullify(material_auxvars)
+    endif
+
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       material_id = cur_patch%imat(ghosted_id)
@@ -2934,7 +3067,7 @@ subroutine assignMaterialPropToRegions(realization)
         call printErrMsgByRank(option)
       endif
       if (option%nflowdof > 0) then
-        patch%sat_func_id(ghosted_id) = material_property%saturation_function_id
+        cur_patch%sat_func_id(ghosted_id) = material_property%saturation_function_id
         icap_loc_p(ghosted_id) = material_property%saturation_function_id
         ithrm_loc_p(ghosted_id) = material_property%id
         perm_xx_p(local_id) = material_property%permeability(1,1)
@@ -2945,7 +3078,10 @@ subroutine assignMaterialPropToRegions(realization)
           perm_xy_p(local_id) = material_property%permeability(1,2)
           perm_yz_p(local_id) = material_property%permeability(2,3)
         endif
-!          perm_pow_p(local_id) = ???
+        if (associated(material_auxvars)) then
+          call MaterialAssignPropertyToAux(material_auxvars(ghosted_id), &
+                                           material_property,option)
+        endif
       endif
       por0_p(local_id) = material_property%porosity
       tor0_p(local_id) = material_property%tortuosity
@@ -2962,7 +3098,6 @@ subroutine assignMaterialPropToRegions(realization)
         call VecRestoreArrayF90(field%perm0_xy,perm_xy_p,ierr)
         call VecRestoreArrayF90(field%perm0_yz,perm_yz_p,ierr)
       endif
-      call VecRestoreArrayF90(field%perm_pow,perm_pow_p,ierr)
     endif
     call VecRestoreArrayF90(field%porosity0,por0_p,ierr)
     call VecRestoreArrayF90(field%tortuosity0,tor0_p,ierr)
@@ -2986,7 +3121,7 @@ subroutine assignMaterialPropToRegions(realization)
           call VecGetArrayF90(field%work,vec_p,ierr)
           call VecGetArrayF90(field%porosity0,por0_p,ierr)
           do local_id = 1, grid%nlmax
-            if (patch%imat(grid%nL2G(local_id)) == &
+            if (cur_patch%imat(grid%nL2G(local_id)) == &
                 material_property%id) then
               por0_p(local_id) = vec_p(local_id)
             endif
@@ -3005,19 +3140,48 @@ subroutine assignMaterialPropToRegions(realization)
   ! update ghosted values
   if (option%nflowdof > 0) then
     call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
-                                     field%perm_xx_loc,ONEDOF)  
+                                     field%work_loc,ONEDOF)
+    call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                 PERMEABILITY_X,0)
     call DiscretizationGlobalToLocal(discretization,field%perm0_yy, &
-                                     field%perm_yy_loc,ONEDOF)  
+                                     field%work_loc,ONEDOF)  
+    call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                 PERMEABILITY_Y,0)
     call DiscretizationGlobalToLocal(discretization,field%perm0_zz, &
-                                     field%perm_zz_loc,ONEDOF)   
-    
+                                     field%work_loc,ONEDOF)   
+    call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                 PERMEABILITY_Z,0)
     if (option%mimetic) then
       call DiscretizationGlobalToLocal(discretization,field%perm0_xz, &
-                                       field%perm_xz_loc,ONEDOF)  
+                                       field%work_loc,ONEDOF)  
+      call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                   PERMEABILITY_XZ,0)
       call DiscretizationGlobalToLocal(discretization,field%perm0_xy, &
-                                       field%perm_xy_loc,ONEDOF)  
+                                       field%work_loc,ONEDOF)  
+      call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                   PERMEABILITY_YZ,0)
       call DiscretizationGlobalToLocal(discretization,field%perm0_yz, &
-                                       field%perm_yz_loc,ONEDOF)   
+                                       field%work_loc,ONEDOF)   
+      call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                   PERMEABILITY_YZ,0)
+    endif
+    !geh: remove
+    if (option%iflowmode /= RICHARDS_MODE) then
+      call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
+                                       field%perm_xx_loc,ONEDOF)  
+      call DiscretizationGlobalToLocal(discretization,field%perm0_yy, &
+                                       field%perm_yy_loc,ONEDOF)  
+      call DiscretizationGlobalToLocal(discretization,field%perm0_zz, &
+                                       field%perm_zz_loc,ONEDOF)   
+    
+      if (option%mimetic) then
+        call DiscretizationGlobalToLocal(discretization,field%perm0_xz, &
+                                         field%perm_xz_loc,ONEDOF)  
+        call DiscretizationGlobalToLocal(discretization,field%perm0_xy, &
+                                         field%perm_xy_loc,ONEDOF)  
+        call DiscretizationGlobalToLocal(discretization,field%perm0_yz, &
+                                         field%perm_yz_loc,ONEDOF)   
+      endif
     endif
      
     call DiscretizationLocalToLocal(discretization,field%icap_loc, &
@@ -3028,20 +3192,88 @@ subroutine assignMaterialPropToRegions(realization)
   endif
   
   call DiscretizationGlobalToLocal(discretization,field%porosity0, &
-                                   field%porosity_loc,ONEDOF)
+                                    field%work_loc,ONEDOF)
+  call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                               POROSITY,0)
   call DiscretizationGlobalToLocal(discretization,field%tortuosity0, &
-                                   field%tortuosity_loc,ONEDOF)
+                                    field%work_loc,ONEDOF)
+  call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                               TORTUOSITY,0)
+  ! rock properties
+  do i = 1, max_material_index
+    call VecGetArrayF90(field%work,vec_p,ierr)
+    do local_id = 1, patch%grid%nlmax
+      ghosted_id = patch%grid%nL2G(local_id)
+      vec_p(local_id) = &
+        patch%aux%Material%auxvars(patch%grid%nL2G(local_id))% &
+        soil_properties(i)
+    enddo
+    call VecRestoreArrayF90(field%work,vec_p,ierr)
+    call DiscretizationGlobalToLocal(discretization,field%work, &
+                                     field%work_loc,ONEDOF)
+    call VecGetArrayF90(field%work_loc,vec_p,ierr)
+    do ghosted_id = 1, patch%grid%ngmax
+      patch%aux%Material%auxvars(ghosted_id)%soil_properties(i) = &
+         vec_p(ghosted_id)
+    enddo
+    call VecRestoreArrayF90(field%work_loc,vec_p,ierr)
+  enddo
+  
+  !geh: remove
+  if (option%iflowmode /= RICHARDS_MODE .and. &
+      option%iflowmode /= NULL_MODE) then
+    call DiscretizationGlobalToLocal(discretization,field%porosity0, &
+                                     field%porosity_loc,ONEDOF)
+    call DiscretizationGlobalToLocal(discretization,field%tortuosity0, &
+                                     field%tortuosity_loc,ONEDOF)
+  endif    
 
 end subroutine assignMaterialPropToRegions
 
 ! ************************************************************************** !
-!
-! verifyAllCouplers: Verifies the connectivity of a coupler
-! author: Glenn Hammond
-! date: 1/8/08
-!
+
+subroutine assignVolumesToMaterialAuxVars(realization)
+  ! 
+  ! Assigns the cell volumes currently stored in field%volume0 to the 
+  ! material auxiliary variable object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/13/14
+  ! 
+
+  use Realization_class
+  use Option_module
+  use Material_module
+  use Discretization_module
+  use Field_module
+  use Variables_module, only : VOLUME
+  
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+
+  option => realization%option
+  field => realization%field
+
+  call DiscretizationGlobalToLocal(realization%discretization,field%volume0, &
+                                   field%work_loc,ONEDOF)
+  call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                               field%work_loc,VOLUME,ZERO_INTEGER)
+
+end subroutine assignVolumesToMaterialAuxVars
+
 ! ************************************************************************** !
+
 subroutine verifyAllCouplers(realization)
+  ! 
+  ! Verifies the connectivity of a coupler
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 1/8/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -3067,13 +3299,14 @@ subroutine verifyAllCouplers(realization)
 end subroutine verifyAllCouplers
 
 ! ************************************************************************** !
-!
-! verifyCoupler: Verifies the connectivity of a coupler
-! author: Glenn Hammond
-! date: 1/8/08
-!
-! ************************************************************************** !
+
 subroutine verifyCoupler(realization,patch,coupler_list)
+  ! 
+  ! Verifies the connectivity of a coupler
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 1/8/08
+  ! 
 
   use Realization_class
   use Discretization_module
@@ -3156,13 +3389,14 @@ subroutine verifyCoupler(realization,patch,coupler_list)
 end subroutine verifyCoupler
 
 ! ************************************************************************** !
-!
-! readRegionFiles: Reads in grid cell ids stored in files
-! author: Glenn Hammond
-! date: 1/03/08
-!
-! ************************************************************************** !
+
 subroutine readRegionFiles(realization)
+  ! 
+  ! Reads in grid cell ids stored in files
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 1/03/08
+  ! 
 
   use Realization_class
   use Region_module
@@ -3210,13 +3444,14 @@ subroutine readRegionFiles(realization)
 end subroutine readRegionFiles
 
 ! ************************************************************************** !
-!
-! readMaterialsFromFile: Reads in grid cell materials
-! author: Glenn Hammond
-! date: 1/03/08
-!
-! ************************************************************************** !
+
 subroutine readMaterialsFromFile(realization,realization_dependent,filename)
+  ! 
+  ! Reads in grid cell materials
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 1/03/08
+  ! 
 
   use Realization_class
   use Field_module
@@ -3298,13 +3533,14 @@ subroutine readMaterialsFromFile(realization,realization_dependent,filename)
 end subroutine readMaterialsFromFile
 
 ! ************************************************************************** !
-!
-! readPermeabilitiesFromFile: Reads in grid cell permeabilities
-! author: Glenn Hammond
-! date: 01/19/09
-!
-! ************************************************************************** !
+
 subroutine readPermeabilitiesFromFile(realization,material_property)
+  ! 
+  ! Reads in grid cell permeabilities
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/19/09
+  ! 
 
   use Realization_class
   use Field_module
@@ -3497,13 +3733,14 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
 end subroutine readPermeabilitiesFromFile
 
 ! ************************************************************************** !
-!
-! readVectorFromFile: Reads data from a file into an associated vector
-! author: Glenn Hammond
-! date: 03/18/08
-!
-! ************************************************************************** !
+
 subroutine readVectorFromFile(realization,vector,filename,vector_type)
+  ! 
+  ! Reads data from a file into an associated vector
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/18/08
+  ! 
 
   use Realization_class
   use Discretization_module
@@ -3612,13 +3849,14 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
 end subroutine readVectorFromFile
 
 ! ************************************************************************** !
-!
-! readFlowInitialCondition: Assigns flow initial condition from HDF5 file
-! author: Glenn Hammond
-! date: 03/05/10
-!
-! ************************************************************************** !
+
 subroutine readFlowInitialCondition(realization,filename)
+  ! 
+  ! Assigns flow initial condition from HDF5 file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/05/10
+  ! 
 
   use Realization_class
   use Option_module
@@ -3703,16 +3941,16 @@ subroutine readFlowInitialCondition(realization,filename)
 
 end subroutine readFlowInitialCondition
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! readTransportInitialCondition: Assigns transport initial condition from 
-!                                HDF5 file
-! author: Glenn Hammond
-! date: 03/05/10
-!
-! ************************************************************************** !
 subroutine readTransportInitialCondition(realization,filename)
+  ! 
+  ! Assigns transport initial condition from
+  ! HDF5 file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/05/10
+  ! 
 
   use Realization_class
   use Option_module
@@ -3797,14 +4035,15 @@ subroutine readTransportInitialCondition(realization,filename)
 end subroutine readTransportInitialCondition
 
 ! ************************************************************************** !
-!
-! Create_IOGroups: Create sub-communicators that are used in initialization 
-!                  and output HDF5 routines. 
-! author: Vamsi Sripathi
-! date: 07/14/09
-!
-! ************************************************************************** !
+
 subroutine Create_IOGroups(option)
+  ! 
+  ! Create sub-communicators that are used in initialization
+  ! and output HDF5 routines.
+  ! 
+  ! Author: Vamsi Sripathi
+  ! Date: 07/14/09
+  ! 
 
   use Option_module
   use Logging_module
@@ -3877,13 +4116,14 @@ subroutine Create_IOGroups(option)
 end subroutine Create_IOGroups
 
 ! ************************************************************************** !
-!
-! InitPrintPFLOTRANHeader: Initializes pflotran
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 subroutine InitPrintPFLOTRANHeader(option,fid)
+  ! 
+  ! Initializes pflotran
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   use Option_module
   
@@ -3898,13 +4138,14 @@ subroutine InitPrintPFLOTRANHeader(option,fid)
 end subroutine InitPrintPFLOTRANHeader
 
 ! ************************************************************************** !
-!
-! InitReadVelocityField: Reads fluxes in for transport with no flow.
-! author: Glenn Hammond
-! date: 02/05/13
-!
-! ************************************************************************** !
+
 subroutine InitReadVelocityField(realization)
+  ! 
+  ! Reads fluxes in for transport with no flow.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/05/13
+  ! 
 
   use Realization_class
   use Patch_module

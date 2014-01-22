@@ -62,7 +62,8 @@ private
   end interface
   
   public :: RealizationCreate, &
-            RealizationDestroy, &
+            RealizationStrip, &
+            RealizationDestroyLegacy, &
             RealizationProcessCouplers, &
             RealizationInitAllCouplerAuxVars, &
             RealizationProcessConditions, &
@@ -97,15 +98,16 @@ private
   !public :: RealizationGetVariable
 
 contains
-  
+
 ! ************************************************************************** !
-!
-! RealizationCreate1: Allocates and initializes a new Realization object
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 function RealizationCreate1()
+  ! 
+  ! Allocates and initializes a new Realization object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   implicit none
   
@@ -120,13 +122,14 @@ function RealizationCreate1()
 end function RealizationCreate1  
 
 ! ************************************************************************** !
-!
-! RealizationCreate2: Allocates and initializes a new Realization object
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 function RealizationCreate2(option)
+  ! 
+  ! Allocates and initializes a new Realization object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   implicit none
   
@@ -167,13 +170,14 @@ function RealizationCreate2(option)
 end function RealizationCreate2 
 
 ! ************************************************************************** !
-!
-! RealizationCreateDiscretization: Creates grid
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine RealizationCreateDiscretization(realization)
+  ! 
+  ! Creates grid
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Grid_module
   use Unstructured_Grid_Aux_module
@@ -184,6 +188,7 @@ subroutine RealizationCreateDiscretization(realization)
   use Discretization_module
   use Unstructured_Cell_module
   use DM_Kludge_module
+  use Variables_module, only : VOLUME
   
   implicit none
   
@@ -214,70 +219,79 @@ subroutine RealizationCreateDiscretization(realization)
   call DiscretizationCreateDMs(discretization,option)
 
   ! 1 degree of freedom, global
-  call DiscretizationCreateVector(discretization,ONEDOF,field%porosity0, &
+  call DiscretizationCreateVector(discretization,ONEDOF,field%work, &
                                   GLOBAL,option)
- 
-  call DiscretizationDuplicateVector(discretization,field%porosity0, &
+  call DiscretizationDuplicateVector(discretization,field%work, &
+                                     field%porosity0)
+  call DiscretizationDuplicateVector(discretization,field%work, &
                                      field%tortuosity0)
-  call DiscretizationDuplicateVector(discretization,field%porosity0, &
-                                     field%volume)
+  call DiscretizationDuplicateVector(discretization,field%work, &
+                                     field%volume0)
+  if (option%iflowmode /= RICHARDS_MODE .and. &
+      option%iflowmode /= NULL_MODE) then
+    !geh: relocated to material aux var
+    call DiscretizationDuplicateVector(discretization,field%work, &
+                                       field%volume)
+  endif
 
-  call DiscretizationDuplicateVector(discretization,field%porosity0, &
-                                     field%work)
-  
   ! 1 degree of freedom, local
-  call DiscretizationCreateVector(discretization,ONEDOF,field%porosity_loc, &
+  call DiscretizationCreateVector(discretization,ONEDOF,field%work_loc, &
                                   LOCAL,option)
-  call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
-                                     field%tortuosity_loc)
-
-  call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
-                                     field%work_loc)
+  if (option%iflowmode /= RICHARDS_MODE .and. &
+      option%iflowmode /= NULL_MODE) then
+      !geh: relocated to material aux var
+    call DiscretizationDuplicateVector(discretization,field%work_loc, &
+                                       field%porosity_loc)
+    call DiscretizationDuplicateVector(discretization,field%work_loc, &
+                                       field%tortuosity_loc)
+  endif
   
   if (option%nflowdof > 0) then
 
     ! 1-dof global  
-    call DiscretizationDuplicateVector(discretization,field%porosity0, &
+    call DiscretizationDuplicateVector(discretization,field%work, &
                                        field%perm0_xx)
-    call DiscretizationDuplicateVector(discretization,field%porosity0, &
+    call DiscretizationDuplicateVector(discretization,field%work, &
                                        field%perm0_yy)
-    call DiscretizationDuplicateVector(discretization,field%porosity0, &
+    call DiscretizationDuplicateVector(discretization,field%work, &
                                        field%perm0_zz)
     if (discretization%itype == STRUCTURED_GRID_MIMETIC.or. &
         discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
-      call DiscretizationDuplicateVector(discretization,field%porosity0, &
+      call DiscretizationDuplicateVector(discretization,field%work, &
                                          field%perm0_xz)
-      call DiscretizationDuplicateVector(discretization,field%porosity0, &
+      call DiscretizationDuplicateVector(discretization,field%work, &
                                          field%perm0_xy)
-      call DiscretizationDuplicateVector(discretization,field%porosity0, &
+      call DiscretizationDuplicateVector(discretization,field%work, &
                                          field%perm0_yz)
     endif
-    call DiscretizationDuplicateVector(discretization,field%porosity0, &
-                                       field%perm_pow)
 
     ! 1-dof local
-    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+    call DiscretizationDuplicateVector(discretization,field%work_loc, &
                                        field%ithrm_loc)
-    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+    call DiscretizationDuplicateVector(discretization,field%work_loc, &
                                        field%icap_loc)
-    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+    call DiscretizationDuplicateVector(discretization,field%work_loc, &
                                        field%iphas_loc)
-    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+    call DiscretizationDuplicateVector(discretization,field%work_loc, &
                                        field%iphas_old_loc)
-    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
-                                       field%perm_xx_loc)
-    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
-                                       field%perm_yy_loc)
-    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
-                                       field%perm_zz_loc)
-    if (discretization%itype == STRUCTURED_GRID_MIMETIC.or. &
-        discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
-      call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
-                                         field%perm_xz_loc)
-      call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
-                                         field%perm_xy_loc)
-      call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
-                                         field%perm_yz_loc)
+    
+    if (option%iflowmode /= RICHARDS_MODE) then
+      !geh: for Richards mode, perm*_loc has been relocated to material aux var
+      call DiscretizationDuplicateVector(discretization,field%work_loc, &
+                                         field%perm_xx_loc)
+      call DiscretizationDuplicateVector(discretization,field%work_loc, &
+                                         field%perm_yy_loc)
+      call DiscretizationDuplicateVector(discretization,field%work_loc, &
+                                         field%perm_zz_loc)
+      if (discretization%itype == STRUCTURED_GRID_MIMETIC.or. &
+          discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
+        call DiscretizationDuplicateVector(discretization,field%work_loc, &
+                                           field%perm_xz_loc)
+        call DiscretizationDuplicateVector(discretization,field%work_loc, &
+                                           field%perm_xy_loc)
+        call DiscretizationDuplicateVector(discretization,field%work_loc, &
+                                           field%perm_yz_loc)
+      endif
     endif
 
     ! ndof degrees of freedom, global
@@ -350,7 +364,8 @@ subroutine RealizationCreateDiscretization(realization)
     case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
       grid => discretization%grid
       ! set up nG2L, nL2G, etc.
-      call GridMapIndices(grid, discretization%dm_1dof%dm, &
+      call GridMapIndices(grid, &
+                          discretization%dm_1dof, &
                           discretization%stencil_type,&
                           discretization%lsm_flux_method, &
                           option)
@@ -365,14 +380,19 @@ subroutine RealizationCreateDiscretization(realization)
       endif
       call GridComputeSpacing(grid,option)
       call GridComputeCoordinates(grid,discretization%origin,option)
-      call GridComputeVolumes(grid,field%volume,option)
+      call GridComputeVolumes(grid,field%volume0,option)
+      !geh: remove
+      if (option%iflowmode /= RICHARDS_MODE .and. &
+          option%iflowmode /= NULL_MODE) then
+        call VecCopy(field%volume0,field%volume,ierr)
+      endif
       ! set up internal connectivity, distance, etc.
       call GridComputeInternalConnect(grid,option)
       if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
           call GridComputeCell2FaceConnectivity(grid, discretization%MFD, option)
       end if
       if (discretization%lsm_flux_method) then
-        call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+        call DiscretizationDuplicateVector(discretization,field%work_loc, &
                                           is_bnd_vec)
         call GridComputeNeighbors(grid,field%work_loc,option)
         call DiscretizationLocalToLocal(discretization,field%work_loc,is_bnd_vec,ONEDOF)
@@ -382,9 +402,11 @@ subroutine RealizationCreateDiscretization(realization)
     case(UNSTRUCTURED_GRID,UNSTRUCTURED_GRID_MIMETIC)
       grid => discretization%grid
       ! set up nG2L, NL2G, etc.
-      call UGridMapIndices(grid%unstructured_grid, &
-                           discretization%dm_1dof%ugdm, &
-                           grid%nG2L,grid%nL2G,grid%nG2A,grid%nG2P,option)
+      call GridMapIndices(grid, &
+                          discretization%dm_1dof, &
+                          discretization%stencil_type,&
+                          discretization%lsm_flux_method, &
+                          option)
       call GridComputeCoordinates(grid,discretization%origin,option, & 
                                     discretization%dm_1dof%ugdm) 
       if (grid%itype == IMPLICIT_UNSTRUCTURED_GRID) then
@@ -395,7 +417,12 @@ subroutine RealizationCreateDiscretization(realization)
       ! set up internal connectivity, distance, etc.
       call GridComputeInternalConnect(grid,option, &
                                       discretization%dm_1dof%ugdm) 
-      call GridComputeVolumes(grid,field%volume,option)
+      call GridComputeVolumes(grid,field%volume0,option)
+      !geh: remove
+      if (option%iflowmode /= RICHARDS_MODE .and. &
+          option%iflowmode /= NULL_MODE) then
+        call VecCopy(field%volume0,field%volume,ierr)
+      endif
 #ifdef MFD_UGRID
       call GridComputeCell2FaceConnectivity(discretization%grid,discretization%MFD,option)
 #endif
@@ -450,7 +477,7 @@ subroutine RealizationCreateDiscretization(realization)
     allocate(field%avg_vars_vec(field%nvars))
 
     do ivar=1,field%nvars
-      call DiscretizationDuplicateVector(discretization,field%porosity0, &
+      call DiscretizationDuplicateVector(discretization,field%work, &
                                          field%avg_vars_vec(ivar))
       call VecSet(field%avg_vars_vec(ivar),0.d0,ierr)
     enddo
@@ -487,13 +514,14 @@ subroutine RealizationCreateDiscretization(realization)
 end subroutine RealizationCreateDiscretization
 
 ! ************************************************************************** !
-!
-! RealizationLocalizeRegions: Localizes regions within each patch
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine RealizationLocalizeRegions(realization)
+  ! 
+  ! Localizes regions within each patch
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Option_module
   use String_module
@@ -530,13 +558,14 @@ subroutine RealizationLocalizeRegions(realization)
 end subroutine RealizationLocalizeRegions
 
 ! ************************************************************************** !
-!
-! RealizatonPassPtrsToPatches: Sets patch%field => realization%field
-! author: Glenn Hammond
-! date: 01/12/11
-!
-! ************************************************************************** !
+
 subroutine RealizatonPassPtrsToPatches(realization)
+  ! 
+  ! Sets patch%field => realization%field
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/11
+  ! 
 
   use Option_module
 
@@ -551,13 +580,14 @@ subroutine RealizatonPassPtrsToPatches(realization)
 end subroutine RealizatonPassPtrsToPatches
 
 ! ************************************************************************** !
-!
-! RealizationAddCoupler: Adds a copy of a coupler to a list
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine RealizationAddCoupler(realization,coupler)
+  ! 
+  ! Adds a copy of a coupler to a list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Coupler_module
 
@@ -589,17 +619,17 @@ subroutine RealizationAddCoupler(realization,coupler)
 end subroutine RealizationAddCoupler
 
 ! ************************************************************************** !
-!> This routine sets up nG2LP() mapping for MIMETIC discretization.
-!! nG2LP: For a given ghosted cell ID, return the index within the PETSc
-!!        solution vector that contains solution at cell centers + cell faces.
-!!        The index returned is in PETSc order (0-based).
-!!
-!> @author
-!! ???
-!!
-!! date: ???
-! ************************************************************************** !
+
 subroutine RealizationCreatenG2LP(realization)
+  ! 
+  ! This routine sets up nG2LP() mapping for MIMETIC discretization.
+  ! nG2LP: For a given ghosted cell ID, return the index within the PETSc
+  ! solution vector that contains solution at cell centers + cell faces.
+  ! The index returned is in PETSc order (0-based).
+  ! 
+  ! Author: ???
+  ! Date: ???
+  ! 
 
   use Grid_module
 
@@ -708,13 +738,14 @@ subroutine RealizationCreatenG2LP(realization)
 end subroutine RealizationCreatenG2LP
 
 ! ************************************************************************** !
-!
-! RealizationAddStrata: Adds a copy of a strata to a list
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine RealizationAddStrata(realization,strata)
+  ! 
+  ! Adds a copy of a strata to a list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Strata_module
 
@@ -734,13 +765,14 @@ subroutine RealizationAddStrata(realization,strata)
 end subroutine RealizationAddStrata
 
 ! ************************************************************************** !
-!
-! RealizationAddObservation: Adds a copy of a observation object to a list
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine RealizationAddObservation(realization,observation)
+  ! 
+  ! Adds a copy of a observation object to a list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Observation_module
 
@@ -761,13 +793,14 @@ subroutine RealizationAddObservation(realization,observation)
 end subroutine RealizationAddObservation
 
 ! ************************************************************************** !
-!
-! RealizationProcessCouplers: Sets connectivity and pointers for couplers
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine RealizationProcessCouplers(realization)
+  ! 
+  ! Sets connectivity and pointers for couplers
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Option_module
 
@@ -782,14 +815,15 @@ subroutine RealizationProcessCouplers(realization)
 end subroutine RealizationProcessCouplers
 
 ! ************************************************************************** !
-!
-! RealizationProcessConditions: Sets up auxiliary data associated with 
-!                               conditions
-! author: Glenn Hammond
-! date: 10/14/08
-!
-! ************************************************************************** !
+
 subroutine RealizationProcessConditions(realization)
+  ! 
+  ! Sets up auxiliary data associated with
+  ! conditions
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/14/08
+  ! 
 
   use Dataset_module
   
@@ -828,15 +862,16 @@ subroutine RealizationProcessConditions(realization)
 end subroutine RealizationProcessConditions
 
 ! ************************************************************************** !
-!
-! RealProcessMatPropAndSatFunc: Sets up linkeage between material properties
-!                               and saturation function, auxiliary arrays
-!                               and datasets
-! author: Glenn Hammond
-! date: 01/21/09, 01/12/11
-!
-! ************************************************************************** !
+
 subroutine RealProcessMatPropAndSatFunc(realization)
+  ! 
+  ! Sets up linkeage between material properties
+  ! and saturation function, auxiliary arrays
+  ! and datasets
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/21/09, 01/12/11
+  ! 
 
   use String_module
   use Dataset_Common_HDF5_class
@@ -926,13 +961,14 @@ subroutine RealProcessMatPropAndSatFunc(realization)
 end subroutine RealProcessMatPropAndSatFunc
 
 ! ************************************************************************** !
-!
-! RealProcessFluidProperties: Sets up linkeage with fluid properties
-! author: Glenn Hammond
-! date: 01/21/09
-!
-! ************************************************************************** !
+
 subroutine RealProcessFluidProperties(realization)
+  ! 
+  ! Sets up linkeage with fluid properties
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/21/09
+  ! 
   
   implicit none
   
@@ -968,13 +1004,14 @@ subroutine RealProcessFluidProperties(realization)
 end subroutine RealProcessFluidProperties
 
 ! ************************************************************************** !
-!
-! RealProcessFlowConditions: Sets linkage of flow conditions to dataset
-! author: Glenn Hammond
-! date: 10/26/11
-!
-! ************************************************************************** !
+
 subroutine RealProcessFlowConditions(realization)
+  ! 
+  ! Sets linkage of flow conditions to dataset
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/11
+  ! 
 
   use Dataset_Base_class
   use Dataset_module
@@ -1022,14 +1059,15 @@ subroutine RealProcessFlowConditions(realization)
 end subroutine RealProcessFlowConditions
 
 ! ************************************************************************** !
-!
-! RealProcessTranConditions: Sets up auxiliary data associated with 
-!                            transport conditions
-! author: Glenn Hammond
-! date: 10/14/08
-!
-! ************************************************************************** !
+
 subroutine RealProcessTranConditions(realization)
+  ! 
+  ! Sets up auxiliary data associated with
+  ! transport conditions
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/14/08
+  ! 
 
   use String_module
   use Reaction_module
@@ -1157,13 +1195,14 @@ subroutine RealProcessTranConditions(realization)
 end subroutine RealProcessTranConditions
 
 ! ************************************************************************** !
-!
-! RealizationInitConstraints: Initializes constraint concentrations
-! author: Glenn Hammond
-! date: 12/04/08
-!
-! ************************************************************************** !
+
 subroutine RealizationInitConstraints(realization)
+  ! 
+  ! Initializes constraint concentrations
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/04/08
+  ! 
 
   implicit none
 
@@ -1182,13 +1221,14 @@ subroutine RealizationInitConstraints(realization)
 end subroutine RealizationInitConstraints
 
 ! ************************************************************************** !
-!
-! RealizationPrintCouplers: Print boundary and initial condition data
-! author: Glenn Hammond
-! date: 10/28/08
-!
-! ************************************************************************** !
+
 subroutine RealizationPrintCouplers(realization)
+  ! 
+  ! Print boundary and initial condition data
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/28/08
+  ! 
 
   use Coupler_module
   
@@ -1237,13 +1277,14 @@ subroutine RealizationPrintCouplers(realization)
 end subroutine RealizationPrintCouplers
 
 ! ************************************************************************** !
-!
-! RealizationPrintCoupler: Prints boundary and initial condition coupler 
-! author: Glenn Hammond
-! date: 10/28/08
-!
-! ************************************************************************** !
+
 subroutine RealizationPrintCoupler(coupler,reaction,option)
+  ! 
+  ! Prints boundary and initial condition coupler
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/28/08
+  ! 
 
   use Coupler_module
   use Reaction_module
@@ -1312,14 +1353,15 @@ subroutine RealizationPrintCoupler(coupler,reaction,option)
 end subroutine RealizationPrintCoupler
 
 ! ************************************************************************** !
-!
-! RealizationInitCouplerAuxVars: Initializes coupler auxillary variables 
-!                                within list
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine RealizationInitAllCouplerAuxVars(realization)
+  ! 
+  ! RealizationInitCouplerAuxVars: Initializes coupler auxillary variables
+  ! within list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Option_module
 
@@ -1340,14 +1382,15 @@ subroutine RealizationInitAllCouplerAuxVars(realization)
 end subroutine RealizationInitAllCouplerAuxVars
 
 ! ************************************************************************** !
-!
-! RealizUpdateAllCouplerAuxVars: Updates auxiliary variables associated 
-!                                  with couplers in lis
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine RealizUpdateAllCouplerAuxVars(realization,force_update_flag)
+  ! 
+  ! Updates auxiliary variables associated
+  ! with couplers in lis
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Option_module
 
@@ -1363,13 +1406,14 @@ subroutine RealizUpdateAllCouplerAuxVars(realization,force_update_flag)
 end subroutine RealizUpdateAllCouplerAuxVars
 
 ! ************************************************************************** !
-!
-! RealizationUpdate: Update parameters in realization (e.g. conditions, bcs, srcs)
-! author: Glenn Hammond
-! date: 11/09/07
-!
-! ************************************************************************** !
+
 subroutine RealizationUpdate(realization)
+  ! 
+  ! Update parameters in realization (e.g. conditions, bcs, srcs)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/09/07
+  ! 
 
   implicit none
   
@@ -1387,7 +1431,7 @@ subroutine RealizationUpdate(realization)
   if (associated(realization%uniform_velocity_dataset)) then
     call RealizUpdateUniformVelocity(realization)
   endif
-! currently don't use aux_vars, just condition for src/sinks
+! currently don't use auxvars, just condition for src/sinks
 !  call RealizationUpdateSrcSinks(realization)
 
   call MassTransferUpdate(realization%flow_mass_transfer_list, &
@@ -1401,17 +1445,20 @@ subroutine RealizationUpdate(realization)
 end subroutine RealizationUpdate
 
 ! ************************************************************************** !
-!
-! RealizationRevertFlowParameters: Assigns initial porosity/perms to vecs
-! author: Glenn Hammond
-! date: 05/09/08
-!
-! ************************************************************************** !
+
 subroutine RealizationRevertFlowParameters(realization)
+  ! 
+  ! Assigns initial porosity/perms to vecs
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/09/08
+  ! 
 
   use Option_module
   use Field_module
   use Discretization_module
+  use Material_Aux_class
+  use Variables_module
 
   implicit none
   
@@ -1420,34 +1467,62 @@ subroutine RealizationRevertFlowParameters(realization)
   type(field_type), pointer :: field
   type(option_type), pointer :: option
   type(discretization_type), pointer :: discretization
+  type(material_type), pointer :: Material
   
   option => realization%option
   field => realization%field
   discretization => realization%discretization
+  Material => realization%patch%aux%Material
 
   if (option%nflowdof > 0) then
+  if (option%iflowmode /= RICHARDS_MODE .and. &
+      option%iflowmode /= NULL_MODE) then
+    !geh: remove    
     call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
                            field%perm_xx_loc,ONEDOF)  
     call DiscretizationGlobalToLocal(discretization,field%perm0_yy, &
                            field%perm_yy_loc,ONEDOF)  
     call DiscretizationGlobalToLocal(discretization,field%perm0_zz, &
                            field%perm_zz_loc,ONEDOF)   
+  else
+    call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
+                                     field%work_loc,ONEDOF)  
+    call MaterialSetAuxVarVecLoc(Material,field%work_loc,PERMEABILITY_X,0)
+    call DiscretizationGlobalToLocal(discretization,field%perm0_yy, &
+                                     field%work_loc,ONEDOF)  
+    call MaterialSetAuxVarVecLoc(Material,field%work_loc,PERMEABILITY_Y,0)
+    call DiscretizationGlobalToLocal(discretization,field%perm0_zz, &
+                                     field%work_loc,ONEDOF)  
+    call MaterialSetAuxVarVecLoc(Material,field%work_loc,PERMEABILITY_Z,0)
+  endif
   endif   
+  if (option%iflowmode /= RICHARDS_MODE .and. &
+      option%iflowmode /= NULL_MODE) then
+    !geh: remove    
   call DiscretizationGlobalToLocal(discretization,field%porosity0, &
                                    field%porosity_loc,ONEDOF)
   call DiscretizationGlobalToLocal(discretization,field%tortuosity0, &
                                    field%tortuosity_loc,ONEDOF)
-                           
+  else
+    call DiscretizationGlobalToLocal(discretization,field%porosity0, &
+                                     field%work_loc,ONEDOF)  
+    call MaterialSetAuxVarVecLoc(Material,field%work_loc,POROSITY,0)
+    call DiscretizationGlobalToLocal(discretization,field%tortuosity0, &
+                                     field%work_loc,ONEDOF)  
+    call MaterialSetAuxVarVecLoc(Material,field%work_loc,TORTUOSITY,0)
+  endif                           
+
 end subroutine RealizationRevertFlowParameters
 
 ! ************************************************************************** !
-!
-! RealizUpdateUniformVelocity: Assigns uniform velocity for transport
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine RealizUpdateUniformVelocity(realization)
+  ! 
+  ! Assigns uniform velocity for transport
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Option_module
 
@@ -1465,14 +1540,15 @@ subroutine RealizUpdateUniformVelocity(realization)
 end subroutine RealizUpdateUniformVelocity
 
 ! ************************************************************************** !
-!
-! RealizationAddWaypointsToList: Creates waypoints associated with source/sinks
-!                             boundary conditions, etc. and add to list
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
+
 subroutine RealizationAddWaypointsToList(realization)
+  ! 
+  ! Creates waypoints associated with source/sinks
+  ! boundary conditions, etc. and add to list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
 
   use Option_module
   use Waypoint_module
@@ -1649,16 +1725,32 @@ subroutine RealizationAddWaypointsToList(realization)
 
   endif
 
+  ! add waypoints for periodic checkpoint
+  if (realization%output_option%periodic_checkpoint_time_incr > 0.d0) then
+
+    ! standard output
+    temp_real = 0.d0
+    do
+      temp_real = temp_real + realization%output_option%periodic_checkpoint_time_incr
+      if (temp_real > final_time) exit
+      waypoint => WaypointCreate()
+      waypoint%time = temp_real
+      waypoint%print_checkpoint = PETSC_TRUE
+      call WaypointInsertInList(waypoint,realization%waypoints)
+    enddo
+  endif
+
 end subroutine RealizationAddWaypointsToList
 
 ! ************************************************************************** !
-!
-! RealizationUpdateProperties: Updates coupled properties at each grid cell
-! author: Glenn Hammond
-! date: 08/05/09
-!
-! ************************************************************************** !
+
 subroutine RealizationUpdateProperties(realization)
+  ! 
+  ! Updates coupled properties at each grid cell
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/05/09
+  ! 
 
   implicit none
 
@@ -1686,13 +1778,14 @@ subroutine RealizationUpdateProperties(realization)
 end subroutine RealizationUpdateProperties
 
 ! ************************************************************************** !
-!
-! RealizationUpdatePropertiesPatch: Updates coupled properties at each grid cell 
-! author: Glenn Hammond
-! date: 08/05/09
-!
-! ************************************************************************** !
+
 subroutine RealizationUpdatePropertiesPatch(realization)
+  ! 
+  ! Updates coupled properties at each grid cell
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/05/09
+  ! 
 
   use Grid_module
   use Reactive_Transport_Aux_module
@@ -1729,7 +1822,7 @@ subroutine RealizationUpdatePropertiesPatch(realization)
   reaction => realization%reaction
   grid => patch%grid
   material_property_array => realization%material_property_array
-  rt_auxvars => patch%aux%RT%aux_vars
+  rt_auxvars => patch%aux%RT%auxvars
 
   if (.not.associated(patch%imat)) then
     option%io_buffer = 'Materials IDs not present in run.  Material ' // &
@@ -1946,14 +2039,15 @@ subroutine RealizationUpdatePropertiesPatch(realization)
 end subroutine RealizationUpdatePropertiesPatch
 
 ! ************************************************************************** !
-!
-! RealLocalToLocalWithArray: Takes an F90 array that is ghosted
-!                            and updates the ghosted values
-! author: Glenn Hammond
-! date: 06/09/11
-!
-! ************************************************************************** !
+
 subroutine RealLocalToLocalWithArray(realization,array_id)
+  ! 
+  ! Takes an F90 array that is ghosted
+  ! and updates the ghosted values
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/09/11
+  ! 
 
   use Grid_module
 
@@ -1994,14 +2088,15 @@ subroutine RealLocalToLocalWithArray(realization,array_id)
 end subroutine RealLocalToLocalWithArray
 
 ! ************************************************************************** !
-!
-! RealizationCountCells: Counts # of active and inactive grid cells 
-! author: Glenn Hammond
-! date: 06/01/10
-!
-! ************************************************************************** !
+
 subroutine RealizationCountCells(realization,global_total_count, &
                                  global_active_count,total_count,active_count)
+  ! 
+  ! Counts # of active and inactive grid cells
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/01/10
+  ! 
 
   use Option_module
 
@@ -2038,7 +2133,7 @@ subroutine RealizationCountCells(realization,global_total_count, &
 end subroutine RealizationCountCells
 
 ! ************************************************************************** !
-! ************************************************************************** !
+
 subroutine RealizationSetUpBC4Faces(realization)
 
   use Connection_module
@@ -2060,7 +2155,7 @@ subroutine RealizationSetUpBC4Faces(realization)
   type(field_type), pointer :: field
   
 
-  type(mfd_auxvar_type), pointer :: aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
   type(connection_set_type), pointer :: conn
   type(coupler_type), pointer ::  boundary_condition
 
@@ -2088,9 +2183,9 @@ subroutine RealizationSetUpBC4Faces(realization)
       local_id = boundary_condition%region%cell_ids(iconn)
       ghosted_id = grid%nL2G(local_id)
 
-      aux_var => grid%MFD%aux_vars(local_id)
-      do j = 1, aux_var%numfaces
-        ghost_face_id = aux_var%face_id_gh(j)
+      auxvar => grid%MFD%auxvars(local_id)
+      do j = 1, auxvar%numfaces
+        ghost_face_id = auxvar%face_id_gh(j)
         local_face_id = grid%fG2L(ghost_face_id)
         conn => grid%faces(ghost_face_id)%conn_set_ptr
         jface = grid%faces(ghost_face_id)%id
@@ -2121,14 +2216,15 @@ subroutine RealizationSetUpBC4Faces(realization)
 end subroutine RealizationSetUpBC4Faces
 
 ! ************************************************************************** !
-!
-! RealizationPrintGridStatistics: Prints statistics regarding the numerical
-!                                 discretization 
-! author: Glenn Hammond
-! date: 06/01/10
-!
-! ************************************************************************** !
+
 subroutine RealizationPrintGridStatistics(realization)
+  ! 
+  ! Prints statistics regarding the numerical
+  ! discretization
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/01/10
+  ! 
 
   use Grid_module
 
@@ -2318,14 +2414,15 @@ subroutine RealizationPrintGridStatistics(realization)
 end subroutine RealizationPrintGridStatistics
 
 ! ************************************************************************** !
-!
-! RealizationCalculateCFL1Timestep: Calculates largest time step that  
-!                                   preserves a CFL # of 1 in a realization
-! author: Glenn Hammond
-! date: 10/07/11
-!
-! ************************************************************************** !
+
 subroutine RealizationCalculateCFL1Timestep(realization,max_dt_cfl_1)
+  ! 
+  ! Calculates largest time step that
+  ! preserves a CFL # of 1 in a realization
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/07/11
+  ! 
 
   implicit none
 
@@ -2352,14 +2449,15 @@ subroutine RealizationCalculateCFL1Timestep(realization,max_dt_cfl_1)
 end subroutine RealizationCalculateCFL1Timestep
 
 ! ************************************************************************** !
-!
-! RealizationNonInitializedData: Checks for non-initialized data sets
-!                                i.e. porosity, permeability
-! author: Glenn Hammond
-! date: 02/08/13
-!
-! ************************************************************************** !
+
 subroutine RealizationNonInitializedData(realization)
+  ! 
+  ! Checks for non-initialized data sets
+  ! i.e. porosity, permeability
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/08/13
+  ! 
 
   use Grid_module
   use Patch_module
@@ -2429,13 +2527,14 @@ subroutine RealizationNonInitializedData(realization)
 end subroutine RealizationNonInitializedData
 
 ! ************************************************************************** !
-!
-! RealizationDestroy: Deallocates a realization
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
-subroutine RealizationDestroy(realization)
+
+subroutine RealizationDestroyLegacy(realization)
+  ! 
+  ! Deallocates a realization
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
 
   use Dataset_module
 
@@ -2492,6 +2591,56 @@ subroutine RealizationDestroy(realization)
   deallocate(realization)
   nullify(realization)
   
-end subroutine RealizationDestroy
+end subroutine RealizationDestroyLegacy
+
+! ************************************************************************** !
+
+subroutine RealizationStrip(this)
+  ! 
+  ! Deallocates a realization
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
+
+  use Dataset_module
+
+  implicit none
+  
+  class(realization_type) :: this
+  
+  call RealizationBaseStrip(this)
+  call RegionDestroyList(this%regions)
+  
+  call FlowConditionDestroyList(this%flow_conditions)
+  call TranConditionDestroyList(this%transport_conditions)
+  call TranConstraintDestroyList(this%transport_constraints)
+
+  if (associated(this%fluid_property_array)) &
+    deallocate(this%fluid_property_array)
+  nullify(this%fluid_property_array)
+  call FluidPropertyDestroy(this%fluid_properties)
+  
+  if (associated(this%material_property_array)) &
+    deallocate(this%material_property_array)
+  nullify(this%material_property_array)
+  call MaterialPropertyDestroy(this%material_properties)
+
+  if (associated(this%saturation_function_array)) &
+    deallocate(this%saturation_function_array)
+  nullify(this%saturation_function_array)
+  call SaturationFunctionDestroy(this%saturation_functions)
+
+  call DatasetDestroy(this%datasets)
+  
+  call UniformVelocityDatasetDestroy(this%uniform_velocity_dataset)
+  
+  call ReactionDestroy(this%reaction)
+  
+  call TranConstraintDestroy(this%sec_transport_constraint)
+  
+  call WaypointListDestroy(this%waypoints)
+  
+end subroutine RealizationStrip
 
 end module Realization_class

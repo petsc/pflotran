@@ -153,15 +153,17 @@ module Grid_module
 contains
 
 #if 0
+
 ! ************************************************************************** !
-!
-! VecGetArrayReadF90: Redirects VecGetArrayReadF90 to VecGetArrayF90 for
-!                     older petsc-dev that lacks stubs for the read version
-! author: Glenn Hammond
-! date: 03/04/13
-!
-! ************************************************************************** !
+
 subroutine VecGetArrayReadF90(vec, f90ptr, ierr)
+  ! 
+  ! Redirects VecGetArrayReadF90 to VecGetArrayF90 for
+  ! older petsc-dev that lacks stubs for the read version
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/04/13
+  ! 
 
   implicit none
 
@@ -175,17 +177,18 @@ subroutine VecGetArrayReadF90(vec, f90ptr, ierr)
   call VecGetArrayF90(vec, f90ptr, ierr)
 
 end subroutine VecGetArrayReadF90
-      
+
 ! ************************************************************************** !
-!
-! VecRestoreArrayReadF90: Redirects VecRestoreArrayReadF90 to VecGetArrayF90 
-!                         older petsc-dev that lacks stubs for the read 
-!                         for version
-! author: Glenn Hammond
-! date: 03/04/13
-!
-! ************************************************************************** !
+
 subroutine VecRestoreArrayReadF90(vec, f90ptr, ierr)
+  ! 
+  ! Redirects VecRestoreArrayReadF90 to VecGetArrayF90
+  ! older petsc-dev that lacks stubs for the read
+  ! for version
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/04/13
+  ! 
 
   implicit none
 
@@ -202,13 +205,14 @@ end subroutine VecRestoreArrayReadF90
 #endif
 
 ! ************************************************************************** !
-!
-! GridCreate: Creates a structured or unstructured grid
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 function GridCreate()
+  ! 
+  ! Creates a structured or unstructured grid
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   implicit none
   
@@ -288,14 +292,15 @@ function GridCreate()
 end function GridCreate
 
 ! ************************************************************************** !
-!
-! GridComputeInternalConnect: computes internal connectivity of a grid
-! author: Glenn Hammond
-! date: 10/17/07
-!
-! sp modified December 2010 
-! ************************************************************************** !
+
 subroutine GridComputeInternalConnect(grid,option,ugdm)
+  ! 
+  ! computes internal connectivity of a grid
+  ! sp modified December 2010
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/17/07
+  ! 
 
   use Connection_module
   use Option_module
@@ -321,10 +326,10 @@ subroutine GridComputeInternalConnect(grid,option,ugdm)
     case(IMPLICIT_UNSTRUCTURED_GRID) 
       connection_set => &
         UGridComputeInternConnect(grid%unstructured_grid,grid%x,grid%y, &
-                                  grid%z,ugdm%scatter_ltol,option)
+                                  grid%z,option)
     case(EXPLICIT_UNSTRUCTURED_GRID)
       connection_set => &
-        ExplicitUGridSetInternConnect(grid%unstructured_grid%explicit_grid, &
+        UGridExplicitSetInternConnect(grid%unstructured_grid%explicit_grid, &
                                         option)
   end select
   
@@ -378,14 +383,15 @@ subroutine GridComputeInternalConnect(grid,option,ugdm)
 end subroutine GridComputeInternalConnect
 
 ! ************************************************************************** !
-!
-! GridPopulateConnection: computes connectivity coupler to a grid
-! author: Glenn Hammond
-! date: 11/09/07
-!
-! ************************************************************************** !
+
 subroutine GridPopulateConnection(grid,connection,iface,iconn,cell_id_local, &
                                   option)
+  ! 
+  ! computes connectivity coupler to a grid
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/09/07
+  ! 
 
   use Connection_module
   use Structured_Grid_module
@@ -418,15 +424,15 @@ subroutine GridPopulateConnection(grid,connection,iface,iconn,cell_id_local, &
 
 end subroutine GridPopulateConnection
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! GridPopulateFaces: allocate and populate array of faces
-! author: Daniil Svyatskiy
-! date: 02/04/10
-!
-! ************************************************************************** !
 subroutine GridPopulateFaces(grid, option)
+  ! 
+  ! allocate and populate array of faces
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 02/04/10
+  ! 
 
    use Connection_module
    use Option_module
@@ -482,7 +488,7 @@ subroutine GridPopulateFaces(grid, option)
 end subroutine GridPopulateFaces 
 
 ! ************************************************************************** !
-! ************************************************************************** !
+
 subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
 
   use MFD_Aux_module
@@ -496,7 +502,7 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
   type(option_type) :: option
 
 #ifdef DASVYAT
-  type(mfd_auxvar_type), pointer :: aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
   type(connection_set_type), pointer :: conn
   PetscInt :: icount, icell, iface, local_id
   PetscInt :: local_id_dn, local_id_up, ghosted_id_dn, ghosted_id_up
@@ -520,8 +526,8 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
   numfaces = 6
 
   do icell = 1, grid%nlmax
-    aux_var => MFD_aux%aux_vars(icell)
-    call MFDAuxVarInit(aux_var, numfaces(icell), option)
+    auxvar => MFD_aux%auxvars(icell)
+    call MFDAuxVarInit(auxvar, numfaces(icell), option)
   enddo
 
   local_id = 1
@@ -534,8 +540,8 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
       local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping
 
       if (local_id_dn>0) then
-        aux_var => MFD_aux%aux_vars(local_id_dn)
-        call MFDAuxAddFace(aux_var,option, icount)
+        auxvar => MFD_aux%auxvars(local_id_dn)
+        call MFDAuxAddFace(auxvar,option, icount)
         grid%fG2L(icount)=local_id
         grid%fL2G(local_id) = icount
         local_id = local_id + 1
@@ -555,12 +561,12 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
       endif
 
       if (local_id_dn>0) then
-        aux_var => MFD_aux%aux_vars(local_id_dn)
-        call MFDAuxAddFace(aux_var,option, icount)
+        auxvar => MFD_aux%auxvars(local_id_dn)
+        call MFDAuxAddFace(auxvar,option, icount)
       endif
       if (local_id_up>0) then
-        aux_var => MFD_aux%aux_vars(local_id_up)
-        call MFDAuxAddFace(aux_var,option, icount)
+        auxvar => MFD_aux%auxvars(local_id_up)
+        call MFDAuxAddFace(auxvar,option, icount)
       endif
     endif
   enddo
@@ -571,9 +577,8 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
 
 end subroutine GridComputeCell2FaceConnectivity
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-! ************************************************************************** !
 subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, sgdm, DOF, option)
 
   use MFD_Aux_module
@@ -618,7 +623,7 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, sgdm, DOF, opt
   IS :: is_local_bl
   PetscViewer :: viewer
 
-  type(mfd_auxvar_type), pointer :: aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
   type(connection_set_type), pointer :: conn
 
   PetscInt, allocatable :: ghosted_ids(:)
@@ -685,9 +690,9 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, sgdm, DOF, opt
   e2n_local_values = 0
 
   do icell = 1, grid%nlmax
-    aux_var => MFD_aux%aux_vars(icell)
-    do icount = 1, aux_var%numfaces
-      ghost_face_id = aux_var%face_id_gh(icount)
+    auxvar => MFD_aux%auxvars(icell)
+    do icount = 1, auxvar%numfaces
+      ghost_face_id = auxvar%face_id_gh(icount)
       local_face_id = grid%fG2L(ghost_face_id)
       conn => grid%faces(ghost_face_id)%conn_set_ptr
       iface = grid%faces(ghost_face_id)%id
@@ -791,9 +796,9 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, sgdm, DOF, opt
   call VecGetArrayF90(grid%e2f, vec_ptr_e2f, ierr)
  
   do icell = 1, grid%nlmax
-    aux_var => MFD_aux%aux_vars(icell)
-    do icount = 1, aux_var%numfaces
-      ghost_face_id = aux_var%face_id_gh(icount)
+    auxvar => MFD_aux%auxvars(icell)
+    do icount = 1, auxvar%numfaces
+      ghost_face_id = auxvar%face_id_gh(icount)
       local_face_id = grid%fG2L(ghost_face_id)
 
       if (local_face_id == 0) then
@@ -845,7 +850,7 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, sgdm, DOF, opt
 end subroutine GridComputeGlobalCell2FaceConnectivity
 
 ! ************************************************************************** !
-! ************************************************************************** !
+
 subroutine CreateMFDStruct4Faces(grid, MFD_aux, ndof, option)
 
     
@@ -969,7 +974,7 @@ subroutine CreateMFDStruct4Faces(grid, MFD_aux, ndof, option)
 end subroutine CreateMFDStruct4Faces
 
 ! ************************************************************************** !
-! ************************************************************************** !
+
 subroutine CreateMFDStruct4LP(grid, MFD_aux, ndof, option)
 
   use MFD_Aux_module
@@ -1089,33 +1094,25 @@ subroutine CreateMFDStruct4LP(grid, MFD_aux, ndof, option)
 end subroutine CreateMFDStruct4LP
 
 ! ************************************************************************** !
-!
-! GridMapIndices: maps global, local and natural indices of cells 
-!                 to each other
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! ************************************************************************** !
-subroutine GridMapIndices(grid, sgdm, stencil_type, lsm_flux_method, option)
 
-use Option_module
+subroutine GridMapIndices(grid, dm_ptr, sgrid_stencil_type, lsm_flux_method, &
+                          option)
+  ! 
+  ! maps global, local and natural indices of cells
+  ! to each other
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/24/07
+  ! 
+
+  use Option_module
+  use DM_Kludge_module
 
   implicit none
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petscviewer.h"
-
-
   
   type(grid_type) :: grid
-  DM :: sgdm
-  PetscInt :: stencil_type
+  type(dm_ptr_type) :: dm_ptr
+  PetscInt :: sgrid_stencil_type
   PetscBool :: lsm_flux_method
   type(option_type) :: option
 
@@ -1127,16 +1124,16 @@ use Option_module
   
   select case(grid%itype)
     case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
-      call StructGridMapIndices(grid%structured_grid,stencil_type, &
-                                    lsm_flux_method, &
-                                    grid%nG2L,grid%nL2G,grid%nG2A, &
-                                    grid%ghosted_level,option)
+      call StructGridMapIndices(grid%structured_grid,sgrid_stencil_type, &
+                                lsm_flux_method, &
+                                grid%nG2L,grid%nL2G,grid%nG2A, &
+                                grid%ghosted_level,option)
 #ifdef DASVYAT
       if ((grid%itype==STRUCTURED_GRID_MIMETIC)) then
         allocate(grid%nG2P(grid%ngmax))
         allocate(int_tmp(grid%ngmax))
 !geh     call DMDAGetGlobalIndicesF90(sgdm, n, int_tmp, ierr)
-        call DMDAGetGlobalIndices(sgdm,  grid%ngmax, int_tmp, i_da, ierr)
+        call DMDAGetGlobalIndices(dm_ptr%dm, grid%ngmax, int_tmp, i_da, ierr)
         do icount = 1, grid%ngmax
 !geh         write(*,*) icount,  int_tmp(icount + i_da)
           grid%nG2P(icount) = int_tmp(icount + i_da)
@@ -1146,20 +1143,24 @@ use Option_module
         deallocate(int_tmp)
       endif
 #endif
-    case(IMPLICIT_UNSTRUCTURED_GRID)
+    case(IMPLICIT_UNSTRUCTURED_GRID,EXPLICIT_UNSTRUCTURED_GRID)
+      call UGridMapIndices(grid%unstructured_grid, &
+                           dm_ptr%ugdm, &
+                           grid%nG2L,grid%nL2G,grid%nG2A,grid%nG2P,option)
   end select
  
  
 end subroutine GridMapIndices
 
 ! ************************************************************************** !
-!
-! GridComputeSpacing: Computes grid spacing (only for structured grid
-! author: Glenn Hammond
-! date: 10/26/07
-!
-! ************************************************************************** !
+
 subroutine GridComputeSpacing(grid,option)
+  ! 
+  ! Computes grid spacing (only for structured grid
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/07
+  ! 
 
   use Option_module
 
@@ -1177,13 +1178,14 @@ subroutine GridComputeSpacing(grid,option)
 end subroutine GridComputeSpacing
 
 ! ************************************************************************** !
-!
-! GridComputeCoordinates: Computes x,y,z coordinates of grid cells
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! ************************************************************************** !
+
 subroutine GridComputeCoordinates(grid,origin_global,option,ugdm)
+  ! 
+  ! Computes x,y,z coordinates of grid cells
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/24/07
+  ! 
 
   use Option_module
   use Unstructured_Explicit_module
@@ -1215,13 +1217,12 @@ subroutine GridComputeCoordinates(grid,origin_global,option,ugdm)
                                       grid%z_min_local,grid%z_max_local)
     case(IMPLICIT_UNSTRUCTURED_GRID)
       call UGridComputeCoord(grid%unstructured_grid,option, &
-                             ugdm%scatter_ltol, & !sp 
                              grid%x,grid%y,grid%z, &
                              grid%x_min_local,grid%x_max_local, &
                              grid%y_min_local,grid%y_max_local, &
                              grid%z_min_local,grid%z_max_local)
     case(EXPLICIT_UNSTRUCTURED_GRID)
-      call ExplicitUGridSetCellCentroids(grid%unstructured_grid% &
+      call UGridExplicitSetCellCentroids(grid%unstructured_grid% &
                                          explicit_grid, &
                                          grid%x,grid%y,grid%z, &
                              grid%x_min_local,grid%x_max_local, &
@@ -1265,13 +1266,14 @@ subroutine GridComputeCoordinates(grid,origin_global,option,ugdm)
 end subroutine GridComputeCoordinates
 
 ! ************************************************************************** !
-!
-! GridComputeVolumes: Computes the volumes of cells in structured grid
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 subroutine GridComputeVolumes(grid,volume,option)
+  ! 
+  ! Computes the volumes of cells in structured grid
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   use Option_module
   use Unstructured_Explicit_module
@@ -1293,20 +1295,21 @@ subroutine GridComputeVolumes(grid,volume,option)
       call UGridComputeVolumes(grid%unstructured_grid,option,volume)
       call UGridComputeQuality(grid%unstructured_grid,option)
     case(EXPLICIT_UNSTRUCTURED_GRID)
-      call ExplicitUGridComputeVolumes(grid%unstructured_grid, &
+      call UGridExplicitComputeVolumes(grid%unstructured_grid, &
                                        option,volume)
   end select
 
 end subroutine GridComputeVolumes
 
 ! ************************************************************************** !
-!
-! GridComputeAreas: Computes the areas for 2D-mesh
-! author: Gautam Bisht
-! date: 03/07/2012
-!
-! ************************************************************************** !
+
 subroutine GridComputeAreas(grid,area,option)
+  ! 
+  ! Computes the areas for 2D-mesh
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 03/07/2012
+  ! 
 
   use Option_module
   
@@ -1334,13 +1337,14 @@ subroutine GridComputeAreas(grid,area,option)
 end subroutine GridComputeAreas
 
 ! ************************************************************************** !
-!
-! GridLocalizeRegions: Resticts regions to cells local to processor
-! author: Glenn Hammond
-! date: 10/29/07
-!
-! ************************************************************************** !
+
 subroutine GridLocalizeRegions(grid,region_list,option)
+  ! 
+  ! Resticts regions to cells local to processor
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/29/07
+  ! 
 
   use Option_module
   use Region_module
@@ -1453,15 +1457,16 @@ subroutine GridLocalizeRegions(grid,region_list,option)
 end subroutine GridLocalizeRegions
 
 ! ************************************************************************** !
-!
-! GridLocalizeRegionsFromCellIDsUGrid: Resticts regions to cells local 
-!    to processor for unstrucutred mesh when the region is defined by a
-!    list of cell ids (in natural order)
-! author: Gautam Bisht
-! date: 5/30/2011
-!
-! ************************************************************************** !
+
 subroutine GridLocalizeRegionsFromCellIDsUGrid(grid, region, option)
+  ! 
+  ! Resticts regions to cells local
+  ! to processor for unstrucutred mesh when the region is defined by a
+  ! list of cell ids (in natural order)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 5/30/2011
+  ! 
 
   use Option_module
   use Region_module
@@ -1634,13 +1639,14 @@ subroutine GridLocalizeRegionsFromCellIDsUGrid(grid, region, option)
 end subroutine GridLocalizeRegionsFromCellIDsUGrid
 
 ! ************************************************************************** !
-!
-! GridLocalizeExplicitFaceset
-! author: Glenn Hammond
-! date: 10/10/12
-!
-! ************************************************************************** !
+
 subroutine GridLocalizeExplicitFaceset(ugrid,region,option)
+  ! 
+  ! GridLocalizeExplicitFaceset
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/10/12
+  ! 
 
   use Region_module
   use Option_module
@@ -1759,15 +1765,15 @@ subroutine GridLocalizeExplicitFaceset(ugrid,region,option)
 end subroutine GridLocalizeExplicitFaceset
 
 ! ************************************************************************** !
-!
-! GridCopyIntegerArrayToVec: Copies values from an integer array into a 
-!                                 PETSc Vec
-! author: Glenn Hammond
-! date: 12/18/07
-!
-! ************************************************************************** !
 
 subroutine GridCopyIntegerArrayToVec(grid, array,vector,num_values)
+  ! 
+  ! Copies values from an integer array into a
+  ! PETSc Vec
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/18/07
+  ! 
 
   implicit none
 
@@ -1789,14 +1795,15 @@ subroutine GridCopyIntegerArrayToVec(grid, array,vector,num_values)
 end subroutine GridCopyIntegerArrayToVec
 
 ! ************************************************************************** !
-!
-! GridCopyRealArrayToVec: Copies values from an integer array into a 
-!                              PETSc Vec
-! author: Glenn Hammond
-! date: 12/18/07
-!
-! ************************************************************************** !
+
 subroutine GridCopyRealArrayToVec(grid,array,vector,num_values)
+  ! 
+  ! Copies values from an integer array into a
+  ! PETSc Vec
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/18/07
+  ! 
 
   implicit none
   
@@ -1818,14 +1825,15 @@ subroutine GridCopyRealArrayToVec(grid,array,vector,num_values)
 end subroutine GridCopyRealArrayToVec
 
 ! ************************************************************************** !
-!
-! GridCopyVecToIntegerArray: Copies values from a PETSc Vec to an  
-!                                 integer array
-! author: Glenn Hammond
-! date: 12/18/07
-!
-! ************************************************************************** !
+
 subroutine GridCopyVecToIntegerArray(grid,array,vector,num_values)
+  ! 
+  ! Copies values from a PETSc Vec to an
+  ! integer array
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/18/07
+  ! 
 
   implicit none
 
@@ -1854,14 +1862,15 @@ subroutine GridCopyVecToIntegerArray(grid,array,vector,num_values)
 end subroutine GridCopyVecToIntegerArray
 
 ! ************************************************************************** !
-!
-! GridCopyVecToRealArray: Copies values from a PETSc Vec to an integer 
-!                              array
-! author: Glenn Hammond
-! date: 12/18/07
-!
-! ************************************************************************** !
+
 subroutine GridCopyVecToRealArray(grid,array,vector,num_values)
+  ! 
+  ! Copies values from a PETSc Vec to an integer
+  ! array
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/18/07
+  ! 
 
   implicit none
   
@@ -1883,15 +1892,16 @@ subroutine GridCopyVecToRealArray(grid,array,vector,num_values)
 end subroutine GridCopyVecToRealArray
 
 ! ************************************************************************** !
-!
-! GridCreateNaturalToGhostedHash: Creates a hash table for looking up the  
-!                                 local ghosted id of a natural id, if it 
-!                                 exists
-! author: Glenn Hammond
-! date: 03/07/07
-!
-! ************************************************************************** !
+
 subroutine GridCreateNaturalToGhostedHash(grid,option)
+  ! 
+  ! Creates a hash table for looking up the
+  ! local ghosted id of a natural id, if it
+  ! exists
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/07/07
+  ! 
 
   use Option_module
   use Logging_module  
@@ -1963,15 +1973,16 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
 end subroutine GridCreateNaturalToGhostedHash
 
 ! ************************************************************************** !
-!
-! GetLocalIdFromNaturalId: Returns the local id corresponding to a natural
-!                          id or 0, if the natural id is off-processor
-! WARNING: Extremely inefficient for large jobs
-! author: Glenn Hammond
-! date: 03/07/07
-!
-! ************************************************************************** !
+
 PetscInt function GridGetLocalIdFromNaturalId(grid,natural_id)
+  ! 
+  ! GetLocalIdFromNaturalId: Returns the local id corresponding to a natural
+  ! id or 0, if the natural id is off-processor
+  ! WARNING: Extremely inefficient for large jobs
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/07/07
+  ! 
 
   implicit none
 
@@ -1990,16 +2001,17 @@ PetscInt function GridGetLocalIdFromNaturalId(grid,natural_id)
 end function GridGetLocalIdFromNaturalId
 
 ! ************************************************************************** !
-!
-! GridGetLocalGhostedIdFromNatId: Returns the local ghosted id corresponding 
-!                                 to a natural id or 0, if the natural id 
-!                                 is off-processor
-! WARNING: Extremely inefficient for large jobs
-! author: Glenn Hammond
-! date: 03/07/07
-!
-! ************************************************************************** !
+
 PetscInt function GridGetLocalGhostedIdFromNatId(grid,natural_id)
+  ! 
+  ! Returns the local ghosted id corresponding
+  ! to a natural id or 0, if the natural id
+  ! is off-processor
+  ! WARNING: Extremely inefficient for large jobs
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/07/07
+  ! 
 
   implicit none
 
@@ -2020,14 +2032,15 @@ PetscInt function GridGetLocalGhostedIdFromNatId(grid,natural_id)
 end function GridGetLocalGhostedIdFromNatId
 
 ! ************************************************************************** !
-!
-! GridGetLocalGhostedIdFromHash: Returns the local ghosted id of a natural 
-!                                id, if it exists.  Otherwise 0 is returned
-! author: Glenn Hammond
-! date: 03/07/07
-!
-! ************************************************************************** !
+
 PetscInt function GridGetLocalGhostedIdFromHash(grid,natural_id)
+  ! 
+  ! Returns the local ghosted id of a natural
+  ! id, if it exists.  Otherwise 0 is returned
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/07/07
+  ! 
 
   implicit none
 
@@ -2048,13 +2061,14 @@ PetscInt function GridGetLocalGhostedIdFromHash(grid,natural_id)
 end function GridGetLocalGhostedIdFromHash
 
 ! ************************************************************************** !
-!
-! GridDestroyHashTable: Deallocates the hash table
-! author: Glenn Hammond
-! date: 03/07/07
-!
-! ************************************************************************** !
+
 subroutine GridDestroyHashTable(grid)
+  ! 
+  ! Deallocates the hash table
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/07/07
+  ! 
 
   implicit none
 
@@ -2073,13 +2087,14 @@ subroutine GridDestroyHashTable(grid)
 end subroutine GridDestroyHashTable
 
 ! ************************************************************************** !
-!
-! UnstructGridPrintHashTable: Prints the hashtable for viewing
-! author: Glenn Hammond
-! date: 03/09/07
-!
-! ************************************************************************** !
+
 subroutine GridPrintHashTable(grid)
+  ! 
+  ! UnstructGridPrintHashTable: Prints the hashtable for viewing
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/07
+  ! 
 
   implicit none
 
@@ -2100,17 +2115,18 @@ subroutine GridPrintHashTable(grid)
 end subroutine GridPrintHashTable
 
 ! ************************************************************************** !
-!
-! GridGetNeighbors: Returns an array of neighboring cells
-! author: Glenn Hammond
-! date: 01/28/11
-!
-! ************************************************************************** !
+
 subroutine GridGetGhostedNeighbors(grid,ghosted_id,stencil_type, &
                                    stencil_width_i,stencil_width_j, &
                                    stencil_width_k,x_count,y_count, &
                                    z_count, &
                                    ghosted_neighbors,option)
+  ! 
+  ! GridGetNeighbors: Returns an array of neighboring cells
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/28/11
+  ! 
 
   use Option_module
 
@@ -2145,17 +2161,18 @@ subroutine GridGetGhostedNeighbors(grid,ghosted_id,stencil_type, &
 end subroutine GridGetGhostedNeighbors
 
 ! ************************************************************************** !
-!
-! GridGetNeighborsWithCorners: Returns an array of neighboring cells along with corner
-! cells
-! author: Satish Karra, LANL
-! date: 02/19/12
-!
-! ************************************************************************** !
+
 subroutine GridGetGhostedNeighborsWithCorners(grid,ghosted_id,stencil_type, &
                                    stencil_width_i,stencil_width_j, &
                                    stencil_width_k,icount, &
                                    ghosted_neighbors,option)
+  ! 
+  ! GridGetNeighborsWithCorners: Returns an array of neighboring cells along with corner
+  ! cells
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 02/19/12
+  ! 
 
   use Option_module
 
@@ -2188,15 +2205,15 @@ subroutine GridGetGhostedNeighborsWithCorners(grid,ghosted_id,stencil_type, &
 
 end subroutine GridGetGhostedNeighborsWithCorners
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! GridDestroy: Deallocates a grid
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
 subroutine GridDestroy(grid)
+  ! 
+  ! Deallocates a grid
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
 
   implicit none
   
@@ -2274,15 +2291,16 @@ subroutine GridDestroy(grid)
   call ConnectionDestroyList(grid%internal_connection_set_list)
 
 end subroutine GridDestroy
-      
+
 ! ************************************************************************** !
-!
-! GridIndexToCellID: Returns the local grid cell id of a Petsc Vec index
-! author: Glenn Hammond
-! date: 01/07/09
-!
-! ************************************************************************** !
+
 function GridIndexToCellID(vec,index,grid,vec_type)
+  ! 
+  ! Returns the local grid cell id of a Petsc Vec index
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/07/09
+  ! 
 
   implicit none
   
@@ -2318,14 +2336,14 @@ function GridIndexToCellID(vec,index,grid,vec_type)
 end function GridIndexToCellID
 
 ! ************************************************************************** !
-!> This routine computes the indices of neighbours for all ghosted cells
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 08/24/12
-! ************************************************************************** !
+
 subroutine GridComputeNeighbors(grid,is_bnd_vec,option)
+  ! 
+  ! This routine computes the indices of neighbours for all ghosted cells
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 08/24/12
+  ! 
 
   use Option_module
   
@@ -2347,15 +2365,15 @@ subroutine GridComputeNeighbors(grid,is_bnd_vec,option)
 end subroutine GridComputeNeighbors
 
 ! ************************************************************************** !
-!> This routine resticts regions to cells local to processor when the region
-!! was defined using a BLOCK from inputfile.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 09/04/12
-! ************************************************************************** !
+
 subroutine GridLocalizeRegionFromBlock(grid,region,option)
+  ! 
+  ! This routine resticts regions to cells local to processor when the region
+  ! was defined using a BLOCK from inputfile.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 09/04/12
+  ! 
 
   use Option_module
   use Region_module
@@ -2442,15 +2460,15 @@ subroutine GridLocalizeRegionFromBlock(grid,region,option)
 end subroutine GridLocalizeRegionFromBlock
 
 ! ************************************************************************** !
-!> This routine resticts regions to cells local to processor when the region
-!! was defined using COORDINATES from inputfile.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 09/04/12
-! ************************************************************************** !
+
 subroutine GridLocalizeRegionFromCoordinates(grid,region,option)
+  ! 
+  ! This routine resticts regions to cells local to processor when the region
+  ! was defined using COORDINATES from inputfile.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 09/04/12
+  ! 
 
   use Option_module
   use Region_module
@@ -2764,16 +2782,16 @@ subroutine GridLocalizeRegionFromCoordinates(grid,region,option)
 end subroutine GridLocalizeRegionFromCoordinates
 
 ! ************************************************************************** !
-!> This routine computes the following:
-!! - Displacement matrix (D), and
-!! - Inverse of D^T*D
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 11/20/12
-! ************************************************************************** !
+
 subroutine GridComputeMinv(grid,max_stencil_width,option)
+  ! 
+  ! This routine computes the following:
+  ! - Displacement matrix (D), and
+  ! - Inverse of D^T*D
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 11/20/12
+  ! 
 
   use Option_module
   use Utility_module
@@ -2842,7 +2860,7 @@ subroutine GridComputeMinv(grid,max_stencil_width,option)
 
       ! B = disp_mat^T * disp_mat
       call MatMatMult(grid%dispT(ghosted_id),A, &
-                  MAT_INITIAL_MATRIX,PETSC_DEFAULT_DOUBLE_PRECISION,B,ierr)
+                  MAT_INITIAL_MATRIX,PETSC_DEFAULT_REAL,B,ierr)
 
       ! Pack the values of B in disp_mat for obtaining the inverse of matrix
       do ii=0,2
@@ -2880,7 +2898,7 @@ subroutine GridComputeMinv(grid,max_stencil_width,option)
 
       ! Compute Minv * dispT
       call MatMatMult(grid%Minv(ghosted_id),grid%dispT(ghosted_id), &
-                      MAT_INITIAL_MATRIX,PETSC_DEFAULT_DOUBLE_PRECISION,A,ierr)
+                      MAT_INITIAL_MATRIX,PETSC_DEFAULT_REAL,A,ierr)
 
       call VecCreateSeq(PETSC_COMM_SELF,cell_neighbors(0,ghosted_id),iden_vec,ierr)
 
@@ -2921,15 +2939,15 @@ subroutine GridComputeMinv(grid,max_stencil_width,option)
 end subroutine GridComputeMinv
 
 ! ************************************************************************** !
-!> This routine saves information regarding a cell being boundary or 
-!! interior cell.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 12/19/12
-! ************************************************************************** !
+
 subroutine GridSaveBoundaryCellInfo(grid,is_bnd_vec,option)
+  ! 
+  ! This routine saves information regarding a cell being boundary or
+  ! interior cell.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 12/19/12
+  ! 
 
   use Option_module
 
@@ -2960,23 +2978,22 @@ subroutine GridSaveBoundaryCellInfo(grid,is_bnd_vec,option)
 end subroutine GridSaveBoundaryCellInfo
 
 ! ************************************************************************** !
-!> This routine populates faces of a unstructured grid for MIMETIC
-!! discretization. It does the following:
-!! 1) Calculates nlmax_faces, ngmax_faces
-!! 2) If boundary faces are present, adds boundary connection in 
-!!    grid%boundary_connection_set_list
-!! 3) Lastly, save information about ghosted faces: faces(ngmax_faces)
-!!
-!! Note: This subroutine performs functions of StructGridComputeInternConnect(),
-!!       StructGridComputeBoundConnect(), and GridPopulateFaces() for a
-!!       STRUCTURED_GRID_MIMETIC.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/29/13
-! ************************************************************************** !
+
 subroutine GridPopulateFacesForUGrid(grid,option)
+  ! 
+  ! This routine populates faces of a unstructured grid for MIMETIC
+  ! discretization. It does the following:
+  ! 1) Calculates nlmax_faces, ngmax_faces
+  ! 2) If boundary faces are present, adds boundary connection in
+  ! grid%boundary_connection_set_list
+  ! 3) Lastly, save information about ghosted faces: faces(ngmax_faces)
+  ! Note: This subroutine performs functions of StructGridComputeInternConnect(),
+  ! StructGridComputeBoundConnect(), and GridPopulateFaces() for a
+  ! STRUCTURED_GRID_MIMETIC.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/29/13
+  ! 
 
   use Option_module
   use Unstructured_Cell_module
@@ -3211,15 +3228,15 @@ subroutine GridPopulateFacesForUGrid(grid,option)
 end subroutine GridPopulateFacesForUGrid
 
 ! ************************************************************************** !
-!> This routine sets up cell to face connection for an unstructure grid for
-!! MIMETIC discretization.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/29/13
-! ************************************************************************** !
+
 subroutine GridComputeCell2FaceForUGrid(grid,MFD,option)
+  ! 
+  ! This routine sets up cell to face connection for an unstructure grid for
+  ! MIMETIC discretization.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/29/13
+  ! 
 
   use MFD_Aux_module
   use Option_module
@@ -3233,7 +3250,7 @@ subroutine GridComputeCell2FaceForUGrid(grid,MFD,option)
 
 #ifdef DASVYAT
 
-  type(mfd_auxvar_type), pointer :: aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
   type(connection_set_type), pointer :: conn
   type(unstructured_grid_type),pointer :: ugrid
   type(connection_set_list_type), pointer :: connection_set_list
@@ -3294,9 +3311,9 @@ subroutine GridComputeCell2FaceForUGrid(grid,MFD,option)
   ! For each local cell, allocate memory for mfd_auxvar_type that depends on
   ! on number of faces for a given cell.
   do local_id = 1, grid%nlmax
-    aux_var => MFD%aux_vars(local_id)
+    auxvar => MFD%auxvars(local_id)
     nfaces = UCellGetNFaces(ugrid%cell_type(local_id),option)
-    call MFDAuxVarInit(aux_var,nfaces,option)
+    call MFDAuxVarInit(auxvar,nfaces,option)
   enddo
 
   ! Compute fG2L and fL2G mapping
@@ -3320,13 +3337,13 @@ subroutine GridComputeCell2FaceForUGrid(grid,MFD,option)
       endif
 
       if (local_id_dn>0) then
-        aux_var => MFD%aux_vars(local_id_dn)
-        call MFDAuxAddFace(aux_var,option,iface)
+        auxvar => MFD%auxvars(local_id_dn)
+        call MFDAuxAddFace(auxvar,option,iface)
       endif
 
       if (local_id_up>0) then
-        aux_var => MFD%aux_vars(local_id_up)
-        call MFDAuxAddFace(aux_var,option,iface)
+        auxvar => MFD%auxvars(local_id_up)
+        call MFDAuxAddFace(auxvar,option,iface)
       endif
 
       ! For 'local_id_up', find the face-id that is shared by cells
@@ -3377,8 +3394,8 @@ subroutine GridComputeCell2FaceForUGrid(grid,MFD,option)
       local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping
    
       if (local_id_dn>0) then
-        aux_var => MFD%aux_vars(local_id_dn)
-        call MFDAuxAddFace(aux_var,option,iface)
+        auxvar => MFD%auxvars(local_id_dn)
+        call MFDAuxAddFace(auxvar,option,iface)
         grid%fG2L(iface)=local_id
         grid%fL2G(local_id) = iface
         local_id = local_id + 1
@@ -3416,15 +3433,15 @@ subroutine GridComputeCell2FaceForUGrid(grid,MFD,option)
 end subroutine GridComputeCell2FaceForUGrid
 
 ! ************************************************************************** !
-!> This routine sets up cell to face connection for an unstructure grid for
-!! MIMETIC discretization.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/29/13
-! ************************************************************************** !
+
 subroutine GridSetGlobalCell2FaceForUGrid(grid,MFD,DOF,option)
+  ! 
+  ! This routine sets up cell to face connection for an unstructure grid for
+  ! MIMETIC discretization.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/29/13
+  ! 
 
   use MFD_Aux_module
   use Option_module
@@ -3450,7 +3467,7 @@ subroutine GridSetGlobalCell2FaceForUGrid(grid,MFD,DOF,option)
   type(option_type) :: option
 
   type(unstructured_grid_type),pointer :: ugrid
-  type(mfd_auxvar_type), pointer :: aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
   type(connection_set_type), pointer :: conn
 
   PetscInt :: local_id
@@ -3535,9 +3552,9 @@ subroutine GridSetGlobalCell2FaceForUGrid(grid,MFD,DOF,option)
   e2n_local_values = 0
 
   do local_id = 1, grid%nlmax
-    aux_var => MFD%aux_vars(local_id)
-    do iface = 1, aux_var%numfaces
-      ghost_face_id = aux_var%face_id_gh(iface)
+    auxvar => MFD%auxvars(local_id)
+    do iface = 1, auxvar%numfaces
+      ghost_face_id = auxvar%face_id_gh(iface)
       local_face_id = grid%fG2L(ghost_face_id)
       conn => grid%faces(ghost_face_id)%conn_set_ptr
       face_id = grid%faces(ghost_face_id)%id
@@ -3652,9 +3669,9 @@ subroutine GridSetGlobalCell2FaceForUGrid(grid,MFD,DOF,option)
  
   jcount=0
   do local_id=1,grid%nlmax
-    aux_var => MFD%aux_vars(local_id)
-    do iface=1,aux_var%numfaces
-      ghost_face_id=aux_var%face_id_gh(iface)
+    auxvar => MFD%auxvars(local_id)
+    do iface=1,auxvar%numfaces
+      ghost_face_id=auxvar%face_id_gh(iface)
       local_face_id=grid%fG2L(ghost_face_id)
 
       if (local_face_id==0) then

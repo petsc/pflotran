@@ -36,14 +36,14 @@ module Surface_Simulation_class
 contains
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/27/13
-! ************************************************************************** !
+
 function SurfaceSimulationCreate(option)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/27/13
+  ! 
 
   use Option_module
   
@@ -61,14 +61,14 @@ function SurfaceSimulationCreate(option)
 end function SurfaceSimulationCreate
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/27/13
-! ************************************************************************** !
+
 subroutine SurfaceSimulationInit(this,option)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/27/13
+  ! 
 
   use Option_module
   
@@ -83,14 +83,14 @@ subroutine SurfaceSimulationInit(this,option)
 end subroutine SurfaceSimulationInit
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/27/13
-! ************************************************************************** !
+
 subroutine SurfaceInitializeRun(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/27/13
+  ! 
 
   use Logging_module
   use Output_module
@@ -132,14 +132,14 @@ subroutine SurfaceInitializeRun(this)
 end subroutine SurfaceInitializeRun
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/27/13
-! ************************************************************************** !
+
 subroutine SurfaceFinalizeRun(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/27/13
+  ! 
 
   use Timestepper_Base_class
 
@@ -161,14 +161,14 @@ subroutine SurfaceFinalizeRun(this)
 end subroutine SurfaceFinalizeRun
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/27/13
-! ************************************************************************** !
+
 subroutine SurfaceSimulationStrip(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/27/13
+  ! 
 
   implicit none
   
@@ -182,14 +182,14 @@ subroutine SurfaceSimulationStrip(this)
 end subroutine SurfaceSimulationStrip
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/27/13
-! ************************************************************************** !
+
 subroutine SurfaceSimulationDestroy(simulation)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/27/13
+  ! 
 
   implicit none
   

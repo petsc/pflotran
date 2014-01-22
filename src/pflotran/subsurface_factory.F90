@@ -18,13 +18,14 @@ module Subsurface_Factory_module
 contains
 
 ! ************************************************************************** !
-!
-! SubsurfaceInitialize: Sets up PFLOTRAN subsurface simulation 
-! author: Glenn Hammond
-! date: 06/10/13
-!
-! ************************************************************************** !
+
 subroutine SubsurfaceInitialize(simulation_base,option)
+  ! 
+  ! Sets up PFLOTRAN subsurface simulation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/10/13
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -49,14 +50,15 @@ subroutine SubsurfaceInitialize(simulation_base,option)
 end subroutine SubsurfaceInitialize
 
 ! ************************************************************************** !
-!
-! SubsurfaceInitializePostPetsc: Sets up PFLOTRAN subsurface simulation 
-!                                framework after to PETSc initialization
-! author: Glenn Hammond
-! date: 06/07/13
-!
-! ************************************************************************** !
+
 subroutine SubsurfaceInitializePostPetsc(simulation, option)
+  ! 
+  ! Sets up PFLOTRAN subsurface simulation
+  ! framework after to PETSc initialization
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/07/13
+  ! 
 
   use Simulation_module
   use Option_module
@@ -82,14 +84,15 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
 end subroutine SubsurfaceInitializePostPetsc
 
 ! ************************************************************************** !
-!
-! SubsurfInitCommandLineSettings: Initializes PFLTORAN subsurface output 
-!                                 filenames, etc.
-! author: Glenn Hammond
-! date: 06/06/13
-!
-! ************************************************************************** !
+
 subroutine SubsurfInitCommandLineSettings(option)
+  ! 
+  ! Initializes PFLTORAN subsurface output
+  ! filenames, etc.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/06/13
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -117,13 +120,12 @@ subroutine SubsurfInitCommandLineSettings(option)
 end subroutine SubsurfInitCommandLineSettings
 
 ! ************************************************************************** !
-!
-! HijackSimulation: 
-! author: Glenn Hammond
-! date: 06/11/13
-!
-! ************************************************************************** !
+
 subroutine HijackSimulation(simulation_old,simulation)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/11/13
+  ! 
 
   use Simulation_module
   use Realization_class
@@ -133,13 +135,17 @@ subroutine HijackSimulation(simulation_old,simulation)
   use PMC_Base_class
   use PMC_Subsurface_class  
   use Simulation_Base_class
-  use Process_Model_Mphase_class
-  use Process_Model_Richards_class
-  use Process_Model_RT_class
-  use Process_Model_TH_class
-  use Process_Model_THC_class
-  use Process_Model_Base_class
-  use Process_Model_module
+  use PM_General_class
+  use PM_Flash2_class
+  use PM_Immis_class
+  use PM_Mphase_class
+  use PM_Miscible_class
+  use PM_Richards_class
+  use PM_RT_class
+  use PM_TH_class
+  use PM_THC_class
+  use PM_Base_class
+  use PM_module
   use Timestepper_BE_class
   
   implicit none
@@ -173,8 +179,16 @@ subroutine HijackSimulation(simulation_old,simulation)
   ! Create Subsurface-flow ProcessModel & ProcessModelCoupler
   if (option%nflowdof > 0) then
     select case(option%iflowmode)
+      case(G_MODE)
+        cur_process_model => PMGeneralCreate()
+      case(FLASH2_MODE)
+        cur_process_model => PMFlash2Create()
+      case(IMS_MODE)
+        cur_process_model => PMImmisCreate()
       case(MPH_MODE)
         cur_process_model => PMMphaseCreate()
+      case(MIS_MODE)
+        cur_process_model => PMMiscibleCreate()
       case(RICHARDS_MODE)
         cur_process_model => PMRichardsCreate()
       case(TH_MODE)
@@ -240,27 +254,36 @@ subroutine HijackSimulation(simulation_old,simulation)
       cur_process_model => cur_process_model_coupler%pm_list
       do
         if (.not.associated(cur_process_model)) exit
+        ! set realization
         select type(cur_process_model)
+          class is (pm_general_type)
+            call cur_process_model%PMGeneralSetRealization(realization)
+          class is (pm_flash2_type)
+            call cur_process_model%PMFlash2SetRealization(realization)
+          class is (pm_immis_type)
+            call cur_process_model%PMImmisSetRealization(realization)
           class is (pm_mphase_type)
             call cur_process_model%PMMphaseSetRealization(realization)
-            call cur_process_model_coupler%SetTimestepper(flow_process_model_coupler%timestepper)
-            flow_process_model_coupler%timestepper%dt = option%flow_dt
+          class is (pm_miscible_type)
+            call cur_process_model%PMMiscibleSetRealization(realization)
           class is (pm_richards_type)
             call cur_process_model%PMRichardsSetRealization(realization)
-            call cur_process_model_coupler%SetTimestepper(flow_process_model_coupler%timestepper)
-            flow_process_model_coupler%timestepper%dt = option%flow_dt
           class is (pm_rt_type)
             call cur_process_model%PMRTSetRealization(realization)
-            call cur_process_model_coupler%SetTimestepper(tran_process_model_coupler%timestepper)
-            tran_process_model_coupler%timestepper%dt = option%tran_dt
           class is (pm_th_type)
             call cur_process_model%PMTHSetRealization(realization)
-            call cur_process_model_coupler%SetTimestepper(flow_process_model_coupler%timestepper)
-            flow_process_model_coupler%timestepper%dt = option%flow_dt
           class is (pm_thc_type)
             call cur_process_model%PMTHCSetRealization(realization)
-!            call cur_process_model_coupler%SetTimestepper(simulation_old%flow_stepper)
-            call cur_process_model_coupler%SetTimestepper(flow_process_model_coupler%timestepper)
+        end select
+        ! set time stepper
+        select type(cur_process_model)
+          class is (pm_rt_type)
+            call cur_process_model_coupler%SetTimestepper( &
+                   tran_process_model_coupler%timestepper)
+            tran_process_model_coupler%timestepper%dt = option%tran_dt
+          class default ! otherwise flow
+            call cur_process_model_coupler%SetTimestepper( &
+                   flow_process_model_coupler%timestepper)
             flow_process_model_coupler%timestepper%dt = option%flow_dt
         end select
 
@@ -300,13 +323,12 @@ subroutine HijackSimulation(simulation_old,simulation)
 end subroutine HijackSimulation
 
 ! ************************************************************************** !
-!
-! SubsurfaceJumpStart: 
-! author: Glenn Hammond
-! date: 06/11/13
-!
-! ************************************************************************** !
+
 subroutine SubsurfaceJumpStart(simulation)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/11/13
+  ! 
 
   use Realization_class
   use Option_module
@@ -493,13 +515,12 @@ subroutine SubsurfaceJumpStart(simulation)
 end subroutine SubsurfaceJumpStart
 
 ! ************************************************************************** !
-!
-! HijackTimestepper: 
-! author: Glenn Hammond
-! date: 06/11/13
-!
-! ************************************************************************** !
+
 subroutine HijackTimestepper(stepper_old,stepper_base)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/11/13
+  ! 
 
   use Timestepper_BE_class
   use Timestepper_Base_class

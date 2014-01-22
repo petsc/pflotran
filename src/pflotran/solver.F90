@@ -96,16 +96,17 @@ module Solver_module
 contains
 
 ! ************************************************************************** !
-!
-! SolverCreate: Allocates and initializes a new (empty) Solver object
-! Note that this does not create the PETSc solver contexts associated 
-! with the Solver.  These contexts are created via a subsequent call to 
-! SolverCreateSNES().
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 function SolverCreate()
+  ! 
+  ! Allocates and initializes a new (empty) Solver object
+  ! Note that this does not create the PETSc solver contexts associated
+  ! with the Solver.  These contexts are created via a subsequent call to
+  ! SolverCreateSNES().
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   implicit none
   
@@ -117,16 +118,16 @@ function SolverCreate()
   
   ! initialize to default values
   solver%itype = NULL_CLASS
-  solver%linear_atol = PETSC_DEFAULT_DOUBLE_PRECISION
-  solver%linear_rtol = PETSC_DEFAULT_DOUBLE_PRECISION
-  solver%linear_dtol = PETSC_DEFAULT_DOUBLE_PRECISION
+  solver%linear_atol = PETSC_DEFAULT_REAL
+  solver%linear_rtol = PETSC_DEFAULT_REAL
+  solver%linear_dtol = PETSC_DEFAULT_REAL
   solver%linear_maxit = PETSC_DEFAULT_INTEGER
-  solver%linear_lu_zero_pivot_tol = PETSC_DEFAULT_DOUBLE_PRECISION
+  solver%linear_lu_zero_pivot_tol = PETSC_DEFAULT_REAL
   
-  solver%newton_atol = PETSC_DEFAULT_DOUBLE_PRECISION
-  solver%newton_rtol = PETSC_DEFAULT_DOUBLE_PRECISION
-  solver%newton_stol = PETSC_DEFAULT_DOUBLE_PRECISION
-  solver%newton_dtol = PETSC_DEFAULT_DOUBLE_PRECISION 
+  solver%newton_atol = PETSC_DEFAULT_REAL
+  solver%newton_rtol = PETSC_DEFAULT_REAL
+  solver%newton_stol = PETSC_DEFAULT_REAL
+  solver%newton_dtol = PETSC_DEFAULT_REAL 
   solver%max_norm = 1.d20     ! set to a large value
   solver%newton_inf_res_tol = 1.d-50 ! arbitrarily set by geh
   solver%newton_inf_upd_tol = 1.d-50 ! arbitrarily set by geh
@@ -168,13 +169,14 @@ function SolverCreate()
 end function SolverCreate
 
 ! ************************************************************************** !
-!
-! SolverCreateSNES: Create PETSc SNES object
-! author: Glenn Hammond
-! date: 02/12/08
-!
-! ************************************************************************** !
+
 subroutine SolverCreateSNES(solver,comm)
+  ! 
+  ! Create PETSc SNES object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/12/08
+  ! 
 
   implicit none
   
@@ -191,15 +193,16 @@ subroutine SolverCreateSNES(solver,comm)
   call KSPGetPC(solver%ksp,solver%pc,ierr)
 
 end subroutine SolverCreateSNES
-  
+
 ! ************************************************************************** !
-!
-! SolverSetSNESOptions: Sets options for SNES
-! author: Glenn Hammond
-! date: 02/12/08
-!
-! ************************************************************************** !
+
 subroutine SolverSetSNESOptions(solver)
+  ! 
+  ! Sets options for SNES
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/12/08
+  ! 
 
   implicit none
   
@@ -227,7 +230,7 @@ subroutine SolverSetSNESOptions(solver)
   call PCGetType(solver%pc,solver%pc_type,ierr)
   
   if ((solver%pc_type == PCLU .or. solver%pc_type == PCILU) .and. &
-      solver%linear_lu_zero_pivot_tol > PETSC_DEFAULT_DOUBLE_PRECISION) then
+      solver%linear_lu_zero_pivot_tol > PETSC_DEFAULT_REAL) then
     call PCFactorSetZeroPivot(solver%pc,solver%linear_lu_zero_pivot_tol,ierr)
   endif
 
@@ -259,8 +262,8 @@ subroutine SolverSetSNESOptions(solver)
 
   call SNESGetLineSearch(solver%snes, linesearch, ierr)
   call SNESLineSearchSetTolerances(linesearch, solver%newton_stol,       &
-          PETSC_DEFAULT_DOUBLE_PRECISION,PETSC_DEFAULT_DOUBLE_PRECISION, &
-          PETSC_DEFAULT_DOUBLE_PRECISION,PETSC_DEFAULT_DOUBLE_PRECISION, &
+          PETSC_DEFAULT_REAL,PETSC_DEFAULT_REAL, &
+          PETSC_DEFAULT_REAL,PETSC_DEFAULT_REAL, &
           PETSC_DEFAULT_INTEGER, ierr)
 
   call SNESGetTolerances(solver%snes,solver%newton_atol,solver%newton_rtol, &
@@ -271,16 +274,16 @@ subroutine SolverSetSNESOptions(solver)
                          solver%linear_dtol,solver%linear_maxit,ierr)
 
 end subroutine SolverSetSNESOptions
-  
+
 ! ************************************************************************** !
-!> This routine creates PETSc TS object.
-!!
-!> @author
-!! Gautam Bisht, LBL
-!!
-!! date: 01/18/13
-! ************************************************************************** !
+
 subroutine SolverCreateTS(solver,comm)
+  ! 
+  ! This routine creates PETSc TS object.
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 01/18/13
+  ! 
 
   implicit none
   
@@ -295,13 +298,14 @@ subroutine SolverCreateTS(solver,comm)
 end subroutine SolverCreateTS
 
 ! ************************************************************************** !
-!
-! SolverReadLinear: Reads parameters associated with linear solver
-! author: Glenn Hammond
-! date: 12/21/07
-!
-! ************************************************************************** !
+
 subroutine SolverReadLinear(solver,input,option)
+  ! 
+  ! Reads parameters associated with linear solver
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/21/07
+  ! 
 
   use Input_Aux_module
   use String_module
@@ -615,13 +619,14 @@ subroutine SolverReadLinear(solver,input,option)
 end subroutine SolverReadLinear
 
 ! ************************************************************************** !
-!
-! SolverReadNewton: Reads parameters associated with linear solver
-! author: Glenn Hammond
-! date: 12/21/07
-!
-! ************************************************************************** !
+
 subroutine SolverReadNewton(solver,input,option)
+  ! 
+  ! Reads parameters associated with linear solver
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/21/07
+  ! 
 
   use Input_Aux_module
   use String_module
@@ -772,13 +777,14 @@ subroutine SolverReadNewton(solver,input,option)
 end subroutine SolverReadNewton
 
 ! ************************************************************************** !
-!
-! SolverPrintLinearInfo: Prints information about linear solver
-! author: Glenn Hammond
-! date: 02/23/08
-!
-! ************************************************************************** !
+
 subroutine SolverPrintLinearInfo(solver,header,option)
+  ! 
+  ! Prints information about linear solver
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/23/08
+  ! 
 
   use Option_module
   
@@ -808,7 +814,7 @@ subroutine SolverPrintLinearInfo(solver,header,option)
     write(*,'("     dtol:",1pe12.4)') solver%linear_dtol
     write(*,'("    maxit:",i7)') solver%linear_maxit
     if (solver%pc_type == PCLU .and. &
-        solver%linear_lu_zero_pivot_tol > PETSC_DEFAULT_DOUBLE_PRECISION) then
+        solver%linear_lu_zero_pivot_tol > PETSC_DEFAULT_REAL) then
       write(*,'("pivot tol:",1pe12.4)') solver%linear_lu_zero_pivot_tol
     endif
   endif
@@ -824,23 +830,23 @@ subroutine SolverPrintLinearInfo(solver,header,option)
     write(fid,'("     dtol:",1pe12.4)') solver%linear_dtol
     write(fid,'("    maxit:",i7)') solver%linear_maxit
     if (solver%pc_type == PCLU .and. &
-        solver%linear_lu_zero_pivot_tol > PETSC_DEFAULT_DOUBLE_PRECISION) then
+        solver%linear_lu_zero_pivot_tol > PETSC_DEFAULT_REAL) then
       write(fid,'("pivot tol:",1pe12.4)') solver%linear_lu_zero_pivot_tol
     endif
   endif
 
 end subroutine SolverPrintLinearInfo
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! SolverPrintNewtonInfo: Prints information about Newton solver
-! author: Glenn Hammond
-! date: 02/23/08
-!
-! ************************************************************************** !
 subroutine SolverPrintNewtonInfo(solver,print_to_screen,print_to_file,fid, &
                                  header)    
+  ! 
+  ! Prints information about Newton solver
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/23/08
+  ! 
 
   implicit none
   
@@ -953,17 +959,18 @@ subroutine SolverPrintNewtonInfo(solver,print_to_screen,print_to_file,fid, &
 end subroutine SolverPrintNewtonInfo
 
 ! ************************************************************************** !
-!
-! SolverCheckCommandLine: Parses the command line for various solver 
-! options.
-! Note: In order to use the PETSc OptionsPrefix associated with 
-! solver%snes in parsing the options, the call to SolverCheckCommandLine() 
-! should come after the SNESSetOptionsPrefix(solver%snes,...) call.
-! author: Richard Tran Mills
-! date: 05/09/2008
-!
-! ************************************************************************** !
+
 subroutine SolverCheckCommandLine(solver)
+  ! 
+  ! Parses the command line for various solver
+  ! options.
+  ! Note: In order to use the PETSc OptionsPrefix associated with
+  ! solver%snes in parsing the options, the call to SolverCheckCommandLine()
+  ! should come after the SNESSetOptionsPrefix(solver%snes,...) call.
+  ! 
+  ! Author: Richard Tran Mills
+  ! Date: 05/09/2008
+  ! 
 
   implicit none
   
@@ -1025,13 +1032,14 @@ subroutine SolverCheckCommandLine(solver)
 end subroutine SolverCheckCommandLine
 
 ! ************************************************************************** !
-!
-! SolverDestroy: Deallocates a solver
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
+
 subroutine SolverDestroy(solver)
+  ! 
+  ! Deallocates a solver
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
 
   implicit none
   

@@ -20,13 +20,14 @@ module Database_hpt_module
 contains
 
 ! ************************************************************************** !
-!
-! DatabaseRead_hpt: Collects parameters from geochemical database
-! author: ???
-! date: ???
-!
-! ************************************************************************** !
+
 subroutine DatabaseRead_hpt(reaction,option)
+  ! 
+  ! Collects parameters from geochemical database
+  ! 
+  ! Author: ???
+  ! Date: ???
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -651,13 +652,14 @@ subroutine DatabaseRead_hpt(reaction,option)
 end subroutine DatabaseRead_hpt
 
 ! ************************************************************************** !
-!
-! BasisInit_hpt: Initializes the basis for geochemistry
-! author: ???
-! date: ???
-!
-! ************************************************************************** !
+
 subroutine BasisInit_hpt(reaction,option)
+  ! 
+  ! Initializes the basis for geochemistry
+  ! 
+  ! Author: ???
+  ! Date: ???
+  ! 
 
   use Option_module
   use String_module
@@ -2972,15 +2974,16 @@ subroutine BasisInit_hpt(reaction,option)
 end subroutine BasisInit_hpt
 
 ! ************************************************************************** !
-!
-! BasisSubSpecInGasOrSecRxn_hpt: Swaps out a chemical species in a chemical  
-!                                reaction, replacing it with the species in a 
-!                                secondary reaction (swaps 1 into 2)
-! author: Glenn Hammond
-! date: 03/02/2012
-!
-! ************************************************************************** !
+
 subroutine BasisSubSpecInGasOrSecRxn_hpt(name1,dbaserxn1,dbaserxn2)
+  ! 
+  ! Swaps out a chemical species in a chemical
+  ! reaction, replacing it with the species in a
+  ! secondary reaction (swaps 1 into 2)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/02/2012
+  ! 
 
   use String_module
 
@@ -2999,15 +3002,16 @@ subroutine BasisSubSpecInGasOrSecRxn_hpt(name1,dbaserxn1,dbaserxn2)
   end subroutine BasisSubSpecInGasOrSecRxn_hpt
 
 ! ************************************************************************** !
-!
-! BasisSubSpeciesInMineralRxn_hpt: Swaps out a chemical species in a chemical  
-!                                reaction, replacing it with the species in a 
-!                                secondary reaction (swaps 1 into 2)
-! author: Glenn Hammond
-! date: 03/02/2012
-!
-! ************************************************************************** !
+
 subroutine BasisSubSpeciesInMineralRxn_hpt(name,sec_dbaserxn,mnrl_dbaserxn)
+  ! 
+  ! Swaps out a chemical species in a chemical
+  ! reaction, replacing it with the species in a
+  ! secondary reaction (swaps 1 into 2)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/02/2012
+  ! 
 
   use String_module
   use Reaction_module

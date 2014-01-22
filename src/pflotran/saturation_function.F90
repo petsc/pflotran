@@ -56,9 +56,11 @@ module Saturation_Function_module
             SatFuncGetRelPermFromSat, &
             SatFuncGetCapillaryPressure, &
             SaturationFunctionGetID, &
-            SaturationFunctionComputeIce, &
-            CapillaryPressureThreshold
-
+            SatFuncComputeIcePExplicit, &
+            CapillaryPressureThreshold, &
+            SatFuncComputeIcePKImplicit, &
+            SatFuncComputeIcePKExplicit
+            
   ! Saturation function 
   PetscInt, parameter :: VAN_GENUCHTEN = 1
   PetscInt, parameter :: BROOKS_COREY = 2
@@ -74,13 +76,14 @@ module Saturation_Function_module
 contains
 
 ! ************************************************************************** !
-!
-! SaturationFunctionCreate: Creates a saturation function
-! author: Glenn Hammond
-! date: 11/02/07
-!
-! ************************************************************************** !
+
 function SaturationFunctionCreate(option)
+  ! 
+  ! Creates a saturation function
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/02/07
+  ! 
   
   use Option_module
   
@@ -120,13 +123,14 @@ function SaturationFunctionCreate(option)
 end function SaturationFunctionCreate
 
 ! ************************************************************************** !
-!
-! SaturationFunctionRead: Reads in contents of a saturation_function card
-! author: Glenn Hammond
-! date: 01/21/09
-! 
-! ************************************************************************** !
+
 subroutine SaturationFunctionRead(saturation_function,input,option)
+  ! 
+  ! Reads in contents of a saturation_function card
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/21/09
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -257,14 +261,15 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
 end subroutine SaturationFunctionRead
 
 ! ************************************************************************** !
-!
-! SaturationFunctionComputeSpline: Computes a spline spanning the 
-!                                  discontinuity in Brooks Corey
-! author: Glenn Hammond
-! date: 02/27/08
-!
-! ************************************************************************** !
+
 subroutine SaturationFunctionComputeSpline(option,saturation_function)
+  ! 
+  ! Computes a spline spanning the
+  ! discontinuity in Brooks Corey
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/27/08
+  ! 
   
   use Option_module
   use Utility_module
@@ -336,14 +341,15 @@ subroutine SaturationFunctionComputeSpline(option,saturation_function)
 end subroutine SaturationFunctionComputeSpline
 
 ! ************************************************************************** !
-!
-! PermFunctionComputeSpline: Computes a spline spanning the 
-!                                  discontinuity in Brooks Corey
-! author: Glenn Hammond
-! date: 02/27/12
-!
-! ************************************************************************** !
+
 subroutine PermFunctionComputeSpline(option,saturation_function)
+  ! 
+  ! Computes a spline spanning the
+  ! discontinuity in Brooks Corey
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/27/12
+  ! 
   
   use Option_module
   use Utility_module
@@ -391,13 +397,14 @@ subroutine PermFunctionComputeSpline(option,saturation_function)
 end subroutine PermFunctionComputeSpline
 
 ! ************************************************************************** !
-!
-! SaturationFunctionAddToList: Adds a saturation function to linked list
-! author: Glenn Hammond
-! date: 11/02/07
-!
-! ************************************************************************** !
+
 subroutine SaturationFunctionAddToList(saturation_function,list)
+  ! 
+  ! Adds a saturation function to linked list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/02/07
+  ! 
 
   implicit none
   
@@ -421,14 +428,15 @@ subroutine SaturationFunctionAddToList(saturation_function,list)
 end subroutine SaturationFunctionAddToList
 
 ! ************************************************************************** !
-!
-! SaturatFuncConvertListToArray: Creates an array of pointers to the 
-!                                saturation functions in the list
-! author: Glenn Hammond
-! date: 12/11/07
-!
-! ************************************************************************** !
+
 subroutine SaturatFuncConvertListToArray(list,array,option)
+  ! 
+  ! Creates an array of pointers to the
+  ! saturation functions in the list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/11/07
+  ! 
 
   use String_module
   use Option_module
@@ -511,19 +519,20 @@ subroutine SaturatFuncConvertListToArray(list,array,option)
 end subroutine SaturatFuncConvertListToArray
 
 ! ************************************************************************** !
-!
-! SaturationFunctionCompute1: Computes the saturation and relative permeability
-!                             (and associated derivatives) as a function of 
-!                             capillary pressure
-! author: Glenn Hammond
-! date: 2/9/12
-!
-! ************************************************************************** !
+
 subroutine SaturationFunctionCompute1(pressure,saturation,relative_perm, &
                                      dsat_pres,dkr_pres, &
                                      saturation_function, &
                                      auxvar1,auxvar2, &
                                      option)
+  ! 
+  ! Computes the saturation and relative permeability
+  ! (and associated derivatives) as a function of
+  ! capillary pressure
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 2/9/12
+  ! 
   use Option_module
   
   implicit none
@@ -544,19 +553,20 @@ subroutine SaturationFunctionCompute1(pressure,saturation,relative_perm, &
 end subroutine SaturationFunctionCompute1
 
 ! ************************************************************************** !
-!
-! SaturationFunctionCompute2: Computes the saturation and relative permeability
-!                             (and associated derivatives) as a function of 
-!                             capillary pressure
-! author: Glenn Hammond
-! date: 12/11/07
-!
-! ************************************************************************** !
+
 subroutine SaturationFunctionCompute2(pressure,saturation,relative_perm, &
                                       dsat_pres,dkr_pres, &
                                       saturation_function, &
                                       auxvar1,auxvar2, &
                                       switch_to_saturated,option)
+  ! 
+  ! Computes the saturation and relative permeability
+  ! (and associated derivatives) as a function of
+  ! capillary pressure
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/11/07
+  ! 
   use Option_module
   use Utility_module, only:CubicPolynomialEvaluate
   
@@ -757,16 +767,17 @@ subroutine SaturationFunctionCompute2(pressure,saturation,relative_perm, &
 end subroutine SaturationFunctionCompute2
 
 ! ************************************************************************** !
-!
-! SaturationFunctionCompute3: Computes just saturation as a function of 
-!                             capillary pressure
-! author: Glenn Hammond
-! date: 2/9/12
-!
-! ************************************************************************** !
+
 subroutine SaturationFunctionCompute3(pressure,saturation, &
                                       saturation_function, &
                                       option)
+  ! 
+  ! Computes just saturation as a function of
+  ! capillary pressure
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 2/9/12
+  ! 
   use Option_module
   
   implicit none
@@ -788,22 +799,25 @@ subroutine SaturationFunctionCompute3(pressure,saturation, &
 end subroutine SaturationFunctionCompute3
 
 ! ************************************************************************** !
-!
-! SaturationFunctionComputeIce:Computes the saturation of ice, water vapor 
-!                              and liquid water given the saturation function
-!                              temperature, water vapor pressure and liquid
-!                              water pressure 
-! author: Satish Karra, LANL
-! date: 11/14/11
-!
-! ************************************************************************** !
-subroutine SaturationFunctionComputeIce(liquid_pressure, temperature, &
-                                        ice_saturation, &
-                                        liquid_saturation, gas_saturation, &
-                                        liquid_relative_perm, dsl_pl, & 
-                                        dsl_temp, dsg_pl, dsg_temp, dsi_pl, &
-                                        dsi_temp, dkr_pl, dkr_temp, &
-                                        saturation_function, pth, option)
+
+subroutine SatFuncComputeIcePExplicit(liquid_pressure, temperature, &
+                                      ice_saturation, &
+                                      liquid_saturation, gas_saturation, &
+                                      liquid_relative_perm, dsl_pl, & 
+                                      dsl_temp, dsg_pl, dsg_temp, dsi_pl, &
+                                      dsi_temp, dkr_pl, dkr_temp, &
+                                      saturation_function, pth, option)
+  ! 
+  ! Computes the saturation of ice, water vapor
+  ! and liquid water given the saturation function
+  ! temperature, water vapor pressure and liquid
+  ! water pressure
+  !
+  ! Model based on Painter, Comp. Geosci, 2011
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 11/14/11
+  ! 
 
   use Option_module
  
@@ -836,6 +850,9 @@ implicit none
   PetscReal, parameter :: interfacial_tensions_ratio = 2.33
   PetscReal, parameter :: T_0 = 273.15d0 !in K
   
+  PetscReal :: dsi_dpl, dsg_dpl, dsl_dpl
+  PetscReal :: dsi_dT, dsg_dT, dsl_dT
+            
   dsl_pl = 0.d0
   dsl_temp = 0.d0
   dsg_pl = 0.d0
@@ -915,25 +932,27 @@ implicit none
 
   if (gas_saturation > 1.d0) then
     print *, option%myrank, 'vG Gas Saturation > 1:', gas_saturation
-  else if (liquid_saturation < 0.d0) then
+  else if (gas_saturation < 0.d0) then
     print *, option%myrank, 'vG Gas Saturation < 0:', gas_saturation
   endif
  
   if (ice_saturation > 1.d0) then
     print *, option%myrank, 'vG Ice Saturation > 1:', ice_saturation
-  else if (liquid_saturation < 0.d0) then
+  else if (ice_saturation < 0.d0) then
     print *, option%myrank, 'vG Ice Saturation < 0:', ice_saturation
   endif
 
   select case(saturation_function%permeability_function_itype)
     case(MUALEM)
-      one_over_m = 1.d0/m
-      liq_sat_one_over_m = liquid_saturation**one_over_m
-      liquid_relative_perm = sqrt(liquid_saturation)* &
-                             (1.d0 - (1.d0 - liq_sat_one_over_m)**m)**2.d0
       if (liquid_saturation == 1.d0) then
+        liquid_relative_perm = 1.d0
         dkr_ds_liq = 0.d0
       else
+        m = saturation_function%m
+        one_over_m = 1.d0/m
+        liq_sat_one_over_m = liquid_saturation**one_over_m
+        liquid_relative_perm = sqrt(liquid_saturation)* &
+                               (1.d0 - (1.d0 - liq_sat_one_over_m)**m)**2.d0
         dkr_ds_liq = 0.5d0*liquid_relative_perm/liquid_saturation + &
                      2.d0*liquid_saturation**(one_over_m - 0.5d0)* &
                      (1.d0 - liq_sat_one_over_m)**(m - 1.d0)* &
@@ -945,26 +964,596 @@ implicit none
       option%io_buffer = 'Ice module only supports Mualem' 
       call printErrMsg(option)
   end select
+   
+end subroutine SatFuncComputeIcePExplicit
+
+! ************************************************************************** !
+
+subroutine ComputeSatVG(alpha,lambda,Pc,S,dS)
+  ! 
+  ! Evaluates van Genunchten saturation function and
+  ! its derivative at given capillary pressure
+  ! 
+  ! Author: Satish Karra
+  ! Date: 10/16/12
+  ! 
+
+  implicit none
+
+  PetscReal :: alpha, lambda, gamma  
+  PetscReal :: Pc, S, dS
   
-!  write(*,*) 'rank:', option%myrank, 'sl:', liquid_saturation, &
-!  'sg:', gas_saturation, 'si:', ice_saturation, 'dsl_pl:', dsl_pl, &
-! 'dsl_temp:', dsl_temp, 'dsg_pl:', dsg_pl, 'dsg_temp:', dsg_temp, &
-!  'dsi_pl:', dsi_pl, 'dsi_temp:', dsi_temp, 'kr:', liquid_relative_perm, &
-!  'dkr_pl:', dkr_pl, 'dkr_temp:', dkr_temp
-
-end subroutine SaturationFunctionComputeIce
+  gamma = 1.d0/(1.d0 - lambda)
+  if (Pc > 0.d0) then
+    S =  (1.d0 + (alpha*Pc)**gamma)**(-lambda)
+    dS = (-lambda)*((1.d0 + (alpha*Pc)**gamma)**(-lambda - 1.d0))* &
+         (gamma*alpha*(alpha*Pc)**(gamma - 1.d0))
+  else
+    S = 1.d0
+    dS = 0.d0
+  endif
+ 
+end subroutine ComputeSatVG
 
 ! ************************************************************************** !
-!
-! SatFuncGetRelPermFromSat: Calculates relative permeability from
-!                           phase saturation
-! author: Glenn Hammond
-! date: 03/05/11
-!
+
+subroutine ComputeInvSatVG(alpha,lambda,sat,Sinv,dSinv)
+  ! 
+  ! Evaluates inverse of van Genunchten saturation function
+  ! and its derivative at given saturation
+  ! 
+  ! Author: Satish Karra
+  ! Date: 10/16/12
+  ! 
+
+  implicit none
+  
+  PetscReal :: alpha, lambda, gamma
+  PetscReal :: sat, Sinv, dSinv
+  
+  gamma = 1.d0/(1.d0 - lambda)
+  if (sat == 1.d0) then
+    Sinv = 0.d0
+    dSinv = 0.d0
+  else
+    Sinv = 1.d0/alpha*((sat)**(-1.d0/lambda) - 1.d0)**(1.d0/gamma)
+    dSinv = 1.d0/alpha*1.d0/gamma*((sat**(-1.d0/lambda) - 1.d0)**(1.d0/gamma - &
+      1.d0))*(-1.d0/lambda)*(sat**(-1.d0/lambda - 1.d0))
+  endif
+  
+end subroutine ComputeInvSatVG
+
 ! ************************************************************************** !
+
+subroutine CalculateImplicitIceFunc(alpha,lambda,Pcgl,T,s_i,func_val,dfunc_val)
+  ! 
+  ! Evaluates the value of implicit equation whose
+  ! solution is ice saturation
+  ! 
+  ! Author: Satish Karra
+  ! Date: 10/16/12
+  ! 
+
+  implicit none
+  
+  PetscReal :: alpha, lambda
+  PetscReal :: Pcgl, T, s_i, func_val
+  PetscReal :: temp_term, PC 
+  PetscReal :: sat, dsat, sat_term
+  PetscReal :: sat_inv, dsat_inv
+  PetscReal :: sat_PC, dsat_PC, dfunc_val
+  PetscReal, parameter :: beta = 2.33          ! dimensionless -- ratio of surf. tens
+  PetscReal, parameter :: rho_i = 9.167d2      ! in kg/m^3
+  PetscReal, parameter :: T_0 = 273.15         ! in K
+  
+  if (T >= 0.d0) then   ! T is in C
+    temp_term = 0.d0
+  else
+    temp_term = -beta*rho_i*HEAT_OF_FUSION*T/T_0
+  endif
+  call ComputeSatVG(alpha,lambda,Pcgl,sat,dsat)
+  sat_term = (s_i + (1.d0 - s_i)*sat)
+  call ComputeInvSatVG(alpha,lambda,sat_term,sat_inv,dsat_inv)
+  PC = temp_term + sat_inv
+  call ComputeSatVG(alpha,lambda,PC,sat_PC,dsat_PC)
+  func_val = (1.d0 - s_i)*sat - sat_PC
+  dfunc_val = -sat - dsat_PC*dsat_inv*(1.d0 - sat)
+  
+end subroutine CalculateImplicitIceFunc
+
+! ************************************************************************** !
+
+subroutine CalcPhasePartitionIceNewt(alpha,lambda,Pcgl,T,s_g,s_i,s_l)
+  ! 
+  ! Solves the implicit constitutive relation
+  ! to calculate saturations of ice, liquid
+  ! and vapor phases
+  ! 
+  ! Author: Satish Karra
+  ! Date: 10/16/12
+  ! 
+
+  implicit none
+  PetscReal :: alpha, lambda
+  PetscReal :: Pcgl, T, s_g, s_i, s_l
+  PetscReal :: func_val, dfunc_val 
+  PetscReal :: x, x_new, sat, dsat
+  PetscInt :: iter
+  PetscReal, parameter :: eps = 1.d-12
+  PetscInt, parameter :: maxit = 10
+  
+  
+  if (T >= 0.d0) then
+    x = 0.d0
+  else
+    x = 5.d-1          ! Initial guess
+    do iter = 1,maxit
+      call CalculateImplicitIceFunc(alpha,lambda,Pcgl,T,x,func_val,dfunc_val)
+!       print *, 'iteration:', iter, 'value:', x, 'inormr:', abs(func_val), &
+!      'dfunc_val:', dfunc_val, 'dfunc_val_num:', dfunc_val_num
+      if (abs(func_val) < eps) exit
+      x_new = x - func_val/dfunc_val
+      if (x_new >= 1.d0) then
+        x_new = 1.d0 - 1.d-8
+      endif
+      if (x_new <= 0.d0) then
+        x_new = 1.d-8
+      endif
+      x = x_new
+    enddo
+  endif
+  
+  call ComputeSatVG(alpha,lambda,Pcgl,sat,dsat)
+  s_i = x
+  s_l = (1.d0 - x)*sat
+  s_g = 1.d0 - s_l - s_i
+
+end subroutine CalcPhasePartitionIceNewt
+
+! ************************************************************************** !
+
+subroutine CalcPhasePartitionIceBis(alpha,lambda,Pcgl,T,s_g,s_i,s_l)
+  ! 
+  ! Solves the implicit constitutive relation
+  ! to calculate saturations of ice, liquid
+  ! and vapor phases using bisection method
+  ! 
+  ! Author: Satish Karra
+  ! Date: 10/16/12
+  ! 
+
+  implicit none
+  
+  PetscReal :: alpha, lambda
+  PetscReal :: Pcgl, T, s_g, s_i, s_l
+  PetscReal :: max_s, min_s
+  PetscReal :: x, F_max_s, F_min_s, sol, F_x
+  PetscReal :: sat, dsat
+  PetscInt :: i
+  PetscReal :: dF_min_s, dF_max_s, dF_x
+  PetscInt, parameter :: maxit = 100
+  PetscReal, parameter :: tol = 1.d-12
+  
+  max_s = 1.d0
+  min_s = 0.d0
+  
+  if (T >= 0.d0) then
+    sol = 0.d0
+  else
+    do i = 1, maxit
+      call CalculateImplicitIceFunc(alpha,lambda,Pcgl,T,min_s,F_min_s,dF_min_s)
+      call CalculateImplicitIceFunc(alpha,lambda,Pcgl,T,max_s,F_max_s,dF_max_s)
+      if (abs(F_min_s) < tol) then
+        sol = min_s
+        exit
+      endif
+      if (abs(F_max_s) < tol) then
+        sol = max_s
+        exit
+      endif
+      x = min_s + (max_s - min_s)/2.d0
+      call CalculateImplicitIceFunc(alpha,lambda,Pcgl,T,x,F_x,dF_x)
+      ! print *, i, x, F_x, max_s, min_s
+      if (abs(F_x) < tol) then
+        sol = x
+        exit
+      endif
+      if (F_min_s*F_x > 0.d0) then
+        min_s = x
+      else
+        max_s = x
+      endif
+    enddo
+  endif
+    
+  call ComputeSatVG(alpha,lambda,Pcgl,sat,dsat)
+  s_i = sol
+  s_l = (1.d0 - sol)*sat
+  s_g = 1.d0 - s_l - s_i
+
+end subroutine  CalcPhasePartitionIceBis
+
+! ************************************************************************** !
+
+subroutine CalcPhasePartitionIceDeriv(alpha,lambda,Pcgl,T,s_g,s_i,s_l, &
+                                      dsg_dpl,dsg_dT,dsi_dpl,dsi_dT, &
+                                      dsl_dpl,dsl_dT)
+  ! 
+  ! Solves the implicit constitutive relation
+  ! to calculate saturations of ice, liquid
+  ! and vapor phases
+  ! 
+  ! Author: Satish Karra
+  ! Date: 10/16/12
+  ! 
+                                          
+  implicit none
+  
+  PetscReal :: alpha, lambda
+  PetscReal :: Pcgl, T
+  PetscReal :: dsg_dpl, dsg_dT
+  PetscReal :: dsi_dpl, dsi_dT
+  PetscReal :: dsl_dpl, dsl_dT
+  PetscReal :: s_g, s_i, s_l
+  PetscReal :: sat, dsat
+  PetscReal :: sat_inv, dsat_inv
+  PetscReal :: PC, sat_PC, dsat_PC
+  PetscReal :: G, dS_dpl, temp_term
+  PetscReal :: L, M, N
+  PetscReal, parameter :: beta = 2.33          ! dimensionless -- ratio of surf. tens
+  PetscReal, parameter :: rho_i = 9.167d2      ! in kg/m^3
+  PetscReal, parameter :: T_0 = 273.15         ! in K
+
+#if 0
+  PetscReal :: dsi_dpl_num, dsi_dT_num
+  PetscReal :: dsg_dpl_num, dsg_dT_num
+  PetscReal :: dsl_dpl_num, dsl_dT_num
+  PetscReal :: s_g_pinc, s_i_pinc, s_l_pinc
+  PetscReal :: s_g_Tinc, s_i_Tinc, s_l_Tinc
+  PetscReal, parameter :: delta = 1.d-8
+#endif
+
+  dsi_dpl = 0.d0
+  dsi_dT = 0.d0
+  dsg_dpl = 0.d0
+  dsg_dT = 0.d0
+  dsl_dpl = 0.d0
+  dsl_dT = 0.d0
+
+#if 0
+  dsi_dpl_num = 0.d0
+  dsg_dpl_num = 0.d0
+  dsl_dpl_num = 0.d0
+  dsi_dT_num = 0.d0
+  dsg_dT_num = 0.d0
+  dsl_dT_num = 0.d0
+#endif
+  
+  ! Calculate the derivatives of saturation with respect to pl
+  call CalcPhasePartitionIceNewt(alpha,lambda,Pcgl,T,s_g,s_i,s_l)
+  if (T >= 0.d0) then
+    temp_term = 0.d0
+  else
+    temp_term = -beta*rho_i*HEAT_OF_FUSION*T/T_0
+  endif
+  call ComputeInvSatVG(alpha,lambda,(s_i + s_l),sat_inv,dsat_inv)
+  PC = temp_term + sat_inv 
+  call ComputeSatVG(alpha,lambda,PC,sat_PC,dsat_PC)
+  call ComputeSatVG(alpha,lambda,Pcgl,sat,dsat)
+  G = dsat_PC*dsat_inv
+  dS_dpl = dsat*(-1.d0)
+  if (G == 1.d0) then
+    dsi_dpl = 0.d0
+    dsl_dpl = (1.d0 - s_i)*dS_dpl
+  else
+    dsi_dpl = (1.d0 - s_i)/(G/(1.d0 - G) + sat)*dS_dpl
+    dsl_dpl = dsi_dpl*G/(1.d0 - G)
+  endif
+  dsg_dpl = -dsi_dpl - dsl_dpl
+
+  
+  ! Calculate the derivatives of saturation with respect to temp
+  L = dsat_PC
+  if (T >= 0.d0) then
+    M = 0.d0
+  else
+    M = temp_term/T
+  endif
+  N = dsat_inv
+  dsi_dT = -L*M/(L*N + (1.d0 - L*N)*sat)
+  dsl_dT = -dsi_dT*sat
+  dsg_dT = -dsi_dT - dsl_dT
+
+#if 0     
+  ! Numerical derivatives      
+  
+  call CalcPhasePartitionIceNewt(alpha,lambda,Pcgl*(1.d0 + delta),T,s_g_pinc, &
+                                 s_i_pinc,s_l_pinc)
+                                 
+  if (T >= 0.d0) then
+    dsi_dT_num = 0.d0
+    dsg_dT_num = 0.d0
+    dsl_dT_num = 0.d0 
+  else                                 
+    call CalcPhasePartitionIceNewt(alpha,lambda,Pcgl,T*(1.d0 + delta),s_g_Tinc, &
+                                   s_i_Tinc,s_l_Tinc)
+    dsi_dT_num = (s_i_Tinc - s_i)/(T*delta)
+    dsg_dT_num = (s_g_Tinc - s_g)/(T*delta)
+    dsl_dT_num = (s_l_Tinc - s_l)/(T*delta)
+  endif
+                                   
+  dsi_dpl_num = (s_i_pinc - s_i)/(delta*Pcgl)*(-1.d0) ! -1.d0 factor for dPcgl/dpl
+  dsg_dpl_num = (s_g_pinc - s_g)/(delta*Pcgl)*(-1.d0)
+  dsl_dpl_num = (s_l_pinc - s_l)/(delta*Pcgl)*(-1.d0) 
+  
+  print *, 'analytical-press:', 'dsg_dpl:', dsg_dpl, &
+           'dsi_dpl:', dsi_dpl, 'dsl_dpl:', dsl_dpl 
+  print *, 'numerical-press:' , 'dsg_dpl:', dsg_dpl_num, &
+           'dsi_dpl:', dsi_dpl_num, 'dsl_dpl:', dsl_dpl_num
+  
+  print *, 'analytical-temp:', 'dsg_dT:', dsg_dT, &
+           'dsi_dT:', dsi_dT, 'dsl_dT:', dsl_dT
+  print *, 'numerical-temp:', 'dsg_dT:', dsg_dT_num, &
+           'dsi_dT:', dsi_dT_num, 'dsl_dT:', dsl_dT_num
+ 
+  dsi_dpl = dsi_dpl_num
+  dsg_dpl = dsg_dpl_num
+  dsl_dpl = dsl_dpl_num
+  
+  dsi_dT = dsi_dT_num
+  dsg_dT = dsg_dT_num
+  dsl_dT = dsl_dT_num
+#endif
+   
+
+end subroutine CalcPhasePartitionIceDeriv 
+
+! ************************************************************************** !
+
+subroutine SatFuncComputeIcePKImplicit(pl,T,s_i,s_l,s_g,kr,dsl_dpl, & 
+                                     dsl_dT,dsg_dpl,dsg_dT,dsi_dpl, &
+                                     dsi_dT,dkr_dpl,dkr_dT, &
+                                     saturation_function,pth,option)
+  ! 
+  ! Calculates the saturations of water phases
+  ! and their derivative with respect to liquid
+  ! pressure
+  
+  ! Model based on Painter & Karra implicit model VZJ (2014)
+  ! 
+  ! Author: Satish Karra
+  ! Date: 10/16/12
+  ! 
+
+  use Option_module
+ 
+implicit none
+
+  PetscReal :: pl, T
+  PetscReal :: s_i, s_g, s_l, kr
+  PetscReal :: dkr_dpl, dkr_dT
+  PetscReal :: dkr_dsl
+  PetscReal :: alpha, m, Pcgl
+  PetscReal :: one_over_m
+  PetscReal :: liq_sat_one_over_m
+  PetscReal :: dsl_dpl, dsl_dT
+  PetscReal :: dsi_dpl, dsi_dT
+  PetscReal :: dsg_dpl, dsg_dT
+  PetscReal :: pth
+  
+  type(saturation_function_type) :: saturation_function
+  type(option_type) :: option
+
+
+  select case(saturation_function%saturation_function_itype)
+    case(VAN_GENUCHTEN)
+      alpha = saturation_function%alpha
+      Pcgl = option%reference_pressure - pl
+      m = saturation_function%m      
+      call CalcPhasePartitionIceDeriv(alpha,m,Pcgl,T,s_g,s_i,s_l,dsg_dpl, &
+                                      dsg_dT,dsi_dpl,dsi_dT,dsl_dpl, &
+                                      dsl_dT)
+    case default  
+      option%io_buffer = 'Only van Genuchten supported with ice'
+      call printErrMsg(option)
+  end select
+ 
+  ! Check for bounds on saturations         
+  if (s_l > 1.d0) then
+    print *, option%myrank, 'vG Liquid Saturation > 1:', s_l
+  else if (s_l < 0.d0) then
+    print *, option%myrank, 'vG Liquid Saturation < 0:', s_l
+  endif
+
+  if (s_g > 1.d0) then
+    print *, option%myrank, 'vG Gas Saturation > 1:', s_g
+  else if (s_g < 0.d0) then
+    print *, option%myrank, 'vG Gas Saturation < 0:', s_g
+  endif
+ 
+  if (s_i > 1.d0) then
+    print *, option%myrank, 'vG Ice Saturation > 1:', s_i
+  else if (s_i < 0.d0) then
+    print *, option%myrank, 'vG Ice Saturation < 0:', s_i
+  endif
+ 
+  ! Calculate relative permeability
+  select case(saturation_function%permeability_function_itype)
+    case(MUALEM)
+      if (s_l == 1.d0) then
+        kr = 1.d0
+        dkr_dsl = 0.d0
+      else
+        m = saturation_function%m
+        one_over_m = 1.d0/m
+        liq_sat_one_over_m = s_l**one_over_m
+        kr = sqrt(s_l)*(1.d0 - (1.d0 - liq_sat_one_over_m)**m)**2.d0
+        dkr_dsl = 0.5d0*kr/s_l + &
+                  2.d0*s_l**(one_over_m - 0.5d0)* &
+                  (1.d0 - liq_sat_one_over_m)**(m - 1.d0)* &
+                  (1.d0 - (1.d0 - liq_sat_one_over_m)**m)
+      endif
+        dkr_dpl = dkr_dsl*dsl_dpl
+        dkr_dT = dkr_dsl*dsl_dT
+    case default
+      option%io_buffer = 'Ice module only supports Mualem' 
+      call printErrMsg(option)
+  end select 
+
+#if 0  
+  write(*,*) 'rank:', option%myrank, 'sl:', s_l, &
+  'sg:', s_g, 'si:', s_i, 'dsl_pl:', dsl_dpl, &
+  'dsl_temp:', dsl_dT, 'dsg_pl:', dsg_dpl, 'dsg_temp:', dsg_dT, &
+  'dsi_pl:', dsi_dpl, 'dsi_temp:', dsi_dT, 'kr:', kr, &
+  'dkr_pl:', dkr_dpl, 'dkr_temp:', dkr_dT, 'pl:', pl, 'T:', T  
+#endif
+
+end subroutine SatFuncComputeIcePKImplicit
+
+! ************************************************************************** !
+
+subroutine SatFuncComputeIcePKExplicit(pl,T,s_i,s_l,s_g,kr,dsl_dpl, & 
+                                       dsl_dT,dsg_dpl,dsg_dT,dsi_dpl, &
+                                       dsi_dT,dkr_dpl,dkr_dT, &
+                                       saturation_function,pth,option)
+  ! 
+  ! Calculates the saturations of water phases
+  ! and their derivative with respect to liquid
+  ! pressure, temperature
+  !
+  ! Model used: explicit model from Painter & Karra, VJZ (2014).
+  ! 
+  ! Author: Satish Karra
+  ! Date: 01/13/13
+  ! 
+
+  use Option_module
+ 
+implicit none
+
+  PetscReal :: pl, T
+  PetscReal :: s_i, s_g, s_l, kr
+  PetscReal :: dkr_dpl, dkr_dT
+  PetscReal :: dkr_dsl
+  PetscReal :: alpha, m, Pcgl
+  PetscReal :: one_over_m
+  PetscReal :: liq_sat_one_over_m
+  PetscReal :: dsl_dpl, dsl_dT
+  PetscReal :: dsi_dpl, dsi_dT
+  PetscReal :: dsg_dpl, dsg_dT
+  PetscReal :: pth
+  PetscReal :: S, dS, Sinv, dSinv
+  PetscReal, parameter :: beta = 2.2           ! dimensionless -- ratio of surf. tension
+  PetscReal, parameter :: rho_l = 9.998d2      ! in kg/m^3
+  PetscReal, parameter :: T_0 = 273.15         ! in K
+  PetscReal, parameter :: L_f = 3.34d5         ! in J/kg
+  PetscReal :: T_f, theta, X, Y, dS_dX
+
+  
+  type(saturation_function_type) :: saturation_function
+  type(option_type) :: option
+
+
+  select case(saturation_function%saturation_function_itype)
+    case(VAN_GENUCHTEN)
+      T = T + T_0  ! convert to K 
+      alpha = saturation_function%alpha
+      Pcgl = option%reference_pressure - pl
+      m = saturation_function%m      
+      call ComputeSatVG(alpha,m,Pcgl,S,dS)
+      call ComputeInvSatVG(alpha,m,S,Sinv,dSinv)
+      T_f = T_0 - 1.d0/beta*T_0/L_f/rho_l*Sinv
+      theta = (T-T_0)/T_0
+      if (T < T_f) then
+        X = -beta*theta*L_f*rho_l
+        call ComputeSatVG(alpha,m,X,s_l,dS_dX)
+        s_i = 1.d0 - s_l/S
+        dsl_dT = 1.d0/T_0*dS_dX*(-beta*rho_l*L_f)
+        dsl_dpl = 0.d0
+        dsi_dT = -1.d0/S*dsl_dT
+        dsi_dpl = -1.d0*s_l/S**2*dS 
+      else
+        s_l = S
+        s_i = 0.d0
+        dsl_dpl = -dS
+        dsl_dT = 0.d0
+        dsi_dpl = 0.d0
+        dsi_dT = 0.d0
+      endif
+      s_g = 1.d0 - s_l - s_i
+      dsg_dpl = -dsl_dpl - dsi_dpl
+      dsg_dT = -dsl_dT - dsi_dT  
+      T = T - T_0 ! change back to C 
+    case default  
+      option%io_buffer = 'Only van Genuchten supported with ice'
+      call printErrMsg(option)
+  end select
+ 
+  ! Check for bounds on saturations         
+  if (s_l > 1.d0) then
+    print *, option%myrank, 'vG Liquid Saturation > 1:', s_l
+  else if (s_l < 0.d0) then
+    print *, option%myrank, 'vG Liquid Saturation < 0:', s_l
+  endif
+
+  if (s_g > 1.d0) then
+    print *, option%myrank, 'vG Gas Saturation > 1:', s_g
+  else if (s_g < 0.d0) then
+    print *, option%myrank, 'vG Gas Saturation < 0:', s_g
+  endif
+ 
+  if (s_i > 1.d0) then
+    print *, option%myrank, 'vG Ice Saturation > 1:', s_i
+  else if (s_i < 0.d0) then
+    print *, option%myrank, 'vG Ice Saturation < 0:', s_i
+  endif
+ 
+  ! Calculate relative permeability
+  select case(saturation_function%permeability_function_itype)
+    case(MUALEM)
+      if (s_l == 1.d0) then
+        kr = 1.d0
+        dkr_dsl = 0.d0
+      else
+        m = saturation_function%m
+        one_over_m = 1.d0/m
+        liq_sat_one_over_m = s_l**one_over_m
+        kr = sqrt(s_l)*(1.d0 - (1.d0 - liq_sat_one_over_m)**m)**2.d0
+        dkr_dsl = 0.5d0*kr/s_l + &
+                  2.d0*s_l**(one_over_m - 0.5d0)* &
+                  (1.d0 - liq_sat_one_over_m)**(m - 1.d0)* &
+                  (1.d0 - (1.d0 - liq_sat_one_over_m)**m)
+      endif
+        dkr_dpl = dkr_dsl*dsl_dpl
+        dkr_dT = dkr_dsl*dsl_dT
+    case default
+      option%io_buffer = 'Ice module only supports Mualem' 
+      call printErrMsg(option)
+  end select 
+
+#if 0
+  print *, '======================================' 
+  write(*,*) 'rank:', option%myrank, 'sl:', s_l, &
+  'sg:', s_g, 'si:', s_i, 'dsl_pl:', dsl_dpl, &
+  'dsl_temp:', dsl_dT, 'dsg_pl:', dsg_dpl, 'dsg_temp:', dsg_dT, &
+  'dsi_pl:', dsi_dpl, 'dsi_temp:', dsi_dT, 'kr:', kr, &
+  'dkr_pl:', dkr_dpl, 'dkr_temp:', dkr_dT, 'pl:', pl, 'T:', T  
+#endif
+
+end subroutine SatFuncComputeIcePKExplicit
+
+! ************************************************************************** !
+
 subroutine SatFuncGetRelPermFromSat(saturation,relative_perm,dkr_Se, &
                                     saturation_function,iphase, &
                                     derivative,option)
+  ! 
+  ! Calculates relative permeability from
+  ! phase saturation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/05/11
+  ! 
 
   use Option_module
   
@@ -1022,19 +1611,19 @@ subroutine SatFuncGetRelPermFromSat(saturation,relative_perm,dkr_Se, &
 end subroutine SatFuncGetRelPermFromSat
 
 ! ************************************************************************** !
-!
-! CapillaryPressureThreshold: Computes the capillary pressure threshold 
-! after which instead of van Genuchten a linear function is used upto 100 Mpa
-! capillary pressure. The saturation at 100 Mpa is set to zero
-! This threshold value depends only on van Genuchten parameters alpha and lambda
-! This is used mainly for ice problem, so that the pressure doesnt go to large
-! negative values
-! author: Satish Karra, LANL
-! date: 09/12/12
-!
-! ************************************************************************** !
 
 subroutine CapillaryPressureThreshold(saturation_function,cap_threshold,option)
+  ! 
+  ! Computes the capillary pressure threshold
+  ! after which instead of van Genuchten a linear function is used upto 100 Mpa
+  ! capillary pressure. The saturation at 100 Mpa is set to zero
+  ! This threshold value depends only on van Genuchten parameters alpha and lambda
+  ! This is used mainly for ice problem, so that the pressure doesnt go to large
+  ! negative values
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 09/12/12
+  ! 
 
   use Option_module
   
@@ -1073,15 +1662,15 @@ subroutine CapillaryPressureThreshold(saturation_function,cap_threshold,option)
 end subroutine CapillaryPressureThreshold
 
 ! ************************************************************************** !
-!
-! ResidualCapPressThre: Computes the residual to calculate capillary pressure
-! thresold in the subroutine CapillaryPressureThreshold
-! author: Satish Karra, LANL
-! date: 09/12/12
-!
-! ************************************************************************** !
 
 subroutine ResidualCapPressThre(p,alpha,lambda,gamma,res)
+  ! 
+  ! Computes the residual to calculate capillary pressure
+  ! thresold in the subroutine CapillaryPressureThreshold
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 09/12/12
+  ! 
 
   implicit none
   
@@ -1092,17 +1681,16 @@ subroutine ResidualCapPressThre(p,alpha,lambda,gamma,res)
 
 end subroutine ResidualCapPressThre
 
-
-! ************************************************************************** !
-!
-! JacobianCapPressThre: Computes the jacobian to calculate capillary pressure
-! thresold in the subroutine CapillaryPressureThreshold
-! author: Satish Karra, LANL
-! date: 09/12/12
-!
 ! ************************************************************************** !
 
 subroutine JacobianCapPressThre(p,alpha,lambda,gamma,jac)
+  ! 
+  ! Computes the jacobian to calculate capillary pressure
+  ! thresold in the subroutine CapillaryPressureThreshold
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 09/12/12
+  ! 
 
   implicit none
   
@@ -1114,17 +1702,17 @@ subroutine JacobianCapPressThre(p,alpha,lambda,gamma,jac)
  
 end subroutine JacobianCapPressThre
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! SatFuncGetCapillaryPressure: Computes the capillary pressure as a function of 
-!                           pressure
-! author: Glenn Hammond
-! date: 06/03/09
-!
-! ************************************************************************** !
 subroutine SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
                                        saturation_function,option)
+  ! 
+  ! Computes the capillary pressure as a function of
+  ! pressure
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/03/09
+  ! 
 
   use Option_module
   
@@ -1211,19 +1799,22 @@ subroutine SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
       call printErrMsg(option)
   end select
 
+  capillary_pressure = min(capillary_pressure,saturation_function%pcwmax)
+
 end subroutine SatFuncGetCapillaryPressure
 
 ! ************************************************************************** !
-!
-! SaturationFunctionGetID: Returns the ID of the saturation function named
-!                          "saturation_function_name"
-! author: Glenn Hammond
-! date: 01/12/11
-!
-! ************************************************************************** !
+
 function SaturationFunctionGetID(saturation_function_list, &
                                  saturation_function_name, &
                                  material_property_name, option)
+  ! 
+  ! Returns the ID of the saturation function named
+  ! "saturation_function_name"
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/11
+  ! 
 
   use Option_module
   use String_module
@@ -1261,13 +1852,14 @@ function SaturationFunctionGetID(saturation_function_list, &
 end function SaturationFunctionGetID
 
 ! ************************************************************************** !
-!
-! SaturationFunctionDestroy: Destroys a saturation function
-! author: Glenn Hammond
-! date: 11/02/07
-!
-! ************************************************************************** !
+
 recursive subroutine SaturationFunctionDestroy(saturation_function)
+  ! 
+  ! Destroys a saturation function
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/02/07
+  ! 
 
   implicit none
   

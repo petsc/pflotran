@@ -39,13 +39,14 @@ module Simulation_Base_class
 contains
 
 ! ************************************************************************** !
-!
-! SimulationBaseCreate: Allocates and initializes a new simulation object
-! author: Glenn Hammond
-! date: 06/11/13
-!
-! ************************************************************************** !
+
 function SimulationBaseCreate(option)
+  ! 
+  ! Allocates and initializes a new simulation object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/11/13
+  ! 
 
   use Option_module
 
@@ -61,13 +62,14 @@ function SimulationBaseCreate(option)
 end function SimulationBaseCreate
 
 ! ************************************************************************** !
-!
-! SimulationBaseInit: Initializes a new simulation object
-! author: Glenn Hammond
-! date: 06/11/13
-!
-! ************************************************************************** !
+
 subroutine SimulationBaseInit(this,option)
+  ! 
+  ! Initializes a new simulation object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/11/13
+  ! 
 
   use Option_module
 
@@ -85,13 +87,14 @@ subroutine SimulationBaseInit(this,option)
 end subroutine SimulationBaseInit
 
 ! ************************************************************************** !
-!
-! InitializeRun: Initializes simulation
-! author: Glenn Hammond
-! date: 06/11/13
-!
-! ************************************************************************** !
+
 subroutine InitializeRun(this)
+  ! 
+  ! Initializes simulation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/11/13
+  ! 
 
   use Logging_module
 
@@ -133,13 +136,14 @@ subroutine InitializeRun(this)
 end subroutine InitializeRun
 
 ! ************************************************************************** !
-!
-! ExecuteRun: Initializes simulation
-! author: Glenn Hammond
-! date: 06/11/13
-!
-! ************************************************************************** !
+
 subroutine ExecuteRun(this)
+  ! 
+  ! Initializes simulation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/11/13
+  ! 
 
   implicit none
   
@@ -186,13 +190,14 @@ subroutine ExecuteRun(this)
 end subroutine ExecuteRun
 
 ! ************************************************************************** !
-!
-! RunToTime: Executes simulation
-! author: Glenn Hammond
-! date: 06/11/13
-!
-! ************************************************************************** !
+
 subroutine RunToTime(this,target_time)
+  ! 
+  ! Executes simulation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/11/13
+  ! 
 
   use Option_module
   use Simulation_Aux_module
@@ -219,13 +224,14 @@ subroutine RunToTime(this,target_time)
 end subroutine RunToTime
 
 ! ************************************************************************** !
-!
-! SimulationBaseFinalizeRun: Finalizes simulation
-! author: Glenn Hammond
-! date: 06/11/13
-!
-! ************************************************************************** !
+
 subroutine SimulationBaseFinalizeRun(this)
+  ! 
+  ! Finalizes simulation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/11/13
+  ! 
 
   use Logging_module
   
@@ -251,15 +257,16 @@ subroutine SimulationBaseFinalizeRun(this)
 end subroutine SimulationBaseFinalizeRun
 
 ! ************************************************************************** !
-!
-! SimulationGetFinalWaypointTime: Returns the earliest final waypoint time
-!                                 from the top layer of process model 
-!                                 couplers.
-! author: Glenn Hammond
-! date: 06/12/13
-!
-! ************************************************************************** !
+
 function SimulationGetFinalWaypointTime(this)
+  ! 
+  ! Returns the earliest final waypoint time
+  ! from the top layer of process model
+  ! couplers.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/12/13
+  ! 
 
   use Waypoint_module
 
@@ -288,13 +295,14 @@ function SimulationGetFinalWaypointTime(this)
 end function SimulationGetFinalWaypointTime
 
 ! ************************************************************************** !
-!
-! SimulationBaseStrip: Deallocates members of simulation base
-! author: Glenn Hammond
-! date: 06/11/13
-!
-! ************************************************************************** !
+
 subroutine SimulationBaseStrip(this)
+  ! 
+  ! Deallocates members of simulation base
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/11/13
+  ! 
 
   implicit none
   
@@ -304,17 +312,19 @@ subroutine SimulationBaseStrip(this)
   call printMsg(this%option,'SimulationBaseStrip()')
 #endif
   call SimAuxDestroy(this%sim_aux)
+  call this%process_model_coupler_list%Destroy()
   
 end subroutine SimulationBaseStrip
 
 ! ************************************************************************** !
-!
-! SimulationBaseDestroy: Deallocates a simulation
-! author: Glenn Hammond
-! date: 06/11/13
-!
-! ************************************************************************** !
+
 subroutine SimulationBaseDestroy(simulation)
+  ! 
+  ! Deallocates a simulation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/11/13
+  ! 
 
   implicit none
   

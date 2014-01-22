@@ -64,6 +64,7 @@ module PFLOTRAN_Constants_module
   PetscMPIInt, parameter, public :: TWO_INTEGER_MPI = TWO_INTEGER
   PetscMPIInt, parameter, public :: THREE_INTEGER_MPI = THREE_INTEGER
   PetscMPIInt, parameter, public :: FOUR_INTEGER_MPI = FOUR_INTEGER
+  PetscMPIInt, parameter, public :: SIX_INTEGER_MPI = SIX_INTEGER
   PetscMPIInt, parameter, public :: SEVEN_INTEGER_MPI = SEVEN_INTEGER
   PetscMPIInt, parameter, public :: TWELVE_INTEGER_MPI = TWELVE_INTEGER
   PetscMPIInt, parameter, public :: MAXSTRINGLENGTH_MPI = MAXSTRINGLENGTH
@@ -236,11 +237,17 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: GEOMECH_DISP_X_DOF = 1
   PetscInt, parameter, public :: GEOMECH_DISP_Y_DOF = 2
   PetscInt, parameter, public :: GEOMECH_DISP_Z_DOF = 3
-  PetscInt, parameter, public :: ONE_WAY_COUPLED = 4
+  PetscInt, parameter, public :: GEOMECH_ONE_WAY_COUPLED = 4
+  PetscInt, parameter, public :: GEOMECH_TWO_WAY_COUPLED = 5
 
   ! Macros that are used as 'vscatter_index' values
   PetscInt, parameter, public :: SURF_TO_SUBSURF = 1
   PetscInt, parameter, public :: SUBSURF_TO_SURF = 2
   PetscInt, parameter, public :: SUBSURF_TO_HYDROGEOPHY = 3
+  
+  ! Ice/water/vapor partitioning model
+  PetscInt, parameter, public :: PAINTER_EXPLICIT = 1
+  PetscInt, parameter, public :: PAINTER_KARRA_IMPLICIT = 2
+  PetscInt, parameter, public :: PAINTER_KARRA_EXPLICIT = 3
 
 end module PFLOTRAN_Constants_module

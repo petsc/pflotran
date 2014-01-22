@@ -188,15 +188,18 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
   
 #ifdef GEOMECH       
     if (option%ngeomechdof > 0) then
-      if (option%geomech_subsurf_coupling == ONE_WAY_COUPLED) then 
-        call GeomechUpdateFromSubsurf(realization,geomech_realization)
-        call GeomechStoreInitialPressTemp(geomech_realization)
-      endif
+      call GeomechUpdateFromSubsurf(realization,geomech_realization)
+      call GeomechStoreInitialPressTemp(geomech_realization)
       call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
                                           failure)
       call GeomechUpdateSolution(geomech_realization)
       call GeomechStoreInitialDisp(geomech_realization)
       call GeomechForceUpdateAuxVars(geomech_realization)
+      if (option%geomech_subsurf_coupling == GEOMECH_TWO_WAY_COUPLED) then 
+        call GeomechStoreInitialPorosity(realization,geomech_realization)
+        call GeomechUpdateSubsurfFromGeomech(realization,geomech_realization)
+        call GeomechUpdateSubsurfPorosity(realization,geomech_realization)
+      endif
     endif
 #endif  
 
@@ -328,6 +331,7 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
   PetscReal :: tran_dt_save, flow_t0
   PetscReal :: flow_to_tran_ts_ratio
   PetscBool :: geomech_plot_flag
+  PetscBool :: checkpoint_flag
 
   PetscLogDouble :: stepper_start_time, current_time, average_step_time
   PetscErrorCode :: ierr
@@ -346,6 +350,7 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
   if (associated(flow_stepper)) then
     run_flow_as_steady_state = flow_stepper%run_as_steady_state
   endif
+  checkpoint_flag = PETSC_FALSE
 
   call PetscTime(master_stepper%start_time, ierr)
 
@@ -371,7 +376,8 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
 
     call StepperSetTargetTimes(flow_stepper,tran_stepper, &
                                option,plot_flag, &
-                               transient_plot_flag)
+                               transient_plot_flag, &
+                               checkpoint_flag)
 
     ! flow solution
     if (associated(flow_stepper) .and. .not.run_flow_as_steady_state) then
@@ -511,18 +517,26 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
   
 #ifdef GEOMECH       
     if (option%ngeomechdof > 0) then
-      if (option%geomech_subsurf_coupling == ONE_WAY_COUPLED) then ! call geomech only at plot times
-        if (geomech_plot_flag) then
+      select case (option%geomech_subsurf_coupling)
+        case (GEOMECH_ONE_WAY_COUPLED) ! call geomech only at plot times
+          if (geomech_plot_flag) then
+            call GeomechUpdateFromSubsurf(realization,geomech_realization)
+            call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
+                                                failure)
+            call GeomechUpdateSolution(geomech_realization)
+          endif
+        case (GEOMECH_TWO_WAY_COUPLED)
           call GeomechUpdateFromSubsurf(realization,geomech_realization)
           call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
                                               failure)
+          call GeomechUpdateSolution(geomech_realization)  
+          call GeomechUpdateSubsurfFromGeomech(realization,geomech_realization)
+          call GeomechUpdateSubsurfPorosity(realization,geomech_realization)
+        case default
+          call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
+                                              failure)
           call GeomechUpdateSolution(geomech_realization)
-        endif
-      else
-        call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
-                                          failure)
-        call GeomechUpdateSolution(geomech_realization)
-      endif
+      end select
       call OutputGeomechanics(geomech_realization,geomech_plot_flag, &
                               transient_plot_flag)
     endif
@@ -666,7 +680,7 @@ end subroutine GeomechTimestepperFinalizeRun
 ! date: 06/19/13
 !
 ! ************************************************************************** !
-subroutine StepperSolveGeomechSteadyState(realization,stepper,failure)
+subroutine StepperSolveGeomechSteadyState(geomech_realization,stepper,failure)
   
   use Geomechanics_Realization_module
   use Geomechanics_Discretization_module
@@ -683,7 +697,7 @@ subroutine StepperSolveGeomechSteadyState(realization,stepper,failure)
 #include "finclude/petscviewer.h"
 #include "finclude/petscsnes.h"
 
-  type(geomech_realization_type) :: realization
+  type(geomech_realization_type) :: geomech_realization
   type(stepper_type) :: stepper
   PetscBool :: failure
 
@@ -698,11 +712,11 @@ subroutine StepperSolveGeomechSteadyState(realization,stepper,failure)
   type(option_type), pointer :: option
   type(geomech_field_type), pointer :: field 
   type(solver_type), pointer :: solver
-  type(geomech_discretization_type), pointer :: discretization 
+  type(geomech_discretization_type), pointer :: geomech_discretization
 
-  option => realization%option
-  discretization => realization%discretization
-  field => realization%geomech_field
+  option => geomech_realization%option
+  geomech_discretization => geomech_realization%geomech_discretization
+  field => geomech_realization%geomech_field
   solver => stepper%solver
 
   sum_newton_iterations = 0
@@ -711,7 +725,7 @@ subroutine StepperSolveGeomechSteadyState(realization,stepper,failure)
     
   if (option%print_screen_flag) write(*,'(/,2("=")," GEOMECHANICS ",65("="))')
 
-  call GeomechanicsForceInitialGuess(realization)
+  call GeomechanicsForceInitialGuess(geomech_realization)
 
 
   call SNESSolve(solver%snes,PETSC_NULL_OBJECT,field%disp_xx,ierr)
@@ -736,8 +750,8 @@ subroutine StepperSolveGeomechSteadyState(realization,stepper,failure)
   call SNESGetFunctionNorm(solver%snes,fnorm,ierr)
   call VecNorm(field%disp_r,NORM_INFINITY,inorm,ierr)
   if (option%print_screen_flag) then
-    if (associated(discretization%grid)) then
-       scaled_fnorm = fnorm/discretization%grid%nmax_node 
+    if (associated(geomech_discretization%grid)) then
+       scaled_fnorm = fnorm/geomech_discretization%grid%nmax_node
     else
        scaled_fnorm = fnorm
     endif

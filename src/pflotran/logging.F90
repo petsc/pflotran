@@ -117,13 +117,14 @@ PetscInt, parameter, public :: FINAL_STAGE = 6
 contains
 
 ! ************************************************************************** !
-!
-! LoggingCreate: Allocates and initializes a new logging object
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 subroutine LoggingCreate()
+  ! 
+  ! Allocates and initializes a new logging object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   implicit none
   
@@ -367,13 +368,14 @@ subroutine LoggingCreate()
 end subroutine LoggingCreate
 
 ! ************************************************************************** !
-!
-! OptionDestroy: Deallocates a logging object
-! author: Glenn Hammond
-! date: 10/26/07
-!
-! ************************************************************************** !
+
 subroutine LoggingDestroy()
+  ! 
+  ! OptionDestroy: Deallocates a logging object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/07
+  ! 
 
   implicit none
   

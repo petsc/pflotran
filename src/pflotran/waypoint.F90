@@ -16,6 +16,7 @@ module Waypoint_module
     PetscReal :: time
     PetscBool :: print_output
     PetscBool :: print_tr_output
+    PetscBool :: print_checkpoint
 !    type(output_option_type), pointer :: output_option
     PetscBool :: update_conditions
     PetscReal :: dt_max
@@ -54,13 +55,14 @@ module Waypoint_module
 contains
 
 ! ************************************************************************** !
-!
-! WaypointCreate1: Creates a simulation waypoint
-! author: Glenn Hammond
-! date: 11/07/07
-!
-! ************************************************************************** !
+
 function WaypointCreate1()
+  ! 
+  ! Creates a simulation waypoint
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/07/07
+  ! 
 
   implicit none
   
@@ -72,6 +74,7 @@ function WaypointCreate1()
   waypoint%time = 0.d0
   waypoint%print_output = PETSC_FALSE
   waypoint%print_tr_output = PETSC_FALSE
+  waypoint%print_checkpoint = PETSC_FALSE
   waypoint%final = PETSC_FALSE
   waypoint%update_conditions = PETSC_FALSE
   waypoint%dt_max = 0.d0
@@ -83,13 +86,14 @@ function WaypointCreate1()
 end function WaypointCreate1
 
 ! ************************************************************************** !
-!
-! WaypointCreate2: Creates a simulation waypoint
-! author: Glenn Hammond
-! date: 11/07/07
-!
-! ************************************************************************** !
+
 function WaypointCreate2(original_waypoint)
+  ! 
+  ! Creates a simulation waypoint
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/07/07
+  ! 
 
   implicit none
   
@@ -103,6 +107,7 @@ function WaypointCreate2(original_waypoint)
   waypoint%time = original_waypoint%time
   waypoint%print_output = original_waypoint%print_output
   waypoint%print_tr_output = original_waypoint%print_tr_output
+  waypoint%print_checkpoint = original_waypoint%print_checkpoint
   waypoint%final = original_waypoint%final
   waypoint%update_conditions = original_waypoint%update_conditions
   waypoint%dt_max = original_waypoint%dt_max
@@ -112,13 +117,14 @@ function WaypointCreate2(original_waypoint)
 end function WaypointCreate2
 
 ! ************************************************************************** !
-!
-! WaypointListCreate: Creates a simulation waypoint list
-! author: Glenn Hammond
-! date: 11/07/07
-!
-! ************************************************************************** !
+
 function WaypointListCreate()
+  ! 
+  ! Creates a simulation waypoint list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/07/07
+  ! 
 
   implicit none
   
@@ -137,13 +143,14 @@ function WaypointListCreate()
 end function WaypointListCreate 
 
 ! ************************************************************************** !
-!
-! WaypointInsertInList: Correctly inserts a waypoing in a list
-! author: Glenn Hammond
-! date: 11/09/07
-!
-! ************************************************************************** !
+
 subroutine WaypointInsertInList(new_waypoint,waypoint_list)
+  ! 
+  ! Correctly inserts a waypoing in a list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/09/07
+  ! 
 
   use Utility_module
 
@@ -218,13 +225,14 @@ subroutine WaypointInsertInList(new_waypoint,waypoint_list)
 end subroutine WaypointInsertInList
 
 ! ************************************************************************** !
-!
-! WaypointDeleteFromList: Deletes a waypoing in a list
-! author: Gautam Bisht
-! date: 01/20/11
-!
-! ************************************************************************** !
+
 subroutine WaypointDeleteFromList(obsolete_waypoint,waypoint_list)
+  ! 
+  ! Deletes a waypoing in a list
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 01/20/11
+  ! 
 
   implicit none
 
@@ -269,13 +277,14 @@ subroutine WaypointDeleteFromList(obsolete_waypoint,waypoint_list)
 end subroutine WaypointDeleteFromList
 
 ! ************************************************************************** !
-!
-! WaypointListFillIn: Fills in missing values (e.g. dt_max) in waypoint list
-! author: Glenn Hammond
-! date: 11/09/07
-!
-! ************************************************************************** !
+
 subroutine WaypointListFillIn(option,waypoint_list)
+  ! 
+  ! Fills in missing values (e.g. dt_max) in waypoint list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/09/07
+  ! 
   
   implicit none
   
@@ -336,13 +345,14 @@ subroutine WaypointListFillIn(option,waypoint_list)
 end subroutine WaypointListFillIn 
 
 ! ************************************************************************** !
-!
-! WaypointConvertTimes: Converts time units to seconds
-! author: Glenn Hammond
-! date: 11/09/07
-!
-! ************************************************************************** !
+
 subroutine WaypointConvertTimes(waypoint_list,time_conversion)
+  ! 
+  ! Converts time units to seconds
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/09/07
+  ! 
 
   implicit none
   
@@ -362,13 +372,12 @@ subroutine WaypointConvertTimes(waypoint_list,time_conversion)
 end subroutine WaypointConvertTimes 
 
 ! ************************************************************************** !
-!
-! WaypointListRemoveExtraWaypnts: 
-! author: Glenn Hammond
-! date: 11/09/07
-!
-! ************************************************************************** !
+
 subroutine WaypointListRemoveExtraWaypnts(option,waypoint_list)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/09/07
+  ! 
 
   implicit none
   
@@ -403,13 +412,14 @@ subroutine WaypointListRemoveExtraWaypnts(option,waypoint_list)
 end subroutine WaypointListRemoveExtraWaypnts 
 
 ! ************************************************************************** !
-!
-! WaypointMerge: Merges 2 waypoints performing an OR operation on logicals
-! author: Glenn Hammond
-! date: 10/28/03
-!
-! ************************************************************************** !
+
 subroutine WaypointMerge(old_waypoint,new_waypoint)
+  ! 
+  ! Merges 2 waypoints performing an OR operation on logicals
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/28/03
+  ! 
 
   implicit none
 
@@ -453,6 +463,12 @@ subroutine WaypointMerge(old_waypoint,new_waypoint)
     old_waypoint%final = PETSC_FALSE
   endif
 
+  if (old_waypoint%print_checkpoint .or. new_waypoint%print_checkpoint) then
+    old_waypoint%print_checkpoint = PETSC_TRUE
+  else
+    old_waypoint%print_checkpoint = PETSC_FALSE
+  endif
+
   ! deallocate new waypoint
   deallocate(new_waypoint)
   ! point new_waypoint to old
@@ -461,13 +477,14 @@ subroutine WaypointMerge(old_waypoint,new_waypoint)
 end subroutine WaypointMerge
 
 ! ************************************************************************** !
-!
-! WaypointReturnAtTime: Returns a pointer to the first waypoint after time
-! author: Glenn Hammond
-! date: 1/03/08
-!
-! ************************************************************************** !
+
 function WaypointReturnAtTime(list,time)
+  ! 
+  ! Returns a pointer to the first waypoint after time
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 1/03/08
+  ! 
 
   implicit none
 
@@ -493,13 +510,14 @@ function WaypointReturnAtTime(list,time)
 end function WaypointReturnAtTime
 
 ! ************************************************************************** !
-!
-! WaypointSkipToTime: Skips the waypoint ahead to the correct time.
-! author: Glenn Hammond
-! date: 07/31/13
-!
-! ************************************************************************** !
+
 subroutine WaypointSkipToTime(cur_waypoint,time)
+  ! 
+  ! Skips the waypoint ahead to the correct time.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/31/13
+  ! 
 
   implicit none
 
@@ -515,13 +533,14 @@ subroutine WaypointSkipToTime(cur_waypoint,time)
 end subroutine WaypointSkipToTime
 
 ! ************************************************************************** !
-!
-! WaypointListPrint: Prints a waypoint
-! author: Glenn Hammond
-! date: 05/20/11
-!
-! ************************************************************************** !
+
 subroutine WaypointListPrint(list,option,output_option)
+  ! 
+  ! Prints a waypoint
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/20/11
+  ! 
 
   use Option_module
   use Output_Aux_module
@@ -573,13 +592,14 @@ subroutine WaypointListPrint(list,option,output_option)
 end subroutine WaypointListPrint
 
 ! ************************************************************************** !
-!
-! WaypointListCopy: Copies a waypoint list
-! author: Glenn Hammond
-! date: 03/19/13
-!
-! ************************************************************************** !
+
 function WaypointListCopy(list)
+  ! 
+  ! Copies a waypoint list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/19/13
+  ! 
 
   use Option_module
   use Output_Aux_module
@@ -619,14 +639,15 @@ function WaypointListCopy(list)
 end function WaypointListCopy
 
 ! ************************************************************************** !
-!
-! WaypointForceMatchToTime: Forces a match to waypoint time if condition is 
-!                           true.
-! author: Glenn Hammond
-! date: 03/19/13
-!
-! ************************************************************************** !
+
 function WaypointForceMatchToTime(waypoint)
+  ! 
+  ! Forces a match to waypoint time if condition is
+  ! true.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/19/13
+  ! 
 
   implicit none
   
@@ -640,6 +661,7 @@ function WaypointForceMatchToTime(waypoint)
       .or. &
       waypoint%print_output .or. &
       waypoint%print_tr_output .or. &
+      waypoint%print_checkpoint .or. &
       waypoint%final &
       ) then
     WaypointForceMatchToTime = PETSC_TRUE
@@ -648,13 +670,14 @@ function WaypointForceMatchToTime(waypoint)
 end function WaypointForceMatchToTime
 
 ! ************************************************************************** !
-!
-! WaypointPrint: Prints a waypoint
-! author: Glenn Hammond
-! date: 05/20/11
-!
-! ************************************************************************** !
+
 subroutine WaypointPrint(waypoint,option,output_option)
+  ! 
+  ! Prints a waypoint
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/20/11
+  ! 
 
   use Option_module
 
@@ -679,6 +702,7 @@ subroutine WaypointPrint(waypoint,option,output_option)
     write(*,10) trim(string), waypoint%time/output_option%tconv
     write(*,30) 'Print Output', waypoint%print_output
     write(*,30) 'Print Tr. Output', waypoint%print_tr_output
+    write(*,30) 'Print Checkpoint', waypoint%print_checkpoint
     write(*,30) 'Update Conditions', waypoint%update_conditions
     write(*,30) 'Print Output', waypoint%print_output
     write(string,*) 'Max DT [' // trim(adjustl(output_option%tunit)) // ']'
@@ -693,6 +717,7 @@ subroutine WaypointPrint(waypoint,option,output_option)
     write(option%fid_out,10) trim(string), waypoint%time/output_option%tconv
     write(option%fid_out,30) 'Print Output', waypoint%print_output
     write(option%fid_out,30) 'Print Tr. Output', waypoint%print_tr_output
+    write(option%fid_out,30) 'Print Checkpoint', waypoint%print_checkpoint
     write(option%fid_out,30) 'Update Conditions', waypoint%update_conditions
     write(option%fid_out,30) 'Print Output', waypoint%print_output
     write(string,*) 'Max DT [' // trim(adjustl(output_option%tunit)) // ']'
@@ -704,13 +729,14 @@ subroutine WaypointPrint(waypoint,option,output_option)
 end subroutine WaypointPrint
 
 ! ************************************************************************** !
-!
-! WaypointListDestroy: Destroys a simulation waypoint list
-! author: Glenn Hammond
-! date: 11/07/07
-!
-! ************************************************************************** !
+
 subroutine WaypointListDestroy(waypoint_list)
+  ! 
+  ! Destroys a simulation waypoint list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/07/07
+  ! 
 
   implicit none
   
@@ -739,13 +765,14 @@ subroutine WaypointListDestroy(waypoint_list)
 end subroutine WaypointListDestroy 
 
 ! ************************************************************************** !
-!
-! WaypointListGetFinalTime: Returns the final time in the waypoint list
-! author: Glenn Hammond
-! date: 06/12/13
-!
-! ************************************************************************** !
+
 function WaypointListGetFinalTime(waypoint_list)
+  ! 
+  ! Returns the final time in the waypoint list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/12/13
+  ! 
 
   implicit none
   
@@ -773,15 +800,16 @@ function WaypointListGetFinalTime(waypoint_list)
 end function WaypointListGetFinalTime 
 
 ! ************************************************************************** !
-!
-! WaypointDestroy: Deallocates a waypoint
-! author: Glenn Hammond
-! date: 11/09/07
-!
-! ************************************************************************** !
-!geh: DO NOT make this subroutine recursive as waypoints within lists need to
-!     be destroyed without recursively destroying the remainder of the list.
+
 subroutine WaypointDestroy(waypoint)
+  ! 
+  ! Deallocates a waypoint
+  ! geh: DO NOT make this subroutine recursive as waypoints within lists need to
+  ! be destroyed without recursively destroying the remainder of the list.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/09/07
+  ! 
 
   implicit none
   

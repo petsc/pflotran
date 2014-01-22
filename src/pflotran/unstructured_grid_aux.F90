@@ -135,13 +135,14 @@ module Unstructured_Grid_Aux_module
 contains
 
 ! ************************************************************************** !
-!
-! UGDMCreate: Creates an unstructured grid distributed mesh object
-! author: Glenn Hammond
-! date: 10/21/09
-!
-! ************************************************************************** !
+
 function UGDMCreate()
+  ! 
+  ! Creates an unstructured grid distributed mesh object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/21/09
+  ! 
 
   implicit none
   
@@ -176,13 +177,14 @@ function UGDMCreate()
 end function UGDMCreate
 
 ! ************************************************************************** !
-!
-! UGridCreate: Creates an unstructured grid object
-! author: Glenn Hammond
-! date: 09/30/09
-!
-! ************************************************************************** !
+
 function UGridCreate()
+  ! 
+  ! Creates an unstructured grid object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/30/09
+  ! 
 
   implicit none
   
@@ -231,13 +233,14 @@ function UGridCreate()
 end function UGridCreate
 
 ! ************************************************************************** !
-!
-! UGridExplicitCreate: Creates an explicit unstructured grid object
-! author: Glenn Hammond
-! date: 05/14/12
-!
-! ************************************************************************** !
+
 function UGridExplicitCreate()
+  ! 
+  ! Creates an explicit unstructured grid object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/14/12
+  ! 
 
   implicit none
   
@@ -259,14 +262,15 @@ function UGridExplicitCreate()
 end function UGridExplicitCreate
 
 ! ************************************************************************** !
-!
-! UGridCreateUGDM: Constructs mappings / scatter contexts for PETSc DM 
-!                                                  object
-! author: Glenn Hammond
-! date: 09/30/09
-!
-! ************************************************************************** !
+
 subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
+  ! 
+  ! Constructs mappings / scatter contexts for PETSc DM
+  ! object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/30/09
+  ! 
   
   use Option_module
   use Utility_module, only: reallocateIntArray
@@ -599,14 +603,15 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
 end subroutine UGridCreateUGDM
 
 ! ************************************************************************** !
-!
-! UGridDMCreateJacobian: Creates a Jacobian matrix based on the unstructured
-!                     grid dual
-! author: Glenn Hammond
-! date: 11/05/09
-!
-! ************************************************************************** !
+
 subroutine UGridDMCreateJacobian(unstructured_grid,ugdm,mat_type,J,option)
+  ! 
+  ! Creates a Jacobian matrix based on the unstructured
+  ! grid dual
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/05/09
+  ! 
 
   use Option_module
   
@@ -710,13 +715,14 @@ subroutine UGridDMCreateJacobian(unstructured_grid,ugdm,mat_type,J,option)
 end subroutine UGridDMCreateJacobian
 
 ! ************************************************************************** !
-!
-! UGridDMCreateVector: Creates a global vector with PETSc ordering
-! author: Glenn Hammond
-! date: 11/06/09
-!
-! ************************************************************************** !
+
 subroutine UGridDMCreateVector(unstructured_grid,ugdm,vec,vec_type,option)
+  ! 
+  ! Creates a global vector with PETSc ordering
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/06/09
+  ! 
 
   use Option_module
 
@@ -765,13 +771,14 @@ subroutine UGridDMCreateVector(unstructured_grid,ugdm,vec,vec_type,option)
 end subroutine UGridDMCreateVector
 
 ! ************************************************************************** !
-!
-! UGridMapIndices: maps global, local and natural indices of cells to each other
-! author: Glenn Hammond
-! date: 11/06/09
-!
-! ************************************************************************** !
+
 subroutine UGridMapIndices(unstructured_grid,ugdm,nG2L,nL2G,nG2A,nG2P,option)
+  ! 
+  ! maps global, local and natural indices of cells to each other
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/06/09
+  ! 
 
   use Option_module
 
@@ -834,16 +841,17 @@ subroutine UGridMapIndices(unstructured_grid,ugdm,nG2L,nL2G,nG2A,nG2P,option)
 end subroutine UGridMapIndices
 
 ! ************************************************************************** !
-!
-! UGridGet_Dual_Part_IS: Given an adjacency matrix, calculates the dual
-!                        partitions, and provides a new IS with the ids 
-!                        of the local cells on the processor
-! author: Glenn Hammond
-! date: 10/05/12
-!
-! ************************************************************************** !
+
 subroutine UGridPartition(ugrid,option,Dual_mat,is_new, &
                           num_cells_local_new)
+  ! 
+  ! UGridGet_Dual_Part_IS: Given an adjacency matrix, calculates the dual
+  ! partitions, and provides a new IS with the ids
+  ! of the local cells on the processor
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/05/12
+  ! 
 
   use Option_module
   
@@ -911,15 +919,16 @@ subroutine UGridPartition(ugrid,option,Dual_mat,is_new, &
 end subroutine UGridPartition  
 
 ! ************************************************************************** !
-!
-! UGridNaturalToPetsc: Deallocates a unstructured grid
-! author: Glenn Hammond
-! date: 11/01/09
-!
-! ************************************************************************** !
+
 subroutine UGridCreateOldVec(ugrid,option,elements_old, &
                              num_cells_local_old, &
                              is_new,is_scatter,stride)
+  ! 
+  ! UGridNaturalToPetsc: Deallocates a unstructured grid
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/09
+  ! 
   use Option_module                  
 
   implicit none
@@ -978,15 +987,16 @@ subroutine UGridCreateOldVec(ugrid,option,elements_old, &
 end subroutine UGridCreateOldVec
 
 ! ************************************************************************** !
-!
-! UGridNaturalToPetsc: Deallocates a unstructured grid
-! author: Glenn Hammond
-! date: 11/01/09
-!
-! ************************************************************************** !
+
 subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
                                num_cells_local_new,stride,dual_offset, &
                                natural_id_offset,is_scatter)
+  ! 
+  ! Deallocates a unstructured grid
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/09
+  ! 
 
   use Option_module
   use Utility_module, only: reallocateIntArray, DeallocateArray
@@ -1510,15 +1520,16 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
 #endif  
 
 end subroutine UGridNaturalToPetsc  
-  
+
 ! ************************************************************************** !
-!
-! UGridDestroy: Deallocates a unstructured grid
-! author: Glenn Hammond
-! date: 11/01/09
-!
-! ************************************************************************** !
+
 subroutine UGridDestroy(unstructured_grid)
+  ! 
+  ! Deallocates a unstructured grid
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/09
+  ! 
 
   use Utility_module, only : DeallocateArray
   
@@ -1563,13 +1574,14 @@ subroutine UGridDestroy(unstructured_grid)
 end subroutine UGridDestroy
 
 ! ************************************************************************** !
-!
-! UGridDMDestroy: Deallocates a unstructured grid distributed mesh
-! author: Glenn Hammond
-! date: 11/01/09
-!
-! ************************************************************************** !
+
 subroutine UGridDMDestroy(ugdm)
+  ! 
+  ! Deallocates a unstructured grid distributed mesh
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/09
+  ! 
 
   implicit none
   
@@ -1607,13 +1619,14 @@ subroutine UGridDMDestroy(ugdm)
 end subroutine UGridDMDestroy
 
 ! ************************************************************************** !
-!
-! UGridExplicitDestroy: Deallocates an explicit unstructured grid object
-! author: Glenn Hammond
-! date: 05/14/12
-!
-! ************************************************************************** !
+
 subroutine UGridExplicitDestroy(explicit_grid)
+  ! 
+  ! Deallocates an explicit unstructured grid object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/14/12
+  ! 
 
   use Utility_module, only : DeallocateArray
 

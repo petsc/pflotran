@@ -36,10 +36,13 @@ module co2_sw_module
 
       public initialize_sw_interp, co2_sw_interp      
  contains
- 
- 
-! prepare data table for interpolation 
+
+! ************************************************************************** !
+
 subroutine initialize_sw_interp(itable,myrank)
+  ! 
+  ! prepare data table for interpolation
+  ! 
       use co2_span_wagner_module, only: co2_span_wagner, vappr
         
         implicit none
@@ -281,10 +284,9 @@ subroutine initialize_sw_interp(itable,myrank)
      end select
       
 end subroutine initialize_sw_interp 
-     
 
- 
-     
+! ************************************************************************** !
+
 PetscReal function co2_prop_spwag(ip,it,iv)
      implicit none 
  !    PetscReal co2_prop_spwag
@@ -298,10 +300,13 @@ PetscReal function co2_prop_spwag(ip,it,iv)
       endif 
      
   end function co2_prop_spwag
-           
-                     
- ! 2-d function interpolation     
+
+! ************************************************************************** !
+
 subroutine interp(x1,x2,y)
+  ! 
+  ! 2-d function interpolation
+  ! 
 
       use co2_span_wagner_module, only: vappr, co2_span_wagner
       implicit none 
@@ -470,6 +475,7 @@ subroutine interp(x1,x2,y)
       endif  
 end subroutine 
 
+! ************************************************************************** !
 
 subroutine co2_sw_interp(p,tc,rho,dddt,dddp,fg,dfgdp,dfgdt, &
         eng,ent,dhdt,dhdp,visc,dvdt,dvdp,itable)

@@ -13,22 +13,23 @@ module Checkpoint_Header_module
   ! compilers.  To be on the safe side, we assume an integer is 8 bytes.
   ! Currently:
   !  PetscReal: 8
-  !  PetscInt:  19
-  !  Total: 27 * 8 = 216
+  !  PetscInt:  20
+  !  Total: 28 * 8 = 224
 ! IMPORTANT: If you change the contents of the header, you MUST update 
 ! 'bagsize' or risk corrupting memory.
 #ifdef PetscSizeT
-  PetscSizeT, parameter :: bagsize = 216
+  PetscSizeT, parameter :: bagsize = 224
 #else
   ! PETSC_SIZEOF_SIZE_T isn't defined, so we just have to assume that it 
   ! is 8 bytes.  This is dangerous, but what can we do?
-  integer*8, parameter :: bagsize = 216
+  integer*8, parameter :: bagsize = 224
 #endif
   public :: bagsize
   type, public :: checkpoint_header_type
     integer*8 :: revision_number  ! increment this every time there is a change
     integer*8 :: plot_number      ! in the checkpoint file format
     integer*8 :: match_waypoint_flag
+    integer*8 :: times_per_h5_file
 
     integer*8 :: grid_discretization_type
 
@@ -108,6 +109,8 @@ contains
 
 #ifndef PROCESS_MODEL
 
+! ************************************************************************** !
+
 subroutine Checkpoint(realization, &
                       flow_time_steps,flow_cumulative_newton_iterations, &
                       flow_cumulative_time_step_cuts, &
@@ -139,7 +142,11 @@ subroutine Checkpoint(realization, &
   use Mphase_module
   use Immis_module
   use Miscible_module
-  use Variables_module, only : PRIMARY_ACTIVITY_COEF, &
+  use Material_module
+  use Variables_module, only : POROSITY, PERMEABILITY_X, PERMEABILITY_Y, &
+                               PERMEABILITY_Z, PERMEABILITY_XY, &
+                               PERMEABILITY_YZ, PERMEABILITY_XZ, &
+                               PRIMARY_ACTIVITY_COEF, &
                                SECONDARY_ACTIVITY_COEF, &
                                MINERAL_VOLUME_FRACTION
 
@@ -231,6 +238,7 @@ subroutine Checkpoint(realization, &
   ! Revision # register in PetscBagRegister since it is default.  All other 
   ! header entities default to 0 or 0.d0
   header%plot_number = output_option%plot_number
+  header%times_per_h5_file = output_option%times_per_h5_file
   header%match_waypoint_flag = ZERO_INTEGER
   if (option%match_waypoint) then
     header%match_waypoint_flag = ONE_INTEGER
@@ -319,36 +327,66 @@ subroutine Checkpoint(realization, &
     ! Porosity and permeability.
     ! (We only write diagonal terms of the permeability tensor for now, 
     ! since we have yet to add the full-tensor formulation.)
-    call DiscretizationLocalToGlobal(discretization,field%porosity_loc, &
-                                     global_vec,ONEDOF)
-    call VecView(global_vec,viewer,ierr)
-    call DiscretizationLocalToGlobal(discretization,field%perm_xx_loc, &
-                                     global_vec,ONEDOF)
-    call VecView(global_vec,viewer,ierr)
-    call DiscretizationLocalToGlobal(discretization,field%perm_yy_loc, &
-                                     global_vec,ONEDOF)
-    call VecView(global_vec,viewer,ierr)
-    call DiscretizationLocalToGlobal(discretization,field%perm_zz_loc, &
-                                     global_vec,ONEDOF)
-    call VecView(global_vec,viewer,ierr)
-
+    if (option%iflowmode /= RICHARDS_MODE) then
+      call DiscretizationLocalToGlobal(discretization,field%porosity_loc, &
+                                       global_vec,ONEDOF)
+      call VecView(global_vec,viewer,ierr)
+      call DiscretizationLocalToGlobal(discretization,field%perm_xx_loc, &
+                                       global_vec,ONEDOF)
+      call VecView(global_vec,viewer,ierr)
+      call DiscretizationLocalToGlobal(discretization,field%perm_yy_loc, &
+                                       global_vec,ONEDOF)
+      call VecView(global_vec,viewer,ierr)
+      call DiscretizationLocalToGlobal(discretization,field%perm_zz_loc, &
+                                       global_vec,ONEDOF)
+      call VecView(global_vec,viewer,ierr)
+    else
+      call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                   field%work_loc,POROSITY,ZERO_INTEGER)
+      call DiscretizationLocalToGlobal(discretization,field%work_loc, &
+                                       global_vec,ONEDOF)
+      call VecView(global_vec,viewer,ierr)
+      call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                   field%work_loc,PERMEABILITY_X,ZERO_INTEGER)
+      call DiscretizationLocalToGlobal(discretization,field%work_loc, &
+                                       global_vec,ONEDOF)
+      call VecView(global_vec,viewer,ierr)
+      call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                   field%work_loc,PERMEABILITY_Y,ZERO_INTEGER)
+      call DiscretizationLocalToGlobal(discretization,field%work_loc, &
+                                       global_vec,ONEDOF)
+      call VecView(global_vec,viewer,ierr)
+      call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                   field%work_loc,PERMEABILITY_Z,ZERO_INTEGER)
+      call DiscretizationLocalToGlobal(discretization,field%work_loc, &
+                                       global_vec,ONEDOF)
+      call VecView(global_vec,viewer,ierr)
+    endif
 
     if (grid%itype == STRUCTURED_GRID_MIMETIC) then 
-      call DiscretizationLocalToGlobal(discretization,field%perm_xz_loc, &
-                                        global_vec,ONEDOF)
+      if (option%iflowmode /= RICHARDS_MODE) then
+        option%io_buffer = 'Checkpointing of mimetic not set up for outside Richards.'
+        call printErrMsg(option)
+      endif
+
+      call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                   field%work_loc,PERMEABILITY_XZ,ZERO_INTEGER)
+      call DiscretizationLocalToGlobal(discretization,field%work_loc, &
+                                       global_vec,ONEDOF)
       call VecView(global_vec,viewer,ierr)
 
-      call DiscretizationLocalToGlobal(discretization,field%perm_xy_loc, &
-                                        global_vec,ONEDOF)
+      call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                   field%work_loc,PERMEABILITY_XY,ZERO_INTEGER)
+      call DiscretizationLocalToGlobal(discretization,field%work_loc, &
+                                       global_vec,ONEDOF)
       call VecView(global_vec,viewer,ierr)
 
-      call DiscretizationLocalToGlobal(discretization,field%perm_yz_loc, &
-                                        global_vec,ONEDOF)
+      call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                   field%work_loc,PERMEABILITY_YZ,ZERO_INTEGER)
+      call DiscretizationLocalToGlobal(discretization,field%work_loc, &
+                                       global_vec,ONEDOF)
       call VecView(global_vec,viewer,ierr)
 
-      call VecGetSize(field%flow_xx_faces, j, ierr)
-      call VecGetBlockSize(field%flow_xx_faces, k, ierr)
-!              write(*,*) "Size", j, "block", k
       call VecView(field%flow_xx_faces, viewer, ierr) 
     end if
 
@@ -412,6 +450,8 @@ subroutine Checkpoint(realization, &
 
 end subroutine Checkpoint
 
+! ************************************************************************** !
+
 subroutine Restart(realization, &
                    flow_time_steps, &
                    flow_cumulative_newton_iterations, &
@@ -446,7 +486,11 @@ subroutine Restart(realization, &
   use Mphase_module
   use Immis_module
   use Miscible_module
-  use Variables_module, only : PRIMARY_ACTIVITY_COEF, &
+  use Material_module
+  use Variables_module, only : POROSITY, PERMEABILITY_X, PERMEABILITY_Y, &
+                               PERMEABILITY_Z, PERMEABILITY_XY, &
+                               PERMEABILITY_YZ, PERMEABILITY_XZ, &
+                               PRIMARY_ACTIVITY_COEF, &
                                SECONDARY_ACTIVITY_COEF, &
                                MINERAL_VOLUME_FRACTION
   
@@ -529,6 +573,20 @@ subroutine Restart(realization, &
   endif
   
   output_option%plot_number = header%plot_number
+
+  ! Check the value of 'times_per_h5_file'
+  if (header%times_per_h5_file /= output_option%times_per_h5_file) then
+    write(string,*),header%times_per_h5_file
+    option%io_buffer = 'From checkpoint file: times_per_h5_file ' // trim(string)
+    call printMsg(option)
+    write(string,*),output_option%times_per_h5_file
+    option%io_buffer = 'From inputdeck      : times_per_h5_file ' // trim(string)
+    call printMsg(option)
+    option%io_buffer = 'times_per_h5_file specified in inputdeck does not ' // &
+      'match that stored in checkpoint file. Correct the inputdeck.'
+    call printErrMsg(option)
+  endif
+  output_option%times_per_h5_file = header%times_per_h5_file
   option%match_waypoint = (header%match_waypoint_flag == ONE_INTEGER)
 
    if (header%grid_discretization_type /= grid%itype) then
@@ -615,35 +673,67 @@ subroutine Restart(realization, &
       case default
     end select
     
-    call VecLoad(global_vec,viewer,ierr)
-    call DiscretizationGlobalToLocal(discretization,global_vec, &
-                                     field%porosity_loc,ONEDOF)
-    call VecLoad(global_vec,viewer,ierr)
-    call DiscretizationGlobalToLocal(discretization,global_vec, &
-                                     field%perm_xx_loc,ONEDOF)
-    call VecLoad(global_vec,viewer,ierr)
-    call DiscretizationGlobalToLocal(discretization,global_vec, &
-                                     field%perm_yy_loc,ONEDOF)
-    call VecLoad(global_vec,viewer,ierr)
-    call DiscretizationGlobalToLocal(discretization,global_vec, &
-                                     field%perm_zz_loc,ONEDOF)
-    
-    if (grid%itype == STRUCTURED_GRID_MIMETIC) then
+    if (option%iflowmode /= RICHARDS_MODE) then
       call VecLoad(global_vec,viewer,ierr)
       call DiscretizationGlobalToLocal(discretization,global_vec, &
-                                        field%perm_xz_loc,ONEDOF)
+                                       field%porosity_loc,ONEDOF)
       call VecLoad(global_vec,viewer,ierr)
       call DiscretizationGlobalToLocal(discretization,global_vec, &
-                                        field%perm_xy_loc,ONEDOF)
+                                       field%perm_xx_loc,ONEDOF)
       call VecLoad(global_vec,viewer,ierr)
       call DiscretizationGlobalToLocal(discretization,global_vec, &
-                                     field%perm_yz_loc,ONEDOF)
+                                       field%perm_yy_loc,ONEDOF)
+      call VecLoad(global_vec,viewer,ierr)
+      call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                       field%perm_zz_loc,ONEDOF)
+    else
+      call VecLoad(global_vec,viewer,ierr)
+      call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                       field%work_loc,ONEDOF)
+      call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                   field%work_loc,POROSITY,ZERO_INTEGER)
+      call VecLoad(global_vec,viewer,ierr)
+      call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                       field%work_loc,ONEDOF)
+      call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                   field%work_loc,PERMEABILITY_X,ZERO_INTEGER)
+      call VecLoad(global_vec,viewer,ierr)
+      call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                       field%work_loc,ONEDOF)
+      call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                   field%work_loc,PERMEABILITY_Y,ZERO_INTEGER)
+      call VecLoad(global_vec,viewer,ierr)
+      call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                       field%work_loc,ONEDOF)
+      call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                   field%work_loc,PERMEABILITY_Z,ZERO_INTEGER)
+    endif
 
-      call VecGetSize(field%flow_xx_faces, j, ierr)
-      call VecGetBlockSize(field%flow_xx_faces, k, ierr)
-!              write(*,*) "Size", j, "block", k
+    if (grid%itype == STRUCTURED_GRID_MIMETIC) then
+      if (option%iflowmode /= RICHARDS_MODE) then
+        option%io_buffer = 'Restart of mimetic not set up for outside Richards.'
+        call printErrMsg(option)
+      endif
+
+      call VecLoad(global_vec,viewer,ierr)
+      call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                       field%work_loc,ONEDOF)
+      call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                   field%work_loc,PERMEABILITY_XZ,ZERO_INTEGER)
+      call VecLoad(global_vec,viewer,ierr)
+      call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                       field%work_loc,ONEDOF)
+      call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                   field%work_loc,PERMEABILITY_XY,ZERO_INTEGER)
+      call VecLoad(global_vec,viewer,ierr)
+      call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                       field%work_loc,ONEDOF)
+      call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                   field%work_loc,PERMEABILITY_YZ,ZERO_INTEGER)
+
       call VecLoad(field%flow_xx_faces, viewer,ierr)
-      call DiscretizationGlobalToLocalLP(discretization, field%flow_xx_faces, field%flow_xx_loc_faces, NFLOWDOF)
+      call DiscretizationGlobalToLocalLP(discretization, field%flow_xx_faces, &
+                                         field%flow_xx_loc_faces, NFLOWDOF)
       call VecCopy(field%flow_xx_faces,field%flow_yy_faces,ierr) 
     end if
     
@@ -723,14 +813,15 @@ subroutine Restart(realization, &
 end subroutine Restart
 
 ! ************************************************************************** !
-!
-! CheckpointRegisterBagHeader: Registers entities within the PETSc bag to
-!                              header
-! author: Glenn Hammond
-! date: 01/12/12
-!
-! ************************************************************************** !
+
 subroutine CheckpointRegisterBagHeader(bag,header)
+  ! 
+  ! Registers entities within the PETSc bag to
+  ! header
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/12
+  ! 
 
   implicit none
   
@@ -749,6 +840,10 @@ subroutine CheckpointRegisterBagHeader(bag,header)
   call PetscBagRegisterInt(bag,header%plot_number,0, &
                            "plot_number", &
                            "plot_number", &
+                           ierr)
+  call PetscBagRegisterInt(bag,header%times_per_h5_file,0, &
+                           "times_per_h5_file", &
+                           "times_per_h5_file", &
                            ierr)
   call PetscBagRegisterInt(bag,header%match_waypoint_flag,0, &
                            "match_waypoint_flag","match_waypoint_flag",ierr)
@@ -861,13 +956,14 @@ end subroutine CheckpointRegisterBagHeader
 #endif
 
 ! ************************************************************************** !
-!
-! OpenCheckpointFile: Opens checkpoint file; sets format
-! author: Glenn Hammond
-! date: 07/26/13
-!
-! ************************************************************************** !
+
 subroutine OpenCheckpointFile(viewer,id,option,id_stamp)
+  ! 
+  ! Opens checkpoint file; sets format
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/26/13
+  ! 
 
   use Option_module
   use String_module, only : StringNull
@@ -918,13 +1014,14 @@ subroutine OpenCheckpointFile(viewer,id,option,id_stamp)
 end subroutine OpenCheckpointFile
 
 ! ************************************************************************** !
-!
-! CloseCheckpointFile: Closes checkpoint file
-! author: Glenn Hammond
-! date: 07/26/13
-!
-! ************************************************************************** !
+
 subroutine CloseCheckpointFile(viewer)
+  ! 
+  ! Closes checkpoint file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/26/13
+  ! 
 
   use Option_module
   
@@ -940,19 +1037,24 @@ subroutine CloseCheckpointFile(viewer)
 end subroutine CloseCheckpointFile
 
 ! ************************************************************************** !
-!
-! CheckpointFlowProcessModel: Checkpoints flow process model vectors
-! author: Glenn Hammond
-! date: 07/26/13
-!
-! ************************************************************************** !
+
 subroutine CheckpointFlowProcessModel(viewer,realization)
+  ! 
+  ! Checkpoints flow process model vectors
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/26/13
+  ! 
 
   use Option_module
   use Realization_class
   use Field_module
   use Discretization_module
   use Grid_module
+  use Material_module
+  use Variables_module, only : POROSITY, PERMEABILITY_X, PERMEABILITY_Y, &
+                               PERMEABILITY_Z, PERMEABILITY_XY, &
+                               PERMEABILITY_YZ, PERMEABILITY_XZ
   
   implicit none
 
@@ -1000,31 +1102,65 @@ subroutine CheckpointFlowProcessModel(viewer,realization)
     ! Porosity and permeability.
     ! (We only write diagonal terms of the permeability tensor for now, 
     ! since we have yet to add the full-tensor formulation.)
-    call DiscretizationLocalToGlobal(discretization,field%porosity_loc, &
-                                     global_vec,ONEDOF)
-    call VecView(global_vec,viewer,ierr)
-    call DiscretizationLocalToGlobal(discretization,field%perm_xx_loc, &
-                                     global_vec,ONEDOF)
-    call VecView(global_vec,viewer,ierr)
-    call DiscretizationLocalToGlobal(discretization,field%perm_yy_loc, &
-                                     global_vec,ONEDOF)
-    call VecView(global_vec,viewer,ierr)
-    call DiscretizationLocalToGlobal(discretization,field%perm_zz_loc, &
-                                     global_vec,ONEDOF)
-    call VecView(global_vec,viewer,ierr)
+    if (option%iflowmode /= RICHARDS_MODE) then
+      call DiscretizationLocalToGlobal(discretization,field%porosity_loc, &
+                                       global_vec,ONEDOF)
+      call VecView(global_vec,viewer,ierr)
+      call DiscretizationLocalToGlobal(discretization,field%perm_xx_loc, &
+                                       global_vec,ONEDOF)
+      call VecView(global_vec,viewer,ierr)
+      call DiscretizationLocalToGlobal(discretization,field%perm_yy_loc, &
+                                       global_vec,ONEDOF)
+      call VecView(global_vec,viewer,ierr)
+      call DiscretizationLocalToGlobal(discretization,field%perm_zz_loc, &
+                                       global_vec,ONEDOF)
+      call VecView(global_vec,viewer,ierr)
+    else
+      call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                   field%work_loc,POROSITY,ZERO_INTEGER)
+      call DiscretizationLocalToGlobal(discretization,field%work_loc, &
+                                       global_vec,ONEDOF)
+      call VecView(global_vec,viewer,ierr)
+      call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                   field%work_loc,PERMEABILITY_X,ZERO_INTEGER)
+      call DiscretizationLocalToGlobal(discretization,field%work_loc, &
+                                       global_vec,ONEDOF)
+      call VecView(global_vec,viewer,ierr)
+      call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                   field%work_loc,PERMEABILITY_Y,ZERO_INTEGER)
+      call DiscretizationLocalToGlobal(discretization,field%work_loc, &
+                                       global_vec,ONEDOF)
+      call VecView(global_vec,viewer,ierr)
+      call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                   field%work_loc,PERMEABILITY_Z,ZERO_INTEGER)
+      call DiscretizationLocalToGlobal(discretization,field%work_loc, &
+                                       global_vec,ONEDOF)
+      call VecView(global_vec,viewer,ierr)
+    endif
 
 
     if (grid%itype == STRUCTURED_GRID_MIMETIC) then 
-      call DiscretizationLocalToGlobal(discretization,field%perm_xz_loc, &
-                                        global_vec,ONEDOF)
+      if (option%iflowmode /= RICHARDS_MODE) then
+        option%io_buffer = 'Checkpointing of mimetic not set up for outside Richards.'
+        call printErrMsg(option)
+      endif
+
+      call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                   field%work_loc,PERMEABILITY_XZ,ZERO_INTEGER)
+      call DiscretizationLocalToGlobal(discretization,field%work_loc, &
+                                       global_vec,ONEDOF)
       call VecView(global_vec,viewer,ierr)
 
-      call DiscretizationLocalToGlobal(discretization,field%perm_xy_loc, &
-                                        global_vec,ONEDOF)
+      call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                   field%work_loc,PERMEABILITY_XY,ZERO_INTEGER)
+      call DiscretizationLocalToGlobal(discretization,field%work_loc, &
+                                       global_vec,ONEDOF)
       call VecView(global_vec,viewer,ierr)
 
-      call DiscretizationLocalToGlobal(discretization,field%perm_yz_loc, &
-                                        global_vec,ONEDOF)
+      call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                   field%work_loc,PERMEABILITY_YZ,ZERO_INTEGER)
+      call DiscretizationLocalToGlobal(discretization,field%work_loc, &
+                                       global_vec,ONEDOF)
       call VecView(global_vec,viewer,ierr)
 
       call VecView(field%flow_xx_faces, viewer, ierr) 
@@ -1039,19 +1175,24 @@ subroutine CheckpointFlowProcessModel(viewer,realization)
 end subroutine CheckpointFlowProcessModel
 
 ! ************************************************************************** !
-!
-! RestartFlowProcessModel: Restarts flow process model
-! author: Glenn Hammond
-! date: 07/26/13
-!
-! ************************************************************************** !
+
 subroutine RestartFlowProcessModel(viewer,realization)
+  ! 
+  ! Restarts flow process model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/26/13
+  ! 
 
   use Option_module
   use Realization_class
   use Field_module
   use Discretization_module
   use Grid_module
+  use Material_module
+  use Variables_module, only : POROSITY, PERMEABILITY_X, PERMEABILITY_Y, &
+                               PERMEABILITY_Z, PERMEABILITY_XY, &
+                               PERMEABILITY_YZ, PERMEABILITY_XZ
   
   implicit none
 
@@ -1107,29 +1248,63 @@ subroutine RestartFlowProcessModel(viewer,realization)
       case default
     end select
     
-    call VecLoad(global_vec,viewer,ierr)
-    call DiscretizationGlobalToLocal(discretization,global_vec, &
-                                     field%porosity_loc,ONEDOF)
-    call VecLoad(global_vec,viewer,ierr)
-    call DiscretizationGlobalToLocal(discretization,global_vec, &
-                                     field%perm_xx_loc,ONEDOF)
-    call VecLoad(global_vec,viewer,ierr)
-    call DiscretizationGlobalToLocal(discretization,global_vec, &
-                                     field%perm_yy_loc,ONEDOF)
-    call VecLoad(global_vec,viewer,ierr)
-    call DiscretizationGlobalToLocal(discretization,global_vec, &
-                                     field%perm_zz_loc,ONEDOF)
+    if (option%iflowmode /= RICHARDS_MODE) then
+      call VecLoad(global_vec,viewer,ierr)
+      call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                       field%porosity_loc,ONEDOF)
+      call VecLoad(global_vec,viewer,ierr)
+      call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                       field%perm_xx_loc,ONEDOF)
+      call VecLoad(global_vec,viewer,ierr)
+      call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                       field%perm_yy_loc,ONEDOF)
+      call VecLoad(global_vec,viewer,ierr)
+      call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                       field%perm_zz_loc,ONEDOF)
+    else
+      call VecLoad(global_vec,viewer,ierr)
+      call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                       field%work_loc,ONEDOF)
+      call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                   field%work_loc,POROSITY,ZERO_INTEGER)
+      call VecLoad(global_vec,viewer,ierr)
+      call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                       field%work_loc,ONEDOF)
+      call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                   field%work_loc,PERMEABILITY_X,ZERO_INTEGER)
+      call VecLoad(global_vec,viewer,ierr)
+      call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                       field%work_loc,ONEDOF)
+      call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                   field%work_loc,PERMEABILITY_Y,ZERO_INTEGER)
+      call VecLoad(global_vec,viewer,ierr)
+      call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                       field%work_loc,ONEDOF)
+      call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                   field%work_loc,PERMEABILITY_Z,ZERO_INTEGER)
+    endif
     
     if (grid%itype == STRUCTURED_GRID_MIMETIC) then
+      if (option%iflowmode /= RICHARDS_MODE) then
+        option%io_buffer = 'Restart of mimetic not set up for outside Richards.'
+        call printErrMsg(option)
+      endif
+
       call VecLoad(global_vec,viewer,ierr)
       call DiscretizationGlobalToLocal(discretization,global_vec, &
-                                        field%perm_xz_loc,ONEDOF)
+                                       field%work_loc,ONEDOF)
+      call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                   field%work_loc,PERMEABILITY_XZ,ZERO_INTEGER)
       call VecLoad(global_vec,viewer,ierr)
       call DiscretizationGlobalToLocal(discretization,global_vec, &
-                                        field%perm_xy_loc,ONEDOF)
+                                       field%work_loc,ONEDOF)
+      call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                   field%work_loc,PERMEABILITY_XY,ZERO_INTEGER)
       call VecLoad(global_vec,viewer,ierr)
       call DiscretizationGlobalToLocal(discretization,global_vec, &
-                                     field%perm_yz_loc,ONEDOF)
+                                       field%work_loc,ONEDOF)
+      call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                   field%work_loc,PERMEABILITY_YZ,ZERO_INTEGER)
 
       call VecLoad(field%flow_xx_faces, viewer,ierr)
       call DiscretizationGlobalToLocalLP(discretization, field%flow_xx_faces, &

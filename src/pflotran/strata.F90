@@ -56,13 +56,14 @@ module Strata_module
 contains
 
 ! ************************************************************************** !
-!
-! StrataCreate1: Creates a strata
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 function StrataCreate1()
+  ! 
+  ! Creates a strata
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   implicit none
 
@@ -95,13 +96,14 @@ function StrataCreate1()
 end function StrataCreate1
 
 ! ************************************************************************** !
-!
-! StrataCreateFromStrata: Creates a strata
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 function StrataCreateFromStrata(strata)
+  ! 
+  ! Creates a strata
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   implicit none
 
@@ -134,13 +136,14 @@ function StrataCreateFromStrata(strata)
 end function StrataCreateFromStrata
 
 ! ************************************************************************** !
-!
-! StrataInitList: Initializes a strata list
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
+
 subroutine StrataInitList(list)
+  ! 
+  ! Initializes a strata list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
 
   implicit none
 
@@ -154,13 +157,14 @@ subroutine StrataInitList(list)
 end subroutine StrataInitList
 
 ! ************************************************************************** !
-!
-! StrataRead: Reads a strata from the input file
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
+
 subroutine StrataRead(strata,input,option)
+  ! 
+  ! Reads a strata from the input file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
 
   use Input_Aux_module
   use Option_module
@@ -213,13 +217,14 @@ subroutine StrataRead(strata,input,option)
 end subroutine StrataRead
 
 ! ************************************************************************** !
-!
-! StrataAddToList: Adds a new strata to a strata list
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
+
 subroutine StrataAddToList(new_strata,list)
+  ! 
+  ! Adds a new strata to a strata list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
 
   implicit none
   
@@ -235,13 +240,14 @@ subroutine StrataAddToList(new_strata,list)
 end subroutine StrataAddToList
 
 ! ************************************************************************** !
-!
-! StrataDestroyList: Deallocates a list of stratas
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
+
 subroutine StrataDestroyList(strata_list)
+  ! 
+  ! Deallocates a list of stratas
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
 
   implicit none
   
@@ -270,13 +276,14 @@ subroutine StrataDestroyList(strata_list)
 end subroutine StrataDestroyList
 
 ! ************************************************************************** !
-!
-! StrataDestroy: Destroys a strata
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 subroutine StrataDestroy(strata)
+  ! 
+  ! Destroys a strata
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   implicit none
   

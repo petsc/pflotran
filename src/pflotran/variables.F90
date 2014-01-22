@@ -103,6 +103,7 @@ module Variables_module
   PetscInt, parameter, public :: GEOMECH_REL_DISP_Z      = 89
 
   PetscInt, parameter, public :: VOLUME                  = 90
+  PetscInt, parameter, public :: TORTUOSITY              = 91
 
 !  PetscInt, parameter, public :: LIQUID_VELOCITY_CELL_CENT = 58
 !  PetscInt, parameter, public :: LIQUID_VELOCITY_CELL_FACE = 59

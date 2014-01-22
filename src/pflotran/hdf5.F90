@@ -54,16 +54,17 @@ contains
 #if defined(PETSC_HAVE_HDF5)
 
 ! ************************************************************************** !
-!
-! HDF5MapLocalToNaturalIndices: Set up indices array that maps local cells to 
-!                               entries in HDF5 grid cell vectors
-! author: Glenn Hammond
-! date: 09/21/07
-!
-! ************************************************************************** !
+
 subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
                                         dataset_name,dataset_size, &
                                         indices,num_indices)
+  ! 
+  ! Set up indices array that maps local cells to
+  ! entries in HDF5 grid cell vectors
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/21/07
+  ! 
 
   use hdf5
   
@@ -377,17 +378,18 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
 ! SCORPIO
 
 end subroutine HDF5MapLocalToNaturalIndices
-   
+
 ! ************************************************************************** !
-!
-! HDF5ReadRealArray: Read in local real values from hdf5 global file
-! author: Glenn Hammond
-! date: 09/21/07
-!
-! ************************************************************************** !
-!TODO(geh): this is only used by general_grid, which should be deprecated.
+
 subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
                              indices,num_indices,real_array)
+  ! 
+  ! Read in local real values from hdf5 global file
+  ! TODO(geh): this is only used by general_grid, which should be deprecated.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/21/07
+  ! 
 
   use hdf5
   
@@ -653,16 +655,17 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
   call PetscLogEventEnd(logging%event_read_real_array_hdf5,ierr)
                           
 end subroutine HDF5ReadRealArray
-      
+
 ! ************************************************************************** !
-!
-! HDF5ReadIntegerArray: Read in local integer values from hdf5 global file
-! author: Glenn Hammond
-! date: 09/21/07
-!
-! ************************************************************************** !
+
 subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
                                 indices,num_indices,integer_array)
+  ! 
+  ! Read in local integer values from hdf5 global file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/21/07
+  ! 
 
   use hdf5
   
@@ -931,16 +934,17 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
 end subroutine HDF5ReadIntegerArray
 
 ! ************************************************************************** !
-!
-! HDF5WriteStructuredDataSet: Writes data from an array into HDF5 file
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
                                       nx_global,ny_global,nz_global, &
                                       nx_local,ny_local,nz_local, &
                                       istart_local,jstart_local,kstart_local)
+  ! 
+  ! Writes data from an array into HDF5 file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   use hdf5
   use Option_module
@@ -1206,19 +1210,19 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
 ! SCORPIO_WRITE vs previous
 
 end subroutine HDF5WriteStructuredDataSet
-      
-! End of Default HDF5 Write
-!GEH - Structured Grid Dependence - End
-      
+
 ! ************************************************************************** !
-!
-! HDF5ReadIndices: Reads cell indices from an hdf5 dataset
-! author: Glenn Hammond
-! date: 01/12/08
-!
-! ************************************************************************** !
+
 subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
                            indices)
+  ! 
+  ! End of Default HDF5 Write
+  ! GEH - Structured Grid Dependence - End
+  ! Reads cell indices from an hdf5 dataset
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/08
+  ! 
 
   use hdf5
   
@@ -1420,17 +1424,17 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   
 end subroutine HDF5ReadIndices
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! HDF5ReadArray: Read an hdf5 array into a Petsc Vec
-! author: Glenn Hammond
-! date: 01/12/08
-!
-! ************************************************************************** !
 subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
                          dataset_size, &
                          indices,global_vec,data_type)
+  ! 
+  ! Read an hdf5 array into a Petsc Vec
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/08
+  ! 
                          
   use hdf5
   
@@ -1680,16 +1684,17 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
 end subroutine HDF5ReadArray
 
 #endif
-!PETSC_HAVE_HDF5
 
 ! ************************************************************************** !
-!
-! HDF5ReadRegionFromFile: Reads a region from an hdf5 file
-! author: Glenn Hammond
-! date: 1/3/08
-!
-! ************************************************************************** !
+
 subroutine HDF5ReadRegionFromFile(realization,region,filename)
+  ! 
+  ! PETSC_HAVE_HDF5
+  ! Reads a region from an hdf5 file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 1/3/08
+  ! 
 
 #if defined(PETSC_HAVE_HDF5)
   use hdf5
@@ -1905,17 +1910,18 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
 end subroutine HDF5ReadRegionFromFile
 
 ! ************************************************************************** !
-!
-! HDF5ReadUnstructuredGridRegionFromFile: Reads a region from an hdf5 file
-!     for unstructured grid
-! author: Gautam Bisht
-! date: 5/31/11
-!
-! ************************************************************************** !
-! gb: modified the input argument, so it works for realization (subsurface)
-!     and surface_realization (surface-flow)
-!subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
+
 subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
+  ! 
+  ! Reads a region from an hdf5 file
+  ! for unstructured grid
+  ! gb: modified the input argument, so it works for realization (subsurface)
+  ! and surface_realization (surface-flow)
+  ! subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 5/31/11
+  ! 
 
 #if defined(PETSC_HAVE_HDF5)
   use hdf5
@@ -2164,16 +2170,17 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
 end subroutine HDF5ReadUnstructuredGridRegionFromFile
 
 ! ************************************************************************** !
-!
-! HDF5ReadCellIndexedIntegerArray: Reads an array of integer values from an 
-!                                  hdf5 file
-! author: Glenn Hammond
-! date: 1/3/08; 02/18/09
-!
-! ************************************************************************** !
+
 subroutine HDF5ReadCellIndexedIntegerArray(realization,global_vec,filename, &
                                            group_name, &
                                            dataset_name,append_realization_id)
+  ! 
+  ! Reads an array of integer values from an
+  ! hdf5 file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 1/3/08; 02/18/09
+  ! 
 
 #if defined(PETSC_HAVE_HDF5)
   use hdf5
@@ -2377,17 +2384,18 @@ subroutine HDF5ReadCellIndexedIntegerArray(realization,global_vec,filename, &
   call PetscLogEventEnd(logging%event_cell_indx_int_read_hdf5,ierr)
                           
 end subroutine HDF5ReadCellIndexedIntegerArray
-    
+
 ! ************************************************************************** !
-!
-! HDF5ReadCellIndexedRealArray: Reads an array of real values from an hdf5 file
-! author: Glenn Hammond
-! date: 01/16/09, 02/18/09
-!
-! ************************************************************************** !
+
 subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
                                         group_name, &
                                         dataset_name,append_realization_id)
+  ! 
+  ! Reads an array of real values from an hdf5 file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/16/09, 02/18/09
+  ! 
 
 #if defined(PETSC_HAVE_HDF5)
   use hdf5
@@ -2594,14 +2602,16 @@ subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
 end subroutine HDF5ReadCellIndexedRealArray
 
 #if defined(PETSC_HAVE_HDF5)
+
 ! ************************************************************************** !
-!
-! HDF5WriteStructDataSetFromVec: Writes data from a PetscVec to HDF5 file
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 subroutine HDF5WriteStructDataSetFromVec(name,realization_base,vec,file_id,data_type)
+  ! 
+  ! Writes data from a PetscVec to HDF5 file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   use hdf5
   use Realization_Base_class, only : realization_base_type
@@ -2648,16 +2658,16 @@ subroutine HDF5WriteStructDataSetFromVec(name,realization_base,vec,file_id,data_
 end subroutine HDF5WriteStructDataSetFromVec
 
 ! ************************************************************************** !
-!> This routine writes data from a PETSc Vec to HDF5 file for unstructured
-!! grids.
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 05/31/12
-! ************************************************************************** !
-!subroutine HDF5WriteUnstructuredDataSetFromVec(name,realization,vec,file_id,data_type)
+
 subroutine HDF5WriteUnstructuredDataSetFromVec(name,option,vec,file_id,data_type)
+  ! 
+  ! This routine writes data from a PETSc Vec to HDF5 file for unstructured
+  ! grids.
+  ! subroutine HDF5WriteUnstructuredDataSetFromVec(name,realization,vec,file_id,data_type)
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 05/31/12
+  ! 
 
   use hdf5
   use Realization_class

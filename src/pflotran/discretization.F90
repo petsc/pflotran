@@ -42,6 +42,7 @@ module Discretization_module
     type(dm_ptr_type), pointer :: dm_1dof
     type(dm_ptr_type), pointer :: dm_nflowdof
     type(dm_ptr_type), pointer :: dm_ntrandof
+    type(dm_ptr_type), pointer :: dm_n_stress_strain_dof
     type(mfd_type), pointer :: MFD
     VecScatter :: tvd_ghost_scatter
     
@@ -97,13 +98,14 @@ module Discretization_module
 contains
 
 ! ************************************************************************** !
-!
-! DiscretizationCreate: Creates a structured or unstructured discretization
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 function DiscretizationCreate()
+  ! 
+  ! Creates a structured or unstructured discretization
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   implicit none
   
@@ -123,12 +125,15 @@ function DiscretizationCreate()
   allocate(discretization%dm_1dof)
   allocate(discretization%dm_nflowdof)
   allocate(discretization%dm_ntrandof)
+  allocate(discretization%dm_n_stress_strain_dof)
   discretization%dm_1dof%dm = 0
   discretization%dm_nflowdof%dm = 0
   discretization%dm_ntrandof%dm = 0
+  discretization%dm_n_stress_strain_dof%dm = 0
   nullify(discretization%dm_1dof%ugdm)
   nullify(discretization%dm_nflowdof%ugdm)
   nullify(discretization%dm_ntrandof%ugdm)
+  nullify(discretization%dm_n_stress_strain_dof%ugdm)
   
   nullify(discretization%grid)
   nullify(discretization%MFD)
@@ -147,13 +152,14 @@ function DiscretizationCreate()
 end function DiscretizationCreate
 
 ! ************************************************************************** !
-!
-! DiscretizationReadRequiredCards: Reads a discretization from the input file
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
+
 subroutine DiscretizationReadRequiredCards(discretization,input,option)
+  ! 
+  ! Reads a discretization from the input file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -331,7 +337,7 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
           grid%unstructured_grid => un_str_grid
         case(EXPLICIT_UNSTRUCTURED_GRID)
           un_str_grid%explicit_grid => UGridExplicitCreate()
-          call ExplicitUGridRead(un_str_grid, &
+          call UGridExplicitRead(un_str_grid, &
                                  discretization%filename,option)
           grid%unstructured_grid => un_str_grid
       end select
@@ -360,13 +366,14 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
 end subroutine DiscretizationReadRequiredCards
 
 ! ************************************************************************** !
-!
-! DiscretizationRead: Reads a discretization from the input file
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
+
 subroutine DiscretizationRead(discretization,input,option)
+  ! 
+  ! Reads a discretization from the input file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -431,81 +438,47 @@ subroutine DiscretizationRead(discretization,input,option)
 
             ! read first line and we will split off the legacy approach vs. new
             call InputReadPflotranString(input,option)
-            call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,X or Min Coordinate')
-            string = input%buf
-
-            do i = 1, 3
-              call InputReadDouble(input,option,tempreal)
-              if (input%ierr /= 0) exit
-            enddo
-
-            input%ierr = 0
-            input%buf = string
-
-            if (i == 3) then ! only 2 successfully read
-              if (grid%structured_grid%itype == CARTESIAN_GRID .or. &
-                  grid%structured_grid%itype == CYLINDRICAL_GRID .or. &
-                  grid%structured_grid%itype == SPHERICAL_GRID) then
-!geh                  call InputReadPflotranString(input,option) ! x-direction
-!geh                  call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,X or R')
-                call InputReadDouble(input,option,grid%structured_grid%bounds(X_DIRECTION,LOWER))
-                call InputErrorMsg(input,option,'Lower X or R','BOUNDS')
-                call InputReadDouble(input,option,grid%structured_grid%bounds(X_DIRECTION,UPPER))
-                call InputErrorMsg(input,option,'Upper X or R','BOUNDS')
-              endif
-              if (grid%structured_grid%itype == CARTESIAN_GRID) then
-                call InputReadPflotranString(input,option) ! y-direction
-                call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,Y')
-                call InputReadDouble(input,option,grid%structured_grid%bounds(Y_DIRECTION,LOWER))
-                call InputErrorMsg(input,option,'Lower Y','BOUNDS')
-                call InputReadDouble(input,option,grid%structured_grid%bounds(Y_DIRECTION,UPPER))
-                call InputErrorMsg(input,option,'Upper Y','BOUNDS')
-              else
-                grid%structured_grid%bounds(Y_DIRECTION,LOWER) = 0.d0
-                grid%structured_grid%bounds(Y_DIRECTION,UPPER) = 1.d0
-              endif
-              if (grid%structured_grid%itype == CARTESIAN_GRID .or. &
-                  grid%structured_grid%itype == CYLINDRICAL_GRID) then
-                call InputReadPflotranString(input,option) ! z-direction
-                call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,Z')
-                call InputReadDouble(input,option,grid%structured_grid%bounds(Z_DIRECTION,LOWER))
-                call InputErrorMsg(input,option,'Lower Z','BOUNDS')
-                call InputReadDouble(input,option,grid%structured_grid%bounds(Z_DIRECTION,UPPER))
-                call InputErrorMsg(input,option,'Upper Z','BOUNDS')
-              else
-                grid%structured_grid%bounds(Z_DIRECTION,LOWER) = 0.d0
-                grid%structured_grid%bounds(Z_DIRECTION,UPPER) = 1.d0
-              endif
-            else ! new min max coordinate approach
-              select case(grid%structured_grid%itype)
-                case(CARTESIAN_GRID)
-                  i = 3
-                case(CYLINDRICAL_GRID)
-                  i = 2
-                case(SPHERICAL_GRID)
-                  i = 1
-              end select
-              call InputReadNDoubles(input,option, &
-                                     grid%structured_grid%bounds(:,LOWER), &
-                                     i)
-              call InputErrorMsg(input,option,'Minimum Coordinate','BOUNDS')
-              call InputReadPflotranString(input,option)
-              call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,MAX COORDINATE')
-              call InputReadNDoubles(input,option, &
-                                     grid%structured_grid%bounds(:,UPPER), &
-                                     i)
-              call InputErrorMsg(input,option,'Maximum Coordinate','BOUNDS')
-              if (grid%structured_grid%itype == CYLINDRICAL_GRID) then
-                grid%structured_grid%bounds(Y_DIRECTION,LOWER) = 0.d0
-                grid%structured_grid%bounds(Y_DIRECTION,UPPER) = 1.d0
-              endif
-              if (grid%structured_grid%itype == SPHERICAL_GRID) then
-                grid%structured_grid%bounds(Z_DIRECTION,LOWER) = 0.d0
-                grid%structured_grid%bounds(Z_DIRECTION,UPPER) = 1.d0
-              endif
+            call InputReadStringErrorMsg(input,option, &
+                                       'DISCRETIZATION,BOUNDS,Min Coordinates')
+            select case(grid%structured_grid%itype)
+              case(CARTESIAN_GRID)
+                i = 3
+              case(CYLINDRICAL_GRID)
+                i = 2
+              case(SPHERICAL_GRID)
+                i = 1
+            end select
+            call InputReadNDoubles(input,option, &
+                                   grid%structured_grid%bounds(:,LOWER), &
+                                   i)
+            call InputErrorMsg(input,option,'Minimum Coordinate','BOUNDS')
+            call InputReadPflotranString(input,option)
+            call InputReadStringErrorMsg(input,option, &
+                                        'DISCRETIZATION,BOUNDS,Min Coordinates')
+            call InputReadNDoubles(input,option, &
+                                   grid%structured_grid%bounds(:,UPPER), &
+                                   i)
+            call InputErrorMsg(input,option,'Maximum Coordinate','BOUNDS')
+            if (grid%structured_grid%itype == CYLINDRICAL_GRID) then
+              ! 2 values were read in in x and y locations, must move y value
+              ! to z as it was really z.
+              grid%structured_grid%bounds(Z_DIRECTION,LOWER) = &
+                grid%structured_grid%bounds(Y_DIRECTION,LOWER)
+              grid%structured_grid%bounds(Z_DIRECTION,UPPER) = &
+                grid%structured_grid%bounds(Y_DIRECTION,UPPER)
+              ! set y bounds to 0 and 1
+              grid%structured_grid%bounds(Y_DIRECTION,LOWER) = 0.d0
+              grid%structured_grid%bounds(Y_DIRECTION,UPPER) = 1.d0
+            endif
+            if (grid%structured_grid%itype == SPHERICAL_GRID) then
+              grid%structured_grid%bounds(Y_DIRECTION,LOWER) = 0.d0
+              grid%structured_grid%bounds(Y_DIRECTION,UPPER) = 1.d0
+              grid%structured_grid%bounds(Z_DIRECTION,LOWER) = 0.d0
+              grid%structured_grid%bounds(Z_DIRECTION,UPPER) = 1.d0
             endif
             call InputReadPflotranString(input,option)
-            call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,END')
+            call InputReadStringErrorMsg(input,option, &
+                                         'DISCRETIZATION,BOUNDS,END')
             if (.not.(InputCheckExit(input,option))) then
               if (OptionPrintToScreen(option)) then
                 if (grid%structured_grid%itype == CARTESIAN_GRID) then
@@ -641,17 +614,18 @@ subroutine DiscretizationRead(discretization,input,option)
 end subroutine DiscretizationRead
 
 ! ************************************************************************** !
-!
-! DiscretizationCreateDMs: creates distributed, parallel meshes/grids
-! If there are multiple degrees of freedom per grid cell, this will call 
-! DiscretizationCreateDM() multiple times to create the DMs corresponding 
-! to one degree of freedom grid cell and those corresponding to multiple 
-! degrees of freedom per cell.
-! author: Glenn Hammond
-! date: 02/08/08
-!
-! ************************************************************************** !
+
 subroutine DiscretizationCreateDMs(discretization,option)
+  ! 
+  ! creates distributed, parallel meshes/grids
+  ! If there are multiple degrees of freedom per grid cell, this will call
+  ! DiscretizationCreateDM() multiple times to create the DMs corresponding
+  ! to one degree of freedom grid cell and those corresponding to multiple
+  ! degrees of freedom per cell.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/08/08
+  ! 
       
   use Option_module    
       
@@ -693,7 +667,7 @@ subroutine DiscretizationCreateDMs(discretization,option)
           endif
         case(EXPLICIT_UNSTRUCTURED_GRID)
           ugrid => discretization%grid%unstructured_grid
-          call ExplicitUGridDecompose(ugrid,option)
+          call UGridExplicitDecompose(ugrid,option)
       end select
   end select
 
@@ -720,6 +694,14 @@ subroutine DiscretizationCreateDMs(discretization,option)
                                 discretization%stencil_type,option)
   endif
 
+#ifdef GEOMECH
+  if (option%ngeomechdof > 0) then
+    ndof = option%n_stress_strain_dof
+    call DiscretizationCreateDM(discretization,discretization%dm_n_stress_strain_dof, &
+                                ndof,discretization%stencil_width, &
+                                discretization%stencil_type,option)
+  endif
+#endif
 
   select case(discretization%itype)
     case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
@@ -741,14 +723,15 @@ subroutine DiscretizationCreateDMs(discretization,option)
 end subroutine DiscretizationCreateDMs
 
 ! ************************************************************************** !
-!
-! DiscretizationCreateDM: creates a distributed, parallel mesh/grid
-! author: Glenn Hammond
-! date: 02/08/08
-!
-! ************************************************************************** !
+
 subroutine DiscretizationCreateDM(discretization,dm_ptr,ndof,stencil_width, &
                                   stencil_type,option)
+  ! 
+  ! creates a distributed, parallel mesh/grid
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/08/08
+  ! 
 
   use Option_module
   
@@ -777,14 +760,15 @@ subroutine DiscretizationCreateDM(discretization,dm_ptr,ndof,stencil_width, &
 end subroutine DiscretizationCreateDM
 
 ! ************************************************************************** !
-!
-! DiscretizationCreateVector: Creates a global PETSc vector
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! ************************************************************************** !
+
 subroutine DiscretizationCreateVector(discretization,dm_index,vector, &
                                       vector_type,option)
+  ! 
+  ! Creates a global PETSc vector
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/24/07
+  ! 
   use Option_module                                      
 
   implicit none
@@ -821,13 +805,14 @@ subroutine DiscretizationCreateVector(discretization,dm_index,vector, &
 end subroutine DiscretizationCreateVector
 
 ! ************************************************************************** !
-!
-! DiscretizationDuplicateVector: Creates a global PETSc vector
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! ************************************************************************** !
+
 subroutine DiscretizationDuplicateVector(discretization,vector1,vector2)
+  ! 
+  ! Creates a global PETSc vector
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/24/07
+  ! 
 
   implicit none
   
@@ -842,13 +827,14 @@ subroutine DiscretizationDuplicateVector(discretization,vector1,vector2)
 end subroutine DiscretizationDuplicateVector
 
 ! ************************************************************************** !
-!
-! DiscretizationGetDMPtrFromIndex: Returns the integer pointer for the DM referenced
-! author: Glenn Hammond
-! date: 02/08/08
-!
-! ************************************************************************** !
+
 function DiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  ! 
+  ! Returns the integer pointer for the DM referenced
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/08/08
+  ! 
 
   implicit none
   
@@ -864,12 +850,14 @@ function DiscretizationGetDMPtrFromIndex(discretization,dm_index)
       DiscretizationGetDMPtrFromIndex => discretization%dm_nflowdof
     case(NTRANDOF)
       DiscretizationGetDMPtrFromIndex => discretization%dm_ntrandof
+    case(NGEODOF)
+      DiscretizationGetDMPtrFromIndex => discretization%dm_n_stress_strain_dof
   end select  
   
 end function DiscretizationGetDMPtrFromIndex
 
 ! ************************************************************************** !
-! ************************************************************************** !
+
 function DiscretizationGetDMCPtrFromIndex(discretization,dm_index)
 
   implicit none
@@ -889,13 +877,14 @@ function DiscretizationGetDMCPtrFromIndex(discretization,dm_index)
 end function DiscretizationGetDMCPtrFromIndex
 
 ! ************************************************************************** !
-!
-! DiscretizationCreateJacobian: Creates Jacobian matrix associated with discretization
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! ************************************************************************** !
+
 subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobian,option)
+  ! 
+  ! Creates Jacobian matrix associated with discretization
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/24/07
+  ! 
 
   use Option_module
   
@@ -973,17 +962,18 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
 end subroutine DiscretizationCreateJacobian
 
 ! ************************************************************************** !
-!
-! DiscretizationCreateInterpolation: Creates interpolation matrix associated 
-! with discretization for geometric multigrid.
-! author: Richard Mills
-! date: 4/25/08.
-!
-! ************************************************************************** !
+
 subroutine DiscretizationCreateInterpolation(discretization,dm_index, &
                                              interpolation,mg_levels_x, &
                                              mg_levels_y, mg_levels_z, &
                                              option)
+  ! 
+  ! Creates interpolation matrix associated
+  ! with discretization for geometric multigrid.
+  ! 
+  ! Author: Richard Mills
+  ! Date: 4/25/08.
+  ! 
 
   use Option_module
   
@@ -1056,13 +1046,14 @@ subroutine DiscretizationCreateInterpolation(discretization,dm_index, &
 end subroutine DiscretizationCreateInterpolation
 
 ! ************************************************************************** !
-!
-! DiscretizationCreateColoring: Creates ISColoring for discretization
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! ************************************************************************** !
+
 subroutine DiscretizationCreateColoring(discretization,dm_index,option,coloring)
+  ! 
+  ! Creates ISColoring for discretization
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/24/07
+  ! 
 
   use Option_module
   
@@ -1101,16 +1092,16 @@ subroutine DiscretizationCreateColoring(discretization,dm_index,option,coloring)
 end subroutine DiscretizationCreateColoring
 
 ! ************************************************************************** !
-!
-! DiscretizationGlobalToLocal: Performs global to local communication with DM
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! Note that 'dm_index' should correspond to one of the macros defined 
-! in 'definitions.h' such as ONEDOF, NPHASEDOF, etc.  --RTM
-!
-! ************************************************************************** !
+
 subroutine DiscretizationGlobalToLocal(discretization,global_vec,local_vec,dm_index)
+  ! 
+  ! Performs global to local communication with DM
+  ! Note that 'dm_index' should correspond to one of the macros defined
+  ! in 'definitions.h' such as ONEDOF, NPHASEDOF, etc.  --RTM
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/24/07
+  ! 
 
   implicit none
 
@@ -1129,14 +1120,14 @@ subroutine DiscretizationGlobalToLocal(discretization,global_vec,local_vec,dm_in
 end subroutine DiscretizationGlobalToLocal
 
 ! ************************************************************************** !
-!
-! DiscretizationGlobalToLocalFaces: Performs global to local communication for MFD
-! author: Daniil Svyatskiy
-! date: 07/20/10
-!
-!
-! ************************************************************************** !
+
 subroutine DiscretizationGlobalToLocalFaces(discretization,global_vec,local_vec,dm_index)
+  ! 
+  ! Performs global to local communication for MFD
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 07/20/10
+  ! 
 
   implicit none
   
@@ -1156,16 +1147,15 @@ subroutine DiscretizationGlobalToLocalFaces(discretization,global_vec,local_vec,
   
 end subroutine DiscretizationGlobalToLocalFaces
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! DiscretizationGlobalToLocalLP: Performs global to local communication for MFD
-! author: Daniil Svyatskiy
-! date: 07/20/10
-!
-!
-! ************************************************************************** !
 subroutine DiscretizationGlobalToLocalLP(discretization,global_vec,local_vec,dm_index)
+  ! 
+  ! Performs global to local communication for MFD
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 07/20/10
+  ! 
 
   implicit none
   
@@ -1184,18 +1174,18 @@ subroutine DiscretizationGlobalToLocalLP(discretization,global_vec,local_vec,dm_
   end select
   
 end subroutine DiscretizationGlobalToLocalLP
-  
+
 ! ************************************************************************** !
-!
-! DiscretizationLocalToGlobal: Performs local to global communication with DM
-! author: Glenn Hammond
-! date: 1/02/08
-!
-! Note that 'dm_index' should correspond to one of the macros defined 
-! in 'definitions.h' such as ONEDOF, NPHASEDOF, etc.  --RTM
-!
-! ************************************************************************** !
+
 subroutine DiscretizationLocalToGlobal(discretization,local_vec,global_vec,dm_index)
+  ! 
+  ! Performs local to global communication with DM
+  ! Note that 'dm_index' should correspond to one of the macros defined
+  ! in 'definitions.h' such as ONEDOF, NPHASEDOF, etc.  --RTM
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 1/02/08
+  ! 
 
   implicit none
   
@@ -1212,24 +1202,24 @@ subroutine DiscretizationLocalToGlobal(discretization,local_vec,global_vec,dm_in
   call DMLocalToGlobalEnd(dm_ptr%dm,local_vec,INSERT_VALUES,global_vec,ierr)
  
 end subroutine DiscretizationLocalToGlobal
-  
+
 ! ************************************************************************** !
-!
-! DiscretizationLocalToLocal: Performs local to local communication with DM
-! author: Glenn Hammond
-! date: 11/14/07
-!
-! Some clarification:
-! A "local to local" operation, in PETSc parlance, refers to communicating 
-! values from a local ghosted vector (in which the ghost points are 
-! irrelevant) and putting those values directly into another ghosted local 
-! vector (in which those ghost points are set correctly).
-! This uses the same communication pattern as a "global to local" operation, 
-! but a in a "global to local", the originating vector is a PETSc global 
-! vector, not a ghosted local vector.
-!
-! ************************************************************************** !
+
 subroutine DiscretizationLocalToLocal(discretization,local_vec1,local_vec2,dm_index)
+  ! 
+  ! Performs local to local communication with DM
+  ! Some clarification:
+  ! A "local to local" operation, in PETSc parlance, refers to communicating
+  ! values from a local ghosted vector (in which the ghost points are
+  ! irrelevant) and putting those values directly into another ghosted local
+  ! vector (in which those ghost points are set correctly).
+  ! This uses the same communication pattern as a "global to local" operation,
+  ! but a in a "global to local", the originating vector is a PETSc global
+  ! vector, not a ghosted local vector.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/14/07
+  ! 
 
   implicit none
   
@@ -1246,15 +1236,16 @@ subroutine DiscretizationLocalToLocal(discretization,local_vec1,local_vec2,dm_in
   call DMLocalToLocalEnd(dm_ptr%dm,local_vec1,INSERT_VALUES,local_vec2,ierr)
   
 end subroutine DiscretizationLocalToLocal
-  
+
 ! ************************************************************************** !
-!
-! DiscretizationLocalToLocalFaces: Performs local to local communication for face unknowns
-! author: Daniil Svyatskiy
-! date: 11/14/07
-!
-! ************************************************************************** !
+
 subroutine DiscretizationLocalToLocalFaces(discretization,local_vec1,local_vec2,dm_index)
+  ! 
+  ! Performs local to local communication for face unknowns
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 11/14/07
+  ! 
 
   implicit none
   
@@ -1275,13 +1266,14 @@ subroutine DiscretizationLocalToLocalFaces(discretization,local_vec1,local_vec2,
 end subroutine DiscretizationLocalToLocalFaces
 
 ! ************************************************************************** !
-!
-! DiscretizationLocalToLocalLP: Performs local to local communication for face unknowns
-! author: Daniil Svyatskiy
-! date: 11/14/07
-!
-! ************************************************************************** !
+
 subroutine DiscretizationLocalToLocalLP(discretization,local_vec1,local_vec2,dm_index)
+  ! 
+  ! Performs local to local communication for face unknowns
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 11/14/07
+  ! 
 
   implicit none
   
@@ -1300,16 +1292,16 @@ subroutine DiscretizationLocalToLocalLP(discretization,local_vec1,local_vec2,dm_
   end select
   
 end subroutine DiscretizationLocalToLocalLP
-  
- 
+
 ! ************************************************************************** !
-!
-! DiscretizationGlobalToNatural: Performs global to natural communication with DM
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! ************************************************************************** !
+
 subroutine DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,dm_index)
+  ! 
+  ! Performs global to natural communication with DM
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/24/07
+  ! 
 
   implicit none
   
@@ -1336,13 +1328,14 @@ subroutine DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,d
 end subroutine DiscretizationGlobalToNatural
 
 ! ************************************************************************** !
-!
-! DiscretizationNaturalToGlobal: Performs natural to global communication with DM
-! author: Glenn Hammond
-! date: 01/12/08
-!
-! ************************************************************************** !
+
 subroutine DiscretizationNaturalToGlobal(discretization,natural_vec,global_vec,dm_index)
+  ! 
+  ! Performs natural to global communication with DM
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/08
+  ! 
 
   implicit none
   
@@ -1369,16 +1362,16 @@ subroutine DiscretizationNaturalToGlobal(discretization,natural_vec,global_vec,d
 end subroutine DiscretizationNaturalToGlobal
 
 ! ************************************************************************** !
-!
-! DiscretizationGlobalToLocalBegin: Begins global to local communication with DM
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! Note that 'dm_index' should correspond to one of the macros defined 
-! in 'definitions.h' such as ONEDOF, NPHASEDOF, etc.  --RTM
-!
-! ************************************************************************** !
+
 subroutine DiscretizationGlobalToLocalBegin(discretization,global_vec,local_vec,dm_index)
+  ! 
+  ! Begins global to local communication with DM
+  ! Note that 'dm_index' should correspond to one of the macros defined
+  ! in 'definitions.h' such as ONEDOF, NPHASEDOF, etc.  --RTM
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/24/07
+  ! 
 
 
 
@@ -1396,18 +1389,18 @@ subroutine DiscretizationGlobalToLocalBegin(discretization,global_vec,local_vec,
   call DMGlobalToLocalBegin(dm_ptr%dm,global_vec,INSERT_VALUES,local_vec,ierr)
   
 end subroutine DiscretizationGlobalToLocalBegin
-  
+
 ! ************************************************************************** !
-!
-! DiscretizationGlobalToLocalEnd: Ends global to local communication with DM
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! Note that 'dm_index' should correspond to one of the macros defined 
-! in 'definitions.h' such as ONEDOF, NPHASEDOF, etc.  --RTM
-!
-! ************************************************************************** !
+
 subroutine DiscretizationGlobalToLocalEnd(discretization,global_vec,local_vec,dm_index)
+  ! 
+  ! Ends global to local communication with DM
+  ! Note that 'dm_index' should correspond to one of the macros defined
+  ! in 'definitions.h' such as ONEDOF, NPHASEDOF, etc.  --RTM
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/24/07
+  ! 
 
  
 
@@ -1425,16 +1418,16 @@ subroutine DiscretizationGlobalToLocalEnd(discretization,global_vec,local_vec,dm
   call DMGlobalToLocalEnd(dm_ptr%dm,global_vec,INSERT_VALUES,local_vec,ierr)
  
 end subroutine DiscretizationGlobalToLocalEnd
-  
+
 ! ************************************************************************** !
-!
-! DiscretizLocalToLocalFacesBegin: Begins Local to local communication with MFD
-! author: Daniil Svyatskiy
-! date: 07/20/10
-!
-!
-! ************************************************************************** !
+
 subroutine DiscretizLocalToLocalFacesBegin(discretization,local_vec1,local_vec2,dm_index)
+  ! 
+  ! Begins Local to local communication with MFD
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 07/20/10
+  ! 
 
 
   use MFD_Aux_module
@@ -1454,16 +1447,16 @@ subroutine DiscretizLocalToLocalFacesBegin(discretization,local_vec1,local_vec2,
   end select
   
 end subroutine DiscretizLocalToLocalFacesBegin
-  
+
 ! ************************************************************************** !
-!
-! DiscretizLocalToLocalFacesEnd: Ends local  to local communication with DM
-! author: Daniil Svyatskiy
-! date: 07/20/10
-!
-!
-! ************************************************************************** !
+
 subroutine DiscretizLocalToLocalFacesEnd(discretization,local_vec1,local_vec2,dm_index)
+  ! 
+  ! Ends local  to local communication with DM
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 07/20/10
+  ! 
 
  
  use MFD_Aux_module
@@ -1484,14 +1477,16 @@ subroutine DiscretizLocalToLocalFacesEnd(discretization,local_vec1,local_vec2,dm
   end select
   
 end subroutine DiscretizLocalToLocalFacesEnd
-  
-! DiscretizGlobalToLocalFacesBegin: Begins global to local communication with MFD
-! author: Daniil Svyatskiy
-! date: 07/20/10
-!
-!
+
 ! ************************************************************************** !
+
 subroutine DiscretizGlobalToLocalFacesBegin(discretization,global_vec,local_vec,dm_index)
+  ! 
+  ! Begins global to local communication with MFD
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 07/20/10
+  ! 
 
 
   use MFD_Aux_module
@@ -1511,16 +1506,16 @@ subroutine DiscretizGlobalToLocalFacesBegin(discretization,global_vec,local_vec,
   end select
   
 end subroutine DiscretizGlobalToLocalFacesBegin
-  
+
 ! ************************************************************************** !
-!
-! DiscretizGlobalToLocalFacesEnd: Ends global to local communication with DM
-! author: Daniil Svyatskiy
-! date: 07/20/10
-!
-!
-! ************************************************************************** !
+
 subroutine DiscretizGlobalToLocalFacesEnd(discretization,global_vec,local_vec,dm_index)
+  ! 
+  ! Ends global to local communication with DM
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 07/20/10
+  ! 
 
  
  use MFD_Aux_module
@@ -1543,14 +1538,14 @@ subroutine DiscretizGlobalToLocalFacesEnd(discretization,global_vec,local_vec,dm
 end subroutine DiscretizGlobalToLocalFacesEnd
 
 ! ************************************************************************** !
-!
-! DiscretizLocalToLocalLPBegin: Begins Local to local communication with MFD
-! author: Daniil Svyatskiy
-! date: 07/20/10
-!
-!
-! ************************************************************************** !
+
 subroutine DiscretizLocalToLocalLPBegin(discretization,local_vec1,local_vec2,dm_index)
+  ! 
+  ! Begins Local to local communication with MFD
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 07/20/10
+  ! 
 
 
   use MFD_Aux_module
@@ -1570,16 +1565,16 @@ subroutine DiscretizLocalToLocalLPBegin(discretization,local_vec1,local_vec2,dm_
   end select
   
 end subroutine DiscretizLocalToLocalLPBegin
-  
+
 ! ************************************************************************** !
-!
-! DiscretizLocalToLocalLPEnd: Ends local  to local communication with DM
-! author: Daniil Svyatskiy
-! date: 07/20/10
-!
-!
-! ************************************************************************** !
+
 subroutine DiscretizLocalToLocalLPEnd(discretization,local_vec1,local_vec2,dm_index)
+  ! 
+  ! Ends local  to local communication with DM
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 07/20/10
+  ! 
 
  
  use MFD_Aux_module
@@ -1600,14 +1595,16 @@ subroutine DiscretizLocalToLocalLPEnd(discretization,local_vec1,local_vec2,dm_in
   end select
   
 end subroutine DiscretizLocalToLocalLPEnd
-  
-! DiscretizGlobalToLocalLPBegin: Begins global to local communication with MFD
-! author: Daniil Svyatskiy
-! date: 07/20/10
-!
-!
+
 ! ************************************************************************** !
+
 subroutine DiscretizGlobalToLocalLPBegin(discretization,global_vec,local_vec,dm_index)
+  ! 
+  ! Begins global to local communication with MFD
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 07/20/10
+  ! 
 
 
   use MFD_Aux_module
@@ -1627,16 +1624,16 @@ subroutine DiscretizGlobalToLocalLPBegin(discretization,global_vec,local_vec,dm_
   end select
   
 end subroutine DiscretizGlobalToLocalLPBegin
-  
+
 ! ************************************************************************** !
-!
-! DiscretizGlobalToLocalLPEnd: Ends global to local communication with DM
-! author: Daniil Svyatskiy
-! date: 07/20/10
-!
-!
-! ************************************************************************** !
+
 subroutine DiscretizGlobalToLocalLPEnd(discretization,global_vec,local_vec,dm_index)
+  ! 
+  ! Ends global to local communication with DM
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 07/20/10
+  ! 
 
  
  use MFD_Aux_module
@@ -1658,16 +1655,15 @@ subroutine DiscretizGlobalToLocalLPEnd(discretization,global_vec,local_vec,dm_in
   
 end subroutine DiscretizGlobalToLocalLPEnd
 
+! ************************************************************************** !
 
-  
-! ************************************************************************** !
-!
-! DiscretizationLocalToLocalBegin: Begins local to local communication with DM
-! author: Glenn Hammond
-! date: 11/14/07
-!
-! ************************************************************************** !
 subroutine DiscretizationLocalToLocalBegin(discretization,local_vec1,local_vec2,dm_index)
+  ! 
+  ! Begins local to local communication with DM
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/14/07
+  ! 
 
   implicit none
   
@@ -1683,15 +1679,16 @@ subroutine DiscretizationLocalToLocalBegin(discretization,local_vec1,local_vec2,
   call DMLocalToLocalBegin(dm_ptr%dm,local_vec1,INSERT_VALUES,local_vec2,ierr)
 
 end subroutine DiscretizationLocalToLocalBegin
-  
+
 ! ************************************************************************** !
-!
-! DiscretizationLocalToLocalEnd: Ends local to local communication with DM
-! author: Glenn Hammond
-! date: 11/14/07
-!
-! ************************************************************************** !
+
 subroutine DiscretizationLocalToLocalEnd(discretization,local_vec1,local_vec2,dm_index)
+  ! 
+  ! Ends local to local communication with DM
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/14/07
+  ! 
 
   implicit none
   
@@ -1707,15 +1704,16 @@ subroutine DiscretizationLocalToLocalEnd(discretization,local_vec1,local_vec2,dm
   call DMLocalToLocalEnd(dm_ptr%dm,local_vec1,INSERT_VALUES,local_vec2,ierr)
 
 end subroutine DiscretizationLocalToLocalEnd
-  
+
 ! ************************************************************************** !
-!
-! DiscretizGlobalToNaturalBegin: Begins global to natural communication with DM
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! ************************************************************************** !
+
 subroutine DiscretizGlobalToNaturalBegin(discretization,global_vec,natural_vec,dm_index)
+  ! 
+  ! Begins global to natural communication with DM
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/24/07
+  ! 
 
   implicit none
   
@@ -1739,13 +1737,14 @@ subroutine DiscretizGlobalToNaturalBegin(discretization,global_vec,natural_vec,d
 end subroutine DiscretizGlobalToNaturalBegin
 
 ! ************************************************************************** !
-!
-! DiscretizGlobalToNaturalEnd: Ends global to natural communication with DM
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! ************************************************************************** !
+
 subroutine DiscretizGlobalToNaturalEnd(discretization,global_vec,natural_vec,dm_index)
+  ! 
+  ! Ends global to natural communication with DM
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/24/07
+  ! 
 
   implicit none
   
@@ -1769,13 +1768,14 @@ subroutine DiscretizGlobalToNaturalEnd(discretization,global_vec,natural_vec,dm_
 end subroutine DiscretizGlobalToNaturalEnd
 
 ! ************************************************************************** !
-!
-! DiscretizNaturalToGlobalBegin: Begins natural to global communication with DM
-! author: Glenn Hammond
-! date: 01/12/08
-!
-! ************************************************************************** !
+
 subroutine DiscretizNaturalToGlobalBegin(discretization,natural_vec,global_vec,dm_index)
+  ! 
+  ! Begins natural to global communication with DM
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/08
+  ! 
 
   implicit none
   
@@ -1797,13 +1797,14 @@ subroutine DiscretizNaturalToGlobalBegin(discretization,natural_vec,global_vec,d
 end subroutine DiscretizNaturalToGlobalBegin
 
 ! ************************************************************************** !
-!
-! DiscretizNaturalToGlobalEnd: Ends natural to global communication with DM
-! author: Glenn Hammond
-! date: 01/12/08
-!
-! ************************************************************************** !
+
 subroutine DiscretizNaturalToGlobalEnd(discretization,natural_vec,global_vec,dm_index)
+  ! 
+  ! Ends natural to global communication with DM
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/08
+  ! 
 
   implicit none
   
@@ -1825,14 +1826,15 @@ subroutine DiscretizNaturalToGlobalEnd(discretization,natural_vec,global_vec,dm_
 end subroutine DiscretizNaturalToGlobalEnd
 
 ! ************************************************************************** !
-!
-! DiscretizationUpdateTVDGhosts: Updates tvd extended ghost cell values
-! author: Glenn Hammond
-! date: 02/04/12
-!
-! ************************************************************************** !
+
 subroutine DiscretizationUpdateTVDGhosts(discretization,global_vec, &
                                          tvd_ghost_vec)
+  ! 
+  ! Updates tvd extended ghost cell values
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/04/12
+  ! 
 
   implicit none
   
@@ -1850,13 +1852,14 @@ subroutine DiscretizationUpdateTVDGhosts(discretization,global_vec, &
 end subroutine DiscretizationUpdateTVDGhosts
 
 ! ************************************************************************** !
-!
-! DiscretAOApplicationToPetsc: Maps application ordering to petsc
-! author: Glenn Hammond
-! date: 10/12/12
-!
-! ************************************************************************** !
+
 subroutine DiscretAOApplicationToPetsc(discretization,int_array)
+  ! 
+  ! Maps application ordering to petsc
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/12/12
+  ! 
 
   implicit none
   
@@ -1879,13 +1882,14 @@ subroutine DiscretAOApplicationToPetsc(discretization,int_array)
 end subroutine DiscretAOApplicationToPetsc
 
 ! ************************************************************************** !
-!
-! DiscretizationDestroy: Deallocates a discretization
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
+
 subroutine DiscretizationDestroy(discretization)
+  ! 
+  ! Deallocates a discretization
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
 
   implicit none
   
@@ -1906,7 +1910,10 @@ subroutine DiscretizationDestroy(discretization)
       discretization%dm_nflowdof%dm = 0
       if (discretization%dm_ntrandof%dm /= 0) &
         call DMDestroy(discretization%dm_ntrandof%dm,ierr)
-      discretization%dm_ntrandof%dm = 0
+      discretization%dm_n_stress_strain_dof%dm = 0
+      if (discretization%dm_nflowdof%dm /= 0) &
+        call DMDestroy(discretization%dm_n_stress_strain_dof%dm,ierr)
+      discretization%dm_n_stress_strain_dof%dm = 0
       if (associated(discretization%dmc_nflowdof)) then
         do i=1,size(discretization%dmc_nflowdof)
           call DMDestroy(discretization%dmc_nflowdof(i)%dm,ierr)
@@ -1928,6 +1935,9 @@ subroutine DiscretizationDestroy(discretization)
         call UGridDMDestroy(discretization%dm_nflowdof%ugdm)
       if (associated(discretization%dm_ntrandof%ugdm)) &
         call UGridDMDestroy(discretization%dm_ntrandof%ugdm)
+      if (associated(discretization%dm_n_stress_strain_dof%ugdm)) &
+        call UGridDMDestroy(discretization%dm_n_stress_strain_dof%ugdm)
+
   end select
   if (associated(discretization%dm_1dof)) &
     deallocate(discretization%dm_1dof)
@@ -1938,6 +1948,9 @@ subroutine DiscretizationDestroy(discretization)
   if (associated(discretization%dm_ntrandof)) &
     deallocate(discretization%dm_ntrandof)
   nullify(discretization%dm_ntrandof)
+  if (associated(discretization%dm_n_stress_strain_dof)) &
+    deallocate(discretization%dm_n_stress_strain_dof)
+  nullify(discretization%dm_n_stress_strain_dof)
 
 
   if (associated(discretization%MFD)) &

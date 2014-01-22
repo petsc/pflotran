@@ -51,13 +51,14 @@ module Simulation_module
 contains
 
 ! ************************************************************************** !
-!
-! SimulationCreate1: Allocates and initializes a new simulation object
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 function SimulationCreate1()
+  ! 
+  ! Allocates and initializes a new simulation object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   use Option_module
   
@@ -74,13 +75,14 @@ function SimulationCreate1()
 end function SimulationCreate1
 
 ! ************************************************************************** !
-!
-! SimulationCreate2: Allocates and initializes a new simulation object
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 function SimulationCreate2(option)
+  ! 
+  ! Allocates and initializes a new simulation object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   use Option_module
 
@@ -111,13 +113,14 @@ function SimulationCreate2(option)
 end function SimulationCreate2
 
 ! ************************************************************************** !
-!
-! SimulationDestroy: Deallocates a simulation
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
+
 subroutine SimulationDestroy(simulation)
+  ! 
+  ! Deallocates a simulation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
 
   use Richards_module, only : RichardsDestroy
   use Reactive_Transport_module, only : RTDestroy
@@ -142,7 +145,7 @@ subroutine SimulationDestroy(simulation)
     call RTDestroy(simulation%realization)
   endif
 
-  call RealizationDestroy(simulation%realization)
+  call RealizationDestroyLegacy(simulation%realization)
   call TimestepperDestroy(simulation%flow_stepper)
   call TimestepperDestroy(simulation%tran_stepper)
 #ifdef SURFACE_FLOW

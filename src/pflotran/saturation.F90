@@ -13,17 +13,16 @@ module Saturation_module
 contains
 
 ! ************************************************************************** !
-!
-! SaturationUpdateCoupler: Computes the pressures for a saturation 
-!                          initial/boundary condition 
-! author: Glenn Hammond
-! date: 06/07/11
-!
-! ************************************************************************** !
+
 subroutine SaturationUpdateCoupler(coupler,option,grid,saturation_functions, &
                                    sat_func_id)
-
-  use Water_EOS_module
+  ! 
+  ! Computes the pressures for a saturation
+  ! initial/boundary condition
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/07/11
+  ! 
 
   use Option_module
   use Grid_module

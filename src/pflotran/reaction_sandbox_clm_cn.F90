@@ -61,13 +61,14 @@ module Reaction_Sandbox_CLM_CN_class
 contains
 
 ! ************************************************************************** !
-!
-! CLM_CN_Create: Allocates CLM-CN reaction object.
-! author: Glenn Hammond
-! date: 02/04/13
-!
-! ************************************************************************** !
+
 function CLM_CN_Create()
+  ! 
+  ! Allocates CLM-CN reaction object.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/04/13
+  ! 
 
   implicit none
   
@@ -92,13 +93,14 @@ function CLM_CN_Create()
 end function CLM_CN_Create
 
 ! ************************************************************************** !
-!
-! CLM_CN_Read: Reads input deck for reaction sandbox parameters
-! author: Glenn Hammond
-! date: 02/04/13
-!
-! ************************************************************************** !
+
 subroutine CLM_CN_Read(this,input,option)
+  ! 
+  ! Reads input deck for reaction sandbox parameters
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/04/13
+  ! 
 
   use Option_module
   use String_module
@@ -287,13 +289,14 @@ subroutine CLM_CN_Read(this,input,option)
 end subroutine CLM_CN_Read
 
 ! ************************************************************************** !
-!
-! CLM_CN_Setup: Sets up CLM-CN reaction after it has been read from input
-! author: Glenn Hammond
-! date: 02/04/13
-!
-! ************************************************************************** !
+
 subroutine CLM_CN_Setup(this,reaction,option)
+  ! 
+  ! Sets up CLM-CN reaction after it has been read from input
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/04/13
+  ! 
 
   use Reaction_Aux_module, only : reaction_type
   use Option_module
@@ -309,13 +312,14 @@ subroutine CLM_CN_Setup(this,reaction,option)
 end subroutine CLM_CN_Setup
 
 ! ************************************************************************** !
-!
-! CLM_CN_Map: Maps coefficients to primary dependent variables
-! author: Glenn Hammond
-! date: 02/04/13
-!
-! ************************************************************************** !
+
 subroutine CLM_CN_Map(this,reaction,option)
+  ! 
+  ! Maps coefficients to primary dependent variables
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/04/13
+  ! 
 
   use Reaction_Aux_module, only : reaction_type
   use Option_module
@@ -463,17 +467,19 @@ subroutine CLM_CN_Map(this,reaction,option)
 end subroutine CLM_CN_Map
 
 ! ************************************************************************** !
-!
-! CLM_CN_React: Evaluates reaction storing residual and/or Jacobian
-! author: Glenn Hammond
-! date: 02/04/13
-!
-! ************************************************************************** !
+
 subroutine CLM_CN_React(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
-                        global_auxvar,porosity,volume,reaction,option)
+                        global_auxvar,material_auxvar,reaction,option)
+  ! 
+  ! Evaluates reaction storing residual and/or Jacobian
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/04/13
+  ! 
 
   use Option_module
   use Reaction_Aux_module, only : reaction_type
+  use Material_Aux_class, only : material_auxvar_type
   
   implicit none
   
@@ -484,10 +490,9 @@ subroutine CLM_CN_React(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
   ! the following arrays must be declared after reaction
   PetscReal :: Residual(reaction%ncomp)
   PetscReal :: Jacobian(reaction%ncomp,reaction%ncomp)
-  PetscReal :: porosity
-  PetscReal :: volume
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
 
   PetscInt, parameter :: iphase = 1
   PetscInt :: ipool_up, ipool_down
@@ -561,7 +566,8 @@ subroutine CLM_CN_React(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
     sumN = 0.d0
   
     ! scaled_rate_const units: (m^3 bulk / s) = (1/s) * (m^3 bulk)
-    scaled_rate_const = this%rate_constant(irxn)*volume*constant_inhibition
+    scaled_rate_const = this%rate_constant(irxn)*material_auxvar%volume* &
+                        constant_inhibition
     resp_frac = this%respiration_fraction(irxn)
     
     ipool_up = this%upstream_pool_id(irxn)
@@ -787,14 +793,15 @@ subroutine CLM_CN_React(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
 end subroutine CLM_CN_React
 
 ! ************************************************************************** !
-!
-! CLM_CN_Destroy: Destroys allocatable or pointer objects created in this 
-!                 module
-! author: Glenn Hammond
-! date: 02/04/13
-!
-! ************************************************************************** !
+
 subroutine CLM_CN_Destroy(this)
+  ! 
+  ! Destroys allocatable or pointer objects created in this
+  ! module
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/04/13
+  ! 
 
   use Utility_module, only : DeallocateArray
 

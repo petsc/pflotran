@@ -9,6 +9,8 @@ module Gas_EOS_module
  
 contains
 
+! ************************************************************************** !
+
 subroutine ideal_gaseos_noderiv(p,tc,energyscale,d,h,u)
     
     PetscReal,intent(in):: p,tc,energyscale
@@ -16,70 +18,65 @@ subroutine ideal_gaseos_noderiv(p,tc,energyscale,d,h,u)
 
    
     PetscReal, parameter:: Rg=8.31415 
-    PetscReal, parameter:: Cpg=Rg*2.5 !maybe
+    ! Cpg units: J/mol-K
+    PetscReal, parameter:: Cv_air = 20.85 ! head capacity wiki
+!geh    PetscReal, parameter:: Cpg=Rg*2.5 !maybe
     PetscReal  t
     
     t = tc + 273.15
     d= p / t / Rg /1D3
-    h= Cpg * t * energyscale*1D3
-    u= (Cpg- Rg) * t * energyscale*1D3
+    h= Cv_air * t * energyscale*1D3
+    u= (Cv_air - Rg) * t * energyscale*1D3
 
    
 end subroutine ideal_gaseos_noderiv
 
- 
+! ************************************************************************** !
+
 subroutine ideal_gaseos(p,tc,energyscale,d,d_p,d_t,h,h_p,h_t,u,u_p,u_t)
     
     PetscReal, intent(in):: p,tc,energyscale
     PetscReal, intent(out):: d,d_p,d_t,h,h_p,h_t,u,u_p,u_t
 
     PetscReal, parameter:: Rg=8.31415 
-    PetscReal, parameter:: Cpg=Rg*2.5 ! maybe
+    ! Cpg units: J/mol-K
+    PetscReal, parameter:: Cv_air = 20.85 ! head capacity wiki
+!geh    PetscReal, parameter:: Cpg=Rg*2.5 ! maybe
     PetscReal  t
 
     t = tc + 273.15
     d= p / t / Rg/1D3
-    h= Cpg * t * energyscale*1D3
-    u= (Cpg- Rg) * t * energyscale*1D3
+    h= Cv_air * t * energyscale*1D3
+    u= (Cv_air - Rg) * t * energyscale*1D3
 
     d_p=  d / p
     d_t=- d / t
     h_p=0.
-    h_t=Cpg * energyscale*1D3
+    h_t=Cv_air * energyscale*1D3
     u_p=0.
-    u_t= (Cpg- Rg) * energyscale*1D3
+    u_t= (Cv_air - Rg) * energyscale*1D3
 
 !print *,'ideal gas ',energyscale,h,h_p,h_t,u,u_p,u_t
 end subroutine ideal_gaseos
 
-
-
-
-
-
-!cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-!
-!c   REFERENCES
-!
-!c     THIS ROUTINE IS LARGELY ADAPTED FROM THE TOUGH CODE.
-!
-!c     this routine computes the viscosity of vapor-air mixtures.
-!c     it uses a modified version of a formulation based on kinetic
-!c     gas theory, as given by j.o. hirschfelder, c.f. curtiss, and
-!c     r.b. bird, molecular theory of gases and liquids, john wiley
-!c     & sons, 1954, pp. 528-530.
-!c
-!c     the modification made to the hirschfelder et al. expressions is
-!c     that for vapor viscosity accurate (empirical) values are used,
-!c     rather than the first order expression of kinetic theory.
-!c
-!c     the formulation matches experimental data on viscosities of
-!c     vapor-air mixtures in the temperature range from 100 to 150
-!c     deg. c, for all compositions, to better than 4%.
-!
-!cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+! ************************************************************************** !
 
 subroutine visgas_noderiv(t,pa,p,ds,visg)
+  ! 
+  ! REFERENCES
+  ! THIS ROUTINE IS LARGELY ADAPTED FROM THE TOUGH CODE.
+  ! this routine computes the viscosity of vapor-air mixtures.
+  ! it uses a modified version of a formulation based on kinetic
+  ! gas theory, as given by j.o. hirschfelder, c.f. curtiss, and
+  ! r.b. bird, molecular theory of gases and liquids, john wiley
+  ! & sons, 1954, pp. 528-530.
+  ! the modification made to the hirschfelder et al. expressions is
+  ! that for vapor viscosity accurate (empirical) values are used,
+  ! rather than the first order expression of kinetic theory.
+  ! the formulation matches experimental data on viscosities of
+  ! vapor-air mixtures in the temperature range from 100 to 150
+  ! deg. c, for all compositions, to better than 4%.
+  ! 
       PetscReal  t,pa,p,ds,visg
       PetscReal  fair,fwat,cair,cwat
 
@@ -133,7 +130,7 @@ subroutine visgas_noderiv(t,pa,p,ds,visg)
       return
 end subroutine visgas_noderiv
 
-
+! ************************************************************************** !
 
 subroutine Henry_air_noderiv(p,tc,ps,Henry)
 ! Calculate Henry Coefficient for N2
@@ -158,6 +155,7 @@ subroutine Henry_air_noderiv(p,tc,ps,Henry)
    return 
 end subroutine Henry_air_noderiv
 
+! ************************************************************************** !
 
 subroutine Henry_air(p,tc,ps,ps_p,ps_t,Henry,Henry_p,Henry_t)
    implicit none

@@ -34,15 +34,16 @@ module Geometry_module
 contains
 
 ! ************************************************************************** !
-!
-! GeometryCreatePolygonalVolume: Creates a polygonal volume.  I.e. a volume
-!                              defined by 3 polygons, on each plane of the
-!                              principle coordinate system x,y,z
-! author: Glenn Hammond
-! date: 01/12/12
-!
-! ************************************************************************** !
+
 function GeometryCreatePolygonalVolume()
+  ! 
+  ! Creates a polygonal volume.  I.e. a volume
+  ! defined by 3 polygons, on each plane of the
+  ! principle coordinate system x,y,z
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/12
+  ! 
 
   implicit none
   
@@ -60,13 +61,14 @@ function GeometryCreatePolygonalVolume()
 end function GeometryCreatePolygonalVolume
 
 ! ************************************************************************** !
-!
-! GeometryReadCoordinates: Reads a list of coordinates
-! author: Glenn Hammond
-! date: 01/12/12
-!
-! ************************************************************************** !
+
 subroutine GeometryReadCoordinates(input,option,region_name,coordinates)
+  ! 
+  ! Reads a list of coordinates
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/12
+  ! 
 
   use Input_Aux_module
   use Option_module
@@ -114,14 +116,15 @@ subroutine GeometryReadCoordinates(input,option,region_name,coordinates)
 end subroutine GeometryReadCoordinates
 
 ! ************************************************************************** !
-!
-! GeometryPointInPolygonalVolume: Determines whether a point in xyz space is 
-!                               within a polygonal volume defined by polygons
-! author: Glenn Hammond
-! date: 01/12/12
-!
-! ************************************************************************** !
+
 function GeometryPointInPolygonalVolume(x,y,z,polygonal_volume,option)
+  ! 
+  ! Determines whether a point in xyz space is
+  ! within a polygonal volume defined by polygons
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/12
+  ! 
  
   use Option_module
 
@@ -170,14 +173,15 @@ function GeometryPointInPolygonalVolume(x,y,z,polygonal_volume,option)
 end function GeometryPointInPolygonalVolume
 
 ! ************************************************************************** !
-!
-! GeometryPointInPolygon1: Determines whether a point in xyz space is within
-!                        a 2d polygon based on coordinate object
-! author: Glenn Hammond
-! date: 01/12/12
-!
-! ************************************************************************** !
+
 function GeometryPointInPolygon1(x,y,z,axis,coordinates)
+  ! 
+  ! Determines whether a point in xyz space is within
+  ! a 2d polygon based on coordinate object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/12
+  ! 
 
   implicit none
   
@@ -229,14 +233,15 @@ function GeometryPointInPolygon1(x,y,z,axis,coordinates)
 end function GeometryPointInPolygon1
 
 ! ************************************************************************** !
-!
-! GeometryPointInPolygon2: Determines whether a point in xy space is within
-!                       a polygon
-! author: Glenn Hammond
-! date: 01/12/12
-!
-! ************************************************************************** !
+
 function GeometryPointInPolygon2(x,y,x_array,y_array,num_coordinates)
+  ! 
+  ! Determines whether a point in xy space is within
+  ! a polygon
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/12
+  ! 
 
   implicit none
   
@@ -266,14 +271,15 @@ function GeometryPointInPolygon2(x,y,x_array,y_array,num_coordinates)
 end function GeometryPointInPolygon2
 
 ! ************************************************************************** !
-!
-! GeometryPointInRectangle: Determines whether a point in xy space is within
-!                           a box
-! author: Glenn Hammond
-! date: 01/12/12
-!
-! ************************************************************************** !
+
 function GeometryPointInRectangle(x,y,x_array,y_array)
+  ! 
+  ! Determines whether a point in xy space is within
+  ! a box
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/12
+  ! 
 
   implicit none
   
@@ -301,13 +307,14 @@ function GeometryPointInRectangle(x,y,x_array,y_array)
 end function GeometryPointInRectangle
 
 ! ************************************************************************** !
-!
-! GeometryCopyCoordinates: Deallocates a polygonal volume object
-! author: Glenn Hammond
-! date: 01/12/12
-!
-! ************************************************************************** !
+
 subroutine GeometryCopyCoordinates(coordinates_in,coordinates_out)
+  ! 
+  ! Deallocates a polygonal volume object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/12
+  ! 
 
   implicit none
   
@@ -328,13 +335,14 @@ subroutine GeometryCopyCoordinates(coordinates_in,coordinates_out)
 end subroutine GeometryCopyCoordinates
 
 ! ************************************************************************** !
-!
-! GeometryDestroyPolygonalVolume: Deallocates a polygonal volume object
-! author: Glenn Hammond
-! date: 11/01/09
-!
-! ************************************************************************** !
+
 subroutine GeometryDestroyPolygonalVolume(polygonal_volume)
+  ! 
+  ! Deallocates a polygonal volume object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/09
+  ! 
 
   implicit none
   

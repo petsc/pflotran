@@ -24,13 +24,14 @@ module Output_Observation_module
 contains
 
 ! ************************************************************************** !
-!
-! OutputObservationInit: Initializes module variables for observation
-! author: Glenn Hammond
-! date: 01/16/13
-!
-! ************************************************************************** !
+
 subroutine OutputObservationInit(num_steps)
+  ! 
+  ! Initializes module variables for observation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/16/13
+  ! 
 
   use Option_module
 
@@ -49,13 +50,14 @@ subroutine OutputObservationInit(num_steps)
 end subroutine OutputObservationInit
 
 ! ************************************************************************** !
-!
-! OutputObservation: Main driver for all observation output subroutines
-! author: Glenn Hammond
-! date: 02/11/08
-!
-! ************************************************************************** !
+
 subroutine OutputObservation(realization_base)
+  ! 
+  ! Main driver for all observation output subroutines
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/11/08
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Option_module
@@ -81,13 +83,14 @@ subroutine OutputObservation(realization_base)
 end subroutine OutputObservation
 
 ! ************************************************************************** !
-!
-! OutputObservationTecplotColumnTXT: Print to observation data to text file
-! author: Glenn Hammond
-! date: 02/11/08
-!
-! ************************************************************************** !  
+
 subroutine OutputObservationTecplotColumnTXT(realization_base)
+  ! 
+  ! Print to observation data to text file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/11/08
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Discretization_module
@@ -243,15 +246,16 @@ subroutine OutputObservationTecplotColumnTXT(realization_base)
 end subroutine OutputObservationTecplotColumnTXT
 
 ! ************************************************************************** !
-!
-! WriteObservationHeaderForCell: Print a header for data at a cell
-! author: Glenn Hammond
-! date: 02/11/08
-!
-! ************************************************************************** !  
+
 subroutine WriteObservationHeaderForCell(fid,realization_base,region,icell, &
                                          print_velocities, &
                                          icolumn)
+  ! 
+  ! Print a header for data at a cell
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/11/08
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
@@ -296,15 +300,16 @@ subroutine WriteObservationHeaderForCell(fid,realization_base,region,icell, &
 end subroutine WriteObservationHeaderForCell
 
 ! ************************************************************************** !
-!
-! WriteObservationHeaderForCoord: Print a header for data at a coordinate
-! author: Glenn Hammond
-! date: 04/11/08
-!
-! ************************************************************************** !  
+
 subroutine WriteObservationHeaderForCoord(fid,realization_base,region, &
                                          print_velocities, &
                                          icolumn)
+  ! 
+  ! Print a header for data at a coordinate
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 04/11/08
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Option_module
@@ -339,14 +344,15 @@ subroutine WriteObservationHeaderForCoord(fid,realization_base,region, &
 end subroutine WriteObservationHeaderForCoord
 
 ! ************************************************************************** !
-!
-! WriteObservationHeader: Print a header for data
-! author: Glenn Hammond
-! date: 10/27/11
-!
-! ************************************************************************** !  
+
 subroutine WriteObservationHeader(fid,realization_base,cell_string, &
                                   print_velocities,icolumn)
+  ! 
+  ! Print a header for data
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/27/11
+  ! 
                                   
   use Realization_Base_class, only : realization_base_type
   use Option_module
@@ -393,14 +399,15 @@ subroutine WriteObservationHeader(fid,realization_base,cell_string, &
 end subroutine WriteObservationHeader
 
 ! ************************************************************************** !
-!
-! OutputObservationTecplotSecTXT: Print to secondary continuum observation 
-! data to text file
-! author: Satish Karra, LANL
-! date: 04/08/13
-!
-! ************************************************************************** !  
+
 subroutine OutputObservationTecplotSecTXT(realization_base)
+  ! 
+  ! Print to secondary continuum observation
+  ! data to text file
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 04/08/13
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Discretization_module
@@ -550,16 +557,17 @@ subroutine OutputObservationTecplotSecTXT(realization_base)
 end subroutine OutputObservationTecplotSecTXT
 
 ! ************************************************************************** !
-!
-! WriteObservationHeaderForCellSec: Print a header for data at a cell for
-! secondary continuum 
-! author: Satish Karra, LANL
-! date: 04/08/13
-!
-! ************************************************************************** !  
+
 subroutine WriteObservationHeaderForCellSec(fid,realization_base,region,icell, &
                                             print_secondary_data, &
                                             icolumn)
+  ! 
+  ! Print a header for data at a cell for
+  ! secondary continuum
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 04/08/13
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
@@ -604,16 +612,17 @@ subroutine WriteObservationHeaderForCellSec(fid,realization_base,region,icell, &
 end subroutine WriteObservationHeaderForCellSec
 
 ! ************************************************************************** !
-!
-! WriteObservationHeaderForCoordSec: Print a header for data at a coordinate
-! for secondary continuum
-! author: Satish Karra, LANL
-! date: 04/08/13
-!
-! ************************************************************************** !  
+
 subroutine WriteObservationHeaderForCoordSec(fid,realization_base,region, &
                                              print_secondary_data, &
                                              icolumn)
+  ! 
+  ! Print a header for data at a coordinate
+  ! for secondary continuum
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 04/08/13
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Option_module
@@ -648,14 +657,15 @@ subroutine WriteObservationHeaderForCoordSec(fid,realization_base,region, &
 end subroutine WriteObservationHeaderForCoordSec
 
 ! ************************************************************************** !
-!
-! WriteObservationHeaderSec: Print a header for secondary continuum data
-! author: Satish Karra, LANL
-! date: 10/27/13
-!
-! ************************************************************************** !  
+
 subroutine WriteObservationHeaderSec(fid,realization_base,cell_string, &
                                      print_secondary_data,icolumn)
+  ! 
+  ! Print a header for secondary continuum data
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 10/27/13
+  ! 
                                      
   use Realization_Base_class, only : realization_base_type
   use Option_module
@@ -730,13 +740,14 @@ subroutine WriteObservationHeaderSec(fid,realization_base,cell_string, &
 end subroutine WriteObservationHeaderSec
 
 ! ************************************************************************** !
-!
-! WriteObservationHeaderForBC: Print a header for data over a region
-! author: Glenn Hammond
-! date: 12/18/08
-!
-! ************************************************************************** !  
+
 subroutine WriteObservationHeaderForBC(fid,realization_base,coupler_name)
+  ! 
+  ! Print a header for data over a region
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/18/08
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Option_module
@@ -783,13 +794,14 @@ subroutine WriteObservationHeaderForBC(fid,realization_base,coupler_name)
 end subroutine WriteObservationHeaderForBC
 
 ! ************************************************************************** !
-!
-! WriteObservationDataForCell: Print data for data at a cell
-! author: Glenn Hammond
-! date: 02/11/08
-!
-! ************************************************************************** !  
+
 subroutine WriteObservationDataForCell(fid,realization_base,local_id)
+  ! 
+  ! Print data for data at a cell
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/11/08
+  ! 
 
   use Realization_Base_class, only : realization_base_type, &
                                      RealizGetVariableValueAtCell
@@ -850,13 +862,14 @@ subroutine WriteObservationDataForCell(fid,realization_base,local_id)
 end subroutine WriteObservationDataForCell
 
 ! ************************************************************************** !
-!
-! WriteObservationDataForCoord: Print data for data at a coordinate
-! author: Glenn Hammond
-! date: 04/11/08
-!
-! ************************************************************************** !  
+
 subroutine WriteObservationDataForCoord(fid,realization_base,region)
+  ! 
+  ! Print data for data at a coordinate
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 04/11/08
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Option_module
@@ -977,13 +990,14 @@ subroutine WriteObservationDataForCoord(fid,realization_base,region)
 end subroutine WriteObservationDataForCoord
 
 ! ************************************************************************** !
-!
-! WriteObservationDataForBC: Print flux data for a boundary condition
-! author: Glenn Hammond
-! date: 12/18/08
-!
-! ************************************************************************** !  
+
 subroutine WriteObservationDataForBC(fid,realization_base,patch,connection_set)
+  ! 
+  ! Print flux data for a boundary condition
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/18/08
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Option_module
@@ -1075,14 +1089,15 @@ subroutine WriteObservationDataForBC(fid,realization_base,patch,connection_set)
 end subroutine WriteObservationDataForBC
 
 ! ************************************************************************** !
-!
-! WriteVelocityAtCell: Computes velocities at a grid cell
-! author: Glenn Hammond
-! note: limited to structured grids
-! date: 03/20/08
-!
-! ************************************************************************** !  
+
 subroutine WriteVelocityAtCell(fid,realization_base,local_id)
+  ! 
+  ! Computes velocities at a grid cell
+  ! note: limited to structured grids
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/20/08
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Option_module
@@ -1113,14 +1128,15 @@ subroutine WriteVelocityAtCell(fid,realization_base,local_id)
 end subroutine WriteVelocityAtCell
 
 ! ************************************************************************** !
-!
-! GetVelocityAtCell: Computes velocities at a grid cell
-! author: Glenn Hammond
-! note: limited to structured grids
-! date: 03/20/08
-!
-! ************************************************************************** !  
+
 function GetVelocityAtCell(fid,realization_base,local_id,iphase)
+  ! 
+  ! Computes velocities at a grid cell
+  ! note: limited to structured grids
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/20/08
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Option_module
@@ -1219,14 +1235,15 @@ function GetVelocityAtCell(fid,realization_base,local_id,iphase)
 end function GetVelocityAtCell
 
 ! ************************************************************************** !
-!
-! WriteVelocityAtCoord: Computes velocities at a coordinate
-! author: Glenn Hammond
-! note: limited to structured grids
-! date: 03/20/08
-!
-! ************************************************************************** !  
+
 subroutine WriteVelocityAtCoord(fid,realization_base,region)
+  ! 
+  ! Computes velocities at a coordinate
+  ! note: limited to structured grids
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/20/08
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Region_module
@@ -1267,14 +1284,15 @@ subroutine WriteVelocityAtCoord(fid,realization_base,region)
 end subroutine WriteVelocityAtCoord
 
 ! ************************************************************************** !
-!
-! GetVelocityAtCoord: Computes velocities at a coordinate
-! author: Glenn Hammond
-! note: limited to structured grids
-! date: 03/20/08
-!
-! ************************************************************************** !  
+
 function GetVelocityAtCoord(fid,realization_base,local_id,x,y,z,iphase)
+  ! 
+  ! Computes velocities at a coordinate
+  ! note: limited to structured grids
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/20/08
+  ! 
   use Realization_Base_class, only : realization_base_type
   use Option_module
   use Grid_module
@@ -1408,13 +1426,14 @@ function GetVelocityAtCoord(fid,realization_base,local_id,x,y,z,iphase)
 end function GetVelocityAtCoord
 
 ! ************************************************************************** !
-!
-! WriteObservationSecondaryDataAtCell: Print data for data at a cell
-! author: Satish Karra, LANL
-! date: 10/4/12
-!
-! ************************************************************************** !  
+
 subroutine WriteObservationSecondaryDataAtCell(fid,realization_base,local_id,ivar)
+  ! 
+  ! Print data for data at a cell
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 10/4/12
+  ! 
 
   use Realization_Base_class, only : realization_base_type, &
                                      RealizGetVariableValueAtCell
@@ -1489,13 +1508,14 @@ subroutine WriteObservationSecondaryDataAtCell(fid,realization_base,local_id,iva
 end subroutine WriteObservationSecondaryDataAtCell
 
 ! ************************************************************************** !
-!
-! OutputMassBalance: Print to Tecplot POINT format
-! author: Glenn Hammond
-! date: 06/18/08
-!
-! ************************************************************************** !  
+
 subroutine OutputMassBalance(realization_base)
+  ! 
+  ! Print to Tecplot POINT format
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/18/08
+  ! 
 
   use Realization_class, only : realization_type
   use Realization_Base_class, only : realization_base_type
@@ -1528,8 +1548,8 @@ subroutine OutputMassBalance(realization_base)
   type(reaction_type), pointer :: reaction
   type(output_option_type), pointer :: output_option  
   type(coupler_type), pointer :: coupler
-  type(global_auxvar_type), pointer :: global_aux_vars_bc_or_ss(:)
-  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars_bc_or_ss(:)
+  type(global_auxvar_type), pointer :: global_auxvars_bc_or_ss(:)
+  type(reactive_transport_auxvar_type), pointer :: rt_auxvars_bc_or_ss(:)
   
   character(len=MAXHEADERLENGTH) :: header
   character(len=MAXSTRINGLENGTH) :: filename
@@ -1903,9 +1923,9 @@ subroutine OutputMassBalance(realization_base)
   endif
   
   coupler => patch%boundary_conditions%first
-  global_aux_vars_bc_or_ss => patch%aux%Global%aux_vars_bc
+  global_auxvars_bc_or_ss => patch%aux%Global%auxvars_bc
   if (option%ntrandof > 0) then
-    rt_aux_vars_bc_or_ss => patch%aux%RT%aux_vars_bc
+    rt_auxvars_bc_or_ss => patch%aux%RT%auxvars_bc
   endif    
   bcs_done = PETSC_FALSE
   do 
@@ -1917,9 +1937,9 @@ subroutine OutputMassBalance(realization_base)
         if (associated(patch%source_sinks)) then
           coupler => patch%source_sinks%first
           if (.not.associated(coupler)) exit
-          global_aux_vars_bc_or_ss => patch%aux%Global%aux_vars_ss
+          global_auxvars_bc_or_ss => patch%aux%Global%auxvars_ss
           if (option%ntrandof > 0) then
-            rt_aux_vars_bc_or_ss => patch%aux%RT%aux_vars_ss
+            rt_auxvars_bc_or_ss => patch%aux%RT%auxvars_ss
           endif    
         else
           exit
@@ -1938,17 +1958,17 @@ subroutine OutputMassBalance(realization_base)
         do iconn = 1, coupler%connection_set%num_connections
           sum_area(1) = sum_area(1) + &
             coupler%connection_set%area(iconn)
-          if (global_aux_vars_bc_or_ss(offset+iconn)%sat(1) >= 0.5d0) then
+          if (global_auxvars_bc_or_ss(offset+iconn)%sat(1) >= 0.5d0) then
             sum_area(2) = sum_area(2) + &
               coupler%connection_set%area(iconn)
           endif
-          if (global_aux_vars_bc_or_ss(offset+iconn)%sat(1) > 0.99d0) then
+          if (global_auxvars_bc_or_ss(offset+iconn)%sat(1) > 0.99d0) then
             sum_area(3) = sum_area(3) + &
               coupler%connection_set%area(iconn)
           endif
           sum_area(4) = sum_area(4) + &
             coupler%connection_set%area(iconn)* &
-            global_aux_vars_bc_or_ss(offset+iconn)%sat(1)
+            global_auxvars_bc_or_ss(offset+iconn)%sat(1)
         enddo
 
         call MPI_Reduce(sum_area,sum_area_global, &
@@ -1981,7 +2001,7 @@ subroutine OutputMassBalance(realization_base)
           ! print out cumulative H2O flux
           sum_kg = 0.d0
           do iconn = 1, coupler%connection_set%num_connections
-            sum_kg = sum_kg + global_aux_vars_bc_or_ss(offset+iconn)%mass_balance
+            sum_kg = sum_kg + global_auxvars_bc_or_ss(offset+iconn)%mass_balance
           enddo
 
           int_mpi = option%nphase
@@ -1997,7 +2017,7 @@ subroutine OutputMassBalance(realization_base)
           ! print out H2O flux
           sum_kg = 0.d0
           do iconn = 1, coupler%connection_set%num_connections
-            sum_kg = sum_kg + global_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta
+            sum_kg = sum_kg + global_auxvars_bc_or_ss(offset+iconn)%mass_balance_delta
           enddo
           
           ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
@@ -2017,7 +2037,7 @@ subroutine OutputMassBalance(realization_base)
           ! print out cumulative H2O flux
           sum_kg = 0.d0
           do iconn = 1, coupler%connection_set%num_connections
-            sum_kg = sum_kg + global_aux_vars_bc_or_ss(offset+iconn)%mass_balance
+            sum_kg = sum_kg + global_auxvars_bc_or_ss(offset+iconn)%mass_balance
           enddo
 
           int_mpi = option%nphase
@@ -2033,7 +2053,7 @@ subroutine OutputMassBalance(realization_base)
           ! print out H2O flux
           sum_kg = 0.d0
           do iconn = 1, coupler%connection_set%num_connections
-            sum_kg = sum_kg + global_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta
+            sum_kg = sum_kg + global_auxvars_bc_or_ss(offset+iconn)%mass_balance_delta
           enddo
           ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
           sum_kg = sum_kg*FMWH2O
@@ -2052,7 +2072,7 @@ subroutine OutputMassBalance(realization_base)
           ! print out cumulative H2O flux
           sum_kg = 0.d0
           do iconn = 1, coupler%connection_set%num_connections
-            sum_kg = sum_kg + global_aux_vars_bc_or_ss(offset+iconn)%mass_balance
+            sum_kg = sum_kg + global_auxvars_bc_or_ss(offset+iconn)%mass_balance
           enddo
 
           int_mpi = option%nphase
@@ -2068,7 +2088,7 @@ subroutine OutputMassBalance(realization_base)
           ! print out H2O flux
           sum_kg = 0.d0
           do iconn = 1, coupler%connection_set%num_connections
-            sum_kg = sum_kg + global_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta
+            sum_kg = sum_kg + global_auxvars_bc_or_ss(offset+iconn)%mass_balance_delta
           enddo
           ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
           sum_kg = sum_kg*FMWH2O
@@ -2089,7 +2109,7 @@ subroutine OutputMassBalance(realization_base)
           do icomp = 1, option%nflowspec
             do iconn = 1, coupler%connection_set%num_connections
               sum_kg(icomp,1) = sum_kg(icomp,1) + &
-                global_aux_vars_bc_or_ss(offset+iconn)%mass_balance(icomp,1)
+                global_auxvars_bc_or_ss(offset+iconn)%mass_balance(icomp,1)
             enddo
             
             if (icomp == 1) then
@@ -2114,7 +2134,7 @@ subroutine OutputMassBalance(realization_base)
           do icomp = 1, option%nflowspec
             do iconn = 1, coupler%connection_set%num_connections
               sum_kg(icomp,1) = sum_kg(icomp,1) + &
-                global_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta(icomp,1)
+                global_auxvars_bc_or_ss(offset+iconn)%mass_balance_delta(icomp,1)
             enddo
             
         !   mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o/glycol
@@ -2141,7 +2161,7 @@ subroutine OutputMassBalance(realization_base)
           do icomp = 1, option%nflowspec
             do iconn = 1, coupler%connection_set%num_connections
               sum_kg(icomp,1) = sum_kg(icomp,1) + &
-                global_aux_vars_bc_or_ss(offset+iconn)%mass_balance(icomp,1)
+                global_auxvars_bc_or_ss(offset+iconn)%mass_balance(icomp,1)
             enddo
             int_mpi = option%nphase
             call MPI_Reduce(sum_kg(icomp,1),sum_kg_global(icomp,1), &
@@ -2159,7 +2179,7 @@ subroutine OutputMassBalance(realization_base)
           do icomp = 1, option%nflowspec
             do iconn = 1, coupler%connection_set%num_connections
               sum_kg(icomp,1) = sum_kg(icomp,1) + &
-                global_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta(icomp,1)
+                global_auxvars_bc_or_ss(offset+iconn)%mass_balance_delta(icomp,1)
             enddo
 
           ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
@@ -2182,7 +2202,7 @@ subroutine OutputMassBalance(realization_base)
           do icomp = 1, option%nflowspec
             do iconn = 1, coupler%connection_set%num_connections
               sum_kg(icomp,1) = sum_kg(icomp,1) + &
-                global_aux_vars_bc_or_ss(offset+iconn)%mass_balance(icomp,1)
+                global_auxvars_bc_or_ss(offset+iconn)%mass_balance(icomp,1)
             enddo
             int_mpi = option%nphase
             call MPI_Reduce(sum_kg(icomp,1),sum_kg_global(icomp,1), &
@@ -2200,7 +2220,7 @@ subroutine OutputMassBalance(realization_base)
           do icomp = 1, option%nflowspec
             do iconn = 1, coupler%connection_set%num_connections
               sum_kg(icomp,1) = sum_kg(icomp,1) + &
-                global_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta(icomp,1)
+                global_auxvars_bc_or_ss(offset+iconn)%mass_balance_delta(icomp,1)
             enddo
 
           ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
@@ -2225,7 +2245,7 @@ subroutine OutputMassBalance(realization_base)
       ! print out cumulative boundary flux
       sum_mol = 0.d0
       do iconn = 1, coupler%connection_set%num_connections
-        sum_mol = sum_mol + rt_aux_vars_bc_or_ss(offset+iconn)%mass_balance
+        sum_mol = sum_mol + rt_auxvars_bc_or_ss(offset+iconn)%mass_balance
       enddo
 
       int_mpi = option%nphase*option%ntrandof
@@ -2245,7 +2265,7 @@ subroutine OutputMassBalance(realization_base)
       ! print out boundary flux
       sum_mol = 0.d0
       do iconn = 1, coupler%connection_set%num_connections
-        sum_mol = sum_mol + rt_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta 
+        sum_mol = sum_mol + rt_auxvars_bc_or_ss(offset+iconn)%mass_balance_delta 
       enddo
 
       int_mpi = option%nphase*option%ntrandof
@@ -2319,7 +2339,7 @@ subroutine OutputMassBalance(realization_base)
     if (option%ntrandof > 0) then
 
       sum_mol = 0.d0
-      sum_mol = sum_mol + patch%aux%RT%aux_vars(iconn)%mass_balance
+      sum_mol = sum_mol + patch%aux%RT%auxvars(iconn)%mass_balance
 
       int_mpi = option%nphase*option%ntrandof
       call MPI_Reduce(sum_mol,sum_mol_global,int_mpi, &

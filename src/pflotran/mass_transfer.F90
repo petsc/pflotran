@@ -1,6 +1,6 @@
 module Mass_Transfer_module
  
-  use Dataset_Global_class
+  use Dataset_Global_HDF5_class
   
   use PFLOTRAN_Constants_module
 
@@ -15,7 +15,7 @@ module Mass_Transfer_module
   type, public :: mass_transfer_type
     PetscInt :: idof
     character(len=MAXWORDLENGTH) :: name
-    class(dataset_global_type), pointer :: dataset
+    class(dataset_global_hdf5_type), pointer :: dataset
     Vec :: vec
     type(mass_transfer_type), pointer :: next
   end type mass_transfer_type
@@ -27,13 +27,14 @@ module Mass_Transfer_module
 contains
 
 ! ************************************************************************** !
-!
-! MassTransferCreate: Creates a mass transfer object
-! author: Glenn Hammond
-! date: 05/01/13
-!
-! ************************************************************************** !
+
 function MassTransferCreate()
+  ! 
+  ! Creates a mass transfer object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/01/13
+  ! 
   
   implicit none
 
@@ -52,13 +53,14 @@ function MassTransferCreate()
 end function MassTransferCreate
 
 ! ************************************************************************** !
-!
-! MassTransferRead: Reads in contents of a mass transfer card
-! author: Glenn Hammond
-! date: 05/01/13
-! 
-! ************************************************************************** !
+
 subroutine MassTransferRead(mass_transfer,input,option)
+  ! 
+  ! Reads in contents of a mass transfer card
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/01/13
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -88,7 +90,7 @@ subroutine MassTransferRead(mass_transfer,input,option)
         call InputReadInt(input,option,mass_transfer%idof)
         call InputErrorMsg(input,option,'idof','MASS_TRANSFER')
       case('DATASET')
-        mass_transfer%dataset => DatasetGlobalCreate()
+        mass_transfer%dataset => DatasetGlobalHDF5Create()
         call InputReadNChars(input,option, &
                              mass_transfer%dataset%name,&
                              MAXWORDLENGTH,PETSC_TRUE)
@@ -104,13 +106,14 @@ subroutine MassTransferRead(mass_transfer,input,option)
 end subroutine MassTransferRead
 
 ! ************************************************************************** !
-!
-! MassTransferAddToList: Adds a mass transfer object to linked list
-! author: Glenn Hammond
-! date: 05/01/13
-!
-! ************************************************************************** !
+
 subroutine MassTransferAddToList(mass_transfer,list)
+  ! 
+  ! Adds a mass transfer object to linked list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/01/13
+  ! 
 
   implicit none
   
@@ -134,15 +137,16 @@ subroutine MassTransferAddToList(mass_transfer,list)
 end subroutine MassTransferAddToList
 
 ! ************************************************************************** !
-!
-! MassTransferInit: Initializes mass transfer object opening dataset to
-!                   set up times, vectors, etc.
-! author: Glenn Hammond
-! date: 05/09/13
-!
-! ************************************************************************** !
+
 recursive subroutine MassTransferInit(mass_transfer, discretization, &
                                       available_datasets, option)
+  ! 
+  ! Initializes mass transfer object opening dataset to
+  ! set up times, vectors, etc.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/09/13
+  ! 
 
   use Discretization_module
   use Dataset_Base_class
@@ -175,9 +179,9 @@ recursive subroutine MassTransferInit(mass_transfer, discretization, &
   dataset_base_ptr => &
     DatasetBaseGetPointer(available_datasets,mass_transfer%dataset%name, &
                           string,option)
-  call DatasetGlobalDestroy(mass_transfer%dataset)
+  call DatasetGlobalHDF5Destroy(mass_transfer%dataset)
   select type(dataset => dataset_base_ptr)
-    class is(dataset_global_type)
+    class is(dataset_global_hdf5_type)
       mass_transfer%dataset => dataset
     class default
       option%io_buffer = 'DATASET ' // trim(dataset%name) // 'is not of ' // &
@@ -215,14 +219,15 @@ recursive subroutine MassTransferInit(mass_transfer, discretization, &
 end subroutine MassTransferInit
 
 ! ************************************************************************** !
-!
-! MassTransferUpdate: Updates a mass transfer object transfering data from
-!                     the buffer into the PETSc Vec
-! author: Glenn Hammond
-! date: 05/01/13
-!
-! ************************************************************************** !
+
 recursive subroutine MassTransferUpdate(mass_transfer, grid, option)
+  ! 
+  ! Updates a mass transfer object transfering data from
+  ! the buffer into the PETSc Vec
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/01/13
+  ! 
 
   use Discretization_module
   use Grid_module
@@ -243,7 +248,7 @@ recursive subroutine MassTransferUpdate(mass_transfer, grid, option)
   
   if (.not.associated(mass_transfer)) return
 
-  call DatasetGlobalLoad(mass_transfer%dataset,option)
+  call DatasetGlobalHDF5Load(mass_transfer%dataset,option)
 
   call VecGetArrayF90(mass_transfer%vec,vec_ptr,ierr)
   ! multiply by -1.d0 for positive contribution to residual
@@ -258,13 +263,14 @@ recursive subroutine MassTransferUpdate(mass_transfer, grid, option)
 end subroutine MassTransferUpdate
 
 ! ************************************************************************** !
-!
-! MassTransferDestroy: Destroys a mass transfer object
-! author: Glenn Hammond
-! date: 05/01/13
-!
-! ************************************************************************** !
+
 recursive subroutine MassTransferDestroy(mass_transfer)
+  ! 
+  ! Destroys a mass transfer object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/01/13
+  ! 
 
   implicit none
   

@@ -1,0 +1,200 @@
+:Description: 1D test problem for THC mode with ice
+:vertical domain
+:08/5/2012
+:Satish Karra
+
+:===================== THC mode ===============================
+MODE THC freezing
+
+ICE_MODEL PAINTER_EXPLICIT
+
+:=========================== regression =======================================
+REGRESSION
+  CELLS_PER_PROCESS 2
+  CELLS
+    1
+    51
+    100
+  /
+/
+
+:===================== Discretization =========================
+GRID
+TYPE structured
+ORIGIN 0.d0 0.d0 0.d0
+NXYZ 1 1 100
+BOUNDS
+0.d0 0.d0 0.d0 
+1.d0 1.d0 10.d0
+/
+END
+:===================== Solver options ========================
+
+TIMESTEPPER
+TS_ACCELERATION 25
+MAX_PRESSURE_CHANGE 1.e5
+MAX_TEMPERATURE_CHANGE 0.1
+MAX_CONCENTRATION_CHANGE 1.d-1
+:MAX_STEPS 1
+/
+
+NEWTON_SOLVER FLOW
+ATOL 1D-12
+RTOL 1D-8
+STOL 1D-12
+ITOL 1D-8
+:ITOL_STOMP 1D-8
+MAX_NORM 1d6
+MAXIT 100
+MAXF 1000
+END
+
+FLUID_PROPERTY
+DIFFUSION_COEFFICIENT 1.d-9
+/
+:========================= material properties ===================
+MATERIAL_PROPERTY soil1
+ID 1
+POROSITY 0.45d0
+TORTUOSITY 0.01d0
+ROCK_DENSITY 2700
+SPECIFIC_HEAT 837.d0
+THERMAL_CONDUCTIVITY_DRY 0.25d0
+THERMAL_CONDUCTIVITY_WET 1.3d0
+THERMAL_COND_EXPONENT 0.45
+THERMAL_CONDUCTIVITY_FROZEN 2.3588d0
+THERMAL_COND_EXPONENT_FROZEN 0.95
+SATURATION_FUNCTION default 
+LONGITUDINAL_DISPERSIVITY 3.1536d0
+PERMEABILITY 
+PERM_X 1.3d-13
+PERM_Y 1.3d-13
+PERM_Z 1.3d-13
+/
+/
+
+:========================= saturation functions ==================
+SATURATION_FUNCTION default
+SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+RESIDUAL_SATURATION 0.005
+LAMBDA 0.721d0
+ALPHA 2.83d-4
+/
+
+:========================= output options =========================
+skip
+OUTPUT
+TIMES y 0.25d0 0.5d0 0.75d0 1.d0 2.d0 3.d0 4.d0 5.d0 6.d0 7.d0 8.d0 9.d0 10.d0
+SCREEN PERIODIC 10
+PERIODIC_OBSERVATION TIMESTEP 1
+FORMAT TECPLOT POINT
+:FORMAT HDF5
+:VELOCITIES
+/
+noskip
+
+:======================== times ====================================
+TIME
+FINAL_TIME 0.25d0 y
+INITIAL_TIMESTEP_SIZE 1.d-12 y
+MAXIMUM_TIMESTEP_SIZE 1.d-1 y
+/
+
+:=========================== regions ===============================
+REGION all
+COORDINATES
+0.d0 0.d0 0.d0
+1.d0 1.d0 10.d0
+/
+END
+
+REGION top
+FACE TOP
+COORDINATES
+0.d0 0.d0 10.d0
+1.d0 1.d0 10.d0
+/
+END
+
+REGION bottom
+FACE BOTTOM
+COORDINATES
+0.d0 0.d0 0.d0
+1.d0 1.d0 0.d0
+/
+END
+
+:======================= flow conditions ===============================
+FLOW_CONDITION initial
+UNITS Pa, C, M, yr
+TYPE
+PRESSURE hydrostatic
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
+ENTHALPY dirichlet
+/
+
+DATUM 0.d0 0.d0 5.d0
+PRESSURE 101325.D0
+TEMPERATURE 5.D0
+CONCENTRATION 1.D-12
+ENTHALPY 0.D0
+END
+
+FLOW_CONDITION top
+UNITS Pa, C, M, yr
+TYPE
+FLUX neumann
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
+ENTHALPY dirichlet
+/
+
+FLUX 0.d0
+TEMPERATURE -5.D0
+CONCENTRATION 1.d-12
+ENTHALPY 0.D0
+END
+
+
+FLOW_CONDITION bottom
+UNITS Pa, C, M, yr
+TYPE 
+PRESSURE hydrostatic
+TEMPERATURE dirichlet
+CONCENTRATION zero_gradient
+ENTHALPY dirichlet
+/
+
+DATUM 0.d0 0.d0 5.d0
+PRESSURE 101325.d0
+TEMPERATURE 5.d0
+CONCENTRATION 1.D-12
+ENTHALPY 0.D0 
+END
+
+:========================== initial and boundary conditions =================
+: initial condition
+INITIAL_CONDITION
+FLOW_CONDITION initial
+REGION all
+END
+
+: top boundary condition
+BOUNDARY_CONDITION
+FLOW_CONDITION top
+REGION top
+END
+
+: bottom boundary condition
+BOUNDARY_CONDITION
+FLOW_CONDITION bottom
+REGION bottom
+END
+
+:===================== stratigraphy couplers ==============================
+STRATA
+REGION all
+MATERIAL soil1
+END
+

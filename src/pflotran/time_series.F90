@@ -20,7 +20,7 @@ module Time_Series_module
     PetscInt :: cur_time_index
     PetscInt :: max_time_index
     PetscReal :: time_shift
-    PetscReal :: lame_aux_variable_remove_me
+    PetscReal :: lame_auxvariable_remove_me
   end type time_series_type
   
   public :: TimeSeriesCreate, &
@@ -33,13 +33,14 @@ module Time_Series_module
 contains
 
 ! ************************************************************************** !
-!
-! TimeSeriesCreate: Initializes a time series
-! author: Glenn Hammond
-! date: 10/26/11
-!
-! ************************************************************************** !
+
 function TimeSeriesCreate()
+  ! 
+  ! Initializes a time series
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/11
+  ! 
 
   implicit none
   
@@ -58,21 +59,22 @@ function TimeSeriesCreate()
   time_series%is_transient = PETSC_FALSE
   time_series%interpolation_method = INTERPOLATION_NULL
   time_series%time_shift = 0.d0
-  time_series%lame_aux_variable_remove_me = 0.d0
+  time_series%lame_auxvariable_remove_me = 0.d0
   
   TimeSeriesCreate => time_series
     
 end function TimeSeriesCreate
 
 ! ************************************************************************** !
-!
-! TimeSeriesVerify: Verifies the data in a time_series
-! author: Glenn Hammond
-! date: 10/26/11
-!
-! ************************************************************************** !
+
 subroutine TimeSeriesVerify(option, default_time, time_series, &
                             default_time_series)
+  ! 
+  ! Verifies the data in a time_series
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/11
+  ! 
   use Option_module
 
   implicit none
@@ -144,13 +146,14 @@ subroutine TimeSeriesVerify(option, default_time, time_series, &
 end subroutine TimeSeriesVerify
 
 ! ************************************************************************** !
-!
-! TimeSeriesGetTimes: Fills an array of times based on time_series
-! author: Glenn Hammond
-! date: 10/26/11
-!
-! ************************************************************************** !
+
 subroutine TimeSeriesGetTimes(option, time_series, max_sim_time, times)
+  ! 
+  ! Fills an array of times based on time_series
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/11
+  ! 
 
   use Option_module
 
@@ -201,13 +204,14 @@ subroutine TimeSeriesGetTimes(option, time_series, max_sim_time, times)
 end subroutine TimeSeriesGetTimes
 
 ! ************************************************************************** !
-!
-! TimeSeriesPrint: Prints flow condition time_series info
-! author: Glenn Hammond
-! date: 10/26/11
-!
-! ************************************************************************** !
+
 subroutine TimeSeriesPrint(time_series,option)
+  ! 
+  ! Prints flow condition time_series info
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/11
+  ! 
 
   use Option_module
 
@@ -249,13 +253,14 @@ subroutine TimeSeriesPrint(time_series,option)
 end subroutine TimeSeriesPrint
 
 ! ************************************************************************** !
-!
-! TimeSeriesUpdate: Updates a transient condition time_series
-! author: Glenn Hammond
-! date: 10/26/11
-!
-! ************************************************************************** !
+
 subroutine TimeSeriesUpdate(option,time,time_series)
+  ! 
+  ! Updates a transient condition time_series
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/11
+  ! 
 
   use Option_module
   
@@ -334,13 +339,14 @@ subroutine TimeSeriesUpdate(option,time,time_series)
 end subroutine TimeSeriesUpdate
 
 ! ************************************************************************** !
-!
-! TimeSeriesDestroy: Destroys a time_series associated with a sub_condition
-! author: Glenn Hammond
-! date: 02/04/08
-!
-! ************************************************************************** !
+
 subroutine TimeSeriesDestroy(time_series)
+  ! 
+  ! Destroys a time_series associated with a sub_condition
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/04/08
+  ! 
 
   implicit none
   

@@ -145,13 +145,14 @@ module Mineral_Aux_module
 contains
 
 ! ************************************************************************** !
-!
-! MineralCreate: Allocate and initialize mineral reaction object
-! author: Glenn Hammond
-! date: 08/16/12
-!
-! ************************************************************************** !
+
 function MineralCreate()
+  ! 
+  ! Allocate and initialize mineral reaction object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/16/12
+  ! 
 
   implicit none
   
@@ -215,13 +216,14 @@ function MineralCreate()
 end function MineralCreate
 
 ! ************************************************************************** !
-!
-! MineralRxnCreate: Allocate and initialize a mineral object
-! author: Glenn Hammond
-! date: 05/02/08
-!
-! ************************************************************************** !
+
 function MineralRxnCreate()
+  ! 
+  ! Allocate and initialize a mineral object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/02/08
+  ! 
 
   implicit none
   
@@ -244,14 +246,15 @@ function MineralRxnCreate()
 end function MineralRxnCreate
 
 ! ************************************************************************** !
-!
-! TransitionStateTheoryRxnCreate: Allocate and initialize a transition state
-!                                 theory reaction
-! author: Glenn Hammond
-! date: 09/01/08
-!
-! ************************************************************************** !
+
 function TransitionStateTheoryRxnCreate()
+  ! 
+  ! Allocate and initialize a transition state
+  ! theory reaction
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/01/08
+  ! 
 
   implicit none
     
@@ -280,14 +283,15 @@ function TransitionStateTheoryRxnCreate()
 end function TransitionStateTheoryRxnCreate
 
 ! ************************************************************************** !
-!
-! TransitionStatePrefactorCreate: Allocate and initialize a transition state
-!                                 theory prefactor
-! author: Glenn Hammond
-! date: 07/29/11
-!
-! ************************************************************************** !
+
 function TransitionStatePrefactorCreate()
+  ! 
+  ! Allocate and initialize a transition state
+  ! theory prefactor
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/29/11
+  ! 
 
   implicit none
     
@@ -306,14 +310,15 @@ function TransitionStatePrefactorCreate()
 end function TransitionStatePrefactorCreate
 
 ! ************************************************************************** !
-!
-! TSPrefactorSpeciesCreate: Allocate and initialize a transition state
-!                           theory prefactor species
-! author: Glenn Hammond
-! date: 08/01/11
-!
-! ************************************************************************** !
+
 function TSPrefactorSpeciesCreate()
+  ! 
+  ! Allocate and initialize a transition state
+  ! theory prefactor species
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/01/11
+  ! 
 
   implicit none
     
@@ -334,13 +339,14 @@ function TSPrefactorSpeciesCreate()
 end function TSPrefactorSpeciesCreate
 
 ! ************************************************************************** !
-!
-! MineralConstraintCreate: Creates a mineral constraint object
-! author: Glenn Hammond
-! date: 10/14/08
-!
-! ************************************************************************** !
+
 function MineralConstraintCreate(mineral,option)
+  ! 
+  ! Creates a mineral constraint object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/14/08
+  ! 
 
   use Option_module
   
@@ -367,15 +373,16 @@ function MineralConstraintCreate(mineral,option)
   MineralConstraintCreate => constraint
 
 end function MineralConstraintCreate
-  
+
 ! ************************************************************************** !
-!
-! GetMineralNames: Returns the names of minerals in an array
-! author: Glenn Hammond
-! date: 09/04/08
-!
-! ************************************************************************** !
+
 function GetMineralNames(mineral)
+  ! 
+  ! Returns the names of minerals in an array
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/04/08
+  ! 
 
   implicit none
   
@@ -403,13 +410,14 @@ function GetMineralNames(mineral)
 end function GetMineralNames
 
 ! ************************************************************************** !
-!
-! GetMineralCount: Returns the number of minerals
-! author: Glenn Hammond
-! date: 06/02/08
-!
-! ************************************************************************** !
+
 function GetMineralCount(mineral)
+  ! 
+  ! Returns the number of minerals
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/02/08
+  ! 
 
   implicit none
   
@@ -429,13 +437,14 @@ function GetMineralCount(mineral)
 end function GetMineralCount
 
 ! ************************************************************************** !
-!
-! GetMineralIDFromName1: Returns the id of mineral with the corresponding name
-! author: Glenn Hammond
-! date: 09/04/08
-!
-! ************************************************************************** !
+
 function GetMineralIDFromName1(mineral,name)
+  ! 
+  ! Returns the id of mineral with the corresponding name
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/04/08
+  ! 
 
   use String_module
   
@@ -452,13 +461,14 @@ function GetMineralIDFromName1(mineral,name)
 end function GetMineralIDFromName1
 
 ! ************************************************************************** !
-!
-! GetMineralIDFromName2: Returns the id of mineral with the corresponding name
-! author: Glenn Hammond
-! date: 09/04/08
-!
-! ************************************************************************** !
+
 function GetMineralIDFromName2(mineral,name,must_be_kinetic)
+  ! 
+  ! Returns the id of mineral with the corresponding name
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/04/08
+  ! 
 
   use String_module
   
@@ -487,14 +497,15 @@ function GetMineralIDFromName2(mineral,name,must_be_kinetic)
 end function GetMineralIDFromName2
 
 ! ************************************************************************** !
-!
-! GetKineticMineralIDFromName: Returns the id of kinetic mineral with the 
-!                              corresponding name
-! author: Glenn Hammond
-! date: 03/11/13
-!
-! ************************************************************************** !
+
 function GetKineticMineralIDFromName(mineral,name)
+  ! 
+  ! Returns the id of kinetic mineral with the
+  ! corresponding name
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/11/13
+  ! 
 
   use String_module
   
@@ -511,13 +522,14 @@ function GetKineticMineralIDFromName(mineral,name)
 end function GetKineticMineralIDFromName
 
 ! ************************************************************************** !
-!
-! MineralDestroy: Deallocates a mineral rxn object
-! author: Glenn Hammond
-! date: 05/29/08
-!
-! ************************************************************************** !
+
 subroutine MineralRxnDestroy(mineral)
+  ! 
+  ! MineralDestroy: Deallocates a mineral rxn object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/29/08
+  ! 
 
   implicit none
     
@@ -534,13 +546,14 @@ subroutine MineralRxnDestroy(mineral)
 end subroutine MineralRxnDestroy
 
 ! ************************************************************************** !
-!
-! TransitionStateTheoryRxnDestroy: Deallocates a transition state reaction
-! author: Glenn Hammond
-! date: 05/29/08
-!
-! ************************************************************************** !
+
 recursive subroutine TransitionStateTheoryRxnDestroy(tstrxn)
+  ! 
+  ! Deallocates a transition state reaction
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/29/08
+  ! 
 
   implicit none
     
@@ -557,13 +570,14 @@ recursive subroutine TransitionStateTheoryRxnDestroy(tstrxn)
 end subroutine TransitionStateTheoryRxnDestroy
 
 ! ************************************************************************** !
-!
-! TransitionStatePrefactorDestroy: Deallocates a transition state prefactor
-! author: Glenn Hammond
-! date: 07/29/11
-!
-! ************************************************************************** !
+
 recursive subroutine TransitionStatePrefactorDestroy(prefactor)
+  ! 
+  ! Deallocates a transition state prefactor
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/29/11
+  ! 
 
   implicit none
     
@@ -580,13 +594,14 @@ recursive subroutine TransitionStatePrefactorDestroy(prefactor)
 end subroutine TransitionStatePrefactorDestroy
 
 ! ************************************************************************** !
-!
-! TSPrefactorSpeciesDestroy: Deallocates a transition state prefactor
-! author: Glenn Hammond
-! date: 08/01/11
-!
-! ************************************************************************** !
+
 recursive subroutine TSPrefactorSpeciesDestroy(species)
+  ! 
+  ! Deallocates a transition state prefactor
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/01/11
+  ! 
 
   implicit none
     
@@ -602,13 +617,14 @@ recursive subroutine TSPrefactorSpeciesDestroy(species)
 end subroutine TSPrefactorSpeciesDestroy
 
 ! ************************************************************************** !
-!
-! MineralConstraintDestroy: Destroys a mineral constraint object
-! author: Glenn Hammond
-! date: 10/14/08
-!
-! ************************************************************************** !
+
 subroutine MineralConstraintDestroy(constraint)
+  ! 
+  ! Destroys a mineral constraint object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/14/08
+  ! 
 
   use Utility_module, only: DeallocateArray
   
@@ -630,13 +646,14 @@ subroutine MineralConstraintDestroy(constraint)
 end subroutine MineralConstraintDestroy
 
 ! ************************************************************************** !
-!
-! MineralDestroy: Deallocates a mineral object
-! author: Glenn Hammond
-! date: 05/29/08
-!
-! ************************************************************************** !
+
 subroutine MineralDestroy(mineral)
+  ! 
+  ! Deallocates a mineral object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/29/08
+  ! 
 
   use Utility_module, only: DeallocateArray
   

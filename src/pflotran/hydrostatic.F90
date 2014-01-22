@@ -14,16 +14,17 @@ module Hydrostatic_module
 contains
 
 ! ************************************************************************** !
-!
-! HydrostaticUpdateCoupler: Computes the hydrostatic initial/boundary 
-!                           condition 
-! author: Glenn Hammond
-! date: 11/28/07
-!
-! ************************************************************************** !
-subroutine HydrostaticUpdateCoupler(coupler,option,grid)
 
-  use Water_EOS_module
+subroutine HydrostaticUpdateCoupler(coupler,option,grid)
+  ! 
+  ! Computes the hydrostatic initial/boundary
+  ! condition
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/28/07
+  ! 
+
+  use EOS_Water_module
 
   use Option_module
   use Grid_module
@@ -33,7 +34,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   use Region_module
   use Structured_Grid_module
   use Utility_module, only : DotProduct
-  use Dataset_Gridded_class
+  use Dataset_Gridded_HDF5_class
   use Dataset_Ascii_class
   
   use General_Aux_module
@@ -62,7 +63,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   PetscReal :: gravity_magnitude
   PetscReal :: z_offset
   
-  class(dataset_gridded_type), pointer :: datum_dataset
+  class(dataset_gridded_hdf5_type), pointer :: datum_dataset
   PetscReal :: datum_dataset_rmax
   PetscReal :: datum_dataset_rmin
   
@@ -142,7 +143,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
         select type(dataset=>condition%datum)
           class is (dataset_ascii_type)
             datum = dataset%rarray(1:3)
-          class is (dataset_gridded_type)
+          class is (dataset_gridded_hdf5_type)
             datum_dataset => dataset
             !TODO(geh): move this to FlowSubConditionUpdateDataset()
             !call DatasetLoad(datum_dataset,option)
@@ -168,7 +169,8 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       endif
   end select      
       
-  call nacl_den(temperature_at_datum,pressure_at_datum*1.d-6,xm_nacl,dw_kg) 
+  call EOSWaterDensityNaCl(temperature_at_datum,pressure_at_datum*1.d-6, &
+                           xm_nacl,dw_kg) 
   rho = dw_kg * 1.d3
   
   gravity_magnitude = sqrt(DotProduct(option%gravity,option%gravity))
@@ -211,7 +213,8 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
     idatum = int((datum(Z_DIRECTION)-min_z)/(max_z-min_z) * &
                  dble(num_pressures))+1
     pressure_array(idatum) = pressure_at_datum
-    call nacl_den(temperature_at_datum,pressure_at_datum*1.d-6,xm_nacl,dw_kg) 
+    call EOSWaterDensityNaCl(temperature_at_datum,pressure_at_datum*1.d-6, &
+                             xm_nacl,dw_kg) 
     temperature = temperature_at_datum
     pressure0 = pressure_at_datum
     rho = dw_kg * 1.d3
@@ -226,14 +229,14 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
         case(TH_MODE,THC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE, MIS_MODE)
           temperature = temperature + temperature_gradient(Z_DIRECTION)*delta_z
       end select
-      call nacl_den(temperature,pressure0*1.d-6,xm_nacl,dw_kg) 
+      call EOSWaterDensityNaCl(temperature,pressure0*1.d-6,xm_nacl,dw_kg) 
       rho = dw_kg * 1.d3
       
       num_iteration = 0
       do 
         pressure = pressure0 + 0.5d0*(rho+rho0) * &
                    option%gravity(Z_DIRECTION) * delta_z
-        call nacl_den(temperature,pressure*1.d-6,xm_nacl,dw_kg) 
+        call EOSWaterDensityNaCl(temperature,pressure*1.d-6,xm_nacl,dw_kg) 
         rho1 = dw_kg * 1.d3
         if (dabs(rho-rho1) < 1.d-10) exit
         rho = rho1
@@ -252,7 +255,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       pressure0 = pressure
     enddo
 
-    ! compute pressures above datum, if any
+    ! compute pressures below datum, if any
     pressure0 = pressure_array(idatum)
     select case(option%iflowmode)
       case(TH_MODE,THC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE,MIS_MODE,G_MODE)
@@ -266,14 +269,14 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
         case(TH_MODE,THC_MODE,MPH_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           temperature = temperature - temperature_gradient(Z_DIRECTION)*delta_z
       end select
-      call nacl_den(temperature,pressure0*1.d-6,xm_nacl,dw_kg) 
+      call EOSWaterDensityNaCl(temperature,pressure0*1.d-6,xm_nacl,dw_kg) 
       rho = dw_kg * 1.d3
 
       num_iteration = 0
       do                   ! notice the negative sign (-) here
         pressure = pressure0 - 0.5d0*(rho+rho0) * &
                    option%gravity(Z_DIRECTION) * delta_z
-        call nacl_den(temperature,pressure*1.d-6,xm_nacl,dw_kg) 
+        call EOSWaterDensityNaCl(temperature,pressure*1.d-6,xm_nacl,dw_kg)
         rho1 = dw_kg * 1.d3
         if (dabs(rho-rho1) < 1.d-10) exit
         rho = rho1
@@ -337,7 +340,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
         dist_x = 0.d0
         dist_y = 0.d0
         !TODO(geh): check that sign is correct for dx/y_conn
-        call DatasetGriddedInterpolateReal(datum_dataset, &
+        call DatasetGriddedHDF5InterpolateReal(datum_dataset, &
                                            grid%x(ghosted_id)-dx_conn, &
                                            grid%y(ghosted_id)-dy_conn, &
                                            0.d0, &
@@ -527,16 +530,17 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
 end subroutine HydrostaticUpdateCoupler
 
 ! ************************************************************************** !
-!
-! HydrostaticTest: Computes the hydrostatic initial/boundary 
-!                                 condition (more accurately than before0
-! author: Glenn Hammond
-! date: 11/28/07
-!
-! ************************************************************************** !
-subroutine HydrostaticTest()
 
-  use Water_EOS_module
+subroutine HydrostaticTest()
+  ! 
+  ! Computes the hydrostatic initial/boundary
+  ! condition (more accurately than before0
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/28/07
+  ! 
+
+  use EOS_Water_module
   
   implicit none
   
@@ -567,7 +571,7 @@ subroutine HydrostaticTest()
   
   do i_increment = 1, num_increment
     pressure = 101325.d0
-    call nacl_den(temperature,pressure*1.d-6,xm_nacl,dw_kg) 
+    call EOSWaterDensityNaCl(temperature,pressure*1.d-6,xm_nacl,dw_kg) 
     rho = dw_kg * 1.d3
     dist_z = 0.d0
     pressure_array(1,i_increment) = pressure
@@ -578,7 +582,7 @@ subroutine HydrostaticTest()
       num_iteration = 0
       do
         pressure = pressure0 + rho * 9.8068d0 * increment(i_increment)
-        call nacl_den(temperature,pressure*1.d-6,xm_nacl,dw_kg) 
+        call EOSWaterDensityNaCl(temperature,pressure*1.d-6,xm_nacl,dw_kg) 
         rho1 = dw_kg * 1.d3
         if (dabs(rho-rho1) < 1.d-10) exit
         rho = rho1
@@ -633,14 +637,16 @@ subroutine HydrostaticTest()
 end subroutine HydrostaticTest
 
 #if 0
+
 ! ************************************************************************** !
-!
-! ProjectAOntoUnitB: Projects vector a onto b, assuming b is a unit vector
-! author: Glenn Hammond
-! date: 02/20/09
-!
-! ************************************************************************** !
+
 function ProjectAOntoUnitB(A,B)
+  ! 
+  ! Projects vector a onto b, assuming b is a unit vector
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/20/09
+  ! 
 
   implicit none
   

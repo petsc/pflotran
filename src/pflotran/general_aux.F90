@@ -9,10 +9,14 @@ module General_Aux_module
 #include "finclude/petscsys.h"
 
   ! thermodynamic state of fluid ids
+  PetscInt, parameter, public :: NULL_STATE = 0
   PetscInt, parameter, public :: LIQUID_STATE = 1
   PetscInt, parameter, public :: GAS_STATE = 2
   PetscInt, parameter, public :: TWO_PHASE_STATE = 3
   PetscInt, parameter, public :: ANY_STATE = 4
+  
+  PetscInt, parameter, public :: PREV_TS = 1
+  PetscInt, parameter, public :: PREV_IT = 2
 
   PetscInt, parameter, public :: GENERAL_LIQUID_PRESSURE_DOF = 1
   PetscInt, parameter, public :: GENERAL_GAS_PRESSURE_DOF = 1
@@ -32,6 +36,7 @@ module General_Aux_module
   PetscInt, parameter, public :: GENERAL_FLUX_DOF = 4
 
   type, public :: general_auxvar_type
+    PetscInt :: istate_store(2) ! 1 = previous timestep; 2 = previous iteration
     PetscReal, pointer :: pres(:)   ! (iphase)
     PetscReal, pointer :: sat(:)    ! (iphase)
     PetscReal, pointer :: den(:)    ! (iphase)
@@ -58,13 +63,13 @@ module General_Aux_module
     PetscInt :: n_zero_rows
     PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
 
-    PetscBool :: aux_vars_up_to_date
+    PetscBool :: auxvars_up_to_date
     PetscBool :: inactive_cells_exist
     PetscInt :: num_aux, num_aux_bc, num_aux_ss
     type(general_parameter_type), pointer :: general_parameter
-    type(general_auxvar_type), pointer :: aux_vars(:,:)
-    type(general_auxvar_type), pointer :: aux_vars_bc(:)
-    type(general_auxvar_type), pointer :: aux_vars_ss(:)
+    type(general_auxvar_type), pointer :: auxvars(:,:)
+    type(general_auxvar_type), pointer :: auxvars_bc(:)
+    type(general_auxvar_type), pointer :: auxvars_ss(:)
   end type general_type
 
   interface GeneralAuxVarDestroy
@@ -86,15 +91,15 @@ module General_Aux_module
 
 contains
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! GeneralAuxCreate: Allocate and initialize auxiliary object
-! author: Glenn Hammond
-! date: 03/07/11
-!
-! ************************************************************************** !
 function GeneralAuxCreate(option)
+  ! 
+  ! Allocate and initialize auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/07/11
+  ! 
 
   use Option_module
 
@@ -107,14 +112,14 @@ function GeneralAuxCreate(option)
   type(general_type), pointer :: aux
 
   allocate(aux) 
-  aux%aux_vars_up_to_date = PETSC_FALSE
+  aux%auxvars_up_to_date = PETSC_FALSE
   aux%inactive_cells_exist = PETSC_FALSE
   aux%num_aux = 0
   aux%num_aux_bc = 0
   aux%num_aux_ss = 0
-  nullify(aux%aux_vars)
-  nullify(aux%aux_vars_bc)
-  nullify(aux%aux_vars_ss)
+  nullify(aux%auxvars)
+  nullify(aux%auxvars_bc)
+  nullify(aux%auxvars_ss)
   aux%n_zero_rows = 0
   nullify(aux%zero_rows_local)
   nullify(aux%zero_rows_local_ghosted)
@@ -131,87 +136,92 @@ function GeneralAuxCreate(option)
 end function GeneralAuxCreate
 
 ! ************************************************************************** !
-!
-! GeneralAuxVarInit: Initialize auxiliary object
-! author: Glenn Hammond
-! date: 03/07/11
-!
-! ************************************************************************** !
-subroutine GeneralAuxVarInit(aux_var,option)
+
+subroutine GeneralAuxVarInit(auxvar,option)
+  ! 
+  ! Initialize auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/07/11
+  ! 
 
   use Option_module
 
   implicit none
   
-  type(general_auxvar_type) :: aux_var
+  type(general_auxvar_type) :: auxvar
   type(option_type) :: option
 
-  allocate(aux_var%pres(option%nphase+THREE_INTEGER))
-  aux_var%pres = 0.d0
-  allocate(aux_var%sat(option%nphase))
-  aux_var%sat = 0.d0
-  allocate(aux_var%den(option%nphase))
-  aux_var%den = 0.d0
-  allocate(aux_var%den_kg(option%nphase))
-  aux_var%den_kg = 0.d0
+  auxvar%istate_store = NULL_STATE
+  allocate(auxvar%pres(option%nphase+THREE_INTEGER))
+  auxvar%pres = 0.d0
+  allocate(auxvar%sat(option%nphase))
+  auxvar%sat = 0.d0
+  allocate(auxvar%den(option%nphase))
+  auxvar%den = 0.d0
+  allocate(auxvar%den_kg(option%nphase))
+  auxvar%den_kg = 0.d0
   ! keep at 25 C.
-  aux_var%temp = 25.d0
-  allocate(aux_var%xmol(option%nflowspec,option%nphase))
-  aux_var%xmol = 0.d0
-  allocate(aux_var%H(option%nphase))
-  aux_var%H = 0.d0
-  allocate(aux_var%U(option%nphase))
-  aux_var%U = 0.d0
-  allocate(aux_var%kvr(option%nphase))
-  aux_var%kvr = 0.d0
+  auxvar%temp = 25.d0
+  allocate(auxvar%xmol(option%nflowspec,option%nphase))
+  auxvar%xmol = 0.d0
+  allocate(auxvar%H(option%nphase))
+  auxvar%H = 0.d0
+  allocate(auxvar%U(option%nphase))
+  auxvar%U = 0.d0
+  allocate(auxvar%kvr(option%nphase))
+  auxvar%kvr = 0.d0
   
-  aux_var%pert = 0.d0
+  auxvar%pert = 0.d0
   
 end subroutine GeneralAuxVarInit
 
 ! ************************************************************************** !
-!
-! GeneralAuxVarCopy: Copies an auxiliary variable
-! author: Glenn Hammond
-! date: 03/07/11
-!
-! ************************************************************************** !  
-subroutine GeneralAuxVarCopy(aux_var,aux_var2,option)
+
+subroutine GeneralAuxVarCopy(auxvar,auxvar2,option)
+  ! 
+  ! Copies an auxiliary variable
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/07/11
+  ! 
 
   use Option_module
 
   implicit none
   
-  type(general_auxvar_type) :: aux_var, aux_var2
+  type(general_auxvar_type) :: auxvar, auxvar2
   type(option_type) :: option
 
-  aux_var2%pres = aux_var%pres
-  aux_var2%temp = aux_var%temp
-  aux_var2%sat = aux_var%sat
-  aux_var2%den = aux_var%den
-  aux_var2%den_kg = aux_var%den_kg
-  aux_var2%xmol = aux_var%xmol
-  aux_var2%H = aux_var%H
-  aux_var2%U = aux_var%U
-  aux_var2%kvr = aux_var%kvr
-  aux_var2%pert = aux_var%pert
+  auxvar2%istate_store = auxvar%istate_store
+  auxvar2%pres = auxvar%pres
+  auxvar2%temp = auxvar%temp
+  auxvar2%sat = auxvar%sat
+  auxvar2%den = auxvar%den
+  auxvar2%den_kg = auxvar%den_kg
+  auxvar2%xmol = auxvar%xmol
+  auxvar2%H = auxvar%H
+  auxvar2%U = auxvar%U
+  auxvar2%kvr = auxvar%kvr
+  auxvar2%pert = auxvar%pert
 
 end subroutine GeneralAuxVarCopy
-  
+
 ! ************************************************************************** !
-!
-! GeneralAuxVarCompute: Computes auxiliary variables for each grid cell
-! author: Glenn Hammond
-! date: 03/07/11
-!
-! ************************************************************************** !
-subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
+
+subroutine GeneralAuxVarCompute(x,gen_auxvar, global_auxvar,&
                                 saturation_function,por,perm,option)
+  ! 
+  ! Computes auxiliary variables for each grid cell
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/07/11
+  ! 
 
   use Option_module
   use Global_Aux_module
-  use Water_EOS_module
   use Gas_EOS_module
+  use EOS_Water_module
   use Saturation_Function_module
   
   implicit none
@@ -219,11 +229,12 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
   type(option_type) :: option
   type(saturation_function_type) :: saturation_function
   PetscReal :: x(option%nflowdof)
-  type(general_auxvar_type) :: gen_aux_var
-  type(global_auxvar_type) :: global_aux_var
-
+  type(general_auxvar_type) :: gen_auxvar
+  type(global_auxvar_type) :: global_auxvar
   PetscReal :: por, perm
+
   PetscInt :: gid, lid, acid, wid, eid
+  PetscReal :: pres_max
   PetscReal :: den_wat_vap, den_kg_wat_vap, h_wat_vap
   PetscReal :: den_air, h_air
   PetscReal :: den_gp, den_gt, hgp, hgt, dgp, dgt, u
@@ -257,150 +268,173 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
   wid = option%water_id
   eid = option%energy_id
   
-  !geh gen_aux_var%temp = 0.d0
+  !geh gen_auxvar%temp = 0.d0
 #ifdef DEBUG_GENERAL  
-  gen_aux_var%H = -999.d0
-  gen_aux_var%U = -999.d0
-  gen_aux_var%kvr = -999.d0
-  gen_aux_var%pres = -999.d0
-  gen_aux_var%sat = -999.d0
-  gen_aux_var%den = -999.d0
-  gen_aux_var%den_kg = -999.d0
-  gen_aux_var%xmol = -999.d0
+  gen_auxvar%H = -999.d0
+  gen_auxvar%U = -999.d0
+  gen_auxvar%pres = -999.d0
+  gen_auxvar%sat = -999.d0
+  gen_auxvar%den = -999.d0
+  gen_auxvar%den_kg = -999.d0
+  gen_auxvar%xmol = -999.d0
 #else
-  gen_aux_var%H = 0.d0
-  gen_aux_var%U = 0.d0
-  gen_aux_var%kvr = 0.d0
-  gen_aux_var%pres = 0.d0
-  gen_aux_var%sat = 0.d0
-  gen_aux_var%den = 0.d0
-  gen_aux_var%den_kg = 0.d0
-  gen_aux_var%xmol = 0.d0
+  gen_auxvar%H = 0.d0
+  gen_auxvar%U = 0.d0
+  gen_auxvar%pres = 0.d0
+  gen_auxvar%sat = 0.d0
+  gen_auxvar%den = 0.d0
+  gen_auxvar%den_kg = 0.d0
+  gen_auxvar%xmol = 0.d0
 #endif  
+  gen_auxvar%kvr = 0.d0
   
-  select case(global_aux_var%istate)
+  select case(global_auxvar%istate)
     case(LIQUID_STATE)
-      gen_aux_var%pres(lid) = x(GENERAL_LIQUID_PRESSURE_DOF)
-      gen_aux_var%xmol(acid,lid) = x(GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF)
-      gen_aux_var%temp = x(GENERAL_LIQUID_STATE_TEMPERATURE_DOF)
+      gen_auxvar%pres(lid) = x(GENERAL_LIQUID_PRESSURE_DOF)
+      gen_auxvar%xmol(acid,lid) = x(GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF)
+      gen_auxvar%temp = x(GENERAL_LIQUID_STATE_TEMPERATURE_DOF)
 
-      gen_aux_var%xmol(wid,lid) = 1.d0 - gen_aux_var%xmol(acid,lid)
-      gen_aux_var%xmol(:,gid) = 0.d0
-      gen_aux_var%sat(lid) = 1.d0
-      gen_aux_var%sat(gid) = 0.d0
+      gen_auxvar%xmol(wid,lid) = 1.d0 - gen_auxvar%xmol(acid,lid)
+      gen_auxvar%xmol(:,gid) = 0.d0
+      gen_auxvar%sat(lid) = 1.d0
+      gen_auxvar%sat(gid) = 0.d0
 
-      call psat(gen_aux_var%temp,P_sat,ierr)
-      call Henry_air_noderiv(dummy,gen_aux_var%temp, &
+      call EOSWaterSaturationPressure(gen_auxvar%temp,P_sat,ierr)
+      !geh: Henry_air_xxx returns K_H in units of Pa, but I am not confident
+      !     that K_H is truly K_H_tilde (i.e. p_g * K_H).
+      call Henry_air_noderiv(dummy,gen_auxvar%temp, &
                              P_sat,K_H_tilde)
-      gen_aux_var%pres(gid) = gen_aux_var%pres(lid)
-      gen_aux_var%pres(apid) = K_H_tilde*gen_aux_var%xmol(acid,lid)
+      gen_auxvar%pres(gid) = gen_auxvar%pres(lid)
+      gen_auxvar%pres(apid) = K_H_tilde*gen_auxvar%xmol(acid,lid)
       ! need vpres for liq -> 2ph check
-      gen_aux_var%pres(vpid) = gen_aux_var%pres(lid) - gen_aux_var%pres(apid)
-      gen_aux_var%pres(cpid) = 0.d0
+      gen_auxvar%pres(vpid) = gen_auxvar%pres(lid) - gen_auxvar%pres(apid)
+      gen_auxvar%pres(cpid) = 0.d0
       
     case(GAS_STATE)
-      gen_aux_var%pres(gid) = x(GENERAL_GAS_PRESSURE_DOF)
-      gen_aux_var%pres(apid) = x(GENERAL_AIR_PRESSURE_DOF)
-      gen_aux_var%temp = x(GENERAL_GAS_STATE_TEMPERATURE_DOF)
+      gen_auxvar%pres(gid) = x(GENERAL_GAS_PRESSURE_DOF)
+      gen_auxvar%pres(apid) = x(GENERAL_AIR_PRESSURE_DOF)
+      gen_auxvar%temp = x(GENERAL_GAS_STATE_TEMPERATURE_DOF)
 
-      gen_aux_var%sat(lid) = 0.d0
-      gen_aux_var%sat(gid) = 1.d0
-      gen_aux_var%xmol(acid,gid) = gen_aux_var%pres(apid) / gen_aux_var%pres(gid)
-      gen_aux_var%xmol(:,lid) = 0.d0
-      gen_aux_var%xmol(wid,gid) = 1.d0 - gen_aux_var%xmol(acid,gid)
-      gen_aux_var%pres(vpid) = gen_aux_var%pres(gid) - gen_aux_var%pres(apid)
-      gen_aux_var%pres(lid) = 0.d0
+      gen_auxvar%sat(lid) = 0.d0
+      gen_auxvar%sat(gid) = 1.d0
+      gen_auxvar%xmol(acid,gid) = gen_auxvar%pres(apid) / &
+                                   gen_auxvar%pres(gid)
+      gen_auxvar%xmol(:,lid) = 0.d0
+      gen_auxvar%xmol(wid,gid) = 1.d0 - gen_auxvar%xmol(acid,gid)
+      gen_auxvar%pres(vpid) = gen_auxvar%pres(gid) - gen_auxvar%pres(apid)
+      !TODO(geh): what to set p_l to when in gas state, pc_max???
+      gen_auxvar%pres(lid) = 0.d0
       
     case(TWO_PHASE_STATE)
-      gen_aux_var%pres(gid) = x(GENERAL_GAS_PRESSURE_DOF)
-      gen_aux_var%pres(apid) = x(GENERAL_AIR_PRESSURE_DOF)
-      gen_aux_var%sat(gid) = x(GENERAL_GAS_SATURATION_DOF)
+      gen_auxvar%pres(gid) = x(GENERAL_GAS_PRESSURE_DOF)
+      gen_auxvar%pres(apid) = x(GENERAL_AIR_PRESSURE_DOF)
+      gen_auxvar%sat(gid) = x(GENERAL_GAS_SATURATION_DOF)
       
-      gen_aux_var%sat(lid) = 1.d0 - gen_aux_var%sat(gid)
-      gen_aux_var%pres(vpid) = gen_aux_var%pres(gid) - gen_aux_var%pres(apid)
+      gen_auxvar%sat(lid) = 1.d0 - gen_auxvar%sat(gid)
+      gen_auxvar%pres(vpid) = gen_auxvar%pres(gid) - gen_auxvar%pres(apid)
       
-      P_sat = gen_aux_var%pres(vpid)
-      guess = gen_aux_var%temp
-      call Tsat(gen_aux_var%temp,P_sat,dummy,guess,ierr)
+      P_sat = gen_auxvar%pres(vpid)
+      guess = gen_auxvar%temp
+      call EOSWaterSaturationTemperature(gen_auxvar%temp,P_sat,dummy, &
+                                         guess,ierr)
       
-      call SatFuncGetCapillaryPressure(gen_aux_var%pres(cpid), &
-                                       gen_aux_var%sat(lid), &
+      call SatFuncGetCapillaryPressure(gen_auxvar%pres(cpid), &
+                                       gen_auxvar%sat(lid), &
                                        saturation_function,option)      
 
-      gen_aux_var%pres(lid) = gen_aux_var%pres(gid) - gen_aux_var%pres(cpid)
+      gen_auxvar%pres(lid) = gen_auxvar%pres(gid) - &
+                              gen_auxvar%pres(cpid)
 
-      call Henry_air_noderiv(dummy,gen_aux_var%temp, &
+      call Henry_air_noderiv(dummy,gen_auxvar%temp, &
                              P_sat,K_H_tilde)
-      gen_aux_var%xmol(acid,lid) = gen_aux_var%pres(apid) / K_H_tilde
-      gen_aux_var%xmol(wid,lid) = 1.d0 - gen_aux_var%xmol(acid,lid)
-      gen_aux_var%xmol(acid,gid) = gen_aux_var%pres(apid) / gen_aux_var%pres(gid)
-      gen_aux_var%xmol(wid,gid) = 1.d0 - gen_aux_var%xmol(acid,gid)
+      gen_auxvar%xmol(acid,lid) = gen_auxvar%pres(apid) / K_H_tilde
+      gen_auxvar%xmol(wid,lid) = 1.d0 - gen_auxvar%xmol(acid,lid)
+      gen_auxvar%xmol(acid,gid) = gen_auxvar%pres(apid) / &
+                                   gen_auxvar%pres(gid)
+      gen_auxvar%xmol(wid,gid) = 1.d0 - gen_auxvar%xmol(acid,gid)
 
   end select
 
+  pres_max = max(gen_auxvar%pres(lid),gen_auxvar%pres(gid))
 
-  if (global_aux_var%istate == LIQUID_STATE .or. &
-      global_aux_var%istate == TWO_PHASE_STATE) then
-    call wateos_noderiv(gen_aux_var%temp,gen_aux_var%pres(lid), &
-                        gen_aux_var%den_kg(lid),gen_aux_var%den(lid), &
-                        gen_aux_var%H(lid),option%scale,ierr)
+  ! ALWAYS UPDATE THERMODYNAMIC PROPERTIES FOR BOTH PHASES!!!
+  ! Liquid phase thermodynamic properties
+  ! must use pres_max as the pressure, not %pres(lid)
+  call EOSWaterDensityEnthalpy(gen_auxvar%temp,pres_max, &
+                               gen_auxvar%den_kg(lid),gen_auxvar%den(lid), &
+                               gen_auxvar%H(lid),option%scale,ierr)
 
-    ! MJ/kmol comp
-    gen_aux_var%U(lid) = gen_aux_var%H(lid) - &
-                         ! Pa / kmol/m^3 * 1.e-6 = MJ/kmol
-                         (gen_aux_var%pres(lid) / gen_aux_var%den(lid) * &
-                          option%scale)
-    ! this does not need to be calculated for LIQUID_STATE (=1)                     
-    call SatFuncGetRelPermFromSat(gen_aux_var%sat(lid),krl,dkrl_Se, &
+  ! MJ/kmol comp
+  gen_auxvar%U(lid) = gen_auxvar%H(lid) - &
+                       ! Pa / kmol/m^3 * 1.e-6 = MJ/kmol
+                       (pres_max / gen_auxvar%den(lid) * &
+                        option%scale)
+
+  ! Gas phase thermodynamic properties
+  call ideal_gaseos_noderiv(gen_auxvar%pres(apid),gen_auxvar%temp, &
+                            option%scale,den_air,h_air,u)
+!  call steameos(gen_auxvar%temp,gen_auxvar%pres(gid), &
+!                gen_auxvar%pres(apid),den_kg_wat_vap,den_wat_vap,dgp,dgt, &
+!                h_wat_vap,hgp,hgt,option%scale,ierr) 
+  call EOSWaterSteamDensityEnthalpy(gen_auxvar%temp,gen_auxvar%pres(gid), &
+                                    gen_auxvar%pres(apid),den_kg_wat_vap, &
+                                    den_wat_vap,h_wat_vap,option%scale,ierr)
+  
+  gen_auxvar%den(gid) = den_wat_vap + den_air
+  gen_auxvar%den_kg(gid) = den_kg_wat_vap + den_air*FMWAIR
+  ! if xmol not set for gas phase, set based on densities
+  if (gen_auxvar%xmol(acid,gid) < 1.d-40) then
+    gen_auxvar%xmol(acid,gid) = den_air / gen_auxvar%den(gid)
+    gen_auxvar%xmol(wid,gid) = 1.d0 - gen_auxvar%xmol(acid,gid)
+  endif
+  ! MJ/kmol
+  gen_auxvar%H(gid) = gen_auxvar%xmol(wid,gid)*h_wat_vap + &
+                       gen_auxvar%xmol(acid,gid)*h_air
+  gen_auxvar%U(gid) = gen_auxvar%H(gid) - &
+                       ! Pa / kmol/m^3 * 1.e-6 = MJ/kmol
+                       (gen_auxvar%pres(gid) / gen_auxvar%den(gid) * &
+                        option%scale)
+
+  if (global_auxvar%istate == LIQUID_STATE .or. &
+      global_auxvar%istate == TWO_PHASE_STATE) then
+    ! this does not need to be calculated for LIQUID_STATE (=1)
+    call SatFuncGetRelPermFromSat(gen_auxvar%sat(lid),krl,dkrl_Se, &
                                   saturation_function,lid,PETSC_FALSE,option)
-    call visw_noderiv(gen_aux_var%temp,gen_aux_var%pres(lid), &
-                      P_sat,visl,ierr)
-    gen_aux_var%kvr(lid) = krl/visl
+    call EOSWaterViscosity(gen_auxvar%temp,gen_auxvar%pres(lid), &
+                           P_sat,visl,ierr)
+    gen_auxvar%kvr(lid) = krl/visl
   endif
 
-  if (global_aux_var%istate == GAS_STATE .or. &
-      global_aux_var%istate == TWO_PHASE_STATE) then
-    call ideal_gaseos_noderiv(gen_aux_var%pres(apid),gen_aux_var%temp, &
-                              option%scale,den_air,h_air,u)
-    call steameos(gen_aux_var%temp,gen_aux_var%pres(gid), &
-                  gen_aux_var%pres(apid),den_kg_wat_vap,den_wat_vap,dgp,dgt, &
-                  h_wat_vap,hgp,hgt,option%scale,ierr)      
-    
-    gen_aux_var%den(gid) = den_wat_vap + den_air
-    gen_aux_var%den_kg(gid) = den_kg_wat_vap + den_air*FMWAIR
-    ! MJ/kmol
-    gen_aux_var%H(gid) = gen_aux_var%xmol(wid,gid)*h_wat_vap + &
-                         gen_aux_var%xmol(acid,gid)*h_air
-    gen_aux_var%U(gid) = gen_aux_var%H(gid) - &
-                         ! Pa / kmol/m^3 * 1.e-6 = MJ/kmol
-                         (gen_aux_var%pres(gid) / gen_aux_var%den(gid) * &
-                          option%scale)
-
+  if (global_auxvar%istate == GAS_STATE .or. &
+      global_auxvar%istate == TWO_PHASE_STATE) then
     ! this does not need to be calculated for GAS_STATE (=1)
-    call SatFuncGetRelPermFromSat(gen_aux_var%sat(gid),krg,dkrg_Se, &
+    call SatFuncGetRelPermFromSat(gen_auxvar%sat(gid),krg,dkrg_Se, &
                                   saturation_function,gid,PETSC_FALSE,option)
-    call visgas_noderiv(gen_aux_var%temp,gen_aux_var%pres(apid), &
-                        gen_aux_var%pres(gid),den_air,visg)
-    gen_aux_var%kvr(gid) = krg/visg
+    call visgas_noderiv(gen_auxvar%temp,gen_auxvar%pres(apid), &
+                        gen_auxvar%pres(gid),den_air,visg)
+    gen_auxvar%kvr(gid) = krg/visg
   endif
+
+! if (option%iflag == 1) write(*,'(a,10f13.4)') 'l/g/a/c/v/s: ', &
+!                         gen_auxvar%pres(1:5), gen_auxvar%sat(1)
 
 end subroutine GeneralAuxVarCompute
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! GeneralUpdateState: Updates the state and swaps primary variables
-! author: Glenn Hammond
-! date: 05/25/11
-!
-! ************************************************************************** !
-subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
+subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
                                     saturation_function,por,perm,ghosted_id, &
                                     option)
+  ! 
+  ! GeneralUpdateState: Updates the state and swaps primary variables
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/25/11
+  ! 
 
   use Option_module
   use Global_Aux_module
-  use Water_EOS_module
+  use EOS_Water_module
   use Gas_EOS_module
   use Saturation_Function_module
   
@@ -409,8 +443,8 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
   type(option_type) :: option
   PetscInt :: ghosted_id
   type(saturation_function_type) :: saturation_function
-  type(general_auxvar_type) :: gen_aux_var
-  type(global_auxvar_type) :: global_aux_var
+  type(general_auxvar_type) :: gen_auxvar
+  type(global_auxvar_type) :: global_auxvar
 
   PetscReal, parameter :: epsilon = 1.d-6
   PetscReal :: x(option%nflowdof)
@@ -435,21 +469,22 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
 
   flag = PETSC_FALSE
   
-  select case(global_aux_var%istate)
+  gen_auxvar%istate_store(PREV_IT) = global_auxvar%istate
+  select case(global_auxvar%istate)
     case(LIQUID_STATE)
-      call psat(gen_aux_var%temp,P_sat,ierr)
-      if (gen_aux_var%pres(vpid) <= P_sat) then
+      call EOSWaterSaturationPressure(gen_auxvar%temp,P_sat,ierr)
+      if (gen_auxvar%pres(vpid) <= P_sat) then
 #ifdef DEBUG_GENERAL
-        call GeneralPrintAuxVars(gen_aux_var,global_aux_var,ghosted_id, &
+        call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &
                                  'Before Update',option)
-        write(state_change_string,'(''Liquid -> 2 Phase at Cell '',i)') &
+        write(state_change_string,'(''Liquid -> 2 Phase at Cell '',i5)') &
           ghosted_id
 #endif      
-        global_aux_var%istate = TWO_PHASE_STATE
+        global_auxvar%istate = TWO_PHASE_STATE
         x(GENERAL_GAS_PRESSURE_DOF) = &
-          gen_aux_var%pres(lid) * (1.d0 + epsilon)
+          gen_auxvar%pres(lid) * (1.d0 + epsilon)
 !        x(GENERAL_AIR_PRESSURE_DOF) = &
-!          gen_aux_var%pres(apid) * (1.d0 + epsilon)
+!          gen_auxvar%pres(apid) * (1.d0 + epsilon)
         x(GENERAL_AIR_PRESSURE_DOF) = &
           ! pa = pg - pv
           x(GENERAL_GAS_PRESSURE_DOF) - P_sat
@@ -457,58 +492,58 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
         flag = PETSC_TRUE
       endif
     case(GAS_STATE)
-      call psat(gen_aux_var%temp,P_sat,ierr)
-      if (gen_aux_var%pres(vpid) >= P_sat) then
+      call EOSWaterSaturationPressure(gen_auxvar%temp,P_sat,ierr)
+      if (gen_auxvar%pres(vpid) >= P_sat) then
 #ifdef DEBUG_GENERAL
-        call GeneralPrintAuxVars(gen_aux_var,global_aux_var,ghosted_id, &
+        call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &
                                  'Before Update',option)
-        write(state_change_string,'(''Gas -> 2 Phase at Cell '',i)') &
+        write(state_change_string,'(''Gas -> 2 Phase at Cell '',i5)') &
           ghosted_id
 #endif      
-        global_aux_var%istate = TWO_PHASE_STATE
+        global_auxvar%istate = TWO_PHASE_STATE
         ! first two primary dependent variables do not change
         x(GENERAL_GAS_SATURATION_DOF) = 1.d0 - epsilon
         flag = PETSC_TRUE
       endif
     case(TWO_PHASE_STATE)
-      if (gen_aux_var%sat(gid) < 0.d0) then
+      if (gen_auxvar%sat(gid) < 0.d0) then
 #ifdef DEBUG_GENERAL
-        call GeneralPrintAuxVars(gen_aux_var,global_aux_var,ghosted_id, &
+        call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &
                                  'Before Update',option)
-        write(state_change_string,'(''2 Phase -> Liquid at Cell '',i)') &
+        write(state_change_string,'(''2 Phase -> Liquid at Cell '',i5)') &
           ghosted_id
 #endif      
         ! convert to liquid state
-        global_aux_var%istate = LIQUID_STATE
+        global_auxvar%istate = LIQUID_STATE
         x(GENERAL_LIQUID_PRESSURE_DOF) = &
-          gen_aux_var%pres(gid) * (1.d0 + epsilon)
+          gen_auxvar%pres(gid) * (1.d0 + epsilon)
         x(GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF) = &
-          gen_aux_var%xmol(acid,lid) * (1+epsilon)
+          gen_auxvar%xmol(acid,lid) * (1+epsilon)
         x(GENERAL_LIQUID_STATE_TEMPERATURE_DOF) = &
-          gen_aux_var%temp * (1.d0 - epsilon)
+          gen_auxvar%temp * (1.d0 - epsilon)
         flag = PETSC_TRUE
-      else if (gen_aux_var%sat(gid) > 1.d0) then
+      else if (gen_auxvar%sat(gid) > 1.d0) then
 #ifdef DEBUG_GENERAL
-        call GeneralPrintAuxVars(gen_aux_var,global_aux_var,ghosted_id, &
+        call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &
                                  'Before Update',option)
-        write(state_change_string,'(''2 Phase -> Gas at Cell '',i)') &
+        write(state_change_string,'(''2 Phase -> Gas at Cell '',i5)') &
           ghosted_id
 #endif      
         ! convert to gas state
-        global_aux_var%istate = GAS_STATE
+        global_auxvar%istate = GAS_STATE
         ! first two primary dependent variables do not change
         x(GENERAL_GAS_STATE_TEMPERATURE_DOF) = &
-          gen_aux_var%temp * (1.d0 + epsilon)
+          gen_auxvar%temp * (1.d0 + epsilon)
         flag = PETSC_TRUE
       endif
   end select
   
   if (flag) then
-    call GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
+    call GeneralAuxVarCompute(x,gen_auxvar, global_auxvar,&
                               saturation_function,por,perm,option)
 #ifdef DEBUG_GENERAL
     call printMsg(option,state_change_string)
-    call GeneralPrintAuxVars(gen_aux_var,global_aux_var,ghosted_id, &
+    call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &
                              'After Update',option)
 #endif
     option%variables_swapped = PETSC_TRUE
@@ -517,14 +552,15 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
 end subroutine GeneralAuxVarUpdateState
 
 ! ************************************************************************** !
-!
-! GeneralPrintAuxVars: Prints out the contents of an auxvar
-! author: Glenn Hammond
-! date: 02/18/13
-!
-! ************************************************************************** !
+
 subroutine GeneralPrintAuxVars(general_auxvar,global_auxvar,ghosted_id, &
                                string,option)
+  ! 
+  ! Prints out the contents of an auxvar
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/18/13
+  ! 
 
   use Global_Aux_module
   use Option_module
@@ -588,14 +624,15 @@ subroutine GeneralPrintAuxVars(general_auxvar,global_auxvar,ghosted_id, &
 end subroutine GeneralPrintAuxVars
 
 ! ************************************************************************** !
-!
-! GeneralOutputAuxVars1: Prints out the contents of an auxvar to a file
-! author: Glenn Hammond
-! date: 02/18/13
-!
-! ************************************************************************** !
+
 subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,ghosted_id, &
                                 string,option)
+  ! 
+  ! Prints out the contents of an auxvar to a file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/18/13
+  ! 
 
   use Global_Aux_module
   use Option_module
@@ -690,13 +727,14 @@ subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,ghosted_id, &
 end subroutine GeneralOutputAuxVars1
 
 ! ************************************************************************** !
-!
-! GeneralOutputAuxVars2: Prints out the contents of an auxvar to a file
-! author: Glenn Hammond
-! date: 02/18/13
-!
-! ************************************************************************** !
+
 subroutine GeneralOutputAuxVars2(general_auxvars,global_auxvars,option)
+  ! 
+  ! Prints out the contents of an auxvar to a file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/18/13
+  ! 
 
   use Global_Aux_module
   use Option_module
@@ -786,118 +824,123 @@ subroutine GeneralOutputAuxVars2(general_auxvars,global_auxvars,option)
 end subroutine GeneralOutputAuxVars2
 
 ! ************************************************************************** !
-!
-! GeneralAuxVarSingleDestroy: Deallocates a mode auxiliary object
-! author: Glenn Hammond
-! date: 01/10/12
-!
-! ************************************************************************** !
-subroutine GeneralAuxVarSingleDestroy(aux_var)
+
+subroutine GeneralAuxVarSingleDestroy(auxvar)
+  ! 
+  ! Deallocates a mode auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/10/12
+  ! 
 
   implicit none
 
-  type(general_auxvar_type), pointer :: aux_var
+  type(general_auxvar_type), pointer :: auxvar
   
-  if (associated(aux_var)) then
-    call GeneralAuxVarStrip(aux_var)
-    deallocate(aux_var)
+  if (associated(auxvar)) then
+    call GeneralAuxVarStrip(auxvar)
+    deallocate(auxvar)
   endif
-  nullify(aux_var)  
+  nullify(auxvar)  
 
 end subroutine GeneralAuxVarSingleDestroy
-  
+
 ! ************************************************************************** !
-!
-! GeneralAuxVarArray1Destroy: Deallocates a mode auxiliary object
-! author: Glenn Hammond
-! date: 01/10/12
-!
-! ************************************************************************** !
-subroutine GeneralAuxVarArray1Destroy(aux_vars)
+
+subroutine GeneralAuxVarArray1Destroy(auxvars)
+  ! 
+  ! Deallocates a mode auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/10/12
+  ! 
 
   implicit none
 
-  type(general_auxvar_type), pointer :: aux_vars(:)
+  type(general_auxvar_type), pointer :: auxvars(:)
   
   PetscInt :: iaux
   
-  if (associated(aux_vars)) then
-    do iaux = 1, size(aux_vars)
-      call GeneralAuxVarStrip(aux_vars(iaux))
+  if (associated(auxvars)) then
+    do iaux = 1, size(auxvars)
+      call GeneralAuxVarStrip(auxvars(iaux))
     enddo  
-    deallocate(aux_vars)
+    deallocate(auxvars)
   endif
-  nullify(aux_vars)  
+  nullify(auxvars)  
 
 end subroutine GeneralAuxVarArray1Destroy
 
 ! ************************************************************************** !
-!
-! GeneralAuxVarArray2Destroy: Deallocates a mode auxiliary object
-! author: Glenn Hammond
-! date: 01/10/12
-!
-! ************************************************************************** !
-subroutine GeneralAuxVarArray2Destroy(aux_vars)
+
+subroutine GeneralAuxVarArray2Destroy(auxvars)
+  ! 
+  ! Deallocates a mode auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/10/12
+  ! 
 
   implicit none
 
-  type(general_auxvar_type), pointer :: aux_vars(:,:)
+  type(general_auxvar_type), pointer :: auxvars(:,:)
   
   PetscInt :: iaux, idof
   
-  if (associated(aux_vars)) then
-    do iaux = 1, size(aux_vars,2)
-      do idof = 1, size(aux_vars,1)
-        call GeneralAuxVarStrip(aux_vars(idof-1,iaux))
+  if (associated(auxvars)) then
+    do iaux = 1, size(auxvars,2)
+      do idof = 1, size(auxvars,1)
+        call GeneralAuxVarStrip(auxvars(idof-1,iaux))
       enddo
     enddo  
-    deallocate(aux_vars)
+    deallocate(auxvars)
   endif
-  nullify(aux_vars)  
+  nullify(auxvars)  
 
 end subroutine GeneralAuxVarArray2Destroy
 
 ! ************************************************************************** !
-!
-! GeneralAuxVarDestroy: Deallocates a general auxiliary object
-! author: Glenn Hammond
-! date: 03/07/11
-!
-! ************************************************************************** !
-subroutine GeneralAuxVarStrip(aux_var)
+
+subroutine GeneralAuxVarStrip(auxvar)
+  ! 
+  ! GeneralAuxVarDestroy: Deallocates a general auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/07/11
+  ! 
 
   implicit none
 
-  type(general_auxvar_type) :: aux_var
+  type(general_auxvar_type) :: auxvar
   
-  if (associated(aux_var%pres)) deallocate(aux_var%pres)
-  nullify(aux_var%pres)
-  if (associated(aux_var%sat)) deallocate(aux_var%sat)
-  nullify(aux_var%sat)
-  if (associated(aux_var%den)) deallocate(aux_var%den)
-  nullify(aux_var%den)
-  if (associated(aux_var%den_kg)) deallocate(aux_var%den_kg)
-  nullify(aux_var%den_kg)
-  if (associated(aux_var%xmol)) deallocate(aux_var%xmol)
-  nullify(aux_var%xmol)
-  if (associated(aux_var%H)) deallocate(aux_var%H)
-  nullify(aux_var%H)
-  if (associated(aux_var%U)) deallocate(aux_var%U)
-  nullify(aux_var%U)
-  if (associated(aux_var%kvr)) deallocate(aux_var%kvr)
-  nullify(aux_var%kvr)
+  if (associated(auxvar%pres)) deallocate(auxvar%pres)
+  nullify(auxvar%pres)
+  if (associated(auxvar%sat)) deallocate(auxvar%sat)
+  nullify(auxvar%sat)
+  if (associated(auxvar%den)) deallocate(auxvar%den)
+  nullify(auxvar%den)
+  if (associated(auxvar%den_kg)) deallocate(auxvar%den_kg)
+  nullify(auxvar%den_kg)
+  if (associated(auxvar%xmol)) deallocate(auxvar%xmol)
+  nullify(auxvar%xmol)
+  if (associated(auxvar%H)) deallocate(auxvar%H)
+  nullify(auxvar%H)
+  if (associated(auxvar%U)) deallocate(auxvar%U)
+  nullify(auxvar%U)
+  if (associated(auxvar%kvr)) deallocate(auxvar%kvr)
+  nullify(auxvar%kvr)
   
 end subroutine GeneralAuxVarStrip
 
 ! ************************************************************************** !
-!
-! GeneralAuxDestroy: Deallocates a general auxiliary object
-! author: Glenn Hammond
-! date: 03/07/11
-!
-! ************************************************************************** !
+
 subroutine GeneralAuxDestroy(aux)
+  ! 
+  ! Deallocates a general auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/07/11
+  ! 
 
   implicit none
 
@@ -906,9 +949,9 @@ subroutine GeneralAuxDestroy(aux)
   
   if (.not.associated(aux)) return
   
-  call GeneralAuxVarDestroy(aux%aux_vars)
-  call GeneralAuxVarDestroy(aux%aux_vars_bc)
-  call GeneralAuxVarDestroy(aux%aux_vars_ss)
+  call GeneralAuxVarDestroy(aux%auxvars)
+  call GeneralAuxVarDestroy(aux%auxvars_bc)
+  call GeneralAuxVarDestroy(aux%auxvars_ss)
 
   if (associated(aux%zero_rows_local)) deallocate(aux%zero_rows_local)
   nullify(aux%zero_rows_local)

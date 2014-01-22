@@ -14,15 +14,16 @@ module Surf_Subsurf_Factory_module
   public :: SurfSubsurfaceInitialize
 
 contains
+
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/28/13
-! ************************************************************************** !
+
 subroutine SurfSubsurfaceInitialize(simulation_base,option)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/28/13
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -45,14 +46,14 @@ subroutine SurfSubsurfaceInitialize(simulation_base,option)
 end subroutine SurfSubsurfaceInitialize
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/28/13
-! ************************************************************************** !
+
 subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/28/13
+  ! 
 
   use Simulation_module
   use Surface_Simulation_class
@@ -191,23 +192,20 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
 
 end subroutine SurfSubsurfaceInitializePostPETSc
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!> This routine creates VecScatter between surface-subsurface grids.
-!!
-!> @author
-!! Gautam Bisht,LBNL
-!!
-!! date: 08/20/13
-!!
-!! Algorithm:
-!!  - It uses a similar logic of Matrix-Vector multiplication used in
-!!    UGridMapSideSet() subroutine. The algorithm here is extended to use
-!!    Matrix-Matrix mulitplication
-!!
-! ************************************************************************** !
 subroutine SurfSubsurfCreateSurfSubSurfVScats(realization, surf_realization, &
                                               surf_to_subsurf, subsurf_to_surf)
+  ! 
+  ! This routine creates VecScatter between surface-subsurface grids.
+  ! Algorithm:
+  ! - It uses a similar logic of Matrix-Vector multiplication used in
+  ! UGridMapSideSet() subroutine. The algorithm here is extended to use
+  ! Matrix-Matrix mulitplication
+  ! 
+  ! Author: Gautam Bisht,LBNL
+  ! Date: 08/20/13
+  ! 
 
   use Grid_module
   use String_module
@@ -461,7 +459,7 @@ subroutine SurfSubsurfCreateSurfSubSurfVScats(realization, surf_realization, &
 #endif
 
   call MatMatMult(Mat_vert_to_face_subsurf,Mat_vert_to_face_surf_transp, &
-                  MAT_INITIAL_MATRIX,PETSC_DEFAULT_DOUBLE_PRECISION,prod,ierr)
+                  MAT_INITIAL_MATRIX,PETSC_DEFAULT_REAL,prod,ierr)
 
 #if UGRID_DEBUG
   string = 'prod.out'
@@ -475,7 +473,7 @@ subroutine SurfSubsurfCreateSurfSubSurfVScats(realization, surf_realization, &
   call MatDestroy(prod,ierr)
 
   call MatMatMult(Mat_vert_to_face_surf,Mat_vert_to_face_subsurf_transp, &
-                  MAT_INITIAL_MATRIX,PETSC_DEFAULT_DOUBLE_PRECISION,prod,ierr)
+                  MAT_INITIAL_MATRIX,PETSC_DEFAULT_REAL,prod,ierr)
 
 #if UGRID_DEBUG
   string = 'prod_2.out'
@@ -499,13 +497,7 @@ subroutine SurfSubsurfCreateSurfSubSurfVScats(realization, surf_realization, &
 end subroutine SurfSubsurfCreateSurfSubSurfVScats
 
 ! ************************************************************************** !
-!> This subroutine creates a single vector scatter context
-!!
-!> @author
-!! Gautam Bisht,LBNL
-!!
-!! date: 08/20/13
-! ************************************************************************** !
+
 subroutine SurfSubsurfCreateSurfSubSurfVScat( &
               realization, &       !<
               surf_realization, &  !<
@@ -513,6 +505,12 @@ subroutine SurfSubsurfCreateSurfSubSurfVScat( &
               source_petsc_ids, &   !< MPI-Vector containing cell ids in PETSc order
               scatter &
               )
+  ! 
+  ! This subroutine creates a single vector scatter context
+  ! 
+  ! Author: Gautam Bisht,LBNL
+  ! Date: 08/20/13
+  ! 
 
   use Grid_module
   use String_module
@@ -656,15 +654,15 @@ subroutine SurfSubsurfCreateSurfSubSurfVScat( &
 end subroutine SurfSubsurfCreateSurfSubSurfVScat
 
 ! ************************************************************************** !
-!> This routine creates subsurface vectors.
-!!
-!> @author
-!! Gautam Bisht,LBNL
-!!
-!! date: 08/20/13
-! ************************************************************************** !
+
 subroutine SurfSubsurfCreateSubsurfVecs(subsurf_realization, option, &
                                         subsurf_pres, subsurf_pres_top_bc)
+  ! 
+  ! This routine creates subsurface vectors.
+  ! 
+  ! Author: Gautam Bisht,LBNL
+  ! Date: 08/20/13
+  ! 
 
   use Realization_class
   use Coupler_module
@@ -734,14 +732,14 @@ subroutine SurfSubsurfCreateSubsurfVecs(subsurf_realization, option, &
 end subroutine SurfSubsurfCreateSubsurfVecs
 
 ! ************************************************************************** !
-!> This routine creates surface vectors.
-!!
-!> @author
-!! Gautam Bisht,LBNL
-!!
-!! date: 08/20/13
-! ************************************************************************** !
+
 subroutine SurfSubsurfCreateSurfVecs(surf_realization,option,surf_head)
+  ! 
+  ! This routine creates surface vectors.
+  ! 
+  ! Author: Gautam Bisht,LBNL
+  ! Date: 08/20/13
+  ! 
 
   use Surface_Realization_class
   use Option_module
@@ -763,14 +761,14 @@ subroutine SurfSubsurfCreateSurfVecs(surf_realization,option,surf_head)
 end subroutine SurfSubsurfCreateSurfVecs
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 07/01/13
-! ************************************************************************** !
+
 subroutine SurfSubsurfInitCommandLineSettings(option)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 07/01/13
+  ! 
 
   use Option_module
   use Input_Aux_module

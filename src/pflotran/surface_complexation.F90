@@ -25,13 +25,14 @@ module Surface_Complexation_module
 contains
 
 ! ************************************************************************** !
-!
-! SurfaceComplexationRead: Reads chemical species 
-! author: Glenn Hammond
-! date: 05/02/08
-!
-! ************************************************************************** !
+
 subroutine SurfaceComplexationRead(reaction,input,option)
+  ! 
+  ! Reads chemical species
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/02/08
+  ! 
 
   use Option_module
   use String_module
@@ -354,15 +355,16 @@ subroutine SurfaceComplexationRead(reaction,input,option)
 end subroutine SurfaceComplexationRead
 
 ! ************************************************************************** !
-!
-! SrfCplxProcessConstraint: Initializes constraints based on surface complex
-!                           species in system
-! author: Glenn Hammond
-! date: 01/07/13
-!
-! ************************************************************************** !
+
 subroutine SrfCplxProcessConstraint(surface_complexation,constraint_name, &
                                     constraint,option)
+  ! 
+  ! Initializes constraints based on surface complex
+  ! species in system
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/07/13
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -422,15 +424,16 @@ subroutine SrfCplxProcessConstraint(surface_complexation,constraint_name, &
 end subroutine SrfCplxProcessConstraint
 
 ! ************************************************************************** !
-!
-! RTotalSorbEqSurfCplx: Computes the total sorbed component concentrations and 
-!                       derivative with respect to free-ion for equilibrium 
-!                       surface complexation
-! author: Glenn Hammond
-! date: 10/22/08; 05/26/09
-!
-! ************************************************************************** !
+
 subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
+  ! 
+  ! Computes the total sorbed component concentrations and
+  ! derivative with respect to free-ion for equilibrium
+  ! surface complexation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/22/08; 05/26/09
+  ! 
 
   use Option_module
   use Matrix_Block_Aux_module
@@ -483,14 +486,15 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
 end subroutine RTotalSorbEqSurfCplx
 
 ! ************************************************************************** !
-!
-! RTotalSorbMultiRateAsEQ: Calculates the multirate surface complexation 
-!                          reaction as if it were equilibrium.
-! author: Glenn Hammond
-! date: 03/19/12
-!
-! ************************************************************************** !
+
 subroutine RTotalSorbMultiRateAsEQ(rt_auxvar,global_auxvar,reaction,option)
+  ! 
+  ! Calculates the multirate surface complexation
+  ! reaction as if it were equilibrium.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/19/12
+  ! 
 
   use Option_module
   use Matrix_Block_Aux_module
@@ -539,17 +543,19 @@ subroutine RTotalSorbMultiRateAsEQ(rt_auxvar,global_auxvar,reaction,option)
 end subroutine RTotalSorbMultiRateAsEQ
 
 ! ************************************************************************** !
-!
-! RMultiRateSorption: Computes contribution to the accumualtion term due
-!                     due to multirate sorption
-! author: Glenn Hammond
-! date: 05/20/09; 03/16/12
-!
-! ************************************************************************** !
+
 subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
-                              global_auxvar,volume,reaction,option)
+                              global_auxvar,material_auxvar,reaction,option)
+  ! 
+  ! Computes contribution to the accumualtion term due
+  ! due to multirate sorption
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/20/09; 03/16/12
+  ! 
 
   use Option_module
+  use Material_Aux_class
   use Matrix_Block_Aux_module
   
   implicit none
@@ -557,7 +563,7 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
   PetscBool :: compute_derivative
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
-  PetscReal :: volume
+  class(material_auxvar_type) :: material_auxvar
   type(reaction_type) :: reaction
   PetscReal :: Res(reaction%ncomp)
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
@@ -609,12 +615,12 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
         surface_complexation%kinmr_rate(irate,ikinmrrxn)/one_plus_kdt
         
       ! this is the constribution to the accumulation term in the residual
-      Res(:) = Res(:) + volume * k_over_one_plus_kdt * &
+      Res(:) = Res(:) + material_auxvar%volume * k_over_one_plus_kdt * &
         (surface_complexation%kinmr_frac(irate,ikinmrrxn)*total_sorb_eq(:) - &
          rt_auxvar%kinmr_total_sorb(:,irate,ikinmrrxn))
       
       if (compute_derivative) then
-        Jac = Jac + volume * k_over_one_plus_kdt * &
+        Jac = Jac + material_auxvar%volume * k_over_one_plus_kdt * &
           surface_complexation%kinmr_frac(irate,ikinmrrxn) * dtotal_sorb_eq
       endif
 
@@ -629,14 +635,7 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
 end subroutine RMultiRateSorption
 
 ! ************************************************************************** !
-!
-! RTotalSorbEqSurfCplx1: Computes the total sorbed component concentrations and 
-!                       derivative with respect to free-ion for equilibrium 
-!                       surface complexation
-! author: Glenn Hammond
-! date: 10/22/08; 05/26/09; 03/16/12
-!
-! ************************************************************************** !
+
 subroutine RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,reaction,option, &
                                  irxn,external_free_site_conc, &
                                  external_srfcplx_conc, &
@@ -644,6 +643,14 @@ subroutine RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,reaction,option, &
                                  external_dtotal_sorb, &
                                  external_total_mob, &
                                  external_dRj_dCj)
+  ! 
+  ! Computes the total sorbed component concentrations and
+  ! derivative with respect to free-ion for equilibrium
+  ! surface complexation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/22/08; 05/26/09; 03/16/12
+  ! 
 
   use Option_module
   use Matrix_Block_Aux_module
@@ -901,24 +908,26 @@ subroutine RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,reaction,option, &
 end subroutine RTotalSorbEqSurfCplx1
 
 ! ************************************************************************** !
-!
-! RKineticSurfCplx: Computes contribution to residual and jacobian for 
-!                   kinetic surface complexation reactions
-! author: Glenn Hammond
-! date: 12/07/09
-!
-! ************************************************************************** !
+
 subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
-                            global_auxvar,volume,reaction,option)
+                            global_auxvar,material_auxvar,reaction,option)
+  ! 
+  ! Computes contribution to residual and jacobian for
+  ! kinetic surface complexation reactions
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/07/09
+  ! 
 
   use Option_module
+  use Material_Aux_class
   
   implicit none
   
   PetscBool :: compute_derivative
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
-  PetscReal :: volume
+  class(material_auxvar_type) :: material_auxvar
   type(reaction_type) :: reaction
   PetscReal :: Res(reaction%ncomp)
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
@@ -1048,7 +1057,7 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
         icomp = surface_complexation%srfcplxspecid(i,icplx)
         Res(icomp) = Res(icomp) + surface_complexation%srfcplxstoich(i,icplx)* &
                      (srfcplx_conc_kp1(icplx,ikinrxn)-rt_auxvar%kinsrfcplx_conc(icplx,ikinrxn))/ &
-                     dt * volume
+                     dt * material_auxvar%volume
       enddo
     enddo
   enddo
@@ -1089,7 +1098,7 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
               (surface_complexation%srfcplxstoich(j,icplx) * fac * numerator_sum(isite) * &
               Q(icplx) * (surface_complexation%srfcplxstoich(l,icplx) - &
               dt * fac_sum(lcomp)/denominator_sum(isite)))/denominator_sum(isite) * &
-              exp(-ln_conc(lcomp)) * volume
+              exp(-ln_conc(lcomp)) * material_auxvar%volume
           enddo
         enddo
       enddo

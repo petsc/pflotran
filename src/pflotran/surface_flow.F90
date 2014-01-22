@@ -46,14 +46,14 @@ module Surface_Flow_module
 contains
 
 ! ************************************************************************** !
-!> This routine sets up surfaceflow type
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 05/21/12
-! ************************************************************************** !
+
 subroutine SurfaceFlowSetup(surf_realization)
+  ! 
+  ! This routine sets up surfaceflow type
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 05/21/12
+  ! 
 
   use Surface_Realization_class
   
@@ -64,14 +64,14 @@ subroutine SurfaceFlowSetup(surf_realization)
 end subroutine SurfaceFlowSetup
 
 ! ************************************************************************** !
-!> This routine adds variables to be printed to list
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 10/30/12
-! ************************************************************************** !
+
 subroutine SurfaceFlowSetPlotVariables(surf_realization)
+  ! 
+  ! This routine adds variables to be printed to list
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 10/30/12
+  ! 
   
   use Surface_Realization_class
   use Output_Aux_module
@@ -99,14 +99,7 @@ subroutine SurfaceFlowSetPlotVariables(surf_realization)
 end subroutine SurfaceFlowSetPlotVariables
 
 ! ************************************************************************** !
-!> This routine computes the internal flux term for the residual under
-!! kinematic-wave assumption.
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 05/21/12
-! ************************************************************************** !
+
 subroutine SurfaceFlowKinematic(hw_up, &
                                 mannings_up, &
                                 hw_dn, &
@@ -116,6 +109,13 @@ subroutine SurfaceFlowKinematic(hw_up, &
                                 option, &
                                 vel, &
                                 Res)
+  ! 
+  ! This routine computes the internal flux term for the residual under
+  ! kinematic-wave assumption.
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 05/21/12
+  ! 
 
   use Option_module
   
@@ -148,14 +148,7 @@ subroutine SurfaceFlowKinematic(hw_up, &
 end subroutine SurfaceFlowKinematic
 
 ! ************************************************************************** !
-!> This routine computes the internal flux term for the residual under
-!! diffusion-wave assumption.
-!!
-!> @author
-!! Gautam Bisht, LBL
-!!
-!! date: 08/03/12
-! ************************************************************************** !
+
 subroutine SurfaceFlowDiffusion(hw_up, &
                                 zc_up, &
                                 mannings_up, &
@@ -167,6 +160,13 @@ subroutine SurfaceFlowDiffusion(hw_up, &
                                 option, &
                                 vel, &
                                 Res)
+  ! 
+  ! This routine computes the internal flux term for the residual under
+  ! diffusion-wave assumption.
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 08/03/12
+  ! 
 
   use Option_module
 
@@ -226,14 +226,14 @@ subroutine SurfaceFlowDiffusion(hw_up, &
 end subroutine SurfaceFlowDiffusion
 
 ! ************************************************************************** !
-!> This routine updates data in module after a successful time step
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 05/22/12
-! ************************************************************************** !
+
 subroutine SurfaceFlowUpdateSolution(surf_realization)
+  ! 
+  ! This routine updates data in module after a successful time step
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 05/22/12
+  ! 
 
   use Surface_Realization_class
   use Surface_Field_module
@@ -251,14 +251,14 @@ subroutine SurfaceFlowUpdateSolution(surf_realization)
 end subroutine SurfaceFlowUpdateSolution
 
 ! ************************************************************************** !
-!> This routine provides the function evaluation for PETSc TSSolve()
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
+  ! 
+  ! This routine provides the function evaluation for PETSc TSSolve()
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   use Surface_Realization_class
   use Surface_Field_module
@@ -293,8 +293,8 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   type(coupler_type), pointer               :: source_sink
   type(connection_set_list_type), pointer   :: connection_set_list
   type(connection_set_type), pointer        :: cur_connection_set
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars(:)
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars_bc(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars_bc(:)
 
   PetscInt  :: local_id_up, local_id_dn, local_id
   PetscInt  :: ghosted_id_up, ghosted_id_dn, ghosted_id
@@ -317,16 +317,16 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   grid => patch%grid
   option => surf_realization%option
   surf_field => surf_realization%surf_field
-  surf_global_aux_vars => patch%surf_aux%SurfaceGlobal%aux_vars
-  surf_global_aux_vars_bc => patch%surf_aux%SurfaceGlobal%aux_vars_bc
+  surf_global_auxvars => patch%surf_aux%SurfaceGlobal%auxvars
+  surf_global_auxvars_bc => patch%surf_aux%SurfaceGlobal%auxvars_bc
 
   surf_field              => surf_realization%surf_field
   discretization          => surf_realization%discretization
   option                  => surf_realization%option
   patch                   => surf_realization%patch
   grid                    => patch%grid
-  surf_global_aux_vars    => patch%surf_aux%SurfaceGlobal%aux_vars
-  surf_global_aux_vars_bc => patch%surf_aux%SurfaceGlobal%aux_vars_bc
+  surf_global_auxvars    => patch%surf_aux%SurfaceGlobal%auxvars
+  surf_global_auxvars_bc => patch%surf_aux%SurfaceGlobal%auxvars_bc
   
   surf_realization%iter_count = surf_realization%iter_count+1
   if (surf_realization%iter_count < 10) then
@@ -375,10 +375,10 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
       dist = sqrt(dx*dx + dy*dy + dz*dz)
       slope = dz/dist
       
-      if(surf_global_aux_vars(ghosted_id_up)%head(1)<0.d0 .or. &
-         surf_global_aux_vars(ghosted_id_dn)%head(1)<0.d0) then
-        write(*,*),'In SurfaceFlowFlux: ', surf_global_aux_vars(ghosted_id_up)%head(1), &
-          surf_global_aux_vars(ghosted_id_dn)%head(1),ghosted_id_up,ghosted_id_dn
+      if(surf_global_auxvars(ghosted_id_up)%head(1)<0.d0 .or. &
+         surf_global_auxvars(ghosted_id_dn)%head(1)<0.d0) then
+        write(*,*),'In SurfaceFlowFlux: ', surf_global_auxvars(ghosted_id_up)%head(1), &
+          surf_global_auxvars(ghosted_id_dn)%head(1),ghosted_id_up,ghosted_id_dn
           option%io_buffer='stopping: -ve head values '
           call printErrMsg(option)
       endif
@@ -390,10 +390,10 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
           call printErrMsg(option)
         case (DIFFUSION_WAVE)
 #if 1
-        call SurfaceFlowFlux(surf_global_aux_vars(ghosted_id_up), &
+        call SurfaceFlowFlux(surf_global_auxvars(ghosted_id_up), &
                              zc(ghosted_id_up), &
                              mannings_loc_p(ghosted_id_up), &
-                             surf_global_aux_vars(ghosted_id_dn), &
+                             surf_global_auxvars(ghosted_id_dn), &
                              zc(ghosted_id_dn), &
                              mannings_loc_p(ghosted_id_dn), &
                              dist, cur_connection_set%area(iconn), &
@@ -441,7 +441,7 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
 
 #if 1
       call SurfaceFlowBCFlux(boundary_condition%flow_condition%itype, &
-                         surf_global_aux_vars_bc(sum_connection), &
+                         surf_global_auxvars_bc(sum_connection), &
                          slope_dn, &
                          mannings_loc_p(ghosted_id_dn), &
                          cur_connection_set%area(iconn), &
@@ -516,16 +516,16 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
 end subroutine SurfaceFlowRHSFunction
 
 ! ************************************************************************** !
-!> This routine maximum allowable 'dt' for surface flow model.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
-subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
 
-  use Water_EOS_module
+subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
+  ! 
+  ! This routine maximum allowable 'dt' for surface flow model.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
+
+  
   use Connection_module
   use Surface_Realization_class
   use Patch_module
@@ -548,8 +548,8 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
   type(coupler_type), pointer               :: boundary_condition
   type(connection_set_list_type), pointer   :: connection_set_list
   type(connection_set_type), pointer        :: cur_connection_set
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars(:)
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars_bc(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars_bc(:)
 
   PetscInt :: local_id, ghosted_id
   PetscInt :: local_id_up, local_id_dn
@@ -574,8 +574,8 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
   grid => patch%grid
   option => surf_realization%option
   surf_field => surf_realization%surf_field
-  surf_global_aux_vars => patch%surf_aux%SurfaceGlobal%aux_vars
-  surf_global_aux_vars_bc => patch%surf_aux%SurfaceGlobal%aux_vars_bc
+  surf_global_auxvars => patch%surf_aux%SurfaceGlobal%auxvars
+  surf_global_auxvars_bc => patch%surf_aux%SurfaceGlobal%auxvars_bc
 
   call VecGetArrayF90(surf_field%mannings_loc,mannings_loc_p, ierr)
   call VecGetArrayF90(surf_field%area,area_p,ierr)
@@ -611,10 +611,10 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
       select case(option%surface_flow_formulation)
         case (KINEMATIC_WAVE)
         case (DIFFUSION_WAVE)
-          call SurfaceFlowFlux(surf_global_aux_vars(ghosted_id_up), &
+          call SurfaceFlowFlux(surf_global_auxvars(ghosted_id_up), &
                                zc(ghosted_id_up), &
                                mannings_loc_p(ghosted_id_up), &
-                               surf_global_aux_vars(ghosted_id_dn), &
+                               surf_global_auxvars(ghosted_id_dn), &
                                zc(ghosted_id_dn), &
                                mannings_loc_p(ghosted_id_dn), &
                                dist, cur_connection_set%area(iconn), &
@@ -653,7 +653,7 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
       slope_dn = dz/dist
 
       call SurfaceFlowBCFlux(boundary_condition%flow_condition%itype, &
-                         surf_global_aux_vars_bc(sum_connection), &
+                         surf_global_auxvars_bc(sum_connection), &
                          slope_dn, &
                          mannings_loc_p(ghosted_id_dn), &
                          cur_connection_set%area(iconn), &
@@ -675,18 +675,11 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
 end subroutine SurfaceFlowComputeMaxDt
 
 ! ************************************************************************** !
-!> This routine computes the internal flux term for under
-!! diffusion-wave assumption.
-!!
-!> @author
-!! Gautam Bisht, LBL
-!!
-!! date: 08/03/12
-! ************************************************************************** !
-subroutine SurfaceFlowFlux(surf_global_aux_var_up, &
+
+subroutine SurfaceFlowFlux(surf_global_auxvar_up, &
                          zc_up, &
                          mannings_up, &
-                         surf_global_aux_var_dn, &
+                         surf_global_auxvar_dn, &
                          zc_dn, &
                          mannings_dn, &
                          dist, &
@@ -694,6 +687,13 @@ subroutine SurfaceFlowFlux(surf_global_aux_var_up, &
                          option, &
                          vel, &
                          Res)
+  ! 
+  ! This routine computes the internal flux term for under
+  ! diffusion-wave assumption.
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 08/03/12
+  ! 
 
   use Surface_Global_Aux_module
   use Option_module
@@ -701,8 +701,8 @@ subroutine SurfaceFlowFlux(surf_global_aux_var_up, &
   implicit none
 
   type(option_type) :: option
-  type(surface_global_auxvar_type) :: surf_global_aux_var_up
-  type(surface_global_auxvar_type) :: surf_global_aux_var_dn
+  type(surface_global_auxvar_type) :: surf_global_auxvar_up
+  type(surface_global_auxvar_type) :: surf_global_auxvar_dn
   PetscReal :: zc_up, zc_dn
   PetscReal :: mannings_up, mannings_dn
 
@@ -720,20 +720,20 @@ subroutine SurfaceFlowFlux(surf_global_aux_var_up, &
   ! initialize
   flux = 0.d0
 
-  head_up = surf_global_aux_var_up%head(1) + zc_up
-  head_dn = surf_global_aux_var_dn%head(1) + zc_dn
+  head_up = surf_global_auxvar_up%head(1) + zc_up
+  head_dn = surf_global_auxvar_dn%head(1) + zc_dn
 
   if (head_up>head_dn) then
     mannings_half = mannings_up
-    if (surf_global_aux_var_up%head(1)>eps) then
-      hw_half = surf_global_aux_var_up%head(1)
+    if (surf_global_auxvar_up%head(1)>eps) then
+      hw_half = surf_global_auxvar_up%head(1)
     else
       hw_half = 0.d0
     endif
   else
     mannings_half = mannings_dn
-    if (surf_global_aux_var_dn%head(1)>eps) then
-      hw_half = surf_global_aux_var_dn%head(1)
+    if (surf_global_auxvar_dn%head(1)>eps) then
+      hw_half = surf_global_auxvar_dn%head(1)
     else
       hw_half = 0.d0
     endif
@@ -755,21 +755,21 @@ subroutine SurfaceFlowFlux(surf_global_aux_var_up, &
 end subroutine SurfaceFlowFlux
 
 ! ************************************************************************** !
-!> This routine computes the boundary term surface water equation
-!!
-!> @author
-!! Gautam Bisht, LBL
-!!
-!! date: 08/03/12
-! ************************************************************************** !
+
 subroutine SurfaceFlowBCFlux(ibndtype, &
-                           surf_global_aux_var, &
+                           surf_global_auxvar, &
                            slope, &
                            mannings, &
                            length, &
                            option, &
                            vel, &
                            Res)
+  ! 
+  ! This routine computes the boundary term surface water equation
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 08/03/12
+  ! 
 
   use Option_module
   use Surface_Global_Aux_module
@@ -777,7 +777,7 @@ subroutine SurfaceFlowBCFlux(ibndtype, &
   implicit none
 
   type(option_type) :: option
-  type(surface_global_auxvar_type) :: surf_global_aux_var
+  type(surface_global_auxvar_type) :: surf_global_auxvar
   PetscReal :: slope
   PetscReal :: mannings
   PetscReal :: length
@@ -794,7 +794,7 @@ subroutine SurfaceFlowBCFlux(ibndtype, &
   
   ! Flow  
   pressure_bc_type = ibndtype(TH_PRESSURE_DOF)
-  head = surf_global_aux_var%head(1)
+  head = surf_global_auxvar%head(1)
   
   select case(pressure_bc_type)
     case (ZERO_GRADIENT_BC)
@@ -813,14 +813,14 @@ subroutine SurfaceFlowBCFlux(ibndtype, &
 end subroutine SurfaceFlowBCFlux
 
 ! ************************************************************************** !
-!> This routine updates auxiliary variables
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceFlowUpdateAuxVars(surf_realization)
+  ! 
+  ! This routine updates auxiliary variables
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   use Surface_Realization_class
   use Patch_module
@@ -843,9 +843,9 @@ subroutine SurfaceFlowUpdateAuxVars(surf_realization)
   type(coupler_type), pointer :: boundary_condition
   type(coupler_type), pointer :: source_sink
   type(connection_set_type), pointer :: cur_connection_set
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars(:)
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars_bc(:)
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars_ss(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars_bc(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars_ss(:)
 
   PetscInt :: ghosted_id, local_id, sum_connection, iconn
   PetscReal, pointer :: xx_loc_p(:), icap_loc_p(:), iphase_loc_p(:)
@@ -859,9 +859,9 @@ subroutine SurfaceFlowUpdateAuxVars(surf_realization)
   grid => patch%grid
   surf_field => surf_realization%surf_field
 
-  surf_global_aux_vars => patch%surf_aux%SurfaceGlobal%aux_vars
-  surf_global_aux_vars_bc => patch%surf_aux%SurfaceGlobal%aux_vars_bc
-  surf_global_aux_vars_ss => patch%surf_aux%SurfaceGlobal%aux_vars_ss
+  surf_global_auxvars => patch%surf_aux%SurfaceGlobal%auxvars
+  surf_global_auxvars_bc => patch%surf_aux%SurfaceGlobal%auxvars_bc
+  surf_global_auxvars_ss => patch%surf_aux%SurfaceGlobal%auxvars_ss
   
   call VecGetArrayF90(surf_field%flow_xx_loc,xx_loc_p, ierr)
 
@@ -873,7 +873,7 @@ subroutine SurfaceFlowUpdateAuxVars(surf_realization)
     if (associated(patch%imat)) then
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
-    surf_global_aux_vars(ghosted_id)%head(1) = xx_loc_p(ghosted_id)
+    surf_global_auxvars(ghosted_id)%head(1) = xx_loc_p(ghosted_id)
   enddo
   call VecRestoreArrayF90(surf_field%flow_xx_loc,xx_loc_p, ierr)
    
@@ -899,7 +899,7 @@ subroutine SurfaceFlowUpdateAuxVars(surf_realization)
             xxbc(1) = xx_loc_p(ghosted_id)
         end select
       
-      surf_global_aux_vars_bc(sum_connection)%head(1) = xxbc(1)
+      surf_global_auxvars_bc(sum_connection)%head(1) = xxbc(1)
     enddo
     boundary_condition => boundary_condition%next
   enddo
@@ -918,7 +918,7 @@ subroutine SurfaceFlowUpdateAuxVars(surf_realization)
       if (patch%imat(ghosted_id) <= 0) cycle
 
       xxss = xx_loc_p(ghosted_id)
-      surf_global_aux_vars_ss(sum_connection)%head(1) = xxss(1)
+      surf_global_auxvars_ss(sum_connection)%head(1) = xxss(1)
     enddo
     source_sink => source_sink%next
   enddo
@@ -928,14 +928,14 @@ subroutine SurfaceFlowUpdateAuxVars(surf_realization)
 end subroutine SurfaceFlowUpdateAuxVars
 
 ! ************************************************************************** !
-!> This routine surface flow tecplot file header
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 05/29/12
-! ************************************************************************** !
+
 function SurfaceFlowGetTecplotHeader(surf_realization,icolumn)
+  ! 
+  ! This routine surface flow tecplot file header
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 05/29/12
+  ! 
 
   use Surface_Realization_class
   use Option_module
@@ -967,15 +967,15 @@ function SurfaceFlowGetTecplotHeader(surf_realization,icolumn)
 end function SurfaceFlowGetTecplotHeader
 
 ! ************************************************************************** !
-!> This routine get soil properties of the top-most soil layer from the 
-!! subsurface domain.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceFlowGetSubsurfProp(realization,surf_realization)
+  ! 
+  ! This routine get soil properties of the top-most soil layer from the
+  ! subsurface domain.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   use Grid_module
   use String_module
@@ -990,7 +990,7 @@ subroutine SurfaceFlowGetSubsurfProp(realization,surf_realization)
   use Coupler_module
   use Surface_Field_module
   use Field_module
-  use Water_EOS_module
+  
   use Discretization_module
   use Connection_module
   use Surface_Realization_class
@@ -1260,15 +1260,15 @@ subroutine SurfaceFlowGetSubsurfProp(realization,surf_realization)
 end subroutine SurfaceFlowGetSubsurfProp
 
 ! ************************************************************************** !
-!> This routine prescribes the strength of source/sink between surface and
-!! subsurface volume.
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 06/06/12
-! ************************************************************************** !
+
 subroutine SurfaceFlowUpdateSubsurfSS(realization,surf_realization,dt)
+  ! 
+  ! This routine prescribes the strength of source/sink between surface and
+  ! subsurface volume.
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 06/06/12
+  ! 
 
   use Grid_module
   use String_module
@@ -1282,7 +1282,7 @@ subroutine SurfaceFlowUpdateSubsurfSS(realization,surf_realization,dt)
   use Condition_module
   use Coupler_module
   use Surface_Field_module
-  use Water_EOS_module
+  use EOS_Water_module
   use Discretization_module
   use Surface_Realization_class
   use Realization_Base_class
@@ -1326,7 +1326,7 @@ subroutine SurfaceFlowUpdateSubsurfSS(realization,surf_realization,dt)
 
   dm_ptr => DiscretizationGetDMPtrFromIndex(surf_realization%discretization,ONEDOF)
 
-  call density(option%reference_temperature,option%reference_pressure,den)
+  call EOSWaterdensity(option%reference_temperature,option%reference_pressure,den)
 
   coupler_list => patch%source_sinks
   coupler => coupler_list%first
@@ -1373,22 +1373,21 @@ subroutine SurfaceFlowUpdateSubsurfSS(realization,surf_realization,dt)
 end subroutine SurfaceFlowUpdateSubsurfSS
 
 ! ************************************************************************** !
-!> This routine scatters pressure values for first soil layer from subsurface
-!! model to surface model. When this routine is called for the first time,
-!! following subsurface properties are send from subsurface model to surface
-!! model:
-!!  - Permeabilities in X,Y,Z directions.
-!!  - Distance of soil control volume to center of surface cell (DX,DY,DZ).
-!!  - Porosity.
-!!  - Saturation function ID of soil control volume.
-!!
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 06/06/12
-! ************************************************************************** !
+
 subroutine SurfaceFlowUpdateSurfBC(realization,surf_realization)
+  ! 
+  ! This routine scatters pressure values for first soil layer from subsurface
+  ! model to surface model. When this routine is called for the first time,
+  ! following subsurface properties are send from subsurface model to surface
+  ! model:
+  ! - Permeabilities in X,Y,Z directions.
+  ! - Distance of soil control volume to center of surface cell (DX,DY,DZ).
+  ! - Porosity.
+  ! - Saturation function ID of soil control volume.
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 06/06/12
+  ! 
 
   use Grid_module
   use String_module
@@ -1403,7 +1402,7 @@ subroutine SurfaceFlowUpdateSurfBC(realization,surf_realization)
   use Coupler_module
   use Surface_Field_module
   use Field_module
-  use Water_EOS_module
+  
   use Discretization_module
   use Connection_module
   use Surface_Realization_class
@@ -1502,14 +1501,14 @@ subroutine SurfaceFlowUpdateSurfBC(realization,surf_realization)
 end subroutine SurfaceFlowUpdateSurfBC
 
 ! ************************************************************************** !
-!> This routine computes flux between surface and subsurface model.
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 06/06/12
-! ************************************************************************** !
+
 subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization)
+  ! 
+  ! This routine computes flux between surface and subsurface model.
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 06/06/12
+  ! 
 
   use Grid_module
   use String_module
@@ -1524,10 +1523,9 @@ subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization)
   use Coupler_module
   use Surface_Field_module
   use Field_module
-  use Water_EOS_module
   use Discretization_module
   use Connection_module
-  use Water_EOS_module
+  use EOS_Water_module
   use Saturation_Function_module
   use Surface_Realization_class
   use Realization_Base_class
@@ -1580,8 +1578,10 @@ subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization)
   PetscReal :: sat_pressure
   PetscReal :: pw
   PetscReal :: visl
-  PetscReal :: dvis_dp
-  PetscReal :: dvis_dt
+!geh: uncomment if derivatives needed.
+!  PetscReal :: dvis_dp
+!  PetscReal :: dvis_dt
+!  PetscReal :: dvis_dps
   PetscReal :: v_darcy
   PetscReal :: v_darcy_max
   PetscReal :: gravity
@@ -1598,7 +1598,7 @@ subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization)
   surf_grid  => surf_realization%discretization%grid
   surf_field => surf_realization%surf_field
 
-  call density(option%reference_temperature,option%reference_pressure,den)
+  call EOSWaterdensity(option%reference_temperature,option%reference_pressure,den)
 
   call VecGetArrayF90(surf_field%press_subsurf,press_sub_p,ierr)
   call VecGetArrayF90(surf_field%flow_xx,hw_p,ierr)
@@ -1677,8 +1677,10 @@ subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization)
           pw = option%reference_pressure
         endif
                                            
-        call psat(option%reference_temperature,sat_pressure,ierr)
-        call VISW(option%reference_temperature,pw,sat_pressure,visl,dvis_dt,dvis_dp,ierr)
+        call EOSWaterSaturationPressure(option%reference_temperature,sat_pressure,ierr)
+!geh: we now have a noderivative version, change back if need derivatives
+!geh        call EOSWaterViscosity(option%reference_temperature,pw,sat_pressure,visl,dvis_dt,dvis_dp,dvis_dps,ierr)
+        call EOSWaterViscosity(option%reference_temperature,pw,sat_pressure,visl,ierr)
 
         v_darcy = Dq_p(local_id)*kr/visl*dphi
         if (v_darcy<=0.d0) then
@@ -1716,15 +1718,15 @@ subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization)
 end subroutine SurfaceFlowSurf2SubsurfFlux
 
 ! ************************************************************************** !
-!> This routine creates a MPI vector to keep accumulated volume of water
-!! exchanged between surface and subsurface model.
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 10/05/12
-! ************************************************************************** !
+
 subroutine SurfaceFlowCreateSurfSubsurfVec(realization,surf_realization)
+  ! 
+  ! This routine creates a MPI vector to keep accumulated volume of water
+  ! exchanged between surface and subsurface model.
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 10/05/12
+  ! 
 
   use Grid_module
   use String_module
@@ -1738,7 +1740,7 @@ subroutine SurfaceFlowCreateSurfSubsurfVec(realization,surf_realization)
   use Condition_module
   use Coupler_module
   use Surface_Field_module
-  use Water_EOS_module
+  
   use Discretization_module
   use Surface_Realization_class
   use Realization_Base_class
@@ -1814,15 +1816,15 @@ subroutine SurfaceFlowCreateSurfSubsurfVec(realization,surf_realization)
 end subroutine SurfaceFlowCreateSurfSubsurfVec
 
 ! ************************************************************************** !
-!> This routine creates a MPI vector to exchanged data from subsurface model
-!! to surface model.
-!!
-!> @author
-!! Gautam Bisht, LBL
-!!
-!! date: 07/29/13
-! ************************************************************************** !
+
 subroutine SurfaceFlowCreateSurfSubsurfVecNew(realization,surf_realization)
+  ! 
+  ! This routine creates a MPI vector to exchanged data from subsurface model
+  ! to surface model.
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 07/29/13
+  ! 
 
   use Grid_module
   use String_module
@@ -1836,7 +1838,6 @@ subroutine SurfaceFlowCreateSurfSubsurfVecNew(realization,surf_realization)
   use Condition_module
   use Coupler_module
   use Surface_Field_module
-  use Water_EOS_module
   use Discretization_module
   use Surface_Realization_class
   use Realization_Base_class
@@ -1916,15 +1917,15 @@ subroutine SurfaceFlowCreateSurfSubsurfVecNew(realization,surf_realization)
 end subroutine SurfaceFlowCreateSurfSubsurfVecNew
 
 ! ************************************************************************** !
-!> This routine gets updated values of standing water at the end of 
-!! subsurface-flow model timestep.
-!!
-!> @author
-!! Gautam Bisht, LBL
-!!
-!! date: 07/30/13
-! ************************************************************************** !
+
 subroutine SurfaceFlowUpdateSurfState(realization, surf_realization, dt)
+  ! 
+  ! This routine gets updated values of standing water at the end of
+  ! subsurface-flow model timestep.
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 07/30/13
+  ! 
 
   use Connection_module
   use Coupler_module
@@ -1938,7 +1939,7 @@ subroutine SurfaceFlowUpdateSurfState(realization, surf_realization, dt)
   use String_module
   use Surface_Field_module
   use Surface_Realization_class
-  use Water_EOS_module
+  use EOS_Water_module
 
   implicit none
   
@@ -2029,7 +2030,7 @@ subroutine SurfaceFlowUpdateSurfState(realization, surf_realization, dt)
                      surf_field%work, &
                      INSERT_VALUES,SCATTER_FORWARD,ierr)
 
-  call density(option%reference_temperature,option%reference_pressure,den)
+  call EOSWaterdensity(option%reference_temperature,option%reference_pressure,den)
 
   call VecGetArrayF90(surf_field%flow_xx, hw_p, ierr)
   call VecGetArrayF90(surf_field%work, surfpress_p, ierr)
@@ -2051,15 +2052,15 @@ subroutine SurfaceFlowUpdateSurfState(realization, surf_realization, dt)
 end subroutine SurfaceFlowUpdateSurfState
 
 ! ************************************************************************** !
-!> This routine gets updated values of standing water at the end of 
-!! subsurface-flow model timestep.
-!!
-!> @author
-!! Gautam Bisht, LBL
-!!
-!! date: 07/30/13
-! ************************************************************************** !
+
 subroutine SurfaceFlowUpdateSurfStateNew(surf_realization)
+  ! 
+  ! This routine gets updated values of standing water at the end of
+  ! subsurface-flow model timestep.
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 07/30/13
+  ! 
 
   use Connection_module
   use Coupler_module
@@ -2073,7 +2074,7 @@ subroutine SurfaceFlowUpdateSurfStateNew(surf_realization)
   use String_module
   use Surface_Field_module
   use Surface_Realization_class
-  use Water_EOS_module
+  use EOS_Water_module
 
   implicit none
   
@@ -2111,7 +2112,7 @@ subroutine SurfaceFlowUpdateSurfStateNew(surf_realization)
   surf_field => surf_realization%surf_field
   surf_grid  => surf_realization%discretization%grid
   
-  call density(option%reference_temperature,option%reference_pressure,den)
+  call EOSWaterdensity(option%reference_temperature,option%reference_pressure,den)
 
   call VecGetArrayF90(surf_field%flow_xx, hw_p, ierr)
   call VecGetArrayF90(surf_field%press_subsurf, surfpress_p, ierr)
@@ -2139,15 +2140,15 @@ subroutine SurfaceFlowUpdateSurfStateNew(surf_realization)
 end subroutine SurfaceFlowUpdateSurfStateNew
 
 ! ************************************************************************** !
-!> This routine updates the pressure BC for subsurface model at the end of
-!!  surface-flow model timestep.
-!!
-!> @author
-!! Gautam Bisht, LBL
-!!
-!! date: 07/30/13
-! ************************************************************************** !
+
 subroutine SurfaceFlowUpdateSubsurfBC(realization,surf_realization)
+  ! 
+  ! This routine updates the pressure BC for subsurface model at the end of
+  ! surface-flow model timestep.
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 07/30/13
+  ! 
 
   use Grid_module
   use String_module
@@ -2161,11 +2162,11 @@ subroutine SurfaceFlowUpdateSubsurfBC(realization,surf_realization)
   use Condition_module
   use Coupler_module
   use Surface_Field_module
-  use Water_EOS_module
   use Discretization_module
   use Surface_Realization_class
   use Realization_Base_class
   use DM_Kludge_module
+  use EOS_Water_module
 
   implicit none
   
@@ -2207,7 +2208,7 @@ subroutine SurfaceFlowUpdateSubsurfBC(realization,surf_realization)
 
   dm_ptr => DiscretizationGetDMPtrFromIndex(surf_realization%discretization,ONEDOF)
 
-  call density(option%reference_temperature,option%reference_pressure,den)
+  call EOSWaterdensity(option%reference_temperature,option%reference_pressure,den)
 
   call VecGetArrayF90(surf_field%flow_xx, hw_p, ierr)
   call VecGetArrayF90(surf_field%work, surfpress_p, ierr)

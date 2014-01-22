@@ -23,14 +23,17 @@ module mixture_module
 
  contains
 
-! subroutines to calculate the properties of mixture  
-! will:: call other EOS mod to obtain pure fluid properties
-!        apply mixing rules
+! ************************************************************************** !
 
 subroutine mixture_eos_noderiv (p,t,xga,sg,energyscale,num_phase,num_spec,&
                     num_pricomp,ipckrtype,pckr_swir,pckr_lambda,pckr_alpha,&
                     pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,sat_pressure,den,avgmw,h, &
                     u,diff,hen,xphi,pc,kvr,ierr,itable)
+  ! 
+  ! subroutines to calculate the properties of mixture
+  ! will:: call other EOS mod to obtain pure fluid properties
+  ! apply mixing rules
+  ! 
 ! xgw: water molar fraction in gas phase
 ! P/Pa, t/(Degree Centigreed), Pc/Pa, Hen(xla=Hen*xga, dimensionless)
  
@@ -255,12 +258,8 @@ subroutine mixture_eos_noderiv (p,t,xga,sg,energyscale,num_phase,num_spec,&
  return
 end subroutine mixture_eos_noderiv
 
+! ************************************************************************** !
 
-
-
- 
-!*************************************************************
-  
 subroutine mixture_eos(p,t,xga,sg,energyscale,num_phase,num_spec, &
     num_pricomp,ipckrtype,pckr_swir,pckr_lambda,pckr_alpha,pckr_m, &
     pckr_pcmax,pckr_betac,pckr_pwr,sat_pressure,den,den_p,den_t,den_c,den_s, &

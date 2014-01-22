@@ -15,13 +15,14 @@ module Hydrogeophysics_Factory_module
 contains
 
 ! ************************************************************************** !
-!
-! HydrogeophysicsInitialize: Sets up hydrogeophysics simulation 
-! author: Glenn Hammond
-! date: 06/17/13
-!
-! ************************************************************************** !
+
 subroutine HydrogeophysicsInitialize(simulation_base,option)
+  ! 
+  ! Sets up hydrogeophysics simulation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/17/13
+  ! 
 
   use Option_module
   use Hydrogeophysics_Wrapper_module
@@ -56,11 +57,14 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
   Vec :: pflotran_solution_vec_mpi, pflotran_solution_vec_seq
   VecScatter :: pflotran_scatter
   
-#ifndef E4D
-  option%io_buffer = 'Must compile with E4D defined during preprocessing ' // &
-    'step in order to use HYDROGEOPHYSICS.'
+#ifdef PETSC_HAVE_MPIUNI
+  option%io_buffer = 'HYDROGEOPHYSICs not supported with MPIUNI.'
   call printErrMsg(option)
-#endif
+#else
+
+  ! initialize PETSc Vecs to 0
+  pflotran_solution_vec_mpi = 0
+  pflotran_solution_vec_seq = 0
 
   string = '-num_slaves'
   num_slaves = -999
@@ -171,6 +175,7 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
   else
     option%io_rank = -1 ! turn off I/O from E4D processes.
   endif
+#endif
 
 !#define DEBUG
 
@@ -285,14 +290,15 @@ print *, option%myrank, int_array
 end subroutine HydrogeophysicsInitialize
 
 ! ************************************************************************** !
-!
-! HydrogeophysicsInitializePostPetsc: Sets up hydrogeophysics simulation 
-!                                     framework after to PETSc initialization
-! author: Glenn Hammond
-! date: 06/17/13
-!
-! ************************************************************************** !
+
 subroutine HydrogeophysicsInitPostPetsc(simulation, option)
+  ! 
+  ! HydrogeophysicsInitializePostPetsc: Sets up hydrogeophysics simulation
+  ! framework after to PETSc initialization
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/17/13
+  ! 
 
   use Simulation_module
   use Subsurface_Factory_module
@@ -327,13 +333,14 @@ subroutine HydrogeophysicsInitPostPetsc(simulation, option)
 end subroutine HydrogeophysicsInitPostPetsc
 
 ! ************************************************************************** !
-!
-! HydrogeoInitCommandLineSettings: Initializes hydrogeophysics settings
-! author: Glenn Hammond
-! date: 06/17/13
-!
-! ************************************************************************** !
+
 subroutine HydrogeoInitCommandLineSettings(option)
+  ! 
+  ! Initializes hydrogeophysics settings
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/17/13
+  ! 
 
   use Option_module
   use Input_Aux_module

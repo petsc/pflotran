@@ -120,8 +120,9 @@ subroutine sw_spline_read
 
   return
 end subroutine sw_spline_read
-  
-  
+
+! ************************************************************************** !
+
 subroutine sw_prop(tx,px,rho,h,u,fg)
       
        use spline_module

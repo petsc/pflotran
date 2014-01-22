@@ -30,13 +30,14 @@ module MFD_module
 contains
 
 ! ************************************************************************** !
-!
-! MFDCreateJacobian: Creates a Jacobian matrix for  the faced based dof
-! author: Daniil Svyatskiy 
-! date: 05/14/10
-!
-! ************************************************************************** !
+
 subroutine MFDCreateJacobian(grid, mfd_aux, mat_type, J, option)
+  ! 
+  ! Creates a Jacobian matrix for  the faced based dof
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 05/14/10
+  ! 
 
  use Option_module
  use Grid_module
@@ -61,7 +62,7 @@ subroutine MFDCreateJacobian(grid, mfd_aux, mat_type, J, option)
   Mat :: J
 
 
-  type(mfd_auxvar_type), pointer :: aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
   PetscInt, allocatable :: d_nnz(:), o_nnz(:)
   PetscInt :: icell, iface
   PetscInt :: ghost_face_id, local_face_id, ghost_face_id_n, local_face_id_n
@@ -76,14 +77,14 @@ subroutine MFDCreateJacobian(grid, mfd_aux, mat_type, J, option)
   o_nnz = 0
 
   do icell = 1, grid%nlmax
-    aux_var => MFD_aux%aux_vars(icell)
-    do icount = 1, aux_var%numfaces
-      ghost_face_id = aux_var%face_id_gh(icount)
+    auxvar => MFD_aux%auxvars(icell)
+    do icount = 1, auxvar%numfaces
+      ghost_face_id = auxvar%face_id_gh(icount)
       local_face_id = grid%fG2L(ghost_face_id)
       if (local_face_id > 0) then
-        do jcount = 1, aux_var%numfaces
+        do jcount = 1, auxvar%numfaces
           if (icount == jcount) cycle
-          ghost_face_id_n = aux_var%face_id_gh(jcount)
+          ghost_face_id_n = auxvar%face_id_gh(jcount)
           local_face_id_n = grid%fG2L(ghost_face_id_n)
           if (local_face_id_n > 0) then
              d_nnz(local_face_id) = d_nnz(local_face_id) + 1
@@ -147,7 +148,7 @@ subroutine MFDCreateJacobian(grid, mfd_aux, mat_type, J, option)
 end subroutine MFDCreateJacobian
 
 ! ************************************************************************** !
-! ************************************************************************** !
+
 subroutine MFDCreateJacobianLP(grid, mfd_aux, mat_type, J, option)
 
   use Option_module
@@ -176,7 +177,7 @@ subroutine MFDCreateJacobianLP(grid, mfd_aux, mat_type, J, option)
   Mat :: J
 
 
-  type(mfd_auxvar_type), pointer :: aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
   PetscInt, allocatable :: d_nnz(:), o_nnz(:)
   type(connection_set_type), pointer :: conn
   PetscInt :: icell, iface, i
@@ -203,14 +204,14 @@ subroutine MFDCreateJacobianLP(grid, mfd_aux, mat_type, J, option)
     !
 
     do icell = 1, grid%nlmax
-      aux_var => MFD_aux%aux_vars(icell)
-      do icount = 1, aux_var%numfaces
-        ghost_face_id = aux_var%face_id_gh(icount)
+      auxvar => MFD_aux%auxvars(icell)
+      do icount = 1, auxvar%numfaces
+        ghost_face_id = auxvar%face_id_gh(icount)
         local_face_id = grid%fG2L(ghost_face_id)
         if (local_face_id > 0) then
-          do jcount = 1, aux_var%numfaces
+          do jcount = 1, auxvar%numfaces
             if (icount == jcount) cycle
-            ghost_face_id_n = aux_var%face_id_gh(jcount)
+            ghost_face_id_n = auxvar%face_id_gh(jcount)
             local_face_id_n = grid%fG2L(ghost_face_id_n)
             if (local_face_id_n > 0) then
               d_nnz(local_face_id) = d_nnz(local_face_id) + 1
@@ -386,7 +387,7 @@ subroutine MFDCreateJacobianLP(grid, mfd_aux, mat_type, J, option)
 end subroutine MFDCreateJacobianLP
 
 ! ************************************************************************** !
-! ************************************************************************** !
+
 subroutine MFDInitializeMassMatrices(grid, field, &
                                              mfd_aux, option)
 
@@ -413,7 +414,7 @@ subroutine MFDInitializeMassMatrices(grid, field, &
   type(option_type) :: option
 
 
-  type(mfd_auxvar_type), pointer :: aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
   PetscInt :: ghosted_cell_id, icell, i, j
   PetscErrorCode :: ierr
   PetscReal :: PermTensor(3,3) 
@@ -443,10 +444,10 @@ subroutine MFDInitializeMassMatrices(grid, field, &
     PermTensor(3,1) = PermTensor(1,3)
     PermTensor(3,2) = PermTensor(2,3)
 
-    aux_var => mfd_aux%aux_vars(icell)
-    call MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id, aux_var, volume_p(icell), PermTensor, option)
-    call MFDAuxInitResidDerivArrays(aux_var, option)
-    call MFDAuxComputeGeometricValues (grid, ghosted_cell_id, aux_var, PermTensor, option)
+    auxvar => mfd_aux%auxvars(icell)
+    call MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id, auxvar, volume_p(icell), PermTensor, option)
+    call MFDAuxInitResidDerivArrays(auxvar, option)
+    call MFDAuxComputeGeometricValues (grid, ghosted_cell_id, auxvar, PermTensor, option)
   enddo
 
   call VecRestoreArrayF90(field%volume, volume_p, ierr)
@@ -460,8 +461,8 @@ subroutine MFDInitializeMassMatrices(grid, field, &
 end subroutine MFDInitializeMassMatrices
 
 ! ************************************************************************** !
-! ************************************************************************** !
-subroutine MFDAuxGenerateStiffMatrix(aux_var, rich_aux_var, global_aux_var,  &
+
+subroutine MFDAuxGenerateStiffMatrix(auxvar, rich_auxvar, global_auxvar,  &
                                        sq_faces, option)
 
   use Option_module
@@ -470,9 +471,9 @@ subroutine MFDAuxGenerateStiffMatrix(aux_var, rich_aux_var, global_aux_var,  &
 
   implicit none
 
-  type(mfd_auxvar_type), pointer :: aux_var
-  type(richards_auxvar_type) :: rich_aux_var
-  type(global_auxvar_type) :: global_aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
+  type(richards_auxvar_type) :: rich_auxvar
+  type(global_auxvar_type) :: global_auxvar
   PetscScalar, pointer :: sq_faces(:)
   type(option_type) :: option
   PetscScalar, pointer :: StiffMatrix(:,:)
@@ -481,21 +482,21 @@ subroutine MFDAuxGenerateStiffMatrix(aux_var, rich_aux_var, global_aux_var,  &
   PetscScalar :: E
   PetscScalar, pointer :: MB(:)
 
-  allocate(MB(aux_var%numfaces))
+  allocate(MB(auxvar%numfaces))
 
   E = 0
-  do iface = 1, aux_var%numfaces
+  do iface = 1, auxvar%numfaces
     MB(iface) = 0.
-    do jface = 1, aux_var%numfaces
-       MB(iface) = MB(iface) + aux_var%MassMatrixInv(iface,jface)*sq_faces(jface)
+    do jface = 1, auxvar%numfaces
+       MB(iface) = MB(iface) + auxvar%MassMatrixInv(iface,jface)*sq_faces(jface)
     enddo
     E = E + MB(iface)*sq_faces(iface)
   enddo
 
-  do iface = 1, aux_var%numfaces
-    do jface = 1, aux_var%numfaces
-        aux_var%StiffMatrix(iface,jface) = sq_faces(iface)*sq_faces(jface)*    &
-                                        (aux_var%MassMatrixInv(iface,jface) - &
+  do iface = 1, auxvar%numfaces
+    do jface = 1, auxvar%numfaces
+        auxvar%StiffMatrix(iface,jface) = sq_faces(iface)*sq_faces(jface)*    &
+                                        (auxvar%MassMatrixInv(iface,jface) - &
                                         (1./E)*MB(iface)*MB(jface))
     enddo
   enddo
@@ -505,11 +506,10 @@ subroutine MFDAuxGenerateStiffMatrix(aux_var, rich_aux_var, global_aux_var,  &
 
 end subroutine MFDAuxGenerateStiffMatrix
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-! ************************************************************************** !
-subroutine MFDAuxGenerateRhs(patch, grid, ghosted_cell_id, PermTensor, bc_g, source_f,  bc_h, aux_var, &
-                                       rich_aux_var, global_aux_var, Accum, &
+subroutine MFDAuxGenerateRhs(patch, grid, ghosted_cell_id, PermTensor, bc_g, source_f,  bc_h, auxvar, &
+                                       rich_auxvar, global_auxvar, Accum, &
                                        porosity, volume, pres, face_pres, bnd,&
                                        sq_faces, neig_den, neig_kvr, neig_dkvr_dp, option, rhs)
 
@@ -522,9 +522,9 @@ subroutine MFDAuxGenerateRhs(patch, grid, ghosted_cell_id, PermTensor, bc_g, sou
 
   type(patch_type) :: patch
   type(grid_type) :: grid
-  type(mfd_auxvar_type), pointer :: aux_var
-  type(richards_auxvar_type) :: rich_aux_var
-  type(global_auxvar_type) :: global_aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
+  type(richards_auxvar_type) :: rich_auxvar
+  type(global_auxvar_type) :: global_auxvar
   PetscScalar :: sq_faces(:), neig_den(:), neig_kvr(:), neig_dkvr_dp(:)
   type(option_type) :: option
   PetscScalar :: bc_g(:), rhs(:), bc_h(:), face_pres(:), bnd(:)
@@ -547,16 +547,16 @@ subroutine MFDAuxGenerateRhs(patch, grid, ghosted_cell_id, PermTensor, bc_g, sou
   PetscScalar :: BARWB, BARWClm, BdARdpWB, BdARdpWClm
   PetscScalar :: upweight, delta_p
 
-  ukvr = 0. !rich_aux_var%kvr_x
-  dukvr_dp = 0.!rich_aux_var%dkvr_x_dp
-  den_cntr = global_aux_var%den(1)
-  dden_cntr_dp =  rich_aux_var%dden_dp
+  ukvr = 0. !rich_auxvar%kvr_x
+  dukvr_dp = 0.!rich_auxvar%dkvr_x_dp
+  den_cntr = global_auxvar%den(1)
+  dden_cntr_dp =  rich_auxvar%dden_dp
 
   upweight = 0.5
 
   do i = 1 , numfaces
     if (bnd(i)==1) then 
-        call MFDComputeDensity(global_aux_var, face_pres(i) + bc_g(i)/sq_faces(i), den(i), dden_dp(i), option)
+        call MFDComputeDensity(global_auxvar, face_pres(i) + bc_g(i)/sq_faces(i), den(i), dden_dp(i), option)
     else  
         den(i) =  upweight*den_cntr + (1.D0-upweight)*neig_den(i)
         dden_dp(i) = dden_cntr_dp
@@ -564,15 +564,15 @@ subroutine MFDAuxGenerateRhs(patch, grid, ghosted_cell_id, PermTensor, bc_g, sou
     endif
 
 #ifdef USE_ANISOTROPIC_MOBILITY
-        if (rich_aux_var%kvr_x < 1e-10) then
+        if (rich_auxvar%kvr_x < 1e-10) then
             ukvr(i) = 1e-10
         else 
-            ukvr(i) = rich_aux_var%kvr_x
+            ukvr(i) = rich_auxvar%kvr_x
         endif
-        dukvr_dp(i) = rich_aux_var%dkvr_x_dp 
+        dukvr_dp(i) = rich_auxvar%dkvr_x_dp 
 #else
-        ukvr(i) = rich_aux_var%kvr
-        dukvr_dp(i) = rich_aux_var%dkvr_dp 
+        ukvr(i) = rich_auxvar%kvr
+        dukvr_dp(i) = rich_auxvar%dkvr_dp 
 #endif
 
      beta(i) = ukvr(i)*den(i)
@@ -595,8 +595,8 @@ subroutine MFDAuxGenerateRhs(patch, grid, ghosted_cell_id, PermTensor, bc_g, sou
   endif
 #endif
 
-  sat = global_aux_var%sat(1)
-  ds_dp = rich_aux_var%dsat_dp
+  sat = global_auxvar%sat(1)
+  ds_dp = rich_auxvar%dsat_dp
   PorVol_dt = porosity*volume/option%flow_dt
 
   E = 0.
@@ -605,73 +605,73 @@ subroutine MFDAuxGenerateRhs(patch, grid, ghosted_cell_id, PermTensor, bc_g, sou
 
   do iface = 1, numfaces
      Clm(iface) = sq_faces(iface)*face_pres(iface) + bc_g(iface)
-     Rgr(iface) = den(iface)*aux_var%gr(iface)
+     Rgr(iface) = den(iface)*auxvar%gr(iface)
   enddo 
 
-  Wg = matmul(aux_var%MassMatrixInv, bc_g)
-  WClm = matmul(aux_var%MassMatrixInv, Clm)
+  Wg = matmul(auxvar%MassMatrixInv, bc_g)
+  WClm = matmul(auxvar%MassMatrixInv, Clm)
 
-  BARWB = dot_product(aux_var%WB, BAR)
+  BARWB = dot_product(auxvar%WB, BAR)
   BARWClm = dot_product(WClm, BAR)
-  BdARdpWB = dot_product(aux_var%WB, BdARdp)
+  BdARdpWB = dot_product(auxvar%WB, BdARdp)
   BdARdpWClm = dot_product(WClm, BdARdp)
   div_grav_term = dot_product(Rgr, BAR)
 
-   aux_var%Rp = BARWB*pres(1) - BARWClm  + f(1) + div_grav_term
+   auxvar%Rp = BARWB*pres(1) - BARWClm  + f(1) + div_grav_term
 
-   aux_var%dRp_dp = BARWB + pres(1) * BdARdpWB - BdARdpWClm
+   auxvar%dRp_dp = BARWB + pres(1) * BdARdpWB - BdARdpWClm
    do iface = 1, numfaces
      
-     aux_var%dRp_dp = aux_var%dRp_dp + & 
+     auxvar%dRp_dp = auxvar%dRp_dp + & 
        sq_faces(iface)* &
      ( dukvr_dp(iface)*den(iface)*den(iface) + 2*den(iface)*ukvr(iface)*dden_dp(iface) ) &
-     * aux_var%gr(iface) 
+     * auxvar%gr(iface) 
 
    enddo
-   aux_var%dRp_dp = aux_var%dRp_dp  + PorVol_dt*sat*dden_cntr_dp + PorVol_dt*den_cntr*ds_dp      
+   auxvar%dRp_dp = auxvar%dRp_dp  + PorVol_dt*sat*dden_cntr_dp + PorVol_dt*den_cntr*ds_dp      
 
-   do iface = 1, aux_var%numfaces
-          aux_var%dRp_dl(iface) = 0.
-         do jface = 1, aux_var%numfaces
-            aux_var%dRp_dl(iface) = aux_var%dRp_dl(iface) - & 
-              BAR(jface) * aux_var%MassMatrixInv(iface,jface) * sq_faces(iface)
+   do iface = 1, auxvar%numfaces
+          auxvar%dRp_dl(iface) = 0.
+         do jface = 1, auxvar%numfaces
+            auxvar%dRp_dl(iface) = auxvar%dRp_dl(iface) - & 
+              BAR(jface) * auxvar%MassMatrixInv(iface,jface) * sq_faces(iface)
          enddo
    enddo
     
-    aux_var%Rl = 0
-    aux_var%dRl_dp = 0
+    auxvar%Rl = 0
+    auxvar%dRl_dp = 0
     CWCl = 0
 
-   do iface = 1, aux_var%numfaces
-     do jface = 1, aux_var%numfaces
-       CWCl(iface) = CWCl(iface) + sq_faces(iface)*aux_var%MassMatrixInv(iface, jface) * &
+   do iface = 1, auxvar%numfaces
+     do jface = 1, auxvar%numfaces
+       CWCl(iface) = CWCl(iface) + sq_faces(iface)*auxvar%MassMatrixInv(iface, jface) * &
                                    sq_faces(jface)*face_pres(jface)
      enddo
    enddo
 
-   do iface = 1, aux_var%numfaces
+   do iface = 1, auxvar%numfaces
 
-     aux_var%Rl(iface) = -sq_faces(iface)*aux_var%WB(iface)*pres(1) &       
+     auxvar%Rl(iface) = -sq_faces(iface)*auxvar%WB(iface)*pres(1) &       
                                    + CWCl(iface)  & 
                                    + sq_faces(iface)*Wg(iface) & 
-                                   - sq_faces(iface)*den(iface)*aux_var%gr(iface)&
+                                   - sq_faces(iface)*den(iface)*auxvar%gr(iface)&
                                    - bc_h(iface)/ukvr(iface)
 
-     aux_var%dRl_dp(iface) = -sq_faces(iface)*aux_var%WB(iface) - sq_faces(iface)*dden_dp(iface)*aux_var%gr(iface)
+     auxvar%dRl_dp(iface) = -sq_faces(iface)*auxvar%WB(iface) - sq_faces(iface)*dden_dp(iface)*auxvar%gr(iface)
 
    enddo
 
-  do iface = 1, aux_var%numfaces
-      rhs(iface) = -aux_var%dRl_dp(iface)*aux_var%Rp/aux_var%dRp_dp + aux_var%Rl(iface)
+  do iface = 1, auxvar%numfaces
+      rhs(iface) = -auxvar%dRl_dp(iface)*auxvar%Rp/auxvar%dRp_dp + auxvar%Rl(iface)
   enddo
 
 
 end subroutine MFDAuxGenerateRhs
 
 ! ************************************************************************** !
-! ************************************************************************** !
-subroutine MFDAuxGenerateRhs_LP(patch, grid, ghosted_cell_id, PermTensor, bc_g, source_f,  bc_h, aux_var, &
-                                       rich_aux_var, global_aux_var, Accum, &
+
+subroutine MFDAuxGenerateRhs_LP(patch, grid, ghosted_cell_id, PermTensor, bc_g, source_f,  bc_h, auxvar, &
+                                       rich_auxvar, global_auxvar, Accum, &
                                        porosity, volume, pres, face_pres, bnd,&
                                        sq_faces, neig_den, neig_kvr, neig_dkvr_dp, neig_pres, option, rhs)
 
@@ -684,9 +684,9 @@ subroutine MFDAuxGenerateRhs_LP(patch, grid, ghosted_cell_id, PermTensor, bc_g, 
 
   type(patch_type) :: patch
   type(grid_type) :: grid
-  type(mfd_auxvar_type), pointer :: aux_var
-  type(richards_auxvar_type) :: rich_aux_var
-  type(global_auxvar_type) :: global_aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
+  type(richards_auxvar_type) :: rich_auxvar
+  type(global_auxvar_type) :: global_auxvar
   PetscScalar :: sq_faces(:), neig_den(:), neig_kvr(:), neig_dkvr_dp(:), neig_pres(:)
   type(option_type) :: option
   PetscScalar :: bc_g(:), rhs(:), bc_h(:), face_pres(:), bnd(:)
@@ -716,18 +716,18 @@ subroutine MFDAuxGenerateRhs_LP(patch, grid, ghosted_cell_id, PermTensor, bc_g, 
   ukvr = 0. 
   dukvr_dp = 0.
   dkvr_dp_neig = 0.
-  den_cntr = global_aux_var%den(1)
-  dden_cntr_dp =  rich_aux_var%dden_dp 
+  den_cntr = global_auxvar%den(1)
+  dden_cntr_dp =  rich_auxvar%dden_dp 
 
   upweight = 0.5
  
   do i = 1 , numfaces
-    ghost_face_id = aux_var%face_id_gh(i)
+    ghost_face_id = auxvar%face_id_gh(i)
     conn => grid%faces(ghost_face_id)%conn_set_ptr
     iface = grid%faces(ghost_face_id)%id
 
     if (bnd(i)==1) then 
-      call MFDComputeDensity(global_aux_var, face_pres(i) + bc_g(i)/sq_faces(i), den(i), dden_dp(i), option)
+      call MFDComputeDensity(global_auxvar, face_pres(i) + bc_g(i)/sq_faces(i), den(i), dden_dp(i), option)
     else
       den(i) =  upweight*den_cntr + (1.D0-upweight)*neig_den(i)
       dden_dp(i) = dden_cntr_dp
@@ -738,27 +738,27 @@ subroutine MFDAuxGenerateRhs_LP(patch, grid, ghosted_cell_id, PermTensor, bc_g, 
                        dot_product(option%gravity, &
                                      conn%dist(1:3,iface))
     gravity = den(i) * FMWH2O * distance_gravity
-    if (aux_var%gr(i) * gravity < 0) gravity = -gravity
+    if (auxvar%gr(i) * gravity < 0) gravity = -gravity
     dphi = pres(1) - neig_pres(i) + gravity
  
-    if (aux_var%gr(i) >=0 )  then
+    if (auxvar%gr(i) >=0 )  then
 #ifdef USE_ANISOTROPIC_MOBILITY
-      if (rich_aux_var%kvr_x < 1e-10 ) then
+      if (rich_auxvar%kvr_x < 1e-10 ) then
         ukvr(i) = 1e-10
       else
-        ukvr(i) = rich_aux_var%kvr_x
+        ukvr(i) = rich_auxvar%kvr_x
       endif
-      dukvr_dp(i) = rich_aux_var%dkvr_x_dp
+      dukvr_dp(i) = rich_auxvar%dkvr_x_dp
 #else
-      if (rich_aux_var%kvr < 1e-10 ) then
+      if (rich_auxvar%kvr < 1e-10 ) then
         ukvr(i) = 1e-10
       else
-        ukvr(i) = rich_aux_var%kvr
+        ukvr(i) = rich_auxvar%kvr
       endif
-      dukvr_dp(i) = rich_aux_var%dkvr_dp
+      dukvr_dp(i) = rich_auxvar%dkvr_dp
 #endif
 
-    else if (aux_var%gr(i) < 0)  then
+    else if (auxvar%gr(i) < 0)  then
 
       if (neig_kvr(i) < 1e-10) then
         ukvr(i) = 1e-10
@@ -776,8 +776,8 @@ subroutine MFDAuxGenerateRhs_LP(patch, grid, ghosted_cell_id, PermTensor, bc_g, 
     BdARdp(i) = sq_faces(i)*dbeta_dp(i)
   enddo
 
-  sat = global_aux_var%sat(1)
-  ds_dp = rich_aux_var%dsat_dp
+  sat = global_auxvar%sat(1)
+  ds_dp = rich_auxvar%dsat_dp
   PorVol_dt = porosity*volume/option%flow_dt
 
   E = 0.
@@ -786,83 +786,83 @@ subroutine MFDAuxGenerateRhs_LP(patch, grid, ghosted_cell_id, PermTensor, bc_g, 
 
   do iface = 1, numfaces
     Clm(iface) = sq_faces(iface)*face_pres(iface) + bc_g(iface)
-    Rgr(iface) = den(iface)*aux_var%gr(iface)
+    Rgr(iface) = den(iface)*auxvar%gr(iface)
   enddo 
 
-  Wg = matmul(aux_var%MassMatrixInv, bc_g)
-  WClm = matmul(aux_var%MassMatrixInv, Clm)
+  Wg = matmul(auxvar%MassMatrixInv, bc_g)
+  WClm = matmul(auxvar%MassMatrixInv, Clm)
 
-  BARWB = dot_product(aux_var%WB, BAR)
+  BARWB = dot_product(auxvar%WB, BAR)
   BARWClm = dot_product(WClm, BAR)
-  BdARdpWB = dot_product(aux_var%WB, BdARdp)
+  BdARdpWB = dot_product(auxvar%WB, BdARdp)
   BdARdpWClm = dot_product(WClm, BdARdp)
   div_grav_term = dot_product(Rgr, BAR)
 
-  aux_var%Rp = BARWB*pres(1) - BARWClm  + f(1) + div_grav_term
-  aux_var%dRp_dp = BARWB + pres(1) * BdARdpWB - BdARdpWClm
+  auxvar%Rp = BARWB*pres(1) - BARWClm  + f(1) + div_grav_term
+  auxvar%dRp_dp = BARWB + pres(1) * BdARdpWB - BdARdpWClm
 
   do iface = 1, numfaces
-    aux_var%dRp_dp = aux_var%dRp_dp + &
+    auxvar%dRp_dp = auxvar%dRp_dp + &
        sq_faces(iface)* &
       (dukvr_dp(iface)*den(iface)*den(iface) + 2*den(iface)*ukvr(iface)*dden_dp(iface) ) &
-      *aux_var%gr(iface)
+      *auxvar%gr(iface)
   enddo
-  aux_var%dRp_dp = aux_var%dRp_dp  + PorVol_dt*sat*dden_cntr_dp + PorVol_dt*den_cntr*ds_dp
+  auxvar%dRp_dp = auxvar%dRp_dp  + PorVol_dt*sat*dden_cntr_dp + PorVol_dt*den_cntr*ds_dp
 
-  aux_var%dRp_dneig = 0
+  auxvar%dRp_dneig = 0
 
   do iface = 1, numfaces
-    aux_var%dRp_dneig(iface)=aux_var%dRp_dneig(iface) + &
+    auxvar%dRp_dneig(iface)=auxvar%dRp_dneig(iface) + &
                              sq_faces(iface)*den(iface)* &
-                              dkvr_dp_neig(iface)*aux_var%WB(iface)*pres(1)
-    aux_var%dRp_dneig(iface)=aux_var%dRp_dneig(iface) - &
+                              dkvr_dp_neig(iface)*auxvar%WB(iface)*pres(1)
+    auxvar%dRp_dneig(iface)=auxvar%dRp_dneig(iface) - &
                              sq_faces(iface)*den(iface)* &
                               dkvr_dp_neig(iface)*WClm(iface)
-    aux_var%dRp_dneig(iface)=aux_var%dRp_dneig(iface) + &
+    auxvar%dRp_dneig(iface)=auxvar%dRp_dneig(iface) + &
                              sq_faces(iface)*den(iface)*den(iface)* &
-                              dkvr_dp_neig(iface)*aux_var%gr(iface)
+                              dkvr_dp_neig(iface)*auxvar%gr(iface)
   enddo
 
-  do iface = 1, aux_var%numfaces
-    aux_var%dRp_dl(iface) = 0.
-    do jface = 1, aux_var%numfaces
-      aux_var%dRp_dl(iface) = aux_var%dRp_dl(iface) - &
-      BAR(jface) * aux_var%MassMatrixInv(iface,jface) * sq_faces(iface)
+  do iface = 1, auxvar%numfaces
+    auxvar%dRp_dl(iface) = 0.
+    do jface = 1, auxvar%numfaces
+      auxvar%dRp_dl(iface) = auxvar%dRp_dl(iface) - &
+      BAR(jface) * auxvar%MassMatrixInv(iface,jface) * sq_faces(iface)
     enddo
   enddo
     
-  aux_var%Rl = 0
-  aux_var%dRl_dp = 0
+  auxvar%Rl = 0
+  auxvar%dRl_dp = 0
   CWCl = 0
 
-  do iface = 1, aux_var%numfaces
-    do jface = 1, aux_var%numfaces
-      CWCl(iface) = CWCl(iface) + sq_faces(iface)*aux_var%MassMatrixInv(iface, jface) * &
+  do iface = 1, auxvar%numfaces
+    do jface = 1, auxvar%numfaces
+      CWCl(iface) = CWCl(iface) + sq_faces(iface)*auxvar%MassMatrixInv(iface, jface) * &
                                    sq_faces(jface)*face_pres(jface)
     enddo
   enddo
 
-  do iface = 1, aux_var%numfaces
-    aux_var%Rl(iface) = -sq_faces(iface)*aux_var%WB(iface)*pres(1) &
+  do iface = 1, auxvar%numfaces
+    auxvar%Rl(iface) = -sq_faces(iface)*auxvar%WB(iface)*pres(1) &
                         + CWCl(iface)  &
                         + sq_faces(iface)*Wg(iface) &
-                        - sq_faces(iface)*den(iface)*aux_var%gr(iface)&
+                        - sq_faces(iface)*den(iface)*auxvar%gr(iface)&
                         - bc_h(iface)/ukvr(iface)
-    aux_var%dRl_dp(iface) = -sq_faces(iface)*aux_var%WB(iface) - sq_faces(iface)*dden_dp(iface)*aux_var%gr(iface)
+    auxvar%dRl_dp(iface) = -sq_faces(iface)*auxvar%WB(iface) - sq_faces(iface)*dden_dp(iface)*auxvar%gr(iface)
   enddo
 
-  do iface = 1, aux_var%numfaces
-    rhs(iface) = aux_var%Rl(iface)
+  do iface = 1, auxvar%numfaces
+    rhs(iface) = auxvar%Rl(iface)
   enddo
-  rhs(aux_var%numfaces + 1) = aux_var%Rp
+  rhs(auxvar%numfaces + 1) = auxvar%Rp
 
 
 end subroutine MFDAuxGenerateRhs_LP
 
 ! ************************************************************************** !
-! ************************************************************************** !
-subroutine MFDAuxJacobianLocal( grid, aux_var, &
-                                       rich_aux_var, global_aux_var,  &
+
+subroutine MFDAuxJacobianLocal( grid, auxvar, &
+                                       rich_auxvar, global_auxvar,  &
                                        sq_faces, option, J)
 
  use Option_module
@@ -872,9 +872,9 @@ subroutine MFDAuxJacobianLocal( grid, aux_var, &
   implicit none
 
   type(grid_type) :: grid
-  type(mfd_auxvar_type), pointer :: aux_var
-  type(richards_auxvar_type) :: rich_aux_var
-  type(global_auxvar_type) :: global_aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
+  type(richards_auxvar_type) :: rich_auxvar
+  type(global_auxvar_type) :: global_auxvar
   PetscScalar, pointer :: sq_faces(:)
   type(option_type) :: option
   PetscScalar, pointer :: J(:)
@@ -883,35 +883,35 @@ subroutine MFDAuxJacobianLocal( grid, aux_var, &
   PetscScalar :: ukvr
 
 #ifdef USE_ANISOTROPIC_MOBILITY
-  ukvr = rich_aux_var%kvr_x
+  ukvr = rich_auxvar%kvr_x
 #else
-  ukvr = rich_aux_var%kvr
+  ukvr = rich_auxvar%kvr
 #endif
 
   J = 0.
 
-   do iface = 1, aux_var%numfaces
-     do jface = 1, aux_var%numfaces
+   do iface = 1, auxvar%numfaces
+     do jface = 1, auxvar%numfaces
 
-!    J(jface + (iface - 1)*aux_var%numfaces) = -ukvr*sq_faces(iface)*aux_var%MassMatrixInv(iface,jface)*sq_faces(jface) - &
-!                                                 aux_var%dRl_dp(iface)*aux_var%dRp_dl(jface)/aux_var%dRp_dp
+!    J(jface + (iface - 1)*auxvar%numfaces) = -ukvr*sq_faces(iface)*auxvar%MassMatrixInv(iface,jface)*sq_faces(jface) - &
+!                                                 auxvar%dRl_dp(iface)*auxvar%dRp_dl(jface)/auxvar%dRp_dp
 
-!    J(jface + (iface - 1)*aux_var%numfaces) = -ukvr*sq_faces(iface)*aux_var%MassMatrixInv(iface,jface)*sq_faces(jface) - & !TEST
-!                                                 aux_var%dRl_dp(iface)*aux_var%dRp_dl(jface)/aux_var%dRp_dp                     !TEST
-    J(jface + (iface - 1)*aux_var%numfaces) = -aux_var%dRl_dp(iface)*aux_var%dRp_dl(jface)/aux_var%dRp_dp   &                  !TEST
-                                               + sq_faces(iface)*aux_var%MassMatrixInv(iface,jface)*sq_faces(jface)  
+!    J(jface + (iface - 1)*auxvar%numfaces) = -ukvr*sq_faces(iface)*auxvar%MassMatrixInv(iface,jface)*sq_faces(jface) - & !TEST
+!                                                 auxvar%dRl_dp(iface)*auxvar%dRp_dl(jface)/auxvar%dRp_dp                     !TEST
+    J(jface + (iface - 1)*auxvar%numfaces) = -auxvar%dRl_dp(iface)*auxvar%dRp_dl(jface)/auxvar%dRp_dp   &                  !TEST
+                                               + sq_faces(iface)*auxvar%MassMatrixInv(iface,jface)*sq_faces(jface)  
 
     enddo
   enddo
 
-  aux_var%dRp_dneig = 0
+  auxvar%dRp_dneig = 0
 
 end subroutine MFDAuxJacobianLocal
 
 ! ************************************************************************** !
-! ************************************************************************** !
-subroutine MFDAuxJacobianLocal_LP( grid, aux_var, &
-                                       rich_aux_var, global_aux_var,  &
+
+subroutine MFDAuxJacobianLocal_LP( grid, auxvar, &
+                                       rich_auxvar, global_auxvar,  &
                                        sq_faces, option, J)
 
   use Option_module
@@ -921,9 +921,9 @@ subroutine MFDAuxJacobianLocal_LP( grid, aux_var, &
   implicit none
 
   type(grid_type) :: grid
-  type(mfd_auxvar_type), pointer :: aux_var
-  type(richards_auxvar_type) :: rich_aux_var
-  type(global_auxvar_type) :: global_aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
+  type(richards_auxvar_type) :: rich_auxvar
+  type(global_auxvar_type) :: global_auxvar
   PetscScalar, pointer :: sq_faces(:)
   type(option_type) :: option
   PetscScalar, pointer :: J(:)
@@ -932,28 +932,27 @@ subroutine MFDAuxJacobianLocal_LP( grid, aux_var, &
   PetscScalar :: ukvr
 
 #ifdef USE_ANISOTROPIC_MOBILITY
-  ukvr = rich_aux_var%kvr_x
+  ukvr = rich_auxvar%kvr_x
 #else
-  ukvr = rich_aux_var%kvr
+  ukvr = rich_auxvar%kvr
 #endif
 
   J = 0.
-  do iface = 1, aux_var%numfaces
-    do jface = 1, aux_var%numfaces
-      J(iface + (jface - 1)*(aux_var%numfaces + 1)) = sq_faces(iface)*aux_var%MassMatrixInv(iface,jface)*sq_faces(jface)
+  do iface = 1, auxvar%numfaces
+    do jface = 1, auxvar%numfaces
+      J(iface + (jface - 1)*(auxvar%numfaces + 1)) = sq_faces(iface)*auxvar%MassMatrixInv(iface,jface)*sq_faces(jface)
     enddo
-    J(aux_var%numfaces + 1 + (iface - 1)*(aux_var%numfaces + 1)) = aux_var%dRp_dl(iface)
-    J(iface + aux_var%numfaces*(aux_var%numfaces + 1)) = aux_var%dRl_dp(iface)
+    J(auxvar%numfaces + 1 + (iface - 1)*(auxvar%numfaces + 1)) = auxvar%dRp_dl(iface)
+    J(iface + auxvar%numfaces*(auxvar%numfaces + 1)) = auxvar%dRl_dp(iface)
   enddo
 
-  J(aux_var%numfaces + 1 + aux_var%numfaces*(aux_var%numfaces + 1)) =  aux_var%dRp_dp
+  J(auxvar%numfaces + 1 + auxvar%numfaces*(auxvar%numfaces + 1)) =  auxvar%dRp_dp
 
 end subroutine MFDAuxJacobianLocal_LP
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-! ************************************************************************** !
-subroutine MFDAuxReconstruct(face_pr, source_f, aux_var, rich_aux_var, global_aux_var, Accum, &
+subroutine MFDAuxReconstruct(face_pr, source_f, auxvar, rich_auxvar, global_auxvar, Accum, &
                                        sq_faces, option, xx)
 
   use Option_module
@@ -962,9 +961,9 @@ subroutine MFDAuxReconstruct(face_pr, source_f, aux_var, rich_aux_var, global_au
 
   implicit none
 
-  type(mfd_auxvar_type), pointer :: aux_var
-  type(richards_auxvar_type) :: rich_aux_var
-  type(global_auxvar_type) :: global_aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
+  type(richards_auxvar_type) :: rich_auxvar
+  type(global_auxvar_type) :: global_auxvar
   PetscScalar, pointer :: sq_faces(:), face_pr(:)
   type(option_type) :: option
   PetscScalar :: Accum(1:option%nflowdof),source_f(1:option%nflowdof), xx(1:option%nflowdof)
@@ -973,20 +972,20 @@ subroutine MFDAuxReconstruct(face_pr, source_f, aux_var, rich_aux_var, global_au
   PetscScalar :: ukvr, E, gMB
   PetscScalar, pointer :: MB(:)
 
-  allocate(MB(aux_var%numfaces))
+  allocate(MB(auxvar%numfaces))
 
   E = 0
 
 #ifdef USE_ANISOTROPIC_MOBILITY
-  ukvr = rich_aux_var%kvr_x
+  ukvr = rich_auxvar%kvr_x
 #else
-  ukvr = rich_aux_var%kvr
+  ukvr = rich_auxvar%kvr
 #endif
 
-  do iface = 1, aux_var%numfaces
+  do iface = 1, auxvar%numfaces
     MB(iface) = 0.
-    do jface = 1, aux_var%numfaces
-       MB(iface) = MB(iface) + aux_var%MassMatrixInv(iface,jface)*sq_faces(jface)
+    do jface = 1, auxvar%numfaces
+       MB(iface) = MB(iface) + auxvar%MassMatrixInv(iface,jface)*sq_faces(jface)
     enddo
     E = E + MB(iface)*sq_faces(iface)
   enddo
@@ -994,7 +993,7 @@ subroutine MFDAuxReconstruct(face_pr, source_f, aux_var, rich_aux_var, global_au
   E = 1./E
   xx(1) = 0
 
-  do iface = 1, aux_var%numfaces
+  do iface = 1, auxvar%numfaces
     xx(1) = xx(1) + E*MB(iface)*sq_faces(iface)*face_pr(iface) 
   enddo 
 
@@ -1002,10 +1001,9 @@ subroutine MFDAuxReconstruct(face_pr, source_f, aux_var, rich_aux_var, global_au
 
 end subroutine MFDAuxReconstruct
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-! ************************************************************************** !
-subroutine  MFDAuxUpdateCellPressure(face_pres, face_DELTA_pres, mfd_aux_var,&
+subroutine  MFDAuxUpdateCellPressure(face_pres, face_DELTA_pres, mfd_auxvar,&
                                 option, pressure)
 
   use Option_module
@@ -1014,7 +1012,7 @@ subroutine  MFDAuxUpdateCellPressure(face_pres, face_DELTA_pres, mfd_aux_var,&
 
   implicit none
 
-  type(mfd_auxvar_type), pointer :: mfd_aux_var
+  type(mfd_auxvar_type), pointer :: mfd_auxvar
   type(option_type) :: option
   PetscScalar, pointer ::  face_pres(:), face_DELTA_pres(:)
   PetscScalar :: pressure(1:option%nflowdof)
@@ -1023,20 +1021,20 @@ subroutine  MFDAuxUpdateCellPressure(face_pres, face_DELTA_pres, mfd_aux_var,&
   PetscScalar :: DELTA_pres
   PetscInt :: iface
 
-  DELTA_pres = mfd_aux_var%Rp
+  DELTA_pres = mfd_auxvar%Rp
 
-  do iface = 1, mfd_aux_var%numfaces
-    DELTA_pres = DELTA_pres + mfd_aux_var%dRp_dl(iface)*face_DELTA_pres(iface)
+  do iface = 1, mfd_auxvar%numfaces
+    DELTA_pres = DELTA_pres + mfd_auxvar%dRp_dl(iface)*face_DELTA_pres(iface)
   enddo
 
-  DELTA_pres = -DELTA_pres/mfd_aux_var%dRp_dp
+  DELTA_pres = -DELTA_pres/mfd_auxvar%dRp_dp
   pressure(1) = pressure(1) + DELTA_pres
 
 end subroutine MFDAuxUpdateCellPressure
 
 ! ************************************************************************** !
-! ************************************************************************** !
-subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, PermTensor, rich_aux_var, global_aux_var, &
+
+subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, auxvar, PermTensor, rich_auxvar, global_auxvar, &
                                        sq_faces, bnd, neigh_den, neig_kvr,  neig_pres, option)
 
   use Option_module
@@ -1050,9 +1048,9 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
 
   type(grid_type) :: grid
   type(patch_type) :: patch
-  type(mfd_auxvar_type), pointer :: aux_var
-  type(richards_auxvar_type) :: rich_aux_var
-  type(global_auxvar_type) :: global_aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
+  type(richards_auxvar_type) :: rich_auxvar
+  type(global_auxvar_type) :: global_auxvar
   PetscScalar, pointer :: sq_faces(:), face_pr(:), neigh_den(:), neig_pres(:), neig_kvr(:), bnd(:)
   type(option_type) :: option
   PetscScalar :: xx(1:option%nflowdof),  PermTensor(3,3), Kg(3), real_tmp
@@ -1066,21 +1064,21 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
   type(connection_set_type), pointer :: conn
 
 #ifdef USE_ANISOTROPIC_MOBILITY
-  ukvr = rich_aux_var%kvr_x
+  ukvr = rich_auxvar%kvr_x
 #else
-  ukvr = rich_aux_var%kvr
+  ukvr = rich_auxvar%kvr
 #endif
   upweight = 0.5
 
 
   do i = 1 , numfaces
-    ghost_face_id = aux_var%face_id_gh(i)
+    ghost_face_id = auxvar%face_id_gh(i)
     conn => grid%faces(ghost_face_id)%conn_set_ptr
     iface = grid%faces(ghost_face_id)%id
     if (bnd(i)==1) then  
-      call MFDComputeDensity(global_aux_var, face_pr(i), den(i), dden_dp(i), option)
+      call MFDComputeDensity(global_auxvar, face_pr(i), den(i), dden_dp(i), option)
     else
-      den(i) = global_aux_var%den(1)*upweight + (1 - upweight)*neigh_den(i)
+      den(i) = global_auxvar%den(1)*upweight + (1 - upweight)*neigh_den(i)
     endif 
 
 ! UPWIND
@@ -1090,27 +1088,27 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
 
     gravity = den(i) * FMWH2O * distance_gravity   
 
-    if (aux_var%gr(i) * gravity < 0) gravity = -gravity 
+    if (auxvar%gr(i) * gravity < 0) gravity = -gravity 
 
     dphi = xx(1) - neig_pres(i) + gravity
     
-    if (aux_var%gr(i) >= 0)  then
+    if (auxvar%gr(i) >= 0)  then
 
 #ifdef USE_ANISOTROPIC_MOBILITY
-      if (rich_aux_var%kvr_x < 1e-10 ) then
+      if (rich_auxvar%kvr_x < 1e-10 ) then
         ukvr(i) = 1e-10
       else
-        ukvr(i) = rich_aux_var%kvr_x
+        ukvr(i) = rich_auxvar%kvr_x
       endif
 #else
-      if (rich_aux_var%kvr < 1e-10 ) then
+      if (rich_auxvar%kvr < 1e-10 ) then
         ukvr(i) = 1e-10
       else
-        ukvr(i) = rich_aux_var%kvr
+        ukvr(i) = rich_auxvar%kvr
       endif
 #endif
 
-    else if (aux_var%gr(i) < 0)  then
+    else if (auxvar%gr(i) < 0)  then
       if (neig_kvr(i) < 1e-10 ) then
         ukvr(i) = 1e-10
       else
@@ -1119,8 +1117,8 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
    endif
  enddo
  
-  do i = 1, aux_var%numfaces
-    ghost_face_id = aux_var%face_id_gh(i)
+  do i = 1, auxvar%numfaces
+    ghost_face_id = auxvar%face_id_gh(i)
     local_face_id = grid%fG2L(ghost_face_id)
     conn => grid%faces(ghost_face_id)%conn_set_ptr
     iface = grid%faces(ghost_face_id)%id
@@ -1130,12 +1128,12 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
     if (conn%itype/=BOUNDARY_CONNECTION_TYPE.and.conn%id_dn(iface)==ghosted_cell_id) dir = -1
 
     darcy_v = 0.
-    do j = 1, aux_var%numfaces
-      darcy_v = darcy_v + ukvr(i)*aux_var%MassMatrixInv(i, j)* &
+    do j = 1, auxvar%numfaces
+      darcy_v = darcy_v + ukvr(i)*auxvar%MassMatrixInv(i, j)* &
                                            (sq_faces(j)*(xx(1) - face_pr(j)))
     enddo
 
-    darcy_v = darcy_v + den(i)*ukvr(i)*aux_var%gr(i)
+    darcy_v = darcy_v + den(i)*ukvr(i)*auxvar%gr(i)
 
     DIV = DIV + den(i)*darcy_v*sq_faces(i)
 
@@ -1155,16 +1153,15 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
 end subroutine MFDAuxFluxes
 
 ! ************************************************************************** !
-! ************************************************************************** !
-subroutine MFDComputeDensity(global_aux_var, pres, den, dden_dp, option)
+
+subroutine MFDComputeDensity(global_auxvar, pres, den, dden_dp, option)
 
   use Option_module
   use Global_Aux_module
-  use Water_EOS_module
+  
+  use EOS_Water_module
 
-
-
-  type(global_auxvar_type) :: global_aux_var
+  type(global_auxvar_type) :: global_auxvar
   PetscScalar :: pres
   type(option_type) :: option
   PetscReal, parameter :: tol = 1.d-3
@@ -1185,13 +1182,13 @@ subroutine MFDComputeDensity(global_aux_var, pres, den, dden_dp, option)
   endif
 
 #ifndef DONT_USE_WATEOS
-  call wateos(global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw, &
-              hw_dp,hw_dt,option%scale,ierr)
+  call EOSWaterDensity(global_auxvar%temp(1),pw,dw_kg,dw_mol, &
+                       dw_dp,dw_dt,option%scale,ierr)
 #else
-  call density(global_aux_var%temp(1),pw,dw_kg)
+  call EOSWaterdensity(global_auxvar%temp(1),pw,dw_kg)
   pert = tol*pw
   pw_pert = pw + pert
-  call density(global_aux_var%temp(1),pw_pert,dw_kg_pert)
+  call EOSWaterdensity(global_auxvar%temp(1),pw_pert,dw_kg_pert)
   dw_dp = (dw_kg_pert-dw_kg)/pert
   ! dw_kg = kg/m^3
   ! dw_mol = kmol/m^3
@@ -1206,8 +1203,8 @@ subroutine MFDComputeDensity(global_aux_var, pres, den, dden_dp, option)
 end subroutine MFDComputeDensity
 
 ! ************************************************************************** !
-! ************************************************************************** !
-subroutine MFDAuxComputeGeometricValues (grid, ghosted_cell_id, aux_var, PermTensor, option)
+
+subroutine MFDAuxComputeGeometricValues (grid, ghosted_cell_id, auxvar, PermTensor, option)
 
 
  use Option_module
@@ -1218,7 +1215,7 @@ subroutine MFDAuxComputeGeometricValues (grid, ghosted_cell_id, aux_var, PermTen
   implicit none
 
   type(grid_type) :: grid
-  type(mfd_auxvar_type), pointer :: aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
   type(option_type) :: option
   PetscScalar :: PermTensor(3,3)
   PetscInt :: ghosted_cell_id
@@ -1237,7 +1234,7 @@ subroutine MFDAuxComputeGeometricValues (grid, ghosted_cell_id, aux_var, PermTen
   enddo
 
   do i = 1, numfaces
-    ghost_face_id = aux_var%face_id_gh(i)
+    ghost_face_id = auxvar%face_id_gh(i)
     conn => grid%faces(ghost_face_id)%conn_set_ptr
     iface = grid%faces(ghost_face_id)%id
     sq_faces(i) = conn%area(iface)
@@ -1248,24 +1245,25 @@ subroutine MFDAuxComputeGeometricValues (grid, ghosted_cell_id, aux_var, PermTen
 
     norm_len = sqrt(dir_norm(1)**2 + dir_norm(2)**2 + dir_norm(3)**2)
 
-    aux_var%gr(i) = 0
+    auxvar%gr(i) = 0
     do j = 1,3
       dir_norm(j) = dir_norm(j)/norm_len
-      aux_var%gr(i) = aux_var%gr(i) + dir_norm(j) * Kg(j)
+      auxvar%gr(i) = auxvar%gr(i) + dir_norm(j) * Kg(j)
     enddo
   enddo
-  aux_var%WB = matmul(aux_var%MassMatrixInv, sq_faces)
+  auxvar%WB = matmul(auxvar%MassMatrixInv, sq_faces)
 
 end subroutine MFDAuxComputeGeometricValues
 
 ! ************************************************************************** !
-!
-! MFDAuxGenerateMassMatrixInv: Create a mass matrix for cell
-! author: Daniil Svyatskiy
-! date: 05/25/10
-!
-! ************************************************************************** !
-subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  aux_var, volume, PermTensor, option)
+
+subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  auxvar, volume, PermTensor, option)
+  ! 
+  ! Create a mass matrix for cell
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 05/25/10
+  ! 
 
  use Grid_module
  use Option_module
@@ -1285,7 +1283,7 @@ subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  aux_var, volume, 
 
 
   type(grid_type) :: grid
-  type(mfd_auxvar_type), pointer :: aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
   PetscScalar :: PermTensor(3,3), dir_norm(3), sq_faces(6)
   PetscScalar :: N(6,3), D(6,3), H(6,3),  W1(6,6), U(3,3), rx(6), ry(6), rz(6)   ! hex only
   PetscScalar :: volume, norm, area, a1, a2, u_parm
@@ -1304,9 +1302,9 @@ subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  aux_var, volume, 
   N = 0.
   u_parm  = (PermTensor(1,1) + PermTensor(2,2) +PermTensor(3,3))/volume
 
-  do i = 1, aux_var%numfaces
+  do i = 1, auxvar%numfaces
 
-    ghost_face_id = aux_var%face_id_gh(i)
+    ghost_face_id = auxvar%face_id_gh(i)
     conn => grid%faces(ghost_face_id)%conn_set_ptr
     iface = grid%faces(ghost_face_id)%id
     area = conn%area(iface)
@@ -1337,40 +1335,40 @@ subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  aux_var, volume, 
 
   norm = dot_product(rx(1:6), rx(1:6))
   norm = sqrt(norm)
-  do i = 1, aux_var%numfaces
+  do i = 1, auxvar%numfaces
     D(i,1) = rx(i)/norm
   enddo
   a1 = -dot_product(D(1:6,1), ry)
 
  ! write(*,*) "a1", a1
 
-  do i = 1, aux_var%numfaces
+  do i = 1, auxvar%numfaces
     D(i,2) = ry(i) + a1*D(i,1)
   enddo
 
   norm = dot_product(D(1:6,2),D(1:6,2))
   norm = sqrt(norm)
 
-  do i = 1, aux_var%numfaces
+  do i = 1, auxvar%numfaces
     D(i,2) = D(i,2)/norm
   enddo
 
   a1 = -dot_product(D(1:6,1), rz(1:6))
   a2 = -dot_product(D(1:6,2), rz(1:6))
 
-  do i = 1, aux_var%numfaces
+  do i = 1, auxvar%numfaces
     D(i,3) = rz(i) + a1*D(i,1) + a2*D(i,2)
   enddo
    
   norm = dot_product(D(1:6,3),D(1:6,3))
   norm = sqrt(norm)
 
-  do i = 1, aux_var%numfaces
+  do i = 1, auxvar%numfaces
     D(i,3) = D(i,3)/norm
   enddo
 
-  do i = 1, aux_var%numfaces
-    do j = 1, aux_var%numfaces
+  do i = 1, auxvar%numfaces
+    do j = 1, auxvar%numfaces
       W1(i,j) = 0.
       do k = 1, 3
          W1(i,j) = W1(i,j) + D(i,k)*D(j,k)
@@ -1378,11 +1376,11 @@ subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  aux_var, volume, 
     enddo
   enddo
 
-  do i = 1, aux_var%numfaces
+  do i = 1, auxvar%numfaces
     W1(i,i) = W1(i,i) - 1
   enddo
 
-  do i = 1, aux_var%numfaces
+  do i = 1, auxvar%numfaces
      do j = 1, 3
        H(i,j) = 0
        do k = 1, 3
@@ -1391,22 +1389,22 @@ subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  aux_var, volume, 
      enddo
   enddo
 
-  allocate(aux_var%MassMatrixInv(aux_var%numfaces, aux_var%numfaces))
+  allocate(auxvar%MassMatrixInv(auxvar%numfaces, auxvar%numfaces))
 
-  do i = 1, aux_var%numfaces
-    do j = 1, aux_var%numfaces
-       aux_var%MassMatrixInv(i,j) = 0
+  do i = 1, auxvar%numfaces
+    do j = 1, auxvar%numfaces
+       auxvar%MassMatrixInv(i,j) = 0
        do k =1,3
-         aux_var%MassMatrixInv(i,j) = aux_var%MassMatrixInv(i,j) + H(i,k) * N(j,k)
+         auxvar%MassMatrixInv(i,j) = auxvar%MassMatrixInv(i,j) + H(i,k) * N(j,k)
        enddo
-       aux_var%MassMatrixInv(i,j) = aux_var%MassMatrixInv(i,j) / volume
-       aux_var%MassMatrixInv(i,j) = aux_var%MassMatrixInv(i,j) - u_parm*W1(i,j)
+       auxvar%MassMatrixInv(i,j) = auxvar%MassMatrixInv(i,j) / volume
+       auxvar%MassMatrixInv(i,j) = auxvar%MassMatrixInv(i,j) - u_parm*W1(i,j)
      enddo
    enddo
 
 #else
 
-  do i = 1, aux_var%numfaces
+  do i = 1, auxvar%numfaces
      do j = 1, 3
        D(i,j) = abs(N(i,j))
      enddo
@@ -1420,7 +1418,7 @@ subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  aux_var, volume, 
      enddo
   enddo 
 
-  do i = 1, aux_var%numfaces
+  do i = 1, auxvar%numfaces
      do j = 1, 3
        H(i,j) = 0
        do k = 1, 3
@@ -1429,20 +1427,20 @@ subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  aux_var, volume, 
      enddo
   enddo
 
-  allocate(aux_var%MassMatrixInv(aux_var%numfaces, aux_var%numfaces))
+  allocate(auxvar%MassMatrixInv(auxvar%numfaces, auxvar%numfaces))
 
 
-  do i = 1, aux_var%numfaces
-    do j = 1, aux_var%numfaces
-       aux_var%MassMatrixInv(i,j) = 0
+  do i = 1, auxvar%numfaces
+    do j = 1, auxvar%numfaces
+       auxvar%MassMatrixInv(i,j) = 0
        do k =1,3
-         aux_var%MassMatrixInv(i,j) = aux_var%MassMatrixInv(i,j) + H(i,k) * N(j,k)
+         auxvar%MassMatrixInv(i,j) = auxvar%MassMatrixInv(i,j) + H(i,k) * N(j,k)
        enddo
-       aux_var%MassMatrixInv(i,j) = aux_var%MassMatrixInv(i,j) / volume
+       auxvar%MassMatrixInv(i,j) = auxvar%MassMatrixInv(i,j) / volume
      enddo
    enddo
 
-  do i = 1, aux_var%numfaces
+  do i = 1, auxvar%numfaces
      do j = 1, 3
        H(i,j) = 0
        do k = 1, 3
@@ -1451,10 +1449,10 @@ subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  aux_var, volume, 
     enddo
   enddo
 
-  do i = 1, aux_var%numfaces
-    do j = 1, aux_var%numfaces
+  do i = 1, auxvar%numfaces
+    do j = 1, auxvar%numfaces
        do k =1,3
-         aux_var%MassMatrixInv(i,j) = aux_var%MassMatrixInv(i,j) + H(i,k) * D(j,k)
+         auxvar%MassMatrixInv(i,j) = auxvar%MassMatrixInv(i,j) + H(i,k) * D(j,k)
        enddo
      enddo
    enddo

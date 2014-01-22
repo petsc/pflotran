@@ -35,15 +35,15 @@ module Dataset_Common_HDF5_class
 
 contains
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! DatasetCommonHDF5Create: Creates members of common hdf5 database class
-! author: Glenn Hammond
-! date: 05/03/13
-!
-! ************************************************************************** !
 function DatasetCommonHDF5Create()
+  ! 
+  ! Creates members of common hdf5 database class
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/03/13
+  ! 
   
   implicit none
   
@@ -59,13 +59,14 @@ function DatasetCommonHDF5Create()
 end function DatasetCommonHDF5Create
 
 ! ************************************************************************** !
-!
-! DatasetCommonHDF5Init: Initializes members of common hdf5 dataset class
-! author: Glenn Hammond
-! date: 05/03/13
-!
-! ************************************************************************** !
+
 subroutine DatasetCommonHDF5Init(this)
+  ! 
+  ! Initializes members of common hdf5 dataset class
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/03/13
+  ! 
   
   implicit none
   
@@ -81,13 +82,14 @@ subroutine DatasetCommonHDF5Init(this)
 end subroutine DatasetCommonHDF5Init
 
 ! ************************************************************************** !
-!
-! DatasetCommonHDF5Copy: Copies members of common hdf5 dataset class
-! author: Glenn Hammond
-! date: 05/03/13
-!
-! ************************************************************************** !
+
 subroutine DatasetCommonHDF5Copy(this, that)
+  ! 
+  ! Copies members of common hdf5 dataset class
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/03/13
+  ! 
   
   implicit none
   
@@ -103,13 +105,14 @@ subroutine DatasetCommonHDF5Copy(this, that)
 end subroutine DatasetCommonHDF5Copy
 
 ! ************************************************************************** !
-!
-! DatasetCommonHDF5Cast: Casts a dataset_base_type to dataset_common_hdf5_type
-! author: Glenn Hammond
-! date: 05/03/13
-!
-! ************************************************************************** !
+
 function DatasetCommonHDF5Cast(this)
+  ! 
+  ! Casts a dataset_base_type to dataset_common_hdf5_type
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/03/13
+  ! 
   
   implicit none
 
@@ -126,13 +129,14 @@ function DatasetCommonHDF5Cast(this)
 end function DatasetCommonHDF5Cast
 
 ! ************************************************************************** !
-!
-! DatasetCommonHDF5Read: Reads in contents of a dataset card
-! author: Glenn Hammond
-! date: 01/12/11, 06/04/13
-! 
-! ************************************************************************** !
+
 subroutine DatasetCommonHDF5Read(this,input,option)
+  ! 
+  ! Reads in contents of a dataset card
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/11, 06/04/13
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -175,14 +179,15 @@ subroutine DatasetCommonHDF5Read(this,input,option)
 end subroutine DatasetCommonHDF5Read
 
 ! ************************************************************************** !
-!
-! DatasetCommonHDF5ReadSelectCase: Compares keyword against HDF5 common
-!                                  keywords
-! author: Glenn Hammond
-! date: 06/04/13
-! 
-! ************************************************************************** !
+
 subroutine DatasetCommonHDF5ReadSelectCase(this,input,keyword,found,option)
+  ! 
+  ! Compares keyword against HDF5 common
+  ! keywords
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/04/13
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -220,15 +225,17 @@ subroutine DatasetCommonHDF5ReadSelectCase(this,input,keyword,found,option)
 end subroutine DatasetCommonHDF5ReadSelectCase
 
 #if defined(PETSC_HAVE_HDF5)
+
 ! ************************************************************************** !
-!
-! DatasetGlobalReadTimes: Read dataset times into time storage
-! author: Glenn Hammond
-! date: 01/12/08
-!
-! ************************************************************************** !
+
 subroutine DatasetCommonHDF5ReadTimes(filename,dataset_name,time_storage, &
                                       option)
+  ! 
+  ! DatasetGlobalReadTimes: Read dataset times into time storage
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/08
+  ! 
                          
   use hdf5
   use Time_Storage_module
@@ -386,13 +393,14 @@ end subroutine DatasetCommonHDF5ReadTimes
 #endif
 
 ! ************************************************************************** !
-!
-! DatasetCommonHDF5Load: Updates indices and returns whether to load new data.
-! author: Glenn Hammond
-! date: 05/03/13
-!
-! ************************************************************************** !
+
 function DatasetCommonHDF5Load(this,option)
+  ! 
+  ! Updates indices and returns whether to load new data.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/03/13
+  ! 
   
 #if defined(PETSC_HAVE_HDF5)    
   use hdf5, only : H5T_NATIVE_DOUBLE
@@ -451,14 +459,15 @@ function DatasetCommonHDF5Load(this,option)
 end function DatasetCommonHDF5Load
 
 ! ************************************************************************** !
-!
-! DatasetCommonHDF5IsCellIndexed: Determine whether a dataset is indexed by 
-!                                 cell ids
-! author: Glenn Hammond
-! date: 05/03/13
-!
-! ************************************************************************** !
+
 function DatasetCommonHDF5IsCellIndexed(dataset,option)
+  ! 
+  ! Determine whether a dataset is indexed by
+  ! cell ids
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/03/13
+  ! 
 
   use Option_module
   use HDF5_Aux_module
@@ -480,14 +489,15 @@ function DatasetCommonHDF5IsCellIndexed(dataset,option)
 end function DatasetCommonHDF5IsCellIndexed
 
 ! ************************************************************************** !
-!
-! DatasetCommonHDF5GetPointer: Returns the pointer to the dataset named "name"
-! author: Glenn Hammond
-! date: 05/03/13
-!
-! ************************************************************************** !
+
 function DatasetCommonHDF5GetPointer(dataset_list, dataset_name, &
                                      debug_string, option)
+  ! 
+  ! Returns the pointer to the dataset named "name"
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/03/13
+  ! 
 
   use Option_module
   use String_module
@@ -516,13 +526,14 @@ function DatasetCommonHDF5GetPointer(dataset_list, dataset_name, &
 end function DatasetCommonHDF5GetPointer
 
 ! ************************************************************************** !
-!
-! DatasetCommonHDF5Print: Prints dataset info
-! author: Glenn Hammond
-! date: 10/22/13
-!
-! ************************************************************************** !
+
 subroutine DatasetCommonHDF5Print(this,option)
+  ! 
+  ! Prints dataset info
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/22/13
+  ! 
 
   use Option_module
 
@@ -551,14 +562,15 @@ subroutine DatasetCommonHDF5Print(this,option)
 end subroutine DatasetCommonHDF5Print
 
 ! ************************************************************************** !
-!
-! DatasetCommonHDF5Strip: Strips allocated objects within common hdf5 dataset 
-!                         object
-! author: Glenn Hammond
-! date: 05/03/13
-!
-! ************************************************************************** !
+
 subroutine DatasetCommonHDF5Strip(this)
+  ! 
+  ! Strips allocated objects within common hdf5 dataset
+  ! object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/03/13
+  ! 
 
   implicit none
   
@@ -569,13 +581,14 @@ subroutine DatasetCommonHDF5Strip(this)
 end subroutine DatasetCommonHDF5Strip
 
 ! ************************************************************************** !
-!
-! DatasetCommonHDF5Destroy: Destroys a dataset
-! author: Glenn Hammond
-! date: 01/12/11
-!
-! ************************************************************************** !
+
 subroutine DatasetCommonHDF5Destroy(this)
+  ! 
+  ! Destroys a dataset
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/11
+  ! 
 
   implicit none
   

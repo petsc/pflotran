@@ -75,12 +75,13 @@ module Reaction_Sandbox_Base_class
     end subroutine Base_SkipBlock 
     
     subroutine Base_React(this,Res,Jac,compute_derivative,rt_auxvar, &
-                          global_auxvar,porosity,volume,reaction,option)
+                          global_auxvar,material_auxvar,reaction,option)
 
       use Option_module
       use Reaction_Aux_module
       use Reactive_Transport_Aux_module
       use Global_Aux_module
+      use Material_Aux_class
   
       import reaction_sandbox_base_type
     
@@ -97,6 +98,7 @@ module Reaction_Sandbox_Base_class
       PetscReal :: volume
       type(reactive_transport_auxvar_type) :: rt_auxvar
       type(global_auxvar_type) :: global_auxvar
+      class(material_auxvar_type) :: material_auxvar
       
     end subroutine
     
@@ -115,7 +117,9 @@ module Reaction_Sandbox_Base_class
 #else
 
 contains
-  
+
+! ************************************************************************** !
+
   subroutine Base_Setup(this,reaction,option)
     
     use Option_module
@@ -129,6 +133,8 @@ contains
   
   end subroutine Base_Setup 
 
+! ************************************************************************** !
+
   subroutine Base_Read(this,input,option)
     
     use Option_module
@@ -141,7 +147,8 @@ contains
     type(option_type) :: option
   
   end subroutine Base_Read
-  
+
+! ************************************************************************** !
 
   subroutine Base_SkipBlock(this,input,option)
     
@@ -155,13 +162,16 @@ contains
     type(option_type) :: option
   
   end subroutine Base_SkipBlock   
-    
+
+! ************************************************************************** !
+
   subroutine Base_React(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
-                        global_auxvar,porosity,volume,reaction,option)
+                        global_auxvar,material_auxvar,reaction,option)
     use Option_module
     use Reaction_Aux_module
     use Reactive_Transport_Aux_module
     use Global_Aux_module
+    use Material_Aux_class
   
     implicit none
   
@@ -176,9 +186,12 @@ contains
     PetscReal :: volume
     type(reactive_transport_auxvar_type) :: rt_auxvar
     type(global_auxvar_type) :: global_auxvar
+    class(material_auxvar_type) :: material_auxvar
       
   end subroutine
-    
+
+! ************************************************************************** !
+
   subroutine Base_Destroy(this)
 
     implicit none

@@ -22,15 +22,16 @@ module Shape_Function_module
             ShapeFunctionDestroy
   
   contains
- 
+
 ! ************************************************************************** !
-!
-! ShapeFunctionInitialize: Allocate memory for shapefunction type
-! author: Satish Karra, LANL
-! date: 5/17/2013  
-!
-! ************************************************************************** !
+
 subroutine ShapeFunctionInitialize(shapefunction)
+  ! 
+  ! Allocate memory for shapefunction type
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 5/17/2013
+  ! 
  
   type(shapefunction_type) :: shapefunction
   PetscReal, pointer :: coord(:,:)
@@ -124,30 +125,31 @@ subroutine ShapeFunctionInitialize(shapefunction)
   end select     
    
 end subroutine ShapeFunctionInitialize
- 
+
 ! ************************************************************************** !
-!
-! ShapeFunctionCalculate: Subroutine provides shape functions and its derivatives
-! at a given spatial point (in the reference element) 'zeta' for various finite
-! elements.
-! author: Satish Karra, LANL
-! date: 5/17/2013 
-! Input variables
-!   EleType: element type
-!       L2: one-dimensional element -1 <= x <= +1
-!       Q4: four node quadrilateral element -1 <= x, y <= +1
-!       Q9: nine node quadrilateral element 
-!       T3: three node right-angled triangle with h = b = 1
-!       T6: six node right-angled triangle
-!       B8: eight node right-angled tetrahedron element
-!   zeta: coordinates of a point in the reference element
-!
-! Output variables
-!   N: shape functions for all nodes evaluated at zeta (N is a row
-!   vector!)
-!   DN: derivatives of shape functions with respect to zeta
-! ************************************************************************** !
+
 subroutine ShapeFunctionCalculate(shapefunction)
+  ! 
+  ! Subroutine provides shape functions and its derivatives
+  ! at a given spatial point (in the reference element) 'zeta' for various finite
+  ! elements.
+  ! Input variables
+  ! EleType: element type
+  ! L2: one-dimensional element -1 <= x <= +1
+  ! Q4: four node quadrilateral element -1 <= x, y <= +1
+  ! Q9: nine node quadrilateral element
+  ! T3: three node right-angled triangle with h = b = 1
+  ! T6: six node right-angled triangle
+  ! B8: eight node right-angled tetrahedron element
+  ! zeta: coordinates of a point in the reference element
+  ! Output variables
+  ! N: shape functions for all nodes evaluated at zeta (N is a row
+  ! vector!)
+  ! DN: derivatives of shape functions with respect to zeta
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 5/17/2013
+  ! 
 
   type(shapefunction_type) :: shapefunction
   PetscReal, pointer :: zeta(:)
@@ -292,13 +294,14 @@ subroutine ShapeFunctionCalculate(shapefunction)
 end subroutine ShapeFunctionCalculate
 
 ! ************************************************************************** !
-!
-! ShapeFunctionDestroy: Dellocate memory for shapefunction type
-! author: Satish Karra, LANL
-! date: 5/17/2013  
-!
-! ************************************************************************** !
+
 subroutine ShapeFunctionDestroy(shapefunction)
+  ! 
+  ! Dellocate memory for shapefunction type
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 5/17/2013
+  ! 
 
   type(shapefunction_type) :: shapefunction
   

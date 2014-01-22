@@ -56,13 +56,14 @@ module Immobile_Aux_module
 contains
 
 ! ************************************************************************** !
-!
-! ImmobileCreate: Allocate and initialize immobile object
-! author: Glenn Hammond
-! date: 01/11/13
-!
-! ************************************************************************** !
+
 function ImmobileCreate()
+  ! 
+  ! Allocate and initialize immobile object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/11/13
+  ! 
 
   implicit none
   
@@ -82,13 +83,14 @@ function ImmobileCreate()
 end function ImmobileCreate
 
 ! ************************************************************************** !
-!
-! ImmobileSpeciesCreate: Allocate and initialize a immobile species object
-! author: Glenn Hammond
-! date: 01/02/13
-!
-! ************************************************************************** !
+
 function ImmobileSpeciesCreate()
+  ! 
+  ! Allocate and initialize a immobile species object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/02/13
+  ! 
 
   implicit none
   
@@ -108,13 +110,14 @@ function ImmobileSpeciesCreate()
 end function ImmobileSpeciesCreate
 
 ! ************************************************************************** !
-!
-! ImmobileConstraintCreate: Creates a immobile constraint object
-! author: Glenn Hammond
-! date: 01/07/13
-!
-! ************************************************************************** !
+
 function ImmobileConstraintCreate(immobile,option)
+  ! 
+  ! Creates a immobile constraint object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/07/13
+  ! 
 
   use Option_module
   
@@ -139,15 +142,16 @@ function ImmobileConstraintCreate(immobile,option)
   ImmobileConstraintCreate => constraint
 
 end function ImmobileConstraintCreate
-  
+
 ! ************************************************************************** !
-!
-! ImmobileGetCount: Returns the number of immobile species
-! author: Glenn Hammond
-! date: 01/02/13
-!
-! ************************************************************************** !
+
 function ImmobileGetCount(immobile)
+  ! 
+  ! Returns the number of immobile species
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/02/13
+  ! 
 
   implicit none
   
@@ -167,13 +171,14 @@ function ImmobileGetCount(immobile)
 end function ImmobileGetCount
 
 ! ************************************************************************** !
-!
-! GetImmobileSpeciesIDFromName1: Returns the id of named immobile species
-! author: Glenn Hammond
-! date: 01/28/13
-!
-! ************************************************************************** !
+
 function GetImmobileSpeciesIDFromName1(name,immobile,option)
+  ! 
+  ! Returns the id of named immobile species
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/28/13
+  ! 
 
   use Option_module
   use String_module
@@ -192,13 +197,14 @@ function GetImmobileSpeciesIDFromName1(name,immobile,option)
 end function GetImmobileSpeciesIDFromName1
 
 ! ************************************************************************** !
-!
-! GetImmobileSpeciesIDFromName2: Returns the id of named immobile species
-! author: Glenn Hammond
-! date: 01/28/13
-!
-! ************************************************************************** !
+
 function GetImmobileSpeciesIDFromName2(name,immobile,return_error,option)
+  ! 
+  ! Returns the id of named immobile species
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/28/13
+  ! 
 
   use Option_module
   use String_module
@@ -249,13 +255,14 @@ function GetImmobileSpeciesIDFromName2(name,immobile,return_error,option)
 end function GetImmobileSpeciesIDFromName2
 
 ! ************************************************************************** !
-!
-! ImmobileSpeciesDestroy: Deallocates a immobile species
-! author: Glenn Hammond
-! date: 01/02/13
-!
-! ************************************************************************** !
+
 subroutine ImmobileSpeciesDestroy(species)
+  ! 
+  ! Deallocates a immobile species
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/02/13
+  ! 
 
   implicit none
     
@@ -269,13 +276,14 @@ subroutine ImmobileSpeciesDestroy(species)
 end subroutine ImmobileSpeciesDestroy
 
 ! ************************************************************************** !
-!
-! ImmobileConstraintDestroy: Destroys a colloid constraint object
-! author: Glenn Hammond
-! date: 03/12/10
-!
-! ************************************************************************** !
+
 subroutine ImmobileConstraintDestroy(constraint)
+  ! 
+  ! Destroys a colloid constraint object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/12/10
+  ! 
 
   use Utility_module, only: DeallocateArray
 
@@ -296,13 +304,14 @@ subroutine ImmobileConstraintDestroy(constraint)
 end subroutine ImmobileConstraintDestroy
 
 ! ************************************************************************** !
-!
-! ImmobileDestroy: Deallocates a immobile object
-! author: Glenn Hammond
-! date: 05/29/08
-!
-! ************************************************************************** !
+
 subroutine ImmobileDestroy(immobile)
+  ! 
+  ! Deallocates a immobile object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/29/08
+  ! 
 
   use Utility_module, only: DeallocateArray
   

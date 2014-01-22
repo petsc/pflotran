@@ -10,8 +10,8 @@ module PFLOTRAN_Factory_module
 
   public :: PFLOTRANInitialize, &
             PFLOTRANInitializePrePetsc, &
-#ifndef PROCESS_MODEL
             PFLOTRANInitializePostPetsc, &
+#ifndef PROCESS_MODEL
             PFLOTRANRun, &
 #endif
             PFLOTRANFinalize
@@ -19,13 +19,14 @@ module PFLOTRAN_Factory_module
 contains
 
 ! ************************************************************************** !
-!
-! PFLOTRANInitialize: Sets up PFLOTRAN subsurface simulation 
-! author: Glenn Hammond
-! date: 06/10/13
-!
-! ************************************************************************** !
+
 subroutine PFLOTRANInitialize(option)
+  ! 
+  ! Sets up PFLOTRAN subsurface simulation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/10/13
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -34,59 +35,90 @@ subroutine PFLOTRANInitialize(option)
   
   type(option_type), pointer :: option
 
+#ifndef PROCESS_MODEL
   call PFLOTRANInitializePrePetsc(option)
+  ! initialize stochastic realizations here
   call OptionInitPetsc(option)
-#ifdef PROCESS_MODEL
-  call PFLOTRANInitializePostPetsc(option)
 #endif
 
 end subroutine PFLOTRANInitialize
 
+#ifdef PROCESS_MODEL
 ! ************************************************************************** !
+
+subroutine PFLOTRANInitializePrePetsc(multisimulation,option)
 !
-! PFLOTRANInitializePrePetsc: Sets up PFLOTRAN subsurface simulation 
-!                             framework prior to PETSc initialization
-! author: Glenn Hammond
-! date: 06/07/13
+! Sets up PFLOTRAN subsurface simulation framework prior to PETSc 
+!   initialization
+! Author: Glenn Hammond
+! Date: 06/07/13
 !
+  use Option_module
+  use Input_Aux_module
+  use Multi_Simulation_module
+  
+  implicit none
+  
+  type(multi_simulation_type), pointer :: multisimulation
+#else
+
 ! ************************************************************************** !
+
 subroutine PFLOTRANInitializePrePetsc(option)
 
   use Option_module
+  use Input_Aux_module
   
   implicit none
   
+#endif
   type(option_type) :: option
   
-  ! NOTE: Cannot add anything that requires PETSc in this routins as PETSc 
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscBool :: bool_flag
+  PetscBool :: option_found
+  
+  ! NOTE: Cannot add anything that requires PETSc in this routine as PETSc 
   !       has not yet been initialized.
   
   call PFLOTRANInitCommandLineSettings(option)
+#ifdef PROCESS_MODEL
+  ! initialize stochastic realizations here
+  string = '-stochastic'
+  call InputGetCommandLineTruth(string,bool_flag,option_found,option)
+  if (option_found) then
+    multisimulation => MultiSimulationCreate()
+    call MultiSimulationInitialize(multisimulation,option)
+  endif
+#endif
   
 end subroutine PFLOTRANInitializePrePetsc
 
-! ************************************************************************** !
-!
-! PFLOTRANInitializePostPetsc: Sets up PFLOTRAN subsurface simulation 
-!                              framework after PETSc initialization
-! author: Glenn Hammond
-! date: 06/17/13
-!
-! ************************************************************************** !
 #ifdef PROCESS_MODEL
-subroutine PFLOTRANInitializePostPetsc(option)
+! ************************************************************************** !
 
+subroutine PFLOTRANInitializePostPetsc(multisimulation,option)
+!
+! Sets up PFLOTRAN subsurface simulation framework after PETSc initialization
+! Author: Glenn Hammond
+! Date: 06/17/13
+!
   use Option_module
-  use Logging_module
+  use Multi_Simulation_module
   
   implicit none
   
+  type(multi_simulation_type), pointer :: multisimulation
   type(option_type) :: option
 
-  call LoggingCreate()
+  ! must come after logging is created
+  call MultiSimulationIncrement(multisimulation,option)
   call OptionBeginTiming(option)
   
 #else
+
+! ************************************************************************** !
+
 subroutine PFLOTRANInitializePostPetsc(simulation, master_stepper, option, &
                                        init_status)
 
@@ -136,14 +168,16 @@ subroutine PFLOTRANInitializePostPetsc(simulation, master_stepper, option, &
 end subroutine PFLOTRANInitializePostPetsc
 
 #ifndef PROCESS_MODEL
+
 ! ************************************************************************** !
-!
-! PFLOTRANRun: Runs the PFLOTRAN simulation
-! author: Glenn Hammond
-! date: 06/07/13
-!
-! ************************************************************************** !
+
 subroutine PFLOTRANRun(simulation, master_stepper, init_status)
+  ! 
+  ! Runs the PFLOTRAN simulation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/07/13
+  ! 
 
   use Simulation_module
   use Timestepper_module
@@ -203,29 +237,30 @@ subroutine PFLOTRANRun(simulation, master_stepper, init_status)
 end subroutine PFLOTRANRun
 #endif
 
-! ************************************************************************** !
-!
-! PFLOTRANFinalize: Destroys PFLOTRAN subsurface simulation framework
-! author: Glenn Hammond
-! date: 06/07/13
-!
-! ************************************************************************** !
 #ifdef PROCESS_MODEL
-subroutine PFLOTRANFinalize(option)
 
+! ************************************************************************** !
+
+subroutine PFLOTRANFinalize(option)
+!
+! Destroys PFLOTRAN subsurface simulation framework
+! Author: Glenn Hammond
+! Date: 06/07/13
+!
   use Option_module
-  use Logging_module
   
   implicit none
   
   type(option_type) :: option
   
   call OptionEndTiming(option)
-  call LoggingDestroy()
   if (option%myrank == option%io_rank .and. option%print_to_file) then
     close(option%fid_out)
   endif
 #else
+
+! ************************************************************************** !
+
 subroutine PFLOTRANFinalize(simulation,option)
 
   use Simulation_module
@@ -250,13 +285,14 @@ subroutine PFLOTRANFinalize(simulation,option)
 end subroutine PFLOTRANFinalize
 
 ! ************************************************************************** !
-!
-! PFLOTRANInitCommandLineSettings: Initializes PFLOTRAN output filenames, etc.
-! author: Glenn Hammond
-! date: 06/06/13
-!
-! ************************************************************************** !
+
 subroutine PFLOTRANInitCommandLineSettings(option)
+  ! 
+  ! Initializes PFLOTRAN output filenames, etc.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/06/13
+  ! 
 
   use Option_module
   use Input_Aux_module

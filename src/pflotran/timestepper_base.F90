@@ -54,6 +54,7 @@ module Timestepper_Base_class
     procedure, public :: UpdateDT => TimestepperBaseUpdateDT
     procedure, public :: Checkpoint => TimestepperBaseCheckpoint
     procedure, public :: Restart => TimestepperBaseRestart
+    procedure, public :: Reset => TimestepperBaseReset
     procedure, public :: FinalizeRun => TimestepperBaseFinalizeRun
     procedure, public :: Strip => TimestepperBaseStrip
     procedure, public :: Destroy => TimestepperBaseDestroy
@@ -77,18 +78,20 @@ module Timestepper_Base_class
             TimestepperBaseInit, &
             TimestepperBaseSetHeader, &
             TimestepperBaseGetHeader, &
+            TimestepperBaseReset, &
             TimestepperBaseRegisterHeader
 
 contains
 
 ! ************************************************************************** !
-!
-! TimestepperBaseCreate: Allocates and initializes a new Timestepper object
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 function TimestepperBaseCreate()
+  ! 
+  ! Allocates and initializes a new Timestepper object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   implicit none
   
@@ -104,13 +107,14 @@ function TimestepperBaseCreate()
 end function TimestepperBaseCreate
 
 ! ************************************************************************** !
-!
-! TimestepperBaseInit: Allocates and initializes a new Timestepper object
-! author: Glenn Hammond
-! date: 07/01/13
-!
-! ************************************************************************** !
+
 subroutine TimestepperBaseInit(this)
+  ! 
+  ! Allocates and initializes a new Timestepper object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/01/13
+  ! 
 
   implicit none
   
@@ -152,13 +156,14 @@ subroutine TimestepperBaseInit(this)
 end subroutine TimestepperBaseInit
 
 ! ************************************************************************** !
-!
-! TimestepperBaseRead: Reads parameters associated with time stepper
-! author: Glenn Hammond
-! date: 02/23/08
-!
-! ************************************************************************** !
+
 subroutine TimestepperBaseRead(this,input,option)
+  ! 
+  ! Reads parameters associated with time stepper
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/23/08
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -175,13 +180,14 @@ subroutine TimestepperBaseRead(this,input,option)
 end subroutine TimestepperBaseRead
 
 ! ************************************************************************** !
-!
-! TimestepperBaseProcessKeyword: Updates time step
-! author: Glenn Hammond
-! date: 03/20/13
-!
-! ************************************************************************** !
+
 subroutine TimestepperBaseProcessKeyword(this,input,option,keyword)
+  ! 
+  ! Updates time step
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/20/13
+  ! 
 
   use Option_module
   use String_module
@@ -265,15 +271,16 @@ subroutine TimestepperBaseProcessKeyword(this,input,option,keyword)
 end subroutine TimestepperBaseProcessKeyword
 
 ! ************************************************************************** !
-!
-! TimestepperBaseUpdateDT: Updates time step
-! author: Glenn Hammond
-! date: 03/20/13
-!
-! ************************************************************************** !
-subroutine TimestepperBaseUpdateDT(this,process_model)
 
-  use Process_Model_Base_class
+subroutine TimestepperBaseUpdateDT(this,process_model)
+  ! 
+  ! Updates time step
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/20/13
+  ! 
+
+  use PM_Base_class
   use Option_module
   
   implicit none
@@ -287,15 +294,17 @@ subroutine TimestepperBaseUpdateDT(this,process_model)
 end subroutine TimestepperBaseUpdateDT
 
 ! ************************************************************************** !
-!
-! TimestepperBaseSetTargetTime: Sets target time for timestepper
-! author: Glenn Hammond
-! date: 03/20/13
-!
-! ************************************************************************** !
+
 subroutine TimestepperBaseSetTargetTime(this,sync_time,option, &
                                         stop_flag,plot_flag, &
-                                        transient_plot_flag)
+                                        transient_plot_flag, &
+                                        checkpoint_flag)
+  ! 
+  ! Sets target time for timestepper
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/20/13
+  ! 
 
   use Option_module
   
@@ -307,6 +316,7 @@ subroutine TimestepperBaseSetTargetTime(this,sync_time,option, &
   PetscInt :: stop_flag
   PetscBool :: plot_flag
   PetscBool :: transient_plot_flag
+  PetscBool :: checkpoint_flag
   
   PetscReal :: target_time
   PetscReal :: dt
@@ -397,6 +407,7 @@ subroutine TimestepperBaseSetTargetTime(this,sync_time,option, &
           if (force_to_match_waypoint) revert_due_to_waypoint = PETSC_TRUE
           if (cur_waypoint%print_output) plot_flag = PETSC_TRUE
           if (cur_waypoint%print_tr_output) transient_plot_flag = PETSC_TRUE
+          if (cur_waypoint%print_checkpoint) checkpoint_flag = PETSC_TRUE
         endif
         if (equal_to_or_exceeds_sync_time) then
           ! If the time step was cut to match the sync time, we want to set
@@ -458,15 +469,16 @@ subroutine TimestepperBaseSetTargetTime(this,sync_time,option, &
  end subroutine TimestepperBaseSetTargetTime
 
 ! ************************************************************************** !
-!
-! TimestepperBaseStepDT: Steps forward one step in time
-! author: Glenn Hammond
-! date: 03/20/13
-!
-! ************************************************************************** !
-subroutine TimestepperBaseStepDT(this,process_model,stop_flag)
 
-  use Process_Model_Base_class
+subroutine TimestepperBaseStepDT(this,process_model,stop_flag)
+  ! 
+  ! Steps forward one step in time
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/20/13
+  ! 
+
+  use PM_Base_class
   use Option_module
   use Output_module, only : Output
   
@@ -486,13 +498,14 @@ subroutine TimestepperBaseStepDT(this,process_model,stop_flag)
 end subroutine TimestepperBaseStepDT
 
 ! ************************************************************************** !
-!
-! TimestepperBasePrintInfo: Prints information about time stepper
-! author: Glenn Hammond
-! date: 02/23/08
-!
-! ************************************************************************** !
+
 subroutine TimestepperBasePrintInfo(this,fid,header,option)
+  ! 
+  ! Prints information about time stepper
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/23/08
+  ! 
 
   use Option_module
   
@@ -530,14 +543,15 @@ subroutine TimestepperBasePrintInfo(this,fid,header,option)
 end subroutine TimestepperBasePrintInfo
 
 ! ************************************************************************** !
-!
-! TimestepperBaseCheckpoint: Checkpoints parameters/variables associated with 
-!                            a time stepper.
-! author: Glenn Hammond
-! date: 07/25/13
-!
-! ************************************************************************** !
+
 subroutine TimestepperBaseCheckpoint(this,viewer,option)
+  ! 
+  ! Checkpoints parameters/variables associated with
+  ! a time stepper.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/25/13
+  ! 
 
   use Option_module
 
@@ -555,13 +569,14 @@ subroutine TimestepperBaseCheckpoint(this,viewer,option)
 end subroutine TimestepperBaseCheckpoint
 
 ! ************************************************************************** !
-!
-! TimestepperBaseRegisterHeader: Register header entries.
-! author: Glenn Hammond
-! date: 07/30/13
-!
-! ************************************************************************** !
+
 subroutine TimestepperBaseRegisterHeader(this,bag,header)
+  ! 
+  ! Register header entries.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/30/13
+  ! 
 
   use Option_module
 
@@ -592,13 +607,14 @@ subroutine TimestepperBaseRegisterHeader(this,bag,header)
 end subroutine TimestepperBaseRegisterHeader
 
 ! ************************************************************************** !
-!
-! TimestepperBaseSetHeader: Sets values in checkpoint header.
-! author: Glenn Hammond
-! date: 07/25/13
-!
-! ************************************************************************** !
+
 subroutine TimestepperBaseSetHeader(this,bag,header)
+  ! 
+  ! Sets values in checkpoint header.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/25/13
+  ! 
 
   use Option_module
 
@@ -627,14 +643,15 @@ subroutine TimestepperBaseSetHeader(this,bag,header)
 end subroutine TimestepperBaseSetHeader
 
 ! ************************************************************************** !
-!
-! TimestepperBaseRestart: Restarts parameters/variables associated with 
-!                         a time stepper.
-! author: Glenn Hammond
-! date: 07/25/13
-!
-! ************************************************************************** !
+
 subroutine TimestepperBaseRestart(this,viewer,option)
+  ! 
+  ! Restarts parameters/variables associated with
+  ! a time stepper.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/25/13
+  ! 
 
   use Option_module
 
@@ -652,13 +669,14 @@ subroutine TimestepperBaseRestart(this,viewer,option)
 end subroutine TimestepperBaseRestart
 
 ! ************************************************************************** !
-!
-! TimestepperBaseGetHeader: Gets values in checkpoint header.
-! author: Glenn Hammond
-! date: 07/25/13
-!
-! ************************************************************************** !
+
 subroutine TimestepperBaseGetHeader(this,header)
+  ! 
+  ! Gets values in checkpoint header.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/25/13
+  ! 
 
   use Option_module
 
@@ -681,13 +699,40 @@ subroutine TimestepperBaseGetHeader(this,header)
 end subroutine TimestepperBaseGetHeader
 
 ! ************************************************************************** !
-!
-! TimestepperBaseFinalizeRun: Finalizes the time stepping
-! author: Glenn Hammond
-! date: 07/22/13
-!
+
+subroutine TimestepperBaseReset(this)
+  ! 
+  ! Zeros timestepper object members.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/20/14
+  ! 
+
+  implicit none
+  
+
+  class(stepper_base_type) :: this
+  
+  this%target_time = 0.d0
+  this%dt = this%dt_min
+  this%prev_dt = 0.d0
+  this%steps = 0
+  this%cumulative_time_step_cuts = 0
+  this%num_constant_time_steps = 0
+  this%num_contig_revert_due_to_sync = 0
+  this%revert_dt = PETSC_FALSE
+    
+end subroutine TimestepperBaseReset
+
 ! ************************************************************************** !
+
 recursive subroutine TimestepperBaseFinalizeRun(this,option)
+  ! 
+  ! Finalizes the time stepping
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/22/13
+  ! 
 
   use Option_module
   
@@ -713,13 +758,14 @@ recursive subroutine TimestepperBaseFinalizeRun(this,option)
 end subroutine TimestepperBaseFinalizeRun
 
 ! ************************************************************************** !
-!
-! TimestepperBaseStrip: Deallocates members of a time stepper
-! author: Glenn Hammond
-! date: 07/22/13
-!
-! ************************************************************************** !
+
 subroutine TimestepperBaseStrip(this)
+  ! 
+  ! Deallocates members of a time stepper
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/22/13
+  ! 
 
   implicit none
   
@@ -728,13 +774,14 @@ subroutine TimestepperBaseStrip(this)
 end subroutine TimestepperBaseStrip
 
 ! ************************************************************************** !
-!
-! TimestepperBaseDestroy: Deallocates a time stepper
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
+
 subroutine TimestepperBaseDestroy(this)
+  ! 
+  ! Deallocates a time stepper
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
 
   implicit none
   

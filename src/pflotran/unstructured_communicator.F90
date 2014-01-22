@@ -42,14 +42,15 @@ module Unstructured_Communicator_class
 contains
 
 ! ************************************************************************** !
-!
-! UnstructuredCommunicatorCreate: Allocates and initializes a new communicator 
-!                               object for unstructured grids
-! author: Glenn Hammond
-! date: 03/15/13
-!
-! ************************************************************************** !
+
 function UnstructuredCommunicatorCreate()
+  ! 
+  ! Allocates and initializes a new communicator
+  ! object for unstructured grids
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/15/13
+  ! 
 
   implicit none
   
@@ -67,13 +68,14 @@ function UnstructuredCommunicatorCreate()
 end function UnstructuredCommunicatorCreate
 
 ! ************************************************************************** !
-!
-! UnstructuredSetDM: Sets pointer to DM
-! author: Glenn Hammond
-! date: 03/18/13
-!
-! ************************************************************************** !
+
 subroutine UnstructuredSetDM(this,dm_ptr)
+  ! 
+  ! Sets pointer to DM
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/18/13
+  ! 
 
   use DM_Kludge_module
 
@@ -88,13 +90,14 @@ subroutine UnstructuredSetDM(this,dm_ptr)
 end subroutine UnstructuredSetDM
 
 ! ************************************************************************** !
-!
-! UnstructuredGlobalToLocal: Performs global to local communication 
-! author: Glenn Hammond
-! date: 03/15/13
-!
-! ************************************************************************** !
+
 subroutine UnstructuredGlobalToLocal(this,source,destination)
+  ! 
+  ! Performs global to local communication
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/15/13
+  ! 
 
 !TODO(geh): move to communicator_base.F90
 
@@ -112,13 +115,14 @@ subroutine UnstructuredGlobalToLocal(this,source,destination)
 end subroutine UnstructuredGlobalToLocal
 
 ! ************************************************************************** !
-!
-! UnstructuredLocalToGlobal: Performs local to global communication 
-! author: Glenn Hammond
-! date: 03/15/13
-!
-! ************************************************************************** !
+
 subroutine UnstructuredLocalToGlobal(this,source,destination)
+  ! 
+  ! Performs local to global communication
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/15/13
+  ! 
 
   implicit none
   
@@ -139,13 +143,14 @@ subroutine UnstructuredLocalToGlobal(this,source,destination)
 end subroutine UnstructuredLocalToGlobal
 
 ! ************************************************************************** !
-!
-! UnstructuredLocalToLocal: Performs local to local communication 
-! author: Glenn Hammond
-! date: 03/15/13
-!
-! ************************************************************************** !
+
 subroutine UnstructuredLocalToLocal(this,source,destination)
+  ! 
+  ! Performs local to local communication
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/15/13
+  ! 
 
   implicit none
   
@@ -166,13 +171,14 @@ subroutine UnstructuredLocalToLocal(this,source,destination)
 end subroutine UnstructuredLocalToLocal
 
 ! ************************************************************************** !
-!
-! UnstructuredGlobalToNatural: Performs global to natural communication 
-! author: Glenn Hammond
-! date: 03/15/13
-!
-! ************************************************************************** !
+
 subroutine UnstructuredGlobalToNatural(this,source,destination)
+  ! 
+  ! Performs global to natural communication
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/15/13
+  ! 
 
   implicit none
   
@@ -193,13 +199,14 @@ subroutine UnstructuredGlobalToNatural(this,source,destination)
 end subroutine UnstructuredGlobalToNatural
 
 ! ************************************************************************** !
-!
-! UnstructuredNaturalToGlobal: Performs natural to global communication 
-! author: Glenn Hammond
-! date: 03/15/13
-!
-! ************************************************************************** !
+
 subroutine UnstructuredNaturalToGlobal(this,source,destination)
+  ! 
+  ! Performs natural to global communication
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/15/13
+  ! 
 
   implicit none
   
@@ -220,14 +227,15 @@ subroutine UnstructuredNaturalToGlobal(this,source,destination)
 end subroutine UnstructuredNaturalToGlobal
 
 ! ************************************************************************** !
-!
-! UnstructuredCommunicatorDestroy: Deallocates a communicator object for 
-!                                  unstructured grids
-! author: Glenn Hammond
-! date: 03/15/13
-!
-! ************************************************************************** !
+
 subroutine UnstructuredCommunicatorDestroy(this)
+  ! 
+  ! Deallocates a communicator object for
+  ! unstructured grids
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/15/13
+  ! 
 
   implicit none
   
@@ -235,12 +243,14 @@ subroutine UnstructuredCommunicatorDestroy(this)
   
   PetscErrorCode :: ierr
   
+  !geh: all DMs are currently destroyed in realization.  This DM is solely
+  !     a pointer.  This will need to change, but skip for now.
   if (associated(this%ugdm)) then
-    call UGridDMDestroy(this%ugdm)
+    !call UGridDMDestroy(this%ugdm)
   endif
   nullify(this%ugdm)
   if (this%dm /= 0) then
-    call DMDestroy(this%dm,ierr)
+    !call DMDestroy(this%dm,ierr)
   endif
   this%dm = 0  
   

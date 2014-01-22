@@ -20,12 +20,7 @@ module Output_VTK_module
 contains
 
 ! ************************************************************************** !
-!
-! OutputVTK: 
-! author: ???
-! date: 
-!
-! ************************************************************************** !  
+
 subroutine OutputVTK(realization_base)
 
   use Realization_Base_class, only : realization_base_type
@@ -166,14 +161,13 @@ subroutine OutputVTK(realization_base)
 end subroutine OutputVTK
 
 #if 1
+
 ! ************************************************************************** !
-!
-! OutputVelocitiesVTK: Print velocities to Tecplot file in BLOCK format
-! author: ???
-! date: 
-!
-! ************************************************************************** !
+
 subroutine OutputVelocitiesVTK(realization_base)
+  ! 
+  ! Print velocities to Tecplot file in BLOCK format
+  ! 
  
   use Realization_Base_class, only : realization_base_type
   use Discretization_module
@@ -285,14 +279,13 @@ subroutine OutputVelocitiesVTK(realization_base)
   
 end subroutine OutputVelocitiesVTK
 #endif
+
 ! ************************************************************************** !
-!
-! WriteVTKGrid: Writes a grid in VTK format
-! author: ???
-! date: 
-!
-! ************************************************************************** !
+
 subroutine WriteVTKGrid(fid,realization_base)
+  ! 
+  ! Writes a grid in VTK format
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
@@ -395,14 +388,12 @@ subroutine WriteVTKGrid(fid,realization_base)
 end subroutine WriteVTKGrid
 
 ! ************************************************************************** !
-!
-! WriteVTKDataSetFromVec: Writes data from a Petsc Vec within a block
-!                             of a VTK file
-! author: 
-! date: 
-!
-! ************************************************************************** !
+
 subroutine WriteVTKDataSetFromVec(fid,realization_base,dataset_name,vec,datatype)
+  ! 
+  ! Writes data from a Petsc Vec within a block
+  ! of a VTK file
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   
@@ -427,15 +418,13 @@ subroutine WriteVTKDataSetFromVec(fid,realization_base,dataset_name,vec,datatype
 end subroutine WriteVTKDataSetFromVec
 
 ! ************************************************************************** !
-!
-! WriteVTKDataSet: Writes data from an array within a block
-!                      of a VTK file
-! author: ???
-! date: 
-!
-! ************************************************************************** !
+
 subroutine WriteVTKDataSet(fid,realization_base,dataset_name,array,datatype, &
                            size_flag)
+  ! 
+  ! Writes data from an array within a block
+  ! of a VTK file
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
