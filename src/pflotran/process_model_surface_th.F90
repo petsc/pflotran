@@ -234,6 +234,8 @@ subroutine PMSurfaceTHUpdateSolution(this)
                            this%surf_realization%option, &
                            this%surf_realization%option%time)
 
+  call SurfRealizAllCouplerAuxVars(this%surf_realization,force_update_flag)
+
   call SurfaceTHUpdateSolution(this%surf_realization)
 
 end subroutine PMSurfaceTHUpdateSolution
