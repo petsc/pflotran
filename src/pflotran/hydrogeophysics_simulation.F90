@@ -97,11 +97,11 @@ subroutine HydrogeophysicsInit(this,option)
   nullify(this%hydrogeophysics_coupler)
   this%solution_mpi = 0
   ! -999 denotes uninitialized
-  this%pf_e4d_scatter_comm = -999
+  this%pf_e4d_scatter_comm = MPI_COMM_NULL
   this%pf_e4d_scatter_grp = -999
   this%pf_e4d_scatter_size = -999
   this%pf_e4d_scatter_rank = -999
-  this%pf_e4d_master_comm = -999
+  this%pf_e4d_master_comm = MPI_COMM_NULL
   this%pf_e4d_master_grp = -999
   this%pf_e4d_master_size = -999
   this%pf_e4d_master_rank = -999
@@ -225,8 +225,9 @@ subroutine HydrogeophysicsStrip(this)
   
   call printMsg(this%option,'Hydrogeophysics%Strip()')
   
-  call SubsurfaceSimulationStrip(this)
-  if (.not.this%pflotran_process) then
+  if (this%pflotran_process) then
+    call SubsurfaceSimulationStrip(this)
+  else
     call HydrogeophysicsWrapperDestroy(this%option)
   endif
   ! created in HydrogeophysicsInitialize()
@@ -234,9 +235,13 @@ subroutine HydrogeophysicsStrip(this)
     call VecDestroy(this%solution_mpi ,ierr)
   this%solution_mpi = 0
 
-  call MPI_Comm_free(this%pf_e4d_scatter_comm,ierr)
+  if (this%pf_e4d_scatter_comm /= MPI_COMM_NULL)  then
+    call MPI_Comm_free(this%pf_e4d_scatter_comm,ierr)
+  endif
   this%pf_e4d_scatter_comm = 0
-  call MPI_Comm_free(this%pf_e4d_master_comm,ierr)
+  if (this%pf_e4d_master_comm /= MPI_COMM_NULL)  then
+    call MPI_Comm_free(this%pf_e4d_master_comm,ierr)
+  endif
   this%pf_e4d_master_comm = 0
 
   ! reset original communicator back to initial state  

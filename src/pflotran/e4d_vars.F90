@@ -78,5 +78,6 @@ module vars
   Vec :: pflotran_solution_vec_seq
   VecScatter :: pflotran_scatter
   PetscInt :: pflotran_solution_vec_size
+  character(len=32) :: pflotran_group_prefix
  
 end module vars

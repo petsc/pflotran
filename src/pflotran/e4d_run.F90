@@ -101,7 +101,10 @@ contains
    
     write(*,*) pf_time
     write(word,'(i15.15)') int(pf_time)
-    filename = 'sigma_' // trim(adjustl(word)) // '.txt' 
+    filename = 'sigma_' // &
+               trim(adjustl(pflotran_group_prefix)) // &
+               trim(adjustl(word)) // &
+               '.txt' 
     write(*,*) filename
     open(unit=86,file=trim(filename),status='replace',action='write')
     write(86,*) nelem
@@ -160,7 +163,10 @@ contains
       
     
     write(word,'(i15.15)') int(pf_time)
-    filename = 'e4d_' // trim(adjustl(word)) // '.dpd' 
+    filename = 'e4d_' // &
+               trim(adjustl(pflotran_group_prefix)) // &
+               trim(adjustl(word)) // &
+               '.dpd' 
     write(*,*) filename
     open(unit=86,file=trim(filename),status='replace',action='write')
     write(86,*) nm
