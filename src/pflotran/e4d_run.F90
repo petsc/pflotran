@@ -103,6 +103,7 @@ contains
     write(word,'(i15.15)') int(pf_time)
     filename = 'sigma_' // &
                trim(adjustl(pflotran_group_prefix)) // &
+               '_' // &
                trim(adjustl(word)) // &
                '.txt' 
     write(*,*) filename
@@ -165,6 +166,7 @@ contains
     write(word,'(i15.15)') int(pf_time)
     filename = 'e4d_' // &
                trim(adjustl(pflotran_group_prefix)) // &
+               '_' // &
                trim(adjustl(word)) // &
                '.dpd' 
     write(*,*) filename
