@@ -416,7 +416,7 @@ subroutine OptionInitRealization(option)
 #ifdef SURFACE_FLOW
   option%nsurfflowdof = 0
   option%subsurf_surf_coupling = DECOUPLED
-  option%surface_flow_formulation = KINEMATIC_WAVE
+  option%surface_flow_formulation = DIFFUSION_WAVE
   option%surf_flow_dt = 0.d0
   option%surf_flow_time =0.d0
   option%surf_subsurf_coupling_time = 0.d0

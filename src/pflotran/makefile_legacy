@@ -133,10 +133,6 @@ ifdef ugrid_debug
   MYFLAGS += -DUGRID_DEBUG
 endif
 
-ifdef surface_flow
-  MYFLAGS += -DSURFACE_FLOW -w -g
-endif
-
 ifdef amanzi_bgd
   MYFLAGS += -DAMANZI_BGD
 endif

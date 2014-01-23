@@ -106,7 +106,7 @@ function SaturationFunctionCreate(option)
   saturation_function%m = 0.d0
   saturation_function%lambda = 0.d0
   saturation_function%alpha = 0.d0
-  saturation_function%pcwmax = 0.d0
+  saturation_function%pcwmax = 1.d9
   saturation_function%betac = 0.d0
   saturation_function%power = 0.d0
   saturation_function%hysteresis_id = 0

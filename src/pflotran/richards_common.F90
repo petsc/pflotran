@@ -664,7 +664,9 @@ subroutine RichardsBCFluxDerivative(ibndtype,auxvars, &
             v_darcy_allowable = (global_auxvar_up%pres(1)-option%reference_pressure) &
                                 /option%flow_dt/(-option%gravity(3))/rho
             if(v_darcy > v_darcy_allowable) then
-              dphi_dp_dn = 0.d0
+              ! Since darcy velocity is limiited, dq_dp_dn needs to be zero.
+              !  Dq = 0 ==> dq_dp_dn = 0
+              Dq = 0.d0
               v_darcy = v_darcy_allowable
             endif
           endif
