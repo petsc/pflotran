@@ -225,6 +225,9 @@ subroutine HydrogeophysicsStrip(this)
   
   call printMsg(this%option,'Hydrogeophysics%Strip()')
   
+  ! we place a barrier here to ensure that the pflotran processes do not
+  ! rate ahead.
+  call MPI_Barrier(this%mycomm_save,ierr)
   if (this%pflotran_process) then
     call SubsurfaceSimulationStrip(this)
   else
@@ -267,13 +270,10 @@ subroutine HydrogeophysicsDestroy(simulation)
   
   class(hydrogeophysics_simulation_type), pointer :: simulation
 
-  PetscErrorCode :: ierr
-  
   call printMsg(simulation%option,'Hydrogeophysics%Destroy()')
   
   if (.not.associated(simulation)) return
   
-  call MPI_Barrier(simulation%mycomm_save,ierr)
   call simulation%Strip()
   deallocate(simulation)
   nullify(simulation)
