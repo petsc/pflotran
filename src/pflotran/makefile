@@ -2,7 +2,8 @@
 
 pflotran_src = ./
 common_src   = ./
-pflotran_test_dir = ../../regression_tests
+regression_test_dir = ../../regression_tests
+unit_test_dir = ./unittests
 
 
 MYFLAGS = -I.
@@ -227,7 +228,7 @@ mode_obj = \
 	${common_src}richards_mfd.o \
 	${common_src}th.o \
 	${common_src}thc.o 
-  
+
 shared_mode_aux_obj = \
 	${common_src}global_aux.o \
 	${common_src}reactive_transport_aux.o 
@@ -337,7 +338,7 @@ misc_obj = \
 	${common_src}secondary_continuum_aux.o\
 	${common_src}secondary_continuum.o \
 	${common_src}simulation.o \
- 	${common_src}simulation_aux.o \
+	${common_src}simulation_aux.o \
 	${common_src}simulation_base.o \
 	${common_src}subsurface_factory.o \
 	${common_src}subsurface_simulation.o \
@@ -973,19 +974,25 @@ waypoint.o : option.o output_aux.o pflotran_constants.o utility.o
 
 # developer level regression testing
 test : FORCE
-	@if [ -d $(pflotran_test_dir) ]; then \
-		$(MAKE) --directory=$(pflotran_test_dir) $(MAKECMDGOALS); \
+	@if [ -d $(unit_test_dir) ]; then \
+		$(MAKE) --directory=$(unit_test_dir) $(MAKECMDGOALS); \
+	fi
+	@if [ -d $(regression_test_dir) ]; then \
+		$(MAKE) --directory=$(regression_test_dir) $(MAKECMDGOALS); \
 	fi
 
 clean-tests : FORCE
-	@if [ -d $(pflotran_test_dir) ]; then \
-		$(MAKE) --directory=$(pflotran_test_dir) $(MAKECMDGOALS); \
+	@if [ -d $(unit_test_dir) ]; then \
+		$(MAKE) --directory=$(unit_test_dir) $(MAKECMDGOALS); \
+	fi
+	@if [ -d $(regression_test_dir) ]; then \
+		$(MAKE) --directory=$(regression_test_dir) $(MAKECMDGOALS); \
 	fi
 
-# user lever tests to verify pflotran is built correctly
+# user level tests to verify pflotran is built correctly
 check : FORCE
-	@if [ -d $(pflotran_test_dir) ]; then \
-		$(MAKE) --directory=$(pflotran_test_dir) $(MAKECMDGOALS); \
+	@if [ -d $(regression_test_dir) ]; then \
+		$(MAKE) --directory=$(regression_test_dir) $(MAKECMDGOALS); \
 	fi
 
 # null rule to force things to happen

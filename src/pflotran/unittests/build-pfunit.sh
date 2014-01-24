@@ -5,13 +5,21 @@
 
 PFUNIT_DIR=
 COMPILER=
+BUILD_STATUS=0
 ################################################################################
 function build-pfunit() {
 
-    pushd ${PFUNIT_DIR}
+    echo "----------------------------------------------------------------------"
+    echo "Building pFUnit :"
     make F90=${COMPILER}
+    BUILD_STATUS=$?
+}
+
+function test-pfunit() {
+    echo "----------------------------------------------------------------------"
+    echo "Testing pFUnit :"
     ./tests/tests.x
-    popd
+    BUILD_STATUS=$?
 }
 
 
@@ -59,6 +67,11 @@ fi
 echo "PFUNIT_DIR: ${PFUNIT_DIR}"
 echo "FC: ${COMPILER}"
 
+pushd ${PFUNIT_DIR}
 build-pfunit
+if [ "${BUILD_STATUS}" -eq "0" ]; then
+    test-pfunit
+fi
+popd
 
 exit ${BUILD_STATUS}
