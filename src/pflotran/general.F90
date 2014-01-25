@@ -212,7 +212,9 @@ subroutine GeneralSetupPatch(realization)
     if (associated(realization%material_property_array(i)%ptr)) then
       ! kg rock/m^3 rock * J/kg rock-K * 1.e-6 MJ/J
       patch%aux%Material%material_parameter% &
-        dencpr(realization%saturation_function_array(i)%ptr%id) = &
+        dencpr(realization%saturation_function_array( &
+          realization%material_property_array(i)%ptr%saturation_function_id)% &
+            ptr%id) = &
         realization%material_property_array(i)%ptr%rock_density * &
         realization%material_property_array(i)%ptr%specific_heat * option%scale
     endif
