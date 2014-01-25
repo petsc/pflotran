@@ -1248,8 +1248,8 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
 
   do iphase = 1, option%nphase
  
-    if (.not.((istate_up == TWO_PHASE_STATE .or. istate_up == iphase) .and. &
-              (istate_dn == TWO_PHASE_STATE .or. istate_dn == iphase))) cycle
+!    if (.not.((istate_up == TWO_PHASE_STATE .or. istate_up == iphase) .and. &
+!              (istate_dn == TWO_PHASE_STATE .or. istate_dn == iphase))) cycle
     
     ! using residual saturation cannot be correct! - geh
     if (gen_auxvar_up%sat(iphase) > sir_up .or. &
@@ -3021,6 +3021,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   PetscReal :: air_pressure0, air_pressure1, del_air_pressure
   PetscReal :: min_pressure
   PetscReal :: scale, temp_scale, temp_real
+  PetscReal, parameter :: tolerance = 0.99d0
   PetscErrorCode :: ierr
   
   grid => realization%patch%grid
@@ -3053,8 +3054,8 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
         min_pressure = gen_auxvars(ZERO_INTEGER,ghosted_id)%pres(apid) + &
                        gen_auxvars(ZERO_INTEGER,ghosted_id)%pres(spid)
         liquid_pressure1 = liquid_pressure0 - del_liquid_pressure
-        if (liquid_pressure1 <= min_pressure) then
-          temp_real = liquid_pressure0 - 0.9d0*min_pressure
+        if (liquid_pressure1 < min_pressure) then
+          temp_real = tolerance * (liquid_pressure0 - min_pressure)
           temp_scale = dabs(temp_real / del_liquid_pressure)
         endif
       case(TWO_PHASE_STATE)
@@ -3069,13 +3070,13 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
         air_pressure1 = air_pressure0 - del_air_pressure
         if (gas_pressure1 <= 0.d0) then
           if (dabs(del_gas_pressure) > 1.d-40) then
-            temp_real = 0.9d0 * dabs(gas_pressure0 / del_gas_pressure)
+            temp_real = tolerance * dabs(gas_pressure0 / del_gas_pressure)
             temp_scale = min(temp_scale,temp_real)
           endif
         endif
         if (air_pressure1 <= 0.d0) then
           if (dabs(del_air_pressure) > 1.d-40) then
-            temp_real = 0.9d0 * dabs(air_pressure0 / del_air_pressure)
+            temp_real = tolerance * dabs(air_pressure0 / del_air_pressure)
             temp_scale = min(temp_scale,temp_real)
           endif
         endif
@@ -3085,7 +3086,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
         if (gas_pressure1 <= air_pressure1) then
           temp_real = (air_pressure0 - gas_pressure0) / &
                       (temp_scale * (del_air_pressure - del_gas_pressure))
-          temp_real = temp_real * 0.9d0 * temp_scale
+          temp_real = temp_real * tolerance * temp_scale
           temp_scale = min(temp_scale,temp_real)
         endif
     end select
