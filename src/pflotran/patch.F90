@@ -487,6 +487,12 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
                    '" not found in flow condition list'
           call printErrMsg(option)
         endif
+        ! check to ensure that a rate subcondition exists
+        if (.not.associated(coupler%flow_condition%rate)) then
+          option%io_buffer = 'FLOW_CONDITIONs associated with SOURCE_SINKs' // &
+            ' must have a RATE expression within them.'
+          call printErrMsg(option)
+        endif
       else
         option%io_buffer = 'A FLOW_CONDITION must be specified in ' // &
                            'SOURCE_SINK: ' // trim(coupler%name) // '.'
