@@ -517,8 +517,13 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
 #ifdef DEBUG_GENERAL
         call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &
                                  'Before Update',option)
-        write(state_change_string,'(''Liquid -> 2 Phase at Cell '',i5)') &
-          ghosted_id
+        if (option%iflag == 1) then
+          write(state_change_string,'(''Liquid -> 2 Phase at Cell '',i5)') &
+            ghosted_id
+        else
+          write(state_change_string,'(''Liquid -> 2 Phase at Boundary Face '', &
+                                    & i5)') ghosted_id
+        endif
 #endif      
         global_auxvar%istate = TWO_PHASE_STATE
         x(GENERAL_GAS_PRESSURE_DOF) = &
@@ -536,8 +541,13 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
 #ifdef DEBUG_GENERAL
         call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &
                                  'Before Update',option)
-        write(state_change_string,'(''Gas -> 2 Phase at Cell '',i5)') &
-          ghosted_id
+        if (option%iflag == 1) then
+          write(state_change_string,'(''Gas -> 2 Phase at Cell '',i5)') &
+            ghosted_id
+        else
+          write(state_change_string,'(''Gas -> 2 Phase at Boundary Face '', &
+                                    & i5)') ghosted_id
+        endif
 #endif      
         global_auxvar%istate = TWO_PHASE_STATE
         ! first two primary dependent variables do not change
@@ -549,8 +559,13 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
 #ifdef DEBUG_GENERAL
         call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &
                                  'Before Update',option)
-        write(state_change_string,'(''2 Phase -> Liquid at Cell '',i5)') &
-          ghosted_id
+        if (option%iflag == 1) then
+          write(state_change_string,'(''2 Phase -> Liquid at Cell '',i5)') &
+            ghosted_id
+        else
+          write(state_change_string,'(''2 Phase -> Liquid at Boundary Face '', &
+                                    & i5)') ghosted_id
+        endif
 #endif      
         ! convert to liquid state
         global_auxvar%istate = LIQUID_STATE
@@ -565,8 +580,13 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
 #ifdef DEBUG_GENERAL
         call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &
                                  'Before Update',option)
-        write(state_change_string,'(''2 Phase -> Gas at Cell '',i5)') &
-          ghosted_id
+        if (option%iflag == 1) then
+          write(state_change_string,'(''2 Phase -> Gas at Cell '',i5)') &
+            ghosted_id
+        else
+          write(state_change_string,'(''2 Phase -> Gas at Boundary Face '', &
+                                    & i5)') ghosted_id
+        endif
 #endif      
         ! convert to gas state
         global_auxvar%istate = GAS_STATE
