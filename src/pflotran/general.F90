@@ -689,19 +689,11 @@ subroutine GeneralUpdateSolution(realization)
                                   field%iphas_loc, &
                                   field%iphas_loc,ONEDOF)
   
-  ! This is solely a check to see if the local update of ghost cell
-  ! state matches that of the owner process  
+  ! Set states of ghosted cells
   call VecGetArrayF90(field%iphas_loc,iphas_loc_p,ierr)
   do ghosted_id = 1, realization%patch%grid%ngmax
-    if (int(iphas_loc_p(ghosted_id)) /= &
-        realization%patch%aux%Global%auxvars(ghosted_id)%istate) then
-      if (realization%patch%aux%Global%auxvars(ghosted_id)%istate /= 0) then
-        write(option%io_buffer,*) 'Mismatch in state of ghosted cell:', &
-          ghosted_id, int(iphas_loc_p(ghosted_id)), &
-          realization%patch%aux%Global%auxvars(ghosted_id)%istate
-        call printErrMsgByRank(option)
-      endif
-    endif
+    realization%patch%aux%Global%auxvars(ghosted_id)%istate = &
+      int(iphas_loc_p(ghosted_id))
   enddo
   call VecRestoreArrayF90(field%iphas_loc,iphas_loc_p,ierr)
 
