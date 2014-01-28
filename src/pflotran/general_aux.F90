@@ -487,7 +487,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
   type(general_auxvar_type) :: gen_auxvar
   type(global_auxvar_type) :: global_auxvar
 
-  PetscReal, parameter :: epsilon = 1.d-8
+  PetscReal, parameter :: epsilon = 1.d-6
   PetscReal :: x(option%nflowdof)
   PetscReal :: por, perm
   PetscInt :: apid, cpid, vpid, spid

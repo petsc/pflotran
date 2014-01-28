@@ -50,6 +50,7 @@ subroutine GeneralTimeCut(realization)
   use Option_module
   use Field_module
   use Patch_module
+  use Discretization_module
  
   implicit none
   
@@ -66,7 +67,8 @@ subroutine GeneralTimeCut(realization)
   field => realization%field
 
   call VecCopy(field%flow_yy,field%flow_xx,ierr)
-  call GeneralInitializeTimestep(realization)  
+  call DiscretizationGlobalToLocal(realization%discretization,field%flow_xx, &
+                                   field%flow_xx_loc,NFLOWDOF)
   
   cur_patch => realization%patch_list%first
   do
@@ -76,6 +78,8 @@ subroutine GeneralTimeCut(realization)
     cur_patch => cur_patch%next
   enddo
  
+  call GeneralInitializeTimestep(realization)  
+
 end subroutine GeneralTimeCut
 
 ! ************************************************************************** !
@@ -653,6 +657,7 @@ subroutine GeneralUpdateSolution(realization)
   use Field_module
   use Patch_module
   use Discretization_module
+  use Option_module
   
   implicit none
   
@@ -660,8 +665,12 @@ subroutine GeneralUpdateSolution(realization)
 
   type(field_type), pointer :: field
   type(patch_type), pointer :: cur_patch
+  type(option_type), pointer :: option
+  PetscInt :: ghosted_id
+  PetscReal, pointer :: iphas_loc_p(:)
   PetscErrorCode :: ierr
   
+  option => realization%option
   field => realization%field
   
   call VecCopy(field%flow_xx,field%flow_yy,ierr)   
@@ -674,12 +683,24 @@ subroutine GeneralUpdateSolution(realization)
     cur_patch => cur_patch%next
   enddo
   
-  ! update ghosted iphase_loc values (must come after 
+  ! update ghosted iphas_loc values (must come after 
   ! GeneralUpdateSolutionPatch)
   call DiscretizationLocalToLocal(realization%discretization, &
                                   field%iphas_loc, &
                                   field%iphas_loc,ONEDOF)
   
+  ! This is solely a check to see if the local update of ghost cell
+  ! state matches that of the owner process  
+  call VecGetArrayF90(field%iphas_loc,iphas_loc_p,ierr)
+  do ghosted_id = 1, realization%patch%grid%ngmax
+    if (int(iphas_loc_p(ghosted_id)) /= &
+        realization%patch%aux%Global%auxvars(ghosted_id)%istate) then
+      option%io_buffer = 'Mismatch in state of ghosted cell'
+      call printErrMsgByRank(option)
+    endif
+  enddo
+  call VecRestoreArrayF90(field%iphas_loc,iphas_loc_p,ierr)
+
 end subroutine GeneralUpdateSolution
 
 ! ************************************************************************** !
