@@ -695,8 +695,12 @@ subroutine GeneralUpdateSolution(realization)
   do ghosted_id = 1, realization%patch%grid%ngmax
     if (int(iphas_loc_p(ghosted_id)) /= &
         realization%patch%aux%Global%auxvars(ghosted_id)%istate) then
-      option%io_buffer = 'Mismatch in state of ghosted cell'
-      call printErrMsgByRank(option)
+      if (realization%patch%aux%Global%auxvars(ghosted_id)%istate /= 0) then
+        write(option%io_buffer,*) 'Mismatch in state of ghosted cell:', &
+          ghosted_id, int(iphas_loc_p(ghosted_id)), &
+          realization%patch%aux%Global%auxvars(ghosted_id)%istate
+        call printErrMsgByRank(option)
+      endif
     endif
   enddo
   call VecRestoreArrayF90(field%iphas_loc,iphas_loc_p,ierr)
@@ -1987,19 +1991,26 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   ! Communication -----------------------------------------
   ! These 3 must be called before GeneralUpdateAuxVars()
   call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
-  call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%perm_xx_loc,field%perm_xx_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%perm_yy_loc,field%perm_yy_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%iphas_loc, &
+                                  field%iphas_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%perm_xx_loc, &
+                                  field%perm_xx_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%perm_yy_loc, &
+                                  field%perm_yy_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%perm_zz_loc, &
+                                  field%perm_zz_loc,ONEDOF)
   
   option%variables_swapped = PETSC_FALSE
   call GeneralResidualPatch1(snes,xx,r,realization,ierr)
   
   if (option%variables_swapped) then
+!#if 0
     if (option%mycommsize > 1) then
-      option%io_buffer = 'Update of primary dep vars needs to be fixed for parallel.'
-      call printErrMsg(option)
+      option%io_buffer = &
+        'Update of primary dep vars needs to be fixed for parallel.'
+      call printErrMsgByRank(option)
     endif
+!#endif
     call DiscretizationLocalToGlobal(discretization,field%flow_xx_loc,xx,NFLOWDOF)
   endif
 
