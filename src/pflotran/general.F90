@@ -1996,13 +1996,15 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   call GeneralResidualPatch1(snes,xx,r,realization,ierr)
   
   if (option%variables_swapped) then
-!#if 0
+#if 0
     if (option%mycommsize > 1) then
       option%io_buffer = &
         'Update of primary dep vars needs to be fixed for parallel.'
       call printErrMsgByRank(option)
     endif
-!#endif
+#endif
+    !geh: since this operation is not collective (i.e. all processors may
+    !     not swap), this operation may fail....
     call DiscretizationLocalToGlobal(discretization,field%flow_xx_loc,xx,NFLOWDOF)
   endif
 
