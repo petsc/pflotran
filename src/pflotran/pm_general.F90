@@ -340,7 +340,7 @@ subroutine PMGeneralUpdateTimestep(this,dt,dt_max,iacceleration, &
   fac = 0.5d0
   if (num_newton_iterations >= iacceleration) then
     fac = 0.33d0
-    ut = 0.d0
+    umin = 0.d0
   else
     up = this%dPmax_allowable/(this%dPmax+0.1)
     ut = this%dTmax_allowable/(this%dTmax+1.d-5)
