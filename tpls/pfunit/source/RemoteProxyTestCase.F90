@@ -20,6 +20,8 @@
 ! 07 Nov 2013 - Added the prologue for the compliance with Doxygen. 
 !
 !-------------------------------------------------------------------------------
+#include "pFUnit_compiler_kludges.H90"
+
 module RemoteProxyTestCase_mod
    use UnixProcess_mod
    use Exception_mod
@@ -146,7 +148,11 @@ contains
                   read(line,*) lineNumber
                   line = contentScan(this%process%getLine())
                   read(line,*) length
+#ifdef GFORTRAN_4_7
+                  message = repeat(' ', length)
+#else
                   allocate(character(len=length) :: message)
+#endif
                   line = this%process%getDelim(C_NULL_CHAR)
                   message = contentScan(line)
                   ! eat remaining linefeed

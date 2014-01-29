@@ -21,6 +21,8 @@
 !
 !-------------------------------------------------------------------------------
 ! Serial TestCase 
+#include "pFUnit_compiler_kludges.H90"
+
 module TestCase_mod
    use SurrogateTestCase_mod
    use TestResult_mod
@@ -47,10 +49,14 @@ module TestCase_mod
    type, abstract, extends(Test) :: TestCase
       private
       type (ConcreteSurrogate) :: surrogate
-#ifdef DEFERRED_LENGTH_CHARACTER
-      character(:), allocatable :: name
+#ifdef GFORTRAN_4_7
+      character(len=PFUNIT_NAME_LENGTH) :: name
 #else
+#  ifdef DEFERRED_LENGTH_CHARACTER
+      character(:), allocatable :: name
+#  else
       character(len=MAX_LENGTH_NAME) :: name
+#  endif
 #endif
    contains
       procedure :: setSurrogate
@@ -81,13 +87,21 @@ contains
 
    function baseName(this) result(name)
       class (TestCase), intent(in) :: this
+#ifdef GFORTRAN_4_7
+      character(len=PFUNIT_NAME_LENGTH) :: name
+#else
       character(:), allocatable :: name
+#endif
       name = this%name
    end function baseName
 
    function getName(this) result(name)
       class (TestCase), intent(in) :: this
+#ifdef GFORTRAN_4_7
+      character(len=PFUNIT_NAME_LENGTH) :: name
+#else
       character(:), allocatable :: name
+#endif
       name = this%baseName()
    end function getName
 
@@ -143,7 +157,11 @@ contains
 
    function getName_surrogate(this) result(name)
       class (ConcreteSurrogate), intent(in) :: this
+#ifdef GFORTRAN_4_7
+      character(PFUNIT_NAME_LENGTH) :: name
+#else
       character(:), allocatable :: name
+#endif
       name = this%tCase%getName()
    end function getName_surrogate
 

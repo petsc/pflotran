@@ -23,7 +23,7 @@ EXCLUDE += RobustRunner.F90 Test_RobustRunner.F90 Test_UnixProcess.F90
 endif
 
 
-SRCS = $(filter-out $(EXCLUDE),$(SRCS_BASE))
+SRCS = $(filter-out $(EXCLUDE) Test_MockCall.F90 Test_MockRepository.F90,$(SRCS_BASE))
 OBJS = $(SRCS:%.F90=%$(OBJ_EXT))
 
 ifneq ($(USEMPI),YES)

@@ -31,6 +31,7 @@
 ! TestCase).  Since Fortran only supports single inheritance, the
 ! Multiple-Inheritance design pattern is also required.  That portion
 ! is implemented in the TestCase module.
+#include "pFUnit_compiler_kludges.H90"
 
 module SurrogateTestCase_mod
    implicit none
@@ -58,7 +59,11 @@ module SurrogateTestCase_mod
       function getName(this) result(name)
          import SurrogateTestCase
          class (SurrogateTestCase), intent(in) :: this
+#ifdef GFORTRAN_4_7
+         character(len=PFUNIT_NAME_LENGTH) :: name
+#else
          character(:), allocatable :: name
+#endif
       end function getName
       
       ! Set the test name for TestCase (may need to move to Test)

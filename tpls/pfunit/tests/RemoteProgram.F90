@@ -1,3 +1,5 @@
+#include "pFUnit_compiler_kludges.H90"
+
 program main
    use, intrinsic :: iso_fortran_env
    use pFUnit_mod, only: initialize, finalize
@@ -31,7 +33,11 @@ contains
 
       call get_command(command)
       call get_command_argument(skipArg, length = strLength)
+#ifdef GFORTRAN_4_7
+      skipString = repeat(' ', strLength)
+#else
       allocate(character(len=strLength) :: skipString)
+#endif
       call get_command_argument(skipArg, value=skipString)
       read (skipString,*)numSkip
 

@@ -36,6 +36,7 @@
 ! of a departure from standard conforming Fortran.  It should be
 ! portable on any Unix system, and easily adapted to Windows by
 ! someone with relevant expertise.
+#include "pFUnit_compiler_kludges.H90"
 
 module UnixProcess_mod
    use, intrinsic :: iso_c_binding
@@ -160,7 +161,11 @@ contains
       use UnixPipeInterfaces_mod, only: c_getLine => getLine
       use UnixPipeInterfaces_mod, only: free
       class (UnixProcess) :: this
+#ifdef GFORTRAN_4_7
+      character(len=PFUNIT_LINE_LENGTH) :: line
+#else
       character(len=:), allocatable :: line
+#endif
 
       type (C_PTR) :: pBuffer
       integer, parameter :: MAX_BUFFER_SIZE = 100000
@@ -188,7 +193,11 @@ contains
    function getDelim(this, delimeter) result(line)
       use UnixPipeInterfaces_mod, only: c_getDelim => getDelim
       use UnixPipeInterfaces_mod, only: free
+#ifdef GFORTRAN_4_7
+      character(len=PFUNIT_LINE_LENGTH) :: line
+#else
       character(len=:), allocatable :: line
+#endif
       class (UnixProcess) :: this
       character(len=C_CHAR), intent(in) :: delimeter
 

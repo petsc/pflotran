@@ -20,6 +20,8 @@
 ! 07 Nov 2013 - Added the prologue for the compliance with Doxygen. 
 !
 !-------------------------------------------------------------------------------
+#include "pFUnit_compiler_kludges.H90"
+
 module TestSuite_mod
    use Test_mod
    implicit none
@@ -231,9 +233,14 @@ contains
 
          do i = 1, size(this%tests)
 
+#ifdef GFORTRAN_4_7
+              ! gfortran 4.7 can't handle the associate block
+              select type (t => this%tests(i)%pTest)
+#else
             associate (t => this%tests(i)%pTest)
 
                select type (t)
+#endif
                class is (TestCase)
                   n = n + 1
                   allocate(testList(n)%test, source=t)
@@ -242,7 +249,9 @@ contains
                class default
                   call throw('Unsupported Test subclass in TestSuite::getTestCases()')
                end select
+#ifndef GFORTRAN_4_7
              end associate
+#endif
           end do
 
        end subroutine accumulateTestCases

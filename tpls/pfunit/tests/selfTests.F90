@@ -1,3 +1,5 @@
+#include "pFUnit_compiler_kludges.H90"
+
 #ifdef USE_MPI
 subroutine debug(line, file)
    integer, intent(in) :: line
@@ -55,8 +57,10 @@ contains
 
       use Test_BasicOpenMP_mod, only: testBasicOpenMpSuite => suite  ! (8)
 
-      use Test_MockCall_mod, only: testMockCallSuite => suite      ! (11)
-      use Test_MockRepository_mod, only: testMockRepositorySuite => suite      ! (11)
+#ifndef GFORTRAN_4_7
+!      use Test_MockCall_mod, only: testMockCallSuite => suite      ! (11)
+!      use Test_MockRepository_mod, only: testMockRepositorySuite => suite      ! (11)
+#endif
 
 #ifdef BUILD_ROBUST
       use Test_RobustRunner_mod, only: testRobustRunnerSuite => suite
@@ -97,8 +101,10 @@ contains
 
       ADD(testBasicOpenMpSuite)
 
-      ADD(testMockCallSuite)
-      ADD(testMockRepositorySuite)
+#ifndef GFORTRAN_4_7
+!      ADD(testMockCallSuite)
+!      ADD(testMockRepositorySuite)
+#endif
 
 #ifdef BUILD_ROBUST
       ADD(testRobustRunnerSuite)

@@ -32,7 +32,7 @@ OBJS = $(SRCS:%.F90=%$(OBJ_EXT))
 EXCLUDE_MPI_SRCS = MpiContext.F90 MpiStubs.F90 MpiTestCase.F90 MpiTestMethod.F90
 
 ifneq ($(USEMPI),YES)
-   SRCS_SERIAL=$(filter-out $(EXCLUDE_MPI_SRCS),$(SRCS))
+   SRCS_SERIAL=$(filter-out $(EXCLUDE_MPI_SRCS) MockCall.F90 MockRepository.F90, $(SRCS))
    OBJS_SERIAL=$(SRCS_SERIAL:%.F90=%$(OBJ_EXT))
 endif
 
