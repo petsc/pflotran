@@ -45,7 +45,6 @@ class AnalyticalSolution:
                 math.erfc((x+t*sqrt_term)/two_sqrt_Dt_over_porR))
     value = temp*(self.c1-self.c0) + self.c0
     return value
-  # incorrect implementation in NUTS
   def bear(self,x,t):
     v = self.U/self.porosity
     beta = math.sqrt(v*v/(4.*self.D*self.D))+ self.lam/self.D
