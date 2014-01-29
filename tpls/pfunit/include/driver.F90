@@ -1,3 +1,5 @@
+#include "pFUnit_compiler_kludges.H90"
+
 program main
    use pfunit_mod
    use ParallelContext_mod
@@ -26,7 +28,11 @@ program main
    numSkip = 0
 
    call get_command_argument(0, length=length)
+#ifdef GFORTRAN_4_7
+   executable = repeat(' ', length)
+#else
    allocate(character(len=length) :: executable)
+#endif
    call get_command_argument(0, value=executable)
 
    i = 0
@@ -35,7 +41,11 @@ program main
       if (i > command_argument_count()) exit
 
       call get_command_argument(i, length=length)
+#ifdef GFORTRAN_4_7
+      argument = repeat(' ', length)
+#else
       allocate(character(len=length) :: argument)
+#endif
       call get_command_argument(i, value=argument)
       select case(argument)
       case ('-robust')
@@ -51,7 +61,11 @@ program main
          i = i + 1
          deallocate(argument)
          call get_command_argument(i, length=length)
+#ifdef GFORTRAN_4_7
+         argument = repeat(' ', length)
+#else
          allocate(character(len=length) :: argument)
+#endif
          call get_command_argument(i, value=argument)
          read(argument,*) numSkip
       end select
