@@ -46,7 +46,7 @@ class AnalyticalSolution:
     value = temp*(self.c1-self.c0) + self.c0
     return value
   # incorrect implementation in NUTS
-  def nuts(self,x,t):
+  def bear(self,x,t):
     v = self.U/self.porosity
     beta = math.sqrt(v*v/(4.*self.D*self.D))+ self.lam/self.D
     temp = 0.5 * \
