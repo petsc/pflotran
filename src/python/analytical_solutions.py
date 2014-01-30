@@ -13,7 +13,7 @@ class AnalyticalSolution:
     self.porosity = porosity
     self.U = Darcy_velocity
     self.D = dispersivity*Darcy_velocity + \
-             porosity*tortuosity**saturation*diffusion_coefficient
+             porosity*tortuosity*saturation*diffusion_coefficient
   def ogata_banks(self,x,t):
     # Based on "Solution of the Differential Equation of Longitudinal
     # Dispersion in Porous Media", USGS Professional Paper 411-A by
