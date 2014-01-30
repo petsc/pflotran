@@ -973,12 +973,16 @@ variables.o :
 waypoint.o : option.o output_aux.o pflotran_constants.o utility.o
 
 # developer level regression testing
-test : FORCE
+test : utest rtest
+
+utest : FORCE
 	@if [ -d $(unit_test_dir) ]; then \
-		$(MAKE) --directory=$(unit_test_dir) $(MAKECMDGOALS); \
+		$(MAKE) --directory=$(unit_test_dir) test; \
 	fi
+
+rtest : FORCE
 	@if [ -d $(regression_test_dir) ]; then \
-		$(MAKE) --directory=$(regression_test_dir) $(MAKECMDGOALS); \
+		$(MAKE) --directory=$(regression_test_dir) test; \
 	fi
 
 clean-tests : FORCE
