@@ -1002,7 +1002,7 @@ subroutine MaterialAssignPropertyToAux(material_auxvar,material_property, &
   
   implicit none
   
-  type(material_auxvar_type) :: material_auxvar
+  class(material_auxvar_type) :: material_auxvar
   type(material_property_type) :: material_property
   type(option_type) :: option
 

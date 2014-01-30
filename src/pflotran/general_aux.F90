@@ -209,8 +209,8 @@ end subroutine GeneralAuxVarCopy
 
 ! ************************************************************************** !
 
-subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar, &
-                                saturation_function,por,perm,ghosted_id,option)
+subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
+                                saturation_function,ghosted_id,option)
   ! 
   ! Computes auxiliary variables for each grid cell
   ! 
@@ -223,6 +223,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar, &
   use Gas_EOS_module
   use EOS_Water_module
   use Saturation_Function_module
+  use Material_Aux_class
   
   implicit none
 
@@ -231,8 +232,8 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar, &
   PetscReal :: x(option%nflowdof)
   type(general_auxvar_type) :: gen_auxvar
   type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
   PetscInt :: ghosted_id
-  PetscReal :: por, perm
 
   PetscInt :: gid, lid, acid, wid, eid
   PetscReal :: cell_pressure
@@ -464,7 +465,8 @@ end subroutine GeneralAuxVarCompute
 ! ************************************************************************** !
 
 subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
-                                    saturation_function,por,perm,ghosted_id, &
+                                    material_auxvar, &
+                                    saturation_function,ghosted_id, &
                                     option)
   ! 
   ! GeneralUpdateState: Updates the state and swaps primary variables
@@ -478,6 +480,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
   use EOS_Water_module
   use Gas_EOS_module
   use Saturation_Function_module
+  use Material_Aux_class
   
   implicit none
 
@@ -486,10 +489,10 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
   type(saturation_function_type) :: saturation_function
   type(general_auxvar_type) :: gen_auxvar
   type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
 
   PetscReal, parameter :: epsilon = 1.d-8
   PetscReal :: x(option%nflowdof)
-  PetscReal :: por, perm
   PetscInt :: apid, cpid, vpid, spid
   PetscInt :: gid, lid, acid, wid, eid
   PetscReal :: dummy, guess
@@ -598,8 +601,8 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
   end select
   
   if (flag) then
-    call GeneralAuxVarCompute(x,gen_auxvar, global_auxvar, &
-                              saturation_function,por,perm,ghosted_id,option)
+    call GeneralAuxVarCompute(x,gen_auxvar, global_auxvar,material_auxvar, &
+                              saturation_function,ghosted_id,option)
 #ifdef DEBUG_GENERAL
     call printMsg(option,state_change_string)
     call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &

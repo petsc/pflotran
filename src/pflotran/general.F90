@@ -225,6 +225,7 @@ subroutine GeneralComputeMassBalance(realization,mass_balance)
   use Patch_module
   use Field_module
   use Grid_module
+  use Material_Aux_class
  
   implicit none
   
@@ -236,6 +237,7 @@ subroutine GeneralComputeMassBalance(realization,mass_balance)
   type(field_type), pointer :: field
   type(grid_type), pointer :: grid
   type(global_auxvar_type), pointer :: global_auxvars(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
   PetscReal, pointer :: volume_p(:), porosity_loc_p(:)
 
   PetscErrorCode :: ierr
@@ -248,9 +250,7 @@ subroutine GeneralComputeMassBalance(realization,mass_balance)
   field => realization%field
 
   global_auxvars => patch%aux%Global%auxvars
-
-  call VecGetArrayReadF90(field%volume,volume_p,ierr)
-  call VecGetArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)
+  material_auxvars => patch%aux%Material%auxvars
 
   mass_balance = 0.d0
 
@@ -262,12 +262,10 @@ subroutine GeneralComputeMassBalance(realization,mass_balance)
     mass_balance = mass_balance + &
       global_auxvars(ghosted_id)%den_kg* &
       global_auxvars(ghosted_id)%sat* &
-      porosity_loc_p(ghosted_id)*volume_p(local_id)
+      material_auxvars(ghosted_id)%porosity* &
+      material_auxvars(ghosted_id)%volume
   enddo
 
-  call VecRestoreArrayReadF90(field%volume,volume_p,ierr)
-  call VecRestoreArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)
-  
 end subroutine GeneralComputeMassBalance
 
 ! ************************************************************************** !
@@ -362,6 +360,7 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
   use Coupler_module
   use Connection_module
   use Material_module
+  use Material_Aux_class
   
   implicit none
 
@@ -376,6 +375,7 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
   type(connection_set_type), pointer :: cur_connection_set
   type(general_auxvar_type), pointer :: gen_auxvars(:,:), gen_auxvars_bc(:)  
   type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)  
+  class(material_auxvar_type), pointer :: material_auxvars(:)
 
   PetscInt :: ghosted_id, local_id, sum_connection, idof, iconn
   PetscInt :: ghosted_start, ghosted_end
@@ -394,10 +394,9 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
   gen_auxvars_bc => patch%aux%General%auxvars_bc
   global_auxvars => patch%aux%Global%auxvars
   global_auxvars_bc => patch%aux%Global%auxvars_bc
+  material_auxvars => patch%aux%Material%auxvars
     
   call VecGetArrayReadF90(field%flow_xx_loc,xx_loc_p, ierr)
-  call VecGetArrayReadF90(field%perm_xx_loc,perm_xx_loc_p,ierr)
-  call VecGetArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)  
 
   do ghosted_id = 1, grid%ngmax
      if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
@@ -411,19 +410,18 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
     call GeneralAuxVarCompute(xx_loc_p(ghosted_start:ghosted_end), &
                        gen_auxvars(ZERO_INTEGER,ghosted_id), &
                        global_auxvars(ghosted_id), &
+                       material_auxvars(ghosted_id), &
                        patch%saturation_function_array( &
                          patch%sat_func_id(ghosted_id))%ptr, &
-                       porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &
                        ghosted_id, &
                        option)
     if (update_state) then
       call GeneralAuxVarUpdateState(xx_loc_p(ghosted_start:ghosted_end), &
                                     gen_auxvars(ZERO_INTEGER,ghosted_id), &
                                     global_auxvars(ghosted_id), &
+                                    material_auxvars(ghosted_id), &
                                     patch%saturation_function_array( &
                                       patch%sat_func_id(ghosted_id))%ptr, &
-                                    porosity_loc_p(ghosted_id), &
-                                    perm_xx_loc_p(ghosted_id), &
                                     ghosted_id, &  ! for debugging
                                     option)
     endif
@@ -459,20 +457,18 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
       option%iflag = 2
       call GeneralAuxVarCompute(xxbc,gen_auxvars_bc(sum_connection), &
                                 global_auxvars_bc(sum_connection), &
+                                material_auxvars(ghosted_id), &
                                 patch%saturation_function_array( &
                                   patch%sat_func_id(ghosted_id))%ptr, &
-                                porosity_loc_p(ghosted_id), &
-                                perm_xx_loc_p(ghosted_id), &
                                 ghosted_id, &
                                 option)
       ! update state and update aux var; this could result in two update to 
       ! the aux var as update state updates if the state changes
       call GeneralAuxVarUpdateState(xxbc,gen_auxvars_bc(sum_connection), &
                                     global_auxvars_bc(sum_connection), &
+                                    material_auxvars(ghosted_id), &
                                     patch%saturation_function_array( &
                                       patch%sat_func_id(ghosted_id))%ptr, &
-                                    porosity_loc_p(ghosted_id), &
-                                    perm_xx_loc_p(ghosted_id), &
                                     ghosted_id,option)
 #if 0
 !geh: moved to prior to GeneralAuxVarUpdateState() as the auxiliary variables
@@ -481,10 +477,9 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
       option%iflag = 2
       call GeneralAuxVarCompute(xxbc,gen_auxvars_bc(sum_connection), &
                                 global_auxvars_bc(sum_connection), &
+                                material_auxvars(ghosted_id), &
                                 patch%saturation_function_array( &
                                   patch%sat_func_id(ghosted_id))%ptr, &
-                                porosity_loc_p(ghosted_id), &
-                                perm_xx_loc_p(ghosted_id), &
                                 ghosted_id, &
                                 option)
 #endif
@@ -493,8 +488,6 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
   enddo
 
   call VecRestoreArrayReadF90(field%flow_xx_loc,xx_loc_p, ierr)
-  call VecRestoreArrayReadF90(field%perm_xx_loc,perm_xx_loc_p,ierr)
-  call VecRestoreArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)  
 
   patch%aux%General%auxvars_up_to_date = PETSC_TRUE
 
@@ -618,6 +611,7 @@ subroutine GeneralUpdateFixedAccum(realization)
   type(field_type), pointer :: field
   type(general_auxvar_type), pointer :: gen_auxvars(:,:)
   type(global_auxvar_type), pointer :: global_auxvars(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
   type(material_parameter_type), pointer :: material_parameter
 
   PetscInt :: ghosted_id, local_id, local_start, local_end
@@ -635,13 +629,10 @@ subroutine GeneralUpdateFixedAccum(realization)
 
   gen_auxvars => patch%aux%General%auxvars
   global_auxvars => patch%aux%Global%auxvars
+  material_auxvars => patch%aux%Material%auxvars
   material_parameter => patch%aux%Material%material_parameter
     
   call VecGetArrayReadF90(field%flow_xx,xx_p, ierr)
-  call VecGetArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)
-  call VecGetArrayReadF90(field%tortuosity_loc,tor_loc_p,ierr)
-  call VecGetArrayReadF90(field%volume,volume_p,ierr)
-  call VecGetArrayReadF90(field%perm_xx_loc,perm_xx_loc_p,ierr)  
 
   call VecGetArrayF90(field%flow_accum, accum_p, ierr)
 
@@ -657,25 +648,19 @@ subroutine GeneralUpdateFixedAccum(realization)
     call GeneralAuxVarCompute(xx_p(local_start:local_end), &
                               gen_auxvars(ZERO_INTEGER,ghosted_id), &
                               global_auxvars(ghosted_id), &
+                              material_auxvars(ghosted_id), &
                               patch%saturation_function_array( &
                                 patch%sat_func_id(ghosted_id))%ptr, &
-                              porosity_loc_p(ghosted_id), &
-                              perm_xx_loc_p(ghosted_id), &
                               ghosted_id, &
                               option)
     call GeneralAccumulation(gen_auxvars(ZERO_INTEGER,ghosted_id), &
                              global_auxvars(ghosted_id), &
+                             material_auxvars(ghosted_id), &
                              material_parameter%dencpr(imat), &
-                             porosity_loc_p(ghosted_id), &
-                             volume_p(local_id), &
                              option,accum_p(local_start:local_end)) 
   enddo
 
   call VecRestoreArrayReadF90(field%flow_xx,xx_p, ierr)
-  call VecRestoreArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)
-  call VecRestoreArrayReadF90(field%tortuosity_loc,tor_loc_p,ierr)
-  call VecRestoreArrayReadF90(field%volume,volume_p,ierr)
-  call VecRestoreArrayReadF90(field%perm_xx_loc,perm_xx_loc_p,ierr)  
 
   call VecRestoreArrayF90(field%flow_accum, accum_p, ierr)
 
@@ -730,7 +715,8 @@ subroutine GeneralNumericalJacTest(xx,realization)
   call VecDuplicate(xx,res_pert,ierr)
   
   call MatCreate(option%mycomm,A,ierr)
-  call MatSetSizes(A,PETSC_DECIDE,PETSC_DECIDE,grid%nlmax*option%nflowdof,grid%nlmax*option%nflowdof,ierr)
+  call MatSetSizes(A,PETSC_DECIDE,PETSC_DECIDE,grid%nlmax*option%nflowdof, &
+                   grid%nlmax*option%nflowdof,ierr)
   call MatSetType(A,MATAIJ,ierr)
   call MatSetFromOptions(A,ierr)
     
@@ -775,6 +761,7 @@ end subroutine GeneralNumericalJacTest
 ! ************************************************************************** !
 
 subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
+                                material_auxvar, &
                                 saturation_function,ghosted_id, &
                                 option)
   ! 
@@ -786,6 +773,7 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
 
   use Option_module
   use Saturation_Function_module
+  use Material_Aux_class
 
   implicit none
 
@@ -793,6 +781,7 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
   PetscInt :: ghosted_id
   type(general_auxvar_type) :: gen_auxvar(0:)
   type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
   type(saturation_function_type) :: saturation_function
      
   PetscReal :: x(option%nflowdof), x_pert(option%nflowdof), &
@@ -870,13 +859,15 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
     x_pert(idof) = x(idof) + pert(idof)
     x_pert_save = x_pert
     call GeneralAuxVarCompute(x_pert,gen_auxvar(idof),global_auxvar, &
-                              saturation_function,0.d0,0.d0,ghosted_id,option)
+                              material_auxvar, &
+                              saturation_function,ghosted_id,option)
 #ifdef DEBUG_GENERAL
     call GlobalAuxVarCopy(global_auxvar,global_auxvar_debug,option)
     call GeneralAuxVarCopy(gen_auxvar(idof),general_auxvar_debug,option)
     call GeneralAuxVarUpdateState(x_pert,general_auxvar_debug, &
+                                  material_auxvar, &
                                   global_auxvar_debug,saturation_function, &
-                                  0.d0,0.d0,ghosted_id,option)
+                                  ghosted_id,option)
     if (global_auxvar%istate /= global_auxvar_debug%istate) then
       write(option%io_buffer, &
             &'(''Change in state due to perturbation: '',i3,'' -> '',i3, &
@@ -896,8 +887,8 @@ end subroutine GeneralAuxVarPerturb
 
 ! ************************************************************************** !
 
-subroutine GeneralAccumulation(gen_auxvar,global_auxvar,dencpr,por,vol, &
-                               option,Res)
+subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
+                               dencpr,option,Res)
   ! 
   ! Computes the non-fixed portion of the accumulation
   ! term for the residual
@@ -907,14 +898,16 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,dencpr,por,vol, &
   ! 
 
   use Option_module
+  use Material_Aux_class
   
   implicit none
 
   type(general_auxvar_type) :: gen_auxvar
   type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
   type(option_type) :: option
   PetscReal :: Res(option%nflowdof) 
-  PetscReal :: vol, por, dencpr
+  PetscReal :: dencpr
   
   PetscInt :: wat_comp_id, air_comp_id, energy_id
   PetscInt :: icomp, iphase
@@ -926,7 +919,7 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,dencpr,por,vol, &
   energy_id = option%energy_id
   
   ! v_over_t[m^3 bulk/sec] = vol[m^3 bulk] / dt[sec]
-  v_over_t = vol / option%flow_dt
+  v_over_t = material_auxvar%volume / option%flow_dt
   
   ! accumulation term units = kmol/s
   Res = 0.d0
@@ -950,7 +943,8 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,dencpr,por,vol, &
   ! scale by porosity * volume / dt
   ! Res[kmol/sec] = Res[kmol/m^3 void] * por[m^3 void/m^3 bulk] * 
   !                 vol[m^3 bulk] / dt[sec]
-  Res(1:option%nflowspec) = Res(1:option%nflowspec) * por * v_over_t
+  Res(1:option%nflowspec) = Res(1:option%nflowspec) * &
+                            material_auxvar%porosity * v_over_t
   
   do iphase = 1, option%nphase
     ! Res[MJ/m^3 void] = sat[m^3 phase/m^3 void] *
@@ -963,15 +957,16 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,dencpr,por,vol, &
   !                (1-por)[m^3 rock/m^3 bulk] * 
   !                  dencpr[kg rock/m^3 rock * MJ/kg rock-K] * T[C]) &
   !               vol[m^3 bulk] / dt[sec]
-  Res(energy_id) = (Res(energy_id) * por + &
-                    (1.d0 - por) * dencpr * gen_auxvar%temp) * v_over_t 
+  Res(energy_id) = (Res(energy_id) * material_auxvar%porosity + &
+                    (1.d0 - material_auxvar%porosity) * dencpr * &
+                      gen_auxvar%temp) * v_over_t 
 
 end subroutine GeneralAccumulation
 
 ! ************************************************************************** !
 
-subroutine GeneralAccumDerivative(gen_auxvar,global_auxvar,dencpr,por,vol, &
-                                  option,J)
+subroutine GeneralAccumDerivative(gen_auxvar,global_auxvar,material_auxvar, &
+                                  dencpr,option,J)
   ! 
   ! Computes derivatives of the accumulation
   ! term for the Jacobian
@@ -982,24 +977,26 @@ subroutine GeneralAccumDerivative(gen_auxvar,global_auxvar,dencpr,por,vol, &
 
   use Option_module
   use Saturation_Function_module
+  use Material_Aux_class
   
   implicit none
 
   type(general_auxvar_type) :: gen_auxvar(0:)
   type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
   type(option_type) :: option
-  PetscReal :: dencpr, vol, por
+  PetscReal :: dencpr
   PetscReal :: J(option%nflowdof,option%nflowdof)
      
   PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
   PetscInt :: idof, irow
 
-  call GeneralAccumulation(gen_auxvar(ZERO_INTEGER),global_auxvar,dencpr, &
-                           por,vol,option,res)
+  call GeneralAccumulation(gen_auxvar(ZERO_INTEGER),global_auxvar, &
+                           material_auxvar,dencpr,option,res)
                            
   do idof = 1, option%nflowdof
-    call GeneralAccumulation(gen_auxvar(idof),global_auxvar,dencpr, &
-                             por,vol,option,res_pert)
+    call GeneralAccumulation(gen_auxvar(idof),global_auxvar, &
+                             material_auxvar,dencpr,option,res_pert)
     do irow = 1, option%nflowdof
       J(irow,idof) = (res_pert(irow)-res(irow))/gen_auxvar(idof)%pert
     enddo !irow
@@ -1010,10 +1007,12 @@ end subroutine GeneralAccumDerivative
 ! ************************************************************************** !
 
 subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
-                       por_up,sir_up,dd_up,perm_up,tor_up, &
+                       material_auxvar_up, &
+                       sir_up, &
                        gen_auxvar_dn,global_auxvar_dn, &
-                       por_dn,sir_dn,dd_dn,perm_dn,tor_dn, &
-                       area,dist_gravity,upweight,general_parameter, &
+                       material_auxvar_dn, &
+                       sir_dn, &
+                       area, dist, general_parameter, &
                        option,v_darcy,Res)
   ! 
   ! Computes the internal flux terms for the residual
@@ -1021,35 +1020,36 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   ! Author: Glenn Hammond
   ! Date: 03/09/11
   ! 
-  use Option_module                              
-  
+  use Option_module
+  use Material_Aux_class
+  use Connection_module
+    
   implicit none
   
   type(general_auxvar_type) :: gen_auxvar_up, gen_auxvar_dn
   type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
+  class(material_auxvar_type) :: material_auxvar_up, material_auxvar_dn
   type(option_type) :: option
   PetscReal :: sir_up, sir_dn
-  PetscReal :: por_up, por_dn
-  PetscReal :: dd_up, dd_dn
-  PetscReal :: perm_up, perm_dn
-  PetscReal :: tor_up, tor_dn
   PetscReal :: v_darcy(option%nphase)
   PetscReal :: area
-  PetscReal :: dist_gravity  ! distance along gravity vector
-  PetscReal :: upweight
-  PetscReal :: uH
+  PetscReal :: dist(-1:3)
   type(general_parameter_type) :: general_parameter
   PetscReal :: Res(option%nflowdof)
 
+  PetscReal :: dist_gravity  ! distance along gravity vector
+  PetscReal :: dd_up, dd_dn
+  PetscReal :: upweight
   PetscReal :: upweight_adj
   PetscInt :: wat_comp_id, air_comp_id, energy_id
   PetscInt :: icomp, iphase
   
-  PetscInt :: istate_up, istate_dn
   PetscReal :: fmw_phase(option%nphase)
   PetscReal :: xmol(option%nflowspec)
+  PetscReal :: perm_up, perm_dn
   PetscReal :: den
   PetscReal :: density_ave
+  PetscReal :: uH
   PetscReal :: H_ave
   PetscReal :: perm_ave_over_dist
   PetscReal :: delta_pressure, delta_xmol, delta_temp
@@ -1076,6 +1076,11 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   fmw_phase(option%liquid_phase) = FMWH2O
   fmw_phase(option%gas_phase) = FMWAIR
 
+  call ConnectionCalculateDistances(dist,option%gravity,dd_up,dd_dn, &
+                                    dist_gravity,upweight)
+  call material_auxvar_up%PermeabilityTensorToScalar(dist,perm_up)
+  call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
+  
   perm_ave_over_dist = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
 
   Res = 0.d0
@@ -1085,15 +1090,8 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   flux = 0.d0
 #endif
 
-  istate_up = global_auxvar_up%istate
-  istate_dn = global_auxvar_dn%istate
-
   do iphase = 1, option%nphase
  
-!    if (.not.((istate_up == TWO_PHASE_STATE .or. istate_up == iphase) .and. &
-!              (istate_dn == TWO_PHASE_STATE .or. istate_dn == iphase))) cycle
-    
-    ! using residual saturation cannot be correct! - geh
     if (gen_auxvar_up%sat(iphase) > sir_up .or. &
         gen_auxvar_dn%sat(iphase) > sir_dn) then
       upweight_adj = upweight
@@ -1188,16 +1186,13 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
         sat_dn = eps
       endif         
   
-! not useng harmonic mean
-!      stp_up = sat_up*tor_up*por_up
-!      stp_dn = sat_dn*tor_dn*por_dn
       ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
       density_ave = upweight_adj*gen_auxvar_up%den(iphase)+ &
                     (1.D0-upweight_adj)*gen_auxvar_dn%den(iphase)
 !      stp_ave = (stp_up*stp_dn)/(stp_up*dd_dn+stp_dn*dd_up)
       stp_ave = sqrt(sat_up*sat_dn)* &
-                sqrt(tor_up*tor_dn)* &
-                sqrt(por_up*por_dn)
+                sqrt(material_auxvar_up%tortuosity*material_auxvar_dn%tortuosity)* &
+                sqrt(material_auxvar_up%porosity*material_auxvar_dn%porosity)
       delta_xmol = gen_auxvar_up%xmol(air_comp_id,iphase) - &
                    gen_auxvar_dn%xmol(air_comp_id,iphase)
       ! need to account for multiple phases
@@ -1265,13 +1260,15 @@ end subroutine GeneralFlux
 
 ! ************************************************************************** !
 
-subroutine GeneralFluxDerivative(gen_auxvar_up,global_auxvar_up,por_up, &
-                                  sir_up,dd_up,perm_up,tor_up, &
-                                  gen_auxvar_dn,global_auxvar_dn,por_dn, &
-                                  sir_dn,dd_dn,perm_dn,tor_dn, &
-                                  area,dist_gravity,upweight, &
-                                  general_parameter, &
-                                  option,Jup,Jdn)
+subroutine GeneralFluxDerivative(gen_auxvar_up,global_auxvar_up, &
+                                 material_auxvar_up, &
+                                 sir_up, &
+                                 gen_auxvar_dn,global_auxvar_dn, &
+                                 material_auxvar_dn, &
+                                 sir_dn, &
+                                 area, dist, &
+                                 general_parameter, &
+                                 option,Jup,Jdn)
   ! 
   ! Computes the derivatives of the internal flux terms
   ! for the Jacobian
@@ -1279,21 +1276,18 @@ subroutine GeneralFluxDerivative(gen_auxvar_up,global_auxvar_up,por_up, &
   ! Author: Glenn Hammond
   ! Date: 03/09/11
   ! 
-  use Option_module 
+  use Option_module
+  use Material_Aux_class
   
   implicit none
   
   type(general_auxvar_type) :: gen_auxvar_up(0:), gen_auxvar_dn(0:)
   type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
+  class(material_auxvar_type) :: material_auxvar_up, material_auxvar_dn
   type(option_type) :: option
   PetscReal :: sir_up, sir_dn
-  PetscReal :: por_up, por_dn
-  PetscReal :: dd_up, dd_dn
-  PetscReal :: perm_up, perm_dn
-  PetscReal :: tor_up, tor_dn
   PetscReal :: area
-  PetscReal :: dist_gravity
-  PetscReal :: upweight
+  PetscReal :: dist(-1:3)
   type(general_parameter_type) :: general_parameter
   PetscReal :: Jup(option%nflowdof,option%nflowdof), Jdn(option%nflowdof,option%nflowdof)
 
@@ -1302,19 +1296,19 @@ subroutine GeneralFluxDerivative(gen_auxvar_up,global_auxvar_up,por_up, &
   PetscInt :: idof, irow
 
   call GeneralFlux(gen_auxvar_up(ZERO_INTEGER),global_auxvar_up, &
-                   por_up,sir_up,dd_up,perm_up,tor_up, &
+                   material_auxvar_up,sir_up, &
                    gen_auxvar_dn(ZERO_INTEGER),global_auxvar_dn, &
-                   por_dn,sir_dn,dd_dn,perm_dn,tor_dn, &
-                   area,dist_gravity,upweight,general_parameter, &
+                   material_auxvar_dn,sir_dn, &
+                   area,dist,general_parameter, &
                    option,v_darcy,res)
                            
   ! upgradient derivatives
   do idof = 1, option%nflowdof
     call GeneralFlux(gen_auxvar_up(idof),global_auxvar_up, &
-                     por_up,sir_up,dd_up,perm_up,tor_up, &
+                     material_auxvar_up,sir_up, &
                      gen_auxvar_dn(ZERO_INTEGER),global_auxvar_dn, &
-                     por_dn,sir_dn,dd_dn,perm_dn,tor_dn, &
-                     area,dist_gravity,upweight,general_parameter, &
+                     material_auxvar_dn,sir_dn, &
+                     area,dist,general_parameter, &
                      option,v_darcy,res_pert)
     do irow = 1, option%nflowdof
       Jup(irow,idof) = (res_pert(irow)-res(irow))/gen_auxvar_up(idof)%pert
@@ -1324,10 +1318,10 @@ subroutine GeneralFluxDerivative(gen_auxvar_up,global_auxvar_up,por_up, &
   ! downgradient derivatives
   do idof = 1, option%nflowdof
     call GeneralFlux(gen_auxvar_up(ZERO_INTEGER),global_auxvar_up, &
-                     por_up,sir_up,dd_up,perm_up,tor_up, &
+                     material_auxvar_up,sir_up, &
                      gen_auxvar_dn(idof),global_auxvar_dn, &
-                     por_dn,sir_dn,dd_dn,perm_dn,tor_dn, &
-                     area,dist_gravity,upweight,general_parameter, &
+                     material_auxvar_dn,sir_dn, &
+                     area,dist,general_parameter, &
                      option,v_darcy,res_pert)
     do irow = 1, option%nflowdof
       Jdn(irow,idof) = (res_pert(irow)-res(irow))/gen_auxvar_dn(idof)%pert
@@ -1341,8 +1335,9 @@ end subroutine GeneralFluxDerivative
 subroutine GeneralBCFlux(ibndtype,auxvars, &
                          gen_auxvar_up,global_auxvar_up, &
                          gen_auxvar_dn,global_auxvar_dn, &
-                         por_dn,sir_dn,dd_dn,perm_dn,tor_dn, &
-                         area,dist_gravity,general_parameter, &
+                         material_auxvar_dn, &
+                         sir_dn, &
+                         area,dist,general_parameter, &
                          option,v_darcy,Res)
   ! 
   ! Computes the boundary flux terms for the residual
@@ -1351,35 +1346,35 @@ subroutine GeneralBCFlux(ibndtype,auxvars, &
   ! Date: 03/09/11
   ! 
   use Option_module                              
+  use Material_Aux_class
   
   implicit none
   
   PetscInt :: ibndtype(:)
   type(general_auxvar_type) :: gen_auxvar_up, gen_auxvar_dn
   type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
+  class(material_auxvar_type) :: material_auxvar_dn
   type(option_type) :: option
-  PetscReal :: dd_dn, sir_dn(option%nphase)
+  PetscReal :: sir_dn(option%nphase)
   PetscReal :: auxvars(:) ! from aux_real_var array
-  PetscReal :: por_dn, perm_dn, tor_dn
   PetscReal :: v_darcy(option%nphase), area
-  PetscReal :: dist_gravity
   type(general_parameter_type) :: general_parameter
+  PetscReal :: dist(-1:3)
   PetscReal :: Res(1:option%nflowdof)
 
   PetscReal :: upweight
   PetscInt :: wat_comp_id, air_comp_id, energy_id
   PetscInt :: icomp, iphase
 
-  PetscInt :: istate_up, istate_dn
   PetscReal :: fmw_phase(option%nphase)
   PetscReal :: xmol(option%nflowspec)  
   PetscReal :: density_ave
   PetscReal :: H_ave, uH
-  PetscReal :: perm_ave_over_dist
+  PetscReal :: perm_ave_over_dist, dist_gravity
   PetscReal :: delta_pressure, delta_xmol, delta_temp
   PetscReal :: gravity
   PetscReal :: ukvr, mole_flux, q
-  PetscReal :: sat_dn
+  PetscReal :: sat_dn, perm_dn
   PetscReal :: temp_ave, stp_ave, theta, v_air
   PetscReal :: k_eff_up, k_eff_dn, k_eff_ave, heat_flux
   
@@ -1396,17 +1391,10 @@ subroutine GeneralBCFlux(ibndtype,auxvars, &
   Res = 0.d0
   v_darcy = 0.d0
   
-  istate_up = global_auxvar_up%istate
-  istate_dn = global_auxvar_dn%istate
-
+  call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
+  
   do iphase = 1, option%nphase
  
-    !geh: we cannot apply this conditional to boundaries as it would prevent
-    !     a phase from exiting as long as the boundary phase state of the 
-    !     boundary does not match the phase state of the interior cell.
-    !if (.not.((istate_up == TWO_PHASE_STATE .or. istate_up == iphase) .and. &
-    !          (istate_dn == TWO_PHASE_STATE .or. istate_dn == iphase))) cycle
-  
     select case(iphase)
       case(LIQUID_PHASE)
         bc_type = ibndtype(GENERAL_LIQUID_PRESSURE_DOF)
@@ -1418,7 +1406,12 @@ subroutine GeneralBCFlux(ibndtype,auxvars, &
       ! figure out the direction of flow
       case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
 
-        if (bc_type == CONDUCTANCE_BC) then
+      ! dist(0) = scalar - magnitude of distance
+      ! gravity = vector(3)
+      ! dist(1:3) = vector(3) - unit vector
+      dist_gravity = dist(0) * dot_product(option%gravity,dist(1:3))
+      
+      if (bc_type == CONDUCTANCE_BC) then
           select case(iphase)
             case(LIQUID_PHASE)
               idof = GENERAL_LIQUID_CONDUCTANCE_DOF
@@ -1427,7 +1420,7 @@ subroutine GeneralBCFlux(ibndtype,auxvars, &
           end select        
           perm_ave_over_dist = auxvars(idof)
         else
-          perm_ave_over_dist = perm_dn / dd_dn
+          perm_ave_over_dist = perm_dn / dist(0)
         endif
         
           
@@ -1546,7 +1539,9 @@ subroutine GeneralBCFlux(ibndtype,auxvars, &
   !    stp_ave = tor_dn*por_dn*(sat_up*sat_dn)/ &
   !              ((sat_up+sat_dn)*dd_dn)
       ! should saturation be distance weighted?
-      stp_ave = tor_dn*por_dn*sat_dn/dd_dn
+      stp_ave = material_auxvar_dn%tortuosity * &
+                material_auxvar_dn%porosity * &
+                sat_dn / dist(0)
       delta_xmol = gen_auxvar_up%xmol(air_comp_id,iphase) - &
                    gen_auxvar_dn%xmol(air_comp_id,iphase)
       ! need to account for multiple phases
@@ -1580,7 +1575,7 @@ subroutine GeneralBCFlux(ibndtype,auxvars, &
              general_parameter%diffusion_coefficient(option%gas_phase)
 !  k_eff_ave = (k_eff_up*k_eff_dn)/(k_eff_up*dd_dn+k_eff_dn*0)
   ! should k_eff be distance weighted?
-  k_eff_ave = k_eff_dn/dd_dn
+  k_eff_ave = k_eff_dn / dist(0)
   delta_temp = gen_auxvar_up%temp - gen_auxvar_dn%temp
   heat_flux = k_eff_ave * delta_temp * area
   Res(energy_id) = Res(energy_id) + heat_flux
@@ -1590,12 +1585,13 @@ end subroutine GeneralBCFlux
 ! ************************************************************************** !
 
 subroutine GeneralBCFluxDerivative(ibndtype,auxvars, &
-                                    gen_auxvar_up, &
-                                    global_auxvar_up, &
-                                    gen_auxvar_dn,global_auxvar_dn, &
-                                    por_dn,sir_dn,dd_dn,perm_dn,tor_dn, &
-                                    area,dist_gravity,general_parameter, &
-                                    option,Jdn)
+                                   gen_auxvar_up, &
+                                   global_auxvar_up, &
+                                   gen_auxvar_dn,global_auxvar_dn, &
+                                   material_auxvar_dn, &
+                                   sir_dn, &
+                                   area,dist,general_parameter, &
+                                   option,Jdn)
   ! 
   ! Computes the derivatives of the boundary flux terms
   ! for the Jacobian
@@ -1605,6 +1601,7 @@ subroutine GeneralBCFluxDerivative(ibndtype,auxvars, &
   ! 
 
   use Option_module 
+  use Material_Aux_class
   
   implicit none
 
@@ -1612,11 +1609,11 @@ subroutine GeneralBCFluxDerivative(ibndtype,auxvars, &
   PetscReal :: auxvars(:) ! from aux_real_var array
   type(general_auxvar_type) :: gen_auxvar_up, gen_auxvar_dn(0:)
   type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
+  class(material_auxvar_type) :: material_auxvar_dn
   type(option_type) :: option
-  PetscReal :: dd_dn, sir_dn(option%nphase)
-  PetscReal :: por_dn,perm_dn,tor_dn
+  PetscReal :: sir_dn(option%nphase)
   PetscReal :: area
-  PetscReal :: dist_gravity
+  PetscReal :: dist(-1:3)
   type(general_parameter_type) :: general_parameter
   PetscReal :: Jdn(option%nflowdof,option%nflowdof)
 
@@ -1627,17 +1624,19 @@ subroutine GeneralBCFluxDerivative(ibndtype,auxvars, &
   call GeneralBCFlux(ibndtype,auxvars, &
                      gen_auxvar_up,global_auxvar_up, &
                      gen_auxvar_dn(ZERO_INTEGER),global_auxvar_dn, &
-                     por_dn,sir_dn,dd_dn,perm_dn,tor_dn, &
-                     area,dist_gravity,general_parameter, &
+                     material_auxvar_dn, &
+                     sir_dn, &
+                     area,dist,general_parameter, &
                      option,v_darcy,res)                     
   ! downgradient derivatives
   do idof = 1, option%nflowdof
     call GeneralBCFlux(ibndtype,auxvars, &
                        gen_auxvar_up,global_auxvar_up, &
                        gen_auxvar_dn(idof),global_auxvar_dn, &
-                       por_dn,sir_dn,dd_dn,perm_dn,tor_dn, &
-                       area,dist_gravity,general_parameter, &
-                       option,v_darcy,res_pert)
+                       material_auxvar_dn, &
+                       sir_dn, &
+                       area,dist,general_parameter, &
+                       option,v_darcy,res)   
     do irow = 1, option%nflowdof
       Jdn(irow,idof) = (res_pert(irow)-res(irow))/gen_auxvar_dn(idof)%pert
     enddo !irow
@@ -1814,6 +1813,7 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   type(general_parameter_type), pointer :: general_parameter
   type(general_auxvar_type), pointer :: gen_auxvars(:,:), gen_auxvars_bc(:)
   type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
 
@@ -1821,26 +1821,16 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   PetscInt :: iphase
   PetscReal :: scale
   PetscInt :: sum_connection
-  PetscReal :: distance, fraction_upwind
-  PetscReal :: distance_gravity
   PetscInt :: local_start, local_end
   PetscInt :: local_id, ghosted_id
   PetscInt :: local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
   PetscInt :: i, imat
 
   PetscReal, pointer :: r_p(:)
-  PetscReal, pointer :: porosity_loc_p(:)
-  PetscReal, pointer :: perm_xx_loc_p(:)
-  PetscReal, pointer :: perm_yy_loc_p(:)
-  PetscReal, pointer :: perm_zz_loc_p(:)
-  PetscReal, pointer :: tort_loc_p(:)
   PetscReal, pointer :: accum_p(:)
   PetscReal, pointer :: volume_p(:)
 
   PetscInt :: icap_up, icap_dn
-  PetscReal :: dd_up, dd_dn
-  PetscReal :: perm_up, perm_dn
-  PetscReal :: upweight
   PetscReal :: Res(realization%option%nflowdof)
   PetscReal :: v_darcy(realization%option%nphase)
   
@@ -1855,18 +1845,13 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   general_parameter => patch%aux%General%general_parameter
   global_auxvars => patch%aux%Global%auxvars
   global_auxvars_bc => patch%aux%Global%auxvars_bc
+  material_auxvars => patch%aux%Material%auxvars
   
   ! Communication -----------------------------------------
   ! These 3 must be called before GeneralUpdateAuxVars()
   call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
   call DiscretizationLocalToLocal(discretization,field%iphas_loc, &
                                   field%iphas_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%perm_xx_loc, &
-                                  field%perm_xx_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%perm_yy_loc, &
-                                  field%perm_yy_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%perm_zz_loc, &
-                                  field%perm_zz_loc,ONEDOF)
   
 !  call GeneralResidualPatch1(snes,xx,r,realization,ierr)
 
@@ -1889,12 +1874,6 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
 
   ! now assign access pointer to local variables
   call VecGetArrayF90(r, r_p, ierr)
-  call VecGetArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayReadF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecGetArrayReadF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecGetArrayReadF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecGetArrayReadF90(field%tortuosity_loc, tort_loc_p, ierr)
-  !print *,' Finished scattering non deriv'
 
   r_p = 0.d0
 
@@ -1916,51 +1895,20 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
       if (patch%imat(ghosted_id_up) <= 0 .or.  &
           patch%imat(ghosted_id_dn) <= 0) cycle
 
-      fraction_upwind = cur_connection_set%dist(-1,iconn)
-      distance = cur_connection_set%dist(0,iconn)
-      ! distance = scalar - magnitude of distance
-      ! gravity = vector(3)
-      ! dist(1:3,iconn) = vector(3) - unit vector
-      distance_gravity = distance * &
-                         dot_product(option%gravity, &
-                                     cur_connection_set%dist(1:3,iconn))
-      dd_up = distance*fraction_upwind
-      dd_dn = distance-dd_up ! should avoid truncation error
-      ! upweight could be calculated as 1.d0-fraction_upwind
-      ! however, this introduces ever so slight error causing pflow-overhaul not
-      ! to match pflow-orig.  This can be changed to 1.d0-fraction_upwind
-      upweight = dd_dn/(dd_up+dd_dn)
-        
-      ! for now, just assume diagonal tensor
-      perm_up = perm_xx_loc_p(ghosted_id_up) * &
-                dabs(cur_connection_set%dist(1,iconn))+ &
-                perm_yy_loc_p(ghosted_id_up) * &
-                dabs(cur_connection_set%dist(2,iconn))+ &
-                perm_zz_loc_p(ghosted_id_up) * &
-                dabs(cur_connection_set%dist(3,iconn))
-
-      perm_dn = perm_xx_loc_p(ghosted_id_dn) * &
-                dabs(cur_connection_set%dist(1,iconn))+ &
-                perm_yy_loc_p(ghosted_id_dn) * &
-                dabs(cur_connection_set%dist(2,iconn))+ &
-                perm_zz_loc_p(ghosted_id_dn) * &
-                dabs(cur_connection_set%dist(3,iconn))
-
       icap_up = patch%sat_func_id(ghosted_id_up)
       icap_dn = patch%sat_func_id(ghosted_id_dn)
    
       call GeneralFlux(gen_auxvars(ZERO_INTEGER,ghosted_id_up), &
-                        global_auxvars(ghosted_id_up), &
-                          porosity_loc_p(ghosted_id_up), &
-                          material_parameter%sir(1,icap_up), &
-                          dd_up,perm_up,tort_loc_p(ghosted_id_up), &
-                        gen_auxvars(ZERO_INTEGER,ghosted_id_dn), &
-                        global_auxvars(ghosted_id_dn), &
-                          porosity_loc_p(ghosted_id_dn), &
-                          material_parameter%sir(1,icap_dn), &
-                          dd_dn,perm_dn,tort_loc_p(ghosted_id_dn), &
-                        cur_connection_set%area(iconn),distance_gravity, &
-                        upweight,general_parameter,option,v_darcy,Res)
+                       global_auxvars(ghosted_id_up), &
+                       material_auxvars(ghosted_id_up), &
+                       material_parameter%sir(1,icap_up), &
+                       gen_auxvars(ZERO_INTEGER,ghosted_id_dn), &
+                       global_auxvars(ghosted_id_dn), &
+                       material_auxvars(ghosted_id_dn), &
+                       material_parameter%sir(1,icap_dn), &
+                       cur_connection_set%area(iconn), &
+                       cur_connection_set%dist(:,iconn), &
+                       general_parameter,option,v_darcy,Res)
 
       patch%internal_velocities(:,sum_connection) = v_darcy
       
@@ -2001,20 +1949,6 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
         stop
       endif
 
-      ! for now, just assume diagonal tensor
-      perm_dn = perm_xx_loc_p(ghosted_id) * &
-                dabs(cur_connection_set%dist(1,iconn))+ &
-                perm_yy_loc_p(ghosted_id) * &
-                dabs(cur_connection_set%dist(2,iconn))+ &
-                perm_zz_loc_p(ghosted_id) * &
-                dabs(cur_connection_set%dist(3,iconn))
-      ! dist(0,iconn) = scalar - magnitude of distance
-      ! gravity = vector(3)
-      ! dist(1:3,iconn) = vector(3) - unit vector
-      distance_gravity = cur_connection_set%dist(0,iconn) * &
-                         dot_product(option%gravity, &
-                                     cur_connection_set%dist(1:3,iconn))
-
       icap_dn = patch%sat_func_id(ghosted_id)
 
       call GeneralBCFlux(boundary_condition%flow_condition%itype, &
@@ -2023,12 +1957,11 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
                                 global_auxvars_bc(sum_connection), &
                                 gen_auxvars(ZERO_INTEGER,ghosted_id), &
                                 global_auxvars(ghosted_id), &
-                                porosity_loc_p(ghosted_id), &
+                                material_auxvars(ghosted_id), &
                                 material_parameter%sir(:,icap_dn), &
-                                cur_connection_set%dist(0,iconn),perm_dn, &
-                                tort_loc_p(ghosted_id), &
                                 cur_connection_set%area(iconn), &
-                                distance_gravity,general_parameter,option, &
+                                cur_connection_set%dist(:,iconn), &
+                                general_parameter,option, &
                                 v_darcy,Res)
       patch%boundary_velocities(:,sum_connection) = v_darcy
       if (option%compute_mass_balance_new) then
@@ -2049,18 +1982,11 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
     boundary_condition => boundary_condition%next
   enddo
 
-  call VecRestoreArrayReadF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecRestoreArrayReadF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecRestoreArrayReadF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecRestoreArrayReadF90(field%tortuosity_loc, tort_loc_p, ierr)
-
   ! Accumulation terms ------------------------------------
   call VecGetArrayReadF90(field%flow_accum, accum_p, ierr)
   r_p = r_p - accum_p
   call VecRestoreArrayReadF90(field%flow_accum, accum_p, ierr)
     
-  call VecGetArrayReadF90(field%volume, volume_p, ierr)
-
   do local_id = 1, grid%nlmax  ! For each local node do...
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
@@ -2070,15 +1996,11 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
     local_start = local_end - option%nflowdof + 1
     call GeneralAccumulation(gen_auxvars(ZERO_INTEGER,ghosted_id), &
                               global_auxvars(ghosted_id), &
+                              material_auxvars(ghosted_id), &
                               material_parameter%dencpr(imat), &
-                              porosity_loc_p(ghosted_id), &
-                              volume_p(local_id), &
                               option,Res) 
     r_p(local_start:local_end) =  r_p(local_start:local_end) + Res(:)
   enddo
-
-  call VecRestoreArrayReadF90(field%volume, volume_p, ierr)
-  call VecRestoreArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)
 
   ! Source/sink terms -------------------------------------
   source_sink => patch%source_sinks%first 
@@ -2171,13 +2093,6 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
   PetscReal :: norm
   PetscViewer :: viewer
 
-  PetscReal, pointer :: porosity_loc_p(:)
-  PetscReal, pointer :: perm_xx_loc_p(:)
-  PetscReal, pointer :: perm_yy_loc_p(:)
-  PetscReal, pointer :: perm_zz_loc_p(:)
-  PetscReal, pointer :: tort_loc_p(:)
-  PetscReal, pointer :: volume_p(:)
-
   PetscInt :: icap,icap_up,icap_dn
   PetscReal :: qsrc, scale
   PetscInt :: imat
@@ -2206,6 +2121,7 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
   type(general_parameter_type), pointer :: general_parameter
   type(general_auxvar_type), pointer :: gen_auxvars(:,:), gen_auxvars_bc(:)
   type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:) 
+  class(material_auxvar_type), pointer :: material_auxvars(:)
   
   patch => realization%patch
   grid => patch%grid
@@ -2217,7 +2133,7 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
   general_parameter => patch%aux%General%general_parameter
   global_auxvars => patch%aux%Global%auxvars
   global_auxvars_bc => patch%aux%Global%auxvars_bc
-
+  material_auxvars => patch%aux%Material%auxvars
 
   flag = SAME_NONZERO_PATTERN
   call MatGetType(A,mat_type,ierr)
@@ -2236,6 +2152,7 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
     if (patch%imat(ghosted_id) <= 0) cycle
     call GeneralAuxVarPerturb(gen_auxvars(:,ghosted_id), &
                               global_auxvars(ghosted_id), &
+                              material_auxvars(ghosted_id), &
                               patch%saturation_function_array( &
                                 patch%sat_func_id(ghosted_id))%ptr, &
                               ghosted_id,option)
@@ -2244,12 +2161,6 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
 #ifdef DEBUG_GENERAL_LOCAL
   call GeneralOutputAuxVars(gen_auxvars,global_auxvars,option)
 #endif 
-
-  call VecGetArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayReadF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecGetArrayReadF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecGetArrayReadF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecGetArrayReadF90(field%tortuosity_loc, tort_loc_p, ierr)
 
   ! Interior Flux Terms -----------------------------------  
   connection_set_list => grid%internal_connection_set_list
@@ -2269,53 +2180,21 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
       local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
    
-      fraction_upwind = cur_connection_set%dist(-1,iconn)
-      distance = cur_connection_set%dist(0,iconn)
-      ! distance = scalar - magnitude of distance
-      ! gravity = vector(3)
-      ! dist(1:3,iconn) = vector(3) - unit vector
-      distance_gravity = distance * &
-                         dot_product(option%gravity, &
-                                     cur_connection_set%dist(1:3,iconn))
-      dd_up = distance*fraction_upwind
-      dd_dn = distance-dd_up ! should avoid truncation error
-      ! upweight could be calculated as 1.d0-fraction_upwind
-      ! however, this introduces ever so slight error causing pflow-overhaul not
-      ! to match pflow-orig.  This can be changed to 1.d0-fraction_upwind
-      upweight = dd_dn/(dd_up+dd_dn)
-    
-      ! for now, just assume diagonal tensor
-      perm_up = perm_xx_loc_p(ghosted_id_up) * &
-                dabs(cur_connection_set%dist(1,iconn))+ &
-                perm_yy_loc_p(ghosted_id_up) * &
-                dabs(cur_connection_set%dist(2,iconn))+ &
-                perm_zz_loc_p(ghosted_id_up) * &
-                dabs(cur_connection_set%dist(3,iconn))
-
-      perm_dn = perm_xx_loc_p(ghosted_id_dn) * &
-                dabs(cur_connection_set%dist(1,iconn))+ &
-                perm_yy_loc_p(ghosted_id_dn) * &
-                dabs(cur_connection_set%dist(2,iconn))+ &
-                perm_zz_loc_p(ghosted_id_dn) * &
-                dabs(cur_connection_set%dist(3,iconn))
-    
       icap_up = patch%sat_func_id(ghosted_id_up)
       icap_dn = patch%sat_func_id(ghosted_id_dn)
                               
       call GeneralFluxDerivative(gen_auxvars(:,ghosted_id_up), &
-                                  global_auxvars(ghosted_id_up), &
-                                    porosity_loc_p(ghosted_id_up), &
-                                    material_parameter%sir(1,icap_up), &
-                                    dd_up,perm_up,tort_loc_p(ghosted_id_up), &
-                                  gen_auxvars(:,ghosted_id_dn), &
-                                  global_auxvars(ghosted_id_dn), &
-                                    porosity_loc_p(ghosted_id_dn), &
-                                    material_parameter%sir(1,icap_dn), &
-                                    dd_dn,perm_dn,tort_loc_p(ghosted_id_dn), &
-                                  cur_connection_set%area(iconn), &
-                                  distance_gravity, &
-                                  upweight,general_parameter,option,&
-                                  Jup,Jdn)
+                                 global_auxvars(ghosted_id_up), &
+                                 material_auxvars(ghosted_id_up), &
+                                 material_parameter%sir(1,icap_up), &
+                                 gen_auxvars(:,ghosted_id_dn), &
+                                 global_auxvars(ghosted_id_dn), &
+                                 material_auxvars(ghosted_id_dn), &
+                                 material_parameter%sir(1,icap_dn), &
+                                 cur_connection_set%area(iconn), &
+                                 cur_connection_set%dist(:,iconn), &
+                                 general_parameter,option,&
+                                 Jup,Jdn)
       if (local_id_up > 0) then
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
                                       Jup,ADD_VALUES,ierr)
@@ -2363,20 +2242,6 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
         stop
       endif
 
-      ! for now, just assume diagonal tensor
-      perm_dn = perm_xx_loc_p(ghosted_id) * &
-                dabs(cur_connection_set%dist(1,iconn))+ &
-                perm_yy_loc_p(ghosted_id) * &
-                dabs(cur_connection_set%dist(2,iconn))+ &
-                perm_zz_loc_p(ghosted_id) * &
-                dabs(cur_connection_set%dist(3,iconn))
-      ! dist(0,iconn) = scalar - magnitude of distance
-      ! gravity = vector(3)
-      ! dist(1:3,iconn) = vector(3) - unit vector
-      distance_gravity = cur_connection_set%dist(0,iconn) * &
-                         dot_product(option%gravity, &
-                                     cur_connection_set%dist(1:3,iconn))
-
       icap_dn = patch%sat_func_id(ghosted_id)
 
       call GeneralBCFluxDerivative(boundary_condition%flow_condition%itype, &
@@ -2385,12 +2250,11 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
                                   global_auxvars_bc(sum_connection), &
                                   gen_auxvars(:,ghosted_id), &
                                   global_auxvars(ghosted_id), &
-                                  porosity_loc_p(ghosted_id), &
+                                  material_auxvars(ghosted_id), &
                                   material_parameter%sir(:,icap_dn), &
-                                  cur_connection_set%dist(0,iconn),perm_dn, &
-                                  tort_loc_p(ghosted_id), &
                                   cur_connection_set%area(iconn), &
-                                  distance_gravity,general_parameter,option, &
+                                  cur_connection_set%dist(:,iconn), &
+                                  general_parameter,option, &
                                   Jdn)
 
       Jdn = -Jdn
@@ -2408,14 +2272,7 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
 
-  call VecRestoreArrayReadF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecRestoreArrayReadF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecRestoreArrayReadF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecRestoreArrayReadF90(field%tortuosity_loc, tort_loc_p, ierr)
-
   ! Accumulation terms ------------------------------------
-
-  call VecGetArrayReadF90(field%volume, volume_p, ierr)
 
   do local_id = 1, grid%nlmax  ! For each local node do...
     ghosted_id = grid%nL2G(local_id)
@@ -2425,16 +2282,13 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
     icap = patch%sat_func_id(ghosted_id)
     call GeneralAccumDerivative(gen_auxvars(:,ghosted_id), &
                               global_auxvars(ghosted_id), &
+                              material_auxvars(ghosted_id), &
                               material_parameter%dencpr(imat), &
-                              porosity_loc_p(ghosted_id), &
-                              volume_p(local_id), &
                               option, &
                               Jup) 
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
                                   ADD_VALUES,ierr)
   enddo
-
-  call VecRestoreArrayReadF90(field%volume, volume_p, ierr)
 
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -2443,8 +2297,6 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
     call MatView(A,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
-
-  call VecRestoreArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)
 
   ! Source/sinks
   source_sink => patch%source_sinks%first 
@@ -2822,8 +2674,6 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   if (option%check_stomp_norm) then
     call VecGetArrayF90(dP,dP_p,ierr)
     call VecGetArrayF90(P1,P1_p,ierr)
-    call VecGetArrayF90(field%volume,volume_p,ierr)
-    call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
     call VecGetArrayF90(field%flow_r,r_p,ierr)
     
     inf_norm = 0.d0
@@ -2844,8 +2694,6 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
                        MPI_MAX,option%mycomm,ierr)
     call VecGetArrayF90(dP,dP_p,ierr)
     call VecGetArrayF90(P1,P1_p,ierr)
-    call VecGetArrayF90(field%volume,volume_p,ierr)
-    call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
     call VecGetArrayF90(field%flow_r,r_p,ierr)
   endif
 #endif  

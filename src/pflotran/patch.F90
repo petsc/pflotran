@@ -2470,7 +2470,7 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
 
   type(reactive_transport_auxvar_type), pointer :: rt_auxvar
   type(global_auxvar_type), pointer :: global_auxvar
-  type(material_auxvar_type), allocatable :: material_auxvar
+  class(material_auxvar_type), allocatable :: material_auxvar
   type(coupler_type), pointer :: cur_coupler
   type(tran_constraint_coupler_type), pointer :: cur_constraint_coupler
   PetscReal :: dum1
