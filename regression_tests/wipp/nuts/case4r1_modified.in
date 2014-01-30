@@ -28,7 +28,7 @@ CHEMISTRY
     REACTION Tracer1 <->
     HALF_LIFE 1.d6
   /
-  DATABASE ../../hanford.dat
+  DATABASE ../../../database/hanford.dat
   OUTPUT
     all
   /
