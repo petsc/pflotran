@@ -53,8 +53,9 @@ saturation = 1.
 dispersivity = 10.
 diffusion = 7.5e-6
 half_life = 1.e6
-anal = analytical.AnalyticalSolution(0,1.,vdarcy,1.,diffusion,dispersivity,
-                                     tortuosity,porosity,1.,half_life)
+anal = analytical.AnalyticalSolution(0,1.,vdarcy,saturation,diffusion,
+                                     dispersivity,tortuosity,porosity,
+                                     1.,half_life)
 for i in range(n):
   x[i] = (i+0.5)*1.
   y_bear[i] = anal.bear(x[i],time)
