@@ -4,8 +4,8 @@ import sys
 
 class AnalyticalSolution:
   def __init__(self,initial_concentration,final_concentration,
-               Darcy_velocity,diffusion_coefficient,dispersivity,
-               tortuosity,porosity,retardation,half_life):
+               Darcy_velocity,saturation,diffusion_coefficient,
+               dispersivity,tortuosity,porosity,retardation,half_life):
     self.c0 = initial_concentration
     self.c1 = final_concentration
     self.R = retardation
@@ -13,8 +13,7 @@ class AnalyticalSolution:
     self.porosity = porosity
     self.U = Darcy_velocity
     self.D = dispersivity*Darcy_velocity + \
-             porosity*tortuosity*diffusion_coefficient
-    print(self.D)
+             porosity*tortuosity**saturation*diffusion_coefficient
   def ogata_banks(self,x,t):
     # Based on "Solution of the Differential Equation of Longitudinal
     # Dispersion in Porous Media", USGS Professional Paper 411-A by
