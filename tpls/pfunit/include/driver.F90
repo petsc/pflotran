@@ -12,8 +12,13 @@ program main
    class(BaseTestRunner), allocatable :: runner
 
    integer :: i
+#ifdef GFORTRAN_4_7
+   character(len=PFUNIT_LINE_LENGTH), allocatable :: executable
+   character(len=PFUNIT_LINE_LENGTH), allocatable :: argument
+#else
    character(len=:), allocatable :: executable
    character(len=:), allocatable :: argument
+#endif
    integer :: length
 
    logical :: useRobustRunner
@@ -28,9 +33,7 @@ program main
    numSkip = 0
 
    call get_command_argument(0, length=length)
-#ifdef GFORTRAN_4_7
-   executable = repeat(' ', length)
-#else
+#ifndef GFORTRAN_4_7
    allocate(character(len=length) :: executable)
 #endif
    call get_command_argument(0, value=executable)
@@ -41,9 +44,7 @@ program main
       if (i > command_argument_count()) exit
 
       call get_command_argument(i, length=length)
-#ifdef GFORTRAN_4_7
-      argument = repeat(' ', length)
-#else
+#ifndef GFORTRAN_4_7
       allocate(character(len=length) :: argument)
 #endif
       call get_command_argument(i, value=argument)
@@ -61,9 +62,7 @@ program main
          i = i + 1
          deallocate(argument)
          call get_command_argument(i, length=length)
-#ifdef GFORTRAN_4_7
-         argument = repeat(' ', length)
-#else
+#ifndef GFORTRAN_4_7
          allocate(character(len=length) :: argument)
 #endif
          call get_command_argument(i, value=argument)
