@@ -3012,6 +3012,7 @@ subroutine assignMaterialPropToRegions(realization)
         
     !geh: remove
     if (option%iflowmode == RICHARDS_MODE .or. &
+        option%iflowmode == G_MODE .or. &
         option%iflowmode == NULL_MODE) then
       material_auxvars => cur_patch%aux%Material%auxvars
     else
@@ -3151,7 +3152,7 @@ subroutine assignMaterialPropToRegions(realization)
                                    PERMEABILITY_YZ,0)
     endif
     !geh: remove
-    if (option%iflowmode /= RICHARDS_MODE) then
+    if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE) then
       call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
                                        field%perm_xx_loc,ONEDOF)  
       call DiscretizationGlobalToLocal(discretization,field%perm0_yy, &
@@ -3205,7 +3206,7 @@ subroutine assignMaterialPropToRegions(realization)
   enddo
   
   !geh: remove
-  if (option%iflowmode /= RICHARDS_MODE .and. &
+  if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE .and. &
       option%iflowmode /= NULL_MODE) then
     call DiscretizationGlobalToLocal(discretization,field%porosity0, &
                                      field%porosity_loc,ONEDOF)

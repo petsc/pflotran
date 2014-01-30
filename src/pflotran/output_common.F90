@@ -1733,7 +1733,7 @@ subroutine OutputGetExplicitCellInfo(realization_base,num_cells,ids,sat,por, &
   grid => patch%grid
   global_auxvar => patch%aux%Global%auxvars
   
-  if (option%iflowmode /= RICHARDS_MODE .and. &
+  if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE .and. &
       option%iflowmode /= NULL_MODE) then
   call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
   endif
@@ -1749,7 +1749,7 @@ subroutine OutputGetExplicitCellInfo(realization_base,num_cells,ids,sat,por, &
     ghosted_id = grid%nL2G(local_id)
     ids(local_id) = grid%nG2A(ghosted_id)
     sat(local_id) = global_auxvar(ghosted_id)%sat(1)
-    if (option%iflowmode /= RICHARDS_MODE .and. &
+    if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE .and. &
         option%iflowmode /= NULL_MODE) then
     por(local_id) = porosity_loc_p(ghosted_id)
     else
@@ -1759,7 +1759,7 @@ subroutine OutputGetExplicitCellInfo(realization_base,num_cells,ids,sat,por, &
     pressure(local_id) = global_auxvar(ghosted_id)%pres(1)
   enddo
 
-  if (option%iflowmode /= RICHARDS_MODE .and. &
+  if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE .and. &
       option%iflowmode /= NULL_MODE) then
   call VecRestoreArrayF90(field%porosity_loc,porosity_loc_p,ierr)
   endif

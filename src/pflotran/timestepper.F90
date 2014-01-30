@@ -1461,6 +1461,7 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
   call DiscretizationLocalToLocal(discretization,field%iphas_loc, &
                                   field%iphas_loc,ONEDOF)
   if (option%iflowmode == RICHARDS_MODE .or. &
+      option%iflowmode == G_MODE .or. &
       option%iflowmode == NULL_MODE) then
     call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
                                  field%work_loc, &
@@ -1988,6 +1989,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
                                     field%tortuosity_loc,ONEDOF)
   endif
   if (option%iflowmode == RICHARDS_MODE .or. &
+      option%iflowmode == G_MODE .or. &
       option%iflowmode == NULL_MODE) then
     call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
                                  field%work_loc, &
@@ -2455,6 +2457,7 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
                                     field%tortuosity_loc,ONEDOF)
   endif
   if (option%iflowmode == RICHARDS_MODE .or. &
+      option%iflowmode == G_MODE .or. &
       option%iflowmode == NULL_MODE) then
     call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
                                  field%work_loc, &
@@ -2741,6 +2744,7 @@ subroutine StepperStepTransportDT_OS(realization,stepper, &
                                     field%tortuosity_loc,ONEDOF)
   endif
   if (option%iflowmode == RICHARDS_MODE .or. &
+      option%iflowmode == G_MODE .or. & .or. &
       option%iflowmode == NULL_MODE) then
     call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
                                  field%work_loc, &
@@ -3149,6 +3153,7 @@ subroutine StepperSolveFlowSteadyState(realization,stepper,failure)
   call DiscretizationLocalToLocal(discretization,field%iphas_loc, &
                                   field%iphas_loc,ONEDOF)
   if (option%iflowmode == RICHARDS_MODE .or. &
+      option%iflowmode == G_MODE .or. & .or. &
       option%iflowmode == NULL_MODE) then
     call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
                                  field%work_loc, &
@@ -3290,6 +3295,7 @@ subroutine StepperSolveTranSteadyState(realization,stepper,failure)
                                     field%tortuosity_loc,ONEDOF)
   endif
   if (option%iflowmode == RICHARDS_MODE .or. &
+      option%iflowmode == G_MODE .or. & .or. &
       option%iflowmode == NULL_MODE) then
     call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
                                  field%work_loc, &
