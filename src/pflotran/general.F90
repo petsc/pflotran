@@ -130,7 +130,6 @@ subroutine GeneralSetup(realization)
   grid => patch%grid
 
   patch%aux%General => GeneralAuxCreate(option)
-  patch%aux%Material => MaterialAuxCreate()
 
   allocate(patch%aux%Material%material_parameter% &
     sir(size(realization%saturation_function_array),option%nphase))
@@ -1636,7 +1635,7 @@ subroutine GeneralBCFluxDerivative(ibndtype,auxvars, &
                        material_auxvar_dn, &
                        sir_dn, &
                        area,dist,general_parameter, &
-                       option,v_darcy,res)   
+                       option,v_darcy,res_pert)   
     do irow = 1, option%nflowdof
       Jdn(irow,idof) = (res_pert(irow)-res(irow))/gen_auxvar_dn(idof)%pert
     enddo !irow

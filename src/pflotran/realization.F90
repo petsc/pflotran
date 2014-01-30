@@ -228,6 +228,7 @@ subroutine RealizationCreateDiscretization(realization)
   call DiscretizationDuplicateVector(discretization,field%work, &
                                      field%volume0)
   if (option%iflowmode /= RICHARDS_MODE .and. &
+      option%iflowmode /= G_MODE .and. &
       option%iflowmode /= NULL_MODE) then
     !geh: relocated to material aux var
     call DiscretizationDuplicateVector(discretization,field%work, &
@@ -238,6 +239,7 @@ subroutine RealizationCreateDiscretization(realization)
   call DiscretizationCreateVector(discretization,ONEDOF,field%work_loc, &
                                   LOCAL,option)
   if (option%iflowmode /= RICHARDS_MODE .and. &
+      option%iflowmode /= G_MODE .and. &
       option%iflowmode /= NULL_MODE) then
       !geh: relocated to material aux var
     call DiscretizationDuplicateVector(discretization,field%work_loc, &
@@ -275,7 +277,8 @@ subroutine RealizationCreateDiscretization(realization)
     call DiscretizationDuplicateVector(discretization,field%work_loc, &
                                        field%iphas_old_loc)
     
-    if (option%iflowmode /= RICHARDS_MODE) then
+    if (option%iflowmode /= RICHARDS_MODE .and. &
+        option%iflowmode /= G_MODE) then
       !geh: for Richards mode, perm*_loc has been relocated to material aux var
       call DiscretizationDuplicateVector(discretization,field%work_loc, &
                                          field%perm_xx_loc)
@@ -383,6 +386,7 @@ subroutine RealizationCreateDiscretization(realization)
       call GridComputeVolumes(grid,field%volume0,option)
       !geh: remove
       if (option%iflowmode /= RICHARDS_MODE .and. &
+          option%iflowmode /= G_MODE .and. &
           option%iflowmode /= NULL_MODE) then
         call VecCopy(field%volume0,field%volume,ierr)
       endif
@@ -420,6 +424,7 @@ subroutine RealizationCreateDiscretization(realization)
       call GridComputeVolumes(grid,field%volume0,option)
       !geh: remove
       if (option%iflowmode /= RICHARDS_MODE .and. &
+          option%iflowmode /= G_MODE .and. &
           option%iflowmode /= NULL_MODE) then
         call VecCopy(field%volume0,field%volume,ierr)
       endif
@@ -1476,6 +1481,7 @@ subroutine RealizationRevertFlowParameters(realization)
 
   if (option%nflowdof > 0) then
   if (option%iflowmode /= RICHARDS_MODE .and. &
+      option%iflowmode /= G_MODE .and. &
       option%iflowmode /= NULL_MODE) then
     !geh: remove    
     call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
@@ -1497,6 +1503,7 @@ subroutine RealizationRevertFlowParameters(realization)
   endif
   endif   
   if (option%iflowmode /= RICHARDS_MODE .and. &
+      option%iflowmode /= G_MODE .and. &
       option%iflowmode /= NULL_MODE) then
     !geh: remove    
   call DiscretizationGlobalToLocal(discretization,field%porosity0, &
