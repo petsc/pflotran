@@ -17,7 +17,7 @@ class AnalyticalSolution:
     # Based on "Solution of the Differential Equation of Longitudinal
     # Dispersion in Porous Media", USGS Professional Paper 411-A by
     # Akio Ogata and R.B. Banks, 1961.
-    D_ = self.D #/self.porosity
+    D_ = self.D/self.porosity
     v = self.U/self.porosity
     temp = 0.5* \
            (math.erfc((x-v/self.R*t)/(2.*math.sqrt(D_/self.R*t))) + \
@@ -28,7 +28,7 @@ class AnalyticalSolution:
   def de_marsily_no_reaction(self,x,t):
     # Based on Equation 10.3.2 in Quantitative Hydrogeology, Ghislain de
     # Marsily, 1986.
-    D_ = self.D*self.porosity
+    D_ = self.D
     U_over_porR = self.U/(self.porosity*self.R)
     two_sqrt_Dt_over_porR = 2.*math.sqrt(D_*t/(self.porosity*self.R))
     temp = 0.5* \
@@ -40,7 +40,7 @@ class AnalyticalSolution:
   def de_marsily(self,x,t):
     # Based on Equation 10.3.4 in Quantitative Hydrogeology, Ghislain de
     # Marsily, 1986.
-    D_ = self.D*self.porosity
+    D_ = self.D
     Ux_over_2D = self.U/(2.*D_)
     temp = self.U/(self.porosity*self.R)
     sqrt_term = math.sqrt(temp*temp + 4.*self.lam*D_ / \
@@ -58,7 +58,7 @@ class AnalyticalSolution:
   def bear(self,x,t):
     # Based on Equation 10.6.22 in "Dynamics of Fluids in Porous Media", 
     # Jacob Bear, 1988.
-    D_ = self.D#/self.porosity
+    D_ = self.D/self.porosity
     v = self.U/self.porosity
     beta = math.sqrt(v*v/(4.*D_*D_)+ self.lam/D_)
     temp = 0.5 * \
