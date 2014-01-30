@@ -186,6 +186,7 @@ subroutine PMGeneralInitializeTimestep(this)
   use Global_module
   use Variables_module, only : POROSITY, TORTUOSITY, PERMEABILITY_X, &
                                PERMEABILITY_Y, PERMEABILITY_Z
+  use Material_module, only : MaterialAuxVarCommunicate
   
   implicit none
   
