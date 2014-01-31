@@ -67,6 +67,7 @@ module Saturation_Function_module
   PetscInt, parameter :: THOMEER_COREY = 3
   PetscInt, parameter :: NMT_EXP = 4
   PetscInt, parameter :: PRUESS_1 = 5
+  PetscInt, parameter :: LINEAR_MODEL = 6
 
   ! Permeability function
   PetscInt, parameter :: DEFAULT = 0
@@ -485,6 +486,8 @@ subroutine SaturatFuncConvertListToArray(list,array,option)
         cur_saturation_function%saturation_function_itype = VAN_GENUCHTEN
       case('BROOKS_COREY')
         cur_saturation_function%saturation_function_itype = BROOKS_COREY
+      case('LINEAR_MODEL')
+        cur_saturation_function%saturation_function_itype = LINEAR_MODEL
       case('THOMEER_COREY')
         cur_saturation_function%saturation_function_itype = THOMEER_COREY
       case('NMT_EXP')
@@ -579,7 +582,7 @@ subroutine SaturationFunctionCompute2(pressure,saturation,relative_perm, &
   type(option_type) :: option
 
   PetscInt :: iphase
-  PetscReal :: alpha, lambda, m, n, Sr, one_over_alpha
+  PetscReal :: alpha, lambda, m, n, Sr, one_over_alpha, pcmax
   PetscReal :: pc, Se, one_over_m, Se_one_over_m, dSe_pc, dsat_pc, dkr_pc
   PetscReal :: dkr_Se, power
   PetscReal :: pc_alpha, pc_alpha_n, one_plus_pc_alpha_n
@@ -730,6 +733,32 @@ subroutine SaturationFunctionCompute2(pressure,saturation,relative_perm, &
           option%io_buffer = 'Unknown relative permeabilty function'
           call printErrMsg(option)
       end select
+    case(LINEAR_MODEL)
+      ! Added by Bwalya Malama 01/30/2014
+      alpha = saturation_function%alpha
+      one_over_alpha = 1.d0/alpha
+      lambda = saturation_function%lambda
+      pcmax = saturation_function%pcwmax
+      pc = option%reference_pressure-pressure
+
+      if (pressure >= option%reference_pressure) then
+        saturation = 1.d0
+        relative_perm = 1.d0
+        switch_to_saturated = PETSC_TRUE
+        return
+      else
+        Sr = saturation_function%Sr(iphase)
+        Se = (pcmax-pc)/(pcmax-one_over_alpha)
+        dSe_pc = -1.d0/(pcmax-one_over_alpha)
+        saturation = Sr + (1.d0-Sr)*Se
+        dsat_pc = (1.d0-Sr)*dSe_pc
+        relative_perm = Se
+      endif
+      if (saturation > 1.d0) then
+        print *, option%myrank, 'BC Saturation > 1:', saturation
+      else if (saturation < Sr) then
+        print *, option%myrank, 'BC Saturation < Sr:', saturation, Sr
+      endif
     case(THOMEER_COREY)
       pc = option%reference_pressure-pressure
       por = auxvar1
@@ -1726,7 +1755,7 @@ subroutine SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
   PetscReal :: alpha, lambda, m, n, Sr, one_over_alpha
   PetscReal :: pc, Se
   PetscReal :: pc_alpha, pc_alpha_n, one_plus_pc_alpha_n
-  PetscReal :: pc_alpha_neg_lambda
+  PetscReal :: pc_alpha_neg_lambda, pcmax
   
   iphase = 1
 
@@ -1756,7 +1785,6 @@ subroutine SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
     case(BROOKS_COREY)
       alpha = saturation_function%alpha
       one_over_alpha = 1.d0/alpha
-!      pc = option%reference_pressure-pressure
       if (saturation >= 1.d0) then
         capillary_pressure = one_over_alpha
         return
@@ -1766,6 +1794,19 @@ subroutine SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
         Se = (saturation-Sr)/(1.d0-Sr)
         pc_alpha_neg_lambda = Se
         capillary_pressure = (pc_alpha_neg_lambda**(-1.d0/lambda))/alpha
+      endif
+    case(LINEAR_MODEL)
+      ! Added by Bwalya Malama 01/31/2014
+      alpha = saturation_function%alpha
+      one_over_alpha = 1.d0/alpha
+      if (saturation >= 1.d0) then
+        capillary_pressure = one_over_alpha
+        return
+      else
+        pcmax = saturation_function%pcwmax
+        Sr = saturation_function%Sr(iphase)
+        Se = (saturation-Sr)/(1.d0-Sr)
+        capillary_pressure = (one_over_alpha-pcmax)*Se + pcmax
       endif
 #if 0
     case(THOMEER_COREY)
