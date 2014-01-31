@@ -332,7 +332,7 @@ subroutine OutputGetCellCenteredVelocities(realization_base,vec,iphase, &
   allocate(velocities(3,realization_base%patch%grid%nlmax))
   call PatchGetCellCenteredVelocities(realization_base%patch,iphase,velocities)
   call VecGetArrayF90(vec,vec_ptr,ierr)
-  vec_ptr(:) = velocities(direction,:)
+  vec_ptr(:) = velocities(direction,:)*realization_base%output_option%tconv
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
   deallocate(velocities)
   
