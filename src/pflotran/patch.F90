@@ -114,7 +114,8 @@ module Patch_module
             PatchInitConstraints, &
             PatchCountCells, PatchGetIvarsFromKeyword, &
             PatchGetVarNameFromKeyword, &
-            PatchCalculateCFL1Timestep
+            PatchCalculateCFL1Timestep, &
+            PatchGetCellCenteredVelocities
 
 contains
 
@@ -5727,5 +5728,103 @@ end subroutine PatchGetVariable2
 
 #endif
 ! SURFACE_FLOW
+
+! ************************************************************************** !
+
+subroutine PatchGetCellCenteredVelocities(patch,iphase,velocities)
+  ! 
+  ! Calculates the Darcy velocity at the center of all cells in a patch
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/31/14
+  ! 
+  use Connection_module
+  use Coupler_module
+  
+  implicit none
+  
+  type(patch_type), pointer :: patch
+  PetscInt :: iphase
+  PetscReal, intent(out) :: velocities(:,:)
+  
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(coupler_type), pointer :: boundary_condition
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set  
+  PetscInt :: sum_connection, iconn, num_connections
+  PetscReal, allocatable :: sum_area(:,:), sum_velocity(:,:)
+  PetscReal :: area(3), velocity(3)
+  PetscInt :: ghosted_id_up, ghosted_id_dn
+  PetscInt :: local_id_up, local_id_dn
+  PetscInt :: local_id
+  PetscInt :: i
+  
+  grid => patch%grid
+  
+  allocate(sum_velocity(3,grid%nlmax))
+  allocate(sum_area(3,grid%nlmax))
+  sum_velocity(:,:) = 0.d0
+  sum_area(:,:) = 0.d0
+
+  ! interior velocities  
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
+  sum_connection = 0
+  do 
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      ghosted_id_up = cur_connection_set%id_up(iconn)
+      ghosted_id_dn = cur_connection_set%id_dn(iconn)
+      local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
+      local_id_dn = grid%nG2L(ghosted_id_dn) ! = zero for ghost nodes
+      ! velocities are stored as the downwind face of the upwind cell
+      area = cur_connection_set%area(iconn)* &
+             cur_connection_set%dist(1:3,iconn)
+      velocity = patch%internal_velocities(iphase,sum_connection)*area
+      if (local_id_up > 0) then
+        sum_velocity(:,local_id_up) = sum_velocity(:,local_id_up) + velocity
+        sum_area(:,local_id_up) = sum_area(:,local_id_up) + dabs(area)
+      endif
+      if (local_id_dn > 0) then
+        sum_velocity(:,local_id_dn) = sum_velocity(:,local_id_dn) + velocity
+        sum_area(:,local_id_dn) = sum_area(:,local_id_dn) + dabs(area)
+      endif
+    enddo
+    cur_connection_set => cur_connection_set%next
+  enddo
+
+  ! boundary velocities
+  boundary_condition => patch%boundary_conditions%first
+  sum_connection = 0
+  do
+    if (.not.associated(boundary_condition)) exit
+    cur_connection_set => boundary_condition%connection_set
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      local_id = cur_connection_set%id_dn(iconn)
+      area = cur_connection_set%area(iconn)* &
+             cur_connection_set%dist(1:3,iconn)
+      velocity = patch%boundary_velocities(iphase,sum_connection)*area
+      sum_velocity(:,local_id) = sum_velocity(:,local_id) + velocity
+      sum_area(:,local_id) = sum_area(:,local_id) + dabs(area)
+    enddo
+    boundary_condition => boundary_condition%next
+  enddo
+
+  ! divide by total area
+  do local_id=1,grid%nlmax
+    do i=1,3
+      if (sum_area(i,local_id) > 0.d0) &
+        velocities(i,local_id) = sum_velocity(i,local_id) / &
+                                 sum_area(i,local_id)  
+    enddo
+  enddo
+      
+  deallocate(sum_velocity)
+  deallocate(sum_area)
+
+end subroutine PatchGetCellCenteredVelocities
 
 end module Patch_module
