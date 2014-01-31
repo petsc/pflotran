@@ -62,8 +62,8 @@ contains
 
 ! ************************************************************************** !
 
-subroutine TDiffusion(global_auxvar_up,material_auxvar_up,disp_up,dist_up, &
-                      global_auxvar_dn,material_auxvar_dn,disp_dn,dist_dn, &
+subroutine TDiffusion(global_auxvar_up,material_auxvar_up,disp_up, &
+                      global_auxvar_dn,material_auxvar_dn,disp_dn,dist, &
                       rt_parameter,option,velocity,diffusion)
   ! 
   ! Computes diffusion term at cell interface
@@ -73,13 +73,14 @@ subroutine TDiffusion(global_auxvar_up,material_auxvar_up,disp_up,dist_up, &
   ! 
 
   use Option_module
+  use Connection_module
 
   implicit none
   
   type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn 
   class(material_auxvar_type) :: material_auxvar_up, material_auxvar_dn
   PetscReal :: disp_up, dist_up
-  PetscReal :: disp_dn, dist_dn
+  PetscReal :: dist(-1:3)
   PetscReal :: velocity(*)
   type(option_type) :: option
   type(reactive_transport_param_type) :: rt_parameter
@@ -87,8 +88,10 @@ subroutine TDiffusion(global_auxvar_up,material_auxvar_up,disp_up,dist_up, &
   
   PetscInt :: iphase
   PetscReal :: stp_ave_over_dist, disp_ave_over_dist
+  PetscReal :: disp_dn, dist_dn
   PetscReal :: sat_up, sat_dn
   PetscReal :: stp_up, stp_dn
+  PetscReal :: distance_gravity, upwind_weight ! both are dummy variables
   PetscReal :: q
 
 #if defined(TEMP_DEPENDENT_LOGK) || defined (CHUAN_HPT)
@@ -107,6 +110,10 @@ subroutine TDiffusion(global_auxvar_up,material_auxvar_up,disp_up,dist_up, &
   sat_up = global_auxvar_up%sat(iphase)
   sat_dn = global_auxvar_dn%sat(iphase)
 
+  call ConnectionCalculateDistances(dist,option%gravity,dist_up, &
+                                    dist_dn,distance_gravity, &
+                                    upwind_weight)  
+  
   ! Weighted harmonic mean of dispersivity divided by distance
   !   disp_up/dn = dispersivity
   !   dist_up/dn = distance

@@ -879,7 +879,6 @@ subroutine RTUpdateTransportCoefs(realization)
   type(connection_set_type), pointer :: cur_connection_set  
   PetscInt :: sum_connection, iconn, num_connections
   PetscInt :: ghosted_id_up, ghosted_id_dn, local_id_up, local_id_dn
-  PetscReal :: fraction_upwind, distance, dist_up, dist_dn
   PetscErrorCode :: ierr
     
   option => realization%option
@@ -909,22 +908,23 @@ subroutine RTUpdateTransportCoefs(realization)
       if (patch%imat(ghosted_id_up) <= 0 .or.  &
           patch%imat(ghosted_id_dn) <= 0) cycle
 
+#if 0
       fraction_upwind = cur_connection_set%dist(-1,iconn)
       distance = cur_connection_set%dist(0,iconn)
     ! distance = scalar - magnitude of distance
       dist_up = distance*fraction_upwind
       dist_dn = distance-dist_up ! should avoid truncation error
+#endif      
 
       call TDiffusion(global_auxvars(ghosted_id_up), &
                       material_auxvars(ghosted_id_up), &
                       patch%material_property_array(patch%imat(ghosted_id_up))% &
                         ptr%longitudinal_dispersivity, &
-                      dist_up, &
                       global_auxvars(ghosted_id_dn), &
                       material_auxvars(ghosted_id_dn), &
                       patch%material_property_array(patch%imat(ghosted_id_dn))% &
                         ptr%longitudinal_dispersivity, &
-                      dist_dn, &
+                      cur_connection_set%dist(:,iconn), &
                       rt_parameter,option, &
                       patch%internal_velocities(:,sum_connection), &
                       patch%internal_tran_coefs(:,sum_connection))
