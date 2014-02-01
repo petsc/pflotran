@@ -853,6 +853,7 @@ subroutine RTUpdateTransportCoefs(realization)
   ! 
 
   use Realization_class
+  use Discretization_module
   use Patch_module
   use Connection_module
   use Coupler_module
@@ -879,7 +880,10 @@ subroutine RTUpdateTransportCoefs(realization)
   type(connection_set_type), pointer :: cur_connection_set  
   PetscInt :: sum_connection, iconn, num_connections
   PetscInt :: ghosted_id_up, ghosted_id_dn, local_id_up, local_id_dn
-  PetscReal :: fraction_upwind, distance, dist_up, dist_dn
+  PetscReal, allocatable :: cell_centered_Darcy_velocities(:,:)
+  PetscReal, allocatable :: cell_centered_Darcy_velocities_ghosted(:,:)
+  PetscReal, pointer :: vec_ptr(:)
+  PetscInt :: i
   PetscErrorCode :: ierr
     
   option => realization%option
@@ -891,6 +895,27 @@ subroutine RTUpdateTransportCoefs(realization)
   grid => patch%grid
   rt_parameter => patch%aux%RT%rt_parameter
 
+  allocate(cell_centered_Darcy_velocities_ghosted(3,patch%grid%ngmax))
+  if (patch%material_property_array(1)%ptr%dispersivity(2) > 0.d0) then
+    allocate(cell_centered_Darcy_velocities(3,patch%grid%nlmax))
+    call PatchGetCellCenteredVelocities(patch,LIQUID_PHASE, &
+                                        cell_centered_Darcy_velocities)
+    ! at this point, velocities are at local cell centers; we need ghosted too.
+    do i=1,3
+      call VecGetArrayF90(field%work,vec_ptr,ierr)
+      vec_ptr(:) = cell_centered_Darcy_velocities(i,:)
+      call VecRestoreArrayF90(field%work,vec_ptr,ierr)
+      call DiscretizationGlobalToLocal(realization%discretization,field%work, &
+                                       field%work_loc,ONEDOF)
+      call VecGetArrayF90(field%work_loc,vec_ptr,ierr)
+      cell_centered_Darcy_velocities_ghosted(i,:) = vec_ptr(:)
+      call VecRestoreArrayF90(field%work_loc,vec_ptr,ierr)
+    enddo
+    deallocate(cell_centered_Darcy_velocities)
+  else
+    cell_centered_Darcy_velocities_ghosted = 0.d0
+  endif
+  
   ! Interior Flux Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
@@ -909,22 +934,17 @@ subroutine RTUpdateTransportCoefs(realization)
       if (patch%imat(ghosted_id_up) <= 0 .or.  &
           patch%imat(ghosted_id_dn) <= 0) cycle
 
-      fraction_upwind = cur_connection_set%dist(-1,iconn)
-      distance = cur_connection_set%dist(0,iconn)
-    ! distance = scalar - magnitude of distance
-      dist_up = distance*fraction_upwind
-      dist_dn = distance-dist_up ! should avoid truncation error
-
-      call TDiffusion(global_auxvars(ghosted_id_up), &
+      call TDispersion(global_auxvars(ghosted_id_up), &
                       material_auxvars(ghosted_id_up), &
+                      cell_centered_Darcy_velocities_ghosted(:,ghosted_id_up), &
                       patch%material_property_array(patch%imat(ghosted_id_up))% &
-                        ptr%longitudinal_dispersivity, &
-                      dist_up, &
+                        ptr%dispersivity, &
                       global_auxvars(ghosted_id_dn), &
                       material_auxvars(ghosted_id_dn), &
+                      cell_centered_Darcy_velocities_ghosted(:,ghosted_id_dn), &
                       patch%material_property_array(patch%imat(ghosted_id_dn))% &
-                        ptr%longitudinal_dispersivity, &
-                      dist_dn, &
+                        ptr%dispersivity, &
+                      cur_connection_set%dist(:,iconn), &
                       rt_parameter,option, &
                       patch%internal_velocities(:,sum_connection), &
                       patch%internal_tran_coefs(:,sum_connection))
@@ -961,19 +981,23 @@ subroutine RTUpdateTransportCoefs(realization)
       ghosted_id = grid%nL2G(local_id)
       if (patch%imat(ghosted_id) <= 0) cycle
 
-      call TDiffusionBC(boundary_condition%tran_condition%itype, &
+      call TDispersionBC(boundary_condition%tran_condition%itype, &
                         global_auxvars_bc(sum_connection), &
                         global_auxvars(ghosted_id), &
                         material_auxvars(ghosted_id), &
+                        cell_centered_Darcy_velocities_ghosted(:,ghosted_id), &
                         patch%material_property_array(patch%imat(ghosted_id))% &
-                          ptr%longitudinal_dispersivity, &
-                        cur_connection_set%dist(0,iconn), &
+                          ptr%dispersivity, &
+                        cur_connection_set%dist(:,iconn), &
                         rt_parameter,option, &
                         patch%boundary_velocities(:,sum_connection), &
                         patch%boundary_tran_coefs(:,sum_connection))
     enddo
     boundary_condition => boundary_condition%next
   enddo
+  
+  if (allocated(cell_centered_Darcy_velocities_ghosted)) &
+    deallocate(cell_centered_Darcy_velocities_ghosted)
 
 end subroutine RTUpdateTransportCoefs
 

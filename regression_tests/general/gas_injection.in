@@ -1,0 +1,226 @@
+:Description: 
+
+:=========================== flow mode ========================================
+MODE GENERAL
+
+:=========================== regression =======================================
+REGRESSION
+  CELLS
+    5
+    50
+    54
+    86
+  /
+END
+
+:=========================== discretization ===================================
+GRID
+  TYPE structured
+  NXYZ 9 1 10
+  BOUNDS
+    0.d0 0.d0 0.d0
+    9.d0 1.d0 10.d0
+  /
+/
+
+:=========================== solver options ===================================
+NEWTON_SOLVER FLOW
+  RTOL 1.d-8
+  ATOL 1.d-8
+  STOL 1.d-30
+  MAXIT 15
+/
+
+LINEAR_SOLVER FLOW
+  SOLVER DIRECT
+/
+
+:=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+/
+
+:=========================== material properties ==============================
+MATERIAL_PROPERTY  soil
+  ID 1
+  SATURATION_FUNCTION sf1
+  POROSITY 0.25
+  TORTUOSITY 0.5
+  PERMEABILITY
+    PERM_X 1.1d-12
+    PERM_Y 1.d-12
+    PERM_Z 1.d-12
+  /
+/
+
+MATERIAL_PROPERTY  impermeable
+  ID 2
+  SATURATION_FUNCTION sf2
+  POROSITY 0.15
+  TORTUOSITY 0.25
+  PERMEABILITY
+    PERM_X 1.d-15
+    PERM_Y 1.1d-15
+    PERM_Z 1.1d-15
+  /
+/
+
+:=========================== saturation functions =============================
+SATURATION_FUNCTION sf1
+  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+:  RESIDUAL_SATURATION 0.1d0
+  RESIDUAL_SATURATION 0.d0
+  LAMBDA 0.5d0
+  ALPHA 1.d-4
+  MAX_CAPILLARY_PRESSURE 1.d6
+/
+
+SATURATION_FUNCTION sf2
+  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+:  RESIDUAL_SATURATION 0.1d0
+  RESIDUAL_SATURATION 0.01d0
+  LAMBDA 0.55d0
+  ALPHA 2.d-4
+  MAX_CAPILLARY_PRESSURE 1.d6
+/
+
+:=========================== output options ===================================
+OUTPUT
+:  PERIODIC TIME 20 h
+:  TIMES y 1.d-6 1.d-5 1.d-4 1.d-3 1.d-2
+:  PERIODIC TIME 0.05 y
+:  PERIODIC_OBSERVATION TIMESTEP 1
+:  FORMAT TECPLOT POINT
+:  FORMAT HDF5
+:  VELOCITIES
+:  VARIABLES
+:    LIQUID_PRESSURE
+:  /
+/
+
+:=========================== times ============================================
+TIME
+  FINAL_TIME 1. y
+  INITIAL_TIMESTEP_SIZE 1.d0 s
+  MAXIMUM_TIMESTEP_SIZE 0.01d0 y
+/
+
+:=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    9.d0 1.d0 10.d0
+  /
+/
+
+REGION top
+  FACE TOP
+  COORDINATES
+    0.d0 0.d0 10.d0
+    9.d0 1.d0 10.d0
+  /
+/
+
+REGION bottom
+  FACE BOTTOM
+  COORDINATES
+    0.d0 0.d0 0.d0
+    9.d0 1.d0 0.d0
+  /
+/
+
+REGION impermeable_zone
+  COORDINATES
+    3.d0 0.d0 5.d0
+    6.d0 1.d0 6.d0
+  /
+/
+
+REGION top_pt
+  COORDINATE 4.5d0 0.5d0 10.d0
+/
+
+REGION bottom_pt
+  COORDINATE 4.5d0 0.5d0 0.d0
+/
+
+:=========================== observation points ===============================
+OBSERVATION 
+  REGION bottom_pt
+/
+
+OBSERVATION 
+  REGION top_pt
+/
+
+:=========================== flow conditions ==================================
+FLOW_CONDITION bottom_pressure
+  TYPE
+    LIQUID_PRESSURE dirichlet
+    MOLE_FRACTION dirichlet
+    TEMPERATURE dirichlet
+  /
+  LIQUID_PRESSURE 200159.412d0
+  MOLE_FRACTION 1.d-10
+  TEMPERATURE 25.d0
+/
+
+FLOW_CONDITION atmosphere
+  TYPE
+    GAS_PRESSURE dirichlet
+    MOLE_FRACTION dirichlet
+    TEMPERATURE dirichlet
+  /
+  GAS_PRESSURE 101325.d0
+  ! psat at 25 C is 3165.9896022949661
+  ! at 100% humidity, p_a = p_g - p_sat
+  ! mole fraction = p_a / p_g = (p_g - p_sat) / p_g
+  !               = (101325. - 3165.9896022949661) / 101325.
+  MOLE_FRACTION 0.978754d0
+  TEMPERATURE 25.d0
+/
+
+FLOW_CONDITION injection
+  TYPE
+    RATE mass_rate
+  /
+  RATE LIST
+    TIME_UNITS y
+              ! 10 kg/yr
+    0.d0 0.d0 3.170979198d-7 0.d0
+    0.5d0 0.d0 0.d0 0.d0
+  /
+/
+
+:=========================== condition couplers ===============================
+INITIAL_CONDITION
+  FLOW_CONDITION bottom_pressure
+  REGION all
+/
+
+BOUNDARY_CONDITION top
+  FLOW_CONDITION atmosphere
+  REGION top
+/
+
+BOUNDARY_CONDITION bottom
+  FLOW_CONDITION bottom_pressure
+  REGION bottom
+/
+
+SOURCE_SINK well
+  FLOW_CONDITION injection
+  REGION bottom_pt
+/
+
+:=========================== stratigraphy couplers ============================
+STRATA
+  MATERIAL soil
+  REGION all
+/
+
+STRATA
+  MATERIAL impermeable
+  REGION impermeable_zone
+/
+

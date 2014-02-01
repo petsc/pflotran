@@ -184,6 +184,9 @@ subroutine PMGeneralInitializeTimestep(this)
 
   use General_module, only : GeneralInitializeTimestep
   use Global_module
+  use Variables_module, only : POROSITY, TORTUOSITY, PERMEABILITY_X, &
+                               PERMEABILITY_Y, PERMEABILITY_Z
+  use Material_module, only : MaterialAuxVarCommunicate
   
   implicit none
   
@@ -195,11 +198,24 @@ subroutine PMGeneralInitializeTimestep(this)
 
   this%option%flow_dt = this%option%dt
 
-#ifndef SIMPLIFY  
-  ! update porosity
-  call this%comm1%LocalToLocal(this%realization%field%porosity_loc, &
-                              this%realization%field%porosity_loc)
-#endif
+  call MaterialAuxVarCommunicate(this%comm1, &
+                                 this%realization%patch%aux%Material, &
+                                 this%realization%field%work_loc,POROSITY,0)
+  call MaterialAuxVarCommunicate(this%comm1, &
+                                 this%realization%patch%aux%Material, &
+                                 this%realization%field%work_loc,TORTUOSITY,0)
+  call MaterialAuxVarCommunicate(this%comm1, &
+                                 this%realization%patch%aux%Material, &
+                                 this%realization%field%work_loc, &
+                                 PERMEABILITY_X,0)
+  call MaterialAuxVarCommunicate(this%comm1, &
+                                 this%realization%patch%aux%Material, &
+                                 this%realization%field%work_loc, &
+                                 PERMEABILITY_Y,0)
+  call MaterialAuxVarCommunicate(this%comm1, &
+                                 this%realization%patch%aux%Material, &
+                                 this%realization%field%work_loc, &
+                                 PERMEABILITY_Z,0)
 
   if (this%option%print_screen_flag) then
     write(*,'(/,2("=")," GENERAL FLOW ",62("="))')
@@ -340,7 +356,7 @@ subroutine PMGeneralUpdateTimestep(this,dt,dt_max,iacceleration, &
   fac = 0.5d0
   if (num_newton_iterations >= iacceleration) then
     fac = 0.33d0
-    ut = 0.d0
+    umin = 0.d0
   else
     up = this%dPmax_allowable/(this%dPmax+0.1)
     ut = this%dTmax_allowable/(this%dTmax+1.d-5)

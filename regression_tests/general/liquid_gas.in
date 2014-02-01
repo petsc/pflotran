@@ -1,0 +1,192 @@
+:Description: 
+
+:=========================== regression =======================================
+REGRESSION
+  CELLS
+    1
+    2
+  /
+END
+
+:=========================== flow mode ========================================
+MODE GENERAL
+
+:=========================== debug settings ===================================
+:USE_TOUCH_OPTIONS
+
+:DEBUG
+:MATVIEW_JACOBIAN
+:VECVIEW_RESIDUAL
+:VECVIEW_SOLUTION
+:/
+
+:=========================== time stepper options =============================
+TIMESTEPPER
+:  MAX_STEPS -1
+/
+
+:=========================== discretization ===================================
+GRID
+  TYPE structured
+  NXYZ 2 1 1
+  BOUNDS
+    0.d0 0.d0 0.d0
+    2.d0 1.d0 1.d0
+  /
+/
+
+:=========================== solver options ===================================
+NEWTON_SOLVER FLOW
+  RTOL 1.d-8
+  ATOL 1.d-8
+  STOL 1.d-30
+/
+
+LINEAR_SOLVER FLOW
+  SOLVER DIRECT
+/
+
+:=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+/
+
+:=========================== material properties ==============================
+MATERIAL_PROPERTY  Hanford
+  ID 1
+  SATURATION_FUNCTION sf1
+  POROSITY 0.25
+  TORTUOSITY 0.5
+  PERMEABILITY
+    PERM_X 1.d-12
+    PERM_Y 1.d-12
+    PERM_Z 1.d-12
+  /
+/
+
+:=========================== saturation functions =============================
+SATURATION_FUNCTION sf1
+  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+  RESIDUAL_SATURATION 0.d0
+  LAMBDA 0.5d0
+  ALPHA 1.d-4
+  MAX_CAPILLARY_PRESSURE 1.d6
+/
+
+:=========================== output options ===================================
+OUTPUT
+:  PERIODIC TIME 20 h
+:  TIMES y 0.24
+:  PERIODIC_OBSERVATION TIMESTEP 1
+:  FORMAT TECPLOT POINT
+  VELOCITIES
+/
+
+:=========================== times ============================================
+TIME
+  FINAL_TIME 1. y
+  INITIAL_TIMESTEP_SIZE 1.d0 s
+  MAXIMUM_TIMESTEP_SIZE 0.001d0 y
+/
+
+:=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    2.d0 1.d0 1.d0
+  /
+/
+
+REGION west
+  FACE WEST
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 1.d0 1.d0
+  /
+/
+
+REGION east
+  FACE EAST
+  COORDINATES
+    2.d0 0.d0 0.d0
+    2.d0 1.d0 1.d0
+  /
+/
+
+REGION liquid_side
+  COORDINATE 0.5d0 0.5d0 0.5d0
+/
+
+REGION gas_side
+  COORDINATE 1.5d0 0.5d0 0.5d0
+/
+
+:=========================== observation points ===============================
+OBSERVATION 
+  REGION liquid_side
+  VELOCITY
+/
+
+OBSERVATION 
+  REGION gas_side
+  VELOCITY
+/
+
+:=========================== flow conditions ==================================
+FLOW_CONDITION liquid_phase
+  TYPE
+    LIQUID_PRESSURE dirichlet
+    MOLE_FRACTION dirichlet
+    TEMPERATURE dirichlet
+  /
+  DATUM 0. 0. 0.d0
+  LIQUID_PRESSURE 111325.d0
+  MOLE_FRACTION 1.d-10
+  TEMPERATURE 25.d0
+/
+
+FLOW_CONDITION gas_phase
+  TYPE
+    GAS_PRESSURE dirichlet
+    MOLE_FRACTION dirichlet
+    TEMPERATURE dirichlet
+  /
+  GAS_PRESSURE 111325.d0
+  ! psat at 25 C is 3165.9896022949661
+  ! at 100% humidity, p_a = p_g - p_sat
+  ! mole fraction = p_a / p_g = (p_g - p_sat) / p_g
+  !               = (111325. - 3165.9896022949661) / 101325.
+  MOLE_FRACTION 0.971560838967d0
+  TEMPERATURE 25.d0
+/
+
+:=========================== condition couplers ===============================
+INITIAL_CONDITION
+  FLOW_CONDITION liquid_phase
+  REGION west
+/
+
+INITIAL_CONDITION
+  FLOW_CONDITION gas_phase
+  REGION east
+/
+
+:skip
+BOUNDARY_CONDITION west
+  FLOW_CONDITION liquid_phase
+  REGION west
+/
+
+BOUNDARY_CONDITION east
+  FLOW_CONDITION gas_phase
+  REGION east
+/
+:noskip
+
+:=========================== stratigraphy couplers ============================
+STRATA
+  MATERIAL Hanford
+  REGION all
+/
+
+

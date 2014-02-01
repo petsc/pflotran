@@ -34,8 +34,9 @@ subroutine HydrogeophysicsWrapperInit(option, &
 
   use vars, only : E4D_COMM, my_rank, n_rank, PFE4D_MASTER_COMM, &
                    pflotran_solution_vec_mpi, pflotran_solution_vec_seq, &
-                   pflotran_scatter, pflotran_solution_vec_size
-  use e4d_setup, only : setup_e4d
+                   pflotran_scatter, pflotran_solution_vec_size, &
+                   pflotran_group_prefix
+  use e4d_setup, only : setup_e4d, destroy_e4d
   use e4d_run, only: run_e4D
   
   implicit none
@@ -60,6 +61,7 @@ subroutine HydrogeophysicsWrapperInit(option, &
   pflotran_solution_vec_mpi = pflotran_solution_vec_mpi_
   pflotran_solution_vec_seq = pflotran_solution_vec_seq_
   pflotran_scatter = pflotran_scatter_
+  pflotran_group_prefix = option%group_prefix
   ! pflotran_solution_vec_seq only defined on master E4D process
   if (pflotran_solution_vec_seq > 0) then
     call VecGetSize(pflotran_solution_vec_seq,pflotran_solution_vec_size,ierr)
@@ -67,6 +69,7 @@ subroutine HydrogeophysicsWrapperInit(option, &
 
   call setup_e4d
   call run_e4d
+  call destroy_e4d
   
 end subroutine HydrogeophysicsWrapperInit
 

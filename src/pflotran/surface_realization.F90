@@ -372,57 +372,17 @@ subroutine SurfRealizCreateDiscretization(surf_realization)
   call DiscretizationDuplicateVector(discretization,surf_field%flow_xx, &
                                      surf_field%work)
 
-  call DiscretizationDuplicateVector(discretization,surf_field%flow_xx, &
-                                     surf_field%exchange_subsurf_2_surf)
-
   ! 1 degree of freedom, global
   call DiscretizationCreateVector(discretization,ONEDOF,surf_field%mannings0, &
                                   GLOBAL,option)
   call VecSet(surf_field%mannings0,0.d0,ierr)
 
-  call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
+   call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
                                      surf_field%area)
-  call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
-                                     surf_field%Dq)
-  call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
-                                     surf_field%perm_xx)
-  call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
-                                     surf_field%perm_yy)
-  call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
-                                     surf_field%perm_zz)
-  call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
-                                     surf_field%por)
-  call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
-                                     surf_field%icap_loc)
-  call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
-                                     surf_field%ithrm_loc)
-  call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
-                                     surf_field%subsurf_xx)
-  call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
-                                     surf_field%subsurf_yy)
-  call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
-                                     surf_field%subsurf_zz)
-  call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
-                                     surf_field%surf2subsurf_dist)
-  call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
-                                     surf_field%surf2subsurf_dist_gravity)
   call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
                                      surf_field%press_subsurf)
   call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
                                      surf_field%temp_subsurf)
-  call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
-                                     surf_field%sat_ice)
-  call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
-                                     surf_field%ckwet)
-  call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
-                                     surf_field%ckdry)
-  call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
-                                     surf_field%ckice)
-  call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
-                                     surf_field%th_alpha)
-  call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
-                                     surf_field%th_alpha_fr)
-
   ! n degrees of freedom, local
   call DiscretizationCreateVector(discretization,NFLOWDOF,surf_field%flow_xx_loc, &
                                   LOCAL,option)
@@ -440,7 +400,7 @@ subroutine SurfRealizCreateDiscretization(surf_realization)
   ! set up nG2L, NL2G, etc.
   call UGridMapIndices(grid%unstructured_grid,discretization%dm_1dof%ugdm, &
                         grid%nG2L,grid%nL2G,grid%nG2A,grid%nG2P,option)
-  call GridComputeCoordinates(grid,discretization%origin,option, & 
+  call GridComputeCoordinates(grid,discretization%origin,option, &
                               discretization%dm_1dof%ugdm) 
   call UGridEnsureRightHandRule(grid%unstructured_grid,grid%x, &
                                 grid%y,grid%z,grid%nG2A,grid%nL2G,option)

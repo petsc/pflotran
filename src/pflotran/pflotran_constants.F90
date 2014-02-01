@@ -202,9 +202,8 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: SURFACE    = 1
   
   PetscInt, parameter, public :: DECOUPLED     = 0
-  PetscInt, parameter, public :: SEQ_COUPLED   = 1
+  PetscInt, parameter, public :: SEQ_COUPLED = 1
   PetscInt, parameter, public :: FULLY_COUPLED = 2
-  PetscInt, parameter, public :: SEQ_COUPLED_NEW = 3
   
   PetscInt, parameter, public :: KINEMATIC_WAVE = 1
   PetscInt, parameter, public :: DIFFUSION_WAVE = 2
@@ -244,5 +243,10 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: SURF_TO_SUBSURF = 1
   PetscInt, parameter, public :: SUBSURF_TO_SURF = 2
   PetscInt, parameter, public :: SUBSURF_TO_HYDROGEOPHY = 3
+  
+  ! Ice/water/vapor partitioning model
+  PetscInt, parameter, public :: PAINTER_EXPLICIT = 1
+  PetscInt, parameter, public :: PAINTER_KARRA_IMPLICIT = 2
+  PetscInt, parameter, public :: PAINTER_KARRA_EXPLICIT = 3
 
 end module PFLOTRAN_Constants_module

@@ -42,12 +42,14 @@ STANDARD_CFG = \
 	default/anisothermal/anisothermal.cfg \
 	default/column/column.cfg \
 	default/eos/eos.cfg \
-	default/materials/material_update.cfg \
+	default/materials/materials.cfg \
+	default/materials/soil_compressibility/soil_compressibility.cfg \
 	default/infiltrometer/infiltrometer.cfg \
 	default/condition/condition.cfg \
 	default/multicontinuum/multicontinuum.cfg \
 	default/scco2/mphase/mphase.cfg \
 	default/scco2/flash2/flash2.cfg \
+	general/general.cfg \
 	ngee/ngee.cfg \
 	shortcourse/1D_Calcite/calcite.cfg \
 	shortcourse/1D_variably_saturated_flow/vsat_flow.cfg \
@@ -83,6 +85,7 @@ FLOW_CFG = \
 	default/infiltrometer/infiltrometer.cfg \
 	default/scco2/mphase/mphase.cfg \
 	default/scco2/flash2/flash2.cfg \
+	general/general.cfg \
 	shortcourse/1D_variably_saturated_flow/vsat_flow.cfg \
 	shortcourse/copper_leaching/cu_leaching.cfg
 

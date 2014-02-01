@@ -54,6 +54,7 @@ module Timestepper_Base_class
     procedure, public :: UpdateDT => TimestepperBaseUpdateDT
     procedure, public :: Checkpoint => TimestepperBaseCheckpoint
     procedure, public :: Restart => TimestepperBaseRestart
+    procedure, public :: Reset => TimestepperBaseReset
     procedure, public :: FinalizeRun => TimestepperBaseFinalizeRun
     procedure, public :: Strip => TimestepperBaseStrip
     procedure, public :: Destroy => TimestepperBaseDestroy
@@ -77,6 +78,7 @@ module Timestepper_Base_class
             TimestepperBaseInit, &
             TimestepperBaseSetHeader, &
             TimestepperBaseGetHeader, &
+            TimestepperBaseReset, &
             TimestepperBaseRegisterHeader
 
 contains
@@ -695,6 +697,32 @@ subroutine TimestepperBaseGetHeader(this,header)
   this%revert_dt = (header%revert_dt == ONE_INTEGER)
     
 end subroutine TimestepperBaseGetHeader
+
+! ************************************************************************** !
+
+subroutine TimestepperBaseReset(this)
+  ! 
+  ! Zeros timestepper object members.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/20/14
+  ! 
+
+  implicit none
+  
+
+  class(stepper_base_type) :: this
+  
+  this%target_time = 0.d0
+  this%dt = this%dt_min
+  this%prev_dt = 0.d0
+  this%steps = 0
+  this%cumulative_time_step_cuts = 0
+  this%num_constant_time_steps = 0
+  this%num_contig_revert_due_to_sync = 0
+  this%revert_dt = PETSC_FALSE
+    
+end subroutine TimestepperBaseReset
 
 ! ************************************************************************** !
 

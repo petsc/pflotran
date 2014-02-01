@@ -666,6 +666,12 @@ recursive subroutine PMCBaseRestart(this,viewer)
   endif
   
   call this%timestepper%Restart(viewer,this%option)
+  if (this%option%restart_time > -999.d0) then
+    ! simply a flag to set time back to zero, no matter what the restart
+    ! time is set to.
+    call this%timestepper%Reset()
+    ! note that this sets the target time back to zero.
+  endif
   
   ! Point cur_waypoint to the correct waypoint.
   !geh: there is a problem here in that the timesteppers "prev_waypoint"

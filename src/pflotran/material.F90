@@ -42,9 +42,7 @@ module Material_module
 
     PetscReal :: pore_compressibility
     PetscReal :: thermal_expansitivity   
-    PetscReal :: longitudinal_dispersivity 
-    PetscReal :: transverse_dispersivity_h
-    PetscReal :: transverse_dispersivity_v
+    PetscReal :: dispersivity(3)
     PetscReal :: tortuosity_pwr
     PetscReal :: min_pressure
     PetscReal :: max_pressure
@@ -172,9 +170,7 @@ function MaterialPropertyCreate()
 
   material_property%pore_compressibility = -999.d0
   material_property%thermal_expansitivity = 0.d0  
-  material_property%longitudinal_dispersivity = 0.d0
-  material_property%transverse_dispersivity_h = 0.d0
-  material_property%transverse_dispersivity_v = 0.d0
+  material_property%dispersivity = 0.d0
   material_property%min_pressure = 0.d0
   material_property%max_pressure = 1.d6
   material_property%max_permfactor = 1.d0
@@ -263,13 +259,13 @@ subroutine MaterialPropertyRead(material_property,input,option)
         call InputReadDouble(input,option,material_property%specific_heat)
         call InputErrorMsg(input,option,'specific heat','MATERIAL_PROPERTY')
       case('LONGITUDINAL_DISPERSIVITY') 
-        call InputReadDouble(input,option,material_property%longitudinal_dispersivity)
+        call InputReadDouble(input,option,material_property%dispersivity(1))
         call InputErrorMsg(input,option,'longitudinal_dispersivity','MATERIAL_PROPERTY')
       case('TRANSVERSE_DISPERSIVITY_H') 
-        call InputReadDouble(input,option,material_property%transverse_dispersivity_h)
+        call InputReadDouble(input,option,material_property%dispersivity(2))
         call InputErrorMsg(input,option,'transverse_dispersivity_h','MATERIAL_PROPERTY')
       case('TRANSVERSE_DISPERSIVITY_V') 
-        call InputReadDouble(input,option,material_property%transverse_dispersivity_v)
+        call InputReadDouble(input,option,material_property%dispersivity(3))
         call InputErrorMsg(input,option,'transverse_dispersivity_v','MATERIAL_PROPERTY')
       case('THERMAL_CONDUCTIVITY_DRY') 
         call InputReadDouble(input,option, &
@@ -924,6 +920,9 @@ subroutine MaterialInitAuxIndices(material_property_ptrs,option)
   max_material_index = 0
   
   do i = 1, size(material_property_ptrs)
+    ! if gaps exist between material ids in the input file, those gaps will
+    ! be null and need to be skipped
+    if (.not.associated(material_property_ptrs(i)%ptr)) cycle
     MaterialCompressSoilPtrTmp => null()
     if (len_trim(material_property_ptrs(i)%ptr% &
                    soil_compressibility_function) > 1) then
@@ -999,7 +998,7 @@ subroutine MaterialAssignPropertyToAux(material_auxvar,material_property, &
   
   implicit none
   
-  type(material_auxvar_type) :: material_auxvar
+  class(material_auxvar_type) :: material_auxvar
   type(material_property_type) :: material_property
   type(option_type) :: option
 

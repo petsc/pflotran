@@ -6,6 +6,8 @@
 :===================== TH mode ===============================
 MODE TH freezing
 
+ICE_MODEL PAINTER_EXPLICIT
+
 :=========================== regression =======================================
 REGRESSION
   CELLS_PER_PROCESS 2

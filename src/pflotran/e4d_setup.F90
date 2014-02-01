@@ -698,6 +698,92 @@ contains
   end subroutine receive_info_geh
   !__________________________________________________________________
   
+  !________________________________________________________________
+  subroutine destroy_e4d
+    implicit none
+    if (allocated(e4d_ranks)) then
+      deallocate(e4d_ranks)
+    endif
+    if (allocated(pf_e4d_ranks)) then
+      deallocate(pf_e4d_ranks)
+    endif
+    if (allocated(map_inds)) then
+      deallocate(map_inds)
+    endif
+    if (allocated(s_conf)) then
+      deallocate(s_conf)
+    endif
+    if (allocated(eind)) then
+      deallocate(eind)
+    endif
+    if (allocated(nbounds)) then
+      deallocate(nbounds)
+    endif
+    if (allocated(zones)) then
+      deallocate(zones)
+    endif
+    if (allocated(elements)) then
+      deallocate(elements)
+    endif
+    if (allocated(faces)) then
+      deallocate(faces)
+    endif
+    if (allocated(e_nods)) then
+      deallocate(e_nods)
+    endif
+    if (allocated(rows)) then
+      deallocate(rows)
+    endif
+    if (allocated(cols)) then
+      deallocate(cols)
+    endif
+    if (allocated(trows)) then
+      deallocate(trows)
+    endif
+    if (allocated(tcols)) then
+      deallocate(tcols)
+    endif
+    if (allocated(A_map)) then
+      deallocate(A_map)
+    endif
+    if (allocated(S_map)) then
+      deallocate(S_map)
+    endif
+    if (allocated(my_drows)) then
+      deallocate(my_drows)
+    endif
+    if (allocated(e_pos)) then
+      deallocate(e_pos)
+    endif
+    if (allocated(nodes)) then
+      deallocate(nodes)
+    endif
+    if (allocated(poles)) then
+      deallocate(poles)
+    endif
+    if (allocated(pf_sol)) then
+      deallocate(pf_sol)
+    endif
+    if (allocated(sigma)) then
+      deallocate(sigma)
+    endif
+    if (allocated(dpred)) then
+      deallocate(dpred)
+    endif
+    if (allocated(my_dvals)) then
+      deallocate(my_dvals)
+    endif
+    if (allocated(map)) then
+      deallocate(map)
+    endif
+    if (allocated(d_nnz)) then
+      deallocate(d_nnz)
+    endif
+    if (allocated(delA)) then
+      deallocate(delA)
+    endif
+  end subroutine destroy_e4d
+  !________________________________________________________________
  
 end module e4d_setup
 

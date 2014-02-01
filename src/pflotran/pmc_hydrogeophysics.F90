@@ -17,7 +17,8 @@ module PMC_Hydrogeophysics_class
   type, public, extends(pmc_base_type) :: pmc_hydrogeophysics_type
     class(realization_type), pointer :: realization
     Vec :: solution_seq
-    Vec :: solution_mpi
+    ! a pointer to solution_mpi in hydrogeophysics_simulation_type
+    Vec :: solution_mpi 
     VecScatter :: pf_to_e4d_scatter
     PetscMPIInt :: pf_to_e4d_master_comm
   contains
@@ -77,7 +78,8 @@ subroutine PMCHydrogeophysicsInit(this)
   this%solution_mpi = 0
   this%solution_seq = 0
   this%pf_to_e4d_scatter = 0
-
+  this%pf_to_e4d_master_comm = 0
+  
 end subroutine PMCHydrogeophysicsInit
 
 ! ************************************************************************** !
@@ -263,12 +265,17 @@ subroutine PMCHydrogeophysicsStrip(this)
 
   call PMCBaseStrip(this)
   nullify(this%realization)
+  ! created in HydrogeophysicsInitialize()
   if (this%solution_seq /= 0) &
     call VecDestroy(this%solution_seq,ierr)
   this%solution_seq = 0
+  ! created in HydrogeophysicsInitialize()
   if (this%pf_to_e4d_scatter /= 0) &
     call VecScatterDestroy(this%pf_to_e4d_scatter, ierr)
   this%pf_to_e4d_scatter = 0
+  ! these are solely pointers set in HydrogeophysicsInitialize()
+  this%pf_to_e4d_master_comm = 0
+  this%solution_mpi = 0
   
 end subroutine PMCHydrogeophysicsStrip
 

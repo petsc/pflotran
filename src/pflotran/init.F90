@@ -1164,24 +1164,8 @@ subroutine Init(simulation)
     select case(option%iflowmode)
       case(RICHARDS_MODE)
         call SurfaceFlowUpdateAuxVars(simulation%surf_realization)
-        if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
-          call SurfaceFlowCreateSurfSubsurfVec( &
-                          simulation%realization, simulation%surf_realization)
-        endif
-        if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED_NEW) then
-          call SurfaceFlowCreateSurfSubsurfVecNew( &
-                          simulation%realization, simulation%surf_realization)
-        endif
       case(TH_MODE)
         call SurfaceTHUpdateAuxVars(surf_realization)
-        if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
-          call SurfaceTHCreateSurfSubsurfVec( &
-                          simulation%realization, simulation%surf_realization)
-        endif
-        if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED_NEW) then
-          call SurfaceTHCreateSurfSubsurfVecNew( &
-                          simulation%realization, simulation%surf_realization)
-        endif
       case default
         option%io_buffer = 'For surface-flow only RICHARDS and TH mode implemented'
         call printErrMsgByRank(option)
@@ -1654,7 +1638,24 @@ subroutine InitReadInput(simulation)
                option%io_buffer = ' TH(C): must specify FREEZING or NO_FREEZING submode!'
                call printErrMsg(option)
             endif
-         endif
+         endif  
+        
+!....................
+      case ('ICE_MODEL')
+        call InputReadWord(input,option,word,PETSC_FALSE)
+        call StringToUpper(word)
+        select case (trim(word))
+          case ('PAINTER_EXPLICIT')
+            option%ice_model = PAINTER_EXPLICIT
+          case ('PAINTER_KARRA_IMPLICIT')
+            option%ice_model = PAINTER_KARRA_IMPLICIT
+          case ('PAINTER_KARRA_EXPLICIT')
+            option%ice_model = PAINTER_KARRA_EXPLICIT
+          case default
+            option%io_buffer = 'Cannot identify the specificed ice model.' // &
+             'Specify PAINTER_EXPLICIT or PAINTER_KARRA_IMPLICIT' // &
+             ' or PAINTER_KARRA_EXPLICIT.'
+          end select
 
 !....................
       case ('GRID')
@@ -1904,11 +1905,6 @@ subroutine InitReadInput(simulation)
 
       case('MULTIPLE_CONTINUUM')
         option%use_mc = PETSC_TRUE
-        
-!......................
-
-      case('ICE_NEW')
-        option%use_ice_new = PETSC_TRUE        
       
 !......................
 
@@ -2597,15 +2593,8 @@ subroutine InitReadInput(simulation)
            option%store_flowrate = PETSC_TRUE
           endif
           if (associated(grid%unstructured_grid%explicit_grid)) then
-#ifndef STORE_FLOWRATES
-            option%io_buffer='To output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE, '// &
-              'compile with -DSTORE_FLOWRATES'
-            call printErrMsg(option)
-#endif
-            output_option%print_explicit_flowrate = mass_flowrate
-          else
             option%io_buffer='Output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE ' // &
-              'only available in HDF5 format for implicit grid' 
+              'not supported for explicit unstructured grid.'
             call printErrMsg(option)
           endif
         
@@ -2833,6 +2822,7 @@ subroutine setFlowMode(option)
       option%air_pressure_id = 3
       option%capillary_pressure_id = 4
       option%vapor_pressure_id = 5
+      option%saturation_pressure_id = 6
 
       option%water_id = 1
       option%air_id = 2
@@ -3022,6 +3012,7 @@ subroutine assignMaterialPropToRegions(realization)
         
     !geh: remove
     if (option%iflowmode == RICHARDS_MODE .or. &
+        option%iflowmode == G_MODE .or. &
         option%iflowmode == NULL_MODE) then
       material_auxvars => cur_patch%aux%Material%auxvars
     else
@@ -3161,7 +3152,7 @@ subroutine assignMaterialPropToRegions(realization)
                                    PERMEABILITY_YZ,0)
     endif
     !geh: remove
-    if (option%iflowmode /= RICHARDS_MODE) then
+    if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE) then
       call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
                                        field%perm_xx_loc,ONEDOF)  
       call DiscretizationGlobalToLocal(discretization,field%perm0_yy, &
@@ -3215,7 +3206,7 @@ subroutine assignMaterialPropToRegions(realization)
   enddo
   
   !geh: remove
-  if (option%iflowmode /= RICHARDS_MODE .and. &
+  if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE .and. &
       option%iflowmode /= NULL_MODE) then
     call DiscretizationGlobalToLocal(discretization,field%porosity0, &
                                      field%porosity_loc,ONEDOF)

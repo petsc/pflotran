@@ -172,8 +172,13 @@ subroutine SurfSubsurfaceExecuteRun(this)
 
   else
 
+    ! If simulation is decoupled surface-subsurface simulation, set
+    ! dt_coupling to be dt_max
+    if (this%surf_realization%dt_coupling == 0.d0) &
+      this%surf_realization%dt_coupling = this%surf_realization%dt_max
+
     do
-      if(time+this%surf_realization%dt_coupling > final_time) then
+      if (time + this%surf_realization%dt_coupling > final_time) then
         dt = final_time-time
       else
         dt = this%surf_realization%dt_coupling

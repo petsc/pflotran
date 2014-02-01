@@ -299,22 +299,18 @@ end function OutputGetVarFromArrayAtCoord
 
 ! ************************************************************************** !
 
-subroutine OutputGetCellCenteredVelocities(realization_base,vec,iphase,direction)
+subroutine OutputGetCellCenteredVelocities(realization_base,vec,iphase, &
+                                           direction)
   ! 
   ! Computes the cell-centered velocity component
   ! as an averages of cell face velocities
   ! 
   ! Author: Glenn Hammond
-  ! Date: 10/25/07
+  ! Date: 10/25/07; refactored 01/31/14
   ! 
-
-  use Grid_module
-  use Option_module
-  use Connection_module
-  use Coupler_module
-  use Field_module
-  use Patch_module
   use Logging_module
+  use Patch_module
+  use Grid_module
 
   implicit none
 
@@ -326,97 +322,20 @@ subroutine OutputGetCellCenteredVelocities(realization_base,vec,iphase,direction
   PetscInt :: direction
   PetscInt :: iphase
   
-  type(grid_type), pointer :: grid
-  type(option_type), pointer :: option
-  type(field_type), pointer :: field
-  type(patch_type), pointer :: patch  
-  type(output_option_type), pointer :: output_option
-  PetscInt :: iconn, sum_connection
-  PetscInt :: local_id_up, local_id_dn, local_id
-  PetscInt :: ghosted_id_up, ghosted_id_dn, ghosted_id
-  PetscReal :: velocity, area
-  PetscReal :: average, sum, max, min, std_dev
-  PetscInt :: max_loc, min_loc
   PetscErrorCode :: ierr
   
   PetscReal, pointer :: vec_ptr(:)
-  PetscReal, allocatable :: sum_area(:)
+  PetscReal, allocatable :: velocities(:,:)
   
-  type(coupler_type), pointer :: boundary_condition
-  type(connection_set_list_type), pointer :: connection_set_list
-  type(connection_set_type), pointer :: cur_connection_set
-
   call PetscLogEventBegin(logging%event_output_get_cell_vel,ierr) 
                             
-  patch => realization_base%patch
-  grid => patch%grid
-  option => realization_base%option
-  field => realization_base%field
-  output_option => realization_base%output_option
-    
-  allocate(sum_area(grid%nlmax))
-  sum_area(1:grid%nlmax) = 0.d0
-
-  call VecSet(vec,0.d0,ierr)
+  allocate(velocities(3,realization_base%patch%grid%nlmax))
+  call PatchGetCellCenteredVelocities(realization_base%patch,iphase,velocities)
   call VecGetArrayF90(vec,vec_ptr,ierr)
-
-  ! interior velocities  
-  connection_set_list => grid%internal_connection_set_list
-  cur_connection_set => connection_set_list%first
-  sum_connection = 0
-  do 
-    if (.not.associated(cur_connection_set)) exit
-    do iconn = 1, cur_connection_set%num_connections
-      sum_connection = sum_connection + 1
-      ghosted_id_up = cur_connection_set%id_up(iconn)
-      ghosted_id_dn = cur_connection_set%id_dn(iconn)
-      local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
-      local_id_dn = grid%nG2L(ghosted_id_dn) ! = zero for ghost nodes
-      ! velocities are stored as the downwind face of the upwind cell
-      area = cur_connection_set%area(iconn)* &
-             cur_connection_set%dist(direction,iconn)
-      velocity = patch%internal_velocities(iphase,sum_connection)* &
-                 area
-      if (local_id_up > 0) then
-        vec_ptr(local_id_up) = vec_ptr(local_id_up) + velocity
-        sum_area(local_id_up) = sum_area(local_id_up) + dabs(area)
-      endif
-      if (local_id_dn > 0) then
-        vec_ptr(local_id_dn) = vec_ptr(local_id_dn) + velocity
-        sum_area(local_id_dn) = sum_area(local_id_dn) + dabs(area)
-      endif
-    enddo
-    cur_connection_set => cur_connection_set%next
-  enddo
-
-  ! boundary velocities
-  boundary_condition => patch%boundary_conditions%first
-  sum_connection = 0
-  do
-    if (.not.associated(boundary_condition)) exit
-    cur_connection_set => boundary_condition%connection_set
-    do iconn = 1, cur_connection_set%num_connections
-      sum_connection = sum_connection + 1
-      local_id = cur_connection_set%id_dn(iconn)
-      area = cur_connection_set%area(iconn)* &
-             cur_connection_set%dist(direction,iconn)
-      vec_ptr(local_id) = vec_ptr(local_id)+ &
-                          patch%boundary_velocities(iphase,sum_connection)* &
-                          area
-      sum_area(local_id) = sum_area(local_id) + dabs(area)
-    enddo
-    boundary_condition => boundary_condition%next
-  enddo
-
-  ! divide by total area
-  do local_id=1,grid%nlmax
-    if (sum_area(local_id) > 0.d0) &
-      vec_ptr(local_id) = vec_ptr(local_id)/sum_area(local_id)*output_option%tconv
-  enddo
+  vec_ptr(:) = velocities(direction,:)*realization_base%output_option%tconv
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
-
-  deallocate(sum_area)
-
+  deallocate(velocities)
+  
   call PetscLogEventEnd(logging%event_output_get_cell_vel,ierr) 
 
 end subroutine OutputGetCellCenteredVelocities
@@ -1733,7 +1652,7 @@ subroutine OutputGetExplicitCellInfo(realization_base,num_cells,ids,sat,por, &
   grid => patch%grid
   global_auxvar => patch%aux%Global%auxvars
   
-  if (option%iflowmode /= RICHARDS_MODE .and. &
+  if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE .and. &
       option%iflowmode /= NULL_MODE) then
   call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
   endif
@@ -1749,7 +1668,7 @@ subroutine OutputGetExplicitCellInfo(realization_base,num_cells,ids,sat,por, &
     ghosted_id = grid%nL2G(local_id)
     ids(local_id) = grid%nG2A(ghosted_id)
     sat(local_id) = global_auxvar(ghosted_id)%sat(1)
-    if (option%iflowmode /= RICHARDS_MODE .and. &
+    if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE .and. &
         option%iflowmode /= NULL_MODE) then
     por(local_id) = porosity_loc_p(ghosted_id)
     else
@@ -1759,7 +1678,7 @@ subroutine OutputGetExplicitCellInfo(realization_base,num_cells,ids,sat,por, &
     pressure(local_id) = global_auxvar(ghosted_id)%pres(1)
   enddo
 
-  if (option%iflowmode /= RICHARDS_MODE .and. &
+  if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE .and. &
       option%iflowmode /= NULL_MODE) then
   call VecRestoreArrayF90(field%porosity_loc,porosity_loc_p,ierr)
   endif

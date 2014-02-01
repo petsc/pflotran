@@ -56,9 +56,10 @@ module Saturation_Function_module
             SatFuncGetRelPermFromSat, &
             SatFuncGetCapillaryPressure, &
             SaturationFunctionGetID, &
-            SaturationFunctionComputeIce, &
+            SatFuncComputeIcePExplicit, &
             CapillaryPressureThreshold, &
-            SatFuncComputeIceImplicit
+            SatFuncComputeIcePKImplicit, &
+            SatFuncComputeIcePKExplicit
             
   ! Saturation function 
   PetscInt, parameter :: VAN_GENUCHTEN = 1
@@ -66,6 +67,7 @@ module Saturation_Function_module
   PetscInt, parameter :: THOMEER_COREY = 3
   PetscInt, parameter :: NMT_EXP = 4
   PetscInt, parameter :: PRUESS_1 = 5
+  PetscInt, parameter :: LINEAR_MODEL = 6
 
   ! Permeability function
   PetscInt, parameter :: DEFAULT = 0
@@ -105,7 +107,7 @@ function SaturationFunctionCreate(option)
   saturation_function%m = 0.d0
   saturation_function%lambda = 0.d0
   saturation_function%alpha = 0.d0
-  saturation_function%pcwmax = 0.d0
+  saturation_function%pcwmax = 1.d9
   saturation_function%betac = 0.d0
   saturation_function%power = 0.d0
   saturation_function%hysteresis_id = 0
@@ -484,6 +486,8 @@ subroutine SaturatFuncConvertListToArray(list,array,option)
         cur_saturation_function%saturation_function_itype = VAN_GENUCHTEN
       case('BROOKS_COREY')
         cur_saturation_function%saturation_function_itype = BROOKS_COREY
+      case('LINEAR_MODEL')
+        cur_saturation_function%saturation_function_itype = LINEAR_MODEL
       case('THOMEER_COREY')
         cur_saturation_function%saturation_function_itype = THOMEER_COREY
       case('NMT_EXP')
@@ -578,7 +582,7 @@ subroutine SaturationFunctionCompute2(pressure,saturation,relative_perm, &
   type(option_type) :: option
 
   PetscInt :: iphase
-  PetscReal :: alpha, lambda, m, n, Sr, one_over_alpha
+  PetscReal :: alpha, lambda, m, n, Sr, one_over_alpha, pcmax
   PetscReal :: pc, Se, one_over_m, Se_one_over_m, dSe_pc, dsat_pc, dkr_pc
   PetscReal :: dkr_Se, power
   PetscReal :: pc_alpha, pc_alpha_n, one_plus_pc_alpha_n
@@ -729,6 +733,32 @@ subroutine SaturationFunctionCompute2(pressure,saturation,relative_perm, &
           option%io_buffer = 'Unknown relative permeabilty function'
           call printErrMsg(option)
       end select
+    case(LINEAR_MODEL)
+      ! Added by Bwalya Malama 01/30/2014
+      alpha = saturation_function%alpha
+      one_over_alpha = 1.d0/alpha
+      lambda = saturation_function%lambda
+      pcmax = saturation_function%pcwmax
+      pc = option%reference_pressure-pressure
+
+      if (pressure >= option%reference_pressure) then
+        saturation = 1.d0
+        relative_perm = 1.d0
+        switch_to_saturated = PETSC_TRUE
+        return
+      else
+        Sr = saturation_function%Sr(iphase)
+        Se = (pcmax-pc)/(pcmax-one_over_alpha)
+        dSe_pc = -1.d0/(pcmax-one_over_alpha)
+        saturation = Sr + (1.d0-Sr)*Se
+        dsat_pc = (1.d0-Sr)*dSe_pc
+        relative_perm = Se
+      endif
+      if (saturation > 1.d0) then
+        print *, option%myrank, 'BC Saturation > 1:', saturation
+      else if (saturation < Sr) then
+        print *, option%myrank, 'BC Saturation < Sr:', saturation, Sr
+      endif
     case(THOMEER_COREY)
       pc = option%reference_pressure-pressure
       por = auxvar1
@@ -799,18 +829,20 @@ end subroutine SaturationFunctionCompute3
 
 ! ************************************************************************** !
 
-subroutine SaturationFunctionComputeIce(liquid_pressure, temperature, &
-                                        ice_saturation, &
-                                        liquid_saturation, gas_saturation, &
-                                        liquid_relative_perm, dsl_pl, & 
-                                        dsl_temp, dsg_pl, dsg_temp, dsi_pl, &
-                                        dsi_temp, dkr_pl, dkr_temp, &
-                                        saturation_function, pth, option)
+subroutine SatFuncComputeIcePExplicit(liquid_pressure, temperature, &
+                                      ice_saturation, &
+                                      liquid_saturation, gas_saturation, &
+                                      liquid_relative_perm, dsl_pl, & 
+                                      dsl_temp, dsg_pl, dsg_temp, dsi_pl, &
+                                      dsi_temp, dkr_pl, dkr_temp, &
+                                      saturation_function, pth, option)
   ! 
   ! Computes the saturation of ice, water vapor
   ! and liquid water given the saturation function
   ! temperature, water vapor pressure and liquid
   ! water pressure
+  !
+  ! Model based on Painter, Comp. Geosci, 2011
   ! 
   ! Author: Satish Karra, LANL
   ! Date: 11/14/11
@@ -961,14 +993,8 @@ implicit none
       option%io_buffer = 'Ice module only supports Mualem' 
       call printErrMsg(option)
   end select
-  
-!  write(*,*) 'rank:', option%myrank, 'sl:', liquid_saturation, &
-!  'sg:', gas_saturation, 'si:', ice_saturation, 'dsl_pl:', dsl_pl, &
-! 'dsl_temp:', dsl_temp, 'dsg_pl:', dsg_pl, 'dsg_temp:', dsg_temp, &
-!  'dsi_pl:', dsi_pl, 'dsi_temp:', dsi_temp, 'kr:', liquid_relative_perm, &
-!  'dkr_pl:', dkr_pl, 'dkr_temp:', dkr_temp   
    
-end subroutine SaturationFunctionComputeIce
+end subroutine SatFuncComputeIcePExplicit
 
 ! ************************************************************************** !
 
@@ -1313,7 +1339,7 @@ end subroutine CalcPhasePartitionIceDeriv
 
 ! ************************************************************************** !
 
-subroutine SatFuncComputeIceImplicit(pl,T,s_i,s_l,s_g,kr,dsl_dpl, & 
+subroutine SatFuncComputeIcePKImplicit(pl,T,s_i,s_l,s_g,kr,dsl_dpl, & 
                                      dsl_dT,dsg_dpl,dsg_dT,dsi_dpl, &
                                      dsi_dT,dkr_dpl,dkr_dT, &
                                      saturation_function,pth,option)
@@ -1321,6 +1347,8 @@ subroutine SatFuncComputeIceImplicit(pl,T,s_i,s_l,s_g,kr,dsl_dpl, &
   ! Calculates the saturations of water phases
   ! and their derivative with respect to liquid
   ! pressure
+  
+  ! Model based on Painter & Karra implicit model VZJ (2014)
   ! 
   ! Author: Satish Karra
   ! Date: 10/16/12
@@ -1409,7 +1437,139 @@ implicit none
   'dkr_pl:', dkr_dpl, 'dkr_temp:', dkr_dT, 'pl:', pl, 'T:', T  
 #endif
 
-end subroutine SatFuncComputeIceImplicit
+end subroutine SatFuncComputeIcePKImplicit
+
+! ************************************************************************** !
+
+subroutine SatFuncComputeIcePKExplicit(pl,T,s_i,s_l,s_g,kr,dsl_dpl, & 
+                                       dsl_dT,dsg_dpl,dsg_dT,dsi_dpl, &
+                                       dsi_dT,dkr_dpl,dkr_dT, &
+                                       saturation_function,pth,option)
+  ! 
+  ! Calculates the saturations of water phases
+  ! and their derivative with respect to liquid
+  ! pressure, temperature
+  !
+  ! Model used: explicit model from Painter & Karra, VJZ (2014).
+  ! 
+  ! Author: Satish Karra
+  ! Date: 01/13/13
+  ! 
+
+  use Option_module
+ 
+implicit none
+
+  PetscReal :: pl, T
+  PetscReal :: s_i, s_g, s_l, kr
+  PetscReal :: dkr_dpl, dkr_dT
+  PetscReal :: dkr_dsl
+  PetscReal :: alpha, m, Pcgl
+  PetscReal :: one_over_m
+  PetscReal :: liq_sat_one_over_m
+  PetscReal :: dsl_dpl, dsl_dT
+  PetscReal :: dsi_dpl, dsi_dT
+  PetscReal :: dsg_dpl, dsg_dT
+  PetscReal :: pth
+  PetscReal :: S, dS, Sinv, dSinv
+  PetscReal, parameter :: beta = 2.2           ! dimensionless -- ratio of surf. tension
+  PetscReal, parameter :: rho_l = 9.998d2      ! in kg/m^3
+  PetscReal, parameter :: T_0 = 273.15         ! in K
+  PetscReal, parameter :: L_f = 3.34d5         ! in J/kg
+  PetscReal :: T_f, theta, X, Y, dS_dX
+
+  
+  type(saturation_function_type) :: saturation_function
+  type(option_type) :: option
+
+
+  select case(saturation_function%saturation_function_itype)
+    case(VAN_GENUCHTEN)
+      T = T + T_0  ! convert to K 
+      alpha = saturation_function%alpha
+      Pcgl = option%reference_pressure - pl
+      m = saturation_function%m      
+      call ComputeSatVG(alpha,m,Pcgl,S,dS)
+      call ComputeInvSatVG(alpha,m,S,Sinv,dSinv)
+      T_f = T_0 - 1.d0/beta*T_0/L_f/rho_l*Sinv
+      theta = (T-T_0)/T_0
+      if (T < T_f) then
+        X = -beta*theta*L_f*rho_l
+        call ComputeSatVG(alpha,m,X,s_l,dS_dX)
+        s_i = 1.d0 - s_l/S
+        dsl_dT = 1.d0/T_0*dS_dX*(-beta*rho_l*L_f)
+        dsl_dpl = 0.d0
+        dsi_dT = -1.d0/S*dsl_dT
+        dsi_dpl = -1.d0*s_l/S**2*dS 
+      else
+        s_l = S
+        s_i = 0.d0
+        dsl_dpl = -dS
+        dsl_dT = 0.d0
+        dsi_dpl = 0.d0
+        dsi_dT = 0.d0
+      endif
+      s_g = 1.d0 - s_l - s_i
+      dsg_dpl = -dsl_dpl - dsi_dpl
+      dsg_dT = -dsl_dT - dsi_dT  
+      T = T - T_0 ! change back to C 
+    case default  
+      option%io_buffer = 'Only van Genuchten supported with ice'
+      call printErrMsg(option)
+  end select
+ 
+  ! Check for bounds on saturations         
+  if (s_l > 1.d0) then
+    print *, option%myrank, 'vG Liquid Saturation > 1:', s_l
+  else if (s_l < 0.d0) then
+    print *, option%myrank, 'vG Liquid Saturation < 0:', s_l
+  endif
+
+  if (s_g > 1.d0) then
+    print *, option%myrank, 'vG Gas Saturation > 1:', s_g
+  else if (s_g < 0.d0) then
+    print *, option%myrank, 'vG Gas Saturation < 0:', s_g
+  endif
+ 
+  if (s_i > 1.d0) then
+    print *, option%myrank, 'vG Ice Saturation > 1:', s_i
+  else if (s_i < 0.d0) then
+    print *, option%myrank, 'vG Ice Saturation < 0:', s_i
+  endif
+ 
+  ! Calculate relative permeability
+  select case(saturation_function%permeability_function_itype)
+    case(MUALEM)
+      if (s_l == 1.d0) then
+        kr = 1.d0
+        dkr_dsl = 0.d0
+      else
+        m = saturation_function%m
+        one_over_m = 1.d0/m
+        liq_sat_one_over_m = s_l**one_over_m
+        kr = sqrt(s_l)*(1.d0 - (1.d0 - liq_sat_one_over_m)**m)**2.d0
+        dkr_dsl = 0.5d0*kr/s_l + &
+                  2.d0*s_l**(one_over_m - 0.5d0)* &
+                  (1.d0 - liq_sat_one_over_m)**(m - 1.d0)* &
+                  (1.d0 - (1.d0 - liq_sat_one_over_m)**m)
+      endif
+        dkr_dpl = dkr_dsl*dsl_dpl
+        dkr_dT = dkr_dsl*dsl_dT
+    case default
+      option%io_buffer = 'Ice module only supports Mualem' 
+      call printErrMsg(option)
+  end select 
+
+#if 0
+  print *, '======================================' 
+  write(*,*) 'rank:', option%myrank, 'sl:', s_l, &
+  'sg:', s_g, 'si:', s_i, 'dsl_pl:', dsl_dpl, &
+  'dsl_temp:', dsl_dT, 'dsg_pl:', dsg_dpl, 'dsg_temp:', dsg_dT, &
+  'dsi_pl:', dsi_dpl, 'dsi_temp:', dsi_dT, 'kr:', kr, &
+  'dkr_pl:', dkr_dpl, 'dkr_temp:', dkr_dT, 'pl:', pl, 'T:', T  
+#endif
+
+end subroutine SatFuncComputeIcePKExplicit
 
 ! ************************************************************************** !
 
@@ -1595,7 +1755,7 @@ subroutine SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
   PetscReal :: alpha, lambda, m, n, Sr, one_over_alpha
   PetscReal :: pc, Se
   PetscReal :: pc_alpha, pc_alpha_n, one_plus_pc_alpha_n
-  PetscReal :: pc_alpha_neg_lambda
+  PetscReal :: pc_alpha_neg_lambda, pcmax
   
   iphase = 1
 
@@ -1625,7 +1785,6 @@ subroutine SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
     case(BROOKS_COREY)
       alpha = saturation_function%alpha
       one_over_alpha = 1.d0/alpha
-!      pc = option%reference_pressure-pressure
       if (saturation >= 1.d0) then
         capillary_pressure = one_over_alpha
         return
@@ -1635,6 +1794,19 @@ subroutine SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
         Se = (saturation-Sr)/(1.d0-Sr)
         pc_alpha_neg_lambda = Se
         capillary_pressure = (pc_alpha_neg_lambda**(-1.d0/lambda))/alpha
+      endif
+    case(LINEAR_MODEL)
+      ! Added by Bwalya Malama 01/31/2014
+      alpha = saturation_function%alpha
+      one_over_alpha = 1.d0/alpha
+      if (saturation >= 1.d0) then
+        capillary_pressure = one_over_alpha
+        return
+      else
+        pcmax = saturation_function%pcwmax
+        Sr = saturation_function%Sr(iphase)
+        Se = (saturation-Sr)/(1.d0-Sr)
+        capillary_pressure = (one_over_alpha-pcmax)*Se + pcmax
       endif
 #if 0
     case(THOMEER_COREY)
