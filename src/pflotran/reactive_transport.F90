@@ -896,8 +896,7 @@ subroutine RTUpdateTransportCoefs(realization)
   rt_parameter => patch%aux%RT%rt_parameter
 
   allocate(cell_centered_Darcy_velocities_ghosted(3,patch%grid%ngmax))
-  if (patch%material_property_array(patch%imat(1))% &
-                        ptr%dispersivity(2) > 0.d0) then
+  if (patch%material_property_array(1)%ptr%dispersivity(2) > 0.d0) then
     allocate(cell_centered_Darcy_velocities(3,patch%grid%nlmax))
     call PatchGetCellCenteredVelocities(patch,LIQUID_PHASE, &
                                         cell_centered_Darcy_velocities)
