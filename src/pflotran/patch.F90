@@ -5816,9 +5816,12 @@ subroutine PatchGetCellCenteredVelocities(patch,iphase,velocities)
   ! divide by total area
   do local_id=1,grid%nlmax
     do i=1,3
-      if (sum_area(i,local_id) > 0.d0) &
+      if (sum_area(i,local_id) > 0.d0) then
         velocities(i,local_id) = sum_velocity(i,local_id) / &
                                  sum_area(i,local_id)  
+      else
+        velocities(i,local_id) = 0.d0
+      endif
     enddo
   enddo
       
