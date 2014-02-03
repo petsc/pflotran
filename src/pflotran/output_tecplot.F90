@@ -2304,7 +2304,7 @@ subroutine OutputSecondaryContinuumTecplot(realization_base)
 
     write(fid,'(a)',advance='yes') ""
     ! write zone header
-    write(string,'(''ZONE T= "'',1es13.5,''",'','' I='',i5)') &
+    write(string,'(''ZONE T="'',1es13.5,''",'','' I='',i5)') &
                   option%time/output_option%tconv, &
                   option%nsec_cells
     string = trim(string) // ',J=1, K=1, DATAPACKING=POINT'
