@@ -823,6 +823,7 @@ subroutine RTUpdateFixedAccumulation(realization)
     ! FIXED PORTION OF THE ACCUMULATION TERM - geh
     call RTAuxVarCompute(rt_auxvars(ghosted_id), &
                          global_auxvars(ghosted_id), &
+                         material_auxvars(ghosted_id), &
                          reaction,option)
     call RTAccumulation(rt_auxvars(ghosted_id), &
                         global_auxvars(ghosted_id), &
@@ -3495,6 +3496,7 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
       endif
       call RTAuxVarCompute(patch%aux%RT%auxvars(ghosted_id), &
                            patch%aux%Global%auxvars(ghosted_id), &
+                           patch%aux%Material%auxvars(ghosted_id), &
                            reaction,option)
       if (associated(reaction%species_idx) .and. &
           associated(patch%aux%Global%auxvars(ghosted_id)%m_nacl)) then
@@ -3677,8 +3679,9 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
               endif                           
           endif
           call RTAuxVarCompute(patch%aux%RT%auxvars_bc(sum_connection), &
-                                patch%aux%Global%auxvars_bc(sum_connection), &
-                                reaction,option)
+                               patch%aux%Global%auxvars_bc(sum_connection), &
+                               patch%aux%Material%auxvars(ghosted_id), &
+                               reaction,option)
         else
           skip_equilibrate_constraint = PETSC_FALSE
         ! Chuan needs to fill this in.

@@ -1403,7 +1403,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     endif
     call RTotal(rt_auxvar,global_auxvar,reaction,option)
     if (reaction%nsorb > 0) then
-      if (reaction%neqsorb > 0) call RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
+      if (reaction%neqsorb > 0) then
+        call RTotalSorb(rt_auxvar,global_auxvar,material_auxvar,reaction,option)
+      endif
       if (reaction%surface_complexation%nkinmrsrfcplx > 0) then
         call RTotalSorbMultiRateAsEQ(rt_auxvar,global_auxvar,reaction,option)
       endif
@@ -1808,7 +1810,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   ! once equilibrated, compute sorbed concentrations
   if (reaction%nsorb > 0) then
     if (reaction%neqsorb > 0) then
-      call RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
+      call RTotalSorb(rt_auxvar,global_auxvar,material_auxvar,reaction,option)
     endif
     if (reaction%surface_complexation%nkinmrsrfcplx > 0) then
       call RTotalSorbMultiRateAsEQ(rt_auxvar,global_auxvar,reaction,option)
@@ -3200,10 +3202,12 @@ subroutine RReact(rt_auxvar,global_auxvar,material_auxvar,tran_xx_p, &
   
     num_iterations = num_iterations + 1
 
-    if (reaction%act_coef_update_frequency == ACT_COEF_FREQUENCY_NEWTON_ITER) then
+    if (reaction%act_coef_update_frequency == &
+        ACT_COEF_FREQUENCY_NEWTON_ITER) then
       call RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
     endif
-    call RTAuxVarCompute(rt_auxvar,global_auxvar,reaction,option)
+    call RTAuxVarCompute(rt_auxvar,global_auxvar,material_auxvar,reaction, &
+                         option)
     
     ! Accumulation
     ! residual is overwritten in RTAccumulation()
@@ -3290,7 +3294,7 @@ subroutine RReact(rt_auxvar,global_auxvar,material_auxvar,tran_xx_p, &
   enddo
 
   ! one last update
-  call RTAuxVarCompute(rt_auxvar,global_auxvar,reaction,option)
+  call RTAuxVarCompute(rt_auxvar,global_auxvar,material_auxvar,reaction,option)
 
   num_iterations_ = num_iterations
   
@@ -3418,9 +3422,10 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
       rt_auxvar_pert%pri_molal(jcomp) = rt_auxvar_pert%pri_molal(jcomp) + pert
       
       call RTotal(rt_auxvar_pert,global_auxvar,reaction,option)
-      if (reaction%neqsorb > 0) call RTotalSorb(rt_auxvar_pert,global_auxvar, &
-                                                reaction,option)
-
+      if (reaction%neqsorb > 0) then
+        call RTotalSorb(rt_auxvar_pert,global_auxvar,material_auxvar, &
+                        reaction,option)
+      endif
       call RReaction(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
                      global_auxvar,material_auxvar,reaction,option)    
 
@@ -3952,7 +3957,7 @@ end subroutine RZeroSorb
 
 ! ************************************************************************** !
 
-subroutine RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
+subroutine RTotalSorb(rt_auxvar,global_auxvar,material_auxvar,reaction,option)
   ! 
   ! Computes the total sorbed component concentrations and
   ! derivative with respect to free-ion
@@ -3967,6 +3972,7 @@ subroutine RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
   
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
+  type(material_auxvar_type) :: material_auxvar
   type(reaction_type) :: reaction
   type(option_type) :: option
   
@@ -3981,14 +3987,15 @@ subroutine RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
   endif
   
   if (reaction%neqkdrxn > 0) then
-    call RTotalSorbKD(rt_auxvar,global_auxvar,reaction,option)
+    call RTotalSorbKD(rt_auxvar,global_auxvar,material_auxvar,reaction,option)
   endif
   
 end subroutine RTotalSorb
 
 ! ************************************************************************** !
 
-subroutine RTotalSorbKD(rt_auxvar,global_auxvar,reaction,option)
+subroutine RTotalSorbKD(rt_auxvar,global_auxvar,material_auxvar,reaction, &
+                        option)
   ! 
   ! Computes the total sorbed component concentrations and
   ! derivative with respect to free-ion for the linear
@@ -4004,6 +4011,7 @@ subroutine RTotalSorbKD(rt_auxvar,global_auxvar,reaction,option)
 
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
+  type(material_auxvar_type) :: material_auxvar
   type(reaction_type) :: reaction
   type(option_type) :: option
   
@@ -4667,7 +4675,8 @@ end subroutine RAge
 
 ! ************************************************************************** !
 
-subroutine RTAuxVarCompute(rt_auxvar,global_auxvar,reaction,option)
+subroutine RTAuxVarCompute(rt_auxvar,global_auxvar,material_auxvar,reaction, &
+                           option)
   ! 
   ! Computes secondary variables for each grid cell
   ! 
@@ -4683,6 +4692,7 @@ subroutine RTAuxVarCompute(rt_auxvar,global_auxvar,reaction,option)
   type(reaction_type) :: reaction
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
+  type(material_auxvar_type) :: material_auxvar
   
 #if 0  
   PetscReal :: Res_orig(reaction%ncomp)
@@ -4697,7 +4707,7 @@ subroutine RTAuxVarCompute(rt_auxvar,global_auxvar,reaction,option)
   !already set  rt_auxvar%pri_molal = x
   call RTotal(rt_auxvar,global_auxvar,reaction,option)
   if (reaction%neqsorb > 0) then
-    call RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
+    call RTotalSorb(rt_auxvar,global_auxvar,material_auxvar,reaction,option)
   endif
 
 #if 0
@@ -4977,7 +4987,7 @@ subroutine RCalculateCompression(global_auxvar,rt_auxvar,material_auxvar, &
   J = 0.d0
   residual = 0.d0
 
-  call RTAuxVarCompute(rt_auxvar,global_auxvar,reaction,option)
+  call RTAuxVarCompute(rt_auxvar,global_auxvar,material_auxvar,reaction,option)
   call RTAccumulationDerivative(rt_auxvar,global_auxvar, &
                                 material_auxvar,reaction,option,1.d0,J)
     
