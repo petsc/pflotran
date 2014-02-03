@@ -15,7 +15,6 @@ module Material_Aux_class
   PetscInt, parameter, public :: perm_yz_index = 5
   PetscInt, parameter, public :: perm_xz_index = 6
 
-  PetscInt, public :: soil_density_index
   PetscInt, public :: soil_thermal_conductivity_index
   PetscInt, public :: soil_heat_capacity_index
   PetscInt, public :: soil_compressibility_index
@@ -26,6 +25,7 @@ module Material_Aux_class
     PetscReal :: volume
     PetscReal :: porosity
     PetscReal :: tortuosity
+    PetscReal :: soil_particle_density
     PetscReal, pointer :: permeability(:)
     PetscReal, pointer :: sat_func_prop(:)
     PetscReal, pointer :: soil_properties(:) ! den, therm. cond., heat cap.
@@ -103,6 +103,7 @@ subroutine MaterialAuxVarInit(auxvar,option)
   auxvar%volume = -999.d0
   auxvar%porosity = -999.d0
   auxvar%tortuosity = -999.d0
+  auxvar%soil_particle_density = 2650.d0 ! default
   if (option%iflowmode /= NULL_MODE) then
     allocate(auxvar%permeability(3))
     auxvar%permeability = -999.d0

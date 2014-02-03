@@ -912,7 +912,6 @@ subroutine MaterialInitAuxIndices(material_property_ptrs,option)
   procedure(MaterialCompressSoilDummy), pointer :: &
     MaterialCompressSoilPtrTmp 
   
-  soil_density_index = 0
   soil_thermal_conductivity_index = 0
   soil_heat_capacity_index = 0
   soil_compressibility_index = 0
@@ -949,11 +948,6 @@ subroutine MaterialInitAuxIndices(material_property_ptrs,option)
         call printErrMsg(option)
       endif
     endif  
-    if (material_property_ptrs(i)%ptr%rock_density > 0.d0 .and. &
-        soil_density_index == 0) then
-      icount = icount + 1
-      soil_density_index = icount
-    endif
     if (material_property_ptrs(i)%ptr%soil_compressibility > -998.d0 .and. &
         soil_compressibility_index == 0) then
       icount = icount + 1
@@ -1002,8 +996,8 @@ subroutine MaterialAssignPropertyToAux(material_auxvar,material_property, &
   type(material_property_type) :: material_property
   type(option_type) :: option
 
-  if (soil_density_index > 0) then
-    material_auxvar%soil_properties(soil_density_index) = &
+  if (material_property%rock_density > 0.d0) then
+    material_auxvar%soil_particle_density = &
       material_property%rock_density
   endif
   if (soil_compressibility_index > 0) then
