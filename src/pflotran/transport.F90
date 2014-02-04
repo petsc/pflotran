@@ -141,8 +141,8 @@ subroutine TDispersion(global_auxvar_up,material_auxvar_up, &
     Dzz_dn = dispersivity_dn(3)*dabs(velocity_dn(X_DIRECTION)) + &
              dispersivity_dn(3)*dabs(velocity_dn(Y_DIRECTION)) + &
              dispersivity_dn(1)*dabs(velocity_dn(Z_DIRECTION))
-    D_up = max(Dxx_up+Dyy_up+Dzz_up,1.d-40)
-    D_dn = max(Dxx_dn+Dyy_dn+Dzz_dn,1.d-40)
+    D_up = max(dist(1)*Dxx_up+dist(2)*Dyy_up+dist(3)*Dzz_up,1.d-40)
+    D_dn = max(dist(1)*Dxx_dn+dist(2)*Dyy_dn+dist(3)*Dzz_dn,1.d-40)
     dispersion(iphase) = D_up*D_dn/(D_up*dist_dn+D_dn*dist_up)
   else
     
