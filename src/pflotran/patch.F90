@@ -755,6 +755,7 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
   use Global_Aux_module
   use Condition_module
   use Constraint_module
+  use General_Aux_module
   
   implicit none
   
@@ -828,8 +829,12 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
                 coupler%flow_aux_int_var = 0
                 
               case(G_MODE)
+                allocate(coupler%flow_aux_mapping(GENERAL_MAX_INDEX))
+                allocate(coupler%flow_bc_type(THREE_INTEGER))
                 allocate(coupler%flow_aux_real_var(FOUR_INTEGER,num_connections))
                 allocate(coupler%flow_aux_int_var(ONE_INTEGER,num_connections))
+                coupler%flow_aux_mapping = 0
+                coupler%flow_bc_type = 0
                 coupler%flow_aux_real_var = 0.d0
                 coupler%flow_aux_int_var = 0
                 
@@ -1039,13 +1044,15 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
   class(dataset_common_hdf5_type), pointer :: dataset
   PetscBool :: update
   PetscBool :: dof1, dof2, dof3
-  PetscReal :: temperature, p_sat
+  PetscReal :: temperature, p_sat, p_air, p_gas
   PetscReal :: x(option%nflowdof)
   character(len=MAXSTRINGLENGTH) :: string, string2
   PetscErrorCode :: ierr
   
   PetscInt :: idof, num_connections,sum_connection
   PetscInt :: iconn, local_id, ghosted_id
+  ! use to map flow_aux_map to the flow_aux_real_var array
+  PetscInt :: real_count 
   
   num_connections = coupler%connection_set%num_connections
 #ifdef DASVYAT      
@@ -1060,41 +1067,66 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
   dof1 = PETSC_FALSE
   dof2 = PETSC_FALSE
   dof3 = PETSC_FALSE
-  coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
-    flow_condition%iphase            
+  real_count = 0
   select case(flow_condition%iphase)
     case(TWO_PHASE_STATE)
+      coupler%flow_aux_int_var(GENERAL_STATE_INDEX,1:num_connections) = TWO_PHASE_STATE
+      real_count = real_count + 1
       select case(general%gas_pressure%itype)
         case(DIRICHLET_BC)
-          coupler%flow_aux_real_var(GENERAL_GAS_PRESSURE_DOF,1:num_connections) = &
+          coupler%flow_aux_mapping(GENERAL_GAS_PRESSURE_INDEX) = real_count
+          coupler%flow_aux_real_var(real_count,1:num_connections) = &
             general%gas_pressure%dataset%rarray(1)
           dof1 = PETSC_TRUE
         case default
+          option%io_buffer = 'Unknown case (general%gas_pressure%itype,' // &
+            'TWO_PHASE_STATE,DIRICHLET_BC)'
+          call printErrMsg(option)
       end select
-      select case(general%gas_saturation%itype)
-        case(DIRICHLET_BC)
-          coupler%flow_aux_real_var(GENERAL_GAS_SATURATION_DOF,1:num_connections) = &
-            general%gas_saturation%dataset%rarray(1)
-          dof2 = PETSC_TRUE
-      end select
+      ! in two-phase flow, air pressure is second dof
+      real_count = real_count + 1
       select case(general%temperature%itype)
         case(DIRICHLET_BC)
+          coupler%flow_aux_mapping(GENERAL_AIR_PRESSURE_INDEX) = real_count
           temperature = general%temperature%dataset%rarray(1)
           call EOSWaterSaturationPressure(temperature,p_sat,ierr)
-          coupler%flow_aux_real_var(GENERAL_AIR_PRESSURE_DOF,1:num_connections) = &
+          coupler%flow_aux_real_var(real_count,1:num_connections) = &
             general%gas_pressure%dataset%rarray(1) - p_sat
-          dof3 = PETSC_TRUE
+          dof2 = PETSC_TRUE
+        case default
+          option%io_buffer = 'Unknown case (general%temperature%itype,' // &
+            'TWO_PHASE_STATE,DIRICHLET_BC)'
+          call printErrMsg(option)
       end select
+      ! in two-phase flow, gas saturation is third dof
+      real_count = real_count + 1
+      select case(general%gas_saturation%itype)
+        case(DIRICHLET_BC)
+          coupler%flow_aux_mapping(GENERAL_GAS_SATURATION_INDEX) = real_count
+          coupler%flow_aux_real_var(real_count,1:num_connections) = &
+            general%gas_saturation%dataset%rarray(1)
+          dof3 = PETSC_TRUE
+        case default
+          option%io_buffer = 'Unknown case (general%gas_saturation%itype,' // &
+            'TWO_PHASE_STATE,DIRICHLET_BC)'
+          call printErrMsg(option)
+      end select
+      coupler%flow_bc_type(1:3) = DIRICHLET_BC
     case(LIQUID_STATE)
+      coupler%flow_aux_int_var(GENERAL_STATE_INDEX,1:num_connections) = LIQUID_STATE
       if (general%liquid_pressure%itype == HYDROSTATIC_BC) then
         if (general%mole_fraction%itype /= DIRICHLET_BC) then
-          option%io_buffer = 'Hydrostatic liquid state pressure bc for flow condition "' // &
-            trim(flow_condition%name) // '" requires a mole fraction bc of type dirichlet'
+          option%io_buffer = &
+            'Hydrostatic liquid state pressure bc for flow condition "' // &
+            trim(flow_condition%name) // &
+            '" requires a mole fraction bc of type dirichlet'
           call printErrMsg(option)
         endif
         if (general%temperature%itype /= DIRICHLET_BC) then
-          option%io_buffer = 'Hydrostatic liquid state pressure bc for flow condition "' // &
-            trim(flow_condition%name) // '" requires a temperature bc of type dirichlet'
+          option%io_buffer = &
+            'Hydrostatic liquid state pressure bc for flow condition "' // &
+            trim(flow_condition%name) // &
+            '" requires a temperature bc of type dirichlet'
           call printErrMsg(option)
         endif
         call HydrostaticUpdateCoupler(coupler,option,patch%grid)
@@ -1113,63 +1145,169 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
                  0.d0,0.d0,ghosted_id,option)
           coupler%flow_aux_real_var(1:option%nflowdof,iconn) = &
             x(1:option%nflowdof)
-          coupler%flow_aux_int_var(ONE_INTEGER,iconn) = &
+          coupler%flow_aux_int_var(GENERAL_STATE_INDEX,iconn) = &
             patch%aux%Global%auxvars(ghosted_id)%istate  
           patch%aux%Global%auxvars(ghosted_id)%istate = &
             patch%aux%Global%auxvars(ghosted_id)%istate    
         enddo
 #endif                  
       else
+        real_count = real_count + 1
         select case(general%liquid_pressure%itype)
           case(DIRICHLET_BC)
-            coupler%flow_aux_real_var(GENERAL_LIQUID_PRESSURE_DOF,1:num_connections) = &
+            coupler%flow_aux_mapping(GENERAL_LIQUID_PRESSURE_INDEX) = real_count
+            coupler%flow_aux_real_var(real_count,1:num_connections) = &
               general%liquid_pressure%dataset%rarray(1)
             dof1 = PETSC_TRUE
+          case default
+            option%io_buffer = 'Unknown case (general%liquid_pressure%itype,' // &
+              'LIQUID_STATE,DIRICHLET_BC)'
+            call printErrMsg(option)
         end select
+        real_count = real_count + 1
         select case(general%mole_fraction%itype)
           case(DIRICHLET_BC)
-            coupler%flow_aux_real_var(GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF,1:num_connections) = &
+            coupler%flow_aux_mapping(GENERAL_MOLE_FRACTION_INDEX) = real_count
+            coupler%flow_aux_real_var(real_count,1:num_connections) = &
               general%mole_fraction%dataset%rarray(1)
             dof2 = PETSC_TRUE
+          case default
+            option%io_buffer = 'Unknown case (general%mole_fraction%itype,' // &
+              'LIQUID_STATE,DIRICHLET_BC)'
+            call printErrMsg(option)
         end select
+        real_count = real_count + 1
         select case(general%temperature%itype)
           case(DIRICHLET_BC)
-            coupler%flow_aux_real_var(GENERAL_LIQUID_STATE_TEMPERATURE_DOF,1:num_connections) = &
+            coupler%flow_aux_mapping(GENERAL_TEMPERATURE_INDEX) = real_count
+            coupler%flow_aux_real_var(real_count,1:num_connections) = &
               general%temperature%dataset%rarray(1)
             dof3 = PETSC_TRUE
+          case default
+            option%io_buffer = 'Unknown case (general%temperature%itype,' // &
+              'LIQUID_STATE,DIRICHLET_BC)'
+            call printErrMsg(option)
         end select
       endif
+      coupler%flow_bc_type(1:3) = DIRICHLET_BC
     case(GAS_STATE)
+      p_gas = -999.d0 ! set to uninitialized
+      real_count = real_count + 1
+      coupler%flow_aux_int_var(GENERAL_STATE_INDEX,1:num_connections) = GAS_STATE
       select case(general%gas_pressure%itype)
         case(DIRICHLET_BC)
-          coupler%flow_aux_real_var(GENERAL_GAS_PRESSURE_DOF,1:num_connections) = &
-            general%gas_pressure%dataset%rarray(1)
+          coupler%flow_aux_mapping(GENERAL_GAS_PRESSURE_INDEX) = real_count
+          p_gas = general%gas_pressure%dataset%rarray(1)
+          coupler%flow_aux_real_var(real_count,1:num_connections) = p_gas
           dof1 = PETSC_TRUE
+        case default
+          option%io_buffer = 'Unknown case (general%gas_pressure%itype,' // &
+            'GAS_STATE,DIRICHLET_BC)'
+          call printErrMsg(option)
       end select
+      real_count = real_count + 1
       select case(general%mole_fraction%itype)
         case(DIRICHLET_BC)
-          coupler%flow_aux_real_var(GENERAL_AIR_PRESSURE_DOF,1:num_connections) = &
-            general%mole_fraction%dataset%rarray(1) * &
-            general%gas_pressure%dataset%rarray(1)
+          coupler%flow_aux_mapping(GENERAL_AIR_PRESSURE_INDEX) = real_count
+          p_air = general%mole_fraction%dataset%rarray(1) * &
+                  general%gas_pressure%dataset%rarray(1)
+          call EOSWaterSaturationPressure(temperature,p_sat,ierr)
+          if (p_gas - p_air >= p_sat) then
+            option%io_buffer = 'MOLE_FRACTION set in flow condition "' // &
+              trim(flow_condition%name) // &
+              ' results in a vapor pressure exceeding the water ' // &
+              'saturation pressure, which indicates that a two-phase ' // &
+              'state with GAS_PRESSURE and GAS_SATURATION should be used.'
+          endif
+          coupler%flow_aux_real_var(real_count,1:num_connections) = p_air
           dof2 = PETSC_TRUE
+        case default
+          option%io_buffer = 'Unknown case (general%mole_fraction%itype,' // &
+            'GAS_STATE,DIRICHLET_BC)'
+          call printErrMsg(option)
       end select                
+      real_count = real_count + 1
       select case(general%temperature%itype)
         case(DIRICHLET_BC)
-          coupler%flow_aux_real_var(GENERAL_GAS_STATE_TEMPERATURE_DOF,1:num_connections) = &
+          coupler%flow_aux_mapping(GENERAL_TEMPERATURE_INDEX) = real_count
+          coupler%flow_aux_real_var(real_count,1:num_connections) = &
             general%temperature%dataset%rarray(1)
           dof3 = PETSC_TRUE
+        case default
+          option%io_buffer = 'Unknown case (general%temperature%itype,' // &
+            'GAS_STATE,DIRICHLET_BC)'
+          call printErrMsg(option)
       end select
+      coupler%flow_bc_type(1:3) = DIRICHLET_BC
     case(ANY_STATE)
-      if (associated(general%flux)) then
-        
+      coupler%flow_aux_int_var(GENERAL_STATE_INDEX,1:num_connections) = ANY_STATE
+      if (.not.associated(general%rate)) then
+        if (associated(general%liquid_flux)) then
+          coupler%flow_bc_type(GENERAL_LIQUID_EQUATION_INDEX) = NEUMANN_BC
+          real_count = real_count + 1
+          coupler%flow_aux_mapping(GENERAL_LIQUID_FLUX_INDEX) = real_count
+          coupler%flow_aux_real_var(real_count,1:num_connections) = &
+            general%liquid_flux%dataset%rarray(1)
+          dof1 = PETSC_TRUE
+        endif
+        if (associated(general%gas_flux)) then
+          coupler%flow_bc_type(GENERAL_GAS_EQUATION_INDEX) = NEUMANN_BC
+          real_count = real_count + 1
+          coupler%flow_aux_mapping(GENERAL_GAS_FLUX_INDEX) = real_count
+          coupler%flow_aux_real_var(real_count,1:num_connections) = &
+            general%gas_flux%dataset%rarray(1)
+          dof2 = PETSC_TRUE
+        endif
+        if (associated(general%energy_flux)) then
+          coupler%flow_bc_type(GENERAL_ENERGY_EQUATION_INDEX) = NEUMANN_BC
+          real_count = real_count + 1
+          coupler%flow_aux_mapping(GENERAL_ENERGY_FLUX_INDEX) = real_count
+          coupler%flow_aux_real_var(real_count,1:num_connections) = &
+            general%energy_flux%dataset%rarray(1)
+          dof3 = PETSC_TRUE
+        endif
+        if (.not. dof1 .or. .not. dof2 .or. .not. dof3) then
+          ! switch to two-phase
+!          coupler%flow_aux_int_var(GENERAL_STATE_INDEX,1:num_connections) = TWO_PHASE_STATE
+        endif
+        if (.not. dof1) then
+          if (.false.) then
+            dof1 = PETSC_TRUE
+          else
+            option%io_buffer = 'Liquid equation not constrained.'
+            call printMsg(option)
+          endif
+        endif
+        if (.not. dof2) then
+          if (associated(general%gas_pressure)) then
+            ! this allows for infiltration in a two phase environment
+            real_count = real_count + 1
+            coupler%flow_bc_type(GENERAL_GAS_EQUATION_INDEX) = DIRICHLET_BC
+            coupler%flow_aux_mapping(GENERAL_GAS_PRESSURE_INDEX) = real_count
+            p_gas = general%gas_pressure%dataset%rarray(1)
+            coupler%flow_aux_real_var(real_count,1:num_connections) = p_gas
+            dof2 = PETSC_TRUE
+          else
+            option%io_buffer = 'Gas equation not constrained.'
+            call printMsg(option)
+          endif
+        endif
+        if (.not. dof3) then
+          if (associated(general%temperature)) then
+            real_count = real_count + 1
+            coupler%flow_bc_type(GENERAL_ENERGY_EQUATION_INDEX) = DIRICHLET_BC
+            coupler%flow_aux_mapping(GENERAL_TEMPERATURE_INDEX) = real_count
+            coupler%flow_aux_real_var(real_count,1:num_connections) = &
+              general%temperature%dataset%rarray(1)
+            dof3 = PETSC_TRUE
+          else
+            option%io_buffer = 'Gas equation not constrained.'
+            call printMsg(option)
+          endif
+        endif
       else
-        do iconn = 1, num_connections
-          coupler%flow_aux_real_var(1:3,iconn) = &
-              general%temperature%dataset%rarray(1:3)
-        enddo
-        dof1 = PETSC_TRUE
-        dof2 = PETSC_TRUE
-        dof3 = PETSC_TRUE
+        option%io_buffer = 'Something wrong in PatchUpdateCouplerAuxVarsG().'
+        call printErrMsg(option)
       endif
   end select  
   !geh: is this really correct, or should it be .or.

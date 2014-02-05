@@ -208,9 +208,9 @@ subroutine CondControlAssignFlowInitCond(realization)
                 case(LIQUID_STATE)
                   xx_p(ibegin+GENERAL_LIQUID_PRESSURE_DOF) = &
                     general%liquid_pressure%dataset%rarray(1)
-                  xx_p(ibegin+GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF) = &
+                  xx_p(ibegin+GENERAL_LIQUID_STATE_X_MOLE_DOF) = &
                     general%mole_fraction%dataset%rarray(1)
-                  xx_p(ibegin+GENERAL_LIQUID_STATE_TEMPERATURE_DOF) = &
+                  xx_p(ibegin+GENERAL_LIQUID_STATE_ENERGY_DOF) = &
                     general%temperature%dataset%rarray(1)
                 case(GAS_STATE)
                   xx_p(ibegin+GENERAL_GAS_PRESSURE_DOF) = &
@@ -218,7 +218,7 @@ subroutine CondControlAssignFlowInitCond(realization)
                   xx_p(ibegin+GENERAL_AIR_PRESSURE_DOF) = &
                     general%gas_pressure%dataset%rarray(1) * &
                     general%mole_fraction%dataset%rarray(1)
-                  xx_p(ibegin+GENERAL_GAS_STATE_TEMPERATURE_DOF) = &
+                  xx_p(ibegin+GENERAL_GAS_STATE_ENERGY_DOF) = &
                     general%temperature%dataset%rarray(1)
               end select
               iphase_loc_p(ghosted_id) = initial_condition%flow_condition%iphase

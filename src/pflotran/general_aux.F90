@@ -22,19 +22,39 @@ module General_Aux_module
   PetscInt, parameter, public :: GENERAL_GAS_PRESSURE_DOF = 1
   PetscInt, parameter, public :: GENERAL_AIR_PRESSURE_DOF = 2
   PetscInt, parameter, public :: GENERAL_GAS_SATURATION_DOF = 3
-  PetscInt, parameter, public :: GENERAL_LIQUID_FLUX_DOF = 1
-  PetscInt, parameter, public :: GENERAL_GAS_FLUX_DOF = 1
   
-  PetscInt, parameter, public :: GENERAL_LIQUID_STATE_TEMPERATURE_DOF = 3
-  PetscInt, parameter, public :: GENERAL_GAS_STATE_TEMPERATURE_DOF = 3
-  PetscInt, parameter, public :: GENERAL_2PHASE_STATE_TEMPERATURE_DOF = 2
+  PetscInt, parameter, public :: GENERAL_LIQUID_STATE_ENERGY_DOF = 3
+  PetscInt, parameter, public :: GENERAL_GAS_STATE_ENERGY_DOF = 3
+  PetscInt, parameter, public :: GENERAL_2PHASE_STATE_ENERGY_DOF = 2
   
-  PetscInt, parameter, public :: GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF = 2
+  PetscInt, parameter, public :: GENERAL_LIQUID_STATE_X_MOLE_DOF = 2
   
-  PetscInt, parameter, public :: GENERAL_LIQUID_CONDUCTANCE_DOF = -1
-  PetscInt, parameter, public :: GENERAL_GAS_CONDUCTANCE_DOF = -2
-  PetscInt, parameter, public :: GENERAL_FLUX_DOF = 4
-
+  PetscInt, parameter, public :: GENERAL_STATE_INDEX = 1
+  PetscInt, parameter, public :: GENERAL_LIQUID_EQUATION_INDEX = 1
+  PetscInt, parameter, public :: GENERAL_GAS_EQUATION_INDEX = 2
+  PetscInt, parameter, public :: GENERAL_ENERGY_EQUATION_INDEX = 3
+  
+  PetscInt, parameter, public :: GENERAL_LIQUID_PRESSURE_INDEX = 2
+  PetscInt, parameter, public :: GENERAL_GAS_PRESSURE_INDEX = 3
+  PetscInt, parameter, public :: GENERAL_AIR_PRESSURE_INDEX = 4
+  PetscInt, parameter, public :: GENERAL_MOLE_FRACTION_INDEX = 5
+  PetscInt, parameter, public :: GENERAL_TEMPERATURE_INDEX = 6
+  PetscInt, parameter, public :: GENERAL_GAS_SATURATION_INDEX = 7
+  PetscInt, parameter, public :: GENERAL_LIQUID_FLUX_INDEX = 8
+  PetscInt, parameter, public :: GENERAL_GAS_FLUX_INDEX = 9
+  PetscInt, parameter, public :: GENERAL_ENERGY_FLUX_INDEX = 10
+  PetscInt, parameter, public :: GENERAL_LIQUID_CONDUCTANCE_INDEX = 11
+  PetscInt, parameter, public :: GENERAL_GAS_CONDUCTANCE_INDEX = 12
+  PetscInt, parameter, public :: GENERAL_MAX_INDEX = 13
+  
+  PetscInt, parameter, public :: dof_to_primary_variable(3,3) = &
+    [GENERAL_LIQUID_PRESSURE_INDEX, GENERAL_MOLE_FRACTION_INDEX, &
+     GENERAL_TEMPERATURE_INDEX, &
+     GENERAL_GAS_PRESSURE_INDEX, GENERAL_AIR_PRESSURE_INDEX, &
+     GENERAL_TEMPERATURE_INDEX, &
+     GENERAL_GAS_PRESSURE_INDEX, GENERAL_AIR_PRESSURE_INDEX, &
+     GENERAL_GAS_SATURATION_INDEX]
+  
   type, public :: general_auxvar_type
     PetscInt :: istate_store(2) ! 1 = previous timestep; 2 = previous iteration
     PetscReal, pointer :: pres(:)   ! (iphase)
@@ -316,8 +336,8 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   select case(global_auxvar%istate)
     case(LIQUID_STATE)
       gen_auxvar%pres(lid) = x(GENERAL_LIQUID_PRESSURE_DOF)
-      gen_auxvar%xmol(acid,lid) = x(GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF)
-      gen_auxvar%temp = x(GENERAL_LIQUID_STATE_TEMPERATURE_DOF)
+      gen_auxvar%xmol(acid,lid) = x(GENERAL_LIQUID_STATE_X_MOLE_DOF)
+      gen_auxvar%temp = x(GENERAL_LIQUID_STATE_ENERGY_DOF)
 
       gen_auxvar%xmol(wid,lid) = 1.d0 - gen_auxvar%xmol(acid,lid)
       gen_auxvar%xmol(:,gid) = 0.d0
@@ -339,7 +359,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
     case(GAS_STATE)
       gen_auxvar%pres(gid) = x(GENERAL_GAS_PRESSURE_DOF)
       gen_auxvar%pres(apid) = x(GENERAL_AIR_PRESSURE_DOF)
-      gen_auxvar%temp = x(GENERAL_GAS_STATE_TEMPERATURE_DOF)
+      gen_auxvar%temp = x(GENERAL_GAS_STATE_ENERGY_DOF)
 
       gen_auxvar%sat(lid) = 0.d0
       gen_auxvar%sat(gid) = 1.d0
@@ -574,9 +594,9 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         global_auxvar%istate = LIQUID_STATE
         x(GENERAL_LIQUID_PRESSURE_DOF) = &
           gen_auxvar%pres(gid) * (1.d0 + epsilon)
-        x(GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF) = &
+        x(GENERAL_LIQUID_STATE_X_MOLE_DOF) = &
           gen_auxvar%xmol(acid,lid) * (1+epsilon)
-        x(GENERAL_LIQUID_STATE_TEMPERATURE_DOF) = &
+        x(GENERAL_LIQUID_STATE_ENERGY_DOF) = &
           gen_auxvar%temp * (1.d0 - epsilon)
         flag = PETSC_TRUE
       else if (gen_auxvar%sat(gid) > 1.d0) then
@@ -594,7 +614,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         ! convert to gas state
         global_auxvar%istate = GAS_STATE
         ! first two primary dependent variables do not change
-        x(GENERAL_GAS_STATE_TEMPERATURE_DOF) = &
+        x(GENERAL_GAS_STATE_ENERGY_DOF) = &
           gen_auxvar%temp * (1.d0 + epsilon)
         flag = PETSC_TRUE
       endif

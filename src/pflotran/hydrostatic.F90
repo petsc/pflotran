@@ -440,9 +440,9 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
                     temperature_gradient(X_DIRECTION)*dist_x + & ! gradient in K/m
                     temperature_gradient(Y_DIRECTION)*dist_y + &
                     temperature_gradient(Z_DIRECTION)*dist_z 
-        coupler%flow_aux_real_var(GENERAL_LIQUID_STATE_TEMPERATURE_DOF,iconn) = &
+        coupler%flow_aux_real_var(GENERAL_LIQUID_STATE_ENERGY_DOF,iconn) = &
           temperature
-        coupler%flow_aux_real_var(GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF,iconn) = &
+        coupler%flow_aux_real_var(GENERAL_LIQUID_STATE_X_MOLE_DOF,iconn) = &
           concentration_at_datum
 
         coupler%flow_aux_int_var(GENERAL_LIQUID_PRESSURE_DOF,iconn) = condition%iphase

@@ -684,16 +684,16 @@ subroutine PMGeneralMaxChange(this)
                               vec_ptr(offset+GENERAL_LIQUID_PRESSURE_DOF))
           dX_air_max = max(dX_air_max, &
                            vec_ptr(offset+ &
-                                   GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF))
+                                   GENERAL_LIQUID_STATE_X_MOLE_DOF))
           dT_max = max(dT_max, &
-                   vec_ptr(offset+GENERAL_LIQUID_STATE_TEMPERATURE_DOF))
+                   vec_ptr(offset+GENERAL_LIQUID_STATE_ENERGY_DOF))
         case(GAS_STATE)
           dP_gas_max = max(dP_gas_max, &
                        vec_ptr(offset+GENERAL_GAS_PRESSURE_DOF))
           dP_air_max = max(dP_air_max, &
                            vec_ptr(offset+GENERAL_AIR_PRESSURE_DOF))
           dT_max = max(dT_max, &
-                       vec_ptr(offset+GENERAL_GAS_STATE_TEMPERATURE_DOF))
+                       vec_ptr(offset+GENERAL_GAS_STATE_ENERGY_DOF))
         case(TWO_PHASE_STATE)
           dP_gas_max = max(dP_gas_max, &
                            vec_ptr(offset+GENERAL_GAS_PRESSURE_DOF))

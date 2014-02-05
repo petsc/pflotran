@@ -360,6 +360,7 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
   use Connection_module
   use Material_module
   use Material_Aux_class
+  use EOS_Water_module
   
   implicit none
 
@@ -379,9 +380,13 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
   PetscInt :: ghosted_id, local_id, sum_connection, idof, iconn
   PetscInt :: ghosted_start, ghosted_end
   PetscInt :: iphasebc, iphase
+  PetscInt :: offset
+  PetscInt :: istate
+  PetscInt :: real_index, variable
   PetscReal, pointer :: xx_loc_p(:)
   PetscReal, pointer :: perm_xx_loc_p(:), porosity_loc_p(:)  
   PetscReal :: xxbc(realization%option%nflowdof)
+  PetscReal :: p_sat, p_gas, temperature
   PetscErrorCode :: ierr
   
   option => realization%option
@@ -435,23 +440,104 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
       sum_connection = sum_connection + 1
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
+      offset = (ghosted_id-1)*option%nflowdof
       if (patch%imat(ghosted_id) <= 0) cycle
 
-      do idof = 1, option%nflowdof
-        select case(boundary_condition%flow_condition%itype(idof))
-          case(DIRICHLET_BC,HYDROSTATIC_BC)
-            xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
-          case(NEUMANN_BC,ZERO_GRADIENT_BC)
-            option%io_buffer = 'NEUMANN_BC and ZERO_GRADIENT_BC not yet ' // &
-              'supported in GeneralUpdateAuxVars()'
-            call printErrMsg(option)
-            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+      xxbc(:) = xx_loc_p(offset+1:offset+option%nflowdof)
+      istate = boundary_condition%flow_aux_int_var(GENERAL_STATE_INDEX,iconn)
+      if (istate == ANY_STATE) then
+        istate = global_auxvars(ghosted_id)%istate
+        select case(istate)
+          case(LIQUID_STATE,GAS_STATE)
+            do idof = 1, option%nflowdof
+              select case(boundary_condition%flow_bc_type(idof))
+                case(DIRICHLET_BC,HYDROSTATIC_BC)
+                  real_index = boundary_condition%flow_aux_mapping(dof_to_primary_variable(idof,istate))
+                  xxbc(idof) = boundary_condition%flow_aux_real_var(real_index,iconn)
+              end select   
+            enddo
+          case(TWO_PHASE_STATE)
+            do idof = 1, option%nflowdof
+              select case(boundary_condition%flow_bc_type(idof))
+                case(DIRICHLET_BC,HYDROSTATIC_BC)
+                  variable = dof_to_primary_variable(idof,istate)
+                  select case(variable)
+                    ! for gas pressure dof
+                    case(GENERAL_GAS_PRESSURE_INDEX)
+                      real_index = boundary_condition%flow_aux_mapping(variable)
+                      if (real_index /= 0) then
+                        xxbc(idof) = boundary_condition%flow_aux_real_var(real_index,iconn)
+                      else
+                        option%io_buffer = 'Mixed FLOW_CONDITION "' // &
+                          trim(boundary_condition%flow_condition%name) // &
+                          '" needs gas pressure defined.'
+                        call printErrMsg(option)
+                      endif
+                    ! for air pressure dof
+                    case(GENERAL_AIR_PRESSURE_INDEX)
+                      real_index = boundary_condition%flow_aux_mapping(variable)
+                      if (real_index == 0) then ! air pressure not found
+                        ! if air pressure is not available, let's try temperature 
+                        real_index = boundary_condition%flow_aux_mapping(GENERAL_TEMPERATURE_INDEX)
+                        if (real_index /= 0) then
+                          temperature = boundary_condition%flow_aux_real_var(real_index,iconn)
+                          call EOSWaterSaturationPressure(temperature,p_sat,ierr)
+                          ! now verify whether gas pressure is provided through BC
+                          if (boundary_condition%flow_bc_type(ONE_INTEGER) == NEUMANN_BC) then
+                            p_gas = xxbc(ONE_INTEGER)
+                          else
+                            real_index = boundary_condition%flow_aux_mapping(GENERAL_GAS_PRESSURE_INDEX)
+                            if (real_index /= 0) then
+                              p_gas = boundary_condition%flow_aux_real_var(real_index,iconn)
+                            else
+                              option%io_buffer = 'Mixed FLOW_CONDITION "' // &
+                                trim(boundary_condition%flow_condition%name) // &
+                                '" needs gas pressure defined to calculate air ' // &
+                                'pressure from temperature.'
+                              call printErrMsg(option)
+                            endif
+                          endif
+                          xxbc(idof) = p_gas - p_sat
+                        else
+                          option%io_buffer = 'Cannot find boundary constraint for air pressure.'
+                          call printErrMsg(option)
+                        endif
+                      else
+                        xxbc(idof) = boundary_condition%flow_aux_real_var(real_index,iconn)
+                      endif
+                    ! for gas saturation dof
+                    case(GENERAL_GAS_SATURATION_INDEX)
+                      real_index = boundary_condition%flow_aux_mapping(variable)
+                      if (real_index /= 0) then
+                        xxbc(idof) = boundary_condition%flow_aux_real_var(real_index,iconn)
+                      else
+                        option%io_buffer = 'Mixed FLOW_CONDITION "' // &
+                          trim(boundary_condition%flow_condition%name) // &
+                          '" needs saturation defined.'
+                        call printErrMsg(option)
+                      endif
+                  end select
+                case(NEUMANN_BC)
+                case default
+                  option%io_buffer = 'Unknown BC type in GeneralUpdateAuxVars().'
+                  call printErrMsg(option)
+              end select
+            enddo  
         end select
-      enddo
-
+      else  
+        do idof = 1, option%nflowdof
+          select case(boundary_condition%flow_bc_type(idof))
+            case(DIRICHLET_BC,HYDROSTATIC_BC)
+              real_index = boundary_condition%flow_aux_mapping(dof_to_primary_variable(idof,istate))
+              xxbc(idof) = boundary_condition%flow_aux_real_var(real_index,iconn)
+            case(NEUMANN_BC,ZERO_GRADIENT_BC)
+!              xxbc(idof) = xx_loc_p(offset+idof)
+          end select
+        enddo
+      endif
+          
       ! set this based on data given 
-      global_auxvars_bc(sum_connection)%istate = &
-        boundary_condition%flow_condition%iphase
+      global_auxvars_bc(sum_connection)%istate = istate
       ! flag(2) indicates call from non-perturbation
       option%iflag = 2
       call GeneralAuxVarCompute(xxbc,gen_auxvars_bc(sum_connection), &
@@ -801,21 +887,21 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
     case(LIQUID_STATE)
        x(GENERAL_LIQUID_PRESSURE_DOF) = &
          gen_auxvar(ZERO_INTEGER)%pres(option%liquid_phase)
-       x(GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF) = &
+       x(GENERAL_LIQUID_STATE_X_MOLE_DOF) = &
          gen_auxvar(ZERO_INTEGER)%xmol(option%air_id,option%liquid_phase)
-       x(GENERAL_LIQUID_STATE_TEMPERATURE_DOF) = &
+       x(GENERAL_LIQUID_STATE_ENERGY_DOF) = &
          gen_auxvar(ZERO_INTEGER)%temp
        pert(GENERAL_LIQUID_PRESSURE_DOF) = 1.d0
-       pert(GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF) = &
-         -1.d0*perturbation_tolerance*x(GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF)
-       pert(GENERAL_LIQUID_STATE_TEMPERATURE_DOF) = &
-         -1.d0*perturbation_tolerance*x(GENERAL_LIQUID_STATE_TEMPERATURE_DOF)
+       pert(GENERAL_LIQUID_STATE_X_MOLE_DOF) = &
+         -1.d0*perturbation_tolerance*x(GENERAL_LIQUID_STATE_X_MOLE_DOF)
+       pert(GENERAL_LIQUID_STATE_ENERGY_DOF) = &
+         -1.d0*perturbation_tolerance*x(GENERAL_LIQUID_STATE_ENERGY_DOF)
     case(GAS_STATE)
        x(GENERAL_GAS_PRESSURE_DOF) = &
          gen_auxvar(ZERO_INTEGER)%pres(option%gas_phase)
        x(GENERAL_AIR_PRESSURE_DOF) = &
          gen_auxvar(ZERO_INTEGER)%pres(option%air_pressure_id)
-       x(GENERAL_GAS_STATE_TEMPERATURE_DOF) = gen_auxvar(ZERO_INTEGER)%temp
+       x(GENERAL_GAS_STATE_ENERGY_DOF) = gen_auxvar(ZERO_INTEGER)%temp
        ! gas pressure [p(g)] must always be perturbed down as p(v) = p(g) - p(a)
        ! and p(v) >= Psat (i.e. an increase in p(v)) results in two phase.
        pert(GENERAL_GAS_PRESSURE_DOF) = -1.d0
@@ -825,8 +911,8 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
        else
          pert(GENERAL_AIR_PRESSURE_DOF) = -1.d0
        endif
-       pert(GENERAL_GAS_STATE_TEMPERATURE_DOF) = perturbation_tolerance * &
-                                            x(GENERAL_GAS_STATE_TEMPERATURE_DOF)
+       pert(GENERAL_GAS_STATE_ENERGY_DOF) = perturbation_tolerance * &
+                                            x(GENERAL_GAS_STATE_ENERGY_DOF)
     case(TWO_PHASE_STATE)
        x(GENERAL_GAS_PRESSURE_DOF) = &
          gen_auxvar(ZERO_INTEGER)%pres(option%gas_phase)
@@ -864,8 +950,9 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
     call GlobalAuxVarCopy(global_auxvar,global_auxvar_debug,option)
     call GeneralAuxVarCopy(gen_auxvar(idof),general_auxvar_debug,option)
     call GeneralAuxVarUpdateState(x_pert,general_auxvar_debug, &
+                                  global_auxvar_debug, &
                                   material_auxvar, &
-                                  global_auxvar_debug,saturation_function, &
+                                  saturation_function, &
                                   ghosted_id,option)
     if (global_auxvar%istate /= global_auxvar_debug%istate) then
       write(option%io_buffer, &
@@ -1331,7 +1418,7 @@ end subroutine GeneralFluxDerivative
 
 ! ************************************************************************** !
 
-subroutine GeneralBCFlux(ibndtype,auxvars, &
+subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
                          gen_auxvar_up,global_auxvar_up, &
                          gen_auxvar_dn,global_auxvar_dn, &
                          material_auxvar_dn, &
@@ -1349,7 +1436,6 @@ subroutine GeneralBCFlux(ibndtype,auxvars, &
   
   implicit none
   
-  PetscInt :: ibndtype(:)
   type(general_auxvar_type) :: gen_auxvar_up, gen_auxvar_dn
   type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
   class(material_auxvar_type) :: material_auxvar_dn
@@ -1360,11 +1446,13 @@ subroutine GeneralBCFlux(ibndtype,auxvars, &
   type(general_parameter_type) :: general_parameter
   PetscReal :: dist(-1:3)
   PetscReal :: Res(1:option%nflowdof)
+  PetscInt :: ibndtype(1:option%nflowdof)
+  PetscInt :: auxvar_mapping(GENERAL_MAX_INDEX)
 
   PetscReal :: upweight
   PetscInt :: wat_comp_id, air_comp_id, energy_id
   PetscInt :: icomp, iphase
-
+  PetscInt :: bc_type
   PetscReal :: fmw_phase(option%nphase)
   PetscReal :: xmol(option%nflowspec)  
   PetscReal :: density_ave
@@ -1377,7 +1465,6 @@ subroutine GeneralBCFlux(ibndtype,auxvars, &
   PetscReal :: temp_ave, stp_ave, theta, v_air
   PetscReal :: k_eff_up, k_eff_dn, k_eff_ave, heat_flux
   
-  PetscInt :: bc_type
   PetscInt :: idof
   
   wat_comp_id = option%water_id
@@ -1394,14 +1481,8 @@ subroutine GeneralBCFlux(ibndtype,auxvars, &
   
   do iphase = 1, option%nphase
  
-    select case(iphase)
-      case(LIQUID_PHASE)
-        bc_type = ibndtype(GENERAL_LIQUID_PRESSURE_DOF)
-      case(GAS_PHASE)
-        bc_type = ibndtype(GENERAL_GAS_PRESSURE_DOF)
-    end select
-
-    select case(bc_type)
+     bc_type = ibndtype(iphase)
+     select case(bc_type)
       ! figure out the direction of flow
       case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
 
@@ -1413,9 +1494,9 @@ subroutine GeneralBCFlux(ibndtype,auxvars, &
       if (bc_type == CONDUCTANCE_BC) then
           select case(iphase)
             case(LIQUID_PHASE)
-              idof = GENERAL_LIQUID_CONDUCTANCE_DOF
+              idof = auxvar_mapping(GENERAL_LIQUID_CONDUCTANCE_INDEX)
             case(GAS_PHASE)
-              idof = GENERAL_GAS_CONDUCTANCE_DOF
+              idof = auxvar_mapping(GENERAL_GAS_CONDUCTANCE_INDEX)
           end select        
           perm_ave_over_dist = auxvars(idof)
         else
@@ -1475,19 +1556,27 @@ subroutine GeneralBCFlux(ibndtype,auxvars, &
       case(NEUMANN_BC)
         select case(iphase)
           case(LIQUID_PHASE)
-            idof = GENERAL_LIQUID_FLUX_DOF
+            idof = auxvar_mapping(GENERAL_LIQUID_FLUX_INDEX)
           case(GAS_PHASE)
-            idof = GENERAL_GAS_FLUX_DOF
+            idof = auxvar_mapping(GENERAL_GAS_FLUX_INDEX)
         end select
       
+        xmol = 0.d0
+        xmol(iphase) = 1.d0
         if (dabs(auxvars(idof)) > floweps) then
           v_darcy(iphase) = auxvars(idof)
           if (v_darcy(iphase) > 0.d0) then 
             density_ave = gen_auxvar_up%den(iphase)
+            uH = gen_auxvar_up%H(iphase)
           else 
             density_ave = gen_auxvar_dn%den(iphase)
+            uH = gen_auxvar_dn%H(iphase)
           endif 
         endif
+      case default
+        option%io_buffer = &
+          'Boundary condition type not recognized in GeneralBCFlux phase loop.'
+        call printErrMsg(option)
     end select
 
     if (dabs(v_darcy(iphase)) > 0.d0) then
@@ -1516,6 +1605,10 @@ subroutine GeneralBCFlux(ibndtype,auxvars, &
   do iphase = 1, option%nphase
     theta = 1.d0
   
+    if (ibndtype(iphase) == NEUMANN_BC) then
+      cycle
+    endif
+    
     !geh: changed to .and. -> .or.
     if (gen_auxvar_up%sat(iphase) > eps .or. &
         gen_auxvar_dn%sat(iphase) > eps) then
@@ -1564,26 +1657,35 @@ subroutine GeneralBCFlux(ibndtype,auxvars, &
 #endif
 
   ! add heat conduction flux
-!  k_eff_up = gen_auxvar_up%sat(option%liquid_phase) * &
-!             general_parameter%diffusion_coefficient(option%liquid_phase) + &
-!             gen_auxvar_up%sat(option%gas_phase) * &
-!             general_parameter%diffusion_coefficient(option%gas_phase)
-  k_eff_dn = gen_auxvar_dn%sat(option%liquid_phase) * &
-             general_parameter%diffusion_coefficient(option%liquid_phase) + &
-             gen_auxvar_dn%sat(option%gas_phase) * &
-             general_parameter%diffusion_coefficient(option%gas_phase)
-!  k_eff_ave = (k_eff_up*k_eff_dn)/(k_eff_up*dd_dn+k_eff_dn*0)
-  ! should k_eff be distance weighted?
-  k_eff_ave = k_eff_dn / dist(0)
-  delta_temp = gen_auxvar_up%temp - gen_auxvar_dn%temp
-  heat_flux = k_eff_ave * delta_temp * area
+  select case (ibndtype(GENERAL_ENERGY_EQUATION_INDEX))
+    case (DIRICHLET_BC)
+    !  k_eff_up = gen_auxvar_up%sat(option%liquid_phase) * &
+    !             general_parameter%diffusion_coefficient(option%liquid_phase) + &
+    !             gen_auxvar_up%sat(option%gas_phase) * &
+    !             general_parameter%diffusion_coefficient(option%gas_phase)
+      k_eff_dn = gen_auxvar_dn%sat(option%liquid_phase) * &
+                 general_parameter%diffusion_coefficient(option%liquid_phase) + &
+                 gen_auxvar_dn%sat(option%gas_phase) * &
+                 general_parameter%diffusion_coefficient(option%gas_phase)
+    !  k_eff_ave = (k_eff_up*k_eff_dn)/(k_eff_up*dd_dn+k_eff_dn*0)
+      ! should k_eff be distance weighted?
+      k_eff_ave = k_eff_dn / dist(0)
+      delta_temp = gen_auxvar_up%temp - gen_auxvar_dn%temp
+      heat_flux = k_eff_ave * delta_temp * area
+    case(NEUMANN_BC)
+      heat_flux = auxvars(auxvar_mapping(GENERAL_LIQUID_FLUX_INDEX))
+    case default
+      option%io_buffer = 'Boundary condition type not recognized in ' // &
+        'GeneralBCFlux heat conduction loop.'
+      call printErrMsg(option)
+  end select
   Res(energy_id) = Res(energy_id) + heat_flux
 
 end subroutine GeneralBCFlux
 
 ! ************************************************************************** !
 
-subroutine GeneralBCFluxDerivative(ibndtype,auxvars, &
+subroutine GeneralBCFluxDerivative(ibndtype,auxvar_mapping,auxvars, &
                                    gen_auxvar_up, &
                                    global_auxvar_up, &
                                    gen_auxvar_dn,global_auxvar_dn, &
@@ -1604,7 +1706,6 @@ subroutine GeneralBCFluxDerivative(ibndtype,auxvars, &
   
   implicit none
 
-  PetscInt :: ibndtype(:)
   PetscReal :: auxvars(:) ! from aux_real_var array
   type(general_auxvar_type) :: gen_auxvar_up, gen_auxvar_dn(0:)
   type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
@@ -1615,12 +1716,14 @@ subroutine GeneralBCFluxDerivative(ibndtype,auxvars, &
   PetscReal :: dist(-1:3)
   type(general_parameter_type) :: general_parameter
   PetscReal :: Jdn(option%nflowdof,option%nflowdof)
+  PetscInt :: ibndtype(1:option%nflowdof)
+  PetscInt :: auxvar_mapping(GENERAL_MAX_INDEX)
 
   PetscReal :: v_darcy(option%nphase)
   PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
   PetscInt :: idof, irow
 
-  call GeneralBCFlux(ibndtype,auxvars, &
+  call GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
                      gen_auxvar_up,global_auxvar_up, &
                      gen_auxvar_dn(ZERO_INTEGER),global_auxvar_dn, &
                      material_auxvar_dn, &
@@ -1629,7 +1732,7 @@ subroutine GeneralBCFluxDerivative(ibndtype,auxvars, &
                      option,v_darcy,res)                     
   ! downgradient derivatives
   do idof = 1, option%nflowdof
-    call GeneralBCFlux(ibndtype,auxvars, &
+    call GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
                        gen_auxvar_up,global_auxvar_up, &
                        gen_auxvar_dn(idof),global_auxvar_dn, &
                        material_auxvar_dn, &
@@ -1950,7 +2053,8 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
 
       icap_dn = patch%sat_func_id(ghosted_id)
 
-      call GeneralBCFlux(boundary_condition%flow_condition%itype, &
+      call GeneralBCFlux(boundary_condition%flow_bc_type, &
+                         boundary_condition%flow_aux_mapping, &
                                 boundary_condition%flow_aux_real_var(:,iconn), &
                                 gen_auxvars_bc(sum_connection), &
                                 global_auxvars_bc(sum_connection), &
@@ -2243,8 +2347,9 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
 
       icap_dn = patch%sat_func_id(ghosted_id)
 
-      call GeneralBCFluxDerivative(boundary_condition%flow_condition%itype, &
-                                boundary_condition%flow_aux_real_var(:,iconn), &
+      call GeneralBCFluxDerivative(boundary_condition%flow_bc_type, &
+                                  boundary_condition%flow_aux_mapping, &
+                                  boundary_condition%flow_aux_real_var(:,iconn), &
                                   gen_auxvars_bc(sum_connection), &
                                   global_auxvars_bc(sum_connection), &
                                   gen_auxvars(:,ghosted_id), &
