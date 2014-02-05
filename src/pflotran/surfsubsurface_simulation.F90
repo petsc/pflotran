@@ -270,7 +270,9 @@ subroutine SurfSubsurfaceSimulationRunToTime(this,target_time)
   class(pmc_base_type), pointer :: cur_process_model_coupler
   PetscViewer :: viewer
 
+#ifdef DEBUG
   call printMsg(this%option,'RunToTime()')
+#endif
   call this%process_model_coupler_list%RunToTime(target_time,this%stop_flag)
 
 end subroutine SurfSubsurfaceSimulationRunToTime

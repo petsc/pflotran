@@ -273,7 +273,9 @@ subroutine PMCSurfaceGetAuxData(this)
 
   PetscErrorCode :: ierr
 
+#ifdef DEBUG
   print *, 'PMCSurfaceGetAuxData()'
+#endif
 
   if(this%option%subsurf_surf_coupling == SEQ_COUPLED) then
     select type(pmc => this)
