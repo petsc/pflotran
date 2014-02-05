@@ -382,7 +382,8 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
   PetscInt :: iphasebc, iphase
   PetscInt :: offset
   PetscInt :: istate
-  PetscInt :: real_index, variable
+  PetscInt :: real_index, variable, idof_in_xxbc
+  PetscInt :: map_two_phase(3) = [1,3,2]
   PetscReal, pointer :: xx_loc_p(:)
   PetscReal, pointer :: perm_xx_loc_p(:), porosity_loc_p(:)  
   PetscReal :: xxbc(realization%option%nflowdof)
@@ -458,15 +459,16 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
             enddo
           case(TWO_PHASE_STATE)
             do idof = 1, option%nflowdof
+              idof_in_xxbc = map_two_phase(idof)
               select case(boundary_condition%flow_bc_type(idof))
                 case(DIRICHLET_BC,HYDROSTATIC_BC)
-                  variable = dof_to_primary_variable(idof,istate)
+                  variable = dof_to_primary_variable(idof_in_xxbc,istate)
                   select case(variable)
                     ! for gas pressure dof
                     case(GENERAL_GAS_PRESSURE_INDEX)
                       real_index = boundary_condition%flow_aux_mapping(variable)
                       if (real_index /= 0) then
-                        xxbc(idof) = boundary_condition%flow_aux_real_var(real_index,iconn)
+                        xxbc(idof_in_xxbc) = boundary_condition%flow_aux_real_var(real_index,iconn)
                       else
                         option%io_buffer = 'Mixed FLOW_CONDITION "' // &
                           trim(boundary_condition%flow_condition%name) // &
@@ -497,19 +499,19 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
                               call printErrMsg(option)
                             endif
                           endif
-                          xxbc(idof) = p_gas - p_sat
+                          xxbc(idof_in_xxbc) = p_gas - p_sat
                         else
                           option%io_buffer = 'Cannot find boundary constraint for air pressure.'
                           call printErrMsg(option)
                         endif
                       else
-                        xxbc(idof) = boundary_condition%flow_aux_real_var(real_index,iconn)
+                        xxbc(idof_in_xxbc) = boundary_condition%flow_aux_real_var(real_index,iconn)
                       endif
                     ! for gas saturation dof
                     case(GENERAL_GAS_SATURATION_INDEX)
                       real_index = boundary_condition%flow_aux_mapping(variable)
                       if (real_index /= 0) then
-                        xxbc(idof) = boundary_condition%flow_aux_real_var(real_index,iconn)
+                        xxbc(idof_in_xxbc) = boundary_condition%flow_aux_real_var(real_index,iconn)
                       else
                         option%io_buffer = 'Mixed FLOW_CONDITION "' // &
                           trim(boundary_condition%flow_condition%name) // &

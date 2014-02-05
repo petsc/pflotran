@@ -48,12 +48,12 @@ module General_Aux_module
   PetscInt, parameter, public :: GENERAL_MAX_INDEX = 13
   
   PetscInt, parameter, public :: dof_to_primary_variable(3,3) = &
-    [GENERAL_LIQUID_PRESSURE_INDEX, GENERAL_MOLE_FRACTION_INDEX, &
-     GENERAL_TEMPERATURE_INDEX, &
-     GENERAL_GAS_PRESSURE_INDEX, GENERAL_AIR_PRESSURE_INDEX, &
-     GENERAL_TEMPERATURE_INDEX, &
-     GENERAL_GAS_PRESSURE_INDEX, GENERAL_AIR_PRESSURE_INDEX, &
-     GENERAL_GAS_SATURATION_INDEX]
+    reshape([GENERAL_LIQUID_PRESSURE_INDEX, GENERAL_MOLE_FRACTION_INDEX, &
+             GENERAL_TEMPERATURE_INDEX, &
+             GENERAL_GAS_PRESSURE_INDEX, GENERAL_AIR_PRESSURE_INDEX, &
+             GENERAL_TEMPERATURE_INDEX, &
+             GENERAL_GAS_PRESSURE_INDEX, GENERAL_AIR_PRESSURE_INDEX, &
+             GENERAL_GAS_SATURATION_INDEX],shape(dof_to_primary_variable))
   
   type, public :: general_auxvar_type
     PetscInt :: istate_store(2) ! 1 = previous timestep; 2 = previous iteration
