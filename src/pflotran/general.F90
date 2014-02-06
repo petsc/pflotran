@@ -1824,8 +1824,6 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
   ! energy units: MJ/sec
   if (size(qsrc) == THREE_INTEGER) then
     if (dabs(qsrc(THREE_INTEGER)) < 1.d-40) then
-!      if (global_auxvar%istate == LIQUID_STATE .or. &
-!          global_auxvar%istate == TWO_PHASE_STATE) then
       if (dabs(qsrc(ONE_INTEGER)) > 0.d0) then
         call EOSWaterDensityEnthalpy(gen_auxvar%temp, &
                                      gen_auxvar%pres(option%liquid_phase), &
@@ -1833,20 +1831,20 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
         ! enthalpy units: MJ/kmol
         res(option%energy_id) = res(option%energy_id) + &
                                 qsrc_mol(ONE_INTEGER) * enthalpy
-!          (gen_auxvar%H(ONE_INTEGER) - gen_auxvar%pres(ONE_INTEGER) / &
-!                                        gen_auxvar%den(ONE_INTEGER) * 1.d-6)
       endif
-!      if (global_auxvar%istate == GAS_STATE .or. &
-!          global_auxvar%istate == TWO_PHASE_STATE) then
       if (dabs(qsrc(TWO_INTEGER)) > 0.d0) then
-        call ideal_gaseos_noderiv(gen_auxvar%pres(option%air_pressure_id), &
-                                  gen_auxvar%temp, &
-                                  option%scale,den,enthalpy,internal_energy)
+        if (gen_auxvar%sat(option%gas_phase) < eps) then
+          ! if no gas exists, the enthalpy calculated in GeneralAuxVarCompute()
+          ! is unrealistic, use pure air enthalpy instead.
+          call ideal_gaseos_noderiv(gen_auxvar%pres(option%air_pressure_id), &
+                                    gen_auxvar%temp, &
+                                    option%scale,den,enthalpy,internal_energy)
+        else
+          enthalpy = gen_auxvar%h(option%gas_phase)
+        endif
         ! enthalpy units: MJ/kmol
         res(option%energy_id) = res(option%energy_id) + &
           qsrc_mol(TWO_INTEGER) * enthalpy
-!          (gen_auxvar%H(TWO_INTEGER) - gen_auxvar%pres(TWO_INTEGER) / &
-!                                        gen_auxvar%den(TWO_INTEGER) * 1.d-6)
       endif
     else
       res(option%energy_id) = qsrc(THREE_INTEGER)
