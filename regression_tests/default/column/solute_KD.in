@@ -47,7 +47,7 @@ CHEMISTRY
         !   saturation = 1.  [m^3 water/m^3 pore space]
         !   porosity = 0.25 (from below)  [m^3 pore space/m^3 bulk volume]
 
-        ! R = 2, Kd = 0
+        ! R = 1, Kd = 0
         DISTRIBUTION_COEFFICIENT 0.25d3 ! kg water/m^3 bulk
       /
     / 
