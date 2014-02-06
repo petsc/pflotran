@@ -782,6 +782,9 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
       
       ! FLOW
       if (associated(coupler%flow_condition)) then
+        ! determine whether flow_condition is transient
+        coupler%flow_condition%is_transient = & 
+          FlowConditionIsTransient(coupler%flow_condition)
         if (coupler%itype == INITIAL_COUPLER_TYPE .or. &
             coupler%itype == BOUNDARY_COUPLER_TYPE) then
 
@@ -981,7 +984,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
     if (associated(coupler%flow_aux_real_var)) then
 
       flow_condition => coupler%flow_condition
-      if (force_update_flag .or. FlowConditionIsTransient(flow_condition)) then
+      if (force_update_flag .or. flow_condition%is_transient) then 
         select case(option%iflowmode)
           case(G_MODE)
             call PatchUpdateCouplerAuxVarsG(patch,coupler,option)

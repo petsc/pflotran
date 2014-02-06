@@ -21,6 +21,7 @@ module Condition_module
 
   type, public :: flow_condition_type
     PetscInt :: id                          ! id from which condition can be referenced
+    PetscBool :: is_transient
     PetscBool :: sync_time_with_update
     character(len=MAXWORDLENGTH) :: name    ! name of condition (e.g. initial, recharge)
     PetscInt :: num_sub_conditions
@@ -164,6 +165,7 @@ function FlowConditionCreate(option)
   nullify(condition%next)
   nullify(condition%datum)
   nullify(condition%default_time_storage)
+  condition%is_transient = PETSC_FALSE
   condition%sync_time_with_update = PETSC_FALSE
   condition%time_units = ''
   condition%length_units = ''
@@ -2394,9 +2396,6 @@ function FlowConditionIsTransient(condition)
   
   FlowConditionIsTransient = PETSC_FALSE
 
-  !TODO(geh): add check for general condition
-  
-  ! pressure
   if (DatasetIsTransient(condition%datum) .or. &
       FlowSubConditionIsTransient(condition%pressure) .or. &
       FlowSubConditionIsTransient(condition%temperature) .or. &
@@ -2404,11 +2403,49 @@ function FlowConditionIsTransient(condition)
       FlowSubConditionIsTransient(condition%saturation) .or. &
       FlowSubConditionIsTransient(condition%rate) .or. &
       FlowSubConditionIsTransient(condition%well) .or. &
-      FlowSubConditionIsTransient(condition%enthalpy)) then
+      FlowSubConditionIsTransient(condition%enthalpy) .or. &
+      FlowSubConditionIsTransient(condition%energy_rate) .or. &
+      FlowConditionGeneralIsTransient(condition%general)) then
     FlowConditionIsTransient = PETSC_TRUE
   endif
   
 end function FlowConditionIsTransient
+
+! ************************************************************************** !
+
+function FlowConditionGeneralIsTransient(condition)
+  ! 
+  ! Returns PETSC_TRUE
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/11
+  ! 
+
+  use Dataset_module
+
+  implicit none
+  
+  type(flow_general_condition_type), pointer :: condition
+  
+  PetscBool :: FlowConditionGeneralIsTransient
+  
+  FlowConditionGeneralIsTransient = PETSC_FALSE
+
+  if (.not.associated(condition)) return
+  
+  if (FlowSubConditionIsTransient(condition%liquid_pressure) .or. &
+      FlowSubConditionIsTransient(condition%gas_pressure) .or. &
+      FlowSubConditionIsTransient(condition%gas_saturation) .or. &
+      FlowSubConditionIsTransient(condition%mole_fraction) .or. &
+      FlowSubConditionIsTransient(condition%temperature) .or. &
+      FlowSubConditionIsTransient(condition%rate) .or. &
+      FlowSubConditionIsTransient(condition%liquid_flux) .or. &
+      FlowSubConditionIsTransient(condition%gas_flux) .or. &
+      FlowSubConditionIsTransient(condition%energy_flux)) then
+    FlowConditionGeneralIsTransient = PETSC_TRUE
+  endif
+  
+end function FlowConditionGeneralIsTransient
 
 ! ************************************************************************** !
 
