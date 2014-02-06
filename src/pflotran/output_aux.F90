@@ -602,6 +602,7 @@ subroutine OutputVariableRead(input,option,output_variable_list)
   
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: name, units
+  type(output_variable_type), pointer :: output_variable
 
   do
     call InputReadPflotranString(input,option)
@@ -619,7 +620,6 @@ subroutine OutputVariableRead(input,option,output_variable_list)
         call OutputVariableAddToList(output_variable_list,name, &
                                      OUTPUT_PRESSURE,units, &
                                      LIQUID_PRESSURE)
-
       case ('LIQUID_SATURATION')
         name = 'Liquid Saturation'
         units = ''
@@ -638,6 +638,77 @@ subroutine OutputVariableRead(input,option,output_variable_list)
         call OutputVariableAddToList(output_variable_list,name, &
                                      OUTPUT_GENERIC,units, &
                                      LIQUID_MOBILITY)
+      case ('LIQUID_ENERGY')
+        name = 'Liquid Energy'
+        units = 'MJ/kmol'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     LIQUID_ENERGY)
+      case ('GAS_PRESSURE')
+        name = 'Gas Pressure'
+        units = 'Pa'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_PRESSURE,units, &
+                                     GAS_PRESSURE)
+      case ('GAS_SATURATION')
+        name = 'Gas Saturation'
+        units = ''
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_SATURATION,units, &
+                                     GAS_SATURATION)
+      case ('GAS_DENSITY')
+        name = 'Gas Density'
+        units = 'kg/m^3'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     GAS_DENSITY)
+      case ('GAS_MOBILITY')
+        name = 'Gas Mobility'
+        units = '1/Pa-s'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     GAS_MOBILITY)
+      case ('GAS_ENERGY')
+       name = 'Gas Energy'
+       units = 'MJ/kmol'
+       call OutputVariableAddToList(output_variable_list,name, &
+                                    OUTPUT_GENERIC,units,GAS_ENERGY)
+      case ('LIQUID_MOLE_FRACTIONS')
+        name = 'X_g^l'
+        units = ''
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     LIQUID_MOLE_FRACTION, &
+                                     option%air_id)
+        name = 'X_l^l'
+        units = ''
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     LIQUID_MOLE_FRACTION, &
+                                     option%water_id)
+      case ('GAS_MOLE_FRACTIONS')
+        name = 'X_g^g'
+        units = ''
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     GAS_MOLE_FRACTION, &
+                                     option%air_id)
+        name = 'X_l^g'
+        units = ''
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     GAS_MOLE_FRACTION, &
+                                     option%water_id)
+      case('THERMODYNAMIC_STATE')
+        name = 'Thermodynamic State'
+         units = ''
+         output_variable => OutputVariableCreate(name,OUTPUT_DISCRETE, &
+                                                 units,STATE)
+         ! toggle output off for observation
+         output_variable%plot_only = PETSC_TRUE 
+         output_variable%iformat = 1 ! integer
+         call OutputVariableAddToList(output_variable_list,output_variable)
+         nullify(output_variable)
       case ('TEMPERATURE')
         name = 'Temperature'
         units = 'C'
