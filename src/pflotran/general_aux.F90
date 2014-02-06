@@ -76,7 +76,6 @@ module General_Aux_module
   
   type, public :: general_parameter_type
     PetscReal, pointer :: diffusion_coefficient(:) ! (iphase)
-    PetscReal, pointer :: thermal_conductivity(:) ! (iphase)
   end type general_parameter_type
   
   type, public :: general_type
@@ -148,8 +147,6 @@ function GeneralAuxCreate(option)
   allocate(aux%general_parameter%diffusion_coefficient(option%nphase))
   aux%general_parameter%diffusion_coefficient(LIQUID_PHASE) = 1.d-9
   aux%general_parameter%diffusion_coefficient(GAS_PHASE) = 1.d-5
-  allocate(aux%general_parameter%thermal_conductivity(option%nphase))
-  aux%general_parameter%thermal_conductivity = 0.d0
 
   GeneralAuxCreate => aux
   
@@ -1046,9 +1043,6 @@ subroutine GeneralAuxDestroy(aux)
     if (associated(aux%general_parameter%diffusion_coefficient)) &
       deallocate(aux%general_parameter%diffusion_coefficient)
     nullify(aux%general_parameter%diffusion_coefficient)
-    if (associated(aux%general_parameter%thermal_conductivity)) &
-      deallocate(aux%general_parameter%thermal_conductivity)
-    nullify(aux%general_parameter%thermal_conductivity)
     deallocate(aux%general_parameter)
   endif
   nullify(aux%general_parameter)

@@ -103,9 +103,8 @@ subroutine GeneralSetup(realization)
   use Coupler_module
   use Connection_module
   use Grid_module
-  use Material_module
-  use Material_Aux_class
   use Fluid_module
+  use Material_Aux_class
  
   implicit none
   
@@ -115,15 +114,18 @@ subroutine GeneralSetup(realization)
   type(patch_type),pointer :: patch
   type(grid_type), pointer :: grid
   type(coupler_type), pointer :: boundary_condition
+  type(material_parameter_type), pointer :: material_parameter
 
   PetscInt :: ghosted_id, iconn, sum_connection
-  PetscInt :: i, idof
+  PetscInt :: i, idof, count
+  PetscBool :: error_found
+  PetscInt :: flag(10)
                                                 ! extra index for derivatives
   type(general_auxvar_type), pointer :: gen_auxvars(:,:)
   type(general_auxvar_type), pointer :: gen_auxvars_bc(:)
   type(general_auxvar_type), pointer :: gen_auxvars_ss(:)
-  type(material_type), pointer :: material
-  type(fluid_property_type), pointer :: cur_fluid_property  
+  type(material_auxvar_type), pointer :: material_auxvars(:)
+  type(fluid_property_type), pointer :: cur_fluid_property
   
   option => realization%option
   patch => realization%patch
@@ -131,32 +133,63 @@ subroutine GeneralSetup(realization)
 
   patch%aux%General => GeneralAuxCreate(option)
 
-  allocate(patch%aux%Material%material_parameter% &
-    sir(size(realization%saturation_function_array),option%nphase))
-  patch%aux%Material%material_parameter%sir = -999.d0
-  do i = 1, size(realization%saturation_function_array)
-    if (associated(realization%saturation_function_array(i)%ptr)) then
-      patch%aux%Material%material_parameter% &
-        sir(realization%saturation_function_array(i)%ptr%id,:) = &
-        realization%saturation_function_array(i)%ptr%Sr(:)
+  ! ensure that material properties specific to this module are properly
+  ! initialized
+  material_parameter => patch%aux%Material%material_parameter
+  error_found = PETSC_FALSE
+  if (minval(material_parameter%soil_residual_saturation(:,:)) < 0.d0) then
+    option%io_buffer = 'Non-initialized soil residual saturation.'
+    call printMsg(option)
+    error_found = PETSC_TRUE
+  endif
+  if (minval(material_parameter%soil_heat_capacity(:)) < 0.d0) then
+    option%io_buffer = 'Non-initialized soil heat capacity.'
+    call printMsg(option)
+    error_found = PETSC_TRUE
+  endif
+  if (minval(material_parameter%soil_thermal_conductivity(:,:)) < 0.d0) then
+    option%io_buffer = 'Non-initialized soil thermal conductivity.'
+    call printMsg(option)
+    error_found = PETSC_TRUE
+  endif
+  
+  material_auxvars => patch%aux%Material%auxvars
+  flag = 0
+  do ghosted_id = 1, grid%ngmax
+    if (material_auxvars(ghosted_id)%volume < 0.d0 .and. flag(1) == 0) then
+      flag(1) = 1
+      option%io_buffer = 'Non-initialized cell volume.'
+      call printMsg(option)
+    endif
+    if (material_auxvars(ghosted_id)%porosity < 0.d0 .and. flag(2) == 0) then
+      flag(2) = 1
+      option%io_buffer = 'Non-initialized porosity.'
+      call printMsg(option)
+    endif
+    if (material_auxvars(ghosted_id)%tortuosity < 0.d0 .and. flag(3) == 0) then
+      flag(3) = 1
+      option%io_buffer = 'Non-initialized tortuosity.'
+      call printMsg(option)
+    endif
+    if (material_auxvars(ghosted_id)%soil_particle_density < 0.d0 .and. &
+        flag(4) == 0) then
+      flag(4) = 1
+      option%io_buffer = 'Non-initialized soil particle density.'
+      call printMsg(option)
+    endif
+    if (minval(material_auxvars(ghosted_id)%permeability) < 0.d0 .and. &
+        flag(5) == 0) then
+      option%io_buffer = 'Non-initialized permeability.'
+      call printMsg(option)
+      flag(5) = 1
     endif
   enddo
-
-  allocate(patch%aux%Material%material_parameter% &
-    dencpr(size(realization%material_property_array)))
-  patch%aux%Material%material_parameter%dencpr = -999.d0
-  do i = 1, size(realization%material_property_array)
-    if (associated(realization%material_property_array(i)%ptr)) then
-      ! kg rock/m^3 rock * J/kg rock-K * 1.e-6 MJ/J
-      patch%aux%Material%material_parameter% &
-        dencpr(realization%saturation_function_array( &
-          realization%material_property_array(i)%ptr%saturation_function_id)% &
-            ptr%id) = &
-        realization%material_property_array(i)%ptr%rock_density * &
-        realization%material_property_array(i)%ptr%specific_heat * option%scale
-    endif
-  enddo
-
+  
+  if (error_found .or. maxval(flag) > 0) then
+    option%io_buffer = 'Material property errors found in GeneralSetup.'
+    call printErrMsg(option)
+  endif
+  
   ! allocate auxvar data structures for all grid cells  
   allocate(gen_auxvars(0:option%nflowdof,grid%ngmax))
   do ghosted_id = 1, grid%ngmax
@@ -382,8 +415,7 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
   PetscInt :: iphasebc, iphase
   PetscInt :: offset
   PetscInt :: istate
-  PetscInt :: real_index, variable, idof_in_xxbc
-  PetscInt :: map_two_phase(3) = [1,3,2]
+  PetscInt :: real_index, variable
   PetscReal, pointer :: xx_loc_p(:)
   PetscReal, pointer :: perm_xx_loc_p(:), porosity_loc_p(:)  
   PetscReal :: xxbc(realization%option%nflowdof)
@@ -459,16 +491,15 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
             enddo
           case(TWO_PHASE_STATE)
             do idof = 1, option%nflowdof
-              idof_in_xxbc = map_two_phase(idof)
               select case(boundary_condition%flow_bc_type(idof))
                 case(DIRICHLET_BC,HYDROSTATIC_BC)
-                  variable = dof_to_primary_variable(idof_in_xxbc,istate)
+                  variable = dof_to_primary_variable(idof,istate)
                   select case(variable)
                     ! for gas pressure dof
                     case(GENERAL_GAS_PRESSURE_INDEX)
                       real_index = boundary_condition%flow_aux_mapping(variable)
                       if (real_index /= 0) then
-                        xxbc(idof_in_xxbc) = boundary_condition%flow_aux_real_var(real_index,iconn)
+                        xxbc(idof) = boundary_condition%flow_aux_real_var(real_index,iconn)
                       else
                         option%io_buffer = 'Mixed FLOW_CONDITION "' // &
                           trim(boundary_condition%flow_condition%name) // &
@@ -499,19 +530,19 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
                               call printErrMsg(option)
                             endif
                           endif
-                          xxbc(idof_in_xxbc) = p_gas - p_sat
+                          xxbc(idof) = p_gas - p_sat
                         else
                           option%io_buffer = 'Cannot find boundary constraint for air pressure.'
                           call printErrMsg(option)
                         endif
                       else
-                        xxbc(idof_in_xxbc) = boundary_condition%flow_aux_real_var(real_index,iconn)
+                        xxbc(idof) = boundary_condition%flow_aux_real_var(real_index,iconn)
                       endif
                     ! for gas saturation dof
                     case(GENERAL_GAS_SATURATION_INDEX)
                       real_index = boundary_condition%flow_aux_mapping(variable)
                       if (real_index /= 0) then
-                        xxbc(idof_in_xxbc) = boundary_condition%flow_aux_real_var(real_index,iconn)
+                        xxbc(idof) = boundary_condition%flow_aux_real_var(real_index,iconn)
                       else
                         option%io_buffer = 'Mixed FLOW_CONDITION "' // &
                           trim(boundary_condition%flow_condition%name) // &
@@ -743,7 +774,7 @@ subroutine GeneralUpdateFixedAccum(realization)
     call GeneralAccumulation(gen_auxvars(ZERO_INTEGER,ghosted_id), &
                              global_auxvars(ghosted_id), &
                              material_auxvars(ghosted_id), &
-                             material_parameter%dencpr(imat), &
+                            material_parameter%soil_heat_capacity(imat), &
                              option,accum_p(local_start:local_end)) 
   enddo
 
@@ -976,7 +1007,7 @@ end subroutine GeneralAuxVarPerturb
 ! ************************************************************************** !
 
 subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
-                               dencpr,option,Res)
+                               soil_heat_capacity,option,Res)
   ! 
   ! Computes the non-fixed portion of the accumulation
   ! term for the residual
@@ -993,9 +1024,9 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
   type(general_auxvar_type) :: gen_auxvar
   type(global_auxvar_type) :: global_auxvar
   class(material_auxvar_type) :: material_auxvar
+  PetscReal :: soil_heat_capacity
   type(option_type) :: option
   PetscReal :: Res(option%nflowdof) 
-  PetscReal :: dencpr
   
   PetscInt :: wat_comp_id, air_comp_id, energy_id
   PetscInt :: icomp, iphase
@@ -1046,15 +1077,16 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
   !                  dencpr[kg rock/m^3 rock * MJ/kg rock-K] * T[C]) &
   !               vol[m^3 bulk] / dt[sec]
   Res(energy_id) = (Res(energy_id) * material_auxvar%porosity + &
-                    (1.d0 - material_auxvar%porosity) * dencpr * &
-                      gen_auxvar%temp) * v_over_t 
+                    (1.d0 - material_auxvar%porosity) * &
+                    material_auxvar%soil_particle_density * &
+                    soil_heat_capacity * gen_auxvar%temp) * v_over_t 
 
 end subroutine GeneralAccumulation
 
 ! ************************************************************************** !
 
 subroutine GeneralAccumDerivative(gen_auxvar,global_auxvar,material_auxvar, &
-                                  dencpr,option,J)
+                                  soil_heat_capacity,option,J)
   ! 
   ! Computes derivatives of the accumulation
   ! term for the Jacobian
@@ -1073,18 +1105,19 @@ subroutine GeneralAccumDerivative(gen_auxvar,global_auxvar,material_auxvar, &
   type(global_auxvar_type) :: global_auxvar
   class(material_auxvar_type) :: material_auxvar
   type(option_type) :: option
-  PetscReal :: dencpr
+  PetscReal :: soil_heat_capacity
   PetscReal :: J(option%nflowdof,option%nflowdof)
      
   PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
   PetscInt :: idof, irow
 
   call GeneralAccumulation(gen_auxvar(ZERO_INTEGER),global_auxvar, &
-                           material_auxvar,dencpr,option,res)
+                           material_auxvar,soil_heat_capacity,option,res)
                            
   do idof = 1, option%nflowdof
     call GeneralAccumulation(gen_auxvar(idof),global_auxvar, &
-                             material_auxvar,dencpr,option,res_pert)
+                             material_auxvar,soil_heat_capacity, &
+                             option,res_pert)
     do irow = 1, option%nflowdof
       J(irow,idof) = (res_pert(irow)-res(irow))/gen_auxvar(idof)%pert
     enddo !irow
@@ -1097,9 +1130,11 @@ end subroutine GeneralAccumDerivative
 subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
                        material_auxvar_up, &
                        sir_up, &
+                       thermal_conductivity_up, &
                        gen_auxvar_dn,global_auxvar_dn, &
                        material_auxvar_dn, &
                        sir_dn, &
+                       thermal_conductivity_dn, &
                        area, dist, general_parameter, &
                        option,v_darcy,Res)
   ! 
@@ -1118,11 +1153,13 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
   class(material_auxvar_type) :: material_auxvar_up, material_auxvar_dn
   type(option_type) :: option
-  PetscReal :: sir_up, sir_dn
+  PetscReal :: sir_up(:), sir_dn(:)
   PetscReal :: v_darcy(option%nphase)
   PetscReal :: area
   PetscReal :: dist(-1:3)
   type(general_parameter_type) :: general_parameter
+  PetscReal :: thermal_conductivity_dn(2)
+  PetscReal :: thermal_conductivity_up(2)
   PetscReal :: Res(option%nflowdof)
 
   PetscReal :: dist_gravity  ! distance along gravity vector
@@ -1149,14 +1186,6 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   PetscReal :: temp_ave, stp_ave, theta, v_air
   PetscReal :: k_eff_up, k_eff_dn, k_eff_ave, heat_flux
   
-#ifdef DEBUG_GENERAL_LOCAL 
-  PetscReal :: flux(option%nflowdof)
-  call GeneralPrintAuxVars(gen_auxvar_up,global_auxvar_up,-999, &
-                           'Upwind',option)  
-  call GeneralPrintAuxVars(gen_auxvar_dn,global_auxvar_dn,-999, &
-                           'Downwind',option)  
-#endif
-
   wat_comp_id = option%water_id
   air_comp_id = option%air_id
   energy_id = option%energy_id
@@ -1174,14 +1203,10 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   Res = 0.d0
   v_darcy = 0.d0
   
-#ifdef DEBUG_GENERAL_LOCAL
-  flux = 0.d0
-#endif
-
   do iphase = 1, option%nphase
  
-    if (gen_auxvar_up%sat(iphase) > sir_up .or. &
-        gen_auxvar_dn%sat(iphase) > sir_dn) then
+    if (gen_auxvar_up%sat(iphase) > sir_up(iphase) .or. &
+        gen_auxvar_dn%sat(iphase) > sir_dn(iphase)) then
       upweight_adj = upweight
       if (gen_auxvar_up%sat(iphase) < eps) then 
         upweight_adj=0.d0
@@ -1228,15 +1253,9 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
         do icomp = 1, option%nflowspec
           ! Res[kmol comp/sec] = mole_flux[kmol phase/sec] * 
           !                      xmol[kmol comp/kmol phase]
-#ifdef DEBUG_GENERAL_LOCAL 
-          flux(icomp) = flux(icomp) + mole_flux * xmol(icomp)
-#endif
           Res(icomp) = Res(icomp) + mole_flux * xmol(icomp)
         enddo
         ! Res[MJ/sec] = mole_flux[kmol comp/sec] * H_ave[MJ/kmol comp]
-#ifdef DEBUG_GENERAL_LOCAL 
-        flux(energy_id) = flux(energy_id) + mole_flux * uH
-#endif
         Res(energy_id) = Res(energy_id) + mole_flux * uH
       endif                   
     endif ! sat > eps
@@ -1246,13 +1265,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
     ! Res[kmol total/sec] = sum(Res[kmol comp/sec])  
     Res(ONE_INTEGER) = Res(ONE_INTEGER) + Res(icomp)
   enddo
-  
-#ifdef DEBUG_GENERAL_LOCAL 
-  print *, 'Darcy flux: ', flux(1:3)
-  flux = 0.d0
-#endif  
 
-#if 1
   ! add in gas component diffusion in gas and liquid phases
   do iphase = 1, option%nphase
     theta = 1.8d0
@@ -1302,29 +1315,19 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
       endif      
       q =  v_air * area
       mole_flux = q * density_ave
-#ifdef DEBUG_GENERAL_LOCAL 
-      flux(air_comp_id) = flux(air_comp_id) + mole_flux
-#endif
       Res(air_comp_id) = Res(air_comp_id) + mole_flux
     endif
   enddo
-#endif
 
-#ifdef DEBUG_GENERAL_LOCAL 
-  print *, 'Gas diffusive flux: ', flux(air_comp_id)
-  flux = 0.d0
-#endif  
-    
-#if 1
   ! add heat conduction flux
-  k_eff_up = gen_auxvar_up%sat(option%liquid_phase) * &
-             general_parameter%thermal_conductivity(option%liquid_phase) + &
-             gen_auxvar_up%sat(option%gas_phase) * &
-             general_parameter%thermal_conductivity(option%gas_phase)
-  k_eff_dn = gen_auxvar_dn%sat(option%liquid_phase) * &
-             general_parameter%thermal_conductivity(option%liquid_phase) + &
-             gen_auxvar_dn%sat(option%gas_phase) * &
-             general_parameter%thermal_conductivity(option%gas_phase)
+  ! based on Somerton et al., 1974:
+  ! k_eff = k_dry + sqrt(s_l)*(k_sat-k_dry)
+  k_eff_up = thermal_conductivity_up(1) + &
+             sqrt(gen_auxvar_up%sat(option%liquid_phase)) * &
+             (thermal_conductivity_up(2) - thermal_conductivity_up(1))
+  k_eff_dn = thermal_conductivity_dn(1) + &
+             sqrt(gen_auxvar_dn%sat(option%liquid_phase)) * &
+             (thermal_conductivity_dn(2) - thermal_conductivity_dn(1))
   if (k_eff_up > 0.d0 .or. k_eff_up > 0.d0) then
     k_eff_ave = (k_eff_up*k_eff_dn)/(k_eff_up*dd_dn+k_eff_dn*dd_up)
   else
@@ -1337,13 +1340,6 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
 #endif 
   Res(energy_id) = Res(energy_id) + heat_flux
     
-#ifdef DEBUG_GENERAL_LOCAL 
-  print *, 'Energy conductive flux: ', flux(energy_id)
-#endif
-
-! if 0
-#endif
-  
 end subroutine GeneralFlux
 
 ! ************************************************************************** !
@@ -1351,9 +1347,11 @@ end subroutine GeneralFlux
 subroutine GeneralFluxDerivative(gen_auxvar_up,global_auxvar_up, &
                                  material_auxvar_up, &
                                  sir_up, &
+                                 thermal_conductivity_up, &
                                  gen_auxvar_dn,global_auxvar_dn, &
                                  material_auxvar_dn, &
                                  sir_dn, &
+                                 thermal_conductivity_dn, &
                                  area, dist, &
                                  general_parameter, &
                                  option,Jup,Jdn)
@@ -1373,7 +1371,9 @@ subroutine GeneralFluxDerivative(gen_auxvar_up,global_auxvar_up, &
   type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
   class(material_auxvar_type) :: material_auxvar_up, material_auxvar_dn
   type(option_type) :: option
-  PetscReal :: sir_up, sir_dn
+  PetscReal :: sir_up(:), sir_dn(:)
+  PetscReal :: thermal_conductivity_dn(2)
+  PetscReal :: thermal_conductivity_up(2)
   PetscReal :: area
   PetscReal :: dist(-1:3)
   type(general_parameter_type) :: general_parameter
@@ -1385,8 +1385,10 @@ subroutine GeneralFluxDerivative(gen_auxvar_up,global_auxvar_up, &
 
   call GeneralFlux(gen_auxvar_up(ZERO_INTEGER),global_auxvar_up, &
                    material_auxvar_up,sir_up, &
+                   thermal_conductivity_up, &
                    gen_auxvar_dn(ZERO_INTEGER),global_auxvar_dn, &
                    material_auxvar_dn,sir_dn, &
+                   thermal_conductivity_dn, &
                    area,dist,general_parameter, &
                    option,v_darcy,res)
                            
@@ -1394,8 +1396,10 @@ subroutine GeneralFluxDerivative(gen_auxvar_up,global_auxvar_up, &
   do idof = 1, option%nflowdof
     call GeneralFlux(gen_auxvar_up(idof),global_auxvar_up, &
                      material_auxvar_up,sir_up, &
+                     thermal_conductivity_up, &
                      gen_auxvar_dn(ZERO_INTEGER),global_auxvar_dn, &
                      material_auxvar_dn,sir_dn, &
+                     thermal_conductivity_dn, &
                      area,dist,general_parameter, &
                      option,v_darcy,res_pert)
     do irow = 1, option%nflowdof
@@ -1407,8 +1411,10 @@ subroutine GeneralFluxDerivative(gen_auxvar_up,global_auxvar_up, &
   do idof = 1, option%nflowdof
     call GeneralFlux(gen_auxvar_up(ZERO_INTEGER),global_auxvar_up, &
                      material_auxvar_up,sir_up, &
+                     thermal_conductivity_up, &
                      gen_auxvar_dn(idof),global_auxvar_dn, &
                      material_auxvar_dn,sir_dn, &
+                     thermal_conductivity_dn, &
                      area,dist,general_parameter, &
                      option,v_darcy,res_pert)
     do irow = 1, option%nflowdof
@@ -1425,6 +1431,7 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
                          gen_auxvar_dn,global_auxvar_dn, &
                          material_auxvar_dn, &
                          sir_dn, &
+                         thermal_conductivity_dn, &
                          area,dist,general_parameter, &
                          option,v_darcy,Res)
   ! 
@@ -1442,7 +1449,7 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
   type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
   class(material_auxvar_type) :: material_auxvar_dn
   type(option_type) :: option
-  PetscReal :: sir_dn(option%nphase)
+  PetscReal :: sir_dn(:)
   PetscReal :: auxvars(:) ! from aux_real_var array
   PetscReal :: v_darcy(option%nphase), area
   type(general_parameter_type) :: general_parameter
@@ -1450,7 +1457,8 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
   PetscReal :: Res(1:option%nflowdof)
   PetscInt :: ibndtype(1:option%nflowdof)
   PetscInt :: auxvar_mapping(GENERAL_MAX_INDEX)
-
+  PetscReal :: thermal_conductivity_dn(2)
+  
   PetscReal :: upweight
   PetscInt :: wat_comp_id, air_comp_id, energy_id
   PetscInt :: icomp, iphase
@@ -1661,16 +1669,11 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
   ! add heat conduction flux
   select case (ibndtype(GENERAL_ENERGY_EQUATION_INDEX))
     case (DIRICHLET_BC)
-    !  k_eff_up = gen_auxvar_up%sat(option%liquid_phase) * &
-    !             general_parameter%diffusion_coefficient(option%liquid_phase) + &
-    !             gen_auxvar_up%sat(option%gas_phase) * &
-    !             general_parameter%diffusion_coefficient(option%gas_phase)
-      k_eff_dn = gen_auxvar_dn%sat(option%liquid_phase) * &
-                 general_parameter%diffusion_coefficient(option%liquid_phase) + &
-                 gen_auxvar_dn%sat(option%gas_phase) * &
-                 general_parameter%diffusion_coefficient(option%gas_phase)
-    !  k_eff_ave = (k_eff_up*k_eff_dn)/(k_eff_up*dd_dn+k_eff_dn*0)
-      ! should k_eff be distance weighted?
+      ! based on Somerton et al., 1974:
+      ! k_eff = k_dry + sqrt(s_l)*(k_sat-k_dry)
+      k_eff_dn = thermal_conductivity_dn(1) + &
+                 sqrt(gen_auxvar_dn%sat(option%liquid_phase)) * &
+                 (thermal_conductivity_dn(2) - thermal_conductivity_dn(1))
       k_eff_ave = k_eff_dn / dist(0)
       delta_temp = gen_auxvar_up%temp - gen_auxvar_dn%temp
       heat_flux = k_eff_ave * delta_temp * area
@@ -1693,6 +1696,7 @@ subroutine GeneralBCFluxDerivative(ibndtype,auxvar_mapping,auxvars, &
                                    gen_auxvar_dn,global_auxvar_dn, &
                                    material_auxvar_dn, &
                                    sir_dn, &
+                                   thermal_conductivity_dn, &
                                    area,dist,general_parameter, &
                                    option,Jdn)
   ! 
@@ -1713,13 +1717,14 @@ subroutine GeneralBCFluxDerivative(ibndtype,auxvar_mapping,auxvars, &
   type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
   class(material_auxvar_type) :: material_auxvar_dn
   type(option_type) :: option
-  PetscReal :: sir_dn(option%nphase)
+  PetscReal :: sir_dn(:)
   PetscReal :: area
   PetscReal :: dist(-1:3)
   type(general_parameter_type) :: general_parameter
   PetscReal :: Jdn(option%nflowdof,option%nflowdof)
   PetscInt :: ibndtype(1:option%nflowdof)
   PetscInt :: auxvar_mapping(GENERAL_MAX_INDEX)
+  PetscReal :: thermal_conductivity_dn(2)
 
   PetscReal :: v_darcy(option%nphase)
   PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
@@ -1730,6 +1735,7 @@ subroutine GeneralBCFluxDerivative(ibndtype,auxvar_mapping,auxvars, &
                      gen_auxvar_dn(ZERO_INTEGER),global_auxvar_dn, &
                      material_auxvar_dn, &
                      sir_dn, &
+                     thermal_conductivity_dn, &
                      area,dist,general_parameter, &
                      option,v_darcy,res)                     
   ! downgradient derivatives
@@ -1739,6 +1745,7 @@ subroutine GeneralBCFluxDerivative(ibndtype,auxvar_mapping,auxvars, &
                        gen_auxvar_dn(idof),global_auxvar_dn, &
                        material_auxvar_dn, &
                        sir_dn, &
+                       thermal_conductivity_dn, &
                        area,dist,general_parameter, &
                        option,v_darcy,res_pert)   
     do irow = 1, option%nflowdof
@@ -1928,7 +1935,7 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   PetscInt :: local_start, local_end
   PetscInt :: local_id, ghosted_id
   PetscInt :: local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
-  PetscInt :: i, imat
+  PetscInt :: i, imat, imat_up, imat_dn
 
   PetscReal, pointer :: r_p(:)
   PetscReal, pointer :: accum_p(:)
@@ -1996,8 +2003,9 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
       local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
 
-      if (patch%imat(ghosted_id_up) <= 0 .or.  &
-          patch%imat(ghosted_id_dn) <= 0) cycle
+      imat_up = patch%imat(ghosted_id_up) 
+      imat_dn = patch%imat(ghosted_id_dn) 
+      if (imat_up <= 0 .or. imat_dn <= 0) cycle
 
       icap_up = patch%sat_func_id(ghosted_id_up)
       icap_dn = patch%sat_func_id(ghosted_id_dn)
@@ -2005,11 +2013,13 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
       call GeneralFlux(gen_auxvars(ZERO_INTEGER,ghosted_id_up), &
                        global_auxvars(ghosted_id_up), &
                        material_auxvars(ghosted_id_up), &
-                       material_parameter%sir(1,icap_up), &
+                       material_parameter%soil_residual_saturation(:,icap_up), &
+                       material_parameter%soil_thermal_conductivity(:,imat_up), &
                        gen_auxvars(ZERO_INTEGER,ghosted_id_dn), &
                        global_auxvars(ghosted_id_dn), &
                        material_auxvars(ghosted_id_dn), &
-                       material_parameter%sir(1,icap_dn), &
+                       material_parameter%soil_residual_saturation(:,icap_dn), &
+                       material_parameter%soil_thermal_conductivity(:,imat_dn), &
                        cur_connection_set%area(iconn), &
                        cur_connection_set%dist(:,iconn), &
                        general_parameter,option,v_darcy,Res)
@@ -2046,7 +2056,8 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
-      if (patch%imat(ghosted_id) <= 0) cycle
+      imat_dn = patch%imat(ghosted_id)
+      if (imat_dn <= 0) cycle
 
       if (ghosted_id<=0) then
         print *, "Wrong boundary node index... STOP!!!"
@@ -2063,7 +2074,8 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
                                 gen_auxvars(ZERO_INTEGER,ghosted_id), &
                                 global_auxvars(ghosted_id), &
                                 material_auxvars(ghosted_id), &
-                                material_parameter%sir(:,icap_dn), &
+                                material_parameter%soil_residual_saturation(:,icap_dn), &
+                                material_parameter%soil_thermal_conductivity(:,imat_dn), &
                                 cur_connection_set%area(iconn), &
                                 cur_connection_set%dist(:,iconn), &
                                 general_parameter,option, &
@@ -2102,7 +2114,7 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
     call GeneralAccumulation(gen_auxvars(ZERO_INTEGER,ghosted_id), &
                               global_auxvars(ghosted_id), &
                               material_auxvars(ghosted_id), &
-                              material_parameter%dencpr(imat), &
+                              material_parameter%soil_heat_capacity(imat), &
                               option,Res) 
     r_p(local_start:local_end) =  r_p(local_start:local_end) + Res(:)
   enddo
@@ -2200,7 +2212,7 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
 
   PetscInt :: icap,icap_up,icap_dn
   PetscReal :: qsrc, scale
-  PetscInt :: imat
+  PetscInt :: imat, imat_up, imat_dn
   PetscReal :: dd_up, dd_dn
   PetscReal :: perm_up, perm_dn
   PetscReal :: upweight
@@ -2279,8 +2291,9 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
       ghosted_id_up = cur_connection_set%id_up(iconn)
       ghosted_id_dn = cur_connection_set%id_dn(iconn)
 
-      if (patch%imat(ghosted_id_up) <= 0 .or. &
-          patch%imat(ghosted_id_dn) <= 0) cycle
+      imat_up = patch%imat(ghosted_id_up)
+      imat_dn = patch%imat(ghosted_id_dn)
+      if (imat_up <= 0 .or. imat_dn <= 0) cycle
 
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
       local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
@@ -2291,11 +2304,13 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
       call GeneralFluxDerivative(gen_auxvars(:,ghosted_id_up), &
                                  global_auxvars(ghosted_id_up), &
                                  material_auxvars(ghosted_id_up), &
-                                 material_parameter%sir(1,icap_up), &
+                                 material_parameter%soil_residual_saturation(:,icap_up), &
+                                 material_parameter%soil_thermal_conductivity(:,imat_up), &
                                  gen_auxvars(:,ghosted_id_dn), &
                                  global_auxvars(ghosted_id_dn), &
                                  material_auxvars(ghosted_id_dn), &
-                                 material_parameter%sir(1,icap_dn), &
+                                 material_parameter%soil_residual_saturation(:,icap_dn), &
+                                 material_parameter%soil_thermal_conductivity(:,imat_dn), &
                                  cur_connection_set%area(iconn), &
                                  cur_connection_set%dist(:,iconn), &
                                  general_parameter,option,&
@@ -2340,7 +2355,8 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
-      if (patch%imat(ghosted_id) <= 0) cycle
+      imat_dn = patch%imat(ghosted_id)
+      if (imat_dn <= 0) cycle
 
       if (ghosted_id<=0) then
         print *, "Wrong boundary node index... STOP!!!"
@@ -2357,7 +2373,8 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
                                   gen_auxvars(:,ghosted_id), &
                                   global_auxvars(ghosted_id), &
                                   material_auxvars(ghosted_id), &
-                                  material_parameter%sir(:,icap_dn), &
+                                  material_parameter%soil_residual_saturation(:,icap_dn), &
+                                  material_parameter%soil_thermal_conductivity(:,imat_dn), &
                                   cur_connection_set%area(iconn), &
                                   cur_connection_set%dist(:,iconn), &
                                   general_parameter,option, &
@@ -2389,7 +2406,7 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
     call GeneralAccumDerivative(gen_auxvars(:,ghosted_id), &
                               global_auxvars(ghosted_id), &
                               material_auxvars(ghosted_id), &
-                              material_parameter%dencpr(imat), &
+                              material_parameter%soil_heat_capacity(imat), &
                               option, &
                               Jup) 
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &

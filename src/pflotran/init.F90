@@ -868,6 +868,10 @@ subroutine Init(simulation)
       case(FLASH2_MODE)
         call Flash2Setup(realization)
       case(G_MODE)
+        call MaterialSetup(realization%patch%aux%Material%material_parameter, &
+                           realization%material_property_array, &
+                           realization%saturation_function_array, &
+                           realization%option)
         call GeneralSetup(realization)
     end select
   

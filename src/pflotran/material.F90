@@ -114,7 +114,8 @@ module Material_module
             MaterialCompressSoil, &
             MaterialPropertyRead, &
             MaterialInitAuxIndices, &
-            MaterialAssignPropertyToAux
+            MaterialAssignPropertyToAux, &
+            MaterialSetup
   
 contains
 
@@ -779,6 +780,62 @@ end subroutine MaterialPropConvertListToArray
 
 ! ************************************************************************** !
 
+subroutine MaterialSetup(material_parameter, material_property_array, &
+                         saturation_function_array, option)
+  ! 
+  ! Creates arrays for material parameter boject
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/05/14
+  !
+  use Option_module
+  use Saturation_Function_module
+  
+  implicit none
+  
+  type(material_parameter_type) :: material_parameter
+  type(material_property_ptr_type) :: material_property_array(:)
+  type(saturation_function_ptr_type) :: saturation_function_array(:)
+  type(option_type), pointer :: option
+  
+  PetscInt :: num_sat_func
+  PetscInt :: num_mat_prop
+  PetscInt :: i
+  
+  num_mat_prop = size(material_property_array)
+  num_sat_func = size(saturation_function_array)
+  
+  allocate(material_parameter%soil_residual_saturation(option%nphase, &
+                                                       num_sat_func))
+  material_parameter%soil_residual_saturation = -999.d0
+  do i = 1, num_sat_func
+    if (associated(saturation_function_array(i)%ptr)) then
+      material_parameter%soil_residual_saturation(:, &
+                         saturation_function_array(i)%ptr%id) = &
+        saturation_function_array(i)%ptr%Sr(:)
+    endif
+  enddo
+
+  allocate(material_parameter%soil_heat_capacity(num_mat_prop))
+  allocate(material_parameter%soil_thermal_conductivity(2,num_mat_prop))
+  material_parameter%soil_heat_capacity = -999.d0
+  material_parameter%soil_thermal_conductivity = -999.d0
+  do i = 1, num_mat_prop
+    if (associated(material_property_array(i)%ptr)) then
+      ! kg rock/m^3 rock * J/kg rock-K * 1.e-6 MJ/J
+      material_parameter%soil_heat_capacity(i) = &
+        material_property_array(i)%ptr%specific_heat * option%scale ! J -> MJ
+      material_parameter%soil_thermal_conductivity(1,i) = &
+        material_property_array(i)%ptr%thermal_conductivity_dry
+      material_parameter%soil_thermal_conductivity(2,i) = &
+        material_property_array(i)%ptr%thermal_conductivity_wet
+    endif
+  enddo
+  
+end subroutine MaterialSetup
+  
+! ************************************************************************** !
+
 function MaterialPropGetPtrFromList(material_property_name, &
                                     material_property_list)
   ! 
@@ -912,8 +969,8 @@ subroutine MaterialInitAuxIndices(material_property_ptrs,option)
   procedure(MaterialCompressSoilDummy), pointer :: &
     MaterialCompressSoilPtrTmp 
   
-  soil_thermal_conductivity_index = 0
-  soil_heat_capacity_index = 0
+!  soil_thermal_conductivity_index = 0
+!  soil_heat_capacity_index = 0
   soil_compressibility_index = 0
   soil_reference_pressure_index = 0
   max_material_index = 0
@@ -958,16 +1015,16 @@ subroutine MaterialInitAuxIndices(material_property_ptrs,option)
       icount = icount + 1
       soil_reference_pressure_index = icount
     endif
-    if (material_property_ptrs(i)%ptr%specific_heat > 0.d0 .and. &
-        soil_heat_capacity_index == 0) then
-      icount = icount + 1
-      soil_heat_capacity_index = icount
-    endif
-    if (material_property_ptrs(i)%ptr%thermal_conductivity_wet > 0.d0 .and. &
-        soil_thermal_conductivity_index == 0) then
-      icount = icount + 1
-      soil_thermal_conductivity_index = icount
-    endif
+!    if (material_property_ptrs(i)%ptr%specific_heat > 0.d0 .and. &
+!        soil_heat_capacity_index == 0) then
+!      icount = icount + 1
+!      soil_heat_capacity_index = icount
+!    endif
+!    if (material_property_ptrs(i)%ptr%thermal_conductivity_wet > 0.d0 .and. &
+!        soil_thermal_conductivity_index == 0) then
+!      icount = icount + 1
+!      soil_thermal_conductivity_index = icount
+!    endif
   enddo
   max_material_index = icount
   
@@ -1008,14 +1065,14 @@ subroutine MaterialAssignPropertyToAux(material_auxvar,material_property, &
     material_auxvar%soil_properties(soil_reference_pressure_index) = &
       material_property%soil_reference_pressure
   endif
-  if (soil_heat_capacity_index > 0) then
-    material_auxvar%soil_properties(soil_heat_capacity_index) = &
-      material_property%specific_heat
-  endif
-  if (soil_thermal_conductivity_index > 0) then
-    material_auxvar%soil_properties(soil_thermal_conductivity_index) = &
-      material_property%thermal_conductivity_wet
-  endif
+!  if (soil_heat_capacity_index > 0) then
+!    material_auxvar%soil_properties(soil_heat_capacity_index) = &
+!      material_property%specific_heat
+!  endif
+!  if (soil_thermal_conductivity_index > 0) then
+!    material_auxvar%soil_properties(soil_thermal_conductivity_index) = &
+!      material_property%thermal_conductivity_wet
+!  endif
   
 end subroutine MaterialAssignPropertyToAux
 
