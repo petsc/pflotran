@@ -1336,12 +1336,15 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   else
     k_eff_ave = 0.d0
   endif
+  ! units:
+  ! k_eff = W/K/m/m = J/s/m/m
+  ! delta_temp = K
+  ! area = m^2
+  ! heat_flux = J/s
   delta_temp = gen_auxvar_up%temp - gen_auxvar_dn%temp
   heat_flux = k_eff_ave * delta_temp * area
-#ifdef DEBUG_GENERAL_LOCAL 
-  flux(energy_id) = flux(energy_id) + heat_flux
-#endif 
-  Res(energy_id) = Res(energy_id) + heat_flux
+  ! MJ/s
+  Res(energy_id) = Res(energy_id) + heat_flux * option%scale ! J/s -> MJ/s
     
 end subroutine GeneralFlux
 
@@ -1677,17 +1680,23 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
       k_eff_dn = thermal_conductivity_dn(1) + &
                  sqrt(gen_auxvar_dn%sat(option%liquid_phase)) * &
                  (thermal_conductivity_dn(2) - thermal_conductivity_dn(1))
+      ! units:
+      ! k_eff = W/K/m/m = J/s/m/m
+      ! delta_temp = K
+      ! area = m^2
+      ! heat_flux = MJ/s
       k_eff_ave = k_eff_dn / dist(0)
       delta_temp = gen_auxvar_up%temp - gen_auxvar_dn%temp
       heat_flux = k_eff_ave * delta_temp * area
     case(NEUMANN_BC)
       heat_flux = auxvars(auxvar_mapping(GENERAL_LIQUID_FLUX_INDEX))
+ 
     case default
       option%io_buffer = 'Boundary condition type not recognized in ' // &
         'GeneralBCFlux heat conduction loop.'
       call printErrMsg(option)
   end select
-  Res(energy_id) = Res(energy_id) + heat_flux
+  Res(energy_id) = Res(energy_id) + heat_flux * option%scale ! J/s -> MJ/s
 
 end subroutine GeneralBCFlux
 

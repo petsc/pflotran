@@ -156,10 +156,10 @@ function MaterialPropertyCreate()
   material_property%tortuosity_pwr = 0.d0
   material_property%saturation_function_id = 0
   material_property%saturation_function_name = ''
-  material_property%rock_density = 0.d0
-  material_property%specific_heat = 0.d0
-  material_property%thermal_conductivity_dry = 0.d0
-  material_property%thermal_conductivity_wet = 0.d0
+  material_property%rock_density = -999.d0
+  material_property%specific_heat = -999.d0
+  material_property%thermal_conductivity_dry = -999.d0
+  material_property%thermal_conductivity_wet = -999.d0
   material_property%alpha = 0.45d0
 
   material_property%soil_compressibility_function = ''
