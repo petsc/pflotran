@@ -619,6 +619,7 @@ mass_transfer.o : dataset_base.o dataset_common_hdf5.o dataset_global_hdf5.o \
                   discretization.o grid.o input_aux.o option.o \
                   pflotran_constants.o string.o
 material.o : communicator_base.o dataset_common_hdf5.o input_aux.o \
+             saturation_function.o \
              material_aux.o option.o pflotran_constants.o string.o variables.o
 material_aux.o : option.o pflotran_constants.o utility.o
 matrix_block_aux.o : option.o pflotran_constants.o
