@@ -256,7 +256,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
       case('ROCK_DENSITY') 
         call InputReadDouble(input,option,material_property%rock_density)
         call InputErrorMsg(input,option,'rock density','MATERIAL_PROPERTY')
-      case('SPECIFIC_HEAT') 
+      case('SPECIFIC_HEAT','HEAT_CAPACITY') 
         call InputReadDouble(input,option,material_property%specific_heat)
         call InputErrorMsg(input,option,'specific heat','MATERIAL_PROPERTY')
       case('LONGITUDINAL_DISPERSIVITY') 
@@ -1053,7 +1053,7 @@ subroutine MaterialAssignPropertyToAux(material_auxvar,material_property, &
   type(material_property_type) :: material_property
   type(option_type) :: option
 
-  if (material_property%rock_density > 0.d0) then
+  if (material_property%rock_density > -998.d0) then
     material_auxvar%soil_particle_density = &
       material_property%rock_density
   endif

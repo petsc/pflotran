@@ -116,7 +116,7 @@ subroutine GeneralSetup(realization)
   type(coupler_type), pointer :: boundary_condition
   type(material_parameter_type), pointer :: material_parameter
 
-  PetscInt :: ghosted_id, iconn, sum_connection
+  PetscInt :: ghosted_id, iconn, sum_connection, local_id
   PetscInt :: i, idof, count
   PetscBool :: error_found
   PetscInt :: flag(10)
@@ -124,7 +124,7 @@ subroutine GeneralSetup(realization)
   type(general_auxvar_type), pointer :: gen_auxvars(:,:)
   type(general_auxvar_type), pointer :: gen_auxvars_bc(:)
   type(general_auxvar_type), pointer :: gen_auxvars_ss(:)
-  type(material_auxvar_type), pointer :: material_auxvars(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
   type(fluid_property_type), pointer :: cur_fluid_property
   
   option => realization%option
@@ -155,7 +155,10 @@ subroutine GeneralSetup(realization)
   
   material_auxvars => patch%aux%Material%auxvars
   flag = 0
-  do ghosted_id = 1, grid%ngmax
+  !TODO(geh): change to looping over ghosted ids once the legacy code is 
+  !           history and the communicator can be passed down.
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
     if (material_auxvars(ghosted_id)%volume < 0.d0 .and. flag(1) == 0) then
       flag(1) = 1
       option%io_buffer = 'Non-initialized cell volume.'
