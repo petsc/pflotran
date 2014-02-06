@@ -418,7 +418,7 @@ function GetFlowSubCondFromArrayByName(sub_condition_ptr_list,name)
   enddo
 
   print *, 'GetFlowSubCondFromArrayByName() needs to be updated to include' // &
-           'the general_condition_type'.
+           'the general_condition_type.'
   stop
   
 end function GetFlowSubCondFromArrayByName
