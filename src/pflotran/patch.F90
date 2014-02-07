@@ -2873,10 +2873,11 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
 
   iphase = 1
   select case(ivar)
-    case(TEMPERATURE,LIQUID_PRESSURE,GAS_PRESSURE, &
+    case(TEMPERATURE,LIQUID_PRESSURE,GAS_PRESSURE,AIR_PRESSURE, &
          LIQUID_SATURATION,GAS_SATURATION,ICE_SATURATION, &
          LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
-         LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,LIQUID_VISCOSITY,GAS_VISCOSITY, &
+         LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,LIQUID_VISCOSITY, &
+         GAS_VISCOSITY, &
          LIQUID_MOBILITY,GAS_MOBILITY,SC_FUGA_COEFF,STATE,ICE_DENSITY)
          
       if (associated(patch%aux%THC)) then
@@ -3301,6 +3302,18 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
                 vec_ptr(local_id) = &
                   patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                     pres(option%gas_phase)
+              else
+                vec_ptr(local_id) = 0.d0
+              endif
+            enddo
+          case(AIR_PRESSURE)
+            do local_id=1,grid%nlmax
+              ghosted_id = grid%nL2G(local_id)
+              if (patch%aux%Global%auxvars(ghosted_id)%istate /= &
+                  LIQUID_STATE) then
+                vec_ptr(local_id) = &
+                  patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+                    pres(option%air_pressure_id)
               else
                 vec_ptr(local_id) = 0.d0
               endif
@@ -3968,7 +3981,8 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
     case(TEMPERATURE,LIQUID_PRESSURE,GAS_PRESSURE, &
          LIQUID_SATURATION,GAS_SATURATION,ICE_SATURATION, &
          LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
-         LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,LIQUID_VISCOSITY,GAS_VISCOSITY, &
+         LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,LIQUID_VISCOSITY, &
+         GAS_VISCOSITY,AIR_PRESSURE, &
          LIQUID_MOBILITY,GAS_MOBILITY,SC_FUGA_COEFF,STATE,ICE_DENSITY, &
          SECONDARY_TEMPERATURE)
          
@@ -4224,6 +4238,14 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
                 LIQUID_STATE) then
               value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                         pres(option%gas_phase)
+            else
+              value = 0.d0
+            endif
+          case(AIR_PRESSURE)
+            if (patch%aux%Global%auxvars(ghosted_id)%istate /= &
+                LIQUID_STATE) then
+              value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+                        pres(option%air_pressure_id)
             else
               value = 0.d0
             endif
@@ -4621,9 +4643,11 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
 
   iphase = 1
   select case(ivar)
-    case(TEMPERATURE,LIQUID_PRESSURE,GAS_PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
+    case(TEMPERATURE,LIQUID_PRESSURE,GAS_PRESSURE,LIQUID_SATURATION, &
+         GAS_SATURATION,AIR_PRESSURE, &
          LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
-         LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,LIQUID_VISCOSITY,GAS_VISCOSITY, &
+         LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,LIQUID_VISCOSITY, &
+         GAS_VISCOSITY, &
          LIQUID_MOBILITY,GAS_MOBILITY,STATE)
       if (associated(patch%aux%THC)) then
         select case(ivar)
@@ -5254,6 +5278,10 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
           case(GAS_PRESSURE)
             do local_id=1,grid%nlmax
               patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))%pres(option%gas_phase) = vec_ptr(local_id)
+            enddo
+          case(AIR_PRESSURE)
+            do local_id=1,grid%nlmax
+              patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))%pres(option%air_pressure_id) = vec_ptr(local_id)
             enddo
           case(STATE)
             do local_id=1,grid%nlmax

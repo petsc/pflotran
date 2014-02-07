@@ -699,6 +699,12 @@ subroutine OutputVariableRead(input,option,output_variable_list)
                                      OUTPUT_GENERIC,units, &
                                      GAS_MOLE_FRACTION, &
                                      option%water_id)
+      case ('AIR_PRESSURE')
+        name = 'Air Pressure'
+        units = 'Pa'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_PRESSURE,units, &
+                                     AIR_PRESSURE)
       case('THERMODYNAMIC_STATE')
         name = 'Thermodynamic State'
          units = ''
@@ -718,6 +724,7 @@ subroutine OutputVariableRead(input,option,output_variable_list)
       case default
         option%io_buffer = 'Keyword: ' // trim(word) // &
                                  ' not recognized in VARIABLES.'
+        call printErrMsg(option)
     end select
 
   enddo
