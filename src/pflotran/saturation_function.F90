@@ -588,7 +588,7 @@ subroutine SaturationFunctionCompute2(pressure,saturation,relative_perm, &
   PetscReal :: pc_alpha, pc_alpha_n, one_plus_pc_alpha_n
   PetscReal :: pc_alpha_neg_lambda
   PetscReal :: por, perm
-  PetscReal :: Fg, a, Pd, PHg
+  PetscReal :: Fg, a, Pd, PHg, pct_over_pcmax, pc_over_pcmax, pc_log_ratio
 
   PetscReal, parameter :: pc_alpha_n_epsilon = 1.d-15
   
@@ -752,13 +752,26 @@ subroutine SaturationFunctionCompute2(pressure,saturation,relative_perm, &
         dSe_pc = -1.d0/(pcmax-one_over_alpha)
         saturation = Sr + (1.d0-Sr)*Se
         dsat_pc = (1.d0-Sr)*dSe_pc
-        relative_perm = Se
       endif
       if (saturation > 1.d0) then
         print *, option%myrank, 'BC Saturation > 1:', saturation
       else if (saturation < Sr) then
         print *, option%myrank, 'BC Saturation < Sr:', saturation, Sr
       endif
+      select case(saturation_function%permeability_function_itype)
+        case(BURDINE)
+          relative_perm = Se
+          dkr_Se = 1.d0
+        case(MUALEM)
+          power = 5.d-1
+          pct_over_pcmax = one_over_alpha/pcmax
+          pc_over_pcmax = 1.d0-(1.d0-pct_over_pcmax)*Se
+          pc_log_ratio = log(pc_over_pcmax)/log(pct_over_pcmax)
+          relative_perm = (Se**power)*(pc_log_ratio**2.d0)
+        case default
+          option%io_buffer = 'Unknown relative permeabilty function'
+          call printErrMsg(option)
+      end select
     case(THOMEER_COREY)
       pc = option%reference_pressure-pressure
       por = auxvar1
@@ -1589,6 +1602,8 @@ subroutine SatFuncGetRelPermFromSat(saturation,relative_perm,dkr_Se, &
   implicit none
 
   PetscReal :: saturation, relative_perm, dkr_Se
+  PetscReal :: power, pct_over_pcmax, pc_over_pcmax, pc_log_ratio
+  PetscReal :: pcmax, one_over_alpha, alpha, lambda
   PetscInt :: iphase
   type(saturation_function_type) :: saturation_function
   PetscBool :: derivative
@@ -1611,32 +1626,72 @@ subroutine SatFuncGetRelPermFromSat(saturation,relative_perm,dkr_Se, &
   endif
     
   ! compute relative permeability
-  select case(saturation_function%permeability_function_itype)
-    case(BURDINE)
-      m = saturation_function%m
-      one_over_m = 1.d0/m
-      Se_one_over_m = Se**one_over_m
-      relative_perm = Se*Se*(1.d0-(1.d0-Se_one_over_m)**m)
-      if (derivative) then
-        dkr_Se = 2.d0*relative_perm/Se + &
+  select case(saturation_function%saturation_function_itype)
+    case(VAN_GENUCHTEN)
+    ! compute relative permeability
+      select case(saturation_function%permeability_function_itype)
+        case(BURDINE)
+          m = saturation_function%m
+          one_over_m = 1.d0/m
+          Se_one_over_m = Se**one_over_m
+          relative_perm = Se*Se*(1.d0-(1.d0-Se_one_over_m)**m)
+          if (derivative) then
+            dkr_Se = 2.d0*relative_perm/Se + &
                  Se*Se_one_over_m*(1.d0-Se_one_over_m)**(m-1.d0)
-      endif
-    case(MUALEM)
-      m = saturation_function%m
-      one_over_m = 1.d0/m
-      Se_one_over_m = Se**one_over_m
-      relative_perm = sqrt(Se)*(1.d0-(1.d0-Se_one_over_m)**m)**2.d0
-      if (derivative) then
-        dkr_Se = 0.5d0*relative_perm/Se+ &
+          endif
+        case(MUALEM)
+          m = saturation_function%m
+          one_over_m = 1.d0/m
+          Se_one_over_m = Se**one_over_m
+          relative_perm = sqrt(Se)*(1.d0-(1.d0-Se_one_over_m)**m)**2.d0
+          if (derivative) then
+            dkr_Se = 0.5d0*relative_perm/Se+ &
                  2.d0*Se**(one_over_m-0.5d0)* &
                       (1.d0-Se_one_over_m)**(m-1.d0)* &
                       (1.d0-(1.d0-Se_one_over_m)**m)
-      endif
-    case default
-      option%io_buffer = 'Unknown relative permeabilty function' 
-      call printErrMsg(option)
+          endif
+        case default
+          option%io_buffer = 'Unknown relative permeabilty function' 
+          call printErrMsg(option)
+      end select
+    case(BROOKS_COREY)
+      select case(saturation_function%permeability_function_itype)
+        case(BURDINE)
+          lambda = saturation_function%lambda
+          power = 3.d0+2.d0/lambda
+          relative_perm = Se**power
+          dkr_Se = power*relative_perm/Se
+        case(MUALEM)
+          power = 2.5d0+2.d0/lambda
+          relative_perm = Se**power
+          dkr_Se = power*relative_perm/Se
+        case default
+          option%io_buffer = 'Unknown relative permeabilty function'
+          call printErrMsg(option)
+      end select
+    case(LINEAR_MODEL)
+      select case(saturation_function%permeability_function_itype)
+        case(BURDINE)
+          relative_perm = Se
+          if (derivative) then
+            dkr_Se = 1.d0
+          endif
+        case(MUALEM)
+          power = 5.d-1
+          alpha = saturation_function%alpha
+          one_over_alpha = 1.d0/alpha
+          pcmax = saturation_function%pcwmax
+          
+          pct_over_pcmax = one_over_alpha/pcmax
+          pc_over_pcmax = 1.d0-(1.d0-pct_over_pcmax)*Se
+          pc_log_ratio = log(pc_over_pcmax)/log(pct_over_pcmax)
+          relative_perm = (Se**power)*(pc_log_ratio**2.d0)
+        case default
+          option%io_buffer = 'Unknown relative permeabilty function'
+          call printErrMsg(option)
+      end select
   end select
-
+  
 end subroutine SatFuncGetRelPermFromSat
 
 ! ************************************************************************** !
@@ -1785,6 +1840,7 @@ subroutine SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
     case(BROOKS_COREY)
       alpha = saturation_function%alpha
       one_over_alpha = 1.d0/alpha
+!      pc = option%reference_pressure-pressure
       if (saturation >= 1.d0) then
         capillary_pressure = one_over_alpha
         return
@@ -1796,9 +1852,9 @@ subroutine SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
         capillary_pressure = (pc_alpha_neg_lambda**(-1.d0/lambda))/alpha
       endif
     case(LINEAR_MODEL)
-      ! Added by Bwalya Malama 01/31/2014
       alpha = saturation_function%alpha
       one_over_alpha = 1.d0/alpha
+!      pc = option%reference_pressure-pressure
       if (saturation >= 1.d0) then
         capillary_pressure = one_over_alpha
         return
