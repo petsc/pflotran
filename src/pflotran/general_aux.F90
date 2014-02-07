@@ -548,11 +548,16 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         global_auxvar%istate = TWO_PHASE_STATE
         x(GENERAL_GAS_PRESSURE_DOF) = &
           gen_auxvar%pres(lid) * (1.d0 + epsilon)
-!        x(GENERAL_AIR_PRESSURE_DOF) = &
-!          gen_auxvar%pres(apid) * (1.d0 + epsilon)
+        ! pa = pg - ps
         x(GENERAL_AIR_PRESSURE_DOF) = &
-          ! pa = pg - ps
           x(GENERAL_GAS_PRESSURE_DOF) - gen_auxvar%pres(spid)
+        ! if the saturation pressure is relatively high, we could get a 
+        ! negative air pressure.  thus, ensure positivity using the air 
+        ! pressure in that case.
+        if (x(GENERAL_AIR_PRESSURE_DOF) <= 0.d0) then
+          x(GENERAL_AIR_PRESSURE_DOF) = &
+            gen_auxvar%pres(apid) * (1.d0 + epsilon)
+        endif
         x(GENERAL_GAS_SATURATION_DOF) = epsilon
         flag = PETSC_TRUE
       endif
@@ -592,7 +597,8 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         x(GENERAL_LIQUID_PRESSURE_DOF) = &
           gen_auxvar%pres(gid) * (1.d0 + epsilon)
         x(GENERAL_LIQUID_STATE_X_MOLE_DOF) = &
-          gen_auxvar%xmol(acid,lid) * (1+epsilon)
+!          gen_auxvar%xmol(acid,lid) * (1+epsilon)
+          gen_auxvar%xmol(acid,lid) * (1.d0 - epsilon)
         x(GENERAL_LIQUID_STATE_ENERGY_DOF) = &
           gen_auxvar%temp * (1.d0 - epsilon)
         flag = PETSC_TRUE
