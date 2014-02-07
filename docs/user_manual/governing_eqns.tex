@@ -1114,8 +1114,72 @@ The total sorbed concentrations are obtained from the equations
 \frac{\p S_{j\a}}{\p t} \eq k_\a^{} \big(S_{j\a}^{\rm eq}-S_{j\a}\big).
 \EN
 
-\subsubsection{Sorption Isotherm}
+\subsubsection{Sorption Isotherm <Under Revision>}
 
+The distribution coefficient $\widetilde K_j^D$ [m$^3$ kg$^{-1}$] is customarily defined as the ratio of sorbed to aqueous concentrations with the sorbed concentration referenced to the mass of solid as given by
+\begin{subequations}
+\BA
+\widetilde K_j^D &\eq \frac{M_j^s/M_s}{M_j^{\rm aq}/V_l},\\
+&\eq \frac{N_j^s/M_s}{N_j^{\rm aq}/V_l},\\
+&\eq \frac{\widetilde S_j}{C_j} \eq \frac{1}{\rho_w}\frac{\widetilde S_j}{m_j},
+\EA
+\end{subequations}
+where $M_j^s \!=\! W_j N_j^s$, $M_j^{\rm aq}\!=\!W_j N_j^{\rm aq}$, refers to the mass and number of moles of sorbed and aqueous solute related by the formula weight $W_j$ of the $j$th species, $M_s$ refers to the mass of the solid, $V_l$ denotes the aqueous volume, $\widetilde S_j\!=\!N_j^s/M_s$ [mol kg$^{-1}$] represents the sorbed concentration referenced to the mass of solid, $C_j\!=\!N_j^{\rm aq}/V_l$ denotes molarity, and $m_j\!=\!C_j/\rho_w$ represents molality, where $\rho_w$ is the density of pure water. 
+
+The distribution coefficient $\widetilde K_j^D$ may be related to its dimensionless counterpart $K_j^D$ [---] defined by
+\BA
+K_j^D &\eq \frac{N_i^s}{N_i^{\rm aq}} \eq \frac{N_i^s/V}{N_i^{\rm aq}/V}\eq \frac{1}{\varphi s_l}\frac{S_j}{C_j},\label{kdj}
+\EA
+by writing
+\BA
+K_j^D &\eq \frac{N_i^s}{M_s} \frac{M_s}{V_s} \frac{V_s}{V_p} \frac{V_p}{V_l} \frac{V_l}{N_i^{\rm aq}},\\
+&\eq \rho_s \frac{1-\varphi}{\varphi s_l} \widetilde K_j^D \eq \frac{\rho_b}{\varphi s_l} \widetilde K_j^D,
+\EA
+with grain density $\rho_s\!=\!M_s/V_s$, bulk density $\rho_b\!=\!(1-\varphi)\rho_s$, porosity $\varphi\!=\!V_p/V$, and saturation $s_l\!=\!V_l/V_p$.
+
+An alternative definition of the distribution coefficient denoted by $\widehat K_j^D$ [kg m$^{-3}$] is obtained by using molality to define the solute concentration and referencing the sorbed concentration to the bulk volume $V$
+\EQ
+\widehat K_j^D \eq \frac{N_j^s/V}{N_j^{\rm aq}/M_w} \eq \frac{S_j}{m_j}.
+\EN
+
+A sorption isotherm $S_j$ may be specified for any primary species $\A_j$ resulting in 
+the transport equation 
+\EQ
+\frac{\p}{\p t} \varphi s_l C_j + \bnabla\cdot\bF_j \eq -\frac{\p S_j}{\p t},
+\EN
+for a partially saturated medium. Substituting $S_j\!=\!\varphi s_l K_j^D C_j$ from Eqn.\eqref{kdj} and introducing the retardation $\R_j$ gives
+\EQ
+\frac{\p}{\p t} R_j \varphi s_l C_j + \bnabla\cdot\bF_j \eq 0,
+\EN
+with the retardation given by the alternative forms
+\begin{subequations}
+\BA
+R_j &\eq 1 + K_j^D, \ \ \ \ \ \ (\text{dimensionless)},\\
+&\eq 1+ \frac{\rho_b}{\varphi s_l} \widetilde K_j^D, \ \ \ \ \ \ (\text{conventional}),\\
+&\eq 1+ \frac{1}{\varphi s_l \rho_w} \widehat K_j^D, \ \ \ \ \ \ (\text{(molality-based)}.
+\EA
+\end{subequations}
+
+Three distinct models are available for the sorption isotherm $S_j$ in PFLOTRAN:
+\begin{itemize}
+\item linear $K_D$ model:
+\EQ\label{linkd}
+S_j \eq \varphi s_l K_j^D C_j \eq \widehat K_j^D m_j,
+\EN
+with coefficient $\widehat K_j^D$,
+\item Langmuir isotherm:
+\EQ\label{Langmuir}
+S_j\eq \frac{K_j^L b_j^L C_j/ \rho_w}{1+K_j^L C_j/ \rho_w} \eq \frac{K_j^L b_j^L m_j}{1+K_j^L m_j},
+\EN
+with Langmuir coefficients $K_j^L$ and $b_j^L$, and
+\item Freundlich isotherm:
+\EQ\label{Freundlich}
+S_j \eq K_j^F \big(C_j/\rho_w \big)^{(1/n_j^F)} \eq K_j^F \big(m_j\big)^{(1/n_j^F)},
+\EN
+with coefficients $K_j^F$ and $n_j^F$.
+\end{itemize}
+
+\begin{comment}
 A sorption isotherm $S_j$ may be specified for any primary species $\A_j$. 
 The following transport equation is solved 
 \EQ
@@ -1148,6 +1212,7 @@ In terms of the retardation the transport equation becomes
 \EQ
 \frac{\p}{\p t} \big(\R_j\varphi s \rho_w m_j\big) + \bnabla\cdot\bF_j \eq 0.
 \EN
+\end{comment}
 
 \subsubsection{Colloid-Facilitated Transport}
 
