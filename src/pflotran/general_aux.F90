@@ -389,7 +389,8 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       call SatFuncGetCapillaryPressure(gen_auxvar%pres(cpid), &
                                        gen_auxvar%sat(lid), &
                                        saturation_function,option)      
-
+!      gen_auxvar%pres(cpid) = 0.d0
+ 
       gen_auxvar%pres(lid) = gen_auxvar%pres(gid) - &
                               gen_auxvar%pres(cpid)
 
@@ -472,8 +473,11 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
 
 #if 0
   if (option%iflag == 1) then
-    write(*,'(a,i3,6f13.4,a3)') 'i/l/g/a/c/v/s: ', &
-      ghosted_id, gen_auxvar%pres(1:5), gen_auxvar%sat(1), trim(state_char)
+    if (ghosted_id == 1) then
+    write(*,'(a,i3,7f13.4,a3)') 'i/l/g/a/c/v/s/t: ', &
+      ghosted_id, gen_auxvar%pres(1:5), gen_auxvar%sat(1), gen_auxvar%temp, &
+      trim(state_char)
+    endif
   endif
 #endif
 
@@ -514,7 +518,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
   PetscInt :: gid, lid, acid, wid, eid
   PetscReal :: dummy, guess
   PetscBool :: flag
-  character(len=MAXSTRINGLENGTH) :: state_change_string
+  character(len=MAXSTRINGLENGTH) :: state_change_string, string
   PetscErrorCode :: ierr
 
   lid = option%liquid_phase
@@ -555,6 +559,11 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         ! negative air pressure.  thus, ensure positivity using the air 
         ! pressure in that case.
         if (x(GENERAL_AIR_PRESSURE_DOF) <= 0.d0) then
+#ifdef DEBUG_GENERAL
+          write(string,*) x(GENERAL_AIR_PRESSURE_DOF)
+          state_change_string = trim(state_change_string) // &
+            ' - air pressure truncated: ' // trim(adjustl(string))
+#endif
           x(GENERAL_AIR_PRESSURE_DOF) = &
             gen_auxvar%pres(apid) * (1.d0 + epsilon)
         endif

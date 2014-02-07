@@ -2657,13 +2657,25 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   type(field_type), pointer :: field
   type(general_auxvar_type), pointer :: gen_auxvars(:,:)
   type(global_auxvar_type), pointer :: global_auxvars(:)  
+#ifdef DEBUG_GENERAL
+  character(len=MAXSTRINGLENGTH) :: string, string2, string3
+  character(len=MAXWORDLENGTH) :: cell_id_word
+  PetscInt, parameter :: max_cell_id = 10
+  PetscInt :: cell_id, cell_locator(0:max_cell_id)
+  PetscInt :: i, ii
+#endif
   PetscInt :: local_id, ghosted_id
   PetscInt :: offset
   PetscInt :: liquid_pressure_index, gas_pressure_index, air_pressure_index
+  PetscInt :: saturation_index, temperature_index
   PetscInt :: lid, gid, apid, cpid, vpid, spid
   PetscReal :: liquid_pressure0, liquid_pressure1, del_liquid_pressure
   PetscReal :: gas_pressure0, gas_pressure1, del_gas_pressure
   PetscReal :: air_pressure0, air_pressure1, del_air_pressure
+  PetscReal :: temperature0, temperature1, del_temperature
+  PetscReal :: saturation0, saturation1, del_saturation
+  PetscReal :: max_saturation_change = 0.125d0
+  PetscReal :: max_temperature_change = 10.d0
   PetscReal :: min_pressure
   PetscReal :: scale, temp_scale, temp_real
   PetscReal, parameter :: tolerance = 0.99d0
@@ -2685,43 +2697,153 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
 
   scale = 1.d0
 
+#ifdef DEBUG_GENERAL
+  cell_locator = 0
+#endif
+
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     offset = (local_id-1)*option%nflowdof
     temp_scale = 1.d0
+#ifdef DEBUG_GENERAL
+    cell_id = grid%nG2A(ghosted_id)
+    write(cell_id_word,*) cell_id
+    cell_id_word = '(Cell ' // trim(adjustl(cell_id_word)) // '): '
+#endif
     select case(global_auxvars(ghosted_id)%istate)
       case(LIQUID_STATE)
+        temp_scale = 1.d0
         liquid_pressure_index  = offset + 1
+        temperature_index  = offset + 3
         del_liquid_pressure = dX_p(liquid_pressure_index)
         liquid_pressure0 = X_p(liquid_pressure_index)
+        liquid_pressure1 = liquid_pressure0 - del_liquid_pressure
+        del_temperature = dX_p(temperature_index)
+        temperature0 = X_p(temperature_index)
+        temperature1 = temperature0 - del_temperature
         ! truncate liquid pressure change to prevent liquid pressure from 
         ! dropping below the air pressure while in the liquid state
         min_pressure = gen_auxvars(ZERO_INTEGER,ghosted_id)%pres(apid) + &
                        gen_auxvars(ZERO_INTEGER,ghosted_id)%pres(spid)
-        liquid_pressure1 = liquid_pressure0 - del_liquid_pressure
         if (liquid_pressure1 < min_pressure) then
           temp_real = tolerance * (liquid_pressure0 - min_pressure)
-          temp_scale = dabs(temp_real / del_liquid_pressure)
+          temp_real = dabs(temp_real / del_liquid_pressure)
+#ifdef DEBUG_GENERAL
+          if (cell_locator(0) < max_cell_id) then
+            cell_locator(0) = cell_locator(0) + 1
+            cell_locator(cell_locator(0)) = ghosted_id
+          endif
+          string = trim(cell_id_word) // &
+            'Liquid pressure change scaled to prevent liquid ' // &
+            'pressure from dropping below air pressure: '
+          call printMsg(option,string)
+          write(string2,*) liquid_pressure0
+          string = '  Liquid pressure 0: ' // adjustl(string2)
+          call printMsg(option,string)
+          write(string2,*) liquid_pressure1
+          string = '  Liquid pressure 1: ' // adjustl(string2)
+          call printMsg(option,string)
+          write(string2,*) -1.d0*del_liquid_pressure
+          string = '  pressure change  : ' // adjustl(string2)
+          call printMsg(option,string)
+          write(string2,*) temp_scale
+          string = '          scaling  : ' // adjustl(string2)
+          call printMsg(option,string)
+#endif
+          temp_scale = min(temp_scale,temp_real)
+        endif
+        if (dabs(del_temperature) > max_temperature_change) then
+          temp_real = dabs(max_temperature_change/del_temperature)
+#ifdef DEBUG_GENERAL
+          if (cell_locator(0) < max_cell_id) then
+            cell_locator(0) = cell_locator(0) + 1
+            cell_locator(cell_locator(0)) = ghosted_id
+          endif
+          string = trim(cell_id_word) // &
+            'Temperature change scaled to truncate at max_temperature_change: '
+          call printMsg(option,string)
+          write(string2,*) temperature0
+          string = '  Temperature 0    : ' // adjustl(string2)
+          call printMsg(option,string)
+          write(string2,*) temperature1
+          string = '  Temperature 1    : ' // adjustl(string2)
+          call printMsg(option,string)
+          write(string2,*) -1.d0*del_temperature
+          string = 'Temperature change : ' // adjustl(string2)
+          call printMsg(option,string)
+          write(string2,*) temp_real
+          string = '          scaling  : ' // adjustl(string2)
+          call printMsg(option,string)
+#endif
+          temp_scale = min(temp_scale,temp_real)
         endif
       case(TWO_PHASE_STATE)
         temp_scale = 1.d0
         gas_pressure_index = offset + 1
         air_pressure_index = offset + 2
+        saturation_index = offset + 3
         del_gas_pressure = dX_p(gas_pressure_index)
         gas_pressure0 = X_p(gas_pressure_index)
         gas_pressure1 = gas_pressure0 - del_gas_pressure
         del_air_pressure = dX_p(air_pressure_index)
         air_pressure0 = X_p(air_pressure_index)
         air_pressure1 = air_pressure0 - del_air_pressure
+        del_saturation = dX_p(saturation_index)
+        saturation0 = X_p(saturation_index)
+        saturation1 = saturation0 - del_saturation
         if (gas_pressure1 <= 0.d0) then
           if (dabs(del_gas_pressure) > 1.d-40) then
             temp_real = tolerance * dabs(gas_pressure0 / del_gas_pressure)
+#ifdef DEBUG_GENERAL
+            if (cell_locator(0) < max_cell_id) then
+              cell_locator(0) = cell_locator(0) + 1
+              cell_locator(cell_locator(0)) = ghosted_id
+            endif
+            string = trim(cell_id_word) // &
+              'Gas pressure change scaled to prevent gas ' // &
+              'pressure from dropping below zero: '
+            call printMsg(option,string)
+            write(string2,*) gas_pressure0
+            string = '  Gas pressure 0   : ' // adjustl(string2)
+            call printMsg(option,string)
+            write(string2,*) gas_pressure1
+            string = '  Gas pressure 1   : ' // adjustl(string2)
+            call printMsg(option,string)
+            write(string2,*) -1.d0*del_gas_pressure
+            string = '  pressure change  : ' // adjustl(string2)
+            call printMsg(option,string)
+            write(string2,*) temp_real
+            string = '          scaling  : ' // adjustl(string2)
+            call printMsg(option,string)
+#endif
             temp_scale = min(temp_scale,temp_real)
           endif
         endif
         if (air_pressure1 <= 0.d0) then
           if (dabs(del_air_pressure) > 1.d-40) then
             temp_real = tolerance * dabs(air_pressure0 / del_air_pressure)
+#ifdef DEBUG_GENERAL
+            if (cell_locator(0) < max_cell_id) then
+              cell_locator(0) = cell_locator(0) + 1
+              cell_locator(cell_locator(0)) = ghosted_id
+            endif
+            string = trim(cell_id_word) // &
+              'Air pressure change scaled to prevent air ' // &
+              'pressure from dropping below zero: '
+            call printMsg(option,string)
+            write(string2,*) air_pressure0
+            string = '  Air pressure 0   : ' // adjustl(string2)
+            call printMsg(option,string)
+            write(string2,*) air_pressure1
+            string = '  Air pressure 1   : ' // adjustl(string2)
+            call printMsg(option,string)
+            write(string2,*) -1.d0*del_air_pressure
+            string = '  pressure change  : ' // adjustl(string2)
+            call printMsg(option,string)
+            write(string2,*) temp_real
+            string = '          scaling  : ' // adjustl(string2)
+            call printMsg(option,string)
+#endif
             temp_scale = min(temp_scale,temp_real)
           endif
         endif
@@ -2732,6 +2854,62 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
           temp_real = (air_pressure0 - gas_pressure0) / &
                       (temp_scale * (del_air_pressure - del_gas_pressure))
           temp_real = temp_real * tolerance * temp_scale
+#ifdef DEBUG_GENERAL
+          if (cell_locator(0) < max_cell_id) then
+            cell_locator(0) = cell_locator(0) + 1
+            cell_locator(cell_locator(0)) = ghosted_id
+          endif
+          string = trim(cell_id_word) // &
+            'Gas/Air pressure change scaled again to prevent gas ' // &
+            'pressure from dropping below air pressure: '
+          call printMsg(option,string)
+          write(string2,*) gas_pressure0
+          string = '  Gas pressure 0       : ' // adjustl(string2)
+          call printMsg(option,string)
+          write(string2,*) gas_pressure1
+          string = '  Gas pressure 1       : ' // adjustl(string2)
+          call printMsg(option,string)
+          write(string2,*) -1.d0*temp_real*del_gas_pressure
+          string = '  Gas pressure change  : ' // adjustl(string2)
+          call printMsg(option,string)
+          write(string2,*) air_pressure0
+          string = '  Air pressure 0       : ' // adjustl(string2)
+          call printMsg(option,string)
+          write(string2,*) air_pressure1
+          string = '  Air pressure 1       : ' // adjustl(string2)
+          call printMsg(option,string)
+          write(string2,*) -1.d0*temp_real*del_air_pressure
+          string = '  Air pressure change  : ' // adjustl(string2)
+          write(string2,*) temp_real
+          string = '          scaling  : ' // adjustl(string2)
+          call printMsg(option,string)
+#endif
+          temp_scale = min(temp_scale,temp_real)
+        endif
+        if (dabs(del_saturation) > max_saturation_change) then
+          temp_real = dabs(max_saturation_change/del_saturation)
+#ifdef DEBUG_GENERAL
+          if (cell_locator(0) < max_cell_id) then
+            cell_locator(0) = cell_locator(0) + 1
+            cell_locator(cell_locator(0)) = ghosted_id
+          endif
+          string = trim(cell_id_word) // &
+            'Gas saturation change scaled to truncate at ' // &
+            'max_saturation_change: '
+          call printMsg(option,string)
+          write(string2,*) saturation0
+          string = '  Saturation 0    : ' // adjustl(string2)
+          call printMsg(option,string)
+          write(string2,*) saturation1
+          string = '  Saturation 1    : ' // adjustl(string2)
+          call printMsg(option,string)
+          write(string2,*) -1.d0*del_saturation
+          string = 'Saturation change : ' // adjustl(string2)
+          call printMsg(option,string)
+          write(string2,*) temp_real
+          string = '          scaling  : ' // adjustl(string2)
+          call printMsg(option,string)
+#endif
           temp_scale = min(temp_scale,temp_real)
         endif
     end select
@@ -2744,6 +2922,35 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
                      MPI_MIN,option%mycomm,ierr)
 
   if (scale < 0.9999d0) then
+#ifdef DEBUG_GENERAL
+    string  = '++++++++++++++++++++++++++++++++++++++++++++++++++++++'
+    call printMsg(option,string)
+print *, cell_locator
+    write(string2,*) scale, (grid%nG2A(cell_locator(i)),i=1,cell_locator(0))
+    string = 'Final scaling: : ' // adjustl(string2)
+    call printMsg(option,string)
+    do i = 1, cell_locator(0)
+      ghosted_id = cell_locator(i)
+      offset = (ghosted_id-1)*option%nflowdof
+      write(string2,*) grid%nG2A(ghosted_id)
+      string = 'Cell ' // trim(adjustl(string2))
+      write(string2,*) global_auxvars(ghosted_id)%istate
+      string = trim(string) // ' (State = ' // trim(adjustl(string2)) // ') '
+      call printMsg(option,string)
+      ! for some reason cannot perform array operation on dX_p(:)
+      write(string2,*) (X_p(offset+ii),ii=1,3)
+      string = '   Orig. Solution: ' // trim(adjustl(string2))
+      call printMsg(option,string)
+      write(string2,*) (X_p(offset+ii)-dX_p(offset+ii),ii=1,3)
+      string = '  Solution before: ' // trim(adjustl(string2))
+      call printMsg(option,string)
+      write(string2,*) (X_p(offset+ii)-scale*dX_p(offset+ii),ii=1,3)
+      string = '   Solution after: ' // trim(adjustl(string2))
+      call printMsg(option,string)
+    enddo
+    string  = '++++++++++++++++++++++++++++++++++++++++++++++++++++++'
+    call printMsg(option,string)
+#endif
     dX_p = scale*dX_p
   endif
 
