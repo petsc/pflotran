@@ -572,7 +572,7 @@ subroutine Init(simulation)
     end select
     
     
-    if (option%check_stomp_norm) then
+    if (option%check_post_convergence) then
       select case(option%iflowmode)
         case(RICHARDS_MODE)
           call SNESGetLineSearch(flow_solver%snes, linesearch, ierr)
