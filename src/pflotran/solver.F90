@@ -698,9 +698,12 @@ subroutine SolverReadNewton(solver,input,option)
       case('ITOL_UPDATE', 'INF_TOL_UPDATE')
         call InputReadDouble(input,option,solver%newton_inf_upd_tol)
         call InputDefaultMsg(input,option,'newton_inf_upd_tol')
+
+      case('ITOL_SCALED_RESIDUAL')
+        option%check_post_convergence = PETSC_TRUE
    
       case('ITOL_STOMP')
-        option%check_stomp_norm = PETSC_TRUE
+        option%check_post_convergence = PETSC_TRUE
         call InputReadDouble(input,option,solver%newton_stomp_tol)
         call InputDefaultMsg(input,option,'newton_stomp_tol')
 
