@@ -1156,7 +1156,7 @@ with the retardation given by the alternative forms
 \BA
 R_j &\eq 1 + K_j^D, \ \ \ \ \ \ (\text{dimensionless)},\\
 &\eq 1+ \frac{\rho_b}{\varphi s_l} \widetilde K_j^D, \ \ \ \ \ \ (\text{conventional}),\\
-&\eq 1+ \frac{1}{\varphi s_l \rho_w} \widehat K_j^D, \ \ \ \ \ \ (\text{(molality-based)}.
+&\eq 1+ \frac{1}{\varphi s_l \rho_w} \widehat K_j^D, \ \ \ \ \ \ (\text{molality-based}).
 \EA
 \end{subequations}
 
@@ -1166,7 +1166,7 @@ Three distinct models are available for the sorption isotherm $S_j$ in PFLOTRAN:
 \EQ\label{linkd}
 S_j \eq \varphi s_l K_j^D C_j \eq \widehat K_j^D m_j,
 \EN
-with coefficient $\widehat K_j^D$,
+with distribution coefficient $\widehat K_j^D$,
 \item Langmuir isotherm:
 \EQ\label{Langmuir}
 S_j\eq \frac{K_j^L b_j^L C_j/ \rho_w}{1+K_j^L C_j/ \rho_w} \eq \frac{K_j^L b_j^L m_j}{1+K_j^L m_j},
@@ -1174,7 +1174,7 @@ S_j\eq \frac{K_j^L b_j^L C_j/ \rho_w}{1+K_j^L C_j/ \rho_w} \eq \frac{K_j^L b_j^L
 with Langmuir coefficients $K_j^L$ and $b_j^L$, and
 \item Freundlich isotherm:
 \EQ\label{Freundlich}
-S_j \eq K_j^F \big(C_j/\rho_w \big)^{(1/n_j^F)} \eq K_j^F \big(m_j\big)^{(1/n_j^F)},
+S_j \eq K_j^F \left(\frac{C_j}{\rho_w}\right)^{(1/n_j^F)} \!\!\!\!\! \eq K_j^F \big(m_j\big)^{(1/n_j^F)},
 \EN
 with coefficients $K_j^F$ and $n_j^F$.
 \end{itemize}
