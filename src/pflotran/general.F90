@@ -2679,6 +2679,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   PetscReal :: min_pressure
   PetscReal :: scale, temp_scale, temp_real
   PetscReal, parameter :: tolerance = 0.99d0
+  PetscReal, parameter :: initial_scale = 1.d0
   PetscErrorCode :: ierr
   
   grid => realization%patch%grid
@@ -2695,7 +2696,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   call VecGetArrayF90(dX,dX_p,ierr)
   call VecGetArrayF90(X,X_p,ierr)
 
-  scale = 1.d0
+  scale = initial_scale
 
 #ifdef DEBUG_GENERAL
   cell_locator = 0
@@ -2746,7 +2747,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
           write(string2,*) -1.d0*del_liquid_pressure
           string = '  pressure change  : ' // adjustl(string2)
           call printMsg(option,string)
-          write(string2,*) temp_scale
+          write(string2,*) temp_real
           string = '          scaling  : ' // adjustl(string2)
           call printMsg(option,string)
 #endif
@@ -2921,11 +2922,10 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
                      MPI_DOUBLE_PRECISION, &
                      MPI_MIN,option%mycomm,ierr)
 
-  if (scale < 0.9999d0) then
+  if (scale < 0.9999d0*initial_scale) then
 #ifdef DEBUG_GENERAL
     string  = '++++++++++++++++++++++++++++++++++++++++++++++++++++++'
     call printMsg(option,string)
-print *, cell_locator
     write(string2,*) scale, (grid%nG2A(cell_locator(i)),i=1,cell_locator(0))
     string = 'Final scaling: : ' // adjustl(string2)
     call printMsg(option,string)
@@ -2973,7 +2973,9 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   use Realization_class
   use Grid_module
   use Field_module
+  use Patch_module
   use Option_module
+  use Material_Aux_class
  
   implicit none
   
@@ -2988,55 +2990,76 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   
   PetscReal, pointer :: X1_p(:)
   PetscReal, pointer :: dX_p(:)
-  PetscReal, pointer :: volume_p(:)
-  PetscReal, pointer :: porosity_loc_p(:)
   PetscReal, pointer :: r_p(:)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  type(general_auxvar_type), pointer :: gen_auxvars(:,:)
+  type(patch_type), pointer :: patch
+  type(general_auxvar_type), pointer :: general_auxvars(:,:)
   type(global_auxvar_type), pointer :: global_auxvars(:)  
+  class(material_auxvar_type), pointer :: material_auxvars(:)  
+  type(material_parameter_type), pointer :: material_parameter
   PetscInt :: local_id, ghosted_id
-  PetscReal :: Res(1)
-  PetscReal :: inf_norm
+  PetscInt :: offset , ival, idof
+  PetscReal :: Res(3)
+  PetscReal :: inf_norm(3)
+  PetscReal :: inf_norm_tol(3)
+  PetscMPIInt :: temp_int, temp_int2
   PetscErrorCode :: ierr
   
   grid => realization%patch%grid
   option => realization%option
   field => realization%field
-  gen_auxvars => realization%patch%aux%General%auxvars
-  global_auxvars => realization%patch%aux%Global%auxvars
+  patch => realization%patch
+  general_auxvars => patch%aux%General%auxvars
+  global_auxvars => patch%aux%Global%auxvars
+  material_auxvars => patch%aux%Material%auxvars
+  material_parameter => patch%aux%Material%material_parameter
   
   dX_changed = PETSC_FALSE
   X1_changed = PETSC_FALSE
   
-#if 0  
-  if (option%check_stomp_norm) then
-    call VecGetArrayF90(dP,dP_p,ierr)
-    call VecGetArrayF90(P1,P1_p,ierr)
+  inf_norm_tol(:) = 1.d-8
+  option%converged = PETSC_FALSE
+  if (option%check_post_convergence) then
+    call VecGetArrayF90(dX,dX_p,ierr)
+    call VecGetArrayF90(X1,X1_p,ierr)
     call VecGetArrayF90(field%flow_r,r_p,ierr)
-    
-    inf_norm = 0.d0
+    inf_norm(:) = 0.d0
     do local_id = 1, grid%nlmax
+      offset = (local_id-1)*option%nflowdof
       ghosted_id = grid%nL2G(local_id)
       if (realization%patch%imat(ghosted_id) <= 0) cycle
-    
-      call RichardsAccumulation(rich_auxvars(ghosted_id), &
-                                global_auxvars(ghosted_id), &
-                                porosity_loc_p(ghosted_id), &
-                                volume_p(local_id), &
-                                option,Res)
-      inf_norm = max(inf_norm,min(dabs(dP_p(local_id)/P1_p(local_id)), &
-                                  dabs(r_p(local_id)/Res(1))))
+      call GeneralAccumulation(general_auxvars(ZERO_INTEGER,ghosted_id), &
+                               global_auxvars(ghosted_id), &
+                               material_auxvars(ghosted_id), &
+                               material_parameter%soil_heat_capacity( &
+                                 patch%imat(ghosted_id)), &
+                               option,Res)
+      do idof = 1, option%nflowdof
+        ival = offset+idof
+        inf_norm(idof) = max(inf_norm(idof), &
+                             min(dabs(dX_p(ival)/X1_p(ival)), &
+                                 dabs(r_p(ival)/Res(idof))))
+      enddo
     enddo
-    call MPI_Allreduce(inf_norm,option%stomp_norm,ONE_INTEGER_MPI, &
-                       MPI_DOUBLE_PRECISION, &
-                       MPI_MAX,option%mycomm,ierr)
-    call VecGetArrayF90(dP,dP_p,ierr)
-    call VecGetArrayF90(P1,P1_p,ierr)
+    option%converged = PETSC_TRUE
+    do idof = 1, option%nflowdof
+      if (inf_norm(idof) > inf_norm_tol(idof)) option%converged = PETSC_FALSE
+    enddo
+    temp_int = 0
+    if (option%converged) temp_int = 1
+    call MPI_Allreduce(temp_int,temp_int2,ONE_INTEGER_MPI, &
+                       MPI_INTEGER,MPI_MIN,option%mycomm,ierr)
+    if (temp_int2 == 1) then
+      option%converged = PETSC_TRUE
+    else
+      option%converged = PETSC_FALSE
+    endif
+    call VecGetArrayF90(dX,dX_p,ierr)
+    call VecGetArrayF90(X1,X1_p,ierr)
     call VecGetArrayF90(field%flow_r,r_p,ierr)
   endif
-#endif  
   
 end subroutine GeneralCheckUpdatePost
 
