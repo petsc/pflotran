@@ -70,6 +70,7 @@ subroutine DatabaseRead(reaction,option)
   type(input_type), pointer :: input
   PetscInt :: iostat
   PetscInt :: num_nulls
+  PetscInt :: num_logKs
   
   surface_complexation => reaction%surface_complexation
   mineral => reaction%mineral
@@ -124,15 +125,21 @@ subroutine DatabaseRead(reaction,option)
   call InputReadPflotranString(input,option)
   ! remove comment
   call InputReadQuotedWord(input,option,name,PETSC_TRUE)
-  call InputReadInt(input,option,reaction%num_dbase_temperatures)
-  call InputErrorMsg(input,option,'Number of database temperatures','DATABASE')  
-  allocate(reaction%dbase_temperatures(reaction%num_dbase_temperatures))
-  reaction%dbase_temperatures = 0.d0 
+  call InputReadInt(input,option,num_logKs)
+  if (reaction%use_geothermal_hpt) then
+    reaction%num_dbase_parameters = num_logKs
+    call InputErrorMsg(input,option,'Number of database parameters','DATABASE')
+  else
+    reaction%num_dbase_temperatures = num_logKs
+    call InputErrorMsg(input,option,'Number of database temperatures','DATABASE')  
+    allocate(reaction%dbase_temperatures(reaction%num_dbase_temperatures))
+    reaction%dbase_temperatures = 0.d0 
    
-  do itemp = 1, reaction%num_dbase_temperatures
-    call InputReadDouble(input,option,reaction%dbase_temperatures(itemp))
-    call InputErrorMsg(input,option,'Database temperatures','DATABASE')            
-  enddo
+    do itemp = 1, reaction%num_dbase_temperatures
+      call InputReadDouble(input,option,reaction%dbase_temperatures(itemp))
+      call InputErrorMsg(input,option,'Database temperatures','DATABASE')            
+    enddo
+  endif
 
   num_nulls = 0
   null_name = 'null'
@@ -158,8 +165,13 @@ subroutine DatabaseRead(reaction,option)
     
     if (StringCompare(name,null_name,MAXWORDLENGTH)) then
       num_nulls = num_nulls + 1
-      if (num_nulls >= 5) exit
-      cycle
+      if (reaction%use_geothermal_hpt) then
+        if (num_nulls >= 4) exit
+        cycle
+      else
+        if (num_nulls >= 5) exit
+        cycle
+      endif
     endif
     
     select case(num_nulls)
@@ -251,7 +263,7 @@ subroutine DatabaseRead(reaction,option)
           cur_aq_spec%dbaserxn%spec_name = ''
           allocate(cur_aq_spec%dbaserxn%stoich(cur_aq_spec%dbaserxn%nspec))
           cur_aq_spec%dbaserxn%stoich = 0.d0
-          allocate(cur_aq_spec%dbaserxn%logK(reaction%num_dbase_temperatures))
+          allocate(cur_aq_spec%dbaserxn%logK(num_logKs))
           cur_aq_spec%dbaserxn%logK = 0.d0
           ! read in species and stoichiometries
           do ispec = 1, cur_aq_spec%dbaserxn%nspec
@@ -260,9 +272,9 @@ subroutine DatabaseRead(reaction,option)
             call InputReadQuotedWord(input,option,cur_aq_spec%dbaserxn%spec_name(ispec),PETSC_TRUE)
             call InputErrorMsg(input,option,'EQRXN species name','DATABASE')            
           enddo
-          do itemp = 1, reaction%num_dbase_temperatures
+          do itemp = 1, num_logKs
             call InputReadDouble(input,option,cur_aq_spec%dbaserxn%logK(itemp))
-            call InputErrorMsg(input,option,'EQRXN logKs','DATABASE')            
+            call InputErrorMsg(input,option,'EQRXN logKs','DATABASE') 
           enddo
         endif
         ! read the Debye-Huckel ion size parameter (a0)
@@ -310,7 +322,7 @@ subroutine DatabaseRead(reaction,option)
         cur_gas_spec%dbaserxn%spec_name = ''
         allocate(cur_gas_spec%dbaserxn%stoich(cur_gas_spec%dbaserxn%nspec))
         cur_gas_spec%dbaserxn%stoich = 0.d0
-        allocate(cur_gas_spec%dbaserxn%logK(reaction%num_dbase_temperatures))
+        allocate(cur_gas_spec%dbaserxn%logK(num_logKs))
         cur_gas_spec%dbaserxn%logK = 0.d0
         ! read in species and stoichiometries
         do ispec = 1, cur_gas_spec%dbaserxn%nspec
@@ -319,7 +331,7 @@ subroutine DatabaseRead(reaction,option)
           call InputReadQuotedWord(input,option,cur_gas_spec%dbaserxn%spec_name(ispec),PETSC_TRUE)
           call InputErrorMsg(input,option,'GAS species name','DATABASE')            
         enddo
-        do itemp = 1, reaction%num_dbase_temperatures
+        do itemp = 1, num_logKs
           call InputReadDouble(input,option,cur_gas_spec%dbaserxn%logK(itemp))
           call InputErrorMsg(input,option,'GAS logKs','DATABASE')            
         enddo
@@ -346,7 +358,7 @@ subroutine DatabaseRead(reaction,option)
         if (.not.found) cycle ! go to next line in database
         
         call MineralReadFromDatabase(cur_mineral, &
-                                     reaction%num_dbase_temperatures,input, &
+                                     num_logKs,input, &
                                      option)
       case(4) ! surface complexes
         cur_srfcplx => surface_complexation%complex_list
@@ -378,7 +390,7 @@ subroutine DatabaseRead(reaction,option)
         cur_srfcplx%dbaserxn%spec_name = ''
         allocate(cur_srfcplx%dbaserxn%stoich(cur_srfcplx%dbaserxn%nspec))
         cur_srfcplx%dbaserxn%stoich = 0.d0
-        allocate(cur_srfcplx%dbaserxn%logK(reaction%num_dbase_temperatures))
+        allocate(cur_srfcplx%dbaserxn%logK(num_logKs))
         cur_srfcplx%dbaserxn%logK = 0.d0
         ! read in species and stoichiometries
         ispec = 0
@@ -397,7 +409,7 @@ subroutine DatabaseRead(reaction,option)
             cur_srfcplx%dbaserxn%spec_name(ispec) = name
           endif
         enddo
-        do itemp = 1, reaction%num_dbase_temperatures
+        do itemp = 1, num_logKs
           call InputReadDouble(input,option,cur_srfcplx%dbaserxn%logK(itemp))
           call InputErrorMsg(input,option,'SURFACE COMPLEX logKs','DATABASE')            
         enddo
@@ -652,11 +664,13 @@ subroutine DatabaseRead(reaction,option)
                ') not found in database.'
       call printMsg(option)
     endif
-    if (.not.DatabaseCheckLegitimateLogKs(cur_aq_spec%dbaserxn, &
-                                          cur_aq_spec%name, &
-                                          reaction%dbase_temperatures, &
-                                          option)) then
-      logK_error_flag = PETSC_TRUE
+    if (.not.reaction%use_geothermal_hpt) then
+      if (.not.DatabaseCheckLegitimateLogKs(cur_aq_spec%dbaserxn, &
+                                            cur_aq_spec%name, &
+                                            reaction%dbase_temperatures, &
+                                            option)) then
+        logK_error_flag = PETSC_TRUE
+      endif
     endif
     cur_aq_spec => cur_aq_spec%next
   enddo
@@ -670,11 +684,13 @@ subroutine DatabaseRead(reaction,option)
                ') not found in database.'
       call printMsg(option)
     endif
-    if (.not.DatabaseCheckLegitimateLogKs(cur_aq_spec%dbaserxn, &
-                                          cur_aq_spec%name, &
-                                          reaction%dbase_temperatures, &
-                                          option)) then
-      logK_error_flag = PETSC_TRUE
+    if (.not.reaction%use_geothermal_hpt) then
+      if (.not.DatabaseCheckLegitimateLogKs(cur_aq_spec%dbaserxn, &
+                                            cur_aq_spec%name, &
+                                            reaction%dbase_temperatures, &
+                                            option)) then
+        logK_error_flag = PETSC_TRUE
+      endif
     endif
     cur_aq_spec => cur_aq_spec%next
   enddo  
@@ -687,11 +703,13 @@ subroutine DatabaseRead(reaction,option)
                          ') not found in database.'
       call printMsg(option)
     endif
-    if (.not.DatabaseCheckLegitimateLogKs(cur_gas_spec%dbaserxn, &
-                                          cur_gas_spec%name, &
-                                          reaction%dbase_temperatures, &
-                                          option)) then
-      logK_error_flag = PETSC_TRUE
+    if (.not.reaction%use_geothermal_hpt) then
+      if (.not.DatabaseCheckLegitimateLogKs(cur_gas_spec%dbaserxn, &
+                                            cur_gas_spec%name, &
+                                            reaction%dbase_temperatures, &
+                                            option)) then
+        logK_error_flag = PETSC_TRUE
+      endif
     endif
     cur_gas_spec => cur_gas_spec%next
   enddo  
@@ -704,11 +722,13 @@ subroutine DatabaseRead(reaction,option)
                ') not found in database.'
       call printMsg(option)
     endif
-    if (.not.DatabaseCheckLegitimateLogKs(cur_mineral%dbaserxn, &
-                                          cur_mineral%name, &
-                                          reaction%dbase_temperatures, &
-                                          option)) then
-      logK_error_flag = PETSC_TRUE
+    if (.not.reaction%use_geothermal_hpt) then
+      if (.not.DatabaseCheckLegitimateLogKs(cur_mineral%dbaserxn, &
+                                            cur_mineral%name, &
+                                            reaction%dbase_temperatures, &
+                                            option)) then
+        logK_error_flag = PETSC_TRUE
+      endif
     endif
     cur_mineral => cur_mineral%next
   enddo
@@ -721,11 +741,13 @@ subroutine DatabaseRead(reaction,option)
                 ') not found in database.'
       call printMsg(option)
     endif
-    if (.not.DatabaseCheckLegitimateLogKs(cur_srfcplx%dbaserxn, &
-                                          cur_srfcplx%name, &
-                                          reaction%dbase_temperatures, &
-                                          option)) then
-      logK_error_flag = PETSC_TRUE
+    if (.not.reaction%use_geothermal_hpt) then
+      if (.not.DatabaseCheckLegitimateLogKs(cur_srfcplx%dbaserxn, &
+                                            cur_srfcplx%name, &
+                                            reaction%dbase_temperatures, &
+                                            option)) then
+        logK_error_flag = PETSC_TRUE
+      endif
     endif
     cur_srfcplx => cur_srfcplx%next
   enddo  
@@ -855,12 +877,19 @@ subroutine BasisInit(reaction,option)
   PetscBool :: compute_new_basis
   PetscBool :: found
   PetscErrorCode :: ierr
+  PetscInt :: num_logKs
   
   surface_complexation => reaction%surface_complexation
   mineral => reaction%mineral
   microbial => reaction%microbial
   immobile => reaction%immobile
-  
+    
+  if (reaction%use_geothermal_hpt) then
+    num_logKs = reaction%num_dbase_parameters
+  else
+    num_logKs = reaction%num_dbase_temperatures
+  endif
+    
 ! get database temperature based on REFERENCE_TEMPERATURE
   if (option%reference_temperature <= 0.01d0) then
     reaction%debyeA = 0.4939d0 
@@ -956,30 +985,32 @@ subroutine BasisInit(reaction,option)
     reaction%debyeBdot = 0.d0
   endif
 
-  if (option%reference_temperature <= reaction%dbase_temperatures(1)) then
-    itemp_low = 1
-    itemp_high = 1
-    temp_low = reaction%dbase_temperatures(itemp_low)
-    temp_high = reaction%dbase_temperatures(itemp_high)
-  else if (option%reference_temperature > &
-           reaction%dbase_temperatures(reaction%num_dbase_temperatures)) then
-    itemp_low = reaction%num_dbase_temperatures
-    itemp_high = reaction%num_dbase_temperatures
-    temp_low = reaction%dbase_temperatures(itemp_low)
-    temp_high = reaction%dbase_temperatures(itemp_high)
-  else
-    do itemp = 1, reaction%num_dbase_temperatures-1
-      itemp_low = itemp
-      itemp_high = itemp+1
+  if (.not. reaction%use_geothermal_hpt) then
+    if (option%reference_temperature <= reaction%dbase_temperatures(1)) then
+      itemp_low = 1
+      itemp_high = 1
       temp_low = reaction%dbase_temperatures(itemp_low)
       temp_high = reaction%dbase_temperatures(itemp_high)
-      if (option%reference_temperature > temp_low .and. &
-          option%reference_temperature <= temp_high) then
-        exit
-      endif
-    enddo
+    else if (option%reference_temperature > &
+             reaction%dbase_temperatures(reaction%num_dbase_temperatures)) then
+      itemp_low = reaction%num_dbase_temperatures
+      itemp_high = reaction%num_dbase_temperatures
+      temp_low = reaction%dbase_temperatures(itemp_low)
+      temp_high = reaction%dbase_temperatures(itemp_high)
+    else
+      do itemp = 1, reaction%num_dbase_temperatures-1
+        itemp_low = itemp
+        itemp_high = itemp+1
+        temp_low = reaction%dbase_temperatures(itemp_low)
+        temp_high = reaction%dbase_temperatures(itemp_high)
+        if (option%reference_temperature > temp_low .and. &
+            option%reference_temperature <= temp_high) then
+          exit
+        endif
+      enddo
+    endif
   endif
-
+  
   reaction%naqcomp = GetPrimarySpeciesCount(reaction)
   reaction%neqcplx = GetSecondarySpeciesCount(reaction)
   reaction%ngas = GetGasCount(reaction)
@@ -1073,7 +1104,7 @@ subroutine BasisInit(reaction,option)
   allocate(gas_names(reaction%ngas))
   gas_names = ''
   
-  allocate(logKvector(reaction%num_dbase_temperatures,ncomp_secondary))
+  allocate(logKvector(num_logKs,ncomp_secondary))
   logKvector = 0.d0
   
   ! fill in names
@@ -1229,11 +1260,11 @@ subroutine BasisInit(reaction,option)
   enddo
   stoich_matrix = -1.d0*stoich_matrix
 
-  allocate(logKvector_swapped(reaction%num_dbase_temperatures,ncomp_secondary))
+  allocate(logKvector_swapped(num_logKs,ncomp_secondary))
   logKvector_swapped = 0.d0
   
   do j = 1, ncomp_secondary
-    do i = 1, reaction%num_dbase_temperatures
+    do i = 1, num_logKs
       logKvector_swapped(i,j) = logKvector_swapped(i,j) - &
         dot_product(sec_matrix_inverse(j,1:ncomp_secondary), &
                     logKvector(i,1:ncomp_secondary))
@@ -1280,7 +1311,7 @@ subroutine BasisInit(reaction,option)
     cur_sec_aq_spec%dbaserxn%spec_name = ''
     allocate(cur_sec_aq_spec%dbaserxn%spec_ids(cur_sec_aq_spec%dbaserxn%nspec))
     cur_sec_aq_spec%dbaserxn%spec_ids = 0
-    allocate(cur_sec_aq_spec%dbaserxn%logK(reaction%num_dbase_temperatures))
+    allocate(cur_sec_aq_spec%dbaserxn%logK(num_logKs))
     cur_sec_aq_spec%dbaserxn%logK = 0.d0
 
     ispec = 0
@@ -1321,7 +1352,7 @@ subroutine BasisInit(reaction,option)
     cur_gas_spec%dbaserxn%spec_name = ''
     allocate(cur_gas_spec%dbaserxn%spec_ids(cur_gas_spec%dbaserxn%nspec))
     cur_gas_spec%dbaserxn%spec_ids = 0
-    allocate(cur_gas_spec%dbaserxn%logK(reaction%num_dbase_temperatures))
+    allocate(cur_gas_spec%dbaserxn%logK(num_logKs))
     cur_gas_spec%dbaserxn%logK = 0.d0
 
     ispec = 0
@@ -1613,12 +1644,17 @@ subroutine BasisInit(reaction,option)
     allocate(reaction%eqcplx_logK(reaction%neqcplx))
     reaction%eqcplx_logK = 0.d0
 
-    if (option%use_isothermal) then
-      allocate(reaction%eqcplx_logKcoef(reaction%num_dbase_temperatures, &
-                                        reaction%neqcplx))
+    if (.not.reaction%use_geothermal_hpt) then
+      if (option%use_isothermal) then
+        allocate(reaction%eqcplx_logKcoef(reaction%num_dbase_temperatures, &
+                                          reaction%neqcplx))
+      else
+        allocate(reaction%eqcplx_logKcoef(FIVE_INTEGER,reaction%neqcplx))
+      endif
     else
-      allocate(reaction%eqcplx_logKcoef(FIVE_INTEGER,reaction%neqcplx))
+      allocate(reaction%eqcplx_logKcoef(num_logKs,reaction%neqcplx))
     endif
+    
     reaction%eqcplx_logKcoef = 0.d0
 
     allocate(reaction%eqcplx_Z(reaction%neqcplx))
@@ -1661,16 +1697,12 @@ subroutine BasisInit(reaction,option)
       enddo
       reaction%eqcplxspecid(0,isec_spec) = ispec
 
-      if (option%use_isothermal) then
-        call Interpolate(temp_high,temp_low,option%reference_temperature, &
-                    cur_sec_aq_spec%dbaserxn%logK(itemp_high), &
-                    cur_sec_aq_spec%dbaserxn%logK(itemp_low), &
-                    reaction%eqcplx_logK(isec_spec))
-      else
-        if (reaction%use_geothermal_hpt) then
-          call ReactionInitializeLogK_hpt(reaction%eqcplx_logKcoef(:,isec_spec), &
-                                          reaction%eqcplx_logK(isec_spec), &
-                                          option,reaction)        
+      if (.not.reaction%use_geothermal_hpt) then
+        if (option%use_isothermal) then
+          call Interpolate(temp_high,temp_low,option%reference_temperature, &
+                      cur_sec_aq_spec%dbaserxn%logK(itemp_high), &
+                      cur_sec_aq_spec%dbaserxn%logK(itemp_low), &
+                      reaction%eqcplx_logK(isec_spec))
         else
           call ReactionFitLogKCoef(reaction%eqcplx_logKcoef(:,isec_spec), &
                                    cur_sec_aq_spec%dbaserxn%logK, &
@@ -1681,6 +1713,12 @@ subroutine BasisInit(reaction,option)
                                       reaction%eqcplx_logK(isec_spec), &
                                       option,reaction)
         endif
+      else
+          reaction%eqcplx_logKcoef(:,isec_spec) = cur_sec_aq_spec%dbaserxn%logK
+          call ReactionInitializeLogK_hpt(reaction%eqcplx_logKcoef(:,isec_spec), &
+                                          reaction%eqcplx_logK(isec_spec), &
+                                          option,reaction)        
+    
       endif
 
       reaction%eqcplx_Z(isec_spec) = cur_sec_aq_spec%Z
@@ -1723,12 +1761,17 @@ subroutine BasisInit(reaction,option)
     reaction%eqgash2ostoich = 0.d0
     allocate(reaction%eqgas_logK(reaction%ngas))
     reaction%eqgas_logK = 0.d0
-    if (option%use_isothermal) then
-      allocate(reaction%eqgas_logKcoef(reaction%num_dbase_temperatures, &
-                                       reaction%ngas))
+    if (.not.reaction%use_geothermal_hpt) then
+      if (option%use_isothermal) then
+        allocate(reaction%eqgas_logKcoef(reaction%num_dbase_temperatures, &
+                                         reaction%ngas))
+      else
+        allocate(reaction%eqgas_logKcoef(FIVE_INTEGER,reaction%ngas))
+      endif
     else
-      allocate(reaction%eqgas_logKcoef(FIVE_INTEGER,reaction%ngas))
+      allocate(reaction%eqgas_logKcoef(num_logKs,reaction%ngas))
     endif
+    
     reaction%eqgas_logKcoef = 0.d0
 
     ! pack in reaction arrays
@@ -1758,17 +1801,13 @@ subroutine BasisInit(reaction,option)
       enddo
       reaction%eqgasspecid(0,igas_spec) = ispec
       
-      if (option%use_isothermal) then
-        reaction%eqgas_logKcoef(:,igas_spec) = cur_gas_spec%dbaserxn%logK
-        call Interpolate(temp_high,temp_low,option%reference_temperature, &
-                         cur_gas_spec%dbaserxn%logK(itemp_high), &
-                         cur_gas_spec%dbaserxn%logK(itemp_low), &
-                         reaction%eqgas_logK(igas_spec))
-      else
-        if (reaction%use_geothermal_hpt) then
-          call ReactionInitializeLogK_hpt(reaction%eqgas_logKcoef(:,igas_spec), &
-                                          reaction%eqgas_logK(igas_spec), &
-                                          option,reaction)  
+      if (.not.reaction%use_geothermal_hpt) then
+        if (option%use_isothermal) then
+          reaction%eqgas_logKcoef(:,igas_spec) = cur_gas_spec%dbaserxn%logK
+          call Interpolate(temp_high,temp_low,option%reference_temperature, &
+                           cur_gas_spec%dbaserxn%logK(itemp_high), &
+                           cur_gas_spec%dbaserxn%logK(itemp_low), &
+                           reaction%eqgas_logK(igas_spec))
         else
           call ReactionFitLogKCoef(reaction%eqgas_logKcoef(:,igas_spec), &
                                    cur_gas_spec%dbaserxn%logK, &
@@ -1779,6 +1818,11 @@ subroutine BasisInit(reaction,option)
                                       reaction%eqgas_logK(igas_spec), &
                                       option,reaction)
         endif
+      else
+          reaction%eqgas_logKcoef(:,igas_spec) = cur_gas_spec%dbaserxn%logK
+          call ReactionInitializeLogK_hpt(reaction%eqgas_logKcoef(:,igas_spec), &
+                                          reaction%eqgas_logK(igas_spec), &
+                                          option,reaction)  
       endif
   
       igas_spec = igas_spec + 1
@@ -1878,12 +1922,17 @@ subroutine BasisInit(reaction,option)
     mineral%mnrl_logK = 0.d0
     allocate(mineral%mnrl_print(mineral%nmnrl))
     mineral%mnrl_print = PETSC_FALSE
-    if (option%use_isothermal) then
-      allocate(mineral%mnrl_logKcoef(reaction%num_dbase_temperatures, &
-                                      mineral%nmnrl))
+    if (.not.reaction%use_geothermal_hpt) then
+      if (option%use_isothermal) then
+        allocate(mineral%mnrl_logKcoef(reaction%num_dbase_temperatures, &
+                                        mineral%nmnrl))
+      else
+        allocate(mineral%mnrl_logKcoef(FIVE_INTEGER,mineral%nmnrl))
+      endif
     else
-      allocate(mineral%mnrl_logKcoef(FIVE_INTEGER,mineral%nmnrl))
+      allocate(mineral%mnrl_logKcoef(num_logKs,mineral%nmnrl))
     endif
+    
     reaction%mineral%mnrl_logKcoef = 0.d0
 
     if (mineral%nkinmnrl > 0) then
@@ -1913,12 +1962,17 @@ subroutine BasisInit(reaction,option)
       mineral%kinmnrlh2ostoich = 0.d0
       allocate(mineral%kinmnrl_logK(mineral%nkinmnrl))
       mineral%kinmnrl_logK = 0.d0
-      if (option%use_isothermal) then
-        allocate(mineral%kinmnrl_logKcoef(reaction%num_dbase_temperatures, &
-                                           mineral%nkinmnrl))
+      if (.not.reaction%use_geothermal_hpt) then
+        if (option%use_isothermal) then
+          allocate(mineral%kinmnrl_logKcoef(reaction%num_dbase_temperatures, &
+                                             mineral%nkinmnrl))
+        else
+          allocate(mineral%kinmnrl_logKcoef(FIVE_INTEGER,mineral%nkinmnrl))
+        endif
       else
-        allocate(mineral%kinmnrl_logKcoef(FIVE_INTEGER,mineral%nkinmnrl))
+        allocate(mineral%kinmnrl_logKcoef(num_logKs,mineral%nkinmnrl))
       endif
+      
       mineral%kinmnrl_logKcoef = 0.d0
 
       ! TST Rxn variables
@@ -2127,16 +2181,12 @@ subroutine BasisInit(reaction,option)
       enddo
       mineral%mnrlspecid(0,imnrl) = ispec
 
-      if (option%use_isothermal) then
-        call Interpolate(temp_high,temp_low,option%reference_temperature, &
-                         cur_mineral%dbaserxn%logK(itemp_high), &
-                         cur_mineral%dbaserxn%logK(itemp_low), &
-                         mineral%mnrl_logK(imnrl))
-      else
-        if (reaction%use_geothermal_hpt) then
-          call ReactionInitializeLogK_hpt(mineral%mnrl_logKcoef(:,imnrl), &
-                                          mineral%mnrl_logK(imnrl), &
-                                          option,reaction)      
+      if (.not.reaction%use_geothermal_hpt) then
+        if (option%use_isothermal) then
+          call Interpolate(temp_high,temp_low,option%reference_temperature, &
+                           cur_mineral%dbaserxn%logK(itemp_high), &
+                           cur_mineral%dbaserxn%logK(itemp_low), &
+                           mineral%mnrl_logK(imnrl))
         else
           call ReactionFitLogKCoef(mineral%mnrl_logKcoef(:,imnrl), &
                                    cur_mineral%dbaserxn%logK, &
@@ -2147,6 +2197,11 @@ subroutine BasisInit(reaction,option)
                                       mineral%mnrl_logK(imnrl), &
                                       option,reaction)
         endif
+      else
+        mineral%mnrl_logKcoef(:,imnrl) = cur_mineral%dbaserxn%logK
+        call ReactionInitializeLogK_hpt(mineral%mnrl_logKcoef(:,imnrl), &
+                                        mineral%mnrl_logK(imnrl), &
+                                        option,reaction)      
       endif
 
       ! geh - for now, the user must specify they want each individual
@@ -2161,16 +2216,12 @@ subroutine BasisInit(reaction,option)
         mineral%kinmnrlh2oid(ikinmnrl) = mineral%mnrlh2oid(imnrl)
         mineral%kinmnrlh2ostoich(ikinmnrl) = mineral%mnrlh2ostoich(imnrl)
 
-        if (option%use_isothermal) then
-          call Interpolate(temp_high,temp_low,option%reference_temperature, &
-                           cur_mineral%dbaserxn%logK(itemp_high), &
-                           cur_mineral%dbaserxn%logK(itemp_low), &
-                           mineral%kinmnrl_logK(ikinmnrl))
-        else
-          if (reaction%use_geothermal_hpt) then
-            call ReactionInitializeLogK_hpt(mineral%kinmnrl_logKcoef(:,ikinmnrl), &
-                                            mineral%kinmnrl_logK(ikinmnrl), &
-                                            option,reaction)        
+        if (.not.reaction%use_geothermal_hpt) then
+          if (option%use_isothermal) then
+            call Interpolate(temp_high,temp_low,option%reference_temperature, &
+                             cur_mineral%dbaserxn%logK(itemp_high), &
+                             cur_mineral%dbaserxn%logK(itemp_low), &
+                             mineral%kinmnrl_logK(ikinmnrl))
           else
             call ReactionFitLogKCoef(mineral%kinmnrl_logKcoef(:,ikinmnrl), &
                                      cur_mineral%dbaserxn%logK, &
@@ -2181,6 +2232,11 @@ subroutine BasisInit(reaction,option)
                                         mineral%kinmnrl_logK(ikinmnrl), &
                                         option,reaction)
           endif
+        else
+          mineral%kinmnrl_logKcoef(:,ikinmnrl) = cur_mineral%dbaserxn%logK
+          call ReactionInitializeLogK_hpt(mineral%kinmnrl_logKcoef(:,ikinmnrl), &
+                                          mineral%kinmnrl_logK(ikinmnrl), &
+                                          option,reaction)        
         endif
 
         tstrxn => cur_mineral%tstrxn
@@ -2380,13 +2436,18 @@ subroutine BasisInit(reaction,option)
     allocate(surface_complexation%srfcplx_logK(icount))
     surface_complexation%srfcplx_logK = 0.d0
     
-    if (option%use_isothermal) then
-      allocate(surface_complexation%srfcplx_logKcoef(reaction% &
-                                                   num_dbase_temperatures, &
-                                                   icount))
+    if (.not.reaction%use_geothermal_hpt) then
+      if (option%use_isothermal) then
+        allocate(surface_complexation%srfcplx_logKcoef(reaction% &
+                                                     num_dbase_temperatures, &
+                                                     icount))
+      else
+        allocate(surface_complexation%srfcplx_logKcoef(FIVE_INTEGER,icount))
+      endif
     else
-      allocate(surface_complexation%srfcplx_logKcoef(FIVE_INTEGER,icount))
+      allocate(surface_complexation%srfcplx_logKcoef(num_logKs,icount))
     endif
+    
     surface_complexation%srfcplx_logKcoef = 0.d0
     
     allocate(surface_complexation%srfcplx_Z(icount))
@@ -2430,16 +2491,12 @@ subroutine BasisInit(reaction,option)
       enddo
       surface_complexation%srfcplxspecid(0,isrfcplx) = ispec
       
-      if (option%use_isothermal) then
-        call Interpolate(temp_high,temp_low,option%reference_temperature, &
-                          cur_srfcplx%dbaserxn%logK(itemp_high), &
-                          cur_srfcplx%dbaserxn%logK(itemp_low), &
-                          surface_complexation%srfcplx_logK(isrfcplx))
-      else
-        if (reaction%use_geothermal_hpt) then
-          call ReactionInitializeLogK_hpt(surface_complexation%srfcplx_logKcoef(:,isrfcplx), &
-                                          surface_complexation%srfcplx_logK(isrfcplx), &
-                                          option,reaction)
+      if (.not.reaction%use_geothermal_hpt) then
+        if (option%use_isothermal) then
+          call Interpolate(temp_high,temp_low,option%reference_temperature, &
+                            cur_srfcplx%dbaserxn%logK(itemp_high), &
+                            cur_srfcplx%dbaserxn%logK(itemp_low), &
+                            surface_complexation%srfcplx_logK(isrfcplx))
         else
           call ReactionFitLogKCoef(surface_complexation%srfcplx_logKcoef(:,isrfcplx),&
                                    cur_srfcplx%dbaserxn%logK, &
@@ -2450,6 +2507,11 @@ subroutine BasisInit(reaction,option)
                                       surface_complexation%srfcplx_logK(isrfcplx), &
                                       option,reaction)
         endif
+      else
+        surface_complexation%srfcplx_logKcoef(:,isrfcplx) = cur_srfcplx%dbaserxn%logK
+        call ReactionInitializeLogK_hpt(surface_complexation%srfcplx_logKcoef(:,isrfcplx), &
+                                        surface_complexation%srfcplx_logK(isrfcplx), &
+                                        option,reaction)
       endif
 
       surface_complexation%srfcplx_Z(isrfcplx) = cur_srfcplx%Z
@@ -2611,11 +2673,17 @@ subroutine BasisInit(reaction,option)
             if (surface_complexation%kinsrfcplx_backward_rate(isrfcplx, &
                   surface_complexation%nkinsrfcplxrxn) < -998.d0) then
               ! backward rate will be calculated based on Kb = Kf * Keq
+              if (.not.reaction%use_geothermal_hpt) then
               call Interpolate(temp_high,temp_low, &
                                option%reference_temperature, &
                                cur_srfcplx%dbaserxn%logK(itemp_high), &
                                cur_srfcplx%dbaserxn%logK(itemp_low), &
                                value)
+              else
+                call ReactionInitializeLogK_hpt(surface_complexation%srfcplx_logKcoef(:,isrfcplx), &
+                                        surface_complexation%srfcplx_logK(isrfcplx), &
+                                        option,reaction)
+              endif
               surface_complexation%kinsrfcplx_backward_rate(isrfcplx, &
                 surface_complexation%nkinsrfcplxrxn) = 10.d0**value * &
                                                        cur_srfcplx%forward_rate
@@ -3903,7 +3971,7 @@ subroutine BasisPrint(reaction,title,option)
                           cur_aq_spec%dbaserxn%spec_name(ispec)
         enddo
         if (reaction%use_geothermal_hpt)then
-          write(option%fid_out,130) '      logKCoeff(PT):', (cur_aq_spec%dbaserxn%logKCoeff_hpt(itemp),&
+          write(option%fid_out,130) '      logKCoeff(PT):', (cur_aq_spec%dbaserxn%logK(itemp),&
                                      itemp=1, reaction%num_dbase_parameters)
         else
           write(option%fid_out,130) '      logK:', (cur_aq_spec%dbaserxn%logK(itemp),itemp=1, &
@@ -3963,7 +4031,7 @@ subroutine BasisPrint(reaction,title,option)
 #endif          
         enddo
         if (reaction%use_geothermal_hpt)then
-          write(option%fid_out,130) '      logKCoeff(PT):', (cur_aq_spec%dbaserxn%logKCoeff_hpt(itemp),&
+          write(option%fid_out,130) '      logKCoeff(PT):', (cur_aq_spec%dbaserxn%logK(itemp),&
                                    itemp=1, reaction%num_dbase_parameters)
 
         else
@@ -4004,7 +4072,7 @@ subroutine BasisPrint(reaction,title,option)
                           cur_gas_spec%dbaserxn%spec_name(ispec)
         enddo
         if (reaction%use_geothermal_hpt)then
-           write(option%fid_out,130) '      logKCoeff(PT):', (cur_gas_spec%dbaserxn%logKCoeff_hpt(itemp),&
+           write(option%fid_out,130) '      logKCoeff(PT):', (cur_gas_spec%dbaserxn%logK(itemp),&
                                      itemp=1, reaction%num_dbase_parameters)
 
         else
@@ -4037,7 +4105,7 @@ subroutine BasisPrint(reaction,title,option)
                           cur_mineral%dbaserxn%spec_name(ispec)
         enddo
         if (reaction%use_geothermal_hpt)then
-          write(option%fid_out,130) '      logKCoeff(PT):', (cur_mineral%dbaserxn%logKCoeff_hpt(itemp),&
+          write(option%fid_out,130) '      logKCoeff(PT):', (cur_mineral%dbaserxn%logK(itemp),&
                                     itemp=1, reaction%num_dbase_parameters)
         else        
           write(option%fid_out,130) '      logK:', (cur_mineral%dbaserxn%logK(itemp),itemp=1, &
@@ -4073,7 +4141,7 @@ subroutine BasisPrint(reaction,title,option)
           enddo
           if (reaction%use_geothermal_hpt)then
             write(option%fid_out,130) '      logKCoeff(PT):', &
-              (cur_srfcplx%dbaserxn%logKCoeff_hpt(itemp),&
+              (cur_srfcplx%dbaserxn%logK(itemp),&
                itemp=1, reaction%num_dbase_parameters)
           else        
             write(option%fid_out,130) '      logK:', &
