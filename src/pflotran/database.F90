@@ -1819,7 +1819,7 @@ subroutine BasisInit(reaction,option)
                                       option,reaction)
         endif
       else
-          reaction%eqgas_logKcoef(:,isec_spec) = cur_gas_spec%dbaserxn%logK
+          reaction%eqgas_logKcoef(:,igas_spec) = cur_gas_spec%dbaserxn%logK
           call ReactionInitializeLogK_hpt(reaction%eqgas_logKcoef(:,igas_spec), &
                                           reaction%eqgas_logK(igas_spec), &
                                           option,reaction)  
@@ -2508,6 +2508,7 @@ subroutine BasisInit(reaction,option)
                                       option,reaction)
         endif
       else
+        surface_complexation%srfcplx_logKcoef(:,isrfcplx) = cur_srfcplx%dbaserxn%logK
         call ReactionInitializeLogK_hpt(surface_complexation%srfcplx_logKcoef(:,isrfcplx), &
                                         surface_complexation%srfcplx_logK(isrfcplx), &
                                         option,reaction)
