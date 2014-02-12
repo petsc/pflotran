@@ -2518,7 +2518,6 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   SNESLineSearch :: line_search
   Vec :: X
   Vec :: dX
-  ! ignore changed flag for now.
   PetscBool :: changed
   type(realization_type) :: realization
   
@@ -2572,6 +2571,8 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
 
   scale = initial_scale
 
+  changed = PETSC_TRUE
+
 #ifdef DEBUG_GENERAL
   cell_locator = 0
 #endif
@@ -2587,6 +2588,8 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
 #endif
     select case(global_auxvars(ghosted_id)%istate)
       case(LIQUID_STATE)
+        dX_p(liquid_pressure_index) = dX_p(liquid_pressure_index) * &
+                                      general_pressure_scale
         temp_scale = 1.d0
         liquid_pressure_index  = offset + 1
         temperature_index  = offset + 3
@@ -2653,6 +2656,11 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
           temp_scale = min(temp_scale,temp_real)
         endif
       case(TWO_PHASE_STATE)
+        dX_p(gas_pressure_index) = dX_p(gas_pressure_index) * &
+                                   general_pressure_scale
+        dX_p(air_pressure_index) = dX_p(air_pressure_index) * &
+                                   general_pressure_scale
+        temp_scale = 1.d0
         temp_scale = 1.d0
         gas_pressure_index = offset + 1
         air_pressure_index = offset + 2
@@ -2787,6 +2795,11 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
 #endif
           temp_scale = min(temp_scale,temp_real)
         endif
+      case(GAS_STATE) 
+        dX_p(gas_pressure_index) = dX_p(gas_pressure_index) * &
+                                   general_pressure_scale
+        dX_p(air_pressure_index) = dX_p(air_pressure_index) * &
+                                   general_pressure_scale
     end select
     scale = min(scale,temp_scale) 
   enddo

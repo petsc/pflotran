@@ -55,7 +55,7 @@ module General_Aux_module
              GENERAL_GAS_PRESSURE_INDEX, GENERAL_AIR_PRESSURE_INDEX, &
              GENERAL_GAS_SATURATION_INDEX],shape(dof_to_primary_variable))
 
-  PetscReal, parameter, public :: general_pressure_scale = 1.d6
+  PetscReal, parameter, public :: general_pressure_scale = 1.d0
   
   type, public :: general_auxvar_type
     PetscInt :: istate_store(2) ! 1 = previous timestep; 2 = previous iteration
@@ -795,7 +795,18 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
 #endif
 
   enddo
-  
+
+  select case(global_auxvar%istate)
+    case(LIQUID_STATE)
+      gen_auxvar(GENERAL_LIQUID_PRESSURE_DOF)%pert = &
+        gen_auxvar(GENERAL_LIQUID_PRESSURE_DOF)%pert / general_pressure_scale
+    case(TWO_PHASE_STATE,GAS_STATE)
+      gen_auxvar(GENERAL_GAS_PRESSURE_DOF)%pert = &
+        gen_auxvar(GENERAL_GAS_PRESSURE_DOF)%pert / general_pressure_scale
+      gen_auxvar(GENERAL_AIR_PRESSURE_DOF)%pert = &
+        gen_auxvar(GENERAL_AIR_PRESSURE_DOF)%pert / general_pressure_scale
+  end select
+ 
 end subroutine GeneralAuxVarPerturb
 
 ! ************************************************************************** !
