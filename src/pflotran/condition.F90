@@ -1406,6 +1406,13 @@ subroutine FlowConditionGeneralRead(condition,input,option)
             endif
             sub_condition_ptr%dataset%rarray(:) = 1.d0 - &
               sub_condition_ptr%dataset%rarray(:)
+          case('LIQUID_PRESSURE','GAS_PRESSURE')
+            if (associated(sub_condition_ptr%dataset%rbuffer)) then
+              sub_condition_ptr%dataset%rbuffer(:) = &
+                sub_condition_ptr%dataset%rbuffer(:) / general_pressure_scale
+            endif
+            sub_condition_ptr%dataset%rarray(:) = &
+              sub_condition_ptr%dataset%rarray(:) / general_pressure_scale
         end select
       case default
         option%io_buffer = 'Keyword: ' // trim(word) // &

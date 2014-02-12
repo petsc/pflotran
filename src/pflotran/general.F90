@@ -881,134 +881,6 @@ end subroutine GeneralNumericalJacTest
 
 ! ************************************************************************** !
 
-subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
-                                material_auxvar, &
-                                saturation_function,ghosted_id, &
-                                option)
-  ! 
-  ! Calculates auxiliary variables for perturbed system
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/09/11
-  ! 
-
-  use Option_module
-  use Saturation_Function_module
-  use Material_Aux_class
-
-  implicit none
-
-  type(option_type) :: option
-  PetscInt :: ghosted_id
-  type(general_auxvar_type) :: gen_auxvar(0:)
-  type(global_auxvar_type) :: global_auxvar
-  class(material_auxvar_type) :: material_auxvar
-  type(saturation_function_type) :: saturation_function
-     
-  PetscReal :: x(option%nflowdof), x_pert(option%nflowdof), &
-               pert(option%nflowdof), x_pert_save(option%nflowdof)
-  PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
-  PetscReal, parameter :: perturbation_tolerance = 1.d-5
-  PetscInt :: idof
-
-#ifdef DEBUG_GENERAL
-  character(len=MAXWORDLENGTH) :: word
-  type(global_auxvar_type) :: global_auxvar_debug
-  type(general_auxvar_type) :: general_auxvar_debug
-  call GlobalAuxVarInit(global_auxvar_debug,option)
-  call GeneralAuxVarInit(general_auxvar_debug,option)
-#endif
-
-  select case(global_auxvar%istate)
-    case(LIQUID_STATE)
-       x(GENERAL_LIQUID_PRESSURE_DOF) = &
-         gen_auxvar(ZERO_INTEGER)%pres(option%liquid_phase)
-       x(GENERAL_LIQUID_STATE_X_MOLE_DOF) = &
-         gen_auxvar(ZERO_INTEGER)%xmol(option%air_id,option%liquid_phase)
-       x(GENERAL_LIQUID_STATE_ENERGY_DOF) = &
-         gen_auxvar(ZERO_INTEGER)%temp
-       pert(GENERAL_LIQUID_PRESSURE_DOF) = 1.d0
-       pert(GENERAL_LIQUID_STATE_X_MOLE_DOF) = &
-         -1.d0*perturbation_tolerance*x(GENERAL_LIQUID_STATE_X_MOLE_DOF)
-       pert(GENERAL_LIQUID_STATE_ENERGY_DOF) = &
-         -1.d0*perturbation_tolerance*x(GENERAL_LIQUID_STATE_ENERGY_DOF)
-    case(GAS_STATE)
-       x(GENERAL_GAS_PRESSURE_DOF) = &
-         gen_auxvar(ZERO_INTEGER)%pres(option%gas_phase)
-       x(GENERAL_AIR_PRESSURE_DOF) = &
-         gen_auxvar(ZERO_INTEGER)%pres(option%air_pressure_id)
-       x(GENERAL_GAS_STATE_ENERGY_DOF) = gen_auxvar(ZERO_INTEGER)%temp
-       ! gas pressure [p(g)] must always be perturbed down as p(v) = p(g) - p(a)
-       ! and p(v) >= Psat (i.e. an increase in p(v)) results in two phase.
-       pert(GENERAL_GAS_PRESSURE_DOF) = -1.d0
-       if (x(GENERAL_GAS_PRESSURE_DOF) - x(GENERAL_AIR_PRESSURE_DOF) > &
-           1.d0) then 
-         pert(GENERAL_AIR_PRESSURE_DOF) = 1.d0
-       else
-         pert(GENERAL_AIR_PRESSURE_DOF) = -1.d0
-       endif
-       pert(GENERAL_GAS_STATE_ENERGY_DOF) = perturbation_tolerance * &
-                                            x(GENERAL_GAS_STATE_ENERGY_DOF)
-    case(TWO_PHASE_STATE)
-       x(GENERAL_GAS_PRESSURE_DOF) = &
-         gen_auxvar(ZERO_INTEGER)%pres(option%gas_phase)
-       x(GENERAL_AIR_PRESSURE_DOF) = &
-         gen_auxvar(ZERO_INTEGER)%pres(option%air_pressure_id)
-       x(GENERAL_GAS_SATURATION_DOF) = &
-         gen_auxvar(ZERO_INTEGER)%sat(option%gas_phase)
-       pert(GENERAL_GAS_PRESSURE_DOF) = 1.d0
-       if (x(GENERAL_GAS_PRESSURE_DOF) - x(GENERAL_AIR_PRESSURE_DOF) > &
-           1.d0) then 
-         pert(GENERAL_AIR_PRESSURE_DOF) = 1.d0
-       else
-         pert(GENERAL_AIR_PRESSURE_DOF) = -1.d0
-       endif
-       if (x(GENERAL_GAS_SATURATION_DOF) > 0.5d0) then 
-         pert(GENERAL_GAS_SATURATION_DOF) = -perturbation_tolerance * &
-                                              x(GENERAL_GAS_SATURATION_DOF)
-       else
-         pert(GENERAL_GAS_SATURATION_DOF) = perturbation_tolerance * &
-                                              x(GENERAL_GAS_SATURATION_DOF)
-       endif
-  end select
-  
-  ! flag(-1) indicates call from perturbation routine - for debugging
-  option%iflag = -1
-  do idof = 1, option%nflowdof
-    gen_auxvar(idof)%pert = pert(idof)
-    x_pert = x
-    x_pert(idof) = x(idof) + pert(idof)
-    x_pert_save = x_pert
-    call GeneralAuxVarCompute(x_pert,gen_auxvar(idof),global_auxvar, &
-                              material_auxvar, &
-                              saturation_function,ghosted_id,option)
-#ifdef DEBUG_GENERAL
-    call GlobalAuxVarCopy(global_auxvar,global_auxvar_debug,option)
-    call GeneralAuxVarCopy(gen_auxvar(idof),general_auxvar_debug,option)
-    call GeneralAuxVarUpdateState(x_pert,general_auxvar_debug, &
-                                  global_auxvar_debug, &
-                                  material_auxvar, &
-                                  saturation_function, &
-                                  ghosted_id,option)
-    if (global_auxvar%istate /= global_auxvar_debug%istate) then
-      write(option%io_buffer, &
-            &'(''Change in state due to perturbation: '',i3,'' -> '',i3, &
-            &'' at cell '',i3,'' for dof '',i3)') &
-        global_auxvar%istate, global_auxvar_debug%istate, ghosted_id, idof
-      call printMsg(option)
-      write(option%io_buffer,'(''orig: '',6es17.8)') x(1:3)
-      call printMsg(option)
-      write(option%io_buffer,'(''pert: '',6es17.8)') x_pert_save(1:3)
-      call printMsg(option)
-    endif
-#endif
-
-  enddo
-  
-end subroutine GeneralAuxVarPerturb
-
-! ************************************************************************** !
-
 subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
                                soil_heat_capacity,option,Res)
   ! 
@@ -1228,8 +1100,8 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
                      (1.D0-upweight)*gen_auxvar_dn%den(iphase)) &
                      * fmw_phase(iphase) * dist_gravity 
 
-      delta_pressure = gen_auxvar_up%pres(iphase) - &
-                       gen_auxvar_dn%pres(iphase) + &
+      delta_pressure = (gen_auxvar_up%pres(iphase) - &
+                        gen_auxvar_dn%pres(iphase)) * general_pressure_scale + &
                        gravity_term
 
       if (delta_pressure >= 0.D0) then
@@ -1308,8 +1180,9 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
       else
         temp_ave = upweight_adj*gen_auxvar_up%temp + &
                    (1.d0-upweight_adj)*gen_auxvar_dn%temp
-        pressure_ave = upweight_adj*gen_auxvar_up%pres(iphase)+ &
-                      (1.D0-upweight_adj)*gen_auxvar_dn%pres(iphase)
+        pressure_ave = (upweight_adj*gen_auxvar_up%pres(iphase)+ &
+                        (1.D0-upweight_adj)*gen_auxvar_dn%pres(iphase)) * &
+                       general_pressure_scale
         ! Eq. 1.9b.  The gas density is added below
         v_air = stp_ave * &
                 ((temp_ave+273.15)/273.15d0)**theta * &
@@ -1539,15 +1412,17 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
                     (1.D0-upweight)*gen_auxvar_dn%den(iphase)) &
                     * fmw_phase(iphase) * dist_gravity 
 
-          delta_pressure = gen_auxvar_up%pres(iphase) - &
-                 gen_auxvar_dn%pres(iphase) + &
-                 gravity
+          delta_pressure = (gen_auxvar_up%pres(iphase) - &
+                            gen_auxvar_dn%pres(iphase)) * &
+                            general_pressure_scale + &
+                           gravity
 
           if (bc_type == SEEPAGE_BC .or. &
               bc_type == CONDUCTANCE_BC) then
                 ! flow in         ! boundary cell is <= pref
             if (delta_pressure > 0.d0 .and. &
-                gen_auxvar_up%pres(iphase)-option%reference_pressure < eps) then
+                gen_auxvar_up%pres(iphase)*general_pressure_scale - &
+                 option%reference_pressure < eps) then
               delta_pressure = 0.d0
             endif
           endif
@@ -1662,7 +1537,8 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
         ! Eq. 1.9b.  The gas density is added below
         v_air = stp_ave * &
                 (temp_ave/273.15d0)**theta * &
-                option%reference_pressure / gen_auxvar_dn%pres(iphase) * &
+                option%reference_pressure / &
+                (gen_auxvar_dn%pres(iphase) * general_pressure_scale) * &
                 general_parameter%diffusion_coefficient(iphase) * delta_xmol      
       endif
       q =  v_air * area
