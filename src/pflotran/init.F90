@@ -3071,10 +3071,10 @@ subroutine assignMaterialPropToRegions(realization)
           perm_xy_p(local_id) = material_property%permeability(1,2)
           perm_yz_p(local_id) = material_property%permeability(2,3)
         endif
-        if (associated(material_auxvars)) then
-          call MaterialAssignPropertyToAux(material_auxvars(ghosted_id), &
-                                           material_property,option)
-        endif
+      endif
+      if (associated(material_auxvars)) then
+        call MaterialAssignPropertyToAux(material_auxvars(ghosted_id), &
+                                         material_property,option)
       endif
       por0_p(local_id) = material_property%porosity
       tor0_p(local_id) = material_property%tortuosity
