@@ -55,7 +55,7 @@ module General_Aux_module
              GENERAL_GAS_PRESSURE_INDEX, GENERAL_AIR_PRESSURE_INDEX, &
              GENERAL_GAS_SATURATION_INDEX],shape(dof_to_primary_variable))
 
-  PetscReal, parameter, public :: general_pressure_scale = 1.d0
+  PetscReal, parameter, public :: general_pressure_scale = 1.d6
   
   type, public :: general_auxvar_type
     PetscInt :: istate_store(2) ! 1 = previous timestep; 2 = previous iteration
@@ -682,6 +682,7 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
      
   PetscReal :: x(option%nflowdof), x_pert(option%nflowdof), &
                pert(option%nflowdof), x_pert_save(option%nflowdof)
+
   PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
   PetscReal, parameter :: perturbation_tolerance = 1.d-5
   PetscInt :: idof
@@ -705,7 +706,8 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
        ! if the liquid state, the liquid pressure will always be greater
        ! than zero.
        pert(GENERAL_LIQUID_PRESSURE_DOF) = &
-         perturbation_tolerance*x(GENERAL_LIQUID_PRESSURE_DOF)
+         max(perturbation_tolerance*x(GENERAL_LIQUID_PRESSURE_DOF), &
+             perturbation_tolerance)
        pert(GENERAL_LIQUID_STATE_X_MOLE_DOF) = &
          -1.d0*perturbation_tolerance*x(GENERAL_LIQUID_STATE_X_MOLE_DOF)
        pert(GENERAL_LIQUID_STATE_ENERGY_DOF) = &

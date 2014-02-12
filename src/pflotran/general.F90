@@ -1100,8 +1100,8 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
                      (1.D0-upweight)*gen_auxvar_dn%den(iphase)) &
                      * fmw_phase(iphase) * dist_gravity 
 
-      delta_pressure = (gen_auxvar_up%pres(iphase) - &
-                        gen_auxvar_dn%pres(iphase)) * general_pressure_scale + &
+      delta_pressure = gen_auxvar_up%pres(iphase) - &
+                       gen_auxvar_dn%pres(iphase) + &
                        gravity_term
 
       if (delta_pressure >= 0.D0) then
@@ -1180,9 +1180,8 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
       else
         temp_ave = upweight_adj*gen_auxvar_up%temp + &
                    (1.d0-upweight_adj)*gen_auxvar_dn%temp
-        pressure_ave = (upweight_adj*gen_auxvar_up%pres(iphase)+ &
-                        (1.D0-upweight_adj)*gen_auxvar_dn%pres(iphase)) * &
-                       general_pressure_scale
+        pressure_ave = upweight_adj*gen_auxvar_up%pres(iphase)+ &
+                       (1.D0-upweight_adj)*gen_auxvar_dn%pres(iphase)
         ! Eq. 1.9b.  The gas density is added below
         v_air = stp_ave * &
                 ((temp_ave+273.15)/273.15d0)**theta * &
@@ -1412,16 +1411,15 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
                     (1.D0-upweight)*gen_auxvar_dn%den(iphase)) &
                     * fmw_phase(iphase) * dist_gravity 
 
-          delta_pressure = (gen_auxvar_up%pres(iphase) - &
-                            gen_auxvar_dn%pres(iphase)) * &
-                            general_pressure_scale + &
+          delta_pressure = gen_auxvar_up%pres(iphase) - &
+                           gen_auxvar_dn%pres(iphase) + &
                            gravity
 
           if (bc_type == SEEPAGE_BC .or. &
               bc_type == CONDUCTANCE_BC) then
                 ! flow in         ! boundary cell is <= pref
             if (delta_pressure > 0.d0 .and. &
-                gen_auxvar_up%pres(iphase)*general_pressure_scale - &
+                gen_auxvar_up%pres(iphase) - &
                  option%reference_pressure < eps) then
               delta_pressure = 0.d0
             endif
@@ -1538,7 +1536,7 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
         v_air = stp_ave * &
                 (temp_ave/273.15d0)**theta * &
                 option%reference_pressure / &
-                (gen_auxvar_dn%pres(iphase) * general_pressure_scale) * &
+                gen_auxvar_dn%pres(iphase) * &
                 general_parameter%diffusion_coefficient(iphase) * delta_xmol      
       endif
       q =  v_air * area

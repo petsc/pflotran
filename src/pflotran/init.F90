@@ -2836,8 +2836,6 @@ subroutine setFlowMode(option)
       option%nflowdof = 3
       option%nflowspec = 2
       option%use_isothermal = PETSC_FALSE
-
-      option%scale = option%scale * general_pressure_scale
     case default
       option%io_buffer = 'Mode: '//trim(option%flowmode)//' not recognized.'
       call printErrMsg(option)
