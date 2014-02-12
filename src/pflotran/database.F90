@@ -2198,7 +2198,7 @@ subroutine BasisInit(reaction,option)
                                       option,reaction)
         endif
       else
-        mineral%mnrl_logKcoef(:,isec_spec) = cur_mineral%dbaserxn%logK
+        mineral%mnrl_logKcoef(:,imnrl) = cur_mineral%dbaserxn%logK
         call ReactionInitializeLogK_hpt(mineral%mnrl_logKcoef(:,imnrl), &
                                         mineral%mnrl_logK(imnrl), &
                                         option,reaction)      
@@ -2233,7 +2233,7 @@ subroutine BasisInit(reaction,option)
                                         option,reaction)
           endif
         else
-          mineral%kinmnrl_logKcoef(:,isec_spec) = cur_mineral%dbaserxn%logK
+          mineral%kinmnrl_logKcoef(:,ikinmnrl) = cur_mineral%dbaserxn%logK
           call ReactionInitializeLogK_hpt(mineral%kinmnrl_logKcoef(:,ikinmnrl), &
                                           mineral%kinmnrl_logK(ikinmnrl), &
                                           option,reaction)        
@@ -3970,7 +3970,7 @@ subroutine BasisPrint(reaction,title,option)
                           cur_aq_spec%dbaserxn%spec_name(ispec)
         enddo
         if (reaction%use_geothermal_hpt)then
-          write(option%fid_out,130) '      logKCoeff(PT):', (cur_aq_spec%dbaserxn%logKCoeff_hpt(itemp),&
+          write(option%fid_out,130) '      logKCoeff(PT):', (cur_aq_spec%dbaserxn%logK(itemp),&
                                      itemp=1, reaction%num_dbase_parameters)
         else
           write(option%fid_out,130) '      logK:', (cur_aq_spec%dbaserxn%logK(itemp),itemp=1, &
@@ -4030,7 +4030,7 @@ subroutine BasisPrint(reaction,title,option)
 #endif          
         enddo
         if (reaction%use_geothermal_hpt)then
-          write(option%fid_out,130) '      logKCoeff(PT):', (cur_aq_spec%dbaserxn%logKCoeff_hpt(itemp),&
+          write(option%fid_out,130) '      logKCoeff(PT):', (cur_aq_spec%dbaserxn%logK(itemp),&
                                    itemp=1, reaction%num_dbase_parameters)
 
         else
@@ -4071,7 +4071,7 @@ subroutine BasisPrint(reaction,title,option)
                           cur_gas_spec%dbaserxn%spec_name(ispec)
         enddo
         if (reaction%use_geothermal_hpt)then
-           write(option%fid_out,130) '      logKCoeff(PT):', (cur_gas_spec%dbaserxn%logKCoeff_hpt(itemp),&
+           write(option%fid_out,130) '      logKCoeff(PT):', (cur_gas_spec%dbaserxn%logK(itemp),&
                                      itemp=1, reaction%num_dbase_parameters)
 
         else
@@ -4104,7 +4104,7 @@ subroutine BasisPrint(reaction,title,option)
                           cur_mineral%dbaserxn%spec_name(ispec)
         enddo
         if (reaction%use_geothermal_hpt)then
-          write(option%fid_out,130) '      logKCoeff(PT):', (cur_mineral%dbaserxn%logKCoeff_hpt(itemp),&
+          write(option%fid_out,130) '      logKCoeff(PT):', (cur_mineral%dbaserxn%logK(itemp),&
                                     itemp=1, reaction%num_dbase_parameters)
         else        
           write(option%fid_out,130) '      logK:', (cur_mineral%dbaserxn%logK(itemp),itemp=1, &
@@ -4140,7 +4140,7 @@ subroutine BasisPrint(reaction,title,option)
           enddo
           if (reaction%use_geothermal_hpt)then
             write(option%fid_out,130) '      logKCoeff(PT):', &
-              (cur_srfcplx%dbaserxn%logKCoeff_hpt(itemp),&
+              (cur_srfcplx%dbaserxn%logK(itemp),&
                itemp=1, reaction%num_dbase_parameters)
           else        
             write(option%fid_out,130) '      logK:', &
