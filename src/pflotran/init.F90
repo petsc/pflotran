@@ -2754,6 +2754,7 @@ subroutine setFlowMode(option)
 
   use Option_module
   use String_module
+  use General_Aux_module
 
   implicit none 
 
