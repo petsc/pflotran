@@ -2556,7 +2556,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   PetscReal :: min_pressure
   PetscReal :: scale, temp_scale, temp_real
   PetscReal, parameter :: tolerance = 0.99d0
-  PetscReal, parameter :: initial_scale = 1.d0
+  PetscReal, parameter :: initial_scale = 0.6d0
   PetscErrorCode :: ierr
   
   grid => realization%patch%grid
@@ -2894,6 +2894,8 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   PetscInt :: offset , ival, idof
   PetscReal :: Res(3)
   PetscReal :: inf_norm(3), global_inf_norm(3)
+  PetscReal :: dX_X1, R_A
+  PetscReal :: dX_X1_max(3), R_A_max(3), A_max(3), R_max(3), dX_max(3), X1_max(3)
   PetscErrorCode :: ierr
   
   grid => realization%patch%grid
@@ -2913,6 +2915,12 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
     call VecGetArrayF90(dX,dX_p,ierr)
     call VecGetArrayF90(X1,X1_p,ierr)
     call VecGetArrayF90(field%flow_r,r_p,ierr)
+    R_A_max = 0.d0
+    A_max = 0.d0
+    R_max = 0.d0
+    dX_X1_max = 0.d0
+    dX_max = 0.d0
+    X1_max = 0.d0
     inf_norm(:) = 0.d0
     do local_id = 1, grid%nlmax
       offset = (local_id-1)*option%nflowdof
@@ -2926,17 +2934,33 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
                                option,Res)
       do idof = 1, option%nflowdof
         ival = offset+idof
-        inf_norm(idof) = max(inf_norm(idof), &
-                             min(dabs(dX_p(ival)/X1_p(ival)), &
-                                 dabs(r_p(ival)/Res(idof))))
+        R_A = dabs(r_p(ival)/Res(idof))
+        dX_X1 = dabs(dX_p(ival)/X1_p(ival))
+        if (inf_norm(idof) < min(dX_X1,R_A)) then
+          inf_norm(idof) = min(dX_X1,R_A)
+#ifdef DEBUG_GENERAL
+          A_max(idof) = Res(idof)
+          R_max(idof) = r_p(ival)
+          R_A_max(idof) = R_A
+          dX_max(idof) = dX_p(ival)
+          X1_max(idof) = X1_p(ival)
+          dX_X1_max(idof) = dX_X1 
+#endif
+        endif
       enddo
     enddo
     call MPI_Allreduce(inf_norm,global_inf_norm,THREE_INTEGER_MPI, &
                        MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
     option%converged = PETSC_TRUE
     do idof = 1, option%nflowdof
-      if (global_inf_norm(idof) > option%post_convergence_tol) &
+      if (global_inf_norm(idof) > option%post_convergence_tol) then
         option%converged = PETSC_FALSE
+#ifdef DEBUG_GENERAL
+        print *, '-+ ', idof, global_inf_norm(idof), &
+           dX_X1_max(idof), dX_max(idof),  X1_max(idof), ' : ', &
+           R_A_max(idof), R_max(idof), A_max(idof)
+#endif
+      endif
     enddo
     call VecGetArrayF90(dX,dX_p,ierr)
     call VecGetArrayF90(X1,X1_p,ierr)

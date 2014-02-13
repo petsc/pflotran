@@ -520,7 +520,24 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
   type(global_auxvar_type) :: global_auxvar
   class(material_auxvar_type) :: material_auxvar
 
-  PetscReal, parameter :: epsilon = 1.d-8
+! based on min_pressure in CheckPre set to zero
+!  PetscReal, parameter :: epsilon = 1.d0 ! crash
+  PetscReal, parameter :: epsilon = 1.d-1 ! 4.74000E+01, 12235 NI, 73 cuts
+!  PetscReal, parameter :: epsilon = 1.d-2 ! 4.39074E+01, 13600 NI, 201 cuts
+!  PetscReal, parameter :: epsilon = 1.d-3 ! 4.59412E+01, 12296 NI, 152 cuts
+!  PetscReal, parameter :: epsilon = 1.d-4 ! 4.49121E+01, 13397 NI, 241 cuts
+!  PetscReal, parameter :: epsilon = 1.d-5 ! 3.97810E+01, 16109 NI, 453 cuts
+!  PetscReal, parameter :: epsilon = 1.d-6 ! 2.10722E+01, 17382 NI, 516 cuts
+!  PetscReal, parameter :: epsilon = 1.d-7 ! 2.07994E+01, 22788 NI, 575 cuts
+!  PetscReal, parameter :: epsilon = 1.d-8 ! 1.84605E+01, 17033 NI, 569 cuts
+!  PetscReal, parameter :: epsilon = 1.d-9 ! 3.46836E+01, 16227 NI, 401 cuts
+!  PetscReal, parameter :: epsilon = 1.d-10 ! 4.32237E+01, 12924 NI, 188 cuts
+!  PetscReal, parameter :: epsilon = 1.d-11 ! 4.32884E+01, 13356 NI, 172 cuts
+!  PetscReal, parameter :: epsilon = 1.d-12 ! 3.95233E+01, 16165 NI, 240 cuts
+!  PetscReal, parameter :: epsilon = 1.d-13 ! Zero pivots
+!  PetscReal, parameter :: epsilon = 0.d0 ! crash
+  PetscReal :: liquid_epsilon
+  PetscReal :: two_phase_epsilon
   PetscReal :: x(option%nflowdof)
   PetscInt :: apid, cpid, vpid, spid
   PetscInt :: gid, lid, acid, wid, eid
@@ -558,8 +575,22 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         endif
 #endif      
         global_auxvar%istate = TWO_PHASE_STATE
+                         ! based on epsilon = 0.1, two_phase_epsilon = 0.
+!        liquid_epsilon = 1.d1*epsilon ! crash
+!        liquid_epsilon = epsilon ! 4.97500E+01, 10003 NI, 0 cuts
+        liquid_epsilon = 1.d-1*epsilon ! 4.96899E+01, 9840 NI, 0 cuts
+!        liquid_epsilon = 1.d-2*epsilon ! 4.95999E+01, 9882 NI, 0 cuts
+!        liquid_epsilon = 1.d-3*epsilon ! 4.93193E+01, 10832 NI, 0 cuts
+!        liquid_epsilon = 1.d-4*epsilon ! 4.93099E+01, 10304 NI, 8 cuts
+!        liquid_epsilon = 1.d-5*epsilon ! 4.64900E+01, 10808 NI, 109 cuts
+!        liquid_epsilon = 1.d-6*epsilon ! 4.14949E+01, 12891 NI, 314 cuts
+!        liquid_epsilon = 1.d-7*epsilon ! 4.38624E+01, 10927 NI, 227 cuts
+                    ! lots of crashes below when min_pressure = 0 in CheckPre
+!        liquid_epsilon = 1.d-8*epsilon ! 4.44247E+01, 14910 NI, 90 cuts
+!        liquid_epsilon = 1.d-9*epsilon ! 4.68555E+01, 13209 NI, 62 cuts
+!        liquid_epsilon = 1.d-10*epsilon ! 4.65514E+01, 13464 NI, 62 cuts
         x(GENERAL_GAS_PRESSURE_DOF) = &
-          gen_auxvar%pres(lid) * (1.d0 + epsilon)
+          gen_auxvar%pres(lid) * (1.d0 + liquid_epsilon)
         ! pa = pg - ps
         x(GENERAL_AIR_PRESSURE_DOF) = &
           x(GENERAL_GAS_PRESSURE_DOF) - gen_auxvar%pres(spid)
@@ -573,9 +604,9 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
             ' - air pressure truncated: ' // trim(adjustl(string))
 #endif
           x(GENERAL_AIR_PRESSURE_DOF) = &
-            gen_auxvar%pres(apid) * (1.d0 + epsilon)
+            gen_auxvar%pres(apid) * (1.d0 + liquid_epsilon)
         endif
-        x(GENERAL_GAS_SATURATION_DOF) = epsilon
+        x(GENERAL_GAS_SATURATION_DOF) = liquid_epsilon
         flag = PETSC_TRUE
       endif
     case(GAS_STATE)
@@ -609,15 +640,36 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
                                     & i5)') ghosted_id
         endif
 #endif      
+                           ! based on epsilon = 0.1
+!        two_phase_epsilon = epsilon ! crash
+!        two_phase_epsilon = 1.d-1*epsilon ! 4.90600E+01, 10768 NI, 23 cuts
+!        two_phase_epsilon = 1.d-2*epsilon ! 4.86000E+01, 11003 NI, 36 cuts
+!        two_phase_epsilon = 1.d-3*epsilon ! 4.94000E+01, 9723 NI, 12 cuts
+!        two_phase_epsilon = 1.d-4*epsilon ! 4.96000E+01, 9037 NI, 5 cuts 
+!        two_phase_epsilon = 1.d-5*epsilon ! 4.94500E+01, 8800 NI, 10 cuts
+!        two_phase_epsilon = 1.d-6*epsilon ! 4.97100E+01, 8449 NI, 2 cuts
+!        two_phase_epsilon = 1.d-7*epsilon ! 4.96499E+01, 10550 NI, 2 cuts
+!        two_phase_epsilon = 1.d-8*epsilon ! 4.96700E+01, 10067 NI, 1 cut
+!        two_phase_epsilon = 1.d-9*epsilon ! 4.97500E+01, 10000 NI, 0 cuts
+!        two_phase_epsilon = 1.d-10*epsilon ! 4.96600E+01, 10062 NI, 1 cut
+!        two_phase_epsilon = 1.d-11*epsilon ! 4.96798E+01, 10071 NI, 2 cuts
+!        two_phase_epsilon = 1.d-12*epsilon ! 4.97200E+01, 10063 NI, 0 cuts
+!        two_phase_epsilon = 1.d-13*epsilon ! 4.97099E+01, 9662 NI, 1 cut
+!        two_phase_epsilon = 1.d-14*epsilon ! 4.97300E+01, 10002 NI, 0 cuts
+!        two_phase_epsilon = 1.d-15*epsilon ! 4.96699E+01, 9852 NI, 1 cut
+!        two_phase_epsilon = 1.d-16*epsilon ! 4.97500E+01, 10003 NI, 0 cuts
+        two_phase_epsilon = 0.d0*epsilon ! 4.97500E+01, 10003 NI, 0 cuts
         ! convert to liquid state
         global_auxvar%istate = LIQUID_STATE
         x(GENERAL_LIQUID_PRESSURE_DOF) = &
-          gen_auxvar%pres(gid) * (1.d0 + epsilon)
+          gen_auxvar%pres(gid) * (1.d0 + two_phase_epsilon) ! 4.94500E+01, 8800 NI, 10 cuts
+!          gen_auxvar%pres(gid) ! 4.95500E+01, 9119 NI, 7 cuts
         x(GENERAL_LIQUID_STATE_X_MOLE_DOF) = &
-!          gen_auxvar%xmol(acid,lid) * (1+epsilon)
-          gen_auxvar%xmol(acid,lid) * (1.d0 - epsilon)
+          gen_auxvar%xmol(acid,lid) * (1.d0 - two_phase_epsilon) ! 4.94500E+01, 8800 NI, 10 cuts
+!          gen_auxvar%xmol(acid,lid) ! 4.95298E+01, 10355 NI, 6 cuts
         x(GENERAL_LIQUID_STATE_ENERGY_DOF) = &
-          gen_auxvar%temp * (1.d0 - epsilon)
+          gen_auxvar%temp * (1.d0 - two_phase_epsilon) ! 4.94500E+01, 8800 NI, 10 cuts
+!          gen_auxvar%temp ! 4.95700E+01, 9074 NI, 6 cuts
         flag = PETSC_TRUE
       else if (gen_auxvar%sat(gid) > 1.d0) then
 #ifdef DEBUG_GENERAL
@@ -631,11 +683,12 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
                                     & i5)') ghosted_id
         endif
 #endif      
+        two_phase_epsilon = epsilon !
         ! convert to gas state
         global_auxvar%istate = GAS_STATE
         ! first two primary dependent variables do not change
         x(GENERAL_GAS_STATE_ENERGY_DOF) = &
-          gen_auxvar%temp * (1.d0 + epsilon)
+          gen_auxvar%temp * (1.d0 + two_phase_epsilon)
         flag = PETSC_TRUE
       endif
   end select
