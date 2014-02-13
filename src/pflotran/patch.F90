@@ -3294,7 +3294,6 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
                 vec_ptr(local_id) = 0.d0
               endif
             enddo
-            vec_ptr = vec_ptr * general_pressure_scale
           case(GAS_PRESSURE)
             do local_id=1,grid%nlmax
               ghosted_id = grid%nL2G(local_id)
@@ -3307,7 +3306,6 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
                 vec_ptr(local_id) = 0.d0
               endif
             enddo
-            vec_ptr = vec_ptr * general_pressure_scale
           case(AIR_PRESSURE)
             do local_id=1,grid%nlmax
               ghosted_id = grid%nL2G(local_id)
@@ -3320,7 +3318,6 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
                 vec_ptr(local_id) = 0.d0
               endif
             enddo
-            vec_ptr = vec_ptr * general_pressure_scale
           case(CAPILLARY_PRESSURE)
             do local_id=1,grid%nlmax
               ghosted_id = grid%nL2G(local_id)
@@ -3328,7 +3325,6 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
                 patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                   pres(option%capillary_pressure_id)
             enddo
-            vec_ptr = vec_ptr * general_pressure_scale
           case(STATE)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = &
@@ -4262,7 +4258,6 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
             else
               value = 0.d0
             endif
-            value = value * general_pressure_scale
           case(GAS_PRESSURE)
             if (patch%aux%Global%auxvars(ghosted_id)%istate /= &
                 LIQUID_STATE) then
@@ -4271,7 +4266,6 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
             else
               value = 0.d0
             endif
-            value = value * general_pressure_scale
           case(AIR_PRESSURE)
             if (patch%aux%Global%auxvars(ghosted_id)%istate /= &
                 LIQUID_STATE) then
@@ -4280,11 +4274,9 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
             else
               value = 0.d0
             endif
-            value = value * general_pressure_scale
           case(CAPILLARY_PRESSURE)
             value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                       pres(option%capillary_pressure_id)
-            value = value * general_pressure_scale
           case(STATE)
             value = patch%aux%Global%auxvars(ghosted_id)%istate
           case(LIQUID_SATURATION)
@@ -5325,26 +5317,22 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
           case(LIQUID_PRESSURE)
             do local_id=1,grid%nlmax
               patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))% &
-                pres(option%liquid_phase) = vec_ptr(local_id) / &
-                                            general_pressure_scale
+                pres(option%liquid_phase) = vec_ptr(local_id)
             enddo
           case(GAS_PRESSURE)
             do local_id=1,grid%nlmax
               patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))% &
-                pres(option%gas_phase) = vec_ptr(local_id) / &
-                                         general_pressure_scale
+                pres(option%gas_phase) = vec_ptr(local_id)
             enddo
           case(AIR_PRESSURE)
             do local_id=1,grid%nlmax
               patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))% &
-                pres(option%air_pressure_id) = vec_ptr(local_id) / &
-                                               general_pressure_scale
+                pres(option%air_pressure_id) = vec_ptr(local_id)
             enddo
           case(CAPILLARY_PRESSURE)
             do local_id=1,grid%nlmax
               patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))% &
-                pres(option%capillary_pressure_id) = vec_ptr(local_id) / &
-                                                     general_pressure_scale
+                pres(option%capillary_pressure_id) = vec_ptr(local_id)
             enddo
           case(STATE)
             do local_id=1,grid%nlmax
