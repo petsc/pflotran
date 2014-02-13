@@ -2057,6 +2057,9 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
     call VecView(xx,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
+
+!  call VecView(xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
+!  call VecView(r,PETSC_VIEWER_STDOUT_WORLD,ierr)
   
 end subroutine GeneralResidual
 
@@ -2381,6 +2384,8 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
     write(option%io_buffer,'("inf norm: ",es11.4)') norm
     call printMsg(option) 
   endif
+
+!  call MatView(J,PETSC_VIEWER_STDOUT_WORLD,ierr)
 
 end subroutine GeneralJacobian
 
@@ -2889,9 +2894,7 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   PetscInt :: local_id, ghosted_id
   PetscInt :: offset , ival, idof
   PetscReal :: Res(3)
-  PetscReal :: inf_norm(3)
-  PetscReal :: inf_norm_tol(3)
-  PetscMPIInt :: temp_int, temp_int2
+  PetscReal :: inf_norm(3), global_inf_norm(3)
   PetscErrorCode :: ierr
   
   grid => realization%patch%grid
@@ -2906,7 +2909,6 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   dX_changed = PETSC_FALSE
   X1_changed = PETSC_FALSE
   
-  inf_norm_tol(:) = 1.d-8
   option%converged = PETSC_FALSE
   if (option%check_post_convergence) then
     call VecGetArrayF90(dX,dX_p,ierr)
@@ -2930,19 +2932,13 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
                                  dabs(r_p(ival)/Res(idof))))
       enddo
     enddo
+    call MPI_Allreduce(inf_norm,global_inf_norm,THREE_INTEGER_MPI, &
+                       MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
     option%converged = PETSC_TRUE
     do idof = 1, option%nflowdof
-      if (inf_norm(idof) > inf_norm_tol(idof)) option%converged = PETSC_FALSE
+      if (global_inf_norm(idof) > option%post_convergence_tol) &
+        option%converged = PETSC_FALSE
     enddo
-    temp_int = 0
-    if (option%converged) temp_int = 1
-    call MPI_Allreduce(temp_int,temp_int2,ONE_INTEGER_MPI, &
-                       MPI_INTEGER,MPI_MIN,option%mycomm,ierr)
-    if (temp_int2 == 1) then
-      option%converged = PETSC_TRUE
-    else
-      option%converged = PETSC_FALSE
-    endif
     call VecGetArrayF90(dX,dX_p,ierr)
     call VecGetArrayF90(X1,X1_p,ierr)
     call VecGetArrayF90(field%flow_r,r_p,ierr)
