@@ -2189,19 +2189,19 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
       icap_dn = patch%sat_func_id(ghosted_id_dn)
                               
       call GeneralFluxDerivative(gen_auxvars(:,ghosted_id_up), &
-                                 global_auxvars(ghosted_id_up), &
-                                 material_auxvars(ghosted_id_up), &
-                                 material_parameter%soil_residual_saturation(:,icap_up), &
-                                 material_parameter%soil_thermal_conductivity(:,imat_up), &
-                                 gen_auxvars(:,ghosted_id_dn), &
-                                 global_auxvars(ghosted_id_dn), &
-                                 material_auxvars(ghosted_id_dn), &
-                                 material_parameter%soil_residual_saturation(:,icap_dn), &
-                                 material_parameter%soil_thermal_conductivity(:,imat_dn), &
-                                 cur_connection_set%area(iconn), &
-                                 cur_connection_set%dist(:,iconn), &
-                                 general_parameter,option,&
-                                 Jup,Jdn)
+                     global_auxvars(ghosted_id_up), &
+                     material_auxvars(ghosted_id_up), &
+                     material_parameter%soil_residual_saturation(:,icap_up), &
+                     material_parameter%soil_thermal_conductivity(:,imat_up), &
+                     gen_auxvars(:,ghosted_id_dn), &
+                     global_auxvars(ghosted_id_dn), &
+                     material_auxvars(ghosted_id_dn), &
+                     material_parameter%soil_residual_saturation(:,icap_dn), &
+                     material_parameter%soil_thermal_conductivity(:,imat_dn), &
+                     cur_connection_set%area(iconn), &
+                     cur_connection_set%dist(:,iconn), &
+                     general_parameter,option,&
+                     Jup,Jdn)
       if (local_id_up > 0) then
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
                                       Jup,ADD_VALUES,ierr)
