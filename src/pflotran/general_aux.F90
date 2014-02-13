@@ -521,8 +521,9 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
   class(material_auxvar_type) :: material_auxvar
 
 ! based on min_pressure in CheckPre set to zero
+  PetscReal, parameter :: epsilon = 1.d-8 
 !  PetscReal, parameter :: epsilon = 1.d0 ! crash
-  PetscReal, parameter :: epsilon = 1.d-1 ! 4.74000E+01, 12235 NI, 73 cuts
+!  PetscReal, parameter :: epsilon = 1.d-1 ! 4.74000E+01, 12235 NI, 73 cuts
 !  PetscReal, parameter :: epsilon = 1.d-2 ! 4.39074E+01, 13600 NI, 201 cuts
 !  PetscReal, parameter :: epsilon = 1.d-3 ! 4.59412E+01, 12296 NI, 152 cuts
 !  PetscReal, parameter :: epsilon = 1.d-4 ! 4.49121E+01, 13397 NI, 241 cuts
@@ -578,7 +579,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
                          ! based on epsilon = 0.1, two_phase_epsilon = 0.
 !        liquid_epsilon = 1.d1*epsilon ! crash
 !        liquid_epsilon = epsilon ! 4.97500E+01, 10003 NI, 0 cuts
-        liquid_epsilon = 1.d-1*epsilon ! 4.96899E+01, 9840 NI, 0 cuts
+!        liquid_epsilon = 1.d-1*epsilon ! 4.96899E+01, 9840 NI, 0 cuts
 !        liquid_epsilon = 1.d-2*epsilon ! 4.95999E+01, 9882 NI, 0 cuts
 !        liquid_epsilon = 1.d-3*epsilon ! 4.93193E+01, 10832 NI, 0 cuts
 !        liquid_epsilon = 1.d-4*epsilon ! 4.93099E+01, 10304 NI, 8 cuts
@@ -589,6 +590,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
 !        liquid_epsilon = 1.d-8*epsilon ! 4.44247E+01, 14910 NI, 90 cuts
 !        liquid_epsilon = 1.d-9*epsilon ! 4.68555E+01, 13209 NI, 62 cuts
 !        liquid_epsilon = 1.d-10*epsilon ! 4.65514E+01, 13464 NI, 62 cuts
+        liquid_epsilon = epsilon
         x(GENERAL_GAS_PRESSURE_DOF) = &
           gen_auxvar%pres(lid) * (1.d0 + liquid_epsilon)
         ! pa = pg - ps
@@ -658,7 +660,8 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
 !        two_phase_epsilon = 1.d-14*epsilon ! 4.97300E+01, 10002 NI, 0 cuts
 !        two_phase_epsilon = 1.d-15*epsilon ! 4.96699E+01, 9852 NI, 1 cut
 !        two_phase_epsilon = 1.d-16*epsilon ! 4.97500E+01, 10003 NI, 0 cuts
-        two_phase_epsilon = 0.d0*epsilon ! 4.97500E+01, 10003 NI, 0 cuts
+!        two_phase_epsilon = 0.d0*epsilon ! 4.97500E+01, 10003 NI, 0 cuts
+        two_phase_epsilon = epsilon
         ! convert to liquid state
         global_auxvar%istate = LIQUID_STATE
         x(GENERAL_LIQUID_PRESSURE_DOF) = &
