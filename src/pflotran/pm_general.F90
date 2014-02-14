@@ -669,7 +669,7 @@ subroutine PMGeneralMaxChange(this)
       ! to customize
       call VecGetArrayF90(field%work,vec_ptr,ierr)
       call VecGetArrayF90(field%max_change_vecs(i),vec_ptr2,ierr)
-      max_change_local(i) = maxval(vec_ptr(:)-vec_ptr2(:))
+      max_change_local(i) = maxval(dabs(vec_ptr(:)-vec_ptr2(:)))
       call VecRestoreArrayF90(field%work,vec_ptr,ierr)
       call VecRestoreArrayF90(field%max_change_vecs(i),vec_ptr2,ierr)
       call VecCopy(field%work,field%max_change_vecs(i),ierr)
@@ -690,8 +690,8 @@ subroutine PMGeneralMaxChange(this)
         max_change_global(1:6)
     endif
     this%dPmax = maxval(max_change_global(1:3))
-    this%dTmax = max_change_global(4)
-    this%dXmax = max_change_global(5)
+    this%dXmax = max_change_global(4)
+    this%dTmax = max_change_global(5)
     this%dSmax = max_change_global(6)
   else
     call VecDuplicateVecsF90(field%work,SIX_INTEGER, &
