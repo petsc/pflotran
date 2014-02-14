@@ -29,7 +29,7 @@ module General_module
          GeneralUpdateFixedAccum, GeneralTimeCut,&
          GeneralSetup, GeneralNumericalJacTest, &
          GeneralInitializeTimestep, GeneralUpdateAuxVars, &
-         GeneralMaxChange, GeneralUpdateSolution, &
+         GeneralUpdateSolution, &
          GeneralGetTecplotHeader, GeneralComputeMassBalance, &
          GeneralDestroy, GeneralSetPlotVariables, &
          GeneralCheckUpdatePre, GeneralCheckUpdatePost
@@ -2464,41 +2464,6 @@ subroutine GeneralCreateZeroArray(patch,option)
   endif
 
 end subroutine GeneralCreateZeroArray
-
-! ************************************************************************** !
-
-subroutine GeneralMaxChange(realization)
-  ! 
-  ! Computes the maximum change in the solution vector
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/09/11
-  ! 
-
-  use Realization_class
-  use Option_module
-  use Field_module
-  
-  implicit none
-  
-  type(realization_type) :: realization
-  
-  type(option_type), pointer :: option
-  type(field_type), pointer :: field  
-  
-  PetscErrorCode :: ierr
-  
-  option => realization%option
-  field => realization%field
-
-  call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
-  call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
-!  call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
-!  call VecStrideNorm(field%flow_dxx,ONE_INTEGER,NORM_INFINITY,option%dcmax,ierr)
-!  call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
-!  call VecStrideNorm(field%flow_dxx,TWO_INTEGER,NORM_INFINITY,option%dtmpmax,ierr)
-
-end subroutine GeneralMaxChange
 
 ! ************************************************************************** !
 

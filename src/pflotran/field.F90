@@ -66,6 +66,8 @@ module Field_module
     Vec :: flowrate_inst
     Vec :: flowrate_aveg
 
+    Vec, pointer :: max_change_vecs(:)
+
   end type field_type
 
   public :: FieldCreate, &
@@ -160,6 +162,8 @@ function FieldCreate()
 
   field%flowrate_inst = 0
   field%flowrate_aveg = 0
+
+  nullify(field%max_change_vecs)
 
   FieldCreate => field
   
@@ -272,6 +276,11 @@ subroutine FieldDestroy(field)
 
   if (field%flowrate_inst/=0) call VecDestroy(field%flowrate_inst,ierr)
   if (field%flowrate_aveg/=0) call VecDestroy(field%flowrate_aveg,ierr)
+
+  if (associated(field%max_change_vecs)) then
+    call VecDestroyVecsF90(size(field%max_change_vecs), &
+                           field%max_change_vecs,ierr)
+  endif
 
   deallocate(field)
   nullify(field)
