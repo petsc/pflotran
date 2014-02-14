@@ -1390,8 +1390,7 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
   use TH_module, only : THMaxChange, THInitializeTimestep, THTimeCut
   use THC_module, only : THCMaxChange, THCInitializeTimestep, THCTimeCut
 
-  use General_module, only : GeneralMaxChange, GeneralInitializeTimestep, &
-                             GeneralTimeCut
+  use General_module, only : GeneralInitializeTimestep, GeneralTimeCut
   use Global_module
 
   use Output_module, only : Output
@@ -1711,7 +1710,7 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
         case(FLASH2_MODE)
           call FLASH2MaxChange(realization)
         case(G_MODE)
-          call GeneralMaxChange(realization)
+!          call GeneralMaxChange(realization)
       end select
       ! note use mph will use variable switching, the x and s change is not meaningful 
       if (option%print_screen_flag) then
