@@ -154,8 +154,9 @@ module Option_module
     PetscReal :: saturation_change_limit
     PetscReal :: pressure_change_limit
     PetscReal :: temperature_change_limit
-    PetscReal :: stomp_norm
-    PetscBool :: check_stomp_norm
+    PetscReal :: post_convergence_tol
+    PetscBool :: check_post_convergence
+    PetscBool :: converged
     
     PetscReal :: infnorm_res_sec  ! inf. norm of secondary continuum rt residual
     
@@ -477,8 +478,9 @@ subroutine OptionInitRealization(option)
   option%saturation_change_limit = 0.d0
   option%pressure_change_limit = 0.d0
   option%temperature_change_limit = 0.d0
-  option%stomp_norm = 0.d0
-  option%check_stomp_norm = PETSC_FALSE
+  option%post_convergence_tol = 0.d0
+  option%check_post_convergence = PETSC_FALSE
+  option%converged = PETSC_FALSE
   
   option%infnorm_res_sec = 0.d0
   

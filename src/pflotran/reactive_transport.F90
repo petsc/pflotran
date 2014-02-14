@@ -122,6 +122,7 @@ subroutine RTSetup(realization)
   use Constraint_module
   use Fluid_module
   use Material_module
+  use Material_Aux_class
   !geh: please leave the "only" clauses for Secondary_Continuum_XXX as this
   !      resolves a bug in the Intel Visual Fortran compiler.
   use Secondary_Continuum_Aux_module, only : sec_transport_type, &
@@ -142,9 +143,12 @@ subroutine RTSetup(realization)
   type(sec_transport_type), pointer :: rt_sec_transport_vars(:)
   type(coupler_type), pointer :: initial_condition
   type(tran_constraint_type), pointer :: sec_tran_constraint
+  class(material_auxvar_type), pointer :: material_auxvars(:)
 
   PetscInt :: ghosted_id, iconn, sum_connection
   PetscInt :: iphase, local_id
+  PetscBool :: error_found
+  PetscInt :: flag(10)  
   
   option => realization%option
   patch => realization%patch
@@ -174,7 +178,44 @@ subroutine RTSetup(realization)
     patch%aux%RT%rt_parameter%nimcomp = reaction%nimcomp
     patch%aux%RT%rt_parameter%offset_immobile = reaction%offset_immobile
   endif
+  
+  material_auxvars => patch%aux%Material%auxvars
+  flag = 0
+  !TODO(geh): change to looping over ghosted ids once the legacy code is 
+  !           history and the communicator can be passed down.
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    if (material_auxvars(ghosted_id)%volume < 0.d0 .and. flag(1) == 0) then
+      flag(1) = 1
+      option%io_buffer = 'Non-initialized cell volume.'
+      call printMsg(option)
+    endif
+    if (material_auxvars(ghosted_id)%porosity < 0.d0 .and. flag(2) == 0) then
+      flag(2) = 1
+      option%io_buffer = 'Non-initialized porosity.'
+      call printMsg(option)
+    endif
+    if (material_auxvars(ghosted_id)%tortuosity < 0.d0 .and. flag(3) == 0) then
+      flag(3) = 1
+      option%io_buffer = 'Non-initialized tortuosity.'
+      call printMsg(option)
+    endif
+    if (reaction%neqkdrxn > 0) then
+      if (material_auxvars(ghosted_id)%soil_particle_density < 0.d0 .and. &
+          flag(4) == 0) then
+        flag(4) = 1
+        option%io_buffer = 'Non-initialized soil particle density.'
+        call printMsg(option)
+      endif
+    endif
+  enddo  
  
+  if (maxval(flag) > 0) then
+    option%io_buffer = &
+      'Material property errors found in RTSetup (reactive transport).'
+    call printErrMsg(option)
+  endif  
+  
 !============== Create secondary continuum variables - SK 2/5/13 ===============
 
   

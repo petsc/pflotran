@@ -1102,7 +1102,8 @@ subroutine CheckpointFlowProcessModel(viewer,realization)
     ! Porosity and permeability.
     ! (We only write diagonal terms of the permeability tensor for now, 
     ! since we have yet to add the full-tensor formulation.)
-    if (option%iflowmode /= RICHARDS_MODE) then
+    if (option%iflowmode /= RICHARDS_MODE .and. &
+        option%iflowmode /= G_MODE) then
       call DiscretizationLocalToGlobal(discretization,field%porosity_loc, &
                                        global_vec,ONEDOF)
       call VecView(global_vec,viewer,ierr)
@@ -1248,7 +1249,8 @@ subroutine RestartFlowProcessModel(viewer,realization)
       case default
     end select
     
-    if (option%iflowmode /= RICHARDS_MODE) then
+    if (option%iflowmode /= RICHARDS_MODE .and. &
+        option%iflowmode /= G_MODE) then
       call VecLoad(global_vec,viewer,ierr)
       call DiscretizationGlobalToLocal(discretization,global_vec, &
                                        field%porosity_loc,ONEDOF)

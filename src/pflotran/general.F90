@@ -29,7 +29,7 @@ module General_module
          GeneralUpdateFixedAccum, GeneralTimeCut,&
          GeneralSetup, GeneralNumericalJacTest, &
          GeneralInitializeTimestep, GeneralUpdateAuxVars, &
-         GeneralMaxChange, GeneralUpdateSolution, &
+         GeneralUpdateSolution, &
          GeneralGetTecplotHeader, GeneralComputeMassBalance, &
          GeneralDestroy, GeneralSetPlotVariables, &
          GeneralCheckUpdatePre, GeneralCheckUpdatePost
@@ -881,134 +881,6 @@ end subroutine GeneralNumericalJacTest
 
 ! ************************************************************************** !
 
-subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
-                                material_auxvar, &
-                                saturation_function,ghosted_id, &
-                                option)
-  ! 
-  ! Calculates auxiliary variables for perturbed system
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/09/11
-  ! 
-
-  use Option_module
-  use Saturation_Function_module
-  use Material_Aux_class
-
-  implicit none
-
-  type(option_type) :: option
-  PetscInt :: ghosted_id
-  type(general_auxvar_type) :: gen_auxvar(0:)
-  type(global_auxvar_type) :: global_auxvar
-  class(material_auxvar_type) :: material_auxvar
-  type(saturation_function_type) :: saturation_function
-     
-  PetscReal :: x(option%nflowdof), x_pert(option%nflowdof), &
-               pert(option%nflowdof), x_pert_save(option%nflowdof)
-  PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
-  PetscReal, parameter :: perturbation_tolerance = 1.d-5
-  PetscInt :: idof
-
-#ifdef DEBUG_GENERAL
-  character(len=MAXWORDLENGTH) :: word
-  type(global_auxvar_type) :: global_auxvar_debug
-  type(general_auxvar_type) :: general_auxvar_debug
-  call GlobalAuxVarInit(global_auxvar_debug,option)
-  call GeneralAuxVarInit(general_auxvar_debug,option)
-#endif
-
-  select case(global_auxvar%istate)
-    case(LIQUID_STATE)
-       x(GENERAL_LIQUID_PRESSURE_DOF) = &
-         gen_auxvar(ZERO_INTEGER)%pres(option%liquid_phase)
-       x(GENERAL_LIQUID_STATE_X_MOLE_DOF) = &
-         gen_auxvar(ZERO_INTEGER)%xmol(option%air_id,option%liquid_phase)
-       x(GENERAL_LIQUID_STATE_ENERGY_DOF) = &
-         gen_auxvar(ZERO_INTEGER)%temp
-       pert(GENERAL_LIQUID_PRESSURE_DOF) = 1.d0
-       pert(GENERAL_LIQUID_STATE_X_MOLE_DOF) = &
-         -1.d0*perturbation_tolerance*x(GENERAL_LIQUID_STATE_X_MOLE_DOF)
-       pert(GENERAL_LIQUID_STATE_ENERGY_DOF) = &
-         -1.d0*perturbation_tolerance*x(GENERAL_LIQUID_STATE_ENERGY_DOF)
-    case(GAS_STATE)
-       x(GENERAL_GAS_PRESSURE_DOF) = &
-         gen_auxvar(ZERO_INTEGER)%pres(option%gas_phase)
-       x(GENERAL_AIR_PRESSURE_DOF) = &
-         gen_auxvar(ZERO_INTEGER)%pres(option%air_pressure_id)
-       x(GENERAL_GAS_STATE_ENERGY_DOF) = gen_auxvar(ZERO_INTEGER)%temp
-       ! gas pressure [p(g)] must always be perturbed down as p(v) = p(g) - p(a)
-       ! and p(v) >= Psat (i.e. an increase in p(v)) results in two phase.
-       pert(GENERAL_GAS_PRESSURE_DOF) = -1.d0
-       if (x(GENERAL_GAS_PRESSURE_DOF) - x(GENERAL_AIR_PRESSURE_DOF) > &
-           1.d0) then 
-         pert(GENERAL_AIR_PRESSURE_DOF) = 1.d0
-       else
-         pert(GENERAL_AIR_PRESSURE_DOF) = -1.d0
-       endif
-       pert(GENERAL_GAS_STATE_ENERGY_DOF) = perturbation_tolerance * &
-                                            x(GENERAL_GAS_STATE_ENERGY_DOF)
-    case(TWO_PHASE_STATE)
-       x(GENERAL_GAS_PRESSURE_DOF) = &
-         gen_auxvar(ZERO_INTEGER)%pres(option%gas_phase)
-       x(GENERAL_AIR_PRESSURE_DOF) = &
-         gen_auxvar(ZERO_INTEGER)%pres(option%air_pressure_id)
-       x(GENERAL_GAS_SATURATION_DOF) = &
-         gen_auxvar(ZERO_INTEGER)%sat(option%gas_phase)
-       pert(GENERAL_GAS_PRESSURE_DOF) = 1.d0
-       if (x(GENERAL_GAS_PRESSURE_DOF) - x(GENERAL_AIR_PRESSURE_DOF) > &
-           1.d0) then 
-         pert(GENERAL_AIR_PRESSURE_DOF) = 1.d0
-       else
-         pert(GENERAL_AIR_PRESSURE_DOF) = -1.d0
-       endif
-       if (x(GENERAL_GAS_SATURATION_DOF) > 0.5d0) then 
-         pert(GENERAL_GAS_SATURATION_DOF) = -perturbation_tolerance * &
-                                              x(GENERAL_GAS_SATURATION_DOF)
-       else
-         pert(GENERAL_GAS_SATURATION_DOF) = perturbation_tolerance * &
-                                              x(GENERAL_GAS_SATURATION_DOF)
-       endif
-  end select
-  
-  ! flag(-1) indicates call from perturbation routine - for debugging
-  option%iflag = -1
-  do idof = 1, option%nflowdof
-    gen_auxvar(idof)%pert = pert(idof)
-    x_pert = x
-    x_pert(idof) = x(idof) + pert(idof)
-    x_pert_save = x_pert
-    call GeneralAuxVarCompute(x_pert,gen_auxvar(idof),global_auxvar, &
-                              material_auxvar, &
-                              saturation_function,ghosted_id,option)
-#ifdef DEBUG_GENERAL
-    call GlobalAuxVarCopy(global_auxvar,global_auxvar_debug,option)
-    call GeneralAuxVarCopy(gen_auxvar(idof),general_auxvar_debug,option)
-    call GeneralAuxVarUpdateState(x_pert,general_auxvar_debug, &
-                                  global_auxvar_debug, &
-                                  material_auxvar, &
-                                  saturation_function, &
-                                  ghosted_id,option)
-    if (global_auxvar%istate /= global_auxvar_debug%istate) then
-      write(option%io_buffer, &
-            &'(''Change in state due to perturbation: '',i3,'' -> '',i3, &
-            &'' at cell '',i3,'' for dof '',i3)') &
-        global_auxvar%istate, global_auxvar_debug%istate, ghosted_id, idof
-      call printMsg(option)
-      write(option%io_buffer,'(''orig: '',6es17.8)') x(1:3)
-      call printMsg(option)
-      write(option%io_buffer,'(''pert: '',6es17.8)') x_pert_save(1:3)
-      call printMsg(option)
-    endif
-#endif
-
-  enddo
-  
-end subroutine GeneralAuxVarPerturb
-
-! ************************************************************************** !
-
 subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
                                soil_heat_capacity,option,Res)
   ! 
@@ -1309,7 +1181,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
         temp_ave = upweight_adj*gen_auxvar_up%temp + &
                    (1.d0-upweight_adj)*gen_auxvar_dn%temp
         pressure_ave = upweight_adj*gen_auxvar_up%pres(iphase)+ &
-                      (1.D0-upweight_adj)*gen_auxvar_dn%pres(iphase)
+                       (1.D0-upweight_adj)*gen_auxvar_dn%pres(iphase)
         ! Eq. 1.9b.  The gas density is added below
         v_air = stp_ave * &
                 ((temp_ave+273.15)/273.15d0)**theta * &
@@ -1540,14 +1412,15 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
                     * fmw_phase(iphase) * dist_gravity 
 
           delta_pressure = gen_auxvar_up%pres(iphase) - &
-                 gen_auxvar_dn%pres(iphase) + &
-                 gravity
+                           gen_auxvar_dn%pres(iphase) + &
+                           gravity
 
           if (bc_type == SEEPAGE_BC .or. &
               bc_type == CONDUCTANCE_BC) then
                 ! flow in         ! boundary cell is <= pref
             if (delta_pressure > 0.d0 .and. &
-                gen_auxvar_up%pres(iphase)-option%reference_pressure < eps) then
+                gen_auxvar_up%pres(iphase) - &
+                 option%reference_pressure < eps) then
               delta_pressure = 0.d0
             endif
           endif
@@ -1662,7 +1535,8 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
         ! Eq. 1.9b.  The gas density is added below
         v_air = stp_ave * &
                 (temp_ave/273.15d0)**theta * &
-                option%reference_pressure / gen_auxvar_dn%pres(iphase) * &
+                option%reference_pressure / &
+                gen_auxvar_dn%pres(iphase) * &
                 general_parameter%diffusion_coefficient(iphase) * delta_xmol      
       endif
       q =  v_air * area
@@ -2077,19 +1951,19 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
       icap_dn = patch%sat_func_id(ghosted_id)
 
       call GeneralBCFlux(boundary_condition%flow_bc_type, &
-                         boundary_condition%flow_aux_mapping, &
-                                boundary_condition%flow_aux_real_var(:,iconn), &
-                                gen_auxvars_bc(sum_connection), &
-                                global_auxvars_bc(sum_connection), &
-                                gen_auxvars(ZERO_INTEGER,ghosted_id), &
-                                global_auxvars(ghosted_id), &
-                                material_auxvars(ghosted_id), &
-                                material_parameter%soil_residual_saturation(:,icap_dn), &
-                                material_parameter%soil_thermal_conductivity(:,imat_dn), &
-                                cur_connection_set%area(iconn), &
-                                cur_connection_set%dist(:,iconn), &
-                                general_parameter,option, &
-                                v_darcy,Res)
+                     boundary_condition%flow_aux_mapping, &
+                     boundary_condition%flow_aux_real_var(:,iconn), &
+                     gen_auxvars_bc(sum_connection), &
+                     global_auxvars_bc(sum_connection), &
+                     gen_auxvars(ZERO_INTEGER,ghosted_id), &
+                     global_auxvars(ghosted_id), &
+                     material_auxvars(ghosted_id), &
+                     material_parameter%soil_residual_saturation(:,icap_dn), &
+                     material_parameter%soil_thermal_conductivity(:,imat_dn), &
+                     cur_connection_set%area(iconn), &
+                     cur_connection_set%dist(:,iconn), &
+                     general_parameter,option, &
+                     v_darcy,Res)
       patch%boundary_velocities(:,sum_connection) = v_darcy
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
@@ -2183,6 +2057,9 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
     call VecView(xx,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
+
+!  call VecView(xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
+!  call VecView(r,PETSC_VIEWER_STDOUT_WORLD,ierr)
   
 end subroutine GeneralResidual
 
@@ -2220,7 +2097,7 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
   PetscReal :: norm
   PetscViewer :: viewer
 
-  PetscInt :: icap,icap_up,icap_dn
+  PetscInt :: icap_up,icap_dn
   PetscReal :: qsrc, scale
   PetscInt :: imat, imat_up, imat_dn
   PetscReal :: dd_up, dd_dn
@@ -2312,19 +2189,19 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
       icap_dn = patch%sat_func_id(ghosted_id_dn)
                               
       call GeneralFluxDerivative(gen_auxvars(:,ghosted_id_up), &
-                                 global_auxvars(ghosted_id_up), &
-                                 material_auxvars(ghosted_id_up), &
-                                 material_parameter%soil_residual_saturation(:,icap_up), &
-                                 material_parameter%soil_thermal_conductivity(:,imat_up), &
-                                 gen_auxvars(:,ghosted_id_dn), &
-                                 global_auxvars(ghosted_id_dn), &
-                                 material_auxvars(ghosted_id_dn), &
-                                 material_parameter%soil_residual_saturation(:,icap_dn), &
-                                 material_parameter%soil_thermal_conductivity(:,imat_dn), &
-                                 cur_connection_set%area(iconn), &
-                                 cur_connection_set%dist(:,iconn), &
-                                 general_parameter,option,&
-                                 Jup,Jdn)
+                     global_auxvars(ghosted_id_up), &
+                     material_auxvars(ghosted_id_up), &
+                     material_parameter%soil_residual_saturation(:,icap_up), &
+                     material_parameter%soil_thermal_conductivity(:,imat_up), &
+                     gen_auxvars(:,ghosted_id_dn), &
+                     global_auxvars(ghosted_id_dn), &
+                     material_auxvars(ghosted_id_dn), &
+                     material_parameter%soil_residual_saturation(:,icap_dn), &
+                     material_parameter%soil_thermal_conductivity(:,imat_dn), &
+                     cur_connection_set%area(iconn), &
+                     cur_connection_set%dist(:,iconn), &
+                     general_parameter,option,&
+                     Jup,Jdn)
       if (local_id_up > 0) then
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
                                       Jup,ADD_VALUES,ierr)
@@ -2376,19 +2253,19 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
       icap_dn = patch%sat_func_id(ghosted_id)
 
       call GeneralBCFluxDerivative(boundary_condition%flow_bc_type, &
-                                  boundary_condition%flow_aux_mapping, &
-                                  boundary_condition%flow_aux_real_var(:,iconn), &
-                                  gen_auxvars_bc(sum_connection), &
-                                  global_auxvars_bc(sum_connection), &
-                                  gen_auxvars(:,ghosted_id), &
-                                  global_auxvars(ghosted_id), &
-                                  material_auxvars(ghosted_id), &
-                                  material_parameter%soil_residual_saturation(:,icap_dn), &
-                                  material_parameter%soil_thermal_conductivity(:,imat_dn), &
-                                  cur_connection_set%area(iconn), &
-                                  cur_connection_set%dist(:,iconn), &
-                                  general_parameter,option, &
-                                  Jdn)
+                      boundary_condition%flow_aux_mapping, &
+                      boundary_condition%flow_aux_real_var(:,iconn), &
+                      gen_auxvars_bc(sum_connection), &
+                      global_auxvars_bc(sum_connection), &
+                      gen_auxvars(:,ghosted_id), &
+                      global_auxvars(ghosted_id), &
+                      material_auxvars(ghosted_id), &
+                      material_parameter%soil_residual_saturation(:,icap_dn), &
+                      material_parameter%soil_thermal_conductivity(:,imat_dn), &
+                      cur_connection_set%area(iconn), &
+                      cur_connection_set%dist(:,iconn), &
+                      general_parameter,option, &
+                      Jdn)
 
       Jdn = -Jdn
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jdn, &
@@ -2412,7 +2289,6 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
     !geh - Ignore inactive cells with inactive materials
     imat = patch%imat(ghosted_id)
     if (imat <= 0) cycle
-    icap = patch%sat_func_id(ghosted_id)
     call GeneralAccumDerivative(gen_auxvars(:,ghosted_id), &
                               global_auxvars(ghosted_id), &
                               material_auxvars(ghosted_id), &
@@ -2508,6 +2384,8 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
     call printMsg(option) 
   endif
 
+!  call MatView(J,PETSC_VIEWER_STDOUT_WORLD,ierr)
+
 end subroutine GeneralJacobian
 
 ! ************************************************************************** !
@@ -2589,41 +2467,6 @@ end subroutine GeneralCreateZeroArray
 
 ! ************************************************************************** !
 
-subroutine GeneralMaxChange(realization)
-  ! 
-  ! Computes the maximum change in the solution vector
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/09/11
-  ! 
-
-  use Realization_class
-  use Option_module
-  use Field_module
-  
-  implicit none
-  
-  type(realization_type) :: realization
-  
-  type(option_type), pointer :: option
-  type(field_type), pointer :: field  
-  
-  PetscErrorCode :: ierr
-  
-  option => realization%option
-  field => realization%field
-
-  call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
-  call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
-!  call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
-!  call VecStrideNorm(field%flow_dxx,ONE_INTEGER,NORM_INFINITY,option%dcmax,ierr)
-!  call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
-!  call VecStrideNorm(field%flow_dxx,TWO_INTEGER,NORM_INFINITY,option%dtmpmax,ierr)
-
-end subroutine GeneralMaxChange
-
-! ************************************************************************** !
-
 subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   ! 
   ! Checks update prior to update
@@ -2644,7 +2487,6 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   SNESLineSearch :: line_search
   Vec :: X
   Vec :: dX
-  ! ignore changed flag for now.
   PetscBool :: changed
   type(realization_type) :: realization
   
@@ -2679,6 +2521,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   PetscReal :: min_pressure
   PetscReal :: scale, temp_scale, temp_real
   PetscReal, parameter :: tolerance = 0.99d0
+  PetscReal, parameter :: initial_scale = 0.6d0
   PetscErrorCode :: ierr
   
   grid => realization%patch%grid
@@ -2695,7 +2538,9 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   call VecGetArrayF90(dX,dX_p,ierr)
   call VecGetArrayF90(X,X_p,ierr)
 
-  scale = 1.d0
+  scale = initial_scale
+
+  changed = PETSC_TRUE
 
 #ifdef DEBUG_GENERAL
   cell_locator = 0
@@ -2712,6 +2557,8 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
 #endif
     select case(global_auxvars(ghosted_id)%istate)
       case(LIQUID_STATE)
+        dX_p(liquid_pressure_index) = dX_p(liquid_pressure_index) * &
+                                      general_pressure_scale
         temp_scale = 1.d0
         liquid_pressure_index  = offset + 1
         temperature_index  = offset + 3
@@ -2746,7 +2593,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
           write(string2,*) -1.d0*del_liquid_pressure
           string = '  pressure change  : ' // adjustl(string2)
           call printMsg(option,string)
-          write(string2,*) temp_scale
+          write(string2,*) temp_real
           string = '          scaling  : ' // adjustl(string2)
           call printMsg(option,string)
 #endif
@@ -2778,6 +2625,11 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
           temp_scale = min(temp_scale,temp_real)
         endif
       case(TWO_PHASE_STATE)
+        dX_p(gas_pressure_index) = dX_p(gas_pressure_index) * &
+                                   general_pressure_scale
+        dX_p(air_pressure_index) = dX_p(air_pressure_index) * &
+                                   general_pressure_scale
+        temp_scale = 1.d0
         temp_scale = 1.d0
         gas_pressure_index = offset + 1
         air_pressure_index = offset + 2
@@ -2912,6 +2764,11 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
 #endif
           temp_scale = min(temp_scale,temp_real)
         endif
+      case(GAS_STATE) 
+        dX_p(gas_pressure_index) = dX_p(gas_pressure_index) * &
+                                   general_pressure_scale
+        dX_p(air_pressure_index) = dX_p(air_pressure_index) * &
+                                   general_pressure_scale
     end select
     scale = min(scale,temp_scale) 
   enddo
@@ -2921,11 +2778,10 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
                      MPI_DOUBLE_PRECISION, &
                      MPI_MIN,option%mycomm,ierr)
 
-  if (scale < 0.9999d0) then
+  if (scale < 0.9999d0*initial_scale) then
 #ifdef DEBUG_GENERAL
     string  = '++++++++++++++++++++++++++++++++++++++++++++++++++++++'
     call printMsg(option,string)
-print *, cell_locator
     write(string2,*) scale, (grid%nG2A(cell_locator(i)),i=1,cell_locator(0))
     string = 'Final scaling: : ' // adjustl(string2)
     call printMsg(option,string)
@@ -2973,7 +2829,9 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   use Realization_class
   use Grid_module
   use Field_module
+  use Patch_module
   use Option_module
+  use Material_Aux_class
  
   implicit none
   
@@ -2988,55 +2846,91 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   
   PetscReal, pointer :: X1_p(:)
   PetscReal, pointer :: dX_p(:)
-  PetscReal, pointer :: volume_p(:)
-  PetscReal, pointer :: porosity_loc_p(:)
   PetscReal, pointer :: r_p(:)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  type(general_auxvar_type), pointer :: gen_auxvars(:,:)
+  type(patch_type), pointer :: patch
+  type(general_auxvar_type), pointer :: general_auxvars(:,:)
   type(global_auxvar_type), pointer :: global_auxvars(:)  
+  class(material_auxvar_type), pointer :: material_auxvars(:)  
+  type(material_parameter_type), pointer :: material_parameter
   PetscInt :: local_id, ghosted_id
-  PetscReal :: Res(1)
-  PetscReal :: inf_norm
+  PetscInt :: offset , ival, idof
+  PetscReal :: Res(3)
+  PetscReal :: inf_norm(3), global_inf_norm(3)
+  PetscReal :: dX_X1, R_A
+  PetscReal :: dX_X1_max(3), R_A_max(3), A_max(3), R_max(3), dX_max(3), X1_max(3)
   PetscErrorCode :: ierr
   
   grid => realization%patch%grid
   option => realization%option
   field => realization%field
-  gen_auxvars => realization%patch%aux%General%auxvars
-  global_auxvars => realization%patch%aux%Global%auxvars
+  patch => realization%patch
+  general_auxvars => patch%aux%General%auxvars
+  global_auxvars => patch%aux%Global%auxvars
+  material_auxvars => patch%aux%Material%auxvars
+  material_parameter => patch%aux%Material%material_parameter
   
   dX_changed = PETSC_FALSE
   X1_changed = PETSC_FALSE
   
-#if 0  
-  if (option%check_stomp_norm) then
-    call VecGetArrayF90(dP,dP_p,ierr)
-    call VecGetArrayF90(P1,P1_p,ierr)
+  option%converged = PETSC_FALSE
+  if (option%check_post_convergence) then
+    call VecGetArrayF90(dX,dX_p,ierr)
+    call VecGetArrayF90(X1,X1_p,ierr)
     call VecGetArrayF90(field%flow_r,r_p,ierr)
-    
-    inf_norm = 0.d0
+    R_A_max = 0.d0
+    A_max = 0.d0
+    R_max = 0.d0
+    dX_X1_max = 0.d0
+    dX_max = 0.d0
+    X1_max = 0.d0
+    inf_norm(:) = 0.d0
     do local_id = 1, grid%nlmax
+      offset = (local_id-1)*option%nflowdof
       ghosted_id = grid%nL2G(local_id)
       if (realization%patch%imat(ghosted_id) <= 0) cycle
-    
-      call RichardsAccumulation(rich_auxvars(ghosted_id), &
-                                global_auxvars(ghosted_id), &
-                                porosity_loc_p(ghosted_id), &
-                                volume_p(local_id), &
-                                option,Res)
-      inf_norm = max(inf_norm,min(dabs(dP_p(local_id)/P1_p(local_id)), &
-                                  dabs(r_p(local_id)/Res(1))))
+      call GeneralAccumulation(general_auxvars(ZERO_INTEGER,ghosted_id), &
+                               global_auxvars(ghosted_id), &
+                               material_auxvars(ghosted_id), &
+                               material_parameter%soil_heat_capacity( &
+                                 patch%imat(ghosted_id)), &
+                               option,Res)
+      do idof = 1, option%nflowdof
+        ival = offset+idof
+        R_A = dabs(r_p(ival)/Res(idof))
+        dX_X1 = dabs(dX_p(ival)/X1_p(ival))
+        if (inf_norm(idof) < min(dX_X1,R_A)) then
+          inf_norm(idof) = min(dX_X1,R_A)
+#ifdef DEBUG_GENERAL
+          A_max(idof) = Res(idof)
+          R_max(idof) = r_p(ival)
+          R_A_max(idof) = R_A
+          dX_max(idof) = dX_p(ival)
+          X1_max(idof) = X1_p(ival)
+          dX_X1_max(idof) = dX_X1 
+#endif
+        endif
+      enddo
     enddo
-    call MPI_Allreduce(inf_norm,option%stomp_norm,ONE_INTEGER_MPI, &
-                       MPI_DOUBLE_PRECISION, &
-                       MPI_MAX,option%mycomm,ierr)
-    call VecGetArrayF90(dP,dP_p,ierr)
-    call VecGetArrayF90(P1,P1_p,ierr)
+    call MPI_Allreduce(inf_norm,global_inf_norm,THREE_INTEGER_MPI, &
+                       MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
+    option%converged = PETSC_TRUE
+    do idof = 1, option%nflowdof
+      if (global_inf_norm(idof) > option%post_convergence_tol) then
+        option%converged = PETSC_FALSE
+#ifdef DEBUG_GENERAL
+        print *, '-+ ', idof, global_inf_norm(idof), &
+           dX_X1_max(idof), dX_max(idof),  X1_max(idof), ' : ', &
+           R_A_max(idof), R_max(idof), A_max(idof)
+#endif
+      endif
+    enddo
+    call VecGetArrayF90(dX,dX_p,ierr)
+    call VecGetArrayF90(X1,X1_p,ierr)
     call VecGetArrayF90(field%flow_r,r_p,ierr)
   endif
-#endif  
   
 end subroutine GeneralCheckUpdatePost
 

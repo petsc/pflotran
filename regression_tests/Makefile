@@ -49,9 +49,10 @@ STANDARD_CFG = \
 	default/multicontinuum/multicontinuum.cfg \
 	default/scco2/mphase/mphase.cfg \
 	default/scco2/flash2/flash2.cfg \
-	general/general.cfg \
+	geothermal_hpt/1D_Calcite/calcite_hpt.cfg\
+        general/general.cfg \
 	ngee/ngee.cfg \
-	shortcourse/1D_Calcite/calcite.cfg \
+        shortcourse/1D_Calcite/calcite.cfg \
 	shortcourse/1D_variably_saturated_flow/vsat_flow.cfg \
 	shortcourse/regional_doublet/regional_doublet.cfg \
 	shortcourse/copper_leaching/cu_leaching.cfg \
@@ -73,7 +74,8 @@ GEOCHEMISTRY_CFG = \
 	default/anisothermal/anisothermal.cfg \
 	default/column/column.cfg \
 	default/multicontinuum/multicontinuum.cfg \
-	ngee/ngee.cfg \
+	geothermal_hpt/1D_Calcite/calcite_hpt.cfg\
+        ngee/ngee.cfg \
 	shortcourse/1D_Calcite/calcite.cfg \
 	shortcourse/copper_leaching/cu_leaching.cfg \
 	wipp/nuts/nuts.cfg

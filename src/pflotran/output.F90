@@ -118,9 +118,7 @@ subroutine Output(realization_base,plot_flag,transient_plot_flag)
       if (realization_base%discretization%itype == UNSTRUCTURED_GRID .or. &
           realization_base%discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
         if (realization_base%discretization%grid%itype == EXPLICIT_UNSTRUCTURED_GRID) then
-          if (option%print_explicit_primal_grid) then
-            call OutputHDF5UGridXDMFExplicit(realization_base,INSTANTANEOUS_VARS)
-          endif
+          call OutputHDF5UGridXDMFExplicit(realization_base,INSTANTANEOUS_VARS)
         else
           call OutputHDF5UGridXDMF(realization_base,INSTANTANEOUS_VARS)
         endif

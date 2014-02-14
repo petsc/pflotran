@@ -572,7 +572,7 @@ subroutine Init(simulation)
     end select
     
     
-    if (option%check_stomp_norm) then
+    if (option%check_post_convergence) then
       select case(option%iflowmode)
         case(RICHARDS_MODE)
           call SNESGetLineSearch(flow_solver%snes, linesearch, ierr)
@@ -2597,9 +2597,12 @@ subroutine InitReadInput(simulation)
            option%store_flowrate = PETSC_TRUE
           endif
           if (associated(grid%unstructured_grid%explicit_grid)) then
-            option%io_buffer='Output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE ' // &
-              'not supported for explicit unstructured grid.'
+#ifndef STORE_FLOWRATES          
+            option%io_buffer='To output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE ' // &
+              'compile with -DSTORE_FLOWRATES.'
             call printErrMsg(option)
+#endif
+            output_option%print_explicit_flowrate = mass_flowrate
           endif
         
         endif
@@ -2754,6 +2757,7 @@ subroutine setFlowMode(option)
 
   use Option_module
   use String_module
+  use General_Aux_module
 
   implicit none 
 
@@ -3068,10 +3072,10 @@ subroutine assignMaterialPropToRegions(realization)
           perm_xy_p(local_id) = material_property%permeability(1,2)
           perm_yz_p(local_id) = material_property%permeability(2,3)
         endif
-        if (associated(material_auxvars)) then
-          call MaterialAssignPropertyToAux(material_auxvars(ghosted_id), &
-                                           material_property,option)
-        endif
+      endif
+      if (associated(material_auxvars)) then
+        call MaterialAssignPropertyToAux(material_auxvars(ghosted_id), &
+                                         material_property,option)
       endif
       por0_p(local_id) = material_property%porosity
       tor0_p(local_id) = material_property%tortuosity

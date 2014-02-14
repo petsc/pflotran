@@ -717,7 +717,8 @@ subroutine RegionReadFromFileId(region,input,option)
 
       call InputReadInt(input,option,temp_int)
       if (InputError(input)) then
-        option%io_buffer = 'ERROR while reading the region from file'
+        option%io_buffer = 'ERROR while reading the region "' // &
+          trim(region%name) // '" from file'
         call printErrMsg(option)
       endif
       face_ids_p(count) = temp_int
@@ -771,7 +772,8 @@ subroutine RegionReadFromFileId(region,input,option)
       do ii = 1, vert_id_0_p(count)
         call InputReadInt(input,option,temp_int)
         if (InputError(input)) then
-          option%io_buffer = 'ERROR while reading the region from file'
+          option%io_buffer = 'ERROR while reading the region "' // &
+            trim(region%name) // '" from file'
           call printErrMsg(option)
         endif
 
