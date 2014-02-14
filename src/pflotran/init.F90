@@ -2597,9 +2597,12 @@ subroutine InitReadInput(simulation)
            option%store_flowrate = PETSC_TRUE
           endif
           if (associated(grid%unstructured_grid%explicit_grid)) then
-            option%io_buffer='Output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE ' // &
-              'not supported for explicit unstructured grid.'
+#ifndef STORE_FLOWRATES          
+            option%io_buffer='To output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE ' // &
+              'compile with -DSTORE_FLOWRATES.'
             call printErrMsg(option)
+#endif
+            output_option%print_explicit_flowrate = mass_flowrate
           endif
         
         endif
