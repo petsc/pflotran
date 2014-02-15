@@ -595,8 +595,8 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         liquid_epsilon = epsilon
         x(GENERAL_GAS_PRESSURE_DOF) = &
           gen_auxvar%pres(lid) * (1.d0 + liquid_epsilon)
-        x(GENERAL_AIR_SATURATION_DOF) = &
-          gen_auxvar%pres(aid) * (1.d0 + liquid_epsilon)
+        x(GENERAL_AIR_PRESSURE_DOF) = &
+          gen_auxvar%pres(apid) * (1.d0 + liquid_epsilon)
 #if 0
         ! pa = pg - ps
         x(GENERAL_AIR_PRESSURE_DOF) = &
