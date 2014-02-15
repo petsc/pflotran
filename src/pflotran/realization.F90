@@ -227,9 +227,7 @@ subroutine RealizationCreateDiscretization(realization)
                                      field%tortuosity0)
   call DiscretizationDuplicateVector(discretization,field%work, &
                                      field%volume0)
-  if (option%iflowmode /= RICHARDS_MODE .and. &
-      option%iflowmode /= G_MODE .and. &
-      option%iflowmode /= NULL_MODE) then
+  if (.not.option%use_refactored_material_auxvars) then
     !geh: relocated to material aux var
     call DiscretizationDuplicateVector(discretization,field%work, &
                                        field%volume)
@@ -238,9 +236,7 @@ subroutine RealizationCreateDiscretization(realization)
   ! 1 degree of freedom, local
   call DiscretizationCreateVector(discretization,ONEDOF,field%work_loc, &
                                   LOCAL,option)
-  if (option%iflowmode /= RICHARDS_MODE .and. &
-      option%iflowmode /= G_MODE .and. &
-      option%iflowmode /= NULL_MODE) then
+  if (.not.option%use_refactored_material_auxvars) then
       !geh: relocated to material aux var
     call DiscretizationDuplicateVector(discretization,field%work_loc, &
                                        field%porosity_loc)
@@ -277,8 +273,7 @@ subroutine RealizationCreateDiscretization(realization)
     call DiscretizationDuplicateVector(discretization,field%work_loc, &
                                        field%iphas_old_loc)
     
-    if (option%iflowmode /= RICHARDS_MODE .and. &
-        option%iflowmode /= G_MODE) then
+    if (.not.option%use_refactored_material_auxvars) then
       !geh: for Richards mode, perm*_loc has been relocated to material aux var
       call DiscretizationDuplicateVector(discretization,field%work_loc, &
                                          field%perm_xx_loc)
@@ -385,9 +380,7 @@ subroutine RealizationCreateDiscretization(realization)
       call GridComputeCoordinates(grid,discretization%origin,option)
       call GridComputeVolumes(grid,field%volume0,option)
       !geh: remove
-      if (option%iflowmode /= RICHARDS_MODE .and. &
-          option%iflowmode /= G_MODE .and. &
-          option%iflowmode /= NULL_MODE) then
+      if (.not.option%use_refactored_material_auxvars) then
         call VecCopy(field%volume0,field%volume,ierr)
       endif
       ! set up internal connectivity, distance, etc.
@@ -423,9 +416,7 @@ subroutine RealizationCreateDiscretization(realization)
                                       discretization%dm_1dof%ugdm) 
       call GridComputeVolumes(grid,field%volume0,option)
       !geh: remove
-      if (option%iflowmode /= RICHARDS_MODE .and. &
-          option%iflowmode /= G_MODE .and. &
-          option%iflowmode /= NULL_MODE) then
+      if (.not.option%use_refactored_material_auxvars) then
         call VecCopy(field%volume0,field%volume,ierr)
       endif
 #ifdef MFD_UGRID
@@ -1480,9 +1471,7 @@ subroutine RealizationRevertFlowParameters(realization)
   Material => realization%patch%aux%Material
 
   if (option%nflowdof > 0) then
-  if (option%iflowmode /= RICHARDS_MODE .and. &
-      option%iflowmode /= G_MODE .and. &
-      option%iflowmode /= NULL_MODE) then
+  if (.not.option%use_refactored_material_auxvars) then
     !geh: remove    
     call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
                            field%perm_xx_loc,ONEDOF)  
@@ -1502,9 +1491,7 @@ subroutine RealizationRevertFlowParameters(realization)
     call MaterialSetAuxVarVecLoc(Material,field%work_loc,PERMEABILITY_Z,0)
   endif
   endif   
-  if (option%iflowmode /= RICHARDS_MODE .and. &
-      option%iflowmode /= G_MODE .and. &
-      option%iflowmode /= NULL_MODE) then
+  if (.not.option%use_refactored_material_auxvars) then
     !geh: remove    
   call DiscretizationGlobalToLocal(discretization,field%porosity0, &
                                    field%porosity_loc,ONEDOF)

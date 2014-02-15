@@ -211,6 +211,8 @@ module Option_module
     PetscBool :: out_of_table
     
     PetscBool :: use_process_model
+    !TODO(geh): remove this once all modes have bee refactored
+    PetscBool :: use_refactored_material_auxvars
         
     ! Specify secondary continuum solver
     PetscBool :: print_explicit_primal_grid    ! prints primal grid if true
@@ -370,6 +372,7 @@ subroutine OptionInitAll(option)
   
   option%simulation_mode = 'SUBSURFACE'
   option%use_process_model = PETSC_FALSE
+  option%use_refactored_material_auxvars = PETSC_FALSE
   option%subsurface_simulation_type = SUBSURFACE_SIM_TYPE
  
   call OptionInitRealization(option)

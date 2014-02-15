@@ -222,6 +222,7 @@ subroutine Init(simulation)
     option%nphase = 1
     option%liquid_phase = 1
     option%use_isothermal = PETSC_TRUE  ! assume default isothermal when only transport
+    option%use_refactored_material_auxvars = PETSC_TRUE
     call TimestepperDestroy(simulation%flow_stepper)
     nullify(flow_stepper)
   endif
@@ -2795,6 +2796,7 @@ subroutine setFlowMode(option)
       option%nflowdof = 1
       option%nflowspec = 1
       option%use_isothermal = PETSC_TRUE
+      option%use_refactored_material_auxvars = PETSC_TRUE
     case('MPH','MPHASE')
       option%iflowmode = MPH_MODE
       option%nphase = 2
@@ -2839,6 +2841,7 @@ subroutine setFlowMode(option)
       option%nflowdof = 3
       option%nflowspec = 2
       option%use_isothermal = PETSC_FALSE
+      option%use_refactored_material_auxvars = PETSC_TRUE
     case default
       option%io_buffer = 'Mode: '//trim(option%flowmode)//' not recognized.'
       call printErrMsg(option)
@@ -3019,9 +3022,7 @@ subroutine assignMaterialPropToRegions(realization)
     call VecGetArrayF90(field%tortuosity0,tor0_p,ierr)
         
     !geh: remove
-    if (option%iflowmode == RICHARDS_MODE .or. &
-        option%iflowmode == G_MODE .or. &
-        option%iflowmode == NULL_MODE) then
+    if (option%use_refactored_material_auxvars) then
       material_auxvars => cur_patch%aux%Material%auxvars
     else
       nullify(material_auxvars)
@@ -3160,7 +3161,7 @@ subroutine assignMaterialPropToRegions(realization)
                                    PERMEABILITY_YZ,0)
     endif
     !geh: remove
-    if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE) then
+    if (.not.option%use_refactored_material_auxvars) then
       call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
                                        field%perm_xx_loc,ONEDOF)  
       call DiscretizationGlobalToLocal(discretization,field%perm0_yy, &
@@ -3214,8 +3215,7 @@ subroutine assignMaterialPropToRegions(realization)
   enddo
   
   !geh: remove
-  if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE .and. &
-      option%iflowmode /= NULL_MODE) then
+  if (.not.option%use_refactored_material_auxvars) then
     call DiscretizationGlobalToLocal(discretization,field%porosity0, &
                                      field%porosity_loc,ONEDOF)
     call DiscretizationGlobalToLocal(discretization,field%tortuosity0, &
