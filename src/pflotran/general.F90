@@ -2529,6 +2529,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   PetscReal :: air_pressure0, air_pressure1, del_air_pressure
   PetscReal :: temperature0, temperature1, del_temperature
   PetscReal :: saturation0, saturation1, del_saturation
+  PetscReal :: xmol_air_in_water0, xmol_air_in_water1, del_xmol_air_in_water
   PetscReal :: max_saturation_change = 0.125d0
   PetscReal :: max_temperature_change = 10.d0
   PetscReal :: min_pressure
