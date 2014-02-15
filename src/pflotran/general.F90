@@ -892,6 +892,7 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
   ! 
 
   use Option_module
+  use Material_module
   use Material_Aux_class
   
   implicit none
@@ -906,6 +907,7 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
   PetscInt :: wat_comp_id, air_comp_id, energy_id
   PetscInt :: icomp, iphase
   
+  PetscReal :: porosity, compressed_porosity, dcompressed_porosity_dp
   PetscReal :: v_over_t
   
   wat_comp_id = option%water_id
@@ -914,6 +916,14 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
   
   ! v_over_t[m^3 bulk/sec] = vol[m^3 bulk] / dt[sec]
   v_over_t = material_auxvar%volume / option%flow_dt
+
+  porosity = material_auxvar%porosity
+    if (soil_compressibility_index > 0) then
+    call MaterialCompressSoil(material_auxvar, &
+                              maxval(global_auxvar%pres(1:2)), &
+                              compressed_porosity,dcompressed_porosity_dp)
+    porosity = compressed_porosity
+  endif
   
   ! accumulation term units = kmol/s
   Res = 0.d0
@@ -938,7 +948,7 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
   ! Res[kmol/sec] = Res[kmol/m^3 void] * por[m^3 void/m^3 bulk] * 
   !                 vol[m^3 bulk] / dt[sec]
   Res(1:option%nflowspec) = Res(1:option%nflowspec) * &
-                            material_auxvar%porosity * v_over_t
+                            porosity * v_over_t
   
   do iphase = 1, option%nphase
     ! Res[MJ/m^3 void] = sat[m^3 phase/m^3 void] *
@@ -951,8 +961,8 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
   !                (1-por)[m^3 rock/m^3 bulk] * 
   !                  dencpr[kg rock/m^3 rock * MJ/kg rock-K] * T[C]) &
   !               vol[m^3 bulk] / dt[sec]
-  Res(energy_id) = (Res(energy_id) * material_auxvar%porosity + &
-                    (1.d0 - material_auxvar%porosity) * &
+  Res(energy_id) = (Res(energy_id) * porosity + &
+                    (1.d0 - porosity) * &
                     material_auxvar%soil_particle_density * &
                     soil_heat_capacity * gen_auxvar%temp) * v_over_t 
 
@@ -1167,8 +1177,11 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
                     (1.D0-upweight_adj)*gen_auxvar_dn%den(iphase)
 !      stp_ave = (stp_up*stp_dn)/(stp_up*dd_dn+stp_dn*dd_up)
       stp_ave = sqrt(sat_up*sat_dn)* &
-                sqrt(material_auxvar_up%tortuosity*material_auxvar_dn%tortuosity)* &
-                sqrt(material_auxvar_up%porosity*material_auxvar_dn%porosity)
+                sqrt(material_auxvar_up%tortuosity* &
+                     material_auxvar_dn%tortuosity)* &
+                !TODO(geh): update that diffusion uses compressed porosity
+                sqrt(material_auxvar_up%porosity* &
+                     material_auxvar_dn%porosity)
       delta_xmol = gen_auxvar_up%xmol(air_comp_id,iphase) - &
                    gen_auxvar_dn%xmol(air_comp_id,iphase)
       ! need to account for multiple phases
@@ -2499,7 +2512,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   type(field_type), pointer :: field
   type(general_auxvar_type), pointer :: gen_auxvars(:,:)
   type(global_auxvar_type), pointer :: global_auxvars(:)  
-#ifdef DEBUG_GENERAL
+#ifdef DEBUG_GENERAL_INFO
   character(len=MAXSTRINGLENGTH) :: string, string2, string3
   character(len=MAXWORDLENGTH) :: cell_id_word
   PetscInt, parameter :: max_cell_id = 10
@@ -2542,7 +2555,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
 
   changed = PETSC_TRUE
 
-#ifdef DEBUG_GENERAL
+#ifdef DEBUG_GENERAL_INFO
   cell_locator = 0
 #endif
 
@@ -2550,7 +2563,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
     ghosted_id = grid%nL2G(local_id)
     offset = (local_id-1)*option%nflowdof
     temp_scale = 1.d0
-#ifdef DEBUG_GENERAL
+#ifdef DEBUG_GENERAL_INFO
     cell_id = grid%nG2A(ghosted_id)
     write(cell_id_word,*) cell_id
     cell_id_word = '(Cell ' // trim(adjustl(cell_id_word)) // '): '
@@ -2574,8 +2587,15 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
                        gen_auxvars(ZERO_INTEGER,ghosted_id)%pres(spid)
         if (liquid_pressure1 < min_pressure) then
           temp_real = tolerance * (liquid_pressure0 - min_pressure)
-          temp_real = dabs(temp_real / del_liquid_pressure)
-#ifdef DEBUG_GENERAL
+          if (dabs(del_liquid_pressure) > 1.d-40) then
+            temp_real = dabs(temp_real / del_liquid_pressure)
+          else
+            option%io_buffer = 'Something is seriously wrong in ' // &
+              'GeneralCheckUpdatePre(liquid<min).  Contact Glenn through ' // &
+              'pflotran-dev@googlegroups.com.'
+            call printErrMsg(option)
+          endif
+#ifdef DEBUG_GENERAL_INFO
           if (cell_locator(0) < max_cell_id) then
             cell_locator(0) = cell_locator(0) + 1
             cell_locator(cell_locator(0)) = ghosted_id
@@ -2601,7 +2621,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
         endif
         if (dabs(del_temperature) > max_temperature_change) then
           temp_real = dabs(max_temperature_change/del_temperature)
-#ifdef DEBUG_GENERAL
+#ifdef DEBUG_GENERAL_INFO
           if (cell_locator(0) < max_cell_id) then
             cell_locator(0) = cell_locator(0) + 1
             cell_locator(cell_locator(0)) = ghosted_id
@@ -2630,7 +2650,6 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
         dX_p(air_pressure_index) = dX_p(air_pressure_index) * &
                                    general_pressure_scale
         temp_scale = 1.d0
-        temp_scale = 1.d0
         gas_pressure_index = offset + 1
         air_pressure_index = offset + 2
         saturation_index = offset + 3
@@ -2646,7 +2665,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
         if (gas_pressure1 <= 0.d0) then
           if (dabs(del_gas_pressure) > 1.d-40) then
             temp_real = tolerance * dabs(gas_pressure0 / del_gas_pressure)
-#ifdef DEBUG_GENERAL
+#ifdef DEBUG_GENERAL_INFO
             if (cell_locator(0) < max_cell_id) then
               cell_locator(0) = cell_locator(0) + 1
               cell_locator(cell_locator(0)) = ghosted_id
@@ -2674,7 +2693,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
         if (air_pressure1 <= 0.d0) then
           if (dabs(del_air_pressure) > 1.d-40) then
             temp_real = tolerance * dabs(air_pressure0 / del_air_pressure)
-#ifdef DEBUG_GENERAL
+#ifdef DEBUG_GENERAL_INFO
             if (cell_locator(0) < max_cell_id) then
               cell_locator(0) = cell_locator(0) + 1
               cell_locator(cell_locator(0)) = ghosted_id
@@ -2703,10 +2722,23 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
         gas_pressure1 = gas_pressure0 - temp_scale * del_gas_pressure
         air_pressure1 = air_pressure0 - temp_scale * del_air_pressure
         if (gas_pressure1 <= air_pressure1) then
-          temp_real = (air_pressure0 - gas_pressure0) / &
-                      (temp_scale * (del_air_pressure - del_gas_pressure))
-          temp_real = temp_real * tolerance * temp_scale
-#ifdef DEBUG_GENERAL
+!          temp_real = (air_pressure0 - gas_pressure0) / &
+!                      (temp_scale * (del_air_pressure - del_gas_pressure))
+!          temp_real = temp_real * tolerance * temp_scale
+          ! refactored to prevent divide by 0
+          temp_real = temp_scale * (del_air_pressure - del_gas_pressure)
+          if (temp_real > 0.d0) then
+            temp_real = (air_pressure0 - gas_pressure0) / temp_real
+            temp_real = temp_real * tolerance * temp_scale
+          endif
+          if (temp_real <= 0.d0) then
+            ! add info on pressures here
+            option%io_buffer = 'Something is seriously wrong in ' // &
+              'GeneralCheckUpdatePre(gas<=air).  Contact Glenn through ' // &
+              'pflotran-dev@googlegroups.com.'
+            call printErrMsg(option)
+          endif
+#ifdef DEBUG_GENERAL_INFO
           if (cell_locator(0) < max_cell_id) then
             cell_locator(0) = cell_locator(0) + 1
             cell_locator(cell_locator(0)) = ghosted_id
@@ -2740,7 +2772,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
         endif
         if (dabs(del_saturation) > max_saturation_change) then
           temp_real = dabs(max_saturation_change/del_saturation)
-#ifdef DEBUG_GENERAL
+#ifdef DEBUG_GENERAL_INFO
           if (cell_locator(0) < max_cell_id) then
             cell_locator(0) = cell_locator(0) + 1
             cell_locator(cell_locator(0)) = ghosted_id
@@ -2779,7 +2811,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
                      MPI_MIN,option%mycomm,ierr)
 
   if (scale < 0.9999d0*initial_scale) then
-#ifdef DEBUG_GENERAL
+#ifdef DEBUG_GENERAL_INFO
     string  = '++++++++++++++++++++++++++++++++++++++++++++++++++++++'
     call printMsg(option,string)
     write(string2,*) scale, (grid%nG2A(cell_locator(i)),i=1,cell_locator(0))
@@ -2903,7 +2935,7 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
         dX_X1 = dabs(dX_p(ival)/X1_p(ival))
         if (inf_norm(idof) < min(dX_X1,R_A)) then
           inf_norm(idof) = min(dX_X1,R_A)
-#ifdef DEBUG_GENERAL
+#ifdef DEBUG_GENERAL_INFO
           A_max(idof) = Res(idof)
           R_max(idof) = r_p(ival)
           R_A_max(idof) = R_A
@@ -2920,7 +2952,7 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
     do idof = 1, option%nflowdof
       if (global_inf_norm(idof) > option%post_convergence_tol) then
         option%converged = PETSC_FALSE
-#ifdef DEBUG_GENERAL
+#ifdef DEBUG_GENERAL_INFO
         print *, '-+ ', idof, global_inf_norm(idof), &
            dX_X1_max(idof), dX_max(idof),  X1_max(idof), ' : ', &
            R_A_max(idof), R_max(idof), A_max(idof)

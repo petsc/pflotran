@@ -87,6 +87,9 @@ endif
 
 ifdef debug_gen
   MYFLAGS += -DDEBUG_GENERAL
+  ifeq ($(debug_gen),2)
+    MYFLAGS += -DDEBUG_GENERAL_INFO
+  endif
 endif 
 
 ifdef coll

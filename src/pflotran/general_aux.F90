@@ -565,8 +565,10 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
     case(LIQUID_STATE)
       if (gen_auxvar%pres(vpid) <= gen_auxvar%pres(spid)) then
 #ifdef DEBUG_GENERAL
+#ifdef DEBUG_GENERAL_INFO
         call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &
                                  'Before Update',option)
+#endif
         if (option%iflag == 1) then
           write(state_change_string,'(''Liquid -> 2 Phase at Cell '',i5)') &
             ghosted_id
@@ -632,8 +634,10 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
     case(TWO_PHASE_STATE)
       if (gen_auxvar%sat(gid) < 0.d0) then
 #ifdef DEBUG_GENERAL
+#ifdef DEBUG_GENERAL_INFO
         call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &
                                  'Before Update',option)
+#endif
         if (option%iflag == 1) then
           write(state_change_string,'(''2 Phase -> Liquid at Cell '',i5)') &
             ghosted_id
@@ -676,8 +680,10 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         flag = PETSC_TRUE
       else if (gen_auxvar%sat(gid) > 1.d0) then
 #ifdef DEBUG_GENERAL
+#ifdef DEBUG_GENERAL_INFO
         call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &
                                  'Before Update',option)
+#endif
         if (option%iflag == 1) then
           write(state_change_string,'(''2 Phase -> Gas at Cell '',i5)') &
             ghosted_id
@@ -701,8 +707,10 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
                               saturation_function,ghosted_id,option)
 #ifdef DEBUG_GENERAL
     call printMsg(option,state_change_string)
+#ifdef DEBUG_GENERAL_INFO
     call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &
                              'After Update',option)
+#endif
 #endif
     option%variables_swapped = PETSC_TRUE
   endif
