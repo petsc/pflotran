@@ -16,6 +16,8 @@ module Dataset_Global_HDF5_class
     PetscInt :: global_size   ! global number of entries
     type(dm_ptr_type), pointer :: dm_wrapper ! pointer 
   end type dataset_global_hdf5_type
+
+  PetscInt, parameter :: default_max_buffer_size = 10
   
   public :: DatasetGlobalHDF5Create, &
             DatasetGlobalHDF5Init, &
@@ -134,6 +136,9 @@ subroutine DatasetGlobalHDF5Load(this,option)
       this%rarray = 0.d0
     endif
     if (.not.associated(this%rbuffer)) then ! not initialized
+      if (this%max_buffer_size < 0) then
+        this%max_buffer_size = default_max_buffer_size
+      endif
       this%buffer_nslice = min(this%max_buffer_size, &
                                this%time_storage%max_time_index)
       allocate(this%rbuffer(this%local_size*this%buffer_nslice))
