@@ -840,6 +840,7 @@ subroutine GeneralNumericalJacTest(xx,realization)
                    grid%nlmax*option%nflowdof,ierr)
   call MatSetType(A,MATAIJ,ierr)
   call MatSetFromOptions(A,ierr)
+  call MatSetUp(A,ierr)
     
   call GeneralResidual(PETSC_NULL_OBJECT,xx,res,realization,ierr)
   call VecGetArrayF90(res,vec2_p,ierr)
