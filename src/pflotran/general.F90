@@ -2900,11 +2900,11 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
 #ifdef DEBUG_GENERAL_INFO
   PetscInt :: icell_max(3), istate_max(3)
   character(len=2) :: state_char
-  PetscReal :: Res(3)
-  PetscReal :: dX_X1, R_A
   PetscReal :: R_A_max(3), A_max(3), R_max(3) 
   PetscReal :: dX_X1_max(3), dX_max(3), X1_max(3)
 #endif
+  PetscReal :: Res(3)
+  PetscReal :: dX_X1, R_A
   PetscReal :: inf_norm(3), global_inf_norm(3)
   PetscErrorCode :: ierr
   
@@ -2948,10 +2948,8 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
                                option,Res)
       do idof = 1, option%nflowdof
         ival = offset+idof
-#ifdef DEBUG_GENERAL_INFO
         R_A = dabs(r_p(ival)/Res(idof))
         dX_X1 = dabs(dX_p(ival)/X1_p(ival))
-#endif
         if (inf_norm(idof) < min(dX_X1,R_A)) then
           inf_norm(idof) = min(dX_X1,R_A)
 #ifdef DEBUG_GENERAL_INFO
