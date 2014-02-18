@@ -481,7 +481,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
 
 #if 0
   if (option%iflag == 1) then
-    if (ghosted_id == 1) then
+    if (ghosted_id == 5) then
     write(*,'(a,i3,7f13.4,a3)') 'i/l/g/a/c/v/s/t: ', &
       ghosted_id, gen_auxvar%pres(1:5), gen_auxvar%sat(1), gen_auxvar%temp, &
       trim(state_char)
@@ -543,6 +543,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
   PetscInt :: apid, cpid, vpid, spid
   PetscInt :: gid, lid, acid, wid, eid
   PetscReal :: dummy, guess
+  PetscReal :: n_air, n_air_in_gas, n_air_in_liquid, RT, K_H_tilde, theta
   PetscBool :: flag
   character(len=MAXSTRINGLENGTH) :: state_change_string, string
   PetscErrorCode :: ierr
@@ -595,8 +596,53 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         liquid_epsilon = epsilon
         x(GENERAL_GAS_PRESSURE_DOF) = &
           gen_auxvar%pres(lid) * (1.d0 + liquid_epsilon)
+        ! assume air pressure is pg - ps, but has to be greater than epsilon.
         x(GENERAL_AIR_PRESSURE_DOF) = &
-          gen_auxvar%pres(apid) * (1.d0 + liquid_epsilon)
+          x(GENERAL_GAS_PRESSURE_DOF) - gen_auxvar%pres(spid)
+        if (x(GENERAL_AIR_PRESSURE_DOF) < 1.d-20) then
+          x(GENERAL_AIR_PRESSURE_DOF) = 1.d-20
+          write(string,*) x(GENERAL_AIR_PRESSURE_DOF)
+          state_change_string = trim(state_change_string) // &
+            ' - air pressure truncated: ' // trim(adjustl(string))
+        endif
+        ! determine # moles air.  at this point, the water is supersaturated
+        ! with respect to air and all air is in the liquid phase
+        n_air_in_liquid = gen_auxvar%xmol(acid,lid) * &
+                          gen_auxvar%den(lid) * &
+                          material_auxvar%porosity*material_auxvar%volume
+        ! but n_air_in_liquid is current supersaturated
+        n_air = n_air_in_liquid
+        ! recalculate mole air in liquid at saturation
+        call Henry_air_noderiv(dummy,gen_auxvar%temp, &
+                               gen_auxvar%pres(spid),K_H_tilde)
+        n_air_in_liquid = (gen_auxvar%pres(lid)-gen_auxvar%pres(spid)) / &
+                           K_H_tilde * &
+                           gen_auxvar%den(lid) * &
+                           material_auxvar%porosity*material_auxvar%volume 
+        ! based on gas pressure, calculate new saturation
+        RT = (8.31415d0*(gen_auxvar%temp+293.15d0))
+!        V_gas = gas_saturation* material_auxvar%porosity* &
+!                material_auxvar%volume
+!        n_water_in_gas = gen_auxvar%pres(spid) * V_gas / RT
+!        n_air_in_gas = gen_auxvar%pres(apid) * V_gas / RT
+        n_air_in_gas = n_air - n_air_in_liquid
+        if (n_air_in_gas <= 0.d0) then
+          option%io_buffer = 'We got problems in GeneralAuxVarUpdateState()'
+          call printErrMsg(option)
+        endif
+!        p_gas = (n_water_in_gas + n_air_in_gas) / V_gas * RT
+        theta = RT / (x(GENERAL_GAS_PRESSURE_DOF) * &
+                      material_auxvar%porosity* &
+                      material_auxvar%volume)
+        x(GENERAL_GAS_SATURATION_DOF) = &
+          n_air_in_gas * theta / &
+          (1.d0 - gen_auxvar%pres(spid) / x(GENERAL_GAS_PRESSURE_DOF)) * &
+          (1.d0 + liquid_epsilon)
+!        x(GENERAL_GAS_SATURATION_DOF) = &
+!                         (n_water_in_gas + n_air_in_gas) / &
+!                         x(GENERAL_GAS_PRESSURE_DOF) * RT / &
+!                         material_auxvar%porosity*material_auxvar%volume * &
+!                         (1.d0 + liquid_epsilon)
 #if 0
         ! pa = pg - ps
         x(GENERAL_AIR_PRESSURE_DOF) = &
@@ -613,8 +659,8 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
           x(GENERAL_AIR_PRESSURE_DOF) = &
             gen_auxvar%pres(apid) * (1.d0 + liquid_epsilon)
         endif
-#endif
         x(GENERAL_GAS_SATURATION_DOF) = liquid_epsilon
+#endif
         flag = PETSC_TRUE
       endif
     case(GAS_STATE)
@@ -710,6 +756,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
     call GeneralAuxVarCompute(x,gen_auxvar, global_auxvar,material_auxvar, &
                               saturation_function,ghosted_id,option)
 #ifdef DEBUG_GENERAL
+    state_change_string = 'State Transition: ' // trim(state_change_string)
     call printMsg(option,state_change_string)
 #ifdef DEBUG_GENERAL_INFO
     call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &
