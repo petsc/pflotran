@@ -75,7 +75,7 @@ subroutine DatasetCommonHDF5Init(this)
   call DatasetBaseInit(this)
   this%hdf5_dataset_name = ''
   this%realization_dependent = PETSC_FALSE
-  this%max_buffer_size = 10
+  this%max_buffer_size = -999
   this%is_cell_indexed = PETSC_FALSE
   this%data_type = DATASET_REAL
     
