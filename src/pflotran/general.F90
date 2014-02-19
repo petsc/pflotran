@@ -590,19 +590,6 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
                                     patch%saturation_function_array( &
                                       patch%sat_func_id(ghosted_id))%ptr, &
                                     ghosted_id,option)
-#if 0
-!geh: moved to prior to GeneralAuxVarUpdateState() as the auxiliary variables
-!     within gen_auxvar need to be updated to check state
-      ! flag(2) indicates call from non-perturbation
-      option%iflag = 2
-      call GeneralAuxVarCompute(xxbc,gen_auxvars_bc(sum_connection), &
-                                global_auxvars_bc(sum_connection), &
-                                material_auxvars(ghosted_id), &
-                                patch%saturation_function_array( &
-                                  patch%sat_func_id(ghosted_id))%ptr, &
-                                ghosted_id, &
-                                option)
-#endif
     enddo
     boundary_condition => boundary_condition%next
   enddo
@@ -830,6 +817,8 @@ subroutine GeneralNumericalJacTest(xx,realization)
   grid => patch%grid
   option => realization%option
   field => realization%field
+
+!geh:print *, 'GeneralNumericalJacTest'
   
   call VecDuplicate(xx,xx_pert,ierr)
   call VecDuplicate(xx,res,ierr)
@@ -846,23 +835,24 @@ subroutine GeneralNumericalJacTest(xx,realization)
   call VecGetArrayF90(res,vec2_p,ierr)
   do icell = 1,grid%nlmax
     if (patch%imat(grid%nL2G(icell)) <= 0) cycle
-    idof = icell
-!    do idof = (icell-1)*option%nflowdof+1,icell*option%nflowdof 
+    do idof = (icell-1)*option%nflowdof+1,icell*option%nflowdof 
       call VecCopy(xx,xx_pert,ierr)
       call VecGetArrayF90(xx_pert,vec_p,ierr)
       perturbation = vec_p(idof)*perturbation_tolerance
       vec_p(idof) = vec_p(idof)+perturbation
-      call vecrestorearrayf90(xx_pert,vec_p,ierr)
+      call VecRestoreArrayF90(xx_pert,vec_p,ierr)
       call GeneralResidual(PETSC_NULL_OBJECT,xx_pert,res_pert,realization,ierr)
-      call vecgetarrayf90(res_pert,vec_p,ierr)
+      call VecGetArrayF90(res_pert,vec_p,ierr)
+!geh:print *, icell, idof
       do idof2 = 1, grid%nlmax*option%nflowdof
         derivative = (vec_p(idof2)-vec2_p(idof2))/perturbation
+!geh:print *, derivative, perturbation
         if (dabs(derivative) > 1.d-30) then
-          call matsetvalue(a,idof2-1,idof-1,derivative,insert_values,ierr)
+          call MatSetValue(a,idof2-1,idof-1,derivative,insert_values,ierr)
         endif
       enddo
       call VecRestoreArrayF90(res_pert,vec_p,ierr)
-!    enddo
+    enddo
   enddo
   call VecRestoreArrayF90(res,vec2_p,ierr)
 
@@ -874,10 +864,13 @@ subroutine GeneralNumericalJacTest(xx,realization)
 
   call MatDestroy(A,ierr)
   
+  ! call again to get auxvars back to previous state
+  call GeneralResidual(PETSC_NULL_OBJECT,xx,res,realization,ierr)
+  
   call VecDestroy(xx_pert,ierr)
   call VecDestroy(res,ierr)
   call VecDestroy(res_pert,ierr)
-  
+
 end subroutine GeneralNumericalJacTest
 
 ! ************************************************************************** !
@@ -928,29 +921,28 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
   
   ! accumulation term units = kmol/s
   Res = 0.d0
-  do icomp = 1, option%nflowspec
-    do iphase = 1, option%nphase
-      ! Res[kmol comp/m^3 void] = sat[m^3 phase/m^3 void] * 
-      !                           den[kmol phase/m^3 phase] * 
-      !                           xmol[kmol comp/kmol phase]
+  do iphase = 1, option%nphase
+    ! all components are lumped in first residual equation
+    ! Res[kmol total/m^3 void] = sat[m^3 phase/m^3 void] * 
+    !                            den[kmol phase/m^3 phase]
+    Res(1) = Res(1) + gen_auxvar%sat(iphase) * &
+                              gen_auxvar%den(iphase)
+    ! Res[kmol comp/m^3 void] = sat[m^3 phase/m^3 void] * 
+    !                           den[kmol phase/m^3 phase] * 
+    !                           xmol[kmol comp/kmol phase]
+    do icomp = 2, option%nflowspec
       Res(icomp) = Res(icomp) + gen_auxvar%sat(iphase) * &
                                 gen_auxvar%den(iphase) * &
                                 gen_auxvar%xmol(icomp,iphase)
     enddo
   enddo
-  
-  ! some all components into first dof
-  do icomp = 2, option%nflowspec
-    ! Resk[mol total/m^3 void] = sum(Res[kmol comp/m^3 void])
-    Res(ONE_INTEGER) = Res(ONE_INTEGER) + Res(icomp)
-  enddo
-  
+
   ! scale by porosity * volume / dt
   ! Res[kmol/sec] = Res[kmol/m^3 void] * por[m^3 void/m^3 bulk] * 
   !                 vol[m^3 bulk] / dt[sec]
   Res(1:option%nflowspec) = Res(1:option%nflowspec) * &
                             porosity * v_over_t
-  
+
   do iphase = 1, option%nphase
     ! Res[MJ/m^3 void] = sat[m^3 phase/m^3 void] *
     !                    den[kmol phase/m^3 phase] * U[MJ/kmol phase]
@@ -997,6 +989,8 @@ subroutine GeneralAccumDerivative(gen_auxvar,global_auxvar,material_auxvar, &
   PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
   PetscInt :: idof, irow
 
+!geh:print *, 'GeneralAccumDerivative'
+
   call GeneralAccumulation(gen_auxvar(ZERO_INTEGER),global_auxvar, &
                            material_auxvar,soil_heat_capacity,option,res)
                            
@@ -1006,6 +1000,7 @@ subroutine GeneralAccumDerivative(gen_auxvar,global_auxvar,material_auxvar, &
                              option,res_pert)
     do irow = 1, option%nflowdof
       J(irow,idof) = (res_pert(irow)-res(irow))/gen_auxvar(idof)%pert
+!geh:print *, irow, idof, J(irow,idof), gen_auxvar(idof)%pert
     enddo !irow
   enddo ! idof
 
@@ -1089,6 +1084,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   Res = 0.d0
   v_darcy = 0.d0
   
+#if 1
   do iphase = 1, option%nphase
  
     if (gen_auxvar_up%sat(iphase) > sir_up(iphase) .or. &
@@ -1136,7 +1132,9 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
         ! mole_flux[kmol phase/sec] = q[m^3 phase/sec] * 
         !                             density_ave[kmol phase/m^3 phase]        
         mole_flux = q*den       
-        do icomp = 1, option%nflowspec
+        ! Res[kmol total/sec]
+        Res(1) = Res(1) + mole_flux
+        do icomp = 2, option%nflowspec
           ! Res[kmol comp/sec] = mole_flux[kmol phase/sec] * 
           !                      xmol[kmol comp/kmol phase]
           Res(icomp) = Res(icomp) + mole_flux * xmol(icomp)
@@ -1146,12 +1144,9 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
       endif                   
     endif ! sat > eps
   enddo
-  
-  do icomp = 2, option%nflowspec
-    ! Res[kmol total/sec] = sum(Res[kmol comp/sec])  
-    Res(ONE_INTEGER) = Res(ONE_INTEGER) + Res(icomp)
-  enddo
+#endif
 
+#if 1
   ! add in gas component diffusion in gas and liquid phases
   do iphase = 1, option%nphase
     theta = 1.8d0
@@ -1173,7 +1168,8 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
         sat_dn = eps
       endif         
   
-      ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
+      ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) 
+      !       = m^3 water/m^4 bulk 
       density_ave = upweight_adj*gen_auxvar_up%den(iphase)+ &
                     (1.D0-upweight_adj)*gen_auxvar_dn%den(iphase)
 !      stp_ave = (stp_up*stp_dn)/(stp_up*dd_dn+stp_dn*dd_up)
@@ -1207,7 +1203,9 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
       Res(air_comp_id) = Res(air_comp_id) + mole_flux
     endif
   enddo
+#endif
 
+#if 1
   ! add heat conduction flux
   ! based on Somerton et al., 1974:
   ! k_eff = k_dry + sqrt(s_l)*(k_sat-k_dry)
@@ -1231,6 +1229,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   heat_flux = k_eff_ave * delta_temp * area
   ! MJ/s
   Res(energy_id) = Res(energy_id) + heat_flux * option%scale ! J/s -> MJ/s
+#endif
     
 end subroutine GeneralFlux
 
@@ -1275,6 +1274,8 @@ subroutine GeneralFluxDerivative(gen_auxvar_up,global_auxvar_up, &
   PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
   PetscInt :: idof, irow
 
+!geh:print *, 'GeneralFluxDerivative'
+
   call GeneralFlux(gen_auxvar_up(ZERO_INTEGER),global_auxvar_up, &
                    material_auxvar_up,sir_up, &
                    thermal_conductivity_up, &
@@ -1296,6 +1297,7 @@ subroutine GeneralFluxDerivative(gen_auxvar_up,global_auxvar_up, &
                      option,v_darcy,res_pert)
     do irow = 1, option%nflowdof
       Jup(irow,idof) = (res_pert(irow)-res(irow))/gen_auxvar_up(idof)%pert
+!geh:print *, 'up: ', irow, idof, Jup(irow,idof), gen_auxvar_up(idof)%pert
     enddo !irow
   enddo ! idof
 
@@ -1311,6 +1313,7 @@ subroutine GeneralFluxDerivative(gen_auxvar_up,global_auxvar_up, &
                      option,v_darcy,res_pert)
     do irow = 1, option%nflowdof
       Jdn(irow,idof) = (res_pert(irow)-res(irow))/gen_auxvar_dn(idof)%pert
+!geh:print *, 'dn: ', irow, idof, Jdn(irow,idof), gen_auxvar_dn(idof)%pert
     enddo !irow
   enddo ! idof
 
@@ -1488,7 +1491,9 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
       ! mole_flux[kmol phase/sec] = q[m^3 phase/sec] * 
       !                              density_ave[kmol phase/m^3 phase]
       mole_flux = q*density_ave       
-      do icomp = 1, option%nflowspec
+      ! Res[kmol total/sec]
+      Res(1) = Res(1) + mole_flux
+      do icomp = 2, option%nflowspec
         ! Res[kmol comp/sec] = mole_flux[kmol phase/sec] * 
         !                      xmol[kmol comp/mol phase]
         Res(icomp) = Res(icomp) + mole_flux * xmol(icomp)
@@ -1496,11 +1501,6 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
       ! Res[MJ/sec] = mole_flux[kmol comp/sec] * H_ave[MJ/kmol comp]
       Res(energy_id) = Res(energy_id) + mole_flux * uH ! H_ave
     endif
-  enddo
-  
-  do icomp = 2, option%nflowspec
-    ! Res[kmol total/sec] = sum(Res[kmol comp/sec])
-    Res(ONE_INTEGER) = Res(ONE_INTEGER) + Res(icomp)
   enddo
 
 #if 1
@@ -1630,6 +1630,8 @@ subroutine GeneralBCFluxDerivative(ibndtype,auxvar_mapping,auxvars, &
   PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
   PetscInt :: idof, irow
 
+!geh:print *, 'GeneralBCFluxDerivative'
+
   call GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
                      gen_auxvar_up,global_auxvar_up, &
                      gen_auxvar_dn(ZERO_INTEGER),global_auxvar_dn, &
@@ -1650,6 +1652,7 @@ subroutine GeneralBCFluxDerivative(ibndtype,auxvar_mapping,auxvars, &
                        option,v_darcy,res_pert)   
     do irow = 1, option%nflowdof
       Jdn(irow,idof) = (res_pert(irow)-res(irow))/gen_auxvar_dn(idof)%pert
+!print *, 'bc: ', irow, idof, Jdn(irow,idof), gen_auxvar_dn(idof)%pert
     enddo !irow
   enddo ! idof
 
@@ -1705,7 +1708,7 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
         qsrc_mol(icomp) = qsrc(icomp)*gen_auxvar%den(icomp)*scale 
     end select
     res(icomp) = qsrc_mol(icomp)
-    if (icomp == TWO_INTEGER) then
+    if (icomp > ONE_INTEGER) then
       res(ONE_INTEGER) = res(ONE_INTEGER) + qsrc_mol(icomp)
     endif
   enddo
@@ -1981,9 +1984,9 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
       patch%boundary_velocities(:,sum_connection) = v_darcy
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
-        global_auxvars_bc(sum_connection)%mass_balance_delta(1,iphase) = &
-          global_auxvars_bc(sum_connection)%mass_balance_delta(1,iphase) - &
-          Res(1)
+!        global_auxvars_bc(sum_connection)%mass_balance_delta(1,iphase) = &
+!          global_auxvars_bc(sum_connection)%mass_balance_delta(1,iphase) - &
+!          Res(1)
         ! contribution to internal 
 !        global_auxvars(ghosted_id)%mass_balance_delta(1) = &
 !          global_auxvars(ghosted_id)%mass_balance_delta(1) + Res(1)
@@ -2152,13 +2155,6 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
   global_auxvars => patch%aux%Global%auxvars
   global_auxvars_bc => patch%aux%Global%auxvars_bc
   material_auxvars => patch%aux%Material%auxvars
-
-#if 0
-  imat = 0
-  if (imat == 1) then
-    call GeneralNumericalJacTest(xx,realization) 
-  endif
-#endif
 
   flag = SAME_NONZERO_PATTERN
   call MatGetType(A,mat_type,ierr)
@@ -2407,6 +2403,14 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
 
 !  call MatView(J,PETSC_VIEWER_STDOUT_WORLD,ierr)
 
+#if 0
+  imat = 1
+  if (imat == 1) then
+    call GeneralNumericalJacTest(xx,realization) 
+  endif
+#endif
+
+
 end subroutine GeneralJacobian
 
 ! ************************************************************************** !
@@ -2579,11 +2583,11 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
 #endif
     select case(global_auxvars(ghosted_id)%istate)
       case(LIQUID_STATE)
+        liquid_pressure_index  = offset + 1
+        temperature_index  = offset + 3
         dX_p(liquid_pressure_index) = dX_p(liquid_pressure_index) * &
                                       general_pressure_scale
         temp_scale = 1.d0
-        liquid_pressure_index  = offset + 1
-        temperature_index  = offset + 3
         del_liquid_pressure = dX_p(liquid_pressure_index)
         liquid_pressure0 = X_p(liquid_pressure_index)
         liquid_pressure1 = liquid_pressure0 - del_liquid_pressure
@@ -2654,14 +2658,14 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
           temp_scale = min(temp_scale,temp_real)
         endif
       case(TWO_PHASE_STATE)
+        gas_pressure_index = offset + 1
+        air_pressure_index = offset + 2
+        saturation_index = offset + 3
         dX_p(gas_pressure_index) = dX_p(gas_pressure_index) * &
                                    general_pressure_scale
         dX_p(air_pressure_index) = dX_p(air_pressure_index) * &
                                    general_pressure_scale
         temp_scale = 1.d0
-        gas_pressure_index = offset + 1
-        air_pressure_index = offset + 2
-        saturation_index = offset + 3
         del_gas_pressure = dX_p(gas_pressure_index)
         gas_pressure0 = X_p(gas_pressure_index)
         gas_pressure1 = gas_pressure0 - del_gas_pressure
@@ -2806,6 +2810,8 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
           temp_scale = min(temp_scale,temp_real)
         endif
       case(GAS_STATE) 
+        gas_pressure_index = offset + 1
+        air_pressure_index = offset + 2
         dX_p(gas_pressure_index) = dX_p(gas_pressure_index) * &
                                    general_pressure_scale
         dX_p(air_pressure_index) = dX_p(air_pressure_index) * &
