@@ -546,10 +546,11 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
                       if (real_index /= 0) then
                         xxbc(idof) = boundary_condition%flow_aux_real_var(real_index,iconn)
                       else
-                        option%io_buffer = 'Mixed FLOW_CONDITION "' // &
-                          trim(boundary_condition%flow_condition%name) // &
-                          '" needs saturation defined.'
-                        call printErrMsg(option)
+!geh: should be able to use the saturation within the cell
+!                        option%io_buffer = 'Mixed FLOW_CONDITION "' // &
+!                          trim(boundary_condition%flow_condition%name) // &
+!                          '" needs saturation defined.'
+!                        call printErrMsg(option)
                       endif
                   end select
                 case(NEUMANN_BC)
@@ -1410,6 +1411,7 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
         
           
         ! using residual saturation cannot be correct! - geh
+        ! reusing sir_dn for bounary auxvar
         if (gen_auxvar_up%sat(iphase) > sir_dn(iphase) .or. &
             gen_auxvar_dn%sat(iphase) > sir_dn(iphase)) then
           upweight = 1.d0
@@ -2542,6 +2544,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   PetscReal :: temperature0, temperature1, del_temperature
   PetscReal :: saturation0, saturation1, del_saturation
   PetscReal :: xmol_air_in_water0, xmol_air_in_water1, del_xmol_air_in_water
+  PetscReal :: max_pressure_change = 5.d4
   PetscReal :: max_saturation_change = 0.125d0
   PetscReal :: max_temperature_change = 10.d0
   PetscReal :: min_pressure
@@ -2594,6 +2597,31 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
         del_temperature = dX_p(temperature_index)
         temperature0 = X_p(temperature_index)
         temperature1 = temperature0 - del_temperature
+        if (dabs(del_liquid_pressure) > max_pressure_change) then
+          temp_real = dabs(max_pressure_change/del_liquid_pressure)
+#ifdef DEBUG_GENERAL_INFO
+          if (cell_locator(0) < max_cell_id) then
+            cell_locator(0) = cell_locator(0) + 1
+            cell_locator(cell_locator(0)) = ghosted_id
+          endif
+          string = trim(cell_id_word) // &
+            'Liquid pressure change scaled to truncate at max_pressure_change: '
+          call printMsg(option,string)
+          write(string2,*) liquid_pressure0
+          string = '  Liquid Pressure 0    : ' // adjustl(string2)
+          call printMsg(option,string)
+          write(string2,*) liquid_pressure1
+          string = '  Liquid Pressure 1    : ' // adjustl(string2)
+          call printMsg(option,string)
+          write(string2,*) -1.d0*del_liquid_pressure
+          string = 'Liquid Pressure change : ' // adjustl(string2)
+          call printMsg(option,string)
+          write(string2,*) temp_real
+          string = '          scaling  : ' // adjustl(string2)
+          call printMsg(option,string)
+#endif
+          temp_scale = min(temp_scale,temp_real)
+        endif
         ! truncate liquid pressure change to prevent liquid pressure from 
         ! dropping below the air pressure while in the liquid state
         min_pressure = gen_auxvars(ZERO_INTEGER,ghosted_id)%pres(apid) + &

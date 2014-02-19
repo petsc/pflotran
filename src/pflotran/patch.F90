@@ -1301,6 +1301,20 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
             option%io_buffer = 'Gas equation not constrained.'
             call printMsg(option)
           endif
+          if (associated(general%gas_saturation)) then
+            ! this allows for infiltration in a two phase environment
+            real_count = real_count + 1
+            coupler%flow_bc_type(GENERAL_GAS_EQUATION_INDEX) = DIRICHLET_BC
+            coupler%flow_aux_mapping(GENERAL_GAS_SATURATION_INDEX) = real_count
+            coupler%flow_aux_real_var(real_count,1:num_connections) = &
+              general%gas_saturation%dataset%rarray(1)
+            dof2 = PETSC_TRUE
+          else
+            option%io_buffer = 'Gas equation not constrained.'
+            call printMsg(option)
+          endif
+          coupler%flow_aux_int_var(GENERAL_STATE_INDEX,1:num_connections) = &
+            TWO_PHASE_STATE
         endif
         if (.not. dof3) then
           if (associated(general%temperature)) then
@@ -1311,7 +1325,7 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
               general%temperature%dataset%rarray(1)
             dof3 = PETSC_TRUE
           else
-            option%io_buffer = 'Gas equation not constrained.'
+            option%io_buffer = 'Energy equation not constrained.'
             call printMsg(option)
           endif
         endif

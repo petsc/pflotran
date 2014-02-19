@@ -594,8 +594,9 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
 !        liquid_epsilon = 1.d-9*epsilon ! 4.68555E+01, 13209 NI, 62 cuts
 !        liquid_epsilon = 1.d-10*epsilon ! 4.65514E+01, 13464 NI, 62 cuts
         liquid_epsilon = epsilon
+        ! gas pressure can never be less than zero.
         x(GENERAL_GAS_PRESSURE_DOF) = &
-          gen_auxvar%pres(lid) * (1.d0 + liquid_epsilon)
+          max(gen_auxvar%pres(lid) * (1.d0 + liquid_epsilon),epsilon)
         ! assume air pressure is pg - ps, but has to be greater than epsilon.
         x(GENERAL_AIR_PRESSURE_DOF) = &
           x(GENERAL_GAS_PRESSURE_DOF) - gen_auxvar%pres(spid)
