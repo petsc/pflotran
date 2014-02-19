@@ -23,7 +23,6 @@ module General_module
 ! Cutoff parameters
   PetscReal, parameter :: eps       = 1.D-8
   PetscReal, parameter :: floweps   = 1.D-24
-  PetscReal, parameter :: perturbation_tolerance = 1.d-5
 
   public GeneralResidual, GeneralJacobian, &
          GeneralUpdateFixedAccum, GeneralTimeCut,&
@@ -816,6 +815,7 @@ subroutine GeneralNumericalJacTest(xx,realization)
   PetscErrorCode :: ierr
   
   PetscReal :: derivative, perturbation
+  PetscReal, parameter :: perturbation_tolerance = 1.d-5
   
   PetscReal, pointer :: vec_p(:), vec2_p(:)
 
@@ -840,6 +840,7 @@ subroutine GeneralNumericalJacTest(xx,realization)
                    grid%nlmax*option%nflowdof,ierr)
   call MatSetType(A,MATAIJ,ierr)
   call MatSetFromOptions(A,ierr)
+  call MatSetUp(A,ierr)
     
   call GeneralResidual(PETSC_NULL_OBJECT,xx,res,realization,ierr)
   call VecGetArrayF90(res,vec2_p,ierr)
@@ -2152,6 +2153,13 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
   global_auxvars_bc => patch%aux%Global%auxvars_bc
   material_auxvars => patch%aux%Material%auxvars
 
+#if 0
+  imat = 0
+  if (imat == 1) then
+    call GeneralNumericalJacTest(xx,realization) 
+  endif
+#endif
+
   flag = SAME_NONZERO_PATTERN
   call MatGetType(A,mat_type,ierr)
   if (mat_type == MATMFFD) then
@@ -2529,6 +2537,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   PetscReal :: air_pressure0, air_pressure1, del_air_pressure
   PetscReal :: temperature0, temperature1, del_temperature
   PetscReal :: saturation0, saturation1, del_saturation
+  PetscReal :: xmol_air_in_water0, xmol_air_in_water1, del_xmol_air_in_water
   PetscReal :: max_saturation_change = 0.125d0
   PetscReal :: max_temperature_change = 10.d0
   PetscReal :: min_pressure
@@ -2889,10 +2898,15 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   type(material_parameter_type), pointer :: material_parameter
   PetscInt :: local_id, ghosted_id
   PetscInt :: offset , ival, idof
+#ifdef DEBUG_GENERAL_INFO
+  PetscInt :: icell_max(3), istate_max(3)
+  character(len=2) :: state_char
+  PetscReal :: R_A_max(3), A_max(3), R_max(3) 
+  PetscReal :: dX_X1_max(3), dX_max(3), X1_max(3)
+#endif
   PetscReal :: Res(3)
-  PetscReal :: inf_norm(3), global_inf_norm(3)
   PetscReal :: dX_X1, R_A
-  PetscReal :: dX_X1_max(3), R_A_max(3), A_max(3), R_max(3), dX_max(3), X1_max(3)
+  PetscReal :: inf_norm(3), global_inf_norm(3)
   PetscErrorCode :: ierr
   
   grid => realization%patch%grid
@@ -2912,12 +2926,16 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
     call VecGetArrayF90(dX,dX_p,ierr)
     call VecGetArrayF90(X1,X1_p,ierr)
     call VecGetArrayF90(field%flow_r,r_p,ierr)
+#ifdef DEBUG_GENERAL_INFO
     R_A_max = 0.d0
     A_max = 0.d0
     R_max = 0.d0
     dX_X1_max = 0.d0
     dX_max = 0.d0
     X1_max = 0.d0
+    istate_max = 0
+    icell_max = 0
+#endif
     inf_norm(:) = 0.d0
     do local_id = 1, grid%nlmax
       offset = (local_id-1)*option%nflowdof
@@ -2936,6 +2954,8 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
         if (inf_norm(idof) < min(dX_X1,R_A)) then
           inf_norm(idof) = min(dX_X1,R_A)
 #ifdef DEBUG_GENERAL_INFO
+          icell_max(idof) = grid%nG2A(ghosted_id)
+          istate_max(idof) = global_auxvars(ghosted_id)%istate
           A_max(idof) = Res(idof)
           R_max(idof) = r_p(ival)
           R_A_max(idof) = R_A
@@ -2952,10 +2972,23 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
     do idof = 1, option%nflowdof
       if (global_inf_norm(idof) > option%post_convergence_tol) then
         option%converged = PETSC_FALSE
+#if 1
 #ifdef DEBUG_GENERAL_INFO
-        print *, '-+ ', idof, global_inf_norm(idof), &
-           dX_X1_max(idof), dX_max(idof),  X1_max(idof), ' : ', &
+        select case(istate_max(idof))
+          case(1)
+            state_char = 'L'
+          case(2)
+            state_char = 'G'
+          case(3)
+            state_char = '2P'
+        end select
+        write(*,'(''-+ '',a3,i2,''('',i5,''):'',es12.4, &
+                 &'' dX_X/dX/X:'',3es12.4, &
+                 &'' R_A/R/A:'',3es12.4)') state_char,idof, &
+           icell_max(idof),global_inf_norm(idof), &
+           dX_X1_max(idof), dX_max(idof),  X1_max(idof), &
            R_A_max(idof), R_max(idof), A_max(idof)
+#endif
 #endif
       endif
     enddo
