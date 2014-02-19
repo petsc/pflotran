@@ -3420,10 +3420,12 @@ subroutine readRegionFiles(realization)
                                                       region%filename)
         endif
       else if (index(region%filename,'.ss') > 0) then
+        region%def_type = DEFINED_BY_SIDESET_UGRID
         region%sideset => RegionCreateSideset()
         call RegionReadFromFile(region%sideset,region%filename, &
                                 realization%option)
       else if (index(region%filename,'.ex') > 0) then
+        region%def_type = DEFINED_BY_FACE_UGRID_EXP
         call RegionReadFromFile(region%explicit_faceset,region%cell_ids, &
                                 region%filename,realization%option)
         region%num_cells = size(region%cell_ids)
