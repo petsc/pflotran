@@ -1984,9 +1984,9 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
       patch%boundary_velocities(:,sum_connection) = v_darcy
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
-        global_auxvars_bc(sum_connection)%mass_balance_delta(1,iphase) = &
-          global_auxvars_bc(sum_connection)%mass_balance_delta(1,iphase) - &
-          Res(1)
+!        global_auxvars_bc(sum_connection)%mass_balance_delta(1,iphase) = &
+!          global_auxvars_bc(sum_connection)%mass_balance_delta(1,iphase) - &
+!          Res(1)
         ! contribution to internal 
 !        global_auxvars(ghosted_id)%mass_balance_delta(1) = &
 !          global_auxvars(ghosted_id)%mass_balance_delta(1) + Res(1)
