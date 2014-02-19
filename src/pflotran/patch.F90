@@ -1195,6 +1195,7 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
       coupler%flow_bc_type(1:3) = DIRICHLET_BC
     case(GAS_STATE)
       p_gas = -999.d0 ! set to uninitialized
+      temperature = -999.d0
       real_count = real_count + 1
       coupler%flow_aux_int_var(GENERAL_STATE_INDEX,1:num_connections) = GAS_STATE
       select case(general%gas_pressure%itype)
@@ -1209,11 +1210,29 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
           call printErrMsg(option)
       end select
       real_count = real_count + 1
+      select case(general%temperature%itype)
+        case(DIRICHLET_BC)
+          temperature = general%temperature%dataset%rarray(1)
+          coupler%flow_aux_mapping(GENERAL_TEMPERATURE_INDEX) = real_count
+          coupler%flow_aux_real_var(real_count,1:num_connections) = &
+            temperature
+          dof3 = PETSC_TRUE
+        case default
+          option%io_buffer = 'Unknown case (general%temperature%itype,' // &
+            'GAS_STATE,DIRICHLET_BC)'
+          call printErrMsg(option)
+      end select
+      real_count = real_count + 1
       select case(general%mole_fraction%itype)
         case(DIRICHLET_BC)
+          if (p_gas < -998.d0 .or. temperature < -998.d0) then
+            option%io_buffer = 'Gas pressure or temperature not set ' // &
+              'correctly in flow condition "' // &
+              trim(flow_condition%name) // '".'
+            call printErrMsg(option)
+          endif
           coupler%flow_aux_mapping(GENERAL_AIR_PRESSURE_INDEX) = real_count
-          p_air = general%mole_fraction%dataset%rarray(1) * &
-                  general%gas_pressure%dataset%rarray(1)
+          p_air = general%mole_fraction%dataset%rarray(1) * p_gas
           call EOSWaterSaturationPressure(temperature,p_sat,ierr)
           if (p_gas - p_air >= p_sat) then
             option%io_buffer = 'MOLE_FRACTION set in flow condition "' // &
@@ -1229,18 +1248,6 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
             'GAS_STATE,DIRICHLET_BC)'
           call printErrMsg(option)
       end select                
-      real_count = real_count + 1
-      select case(general%temperature%itype)
-        case(DIRICHLET_BC)
-          coupler%flow_aux_mapping(GENERAL_TEMPERATURE_INDEX) = real_count
-          coupler%flow_aux_real_var(real_count,1:num_connections) = &
-            general%temperature%dataset%rarray(1)
-          dof3 = PETSC_TRUE
-        case default
-          option%io_buffer = 'Unknown case (general%temperature%itype,' // &
-            'GAS_STATE,DIRICHLET_BC)'
-          call printErrMsg(option)
-      end select
       coupler%flow_bc_type(1:3) = DIRICHLET_BC
     case(ANY_STATE)
       coupler%flow_aux_int_var(GENERAL_STATE_INDEX,1:num_connections) = ANY_STATE
