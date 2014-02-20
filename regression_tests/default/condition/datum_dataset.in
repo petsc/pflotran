@@ -48,6 +48,7 @@ END
 DATASET xy_dataset
   FILENAME datum_dataset_in.h5
   HDF5_DATASET_NAME test_surface
+  MAX_BUFFER_SIZE 6
 END
 
 DATASET y_dataset

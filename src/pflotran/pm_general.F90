@@ -121,11 +121,13 @@ subroutine PMGeneralInit(this)
   implicit none
   
   class(pm_general_type) :: this
+  
+  PetscErrorCode :: ierr
 
 #ifdef PM_GENERAL_DEBUG  
   call printMsg(this%option,'PMGeneral%Init()')
 #endif
-  
+
 #ifndef SIMPLIFY  
   ! set up communicator
   select case(this%realization%discretization%itype)
@@ -279,7 +281,6 @@ subroutine PMGeneralFinalizeTimestep(this)
   ! Date: 03/14/13
   ! 
 
-  use General_module, only : GeneralMaxChange
   use Global_module
 
   implicit none
@@ -294,14 +295,7 @@ subroutine PMGeneralFinalizeTimestep(this)
     call GlobalUpdateAuxVars(this%realization,TIME_TpDT,this%option%time)
   endif
   
-  call GeneralMaxChange(this%realization)
-  if (this%option%print_screen_flag) then
-    write(*,'("  --> max chng: dpmx= ",1pe12.4)') this%option%dpmax
-  endif
-  if (this%option%print_file_flag) then
-    write(this%option%fid_out,'("  --> max chng: dpmx= ",1pe12.4)') &
-      this%option%dpmax
-  endif  
+  call this%MaxChange()
   
 end subroutine PMGeneralFinalizeTimestep
 
@@ -399,6 +393,9 @@ recursive subroutine PMGeneralInitializeRun(this)
   endif  
   call GeneralUpdateSolution(this%realization)
 #endif  
+
+  ! need to initialize values store in max change vectors
+  call this%MaxChange()
     
 end subroutine PMGeneralInitializeRun
 
@@ -622,119 +619,89 @@ subroutine PMGeneralMaxChange(this)
   ! Date: 03/14/13
   ! 
 
+  use Realization_base_class
   use Option_module
   use Field_module
   use Grid_module
   use Global_Aux_module
   use General_Aux_module
-
+  use Variables_module, only : LIQUID_PRESSURE, LIQUID_MOLE_FRACTION, &
+                               TEMPERATURE, GAS_PRESSURE, AIR_PRESSURE, &
+                               GAS_SATURATION
   implicit none
   
   class(pm_general_type) :: this
   
+  class(realization_type), pointer :: realization
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(grid_type), pointer :: grid
-  type(general_auxvar_type), pointer :: gen_auxvars(:,:)
-  type(global_auxvar_type), pointer :: global_auxvars(:)
-  PetscReal, pointer :: vec_ptr(:)
-  PetscReal :: dP_liquid_max
-  PetscReal :: dP_gas_max
-  PetscReal :: dP_air_max
-  PetscReal :: dX_air_max
-  PetscReal :: dT_max
-  PetscReal :: dS_gas_max
-  PetscReal :: send_buffer(6), recv_buffer(6)
+  PetscReal, pointer :: vec_ptr(:), vec_ptr2(:)
+  PetscReal :: max_change_local(6)
+  PetscReal :: max_change_global(6)
+  PetscInt :: i
   PetscInt :: local_id, ghosted_id
-  PetscInt :: offset
+
+  PetscInt, parameter :: ivar(6) = [LIQUID_PRESSURE, GAS_PRESSURE, &
+                                    AIR_PRESSURE, LIQUID_MOLE_FRACTION, &
+                                    TEMPERATURE, GAS_SATURATION]
+  ! based on option%water_id = 1
+  PetscInt, parameter :: isubvar(6) = [0,0,0,1,0,0]
+  
+
   PetscErrorCode :: ierr
   
-  option => this%realization%option
-  field => this%realization%field
-  grid => this%realization%patch%grid
+  realization => this%realization
+  option => realization%option
+  field => realization%field
+  grid => realization%patch%grid
 
 #ifdef PM_GENERAL_DEBUG  
   call printMsg(this%option,'PMGeneral%MaxChange()')
 #endif
 
-  gen_auxvars => this%realization%patch%aux%General%auxvars
-  global_auxvars => this%realization%patch%aux%Global%auxvars
-  
-  dP_liquid_max = 0.d0
-  dP_gas_max = 0.d0
-  dP_air_max = 0.d0
-  dX_air_max = 0.d0
-  dT_max = 0.d0
-  dS_gas_max = 0.d0
-  
-  call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
-  call VecAbs(field%flow_dxx,ierr)
-  ! cannot use VecStrideMax on field%flow_dxx given the entries have no 
-  ! meaning if state changes
-  call VecGetArrayReadF90(field%flow_dxx,vec_ptr,ierr)
-  do local_id = 1, grid%nlmax
-    ghosted_id = grid%nL2G(local_id)
-    ! flow_dxx only represents change if same primary dependent variable
-    if (gen_auxvars(ZERO_INTEGER,ghosted_id)%istate_store(PREV_TS) == &
-        global_auxvars(ghosted_id)%istate) then
-      offset = (local_id-1)*option%nflowdof
-      select case(global_auxvars(ghosted_id)%istate)
-        case(LIQUID_STATE)
-          dP_liquid_max = max(dP_liquid_max, &
-                              vec_ptr(offset+GENERAL_LIQUID_PRESSURE_DOF))
-          dX_air_max = max(dX_air_max, &
-                           vec_ptr(offset+ &
-                                   GENERAL_LIQUID_STATE_X_MOLE_DOF))
-          dT_max = max(dT_max, &
-                   vec_ptr(offset+GENERAL_LIQUID_STATE_ENERGY_DOF))
-        case(GAS_STATE)
-          dP_gas_max = max(dP_gas_max, &
-                       vec_ptr(offset+GENERAL_GAS_PRESSURE_DOF))
-          dP_air_max = max(dP_air_max, &
-                           vec_ptr(offset+GENERAL_AIR_PRESSURE_DOF))
-          dT_max = max(dT_max, &
-                       vec_ptr(offset+GENERAL_GAS_STATE_ENERGY_DOF))
-        case(TWO_PHASE_STATE)
-          dP_gas_max = max(dP_gas_max, &
-                           vec_ptr(offset+GENERAL_GAS_PRESSURE_DOF))
-          dP_air_max = max(dP_air_max, &
-                           vec_ptr(offset+GENERAL_AIR_PRESSURE_DOF))
-          dS_gas_max = max(dS_gas_max, &
-                           vec_ptr(offset+GENERAL_GAS_SATURATION_DOF))
-      end select
+  max_change_global = 0.d0
+  max_change_local = 0.d0
+  if (associated(field%max_change_vecs)) then
+    do i = 1, 6
+      call RealizationGetVariable(realization,field%work,ivar(i),isubvar(i))
+      ! yes, we could use VecWAXPY and a norm here, but we need the ability
+      ! to customize
+      call VecGetArrayF90(field%work,vec_ptr,ierr)
+      call VecGetArrayF90(field%max_change_vecs(i),vec_ptr2,ierr)
+      max_change_local(i) = maxval(dabs(vec_ptr(:)-vec_ptr2(:)))
+      call VecRestoreArrayF90(field%work,vec_ptr,ierr)
+      call VecRestoreArrayF90(field%max_change_vecs(i),vec_ptr2,ierr)
+      call VecCopy(field%work,field%max_change_vecs(i),ierr)
+    enddo
+    call MPI_Allreduce(max_change_local,max_change_global,SIX_INTEGER, &
+                       MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
+    ! print them out
+    if (OptionPrintToScreen(option)) then
+      write(*,'("  --> max chng: dpl= ",1pe12.4, " dpg= ",1pe12.4,&
+        & " dpa= ",1pe12.4,/,15x," dxa= ",1pe12.4,"  dt= ",1pe12.4,&
+        & " dsg= ",1pe12.4)') &
+        max_change_global(1:6)
     endif
-  enddo
-  call VecRestoreArrayReadF90(field%flow_dxx,vec_ptr,ierr)
-  ! load the maximums into buffer for global reduction
-  send_buffer(1) = dP_liquid_max
-  send_buffer(2) = dP_gas_max
-  send_buffer(3) = dP_air_max
-  send_buffer(4) = dX_air_max
-  send_buffer(5) = dT_max
-  send_buffer(6) = dS_gas_max
-  call MPI_Allreduce(send_buffer,recv_buffer,SIX_INTEGER_MPI, &
-                     MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
-  dP_liquid_max = send_buffer(1)
-  dP_gas_max = send_buffer(2)
-  dP_air_max = send_buffer(3)
-  dX_air_max = send_buffer(4)
-  dT_max = send_buffer(5)
-  dS_gas_max = send_buffer(6)
-  ! print them out
-  if (OptionPrintToScreen(option)) then
-    write(*,'("  --> max chng: dpl= ",1pe12.4, " dpg= ",1pe12.4,&
-      & " dpa= ",1pe12.4," dxa= ",1pe12.4," dt= ",1pe12.4," dsg= ",1pe12.4)') &
-      dP_liquid_max,dP_gas_max,dP_air_max,dX_air_max,dT_max,dS_gas_max
+    if (OptionPrintToScreen(option)) then
+      write(option%fid_out,'("  --> max chng: dpl= ",1pe12.4, " dpg= ",1pe12.4,&
+        & " dpa= ",1pe12.4,/,15x," dxa= ",1pe12.4,"  dt= ",1pe12.4, &
+        & " dsg= ",1pe12.4)') &
+        max_change_global(1:6)
+    endif
+    this%dPmax = maxval(max_change_global(1:3))
+    this%dXmax = max_change_global(4)
+    this%dTmax = max_change_global(5)
+    this%dSmax = max_change_global(6)
+  else
+    call VecDuplicateVecsF90(field%work,SIX_INTEGER, &
+                             field%max_change_vecs,ierr)
+    ! set initial values
+    do i = 1, 6
+      call RealizationGetVariable(realization,field%max_change_vecs(i), &
+                                  ivar(i),isubvar(i))
+    enddo
   endif
-  if (OptionPrintToScreen(option)) then
-    write(option%fid_out,'("  --> max chng: dpl= ",1pe12.4, " dpg= ",1pe12.4,&
-      & " dpa= ",1pe12.4," dxa= ",1pe12.4," dt= ",1pe12.4," dsg= ",1pe12.4)') &
-      dP_liquid_max,dP_gas_max,dP_air_max,dX_air_max,dT_max,dS_gas_max
-  endif
-  this%dPmax = max(dP_liquid_max,dP_gas_max,dP_air_max)
-  this%dTmax = dT_max
-  this%dXmax = dX_air_max
-  this%dSmax = dS_gas_max
   
 end subroutine PMGeneralMaxChange
 

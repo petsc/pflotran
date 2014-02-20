@@ -26,8 +26,8 @@ module Dataset_Gridded_HDF5_class
   PetscInt, parameter, public :: DIM_YZ = 6
   PetscInt, parameter, public :: DIM_XYZ = 7
   
-  PetscInt, parameter :: MAX_NSLICE = 4
-
+  PetscInt, parameter :: default_max_buffer_size = 10
+  
   public :: DatasetGriddedHDF5Create, &
             DatasetGriddedHDF5Init, &
             DatasetGriddedHDF5Cast, &
@@ -258,6 +258,19 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
     if (attribute_exists) then
       this%is_cell_centered = PETSC_TRUE
     endif
+    ! this%max_buffer_size is initially set to -999 to force initializaion
+    ! either here, or in the reading of the dataset block.
+    attribute_name = "Max Buffer Size"
+    call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)
+    if (attribute_exists .and. this%max_buffer_size < 0) then
+      call h5aopen_f(grp_id,attribute_name,attribute_id,hdf5_err)
+      attribute_dim(1) = 1
+      call h5aread_f(attribute_id,H5T_NATIVE_INTEGER,this%max_buffer_size, &
+                     attribute_dim,hdf5_err)
+      call h5aclose_f(attribute_id,hdf5_err)
+    else if (this%max_buffer_size < 0) then
+      this%max_buffer_size = default_max_buffer_size
+    endif
   endif ! this%data_dim == DIM_NULL
   
   num_spatial_dims = DatasetGriddedHDF5GetNDimensions(this)
@@ -324,7 +337,7 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
     this%rarray = 0.d0
     if (associated(this%time_storage) .and. .not.associated(this%rbuffer)) then
       ! buffered array
-      allocate(this%rbuffer(size(this%rarray)*MAX_NSLICE))
+      allocate(this%rbuffer(size(this%rarray)*this%max_buffer_size))
       this%rbuffer = 0.d0
     endif
   endif
@@ -341,7 +354,7 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
   length = 1
   ! length (or size) must be adjusted according to the size of the 
   ! remaining data in the file
-  this%buffer_nslice = min(MAX_NSLICE,(num_times-this%buffer_slice_offset))
+  this%buffer_nslice = min(this%max_buffer_size,(num_times-this%buffer_slice_offset))
   if (time_dim > 0) then
     length(1) = size(this%rarray) * this%buffer_nslice
   else

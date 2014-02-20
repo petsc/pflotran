@@ -13,6 +13,15 @@ module Region_module
   PetscInt, parameter, public :: STRUCTURED_GRID_REGION = 1
   PetscInt, parameter, public :: UNSTRUCTURED_GRID_REGION = 2
 
+  PetscInt, parameter, public :: DEFINED_BY_BLOCK = 1
+  PetscInt, parameter, public :: DEFINED_BY_COORD = 2
+  PetscInt, parameter, public :: DEFINED_BY_CELL_IDS = 3
+  PetscInt, parameter, public :: DEFINED_BY_CELL_IDS_WTIH_FACE_IDS = 4
+  PetscInt, parameter, public :: DEFINED_BY_VERTEX_IDS = 5
+  PetscInt, parameter, public :: DEFINED_BY_SIDESET_UGRID = 6
+  PetscInt, parameter, public :: DEFINED_BY_FACE_UGRID_EXP = 7
+  PetscInt, parameter, public :: DEFINED_BY_POLY_VOL_UGRID = 8
+
   type, public :: block_type        
     PetscInt :: i1,i2,j1,j2,k1,k2    
     type(block_type), pointer :: next
@@ -20,6 +29,7 @@ module Region_module
  
   type, public :: region_type
     PetscInt :: id
+    PetscInt :: def_type
     character(len=MAXWORDLENGTH) :: name
     character(len=MAXSTRINGLENGTH) :: filename
     PetscInt :: i1,i2,j1,j2,k1,k2
@@ -98,6 +108,7 @@ function RegionCreateWithNothing()
   
   allocate(region)
   region%id = 0
+  region%def_type = 0
   region%name = ""
   region%filename = ""
   region%i1 = 0
@@ -255,6 +266,7 @@ function RegionCreateWithRegion(region)
   new_region => RegionCreateWithNothing()
   
   new_region%id = region%id
+  new_region%def_type = region%def_type
   new_region%name = region%name
   new_region%filename = region%filename
   new_region%i1 = region%i1
@@ -414,7 +426,8 @@ subroutine RegionRead(region,input,option)
     select case(trim(keyword))
     
       case('BLOCK')
-        call InputReadInt(input,option,region%i1) 
+        region%def_type = DEFINED_BY_BLOCK
+        call InputReadInt(input,option,region%i1)
         if (InputError(input)) then
           input%ierr = 0
           call InputReadPflotranString(input,option)
@@ -433,6 +446,7 @@ subroutine RegionRead(region,input,option)
         call InputReadInt(input,option,region%k2)
         call InputErrorMsg(input,option,'k2','REGION')
       case('COORDINATE')
+        region%def_type = DEFINED_BY_COORD
         allocate(region%coordinates(1))
         call InputReadDouble(input,option,region%coordinates(ONE_INTEGER)%x) 
         if (InputError(input)) then
@@ -447,9 +461,11 @@ subroutine RegionRead(region,input,option)
         call InputReadDouble(input,option,region%coordinates(ONE_INTEGER)%z)
         call InputErrorMsg(input,option,'z-coordinate','REGION')
       case('COORDINATES')
+        region%def_type = DEFINED_BY_COORD
         call GeometryReadCoordinates(input,option,region%name, &
                                      region%coordinates)
       case('POLYGON')
+        region%def_type = DEFINED_BY_POLY_VOL_UGRID
         if (.not.associated(region%polygonal_volume)) then
           region%polygonal_volume => GeometryCreatePolygonalVolume()
         endif
@@ -665,6 +681,7 @@ subroutine RegionReadFromFileId(region,input,option)
     input_data_type = CELL_IDS_ONLY
     cell_ids_p(1) = temp_int_array(1)
     count = 1
+    region%def_type = DEFINED_BY_CELL_IDS
 
     ! Read the data
     do
@@ -705,6 +722,7 @@ subroutine RegionReadFromFileId(region,input,option)
     cell_ids_p(1) = temp_int_array(1)
     face_ids_p(1) = temp_int_array(2)
     count = 1 ! reset the counter to represent the num of rows read
+    region%def_type = DEFINED_BY_CELL_IDS_WTIH_FACE_IDS
 
     ! Read the data
     do
@@ -717,7 +735,8 @@ subroutine RegionReadFromFileId(region,input,option)
 
       call InputReadInt(input,option,temp_int)
       if (InputError(input)) then
-        option%io_buffer = 'ERROR while reading the region from file'
+        option%io_buffer = 'ERROR while reading the region "' // &
+          trim(region%name) // '" from file'
         call printErrMsg(option)
       endif
       face_ids_p(count) = temp_int
@@ -757,6 +776,7 @@ subroutine RegionReadFromFileId(region,input,option)
     vert_id_3_p(1) = temp_int_array(4)
     if (vert_id_0_p(1) == 4 ) vert_id_4_p(1) = temp_int_array(5)
     count = 1 ! reset the counter to represent the num of rows read
+    region%def_type = DEFINED_BY_VERTEX_IDS
 
     ! Read the data
     do
@@ -771,7 +791,8 @@ subroutine RegionReadFromFileId(region,input,option)
       do ii = 1, vert_id_0_p(count)
         call InputReadInt(input,option,temp_int)
         if (InputError(input)) then
-          option%io_buffer = 'ERROR while reading the region from file'
+          option%io_buffer = 'ERROR while reading the region "' // &
+            trim(region%name) // '" from file'
           call printErrMsg(option)
         endif
 

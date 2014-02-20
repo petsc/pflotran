@@ -1195,6 +1195,7 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
       coupler%flow_bc_type(1:3) = DIRICHLET_BC
     case(GAS_STATE)
       p_gas = -999.d0 ! set to uninitialized
+      temperature = -999.d0
       real_count = real_count + 1
       coupler%flow_aux_int_var(GENERAL_STATE_INDEX,1:num_connections) = GAS_STATE
       select case(general%gas_pressure%itype)
@@ -1209,11 +1210,29 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
           call printErrMsg(option)
       end select
       real_count = real_count + 1
+      select case(general%temperature%itype)
+        case(DIRICHLET_BC)
+          temperature = general%temperature%dataset%rarray(1)
+          coupler%flow_aux_mapping(GENERAL_TEMPERATURE_INDEX) = real_count
+          coupler%flow_aux_real_var(real_count,1:num_connections) = &
+            temperature
+          dof3 = PETSC_TRUE
+        case default
+          option%io_buffer = 'Unknown case (general%temperature%itype,' // &
+            'GAS_STATE,DIRICHLET_BC)'
+          call printErrMsg(option)
+      end select
+      real_count = real_count + 1
       select case(general%mole_fraction%itype)
         case(DIRICHLET_BC)
+          if (p_gas < -998.d0 .or. temperature < -998.d0) then
+            option%io_buffer = 'Gas pressure or temperature not set ' // &
+              'correctly in flow condition "' // &
+              trim(flow_condition%name) // '".'
+            call printErrMsg(option)
+          endif
           coupler%flow_aux_mapping(GENERAL_AIR_PRESSURE_INDEX) = real_count
-          p_air = general%mole_fraction%dataset%rarray(1) * &
-                  general%gas_pressure%dataset%rarray(1)
+          p_air = general%mole_fraction%dataset%rarray(1) * p_gas
           call EOSWaterSaturationPressure(temperature,p_sat,ierr)
           if (p_gas - p_air >= p_sat) then
             option%io_buffer = 'MOLE_FRACTION set in flow condition "' // &
@@ -1229,18 +1248,6 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
             'GAS_STATE,DIRICHLET_BC)'
           call printErrMsg(option)
       end select                
-      real_count = real_count + 1
-      select case(general%temperature%itype)
-        case(DIRICHLET_BC)
-          coupler%flow_aux_mapping(GENERAL_TEMPERATURE_INDEX) = real_count
-          coupler%flow_aux_real_var(real_count,1:num_connections) = &
-            general%temperature%dataset%rarray(1)
-          dof3 = PETSC_TRUE
-        case default
-          option%io_buffer = 'Unknown case (general%temperature%itype,' // &
-            'GAS_STATE,DIRICHLET_BC)'
-          call printErrMsg(option)
-      end select
       coupler%flow_bc_type(1:3) = DIRICHLET_BC
     case(ANY_STATE)
       coupler%flow_aux_int_var(GENERAL_STATE_INDEX,1:num_connections) = ANY_STATE
@@ -2163,9 +2170,7 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
   material_auxvars => patch%aux%Material%auxvars
 
   !geh: remove
-  if (option%iflowmode /= RICHARDS_MODE .and. &
-      option%iflowmode /= G_MODE .and. &
-      option%iflowmode /= NULL_MODE) then
+  if (.not.option%use_refactored_material_auxvars) then
     call VecGetArrayF90(field%perm_xx_loc,perm_loc_ptr,ierr)
     call VecGetArrayF90(field%volume,vol_ptr,ierr)
   endif
@@ -2184,8 +2189,7 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
       do iconn = 1, cur_connection_set%num_connections
         local_id = cur_connection_set%id_dn(iconn)
         !geh: remove
-        if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE .and. &
-            option%iflowmode /= NULL_MODE) then
+        if (.not.option%use_refactored_material_auxvars) then
           !geh: remove
           vec_ptr(local_id) = vec_ptr(local_id) + vol_ptr(local_id)
         else
@@ -2199,8 +2203,7 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
         local_id = cur_connection_set%id_dn(iconn)
         ghosted_id = grid%nL2G(local_id)
         !geh: remove
-        if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE .and. &
-            option%iflowmode /= NULL_MODE) then
+        if (.not.option%use_refactored_material_auxvars) then
           !geh: remove
           vec_ptr(local_id) = vec_ptr(local_id) + perm_loc_ptr(ghosted_id) * &
                                                   vol_ptr(local_id)
@@ -2226,8 +2229,7 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
           icount = icount + 1
           neighbor_ghosted_id = ghosted_neighbors(icount)
           !geh: remove
-          if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE .and. &
-              option%iflowmode /= NULL_MODE) then
+          if (.not.option%use_refactored_material_auxvars) then
             !geh: remove
             sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
                         grid%structured_grid%dy(neighbor_ghosted_id)* &
@@ -2244,8 +2246,7 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
           icount = icount + 1
           neighbor_ghosted_id = ghosted_neighbors(icount)                 
           !geh: remove
-          if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE .and. &
-              option%iflowmode /= NULL_MODE) then
+          if (.not.option%use_refactored_material_auxvars) then
             !geh: remove
             sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
                         grid%structured_grid%dx(neighbor_ghosted_id)* &
@@ -2262,8 +2263,7 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
           icount = icount + 1
           neighbor_ghosted_id = ghosted_neighbors(icount)                 
           !geh: remove
-          if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE .and. &
-              option%iflowmode /= NULL_MODE) then
+          if (.not.option%use_refactored_material_auxvars) then
             !geh: remove
             sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
                         grid%structured_grid%dx(neighbor_ghosted_id)* &
@@ -2303,8 +2303,7 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
   call VecRestoreArrayF90(field%work,vec_ptr,ierr)
 
   !geh: remove
-  if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE .and. &
-      option%iflowmode /= NULL_MODE) then
+  if (.not.option%use_refactored_material_auxvars) then
     call VecRestoreArrayF90(field%perm_xx_loc,perm_loc_ptr, ierr)
     call VecRestoreArrayF90(field%volume,vol_ptr, ierr)
   endif
@@ -3773,8 +3772,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
           enddo        
       end select
     case(POROSITY)
-      if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE .and. &
-          option%iflowmode /= NULL_MODE) then
+      if (.not.option%use_refactored_material_auxvars) then
         !geh: remove    
         call VecGetArrayF90(field%porosity_loc,vec_ptr2,ierr)
         do local_id=1,grid%nlmax
@@ -3787,8 +3785,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
         enddo
       endif
     case(PERMEABILITY,PERMEABILITY_X)
-      if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE .and. &
-          option%iflowmode /= NULL_MODE) then
+      if (.not.option%use_refactored_material_auxvars) then
         !geh: remove    
         call VecGetArrayF90(field%perm_xx_loc,vec_ptr2,ierr)
         do local_id=1,grid%nlmax
@@ -3802,8 +3799,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
         enddo
       endif
     case(PERMEABILITY_Y)
-      if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE .and. &
-          option%iflowmode /= NULL_MODE) then
+      if (.not.option%use_refactored_material_auxvars) then
         !geh: remove    
         call VecGetArrayF90(field%perm_yy_loc,vec_ptr2,ierr)
         do local_id=1,grid%nlmax
@@ -3817,8 +3813,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
         enddo
       endif
     case(PERMEABILITY_Z)
-      if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE .and. &
-          option%iflowmode /= NULL_MODE) then
+      if (.not.option%use_refactored_material_auxvars) then
         !geh: remove    
         call VecGetArrayF90(field%perm_zz_loc,vec_ptr2,ierr)
         do local_id=1,grid%nlmax
@@ -3832,8 +3827,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
         enddo
       endif
     case(PERMEABILITY_XY)
-      if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE .and. &
-          option%iflowmode /= NULL_MODE) then
+      if (.not.option%use_refactored_material_auxvars) then
         !geh: remove    
         call VecGetArrayF90(field%perm_xy_loc,vec_ptr2,ierr)
         do local_id=1,grid%nlmax
@@ -3847,8 +3841,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
         enddo
       endif
     case(PERMEABILITY_XZ)
-      if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE .and. &
-          option%iflowmode /= NULL_MODE) then
+      if (.not.option%use_refactored_material_auxvars) then
         !geh: remove    
         call VecGetArrayF90(field%perm_xz_loc,vec_ptr2,ierr)
         do local_id=1,grid%nlmax
@@ -3862,8 +3855,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
         enddo
       endif    
     case(PERMEABILITY_YZ)
-      if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE .and. &
-          option%iflowmode /= NULL_MODE) then
+      if (.not.option%use_refactored_material_auxvars) then
         !geh: remove  
         call VecGetArrayF90(field%perm_yz_loc,vec_ptr2,ierr)
         do local_id=1,grid%nlmax
@@ -3891,8 +3883,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
         vec_ptr(local_id) = option%myrank
       enddo
     case(VOLUME)
-      if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE .and. &
-          option%iflowmode /= NULL_MODE) then
+      if (.not.option%use_refactored_material_auxvars) then
         !geh: remove        
         call VecGetArrayF90(field%volume,vec_ptr2,ierr)
         do local_id=1,grid%nlmax
@@ -3906,8 +3897,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
         enddo      
       endif
     case(TORTUOSITY)
-      if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE .and. &
-          option%iflowmode /= NULL_MODE) then
+      if (.not.option%use_refactored_material_auxvars) then
         !geh: remove        
         call VecGetArrayF90(field%tortuosity_loc,vec_ptr2,ierr)
         do local_id=1,grid%nlmax
@@ -4547,8 +4537,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           endif
       end select
     case(POROSITY)
-      if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE .and. &
-          option%iflowmode /= NULL_MODE) then
+      if (.not.option%use_refactored_material_auxvars) then
         !geh: remove    
         call VecGetArrayF90(field%porosity_loc,vec_ptr2,ierr)
         value = vec_ptr2(ghosted_id)
@@ -4557,8 +4546,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
         value = material_auxvars(ghosted_id)%porosity
       endif
     case(PERMEABILITY,PERMEABILITY_X)
-      if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE .and. &
-          option%iflowmode /= NULL_MODE) then
+      if (.not.option%use_refactored_material_auxvars) then
         !geh: remove    
         call VecGetArrayF90(field%perm_xx_loc,vec_ptr2,ierr)
         value = vec_ptr2(ghosted_id)
@@ -4567,8 +4555,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
         value = material_auxvars(ghosted_id)%permeability(perm_xx_index)
       endif
     case(PERMEABILITY_Y)
-      if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE .and. &
-          option%iflowmode /= NULL_MODE) then
+      if (.not.option%use_refactored_material_auxvars) then
         !geh: remove    
         call VecGetArrayF90(field%perm_yy_loc,vec_ptr2,ierr)
         value = vec_ptr2(ghosted_id)
@@ -4577,8 +4564,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
         value = material_auxvars(ghosted_id)%permeability(perm_yy_index)
       endif
     case(PERMEABILITY_Z)
-      if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE .and. &
-          option%iflowmode /= NULL_MODE) then
+      if (.not.option%use_refactored_material_auxvars) then
         !geh: remove    
         call VecGetArrayF90(field%perm_zz_loc,vec_ptr2,ierr)
         value = vec_ptr2(ghosted_id)
@@ -4605,8 +4591,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
       value = patch%aux%SC_RT%sec_transport_vars(local_id)% &
               sec_rt_auxvar(isubvar)%mnrl_volfrac(isubvar1)
     case(TORTUOSITY)
-      if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE .and. &
-          option%iflowmode /= NULL_MODE) then
+      if (.not.option%use_refactored_material_auxvars) then
             !geh: remove
         call VecGetArrayF90(field%tortuosity_loc,vec_ptr2,ierr)
         value = vec_ptr2(ghosted_id)
@@ -4615,8 +4600,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
         value = material_auxvars(ghosted_id)%tortuosity
       endif
     case(VOLUME)
-      if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE .and. &
-          option%iflowmode /= NULL_MODE) then
+      if (.not.option%use_refactored_material_auxvars) then
             !geh: remove
         call VecGetArrayF90(field%volume,vec_ptr2,ierr)
         local_id = grid%nG2L(ghosted_id)
@@ -5311,59 +5295,73 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
         select case(ivar)
           case(TEMPERATURE)
             do local_id=1,grid%nlmax
-              patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))%temp = vec_ptr(local_id)
+              patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))% &
+                temp = vec_ptr(local_id)
             enddo
           case(LIQUID_PRESSURE)
             do local_id=1,grid%nlmax
-              patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))%pres(option%liquid_phase) = vec_ptr(local_id)
+              patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))% &
+                pres(option%liquid_phase) = vec_ptr(local_id)
             enddo
           case(GAS_PRESSURE)
             do local_id=1,grid%nlmax
-              patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))%pres(option%gas_phase) = vec_ptr(local_id)
+              patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))% &
+                pres(option%gas_phase) = vec_ptr(local_id)
             enddo
           case(AIR_PRESSURE)
             do local_id=1,grid%nlmax
-              patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))%pres(option%air_pressure_id) = vec_ptr(local_id)
+              patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))% &
+                pres(option%air_pressure_id) = vec_ptr(local_id)
             enddo
           case(CAPILLARY_PRESSURE)
             do local_id=1,grid%nlmax
-              patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))%pres(option%capillary_pressure_id) = vec_ptr(local_id)
+              patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))% &
+                pres(option%capillary_pressure_id) = vec_ptr(local_id)
             enddo
           case(STATE)
             do local_id=1,grid%nlmax
-              patch%aux%Global%auxvars(grid%nL2G(local_id))%istate = int(vec_ptr(local_id)+1.d-10)
+              patch%aux%Global%auxvars(grid%nL2G(local_id))%istate = &
+                int(vec_ptr(local_id)+1.d-10)
             enddo
           case(LIQUID_SATURATION)
             do local_id=1,grid%nlmax
-              patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))%sat(option%liquid_phase) = vec_ptr(local_id)
+              patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))% &
+                sat(option%liquid_phase) = vec_ptr(local_id)
             enddo
           case(LIQUID_DENSITY)
             do local_id=1,grid%nlmax
-              patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))%den_kg(option%liquid_phase) = vec_ptr(local_id)
+              patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))% &
+               den_kg(option%liquid_phase) = vec_ptr(local_id)
             enddo
           case(LIQUID_ENERGY)
             do local_id=1,grid%nlmax
-              patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))%U(option%liquid_phase) = vec_ptr(local_id)
+              patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))% &
+                U(option%liquid_phase) = vec_ptr(local_id)
             enddo
           case(LIQUID_MOLE_FRACTION)
             do local_id=1,grid%nlmax
-              patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))%xmol(isubvar,option%liquid_phase) = vec_ptr(local_id)
+              patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))% &
+                xmol(isubvar,option%liquid_phase) = vec_ptr(local_id)
             enddo
           case(GAS_SATURATION)
             do local_id=1,grid%nlmax
-              patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))%sat(option%gas_phase) = vec_ptr(local_id)
+              patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))% &
+                sat(option%gas_phase) = vec_ptr(local_id)
             enddo
           case(GAS_DENSITY) 
             do local_id=1,grid%nlmax
-              patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))%den_kg(option%gas_phase) = vec_ptr(local_id)
+              patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))% &
+                den_kg(option%gas_phase) = vec_ptr(local_id)
             enddo
           case(GAS_ENERGY)
             do local_id=1,grid%nlmax
-              patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))%U(option%gas_phase) = vec_ptr(local_id)
+              patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))% &
+                U(option%gas_phase) = vec_ptr(local_id)
             enddo
           case(GAS_MOLE_FRACTION)
             do local_id=1,grid%nlmax
-              patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))%xmol(isubvar,option%gas_phase) = vec_ptr(local_id)
+              patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))% &
+                xmol(isubvar,option%gas_phase) = vec_ptr(local_id)
             enddo
         end select         
       endif
@@ -5448,8 +5446,7 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
           call printErrMsg(option,'Setting of immobile colloid concentration at grid cell not supported.')
       end select
     case(POROSITY)
-      if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE .and. &
-          option%iflowmode /= NULL_MODE) then
+      if (.not.option%use_refactored_material_auxvars) then
         !geh: remove      
         if (vec_format == GLOBAL) then
           call VecGetArrayF90(field%porosity_loc,vec_ptr2,ierr)
@@ -5591,7 +5588,7 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
   grid => patch%grid
 
   !geh: remove
-  if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE) then
+  if (.not.option%use_refactored_material_auxvars) then
   call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   endif
 
@@ -5680,7 +5677,7 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
   enddo
 
   !geh: remove
-  if (option%iflowmode /= RICHARDS_MODE .and. option%iflowmode /= G_MODE) then
+  if (.not.option%use_refactored_material_auxvars) then
   call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   endif
 

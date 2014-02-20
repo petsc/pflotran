@@ -1390,8 +1390,7 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
   use TH_module, only : THMaxChange, THInitializeTimestep, THTimeCut
   use THC_module, only : THCMaxChange, THCInitializeTimestep, THCTimeCut
 
-  use General_module, only : GeneralMaxChange, GeneralInitializeTimestep, &
-                             GeneralTimeCut
+  use General_module, only : GeneralInitializeTimestep, GeneralTimeCut
   use Global_module
 
   use Output_module, only : Output
@@ -1460,9 +1459,7 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
                                   field%ithrm_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%iphas_loc, &
                                   field%iphas_loc,ONEDOF)
-  if (option%iflowmode == RICHARDS_MODE .or. &
-      option%iflowmode == G_MODE .or. &
-      option%iflowmode == NULL_MODE) then
+  if (.not.option%use_refactored_material_auxvars) then
     call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
                                  field%work_loc, &
                                  POROSITY,ZERO_INTEGER)
@@ -1711,7 +1708,7 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
         case(FLASH2_MODE)
           call FLASH2MaxChange(realization)
         case(G_MODE)
-          call GeneralMaxChange(realization)
+!          call GeneralMaxChange(realization)
       end select
       ! note use mph will use variable switching, the x and s change is not meaningful 
       if (option%print_screen_flag) then
@@ -1988,9 +1985,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
     call DiscretizationLocalToLocal(discretization,field%tortuosity_loc, &
                                     field%tortuosity_loc,ONEDOF)
   endif
-  if (option%iflowmode == RICHARDS_MODE .or. &
-      option%iflowmode == G_MODE .or. &
-      option%iflowmode == NULL_MODE) then
+  if (.not.option%use_refactored_material_auxvars) then
     call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
                                  field%work_loc, &
                                  POROSITY,ZERO_INTEGER)
@@ -2456,9 +2451,7 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
     call DiscretizationLocalToLocal(discretization,field%tortuosity_loc, &
                                     field%tortuosity_loc,ONEDOF)
   endif
-  if (option%iflowmode == RICHARDS_MODE .or. &
-      option%iflowmode == G_MODE .or. &
-      option%iflowmode == NULL_MODE) then
+  if (.not.option%use_refactored_material_auxvars) then
     call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
                                  field%work_loc, &
                                  POROSITY,ZERO_INTEGER)
@@ -2743,9 +2736,7 @@ subroutine StepperStepTransportDT_OS(realization,stepper, &
     call DiscretizationLocalToLocal(discretization,field%tortuosity_loc, &
                                     field%tortuosity_loc,ONEDOF)
   endif
-  if (option%iflowmode == RICHARDS_MODE .or. &
-      option%iflowmode == G_MODE .or. &
-      option%iflowmode == NULL_MODE) then
+  if (.not.option%use_refactored_material_auxvars) then
     call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
                                  field%work_loc, &
                                  POROSITY,ZERO_INTEGER)
@@ -3152,9 +3143,7 @@ subroutine StepperSolveFlowSteadyState(realization,stepper,failure)
                                   field%ithrm_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%iphas_loc, &
                                   field%iphas_loc,ONEDOF)
-  if (option%iflowmode == RICHARDS_MODE .or. &
-      option%iflowmode == G_MODE  .or. &
-      option%iflowmode == NULL_MODE) then
+  if (.not.option%use_refactored_material_auxvars) then
     call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
                                  field%work_loc, &
                                  POROSITY,ZERO_INTEGER)
@@ -3294,9 +3283,7 @@ subroutine StepperSolveTranSteadyState(realization,stepper,failure)
     call DiscretizationLocalToLocal(discretization,field%tortuosity_loc, &
                                     field%tortuosity_loc,ONEDOF)
   endif
-  if (option%iflowmode == RICHARDS_MODE .or. &
-      option%iflowmode == G_MODE  .or. &
-      option%iflowmode == NULL_MODE) then
+  if (.not.option%use_refactored_material_auxvars) then
     call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
                                  field%work_loc, &
                                  POROSITY,ZERO_INTEGER)

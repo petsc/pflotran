@@ -191,8 +191,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
 !      if (fnorm > solver%max_norm .or. pnorm > solver%max_norm .or. &
 !        inorm_residual > solver%max_norm) then
  
-  if (option%check_stomp_norm .and. &
-      option%stomp_norm < solver%newton_stomp_tol) then
+  if (option%check_post_convergence .and. option%converged) then
     reason = 12
   endif
   
@@ -255,7 +254,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
         case(11)
           string = 'itol_upd'
         case(12)
-          string = 'itol_stomp'
+          string = 'itol_post_check'
         case(13)
           string = 'itol_res_sec'
         case default
@@ -311,7 +310,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
         case(11)
           string = 'itol_upd'
         case(12)
-          string = 'itol_stomp'
+          string = 'itol_post_check'
         case(13)
           string = 'itol_res_sec'
         case default

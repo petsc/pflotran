@@ -1,25 +1,8 @@
-:Description: 1D solute transport with a simple linear sorption isotherm.
+:Description: 1D Calcite dissolution problem
 
 :=========================== regression =======================================
 REGRESSION
-:  CELLS_PER_PROCESS 5
-  CELLS
-    1
-    20 
-    25 
-    30 
-    35 
-    40 
-    45 
-    50 
-    55 
-    60 
-    65 
-    70 
-    75 
-    80 
-    100
-  /
+  CELLS_PER_PROCESS 5
 END
 
 :=========================== flow mode ========================================
@@ -28,34 +11,37 @@ END
 :=========================== useful tranport parameters ==================
 UNIFORM_VELOCITY 1.d0 0.d0 0.d0 m/yr
 
-REFERENCE_DENSITY 1000.d0
-
 :=========================== chemistry ========================================
 CHEMISTRY
   PRIMARY_SPECIES
-    A(aq)
+    H+
+    HCO3-
+    Ca++
   /
-  SORPTION
-    ISOTHERM_REACTIONS
-      A(aq)
-        TYPE LINEAR
-        ! Calculating distribution coefficient (Kd) from retardation (R):
-
-        !   Kd = porosity*saturation*water_density*(R-1)
-
-        ! Assume:
-        !   Kd units = kg water/m^3 bulk volume
-        !   water_density = 1000. (set above under REFERENCE_DENSITY) [kg/m^3]
-        !   saturation = 1.  [m^3 water/m^3 pore space]
-        !   porosity = 0.25 (from below)  [m^3 pore space/m^3 bulk volume]
-
-        ! R = 2, Kd = 250.
-        DISTRIBUTION_COEFFICIENT 0.25d3 ! kg water/m^3 bulk
-      /
-    / 
+  SECONDARY_SPECIES
+    OH-
+    CO3--
+    CO2(aq)
+    CaCO3(aq)
   /
-  DATABASE ../../../database/hanford.dat
+  GAS_SPECIES
+    CO2(g)
+  /
+  MINERALS
+    Calcite
+  /
+  MINERAL_KINETICS
+    Calcite
+      RATE_CONSTANT 1.d-6
+    /
+  /
+  DATABASE ../../../database/geothermal-hpt.dat
+  GEOTHERMAL_HPT
+  LOG_FORMULATION
+:  OPERATOR_SPLITTING
+  ACTIVITY_COEFFICIENTS TIMESTEP
   OUTPUT
+    PH
     all
   /
 END
@@ -85,18 +71,17 @@ MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.25d0
   TORTUOSITY 1.d0
-  ROCK_DENSITY 2650.d0
 END
 
 :=========================== output options ===================================
 OUTPUT
-:  TIMES y 5. 10. 15. 20.
-  FORMAT TECPLOT POINT
+  TIMES y 5. 10. 15. 20.
+  :FORMAT TECPLOT POINT
 END
 
 :=========================== times ============================================
 TIME
-  FINAL_TIME 25.d0 y            ! A(aq) at 50m midpoint
+  FINAL_TIME 25.d0 y
   INITIAL_TIMESTEP_SIZE 1.d0 h
   MAXIMUM_TIMESTEP_SIZE 2.5d-1 y
 END
@@ -143,13 +128,20 @@ END
 :=========================== constraints ======================================
 CONSTRAINT initial
   CONCENTRATIONS
-    A(aq) 1.d-7  T
+    H+     1.d-8      F
+    HCO3-  1.d-3      G  CO2(g)
+    Ca++   5.d-4      M  Calcite
+  /
+  MINERALS
+    Calcite 1.d-5 1.d0
   /
 END
 
 CONSTRAINT inlet
   CONCENTRATIONS
-    A(aq) 1.d-3  T
+    H+     5.         P
+    HCO3-  1.d-3      T 
+    Ca++   1.d-6      Z 
   /
 END
 
