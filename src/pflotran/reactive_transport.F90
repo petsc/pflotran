@@ -809,10 +809,6 @@ subroutine RTUpdateFixedAccumulation(realization)
       iendim = dof_offset + reaction%offset_immobile + reaction%nimcomp
       rt_auxvars(ghosted_id)%immobile = xx_p(istartim:iendim)
     endif
-    
-    if (option%use_mc) then
-      vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
-    endif
 
     if (.not.option%use_isothermal) then
       call RUpdateTempDependentCoefs(global_auxvars(ghosted_id),reaction, &
@@ -828,7 +824,7 @@ subroutine RTUpdateFixedAccumulation(realization)
     call RTAccumulation(rt_auxvars(ghosted_id), &
                         global_auxvars(ghosted_id), &
                         material_auxvars(ghosted_id), &
-                        reaction,option,vol_frac_prim, &
+                        reaction,option, &
                         accum_p(istart:iendall)) 
     if (reaction%neqsorb > 0) then
       call RAccumulationSorb(rt_auxvars(ghosted_id), &
@@ -836,6 +832,12 @@ subroutine RTUpdateFixedAccumulation(realization)
                              material_auxvars(ghosted_id), &
                              reaction,option,accum_p(istart:iendall))
     endif
+        
+    if (option%use_mc) then
+      vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
+      accum_p(istart:iendall) = accum_p(istart:iendall)*vol_frac_prim
+    endif
+    
   enddo
 
   call VecRestoreArrayReadF90(field%tran_xx,xx_p, ierr)
@@ -1628,7 +1630,6 @@ subroutine RTReact(realization)
 #endif
   PetscInt :: icount
   PetscErrorCode :: ierr
-  PetscReal :: vol_frac_prim
 
 #ifdef OS_STATISTICS
   PetscInt :: call_count
@@ -1659,9 +1660,6 @@ subroutine RTReact(realization)
   material_auxvars => patch%aux%Material%auxvars
   grid => patch%grid
   reaction => realization%reaction
-  if (option%use_mc) then
-    rt_sec_transport_vars => patch%aux%SC_RT%sec_transport_vars
-  endif
 
   ! need up update aux vars based on current density/saturation,
   ! but NOT activity coefficients
@@ -1670,7 +1668,6 @@ subroutine RTReact(realization)
   ! Get vectors
   call VecGetArrayReadF90(field%tran_xx,tran_xx_p,ierr)
       
-  vol_frac_prim = 1.d0    
   iphase = 1
   ithread = 1
 #ifdef OS_STATISTICS
@@ -1687,14 +1684,11 @@ subroutine RTReact(realization)
     iend = istart + reaction%ncomp - 1
     iendaq = istart + reaction%naqcomp - 1
     
-    if (option%use_mc) then
-      vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
-    endif
     
     call RReact(rt_auxvars(ghosted_id),global_auxvars(ghosted_id), &
                 material_auxvars(ghosted_id), &
                 tran_xx_p(istart:iend), &
-                num_iterations,reaction,option,vol_frac_prim)
+                num_iterations,reaction,option)
     ! set primary dependent var back to free-ion molality
     tran_xx_p(istart:iendaq) = rt_auxvars(ghosted_id)%pri_molal
     if (reaction%nimcomp > 0) then
@@ -2531,20 +2525,25 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
       istartall = offset + 1
       iendall = offset + reaction%ncomp
 
-      if (option%use_mc) then
-        vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
-      endif  
       call RTAccumulation(rt_auxvars(ghosted_id), &
                           global_auxvars(ghosted_id), &
                           material_auxvars(ghosted_id), &
-                          reaction,option,vol_frac_prim,Res)
+                          reaction,option,Res)
       if (reaction%neqsorb > 0) then
         call RAccumulationSorb(rt_auxvars(ghosted_id), &
                                global_auxvars(ghosted_id), &
                                material_auxvars(ghosted_id), &
                                reaction,option,Res)
       endif
+
+      if (option%use_mc) then
+        vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
+        Res = Res*vol_frac_prim
+      endif        
+      
       r_p(istartall:iendall) = r_p(istartall:iendall) + Res(1:reaction%ncomp)
+      
+      ! Secondary continuum formation not implemented for Age equation
       if (reaction%calculate_water_age) then 
         call RAge(rt_auxvars(ghosted_id),global_auxvars(ghosted_id), &
                   material_auxvars(ghosted_id),option,reaction,Res)
@@ -3194,15 +3193,10 @@ subroutine RTJacobianNonFlux(snes,xx,A,B,flag,realization,ierr)
       !geh - Ignore inactive cells with inactive materials
       if (patch%imat(ghosted_id) <= 0) cycle
       
-      if (option%use_mc) then    
-        vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
-      endif      
-      
       call RTAccumulationDerivative(rt_auxvars(ghosted_id), &
                                     global_auxvars(ghosted_id), &
                                     material_auxvars(ghosted_id), &
-                                    reaction,option, &
-                                    vol_frac_prim,Jup) 
+                                    reaction,option,Jup) 
                                     
       if (reaction%neqsorb > 0) then
         call RAccumulationSorbDerivative(rt_auxvars(ghosted_id), &
@@ -3212,6 +3206,9 @@ subroutine RTJacobianNonFlux(snes,xx,A,B,flag,realization,ierr)
       endif
       
       if (option%use_mc) then
+      
+        vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
+        Jup = Jup*vol_frac_prim
 
         sec_diffusion_coefficient = realization%material_property_array(1)% &
                                     ptr%secondary_continuum_diff_coeff

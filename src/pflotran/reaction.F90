@@ -3109,7 +3109,7 @@ end subroutine RJumpStartKineticSorption
 ! ************************************************************************** !
 
 subroutine RReact(rt_auxvar,global_auxvar,material_auxvar,tran_xx_p, &
-                  num_iterations_,reaction,option,vol_frac_prim)
+                  num_iterations_,reaction,option)
   ! 
   ! Solves reaction portion of operator splitting using Newton-Raphson
   ! 
@@ -3147,7 +3147,6 @@ subroutine RReact(rt_auxvar,global_auxvar,material_auxvar,tran_xx_p, &
   PetscReal :: scale
   
   PetscInt, parameter :: iphase = 1
-  PetscReal :: vol_frac_prim
 
   one_over_dt = 1.d0/option%tran_dt
   num_iterations = 0
@@ -3187,7 +3186,7 @@ subroutine RReact(rt_auxvar,global_auxvar,material_auxvar,tran_xx_p, &
 
   ! still need code to overwrite other phases
   call RTAccumulation(rt_auxvar,global_auxvar,material_auxvar,reaction, &
-                      option,vol_frac_prim,fixed_accum)
+                      option,fixed_accum)
   if (reaction%neqsorb > 0) then
     call RAccumulationSorb(rt_auxvar,global_auxvar,material_auxvar,reaction, &
                            option,fixed_accum)  
@@ -3212,12 +3211,12 @@ subroutine RReact(rt_auxvar,global_auxvar,material_auxvar,tran_xx_p, &
     ! Accumulation
     ! residual is overwritten in RTAccumulation()
     call RTAccumulation(rt_auxvar,global_auxvar,material_auxvar,reaction, &
-                        option,vol_frac_prim,residual)
+                        option,residual)
     residual = residual-fixed_accum
 
     ! J is overwritten in RTAccumulationDerivative()
     call RTAccumulationDerivative(rt_auxvar,global_auxvar,material_auxvar, &
-                                  reaction,option,vol_frac_prim,J)
+                                  reaction,option,J)
 
     if (reaction%neqsorb > 0) then
       call RAccumulationSorb(rt_auxvar,global_auxvar,material_auxvar,reaction, &
@@ -4762,8 +4761,7 @@ end subroutine RTAuxVarCompute
 ! ************************************************************************** !
 
 subroutine RTAccumulation(rt_auxvar,global_auxvar,material_auxvar, &
-                          reaction,option, &
-                          vol_frac_prim,Res)
+                          reaction,option,Res)
   ! 
   ! Computes aqueous portion of the accumulation term in
   ! residual function
@@ -4793,7 +4791,6 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,material_auxvar, &
   PetscInt :: iimb
   PetscReal :: psv_t
   PetscReal :: v_t
-  PetscReal :: vol_frac_prim
   
   iphase = 1
   Res = 0.d0
@@ -4806,7 +4803,7 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,material_auxvar, &
           material_auxvar%volume / option%tran_dt  
   istart = 1
   iend = reaction%naqcomp
-  Res(istart:iend) = psv_t*rt_auxvar%total(:,iphase)*vol_frac_prim 
+  Res(istart:iend) = psv_t*rt_auxvar%total(:,iphase) 
 
   if (reaction%ncoll > 0) then
     do icoll = 1, reaction%ncoll
@@ -4839,8 +4836,7 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,material_auxvar, &
     if (iphase == 2) then
       psv_t = material_auxvar%porosity*global_auxvar%sat(iphase)*1000.d0* &
               material_auxvar%volume / option%tran_dt 
-      Res(istart:iend) = Res(istart:iend) + psv_t*rt_auxvar%total(:,iphase)* &
-                         vol_frac_prim 
+      Res(istart:iend) = Res(istart:iend) + psv_t*rt_auxvar%total(:,iphase) 
       ! should sum over gas component only need more implementations
     endif 
 ! add code for other phases here
@@ -4853,8 +4849,7 @@ end subroutine RTAccumulation
 
 subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
                                     material_auxvar, &
-                                    reaction,option, &
-                                    vol_frac_prim,J)
+                                    reaction,option,J)
   ! 
   ! Computes derivative of aqueous portion of the
   ! accumulation term in residual function
@@ -4880,7 +4875,6 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
   PetscInt :: icoll
   PetscInt :: iimob
   PetscReal :: psvd_t, v_t
-  PetscReal :: vol_frac_prim
 
   iphase = 1
   istart = 1
@@ -4891,12 +4885,12 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
   J = 0.d0
   if (associated(rt_auxvar%aqueous%dtotal)) then ! units of dtotal = kg water/L water
     psvd_t = material_auxvar%porosity*global_auxvar%sat(iphase)*1000.d0* &
-             material_auxvar%volume/option%tran_dt*vol_frac_prim
+             material_auxvar%volume/option%tran_dt
     J(istart:iendaq,istart:iendaq) = rt_auxvar%aqueous%dtotal(:,:,iphase)*psvd_t
   else
     psvd_t = material_auxvar%porosity*global_auxvar%sat(iphase)* &
              global_auxvar%den_kg(iphase)*material_auxvar%volume/ &
-             option%tran_dt*vol_frac_prim ! units of den = kg water/m^3 water
+             option%tran_dt ! units of den = kg water/m^3 water
     do icomp=istart,iendaq
       J(icomp,icomp) = psvd_t
     enddo
@@ -4933,14 +4927,13 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
     if (iphase == 2) then
       if (associated(rt_auxvar%aqueous%dtotal)) then
         psvd_t = material_auxvar%porosity*global_auxvar%sat(iphase)*1000.d0* &
-                 material_auxvar%volume/option%tran_dt* &
-                 vol_frac_prim  
+                 material_auxvar%volume/option%tran_dt  
         J(istart:iendaq,istart:iendaq) = J(istart:iendaq,istart:iendaq) + &
           rt_auxvar%aqueous%dtotal(:,:,iphase)*psvd_t
       else
         psvd_t = material_auxvar%porosity*global_auxvar%sat(iphase)* &
                  global_auxvar%den_kg(iphase)*material_auxvar%volume/ &
-                 option%tran_dt*vol_frac_prim ! units of den = kg water/m^3 water
+                 option%tran_dt ! units of den = kg water/m^3 water
         do icomp=istart,iendaq
           J(icomp,icomp) = J(icomp,icomp) + psvd_t
         enddo
@@ -4989,7 +4982,7 @@ subroutine RCalculateCompression(global_auxvar,rt_auxvar,material_auxvar, &
 
   call RTAuxVarCompute(rt_auxvar,global_auxvar,material_auxvar,reaction,option)
   call RTAccumulationDerivative(rt_auxvar,global_auxvar, &
-                                material_auxvar,reaction,option,1.d0,J)
+                                material_auxvar,reaction,option,J)
     
   do jj = 1, reaction%ncomp
     do i = 1, reaction%ncomp
