@@ -1441,12 +1441,13 @@ subroutine FlowConditionGeneralRead(condition,input,option)
       call printErrMsg(option)
     endif
   else
-
-
-    if (.not.associated(general%rate) .and. &
-        .not.associated(general%liquid_flux) .and. &
-        .not.associated(general%gas_flux) .and. &
-        .not.associated(general%energy_flux)) then
+    if (associated(general%rate)) then
+      condition%iphase = ANY_STATE
+    elseif (associated(general%liquid_flux) .and. &
+            associated(general%gas_flux) .and. &
+            associated(general%energy_flux)) then
+      condition%iphase = ANY_STATE
+    else
       ! some sort of dirichlet-based pressure, temperature, etc.
       if (.not.associated(general%liquid_pressure) .and. &
           .not.associated(general%gas_pressure)) then
@@ -1478,12 +1479,8 @@ subroutine FlowConditionGeneralRead(condition,input,option)
         ! gas phase condition
         condition%iphase = GAS_STATE
       endif
-    else if (associated(general%rate) .or. &
-             associated(general%liquid_flux) .or. &
-             associated(general%gas_flux) .or. &
-             associated(general%energy_flux)) then
-      condition%iphase = ANY_STATE
-    else 
+    endif
+    if (condition%iphase == NULL_STATE) then
       option%io_buffer = 'General Phase non-rate/flux condition contains ' // &
         'an unsupported combination of primary dependent variables.'
       call printErrMsg(option)
