@@ -396,6 +396,7 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
   use Material_module
   use Material_Aux_class
   use EOS_Water_module
+  use Saturation_Function_module
   
   implicit none
 
@@ -417,11 +418,12 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
   PetscInt :: iphasebc, iphase
   PetscInt :: offset
   PetscInt :: istate
+  PetscReal :: gas_pressure, capillary_pressure, liquid_saturation
+  PetscReal :: saturation_pressure, temperature
   PetscInt :: real_index, variable
   PetscReal, pointer :: xx_loc_p(:)
   PetscReal, pointer :: perm_xx_loc_p(:), porosity_loc_p(:)  
   PetscReal :: xxbc(realization%option%nflowdof)
-  PetscReal :: p_sat, p_gas, temperature
   PetscErrorCode :: ierr
   
   option => realization%option
@@ -494,7 +496,10 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
           case(TWO_PHASE_STATE)
             do idof = 1, option%nflowdof
               select case(boundary_condition%flow_bc_type(idof))
-                case(DIRICHLET_BC,HYDROSTATIC_BC)
+                case(HYDROSTATIC_BC)
+                  real_index = boundary_condition%flow_aux_mapping(dof_to_primary_variable(idof,istate))
+                  xxbc(idof) = boundary_condition%flow_aux_real_var(real_index,iconn)
+                case(DIRICHLET_BC)
                   variable = dof_to_primary_variable(idof,istate)
                   select case(variable)
                     ! for gas pressure dof
@@ -516,14 +521,14 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
                         real_index = boundary_condition%flow_aux_mapping(GENERAL_TEMPERATURE_INDEX)
                         if (real_index /= 0) then
                           temperature = boundary_condition%flow_aux_real_var(real_index,iconn)
-                          call EOSWaterSaturationPressure(temperature,p_sat,ierr)
+                          call EOSWaterSaturationPressure(temperature,saturation_pressure,ierr)
                           ! now verify whether gas pressure is provided through BC
                           if (boundary_condition%flow_bc_type(ONE_INTEGER) == NEUMANN_BC) then
-                            p_gas = xxbc(ONE_INTEGER)
+                            gas_pressure = xxbc(ONE_INTEGER)
                           else
                             real_index = boundary_condition%flow_aux_mapping(GENERAL_GAS_PRESSURE_INDEX)
                             if (real_index /= 0) then
-                              p_gas = boundary_condition%flow_aux_real_var(real_index,iconn)
+                              gas_pressure = boundary_condition%flow_aux_real_var(real_index,iconn)
                             else
                               option%io_buffer = 'Mixed FLOW_CONDITION "' // &
                                 trim(boundary_condition%flow_condition%name) // &
@@ -532,7 +537,7 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
                               call printErrMsg(option)
                             endif
                           endif
-                          xxbc(idof) = p_gas - p_sat
+                          xxbc(idof) = gas_pressure - saturation_pressure
                         else
                           option%io_buffer = 'Cannot find boundary constraint for air pressure.'
                           call printErrMsg(option)
@@ -560,15 +565,16 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
               end select
             enddo  
         end select
-      else  
+      else
+        ! we do this for all BCs; Neumann bcs will be set later
         do idof = 1, option%nflowdof
-          select case(boundary_condition%flow_bc_type(idof))
-            case(DIRICHLET_BC,HYDROSTATIC_BC)
-              real_index = boundary_condition%flow_aux_mapping(dof_to_primary_variable(idof,istate))
-              xxbc(idof) = boundary_condition%flow_aux_real_var(real_index,iconn)
-            case(NEUMANN_BC,ZERO_GRADIENT_BC)
-!              xxbc(idof) = xx_loc_p(offset+idof)
-          end select
+          real_index = boundary_condition%flow_aux_mapping(dof_to_primary_variable(idof,istate))
+          if (real_index > 0) then
+            xxbc(idof) = boundary_condition%flow_aux_real_var(real_index,iconn)
+          else
+            option%io_buffer = 'Error setting up boundary condition in GeneralUpdateAuxVars'
+            call printErrMsg(option)
+          endif
         enddo
       endif
           
@@ -1095,7 +1101,9 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
         upweight_adj=0.d0
       else if (gen_auxvar_dn%sat(iphase) < eps) then 
         upweight_adj=1.d0
-      endif    
+      endif
+#if 0   
+! trying to rule out the averaging of density, etc. causing problems
       density_ave = upweight_adj*gen_auxvar_up%den(iphase)+ &
                     (1.D0-upweight_adj)*gen_auxvar_dn%den(iphase)
       ! MJ/kmol
@@ -1106,8 +1114,12 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
       !     gravity (negative if gravity is down)      
       gravity_term = (upweight_adj*gen_auxvar_up%den(iphase) + &
                      (1.D0-upweight)*gen_auxvar_dn%den(iphase)) &
-                     * fmw_phase(iphase) * dist_gravity 
-
+                     * fmw_phase(iphase) * dist_gravity
+#endif
+      density_ave = 0.5*(gen_auxvar_up%den(iphase) + gen_auxvar_dn%den(iphase))
+      H_ave = 0.5*(gen_auxvar_up%H(iphase) + gen_auxvar_dn%H(iphase))
+      gravity_term = density_ave * fmw_phase(iphase) * dist_gravity
+      
       delta_pressure = gen_auxvar_up%pres(iphase) - &
                        gen_auxvar_dn%pres(iphase) + &
                        gravity_term
@@ -1365,7 +1377,7 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
   PetscReal :: H_ave, uH
   PetscReal :: perm_ave_over_dist, dist_gravity
   PetscReal :: delta_pressure, delta_xmol, delta_temp
-  PetscReal :: gravity
+  PetscReal :: gravity_term
   PetscReal :: ukvr, mole_flux, q
   PetscReal :: sat_dn, perm_dn
   PetscReal :: temp_ave, stp_ave, theta, v_air
@@ -1419,20 +1431,25 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
             upweight=0.d0
           else if (gen_auxvar_dn%sat(iphase) < eps) then 
             upweight=1.d0
-          endif    
+          endif 
+#if 0          
           density_ave = upweight*gen_auxvar_up%den(iphase)+ &
                         (1.D0-upweight)*gen_auxvar_dn%den(iphase)
           ! MJ/kmol
 !geh          H_ave = upweight*gen_auxvar_up%H(iphase)+ &
 !geh                  (1.D0-upweight)*gen_auxvar_dn%H(iphase)
 
-          gravity = (upweight*gen_auxvar_up%den(iphase) + &
-                    (1.D0-upweight)*gen_auxvar_dn%den(iphase)) &
-                    * fmw_phase(iphase) * dist_gravity 
+          gravity_term = (upweight*gen_auxvar_up%den(iphase) + &
+                         (1.D0-upweight)*gen_auxvar_dn%den(iphase)) &
+                          * fmw_phase(iphase) * dist_gravity 
+#endif                    
 
+          density_ave = 0.5*(gen_auxvar_up%den(iphase) + gen_auxvar_dn%den(iphase))
+          gravity_term = density_ave * fmw_phase(iphase) * dist_gravity
+      
           delta_pressure = gen_auxvar_up%pres(iphase) - &
                            gen_auxvar_dn%pres(iphase) + &
-                           gravity
+                           gravity_term
 
           if (bc_type == SEEPAGE_BC .or. &
               bc_type == CONDUCTANCE_BC) then
@@ -2570,6 +2587,13 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   scale = initial_scale
 
   changed = PETSC_TRUE
+  
+!#define LIMIT_MAX_PRESSURE_CHANGE
+!#define LIMIT_MAX_SATURATION_CHANGE
+!#define LIMIT_MAX_TEMPERATURE_CHANGE
+!#define TRUNCATE_LIQUID_PRESSURE
+!#define TRUNCATE_GAS_PRESSURE
+!#define TRUNCATE_AIR_PRESSURE
 
 #ifdef DEBUG_GENERAL_INFO
   cell_locator = 0
@@ -2597,6 +2621,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
         del_temperature = dX_p(temperature_index)
         temperature0 = X_p(temperature_index)
         temperature1 = temperature0 - del_temperature
+#ifdef LIMIT_MAX_PRESSURE_CHANGE
         if (dabs(del_liquid_pressure) > max_pressure_change) then
           temp_real = dabs(max_pressure_change/del_liquid_pressure)
 #ifdef DEBUG_GENERAL_INFO
@@ -2622,6 +2647,8 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
 #endif
           temp_scale = min(temp_scale,temp_real)
         endif
+#endif !LIMIT_MAX_PRESSURE_CHANGE
+#ifdef TRUNCATE_LIQUID_PRESSURE
         ! truncate liquid pressure change to prevent liquid pressure from 
         ! dropping below the air pressure while in the liquid state
         min_pressure = gen_auxvars(ZERO_INTEGER,ghosted_id)%pres(apid) + &
@@ -2660,6 +2687,8 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
 #endif
           temp_scale = min(temp_scale,temp_real)
         endif
+#endif !TRUNCATE_LIQUID_PRESSURE  
+#ifdef LIMIT_MAX_TEMPERATURE_CHANGE
         if (dabs(del_temperature) > max_temperature_change) then
           temp_real = dabs(max_temperature_change/del_temperature)
 #ifdef DEBUG_GENERAL_INFO
@@ -2685,6 +2714,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
 #endif
           temp_scale = min(temp_scale,temp_real)
         endif
+#endif !LIMIT_MAX_TEMPERATURE_CHANGE        
       case(TWO_PHASE_STATE)
         gas_pressure_index = offset + 1
         air_pressure_index = offset + 2
@@ -2703,6 +2733,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
         del_saturation = dX_p(saturation_index)
         saturation0 = X_p(saturation_index)
         saturation1 = saturation0 - del_saturation
+#ifdef TRUNCATE_GAS_PRESSURE
         if (gas_pressure1 <= 0.d0) then
           if (dabs(del_gas_pressure) > 1.d-40) then
             temp_real = tolerance * dabs(gas_pressure0 / del_gas_pressure)
@@ -2731,6 +2762,8 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
             temp_scale = min(temp_scale,temp_real)
           endif
         endif
+#endif !TRUNCATE_GAS_PRESSURE
+#ifdef TRUNCATE_AIR_PRESSURE
         if (air_pressure1 <= 0.d0) then
           if (dabs(del_air_pressure) > 1.d-40) then
             temp_real = tolerance * dabs(air_pressure0 / del_air_pressure)
@@ -2759,6 +2792,8 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
             temp_scale = min(temp_scale,temp_real)
           endif
         endif
+#endif !TRUNCATE_AIR_PRESSURE
+#if defined(TRUNCATE_GAS_PRESSURE) && defined(TRUNCATE_AIR_PRESSURE)
         ! have to factor in scaled update from previous conditionals
         gas_pressure1 = gas_pressure0 - temp_scale * del_gas_pressure
         air_pressure1 = air_pressure0 - temp_scale * del_air_pressure
@@ -2811,6 +2846,8 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
 #endif
           temp_scale = min(temp_scale,temp_real)
         endif
+#endif !TRUNCATE_GAS_PRESSURE && TRUNCATE_AIR_PRESSURE
+#ifdef LIMIT_MAX_SATURATION_CHANGE
         if (dabs(del_saturation) > max_saturation_change) then
           temp_real = dabs(max_saturation_change/del_saturation)
 #ifdef DEBUG_GENERAL_INFO
@@ -2837,6 +2874,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
 #endif
           temp_scale = min(temp_scale,temp_real)
         endif
+#endif !LIMIT_MAX_SATURATION_CHANGE        
       case(GAS_STATE) 
         gas_pressure_index = offset + 1
         air_pressure_index = offset + 2
@@ -2853,7 +2891,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
                      MPI_DOUBLE_PRECISION, &
                      MPI_MIN,option%mycomm,ierr)
 
-  if (scale < 0.9999d0*initial_scale) then
+  if (scale < 0.9999d0) then
 #ifdef DEBUG_GENERAL_INFO
     string  = '++++++++++++++++++++++++++++++++++++++++++++++++++++++'
     call printMsg(option,string)
