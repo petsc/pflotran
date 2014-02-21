@@ -561,6 +561,8 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
 
   flag = PETSC_FALSE
   
+!#define ALTERNATIVE_UPDATE
+  
   gen_auxvar%istate_store(PREV_IT) = global_auxvar%istate
   select case(global_auxvar%istate)
     case(LIQUID_STATE)
@@ -595,6 +597,26 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
 !        liquid_epsilon = 1.d-10*epsilon ! 4.65514E+01, 13464 NI, 62 cuts
         liquid_epsilon = epsilon
         ! gas pressure can never be less than zero.
+#if !defined(ALTERNATIVE_UPDATE)
+        x(GENERAL_GAS_PRESSURE_DOF) = &
+          gen_auxvar%pres(lid) * (1.d0 + liquid_epsilon)
+        if (x(GENERAL_GAS_PRESSURE_DOF) < 0.d0) then
+          write(string,*) ghosted_id
+          option%io_buffer = 'Negative gas pressure during state change ' // &
+            'at ' // trim(adjustl(string))
+          call printErrMsg(option)
+        endif
+        ! pa = pg - ps
+        x(GENERAL_AIR_PRESSURE_DOF) = &
+          x(GENERAL_GAS_PRESSURE_DOF) - gen_auxvar%pres(spid)
+        if (x(GENERAL_AIR_PRESSURE_DOF) < 0.d0) then
+          write(string,*) ghosted_id
+          option%io_buffer = 'Negative air pressure during state change ' // &
+            'at ' // trim(adjustl(string))
+          call printErrMsg(option)
+        endif
+        x(GENERAL_GAS_SATURATION_DOF) = liquid_epsilon
+#else
         x(GENERAL_GAS_PRESSURE_DOF) = &
           max(gen_auxvar%pres(lid) * (1.d0 + liquid_epsilon),epsilon)
         ! assume air pressure is pg - ps, but has to be greater than epsilon.
@@ -661,6 +683,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
             gen_auxvar%pres(apid) * (1.d0 + liquid_epsilon)
         endif
         x(GENERAL_GAS_SATURATION_DOF) = liquid_epsilon
+#endif
 #endif
         flag = PETSC_TRUE
       endif
