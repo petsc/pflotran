@@ -815,7 +815,7 @@ subroutine BasisInit(reaction,option)
   type(general_rxn_type), pointer :: cur_general_rxn
   type(radioactive_decay_rxn_type), pointer :: cur_radiodecay_rxn
   type(microbial_rxn_type), pointer :: cur_microbial_rxn
-  type(kd_rxn_type), pointer :: cur_kd_rxn
+  type(kd_rxn_type), pointer :: cur_kd_rxn, sec_cont_cur_kd_rxn
   type(colloid_type), pointer :: cur_colloid
   type(database_rxn_type), pointer :: dbaserxn
   type(transition_state_rxn_type), pointer :: tstrxn
@@ -3369,6 +3369,19 @@ subroutine BasisInit(reaction,option)
     reaction%eqkdfreundlichn = 0.d0
 
     cur_kd_rxn => reaction%kd_rxn_list
+    
+    if (option%use_mc) then
+      allocate(reaction%sec_cont_eqkdtype(reaction%neqkdrxn))
+      reaction%sec_cont_eqkdtype = 0   
+      allocate(reaction%sec_cont_eqkddistcoef(reaction%neqkdrxn))
+      reaction%sec_cont_eqkddistcoef = 0.d0
+      allocate(reaction%sec_cont_eqkdlangmuirb(reaction%neqkdrxn))
+      reaction%sec_cont_eqkdlangmuirb = 0.d0
+      allocate(reaction%sec_cont_eqkdfreundlichn(reaction%neqkdrxn))
+      reaction%sec_cont_eqkdfreundlichn = 0.d0
+      sec_cont_cur_kd_rxn => reaction%sec_cont_kd_rxn_list
+    endif
+    
     irxn = 0
     do  
       if (.not.associated(cur_kd_rxn)) exit
@@ -3397,6 +3410,16 @@ subroutine BasisInit(reaction,option)
       reaction%eqkdfreundlichn(irxn) = cur_kd_rxn%Freundlich_n
        
       cur_kd_rxn => cur_kd_rxn%next
+      
+      if (option%use_mc) then
+        reaction%sec_cont_eqkdtype(irxn) = sec_cont_cur_kd_rxn%itype
+        reaction%sec_cont_eqkddistcoef(irxn) = sec_cont_cur_kd_rxn%Kd
+        reaction%sec_cont_eqkdlangmuirb(irxn) = sec_cont_cur_kd_rxn%Langmuir_b
+        reaction%sec_cont_eqkdfreundlichn(irxn) = sec_cont_cur_kd_rxn%Freundlich_n
+        sec_cont_cur_kd_rxn => sec_cont_cur_kd_rxn%next
+      endif
+      
+      
     enddo
   endif
 
