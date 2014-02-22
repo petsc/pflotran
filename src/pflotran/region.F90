@@ -1271,17 +1271,16 @@ subroutine RegionDestroy(region)
   ! Author: Glenn Hammond
   ! Date: 10/23/07
   ! 
-
+  use Utility_module, only : DeallocateArray
+  
   implicit none
   
   type(region_type), pointer :: region
   
   if (.not.associated(region)) return
   
-  if (associated(region%cell_ids)) deallocate(region%cell_ids)
-  nullify(region%cell_ids)
-  if (associated(region%faces)) deallocate(region%faces)
-  nullify(region%faces)
+  call DeallocateArray(region%cell_ids)
+  call DeallocateArray(region%faces)
   if (associated(region%coordinates)) deallocate(region%coordinates)
   nullify(region%coordinates)
   call RegionDestroySideset(region%sideset)

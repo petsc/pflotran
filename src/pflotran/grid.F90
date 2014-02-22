@@ -2128,16 +2128,16 @@ subroutine GridDestroyHashTable(grid)
   ! Author: Glenn Hammond
   ! Date: 03/07/07
   ! 
-
+  use Utility_module, only : DeallocateArray
+  
   implicit none
 
   type(grid_type), pointer :: grid
   
-  if (associated(grid%hash)) deallocate(grid%hash)
+  call DeallocateArray(grid%hash)
   
 #ifdef DASVYAT
-  if (associated(grid%faces)) deallocate(grid%faces)
-  nullify(grid%faces)
+  call DeallocateArray(grid%faces)
 #endif
 
   nullify(grid%hash)
@@ -2273,7 +2273,8 @@ subroutine GridDestroy(grid)
   ! Author: Glenn Hammond
   ! Date: 11/01/07
   ! 
-
+  use Utility_module, only : DeallocateArray
+  
   implicit none
   
   type(grid_type), pointer :: grid
@@ -2282,14 +2283,10 @@ subroutine GridDestroy(grid)
     
   if (.not.associated(grid)) return
       
-  if (associated(grid%nL2G)) deallocate(grid%nL2G)
-  nullify(grid%nL2G)
-  if (associated(grid%nG2L)) deallocate(grid%nG2L)
-  nullify(grid%nG2L)
-  if (associated(grid%nG2A)) deallocate(grid%nG2A)
-  nullify(grid%nG2A)
-  if (associated(grid%nG2P)) deallocate(grid%nG2P)
-  nullify(grid%nG2P)
+  call DeallocateArray(grid%nL2G)
+  call DeallocateArray(grid%nG2L)
+  call DeallocateArray(grid%nG2A)
+  call DeallocateArray(grid%nG2P)
 
   !Note: Destroying for ghosted_level<TWO_INTEGER assumes that max_stencil_width
   !      was TWO_INTEGER.
@@ -2317,16 +2314,11 @@ subroutine GridDestroy(grid)
   nullify(grid%bnd_cell)
 
 #ifdef DASVYAT
-  if (associated(grid%fL2G)) deallocate(grid%fL2G)
-  nullify(grid%fL2G)
-  if (associated(grid%fG2L)) deallocate(grid%fG2L)
-  nullify(grid%fG2L)
-  if (associated(grid%fG2P)) deallocate(grid%fG2P)
-  nullify(grid%fG2P)
-  if (associated(grid%fL2P)) deallocate(grid%fL2P)
-  nullify(grid%fL2P)
-  if (associated(grid%fL2B)) deallocate(grid%fL2B)
-  nullify(grid%fL2B)
+  call DeallocateArray(grid%fL2G)
+  call DeallocateArray(grid%fG2L)
+  call DeallocateArray(grid%fG2P)
+  call DeallocateArray(grid%fL2P)
+  call DeallocateArray(grid%fL2B)
 
   if (grid%e2f /= 0) Call VecDestroy(grid%e2f, ierr)
   if (grid%e2n /= 0) Call VecDestroy(grid%e2n, ierr)
@@ -2335,12 +2327,9 @@ subroutine GridDestroy(grid)
   call MFDAuxDestroy(grid%MFD)
 #endif
 
-  if (associated(grid%x)) deallocate(grid%x)
-  nullify(grid%x)
-  if (associated(grid%y)) deallocate(grid%y)
-  nullify(grid%y)
-  if (associated(grid%z)) deallocate(grid%z)
-  nullify(grid%z)
+  call DeallocateArray(grid%x)
+  call DeallocateArray(grid%y)
+  call DeallocateArray(grid%z)
   
   if (associated(grid%hash)) call GridDestroyHashTable(grid)
   

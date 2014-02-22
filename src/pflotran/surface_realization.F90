@@ -109,11 +109,14 @@ function SurfRealizCreate(option)
   nullify(surf_realization%input)
 
   surf_realization%surf_field => SurfaceFieldCreate()
-  surf_realization%debug => DebugCreate()
-  surf_realization%output_option => OutputOptionCreate()
-  surf_realization%patch_list => PatchCreateList()
+  !geh: debug, output_option, patch_list already allocated in 
+  !     RealizationBaseInit()
+  !geh: surf_realization%debug => DebugCreate()
+  !geh: surf_realization%output_option => OutputOptionCreate()
+  !geh: surf_realization%patch_list => PatchCreateList()
 
   nullify(surf_realization%surf_material_properties)
+  nullify(surf_realization%surf_material_property_array)
 
   allocate(surf_realization%surf_regions)
   call RegionInitList(surf_realization%surf_regions)
@@ -1202,6 +1205,9 @@ subroutine SurfRealizDestroy(surf_realization)
   type(surface_realization_type), pointer :: surf_realization
   
   if(.not.associated(surf_realization)) return
+  
+  !geh: deallocate everything in base
+  call RealizationBaseStrip(surf_realization)
   
   call SurfaceFieldDestroy(surf_realization%surf_field)
   

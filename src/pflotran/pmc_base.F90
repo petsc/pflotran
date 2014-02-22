@@ -826,7 +826,11 @@ subroutine PMCBaseStrip(this)
   endif
   nullify(this%waypoints) ! deleted in realization
 !  call WaypointListDestroy(this%waypoints)
-  nullify(this%pm_ptr)
+  if (associated(this%pm_ptr)) then
+    nullify(this%pm_ptr%ptr)
+    deallocate(this%pm_ptr)
+    nullify(this%pm_ptr)
+  endif
   nullify(this%sim_aux)
 
 end subroutine PMCBaseStrip

@@ -71,9 +71,9 @@ module General_Aux_module
 !    PetscReal, pointer :: dden_dp(:,:)
 !    PetscReal, pointer :: dsat_dt(:)
 !    PetscReal, pointer :: dden_dt(:)
-    PetscReal, pointer :: kvr(:)
+    PetscReal, pointer :: mobility(:) ! relative perm / kinematic viscosity
     PetscReal :: pert
-!    PetscReal, pointer :: dkvr_dp(:)
+!    PetscReal, pointer :: dmobility_dp(:)
   end type general_auxvar_type
   
   type, public :: general_parameter_type
@@ -194,8 +194,8 @@ subroutine GeneralAuxVarInit(auxvar,option)
   auxvar%H = 0.d0
   allocate(auxvar%U(option%nphase))
   auxvar%U = 0.d0
-  allocate(auxvar%kvr(option%nphase))
-  auxvar%kvr = 0.d0
+  allocate(auxvar%mobility(option%nphase))
+  auxvar%mobility = 0.d0
   
   auxvar%pert = 0.d0
   
@@ -227,7 +227,7 @@ subroutine GeneralAuxVarCopy(auxvar,auxvar2,option)
   auxvar2%xmol = auxvar%xmol
   auxvar2%H = auxvar%H
   auxvar2%U = auxvar%U
-  auxvar2%kvr = auxvar%kvr
+  auxvar2%mobility = auxvar%mobility
   auxvar2%pert = auxvar%pert
 
 end subroutine GeneralAuxVarCopy
@@ -324,7 +324,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   gen_auxvar%den_kg = 0.d0
   gen_auxvar%xmol = 0.d0
 #endif  
-  gen_auxvar%kvr = 0.d0
+  gen_auxvar%mobility = 0.d0
 
 #if 0
   if (option%iflag >= 1) then
@@ -345,6 +345,12 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       gen_auxvar%temp = x(GENERAL_LIQUID_STATE_ENERGY_DOF)
 
       gen_auxvar%xmol(wid,lid) = 1.d0 - gen_auxvar%xmol(acid,lid)
+      ! with the gas state, we must calculate the mole fraction of air in 
+      ! in the liquid phase, even though the liquid phase does not exist
+      ! due to air diffusion between neighboring GAS and LIQUID cells (this
+      ! is more of an issue on a boundary condition).  this is not 
+      ! necessary for water since we do not calculate water diffusion 
+      ! explicitly.  set mole fractions to zero in gas phase.
       gen_auxvar%xmol(:,gid) = 0.d0
       gen_auxvar%sat(lid) = 1.d0
       gen_auxvar%sat(gid) = 0.d0
@@ -384,15 +390,24 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       gen_auxvar%sat(gid) = 1.d0
       gen_auxvar%xmol(acid,gid) = gen_auxvar%pres(apid) / &
                                    gen_auxvar%pres(gid)
-      gen_auxvar%xmol(:,lid) = 0.d0
       gen_auxvar%xmol(wid,gid) = 1.d0 - gen_auxvar%xmol(acid,gid)
+      ! need to set mole fractions in liquid phase in equilibrium with
+      ! water saturated with air in order to accommodate air diffusion between
+      ! GAS_STATE cell and TWO_PHASE/LIQUID_STATE cells as air should still
+      ! diffuse through the liquid phase.
+      call EOSWaterSaturationPressure(gen_auxvar%temp, &
+                                      gen_auxvar%pres(spid),ierr)
+      call Henry_air_noderiv(dummy,gen_auxvar%temp, &
+                             gen_auxvar%pres(spid),K_H_tilde)
+      gen_auxvar%xmol(acid,lid) = gen_auxvar%pres(apid) / K_H_tilde
+      ! set water mole fraction to zero as there is no water in liquid phase
+      gen_auxvar%xmol(wid,lid) = 0.d0
+      
       gen_auxvar%pres(vpid) = gen_auxvar%pres(gid) - gen_auxvar%pres(apid)
       ! we have to have a liquid pressure to counter a neighboring 
       ! liquid pressure.  Set to gas pressure.
       gen_auxvar%pres(lid) = gen_auxvar%pres(gid)
       gen_auxvar%pres(cpid) = 0.d0
-      call EOSWaterSaturationPressure(gen_auxvar%temp, &
-                                      gen_auxvar%pres(spid),ierr)
       
     case(TWO_PHASE_STATE)
       gen_auxvar%pres(gid) = x(GENERAL_GAS_PRESSURE_DOF)
@@ -454,7 +469,8 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   
   gen_auxvar%den(gid) = den_wat_vap + den_air
   gen_auxvar%den_kg(gid) = den_kg_wat_vap + den_air*FMWAIR
-  ! if xmol not set for gas phase, set based on densities
+  ! if xmol not set for gas phase, as is the case for LIQUID_STATE, 
+  ! set based on densities
   if (gen_auxvar%xmol(acid,gid) < 1.d-40) then
     xmol_air_in_gas = den_air / gen_auxvar%den(gid)
     xmol_water_in_gas = 1.d0 - gen_auxvar%xmol(acid,gid)
@@ -479,7 +495,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
 !    call EOSWaterViscosity(gen_auxvar%temp,gen_auxvar%pres(lid), &
     call EOSWaterViscosity(gen_auxvar%temp,cell_pressure, &
                            gen_auxvar%pres(spid),visl,ierr)
-    gen_auxvar%kvr(lid) = krl/visl
+    gen_auxvar%mobility(lid) = krl/visl
   endif
 
   if (global_auxvar%istate == GAS_STATE .or. &
@@ -490,7 +506,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
     call visgas_noderiv(gen_auxvar%temp,gen_auxvar%pres(apid), &
 !                        gen_auxvar%pres(gid),den_air,visg)
                         cell_pressure,den_air,visg)
-    gen_auxvar%kvr(gid) = krg/visg
+    gen_auxvar%mobility(gid) = krg/visg
   endif
 
 #if 0
@@ -993,6 +1009,11 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
       gen_auxvar(GENERAL_AIR_PRESSURE_DOF)%pert = &
         gen_auxvar(GENERAL_AIR_PRESSURE_DOF)%pert / general_pressure_scale
   end select
+  
+#ifdef DEBUG_GENERAL
+  call GlobalAuxVarStrip(global_auxvar_debug)
+  call GeneralAuxVarStrip(general_auxvar_debug)
+#endif
  
 end subroutine GeneralAuxVarPerturb
 
@@ -1064,8 +1085,8 @@ subroutine GeneralPrintAuxVars(general_auxvar,global_auxvar,ghosted_id, &
   print *, '   X (air in liquid): ', general_auxvar%xmol(gid,lid)
   print *, '    X (water in gas): ', general_auxvar%xmol(lid,gid)
   print *, '      X (air in gas): ', general_auxvar%xmol(gid,gid)
-  print *, '          liquid kvr: ', general_auxvar%kvr(lid)
-  print *, '             gas kvr: ', general_auxvar%kvr(gid)
+  print *, '     liquid mobility: ', general_auxvar%mobility(lid)
+  print *, '        gas mobility: ', general_auxvar%mobility(gid)
   print *, '--------------------------------------------------------'
 
 end subroutine GeneralPrintAuxVars
@@ -1141,8 +1162,8 @@ subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,ghosted_id, &
   write(86,*) '     gas H [MJ/kmol]: ', general_auxvar%H(gid)
   write(86,*) '  liquid U [MJ/kmol]: ', general_auxvar%U(lid)
   write(86,*) '     gas U [MJ/kmol]: ', general_auxvar%U(gid)
-  write(86,*) '          liquid kvr: ', general_auxvar%kvr(lid)
-  write(86,*) '             gas kvr: ', general_auxvar%kvr(gid)
+  write(86,*) '     liquid mobility: ', general_auxvar%mobility(lid)
+  write(86,*) '        gas mobility: ', general_auxvar%mobility(gid)
   write(86,*) '...'
   write(86,*) general_auxvar%pres(lid)
   write(86,*) general_auxvar%pres(gid)
@@ -1165,8 +1186,8 @@ subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,ghosted_id, &
   write(86,*) general_auxvar%U(lid)
   write(86,*) general_auxvar%U(gid)
   write(86,*) ''
-  write(86,*) general_auxvar%kvr(lid)
-  write(86,*) general_auxvar%kvr(gid)
+  write(86,*) general_auxvar%mobility(lid)
+  write(86,*) general_auxvar%mobility(gid)
   write(86,*) '--------------------------------------------------------'
   
   close(86)
@@ -1261,10 +1282,10 @@ subroutine GeneralOutputAuxVars2(general_auxvars,global_auxvars,option)
   write(86,100) '     gas U [MJ/kmol]: ', &
     ((general_auxvars(idof,i)%U(gid),i=1,n),idof=0,3)
   write(86,*)
-  write(86,100) '          liquid kvr: ', &
-    ((general_auxvars(idof,i)%kvr(lid),i=1,n),idof=0,3)
-  write(86,100) '             gas kvr: ', &
-    ((general_auxvars(idof,i)%kvr(gid),i=1,n),idof=0,3)
+  write(86,100) '     liquid mobility: ', &
+    ((general_auxvars(idof,i)%mobility(lid),i=1,n),idof=0,3)
+  write(86,100) '        gas mobility: ', &
+    ((general_auxvars(idof,i)%mobility(gid),i=1,n),idof=0,3)
   
   close(86)
 
@@ -1355,27 +1376,20 @@ subroutine GeneralAuxVarStrip(auxvar)
   ! Author: Glenn Hammond
   ! Date: 03/07/11
   ! 
+  use Utility_module, only : DeallocateArray
 
   implicit none
 
   type(general_auxvar_type) :: auxvar
   
-  if (associated(auxvar%pres)) deallocate(auxvar%pres)
-  nullify(auxvar%pres)
-  if (associated(auxvar%sat)) deallocate(auxvar%sat)
-  nullify(auxvar%sat)
-  if (associated(auxvar%den)) deallocate(auxvar%den)
-  nullify(auxvar%den)
-  if (associated(auxvar%den_kg)) deallocate(auxvar%den_kg)
-  nullify(auxvar%den_kg)
-  if (associated(auxvar%xmol)) deallocate(auxvar%xmol)
-  nullify(auxvar%xmol)
-  if (associated(auxvar%H)) deallocate(auxvar%H)
-  nullify(auxvar%H)
-  if (associated(auxvar%U)) deallocate(auxvar%U)
-  nullify(auxvar%U)
-  if (associated(auxvar%kvr)) deallocate(auxvar%kvr)
-  nullify(auxvar%kvr)
+  call DeallocateArray(auxvar%pres)  
+  call DeallocateArray(auxvar%sat)  
+  call DeallocateArray(auxvar%den)  
+  call DeallocateArray(auxvar%den_kg)  
+  call DeallocateArray(auxvar%xmol)  
+  call DeallocateArray(auxvar%H)  
+  call DeallocateArray(auxvar%U)  
+  call DeallocateArray(auxvar%mobility)  
   
 end subroutine GeneralAuxVarStrip
 
@@ -1388,6 +1402,7 @@ subroutine GeneralAuxDestroy(aux)
   ! Author: Glenn Hammond
   ! Date: 03/07/11
   ! 
+  use Utility_module, only : DeallocateArray
 
   implicit none
 
@@ -1400,15 +1415,11 @@ subroutine GeneralAuxDestroy(aux)
   call GeneralAuxVarDestroy(aux%auxvars_bc)
   call GeneralAuxVarDestroy(aux%auxvars_ss)
 
-  if (associated(aux%zero_rows_local)) deallocate(aux%zero_rows_local)
-  nullify(aux%zero_rows_local)
-  if (associated(aux%zero_rows_local_ghosted)) deallocate(aux%zero_rows_local_ghosted)
-  nullify(aux%zero_rows_local_ghosted)
+  call DeallocateArray(aux%zero_rows_local)
+  call DeallocateArray(aux%zero_rows_local_ghosted)
 
   if (associated(aux%general_parameter)) then
-    if (associated(aux%general_parameter%diffusion_coefficient)) &
-      deallocate(aux%general_parameter%diffusion_coefficient)
-    nullify(aux%general_parameter%diffusion_coefficient)
+    call DeallocateArray(aux%general_parameter%diffusion_coefficient)
     deallocate(aux%general_parameter)
   endif
   nullify(aux%general_parameter)

@@ -1068,7 +1068,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   PetscReal :: delta_pressure, delta_xmol, delta_temp
   PetscReal :: pressure_ave
   PetscReal :: gravity_term
-  PetscReal :: ukvr, mole_flux, q
+  PetscReal :: mobility, mole_flux, q
   PetscReal :: stp_up, stp_dn
   PetscReal :: sat_up, sat_dn
   PetscReal :: temp_ave, stp_ave, theta, v_air
@@ -1125,21 +1125,21 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
                        gravity_term
 
       if (delta_pressure >= 0.D0) then
-        ukvr = gen_auxvar_up%kvr(iphase)
+        mobility = gen_auxvar_up%mobility(iphase)
         xmol(:) = gen_auxvar_up%xmol(:,iphase)
         den = density_ave
         uH = H_ave
       else
-        ukvr = gen_auxvar_dn%kvr(iphase)
+        mobility = gen_auxvar_dn%mobility(iphase)
         xmol(:) = gen_auxvar_dn%xmol(:,iphase)
         den = density_ave
         uH = H_ave
       endif      
 
-      if (ukvr > floweps) then
+      if (mobility > floweps) then
         ! v_darcy[m/sec] = perm[m^2] / dist[m] * kr[-] / mu[Pa-sec]
         !                    dP[Pa]]
-        v_darcy(iphase) = perm_ave_over_dist * ukvr * delta_pressure
+        v_darcy(iphase) = perm_ave_over_dist * mobility * delta_pressure
         ! q[m^3 phase/sec] = v_darcy[m/sec] * area[m^2]
         q = v_darcy(iphase) * area  
         ! mole_flux[kmol phase/sec] = q[m^3 phase/sec] * 
@@ -1165,39 +1165,29 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   ! add in gas component diffusion in gas and liquid phases
   do iphase = 1, option%nphase
     theta = 1.8d0
-#if 0
+    sat_up = gen_auxvar_up%sat(iphase)
+    sat_dn = gen_auxvar_dn%sat(iphase)
     !geh: changed to .and. -> .or.
-    if (gen_auxvar_up%sat(iphase) > eps .or. &
-        gen_auxvar_dn%sat(iphase) > eps) then
-#else
-    if (gen_auxvar_up%sat(iphase) > eps .and. &
-        gen_auxvar_dn%sat(iphase) > eps) then
-#endif        
+    if (sat_up > eps .or. sat_dn > eps) then
       upweight_adj = upweight
-      sat_up = gen_auxvar_up%sat(iphase)
-      sat_dn = gen_auxvar_dn%sat(iphase)
+      ! for now, if liquid state neighboring gas, we allow for minute
+      ! diffusion in liquid phase.
+      if (iphase == option%liquid_phase) then
+        if ((sat_up > eps .and. sat_dn > eps) .or. &
+            (sat_up < eps .and. sat_dn < eps)) then
+          sat_up = max(sat_up,eps)
+          sat_dn = max(sat_dn,eps)
+        endif
+      endif
       if (gen_auxvar_up%sat(iphase) < eps) then 
         upweight_adj=0.d0
       else if (gen_auxvar_dn%sat(iphase) < eps) then 
         upweight_adj=1.d0
       endif   
-#if 0      
-      ! this could be a problem.  if there is no phase present
-      ! how can mass diffuse through it.  besides, xmol for this
-      ! non-existent phase would be zero.
-      if (gen_auxvar_up%sat(iphase) < eps) then 
-        sat_up = eps
-      endif         
-      if (gen_auxvar_dn%sat(iphase) < eps) then 
-        sat_dn = eps
-      endif
-#endif      
-  
       ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) 
       !       = m^3 water/m^4 bulk 
       density_ave = upweight_adj*gen_auxvar_up%den(iphase)+ &
                     (1.D0-upweight_adj)*gen_auxvar_dn%den(iphase)
-!      stp_ave = (stp_up*stp_dn)/(stp_up*dd_dn+stp_dn*dd_up)
       stp_ave = sqrt(sat_up*sat_dn)* &
                 sqrt(material_auxvar_up%tortuosity* &
                      material_auxvar_dn%tortuosity)* &
@@ -1390,7 +1380,7 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
   PetscReal :: perm_ave_over_dist, dist_gravity
   PetscReal :: delta_pressure, delta_xmol, delta_temp
   PetscReal :: gravity_term
-  PetscReal :: ukvr, mole_flux, q
+  PetscReal :: mobility, mole_flux, q
   PetscReal :: sat_dn, perm_dn
   PetscReal :: temp_ave, stp_ave, theta, v_air
   PetscReal :: k_eff_up, k_eff_dn, k_eff_ave, heat_flux
@@ -1477,19 +1467,19 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
           endif
             
           if (delta_pressure >= 0.D0) then
-            ukvr = gen_auxvar_up%kvr(iphase)
+            mobility = gen_auxvar_up%mobility(iphase)
             xmol(:) = gen_auxvar_up%xmol(:,iphase)
             uH = gen_auxvar_up%H(iphase)
           else
-            ukvr = gen_auxvar_dn%kvr(iphase)
+            mobility = gen_auxvar_dn%mobility(iphase)
             xmol(:) = gen_auxvar_dn%xmol(:,iphase)
             uH = gen_auxvar_dn%H(iphase)
           endif      
 
-          if (ukvr > floweps) then
+          if (mobility > floweps) then
             ! v_darcy[m/sec] = perm[m^2] / dist[m] * kr[-] / mu[Pa-sec]
             !                    dP[Pa]]
-            v_darcy(iphase) = perm_ave_over_dist * ukvr * delta_pressure
+            v_darcy(iphase) = perm_ave_over_dist * mobility * delta_pressure
           endif
 #ifndef BAD_MOVE1        
         endif ! sat > eps
@@ -1548,15 +1538,13 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
       cycle
     endif
     
-!#define BAD_MOVE2 ! this definitely does not work; leave undefined
-#ifndef BAD_MOVE2        
-    !geh: changed to .and. -> .or.
-    if (gen_auxvar_up%sat(iphase) > eps .or. &
-        gen_auxvar_dn%sat(iphase) > eps) then
-#else
-    if (gen_auxvar_up%sat(iphase) > eps .and. &
-        gen_auxvar_dn%sat(iphase) > eps) then
-#endif
+    ! diffusion all depends upon the downwind cell.  phase diffusion only
+    ! occurs if a phase exists in both auxvars (boundary and internal) or
+    ! a liquid phase exists in the internal cell. so, one could say that
+    ! liquid diffusion always exists as the internal cell has a liquid phase,
+    ! but gas phase diffusion only occurs if the internal cell has a gas
+    ! phase.
+    if (gen_auxvar_dn%sat(iphase) > eps) then
       upweight = 1.d0
       sat_dn = gen_auxvar_dn%sat(iphase)
       if (gen_auxvar_up%sat(iphase) < eps) then 
@@ -1564,11 +1552,6 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
       else if (gen_auxvar_dn%sat(iphase) < eps) then 
         upweight = 1.d0
       endif
-#ifndef BAD_MOVE2        
-      if (gen_auxvar_dn%sat(iphase) < eps) then 
-        sat_dn = eps
-      endif         
-#endif
       ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) 
       !       = m^3 water/m^4 bulk 
       temp_ave = upweight*gen_auxvar_up%temp + &
