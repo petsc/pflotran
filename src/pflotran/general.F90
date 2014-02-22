@@ -1436,15 +1436,18 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
           
         ! using residual saturation cannot be correct! - geh
         ! reusing sir_dn for bounary auxvar
+#define BAD_MOVE1 ! this works
+#ifndef BAD_MOVE1       
         if (gen_auxvar_up%sat(iphase) > sir_dn(iphase) .or. &
             gen_auxvar_dn%sat(iphase) > sir_dn(iphase)) then
+#endif
           upweight = 1.d0
           if (gen_auxvar_up%sat(iphase) < eps) then 
             upweight=0.d0
           else if (gen_auxvar_dn%sat(iphase) < eps) then 
             upweight=1.d0
           endif 
-#if 0          
+#if 0                  
           density_ave = upweight*gen_auxvar_up%den(iphase)+ &
                         (1.D0-upweight)*gen_auxvar_dn%den(iphase)
           ! MJ/kmol
@@ -1487,8 +1490,10 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
             ! v_darcy[m/sec] = perm[m^2] / dist[m] * kr[-] / mu[Pa-sec]
             !                    dP[Pa]]
             v_darcy(iphase) = perm_ave_over_dist * ukvr * delta_pressure
-          endif                   
+          endif
+#ifndef BAD_MOVE1        
         endif ! sat > eps
+#endif
 
       case(NEUMANN_BC)
         select case(iphase)
@@ -1543,19 +1548,27 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
       cycle
     endif
     
+!#define BAD_MOVE2 ! this definitely does not work; leave undefined
+#ifndef BAD_MOVE2        
     !geh: changed to .and. -> .or.
     if (gen_auxvar_up%sat(iphase) > eps .or. &
         gen_auxvar_dn%sat(iphase) > eps) then
+#else
+    if (gen_auxvar_up%sat(iphase) > eps .and. &
+        gen_auxvar_dn%sat(iphase) > eps) then
+#endif
       upweight = 1.d0
       sat_dn = gen_auxvar_dn%sat(iphase)
       if (gen_auxvar_up%sat(iphase) < eps) then 
         upweight = 0.d0
       else if (gen_auxvar_dn%sat(iphase) < eps) then 
         upweight = 1.d0
-      endif         
+      endif
+#ifndef BAD_MOVE2        
       if (gen_auxvar_dn%sat(iphase) < eps) then 
         sat_dn = eps
       endif         
+#endif
       ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) 
       !       = m^3 water/m^4 bulk 
       temp_ave = upweight*gen_auxvar_up%temp + &
@@ -2601,11 +2614,13 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   changed = PETSC_TRUE
   
 !#define LIMIT_MAX_PRESSURE_CHANGE
-!#define LIMIT_MAX_SATURATION_CHANGE
+#define LIMIT_MAX_SATURATION_CHANGE
 !#define LIMIT_MAX_TEMPERATURE_CHANGE
-!#define TRUNCATE_LIQUID_PRESSURE
-!#define TRUNCATE_GAS_PRESSURE
-!#define TRUNCATE_AIR_PRESSURE
+#define TRUNCATE_LIQUID_PRESSURE
+! TRUNCATE_GAS/AIR_PRESSURE is needed for times when the solve wants
+! to pull them negative.
+#define TRUNCATE_GAS_PRESSURE
+#define TRUNCATE_AIR_PRESSURE
 
 #ifdef DEBUG_GENERAL_INFO
   cell_locator = 0
