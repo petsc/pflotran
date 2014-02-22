@@ -1068,7 +1068,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   PetscReal :: delta_pressure, delta_xmol, delta_temp
   PetscReal :: pressure_ave
   PetscReal :: gravity_term
-  PetscReal :: ukvr, mole_flux, q
+  PetscReal :: mobility, mole_flux, q
   PetscReal :: stp_up, stp_dn
   PetscReal :: sat_up, sat_dn
   PetscReal :: temp_ave, stp_ave, theta, v_air
@@ -1125,21 +1125,21 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
                        gravity_term
 
       if (delta_pressure >= 0.D0) then
-        ukvr = gen_auxvar_up%kvr(iphase)
+        mobility = gen_auxvar_up%mobility(iphase)
         xmol(:) = gen_auxvar_up%xmol(:,iphase)
         den = density_ave
         uH = H_ave
       else
-        ukvr = gen_auxvar_dn%kvr(iphase)
+        mobility = gen_auxvar_dn%mobility(iphase)
         xmol(:) = gen_auxvar_dn%xmol(:,iphase)
         den = density_ave
         uH = H_ave
       endif      
 
-      if (ukvr > floweps) then
+      if (mobility > floweps) then
         ! v_darcy[m/sec] = perm[m^2] / dist[m] * kr[-] / mu[Pa-sec]
         !                    dP[Pa]]
-        v_darcy(iphase) = perm_ave_over_dist * ukvr * delta_pressure
+        v_darcy(iphase) = perm_ave_over_dist * mobility * delta_pressure
         ! q[m^3 phase/sec] = v_darcy[m/sec] * area[m^2]
         q = v_darcy(iphase) * area  
         ! mole_flux[kmol phase/sec] = q[m^3 phase/sec] * 
@@ -1390,7 +1390,7 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
   PetscReal :: perm_ave_over_dist, dist_gravity
   PetscReal :: delta_pressure, delta_xmol, delta_temp
   PetscReal :: gravity_term
-  PetscReal :: ukvr, mole_flux, q
+  PetscReal :: mobility, mole_flux, q
   PetscReal :: sat_dn, perm_dn
   PetscReal :: temp_ave, stp_ave, theta, v_air
   PetscReal :: k_eff_up, k_eff_dn, k_eff_ave, heat_flux
@@ -1477,19 +1477,19 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
           endif
             
           if (delta_pressure >= 0.D0) then
-            ukvr = gen_auxvar_up%kvr(iphase)
+            mobility = gen_auxvar_up%mobility(iphase)
             xmol(:) = gen_auxvar_up%xmol(:,iphase)
             uH = gen_auxvar_up%H(iphase)
           else
-            ukvr = gen_auxvar_dn%kvr(iphase)
+            mobility = gen_auxvar_dn%mobility(iphase)
             xmol(:) = gen_auxvar_dn%xmol(:,iphase)
             uH = gen_auxvar_dn%H(iphase)
           endif      
 
-          if (ukvr > floweps) then
+          if (mobility > floweps) then
             ! v_darcy[m/sec] = perm[m^2] / dist[m] * kr[-] / mu[Pa-sec]
             !                    dP[Pa]]
-            v_darcy(iphase) = perm_ave_over_dist * ukvr * delta_pressure
+            v_darcy(iphase) = perm_ave_over_dist * mobility * delta_pressure
           endif
 #ifndef BAD_MOVE1        
         endif ! sat > eps
