@@ -358,7 +358,21 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       gen_auxvar%pres(gid) = gen_auxvar%pres(lid)
       gen_auxvar%pres(apid) = K_H_tilde*gen_auxvar%xmol(acid,lid)
       ! need vpres for liq -> 2ph check
-      gen_auxvar%pres(vpid) = gen_auxvar%pres(lid) - gen_auxvar%pres(apid)
+      
+      ! at this point, if the liquid pressure is negative, we have to go to 
+      ! two phase or everything blows up:
+      if (gen_auxvar%pres(gid) <= 0.d0) then
+        write(option%io_buffer,'(''Negative gas pressure at cell '', &
+          & i5,''in GeneralAuxVarCompute().  Attempting bailout.'')') ghosted_id
+        call printMsg(option)
+        ! set vapor pressure to just under saturation pressure
+        gen_auxvar%pres(vpid) = 0.5d0*gen_auxvar%pres(spid)
+        ! set gas pressure to vapor pressure + air pressure
+        gen_auxvar%pres(gid) = gen_auxvar%pres(vpid) + gen_auxvar%pres(apid)
+        ! capillary pressure won't matter here.        
+      else
+        gen_auxvar%pres(vpid) = gen_auxvar%pres(lid) - gen_auxvar%pres(apid)
+      endif
       gen_auxvar%pres(cpid) = 0.d0
       
     case(GAS_STATE)
@@ -575,6 +589,10 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         if (option%iflag == 1) then
           write(state_change_string,'(''Liquid -> 2 Phase at Cell '',i5)') &
             ghosted_id
+        else if (option%iflag == -1) then
+          write(state_change_string, &
+            '(''Liquid -> 2 Phase at Cell (due to perturbation) '',i5)') &
+            ghosted_id
         else
           write(state_change_string,'(''Liquid -> 2 Phase at Boundary Face '', &
                                     & i5)') ghosted_id
@@ -600,7 +618,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
 #if !defined(ALTERNATIVE_UPDATE)
         x(GENERAL_GAS_PRESSURE_DOF) = &
           gen_auxvar%pres(lid) * (1.d0 + liquid_epsilon)
-        if (x(GENERAL_GAS_PRESSURE_DOF) < 0.d0) then
+        if (x(GENERAL_GAS_PRESSURE_DOF) <= 0.d0) then
           write(string,*) ghosted_id
           option%io_buffer = 'Negative gas pressure during state change ' // &
             'at ' // trim(adjustl(string))
@@ -611,13 +629,13 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         ! pa = pg - ps
         x(GENERAL_AIR_PRESSURE_DOF) = &
           x(GENERAL_GAS_PRESSURE_DOF) - gen_auxvar%pres(spid)
-        if (x(GENERAL_AIR_PRESSURE_DOF) < 0.d0) then
+        if (x(GENERAL_AIR_PRESSURE_DOF) <= 0.d0) then
           write(string,*) ghosted_id
           option%io_buffer = 'Negative air pressure during state change ' // &
             'at ' // trim(adjustl(string))
 !          call printErrMsg(option)
           call printMsg(option)
-          x(GENERAL_AIR_PRESSURE_DOF) = 0.5d0*x(GENERAL_GAS_PRESSURE_DOF)
+          x(GENERAL_AIR_PRESSURE_DOF) = 0.01d0*x(GENERAL_GAS_PRESSURE_DOF)
         endif
         x(GENERAL_GAS_SATURATION_DOF) = liquid_epsilon
 #else
@@ -699,6 +717,10 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         if (option%iflag == 1) then
           write(state_change_string,'(''Gas -> 2 Phase at Cell '',i5)') &
             ghosted_id
+        else if (option%iflag == -1) then
+          write(state_change_string, &
+            '(''Gas -> 2 Phase at Cell (due to perturbation) '',i5)') &
+            ghosted_id
         else
           write(state_change_string,'(''Gas -> 2 Phase at Boundary Face '', &
                                     & i5)') ghosted_id
@@ -719,6 +741,10 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         if (option%iflag == 1) then
           write(state_change_string,'(''2 Phase -> Liquid at Cell '',i5)') &
             ghosted_id
+        else if (option%iflag == -1) then
+          write(state_change_string, &
+            '(''2 Phase -> Liquid at Cell (due to perturbation) '',i5)') &
+            ghosted_id        
         else
           write(state_change_string,'(''2 Phase -> Liquid at Boundary Face '', &
                                     & i5)') ghosted_id
@@ -752,9 +778,23 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         x(GENERAL_LIQUID_STATE_X_MOLE_DOF) = &
           gen_auxvar%xmol(acid,lid) * (1.d0 - two_phase_epsilon) ! 4.94500E+01, 8800 NI, 10 cuts
 !          gen_auxvar%xmol(acid,lid) ! 4.95298E+01, 10355 NI, 6 cuts
+        if (x(GENERAL_LIQUID_STATE_X_MOLE_DOF) <= 0.d0) then
+          write(string,*) ghosted_id
+          option%io_buffer = 'Negative air mole fraction during state change ' // &
+            'at ' // trim(adjustl(string))
+          call printMsg(option)
+          x(GENERAL_LIQUID_STATE_X_MOLE_DOF) = two_phase_epsilon
+        endif
         x(GENERAL_LIQUID_STATE_ENERGY_DOF) = &
           gen_auxvar%temp * (1.d0 - two_phase_epsilon) ! 4.94500E+01, 8800 NI, 10 cuts
 !          gen_auxvar%temp ! 4.95700E+01, 9074 NI, 6 cuts
+        if (x(GENERAL_LIQUID_STATE_ENERGY_DOF) <= 0.d0) then
+          write(string,*) ghosted_id
+          option%io_buffer = 'Negative temperature during state change ' // &
+            'at ' // trim(adjustl(string))
+          call printMsg(option)
+          x(GENERAL_LIQUID_STATE_ENERGY_DOF) = two_phase_epsilon
+        endif
         flag = PETSC_TRUE
       else if (gen_auxvar%sat(gid) > 1.d0) then
 #ifdef DEBUG_GENERAL
@@ -765,6 +805,10 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         if (option%iflag == 1) then
           write(state_change_string,'(''2 Phase -> Gas at Cell '',i5)') &
             ghosted_id
+        else if (option%iflag == -1) then
+          write(state_change_string, &
+            '(''2 Phase -> Gas at Cell (due to perturbation) '',i5)') &
+            ghosted_id       
         else
           write(state_change_string,'(''2 Phase -> Gas at Boundary Face '', &
                                     & i5)') ghosted_id
