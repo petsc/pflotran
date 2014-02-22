@@ -236,7 +236,7 @@ subroutine RichardsAuxVarCompute(x,auxvar,global_auxvar,material_auxvar, &
   dkr_dp = 0.d0
   if (auxvar%pc > 0.d0) then
     saturated = PETSC_FALSE
-    call SaturationFunctionCompute(global_auxvar%pres(1), &
+    call SaturationFunctionCompute(auxvar%pc, &
                                 global_auxvar%sat(1),kr, &
                                 ds_dp,dkr_dp, &
                                 saturation_function, &

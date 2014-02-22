@@ -314,6 +314,7 @@ subroutine SaturationFunctionComputeSpline(option,saturation_function)
 
       !geh: keep for now
 #if 0
+      ! geh: needs to be refactored to consider capillary pressure
       ! fill matix with values
       ! these are capillary pressures
       pressure_low = 0  ! saturated
@@ -523,11 +524,12 @@ end subroutine SaturatFuncConvertListToArray
 
 ! ************************************************************************** !
 
-subroutine SaturationFunctionCompute1(pressure,saturation,relative_perm, &
-                                     dsat_pres,dkr_pres, &
-                                     saturation_function, &
-                                     auxvar1,auxvar2, &
-                                     option)
+subroutine SaturationFunctionCompute1(capillary_pressure,saturation, &
+                                      relative_perm, &
+                                      dsat_pres,dkr_pres, &
+                                      saturation_function, &
+                                      auxvar1,auxvar2, &
+                                      option)
   ! 
   ! Computes the saturation and relative permeability
   ! (and associated derivatives) as a function of
@@ -540,14 +542,16 @@ subroutine SaturationFunctionCompute1(pressure,saturation,relative_perm, &
   
   implicit none
 
-  PetscReal :: pressure, saturation, relative_perm, dsat_pres, dkr_pres
+  PetscReal :: capillary_pressure, saturation, relative_perm
+  PetscReal :: dsat_pres, dkr_pres
   type(saturation_function_type) :: saturation_function
   PetscReal :: auxvar1,auxvar2
   type(option_type) :: option
 
   PetscBool :: switch_to_saturated
   
-  call SaturationFunctionCompute2(pressure,saturation,relative_perm, &
+  call SaturationFunctionCompute2(capillary_pressure,saturation, &
+                                  relative_perm, &
                                   dsat_pres,dkr_pres, &
                                   saturation_function, &
                                   auxvar1,auxvar2, &
@@ -557,7 +561,8 @@ end subroutine SaturationFunctionCompute1
 
 ! ************************************************************************** !
 
-subroutine SaturationFunctionCompute2(pressure,saturation,relative_perm, &
+subroutine SaturationFunctionCompute2(capillary_pressure,saturation, &
+                                      relative_perm, &
                                       dsat_pres,dkr_pres, &
                                       saturation_function, &
                                       auxvar1,auxvar2, &
@@ -575,7 +580,8 @@ subroutine SaturationFunctionCompute2(pressure,saturation,relative_perm, &
   
   implicit none
 
-  PetscReal :: pressure, saturation, relative_perm, dsat_pres, dkr_pres
+  PetscReal :: capillary_pressure, saturation, relative_perm 
+  PetscReal :: dsat_pres, dkr_pres
   type(saturation_function_type) :: saturation_function
   PetscReal :: auxvar1,auxvar2
   PetscBool :: switch_to_saturated
@@ -612,7 +618,7 @@ subroutine SaturationFunctionCompute2(pressure,saturation,relative_perm, &
         saturation = Sr + (1.d0-Sr)*Se
         dsat_pc = (1.d0-Sr)*dSe_pc
 #else
-      if (pressure >= option%reference_pressure) then
+      if (capillary_pressure <= 0.d0) then
         saturation = 1.d0
         relative_perm = 1.d0
         switch_to_saturated = PETSC_TRUE
@@ -620,7 +626,7 @@ subroutine SaturationFunctionCompute2(pressure,saturation,relative_perm, &
 #endif        
       else
         alpha = saturation_function%alpha
-        pc = option%reference_pressure-pressure
+        pc = capillary_pressure
         m = saturation_function%m
         n = 1.d0/(1.d0-m)
         pc_alpha = pc*alpha
@@ -682,7 +688,7 @@ subroutine SaturationFunctionCompute2(pressure,saturation,relative_perm, &
     case(BROOKS_COREY)
       alpha = saturation_function%alpha
       one_over_alpha = 1.d0/alpha
-      pc = option%reference_pressure-pressure
+      pc = capillary_pressure
 #if 0
       if (pc < saturation_function%spline_low) then
         saturation = 1.d0
@@ -739,9 +745,9 @@ subroutine SaturationFunctionCompute2(pressure,saturation,relative_perm, &
       one_over_alpha = 1.d0/alpha
       lambda = saturation_function%lambda
       pcmax = saturation_function%pcwmax
-      pc = option%reference_pressure-pressure
+      pc = capillary_pressure
 
-      if (pressure >= option%reference_pressure) then
+      if (capillary_pressure <= 0.d0) then
         saturation = 1.d0
         relative_perm = 1.d0
         switch_to_saturated = PETSC_TRUE
@@ -773,7 +779,7 @@ subroutine SaturationFunctionCompute2(pressure,saturation,relative_perm, &
           call printErrMsg(option)
       end select
     case(THOMEER_COREY)
-      pc = option%reference_pressure-pressure
+      pc = capillary_pressure
       por = auxvar1
       perm = auxvar2*1.013202d15 ! convert from m^2 to mD
       Fg = saturation_function%alpha
@@ -810,7 +816,7 @@ end subroutine SaturationFunctionCompute2
 
 ! ************************************************************************** !
 
-subroutine SaturationFunctionCompute3(pressure,saturation, &
+subroutine SaturationFunctionCompute3(capillary_pressure,saturation, &
                                       saturation_function, &
                                       option)
   ! 
@@ -824,7 +830,7 @@ subroutine SaturationFunctionCompute3(pressure,saturation, &
   
   implicit none
 
-  PetscReal :: pressure, saturation
+  PetscReal :: capillary_pressure, saturation
   PetscReal :: relative_perm_dummy, dsat_pres_dummy, dkr_pres_dummy
   type(saturation_function_type) :: saturation_function
   PetscReal :: auxvar1_dummy, auxvar2_dummy
@@ -832,7 +838,8 @@ subroutine SaturationFunctionCompute3(pressure,saturation, &
 
   PetscBool :: switch_to_saturated_dummy
   
-  call SaturationFunctionCompute2(pressure,saturation,relative_perm_dummy, &
+  call SaturationFunctionCompute2(capillary_pressure,saturation, &
+                                  relative_perm_dummy, &
                                   dsat_pres_dummy,dkr_pres_dummy, &
                                   saturation_function, &
                                   auxvar1_dummy,auxvar2_dummy, &
