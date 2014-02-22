@@ -1409,7 +1409,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                                         region%cell_ids,region%faces)
         region%num_cells = size(region%cell_ids)
       case default
-        option%io_buffer = 'region definition not recognized'
+        option%io_buffer = 'GridLocalizeRegions: Region definition not recognized'
         call printErrMsg(option)
     end select
 

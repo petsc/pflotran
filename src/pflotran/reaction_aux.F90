@@ -194,6 +194,9 @@ module Reaction_Aux_module
     type(microbial_type), pointer :: microbial
     type(immobile_type), pointer :: immobile
     
+    ! secondary continuum reaction objects
+    type(kd_rxn_type), pointer :: sec_cont_kd_rxn_list
+    
 #ifdef SOLID_SOLUTION    
     type(solid_solution_type), pointer :: solid_solution_list
 #endif    
@@ -316,6 +319,13 @@ module Reaction_Aux_module
     PetscReal, pointer :: eqkddistcoef(:)
     PetscReal, pointer :: eqkdlangmuirb(:)
     PetscReal, pointer :: eqkdfreundlichn(:)
+    
+    ! secondary continuum kd rxn
+    ! neqkdrxn and eqkdspecid will be the same
+    PetscInt, pointer :: sec_cont_eqkdtype(:)
+    PetscReal, pointer :: sec_cont_eqkddistcoef(:)
+    PetscReal, pointer :: sec_cont_eqkdlangmuirb(:)
+    PetscReal, pointer :: sec_cont_eqkdfreundlichn(:)
     
     PetscReal :: max_dlnC
     PetscReal :: max_relative_change_tolerance
@@ -461,6 +471,8 @@ function ReactionCreate()
   nullify(reaction%kd_rxn_list)
   nullify(reaction%redox_species_list)
   
+  nullify(reaction%sec_cont_kd_rxn_list)
+  
   ! new reaction objects
   reaction%surface_complexation => SurfaceComplexationCreate()
   reaction%mineral => MineralCreate()
@@ -572,6 +584,11 @@ function ReactionCreate()
   nullify(reaction%eqkdlangmuirb)
   nullify(reaction%eqkdfreundlichn)
       
+  nullify(reaction%sec_cont_eqkdtype)
+  nullify(reaction%sec_cont_eqkddistcoef)
+  nullify(reaction%sec_cont_eqkdlangmuirb)
+  nullify(reaction%sec_cont_eqkdfreundlichn)
+       
   reaction%max_dlnC = 5.d0
   reaction%max_relative_change_tolerance = 1.d-6
   reaction%max_residual_tolerance = 1.d-12
@@ -1999,6 +2016,16 @@ subroutine ReactionDestroy(reaction)
     call KDRxnDestroy(prev_kd_rxn)
   enddo    
   nullify(reaction%kd_rxn_list)
+
+  ! kd reactions secondary continuum
+  kd_rxn => reaction%sec_cont_kd_rxn_list
+  do
+    if (.not.associated(kd_rxn)) exit
+    prev_kd_rxn => kd_rxn
+    kd_rxn => kd_rxn%next
+    call KDRxnDestroy(prev_kd_rxn)
+  enddo    
+  nullify(reaction%sec_cont_kd_rxn_list)
   
   call SurfaceComplexationDestroy(reaction%surface_complexation)
   call MineralDestroy(reaction%mineral)
@@ -2089,10 +2116,14 @@ subroutine ReactionDestroy(reaction)
   
   call DeallocateArray(reaction%eqkdspecid)
   call DeallocateArray(reaction%eqkdtype)
-  call DeallocateArray(reaction%eqkdspecid)
   call DeallocateArray(reaction%eqkddistcoef)
   call DeallocateArray(reaction%eqkdlangmuirb)
   call DeallocateArray(reaction%eqkdfreundlichn)
+ 
+  call DeallocateArray(reaction%sec_cont_eqkdtype)
+  call DeallocateArray(reaction%sec_cont_eqkddistcoef)
+  call DeallocateArray(reaction%sec_cont_eqkdlangmuirb)
+  call DeallocateArray(reaction%sec_cont_eqkdfreundlichn)     
   
   deallocate(reaction)
   nullify(reaction)

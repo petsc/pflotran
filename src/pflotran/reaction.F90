@@ -64,7 +64,8 @@ module Reaction_module
             ReactionInterpolateLogK_hpt, &
             ReactionInitializeLogK_hpt, &
             RUpdateKineticState, &
-            RUpdateTempDependentCoefs
+            RUpdateTempDependentCoefs, &
+            RZeroSorb
 
 contains
 
@@ -144,6 +145,7 @@ subroutine ReactionReadPass1(reaction,input,option)
   type(radioactive_decay_rxn_type), pointer :: radioactive_decay_rxn, &
                                                prev_radioactive_decay_rxn
   type(kd_rxn_type), pointer :: kd_rxn, prev_kd_rxn
+  type(kd_rxn_type), pointer :: sec_cont_kd_rxn, sec_cont_prev_kd_rxn
   PetscInt :: i, temp_int
   PetscReal :: temp_real
   PetscInt :: srfcplx_count
@@ -160,6 +162,10 @@ subroutine ReactionReadPass1(reaction,input,option)
   nullify(prev_radioactive_decay_rxn)
   nullify(prev_kd_rxn)
   nullify(prev_ionx_rxn)
+  
+  if (option%use_mc) then
+    nullify(sec_cont_prev_kd_rxn)
+  endif
   
   reaction_sandbox_read = PETSC_FALSE
   
@@ -546,11 +552,17 @@ subroutine ReactionReadPass1(reaction,input,option)
                 reaction%neqkdrxn = reaction%neqkdrxn + 1
 
                 kd_rxn => KDRxnCreate()
+                if (option%use_mc) then
+                  sec_cont_kd_rxn => KDRxnCreate()
+                endif
                 ! first string is species name
                 call InputReadWord(input,option,word,PETSC_TRUE)
                 call InputErrorMsg(input,option,'species name', &
                                    'CHEMISTRY,ISOTHERM_REACTIONS')
                 kd_rxn%species_name = trim(word)
+                if (option%use_mc) then
+                  sec_cont_kd_rxn%species_name = kd_rxn%species_name
+                endif
                 do 
                   call InputReadPflotranString(input,option)
                   if (InputError(input)) exit
@@ -580,10 +592,26 @@ subroutine ReactionReadPass1(reaction,input,option)
                           trim(word)//' not recognized'
                         call printErrMsg(option)
                       end select
+                      if (option%use_mc) then
+                        sec_cont_kd_rxn%itype = kd_rxn%itype
+                      endif
                     case('DISTRIBUTION_COEFFICIENT','KD')
                       call InputReadDouble(input,option,kd_rxn%Kd)
                       call InputErrorMsg(input,option,'DISTRIBUTION_COEFFICIENT', &
                                          'CHEMISTRY,ISOTHERM_REACTIONS')
+                    ! S.Karra, 02/20/2014
+                    case('SEC_CONT_DISTRIBUTION_COEFFICIENT', &
+                         'SEC_CONT_KD')
+                         if (.not.option%use_mc) then
+                           option%io_buffer = 'Make sure MULTIPLE_CONTINUUM ' // &
+                             'keyword is set, SECONDARY_CONTINUUM_KD.'
+                           call printErrMsg(option)
+                         else
+                           call InputReadDouble(input,option,sec_cont_kd_rxn%Kd)
+                           call InputErrorMsg(input,option, &
+                             'SECONDARY_CONTINUUM_DISTRIBUTION_COEFFICIENT', &
+                             'CHEMISTRY,ISOTHERM_REACTIONS')                           
+                        endif
                     case('LANGMUIR_B')
                       call InputReadDouble(input,option,kd_rxn%Langmuir_B)
                       call InputErrorMsg(input,option,'Langmuir_B', &
@@ -612,6 +640,20 @@ subroutine ReactionReadPass1(reaction,input,option)
                 endif
                 prev_kd_rxn => kd_rxn
                 nullify(kd_rxn)
+                
+                if (option%use_mc) then
+                ! add to list
+                  if (.not.associated(reaction%sec_cont_kd_rxn_list)) then
+                    reaction%sec_cont_kd_rxn_list => sec_cont_kd_rxn
+                    sec_cont_kd_rxn%id = 1
+                  endif
+                  if (associated(sec_cont_prev_kd_rxn)) then
+                    sec_cont_prev_kd_rxn%next => sec_cont_kd_rxn
+                    sec_cont_kd_rxn%id = sec_cont_prev_kd_rxn%id + 1
+                  endif
+                  sec_cont_prev_kd_rxn => sec_cont_kd_rxn
+                  nullify(sec_cont_kd_rxn)
+                endif
                 
               enddo
             
@@ -3109,7 +3151,7 @@ end subroutine RJumpStartKineticSorption
 ! ************************************************************************** !
 
 subroutine RReact(rt_auxvar,global_auxvar,material_auxvar,tran_xx_p, &
-                  num_iterations_,reaction,option,vol_frac_prim)
+                  num_iterations_,reaction,option)
   ! 
   ! Solves reaction portion of operator splitting using Newton-Raphson
   ! 
@@ -3147,7 +3189,6 @@ subroutine RReact(rt_auxvar,global_auxvar,material_auxvar,tran_xx_p, &
   PetscReal :: scale
   
   PetscInt, parameter :: iphase = 1
-  PetscReal :: vol_frac_prim
 
   one_over_dt = 1.d0/option%tran_dt
   num_iterations = 0
@@ -3187,7 +3228,7 @@ subroutine RReact(rt_auxvar,global_auxvar,material_auxvar,tran_xx_p, &
 
   ! still need code to overwrite other phases
   call RTAccumulation(rt_auxvar,global_auxvar,material_auxvar,reaction, &
-                      option,vol_frac_prim,fixed_accum)
+                      option,fixed_accum)
   if (reaction%neqsorb > 0) then
     call RAccumulationSorb(rt_auxvar,global_auxvar,material_auxvar,reaction, &
                            option,fixed_accum)  
@@ -3212,12 +3253,12 @@ subroutine RReact(rt_auxvar,global_auxvar,material_auxvar,tran_xx_p, &
     ! Accumulation
     ! residual is overwritten in RTAccumulation()
     call RTAccumulation(rt_auxvar,global_auxvar,material_auxvar,reaction, &
-                        option,vol_frac_prim,residual)
+                        option,residual)
     residual = residual-fixed_accum
 
     ! J is overwritten in RTAccumulationDerivative()
     call RTAccumulationDerivative(rt_auxvar,global_auxvar,material_auxvar, &
-                                  reaction,option,vol_frac_prim,J)
+                                  reaction,option,J)
 
     if (reaction%neqsorb > 0) then
       call RAccumulationSorb(rt_auxvar,global_auxvar,material_auxvar,reaction, &
@@ -4762,8 +4803,7 @@ end subroutine RTAuxVarCompute
 ! ************************************************************************** !
 
 subroutine RTAccumulation(rt_auxvar,global_auxvar,material_auxvar, &
-                          reaction,option, &
-                          vol_frac_prim,Res)
+                          reaction,option,Res)
   ! 
   ! Computes aqueous portion of the accumulation term in
   ! residual function
@@ -4793,7 +4833,6 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,material_auxvar, &
   PetscInt :: iimb
   PetscReal :: psv_t
   PetscReal :: v_t
-  PetscReal :: vol_frac_prim
   
   iphase = 1
   Res = 0.d0
@@ -4806,7 +4845,7 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,material_auxvar, &
           material_auxvar%volume / option%tran_dt  
   istart = 1
   iend = reaction%naqcomp
-  Res(istart:iend) = psv_t*rt_auxvar%total(:,iphase)*vol_frac_prim 
+  Res(istart:iend) = psv_t*rt_auxvar%total(:,iphase) 
 
   if (reaction%ncoll > 0) then
     do icoll = 1, reaction%ncoll
@@ -4839,8 +4878,7 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,material_auxvar, &
     if (iphase == 2) then
       psv_t = material_auxvar%porosity*global_auxvar%sat(iphase)*1000.d0* &
               material_auxvar%volume / option%tran_dt 
-      Res(istart:iend) = Res(istart:iend) + psv_t*rt_auxvar%total(:,iphase)* &
-                         vol_frac_prim 
+      Res(istart:iend) = Res(istart:iend) + psv_t*rt_auxvar%total(:,iphase) 
       ! should sum over gas component only need more implementations
     endif 
 ! add code for other phases here
@@ -4853,8 +4891,7 @@ end subroutine RTAccumulation
 
 subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
                                     material_auxvar, &
-                                    reaction,option, &
-                                    vol_frac_prim,J)
+                                    reaction,option,J)
   ! 
   ! Computes derivative of aqueous portion of the
   ! accumulation term in residual function
@@ -4880,7 +4917,6 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
   PetscInt :: icoll
   PetscInt :: iimob
   PetscReal :: psvd_t, v_t
-  PetscReal :: vol_frac_prim
 
   iphase = 1
   istart = 1
@@ -4891,12 +4927,12 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
   J = 0.d0
   if (associated(rt_auxvar%aqueous%dtotal)) then ! units of dtotal = kg water/L water
     psvd_t = material_auxvar%porosity*global_auxvar%sat(iphase)*1000.d0* &
-             material_auxvar%volume/option%tran_dt*vol_frac_prim
+             material_auxvar%volume/option%tran_dt
     J(istart:iendaq,istart:iendaq) = rt_auxvar%aqueous%dtotal(:,:,iphase)*psvd_t
   else
     psvd_t = material_auxvar%porosity*global_auxvar%sat(iphase)* &
              global_auxvar%den_kg(iphase)*material_auxvar%volume/ &
-             option%tran_dt*vol_frac_prim ! units of den = kg water/m^3 water
+             option%tran_dt ! units of den = kg water/m^3 water
     do icomp=istart,iendaq
       J(icomp,icomp) = psvd_t
     enddo
@@ -4933,14 +4969,13 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
     if (iphase == 2) then
       if (associated(rt_auxvar%aqueous%dtotal)) then
         psvd_t = material_auxvar%porosity*global_auxvar%sat(iphase)*1000.d0* &
-                 material_auxvar%volume/option%tran_dt* &
-                 vol_frac_prim  
+                 material_auxvar%volume/option%tran_dt  
         J(istart:iendaq,istart:iendaq) = J(istart:iendaq,istart:iendaq) + &
           rt_auxvar%aqueous%dtotal(:,:,iphase)*psvd_t
       else
         psvd_t = material_auxvar%porosity*global_auxvar%sat(iphase)* &
                  global_auxvar%den_kg(iphase)*material_auxvar%volume/ &
-                 option%tran_dt*vol_frac_prim ! units of den = kg water/m^3 water
+                 option%tran_dt ! units of den = kg water/m^3 water
         do icomp=istart,iendaq
           J(icomp,icomp) = J(icomp,icomp) + psvd_t
         enddo
@@ -4989,7 +5024,7 @@ subroutine RCalculateCompression(global_auxvar,rt_auxvar,material_auxvar, &
 
   call RTAuxVarCompute(rt_auxvar,global_auxvar,material_auxvar,reaction,option)
   call RTAccumulationDerivative(rt_auxvar,global_auxvar, &
-                                material_auxvar,reaction,option,1.d0,J)
+                                material_auxvar,reaction,option,J)
     
   do jj = 1, reaction%ncomp
     do i = 1, reaction%ncomp

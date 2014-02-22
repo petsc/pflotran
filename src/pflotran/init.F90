@@ -1434,6 +1434,12 @@ subroutine InitReadRequiredCardsFromInput(realization)
   
 !.........................................................................
 
+  ! Need this with CHEMISTRY read
+  string = "MULTIPLE_CONTINUUM"
+  option%use_mc = PETSC_TRUE
+
+!.........................................................................
+
   ! CHEMISTRY information
   string = "CHEMISTRY"
   call InputFindStringInFile(input,option,string)
@@ -1908,19 +1914,19 @@ subroutine InitReadInput(simulation)
         
 !......................
 
-      case('MULTIPLE_CONTINUUM')
-        option%use_mc = PETSC_TRUE
-      
-!......................
-
       case('UPDATE_FLOW_PERMEABILITY')
         option%update_flow_perm = PETSC_TRUE
         
 !......................
 
       case('DFN')
-        grid%unstructured_grid%grid_type = TWO_DIM_GRID        
-        
+        grid%unstructured_grid%grid_type = TWO_DIM_GRID    
+            
+!......................
+
+      case("MULTIPLE_CONTINUUM")
+        option%use_mc = PETSC_TRUE
+              
 !......................
 
       case('SECONDARY_CONTINUUM_SOLVER')
