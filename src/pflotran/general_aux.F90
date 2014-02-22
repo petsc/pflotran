@@ -345,6 +345,12 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       gen_auxvar%temp = x(GENERAL_LIQUID_STATE_ENERGY_DOF)
 
       gen_auxvar%xmol(wid,lid) = 1.d0 - gen_auxvar%xmol(acid,lid)
+      ! with the gas state, we must calculate the mole fraction of air in 
+      ! in the liquid phase, even though the liquid phase does not exist
+      ! due to air diffusion between neighboring GAS and LIQUID cells (this
+      ! is more of an issue on a boundary condition).  this is not 
+      ! necessary for water since we do not calculate water diffusion 
+      ! explicitly.  set mole fractions to zero in gas phase.
       gen_auxvar%xmol(:,gid) = 0.d0
       gen_auxvar%sat(lid) = 1.d0
       gen_auxvar%sat(gid) = 0.d0
@@ -384,15 +390,24 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       gen_auxvar%sat(gid) = 1.d0
       gen_auxvar%xmol(acid,gid) = gen_auxvar%pres(apid) / &
                                    gen_auxvar%pres(gid)
-      gen_auxvar%xmol(:,lid) = 0.d0
       gen_auxvar%xmol(wid,gid) = 1.d0 - gen_auxvar%xmol(acid,gid)
+      ! need to set mole fractions in liquid phase in equilibrium with
+      ! water saturated with air in order to accommodate air diffusion between
+      ! GAS_STATE cell and TWO_PHASE/LIQUID_STATE cells as air should still
+      ! diffuse through the liquid phase.
+      call EOSWaterSaturationPressure(gen_auxvar%temp, &
+                                      gen_auxvar%pres(spid),ierr)
+      call Henry_air_noderiv(dummy,gen_auxvar%temp, &
+                             gen_auxvar%pres(spid),K_H_tilde)
+      gen_auxvar%xmol(acid,lid) = gen_auxvar%pres(apid) / K_H_tilde
+      ! set water mole fraction to zero as there is no water in liquid phase
+      gen_auxvar%xmol(wid,lid) = 0.d0
+      
       gen_auxvar%pres(vpid) = gen_auxvar%pres(gid) - gen_auxvar%pres(apid)
       ! we have to have a liquid pressure to counter a neighboring 
       ! liquid pressure.  Set to gas pressure.
       gen_auxvar%pres(lid) = gen_auxvar%pres(gid)
       gen_auxvar%pres(cpid) = 0.d0
-      call EOSWaterSaturationPressure(gen_auxvar%temp, &
-                                      gen_auxvar%pres(spid),ierr)
       
     case(TWO_PHASE_STATE)
       gen_auxvar%pres(gid) = x(GENERAL_GAS_PRESSURE_DOF)
@@ -454,7 +469,8 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   
   gen_auxvar%den(gid) = den_wat_vap + den_air
   gen_auxvar%den_kg(gid) = den_kg_wat_vap + den_air*FMWAIR
-  ! if xmol not set for gas phase, set based on densities
+  ! if xmol not set for gas phase, as is the case for LIQUID_STATE, 
+  ! set based on densities
   if (gen_auxvar%xmol(acid,gid) < 1.d-40) then
     xmol_air_in_gas = den_air / gen_auxvar%den(gid)
     xmol_water_in_gas = 1.d0 - gen_auxvar%xmol(acid,gid)

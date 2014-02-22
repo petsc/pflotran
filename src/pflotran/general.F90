@@ -1165,39 +1165,29 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   ! add in gas component diffusion in gas and liquid phases
   do iphase = 1, option%nphase
     theta = 1.8d0
-#if 0
+    sat_up = gen_auxvar_up%sat(iphase)
+    sat_dn = gen_auxvar_dn%sat(iphase)
     !geh: changed to .and. -> .or.
-    if (gen_auxvar_up%sat(iphase) > eps .or. &
-        gen_auxvar_dn%sat(iphase) > eps) then
-#else
-    if (gen_auxvar_up%sat(iphase) > eps .and. &
-        gen_auxvar_dn%sat(iphase) > eps) then
-#endif        
+    if (sat_up > eps .or. sat_dn > eps) then
       upweight_adj = upweight
-      sat_up = gen_auxvar_up%sat(iphase)
-      sat_dn = gen_auxvar_dn%sat(iphase)
+      ! for now, if liquid state neighboring gas, we allow for minute
+      ! diffusion in liquid phase.
+      if (iphase == option%liquid_phase) then
+        if ((sat_up > eps .and. sat_dn > eps) .or. &
+            (sat_up < eps .and. sat_dn < eps)) then
+          sat_up = max(sat_up,eps)
+          sat_dn = max(sat_dn,eps)
+        endif
+      endif
       if (gen_auxvar_up%sat(iphase) < eps) then 
         upweight_adj=0.d0
       else if (gen_auxvar_dn%sat(iphase) < eps) then 
         upweight_adj=1.d0
       endif   
-#if 0      
-      ! this could be a problem.  if there is no phase present
-      ! how can mass diffuse through it.  besides, xmol for this
-      ! non-existent phase would be zero.
-      if (gen_auxvar_up%sat(iphase) < eps) then 
-        sat_up = eps
-      endif         
-      if (gen_auxvar_dn%sat(iphase) < eps) then 
-        sat_dn = eps
-      endif
-#endif      
-  
       ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) 
       !       = m^3 water/m^4 bulk 
       density_ave = upweight_adj*gen_auxvar_up%den(iphase)+ &
                     (1.D0-upweight_adj)*gen_auxvar_dn%den(iphase)
-!      stp_ave = (stp_up*stp_dn)/(stp_up*dd_dn+stp_dn*dd_up)
       stp_ave = sqrt(sat_up*sat_dn)* &
                 sqrt(material_auxvar_up%tortuosity* &
                      material_auxvar_dn%tortuosity)* &
@@ -1548,15 +1538,13 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
       cycle
     endif
     
-!#define BAD_MOVE2 ! this definitely does not work; leave undefined
-#ifndef BAD_MOVE2        
-    !geh: changed to .and. -> .or.
-    if (gen_auxvar_up%sat(iphase) > eps .or. &
-        gen_auxvar_dn%sat(iphase) > eps) then
-#else
-    if (gen_auxvar_up%sat(iphase) > eps .and. &
-        gen_auxvar_dn%sat(iphase) > eps) then
-#endif
+    ! diffusion all depends upon the downwind cell.  phase diffusion only
+    ! occurs if a phase exists in both auxvars (boundary and internal) or
+    ! a liquid phase exists in the internal cell. so, one could say that
+    ! liquid diffusion always exists as the internal cell has a liquid phase,
+    ! but gas phase diffusion only occurs if the internal cell has a gas
+    ! phase.
+    if (gen_auxvar_dn%sat(iphase) > eps) then
       upweight = 1.d0
       sat_dn = gen_auxvar_dn%sat(iphase)
       if (gen_auxvar_up%sat(iphase) < eps) then 
@@ -1564,11 +1552,6 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
       else if (gen_auxvar_dn%sat(iphase) < eps) then 
         upweight = 1.d0
       endif
-#ifndef BAD_MOVE2        
-      if (gen_auxvar_dn%sat(iphase) < eps) then 
-        sat_dn = eps
-      endif         
-#endif
       ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) 
       !       = m^3 water/m^4 bulk 
       temp_ave = upweight*gen_auxvar_up%temp + &
