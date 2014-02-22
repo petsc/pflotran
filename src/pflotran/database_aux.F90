@@ -591,7 +591,8 @@ subroutine DatabaseRxnDestroy(dbaserxn)
   ! Author: Glenn Hammond
   ! Date: 05/29/08
   ! 
-
+  use Utility_module, only : DeallocateArray
+  
   implicit none
     
   type(database_rxn_type), pointer :: dbaserxn
@@ -600,12 +601,9 @@ subroutine DatabaseRxnDestroy(dbaserxn)
   
   if (associated(dbaserxn%spec_name)) deallocate(dbaserxn%spec_name)
   nullify(dbaserxn%spec_name)
-  if (associated(dbaserxn%spec_ids)) deallocate(dbaserxn%spec_ids)
-  nullify(dbaserxn%spec_ids)
-  if (associated(dbaserxn%stoich)) deallocate(dbaserxn%stoich)
-  nullify(dbaserxn%stoich)
-  if (associated(dbaserxn%logK)) deallocate(dbaserxn%logK)
-  nullify(dbaserxn%logK)
+  call DeallocateArray(dbaserxn%spec_ids)
+  call DeallocateArray(dbaserxn%stoich)
+  call DeallocateArray(dbaserxn%logK)
 
   deallocate(dbaserxn)  
   nullify(dbaserxn)

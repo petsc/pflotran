@@ -283,33 +283,25 @@ subroutine ConnectionDestroy(connection)
   ! Author: Glenn Hammond
   ! Date: 10/23/07
   ! 
-
+  use Utility_module, only : DeallocateArray
+  
   implicit none
   
   type(connection_set_type), pointer :: connection
   
   if (.not.associated(connection)) return
   
-  if (associated(connection%local)) deallocate(connection%local)
-  nullify(connection%local)
-  if (associated(connection%id_up)) deallocate(connection%id_up)
-  nullify(connection%id_up)
-  if (associated(connection%id_dn)) deallocate(connection%id_dn)
-  nullify(connection%id_dn)
-  if (associated(connection%id_up2)) deallocate(connection%id_up2)
-  nullify(connection%id_up2)
-  if (associated(connection%id_dn2)) deallocate(connection%id_dn2)
-  nullify(connection%id_dn2)
-  if (associated(connection%face_id)) deallocate(connection%face_id)
-  nullify(connection%face_id)
-  if (associated(connection%dist)) deallocate(connection%dist)
-  nullify(connection%dist)
-  if (associated(connection%intercp)) deallocate(connection%intercp)
-  nullify(connection%intercp)
-  if (associated(connection%area)) deallocate(connection%area)
-  nullify(connection%area)
-  if (associated(connection%cntr)) deallocate(connection%cntr)
-  nullify(connection%cntr)
+  call DeallocateArray(connection%local)
+  call DeallocateArray(connection%id_up)
+  call DeallocateArray(connection%id_dn)
+  call DeallocateArray(connection%id_up2)
+  call DeallocateArray(connection%id_dn2)
+  call DeallocateArray(connection%face_id)
+  call DeallocateArray(connection%dist)
+  call DeallocateArray(connection%intercp)
+  call DeallocateArray(connection%area)
+  call DeallocateArray(connection%cntr)
+  
   nullify(connection%next)
   
   deallocate(connection)

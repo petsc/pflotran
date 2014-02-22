@@ -705,6 +705,7 @@ subroutine TimestepperBEStrip(this)
   
   class(stepper_BE_type) :: this
   
+  call TimestepperBaseStrip(this)
   call SolverDestroy(this%solver)
   call ConvergenceContextDestroy(this%convergence_context)
 
@@ -727,7 +728,7 @@ subroutine TimestepperBEDestroy(this)
   
   class(stepper_BE_type) :: this
   
-  call TimestepperBaseStrip(this)
+  call TimestepperBEStrip(this)
   
 !  deallocate(this)
 !  nullify(this)

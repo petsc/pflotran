@@ -1009,6 +1009,11 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
       gen_auxvar(GENERAL_AIR_PRESSURE_DOF)%pert = &
         gen_auxvar(GENERAL_AIR_PRESSURE_DOF)%pert / general_pressure_scale
   end select
+  
+#ifdef DEBUG_GENERAL
+  call GlobalAuxVarStrip(global_auxvar_debug)
+  call GeneralAuxVarStrip(general_auxvar_debug)
+#endif
  
 end subroutine GeneralAuxVarPerturb
 
@@ -1371,27 +1376,20 @@ subroutine GeneralAuxVarStrip(auxvar)
   ! Author: Glenn Hammond
   ! Date: 03/07/11
   ! 
+  use Utility_module, only : DeallocateArray
 
   implicit none
 
   type(general_auxvar_type) :: auxvar
   
-  if (associated(auxvar%pres)) deallocate(auxvar%pres)
-  nullify(auxvar%pres)
-  if (associated(auxvar%sat)) deallocate(auxvar%sat)
-  nullify(auxvar%sat)
-  if (associated(auxvar%den)) deallocate(auxvar%den)
-  nullify(auxvar%den)
-  if (associated(auxvar%den_kg)) deallocate(auxvar%den_kg)
-  nullify(auxvar%den_kg)
-  if (associated(auxvar%xmol)) deallocate(auxvar%xmol)
-  nullify(auxvar%xmol)
-  if (associated(auxvar%H)) deallocate(auxvar%H)
-  nullify(auxvar%H)
-  if (associated(auxvar%U)) deallocate(auxvar%U)
-  nullify(auxvar%U)
-  if (associated(auxvar%mobility)) deallocate(auxvar%mobility)
-  nullify(auxvar%mobility)
+  call DeallocateArray(auxvar%pres)  
+  call DeallocateArray(auxvar%sat)  
+  call DeallocateArray(auxvar%den)  
+  call DeallocateArray(auxvar%den_kg)  
+  call DeallocateArray(auxvar%xmol)  
+  call DeallocateArray(auxvar%H)  
+  call DeallocateArray(auxvar%U)  
+  call DeallocateArray(auxvar%mobility)  
   
 end subroutine GeneralAuxVarStrip
 
@@ -1404,6 +1402,7 @@ subroutine GeneralAuxDestroy(aux)
   ! Author: Glenn Hammond
   ! Date: 03/07/11
   ! 
+  use Utility_module, only : DeallocateArray
 
   implicit none
 
@@ -1416,15 +1415,11 @@ subroutine GeneralAuxDestroy(aux)
   call GeneralAuxVarDestroy(aux%auxvars_bc)
   call GeneralAuxVarDestroy(aux%auxvars_ss)
 
-  if (associated(aux%zero_rows_local)) deallocate(aux%zero_rows_local)
-  nullify(aux%zero_rows_local)
-  if (associated(aux%zero_rows_local_ghosted)) deallocate(aux%zero_rows_local_ghosted)
-  nullify(aux%zero_rows_local_ghosted)
+  call DeallocateArray(aux%zero_rows_local)
+  call DeallocateArray(aux%zero_rows_local_ghosted)
 
   if (associated(aux%general_parameter)) then
-    if (associated(aux%general_parameter%diffusion_coefficient)) &
-      deallocate(aux%general_parameter%diffusion_coefficient)
-    nullify(aux%general_parameter%diffusion_coefficient)
+    call DeallocateArray(aux%general_parameter%diffusion_coefficient)
     deallocate(aux%general_parameter)
   endif
   nullify(aux%general_parameter)

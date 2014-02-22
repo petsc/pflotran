@@ -576,7 +576,13 @@ subroutine ConvergenceContextDestroy(context)
   
   type(convergence_context_type), pointer :: context
   
-  if (associated(context)) deallocate(context)
+  if (.not.associated(context)) return
+  
+  nullify(context%solver)
+  nullify(context%option)
+  nullify(context%grid)
+  
+  deallocate(context)
   nullify(context)
 
 end subroutine ConvergenceContextDestroy
