@@ -176,8 +176,8 @@ subroutine EOSWaterInit()
   EOSWaterDensityPtr => EOSWaterDensityIFC67
   EOSWaterEnthalpyPtr => EOSWaterEnthalpyIFC67
   EOSWaterViscosityPtr => EOSWaterViscosity1
-  EOSWaterSaturationPressurePtr => EOSWaterSaturationPressure1
-  EOSWaterSteamDensityEnthalpyPtr => EOSWaterSteamDensityEnthalpy1
+  EOSWaterSaturationPressurePtr => EOSWaterSaturationPressureIFC67
+  EOSWaterSteamDensityEnthalpyPtr => EOSWaterSteamDensityEnthalpyIFC67
   
 end subroutine EOSWaterInit
 
@@ -458,7 +458,7 @@ end subroutine EOSWaterSatPresDerive
 
 ! ************************************************************************** !
 
-subroutine EOSWaterSaturationPressure1(T, PS, calculate_derivatives, dPS_dT, &
+subroutine EOSWaterSaturationPressureIFC67(T, PS, calculate_derivatives, dPS_dT, &
                                        ierr)
 
     implicit none
@@ -508,7 +508,7 @@ subroutine EOSWaterSaturationPressure1(T, PS, calculate_derivatives, dPS_dT, &
     endif
     ierr = 0
 
-end subroutine EOSWaterSaturationPressure1  
+end subroutine EOSWaterSaturationPressureIFC67
 
 ! ************************************************************************** !
 
@@ -1449,7 +1449,7 @@ end subroutine EOSWaterSteamDenEnthDerive
 
 ! ************************************************************************** !
 
-subroutine EOSWaterSteamDensityEnthalpy1(t,p,pa,dg,dgmol,hg, &
+subroutine EOSWaterSteamDensityEnthalpyIFC67(t,p,pa,dg,dgmol,hg, &
                                          calculate_derivatives, &
                                          dgp,dgt,hgp,hgt,scale,ierr)
 ! t/C  p/Pa dgmol/(mol/m^3)  h/MJ/mol
@@ -1753,7 +1753,7 @@ subroutine EOSWaterSteamDensityEnthalpy1(t,p,pa,dg,dgmol,hg, &
     hgp = -999.d0
   endif
 
-end subroutine EOSWaterSteamDensityEnthalpy1
+end subroutine EOSWaterSteamDensityEnthalpyIFC67
 
 ! ************************************************************************** !
 
