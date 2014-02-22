@@ -1094,6 +1094,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
 #if 1
   do iphase = 1, option%nphase
  
+#if 0   
     if (gen_auxvar_up%sat(iphase) > sir_up(iphase) .or. &
         gen_auxvar_dn%sat(iphase) > sir_dn(iphase)) then
       upweight_adj = upweight
@@ -1102,7 +1103,6 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
       else if (gen_auxvar_dn%sat(iphase) < eps) then 
         upweight_adj=1.d0
       endif
-#if 0   
 ! trying to rule out the averaging of density, etc. causing problems
       density_ave = upweight_adj*gen_auxvar_up%den(iphase)+ &
                     (1.D0-upweight_adj)*gen_auxvar_dn%den(iphase)
@@ -1116,8 +1116,8 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
                      (1.D0-upweight)*gen_auxvar_dn%den(iphase)) &
                      * fmw_phase(iphase) * dist_gravity
 #endif
-      density_ave = 0.5*(gen_auxvar_up%den(iphase) + gen_auxvar_dn%den(iphase))
-      H_ave = 0.5*(gen_auxvar_up%H(iphase) + gen_auxvar_dn%H(iphase))
+      density_ave = 0.5d0*(gen_auxvar_up%den(iphase) + gen_auxvar_dn%den(iphase))
+      H_ave = 0.5d0*(gen_auxvar_up%H(iphase) + gen_auxvar_dn%H(iphase))
       gravity_term = density_ave * fmw_phase(iphase) * dist_gravity
       
       delta_pressure = gen_auxvar_up%pres(iphase) - &
@@ -1155,7 +1155,9 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
         ! Res[MJ/sec] = mole_flux[kmol comp/sec] * H_ave[MJ/kmol comp]
         Res(energy_id) = Res(energy_id) + mole_flux * uH
       endif                   
+#if 0
     endif ! sat > eps
+#endif
   enddo
 #endif
 
@@ -1163,9 +1165,14 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   ! add in gas component diffusion in gas and liquid phases
   do iphase = 1, option%nphase
     theta = 1.8d0
+#if 0
     !geh: changed to .and. -> .or.
     if (gen_auxvar_up%sat(iphase) > eps .or. &
         gen_auxvar_dn%sat(iphase) > eps) then
+#else
+    if (gen_auxvar_up%sat(iphase) > eps .and. &
+        gen_auxvar_dn%sat(iphase) > eps) then
+#endif        
       upweight_adj = upweight
       sat_up = gen_auxvar_up%sat(iphase)
       sat_dn = gen_auxvar_dn%sat(iphase)
@@ -1173,13 +1180,18 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
         upweight_adj=0.d0
       else if (gen_auxvar_dn%sat(iphase) < eps) then 
         upweight_adj=1.d0
-      endif         
+      endif   
+#if 0      
+      ! this could be a problem.  if there is no phase present
+      ! how can mass diffuse through it.  besides, xmol for this
+      ! non-existent phase would be zero.
       if (gen_auxvar_up%sat(iphase) < eps) then 
         sat_up = eps
       endif         
       if (gen_auxvar_dn%sat(iphase) < eps) then 
         sat_dn = eps
-      endif         
+      endif
+#endif      
   
       ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) 
       !       = m^3 water/m^4 bulk 
@@ -1444,7 +1456,7 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
                           * fmw_phase(iphase) * dist_gravity 
 #endif                    
 
-          density_ave = 0.5*(gen_auxvar_up%den(iphase) + gen_auxvar_dn%den(iphase))
+          density_ave = 0.5d0*(gen_auxvar_up%den(iphase) + gen_auxvar_dn%den(iphase))
           gravity_term = density_ave * fmw_phase(iphase) * dist_gravity
       
           delta_pressure = gen_auxvar_up%pres(iphase) - &

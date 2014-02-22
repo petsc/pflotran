@@ -604,7 +604,9 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
           write(string,*) ghosted_id
           option%io_buffer = 'Negative gas pressure during state change ' // &
             'at ' // trim(adjustl(string))
-          call printErrMsg(option)
+!          call printErrMsg(option)
+          call printMsg(option)
+          x(GENERAL_GAS_PRESSURE_DOF) = gen_auxvar%pres(spid)
         endif
         ! pa = pg - ps
         x(GENERAL_AIR_PRESSURE_DOF) = &
@@ -613,7 +615,9 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
           write(string,*) ghosted_id
           option%io_buffer = 'Negative air pressure during state change ' // &
             'at ' // trim(adjustl(string))
-          call printErrMsg(option)
+!          call printErrMsg(option)
+          call printMsg(option)
+          x(GENERAL_AIR_PRESSURE_DOF) = 0.5d0*x(GENERAL_GAS_PRESSURE_DOF)
         endif
         x(GENERAL_GAS_SATURATION_DOF) = liquid_epsilon
 #else
