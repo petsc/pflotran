@@ -2579,7 +2579,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   PetscReal :: min_pressure
   PetscReal :: scale, temp_scale, temp_real
   PetscReal, parameter :: tolerance = 0.99d0
-  PetscReal, parameter :: initial_scale = 0.6d0
+  PetscReal, parameter :: initial_scale = 1.d0
   PetscErrorCode :: ierr
   
   grid => realization%patch%grid
@@ -2594,7 +2594,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   apid = option%air_pressure_id
 
   call VecGetArrayF90(dX,dX_p,ierr)
-  call VecGetArrayF90(X,X_p,ierr)
+  call VecGetArrayReadF90(X,X_p,ierr)
 
   scale = initial_scale
 
@@ -2936,7 +2936,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   endif
 
   call VecRestoreArrayF90(dX,dX_p,ierr)
-  call VecRestoreArrayF90(X,X_p,ierr)
+  call VecRestoreArrayReadF90(X,X_p,ierr)
 
 end subroutine GeneralCheckUpdatePre
 
@@ -2972,6 +2972,7 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   PetscReal, pointer :: X1_p(:)
   PetscReal, pointer :: dX_p(:)
   PetscReal, pointer :: r_p(:)
+  PetscReal, pointer :: accum_p(:)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
@@ -2988,7 +2989,6 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   PetscReal :: R_A_max(3), A_max(3), R_max(3) 
   PetscReal :: dX_X1_max(3), dX_max(3), X1_max(3)
 #endif
-  PetscReal :: Res(3)
   PetscReal :: dX_X1, R_A
   PetscReal :: inf_norm(3), global_inf_norm(3)
   PetscErrorCode :: ierr
@@ -3007,9 +3007,10 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   
   option%converged = PETSC_FALSE
   if (option%check_post_convergence) then
-    call VecGetArrayF90(dX,dX_p,ierr)
-    call VecGetArrayF90(X1,X1_p,ierr)
-    call VecGetArrayF90(field%flow_r,r_p,ierr)
+    call VecGetArrayReadF90(dX,dX_p,ierr)
+    call VecGetArrayReadF90(X1,X1_p,ierr)
+    call VecGetArrayReadF90(field%flow_r,r_p,ierr)
+    call VecGetArrayReadF90(field%flow_accum,accum_p,ierr)
 #ifdef DEBUG_GENERAL_INFO
     R_A_max = 0.d0
     A_max = 0.d0
@@ -3025,15 +3026,9 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
       offset = (local_id-1)*option%nflowdof
       ghosted_id = grid%nL2G(local_id)
       if (realization%patch%imat(ghosted_id) <= 0) cycle
-      call GeneralAccumulation(general_auxvars(ZERO_INTEGER,ghosted_id), &
-                               global_auxvars(ghosted_id), &
-                               material_auxvars(ghosted_id), &
-                               material_parameter%soil_heat_capacity( &
-                                 patch%imat(ghosted_id)), &
-                               option,Res)
       do idof = 1, option%nflowdof
         ival = offset+idof
-        R_A = dabs(r_p(ival)/Res(idof))
+        R_A = dabs(r_p(ival)/accum_p(ival))
         dX_X1 = dabs(dX_p(ival)/X1_p(ival))
         if (inf_norm(idof) < min(dX_X1,R_A)) then
           inf_norm(idof) = min(dX_X1,R_A)
@@ -3076,9 +3071,10 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
 #endif
       endif
     enddo
-    call VecGetArrayF90(dX,dX_p,ierr)
-    call VecGetArrayF90(X1,X1_p,ierr)
-    call VecGetArrayF90(field%flow_r,r_p,ierr)
+    call VecRestoreArrayReadF90(dX,dX_p,ierr)
+    call VecRestoreArrayReadF90(X1,X1_p,ierr)
+    call VecRestoreArrayReadF90(field%flow_r,r_p,ierr)
+    call VecRestoreArrayReadF90(field%flow_accum,accum_p,ierr)
   endif
   
 end subroutine GeneralCheckUpdatePost
