@@ -820,14 +820,20 @@ subroutine PMCBaseStrip(this)
 
   if (associated(this%timestepper)) then
     call this%timestepper%Destroy()
+    ! destroy does not currently destroy; it strips
+    deallocate(this%timestepper)
+    nullify(this%timestepper)
   endif
   if (associated(this%pm_list)) then
+    ! destroy does not currently destroy; it strips
     call this%pm_list%Destroy()
+    deallocate(this%pm_list)
+    nullify(this%pm_list)
   endif
   nullify(this%waypoints) ! deleted in realization
 !  call WaypointListDestroy(this%waypoints)
   if (associated(this%pm_ptr)) then
-    nullify(this%pm_ptr%ptr)
+    nullify(this%pm_ptr%ptr) ! solely a pointer
     deallocate(this%pm_ptr)
     nullify(this%pm_ptr)
   endif
@@ -857,10 +863,16 @@ recursive subroutine PMCBaseDestroy(this)
   
   if (associated(this%below)) then
     call this%below%Destroy()
+    ! destroy does not currently destroy; it strips
+    deallocate(this%below)
+    nullify(this%below)
   endif 
   
   if (associated(this%next)) then
     call this%next%Destroy()
+    ! destroy does not currently destroy; it strips
+    deallocate(this%next)
+    nullify(this%next)
   endif 
   
 !  deallocate(pmc)

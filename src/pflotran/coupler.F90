@@ -948,6 +948,7 @@ subroutine CouplerDestroy(coupler)
   nullify(coupler%region)        ! conditoins in list, nullify
 
   call DeallocateArray(coupler%flow_aux_mapping)
+  call DeallocateArray(coupler%flow_bc_type)
   call DeallocateArray(coupler%flow_aux_int_var)
   call DeallocateArray(coupler%flow_aux_real_var)
 

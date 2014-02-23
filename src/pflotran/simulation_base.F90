@@ -314,6 +314,9 @@ subroutine SimulationBaseStrip(this)
   call SimAuxDestroy(this%sim_aux)
   if (associated(this%process_model_coupler_list)) then
     call this%process_model_coupler_list%Destroy()
+    ! destroy does not currently destroy; it strips
+    deallocate(this%process_model_coupler_list)
+    nullify(this%process_model_coupler_list)
   endif
   
 end subroutine SimulationBaseStrip
