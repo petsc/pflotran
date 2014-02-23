@@ -1960,7 +1960,6 @@ subroutine DiscretizationDestroy(discretization)
   if (discretization%tvd_ghost_scatter /= 0) &
     call VecScatterDestroy(discretization%tvd_ghost_scatter)
   
-  ! solely nullify grid since destroyed in patch
   call GridDestroy(discretization%grid)
   
   deallocate(discretization)
