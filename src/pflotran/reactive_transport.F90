@@ -210,16 +210,18 @@ subroutine RTSetup(realization)
       endif
     endif
     if (associated(reaction%surface_complexation)) then
-      do i = 1, size(reaction%surface_complexation%srfcplxrxn_surf_type)
-        if (reaction%surface_complexation%srfcplxrxn_surf_type(i) == &
-            ROCK_SURFACE .and. &
-            material_auxvars(ghosted_id)%soil_particle_density < 0.d0 .and. &
-            flag(4) == 0) then
-          flag(4) = 1
-          option%io_buffer = 'Non-initialized soil particle density.'
-          call printMsg(option)
-        endif
-      enddo
+      if (associated(reaction%surface_complexation%srfcplxrxn_surf_type)) then
+        do i = 1, size(reaction%surface_complexation%srfcplxrxn_surf_type)
+          if (reaction%surface_complexation%srfcplxrxn_surf_type(i) == &
+              ROCK_SURFACE .and. &
+              material_auxvars(ghosted_id)%soil_particle_density < 0.d0 .and. &
+              flag(4) == 0) then
+            flag(4) = 1
+            option%io_buffer = 'Non-initialized soil particle density.'
+            call printMsg(option)
+          endif
+        enddo
+      endif
     endif
   enddo  
  
