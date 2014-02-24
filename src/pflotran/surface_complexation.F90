@@ -60,6 +60,7 @@ subroutine SurfaceComplexationRead(reaction,input,option)
   PetscBool :: found
   PetscReal :: tempreal
   PetscInt :: i
+  PetscInt :: num_times_surface_type_set
   
   nullify(srfcplx_rxn)
   nullify(cur_srfcplx_rxn)
@@ -71,6 +72,7 @@ subroutine SurfaceComplexationRead(reaction,input,option)
   ! default
   srfcplx_rxn%itype = SRFCMPLX_RXN_EQUILIBRIUM
   temp_srfcplx_count = 0
+  num_times_surface_type_set = 0
   do
     call InputReadPflotranString(input,option)
     if (InputError(input)) exit
@@ -149,14 +151,17 @@ subroutine SurfaceComplexationRead(reaction,input,option)
           'CHEMISTRY,SURFACE_COMPLEXATION_RXN,MULTIRATE_SCALE_FACTOR')
       case('MINERAL')
         srfcplx_rxn%surface_itype = MINERAL_SURFACE
+        num_times_surface_type_set = num_times_surface_type_set + 1
         call InputReadWord(input,option,srfcplx_rxn%surface_name, &
           PETSC_TRUE)
         call InputErrorMsg(input,option,'keyword', &
           'CHEMISTRY,SURFACE_COMPLEXATION_RXN,MINERAL_NAME')
       case('ROCK_DENSITY')
         srfcplx_rxn%surface_itype = ROCK_SURFACE
+        num_times_surface_type_set = num_times_surface_type_set + 1
       case('COLLOID')
         srfcplx_rxn%surface_itype = COLLOID_SURFACE
+        num_times_surface_type_set = num_times_surface_type_set + 1
         call InputReadWord(input,option,srfcplx_rxn%surface_name, &
           PETSC_TRUE)
         call InputErrorMsg(input,option,'keyword', &
@@ -201,6 +206,12 @@ subroutine SurfaceComplexationRead(reaction,input,option)
     end select
 
   enddo
+  
+  if (num_times_surface_type_set > 1) then
+    option%io_buffer = 'Surface site type (e.g. MINERAL, ROCK_DENSITY, ' // &
+      'COLLOID) may only be set once under the SURFACE_COMPLEXATION_RXN card.'
+    call printErrMsg(option)
+  endif
   
   if (.not.associated(surface_complexation%rxn_list)) then
     surface_complexation%rxn_list => srfcplx_rxn
