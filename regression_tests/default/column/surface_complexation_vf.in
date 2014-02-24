@@ -1,0 +1,432 @@
+:Description: 1D solute trasport test problem for testing chemical reactions
+:             based on chemistry from Hammond and Lichtner, WRR, 2010
+
+:=========================== regression =======================================
+REGRESSION
+  CELLS
+    1
+    4
+    8
+    12
+    16
+    20
+  /
+END
+
+:=========================== flow mode ========================================
+: Uniform velocity (see below). No flow mode specified.
+
+:=========================== useful tranport parameters =======================
+UNIFORM_VELOCITY 1.d0 0.d0 0.d0 m/yr
+
+REFERENCE_DENSITY 1000.d0
+
+:=========================== chemistry ========================================
+CHEMISTRY
+  PRIMARY_SPECIES
+  H+
+  Ca++
+  Cu++
+  Mg++
+  UO2++
+  K+
+  Na+
+  HCO3-
+  Cl-
+  F-
+  HPO4--
+  NO3-
+  SO4--
+  Tracer
+  Tracer2
+  /
+  REDOX_SPECIES
+    NO3-
+  /
+  SECONDARY_SPECIES
+    OH-
+    CO3--
+    CO2(aq)
+    CaCO3(aq)
+    CaHCO3+
+    CaSO4(aq)
+    CaCl+
+    CaCl2(aq)
+    CaF+
+    CaH2PO4+
+    CaHPO4(aq)
+    CaNO3+
+    CaPO4-
+    MgCO3(aq)
+    MgHCO3+
+    MgSO4(aq)
+    MgCl+
+    MgF+
+    MgH2PO4+
+    MgHPO4(aq)
+    MgP2O7--
+    MgPO4-
+    NaCl(aq)
+    NaOH(aq)
+    NaSO4-
+    NaHCO3(aq)
+    NaNO3(aq)
+    NaF(aq)
+    NaHP2O7--
+    NaHPO4-
+    KCl(aq)
+    KHPO4-
+    KHSO4(aq)
+    KOH(aq)
+    KP2O7---
+    KSO4-
+    HSO4-
+    H2SO4(aq)
+    HCl(aq)
+    H2PO4-
+    PO4---
+    H3PO4(aq)
+    H2F2(aq)
+    H2PO3F(aq)
+    Cu(CO3)2--
+    CuCO3(OH)2--
+    CuCO3(aq)
+    CuCl+
+    CuCl2(aq)
+    CuCl4--
+    CuF+
+    CuH2PO4+
+    CuHPO4(aq)
+    CuO2--
+    CuOH+
+    CuPO4-
+    CuSO4(aq)
+    UO2OH+
+    UO2(OH)2(aq)
+    UO2(OH)3-
+    UO2(OH)4--
+    (UO2)2OH+++
+    (UO2)2(OH)2++
+    (UO2)3(OH)4++
+    (UO2)3(OH)5+
+    (UO2)3(OH)7-
+    (UO2)4(OH)7+
+    UO2CO3(aq)
+    UO2(CO3)2--
+    UO2(CO3)3----
+    (UO2)2CO3(OH)3-
+    Ca2UO2(CO3)3(aq)
+    CaUO2(CO3)3--
+    UO2NO3+
+    UO2Cl+
+    UO2Cl2(aq)
+    UO2SO4(aq)
+    UO2(SO4)2--
+    UO2F+
+    UO2F2(aq)
+    UO2F3-
+    UO2F4--
+    UO2(H2PO4)(H3PO4)+
+    UO2(H2PO4)2(aq)
+    UO2HPO4(aq)
+    UO2H2PO4+
+    UO2H3PO4++
+    UO2PO4-
+  /
+  GAS_SPECIES
+    CO2(g)
+  /
+  MINERALS
+    Calcite
+    Magnesite
+    Dolomite
+    Dolomite-dis
+    Dolomite-ord
+    Brucite
+    Nesquehonite
+    Gypsum
+    Schoepite
+    UO2CO3
+    UO2(PO3)2
+    (UO2)3(PO4)2
+    (UO2)3(PO4)2.4H2O
+    CaUO4
+    UO2SO4
+    UOF4
+    UO3.2H2O
+    UO3.0.9H2O(alpha)
+    Saleeite
+    Sylvite
+    Metatorbernite
+    Whitlockite
+    Chalcanthite
+    Brochantite
+    Tenorite
+    Malachite
+    Fluorapatite
+    Fluorite
+    Hydroxylapatite
+    Torbernite
+  /
+  MINERAL_KINETICS
+    Calcite 
+      RATE_CONSTANT 1.e-12 mol/cm^2-sec
+    /
+    Metatorbernite 
+      RATE_CONSTANT 2.e-17 mol/cm^2-sec
+    /
+  /
+  SORPTION
+    SURFACE_COMPLEXATION_RXN
+skip
+      SITE_FRACTION 0.02 0.02 0.02 0.02 0.02 \
+        0.02 0.02 0.02 0.02 0.02 \
+        0.02 0.02 0.02 0.02 0.02 \
+        0.02 0.02 0.02 0.02 0.02 \
+        0.02 0.02 0.02 0.02 0.02 \
+        0.02 0.02 0.02 0.02 0.02 \
+        0.02 0.02 0.02 0.02 0.02 \
+        0.02 0.02 0.02 0.02 0.02 \
+        0.02 0.02 0.02 0.02 0.02 \
+        0.02 0.02 0.02 0.02 0.02
+      RATES 2.5722E-11  8.5000E-11  1.5972E-10  2.5139E-10  3.6111E-10 \
+        4.9167E-10  6.4167E-10  8.1667E-10  1.0167E-09  1.2472E-09 \
+        1.5111E-09  1.8111E-09  2.1528E-09  2.5389E-09  2.9722E-09 \
+        3.4722E-09  4.0278E-09  4.6667E-09  5.3889E-09  6.2222E-09 \
+        7.1389E-09  8.1944E-09  9.3611E-09  1.0722E-08  1.2278E-08 \
+        1.4028E-08  1.6056E-08  1.8389E-08  2.1056E-08  2.4139E-08 \
+        2.7750E-08  3.1944E-08  3.6944E-08  4.2778E-08  4.9444E-08 \
+        5.7778E-08  6.7778E-08  8.0000E-08  9.5000E-08  1.1389E-07 \
+        1.3806E-07  1.6944E-07  2.1111E-07  2.6861E-07  3.5000E-07 \
+        4.7778E-07  6.8611E-07  1.0778E-06  2.0278E-06  6.6944E-06
+  :MULTIRATE_SCALE_FACTOR 1000.d0
+noskip
+      MINERAL Calcite
+! recall that this is being scaled by the Calcite vol frac
+      SITE >SOH 152.64d0 ! 20 m^2/g, por = 0.25
+:      SITE >SOH 15.264d0 ! 2.0 m^2/g, por = 0.25
+      COMPLEXES
+        >SOUO2OH
+        >SOHUO2CO3
+      /
+    /
+  /
+  DATABASE ../../../database/hanford.dat
+  LOG_FORMULATION
+  ACTIVITY_COEFFICIENTS NEWTON_ITERATION
+  MOLAL
+  OUTPUT
+    All
+    pH
+    TOTAL_SORBED
+    KD
+  /
+END
+
+:=========================== solver options ===================================
+NEWTON_SOLVER TRANSPORT
+END
+
+LINEAR_SOLVER TRANSPORT
+!  SOLVER DIRECT
+END
+
+:=========================== discretization ===================================
+GRID
+  TYPE structured
+  NXYZ 20 1 1
+  BOUNDS
+    0.d0 0.d0 0.d0
+    100.d0 1.d0 1.d0
+  /
+END
+
+:=========================== fluid properties =================================
+FLUID_PROPERTY 
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+:=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+  ROCK_DENSITY 2500.d0
+END
+
+MATERIAL_PROPERTY soil2
+  ID 2
+  POROSITY 0.2d0
+  TORTUOSITY 0.5d0
+  ROCK_DENSITY 2000.d0
+END
+
+:=========================== output options ===================================
+OUTPUT
+  FORMAT TECPLOT POINT
+END
+
+:=========================== times ============================================
+TIME
+  FINAL_TIME 15.d0 y
+  INITIAL_TIMESTEP_SIZE 1.d0 h
+  MAXIMUM_TIMESTEP_SIZE 2.5d-1 y
+END
+
+:=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    100.d0 1.d0 1.d0
+  /
+END
+
+REGION middle
+  COORDINATES
+    25.d0 0.d0 0.d0
+    75.d0 1.d0 1.d0
+  /
+END
+
+REGION west
+  FACE west
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 1.d0 1.d0
+  /
+END
+
+REGION east
+  FACE east
+  COORDINATES
+    100.d0 0.d0 0.d0
+    100.d0 1.d0 1.d0
+  /
+END
+
+:=========================== transport conditions =============================
+TRANSPORT_CONDITION inlet
+  TYPE dirichlet_zero_gradient
+  CONSTRAINT_LIST
+    0.d0 river_water
+  /
+END
+
+TRANSPORT_CONDITION source_zone
+  TYPE dirichlet_zero_gradient
+  CONSTRAINT_LIST
+    0.d0 U_source
+  /
+END
+
+TRANSPORT_CONDITION groundwater
+  TYPE dirichlet_zero_gradient
+  CONSTRAINT_LIST
+    0.d0 groundwater
+  /
+END
+
+:=========================== transport constraints ============================
+CONSTRAINT groundwater
+  CONCENTRATIONS
+    H+       1.d-7            M Calcite
+    Ca++     1.20644e-3       T
+    Cu++     1.e-8            T
+    Mg++     5.09772e-4       T Dolomite
+    UO2++    2.4830E-11       T
+    K+       1.54789e-4       T
+    Na+      1.03498e-3       Z
+    HCO3-    2.57305e-3       T
+    Cl-      6.97741e-4       T
+    F-       2.09491e-5       T
+    HPO4--   1.e-8            M Fluorapatite
+    NO3-     4.69979e-4       T
+    SO4--    6.37961e-4       T
+    Tracer   1.e-7            F
+    Tracer2  1.e-7            F
+  /
+  MINERALS
+    Calcite        0.1d0 1.d0 cm^2/cm^3
+    Metatorbernite 0.d0  1.d0 cm^2/cm^3
+  /
+END
+
+CONSTRAINT U_source
+  CONCENTRATIONS
+    H+       1.d-7            M Calcite
+    Ca++     1.20644e-3       T
+    Cu++     1.e-6            T
+    Mg++     5.09772e-4       T Dolomite
+    UO2++    2.34845e-7       T
+    K+       1.54789e-4       T
+    Na+      1.03498e-3       Z
+    HCO3-    2.57305e-3       T
+    Cl-      6.97741e-4       T
+    F-       2.09491e-5       T
+    HPO4--   1.e-6            M Fluorapatite
+    NO3-     4.69979e-4       T
+    SO4--    6.37961e-4       T
+    Tracer   1.e-7            F
+    Tracer2  1.e-3            F
+  /
+  MINERALS
+    Calcite        0.08533333333d0 1.d0 cm^2/cm^3
+    Metatorbernite 1.d-4 1.d0 cm^2/cm^3
+  /
+END
+
+CONSTRAINT river_water
+  CONCENTRATIONS
+    H+       7.8             pH
+    Ca++     4.49496e-4       T
+    Cu++     1.e-8            T
+    Mg++     1.82316e-4       T
+    UO2++    2.4830E-11       T
+    K+       1.905371e-5      T
+    Na+      1.00551e-4       Z
+    HCO3-    1.127881e-3      T
+    Cl-      3.3895e-5        T
+    F-       6.23269e-6       T
+    HPO4--   1.e-9            T
+    NO3-     1.e-5            T
+    SO4--    9.23943e-5       T
+    Tracer   1.e-3            F
+    Tracer2  1.e-7            F
+  /
+END
+
+:=========================== condition couplers ===============================
+: initial condition
+INITIAL_CONDITION
+  TRANSPORT_CONDITION groundwater
+  REGION all
+END
+
+INITIAL_CONDITION
+  TRANSPORT_CONDITION source_zone
+  REGION middle
+END
+
+: west boundary condition
+BOUNDARY_CONDITION west
+  TRANSPORT_CONDITION inlet
+  REGION west
+END
+
+: east boundary condition
+BOUNDARY_CONDITION east
+  TRANSPORT_CONDITION groundwater
+  REGION east
+END
+
+:=========================== stratigraphy couplers ============================
+STRATA
+  REGION all
+  MATERIAL soil1
+END
+
+STRATA
+  REGION middle
+  MATERIAL soil2
+END
+
