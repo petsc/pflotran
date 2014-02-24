@@ -1449,7 +1449,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
         call RTotalSorb(rt_auxvar,global_auxvar,material_auxvar,reaction,option)
       endif
       if (reaction%surface_complexation%nkinmrsrfcplx > 0) then
-        call RTotalSorbMultiRateAsEQ(rt_auxvar,global_auxvar,reaction,option)
+        call RTotalSorbMultiRateAsEQ(rt_auxvar,global_auxvar,material_auxvar, &
+                                     reaction,option)
       endif
     endif
     
@@ -1855,7 +1856,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
       call RTotalSorb(rt_auxvar,global_auxvar,material_auxvar,reaction,option)
     endif
     if (reaction%surface_complexation%nkinmrsrfcplx > 0) then
-      call RTotalSorbMultiRateAsEQ(rt_auxvar,global_auxvar,reaction,option)
+      call RTotalSorbMultiRateAsEQ(rt_auxvar,global_auxvar,material_auxvar, &
+                                   reaction,option)
     endif
   endif
   
@@ -3107,7 +3109,7 @@ end subroutine ReactionReadOutput
 ! ************************************************************************** !
 
 subroutine RJumpStartKineticSorption(rt_auxvar,global_auxvar, &
-                                     reaction,option)
+                                     material_auxvar,reaction,option)
   ! 
   ! Calculates the concentrations of species sorbing
   ! through kinetic sorption processes based
@@ -3124,6 +3126,7 @@ subroutine RJumpStartKineticSorption(rt_auxvar,global_auxvar, &
   type(reaction_type), pointer :: reaction
   type(reactive_transport_auxvar_type) :: rt_auxvar 
   type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
   type(option_type) :: option
 
   PetscInt :: irate
@@ -3133,7 +3136,8 @@ subroutine RJumpStartKineticSorption(rt_auxvar,global_auxvar, &
   !geh: if jumpstarting, we need to zero the sorbed total as 
   !     RTotalSorbEqSurfCplx() will add but not initialize
   call RZeroSorb(rt_auxvar)
-  call RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
+  call RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,material_auxvar, &
+                            reaction,option)
   option%io_buffer = 'RJumpStartKineticSorption needs to be fixed'
   call printErrMsg(option)
 #if 0  
@@ -4020,7 +4024,8 @@ subroutine RTotalSorb(rt_auxvar,global_auxvar,material_auxvar,reaction,option)
   call RZeroSorb(rt_auxvar)
   
   if (reaction%surface_complexation%neqsrfcplxrxn > 0) then
-    call RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
+    call RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,material_auxvar, &
+                              reaction,option)
   endif
   
   if (reaction%neqionxrxn > 0) then

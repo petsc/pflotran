@@ -3610,6 +3610,13 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
             reaction%surface_complexation%srfcplxrxn_site_density(isubvar)
           select case(reaction%surface_complexation% &
                         srfcplxrxn_surf_type(isubvar))
+            case(ROCK_SURFACE)
+              do local_id=1,grid%nlmax
+                ghosted_id = grid%nL2G(local_id)
+                vec_ptr(local_id) = tempreal* &
+                        material_auxvars(ghosted_id)%soil_particle_density * &
+                        (1.d0-material_auxvars(ghosted_id)%porosity)
+              enddo
             case(MINERAL_SURFACE)
               tempint = &
                 reaction%surface_complexation%srfcplxrxn_to_surf(isubvar)
@@ -4438,6 +4445,11 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
         case(SURFACE_SITE_DENSITY)
           select case(reaction%surface_complexation% &
                         srfcplxrxn_surf_type(isubvar))
+            case(ROCK_SURFACE)
+              value = reaction%surface_complexation% &
+                        srfcplxrxn_site_density(isubvar)* &
+                      material_auxvars(ghosted_id)%soil_particle_density * &
+                      (1.d0-material_auxvars(ghosted_id)%porosity)
             case(MINERAL_SURFACE)
               value = reaction%surface_complexation% &
                         srfcplxrxn_site_density(isubvar)* &

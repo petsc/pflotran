@@ -4,6 +4,7 @@ module Surface_Complexation_module
   use Reaction_Aux_module
   use Reactive_Transport_Aux_module
   use Global_Aux_module
+  use Material_Aux_class
   
   use PFLOTRAN_Constants_module
 
@@ -147,12 +148,16 @@ subroutine SurfaceComplexationRead(reaction,input,option)
         call InputErrorMsg(input,option,'keyword', &
           'CHEMISTRY,SURFACE_COMPLEXATION_RXN,MULTIRATE_SCALE_FACTOR')
       case('MINERAL')
-        call InputReadWord(input,option,srfcplx_rxn%mineral_name, &
+        srfcplx_rxn%surface_itype = MINERAL_SURFACE
+        call InputReadWord(input,option,srfcplx_rxn%surface_name, &
           PETSC_TRUE)
         call InputErrorMsg(input,option,'keyword', &
           'CHEMISTRY,SURFACE_COMPLEXATION_RXN,MINERAL_NAME')
+      case('ROCK_DENSITY')
+        srfcplx_rxn%surface_itype = ROCK_SURFACE
       case('COLLOID')
-        call InputReadWord(input,option,srfcplx_rxn%colloid_name, &
+        srfcplx_rxn%surface_itype = COLLOID_SURFACE
+        call InputReadWord(input,option,srfcplx_rxn%surface_name, &
           PETSC_TRUE)
         call InputErrorMsg(input,option,'keyword', &
           'CHEMISTRY,SURFACE_COMPLEXATION_RXN,COLLOID_NAME')
@@ -425,7 +430,8 @@ end subroutine SrfCplxProcessConstraint
 
 ! ************************************************************************** !
 
-subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
+subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,material_auxvar, &
+                                reaction,option)
   ! 
   ! Computes the total sorbed component concentrations and
   ! derivative with respect to free-ion for equilibrium
@@ -442,6 +448,7 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
   
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
   type(reaction_type) :: reaction
   type(option_type) :: option
   
@@ -469,7 +476,8 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
     irxn = surface_complexation%eqsrfcplxrxn_to_srfcplxrxn(ieqrxn)
     
     !TODO(geh): clean up colloidpointers
-    call RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,reaction,option, &
+    call RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,material_auxvar, &
+                               reaction,option, &
                                irxn, &
                                rt_auxvar%srfcplxrxn_free_site_conc(irxn), &
                                rt_auxvar%eqsrfcplx_conc, &
@@ -487,7 +495,8 @@ end subroutine RTotalSorbEqSurfCplx
 
 ! ************************************************************************** !
 
-subroutine RTotalSorbMultiRateAsEQ(rt_auxvar,global_auxvar,reaction,option)
+subroutine RTotalSorbMultiRateAsEQ(rt_auxvar,global_auxvar,material_auxvar, &
+                                   reaction,option)
   ! 
   ! Calculates the multirate surface complexation
   ! reaction as if it were equilibrium.
@@ -503,6 +512,7 @@ subroutine RTotalSorbMultiRateAsEQ(rt_auxvar,global_auxvar,reaction,option)
   
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
   type(reaction_type) :: reaction
   type(option_type) :: option
   
@@ -527,7 +537,8 @@ subroutine RTotalSorbMultiRateAsEQ(rt_auxvar,global_auxvar,reaction,option)
     total_sorb_eq = 0.d0
     dtotal_sorb_eq = 0.d0  
 
-    call RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,reaction,option, &
+    call RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,material_auxvar, &
+                               reaction,option, &
                                irxn, &
                                rt_auxvar%srfcplxrxn_free_site_conc(irxn), &
                                null_array_ptr, &
@@ -555,7 +566,6 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
   ! 
 
   use Option_module
-  use Material_Aux_class
   use Matrix_Block_Aux_module
   
   implicit none
@@ -597,7 +607,8 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
     total_sorb_eq = 0.d0
     dtotal_sorb_eq = 0.d0  
 
-    call RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,reaction,option, &
+    call RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,material_auxvar, &
+                               reaction,option, &
                                irxn, &
                                rt_auxvar%srfcplxrxn_free_site_conc(irxn), &
                                null_array_ptr, &
@@ -636,7 +647,8 @@ end subroutine RMultiRateSorption
 
 ! ************************************************************************** !
 
-subroutine RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,reaction,option, &
+subroutine RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,material_auxvar, &
+                                 reaction,option, &
                                  irxn,external_free_site_conc, &
                                  external_srfcplx_conc, &
                                  external_total_sorb, &
@@ -659,6 +671,7 @@ subroutine RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,reaction,option, &
   
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
   type(reaction_type) :: reaction
   type(option_type) :: option
   PetscInt :: irxn
@@ -705,6 +718,11 @@ subroutine RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,reaction,option, &
       site_density(1) = surface_complexation%srfcplxrxn_site_density(irxn)* &
                 rt_auxvar%mnrl_volfrac(surface_complexation% &
                                          srfcplxrxn_to_surf(irxn))
+      num_types_of_sites = 1
+    case(ROCK_SURFACE)
+      site_density(1) = surface_complexation%srfcplxrxn_site_density(irxn)* &
+                        material_auxvar%soil_particle_density * &
+                        (1.d0-material_auxvar%porosity)
       num_types_of_sites = 1
     case(COLLOID_SURFACE)
       mobile_fraction = reaction%colloid_mobile_fraction( &

@@ -2722,54 +2722,55 @@ subroutine BasisInit(reaction,option)
       surface_complexation%srfcplxrxn_site_density_print(irxn) = &
                                 cur_srfcplx_rxn%site_density_print_me .or. &
                                 reaction%print_all_species
-      if (len_trim(cur_srfcplx_rxn%mineral_name) > 1) then
-        surface_complexation%srfcplxrxn_to_surf(irxn) = &
-          GetKineticMineralIDFromName(reaction%mineral, &
-                                      cur_srfcplx_rxn%mineral_name)
-        surface_complexation%srfcplxrxn_surf_type(irxn) = MINERAL_SURFACE
-        if (surface_complexation%srfcplxrxn_to_surf(irxn) < 0) then
-          option%io_buffer = 'Mineral ' // &
-                              trim(cur_srfcplx_rxn%mineral_name) // &
-                              ' listed in surface complexation ' // &
-                              'reaction not found in kinetic mineral list'
-          call printErrMsg(option)
-        endif
-      else if (len_trim(cur_srfcplx_rxn%colloid_name) > 1) then
-        surface_complexation%srfcplxrxn_to_surf(irxn) = &
-          GetColloidIDFromName(reaction,cur_srfcplx_rxn%colloid_name)
-        surface_complexation%srfcplxrxn_surf_type(irxn) = COLLOID_SURFACE
-        if (surface_complexation%srfcplxrxn_to_surf(irxn) < 0) then
-          option%io_buffer = 'Colloid ' // &
-                              trim(cur_srfcplx_rxn%colloid_name) // &
-                              ' listed in surface complexation ' // &
-                              'reaction not found in colloid list'
-          call printErrMsg(option)
-        endif
-        ! loop over primary species associated with colloid sorption and
-        ! add to colloid species list, if not already listed
-        cur_srfcplx_in_rxn => cur_srfcplx_rxn%complex_list
-        do
-          if (.not.associated(cur_srfcplx_in_rxn)) exit
-          ! cur_srfcplx2%ptr is a pointer to complex in master list
-          cur_srfcplx => cur_srfcplx_in_rxn%ptr 
-          do i = 1, cur_srfcplx%dbaserxn%nspec
-            if (cur_srfcplx%dbaserxn%spec_ids(i) == h2o_id) cycle
-            spec_id = cur_srfcplx%dbaserxn%spec_ids(i)
-            if (spec_id > h2o_id) spec_id = spec_id - 1              
-            colloid_species_flag(spec_id) = PETSC_TRUE
+      surface_complexation%srfcplxrxn_surf_type(irxn) = &
+        cur_srfcplx_rxn%surface_itype
+      select case(cur_srfcplx_rxn%surface_itype)
+        case(ROCK_SURFACE)
+          ! nothing to do here as the linkage to rick density is already set
+        case(MINERAL_SURFACE)
+          surface_complexation%srfcplxrxn_to_surf(irxn) = &
+            GetKineticMineralIDFromName(reaction%mineral, &
+                                        cur_srfcplx_rxn%surface_name)
+          if (surface_complexation%srfcplxrxn_to_surf(irxn) < 0) then
+            option%io_buffer = 'Mineral ' // &
+                                trim(cur_srfcplx_rxn%surface_name) // &
+                                ' listed in surface complexation ' // &
+                                'reaction not found in kinetic mineral list'
+            call printErrMsg(option)
+          endif
+        case(COLLOID_SURFACE)
+          surface_complexation%srfcplxrxn_to_surf(irxn) = &
+            GetColloidIDFromName(reaction,cur_srfcplx_rxn%surface_name)
+          if (surface_complexation%srfcplxrxn_to_surf(irxn) < 0) then
+            option%io_buffer = 'Colloid ' // &
+                                trim(cur_srfcplx_rxn%surface_name) // &
+                                ' listed in surface complexation ' // &
+                                'reaction not found in colloid list'
+            call printErrMsg(option)
+          endif
+          ! loop over primary species associated with colloid sorption and
+          ! add to colloid species list, if not already listed
+          cur_srfcplx_in_rxn => cur_srfcplx_rxn%complex_list
+          do
+            if (.not.associated(cur_srfcplx_in_rxn)) exit
+            ! cur_srfcplx2%ptr is a pointer to complex in master list
+            cur_srfcplx => cur_srfcplx_in_rxn%ptr 
+            do i = 1, cur_srfcplx%dbaserxn%nspec
+              if (cur_srfcplx%dbaserxn%spec_ids(i) == h2o_id) cycle
+              spec_id = cur_srfcplx%dbaserxn%spec_ids(i)
+              if (spec_id > h2o_id) spec_id = spec_id - 1              
+              colloid_species_flag(spec_id) = PETSC_TRUE
+            enddo
+            nullify(cur_srfcplx)
+            cur_srfcplx_in_rxn => cur_srfcplx_in_rxn%next
           enddo
-          nullify(cur_srfcplx)
-          cur_srfcplx_in_rxn => cur_srfcplx_in_rxn%next
-        enddo
-          
-      else
-        write(word,*) cur_srfcplx_rxn%id
-        option%io_buffer = 'No mineral or colloid name specified ' // &
-          'for equilibrium surface complexation reaction:' // &
-          trim(adjustl(word))
-        call printWrnMsg(option)
-        surface_complexation%srfcplxrxn_surf_type(irxn) = NULL_SURFACE      
-      endif
+        case(NULL_SURFACE)
+          write(word,*) cur_srfcplx_rxn%id
+          option%io_buffer = 'No mineral or colloid name specified ' // &
+            'for equilibrium surface complexation reaction:' // &
+            trim(adjustl(word))
+          call printWrnMsg(option)
+      end select
       surface_complexation%srfcplxrxn_site_density(irxn) = &
         cur_srfcplx_rxn%site_density
               

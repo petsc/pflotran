@@ -4280,6 +4280,7 @@ subroutine RTJumpStartKineticSorption(realization)
       if (patch%imat(ghosted_id) <= 0) cycle
       call RJumpStartKineticSorption(patch%aux%RT%auxvars(ghosted_id), &
                                      patch%aux%Global%auxvars(ghosted_id), &
+                                     patch%aux%Material%auxvars(ghosted_id), &
                                      reaction,option)
     enddo
   endif
