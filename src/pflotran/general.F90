@@ -1254,14 +1254,14 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
     k_eff_ave = 0.d0
   endif
   ! units:
-  ! k_eff = W/K/m/m = J/s/m/m
+  ! k_eff = W/K/m/m = J/s/K/m/m
   ! delta_temp = K
   ! area = m^2
   ! heat_flux = J/s
   delta_temp = gen_auxvar_up%temp - gen_auxvar_dn%temp
   heat_flux = k_eff_ave * delta_temp * area
   ! MJ/s
-  Res(energy_id) = Res(energy_id) + heat_flux * option%scale ! J/s -> MJ/s
+  Res(energy_id) = Res(energy_id) + heat_flux * 1.d-6 ! J/s -> MJ/s
 #endif
     
 end subroutine GeneralFlux
@@ -1630,7 +1630,7 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
         'GeneralBCFlux heat conduction loop.'
       call printErrMsg(option)
   end select
-  Res(energy_id) = Res(energy_id) + heat_flux * option%scale ! J/s -> MJ/s
+  Res(energy_id) = Res(energy_id) + heat_flux * 1.d-6 ! J/s -> MJ/s
 
 end subroutine GeneralBCFlux
 
@@ -1760,7 +1760,7 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
       if (dabs(qsrc(ONE_INTEGER)) > 0.d0) then
         call EOSWaterDensityEnthalpy(gen_auxvar%temp, &
                                      gen_auxvar%pres(option%liquid_phase), &
-                                     den_kg,den,enthalpy,option%scale,ierr)
+                                     den_kg,den,enthalpy,1.d-6,ierr)
         ! enthalpy units: MJ/kmol
         res(option%energy_id) = res(option%energy_id) + &
                                 qsrc_mol(ONE_INTEGER) * enthalpy
@@ -1771,7 +1771,7 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
           ! is unrealistic, use pure air enthalpy instead.
           call ideal_gaseos_noderiv(gen_auxvar%pres(option%air_pressure_id), &
                                     gen_auxvar%temp, &
-                                    option%scale,den,enthalpy,internal_energy)
+                                    1.d-6,den,enthalpy,internal_energy)
         else
           enthalpy = gen_auxvar%h(option%gas_phase)
         endif
