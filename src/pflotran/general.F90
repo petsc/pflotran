@@ -129,7 +129,7 @@ subroutine GeneralSetup(realization)
   option => realization%option
   patch => realization%patch
   grid => patch%grid
-
+  
   patch%aux%General => GeneralAuxCreate(option)
 
   ! ensure that material properties specific to this module are properly
@@ -264,26 +264,30 @@ subroutine GeneralComputeMassBalance(realization,mass_balance)
   implicit none
   
   type(realization_type) :: realization
-  PetscReal :: mass_balance(realization%option%nphase)
+  PetscReal :: mass_balance(realization%option%nflowspec, &
+                            realization%option%nflowdof)
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(field_type), pointer :: field
   type(grid_type), pointer :: grid
-  type(global_auxvar_type), pointer :: global_auxvars(:)
+  type(general_auxvar_type), pointer :: general_auxvars(:,:)
   class(material_auxvar_type), pointer :: material_auxvars(:)
   PetscReal, pointer :: volume_p(:), porosity_loc_p(:)
 
   PetscErrorCode :: ierr
   PetscInt :: local_id
   PetscInt :: ghosted_id
+  PetscInt :: iphase, icomp
+  PetscReal :: vol_phase
+  PetscReal, parameter :: fmw_comp(2) = [FMWH2O,FMWAIR]  
 
   option => realization%option
   patch => realization%patch
   grid => patch%grid
   field => realization%field
 
-  global_auxvars => patch%aux%Global%auxvars
+  general_auxvars => patch%aux%General%auxvars
   material_auxvars => patch%aux%Material%auxvars
 
   mass_balance = 0.d0
@@ -292,12 +296,20 @@ subroutine GeneralComputeMassBalance(realization,mass_balance)
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
     if (patch%imat(ghosted_id) <= 0) cycle
-    ! mass = volume*saturation*density
-    mass_balance = mass_balance + &
-      global_auxvars(ghosted_id)%den_kg* &
-      global_auxvars(ghosted_id)%sat* &
-      material_auxvars(ghosted_id)%porosity* &
-      material_auxvars(ghosted_id)%volume
+    do iphase = 1, option%nphase
+      ! volume_phase = saturation*porosity*volume
+      vol_phase = &
+        general_auxvars(ZERO_INTEGER,ghosted_id)%sat(iphase)* &
+        material_auxvars(ghosted_id)%porosity* &
+        material_auxvars(ghosted_id)%volume
+      ! mass = volume_phase*density
+      do icomp = 1, option%nflowspec
+        mass_balance(icomp,iphase) = mass_balance(icomp,iphase) + &
+          general_auxvars(ZERO_INTEGER,ghosted_id)%den(iphase)* &
+          general_auxvars(ZERO_INTEGER,ghosted_id)%xmol(icomp,iphase) * &
+          fmw_comp(icomp)*vol_phase
+      enddo
+    enddo
   enddo
 
 end subroutine GeneralComputeMassBalance
@@ -360,8 +372,10 @@ subroutine GeneralUpdateMassBalance(realization)
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(global_auxvar_type), pointer :: global_auxvars_bc(:)
-
+  
+  PetscReal, parameter :: fmw_comp(2) = [FMWH2O,FMWAIR]
   PetscInt :: iconn
+  PetscInt :: icomp
 
   option => realization%option
   patch => realization%patch
@@ -369,9 +383,12 @@ subroutine GeneralUpdateMassBalance(realization)
   global_auxvars_bc => patch%aux%Global%auxvars_bc
 
   do iconn = 1, patch%aux%General%num_aux_bc
-    global_auxvars_bc(iconn)%mass_balance = &
-      global_auxvars_bc(iconn)%mass_balance + &
-      global_auxvars_bc(iconn)%mass_balance_delta*FMWH2O*option%flow_dt
+    do icomp = 1, option%nflowspec
+      global_auxvars_bc(iconn)%mass_balance(icomp,:) = &
+        global_auxvars_bc(iconn)%mass_balance(icomp,:) + &
+        global_auxvars_bc(iconn)%mass_balance_delta(icomp,:)* &
+        fmw_comp(icomp)*option%flow_dt
+    enddo
   enddo
 
 end subroutine GeneralUpdateMassBalance
@@ -1057,11 +1074,10 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   PetscInt :: wat_comp_id, air_comp_id, energy_id
   PetscInt :: icomp, iphase
   
-  PetscReal :: fmw_phase(option%nphase)
   PetscReal :: xmol(option%nflowspec)
   PetscReal :: perm_up, perm_dn
   PetscReal :: den
-  PetscReal :: density_ave
+  PetscReal :: density_ave, density_kg_ave
   PetscReal :: uH
   PetscReal :: H_ave
   PetscReal :: perm_ave_over_dist
@@ -1077,9 +1093,6 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   wat_comp_id = option%water_id
   air_comp_id = option%air_id
   energy_id = option%energy_id
-
-  fmw_phase(option%liquid_phase) = FMWH2O
-  fmw_phase(option%gas_phase) = FMWAIR
 
   call ConnectionCalculateDistances(dist,option%gravity,dd_up,dd_dn, &
                                     dist_gravity,upweight)
@@ -1116,9 +1129,14 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
                      (1.D0-upweight)*gen_auxvar_dn%den(iphase)) &
                      * fmw_phase(iphase) * dist_gravity
 #endif
-      density_ave = 0.5d0*(gen_auxvar_up%den(iphase) + gen_auxvar_dn%den(iphase))
+      density_ave = 0.5d0*(gen_auxvar_up%den(iphase) + &
+                           gen_auxvar_dn%den(iphase))
       H_ave = 0.5d0*(gen_auxvar_up%H(iphase) + gen_auxvar_dn%H(iphase))
-      gravity_term = density_ave * fmw_phase(iphase) * dist_gravity
+      ! density_ave must be in units of kg/m^3, not mol as we cannot 
+      ! convert the gas density using FMWAIR!!!
+      density_kg_ave =  0.5d0*(gen_auxvar_up%den_kg(iphase) + &
+                               gen_auxvar_dn%den_kg(iphase))
+      gravity_term = density_kg_ave * dist_gravity
       
       delta_pressure = gen_auxvar_up%pres(iphase) - &
                        gen_auxvar_dn%pres(iphase) + &
@@ -1373,9 +1391,8 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
   PetscInt :: wat_comp_id, air_comp_id, energy_id
   PetscInt :: icomp, iphase
   PetscInt :: bc_type
-  PetscReal :: fmw_phase(option%nphase)
   PetscReal :: xmol(option%nflowspec)  
-  PetscReal :: density_ave
+  PetscReal :: density_ave, density_kg_ave
   PetscReal :: H_ave, uH
   PetscReal :: perm_ave_over_dist, dist_gravity
   PetscReal :: delta_pressure, delta_xmol, delta_temp
@@ -1390,9 +1407,6 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
   wat_comp_id = option%water_id
   air_comp_id = option%air_id
   energy_id = option%energy_id
-
-  fmw_phase(option%liquid_phase) = FMWH2O
-  fmw_phase(option%gas_phase) = FMWAIR
 
   Res = 0.d0
   v_darcy = 0.d0
@@ -1449,8 +1463,13 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
                           * fmw_phase(iphase) * dist_gravity 
 #endif                    
 
-          density_ave = 0.5d0*(gen_auxvar_up%den(iphase) + gen_auxvar_dn%den(iphase))
-          gravity_term = density_ave * fmw_phase(iphase) * dist_gravity
+          density_ave = 0.5d0*(gen_auxvar_up%den(iphase) + &
+                               gen_auxvar_dn%den(iphase))
+          ! density_ave must be in units of kg/m^3, not mol as we cannot 
+          ! convert the gas density using FMWAIR!!!
+          density_kg_ave =  0.5d0*(gen_auxvar_up%den_kg(iphase) + &
+                               gen_auxvar_dn%den_kg(iphase))
+          gravity_term = density_kg_ave * dist_gravity
       
           delta_pressure = gen_auxvar_up%pres(iphase) - &
                            gen_auxvar_dn%pres(iphase) + &
@@ -1711,22 +1730,18 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
   PetscReal :: scale
   PetscReal :: res(option%nflowdof)
       
-  PetscReal :: fmw_phase(option%nphase)
   PetscReal :: qsrc_mol(option%nphase)
   PetscReal :: den, den_kg, enthalpy, internal_energy
   PetscInt :: icomp, ierr
-  
-
-  fmw_phase(option%liquid_phase) = FMWH2O
-  fmw_phase(option%gas_phase) = FMWAIR
+  PetscReal, parameter :: fmw_comp(2) = [FMWH2O,FMWAIR]
 
   res = 0.d0
   do icomp = 1, option%nflowspec
     select case(flow_src_sink_type)
       case(MASS_RATE_SS)
-        qsrc_mol(icomp) = qsrc(icomp)/fmw_phase(icomp) ! kg/sec -> kmol/sec
-      case(SCALED_MASS_RATE_SS)                        ! kg/sec -> kmol/sec
-        qsrc_mol(icomp) = qsrc(icomp)/fmw_phase(icomp)*scale 
+        qsrc_mol(icomp) = qsrc(icomp)/fmw_comp(icomp) ! kg/sec -> kmol/sec
+      case(SCALED_MASS_RATE_SS)                       ! kg/sec -> kmol/sec
+        qsrc_mol(icomp) = qsrc(icomp)/fmw_comp(icomp)*scale 
       case(VOLUMETRIC_RATE_SS)  ! assume local density for now
         ! qsrc1 = m^3/sec
         qsrc_mol(icomp) = qsrc(icomp)*gen_auxvar%den(icomp) ! den = kmol/m^3
@@ -1872,6 +1887,7 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   PetscInt :: icap_up, icap_dn
   PetscReal :: Res(realization%option%nflowdof)
   PetscReal :: v_darcy(realization%option%nphase)
+  PetscReal :: water_mass, air_mass
   
   discretization => realization%discretization
   option => realization%option
@@ -2011,12 +2027,14 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
       patch%boundary_velocities(:,sum_connection) = v_darcy
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
-!        global_auxvars_bc(sum_connection)%mass_balance_delta(1,iphase) = &
-!          global_auxvars_bc(sum_connection)%mass_balance_delta(1,iphase) - &
-!          Res(1)
-        ! contribution to internal 
-!        global_auxvars(ghosted_id)%mass_balance_delta(1) = &
-!          global_auxvars(ghosted_id)%mass_balance_delta(1) + Res(1)
+        air_mass = Res(2)
+        water_mass = Res(1)-air_mass
+        global_auxvars_bc(sum_connection)%mass_balance_delta(1,1) = &
+          global_auxvars_bc(sum_connection)%mass_balance_delta(1,1) - &
+          water_mass
+        global_auxvars_bc(sum_connection)%mass_balance_delta(2,1) = &
+          global_auxvars_bc(sum_connection)%mass_balance_delta(2,1) - &
+          air_mass
       endif
 
       local_end = local_id * option%nflowdof
@@ -2076,6 +2094,18 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
                         scale,Res)
 
       r_p(local_start:local_end) =  r_p(local_start:local_end) - Res(:)
+      
+      if (option%compute_mass_balance_new) then
+        ! contribution to boundary
+        air_mass = Res(2)
+        water_mass = Res(1)-air_mass
+        global_auxvars_bc(sum_connection)%mass_balance_delta(1,1) = &
+          global_auxvars_bc(sum_connection)%mass_balance_delta(1,1) - &
+          water_mass
+        global_auxvars_bc(sum_connection)%mass_balance_delta(2,1) = &
+          global_auxvars_bc(sum_connection)%mass_balance_delta(2,1) - &
+          air_mass
+      endif
 
     enddo
     source_sink => source_sink%next
