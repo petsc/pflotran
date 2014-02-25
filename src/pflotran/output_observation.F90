@@ -1634,13 +1634,13 @@ subroutine OutputMassBalance(realization_base)
                                     'kg','',icol)
         case(G_MODE)
           call OutputAppendToHeader(header,'Global Water Mass in Liquid Phase', &
-                                    'mol','',icol)
+                                    'kg','',icol)
           call OutputAppendToHeader(header,'Global Air Mass in Liquid Phase', &
-                                    'mol','',icol)
+                                    'kg','',icol)
           call OutputAppendToHeader(header,'Global Water Mass in Gas Phase', &
-                                    'mol','',icol)
+                                    'kg','',icol)
           call OutputAppendToHeader(header,'Global Air Mass in Gas Phase', &
-                                    'mol','',icol)
+                                    'kg','',icol)
         case(MPH_MODE)
           call OutputAppendToHeader(header,'Global Water Mass in Water Phase', &
                                     'kmol','',icol)
@@ -1731,11 +1731,11 @@ subroutine OutputMassBalance(realization_base)
             call OutputAppendToHeader(header,string,units,'',icol)
           case(G_MODE)
             string = trim(coupler%name) // ' Water Mass'
-            call OutputAppendToHeader(header,string,'mol','',icol)
+            call OutputAppendToHeader(header,string,'kg','',icol)
             string = trim(coupler%name) // ' Air Mass'
-            call OutputAppendToHeader(header,string,'mol','',icol)
-            
-            units = 'mol/' // trim(output_option%tunit) // ''
+            call OutputAppendToHeader(header,string,'kg','',icol)
+
+            units = 'kg/' // trim(output_option%tunit) // ''
             string = trim(coupler%name) // ' Water Mass'
             call OutputAppendToHeader(header,string,units,'',icol)
             string = trim(coupler%name) // ' Air Mass'
@@ -1855,9 +1855,7 @@ subroutine OutputMassBalance(realization_base)
           case(IMS_MODE)
             call ImmisComputeMassBalance(realization_base,sum_kg(:,1))
           case(G_MODE)
-            option%io_buffer = 'Mass balance calculations not yet implemented for General Mode'
-            call printErrMsg(option)
-            call GeneralComputeMassBalance(realization_base,sum_kg(1,:))
+            call GeneralComputeMassBalance(realization_base,sum_kg(:,:))
         end select
       class default
         option%io_buffer = 'Unrecognized realization class in MassBalance().'
@@ -2237,6 +2235,40 @@ subroutine OutputMassBalance(realization_base)
             endif
           enddo
         case(G_MODE)
+          ! print out cumulative H2O flux
+          sum_kg = 0.d0
+          do iconn = 1, coupler%connection_set%num_connections
+            sum_kg = sum_kg + global_auxvars_bc_or_ss(offset+iconn)%mass_balance
+          enddo
+
+          int_mpi = option%nphase
+          call MPI_Reduce(sum_kg,sum_kg_global, &
+                          int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                          option%io_rank,option%mycomm,ierr)
+                              
+          if (option%myrank == option%io_rank) then
+            ! change sign for positive in / negative out
+            write(fid,110,advance="no") -sum_kg_global(:,1)
+          endif
+
+          ! print out H2O flux
+          sum_kg = 0.d0
+          do iconn = 1, coupler%connection_set%num_connections
+            sum_kg(:,1) = sum_kg(:,1) + &
+              global_auxvars_bc_or_ss(offset+iconn)%mass_balance_delta(:,1)
+          enddo
+          sum_kg(1,1) = sum_kg(1,1)*FMWH2O
+          sum_kg(2,1) = sum_kg(2,1)*FMWAIR
+          
+          int_mpi = option%nphase
+          call MPI_Reduce(sum_kg,sum_kg_global, &
+                          int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                          option%io_rank,option%mycomm,ierr)
+                              
+          if (option%myrank == option%io_rank) then
+            ! change sign for positive in / negative out
+            write(fid,110,advance="no") -sum_kg_global(:,1)*output_option%tconv
+          endif
       end select
     endif
     
