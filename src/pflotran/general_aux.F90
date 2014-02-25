@@ -154,7 +154,7 @@ function GeneralAuxCreate(option)
   allocate(aux%general_parameter)
   allocate(aux%general_parameter%diffusion_coefficient(option%nphase))
   aux%general_parameter%diffusion_coefficient(LIQUID_PHASE) = 1.d-9
-  aux%general_parameter%diffusion_coefficient(GAS_PHASE) = 1.d-5
+  aux%general_parameter%diffusion_coefficient(GAS_PHASE) = 2.13d-5
 
   GeneralAuxCreate => aux
   
@@ -370,7 +370,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       if (gen_auxvar%pres(gid) <= 0.d0) then
         write(option%io_buffer,'(''Negative gas pressure at cell '', &
           & i5,''in GeneralAuxVarCompute().  Attempting bailout.'')') ghosted_id
-        call printMsg(option)
+        call printErrMsg(option)
         ! set vapor pressure to just under saturation pressure
         gen_auxvar%pres(vpid) = 0.5d0*gen_auxvar%pres(spid)
         ! set gas pressure to vapor pressure + air pressure
@@ -404,10 +404,18 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       gen_auxvar%xmol(wid,lid) = 0.d0
       
       gen_auxvar%pres(vpid) = gen_auxvar%pres(gid) - gen_auxvar%pres(apid)
+
+      
       ! we have to have a liquid pressure to counter a neighboring 
       ! liquid pressure.  Set to gas pressure.
-      gen_auxvar%pres(lid) = gen_auxvar%pres(gid)
-      gen_auxvar%pres(cpid) = 0.d0
+!      gen_auxvar%pres(lid) = gen_auxvar%pres(gid)
+!      gen_auxvar%pres(cpid) = 0.d0
+
+      call SatFuncGetCapillaryPressure(gen_auxvar%pres(cpid), &
+                                       gen_auxvar%sat(lid), &
+                                       saturation_function,option) 
+      gen_auxvar%pres(lid) = gen_auxvar%pres(gid) - &
+                             gen_auxvar%pres(cpid)
       
     case(TWO_PHASE_STATE)
       gen_auxvar%pres(gid) = x(GENERAL_GAS_PRESSURE_DOF)

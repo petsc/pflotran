@@ -1087,7 +1087,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   PetscReal :: mobility, mole_flux, q
   PetscReal :: stp_up, stp_dn
   PetscReal :: sat_up, sat_dn
-  PetscReal :: temp_ave, stp_ave, theta, v_air
+  PetscReal :: temp_ave, stp_ave, v_air
   PetscReal :: k_eff_up, k_eff_dn, k_eff_ave, heat_flux
   
   wat_comp_id = option%water_id
@@ -1107,85 +1107,93 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
 #if 1
   do iphase = 1, option%nphase
  
-#if 0   
-    if (gen_auxvar_up%sat(iphase) > sir_up(iphase) .or. &
-        gen_auxvar_dn%sat(iphase) > sir_dn(iphase)) then
-      upweight_adj = upweight
-      if (gen_auxvar_up%sat(iphase) < eps) then 
-        upweight_adj=0.d0
-      else if (gen_auxvar_dn%sat(iphase) < eps) then 
-        upweight_adj=1.d0
+    if (gen_auxvar_up%mobility(iphase) + &
+        gen_auxvar_dn%mobility(iphase) < eps) then
+      cycle
+    endif
+    
+    if (iphase == LIQUID_PHASE) then
+      if (global_auxvar_up%istate == GAS_STATE) then
+        density_ave = gen_auxvar_dn%den(iphase)
+        density_kg_ave = gen_auxvar_dn%den_kg(iphase)
+      else if (global_auxvar_dn%istate == GAS_STATE) then
+        density_ave = gen_auxvar_dn%den(iphase)
+        density_kg_ave = gen_auxvar_dn%den_kg(iphase)
+      else          
+        density_ave = 0.5d0*(gen_auxvar_up%den(iphase) + &
+                              gen_auxvar_dn%den(iphase))
+        density_kg_ave = 0.5d0*(gen_auxvar_up%den_kg(iphase) + &
+                                gen_auxvar_dn%den_kg(iphase))
       endif
-! trying to rule out the averaging of density, etc. causing problems
-      density_ave = upweight_adj*gen_auxvar_up%den(iphase)+ &
-                    (1.D0-upweight_adj)*gen_auxvar_dn%den(iphase)
-      ! MJ/kmol
-      H_ave = upweight_adj*gen_auxvar_up%H(iphase)+ &
-              (1.D0-upweight_adj)*gen_auxvar_dn%H(iphase)
-
-      !geh: dist_gravity is the distance * gravity in the direction of 
-      !     gravity (negative if gravity is down)      
-      gravity_term = (upweight_adj*gen_auxvar_up%den(iphase) + &
-                     (1.D0-upweight)*gen_auxvar_dn%den(iphase)) &
-                     * fmw_phase(iphase) * dist_gravity
-#endif
-      density_ave = 0.5d0*(gen_auxvar_up%den(iphase) + &
-                           gen_auxvar_dn%den(iphase))
-      H_ave = 0.5d0*(gen_auxvar_up%H(iphase) + gen_auxvar_dn%H(iphase))
-      ! density_ave must be in units of kg/m^3, not mol as we cannot 
-      ! convert the gas density using FMWAIR!!!
-      density_kg_ave =  0.5d0*(gen_auxvar_up%den_kg(iphase) + &
-                               gen_auxvar_dn%den_kg(iphase))
-      gravity_term = density_kg_ave * dist_gravity
+    else if (iphase == GAS_PHASE) then
+      if (global_auxvar_up%istate == LIQUID_STATE) then
+        density_ave = gen_auxvar_dn%den(iphase)
+        density_kg_ave = gen_auxvar_dn%den_kg(iphase)
+      else if (global_auxvar_dn%istate == LIQUID_STATE) then
+        density_ave = gen_auxvar_dn%den(iphase)
+        density_kg_ave = gen_auxvar_dn%den_kg(iphase)
+      else          
+        density_ave = 0.5d0*(gen_auxvar_up%den(iphase) + &
+                              gen_auxvar_dn%den(iphase))
+        density_kg_ave = 0.5d0*(gen_auxvar_up%den_kg(iphase) + &
+                                gen_auxvar_dn%den_kg(iphase))
+      endif
+    endif
+!      H_ave = 0.5d0*(gen_auxvar_up%H(iphase) + gen_auxvar_dn%H(iphase))
+    ! density_ave must be in units of kg/m^3, not mol as we cannot 
+    ! convert the gas density using FMWAIR!!!
+!      density_kg_ave =  0.5d0*(gen_auxvar_up%den_kg(iphase) + &
+!                               gen_auxvar_dn%den_kg(iphase))
+    gravity_term = density_kg_ave * dist_gravity
       
-      delta_pressure = gen_auxvar_up%pres(iphase) - &
-                       gen_auxvar_dn%pres(iphase) + &
-                       gravity_term
+    delta_pressure = gen_auxvar_up%pres(iphase) - &
+                     gen_auxvar_dn%pres(iphase) + &
+                     gravity_term
 
-      if (delta_pressure >= 0.D0) then
-        mobility = gen_auxvar_up%mobility(iphase)
-        xmol(:) = gen_auxvar_up%xmol(:,iphase)
-        den = density_ave
-        uH = H_ave
-      else
-        mobility = gen_auxvar_dn%mobility(iphase)
-        xmol(:) = gen_auxvar_dn%xmol(:,iphase)
-        den = density_ave
-        uH = H_ave
-      endif      
+    if (delta_pressure >= 0.D0) then
+      mobility = gen_auxvar_up%mobility(iphase)
+      xmol(:) = gen_auxvar_up%xmol(:,iphase)
+      den = density_ave
+      H_ave = gen_auxvar_up%H(iphase)
+      uH = H_ave
+    else
+      mobility = gen_auxvar_dn%mobility(iphase)
+      xmol(:) = gen_auxvar_dn%xmol(:,iphase)
+      den = density_ave
+      H_ave = gen_auxvar_dn%H(iphase)
+      uH = H_ave
+    endif      
 
-      if (mobility > floweps) then
-        ! v_darcy[m/sec] = perm[m^2] / dist[m] * kr[-] / mu[Pa-sec]
-        !                    dP[Pa]]
-        v_darcy(iphase) = perm_ave_over_dist * mobility * delta_pressure
-        ! q[m^3 phase/sec] = v_darcy[m/sec] * area[m^2]
-        q = v_darcy(iphase) * area  
-        ! mole_flux[kmol phase/sec] = q[m^3 phase/sec] * 
-        !                             density_ave[kmol phase/m^3 phase]        
-        mole_flux = q*den       
-        ! Res[kmol total/sec]
-        Res(1) = Res(1) + mole_flux
-        do icomp = 2, option%nflowspec
-          ! Res[kmol comp/sec] = mole_flux[kmol phase/sec] * 
-          !                      xmol[kmol comp/kmol phase]
-          Res(icomp) = Res(icomp) + mole_flux * xmol(icomp)
-        enddo
-        ! Res[MJ/sec] = mole_flux[kmol comp/sec] * H_ave[MJ/kmol comp]
-        Res(energy_id) = Res(energy_id) + mole_flux * uH
-      endif                   
-#if 0
-    endif ! sat > eps
-#endif
+    if (mobility > floweps) then
+      ! v_darcy[m/sec] = perm[m^2] / dist[m] * kr[-] / mu[Pa-sec]
+      !                    dP[Pa]]
+      v_darcy(iphase) = perm_ave_over_dist * mobility * delta_pressure
+      ! q[m^3 phase/sec] = v_darcy[m/sec] * area[m^2]
+      q = v_darcy(iphase) * area  
+      ! mole_flux[kmol phase/sec] = q[m^3 phase/sec] * 
+      !                             density_ave[kmol phase/m^3 phase]        
+      mole_flux = q*den       
+      ! Res[kmol total/sec]
+      Res(1) = Res(1) + mole_flux
+      do icomp = 2, option%nflowspec
+        ! Res[kmol comp/sec] = mole_flux[kmol phase/sec] * 
+        !                      xmol[kmol comp/kmol phase]
+        Res(icomp) = Res(icomp) + mole_flux * xmol(icomp)
+      enddo
+      ! Res[MJ/sec] = mole_flux[kmol comp/sec] * H_ave[MJ/kmol comp]
+      Res(energy_id) = Res(energy_id) + mole_flux * uH
+    endif                   
+
   enddo
 #endif
 
 #if 1
   ! add in gas component diffusion in gas and liquid phases
   do iphase = 1, option%nphase
-    theta = 1.8d0
     sat_up = gen_auxvar_up%sat(iphase)
     sat_dn = gen_auxvar_dn%sat(iphase)
     !geh: changed to .and. -> .or.
+    if (sqrt(sat_up*sat_dn) < eps) cycle
     if (sat_up > eps .or. sat_dn > eps) then
       upweight_adj = upweight
       ! for now, if liquid state neighboring gas, we allow for minute
@@ -1204,8 +1212,9 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
       endif   
       ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) 
       !       = m^3 water/m^4 bulk 
-      density_ave = upweight_adj*gen_auxvar_up%den(iphase)+ &
-                    (1.D0-upweight_adj)*gen_auxvar_dn%den(iphase)
+!      density_ave = upweight_adj*gen_auxvar_up%den(iphase)+ &
+!                    (1.D0-upweight_adj)*gen_auxvar_dn%den(iphase)
+      density_ave = 0.5d0*(gen_auxvar_up%den(iphase)+gen_auxvar_dn%den(iphase))
       stp_ave = sqrt(sat_up*sat_dn)* &
                 sqrt(material_auxvar_up%tortuosity* &
                      material_auxvar_dn%tortuosity)* &
@@ -1221,14 +1230,16 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
         v_air = stp_ave * &
                 general_parameter%diffusion_coefficient(iphase) * delta_xmol
       else
-        temp_ave = upweight_adj*gen_auxvar_up%temp + &
-                   (1.d0-upweight_adj)*gen_auxvar_dn%temp
-        pressure_ave = upweight_adj*gen_auxvar_up%pres(iphase)+ &
-                       (1.D0-upweight_adj)*gen_auxvar_dn%pres(iphase)
+!        temp_ave = upweight_adj*gen_auxvar_up%temp + &
+!                   (1.d0-upweight_adj)*gen_auxvar_dn%temp
+!        pressure_ave = upweight_adj*gen_auxvar_up%pres(iphase)+ &
+!                       (1.D0-upweight_adj)*gen_auxvar_dn%pres(iphase)
+        temp_ave = 0.5d0*(gen_auxvar_up%temp+gen_auxvar_dn%temp)
+        pressure_ave = 0.5d0*(gen_auxvar_up%pres(iphase)+gen_auxvar_dn%pres(iphase))
         ! Eq. 1.9b.  The gas density is added below
         v_air = stp_ave * &
-                ((temp_ave+273.15)/273.15d0)**theta * &
-                option%reference_pressure / pressure_ave * &
+                ((temp_ave+273.15)/273.15d0)**1.8d0 * &
+                101325.d0 / pressure_ave * &
                 general_parameter%diffusion_coefficient(iphase) * delta_xmol      
       endif      
       q =  v_air * area
@@ -1399,7 +1410,7 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
   PetscReal :: gravity_term
   PetscReal :: mobility, mole_flux, q
   PetscReal :: sat_dn, perm_dn
-  PetscReal :: temp_ave, stp_ave, theta, v_air
+  PetscReal :: temp_ave, stp_ave, v_air, pres_ave
   PetscReal :: k_eff_up, k_eff_dn, k_eff_ave, heat_flux
   
   PetscInt :: idof
@@ -1451,24 +1462,41 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
           else if (gen_auxvar_dn%sat(iphase) < eps) then 
             upweight=1.d0
           endif 
-#if 0                  
-          density_ave = upweight*gen_auxvar_up%den(iphase)+ &
-                        (1.D0-upweight)*gen_auxvar_dn%den(iphase)
-          ! MJ/kmol
-!geh          H_ave = upweight*gen_auxvar_up%H(iphase)+ &
-!geh                  (1.D0-upweight)*gen_auxvar_dn%H(iphase)
 
-          gravity_term = (upweight*gen_auxvar_up%den(iphase) + &
-                         (1.D0-upweight)*gen_auxvar_dn%den(iphase)) &
-                          * fmw_phase(iphase) * dist_gravity 
-#endif                    
-
-          density_ave = 0.5d0*(gen_auxvar_up%den(iphase) + &
-                               gen_auxvar_dn%den(iphase))
+          if (iphase == LIQUID_PHASE) then
+            if (global_auxvar_up%istate == GAS_STATE) then
+              density_ave = gen_auxvar_dn%den(iphase)
+              density_kg_ave = gen_auxvar_dn%den_kg(iphase)
+            else if (global_auxvar_dn%istate == GAS_STATE) then
+              density_ave = gen_auxvar_dn%den(iphase)
+              density_kg_ave = gen_auxvar_dn%den_kg(iphase)
+            else          
+              density_ave = 0.5d0*(gen_auxvar_up%den(iphase) + &
+                                    gen_auxvar_dn%den(iphase))
+              density_kg_ave = 0.5d0*(gen_auxvar_up%den_kg(iphase) + &
+                                      gen_auxvar_dn%den_kg(iphase))
+            endif
+          else if (iphase == GAS_PHASE) then
+            if (global_auxvar_up%istate == LIQUID_STATE) then
+              density_ave = gen_auxvar_dn%den(iphase)
+              density_kg_ave = gen_auxvar_dn%den_kg(iphase)
+            else if (global_auxvar_dn%istate == LIQUID_STATE) then
+              density_ave = gen_auxvar_dn%den(iphase)
+              density_kg_ave = gen_auxvar_dn%den_kg(iphase)
+            else          
+              density_ave = 0.5d0*(gen_auxvar_up%den(iphase) + &
+                                    gen_auxvar_dn%den(iphase))
+              density_kg_ave = 0.5d0*(gen_auxvar_up%den_kg(iphase) + &
+                                      gen_auxvar_dn%den_kg(iphase))
+            endif
+          endif
+    
+!          density_ave = 0.5d0*(gen_auxvar_up%den(iphase) + &
+!                               gen_auxvar_dn%den(iphase))
           ! density_ave must be in units of kg/m^3, not mol as we cannot 
           ! convert the gas density using FMWAIR!!!
-          density_kg_ave =  0.5d0*(gen_auxvar_up%den_kg(iphase) + &
-                               gen_auxvar_dn%den_kg(iphase))
+!          density_kg_ave =  0.5d0*(gen_auxvar_up%den_kg(iphase) + &
+!                               gen_auxvar_dn%den_kg(iphase))
           gravity_term = density_kg_ave * dist_gravity
       
           delta_pressure = gen_auxvar_up%pres(iphase) - &
@@ -1551,7 +1579,6 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
 #if 1
   ! add in gas component diffusion in gas and liquid phases
   do iphase = 1, option%nphase
-    theta = 1.d0
   
     if (ibndtype(iphase) == NEUMANN_BC) then
       cycle
@@ -1566,17 +1593,13 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
     if (gen_auxvar_dn%sat(iphase) > eps) then
       upweight = 1.d0
       sat_dn = gen_auxvar_dn%sat(iphase)
-      if (gen_auxvar_up%sat(iphase) < eps) then 
-        upweight = 0.d0
-      else if (gen_auxvar_dn%sat(iphase) < eps) then 
-        upweight = 1.d0
-      endif
+!      if (gen_auxvar_up%sat(iphase) < eps) then 
+!        upweight = 0.d0
+!      else if (gen_auxvar_dn%sat(iphase) < eps) then 
+!        upweight = 1.d0
+!      endif
       ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) 
       !       = m^3 water/m^4 bulk 
-      temp_ave = upweight*gen_auxvar_up%temp + &
-              (1.d0-upweight)*gen_auxvar_dn%temp
-      density_ave = upweight*gen_auxvar_up%den(iphase)+ &
-                    (1.D0-upweight)*gen_auxvar_dn%den(iphase)             
   !    stp_ave = tor_dn*por_dn*(sat_up*sat_dn)/ &
   !              ((sat_up+sat_dn)*dd_dn)
       ! should saturation be distance weighted?
@@ -1592,14 +1615,21 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
         v_air = stp_ave * &
                 general_parameter%diffusion_coefficient(iphase) * delta_xmol
       else
+!        temp_ave = upweight*gen_auxvar_up%temp + &
+!                   (1.d0-upweight)*gen_auxvar_dn%temp
+        temp_ave = 0.5d0*(gen_auxvar_up%temp + gen_auxvar_dn%temp)
+        pres_ave = 0.5d0*(gen_auxvar_up%pres(iphase)+gen_auxvar_dn%pres(iphase))
         ! Eq. 1.9b.  The gas density is added below
         v_air = stp_ave * &
-                (temp_ave/273.15d0)**theta * &
-                option%reference_pressure / &
-                gen_auxvar_dn%pres(iphase) * &
+                ((temp_ave+273.15)/273.15d0)**1.8d0 * &
+                101325.d0 / &
+                pres_ave * &
                 general_parameter%diffusion_coefficient(iphase) * delta_xmol      
       endif
       q =  v_air * area
+!      density_ave = upweight*gen_auxvar_up%den(iphase)+ &
+!                    (1.D0-upweight)*gen_auxvar_dn%den(iphase)             
+      density_ave = 0.5d0*(gen_auxvar_up%den(iphase)+gen_auxvar_dn%den(iphase))
       mole_flux = q * density_ave
       Res(air_comp_id) = Res(air_comp_id) + mole_flux
     endif
@@ -1908,9 +1938,6 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   call DiscretizationLocalToLocal(discretization,field%iphas_loc, &
                                   field%iphas_loc,ONEDOF)
   
-!  call GeneralResidualPatch1(snes,xx,r,realization,ierr)
-
-
   option%variables_swapped = PETSC_FALSE
                                              ! do update state
   call GeneralUpdateAuxVars(realization,PETSC_TRUE)
@@ -1930,7 +1957,27 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   ! now assign access pointer to local variables
   call VecGetArrayF90(r, r_p, ierr)
 
-  r_p = 0.d0
+  ! Accumulation terms ------------------------------------
+  ! accumulation at t(k) (doesn't change during Newton iteration)
+  call VecGetArrayReadF90(field%flow_accum, accum_p, ierr)
+  r_p = -accum_p
+  call VecRestoreArrayReadF90(field%flow_accum, accum_p, ierr)
+  
+  ! accumulation at t(k+1)
+  do local_id = 1, grid%nlmax  ! For each local node do...
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    imat = patch%imat(ghosted_id)
+    if (imat <= 0) cycle
+    local_end = local_id * option%nflowdof
+    local_start = local_end - option%nflowdof + 1
+    call GeneralAccumulation(gen_auxvars(ZERO_INTEGER,ghosted_id), &
+                              global_auxvars(ghosted_id), &
+                              material_auxvars(ghosted_id), &
+                              material_parameter%soil_heat_capacity(imat), &
+                              option,Res) 
+    r_p(local_start:local_end) =  r_p(local_start:local_end) + Res(:)
+  enddo
 
   ! Interior Flux Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
@@ -2043,26 +2090,6 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
 
     enddo
     boundary_condition => boundary_condition%next
-  enddo
-
-  ! Accumulation terms ------------------------------------
-  call VecGetArrayReadF90(field%flow_accum, accum_p, ierr)
-  r_p = r_p - accum_p
-  call VecRestoreArrayReadF90(field%flow_accum, accum_p, ierr)
-    
-  do local_id = 1, grid%nlmax  ! For each local node do...
-    ghosted_id = grid%nL2G(local_id)
-    !geh - Ignore inactive cells with inactive materials
-    imat = patch%imat(ghosted_id)
-    if (imat <= 0) cycle
-    local_end = local_id * option%nflowdof
-    local_start = local_end - option%nflowdof + 1
-    call GeneralAccumulation(gen_auxvars(ZERO_INTEGER,ghosted_id), &
-                              global_auxvars(ghosted_id), &
-                              material_auxvars(ghosted_id), &
-                              material_parameter%soil_heat_capacity(imat), &
-                              option,Res) 
-    r_p(local_start:local_end) =  r_p(local_start:local_end) + Res(:)
   enddo
 
   ! Source/sink terms -------------------------------------
@@ -2240,6 +2267,22 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
   call GeneralOutputAuxVars(gen_auxvars,global_auxvars,option)
 #endif 
 
+  ! Accumulation terms ------------------------------------
+  do local_id = 1, grid%nlmax  ! For each local node do...
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    imat = patch%imat(ghosted_id)
+    if (imat <= 0) cycle
+    call GeneralAccumDerivative(gen_auxvars(:,ghosted_id), &
+                              global_auxvars(ghosted_id), &
+                              material_auxvars(ghosted_id), &
+                              material_parameter%soil_heat_capacity(imat), &
+                              option, &
+                              Jup) 
+    call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
+                                  ADD_VALUES,ierr)
+  enddo
+
   ! Interior Flux Terms -----------------------------------  
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
@@ -2355,23 +2398,6 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
     call MatView(A,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
-
-  ! Accumulation terms ------------------------------------
-
-  do local_id = 1, grid%nlmax  ! For each local node do...
-    ghosted_id = grid%nL2G(local_id)
-    !geh - Ignore inactive cells with inactive materials
-    imat = patch%imat(ghosted_id)
-    if (imat <= 0) cycle
-    call GeneralAccumDerivative(gen_auxvars(:,ghosted_id), &
-                              global_auxvars(ghosted_id), &
-                              material_auxvars(ghosted_id), &
-                              material_parameter%soil_heat_capacity(imat), &
-                              option, &
-                              Jup) 
-    call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
-                                  ADD_VALUES,ierr)
-  enddo
 
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
