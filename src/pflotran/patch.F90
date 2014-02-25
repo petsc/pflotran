@@ -489,7 +489,8 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
           call printErrMsg(option)
         endif
         ! check to ensure that a rate subcondition exists
-        if (.not.associated(coupler%flow_condition%rate)) then
+        if (.not.associated(coupler%flow_condition%rate) .and. &
+              .not.associated(coupler%flow_condition%well)) then
           temp_int = 0
           if (associated(coupler%flow_condition%general)) then
             if (associated(coupler%flow_condition%general%rate)) then
@@ -498,7 +499,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
           endif
           if (temp_int == 0) then
             option%io_buffer = 'FLOW_CONDITIONs associated with ' // &
-              'SOURCE_SINKs must have a RATE expression within them.'
+              'SOURCE_SINKs must have a RATE or WELL expression within them.'
             call printErrMsg(option)
           endif
         endif
