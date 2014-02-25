@@ -936,7 +936,7 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
   v_over_t = material_auxvar%volume / option%flow_dt
 
   porosity = material_auxvar%porosity
-    if (soil_compressibility_index > 0) then
+  if (soil_compressibility_index > 0) then
     call MaterialCompressSoil(material_auxvar, &
                               maxval(global_auxvar%pres(1:2)), &
                               compressed_porosity,dcompressed_porosity_dp)
@@ -950,7 +950,7 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
     ! Res[kmol total/m^3 void] = sat[m^3 phase/m^3 void] * 
     !                            den[kmol phase/m^3 phase]
     Res(1) = Res(1) + gen_auxvar%sat(iphase) * &
-                              gen_auxvar%den(iphase)
+                      gen_auxvar%den(iphase)
     ! Res[kmol comp/m^3 void] = sat[m^3 phase/m^3 void] * 
     !                           den[kmol phase/m^3 phase] * 
     !                           xmol[kmol comp/kmol phase]
@@ -1111,7 +1111,8 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
         gen_auxvar_dn%mobility(iphase) < eps) then
       cycle
     endif
-    
+
+#if 1
     if (iphase == LIQUID_PHASE) then
       if (global_auxvar_up%istate == GAS_STATE) then
         density_ave = gen_auxvar_dn%den(iphase)
@@ -1139,6 +1140,12 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
                                 gen_auxvar_dn%den_kg(iphase))
       endif
     endif
+#else
+    density_ave = 0.5d0*(gen_auxvar_up%den(iphase) + &
+                          gen_auxvar_dn%den(iphase))
+    density_kg_ave = 0.5d0*(gen_auxvar_up%den_kg(iphase) + &
+                            gen_auxvar_dn%den_kg(iphase))
+#endif    
 !      H_ave = 0.5d0*(gen_auxvar_up%H(iphase) + gen_auxvar_dn%H(iphase))
     ! density_ave must be in units of kg/m^3, not mol as we cannot 
     ! convert the gas density using FMWAIR!!!
@@ -1462,7 +1469,7 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
           else if (gen_auxvar_dn%sat(iphase) < eps) then 
             upweight=1.d0
           endif 
-
+#if 1
           if (iphase == LIQUID_PHASE) then
             if (global_auxvar_up%istate == GAS_STATE) then
               density_ave = gen_auxvar_dn%den(iphase)
@@ -1490,7 +1497,12 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
                                       gen_auxvar_dn%den_kg(iphase))
             endif
           endif
-    
+#else
+          density_ave = 0.5d0*(gen_auxvar_up%den(iphase) + &
+                                gen_auxvar_dn%den(iphase))
+          density_kg_ave = 0.5d0*(gen_auxvar_up%den_kg(iphase) + &
+                                  gen_auxvar_dn%den_kg(iphase))
+#endif
 !          density_ave = 0.5d0*(gen_auxvar_up%den(iphase) + &
 !                               gen_auxvar_dn%den(iphase))
           ! density_ave must be in units of kg/m^3, not mol as we cannot 
