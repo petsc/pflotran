@@ -61,8 +61,8 @@ module General_Aux_module
     PetscInt :: istate_store(2) ! 1 = previous timestep; 2 = previous iteration
     PetscReal, pointer :: pres(:)   ! (iphase)
     PetscReal, pointer :: sat(:)    ! (iphase)
-    PetscReal, pointer :: den(:)    ! (iphase)
-    PetscReal, pointer :: den_kg(:) ! (iphase)
+    PetscReal, pointer :: den(:)    ! (iphase) kmol/m^3 phase
+    PetscReal, pointer :: den_kg(:) ! (iphase) kg/m^3 phase
     PetscReal :: temp
     PetscReal, pointer :: xmol(:,:) ! (icomp,iphase)
     PetscReal, pointer :: H(:) ! MJ/kmol
@@ -728,8 +728,10 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
     case(GAS_STATE)
       if (gen_auxvar%pres(vpid) >= gen_auxvar%pres(spid)) then
 #ifdef DEBUG_GENERAL
+#ifdef DEBUG_GENERAL_INFO
         call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &
                                  'Before Update',option)
+#endif
         if (option%iflag == 1) then
           write(state_change_string,'(''Gas -> 2 Phase at Cell '',i5)') &
             ghosted_id
