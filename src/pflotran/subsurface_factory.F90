@@ -78,6 +78,8 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   simulation_old => SimulationCreate(option)
   call Init(simulation_old)
   call HijackSimulation(simulation_old,simulation)
+  ! no longer need simulation
+  deallocate(simulation_old)
   call SubsurfaceJumpStart(simulation)
   
 end subroutine SubsurfaceInitializePostPetsc
@@ -149,7 +151,7 @@ subroutine HijackSimulation(simulation_old,simulation)
   
   implicit none
   
-  type(simulation_type), pointer :: simulation_old
+  type(simulation_type) :: simulation_old
   class(subsurface_simulation_type) :: simulation
   
   class(pmc_subsurface_type), pointer :: flow_process_model_coupler
@@ -318,12 +320,6 @@ subroutine HijackSimulation(simulation_old,simulation)
   
   ! point the top process model coupler to Output
   simulation%process_model_coupler_list%Output => Output
- 
-  ! no longer need simulation
-  ! nullify realization and regression so that it is not destroyed
-  nullify(simulation_old%realization)
-  nullify(simulation_old%regression)
-  call SimulationDestroy(simulation_old)
 
 end subroutine HijackSimulation
 
