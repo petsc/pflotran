@@ -1,0 +1,183 @@
+:Description: 1D test problem for permeability update with pressure
+:Satish Karra
+:01/15/2014 
+:===================== richards mode ===============================================
+MODE RICHARDS 
+
+:updating permeability based on pressure
+UPDATE_FLOW_PERMEABILITY
+
+:=========================== regression =======================================
+REGRESSION
+  :CELLS_PER_PROCESS 2
+  CELLS
+    1
+    20
+    25
+    30
+    35
+    40
+    45
+    50
+    55
+    60
+    65
+    70
+    75
+    80
+    100
+  /
+END
+:===================== Discretization =========================================
+GRID
+  TYPE structured
+  ORIGIN 0.d0 0.d0 0.d0
+  NXYZ 100 1 1
+  BOUNDS
+    0.d0 0.d0 0.d0
+    10.d0 1.d0 1.d0
+  /
+END
+
+:===================== Solver options =========================================
+NEWTON_SOLVER FLOW
+  ATOL 1D-12
+  RTOL 1D-8
+  STOL 1D-15
+  ITOL 1D-8
+  MAXIT 100
+  MAXF 1000
+END
+
+
+LINEAR_SOLVER FLOW
+:PC_TYPE LU
+:KSP_TYPE PREONLY
+END
+
+LINEAR_SOLVER TRANSPORT
+:PC_TYPE LU
+:KSP_TYPE PREONLY
+END
+
+NEWTON_SOLVER TRANSPORT
+  MATRIX_TYPE AIJ
+  PRECONDITIONER_MATRIX_TYPE AIJ
+END
+
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+:========================= material properties ================================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.5d0
+  SATURATION_FUNCTION default 
+  PERMEABILITY 
+    PERM_X 1.d-15
+    PERM_Y 1.d-15
+    PERM_Z 1.d-15
+  /
+  PERM_FACTOR
+    MIN_PRESSURE 3.d5
+    MAX_PRESSURE 7.d5
+    MAX_PERMFACTOR 100
+  /
+END
+
+:========================= saturation functions ===============================
+SATURATION_FUNCTION default
+  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+  RESIDUAL_SATURATION 0.5d-1
+  LAMBDA 0.75
+  ALPHA 1.d-3
+END
+
+:========================= output options =====================================
+OUTPUT
+  TIMES y  0.001 0.1 0.5 1 1.5 2
+  SCREEN PERIODIC 1
+  PRINT_COLUMN_IDS
+  FORMAT TECPLOT POINT
+  PERMEABILITY
+  VELOCITIES
+END
+
+:======================== times ===============================================
+TIME
+  FINAL_TIME 2 y
+  INITIAL_TIMESTEP_SIZE 1.d-8 y
+  MAXIMUM_TIMESTEP_SIZE 1.d1  y
+END
+
+:=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    10.d0 1.d0 1.d0
+  /
+END
+
+REGION west
+  FACE WEST
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 1.d0 1.d0
+  /
+END
+
+REGION east
+  FACE EAST
+  COORDINATES
+    10.d0 0.d0 0.d0
+    10.d0 1.d0 1.d0
+  /
+END
+
+:======================= flow conditions ======================================
+FLOW_CONDITION initial
+  UNITS Pa, C, yr
+  TYPE
+    PRESSURE dirichlet
+  /
+  PRESSURE 1.5D5
+END
+
+FLOW_CONDITION east 
+  TYPE 
+    PRESSURE dirichlet
+  /
+  PRESSURE 1.5D5
+END
+
+FLOW_CONDITION west
+  TYPE 
+    PRESSURE dirichlet
+  /
+  PRESSURE 10.0D5
+END
+:========================== initial and boundary conditions ===================
+: initial condition
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  REGION all
+END
+
+: west boundary condition
+BOUNDARY_CONDITION
+  FLOW_CONDITION west
+  REGION west
+END
+
+: east boundary condition
+BOUNDARY_CONDITION
+  FLOW_CONDITION initial
+  REGION east
+END
+
+:===================== stratigraphy couplers ==================================
+STRATA
+  REGION all
+  MATERIAL soil1
+END
+

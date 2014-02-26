@@ -179,7 +179,7 @@ end subroutine ExampleSetup
 ! ************************************************************************** !
 
 subroutine ExampleReact(this,Residual,Jacobian,compute_derivative, &
-                         rt_auxvar,global_auxvar,porosity,volume,reaction, &
+                         rt_auxvar,global_auxvar,material_auxvar,reaction, &
                          option)
   ! 
   ! Evaluates reaction storing residual and/or Jacobian
@@ -190,6 +190,7 @@ subroutine ExampleReact(this,Residual,Jacobian,compute_derivative, &
 
   use Option_module
   use Reaction_Aux_module
+  use Material_Aux_class
   
   implicit none
   
@@ -200,10 +201,9 @@ subroutine ExampleReact(this,Residual,Jacobian,compute_derivative, &
   ! the following arrays must be declared after reaction
   PetscReal :: Residual(reaction%ncomp)
   PetscReal :: Jacobian(reaction%ncomp,reaction%ncomp)
-  PetscReal :: porosity
-  PetscReal :: volume
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
 
   PetscInt, parameter :: iphase = 1
   PetscReal :: L_water
@@ -260,7 +260,8 @@ subroutine ExampleReact(this,Residual,Jacobian,compute_derivative, &
   ! Unit of the residual must be in moles/second
   ! global_auxvar%sat(iphase) = saturation of cell
   ! 1.d3 converts m^3 water -> L water
-  L_water = porosity*global_auxvar%sat(iphase)*volume*1.d3
+  L_water = material_auxvar%porosity*global_auxvar%sat(iphase)* &
+            material_auxvar%volume*1.d3
   ! alway subtract contribution from residual
   Residual(this%species_id) = Residual(this%species_id) - &
     this%rate_constant * &  ! 1/sec

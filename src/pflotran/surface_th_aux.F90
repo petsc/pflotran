@@ -31,12 +31,12 @@ module Surface_TH_Aux_module
   type, public :: Surface_TH_type
     PetscInt :: n_zero_rows
     PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
-    PetscBool :: aux_vars_up_to_date
+    PetscBool :: auxvars_up_to_date
     PetscBool :: inactive_cells_exist
     PetscInt :: num_aux, num_aux_bc, num_aux_ss
-    type(Surface_TH_auxvar_type), pointer :: aux_vars(:)
-    type(Surface_TH_auxvar_type), pointer :: aux_vars_bc(:)
-    type(Surface_TH_auxvar_type), pointer :: aux_vars_ss(:)
+    type(Surface_TH_auxvar_type), pointer :: auxvars(:)
+    type(Surface_TH_auxvar_type), pointer :: auxvars_bc(:)
+    type(Surface_TH_auxvar_type), pointer :: auxvars_ss(:)
   end type Surface_TH_type
 
   public :: SurfaceTHAuxCreate, &
@@ -68,14 +68,14 @@ function SurfaceTHAuxCreate(option)
   type(Surface_TH_type), pointer :: aux
 
   allocate(aux)
-  aux%aux_vars_up_to_date = PETSC_FALSE
+  aux%auxvars_up_to_date = PETSC_FALSE
   aux%inactive_cells_exist = PETSC_FALSE
   aux%num_aux = 0
   aux%num_aux_bc = 0
   aux%num_aux_ss = 0
-  nullify(aux%aux_vars)
-  nullify(aux%aux_vars_bc)
-  nullify(aux%aux_vars_ss)
+  nullify(aux%auxvars)
+  nullify(aux%auxvars_bc)
+  nullify(aux%auxvars_ss)
   aux%n_zero_rows = 0
   nullify(aux%zero_rows_local)
   nullify(aux%zero_rows_local_ghosted)
@@ -86,7 +86,7 @@ end function SurfaceTHAuxCreate
 
 ! ************************************************************************** !
 
-subroutine SurfaceTHAuxVarInit(aux_var,option)
+subroutine SurfaceTHAuxVarInit(auxvar,option)
   ! 
   ! This routine initilizes an object.
   ! 
@@ -98,24 +98,24 @@ subroutine SurfaceTHAuxVarInit(aux_var,option)
 
   implicit none
   
-  type(Surface_TH_auxvar_type) :: aux_var
+  type(Surface_TH_auxvar_type) :: auxvar
   type(option_type) :: option
 
-  aux_var%h = 0.d0
-  aux_var%u = 0.d0
-  aux_var%pc = 0.d0
-  aux_var%Cw = 4.188d3     ! [J/kg/K]
-  aux_var%Ci = 2.050d3     ! [J/kg/K]
-  aux_var%Cwi = 4.188d3     ! [J/kg/K]
-  aux_var%k_therm = 0.57d0 ! [J/s/m/K]
-  aux_var%unfrozen_fraction = 1.d0
-  aux_var%den_water_kg = 1.d3  ! [kg/m^3]
+  auxvar%h = 0.d0
+  auxvar%u = 0.d0
+  auxvar%pc = 0.d0
+  auxvar%Cw = 4.188d3     ! [J/kg/K]
+  auxvar%Ci = 2.050d3     ! [J/kg/K]
+  auxvar%Cwi = 4.188d3     ! [J/kg/K]
+  auxvar%k_therm = 0.57d0 ! [J/s/m/K]
+  auxvar%unfrozen_fraction = 1.d0
+  auxvar%den_water_kg = 1.d3  ! [kg/m^3]
 
 end subroutine SurfaceTHAuxVarInit
 
 ! ************************************************************************** !
 
-subroutine SurfaceTHAuxVarCopy(aux_var,aux_var2,option)
+subroutine SurfaceTHAuxVarCopy(auxvar,auxvar2,option)
   ! 
   ! This routine makes a copy of an object.
   ! 
@@ -127,24 +127,24 @@ subroutine SurfaceTHAuxVarCopy(aux_var,aux_var2,option)
 
   implicit none
   
-  type(Surface_TH_auxvar_type) :: aux_var, aux_var2
+  type(Surface_TH_auxvar_type) :: auxvar, auxvar2
   type(option_type) :: option
 
-  aux_var2%h = aux_var%h
-  aux_var2%u = aux_var%u
-  aux_var2%pc = aux_var%pc
-  aux_var2%Cw = aux_var%Cw
-  aux_var2%Ci = aux_var%Ci
-  aux_var2%Cwi = aux_var%Cwi
-  aux_var2%k_therm = aux_var%k_therm
-  aux_var2%unfrozen_fraction = aux_var%unfrozen_fraction
-  aux_var2%den_water_kg = aux_var%den_water_kg
+  auxvar2%h = auxvar%h
+  auxvar2%u = auxvar%u
+  auxvar2%pc = auxvar%pc
+  auxvar2%Cw = auxvar%Cw
+  auxvar2%Ci = auxvar%Ci
+  auxvar2%Cwi = auxvar%Cwi
+  auxvar2%k_therm = auxvar%k_therm
+  auxvar2%unfrozen_fraction = auxvar%unfrozen_fraction
+  auxvar2%den_water_kg = auxvar%den_water_kg
 
 end subroutine SurfaceTHAuxVarCopy
 
 ! ************************************************************************** !
 
-subroutine SurfaceTHAuxVarCompute(xx,aux_var,global_aux_var, &
+subroutine SurfaceTHAuxVarCompute(xx,auxvar,global_auxvar, &
                                   option)
   ! 
   ! This routine computes values for auxiliary variables.
@@ -164,8 +164,8 @@ subroutine SurfaceTHAuxVarCompute(xx,aux_var,global_aux_var, &
   type(option_type) :: option
   type(saturation_function_type) :: saturation_function
   PetscReal :: xx(option%nflowdof)
-  type(Surface_TH_auxvar_type) :: aux_var
-  type(surface_global_auxvar_type) :: global_aux_var
+  type(Surface_TH_auxvar_type) :: auxvar
+  type(surface_global_auxvar_type) :: global_auxvar
   PetscReal :: por, perm
 
   PetscErrorCode :: ierr
@@ -180,14 +180,14 @@ subroutine SurfaceTHAuxVarCompute(xx,aux_var,global_aux_var, &
   PetscReal :: dpsat_dt
   PetscReal :: k_therm_w, k_therm_i
   
-  global_aux_var%den_kg(1) = 0.d0
+  global_auxvar%den_kg(1) = 0.d0
 
-  aux_var%h = 0.d0
-  aux_var%u = 0.d0
+  auxvar%h = 0.d0
+  auxvar%u = 0.d0
   kr = 0.d0
  
-  global_aux_var%head(1) = xx(1)
-  !global_aux_var%temp(1) = xx(2)
+  global_auxvar%head(1) = xx(1)
+  !global_auxvar%temp(1) = xx(2)
     ! RTM: Why is the above commented out?  Is one of these internal 
     ! energy instead of temperature?
  
@@ -198,9 +198,9 @@ subroutine SurfaceTHAuxVarCompute(xx,aux_var,global_aux_var, &
   ds_dp = 0.d0
   dkr_dp = 0.d0
 
-  call EOSWaterDensityEnthalpy(global_aux_var%temp(1),pw,dw_kg,dw_mol,hw, &
+  call EOSWaterDensityEnthalpy(global_auxvar%temp(1),pw,dw_kg,dw_mol,hw, &
                                option%scale,ierr)
-  global_aux_var%den_kg(1) = dw_kg
+  global_auxvar%den_kg(1) = dw_kg
   di_kg = 917.d0 ![kg/m^3]
     ! RTM: WARNING!  We are hard-coding the density of ice at atmospheric 
     ! pressure here.  We should actually compute this according to the 
@@ -213,16 +213,16 @@ subroutine SurfaceTHAuxVarCompute(xx,aux_var,global_aux_var, &
   ! RTM: These are being set but we are not using them now.  We should get rid 
   ! of them if we settle on not using an enthalpy formulation for the energy 
   ! equation.
-  aux_var%h = hw
-  aux_var%u = aux_var%h - pw / dw_mol * option%scale
+  auxvar%h = hw
+  auxvar%u = auxvar%h - pw / dw_mol * option%scale
 
   ! Compute unfrozen fraction, and then compute the weighted averages of 
   ! density, specific heat capacity, thermal conductivity
-  unfrozen_fraction = SurfaceTHAuxVarComputeUnfrozen(global_aux_var%temp(1))
-  aux_var%unfrozen_fraction = unfrozen_fraction
-  global_aux_var%den_kg(1) = unfrozen_fraction * dw_kg + (1.d0 - unfrozen_fraction) * di_kg
-  aux_var%Cwi = unfrozen_fraction * aux_var%Cw + (1.d0 - unfrozen_fraction) * aux_var%Ci
-  aux_var%k_therm = unfrozen_fraction * k_therm_w + (1.d0 - unfrozen_fraction) * k_therm_i
+  unfrozen_fraction = SurfaceTHAuxVarComputeUnfrozen(global_auxvar%temp(1))
+  auxvar%unfrozen_fraction = unfrozen_fraction
+  global_auxvar%den_kg(1) = unfrozen_fraction * dw_kg + (1.d0 - unfrozen_fraction) * di_kg
+  auxvar%Cwi = unfrozen_fraction * auxvar%Cw + (1.d0 - unfrozen_fraction) * auxvar%Ci
+  auxvar%k_therm = unfrozen_fraction * k_therm_w + (1.d0 - unfrozen_fraction) * k_therm_i
   
   
 end subroutine SurfaceTHAuxVarCompute
@@ -277,12 +277,12 @@ subroutine SurfaceTHAuxDestroy(aux)
   
   if (.not.associated(aux)) return
   
-  if (associated(aux%aux_vars)) deallocate(aux%aux_vars)
-  nullify(aux%aux_vars)
-  if (associated(aux%aux_vars_bc)) deallocate(aux%aux_vars_bc)
-  nullify(aux%aux_vars_bc)
-  if (associated(aux%aux_vars_ss)) deallocate(aux%aux_vars_ss)
-  nullify(aux%aux_vars_ss)
+  if (associated(aux%auxvars)) deallocate(aux%auxvars)
+  nullify(aux%auxvars)
+  if (associated(aux%auxvars_bc)) deallocate(aux%auxvars_bc)
+  nullify(aux%auxvars_bc)
+  if (associated(aux%auxvars_ss)) deallocate(aux%auxvars_ss)
+  nullify(aux%auxvars_ss)
   if (associated(aux%zero_rows_local)) deallocate(aux%zero_rows_local)
   nullify(aux%zero_rows_local)
   if (associated(aux%zero_rows_local_ghosted)) deallocate(aux%zero_rows_local_ghosted)

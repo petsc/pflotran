@@ -1785,6 +1785,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   enddo
   call PetscLogEventEnd(logging%event_hash_map,ierr)
   region%cell_ids => integer_array
+  region%def_type = DEFINED_BY_CELL_IDS
                             
   allocate(integer_array(num_indices))
   integer_array = 0
@@ -1805,6 +1806,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
                               integer_array)
                             
     region%faces => integer_array
+    region%def_type = DEFINED_BY_CELL_IDS_WTIH_FACE_IDS
   endif
   region%num_cells = num_indices
   deallocate(indices)
@@ -2017,6 +2019,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
     !
     !                    Read Cell IDs
     !
+    region%def_type = DEFINED_BY_CELL_IDS
     region%num_cells = int(dims_h5(1)/option%mycommsize)
       remainder = int(dims_h5(1)) - region%num_cells*option%mycommsize
     if (option%myrank < remainder) region%num_cells = region%num_cells + 1
@@ -2067,7 +2070,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
         write(option%io_buffer,'("Cell ids in the HDF5 for region less than 1")')
         call printErrMsg(option)
       endif
-      region%cell_ids(ii) = int_buffer_1d(ii) - 1
+      region%cell_ids(ii) = int_buffer_1d(ii)
     enddo
      call DeallocateArray(int_buffer_1d)
     
@@ -2128,6 +2131,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
        !
        ! Input data is: Cell IDs + Face IDs
        !
+       region%def_type = DEFINED_BY_CELL_IDS_WTIH_FACE_IDS
        region%num_cells = region%num_verts
        allocate(region%cell_ids(region%num_cells))
        allocate(region%faces(region%num_cells))
@@ -2142,6 +2146,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
        ! Input data is list of Vertices
        !
        ! allocate array to store vertices for each cell
+       region%def_type = DEFINED_BY_SIDESET_UGRID
        allocate(sideset%face_vertices(MAX_VERT_PER_FACE,sideset%nfaces))
        sideset%face_vertices = -999
   

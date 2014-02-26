@@ -104,7 +104,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
         subsurf_simulation%rt_process_model_coupler
    simulation%regression => simulation_old%regression
 
-  if(option%nsurfflowdof>0) then
+  if (option%nsurfflowdof>0) then
     ! Both, Surface-Subsurface flow active
     call HijackSurfaceSimulation(simulation_old,surf_simulation)
     call SurfaceJumpStart(surf_simulation)
@@ -126,16 +126,6 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
 
     nullify(surf_simulation%process_model_coupler_list)
   
-    if (option%subsurf_surf_coupling == SEQ_COUPLED) then
-       select case(option%iflowmode)
-         case (RICHARDS_MODE)
-            call SurfaceFlowGetSubsurfProp(simulation%realization, &
-                 simulation%surf_realization)
-         case (TH_MODE)
-            call SurfaceTHGetSubsurfProp(simulation%realization, &
-                 simulation%surf_realization)
-         end select
-      end if
    else
       ! Only subsurface flow active
       simulation%process_model_coupler_list => &
@@ -150,7 +140,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
    nullify(subsurf_simulation%process_model_coupler_list)
 
   ! sim_aux: Create PETSc Vectors and VectorScatters
-  if(option%nsurfflowdof>0) then
+  if (option%nsurfflowdof>0 .and. option%subsurf_surf_coupling /= DECOUPLED) then
 
     call SurfSubsurfCreateSubsurfVecs(simulation_old%realization, option, &
                                       vec_subsurf_pres, vec_subsurf_pres_top_bc)
@@ -691,6 +681,7 @@ subroutine SurfSubsurfCreateSubsurfVecs(subsurf_realization, option, &
   call VecSetFromOptions(subsurf_pres,ierr)
   call VecSet(subsurf_pres,0.d0,ierr)
 
+#if 1
   found = 0
   num_conn = 0
   coupler_list => subsurf_realization%patch%source_sinks
@@ -706,7 +697,9 @@ subroutine SurfSubsurfCreateSubsurfVecs(subsurf_realization, option, &
 
   call MPI_AllReduce(found,found_global,ONE_INTEGER_MPI,MPI_INTEGER,MPI_MAX, &
                      option%mycomm,ierr)
+#endif
 
+  !found_global = 0
   if (found_global == 0) then
     coupler_list => subsurf_realization%patch%boundary_conditions
     coupler => coupler_list%first

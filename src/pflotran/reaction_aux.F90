@@ -194,6 +194,9 @@ module Reaction_Aux_module
     type(microbial_type), pointer :: microbial
     type(immobile_type), pointer :: immobile
     
+    ! secondary continuum reaction objects
+    type(kd_rxn_type), pointer :: sec_cont_kd_rxn_list
+    
 #ifdef SOLID_SOLUTION    
     type(solid_solution_type), pointer :: solid_solution_list
 #endif    
@@ -317,6 +320,13 @@ module Reaction_Aux_module
     PetscReal, pointer :: eqkdlangmuirb(:)
     PetscReal, pointer :: eqkdfreundlichn(:)
     
+    ! secondary continuum kd rxn
+    ! neqkdrxn and eqkdspecid will be the same
+    PetscInt, pointer :: sec_cont_eqkdtype(:)
+    PetscReal, pointer :: sec_cont_eqkddistcoef(:)
+    PetscReal, pointer :: sec_cont_eqkdlangmuirb(:)
+    PetscReal, pointer :: sec_cont_eqkdfreundlichn(:)
+    
     PetscReal :: max_dlnC
     PetscReal :: max_relative_change_tolerance
     PetscReal :: max_residual_tolerance
@@ -335,6 +345,11 @@ module Reaction_Aux_module
     PetscBool :: use_sandbox
     
   end type reaction_type
+
+  interface GetPrimarySpeciesIDFromName
+    module procedure GetPrimarySpeciesIDFromName1
+    module procedure GetPrimarySpeciesIDFromName2
+  end interface
 
   public :: ReactionCreate, &
             SpeciesIndexCreate, &
@@ -456,6 +471,8 @@ function ReactionCreate()
   nullify(reaction%kd_rxn_list)
   nullify(reaction%redox_species_list)
   
+  nullify(reaction%sec_cont_kd_rxn_list)
+  
   ! new reaction objects
   reaction%surface_complexation => SurfaceComplexationCreate()
   reaction%mineral => MineralCreate()
@@ -567,6 +584,11 @@ function ReactionCreate()
   nullify(reaction%eqkdlangmuirb)
   nullify(reaction%eqkdfreundlichn)
       
+  nullify(reaction%sec_cont_eqkdtype)
+  nullify(reaction%sec_cont_eqkddistcoef)
+  nullify(reaction%sec_cont_eqkdlangmuirb)
+  nullify(reaction%sec_cont_eqkdfreundlichn)
+       
   reaction%max_dlnC = 5.d0
   reaction%max_relative_change_tolerance = 1.d-6
   reaction%max_residual_tolerance = 1.d-12
@@ -1001,7 +1023,7 @@ end function GetPrimarySpeciesCount
 
 ! ************************************************************************** !
 
-function GetPrimarySpeciesIDFromName(name,reaction,option)
+function GetPrimarySpeciesIDFromName1(name,reaction,option)
   ! 
   ! Returns the id of named primary species
   ! 
@@ -1018,19 +1040,46 @@ function GetPrimarySpeciesIDFromName(name,reaction,option)
   type(reaction_type) :: reaction
   type(option_type) :: option
 
-  PetscInt :: GetPrimarySpeciesIDFromName
+  PetscInt :: GetPrimarySpeciesIDFromName1
+
+  GetPrimarySpeciesIDFromName1 = GetPrimarySpeciesIDFromName2(name,reaction, &
+          PETSC_TRUE, option)
+
+end function GetPrimarySpeciesIDFromName1
+
+! ************************************************************************** !
+
+function GetPrimarySpeciesIDFromName2(name,reaction,return_error,option)
+  ! 
+  ! Returns the id of named primary species
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/30/12
+   
+
+  use Option_module
+  use String_module
+  
+  implicit none
+  
+  character(len=MAXWORDLENGTH) :: name
+  type(reaction_type) :: reaction
+  type(option_type) :: option
+
+  PetscInt :: GetPrimarySpeciesIDFromName2
 
   type(aq_species_type), pointer :: species
   PetscInt :: i
+  PetscBool :: return_error
 
-  GetPrimarySpeciesIDFromName = -999
+  GetPrimarySpeciesIDFromName2 = -999
   
   ! if the primary species name list exists
   if (associated(reaction%primary_species_names)) then
     do i = 1, size(reaction%primary_species_names)
       if (StringCompare(name,reaction%primary_species_names(i), &
                         MAXWORDLENGTH)) then
-        GetPrimarySpeciesIDFromName = i
+        GetPrimarySpeciesIDFromName2 = i
         exit
       endif
     enddo
@@ -1041,20 +1090,20 @@ function GetPrimarySpeciesIDFromName(name,reaction,option)
       if (.not.associated(species)) exit
       i = i + 1
       if (StringCompare(name,species%name,MAXWORDLENGTH)) then
-        GetPrimarySpeciesIDFromName = i
+        GetPrimarySpeciesIDFromName2 = i
         exit
       endif
       species => species%next
     enddo
   endif
 
-  if (GetPrimarySpeciesIDFromName <= 0) then
+  if (return_error .and. GetPrimarySpeciesIDFromName2 <= 0) then
     option%io_buffer = 'Species "' // trim(name) // &
       '" not founds among primary species in GetPrimarySpeciesIDFromName().'
     call printErrMsg(option)
   endif
   
-end function GetPrimarySpeciesIDFromName
+end function GetPrimarySpeciesIDFromName2
 
 ! ************************************************************************** !
 
@@ -1944,7 +1993,7 @@ subroutine ReactionDestroy(reaction)
     if (.not.associated(radioactive_decay_rxn)) exit
     prev_radioactive_decay_rxn => radioactive_decay_rxn
     radioactive_decay_rxn => radioactive_decay_rxn%next
-    call GeneralRxnDestroy(prev_general_rxn)
+    call RadioactiveDecayRxnDestroy(prev_radioactive_decay_rxn)
   enddo    
   nullify(reaction%radioactive_decay_rxn_list)
   
@@ -1967,6 +2016,16 @@ subroutine ReactionDestroy(reaction)
     call KDRxnDestroy(prev_kd_rxn)
   enddo    
   nullify(reaction%kd_rxn_list)
+
+  ! kd reactions secondary continuum
+  kd_rxn => reaction%sec_cont_kd_rxn_list
+  do
+    if (.not.associated(kd_rxn)) exit
+    prev_kd_rxn => kd_rxn
+    kd_rxn => kd_rxn%next
+    call KDRxnDestroy(prev_kd_rxn)
+  enddo    
+  nullify(reaction%sec_cont_kd_rxn_list)
   
   call SurfaceComplexationDestroy(reaction%surface_complexation)
   call MineralDestroy(reaction%mineral)
@@ -2057,10 +2116,14 @@ subroutine ReactionDestroy(reaction)
   
   call DeallocateArray(reaction%eqkdspecid)
   call DeallocateArray(reaction%eqkdtype)
-  call DeallocateArray(reaction%eqkdspecid)
   call DeallocateArray(reaction%eqkddistcoef)
   call DeallocateArray(reaction%eqkdlangmuirb)
   call DeallocateArray(reaction%eqkdfreundlichn)
+ 
+  call DeallocateArray(reaction%sec_cont_eqkdtype)
+  call DeallocateArray(reaction%sec_cont_eqkddistcoef)
+  call DeallocateArray(reaction%sec_cont_eqkdlangmuirb)
+  call DeallocateArray(reaction%sec_cont_eqkdfreundlichn)     
   
   deallocate(reaction)
   nullify(reaction)

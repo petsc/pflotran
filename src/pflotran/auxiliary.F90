@@ -10,7 +10,7 @@ module Auxiliary_module
   use Miscible_Aux_module
   use Flash2_Aux_module
   use General_Aux_module
-  use Material_Aux_module
+  use Material_Aux_class
   use Secondary_Continuum_Aux_module
   
   use PFLOTRAN_Constants_module
@@ -70,7 +70,7 @@ subroutine AuxInit(aux)
   nullify(aux%Material)
   nullify(aux%SC_heat)
   nullify(aux%SC_RT)
-
+  
 end subroutine AuxInit
 
 ! ************************************************************************** !

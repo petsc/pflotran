@@ -27,18 +27,12 @@ module Surface_TH_module
   PetscReal, parameter :: perturbation_tolerance = 1.d-6
 
   public SurfaceTHSetup, &
-         SurfaceTHUpdateSurfBC, &
-         SurfaceTHUpdateSubsurfSS, &
-         SurfaceTHSurf2SubsurfFlux, &
-         SurfaceTHCreateSurfSubsurfVec, &
-         SurfaceTHCreateSurfSubsurfVecNew, &
-         SurfaceTHGetSubsurfProp, &
          SurfaceTHRHSFunction, &
          SurfaceTHComputeMaxDt, &
          SurfaceTHUpdateAuxVars, &
          SurfaceTHUpdateSolution, &
          SurfaceTHUpdateTemperature, &
-         SurfaceTHUpdateSurfStateNew
+         SurfaceTHUpdateSurfState
 
 contains
 
@@ -69,9 +63,9 @@ subroutine SurfaceTHSetup(surf_realization)
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(coupler_type), pointer :: boundary_condition
-  type(Surface_TH_auxvar_type), pointer :: Surf_TH_aux_vars(:)
-  type(Surface_TH_auxvar_type), pointer :: Surf_TH_aux_vars_bc(:)
-  type(Surface_TH_auxvar_type), pointer :: Surf_TH_aux_vars_ss(:)
+  type(Surface_TH_auxvar_type), pointer :: Surf_TH_auxvars(:)
+  type(Surface_TH_auxvar_type), pointer :: Surf_TH_auxvars_bc(:)
+  type(Surface_TH_auxvar_type), pointer :: Surf_TH_auxvars_ss(:)
   type(fluid_property_type), pointer :: cur_fluid_property
   type(coupler_type), pointer :: initial_condition
   PetscReal :: area_per_vol
@@ -86,17 +80,17 @@ subroutine SurfaceTHSetup(surf_realization)
     
   patch%surf_aux%SurfaceTH => SurfaceTHAuxCreate(option)
 
-  ! allocate aux_var data structures for all grid cells
-  allocate(Surf_TH_aux_vars(grid%ngmax))
+  ! allocate auxvar data structures for all grid cells
+  allocate(Surf_TH_auxvars(grid%ngmax))
   do ghosted_id = 1, grid%ngmax
-    call SurfaceTHAuxVarInit(Surf_TH_aux_vars(ghosted_id),option)
+    call SurfaceTHAuxVarInit(Surf_TH_auxvars(ghosted_id),option)
   enddo
 
-  patch%surf_aux%SurfaceTH%aux_vars => Surf_TH_aux_vars
+  patch%surf_aux%SurfaceTH%auxvars => Surf_TH_auxvars
   patch%surf_aux%SurfaceTH%num_aux = grid%ngmax
 
   ! count the number of boundary connections and allocate
-  ! aux_var data structures for them
+  ! auxvar data structures for them
   boundary_condition => patch%boundary_conditions%first
 
   sum_connection = 0    
@@ -108,22 +102,22 @@ subroutine SurfaceTHSetup(surf_realization)
   enddo
 
   if (sum_connection > 0) then 
-    allocate(Surf_TH_aux_vars_bc(sum_connection))
+    allocate(Surf_TH_auxvars_bc(sum_connection))
     do iconn = 1, sum_connection
-      call SurfaceTHAuxVarInit(Surf_TH_aux_vars_bc(iconn),option)
+      call SurfaceTHAuxVarInit(Surf_TH_auxvars_bc(iconn),option)
     enddo
-    patch%surf_aux%SurfaceTH%aux_vars_bc => Surf_TH_aux_vars_bc
+    patch%surf_aux%SurfaceTH%auxvars_bc => Surf_TH_auxvars_bc
   endif
   patch%surf_aux%SurfaceTH%num_aux_bc = sum_connection
 
   ! Create aux vars for source/sink
   sum_connection = CouplerGetNumConnectionsInList(patch%source_sinks)
   if (sum_connection > 0) then
-    allocate(Surf_TH_aux_vars_ss(sum_connection))
+    allocate(Surf_TH_auxvars_ss(sum_connection))
     do iconn = 1, sum_connection
-      call SurfaceTHAuxVarInit(Surf_TH_aux_vars_ss(iconn),option)
+      call SurfaceTHAuxVarInit(Surf_TH_auxvars_ss(iconn),option)
     enddo
-    patch%surf_aux%SurfaceTH%aux_vars_ss => Surf_TH_aux_vars_ss
+    patch%surf_aux%SurfaceTH%auxvars_ss => Surf_TH_auxvars_ss
   endif
   patch%surf_aux%SurfaceTH%num_aux_ss = sum_connection
 
@@ -173,1170 +167,6 @@ end subroutine SurfaceTHSetPlotVariables
 
 ! ************************************************************************** !
 
-subroutine SurfaceTHUpdateSurfBC(realization,surf_realization)
-  ! 
-  ! This routine gets latest states (P,T) from subsurface model and updates
-  ! boundary condition for surface flow model.
-  ! 
-  ! Author: Gautam Bisht, LBNL
-  ! Date: 02/28/13
-  ! 
-
-  use Grid_module
-  use String_module
-  use Unstructured_Grid_module
-  use Unstructured_Grid_Aux_module
-  use Unstructured_Cell_module
-  use Realization_class
-  use Option_module
-  use Patch_module
-  use Region_module
-  use Condition_module
-  use Coupler_module
-  use Surface_Field_module
-  use Field_module
-  use EOS_Water_module
-  use Discretization_module
-  use Connection_module
-  use Surface_Realization_class
-  use Realization_Base_class
-  use DM_Kludge_module
-  use Global_Aux_module
-
-  implicit none
-  
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-
-  type(realization_type)         :: realization
-  type(surface_realization_type) :: surf_realization
-
-  type(patch_type),pointer            :: patch,surf_patch
-  type(grid_type),pointer             :: grid,surf_grid
-  type(coupler_list_type), pointer    :: coupler_list
-  type(coupler_type), pointer         :: coupler
-  type(flow_condition_type), pointer  :: flow_condition
-  type(option_type), pointer          :: option
-  type(field_type),pointer            :: field
-  type(surface_field_type),pointer    :: surf_field
-  type(dm_ptr_type), pointer          :: dm_ptr
-  type(connection_set_type), pointer  :: cur_connection_set
-  type(global_auxvar_type), pointer :: global_aux_vars(:)  
-  
-  Vec            :: destin_mpi_vec, source_mpi_vec
-  PetscErrorCode :: ierr
-  PetscReal, pointer :: qsrc_p(:),press_p(:),temp_p(:)
-  PetscInt :: local_id,iconn,sum_connection,ghosted_id
-  PetscReal, pointer :: xx_loc_p(:)
-  PetscReal, pointer :: xx_p(:)
-  PetscReal, pointer :: yy_p(:)
-  PetscReal, pointer :: zz_p(:)
-  PetscReal, pointer :: perm_xx_p(:)
-  PetscReal, pointer :: perm_yy_p(:)
-  PetscReal, pointer :: perm_zz_p(:)
-  PetscReal, pointer :: Dq_p(:)
-  PetscReal, pointer :: dist_p(:)
-  PetscReal :: dist_x,dist_y,dist_z,dist
-  PetscInt :: size,istart,iend
-  
-  PetscBool :: coupler_found = PETSC_FALSE
-
-  patch      => realization%patch
-  surf_patch => surf_realization%patch
-  option     => realization%option
-  grid       => realization%discretization%grid
-  field      => realization%field
-  surf_grid  => surf_realization%discretization%grid
-  surf_field => surf_realization%surf_field
-  global_aux_vars => patch%aux%Global%aux_vars
-
-  dm_ptr => DiscretizationGetDMPtrFromIndex(realization%discretization,ONEDOF)
-  
-  ! Update the surface BC
-  coupler_list => patch%source_sinks
-  coupler => coupler_list%first
-  sum_connection = 0
-  do
-    if (.not.associated(coupler)) exit
-    
-    ! FLOW
-    if (associated(coupler%flow_aux_real_var)) then
-      cur_connection_set => coupler%connection_set
-      
-      ! Find the BC from the list of BCs
-      if(StringCompare(coupler%name,'from_surface_ss')) then
-
-        ! Exchange subsurface PRESSURE
-        call VecGetArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
-        call VecGetArrayF90(surf_field%subsurf_temp_vec_1dof,press_p,ierr)
-        do iconn=1,cur_connection_set%num_connections
-          local_id = cur_connection_set%id_dn(iconn)
-          ghosted_id = grid%nL2G(local_id)
-
-          iend = ghosted_id*option%nflowdof
-          istart = iend-option%nflowdof+1
-          press_p(iconn) = xx_loc_p(istart)
-        enddo
-        call VecRestoreArrayF90(surf_field%subsurf_temp_vec_1dof,press_p,ierr)
-        call VecRestoreArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
-
-        ! Scatter the data
-        call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids_1dof, &
-                        surf_field%subsurf_temp_vec_1dof,surf_field%press_subsurf, &
-                        INSERT_VALUES,SCATTER_FORWARD,ierr)
-        call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids_1dof, &
-                        surf_field%subsurf_temp_vec_1dof,surf_field%press_subsurf, &
-                        INSERT_VALUES,SCATTER_FORWARD,ierr)
-
-        ! Exchange subsurface TEMPERATURE
-        call VecGetArrayF90(surf_field%subsurf_temp_vec_1dof,temp_p,ierr)
-        do iconn=1,cur_connection_set%num_connections
-          local_id = cur_connection_set%id_dn(iconn)
-          ghosted_id = grid%nL2G(local_id)
-
-          iend = ghosted_id*option%nflowdof
-          istart = iend-option%nflowdof+1
-          temp_p(iconn) = global_aux_vars(ghosted_id)%temp(1)
-        enddo
-        call VecRestoreArrayF90(surf_field%subsurf_temp_vec_1dof,temp_p,ierr)
-
-        ! Scatter the data
-        call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids_1dof, &
-                        surf_field%subsurf_temp_vec_1dof,surf_field%temp_subsurf, &
-                        INSERT_VALUES,SCATTER_FORWARD,ierr)
-        call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids_1dof, &
-                        surf_field%subsurf_temp_vec_1dof,surf_field%temp_subsurf, &
-                        INSERT_VALUES,SCATTER_FORWARD,ierr)
-
-      else
-        sum_connection = sum_connection + cur_connection_set%num_connections
-      endif
-
-    endif
-    coupler => coupler%next
-  enddo
-
-end subroutine SurfaceTHUpdateSurfBC
-
-! ************************************************************************** !
-
-subroutine SurfaceTHUpdateSubsurfSS(realization,surf_realization,dt)
-  ! 
-  ! RTM: TODO: Figure out if this needs to be modified for surface freezing.
-  ! This routine updates source/sink term for the subsurface model
-  ! 
-  ! Author: Gautam Bisht, LBNL
-  ! Date: 02/28/13
-  ! 
-
-  use Grid_module
-  use String_module
-  use Unstructured_Grid_module
-  use Unstructured_Grid_Aux_module
-  use Unstructured_Cell_module
-  use Realization_class
-  use Option_module
-  use Patch_module
-  use Region_module
-  use Condition_module
-  use Coupler_module
-  use Surface_Field_module
-  use EOS_Water_module
-  use Discretization_module
-  use Surface_Realization_class
-  use Realization_Base_class
-  use DM_Kludge_module
-
-  implicit none
-  
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-
-  type(realization_type)         :: realization
-  type(surface_realization_type) :: surf_realization
-
-  type(patch_type),pointer            :: patch,surf_patch
-  type(grid_type),pointer             :: grid,surf_grid
-  type(coupler_list_type), pointer    :: coupler_list
-  type(coupler_type), pointer         :: coupler
-  type(flow_condition_type), pointer  :: flow_condition
-  type(option_type), pointer          :: option
-  type(surface_field_type),pointer    :: surf_field
-  type(dm_ptr_type), pointer          :: dm_ptr
-  
-  Vec            :: destin_mpi_vec, source_mpi_vec
-  PetscErrorCode :: ierr
-  PetscReal, pointer :: xx_loc_p(:),vec_p(:)
-  PetscReal :: dt
-  PetscInt :: local_id
-  PetscInt :: iconn
-  PetscReal :: den
-  
-  PetscBool :: coupler_found = PETSC_FALSE
-
-  patch      => realization%patch
-  surf_patch => surf_realization%patch
-  option     => realization%option
-  grid       => realization%discretization%grid
-  surf_grid  => surf_realization%discretization%grid
-  surf_field => surf_realization%surf_field
-
-  dm_ptr => DiscretizationGetDMPtrFromIndex(surf_realization%discretization,NFLOWDOF)
-
-  call EOSWaterdensity(option%reference_temperature,option%reference_pressure,den)
-
-  coupler_list => patch%source_sinks
-  coupler => coupler_list%first
-  do
-    if (.not.associated(coupler)) exit
-
-    ! FLOW
-    if (associated(coupler%flow_aux_real_var)) then
-
-      ! Find the BC from the list of BCs
-      if(StringCompare(coupler%name,'from_surface_ss')) then
-      
-        coupler_found = PETSC_TRUE
-        
-        call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids_ndof, &
-                             surf_field%exchange_subsurf_2_surf, &
-                             surf_field%subsurf_temp_vec_ndof, &
-                             INSERT_VALUES,SCATTER_FORWARD,ierr)
-        call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids_ndof, &
-                           surf_field%exchange_subsurf_2_surf, &
-                           surf_field%subsurf_temp_vec_ndof, &
-                           INSERT_VALUES,SCATTER_FORWARD,ierr)
-
-        call VecGetArrayF90(surf_field%subsurf_temp_vec_ndof,vec_p,ierr)
-        do iconn=1,coupler%connection_set%num_connections
-          ! Flux of water
-          coupler%flow_aux_real_var(ONE_INTEGER,iconn)=-vec_p((iconn-1)*option%nflowdof+1)/dt*den
-          
-          ! Heat flux
-          coupler%flow_aux_real_var(TWO_INTEGER,iconn)=-vec_p(iconn*option%nflowdof)/dt
-        enddo
-        call VecRestoreArrayF90(surf_field%subsurf_temp_vec_ndof,vec_p,ierr)
-
-        call VecSet(surf_field%exchange_subsurf_2_surf,0.d0,ierr)
-      endif
-
-    endif
-    
-    coupler => coupler%next
-  enddo
-
-  if(.not.coupler_found) then
-    option%io_buffer = 'Missing within the input deck for subsurface ' // &
-      'boundary condition named from_surface_ss.'
-    call printErrMsg(option)
-  endif
-  
-end subroutine SurfaceTHUpdateSubsurfSS
-
-! ************************************************************************** !
-
-subroutine SurfaceTHCreateSurfSubsurfVec(realization,surf_realization)
-  ! 
-  ! This routine creates a PETSc vector to data between surface and subsurface
-  ! model.
-  ! 
-  ! Author: Gautam Bisht, LBNL
-  ! Date: 02/28/13
-  ! 
-
-  use Grid_module
-  use String_module
-  use Unstructured_Grid_module
-  use Unstructured_Grid_Aux_module
-  use Unstructured_Cell_module
-  use Realization_class
-  use Option_module
-  use Patch_module
-  use Region_module
-  use Condition_module
-  use Coupler_module
-  use Surface_Field_module
-  use EOS_Water_module
-  use Discretization_module
-  use Surface_Realization_class
-  use Realization_Base_class
-  use DM_Kludge_module
-
-  implicit none
-  
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-
-  type(realization_type)         :: realization
-  type(surface_realization_type) :: surf_realization
-
-  type(patch_type),pointer            :: patch,surf_patch
-  type(grid_type),pointer             :: grid,surf_grid
-  type(coupler_list_type), pointer    :: coupler_list
-  type(coupler_type), pointer         :: coupler
-  type(flow_condition_type), pointer  :: flow_condition
-  type(option_type), pointer          :: option
-  type(surface_field_type),pointer    :: surf_field
-  type(dm_ptr_type), pointer          :: dm_ptr
-  
-  Vec            :: destin_mpi_vec, source_mpi_vec
-  PetscErrorCode :: ierr
-  PetscReal, pointer :: xx_loc_p(:),vec_p(:)
-  PetscReal :: den          ! density      [kg/m^3]
-  PetscInt :: local_id,i
-  PetscInt :: iconn
-  
-  PetscBool :: coupler_found = PETSC_FALSE
-
-  patch      => realization%patch
-  surf_patch => surf_realization%patch
-  option     => realization%option
-  grid       => realization%discretization%grid
-  surf_grid  => surf_realization%discretization%grid
-  surf_field => surf_realization%surf_field
-
-  coupler_list => patch%source_sinks
-  coupler => coupler_list%first
-  do
-    if (.not.associated(coupler)) exit
-    ! FLOW
-    if (associated(coupler%flow_aux_real_var)) then
-      ! Find the BC from the list of BCs
-      if(StringCompare(coupler%name,'from_surface_ss')) then
-        if(coupler%flow_condition%rate%itype/=HET_MASS_RATE_SS) then
-          option%io_buffer = 'Flow condition from_surface_ss should be ' // &
-            'heterogeneous_mass_rate'
-          call printErrMsg(option)
-        endif
-        coupler_found = PETSC_TRUE
-
-        call VecCreate(option%mycomm,surf_field%subsurf_temp_vec_ndof,ierr)
-        call VecSetSizes(surf_field%subsurf_temp_vec_ndof, &
-                         coupler%connection_set%num_connections*option%nflowdof, &
-                         PETSC_DECIDE,ierr)
-        call VecSetFromOptions(surf_field%subsurf_temp_vec_ndof,ierr)
-
-        call VecCreate(option%mycomm,surf_field%subsurf_temp_vec_1dof,ierr)
-        call VecSetSizes(surf_field%subsurf_temp_vec_1dof, &
-                         coupler%connection_set%num_connections, &
-                         PETSC_DECIDE,ierr)
-        call VecSetFromOptions(surf_field%subsurf_temp_vec_1dof,ierr)
-
-      endif
-    endif
-    
-    coupler => coupler%next
-  enddo
-
-  if(.not.coupler_found) then
-    option%io_buffer = 'Missing within the input deck for subsurface ' // &
-      'boundary condition named from_surface_ss.'
-    call printErrMsg(option)
-  endif
-
-end subroutine SurfaceTHCreateSurfSubsurfVec
-
-! ************************************************************************** !
-
-subroutine SurfaceTHCreateSurfSubsurfVecNew(realization, surf_realization)
-  ! 
-  ! This routine creates a MPI vector to exchanged data between surface and
-  ! subsurface model.
-  ! 
-  ! Author: Gautam Bisht, LBL
-  ! Date: 07/29/13
-  ! 
-
-  use Grid_module
-  use String_module
-  use Unstructured_Grid_module
-  use Unstructured_Grid_Aux_module
-  use Unstructured_Cell_module
-  use Realization_class
-  use Option_module
-  use Patch_module
-  use Region_module
-  use Condition_module
-  use Coupler_module
-  use Surface_Field_module
-  use EOS_Water_module
-  use Discretization_module
-  use Surface_Realization_class
-  use Realization_Base_class
-  use DM_Kludge_module
-
-  implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-
-  type(realization_type)         :: realization
-  type(surface_realization_type) :: surf_realization
-
-  type(patch_type),pointer            :: patch,surf_patch
-  type(grid_type),pointer             :: grid,surf_grid
-  type(coupler_list_type), pointer    :: coupler_list
-  type(coupler_type), pointer         :: coupler
-  type(flow_condition_type), pointer  :: flow_condition
-  type(option_type), pointer          :: option
-  type(surface_field_type),pointer    :: surf_field
-  type(dm_ptr_type), pointer          :: dm_ptr
-
-  Vec            :: destin_mpi_vec, source_mpi_vec
-  PetscErrorCode :: ierr
-  PetscReal, pointer :: xx_loc_p(:),vec_p(:)
-  PetscReal :: den          ! density      [kg/m^3]
-  PetscInt :: local_id,i
-  PetscInt :: iconn
-
-  PetscBool :: coupler_found = PETSC_FALSE
-
-  patch      => realization%patch
-  surf_patch => surf_realization%patch
-  option     => realization%option
-  grid       => realization%discretization%grid
-  surf_grid  => surf_realization%discretization%grid
-  surf_field => surf_realization%surf_field
-
-  coupler_list => patch%boundary_conditions
-  coupler => coupler_list%first
-  do
-    if (.not.associated(coupler)) exit
-    ! FLOW
-    if (associated(coupler%flow_aux_real_var)) then
-
-      ! Find the BC from the list of BCs
-      if(StringCompare(coupler%name,'from_surface_bc')) then
-        if(coupler%flow_condition%pressure%itype/=HET_SURF_SEEPAGE_BC) then
-          option%io_buffer = 'Flow condition from_surface_bc should be ' // &
-            'heterogeneous_surface_seepage'
-          call printErrMsg(option)
-        endif
-        coupler_found = PETSC_TRUE
-
-        call VecCreate(option%mycomm,surf_field%subsurf_temp_vec_ndof,ierr)
-        call VecSetSizes(surf_field%subsurf_temp_vec_ndof, &
-                         coupler%connection_set%num_connections*option%nflowdof, &
-                         PETSC_DECIDE,ierr)
-        call VecSetFromOptions(surf_field%subsurf_temp_vec_ndof,ierr)
-
-        call VecCreate(option%mycomm,surf_field%subsurf_temp_vec_1dof,ierr)
-        call VecSetSizes(surf_field%subsurf_temp_vec_1dof, &
-                         coupler%connection_set%num_connections, &
-                         PETSC_DECIDE,ierr)
-        call VecSetFromOptions(surf_field%subsurf_temp_vec_1dof,ierr)
-
-      endif
-    endif
-
-    coupler => coupler%next
-  enddo
-
-  if(.not.coupler_found) then
-    option%io_buffer = '3)Missing within the input deck for subsurface ' // &
-      'boundary condition named from_surface_ss.'
-    call printErrMsg(option)
-  endif
-
-end subroutine SurfaceTHCreateSurfSubsurfVecNew
-
-! ************************************************************************** !
-
-subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
-  ! 
-  ! This routine computes the flux of water and energy from surface to
-  ! subsurface model.
-  ! 
-  ! Author: Gautam Bisht, LBNL
-  ! Date: 02/28/13
-  ! 
-
-  use Grid_module
-  use String_module
-  use Unstructured_Grid_module
-  use Unstructured_Grid_Aux_module
-  use Unstructured_Cell_module
-  use Realization_class
-  use Option_module
-  use Patch_module
-  use Region_module
-  use Condition_module
-  use Coupler_module
-  use Surface_Field_module
-  use Field_module
-  use Discretization_module
-  use Connection_module
-  use EOS_Water_module
-  use Saturation_Function_module
-  use Surface_Realization_class
-  use Realization_Base_class
-  use DM_Kludge_module
-  use Surface_TH_Aux_module
-  
-  implicit none
-  
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-
-  type(realization_type)         :: realization
-  type(surface_realization_type) :: surf_realization
-
-  type(patch_type),pointer            :: patch,surf_patch
-  type(grid_type),pointer             :: grid,surf_grid
-  type(coupler_list_type), pointer    :: coupler_list
-  type(coupler_type), pointer         :: coupler
-  type(flow_condition_type), pointer  :: flow_condition
-  type(option_type), pointer          :: option
-  type(field_type),pointer            :: field
-  type(surface_field_type),pointer    :: surf_field
-  type(dm_ptr_type), pointer          :: dm_ptr
-  type(connection_set_type), pointer  :: cur_connection_set
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars(:)
-  type(Surface_TH_auxvar_type), pointer :: surf_aux_vars(:)
-  
-  Vec            :: destin_mpi_vec, source_mpi_vec
-  PetscErrorCode :: ierr
-  PetscReal :: den_surf_kg          ! density      [kg/m^3]
-  PetscReal, parameter :: den_surf_ice_kg=917.d0   ! density of surface ice [kg/m^3]
-  PetscReal :: den_sub_kg           ! density      [kg/m^3]
-  PetscReal :: den_aveg             ! density      [kg/m^3]
-  PetscInt :: local_id, ghosted_id, iconn
-  
-  PetscReal, pointer :: xx_p(:)
-  PetscReal, pointer :: press_sub_p(:) ! Pressure [Pa]
-  PetscReal, pointer :: temp_sub_p(:)  ! Temperature [C]
-  PetscReal, pointer :: icap_loc_p(:)
-  PetscReal, pointer :: ithrm_loc_p(:)
-  PetscReal, pointer :: Dq_p(:)
-  PetscReal, pointer :: exch_p(:)
-  PetscReal, pointer :: area_p(:)
-  PetscReal, pointer :: dist_gravity_p(:)
-  PetscReal, pointer :: dist_p(:)
-  PetscReal, pointer :: ckdry_p(:)
-  PetscReal, pointer :: ckwet_p(:)
-  PetscReal, pointer :: ckice_p(:)
-  PetscReal, pointer :: th_alpha_p(:)
-  PetscReal, pointer :: th_alpha_fr_p(:)
-  PetscReal, pointer :: sat_ice_p(:)
-  
-  PetscReal :: hw
-  PetscReal :: press_surf
-  PetscReal :: dphi
-  PetscReal :: press
-  PetscReal :: sat
-  PetscReal :: kr
-  PetscReal :: ds_dp
-  PetscReal :: dkr_dp
-  PetscReal :: por
-  PetscReal :: perm
-  PetscBool :: saturated
-  PetscReal :: sat_pressure
-  PetscReal :: pw
-  PetscReal :: visl
-  PetscReal :: v_darcy
-  PetscReal :: v_darcy_max
-  PetscReal :: gravity
-  PetscReal :: press_up, press_dn
-  PetscReal :: k_eff_dn, k_eff_up
-  PetscReal :: Dk_eff
-  PetscReal :: Ke_up, Ke_fr, Ke_fr_up
-  PetscReal :: dtemp
-  PetscReal :: Cwi
-  PetscReal :: temp_half
-  PetscReal, parameter :: epsilon = 1.d-6
-    
-  PetscBool :: coupler_found = PETSC_FALSE
-  PetscBool :: v_darcy_limit
-
-  patch      => realization%patch
-  surf_patch => surf_realization%patch
-  option     => realization%option
-  grid       => realization%discretization%grid
-  field      => realization%field
-  surf_grid  => surf_realization%discretization%grid
-  surf_field => surf_realization%surf_field
-  surf_global_aux_vars => surf_patch%surf_aux%SurfaceGlobal%aux_vars
-  surf_aux_vars => surf_patch%surf_aux%SurfaceTH%aux_vars
-
-  call VecGetArrayF90(surf_field%press_subsurf,press_sub_p,ierr)
-  call VecGetArrayF90(surf_field%temp_subsurf,temp_sub_p,ierr)
-  call VecGetArrayF90(surf_field%flow_xx_loc,xx_p,ierr)
-  call VecGetArrayF90(surf_field%icap_loc,icap_loc_p,ierr)
-  call VecGetArrayF90(surf_field%ithrm_loc,ithrm_loc_p,ierr)
-  call VecGetArrayF90(surf_field%Dq,Dq_p,ierr)
-  call VecGetArrayF90(surf_field%exchange_subsurf_2_surf,exch_p,ierr)
-  call VecGetArrayF90(surf_field%surf2subsurf_dist_gravity,dist_gravity_p,ierr)
-  call VecGetArrayF90(surf_field%surf2subsurf_dist,dist_p,ierr)
-  call VecGetArrayF90(surf_field%area,area_p,ierr)
-  call VecGetArrayF90(surf_field%ckdry,ckdry_p,ierr)
-  call VecGetArrayF90(surf_field%ckwet,ckwet_p,ierr)
-  call VecGetArrayF90(surf_field%ckice,ckice_p,ierr)
-  call VecGetArrayF90(surf_field%th_alpha,th_alpha_p,ierr)
-  call VecGetArrayF90(surf_field%th_alpha_fr,th_alpha_fr_p,ierr)
-  call VecGetArrayF90(surf_field%sat_ice,sat_ice_p,ierr)
-
-  ! Update the surface BC
-  coupler_list => surf_patch%source_sinks
-  coupler => coupler_list%first
-
-  v_darcy_max=0.d0
-  v_darcy_limit=PETSC_FALSE
-  
-  !
-  !            SURFACE
-  !              (DN)
-  !   ---------------------------------
-  !           SUBSURFACE         ///\\\
-  !              (UP)
-  !
-
-  do
-    if (.not.associated(coupler)) exit
-    
-    ! FLOW
-    if(StringCompare(coupler%name,'from_subsurface_ss')) then
-
-      if (.not.associated(coupler%flow_aux_real_var)) then
-        option%io_buffer='SURF_SOURCE_SINK: from_subsurface_ss was does not ' //&
-          ' a heterogeneous flow condition associated with it'
-        call printErrMsg(option)
-      endif
-
-      if(coupler%flow_condition%rate%itype/=HET_VOL_RATE_SS) then
-        option%io_buffer = 'Flow condition from_subsurface_ss should be ' // &
-          'heterogeneous_volumetric_rate'
-        call printErrMsg(option)
-      endif
-      
-      cur_connection_set => coupler%connection_set
-
-      do iconn = 1, cur_connection_set%num_connections
-
-        local_id = cur_connection_set%id_dn(iconn)
-        ghosted_id = surf_grid%nL2G(local_id)
-
-        ! Compute densities:
-        call EOSWaterdensity(surf_global_aux_vars(ghosted_id)%temp(1), &
-                     option%reference_pressure,den_surf_kg)
-        ! Now modify den_surf_kg to account for frozen fraction.
-        ! WARNING: This assumes density of ice at atmospheric pressure;
-        ! TODO: Need to actually compute this to handle the general case.
-        den_surf_kg = surf_aux_vars(ghosted_id)%unfrozen_fraction*den_surf_kg + &
-                      (1-surf_aux_vars(ghosted_id)%unfrozen_fraction)*den_surf_ice_kg
-        call EOSWaterdensity(temp_sub_p(local_id),press_sub_p(local_id),den_sub_kg)
-        den_aveg = (den_surf_kg + den_sub_kg)/2.d0
-
-        ! Exchange of water between surface-subsurface.
-        hw = xx_p((local_id-1)*option%nflowdof+1)
-        press_surf = hw*(abs(option%gravity(3)))*den_surf_kg + &
-                     option%reference_pressure
-
-        press_up = press_sub_p(local_id)
-        press_dn = press_surf
-        gravity = dist_gravity_p(local_id)*den_aveg
-        
-        dphi = press_up - press_dn + gravity
-        
-        ! check if there is standing water on the surface
-        if (dphi<0.d0 .and. press_dn - option%reference_pressure<eps) then
-          dphi= 0.d0
-        endif
-        
-        ! exfiltration will only occur if subsurface pressure is greater
-        ! than reference pressure
-        if (dphi>=0 .and. press_up-option%reference_pressure<eps ) then
-          dphi = 0.d0
-        endif
-        
-        if(dphi>0.d0) then
-          press = press_up
-        else
-          press = press_dn
-        endif
-        
-        call SaturationFunctionCompute( &
-          press,sat,kr,ds_dp,dkr_dp,&
-          patch%saturation_function_array(int(icap_loc_p(local_id)))%ptr, &
-          0.d0,0.d0,saturated,option)
-        
-        if(saturated) then
-          pw = press
-        else
-          pw = option%reference_pressure
-        endif
-                                           
-        call EOSWaterSaturationPressure(option%reference_temperature,sat_pressure,ierr)
-        call EOSWaterViscosity(option%reference_temperature,pw,sat_pressure,visl,ierr)
-
-        v_darcy = Dq_p(local_id)*kr/visl*dphi
-        if (v_darcy<=0.d0) then
-          ! Flow is happening from surface to subsurface.
-          ! Note that we limit the mass exchange when surface ice is present 
-          ! (as the frozen fraction is immobile) by multiplying by the 
-          ! unfrozen fraction.
-          if ( abs(v_darcy) > surf_aux_vars(ghosted_id)%unfrozen_fraction * &
-                              xx_p(local_id)/option%surf_flow_dt ) then
-            v_darcy = surf_aux_vars(ghosted_id)%unfrozen_fraction * &
-                      (-xx_p(local_id)/option%surf_flow_dt)
-            v_darcy_limit=PETSC_TRUE
-          endif
-          temp_half = surf_global_aux_vars(ghosted_id)%temp(1) + 273.15d0
-        else
-          ! Exfiltration is occuring
-          temp_half = temp_sub_p(local_id) + 273.15d0
-        endif
-        
-        ! Mass flux
-        exch_p((local_id-1)*option%nflowdof+1) = &
-          exch_p((local_id-1)*option%nflowdof+1) + &
-          v_darcy*area_p(local_id)*option%surf_flow_dt
-        !coupler%flow_aux_real_var(ONE_INTEGER,local_id)=v_darcy
-        coupler%flow_aux_real_var(ONE_INTEGER,local_id)=0.d0
-        xx_p((local_id-1)*option%nflowdof+1) = &
-          xx_p((local_id-1)*option%nflowdof+1) + v_darcy*option%surf_flow_dt
-        if(abs(v_darcy)>v_darcy_max) v_darcy_max = v_darcy
-
-        ! Heat flux associated with mass flux
-        Cwi = surf_aux_vars(ghosted_id)%Cwi
-        exch_p((local_id-1)*option%nflowdof+2) = &
-          exch_p((local_id-1)*option%nflowdof+2) + &
-          den_aveg*v_darcy*temp_half*Cwi*area_p(local_id)*option%surf_flow_dt
-
-        if (hw>0.d0) then
-          ! Exchange of heat between surface water--subsurface domain
-          Ke_up = (sat + epsilon)**th_alpha_p(local_id)
-          k_eff_up = ckdry_p(local_id) + &
-                      (ckwet_p(local_id) - ckdry_p(local_id))*Ke_up
-          if (option%use_th_freezing) then
-             Ke_fr_up = (sat_ice_p(local_id) + epsilon)**th_alpha_fr_p(local_id)
-             k_eff_up = ckwet_p(local_id)*Ke_up + ckice_p(local_id)*Ke_fr_up + &
-                  ckdry_p(local_id)*(1.d0 - Ke_up - Ke_fr_up)
-          endif
-          k_eff_dn = surf_aux_vars(ghosted_id)%k_therm
-
-          Dk_eff = k_eff_up*k_eff_dn/(k_eff_up*hw/2.d0 + &
-                                      k_eff_dn*dist_p(local_id))
-
-          dtemp = temp_sub_p(local_id) - surf_global_aux_vars(ghosted_id)%temp(1)
-          exch_p(local_id*option%nflowdof) = exch_p(local_id*option%nflowdof) + &
-            area_p(local_id)*Dk_eff*dTemp*option%surf_flow_dt
-        endif
-      enddo
-    else
-
-      ! In the absence of standing water, the heat flux SS term for surface flow
-      ! is directly applied to subsurface domain.
-
-      if (associated(coupler%flow_aux_real_var) .and. &
-          coupler%flow_condition%energy_rate%itype == HET_ENERGY_RATE_SS) then
-
-        cur_connection_set => coupler%connection_set
-
-        do iconn = 1, cur_connection_set%num_connections
-
-          local_id = cur_connection_set%id_dn(iconn)
-          ghosted_id = surf_grid%nL2G(local_id)
-
-          hw = xx_p((local_id-1)*option%nflowdof+1)
-
-          if (hw==0.d0) then
-            exch_p(local_id*option%nflowdof) = exch_p(local_id*option%nflowdof) &
-              -coupler%flow_aux_real_var(TWO_INTEGER,local_id)*option%surf_flow_dt
-            ! NOTE: There is a -ve sign
-            !   coupler%flow_aux_real_var(TWO_INTEGER,:) : +ve value implies a
-            !       source of energy to surface water; while
-            !   exch_p(:) : +ve values implies transfer of energy from subsurface
-            !       to surface water.
-          endif
-
-        enddo
-
-      endif
-
-    endif
-    coupler => coupler%next
-  enddo
-  
-  call VecRestoreArrayF90(surf_field%area,area_p,ierr)
-  call VecRestoreArrayF90(surf_field%surf2subsurf_dist_gravity,dist_gravity_p,ierr)
-  call VecRestoreArrayF90(surf_field%surf2subsurf_dist,dist_p,ierr)
-  call VecRestoreArrayF90(surf_field%exchange_subsurf_2_surf,exch_p,ierr)
-  call VecRestoreArrayF90(surf_field%Dq,Dq_p,ierr)  
-  call VecRestoreArrayF90(surf_field%icap_loc,icap_loc_p,ierr)
-  call VecRestoreArrayF90(surf_field%flow_xx_loc,xx_p,ierr)
-  call VecRestoreArrayF90(surf_field%temp_subsurf,temp_sub_p,ierr)
-  call VecRestoreArrayF90(surf_field%press_subsurf,press_sub_p,ierr)
-  call VecRestoreArrayF90(surf_field%ckdry,ckdry_p,ierr)
-  call VecRestoreArrayF90(surf_field%ckwet,ckwet_p,ierr)
-  call VecRestoreArrayF90(surf_field%ckice,ckice_p,ierr)
-  call VecRestoreArrayF90(surf_field%th_alpha,th_alpha_p,ierr)
-  call VecRestoreArrayF90(surf_field%th_alpha_fr,th_alpha_fr_p,ierr)
-  call VecRestoreArrayF90(surf_field%sat_ice,sat_ice_p,ierr)
-
-end subroutine SurfaceTHSurf2SubsurfFlux
-
-! ************************************************************************** !
-
-subroutine SurfaceTHGetSubsurfProp(realization,surf_realization)
-  ! 
-  ! This routine get soil properties of the top-most soil layer from the
-  ! subsurface domain.
-  ! 
-  ! Author: Gautam Bisht, LBNL
-  ! Date: 02/28/13
-  ! 
-
-  use Grid_module
-  use String_module
-  use Unstructured_Grid_module
-  use Unstructured_Grid_Aux_module
-  use Unstructured_Cell_module
-  use Realization_class
-  use Option_module
-  use Patch_module
-  use Region_module
-  use Condition_module
-  use Coupler_module
-  use Surface_Field_module
-  use Field_module
-  use EOS_Water_module
-  use Discretization_module
-  use Connection_module
-  use Surface_Realization_class
-  use Realization_Base_class
-  use DM_Kludge_module
-  use TH_Aux_module
-
-  implicit none
-  
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-
-  type(realization_type)         :: realization
-  type(surface_realization_type) :: surf_realization
-
-  type(patch_type),pointer            :: patch,surf_patch
-  type(grid_type),pointer             :: grid,surf_grid
-  type(coupler_list_type), pointer    :: coupler_list
-  type(coupler_type), pointer         :: coupler
-  type(flow_condition_type), pointer  :: flow_condition
-  type(option_type), pointer          :: option
-  type(field_type),pointer            :: field
-  type(surface_field_type),pointer    :: surf_field
-  type(dm_ptr_type), pointer          :: dm_ptr
-  type(connection_set_type), pointer  :: cur_connection_set
-  type(TH_parameter_type), pointer :: TH_parameter
-  
-  Vec            :: destin_mpi_vec, source_mpi_vec
-  PetscErrorCode :: ierr
-  PetscReal, pointer :: qsrc_p(:),vec_p(:)
-  PetscInt :: local_id,iconn,sum_connection,ghosted_id
-  PetscReal, pointer :: xx_loc_p(:)
-  PetscReal, pointer :: xx_p(:)
-  PetscReal, pointer :: yy_p(:)
-  PetscReal, pointer :: zz_p(:)
-  PetscReal, pointer :: perm_xx_p(:)
-  PetscReal, pointer :: perm_yy_p(:)
-  PetscReal, pointer :: perm_zz_p(:)
-  PetscReal, pointer :: Dq_p(:)
-  PetscReal, pointer :: dist_gravity_p(:)
-  PetscReal, pointer :: dist_p(:)
-  PetscReal, pointer :: icap_loc_p(:)
-  PetscReal, pointer :: ithrm_loc_p(:)
-  PetscReal, pointer :: ckwet_p(:)
-  PetscReal, pointer :: ckdry_p(:)
-  PetscReal, pointer :: ckice_p(:)
-  PetscReal, pointer :: th_alpha_p(:)
-  PetscReal, pointer :: th_alpha_fr_p(:)
-  PetscReal :: dist_x,dist_y,dist_z,dist
-  PetscInt :: size
-  
-  PetscBool :: coupler_found = PETSC_FALSE
-
-  patch      => realization%patch
-  surf_patch => surf_realization%patch
-  option     => realization%option
-  grid       => realization%discretization%grid
-  field      => realization%field
-  surf_grid  => surf_realization%discretization%grid
-  surf_field => surf_realization%surf_field
-  TH_parameter => patch%aux%TH%TH_parameter
-
-  dm_ptr => DiscretizationGetDMPtrFromIndex(realization%discretization,ONEDOF)
-  
-  ! Update the surface BC
-  coupler_list => patch%source_sinks
-  coupler => coupler_list%first
-  sum_connection = 0
-  do
-    if (.not.associated(coupler)) exit
-    
-    ! FLOW
-    if (associated(coupler%flow_aux_real_var)) then
-      cur_connection_set => coupler%connection_set
-      
-      ! Find the BC from the list of BCs
-      if(StringCompare(coupler%name,'from_surface_ss')) then
-
-        ! perm_x
-        call VecGetArrayF90(field%perm_xx_loc,xx_loc_p, ierr)
-        call VecGetArrayF90(surf_field%subsurf_temp_vec_1dof,vec_p,ierr)
-        do iconn=1,cur_connection_set%num_connections
-          local_id = cur_connection_set%id_dn(iconn)
-          ghosted_id = grid%nL2G(local_id)
-          vec_p(iconn)=xx_loc_p(ghosted_id)
-        enddo
-        call VecRestoreArrayF90(field%perm_xx_loc,xx_loc_p, ierr)
-        call VecRestoreArrayF90(surf_field%subsurf_temp_vec_1dof,vec_p,ierr)
-        ! Scatter the data
-        call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids_1dof, &
-                             surf_field%subsurf_temp_vec_1dof, &
-                             surf_field%perm_xx, &
-                            INSERT_VALUES,SCATTER_FORWARD,ierr)
-        call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids_1dof, &
-                           surf_field%subsurf_temp_vec_1dof, &
-                           surf_field%perm_xx, &
-                           INSERT_VALUES,SCATTER_FORWARD,ierr)
-
-        ! perm_y
-        call VecGetArrayF90(field%perm_yy_loc,xx_loc_p, ierr)
-        call VecGetArrayF90(surf_field%subsurf_temp_vec_1dof,vec_p,ierr)
-        do iconn=1,cur_connection_set%num_connections
-          local_id = cur_connection_set%id_dn(iconn)
-          ghosted_id = grid%nL2G(local_id)
-          vec_p(iconn)=xx_loc_p(ghosted_id)
-        enddo
-        call VecRestoreArrayF90(field%perm_yy_loc,xx_loc_p, ierr)
-        call VecRestoreArrayF90(surf_field%subsurf_temp_vec_1dof,vec_p,ierr)
-        ! Scatter the data
-        call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids_1dof, &
-                            surf_field%subsurf_temp_vec_1dof, &
-                            surf_field%perm_yy, &
-                            INSERT_VALUES,SCATTER_FORWARD,ierr)
-        call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids_1dof, &
-                           surf_field%subsurf_temp_vec_1dof, &
-                           surf_field%perm_yy, &
-                           INSERT_VALUES,SCATTER_FORWARD,ierr)
-
-        ! perm_z
-        call VecGetArrayF90(field%perm_zz_loc,xx_loc_p, ierr)
-        call VecGetArrayF90(surf_field%subsurf_temp_vec_1dof,vec_p,ierr)
-        do iconn=1,cur_connection_set%num_connections
-          local_id = cur_connection_set%id_dn(iconn)
-          ghosted_id = grid%nL2G(local_id)
-          vec_p(iconn)=xx_loc_p(ghosted_id)
-        enddo
-        call VecRestoreArrayF90(field%perm_zz_loc,xx_loc_p, ierr)
-        call VecRestoreArrayF90(surf_field%subsurf_temp_vec_1dof,vec_p,ierr)
-        ! Scatter the data
-        call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids_1dof, &
-                            surf_field%subsurf_temp_vec_1dof, &
-                            surf_field%perm_zz, &
-                            INSERT_VALUES, SCATTER_FORWARD,ierr)
-        call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids_1dof, &
-                           surf_field%subsurf_temp_vec_1dof, &
-                           surf_field%perm_zz, &
-                           INSERT_VALUES,SCATTER_FORWARD,ierr)
-
-        ! por
-        call VecGetArrayF90(field%porosity_loc,xx_loc_p, ierr)
-        call VecGetArrayF90(surf_field%subsurf_temp_vec_1dof,vec_p,ierr)
-        do iconn=1,cur_connection_set%num_connections
-          local_id = cur_connection_set%id_dn(iconn)
-          ghosted_id = grid%nL2G(local_id)
-          vec_p(iconn)=xx_loc_p(ghosted_id)
-        enddo
-        call VecRestoreArrayF90(field%porosity_loc,xx_loc_p, ierr)
-        call VecRestoreArrayF90(surf_field%subsurf_temp_vec_1dof,vec_p,ierr)
-        ! Scatter the data
-        call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids_1dof, &
-                            surf_field%subsurf_temp_vec_1dof, &
-                            surf_field%por, &
-                            INSERT_VALUES,SCATTER_FORWARD,ierr)
-        call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids_1dof, &
-                           surf_field%subsurf_temp_vec_1dof, &
-                           surf_field%por, &
-                           INSERT_VALUES,SCATTER_FORWARD,ierr)
-
-        ! icap
-        call VecGetArrayF90(surf_field%subsurf_temp_vec_1dof,vec_p,ierr)
-        call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
-        do iconn=1,cur_connection_set%num_connections
-          local_id = cur_connection_set%id_dn(iconn)
-          ghosted_id = grid%nL2G(local_id)
-          vec_p(iconn)=icap_loc_p(ghosted_id)
-        enddo
-        call VecRestoreArrayF90(surf_field%subsurf_temp_vec_1dof,vec_p,ierr)
-        call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
-        ! Scatter the data
-        call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids_1dof, &
-                            surf_field%subsurf_temp_vec_1dof, &
-                            surf_field%icap_loc, &
-                            INSERT_VALUES,SCATTER_FORWARD,ierr)
-        call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids_1dof, &
-                           surf_field%subsurf_temp_vec_1dof, &
-                           surf_field%icap_loc, &
-                           INSERT_VALUES,SCATTER_FORWARD,ierr)
-
-        ! ithrm_id
-        call VecGetArrayF90(surf_field%subsurf_temp_vec_1dof,vec_p,ierr)
-        call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
-        do iconn=1,cur_connection_set%num_connections
-          local_id = cur_connection_set%id_dn(iconn)
-          ghosted_id = grid%nL2G(local_id)
-          vec_p(iconn)=ithrm_loc_p(ghosted_id)
-        enddo
-        call VecRestoreArrayF90(surf_field%subsurf_temp_vec_1dof,vec_p,ierr)
-        call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
-        ! Scatter the data
-        call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids_1dof, &
-                            surf_field%subsurf_temp_vec_1dof, &
-                            surf_field%ithrm_loc, &
-                            INSERT_VALUES,SCATTER_FORWARD,ierr)
-        call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids_1dof, &
-                           surf_field%subsurf_temp_vec_1dof, &
-                           surf_field%ithrm_loc, &
-                           INSERT_VALUES,SCATTER_FORWARD,ierr)
-
-        ! x
-        call VecGetArrayF90(surf_field%subsurf_temp_vec_1dof,vec_p,ierr)
-        do iconn=1,cur_connection_set%num_connections
-          local_id = cur_connection_set%id_dn(iconn)
-          ghosted_id = grid%nL2G(local_id)
-          vec_p(iconn)=grid%x(ghosted_id)
-        enddo
-        call VecRestoreArrayF90(surf_field%subsurf_temp_vec_1dof,vec_p,ierr)
-        ! Scatter the data
-        call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids_1dof, &
-                            surf_field%subsurf_temp_vec_1dof, &
-                            surf_field%subsurf_xx, &
-                            INSERT_VALUES,SCATTER_FORWARD,ierr)
-        call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids_1dof, &
-                           surf_field%subsurf_temp_vec_1dof, &
-                           surf_field%subsurf_xx, &
-                           INSERT_VALUES,SCATTER_FORWARD,ierr)
-
-        ! y
-        call VecGetArrayF90(surf_field%subsurf_temp_vec_1dof,vec_p,ierr)
-        do iconn=1,cur_connection_set%num_connections
-          local_id = cur_connection_set%id_dn(iconn)
-          ghosted_id = grid%nL2G(local_id)
-          vec_p(iconn)=grid%y(ghosted_id)
-        enddo
-        call VecRestoreArrayF90(surf_field%subsurf_temp_vec_1dof,vec_p,ierr)
-        ! Scatter the data
-        call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids_1dof, &
-                            surf_field%subsurf_temp_vec_1dof, &
-                            surf_field%subsurf_yy, &
-                            INSERT_VALUES,SCATTER_FORWARD,ierr)
-        call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids_1dof, &
-                           surf_field%subsurf_temp_vec_1dof, &
-                           surf_field%subsurf_yy, &
-                           INSERT_VALUES,SCATTER_FORWARD,ierr)
-
-        ! z
-        call VecGetArrayF90(surf_field%subsurf_temp_vec_1dof,vec_p,ierr)
-        do iconn=1,cur_connection_set%num_connections
-          local_id = cur_connection_set%id_dn(iconn)
-          ghosted_id = grid%nL2G(local_id)
-          vec_p(iconn)=grid%z(ghosted_id)
-        enddo
-        call VecRestoreArrayF90(surf_field%subsurf_temp_vec_1dof,vec_p,ierr)
-        ! Scatter the data
-        call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids_1dof, &
-                            surf_field%subsurf_temp_vec_1dof, &
-                            surf_field%subsurf_zz, &
-                            INSERT_VALUES,SCATTER_FORWARD,ierr)
-        call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids_1dof, &
-                           surf_field%subsurf_temp_vec_1dof, &
-                           surf_field%subsurf_zz, &
-                           INSERT_VALUES,SCATTER_FORWARD,ierr)
-      else
-        sum_connection = sum_connection + cur_connection_set%num_connections
-      endif
-
-    endif
-    coupler => coupler%next
-  enddo
-
-  call VecGetArrayF90(surf_field%subsurf_xx,xx_p,ierr)
-  call VecGetArrayF90(surf_field%subsurf_yy,yy_p,ierr)
-  call VecGetArrayF90(surf_field%subsurf_zz,zz_p,ierr)
-  call VecGetArrayF90(surf_field%perm_xx,perm_xx_p,ierr)
-  call VecGetArrayF90(surf_field%perm_yy,perm_yy_p,ierr)
-  call VecGetArrayF90(surf_field%perm_zz,perm_zz_p,ierr)
-  call VecGetArrayF90(surf_field%Dq,Dq_p,ierr)
-  call VecGetArrayF90(surf_field%surf2subsurf_dist_gravity,dist_gravity_p,ierr)
-  call VecGetArrayF90(surf_field%surf2subsurf_dist,dist_p,ierr)
-  call VecGetArrayF90(surf_field%ithrm_loc,ithrm_loc_p,ierr)
-  call VecGetArrayF90(surf_field%ckwet,ckwet_p,ierr)
-  call VecGetArrayF90(surf_field%ckdry,ckdry_p,ierr)
-  call VecGetArrayF90(surf_field%ckice,ckice_p,ierr)
-  call VecGetArrayF90(surf_field%th_alpha,th_alpha_p,ierr)
-  call VecGetArrayF90(surf_field%th_alpha_fr,th_alpha_fr_p,ierr)
-
-  do local_id=1,surf_grid%nlmax
-    dist_x = (xx_p(local_id) - surf_grid%x(local_id))
-    dist_y = (yy_p(local_id) - surf_grid%y(local_id))
-    dist_z = (zz_p(local_id) - surf_grid%z(local_id))
-      
-    dist = sqrt(dist_x*dist_x + dist_y*dist_y + dist_z*dist_z)
-
-    Dq_p(local_id) = (perm_xx_p(local_id)*abs(dist_x)/dist + &
-                      perm_yy_p(local_id)*abs(dist_y)/dist + &
-                      perm_zz_p(local_id)*abs(dist_z)/dist)/dist
-    dist_gravity_p(local_id) = dist*(dist_x*option%gravity(1)+ &
-                             dist_y*option%gravity(2)+ &
-                             dist_z*option%gravity(3))
-
-    dist_p(local_id) = dist
-    ckwet_p(local_id) = TH_parameter%ckwet(int(ithrm_loc_p(local_id)))
-    ckdry_p(local_id) = TH_parameter%ckdry(int(ithrm_loc_p(local_id)))
-    th_alpha_p(local_id) = TH_parameter%alpha(int(ithrm_loc_p(local_id)))
-
-    if (option%use_th_freezing) then
-       ckice_p(local_id) = TH_parameter%ckfrozen(int(ithrm_loc_p(local_id)))
-       th_alpha_fr_p(local_id) = TH_parameter%alpha_fr(int(ithrm_loc_p(local_id)))
-    else
-       ckice_p(local_id) = 0.d0
-       th_alpha_fr_p(local_id) = 0.d0
-    endif
-
-  enddo
-
-  call VecRestoreArrayF90(surf_field%surf2subsurf_dist_gravity,dist_gravity_p,ierr)
-  call VecRestoreArrayF90(surf_field%surf2subsurf_dist,dist_p,ierr)
-  call VecRestoreArrayF90(surf_field%subsurf_xx,xx_p,ierr)
-  call VecRestoreArrayF90(surf_field%subsurf_yy,yy_p,ierr)
-  call VecRestoreArrayF90(surf_field%subsurf_zz,zz_p,ierr)
-  call VecRestoreArrayF90(surf_field%perm_xx,perm_xx_p,ierr)
-  call VecRestoreArrayF90(surf_field%perm_yy,perm_yy_p,ierr)
-  call VecRestoreArrayF90(surf_field%perm_zz,perm_zz_p,ierr)
-  call VecRestoreArrayF90(surf_field%Dq,Dq_p,ierr)
-  call VecRestoreArrayF90(surf_field%ckwet,ckwet_p,ierr)
-  call VecRestoreArrayF90(surf_field%ckdry,ckdry_p,ierr)
-  call VecRestoreArrayF90(surf_field%ckice,ckice_p,ierr)
-  call VecRestoreArrayF90(surf_field%th_alpha,th_alpha_p,ierr)
-  call VecRestoreArrayF90(surf_field%th_alpha_fr,th_alpha_fr_p,ierr)
-
-  surf_realization%first_time=PETSC_FALSE
-
-end subroutine SurfaceTHGetSubsurfProp
-
-! ************************************************************************** !
-
 subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   ! 
   ! This routine provides the function evaluation for PETSc TSSolve()
@@ -1374,11 +204,11 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   type(connection_set_list_type), pointer   :: connection_set_list
   type(connection_set_type), pointer        :: cur_connection_set
 
-  type(Surface_TH_auxvar_type), pointer :: surf_aux_vars(:)
-  type(Surface_TH_auxvar_type), pointer :: surf_aux_vars_bc(:)
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars(:)
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars_bc(:)
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars_ss(:)
+  type(Surface_TH_auxvar_type), pointer :: surf_auxvars(:)
+  type(Surface_TH_auxvar_type), pointer :: surf_auxvars_bc(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars_bc(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars_ss(:)
 
   PetscInt :: local_id_up, local_id_dn, local_id
   PetscInt :: ghosted_id_up, ghosted_id_dn, ghosted_id
@@ -1408,11 +238,11 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   option => surf_realization%option
   surf_field => surf_realization%surf_field
 
-  surf_aux_vars => patch%surf_aux%SurfaceTH%aux_vars
-  surf_aux_vars_bc => patch%surf_aux%SurfaceTH%aux_vars_bc
-  surf_global_aux_vars => patch%surf_aux%SurfaceGlobal%aux_vars
-  surf_global_aux_vars_bc => patch%surf_aux%SurfaceGlobal%aux_vars_bc
-  surf_global_aux_vars_ss => patch%surf_aux%SurfaceGlobal%aux_vars_ss
+  surf_auxvars => patch%surf_aux%SurfaceTH%auxvars
+  surf_auxvars_bc => patch%surf_aux%SurfaceTH%auxvars_bc
+  surf_global_auxvars => patch%surf_aux%SurfaceGlobal%auxvars
+  surf_global_auxvars_bc => patch%surf_aux%SurfaceGlobal%auxvars_bc
+  surf_global_auxvars_ss => patch%surf_aux%SurfaceGlobal%auxvars_ss
 
   surf_realization%iter_count = surf_realization%iter_count+1
   if (surf_realization%iter_count < 10) then
@@ -1433,7 +263,7 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   ! RTM: This includes calculation of the accumulation terms, correct?
   call SurfaceTHUpdateAuxVars(surf_realization)
   ! override flags since they will soon be out of date  
-  patch%surf_aux%SurfaceTH%aux_vars_up_to_date = PETSC_FALSE
+  patch%surf_aux%SurfaceTH%auxvars_up_to_date = PETSC_FALSE
 
   call VecGetArrayF90(ff,ff_p, ierr)
   call VecGetArrayF90(surf_field%mannings_loc,mannings_loc_p, ierr)
@@ -1467,12 +297,12 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
       dist = sqrt(dx*dx + dy*dy + dz*dz)
       slope = dz/dist
       
-      call SurfaceTHFlux(surf_aux_vars(ghosted_id_up), &
-                         surf_global_aux_vars(ghosted_id_up), &
+      call SurfaceTHFlux(surf_auxvars(ghosted_id_up), &
+                         surf_global_auxvars(ghosted_id_up), &
                          zc(ghosted_id_up), &
                          mannings_loc_p(ghosted_id_up), &
-                         surf_aux_vars(ghosted_id_dn), &
-                         surf_global_aux_vars(ghosted_id_dn), &
+                         surf_auxvars(ghosted_id_dn), &
+                         surf_global_auxvars(ghosted_id_dn), &
                          zc(ghosted_id_dn), &
                          mannings_loc_p(ghosted_id_dn), &
                          dist, cur_connection_set%area(iconn), &
@@ -1518,8 +348,8 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
       slope_dn = dz/sqrt(dx*dx + dy*dy + dz*dz)
 
       call SurfaceTHBCFlux(boundary_condition%flow_condition%itype, &
-                         surf_aux_vars_bc(sum_connection), &
-                         surf_global_aux_vars_bc(sum_connection), &
+                         surf_auxvars_bc(sum_connection), &
+                         surf_global_auxvars_bc(sum_connection), &
                          slope_dn, &
                          mannings_loc_p(ghosted_id_dn), &
                          cur_connection_set%area(iconn), &
@@ -1586,9 +416,9 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
       ! I think using the weighted average of liquid and ice densities and Cwi 
       ! is correct here, but I should check.
       ff_p(iend) = ff_p(iend) + esrc + &
-                    surf_global_aux_vars_ss(local_id)%den_kg(1)* &
-                    (surf_global_aux_vars_ss(local_id)%temp(1) + 273.15d0)* &
-                    surf_aux_vars(local_id)%Cwi* &
+                    surf_global_auxvars_ss(local_id)%den_kg(1)* &
+                    (surf_global_auxvars_ss(local_id)%temp(1) + 273.15d0)* &
+                    surf_auxvars(local_id)%Cwi* &
                     qsrc/area_p(local_id)
     enddo
     source_sink => source_sink%next
@@ -1647,10 +477,10 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
   type(connection_set_list_type), pointer   :: connection_set_list
   type(connection_set_type), pointer        :: cur_connection_set
 
-  type(Surface_TH_auxvar_type), pointer :: surf_aux_vars(:)
-  type(Surface_TH_auxvar_type), pointer :: surf_aux_vars_bc(:)
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars(:)
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars_bc(:)
+  type(Surface_TH_auxvar_type), pointer :: surf_auxvars(:)
+  type(Surface_TH_auxvar_type), pointer :: surf_auxvars_bc(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars_bc(:)
 
   PetscInt :: local_id_up, local_id_dn
   PetscInt :: ghosted_id_up, ghosted_id_dn
@@ -1674,10 +504,10 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
   option => surf_realization%option
   surf_field => surf_realization%surf_field
 
-  surf_aux_vars => patch%surf_aux%SurfaceTH%aux_vars
-  surf_aux_vars_bc => patch%surf_aux%SurfaceTH%aux_vars_bc
-  surf_global_aux_vars => patch%surf_aux%SurfaceGlobal%aux_vars
-  surf_global_aux_vars_bc => patch%surf_aux%SurfaceGlobal%aux_vars_bc
+  surf_auxvars => patch%surf_aux%SurfaceTH%auxvars
+  surf_auxvars_bc => patch%surf_aux%SurfaceTH%auxvars_bc
+  surf_global_auxvars => patch%surf_aux%SurfaceGlobal%auxvars
+  surf_global_auxvars_bc => patch%surf_aux%SurfaceGlobal%auxvars_bc
 
   call VecGetArrayF90(surf_field%mannings_loc,mannings_loc_p, ierr)
   call VecGetArrayF90(surf_field%area,area_p,ierr)
@@ -1711,12 +541,12 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
       dist = sqrt(dx*dx + dy*dy + dz*dz)
       slope = dz/dist
       
-      call SurfaceTHFlux(surf_aux_vars(ghosted_id_up), &
-                         surf_global_aux_vars(ghosted_id_up), &
+      call SurfaceTHFlux(surf_auxvars(ghosted_id_up), &
+                         surf_global_auxvars(ghosted_id_up), &
                          zc(ghosted_id_up), &
                          mannings_loc_p(ghosted_id_up), &
-                         surf_aux_vars(ghosted_id_dn), &
-                         surf_global_aux_vars(ghosted_id_dn), &
+                         surf_auxvars(ghosted_id_dn), &
+                         surf_global_auxvars(ghosted_id_dn), &
                          zc(ghosted_id_dn), &
                          mannings_loc_p(ghosted_id_dn), &
                          dist, cur_connection_set%area(iconn), &
@@ -1753,8 +583,8 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
       slope_dn = dz/sqrt(dx*dx + dy*dy + dz*dz)
 
       call SurfaceTHBCFlux(boundary_condition%flow_condition%itype, &
-                         surf_aux_vars_bc(sum_connection), &
-                         surf_global_aux_vars_bc(sum_connection), &
+                         surf_auxvars_bc(sum_connection), &
+                         surf_global_auxvars_bc(sum_connection), &
                          slope_dn, &
                          mannings_loc_p(ghosted_id_dn), &
                          cur_connection_set%area(iconn), &
@@ -1778,12 +608,12 @@ end subroutine SurfaceTHComputeMaxDt
 
 ! ************************************************************************** !
 
-subroutine SurfaceTHFlux(surf_aux_var_up, &
-                         surf_global_aux_var_up, &
+subroutine SurfaceTHFlux(surf_auxvar_up, &
+                         surf_global_auxvar_up, &
                          zc_up, &
                          mannings_up, &
-                         surf_aux_var_dn, &
-                         surf_global_aux_var_dn, &
+                         surf_auxvar_dn, &
+                         surf_global_auxvar_dn, &
                          zc_dn, &
                          mannings_dn, &
                          dist, &
@@ -1806,10 +636,10 @@ subroutine SurfaceTHFlux(surf_aux_var_up, &
   implicit none
 
   type(option_type) :: option
-  type(Surface_TH_auxvar_type) :: surf_aux_var_up
-  type(Surface_TH_auxvar_type) :: surf_aux_var_dn
-  type(surface_global_auxvar_type) :: surf_global_aux_var_up
-  type(surface_global_auxvar_type) :: surf_global_aux_var_dn
+  type(Surface_TH_auxvar_type) :: surf_auxvar_up
+  type(Surface_TH_auxvar_type) :: surf_auxvar_dn
+  type(surface_global_auxvar_type) :: surf_global_auxvar_up
+  type(surface_global_auxvar_type) :: surf_global_auxvar_dn
   PetscReal :: zc_up, zc_dn
   PetscReal :: mannings_up, mannings_dn
 
@@ -1834,24 +664,24 @@ subroutine SurfaceTHFlux(surf_aux_var_up, &
   flux = 0.d0
 
   ! Flow equation
-  head_up = surf_global_aux_var_up%head(1) + zc_up
-  head_dn = surf_global_aux_var_dn%head(1) + zc_dn
+  head_up = surf_global_auxvar_up%head(1) + zc_up
+  head_dn = surf_global_auxvar_dn%head(1) + zc_dn
 
   if (head_up>head_dn) then
     mannings_half = mannings_up
-    temp_half = surf_global_aux_var_up%temp(1) + 273.15d0
-    unfrozen_fraction_half = surf_aux_var_up%unfrozen_fraction
-    if (surf_global_aux_var_up%head(1)>eps) then
-      hw_half = surf_global_aux_var_up%head(1)
+    temp_half = surf_global_auxvar_up%temp(1) + 273.15d0
+    unfrozen_fraction_half = surf_auxvar_up%unfrozen_fraction
+    if (surf_global_auxvar_up%head(1)>eps) then
+      hw_half = surf_global_auxvar_up%head(1)
     else
       hw_half = 0.d0
     endif
   else
     mannings_half = mannings_dn
-    temp_half = surf_global_aux_var_dn%temp(1) + 273.15d0
-    unfrozen_fraction_half = surf_aux_var_dn%unfrozen_fraction
-    if (surf_global_aux_var_dn%head(1)>eps) then
-      hw_half = surf_global_aux_var_dn%head(1)
+    temp_half = surf_global_auxvar_dn%temp(1) + 273.15d0
+    unfrozen_fraction_half = surf_auxvar_dn%unfrozen_fraction
+    if (surf_global_auxvar_dn%head(1)>eps) then
+      hw_half = surf_global_auxvar_dn%head(1)
     else
       hw_half = 0.d0
     endif
@@ -1898,16 +728,16 @@ subroutine SurfaceTHFlux(surf_aux_var_up, &
 
   ! Average density
   ! Here we only consider the LIQUID fraction.
-  den_aveg = (surf_aux_var_up%den_water_kg + &
-              surf_aux_var_dn%den_water_kg)/2.d0
-  den_aveg = (surf_global_aux_var_up%den_kg(1) + &
-              surf_global_aux_var_dn%den_kg(1))/2.d0
+  den_aveg = (surf_auxvar_up%den_water_kg + &
+              surf_auxvar_dn%den_water_kg)/2.d0
+  den_aveg = (surf_global_auxvar_up%den_kg(1) + &
+              surf_global_auxvar_dn%den_kg(1))/2.d0
   ! Temperature difference
-  dtemp = surf_global_aux_var_up%temp(1) - surf_global_aux_var_dn%temp(1)
+  dtemp = surf_global_auxvar_up%temp(1) - surf_global_auxvar_dn%temp(1)
 
   ! Note, Cw and k_therm are same for up and downwind
-  Cw = surf_aux_var_up%Cw
-  k_therm = surf_aux_var_up%k_therm
+  Cw = surf_auxvar_up%Cw
+  k_therm = surf_auxvar_up%k_therm
   
   ! Unfrozen fraction multiplies hw_half in advection term, but does NOT affect the 
   ! conduction therm.  
@@ -1920,8 +750,8 @@ end subroutine SurfaceTHFlux
 ! ************************************************************************** !
 
 subroutine SurfaceTHBCFlux(ibndtype, &
-                           surf_aux_var, &
-                           surf_global_aux_var, &
+                           surf_auxvar, &
+                           surf_global_auxvar, &
                            slope, &
                            mannings, &
                            length, &
@@ -1940,8 +770,8 @@ subroutine SurfaceTHBCFlux(ibndtype, &
   implicit none
 
   type(option_type) :: option
-  type(Surface_TH_auxvar_type) :: surf_aux_var
-  type(surface_global_auxvar_type) :: surf_global_aux_var
+  type(Surface_TH_auxvar_type) :: surf_auxvar
+  type(surface_global_auxvar_type) :: surf_global_auxvar
   PetscReal :: slope
   PetscReal :: mannings
   PetscReal :: length
@@ -1965,7 +795,7 @@ subroutine SurfaceTHBCFlux(ibndtype, &
 
   ! Flow  
   pressure_bc_type = ibndtype(TH_PRESSURE_DOF)
-  head = surf_global_aux_var%head(1)
+  head = surf_global_auxvar%head(1)
   
   select case(pressure_bc_type)
     case (ZERO_GRADIENT_BC)
@@ -1973,7 +803,7 @@ subroutine SurfaceTHBCFlux(ibndtype, &
         vel =  0.d0
         head_liq = 0.d0
       else
-        head_liq = surf_aux_var%unfrozen_fraction * head
+        head_liq = surf_auxvar%unfrozen_fraction * head
         vel = -sqrt(dabs(slope))/mannings*(head_liq**(2.d0/3.d0))
       endif
     case default
@@ -1985,9 +815,9 @@ subroutine SurfaceTHBCFlux(ibndtype, &
 
   ! Temperature
   ! RTM: See note about in SufaceTHFlux() about how frozen/unfrozen are handled here.
-  Res(TH_TEMPERATURE_DOF) = surf_global_aux_var%den_kg(1)* &
-                            (surf_global_aux_var%temp(1) + 273.15d0)* &
-                            surf_aux_var%Cwi* &
+  Res(TH_TEMPERATURE_DOF) = surf_global_auxvar%den_kg(1)* &
+                            (surf_global_auxvar%temp(1) + 273.15d0)* &
+                            surf_auxvar%Cwi* &
                             vel*head_liq*length
 
 end subroutine SurfaceTHBCFlux
@@ -2022,12 +852,12 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
   type(coupler_type), pointer :: boundary_condition
   type(coupler_type), pointer :: source_sink
   type(connection_set_type), pointer :: cur_connection_set
-  type(Surface_TH_auxvar_type), pointer :: surf_th_aux_vars(:)
-  type(Surface_TH_auxvar_type), pointer :: surf_th_aux_vars_bc(:)
-  type(Surface_TH_auxvar_type), pointer :: surf_th_aux_vars_ss(:)
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars(:)
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars_bc(:)
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars_ss(:)
+  type(Surface_TH_auxvar_type), pointer :: surf_th_auxvars(:)
+  type(Surface_TH_auxvar_type), pointer :: surf_th_auxvars_bc(:)
+  type(Surface_TH_auxvar_type), pointer :: surf_th_auxvars_ss(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars_bc(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars_ss(:)
 
   PetscInt :: ghosted_id, local_id, istart, iend, sum_connection, idof, iconn
   PetscInt :: iphasebc, iphase
@@ -2044,12 +874,12 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
   grid => patch%grid
   surf_field => surf_realization%surf_field
 
-  surf_th_aux_vars => patch%surf_aux%SurfaceTH%aux_vars
-  surf_th_aux_vars_bc => patch%surf_aux%SurfaceTH%aux_vars_bc
-  surf_th_aux_vars_ss => patch%surf_aux%SurfaceTH%aux_vars_ss
-  surf_global_aux_vars => patch%surf_aux%SurfaceGlobal%aux_vars
-  surf_global_aux_vars_bc => patch%surf_aux%SurfaceGlobal%aux_vars_bc
-  surf_global_aux_vars_ss => patch%surf_aux%SurfaceGlobal%aux_vars_ss
+  surf_th_auxvars => patch%surf_aux%SurfaceTH%auxvars
+  surf_th_auxvars_bc => patch%surf_aux%SurfaceTH%auxvars_bc
+  surf_th_auxvars_ss => patch%surf_aux%SurfaceTH%auxvars_ss
+  surf_global_auxvars => patch%surf_aux%SurfaceGlobal%auxvars
+  surf_global_auxvars_bc => patch%surf_aux%SurfaceGlobal%auxvars_bc
+  surf_global_auxvars_ss => patch%surf_aux%SurfaceGlobal%auxvars_ss
   
   call VecGetArrayF90(surf_field%flow_xx_loc,xx_loc_p, ierr)
 
@@ -2065,14 +895,14 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
     istart = iend-option%nflowdof+1
 
     call SurfaceTHAuxVarCompute(xx_loc_p(istart:iend), &
-                                surf_th_aux_vars(ghosted_id), &
-                                surf_global_aux_vars(ghosted_id), &
+                                surf_th_auxvars(ghosted_id), &
+                                surf_global_auxvars(ghosted_id), &
                                 option)
     ! [rho*h*T*Cwi]
-    xx_loc_p(istart+1) = surf_global_aux_vars(ghosted_id)%den_kg(1)* &
+    xx_loc_p(istart+1) = surf_global_auxvars(ghosted_id)%den_kg(1)* &
                          xx_loc_p(istart)* &
-                         (surf_global_aux_vars(ghosted_id)%temp(1) + 273.15d0)* &
-                         surf_th_aux_vars(ghosted_id)%Cwi
+                         (surf_global_auxvars(ghosted_id)%temp(1) + 273.15d0)* &
+                         surf_th_auxvars(ghosted_id)%Cwi
   enddo
    
   ! Boundary aux vars
@@ -2098,10 +928,10 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
         end select
       enddo
       
-      surf_global_aux_vars_bc(sum_connection)%temp(1) = xxbc(2)
+      surf_global_auxvars_bc(sum_connection)%temp(1) = xxbc(2)
       call SurfaceTHAuxVarCompute(xxbc, &
-                                  surf_th_aux_vars_bc(sum_connection), &
-                                  surf_global_aux_vars_bc(sum_connection), &
+                                  surf_th_auxvars_bc(sum_connection), &
+                                  surf_global_auxvars_bc(sum_connection), &
                                   option)
 
     enddo
@@ -2132,22 +962,22 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
         endif
       else
         tsrc1 = xx_loc_p((ghosted_id-1)*option%nflowdof+1)
-        tsrc1 = surf_global_aux_vars(ghosted_id)%temp(1)
+        tsrc1 = surf_global_auxvars(ghosted_id)%temp(1)
       endif
 
       xxss = xx_loc_p(istart:iend)
       xxss(2) = tsrc1
 
-      surf_global_aux_vars_ss(sum_connection)%temp(1) = tsrc1
+      surf_global_auxvars_ss(sum_connection)%temp(1) = tsrc1
       call SurfaceTHAuxVarCompute(xxss, &
-                                  surf_th_aux_vars_ss(sum_connection), &
-                                  surf_global_aux_vars_ss(sum_connection), &
+                                  surf_th_auxvars_ss(sum_connection), &
+                                  surf_global_auxvars_ss(sum_connection), &
                                   option)
     enddo
     source_sink => source_sink%next
   enddo
 
-  patch%surf_aux%SurfaceTH%aux_vars_up_to_date = PETSC_TRUE
+  patch%surf_aux%SurfaceTH%auxvars_up_to_date = PETSC_TRUE
 
   call VecRestoreArrayF90(surf_field%flow_xx_loc,xx_loc_p, ierr)
 
@@ -2183,12 +1013,12 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
   type(coupler_type), pointer :: boundary_condition
   type(coupler_type), pointer :: source_sink
   type(connection_set_type), pointer :: cur_connection_set
-  type(Surface_TH_auxvar_type), pointer :: surf_aux_vars(:)
-  type(Surface_TH_auxvar_type), pointer :: surf_aux_vars_bc(:)
-  type(Surface_TH_auxvar_type), pointer :: surf_aux_vars_ss(:)
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars(:)
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars_bc(:)
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars_ss(:)
+  type(Surface_TH_auxvar_type), pointer :: surf_auxvars(:)
+  type(Surface_TH_auxvar_type), pointer :: surf_auxvars_bc(:)
+  type(Surface_TH_auxvar_type), pointer :: surf_auxvars_ss(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars_bc(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars_ss(:)
 
   PetscInt :: ghosted_id, local_id, istart, iend, sum_connection, idof, iconn
   PetscInt :: iphasebc, iphase
@@ -2207,11 +1037,11 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
   grid => patch%grid
   surf_field => surf_realization%surf_field
 
-  surf_global_aux_vars => patch%surf_aux%SurfaceGlobal%aux_vars
-  surf_global_aux_vars_bc => patch%surf_aux%SurfaceGlobal%aux_vars_bc
-  surf_global_aux_vars_ss => patch%surf_aux%SurfaceGlobal%aux_vars_ss
-  surf_aux_vars => patch%surf_aux%SurfaceTH%aux_vars
-  surf_aux_vars_bc => patch%surf_aux%SurfaceTH%aux_vars_bc
+  surf_global_auxvars => patch%surf_aux%SurfaceGlobal%auxvars
+  surf_global_auxvars_bc => patch%surf_aux%SurfaceGlobal%auxvars_bc
+  surf_global_auxvars_ss => patch%surf_aux%SurfaceGlobal%auxvars_ss
+  surf_auxvars => patch%surf_aux%SurfaceTH%auxvars
+  surf_auxvars_bc => patch%surf_aux%SurfaceTH%auxvars_bc
 
   ! Number of iterations to solve for T^{t+1}
   ! T^{t+1,m} = (rho Cwi hw T)^{t+1} / rho^{t+1,m-1} Cw)^{t} (hw)^{t+1}
@@ -2232,13 +1062,13 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
         ! T^{t+1,m} = (rho Cwi hw T)^{t+1} / rho^{t+1,m-1} Cw)^{t} (hw)^{t+1}
         do iter = 1,niter
           temp = xx_loc_p(iend)/xx_loc_p(istart)/ &
-                  surf_global_aux_vars(local_id)%den_kg(1)/ &
-                  surf_aux_vars(local_id)%Cwi - 273.15d0
+                  surf_global_auxvars(local_id)%den_kg(1)/ &
+                  surf_auxvars(local_id)%Cwi - 273.15d0
           call EOSWaterdensity(temp,option%reference_pressure,den)
-          surf_global_aux_vars(local_id)%den_kg(1) = den
+          surf_global_auxvars(local_id)%den_kg(1) = den
         enddo
       endif
-      surf_global_aux_vars(ghosted_id)%temp(1) = temp
+      surf_global_auxvars(ghosted_id)%temp(1) = temp
     endif
   enddo
 
@@ -2253,8 +1083,8 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
       
-      surf_global_aux_vars_bc(sum_connection)%temp(1) = &
-        surf_global_aux_vars(ghosted_id)%temp(1)
+      surf_global_auxvars_bc(sum_connection)%temp(1) = &
+        surf_global_auxvars(ghosted_id)%temp(1)
     enddo
     boundary_condition => boundary_condition%next
   enddo
@@ -2270,8 +1100,8 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
-      surf_global_aux_vars_ss(sum_connection)%temp(1) = &
-        surf_global_aux_vars(ghosted_id)%temp(1)
+      surf_global_auxvars_ss(sum_connection)%temp(1) = &
+        surf_global_auxvars(ghosted_id)%temp(1)
 
     enddo
     source_sink => source_sink%next
@@ -2283,7 +1113,7 @@ end subroutine SurfaceTHUpdateTemperature
 
 ! ************************************************************************** !
 
-subroutine SurfaceTHUpdateSurfStateNew(surf_realization)
+subroutine SurfaceTHUpdateSurfState(surf_realization)
   ! 
   ! This routine updates the states for surface-model at the end of
   ! subsurface-model timestep.
@@ -2323,7 +1153,7 @@ subroutine SurfaceTHUpdateSurfStateNew(surf_realization)
   type(option_type), pointer          :: option
   type(patch_type),pointer            :: patch,surf_patch
   type(surface_field_type),pointer    :: surf_field
-  type(Surface_TH_auxvar_type), pointer :: surf_aux_vars(:)
+  type(Surface_TH_auxvar_type), pointer :: surf_auxvars(:)
 
   PetscInt                :: count
   PetscInt                :: ghosted_id
@@ -2348,7 +1178,7 @@ subroutine SurfaceTHUpdateSurfStateNew(surf_realization)
   option     => surf_realization%option
   surf_field => surf_realization%surf_field
   surf_grid  => surf_realization%discretization%grid
-  surf_aux_vars => patch%surf_aux%SurfaceTH%aux_vars
+  surf_auxvars => patch%surf_aux%SurfaceTH%auxvars
 
   call VecGetArrayF90(surf_field%flow_xx, xx_p, ierr)
   call VecGetArrayF90(surf_field%press_subsurf, surfpress_p, ierr)
@@ -2372,7 +1202,7 @@ subroutine SurfaceTHUpdateSurfStateNew(surf_realization)
       xx_p(ibeg) = 0.d0
       xx_p(iend) = option%reference_temperature
     else
-      Cwi = surf_aux_vars(ghosted_id)%Cwi
+      Cwi = surf_auxvars(ghosted_id)%Cwi
       temp_K = surftemp_p(count) + 273.15d0
       xx_p(iend) = den*Cwi*temp_K*xx_p(ibeg)
     endif
@@ -2388,7 +1218,7 @@ subroutine SurfaceTHUpdateSurfStateNew(surf_realization)
                                    NFLOWDOF)
   call SurfaceTHUpdateAuxVars(surf_realization)
 
-end subroutine SurfaceTHUpdateSurfStateNew
+end subroutine SurfaceTHUpdateSurfState
 
 ! ************************************************************************** !
 

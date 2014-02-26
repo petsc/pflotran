@@ -271,7 +271,7 @@ subroutine PMRTPreSolve(this)
       call RTUpdateAuxVars(this%realization,PETSC_TRUE,PETSC_TRUE,PETSC_TRUE)
 !       The below is set within RTUpdateAuxVarsPatch() when 
 !         PETSC_TRUE,PETSC_TRUE,* are passed
-!       patch%aux%RT%aux_vars_up_to_date = PETSC_TRUE 
+!       patch%aux%RT%auxvars_up_to_date = PETSC_TRUE 
   endif
   if (this%realization%reaction%use_log_formulation) then
     call VecCopy(this%realization%field%tran_xx, &

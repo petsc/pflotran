@@ -204,7 +204,7 @@ end subroutine RSandboxSkipInput
 ! ************************************************************************** !
 
 subroutine RSandbox(Residual,Jacobian,compute_derivative,rt_auxvar, &
-                    global_auxvar,porosity,volume,reaction,option)
+                    global_auxvar,material_auxvar,reaction,option)
   ! 
   ! Evaluates reaction storing residual and/or Jacobian
   ! 
@@ -216,6 +216,7 @@ subroutine RSandbox(Residual,Jacobian,compute_derivative,rt_auxvar, &
   use Reaction_Aux_module
   use Reactive_Transport_Aux_module
   use Global_Aux_module
+  use Material_Aux_class, only: material_auxvar_type
   
   implicit none
 
@@ -228,6 +229,7 @@ subroutine RSandbox(Residual,Jacobian,compute_derivative,rt_auxvar, &
   PetscReal :: volume
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
   
   class(reaction_sandbox_base_type), pointer :: cur_reaction
   
@@ -237,7 +239,7 @@ subroutine RSandbox(Residual,Jacobian,compute_derivative,rt_auxvar, &
 !    select type(cur_reaction)
 !      class is(reaction_sandbox_clm_cn_type)
         call cur_reaction%Evaluate(Residual,Jacobian,compute_derivative, &
-                                   rt_auxvar,global_auxvar,porosity,volume, &
+                                   rt_auxvar,global_auxvar,material_auxvar, &
                                    reaction,option)
 !    end select
     cur_reaction => cur_reaction%next

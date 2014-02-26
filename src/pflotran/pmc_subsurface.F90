@@ -17,6 +17,7 @@ module PMC_Subsurface_class
     procedure, public :: Init => PMCSubsurfaceInit
     procedure, public :: GetAuxData => PMCSubsurfaceGetAuxData
     procedure, public :: SetAuxData => PMCSubsurfaceSetAuxData
+    procedure, public :: Destroy => PMCSubsurfaceDestroy
   end type pmc_subsurface_type
   
   public :: PMCSubsurfaceCreate
@@ -198,6 +199,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
             call EOSWaterdensity(option%reference_temperature, &
                                  option%reference_pressure, den)
 
+#if 0
             coupler_list => patch%source_sinks
             coupler => coupler_list%first
             do
@@ -213,7 +215,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
                   call VecGetArrayF90(pmc%sim_aux%subsurf_mflux_exchange_with_surf, &
                                       mflux_p,ierr)
                   do iconn = 1,coupler%connection_set%num_connections
-                    coupler%flow_aux_real_var(ONE_INTEGER,iconn) = -mflux_p(iconn)/dt*den
+                    !coupler%flow_aux_real_var(ONE_INTEGER,iconn) = -mflux_p(iconn)/dt*den
                   enddo
                   call VecRestoreArrayF90(pmc%sim_aux%subsurf_mflux_exchange_with_surf, &
                                           mflux_p,ierr)
@@ -224,6 +226,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
 
               coupler => coupler%next
             enddo
+#endif
 
             coupler_list => patch%boundary_conditions
             coupler => coupler_list%first
@@ -419,6 +422,7 @@ subroutine PMCSubsurfaceSetAuxDataForSurf(this)
           field      => pmc%realization%field
           option     => pmc%realization%option
 
+#if 0
           coupler_list => pmc%realization%patch%source_sinks
           coupler => coupler_list%first
           do
@@ -469,6 +473,7 @@ subroutine PMCSubsurfaceSetAuxDataForSurf(this)
 
             coupler => coupler%next
           enddo
+#endif
 
           call EOSWaterdensity(option%reference_temperature, option%reference_pressure, &
                                den)
@@ -553,16 +558,31 @@ end subroutine PMCSubsurfaceFinalizeRun
 
 ! ************************************************************************** !
 
-recursive subroutine Destroy(this)
+subroutine PMCSubsurfaceStrip(this)
+  !
+  ! Deallocates members of PMC Subsurface.
+  !
+  ! Author: Glenn Hammond
+  ! Date: 01/13/14
+  
+  implicit none
+  
+  class(pmc_subsurface_type) :: this
+
+  call PMCBaseStrip(this)
+  nullify(this%realization)
+
+end subroutine PMCSubsurfaceStrip
+
+! ************************************************************************** !
+
+recursive subroutine PMCSubsurfaceDestroy(this)
   ! 
   ! ProcessModelCouplerDestroy: Deallocates a process_model_coupler object
   ! 
   ! Author: Glenn Hammond
   ! Date: 03/14/13
   ! 
-
-  use Utility_module, only: DeallocateArray
-  use Option_module
 
   implicit none
   
@@ -571,11 +591,23 @@ recursive subroutine Destroy(this)
 #ifdef DEBUG
   call printMsg(this%option,'PMCSubsurface%Destroy()')
 #endif
+
+  call PMCSubsurfaceStrip(this)
+  
+  if (associated(this%below)) then
+    call this%below%Destroy()
+    ! destroy does not currently destroy; it strips
+    deallocate(this%below)
+    nullify(this%below)
+  endif 
   
   if (associated(this%next)) then
     call this%next%Destroy()
-  endif 
+    ! destroy does not currently destroy; it strips
+    deallocate(this%next)
+    nullify(this%next)
+  endif
   
-end subroutine Destroy
+end subroutine PMCSubsurfaceDestroy
   
 end module PMC_Subsurface_class

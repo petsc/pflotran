@@ -514,7 +514,7 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
   type(option_type) :: option
 
 #ifdef DASVYAT
-  type(mfd_auxvar_type), pointer :: aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
   type(connection_set_type), pointer :: conn
   PetscInt :: icount, icell, iface, local_id
   PetscInt :: local_id_dn, local_id_up, ghosted_id_dn, ghosted_id_up
@@ -538,8 +538,8 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
   numfaces = 6
 
   do icell = 1, grid%nlmax
-    aux_var => MFD_aux%aux_vars(icell)
-    call MFDAuxVarInit(aux_var, numfaces(icell), option)
+    auxvar => MFD_aux%auxvars(icell)
+    call MFDAuxVarInit(auxvar, numfaces(icell), option)
   enddo
 
   local_id = 1
@@ -552,8 +552,8 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
       local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping
 
       if (local_id_dn>0) then
-        aux_var => MFD_aux%aux_vars(local_id_dn)
-        call MFDAuxAddFace(aux_var,option, icount)
+        auxvar => MFD_aux%auxvars(local_id_dn)
+        call MFDAuxAddFace(auxvar,option, icount)
         grid%fG2L(icount)=local_id
         grid%fL2G(local_id) = icount
         local_id = local_id + 1
@@ -573,12 +573,12 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
       endif
 
       if (local_id_dn>0) then
-        aux_var => MFD_aux%aux_vars(local_id_dn)
-        call MFDAuxAddFace(aux_var,option, icount)
+        auxvar => MFD_aux%auxvars(local_id_dn)
+        call MFDAuxAddFace(auxvar,option, icount)
       endif
       if (local_id_up>0) then
-        aux_var => MFD_aux%aux_vars(local_id_up)
-        call MFDAuxAddFace(aux_var,option, icount)
+        auxvar => MFD_aux%auxvars(local_id_up)
+        call MFDAuxAddFace(auxvar,option, icount)
       endif
     endif
   enddo
@@ -635,7 +635,7 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, sgdm, DOF, opt
   IS :: is_local_bl
   PetscViewer :: viewer
 
-  type(mfd_auxvar_type), pointer :: aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
   type(connection_set_type), pointer :: conn
 
   PetscInt, allocatable :: ghosted_ids(:)
@@ -702,9 +702,9 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, sgdm, DOF, opt
   e2n_local_values = 0
 
   do icell = 1, grid%nlmax
-    aux_var => MFD_aux%aux_vars(icell)
-    do icount = 1, aux_var%numfaces
-      ghost_face_id = aux_var%face_id_gh(icount)
+    auxvar => MFD_aux%auxvars(icell)
+    do icount = 1, auxvar%numfaces
+      ghost_face_id = auxvar%face_id_gh(icount)
       local_face_id = grid%fG2L(ghost_face_id)
       conn => grid%faces(ghost_face_id)%conn_set_ptr
       iface = grid%faces(ghost_face_id)%id
@@ -808,9 +808,9 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, sgdm, DOF, opt
   call VecGetArrayF90(grid%e2f, vec_ptr_e2f, ierr)
  
   do icell = 1, grid%nlmax
-    aux_var => MFD_aux%aux_vars(icell)
-    do icount = 1, aux_var%numfaces
-      ghost_face_id = aux_var%face_id_gh(icount)
+    auxvar => MFD_aux%auxvars(icell)
+    do icount = 1, auxvar%numfaces
+      ghost_face_id = auxvar%face_id_gh(icount)
       local_face_id = grid%fG2L(ghost_face_id)
 
       if (local_face_id == 0) then
@@ -1395,6 +1395,69 @@ subroutine GridLocalizeRegions(grid,region_list,option)
   iflag = 0
   region => region_list%first
   do
+    if (.not.associated(region)) exit
+
+    select case(region%def_type)
+      case (DEFINED_BY_BLOCK)
+        call GridLocalizeRegionFromBlock(grid,region,option)
+      case (DEFINED_BY_COORD)
+        call GridLocalizeRegionFromCoordinates(grid,region,option)
+      case (DEFINED_BY_CELL_IDS)
+        select case(grid%itype)
+          case(IMPLICIT_UNSTRUCTURED_GRID)
+            call GridLocalizeRegionsFromCellIDsUGrid(grid,region,option)
+          case(EXPLICIT_UNSTRUCTURED_GRID)
+            call GridLocalizeRegionsFromCellIDsUGrid(grid,region,option)
+        end select
+      case (DEFINED_BY_CELL_IDS_WTIH_FACE_IDS)
+        option%io_buffer = 'Extended GridLocalizeRegions() for region ' // &
+          'DEFINED_BY_CELL_IDS_WTIH_FACE_IDS'
+        call printErrMsg(option)
+      case (DEFINED_BY_VERTEX_IDS)
+        option%io_buffer = 'Extended GridLocalizeRegions() for region ' // &
+          'DEFINED_BY_VERTEX_IDS'
+        call printErrMsg(option)
+      case (DEFINED_BY_SIDESET_UGRID)
+        call UGridMapSideSet(grid%unstructured_grid, &
+                             region%sideset%face_vertices, &
+                             region%sideset%nfaces,region%name, &
+                             option,region%cell_ids,region%faces)
+        region%num_cells = size(region%cell_ids)
+      case (DEFINED_BY_FACE_UGRID_EXP)
+          call GridLocalizeExplicitFaceset(grid%unstructured_grid,region, &
+                                           option)
+      case (DEFINED_BY_POLY_VOL_UGRID)
+        call UGridMapBoundFacesInPolVol(grid%unstructured_grid, &
+                                        region%polygonal_volume, &
+                                        region%name,option, &
+                                        region%cell_ids,region%faces)
+        region%num_cells = size(region%cell_ids)
+      case default
+        option%io_buffer = 'GridLocalizeRegions: Region definition not recognized'
+        call printErrMsg(option)
+    end select
+
+    if (region%num_cells == 0 .and. associated(region%cell_ids)) then
+      deallocate(region%cell_ids)
+      nullify(region%cell_ids)
+    endif
+
+    call MPI_Barrier(MPI_COMM_WORLD,ierr)
+    if (region%num_cells == 0 .and. associated(region%faces)) then
+      deallocate(region%faces)
+      nullify(region%faces)
+    endif
+    region => region%next
+
+  enddo
+
+#if 0
+  !
+  ! GB: Older formulation. Need to remove it.
+  !
+  iflag = 0
+  region => region_list%first
+  do
   
     if (.not.associated(region)) exit
     
@@ -1477,6 +1540,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
     region => region%next
     
   enddo
+#endif
 
 end subroutine GridLocalizeRegions
 
@@ -1536,14 +1600,6 @@ subroutine GridLocalizeRegionsFromCellIDsUGrid(grid, region, option)
   ! PetscScalar, pointer            :: aa(:)
   ! Would like to use the above, but I have to fix MatGetArrayF90() first. --RTM
   
-  Mat                 :: mat_vert2cell, mat_vert2cell_diag, mat_vert2cell_offdiag
-  Vec                 :: vec_vert2cell, vec_cell2facevert
-  Vec                 :: vec_vert2cell_reg_subset, vec_cell2facevert_reg_subset
-  PetscInt            :: vert_id_loc, vert_id_nat, counter1, counter2
-  PetscInt,pointer    :: cell_count(:), cell_ids(:)
-  PetscInt,pointer    :: cell_ids_for_face(:), face_ids_for_face(:)
-  PetscScalar,pointer :: vert2cell_array(:)
-
   ugrid => grid%unstructured_grid
   
   if (associated(region%cell_ids)) then
@@ -1561,7 +1617,7 @@ subroutine GridLocalizeRegionsFromCellIDsUGrid(grid, region, option)
     count = 0
     do ii = 1, region%num_cells
       count = count + 1
-      tmp_int_array(count) = region%cell_ids(ii)
+      tmp_int_array(count) = region%cell_ids(ii) - 1
       tmp_scl_array(count) = 1.d0
     enddo
 
@@ -1651,6 +1707,9 @@ subroutine GridLocalizeRegionsFromCellIDsUGrid(grid, region, option)
       allocate(region%cell_ids(region%num_cells))
       region%cell_ids = tmp_int_array
       deallocate(tmp_int_array)
+    else
+      deallocate(region%cell_ids)
+      allocate(region%cell_ids(region%num_cells))
     endif
     
     call VecRestoreArrayF90(vec_cell_ids_loc,v_loc_p,ierr)
@@ -2093,16 +2152,16 @@ subroutine GridDestroyHashTable(grid)
   ! Author: Glenn Hammond
   ! Date: 03/07/07
   ! 
-
+  use Utility_module, only : DeallocateArray
+  
   implicit none
 
   type(grid_type), pointer :: grid
   
-  if (associated(grid%hash)) deallocate(grid%hash)
+  call DeallocateArray(grid%hash)
   
 #ifdef DASVYAT
-  if (associated(grid%faces)) deallocate(grid%faces)
-  nullify(grid%faces)
+  call DeallocateArray(grid%faces)
 #endif
 
   nullify(grid%hash)
@@ -2238,7 +2297,8 @@ subroutine GridDestroy(grid)
   ! Author: Glenn Hammond
   ! Date: 11/01/07
   ! 
-
+  use Utility_module, only : DeallocateArray
+  
   implicit none
   
   type(grid_type), pointer :: grid
@@ -2247,14 +2307,10 @@ subroutine GridDestroy(grid)
     
   if (.not.associated(grid)) return
       
-  if (associated(grid%nL2G)) deallocate(grid%nL2G)
-  nullify(grid%nL2G)
-  if (associated(grid%nG2L)) deallocate(grid%nG2L)
-  nullify(grid%nG2L)
-  if (associated(grid%nG2A)) deallocate(grid%nG2A)
-  nullify(grid%nG2A)
-  if (associated(grid%nG2P)) deallocate(grid%nG2P)
-  nullify(grid%nG2P)
+  call DeallocateArray(grid%nL2G)
+  call DeallocateArray(grid%nG2L)
+  call DeallocateArray(grid%nG2A)
+  call DeallocateArray(grid%nG2P)
 
   !Note: Destroying for ghosted_level<TWO_INTEGER assumes that max_stencil_width
   !      was TWO_INTEGER.
@@ -2282,16 +2338,11 @@ subroutine GridDestroy(grid)
   nullify(grid%bnd_cell)
 
 #ifdef DASVYAT
-  if (associated(grid%fL2G)) deallocate(grid%fL2G)
-  nullify(grid%fL2G)
-  if (associated(grid%fG2L)) deallocate(grid%fG2L)
-  nullify(grid%fG2L)
-  if (associated(grid%fG2P)) deallocate(grid%fG2P)
-  nullify(grid%fG2P)
-  if (associated(grid%fL2P)) deallocate(grid%fL2P)
-  nullify(grid%fL2P)
-  if (associated(grid%fL2B)) deallocate(grid%fL2B)
-  nullify(grid%fL2B)
+  call DeallocateArray(grid%fL2G)
+  call DeallocateArray(grid%fG2L)
+  call DeallocateArray(grid%fG2P)
+  call DeallocateArray(grid%fL2P)
+  call DeallocateArray(grid%fL2B)
 
   if (grid%e2f /= 0) Call VecDestroy(grid%e2f, ierr)
   if (grid%e2n /= 0) Call VecDestroy(grid%e2n, ierr)
@@ -2300,12 +2351,9 @@ subroutine GridDestroy(grid)
   call MFDAuxDestroy(grid%MFD)
 #endif
 
-  if (associated(grid%x)) deallocate(grid%x)
-  nullify(grid%x)
-  if (associated(grid%y)) deallocate(grid%y)
-  nullify(grid%y)
-  if (associated(grid%z)) deallocate(grid%z)
-  nullify(grid%z)
+  call DeallocateArray(grid%x)
+  call DeallocateArray(grid%y)
+  call DeallocateArray(grid%z)
   
   if (associated(grid%hash)) call GridDestroyHashTable(grid)
   
@@ -3287,7 +3335,7 @@ subroutine GridComputeCell2FaceForUGrid(grid,MFD,option)
 
 #ifdef DASVYAT
 
-  type(mfd_auxvar_type), pointer :: aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
   type(connection_set_type), pointer :: conn
   type(unstructured_grid_type),pointer :: ugrid
   type(connection_set_list_type), pointer :: connection_set_list
@@ -3348,9 +3396,9 @@ subroutine GridComputeCell2FaceForUGrid(grid,MFD,option)
   ! For each local cell, allocate memory for mfd_auxvar_type that depends on
   ! on number of faces for a given cell.
   do local_id = 1, grid%nlmax
-    aux_var => MFD%aux_vars(local_id)
+    auxvar => MFD%auxvars(local_id)
     nfaces = UCellGetNFaces(ugrid%cell_type(local_id),option)
-    call MFDAuxVarInit(aux_var,nfaces,option)
+    call MFDAuxVarInit(auxvar,nfaces,option)
   enddo
 
   ! Compute fG2L and fL2G mapping
@@ -3374,13 +3422,13 @@ subroutine GridComputeCell2FaceForUGrid(grid,MFD,option)
       endif
 
       if (local_id_dn>0) then
-        aux_var => MFD%aux_vars(local_id_dn)
-        call MFDAuxAddFace(aux_var,option,iface)
+        auxvar => MFD%auxvars(local_id_dn)
+        call MFDAuxAddFace(auxvar,option,iface)
       endif
 
       if (local_id_up>0) then
-        aux_var => MFD%aux_vars(local_id_up)
-        call MFDAuxAddFace(aux_var,option,iface)
+        auxvar => MFD%auxvars(local_id_up)
+        call MFDAuxAddFace(auxvar,option,iface)
       endif
 
       ! For 'local_id_up', find the face-id that is shared by cells
@@ -3431,8 +3479,8 @@ subroutine GridComputeCell2FaceForUGrid(grid,MFD,option)
       local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping
    
       if (local_id_dn>0) then
-        aux_var => MFD%aux_vars(local_id_dn)
-        call MFDAuxAddFace(aux_var,option,iface)
+        auxvar => MFD%auxvars(local_id_dn)
+        call MFDAuxAddFace(auxvar,option,iface)
         grid%fG2L(iface)=local_id
         grid%fL2G(local_id) = iface
         local_id = local_id + 1
@@ -3504,7 +3552,7 @@ subroutine GridSetGlobalCell2FaceForUGrid(grid,MFD,DOF,option)
   type(option_type) :: option
 
   type(unstructured_grid_type),pointer :: ugrid
-  type(mfd_auxvar_type), pointer :: aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
   type(connection_set_type), pointer :: conn
 
   PetscInt :: local_id
@@ -3589,9 +3637,9 @@ subroutine GridSetGlobalCell2FaceForUGrid(grid,MFD,DOF,option)
   e2n_local_values = 0
 
   do local_id = 1, grid%nlmax
-    aux_var => MFD%aux_vars(local_id)
-    do iface = 1, aux_var%numfaces
-      ghost_face_id = aux_var%face_id_gh(iface)
+    auxvar => MFD%auxvars(local_id)
+    do iface = 1, auxvar%numfaces
+      ghost_face_id = auxvar%face_id_gh(iface)
       local_face_id = grid%fG2L(ghost_face_id)
       conn => grid%faces(ghost_face_id)%conn_set_ptr
       face_id = grid%faces(ghost_face_id)%id
@@ -3706,9 +3754,9 @@ subroutine GridSetGlobalCell2FaceForUGrid(grid,MFD,DOF,option)
  
   jcount=0
   do local_id=1,grid%nlmax
-    aux_var => MFD%aux_vars(local_id)
-    do iface=1,aux_var%numfaces
-      ghost_face_id=aux_var%face_id_gh(iface)
+    auxvar => MFD%auxvars(local_id)
+    do iface=1,auxvar%numfaces
+      ghost_face_id=auxvar%face_id_gh(iface)
       local_face_id=grid%fG2L(ghost_face_id)
 
       if (local_face_id==0) then

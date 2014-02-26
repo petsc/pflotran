@@ -43,9 +43,13 @@ module Connection_module
     type(connection_set_ptr_type), pointer :: array(:)
   end type connection_set_list_type
   
-  public :: ConnectionCreate, ConnectionAddToList, &
+  public :: ConnectionCreate, &
+            ConnectionAddToList, &
             ConnectionGetNumberInList, &
-            ConnectionInitList, ConnectionDestroyList, ConnectionDestroy
+            ConnectionInitList, &
+            ConnectionCalculateDistances, &
+            ConnectionDestroyList, &
+            ConnectionDestroy
   
 contains
 
@@ -235,6 +239,43 @@ end subroutine ConnectionConvertListToArray
 
 ! ************************************************************************** !
 
+subroutine ConnectionCalculateDistances(dist,gravity,distance_upwind, &
+                                        distance_downwind,distance_gravity, &
+                                        upwind_weight)
+  ! 
+  ! Calculates the various distances and weights used in a flux calculation.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/09/14
+  ! 
+
+  implicit none
+  
+  PetscReal, intent(in) :: dist(-1:3)
+  PetscReal, intent(in) :: gravity(3)
+  
+  PetscReal, intent(out) :: distance_upwind
+  PetscReal, intent(out) :: distance_downwind
+  PetscReal, intent(out) :: distance_gravity
+  PetscReal, intent(out) :: upwind_weight
+  
+  ! dist(-1) = scalar - fraction upwind
+  ! dist(0) = scalar - magnitude of distance
+  ! gravity = vector(3)
+  ! dist(1:3) = vector(3) - unit vector
+  distance_gravity = dist(0) * &                  ! distance_gravity = dx*g*n
+                     dot_product(gravity,dist(1:3))
+  distance_upwind = dist(0)*dist(-1)
+  distance_downwind = dist(0)-distance_upwind ! should avoid truncation error
+  ! upweight could be calculated as 1.d0-fraction_upwind
+  ! however, this introduces ever so slight error causing pflow-overhaul not
+  ! to match pflow-orig.  This can be changed to 1.d0-fraction_upwind
+  upwind_weight = distance_downwind/(distance_upwind+distance_downwind)
+  
+end subroutine ConnectionCalculateDistances
+
+! ************************************************************************** !
+
 subroutine ConnectionDestroy(connection)
   ! 
   ! Deallocates a connection
@@ -242,33 +283,25 @@ subroutine ConnectionDestroy(connection)
   ! Author: Glenn Hammond
   ! Date: 10/23/07
   ! 
-
+  use Utility_module, only : DeallocateArray
+  
   implicit none
   
   type(connection_set_type), pointer :: connection
   
   if (.not.associated(connection)) return
   
-  if (associated(connection%local)) deallocate(connection%local)
-  nullify(connection%local)
-  if (associated(connection%id_up)) deallocate(connection%id_up)
-  nullify(connection%id_up)
-  if (associated(connection%id_dn)) deallocate(connection%id_dn)
-  nullify(connection%id_dn)
-  if (associated(connection%id_up2)) deallocate(connection%id_up2)
-  nullify(connection%id_up2)
-  if (associated(connection%id_dn2)) deallocate(connection%id_dn2)
-  nullify(connection%id_dn2)
-  if (associated(connection%face_id)) deallocate(connection%face_id)
-  nullify(connection%face_id)
-  if (associated(connection%dist)) deallocate(connection%dist)
-  nullify(connection%dist)
-  if (associated(connection%intercp)) deallocate(connection%intercp)
-  nullify(connection%intercp)
-  if (associated(connection%area)) deallocate(connection%area)
-  nullify(connection%area)
-  if (associated(connection%cntr)) deallocate(connection%cntr)
-  nullify(connection%cntr)
+  call DeallocateArray(connection%local)
+  call DeallocateArray(connection%id_up)
+  call DeallocateArray(connection%id_dn)
+  call DeallocateArray(connection%id_up2)
+  call DeallocateArray(connection%id_dn2)
+  call DeallocateArray(connection%face_id)
+  call DeallocateArray(connection%dist)
+  call DeallocateArray(connection%intercp)
+  call DeallocateArray(connection%area)
+  call DeallocateArray(connection%cntr)
+  
   nullify(connection%next)
   
   deallocate(connection)

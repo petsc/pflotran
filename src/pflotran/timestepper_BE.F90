@@ -36,6 +36,7 @@ module Timestepper_BE_class
     procedure, public :: UpdateDT => TimestepperBEUpdateDT
     procedure, public :: Checkpoint => TimestepperBECheckpoint
     procedure, public :: Restart => TimestepperBERestart
+    procedure, public :: Reset => TimestepperBEReset
     procedure, public :: FinalizeRun => TimestepperBEFinalizeRun
     procedure, public :: Destroy => TimestepperBEDestroy
     
@@ -634,6 +635,28 @@ end subroutine TimestepperBEGetHeader
 
 ! ************************************************************************** !
 
+subroutine TimestepperBEReset(this)
+  ! 
+  ! Zeros timestepper object members.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/20/14
+  ! 
+
+  implicit none
+
+  class(stepper_BE_type) :: this
+  
+  this%cumulative_newton_iterations = 0
+  this%cumulative_linear_iterations = 0
+  this%num_newton_iterations = 0
+
+  call TimestepperBaseReset(this)
+  
+end subroutine TimestepperBEReset
+
+! ************************************************************************** !
+
 recursive subroutine TimestepperBEFinalizeRun(this,option)
   ! 
   ! Finalizes the time stepping
@@ -682,6 +705,7 @@ subroutine TimestepperBEStrip(this)
   
   class(stepper_BE_type) :: this
   
+  call TimestepperBaseStrip(this)
   call SolverDestroy(this%solver)
   call ConvergenceContextDestroy(this%convergence_context)
 
@@ -704,7 +728,7 @@ subroutine TimestepperBEDestroy(this)
   
   class(stepper_BE_type) :: this
   
-  call TimestepperBaseStrip(this)
+  call TimestepperBEStrip(this)
   
 !  deallocate(this)
 !  nullify(this)

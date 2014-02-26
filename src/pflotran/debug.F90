@@ -22,7 +22,7 @@ module Debug_module
     PetscBool :: print_waypoints
   end type debug_type
 
-  public :: DebugCreate, DebugRead
+  public :: DebugCreate, DebugRead, DebugDestroy
   
 contains
 
@@ -119,5 +119,23 @@ subroutine DebugRead(debug,input,option)
   enddo  
 
 end subroutine DebugRead
+
+! ************************************************************************** !
+
+subroutine DebugDestroy(debug)
+  ! 
+  ! Deallocates memory associated with debug object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/21/07
+  ! 
+  implicit none
+  
+  type(debug_type), pointer :: debug
+  
+  deallocate(debug)
+  nullify(debug)
+  
+end subroutine DebugDestroy
 
 end module Debug_module

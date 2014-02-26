@@ -1,0 +1,164 @@
+:Description: Tracer Convection-Dispersion-Decay test case
+: This problem has been changed from NUTS test case 4 by increasing the
+: coefficient of molecular diffusion and decreasing the half-life
+
+:=========================== regression =======================================
+REGRESSION
+  CELLS 
+    1
+    2
+    4
+    6
+    8
+    10
+  /
+  CELLS_PER_PROCESS 8
+END
+
+:=========================== flow =============================================
+UNIFORM_VELOCITY 1.d-7 0.d0 0.d0 ! m/s
+
+:=========================== chemistry ========================================
+CHEMISTRY
+  PRIMARY_SPECIES
+    Tracer1
+  /
+  : First order decay of Tracer1 to Tracer2
+  RADIOACTIVE_DECAY_REACTION
+    REACTION Tracer1 <->
+    HALF_LIFE 1.d6
+  /
+  DATABASE ../../../database/hanford.dat
+  OUTPUT
+    all
+  /
+END
+
+:=========================== solver options ===================================
+LINEAR_SOLVER TRANSPORT
+  SOLVER DIRECT
+END
+
+:=========================== discretization ===================================
+GRID
+  TYPE structured
+  NXYZ 60 1 1
+  BOUNDS
+    0.d0    0.d0  0.d0
+    120.d0 20.d0 20.d0
+  /
+END
+
+:=========================== fluid properties =================================
+FLUID_PROPERTY 
+  DIFFUSION_COEFFICIENT 7.5d-6
+END
+
+:=========================== material properties ==============================
+MATERIAL_PROPERTY rock1
+  ID 1
+  SATURATION_FUNCTION default
+  POROSITY 0.2d0
+  TORTUOSITY  0.1d0
+  LONGITUDINAL_DISPERSIVITY 10.0d0
+  PERMEABILITY
+    PERM_ISO 1.d-12
+  /
+END
+
+:=========================== output options ===================================
+OUTPUT
+  PERIODIC_OBSERVATION TIMESTEP  1
+  TIMES s 1.d4
+  FORMAT TECPLOT POINT
+END
+
+:=========================== times ============================================
+TIME
+  FINAL_TIME 8.64d6 s
+  INITIAL_TIMESTEP_SIZE 8.64d5 s
+  MAXIMUM_TIMESTEP_SIZE 8.64d5 s
+END
+
+:=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    120.d0 20.d0 20.d0
+  /
+END
+
+REGION reservoir
+  COORDINATES
+    0.d0 0.d0 0.d0
+    2.d0 20.d0 20.d0
+  /
+END
+
+REGION inlet
+  FACE west
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 20.d0 20.d0
+  /
+END
+
+REGION outlet
+  FACE east
+  COORDINATES
+    120.d0 0.d0 0.d0
+    120.d0 20.d0 20.d0
+  /
+END
+
+:=========================== transport conditions =============================
+TRANSPORT_CONDITION media_initial
+  TYPE zero_gradient
+  CONSTRAINT_LIST
+    0.d0 media_initial_constraint
+  /
+END
+
+TRANSPORT_CONDITION inlet_conc
+  TYPE dirichlet
+  CONSTRAINT_LIST
+    0.d0 inlet_constraint
+  /
+END
+
+:=========================== constraints ======================================
+CONSTRAINT media_initial_constraint
+  CONCENTRATIONS
+    Tracer1      1.d-90      T
+  /
+END
+
+CONSTRAINT inlet_constraint
+  CONCENTRATIONS
+    Tracer1    1.d0         T  ! 1.0 kg/s 
+  /
+END
+
+:=========================== condition couplers ===============================
+: initial condition
+INITIAL_CONDITION
+  TRANSPORT_CONDITION media_initial
+  REGION all
+END
+
+BOUNDARY_CONDITION inlet
+  TRANSPORT_CONDITION inlet_conc
+  REGION inlet
+END
+
+BOUNDARY_CONDITION outlet
+  TRANSPORT_CONDITION media_initial
+  REGION outlet
+END
+
+:=========================== stratigraphy couplers ============================
+STRATA
+  REGION all
+  MATERIAL rock1
+END
+

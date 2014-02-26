@@ -4,6 +4,7 @@ module Surface_Complexation_module
   use Reaction_Aux_module
   use Reactive_Transport_Aux_module
   use Global_Aux_module
+  use Material_Aux_class
   
   use PFLOTRAN_Constants_module
 
@@ -59,6 +60,7 @@ subroutine SurfaceComplexationRead(reaction,input,option)
   PetscBool :: found
   PetscReal :: tempreal
   PetscInt :: i
+  PetscInt :: num_times_surface_type_set
   
   nullify(srfcplx_rxn)
   nullify(cur_srfcplx_rxn)
@@ -70,6 +72,7 @@ subroutine SurfaceComplexationRead(reaction,input,option)
   ! default
   srfcplx_rxn%itype = SRFCMPLX_RXN_EQUILIBRIUM
   temp_srfcplx_count = 0
+  num_times_surface_type_set = 0
   do
     call InputReadPflotranString(input,option)
     if (InputError(input)) exit
@@ -147,12 +150,19 @@ subroutine SurfaceComplexationRead(reaction,input,option)
         call InputErrorMsg(input,option,'keyword', &
           'CHEMISTRY,SURFACE_COMPLEXATION_RXN,MULTIRATE_SCALE_FACTOR')
       case('MINERAL')
-        call InputReadWord(input,option,srfcplx_rxn%mineral_name, &
+        srfcplx_rxn%surface_itype = MINERAL_SURFACE
+        num_times_surface_type_set = num_times_surface_type_set + 1
+        call InputReadWord(input,option,srfcplx_rxn%surface_name, &
           PETSC_TRUE)
         call InputErrorMsg(input,option,'keyword', &
           'CHEMISTRY,SURFACE_COMPLEXATION_RXN,MINERAL_NAME')
+      case('ROCK_DENSITY')
+        srfcplx_rxn%surface_itype = ROCK_SURFACE
+        num_times_surface_type_set = num_times_surface_type_set + 1
       case('COLLOID')
-        call InputReadWord(input,option,srfcplx_rxn%colloid_name, &
+        srfcplx_rxn%surface_itype = COLLOID_SURFACE
+        num_times_surface_type_set = num_times_surface_type_set + 1
+        call InputReadWord(input,option,srfcplx_rxn%surface_name, &
           PETSC_TRUE)
         call InputErrorMsg(input,option,'keyword', &
           'CHEMISTRY,SURFACE_COMPLEXATION_RXN,COLLOID_NAME')
@@ -196,6 +206,12 @@ subroutine SurfaceComplexationRead(reaction,input,option)
     end select
 
   enddo
+  
+  if (num_times_surface_type_set > 1) then
+    option%io_buffer = 'Surface site type (e.g. MINERAL, ROCK_DENSITY, ' // &
+      'COLLOID) may only be set once under the SURFACE_COMPLEXATION_RXN card.'
+    call printErrMsg(option)
+  endif
   
   if (.not.associated(surface_complexation%rxn_list)) then
     surface_complexation%rxn_list => srfcplx_rxn
@@ -425,7 +441,8 @@ end subroutine SrfCplxProcessConstraint
 
 ! ************************************************************************** !
 
-subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
+subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,material_auxvar, &
+                                reaction,option)
   ! 
   ! Computes the total sorbed component concentrations and
   ! derivative with respect to free-ion for equilibrium
@@ -442,6 +459,7 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
   
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
   type(reaction_type) :: reaction
   type(option_type) :: option
   
@@ -469,7 +487,8 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
     irxn = surface_complexation%eqsrfcplxrxn_to_srfcplxrxn(ieqrxn)
     
     !TODO(geh): clean up colloidpointers
-    call RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,reaction,option, &
+    call RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,material_auxvar, &
+                               reaction,option, &
                                irxn, &
                                rt_auxvar%srfcplxrxn_free_site_conc(irxn), &
                                rt_auxvar%eqsrfcplx_conc, &
@@ -487,7 +506,8 @@ end subroutine RTotalSorbEqSurfCplx
 
 ! ************************************************************************** !
 
-subroutine RTotalSorbMultiRateAsEQ(rt_auxvar,global_auxvar,reaction,option)
+subroutine RTotalSorbMultiRateAsEQ(rt_auxvar,global_auxvar,material_auxvar, &
+                                   reaction,option)
   ! 
   ! Calculates the multirate surface complexation
   ! reaction as if it were equilibrium.
@@ -503,6 +523,7 @@ subroutine RTotalSorbMultiRateAsEQ(rt_auxvar,global_auxvar,reaction,option)
   
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
   type(reaction_type) :: reaction
   type(option_type) :: option
   
@@ -527,7 +548,8 @@ subroutine RTotalSorbMultiRateAsEQ(rt_auxvar,global_auxvar,reaction,option)
     total_sorb_eq = 0.d0
     dtotal_sorb_eq = 0.d0  
 
-    call RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,reaction,option, &
+    call RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,material_auxvar, &
+                               reaction,option, &
                                irxn, &
                                rt_auxvar%srfcplxrxn_free_site_conc(irxn), &
                                null_array_ptr, &
@@ -545,7 +567,7 @@ end subroutine RTotalSorbMultiRateAsEQ
 ! ************************************************************************** !
 
 subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
-                              global_auxvar,volume,reaction,option)
+                              global_auxvar,material_auxvar,reaction,option)
   ! 
   ! Computes contribution to the accumualtion term due
   ! due to multirate sorption
@@ -562,7 +584,7 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
   PetscBool :: compute_derivative
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
-  PetscReal :: volume
+  class(material_auxvar_type) :: material_auxvar
   type(reaction_type) :: reaction
   PetscReal :: Res(reaction%ncomp)
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
@@ -596,7 +618,8 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
     total_sorb_eq = 0.d0
     dtotal_sorb_eq = 0.d0  
 
-    call RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,reaction,option, &
+    call RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,material_auxvar, &
+                               reaction,option, &
                                irxn, &
                                rt_auxvar%srfcplxrxn_free_site_conc(irxn), &
                                null_array_ptr, &
@@ -614,12 +637,12 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
         surface_complexation%kinmr_rate(irate,ikinmrrxn)/one_plus_kdt
         
       ! this is the constribution to the accumulation term in the residual
-      Res(:) = Res(:) + volume * k_over_one_plus_kdt * &
+      Res(:) = Res(:) + material_auxvar%volume * k_over_one_plus_kdt * &
         (surface_complexation%kinmr_frac(irate,ikinmrrxn)*total_sorb_eq(:) - &
          rt_auxvar%kinmr_total_sorb(:,irate,ikinmrrxn))
       
       if (compute_derivative) then
-        Jac = Jac + volume * k_over_one_plus_kdt * &
+        Jac = Jac + material_auxvar%volume * k_over_one_plus_kdt * &
           surface_complexation%kinmr_frac(irate,ikinmrrxn) * dtotal_sorb_eq
       endif
 
@@ -635,7 +658,8 @@ end subroutine RMultiRateSorption
 
 ! ************************************************************************** !
 
-subroutine RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,reaction,option, &
+subroutine RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,material_auxvar, &
+                                 reaction,option, &
                                  irxn,external_free_site_conc, &
                                  external_srfcplx_conc, &
                                  external_total_sorb, &
@@ -658,6 +682,7 @@ subroutine RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,reaction,option, &
   
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
   type(reaction_type) :: reaction
   type(option_type) :: option
   PetscInt :: irxn
@@ -704,6 +729,11 @@ subroutine RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,reaction,option, &
       site_density(1) = surface_complexation%srfcplxrxn_site_density(irxn)* &
                 rt_auxvar%mnrl_volfrac(surface_complexation% &
                                          srfcplxrxn_to_surf(irxn))
+      num_types_of_sites = 1
+    case(ROCK_SURFACE)
+      site_density(1) = surface_complexation%srfcplxrxn_site_density(irxn)* &
+                        material_auxvar%soil_particle_density * &
+                        (1.d0-material_auxvar%porosity)
       num_types_of_sites = 1
     case(COLLOID_SURFACE)
       mobile_fraction = reaction%colloid_mobile_fraction( &
@@ -909,7 +939,7 @@ end subroutine RTotalSorbEqSurfCplx1
 ! ************************************************************************** !
 
 subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
-                            global_auxvar,volume,reaction,option)
+                            global_auxvar,material_auxvar,reaction,option)
   ! 
   ! Computes contribution to residual and jacobian for
   ! kinetic surface complexation reactions
@@ -919,13 +949,14 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
   ! 
 
   use Option_module
+  use Material_Aux_class
   
   implicit none
   
   PetscBool :: compute_derivative
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
-  PetscReal :: volume
+  class(material_auxvar_type) :: material_auxvar
   type(reaction_type) :: reaction
   PetscReal :: Res(reaction%ncomp)
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
@@ -1055,7 +1086,7 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
         icomp = surface_complexation%srfcplxspecid(i,icplx)
         Res(icomp) = Res(icomp) + surface_complexation%srfcplxstoich(i,icplx)* &
                      (srfcplx_conc_kp1(icplx,ikinrxn)-rt_auxvar%kinsrfcplx_conc(icplx,ikinrxn))/ &
-                     dt * volume
+                     dt * material_auxvar%volume
       enddo
     enddo
   enddo
@@ -1096,7 +1127,7 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
               (surface_complexation%srfcplxstoich(j,icplx) * fac * numerator_sum(isite) * &
               Q(icplx) * (surface_complexation%srfcplxstoich(l,icplx) - &
               dt * fac_sum(lcomp)/denominator_sum(isite)))/denominator_sum(isite) * &
-              exp(-ln_conc(lcomp)) * volume
+              exp(-ln_conc(lcomp)) * material_auxvar%volume
           enddo
         enddo
       enddo

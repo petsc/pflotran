@@ -75,6 +75,7 @@ module PMC_Base_class
     
   public :: PMCBaseCreate, &
             PMCBaseInit, &
+            PMCBaseStrip, &
             SetOutputFlags
   
 contains
@@ -665,6 +666,12 @@ recursive subroutine PMCBaseRestart(this,viewer)
   endif
   
   call this%timestepper%Restart(viewer,this%option)
+  if (this%option%restart_time > -999.d0) then
+    ! simply a flag to set time back to zero, no matter what the restart
+    ! time is set to.
+    call this%timestepper%Reset()
+    ! note that this sets the target time back to zero.
+  endif
   
   ! Point cur_waypoint to the correct waypoint.
   !geh: there is a problem here in that the timesteppers "prev_waypoint"
@@ -798,6 +805,44 @@ end subroutine SetAuxData
 
 ! ************************************************************************** !
 
+subroutine PMCBaseStrip(this)
+  !
+  ! Deallocates members of PMC Base.
+  !
+  ! Author: Glenn Hammond
+  ! Date: 01/13/14
+  
+  implicit none
+  
+  class(pmc_base_type) :: this
+
+  nullify(this%option)
+
+  if (associated(this%timestepper)) then
+    call this%timestepper%Destroy()
+    ! destroy does not currently destroy; it strips
+    deallocate(this%timestepper)
+    nullify(this%timestepper)
+  endif
+  if (associated(this%pm_list)) then
+    ! destroy does not currently destroy; it strips
+    call this%pm_list%Destroy()
+    deallocate(this%pm_list)
+    nullify(this%pm_list)
+  endif
+  nullify(this%waypoints) ! deleted in realization
+!  call WaypointListDestroy(this%waypoints)
+  if (associated(this%pm_ptr)) then
+    nullify(this%pm_ptr%ptr) ! solely a pointer
+    deallocate(this%pm_ptr)
+    nullify(this%pm_ptr)
+  endif
+  nullify(this%sim_aux)
+
+end subroutine PMCBaseStrip
+
+! ************************************************************************** !
+
 recursive subroutine PMCBaseDestroy(this)
   ! 
   ! Deallocates a pmc object
@@ -816,14 +861,20 @@ recursive subroutine PMCBaseDestroy(this)
   call printMsg(this%option,'PMC%Destroy()')
 #endif
   
-  if (associated(this%next)) then
-    call this%next%Destroy()
+  if (associated(this%below)) then
+    call this%below%Destroy()
+    ! destroy does not currently destroy; it strips
+    deallocate(this%below)
+    nullify(this%below)
   endif 
   
-  if (associated(this%pm_list)) then
-    call this%pm_list%Destroy()
-  endif
-
+  if (associated(this%next)) then
+    call this%next%Destroy()
+    ! destroy does not currently destroy; it strips
+    deallocate(this%next)
+    nullify(this%next)
+  endif 
+  
 !  deallocate(pmc)
 !  nullify(pmc)
   

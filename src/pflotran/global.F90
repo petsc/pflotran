@@ -41,9 +41,9 @@ subroutine GlobalSetup(realization)
   type(coupler_type), pointer :: source_sink
 
   PetscInt :: ghosted_id, iconn, sum_connection
-  type(global_auxvar_type), pointer :: aux_vars(:)
-  type(global_auxvar_type), pointer :: aux_vars_bc(:)
-  type(global_auxvar_type), pointer :: aux_vars_ss(:)
+  type(global_auxvar_type), pointer :: auxvars(:)
+  type(global_auxvar_type), pointer :: auxvars_bc(:)
+  type(global_auxvar_type), pointer :: auxvars_ss(:)
   
   option => realization%option
   patch => realization%patch
@@ -51,21 +51,21 @@ subroutine GlobalSetup(realization)
 
   patch%aux%Global => GlobalAuxCreate()
   
-  ! allocate aux_var data structures for all grid cells  
+  ! allocate auxvar data structures for all grid cells  
 #ifdef COMPUTE_INTERNAL_MASS_FLUX
   option%iflag = 1 ! allocate mass_balance array
 #else  
   option%iflag = 0 ! be sure not to allocate mass_balance array
 #endif
-  allocate(aux_vars(grid%ngmax))
+  allocate(auxvars(grid%ngmax))
   do ghosted_id = 1, grid%ngmax
-    call GlobalAuxVarInit(aux_vars(ghosted_id),option)
+    call GlobalAuxVarInit(auxvars(ghosted_id),option)
   enddo
-  patch%aux%Global%aux_vars => aux_vars
+  patch%aux%Global%auxvars => auxvars
   patch%aux%Global%num_aux = grid%ngmax
   
   ! count the number of boundary connections and allocate
-  ! aux_var data structures for them  
+  ! auxvar data structures for them  
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
@@ -77,16 +77,16 @@ subroutine GlobalSetup(realization)
 
   if (sum_connection > 0) then
     option%iflag = 1 ! enable allocation of mass_balance array 
-    allocate(aux_vars_bc(sum_connection))
+    allocate(auxvars_bc(sum_connection))
     do iconn = 1, sum_connection
-      call GlobalAuxVarInit(aux_vars_bc(iconn),option)
+      call GlobalAuxVarInit(auxvars_bc(iconn),option)
     enddo
-    patch%aux%Global%aux_vars_bc => aux_vars_bc
+    patch%aux%Global%auxvars_bc => auxvars_bc
   endif
   patch%aux%Global%num_aux_bc = sum_connection
 
   ! count the number of source/sink connections and allocate
-  ! aux_var data structures for them  
+  ! auxvar data structures for them  
   source_sink => patch%source_sinks%first
   sum_connection = 0    
   do 
@@ -98,11 +98,11 @@ subroutine GlobalSetup(realization)
 
   if (sum_connection > 0) then
     option%iflag = 1 ! enable allocation of mass_balance array 
-    allocate(aux_vars_ss(sum_connection))
+    allocate(auxvars_ss(sum_connection))
     do iconn = 1, sum_connection
-      call GlobalAuxVarInit(aux_vars_ss(iconn),option)
+      call GlobalAuxVarInit(auxvars_ss(iconn),option)
     enddo
-    patch%aux%Global%aux_vars_ss => aux_vars_ss
+    patch%aux%Global%auxvars_ss => auxvars_ss
   endif
   patch%aux%Global%num_aux_ss = sum_connection
 
@@ -145,33 +145,33 @@ subroutine GlobalSetAuxVarScalar(realization,value,ivar)
   select case(ivar)
     case(LIQUID_PRESSURE)
       do i=1, patch%aux%Global%num_aux
-        patch%aux%Global%aux_vars(i)%pres = value
+        patch%aux%Global%auxvars(i)%pres = value
       enddo
       do i=1, patch%aux%Global%num_aux_bc
-        patch%aux%Global%aux_vars_bc(i)%pres = value
+        patch%aux%Global%auxvars_bc(i)%pres = value
       enddo
     case(TEMPERATURE)
       do i=1, patch%aux%Global%num_aux
-        patch%aux%Global%aux_vars(i)%temp = value
+        patch%aux%Global%auxvars(i)%temp = value
       enddo
       do i=1, patch%aux%Global%num_aux_bc
-        patch%aux%Global%aux_vars_bc(i)%temp = value
+        patch%aux%Global%auxvars_bc(i)%temp = value
       enddo
     case(LIQUID_DENSITY)
       do i=1, patch%aux%Global%num_aux
-        patch%aux%Global%aux_vars(i)%den_kg(option%liquid_phase) = value
-        patch%aux%Global%aux_vars(i)%den(option%liquid_phase) = value/FMWH2O
+        patch%aux%Global%auxvars(i)%den_kg(option%liquid_phase) = value
+        patch%aux%Global%auxvars(i)%den(option%liquid_phase) = value/FMWH2O
       enddo
       do i=1, realization%patch%aux%Global%num_aux_bc
-        patch%aux%Global%aux_vars_bc(i)%den_kg(option%liquid_phase) = value
-        patch%aux%Global%aux_vars_bc(i)%den(option%liquid_phase) = value/FMWH2O
+        patch%aux%Global%auxvars_bc(i)%den_kg(option%liquid_phase) = value
+        patch%aux%Global%auxvars_bc(i)%den(option%liquid_phase) = value/FMWH2O
       enddo
     case(LIQUID_SATURATION)
       do i=1, patch%aux%Global%num_aux
-        patch%aux%Global%aux_vars(i)%sat(option%liquid_phase) = value
+        patch%aux%Global%auxvars(i)%sat(option%liquid_phase) = value
       enddo
       do i=1, patch%aux%Global%num_aux_bc
-        patch%aux%Global%aux_vars_bc(i)%sat(option%liquid_phase) = value
+        patch%aux%Global%auxvars_bc(i)%sat(option%liquid_phase) = value
       enddo
   end select
   
@@ -225,69 +225,69 @@ subroutine GlobalSetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
       select case(isubvar)
         case(TIME_T)
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%aux_vars(ghosted_id)%pres_store(option%liquid_phase,TIME_T) = &
+            patch%aux%Global%auxvars(ghosted_id)%pres_store(option%liquid_phase,TIME_T) = &
                 vec_loc_p(ghosted_id)
           enddo
         case(TIME_TpDT)
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%aux_vars(ghosted_id)%pres_store(option%liquid_phase,TIME_TpDT) = &
+            patch%aux%Global%auxvars(ghosted_id)%pres_store(option%liquid_phase,TIME_TpDT) = &
                 vec_loc_p(ghosted_id)
           enddo
         case default
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%aux_vars(ghosted_id)%pres(option%liquid_phase) = vec_loc_p(ghosted_id)
+            patch%aux%Global%auxvars(ghosted_id)%pres(option%liquid_phase) = vec_loc_p(ghosted_id)
           enddo
       end select
     case(GAS_PRESSURE)
       select case(isubvar)
         case(TIME_T)
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%aux_vars(ghosted_id)%pres_store(option%gas_phase,TIME_T) = &
+            patch%aux%Global%auxvars(ghosted_id)%pres_store(option%gas_phase,TIME_T) = &
                 vec_loc_p(ghosted_id)
           enddo
         case(TIME_TpDT)
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%aux_vars(ghosted_id)%pres_store(option%gas_phase,TIME_TpDT) = &
+            patch%aux%Global%auxvars(ghosted_id)%pres_store(option%gas_phase,TIME_TpDT) = &
                 vec_loc_p(ghosted_id)
           enddo
         case default
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%aux_vars(ghosted_id)%pres(option%gas_phase) = vec_loc_p(ghosted_id)
+            patch%aux%Global%auxvars(ghosted_id)%pres(option%gas_phase) = vec_loc_p(ghosted_id)
           enddo
       end select
     case(TEMPERATURE)
       select case(isubvar)
         case(TIME_T)
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%aux_vars(ghosted_id)%temp_store(1,TIME_T) = &
+            patch%aux%Global%auxvars(ghosted_id)%temp_store(1,TIME_T) = &
               vec_loc_p(ghosted_id)
           enddo
         case(TIME_TpDT)
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%aux_vars(ghosted_id)%temp_store(1,TIME_TpDT) = &
+            patch%aux%Global%auxvars(ghosted_id)%temp_store(1,TIME_TpDT) = &
               vec_loc_p(ghosted_id)
           enddo
         case default
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%aux_vars(ghosted_id)%temp(1) = vec_loc_p(ghosted_id)
+            patch%aux%Global%auxvars(ghosted_id)%temp(1) = vec_loc_p(ghosted_id)
           enddo
       end select
     case(LIQUID_DENSITY)
       select case(isubvar)
         case(TIME_T)
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%aux_vars(ghosted_id)%den_kg_store(option%liquid_phase,TIME_T) = &
+            patch%aux%Global%auxvars(ghosted_id)%den_kg_store(option%liquid_phase,TIME_T) = &
               vec_loc_p(ghosted_id)
           enddo
         case(TIME_TpDT)
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%aux_vars(ghosted_id)%den_kg_store(option%liquid_phase,TIME_TpDT) = &
+            patch%aux%Global%auxvars(ghosted_id)%den_kg_store(option%liquid_phase,TIME_TpDT) = &
               vec_loc_p(ghosted_id)
           enddo
         case default
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%aux_vars(ghosted_id)%den_kg(option%liquid_phase) = vec_loc_p(ghosted_id)
-            patch%aux%Global%aux_vars(ghosted_id)%den(option%liquid_phase) = &
+            patch%aux%Global%auxvars(ghosted_id)%den_kg(option%liquid_phase) = vec_loc_p(ghosted_id)
+            patch%aux%Global%auxvars(ghosted_id)%den(option%liquid_phase) = &
               vec_loc_p(ghosted_id)/FMWH2O
           enddo
       end select
@@ -295,17 +295,17 @@ subroutine GlobalSetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
       select case(isubvar)
         case(TIME_T)
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%aux_vars(ghosted_id)%sat_store(option%gas_phase,TIME_T) = &
+            patch%aux%Global%auxvars(ghosted_id)%sat_store(option%gas_phase,TIME_T) = &
               vec_loc_p(ghosted_id)
           enddo
         case(TIME_TpDT)
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%aux_vars(ghosted_id)%sat_store(option%gas_phase,TIME_TpDT) = &
+            patch%aux%Global%auxvars(ghosted_id)%sat_store(option%gas_phase,TIME_TpDT) = &
               vec_loc_p(ghosted_id)
           enddo
         case default
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%aux_vars(ghosted_id)%sat(option%gas_phase) = &
+            patch%aux%Global%auxvars(ghosted_id)%sat(option%gas_phase) = &
               vec_loc_p(ghosted_id)
           enddo
       end select
@@ -313,51 +313,51 @@ subroutine GlobalSetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
       select case(isubvar)
         case(TIME_T)
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%aux_vars(ghosted_id)%den_kg_store(option%gas_phase,TIME_T) = &
+            patch%aux%Global%auxvars(ghosted_id)%den_kg_store(option%gas_phase,TIME_T) = &
               vec_loc_p(ghosted_id)
           enddo
         case(TIME_TpDT)
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%aux_vars(ghosted_id)%den_kg_store(option%gas_phase,TIME_TpDT) = &
+            patch%aux%Global%auxvars(ghosted_id)%den_kg_store(option%gas_phase,TIME_TpDT) = &
               vec_loc_p(ghosted_id)
           enddo
         case default
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%aux_vars(ghosted_id)%den_kg(option%gas_phase) = vec_loc_p(ghosted_id)
+            patch%aux%Global%auxvars(ghosted_id)%den_kg(option%gas_phase) = vec_loc_p(ghosted_id)
           enddo
       end select
     case(GAS_DENSITY_MOL)
       select case(isubvar)
         case(TIME_T)
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%aux_vars(ghosted_id)%den_store(option%gas_phase,TIME_T) = &
+            patch%aux%Global%auxvars(ghosted_id)%den_store(option%gas_phase,TIME_T) = &
               vec_loc_p(ghosted_id)
           enddo
         case(TIME_TpDT)
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%aux_vars(ghosted_id)%den_store(option%gas_phase,TIME_TpDT) = &
+            patch%aux%Global%auxvars(ghosted_id)%den_store(option%gas_phase,TIME_TpDT) = &
               vec_loc_p(ghosted_id)
           enddo
         case default
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%aux_vars(ghosted_id)%den(option%gas_phase) = vec_loc_p(ghosted_id)
+            patch%aux%Global%auxvars(ghosted_id)%den(option%gas_phase) = vec_loc_p(ghosted_id)
           enddo
       end select
     case(LIQUID_SATURATION)
       select case(isubvar)
         case(TIME_T)
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%aux_vars(ghosted_id)%sat_store(option%liquid_phase,TIME_T) = &
+            patch%aux%Global%auxvars(ghosted_id)%sat_store(option%liquid_phase,TIME_T) = &
               vec_loc_p(ghosted_id)
           enddo
         case(TIME_TpDT)
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%aux_vars(ghosted_id)%sat_store(option%liquid_phase,TIME_TpDT) = &
+            patch%aux%Global%auxvars(ghosted_id)%sat_store(option%liquid_phase,TIME_TpDT) = &
               vec_loc_p(ghosted_id)
           enddo
         case default
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%aux_vars(ghosted_id)%sat(option%liquid_phase) = &
+            patch%aux%Global%auxvars(ghosted_id)%sat(option%liquid_phase) = &
               vec_loc_p(ghosted_id)
           enddo
       end select
@@ -365,17 +365,17 @@ subroutine GlobalSetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
       select case(isubvar)
         case(TIME_T)
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%aux_vars(ghosted_id)%fugacoeff_store(1,TIME_T) = &
+            patch%aux%Global%auxvars(ghosted_id)%fugacoeff_store(1,TIME_T) = &
               vec_loc_p(ghosted_id)
           enddo
         case(TIME_TpDT)
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%aux_vars(ghosted_id)%fugacoeff_store(1,TIME_TpDT) = &
+            patch%aux%Global%auxvars(ghosted_id)%fugacoeff_store(1,TIME_TpDT) = &
               vec_loc_p(ghosted_id)
           enddo
         case default
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%aux_vars(ghosted_id)%fugacoeff(1) = vec_loc_p(ghosted_id)
+            patch%aux%Global%auxvars(ghosted_id)%fugacoeff(1) = vec_loc_p(ghosted_id)
           enddo
       end select
   end select
@@ -413,47 +413,47 @@ subroutine GlobalUpdateDenAndSat(realization,weight)
   
   do ghosted_id = 1, patch%aux%Global%num_aux
     ! interpolate density and saturation based on weight
-    patch%aux%Global%aux_vars(ghosted_id)%den_kg(:) = &
-      (weight*patch%aux%Global%aux_vars(ghosted_id)%den_kg_store(:,TIME_TpDT)+ &
-       (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%den_kg_store(:,TIME_T))
-    patch%aux%Global%aux_vars(ghosted_id)%sat(:) = &
-      (weight*patch%aux%Global%aux_vars(ghosted_id)%sat_store(:,TIME_TpDT)+ &
-       (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%sat_store(:,TIME_T))
+    patch%aux%Global%auxvars(ghosted_id)%den_kg(:) = &
+      (weight*patch%aux%Global%auxvars(ghosted_id)%den_kg_store(:,TIME_TpDT)+ &
+       (1.d0-weight)*patch%aux%Global%auxvars(ghosted_id)%den_kg_store(:,TIME_T))
+    patch%aux%Global%auxvars(ghosted_id)%sat(:) = &
+      (weight*patch%aux%Global%auxvars(ghosted_id)%sat_store(:,TIME_TpDT)+ &
+       (1.d0-weight)*patch%aux%Global%auxvars(ghosted_id)%sat_store(:,TIME_T))
   enddo
   
     ! need future implementation for ims_mode too    
   if (option%iflowmode == MPH_MODE) then
     do ghosted_id = 1, patch%aux%Global%num_aux
-      patch%aux%Global%aux_vars(ghosted_id)%pres(:) = &
-        (weight*patch%aux%Global%aux_vars(ghosted_id)%pres_store(:,TIME_TpDT)+ &
-         (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%pres_store(:,TIME_T))
-      patch%aux%Global%aux_vars(ghosted_id)%temp(:) = &
-        (weight*patch%aux%Global%aux_vars(ghosted_id)%temp_store(:,TIME_TpDT)+ &
-         (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%temp_store(:,TIME_T))
-      patch%aux%Global%aux_vars(ghosted_id)%fugacoeff(:) = &
-        (weight*patch%aux%Global%aux_vars(ghosted_id)%fugacoeff_store(:,TIME_TpDT)+ &
-         (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%fugacoeff_store(:,TIME_T))
-      if (weight<1D-12) patch%aux%Global%aux_vars(ghosted_id)%reaction_rate(:)=0D0
-!      patch%aux%Global%aux_vars(ghosted_id)%den(:) = &
-!        (weight*patch%aux%Global%aux_vars(ghosted_id)%den_store(:,TIME_TpDT)+ &
-!         (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%den_store(:,TIME_T))
+      patch%aux%Global%auxvars(ghosted_id)%pres(:) = &
+        (weight*patch%aux%Global%auxvars(ghosted_id)%pres_store(:,TIME_TpDT)+ &
+         (1.d0-weight)*patch%aux%Global%auxvars(ghosted_id)%pres_store(:,TIME_T))
+      patch%aux%Global%auxvars(ghosted_id)%temp(:) = &
+        (weight*patch%aux%Global%auxvars(ghosted_id)%temp_store(:,TIME_TpDT)+ &
+         (1.d0-weight)*patch%aux%Global%auxvars(ghosted_id)%temp_store(:,TIME_T))
+      patch%aux%Global%auxvars(ghosted_id)%fugacoeff(:) = &
+        (weight*patch%aux%Global%auxvars(ghosted_id)%fugacoeff_store(:,TIME_TpDT)+ &
+         (1.d0-weight)*patch%aux%Global%auxvars(ghosted_id)%fugacoeff_store(:,TIME_T))
+      if (weight<1D-12) patch%aux%Global%auxvars(ghosted_id)%reaction_rate(:)=0D0
+!      patch%aux%Global%auxvars(ghosted_id)%den(:) = &
+!        (weight*patch%aux%Global%auxvars(ghosted_id)%den_store(:,TIME_TpDT)+ &
+!         (1.d0-weight)*patch%aux%Global%auxvars(ghosted_id)%den_store(:,TIME_T))
     enddo     
   endif 
   if (option%iflowmode == FLASH2_MODE) then
     do ghosted_id = 1, patch%aux%Global%num_aux
-      patch%aux%Global%aux_vars(ghosted_id)%pres(:) = &
-        (weight*patch%aux%Global%aux_vars(ghosted_id)%pres_store(:,TIME_TpDT)+ &
-         (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%pres_store(:,TIME_T))
-      patch%aux%Global%aux_vars(ghosted_id)%temp(:) = &
-        (weight*patch%aux%Global%aux_vars(ghosted_id)%temp_store(:,TIME_TpDT)+ &
-         (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%temp_store(:,TIME_T))
-      patch%aux%Global%aux_vars(ghosted_id)%fugacoeff(:) = &
-        (weight*patch%aux%Global%aux_vars(ghosted_id)%fugacoeff_store(:,TIME_TpDT)+ &
-         (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%fugacoeff_store(:,TIME_T))
-      if (weight<1D-12) patch%aux%Global%aux_vars(ghosted_id)%reaction_rate(:)=0D0
-!      patch%aux%Global%aux_vars(ghosted_id)%den(:) = &
-!        (weight*patch%aux%Global%aux_vars(ghosted_id)%den_store(:,TIME_TpDT)+ &
-!         (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%den_store(:,TIME_T))
+      patch%aux%Global%auxvars(ghosted_id)%pres(:) = &
+        (weight*patch%aux%Global%auxvars(ghosted_id)%pres_store(:,TIME_TpDT)+ &
+         (1.d0-weight)*patch%aux%Global%auxvars(ghosted_id)%pres_store(:,TIME_T))
+      patch%aux%Global%auxvars(ghosted_id)%temp(:) = &
+        (weight*patch%aux%Global%auxvars(ghosted_id)%temp_store(:,TIME_TpDT)+ &
+         (1.d0-weight)*patch%aux%Global%auxvars(ghosted_id)%temp_store(:,TIME_T))
+      patch%aux%Global%auxvars(ghosted_id)%fugacoeff(:) = &
+        (weight*patch%aux%Global%auxvars(ghosted_id)%fugacoeff_store(:,TIME_TpDT)+ &
+         (1.d0-weight)*patch%aux%Global%auxvars(ghosted_id)%fugacoeff_store(:,TIME_T))
+      if (weight<1D-12) patch%aux%Global%auxvars(ghosted_id)%reaction_rate(:)=0D0
+!      patch%aux%Global%auxvars(ghosted_id)%den(:) = &
+!        (weight*patch%aux%Global%auxvars(ghosted_id)%den_store(:,TIME_TpDT)+ &
+!         (1.d0-weight)*patch%aux%Global%auxvars(ghosted_id)%den_store(:,TIME_T))
     enddo     
   endif
   if (option%iflowmode == G_MODE) then

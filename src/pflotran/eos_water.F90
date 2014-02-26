@@ -140,6 +140,7 @@ module EOS_Water_module
             EOSWaterDensity, &
             EOSWaterEnthalpy, &
             EOSWaterDensityEnthalpy, &
+            EOSWaterDensityEnthalpyPainter, &
             EOSWaterSteamDensityEnthalpy, &
             EOSWaterDuanMixture, &
             EOSWaterDensityNaCl, &
@@ -175,8 +176,8 @@ subroutine EOSWaterInit()
   EOSWaterDensityPtr => EOSWaterDensityIFC67
   EOSWaterEnthalpyPtr => EOSWaterEnthalpyIFC67
   EOSWaterViscosityPtr => EOSWaterViscosity1
-  EOSWaterSaturationPressurePtr => EOSWaterSaturationPressure1
-  EOSWaterSteamDensityEnthalpyPtr => EOSWaterSteamDensityEnthalpy1
+  EOSWaterSaturationPressurePtr => EOSWaterSaturationPressureIFC67
+  EOSWaterSteamDensityEnthalpyPtr => EOSWaterSteamDensityEnthalpyIFC67
   
 end subroutine EOSWaterInit
 
@@ -457,7 +458,7 @@ end subroutine EOSWaterSatPresDerive
 
 ! ************************************************************************** !
 
-subroutine EOSWaterSaturationPressure1(T, PS, calculate_derivatives, dPS_dT, &
+subroutine EOSWaterSaturationPressureIFC67(T, PS, calculate_derivatives, dPS_dT, &
                                        ierr)
 
     implicit none
@@ -507,7 +508,7 @@ subroutine EOSWaterSaturationPressure1(T, PS, calculate_derivatives, dPS_dT, &
     endif
     ierr = 0
 
-end subroutine EOSWaterSaturationPressure1  
+end subroutine EOSWaterSaturationPressureIFC67
 
 ! ************************************************************************** !
 
@@ -650,7 +651,7 @@ subroutine EOSWaterDensityEnthalpyIFC67(t,p,dw,dwmol,hw, &
 !  The water and steam properties are valid in the range of:
 !
 !            0 < p < 165.4 * 10^5 pascals (165.4 bars)
-!            0 < t < 800 centigrade (1073.15 Kelvin)
+!            0 < t < 350 centigrade (1073.15 Kelvin)
 !
 !  The properties cover densities, enthalpies, internal energies,
 !  and partial derivatives of these quanties with respect to
@@ -925,7 +926,7 @@ subroutine EOSWaterDensityIFC67(t,p,dw,dwmol, &
 !  The water and steam properties are valid in the range of:
 !
 !            0 < p < 165.4 * 10^5 pascals (165.4 bars)
-!            0 < t < 800 centigrade (1073.15 Kelvin)
+!            0 < t < 350 centigrade (623.15 Kelvin)
 !
 !  The properties cover densities, enthalpies, internal energies,
 !  and partial derivatives of these quanties with respect to
@@ -1084,7 +1085,7 @@ subroutine EOSWaterEnthalpyIFC67(t,p,hw, &
 !  The water and steam properties are valid in the range of:
 !
 !            0 < p < 165.4 * 10^5 pascals (165.4 bars)
-!            0 < t < 800 centigrade (1073.15 Kelvin)
+!            0 < t < 350 centigrade (623.15 Kelvin)
 !
 !  The properties cover densities, enthalpies, internal energies,
 !  and partial derivatives of these quanties with respect to
@@ -1448,7 +1449,7 @@ end subroutine EOSWaterSteamDenEnthDerive
 
 ! ************************************************************************** !
 
-subroutine EOSWaterSteamDensityEnthalpy1(t,p,pa,dg,dgmol,hg, &
+subroutine EOSWaterSteamDensityEnthalpyIFC67(t,p,pa,dg,dgmol,hg, &
                                          calculate_derivatives, &
                                          dgp,dgt,hgp,hgt,scale,ierr)
 ! t/C  p/Pa dgmol/(mol/m^3)  h/MJ/mol
@@ -1752,7 +1753,7 @@ subroutine EOSWaterSteamDensityEnthalpy1(t,p,pa,dg,dgmol,hg, &
     hgp = -999.d0
   endif
 
-end subroutine EOSWaterSteamDensityEnthalpy1
+end subroutine EOSWaterSteamDensityEnthalpyIFC67
 
 ! ************************************************************************** !
 
@@ -1987,10 +1988,10 @@ end subroutine EOSWaterInternalEnergyIce
 
 ! ************************************************************************** !
 
-subroutine EOSWaterDensityEnthalpy2(T, P, den_water_kg, den_water_kmol, &
-                                    h_MJ_kmol, &
-                                    calculate_derivatives, dden_water_dp, &
-                                    dden_water_dt, dh_dp, dh_dt, ierr)
+subroutine EOSWaterDensityEnthalpyPainter(T, P, den_water_kg, den_water_kmol, &
+                                          h_MJ_kmol, &
+                                          calculate_derivatives, dden_water_dp, &
+                                          dden_water_dt, dh_dp, dh_dt, ierr)
 ! wateos_simple: Simple water equation of state from Scott Painter
 ! Author: Satish Karra, LANL
 ! Date: 02/1/12
@@ -2008,7 +2009,7 @@ subroutine EOSWaterDensityEnthalpy2(T, P, den_water_kg, den_water_kmol, &
   
   PetscReal, parameter :: a = 999.915d0
   PetscReal, parameter :: b = 0.0416516d0
-  PetscReal, parameter :: c = 0.0100836d0
+  PetscReal, parameter :: c = -0.0100836d0
   PetscReal, parameter :: d = 0.000206355
   PetscReal, parameter :: alpha = 5.0d-10     ! in Pa^(-1)
   PetscReal, parameter :: T_ref = 273.15d0    ! in K
@@ -2052,7 +2053,7 @@ subroutine EOSWaterDensityEnthalpy2(T, P, den_water_kg, den_water_kmol, &
     dh_dt = -999.d0
   endif
    
-end subroutine EOSWaterDensityEnthalpy2
+end subroutine EOSWaterDensityEnthalpyPainter
 
 ! ************************************************************************** !
 

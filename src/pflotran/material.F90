@@ -3,6 +3,7 @@ module Material_module
   use Dataset_Common_HDF5_class
 
   use PFLOTRAN_Constants_module
+  use Material_Aux_class
 
   implicit none
 
@@ -31,15 +32,17 @@ module Material_module
     PetscReal :: thermal_conductivity_wet
     PetscReal :: alpha    ! conductivity saturation relation exponent
 
+    character(len=MAXWORDLENGTH) :: soil_compressibility_function
+    PetscReal :: soil_compressibility
+    PetscReal :: soil_reference_pressure
+
     ! ice properties
     PetscReal :: thermal_conductivity_frozen
     PetscReal :: alpha_fr
 
     PetscReal :: pore_compressibility
     PetscReal :: thermal_expansitivity   
-    PetscReal :: longitudinal_dispersivity 
-    PetscReal :: transverse_dispersivity_h
-    PetscReal :: transverse_dispersivity_v
+    PetscReal :: dispersivity(3)
     PetscReal :: tortuosity_pwr
     PetscReal :: min_pressure
     PetscReal :: max_pressure
@@ -76,6 +79,27 @@ module Material_module
     type(material_property_type), pointer :: ptr
   end type material_property_ptr_type
   
+  ! procedure pointer declarations
+  procedure(MaterialCompressSoilDummy), pointer :: &
+    MaterialCompressSoilPtr => null()
+ 
+  ! interface blocks
+  interface
+    subroutine MaterialCompressSoilDummy(auxvar,pressure,compressed_porosity, &
+                                         dcompressed_porosity_dp)
+    use Material_Aux_class
+    implicit none
+    class(material_auxvar_type), intent(in) :: auxvar
+    PetscReal, intent(in) :: pressure
+    PetscReal, intent(out) :: compressed_porosity
+    PetscReal, intent(out) :: dcompressed_porosity_dp
+    end subroutine MaterialCompressSoilDummy
+  end interface 
+  
+  interface MaterialCompressSoil
+    procedure MaterialCompressSoilPtr
+  end interface
+  
   public :: MaterialPropertyCreate, &
             MaterialPropertyDestroy, &
             MaterialPropertyAddToList, &
@@ -83,7 +107,15 @@ module Material_module
             MaterialPropGetPtrFromArray, &
             MaterialPropConvertListToArray, &
             MaterialAnisotropyExists, &
-            MaterialPropertyRead
+            MaterialSetAuxVarScalar, &
+            MaterialSetAuxVarVecLoc, &
+            MaterialGetAuxVarVecLoc, &
+            MaterialAuxVarCommunicate, &
+            MaterialCompressSoil, &
+            MaterialPropertyRead, &
+            MaterialInitAuxIndices, &
+            MaterialAssignPropertyToAux, &
+            MaterialSetup
   
 contains
 
@@ -124,20 +156,22 @@ function MaterialPropertyCreate()
   material_property%tortuosity_pwr = 0.d0
   material_property%saturation_function_id = 0
   material_property%saturation_function_name = ''
-  material_property%rock_density = 0.d0
-  material_property%specific_heat = 0.d0
-  material_property%thermal_conductivity_dry = 0.d0
-  material_property%thermal_conductivity_wet = 0.d0
+  material_property%rock_density = -999.d0
+  material_property%specific_heat = -999.d0
+  material_property%thermal_conductivity_dry = -999.d0
+  material_property%thermal_conductivity_wet = -999.d0
   material_property%alpha = 0.45d0
+
+  material_property%soil_compressibility_function = ''
+  material_property%soil_compressibility = -999.d0
+  material_property%soil_reference_pressure = -999.d0
 
   material_property%thermal_conductivity_frozen = 0.d0
   material_property%alpha_fr = 0.95d0
 
-  material_property%pore_compressibility = 0.d0
+  material_property%pore_compressibility = -999.d0
   material_property%thermal_expansitivity = 0.d0  
-  material_property%longitudinal_dispersivity = 0.d0
-  material_property%transverse_dispersivity_h = 0.d0
-  material_property%transverse_dispersivity_v = 0.d0
+  material_property%dispersivity = 0.d0
   material_property%min_pressure = 0.d0
   material_property%max_pressure = 1.d6
   material_property%max_permfactor = 1.d0
@@ -222,17 +256,17 @@ subroutine MaterialPropertyRead(material_property,input,option)
       case('ROCK_DENSITY') 
         call InputReadDouble(input,option,material_property%rock_density)
         call InputErrorMsg(input,option,'rock density','MATERIAL_PROPERTY')
-      case('SPECIFIC_HEAT') 
+      case('SPECIFIC_HEAT','HEAT_CAPACITY') 
         call InputReadDouble(input,option,material_property%specific_heat)
         call InputErrorMsg(input,option,'specific heat','MATERIAL_PROPERTY')
       case('LONGITUDINAL_DISPERSIVITY') 
-        call InputReadDouble(input,option,material_property%longitudinal_dispersivity)
+        call InputReadDouble(input,option,material_property%dispersivity(1))
         call InputErrorMsg(input,option,'longitudinal_dispersivity','MATERIAL_PROPERTY')
       case('TRANSVERSE_DISPERSIVITY_H') 
-        call InputReadDouble(input,option,material_property%transverse_dispersivity_h)
+        call InputReadDouble(input,option,material_property%dispersivity(2))
         call InputErrorMsg(input,option,'transverse_dispersivity_h','MATERIAL_PROPERTY')
       case('TRANSVERSE_DISPERSIVITY_V') 
-        call InputReadDouble(input,option,material_property%transverse_dispersivity_v)
+        call InputReadDouble(input,option,material_property%dispersivity(3))
         call InputErrorMsg(input,option,'transverse_dispersivity_v','MATERIAL_PROPERTY')
       case('THERMAL_CONDUCTIVITY_DRY') 
         call InputReadDouble(input,option, &
@@ -265,6 +299,22 @@ subroutine MaterialPropertyRead(material_property,input,option)
         call InputReadDouble(input,option, &
                              material_property%pore_compressibility)
         call InputErrorMsg(input,option,'pore compressibility', &
+                           'MATERIAL_PROPERTY')
+      case('SOIL_COMPRESSIBILITY_FUNCTION') 
+        call InputReadWord(input,option, &
+                           material_property%soil_compressibility_function, &
+                           PETSC_TRUE)
+        call InputErrorMsg(input,option,'soil compressibility function', &
+                           'MATERIAL_PROPERTY')
+      case('SOIL_COMPRESSIBILITY') 
+        call InputReadDouble(input,option, &
+                             material_property%soil_compressibility)
+        call InputErrorMsg(input,option,'soil compressibility', &
+                           'MATERIAL_PROPERTY')
+      case('SOIL_REFERENCE_PRESSURE') 
+        call InputReadDouble(input,option, &
+                             material_property%soil_reference_pressure)
+        call InputErrorMsg(input,option,'soil reference pressure', &
                            'MATERIAL_PROPERTY')
       case('THERMAL_EXPANSITIVITY') 
         call InputReadDouble(input,option, &
@@ -553,11 +603,13 @@ subroutine MaterialPropertyRead(material_property,input,option)
   if ((option%iflowmode == TH_MODE) .or. (option%iflowmode == THC_MODE)) then
      if (option%use_th_freezing .eqv. PETSC_TRUE) then
         if (.not. therm_k_frz) then
-           option%io_buffer = 'THERMAL_CONDUCTIVITY_FROZEN must be set in inputdeck for MODE TH(C) ICE'
+           option%io_buffer = 'THERMAL_CONDUCTIVITY_FROZEN must be set ' // &
+             'in inputdeck for MODE TH(C) ICE'
            call printErrMsg(option)
         endif
         if (.not. therm_k_exp_frz) then
-           option%io_buffer = 'THERMAL_COND_EXPONENT_FROZEN must be set in inputdeck for MODE TH(C) ICE'
+           option%io_buffer = 'THERMAL_COND_EXPONENT_FROZEN must be set ' // &
+             'in inputdeck for MODE TH(C) ICE'
            call printErrMsg(option)
         endif
      endif
@@ -728,6 +780,62 @@ end subroutine MaterialPropConvertListToArray
 
 ! ************************************************************************** !
 
+subroutine MaterialSetup(material_parameter, material_property_array, &
+                         saturation_function_array, option)
+  ! 
+  ! Creates arrays for material parameter boject
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/05/14
+  !
+  use Option_module
+  use Saturation_Function_module
+  
+  implicit none
+  
+  type(material_parameter_type) :: material_parameter
+  type(material_property_ptr_type) :: material_property_array(:)
+  type(saturation_function_ptr_type) :: saturation_function_array(:)
+  type(option_type), pointer :: option
+  
+  PetscInt :: num_sat_func
+  PetscInt :: num_mat_prop
+  PetscInt :: i
+  
+  num_mat_prop = size(material_property_array)
+  num_sat_func = size(saturation_function_array)
+  
+  allocate(material_parameter%soil_residual_saturation(option%nphase, &
+                                                       num_sat_func))
+  material_parameter%soil_residual_saturation = -999.d0
+  do i = 1, num_sat_func
+    if (associated(saturation_function_array(i)%ptr)) then
+      material_parameter%soil_residual_saturation(:, &
+                         saturation_function_array(i)%ptr%id) = &
+        saturation_function_array(i)%ptr%Sr(:)
+    endif
+  enddo
+
+  allocate(material_parameter%soil_heat_capacity(num_mat_prop))
+  allocate(material_parameter%soil_thermal_conductivity(2,num_mat_prop))
+  material_parameter%soil_heat_capacity = -999.d0
+  material_parameter%soil_thermal_conductivity = -999.d0
+  do i = 1, num_mat_prop
+    if (associated(material_property_array(i)%ptr)) then
+      ! kg rock/m^3 rock * J/kg rock-K * 1.e-6 MJ/J
+      material_parameter%soil_heat_capacity(i) = &
+        material_property_array(i)%ptr%specific_heat * option%scale ! J -> MJ
+      material_parameter%soil_thermal_conductivity(1,i) = &
+        material_property_array(i)%ptr%thermal_conductivity_dry
+      material_parameter%soil_thermal_conductivity(2,i) = &
+        material_property_array(i)%ptr%thermal_conductivity_wet
+    endif
+  enddo
+  
+end subroutine MaterialSetup
+  
+! ************************************************************************** !
+
 function MaterialPropGetPtrFromList(material_property_name, &
                                     material_property_list)
   ! 
@@ -835,6 +943,444 @@ function MaterialAnisotropyExists(material_property_list)
   enddo
   
 end function MaterialAnisotropyExists
+
+
+! ************************************************************************** !
+
+subroutine MaterialInitAuxIndices(material_property_ptrs,option)
+  !
+  ! Initializes the pointer used to index material property arrays
+  !
+  ! Author: Glenn Hammond
+  ! Date: 01/09/14
+  !
+  use Material_Aux_class
+  use String_module
+  use Option_module
+  
+  implicit none
+  
+  type(material_property_ptr_type), pointer :: material_property_ptrs(:)
+  type(option_type) :: option
+
+  PetscInt :: i
+  PetscInt :: icount = 0
+  
+  procedure(MaterialCompressSoilDummy), pointer :: &
+    MaterialCompressSoilPtrTmp 
+  
+!  soil_thermal_conductivity_index = 0
+!  soil_heat_capacity_index = 0
+  soil_compressibility_index = 0
+  soil_reference_pressure_index = 0
+  max_material_index = 0
+  
+  do i = 1, size(material_property_ptrs)
+    ! if gaps exist between material ids in the input file, those gaps will
+    ! be null and need to be skipped
+    if (.not.associated(material_property_ptrs(i)%ptr)) cycle
+    MaterialCompressSoilPtrTmp => null()
+    if (len_trim(material_property_ptrs(i)%ptr% &
+                   soil_compressibility_function) > 1) then
+      call StringToUpper(material_property_ptrs(i)%ptr% &
+                           soil_compressibility_function)
+      select case(material_property_ptrs(i)%ptr%soil_compressibility_function)
+        case('BRAGFLO')
+          MaterialCompressSoilPtrTmp => MaterialCompressSoilBRAGFLO
+        case('LEIJNSE','DEFAULT')
+          MaterialCompressSoilPtrTmp => MaterialCompressSoilLeijnse
+        case default
+          option%io_buffer = 'Soil compressibility function "' // &
+            trim(material_property_ptrs(i)%ptr% &
+                   soil_compressibility_function) // &
+            '" not recognized.'
+          call printErrMsg(option)
+      end select
+      if (.not.associated(MaterialCompressSoilPtr)) then
+        MaterialCompressSoilPtr => MaterialCompressSoilPtrTmp
+      else if (.not.associated(MaterialCompressSoilPtr, &
+                               MaterialCompressSoilPtrTmp)) then
+        option%io_buffer = 'All MATERIAL_PROPERTIES must specify the ' // &
+          'same soil compressibility function.'
+        call printErrMsg(option)
+      endif
+    endif  
+    if (material_property_ptrs(i)%ptr%soil_compressibility > -998.d0 .and. &
+        soil_compressibility_index == 0) then
+      icount = icount + 1
+      soil_compressibility_index = icount
+    endif
+    if (material_property_ptrs(i)%ptr%soil_reference_pressure > -998.d0 .and. &
+        soil_reference_pressure_index == 0) then
+      icount = icount + 1
+      soil_reference_pressure_index = icount
+    endif
+!    if (material_property_ptrs(i)%ptr%specific_heat > 0.d0 .and. &
+!        soil_heat_capacity_index == 0) then
+!      icount = icount + 1
+!      soil_heat_capacity_index = icount
+!    endif
+!    if (material_property_ptrs(i)%ptr%thermal_conductivity_wet > 0.d0 .and. &
+!        soil_thermal_conductivity_index == 0) then
+!      icount = icount + 1
+!      soil_thermal_conductivity_index = icount
+!    endif
+  enddo
+  max_material_index = icount
+  
+  if (.not.associated(MaterialCompressSoilPtr)) then
+    MaterialCompressSoilPtr => MaterialCompressSoilLeijnse
+  endif
+  
+end subroutine MaterialInitAuxIndices
+
+! ************************************************************************** !
+
+subroutine MaterialAssignPropertyToAux(material_auxvar,material_property, &
+                                       option)
+  !
+  ! Initializes the pointer used to index material property arrays
+  !
+  ! Author: Glenn Hammond
+  ! Date: 01/09/14
+  !
+  use Material_Aux_class
+  use Option_module
+  
+  implicit none
+  
+  class(material_auxvar_type) :: material_auxvar
+  type(material_property_type) :: material_property
+  type(option_type) :: option
+
+  if (material_property%rock_density > -998.d0) then
+    material_auxvar%soil_particle_density = &
+      material_property%rock_density
+  endif
+  if (soil_compressibility_index > 0) then
+    material_auxvar%soil_properties(soil_compressibility_index) = &
+      material_property%soil_compressibility
+  endif
+  if (soil_reference_pressure_index > 0) then
+    material_auxvar%soil_properties(soil_reference_pressure_index) = &
+      material_property%soil_reference_pressure
+  endif
+!  if (soil_heat_capacity_index > 0) then
+!    material_auxvar%soil_properties(soil_heat_capacity_index) = &
+!      material_property%specific_heat
+!  endif
+!  if (soil_thermal_conductivity_index > 0) then
+!    material_auxvar%soil_properties(soil_thermal_conductivity_index) = &
+!      material_property%thermal_conductivity_wet
+!  endif
+  
+end subroutine MaterialAssignPropertyToAux
+
+! ************************************************************************** !
+
+subroutine MaterialSetAuxVarScalar(Material,value,ivar)
+  ! 
+  ! Sets values of a material auxvar data using a scalar value.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/09/14
+  ! 
+
+  use Variables_module
+  
+  implicit none
+
+  type(material_type) :: Material ! from realization%patch%aux%Material
+  PetscReal :: value
+  PetscInt :: ivar
+
+  PetscInt :: i
+  
+  select case(ivar)
+    case(VOLUME)
+      do i=1, Material%num_aux
+        Material%auxvars(i)%volume = value
+      enddo
+    case(POROSITY)
+      do i=1, Material%num_aux
+        Material%auxvars(i)%porosity = value
+      enddo
+    case(TORTUOSITY)
+      do i=1, Material%num_aux
+        Material%auxvars(i)%tortuosity = value
+      enddo
+    case(PERMEABILITY_X)
+      do i=1, Material%num_aux
+        Material%auxvars(i)%permeability(perm_xx_index) = value
+      enddo
+    case(PERMEABILITY_Y)
+      do i=1, Material%num_aux
+        Material%auxvars(i)%permeability(perm_yy_index) = value
+      enddo
+    case(PERMEABILITY_Z)
+      do i=1, Material%num_aux
+        Material%auxvars(i)%permeability(perm_zz_index) = value
+      enddo
+    case(PERMEABILITY_XY)
+      do i=1, Material%num_aux
+        Material%auxvars(i)%permeability(perm_xy_index) = value
+      enddo
+    case(PERMEABILITY_YZ)
+      do i=1, Material%num_aux
+        Material%auxvars(i)%permeability(perm_yz_index) = value
+      enddo
+    case(PERMEABILITY_XZ)
+      do i=1, Material%num_aux
+        Material%auxvars(i)%permeability(perm_xz_index) = value
+      enddo
+  end select
+  
+end subroutine MaterialSetAuxVarScalar
+
+! ************************************************************************** !
+
+subroutine MaterialSetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
+  ! 
+  ! Sets values of material auxvar data using a vector.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/09/14
+  ! 
+
+  use Variables_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  type(material_type) :: Material ! from realization%patch%aux%Material
+  Vec :: vec_loc
+  PetscInt :: ivar
+  PetscInt :: isubvar  
+  
+  PetscInt :: ghosted_id
+  PetscReal, pointer :: vec_loc_p(:)
+  PetscErrorCode :: ierr
+  
+  call VecGetArrayReadF90(vec_loc,vec_loc_p,ierr)
+  
+  select case(ivar)
+    case(VOLUME)
+      do ghosted_id=1, Material%num_aux
+        Material%auxvars(ghosted_id)%volume = vec_loc_p(ghosted_id)
+      enddo
+    case(POROSITY)
+      do ghosted_id=1, Material%num_aux
+        Material%auxvars(ghosted_id)%porosity = vec_loc_p(ghosted_id)
+      enddo
+    case(TORTUOSITY)
+      do ghosted_id=1, Material%num_aux
+        Material%auxvars(ghosted_id)%tortuosity = vec_loc_p(ghosted_id)
+      enddo
+    case(PERMEABILITY_X)
+      do ghosted_id=1, Material%num_aux
+        Material%auxvars(ghosted_id)%permeability(perm_xx_index) = &
+          vec_loc_p(ghosted_id)
+      enddo
+    case(PERMEABILITY_Y)
+      do ghosted_id=1, Material%num_aux
+        Material%auxvars(ghosted_id)%permeability(perm_yy_index) = &
+          vec_loc_p(ghosted_id)
+      enddo
+    case(PERMEABILITY_Z)
+      do ghosted_id=1, Material%num_aux
+        Material%auxvars(ghosted_id)%permeability(perm_zz_index) = &
+          vec_loc_p(ghosted_id)
+      enddo
+    case(PERMEABILITY_XY)
+      do ghosted_id=1, Material%num_aux
+        Material%auxvars(ghosted_id)%permeability(perm_xy_index) = &
+          vec_loc_p(ghosted_id)
+      enddo
+    case(PERMEABILITY_YZ)
+      do ghosted_id=1, Material%num_aux
+        Material%auxvars(ghosted_id)%permeability(perm_yz_index) = &
+          vec_loc_p(ghosted_id)
+      enddo
+    case(PERMEABILITY_XZ)
+      do ghosted_id=1, Material%num_aux
+        Material%auxvars(ghosted_id)%permeability(perm_xz_index) = &
+          vec_loc_p(ghosted_id)
+      enddo
+  end select
+
+  call VecRestoreArrayReadF90(vec_loc,vec_loc_p,ierr)
+
+end subroutine MaterialSetAuxVarVecLoc
+
+! ************************************************************************** !
+
+subroutine MaterialGetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
+  ! 
+  ! Sets values of material auxvar data using a vector.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/09/14
+  ! 
+
+  use Variables_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  type(material_type) :: Material ! from realization%patch%aux%Material
+  Vec :: vec_loc
+  PetscInt :: ivar
+  PetscInt :: isubvar  
+  
+  PetscInt :: ghosted_id
+  PetscReal, pointer :: vec_loc_p(:)
+  PetscErrorCode :: ierr
+  
+  call VecGetArrayReadF90(vec_loc,vec_loc_p,ierr)
+  
+  select case(ivar)
+    case(VOLUME)
+      do ghosted_id=1, Material%num_aux
+        vec_loc_p(ghosted_id) = Material%auxvars(ghosted_id)%volume
+      enddo
+    case(POROSITY)
+      do ghosted_id=1, Material%num_aux
+        vec_loc_p(ghosted_id) = Material%auxvars(ghosted_id)%porosity
+      enddo
+    case(TORTUOSITY)
+      do ghosted_id=1, Material%num_aux
+        vec_loc_p(ghosted_id) = Material%auxvars(ghosted_id)%tortuosity
+      enddo
+    case(PERMEABILITY_X)
+      do ghosted_id=1, Material%num_aux
+        vec_loc_p(ghosted_id) = &
+          Material%auxvars(ghosted_id)%permeability(perm_xx_index)
+      enddo
+    case(PERMEABILITY_Y)
+      do ghosted_id=1, Material%num_aux
+        vec_loc_p(ghosted_id) = &
+          Material%auxvars(ghosted_id)%permeability(perm_yy_index)
+      enddo
+    case(PERMEABILITY_Z)
+      do ghosted_id=1, Material%num_aux
+        vec_loc_p(ghosted_id) = &
+          Material%auxvars(ghosted_id)%permeability(perm_zz_index)
+      enddo
+    case(PERMEABILITY_XY)
+      do ghosted_id=1, Material%num_aux
+        vec_loc_p(ghosted_id) = &
+          Material%auxvars(ghosted_id)%permeability(perm_xy_index)
+      enddo
+    case(PERMEABILITY_YZ)
+      do ghosted_id=1, Material%num_aux
+        vec_loc_p(ghosted_id) = &
+          Material%auxvars(ghosted_id)%permeability(perm_yz_index)
+      enddo
+    case(PERMEABILITY_XZ)
+      do ghosted_id=1, Material%num_aux
+        vec_loc_p(ghosted_id) = &
+          Material%auxvars(ghosted_id)%permeability(perm_xz_index)
+      enddo
+  end select
+
+  call VecRestoreArrayReadF90(vec_loc,vec_loc_p,ierr)
+
+end subroutine MaterialGetAuxVarVecLoc
+
+! ************************************************************************** !
+
+subroutine MaterialAuxVarCommunicate(comm,Material,vec_loc,ivar,isubvar)
+  ! 
+  ! Sets values of material auxvar data using a vector.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/09/14
+  ! 
+
+  use Communicator_Base_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  class(communicator_type), pointer :: comm
+  type(material_type) :: Material ! from realization%patch%aux%Material
+  Vec :: vec_loc
+  PetscInt :: ivar
+  PetscInt :: isubvar  
+  
+  call MaterialGetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
+  call comm%LocalToLocal(vec_loc,vec_loc)
+  call MaterialSetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
+
+end subroutine MaterialAuxVarCommunicate
+
+! ************************************************************************** !
+
+subroutine MaterialCompressSoilLeijnse(auxvar,pressure, &
+                                       compressed_porosity, &
+                                       dcompressed_porosity_dp)
+  ! 
+  ! Calculates soil matrix compression based on Leijnse, 1992.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/14/14
+  ! 
+
+  implicit none
+
+  class(material_auxvar_type), intent(in) :: auxvar
+  PetscReal, intent(in) :: pressure
+  PetscReal, intent(out) :: compressed_porosity
+  PetscReal, intent(out) :: dcompressed_porosity_dp
+  
+  PetscReal :: compressibility
+  PetscReal :: compression
+  PetscReal :: tempreal
+  
+  compressibility = auxvar%soil_properties(soil_compressibility_index)
+  compression = &
+    exp(-1.d0 * compressibility * &
+        (pressure - auxvar%soil_properties(soil_reference_pressure_index)))
+  tempreal = (1.d0 - auxvar%porosity) * compression
+  compressed_porosity = 1.d0 - tempreal
+  dcompressed_porosity_dp = tempreal * compressibility
+  
+end subroutine MaterialCompressSoilLeijnse
+
+! ************************************************************************** !
+
+subroutine MaterialCompressSoilBRAGFLO(auxvar,pressure, &
+                                       compressed_porosity, &
+                                       dcompressed_porosity_dp)
+  ! 
+  ! Calculates soil matrix compression based on Eq. 9.6.9 of BRAGFLO
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/14/14
+  ! 
+
+  implicit none
+
+  class(material_auxvar_type), intent(in) :: auxvar
+  PetscReal, intent(in) :: pressure
+  PetscReal, intent(out) :: compressed_porosity
+  PetscReal, intent(out) :: dcompressed_porosity_dp
+  
+  PetscReal :: compressibility
+  
+  compressibility = auxvar%soil_properties(soil_compressibility_index)
+  compressed_porosity = auxvar%porosity * &
+    exp(compressibility * &
+        (pressure - auxvar%soil_properties(soil_reference_pressure_index)))
+  dcompressed_porosity_dp = compressibility * compressed_porosity
+  
+end subroutine MaterialCompressSoilBRAGFLO
 
 ! ************************************************************************** !
 
