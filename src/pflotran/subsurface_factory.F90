@@ -79,7 +79,10 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   call Init(simulation_old)
   call HijackSimulation(simulation_old,simulation)
   ! no longer need simulation
-  deallocate(simulation_old)
+  ! nullify realization and regression so that it is not destroyed
+  nullify(simulation_old%realization)
+  nullify(simulation_old%regression)
+  call SimulationDestroy(simulation_old)
   call SubsurfaceJumpStart(simulation)
   
 end subroutine SubsurfaceInitializePostPetsc
