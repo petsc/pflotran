@@ -1089,6 +1089,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   PetscReal :: sat_up, sat_dn
   PetscReal :: temp_ave, stp_ave, v_air
   PetscReal :: k_eff_up, k_eff_dn, k_eff_ave, heat_flux
+  PetscReal :: adv_flux(3), diff_flux(3)
   
   wat_comp_id = option%water_id
   air_comp_id = option%air_id
@@ -1103,7 +1104,12 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
 
   Res = 0.d0
   v_darcy = 0.d0
-  
+!#define DEBUG_FLUXES  
+#ifdef DEBUG_FLUXES  
+  adv_flux = 0.d0
+  diff_flux = 0.d0
+#endif
+
 #if 1
   do iphase = 1, option%nphase
  
@@ -1187,8 +1193,15 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
         !                      xmol[kmol comp/kmol phase]
         Res(icomp) = Res(icomp) + mole_flux * xmol(icomp)
       enddo
-      ! Res[MJ/sec] = mole_flux[kmol comp/sec] * H_ave[MJ/kmol comp]
+#ifdef DEBUG_FLUXES  
+      do icomp = 1, option%nflowspec
+        adv_flux(icomp) = adv_flux(icomp) + mole_flux * xmol(icomp)
+      enddo      ! Res[MJ/sec] = mole_flux[kmol comp/sec] * H_ave[MJ/kmol comp]
+#endif
       Res(energy_id) = Res(energy_id) + mole_flux * uH
+#ifdef DEBUG_FLUXES  
+      adv_flux(energy_id) = adv_flux(energy_id) + mole_flux * uH
+#endif
     endif                   
 
   enddo
@@ -1197,6 +1210,9 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
 #if 1
   ! add in gas component diffusion in gas and liquid phases
   do iphase = 1, option%nphase
+    
+    if (iphase == LIQUID_PHASE) cycle
+    
     sat_up = gen_auxvar_up%sat(iphase)
     sat_dn = gen_auxvar_dn%sat(iphase)
     !geh: changed to .and. -> .or.
@@ -1252,6 +1268,10 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
       q =  v_air * area
       mole_flux = q * density_ave
       Res(air_comp_id) = Res(air_comp_id) + mole_flux
+#ifdef DEBUG_FLUXES  
+      diff_flux(wat_comp_id) = diff_flux(wat_comp_id) - mole_flux
+      diff_flux(air_comp_id) = diff_flux(air_comp_id) + mole_flux      
+#endif
     endif
   enddo
 #endif
@@ -1280,6 +1300,13 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   heat_flux = k_eff_ave * delta_temp * area
   ! MJ/s
   Res(energy_id) = Res(energy_id) + heat_flux * 1.d-6 ! J/s -> MJ/s
+#endif
+#ifdef DEBUG_FLUXES  
+  diff_flux(3) = diff_flux(3) + heat_flux * 1.d-6
+
+  if (option%iflag == 1) then  
+    write(*,'(a,7es12.4)') 'in: ', adv_flux(:)*dist(3), diff_flux(:)*dist(3)
+  endif
 #endif
     
 end subroutine GeneralFlux
@@ -1326,7 +1353,7 @@ subroutine GeneralFluxDerivative(gen_auxvar_up,global_auxvar_up, &
   PetscInt :: idof, irow
 
 !geh:print *, 'GeneralFluxDerivative'
-
+  option%iflag = -2
   call GeneralFlux(gen_auxvar_up(ZERO_INTEGER),global_auxvar_up, &
                    material_auxvar_up,sir_up, &
                    thermal_conductivity_up, &
@@ -1419,8 +1446,10 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
   PetscReal :: sat_dn, perm_dn
   PetscReal :: temp_ave, stp_ave, v_air, pres_ave
   PetscReal :: k_eff_up, k_eff_dn, k_eff_ave, heat_flux
+  PetscReal :: adv_flux(3), diff_flux(3)
   
   PetscInt :: idof
+  PetscBool :: neumann_bc_present
   
   wat_comp_id = option%water_id
   air_comp_id = option%air_id
@@ -1428,6 +1457,11 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
 
   Res = 0.d0
   v_darcy = 0.d0
+#ifdef DEBUG_FLUXES    
+  adv_flux = 0.d0
+  diff_flux = 0.d0
+#endif
+  neumann_bc_present = PETSC_FALSE
   
   call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
   
@@ -1551,7 +1585,8 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
           case(GAS_PHASE)
             idof = auxvar_mapping(GENERAL_GAS_FLUX_INDEX)
         end select
-      
+        
+        neumann_bc_present = PETSC_TRUE
         xmol = 0.d0
         xmol(iphase) = 1.d0
         if (dabs(auxvars(idof)) > floweps) then
@@ -1583,8 +1618,16 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
         !                      xmol[kmol comp/mol phase]
         Res(icomp) = Res(icomp) + mole_flux * xmol(icomp)
       enddo
+#ifdef DEBUG_FLUXES  
+      do icomp = 1, option%nflowspec
+        adv_flux(icomp) = adv_flux(icomp) + mole_flux * xmol(icomp)
+      enddo
+#endif
       ! Res[MJ/sec] = mole_flux[kmol comp/sec] * H_ave[MJ/kmol comp]
       Res(energy_id) = Res(energy_id) + mole_flux * uH ! H_ave
+#ifdef DEBUG_FLUXES  
+      adv_flux(energy_id) = adv_flux(energy_id) + mole_flux * uH
+#endif
     endif
   enddo
 
@@ -1592,9 +1635,9 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
   ! add in gas component diffusion in gas and liquid phases
   do iphase = 1, option%nphase
   
-    if (ibndtype(iphase) == NEUMANN_BC) then
-      cycle
-    endif
+!    if (neumann_bc_present) cycle
+!    if (ibndtype(iphase) == NEUMANN_BC) cycle
+    if (iphase == LIQUID_PHASE) cycle
     
     ! diffusion all depends upon the downwind cell.  phase diffusion only
     ! occurs if a phase exists in both auxvars (boundary and internal) or
@@ -1644,6 +1687,11 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
       density_ave = 0.5d0*(gen_auxvar_up%den(iphase)+gen_auxvar_dn%den(iphase))
       mole_flux = q * density_ave
       Res(air_comp_id) = Res(air_comp_id) + mole_flux
+#ifdef DEBUG_FLUXES  
+      ! equal but opposite
+      diff_flux(wat_comp_id) = diff_flux(wat_comp_id) - mole_flux
+      diff_flux(air_comp_id) = diff_flux(air_comp_id) + mole_flux
+#endif
     endif
   enddo
 #endif
@@ -1666,14 +1714,21 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
       heat_flux = k_eff_ave * delta_temp * area
     case(NEUMANN_BC)
       heat_flux = auxvars(auxvar_mapping(GENERAL_LIQUID_FLUX_INDEX))
- 
+
     case default
       option%io_buffer = 'Boundary condition type not recognized in ' // &
         'GeneralBCFlux heat conduction loop.'
       call printErrMsg(option)
   end select
   Res(energy_id) = Res(energy_id) + heat_flux * 1.d-6 ! J/s -> MJ/s
+#ifdef DEBUG_FLUXES  
+  diff_flux(3) = diff_flux(3) + heat_flux * 1.d-6
 
+  if (option%iflag == 1) then
+    write(*,'(a,7es12.4)') 'bc: ', adv_flux(:)*dist(3), diff_flux(:)*dist(3)
+  endif
+#endif
+  
 end subroutine GeneralBCFlux
 
 ! ************************************************************************** !
@@ -1720,6 +1775,7 @@ subroutine GeneralBCFluxDerivative(ibndtype,auxvar_mapping,auxvars, &
 
 !geh:print *, 'GeneralBCFluxDerivative'
 
+  option%iflag = -2
   call GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
                      gen_auxvar_up,global_auxvar_up, &
                      gen_auxvar_dn(ZERO_INTEGER),global_auxvar_dn, &
@@ -1854,6 +1910,7 @@ subroutine GeneralSrcSinkDerivative(option,qsrc,flow_src_sink_type, &
   PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
   PetscInt :: idof, irow
 
+  option%iflag = -3
   call GeneralSrcSink(option,qsrc,flow_src_sink_type, &
                       gen_auxvars(ZERO_INTEGER),global_auxvar,scale,res)
   ! downgradient derivatives
@@ -1966,6 +2023,7 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
     call GeneralZeroMassBalanceDelta(realization)
   endif
 
+  option%iflag = 1
   ! now assign access pointer to local variables
   call VecGetArrayF90(r, r_p, ierr)
 

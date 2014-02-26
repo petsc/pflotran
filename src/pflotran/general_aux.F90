@@ -454,22 +454,36 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   ! ALWAYS UPDATE THERMODYNAMIC PROPERTIES FOR BOTH PHASES!!!
   ! Liquid phase thermodynamic properties
   ! must use cell_pressure as the pressure, not %pres(lid)
+!#define FIXED_COEFFICIENTS
+#ifndef FIXED_COEFFICIENTS
   call EOSWaterDensityEnthalpy(gen_auxvar%temp,cell_pressure, &
                                gen_auxvar%den_kg(lid),gen_auxvar%den(lid), &
                                gen_auxvar%H(lid),1.d-6,ierr)
+#else
+  gen_auxvar%den(lid) = 55.35d0
+  gen_auxvar%den_kg(lid) = 55.35d0*FMWH2O
+  gen_auxvar%H(lid) = 1.89d0
+#endif
 
   ! MJ/kmol comp
   gen_auxvar%U(lid) = gen_auxvar%H(lid) - &
                        ! Pa / kmol/m^3 * 1.e-6 = MJ/kmol
                        (cell_pressure / gen_auxvar%den(lid) * &
                         1.d-6)
-
+#ifndef FIXED_COEFFICIENTS
   ! Gas phase thermodynamic properties
   call ideal_gaseos_noderiv(gen_auxvar%pres(apid),gen_auxvar%temp, &
                             1.d-6,den_air,h_air,u)
   call EOSWaterSteamDensityEnthalpy(gen_auxvar%temp,cell_pressure, &
                                     gen_auxvar%pres(apid),den_kg_wat_vap, &
                                     den_wat_vap,h_wat_vap,1.d-6,ierr)
+#else
+  den_wat_vap = 1.279d-3
+  den_kg_wat_vap = den_wat_vap*FMWH2O
+  den_air = 3.9d-2
+  h_wat_vap = 45.89d0
+  h_air = 6.21d0
+#endif
   
   gen_auxvar%den(gid) = den_wat_vap + den_air
   gen_auxvar%den_kg(gid) = den_kg_wat_vap + den_air*FMWAIR
@@ -497,8 +511,12 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
     call SatFuncGetRelPermFromSat(gen_auxvar%sat(lid),krl,dkrl_Se, &
                                   saturation_function,lid,PETSC_FALSE,option)
 !    call EOSWaterViscosity(gen_auxvar%temp,gen_auxvar%pres(lid), &
+#ifndef FIXED_COEFFICIENTS                             
     call EOSWaterViscosity(gen_auxvar%temp,cell_pressure, &
                            gen_auxvar%pres(spid),visl,ierr)
+#else
+    visl = 8.9d-4
+#endif
     gen_auxvar%mobility(lid) = krl/visl
   endif
 
@@ -507,9 +525,13 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
     ! this does not need to be calculated for GAS_STATE (=1)
     call SatFuncGetRelPermFromSat(gen_auxvar%sat(gid),krg,dkrg_Se, &
                                   saturation_function,gid,PETSC_FALSE,option)
+#ifndef FIXED_COEFFICIENTS
     call visgas_noderiv(gen_auxvar%temp,gen_auxvar%pres(apid), &
 !                        gen_auxvar%pres(gid),den_air,visg)
                         cell_pressure,den_air,visg)
+#else
+    visg = 1.83d-5
+#endif
     gen_auxvar%mobility(gid) = krg/visg
   endif
 
