@@ -1100,12 +1100,12 @@ waypoint.o : option.o output_aux.o pflotran_constants.o utility.o
 # developer level regression testing
 test : utest rtest
 
-utest : FORCE
+utest : pflotran
 	@if [ -d $(unit_test_dir) ]; then \
 		$(MAKE) --directory=$(unit_test_dir) test; \
 	fi
 
-rtest : FORCE
+rtest : pflotran
 	@if [ -d $(regression_test_dir) ]; then \
 		$(MAKE) --directory=$(regression_test_dir) test; \
 	fi
