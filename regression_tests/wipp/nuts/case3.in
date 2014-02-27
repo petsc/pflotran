@@ -66,6 +66,7 @@ END
 MATERIAL_PROPERTY rock1
   ID 1
   POROSITY 0.2d0
+  ROCK_DENSITY 1650.d0
 END
 
 :=========================== observation points ===============================

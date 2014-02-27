@@ -449,7 +449,7 @@ subroutine MineralReadFromDatabase(mineral,num_dbase_temperatures,input, &
   enddo
   do itemp = 1, num_dbase_temperatures
     call InputReadDouble(input,option,mineral%dbaserxn%logK(itemp))
-    call InputErrorMsg(input,option,'MINERAL logKs','DATABASE')            
+    call InputErrorMsg(input,option,'MINERAL logKs','DATABASE')   
   enddo
   ! read the molar weight
   call InputReadDouble(input,option,mineral%molar_weight)

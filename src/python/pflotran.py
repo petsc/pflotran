@@ -163,7 +163,7 @@ class Dataset:
       if count >= n:
         break
     for i in range(ny):
-      y[i] = 0.5*(temp_array[i*ny]+temp_array[(i+1)*ny])
+      y[i] = 0.5*(temp_array[i*nx]+temp_array[(i+1)*nx])
     # Z
     count = 0
     for line in self.f:

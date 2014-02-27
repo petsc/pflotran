@@ -84,7 +84,7 @@ subroutine CondControlAssignFlowInitCond(realization)
   PetscBool :: dataset_flag(realization%option%nflowdof)
   PetscInt :: num_connections
   PetscInt, pointer :: conn_id_ptr(:)
-  PetscInt :: ghosted_offset
+  PetscInt :: offset, istate
   PetscReal :: x(realization%option%nflowdof)
   PetscReal :: temperature, p_sat
 
@@ -208,9 +208,9 @@ subroutine CondControlAssignFlowInitCond(realization)
                 case(LIQUID_STATE)
                   xx_p(ibegin+GENERAL_LIQUID_PRESSURE_DOF) = &
                     general%liquid_pressure%dataset%rarray(1)
-                  xx_p(ibegin+GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF) = &
+                  xx_p(ibegin+GENERAL_LIQUID_STATE_X_MOLE_DOF) = &
                     general%mole_fraction%dataset%rarray(1)
-                  xx_p(ibegin+GENERAL_LIQUID_STATE_TEMPERATURE_DOF) = &
+                  xx_p(ibegin+GENERAL_LIQUID_STATE_ENERGY_DOF) = &
                     general%temperature%dataset%rarray(1)
                 case(GAS_STATE)
                   xx_p(ibegin+GENERAL_GAS_PRESSURE_DOF) = &
@@ -218,7 +218,7 @@ subroutine CondControlAssignFlowInitCond(realization)
                   xx_p(ibegin+GENERAL_AIR_PRESSURE_DOF) = &
                     general%gas_pressure%dataset%rarray(1) * &
                     general%mole_fraction%dataset%rarray(1)
-                  xx_p(ibegin+GENERAL_GAS_STATE_TEMPERATURE_DOF) = &
+                  xx_p(ibegin+GENERAL_GAS_STATE_ENERGY_DOF) = &
                     general%temperature%dataset%rarray(1)
               end select
               iphase_loc_p(ghosted_id) = initial_condition%flow_condition%iphase
@@ -229,18 +229,23 @@ subroutine CondControlAssignFlowInitCond(realization)
             do iconn=1,initial_condition%connection_set%num_connections
               local_id = initial_condition%connection_set%id_dn(iconn)
               ghosted_id = grid%nL2G(local_id)
-              iend = local_id*option%nflowdof
-              ibegin = iend-option%nflowdof+1
               if (cur_patch%imat(ghosted_id) <= 0) then
+                iend = local_id*option%nflowdof
+                ibegin = iend-option%nflowdof+1
                 xx_p(ibegin:iend) = 0.d0
                 iphase_loc_p(ghosted_id) = 0
                 cycle
               endif
-              xx_p(ibegin:iend) = &
-                initial_condition%flow_aux_real_var(1:option%nflowdof,iconn)
-              iphase_loc_p(ghosted_id) = initial_condition%flow_condition%iphase
-              cur_patch%aux%Global%auxvars(ghosted_id)%istate = &
-                initial_condition%flow_condition%iphase
+              offset = (local_id-1)*option%nflowdof
+              istate = initial_condition%flow_aux_int_var(1,iconn)
+              do idof = 1, option%nflowdof
+                xx_p(offset+idof) = &
+                  initial_condition%flow_aux_real_var( &
+                    initial_condition%flow_aux_mapping( &
+                      dof_to_primary_variable(idof,istate)),iconn)
+              enddo
+              iphase_loc_p(ghosted_id) = istate
+              cur_patch%aux%Global%auxvars(ghosted_id)%istate = istate
             enddo
           endif
           initial_condition => initial_condition%next

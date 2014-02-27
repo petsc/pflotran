@@ -154,8 +154,9 @@ module Option_module
     PetscReal :: saturation_change_limit
     PetscReal :: pressure_change_limit
     PetscReal :: temperature_change_limit
-    PetscReal :: stomp_norm
-    PetscBool :: check_stomp_norm
+    PetscReal :: post_convergence_tol
+    PetscBool :: check_post_convergence
+    PetscBool :: converged
     
     PetscReal :: infnorm_res_sec  ! inf. norm of secondary continuum rt residual
     
@@ -210,6 +211,8 @@ module Option_module
     PetscBool :: out_of_table
     
     PetscBool :: use_process_model
+    !TODO(geh): remove this once all modes have bee refactored
+    PetscBool :: use_refactored_material_auxvars
         
     ! Specify secondary continuum solver
     PetscBool :: print_explicit_primal_grid    ! prints primal grid if true
@@ -369,6 +372,7 @@ subroutine OptionInitAll(option)
   
   option%simulation_mode = 'SUBSURFACE'
   option%use_process_model = PETSC_FALSE
+  option%use_refactored_material_auxvars = PETSC_FALSE
   option%subsurface_simulation_type = SUBSURFACE_SIM_TYPE
  
   call OptionInitRealization(option)
@@ -477,8 +481,9 @@ subroutine OptionInitRealization(option)
   option%saturation_change_limit = 0.d0
   option%pressure_change_limit = 0.d0
   option%temperature_change_limit = 0.d0
-  option%stomp_norm = 0.d0
-  option%check_stomp_norm = PETSC_FALSE
+  option%post_convergence_tol = 0.d0
+  option%check_post_convergence = PETSC_FALSE
+  option%converged = PETSC_FALSE
   
   option%infnorm_res_sec = 0.d0
   

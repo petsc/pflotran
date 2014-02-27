@@ -2114,7 +2114,8 @@ subroutine StructGridDestroy(structured_grid)
   ! Author: Glenn Hammond
   ! Date: 11/01/07
   ! 
-
+  use Utility_module, only : DeallocateArray
+  
   implicit none
   
   type(structured_grid_type), pointer :: structured_grid
@@ -2123,30 +2124,19 @@ subroutine StructGridDestroy(structured_grid)
     
   if (.not.associated(structured_grid)) return
   
-
-  if (associated(structured_grid%dx_global)) deallocate(structured_grid%dx_global)
-  nullify(structured_grid%dx_global)
-  if (associated(structured_grid%dy_global)) deallocate(structured_grid%dy_global)
-  nullify(structured_grid%dy_global)
-  if (associated(structured_grid%dz_global)) deallocate(structured_grid%dz_global)
-  nullify(structured_grid%dz_global)
-
-  if (associated(structured_grid%dxg_local)) deallocate(structured_grid%dxg_local)
-  nullify(structured_grid%dxg_local)
-  if (associated(structured_grid%dyg_local)) deallocate(structured_grid%dyg_local)
-  nullify(structured_grid%dyg_local)
-  if (associated(structured_grid%dzg_local)) deallocate(structured_grid%dzg_local)
-  nullify(structured_grid%dzg_local)
-
-  if (associated(structured_grid%dx)) deallocate(structured_grid%dx)
-  nullify(structured_grid%dx)
-  if (associated(structured_grid%dy)) deallocate(structured_grid%dy)
-  nullify(structured_grid%dy)
-  if (associated(structured_grid%dz)) deallocate(structured_grid%dz)
-  nullify(structured_grid%dz)
+  call DeallocateArray(structured_grid%dx_global)
+  call DeallocateArray(structured_grid%dy_global)
+  call DeallocateArray(structured_grid%dz_global)
   
-  if(associated(structured_grid%cell_neighbors)) deallocate(structured_grid%cell_neighbors)
-  nullify(structured_grid%cell_neighbors)
+  call DeallocateArray(structured_grid%dxg_local)
+  call DeallocateArray(structured_grid%dyg_local)
+  call DeallocateArray(structured_grid%dzg_local)
+  
+  call DeallocateArray(structured_grid%dx)
+  call DeallocateArray(structured_grid%dy)
+  call DeallocateArray(structured_grid%dz)
+  
+  call DeallocateArray(structured_grid%cell_neighbors)
   
   deallocate(structured_grid)
   nullify(structured_grid)

@@ -81,15 +81,22 @@ subroutine Init(simulation)
   use Surface_Field_module
   use Surface_Flow_module
   use Surface_Global_module
-  use Surface_Init_module
+  use Surface_Init_module, only : SurfaceInitReadRequiredCards, &
+                                  SurfaceInitMatPropToRegions, &
+                                  SurfaceInitReadRegionFiles
   use Surface_Realization_class
   use Surface_TH_module
   use Unstructured_Grid_module
 #endif
 
 #ifdef GEOMECH
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
-  use Geomechanics_Init_module 
+#endif
+  use Geomechanics_Init_module, only : GeomechicsInitReadRequiredCards, &
+                                       GeomechInitMatPropToGeomechRegions
   use Geomechanics_Grid_module
   use Geomechanics_Discretization_module
   use Geomechanics_Field_module
@@ -189,6 +196,7 @@ subroutine Init(simulation)
   ! read required cards
   call InitReadRequiredCardsFromInput(realization)
 #ifdef SURFACE_FLOW
+  !geh: surf_realization%input is never freed
   surf_realization%input => InputCreate(IN_UNIT,option%input_filename,option)
   surf_realization%subsurf_filename = realization%discretization%filename
   call SurfaceInitReadRequiredCards(simulation%surf_realization)
@@ -222,6 +230,7 @@ subroutine Init(simulation)
     option%nphase = 1
     option%liquid_phase = 1
     option%use_isothermal = PETSC_TRUE  ! assume default isothermal when only transport
+    option%use_refactored_material_auxvars = PETSC_TRUE
     call TimestepperDestroy(simulation%flow_stepper)
     nullify(flow_stepper)
   endif
@@ -572,7 +581,7 @@ subroutine Init(simulation)
     end select
     
     
-    if (option%check_stomp_norm) then
+    if (option%check_post_convergence) then
       select case(option%iflowmode)
         case(RICHARDS_MODE)
           call SNESGetLineSearch(flow_solver%snes, linesearch, ierr)
@@ -868,6 +877,10 @@ subroutine Init(simulation)
       case(FLASH2_MODE)
         call Flash2Setup(realization)
       case(G_MODE)
+        call MaterialSetup(realization%patch%aux%Material%material_parameter, &
+                           realization%material_property_array, &
+                           realization%saturation_function_array, &
+                           realization%option)
         call GeneralSetup(realization)
     end select
   
@@ -1429,6 +1442,12 @@ subroutine InitReadRequiredCardsFromInput(realization)
   
 !.........................................................................
 
+  ! Need this with CHEMISTRY read
+  string = "MULTIPLE_CONTINUUM"
+  option%use_mc = PETSC_TRUE
+
+!.........................................................................
+
   ! CHEMISTRY information
   string = "CHEMISTRY"
   call InputFindStringInFile(input,option,string)
@@ -1489,11 +1508,15 @@ subroutine InitReadInput(simulation)
   
 #ifdef SURFACE_FLOW
   use Surface_Flow_module
-  use Surface_Init_module
+  use Surface_Init_module, only : SurfaceInitReadInput
 #endif
 #ifdef GEOMECH
-  use Geomechanics_Init_module
+  use Geomechanics_Init_module, only : GeomechanicsInitReadInput
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
 #endif
 #ifdef SOLID_SOLUTION
   use Solid_Solution_module, only : SolidSolutionReadFromInputFile
@@ -1903,19 +1926,19 @@ subroutine InitReadInput(simulation)
         
 !......................
 
-      case('MULTIPLE_CONTINUUM')
-        option%use_mc = PETSC_TRUE
-      
-!......................
-
       case('UPDATE_FLOW_PERMEABILITY')
         option%update_flow_perm = PETSC_TRUE
         
 !......................
 
       case('DFN')
-        grid%unstructured_grid%grid_type = TWO_DIM_GRID        
-        
+        grid%unstructured_grid%grid_type = TWO_DIM_GRID    
+            
+!......................
+
+      case("MULTIPLE_CONTINUUM")
+        option%use_mc = PETSC_TRUE
+              
 !......................
 
       case('SECONDARY_CONTINUUM_SOLVER')
@@ -2593,9 +2616,12 @@ subroutine InitReadInput(simulation)
            option%store_flowrate = PETSC_TRUE
           endif
           if (associated(grid%unstructured_grid%explicit_grid)) then
-            option%io_buffer='Output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE ' // &
-              'not supported for explicit unstructured grid.'
+#ifndef STORE_FLOWRATES          
+            option%io_buffer='To output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE ' // &
+              'compile with -DSTORE_FLOWRATES.'
             call printErrMsg(option)
+#endif
+            output_option%print_explicit_flowrate = mass_flowrate
           endif
         
         endif
@@ -2750,6 +2776,7 @@ subroutine setFlowMode(option)
 
   use Option_module
   use String_module
+  use General_Aux_module
 
   implicit none 
 
@@ -2787,6 +2814,7 @@ subroutine setFlowMode(option)
       option%nflowdof = 1
       option%nflowspec = 1
       option%use_isothermal = PETSC_TRUE
+      option%use_refactored_material_auxvars = PETSC_TRUE
     case('MPH','MPHASE')
       option%iflowmode = MPH_MODE
       option%nphase = 2
@@ -2831,6 +2859,7 @@ subroutine setFlowMode(option)
       option%nflowdof = 3
       option%nflowspec = 2
       option%use_isothermal = PETSC_FALSE
+      option%use_refactored_material_auxvars = PETSC_TRUE
     case default
       option%io_buffer = 'Mode: '//trim(option%flowmode)//' not recognized.'
       call printErrMsg(option)
@@ -3011,8 +3040,7 @@ subroutine assignMaterialPropToRegions(realization)
     call VecGetArrayF90(field%tortuosity0,tor0_p,ierr)
         
     !geh: remove
-    if (option%iflowmode == RICHARDS_MODE .or. &
-        option%iflowmode == NULL_MODE) then
+    if (option%use_refactored_material_auxvars) then
       material_auxvars => cur_patch%aux%Material%auxvars
     else
       nullify(material_auxvars)
@@ -3063,10 +3091,10 @@ subroutine assignMaterialPropToRegions(realization)
           perm_xy_p(local_id) = material_property%permeability(1,2)
           perm_yz_p(local_id) = material_property%permeability(2,3)
         endif
-        if (associated(material_auxvars)) then
-          call MaterialAssignPropertyToAux(material_auxvars(ghosted_id), &
-                                           material_property,option)
-        endif
+      endif
+      if (associated(material_auxvars)) then
+        call MaterialAssignPropertyToAux(material_auxvars(ghosted_id), &
+                                         material_property,option)
       endif
       por0_p(local_id) = material_property%porosity
       tor0_p(local_id) = material_property%tortuosity
@@ -3151,7 +3179,7 @@ subroutine assignMaterialPropToRegions(realization)
                                    PERMEABILITY_YZ,0)
     endif
     !geh: remove
-    if (option%iflowmode /= RICHARDS_MODE) then
+    if (.not.option%use_refactored_material_auxvars) then
       call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
                                        field%perm_xx_loc,ONEDOF)  
       call DiscretizationGlobalToLocal(discretization,field%perm0_yy, &
@@ -3205,8 +3233,7 @@ subroutine assignMaterialPropToRegions(realization)
   enddo
   
   !geh: remove
-  if (option%iflowmode /= RICHARDS_MODE .and. &
-      option%iflowmode /= NULL_MODE) then
+  if (.not.option%use_refactored_material_auxvars) then
     call DiscretizationGlobalToLocal(discretization,field%porosity0, &
                                      field%porosity_loc,ONEDOF)
     call DiscretizationGlobalToLocal(discretization,field%tortuosity0, &
@@ -3411,10 +3438,12 @@ subroutine readRegionFiles(realization)
                                                       region%filename)
         endif
       else if (index(region%filename,'.ss') > 0) then
+        region%def_type = DEFINED_BY_SIDESET_UGRID
         region%sideset => RegionCreateSideset()
         call RegionReadFromFile(region%sideset,region%filename, &
                                 realization%option)
       else if (index(region%filename,'.ex') > 0) then
+        region%def_type = DEFINED_BY_FACE_UGRID_EXP
         call RegionReadFromFile(region%explicit_faceset,region%cell_ids, &
                                 region%filename,realization%option)
         region%num_cells = size(region%cell_ids)

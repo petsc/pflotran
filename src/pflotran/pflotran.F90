@@ -19,12 +19,10 @@
 ! Send all bug reports/questions/comments to:
 !
 ! Peter C. Lichtner
-! Los Alamos National Laboratory
-! Earth and Environmental Sciences
-! EES-16, MS: D469
-! (505) 667-3420
-! lichtner@lanl.gov
-! Los Alamos, NM
+! OFM Research
+! (505) 692-4029 (cell)
+! peter.lichtner@gmail.com
+! Santa Fe, New Mexico
 
 ! or
 
@@ -49,7 +47,9 @@ program pflotran
   use Surface_Factory_module
   use Surf_Subsurf_Factory_module
 #endif  
-  
+#ifdef GEOMECH
+  use Geomechanics_Factory_module
+#endif
   use PFLOTRAN_Constants_module
 
   implicit none
@@ -81,7 +81,11 @@ program pflotran
         call SurfaceInitialize(simulation,option)
       case('SURFACE_SUBSURFACE')
         call SurfSubsurfaceInitialize(simulation,option)
-#endif      
+#endif
+#ifdef GEOMECH
+      case ('GEOMECHANICS')
+        call GeomechanicsInitialize(simulation,option)
+#endif
       case default
         option%io_buffer = 'Simulation Mode not recognized.'
         call printErrMsg(option)

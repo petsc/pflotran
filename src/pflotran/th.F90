@@ -531,7 +531,7 @@ subroutine THCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
 
   PetscInt :: local_id, ghosted_id
   PetscReal :: Res(2)
-  PetscReal :: inf_norm
+  PetscReal :: inf_norm, global_inf_norm
   PetscErrorCode :: ierr
   PetscReal :: vol_frac_prim
   PetscInt :: istart, iend
@@ -548,7 +548,7 @@ subroutine THCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
   dP_changed = PETSC_FALSE
   P1_changed = PETSC_FALSE
   
-  if (option%check_stomp_norm) then
+  if (option%check_post_convergence) then
     call VecGetArrayF90(dP,dP_p,ierr)
     call VecGetArrayF90(P1,P1_p,ierr)
     call VecGetArrayF90(field%volume,volume_p,ierr)
@@ -582,9 +582,12 @@ subroutine THCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
                                   dabs(dP_p(iend)/P1_p(iend)), &
                                   dabs(r_p(iend)/Res(2))))
     enddo
-    call MPI_Allreduce(inf_norm,option%stomp_norm,ONE_INTEGER_MPI, &
+    call MPI_Allreduce(inf_norm,global_inf_norm,ONE_INTEGER_MPI, &
                        MPI_DOUBLE_PRECISION, &
                        MPI_MAX,option%mycomm,ierr)
+    option%converged = PETSC_TRUE
+    if (global_inf_norm > option%post_convergence_tol) &
+      option%converged = PETSC_FALSE
     call VecRestoreArrayF90(dP,dP_p,ierr)
     call VecRestoreArrayF90(P1,P1_p,ierr)
     call VecRestoreArrayF90(field%volume,volume_p,ierr)

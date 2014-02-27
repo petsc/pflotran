@@ -1,5 +1,7 @@
 #ifdef GEOMECH
 
+#ifndef PROCESS_MODEL
+
 module Geomechanics_Timestepper_module
  
   use Solver_module
@@ -40,8 +42,12 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
   use Output_module, only : Output, OutputInit, OutputPrintCouplers
   use Condition_Control_module
 #ifdef GEOMECH  
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
-  use Geomechanics_Logging_module  
+#endif
+  use Geomechanics_Logging_module
   use Output_Geomechanics_module
   use Geomechanics_Force_module
 #endif
@@ -299,7 +305,11 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
   use Discretization_module
   use Condition_Control_module
 #ifdef GEOMECH
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Output_Geomechanics_module, only : OutputGeomechanics
   use Geomechanics_Force_module
 #endif  
@@ -589,7 +599,11 @@ subroutine GeomechTimestepperFinalizeRun(realization,geomech_realization, &
   use Output_Aux_module
   use Output_module, only : Output, OutputInit, OutputPrintCouplers
   use Logging_module  
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
 
   implicit none
   
@@ -682,7 +696,11 @@ end subroutine GeomechTimestepperFinalizeRun
 ! ************************************************************************** !
 subroutine StepperSolveGeomechSteadyState(geomech_realization,stepper,failure)
   
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Geomechanics_Discretization_module
   use Option_module
   use Solver_module
@@ -786,4 +804,6 @@ subroutine StepperSolveGeomechSteadyState(geomech_realization,stepper,failure)
 end subroutine StepperSolveGeomechSteadyState
 
 end module Geomechanics_Timestepper_module
+#endif
+
 #endif
