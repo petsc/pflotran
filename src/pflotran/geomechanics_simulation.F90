@@ -43,14 +43,14 @@ module Geomechanics_Simulation_class
 contains
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 01/01/14
-! ************************************************************************** !
+
 function GeomechanicsSimulationCreate(option)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 01/01/14
+  ! 
 
   use Option_module
 
@@ -68,14 +68,14 @@ function GeomechanicsSimulationCreate(option)
 end function GeomechanicsSimulationCreate
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 01/01/14
-! ************************************************************************** !
+
 subroutine GeomechanicsSimulationInit(this, option)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 01/01/14
+  ! 
 
   use Option_module
 
@@ -90,14 +90,14 @@ subroutine GeomechanicsSimulationInit(this, option)
 end subroutine GeomechanicsSimulationInit
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 01/01/14
-! ************************************************************************** !
+
 subroutine GeomechanicsSimulationInitializeRun(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 01/01/14
+  ! 
 
   use Output_module
   use PMC_Geomechanics_class
@@ -116,14 +116,14 @@ subroutine GeomechanicsSimulationInitializeRun(this)
 end subroutine GeomechanicsSimulationInitializeRun
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 01/01/14
-! ************************************************************************** !
+
 subroutine GeomechanicsSimulationExecuteRun(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 01/01/14
+  ! 
 
   use Simulation_Base_class
 
@@ -141,14 +141,14 @@ subroutine GeomechanicsSimulationExecuteRun(this)
 end subroutine GeomechanicsSimulationExecuteRun
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 01/01/14
-! ************************************************************************** !
+
 subroutine GeomechanicsSimulationFinalizeRun(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 01/01/14
+  ! 
 
   use Simulation_Base_class
   use Timestepper_Base_class
@@ -165,14 +165,14 @@ subroutine GeomechanicsSimulationFinalizeRun(this)
 end subroutine GeomechanicsSimulationFinalizeRun
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 01/01/14
-! ************************************************************************** !
+
 subroutine GeomechanicsSimulationStrip(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 01/01/14
+  ! 
 
   use Simulation_Base_class
 
@@ -188,14 +188,14 @@ subroutine GeomechanicsSimulationStrip(this)
 end subroutine GeomechanicsSimulationStrip
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 01/01/14
-! ************************************************************************** !
+
 subroutine GeomechanicsSimulationDestroy(simulation)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 01/01/14
+  ! 
 
   implicit none
   

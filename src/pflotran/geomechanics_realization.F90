@@ -1156,13 +1156,14 @@ private
 contains
 
 ! ************************************************************************** !
-!
-! GeomechRealizCreate: This subroutine creates realization for geomechanics
-! author: Satish Karra, LANL
-! date: 05/23/13
-!
-! ************************************************************************** !
+
 function GeomechRealizCreate(option)
+  ! 
+  ! This subroutine creates realization for geomechanics
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 05/23/13
+  ! 
 
   implicit none
 
@@ -1201,13 +1202,14 @@ function GeomechRealizCreate(option)
 end function GeomechRealizCreate
 
 ! ************************************************************************** !
-!
-! GeomechRealizAddStrata: Adds strata to a list
-! author: Satish Karra, LANL
-! date: 05/23/13
-!
-! ************************************************************************** !
+
 subroutine GeomechRealizAddStrata(geomech_realization,strata)
+  ! 
+  ! Adds strata to a list
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 05/23/13
+  ! 
 
   use Geomechanics_Strata_module
 
@@ -1232,14 +1234,15 @@ subroutine GeomechRealizAddStrata(geomech_realization,strata)
 end subroutine GeomechRealizAddStrata
 
 ! ************************************************************************** !
-!
-! GeomechRealizLocalizeRegions: This routine localizes geomechanics regions
-!                               within each patch
-! author: Satish Karra, LANL
-! date: 06/07/13
-!
-! ************************************************************************** !
+
 subroutine GeomechRealizLocalizeRegions(geomech_realization)
+  ! 
+  ! This routine localizes geomechanics regions
+  ! within each patch
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/07/13
+  ! 
 
   use Option_module
   use String_module
@@ -1261,13 +1264,14 @@ subroutine GeomechRealizLocalizeRegions(geomech_realization)
 end subroutine GeomechRealizLocalizeRegions
 
 ! ************************************************************************** !
-!
-! GeomechRealizProcessMatProp: Setup for material properties
-! author: Satish Karra, LANL
-! date: 06/13/13
-!
-! ************************************************************************** !
+
 subroutine GeomechRealizProcessMatProp(geomech_realization)
+  ! 
+  ! Setup for material properties
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/13/13
+  ! 
 
   use String_module
   
@@ -1298,13 +1302,14 @@ subroutine GeomechRealizProcessMatProp(geomech_realization)
 end subroutine GeomechRealizProcessMatProp
 
 ! ************************************************************************** !
-!
-! GeomechRealizCreateDiscretization: Creates grid
-! author: Satish Karra, LANL
-! date: 05/23/13
-!
-! ************************************************************************** !
+
 subroutine GeomechRealizCreateDiscretization(geomech_realization)
+  ! 
+  ! Creates grid
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 05/23/13
+  ! 
 
   use Geomechanics_Grid_Aux_module
   
@@ -1405,15 +1410,16 @@ subroutine GeomechRealizCreateDiscretization(geomech_realization)
 end subroutine GeomechRealizCreateDiscretization
 
 ! ************************************************************************** !
-!
-! GeomechRealizMapSubsurfGeomechGrid: This routine creates scatter contexts
-! betweeen subsurface and geomech grids
-! author: Satish Karra, LANL
-! date: 09/09/13
-!
-! ************************************************************************** !
+
 subroutine GeomechRealizMapSubsurfGeomechGrid(realization,geomech_realization, &
                                               option)
+  ! 
+  ! This routine creates scatter contexts
+  ! betweeen subsurface and geomech grids
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 09/09/13
+  ! 
 
   use Option_module
   use Geomechanics_Grid_Aux_module
@@ -1647,14 +1653,15 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization,geomech_realization, &
 end subroutine GeomechRealizMapSubsurfGeomechGrid
 
 ! ************************************************************************** !
-!
-! GeomechGridElemsSharedByNodes: Calculates the number of elements common
-! to a node (vertex)
-! author: Satish Karra
-! date: 09/17/13
-!
-! ************************************************************************** !
+
 subroutine GeomechGridElemSharedByNodes(geomech_realization)
+  ! 
+  ! GeomechGridElemsSharedByNodes: Calculates the number of elements common
+  ! to a node (vertex)
+  ! 
+  ! Author: Satish Karra
+  ! Date: 09/17/13
+  ! 
   
   use Geomechanics_Grid_Aux_module
 
@@ -1700,14 +1707,15 @@ subroutine GeomechGridElemSharedByNodes(geomech_realization)
 end subroutine GeomechGridElemSharedByNodes
 
 ! ************************************************************************** !
-!
-! GeomechRealizInitAllCouplerAuxVars: This routine initializez coupler 
-!                                     auxillary variables
-! author: Satish Karra, LANL
-! date: 06/17/13
-!
-! ************************************************************************** !
+
 subroutine GeomechRealizInitAllCouplerAuxVars(geomech_realization)
+  ! 
+  ! This routine initializez coupler
+  ! auxillary variables
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/17/13
+  ! 
 
   use Option_module
 
@@ -1724,14 +1732,15 @@ subroutine GeomechRealizInitAllCouplerAuxVars(geomech_realization)
 end subroutine GeomechRealizInitAllCouplerAuxVars
 
 ! ************************************************************************** !
-!
-! GeomechRealizLocalToLocalWithArray: This routine takes an F90 array that is 
-!                                    ghosted and updates the ghosted values
-! author: Satish Karra, LANL
-! date: 06/17/13
-!
-! ************************************************************************** !
+
 subroutine GeomechRealizLocalToLocalWithArray(geomech_realization,array_id)
+  ! 
+  ! This routine takes an F90 array that is
+  ! ghosted and updates the ghosted values
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/17/13
+  ! 
 
   use Geomechanics_Grid_Aux_module
   use Geomechanics_Grid_module
@@ -1771,13 +1780,14 @@ subroutine GeomechRealizLocalToLocalWithArray(geomech_realization,array_id)
 end subroutine GeomechRealizLocalToLocalWithArray
 
 ! ************************************************************************** !
-!
-! GeomechRealizPrintCouplers: Print boundary data for geomechanics
-! author: Satish Karra, LANL
-! date: 06/17/13
-!
-! ************************************************************************** !
+
 subroutine GeomechRealizPrintCouplers(geomech_realization)
+  ! 
+  ! Print boundary data for geomechanics
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/17/13
+  ! 
 
   use Geomechanics_Coupler_module
   
@@ -1812,13 +1822,14 @@ subroutine GeomechRealizPrintCouplers(geomech_realization)
 end subroutine GeomechRealizPrintCouplers
 
 ! ************************************************************************** !
-!
-! GeomechRealizPrintCoupler: Prints boundary condition coupler for geomechanics
-! author: Satish Karra, LANL
-! date: 06/17/13
-!
-! ************************************************************************** !
+
 subroutine GeomechRealizPrintCoupler(coupler,option)
+  ! 
+  ! Prints boundary condition coupler for geomechanics
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/17/13
+  ! 
 
   use Geomechanics_Coupler_module
   
@@ -1866,13 +1877,14 @@ subroutine GeomechRealizPrintCoupler(coupler,option)
 end subroutine GeomechRealizPrintCoupler
 
 ! ************************************************************************** !
-!
-! GeomechRealizPassFieldPtrToPatch: This subroutine passes field to patch
-! author: Satish Karra, LANL
-! date: 06/13/13
-!
-! ************************************************************************** !
+
 subroutine GeomechRealizPassFieldPtrToPatch(geomech_realization)
+  ! 
+  ! This subroutine passes field to patch
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/13/13
+  ! 
 
   use Option_module
 
@@ -1889,14 +1901,15 @@ subroutine GeomechRealizPassFieldPtrToPatch(geomech_realization)
 end subroutine GeomechRealizPassFieldPtrToPatch
 
 ! ************************************************************************** !
-!
-! GeomechRealizProcessGeomechCouplers: This subroutine sets up couplers in 
-!                                      geomech realization
-! author: Satish Karra, LANL
-! date: 06/14/13
-!
-! ************************************************************************** !
+
 subroutine GeomechRealizProcessGeomechCouplers(geomech_realization)
+  ! 
+  ! This subroutine sets up couplers in
+  ! geomech realization
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/14/13
+  ! 
 
   implicit none
   
@@ -1913,14 +1926,15 @@ subroutine GeomechRealizProcessGeomechCouplers(geomech_realization)
 end subroutine GeomechRealizProcessGeomechCouplers
 
 ! ************************************************************************** !
-!
-! GeomechRealizProcessGeomechConditions: This subroutine sets up condition in 
-!                                      geomech realization
-! author: Satish Karra, LANL
-! date: 06/17/13
-!
-! ************************************************************************** !
+
 subroutine GeomechRealizProcessGeomechConditions(geomech_realization)
+  ! 
+  ! This subroutine sets up condition in
+  ! geomech realization
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/17/13
+  ! 
 
   use Dataset_Base_class
   use Dataset_module
@@ -1956,14 +1970,15 @@ subroutine GeomechRealizProcessGeomechConditions(geomech_realization)
 end subroutine GeomechRealizProcessGeomechConditions
 
 ! ************************************************************************** !
-!
-! GeomechRealizGetDataset: This routine extracts variables indexed by 
-!                          ivar and isubvar from geomechanics realization
-! author: Satish Karra, LANL
-! date: 07/03/13
-!
-! ************************************************************************** !
+
 subroutine GeomechRealizGetDataset(geomech_realization,vec,ivar,isubvar,isubvar1)
+  ! 
+  ! This routine extracts variables indexed by
+  ! ivar and isubvar from geomechanics realization
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 07/03/13
+  ! 
 
   implicit none
 
@@ -1982,14 +1997,15 @@ subroutine GeomechRealizGetDataset(geomech_realization,vec,ivar,isubvar,isubvar1
 end subroutine GeomechRealizGetDataset
 
 ! ************************************************************************** !
-!
-! GeomechRealizAddGeomechCoupler: This subroutine addes a geomechanics 
-!                                 coupler to a geomechanics realization
-! author: Satish Karra, LANL
-! date: 06/13/13
-!
-! ************************************************************************** !
+
 subroutine GeomechRealizAddGeomechCoupler(geomech_realization,coupler)
+  ! 
+  ! This subroutine addes a geomechanics
+  ! coupler to a geomechanics realization
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/13/13
+  ! 
 
   use Geomechanics_Coupler_module
 
@@ -2019,14 +2035,15 @@ subroutine GeomechRealizAddGeomechCoupler(geomech_realization,coupler)
 end subroutine GeomechRealizAddGeomechCoupler
 
 ! ************************************************************************** !
-!
-! GeomechRealizAddWaypointsToList: Adds waypoints from BCs and source/sink
-!                                  to waypoint list
-! author: Satish Karra, LANL
-! date: 06/17/13
-!
-! ************************************************************************** !
+
 subroutine GeomechRealizAddWaypointsToList(geomech_realization)
+  ! 
+  ! Adds waypoints from BCs and source/sink
+  ! to waypoint list
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/17/13
+  ! 
 
   use Option_module
   use Waypoint_module
@@ -2136,13 +2153,14 @@ subroutine GeomechRealizAddWaypointsToList(geomech_realization)
 end subroutine GeomechRealizAddWaypointsToList
 
 ! ************************************************************************** !
-!
-! GeomechRealizDestroy: This subroutine deallocates geomechanics realization
-! author: Satish Karra, LANL
-! date: 05/23/13
-!
-! ************************************************************************** !
+
 subroutine GeomechRealizDestroy(geomech_realization)
+  ! 
+  ! This subroutine deallocates geomechanics realization
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 05/23/13
+  ! 
 
   implicit none
   

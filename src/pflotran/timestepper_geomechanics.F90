@@ -38,14 +38,14 @@ module Timestepper_Geomechanics_class
 contains
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 01/01/14
-! ************************************************************************** !
+
 function TimestepperGeomechanicsCreate()
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 01/01/14
+  ! 
 
   implicit none
 
@@ -63,14 +63,14 @@ function TimestepperGeomechanicsCreate()
 end function TimestepperGeomechanicsCreate
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 01/01/14
-! ************************************************************************** !
+
 subroutine TimestepperGeomechanicsInit(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 01/01/14
+  ! 
 
   implicit none
   
@@ -81,14 +81,14 @@ subroutine TimestepperGeomechanicsInit(this)
 end subroutine TimestepperGeomechanicsInit
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 01/01/14
-! ************************************************************************** !
+
 subroutine TimestepperGeomechanicsStepDT(this, process_model, stop_flag)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 01/01/14
+  ! 
 
   use PM_Base_class
   use PM_Geomechanics_Force_class

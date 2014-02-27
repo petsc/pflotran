@@ -63,13 +63,14 @@ module Geomechanics_Coupler_module
 contains
 
 ! ************************************************************************** !
-!
-! GeomechCouplerCreate: Creates a coupler
-! author: Satish Karra, LANL
-! date: 06/13/13
-!
-! ************************************************************************** !
+
 function GeomechCouplerCreate1()
+  ! 
+  ! GeomechCouplerCreate: Creates a coupler
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/13/13
+  ! 
 
   implicit none
 
@@ -97,13 +98,14 @@ function GeomechCouplerCreate1()
 end function GeomechCouplerCreate1
 
 ! ************************************************************************** !
-!
-! GeomechCouplerCreate2: Creates a coupler
-! author: Satish Karra, LANL
-! date: 06/13/13
-!
-! ************************************************************************** !
+
 function GeomechCouplerCreate2(itype)
+  ! 
+  ! Creates a coupler
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/13/13
+  ! 
 
   implicit none
 
@@ -127,13 +129,14 @@ function GeomechCouplerCreate2(itype)
 end function GeomechCouplerCreate2
 
 ! ************************************************************************** !
-!
-! GeomechCouplerCreateFromGeomechCoupler: Creates a coupler
-! author: Satish Karra, LANL
-! date: 06/13/13
-!
-! ************************************************************************** !
+
 function GeomechCouplerCreateFromGeomechCoupler(coupler)
+  ! 
+  ! Creates a coupler
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/13/13
+  ! 
 
   implicit none
   
@@ -165,13 +168,14 @@ function GeomechCouplerCreateFromGeomechCoupler(coupler)
 end function GeomechCouplerCreateFromGeomechCoupler
 
 ! ************************************************************************** !
-!
-! GeomechCouplerInitList: Initializes a coupler list
-! author: Satish Karra, LANL
-! date: 06/13/13
-!
-! ************************************************************************** !
+
 subroutine GeomechCouplerInitList(list)
+  ! 
+  ! Initializes a coupler list
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/13/13
+  ! 
 
   implicit none
 
@@ -185,13 +189,14 @@ subroutine GeomechCouplerInitList(list)
 end subroutine GeomechCouplerInitList
 
 ! ************************************************************************** !
-!
-! GeomechCouplerRead: Reads a coupler from the input file
-! author: Satish Karra, LANL
-! date: 06/13/13
-!
-! ************************************************************************** !
+
 subroutine GeomechCouplerRead(coupler,input,option)
+  ! 
+  ! Reads a coupler from the input file
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/13/13
+  ! 
 
   use Input_Aux_module
   use String_module
@@ -234,13 +239,14 @@ subroutine GeomechCouplerRead(coupler,input,option)
 end subroutine GeomechCouplerRead
 
 ! ************************************************************************** !
-!
-! GeomechCouplerAddToList: Adds a new coupler to a coupler list
-! author: Satish Karra, LANL
-! date: 06/13/13
-!
-! ************************************************************************** !
+
 subroutine GeomechCouplerAddToList(new_coupler,list)
+  ! 
+  ! Adds a new coupler to a coupler list
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/13/13
+  ! 
 
   implicit none
   
@@ -256,14 +262,15 @@ subroutine GeomechCouplerAddToList(new_coupler,list)
 end subroutine GeomechCouplerAddToList
 
 ! ************************************************************************** !
-!
-! GeomechCouplerGetPtrFromList: Returns a pointer to the geomech coupler 
-!                               matching coupler_name
-! author: Satish Karra, LANL
-! date: 06/13/13
-!
-! ************************************************************************** !
+
 function GeomechCouplerGetPtrFromList(coupler_name,coupler_list)
+  ! 
+  ! Returns a pointer to the geomech coupler
+  ! matching coupler_name
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/13/13
+  ! 
 
   use String_module
 
@@ -293,13 +300,14 @@ function GeomechCouplerGetPtrFromList(coupler_name,coupler_list)
 end function GeomechCouplerGetPtrFromList
 
 ! ************************************************************************** !
-!
-! GeomechCouplerDestroyList: Deallocates a list of geomech couplers
-! author: Satish Karra, LANL
-! date: 06/13/13
-!
-! ************************************************************************** !
+
 subroutine GeomechCouplerDestroyList(coupler_list)
+  ! 
+  ! Deallocates a list of geomech couplers
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/13/13
+  ! 
 
   implicit none
   
@@ -327,15 +335,16 @@ subroutine GeomechCouplerDestroyList(coupler_list)
   nullify(coupler_list)
 
 end subroutine GeomechCouplerDestroyList
-  
+
 ! ************************************************************************** !
-!
-! GeomechCouplerDestroy: Destroys a coupler
-! author: Satish Karra, LANL
-! date: 06/13/13
-!
-! ************************************************************************** !
+
 subroutine GeomechCouplerDestroy(coupler)
+  ! 
+  ! Destroys a coupler
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/13/13
+  ! 
 
   implicit none
   
