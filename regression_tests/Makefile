@@ -56,7 +56,8 @@ STANDARD_CFG = \
 	shortcourse/1D_variably_saturated_flow/vsat_flow.cfg \
 	shortcourse/regional_doublet/regional_doublet.cfg \
 	shortcourse/copper_leaching/cu_leaching.cfg \
-	wipp/nuts/nuts.cfg
+	wipp/nuts/nuts.cfg \
+	surfaceflow/surface_flow_only/surface_only.cfg
 
 ifneq ($(strip $(PARMETIS_LIB)),)
 	STANDARD_CFG += \
