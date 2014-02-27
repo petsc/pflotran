@@ -34,6 +34,7 @@ module Output_Aux_module
     PetscInt :: tecplot_format
     PetscBool :: print_tecplot_velocities
     PetscBool :: print_tecplot_flux_velocities
+    PetscBool :: print_fluxes
     
     PetscBool :: print_vtk 
     PetscBool :: print_vtk_velocities
@@ -163,6 +164,7 @@ function OutputOptionCreate()
   output_option%print_tecplot = PETSC_FALSE
   output_option%tecplot_format = 0
   output_option%print_tecplot_velocities = PETSC_FALSE
+  output_option%print_fluxes = PETSC_FALSE
   output_option%print_tecplot_flux_velocities = PETSC_FALSE
   output_option%print_vtk = PETSC_FALSE
   output_option%print_vtk_velocities = PETSC_FALSE

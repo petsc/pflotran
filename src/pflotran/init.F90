@@ -1529,6 +1529,7 @@ subroutine InitReadInput(simulation)
   
   PetscBool :: velocities
   PetscBool :: flux_velocities
+  PetscBool :: fluxes
   PetscBool :: mass_flowrate
   PetscBool :: energy_flowrate
   PetscBool :: aveg_mass_flowrate
@@ -2272,6 +2273,7 @@ subroutine InitReadInput(simulation)
       case ('OUTPUT')
         velocities = PETSC_FALSE
         flux_velocities = PETSC_FALSE
+        fluxes = PETSC_FALSE
         mass_flowrate = PETSC_FALSE
         energy_flowrate = PETSC_FALSE
         aveg_mass_flowrate = PETSC_FALSE
@@ -2529,6 +2531,8 @@ subroutine InitReadInput(simulation)
               velocities = PETSC_TRUE
             case('FLUXES_VELOCITIES')
               flux_velocities = PETSC_TRUE
+            case('FLUXES')
+              fluxes = PETSC_TRUE
             case('FLOWRATES','FLOWRATE')
               mass_flowrate = PETSC_TRUE
               energy_flowrate = PETSC_TRUE
@@ -2571,6 +2575,9 @@ subroutine InitReadInput(simulation)
             output_option%print_tecplot_flux_velocities = PETSC_TRUE
           if (output_option%print_hdf5) &
            output_option%print_hdf5_flux_velocities = PETSC_TRUE
+        endif
+        if (fluxes) then
+          output_option%print_fluxes = PETSC_TRUE
         endif
         if(output_option%aveg_output_variable_list%nvars>0) then
           if(output_option%periodic_output_time_incr==0.d0) then
