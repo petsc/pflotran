@@ -42,13 +42,14 @@ module Geomechanics_Force_module
 contains
 
 ! ************************************************************************** !
-!
-! GeomechForceSetup: Sets up the geomechanics calculations
-! author: Satish Karra, LANL
-! date: 06/17/13
-!
-! ************************************************************************** !
+
 subroutine GeomechForceSetup(geomech_realization)
+  ! 
+  ! Sets up the geomechanics calculations
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/17/13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -64,13 +65,14 @@ subroutine GeomechForceSetup(geomech_realization)
 end subroutine GeomechForceSetup
 
 ! ************************************************************************** !
-!
-! GeomechForceSetupPatch: Sets up the arrays for geomech parameters 
-! author: Satish Karra, LANL
-! date: 09/11/13
-!
-! ************************************************************************** !
+
 subroutine GeomechForceSetupPatch(geomech_realization)
+  ! 
+  ! Sets up the arrays for geomech parameters
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 09/11/13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -123,13 +125,14 @@ subroutine GeomechForceSetupPatch(geomech_realization)
 end subroutine GeomechForceSetupPatch
 
 ! ************************************************************************** !
-!
-! GeomechForceSetPlotVariables: Set up of geomechanics plot variables
-! author: Satish Karra, LANL
-! date: 06/17/13
-!
-! ************************************************************************** !
+
 subroutine GeomechForceSetPlotVariables(geomech_realization)
+  ! 
+  ! Set up of geomechanics plot variables
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/17/13
+  ! 
   
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -246,14 +249,15 @@ subroutine GeomechForceSetPlotVariables(geomech_realization)
 end subroutine GeomechForceSetPlotVariables
 
 ! ************************************************************************** !
-!
-! GeomechanicsForceInitialGuess: Sets up the inital guess for the solution
-!                                The boundary conditions are set here
-! author: Satish Karra, LANL
-! date: 06/19/13
-!
-! ************************************************************************** !
+
 subroutine GeomechanicsForceInitialGuess(geomech_realization)
+  ! 
+  ! Sets up the inital guess for the solution
+  ! The boundary conditions are set here
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/19/13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -345,13 +349,14 @@ subroutine GeomechanicsForceInitialGuess(geomech_realization)
 end subroutine GeomechanicsForceInitialGuess
 
 ! ************************************************************************** !
-!
-! GeomechForceUpdateAuxVars: Updates the geomechanics variables
-! author: Satish Karra, LANL
-! date: 06/18/13
-!
-! ************************************************************************** !
+
 subroutine GeomechForceUpdateAuxVars(geomech_realization)
+  ! 
+  ! Updates the geomechanics variables
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/18/13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -427,13 +432,14 @@ subroutine GeomechForceUpdateAuxVars(geomech_realization)
 end subroutine GeomechForceUpdateAuxVars
 
 ! ************************************************************************** !
-!
-! GeomechForceResidual: Computes the residual equation 
-! author: Satish Karra
-! date: 06/21/13
-!
-! ************************************************************************** !
+
 subroutine GeomechForceResidual(snes,xx,r,geomech_realization,ierr)
+  ! 
+  ! Computes the residual equation
+  ! 
+  ! Author: Satish Karra
+  ! Date: 06/21/13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -490,13 +496,14 @@ subroutine GeomechForceResidual(snes,xx,r,geomech_realization,ierr)
 end subroutine GeomechForceResidual
 
 ! ************************************************************************** !
-!
-! GeomechForceResidualPatch: Computes the residual equation on a patch 
-! author: Satish Karra
-! date: 06/24/13
-!
-! ************************************************************************** !
+
 subroutine GeomechForceResidualPatch(snes,xx,r,geomech_realization,ierr)
+  ! 
+  ! Computes the residual equation on a patch
+  ! 
+  ! Author: Satish Karra
+  ! Date: 06/24/13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -794,17 +801,18 @@ subroutine GeomechForceResidualPatch(snes,xx,r,geomech_realization,ierr)
 end subroutine GeomechForceResidualPatch
 
 ! ************************************************************************** !
-!
-! GeomechForceLocalElemResidual: Computes the residual for a local element
-! author: Satish Karra
-! date: 06/24/13
-!
-! ************************************************************************** !
+
 subroutine GeomechForceLocalElemResidual(size_elenodes,local_coordinates,local_disp, &
                                          local_press,local_temp, &
                                          local_youngs,local_poissons, &
                                          local_density,local_beta,local_alpha, &
                                          eletype,dim,r,w,res_vec,option)
+  ! 
+  ! Computes the residual for a local element
+  ! 
+  ! Author: Satish Karra
+  ! Date: 06/24/13
+  ! 
                                          
   use Unstructured_Cell_module
   use Shape_Function_module
@@ -949,6 +957,9 @@ end subroutine GeomechForceLocalElemResidual
 !
 ! ************************************************************************** !
 #if 0
+
+! ************************************************************************** !
+
 subroutine GeomechForceLocalElemError(size_elenodes,local_coordinates,local_disp, &
                                       eletype,dim,r,w,error_L2,error_H1,option)
                                          
@@ -1051,16 +1062,16 @@ subroutine GeomechForceLocalElemError(size_elenodes,local_coordinates,local_disp
 end subroutine GeomechForceLocalElemError
 #endif
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! GeomechGetBodyForce: Gets the body force at a given position
-! of the point
-! author: Satish Karra
-! date: 06/24/13
-!
-! ************************************************************************** !
 subroutine GetAnalytical(load_type,lambda,mu,coord,u,grad_u)
+  ! 
+  ! GeomechGetBodyForce: Gets the body force at a given position
+  ! of the point
+  ! 
+  ! Author: Satish Karra
+  ! Date: 06/24/13
+  ! 
 
   PetscReal :: lambda, mu
   PetscReal :: coord(THREE_INTEGER)
@@ -1093,15 +1104,16 @@ subroutine GetAnalytical(load_type,lambda,mu,coord,u,grad_u)
 end subroutine GetAnalytical
 
 ! ************************************************************************** !
-!
-! GeomechForceLocalElemJacobian: Computes the Jacobian for a local element
-! author: Satish Karra
-! date: 06/24/13
-!
-! ************************************************************************** !
+
 subroutine GeomechForceLocalElemJacobian(size_elenodes,local_coordinates,local_disp, &
                                          local_youngs,local_poissons, &
                                          eletype,dim,r,w,Kmat,option)
+  ! 
+  ! Computes the Jacobian for a local element
+  ! 
+  ! Author: Satish Karra
+  ! Date: 06/24/13
+  ! 
                                          
   use Unstructured_Cell_module
   use Shape_Function_module
@@ -1205,14 +1217,15 @@ subroutine GeomechForceLocalElemJacobian(size_elenodes,local_coordinates,local_d
 end subroutine GeomechForceLocalElemJacobian
 
 ! ************************************************************************** !
-!
-! GeomechGetLambdaMu: Gets the material properties given the position 
-! of the point
-! author: Satish Karra
-! date: 06/24/13
-!
-! ************************************************************************** !
+
 subroutine GeomechGetLambdaMu(lambda,mu,E,nu)
+  ! 
+  ! Gets the material properties given the position
+  ! of the point
+  ! 
+  ! Author: Satish Karra
+  ! Date: 06/24/13
+  ! 
 
   PetscReal :: lambda, mu
   PetscReal :: E, nu
@@ -1225,14 +1238,15 @@ subroutine GeomechGetLambdaMu(lambda,mu,E,nu)
 end subroutine GeomechGetLambdaMu
 
 ! ************************************************************************** !
-!
-! GeomechGetBodyForce: Gets the body force at a given position
-! of the point
-! author: Satish Karra
-! date: 06/24/13
-!
-! ************************************************************************** !
+
 subroutine GeomechGetBodyForce(load_type,lambda,mu,coord,bf,option)
+  ! 
+  ! Gets the body force at a given position
+  ! of the point
+  ! 
+  ! Author: Satish Karra
+  ! Date: 06/24/13
+  ! 
 
   use Option_module
 
@@ -1264,13 +1278,14 @@ subroutine GeomechGetBodyForce(load_type,lambda,mu,coord,bf,option)
 end subroutine GeomechGetBodyForce
 
 ! ************************************************************************** !
-!
-! GeomechForceJacobian: Computes the Jacobian
-! author: Satish Karra
-! date: 06/21/13
-!
-! ************************************************************************** !
+
 subroutine GeomechForceJacobian(snes,xx,A,B,flag,geomech_realization,ierr)
+  ! 
+  ! Computes the Jacobian
+  ! 
+  ! Author: Satish Karra
+  ! Date: 06/21/13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -1343,13 +1358,14 @@ subroutine GeomechForceJacobian(snes,xx,A,B,flag,geomech_realization,ierr)
 end subroutine GeomechForceJacobian
 
 ! ************************************************************************** !
-!
-! GeomechForceJacobianPatch: Computes the Jacobian on a patch
-! author: Satish Karra
-! date: 06/21/13
-!
-! ************************************************************************** !
+
 subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,geomech_realization,ierr)
+  ! 
+  ! Computes the Jacobian on a patch
+  ! 
+  ! Author: Satish Karra
+  ! Date: 06/21/13
+  ! 
        
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -1558,14 +1574,15 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,geomech_realization,ierr)
 end subroutine GeomechForceJacobianPatch  
 
 ! ************************************************************************** !
-!
-! GeomechUpdateFromSubsurf: The pressure/temperature from subsurface are
-! mapped to geomech
-! author: Satish Karra, LANL
-! date: 09/10/13
-!
-! ************************************************************************** !
+
 subroutine GeomechUpdateFromSubsurf(realization,geomech_realization)
+  ! 
+  ! The pressure/temperature from subsurface are
+  ! mapped to geomech
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 09/10/13
+  ! 
 
   use Realization_class
   use Grid_module
@@ -1664,14 +1681,15 @@ subroutine GeomechUpdateFromSubsurf(realization,geomech_realization)
 end subroutine GeomechUpdateFromSubsurf
 
 ! ************************************************************************** !
-!
-! GeomechUpdateSubsurfFromGeomech: The stresses and strains from geomech
-! are mapped to subsurf.
-! author: Satish Karra, LANL
-! date: 10/10/13
-!
-! ************************************************************************** !
+
 subroutine GeomechUpdateSubsurfFromGeomech(realization,geomech_realization)
+  ! 
+  ! The stresses and strains from geomech
+  ! are mapped to subsurf.
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 10/10/13
+  ! 
 
   use Realization_class
   use Discretization_module
@@ -1743,14 +1761,15 @@ subroutine GeomechUpdateSubsurfFromGeomech(realization,geomech_realization)
 end subroutine GeomechUpdateSubsurfFromGeomech
 
 ! ************************************************************************** !
-!
-! GeomechCreateGeomechSubsurfVec: Creates the MPI vector that stores the
-! variables from subsurface
-! author: Satish Karra, LANL
-! date: 09/10/13
-!
-! ************************************************************************** !
+
 subroutine GeomechCreateGeomechSubsurfVec(realization,geomech_realization)
+  ! 
+  ! Creates the MPI vector that stores the
+  ! variables from subsurface
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 09/10/13
+  ! 
 
   use Grid_module
   use Geomechanics_Discretization_module
@@ -1795,14 +1814,15 @@ subroutine GeomechCreateGeomechSubsurfVec(realization,geomech_realization)
 end subroutine GeomechCreateGeomechSubsurfVec
 
 ! ************************************************************************** !
-!
-! GeomechCreateSubsurfStressStrainVec: Creates the subsurface stress and strain
-! MPI vectors to store information from geomechanics
-! author: Satish Karra, LANL
-! date: 10/10/13
-!
-! ************************************************************************** !
+
 subroutine GeomechCreateSubsurfStressStrainVec(realization,geomech_realization)
+  ! 
+  ! Creates the subsurface stress and strain
+  ! MPI vectors to store information from geomechanics
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 10/10/13
+  ! 
 
   use Grid_module
   use Geomechanics_Discretization_module
@@ -1870,13 +1890,14 @@ subroutine GeomechCreateSubsurfStressStrainVec(realization,geomech_realization)
 end subroutine GeomechCreateSubsurfStressStrainVec
 
 ! ************************************************************************** !
-!
-! GeomechForceStressStrain: Computes the stress strain on a patch 
-! author: Satish Karra
-! date: 09/17/13
-!
-! ************************************************************************** !
+
 subroutine GeomechForceStressStrain(geomech_realization)
+  ! 
+  ! Computes the stress strain on a patch
+  ! 
+  ! Author: Satish Karra
+  ! Date: 09/17/13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -2057,17 +2078,18 @@ subroutine GeomechForceStressStrain(geomech_realization)
 end subroutine GeomechForceStressStrain
 
 ! ************************************************************************** !
-!
-! GeomechForceLocalElemStressStrain: Computes the stress-strain for a local
-! element
-! author: Satish Karra
-! date: 09/17/13
-!
-! ************************************************************************** !
+
 subroutine GeomechForceLocalElemStressStrain(size_elenodes,local_coordinates, &
                                              local_disp, &
                                              local_youngs,local_poissons, &
                                              eletype,dim,strain,stress,option)
+  ! 
+  ! Computes the stress-strain for a local
+  ! element
+  ! 
+  ! Author: Satish Karra
+  ! Date: 09/17/13
+  ! 
                                          
   use Unstructured_Cell_module
   use Shape_Function_module
@@ -2178,14 +2200,15 @@ subroutine GeomechForceLocalElemStressStrain(size_elenodes,local_coordinates, &
 end subroutine GeomechForceLocalElemStressStrain 
 
 ! ************************************************************************** !
-!
-! GeomechUpdateSolution: Updates data in module after a successful time 
-!                        step
-! author: Satish Karra, LANL
-! date: 09/17/13 
-!
-! ************************************************************************** !
+
 subroutine GeomechUpdateSolution(geomech_realization)
+  ! 
+  ! Updates data in module after a successful time
+  ! step
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 09/17/13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -2209,14 +2232,15 @@ subroutine GeomechUpdateSolution(geomech_realization)
 end subroutine GeomechUpdateSolution
 
 ! ************************************************************************** !
-!
-! geomechupdatesolutionpatch: updates data in module after a successful time 
-!                             step
-! author: satish karra, lanl 
-! date: 09/17/13
-!
-! ************************************************************************** !
+
 subroutine geomechupdatesolutionpatch(geomech_realization)
+  ! 
+  ! updates data in module after a successful time
+  ! step
+  ! 
+  ! Author: satish karra, lanl
+  ! Date: 09/17/13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -2233,14 +2257,15 @@ subroutine geomechupdatesolutionpatch(geomech_realization)
 end subroutine geomechupdatesolutionpatch
 
 ! ************************************************************************** !
-!
-! GeomechStoreInitialPressTemp: Stores initial pressure and temperature from
-!                               subsurface 
-! Author: Satish Karra, LANL 
-! Date: 09/24/13
-!
-! ************************************************************************** !
+
 subroutine GeomechStoreInitialPressTemp(geomech_realization)
+  ! 
+  ! Stores initial pressure and temperature from
+  ! subsurface
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 09/24/13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -2263,14 +2288,15 @@ subroutine GeomechStoreInitialPressTemp(geomech_realization)
 end subroutine GeomechStoreInitialPressTemp
 
 ! ************************************************************************** !
-!
-! GeomechStoreInitialPorosity: Stores initial porosity from
-!                              subsurface 
-! Author: Satish Karra, LANL 
-! Date: 10/22/13
-!
-! ************************************************************************** !
+
 subroutine GeomechStoreInitialPorosity(realization,geomech_realization)
+  ! 
+  ! Stores initial porosity from
+  ! subsurface
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 10/22/13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -2296,14 +2322,15 @@ subroutine GeomechStoreInitialPorosity(realization,geomech_realization)
 end subroutine GeomechStoreInitialPorosity
 
 ! ************************************************************************** !
-!
-! GeomechStoreInitialDisp: Stores initial displacement for calculating
-!                          relative displacements 
-! Author: Satish Karra, LANL 
-! Date: 09/30/13
-!
-! ************************************************************************** !
+
 subroutine GeomechStoreInitialDisp(geomech_realization)
+  ! 
+  ! Stores initial displacement for calculating
+  ! relative displacements
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 09/30/13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -2323,14 +2350,15 @@ subroutine GeomechStoreInitialDisp(geomech_realization)
 end subroutine GeomechStoreInitialDisp
 
 ! ************************************************************************** !
-!
-! GeomechUpdateSubsurfPorosity: Updates the porosity in the subsurface based 
-!                               on the deformation in geomechanics
-! author: Satish Karra, LANL
-! date: 10/08/13 
-!
-! ************************************************************************** !
+
 subroutine GeomechUpdateSubsurfPorosity(realization,geomech_realization)
+  ! 
+  ! Updates the porosity in the subsurface based
+  ! on the deformation in geomechanics
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 10/08/13
+  ! 
 
   use Realization_class
   use Option_module

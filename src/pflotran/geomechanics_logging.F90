@@ -43,13 +43,14 @@ PetscInt, parameter, public :: GEOMECH_OUTPUT_STAGE = 4
 contains
 
 ! ************************************************************************** !
-!
-! GeomechLoggingCreate: Allocates and initializes a new geomech_logging object
-! author: Satish Karra, LANL
-! date: 06/12/13
-!
-! ************************************************************************** !
+
 subroutine GeomechLoggingCreate()
+  ! 
+  ! Allocates and initializes a new geomech_logging object
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/12/13
+  ! 
 
   implicit none
   
@@ -103,13 +104,14 @@ subroutine GeomechLoggingCreate()
 end subroutine GeomechLoggingCreate
 
 ! ************************************************************************** !
-!
-! OptionDestroy: Deallocates a geomech_logging object
-! author: Satish Karra, LANL
-! date: 06/12/13
-!
-! ************************************************************************** !
+
 subroutine GeomechLoggingDestroy()
+  ! 
+  ! OptionDestroy: Deallocates a geomech_logging object
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/12/13
+  ! 
 
   implicit none
   

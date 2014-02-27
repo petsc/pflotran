@@ -40,13 +40,14 @@ module Geomechanics_Global_Aux_module
 contains
 
 ! ************************************************************************** !
-!
-! GeomechGlobalAuxCreate: Creates a geomech global aux
-! author: Satish Karra, LANL
-! date: 06/14/13
-!
-! ************************************************************************** !
+
 function GeomechGlobalAuxCreate()
+  ! 
+  ! Creates a geomech global aux
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/14/13
+  ! 
 
   implicit none
   
@@ -63,13 +64,14 @@ function GeomechGlobalAuxCreate()
 end function GeomechGlobalAuxCreate
 
 ! ************************************************************************** !
-!
-! GeomechGlobalAuxVarInit: Initializes a geomech global aux
-! author: Satish Karra, LANL
-! date: 06/14/13
-! 
-! ************************************************************************** !
+
 subroutine GeomechGlobalAuxVarInit(aux_var,option)
+  ! 
+  ! Initializes a geomech global aux
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/14/13
+  ! 
 
   use Option_module
 
@@ -90,13 +92,14 @@ subroutine GeomechGlobalAuxVarInit(aux_var,option)
 end subroutine GeomechGlobalAuxVarInit
 
 ! ************************************************************************** !
-!
-! GeomechGlobalAuxVarCopy: Copies a geomech global aux to another
-! author: Satish Karra, LANL
-! date: 06/14/13
-! 
-! ************************************************************************** !  
+
 subroutine GeomechGlobalAuxVarCopy(aux_var,aux_var2,option)
+  ! 
+  ! Copies a geomech global aux to another
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/14/13
+  ! 
 
   use Option_module
 
@@ -113,13 +116,14 @@ subroutine GeomechGlobalAuxVarCopy(aux_var,aux_var2,option)
 end subroutine GeomechGlobalAuxVarCopy
 
 ! ************************************************************************** !
-!
-! GeomechGlobalAuxVarSingleDestroy: Destroys a geomech global aux
-! author: Satish Karra, LANL
-! date: 06/14/13
-! 
-! ************************************************************************** !
+
 subroutine GeomechGlobalAuxVarSingleDestroy(aux_var)
+  ! 
+  ! Destroys a geomech global aux
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/14/13
+  ! 
 
   implicit none
 
@@ -132,16 +136,17 @@ subroutine GeomechGlobalAuxVarSingleDestroy(aux_var)
   nullify(aux_var)
 
 end subroutine GeomechGlobalAuxVarSingleDestroy
-  
+
 ! ************************************************************************** !
-!
-! GeomechGlobalAuxVarArrayDestroy: Destroys an array of geomech global auxvar
-!                                  type
-! author: Satish Karra, LANL
-! date: 06/14/13
-! 
-! ************************************************************************** !
+
 subroutine GeomechGlobalAuxVarArrayDestroy(aux_vars)
+  ! 
+  ! Destroys an array of geomech global auxvar
+  ! type
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/14/13
+  ! 
 
   implicit none
 
@@ -158,15 +163,16 @@ subroutine GeomechGlobalAuxVarArrayDestroy(aux_vars)
   nullify(aux_vars)
 
 end subroutine GeomechGlobalAuxVarArrayDestroy
-  
+
 ! ************************************************************************** !
-!
-! GeomechGlobalAuxVarStrip: Strips a geomech global auxvar
-! author: Satish Karra, LANL
-! date: 06/14/13
-! 
-! ************************************************************************** !
+
 subroutine GeomechGlobalAuxVarStrip(aux_var)
+  ! 
+  ! Strips a geomech global auxvar
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/14/13
+  ! 
 
   use Utility_module, only: DeallocateArray
 
@@ -182,13 +188,14 @@ subroutine GeomechGlobalAuxVarStrip(aux_var)
 end subroutine GeomechGlobalAuxVarStrip
 
 ! ************************************************************************** !
-!
-! GeomechGlobalAuxDestroy: Destroys a geomech global type
-! author: Satish Karra, LANL
-! date: 06/14/13
-! 
-! ************************************************************************** !
+
 subroutine GeomechGlobalAuxDestroy(aux)
+  ! 
+  ! Destroys a geomech global type
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/14/13
+  ! 
 
   implicit none
 

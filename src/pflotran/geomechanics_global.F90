@@ -19,13 +19,14 @@ module Geomechanics_Global_module
 contains
 
 ! ************************************************************************** !
-!
-! GeomechGlobalSetup: Set up global aux vars in a realization
-! author: Satish Karra, LANL
-! date: 06/17/13
-! 
-! ************************************************************************** !
+
 subroutine GeomechGlobalSetup(geomech_realization)
+  ! 
+  ! Set up global aux vars in a realization
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/17/13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -44,13 +45,14 @@ subroutine GeomechGlobalSetup(geomech_realization)
 end subroutine GeomechGlobalSetup
 
 ! ************************************************************************** !
-!
-! GeomechGlobalSetupPatch: Strips a geomech global auxvar
-! author: Satish Karra, LANL
-! date: 06/17/13
-! 
-! ************************************************************************** !
+
 subroutine GeomechGlobalSetupPatch(geomech_realization)
+  ! 
+  ! Strips a geomech global auxvar
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/17/13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -93,13 +95,14 @@ subroutine GeomechGlobalSetupPatch(geomech_realization)
 end subroutine GeomechGlobalSetupPatch
 
 ! ************************************************************************** !
-!
-! GeomechGlobalSetAuxVarScalar: Strips a geomech global auxvar
-! author: Satish Karra, LANL
-! date: 06/17/13
-! 
-! ************************************************************************** !
+
 subroutine GeomechGlobalSetAuxVarScalar(geomech_realization,value,ivar)
+  ! 
+  ! Strips a geomech global auxvar
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/17/13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -122,13 +125,14 @@ subroutine GeomechGlobalSetAuxVarScalar(geomech_realization,value,ivar)
 end subroutine GeomechGlobalSetAuxVarScalar
 
 ! ************************************************************************** !
-!
-! GeomechGlobalSetAuxVarScalarPatch: Strips a geomech global auxvar
-! author: Satish Karra, LANL
-! date: 06/17/13
-! 
-! ************************************************************************** !
+
 subroutine GeomechGlobalSetAuxVarScalarPatch(geomech_realization,value,ivar)
+  ! 
+  ! Strips a geomech global auxvar
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/17/13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -173,13 +177,14 @@ subroutine GeomechGlobalSetAuxVarScalarPatch(geomech_realization,value,ivar)
 end subroutine GeomechGlobalSetAuxVarScalarPatch
 
 ! ************************************************************************** !
-!
-! GeomechGlobalSetAuxVarVecLoc: Strips a geomech global auxvar
-! author: Satish Karra, LANL
-! date: 06/17/13
-! 
-! ************************************************************************** !
+
 subroutine GeomechGlobalSetAuxVarVecLoc(geomech_realization,vec_loc,ivar,isubvar)
+  ! 
+  ! Strips a geomech global auxvar
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/17/13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -206,13 +211,14 @@ subroutine GeomechGlobalSetAuxVarVecLoc(geomech_realization,vec_loc,ivar,isubvar
 end subroutine GeomechGlobalSetAuxVarVecLoc
 
 ! ************************************************************************** !
-!
-! GeomechGlobalSetAuxVarVecLocPatch: Strips a geomech global auxvar
-! author: Satish Karra, LANL
-! date: 06/17/13
-! 
-! ************************************************************************** !
+
 subroutine GeomechGlobalSetAuxVarVecLocPatch(geomech_realization,vec_loc,ivar,isubvar)
+  ! 
+  ! Strips a geomech global auxvar
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/17/13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -283,13 +289,14 @@ subroutine GeomechGlobalSetAuxVarVecLocPatch(geomech_realization,vec_loc,ivar,is
 end subroutine GeomechGlobalSetAuxVarVecLocPatch
 
 ! ************************************************************************** !
-!
-! GeomechGlobalUpdateAuxVars: Strips a geomech global auxvar
-! author: Satish Karra, LANL
-! date: 06/17/13
-! 
-! ************************************************************************** !
+
 subroutine GeomechGlobalUpdateAuxVars(geomech_realization,time_level)
+  ! 
+  ! Strips a geomech global auxvar
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/17/13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class

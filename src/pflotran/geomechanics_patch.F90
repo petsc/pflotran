@@ -46,14 +46,15 @@ module Geomechanics_Patch_module
 contains
 
 ! ************************************************************************** !
-!
-! GeomechanicsPatchCreate: Allocates and initializes a new geomechanics 
-!                          patch object
-! author: Satish Karra, LANL
-! date: 05/23/13
-!
-! ************************************************************************** !
+
 function GeomechanicsPatchCreate()
+  ! 
+  ! Allocates and initializes a new geomechanics
+  ! patch object
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 05/23/13
+  ! 
 
   implicit none
   
@@ -90,13 +91,14 @@ function GeomechanicsPatchCreate()
 end function GeomechanicsPatchCreate
 
 ! ************************************************************************** !
-!
-! GeomechPatchLocalizeRegions: Localizes regions within each patch
-! author: Satish Karra, LANL
-! date: 05/23/13
-!
-! ************************************************************************** !
+
 subroutine GeomechPatchLocalizeRegions(geomech_patch,regions,option)
+  ! 
+  ! Localizes regions within each patch
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 05/23/13
+  ! 
 
   use Option_module
   use Geomechanics_Region_module
@@ -127,13 +129,14 @@ subroutine GeomechPatchLocalizeRegions(geomech_patch,regions,option)
 end subroutine GeomechPatchLocalizeRegions
 
 ! ************************************************************************** !
-!
-! GeomechPatchProcessGeomechCouplers: Assigns conditions and regions to couplers
-! author: Satish Karra, LANL
-! date: 05/23/13
-!
-! ************************************************************************** !
+
 subroutine GeomechPatchProcessGeomechCouplers(patch,conditions,option)
+  ! 
+  ! Assigns conditions and regions to couplers
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 05/23/13
+  ! 
 
   use Option_module
   use Geomechanics_Material_module
@@ -319,14 +322,15 @@ subroutine GeomechPatchProcessGeomechCouplers(patch,conditions,option)
 end subroutine GeomechPatchProcessGeomechCouplers
 
 ! ************************************************************************** !
-!
-! GeomechPatchInitAllCouplerAuxVars: Initializes coupler auxillary variables 
-!                                    within list
-! author: Satish Karra, LANL
-! date: 06/17/13
-!
-! ************************************************************************** !
+
 subroutine GeomechPatchInitAllCouplerAuxVars(patch,option)
+  ! 
+  ! Initializes coupler auxillary variables
+  ! within list
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/17/13
+  ! 
 
   use Option_module
   
@@ -347,14 +351,15 @@ subroutine GeomechPatchInitAllCouplerAuxVars(patch,option)
 end subroutine GeomechPatchInitAllCouplerAuxVars
 
 ! ************************************************************************** !
-!
-! GeomechPatchInitCouplerAuxVars: Initializes coupler auxillary variables 
-!                                 within list
-! author: Satish Karra, LANL
-! date: 06/17/13
-!
-! ************************************************************************** !
+
 subroutine GeomechPatchInitCouplerAuxVars(coupler_list,patch,option)
+  ! 
+  ! Initializes coupler auxillary variables
+  ! within list
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/17/13
+  ! 
 
   use Option_module
   use Geomechanics_Global_Aux_module
@@ -408,14 +413,15 @@ subroutine GeomechPatchInitCouplerAuxVars(coupler_list,patch,option)
 end subroutine GeomechPatchInitCouplerAuxVars
 
 ! ************************************************************************** !
-!
-! GeomechPatchUpdateAllCouplerAuxVars: Updates auxiliary variables associated 
-!                                      with couplers in list
-! author: Satish Karra, LANL
-! date: 06/17/13
-!
-! ************************************************************************** !
+
 subroutine GeomechPatchUpdateAllCouplerAuxVars(patch,force_update_flag,option)
+  ! 
+  ! Updates auxiliary variables associated
+  ! with couplers in list
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/17/13
+  ! 
 
   use Option_module
   
@@ -436,15 +442,16 @@ subroutine GeomechPatchUpdateAllCouplerAuxVars(patch,force_update_flag,option)
 end subroutine GeomechPatchUpdateAllCouplerAuxVars
 
 ! ************************************************************************** !
-!
-! GeomechPatchUpdateCouplerAuxVars: Updates auxiliary variables associated 
-!                                   with couplers in list
-! author: Satish Karra, LANL
-! date: 06/17/13
-!
-! ************************************************************************** !
+
 subroutine GeomechPatchUpdateCouplerAuxVars(patch,coupler_list, &
                                             force_update_flag,option)
+  ! 
+  ! Updates auxiliary variables associated
+  ! with couplers in list
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/17/13
+  ! 
                                      
   use Option_module
   use Geomechanics_Condition_module
@@ -536,15 +543,16 @@ subroutine GeomechPatchUpdateCouplerAuxVars(patch,coupler_list, &
 end subroutine GeomechPatchUpdateCouplerAuxVars
 
 ! ************************************************************************** !
-!
-! GeomechPatchGetDataset: Extracts variables indexed by ivar and isubvar 
-!                         from a geomechanics patch
-! author: Satish Karra, LANL
-! date: 07/02/13
-!
-! ************************************************************************** !
+
 subroutine GeomechPatchGetDataset(patch,geomech_field,option,output_option, &
                                   vec,ivar,isubvar,isubvar1)
+  ! 
+  ! Extracts variables indexed by ivar and isubvar
+  ! from a geomechanics patch
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 07/02/13
+  ! 
 
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
@@ -666,13 +674,14 @@ subroutine GeomechPatchGetDataset(patch,geomech_field,option,output_option, &
 end subroutine GeomechPatchGetDataset
 
 ! ************************************************************************** !
-!
-! GeomechanicsPatchDestroy: Destroys a new geomechanics patch  object
-! author: Satish Karra, LANL
-! date: 05/23/13
-!
-! ************************************************************************** !
+
 subroutine GeomechanicsPatchDestroy(geomech_patch)
+  ! 
+  ! Destroys a new geomechanics patch  object
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 05/23/13
+  ! 
 
   implicit none
   
