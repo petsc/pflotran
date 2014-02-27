@@ -240,6 +240,12 @@ subroutine GeneralSetup(realization)
     cur_fluid_property => cur_fluid_property%next
   enddo  
 
+  if (realization%output_option%print_fluxes) then
+    allocate(patch%internal_fluxes(1,1,ConnectionGetNumberInList(patch%grid%&
+             internal_connection_set_list)))
+    patch%internal_fluxes = 0.d0
+  endif
+
   call GeneralSetPlotVariables(realization) 
 
 end subroutine GeneralSetup
@@ -1986,7 +1992,6 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   PetscInt :: icap_up, icap_dn
   PetscReal :: Res(realization%option%nflowdof)
   PetscReal :: v_darcy(realization%option%nphase)
-  PetscReal :: water_mass, air_mass
   
   discretization => realization%discretization
   option => realization%option
@@ -2086,6 +2091,10 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
                        general_parameter,option,v_darcy,Res)
 
       patch%internal_velocities(:,sum_connection) = v_darcy
+      if (associated(patch%internal_fluxes)) then
+        patch%internal_fluxes(:,1,sum_connection) = Res(:)
+        patch%internal_fluxes(1,1,sum_connection) = Res(1) - Res(2)
+      endif
       
       if (local_id_up > 0) then
         local_end = local_id_up * option%nflowdof
@@ -2144,14 +2153,12 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
       patch%boundary_velocities(:,sum_connection) = v_darcy
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
-        air_mass = Res(2)
-        water_mass = Res(1)-air_mass
         global_auxvars_bc(sum_connection)%mass_balance_delta(1,1) = &
           global_auxvars_bc(sum_connection)%mass_balance_delta(1,1) - &
-          water_mass
+          Res(1) - Res(2)
         global_auxvars_bc(sum_connection)%mass_balance_delta(2,1) = &
           global_auxvars_bc(sum_connection)%mass_balance_delta(2,1) - &
-          air_mass
+          Res(2)
       endif
 
       local_end = local_id * option%nflowdof
@@ -2194,14 +2201,12 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
       
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
-        air_mass = Res(2)
-        water_mass = Res(1)-air_mass
         global_auxvars_bc(sum_connection)%mass_balance_delta(1,1) = &
           global_auxvars_bc(sum_connection)%mass_balance_delta(1,1) - &
-          water_mass
+          Res(1) - Res(2)
         global_auxvars_bc(sum_connection)%mass_balance_delta(2,1) = &
           global_auxvars_bc(sum_connection)%mass_balance_delta(2,1) - &
-          air_mass
+          Res(2)
       endif
 
     enddo
