@@ -210,16 +210,18 @@ subroutine RTSetup(realization)
       endif
     endif
     if (associated(reaction%surface_complexation)) then
-      do i = 1, size(reaction%surface_complexation%srfcplxrxn_surf_type)
-        if (reaction%surface_complexation%srfcplxrxn_surf_type(i) == &
-            ROCK_SURFACE .and. &
-            material_auxvars(ghosted_id)%soil_particle_density < 0.d0 .and. &
-            flag(4) == 0) then
-          flag(4) = 1
-          option%io_buffer = 'Non-initialized soil particle density.'
-          call printMsg(option)
-        endif
-      enddo
+      if (associated(reaction%surface_complexation%srfcplxrxn_surf_type)) then
+        do i = 1, size(reaction%surface_complexation%srfcplxrxn_surf_type)
+          if (reaction%surface_complexation%srfcplxrxn_surf_type(i) == &
+              ROCK_SURFACE .and. &
+              material_auxvars(ghosted_id)%soil_particle_density < 0.d0 .and. &
+              flag(4) == 0) then
+            flag(4) = 1
+            option%io_buffer = 'Non-initialized soil particle density.'
+            call printMsg(option)
+          endif
+        enddo
+      endif
     endif
   enddo  
  
@@ -2308,7 +2310,7 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
       
 #ifndef CENTRAL_DIFFERENCE        
       call TFluxCoef(option,cur_connection_set%area(iconn), &
-                patch%internal_velocities(:,sum_connection)*vol_frac_prim, &
+                patch%internal_velocities(:,sum_connection), &
                 patch%internal_tran_coefs(:,sum_connection)*vol_frac_prim, &
                 cur_connection_set%dist(-1,iconn), &
                 coef_up,coef_dn)
@@ -2345,7 +2347,7 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
       endif
 #else
       call TFluxCoef_CD(option,cur_connection_set%area(iconn), &
-                 patch%internal_velocities(:,sum_connection)*vol_frac_prim, &
+                 patch%internal_velocities(:,sum_connection), &
                  patch%internal_tran_coefs(:,sum_connection)*vol_frac_prim, &
                  cur_connection_set%dist(-1,iconn), &
                  T_11,T_12,T_21,T_22)
@@ -2396,7 +2398,7 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
 #ifndef CENTRAL_DIFFERENCE
       ! TFluxCoef accomplishes the same as what TBCCoef would
       call TFluxCoef(option,cur_connection_set%area(iconn), &
-                  patch%boundary_velocities(:,sum_connection)*vol_frac_prim, &
+                  patch%boundary_velocities(:,sum_connection), &
                   patch%boundary_tran_coefs(:,sum_connection)*vol_frac_prim, &
                   0.5d0, &
                   coef_up,coef_dn)
@@ -2428,7 +2430,7 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
 
 #else
       call TFluxCoef_CD(option,cur_connection_set%area(iconn), &
-                patch%boundary_velocities(:,sum_connection)*vol_frac_prim, &
+                patch%boundary_velocities(:,sum_connection), &
                 patch%boundary_tran_coefs(:,sum_connection)*vol_frac_prim, &
                 0.5d0, & ! fraction upwind (0.d0 upwind, 0.5 central)
                 T_11,T_12,T_21,T_22)
@@ -3023,7 +3025,7 @@ subroutine RTJacobianFlux(snes,xx,A,B,flag,realization,ierr)
 
 #ifndef CENTRAL_DIFFERENCE
       call TFluxCoef(option,cur_connection_set%area(iconn), &
-                patch%internal_velocities(:,sum_connection)*vol_frac_prim, &
+                patch%internal_velocities(:,sum_connection), &
                 patch%internal_tran_coefs(:,sum_connection)*vol_frac_prim, &
                 cur_connection_set%dist(-1,iconn), &
                 coef_up,coef_dn)
@@ -3051,7 +3053,7 @@ subroutine RTJacobianFlux(snes,xx,A,B,flag,realization,ierr)
 
 #else
       call TFluxCoef_CD(option,cur_connection_set%area(iconn), &
-                patch%internal_velocities(:,sum_connection)*vol_frac_prim, &
+                patch%internal_velocities(:,sum_connection), &
                 patch%internal_tran_coefs(:,sum_connection)*vol_frac_prim, &
                 cur_connection_set%dist(-1,iconn), &
                 T_11,T_12,T_21,T_22)
@@ -3111,7 +3113,7 @@ subroutine RTJacobianFlux(snes,xx,A,B,flag,realization,ierr)
 #ifndef CENTRAL_DIFFERENCE
       ! TFluxCoef accomplishes the same as what TBCCoef would
       call TFluxCoef(option,cur_connection_set%area(iconn), &
-                patch%boundary_velocities(:,sum_connection)*vol_frac_prim, &
+                patch%boundary_velocities(:,sum_connection), &
                 patch%boundary_tran_coefs(:,sum_connection)*vol_frac_prim, &
                 0.5d0, & ! fraction upwind (0.d0 upwind, 0.5 central)
                 coef_up,coef_dn)
@@ -3130,7 +3132,7 @@ subroutine RTJacobianFlux(snes,xx,A,B,flag,realization,ierr)
  
 #else
       call TFluxCoef_CD(option,cur_connection_set%area(iconn), &
-                 patch%boundary_velocities(:,sum_connection)*vol_frac_prim, &
+                 patch%boundary_velocities(:,sum_connection), &
                  patch%boundary_tran_coefs(:,sum_connection)*vol_frac_prim, &
                  0.5d0, & ! fraction upwind (0.d0 upwind, 0.5 central)
                  T_11,T_12,T_21,T_22)

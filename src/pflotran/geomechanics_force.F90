@@ -50,8 +50,12 @@ contains
 ! ************************************************************************** !
 subroutine GeomechForceSetup(geomech_realization)
 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
-  
+#endif
+
   type(geomech_realization_type) :: geomech_realization
 
   call GeomechForceSetupPatch(geomech_realization)
@@ -68,7 +72,11 @@ end subroutine GeomechForceSetup
 ! ************************************************************************** !
 subroutine GeomechForceSetupPatch(geomech_realization)
 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Geomechanics_Patch_module
   use Option_module
  
@@ -123,7 +131,11 @@ end subroutine GeomechForceSetupPatch
 ! ************************************************************************** !
 subroutine GeomechForceSetPlotVariables(geomech_realization)
   
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Output_Aux_module
   use Variables_module
     
@@ -243,7 +255,11 @@ end subroutine GeomechForceSetPlotVariables
 ! ************************************************************************** !
 subroutine GeomechanicsForceInitialGuess(geomech_realization)
 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Geomechanics_Field_module
   use Option_module
   use Geomechanics_Grid_Aux_module
@@ -337,7 +353,11 @@ end subroutine GeomechanicsForceInitialGuess
 ! ************************************************************************** !
 subroutine GeomechForceUpdateAuxVars(geomech_realization)
 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Geomechanics_Patch_module
   use Option_module
   use Geomechanics_Field_module
@@ -415,7 +435,11 @@ end subroutine GeomechForceUpdateAuxVars
 ! ************************************************************************** !
 subroutine GeomechForceResidual(snes,xx,r,geomech_realization,ierr)
 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Geomechanics_Field_module
   use Geomechanics_Discretization_module
   use Geomechanics_Logging_module
@@ -451,6 +475,7 @@ subroutine GeomechForceResidual(snes,xx,r,geomech_realization,ierr)
                               'Geomech_residual.out',viewer,ierr)
     call VecView(r,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
+
   endif
   
   if (geomech_realization%geomech_debug%vecview_solution) then
@@ -473,7 +498,11 @@ end subroutine GeomechForceResidual
 ! ************************************************************************** !
 subroutine GeomechForceResidualPatch(snes,xx,r,geomech_realization,ierr)
 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Geomechanics_Field_module
   use Geomechanics_Discretization_module
   use Geomechanics_Logging_module
@@ -648,7 +677,7 @@ subroutine GeomechForceResidualPatch(snes,xx,r,geomech_realization,ierr)
       
   call VecAssemblyBegin(r,ierr)
   call VecAssemblyEnd(r,ierr)  
- 
+
   ! Find the boundary nodes with dirichlet and set the residual at those nodes
   ! to zero, later set the Jacobian to 1
 
@@ -1243,7 +1272,11 @@ end subroutine GeomechGetBodyForce
 ! ************************************************************************** !
 subroutine GeomechForceJacobian(snes,xx,A,B,flag,geomech_realization,ierr)
 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Geomechanics_Patch_module
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
@@ -1318,7 +1351,11 @@ end subroutine GeomechForceJacobian
 ! ************************************************************************** !
 subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,geomech_realization,ierr)
        
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Geomechanics_Patch_module
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
@@ -1533,7 +1570,11 @@ subroutine GeomechUpdateFromSubsurf(realization,geomech_realization)
   use Realization_class
   use Grid_module
   use Field_module
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
   use Geomechanics_Field_module
@@ -1636,7 +1677,11 @@ subroutine GeomechUpdateSubsurfFromGeomech(realization,geomech_realization)
   use Discretization_module
   use Grid_module
   use Field_module
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
   use Geomechanics_Field_module
@@ -1709,7 +1754,11 @@ subroutine GeomechCreateGeomechSubsurfVec(realization,geomech_realization)
 
   use Grid_module
   use Geomechanics_Discretization_module
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Geomechanics_Grid_Aux_module
   use Geomechanics_Grid_module
   use Geomechanics_Field_module
@@ -1757,7 +1806,11 @@ subroutine GeomechCreateSubsurfStressStrainVec(realization,geomech_realization)
 
   use Grid_module
   use Geomechanics_Discretization_module
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Geomechanics_Grid_Aux_module
   use Geomechanics_Grid_module
   use Geomechanics_Field_module
@@ -1825,7 +1878,11 @@ end subroutine GeomechCreateSubsurfStressStrainVec
 ! ************************************************************************** !
 subroutine GeomechForceStressStrain(geomech_realization)
 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Geomechanics_Field_module
   use Geomechanics_Discretization_module
   use Geomechanics_Logging_module
@@ -2130,7 +2187,11 @@ end subroutine GeomechForceLocalElemStressStrain
 ! ************************************************************************** !
 subroutine GeomechUpdateSolution(geomech_realization)
 
-  use Geomechanics_Realization_module 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
+  use Geomechanics_Realization_module
+#endif
   use Geomechanics_Field_module
   
   implicit none 
@@ -2157,7 +2218,11 @@ end subroutine GeomechUpdateSolution
 ! ************************************************************************** !
 subroutine geomechupdatesolutionpatch(geomech_realization)
 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
     
   implicit none 
   
@@ -2177,7 +2242,11 @@ end subroutine geomechupdatesolutionpatch
 ! ************************************************************************** !
 subroutine GeomechStoreInitialPressTemp(geomech_realization)
 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
     
   implicit none 
   
@@ -2203,7 +2272,11 @@ end subroutine GeomechStoreInitialPressTemp
 ! ************************************************************************** !
 subroutine GeomechStoreInitialPorosity(realization,geomech_realization)
 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Realization_class
   use Discretization_module
     
@@ -2232,7 +2305,11 @@ end subroutine GeomechStoreInitialPorosity
 ! ************************************************************************** !
 subroutine GeomechStoreInitialDisp(geomech_realization)
 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
     
   implicit none 
   
@@ -2262,7 +2339,11 @@ subroutine GeomechUpdateSubsurfPorosity(realization,geomech_realization)
   use Grid_module
   use Discretization_module
   use Geomechanics_Field_module
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
 
   implicit none
   

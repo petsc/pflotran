@@ -27,7 +27,11 @@ contains
 ! ************************************************************************** !
 subroutine GeomechGlobalSetup(geomech_realization)
 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Geomechanics_Patch_module
   
   implicit none
@@ -48,7 +52,11 @@ end subroutine GeomechGlobalSetup
 ! ************************************************************************** !
 subroutine GeomechGlobalSetupPatch(geomech_realization)
 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Geomechanics_Patch_module
   use Option_module
   use Geomechanics_Coupler_module
@@ -93,7 +101,11 @@ end subroutine GeomechGlobalSetupPatch
 ! ************************************************************************** !
 subroutine GeomechGlobalSetAuxVarScalar(geomech_realization,value,ivar)
 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Geomechanics_Patch_module
 
   implicit none
@@ -118,7 +130,11 @@ end subroutine GeomechGlobalSetAuxVarScalar
 ! ************************************************************************** !
 subroutine GeomechGlobalSetAuxVarScalarPatch(geomech_realization,value,ivar)
 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Option_module
   use Geomechanics_Patch_module
   use Variables_module, only : GEOMECH_DISP_X, &
@@ -165,7 +181,11 @@ end subroutine GeomechGlobalSetAuxVarScalarPatch
 ! ************************************************************************** !
 subroutine GeomechGlobalSetAuxVarVecLoc(geomech_realization,vec_loc,ivar,isubvar)
 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Geomechanics_Patch_module
 
   implicit none
@@ -194,7 +214,11 @@ end subroutine GeomechGlobalSetAuxVarVecLoc
 ! ************************************************************************** !
 subroutine GeomechGlobalSetAuxVarVecLocPatch(geomech_realization,vec_loc,ivar,isubvar)
 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Geomechanics_Patch_module
   use Geomechanics_Grid_Aux_module
   use Geomechanics_Grid_module
@@ -267,7 +291,11 @@ end subroutine GeomechGlobalSetAuxVarVecLocPatch
 ! ************************************************************************** !
 subroutine GeomechGlobalUpdateAuxVars(geomech_realization,time_level)
 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Geomechanics_Field_module
   use Option_module
   use Geomechanics_Discretization_module
