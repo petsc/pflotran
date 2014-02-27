@@ -122,6 +122,8 @@ subroutine RTSetup(realization)
   use Constraint_module
   use Fluid_module
   use Material_module
+  use Material_Aux_class
+  use Surface_Complexation_Aux_module
   !geh: please leave the "only" clauses for Secondary_Continuum_XXX as this
   !      resolves a bug in the Intel Visual Fortran compiler.
   use Secondary_Continuum_Aux_module, only : sec_transport_type, &
@@ -142,9 +144,12 @@ subroutine RTSetup(realization)
   type(sec_transport_type), pointer :: rt_sec_transport_vars(:)
   type(coupler_type), pointer :: initial_condition
   type(tran_constraint_type), pointer :: sec_tran_constraint
+  class(material_auxvar_type), pointer :: material_auxvars(:)
 
   PetscInt :: ghosted_id, iconn, sum_connection
-  PetscInt :: iphase, local_id
+  PetscInt :: iphase, local_id, i
+  PetscBool :: error_found
+  PetscInt :: flag(10)  
   
   option => realization%option
   patch => realization%patch
@@ -174,7 +179,58 @@ subroutine RTSetup(realization)
     patch%aux%RT%rt_parameter%nimcomp = reaction%nimcomp
     patch%aux%RT%rt_parameter%offset_immobile = reaction%offset_immobile
   endif
+  
+  material_auxvars => patch%aux%Material%auxvars
+  flag = 0
+  !TODO(geh): change to looping over ghosted ids once the legacy code is 
+  !           history and the communicator can be passed down.
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    if (material_auxvars(ghosted_id)%volume < 0.d0 .and. flag(1) == 0) then
+      flag(1) = 1
+      option%io_buffer = 'Non-initialized cell volume.'
+      call printMsg(option)
+    endif
+    if (material_auxvars(ghosted_id)%porosity < 0.d0 .and. flag(2) == 0) then
+      flag(2) = 1
+      option%io_buffer = 'Non-initialized porosity.'
+      call printMsg(option)
+    endif
+    if (material_auxvars(ghosted_id)%tortuosity < 0.d0 .and. flag(3) == 0) then
+      flag(3) = 1
+      option%io_buffer = 'Non-initialized tortuosity.'
+      call printMsg(option)
+    endif
+    if (reaction%neqkdrxn > 0) then
+      if (material_auxvars(ghosted_id)%soil_particle_density < 0.d0 .and. &
+          flag(4) == 0) then
+        flag(4) = 1
+        option%io_buffer = 'Non-initialized soil particle density.'
+        call printMsg(option)
+      endif
+    endif
+    if (associated(reaction%surface_complexation)) then
+      if (associated(reaction%surface_complexation%srfcplxrxn_surf_type)) then
+        do i = 1, size(reaction%surface_complexation%srfcplxrxn_surf_type)
+          if (reaction%surface_complexation%srfcplxrxn_surf_type(i) == &
+              ROCK_SURFACE .and. &
+              material_auxvars(ghosted_id)%soil_particle_density < 0.d0 .and. &
+              flag(4) == 0) then
+            flag(4) = 1
+            option%io_buffer = 'Non-initialized soil particle density.'
+            call printMsg(option)
+          endif
+        enddo
+      endif
+    endif
+  enddo  
  
+  if (maxval(flag) > 0) then
+    option%io_buffer = &
+      'Material property errors found in RTSetup (reactive transport).'
+    call printErrMsg(option)
+  endif  
+  
 !============== Create secondary continuum variables - SK 2/5/13 ===============
 
   
@@ -628,7 +684,7 @@ subroutine RTUpdateEquilibriumState(realization)
       ghosted_id = grid%nL2G(local_id)
       if (patch%imat(ghosted_id) <= 0) cycle
         call SecondaryRTUpdateEquilState(rt_sec_transport_vars(local_id), &
-                                          global_auxvars(local_id), &
+                                          global_auxvars(ghosted_id), &
                                           reaction,option)                     
     enddo
   endif
@@ -711,7 +767,7 @@ subroutine RTUpdateKineticState(realization)
         sec_porosity = realization%material_property_array(1)%ptr% &
                         secondary_continuum_porosity
 
-        call SecondaryRTUpdateKineticState(rt_sec_transport_vars(ghosted_id), &
+        call SecondaryRTUpdateKineticState(rt_sec_transport_vars(local_id), &
                                            global_auxvars(ghosted_id), &
                                            reaction,sec_porosity,option)                     
     enddo
@@ -809,10 +865,6 @@ subroutine RTUpdateFixedAccumulation(realization)
       iendim = dof_offset + reaction%offset_immobile + reaction%nimcomp
       rt_auxvars(ghosted_id)%immobile = xx_p(istartim:iendim)
     endif
-    
-    if (option%use_mc) then
-      vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
-    endif
 
     if (.not.option%use_isothermal) then
       call RUpdateTempDependentCoefs(global_auxvars(ghosted_id),reaction, &
@@ -823,11 +875,12 @@ subroutine RTUpdateFixedAccumulation(realization)
     ! FIXED PORTION OF THE ACCUMULATION TERM - geh
     call RTAuxVarCompute(rt_auxvars(ghosted_id), &
                          global_auxvars(ghosted_id), &
+                         material_auxvars(ghosted_id), &
                          reaction,option)
     call RTAccumulation(rt_auxvars(ghosted_id), &
                         global_auxvars(ghosted_id), &
                         material_auxvars(ghosted_id), &
-                        reaction,option,vol_frac_prim, &
+                        reaction,option, &
                         accum_p(istart:iendall)) 
     if (reaction%neqsorb > 0) then
       call RAccumulationSorb(rt_auxvars(ghosted_id), &
@@ -835,6 +888,12 @@ subroutine RTUpdateFixedAccumulation(realization)
                              material_auxvars(ghosted_id), &
                              reaction,option,accum_p(istart:iendall))
     endif
+        
+    if (option%use_mc) then
+      vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
+      accum_p(istart:iendall) = accum_p(istart:iendall)*vol_frac_prim
+    endif
+    
   enddo
 
   call VecRestoreArrayReadF90(field%tran_xx,xx_p, ierr)
@@ -853,6 +912,7 @@ subroutine RTUpdateTransportCoefs(realization)
   ! 
 
   use Realization_class
+  use Discretization_module
   use Patch_module
   use Connection_module
   use Coupler_module
@@ -879,7 +939,10 @@ subroutine RTUpdateTransportCoefs(realization)
   type(connection_set_type), pointer :: cur_connection_set  
   PetscInt :: sum_connection, iconn, num_connections
   PetscInt :: ghosted_id_up, ghosted_id_dn, local_id_up, local_id_dn
-  PetscReal :: fraction_upwind, distance, dist_up, dist_dn
+  PetscReal, allocatable :: cell_centered_Darcy_velocities(:,:)
+  PetscReal, allocatable :: cell_centered_Darcy_velocities_ghosted(:,:)
+  PetscReal, pointer :: vec_ptr(:)
+  PetscInt :: i
   PetscErrorCode :: ierr
     
   option => realization%option
@@ -891,6 +954,27 @@ subroutine RTUpdateTransportCoefs(realization)
   grid => patch%grid
   rt_parameter => patch%aux%RT%rt_parameter
 
+  allocate(cell_centered_Darcy_velocities_ghosted(3,patch%grid%ngmax))
+  if (patch%material_property_array(1)%ptr%dispersivity(2) > 0.d0) then
+    allocate(cell_centered_Darcy_velocities(3,patch%grid%nlmax))
+    call PatchGetCellCenteredVelocities(patch,LIQUID_PHASE, &
+                                        cell_centered_Darcy_velocities)
+    ! at this point, velocities are at local cell centers; we need ghosted too.
+    do i=1,3
+      call VecGetArrayF90(field%work,vec_ptr,ierr)
+      vec_ptr(:) = cell_centered_Darcy_velocities(i,:)
+      call VecRestoreArrayF90(field%work,vec_ptr,ierr)
+      call DiscretizationGlobalToLocal(realization%discretization,field%work, &
+                                       field%work_loc,ONEDOF)
+      call VecGetArrayF90(field%work_loc,vec_ptr,ierr)
+      cell_centered_Darcy_velocities_ghosted(i,:) = vec_ptr(:)
+      call VecRestoreArrayF90(field%work_loc,vec_ptr,ierr)
+    enddo
+    deallocate(cell_centered_Darcy_velocities)
+  else
+    cell_centered_Darcy_velocities_ghosted = 0.d0
+  endif
+  
   ! Interior Flux Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
@@ -909,22 +993,17 @@ subroutine RTUpdateTransportCoefs(realization)
       if (patch%imat(ghosted_id_up) <= 0 .or.  &
           patch%imat(ghosted_id_dn) <= 0) cycle
 
-      fraction_upwind = cur_connection_set%dist(-1,iconn)
-      distance = cur_connection_set%dist(0,iconn)
-    ! distance = scalar - magnitude of distance
-      dist_up = distance*fraction_upwind
-      dist_dn = distance-dist_up ! should avoid truncation error
-
-      call TDiffusion(global_auxvars(ghosted_id_up), &
+      call TDispersion(global_auxvars(ghosted_id_up), &
                       material_auxvars(ghosted_id_up), &
+                      cell_centered_Darcy_velocities_ghosted(:,ghosted_id_up), &
                       patch%material_property_array(patch%imat(ghosted_id_up))% &
-                        ptr%longitudinal_dispersivity, &
-                      dist_up, &
+                        ptr%dispersivity, &
                       global_auxvars(ghosted_id_dn), &
                       material_auxvars(ghosted_id_dn), &
+                      cell_centered_Darcy_velocities_ghosted(:,ghosted_id_dn), &
                       patch%material_property_array(patch%imat(ghosted_id_dn))% &
-                        ptr%longitudinal_dispersivity, &
-                      dist_dn, &
+                        ptr%dispersivity, &
+                      cur_connection_set%dist(:,iconn), &
                       rt_parameter,option, &
                       patch%internal_velocities(:,sum_connection), &
                       patch%internal_tran_coefs(:,sum_connection))
@@ -961,19 +1040,23 @@ subroutine RTUpdateTransportCoefs(realization)
       ghosted_id = grid%nL2G(local_id)
       if (patch%imat(ghosted_id) <= 0) cycle
 
-      call TDiffusionBC(boundary_condition%tran_condition%itype, &
+      call TDispersionBC(boundary_condition%tran_condition%itype, &
                         global_auxvars_bc(sum_connection), &
                         global_auxvars(ghosted_id), &
                         material_auxvars(ghosted_id), &
+                        cell_centered_Darcy_velocities_ghosted(:,ghosted_id), &
                         patch%material_property_array(patch%imat(ghosted_id))% &
-                          ptr%longitudinal_dispersivity, &
-                        cur_connection_set%dist(0,iconn), &
+                          ptr%dispersivity, &
+                        cur_connection_set%dist(:,iconn), &
                         rt_parameter,option, &
                         patch%boundary_velocities(:,sum_connection), &
                         patch%boundary_tran_coefs(:,sum_connection))
     enddo
     boundary_condition => boundary_condition%next
   enddo
+  
+  if (allocated(cell_centered_Darcy_velocities_ghosted)) &
+    deallocate(cell_centered_Darcy_velocities_ghosted)
 
 end subroutine RTUpdateTransportCoefs
 
@@ -1603,7 +1686,6 @@ subroutine RTReact(realization)
 #endif
   PetscInt :: icount
   PetscErrorCode :: ierr
-  PetscReal :: vol_frac_prim
 
 #ifdef OS_STATISTICS
   PetscInt :: call_count
@@ -1634,9 +1716,6 @@ subroutine RTReact(realization)
   material_auxvars => patch%aux%Material%auxvars
   grid => patch%grid
   reaction => realization%reaction
-  if (option%use_mc) then
-    rt_sec_transport_vars => patch%aux%SC_RT%sec_transport_vars
-  endif
 
   ! need up update aux vars based on current density/saturation,
   ! but NOT activity coefficients
@@ -1645,7 +1724,6 @@ subroutine RTReact(realization)
   ! Get vectors
   call VecGetArrayReadF90(field%tran_xx,tran_xx_p,ierr)
       
-  vol_frac_prim = 1.d0    
   iphase = 1
   ithread = 1
 #ifdef OS_STATISTICS
@@ -1662,14 +1740,11 @@ subroutine RTReact(realization)
     iend = istart + reaction%ncomp - 1
     iendaq = istart + reaction%naqcomp - 1
     
-    if (option%use_mc) then
-      vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
-    endif
     
     call RReact(rt_auxvars(ghosted_id),global_auxvars(ghosted_id), &
                 material_auxvars(ghosted_id), &
                 tran_xx_p(istart:iend), &
-                num_iterations,reaction,option,vol_frac_prim)
+                num_iterations,reaction,option)
     ! set primary dependent var back to free-ion molality
     tran_xx_p(istart:iendaq) = rt_auxvars(ghosted_id)%pri_molal
     if (reaction%nimcomp > 0) then
@@ -2506,20 +2581,25 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
       istartall = offset + 1
       iendall = offset + reaction%ncomp
 
-      if (option%use_mc) then
-        vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
-      endif  
       call RTAccumulation(rt_auxvars(ghosted_id), &
                           global_auxvars(ghosted_id), &
                           material_auxvars(ghosted_id), &
-                          reaction,option,vol_frac_prim,Res)
+                          reaction,option,Res)
       if (reaction%neqsorb > 0) then
         call RAccumulationSorb(rt_auxvars(ghosted_id), &
                                global_auxvars(ghosted_id), &
                                material_auxvars(ghosted_id), &
                                reaction,option,Res)
       endif
+
+      if (option%use_mc) then
+        vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
+        Res = Res*vol_frac_prim
+      endif        
+      
       r_p(istartall:iendall) = r_p(istartall:iendall) + Res(1:reaction%ncomp)
+      
+      ! Secondary continuum formation not implemented for Age equation
       if (reaction%calculate_water_age) then 
         call RAge(rt_auxvars(ghosted_id),global_auxvars(ghosted_id), &
                   material_auxvars(ghosted_id),option,reaction,Res)
@@ -3169,15 +3249,10 @@ subroutine RTJacobianNonFlux(snes,xx,A,B,flag,realization,ierr)
       !geh - Ignore inactive cells with inactive materials
       if (patch%imat(ghosted_id) <= 0) cycle
       
-      if (option%use_mc) then    
-        vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
-      endif      
-      
       call RTAccumulationDerivative(rt_auxvars(ghosted_id), &
                                     global_auxvars(ghosted_id), &
                                     material_auxvars(ghosted_id), &
-                                    reaction,option, &
-                                    vol_frac_prim,Jup) 
+                                    reaction,option,Jup) 
                                     
       if (reaction%neqsorb > 0) then
         call RAccumulationSorbDerivative(rt_auxvars(ghosted_id), &
@@ -3187,6 +3262,9 @@ subroutine RTJacobianNonFlux(snes,xx,A,B,flag,realization,ierr)
       endif
       
       if (option%use_mc) then
+      
+        vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
+        Jup = Jup*vol_frac_prim
 
         sec_diffusion_coefficient = realization%material_property_array(1)% &
                                     ptr%secondary_continuum_diff_coeff
@@ -3471,6 +3549,7 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
       endif
       call RTAuxVarCompute(patch%aux%RT%auxvars(ghosted_id), &
                            patch%aux%Global%auxvars(ghosted_id), &
+                           patch%aux%Material%auxvars(ghosted_id), &
                            reaction,option)
       if (associated(reaction%species_idx) .and. &
           associated(patch%aux%Global%auxvars(ghosted_id)%m_nacl)) then
@@ -3653,8 +3732,9 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
               endif                           
           endif
           call RTAuxVarCompute(patch%aux%RT%auxvars_bc(sum_connection), &
-                                patch%aux%Global%auxvars_bc(sum_connection), &
-                                reaction,option)
+                               patch%aux%Global%auxvars_bc(sum_connection), &
+                               patch%aux%Material%auxvars(ghosted_id), &
+                               reaction,option)
         else
           skip_equilibrate_constraint = PETSC_FALSE
         ! Chuan needs to fill this in.
@@ -4215,6 +4295,7 @@ subroutine RTJumpStartKineticSorption(realization)
       if (patch%imat(ghosted_id) <= 0) cycle
       call RJumpStartKineticSorption(patch%aux%RT%auxvars(ghosted_id), &
                                      patch%aux%Global%auxvars(ghosted_id), &
+                                     patch%aux%Material%auxvars(ghosted_id), &
                                      reaction,option)
     enddo
   endif

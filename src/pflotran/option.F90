@@ -85,6 +85,7 @@ module Option_module
     PetscInt :: air_pressure_id
     PetscInt :: capillary_pressure_id
     PetscInt :: vapor_pressure_id 
+    PetscInt :: saturation_pressure_id 
     PetscInt :: water_id  ! index of water component dof
     PetscInt :: air_id  ! index of air component dof
     PetscInt :: energy_id  ! index of energy dof
@@ -122,7 +123,7 @@ module Option_module
     
     PetscBool :: update_flow_perm ! If true, permeability changes due to pressure    
     
-    PetscBool :: use_ice_new      ! use new formulation for ice partitioning
+    PetscInt :: ice_model         ! specify water/ice/vapor phase partitioning model
       
     PetscReal :: flow_time, tran_time, time  ! The time elapsed in the simulation.
     PetscReal :: tran_weight_t0, tran_weight_t1
@@ -153,8 +154,9 @@ module Option_module
     PetscReal :: saturation_change_limit
     PetscReal :: pressure_change_limit
     PetscReal :: temperature_change_limit
-    PetscReal :: stomp_norm
-    PetscBool :: check_stomp_norm
+    PetscReal :: post_convergence_tol
+    PetscBool :: check_post_convergence
+    PetscBool :: converged
     
     PetscReal :: infnorm_res_sec  ! inf. norm of secondary continuum rt residual
     
@@ -209,6 +211,8 @@ module Option_module
     PetscBool :: out_of_table
     
     PetscBool :: use_process_model
+    !TODO(geh): remove this once all modes have bee refactored
+    PetscBool :: use_refactored_material_auxvars
         
     ! Specify secondary continuum solver
     PetscBool :: print_explicit_primal_grid    ! prints primal grid if true
@@ -368,6 +372,7 @@ subroutine OptionInitAll(option)
   
   option%simulation_mode = 'SUBSURFACE'
   option%use_process_model = PETSC_FALSE
+  option%use_refactored_material_auxvars = PETSC_FALSE
   option%subsurface_simulation_type = SUBSURFACE_SIM_TYPE
  
   call OptionInitRealization(option)
@@ -401,7 +406,7 @@ subroutine OptionInitRealization(option)
   option%use_matrix_free = PETSC_FALSE
   option%use_mc = PETSC_FALSE
   option%set_secondary_init_temp = PETSC_FALSE
-  option%use_ice_new = PETSC_FALSE
+  option%ice_model = PAINTER_EXPLICIT
   option%set_secondary_init_conc = PETSC_FALSE
   
   option%update_flow_perm = PETSC_FALSE
@@ -416,7 +421,7 @@ subroutine OptionInitRealization(option)
 #ifdef SURFACE_FLOW
   option%nsurfflowdof = 0
   option%subsurf_surf_coupling = DECOUPLED
-  option%surface_flow_formulation = KINEMATIC_WAVE
+  option%surface_flow_formulation = DIFFUSION_WAVE
   option%surf_flow_dt = 0.d0
   option%surf_flow_time =0.d0
   option%surf_subsurf_coupling_time = 0.d0
@@ -451,6 +456,7 @@ subroutine OptionInitRealization(option)
   option%air_pressure_id = 0
   option%capillary_pressure_id = 0
   option%vapor_pressure_id = 0
+  option%saturation_pressure_id = 0
 
   option%water_id = 0
   option%air_id = 0
@@ -475,8 +481,9 @@ subroutine OptionInitRealization(option)
   option%saturation_change_limit = 0.d0
   option%pressure_change_limit = 0.d0
   option%temperature_change_limit = 0.d0
-  option%stomp_norm = 0.d0
-  option%check_stomp_norm = PETSC_FALSE
+  option%post_convergence_tol = 0.d0
+  option%check_post_convergence = PETSC_FALSE
+  option%converged = PETSC_FALSE
   
   option%infnorm_res_sec = 0.d0
   

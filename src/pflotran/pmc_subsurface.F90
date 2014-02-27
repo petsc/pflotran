@@ -205,6 +205,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
             call EOSWaterdensity(option%reference_temperature, &
                                  option%reference_pressure, den)
 
+#if 0
             coupler_list => patch%source_sinks
             coupler => coupler_list%first
             do
@@ -220,7 +221,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
                   call VecGetArrayF90(pmc%sim_aux%subsurf_mflux_exchange_with_surf, &
                                       mflux_p,ierr)
                   do iconn = 1,coupler%connection_set%num_connections
-                    coupler%flow_aux_real_var(ONE_INTEGER,iconn) = -mflux_p(iconn)/dt*den
+                    !coupler%flow_aux_real_var(ONE_INTEGER,iconn) = -mflux_p(iconn)/dt*den
                   enddo
                   call VecRestoreArrayF90(pmc%sim_aux%subsurf_mflux_exchange_with_surf, &
                                           mflux_p,ierr)
@@ -231,6 +232,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
 
               coupler => coupler%next
             enddo
+#endif
 
             coupler_list => patch%boundary_conditions
             coupler => coupler_list%first
@@ -426,6 +428,7 @@ subroutine PMCSubsurfaceSetAuxDataForSurf(this)
           field      => pmc%realization%field
           option     => pmc%realization%option
 
+#if 0
           coupler_list => pmc%realization%patch%source_sinks
           coupler => coupler_list%first
           do
@@ -476,6 +479,7 @@ subroutine PMCSubsurfaceSetAuxDataForSurf(this)
 
             coupler => coupler%next
           enddo
+#endif
 
           call EOSWaterdensity(option%reference_temperature, option%reference_pressure, &
                                den)
@@ -780,14 +784,20 @@ recursive subroutine PMCSubsurfaceDestroy(this)
   call printMsg(this%option,'PMCSubsurface%Destroy()')
 #endif
 
-  call PMCBaseStrip(this)
+  call PMCSubsurfaceStrip(this)
   
   if (associated(this%below)) then
     call this%below%Destroy()
+    ! destroy does not currently destroy; it strips
+    deallocate(this%below)
+    nullify(this%below)
   endif 
   
   if (associated(this%next)) then
     call this%next%Destroy()
+    ! destroy does not currently destroy; it strips
+    deallocate(this%next)
+    nullify(this%next)
   endif
   
 end subroutine PMCSubsurfaceDestroy

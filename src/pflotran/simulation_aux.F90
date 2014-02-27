@@ -245,9 +245,11 @@ subroutine SimAuxDestroy(aux)
 
   implicit none
 
-  type(simulation_aux_type) :: aux
+  type(simulation_aux_type), pointer :: aux
 
   PetscErrorCode :: ierr
+
+  if (.not.associated(aux)) return
 
   if (aux%subsurf_pres /= 0) call VecDestroy(aux%subsurf_pres,ierr)
   if (aux%subsurf_temp /= 0) call VecDestroy(aux%subsurf_temp,ierr)
@@ -280,6 +282,9 @@ subroutine SimAuxDestroy(aux)
     call VecScatterDestroy(aux%subsurf_to_geomechanics, ierr)
   if (aux%geomechanics_to_subsurf /= 0) &
     call VecScatterDestroy(aux%geomechanics_to_subsurf, ierr)
+
+  deallocate(aux)
+  nullify(aux)
 
 end subroutine SimAuxDestroy
 

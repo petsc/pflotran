@@ -49,6 +49,7 @@ subroutine RichardsAccumDerivative(rich_auxvar,global_auxvar, &
 
   use Option_module
   use Saturation_Function_module
+  use Material_module, only : MaterialCompressSoil
   use Material_Aux_class
   
   implicit none
@@ -63,7 +64,9 @@ subroutine RichardsAccumDerivative(rich_auxvar,global_auxvar, &
   PetscInt :: ispec 
   PetscReal :: vol_over_dt
   PetscReal :: por
-  PetscReal :: tempreal 
+  PetscReal :: tempreal
+  PetscReal :: derivative
+  PetscReal :: compressed_porosity, dcompressed_porosity_dp
 
   PetscInt :: iphase, ideriv
   type(richards_auxvar_type) :: rich_auxvar_pert
@@ -73,24 +76,22 @@ subroutine RichardsAccumDerivative(rich_auxvar,global_auxvar, &
 
   vol_over_dt = material_auxvar%volume/option%flow_dt
   por = material_auxvar%porosity
-      
-!#define USE_COMPRESSIBLITY
-#ifndef USE_COMPRESSIBLITY  
-  ! accumulation term units = dkmol/dp
-  J(1,1) = (global_auxvar%sat(1)*rich_auxvar%dden_dp+ &
-            rich_auxvar%dsat_dp*global_auxvar%den(1))* &
-           por*vol_over_dt
-
-#else
-  tempreal = exp(-1.d-7*(global_auxvar%pres(1)-option%reference_pressure))
-  J(1,1) = ((global_auxvar%sat(1)*rich_auxvar%dden_dp+ &
-             rich_auxvar%dsat_dp*global_auxvar%den(1))* &
-            1.d0-(1.d0-por)*tempreal + &
-            global_auxvar%sat(1)*global_auxvar%den(1)* &
-            (por-1.d0)*-1.d-7*tempreal)* &
-           vol_over_dt
-#endif  
   
+  derivative = 0.d0
+  if (soil_compressibility_index > 0) then
+    tempreal = global_auxvar%sat(1)*global_auxvar%den(1)
+    call MaterialCompressSoil(material_auxvar,global_auxvar%pres(1), &
+                                 compressed_porosity,dcompressed_porosity_dp)
+    por = compressed_porosity
+    derivative = derivative + dcompressed_porosity_dp * tempreal
+  endif
+
+  ! accumulation term units = dkmol/dp
+  derivative = derivative + (global_auxvar%sat(1)*rich_auxvar%dden_dp + &
+                             rich_auxvar%dsat_dp*global_auxvar%den(1)) * por
+
+  J(1,1) = derivative * vol_over_dt
+
   if (option%numerical_derivatives_flow) then
     call GlobalAuxVarInit(global_auxvar_pert,option)  
     call MaterialAuxVarInit(material_auxvar_pert,option)  
@@ -146,6 +147,7 @@ subroutine RichardsAccumulation(rich_auxvar,global_auxvar, &
   ! 
 
   use Option_module
+  use Material_module
   use Material_Aux_class
   
   implicit none
@@ -154,23 +156,24 @@ subroutine RichardsAccumulation(rich_auxvar,global_auxvar, &
   type(global_auxvar_type) :: global_auxvar
   type(material_auxvar_type) :: material_auxvar
   type(option_type) :: option
-  PetscReal :: Res(1:option%nflowdof) 
+  PetscReal :: Res(1:option%nflowdof)
+  
   PetscReal :: por, por1, vol_over_dt
+  PetscReal :: compressed_porosity, dcompressed_porosity_dp
        
   vol_over_dt = material_auxvar%volume/option%flow_dt
   por = material_auxvar%porosity
   
-  ! accumulation term units = kmol/s
-#ifndef USE_COMPRESSIBILITY
-    Res(1) = global_auxvar%sat(1) * global_auxvar%den(1) * por * &
-             vol_over_dt
-#else
-    por1 = 1.d0-(1.d0-por)*exp(-1.d-7*(global_auxvar%pres(1)- &
-                                       option%reference_pressure))
-    Res(1) = global_auxvar%sat(1) * global_auxvar%den(1) * por1 * &
-             vol_over_dt
-#endif
+  if (soil_compressibility_index > 0) then
+    call MaterialCompressSoil(material_auxvar,global_auxvar%pres(1), &
+                              compressed_porosity,dcompressed_porosity_dp)
+    por = compressed_porosity
+  endif
     
+  ! accumulation term units = kmol/s
+  Res(1) = global_auxvar%sat(1) * global_auxvar%den(1) * por * &
+           vol_over_dt
+  
 end subroutine RichardsAccumulation
 
 ! ************************************************************************** !
@@ -428,7 +431,6 @@ subroutine RichardsFlux(rich_auxvar_up,global_auxvar_up, &
   call material_auxvar_up%PermeabilityTensorToScalar(dist,perm_up)
   call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
 
-  
   Dq = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
   
 ! Flow term
@@ -661,7 +663,9 @@ subroutine RichardsBCFluxDerivative(ibndtype,auxvars, &
             v_darcy_allowable = (global_auxvar_up%pres(1)-option%reference_pressure) &
                                 /option%flow_dt/(-option%gravity(3))/rho
             if(v_darcy > v_darcy_allowable) then
-              dphi_dp_dn = 0.d0
+              ! Since darcy velocity is limiited, dq_dp_dn needs to be zero.
+              !  Dq = 0 ==> dq_dp_dn = 0
+              Dq = 0.d0
               v_darcy = v_darcy_allowable
             endif
           endif

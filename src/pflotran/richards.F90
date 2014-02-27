@@ -244,6 +244,7 @@ subroutine RichardsCheckUpdatePre(line_search,P,dP,changed,realization,ierr)
 
   if (dabs(option%saturation_change_limit) > 0.d0) then
 
+    changed = PETSC_TRUE
     patch => realization%patch
 
     call VecGetArrayF90(dP,dP_p,ierr)
@@ -276,6 +277,7 @@ subroutine RichardsCheckUpdatePre(line_search,P,dP,changed,realization,ierr)
   endif
 
   if (dabs(option%pressure_dampening_factor) > 0.d0) then
+    changed = PETSC_TRUE
     ! P^p+1 = P^p - dP^p
     P_R = option%reference_pressure
     scale = option%pressure_dampening_factor
@@ -360,7 +362,7 @@ subroutine RichardsCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
   class(material_auxvar_type), pointer :: material_auxvars(:)  
   PetscInt :: local_id, ghosted_id
   PetscReal :: Res(1)
-  PetscReal :: inf_norm
+  PetscReal :: inf_norm, global_inf_norm
   PetscErrorCode :: ierr
   
   grid => realization%patch%grid
@@ -373,7 +375,8 @@ subroutine RichardsCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
   dP_changed = PETSC_FALSE
   P1_changed = PETSC_FALSE
   
-  if (option%check_stomp_norm) then
+  option%converged = PETSC_FALSE
+  if (option%check_post_convergence) then
     call VecGetArrayF90(dP,dP_p,ierr)
     call VecGetArrayF90(P1,P1_p,ierr)
     call VecGetArrayF90(field%flow_r,r_p,ierr)
@@ -390,9 +393,12 @@ subroutine RichardsCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
       inf_norm = max(inf_norm,min(dabs(dP_p(local_id)/P1_p(local_id)), &
                                   dabs(r_p(local_id)/Res(1))))
     enddo
-    call MPI_Allreduce(inf_norm,option%stomp_norm,ONE_INTEGER_MPI, &
+    call MPI_Allreduce(inf_norm,global_inf_norm,ONE_INTEGER_MPI, &
                        MPI_DOUBLE_PRECISION, &
                        MPI_MAX,option%mycomm,ierr)
+    option%converged = PETSC_TRUE
+    if (global_inf_norm > option%post_convergence_tol) &
+      option%converged = PETSC_FALSE
     call VecRestoreArrayF90(dP,dP_p,ierr)
     call VecRestoreArrayF90(P1,P1_p,ierr)
     call VecGetArrayF90(field%flow_r,r_p,ierr)
@@ -624,6 +630,7 @@ subroutine RichardsUpdatePermPatch(realization)
   PetscReal :: p_min, p_max, permfactor_max
   PetscReal, pointer :: xx_loc_p(:)
   PetscReal, pointer :: perm0_xx_p(:), perm0_yy_p(:), perm0_zz_p(:)
+  PetscReal, pointer :: perm_ptr(:)
   PetscErrorCode :: ierr
 
   option => realization%option
@@ -661,12 +668,19 @@ subroutine RichardsUpdatePermPatch(realization)
         scale = permfactor_max
       endif
     endif
-    material_auxvars(ghosted_id)%permeability(perm_xx_index) = &
-      perm0_xx_p(local_id)*scale
-    material_auxvars(ghosted_id)%permeability(perm_yy_index) = &
-      perm0_yy_p(local_id)*scale
-    material_auxvars(ghosted_id)%permeability(perm_zz_index) = &
-      perm0_zz_p(local_id)*scale
+    !geh: this is a kludge for gfortran.  the code reports errors when 
+    !     material_auxvars(ghosted_id)%permeability is used.
+    !TODO(geh): test with Intel!
+    perm_ptr => material_auxvars(ghosted_id)%permeability
+    perm_ptr(perm_xx_index) = perm0_xx_p(local_id)*scale
+    perm_ptr(perm_yy_index) = perm0_yy_p(local_id)*scale
+    perm_ptr(perm_zz_index) = perm0_zz_p(local_id)*scale
+!    material_auxvars(ghosted_id)%permeability(perm_xx_index) = &
+!      perm0_xx_p(local_id)*scale
+!    material_auxvars(ghosted_id)%permeability(perm_yy_index) = &
+!      perm0_yy_p(local_id)*scale
+!    material_auxvars(ghosted_id)%permeability(perm_zz_index) = &
+!      perm0_zz_p(local_id)*scale
   enddo
   
   call VecRestoreArrayF90(field%perm0_xx,perm0_xx_p,ierr)
@@ -2282,10 +2296,10 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
                 if (ukvr*Dq > floweps) then
                   v_darcy = Dq * ukvr * dphi
                   ! store volumetric rate for ss_fluid_fluxes()
-                  Jup(1,1) = -Dq*rich_auxvars(ghosted_id)%dkvr_dp*dphi* &
+                  Jup(1,1) = -1.d0*(-Dq*rich_auxvars(ghosted_id)%dkvr_dp*dphi* &
                              global_auxvars(ghosted_id)%den(1) &
                              -Dq*ukvr*1.d0*global_auxvars(ghosted_id)%den(1) &
-                             -Dq*ukvr*dphi*rich_auxvars(ghosted_id)%dden_dp
+                             -Dq*ukvr*dphi*rich_auxvars(ghosted_id)%dden_dp)
                 endif
               endif
             endif

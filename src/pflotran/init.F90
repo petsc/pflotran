@@ -196,6 +196,7 @@ subroutine Init(simulation)
   ! read required cards
   call InitReadRequiredCardsFromInput(realization)
 #ifdef SURFACE_FLOW
+  !geh: surf_realization%input is never freed
   surf_realization%input => InputCreate(IN_UNIT,option%input_filename,option)
   surf_realization%subsurf_filename = realization%discretization%filename
   call SurfaceInitReadRequiredCards(simulation%surf_realization)
@@ -229,6 +230,7 @@ subroutine Init(simulation)
     option%nphase = 1
     option%liquid_phase = 1
     option%use_isothermal = PETSC_TRUE  ! assume default isothermal when only transport
+    option%use_refactored_material_auxvars = PETSC_TRUE
     call TimestepperDestroy(simulation%flow_stepper)
     nullify(flow_stepper)
   endif
@@ -579,7 +581,7 @@ subroutine Init(simulation)
     end select
     
     
-    if (option%check_stomp_norm) then
+    if (option%check_post_convergence) then
       select case(option%iflowmode)
         case(RICHARDS_MODE)
           call SNESGetLineSearch(flow_solver%snes, linesearch, ierr)
@@ -875,6 +877,10 @@ subroutine Init(simulation)
       case(FLASH2_MODE)
         call Flash2Setup(realization)
       case(G_MODE)
+        call MaterialSetup(realization%patch%aux%Material%material_parameter, &
+                           realization%material_property_array, &
+                           realization%saturation_function_array, &
+                           realization%option)
         call GeneralSetup(realization)
     end select
   
@@ -1171,24 +1177,8 @@ subroutine Init(simulation)
     select case(option%iflowmode)
       case(RICHARDS_MODE)
         call SurfaceFlowUpdateAuxVars(simulation%surf_realization)
-        if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
-          call SurfaceFlowCreateSurfSubsurfVec( &
-                          simulation%realization, simulation%surf_realization)
-        endif
-        if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED_NEW) then
-          call SurfaceFlowCreateSurfSubsurfVecNew( &
-                          simulation%realization, simulation%surf_realization)
-        endif
       case(TH_MODE)
         call SurfaceTHUpdateAuxVars(surf_realization)
-        if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
-          call SurfaceTHCreateSurfSubsurfVec( &
-                          simulation%realization, simulation%surf_realization)
-        endif
-        if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED_NEW) then
-          call SurfaceTHCreateSurfSubsurfVecNew( &
-                          simulation%realization, simulation%surf_realization)
-        endif
       case default
         option%io_buffer = 'For surface-flow only RICHARDS and TH mode implemented'
         call printErrMsgByRank(option)
@@ -1452,6 +1442,12 @@ subroutine InitReadRequiredCardsFromInput(realization)
   
 !.........................................................................
 
+  ! Need this with CHEMISTRY read
+  string = "MULTIPLE_CONTINUUM"
+  option%use_mc = PETSC_TRUE
+
+!.........................................................................
+
   ! CHEMISTRY information
   string = "CHEMISTRY"
   call InputFindStringInFile(input,option,string)
@@ -1665,7 +1661,24 @@ subroutine InitReadInput(simulation)
                option%io_buffer = ' TH(C): must specify FREEZING or NO_FREEZING submode!'
                call printErrMsg(option)
             endif
-         endif
+         endif  
+        
+!....................
+      case ('ICE_MODEL')
+        call InputReadWord(input,option,word,PETSC_FALSE)
+        call StringToUpper(word)
+        select case (trim(word))
+          case ('PAINTER_EXPLICIT')
+            option%ice_model = PAINTER_EXPLICIT
+          case ('PAINTER_KARRA_IMPLICIT')
+            option%ice_model = PAINTER_KARRA_IMPLICIT
+          case ('PAINTER_KARRA_EXPLICIT')
+            option%ice_model = PAINTER_KARRA_EXPLICIT
+          case default
+            option%io_buffer = 'Cannot identify the specificed ice model.' // &
+             'Specify PAINTER_EXPLICIT or PAINTER_KARRA_IMPLICIT' // &
+             ' or PAINTER_KARRA_EXPLICIT.'
+          end select
 
 !....................
       case ('GRID')
@@ -1913,24 +1926,19 @@ subroutine InitReadInput(simulation)
         
 !......................
 
-      case('MULTIPLE_CONTINUUM')
-        option%use_mc = PETSC_TRUE
-        
-!......................
-
-      case('ICE_NEW')
-        option%use_ice_new = PETSC_TRUE        
-      
-!......................
-
       case('UPDATE_FLOW_PERMEABILITY')
         option%update_flow_perm = PETSC_TRUE
         
 !......................
 
       case('DFN')
-        grid%unstructured_grid%grid_type = TWO_DIM_GRID        
-        
+        grid%unstructured_grid%grid_type = TWO_DIM_GRID    
+            
+!......................
+
+      case("MULTIPLE_CONTINUUM")
+        option%use_mc = PETSC_TRUE
+              
 !......................
 
       case('SECONDARY_CONTINUUM_SOLVER')
@@ -2608,16 +2616,12 @@ subroutine InitReadInput(simulation)
            option%store_flowrate = PETSC_TRUE
           endif
           if (associated(grid%unstructured_grid%explicit_grid)) then
-#ifndef STORE_FLOWRATES
-            option%io_buffer='To output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE, '// &
-              'compile with -DSTORE_FLOWRATES'
+#ifndef STORE_FLOWRATES          
+            option%io_buffer='To output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE ' // &
+              'compile with -DSTORE_FLOWRATES.'
             call printErrMsg(option)
 #endif
             output_option%print_explicit_flowrate = mass_flowrate
-          else
-            option%io_buffer='Output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE ' // &
-              'only available in HDF5 format for implicit grid' 
-            call printErrMsg(option)
           endif
         
         endif
@@ -2772,6 +2776,7 @@ subroutine setFlowMode(option)
 
   use Option_module
   use String_module
+  use General_Aux_module
 
   implicit none 
 
@@ -2809,6 +2814,7 @@ subroutine setFlowMode(option)
       option%nflowdof = 1
       option%nflowspec = 1
       option%use_isothermal = PETSC_TRUE
+      option%use_refactored_material_auxvars = PETSC_TRUE
     case('MPH','MPHASE')
       option%iflowmode = MPH_MODE
       option%nphase = 2
@@ -2844,6 +2850,7 @@ subroutine setFlowMode(option)
       option%air_pressure_id = 3
       option%capillary_pressure_id = 4
       option%vapor_pressure_id = 5
+      option%saturation_pressure_id = 6
 
       option%water_id = 1
       option%air_id = 2
@@ -2852,6 +2859,7 @@ subroutine setFlowMode(option)
       option%nflowdof = 3
       option%nflowspec = 2
       option%use_isothermal = PETSC_FALSE
+      option%use_refactored_material_auxvars = PETSC_TRUE
     case default
       option%io_buffer = 'Mode: '//trim(option%flowmode)//' not recognized.'
       call printErrMsg(option)
@@ -2906,6 +2914,7 @@ subroutine assignMaterialPropToRegions(realization)
   
   PetscInt :: icell, local_id, ghosted_id, natural_id, material_id
   PetscInt :: istart, iend
+  PetscInt :: i
   character(len=MAXSTRINGLENGTH) :: group_name
   character(len=MAXSTRINGLENGTH) :: dataset_name
   PetscErrorCode :: ierr
@@ -2928,6 +2937,9 @@ subroutine assignMaterialPropToRegions(realization)
   patch => realization%patch
   field => realization%field
 
+  ! initialize material auxiliary indices
+  call MaterialInitAuxIndices(realization%material_property_array,option)
+  
   ! loop over all patches and allocation material id arrays
   cur_patch => realization%patch_list%first
   do
@@ -2942,13 +2954,13 @@ subroutine assignMaterialPropToRegions(realization)
       cur_patch%sat_func_id = -999
     endif
     
-    patch%aux%Material => MaterialAuxCreate()
+    cur_patch%aux%Material => MaterialAuxCreate()
     allocate(material_auxvars(grid%ngmax))
     do ghosted_id = 1, grid%ngmax
       call MaterialAuxVarInit(material_auxvars(ghosted_id),option)
     enddo
-    patch%aux%Material%num_aux = grid%ngmax
-    patch%aux%Material%auxvars => material_auxvars
+    cur_patch%aux%Material%num_aux = grid%ngmax
+    cur_patch%aux%Material%auxvars => material_auxvars
     nullify(material_auxvars)
     
     cur_patch => cur_patch%next
@@ -3027,6 +3039,13 @@ subroutine assignMaterialPropToRegions(realization)
     call VecGetArrayF90(field%porosity0,por0_p,ierr)
     call VecGetArrayF90(field%tortuosity0,tor0_p,ierr)
         
+    !geh: remove
+    if (option%use_refactored_material_auxvars) then
+      material_auxvars => cur_patch%aux%Material%auxvars
+    else
+      nullify(material_auxvars)
+    endif
+
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       material_id = cur_patch%imat(ghosted_id)
@@ -3061,7 +3080,7 @@ subroutine assignMaterialPropToRegions(realization)
         call printErrMsgByRank(option)
       endif
       if (option%nflowdof > 0) then
-        patch%sat_func_id(ghosted_id) = material_property%saturation_function_id
+        cur_patch%sat_func_id(ghosted_id) = material_property%saturation_function_id
         icap_loc_p(ghosted_id) = material_property%saturation_function_id
         ithrm_loc_p(ghosted_id) = material_property%id
         perm_xx_p(local_id) = material_property%permeability(1,1)
@@ -3072,6 +3091,10 @@ subroutine assignMaterialPropToRegions(realization)
           perm_xy_p(local_id) = material_property%permeability(1,2)
           perm_yz_p(local_id) = material_property%permeability(2,3)
         endif
+      endif
+      if (associated(material_auxvars)) then
+        call MaterialAssignPropertyToAux(material_auxvars(ghosted_id), &
+                                         material_property,option)
       endif
       por0_p(local_id) = material_property%porosity
       tor0_p(local_id) = material_property%tortuosity
@@ -3111,7 +3134,7 @@ subroutine assignMaterialPropToRegions(realization)
           call VecGetArrayF90(field%work,vec_p,ierr)
           call VecGetArrayF90(field%porosity0,por0_p,ierr)
           do local_id = 1, grid%nlmax
-            if (patch%imat(grid%nL2G(local_id)) == &
+            if (cur_patch%imat(grid%nL2G(local_id)) == &
                 material_property%id) then
               por0_p(local_id) = vec_p(local_id)
             endif
@@ -3156,7 +3179,7 @@ subroutine assignMaterialPropToRegions(realization)
                                    PERMEABILITY_YZ,0)
     endif
     !geh: remove
-    if (option%iflowmode /= RICHARDS_MODE) then
+    if (.not.option%use_refactored_material_auxvars) then
       call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
                                        field%perm_xx_loc,ONEDOF)  
       call DiscretizationGlobalToLocal(discretization,field%perm0_yy, &
@@ -3189,9 +3212,28 @@ subroutine assignMaterialPropToRegions(realization)
                                     field%work_loc,ONEDOF)
   call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
                                TORTUOSITY,0)
+  ! rock properties
+  do i = 1, max_material_index
+    call VecGetArrayF90(field%work,vec_p,ierr)
+    do local_id = 1, patch%grid%nlmax
+      ghosted_id = patch%grid%nL2G(local_id)
+      vec_p(local_id) = &
+        patch%aux%Material%auxvars(patch%grid%nL2G(local_id))% &
+        soil_properties(i)
+    enddo
+    call VecRestoreArrayF90(field%work,vec_p,ierr)
+    call DiscretizationGlobalToLocal(discretization,field%work, &
+                                     field%work_loc,ONEDOF)
+    call VecGetArrayF90(field%work_loc,vec_p,ierr)
+    do ghosted_id = 1, patch%grid%ngmax
+      patch%aux%Material%auxvars(ghosted_id)%soil_properties(i) = &
+         vec_p(ghosted_id)
+    enddo
+    call VecRestoreArrayF90(field%work_loc,vec_p,ierr)
+  enddo
+  
   !geh: remove
-  if (option%iflowmode /= RICHARDS_MODE .and. &
-      option%iflowmode /= NULL_MODE) then
+  if (.not.option%use_refactored_material_auxvars) then
     call DiscretizationGlobalToLocal(discretization,field%porosity0, &
                                      field%porosity_loc,ONEDOF)
     call DiscretizationGlobalToLocal(discretization,field%tortuosity0, &
@@ -3396,10 +3438,12 @@ subroutine readRegionFiles(realization)
                                                       region%filename)
         endif
       else if (index(region%filename,'.ss') > 0) then
+        region%def_type = DEFINED_BY_SIDESET_UGRID
         region%sideset => RegionCreateSideset()
         call RegionReadFromFile(region%sideset,region%filename, &
                                 realization%option)
       else if (index(region%filename,'.ex') > 0) then
+        region%def_type = DEFINED_BY_FACE_UGRID_EXP
         call RegionReadFromFile(region%explicit_faceset,region%cell_ids, &
                                 region%filename,realization%option)
         region%num_cells = size(region%cell_ids)

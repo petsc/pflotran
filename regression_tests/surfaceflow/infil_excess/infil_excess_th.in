@@ -1,11 +1,11 @@
 :Description: 
 
 :=========================== flow mode ========================================
-MODE TH
+MODE TH NO_FREEZING
 
 :=========================== discretization ===================================
 GRID
-  TYPE unstructured sloping_plane_400X_320Y_80dx_80dy_0.2000dz_0.0005slope.h5
+  TYPE unstructured ../surface_flow_only/sloping_plane_400X_320Y_80dx_80dy_0.2000dz_0.0005slope.h5
 END
 
 :=========================== fluid properties =================================
@@ -63,7 +63,7 @@ REGION all
 END 
 
 REGION top
-  FILE sloping_plane_400X_320Y_80dx_80dy_0.2000dz_0.0005slope.h5
+  FILE ../surface_flow_only/sloping_plane_400X_320Y_80dx_80dy_0.2000dz_0.0005slope.h5
   GRID unstructured
 END
 
@@ -129,13 +129,13 @@ END
 SURFACE_FLOW
 
 SURF_GRID
-  TYPE unstructured sloping_plane_400X_320Y_80dx_80dy_0.2000dz_0.0005slope.h5
+  TYPE unstructured ../surface_flow_only/sloping_plane_400X_320Y_80dx_80dy_0.2000dz_0.0005slope.h5
 END
 
 SURF_FLOW_FORMULATION diffusive
 
 SURF_SUBSURFACE_COUPLING
-  seq_coupled_new
+  seq_coupled
 END
 
 SURF_MATERIAL_PROPERTY surf1

@@ -188,6 +188,7 @@ subroutine MphaseSetupPatch(realization)
   type(sec_heat_type), pointer :: mphase_sec_heat_vars(:)
   type(coupler_type), pointer :: initial_condition
   PetscReal :: area_per_vol
+  PetscInt :: local_id
 
   option => realization%option
   patch => realization%patch
@@ -234,14 +235,14 @@ subroutine MphaseSetupPatch(realization)
   if (option%use_mc) then
  
     initial_condition => patch%initial_conditions%first
-    allocate(mphase_sec_heat_vars(grid%ngmax))
+    allocate(mphase_sec_heat_vars(grid%nlmax))
   
-    do ghosted_id = 1, grid%ngmax
+    do local_id = 1, grid%nlmax
   
     ! Assuming the same secondary continuum for all regions (need to make it an array)
     ! S. Karra 07/18/12
       call SecondaryContinuumSetProperties( &
-        mphase_sec_heat_vars(ghosted_id)%sec_continuum, &
+        mphase_sec_heat_vars(local_id)%sec_continuum, &
         realization%material_property_array(1)%ptr%secondary_continuum_name, &
         realization%material_property_array(1)%ptr%secondary_continuum_length, &
         realization%material_property_array(1)%ptr%secondary_continuum_matrix_block_size, &
@@ -250,57 +251,57 @@ subroutine MphaseSetupPatch(realization)
         realization%material_property_array(1)%ptr%secondary_continuum_area, &
         option)
         
-      mphase_sec_heat_vars(ghosted_id)%ncells = &
+      mphase_sec_heat_vars(local_id)%ncells = &
         realization%material_property_array(1)%ptr%secondary_continuum_ncells
-      mphase_sec_heat_vars(ghosted_id)%aperture = &
+      mphase_sec_heat_vars(local_id)%aperture = &
         realization%material_property_array(1)%ptr%secondary_continuum_aperture
-      mphase_sec_heat_vars(ghosted_id)%epsilon = &
+      mphase_sec_heat_vars(local_id)%epsilon = &
         realization%material_property_array(1)%ptr%secondary_continuum_epsilon
-      mphase_sec_heat_vars(ghosted_id)%log_spacing = &
+      mphase_sec_heat_vars(local_id)%log_spacing = &
         realization%material_property_array(1)%ptr%secondary_continuum_log_spacing
-      mphase_sec_heat_vars(ghosted_id)%outer_spacing = &
+      mphase_sec_heat_vars(local_id)%outer_spacing = &
         realization%material_property_array(1)%ptr%secondary_continuum_outer_spacing
         
 
-      allocate(mphase_sec_heat_vars(ghosted_id)%area(mphase_sec_heat_vars(ghosted_id)%ncells))
-      allocate(mphase_sec_heat_vars(ghosted_id)%vol(mphase_sec_heat_vars(ghosted_id)%ncells))
-      allocate(mphase_sec_heat_vars(ghosted_id)%dm_minus(mphase_sec_heat_vars(ghosted_id)%ncells))
-      allocate(mphase_sec_heat_vars(ghosted_id)%dm_plus(mphase_sec_heat_vars(ghosted_id)%ncells))
-      allocate(mphase_sec_heat_vars(ghosted_id)%sec_continuum% &
-               distance(mphase_sec_heat_vars(ghosted_id)%ncells))
+      allocate(mphase_sec_heat_vars(local_id)%area(mphase_sec_heat_vars(local_id)%ncells))
+      allocate(mphase_sec_heat_vars(local_id)%vol(mphase_sec_heat_vars(local_id)%ncells))
+      allocate(mphase_sec_heat_vars(local_id)%dm_minus(mphase_sec_heat_vars(local_id)%ncells))
+      allocate(mphase_sec_heat_vars(local_id)%dm_plus(mphase_sec_heat_vars(local_id)%ncells))
+      allocate(mphase_sec_heat_vars(local_id)%sec_continuum% &
+               distance(mphase_sec_heat_vars(local_id)%ncells))
     
       call SecondaryContinuumType(&
-                              mphase_sec_heat_vars(ghosted_id)%sec_continuum, &
-                              mphase_sec_heat_vars(ghosted_id)%ncells, &
-                              mphase_sec_heat_vars(ghosted_id)%area, &
-                              mphase_sec_heat_vars(ghosted_id)%vol, &
-                              mphase_sec_heat_vars(ghosted_id)%dm_minus, &
-                              mphase_sec_heat_vars(ghosted_id)%dm_plus, &
-                              mphase_sec_heat_vars(ghosted_id)%aperture, &
-                              mphase_sec_heat_vars(ghosted_id)%epsilon, &
-                              mphase_sec_heat_vars(ghosted_id)%log_spacing, &
-                              mphase_sec_heat_vars(ghosted_id)%outer_spacing, &
+                              mphase_sec_heat_vars(local_id)%sec_continuum, &
+                              mphase_sec_heat_vars(local_id)%ncells, &
+                              mphase_sec_heat_vars(local_id)%area, &
+                              mphase_sec_heat_vars(local_id)%vol, &
+                              mphase_sec_heat_vars(local_id)%dm_minus, &
+                              mphase_sec_heat_vars(local_id)%dm_plus, &
+                              mphase_sec_heat_vars(local_id)%aperture, &
+                              mphase_sec_heat_vars(local_id)%epsilon, &
+                              mphase_sec_heat_vars(local_id)%log_spacing, &
+                              mphase_sec_heat_vars(local_id)%outer_spacing, &
                               area_per_vol,option)
                                 
-      mphase_sec_heat_vars(ghosted_id)%interfacial_area = area_per_vol* &
-          (1.d0 - mphase_sec_heat_vars(ghosted_id)%epsilon)* &
+      mphase_sec_heat_vars(local_id)%interfacial_area = area_per_vol* &
+          (1.d0 - mphase_sec_heat_vars(local_id)%epsilon)* &
           realization%material_property_array(1)%ptr% &
           secondary_continuum_area_scaling
 
 
     ! Setting the initial values of all secondary node temperatures same as primary node 
     ! temperatures (with initial dirichlet BC only) -- sk 06/26/12
-      allocate(mphase_sec_heat_vars(ghosted_id)%sec_temp(mphase_sec_heat_vars(ghosted_id)%ncells))
+      allocate(mphase_sec_heat_vars(local_id)%sec_temp(mphase_sec_heat_vars(local_id)%ncells))
       
       if (option%set_secondary_init_temp) then
-        mphase_sec_heat_vars(ghosted_id)%sec_temp = &
+        mphase_sec_heat_vars(local_id)%sec_temp = &
           realization%material_property_array(1)%ptr%secondary_continuum_init_temp
       else
-        mphase_sec_heat_vars(ghosted_id)%sec_temp = &
+        mphase_sec_heat_vars(local_id)%sec_temp = &
         initial_condition%flow_condition%temperature%dataset%rarray(1)
       endif
           
-      mphase_sec_heat_vars(ghosted_id)%sec_temp_update = PETSC_FALSE
+      mphase_sec_heat_vars(local_id)%sec_temp_update = PETSC_FALSE
 
     enddo
       
@@ -1325,7 +1326,7 @@ subroutine MphaseUpdateFixedAccumPatch(realization)
     istart = iend-option%nflowdof+1
     
     if (option%use_mc) then
-      vol_frac_prim = mphase_sec_heat_vars(ghosted_id)%epsilon
+      vol_frac_prim = mphase_sec_heat_vars(local_id)%epsilon
     endif
     
 !    iphase = int(iphase_loc_p(ghosted_id))
@@ -2683,7 +2684,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
     istart = iend-option%nflowdof+1
     
     if (option%use_mc) then
-      vol_frac_prim = mphase_sec_heat_vars(ghosted_id)%epsilon
+      vol_frac_prim = mphase_sec_heat_vars(local_id)%epsilon
     endif
     
     call MphaseAccumulation(auxvars(ghosted_id)%auxvar_elem(0), &
@@ -2715,7 +2716,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       sec_dencpr = mphase_parameter%dencpr(int(ithrm_loc_p(ghosted_id))) ! secondary rho*c_p same as primary for now
 
       if (option%sec_vars_update) then
-        call MphaseSecHeatAuxVarCompute(mphase_sec_heat_vars(ghosted_id), &
+        call MphaseSecHeatAuxVarCompute(mphase_sec_heat_vars(local_id), &
                         auxvars(ghosted_id)%auxvar_elem(0), &
                         global_auxvars(ghosted_id), &
                         mphase_parameter%ckwet(int(ithrm_loc_p(ghosted_id))), &
@@ -2723,7 +2724,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
                         option)
       endif       
     
-      call MphaseSecondaryHeat(mphase_sec_heat_vars(ghosted_id), &
+      call MphaseSecondaryHeat(mphase_sec_heat_vars(local_id), &
                         auxvars(ghosted_id)%auxvar_elem(0), &
                         global_auxvars(ghosted_id), &
                         mphase_parameter%ckwet(int(ithrm_loc_p(ghosted_id))), &
@@ -3336,7 +3337,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     icap = int(icap_loc_p(ghosted_id))
      
     if (option%use_mc) then
-      vol_frac_prim = sec_heat_vars(ghosted_id)%epsilon
+      vol_frac_prim = sec_heat_vars(local_id)%epsilon
     endif
      
     do nvar =1, option%nflowdof
@@ -3557,7 +3558,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
     if (option%use_mc) then
 
-      call MphaseSecondaryHeatJacobian(sec_heat_vars(ghosted_id), &
+      call MphaseSecondaryHeatJacobian(sec_heat_vars(local_id), &
                         mphase_parameter%ckwet(int(ithrm_loc_p(ghosted_id))), &
                         mphase_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
                         option,jac_sec_heat)

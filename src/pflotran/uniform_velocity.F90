@@ -500,19 +500,17 @@ subroutine UniformVelocityDatasetDestroy(dataset)
   ! Author: Glenn Hammond
   ! Date: 06/02/09
   ! 
-
+  use Utility_module, only : DeallocateArray
+  
   implicit none
   
   type(uniform_velocity_dataset_type), pointer :: dataset
   
   if (.not.associated(dataset)) return
   
-  if (associated(dataset%times)) deallocate(dataset%times)
-  nullify(dataset%times)
-  if (associated(dataset%values)) deallocate(dataset%values)
-  nullify(dataset%values)  
-  if (associated(dataset%cur_value)) deallocate(dataset%cur_value)
-  nullify(dataset%cur_value)
+  call DeallocateArray(dataset%times)
+  call DeallocateArray(dataset%values)
+  call DeallocateArray(dataset%cur_value)
   
   deallocate(dataset)
   nullify(dataset)  

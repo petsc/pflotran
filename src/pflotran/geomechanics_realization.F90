@@ -2155,9 +2155,9 @@ subroutine GeomechRealizDestroy(geomech_realization)
   call GeomechRegionDestroyList(geomech_realization%geomech_regions)
   call GeomechConditionDestroyList(geomech_realization%geomech_conditions)
   
-  if (associated(geomech_realization%debug)) &
-    deallocate(geomech_realization%debug)
-  nullify(geomech_realization%debug)  
+  if (associated(geomech_realization%geomech_debug)) &
+    deallocate(geomech_realization%geomech_debug)
+  nullify(geomech_realization%geomech_debug)
   
   if (associated(geomech_realization%geomech_material_property_array)) &
     deallocate(geomech_realization%geomech_material_property_array)

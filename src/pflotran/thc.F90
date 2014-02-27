@@ -530,7 +530,7 @@ subroutine THCCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
 
   PetscInt :: local_id, ghosted_id
   PetscReal :: Res(3)
-  PetscReal :: inf_norm
+  PetscReal :: inf_norm, global_inf_norm
   PetscErrorCode :: ierr
   PetscReal :: vol_frac_prim
   PetscInt :: istart, iend
@@ -547,7 +547,7 @@ subroutine THCCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
   dP_changed = PETSC_FALSE
   P1_changed = PETSC_FALSE
   
-  if (option%check_stomp_norm) then
+  if (option%check_post_convergence) then
     call VecGetArrayF90(dP,dP_p,ierr)
     call VecGetArrayF90(P1,P1_p,ierr)
     call VecGetArrayF90(field%volume,volume_p,ierr)
@@ -566,7 +566,7 @@ subroutine THCCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
       istart = iend-option%nflowdof+1
       
       if (option%use_mc) then
-        vol_frac_prim = thc_sec_heat_vars(ghosted_id)%epsilon
+        vol_frac_prim = thc_sec_heat_vars(local_id)%epsilon
       endif
 
       call THCAccumulation(thc_auxvars(ghosted_id), &
@@ -581,9 +581,12 @@ subroutine THCCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
                                   dabs(dP_p(iend)/P1_p(iend)), &
                                   dabs(r_p(iend)/Res(3))))
     enddo
-    call MPI_Allreduce(inf_norm,option%stomp_norm,ONE_INTEGER_MPI, &
+    call MPI_Allreduce(inf_norm,global_inf_norm,ONE_INTEGER_MPI, &
                        MPI_DOUBLE_PRECISION, &
                        MPI_MAX,option%mycomm,ierr)
+    option%converged = PETSC_TRUE
+    if (global_inf_norm > option%post_convergence_tol) &
+      option%converged = PETSC_FALSE
     call VecRestoreArrayF90(dP,dP_p,ierr)
     call VecRestoreArrayF90(P1,P1_p,ierr)
     call VecRestoreArrayF90(field%volume,volume_p,ierr)
@@ -3328,14 +3331,14 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
 
       if (option%sec_vars_update) then
         call THCSecHeatAuxVarCompute(thc_sec_heat_vars(local_id), &
-                            global_auxvars(local_id), &
+                            global_auxvars(ghosted_id), &
                             thc_parameter%ckwet(int(ithrm_loc_p(local_id))), &
                             sec_dencpr, &
                             option)
       endif       
     
       call THCSecondaryHeat(thc_sec_heat_vars(local_id), &
-                          global_auxvars(local_id), &
+                          global_auxvars(ghosted_id), &
 !                         thc_parameter%ckdry(int(ithrm_loc_p(local_id))), &
                           thc_parameter%ckwet(int(ithrm_loc_p(local_id))), &
                           sec_dencpr, &

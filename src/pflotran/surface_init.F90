@@ -293,8 +293,8 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
         call InputReadWord(input,option,word,PETSC_TRUE)
         call StringToUpper(word)
         select case(trim(word))
-          case ('KINEMATIC')
-            option%surface_flow_formulation = KINEMATIC_WAVE
+          !case ('KINEMATIC')
+          !  option%surface_flow_formulation = KINEMATIC_WAVE
           case ('DIFFUSIVE')
             option%surface_flow_formulation = DIFFUSION_WAVE
           case default
@@ -384,12 +384,10 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
         select case(trim(word))
           case('DECOUPLED')
             option%subsurf_surf_coupling = DECOUPLED
-          case('SEQ_COUPLED')
-            option%subsurf_surf_coupling = SEQ_COUPLED
           case('FULLY_COUPLED')
             option%subsurf_surf_coupling = FULLY_COUPLED
-          case('SEQ_COUPLED_NEW')
-            option%subsurf_surf_coupling = SEQ_COUPLED_NEW
+          case('SEQ_COUPLED')
+            option%subsurf_surf_coupling = SEQ_COUPLED
           case default
             option%io_buffer = 'Invalid value for SURF_SUBSURFACE_COUPLING'
             call printErrMsg(option)

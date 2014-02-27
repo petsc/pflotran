@@ -236,7 +236,7 @@ subroutine RichardsAuxVarCompute(x,auxvar,global_auxvar,material_auxvar, &
   dkr_dp = 0.d0
   if (auxvar%pc > 0.d0) then
     saturated = PETSC_FALSE
-    call SaturationFunctionCompute(global_auxvar%pres(1), &
+    call SaturationFunctionCompute(auxvar%pc, &
                                 global_auxvar%sat(1),kr, &
                                 ds_dp,dkr_dp, &
                                 saturation_function, &
@@ -353,7 +353,8 @@ subroutine RichardsAuxDestroy(aux)
   ! Author: Glenn Hammond
   ! Date: 02/14/08
   ! 
-
+  use Utility_module, only : DeallocateArray
+  
   implicit none
 
   type(richards_type), pointer :: aux
@@ -382,13 +383,11 @@ subroutine RichardsAuxDestroy(aux)
     deallocate(aux%auxvars_ss)
   endif
   nullify(aux%auxvars_ss)
-  if (associated(aux%zero_rows_local)) deallocate(aux%zero_rows_local)
-  nullify(aux%zero_rows_local)
-  if (associated(aux%zero_rows_local_ghosted)) deallocate(aux%zero_rows_local_ghosted)
-  nullify(aux%zero_rows_local_ghosted)
+  
+  call DeallocateArray(aux%zero_rows_local)
+  call DeallocateArray(aux%zero_rows_local_ghosted)
   if (associated(aux%richards_parameter)) then
-    if (associated(aux%richards_parameter%sir)) deallocate(aux%richards_parameter%sir)
-    nullify(aux%richards_parameter%sir)
+    call DeallocateArray(aux%richards_parameter%sir)
     deallocate(aux%richards_parameter)
   endif
   nullify(aux%richards_parameter)

@@ -30,6 +30,8 @@ module Coupler_module
     PetscInt :: itran_condition                         ! id of condition in condition array/list
     PetscInt :: iregion                                 ! id of region in region array/list
     PetscInt :: iface                                   ! for structured grids only
+    PetscInt, pointer :: flow_aux_mapping(:)            ! maps flow_aux_real_var to primarhy dof
+    PetscInt, pointer :: flow_bc_type(:)                ! id of boundary condition type
     PetscInt, pointer :: flow_aux_int_var(:,:)          ! auxiliary array for integer value
     PetscReal, pointer :: flow_aux_real_var(:,:)        ! auxiliary array for real values
     type(flow_condition_type), pointer :: flow_condition     ! pointer to condition in condition array/list
@@ -101,6 +103,8 @@ function CouplerCreate1()
   coupler%itran_condition = 0
   coupler%iregion = 0
   coupler%iface = 0
+  nullify(coupler%flow_aux_mapping)
+  nullify(coupler%flow_bc_type)
   nullify(coupler%flow_aux_int_var)
   nullify(coupler%flow_aux_real_var)
   nullify(coupler%flow_condition)
@@ -182,6 +186,8 @@ function CouplerCreateFromCoupler(coupler)
   nullify(coupler%flow_condition)
   nullify(coupler%tran_condition)
   nullify(coupler%region)
+  nullify(coupler%flow_aux_mapping)
+  nullify(coupler%flow_bc_type)
   nullify(coupler%flow_aux_int_var)
   nullify(coupler%flow_aux_real_var)
   nullify(coupler%connection_set)
@@ -926,7 +932,8 @@ subroutine CouplerDestroy(coupler)
   ! Author: Glenn Hammond
   ! Date: 10/23/07
   ! 
-
+  use Utility_module, only : DeallocateArray
+  
   implicit none
   
   type(coupler_type), pointer :: coupler
@@ -940,12 +947,10 @@ subroutine CouplerDestroy(coupler)
   nullify(coupler%tran_condition)     ! since these are simply pointers to 
   nullify(coupler%region)        ! conditoins in list, nullify
 
-  if (associated(coupler%flow_aux_int_var)) &
-    deallocate(coupler%flow_aux_int_var)
-  nullify(coupler%flow_aux_int_var)
-  if (associated(coupler%flow_aux_real_var)) &
-    deallocate(coupler%flow_aux_real_var)
-  nullify(coupler%flow_aux_real_var)
+  call DeallocateArray(coupler%flow_aux_mapping)
+  call DeallocateArray(coupler%flow_bc_type)
+  call DeallocateArray(coupler%flow_aux_int_var)
+  call DeallocateArray(coupler%flow_aux_real_var)
 
   call ConnectionDestroy(coupler%connection_set)
   nullify(coupler%connection_set)

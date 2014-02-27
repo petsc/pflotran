@@ -19,12 +19,10 @@
 ! Send all bug reports/questions/comments to:
 !
 ! Peter C. Lichtner
-! Los Alamos National Laboratory
-! Earth and Environmental Sciences
-! EES-16, MS: D469
-! (505) 667-3420
-! lichtner@lanl.gov
-! Los Alamos, NM
+! OFM Research
+! (505) 692-4029 (cell)
+! peter.lichtner@gmail.com
+! Santa Fe, New Mexico
 
 ! or
 

@@ -19,6 +19,7 @@ module Surface_Complexation_Aux_module
   PetscInt, parameter, public :: NULL_SURFACE = 0
   PetscInt, parameter, public :: COLLOID_SURFACE = 1
   PetscInt, parameter, public :: MINERAL_SURFACE = 2
+  PetscInt, parameter, public :: ROCK_SURFACE = 3
 
   type, public :: surface_complex_type
     PetscInt :: id
@@ -42,9 +43,9 @@ module Surface_Complexation_Aux_module
     character(len=MAXWORDLENGTH) :: free_site_name
     PetscBool :: free_site_print_me
     PetscBool :: site_density_print_me
+    PetscInt :: surface_itype
     PetscInt :: mineral_id
-    character(len=MAXWORDLENGTH) :: mineral_name
-    character(len=MAXWORDLENGTH) :: colloid_name
+    character(len=MAXWORDLENGTH) :: surface_name
     PetscReal :: site_density ! site density in mol/m^3 bulk
     PetscReal, pointer :: rates(:)
     PetscReal, pointer :: site_fractions(:)
@@ -90,7 +91,11 @@ module Surface_Complexation_Aux_module
     PetscInt, pointer :: srfcplxrxn_to_surf(:)
     PetscInt, pointer :: srfcplxrxn_surf_type(:)
     PetscInt, pointer :: srfcplxrxn_to_complex(:,:)
-    PetscReal, pointer :: srfcplxrxn_site_density(:) ! site density in mol/m^3 bulk
+    ! site density in 
+    ! (1) mol/m^3 bulk 
+    ! (2) mol/m^3 mineral, which * mineral volume fraction = mol/m^3 bulk
+    ! (3) mol/kg rock, which * 1-porosity = mol/m^3 bulk
+    PetscReal, pointer :: srfcplxrxn_site_density(:) 
     ! this flag indicates that the stoichiometry for free sites in one of the
     ! reactions is not 1, and thus we must use nonlinear iteration to solve
     PetscBool, pointer :: srfcplxrxn_stoich_flag(:)
@@ -235,9 +240,9 @@ function SurfaceComplexationRxnCreate()
   srfcplxrxn%free_site_print_me = PETSC_FALSE
   srfcplxrxn%site_density_print_me = PETSC_FALSE
 
+  srfcplxrxn%surface_itype = NULL_SURFACE
   srfcplxrxn%mineral_id = 0
-  srfcplxrxn%mineral_name = ''
-  srfcplxrxn%colloid_name = ''
+  srfcplxrxn%surface_name = ''
   srfcplxrxn%site_density = 0.d0
   srfcplxrxn%kinmr_scale_factor = 1.d0
   nullify(srfcplxrxn%rates)
