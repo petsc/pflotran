@@ -5,14 +5,26 @@
 
 PFUNIT_DIR=
 COMPILER=
+VENDOR=
 DISTCLEAN=0
 BUILD_STATUS=0
 ################################################################################
+function determine-vendor() {
+    _version=`${COMPILER} --version`
+    if [[ ${_version} =~ "ifort" ]]; then
+        VENDOR=Intel
+    elif [[ ${_version} =~ "GNU" ]]; then
+        VENDOR=GNU
+    else
+        echo "Warning: Could not determine the compiler vendor. Assuming GNU"
+    fi
+}
+
 function build-pfunit() {
 
     echo "----------------------------------------------------------------------"
     echo "Building pFUnit :"
-    make FC=${COMPILER} DEBUG=YES
+    make F90=${COMPILER} F90_VENDOR=${VENDOR} DEBUG=YES
     BUILD_STATUS=$?
 }
 
@@ -73,9 +85,11 @@ if [ -z "${COMPILER}" ]; then
     exit 1
 fi
 
+determine-vendor
 
 echo "PFUNIT_DIR: ${PFUNIT_DIR}"
 echo "FC: ${COMPILER}"
+echo "VENDOR: ${VENDOR}"
 
 pushd ${PFUNIT_DIR}
 if [ "${DISTCLEAN}" -eq "1" ]; then

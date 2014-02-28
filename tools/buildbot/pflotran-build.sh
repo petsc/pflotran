@@ -146,7 +146,7 @@ function stage-pflotran-build() {
 }
 
 function stage-pflotran-test() {
-    echo "Running PFLOTRAN regression tests with:"
+    echo "Running PFLOTRAN regression and unit tests with:"
     echo "  PETSC_DIR=${PETSC_DIR}"
     echo "  PETSC_ARCH=${PETSC_ARCH}"
     export PETSC_DIR PETSC_ARCH
@@ -165,7 +165,10 @@ function stage-pflotran-test() {
         echo "Could not find build flags file: ${_flags_file}. Testing with 'make pflotran'."
     fi
 
-    echo "  test directory : ${_test_dir}"
+    echo "  running unit tests:"
+    cd ${PFLOTRAN_DIR}/src/pflotran
+    make utest
+    echo "  running regression tests in test directory : ${_test_dir}"
     cd ${_test_dir}
     make clean-tests &> /dev/null
     # FIXME(bja 2014-01-10) Need to handle the case of -f makefile_legacy...?
