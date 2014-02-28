@@ -496,7 +496,15 @@ subroutine THAuxVarComputeIce(x, auxvar, global_auxvar, iphase, &
                                        kr, ds_dp, dsl_temp, dsg_pl, dsg_temp, &
                                        dsi_pl, dsi_temp, dkr_dp, dkr_dt, &
                                        saturation_function, p_th, option) 
-    
+    case (DALL_AMICO)
+      ! Model from Dall'Amico (2010) and Dall' Amico et al. (2011)
+      call SatFuncComputeIceDallAmico(global_auxvar%pres(1), &
+                                      global_auxvar%temp(1), &
+                                      ice_saturation, &
+                                      global_auxvar%sat(1), gas_saturation, &
+                                      kr, ds_dp, dsl_temp, dsg_pl, dsg_temp, &
+                                      dsi_pl, dsi_temp, dkr_dp, dkr_dt, &
+                                      saturation_function, option)
     case default
       option%io_buffer = 'THCAuxVarComputeIce: Ice model not recognized.'
       call printErrMsg(option)
@@ -559,6 +567,14 @@ subroutine THAuxVarComputeIce(x, auxvar, global_auxvar, iphase, &
   auxvar%dden_ice_dp = dden_ice_dP
   auxvar%u_ice = u_ice*1.d-3                  !kJ/kmol --> MJ/kmol
   auxvar%du_ice_dt = du_ice_dT*1.d-3          !kJ/kmol/K --> MJ/kmol/K 
+
+  if (option%ice_model == DALL_AMICO) then
+    auxvar%den_ice = dw_mol
+    auxvar%dden_ice_dt = auxvar%dden_dt
+    auxvar%dden_ice_dp = auxvar%dden_dp
+    auxvar%u_ice = auxvar%u
+    auxvar%du_ice_dt = auxvar%du_dt
+  endif
 
 end subroutine THAuxVarComputeIce
 

@@ -59,7 +59,8 @@ module Saturation_Function_module
             SatFuncComputeIcePExplicit, &
             CapillaryPressureThreshold, &
             SatFuncComputeIcePKImplicit, &
-            SatFuncComputeIcePKExplicit
+            SatFuncComputeIcePKExplicit, &
+            SatFuncComputeIceDallAmico
             
   ! Saturation function 
   PetscInt, parameter :: VAN_GENUCHTEN = 1
@@ -1590,6 +1591,129 @@ implicit none
 #endif
 
 end subroutine SatFuncComputeIcePKExplicit
+
+! ************************************************************************** !
+
+subroutine SatFuncComputeIceDallAmico(pl, T, &
+                                      s_i, s_l, s_g, &
+                                      kr, &
+                                      dsl_dpl, dsl_dT, &
+                                      dsg_dpl, dsg_dT, &
+                                      dsi_dpl, dsi_dT, &
+                                      dkr_dpl, dkr_dT, &
+                                      saturation_function, &
+                                      option)
+  !
+  ! Calculates the saturations of water phases  and their derivative with
+  ! respect to liquid pressure and temperature.
+  !
+  ! Model used: Dall'Amico (2010) and Dall' Amico et al. (2011)
+  !
+  ! Author: Gautam Bisht
+  ! Date: 02/24/14
+  !
+
+  use Option_module
+
+  implicit none
+
+  PetscReal :: pl, T
+  PetscReal :: s_i, s_g, s_l
+  PetscReal :: kr
+  PetscReal :: dsl_dpl, dsl_dT
+  PetscReal :: dsi_dpl, dsi_dT
+  PetscReal :: dsg_dpl, dsg_dT
+  PetscReal :: dkr_dpl, dkr_dT
+  type(saturation_function_type) :: saturation_function
+  type(option_type) :: option
+
+  PetscReal :: dkr_dsl
+  PetscReal :: alpha
+  PetscReal :: m
+  PetscReal :: Pc0, Pc1
+  PetscReal :: one_over_m
+  PetscReal :: liq_sat_one_over_m
+  PetscReal :: S0,S1
+  PetscReal :: dS0,dS1
+  PetscReal :: H, dH_dT
+  PetscReal :: T_star
+  PetscReal :: theta
+
+  !PetscReal, parameter :: beta = 2.2           ! dimensionless -- ratio of surf. tension
+  PetscReal, parameter :: beta = 1             ! dimensionless [assumed as 1.d0]
+  PetscReal, parameter :: rho_l = 9.998d2      ! in kg/m^3
+  PetscReal, parameter :: T_0 = 273.15         ! in K
+  PetscReal, parameter :: L_f = 3.34d5         ! in J/kg
+
+  s_g = 0.d0
+  dsg_dpl = 0.d0
+  dsg_dT = 0.d0
+
+  select case(saturation_function%saturation_function_itype)
+    case(VAN_GENUCHTEN)
+
+      T = T + T_0  ! convert to K
+      alpha = saturation_function%alpha
+      m = saturation_function%m
+
+      Pc0 = option%reference_pressure - pl
+
+      T_star = T_0 - 1.d0/beta*T_0/L_f/rho_l*Pc0
+
+      if (T<T_star) then
+        H = 1.d0
+        dH_dT = 0.d0
+      else
+        H = 0.d0
+        dH_dT = 0.d0
+      endif
+
+      theta = (T - T_star)/T_star
+      Pc1 = Pc0 - beta*theta*L_f*rho_l*H
+
+      call ComputeSatVG(alpha,m,Pc0,S0,dS0)
+      call ComputeSatVG(alpha,m,Pc1,S1,dS1)
+
+      s_l = S1
+      s_i = S0 - S1
+
+      dsl_dpl = dS1
+      dsl_dT = dS0 - dS1
+
+      dsi_dpl = dS1*(-beta*L_f*rho_l*H/T_star - beta*theta*L_f*rho_l*dH_dT)
+      dsi_dT = -dsl_dT
+
+      T = T - T_0 ! change back to C
+
+    case default
+      option%io_buffer = 'Only van Genuchten supported with ice'
+      call printErrMsg(option)
+  end select
+
+  ! Calculate relative permeability
+  select case(saturation_function%permeability_function_itype)
+    case(MUALEM)
+      if (s_l == 1.d0) then
+        kr = 1.d0
+        dkr_dsl = 0.d0
+      else
+        m = saturation_function%m
+        one_over_m = 1.d0/m
+        liq_sat_one_over_m = s_l**one_over_m
+        kr = sqrt(s_l)*(1.d0 - (1.d0 - liq_sat_one_over_m)**m)**2.d0
+        dkr_dsl = 0.5d0*kr/s_l + &
+                  2.d0*s_l**(one_over_m - 0.5d0)* &
+                  (1.d0 - liq_sat_one_over_m)**(m - 1.d0)* &
+                  (1.d0 - (1.d0 - liq_sat_one_over_m)**m)
+      endif
+        dkr_dpl = dkr_dsl*dsl_dpl
+        dkr_dT = dkr_dsl*dsl_dT
+    case default
+      option%io_buffer = 'Ice module only supports Mualem'
+      call printErrMsg(option)
+  end select
+
+end subroutine SatFuncComputeIceDallAmico
 
 ! ************************************************************************** !
 

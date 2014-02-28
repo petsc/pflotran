@@ -1674,6 +1674,8 @@ subroutine InitReadInput(simulation)
             option%ice_model = PAINTER_KARRA_IMPLICIT
           case ('PAINTER_KARRA_EXPLICIT')
             option%ice_model = PAINTER_KARRA_EXPLICIT
+          case ('DALL_AMICO')
+            option%ice_model = DALL_AMICO
           case default
             option%io_buffer = 'Cannot identify the specificed ice model.' // &
              'Specify PAINTER_EXPLICIT or PAINTER_KARRA_IMPLICIT' // &
