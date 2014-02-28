@@ -140,7 +140,7 @@ function stage-pflotran-build() {
     fi
     
     cd ${PFLOTRAN_DIR}/src/pflotran
-    make clean
+    make ${_pflotran_flags} clean
     make ${_pflotran_flags} pflotran
     BUILD_STATUS=$?
 }
@@ -156,26 +156,15 @@ function stage-pflotran-test() {
     if [ -f ${_flags_file} ]; then
         _pflotran_flags=`cat ${_flags_file}`
         echo "  pflotran build flags=${_pflotran_flags}"
-
-        grep -e "makefile_legacy" ${_flags_file} &> /dev/null
-        if [ "$?" -eq "0" ]; then
-            _test_dir=${PFLOTRAN_DIR}/regression_tests_legacy
-        fi
     else
         echo "Could not find build flags file: ${_flags_file}. Testing with 'make pflotran'."
     fi
 
-    echo "  running unit tests:"
     cd ${PFLOTRAN_DIR}/src/pflotran
-    make utest
-    echo "  running regression tests in test directory : ${_test_dir}"
-    cd ${_test_dir}
-    make clean-tests &> /dev/null
-    # FIXME(bja 2014-01-10) Need to handle the case of -f makefile_legacy...?
-    #make ${_pflotran_flags} test
-    make test
+    make ${_pflotran_flags} clean-tests &> /dev/null
+    make ${_pflotran_flags} test
     BUILD_STATUS=$?
-    cat *.testlog
+    cat ${_test_dir}/*.testlog
 }
 
 
