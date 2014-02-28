@@ -1638,12 +1638,14 @@ subroutine SatFuncComputeIceDallAmico(pl, T, &
   PetscReal :: H, dH_dT
   PetscReal :: T_star
   PetscReal :: theta
+  PetscReal :: x
 
   !PetscReal, parameter :: beta = 2.2           ! dimensionless -- ratio of surf. tension
   PetscReal, parameter :: beta = 1             ! dimensionless [assumed as 1.d0]
   PetscReal, parameter :: rho_l = 9.998d2      ! in kg/m^3
   PetscReal, parameter :: T_0 = 273.15         ! in K
   PetscReal, parameter :: L_f = 3.34d5         ! in J/kg
+  PetscReal, parameter :: k = 1.d6
 
   s_g = 0.d0
   dsg_dpl = 0.d0
@@ -1667,6 +1669,11 @@ subroutine SatFuncComputeIceDallAmico(pl, T, &
         H = 0.d0
         dH_dT = 0.d0
       endif
+
+      !GB: Add an option to swich between step-function and smooth approximation
+      !    of step function.
+      !x = (T - T_star)*k
+      !H = 0.5d0 - atan(x)/PI
 
       theta = (T - T_star)/T_star
       Pc1 = Pc0 - beta*theta*L_f*rho_l*H
