@@ -1595,6 +1595,8 @@ end subroutine SatFuncComputeIcePKExplicit
 ! ************************************************************************** !
 
 subroutine SatFuncComputeIceDallAmico(pl, T, &
+                                      p_fh2o, &
+                                      dp_fh2o_dT, &
                                       s_i, s_l, s_g, &
                                       kr, &
                                       dsl_dpl, dsl_dT, &
@@ -1618,6 +1620,7 @@ subroutine SatFuncComputeIceDallAmico(pl, T, &
   implicit none
 
   PetscReal :: pl, T
+  PetscReal :: p_fh2o, dp_fh2o_dT
   PetscReal :: s_i, s_g, s_l
   PetscReal :: kr
   PetscReal :: dsl_dpl, dsl_dT
@@ -1677,6 +1680,11 @@ subroutine SatFuncComputeIceDallAmico(pl, T, &
 
       theta = (T - T_star)/T_star
       Pc1 = Pc0 - beta*theta*L_f*rho_l*H
+
+      p_fh2o = option%reference_pressure - Pc1
+      dp_fh2o_dT = beta*L_f*rho_l*H/T_star
+      p_fh2o = pl
+      dp_fh2o_dT = 0.d0
 
       call ComputeSatVG(alpha,m,Pc0,S0,dS0)
       call ComputeSatVG(alpha,m,Pc1,S1,dS1)

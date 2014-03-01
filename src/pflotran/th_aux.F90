@@ -42,6 +42,9 @@ module TH_Aux_module
     PetscReal :: dden_ice_dt
     PetscReal :: u_ice
     PetscReal :: du_ice_dt
+    ! For DallAmico model
+    PetscReal :: pres_fh2o
+    PetscReal :: dpres_fh2o_dt
   end type TH_auxvar_type
 
   type, public :: TH_parameter_type
@@ -183,6 +186,8 @@ subroutine THAuxVarInit(auxvar,option)
   auxvar%dden_ice_dt = 0.d0
   auxvar%u_ice = 0.d0
   auxvar%du_ice_dt = 0.d0
+  auxvar%pres_fh2o = 0.d0
+  auxvar%dpres_fh2o_dt = 0.d0
 
 end subroutine THAuxVarInit
 
@@ -241,6 +246,8 @@ subroutine THAuxVarCopy(auxvar,auxvar2,option)
      auxvar2%dden_ice_dt = auxvar%dden_ice_dt
      auxvar2%u_ice = auxvar%u_ice
      auxvar2%du_ice_dt = auxvar%du_ice_dt
+     auxvar2%pres_fh2o = auxvar%pres_fh2o
+     auxvar2%dpres_fh2o_dt = auxvar%dpres_fh2o_dt
   endif
 
 end subroutine THAuxVarCopy
@@ -500,6 +507,8 @@ subroutine THAuxVarComputeIce(x, auxvar, global_auxvar, iphase, &
       ! Model from Dall'Amico (2010) and Dall' Amico et al. (2011)
       call SatFuncComputeIceDallAmico(global_auxvar%pres(1), &
                                       global_auxvar%temp(1), &
+                                      auxvar%pres_fh2o, &
+                                      auxvar%dpres_fh2o_dt, &
                                       ice_saturation, &
                                       global_auxvar%sat(1), gas_saturation, &
                                       kr, ds_dp, dsl_temp, dsg_pl, dsg_temp, &
