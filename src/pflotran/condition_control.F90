@@ -237,14 +237,14 @@ subroutine CondControlAssignFlowInitCond(realization)
                 cycle
               endif
               offset = (local_id-1)*option%nflowdof
-              istate = initial_condition%flow_condition%iphase
+              istate = initial_condition%flow_aux_int_var(1,iconn)
               do idof = 1, option%nflowdof
                 xx_p(offset+idof) = &
                   initial_condition%flow_aux_real_var( &
                     initial_condition%flow_aux_mapping( &
                       dof_to_primary_variable(idof,istate)),iconn)
               enddo
-              iphase_loc_p(ghosted_id) = initial_condition%flow_condition%iphase
+              iphase_loc_p(ghosted_id) = istate
               cur_patch%aux%Global%auxvars(ghosted_id)%istate = istate
             enddo
           endif

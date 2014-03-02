@@ -619,7 +619,7 @@ subroutine PMGeneralMaxChange(this)
   ! Date: 03/14/13
   ! 
 
-  use Realization_base_class
+  use Realization_Base_class
   use Option_module
   use Field_module
   use Grid_module

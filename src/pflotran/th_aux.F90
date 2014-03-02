@@ -316,7 +316,7 @@ subroutine THAuxVarCompute(x,auxvar,global_auxvar, &
 !  if (auxvar%pc > 0.d0) then
   if (auxvar%pc > 1.d0) then
     iphase = 3
-    call SaturationFunctionCompute(global_auxvar%pres(1),global_auxvar%sat(1), &
+    call SaturationFunctionCompute(auxvar%pc,global_auxvar%sat(1), &
                                    kr,ds_dp,dkr_dp, &
                                    saturation_function, &
                                    material_auxvar%porosity, &

@@ -104,6 +104,7 @@ function CouplerCreate1()
   coupler%iregion = 0
   coupler%iface = 0
   nullify(coupler%flow_aux_mapping)
+  nullify(coupler%flow_bc_type)
   nullify(coupler%flow_aux_int_var)
   nullify(coupler%flow_aux_real_var)
   nullify(coupler%flow_condition)
@@ -186,6 +187,7 @@ function CouplerCreateFromCoupler(coupler)
   nullify(coupler%tran_condition)
   nullify(coupler%region)
   nullify(coupler%flow_aux_mapping)
+  nullify(coupler%flow_bc_type)
   nullify(coupler%flow_aux_int_var)
   nullify(coupler%flow_aux_real_var)
   nullify(coupler%connection_set)
@@ -930,7 +932,8 @@ subroutine CouplerDestroy(coupler)
   ! Author: Glenn Hammond
   ! Date: 10/23/07
   ! 
-
+  use Utility_module, only : DeallocateArray
+  
   implicit none
   
   type(coupler_type), pointer :: coupler
@@ -944,15 +947,10 @@ subroutine CouplerDestroy(coupler)
   nullify(coupler%tran_condition)     ! since these are simply pointers to 
   nullify(coupler%region)        ! conditoins in list, nullify
 
-  if (associated(coupler%flow_aux_mapping)) &
-    deallocate(coupler%flow_aux_mapping)
-  nullify(coupler%flow_aux_mapping)
-  if (associated(coupler%flow_aux_int_var)) &
-    deallocate(coupler%flow_aux_int_var)
-  nullify(coupler%flow_aux_int_var)
-  if (associated(coupler%flow_aux_real_var)) &
-    deallocate(coupler%flow_aux_real_var)
-  nullify(coupler%flow_aux_real_var)
+  call DeallocateArray(coupler%flow_aux_mapping)
+  call DeallocateArray(coupler%flow_bc_type)
+  call DeallocateArray(coupler%flow_aux_int_var)
+  call DeallocateArray(coupler%flow_aux_real_var)
 
   call ConnectionDestroy(coupler%connection_set)
   nullify(coupler%connection_set)

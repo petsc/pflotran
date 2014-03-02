@@ -740,7 +740,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,auxvar, &
   PetscInt :: indx(reaction%naqcomp)
   PetscInt :: d, ier
   PetscReal :: m
-
+  
   ! Quantities for numerical jacobian
   PetscReal :: conc_prim(reaction%naqcomp)
   PetscReal :: conc_prim_pert(reaction%naqcomp)
@@ -771,6 +771,10 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,auxvar, &
   PetscReal :: coeff_right_copy(reaction%naqcomp,reaction%naqcomp, &
                            sec_transport_vars%ncells)
 
+  PetscReal :: total_sorb_upd(reaction%neqsorb,sec_transport_vars%ncells) 
+  PetscReal :: total_sorb_prev(reaction%neqsorb,sec_transport_vars%ncells)
+  PetscReal :: dtotal_sorb_upd(reaction%neqsorb,reaction%neqsorb,sec_transport_vars%ncells)
+
   class(material_auxvar_type), allocatable :: material_auxvar
   
   ngcells = sec_transport_vars%ncells
@@ -784,6 +788,9 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,auxvar, &
   do j = 1, ncomp
     do i = 1, ngcells
       total_prev(j,i) = sec_transport_vars%sec_rt_auxvar(i)%total(j,1)
+      if (reaction%neqsorb > 0) then
+        total_sorb_prev(j,i) = sec_transport_vars%sec_rt_auxvar(i)%total_sorb_eq(j)
+      endif
     enddo
   enddo
   conc_upd = sec_transport_vars%updated_conc
@@ -815,8 +822,15 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,auxvar, &
     call RTAuxVarCopy(rt_auxvar,sec_transport_vars%sec_rt_auxvar(i),option)
     rt_auxvar%pri_molal = conc_upd(:,i)
     call RTotal(rt_auxvar,global_auxvar,reaction,option)
+    if (reaction%neqsorb > 0) then
+      call RTotalSorb(rt_auxvar,global_auxvar,material_auxvar,reaction,option)
+    endif
     total_upd(:,i) = rt_auxvar%total(:,1)
     dtotal(:,:,i) = rt_auxvar%aqueous%dtotal(:,:,1)
+    if (reaction%neqsorb > 0) then 
+      total_sorb_upd(:,i) = rt_auxvar%total_sorb_eq(:)
+      dtotal_sorb_upd(:,:,i) = rt_auxvar%dtotal_sorb_eq(:,:)
+    endif
   enddo 
                           
 !================ Calculate the secondary residual =============================        
@@ -827,6 +841,9 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,auxvar, &
     do i = 1, ngcells
       n = j + (i-1)*ncomp
       res(n) = pordt*(total_upd(j,i) - total_prev(j,i))*vol(i)    ! in mol/L*m3/s
+      if (reaction%neqsorb > 0) then 
+        res(n) = res(n) + vol(i)/option%tran_dt*(total_sorb_upd(j,i) - total_sorb_prev(j,i))
+      endif      
     enddo
   
     ! Flux terms
@@ -865,6 +882,9 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,auxvar, &
         ! Accumulation
         do i = 1, ngcells 
           coeff_diag(j,k,i) = coeff_diag(j,k,i) + pordt*vol(i)
+          if (reaction%neqsorb > 0) then
+            coeff_diag(j,k,i) = coeff_diag(j,k,i) + vol(i)/option%tran_dt*(dtotal_sorb_upd(j,k,i))
+          endif
         enddo
   
         ! Flux terms
@@ -925,6 +945,19 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,auxvar, &
       coeff_left(j,k,i) = coeff_left(j,k,i)*dtotal(j,k,i-1)
     enddo
   enddo
+  
+  ! Sorption
+  do j = 1, ncomp
+    do k = 1, ncomp  
+      ! Accumulation
+      do i = 1, ngcells 
+        if (reaction%neqsorb > 0) then
+          coeff_diag(j,k,i) = coeff_diag(j,k,i) + vol(i)/option%tran_dt*(dtotal_sorb_upd(j,k,i))
+        endif
+      enddo
+    enddo
+  enddo
+    
   
   ! Convert m3/s*kg/L to kg water/s
   coeff_right = coeff_right*1.d3
@@ -2093,6 +2126,115 @@ subroutine MphaseSecHeatAuxVarCompute(sec_heat_vars,auxvar,global_auxvar, &
 
 
 end subroutine MphaseSecHeatAuxVarCompute
+
+! ************************************************************************** !
+
+subroutine SecondaryRTotalSorb(rt_auxvar,global_auxvar,material_auxvar,reaction, &
+                               option)
+  ! 
+  ! Computes the secondary total sorbed component concentrations and
+  ! derivative with respect to free-ion
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 02/20/2014
+  ! 
+
+  use Option_module
+  use Global_Aux_module
+  use Reaction_Aux_module
+  use Reaction_module
+  use Reactive_Transport_Aux_module
+  use Material_Aux_class
+  
+  implicit none
+  
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar
+  type(material_auxvar_type) :: material_auxvar
+  type(reaction_type) :: reaction
+  type(option_type) :: option
+  
+  call RZeroSorb(rt_auxvar)
+  
+  if (reaction%neqkdrxn > 0) then
+    call SecondaryRTotalSorbKD(rt_auxvar,global_auxvar,material_auxvar, &
+                               reaction,option)
+  endif
+  
+end subroutine SecondaryRTotalSorb
+
+! ************************************************************************** !
+
+subroutine SecondaryRTotalSorbKD(rt_auxvar,global_auxvar,material_auxvar,reaction, &
+                        option)
+  ! 
+  ! Computes the total sorbed component concentrations and
+  ! derivative with respect to free-ion for the linear
+  ! K_D model
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 02/20/2014
+  ! 
+
+  use Option_module
+  use Reaction_Aux_module
+  use Reaction_module
+  use Reactive_Transport_Aux_module
+  use Material_Aux_class
+  use Global_Aux_module
+
+  implicit none
+
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar
+  type(material_auxvar_type) :: material_auxvar
+  type(reaction_type) :: reaction
+  type(option_type) :: option
+  
+  PetscInt :: irxn
+  PetscInt :: icomp
+  PetscReal :: res
+  PetscReal :: dres_dc
+  PetscReal :: activity
+  PetscReal :: molality
+  PetscReal :: tempreal
+  PetscReal :: one_over_n
+  PetscReal :: activity_one_over_n
+
+  ! Surface Complexation
+  do irxn = 1, reaction%neqkdrxn
+    icomp = reaction%eqkdspecid(irxn)
+    molality = rt_auxvar%pri_molal(icomp)
+    activity = molality*rt_auxvar%pri_act_coef(icomp) ! Activity coefficient needs?
+    select case(reaction%sec_cont_eqkdtype(irxn))
+      case(SORPTION_LINEAR)
+        ! Csorb = Kd*Caq
+        res = reaction%sec_cont_eqkddistcoef(irxn)*activity
+        dres_dc = res/molality
+      case(SORPTION_LANGMUIR)
+        ! Csorb = K*Caq*b/(1+K*Caq)
+        tempreal = reaction%sec_cont_eqkddistcoef(irxn)*activity
+        res = tempreal*reaction%sec_cont_eqkdlangmuirb(irxn) / (1.d0 + tempreal)
+        dres_dc = res/molality - &
+                  res / (1.d0 + tempreal) * tempreal / molality
+      case(SORPTION_FREUNDLICH)
+        ! Csorb = Kd*Caq**(1/n)
+        one_over_n = 1.d0/reaction%sec_cont_eqkdfreundlichn(irxn)
+        activity_one_over_n = activity**one_over_n
+        res = reaction%sec_cont_eqkddistcoef(irxn)* &
+                activity**one_over_n
+        dres_dc = res/molality*one_over_n
+      case default
+        res = 0.d0
+        dres_dc = 0.d0
+    end select
+    rt_auxvar%total_sorb_eq(icomp) = rt_auxvar%total_sorb_eq(icomp) + res
+    rt_auxvar%dtotal_sorb_eq(icomp,icomp) = &
+      rt_auxvar%dtotal_sorb_eq(icomp,icomp) + dres_dc 
+  enddo
+
+end subroutine SecondaryRTotalSorbKD
+
 
 end module Secondary_Continuum_module
             

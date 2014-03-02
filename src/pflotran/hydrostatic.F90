@@ -52,6 +52,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   PetscReal :: rho, rho1, rho0, pressure, pressure0, pressure_at_datum 
   PetscReal :: temperature_at_datum, temperature
   PetscReal :: concentration_at_datum
+  PetscReal :: gas_pressure
   PetscReal :: xm_nacl, dw_kg
   PetscReal :: max_z, min_z, temp_real
   PetscInt  :: num_faces, face_id_ghosted, conn_id, num_regions
@@ -84,6 +85,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   concentration_at_datum = 0.d0
   datum = 0.d0
 
+  gas_pressure = 0.d0
   pressure_gradient = 0.d0
   temperature_gradient = 0.d0
   piezometric_head_gradient = 0.d0
@@ -106,11 +108,25 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       datum(1:3) = condition%datum%rarray(1:3)
       pressure_at_datum = &
         condition%general%liquid_pressure%dataset%rarray(1)    
+      gas_pressure = option%reference_pressure
+      if (associated(condition%general%gas_pressure)) then
+        gas_pressure = condition%general%gas_pressure%dataset%rarray(1)
+      endif
       ! gradient is in m/m; needs conversion to Pa/m
       if (associated(condition%general%liquid_pressure%gradient)) then
         piezometric_head_gradient(1:3) = &
           condition%general%liquid_pressure%gradient%rarray(1:3)
       endif
+      ! for liquid state
+      coupler%flow_aux_mapping(GENERAL_LIQUID_PRESSURE_INDEX) = 1
+      coupler%flow_aux_mapping(GENERAL_MOLE_FRACTION_INDEX) = 2
+      coupler%flow_aux_mapping(GENERAL_TEMPERATURE_INDEX) = 3
+      ! for two-phase state
+      coupler%flow_aux_mapping(GENERAL_GAS_PRESSURE_INDEX) = 1
+      ! air pressure here is being hijacked to store capillary pressure
+      coupler%flow_aux_mapping(GENERAL_AIR_PRESSURE_INDEX) = 2
+      coupler%flow_aux_mapping(GENERAL_TEMPERATURE_INDEX) = 3
+      coupler%flow_aux_mapping(GENERAL_GAS_SATURATION_INDEX) = 3
     case default
       ! for now, just set it; in future need to account for a different temperature datum
       if (associated(condition%temperature)) then
@@ -391,7 +407,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
     ! assign pressure
     select case(option%iflowmode)
       case(G_MODE)
-        coupler%flow_aux_real_var(GENERAL_LIQUID_PRESSURE_DOF,iconn) = pressure
+        coupler%flow_aux_real_var(1,iconn) = pressure
       case (MPH_MODE)
         coupler%flow_aux_real_var(1,iconn) = pressure
       case default
@@ -440,12 +456,18 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
                     temperature_gradient(X_DIRECTION)*dist_x + & ! gradient in K/m
                     temperature_gradient(Y_DIRECTION)*dist_y + &
                     temperature_gradient(Z_DIRECTION)*dist_z 
-        coupler%flow_aux_real_var(GENERAL_LIQUID_STATE_ENERGY_DOF,iconn) = &
+        coupler%flow_aux_real_var(3,iconn) = &
           temperature
-        coupler%flow_aux_real_var(GENERAL_LIQUID_STATE_X_MOLE_DOF,iconn) = &
-          concentration_at_datum
-
-        coupler%flow_aux_int_var(GENERAL_LIQUID_PRESSURE_DOF,iconn) = condition%iphase
+        ! switch to two-phase if liquid pressure drops below gas pressure
+        if (pressure < gas_pressure) then
+          ! we hijack the air pressure entry, storing capillary pressure there
+          coupler%flow_aux_real_var(1,iconn) = gas_pressure
+          coupler%flow_aux_real_var(2,iconn) = gas_pressure - pressure
+          coupler%flow_aux_int_var(GENERAL_STATE_INDEX,iconn) = TWO_PHASE_STATE
+        else
+          coupler%flow_aux_real_var(2,iconn) = concentration_at_datum
+          coupler%flow_aux_int_var(GENERAL_STATE_INDEX,iconn) = LIQUID_STATE
+        endif
       case default
         coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,iconn) = 1
     end select

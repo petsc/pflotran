@@ -200,8 +200,7 @@ subroutine RealizationBaseStrip(this)
   call PatchDestroyList(this%patch_list)
   nullify(this%patch)
 
-  if (associated(this%debug)) deallocate(this%debug)
-  nullify(this%debug)
+  call DebugDestroy(this%debug)
   
   call MassTransferDestroy(this%flow_mass_transfer_list)
   call MassTransferDestroy(this%rt_mass_transfer_list)

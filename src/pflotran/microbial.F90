@@ -308,8 +308,8 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
     ! biomass expression
     if (ibiomass > 0) then
       dR_dbiomass = Im / biomass_conc
-      option%io_buffer = "Shouldn't biomass contribution be negative"
-      call printErrMsg(option)
+!      option%io_buffer = "Shouldn't biomass contribution be negative"
+!      call printErrMsg(option)
       do i = 1, ncomp
         ! units = (mol/sec)*(kg water/mol) = kg water/sec
         Jac(icomp,immobile_id) = Jac(icomp,immobile_id) + &

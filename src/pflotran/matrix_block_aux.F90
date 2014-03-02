@@ -141,15 +141,15 @@ subroutine MatrixBlockAuxVarDestroy(auxvar)
   ! Author: Glenn Hammond
   ! Date: 03/04/2010
   ! 
-
+  use Utility_module, only : DeallocateArray
+  
   implicit none
 
   type(matrix_block_auxvar_type), pointer :: auxvar
   
   if (.not.associated(auxvar)) return
   
-  if (associated(auxvar%dtotal))deallocate(auxvar%dtotal)
-  nullify(auxvar%dtotal)
+  call DeallocateArray(auxvar%dtotal)
   
   deallocate(auxvar)
   nullify(auxvar)

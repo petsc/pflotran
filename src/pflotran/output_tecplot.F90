@@ -2322,19 +2322,29 @@ subroutine OutputSecondaryContinuumTecplot(realization_base)
                                       sec_id,ghosted_id)        
         endif
         if (observation%print_secondary_data(2)) then
-          do naqcomp = 1, reaction%naqcomp
-            write(fid,1000,advance='no') &
-            RealizGetVariableValueAtCell(realization_base, &
-                                        SECONDARY_CONCENTRATION, &
-                                        sec_id,ghosted_id,naqcomp)
-          enddo
+          if (associated(reaction)) then
+            if (reaction%naqcomp > 0) then
+              do naqcomp = 1, reaction%naqcomp
+                write(fid,1000,advance='no') &
+                RealizGetVariableValueAtCell(realization_base, &
+                                             SECONDARY_CONCENTRATION, &
+                                             sec_id,ghosted_id,naqcomp)
+               enddo
+            endif
+          endif
         endif
         if (observation%print_secondary_data(3)) then
-          do nkinmnrl = 1, reaction%mineral%nkinmnrl
-            write(fid,1000,advance='no') &
-            RealizGetVariableValueAtCell(realization_base,SEC_MIN_VOLFRAC, &
-                                        sec_id,ghosted_id,nkinmnrl) 
-          enddo
+          if (associated(reaction)) then
+            if (associated(reaction%mineral)) then
+              if (reaction%mineral%nkinmnrl > 0) then
+                do nkinmnrl = 1, reaction%mineral%nkinmnrl
+                  write(fid,1000,advance='no') &
+                  RealizGetVariableValueAtCell(realization_base,SEC_MIN_VOLFRAC, &
+                                               sec_id,ghosted_id,nkinmnrl) 
+                enddo
+              endif
+            endif
+          endif
         endif        
       enddo
       write(fid,1009)

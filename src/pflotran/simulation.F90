@@ -10,7 +10,11 @@ module Simulation_module
 #endif
 
 #ifdef GEOMECH
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
 #endif
 
   use PFLOTRAN_Constants_module
@@ -132,20 +136,22 @@ subroutine SimulationDestroy(simulation)
   
   if (.not.associated(simulation)) return
 
-  if (simulation%realization%option%nflowdof > 0) then
-    select case(simulation%realization%option%iflowmode)
-      case(RICHARDS_MODE)
-        call RichardsDestroy(simulation%realization)
-      case(G_MODE)
-        call GeneralDestroy(simulation%realization)
-    end select
-  endif
+  if (associated(simulation%realization)) then
+    if (simulation%realization%option%nflowdof > 0) then
+      select case(simulation%realization%option%iflowmode)
+        case(RICHARDS_MODE)
+          call RichardsDestroy(simulation%realization)
+        case(G_MODE)
+          call GeneralDestroy(simulation%realization)
+      end select
+    endif
 
-  if (simulation%realization%option%ntrandof > 0) then
-    call RTDestroy(simulation%realization)
-  endif
+    if (simulation%realization%option%ntrandof > 0) then
+      call RTDestroy(simulation%realization)
+    endif
 
-  call RealizationDestroyLegacy(simulation%realization)
+    call RealizationDestroyLegacy(simulation%realization)
+  endif
   call TimestepperDestroy(simulation%flow_stepper)
   call TimestepperDestroy(simulation%tran_stepper)
 #ifdef SURFACE_FLOW
@@ -157,8 +163,8 @@ subroutine SimulationDestroy(simulation)
 #endif
 
 #ifdef GEOMECH
-  call GeomechRealizDestroy(simulation%geomech_realization)
   call TimestepperDestroy(simulation%geomech_stepper)
+  call GeomechRealizDestroy(simulation%geomech_realization)
 #endif
 
   call RegressionDestroy(simulation%regression)

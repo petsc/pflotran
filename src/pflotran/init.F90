@@ -81,15 +81,22 @@ subroutine Init(simulation)
   use Surface_Field_module
   use Surface_Flow_module
   use Surface_Global_module
-  use Surface_Init_module
+  use Surface_Init_module, only : SurfaceInitReadRequiredCards, &
+                                  SurfaceInitMatPropToRegions, &
+                                  SurfaceInitReadRegionFiles
   use Surface_Realization_class
   use Surface_TH_module
   use Unstructured_Grid_module
 #endif
 
 #ifdef GEOMECH
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
-  use Geomechanics_Init_module 
+#endif
+  use Geomechanics_Init_module, only : GeomechicsInitReadRequiredCards, &
+                                       GeomechInitMatPropToGeomechRegions
   use Geomechanics_Grid_module
   use Geomechanics_Discretization_module
   use Geomechanics_Field_module
@@ -189,6 +196,7 @@ subroutine Init(simulation)
   ! read required cards
   call InitReadRequiredCardsFromInput(realization)
 #ifdef SURFACE_FLOW
+  !geh: surf_realization%input is never freed
   surf_realization%input => InputCreate(IN_UNIT,option%input_filename,option)
   surf_realization%subsurf_filename = realization%discretization%filename
   call SurfaceInitReadRequiredCards(simulation%surf_realization)
@@ -1434,6 +1442,12 @@ subroutine InitReadRequiredCardsFromInput(realization)
   
 !.........................................................................
 
+  ! Need this with CHEMISTRY read
+  string = "MULTIPLE_CONTINUUM"
+  option%use_mc = PETSC_TRUE
+
+!.........................................................................
+
   ! CHEMISTRY information
   string = "CHEMISTRY"
   call InputFindStringInFile(input,option,string)
@@ -1494,11 +1508,15 @@ subroutine InitReadInput(simulation)
   
 #ifdef SURFACE_FLOW
   use Surface_Flow_module
-  use Surface_Init_module
+  use Surface_Init_module, only : SurfaceInitReadInput
 #endif
 #ifdef GEOMECH
-  use Geomechanics_Init_module
+  use Geomechanics_Init_module, only : GeomechanicsInitReadInput
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
 #endif
 #ifdef SOLID_SOLUTION
   use Solid_Solution_module, only : SolidSolutionReadFromInputFile
@@ -1908,19 +1926,19 @@ subroutine InitReadInput(simulation)
         
 !......................
 
-      case('MULTIPLE_CONTINUUM')
-        option%use_mc = PETSC_TRUE
-      
-!......................
-
       case('UPDATE_FLOW_PERMEABILITY')
         option%update_flow_perm = PETSC_TRUE
         
 !......................
 
       case('DFN')
-        grid%unstructured_grid%grid_type = TWO_DIM_GRID        
-        
+        grid%unstructured_grid%grid_type = TWO_DIM_GRID    
+            
+!......................
+
+      case("MULTIPLE_CONTINUUM")
+        option%use_mc = PETSC_TRUE
+              
 !......................
 
       case('SECONDARY_CONTINUUM_SOLVER')
@@ -3421,10 +3439,12 @@ subroutine readRegionFiles(realization)
                                                       region%filename)
         endif
       else if (index(region%filename,'.ss') > 0) then
+        region%def_type = DEFINED_BY_SIDESET_UGRID
         region%sideset => RegionCreateSideset()
         call RegionReadFromFile(region%sideset,region%filename, &
                                 realization%option)
       else if (index(region%filename,'.ex') > 0) then
+        region%def_type = DEFINED_BY_FACE_UGRID_EXP
         call RegionReadFromFile(region%explicit_faceset,region%cell_ids, &
                                 region%filename,realization%option)
         region%num_cells = size(region%cell_ids)

@@ -30,13 +30,14 @@ module Geomechanics_Auxiliary_module
 contains
 
 ! ************************************************************************** !
-!
-! GeomechAuxInit: Nullifies pointers in geomech auxiliary type
-! author: Satish Karra, LANL
-! date: 06/14/13
-! 
-! ************************************************************************** !
+
 subroutine GeomechAuxInit(geomech_aux)
+  ! 
+  ! Nullifies pointers in geomech auxiliary type
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/14/13
+  ! 
 
   implicit none
   
@@ -53,13 +54,14 @@ subroutine GeomechAuxInit(geomech_aux)
 end subroutine GeomechAuxInit
 
 ! ************************************************************************** !
-!
-! GeomechAuxDestroy: Strips a geomech auxiliary type
-! author: Satish Karra, LANL
-! date: 06/14/13
-! 
-! ************************************************************************** !
+
 subroutine GeomechAuxDestroy(geomech_aux)
+  ! 
+  ! Strips a geomech auxiliary type
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/14/13
+  ! 
 
   implicit none
   

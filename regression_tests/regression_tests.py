@@ -84,6 +84,7 @@ class RegressionTest(object):
         self._stochastic_realizations = None
         self._restart_timestep = None
         self._timeout = 60.0
+        self._skip_check_gold = False
         self._check_performance = False
         self._num_failed = 0
         self._test_name = None
@@ -332,6 +333,11 @@ class RegressionTest(object):
         We return zero on success, one on failure so that the test
         manager can track how many tests succeeded and failed.
         """
+        if self._skip_check_gold:
+            message = "    Skipping comparison to regression gold file (only test if model runs to completion)."
+            print("".join(['\n', message, '\n']), file=testlog)
+            return
+
         gold_filename = self.name() + run_id + ".regression.gold"
         if not os.path.isfile(gold_filename):
             message = self._txtwrap.fill(
@@ -802,6 +808,11 @@ class RegressionTest(object):
                 raise ValueError("ERROR: restart_timestep must be an integer value. "
                                 "test : {0}".format(self.name()))
 
+        self._skip_check_gold = test_data.pop('skip_check_gold', None)
+        if self._skip_check_gold is not None:
+            if self._skip_check_gold[0] in ["T", "t", "Y", "y"]:
+                self._skip_check_gold = True
+
         self._check_performance = check_performance
 
         # timeout : preference (1) command line (2) test data (3) class default
@@ -886,7 +897,7 @@ class RegressionTestManager(object):
         self._debug = False
         self._file_status = TestStatus()
         self._config_filename = None
-        self._default_test_criteria = None
+        self._default_test_criteria = {}
         self._available_tests = {}
         self._available_suites = {}
         self._tests = []

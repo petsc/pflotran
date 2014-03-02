@@ -123,6 +123,7 @@ subroutine RTSetup(realization)
   use Fluid_module
   use Material_module
   use Material_Aux_class
+  use Surface_Complexation_Aux_module
   !geh: please leave the "only" clauses for Secondary_Continuum_XXX as this
   !      resolves a bug in the Intel Visual Fortran compiler.
   use Secondary_Continuum_Aux_module, only : sec_transport_type, &
@@ -146,7 +147,7 @@ subroutine RTSetup(realization)
   class(material_auxvar_type), pointer :: material_auxvars(:)
 
   PetscInt :: ghosted_id, iconn, sum_connection
-  PetscInt :: iphase, local_id
+  PetscInt :: iphase, local_id, i
   PetscBool :: error_found
   PetscInt :: flag(10)  
   
@@ -206,6 +207,20 @@ subroutine RTSetup(realization)
         flag(4) = 1
         option%io_buffer = 'Non-initialized soil particle density.'
         call printMsg(option)
+      endif
+    endif
+    if (associated(reaction%surface_complexation)) then
+      if (associated(reaction%surface_complexation%srfcplxrxn_surf_type)) then
+        do i = 1, size(reaction%surface_complexation%srfcplxrxn_surf_type)
+          if (reaction%surface_complexation%srfcplxrxn_surf_type(i) == &
+              ROCK_SURFACE .and. &
+              material_auxvars(ghosted_id)%soil_particle_density < 0.d0 .and. &
+              flag(4) == 0) then
+            flag(4) = 1
+            option%io_buffer = 'Non-initialized soil particle density.'
+            call printMsg(option)
+          endif
+        enddo
       endif
     endif
   enddo  
@@ -850,10 +865,6 @@ subroutine RTUpdateFixedAccumulation(realization)
       iendim = dof_offset + reaction%offset_immobile + reaction%nimcomp
       rt_auxvars(ghosted_id)%immobile = xx_p(istartim:iendim)
     endif
-    
-    if (option%use_mc) then
-      vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
-    endif
 
     if (.not.option%use_isothermal) then
       call RUpdateTempDependentCoefs(global_auxvars(ghosted_id),reaction, &
@@ -869,7 +880,7 @@ subroutine RTUpdateFixedAccumulation(realization)
     call RTAccumulation(rt_auxvars(ghosted_id), &
                         global_auxvars(ghosted_id), &
                         material_auxvars(ghosted_id), &
-                        reaction,option,vol_frac_prim, &
+                        reaction,option, &
                         accum_p(istart:iendall)) 
     if (reaction%neqsorb > 0) then
       call RAccumulationSorb(rt_auxvars(ghosted_id), &
@@ -877,6 +888,12 @@ subroutine RTUpdateFixedAccumulation(realization)
                              material_auxvars(ghosted_id), &
                              reaction,option,accum_p(istart:iendall))
     endif
+        
+    if (option%use_mc) then
+      vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
+      accum_p(istart:iendall) = accum_p(istart:iendall)*vol_frac_prim
+    endif
+    
   enddo
 
   call VecRestoreArrayReadF90(field%tran_xx,xx_p, ierr)
@@ -1669,7 +1686,6 @@ subroutine RTReact(realization)
 #endif
   PetscInt :: icount
   PetscErrorCode :: ierr
-  PetscReal :: vol_frac_prim
 
 #ifdef OS_STATISTICS
   PetscInt :: call_count
@@ -1700,9 +1716,6 @@ subroutine RTReact(realization)
   material_auxvars => patch%aux%Material%auxvars
   grid => patch%grid
   reaction => realization%reaction
-  if (option%use_mc) then
-    rt_sec_transport_vars => patch%aux%SC_RT%sec_transport_vars
-  endif
 
   ! need up update aux vars based on current density/saturation,
   ! but NOT activity coefficients
@@ -1711,7 +1724,6 @@ subroutine RTReact(realization)
   ! Get vectors
   call VecGetArrayReadF90(field%tran_xx,tran_xx_p,ierr)
       
-  vol_frac_prim = 1.d0    
   iphase = 1
   ithread = 1
 #ifdef OS_STATISTICS
@@ -1728,14 +1740,11 @@ subroutine RTReact(realization)
     iend = istart + reaction%ncomp - 1
     iendaq = istart + reaction%naqcomp - 1
     
-    if (option%use_mc) then
-      vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
-    endif
     
     call RReact(rt_auxvars(ghosted_id),global_auxvars(ghosted_id), &
                 material_auxvars(ghosted_id), &
                 tran_xx_p(istart:iend), &
-                num_iterations,reaction,option,vol_frac_prim)
+                num_iterations,reaction,option)
     ! set primary dependent var back to free-ion molality
     tran_xx_p(istart:iendaq) = rt_auxvars(ghosted_id)%pri_molal
     if (reaction%nimcomp > 0) then
@@ -2301,7 +2310,7 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
       
 #ifndef CENTRAL_DIFFERENCE        
       call TFluxCoef(option,cur_connection_set%area(iconn), &
-                patch%internal_velocities(:,sum_connection)*vol_frac_prim, &
+                patch%internal_velocities(:,sum_connection), &
                 patch%internal_tran_coefs(:,sum_connection)*vol_frac_prim, &
                 cur_connection_set%dist(-1,iconn), &
                 coef_up,coef_dn)
@@ -2338,7 +2347,7 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
       endif
 #else
       call TFluxCoef_CD(option,cur_connection_set%area(iconn), &
-                 patch%internal_velocities(:,sum_connection)*vol_frac_prim, &
+                 patch%internal_velocities(:,sum_connection), &
                  patch%internal_tran_coefs(:,sum_connection)*vol_frac_prim, &
                  cur_connection_set%dist(-1,iconn), &
                  T_11,T_12,T_21,T_22)
@@ -2389,7 +2398,7 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
 #ifndef CENTRAL_DIFFERENCE
       ! TFluxCoef accomplishes the same as what TBCCoef would
       call TFluxCoef(option,cur_connection_set%area(iconn), &
-                  patch%boundary_velocities(:,sum_connection)*vol_frac_prim, &
+                  patch%boundary_velocities(:,sum_connection), &
                   patch%boundary_tran_coefs(:,sum_connection)*vol_frac_prim, &
                   0.5d0, &
                   coef_up,coef_dn)
@@ -2421,7 +2430,7 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
 
 #else
       call TFluxCoef_CD(option,cur_connection_set%area(iconn), &
-                patch%boundary_velocities(:,sum_connection)*vol_frac_prim, &
+                patch%boundary_velocities(:,sum_connection), &
                 patch%boundary_tran_coefs(:,sum_connection)*vol_frac_prim, &
                 0.5d0, & ! fraction upwind (0.d0 upwind, 0.5 central)
                 T_11,T_12,T_21,T_22)
@@ -2572,20 +2581,25 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
       istartall = offset + 1
       iendall = offset + reaction%ncomp
 
-      if (option%use_mc) then
-        vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
-      endif  
       call RTAccumulation(rt_auxvars(ghosted_id), &
                           global_auxvars(ghosted_id), &
                           material_auxvars(ghosted_id), &
-                          reaction,option,vol_frac_prim,Res)
+                          reaction,option,Res)
       if (reaction%neqsorb > 0) then
         call RAccumulationSorb(rt_auxvars(ghosted_id), &
                                global_auxvars(ghosted_id), &
                                material_auxvars(ghosted_id), &
                                reaction,option,Res)
       endif
+
+      if (option%use_mc) then
+        vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
+        Res = Res*vol_frac_prim
+      endif        
+      
       r_p(istartall:iendall) = r_p(istartall:iendall) + Res(1:reaction%ncomp)
+      
+      ! Secondary continuum formation not implemented for Age equation
       if (reaction%calculate_water_age) then 
         call RAge(rt_auxvars(ghosted_id),global_auxvars(ghosted_id), &
                   material_auxvars(ghosted_id),option,reaction,Res)
@@ -3011,7 +3025,7 @@ subroutine RTJacobianFlux(snes,xx,A,B,flag,realization,ierr)
 
 #ifndef CENTRAL_DIFFERENCE
       call TFluxCoef(option,cur_connection_set%area(iconn), &
-                patch%internal_velocities(:,sum_connection)*vol_frac_prim, &
+                patch%internal_velocities(:,sum_connection), &
                 patch%internal_tran_coefs(:,sum_connection)*vol_frac_prim, &
                 cur_connection_set%dist(-1,iconn), &
                 coef_up,coef_dn)
@@ -3039,7 +3053,7 @@ subroutine RTJacobianFlux(snes,xx,A,B,flag,realization,ierr)
 
 #else
       call TFluxCoef_CD(option,cur_connection_set%area(iconn), &
-                patch%internal_velocities(:,sum_connection)*vol_frac_prim, &
+                patch%internal_velocities(:,sum_connection), &
                 patch%internal_tran_coefs(:,sum_connection)*vol_frac_prim, &
                 cur_connection_set%dist(-1,iconn), &
                 T_11,T_12,T_21,T_22)
@@ -3099,7 +3113,7 @@ subroutine RTJacobianFlux(snes,xx,A,B,flag,realization,ierr)
 #ifndef CENTRAL_DIFFERENCE
       ! TFluxCoef accomplishes the same as what TBCCoef would
       call TFluxCoef(option,cur_connection_set%area(iconn), &
-                patch%boundary_velocities(:,sum_connection)*vol_frac_prim, &
+                patch%boundary_velocities(:,sum_connection), &
                 patch%boundary_tran_coefs(:,sum_connection)*vol_frac_prim, &
                 0.5d0, & ! fraction upwind (0.d0 upwind, 0.5 central)
                 coef_up,coef_dn)
@@ -3118,7 +3132,7 @@ subroutine RTJacobianFlux(snes,xx,A,B,flag,realization,ierr)
  
 #else
       call TFluxCoef_CD(option,cur_connection_set%area(iconn), &
-                 patch%boundary_velocities(:,sum_connection)*vol_frac_prim, &
+                 patch%boundary_velocities(:,sum_connection), &
                  patch%boundary_tran_coefs(:,sum_connection)*vol_frac_prim, &
                  0.5d0, & ! fraction upwind (0.d0 upwind, 0.5 central)
                  T_11,T_12,T_21,T_22)
@@ -3235,15 +3249,10 @@ subroutine RTJacobianNonFlux(snes,xx,A,B,flag,realization,ierr)
       !geh - Ignore inactive cells with inactive materials
       if (patch%imat(ghosted_id) <= 0) cycle
       
-      if (option%use_mc) then    
-        vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
-      endif      
-      
       call RTAccumulationDerivative(rt_auxvars(ghosted_id), &
                                     global_auxvars(ghosted_id), &
                                     material_auxvars(ghosted_id), &
-                                    reaction,option, &
-                                    vol_frac_prim,Jup) 
+                                    reaction,option,Jup) 
                                     
       if (reaction%neqsorb > 0) then
         call RAccumulationSorbDerivative(rt_auxvars(ghosted_id), &
@@ -3253,6 +3262,9 @@ subroutine RTJacobianNonFlux(snes,xx,A,B,flag,realization,ierr)
       endif
       
       if (option%use_mc) then
+      
+        vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
+        Jup = Jup*vol_frac_prim
 
         sec_diffusion_coefficient = realization%material_property_array(1)% &
                                     ptr%secondary_continuum_diff_coeff
@@ -4283,6 +4295,7 @@ subroutine RTJumpStartKineticSorption(realization)
       if (patch%imat(ghosted_id) <= 0) cycle
       call RJumpStartKineticSorption(patch%aux%RT%auxvars(ghosted_id), &
                                      patch%aux%Global%auxvars(ghosted_id), &
+                                     patch%aux%Material%auxvars(ghosted_id), &
                                      reaction,option)
     enddo
   endif
