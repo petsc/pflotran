@@ -248,7 +248,9 @@ end subroutine THAuxVarCopy
 ! ************************************************************************** !
 
 subroutine THAuxVarCompute(x,auxvar,global_auxvar, &
-                            iphase,saturation_function,por,perm,option)
+                           material_auxvar, &
+                            iphase,saturation_function, &
+                            option)
   ! 
   ! Computes auxiliary variables for each grid cell
   ! 
@@ -261,6 +263,7 @@ subroutine THAuxVarCompute(x,auxvar,global_auxvar, &
   
   use EOS_Water_module
   use Saturation_Function_module  
+  use Material_Aux_class
   
   implicit none
 
@@ -269,8 +272,8 @@ subroutine THAuxVarCompute(x,auxvar,global_auxvar, &
   PetscReal :: x(option%nflowdof)
   type(TH_auxvar_type) :: auxvar
   type(global_auxvar_type) :: global_auxvar
-  PetscReal :: por, perm
   PetscInt :: iphase
+  class(material_auxvar_type) :: material_auxvar
 
   PetscErrorCode :: ierr
   PetscReal :: pw,dw_kg,dw_mol,hw,sat_pressure,visl
@@ -316,7 +319,8 @@ subroutine THAuxVarCompute(x,auxvar,global_auxvar, &
     call SaturationFunctionCompute(global_auxvar%pres(1),global_auxvar%sat(1), &
                                    kr,ds_dp,dkr_dp, &
                                    saturation_function, &
-                                   por,perm, &
+                                   material_auxvar%porosity, &
+                                   material_auxvar%permeability(perm_xx_index), &
                                    option)
     dpw_dp = 0.d0
   else
@@ -382,8 +386,11 @@ end subroutine THAuxVarCompute
 
 ! ************************************************************************** !
 
-subroutine THAuxVarComputeIce(x, auxvar, global_auxvar, iphase, &
-                               saturation_function, por, perm, option)
+subroutine THAuxVarComputeIce(x, auxvar, global_auxvar, &
+                              material_auxvar, &
+                              iphase, &
+                              saturation_function, &
+                              option)
   ! 
   ! Computes auxillary variables for each grid cell when
   ! ice and vapor phases are present
@@ -399,6 +406,7 @@ subroutine THAuxVarComputeIce(x, auxvar, global_auxvar, iphase, &
   
   use EOS_Water_module
   use Saturation_Function_module  
+  use Material_Aux_class
   
   implicit none
 
@@ -407,7 +415,7 @@ subroutine THAuxVarComputeIce(x, auxvar, global_auxvar, iphase, &
   PetscReal :: x(option%nflowdof)
   type(TH_auxvar_type) :: auxvar
   type(global_auxvar_type) :: global_auxvar
-  PetscReal :: por, perm
+  class(material_auxvar_type) :: material_auxvar
   PetscInt :: iphase
 
   PetscErrorCode :: ierr

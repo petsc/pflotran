@@ -170,7 +170,10 @@ subroutine PMTHInitializeTimestep(this)
 
   use TH_module, only : THInitializeTimestep
   use Global_module
-  
+  use Variables_module, only : POROSITY, TORTUOSITY, PERMEABILITY_X, &
+                               PERMEABILITY_Y, PERMEABILITY_Z
+  use Material_module, only : MaterialAuxVarCommunicate
+
   implicit none
   
   class(pm_th_type) :: this
@@ -183,16 +186,30 @@ subroutine PMTHInitializeTimestep(this)
 
 #ifndef SIMPLIFY  
   ! update porosity
-  call this%comm1%LocalToLocal(this%realization%field%porosity_loc, &
-                              this%realization%field%porosity_loc)
-  call this%comm1%LocalToLocal(this%realization%field%tortuosity_loc, &
-                              this%realization%field%tortuosity_loc)
   call this%comm1%LocalToLocal(this%realization%field%icap_loc, &
                               this%realization%field%icap_loc)
   call this%comm1%LocalToLocal(this%realization%field%ithrm_loc, &
                               this%realization%field%ithrm_loc)
   call this%comm1%LocalToLocal(this%realization%field%iphas_loc, &
                               this%realization%field%iphas_loc)
+  call MaterialAuxVarCommunicate(this%comm1, &
+                                 this%realization%patch%aux%Material, &
+                                 this%realization%field%work_loc,POROSITY,0)
+  call MaterialAuxVarCommunicate(this%comm1, &
+                                 this%realization%patch%aux%Material, &
+                                 this%realization%field%work_loc,TORTUOSITY,0)
+  call MaterialAuxVarCommunicate(this%comm1, &
+                                 this%realization%patch%aux%Material, &
+                                 this%realization%field%work_loc, &
+                                 PERMEABILITY_X,0)
+  call MaterialAuxVarCommunicate(this%comm1, &
+                                 this%realization%patch%aux%Material, &
+                                 this%realization%field%work_loc, &
+                                 PERMEABILITY_Y,0)
+  call MaterialAuxVarCommunicate(this%comm1, &
+                                 this%realization%patch%aux%Material, &
+                                 this%realization%field%work_loc, &
+                                 PERMEABILITY_Z,0)
 #endif
 
   if (this%option%print_screen_flag) then

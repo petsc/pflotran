@@ -2,7 +2,7 @@ module TH_module
 
   use TH_Aux_module
   use Global_Aux_module
-  
+  use Material_Aux_class
   use PFLOTRAN_Constants_module
 
   implicit none
@@ -527,7 +527,7 @@ subroutine THCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
   type(global_auxvar_type), pointer :: global_auxvars(:)  
   type(TH_parameter_type), pointer :: TH_parameter
   type(sec_heat_type), pointer :: TH_sec_heat_vars(:)
-
+  class(material_auxvar_type), pointer :: material_auxvars(:)  
 
   PetscInt :: local_id, ghosted_id
   PetscReal :: Res(2)
@@ -543,7 +543,7 @@ subroutine THCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
   TH_parameter => realization%patch%aux%TH%TH_parameter
   global_auxvars => realization%patch%aux%Global%auxvars
   TH_sec_heat_vars => realization%patch%aux%SC_heat%sec_heat_vars
-
+  material_auxvars => realization%patch%aux%Material%auxvars
   
   dP_changed = PETSC_FALSE
   P1_changed = PETSC_FALSE
@@ -551,8 +551,6 @@ subroutine THCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
   if (option%check_post_convergence) then
     call VecGetArrayF90(dP,dP_p,ierr)
     call VecGetArrayF90(P1,P1_p,ierr)
-    call VecGetArrayF90(field%volume,volume_p,ierr)
-    call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
     call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
     call VecGetArrayF90(field%flow_r,r_p,ierr)
     
@@ -572,8 +570,7 @@ subroutine THCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
 
       call THAccumulation(TH_auxvars(ghosted_id), &
                            global_auxvars(ghosted_id), &
-                           porosity_loc_p(ghosted_id), &
-                           volume_p(local_id), &
+                           material_auxvars(ghosted_id), &
                            TH_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
                            option,vol_frac_prim,Res)
                                                         
@@ -590,8 +587,6 @@ subroutine THCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
       option%converged = PETSC_FALSE
     call VecRestoreArrayF90(dP,dP_p,ierr)
     call VecRestoreArrayF90(P1,P1_p,ierr)
-    call VecRestoreArrayF90(field%volume,volume_p,ierr)
-    call VecRestoreArrayF90(field%porosity_loc,porosity_loc_p,ierr)
     call VecGetArrayF90(field%flow_r,r_p,ierr)
   endif
   
@@ -655,7 +650,7 @@ subroutine THComputeMassBalancePatch(realization,mass_balance)
   type(field_type), pointer :: field
   type(grid_type), pointer :: grid
   type(global_auxvar_type), pointer :: global_auxvars(:)
-  PetscReal, pointer :: volume_p(:), porosity_loc_p(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
 
   PetscErrorCode :: ierr
   PetscInt :: local_id
@@ -667,9 +662,7 @@ subroutine THComputeMassBalancePatch(realization,mass_balance)
   field => realization%field
 
   global_auxvars => patch%aux%Global%auxvars
-
-  call VecGetArrayF90(field%volume,volume_p,ierr)
-  call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
+  material_auxvars => patch%aux%Material%auxvars
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
@@ -681,12 +674,10 @@ subroutine THComputeMassBalancePatch(realization,mass_balance)
     mass_balance = mass_balance + &
       global_auxvars(ghosted_id)%den_kg* &
       global_auxvars(ghosted_id)%sat* &
-      porosity_loc_p(ghosted_id)*volume_p(local_id)
+      material_auxvars(ghosted_id)%porosity* &
+      material_auxvars(ghosted_id)%volume
   enddo
 
-  call VecRestoreArrayF90(field%volume,volume_p,ierr)
-  call VecRestoreArrayF90(field%porosity_loc,porosity_loc_p,ierr)
-  
 end subroutine THComputeMassBalancePatch
 
 ! ************************************************************************** !
@@ -854,11 +845,11 @@ subroutine THUpdateAuxVarsPatch(realization)
   type(global_auxvar_type), pointer :: global_auxvars(:)
   type(global_auxvar_type), pointer :: global_auxvars_bc(:)
   type(global_auxvar_type), pointer :: global_auxvars_ss(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
 
   PetscInt :: ghosted_id, local_id, istart, iend, sum_connection, idof, iconn
   PetscInt :: iphasebc, iphase
   PetscReal, pointer :: xx_loc_p(:), icap_loc_p(:), iphase_loc_p(:)
-  PetscReal, pointer :: perm_xx_loc_p(:), porosity_loc_p(:)
   PetscReal :: xxbc(realization%option%nflowdof)
   PetscReal, pointer :: xx(:)
   PetscReal :: tsrc1
@@ -884,12 +875,11 @@ subroutine THUpdateAuxVarsPatch(realization)
   global_auxvars => patch%aux%Global%auxvars
   global_auxvars_bc => patch%aux%Global%auxvars_bc
   global_auxvars_ss => patch%aux%Global%auxvars_ss
+  material_auxvars => patch%aux%Material%auxvars
   
   call VecGetArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
   call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
   call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
-  call VecGetArrayF90(field%perm_xx_loc,perm_xx_loc_p,ierr)
-  call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
 
   do ghosted_id = 1, grid%ngmax
     if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
@@ -905,16 +895,16 @@ subroutine THUpdateAuxVarsPatch(realization)
     if (option%use_th_freezing) then
        call THAuxVarComputeIce(xx_loc_p(istart:iend), &
             TH_auxvars(ghosted_id),global_auxvars(ghosted_id), &
+            material_auxvars(ghosted_id), &
             iphase, &
             realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
-            porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &
             option)
     else
        call THAuxVarCompute(xx_loc_p(istart:iend), &
             TH_auxvars(ghosted_id),global_auxvars(ghosted_id), &
+            material_auxvars(ghosted_id), &
             iphase, &
             realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
-            porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &
             option)
     endif
 
@@ -953,16 +943,16 @@ subroutine THUpdateAuxVarsPatch(realization)
       if (option%use_th_freezing) then
          call THAuxVarComputeIce(xxbc,TH_auxvars_bc(sum_connection), &
               global_auxvars_bc(sum_connection), &
+              material_auxvars(sum_connection), &
               iphasebc, &
               realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
-              porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &
               option)
       else
          call THAuxVarCompute(xxbc,TH_auxvars_bc(sum_connection), &
               global_auxvars_bc(sum_connection), &
+              material_auxvars(sum_connection), &
               iphasebc, &
               realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
-              porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &
               option)
       endif
 
@@ -1014,16 +1004,16 @@ subroutine THUpdateAuxVarsPatch(realization)
       if (option%use_th_freezing) then
          call THAuxVarComputeIce(xx, &
               TH_auxvars_ss(sum_connection),global_auxvars_ss(sum_connection), &
+              material_auxvars(sum_connection), &
               iphase, &
               realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
-              porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &
               option)
       else
          call THAuxVarCompute(xx, &
               TH_auxvars_ss(sum_connection),global_auxvars_ss(sum_connection), &
+              material_auxvars(sum_connection), &
               iphase, &
               realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
-              porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &
               option)
       endif
     enddo
@@ -1034,9 +1024,7 @@ subroutine THUpdateAuxVarsPatch(realization)
   call VecRestoreArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
   call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
   call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
-  call VecRestoreArrayF90(field%perm_xx_loc,perm_xx_loc_p,ierr)
-  call VecRestoreArrayF90(field%porosity_loc,porosity_loc_p,ierr)
-  
+
   patch%aux%TH%auxvars_up_to_date = PETSC_TRUE
 
 !  deallocate(gradient)
@@ -1182,6 +1170,7 @@ subroutine THUpdateFixedAccumPatch(realization)
   type(TH_auxvar_type), pointer :: TH_auxvars(:)
   type(TH_parameter_type), pointer :: TH_parameter
   type(sec_heat_type), pointer :: TH_sec_heat_vars(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
 
   PetscInt :: ghosted_id, local_id, istart, iend, iphase
   PetscReal, pointer :: xx_p(:), icap_loc_p(:), iphase_loc_p(:)
@@ -1200,16 +1189,12 @@ subroutine THUpdateFixedAccumPatch(realization)
   TH_auxvars => patch%aux%TH%auxvars
   global_auxvars => patch%aux%Global%auxvars
   TH_sec_heat_vars => patch%aux%SC_heat%sec_heat_vars
+  material_auxvars => patch%aux%Material%auxvars
 
-          
   call VecGetArrayF90(field%flow_xx,xx_p, ierr)
   call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
   call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
-  call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
-  call VecGetArrayF90(field%tortuosity_loc,tor_loc_p,ierr)
-  call VecGetArrayF90(field%volume,volume_p,ierr)
   call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
-  call VecGetArrayF90(field%perm_xx_loc,perm_xx_loc_p,ierr)
 
   call VecGetArrayF90(field%flow_accum, accum_p, ierr)
 
@@ -1230,16 +1215,16 @@ subroutine THUpdateFixedAccumPatch(realization)
     if (option%use_th_freezing) then
        call THAuxVarComputeIce(xx_p(istart:iend), &
             TH_auxvars(ghosted_id),global_auxvars(ghosted_id), &
+            material_auxvars(ghosted_id), &
             iphase, &
             realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
-            porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                       
             option)
     else
        call THAuxVarCompute(xx_p(istart:iend), &
             TH_auxvars(ghosted_id),global_auxvars(ghosted_id), &
+            material_auxvars(ghosted_id), &
             iphase, &
             realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
-            porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                       
             option)
     endif
 
@@ -1250,8 +1235,7 @@ subroutine THUpdateFixedAccumPatch(realization)
     
     iphase_loc_p(ghosted_id) = iphase
     call THAccumulation(TH_auxvars(ghosted_id),global_auxvars(ghosted_id), &
-                              porosity_loc_p(ghosted_id), &
-                              volume_p(local_id), &
+                              material_auxvars(ghosted_id), &
                               TH_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
                               option,vol_frac_prim,accum_p(istart:iend)) 
   enddo
@@ -1259,11 +1243,7 @@ subroutine THUpdateFixedAccumPatch(realization)
   call VecRestoreArrayF90(field%flow_xx,xx_p, ierr)
   call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
   call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
-  call VecRestoreArrayF90(field%porosity_loc,porosity_loc_p,ierr)
-  call VecRestoreArrayF90(field%tortuosity_loc,tor_loc_p,ierr)
-  call VecRestoreArrayF90(field%volume,volume_p,ierr)
   call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
-  call VecRestoreArrayF90(field%perm_xx_loc,perm_xx_loc_p,ierr)
 
   call VecRestoreArrayF90(field%flow_accum, accum_p, ierr)
 
@@ -1367,9 +1347,10 @@ end subroutine THNumericalJacobianTest
 
 ! ************************************************************************** !
 
-subroutine THAccumDerivative(TH_auxvar,global_auxvar,por,vol, &
-                              rock_dencpr,option,sat_func, &
-                              vol_frac_prim,J)
+subroutine THAccumDerivative(TH_auxvar,global_auxvar, &
+                             material_auxvar, &
+                             rock_dencpr,option,sat_func, &
+                             vol_frac_prim,J)
   ! 
   ! Computes derivatives of the accumulation
   ! term for the Jacobian
@@ -1387,6 +1368,7 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar,por,vol, &
 
   type(TH_auxvar_type) :: TH_auxvar
   type(global_auxvar_type) :: global_auxvar
+  type(material_auxvar_type) :: material_auxvar
   type(option_type) :: option
   PetscReal :: vol,por,rock_dencpr
   type(saturation_function_type) :: sat_func
@@ -1398,6 +1380,7 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar,por,vol, &
   PetscInt :: iphase, ideriv
   type(TH_auxvar_type) :: TH_auxvar_pert
   type(global_auxvar_type) :: global_auxvar_pert
+  type(material_auxvar_type) :: material_auxvar_pert
   PetscReal :: x(option%nflowdof), x_pert(option%nflowdof), pert
   PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
   PetscReal :: J_pert(option%nflowdof,option%nflowdof)
@@ -1417,6 +1400,8 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar,por,vol, &
   
   ! X = {p, T}; R = {R_p, R_T}
   
+  por = material_auxvar%porosity
+  vol = material_auxvar%volume
   
 #ifndef USE_COMPRESSIBILITY
   porXvol = por*vol
@@ -1462,7 +1447,7 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar,por,vol, &
      u_i = TH_auxvar%u_ice
      den_i = TH_auxvar%den_ice
      p_g = option%reference_pressure ! set to reference pressure
-     den_g = p_g/(IDEAL_GAS_CONST*(global_auxvar%temp(1) + 273.15d0))*1.d-3 
+     den_g = p_g/(IDEAL_GAS_CONST*(global_auxvar%temp(1) + 273.15d0))*1.d-3
      call EOSWaterSaturationPressure(global_auxvar%temp(1), p_sat, dpsat_dt, ierr)
      mol_g = p_sat/p_g
      C_g = C_wv*mol_g*FMWH2O + C_a*(1.d0 - mol_g)*FMWAIR !in MJ/kmol/K, expression might be different
@@ -1500,14 +1485,17 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar,por,vol, &
   if (option%numerical_derivatives_flow) then
     allocate(TH_auxvar_pert%xmol(option%nflowspec),TH_auxvar_pert%diff(option%nflowspec))
     call GlobalAuxVarInit(global_auxvar_pert,option)  
+    call MaterialAuxVarInit(material_auxvar_pert,option)  
+
     call THAuxVarCopy(TH_auxvar,TH_auxvar_pert,option)
     call GlobalAuxVarCopy(global_auxvar,global_auxvar_pert,option)
+    call MaterialAuxVarCopy(material_auxvar,material_auxvar_pert,option)
 
     x(1) = global_auxvar%pres(1)
     x(2) = global_auxvar%temp(1)
     
-    call THAccumulation(TH_auxvar,global_auxvar, &
-                         por,vol,rock_dencpr,option, &
+    call THAccumulation(TH_auxvar,global_auxvar,material_auxvar, &
+                         rock_dencpr,option, &
                          vol_frac_prim,res)
     
     do ideriv = 1,option%nflowdof
@@ -1534,14 +1522,19 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar,por,vol, &
       endif
 
       if (option%use_th_freezing) then
-         call THAuxVarComputeIce(x_pert,TH_auxvar_pert,global_auxvar_pert,iphase,sat_func, &
-              0.d0,0.d0,option)
+         call THAuxVarComputeIce(x_pert,TH_auxvar_pert, &
+                                 global_auxvar_pert,material_auxvar_pert, &
+                                 iphase,sat_func, &
+                                 option)
       else
-         call THAuxVarCompute(x_pert,TH_auxvar_pert,global_auxvar_pert,iphase,sat_func, &
-              0.d0,0.d0,option)
+         call THAuxVarCompute(x_pert,TH_auxvar_pert,&
+                              global_auxvar_pert,material_auxvar_pert,&
+                              iphase,sat_func, &
+                              option)
       endif
-      call THAccumulation(TH_auxvar_pert,global_auxvar_pert, &
-                           por,vol,rock_dencpr,option,vol_frac_prim, &
+
+      call THAccumulation(TH_auxvar_pert,global_auxvar_pert, material_auxvar_pert, &
+                           rock_dencpr,option,vol_frac_prim, &
                            res_pert)
       J_pert(:,ideriv) = (res_pert(:)-res(:))/pert
     enddo
@@ -1555,8 +1548,9 @@ end subroutine THAccumDerivative
 
 ! ************************************************************************** !
 
-subroutine THAccumulation(auxvar,global_auxvar,por,vol, &
-                           rock_dencpr,option,vol_frac_prim,Res)
+subroutine THAccumulation(auxvar,global_auxvar, &
+                          material_auxvar, &
+                          rock_dencpr,option,vol_frac_prim,Res)
   ! 
   ! Computes the non-fixed portion of the accumulation
   ! term for the residual
@@ -1573,11 +1567,13 @@ subroutine THAccumulation(auxvar,global_auxvar,por,vol, &
 
   type(TH_auxvar_type) :: auxvar
   type(global_auxvar_type) :: global_auxvar
+  type(material_auxvar_type) :: material_auxvar
   type(option_type) :: option
   PetscReal :: Res(1:option%nflowdof) 
-  PetscReal :: vol,por,rock_dencpr,por1
-     
-  PetscInt :: ispec 
+  PetscReal ::rock_dencpr,por1
+
+  PetscInt :: ispec
+  PetscReal :: vol,por
   PetscReal :: porXvol, mol(option%nflowspec), eng
   PetscReal :: vol_frac_prim
 
@@ -1588,6 +1584,8 @@ subroutine THAccumulation(auxvar,global_auxvar,por,vol, &
   PetscReal, parameter :: C_wv = 1.005d-3 ! in MJ/kg/K
   PetscErrorCode :: ierr
   
+  por = material_auxvar%porosity
+  vol = material_auxvar%volume
 ! TechNotes, TH Mode: First term of Equation 8
   porXvol = por*vol
   
@@ -1637,17 +1635,23 @@ end subroutine THAccumulation
 
 ! ************************************************************************** !
 
-subroutine THFluxDerivative(auxvar_up,global_auxvar_up,por_up,tor_up, &
-                             sir_up,dd_up,perm_up,Dk_up, &
-                             auxvar_dn,global_auxvar_dn,por_dn,tor_dn, &
-                             sir_dn,dd_dn,perm_dn,Dk_dn, &
-                             area,dist_gravity,upweight, &
+subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
+                            material_auxvar_up, &
+                             sir_up, &
+                             Dk_up, &
+                             auxvar_dn,global_auxvar_dn, &
+                             material_auxvar_dn, &
+                             sir_dn, &
+                             Dk_dn, &
+                             area, &
+                             dist, upweight, &
                              option,sat_func_up,sat_func_dn, &
                              Diff_up,Diff_dn,Dk_dry_up,Dk_dry_dn, &
                              Dk_ice_up,Dk_ice_dn, &
                              alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
                              Jup,Jdn)
-  ! 
+
+  !
   ! Computes the derivatives of the internal flux terms
   ! for the Jacobian
   ! 
@@ -1657,17 +1661,16 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up,por_up,tor_up, &
                              
   use Option_module 
   use Saturation_Function_module             
-   
+  use Connection_module
   use EOS_Water_module
   
   implicit none
   
   type(TH_auxvar_type) :: auxvar_up, auxvar_dn
   type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
+  class(material_auxvar_type) :: material_auxvar_up, material_auxvar_dn
   type(option_type) :: option
   PetscReal :: sir_up, sir_dn
-  PetscReal :: por_up, por_dn
-  PetscReal :: tor_up, tor_dn
   PetscReal :: dd_up, dd_dn
   PetscReal :: perm_up, perm_dn
   PetscReal :: Dk_up, Dk_dn
@@ -1677,10 +1680,13 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up,por_up,tor_up, &
   PetscReal :: alpha_fr_up, alpha_fr_dn
   PetscReal :: Diff_up, Diff_dn
   PetscReal :: v_darcy, area
-  PetscReal :: dist_gravity  ! distance along gravity vector
+  PetscReal :: dist(-1:3)
   type(saturation_function_type) :: sat_func_up, sat_func_dn
   PetscReal :: Jup(option%nflowdof,option%nflowdof), Jdn(option%nflowdof,option%nflowdof)
      
+  PetscReal :: por_up, por_dn
+  PetscReal :: tor_up, tor_dn
+  PetscReal :: dist_gravity  ! distance along gravity vector
   PetscInt :: ispec
   PetscReal :: fluxm(option%nflowspec),fluxe,q
   PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,difff,diffdp, DK,Dq
@@ -1714,6 +1720,8 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up,por_up,tor_up, &
   PetscReal :: res_pert_dn(option%nflowdof)
   PetscReal :: J_pert_up(option%nflowdof,option%nflowdof)
   PetscReal :: J_pert_dn(option%nflowdof,option%nflowdof)
+  class(material_auxvar_type), allocatable :: material_auxvar_pert_dn, &
+                                              material_auxvar_pert_up
 
   ! ice variables
   PetscReal :: Ddiffgas_avg, Ddiffgas_up, Ddiffgas_dn
@@ -1741,6 +1749,17 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up,por_up,tor_up, &
   PetscReal :: dmolg_dp_up, dmolg_dp_dn
   PetscReal :: fv_up_pert
   
+  call ConnectionCalculateDistances(dist,option%gravity,dd_up,dd_dn, &
+                                    dist_gravity,upweight)
+  call material_auxvar_up%PermeabilityTensorToScalar(dist,perm_up)
+  call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
+
+  por_up = material_auxvar_up%porosity
+  por_dn = material_auxvar_dn%porosity
+
+  tor_up = material_auxvar_up%tortuosity
+  tor_dn = material_auxvar_dn%tortuosity
+
   Dq = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
   diffdp = (por_up*tor_up*por_dn*tor_dn) / (dd_dn*por_up*tor_up + dd_up*por_dn*tor_dn)*area
   
@@ -2099,21 +2118,36 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up,por_up,tor_up, &
   if (option%numerical_derivatives_flow) then
     allocate(auxvar_pert_up%xmol(option%nflowspec),auxvar_pert_up%diff(option%nflowspec))
     allocate(auxvar_pert_dn%xmol(option%nflowspec),auxvar_pert_dn%diff(option%nflowspec))
-    call GlobalAuxVarInit(global_auxvar_pert_up,option)
-    call GlobalAuxVarInit(global_auxvar_pert_dn,option)  
+
     call THAuxVarCopy(auxvar_up,auxvar_pert_up,option)
     call THAuxVarCopy(auxvar_dn,auxvar_pert_dn,option)
+
+    call GlobalAuxVarInit(global_auxvar_pert_up,option)
+    call GlobalAuxVarInit(global_auxvar_pert_dn,option)  
     call GlobalAuxVarCopy(global_auxvar_up,global_auxvar_pert_up,option)
     call GlobalAuxVarCopy(global_auxvar_dn,global_auxvar_pert_dn,option)
+
+    call MaterialAuxVarInit(material_auxvar_pert_up,option)
+    call MaterialAuxVarInit(material_auxvar_pert_dn,option)  
+    call MaterialAuxVarCopy(material_auxvar_up,material_auxvar_pert_up,option)
+    call MaterialAuxVarCopy(material_auxvar_dn,material_auxvar_pert_dn,option)
+
     x_up(1) = global_auxvar_up%pres(1)
     x_up(2) = global_auxvar_up%temp(1)
     x_dn(1) = global_auxvar_dn%pres(1)
     x_dn(2) = global_auxvar_dn%temp(1)
 
     call THFlux( &
-      auxvar_up,global_auxvar_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
-      auxvar_dn,global_auxvar_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
-      area,dist_gravity,upweight, &
+      auxvar_up,global_auxvar_up, &
+      material_auxvar_up, &
+      sir_up, &
+      Dk_up, &
+      auxvar_dn,global_auxvar_dn, &
+      material_auxvar_dn, &
+      sir_dn, &
+      Dk_dn, &
+      area, &
+      dist, upweight, &
       option,v_darcy,Diff_up,Diff_dn,Dk_dry_up,Dk_dry_dn, &
       Dk_ice_up,Dk_ice_dn, &
       alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
@@ -2162,36 +2196,48 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up,por_up,tor_up, &
 
       if (option%use_th_freezing) then
          call THAuxVarComputeIce(x_pert_up,auxvar_pert_up, &
-              global_auxvar_pert_up, &
+              global_auxvar_pert_up, material_auxvar_pert_up, &
               iphase,sat_func_up, &
-              0.d0,0.d0,option)
+              option)
          call THAuxVarComputeIce(x_pert_dn,auxvar_pert_dn, &
-              global_auxvar_pert_dn,iphase,sat_func_dn, &
-              0.d0,0.d0,option)
+              global_auxvar_pert_dn, material_auxvar_pert_up, &
+              iphase,sat_func_dn, &
+              option)
       else
          call THAuxVarCompute(x_pert_up,auxvar_pert_up, &
-              global_auxvar_pert_up, &
+              global_auxvar_pert_up, material_auxvar_pert_up, &
               iphase,sat_func_up, &
-              0.d0,0.d0,option)
+              option)
          call THAuxVarCompute(x_pert_dn,auxvar_pert_dn, &
-              global_auxvar_pert_dn,iphase,sat_func_dn, &
-              0.d0,0.d0,option)
+              global_auxvar_pert_dn,material_auxvar_pert_dn, &
+              iphase,sat_func_dn, &
+              option)
       endif
 
       call THFlux(auxvar_pert_up,global_auxvar_pert_up, &
-                   por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
+                   material_auxvar_pert_up, &
+                   sir_up, &
+                   Dk_up, &
                    auxvar_dn,global_auxvar_dn, &
-                   por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
-                   area,dist_gravity,upweight, &
+                   material_auxvar_pert_dn, &
+                   sir_dn, &
+                   Dk_dn, &
+                   area, &
+                   dist, upweight, &
                    option,v_darcy,Diff_up,Diff_dn,Dk_dry_up, &
                    Dk_dry_dn,Dk_ice_up,Dk_ice_dn, &
                    alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
                    res_pert_up)
       call THFlux(auxvar_up,global_auxvar_up, &
-                   por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
+                   material_auxvar_pert_up, &
+                   sir_up,&
+                   Dk_up, &
                    auxvar_pert_dn,global_auxvar_pert_dn, &
-                   por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
-                   area,dist_gravity,upweight, &
+                   material_auxvar_pert_dn, &
+                   sir_dn, &
+                   Dk_dn, &
+                   area, &
+                   dist, upweight, &
                    option,v_darcy,Diff_up,Diff_dn,Dk_dry_up, &
                    Dk_dry_dn,Dk_ice_up,Dk_ice_dn, &
                    alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
@@ -2212,12 +2258,17 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up,por_up,tor_up, &
 end subroutine THFluxDerivative
 
 ! ************************************************************************** !
-
 subroutine THFlux(auxvar_up,global_auxvar_up, &
-                  por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
+                  material_auxvar_up, &
+                  sir_up, &
+                  Dk_up, &
                   auxvar_dn,global_auxvar_dn, &
-                  por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
-                  area,dist_gravity,upweight, &
+                  material_auxvar_dn, &
+                  sir_dn, &
+                  Dk_dn, &
+                  area, &
+                  dist, &
+                  upweight, &
                   option,v_darcy,Diff_up,Diff_dn,Dk_dry_up, &
                   Dk_dry_dn,Dk_ice_up,Dk_ice_dn, &
                   alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
@@ -2230,19 +2281,17 @@ subroutine THFlux(auxvar_up,global_auxvar_up, &
   ! 
                   
   use Option_module                              
-  
+  use Connection_module
   use EOS_Water_module
 
   implicit none
   
   type(TH_auxvar_type) :: auxvar_up, auxvar_dn
   type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
+  class(material_auxvar_type) :: material_auxvar_up, material_auxvar_dn
   type(option_type) :: option
   PetscReal :: sir_up, sir_dn
-  PetscReal :: por_up, por_dn
-  PetscReal :: tor_up, tor_dn
   PetscReal :: dd_up, dd_dn
-  PetscReal :: perm_up, perm_dn
   PetscReal :: Dk_up, Dk_dn
   PetscReal :: Dk_dry_up, Dk_dry_dn
   PetscReal :: Dk_ice_up, Dk_ice_dn
@@ -2252,15 +2301,20 @@ subroutine THFlux(auxvar_up,global_auxvar_up, &
   PetscReal :: Diff_up,Diff_dn
   PetscReal :: v_darcy,area
   PetscReal :: Res(1:option%nflowdof) 
-  PetscReal :: dist_gravity  ! distance along gravity vector
-  PetscReal :: Ke_up,Ke_dn   ! unfrozen soil Kersten numbers 
+  PetscReal :: dist(-1:3)
+  PetscReal :: Ke_up,Ke_dn   ! unfrozen soil Kersten numbers
   PetscInt :: ispec
   PetscReal :: fluxm(option%nflowspec),fluxe,q
   PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,difff,diffdp, DK,Dq
   PetscReal :: upweight,density_ave,cond,gravity,dphi
   PetscReal, parameter :: epsilon = 1.d-6
 
+  PetscReal :: por_up, por_dn
+  PetscReal :: tor_up, tor_dn
+  PetscReal :: perm_up, perm_dn
+
   ! ice variables
+  PetscReal :: dist_gravity  ! distance along gravity vector
   PetscReal :: Ddiffgas_avg, Ddiffgas_up, Ddiffgas_dn
   PetscReal :: p_g
   PetscReal :: deng_up, deng_dn
@@ -2274,13 +2328,24 @@ subroutine THFlux(auxvar_up,global_auxvar_up, &
   PetscReal :: fv_up, fv_dn
   PetscReal, parameter :: R_gas_constant = 8.3144621 ! Gas constant in J/mol/K
      
+  call ConnectionCalculateDistances(dist,option%gravity,dd_up,dd_dn, &
+                                    dist_gravity,upweight)
+  call material_auxvar_up%PermeabilityTensorToScalar(dist,perm_up)
+  call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
+
+  por_up = material_auxvar_up%porosity
+  por_dn = material_auxvar_dn%porosity
+
+  tor_up = material_auxvar_up%tortuosity
+  tor_dn = material_auxvar_dn%tortuosity
+
   Dq = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
   diffdp = (por_up*tor_up*por_dn*tor_dn) / (dd_dn*por_up*tor_up + dd_up*por_dn*tor_dn)*area
   
   fluxm = 0.D0
   fluxe = 0.D0
   v_darcy = 0.D0  
-  
+
 ! Flow term
   if (global_auxvar_up%sat(1) > sir_up .or. global_auxvar_dn%sat(1) > sir_dn) then
     if (global_auxvar_up%sat(1) < eps) then 
@@ -2314,7 +2379,7 @@ subroutine THFlux(auxvar_up,global_auxvar_up, &
         
       fluxm(1) = fluxm(1) + q*density_ave
       !fluxm(2) = fluxm(2) + q*density_ave*uxmol(2)
-      fluxe = fluxe + q*density_ave*uh 
+      fluxe = fluxe + q*density_ave*uh
     endif
   endif 
 
@@ -2399,7 +2464,8 @@ subroutine THFlux(auxvar_up,global_auxvar_up, &
   endif
  
   Dk = (Dk_eff_up * Dk_eff_dn) / (dd_dn*Dk_eff_up + dd_up*Dk_eff_dn)
-  cond = Dk*area*(global_auxvar_up%temp(1) - global_auxvar_dn%temp(1)) 
+  cond = Dk*area*(global_auxvar_up%temp(1) - global_auxvar_dn%temp(1))
+
   fluxe = fluxe + cond
 
   Res(1:option%nflowdof-1) = fluxm(:)
@@ -2416,8 +2482,12 @@ end subroutine THFlux
 subroutine THBCFluxDerivative(ibndtype,auxvars, &
                               auxvar_up,global_auxvar_up, &
                               auxvar_dn,global_auxvar_dn, &
-                              por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
-                              area,dist_gravity,option, &
+                              material_auxvar_dn, &
+                              sir_dn, &
+                              Dk_dn, &
+                              area, &
+                              dist, &
+                              option, &
                               sat_func_dn,Jdn)
   ! 
   ! Computes the derivatives of the boundary flux
@@ -2428,7 +2498,7 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
   ! 
   use Option_module
   use Saturation_Function_module
-  
+  use Connection_module
   use EOS_Water_module
  
   implicit none
@@ -2436,16 +2506,19 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
   PetscInt :: ibndtype(:)
   type(TH_auxvar_type) :: auxvar_up, auxvar_dn
   type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
+  class(material_auxvar_type) :: material_auxvar_dn
   type(option_type) :: option
-  PetscReal :: dd_up, sir_dn
+  PetscReal :: sir_dn
   PetscReal :: auxvars(:) ! from aux_real_var array in boundary condition
   PetscReal :: por_dn,perm_dn,Dk_dn,tor_dn,Diff_dn
   PetscReal :: area
   type(saturation_function_type) :: sat_func_dn  
   PetscReal :: Jdn(option%nflowdof,option%nflowdof)
+  PetscReal :: dist(-1:3)
   
   PetscReal :: dist_gravity  ! distance along gravity vector
           
+  PetscReal :: dd_up, dd_dn
   PetscInt :: ispec
   PetscReal :: v_darcy
   PetscReal :: fluxm(option%nflowspec),fluxe,q,density_ave
@@ -2464,6 +2537,9 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
   PetscInt :: iphase, ideriv
   type(TH_auxvar_type) :: auxvar_pert_dn, auxvar_pert_up
   type(global_auxvar_type) :: global_auxvar_pert_dn, global_auxvar_pert_up
+  class(material_auxvar_type), allocatable :: material_auxvar_pert_dn, &
+                                              material_auxvar_pert_up
+
   PetscReal :: perturbation
   PetscReal :: x_up(option%nflowdof), x_dn(option%nflowdof)
   PetscReal :: x_pert_up(option%nflowdof), x_pert_dn(option%nflowdof)
@@ -2518,6 +2594,13 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
   hw_present = PETSC_TRUE ! assume standing water is present when running with
                           ! surface-flow
         
+  dist_gravity = dist(0) * dot_product(option%gravity,dist(1:3))
+  dd_up = dist(0)
+
+  call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
+  por_dn = material_auxvar_dn%porosity
+  tor_dn = material_auxvar_dn%tortuosity
+
   ! Flow
   diffdp = por_dn*tor_dn/dd_up*area
   select case(ibndtype(TH_PRESSURE_DOF))
@@ -2700,9 +2783,14 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
 
   end select
 
+#if 0
   if (option%numerical_derivatives_flow) then
     allocate(auxvar_pert_dn%xmol(option%nflowspec),auxvar_pert_dn%diff(option%nflowspec))
     allocate(auxvar_pert_up%xmol(option%nflowspec),auxvar_pert_up%diff(option%nflowspec))
+    allocate(material_auxvar_pert_up,material_auxvar_pert_dn)
+
+    call MaterialAuxVarInit(material_auxvar_pert_up,option)
+    call MaterialAuxVarInit(material_auxvar_pert_dn,option)  
     
     call GlobalAuxVarInit(global_auxvar_pert_up,option)
     call GlobalAuxVarInit(global_auxvar_pert_dn,option)  
@@ -2711,6 +2799,11 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
     call GlobalAuxVarCopy(global_auxvar_up,global_auxvar_pert_up,option)
     call GlobalAuxVarCopy(global_auxvar_dn,global_auxvar_pert_dn,option)
     
+    call MaterialAuxVarCopy(material_auxvar_dn,material_auxvar_pert_up, &
+                            option)
+    call MaterialAuxVarCopy(material_auxvar_dn,material_auxvar_pert_dn, &
+                            option)
+
     x_up(1) = global_auxvar_up%pres(1)
     x_up(2) = global_auxvar_up%temp(1)
     x_dn(1) = global_auxvar_dn%pres(1)
@@ -2722,23 +2815,34 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
     enddo
     if (option%use_th_freezing) then
        call THAuxVarComputeIce(x_dn,auxvar_dn, &
-            global_auxvar_dn,iphase,sat_func_dn, &
-            0.d0,0.d0,option)
+            global_auxvar_dn, &
+            material_auxvar_dn, &
+            iphase,sat_func_dn, &
+            option)
        call THAuxVarComputeIce(x_up,auxvar_up, &
-            global_auxvar_up,iphase,sat_func_dn, &
-            0.d0,0.d0,option)
+            global_auxvar_up, &
+            material_auxvar_up, &
+            iphase,sat_func_dn, &
+            option)
     else
        call THAuxVarCompute(x_dn,auxvar_dn, &
-            global_auxvar_dn,iphase,sat_func_dn, &
-            0.d0,0.d0,option)
+            global_auxvar_dn, &
+            material_auxvar_dn, &
+            iphase,sat_func_dn, &
+            option)
        call THAuxVarCompute(x_up,auxvar_up, &
-            global_auxvar_up,iphase,sat_func_dn, &
-            0.d0,0.d0,option)
+            global_auxvar_up, &
+            material_auxvar_up, &
+            iphase,sat_func_dn, &
+            option)
     endif
     
     call THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
+                  material_auxvar_up, &
                   auxvar_dn,global_auxvar_dn, &
-                  por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
+                  material_auxvar_dn, &
+                  sir_dn, &
+                  Dk_dn, &
                   area,dist_gravity,option,v_darcy,Diff_dn, &
                   res)
     if (ibndtype(TH_PRESSURE_DOF) == ZERO_GRADIENT_BC .or. &
@@ -2778,23 +2882,34 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
 
       if (option%use_th_freezing) then
          call THAuxVarComputeIce(x_pert_dn,auxvar_pert_dn, &
-              global_auxvar_pert_dn,iphase,sat_func_dn, &
-              0.d0,0.d0,option)
+              global_auxvar_pert_dn, &
+              material_auxvar_pert_dn, &
+              iphase,sat_func_dn, &
+              option)
          call THAuxVarComputeIce(x_pert_up,auxvar_pert_up, &
-              global_auxvar_pert_up,iphase,sat_func_dn, &
-              0.d0,0.d0,option)
+              global_auxvar_pert_up, &
+              material_auxvar_pert_up, &
+              iphase,sat_func_dn, &
+              option)
       else
          call THAuxVarCompute(x_pert_dn,auxvar_pert_dn, &
-              global_auxvar_pert_dn,iphase,sat_func_dn, &
-              0.d0,0.d0,option)
+              global_auxvar_pert_dn, &
+              material_auxvar_pert_dn, &
+              iphase,sat_func_dn, &
+              option)
          call THAuxVarCompute(x_pert_up,auxvar_pert_up, &
-              global_auxvar_pert_up,iphase,sat_func_dn, &
-              0.d0,0.d0,option)
+              global_auxvar_pert_up, &
+              material_auxvar_pert_up, &
+              iphase,sat_func_dn, &
+              option)
       endif
 
       call THBCFlux(ibndtype,auxvars,auxvar_pert_up,global_auxvar_pert_up, &
+                    material_auxvar_pert_up, &
                     auxvar_pert_dn,global_auxvar_pert_dn, &
-                    por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
+                    material_auxvar_pert_dn, &
+                    sir_dn, &
+                    Dk_dn, &
                     area,dist_gravity,option,v_darcy,Diff_dn, &
                     res_pert_dn)
       J_pert_dn(:,ideriv) = (res_pert_dn(:)-res(:))/pert_dn
@@ -2804,6 +2919,7 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
     call GlobalAuxVarStrip(global_auxvar_pert_up)
     call GlobalAuxVarStrip(global_auxvar_pert_dn)      
   endif
+#endif
 
 end subroutine THBCFluxDerivative
 
@@ -2811,8 +2927,12 @@ end subroutine THBCFluxDerivative
 
 subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
                     auxvar_dn,global_auxvar_dn, &
-                    por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
-                    area,dist_gravity,option,v_darcy,Diff_dn, &
+                    material_auxvar_dn, &
+                    sir_dn, &
+                    Dk_dn, &
+                    area, &
+                    dist, &
+                    option,v_darcy,Diff_dn, &
                     Res)
   ! 
   ! Computes the  boundary flux terms for the residual
@@ -2821,7 +2941,7 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
   ! Date: 12/13/07
   ! 
   use Option_module
-  
+  use Connection_module
   use EOS_Water_module
   use Condition_module
  
@@ -2830,15 +2950,19 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
   PetscInt :: ibndtype(:)
   type(TH_auxvar_type) :: auxvar_up, auxvar_dn
   type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
+  class(material_auxvar_type) :: material_auxvar_dn
   type(option_type) :: option
-  PetscReal :: dd_up, sir_dn, Diff_dn
+  PetscReal :: sir_dn, Diff_dn
   PetscReal :: auxvars(:) ! from aux_real_var array
-  PetscReal :: por_dn,perm_dn,Dk_dn,tor_dn
+  PetscReal :: Dk_dn
   PetscReal :: v_darcy, area
   PetscReal :: Res(1:option%nflowdof) 
+  PetscReal :: dist(-1:3)
   
   PetscReal :: dist_gravity  ! distance along gravity vector
+  PetscReal :: dd_up, dd_dn
           
+  PetscReal :: por_dn,perm_dn,tor_dn
   PetscInt :: ispec
   PetscReal :: fluxm(option%nflowspec),fluxe,q,density_ave
   PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,diff,diffdp,DK,Dq
@@ -2865,7 +2989,14 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
   q = 0.d0
   hw_present = PETSC_TRUE ! assume standing water is present
 
-  ! Flow   
+  dist_gravity = dist(0) * dot_product(option%gravity,dist(1:3))
+  dd_up = dist(0)
+
+  call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
+  por_dn = material_auxvar_dn%porosity
+  tor_dn = material_auxvar_dn%tortuosity
+
+  ! Flow
   diffdp = por_dn*tor_dn/dd_up*area
   select case(ibndtype(TH_PRESSURE_DOF))
     ! figure out the direction of flow
@@ -3030,6 +3161,8 @@ subroutine THResidual(snes,xx,r,realization,ierr)
   use Discretization_module
   use Field_module
   use Option_module
+  use Variables_module
+  use Material_module
 
   implicit none
 
@@ -3053,12 +3186,31 @@ subroutine THResidual(snes,xx,r,realization,ierr)
   call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
   call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%icap_loc,field%icap_loc,ONEDOF)
+  realization%output_option%plot_number = realization%output_option%plot_number + 1
 
-  call DiscretizationLocalToLocal(discretization,field%perm_xx_loc,field%perm_xx_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%perm_yy_loc,field%perm_yy_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%ithrm_loc,field%ithrm_loc,ONEDOF)
   
+  call MaterialGetAuxVarVecLoc(realization%patch%aux%Material,field%work_loc, &
+                               PERMEABILITY_X,ZERO_INTEGER)
+  call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                  field%work_loc,ONEDOF)
+  call MaterialSetAuxVarVecLoc(realization%patch%aux%Material,field%work_loc, &
+                               PERMEABILITY_X,ZERO_INTEGER)
+
+  call MaterialGetAuxVarVecLoc(realization%patch%aux%Material,field%work_loc, &
+                               PERMEABILITY_Y,ZERO_INTEGER)
+  call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                  field%work_loc,ONEDOF)
+  call MaterialSetAuxVarVecLoc(realization%patch%aux%Material,field%work_loc, &
+                               PERMEABILITY_Y,ZERO_INTEGER)
+
+  call MaterialGetAuxVarVecLoc(realization%patch%aux%Material,field%work_loc, &
+                               PERMEABILITY_Z,ZERO_INTEGER)
+  call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                  field%work_loc,ONEDOF)
+  call MaterialSetAuxVarVecLoc(realization%patch%aux%Material,field%work_loc, &
+                               PERMEABILITY_Z,ZERO_INTEGER)
+
   cur_patch => realization%patch_list%first
   do
     if (.not.associated(cur_patch)) exit
@@ -3141,6 +3293,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   type(TH_auxvar_type), pointer :: auxvars(:), auxvars_bc(:)
   type(TH_auxvar_type), pointer :: auxvars_ss(:)
   type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set  
@@ -3169,7 +3322,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   auxvars_ss => patch%aux%TH%auxvars_ss
   global_auxvars => patch%aux%Global%auxvars
   global_auxvars_bc => patch%aux%Global%auxvars_bc
-  
+  material_auxvars => patch%aux%Material%auxvars
   TH_sec_heat_vars => patch%aux%SC_heat%sec_heat_vars
   
   call THUpdateAuxVarsPatch(realization)
@@ -3187,12 +3340,6 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   call VecGetArrayF90(field%flow_accum, accum_p, ierr)
  
   call VecGetArrayF90(field%flow_yy,yy_p,ierr)
-  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayF90(field%tortuosity_loc, tor_loc_p, ierr)
-  call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecGetArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecGetArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecGetArrayF90(field%volume, volume_p, ierr)
   call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
@@ -3222,8 +3369,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
     endif
 
     call THAccumulation(auxvars(ghosted_id),global_auxvars(ghosted_id), &
-                        porosity_loc_p(ghosted_id), &
-                        volume_p(local_id), &
+                        material_auxvars(ghosted_id), &
                         TH_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
                         option,vol_frac_prim,Res)
     r_p(istart:iend) = r_p(istart:iend) + Res
@@ -3259,7 +3405,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
                           sec_dencpr, &
                           option,res_sec_heat)
 
-      r_p(iend) = r_p(iend) - res_sec_heat*volume_p(local_id)
+      r_p(iend) = r_p(iend) - res_sec_heat*material_auxvars(local_id)%volume
     enddo   
     option%sec_vars_update = PETSC_FALSE
   endif
@@ -3363,15 +3509,6 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
       ! to match pflow-orig.  This can be changed to 1.d0-fraction_upwind
       upweight = dd_dn/(dd_up+dd_dn)
         
-      ! for now, just assume diagonal tensor
-      perm_up = perm_xx_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(1,iconn))+ &
-                perm_yy_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(2,iconn))+ &
-                perm_zz_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(3,iconn))
-
-      perm_dn = perm_xx_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(1,iconn))+ &
-                perm_yy_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(2,iconn))+ &
-                perm_zz_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(3,iconn))
-
       ithrm_up = int(ithrm_loc_p(ghosted_id_up))
       ithrm_dn = int(ithrm_loc_p(ghosted_id_dn))
       icap_up = int(icap_loc_p(ghosted_id_up))
@@ -3404,14 +3541,15 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
       Diff_dn = TH_parameter%diffusion_coefficient(1)
       
       call THFlux(auxvars(ghosted_id_up),global_auxvars(ghosted_id_up), &
-                  porosity_loc_p(ghosted_id_up), &
-                  tor_loc_p(ghosted_id_up),TH_parameter%sir(1,icap_up), &
-                  dd_up,perm_up,D_up, &
+                  material_auxvars(ghosted_id_up), &
+                  TH_parameter%sir(1,icap_up), &
+                  D_up, &
                   auxvars(ghosted_id_dn),global_auxvars(ghosted_id_dn), &
-                  porosity_loc_p(ghosted_id_dn), &
-                  tor_loc_p(ghosted_id_dn),TH_parameter%sir(1,icap_dn), &
-                  dd_dn,perm_dn,D_dn, &
-                  cur_connection_set%area(iconn),distance_gravity, &
+                  material_auxvars(ghosted_id_dn), &
+                  TH_parameter%sir(1,icap_dn), &
+                  D_dn, &
+                  cur_connection_set%area(iconn), &
+                  cur_connection_set%dist(:,iconn), &
                   upweight,option,v_darcy,Diff_up,Diff_dn,Dk_dry_up, &
                   Dk_dry_dn,Dk_ice_up,Dk_ice_dn, &
                   alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
@@ -3465,13 +3603,6 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
       ithrm_dn = int(ithrm_loc_p(ghosted_id))
       D_dn = TH_parameter%ckwet(ithrm_dn)
 
-      ! for now, just assume diagonal tensor
-      perm_dn = perm_xx_loc_p(ghosted_id)*abs(cur_connection_set%dist(1,iconn))+ &
-                perm_yy_loc_p(ghosted_id)*abs(cur_connection_set%dist(2,iconn))+ &
-                perm_zz_loc_p(ghosted_id)*abs(cur_connection_set%dist(3,iconn))
-      ! dist(0,iconn) = scalar - magnitude of distance
-      ! gravity = vector(3)
-      ! dist(1:3,iconn) = vector(3) - unit vector
       distance_gravity = cur_connection_set%dist(0,iconn) * &
                          dot_product(option%gravity, &
                                      cur_connection_set%dist(1:3,iconn))
@@ -3484,13 +3615,14 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
                                 global_auxvars_bc(sum_connection), &
                                 auxvars(ghosted_id), &
                                 global_auxvars(ghosted_id), &
-                                porosity_loc_p(ghosted_id), &
-                                tor_loc_p(ghosted_id), &
+                                material_auxvars(ghosted_id), &
                                 TH_parameter%sir(1,icap_dn), &
-                                cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
+                                D_dn, &
                                 cur_connection_set%area(iconn), &
-                                distance_gravity,option, &
+                                cur_connection_set%dist(-1:3,iconn), &
+                                option, &
                                 v_darcy,Diff_dn,Res)
+
       patch%boundary_velocities(1,sum_connection) = v_darcy
 #ifdef STORE_FLOWRATES
       patch%boundary_fluxes(TH_PRESSURE_DOF,1,sum_connection) = Res(TH_PRESSURE_DOF)
@@ -3500,7 +3632,6 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
       iend = local_id*option%nflowdof
       istart = iend-option%nflowdof+1
       r_p(istart:iend)= r_p(istart:iend) - Res(1:option%nflowdof)
- 
     enddo
     boundary_condition => boundary_condition%next
   enddo
@@ -3511,7 +3642,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
     endif
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
-    r_p (istart:iend)= r_p(istart:iend)/volume_p(local_id)
+    r_p (istart:iend)= r_p(istart:iend)/material_auxvars(local_id)%volume
   enddo
 
   if (option%use_isothermal) then
@@ -3536,12 +3667,6 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   call VecRestoreArrayF90(field%flow_yy, yy_p, ierr)
   call VecRestoreArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
   call VecRestoreArrayF90(field%flow_accum, accum_p, ierr)
-  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayF90(field%tortuosity_loc, tor_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecRestoreArrayF90(field%volume, volume_p, ierr)
   call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr)
   call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
@@ -3708,6 +3833,7 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   type(TH_parameter_type), pointer :: TH_parameter
   type(TH_auxvar_type), pointer :: auxvars(:), auxvars_bc(:),auxvars_ss(:)
   type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:) 
+  class(material_auxvar_type), pointer :: material_auxvars(:)
 
   type(sec_heat_type), pointer :: sec_heat_vars(:)
   character(len=MAXSTRINGLENGTH) :: string
@@ -3731,6 +3857,7 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   auxvars_ss => patch%aux%TH%auxvars_ss
   global_auxvars => patch%aux%Global%auxvars
   global_auxvars_bc => patch%aux%Global%auxvars_bc
+  material_auxvars => patch%aux%Material%auxvars
 
   sec_heat_vars => patch%aux%SC_heat%sec_heat_vars
   
@@ -3739,12 +3866,6 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 #endif
 
   call VecGetArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
-  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayF90(field%tortuosity_loc, tor_loc_p, ierr)
-  call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecGetArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecGetArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecGetArrayF90(field%volume, volume_p, ierr)
 
   call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
@@ -3768,8 +3889,7 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     endif
 
     call THAccumDerivative(auxvars(ghosted_id),global_auxvars(ghosted_id), &
-                            porosity_loc_p(ghosted_id), &
-                            volume_p(local_id), &
+                            material_auxvars(ghosted_id), &
                             TH_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
                             option, &
                             realization%saturation_function_array(icap)%ptr, &
@@ -3782,12 +3902,12 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                         option,jac_sec_heat)
                         
       Jup(option%nflowdof,2) = Jup(option%nflowdof,2) - &
-                               jac_sec_heat*volume_p(local_id)
+                               jac_sec_heat*material_auxvars(local_id)%volume
     endif
                             
     ! scale by the volume of the cell
-    Jup = Jup/volume_p(local_id)
-                           
+    Jup = Jup/material_auxvars(local_id)%volume
+
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
                                   ADD_VALUES,ierr)
   enddo
@@ -3896,15 +4016,6 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       ! to match pflow-orig.  This can be changed to 1.d0-fraction_upwind
       upweight = dd_dn/(dd_up+dd_dn)
     
-      ! for now, just assume diagonal tensor
-      perm_up = perm_xx_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(1,iconn))+ &
-                perm_yy_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(2,iconn))+ &
-                perm_zz_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(3,iconn))
-
-      perm_dn = perm_xx_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(1,iconn))+ &
-                perm_yy_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(2,iconn))+ &
-                perm_zz_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(3,iconn))
-    
       ithrm_up = int(ithrm_loc_p(ghosted_id_up))
       ithrm_dn = int(ithrm_loc_p(ghosted_id_dn))
       
@@ -3938,14 +4049,15 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       icap_dn = int(icap_loc_p(ghosted_id_dn))
 
       call THFluxDerivative(auxvars(ghosted_id_up),global_auxvars(ghosted_id_up), &
-                             porosity_loc_p(ghosted_id_up), &
-                             tor_loc_p(ghosted_id_up),TH_parameter%sir(1,icap_up), &
-                             dd_up,perm_up,D_up, &
+                             material_auxvars(ghosted_id_up), &
+                             TH_parameter%sir(1,icap_up), &
+                             D_up, &
                              auxvars(ghosted_id_dn),global_auxvars(ghosted_id_dn), &
-                             porosity_loc_p(ghosted_id_dn), &
-                             tor_loc_p(ghosted_id_dn),TH_parameter%sir(1,icap_dn), &
-                             dd_dn,perm_dn,D_dn, &
-                             cur_connection_set%area(iconn),distance_gravity, &
+                             material_auxvars(ghosted_id_dn), &
+                             TH_parameter%sir(1,icap_dn), &
+                             D_dn, &
+                             cur_connection_set%area(iconn), &
+                             cur_connection_set%dist(-1:3,iconn), &
                              upweight,option, &
                              realization%saturation_function_array(icap_up)%ptr, &
                              realization%saturation_function_array(icap_dn)%ptr, &
@@ -3958,18 +4070,18 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       
       if (local_id_up > 0) then
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
-                                      Jup/volume_p(local_id_up),ADD_VALUES,ierr)
+                                      Jup/material_auxvars(local_id_up)%volume,ADD_VALUES,ierr)
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
-                                      Jdn/volume_p(local_id_up),ADD_VALUES,ierr)
+                                      Jdn/material_auxvars(local_id_up)%volume,ADD_VALUES,ierr)
       endif
       if (local_id_dn > 0) then
         Jup = -Jup
         Jdn = -Jdn
         
         call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
-                                      Jdn/volume_p(local_id_dn),ADD_VALUES,ierr)
+                                      Jdn/material_auxvars(local_id_dn)%volume,ADD_VALUES,ierr)
         call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
-                                      Jup/volume_p(local_id_dn),ADD_VALUES,ierr)
+                                      Jup/material_auxvars(local_id_dn)%volume,ADD_VALUES,ierr)
       endif
     enddo
     cur_connection_set => cur_connection_set%next
@@ -4009,17 +4121,7 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       ithrm_dn = int(ithrm_loc_p(ghosted_id))
       D_dn = TH_parameter%ckwet(ithrm_dn)
 
-      ! for now, just assume diagonal tensor
-      perm_dn = perm_xx_loc_p(ghosted_id)*abs(cur_connection_set%dist(1,iconn))+ &
-                perm_yy_loc_p(ghosted_id)*abs(cur_connection_set%dist(2,iconn))+ &
-                perm_zz_loc_p(ghosted_id)*abs(cur_connection_set%dist(3,iconn))
-      ! dist(0,iconn) = scalar - magnitude of distance
-      ! gravity = vector(3)
-      ! dist(1:3,iconn) = vector(3) - unit vector
-      distance_gravity = cur_connection_set%dist(0,iconn) * &
-                         dot_product(option%gravity, &
-                                     cur_connection_set%dist(1:3,iconn))
-      icap_dn = int(icap_loc_p(ghosted_id))  
+      icap_dn = int(icap_loc_p(ghosted_id))
 	  
       call THBCFluxDerivative(boundary_condition%flow_condition%itype, &
                                 boundary_condition%flow_aux_real_var(:,iconn), &
@@ -4027,18 +4129,18 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                                 global_auxvars_bc(sum_connection), &
                                 auxvars(ghosted_id), &
                                 global_auxvars(ghosted_id), &
-                                porosity_loc_p(ghosted_id), &
-                                tor_loc_p(ghosted_id), &
+                                material_auxvars(ghosted_id), &
                                 TH_parameter%sir(1,icap_dn), &
-                                cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
+                                D_dn, &
                                 cur_connection_set%area(iconn), &
-                                distance_gravity,option, &
+                                cur_connection_set%dist(-1:3,iconn), &
+                                option, &
                                 realization%saturation_function_array(icap_dn)%ptr,&
                                 Jdn)
-      Jdn = -Jdn
+    Jdn = -Jdn
   
       !  scale by the volume of the cell
-      Jdn = Jdn/volume_p(local_id)
+      Jdn = Jdn/material_auxvars(local_id)%volume
       
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jdn,ADD_VALUES,ierr)
  
@@ -4055,14 +4157,6 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   endif
   
   call VecRestoreArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
-  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayF90(field%tortuosity_loc, tor_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecRestoreArrayF90(field%volume, volume_p, ierr)
-
-   
   call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr)
   call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
