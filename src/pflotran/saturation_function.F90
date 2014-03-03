@@ -1682,7 +1682,7 @@ subroutine SatFuncComputeIceDallAmico(pl, T, &
       Pc1 = Pc0 - beta*theta*L_f*rho_l*H
 
       p_fh2o = option%reference_pressure - Pc1
-      dp_fh2o_dT = beta*L_f*rho_l*H/T_star
+      dp_fh2o_dT = -beta*L_f*rho_l*H/T_star
       p_fh2o = pl
       dp_fh2o_dT = 0.d0
 
