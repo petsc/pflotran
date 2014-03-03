@@ -3186,7 +3186,6 @@ subroutine THResidual(snes,xx,r,realization,ierr)
   call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
   call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%icap_loc,field%icap_loc,ONEDOF)
-  realization%output_option%plot_number = realization%output_option%plot_number + 1
 
   call DiscretizationLocalToLocal(discretization,field%ithrm_loc,field%ithrm_loc,ONEDOF)
   
