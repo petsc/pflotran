@@ -13,15 +13,16 @@ module Geomechanics_Factory_module
   public :: GeomechanicsInitialize
 
 contains
+
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 01/01/14
-! ************************************************************************** !
+
 subroutine GeomechanicsInitialize(simulation_base,option)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 01/01/14
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -44,14 +45,14 @@ subroutine GeomechanicsInitialize(simulation_base,option)
 end subroutine GeomechanicsInitialize
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 01/01/14
-! ************************************************************************** !
+
 subroutine GeomechanicsInitializePostPETSc(simulation, option)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 01/01/14
+  ! 
 
   use Init_module
   use Option_module
@@ -192,14 +193,14 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
 end subroutine GeomechanicsInitializePostPETSc
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 01/01/14
-! ************************************************************************** !
+
 subroutine HijackGeomechanicsSimulation(simulation_old,simulation)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 01/01/14
+  ! 
 
   use Simulation_module
 #ifdef PROCESS_MODEL
@@ -318,14 +319,14 @@ subroutine HijackGeomechanicsSimulation(simulation_old,simulation)
 end subroutine HijackGeomechanicsSimulation
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 01/01/14
-! ************************************************************************** !
+
 subroutine GeomechanicsJumpStart(simulation)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 01/01/14
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -386,14 +387,14 @@ subroutine GeomechanicsJumpStart(simulation)
 end subroutine GeomechanicsJumpStart
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 01/01/14
-! ************************************************************************** !
+
 subroutine HijackTimestepper(stepper_old,stepper_base)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 01/01/14
+  ! 
 
   use Timestepper_Geomechanics_class
   use Timestepper_Base_class

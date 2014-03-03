@@ -64,13 +64,14 @@ module Geomechanics_Discretization_module
 contains
 
 ! ************************************************************************** !
-!
-! GeomechDiscretizationCreate: Creates a geomechanics discretization
-! author: Satish Karra, LANL
-! date: 05/23/2013
-!
-! ************************************************************************** !
+
 function GeomechDiscretizationCreate()
+  ! 
+  ! Creates a geomechanics discretization
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 05/23/2013
+  ! 
 
   implicit none
   
@@ -100,17 +101,18 @@ function GeomechDiscretizationCreate()
 end function GeomechDiscretizationCreate
 
 ! ************************************************************************** !
-!
-! GeomechDiscretizationCreateDMs: creates distributed, parallel meshes/grids
-! If there are multiple degrees of freedom per grid cell, this will call 
-! GeomechDiscretizationCreateDM() multiple times to create the DMs corresponding 
-! to one degree of freedom grid cell and those corresponding to multiple 
-! degrees of freedom per cell for geomechanics.
-! author: Satish Karra, LANL
-! date: 06/02/13
-!
-! ************************************************************************** !
+
 subroutine GeomechDiscretizationCreateDMs(geomech_discretization,option)
+  ! 
+  ! creates distributed, parallel meshes/grids
+  ! If there are multiple degrees of freedom per grid cell, this will call
+  ! GeomechDiscretizationCreateDM() multiple times to create the DMs corresponding
+  ! to one degree of freedom grid cell and those corresponding to multiple
+  ! degrees of freedom per cell for geomechanics.
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/02/13
+  ! 
       
   use Option_module    
       
@@ -144,14 +146,15 @@ subroutine GeomechDiscretizationCreateDMs(geomech_discretization,option)
 end subroutine GeomechDiscretizationCreateDMs
 
 ! ************************************************************************** !
-!
-! GeomechDiscretizationCreateDM: creates a distributed, parallel mesh/grid
-! for geomechanics
-! author: Satish Karra, LANL
-! date: 06/02/13
-!
-! ************************************************************************** !
+
 subroutine GeomechDiscretizationCreateDM(geomech_discretization,dm_ptr,ndof,option)
+  ! 
+  ! creates a distributed, parallel mesh/grid
+  ! for geomechanics
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/02/13
+  ! 
 
   use Option_module
   
@@ -178,14 +181,15 @@ subroutine GeomechDiscretizationCreateDM(geomech_discretization,dm_ptr,ndof,opti
 end subroutine GeomechDiscretizationCreateDM
 
 ! ************************************************************************** !
-!
-! GeomechDiscretizationCreateVector: Creates a PETSc vector for the nodes
-! author: Satish Karra, LANL
-! date: 06/02/13
-!
-! ************************************************************************** !
+
 subroutine GeomechDiscretizationCreateVector(geomech_discretization,dm_index,vector, &
                                              vector_type,option)
+  ! 
+  ! Creates a PETSc vector for the nodes
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/02/13
+  ! 
   use Option_module                                      
 
   implicit none
@@ -210,13 +214,14 @@ subroutine GeomechDiscretizationCreateVector(geomech_discretization,dm_index,vec
 end subroutine GeomechDiscretizationCreateVector
 
 ! ************************************************************************** !
-!
-! GeomechDiscretizationDuplicateVector: Duplicates a Petsc vector
-! author: Satish Karra, LANL
-! date: 06/02/13
-!
-! ************************************************************************** !
+
 subroutine GeomechDiscretizationDuplicateVector(geomech_discretization,vector1,vector2)
+  ! 
+  ! Duplicates a Petsc vector
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/02/13
+  ! 
 
   implicit none
   
@@ -231,14 +236,15 @@ subroutine GeomechDiscretizationDuplicateVector(geomech_discretization,vector1,v
 end subroutine GeomechDiscretizationDuplicateVector
 
 ! ************************************************************************** !
-!
-! GeomechDiscretizationGetDMPtrFromIndex: Returns the integer pointer for 
-! the Geomech DM referenced
-! author: Satish Karra, LANL
-! date: 06/02/13
-!
-! ************************************************************************** !
+
 function GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
+  ! 
+  ! Returns the integer pointer for
+  ! the Geomech DM referenced
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/02/13
+  ! 
 
   implicit none
   
@@ -259,15 +265,16 @@ function GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
 end function GeomechDiscretizationGetDMPtrFromIndex
 
 ! ************************************************************************** !
-!
-! GeomechDiscretizationCreateJacobian: Creates Jacobian matrix associated 
-! with geomechanics discretization
-! author: Satish Karra, LANL
-! date: 06/05/13
-!
-! ************************************************************************** !
+
 subroutine GeomechDiscretizationCreateJacobian(geomech_discretization,dm_index, &
                                                mat_type,Jacobian,option)
+  ! 
+  ! Creates Jacobian matrix associated
+  ! with geomechanics discretization
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/05/13
+  ! 
 
   use Option_module
   
@@ -292,15 +299,16 @@ subroutine GeomechDiscretizationCreateJacobian(geomech_discretization,dm_index, 
 end subroutine GeomechDiscretizationCreateJacobian
 
 ! ************************************************************************** !
-!
-! GeomechDiscretizationGlobalToLocal: Performs global to local communication
-! with geomech DM
-! author: Satish Karra, LANL
-! date: 06/02/13
-!
-! ************************************************************************** !
+
 subroutine GeomechDiscretizationGlobalToLocal(geomech_discretization,global_vec, &
                                               local_vec,dm_index)
+  ! 
+  ! Performs global to local communication
+  ! with geomech DM
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/02/13
+  ! 
 
   implicit none
 
@@ -319,15 +327,16 @@ subroutine GeomechDiscretizationGlobalToLocal(geomech_discretization,global_vec,
 end subroutine GeomechDiscretizationGlobalToLocal
 
 ! ************************************************************************** !
-!
-! GeomechDiscretizationLocalToGlobal: Performs local to global communication
-! with DM
-! author: Satish Karra, LANL
-! date: 06/02/13
-!
-! ************************************************************************** !
+
 subroutine GeomechDiscretizationLocalToGlobal(geomech_discretization,local_vec, &
                                               global_vec,dm_index)
+  ! 
+  ! Performs local to global communication
+  ! with DM
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/02/13
+  ! 
 
   implicit none
   
@@ -348,15 +357,16 @@ subroutine GeomechDiscretizationLocalToGlobal(geomech_discretization,local_vec, 
 end subroutine GeomechDiscretizationLocalToGlobal
 
 ! ************************************************************************** !
-!
-! GeomechDiscretizationLocalToGlobalAdd: Performs local to global communication
-! with DM and adds
-! author: Satish Karra, LANL
-! date: 09/17/13
-!
-! ************************************************************************** !
+
 subroutine GeomechDiscretizationLocalToGlobalAdd(geomech_discretization,local_vec, &
                                                  global_vec,dm_index)
+  ! 
+  ! Performs local to global communication
+  ! with DM and adds
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 09/17/13
+  ! 
 
   implicit none
   
@@ -377,15 +387,16 @@ subroutine GeomechDiscretizationLocalToGlobalAdd(geomech_discretization,local_ve
 end subroutine GeomechDiscretizationLocalToGlobalAdd
 
 ! ************************************************************************** !
-!
-! GeomechDiscretizationLocalToLocal: Performs local to local communication 
-! with geomech DM
-! author: Satish Karra, LANL
-! date: 06/02/13
-!
-! ************************************************************************** !
+
 subroutine GeomechDiscretizationLocalToLocal(geomech_discretization,local_vec1, &
                                              local_vec2,dm_index)
+  ! 
+  ! Performs local to local communication
+  ! with geomech DM
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/02/13
+  ! 
 
   implicit none
   
@@ -406,15 +417,16 @@ subroutine GeomechDiscretizationLocalToLocal(geomech_discretization,local_vec1, 
 end subroutine GeomechDiscretizationLocalToLocal
 
 ! ************************************************************************** !
-!
-! GeomechDiscretizationGlobalToNatural: Performs global to natural
-! communication with geomech DM
-! author: Satish Karra, LANL
-! date: 06/02/13
-!
-! ************************************************************************** !
+
 subroutine GeomechDiscretizationGlobalToNatural(geomech_discretization,global_vec, &
                                                 natural_vec,dm_index)
+  ! 
+  ! Performs global to natural
+  ! communication with geomech DM
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/02/13
+  ! 
 
   implicit none
   
@@ -435,15 +447,16 @@ subroutine GeomechDiscretizationGlobalToNatural(geomech_discretization,global_ve
 end subroutine GeomechDiscretizationGlobalToNatural
 
 ! ************************************************************************** !
-!
-! GeomechDiscretizationNaturalToGlobal: Performs natural to global 
-! communication with DM
-! author: Satish Karra, LANL
-! date: 06/02/13
-!
-! ************************************************************************** !
+
 subroutine GeomechDiscretizationNaturalToGlobal(geomech_discretization,natural_vec, &
                                                 global_vec,dm_index)
+  ! 
+  ! Performs natural to global
+  ! communication with DM
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/02/13
+  ! 
 
   implicit none
   
@@ -464,15 +477,16 @@ subroutine GeomechDiscretizationNaturalToGlobal(geomech_discretization,natural_v
 end subroutine GeomechDiscretizationNaturalToGlobal
 
 ! ************************************************************************** !
-!
-! GeomechDiscretizationGlobalToLocalBegin: Begins global to local 
-! communication with geomech DM
-! author: Satish Karra, LANL
-! date: 06/02/13
-!
-! ************************************************************************** !
+
 subroutine GeomechDiscretizationGlobalToLocalBegin(geomech_discretization,global_vec, &
                                                    local_vec,dm_index)
+  ! 
+  ! Begins global to local
+  ! communication with geomech DM
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/02/13
+  ! 
 
   implicit none
   
@@ -489,17 +503,18 @@ subroutine GeomechDiscretizationGlobalToLocalBegin(geomech_discretization,global
                        INSERT_VALUES,SCATTER_FORWARD,ierr)
   
 end subroutine GeomechDiscretizationGlobalToLocalBegin
-  
+
 ! ************************************************************************** !
-!
-! GeomechDiscretizationGlobalToLocalEnd: Ends global to local communication
-! with geomech DM
-! author: Satish Karra, LANL
-! date: 06/02/13
-!
-! ************************************************************************** !
+
 subroutine GeomechDiscretizationGlobalToLocalEnd(geomech_discretization,global_vec, &
                                                  local_vec,dm_index)
+  ! 
+  ! Ends global to local communication
+  ! with geomech DM
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/02/13
+  ! 
 
  implicit none
   
@@ -518,15 +533,16 @@ subroutine GeomechDiscretizationGlobalToLocalEnd(geomech_discretization,global_v
 end subroutine GeomechDiscretizationGlobalToLocalEnd
 
 ! ************************************************************************** !
-!
-! GeomechDiscretizationLocalToLocalBegin: Begins local to local communication 
-! with geomech DM
-! author: Satish Karra, LANL
-! date: 06/02/13
-!
-! ************************************************************************** !
+
 subroutine GeomechDiscretizationLocalToLocalBegin(geomech_discretization,local_vec1, &
                                                   local_vec2,dm_index)
+  ! 
+  ! Begins local to local communication
+  ! with geomech DM
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/02/13
+  ! 
 
   implicit none
   
@@ -543,17 +559,18 @@ subroutine GeomechDiscretizationLocalToLocalBegin(geomech_discretization,local_v
                        INSERT_VALUES,SCATTER_FORWARD,ierr)
 
 end subroutine GeomechDiscretizationLocalToLocalBegin
-  
+
 ! ************************************************************************** !
-!
-! GeomechDiscretizationLocalToLocalEnd: Ends local to local communication 
-! with geomech DM
-! author: Satish Karra, LANL
-! date: 06/02/13
-!
-! ************************************************************************** !
+
 subroutine GeomechDiscretizationLocalToLocalEnd(geomech_discretization,local_vec1, &
                                                 local_vec2,dm_index)
+  ! 
+  ! Ends local to local communication
+  ! with geomech DM
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/02/13
+  ! 
 
   implicit none
   
@@ -570,17 +587,18 @@ subroutine GeomechDiscretizationLocalToLocalEnd(geomech_discretization,local_vec
                      INSERT_VALUES,SCATTER_FORWARD,ierr)    
 
 end subroutine GeomechDiscretizationLocalToLocalEnd
-  
+
 ! ************************************************************************** !
-!
-! GeomechDiscretizGlobalToNaturalBegin: Begins global to natural communication
-! with geomech DM
-! author: Satish Karra, LANL
-! date: 06/02/13
-!
-! ************************************************************************** !
+
 subroutine GeomechDiscretizGlobalToNaturalBegin(geomech_discretization,global_vec, &
                                                 natural_vec,dm_index)
+  ! 
+  ! Begins global to natural communication
+  ! with geomech DM
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/02/13
+  ! 
 
   implicit none
   
@@ -599,15 +617,16 @@ subroutine GeomechDiscretizGlobalToNaturalBegin(geomech_discretization,global_ve
 end subroutine GeomechDiscretizGlobalToNaturalBegin
 
 ! ************************************************************************** !
-!
-! GeomechDiscretizGlobalToNaturalEnd: Ends global to natural communication 
-! with geomech DM
-! author: Satish Karra, LANL
-! date: 06/02/13
-!
-! ************************************************************************** !
+
 subroutine GeomechDiscretizGlobalToNaturalEnd(geomech_discretization,global_vec, &
                                               natural_vec,dm_index)
+  ! 
+  ! Ends global to natural communication
+  ! with geomech DM
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/02/13
+  ! 
 
   implicit none
   
@@ -626,15 +645,16 @@ subroutine GeomechDiscretizGlobalToNaturalEnd(geomech_discretization,global_vec,
 end subroutine GeomechDiscretizGlobalToNaturalEnd
 
 ! ************************************************************************** !
-!
-! GeomechDiscretizNaturalToGlobalBegin: Begins natural to global communication
-! with geomech DM
-! author: Satish Karra, LANL
-! date: 06/02/13
-!
-! ************************************************************************** !
+
 subroutine GeomechDiscretizNaturalToGlobalBegin(geomech_discretization,natural_vec, &
                                                 global_vec,dm_index)
+  ! 
+  ! Begins natural to global communication
+  ! with geomech DM
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/02/13
+  ! 
 
   implicit none
   
@@ -650,15 +670,16 @@ subroutine GeomechDiscretizNaturalToGlobalBegin(geomech_discretization,natural_v
 end subroutine GeomechDiscretizNaturalToGlobalBegin
 
 ! ************************************************************************** !
-!
-! GeomechDiscretizNaturalToGlobalEnd: Ends natural to global communication
-! with geomech DM
-! author: Satish Karra, LANL
-! date: 06/02/13
-!
-! ************************************************************************** !
+
 subroutine GeomechDiscretizNaturalToGlobalEnd(geomech_discretization,natural_vec, &
                                               global_vec,dm_index)
+  ! 
+  ! Ends natural to global communication
+  ! with geomech DM
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/02/13
+  ! 
 
   implicit none
   
@@ -674,13 +695,14 @@ subroutine GeomechDiscretizNaturalToGlobalEnd(geomech_discretization,natural_vec
 end subroutine GeomechDiscretizNaturalToGlobalEnd
 
 ! ************************************************************************** !
-!
-! GeomechDiscretAOApplicationToPetsc: Maps application ordering to petsc
-! author: Satish Karra, LANL
-! date: 06/02/13
-!
-! ************************************************************************** !
+
 subroutine GeomechDiscretAOApplicationToPetsc(geomech_discretization,int_array)
+  ! 
+  ! Maps application ordering to petsc
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/02/13
+  ! 
 
   implicit none
   
@@ -698,13 +720,14 @@ subroutine GeomechDiscretAOApplicationToPetsc(geomech_discretization,int_array)
 end subroutine GeomechDiscretAOApplicationToPetsc
 
 ! ************************************************************************** !
-!
-! GeomechDiscretizationDestroy: Deallocates a geomechanics discretization
-! author: Satish Karra, LANL
-! date: 05/23/2013
-!
-! ************************************************************************** !
+
 subroutine GeomechDiscretizationDestroy(geomech_discretization)
+  ! 
+  ! Deallocates a geomechanics discretization
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 05/23/2013
+  ! 
 
   implicit none
   

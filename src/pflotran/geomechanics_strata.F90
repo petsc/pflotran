@@ -52,13 +52,14 @@ module Geomechanics_Strata_module
 contains
 
 ! ************************************************************************** !
-!
-! GeomechStrataCreate1: Creates a geomechanics strata
-! author: Satish Karra, LANL
-! date: 06/07/2013
-!
-! ************************************************************************** !
+
 function GeomechStrataCreate1()
+  ! 
+  ! Creates a geomechanics strata
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/07/2013
+  ! 
 
   implicit none
 
@@ -85,14 +86,15 @@ function GeomechStrataCreate1()
 end function GeomechStrataCreate1
 
 ! ************************************************************************** !
-!
-! GeomechStrataCreateFromGeomechStrata: Creates a geomechanics strata
-!                                       from another geomechanics strata
-! author: Satish Karra, LANL
-! date: 06/07/2013
-!
-! ************************************************************************** !
+
 function GeomechStrataCreateFromGeomechStrata(strata)
+  ! 
+  ! Creates a geomechanics strata
+  ! from another geomechanics strata
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/07/2013
+  ! 
 
   implicit none
 
@@ -120,13 +122,14 @@ function GeomechStrataCreateFromGeomechStrata(strata)
 end function GeomechStrataCreateFromGeomechStrata
 
 ! ************************************************************************** !
-!
-! GeomechStrataInitList: Initializes a geomechanics strata list
-! author: Satish Karra, LANL
-! date: 06/07/2013
-!
-! ************************************************************************** !
+
 subroutine GeomechStrataInitList(list)
+  ! 
+  ! Initializes a geomechanics strata list
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/07/2013
+  ! 
 
   implicit none
 
@@ -140,13 +143,14 @@ subroutine GeomechStrataInitList(list)
 end subroutine GeomechStrataInitList
 
 ! ************************************************************************** !
-!
-! GeomechStrataRead: Reads a geomechanics strata from the input file
-! author: Satish Karra, LANL
-! date: 06/07/2013
-!
-! ************************************************************************** !
+
 subroutine GeomechStrataRead(strata,input,option)
+  ! 
+  ! Reads a geomechanics strata from the input file
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/07/2013
+  ! 
 
   use Input_Aux_module
   use Option_module
@@ -202,14 +206,15 @@ subroutine GeomechStrataRead(strata,input,option)
 end subroutine GeomechStrataRead
 
 ! ************************************************************************** !
-!
-! GeomechStrataAddToList: Adds a new geomechanics strata to a geomechanics
-!                         strata list
-! author: Satish Karra, LANL
-! date: 06/07/2013
-!
-! ************************************************************************** !
+
 subroutine GeomechStrataAddToList(new_strata,list)
+  ! 
+  ! Adds a new geomechanics strata to a geomechanics
+  ! strata list
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/07/2013
+  ! 
 
   implicit none
   
@@ -225,13 +230,14 @@ subroutine GeomechStrataAddToList(new_strata,list)
 end subroutine GeomechStrataAddToList
 
 ! ************************************************************************** !
-!
-! GeomechStrataDestroyList: Deallocates a list of geomechanics stratas
-! author: Satish Karra, LANL
-! date: 06/07/2013
-!
-! ************************************************************************** !
+
 subroutine GeomechStrataDestroyList(strata_list)
+  ! 
+  ! Deallocates a list of geomechanics stratas
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/07/2013
+  ! 
 
   implicit none
   
@@ -260,13 +266,14 @@ subroutine GeomechStrataDestroyList(strata_list)
 end subroutine GeomechStrataDestroyList
 
 ! ************************************************************************** !
-!
-! GeomechStrataDestroy: Destroys a geomechanics strata
-! author: Satish Karra, LANL
-! date: 06/07/2013
-!
-! ************************************************************************** !
+
 subroutine GeomechStrataDestroy(strata)
+  ! 
+  ! Destroys a geomechanics strata
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/07/2013
+  ! 
 
   implicit none
   

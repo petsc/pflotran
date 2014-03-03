@@ -32,14 +32,14 @@ module PMC_Geomechanics_class
 contains
 
 ! ************************************************************************** !
-!> This routine allocates and initializes a new object.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 01/01/14
-! ************************************************************************** !
+
 function PMCGeomechanicsCreate()
+  ! 
+  ! This routine allocates and initializes a new object.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 01/01/14
+  ! 
 
   implicit none
   
@@ -59,14 +59,14 @@ function PMCGeomechanicsCreate()
 end function PMCGeomechanicsCreate
 
 ! ************************************************************************** !
-!> This routine initializes a new process model coupler object.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 01/01/14
-! ************************************************************************** !
+
 subroutine PMCGeomechanicsInit(this)
+  ! 
+  ! This routine initializes a new process model coupler object.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 01/01/14
+  ! 
 
   implicit none
   
@@ -83,14 +83,14 @@ subroutine PMCGeomechanicsInit(this)
 end subroutine PMCGeomechanicsInit
 
 ! ************************************************************************** !
-!> This routine runs the geomechanics simulation.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 01/01/14
-! ************************************************************************** !
+
 subroutine PMCGeomechanicsRunToTime(this,sync_time,stop_flag)
+  ! 
+  ! This routine runs the geomechanics simulation.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 01/01/14
+  ! 
 
   use Timestepper_Base_class
   use Option_module
@@ -149,15 +149,15 @@ subroutine PMCGeomechanicsRunToTime(this,sync_time,stop_flag)
 end subroutine PMCGeomechanicsRunToTime
 
 ! ************************************************************************** !
-!> This routine updates data in simulation_aux that is required by other
-!! process models.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 01/01/14
-! ************************************************************************** !
+
 subroutine PMCGeomechanicsSetAuxData(this)
+  ! 
+  ! This routine updates data in simulation_aux that is required by other
+  ! process models.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 01/01/14
+  ! 
 
   use Option_module
   use Grid_module
@@ -232,15 +232,15 @@ subroutine PMCGeomechanicsSetAuxData(this)
 end subroutine PMCGeomechanicsSetAuxData
 
 ! ************************************************************************** !
-!> This routine updates data for geomechanics simulation from other process 
-!! models.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 01/01/14
-! ************************************************************************** !
+
 subroutine PMCGeomechanicsGetAuxData(this)
+  ! 
+  ! This routine updates data for geomechanics simulation from other process
+  ! models.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 01/01/14
+  ! 
 
   use Option_module
   use Geomechanics_Discretization_module

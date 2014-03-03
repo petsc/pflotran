@@ -1,0 +1,39 @@
+pFUnit
+======
+
+* NOTE(bja, 2014-01) The development version of pFUnit (to become
+  pfunit 3.x) includes changes that break with gfortran < 4.8.3. To
+  continue supporting gfortran 4.7.3, we have to use the branch
+  pfunit_2.1-gfortran4.7 from the pflotran pfunit bitbucket repo
+
+* Do NOT make changes to the contents of
+  ${PFLOTRAN_DEV}/tpls/pfunit. The upstream version is maintained as a
+  git repository. All pflotran specific changes should be made to the
+  pflotran fork of the git repo to ensure easy
+  integration of upstream changes and that any pflotran specific
+  changes are not lost.
+
+* Updating from the git repository (will be turned into a shell script
+  when our needs are more clear):
+
+.. code-block:: bash
+
+    cd ${PFLOTRAN_DIR}/tpls
+    rm -rf pfunit
+    git clone https://bitbucket.org/pflotran/pfunit-pflotran-fork.git pfunit
+    cd pfunit
+    git checkout pfunit_2.1-gfortran4.7
+    git log --pretty="%H" -1 HEAD > ../git-version-pfunit.txt
+    hg addremove
+    hg ci -m "update pfunit to revision XXXXX"
+
+
+
+* To build and test pfunit manually:
+
+.. code-block:: bash
+
+    cd ${PFLOTRAN_DEV}/tpls/pfunit
+    make distclean
+    make F90=gfortran-mp-4.7 DEBUG=YES all
+    ./tests/tests.x

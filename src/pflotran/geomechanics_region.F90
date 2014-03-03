@@ -53,16 +53,17 @@ module Geomechanics_Region_module
              GeomechRegionGetPtrFromList
              
  contains
-  
+
 ! ************************************************************************** !
-!
-! GeomechRegionCreateWithNothing: Creates a region with no arguments for 
-!                                 geomechanics
-! author: Satish Karra, LANL
-! date: 06/06/13
-!
-! ************************************************************************** !
+
 function GeomechRegionCreateWithNothing()
+  ! 
+  ! Creates a region with no arguments for
+  ! geomechanics
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/06/13
+  ! 
 
   implicit none
   
@@ -84,13 +85,14 @@ function GeomechRegionCreateWithNothing()
 end function GeomechRegionCreateWithNothing
 
 ! ************************************************************************** !
-!
-! GeomechRegionCreateWithList: Creates a region from a list of vertices
-! author: Satish Karra, LANL
-! date: 06/06/13
-!
-! ************************************************************************** !
+
 function GeomechRegionCreateWithList(list)
+  ! 
+  ! Creates a region from a list of vertices
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/06/13
+  ! 
 
   implicit none
   
@@ -110,13 +112,14 @@ function GeomechRegionCreateWithList(list)
 end function GeomechRegionCreateWithList
 
 ! ************************************************************************** !
-!
-! GeomechRegionCreateWithGeomechRegion: Creates a copy of a region
-! author: Satish Karra, LANL
-! date: 06/06/13
-!
-! ************************************************************************** !
+
 function GeomechRegionCreateWithGeomechRegion(region)
+  ! 
+  ! Creates a copy of a region
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/06/13
+  ! 
 
   use Unstructured_Cell_module
 
@@ -149,13 +152,14 @@ function GeomechRegionCreateWithGeomechRegion(region)
 end function GeomechRegionCreateWithGeomechRegion
 
 ! ************************************************************************** !
-!
-! GeomechRegionInitList: Initializes a region list
-! author: Satish Karra, LANL
-! date: 06/06/13
-!
-! ************************************************************************** !
+
 subroutine GeomechRegionInitList(list)
+  ! 
+  ! Initializes a region list
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/06/13
+  ! 
 
   implicit none
 
@@ -169,13 +173,14 @@ subroutine GeomechRegionInitList(list)
 end subroutine GeomechRegionInitList
 
 ! ************************************************************************** !
-!
-! GeomechRegionAddToList: Adds a new region to a region list
-! author: Satish Karra, LANL
-! date: 06/06/13
-!
-! ************************************************************************** !
+
 subroutine GeomechRegionAddToList(new_region,list)
+  ! 
+  ! Adds a new region to a region list
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/06/13
+  ! 
 
   implicit none
   
@@ -191,13 +196,14 @@ subroutine GeomechRegionAddToList(new_region,list)
 end subroutine GeomechRegionAddToList
 
 ! ************************************************************************** !
-!
-! GeomechRegionRead: Reads a region from the input file
-! author: Satish Karra, LANL
-! date: 06/06/13
-!
-! ************************************************************************** !
+
 subroutine GeomechRegionRead(region,input,option)
+  ! 
+  ! Reads a region from the input file
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/06/13
+  ! 
 
   use Input_Aux_module
   use String_module
@@ -256,14 +262,15 @@ subroutine GeomechRegionRead(region,input,option)
 end subroutine GeomechRegionRead
 
 ! ************************************************************************** !
-!
-! GeomechRegionReadFromFilename: Reads a list of vertex ids from a file named 
-!                                filename
-! author: Satish Karra, LANL
-! date: 06/06/13
-!
-! ************************************************************************** !
+
 subroutine GeomechRegionReadFromFilename(region,option,filename)
+  ! 
+  ! Reads a list of vertex ids from a file named
+  ! filename
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/06/13
+  ! 
 
   use Input_Aux_module
   use Option_module
@@ -283,13 +290,14 @@ subroutine GeomechRegionReadFromFilename(region,option,filename)
 end subroutine GeomechRegionReadFromFilename
 
 ! ************************************************************************** !
-!
-! GeomechRegionReadFromFileId: Reads a list of vertex ids from an open file
-! author: Satish Karra, LANL
-! date: 06/06/13
-!
-! ************************************************************************** !
+
 subroutine GeomechRegionReadFromFileId(region,input,option)
+  ! 
+  ! Reads a list of vertex ids from an open file
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/06/13
+  ! 
 
   use Input_Aux_module
   use Option_module
@@ -403,13 +411,14 @@ subroutine GeomechRegionReadFromFileId(region,input,option)
 end subroutine GeomechRegionReadFromFileId
 
 ! ************************************************************************** !
-!
-! GeomechRegionGetPtrFromList: Returns a pointer to the region matching region_name
-! author: Satish Karra, LANL
-! date: 06/06/13
-!
-! ************************************************************************** !
+
 function GeomechRegionGetPtrFromList(region_name,region_list)
+  ! 
+  ! Returns a pointer to the region matching region_name
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/06/13
+  ! 
 
   use String_module
 
@@ -439,13 +448,14 @@ function GeomechRegionGetPtrFromList(region_name,region_list)
 end function GeomechRegionGetPtrFromList
 
 ! ************************************************************************** !
-!
-! GeomechRegionDestroyList: Deallocates a list of regions
-! author: Satish Karra, LANL
-! date: 06/06/13
-!
-! ************************************************************************** !
+
 subroutine GeomechRegionDestroyList(region_list)
+  ! 
+  ! Deallocates a list of regions
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/06/13
+  ! 
 
   implicit none
   
@@ -475,13 +485,14 @@ subroutine GeomechRegionDestroyList(region_list)
 end subroutine GeomechRegionDestroyList
 
 ! ************************************************************************** !
-!
-! GeomechRegionDestroy: Deallocates a region
-! author: Satish Karra, LANL
-! date: 06/06/13
-!
-! ************************************************************************** !
+
 subroutine GeomechRegionDestroy(region)
+  ! 
+  ! Deallocates a region
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/06/13
+  ! 
 
   implicit none
   

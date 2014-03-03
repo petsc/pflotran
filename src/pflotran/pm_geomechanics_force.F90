@@ -49,14 +49,14 @@ module PM_Geomechanics_Force_class
 contains
 
 ! ************************************************************************** !
-!> This routine creates
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 12/31/13
-! ************************************************************************** !
+
 function PMGeomechForceCreate()
+  ! 
+  ! This routine creates
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 12/31/13
+  ! 
 
   implicit none
 
@@ -77,14 +77,14 @@ function PMGeomechForceCreate()
 end function PMGeomechForceCreate
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 12/31/13
-! ************************************************************************** !
+
 subroutine PMGeomechForceInit(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 12/31/13
+  ! 
 
   use Geomechanics_Discretization_module
   use Structured_Communicator_class
@@ -108,14 +108,14 @@ subroutine PMGeomechForceInit(this)
 end subroutine PMGeomechForceInit
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 12/31/13
-! ************************************************************************** !
+
 recursive subroutine PMGeomechForceInitializeRun(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 12/31/13
+  ! 
 
   use Geomechanics_Force_module, only : GeomechUpdateSolution
 
@@ -126,14 +126,14 @@ recursive subroutine PMGeomechForceInitializeRun(this)
 end subroutine PMGeomechForceInitializeRun
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 12/31/13
-! ************************************************************************** !
+
 recursive subroutine PMGeomechForceFinalizeRun(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 12/31/13
+  ! 
 
   implicit none
 
@@ -150,14 +150,14 @@ recursive subroutine PMGeomechForceFinalizeRun(this)
 end subroutine PMGeomechForceFinalizeRun
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 12/31/13
-! ************************************************************************** !
+
 subroutine PMGeomechForceSetRealization(this, geomech_realization)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 12/31/13
+  ! 
 
   use Grid_module
 
@@ -175,14 +175,14 @@ subroutine PMGeomechForceSetRealization(this, geomech_realization)
 end subroutine PMGeomechForceSetRealization
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 12/31/13
-! ************************************************************************** !
+
 subroutine PMGeomechForceInitializeTimestep(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 12/31/13
+  ! 
 
   use Geomechanics_Force_module, only : GeomechanicsForceInitialGuess
   use Global_module
@@ -204,14 +204,14 @@ subroutine PMGeomechForceInitializeTimestep(this)
 end subroutine PMGeomechForceInitializeTimestep
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 12/31/13
-! ************************************************************************** !
+
 subroutine PMGeomechForceResidual(this,snes,xx,r,ierr)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 12/31/13
+  ! 
 
   use Geomechanics_Force_module, only : GeomechForceResidual
 
@@ -232,14 +232,14 @@ subroutine PMGeomechForceResidual(this,snes,xx,r,ierr)
 end subroutine PMGeomechForceResidual
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 12/31/13
-! ************************************************************************** !
+
 subroutine PMGeomechForceJacobian(this,snes,xx,A,B,flag,ierr)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 12/31/13
+  ! 
 
   use Geomechanics_Force_module, only : GeomechForceJacobian
 
@@ -261,14 +261,14 @@ subroutine PMGeomechForceJacobian(this,snes,xx,A,B,flag,ierr)
 end subroutine PMGeomechForceJacobian
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 12/31/13
-! ************************************************************************** !
+
 subroutine PMGeomechForcePreSolve(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 12/31/13
+  ! 
 
   implicit none
 
@@ -277,14 +277,14 @@ subroutine PMGeomechForcePreSolve(this)
 end subroutine PMGeomechForcePreSolve
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 12/31/13
-! ************************************************************************** !
+
 subroutine PMGeomechForceUpdateSolution(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 12/31/13
+  ! 
 
   use Geomechanics_Force_module, only : GeomechUpdateSolution, &
                                         GeomechStoreInitialDisp, &
@@ -309,14 +309,14 @@ subroutine PMGeomechForceUpdateSolution(this)
 end subroutine PMGeomechForceUpdateSolution
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 12/31/13
-! ************************************************************************** !
+
 subroutine PMGeomechForceFinalizeTimestep(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 12/31/13
+  ! 
 
   use Global_module
 
@@ -331,14 +331,14 @@ subroutine PMGeomechForceFinalizeTimestep(this)
 end subroutine PMGeomechForceFinalizeTimestep
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 12/31/13
-! ************************************************************************** !
+
 subroutine PMGeomechForceCheckpoint(this,viewer)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 12/31/13
+  ! 
 
   use Checkpoint_module
 
@@ -353,14 +353,14 @@ subroutine PMGeomechForceCheckpoint(this,viewer)
 end subroutine PMGeomechForceCheckpoint
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 12/31/13
-! ************************************************************************** !
+
 subroutine PMGeomechForceRestart(this,viewer)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 12/31/13
+  ! 
 
   use Checkpoint_module
 
@@ -375,14 +375,14 @@ subroutine PMGeomechForceRestart(this,viewer)
 end subroutine PMGeomechForceRestart
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 12/31/13
-! ************************************************************************** !
+
 subroutine PMGeomechForceDestroy(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 12/31/13
+  ! 
 
   use Geomechanics_Realization_class, only : GeomechRealizDestroy
 

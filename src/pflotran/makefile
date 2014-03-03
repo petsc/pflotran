@@ -2,7 +2,8 @@
 
 pflotran_src = ./
 common_src   = ./
-pflotran_test_dir = ../../regression_tests
+regression_test_dir = ../../regression_tests
+unit_test_dir = ./unittests
 
 
 MYFLAGS = -I.
@@ -231,7 +232,7 @@ mode_obj = \
 	${common_src}richards_mfd.o \
 	${common_src}th.o \
 	${common_src}thc.o 
-  
+
 shared_mode_aux_obj = \
 	${common_src}global_aux.o \
 	${common_src}reactive_transport_aux.o 
@@ -253,6 +254,7 @@ chem_obj = \
 	${common_src}reaction_sandbox_base.o \
 	${common_src}reaction_sandbox_clm_cn.o \
 	${common_src}reaction_sandbox_example.o \
+	${common_src}reaction_sandbox_ufd_wp.o \
 	${common_src}solid_solution.o \
 	${common_src}solid_solution_aux.o \
 	${common_src}surface_complexation.o \
@@ -341,7 +343,7 @@ misc_obj = \
 	${common_src}secondary_continuum_aux.o\
 	${common_src}secondary_continuum.o \
 	${common_src}simulation.o \
- 	${common_src}simulation_aux.o \
+	${common_src}simulation_aux.o \
 	${common_src}simulation_base.o \
 	${common_src}subsurface_factory.o \
 	${common_src}subsurface_simulation.o \
@@ -862,8 +864,8 @@ reaction_aux.o : database_aux.o immobile_aux.o microbial_aux.o mineral_aux.o \
 reaction_sandbox.o : global_aux.o input_aux.o material_aux.o option.o \
                      pflotran_constants.o reaction_aux.o \
                      reaction_sandbox_base.o reaction_sandbox_clm_cn.o \
-                     reaction_sandbox_example.o reactive_transport_aux.o \
-                     string.o utility.o
+                     reaction_sandbox_example.o reaction_sandbox_ufd_wp.o \
+		     reactive_transport_aux.o string.o utility.o
 reaction_sandbox_base.o : global_aux.o input_aux.o material_aux.o option.o \
                           pflotran_constants.o reaction_aux.o \
                           reactive_transport_aux.o
@@ -876,6 +878,10 @@ reaction_sandbox_example.o : global_aux.o input_aux.o material_aux.o option.o \
                              pflotran_constants.o reaction_aux.o \
                              reaction_sandbox_base.o reactive_transport_aux.o \
                              string.o units.o
+reaction_sandbox_udf_wp.o : global_aux.o immobile_aux.o input_aux.o \
+	                    material_aux.o option.o pflotran_constants.o \
+			    reaction_aux.o reaction_sandbox_base.o \
+			    reactive_transport_aux.o string.o units.o
 reactive_transport.o : condition.o connection.o constraint.o coupler.o debug.o \
                        discretization.o field.o fluid.o global.o global_aux.o \
                        grid.o logging.o mass_transfer.o material.o \
@@ -1097,20 +1103,30 @@ variables.o :
 waypoint.o : option.o output_aux.o pflotran_constants.o utility.o
 
 # developer level regression testing
-test : FORCE
-	@if [ -d $(pflotran_test_dir) ]; then \
-		$(MAKE) --directory=$(pflotran_test_dir) $(MAKECMDGOALS); \
+test : utest rtest
+
+utest : pflotran
+	@if [ -d $(unit_test_dir) ]; then \
+		$(MAKE) --directory=$(unit_test_dir) test; \
+	fi
+
+rtest : pflotran
+	@if [ -d $(regression_test_dir) ]; then \
+		$(MAKE) --directory=$(regression_test_dir) test; \
 	fi
 
 clean-tests : FORCE
-	@if [ -d $(pflotran_test_dir) ]; then \
-		$(MAKE) --directory=$(pflotran_test_dir) $(MAKECMDGOALS); \
+	@if [ -d $(unit_test_dir) ]; then \
+		$(MAKE) --directory=$(unit_test_dir) $(MAKECMDGOALS); \
+	fi
+	@if [ -d $(regression_test_dir) ]; then \
+		$(MAKE) --directory=$(regression_test_dir) $(MAKECMDGOALS); \
 	fi
 
-# user lever tests to verify pflotran is built correctly
+# user level tests to verify pflotran is built correctly
 check : FORCE
-	@if [ -d $(pflotran_test_dir) ]; then \
-		$(MAKE) --directory=$(pflotran_test_dir) $(MAKECMDGOALS); \
+	@if [ -d $(regression_test_dir) ]; then \
+		$(MAKE) --directory=$(regression_test_dir) $(MAKECMDGOALS); \
 	fi
 
 # null rule to force things to happen

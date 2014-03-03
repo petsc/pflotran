@@ -1669,6 +1669,7 @@ subroutine SatFuncGetRelPermFromSat(saturation,relative_perm,dkr_Se, &
           relative_perm = Se**power
           dkr_Se = power*relative_perm/Se
         case(MUALEM)
+          lambda = saturation_function%lambda
           power = 2.5d0+2.d0/lambda
           relative_perm = Se**power
           dkr_Se = power*relative_perm/Se
