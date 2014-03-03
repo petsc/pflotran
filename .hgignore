@@ -71,4 +71,5 @@ src/pflotran/pflotran_dependencies.txt
 src/pflotran/pflotran_source_files.txt
 .git
 .gitignore
-
+*.rej
+*.pyc
