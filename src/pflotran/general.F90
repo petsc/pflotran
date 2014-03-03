@@ -103,6 +103,36 @@ end subroutine GeneralTimeCut
 
 ! ************************************************************************** !
 
+subroutine GeneralInitializeTimestep(realization)
+  ! 
+  ! Update data in module prior to time step
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
+
+  use Realization_class
+  
+  implicit none
+  
+  type(realization_type) :: realization
+
+  call GeneralUpdateFixedAccum(realization)
+  
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+  debug_flag = 0
+!  if (realization%option%time >= 35.6d0*3600d0*24.d0*365.d0 - 1.d-40) then
+  if (.false.) then
+    debug_iteration_count = 0
+    debug_flag = 1
+  endif
+  debug_iteration_count = 0
+#endif
+
+end subroutine GeneralInitializeTimestep
+
+! ************************************************************************** !
+
 subroutine GeneralSetup(realization)
   ! 
   ! Creates arrays for auxiliary variables
@@ -673,35 +703,6 @@ end subroutine GeneralUpdateAuxVars
 
 ! ************************************************************************** !
 
-subroutine GeneralInitializeTimestep(realization)
-  ! 
-  ! Update data in module prior to time step
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/10/11
-  ! 
-
-  use Realization_class
-  
-  implicit none
-  
-  type(realization_type) :: realization
-
-  call GeneralUpdateFixedAccum(realization)
-  
-#ifdef GENERAL_DEBUG_FILEOUTPUT
-  debug_flag = 0
-  if (realization%option%time >= 5.d0*3600d0*24.d0*365.d0 - 1.d-40) then
-    debug_iteration_count = 0
-    debug_flag = 1
-  endif
-  debug_iteration_count = 0
-#endif
-
-end subroutine GeneralInitializeTimestep
-
-! ************************************************************************** !
-
 subroutine GeneralUpdateSolution(realization)
   ! 
   ! Updates data in module after a successful time
@@ -1179,7 +1180,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
 
   Res = 0.d0
   v_darcy = 0.d0
-#define DEBUG_FLUXES  
+!#define DEBUG_FLUXES  
 #ifdef DEBUG_FLUXES  
   adv_flux = 0.d0
   diff_flux = 0.d0
@@ -3371,6 +3372,22 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
 #endif
   PetscReal :: dX_X1, R_A
   PetscReal :: inf_norm(3), global_inf_norm(3)
+  PetscReal :: inf_norm_update(3,3), global_inf_norm_update(3,3)
+  PetscReal, parameter :: inf_pres_tol = 1.d-1
+  PetscReal, parameter :: inf_temp_tol = 1.d-5
+  PetscReal, parameter :: inf_sat_tol = 1.d-6
+  PetscReal, parameter :: inf_xmol_tol = 1.d-6
+  PetscReal, parameter :: inf_norm_update_tol(3,3) = &
+    reshape([inf_pres_tol,inf_xmol_tol,inf_temp_tol, &
+             inf_pres_tol,inf_pres_tol,inf_temp_tol, &
+             inf_pres_tol,inf_pres_tol,inf_sat_tol], &
+            shape(inf_norm_update_tol)) * &
+            0.d0
+  PetscReal :: temp(3,4), global_temp(3,4)
+  PetscMPIInt :: mpi_int
+  PetscBool :: converged_abs_update
+  PetscBool :: converged_rel_update
+  PetscInt :: istate
   PetscErrorCode :: ierr
   
   grid => realization%patch%grid
@@ -3385,7 +3402,8 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   dX_changed = PETSC_FALSE
   X1_changed = PETSC_FALSE
   
-  option%converged = PETSC_FALSE
+  inf_norm_update = 0.d0
+  
   if (option%check_post_convergence) then
     call VecGetArrayReadF90(dX,dX_p,ierr)
     call VecGetArrayReadF90(X1,X1_p,ierr)
@@ -3406,10 +3424,13 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
       offset = (local_id-1)*option%nflowdof
       ghosted_id = grid%nL2G(local_id)
       if (realization%patch%imat(ghosted_id) <= 0) cycle
+      istate = global_auxvars(ghosted_id)%istate
       do idof = 1, option%nflowdof
         ival = offset+idof
         R_A = dabs(r_p(ival)/accum_p(ival))
         dX_X1 = dabs(dX_p(ival)/X1_p(ival))
+        inf_norm_update(idof,istate) = max(inf_norm_update(idof,istate), &
+                                           dabs(dX_p(ival)))
         if (inf_norm(idof) < min(dX_X1,R_A)) then
           inf_norm(idof) = min(dX_X1,R_A)
 #ifdef DEBUG_GENERAL_INFO
@@ -3425,12 +3446,26 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
         endif
       enddo
     enddo
-    call MPI_Allreduce(inf_norm,global_inf_norm,THREE_INTEGER_MPI, &
+    temp(1:3,1:3) = inf_norm_update(:,:)
+    temp(1:3,4) = inf_norm(:)
+    mpi_int = 12
+    call MPI_Allreduce(temp,global_temp,mpi_int, &
                        MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
-    option%converged = PETSC_TRUE
+    global_inf_norm_update(:,:) = global_temp(1:3,1:3)
+    global_inf_norm(:) = global_temp(1:3,4)
+    converged_abs_update = PETSC_TRUE
+    do istate = 1, 3
+      do idof = 1, option%nflowdof
+        if (global_inf_norm_update(idof,istate) > &
+          inf_norm_update_tol(idof,istate)) then
+          converged_abs_update = PETSC_FALSE
+        endif
+      enddo  
+    enddo  
+    converged_rel_update = PETSC_TRUE
     do idof = 1, option%nflowdof
       if (global_inf_norm(idof) > option%post_convergence_tol) then
-        option%converged = PETSC_FALSE
+        converged_rel_update = PETSC_FALSE
 #if 1
 #ifdef DEBUG_GENERAL_INFO
         select case(istate_max(idof))
@@ -3451,6 +3486,10 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
 #endif
       endif
     enddo
+    option%converged = PETSC_FALSE
+    if (converged_rel_update .or. converged_abs_update) then
+      option%converged = PETSC_TRUE
+    endif
     call VecRestoreArrayReadF90(dX,dX_p,ierr)
     call VecRestoreArrayReadF90(X1,X1_p,ierr)
     call VecRestoreArrayReadF90(field%flow_r,r_p,ierr)
