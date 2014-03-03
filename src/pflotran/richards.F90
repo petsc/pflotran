@@ -1410,10 +1410,10 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
                             cur_connection_set%dist(:,iconn), &
                             option,v_darcy,Res)
         case (LSM_FLUX)
-#if 0         
           option%io_buffer = 'RicardsLSM needs to be implemented with ' // &
                              'new material_aux_type.'
           call printErrMsg(option)
+#if 0
           call RichardsLSMFlux(rich_auxvars(ghosted_id_up), &
                                global_auxvars(ghosted_id_up), &
                                porosity_loc_p(ghosted_id_up), &
