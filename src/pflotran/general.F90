@@ -23,6 +23,17 @@ module General_module
 ! Cutoff parameters
   PetscReal, parameter :: eps       = 1.D-8
   PetscReal, parameter :: floweps   = 1.D-24
+  
+!#define GENERAL_DEBUG_FILEOUTPUT
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+  PetscInt, parameter :: debug_unit = 87
+  PetscInt, parameter :: debug_info_unit = 86
+  character(len=MAXWORDLENGTH) :: debug_filename
+  PetscInt :: debug_flag = 0
+  PetscInt :: debug_iteration_count
+  PetscInt :: debug_timestep_cut_count
+  PetscInt :: debug_timestep_count
+#endif
 
   public GeneralResidual, GeneralJacobian, &
          GeneralUpdateFixedAccum, GeneralTimeCut,&
@@ -81,6 +92,10 @@ subroutine GeneralTimeCut(realization)
     global_auxvars(ghosted_id)%istate = int(iphas_loc_p(ghosted_id))
   enddo
   call VecRestoreArrayReadF90(field%iphas_loc,iphas_loc_p, ierr)  
+
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+  debug_timestep_cut_count = debug_timestep_cut_count + 1
+#endif 
 
   call GeneralInitializeTimestep(realization)  
 
@@ -241,12 +256,24 @@ subroutine GeneralSetup(realization)
   enddo  
 
   if (realization%output_option%print_fluxes) then
-    allocate(patch%internal_fluxes(1,1,ConnectionGetNumberInList(patch%grid%&
-             internal_connection_set_list)))
+    allocate(patch%internal_fluxes(option%nflowdof,1, &
+           ConnectionGetNumberInList(patch%grid%internal_connection_set_list)))
     patch%internal_fluxes = 0.d0
   endif
 
   call GeneralSetPlotVariables(realization) 
+  
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+  debug_flag = 0
+  debug_iteration_count = 0
+  debug_timestep_cut_count = 0
+  debug_timestep_count = 0
+  ! create new file
+  open(debug_info_unit, file='debug_info.txt', action="write", &
+       status="unknown")
+  write(debug_info_unit,*) 'type timestep cut iteration'
+  close(debug_info_unit)
+#endif  
 
 end subroutine GeneralSetup
 
@@ -489,6 +516,13 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
                                     ghosted_id, &  ! for debugging
                                     option)
     endif
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+  if (debug_flag > 0) then
+    write(debug_unit,'(a,i5,i3,7es24.15)') 'auxvar:', ghosted_id, &
+                        global_auxvars(ghosted_id)%istate, &
+                        xx_loc_p(ghosted_start:ghosted_end)
+  endif
+#endif
   enddo
 
   boundary_condition => patch%boundary_conditions%first
@@ -620,6 +654,13 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
                                     patch%saturation_function_array( &
                                       patch%sat_func_id(ghosted_id))%ptr, &
                                     ghosted_id,option)
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+      if (debug_flag > 0) then
+        write(debug_unit,'(a,i5,i3,7es24.15)') 'bc_auxvar:', ghosted_id, &
+                           global_auxvars_bc(ghosted_id)%istate, &
+                            xxbc(:)
+      endif
+#endif
     enddo
     boundary_condition => boundary_condition%next
   enddo
@@ -647,6 +688,15 @@ subroutine GeneralInitializeTimestep(realization)
   type(realization_type) :: realization
 
   call GeneralUpdateFixedAccum(realization)
+  
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+  debug_flag = 0
+  if (realization%option%time >= 5.d0*3600d0*24.d0*365.d0 - 1.d-40) then
+    debug_iteration_count = 0
+    debug_flag = 1
+  endif
+  debug_iteration_count = 0
+#endif
 
 end subroutine GeneralInitializeTimestep
 
@@ -718,6 +768,12 @@ subroutine GeneralUpdateSolution(realization)
   enddo
   call VecRestoreArrayF90(field%iphas_loc,iphas_loc_p,ierr)
 
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+  debug_iteration_count = 0
+  debug_timestep_cut_count = 0
+  debug_timestep_count = debug_timestep_count + 1
+#endif   
+  
 end subroutine GeneralUpdateSolution
 
 ! ************************************************************************** !
@@ -987,7 +1043,13 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
   Res(energy_id) = (Res(energy_id) * porosity + &
                     (1.d0 - porosity) * &
                     material_auxvar%soil_particle_density * &
-                    soil_heat_capacity * gen_auxvar%temp) * v_over_t 
+                    soil_heat_capacity * gen_auxvar%temp) * v_over_t
+                    
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+  if (debug_flag > 0) then
+    write(debug_unit,'(a,7es24.15)') 'accum:', Res
+  endif
+#endif                    
 
 end subroutine GeneralAccumulation
 
@@ -1034,6 +1096,12 @@ subroutine GeneralAccumDerivative(gen_auxvar,global_auxvar,material_auxvar, &
     enddo !irow
   enddo ! idof
 
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+  if (debug_flag > 0) then
+    write(debug_unit,'(a,10es24.15)') 'accum deriv:', J
+  endif
+#endif
+  
 end subroutine GeneralAccumDerivative
 
 ! ************************************************************************** !
@@ -1096,7 +1164,8 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   PetscReal :: temp_ave, stp_ave, v_air
   PetscReal :: k_eff_up, k_eff_dn, k_eff_ave, heat_flux
   PetscReal :: adv_flux(3), diff_flux(3)
-  
+  PetscReal :: debug_flux(3,3), debug_dphi(2)
+   
   wat_comp_id = option%water_id
   air_comp_id = option%air_id
   energy_id = option%energy_id
@@ -1110,10 +1179,14 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
 
   Res = 0.d0
   v_darcy = 0.d0
-!#define DEBUG_FLUXES  
+#define DEBUG_FLUXES  
 #ifdef DEBUG_FLUXES  
   adv_flux = 0.d0
   diff_flux = 0.d0
+#endif
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+  debug_flux = 0.d0
+  debug_dphi = 0.d0
 #endif
 
 #if 1
@@ -1169,6 +1242,10 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
                      gen_auxvar_dn%pres(iphase) + &
                      gravity_term
 
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+      debug_dphi(iphase) = delta_pressure
+#endif
+
     if (delta_pressure >= 0.D0) then
       mobility = gen_auxvar_up%mobility(iphase)
       xmol(:) = gen_auxvar_up%xmol(:,iphase)
@@ -1204,20 +1281,41 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
         adv_flux(icomp) = adv_flux(icomp) + mole_flux * xmol(icomp)
       enddo      ! Res[MJ/sec] = mole_flux[kmol comp/sec] * H_ave[MJ/kmol comp]
 #endif
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+      do icomp = 1, option%nflowspec
+        debug_flux(icomp,iphase) = debug_flux(icomp,iphase) + mole_flux * xmol(icomp)
+      enddo      ! Res[MJ/sec] = mole_flux[kmol comp/sec] * H_ave[MJ/kmol comp]
+#endif
       Res(energy_id) = Res(energy_id) + mole_flux * uH
 #ifdef DEBUG_FLUXES  
       adv_flux(energy_id) = adv_flux(energy_id) + mole_flux * uH
+#endif
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+      debug_dphi(iphase) = delta_pressure
+      debug_flux(energy_id,iphase) = debug_flux(energy_id,iphase) + mole_flux * uH
 #endif
     endif                   
 
   enddo
 #endif
 
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+  if (debug_flag > 0) then  
+    write(debug_unit,'(a,7es24.15)') 'delta pressure :', debug_dphi(:)
+    write(debug_unit,'(a,7es24.15)') 'adv flux (liquid):', debug_flux(:,1)
+    write(debug_unit,'(a,7es24.15)') 'adv flux (gas):', debug_flux(:,2)
+  endif
+  debug_flux = 0.d0
+#endif                    
+
 #if 1
   ! add in gas component diffusion in gas and liquid phases
   do iphase = 1, option%nphase
     
+!#define LIQUID_DIFFUSION  
+#ifndef LIQUID_DIFFUSION  
     if (iphase == LIQUID_PHASE) cycle
+#endif    
     
     sat_up = gen_auxvar_up%sat(iphase)
     sat_dn = gen_auxvar_dn%sat(iphase)
@@ -1278,6 +1376,10 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
       diff_flux(wat_comp_id) = diff_flux(wat_comp_id) - mole_flux
       diff_flux(air_comp_id) = diff_flux(air_comp_id) + mole_flux      
 #endif
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+      debug_flux(wat_comp_id,iphase) = debug_flux(wat_comp_id,iphase) - mole_flux 
+      debug_flux(air_comp_id,iphase) = debug_flux(air_comp_id,iphase) + mole_flux 
+#endif
     endif
   enddo
 #endif
@@ -1314,7 +1416,15 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
     write(*,'(a,7es12.4)') 'in: ', adv_flux(:)*dist(3), diff_flux(:)*dist(3)
   endif
 #endif
-    
+
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+  debug_flux(energy_id,1) = debug_flux(energy_id,1) + heat_flux * 1.d-6
+  if (debug_flag > 0) then  
+    write(debug_unit,'(a,7es24.15)') 'dif flux (liquid):', debug_flux(:,1)
+    write(debug_unit,'(a,7es24.15)') 'dif flux (gas):', debug_flux(:,2)
+  endif
+#endif
+
 end subroutine GeneralFlux
 
 ! ************************************************************************** !
@@ -1401,6 +1511,12 @@ subroutine GeneralFluxDerivative(gen_auxvar_up,global_auxvar_up, &
     enddo !irow
   enddo ! idof
 
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+  if (debug_flag > 0) then
+    write(debug_unit,'(a,20es24.15)') 'flux deriv:', Jup, Jdn
+  endif
+#endif
+  
 end subroutine GeneralFluxDerivative
 
 ! ************************************************************************** !
@@ -1453,6 +1569,7 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
   PetscReal :: temp_ave, stp_ave, v_air, pres_ave
   PetscReal :: k_eff_up, k_eff_dn, k_eff_ave, heat_flux
   PetscReal :: adv_flux(3), diff_flux(3)
+  PetscReal :: debug_flux(3,3), debug_dphi(2)
   
   PetscInt :: idof
   PetscBool :: neumann_bc_present
@@ -1467,6 +1584,11 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
   adv_flux = 0.d0
   diff_flux = 0.d0
 #endif
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+  debug_flux = 0.d0
+  debug_dphi = 0.d0
+#endif
+
   neumann_bc_present = PETSC_FALSE
   
   call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
@@ -1555,6 +1677,10 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
                            gen_auxvar_dn%pres(iphase) + &
                            gravity_term
 
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+          debug_dphi(iphase) = delta_pressure
+#endif
+
           if (bc_type == SEEPAGE_BC .or. &
               bc_type == CONDUCTANCE_BC) then
                 ! flow in         ! boundary cell is <= pref
@@ -1629,21 +1755,41 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
         adv_flux(icomp) = adv_flux(icomp) + mole_flux * xmol(icomp)
       enddo
 #endif
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+      do icomp = 1, option%nflowspec
+        debug_flux(icomp,iphase) = debug_flux(icomp,iphase) + mole_flux * xmol(icomp)
+      enddo
+#endif
       ! Res[MJ/sec] = mole_flux[kmol comp/sec] * H_ave[MJ/kmol comp]
       Res(energy_id) = Res(energy_id) + mole_flux * uH ! H_ave
 #ifdef DEBUG_FLUXES  
       adv_flux(energy_id) = adv_flux(energy_id) + mole_flux * uH
 #endif
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+      debug_flux(energy_id,iphase) = debug_flux(energy_id,iphase) + mole_flux * uH
+#endif
     endif
   enddo
+  
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+  if (debug_flag > 0) then 
+    write(debug_unit,'(a,7es24.15)') 'bc delta pressure :', debug_dphi(:)  
+    write(debug_unit,'(a,7es24.15)') 'bc adv flux (liquid):', debug_flux(:,1)
+    write(debug_unit,'(a,7es24.15)') 'bc adv flux (gas):', debug_flux(:,2)
+  endif
+  debug_flux = 0.d0
+#endif  
 
 #if 1
   ! add in gas component diffusion in gas and liquid phases
   do iphase = 1, option%nphase
   
+#ifdef LIQUID_DIFFUSION    
 !    if (neumann_bc_present) cycle
-!    if (ibndtype(iphase) == NEUMANN_BC) cycle
+    if (ibndtype(iphase) == NEUMANN_BC) cycle
+#else
     if (iphase == LIQUID_PHASE) cycle
+#endif
     
     ! diffusion all depends upon the downwind cell.  phase diffusion only
     ! occurs if a phase exists in both auxvars (boundary and internal) or
@@ -1698,6 +1844,10 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
       diff_flux(wat_comp_id) = diff_flux(wat_comp_id) - mole_flux
       diff_flux(air_comp_id) = diff_flux(air_comp_id) + mole_flux
 #endif
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+      debug_flux(wat_comp_id,iphase) = debug_flux(wat_comp_id,iphase) - mole_flux
+      debug_flux(air_comp_id,iphase) = debug_flux(air_comp_id,iphase) + mole_flux
+#endif
     endif
   enddo
 #endif
@@ -1732,6 +1882,14 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
 
   if (option%iflag == 1) then
     write(*,'(a,7es12.4)') 'bc: ', adv_flux(:)*dist(3), diff_flux(:)*dist(3)
+  endif
+#endif
+
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+  debug_flux(energy_id,1) = debug_flux(energy_id,1) + heat_flux * 1.d-6
+  if (debug_flag > 0) then  
+    write(debug_unit,'(a,7es24.15)') 'bc dif flux (liquid):', debug_flux(:,1)*dist(3)
+    write(debug_unit,'(a,7es24.15)') 'bc dif flux (gas):', debug_flux(:,2)*dist(3)
   endif
 #endif
   
@@ -1806,6 +1964,12 @@ subroutine GeneralBCFluxDerivative(ibndtype,auxvar_mapping,auxvars, &
     enddo !irow
   enddo ! idof
 
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+  if (debug_flag > 0) then
+    write(debug_unit,'(a,10es24.15)') 'bc flux deriv:', Jdn
+  endif
+#endif
+  
 end subroutine GeneralBCFluxDerivative
 
 ! ************************************************************************** !
@@ -1888,6 +2052,12 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
     endif
   endif
   
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+  if (debug_flag > 0) then  
+    write(debug_unit,'(a,7es24.15)') 'src/sink:', res(1)-res(2),res(2:3)
+  endif
+#endif   
+  
 end subroutine GeneralSrcSink
 
 ! ************************************************************************** !
@@ -1927,6 +2097,12 @@ subroutine GeneralSrcSinkDerivative(option,qsrc,flow_src_sink_type, &
       Jac(irow,idof) = (res_pert(irow)-res(irow))/gen_auxvars(idof)%pert
     enddo !irow
   enddo ! idof
+  
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+  if (debug_flag > 0) then
+    write(debug_unit,'(a,20es24.15)') 'src/sink deriv:', Jac
+  endif
+#endif  
   
 end subroutine GeneralSrcSinkDerivative
 
@@ -1988,6 +2164,9 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   PetscReal, pointer :: r_p(:)
   PetscReal, pointer :: accum_p(:)
   PetscReal, pointer :: volume_p(:)
+  
+  character(len=MAXWORDLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word
 
   PetscInt :: icap_up, icap_dn
   PetscReal :: Res(realization%option%nflowdof)
@@ -2006,6 +2185,24 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   global_auxvars_bc => patch%aux%Global%auxvars_bc
   material_auxvars => patch%aux%Material%auxvars
   
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+  if (debug_flag > 0) then
+    debug_iteration_count = debug_iteration_count + 1
+    write(word,*) debug_timestep_count
+    string = 'residual_debug_data_' // trim(adjustl(word))
+    write(word,*) debug_timestep_cut_count
+    string = trim(string) // '_' // trim(adjustl(word))
+    write(word,*) debug_iteration_count
+    debug_filename = trim(string) // '_' // trim(adjustl(word)) // '.txt'
+    open(debug_unit, file=debug_filename, action="write", status="unknown")
+    open(debug_info_unit, file='debug_info.txt', action="write", &
+         position="append", status="unknown")
+    write(debug_info_unit,*) 'residual ', debug_timestep_count, &
+      debug_timestep_cut_count, debug_iteration_count
+    close(debug_info_unit)
+  endif
+#endif
+
   ! Communication -----------------------------------------
   ! These 3 must be called before GeneralUpdateAuxVars()
   call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
@@ -2219,6 +2416,19 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
     enddo
   endif
 
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+  call VecGetArrayReadF90(field%flow_accum, accum_p, ierr)
+  do local_id = 1, grid%nlmax
+    write(debug_unit,'(a,i5,7es24.15)') 'fixed residual:', local_id, &
+      accum_p((local_id-1)*option%nflowdof+1:local_id*option%nflowdof)
+  enddo
+  call VecRestoreArrayReadF90(field%flow_accum, accum_p, ierr)
+  do local_id = 1, grid%nlmax
+    write(debug_unit,'(a,i5,7es24.15)') 'residual:', local_id, &
+      r_p((local_id-1)*option%nflowdof+1:local_id*option%nflowdof)
+  enddo
+#endif
+  
   call VecRestoreArrayF90(r, r_p, ierr)
    
   if (realization%debug%vecview_residual) then
@@ -2236,6 +2446,12 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
 
 !  call VecView(xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
 !  call VecView(r,PETSC_VIEWER_STDOUT_WORLD,ierr)
+
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+  if (debug_flag > 0) then
+    close(debug_unit)
+  endif
+#endif
   
 end subroutine GeneralResidual
 
@@ -2303,6 +2519,9 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
   type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:) 
   class(material_auxvar_type), pointer :: material_auxvars(:)
   
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word
+  
   patch => realization%patch
   grid => patch%grid
   option => realization%option
@@ -2326,6 +2545,23 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
   endif
 
   call MatZeroEntries(J,ierr)
+
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+  if (debug_flag > 0) then
+    write(word,*) debug_timestep_count
+    string = 'jacobian_debug_data_' // trim(adjustl(word))
+    write(word,*) debug_timestep_cut_count
+    string = trim(string) // '_' // trim(adjustl(word))
+    write(word,*) debug_iteration_count
+    debug_filename = trim(string) // '_' // trim(adjustl(word)) // '.txt'
+    open(debug_unit, file=debug_filename, action="write", status="unknown")
+    open(debug_info_unit, file='debug_info.txt', action="write", &
+         position="append", status="unknown")
+    write(debug_info_unit,*) 'jacobian ', debug_timestep_count, &
+      debug_timestep_cut_count, debug_iteration_count
+    close(debug_info_unit)
+  endif
+#endif
 
   ! Perturb aux vars
   do ghosted_id = 1, grid%ngmax  ! For each local node do...
@@ -2568,6 +2804,21 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
   endif
 #endif
 
+#ifdef GENERAL_DEBUG_FILEOUTPUT
+  if (debug_flag > 0) then
+    write(word,*) debug_timestep_count
+    string = 'jacobian_' // trim(adjustl(word))
+    write(word,*) debug_timestep_cut_count
+    string = trim(string) // '_' // trim(adjustl(word))
+    write(word,*) debug_iteration_count
+    string = trim(string) // '_' // trim(adjustl(word)) // '.out'
+    call PetscViewerASCIIOpen(realization%option%mycomm,trim(string), &
+                              viewer,ierr)
+    call MatView(J,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+    close(debug_unit)
+  endif
+#endif
 
 end subroutine GeneralJacobian
 
