@@ -606,7 +606,8 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
   class(material_auxvar_type) :: material_auxvar
 
 ! based on min_pressure in CheckPre set to zero
-  PetscReal, parameter :: epsilon = 1.d-8 
+  PetscReal, parameter :: epsilon = 1.d-8
+  PetscReal, parameter :: window_epsilon = 1.d-4
 !  PetscReal, parameter :: epsilon = 1.d0 ! crash
 !  PetscReal, parameter :: epsilon = 1.d-1 ! 4.74000E+01, 12235 NI, 73 cuts
 !  PetscReal, parameter :: epsilon = 1.d-2 ! 4.39074E+01, 13600 NI, 201 cuts
@@ -651,7 +652,10 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
   gen_auxvar%istate_store(PREV_IT) = global_auxvar%istate
   select case(global_auxvar%istate)
     case(LIQUID_STATE)
-      if (gen_auxvar%pres(vpid) <= gen_auxvar%pres(spid)) then
+      ! scaling by window_epsilon forces vapor pressure to enter two phase region
+      ! a finite amount before phase change can occur
+      if (gen_auxvar%pres(vpid) <= &
+          gen_auxvar%pres(spid)*(1.d0-window_epsilon)) then
 #ifdef DEBUG_GENERAL
 #ifdef DEBUG_GENERAL_INFO
         call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &
@@ -781,7 +785,10 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         flag = PETSC_TRUE
       endif
     case(GAS_STATE)
-      if (gen_auxvar%pres(vpid) >= gen_auxvar%pres(spid)) then
+      ! scaling by window_epsilon forces vapor pressure to enter two phase region
+      ! a finite amount before phase change can occur
+      if (gen_auxvar%pres(vpid) >= &
+          gen_auxvar%pres(spid)*(1.d0+window_epsilon)) then
 #ifdef DEBUG_GENERAL
 #ifdef DEBUG_GENERAL_INFO
         call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &
