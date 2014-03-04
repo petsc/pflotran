@@ -378,7 +378,9 @@ subroutine EOSWaterViscosity1(T, P, PS, dPS_dT, VW, calculate_derivatives, &
   
   EX  = 247.8d0/(T+133.15d0)
   PHI = 1.0467d0*(T-31.85d0)
-  AM  = 1.d0+PHI*(P-PS)*1.d-11
+  !geh: added max(P,PS)-PS in place of P-PS
+  !geh: here P should be the maximum of Pl and Pg
+  AM  = 1.d0+PHI*(max(P,PS)-PS)*1.d-11
   pwr = 10.d0**EX
   VW = 1.d-7*AM*241.4d0*pwr
     
