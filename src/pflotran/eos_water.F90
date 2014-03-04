@@ -1449,14 +1449,14 @@ end subroutine EOSWaterSteamDenEnthDerive
 
 ! ************************************************************************** !
 
-subroutine EOSWaterSteamDensityEnthalpyIFC67(t,p,pa,dg,dgmol,hg, &
+subroutine EOSWaterSteamDensityEnthalpyIFC67(t,pv,pa,dg,dgmol,hg, &
                                          calculate_derivatives, &
                                          dgp,dgt,hgp,hgt,scale,ierr)
 ! t/C  p/Pa dgmol/(mol/m^3)  h/MJ/mol
   implicit none
   
   PetscReal, intent(in) :: t   ! Temperature in centigrade.
-  PetscReal, intent(in) :: p,pa   ! Pressure in Pascals.
+  PetscReal, intent(in) :: pv,pa   ! Vapor Pressure in Pascals.
   PetscBool, intent(in) :: calculate_derivatives
   PetscReal, intent(out) :: dg,dgmol,dgp,dgt
   PetscReal, intent(out) :: hg,hgp,hgt
@@ -1547,7 +1547,7 @@ subroutine EOSWaterSteamDensityEnthalpyIFC67(t,p,pa,dg,dgmol,hg, &
   vc1molh = vc1mol*scale   
 
   theta  = (t+273.15d0)*utc1
-  beta   = (p-pa)*upc1
+  beta   = pv*upc1
   ubeta  = one/beta
   utheta = one/theta
   xx = exp(b(1,1)*(one-theta))
