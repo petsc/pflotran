@@ -1540,20 +1540,11 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
         case(IMS_MODE)
           call ImmisUpdateReason(update_reason,realization)
         case(MPH_MODE)
-          if (option%use_mc) then
-            option%sec_vars_update = PETSC_TRUE
-          endif
         case(FLASH2_MODE)
         case(TH_MODE)
           update_reason=1
-          if (option%use_mc) then
-            option%sec_vars_update = PETSC_TRUE
-          endif
         case(THC_MODE)
           update_reason=1
-          if (option%use_mc) then
-            option%sec_vars_update = PETSC_TRUE
-          endif
         case (MIS_MODE)
           update_reason=1
         case(RICHARDS_MODE,G_MODE)
@@ -2096,21 +2087,12 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
             call ImmisUpdateReason(update_reason,realization)
           case(MPH_MODE)
 !           call MPhaseUpdateReason(update_reason,realization)
-            if (option%use_mc) then
-              option%sec_vars_update = PETSC_TRUE
-            endif
           case(FLASH2_MODE)
 !           call Flash2UpdateReason(update_reason,realization)
           case(TH_MODE)
             update_reason=1
-            if (option%use_mc) then
-              option%sec_vars_update = PETSC_TRUE
-            endif
           case(THC_MODE)
             update_reason=1
-            if (option%use_mc) then
-              option%sec_vars_update = PETSC_TRUE
-            endif
           case (MIS_MODE)
             update_reason=1
           case(RICHARDS_MODE,G_MODE)
