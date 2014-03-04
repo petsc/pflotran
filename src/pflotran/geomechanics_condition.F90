@@ -85,13 +85,14 @@ module Geomechanics_Condition_module
 contains
 
 ! ************************************************************************** !
-!
-! GeomechConditionCreate: Creates a condition
-! author: Satish Karra, LANL
-! date: 06/07/13
-!
-! ************************************************************************** !
+
 function GeomechConditionCreate(option)
+  ! 
+  ! Creates a condition
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/07/13
+  ! 
 
   use Option_module
   
@@ -124,13 +125,14 @@ function GeomechConditionCreate(option)
 end function GeomechConditionCreate
 
 ! ************************************************************************** !
-!
-! GeomechSubConditionCreate: Creates a sub_condition
-! author: Satish Karra, LANL
-! date: 06/12/13
-!
-! ************************************************************************** !
+
 function GeomechSubConditionCreate(ndof)
+  ! 
+  ! Creates a sub_condition
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/12/13
+  ! 
 
   use Option_module
   
@@ -164,15 +166,16 @@ function GeomechSubConditionCreate(ndof)
 end function GeomechSubConditionCreate
 
 ! ************************************************************************** !
-!
-! GeomechSubConditionVerify: Verifies the data in a subcondition
-! author: Satish Karra, LANL
-! date: 06/12/13
-!
-! ************************************************************************** !
+
 subroutine GeomechSubConditionVerify(option, condition, sub_condition_name, &
                                      sub_condition, default_time_storage, &
                                      destroy_if_null)
+  ! 
+  ! Verifies the data in a subcondition
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/12/13
+  ! 
 
   use Option_module
   use Dataset_module
@@ -208,13 +211,14 @@ subroutine GeomechSubConditionVerify(option, condition, sub_condition_name, &
 end subroutine GeomechSubConditionVerify
 
 ! ************************************************************************** !
-!
-! GeomechConditionRead: Reads a condition from the input file
-! author: Satish Karra, LANL
-! date: 06/12/13
-!
-! ************************************************************************** !
+
 subroutine GeomechConditionRead(condition,input,option)
+  ! 
+  ! Reads a condition from the input file
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/12/13
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -533,13 +537,14 @@ subroutine GeomechConditionRead(condition,input,option)
 end subroutine GeomechConditionRead
 
 ! ************************************************************************** !
-!
-! GeomechConditionPrint: Prints Geomech condition info
-! author: Satish Karra, LANL
-! date: 06/12/13
-!
-! ************************************************************************** !
+
 subroutine GeomechConditionPrint(condition,option)
+  ! 
+  ! Prints Geomech condition info
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/12/13
+  ! 
 
   use Option_module
 
@@ -573,13 +578,14 @@ subroutine GeomechConditionPrint(condition,option)
 end subroutine GeomechConditionPrint
 
 ! ************************************************************************** !
-!
-! GeomechConditionPrintSubCondition: Prints Geomech subcondition info
-! author: Satish Karra, LANL
-! date: 06/12/13
-!
-! ************************************************************************** !
+
 subroutine GeomechConditionPrintSubCondition(subcondition,option)
+  ! 
+  ! Prints Geomech subcondition info
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/12/13
+  ! 
 
   use Option_module
 
@@ -614,13 +620,14 @@ subroutine GeomechConditionPrintSubCondition(subcondition,option)
 end subroutine GeomechConditionPrintSubCondition
 
 ! ************************************************************************** !
-!
-! GeomechConditionUpdate: Updates a transient condition
-! author: Satish Karra, LANL
-! date: 06/12/13
-!
-! ************************************************************************** !
+
 subroutine GeomechConditionUpdate(condition_list,option,time)
+  ! 
+  ! Updates a transient condition
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/12/13
+  ! 
 
   use Option_module
   use Dataset_module
@@ -656,13 +663,14 @@ subroutine GeomechConditionUpdate(condition_list,option,time)
 end subroutine GeomechConditionUpdate
 
 ! ************************************************************************** !
-!
-! GeomechConditionInitList: Initializes a condition list
-! author: Satish Karra, LANL
-! date: 06/12/13
-!
-! ************************************************************************** !
+
 subroutine GeomechConditionInitList(list)
+  ! 
+  ! Initializes a condition list
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/12/13
+  ! 
 
   implicit none
 
@@ -676,13 +684,14 @@ subroutine GeomechConditionInitList(list)
 end subroutine GeomechConditionInitList
 
 ! ************************************************************************** !
-!
-! GeomechConditionAddToList: Adds a new condition to a condition list
-! author: Satish Karra, LANL
-! date: 06/12/13
-!
-! ************************************************************************** !
+
 subroutine GeomechConditionAddToList(new_condition,list)
+  ! 
+  ! Adds a new condition to a condition list
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/12/13
+  ! 
 
   implicit none
   
@@ -698,14 +707,15 @@ subroutine GeomechConditionAddToList(new_condition,list)
 end subroutine GeomechConditionAddToList
 
 ! ************************************************************************** !
-!
-! GeomechConditionGetPtrFromList: Returns a pointer to the condition matching &
-!                          condition_name
-! author: Satish Karra, LANL
-! date: 06/12/13
-!
-! ************************************************************************** !
+
 function GeomechConditionGetPtrFromList(condition_name,condition_list)
+  ! 
+  ! Returns a pointer to the condition matching &
+  ! condition_name
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/12/13
+  ! 
 
   use String_module
   
@@ -736,14 +746,15 @@ function GeomechConditionGetPtrFromList(condition_name,condition_list)
 end function GeomechConditionGetPtrFromList
 
 ! ************************************************************************** !
-!
-! GeomechConditionIsTransient: Returns PETSC_TRUE for geomech condition if
-!                              it is transient
-! author: Satish Karra, LANL
-! date: 06/12/13
-!
-! ************************************************************************** !
+
 function GeomechConditionIsTransient(condition)
+  ! 
+  ! Returns PETSC_TRUE for geomech condition if
+  ! it is transient
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/12/13
+  ! 
 
   implicit none
   
@@ -769,14 +780,15 @@ function GeomechConditionIsTransient(condition)
 end function GeomechConditionIsTransient
 
 ! ************************************************************************** !
-!
-! GeomechSubConditionIsTransient: Returns PETSC_TRUE for geomech sub condition
-!                                 if it is transient
-! author: Satish Karra, LANL
-! date: 06/12/13
-!
-! ************************************************************************** !
+
 function GeomechSubConditionIsTransient(sub_condition)
+  ! 
+  ! Returns PETSC_TRUE for geomech sub condition
+  ! if it is transient
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/12/13
+  ! 
 
   use Dataset_module
 
@@ -797,13 +809,14 @@ function GeomechSubConditionIsTransient(sub_condition)
 end function GeomechSubConditionIsTransient
 
 ! ************************************************************************** !
-!
-! GeomechConditionDestroyList: Deallocates a list of conditions
-! author: Satish Karra, LANL
-! date: 06/06/13
-!
-! ************************************************************************** !
+
 subroutine GeomechConditionDestroyList(condition_list)
+  ! 
+  ! Deallocates a list of conditions
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/06/13
+  ! 
 
   implicit none
   
@@ -834,13 +847,14 @@ subroutine GeomechConditionDestroyList(condition_list)
 end subroutine GeomechConditionDestroyList
 
 ! ************************************************************************** !
-!
-! GeomechConditionDestroy: Deallocates a condition
-! author: Satish Karra, LANL
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 subroutine GeomechConditionDestroy(condition)
+  ! 
+  ! Deallocates a condition
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 10/23/07
+  ! 
 
   implicit none
   
@@ -876,13 +890,14 @@ subroutine GeomechConditionDestroy(condition)
 end subroutine GeomechConditionDestroy
 
 ! ************************************************************************** !
-!
-! GeomechSubConditionDestroy: Destroys a sub_condition
-! author: Satish Karra, LANL
-! date: 02/04/08
-!
-! ************************************************************************** !
+
 subroutine GeomechSubConditionDestroy(sub_condition)
+  ! 
+  ! Destroys a sub_condition
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 02/04/08
+  ! 
 
   use Dataset_module
   use Dataset_Ascii_class

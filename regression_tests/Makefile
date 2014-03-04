@@ -56,7 +56,8 @@ STANDARD_CFG = \
 	shortcourse/1D_variably_saturated_flow/vsat_flow.cfg \
 	shortcourse/regional_doublet/regional_doublet.cfg \
 	shortcourse/copper_leaching/cu_leaching.cfg \
-	wipp/nuts/nuts.cfg
+	wipp/nuts/nuts.cfg \
+	surfaceflow/surface_flow_only/surface_only.cfg
 
 ifneq ($(strip $(PARMETIS_LIB)),)
 	STANDARD_CFG += \
@@ -179,6 +180,8 @@ clean-tests :
 	-find . -type f -name '*~' -print0 | xargs -0 rm
 	-find . -type f -name 'tmp-restart-*' -print0 | xargs -0 rm
 	-find . -type f -name '*.chk' -print0 | xargs -0 rm
+	-find . -type f -name '*.pyc' -print0 | xargs -0 rm
+	-find . -type d -name '__pycache__' -print0 | xargs -0 rm -r
 	-rm -f default/anisothermal/thc_1d.h5
 	-rm -f default/anisothermal/th_1d.h5
 	-rm -f mfd/mfd-mas.dat

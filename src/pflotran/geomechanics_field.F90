@@ -48,14 +48,15 @@ module Geomechanics_Field_module
 contains
 
 ! ************************************************************************** !
-!
-! GeomechFieldCreate: Allocates and initializes a new geomechanics
-!                     Field object
-! author: Satish Karra, LANL
-! date: 06/05/13
-!
-! ************************************************************************** !
+
 function GeomechFieldCreate()
+  ! 
+  ! Allocates and initializes a new geomechanics
+  ! Field object
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/05/13
+  ! 
 
   implicit none
   
@@ -99,13 +100,14 @@ function GeomechFieldCreate()
 end function GeomechFieldCreate
 
 ! ************************************************************************** !
-!
-! GeomechFieldDestroy: Deallocates a geomechanics field object
-! author: Satish Karra, LANL
-! date: 06/05/13
-!
-! ************************************************************************** !
+
 subroutine GeomechFieldDestroy(geomech_field)
+  ! 
+  ! Deallocates a geomechanics field object
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/05/13
+  ! 
 
   implicit none
   

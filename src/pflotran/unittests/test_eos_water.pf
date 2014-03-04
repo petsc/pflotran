@@ -1,0 +1,153 @@
+module Test_EOS_Water_module
+
+  use pFUnit_mod
+  use EOS_Water_module
+
+  implicit none
+
+#include "finclude/petscsys.h"
+
+  public :: Test_EOS_Water
+
+  interface Test_EOS_Water
+     module procedure newTest_EOS_Water
+  end interface Test_EOS_Water
+
+  @TestCase
+  type, extends(TestCase) :: Test_EOS_Water
+     procedure(runMethod), pointer :: userMethod => null()
+   contains
+     procedure :: setUp
+     procedure :: tearDown
+     procedure :: runMethod
+  end type Test_EOS_Water
+
+contains
+
+! ************************************************************************** !
+
+  function newTest_EOS_Water(name, userMethod) result(test)
+
+    implicit none
+
+    character(len=*), intent(in) :: name
+    procedure(runMethod) :: userMethod
+
+    type(Test_EOS_Water) :: test
+
+    call test%setName(name)
+    test%userMethod => userMethod
+
+  end function newTest_EOS_Water
+
+! ************************************************************************** !
+
+  subroutine setUp(this)
+    implicit none
+    class (Test_EOS_Water), intent(inout) :: this
+
+    call EOSWaterInit()
+
+  end subroutine setUp
+
+! ************************************************************************** !
+
+  subroutine tearDown(this)
+    implicit none
+    class (Test_EOS_Water), intent(inout) :: this
+    ! Destroy calls would go here
+  end subroutine tearDown
+
+! ************************************************************************** !
+
+  subroutine runMethod(this)
+    implicit none
+    class (Test_EOS_Water), intent(inout) :: this
+    call this%userMethod()
+  end subroutine runMethod
+
+! ************************************************************************** !
+
+  @Test
+  subroutine testEOSWater_VerifyDefault(this)
+    !
+    ! verify that the default from EOSWaterInit passes the verify
+    ! test.
+    !
+    use PFLOTRAN_Constants_module, only : MAXSTRINGLENGTH
+
+    implicit none
+
+    class (Test_EOS_Water), intent(inout) :: this
+
+    PetscErrorCode :: ierr
+    character(len=MAXSTRINGLENGTH) :: error_string
+
+    call EOSWaterVerify(ierr, error_string)
+    @assertEqual(0, ierr)
+
+  end subroutine testEOSWater_VerifyDefault
+
+! ************************************************************************** !
+
+  @Test
+  subroutine testEOSWater_ConstantDensity(this)
+    !
+    ! verify that the EOSWaterSetDensityConstant() followed by
+    ! EOSWaterDensity() correctly returns the constant density
+    !
+    use PFLOTRAN_Constants_module, only : MAXSTRINGLENGTH
+
+    implicit none
+
+    class (Test_EOS_Water), intent(inout) :: this
+
+    PetscErrorCode :: ierr
+    character(len=MAXSTRINGLENGTH) :: error_string
+
+    PetscReal, parameter :: density = 1234.5
+    PetscReal, parameter :: temperature = -23.4
+    PetscReal, parameter :: pressure = 1.0
+    PetscReal, parameter :: scale = 1.0
+    PetscReal :: dw, dwmol, dwp, dwt
+
+    call EOSWaterSetDensityConstant(density)
+
+    call EOSWaterVerify(ierr, error_string)
+    @assertEqual(0, ierr)
+
+    call EOSWaterDensity(temperature, pressure, dw, dwmol, &
+         dwp, dwt, scale, ierr)
+    @assertEqual(density, dw, 1.0d-16)
+
+  end subroutine testEOSWater_ConstantDensity
+
+! ************************************************************************** !
+
+  @Test
+  subroutine testEOSWater_DensitySTP(this)
+    !
+    ! verify that EOSWaterDensity returns the correct density at
+    ! NIST standard temperature and pressure (20C, 101.325 kPa absolute)
+    !
+    use PFLOTRAN_Constants_module, only : MAXSTRINGLENGTH
+
+    implicit none
+
+    class (Test_EOS_Water), intent(inout) :: this
+
+    PetscErrorCode :: ierr
+    character(len=MAXSTRINGLENGTH) :: error_string
+
+    PetscReal, parameter :: stp_density = 998.32328795198055d0
+    PetscReal, parameter :: temperature = 20.0d0
+    PetscReal, parameter :: pressure = 101325.0d0
+    PetscReal :: density
+
+    call EOSWaterDensity(temperature, pressure, density)
+    @assertEqual(density, stp_density, 1.0d-16)
+
+  end subroutine testEOSWater_DensitySTP
+
+end module Test_EOS_Water_module
+

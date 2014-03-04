@@ -201,6 +201,13 @@ class RegressionTest_SetTestData(unittest.TestCase):
         self.rt._set_criteria(key, self.criteria, self.test_data)
         self.assertEqual(self.rt._tolerance[key], [1.0e-7, "percent"])
 
+    def test_set_criteria_cfg_empty_default(self):
+        # an exception is thrown when cfg default criteria is not iterable (a dict)
+        key = "concentration"
+        default_cfg_criteria = None
+        self.assertRaises(Exception,
+                          self.rt._set_criteria, key, default_cfg_criteria, "cfg default criteria not a dict")
+
     #--- validate_criteria ----------------------------------------------------
     def test_validate_criteria_absolute(self):
         key = "velocity"
