@@ -536,7 +536,7 @@ subroutine PMRTCheckUpdatePre(this,line_search,P,dP,changed,ierr)
   ! Date: 03/14/13
   ! 
 
-  use Reactive_Transport_module, only : RTCheckUpdate
+  use Reactive_Transport_module, only : RTCheckUpdatePre
 
   implicit none
   
@@ -552,7 +552,7 @@ subroutine PMRTCheckUpdatePre(this,line_search,P,dP,changed,ierr)
 #endif
   
 #ifndef SIMPLIFY 
-  call RTCheckUpdate(line_search,P,dP,changed,this%realization,ierr)
+  call RTCheckUpdatePre(line_search,P,dP,changed,this%realization,ierr)
 #endif
 
 end subroutine PMRTCheckUpdatePre
@@ -566,7 +566,7 @@ subroutine PMRTCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
   ! Date: 03/14/13
   ! 
 
-!  use Reactive_Transport_module, only : RTCheckUpdatePost
+  use Reactive_Transport_module, only : RTCheckUpdatePost
 
   implicit none
   
@@ -583,8 +583,8 @@ subroutine PMRTCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
   call printMsg(this%option,'PMRT%CheckUpdatePost()')
 #endif
   
-!  call RTCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
-!                               P1_changed,this%realization,ierr)
+  call RTCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
+                         P1_changed,this%realization,ierr)
 
 end subroutine PMRTCheckUpdatePost
 
@@ -883,7 +883,7 @@ subroutine PMRTCheckpoint(this,viewer)
     endif
     ! sorbed concentrations for multirate kinetic sorption
     if (realization%reaction%surface_complexation%nkinmrsrfcplxrxn > 0 .and. &
-        .not.option%no_checkpoint_kinetic_sorption) then
+        .not.option%transport%no_checkpoint_kinetic_sorption) then
       ! PETSC_TRUE flag indicates write to file
       call RTCheckpointKineticSorption(realization,viewer,PETSC_TRUE)
     endif
@@ -1004,7 +1004,7 @@ subroutine PMRTRestart(this,viewer)
     do i = 1, realization%reaction%mineral%nkinmnrl
       ! have to load the vecs no matter what
       call VecLoad(global_vec,viewer,ierr)
-      if (.not.option%no_restart_mineral_vol_frac) then
+      if (.not.option%transport%no_restart_mineral_vol_frac) then
         call RealizationSetVariable(realization,global_vec,GLOBAL, &
                                     MINERAL_VOLUME_FRACTION,i)
       endif
@@ -1012,11 +1012,11 @@ subroutine PMRTRestart(this,viewer)
   endif
   ! sorbed concentrations for multirate kinetic sorption
   if (realization%reaction%surface_complexation%nkinmrsrfcplxrxn > 0 .and. &
-      .not.option%no_checkpoint_kinetic_sorption .and. &
+      .not.option%transport%no_checkpoint_kinetic_sorption .and. &
       ! we need to fix this.  We need something to skip over the reading
       ! of sorbed concentrations altogether if they do not exist in the
       ! checkpoint file
-      .not.option%no_restart_kinetic_sorption) then
+      .not.option%transport%no_restart_kinetic_sorption) then
     ! PETSC_FALSE flag indicates read from file
     call RTCheckpointKineticSorption(realization,viewer,PETSC_FALSE)
   endif

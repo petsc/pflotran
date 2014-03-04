@@ -546,7 +546,7 @@ subroutine THCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
   dP_changed = PETSC_FALSE
   P1_changed = PETSC_FALSE
   
-  if (option%check_post_convergence) then
+  if (option%flow%check_post_convergence) then
     call VecGetArrayF90(dP,dP_p,ierr)
     call VecGetArrayF90(P1,P1_p,ierr)
     call VecGetArrayF90(field%volume,volume_p,ierr)
@@ -584,7 +584,7 @@ subroutine THCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
                        MPI_DOUBLE_PRECISION, &
                        MPI_MAX,option%mycomm,ierr)
     option%converged = PETSC_TRUE
-    if (global_inf_norm > option%post_convergence_tol) &
+    if (global_inf_norm > option%flow%post_convergence_tol) &
       option%converged = PETSC_FALSE
     call VecRestoreArrayF90(dP,dP_p,ierr)
     call VecRestoreArrayF90(P1,P1_p,ierr)

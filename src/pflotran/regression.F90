@@ -770,7 +770,7 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
   endif
   if (associated(tran_stepper)) then
     call VecNorm(realization%field%tran_xx,NORM_2,x_norm,ierr)
-    if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+    if (option%transport%reactive_transport_coupling == GLOBAL_IMPLICIT) then
       call VecNorm(realization%field%tran_r,NORM_2,r_norm,ierr)
     endif
     if (option%myrank == option%io_rank) then
@@ -785,7 +785,7 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
       write(OUTPUT_UNIT,'(''   Time Step Cuts: '',i12)') &
         tran_stepper%cumulative_time_step_cuts
       write(OUTPUT_UNIT,'(''   Solution 2-Norm: '',es21.13)') x_norm
-      if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+      if (option%transport%reactive_transport_coupling == GLOBAL_IMPLICIT) then
         write(OUTPUT_UNIT,'(''   Residual 2-Norm: '',es21.13)') r_norm
       endif
     endif
