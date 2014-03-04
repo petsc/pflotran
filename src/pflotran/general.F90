@@ -3436,7 +3436,7 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
 #ifdef DEBUG_GENERAL_INFO
           icell_max(idof) = grid%nG2A(ghosted_id)
           istate_max(idof) = global_auxvars(ghosted_id)%istate
-          A_max(idof) = Res(idof)
+          A_max(idof) = accum_p(idof)
           R_max(idof) = r_p(ival)
           R_A_max(idof) = R_A
           dX_max(idof) = dX_p(ival)
