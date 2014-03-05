@@ -44,6 +44,7 @@ module TH_Aux_module
     PetscReal :: du_ice_dt
     ! For DallAmico model
     PetscReal :: pres_fh2o
+    PetscReal :: dpres_fh2o_dp
     PetscReal :: dpres_fh2o_dt
   end type TH_auxvar_type
 
@@ -187,6 +188,7 @@ subroutine THAuxVarInit(auxvar,option)
   auxvar%u_ice = 0.d0
   auxvar%du_ice_dt = 0.d0
   auxvar%pres_fh2o = 0.d0
+  auxvar%dpres_fh2o_dp = 0.d0
   auxvar%dpres_fh2o_dt = 0.d0
 
 end subroutine THAuxVarInit
@@ -247,6 +249,7 @@ subroutine THAuxVarCopy(auxvar,auxvar2,option)
      auxvar2%u_ice = auxvar%u_ice
      auxvar2%du_ice_dt = auxvar%du_ice_dt
      auxvar2%pres_fh2o = auxvar%pres_fh2o
+     auxvar2%dpres_fh2o_dp = auxvar%dpres_fh2o_dp
      auxvar2%dpres_fh2o_dt = auxvar%dpres_fh2o_dt
   endif
 
@@ -508,6 +511,7 @@ subroutine THAuxVarComputeIce(x, auxvar, global_auxvar, iphase, &
       call SatFuncComputeIceDallAmico(global_auxvar%pres(1), &
                                       global_auxvar%temp(1), &
                                       auxvar%pres_fh2o, &
+                                      auxvar%dpres_fh2o_dp, &
                                       auxvar%dpres_fh2o_dt, &
                                       ice_saturation, &
                                       global_auxvar%sat(1), gas_saturation, &

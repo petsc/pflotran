@@ -1596,6 +1596,7 @@ end subroutine SatFuncComputeIcePKExplicit
 
 subroutine SatFuncComputeIceDallAmico(pl, T, &
                                       p_fh2o, &
+                                      dp_fh2o_dP, &
                                       dp_fh2o_dT, &
                                       s_i, s_l, s_g, &
                                       kr, &
@@ -1620,7 +1621,7 @@ subroutine SatFuncComputeIceDallAmico(pl, T, &
   implicit none
 
   PetscReal :: pl, T
-  PetscReal :: p_fh2o, dp_fh2o_dT
+  PetscReal :: p_fh2o, dp_fh2o_dP, dp_fh2o_dT
   PetscReal :: s_i, s_g, s_l
   PetscReal :: kr
   PetscReal :: dsl_dpl, dsl_dT
@@ -1686,8 +1687,10 @@ subroutine SatFuncComputeIceDallAmico(pl, T, &
 
       p_fh2o = option%reference_pressure - Pc1
       dp_fh2o_dT = -beta*L_f*rho_l*H/T_star
+      dp_fh2o_dP = 1.d0 - T*T_0/T_star/T_star*H
       p_fh2o = pl
       dp_fh2o_dT = 0.d0
+      dp_fh2o_dP = 1.d0
 
       ! dummy and switch are not used here
       call SaturationFunctionCompute2(Pc0,S0,dummy,dS0,dummy,saturation_function,dummy,dummy,switch,option)

@@ -1822,8 +1822,8 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up,por_up,tor_up, &
     dphi_dt_dn = dgravity_dden_dn*auxvar_dn%dden_dt
     else
       dphi = auxvar_up%pres_fh2o - auxvar_dn%pres_fh2o + gravity
-      dphi_dp_up = 1.d0 + dgravity_dden_up*auxvar_up%dden_dp
-      dphi_dp_dn = -1.d0 + dgravity_dden_dn*auxvar_dn%dden_dp
+      dphi_dp_up =  auxvar_up%dpres_fh2o_dp + dgravity_dden_up*auxvar_up%dden_dp
+      dphi_dp_dn = -auxvar_dn%dpres_fh2o_dp + dgravity_dden_dn*auxvar_dn%dden_dp
       dphi_dt_up =  auxvar_up%dpres_fh2o_dt + dgravity_dden_up*auxvar_up%dden_dt
       dphi_dt_dn = -auxvar_dn%dpres_fh2o_dt + dgravity_dden_dn*auxvar_dn%dden_dt
     endif
@@ -2564,7 +2564,7 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
         dphi_dt_dn = dgravity_dden_dn*auxvar_dn%dden_dt
         else
           dphi = auxvar_up%pres_fh2o - auxvar_dn%pres_fh2o + gravity
-          dphi_dp_dn = -1.d0 + dgravity_dden_dn*auxvar_dn%dden_dp
+          dphi_dp_dn = -auxvar_dn%dpres_fh2o_dp + dgravity_dden_dn*auxvar_dn%dden_dp
           dphi_dt_dn = -auxvar_dn%dpres_fh2o_dt + dgravity_dden_dn*auxvar_dn%dden_dt
         endif
 
