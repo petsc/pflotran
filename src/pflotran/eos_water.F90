@@ -949,7 +949,7 @@ subroutine EOSWaterDensityIFC67(t,p,dw,dwmol, &
 !               term5,term5t,term5p,term6,term6t,term6p,term7,term7t,term7p
 !  PetscReal :: dv2t,dv2p,dv3t
   PetscReal :: vr,ypt,yptt,zpt,zpp,vrpt,vrpp,cnv
-  PetscReal :: tc1,pc1,vc1,utc1,upc1,vc1mol,vc1molh
+  PetscReal :: tc1,pc1,vc1,utc1,upc1,vc1mol
   PetscReal, parameter :: zero = 0.d0
   PetscReal, parameter :: one = 1.d0
   PetscReal, parameter :: two = 2.d0
@@ -1108,7 +1108,7 @@ subroutine EOSWaterEnthalpyIFC67(t,p,hw, &
   PetscReal :: dv2t,dv2p,dv3t
 !  PetscReal :: vr,ypt,yptt,zpt,zpp,vrpt,vrpp,cnv
   PetscReal :: ypt,yptt,zpt,zpp
-  PetscReal :: tc1,pc1,vc1,utc1,upc1,vc1mol,vc1molh
+  PetscReal :: tc1,pc1,vc1,utc1,upc1,vc1mol
   PetscReal, parameter :: zero = 0.d0
   PetscReal, parameter :: one = 1.d0
   PetscReal, parameter :: two = 2.d0
@@ -1305,7 +1305,7 @@ subroutine EOSWaterEnthalpyIFC67(t,p,hw, &
     term7p = beta2x*(three*aa(21)*a12+84.d0*aa(22)*beta/theta20)
     term7t = -420.d0*aa(22)*beta4/(theta20*theta)
 
-    hwp = (term3p+term4p-term5p+term6p+term7p)*vc1molh
+    hwp = (term3p+term4p-term5p+term6p+term7p)*vc1mol
     hwt = (aa(0)-term2t+term3t+term4t-term5t+term6t+term7t)*v1_6*utc1
   else
     hwp = -999.d0
@@ -1741,7 +1741,6 @@ subroutine EOSWaterDuanMixture(t,p,xmol,y_nacl,avgmw,dw_kg,denmix)
   !duan mixing **************************
   tk = t + 273.15D0; xco2 = xmol;
   call EOSWaterDensityNaCl(t, p, 0.D0, pw_kg)
-  pw_kg = pw_kg*1.D3;
   x1 = 1.D0-xco2;
   vphi_a1 = (0.3838402D-3*tk - 0.5595385D0)*tk + 0.30429268D3 + &
             (-0.72044305D5 + 0.63003388D7/tk)/tk;  
