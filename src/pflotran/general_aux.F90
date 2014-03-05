@@ -78,6 +78,8 @@ module General_Aux_module
   
   type, public :: general_parameter_type
     PetscReal, pointer :: diffusion_coefficient(:) ! (iphase)
+    PetscReal :: newton_inf_scaled_res_tol
+    PetscBool :: check_post_converged
   end type general_parameter_type
   
   type, public :: general_type
@@ -155,6 +157,8 @@ function GeneralAuxCreate(option)
   allocate(aux%general_parameter%diffusion_coefficient(option%nphase))
   aux%general_parameter%diffusion_coefficient(LIQUID_PHASE) = 1.d-9
   aux%general_parameter%diffusion_coefficient(GAS_PHASE) = 1.d-5
+  aux%general_parameter%newton_inf_scaled_res_tol = 1.d-50
+  aux%general_parameter%check_post_converged = PETSC_FALSE
 
   GeneralAuxCreate => aux
   

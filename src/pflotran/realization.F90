@@ -310,7 +310,7 @@ subroutine RealizationCreateDiscretization(realization)
   endif
 
   if (option%ntrandof > 0) then
-    if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+    if (option%transport%reactive_transport_coupling == GLOBAL_IMPLICIT) then
       ! ndof degrees of freedom, global
       call DiscretizationCreateVector(discretization,NTRANDOF,field%tran_xx, &
                                       GLOBAL,option)
