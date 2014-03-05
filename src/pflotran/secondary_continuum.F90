@@ -622,10 +622,10 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
       call EOSWaterDensity(global_auxvar%temp(1), &
                            global_auxvar%pres(1), &
                            global_auxvar%den_kg(1), &
-                           dum1,option%scale,ierr)
+                           dum1,ierr)
 #else
-      call EOSWaterdensity(global_auxvar%temp(1),global_auxvar%pres(1), &
-                    global_auxvar%den_kg(1))
+      call EOSWaterDensity(global_auxvar%temp(1),global_auxvar%pres(1), &
+                           global_auxvar%den_kg(1))
 #endif             
     else
       global_auxvar%pres = option%reference_pressure

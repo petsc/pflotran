@@ -1745,7 +1745,8 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
       if (dabs(qsrc(ONE_INTEGER)) > 0.d0) then
         call EOSWaterDensityEnthalpy(gen_auxvar%temp, &
                                      gen_auxvar%pres(option%liquid_phase), &
-                                     den_kg,den,enthalpy,option%scale,ierr)
+                                     den_kg,den,enthalpy,ierr)
+        enthalpy = enthalpy * 1.d-6 ! J/kmol -> whatever units
         ! enthalpy units: MJ/kmol
         res(option%energy_id) = res(option%energy_id) + &
                                 qsrc_mol(ONE_INTEGER) * enthalpy
@@ -1755,8 +1756,9 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
           ! if no gas exists, the enthalpy calculated in GeneralAuxVarCompute()
           ! is unrealistic, use pure air enthalpy instead.
           call ideal_gaseos_noderiv(gen_auxvar%pres(option%air_pressure_id), &
-                                    gen_auxvar%temp, &
-                                    option%scale,den,enthalpy,internal_energy)
+                                    gen_auxvar%temp,den,enthalpy, &
+                                    internal_energy)
+          enthalpy = enthalpy * 1.d-6 ! J/kmol -> MJ/kmol
         else
           enthalpy = gen_auxvar%h(option%gas_phase)
         endif

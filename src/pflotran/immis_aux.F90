@@ -350,7 +350,10 @@ subroutine ImmisAuxVarCompute_NINC(x,auxvar,saturation_function, &
         call printErrMsg(option,'pflow Immis ERROR: Need specify CO2 EOS')
       endif
     else      
-      call ideal_gaseos_noderiv(p2,t,option%scale,dg,hg,eng)
+      call ideal_gaseos_noderiv(p2,t,dg,hg,eng)
+      ! J/kmol -> whatever
+      hg = hg * option%scale
+      eng = eng * option%scale
       call visco2(t,dg*FMWCO2,visg)
       fg=p2
       xphi = 1.D0
@@ -373,7 +376,9 @@ subroutine ImmisAuxVarCompute_NINC(x,auxvar,saturation_function, &
 !***************  Liquid phase properties **************************
  
 !  avgmw(1)= xmol(1)*FMWH2O + xmol(2)*FMWCO2 
-  call EOSWaterDensityEnthalpy(t,pw,dw_kg,dw_mol,hw,option%scale,ierr) 
+  call EOSWaterDensityEnthalpy(t,pw,dw_kg,dw_mol,hw,ierr) 
+  ! J/kmol -> whatever units
+  hw = hw * option%scale
 
   auxvar%h(1) = hw
   auxvar%u(1) = auxvar%h(1) - pw /dw_mol*option%scale
@@ -382,9 +387,8 @@ subroutine ImmisAuxVarCompute_NINC(x,auxvar,saturation_function, &
 
   xm_nacl = option%m_nacl*FMWNACL
   xm_nacl = xm_nacl /(1.D3 + xm_nacl)
-  call EOSWaterDensityNaCl(t,p*1D-6,xm_nacl,dw_kg) 
-  dw_kg = dw_kg * 1D3
-  call EOSWaterViscosityNaCl(t,p*1D-6,xm_nacl,visl)
+  call EOSWaterDensityNaCl(t,p,xm_nacl,dw_kg) 
+  call EOSWaterViscosityNaCl(t,p,xm_nacl,visl)
 
 !FEHM mixing ****************************
 ! den(1) = xmol(2)*dg + xmol(1)*dw_mol
