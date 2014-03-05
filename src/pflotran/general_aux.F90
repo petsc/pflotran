@@ -263,8 +263,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   PetscInt :: gid, lid, acid, wid, eid
   PetscReal :: cell_pressure, water_vapor_pressure
   PetscReal :: den_water_vapor, den_kg_water_vapor, h_water_vapor
-  PetscReal :: den_air, h_air
-  PetscReal :: den_gp, den_gt, hgp, hgt, dgp, dgt, u
+  PetscReal :: den_air, h_air, u_air
   PetscReal :: xmol_air_in_gas, xmol_water_in_gas
   PetscReal :: krl, visl, dkrl_Se
   PetscReal :: krg, visg, dkrg_Se
@@ -474,43 +473,50 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
                         1.d-6)
 
   ! Gas phase thermodynamic properties
-  water_vapor_pressure = min(gen_auxvar%pres(vpid),gen_auxvar%pres(spid))
+  ! we cannot use %pres(vpid) as vapor pressre in the liquid phase, since
+  ! it can go negative
+  if (global_auxvar%istate /= LIQUID_STATE) then
+    if (global_auxvar%istate == GAS_STATE) then
+      water_vapor_pressure = gen_auxvar%pres(vpid)
+    else
+      water_vapor_pressure = gen_auxvar%pres(spid)
+    endif
 #ifndef FIXED_COEFFICIENTS
-  call ideal_gaseos_noderiv(gen_auxvar%pres(apid),gen_auxvar%temp, &
-                            1.d-6,den_air,h_air,u)
-  call EOSWaterSteamDensityEnthalpy(gen_auxvar%temp,water_vapor_pressure, &
-                                    den_kg_water_vapor,den_water_vapor, &
-                                    h_water_vapor,1.d-6,ierr)
+    call ideal_gaseos_noderiv(gen_auxvar%pres(apid),gen_auxvar%temp, &
+                              1.d-6,den_air,h_air,u_air)
+    call EOSWaterSteamDensityEnthalpy(gen_auxvar%temp,water_vapor_pressure, &
+                                      den_kg_water_vapor,den_water_vapor, &
+                                      h_water_vapor,1.d-6,ierr)
 #else
-  den_water_vapor = 1.279d-3
-  den_kg_water_vapor = den_water_vapor*FMWH2O
-  den_air = 3.9d-2
-  h_water_vapor = 45.89d0
-  h_air = 6.21d0
+    den_water_vapor = 1.279d-3
+    den_kg_water_vapor = den_water_vapor*FMWH2O
+    den_air = 3.9d-2
+    h_water_vapor = 45.89d0
+    h_air = 6.21d0
 #endif
   
-  gen_auxvar%den(gid) = den_water_vapor + den_air
-  gen_auxvar%den_kg(gid) = den_kg_water_vapor + den_air*FMWAIR
-  ! if xmol not set for gas phase, as is the case for LIQUID_STATE, 
-  ! set based on densities
-  if (gen_auxvar%xmol(acid,gid) < 1.d-40) then
-    xmol_air_in_gas = den_air / gen_auxvar%den(gid)
-    xmol_water_in_gas = 1.d0 - gen_auxvar%xmol(acid,gid)
-  else
-    xmol_air_in_gas = gen_auxvar%xmol(acid,gid)
-    xmol_water_in_gas = gen_auxvar%xmol(wid,gid)
-  endif
-  ! MJ/kmol
-  gen_auxvar%H(gid) = xmol_water_in_gas*h_water_vapor + &
-                      xmol_air_in_gas*h_air
+    gen_auxvar%den(gid) = den_water_vapor + den_air
+    gen_auxvar%den_kg(gid) = den_kg_water_vapor + den_air*FMWAIR
+    ! if xmol not set for gas phase, as is the case for LIQUID_STATE, 
+    ! set based on densities
+!    if (gen_auxvar%xmol(acid,gid) < 1.d-40) then
+!      xmol_air_in_gas = den_air / gen_auxvar%den(gid)
+!      xmol_water_in_gas = 1.d0 - gen_auxvar%xmol(acid,gid)
+!    else
+      xmol_air_in_gas = gen_auxvar%xmol(acid,gid)
+      xmol_water_in_gas = gen_auxvar%xmol(wid,gid)
+!    endif
+    ! MJ/kmol
+    gen_auxvar%H(gid) = xmol_water_in_gas*h_water_vapor + &
+                        xmol_air_in_gas*h_air
 
-                      ! Pa / kmol/m^3 * 1.e-6 = MJ/kmol
-  gen_auxvar%U(gid) = xmol_water_in_gas * &
-                        (h_water_vapor - &
-                         water_vapor_pressure / den_water_vapor * 1.d-6) +
-                      xmol_air_in_gas * &
-                        (h_air - gen_auxvar%pres(apid) / den_air * 1.d-6)
-
+                        ! Pa / kmol/m^3 * 1.e-6 = MJ/kmol
+    gen_auxvar%U(gid) = xmol_water_in_gas * &
+                          (h_water_vapor - &
+                           water_vapor_pressure / den_water_vapor * 1.d-6) + &
+                        xmol_air_in_gas * u_air
+  endif ! istate /= LIQUID_STATE
+  
   if (global_auxvar%istate == LIQUID_STATE .or. &
       global_auxvar%istate == TWO_PHASE_STATE) then
     ! this does not need to be calculated for LIQUID_STATE (=1)
@@ -543,9 +549,9 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
     gen_auxvar%mobility(gid) = krg/visg
   endif
 
-#if 0
+#if 1
   if (option%iflag == 1) then
-    if (ghosted_id == 5) then
+    if (ghosted_id == 1) then
     write(*,'(a,i3,7f13.4,a3)') 'i/l/g/a/c/v/s/t: ', &
       ghosted_id, gen_auxvar%pres(1:5), gen_auxvar%sat(1), gen_auxvar%temp, &
       trim(state_char)

@@ -2035,15 +2035,11 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
                                 qsrc_mol(ONE_INTEGER) * enthalpy
       endif
       if (dabs(qsrc(TWO_INTEGER)) > 0.d0) then
-        if (gen_auxvar%sat(option%gas_phase) < eps) then
-          ! if no gas exists, the enthalpy calculated in GeneralAuxVarCompute()
-          ! is unrealistic, use pure air enthalpy instead.
-          call ideal_gaseos_noderiv(gen_auxvar%pres(option%air_pressure_id), &
-                                    gen_auxvar%temp, &
-                                    1.d-6,den,enthalpy,internal_energy)
-        else
-          enthalpy = gen_auxvar%h(option%gas_phase)
-        endif
+        ! this is pure air, we use the enthalpy of air, NOT the air/water
+        ! mixture in gas
+        call ideal_gaseos_noderiv(gen_auxvar%pres(option%air_pressure_id), &
+                                  gen_auxvar%temp, &
+                                  1.d-6,den,enthalpy,internal_energy)
         ! enthalpy units: MJ/kmol
         res(option%energy_id) = res(option%energy_id) + &
           qsrc_mol(TWO_INTEGER) * enthalpy
@@ -3466,7 +3462,7 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
     do idof = 1, option%nflowdof
       if (global_inf_norm(idof) > option%post_convergence_tol) then
         converged_rel_update = PETSC_FALSE
-#if 1
+#if 0
 #ifdef DEBUG_GENERAL_INFO
         select case(istate_max(idof))
           case(1)
