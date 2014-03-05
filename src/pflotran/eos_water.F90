@@ -90,12 +90,12 @@ module EOS_Water_module
       PetscReal, intent(in) :: scale
       PetscErrorCode, intent(out) :: ierr
     end subroutine EOSWaterDensityEnthalpyDummy
-    subroutine EOSWaterSteamDenEnthDummy(t,p,pa,dg,dgmol,hg, &
+    subroutine EOSWaterSteamDenEnthDummy(t,p,dg,dgmol,hg, &
                                          calculate_derivatives, &
                                          dgp,dgt,hgp,hgt,scale,ierr)
       implicit none
       PetscReal, intent(in) :: t
-      PetscReal, intent(in) :: p,pa
+      PetscReal, intent(in) :: p
       PetscBool, intent(in) :: calculate_derivatives
       PetscReal, intent(out) :: dg,dgmol,dgp,dgt
       PetscReal, intent(out) :: hg,hgp,hgt
@@ -1413,12 +1413,12 @@ end subroutine EOSWaterDensityExponential
 
 ! ************************************************************************** !
 
-subroutine EOSWaterSteamDenEnthNoDerive(t,p,pa,dg,dgmol,hg,scale,ierr)
+subroutine EOSWaterSteamDenEnthNoDerive(t,p,dg,dgmol,hg,scale,ierr)
 
   implicit none
 
   PetscReal, intent(in) :: t   ! Temperature in centigrade.
-  PetscReal, intent(in) :: p,pa   ! Pressure in Pascals.
+  PetscReal, intent(in) :: p   ! Vapor Pressure in Pascals.
   PetscReal, intent(out) :: dg,dgmol
   PetscReal, intent(out) :: hg
   PetscReal, intent(in) :: scale
@@ -1426,39 +1426,39 @@ subroutine EOSWaterSteamDenEnthNoDerive(t,p,pa,dg,dgmol,hg,scale,ierr)
   
   PetscReal :: dum1, dum2, dum3, dum4
   
-  call EOSWaterSteamDensityEnthalpyPtr(t,p,pa,dg,dgmol,hg,PETSC_FALSE, &
+  call EOSWaterSteamDensityEnthalpyPtr(t,p,dg,dgmol,hg,PETSC_FALSE, &
                                        dum1,dum2,dum3,dum4,scale,ierr)
   
 end subroutine EOSWaterSteamDenEnthNoDerive
 
 ! ************************************************************************** !
 
-subroutine EOSWaterSteamDenEnthDerive(t,p,pa,dg,dgmol,hg, &
+subroutine EOSWaterSteamDenEnthDerive(t,pv,dg,dgmol,hg, &
                                       dgp,dgt,hgp,hgt,scale,ierr)
   implicit none
 
   PetscReal, intent(in) :: t   ! Temperature in centigrade.
-  PetscReal, intent(in) :: p,pa   ! Pressure in Pascals.
+  PetscReal, intent(in) :: pv  ! Vapor Pressure in Pascals.
   PetscReal, intent(out) :: dg,dgmol,dgp,dgt
   PetscReal, intent(out) :: hg,hgp,hgt
   PetscReal, intent(in) :: scale
   PetscErrorCode, intent(out) :: ierr
   
-  call EOSWaterSteamDensityEnthalpyPtr(t,p,pa,dg,dgmol,hg,PETSC_TRUE, &
+  call EOSWaterSteamDensityEnthalpyPtr(t,pv,dg,dgmol,hg,PETSC_TRUE, &
                                        dgp,dgt,hgp,hgt,scale,ierr)
   
 end subroutine EOSWaterSteamDenEnthDerive
 
 ! ************************************************************************** !
 
-subroutine EOSWaterSteamDensityEnthalpyIFC67(t,pv,pa,dg,dgmol,hg, &
+subroutine EOSWaterSteamDensityEnthalpyIFC67(t,pv,dg,dgmol,hg, &
                                          calculate_derivatives, &
                                          dgp,dgt,hgp,hgt,scale,ierr)
 ! t/C  p/Pa dgmol/(mol/m^3)  h/MJ/mol
   implicit none
   
   PetscReal, intent(in) :: t   ! Temperature in centigrade.
-  PetscReal, intent(in) :: pv,pa   ! Vapor Pressure in Pascals.
+  PetscReal, intent(in) :: pv  ! Vapor Pressure in Pascals.
   PetscBool, intent(in) :: calculate_derivatives
   PetscReal, intent(out) :: dg,dgmol,dgp,dgt
   PetscReal, intent(out) :: hg,hgp,hgt
