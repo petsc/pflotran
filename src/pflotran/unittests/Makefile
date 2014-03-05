@@ -22,6 +22,8 @@ PFLOTRAN_OBJS = \
 	$(SRC_DIR)/input_aux.o \
 	$(SRC_DIR)/logging.o \
 	$(SRC_DIR)/option.o \
+	$(SRC_DIR)/option_flow.o \
+	$(SRC_DIR)/option_transport.o \
 	$(SRC_DIR)/string.o \
 	$(SRC_DIR)/utility.o
 
