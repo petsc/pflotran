@@ -1009,15 +1009,10 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
   ! accumulation term units = kmol/s
   Res = 0.d0
   do iphase = 1, option%nphase
-    ! all components are lumped in first residual equation
-    ! Res[kmol total/m^3 void] = sat[m^3 phase/m^3 void] * 
-    !                            den[kmol phase/m^3 phase]
-    Res(1) = Res(1) + gen_auxvar%sat(iphase) * &
-                      gen_auxvar%den(iphase)
     ! Res[kmol comp/m^3 void] = sat[m^3 phase/m^3 void] * 
     !                           den[kmol phase/m^3 phase] * 
     !                           xmol[kmol comp/kmol phase]
-    do icomp = 2, option%nflowspec
+    do icomp = 1, option%nflowspec
       Res(icomp) = Res(icomp) + gen_auxvar%sat(iphase) * &
                                 gen_auxvar%den(iphase) * &
                                 gen_auxvar%xmol(icomp,iphase)
@@ -1271,8 +1266,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
       !                             density_ave[kmol phase/m^3 phase]        
       mole_flux = q*den       
       ! Res[kmol total/sec]
-      Res(1) = Res(1) + mole_flux
-      do icomp = 2, option%nflowspec
+      do icomp = 1, option%nflowspec
         ! Res[kmol comp/sec] = mole_flux[kmol phase/sec] * 
         !                      xmol[kmol comp/kmol phase]
         Res(icomp) = Res(icomp) + mole_flux * xmol(icomp)
@@ -1372,6 +1366,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
       endif      
       q =  v_air * area
       mole_flux = q * density_ave
+      Res(wat_comp_id) = Res(wat_comp_id) - mole_flux
       Res(air_comp_id) = Res(air_comp_id) + mole_flux
 #ifdef DEBUG_FLUXES  
       diff_flux(wat_comp_id) = diff_flux(wat_comp_id) - mole_flux
@@ -1745,8 +1740,7 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
       !                              density_ave[kmol phase/m^3 phase]
       mole_flux = q*density_ave       
       ! Res[kmol total/sec]
-      Res(1) = Res(1) + mole_flux
-      do icomp = 2, option%nflowspec
+      do icomp = 1, option%nflowspec
         ! Res[kmol comp/sec] = mole_flux[kmol phase/sec] * 
         !                      xmol[kmol comp/mol phase]
         Res(icomp) = Res(icomp) + mole_flux * xmol(icomp)
@@ -1839,6 +1833,7 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
 !                    (1.D0-upweight)*gen_auxvar_dn%den(iphase)             
       density_ave = 0.5d0*(gen_auxvar_up%den(iphase)+gen_auxvar_dn%den(iphase))
       mole_flux = q * density_ave
+      Res(wat_comp_id) = Res(wat_comp_id) - mole_flux
       Res(air_comp_id) = Res(air_comp_id) + mole_flux
 #ifdef DEBUG_FLUXES  
       ! equal but opposite
@@ -2019,27 +2014,30 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
         qsrc_mol(icomp) = qsrc(icomp)*gen_auxvar%den(icomp)*scale 
     end select
     res(icomp) = qsrc_mol(icomp)
-    if (icomp > ONE_INTEGER) then
-      res(ONE_INTEGER) = res(ONE_INTEGER) + qsrc_mol(icomp)
-    endif
   enddo
   ! energy units: MJ/sec
   if (size(qsrc) == THREE_INTEGER) then
     if (dabs(qsrc(THREE_INTEGER)) < 1.d-40) then
       if (dabs(qsrc(ONE_INTEGER)) > 0.d0) then
         call EOSWaterDensityEnthalpy(gen_auxvar%temp, &
-                                     gen_auxvar%pres(option%liquid_phase), &
-                                     den_kg,den,enthalpy,ierr)
+          maxval(gen_auxvar%pres(option%liquid_phase:option%gas_phase)), &
+          den_kg,den,enthalpy,ierr)
         enthalpy = enthalpy * 1.d-6 ! J/kmol -> whatever units
         ! enthalpy units: MJ/kmol
         res(option%energy_id) = res(option%energy_id) + &
                                 qsrc_mol(ONE_INTEGER) * enthalpy
       endif
       if (dabs(qsrc(TWO_INTEGER)) > 0.d0) then
-        ! this is pure air, we use the enthalpy of air, NOT the air/water
-        ! mixture in gas
-        call ideal_gaseos_noderiv(gen_auxvar%pres(option%air_pressure_id), &
-                                  gen_auxvar%temp,den,enthalpy,internal_energy)
+        if (gen_auxvar%sat(option%gas_phase) > 0.d0) then
+          ! this is pure air, we use the enthalpy of air, NOT the air/water
+          ! mixture in gas
+          call ideal_gaseos_noderiv(gen_auxvar%pres(option%air_pressure_id), &
+                                    gen_auxvar%temp,den,enthalpy,internal_energy)
+        else
+          call EOSWaterDensityEnthalpy(gen_auxvar%temp, &
+                                       gen_auxvar%pres(option%liquid_phase), &
+                                       den_kg,den,enthalpy,ierr)
+        endif
         enthalpy = enthalpy * 1.d-6 ! J/kmol -> MJ/kmol                                  
         ! enthalpy units: MJ/kmol
         res(option%energy_id) = res(option%energy_id) + &
@@ -2288,7 +2286,6 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
       patch%internal_velocities(:,sum_connection) = v_darcy
       if (associated(patch%internal_fluxes)) then
         patch%internal_fluxes(:,1,sum_connection) = Res(:)
-        patch%internal_fluxes(1,1,sum_connection) = Res(1) - Res(2)
       endif
       
       if (local_id_up > 0) then
@@ -2348,12 +2345,9 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
       patch%boundary_velocities(:,sum_connection) = v_darcy
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
-        global_auxvars_bc(sum_connection)%mass_balance_delta(1,1) = &
-          global_auxvars_bc(sum_connection)%mass_balance_delta(1,1) - &
-          Res(1) - Res(2)
-        global_auxvars_bc(sum_connection)%mass_balance_delta(2,1) = &
-          global_auxvars_bc(sum_connection)%mass_balance_delta(2,1) - &
-          Res(2)
+        global_auxvars_bc(sum_connection)%mass_balance_delta(1:2,1) = &
+          global_auxvars_bc(sum_connection)%mass_balance_delta(1:2,1) - &
+          Res(1:2)
       endif
 
       local_end = local_id * option%nflowdof
@@ -2396,12 +2390,9 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
       
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
-        global_auxvars_bc(sum_connection)%mass_balance_delta(1,1) = &
-          global_auxvars_bc(sum_connection)%mass_balance_delta(1,1) - &
-          Res(1) - Res(2)
-        global_auxvars_bc(sum_connection)%mass_balance_delta(2,1) = &
-          global_auxvars_bc(sum_connection)%mass_balance_delta(2,1) - &
-          Res(2)
+        global_auxvars_bc(sum_connection)%mass_balance_delta(1:2,1) = &
+          global_auxvars_bc(sum_connection)%mass_balance_delta(1:2,1) - &
+          Res(1:2)
       endif
 
     enddo
