@@ -2029,7 +2029,8 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
       if (dabs(qsrc(ONE_INTEGER)) > 0.d0) then
         call EOSWaterDensityEnthalpy(gen_auxvar%temp, &
                                      gen_auxvar%pres(option%liquid_phase), &
-                                     den_kg,den,enthalpy,1.d-6,ierr)
+                                     den_kg,den,enthalpy,ierr)
+        enthalpy = enthalpy * 1.d-6 ! J/kmol -> whatever units
         ! enthalpy units: MJ/kmol
         res(option%energy_id) = res(option%energy_id) + &
                                 qsrc_mol(ONE_INTEGER) * enthalpy
@@ -2038,8 +2039,8 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
         ! this is pure air, we use the enthalpy of air, NOT the air/water
         ! mixture in gas
         call ideal_gaseos_noderiv(gen_auxvar%pres(option%air_pressure_id), &
-                                  gen_auxvar%temp, &
-                                  1.d-6,den,enthalpy,internal_energy)
+                                  gen_auxvar%temp,den,enthalpy,internal_energy)
+        enthalpy = enthalpy * 1.d-6 ! J/kmol -> MJ/kmol                                  
         ! enthalpy units: MJ/kmol
         res(option%energy_id) = res(option%energy_id) + &
           qsrc_mol(TWO_INTEGER) * enthalpy
@@ -3400,7 +3401,8 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   
   inf_norm_update = 0.d0
   
-  if (option%check_post_convergence) then
+  option%converged = PETSC_FALSE
+  if (option%flow%check_post_convergence) then
     call VecGetArrayReadF90(dX,dX_p,ierr)
     call VecGetArrayReadF90(X1,X1_p,ierr)
     call VecGetArrayReadF90(field%flow_r,r_p,ierr)
@@ -3460,7 +3462,7 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
     enddo  
     converged_rel_update = PETSC_TRUE
     do idof = 1, option%nflowdof
-      if (global_inf_norm(idof) > option%post_convergence_tol) then
+      if (global_inf_norm(idof) > option%flow%post_convergence_tol) then
         converged_rel_update = PETSC_FALSE
 #if 0
 #ifdef DEBUG_GENERAL_INFO

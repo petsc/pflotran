@@ -2999,7 +2999,7 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id,var_list_type
   end select
 
   call VecGetLocalSize(field%flowrate_inst,local_size,ierr)
-  local_size = local_size/(MAX_FACE_PER_CELL+1)/option%nflowdof
+  local_size = local_size/(option%nflowdof*MAX_FACE_PER_CELL + 1)
 
   allocate(double_array(local_size*(MAX_FACE_PER_CELL+1)))
   double_array = 0.d0
@@ -3093,7 +3093,7 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id,var_list_type
         do i=1,local_size
           ! Num. of faces for each cell (Note: Use vec_ptr1 not vec_ptr2)
           double_array((i-1)*(MAX_FACE_PER_CELL+1)+1) = &
-            vec_ptr1((i-1)*offset+(dof-1)*MAX_FACE_PER_CELL+1)
+            vec_ptr1((i-1)*offset+1)
           ! Flowrate values for each face
           do iface = 1,MAX_FACE_PER_CELL
             double_array((i-1)*(MAX_FACE_PER_CELL+1)+iface+1) = &
@@ -3106,7 +3106,7 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id,var_list_type
         do i=1,local_size
           ! Num. of faces for each cell (Note: Use vec_ptr1 not vec_ptr2)
           double_array((i-1)*(MAX_FACE_PER_CELL+1)+1) = &
-            vec_ptr1((i-1)*offset+(dof-1)*MAX_FACE_PER_CELL+1)
+            vec_ptr1((i-1)*offset+1)
           ! Divide the flowrate values by integration 'time'
           do iface = 1,MAX_FACE_PER_CELL
             double_array((i-1)*(MAX_FACE_PER_CELL+1)+iface+1) = &

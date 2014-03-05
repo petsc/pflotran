@@ -1168,8 +1168,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
                         sub_condition_ptr(idof)%ptr%dataset%rarray(1)
                       pw = option%reference_pressure
                         
-                      call EOSWaterDensity(temp,pw,dw_kg,dw_mol, &
-                                           option%scale, ierr)
+                      call EOSWaterDensity(temp,pw,dw_kg,dw_mol,ierr)
                       ! [rho*h*T*Cw]
                       xx_p(ibegin+idof-1) = dw_kg*xx_p(ibegin)* &
                                             (temp + 273.15d0)* &

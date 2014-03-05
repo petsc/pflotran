@@ -198,8 +198,10 @@ subroutine SurfaceTHAuxVarCompute(xx,auxvar,global_auxvar, &
   ds_dp = 0.d0
   dkr_dp = 0.d0
 
-  call EOSWaterDensityEnthalpy(global_auxvar%temp(1),pw,dw_kg,dw_mol,hw, &
-                               option%scale,ierr)
+  call EOSWaterDensityEnthalpy(global_auxvar%temp(1),pw,dw_kg,dw_mol,hw,ierr)
+  ! J/kmol -> whatever units
+  hw = hw * option%scale
+  
   global_auxvar%den_kg(1) = dw_kg
   di_kg = 917.d0 ![kg/m^3]
     ! RTM: WARNING!  We are hard-coding the density of ice at atmospheric 

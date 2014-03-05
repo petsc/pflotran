@@ -431,7 +431,8 @@ subroutine SubsurfaceJumpStart(simulation)
 !    call simulation%rt_process_model_coupler%UpdateSolution()
 !  endif
 
-  if (option%jumpstart_kinetic_sorption .and. option%time < 1.d-40) then
+  if (option%transport%jumpstart_kinetic_sorption .and. &
+      option%time < 1.d-40) then
     ! only user jumpstart for a restarted simulation
     if (.not. option%restart_flag) then
       option%io_buffer = 'Only use JUMPSTART_KINETIC_SORPTION on a ' // &

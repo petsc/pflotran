@@ -78,6 +78,8 @@ module General_Aux_module
   
   type, public :: general_parameter_type
     PetscReal, pointer :: diffusion_coefficient(:) ! (iphase)
+    PetscReal :: newton_inf_scaled_res_tol
+    PetscBool :: check_post_converged
   end type general_parameter_type
   
   type, public :: general_type
@@ -155,6 +157,8 @@ function GeneralAuxCreate(option)
   allocate(aux%general_parameter%diffusion_coefficient(option%nphase))
   aux%general_parameter%diffusion_coefficient(LIQUID_PHASE) = 1.d-9
   aux%general_parameter%diffusion_coefficient(GAS_PHASE) = 2.13d-5
+  aux%general_parameter%newton_inf_scaled_res_tol = 1.d-50
+  aux%general_parameter%check_post_converged = PETSC_FALSE
 
   GeneralAuxCreate => aux
   
@@ -459,13 +463,13 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
 #ifndef FIXED_COEFFICIENTS
   call EOSWaterDensityEnthalpy(gen_auxvar%temp,cell_pressure, &
                                gen_auxvar%den_kg(lid),gen_auxvar%den(lid), &
-                               gen_auxvar%H(lid),1.d-6,ierr)
+                               gen_auxvar%H(lid),ierr)
+  gen_auxvar%H(lid) = gen_auxvar%H(lid) * 1.d-6 ! J/kmol -> MJ/kmol
 #else
   gen_auxvar%den(lid) = 55.35d0
   gen_auxvar%den_kg(lid) = 55.35d0*FMWH2O
   gen_auxvar%H(lid) = 1.89d0
 #endif
-
   ! MJ/kmol comp
   gen_auxvar%U(lid) = gen_auxvar%H(lid) - &
                        ! Pa / kmol/m^3 * 1.e-6 = MJ/kmol
@@ -483,10 +487,13 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
     endif
 #ifndef FIXED_COEFFICIENTS
     call ideal_gaseos_noderiv(gen_auxvar%pres(apid),gen_auxvar%temp, &
-                              1.d-6,den_air,h_air,u_air)
+                              den_air,h_air,u_air)
+    h_air = h_air * 1.d-6
+    u_air = u_air * 1.d-6
     call EOSWaterSteamDensityEnthalpy(gen_auxvar%temp,water_vapor_pressure, &
                                       den_kg_water_vapor,den_water_vapor, &
-                                      h_water_vapor,1.d-6,ierr)
+                                      h_water_vapor,ierr)
+    h_water_vapor = h_water_vapor * 1.d-6                                  
 #else
     den_water_vapor = 1.279d-3
     den_kg_water_vapor = den_water_vapor*FMWH2O
@@ -509,7 +516,6 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
     ! MJ/kmol
     gen_auxvar%H(gid) = xmol_water_in_gas*h_water_vapor + &
                         xmol_air_in_gas*h_air
-
                         ! Pa / kmol/m^3 * 1.e-6 = MJ/kmol
     gen_auxvar%U(gid) = xmol_water_in_gas * &
                           (h_water_vapor - &

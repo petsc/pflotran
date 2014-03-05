@@ -264,9 +264,9 @@ subroutine RichardsAuxVarCompute(x,auxvar,global_auxvar,material_auxvar, &
 !geh  call EOSWaterDensityEnthalpy(global_auxvar%temp(1),pw,dw_kg,dw_mol,hw, &
 !                               dw_dp,dw_dt,hw_dp,hw_dt,option%scale,ierr)
   call EOSWaterDensity(global_auxvar%temp(1),pw,dw_kg,dw_mol, &
-                       dw_dp,dw_dt,option%scale,ierr)
+                       dw_dp,dw_dt,ierr)
 #else
-  call EOSWaterdensity(global_auxvar%temp(1),pw,dw_kg)
+  call EOSWaterDensity(global_auxvar%temp(1),pw,dw_kg)
   pert = tol*pw
   pw_pert = pw+pert
   call EOSWaterdensity(global_auxvar%temp(1),pw_pert,dw_kg_pert)

@@ -645,12 +645,12 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   patch%internal_velocities = 0.d0
   allocate(patch%internal_tran_coefs(option%nphase,temp_int))
   patch%internal_tran_coefs = 0.d0
-  if (option%store_solute_fluxes) then
+  if (option%transport%store_solute_fluxes) then
     allocate(patch%internal_fluxes(option%nphase,option%ntrandof,temp_int))
     patch%internal_fluxes = 0.d0
   endif
   if (option%store_flowrate) then
-    if(option%store_solute_fluxes) then
+    if(option%transport%store_solute_fluxes) then
       option%io_buffer='Model does not support store_solute_fluxes and flowrate ' // &
       ' options together. If you run into this message, complain on pflotran-dev@googlegroups.com'
       call printErrMsg(option)
@@ -687,7 +687,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     patch%boundary_velocities = 0.d0
     allocate(patch%boundary_tran_coefs(option%nphase,temp_int))
     patch%boundary_tran_coefs = 0.d0
-    if (option%store_solute_fluxes) then
+    if (option%transport%store_solute_fluxes) then
       allocate(patch%boundary_fluxes(option%nphase,option%ntrandof,temp_int))
       patch%boundary_fluxes = 0.d0
     endif
@@ -2645,10 +2645,10 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
         call EOSWaterDensity(global_auxvar%temp(1), &
                              global_auxvar%pres(1), &
                              global_auxvar%den_kg(1), &
-                             dum1,option%scale,ierr)
+                             dum1,ierr)
 #else
         call EOSWaterdensity(global_auxvar%temp(1),global_auxvar%pres(1), &
-                     global_auxvar%den_kg(1))
+                             global_auxvar%den_kg(1))
 #endif                     
       else
         global_auxvar%pres = option%reference_pressure

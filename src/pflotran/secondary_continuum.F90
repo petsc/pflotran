@@ -622,10 +622,10 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
       call EOSWaterDensity(global_auxvar%temp(1), &
                            global_auxvar%pres(1), &
                            global_auxvar%den_kg(1), &
-                           dum1,option%scale,ierr)
+                           dum1,ierr)
 #else
-      call EOSWaterdensity(global_auxvar%temp(1),global_auxvar%pres(1), &
-                    global_auxvar%den_kg(1))
+      call EOSWaterDensity(global_auxvar%temp(1),global_auxvar%pres(1), &
+                           global_auxvar%den_kg(1))
 #endif             
     else
       global_auxvar%pres = option%reference_pressure
@@ -649,6 +649,7 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
        
   enddo                                    
   
+  call MaterialAuxVarStrip(material_auxvar)
   deallocate(material_auxvar)
   
   rt_sec_transport_vars%sec_jac_update = PETSC_FALSE
@@ -1726,7 +1727,7 @@ subroutine SecondaryRTCheckResidual(sec_transport_vars,auxvar, &
  ! Need to decide how to scale the residual with volumes
   do i = 1, ngcells
     do j = 1, ncomp
-      if (vol(i) > 1.d0) res(j+(i-1)*ncomp) = res(j+(i-1)*ncomp)/vol(i)
+      res(j+(i-1)*ncomp) = res(j+(i-1)*ncomp)/vol(i)
     enddo
   enddo
     
