@@ -334,7 +334,10 @@ subroutine Flash2AuxVarCompute_NINC(x,auxvar,global_auxvar, &
         call printErrMsg(option,'pflow Flash2 ERROR: Need specify CO2 EOS')
       endif
     else      
-      call ideal_gaseos_noderiv(p2, t,option%scale,dg,hg,eng)
+      call ideal_gaseos_noderiv(p2, t,dg,hg,eng)
+      ! J/kmol -> whatever
+      hg = hg * option%scale
+      eng = eng * option%scale        
       call visco2(t,dg*FMWCO2,visg)
       fg=p2
       xphi = 1.D0
@@ -390,7 +393,8 @@ subroutine Flash2AuxVarCompute_NINC(x,auxvar,global_auxvar, &
 ! **************  Gas phase properties ********************
     auxvar%avgmw(2) = auxvar%xmol(3)*FMWH2O + auxvar%xmol(4)*FMWCO2
     pw = p
-    call EOSWaterDensityEnthalpy(t,pw,dw_kg,dw_mol,hw,option%scale,ierr)
+    call EOSWaterDensityEnthalpy(t,pw,dw_kg,dw_mol,hw,ierr)
+    hw = hw * option%scale ! J/kmol -> whatever units
     auxvar%den(2) = 1.D0/(auxvar%xmol(4)/dg + auxvar%xmol(3)/dw_mol)
     auxvar%h(2) = hg  
     auxvar%u(2) = hg - p/dg * option%scale
@@ -415,9 +419,8 @@ subroutine Flash2AuxVarCompute_NINC(x,auxvar,global_auxvar, &
   
     xm_nacl = m_nacl * FMWNACL
     xm_nacl = xm_nacl /(1.D3 + xm_nacl)
-    call EOSWaterDensityNaCl(t, p*1D-6, xm_nacl, dw_kg) 
-    dw_kg = dw_kg * 1D3
-    call EOSWaterViscosityNaCl(t,p*1D-6,xm_nacl,visl)
+    call EOSWaterDensityNaCl(t, p, xm_nacl, dw_kg) 
+    call EOSWaterViscosityNaCl(t,p,xm_nacl,visl)
     
     y_nacl =  m_nacl/( m_nacl + 1D3/FMWH2O)
 !   y_nacl is the mole fraction

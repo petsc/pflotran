@@ -452,25 +452,27 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   ! must use cell_pressure as the pressure, not %pres(lid)
   call EOSWaterDensityEnthalpy(gen_auxvar%temp,cell_pressure, &
                                gen_auxvar%den_kg(lid),gen_auxvar%den(lid), &
-                               gen_auxvar%H(lid),option%scale,ierr)
-
+                               gen_auxvar%H(lid),ierr)
+  gen_auxvar%H(lid) = gen_auxvar%H(lid) * 1.d-6 ! J/kmol -> MJ/kmol
   ! MJ/kmol comp
   gen_auxvar%U(lid) = gen_auxvar%H(lid) - &
                        ! Pa / kmol/m^3 * 1.e-6 = MJ/kmol
                        (cell_pressure / gen_auxvar%den(lid) * &
-                        option%scale)
+                        1.d-6)
 
   ! Gas phase thermodynamic properties
   call ideal_gaseos_noderiv(gen_auxvar%pres(apid),gen_auxvar%temp, &
-                            option%scale,den_air,h_air,u)
+                            den_air,h_air,u)
+  h_air = h_air * 1.d-6
+  u = u * 1.d-6
 !  call steameos(gen_auxvar%temp,gen_auxvar%pres(gid), &
 !                gen_auxvar%pres(apid),den_kg_wat_vap,den_wat_vap,dgp,dgt, &
 !                h_wat_vap,hgp,hgt,option%scale,ierr) 
 !  call EOSWaterSteamDensityEnthalpy(gen_auxvar%temp,gen_auxvar%pres(gid), &
   call EOSWaterSteamDensityEnthalpy(gen_auxvar%temp,cell_pressure, &
                                     gen_auxvar%pres(apid),den_kg_wat_vap, &
-                                    den_wat_vap,h_wat_vap,option%scale,ierr)
-  
+                                    den_wat_vap,h_wat_vap,ierr)
+  h_wat_vap = h_wat_vap * 1.d-6 
   gen_auxvar%den(gid) = den_wat_vap + den_air
   gen_auxvar%den_kg(gid) = den_kg_wat_vap + den_air*FMWAIR
   ! if xmol not set for gas phase, as is the case for LIQUID_STATE, 
@@ -489,7 +491,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
                        ! Pa / kmol/m^3 * 1.e-6 = MJ/kmol
 !                       (gen_auxvar%pres(gid) / gen_auxvar%den(gid) * &
                        (cell_pressure / gen_auxvar%den(gid) * &
-                        option%scale)
+                        1.d-6)
 
   if (global_auxvar%istate == LIQUID_STATE .or. &
       global_auxvar%istate == TWO_PHASE_STATE) then

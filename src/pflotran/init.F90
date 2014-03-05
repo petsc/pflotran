@@ -292,7 +292,7 @@ subroutine Init(simulation)
     call EOSWaterDensity(option%reference_temperature, &
                          option%reference_pressure, &
                          option%reference_water_density, &
-                         dum1,option%scale, ierr)    
+                         dum1,ierr)    
 #else
     call EOSWaterdensity(option%reference_temperature,option%reference_pressure, &
                  option%reference_water_density)
