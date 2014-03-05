@@ -1630,7 +1630,8 @@ subroutine SatFuncComputeIceDallAmico(pl, T, &
   type(saturation_function_type) :: saturation_function
   type(option_type) :: option
 
-  PetscReal :: dkr_dsl
+  PetscReal :: Se,Sr
+  PetscReal :: dkr_dsl, dkr_dSe
   PetscReal :: alpha
   PetscReal :: m
   PetscReal :: Pc0, Pc1
@@ -1642,6 +1643,8 @@ subroutine SatFuncComputeIceDallAmico(pl, T, &
   PetscReal :: T_star
   PetscReal :: theta
   PetscReal :: x
+  PetscReal :: dummy
+  PetscBool :: switch
 
   !PetscReal, parameter :: beta = 2.2           ! dimensionless -- ratio of surf. tension
   PetscReal, parameter :: beta = 1             ! dimensionless [assumed as 1.d0]
@@ -1686,8 +1689,9 @@ subroutine SatFuncComputeIceDallAmico(pl, T, &
       p_fh2o = pl
       dp_fh2o_dT = 0.d0
 
-      call ComputeSatVG(alpha,m,Pc0,S0,dS0)
-      call ComputeSatVG(alpha,m,Pc1,S1,dS1)
+      ! dummy and switch are not used here
+      call SaturationFunctionCompute2(Pc0,S0,dummy,dS0,dummy,saturation_function,dummy,dummy,switch,option)
+      call SaturationFunctionCompute2(Pc1,S1,dummy,dS1,dummy,saturation_function,dummy,dummy,switch,option)
 
       s_l = S1
       s_i = S0 - S1
@@ -1708,18 +1712,21 @@ subroutine SatFuncComputeIceDallAmico(pl, T, &
   ! Calculate relative permeability
   select case(saturation_function%permeability_function_itype)
     case(MUALEM)
-      if (s_l == 1.d0) then
+      Sr = saturation_function%Sr(1)
+      Se = (s_l-Sr)/(1.0d0-Sr)
+      if ( abs(Se-1.d0) < 1.0d-12 ) then
         kr = 1.d0
         dkr_dsl = 0.d0
       else
         m = saturation_function%m
         one_over_m = 1.d0/m
-        liq_sat_one_over_m = s_l**one_over_m
-        kr = sqrt(s_l)*(1.d0 - (1.d0 - liq_sat_one_over_m)**m)**2.d0
-        dkr_dsl = 0.5d0*kr/s_l + &
-                  2.d0*s_l**(one_over_m - 0.5d0)* &
-                  (1.d0 - liq_sat_one_over_m)**(m - 1.d0)* &
-                  (1.d0 - (1.d0 - liq_sat_one_over_m)**m)
+        liq_sat_one_over_m = Se**one_over_m
+        kr = sqrt(Se)*(1.d0 - (1.d0 - liq_sat_one_over_m)**m)**2.d0
+        dkr_dSe = 0.5d0*kr/Se + &
+                  2.d0*Se**(one_over_m - 0.5d0)* &
+                 (1.d0 - liq_sat_one_over_m)**(m - 1.d0)* &
+                 (1.d0 - (1.d0 - liq_sat_one_over_m)**m)
+        dkr_dsl = dkr_dSe / ( 1.0d0 - Sr )
       endif
         dkr_dpl = dkr_dsl*dsl_dpl
         dkr_dT = dkr_dsl*dsl_dT
