@@ -986,6 +986,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,auxvar, &
     enddo
     coeff_diag(:,:,i) = coeff_diag(:,:,i) + jac_react  ! in kg water/s
   enddo  
+  call MaterialAuxVarStrip(material_auxvar)
   deallocate(material_auxvar)
          
 !============================== Forward solve ==================================        
@@ -1557,6 +1558,7 @@ subroutine SecondaryRTUpdateKineticState(sec_transport_vars,global_auxvars, &
                    sec_transport_vars%sec_rt_auxvar(i), &
                    global_auxvars,material_auxvar,reaction,option)
   enddo
+  call MaterialAuxVarStrip(material_auxvar)
   deallocate(material_auxvar)
   
   if (reaction%mineral%nkinmnrl > 0) then
@@ -1721,7 +1723,8 @@ subroutine SecondaryRTCheckResidual(sec_transport_vars,auxvar, &
     do j = 1, ncomp
       res(j+(i-1)*ncomp) = res(j+(i-1)*ncomp) + res_react(j) 
     enddo
-  enddo           
+  enddo  
+  call MaterialAuxVarStrip(material_auxvar)         
   deallocate(material_auxvar)
   
  ! Need to decide how to scale the residual with volumes
@@ -1732,7 +1735,8 @@ subroutine SecondaryRTCheckResidual(sec_transport_vars,auxvar, &
   enddo
     
   inf_norm_sec = maxval(abs(res))  
-                                    
+  call RTAuxVarStrip(rt_auxvar)  
+                                                                      
 end subroutine SecondaryRTCheckResidual                                    
 
 ! ************************************************************************** !
