@@ -301,8 +301,6 @@ subroutine MphaseSetupPatch(realization)
         initial_condition%flow_condition%temperature%dataset%rarray(1)
       endif
           
-      mphase_sec_heat_vars(local_id)%sec_temp_update = PETSC_FALSE
-
     enddo
       
     patch%aux%SC_heat%sec_heat_vars => mphase_sec_heat_vars    
@@ -1207,18 +1205,82 @@ subroutine MphaseUpdateSolutionPatch(realization)
   ! written based on RichardsUpdateSolutionPatch
   ! 
   ! Author: Satish Karra, LANL
-  ! Date: 08/23/11
+  ! Date: 08/23/11, 02/27/14
   ! 
 
   use Realization_class
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Field_module
+  use Secondary_Continuum_Aux_module
+  use Secondary_Continuum_module
     
   implicit none
   
   type(realization_type) :: realization
+  type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(mphase_type), pointer :: mphase
+  type(mphase_parameter_type), pointer :: mphase_parameter
+  type(mphase_auxvar_type), pointer :: auxvars(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+  type(sec_heat_type), pointer :: mphase_sec_heat_vars(:)
+
+  PetscInt :: istart, iend  
+  PetscInt :: local_id, ghosted_id
+  ! secondary continuum variables
+  PetscReal :: sec_dencpr
+  PetscErrorCode :: ierr
+  PetscReal, pointer :: ithrm_loc_p(:)
+
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  field => realization%field
+
+  mphase => patch%aux%Mphase
+  mphase_parameter => mphase%mphase_parameter
+  auxvars => mphase%auxvars
+  global_auxvars => patch%aux%Global%auxvars
+
+  if (option%use_mc) then
+    mphase_sec_heat_vars => patch%aux%SC_heat%sec_heat_vars  
+  endif
 
   if (realization%option%compute_mass_balance_new) then
     call MphaseUpdateMassBalancePatch(realization)
   endif
+  
+  if (option%use_mc) then
+ 
+   call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)  
+  
+  ! Secondary continuum contribution (Added by SK 06/26/2012)
+  ! only one secondary continuum for now for each primary continuum node
+    do local_id = 1, grid%nlmax  ! For each local node do...
+      ghosted_id = grid%nL2G(local_id)
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
+      iend = local_id*option%nflowdof
+      istart = iend-option%nflowdof+1
+    
+      sec_dencpr = mphase_parameter%dencpr(int(ithrm_loc_p(ghosted_id))) ! secondary rho*c_p same as primary for now
+
+      call MphaseSecHeatAuxVarCompute(mphase_sec_heat_vars(local_id), &
+                        auxvars(ghosted_id)%auxvar_elem(0), &
+                        global_auxvars(ghosted_id), &
+                        mphase_parameter%ckwet(int(ithrm_loc_p(ghosted_id))), &
+                        sec_dencpr, &
+                        option)
+    enddo   
+    
+    call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
+    
+  endif  
 
 end subroutine MphaseUpdateSolutionPatch
 
@@ -2713,16 +2775,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       iend = local_id*option%nflowdof
       istart = iend-option%nflowdof+1
     
-      sec_dencpr = mphase_parameter%dencpr(int(ithrm_loc_p(ghosted_id))) ! secondary rho*c_p same as primary for now
-
-      if (option%sec_vars_update) then
-        call MphaseSecHeatAuxVarCompute(mphase_sec_heat_vars(local_id), &
-                        auxvars(ghosted_id)%auxvar_elem(0), &
-                        global_auxvars(ghosted_id), &
-                        mphase_parameter%ckwet(int(ithrm_loc_p(ghosted_id))), &
-                        sec_dencpr, &
-                        option)
-      endif       
+      sec_dencpr = mphase_parameter%dencpr(int(ithrm_loc_p(ghosted_id))) ! secondary rho*c_p same as primary for now   
     
       call MphaseSecondaryHeat(mphase_sec_heat_vars(local_id), &
                         auxvars(ghosted_id)%auxvar_elem(0), &
@@ -2733,7 +2786,6 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       r_p(iend) = r_p(iend) - res_sec_heat*option%flow_dt*volume_p(local_id)
 
     enddo   
-    option%sec_vars_update = PETSC_FALSE
   endif
 #endif
 

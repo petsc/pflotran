@@ -35,7 +35,6 @@ module Secondary_Continuum_Aux_module
   end type sec_continuum_type                 ! farthest is the cell center closest to interface between prim. and sec. continuua
 
   type, public :: sec_heat_type  
-    PetscBool :: sec_temp_update               ! flag to check if the temp is updated
     PetscInt :: ncells                         ! number of secondary grid cells
     PetscReal :: aperture                      ! fracture aperture
     PetscReal :: epsilon                       ! vol. frac. of primary continuum

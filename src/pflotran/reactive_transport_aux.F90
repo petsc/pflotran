@@ -87,7 +87,9 @@ module Reactive_Transport_Aux_module
     PetscInt :: max_newton_iterations
     PetscInt :: overall_max_newton_iterations
 #endif    
-
+    PetscReal :: newton_inf_rel_update_tol
+    PetscReal :: newton_inf_scaled_res_tol
+    PetscBool :: check_post_converged
   end type reactive_transport_param_type
 
   ! Colloids
@@ -185,7 +187,8 @@ function RTAuxCreate(option)
   aux%rt_parameter%sum_newton_iterations = 0.d0
   aux%rt_parameter%max_newton_iterations = 0
   aux%rt_parameter%overall_max_newton_iterations = 0
-#endif   
+#endif  
+
   RTAuxCreate => aux
   
 end function RTAuxCreate

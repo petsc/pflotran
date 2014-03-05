@@ -27,14 +27,15 @@ module Geomechanics_Debug_module
 contains
 
 ! ************************************************************************** !
-!
-! GeomechDebugCreate: Create object that stores debugging options 
-!                     for geomechanics
-! author: Satish Karra, LANL
-! date: 06/06/13
-!
-! ************************************************************************** !
+
 function GeomechDebugCreate()
+  ! 
+  ! Create object that stores debugging options
+  ! for geomechanics
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/06/13
+  ! 
 
   implicit none
   
@@ -58,13 +59,14 @@ function GeomechDebugCreate()
 end function GeomechDebugCreate
 
 ! ************************************************************************** !
-!
-! GeomechDebugRead: Reads debugging data from the input file
-! author: Satish Karra, LANL
-! date: 06/06/13
-!
-! ************************************************************************** !
+
 subroutine GeomechDebugRead(debug,input,option)
+  ! 
+  ! Reads debugging data from the input file
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/06/13
+  ! 
 
   use Option_module
   use Input_Aux_module

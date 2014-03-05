@@ -3004,7 +3004,7 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   X1_changed = PETSC_FALSE
   
   option%converged = PETSC_FALSE
-  if (option%check_post_convergence) then
+  if (option%flow%check_post_convergence) then
     call VecGetArrayReadF90(dX,dX_p,ierr)
     call VecGetArrayReadF90(X1,X1_p,ierr)
     call VecGetArrayReadF90(field%flow_r,r_p,ierr)
@@ -3047,7 +3047,7 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
                        MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
     option%converged = PETSC_TRUE
     do idof = 1, option%nflowdof
-      if (global_inf_norm(idof) > option%post_convergence_tol) then
+      if (global_inf_norm(idof) > option%flow%post_convergence_tol) then
         option%converged = PETSC_FALSE
 #if 1
 #ifdef DEBUG_GENERAL_INFO

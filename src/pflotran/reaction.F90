@@ -723,12 +723,12 @@ subroutine ReactionReadPass1(reaction,input,option)
 
               nullify(ionx_rxn)          
             case('JUMPSTART_KINETIC_SORPTION')
-              option%jumpstart_kinetic_sorption = PETSC_TRUE
-              option%no_restart_kinetic_sorption = PETSC_TRUE
+              option%transport%jumpstart_kinetic_sorption = PETSC_TRUE
+              option%transport%no_restart_kinetic_sorption = PETSC_TRUE
             case('NO_CHECKPOINT_KINETIC_SORPTION')
-              option%no_checkpoint_kinetic_sorption = PETSC_TRUE
+              option%transport%no_checkpoint_kinetic_sorption = PETSC_TRUE
             case('NO_RESTART_KINETIC_SORPTION')
-              option%no_restart_kinetic_sorption = PETSC_TRUE
+              option%transport%no_restart_kinetic_sorption = PETSC_TRUE
           end select
         enddo
       case('DATABASE')
@@ -743,7 +743,7 @@ subroutine ReactionReadPass1(reaction,input,option)
       case('NO_CHECK_UPDATE')
         reaction%check_update = PETSC_FALSE       
       case('NO_RESTART_MINERAL_VOL_FRAC')
-        option%no_restart_mineral_vol_frac = PETSC_TRUE
+        option%transport%no_restart_mineral_vol_frac = PETSC_TRUE
       case('NO_CHECKPOINT_ACT_COEFS')
         reaction%checkpoint_activity_coefs = PETSC_FALSE
       case('ACTIVITY_COEFFICIENTS')
@@ -797,7 +797,7 @@ subroutine ReactionReadPass1(reaction,input,option)
         call InputReadDouble(input,option,reaction%max_dlnC)
         call InputErrorMsg(input,option,trim(word),'CHEMISTRY')
       case('OPERATOR_SPLIT','OPERATOR_SPLITTING')
-        option%reactive_transport_coupling = OPERATOR_SPLIT    
+        option%transport%reactive_transport_coupling = OPERATOR_SPLIT    
       case('EXPLICIT_ADVECTION')
         option%itranmode = EXPLICIT_ADVECTION
         call InputReadWord(input,option,word,PETSC_TRUE)
@@ -806,15 +806,15 @@ subroutine ReactionReadPass1(reaction,input,option)
           select case(word)
             !TODO(geh): fix these hardwired values.
             case('UPWIND')
-              option%tvd_flux_limiter = 1
+              option%transport%tvd_flux_limiter = 1
             case('MINMOD')
-              option%tvd_flux_limiter = 3
+              option%transport%tvd_flux_limiter = 3
             case('MC')
-              option%tvd_flux_limiter = 2
+              option%transport%tvd_flux_limiter = 2
             case('SUPERBEE')
-              option%tvd_flux_limiter = 4
+              option%transport%tvd_flux_limiter = 4
             case('VANLEER')
-              option%tvd_flux_limiter = 5
+              option%transport%tvd_flux_limiter = 5
             case default
               option%io_buffer = 'TVD flux limiter ' // trim(word) // &
                 ' not recognized.'

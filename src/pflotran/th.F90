@@ -261,9 +261,7 @@ subroutine THSetupPatch(realization)
         TH_sec_heat_vars(local_id)%sec_temp = &
         initial_condition%flow_condition%temperature%dataset%rarray(1)
       endif
-      
-      TH_sec_heat_vars(local_id)%sec_temp_update = PETSC_FALSE
-    
+          
     enddo
       
     patch%aux%SC_heat%sec_heat_vars => TH_sec_heat_vars    
@@ -548,7 +546,7 @@ subroutine THCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
   dP_changed = PETSC_FALSE
   P1_changed = PETSC_FALSE
   
-  if (option%check_post_convergence) then
+  if (option%flow%check_post_convergence) then
     call VecGetArrayF90(dP,dP_p,ierr)
     call VecGetArrayF90(P1,P1_p,ierr)
     call VecGetArrayF90(field%volume,volume_p,ierr)
@@ -586,7 +584,7 @@ subroutine THCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
                        MPI_DOUBLE_PRECISION, &
                        MPI_MAX,option%mycomm,ierr)
     option%converged = PETSC_TRUE
-    if (global_inf_norm > option%post_convergence_tol) &
+    if (global_inf_norm > option%flow%post_convergence_tol) &
       option%converged = PETSC_FALSE
     call VecRestoreArrayF90(dP,dP_p,ierr)
     call VecRestoreArrayF90(P1,P1_p,ierr)
@@ -1108,18 +1106,76 @@ subroutine THUpdateSolutionPatch(realization)
   ! step
   ! 
   ! Author: Satish Karra, LANL
-  ! Date: 12/13/11
+  ! Date: 12/13/11, 02/28/14
   ! 
 
+
   use Realization_class
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Field_module
+  use Secondary_Continuum_Aux_module
+  use Secondary_Continuum_module
     
   implicit none
   
   type(realization_type) :: realization
+  type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(TH_parameter_type), pointer :: TH_parameter
+  type(TH_auxvar_type), pointer :: auxvars(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+  type(sec_heat_type), pointer :: TH_sec_heat_vars(:)
+
+  PetscInt :: istart, iend  
+  PetscInt :: local_id, ghosted_id
+  ! secondary continuum variables
+  PetscReal :: sec_dencpr
+  PetscErrorCode :: ierr
+  PetscReal, pointer :: ithrm_loc_p(:)
+
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  field => realization%field
+
+  TH_parameter => patch%aux%TH%TH_parameter
+  auxvars => patch%aux%TH%auxvars
+  global_auxvars => patch%aux%Global%auxvars
+  
+  if (option%use_mc) then
+    TH_sec_heat_vars => patch%aux%SC_heat%sec_heat_vars
+  endif
 
   if (realization%option%compute_mass_balance_new) then
     call THUpdateMassBalancePatch(realization)
   endif
+
+  if (option%use_mc) then
+    call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)  
+    do local_id = 1, grid%nlmax  ! For each local node do...
+      ghosted_id = grid%nL2G(local_id)
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
+      iend = local_id*option%nflowdof
+      istart = iend-option%nflowdof+1
+    
+      sec_dencpr = TH_parameter%dencpr(int(ithrm_loc_p(local_id))) ! secondary rho*c_p same as primary for now
+        
+      call THSecHeatAuxVarCompute(TH_sec_heat_vars(local_id), &
+                            global_auxvars(ghosted_id), &
+                            TH_parameter%ckwet(int(ithrm_loc_p(local_id))), &
+                            sec_dencpr, &
+                            option)
+                            
+    enddo 
+    call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
+  endif
+
 
 end subroutine THUpdateSolutionPatch
 
@@ -3243,15 +3299,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
       istart = iend-option%nflowdof+1
     
       sec_dencpr = TH_parameter%dencpr(int(ithrm_loc_p(local_id))) ! secondary rho*c_p same as primary for now
-
-      if (option%sec_vars_update) then
-        call THSecHeatAuxVarCompute(TH_sec_heat_vars(local_id), &
-                            global_auxvars(ghosted_id), &
-                            TH_parameter%ckwet(int(ithrm_loc_p(local_id))), &
-                            sec_dencpr, &
-                            option)
-      endif       
-    
+        
       call THSecondaryHeat(TH_sec_heat_vars(local_id), &
                           global_auxvars(ghosted_id), &
 !                         TH_parameter%ckdry(int(ithrm_loc_p(local_id))), &
@@ -3261,7 +3309,6 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
 
       r_p(iend) = r_p(iend) - res_sec_heat*volume_p(local_id)
     enddo   
-    option%sec_vars_update = PETSC_FALSE
   endif
 
 

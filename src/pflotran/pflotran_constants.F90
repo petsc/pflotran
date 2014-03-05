@@ -244,6 +244,8 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: SURF_TO_SUBSURF = 1
   PetscInt, parameter, public :: SUBSURF_TO_SURF = 2
   PetscInt, parameter, public :: SUBSURF_TO_HYDROGEOPHY = 3
+  PetscInt, parameter, public :: SUBSURF_TO_GEOMECHANICS = 4
+  PetscInt, parameter, public :: GEOMECHANICS_TO_SUBSURF = 5
   
   ! Ice/water/vapor partitioning model
   PetscInt, parameter, public :: PAINTER_EXPLICIT = 1

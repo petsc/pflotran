@@ -10,7 +10,11 @@ module Simulation_module
 #endif
 
 #ifdef GEOMECH
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
 #endif
 
   use PFLOTRAN_Constants_module
@@ -159,8 +163,8 @@ subroutine SimulationDestroy(simulation)
 #endif
 
 #ifdef GEOMECH
-  call GeomechRealizDestroy(simulation%geomech_realization)
   call TimestepperDestroy(simulation%geomech_stepper)
+  call GeomechRealizDestroy(simulation%geomech_realization)
 #endif
 
   call RegressionDestroy(simulation%regression)

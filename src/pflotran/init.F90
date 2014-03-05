@@ -81,15 +81,22 @@ subroutine Init(simulation)
   use Surface_Field_module
   use Surface_Flow_module
   use Surface_Global_module
-  use Surface_Init_module
+  use Surface_Init_module, only : SurfaceInitReadRequiredCards, &
+                                  SurfaceInitMatPropToRegions, &
+                                  SurfaceInitReadRegionFiles
   use Surface_Realization_class
   use Surface_TH_module
   use Unstructured_Grid_module
 #endif
 
 #ifdef GEOMECH
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
-  use Geomechanics_Init_module 
+#endif
+  use Geomechanics_Init_module, only : GeomechicsInitReadRequiredCards, &
+                                       GeomechInitMatPropToGeomechRegions
   use Geomechanics_Grid_module
   use Geomechanics_Discretization_module
   use Geomechanics_Field_module
@@ -313,12 +320,12 @@ subroutine Init(simulation)
   end select
   
   ! SK 09/30/13, Added to check if Mphase is called with OS
-  if (option%reactive_transport_coupling == OPERATOR_SPLIT .and. &
+  if (option%transport%reactive_transport_coupling == OPERATOR_SPLIT .and. &
       option%iflowmode == MPH_MODE) then
     option%io_buffer = 'Operator split not implemented with MPHASE. ' // &
                        'Switching to Global Implicit.'
     call printWrnMsg(option)
-    option%reactive_transport_coupling = GLOBAL_IMPLICIT
+    option%transport%reactive_transport_coupling = GLOBAL_IMPLICIT
   endif
   
   ! create grid and allocate vectors
@@ -539,17 +546,16 @@ subroutine Init(simulation)
 
     
  
+    call SNESGetLineSearch(flow_solver%snes, linesearch, ierr)
     select case(option%iflowmode)
       case(RICHARDS_MODE)
         if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
             dabs(option%saturation_change_limit) > 0.d0) then
-          call SNESGetLineSearch(flow_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPreCheck(linesearch, &
                                          RichardsCheckUpdatePre, &
                                          realization,ierr)
         endif
       case(G_MODE)
-        call SNESGetLineSearch(flow_solver%snes, linesearch, ierr)
         call SNESLineSearchSetPreCheck(linesearch, &
                                        GeneralCheckUpdatePre, &
                                        realization,ierr)
@@ -557,7 +563,6 @@ subroutine Init(simulation)
         if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
             dabs(option%pressure_change_limit) > 0.d0 .or. &
             dabs(option%temperature_change_limit) > 0.d0) then
-          call SNESGetLineSearch(flow_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPreCheck(linesearch, &
                                          THCheckUpdatePre, &
                                          realization,ierr)
@@ -566,7 +571,6 @@ subroutine Init(simulation)
         if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
             dabs(option%pressure_change_limit) > 0.d0 .or. &
             dabs(option%temperature_change_limit) > 0.d0) then
-          call SNESGetLineSearch(flow_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPreCheck(linesearch, &
                                          THCCheckUpdatePre, &
                                          realization,ierr)
@@ -574,25 +578,22 @@ subroutine Init(simulation)
     end select
     
     
-    if (option%check_post_convergence) then
+    if (flow_solver%check_post_convergence) then
+      call SNESGetLineSearch(flow_solver%snes, linesearch, ierr)
       select case(option%iflowmode)
         case(RICHARDS_MODE)
-          call SNESGetLineSearch(flow_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPostCheck(linesearch, &
                                           RichardsCheckUpdatePost, &
                                           realization,ierr)
         case(G_MODE)
-          call SNESGetLineSearch(flow_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPostCheck(linesearch, &
                                           GeneralCheckUpdatePost, &
                                           realization,ierr)
         case(TH_MODE)
-          call SNESGetLineSearch(flow_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPostCheck(linesearch, &
                                           THCheckUpdatePost, &
                                           realization,ierr)
         case(THC_MODE)
-          call SNESGetLineSearch(flow_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPostCheck(linesearch, &
                                           THCCheckUpdatePost, &
                                           realization,ierr)
@@ -702,7 +703,7 @@ subroutine Init(simulation)
     call SNESSetOptionsPrefix(tran_solver%snes, "tran_",ierr)
     call SolverCheckCommandLine(tran_solver)
     
-    if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+    if (option%transport%reactive_transport_coupling == GLOBAL_IMPLICIT) then
       if (tran_solver%Jpre_mat_type == '') then
         if (tran_solver%J_mat_type /= MATMFFD) then
           tran_solver%Jpre_mat_type = tran_solver%J_mat_type
@@ -737,7 +738,7 @@ subroutine Init(simulation)
                                              option)
     endif
 
-    if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+    if (option%transport%reactive_transport_coupling == GLOBAL_IMPLICIT) then
 
       call SNESSetFunction(tran_solver%snes,field%tran_r,RTResidual,&
                            realization,ierr)
@@ -776,7 +777,7 @@ subroutine Init(simulation)
     option%io_buffer = 'Preconditioner: ' // trim(tran_solver%pc_type)
     call printMsg(option)
 
-    if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+    if (option%transport%reactive_transport_coupling == GLOBAL_IMPLICIT) then
 
       ! shell for custom convergence test.  The default SNES convergence test  
       ! is call within this function. 
@@ -789,10 +790,14 @@ subroutine Init(simulation)
       ! this update check must be in place, otherwise reactive transport is likely
       ! to fail
       if (associated(realization%reaction)) then
+        call SNESGetLineSearch(tran_solver%snes, linesearch, ierr)
         if (realization%reaction%check_update) then
-          call SNESGetLineSearch(tran_solver%snes, linesearch, ierr)
-          call SNESLineSearchSetPreCheck(linesearch,RTCheckUpdate, &
+          call SNESLineSearchSetPreCheck(linesearch,RTCheckUpdatePre, &
                                          realization,ierr)
+        endif
+        if (tran_solver%check_post_convergence) then
+          call SNESLineSearchSetPostCheck(linesearch,RTCheckUpdatePost, &
+                                          realization,ierr)
         endif
       endif
     endif
@@ -918,6 +923,7 @@ subroutine Init(simulation)
   endif
 
   if (option%ntrandof > 0) then
+
     call RTSetup(realization)
 
     ! initialize densities and saturations
@@ -1501,11 +1507,15 @@ subroutine InitReadInput(simulation)
   
 #ifdef SURFACE_FLOW
   use Surface_Flow_module
-  use Surface_Init_module
+  use Surface_Init_module, only : SurfaceInitReadInput
 #endif
 #ifdef GEOMECH
-  use Geomechanics_Init_module
+  use Geomechanics_Init_module, only : GeomechanicsInitReadInput
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
 #endif
 #ifdef SOLID_SOLUTION
   use Solid_Solution_module, only : SolidSolutionReadFromInputFile
@@ -1557,6 +1567,7 @@ subroutine InitReadInput(simulation)
   type(solver_type), pointer :: flow_solver
   type(solver_type), pointer :: tran_solver
   type(solver_type), pointer :: default_solver
+  type(solver_type), pointer :: solver_pointer
   type(stepper_type), pointer :: flow_stepper
   type(stepper_type), pointer :: tran_stepper
   type(stepper_type), pointer :: default_stepper
@@ -2130,55 +2141,58 @@ subroutine InitReadInput(simulation)
 !....................
 
       case ('LINEAR_SOLVER')
+        nullify(solver_pointer)
         call InputReadWord(input,option,word,PETSC_FALSE)
         call StringToUpper(word)
         select case(word)
           case('FLOW')
-            if (associated(flow_solver)) then
-              call SolverReadLinear(flow_solver,input,option)
-            else
-              call InputSkipToEnd(input,option,card)
-            endif
+            solver_pointer => flow_solver
           case('TRAN','TRANSPORT')
-            if (associated(tran_solver)) then
-              call SolverReadLinear(tran_solver,input,option)
-            else
-              call InputSkipToEnd(input,option,card)
-            endif
+            solver_pointer => tran_solver
           case default
-            if (associated(default_solver)) then
-              call SolverReadLinear(default_solver,input,option)
-            else
-              call InputSkipToEnd(input,option,card)
-            endif
+            solver_pointer => default_solver
         end select
+        if (associated(solver_pointer)) then
+          call SolverReadLinear(solver_pointer,input,option)
+        else
+          call InputSkipToEnd(input,option,card)
+        endif
 
 !....................
 
       case ('NEWTON_SOLVER')
+        nullify(solver_pointer)
         call InputReadWord(input,option,word,PETSC_FALSE)
         call StringToUpper(word)
         select case(word)
           case('FLOW')
-            if (associated(flow_solver)) then
-              call SolverReadNewton(flow_solver,input,option)
-            else
-              call InputSkipToEnd(input,option,card)
-            endif
+            solver_pointer => flow_solver
           case('TRAN','TRANSPORT')
-            if (associated(tran_solver)) then
-              call SolverReadNewton(tran_solver,input,option)
-            else
-              call InputSkipToEnd(input,option,card)
-            endif
+            solver_pointer => tran_solver
           case default
-            if (associated(default_solver)) then
-              call SolverReadNewton(default_solver,input,option)
-            else
-              call InputSkipToEnd(input,option,card)
-            endif
+            solver_pointer => default_solver
         end select
+        if (associated(solver_pointer)) then
+          call SolverReadNewton(solver_pointer,input,option)
+        else
+          call InputSkipToEnd(input,option,card)
+        endif
 
+        if (associated(solver_pointer,flow_solver) .and. &
+            solver_pointer%check_post_convergence) then
+          option%flow%check_post_convergence = PETSC_TRUE
+          option%flow%post_convergence_tol = &
+          solver_pointer%newton_inf_scaled_res_tol
+        endif
+        if (associated(solver_pointer,tran_solver) .and. &
+            solver_pointer%check_post_convergence) then
+          option%transport%check_post_convergence = PETSC_TRUE
+          option%transport%inf_scaled_res_tol = &
+            solver_pointer%newton_inf_scaled_res_tol
+          option%transport%inf_rel_update_tol = &
+            solver_pointer%newton_inf_rel_update_tol
+        endif
+        
 !....................
 
       case ('FLUID_PROPERTY')

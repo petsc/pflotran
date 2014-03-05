@@ -44,7 +44,8 @@ module Reactive_Transport_module
             RTCalculateRHS_t1, &
             RTCalculateTransportMatrix, &
             RTReact, &
-            RTCheckUpdate, &
+            RTCheckUpdatePre, &
+            RTCheckUpdatePost, &
             RTJumpStartKineticSorption, &
             RTCheckpointKineticSorption, &
             RTExplicitAdvection
@@ -83,7 +84,8 @@ subroutine RTTimeCut(realization)
   
   ! set densities and saturations to t
   if (realization%option%nflowdof > 0) then
-    call GlobalUpdateDenAndSat(realization,realization%option%tran_weight_t0)
+    call GlobalUpdateDenAndSat(realization, &
+                               realization%option%transport%tran_weight_t0)
   endif
   
   call RTInitializeTimestep(realization)  
@@ -92,7 +94,8 @@ subroutine RTTimeCut(realization)
   
   ! set densities and saturations to t+dt
   if (realization%option%nflowdof > 0) then
-    call GlobalUpdateDenAndSat(realization,realization%option%tran_weight_t1)
+    call GlobalUpdateDenAndSat(realization, &
+                               realization%option%transport%tran_weight_t1)
   endif
 
   call RTUpdateTransportCoefs(realization)
@@ -310,7 +313,7 @@ end subroutine RTSetup
 
 ! ************************************************************************** !
 
-subroutine RTCheckUpdate(line_search,C,dC,changed,realization,ierr)
+subroutine RTCheckUpdatePre(line_search,C,dC,changed,realization,ierr)
   ! 
   ! In the case of the log formulation, ensures that the update
   ! vector does not exceed a prescribed tolerance
@@ -382,7 +385,83 @@ subroutine RTCheckUpdate(line_search,C,dC,changed,realization,ierr)
 
   call VecRestoreArrayF90(dC,dC_p,ierr)
 
-end subroutine RTCheckUpdate
+end subroutine RTCheckUpdatePre
+
+! ************************************************************************** !
+
+subroutine RTCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
+                             X1_changed,realization,ierr)
+  ! 
+  ! Checks convergence after to update
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/04/14
+  ! 
+  use Realization_class
+  use Grid_module
+  use Field_module
+  use Patch_module
+  use Option_module
+ 
+  implicit none
+  
+  SNESLineSearch :: line_search
+  Vec :: X0
+  Vec :: dX
+  Vec :: X1
+  type(realization_type) :: realization
+  ! ignore changed flag for now.
+  PetscBool :: dX_changed
+  PetscBool :: X1_changed
+  
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
+  PetscReal, pointer :: X1_p(:)
+  PetscReal, pointer :: dX_p(:)
+  PetscReal, pointer :: r_p(:)
+  PetscReal, pointer :: accum_p(:)  
+  PetscBool :: converged_due_to_rel_update
+  PetscBool :: converged_due_to_residual
+  PetscReal :: max_relative_change
+  PetscReal :: max_scaled_residual
+  PetscErrorCode :: ierr
+  
+  grid => realization%patch%grid
+  option => realization%option
+  field => realization%field
+  patch => realization%patch
+  
+  dX_changed = PETSC_FALSE
+  X1_changed = PETSC_FALSE
+  
+  option%converged = PETSC_FALSE
+  if (option%transport%check_post_convergence) then
+    converged_due_to_rel_update = PETSC_FALSE
+    converged_due_to_residual = PETSC_FALSE
+    call VecGetArrayReadF90(dX,dX_p,ierr)
+    call VecGetArrayReadF90(X1,X1_p,ierr)
+    max_relative_change = maxval(dabs(dX_p(:)/X1_p(:)))
+    call VecRestoreArrayReadF90(dX,dX_p,ierr)
+    call VecRestoreArrayReadF90(X1,X1_p,ierr)
+    call VecGetArrayReadF90(field%flow_r,r_p,ierr)
+    call VecGetArrayReadF90(field%flow_accum,accum_p,ierr)
+    max_scaled_residual = maxval(dabs(r_p(:)/accum_p(:)))
+    call VecRestoreArrayReadF90(field%flow_r,r_p,ierr)
+    call VecRestoreArrayReadF90(field%flow_accum,accum_p,ierr)
+    converged_due_to_rel_update = &
+      (option%transport%inf_rel_update_tol > 0.d0 .and. &
+       max_relative_change < option%transport%inf_rel_update_tol)
+    converged_due_to_residual = &
+      (option%transport%inf_scaled_res_tol  > 0.d0 .and. &
+       max_scaled_residual < option%transport%inf_scaled_res_tol)
+    if (converged_due_to_rel_update .or. converged_due_to_residual) then
+      option%converged = PETSC_TRUE
+    endif
+  endif
+    
+end subroutine RTCheckUpdatePost
 
 ! ************************************************************************** !
 
@@ -2310,7 +2389,7 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
       
 #ifndef CENTRAL_DIFFERENCE        
       call TFluxCoef(option,cur_connection_set%area(iconn), &
-                patch%internal_velocities(:,sum_connection)*vol_frac_prim, &
+                patch%internal_velocities(:,sum_connection), &
                 patch%internal_tran_coefs(:,sum_connection)*vol_frac_prim, &
                 cur_connection_set%dist(-1,iconn), &
                 coef_up,coef_dn)
@@ -2341,13 +2420,13 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
         r_p(istart:iend) = r_p(istart:iend) - Res(1:reaction%ncomp)
       endif
 
-      if (option%store_solute_fluxes) then
+      if (option%transport%store_solute_fluxes) then
         patch%internal_fluxes(iphase,1:reaction%ncomp,iconn) = &
             Res(1:reaction%ncomp)
       endif
 #else
       call TFluxCoef_CD(option,cur_connection_set%area(iconn), &
-                 patch%internal_velocities(:,sum_connection)*vol_frac_prim, &
+                 patch%internal_velocities(:,sum_connection), &
                  patch%internal_tran_coefs(:,sum_connection)*vol_frac_prim, &
                  cur_connection_set%dist(-1,iconn), &
                  T_11,T_12,T_21,T_22)
@@ -2398,7 +2477,7 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
 #ifndef CENTRAL_DIFFERENCE
       ! TFluxCoef accomplishes the same as what TBCCoef would
       call TFluxCoef(option,cur_connection_set%area(iconn), &
-                  patch%boundary_velocities(:,sum_connection)*vol_frac_prim, &
+                  patch%boundary_velocities(:,sum_connection), &
                   patch%boundary_tran_coefs(:,sum_connection)*vol_frac_prim, &
                   0.5d0, &
                   coef_up,coef_dn)
@@ -2414,7 +2493,7 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
       istart = iend-reaction%ncomp+1
       r_p(istart:iend)= r_p(istart:iend) - Res(1:reaction%ncomp)
 
-      if (option%store_solute_fluxes) then
+      if (option%transport%store_solute_fluxes) then
         patch%boundary_fluxes(iphase,1:reaction%ncomp,sum_connection) = &
             -Res(1:reaction%ncomp)
       endif
@@ -2430,7 +2509,7 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
 
 #else
       call TFluxCoef_CD(option,cur_connection_set%area(iconn), &
-                patch%boundary_velocities(:,sum_connection)*vol_frac_prim, &
+                patch%boundary_velocities(:,sum_connection), &
                 patch%boundary_tran_coefs(:,sum_connection)*vol_frac_prim, &
                 0.5d0, & ! fraction upwind (0.d0 upwind, 0.5 central)
                 T_11,T_12,T_21,T_22)
@@ -3025,7 +3104,7 @@ subroutine RTJacobianFlux(snes,xx,A,B,flag,realization,ierr)
 
 #ifndef CENTRAL_DIFFERENCE
       call TFluxCoef(option,cur_connection_set%area(iconn), &
-                patch%internal_velocities(:,sum_connection)*vol_frac_prim, &
+                patch%internal_velocities(:,sum_connection), &
                 patch%internal_tran_coefs(:,sum_connection)*vol_frac_prim, &
                 cur_connection_set%dist(-1,iconn), &
                 coef_up,coef_dn)
@@ -3053,7 +3132,7 @@ subroutine RTJacobianFlux(snes,xx,A,B,flag,realization,ierr)
 
 #else
       call TFluxCoef_CD(option,cur_connection_set%area(iconn), &
-                patch%internal_velocities(:,sum_connection)*vol_frac_prim, &
+                patch%internal_velocities(:,sum_connection), &
                 patch%internal_tran_coefs(:,sum_connection)*vol_frac_prim, &
                 cur_connection_set%dist(-1,iconn), &
                 T_11,T_12,T_21,T_22)
@@ -3113,7 +3192,7 @@ subroutine RTJacobianFlux(snes,xx,A,B,flag,realization,ierr)
 #ifndef CENTRAL_DIFFERENCE
       ! TFluxCoef accomplishes the same as what TBCCoef would
       call TFluxCoef(option,cur_connection_set%area(iconn), &
-                patch%boundary_velocities(:,sum_connection)*vol_frac_prim, &
+                patch%boundary_velocities(:,sum_connection), &
                 patch%boundary_tran_coefs(:,sum_connection)*vol_frac_prim, &
                 0.5d0, & ! fraction upwind (0.d0 upwind, 0.5 central)
                 coef_up,coef_dn)
@@ -3132,7 +3211,7 @@ subroutine RTJacobianFlux(snes,xx,A,B,flag,realization,ierr)
  
 #else
       call TFluxCoef_CD(option,cur_connection_set%area(iconn), &
-                 patch%boundary_velocities(:,sum_connection)*vol_frac_prim, &
+                 patch%boundary_velocities(:,sum_connection), &
                  patch%boundary_tran_coefs(:,sum_connection)*vol_frac_prim, &
                  0.5d0, & ! fraction upwind (0.d0 upwind, 0.5 central)
                  T_11,T_12,T_21,T_22)
@@ -3868,7 +3947,7 @@ subroutine RTCreateZeroArray(patch,reaction,option)
   
   n_zero_rows = 0
   
-  if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+  if (option%transport%reactive_transport_coupling == GLOBAL_IMPLICIT) then
     ndof = reaction%ncomp
   else
     ndof = 1
@@ -4375,7 +4454,7 @@ subroutine RTCheckpointKineticSorption(realization,viewer,checkpoint)
             call VecView(field%work,viewer,ierr)
           else
             call VecLoad(field%work,viewer,ierr)
-            if (.not.option%no_restart_kinetic_sorption) then
+            if (.not.option%transport%no_restart_kinetic_sorption) then
               call VecGetArrayF90(field%work,vec_p,ierr)
               do local_id = 1, grid%nlmax
                 rt_auxvars(grid%nL2G(local_id))% &
@@ -4452,7 +4531,7 @@ subroutine RTExplicitAdvection(realization)
 
   procedure (TFluxLimiterDummy), pointer :: TFluxLimitPtr
   
-  select case(realization%option%tvd_flux_limiter)
+  select case(realization%option%transport%tvd_flux_limiter)
     case(TVD_LIMITER_UPWIND)
       TFluxLimitPtr => TFluxLimitUpwind
     case(TVD_LIMITER_MC)
@@ -4482,7 +4561,7 @@ subroutine RTExplicitAdvection(realization)
   
   ntvddof = patch%aux%RT%rt_parameter%naqcomp
   
-  if (realization%option%tvd_flux_limiter /= TVD_LIMITER_UPWIND) then
+  if (realization%option%transport%tvd_flux_limiter /= TVD_LIMITER_UPWIND) then
     allocate(total_up2(option%nphase,ntvddof))
     allocate(total_dn2(option%nphase,ntvddof))
   else

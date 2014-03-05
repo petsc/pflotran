@@ -645,12 +645,12 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   patch%internal_velocities = 0.d0
   allocate(patch%internal_tran_coefs(option%nphase,temp_int))
   patch%internal_tran_coefs = 0.d0
-  if (option%store_solute_fluxes) then
+  if (option%transport%store_solute_fluxes) then
     allocate(patch%internal_fluxes(option%nphase,option%ntrandof,temp_int))
     patch%internal_fluxes = 0.d0
   endif
   if (option%store_flowrate) then
-    if(option%store_solute_fluxes) then
+    if(option%transport%store_solute_fluxes) then
       option%io_buffer='Model does not support store_solute_fluxes and flowrate ' // &
       ' options together. If you run into this message, complain on pflotran-dev@googlegroups.com'
       call printErrMsg(option)
@@ -687,7 +687,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     patch%boundary_velocities = 0.d0
     allocate(patch%boundary_tran_coefs(option%nphase,temp_int))
     patch%boundary_tran_coefs = 0.d0
-    if (option%store_solute_fluxes) then
+    if (option%transport%store_solute_fluxes) then
       allocate(patch%boundary_fluxes(option%nphase,option%ntrandof,temp_int))
       patch%boundary_fluxes = 0.d0
     endif

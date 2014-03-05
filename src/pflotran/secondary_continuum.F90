@@ -1726,7 +1726,7 @@ subroutine SecondaryRTCheckResidual(sec_transport_vars,auxvar, &
  ! Need to decide how to scale the residual with volumes
   do i = 1, ngcells
     do j = 1, ncomp
-      if (vol(i) > 1.d0) res(j+(i-1)*ncomp) = res(j+(i-1)*ncomp)/vol(i)
+      res(j+(i-1)*ncomp) = res(j+(i-1)*ncomp)/vol(i)
     enddo
   enddo
     

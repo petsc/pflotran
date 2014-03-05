@@ -36,13 +36,14 @@ module Geomechanics_Material_module
 contains
 
 ! ************************************************************************** !
-!
-! GeomechanicsMaterialPropertyCreate: Creates a geomechanics material property
-! author: Satish Karra, LANL
-! date: 05/23/13
-!
-! ************************************************************************** !
+
 function GeomechanicsMaterialPropertyCreate()
+  ! 
+  ! Creates a geomechanics material property
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 05/23/13
+  ! 
 
   implicit none
   
@@ -67,15 +68,16 @@ function GeomechanicsMaterialPropertyCreate()
 end function GeomechanicsMaterialPropertyCreate
 
 ! ************************************************************************** !
-!
-! GeomechanicsMaterialPropertyRead: Reads geomechanics material properties
-! property
-! author: Satish Karra, LANL
-! date: 05/23/13. 09/02/13
-!
-! ************************************************************************** !
+
 subroutine GeomechanicsMaterialPropertyRead(geomech_material_property, &
                                             input,option)
+  ! 
+  ! Reads geomechanics material properties
+  ! property
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 05/23/13. 09/02/13
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -138,14 +140,15 @@ subroutine GeomechanicsMaterialPropertyRead(geomech_material_property, &
 end subroutine GeomechanicsMaterialPropertyRead
 
 ! ************************************************************************** !
-!
-! GeomechanicsMaterialPropertyAddToList: Destroys a geomechanics material
-! property
-! author: Satish Karra, LANL
-! date: 05/23/13
-!
-! ************************************************************************** !
+
 subroutine GeomechanicsMaterialPropertyAddToList(geomech_material_property,list)
+  ! 
+  ! Destroys a geomechanics material
+  ! property
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 05/23/13
+  ! 
 
   implicit none
   
@@ -168,14 +171,15 @@ subroutine GeomechanicsMaterialPropertyAddToList(geomech_material_property,list)
 end subroutine GeomechanicsMaterialPropertyAddToList
 
 ! ************************************************************************** !
-!
-! GeomechanicsMaterialPropConvertListToArray: Destroys a geomechanics material
-! property
-! author: Satish Karra, LANL
-! date: 05/23/13
-!
-! ************************************************************************** !
+
 subroutine GeomechanicsMaterialPropConvertListToArray(list,array,option)
+  ! 
+  ! Destroys a geomechanics material
+  ! property
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 05/23/13
+  ! 
 
   use Option_module
   use String_module
@@ -268,16 +272,17 @@ subroutine GeomechanicsMaterialPropConvertListToArray(list,array,option)
 end subroutine GeomechanicsMaterialPropConvertListToArray
 
 ! ************************************************************************** !
-!
-! GeomechanicsMaterialPropGetPtrFromArray: Destroys a geomechanics material
-! property
-! author: Satish Karra, LANL
-! date: 05/23/13
-!
-! ************************************************************************** !
+
 function GeomechanicsMaterialPropGetPtrFromArray( &
                                             geomech_material_property_name, &
                                             geomech_material_property_array)
+  ! 
+  ! Destroys a geomechanics material
+  ! property
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 05/23/13
+  ! 
 
   use String_module
 
@@ -312,14 +317,15 @@ function GeomechanicsMaterialPropGetPtrFromArray( &
 end function GeomechanicsMaterialPropGetPtrFromArray
 
 ! ************************************************************************** !
-!
-! GeomechanicsMaterialPropertyDestroy: Destroys a geomechanics material
-! property
-! author: Satish Karra, LANL
-! date: 05/23/13
-!
-! ************************************************************************** !
+
 recursive subroutine GeomechanicsMaterialPropertyDestroy(geomech_material_property)
+  ! 
+  ! Destroys a geomechanics material
+  ! property
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 05/23/13
+  ! 
 
   implicit none
   
