@@ -649,6 +649,7 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
        
   enddo                                    
   
+  call MaterialAuxVarStrip(material_auxvar)
   deallocate(material_auxvar)
   
   rt_sec_transport_vars%sec_jac_update = PETSC_FALSE
