@@ -49,7 +49,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   PetscInt :: num_iteration, ipressure, idatum, num_pressures
   PetscReal :: dist_x, dist_y, dist_z, delta_z, dist_z_for_pressure
   PetscReal :: dx_conn, dy_conn, dz_conn
-  PetscReal :: rho_kg, rho1, rho0, pressure, pressure0, pressure_at_datum 
+  PetscReal :: rho_kg, rho_one, rho_zero, pressure, pressure0, pressure_at_datum
   PetscReal :: temperature_at_datum, temperature
   PetscReal :: concentration_at_datum
   PetscReal :: gas_pressure
@@ -185,9 +185,10 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       endif
   end select      
       
-  call EOSWaterDensityNaCl(temperature_at_datum,pressure_at_datum, &
+  call EOSWaterDensityNaCl(temperature_at_datum,pressure_at_datum*1.d-6, &
                            xm_nacl,rho_kg) 
-
+  rho_kg = rho_kg * 1.d3
+  
   gravity_magnitude = sqrt(DotProduct(option%gravity,option%gravity))
   
   if (dabs(gravity_magnitude-9.8068d0) > 0.1d0) then
@@ -228,40 +229,42 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
     idatum = int((datum(Z_DIRECTION)-min_z)/(max_z-min_z) * &
                  dble(num_pressures))+1
     pressure_array(idatum) = pressure_at_datum
-    call EOSWaterDensityNaCl(temperature_at_datum,pressure_at_datum, &
+    call EOSWaterDensityNaCl(temperature_at_datum,pressure_at_datum*1.d-6, &
                              xm_nacl,rho_kg) 
+    rho_kg = rho_kg * 1.d3
     temperature = temperature_at_datum
     pressure0 = pressure_at_datum
     density_array(idatum) = rho_kg
     z(idatum) = datum(Z_DIRECTION)
     ! compute pressures above datum, if any
     dist_z = 0.d0
-    rho0 = rho_kg
+    rho_zero = rho_kg
     do ipressure=idatum+1,num_pressures
       dist_z = dist_z + delta_z
       select case(option%iflowmode)
         case(TH_MODE,THC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE, MIS_MODE)
           temperature = temperature + temperature_gradient(Z_DIRECTION)*delta_z
       end select
-      call EOSWaterDensityNaCl(temperature,pressure0,xm_nacl,rho_kg) 
+      call EOSWaterDensityNaCl(temperature,pressure0*1.d-6,xm_nacl,rho_kg) 
+      rho_kg = rho_kg * 1.d3
       
       num_iteration = 0
       do 
-        pressure = pressure0 + 0.5d0*(rho_kg+rho0) * &
+        pressure = pressure0 + 0.5d0*(rho_kg+rho_zero) * &
                    option%gravity(Z_DIRECTION) * delta_z
-        call EOSWaterDensityNaCl(temperature,pressure,xm_nacl,rho_kg) 
-        rho1 = rho_kg
-        if (dabs(rho_kg-rho1) < 1.d-10) exit
-        rho_kg = rho1
+        call EOSWaterDensityNaCl(temperature,pressure*1.d-6,xm_nacl,rho_one) 
+        rho_one = rho_one * 1.d3
+        if (dabs(rho_kg-rho_one) < 1.d-10) exit
+        rho_kg = rho_one
         num_iteration = num_iteration + 1
         if (num_iteration > 100) then
-          print *,'Hydrostatic iteration failed to converge',num_iteration,rho1,rho_kg
+          print *,'Hydrostatic iteration failed to converge',num_iteration,rho_one,rho_kg
           print *, condition%name, idatum
           print *, pressure_array
           stop
         endif
       enddo
-      rho0 = rho_kg
+      rho_zero = rho_kg
       pressure_array(ipressure) = pressure
       density_array(ipressure) = rho_kg
       z(ipressure) = z(idatum)+dist_z
@@ -275,31 +278,33 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
         temperature = temperature_at_datum
     end select
     dist_z = 0.d0
-    rho0 = density_array(idatum)
+    rho_zero = density_array(idatum)
     do ipressure=idatum-1,1,-1
       dist_z = dist_z + delta_z
       select case(option%iflowmode)
         case(TH_MODE,THC_MODE,MPH_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           temperature = temperature - temperature_gradient(Z_DIRECTION)*delta_z
       end select
-      call EOSWaterDensityNaCl(temperature,pressure0,xm_nacl,rho_kg) 
+      call EOSWaterDensityNaCl(temperature,pressure0*1.d-6,xm_nacl,rho_kg) 
+      rho_kg = rho_kg * 1.d3
 
       num_iteration = 0
       do                   ! notice the negative sign (-) here
-        pressure = pressure0 - 0.5d0*(rho_kg+rho0) * &
+        pressure = pressure0 - 0.5d0*(rho_kg+rho_zero) * &
                    option%gravity(Z_DIRECTION) * delta_z
-        call EOSWaterDensityNaCl(temperature,pressure,xm_nacl,rho1)
-        if (dabs(rho_kg-rho1) < 1.d-10) exit
-        rho_kg = rho1
+        call EOSWaterDensityNaCl(temperature,pressure*1.d-6,xm_nacl,rho_one)
+        rho_one = rho_one * 1.d3
+        if (dabs(rho_kg-rho_one) < 1.d-10) exit
+        rho_kg = rho_one
         num_iteration = num_iteration + 1
         if (num_iteration > 100) then
-          print *,'Hydrostatic iteration failed to converge',num_iteration,rho1,rho_kg
+          print *,'Hydrostatic iteration failed to converge',num_iteration,rho_one,rho_kg
           print *, condition%name, idatum
           print *, pressure_array
           stop
         endif
       enddo
-      rho0 = rho_kg
+      rho_zero = rho_kg
       pressure_array(ipressure) = pressure
       density_array(ipressure) = rho_kg
       z(ipressure) = z(idatum)-dist_z
@@ -563,9 +568,9 @@ subroutine HydrostaticTest()
   
   PetscInt :: iz, i, i_increment, num_increment
   PetscInt :: max_num_pressures, i_up, i_dn, num_iteration
-  PetscReal :: rho, rho1, rho0, pressure0, pressure, temperature
+  PetscReal :: rho_kg, rho_one, rho_zero, pressure0, pressure, temperature
   PetscReal :: increment(4)
-  PetscReal :: xm_nacl, dw_kg, dist_z, dist
+  PetscReal :: xm_nacl, dist_z, dist
 
   PetscReal, pointer :: density_array(:,:), pressure_array(:,:)
   
@@ -588,32 +593,32 @@ subroutine HydrostaticTest()
   
   do i_increment = 1, num_increment
     pressure = 101325.d0
-    call EOSWaterDensityNaCl(temperature,pressure,xm_nacl,dw_kg) 
-    rho = dw_kg * 1.d3
+    call EOSWaterDensityNaCl(temperature,pressure*1.d-6,xm_nacl,rho_kg) 
+    rho_kg = rho_kg * 1.d3
     dist_z = 0.d0
     pressure_array(1,i_increment) = pressure
-    density_array(1,i_increment) = rho
+    density_array(1,i_increment) = rho_kg
     do iz=1,int(1000.d0/increment(i_increment)+0.5d0)
       dist_z = dist_z + increment(i_increment)
       pressure0 = pressure
       num_iteration = 0
       do
-        pressure = pressure0 + rho * 9.8068d0 * increment(i_increment)
-        call EOSWaterDensityNaCl(temperature,pressure,xm_nacl,dw_kg) 
-        rho1 = dw_kg * 1.d3
-        if (dabs(rho-rho1) < 1.d-10) exit
-        rho = rho1
+        pressure = pressure0 + rho_kg * 9.8068d0 * increment(i_increment)
+        call EOSWaterDensityNaCl(temperature,pressure*1.d-6,xm_nacl,rho_one) 
+        rho_one = rho_one * 1.d3
+        if (dabs(rho_kg-rho_one) < 1.d-10) exit
+        rho_kg = rho_one
         num_iteration = num_iteration + 1
         if (num_iteration > 100) then
-          print *,'HydrostaticInitCondition failed to converge',num_iteration,rho1,rho
+          print *,'HydrostaticInitCondition failed to converge',num_iteration,rho_one,rho_kg
           stop
         endif
       enddo
       i = int(dist_z/increment(1)+0.5d0)+1
       pressure_array(i,i_increment) = pressure
-      density_array(i,i_increment) = rho
+      density_array(i,i_increment) = rho_kg
       pressure0 = pressure
-      rho0 = rho  
+      rho_zero = rho_kg  
     enddo
   enddo
 
