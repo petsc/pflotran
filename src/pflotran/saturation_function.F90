@@ -1693,6 +1693,10 @@ subroutine SatFuncComputeIceDallAmico(pl, T, &
       call SaturationFunctionCompute2(Pc0,S0,dummy,dS0,dummy,saturation_function,dummy,dummy,switch,option)
       call SaturationFunctionCompute2(Pc1,S1,dummy,dS1,dummy,saturation_function,dummy,dummy,switch,option)
 
+      ! convert dS/dpsi to dS/dpl
+      dS0 = -dS0
+      dS1 = -dS1
+
       s_l = S1
       s_i = S0 - S1
 
