@@ -215,7 +215,7 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
             call InputReadDouble(input,option,saturation_function%Sr(iphase))
             word = trim(keyword) // ' residual saturation'
             call InputErrorMsg(input,option,word,'SATURATION_FUNCTION')
-          case(RICHARDS_MODE,TH_MODE,THC_MODE,G_MODE)
+          case(RICHARDS_MODE,TH_MODE,G_MODE)
             call InputReadDouble(input,option,saturation_function%Sr(1))
             call InputErrorMsg(input,option,'residual saturation','SATURATION_FUNCTION')
         end select
@@ -1019,10 +1019,14 @@ end subroutine SatFuncComputeIcePExplicit
 
 ! ************************************************************************** !
 
-subroutine ComputeSatVG(alpha,lambda,Pc,S,dS)
+subroutine ComputeVGAndDerivative(alpha,lambda,Pc,S,dS_dPc)
   ! 
   ! Evaluates van Genunchten saturation function and
-  ! its derivative at given capillary pressure
+  ! its derivative with respect to capillary pressure
+  ! for given capillary pressure
+  !
+  ! Note: Derivative wrt capillary pressure and not liquid pressure 
+  ! is evaluated
   ! 
   ! Author: Satish Karra
   ! Date: 10/16/12
@@ -1031,26 +1035,26 @@ subroutine ComputeSatVG(alpha,lambda,Pc,S,dS)
   implicit none
 
   PetscReal :: alpha, lambda, gamma  
-  PetscReal :: Pc, S, dS
+  PetscReal :: Pc, S, dS_dPc
   
   gamma = 1.d0/(1.d0 - lambda)
   if (Pc > 0.d0) then
     S =  (1.d0 + (alpha*Pc)**gamma)**(-lambda)
-    dS = (-lambda)*((1.d0 + (alpha*Pc)**gamma)**(-lambda - 1.d0))* &
+    dS_dPc = (-lambda)*((1.d0 + (alpha*Pc)**gamma)**(-lambda - 1.d0))* &
          (gamma*alpha*(alpha*Pc)**(gamma - 1.d0))
   else
     S = 1.d0
-    dS = 0.d0
+    dS_dPc = 0.d0
   endif
  
-end subroutine ComputeSatVG
+end subroutine ComputeVGAndDerivative
 
 ! ************************************************************************** !
 
-subroutine ComputeInvSatVG(alpha,lambda,sat,Sinv,dSinv)
+subroutine ComputeInvVGAndDerivative(alpha,lambda,sat,Sinv,dSinv_dsat)
   ! 
   ! Evaluates inverse of van Genunchten saturation function
-  ! and its derivative at given saturation
+  ! and its derivative with respect to saturation at a given saturation
   ! 
   ! Author: Satish Karra
   ! Date: 10/16/12
@@ -1059,19 +1063,19 @@ subroutine ComputeInvSatVG(alpha,lambda,sat,Sinv,dSinv)
   implicit none
   
   PetscReal :: alpha, lambda, gamma
-  PetscReal :: sat, Sinv, dSinv
+  PetscReal :: sat, Sinv, dSinv_dsat
   
   gamma = 1.d0/(1.d0 - lambda)
   if (sat == 1.d0) then
     Sinv = 0.d0
-    dSinv = 0.d0
+    dSinv_dsat = 0.d0
   else
     Sinv = 1.d0/alpha*((sat)**(-1.d0/lambda) - 1.d0)**(1.d0/gamma)
-    dSinv = 1.d0/alpha*1.d0/gamma*((sat**(-1.d0/lambda) - 1.d0)**(1.d0/gamma - &
+    dSinv_dsat = 1.d0/alpha*1.d0/gamma*((sat**(-1.d0/lambda) - 1.d0)**(1.d0/gamma - &
       1.d0))*(-1.d0/lambda)*(sat**(-1.d0/lambda - 1.d0))
   endif
   
-end subroutine ComputeInvSatVG
+end subroutine ComputeInvVGAndDerivative
 
 ! ************************************************************************** !
 
@@ -1101,11 +1105,11 @@ subroutine CalculateImplicitIceFunc(alpha,lambda,Pcgl,T,s_i,func_val,dfunc_val)
   else
     temp_term = -beta*rho_i*HEAT_OF_FUSION*T/T_0
   endif
-  call ComputeSatVG(alpha,lambda,Pcgl,sat,dsat)
+  call ComputeVGAndDerivative(alpha,lambda,Pcgl,sat,dsat)
   sat_term = (s_i + (1.d0 - s_i)*sat)
-  call ComputeInvSatVG(alpha,lambda,sat_term,sat_inv,dsat_inv)
+  call ComputeInvVGAndDerivative(alpha,lambda,sat_term,sat_inv,dsat_inv)
   PC = temp_term + sat_inv
-  call ComputeSatVG(alpha,lambda,PC,sat_PC,dsat_PC)
+  call ComputeVGAndDerivative(alpha,lambda,PC,sat_PC,dsat_PC)
   func_val = (1.d0 - s_i)*sat - sat_PC
   dfunc_val = -sat - dsat_PC*dsat_inv*(1.d0 - sat)
   
@@ -1153,7 +1157,7 @@ subroutine CalcPhasePartitionIceNewt(alpha,lambda,Pcgl,T,s_g,s_i,s_l)
     enddo
   endif
   
-  call ComputeSatVG(alpha,lambda,Pcgl,sat,dsat)
+  call ComputeVGAndDerivative(alpha,lambda,Pcgl,sat,dsat)
   s_i = x
   s_l = (1.d0 - x)*sat
   s_g = 1.d0 - s_l - s_i
@@ -1216,7 +1220,7 @@ subroutine CalcPhasePartitionIceBis(alpha,lambda,Pcgl,T,s_g,s_i,s_l)
     enddo
   endif
     
-  call ComputeSatVG(alpha,lambda,Pcgl,sat,dsat)
+  call ComputeVGAndDerivative(alpha,lambda,Pcgl,sat,dsat)
   s_i = sol
   s_l = (1.d0 - sol)*sat
   s_g = 1.d0 - s_l - s_i
@@ -1286,10 +1290,10 @@ subroutine CalcPhasePartitionIceDeriv(alpha,lambda,Pcgl,T,s_g,s_i,s_l, &
   else
     temp_term = -beta*rho_i*HEAT_OF_FUSION*T/T_0
   endif
-  call ComputeInvSatVG(alpha,lambda,(s_i + s_l),sat_inv,dsat_inv)
+  call ComputeInvVGAndDerivative(alpha,lambda,(s_i + s_l),sat_inv,dsat_inv)
   PC = temp_term + sat_inv 
-  call ComputeSatVG(alpha,lambda,PC,sat_PC,dsat_PC)
-  call ComputeSatVG(alpha,lambda,Pcgl,sat,dsat)
+  call ComputeVGAndDerivative(alpha,lambda,PC,sat_PC,dsat_PC)
+  call ComputeVGAndDerivative(alpha,lambda,Pcgl,sat,dsat)
   G = dsat_PC*dsat_inv
   dS_dpl = dsat*(-1.d0)
   if (G == 1.d0) then
@@ -1510,13 +1514,13 @@ implicit none
       alpha = saturation_function%alpha
       Pcgl = option%reference_pressure - pl
       m = saturation_function%m      
-      call ComputeSatVG(alpha,m,Pcgl,S,dS)
-      call ComputeInvSatVG(alpha,m,S,Sinv,dSinv)
+      call ComputeVGAndDerivative(alpha,m,Pcgl,S,dS)
+      call ComputeInvVGAndDerivative(alpha,m,S,Sinv,dSinv)
       T_f = T_0 - 1.d0/beta*T_0/L_f/rho_l*Sinv
       theta = (T-T_0)/T_0
       if (T < T_f) then
         X = -beta*theta*L_f*rho_l
-        call ComputeSatVG(alpha,m,X,s_l,dS_dX)
+        call ComputeVGAndDerivative(alpha,m,X,s_l,dS_dX)
         s_i = 1.d0 - s_l/S
         dsl_dT = 1.d0/T_0*dS_dX*(-beta*rho_l*L_f)
         dsl_dpl = 0.d0
@@ -1823,6 +1827,7 @@ subroutine SatFuncGetRelPermFromSat(saturation,relative_perm,dkr_Se, &
           relative_perm = Se**power
           dkr_Se = power*relative_perm/Se
         case(MUALEM)
+          lambda = saturation_function%lambda
           power = 2.5d0+2.d0/lambda
           relative_perm = Se**power
           dkr_Se = power*relative_perm/Se

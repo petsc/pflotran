@@ -3,6 +3,8 @@ module Option_module
 ! IMPORTANT NOTE: This module can have no dependencies on other modules!!!
  
   use PFLOTRAN_Constants_module
+  use Option_Flow_module
+  use Option_Transport_module
 
   implicit none
 
@@ -12,6 +14,9 @@ module Option_module
 
 
   type, public :: option_type 
+  
+    type(flow_option_type), pointer :: flow
+    type(transport_option_type), pointer :: transport
   
     PetscInt :: id                         ! id of realization
   
@@ -33,8 +38,6 @@ module Option_module
     PetscMPIInt :: hdf5_read_group_size, hdf5_write_group_size
     PetscBool :: broadcast_read
     
-    PetscInt :: reactive_transport_coupling
-
 #if defined(SCORPIO)
     PetscMPIInt :: ioread_group_id, iowrite_group_id
 #endif
@@ -49,14 +52,12 @@ module Option_module
     PetscInt :: iflowmode
     character(len=MAXWORDLENGTH) :: tranmode
     PetscInt :: itranmode
-    PetscInt :: tvd_flux_limiter
 
     PetscInt :: nphase
     PetscInt :: liquid_phase
     PetscInt :: gas_phase
     PetscInt :: nflowdof
     PetscInt :: nflowspec
-    PetscInt :: rt_idof
     PetscInt :: nmechdof
     PetscInt :: nsec_cells
     PetscBool :: use_th_freezing
@@ -110,7 +111,6 @@ module Option_module
     PetscInt, pointer :: garbage ! for some reason, Intel will not compile without this
 
     PetscReal :: uniform_velocity(3)
-    PetscBool :: store_solute_fluxes
     PetscBool :: store_flowrate
 
     ! Program options
@@ -126,8 +126,8 @@ module Option_module
     PetscInt :: ice_model         ! specify water/ice/vapor phase partitioning model
       
     PetscReal :: flow_time, tran_time, time  ! The time elapsed in the simulation.
-    PetscReal :: tran_weight_t0, tran_weight_t1
-    PetscReal :: flow_dt, tran_dt ! The size of the time step.
+    PetscReal :: flow_dt ! The size of the time step.
+    PetscReal :: tran_dt  
     PetscReal :: dt
     PetscBool :: match_waypoint
     PetscReal :: refactor_dt
@@ -154,19 +154,12 @@ module Option_module
     PetscReal :: saturation_change_limit
     PetscReal :: pressure_change_limit
     PetscReal :: temperature_change_limit
-    PetscReal :: post_convergence_tol
-    PetscBool :: check_post_convergence
     PetscBool :: converged
     
     PetscReal :: infnorm_res_sec  ! inf. norm of secondary continuum rt residual
     
     PetscReal :: minimum_hydrostatic_pressure
     
-    PetscBool :: jumpstart_kinetic_sorption
-    PetscBool :: no_checkpoint_kinetic_sorption
-    PetscBool :: no_restart_kinetic_sorption
-    PetscBool :: no_restart_mineral_vol_frac
-        
 !   table lookup
     PetscInt :: itable
     PetscInt :: co2eos
@@ -305,7 +298,9 @@ function OptionCreate()
   type(option_type), pointer :: option
   
   allocate(option)
-
+  option%flow => OptionFlowCreate()
+  option%transport => OptionTransportCreate()
+  
   ! DO NOT initialize members of the option type here.  One must decide 
   ! whether the member needs initialization once for all stochastic 
   ! simulations or initialization for every realization (e.g. within multiple 
@@ -332,6 +327,9 @@ subroutine OptionInitAll(option)
   
   ! These variables should only be initialized once at the beginning of a
   ! PFLOTRAN run (regardless of whether stochastic)
+  
+  call OptionFlowInitAll(option%flow)
+  call OptionTransportInitAll(option%transport)
   
   option%id = 0
 
@@ -396,7 +394,10 @@ subroutine OptionInitRealization(option)
   
   ! These variables should be initialized once at the beginning of every 
   ! PFLOTRAN realization or simulation of a single realization
-    
+  call OptionFlowInitRealization(option%flow)  
+  call OptionTransportInitRealization(option%transport)  
+  
+  
   option%fid_out = OUT_UNIT
 
   option%iflag = 0
@@ -444,11 +445,7 @@ subroutine OptionInitRealization(option)
   option%tranmode = ""
   option%itranmode = NULL_MODE
   option%ntrandof = 0
-  option%tvd_flux_limiter = 1
-  option%rt_idof = -999
   
-  option%reactive_transport_coupling = GLOBAL_IMPLICIT
-
   option%nphase = 0
   option%liquid_phase = 0
   option%gas_phase = 0
@@ -463,7 +460,6 @@ subroutine OptionInitRealization(option)
   option%energy_id = 0
   
   option%uniform_velocity = 0.d0
-  option%store_solute_fluxes = PETSC_FALSE
   
 !-----------------------------------------------------------------------
       ! Initialize some parameters to sensible values.  These are parameters
@@ -481,16 +477,9 @@ subroutine OptionInitRealization(option)
   option%saturation_change_limit = 0.d0
   option%pressure_change_limit = 0.d0
   option%temperature_change_limit = 0.d0
-  option%post_convergence_tol = 0.d0
-  option%check_post_convergence = PETSC_FALSE
   option%converged = PETSC_FALSE
   
   option%infnorm_res_sec = 0.d0
-  
-  option%jumpstart_kinetic_sorption = PETSC_FALSE
-  option%no_checkpoint_kinetic_sorption = PETSC_FALSE
-  option%no_restart_kinetic_sorption = PETSC_FALSE
-  option%no_restart_mineral_vol_frac = PETSC_FALSE
   
   option%minimum_hydrostatic_pressure = -1.d20
 
@@ -552,8 +541,6 @@ subroutine OptionInitRealization(option)
   option%flow_time = 0.d0
   option%tran_time = 0.d0
   option%time = 0.d0
-  option%tran_weight_t0 = 0.d0
-  option%tran_weight_t1 = 0.d0
   option%flow_dt = 0.d0
   option%tran_dt = 0.d0
   option%dt = 0.d0
@@ -1340,6 +1327,8 @@ subroutine OptionDestroy(option)
   
   type(option_type), pointer :: option
   
+  call OptionFlowDestroy(option%flow)
+  call OptionTransportDestroy(option%transport)
   ! all kinds of stuff needs to be added here.
 
   ! all the below should be placed somewhere other than option.F90

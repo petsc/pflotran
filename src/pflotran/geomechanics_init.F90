@@ -23,14 +23,15 @@ module Geomechanics_Init_module
 contains
 
 ! ************************************************************************** !
-!
-! GeomechicsInitReadRequiredCards: Reads the required input file cards
-! related to geomechanics
-! author: Satish Karra, LANL
-! date: 05/23/13
-!
-! ************************************************************************** !
+
 subroutine GeomechicsInitReadRequiredCards(geomech_realization)
+  ! 
+  ! Reads the required input file cards
+  ! related to geomechanics
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 05/23/13
+  ! 
 
   use Geomechanics_Discretization_module
 #ifdef PROCESS_MODEL
@@ -76,13 +77,14 @@ subroutine GeomechicsInitReadRequiredCards(geomech_realization)
 end subroutine GeomechicsInitReadRequiredCards
 
 ! ************************************************************************** !
-!
-! GeomechanicsInit: Reads the required geomechanics data from input file
-! author: Satish Karra, LANL
-! date: 05/23/13
-!
-! ************************************************************************** !
+
 subroutine GeomechanicsInit(geomech_realization,input,option)
+  ! 
+  ! Reads the required geomechanics data from input file
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 05/23/13
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -173,14 +175,15 @@ subroutine GeomechanicsInit(geomech_realization,input,option)
 end subroutine GeomechanicsInit
 
 ! ************************************************************************** !
-!
-! GeomechanicsInitReadInput: Reads the geomechanics input data 
-! author: Satish Karra, LANL
-! date: 05/23/13
-!
-! ************************************************************************** !
+
 subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
                                      input,option)
+  ! 
+  ! Reads the geomechanics input data
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 05/23/13
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -608,14 +611,15 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
 end subroutine GeomechanicsInitReadInput
 
 ! ************************************************************************** !
-!
-! GeomechInitMatPropToGeomechRegions: This routine assigns geomech material 
-!                                     properties to associated regions 
-! author: Satish Karra, LANL
-! date: 06/17/13
-!
-! ************************************************************************** !
+
 subroutine GeomechInitMatPropToGeomechRegions(geomech_realization)
+  ! 
+  ! This routine assigns geomech material
+  ! properties to associated regions
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/17/13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class

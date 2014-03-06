@@ -1,0 +1,7 @@
+#if (__GFORTRAN__ && __GNUC__ == 4 && __GNUC_MINOR__ == 7)
+#    define GFORTRAN_4_7
+#    define PFUNIT_NAME_LENGTH 64
+#    define PFUNIT_LABEL_LENGTH 32
+#    define PFUNIT_LINE_LENGTH 512
+#endif
+

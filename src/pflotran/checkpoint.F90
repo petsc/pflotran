@@ -316,7 +316,7 @@ subroutine Checkpoint(realization, &
     ! that indicates what phases are present, as well as the 'var' vector 
     ! that holds variables derived from the primary ones via the translator.
     select case(option%iflowmode)
-      case(MPH_MODE,TH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
+      case(MPH_MODE,TH_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
            FLASH2_MODE,G_MODE)
         call DiscretizationLocalToGlobal(realization%discretization, &
                                          field%iphas_loc,global_vec,ONEDOF)
@@ -652,7 +652,7 @@ subroutine Restart(realization, &
     call VecCopy(field%flow_xx,field%flow_yy,ierr)  
 
     select case(option%iflowmode)
-      case(MPH_MODE,TH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
+      case(MPH_MODE,TH_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
            FLASH2_MODE,G_MODE)
         call VecLoad(global_vec,viewer,ierr)      
         call DiscretizationGlobalToLocal(discretization,global_vec, &
@@ -1091,7 +1091,7 @@ subroutine CheckpointFlowProcessModel(viewer,realization)
     ! that indicates what phases are present, as well as the 'var' vector 
     ! that holds variables derived from the primary ones via the translator.
     select case(option%iflowmode)
-      case(MPH_MODE,TH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
+      case(MPH_MODE,TH_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
            FLASH2_MODE,G_MODE)
         call DiscretizationLocalToGlobal(realization%discretization, &
                                          field%iphas_loc,global_vec,ONEDOF)
@@ -1227,7 +1227,7 @@ subroutine RestartFlowProcessModel(viewer,realization)
     call VecCopy(field%flow_xx,field%flow_yy,ierr)  
 
     select case(option%iflowmode)
-      case(MPH_MODE,TH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
+      case(MPH_MODE,TH_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
            FLASH2_MODE,G_MODE)
         call VecLoad(global_vec,viewer,ierr)      
         call DiscretizationGlobalToLocal(discretization,global_vec, &

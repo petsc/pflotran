@@ -1021,7 +1021,6 @@ subroutine CondControlScaleSourceSink(realization)
               enddo
               vec_ptr(local_id) = vec_ptr(local_id) + sum
           case(TH_MODE)
-          case(THC_MODE)
           case(MPH_MODE)
           case(IMS_MODE)
           case(MIS_MODE)
@@ -1043,7 +1042,6 @@ subroutine CondControlScaleSourceSink(realization)
             cur_source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = &
               vec_ptr(local_id)
           case(TH_MODE)
-          case(THC_MODE)
           case(MPH_MODE)
           case(IMS_MODE)
           case(MIS_MODE)
@@ -1168,8 +1166,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
                         sub_condition_ptr(idof)%ptr%dataset%rarray(1)
                       pw = option%reference_pressure
                         
-                      call EOSWaterDensity(temp,pw,dw_kg,dw_mol, &
-                                           option%scale, ierr)
+                      call EOSWaterDensity(temp,pw,dw_kg,dw_mol,ierr)
                       ! [rho*h*T*Cw]
                       xx_p(ibegin+idof-1) = dw_kg*xx_p(ibegin)* &
                                             (temp + 273.15d0)* &

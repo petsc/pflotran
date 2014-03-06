@@ -1745,7 +1745,8 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
       if (dabs(qsrc(ONE_INTEGER)) > 0.d0) then
         call EOSWaterDensityEnthalpy(gen_auxvar%temp, &
                                      gen_auxvar%pres(option%liquid_phase), &
-                                     den_kg,den,enthalpy,option%scale,ierr)
+                                     den_kg,den,enthalpy,ierr)
+        enthalpy = enthalpy * 1.d-6 ! J/kmol -> whatever units
         ! enthalpy units: MJ/kmol
         res(option%energy_id) = res(option%energy_id) + &
                                 qsrc_mol(ONE_INTEGER) * enthalpy
@@ -1755,8 +1756,9 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
           ! if no gas exists, the enthalpy calculated in GeneralAuxVarCompute()
           ! is unrealistic, use pure air enthalpy instead.
           call ideal_gaseos_noderiv(gen_auxvar%pres(option%air_pressure_id), &
-                                    gen_auxvar%temp, &
-                                    option%scale,den,enthalpy,internal_energy)
+                                    gen_auxvar%temp,den,enthalpy, &
+                                    internal_energy)
+          enthalpy = enthalpy * 1.d-6 ! J/kmol -> MJ/kmol
         else
           enthalpy = gen_auxvar%h(option%gas_phase)
         endif
@@ -3004,7 +3006,7 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   X1_changed = PETSC_FALSE
   
   option%converged = PETSC_FALSE
-  if (option%check_post_convergence) then
+  if (option%flow%check_post_convergence) then
     call VecGetArrayReadF90(dX,dX_p,ierr)
     call VecGetArrayReadF90(X1,X1_p,ierr)
     call VecGetArrayReadF90(field%flow_r,r_p,ierr)
@@ -3047,7 +3049,7 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
                        MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
     option%converged = PETSC_TRUE
     do idof = 1, option%nflowdof
-      if (global_inf_norm(idof) > option%post_convergence_tol) then
+      if (global_inf_norm(idof) > option%flow%post_convergence_tol) then
         option%converged = PETSC_FALSE
 #if 1
 #ifdef DEBUG_GENERAL_INFO

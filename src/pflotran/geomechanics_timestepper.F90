@@ -23,17 +23,18 @@ module Geomechanics_Timestepper_module
 contains
 
 ! ************************************************************************** !
-!
-! GeomechTimestepperInitializeRun: Initializes timestepping run the time step loop
-! author: Glenn Hammond
-! date: 03/11/13
-!
-! ************************************************************************** !
+
 subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
                                     master_stepper, &
                                     flow_stepper,tran_stepper, &
                                     geomech_stepper, &
                                     init_status)
+  ! 
+  ! Initializes timestepping run the time step loop
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/11/13
+  ! 
 
   use Realization_class
 
@@ -286,15 +287,16 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
 end subroutine GeomechTimestepperInitializeRun
 
 ! ************************************************************************** !
-!
-! GeomechTimestepperExecuteRun: Runs the time step loop
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
                                         master_stepper,flow_stepper, &
                                         tran_stepper,geomech_stepper)
+  ! 
+  ! Runs the time step loop
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   use Realization_class
 
@@ -582,15 +584,16 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
 end subroutine GeomechTimestepperExecuteRun
 
 ! ************************************************************************** !
-!
-! GeomechTimestepperFinalizeRun: Finalizes timestepping runs the time step loop
-! author: Glenn Hammond
-! date: 03/11/13
-!
-! ************************************************************************** !
+
 subroutine GeomechTimestepperFinalizeRun(realization,geomech_realization, &
                                   master_stepper,flow_stepper, &
                                   tran_stepper,geomech_stepper)
+  ! 
+  ! Finalizes timestepping runs the time step loop
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/11/13
+  ! 
 
 
   use Realization_class
@@ -688,13 +691,14 @@ subroutine GeomechTimestepperFinalizeRun(realization,geomech_realization, &
 end subroutine GeomechTimestepperFinalizeRun
 
 ! ************************************************************************** !
-!
-! StepperSolveGeomechSteadyState: Solves the steady-state force balance equation
-! author: Satish Karra
-! date: 06/19/13
-!
-! ************************************************************************** !
+
 subroutine StepperSolveGeomechSteadyState(geomech_realization,stepper,failure)
+  ! 
+  ! Solves the steady-state force balance equation
+  ! 
+  ! Author: Satish Karra
+  ! Date: 06/19/13
+  ! 
   
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class

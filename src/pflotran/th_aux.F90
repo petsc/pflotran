@@ -29,6 +29,7 @@ module TH_Aux_module
     PetscReal :: du_dt
     PetscReal, pointer :: xmol(:)
     PetscReal, pointer :: diff(:)
+    PetscReal :: transient_por
     ! ice
     PetscReal :: sat_ice
     PetscReal :: sat_gas
@@ -170,6 +171,7 @@ subroutine THAuxVarInit(auxvar,option)
   auxvar%dh_dt = 0.d0
   auxvar%du_dp = 0.d0
   auxvar%du_dt = 0.d0    
+  auxvar%transient_por = 0.d0
   allocate(auxvar%xmol(option%nflowspec))
   auxvar%xmol = 0.d0
   allocate(auxvar%diff(option%nflowspec))
@@ -233,6 +235,7 @@ subroutine THAuxVarCopy(auxvar,auxvar2,option)
   auxvar2%dh_dt = auxvar%dh_dt
   auxvar2%du_dp = auxvar%du_dp
   auxvar2%du_dt = auxvar%du_dt  
+  auxvar2%transient_por = auxvar%transient_por
   auxvar2%xmol = auxvar%xmol
   auxvar2%diff = auxvar%diff
   if (option%use_th_freezing) then
@@ -258,7 +261,9 @@ end subroutine THAuxVarCopy
 ! ************************************************************************** !
 
 subroutine THAuxVarCompute(x,auxvar,global_auxvar, &
-                            iphase,saturation_function,por,perm,option)
+                           material_auxvar, &
+                            iphase,saturation_function, &
+                            option)
   ! 
   ! Computes auxiliary variables for each grid cell
   ! 
@@ -271,6 +276,7 @@ subroutine THAuxVarCompute(x,auxvar,global_auxvar, &
   
   use EOS_Water_module
   use Saturation_Function_module  
+  use Material_Aux_class
   
   implicit none
 
@@ -279,8 +285,8 @@ subroutine THAuxVarCompute(x,auxvar,global_auxvar, &
   PetscReal :: x(option%nflowdof)
   type(TH_auxvar_type) :: auxvar
   type(global_auxvar_type) :: global_auxvar
-  PetscReal :: por, perm
   PetscInt :: iphase
+  class(material_auxvar_type) :: material_auxvar
 
   PetscErrorCode :: ierr
   PetscReal :: pw,dw_kg,dw_mol,hw,sat_pressure,visl
@@ -326,7 +332,8 @@ subroutine THAuxVarCompute(x,auxvar,global_auxvar, &
     call SaturationFunctionCompute(auxvar%pc,global_auxvar%sat(1), &
                                    kr,ds_dp,dkr_dp, &
                                    saturation_function, &
-                                   por,perm, &
+                                   material_auxvar%porosity, &
+                                   material_auxvar%permeability(perm_xx_index), &
                                    option)
     dpw_dp = 0.d0
   else
@@ -341,8 +348,12 @@ subroutine THAuxVarCompute(x,auxvar,global_auxvar, &
 
 !  call wateos_noderiv(option%temp,pw,dw_kg,dw_mol,hw,option%scale,ierr)
   call EOSWaterDensityEnthalpy(global_auxvar%temp(1),pw,dw_kg,dw_mol,hw, &
-                               dw_dp,dw_dt,hw_dp,hw_dt,option%scale,ierr)
-
+                               dw_dp,dw_dt,hw_dp,hw_dt,ierr)
+  ! J/kmol -> whatever units
+  hw = hw * option%scale
+  hw_dp = hw_dp * option%scale
+  hw_dt = hw_dt * option%scale
+  
 ! may need to compute dpsat_dt to pass to VISW
   call EOSWaterSaturationPressure(global_auxvar%temp(1),sat_pressure,dpsat_dt,ierr)
   
@@ -392,8 +403,11 @@ end subroutine THAuxVarCompute
 
 ! ************************************************************************** !
 
-subroutine THAuxVarComputeIce(x, auxvar, global_auxvar, iphase, &
-                               saturation_function, por, perm, option)
+subroutine THAuxVarComputeIce(x, auxvar, global_auxvar, &
+                              material_auxvar, &
+                              iphase, &
+                              saturation_function, &
+                              option)
   ! 
   ! Computes auxillary variables for each grid cell when
   ! ice and vapor phases are present
@@ -409,6 +423,7 @@ subroutine THAuxVarComputeIce(x, auxvar, global_auxvar, iphase, &
   
   use EOS_Water_module
   use Saturation_Function_module  
+  use Material_Aux_class
   
   implicit none
 
@@ -417,7 +432,7 @@ subroutine THAuxVarComputeIce(x, auxvar, global_auxvar, iphase, &
   PetscReal :: x(option%nflowdof)
   type(TH_auxvar_type) :: auxvar
   type(global_auxvar_type) :: global_auxvar
-  PetscReal :: por, perm
+  class(material_auxvar_type) :: material_auxvar
   PetscInt :: iphase
 
   PetscErrorCode :: ierr
@@ -524,11 +539,14 @@ subroutine THAuxVarComputeIce(x, auxvar, global_auxvar, iphase, &
   end select
 
 !  call EOSWaterDensityEnthalpy(global_auxvar%temp(1),pw,dw_kg,dw_mol,hw, &
-!                               dw_dp,dw_dt,hw_dp,hw_dt,option%scale,ierr)
+!                               dw_dp,dw_dt,hw_dp,hw_dt,ierr)
 
   call EOSWaterDensityEnthalpyPainter(global_auxvar%temp(1),pw,dw_kg,dw_mol, &
                                       hw,PETSC_TRUE,dw_dp,dw_dt,hw_dp,hw_dt,ierr)
-
+  ! J/kmol -> MJ/kmol
+  hw = hw * 1.d-6
+  hw_dp = hw_dp * 1.d-6
+  hw_dt = hw_dt * 1.d-6
                          
   call EOSWaterSaturationPressure(global_auxvar%temp(1), sat_pressure, &
                                   dpsat_dt, ierr)
