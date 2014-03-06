@@ -1442,7 +1442,6 @@ subroutine SecondaryRTUpdateIterate(line_search,P0,dP,P1,dP_changed, &
 
       call SecondaryRTAuxVarComputeMulti(&
                                     rt_sec_transport_vars(local_id), &
-                                    global_auxvars(ghosted_id), &
                                     reaction, &
                                     option)              
  
@@ -1741,8 +1740,7 @@ end subroutine SecondaryRTCheckResidual
 
 ! ************************************************************************** !
 
-subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars, &
-                                         global_auxvar,reaction, &
+subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars,reaction, &
                                          option)
   ! 
   ! Updates the secondary continuum
@@ -1754,7 +1752,6 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars, &
                                
                             
   use Option_module 
-  use Global_Aux_module
   use Reaction_Aux_module
   use Reaction_module
   use Reactive_Transport_Aux_module
@@ -1766,7 +1763,6 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars, &
   implicit none
   
   type(sec_transport_type) :: sec_transport_vars
-  type(global_auxvar_type) :: global_auxvar
   type(reaction_type), pointer :: reaction
   type(option_type) :: option
   PetscReal :: coeff_left(reaction%naqcomp,reaction%naqcomp, &
