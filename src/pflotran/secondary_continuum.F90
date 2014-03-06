@@ -986,6 +986,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,auxvar, &
     enddo
     coeff_diag(:,:,i) = coeff_diag(:,:,i) + jac_react  ! in kg water/s
   enddo  
+  call MaterialAuxVarStrip(material_auxvar)
   deallocate(material_auxvar)
          
 !============================== Forward solve ==================================        
@@ -1441,7 +1442,6 @@ subroutine SecondaryRTUpdateIterate(line_search,P0,dP,P1,dP_changed, &
 
       call SecondaryRTAuxVarComputeMulti(&
                                     rt_sec_transport_vars(local_id), &
-                                    global_auxvars(ghosted_id), &
                                     reaction, &
                                     option)              
  
@@ -1557,6 +1557,7 @@ subroutine SecondaryRTUpdateKineticState(sec_transport_vars,global_auxvars, &
                    sec_transport_vars%sec_rt_auxvar(i), &
                    global_auxvars,material_auxvar,reaction,option)
   enddo
+  call MaterialAuxVarStrip(material_auxvar)
   deallocate(material_auxvar)
   
   if (reaction%mineral%nkinmnrl > 0) then
@@ -1721,7 +1722,8 @@ subroutine SecondaryRTCheckResidual(sec_transport_vars,auxvar, &
     do j = 1, ncomp
       res(j+(i-1)*ncomp) = res(j+(i-1)*ncomp) + res_react(j) 
     enddo
-  enddo           
+  enddo  
+  call MaterialAuxVarStrip(material_auxvar)         
   deallocate(material_auxvar)
   
  ! Need to decide how to scale the residual with volumes
@@ -1732,13 +1734,13 @@ subroutine SecondaryRTCheckResidual(sec_transport_vars,auxvar, &
   enddo
     
   inf_norm_sec = maxval(abs(res))  
-                                    
+  call RTAuxVarStrip(rt_auxvar)  
+                                                                      
 end subroutine SecondaryRTCheckResidual                                    
 
 ! ************************************************************************** !
 
-subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars, &
-                                         global_auxvar,reaction, &
+subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars,reaction, &
                                          option)
   ! 
   ! Updates the secondary continuum
@@ -1750,7 +1752,6 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars, &
                                
                             
   use Option_module 
-  use Global_Aux_module
   use Reaction_Aux_module
   use Reaction_module
   use Reactive_Transport_Aux_module
@@ -1762,7 +1763,6 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars, &
   implicit none
   
   type(sec_transport_type) :: sec_transport_vars
-  type(global_auxvar_type) :: global_auxvar
   type(reaction_type), pointer :: reaction
   type(option_type) :: option
   PetscReal :: coeff_left(reaction%naqcomp,reaction%naqcomp, &

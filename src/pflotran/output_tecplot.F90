@@ -2294,7 +2294,7 @@ subroutine OutputSecondaryContinuumTecplot(realization_base)
       rt_sec_tranport_vars => patch%aux%SC_RT%sec_transport_vars
       reaction => realization_base%reaction
     endif
-    if (option%iflowmode == TH_MODE .or. option%iflowmode == THC_MODE &
+    if (option%iflowmode == TH_MODE &
         .or. option%iflowmode == MPH_MODE) then
       sec_heat_vars => patch%aux%SC_heat%sec_heat_vars
     endif
@@ -2565,7 +2565,7 @@ subroutine WriteTecplotHeaderSec(fid,realization_base,cell_string, &
   ! add secondary temperature to header
   if (print_secondary_data(1)) then
     select case (option%iflowmode) 
-      case (TH_MODE,THC_MODE, MPH_MODE)
+      case (TH_MODE, MPH_MODE)
         header = ''
         string = 'T'
         call OutputAppendToHeader(header,string,'C',cell_string,icolumn)
