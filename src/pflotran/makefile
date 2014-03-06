@@ -75,10 +75,6 @@ ifdef remove_sat
   MYFLAGS += -DREMOVE_SATURATION
 endif
 
-ifdef compressibility
-  MYFLAGS += -DUSE_COMPRESSIBILITY
-endif
-
 ifdef no_vapor_diffusion
   MYFLAGS += -DNO_VAPOR_DIFFUSION
 endif

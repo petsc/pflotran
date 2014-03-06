@@ -1417,7 +1417,8 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar, &
 
   use Option_module
   use Saturation_Function_module
-  
+  use Material_module, only : MaterialCompressSoil
+  use Material_Aux_class
   use EOS_Water_module
   
   implicit none
@@ -1441,6 +1442,7 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar, &
   PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
   PetscReal :: J_pert(option%nflowdof,option%nflowdof)
   PetscReal :: vol_frac_prim, tempreal
+  PetscReal :: compressed_porosity, dcompressed_porosity_dp
   
   ! ice variables
   PetscReal :: sat_g, p_g, den_g, p_sat, mol_g, u_g, C_g
@@ -1456,36 +1458,25 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar, &
   
   ! X = {p, T}; R = {R_p, R_T}
   
-  por = material_auxvar%porosity
   vol = material_auxvar%volume
   
-#ifndef USE_COMPRESSIBILITY
+  if (soil_compressibility_index > 0) then
+    tempreal = global_auxvar%sat(1)*global_auxvar%den(1)
+    call MaterialCompressSoil(material_auxvar,global_auxvar%pres(1), &
+                              compressed_porosity,dcompressed_porosity_dp)
+    por = compressed_porosity
+  else
+    por = material_auxvar%porosity
+    dcompressed_porosity_dp = 0.d0
+  endif
+
   porXvol = por*vol
-  J(TH_PRESSURE_DOF,TH_PRESSURE_DOF) = (global_auxvar%sat(1)*TH_auxvar%dden_dp + &
-           TH_auxvar%dsat_dp*global_auxvar%den(1))*porXvol !*TH_auxvar%xmol(1)
-#else
-  if (TH_auxvar%pc > 0.d0) then
-    por1 = por
-  else
-    por1 = 1.d0-(1.d0-por)*exp(-1.d-10*(abs(global_auxvar%pres(1)- &
-                                       option%reference_pressure)))
-  endif
-  
-  porXvol = por1*vol
-  
-  if (TH_auxvar%pc > 0.d0) then
-    J(TH_PRESSURE_DOF,TH_PRESSURE_DOF) = (global_auxvar%sat(1)*TH_auxvar%dden_dp + &
-             TH_auxvar%dsat_dp*global_auxvar%den(1))*porXvol
-  else
-    tempreal = exp(-1.d-10*(abs(global_auxvar%pres(1)-option%reference_pressure)))
-    J(TH_PRESSURE_DOF,TH_PRESSURE_DOF) = (global_auxvar%sat(1)*TH_auxvar%dden_dp + &
-             TH_auxvar%dsat_dp*global_auxvar%den(1))*porXvol + &
-             global_auxvar%sat(1)*global_auxvar%den(1)*vol*1.d-10* &
-             (1.d0 - por)*tempreal*abs(global_auxvar%pres(1)- &
-             option%reference_pressure)/(global_auxvar%pres(1)- &
-             option%reference_pressure)
-  endif
-#endif
+
+  ! d(por*sat*den)/dP * vol
+  J(TH_PRESSURE_DOF,TH_PRESSURE_DOF) = &
+    (global_auxvar%sat(1)*TH_auxvar%dden_dp + &
+     TH_auxvar%dsat_dp*global_auxvar%den(1))*porXvol + &
+    dcompressed_porosity_dp*global_auxvar%sat(1)*global_auxvar%den(1)*vol
 
   J(TH_PRESSURE_DOF,TH_TEMPERATURE_DOF) = global_auxvar%sat(1)*TH_auxvar%dden_dt*porXvol !*TH_auxvar%xmol(1)
   J(TH_TEMPERATURE_DOF,TH_PRESSURE_DOF) = (TH_auxvar%dsat_dp*global_auxvar%den(1)*TH_auxvar%u + &
@@ -1616,7 +1607,8 @@ subroutine THAccumulation(auxvar,global_auxvar, &
   ! 
 
   use Option_module
-  
+  use Material_module, only : MaterialCompressSoil
+  use Material_Aux_class
   use EOS_Water_module
   
   implicit none
@@ -1632,6 +1624,7 @@ subroutine THAccumulation(auxvar,global_auxvar, &
   PetscReal :: vol,por
   PetscReal :: porXvol, mol(option%nflowspec), eng
   PetscReal :: vol_frac_prim
+  PetscReal :: compressed_porosity, dcompressed_porosity_dp
 
   ! ice variables
   PetscReal :: sat_g, p_g, den_g, p_sat, mol_g, u_g, C_g
@@ -1640,22 +1633,21 @@ subroutine THAccumulation(auxvar,global_auxvar, &
   PetscReal, parameter :: C_wv = 1.005d-3 ! in MJ/kg/K
   PetscErrorCode :: ierr
   
-  por = material_auxvar%porosity
   vol = material_auxvar%volume
-! TechNotes, TH Mode: First term of Equation 8
-  porXvol = por*vol
   
-#ifndef USE_COMPRESSIBILITY  
-  mol(1) = global_auxvar%sat(1)*global_auxvar%den(1)*porXvol
-#else
-  if (auxvar%pc > 0.d0) then
-    por1 = por 
+  if (soil_compressibility_index > 0) then
+    call MaterialCompressSoil(material_auxvar,global_auxvar%pres(1), &
+                              compressed_porosity,dcompressed_porosity_dp)
+    por = compressed_porosity
   else
-    por1 = 1.d0-(1.d0-por)*exp(-1.d-10*(abs(global_auxvar%pres(1)- &
-                                       option%reference_pressure)))
+    por = material_auxvar%porosity
   endif
-  mol(1) = global_auxvar%sat(1)*global_auxvar%den(1)*por1*vol
-#endif
+
+  ! TechNotes, TH Mode: First term of Equation 8
+  porXvol = por*vol
+
+  mol(1) = global_auxvar%sat(1)*global_auxvar%den(1)*porXvol
+
     
 !  mol(2) = global_auxvar%sat(1)*global_auxvar%den(1)*auxvar%xmol(2)*porXvol
 
