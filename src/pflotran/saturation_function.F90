@@ -1720,16 +1720,22 @@ subroutine SatFuncComputeIceDallAmico(pl, T, &
   select case(saturation_function%permeability_function_itype)
     case(MUALEM)
       Sr = saturation_function%Sr(1)
-      Se = min((s_l-Sr)/(1.0d0-Sr),1.d0)
-      m = saturation_function%m
-      one_over_m = 1.d0/m
-      liq_sat_one_over_m = Se**one_over_m
-      kr = sqrt(Se)*(1.d0 - (1.d0 - liq_sat_one_over_m)**m)**2.d0
-      dkr_dSe = 0.5d0*kr/Se + &
-           2.d0*Se**(one_over_m - 0.5d0)* &
-           (1.d0 - liq_sat_one_over_m)**(m - 1.d0)* &
-           (1.d0 - (1.d0 - liq_sat_one_over_m)**m)
-      dkr_dsl = dkr_dSe / ( 1.0d0 - Sr )
+      Sr = 0.d0
+      Se = (s_l-Sr)/(1.0d0-Sr)
+      if ( abs(Se-1.d0) < 1.0d-12 ) then
+        kr = 1.d0
+        dkr_dsl = 0.d0
+      else
+        m = saturation_function%m
+        one_over_m = 1.d0/m
+        liq_sat_one_over_m = Se**one_over_m
+        kr = sqrt(Se)*(1.d0 - (1.d0 - liq_sat_one_over_m)**m)**2.d0
+        dkr_dSe = 0.5d0*kr/Se + &
+                  2.d0*Se**(one_over_m - 0.5d0)* &
+                 (1.d0 - liq_sat_one_over_m)**(m - 1.d0)* &
+                 (1.d0 - (1.d0 - liq_sat_one_over_m)**m)
+        dkr_dsl = dkr_dSe / ( 1.0d0 - Sr )
+      endif
       dkr_dpl = dkr_dsl*dsl_dpl
       dkr_dT = dkr_dsl*dsl_dT
     case default
