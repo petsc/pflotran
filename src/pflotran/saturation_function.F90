@@ -145,6 +145,8 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
   PetscInt :: iphase
   
   character(len=MAXWORDLENGTH) :: keyword, word
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscReal :: tempreal
 
   input%ierr = 0
   do
@@ -214,7 +216,40 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
             call InputReadDouble(input,option,saturation_function%Sr(iphase))
             word = trim(keyword) // ' residual saturation'
             call InputErrorMsg(input,option,word,'SATURATION_FUNCTION')
-          case(RICHARDS_MODE,TH_MODE,G_MODE)
+          case(G_MODE)
+            iphase = 0
+            string = input%buf
+            call InputReadDouble(input,option,tempreal)
+!            call InputErrorMsg(input,option,'residual saturation','SATURATION_FUNCTION')
+            if (input%ierr /= 0) then
+              input%buf = string
+              call InputReadWord(input,option,keyword,PETSC_TRUE)
+              call InputErrorMsg(input,option,'phase', &
+                                 'SATURATION_FUNCTION,RESIDUAL_SATURATION')
+              call StringToUpper(keyword)   
+              select case(trim(keyword))
+                case('LIQUID','LIQUID_PHASE')
+                  iphase = 1
+                case('GAS','GAS_PHASE')
+                  iphase = 2
+                case default
+                  option%io_buffer = 'Keyword "' // trim(keyword) // &
+                    '" not recognized for RESIDUAL_SATURATION phase.'
+                  call printErrMsg(option)
+              end select
+              call InputReadDouble(input,option,tempreal)
+              word = trim(keyword) // ' residual saturation'
+              call InputErrorMsg(input,option,word,'SATURATION_FUNCTION')
+            else
+              ! if missing phase keyword, assume for all phases and set
+              ! buffer to value
+            endif
+            if (iphase > 0) then
+              saturation_function%Sr(iphase) = tempreal
+            else
+              saturation_function%Sr(:) = tempreal
+            endif
+          case(RICHARDS_MODE,TH_MODE)
             call InputReadDouble(input,option,saturation_function%Sr(1))
             call InputErrorMsg(input,option,'residual saturation','SATURATION_FUNCTION')
         end select
