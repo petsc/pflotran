@@ -29,6 +29,7 @@ module TH_Aux_module
     PetscReal :: du_dt
     PetscReal, pointer :: xmol(:)
     PetscReal, pointer :: diff(:)
+    PetscReal :: transient_por
     ! ice
     PetscReal :: sat_ice
     PetscReal :: sat_gas
@@ -166,6 +167,7 @@ subroutine THAuxVarInit(auxvar,option)
   auxvar%dh_dt = 0.d0
   auxvar%du_dp = 0.d0
   auxvar%du_dt = 0.d0    
+  auxvar%transient_por = 0.d0
   allocate(auxvar%xmol(option%nflowspec))
   auxvar%xmol = 0.d0
   allocate(auxvar%diff(option%nflowspec))
@@ -226,6 +228,7 @@ subroutine THAuxVarCopy(auxvar,auxvar2,option)
   auxvar2%dh_dt = auxvar%dh_dt
   auxvar2%du_dp = auxvar%du_dp
   auxvar2%du_dt = auxvar%du_dt  
+  auxvar2%transient_por = auxvar%transient_por
   auxvar2%xmol = auxvar%xmol
   auxvar2%diff = auxvar%diff
   if (option%use_th_freezing) then

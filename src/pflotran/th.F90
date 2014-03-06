@@ -1642,6 +1642,7 @@ subroutine THAccumulation(auxvar,global_auxvar, &
   else
     por = material_auxvar%porosity
   endif
+  auxvar%transient_por = por
 
   ! TechNotes, TH Mode: First term of Equation 8
   porXvol = por*vol
@@ -4573,6 +4574,8 @@ subroutine THSetPlotVariables(realization)
   use Realization_class
   use Output_Aux_module
   use Variables_module
+  use Material_Aux_class
+  use Option_module
 
   implicit none
 
@@ -4671,6 +4674,12 @@ subroutine THSetPlotVariables(realization)
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                GAS_MOLE_FRACTION,ONE_INTEGER)
 
+  if (soil_compressibility_index > 0) then
+    name = 'Transient Porosity'
+    units = ''
+    call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                                 TRANSIENT_POROSITY)
+  endif
 ! name = 'Phase'
 ! units = ''
 ! output_variable%iformat = 1 ! integer
