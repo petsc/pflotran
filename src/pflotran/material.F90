@@ -615,6 +615,21 @@ subroutine MaterialPropertyRead(material_property,input,option)
      endif
   endif
 
+  if (len(trim(material_property%soil_compressibility_function)) > 0) then
+    if (material_property%soil_compressibility<-998.d0) then
+      option%io_buffer = 'SOIL_COMPRESSIBILITY_FUNCTION is specified in ' // &
+        'inputdeck for MATERIAL_PROPERTY card, but SOIL_COMPRESSIBILITY ' // &
+        'is not defined.'
+      call printErrMsg(option)
+    endif
+    if (material_property%soil_reference_pressure<-998.d0) then
+      option%io_buffer = 'SOIL_COMPRESSIBILITY_FUNCTION is specified in ' // &
+        'inputdeck for MATERIAL_PROPERTY card, but SOIL_REFERENCE_PRESSURE ' // &
+        'is not defined.'
+      call printErrMsg(option)
+    endif
+  endif
+
 end subroutine MaterialPropertyRead
 
 ! ************************************************************************** !
