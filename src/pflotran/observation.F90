@@ -153,7 +153,7 @@ subroutine ObservationRead(observation,input,option)
       case('BOUNDARY_CONDITION')
         call InputReadWord(input,option,observation%linkage_name,PETSC_TRUE)
         call InputErrorMsg(input,option,'boundary condition name','OBSERVATION')
-        option%store_solute_fluxes = PETSC_TRUE
+        option%transport%store_solute_fluxes = PETSC_TRUE
         observation%itype = OBSERVATION_FLUX
       case('REGION')
         call InputReadWord(input,option,observation%linkage_name,PETSC_TRUE)

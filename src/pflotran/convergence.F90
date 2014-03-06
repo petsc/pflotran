@@ -191,8 +191,10 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
 !      if (fnorm > solver%max_norm .or. pnorm > solver%max_norm .or. &
 !        inorm_residual > solver%max_norm) then
  
-  if (option%check_post_convergence .and. option%converged) then
+  if (solver%check_post_convergence .and. option%converged) then
     reason = 12
+    ! set back to false
+    option%converged = PETSC_FALSE
   endif
   
   if (option%out_of_table) then

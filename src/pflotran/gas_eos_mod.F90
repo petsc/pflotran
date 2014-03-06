@@ -11,57 +11,59 @@ contains
 
 ! ************************************************************************** !
 
-subroutine ideal_gaseos_noderiv(p,tc,energyscale,d,h,u)
+subroutine ideal_gaseos_noderiv(p,tc,d,h,u)
     
-    PetscReal,intent(in):: p,tc,energyscale
-   PetscReal, intent(out):: d,h,u
-
+  PetscReal,intent(in) :: p  ! [Pa]
+  PetscReal,intent(in) :: tc ! [C]
+  PetscReal, intent(out):: d ! [kmol/m^3]
+  PetscReal, intent(out):: h ! [J/kmol]
+  PetscReal, intent(out):: u ! [J/kmol]
    
-    PetscReal, parameter:: Rg=8.31415 
-    ! Cpg units: J/mol-K
-    PetscReal, parameter:: Cv_air = 20.85 ! head capacity wiki
-!geh    PetscReal, parameter:: Cpg=Rg*2.5 !maybe
-    PetscReal  t
+  PetscReal, parameter:: Rg=8.31415 
+  ! Cpg units: J/mol-K
+  PetscReal, parameter:: Cv_air = 20.85 ! head capacity wiki
+  PetscReal  tk
     
-    t = tc + 273.15
-    d= p / t / Rg /1D3
-    h= Cv_air * t * energyscale*1D3
-    u= (Cv_air - Rg) * t * energyscale*1D3
-
+  tk = tc + 273.15
+  d = p / tk / Rg * 1.d-3 ! mol/m^3 -> kmol/m^3
+  h = Cv_air * tk * 1.d3  ! J/mol -> J/kmol
+  u = (Cv_air - Rg) * tk * 1.d3 ! J/mol -> J/kmol
    
 end subroutine ideal_gaseos_noderiv
 
 ! ************************************************************************** !
 
-subroutine ideal_gaseos(p,tc,energyscale,d,d_p,d_t,h,h_p,h_t,u,u_p,u_t)
+subroutine ideal_gaseos(p,tc,d,d_p,d_t,h,h_p,h_t,u,u_p,u_t)
     
-    PetscReal, intent(in):: p,tc,energyscale
-    PetscReal, intent(out):: d,d_p,d_t,h,h_p,h_t,u,u_p,u_t
+  PetscReal,intent(in) :: p  ! [Pa]
+  PetscReal,intent(in) :: tc ! [C]
+  PetscReal, intent(out):: d ! [kmol/m^3]
+  PetscReal, intent(out):: h ! [J/kmol]
+  PetscReal, intent(out):: u ! [J/kmol]
+  PetscReal, intent(out):: d_p,d_t,h_p,h_t,u_p,u_t
 
-    PetscReal, parameter:: Rg=8.31415 
-    ! Cpg units: J/mol-K
-    PetscReal, parameter:: Cv_air = 20.85 ! head capacity wiki
-!geh    PetscReal, parameter:: Cpg=Rg*2.5 ! maybe
-    PetscReal  t
+  PetscReal, parameter:: Rg=8.31415 
+  ! Cpg units: J/mol-K
+  PetscReal, parameter:: Cv_air = 20.85 ! head capacity wiki
+  PetscReal  tk
 
-    t = tc + 273.15
-    d= p / t / Rg/1D3
-    h= Cv_air * t * energyscale*1D3
-    u= (Cv_air - Rg) * t * energyscale*1D3
+  tk = tc + 273.15
+  d = p / tk / Rg * 1.d-3 ! mol/m^3 -> kmol/m^3
+  h = Cv_air * tk * 1.d3  ! J/mol -> J/kmol
+  u = (Cv_air - Rg) * tk * 1.d3 ! J/mol -> J/kmol
 
-    d_p=  d / p
-    d_t=- d / t
-    h_p=0.
-    h_t=Cv_air * energyscale*1D3
-    u_p=0.
-    u_t= (Cv_air - Rg) * energyscale*1D3
+  d_p =  d / p
+  d_t = -d / tk
+  h_p = 0.d0
+  h_t = Cv_air * 1.d3
+  u_p = 0.d0
+  u_t = (Cv_air - Rg) * 1.d3
 
-!print *,'ideal gas ',energyscale,h,h_p,h_t,u,u_p,u_t
 end subroutine ideal_gaseos
 
 ! ************************************************************************** !
 
-subroutine visgas_noderiv(t,pa,p,ds,visg)
+subroutine visgas_noderiv(t,p_air,p_gas,d_air,visg)
   ! 
   ! REFERENCES
   ! THIS ROUTINE IS LARGELY ADAPTED FROM THE TOUGH CODE.
@@ -77,8 +79,13 @@ subroutine visgas_noderiv(t,pa,p,ds,visg)
   ! vapor-air mixtures in the temperature range from 100 to 150
   ! deg. c, for all compositions, to better than 4%.
   ! 
-      PetscReal  t,pa,p,ds,visg
-      PetscReal  fair,fwat,cair,cwat
+  PetscReal, intent(in) :: t     ! [C]
+  PetscReal, intent(in) :: p_air ! [Pa]
+  PetscReal, intent(in) :: p_gas ! [Pa]
+  PetscReal, intent(in) :: d_air ! [kmol/m^3]
+  PetscReal, intent(out) :: visg ! [Pa-s]
+
+  PetscReal ::  fair,fwat,cair,cwat
 
       data  fair,   fwat,    cair,  cwat &
            /97.d0, 363.d0, 3.617d0, 2.655d0/
@@ -95,8 +102,8 @@ subroutine visgas_noderiv(t,pa,p,ds,visg)
 !      do k = 1,nb
  !       if (iphas(k).eq.2 .or. iphas(k).eq.0) then
 
-          d   = ds *FMWAIR       
-          xga = pa /p ! for debug, set x constant
+          d   = d_air *FMWAIR       
+          xga = p_air / p_gas ! for debug, set x constant
           xg1 = 1.D0 - xga
           tk  = t +273.15d0
 
@@ -127,7 +134,6 @@ subroutine visgas_noderiv(t,pa,p,ds,visg)
           z3   = 0.6d0*ard*(g+e*(vis1+vis2)-2.d0*xga*xg1+h)
           visg  = (1.d0+z3)/(z1+z2)*.1d0
            
-      return
 end subroutine visgas_noderiv
 
 ! ************************************************************************** !

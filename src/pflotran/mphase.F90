@@ -301,8 +301,6 @@ subroutine MphaseSetupPatch(realization)
         initial_condition%flow_condition%temperature%dataset%rarray(1)
       endif
           
-      mphase_sec_heat_vars(local_id)%sec_temp_update = PETSC_FALSE
-
     enddo
       
     patch%aux%SC_heat%sec_heat_vars => mphase_sec_heat_vars    
@@ -1207,18 +1205,82 @@ subroutine MphaseUpdateSolutionPatch(realization)
   ! written based on RichardsUpdateSolutionPatch
   ! 
   ! Author: Satish Karra, LANL
-  ! Date: 08/23/11
+  ! Date: 08/23/11, 02/27/14
   ! 
 
   use Realization_class
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Field_module
+  use Secondary_Continuum_Aux_module
+  use Secondary_Continuum_module
     
   implicit none
   
   type(realization_type) :: realization
+  type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(mphase_type), pointer :: mphase
+  type(mphase_parameter_type), pointer :: mphase_parameter
+  type(mphase_auxvar_type), pointer :: auxvars(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+  type(sec_heat_type), pointer :: mphase_sec_heat_vars(:)
+
+  PetscInt :: istart, iend  
+  PetscInt :: local_id, ghosted_id
+  ! secondary continuum variables
+  PetscReal :: sec_dencpr
+  PetscErrorCode :: ierr
+  PetscReal, pointer :: ithrm_loc_p(:)
+
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  field => realization%field
+
+  mphase => patch%aux%Mphase
+  mphase_parameter => mphase%mphase_parameter
+  auxvars => mphase%auxvars
+  global_auxvars => patch%aux%Global%auxvars
+
+  if (option%use_mc) then
+    mphase_sec_heat_vars => patch%aux%SC_heat%sec_heat_vars  
+  endif
 
   if (realization%option%compute_mass_balance_new) then
     call MphaseUpdateMassBalancePatch(realization)
   endif
+  
+  if (option%use_mc) then
+ 
+   call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)  
+  
+  ! Secondary continuum contribution (Added by SK 06/26/2012)
+  ! only one secondary continuum for now for each primary continuum node
+    do local_id = 1, grid%nlmax  ! For each local node do...
+      ghosted_id = grid%nL2G(local_id)
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
+      iend = local_id*option%nflowdof
+      istart = iend-option%nflowdof+1
+    
+      sec_dencpr = mphase_parameter%dencpr(int(ithrm_loc_p(ghosted_id))) ! secondary rho*c_p same as primary for now
+
+      call MphaseSecHeatAuxVarCompute(mphase_sec_heat_vars(local_id), &
+                        auxvars(ghosted_id)%auxvar_elem(0), &
+                        global_auxvars(ghosted_id), &
+                        mphase_parameter%ckwet(int(ithrm_loc_p(ghosted_id))), &
+                        sec_dencpr, &
+                        option)
+    enddo   
+    
+    call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
+    
+  endif  
 
 end subroutine MphaseUpdateSolutionPatch
 
@@ -1489,7 +1551,10 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype,R
       msrc(2) =  msrc(2) / FMWCO2
       if (msrc(1) > 0.d0) then ! H2O injection
         call EOSWaterDensityEnthalpy(tsrc,auxvar%pres,dw_kg,dw_mol, &
-                                     enth_src_h2o,option%scale,ierr)
+                                     enth_src_h2o,ierr)
+        ! J/kmol -> whatever units
+        enth_src_h2o = enth_src_h2o * option%scale
+                                     
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
         Res(jh2o) = Res(jh2o) + msrc(1)*(1.d0-csrc)*option%flow_dt
@@ -1503,7 +1568,9 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype,R
         qsrc_phase(1) = msrc(1)/dw_mol
       elseif (msrc(1) < 0.d0) then ! H2O extraction
         call EOSWaterDensityEnthalpy(auxvar%temp,auxvar%pres,dw_kg,dw_mol, &
-                                     enth_src_h2o,option%scale,ierr)
+                                     enth_src_h2o,ierr)
+        ! J/kmol -> whatever
+        enth_src_h2o = enth_src_h2o * option%scale                            
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
         Res(jh2o) = Res(jh2o) + msrc(1)*(1.d0-csrc)*option%flow_dt
@@ -1618,7 +1685,9 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype,R
       if( dabs(well_status - 2.D0) < 1.D-1) then
 
         call EOSWaterDensityEnthalpy(tsrc,auxvar%pres,dw_kg,dw_mol, &
-                                     enth_src_h2o,option%scale,ierr)
+                                     enth_src_h2o,ierr)
+        ! J/kmol -> whatever units
+        enth_src_h2o = enth_src_h2o * option%scale
 
         Dq = msrc(2) ! well parameter, read in input file
                       ! Take the place of 2nd parameter 
@@ -2270,7 +2339,10 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
         hg = hg * FMWCO2 *option%scale
       endif
     else      
-      call ideal_gaseos_noderiv(p2,t,option%scale,dg,hg,ug)
+      call ideal_gaseos_noderiv(p2,t,dg,hg,ug)
+      ! J/kmol -> whatever
+      hg = hg * option%scale                            
+      ug = ug * option%scale                            
       fg = p2
     endif
    
@@ -2713,16 +2785,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       iend = local_id*option%nflowdof
       istart = iend-option%nflowdof+1
     
-      sec_dencpr = mphase_parameter%dencpr(int(ithrm_loc_p(ghosted_id))) ! secondary rho*c_p same as primary for now
-
-      if (option%sec_vars_update) then
-        call MphaseSecHeatAuxVarCompute(mphase_sec_heat_vars(local_id), &
-                        auxvars(ghosted_id)%auxvar_elem(0), &
-                        global_auxvars(ghosted_id), &
-                        mphase_parameter%ckwet(int(ithrm_loc_p(ghosted_id))), &
-                        sec_dencpr, &
-                        option)
-      endif       
+      sec_dencpr = mphase_parameter%dencpr(int(ithrm_loc_p(ghosted_id))) ! secondary rho*c_p same as primary for now   
     
       call MphaseSecondaryHeat(mphase_sec_heat_vars(local_id), &
                         auxvars(ghosted_id)%auxvar_elem(0), &
@@ -2733,7 +2796,6 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       r_p(iend) = r_p(iend) - res_sec_heat*option%flow_dt*volume_p(local_id)
 
     enddo   
-    option%sec_vars_update = PETSC_FALSE
   endif
 #endif
 

@@ -600,7 +600,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
     end select 
   enddo
 
-  if ((option%iflowmode == TH_MODE) .or. (option%iflowmode == THC_MODE)) then
+  if (option%iflowmode == TH_MODE) then
      if (option%use_th_freezing .eqv. PETSC_TRUE) then
         if (.not. therm_k_frz) then
            option%io_buffer = 'THERMAL_CONDUCTIVITY_FROZEN must be set ' // &
@@ -613,6 +613,21 @@ subroutine MaterialPropertyRead(material_property,input,option)
            call printErrMsg(option)
         endif
      endif
+  endif
+
+  if (len(trim(material_property%soil_compressibility_function)) > 0) then
+    if (material_property%soil_compressibility<-998.d0) then
+      option%io_buffer = 'SOIL_COMPRESSIBILITY_FUNCTION is specified in ' // &
+        'inputdeck for MATERIAL_PROPERTY card, but SOIL_COMPRESSIBILITY ' // &
+        'is not defined.'
+      call printErrMsg(option)
+    endif
+    if (material_property%soil_reference_pressure<-998.d0) then
+      option%io_buffer = 'SOIL_COMPRESSIBILITY_FUNCTION is specified in ' // &
+        'inputdeck for MATERIAL_PROPERTY card, but SOIL_REFERENCE_PRESSURE ' // &
+        'is not defined.'
+      call printErrMsg(option)
+    endif
   endif
 
 end subroutine MaterialPropertyRead

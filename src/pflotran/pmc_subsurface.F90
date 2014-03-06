@@ -666,9 +666,6 @@ subroutine PMCSubsurfaceSetAuxDataForGeomech(this)
     case (TH_MODE)
       pres_dof = TH_PRESSURE_DOF
       temp_dof = TH_TEMPERATURE_DOF
-    case (THC_MODE)
-      pres_dof = THC_PRESSURE_DOF
-      temp_dof = THC_TEMPERATURE_DOF
     case (MPH_MODE)
       pres_dof = MPH_PRESSURE_DOF
       temp_dof = MPH_TEMPERATURE_DOF

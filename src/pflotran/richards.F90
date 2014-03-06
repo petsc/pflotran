@@ -376,7 +376,7 @@ subroutine RichardsCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
   P1_changed = PETSC_FALSE
   
   option%converged = PETSC_FALSE
-  if (option%check_post_convergence) then
+  if (option%flow%check_post_convergence) then
     call VecGetArrayF90(dP,dP_p,ierr)
     call VecGetArrayF90(P1,P1_p,ierr)
     call VecGetArrayF90(field%flow_r,r_p,ierr)
@@ -397,7 +397,7 @@ subroutine RichardsCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
                        MPI_DOUBLE_PRECISION, &
                        MPI_MAX,option%mycomm,ierr)
     option%converged = PETSC_TRUE
-    if (global_inf_norm > option%post_convergence_tol) &
+    if (global_inf_norm > option%flow%post_convergence_tol) &
       option%converged = PETSC_FALSE
     call VecRestoreArrayF90(dP,dP_p,ierr)
     call VecRestoreArrayF90(P1,P1_p,ierr)
@@ -1410,10 +1410,10 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
                             cur_connection_set%dist(:,iconn), &
                             option,v_darcy,Res)
         case (LSM_FLUX)
-#if 0         
           option%io_buffer = 'RicardsLSM needs to be implemented with ' // &
                              'new material_aux_type.'
           call printErrMsg(option)
+#if 0
           call RichardsLSMFlux(rich_auxvars(ghosted_id_up), &
                                global_auxvars(ghosted_id_up), &
                                porosity_loc_p(ghosted_id_up), &
