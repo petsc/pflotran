@@ -15,6 +15,7 @@ module Output_Observation_module
   ! flags signifying the first time a routine is called during a given
   ! simulation
   PetscBool :: observation_first
+  PetscBool :: secondary_observation_first
   PetscBool :: mass_balance_first
 
   public :: OutputObservation, &
@@ -41,9 +42,11 @@ subroutine OutputObservationInit(num_steps)
   
   if (num_steps == 0) then
     observation_first = PETSC_TRUE
+    secondary_observation_first = PETSC_TRUE
     mass_balance_first = PETSC_TRUE
   else
     observation_first = PETSC_FALSE
+    secondary_observation_first = PETSC_TRUE
     mass_balance_first = PETSC_FALSE
   endif
 
@@ -469,7 +472,7 @@ subroutine OutputObservationTecplotSecTXT(realization_base)
   
     ! open file
     fid = 86
-    if (observation_first .or. .not.FileExists(filename)) then
+    if (secondary_observation_first .or. .not.FileExists(filename)) then
       open(unit=fid,file=filename,action="write",status="replace")
       ! write header
       ! write title
@@ -550,7 +553,7 @@ subroutine OutputObservationTecplotSecTXT(realization_base)
 
   endif
 
-  observation_first = PETSC_FALSE
+  secondary_observation_first = PETSC_FALSE
   
   call PetscLogEventEnd(logging%event_output_observation,ierr)    
       
