@@ -2638,7 +2638,6 @@ function PatchAuxVarsUpToDate(patch)
   
   use Mphase_Aux_module
   use TH_Aux_module
-  use THC_Aux_module
   use Richards_Aux_module
   use Reactive_Transport_Aux_module  
   
@@ -2689,7 +2688,6 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
   use Miscible_Aux_module
   use Mphase_Aux_module
   use TH_Aux_module
-  use THC_Aux_module
   use Richards_Aux_module
   use Mineral_module
   use Reaction_module
@@ -3747,7 +3745,6 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
 
   use Mphase_Aux_module
   use TH_Aux_module
-  use THC_Aux_module
   use Richards_Aux_module
   use Miscible_Aux_module
   use Reactive_Transport_Aux_module  
