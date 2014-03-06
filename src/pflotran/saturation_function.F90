@@ -1703,7 +1703,7 @@ subroutine SatFuncComputeIceDallAmico(pl, T, &
       s_l = S1
       s_i = S0 - S1
 
-      dsl_dpl = -dS1*(1.0d0 - T*T_0/T_star/T_star)
+      dsl_dpl = -dS1*(1.0d0 - T*T_0/T_star/T_star*H)
       dsi_dpl = -dS0 - dsl_dpl
 
       dsl_dT = dS1*(-beta*L_f*rho_l*H/T_star - beta*theta*L_f*rho_l*dH_dT)
