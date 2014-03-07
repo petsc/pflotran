@@ -692,7 +692,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,auxvar, &
   type(sec_transport_type) :: sec_transport_vars
   type(reactive_transport_auxvar_type) :: auxvar
   type(reactive_transport_auxvar_type) :: rt_auxvar
-  type(global_auxvar_type) :: global_auxvar, global_auxvar_sec
+  type(global_auxvar_type) :: global_auxvar
   type(reaction_type), pointer :: reaction
   type(option_type) :: option
   PetscReal :: coeff_left(reaction%naqcomp,reaction%naqcomp, &
@@ -819,17 +819,12 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,auxvar, &
   pordiff = porosity*diffusion_coefficient
 
   call RTAuxVarInit(rt_auxvar,reaction,option)
-  call GlobalAuxVarInit(global_auxvar_sec,option)
-  call GlobalAuxVarCopy(global_auxvar,global_auxvar_sec,option)
   do i = 1, ngcells
     call RTAuxVarCopy(rt_auxvar,sec_transport_vars%sec_rt_auxvar(i),option)
     rt_auxvar%pri_molal = conc_upd(:,i)
-    if (associated(global_auxvar%sec_temp)) then
-      global_auxvar_sec%temp(1) = global_auxvar%sec_temp(i)
-    endif
-    call RTotal(rt_auxvar,global_auxvar_sec,reaction,option)
+    call RTotal(rt_auxvar,global_auxvar,reaction,option)
     if (reaction%neqsorb > 0) then
-      call RTotalSorb(rt_auxvar,global_auxvar_sec,material_auxvar,reaction,option)
+      call RTotalSorb(rt_auxvar,global_auxvar,material_auxvar,reaction,option)
     endif
     total_upd(:,i) = rt_auxvar%total(:,1)
     dtotal(:,:,i) = rt_auxvar%aqueous%dtotal(:,:,1)
@@ -981,14 +976,11 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,auxvar, &
     call RTAuxVarCopy(rt_auxvar,sec_transport_vars%sec_rt_auxvar(i), &
                       option)
     rt_auxvar%pri_molal = conc_upd(:,i) ! in mol/kg
-    if (associated(global_auxvar%sec_temp)) then
-      global_auxvar_sec%temp(1) = global_auxvar%sec_temp(i)
-    endif
-    call RTotal(rt_auxvar,global_auxvar_sec,reaction,option)
+    call RTotal(rt_auxvar,global_auxvar,reaction,option)
     material_auxvar%porosity = porosity
     material_auxvar%volume = vol(i)
     call RReaction(res_react,jac_react,PETSC_TRUE, &
-                   rt_auxvar,global_auxvar_sec,material_auxvar,reaction,option)                     
+                   rt_auxvar,global_auxvar,material_auxvar,reaction,option)                     
     do j = 1, ncomp
       res(j+(i-1)*ncomp) = res(j+(i-1)*ncomp) + res_react(j) 
     enddo
@@ -1139,10 +1131,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,auxvar, &
   call RTAuxVarCopy(rt_auxvar,sec_transport_vars%sec_rt_auxvar(ngcells), &
                     option)
   rt_auxvar%pri_molal = conc_current_M ! in mol/kg
-  if (associated(global_auxvar%sec_temp)) then
-    global_auxvar_sec%temp(1) = global_auxvar%sec_temp(ngcells)
-  endif
-  call RTotal(rt_auxvar,global_auxvar_sec,reaction,option)
+  call RTotal(rt_auxvar,global_auxvar,reaction,option)
   total_current_M = rt_auxvar%total(:,1)
   if (reaction%neqcplx > 0) sec_sec_molal_M = rt_auxvar%sec_molal
   call RTAuxVarStrip(rt_auxvar)
@@ -1210,7 +1199,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,auxvar, &
   
   endif
   
-  dPsisec_dCprim = dPsisec_dCprim*global_auxvar_sec%den_kg(1)*1.d-3 ! in kg/L
+  dPsisec_dCprim = dPsisec_dCprim*global_auxvar%den_kg(1)*1.d-3 ! in kg/L
             
   ! Calculate the coupling term
   res_transport = pordiff/dm_plus(ngcells)*area_fm* &
@@ -1233,8 +1222,6 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,auxvar, &
   
   ! Store the solution of the forward solve
   sec_transport_vars%r = rhs
-  
-  call GlobalAuxVarStrip(global_auxvar_sec)  
   
 !============== Numerical jacobian for coupling term ===========================
 
@@ -1361,13 +1348,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,auxvar, &
       call RTAuxVarCopy(rt_auxvar,sec_transport_vars%sec_rt_auxvar(ngcells), &
                         option)
       rt_auxvar%pri_molal = conc_current_M_pert ! in mol/kg
-      
-      call GlobalAuxVarInit(global_auxvar_sec,option)
-      call GlobalAuxVarCopy(global_auxvar,global_auxvar_sec,option)
-      if (associated(global_auxvar%sec_temp)) then
-        global_auxvar_sec%temp(1) = global_auxvar%sec_temp(ngcells)
-      endif
-      call RTotal(rt_auxvar,global_auxvar_sec,reaction,option)
+      call RTotal(rt_auxvar,global_auxvar,reaction,option)
       total_current_M_pert = rt_auxvar%total(:,1)
              
       ! Calculate the coupling term
@@ -1386,8 +1367,6 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,auxvar, &
     enddo    
 
     call RTAuxVarStrip(rt_auxvar)
-    call GlobalAuxVarStrip(global_auxvar_sec)
-    
     sec_transport_vars%sec_jac = sec_jac_num 
 
   endif
@@ -1507,7 +1486,7 @@ subroutine SecondaryRTUpdateEquilState(sec_transport_vars,global_auxvars, &
 
   type(option_type), pointer :: option
   type(sec_transport_type) :: sec_transport_vars
-  type(global_auxvar_type) :: global_auxvars, global_auxvar_sec
+  type(global_auxvar_type) :: global_auxvars
   type(reaction_type), pointer :: reaction
   PetscInt :: ngcells,ncomp
   PetscInt :: i,j
@@ -1521,19 +1500,11 @@ subroutine SecondaryRTUpdateEquilState(sec_transport_vars,global_auxvars, &
         updated_conc(j,i)
     enddo
   enddo
-  
-  call GlobalAuxVarInit(global_auxvar_sec,option)   
-  call GlobalAuxVarCopy(global_auxvars,global_auxvar_sec,option) 
     
   do i = 1, ngcells
-    if (associated(global_auxvars%sec_temp)) then
-      global_auxvar_sec%temp(1) = global_auxvars%sec_temp(i)
-    endif  
-    call RTotal(sec_transport_vars%sec_rt_auxvar(i),global_auxvar_sec, &
+    call RTotal(sec_transport_vars%sec_rt_auxvar(i),global_auxvars, &
                 reaction,option)
   enddo
-  
-  call GlobalAuxVarStrip(global_auxvar_sec)
   
 end subroutine SecondaryRTUpdateEquilState
 
@@ -1562,7 +1533,7 @@ subroutine SecondaryRTUpdateKineticState(sec_transport_vars,global_auxvars, &
 
   type(option_type), pointer :: option
   type(sec_transport_type) :: sec_transport_vars
-  type(global_auxvar_type) :: global_auxvars, global_auxvar_sec
+  type(global_auxvar_type) :: global_auxvars
   type(reaction_type), pointer :: reaction
   PetscReal :: porosity
   PetscInt :: ngcells
@@ -1579,23 +1550,15 @@ subroutine SecondaryRTUpdateKineticState(sec_transport_vars,global_auxvars, &
   jac_react = 0.d0 ! These are not used anyway
   allocate(material_auxvar)
   call MaterialAuxVarInit(material_auxvar,option)
-  call GlobalAuxVarInit(global_auxvar_sec,option)
-  call GlobalAuxVarCopy(global_auxvars,global_auxvar_sec,option)
-
   do i = 1, ngcells
     material_auxvar%porosity = porosity
     material_auxvar%volume = vol(i)
-    if (associated(global_auxvars%sec_temp)) then
-      global_auxvar_sec%temp(1) = global_auxvars%sec_temp(i)
-    endif    
     call RReaction(res_react,jac_react,PETSC_FALSE, &
                    sec_transport_vars%sec_rt_auxvar(i), &
-                   global_auxvar_sec,material_auxvar,reaction,option)
+                   global_auxvars,material_auxvar,reaction,option)
   enddo
   call MaterialAuxVarStrip(material_auxvar)
   deallocate(material_auxvar)
-  
-  call GlobalAuxVarStrip(global_auxvar_sec)
   
   if (reaction%mineral%nkinmnrl > 0) then
     do i = 1, ngcells
@@ -1643,7 +1606,7 @@ subroutine SecondaryRTCheckResidual(sec_transport_vars,auxvar, &
   type(sec_transport_type) :: sec_transport_vars
   type(reactive_transport_auxvar_type) :: auxvar
   type(reactive_transport_auxvar_type) :: rt_auxvar
-  type(global_auxvar_type) :: global_auxvar, global_auxvar_sec
+  type(global_auxvar_type) :: global_auxvar
   type(reaction_type), pointer :: reaction
   type(option_type) :: option
   
@@ -1694,15 +1657,10 @@ subroutine SecondaryRTCheckResidual(sec_transport_vars,auxvar, &
   pordiff = porosity*diffusion_coefficient
 
   call RTAuxVarInit(rt_auxvar,reaction,option)
-  call GlobalAuxVarInit(global_auxvar_sec,option)
-  call GlobalAuxVarCopy(global_auxvar,global_auxvar_sec,option)
   do i = 1, ngcells
     call RTAuxVarCopy(rt_auxvar,sec_transport_vars%sec_rt_auxvar(i),option)
     rt_auxvar%pri_molal = conc_upd(:,i)
-    if (associated(global_auxvar%sec_temp)) then
-      global_auxvar_sec%temp(1) = global_auxvar%sec_temp(i)
-    endif
-    call RTotal(rt_auxvar,global_auxvar_sec,reaction,option)
+    call RTotal(rt_auxvar,global_auxvar,reaction,option)
     total_upd(:,i) = rt_auxvar%total(:,1)
   enddo
                                     
@@ -1756,14 +1714,11 @@ subroutine SecondaryRTCheckResidual(sec_transport_vars,auxvar, &
     call RTAuxVarCopy(rt_auxvar,sec_transport_vars%sec_rt_auxvar(i), &
                       option)
     rt_auxvar%pri_molal = conc_upd(:,i) ! in mol/kg
-    if (associated(global_auxvar%sec_temp)) then
-      global_auxvar_sec%temp(1) = global_auxvar%sec_temp(i)
-    endif
-    call RTotal(rt_auxvar,global_auxvar_sec,reaction,option)
+    call RTotal(rt_auxvar,global_auxvar,reaction,option)
     material_auxvar%porosity = porosity
     material_auxvar%volume = vol(i)
     call RReaction(res_react,jac_react,PETSC_FALSE, &
-                   rt_auxvar,global_auxvar_sec,material_auxvar,reaction,option)                     
+                   rt_auxvar,global_auxvar,material_auxvar,reaction,option)                     
     do j = 1, ncomp
       res(j+(i-1)*ncomp) = res(j+(i-1)*ncomp) + res_react(j) 
     enddo
@@ -1780,7 +1735,6 @@ subroutine SecondaryRTCheckResidual(sec_transport_vars,auxvar, &
     
   inf_norm_sec = maxval(abs(res))  
   call RTAuxVarStrip(rt_auxvar)  
-  call GlobalAuxVarStrip(global_auxvar_sec)
                                                                       
 end subroutine SecondaryRTCheckResidual                                    
 

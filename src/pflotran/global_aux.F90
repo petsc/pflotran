@@ -31,7 +31,6 @@ module Global_Aux_module
 !   PetscReal, pointer :: reaction_rate_store(:,:)
     PetscReal, pointer :: dphi(:,:)
     PetscReal :: scco2_eq_logK ! SC CO2
-    PetscReal, pointer :: sec_temp(:)
   end type global_auxvar_type
   
   type, public :: global_type
@@ -193,11 +192,7 @@ subroutine GlobalAuxVarInit(auxvar,option)
       nullify(auxvar%reaction_rate)
       nullify(auxvar%reaction_rate_store)
   end select
-
-  if (option%use_mc) then
-    nullify(auxvar%sec_temp)
-  endif
-        
+  
   if (option%iflag /= 0 .and. option%compute_mass_balance_new) then
     allocate(auxvar%mass_balance(option%nflowspec,option%nphase))
     auxvar%mass_balance = 0.d0
@@ -282,7 +277,7 @@ subroutine GlobalAuxVarCopy(auxvar,auxvar2,option)
     auxvar2%mass_balance = auxvar%mass_balance
     auxvar2%mass_balance_delta = auxvar%mass_balance_delta
   endif
-  
+
 end subroutine GlobalAuxVarCopy
 
 ! ************************************************************************** !
@@ -368,8 +363,6 @@ subroutine GlobalAuxVarStrip(auxvar)
   
   call DeallocateArray(auxvar%mass_balance)
   call DeallocateArray(auxvar%mass_balance_delta)
-  
-  call DeallocateArray(auxvar%sec_temp)
 
 end subroutine GlobalAuxVarStrip
 
