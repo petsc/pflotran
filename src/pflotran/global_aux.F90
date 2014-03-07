@@ -360,6 +360,8 @@ subroutine GlobalAuxVarStrip(auxvar)
   call DeallocateArray(auxvar%fugacoeff_store)
   call DeallocateArray(auxvar%sat_store)
   call DeallocateArray(auxvar%den_kg_store)
+  call DeallocateArray(auxvar%den_store)
+  call DeallocateArray(auxvar%reaction_rate_store)
   
   call DeallocateArray(auxvar%mass_balance)
   call DeallocateArray(auxvar%mass_balance_delta)
