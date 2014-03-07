@@ -186,6 +186,7 @@ subroutine MphaseSetupPatch(realization)
   type(Mphase_auxvar_type), pointer :: auxvars_bc(:)
   type(Mphase_auxvar_type), pointer :: auxvars_ss(:)  
   type(sec_heat_type), pointer :: mphase_sec_heat_vars(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)
   type(coupler_type), pointer :: initial_condition
   PetscReal :: area_per_vol
   PetscInt :: local_id
@@ -197,6 +198,7 @@ subroutine MphaseSetupPatch(realization)
   patch%aux%Mphase => MphaseAuxCreate()
   patch%aux%SC_heat => SecondaryAuxHeatCreate(option)
   mphase => patch%aux%Mphase
+  global_auxvars => patch%aux%Global%auxvars
 
   
 !  option%io_buffer = 'Before Mphase can be run, the thc_parameter object ' // &
@@ -300,6 +302,10 @@ subroutine MphaseSetupPatch(realization)
         mphase_sec_heat_vars(local_id)%sec_temp = &
         initial_condition%flow_condition%temperature%dataset%rarray(1)
       endif
+      
+      ghosted_id = grid%nL2G(local_id)
+      allocate(global_auxvars(ghosted_id)%sec_temp(mphase_sec_heat_vars(local_id)%ncells))
+      global_auxvars(ghosted_id)%sec_temp = mphase_sec_heat_vars(local_id)%sec_temp      
           
     enddo
       
@@ -1276,6 +1282,10 @@ subroutine MphaseUpdateSolutionPatch(realization)
                         mphase_parameter%ckwet(int(ithrm_loc_p(ghosted_id))), &
                         sec_dencpr, &
                         option)
+                        
+      ! update the sec temperatures in global_auxvars                  
+      global_auxvars(ghosted_id)%sec_temp = mphase_sec_heat_vars(local_id)%sec_temp	                  
+                        
     enddo   
     
     call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
