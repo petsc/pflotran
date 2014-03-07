@@ -59,7 +59,6 @@ subroutine Init(simulation)
   use Richards_module
   use Richards_MFD_module
   use TH_module
-  use THC_module
   use General_module
   
   use Reactive_Transport_module
@@ -223,7 +222,7 @@ subroutine Init(simulation)
   
   ! initialize flow mode
   if (len_trim(option%flowmode) > 0) then
-    ! set the operational mode (e.g. THC_MODE, MPH_MODE, etc)
+    ! set the operational mode (e.g.  MPH_MODE, etc)
     call setFlowMode(option)
     flow_solver => flow_stepper%solver
   else
@@ -371,7 +370,7 @@ subroutine Init(simulation)
   
     if (flow_solver%J_mat_type == MATAIJ) then
       select case(option%iflowmode)
-        case(MPH_MODE,TH_MODE,THC_MODE,IMS_MODE, FLASH2_MODE, G_MODE, MIS_MODE)
+        case(MPH_MODE,TH_MODE,IMS_MODE, FLASH2_MODE, G_MODE, MIS_MODE)
           option%io_buffer = 'AIJ matrix not supported for current mode: '// &
                              option%flowmode
           call printErrMsg(option)
@@ -392,8 +391,6 @@ subroutine Init(simulation)
           write(*,'(" mode = MIS: p, Xs")')
         case(TH_MODE)
           write(*,'(" mode = TH: p, T")')
-        case(THC_MODE)
-          write(*,'(" mode = THC: p, T, s/X")')
         case(RICHARDS_MODE)
           write(*,'(" mode = Richards: p")')  
         case(G_MODE)    
@@ -438,9 +435,6 @@ subroutine Init(simulation)
       case(TH_MODE)
         call SNESSetFunction(flow_solver%snes,field%flow_r,THResidual, &
                              realization,ierr)
-      case(THC_MODE)
-        call SNESSetFunction(flow_solver%snes,field%flow_r,THCResidual, &
-                             realization,ierr)
       case(RICHARDS_MODE)
         select case(realization%discretization%itype)
           case(STRUCTURED_GRID_MIMETIC,UNSTRUCTURED_GRID_MIMETIC)
@@ -477,9 +471,6 @@ subroutine Init(simulation)
       case(TH_MODE)
         call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
                              THJacobian,realization,ierr)
-      case(THC_MODE)
-        call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
-                             THCJacobian,realization,ierr)
       case(RICHARDS_MODE)
         select case(realization%discretization%itype)
           case(STRUCTURED_GRID_MIMETIC,UNSTRUCTURED_GRID_MIMETIC)
@@ -567,14 +558,6 @@ subroutine Init(simulation)
                                          THCheckUpdatePre, &
                                          realization,ierr)
         endif
-      case(THC_MODE)
-        if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
-            dabs(option%pressure_change_limit) > 0.d0 .or. &
-            dabs(option%temperature_change_limit) > 0.d0) then
-          call SNESLineSearchSetPreCheck(linesearch, &
-                                         THCCheckUpdatePre, &
-                                         realization,ierr)
-        endif
     end select
     
     
@@ -592,10 +575,6 @@ subroutine Init(simulation)
         case(TH_MODE)
           call SNESLineSearchSetPostCheck(linesearch, &
                                           THCheckUpdatePost, &
-                                          realization,ierr)
-        case(THC_MODE)
-          call SNESLineSearchSetPostCheck(linesearch, &
-                                          THCCheckUpdatePost, &
                                           realization,ierr)
       end select
     endif
@@ -862,8 +841,6 @@ subroutine Init(simulation)
     select case(option%iflowmode)
       case(TH_MODE)
         call THSetup(realization)
-      case(THC_MODE)
-        call THCSetup(realization)
       case(RICHARDS_MODE)
         call RichardsSetup(realization)
       case(MPH_MODE)
@@ -894,8 +871,6 @@ subroutine Init(simulation)
     select case(option%iflowmode)
       case(TH_MODE)
         call THUpdateAuxVars(realization)
-      case(THC_MODE)
-        call THCUpdateAuxVars(realization)
       case(RICHARDS_MODE)
 #ifdef DASVYAT
        if (option%mimetic) then
@@ -1644,21 +1619,21 @@ subroutine InitReadInput(simulation)
       case ('MODE')
          call InputReadWord(input, option, word, PETSC_FALSE)
          call StringToUpper(word)
-         if ('TH' == trim(word) .or. 'THC' == trim(word)) then
+         if ('TH' == trim(word)) then
             call InputReadWord(input, option, word, PETSC_TRUE)
-            call InputErrorMsg(input, option, 'th(c) freezing mode', 'mode th(c)')
+            call InputErrorMsg(input, option, 'th freezing mode', 'mode th')
             call StringToUpper(word)
             if ('FREEZING' == trim(word)) then
                option%use_th_freezing = PETSC_TRUE
-               option%io_buffer = ' TH(C): using FREEZING submode!'
+               option%io_buffer = ' TH: using FREEZING submode!'
                call printMsg(option)
             else if ('NO_FREEZING' == trim(word)) then
                option%use_th_freezing = PETSC_FALSE
-               option%io_buffer = ' TH(C): using NO_FREEZING submode!'
+               option%io_buffer = ' TH: using NO_FREEZING submode!'
                call printMsg(option)
             else
                ! NOTE(bja, 2013-12) use_th_freezing defaults to false, can skip this....
-               option%io_buffer = ' TH(C): must specify FREEZING or NO_FREEZING submode!'
+               option%io_buffer = ' TH: must specify FREEZING or NO_FREEZING submode!'
                call printErrMsg(option)
             endif
          endif  
@@ -2794,14 +2769,6 @@ subroutine setFlowMode(option)
       option%gas_phase = 2
       option%nflowdof = 2
       option%nflowspec = 1
-      option%use_isothermal = PETSC_FALSE
-    case('THC')
-      option%iflowmode = THC_MODE
-      option%nphase = 1
-      option%liquid_phase = 1      
-      option%gas_phase = 2      
-      option%nflowdof = 3
-      option%nflowspec = 2
       option%use_isothermal = PETSC_FALSE
     case('MIS','MISCIBLE')
       option%iflowmode = MIS_MODE

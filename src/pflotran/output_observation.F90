@@ -15,6 +15,7 @@ module Output_Observation_module
   ! flags signifying the first time a routine is called during a given
   ! simulation
   PetscBool :: observation_first
+  PetscBool :: secondary_observation_first
   PetscBool :: mass_balance_first
 
   public :: OutputObservation, &
@@ -41,9 +42,11 @@ subroutine OutputObservationInit(num_steps)
   
   if (num_steps == 0) then
     observation_first = PETSC_TRUE
+    secondary_observation_first = PETSC_TRUE
     mass_balance_first = PETSC_TRUE
   else
     observation_first = PETSC_FALSE
+    secondary_observation_first = PETSC_TRUE
     mass_balance_first = PETSC_FALSE
   endif
 
@@ -469,7 +472,7 @@ subroutine OutputObservationTecplotSecTXT(realization_base)
   
     ! open file
     fid = 86
-    if (observation_first .or. .not.FileExists(filename)) then
+    if (secondary_observation_first .or. .not.FileExists(filename)) then
       open(unit=fid,file=filename,action="write",status="replace")
       ! write header
       ! write title
@@ -550,7 +553,7 @@ subroutine OutputObservationTecplotSecTXT(realization_base)
 
   endif
 
-  observation_first = PETSC_FALSE
+  secondary_observation_first = PETSC_FALSE
   
   call PetscLogEventEnd(logging%event_output_observation,ierr)    
       
@@ -692,7 +695,7 @@ subroutine WriteObservationHeaderSec(fid,realization_base,cell_string, &
   ! add secondary temperature to header
   if (print_secondary_data(1)) then
     select case (option%iflowmode) 
-      case (TH_MODE,THC_MODE, MPH_MODE)
+      case (TH_MODE, MPH_MODE)
         header = ''
         do i = 1, option%nsec_cells
           write(string,'(i2)') i
@@ -772,7 +775,6 @@ subroutine WriteObservationHeaderForBC(fid,realization_base,coupler_name)
     case(MPH_MODE)
     case(IMS_MODE)
     case(TH_MODE)
-    case(THC_MODE)
     case(MIS_MODE)
     case(RICHARDS_MODE)
       string = ',"Darcy flux ' // trim(coupler_name) // &
@@ -1041,7 +1043,7 @@ subroutine WriteObservationDataForBC(fid,realization_base,patch,connection_set)
   if (associated(connection_set)) then
     offset = connection_set%offset
     select case(option%iflowmode)
-      case(MPH_MODE,TH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+      case(MPH_MODE,TH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
       case(MIS_MODE)
       case(RICHARDS_MODE)
         sum_volumetric_flux = 0.d0
@@ -1474,7 +1476,7 @@ subroutine WriteObservationSecondaryDataAtCell(fid,realization_base,local_id,iva
   if (option%nsec_cells > 0) then
     if (ivar == PRINT_SEC_TEMP) then
       select case(option%iflowmode)
-        case(MPH_MODE,TH_MODE,THC_MODE)
+        case(MPH_MODE,TH_MODE)
           do i = 1, option%nsec_cells 
             write(fid,110,advance="no") &
               RealizGetVariableValueAtCell(realization_base,SECONDARY_TEMPERATURE,i, &
@@ -1530,7 +1532,6 @@ subroutine OutputMassBalance(realization_base)
   use Immis_module, only : ImmisComputeMassBalance
   use Miscible_module, only : MiscibleComputeMassBalance
   use TH_module, only : THComputeMassBalance
-  use THC_module, only : THCComputeMassBalance
   use Reactive_Transport_module, only : RTComputeMassBalance
   use General_module, only : GeneralComputeMassBalance
   
@@ -1629,9 +1630,6 @@ subroutine OutputMassBalance(realization_base)
         case(TH_MODE)
           call OutputAppendToHeader(header,'Global Water Mass in Liquid Phase', &
                                     'kg','',icol)
-        case(THC_MODE)
-          call OutputAppendToHeader(header,'Global Water Mass in Liquid Phase', &
-                                    'kg','',icol)
         case(G_MODE)
           call OutputAppendToHeader(header,'Global Water Mass in Liquid Phase', &
                                     'mol','',icol)
@@ -1705,13 +1703,6 @@ subroutine OutputMassBalance(realization_base)
             string = trim(coupler%name) // ' Water Mass'
             call OutputAppendToHeader(header,string,units,'',icol)
           case(TH_MODE)
-            string = trim(coupler%name) // ' Water Mass'
-            call OutputAppendToHeader(header,string,'kg','',icol)
-            
-            units = 'kg/' // trim(output_option%tunit) // ''
-            string = trim(coupler%name) // ' Water Mass'
-            call OutputAppendToHeader(header,string,units,'',icol)
-          case(THC_MODE)
             string = trim(coupler%name) // ' Water Mass'
             call OutputAppendToHeader(header,string,'kg','',icol)
             
@@ -1794,9 +1785,6 @@ subroutine OutputMassBalance(realization_base)
           case(TH_MODE)
             write(fid,'(a)',advance="no") ',"' // &
               trim(adjustl(word)) // 'm Water Mass [kg]"'
-          case(THC_MODE)
-            write(fid,'(a)',advance="no") ',"' // &
-              trim(adjustl(word)) // 'm Water Mass [kg]"'
         end select
         
         if (option%ntrandof > 0) then
@@ -1846,8 +1834,6 @@ subroutine OutputMassBalance(realization_base)
             call RichardsComputeMassBalance(realization_base,sum_kg(1,:))
           case(TH_MODE)
             call THComputeMassBalance(realization_base,sum_kg(1,:))
-          case(THC_MODE)
-            call THCComputeMassBalance(realization_base,sum_kg(1,:))
           case(MIS_MODE)
             call MiscibleComputeMassBalance(realization_base,sum_kg(:,1))
           case(MPH_MODE)
@@ -1880,7 +1866,7 @@ subroutine OutputMassBalance(realization_base)
     if (option%myrank == option%io_rank) then
       select case(option%iflowmode)
         case(RICHARDS_MODE,IMS_MODE,MIS_MODE,G_MODE, &
-             TH_MODE,THC_MODE)
+             TH_MODE)
           do iphase = 1, option%nphase
             do ispec = 1, option%nflowspec
               write(fid,110,advance="no") sum_kg_global(ispec,iphase)
@@ -2068,41 +2054,6 @@ subroutine OutputMassBalance(realization_base)
             write(fid,110,advance="no") -sum_kg_global*output_option%tconv
           endif
 
-        case(THC_MODE)
-          ! print out cumulative H2O flux
-          sum_kg = 0.d0
-          do iconn = 1, coupler%connection_set%num_connections
-            sum_kg = sum_kg + global_auxvars_bc_or_ss(offset+iconn)%mass_balance
-          enddo
-
-          int_mpi = option%nphase
-          call MPI_Reduce(sum_kg,sum_kg_global, &
-                          int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
-                          option%io_rank,option%mycomm,ierr)
-                              
-          if (option%myrank == option%io_rank) then
-            ! change sign for positive in / negative out
-            write(fid,110,advance="no") -sum_kg_global
-          endif
-
-          ! print out H2O flux
-          sum_kg = 0.d0
-          do iconn = 1, coupler%connection_set%num_connections
-            sum_kg = sum_kg + global_auxvars_bc_or_ss(offset+iconn)%mass_balance_delta
-          enddo
-          ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
-          sum_kg = sum_kg*FMWH2O
-
-          int_mpi = option%nphase
-          call MPI_Reduce(sum_kg,sum_kg_global, &
-                          int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
-                          option%io_rank,option%mycomm,ierr)
-                              
-          if (option%myrank == option%io_rank) then
-            ! change sign for positive in / negative out
-            write(fid,110,advance="no") -sum_kg_global*output_option%tconv
-          endif
-          
         case(MIS_MODE)
           ! print out cumulative mixture flux
           sum_kg = 0.d0

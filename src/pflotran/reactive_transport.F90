@@ -402,7 +402,8 @@ subroutine RTCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   use Field_module
   use Patch_module
   use Option_module
- 
+  use Secondary_Continuum_module, only : SecondaryRTUpdateIterate
+
   implicit none
   
   SNESLineSearch :: line_search
@@ -460,7 +461,13 @@ subroutine RTCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
       option%converged = PETSC_TRUE
     endif
   endif
-    
+  
+  
+  if (option%use_mc) then  
+    call SecondaryRTUpdateIterate(line_search,X0,dX,X1,dX_changed, &
+                                  X1_changed,realization,ierr)
+  endif
+       
 end subroutine RTCheckUpdatePost
 
 ! ************************************************************************** !

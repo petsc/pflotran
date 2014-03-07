@@ -107,15 +107,13 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: NULL_MODE = 0
   
   ! flow modes
-  PetscInt, parameter, public :: THC_MODE = 1
-  PetscInt, parameter, public :: MPH_MODE = 2
-  PetscInt, parameter, public :: RICHARDS_MODE = 3
-  PetscInt, parameter, public :: REACTIVE_TRANSPORT_MODE = 4
-  PetscInt, parameter, public :: IMS_MODE = 5
-  PetscInt, parameter, public :: FLASH2_MODE = 6
-  PetscInt, parameter, public :: G_MODE = 7
-  PetscInt, parameter, public :: MIS_MODE = 8
-  PetscInt, parameter, public :: TH_MODE = 9
+  PetscInt, parameter, public :: MPH_MODE = 1
+  PetscInt, parameter, public :: RICHARDS_MODE = 2
+  PetscInt, parameter, public :: IMS_MODE = 3
+  PetscInt, parameter, public :: FLASH2_MODE = 4
+  PetscInt, parameter, public :: G_MODE = 5
+  PetscInt, parameter, public :: MIS_MODE = 6
+  PetscInt, parameter, public :: TH_MODE = 7
   
   ! transport modes
   PetscInt, parameter, public :: EXPLICIT_ADVECTION = 1
