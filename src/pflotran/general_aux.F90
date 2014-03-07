@@ -8,6 +8,13 @@ module General_Aux_module
 
 #include "finclude/petscsys.h"
 
+!#define FIXED_COEFFICIENTS
+! DO NOT undefine this.  The code seems to run much better with the more accurate
+! update of saturation
+#define ALTERNATIVE_UPDATE
+  
+
+
   ! thermodynamic state of fluid ids
   PetscInt, parameter, public :: NULL_STATE = 0
   PetscInt, parameter, public :: LIQUID_STATE = 1
@@ -301,15 +308,14 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   wid = option%water_id
   eid = option%energy_id
   
-  !geh gen_auxvar%temp = 0.d0
 #ifdef DEBUG_GENERAL  
-  gen_auxvar%H = -999.d0
-  gen_auxvar%U = -999.d0
-  gen_auxvar%pres = -999.d0
-  gen_auxvar%sat = -999.d0
-  gen_auxvar%den = -999.d0
-  gen_auxvar%den_kg = -999.d0
-  gen_auxvar%xmol = -999.d0
+  gen_auxvar%H = 1.d200
+  gen_auxvar%U = 1.d200
+  gen_auxvar%pres = 1.d200
+  gen_auxvar%sat = 1.d20
+  gen_auxvar%den = 1.d200
+  gen_auxvar%den_kg = 1.d200
+  gen_auxvar%xmol = 1.d200
   select case(global_auxvar%istate)
     case(1)
       state_char = 'L'
@@ -319,6 +325,8 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       state_char = '2P'
   end select
 #else
+  !geh: do not initialize gen_auxvar%temp a the previous value is used as the
+  !     initial guess for two phase.
   gen_auxvar%H = 0.d0
   gen_auxvar%U = 0.d0
   gen_auxvar%pres = 0.d0
@@ -459,7 +467,6 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
 
   ! Liquid phase thermodynamic properties
   ! must use cell_pressure as the pressure, not %pres(lid)
-!#define FIXED_COEFFICIENTS
 #ifndef FIXED_COEFFICIENTS
   call EOSWaterDensityEnthalpy(gen_auxvar%temp,cell_pressure, &
                                gen_auxvar%den_kg(lid),gen_auxvar%den(lid), &
@@ -661,8 +668,6 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
   eid = option%energy_id
 
   flag = PETSC_FALSE
-  
-!#define ALTERNATIVE_UPDATE
   
   gen_auxvar%istate_store(PREV_IT) = global_auxvar%istate
   select case(global_auxvar%istate)
