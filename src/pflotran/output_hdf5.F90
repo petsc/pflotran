@@ -12,6 +12,8 @@ module Output_HDF5_module
 
 #include "finclude/petscsys.h"
 
+  PetscMPIInt, private, parameter :: ON=1, OFF=0
+
 #if defined(SCORPIO_WRITE)
   include "scorpiof.h"
 #endif
@@ -24,7 +26,11 @@ module Output_HDF5_module
             OutputHDF5, &
             OutputHDF5UGridXDMF, &
             OutputHDF5FilenameID, &
-            OutputHDF5UGridXDMFExplicit
+            OutputHDF5UGridXDMFExplicit, &
+            OutputHDF5DatasetStringArray, &
+            OutputHDF5AttributeStringArray, &
+            OutputHDF5OpenFile, &
+            OutputHDF5CloseFile
 
 contains
 
@@ -137,7 +143,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
   PetscReal, pointer :: v_ptr
   
   character(len=MAXSTRINGLENGTH) :: filename
-  character(len=MAXSTRINGLENGTH) :: string,string2,string3
+  character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
   character(len=2) :: free_mol_char, tot_mol_char, sec_mol_char
   PetscReal, pointer :: array(:)
@@ -157,79 +163,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
   field => realization_base%field
   output_option => realization_base%output_option
 
-  select case (var_list_type)
-    case (INSTANTANEOUS_VARS)
-      string2=''
-      write(string3,'(i4)') output_option%plot_number
-    case (AVERAGED_VARS)
-      string2='-aveg'
-      write(string3,'(i4)') int(option%time/output_option%periodic_output_time_incr)
-  end select
-
-  if (output_option%print_single_h5_file) then
-    first = hdf5_first
-    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-               trim(string2) // '.h5'
-  else
-    string = OutputHDF5FilenameID(output_option,option,var_list_type)
-    select case (var_list_type)
-      case (INSTANTANEOUS_VARS)
-        if (mod(output_option%plot_number,output_option%times_per_h5_file)==0) then
-          first = PETSC_TRUE
-        else
-          first = PETSC_FALSE
-        endif
-      case (AVERAGED_VARS)
-        if (mod((option%time-output_option%periodic_output_time_incr)/ &
-                output_option%periodic_output_time_incr, &
-                real(output_option%times_per_h5_file))==0) then
-          first = PETSC_TRUE
-        else
-          first = PETSC_FALSE
-        endif
-    end select
-
-    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-                '-' // trim(string) // trim(string2) // '.h5'
-  endif
-
-  grid => patch%grid
-#if defined(SCORPIO_WRITE)
-  if (.not.first) then
-    filename = trim(filename) // CHAR(0)
-    call scorpio_open_file(filename, option%iowrite_group_id, &
-                              SCORPIO_FILE_READWRITE, file_id, ierr)
-    if (file_id == -1) first = PETSC_TRUE
-  endif
-  if (first) then
-    filename = trim(filename) // CHAR(0)
-    call scorpio_open_file(filename, option%iowrite_group_id, &
-                              SCORPIO_FILE_CREATE, file_id, ierr)
-  endif
-
-#else
-! SCORPIO_WRITE is not defined
-
-    ! initialize fortran interface
-  call h5open_f(hdf5_err)
-
-  call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
-#ifndef SERIAL_HDF5
-  call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
-#endif
-  if (.not.first) then
-    call h5eset_auto_f(OFF,hdf5_err)
-    call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id,hdf5_err,prop_id)
-    if (hdf5_err /= 0) first = PETSC_TRUE
-    call h5eset_auto_f(ON,hdf5_err)
-  endif
-  if (first) then 
-    call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,hdf5_err, &
-                      H5P_DEFAULT_F,prop_id)
-  endif
-  call h5pclose_f(prop_id,hdf5_err)
-#endif
-! SCORPIO_WRITE
+  call OutputHDF5OpenFile(option, output_option, var_list_type, file_id, first)
 
   if (first) then
     option%io_buffer = '--> creating hdf5 output file: ' // trim(filename)
@@ -238,6 +172,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
   endif
   call printMsg(option)
 
+  grid => patch%grid
   if (first) then
 
     ! create a group for the coordinates data set
@@ -437,19 +372,149 @@ subroutine OutputHDF5(realization_base,var_list_type)
 #if defined(SCORPIO_WRITE)
     call scorpio_close_dataset_group(pio_dataset_groupid, file_id, &
             option%iowrite_group_id, ierr)
-    call scorpio_close_file(file_id, option%iowrite_group_id, ierr)
 #else
     call h5gclose_f(grp_id,hdf5_err)
-    call h5fclose_f(file_id,hdf5_err)
-     call h5close_f(hdf5_err)
 #endif
-!SCORPIO_WRITE
+
+    call OutputHDF5CloseFile(option, file_id)
+
 #endif
 !PETSC_HAVE_HDF5
 
   hdf5_first = PETSC_FALSE
 
 end subroutine OutputHDF5
+
+! ************************************************************************** !
+
+subroutine OutputHDF5OpenFile(option, output_option, var_list_type, file_id, first)
+  !
+  ! Determine the propper hdf5 output file name and open it.
+  !
+  ! Return the file handle and 'first' flag indicating if this is the
+  ! first time the file has been opened.
+  !
+  use Option_module, only : option_type
+  use hdf5
+
+#include "finclude/petscsysdef.h"
+
+  implicit none
+
+  type(option_type), intent(in) :: option
+  type(output_option_type), intent(in) :: output_option
+  PetscInt, intent(in) :: var_list_type
+  PetscBool, intent(out) :: first
+
+#if defined(SCORPIO_WRITE)
+  integer, intent(out) :: file_id
+  integer:: prop_id
+#else
+  integer(HID_T), intent(out) :: file_id
+  integer(HID_T) :: prop_id
+#endif
+  
+  character(len=MAXSTRINGLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: string,string2,string3
+  PetscMPIInt :: hdf5_err
+
+  select case (var_list_type)
+    case (INSTANTANEOUS_VARS)
+      string2=''
+      write(string3,'(i4)') output_option%plot_number
+    case (AVERAGED_VARS)
+      string2='-aveg'
+      write(string3,'(i4)') int(option%time/output_option%periodic_output_time_incr)
+  end select
+
+  if (output_option%print_single_h5_file) then
+    first = hdf5_first
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
+               trim(string2) // '.h5'
+  else
+    string = OutputHDF5FilenameID(output_option,option,var_list_type)
+    select case (var_list_type)
+      case (INSTANTANEOUS_VARS)
+        if (mod(output_option%plot_number,output_option%times_per_h5_file)==0) then
+          first = PETSC_TRUE
+        else
+          first = PETSC_FALSE
+        endif
+      case (AVERAGED_VARS)
+        if (mod((option%time-output_option%periodic_output_time_incr)/ &
+                output_option%periodic_output_time_incr, &
+                real(output_option%times_per_h5_file))==0) then
+          first = PETSC_TRUE
+        else
+          first = PETSC_FALSE
+        endif
+    end select
+
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
+                '-' // trim(string) // trim(string2) // '.h5'
+  endif
+
+#if defined(SCORPIO_WRITE)
+  if (.not.first) then
+    filename = trim(filename) // CHAR(0)
+    call scorpio_open_file(filename, option%iowrite_group_id, &
+                              SCORPIO_FILE_READWRITE, file_id, ierr)
+    if (file_id == -1) first = PETSC_TRUE
+  endif
+  if (first) then
+    filename = trim(filename) // CHAR(0)
+    call scorpio_open_file(filename, option%iowrite_group_id, &
+                              SCORPIO_FILE_CREATE, file_id, ierr)
+  endif
+
+#else
+! SCORPIO_WRITE is not defined
+
+    ! initialize fortran interface
+  call h5open_f(hdf5_err)
+
+  call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+  call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
+#endif
+  if (.not.first) then
+    call h5eset_auto_f(OFF,hdf5_err)
+    call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id,hdf5_err,prop_id)
+    if (hdf5_err /= 0) first = PETSC_TRUE
+    call h5eset_auto_f(ON,hdf5_err)
+  endif
+  if (first) then 
+    call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,hdf5_err, &
+                      H5P_DEFAULT_F,prop_id)
+  endif
+  call h5pclose_f(prop_id,hdf5_err)
+#endif
+! SCORPIO_WRITE
+
+end subroutine OutputHDF5OpenFile
+
+! ************************************************************************** !
+
+subroutine OutputHDF5CloseFile(option, file_id)
+
+  use Option_module, only : option_type
+  use hdf5
+
+  implicit none
+
+  type(option_type), intent(in) :: option
+  integer(HID_T), intent(in) :: file_id
+  integer :: hdf5_err
+  PetscErrorCode :: ierr
+
+#if defined(SCORPIO_WRITE)
+  call scorpio_close_file(file_id, option%iowrite_group_id, ierr)
+#else
+  call h5fclose_f(file_id, hdf5_err)
+  call h5close_f(hdf5_err)
+#endif
+
+end subroutine OutputHDF5CloseFile
 
 ! ************************************************************************** !
 
@@ -3134,6 +3199,62 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id,var_list_type
 ! #ifdef SCORPIO_WRITE
 
 end subroutine WriteHDF5FlowratesUGrid
+
+! ************************************************************************** !
+
+subroutine OutputHDF5AttributeStringArray(parent_id, type, name, length, data)
+  ! create the dataspaces and attributes consisting of an array of
+  ! strings, then write the data and cleanup
+
+  use hdf5
+
+  implicit none
+
+  integer(HID_T), intent(in) ::  parent_id, type
+  character(len=*), intent(in) :: name
+  integer, intent(in) :: length
+  character(len=*), intent(in) :: data(length)
+
+  integer(HID_T) :: dataspace_id, attribute_id
+  integer(HSIZE_T), dimension(1:1) :: dims
+  integer :: hdf5_err
+
+  dims = length
+  call h5screate_simple_f(1, dims, dataspace_id, hdf5_err)
+  call h5acreate_f(parent_id, name, type, dataspace_id, attribute_id, hdf5_err)
+  call h5awrite_f(attribute_id, type, data, dims, hdf5_err)
+  call h5aclose_f(attribute_id, hdf5_err)
+  call h5sclose_f(dataspace_id, hdf5_err)
+
+end subroutine OutputHDF5AttributeStringArray
+
+! ************************************************************************** !
+
+subroutine OutputHDF5DatasetStringArray(parent_id, type, name, length, data)
+  ! create the dataspaces and dataset consisting of an array of
+  ! strings, then write the data and cleanup
+
+  use hdf5
+
+  implicit none
+
+  integer(HID_T), intent(in) ::  parent_id, type
+  character(len=*), intent(in) :: name
+  integer, intent(in) :: length
+  character(len=*), intent(in) :: data(length)
+
+  integer(HID_T) :: dataspace_id, attribute_id
+  integer(HSIZE_T), dimension(1:1) :: dims
+  integer :: hdf5_err
+
+  dims = length
+  call h5screate_simple_f(1, dims, dataspace_id, hdf5_err)
+  call h5dcreate_f(parent_id, name, type, dataspace_id, attribute_id, hdf5_err)
+  call h5dwrite_f(attribute_id, type, data, dims, hdf5_err)
+  call h5dclose_f(attribute_id, hdf5_err)
+  call h5sclose_f(dataspace_id, hdf5_err)
+
+end subroutine OutputHDF5DatasetStringArray
 
 ! PETSC_HAVE_HDF5
 #endif
