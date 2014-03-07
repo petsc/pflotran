@@ -555,12 +555,36 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
     gen_auxvar%mobility(gid) = krg/visg
   endif
 
-#if 1
+#if 0
   if (option%iflag == 1) then
     if (ghosted_id == 1) then
     write(*,'(a,i3,7f13.4,a3)') 'i/l/g/a/c/v/s/t: ', &
       ghosted_id, gen_auxvar%pres(1:5), gen_auxvar%sat(1), gen_auxvar%temp, &
       trim(state_char)
+    if (gen_auxvar%sat(2) > 0.d0) then
+      write(*,'(a,7es13.6)') 'kmol/kmol/kmol/MJ/MJ/MJ: ', &
+        gen_auxvar%den(1)*gen_auxvar%sat(1)*gen_auxvar%xmol(1,1) + &
+        gen_auxvar%den(2)*gen_auxvar%sat(2)*gen_auxvar%xmol(1,2),  &
+        gen_auxvar%den(1)*gen_auxvar%sat(1)*gen_auxvar%xmol(2,1) + &
+        gen_auxvar%den(2)*gen_auxvar%sat(2)*gen_auxvar%xmol(2,2),  &
+        gen_auxvar%den(1)*gen_auxvar%sat(1)*gen_auxvar%xmol(1,1) + &
+        gen_auxvar%den(2)*gen_auxvar%sat(2)*gen_auxvar%xmol(1,2) + &
+        gen_auxvar%den(1)*gen_auxvar%sat(1)*gen_auxvar%xmol(2,1) + &
+        gen_auxvar%den(2)*gen_auxvar%sat(2)*gen_auxvar%xmol(2,2),  &
+        gen_auxvar%sat(1)*gen_auxvar%den(1)*gen_auxvar%U(1),  &
+        gen_auxvar%sat(2)*gen_auxvar%den(2)*gen_auxvar%U(2),  &
+        gen_auxvar%sat(1)*gen_auxvar%den(1)*gen_auxvar%U(1) + &
+        gen_auxvar%sat(2)*gen_auxvar%den(2)*gen_auxvar%U(2)
+    else
+      write(*,'(a,7es13.6)') 'kmol/kmol/kmol/MJ/MJ/MJ: ', &
+        gen_auxvar%den(1)*gen_auxvar%sat(1)*gen_auxvar%xmol(1,1), &
+        gen_auxvar%den(1)*gen_auxvar%sat(1)*gen_auxvar%xmol(2,1), &
+        gen_auxvar%den(1)*gen_auxvar%sat(1)*gen_auxvar%xmol(1,1) + &
+        gen_auxvar%den(1)*gen_auxvar%sat(1)*gen_auxvar%xmol(2,1), &
+        gen_auxvar%sat(1)*gen_auxvar%den(1)*gen_auxvar%U(1), 0.d0, &
+        gen_auxvar%sat(1)*gen_auxvar%den(1)*gen_auxvar%U(1)
+    endif
+
     endif
   endif
 #endif
@@ -597,7 +621,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
   class(material_auxvar_type) :: material_auxvar
 
 ! based on min_pressure in CheckPre set to zero
-  PetscReal, parameter :: epsilon = 1.d-8
+  PetscReal, parameter :: epsilon = 1.d-6
   PetscReal, parameter :: window_epsilon = 1.d-4
 !  PetscReal, parameter :: epsilon = 1.d0 ! crash
 !  PetscReal, parameter :: epsilon = 1.d-1 ! 4.74000E+01, 12235 NI, 73 cuts
