@@ -8,8 +8,7 @@ module PFLOTRAN_Factory_module
 
 #include "finclude/petscsys.h"
 
-  public :: PFLOTRANInitialize, &
-            PFLOTRANInitializePrePetsc, &
+  public :: PFLOTRANInitializePrePetsc, &
             PFLOTRANInitializePostPetsc, &
             PFLOTRANFinalize
 
