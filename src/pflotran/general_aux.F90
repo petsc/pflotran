@@ -281,6 +281,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   PetscReal :: K_H_tilde
   PetscReal :: guess, dummy
   PetscInt :: apid, cpid, vpid, spid
+  PetscReal :: NaN
   character(len=8) :: state_char
   PetscErrorCode :: ierr
 
@@ -309,13 +310,17 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   eid = option%energy_id
   
 #ifdef DEBUG_GENERAL  
-  gen_auxvar%H = 1.d200
-  gen_auxvar%U = 1.d200
-  gen_auxvar%pres = 1.d200
-  gen_auxvar%sat = 1.d20
-  gen_auxvar%den = 1.d200
-  gen_auxvar%den_kg = 1.d200
-  gen_auxvar%xmol = 1.d200
+  ! create a NaN
+  NaN = 0.d0
+  NaN = 1.d0/NaN
+  NaN = 0.d0*NaN
+  gen_auxvar%H = NaN
+  gen_auxvar%U = NaN
+  gen_auxvar%pres = NaN
+  gen_auxvar%sat = NaN
+  gen_auxvar%den = NaN
+  gen_auxvar%den_kg = NaN
+  gen_auxvar%xmol = NaN
   select case(global_auxvar%istate)
     case(1)
       state_char = 'L'
