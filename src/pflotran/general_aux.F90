@@ -603,7 +603,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
   select case(global_auxvar%istate)
     case(LIQUID_STATE)
       if (gen_auxvar%pres(vpid) <= gen_auxvar%pres(spid)) then
-#ifdef DEBUG_GENERAL
+!#ifdef DEBUG_GENERAL
 #ifdef DEBUG_GENERAL_INFO
         call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &
                                  'Before Update',option)
@@ -619,7 +619,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
           write(state_change_string,'(''Liquid -> 2 Phase at Boundary Face '', &
                                     & i5)') ghosted_id
         endif
-#endif      
+!#endif      
         global_auxvar%istate = TWO_PHASE_STATE
                          ! based on epsilon = 0.1, two_phase_epsilon = 0.
 !        liquid_epsilon = 1.d1*epsilon ! crash
@@ -718,11 +718,11 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         ! negative air pressure.  thus, ensure positivity using the air 
         ! pressure in that case.
         if (x(GENERAL_AIR_PRESSURE_DOF) <= 0.d0) then
-#ifdef DEBUG_GENERAL
+!#ifdef DEBUG_GENERAL
           write(string,*) x(GENERAL_AIR_PRESSURE_DOF)
           state_change_string = trim(state_change_string) // &
             ' - air pressure truncated: ' // trim(adjustl(string))
-#endif
+!#endif
           x(GENERAL_AIR_PRESSURE_DOF) = &
             gen_auxvar%pres(apid) * (1.d0 + liquid_epsilon)
         endif
@@ -733,9 +733,11 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
       endif
     case(GAS_STATE)
       if (gen_auxvar%pres(vpid) >= gen_auxvar%pres(spid)) then
-#ifdef DEBUG_GENERAL
+!#ifdef DEBUG_GENERAL
+#ifdef DEBUG_GENERAL_INFO
         call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &
                                  'Before Update',option)
+#endif
         if (option%iflag == 1) then
           write(state_change_string,'(''Gas -> 2 Phase at Cell '',i5)') &
             ghosted_id
@@ -747,7 +749,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
           write(state_change_string,'(''Gas -> 2 Phase at Boundary Face '', &
                                     & i5)') ghosted_id
         endif
-#endif      
+!#endif      
         global_auxvar%istate = TWO_PHASE_STATE
         ! first two primary dependent variables do not change
         x(GENERAL_GAS_SATURATION_DOF) = 1.d0 - epsilon
@@ -755,7 +757,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
       endif
     case(TWO_PHASE_STATE)
       if (gen_auxvar%sat(gid) < 0.d0) then
-#ifdef DEBUG_GENERAL
+!#ifdef DEBUG_GENERAL
 #ifdef DEBUG_GENERAL_INFO
         call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &
                                  'Before Update',option)
@@ -771,7 +773,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
           write(state_change_string,'(''2 Phase -> Liquid at Boundary Face '', &
                                     & i5)') ghosted_id
         endif
-#endif      
+!#endif      
                            ! based on epsilon = 0.1
 !        two_phase_epsilon = epsilon ! crash
 !        two_phase_epsilon = 1.d-1*epsilon ! 4.90600E+01, 10768 NI, 23 cuts
@@ -819,7 +821,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         endif
         flag = PETSC_TRUE
       else if (gen_auxvar%sat(gid) > 1.d0) then
-#ifdef DEBUG_GENERAL
+!#ifdef DEBUG_GENERAL
 #ifdef DEBUG_GENERAL_INFO
         call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &
                                  'Before Update',option)
@@ -835,7 +837,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
           write(state_change_string,'(''2 Phase -> Gas at Boundary Face '', &
                                     & i5)') ghosted_id
         endif
-#endif      
+!#endif      
         two_phase_epsilon = epsilon !
         ! convert to gas state
         global_auxvar%istate = GAS_STATE
@@ -849,14 +851,14 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
   if (flag) then
     call GeneralAuxVarCompute(x,gen_auxvar, global_auxvar,material_auxvar, &
                               saturation_function,ghosted_id,option)
-#ifdef DEBUG_GENERAL
+!#ifdef DEBUG_GENERAL
     state_change_string = 'State Transition: ' // trim(state_change_string)
     call printMsg(option,state_change_string)
 #ifdef DEBUG_GENERAL_INFO
     call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &
                              'After Update',option)
 #endif
-#endif
+!#endif
     option%variables_swapped = PETSC_TRUE
   endif
 
