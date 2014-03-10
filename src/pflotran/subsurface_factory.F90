@@ -61,7 +61,6 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   ! 
 
   use Simulation_module
-  use Timestepper_module
   use Option_module
   use Init_module
   

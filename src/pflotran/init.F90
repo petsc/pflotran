@@ -89,11 +89,7 @@ subroutine Init(simulation)
 #endif
 
 #ifdef GEOMECH
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Init_module, only : GeomechicsInitReadRequiredCards, &
                                        GeomechInitMatPropToGeomechRegions
   use Geomechanics_Grid_module
@@ -1486,11 +1482,7 @@ subroutine InitReadInput(simulation)
 #endif
 #ifdef GEOMECH
   use Geomechanics_Init_module, only : GeomechanicsInitReadInput
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
 #endif
 #ifdef SOLID_SOLUTION
   use Solid_Solution_module, only : SolidSolutionReadFromInputFile
