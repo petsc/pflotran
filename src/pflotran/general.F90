@@ -10,7 +10,6 @@ module General_module
   private 
 
 #include "finclude/petscsys.h"
-  
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 #include "finclude/petscmat.h"
@@ -19,72 +18,44 @@ module General_module
 #include "finclude/petscviewer.h"
 #include "finclude/petsclog.h"
 
+#define CONVECTION
+#define DIFFUSION
+#define LIQUID_DIFFUSION
+#define CONDUCTION
+  
+!#define DEBUG_GENERAL_FILEOUTPUT
+!#define DEBUG_FLUXES  
 
 ! Cutoff parameters
-  PetscReal, parameter :: eps       = 1.D-8
-  PetscReal, parameter :: floweps   = 1.D-24
+  PetscReal, parameter :: eps       = 1.d-8
+  PetscReal, parameter :: floweps   = 1.d-24
 
-  public GeneralResidual, GeneralJacobian, &
-         GeneralUpdateFixedAccum, GeneralTimeCut,&
-         GeneralSetup, GeneralNumericalJacTest, &
-         GeneralInitializeTimestep, GeneralUpdateAuxVars, &
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+  PetscInt, parameter :: debug_unit = 87
+  PetscInt, parameter :: debug_info_unit = 86
+  character(len=MAXWORDLENGTH) :: debug_filename
+  PetscInt :: debug_flag = 0
+  PetscInt :: debug_iteration_count
+  PetscInt :: debug_timestep_cut_count
+  PetscInt :: debug_timestep_count
+#endif
+
+  public GeneralSetup, &
+         GeneralInitializeTimestep, &
          GeneralUpdateSolution, &
-         GeneralGetTecplotHeader, GeneralComputeMassBalance, &
-         GeneralDestroy, GeneralSetPlotVariables, &
-         GeneralCheckUpdatePre, GeneralCheckUpdatePost
+         GeneralTimeCut,&
+         GeneralUpdateAuxVars, &
+         GeneralUpdateFixedAccum, &
+         GeneralComputeMassBalance, &
+         GeneralResidual, &
+         GeneralJacobian, &
+         GeneralGetTecplotHeader, &
+         GeneralSetPlotVariables, &
+         GeneralCheckUpdatePre, &
+         GeneralCheckUpdatePost, &
+         GeneralDestroy
 
 contains
-
-! ************************************************************************** !
-
-subroutine GeneralTimeCut(realization)
-  ! 
-  ! Resets arrays for time step cut
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/10/11
-  ! 
- 
-  use Realization_class
-  use Option_module
-  use Field_module
-  use Patch_module
-  use Discretization_module
-  use Grid_module
- 
-  implicit none
-  
-  type(realization_type) :: realization
-  type(option_type), pointer :: option
-  type(field_type), pointer :: field
-  type(patch_type), pointer :: patch
-  type(grid_type), pointer :: grid
-  type(global_auxvar_type), pointer :: global_auxvars(:)  
-  
-  PetscInt :: local_id, ghosted_id
-  PetscReal, pointer :: iphas_loc_p(:)
-  PetscErrorCode :: ierr
-
-  option => realization%option
-  field => realization%field
-  patch => realization%patch
-  grid => patch%grid
-  global_auxvars => patch%aux%Global%auxvars
-
-  call VecCopy(field%flow_yy,field%flow_xx,ierr)
-  call DiscretizationGlobalToLocal(realization%discretization,field%flow_xx, &
-                                   field%flow_xx_loc,NFLOWDOF)
-  
-  ! restore stored state
-  call VecGetArrayReadF90(field%iphas_loc,iphas_loc_p, ierr)
-  do ghosted_id = 1, grid%ngmax
-    global_auxvars(ghosted_id)%istate = int(iphas_loc_p(ghosted_id))
-  enddo
-  call VecRestoreArrayReadF90(field%iphas_loc,iphas_loc_p, ierr)  
-
-  call GeneralInitializeTimestep(realization)  
-
-end subroutine GeneralTimeCut
 
 ! ************************************************************************** !
 
@@ -129,7 +100,7 @@ subroutine GeneralSetup(realization)
   option => realization%option
   patch => realization%patch
   grid => patch%grid
-
+  
   patch%aux%General => GeneralAuxCreate(option)
 
   ! ensure that material properties specific to this module are properly
@@ -240,9 +211,188 @@ subroutine GeneralSetup(realization)
     cur_fluid_property => cur_fluid_property%next
   enddo  
 
+  if (realization%output_option%print_fluxes) then
+    allocate(patch%internal_fluxes(option%nflowdof,1, &
+           ConnectionGetNumberInList(patch%grid%internal_connection_set_list)))
+    patch%internal_fluxes = 0.d0
+  endif
+
   call GeneralSetPlotVariables(realization) 
+  
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+  debug_flag = 0
+  debug_iteration_count = 0
+  debug_timestep_cut_count = 0
+  debug_timestep_count = 0
+  ! create new file
+  open(debug_info_unit, file='debug_info.txt', action="write", &
+       status="unknown")
+  write(debug_info_unit,*) 'type timestep cut iteration'
+  close(debug_info_unit)
+#endif  
 
 end subroutine GeneralSetup
+
+! ************************************************************************** !
+
+subroutine GeneralInitializeTimestep(realization)
+  ! 
+  ! Update data in module prior to time step
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
+
+  use Realization_class
+  
+  implicit none
+  
+  type(realization_type) :: realization
+
+  call GeneralUpdateFixedAccum(realization)
+  
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+  debug_flag = 0
+!  if (realization%option%time >= 35.6d0*3600d0*24.d0*365.d0 - 1.d-40) then
+!  if (.false.) then
+  if (.true.) then
+    debug_iteration_count = 0
+    debug_flag = 1
+  endif
+  debug_iteration_count = 0
+#endif
+
+end subroutine GeneralInitializeTimestep
+
+! ************************************************************************** !
+
+subroutine GeneralUpdateSolution(realization)
+  ! 
+  ! Updates data in module after a successful time
+  ! step
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
+
+  use Realization_class
+  use Field_module
+  use Patch_module
+  use Discretization_module
+  use Option_module
+  use Grid_module
+  
+  implicit none
+  
+  type(realization_type) :: realization
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+  type(general_auxvar_type), pointer :: gen_auxvars(:,:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)  
+  PetscInt :: local_id, ghosted_id
+  PetscReal, pointer :: iphas_loc_p(:)
+  PetscErrorCode :: ierr
+  
+  option => realization%option
+  field => realization%field
+  patch => realization%patch
+  grid => patch%grid
+  gen_auxvars => patch%aux%General%auxvars  
+  global_auxvars => patch%aux%Global%auxvars
+  
+  call VecCopy(field%flow_xx,field%flow_yy,ierr)   
+
+  if (realization%option%compute_mass_balance_new) then
+    call GeneralUpdateMassBalance(realization)
+  endif
+  
+  ! update stored state
+  call VecGetArrayF90(field%iphas_loc,iphas_loc_p,ierr)
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    iphas_loc_p(ghosted_id) = global_auxvars(ghosted_id)%istate
+    gen_auxvars%istate_store(PREV_TS) = global_auxvars(ghosted_id)%istate
+  enddo
+  call VecRestoreArrayF90(field%iphas_loc,iphas_loc_p,ierr)
+  
+  ! update ghosted iphas_loc values (must come after 
+  ! GeneralUpdateSolutionPatch)
+  call DiscretizationLocalToLocal(realization%discretization, &
+                                  field%iphas_loc, &
+                                  field%iphas_loc,ONEDOF)
+  
+  ! Set states of ghosted cells
+  call VecGetArrayF90(field%iphas_loc,iphas_loc_p,ierr)
+  do ghosted_id = 1, realization%patch%grid%ngmax
+    realization%patch%aux%Global%auxvars(ghosted_id)%istate = &
+      int(iphas_loc_p(ghosted_id))
+  enddo
+  call VecRestoreArrayF90(field%iphas_loc,iphas_loc_p,ierr)
+
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+  debug_iteration_count = 0
+  debug_timestep_cut_count = 0
+  debug_timestep_count = debug_timestep_count + 1
+#endif   
+  
+end subroutine GeneralUpdateSolution
+
+! ************************************************************************** !
+
+subroutine GeneralTimeCut(realization)
+  ! 
+  ! Resets arrays for time step cut
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
+  use Realization_class
+  use Option_module
+  use Field_module
+  use Patch_module
+  use Discretization_module
+  use Grid_module
+ 
+  implicit none
+  
+  type(realization_type) :: realization
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(global_auxvar_type), pointer :: global_auxvars(:)  
+  
+  PetscInt :: local_id, ghosted_id
+  PetscReal, pointer :: iphas_loc_p(:)
+  PetscErrorCode :: ierr
+
+  option => realization%option
+  field => realization%field
+  patch => realization%patch
+  grid => patch%grid
+  global_auxvars => patch%aux%Global%auxvars
+
+  call VecCopy(field%flow_yy,field%flow_xx,ierr)
+  call DiscretizationGlobalToLocal(realization%discretization,field%flow_xx, &
+                                   field%flow_xx_loc,NFLOWDOF)
+  
+  ! restore stored state
+  call VecGetArrayReadF90(field%iphas_loc,iphas_loc_p, ierr)
+  do ghosted_id = 1, grid%ngmax
+    global_auxvars(ghosted_id)%istate = int(iphas_loc_p(ghosted_id))
+  enddo
+  call VecRestoreArrayReadF90(field%iphas_loc,iphas_loc_p, ierr)  
+
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+  debug_timestep_cut_count = debug_timestep_cut_count + 1
+#endif 
+
+  call GeneralInitializeTimestep(realization)  
+
+end subroutine GeneralTimeCut
 
 ! ************************************************************************** !
 
@@ -264,26 +414,30 @@ subroutine GeneralComputeMassBalance(realization,mass_balance)
   implicit none
   
   type(realization_type) :: realization
-  PetscReal :: mass_balance(realization%option%nphase)
+  PetscReal :: mass_balance(realization%option%nflowspec, &
+                            realization%option%nflowdof)
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(field_type), pointer :: field
   type(grid_type), pointer :: grid
-  type(global_auxvar_type), pointer :: global_auxvars(:)
+  type(general_auxvar_type), pointer :: general_auxvars(:,:)
   class(material_auxvar_type), pointer :: material_auxvars(:)
   PetscReal, pointer :: volume_p(:), porosity_loc_p(:)
 
   PetscErrorCode :: ierr
   PetscInt :: local_id
   PetscInt :: ghosted_id
+  PetscInt :: iphase, icomp
+  PetscReal :: vol_phase
+  PetscReal, parameter :: fmw_comp(2) = [FMWH2O,FMWAIR]  
 
   option => realization%option
   patch => realization%patch
   grid => patch%grid
   field => realization%field
 
-  global_auxvars => patch%aux%Global%auxvars
+  general_auxvars => patch%aux%General%auxvars
   material_auxvars => patch%aux%Material%auxvars
 
   mass_balance = 0.d0
@@ -292,12 +446,20 @@ subroutine GeneralComputeMassBalance(realization,mass_balance)
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
     if (patch%imat(ghosted_id) <= 0) cycle
-    ! mass = volume*saturation*density
-    mass_balance = mass_balance + &
-      global_auxvars(ghosted_id)%den_kg* &
-      global_auxvars(ghosted_id)%sat* &
-      material_auxvars(ghosted_id)%porosity* &
-      material_auxvars(ghosted_id)%volume
+    do iphase = 1, option%nphase
+      ! volume_phase = saturation*porosity*volume
+      vol_phase = &
+        general_auxvars(ZERO_INTEGER,ghosted_id)%sat(iphase)* &
+        material_auxvars(ghosted_id)%porosity* &
+        material_auxvars(ghosted_id)%volume
+      ! mass = volume_phase*density
+      do icomp = 1, option%nflowspec
+        mass_balance(icomp,iphase) = mass_balance(icomp,iphase) + &
+          general_auxvars(ZERO_INTEGER,ghosted_id)%den(iphase)* &
+          general_auxvars(ZERO_INTEGER,ghosted_id)%xmol(icomp,iphase) * &
+          fmw_comp(icomp)*vol_phase
+      enddo
+    enddo
   enddo
 
 end subroutine GeneralComputeMassBalance
@@ -360,8 +522,10 @@ subroutine GeneralUpdateMassBalance(realization)
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(global_auxvar_type), pointer :: global_auxvars_bc(:)
-
+  
+  PetscReal, parameter :: fmw_comp(2) = [FMWH2O,FMWAIR]
   PetscInt :: iconn
+  PetscInt :: icomp
 
   option => realization%option
   patch => realization%patch
@@ -369,9 +533,12 @@ subroutine GeneralUpdateMassBalance(realization)
   global_auxvars_bc => patch%aux%Global%auxvars_bc
 
   do iconn = 1, patch%aux%General%num_aux_bc
-    global_auxvars_bc(iconn)%mass_balance = &
-      global_auxvars_bc(iconn)%mass_balance + &
-      global_auxvars_bc(iconn)%mass_balance_delta*FMWH2O*option%flow_dt
+    do icomp = 1, option%nflowspec
+      global_auxvars_bc(iconn)%mass_balance(icomp,:) = &
+        global_auxvars_bc(iconn)%mass_balance(icomp,:) + &
+        global_auxvars_bc(iconn)%mass_balance_delta(icomp,:)* &
+        fmw_comp(icomp)*option%flow_dt
+    enddo
   enddo
 
 end subroutine GeneralUpdateMassBalance
@@ -466,6 +633,13 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
                                     ghosted_id, &  ! for debugging
                                     option)
     endif
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+  if (debug_flag > 0) then
+    write(debug_unit,'(a,i5,i3,7es24.15)') 'auxvar:', ghosted_id, &
+                        global_auxvars(ghosted_id)%istate, &
+                        xx_loc_p(ghosted_start:ghosted_end)
+  endif
+#endif
   enddo
 
   boundary_condition => patch%boundary_conditions%first
@@ -597,6 +771,13 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
                                     patch%saturation_function_array( &
                                       patch%sat_func_id(ghosted_id))%ptr, &
                                     ghosted_id,option)
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+      if (debug_flag > 0) then
+        write(debug_unit,'(a,i5,i3,7es24.15)') 'bc_auxvar:', ghosted_id, &
+                           global_auxvars_bc(ghosted_id)%istate, &
+                            xxbc(:)
+      endif
+#endif
     enddo
     boundary_condition => boundary_condition%next
   enddo
@@ -606,96 +787,6 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
   patch%aux%General%auxvars_up_to_date = PETSC_TRUE
 
 end subroutine GeneralUpdateAuxVars
-
-! ************************************************************************** !
-
-subroutine GeneralInitializeTimestep(realization)
-  ! 
-  ! Update data in module prior to time step
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/10/11
-  ! 
-
-  use Realization_class
-  
-  implicit none
-  
-  type(realization_type) :: realization
-
-  call GeneralUpdateFixedAccum(realization)
-
-end subroutine GeneralInitializeTimestep
-
-! ************************************************************************** !
-
-subroutine GeneralUpdateSolution(realization)
-  ! 
-  ! Updates data in module after a successful time
-  ! step
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/10/11
-  ! 
-
-  use Realization_class
-  use Field_module
-  use Patch_module
-  use Discretization_module
-  use Option_module
-  use Grid_module
-  
-  implicit none
-  
-  type(realization_type) :: realization
-
-  type(option_type), pointer :: option
-  type(patch_type), pointer :: patch
-  type(grid_type), pointer :: grid
-  type(field_type), pointer :: field
-  type(general_auxvar_type), pointer :: gen_auxvars(:,:)
-  type(global_auxvar_type), pointer :: global_auxvars(:)  
-  PetscInt :: local_id, ghosted_id
-  PetscReal, pointer :: iphas_loc_p(:)
-  PetscErrorCode :: ierr
-  
-  option => realization%option
-  field => realization%field
-  patch => realization%patch
-  grid => patch%grid
-  gen_auxvars => patch%aux%General%auxvars  
-  global_auxvars => patch%aux%Global%auxvars
-  
-  call VecCopy(field%flow_xx,field%flow_yy,ierr)   
-
-  if (realization%option%compute_mass_balance_new) then
-    call GeneralUpdateMassBalance(realization)
-  endif
-  
-  ! update stored state
-  call VecGetArrayF90(field%iphas_loc,iphas_loc_p,ierr)
-  do local_id = 1, grid%nlmax
-    ghosted_id = grid%nL2G(local_id)
-    iphas_loc_p(ghosted_id) = global_auxvars(ghosted_id)%istate
-    gen_auxvars%istate_store(PREV_TS) = global_auxvars(ghosted_id)%istate
-  enddo
-  call VecRestoreArrayF90(field%iphas_loc,iphas_loc_p,ierr)
-  
-  ! update ghosted iphas_loc values (must come after 
-  ! GeneralUpdateSolutionPatch)
-  call DiscretizationLocalToLocal(realization%discretization, &
-                                  field%iphas_loc, &
-                                  field%iphas_loc,ONEDOF)
-  
-  ! Set states of ghosted cells
-  call VecGetArrayF90(field%iphas_loc,iphas_loc_p,ierr)
-  do ghosted_id = 1, realization%patch%grid%ngmax
-    realization%patch%aux%Global%auxvars(ghosted_id)%istate = &
-      int(iphas_loc_p(ghosted_id))
-  enddo
-  call VecRestoreArrayF90(field%iphas_loc,iphas_loc_p,ierr)
-
-end subroutine GeneralUpdateSolution
 
 ! ************************************************************************** !
 
@@ -782,106 +873,6 @@ end subroutine GeneralUpdateFixedAccum
 
 ! ************************************************************************** !
 
-subroutine GeneralNumericalJacTest(xx,realization)
-  ! 
-  ! Computes the a test numerical jacobian
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/10/11
-  ! 
-
-  use Realization_class
-  use Patch_module
-  use Option_module
-  use Grid_module
-  use Field_module
-
-  implicit none
-
-  Vec :: xx
-  type(realization_type) :: realization
-
-  Vec :: xx_pert
-  Vec :: res
-  Vec :: res_pert
-  Mat :: A
-  PetscViewer :: viewer
-  PetscErrorCode :: ierr
-  
-  PetscReal :: derivative, perturbation
-  PetscReal, parameter :: perturbation_tolerance = 1.d-5
-  
-  PetscReal, pointer :: vec_p(:), vec2_p(:)
-
-  type(grid_type), pointer :: grid
-  type(option_type), pointer :: option
-  type(patch_type), pointer :: patch
-  type(field_type), pointer :: field
-  
-  PetscInt :: idof, idof2, icell
-
-  patch => realization%patch
-  grid => patch%grid
-  option => realization%option
-  field => realization%field
-
-!geh:print *, 'GeneralNumericalJacTest'
-  
-  call VecDuplicate(xx,xx_pert,ierr)
-  call VecDuplicate(xx,res,ierr)
-  call VecDuplicate(xx,res_pert,ierr)
-  
-  call MatCreate(option%mycomm,A,ierr)
-  call MatSetSizes(A,PETSC_DECIDE,PETSC_DECIDE,grid%nlmax*option%nflowdof, &
-                   grid%nlmax*option%nflowdof,ierr)
-  call MatSetType(A,MATAIJ,ierr)
-  call MatSetFromOptions(A,ierr)
-  call MatSetUp(A,ierr)
-    
-  call GeneralResidual(PETSC_NULL_OBJECT,xx,res,realization,ierr)
-  call VecGetArrayF90(res,vec2_p,ierr)
-  do icell = 1,grid%nlmax
-    if (patch%imat(grid%nL2G(icell)) <= 0) cycle
-    do idof = (icell-1)*option%nflowdof+1,icell*option%nflowdof 
-      call VecCopy(xx,xx_pert,ierr)
-      call VecGetArrayF90(xx_pert,vec_p,ierr)
-      perturbation = vec_p(idof)*perturbation_tolerance
-      vec_p(idof) = vec_p(idof)+perturbation
-      call VecRestoreArrayF90(xx_pert,vec_p,ierr)
-      call GeneralResidual(PETSC_NULL_OBJECT,xx_pert,res_pert,realization,ierr)
-      call VecGetArrayF90(res_pert,vec_p,ierr)
-!geh:print *, icell, idof
-      do idof2 = 1, grid%nlmax*option%nflowdof
-        derivative = (vec_p(idof2)-vec2_p(idof2))/perturbation
-!geh:print *, derivative, perturbation
-        if (dabs(derivative) > 1.d-30) then
-          call MatSetValue(a,idof2-1,idof-1,derivative,insert_values,ierr)
-        endif
-      enddo
-      call VecRestoreArrayF90(res_pert,vec_p,ierr)
-    enddo
-  enddo
-  call VecRestoreArrayF90(res,vec2_p,ierr)
-
-  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-  call PetscViewerASCIIOpen(option%mycomm,'numerical_jacobian.out',viewer,ierr)
-  call MatView(A,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
-
-  call MatDestroy(A,ierr)
-  
-  ! call again to get auxvars back to previous state
-  call GeneralResidual(PETSC_NULL_OBJECT,xx,res,realization,ierr)
-  
-  call VecDestroy(xx_pert,ierr)
-  call VecDestroy(res,ierr)
-  call VecDestroy(res_pert,ierr)
-
-end subroutine GeneralNumericalJacTest
-
-! ************************************************************************** !
-
 subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
                                soil_heat_capacity,option,Res)
   ! 
@@ -919,7 +910,7 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
   v_over_t = material_auxvar%volume / option%flow_dt
 
   porosity = material_auxvar%porosity
-    if (soil_compressibility_index > 0) then
+  if (soil_compressibility_index > 0) then
     call MaterialCompressSoil(material_auxvar, &
                               maxval(global_auxvar%pres(1:2)), &
                               compressed_porosity,dcompressed_porosity_dp)
@@ -929,18 +920,23 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
   ! accumulation term units = kmol/s
   Res = 0.d0
   do iphase = 1, option%nphase
-    ! all components are lumped in first residual equation
-    ! Res[kmol total/m^3 void] = sat[m^3 phase/m^3 void] * 
-    !                            den[kmol phase/m^3 phase]
-    Res(1) = Res(1) + gen_auxvar%sat(iphase) * &
-                              gen_auxvar%den(iphase)
     ! Res[kmol comp/m^3 void] = sat[m^3 phase/m^3 void] * 
     !                           den[kmol phase/m^3 phase] * 
     !                           xmol[kmol comp/kmol phase]
-    do icomp = 2, option%nflowspec
+    do icomp = 1, option%nflowspec
+#ifdef DEBUG_GENERAL
+      ! for debug version, aux var entries are initialized to NaNs.  even if
+      ! saturation is zero, density may be a NaN.  So the conditional prevents
+      ! this calculation.  For non-debug, aux var entries are initialized to
+      ! 0.d0
+      if (gen_auxvar%sat(iphase) > 0.d0) then
+#endif
       Res(icomp) = Res(icomp) + gen_auxvar%sat(iphase) * &
                                 gen_auxvar%den(iphase) * &
                                 gen_auxvar%xmol(icomp,iphase)
+#ifdef DEBUG_GENERAL
+      endif
+#endif
     enddo
   enddo
 
@@ -953,9 +949,19 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
   do iphase = 1, option%nphase
     ! Res[MJ/m^3 void] = sat[m^3 phase/m^3 void] *
     !                    den[kmol phase/m^3 phase] * U[MJ/kmol phase]
+#ifdef DEBUG_GENERAL
+    ! for debug version, aux var entries are initialized to NaNs.  even if
+    ! saturation is zero, density may be a NaN.  So the conditional prevents
+    ! this calculation.  For non-debug, aux var entries are initialized to
+    ! 0.d0
+    if (gen_auxvar%sat(iphase) > 0.d0) then
+#endif
     Res(energy_id) = Res(energy_id) + gen_auxvar%sat(iphase) * &
                                       gen_auxvar%den(iphase) * &
                                       gen_auxvar%U(iphase)
+#ifdef DEBUG_GENERAL
+    endif
+#endif
   enddo
   ! Res[MJ/sec] = (Res[MJ/m^3 void] * por[m^3 void/m^3 bulk] + 
   !                (1-por)[m^3 rock/m^3 bulk] * 
@@ -964,9 +970,730 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
   Res(energy_id) = (Res(energy_id) * porosity + &
                     (1.d0 - porosity) * &
                     material_auxvar%soil_particle_density * &
-                    soil_heat_capacity * gen_auxvar%temp) * v_over_t 
+                    soil_heat_capacity * gen_auxvar%temp) * v_over_t
+                    
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+  if (debug_flag > 0) then
+    write(debug_unit,'(a,7es24.15)') 'accum:', Res
+  endif
+#endif                    
 
 end subroutine GeneralAccumulation
+
+! ************************************************************************** !
+
+subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
+                       material_auxvar_up, &
+                       sir_up, &
+                       thermal_conductivity_up, &
+                       gen_auxvar_dn,global_auxvar_dn, &
+                       material_auxvar_dn, &
+                       sir_dn, &
+                       thermal_conductivity_dn, &
+                       area, dist, general_parameter, &
+                       option,v_darcy,Res)
+  ! 
+  ! Computes the internal flux terms for the residual
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
+  use Option_module
+  use Material_Aux_class
+  use Connection_module
+    
+  implicit none
+  
+  type(general_auxvar_type) :: gen_auxvar_up, gen_auxvar_dn
+  type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
+  class(material_auxvar_type) :: material_auxvar_up, material_auxvar_dn
+  type(option_type) :: option
+  PetscReal :: sir_up(:), sir_dn(:)
+  PetscReal :: v_darcy(option%nphase)
+  PetscReal :: area
+  PetscReal :: dist(-1:3)
+  type(general_parameter_type) :: general_parameter
+  PetscReal :: thermal_conductivity_dn(2)
+  PetscReal :: thermal_conductivity_up(2)
+  PetscReal :: Res(option%nflowdof)
+
+  PetscReal :: dist_gravity  ! distance along gravity vector
+  PetscReal :: dd_up, dd_dn
+  PetscReal :: upweight
+  PetscInt :: wat_comp_id, air_comp_id, energy_id
+  PetscInt :: icomp, iphase
+  
+  PetscReal :: xmol(option%nflowspec)
+  PetscReal :: perm_up, perm_dn
+  PetscReal :: density_ave, density_kg_ave
+  PetscReal :: uH
+  PetscReal :: H_ave
+  PetscReal :: perm_ave_over_dist
+  PetscReal :: delta_pressure, delta_xmol, delta_temp
+  PetscReal :: pressure_ave
+  PetscReal :: gravity_term
+  PetscReal :: mobility, mole_flux, q
+  PetscReal :: stp_up, stp_dn
+  PetscReal :: sat_up, sat_dn
+  PetscReal :: temp_ave, stp_ave, v_air
+  PetscReal :: k_eff_up, k_eff_dn, k_eff_ave, heat_flux
+  PetscReal :: adv_flux(3), diff_flux(3)
+  PetscReal :: debug_flux(3,3), debug_dphi(2)
+   
+  wat_comp_id = option%water_id
+  air_comp_id = option%air_id
+  energy_id = option%energy_id
+
+  call ConnectionCalculateDistances(dist,option%gravity,dd_up,dd_dn, &
+                                    dist_gravity,upweight)
+  call material_auxvar_up%PermeabilityTensorToScalar(dist,perm_up)
+  call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
+  
+  perm_ave_over_dist = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
+
+  Res = 0.d0
+  v_darcy = 0.d0
+#ifdef DEBUG_FLUXES  
+  adv_flux = 0.d0
+  diff_flux = 0.d0
+#endif
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+  debug_flux = 0.d0
+  debug_dphi = 0.d0
+#endif
+
+#ifdef CONVECTION
+  do iphase = 1, option%nphase
+ 
+    if (gen_auxvar_up%mobility(iphase) + &
+        gen_auxvar_dn%mobility(iphase) < eps) then
+      cycle
+    endif
+
+    density_kg_ave = GeneralAverageDensity(iphase, &
+                                           global_auxvar_up%istate, &
+                                           global_auxvar_dn%istate, &
+                                           gen_auxvar_up%den_kg, &
+                                           gen_auxvar_dn%den_kg)
+    gravity_term = density_kg_ave * dist_gravity
+    delta_pressure = gen_auxvar_up%pres(iphase) - &
+                     gen_auxvar_dn%pres(iphase) + &
+                     gravity_term
+
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+      debug_dphi(iphase) = delta_pressure
+#endif
+
+    if (delta_pressure >= 0.D0) then
+      mobility = gen_auxvar_up%mobility(iphase)
+      xmol(:) = gen_auxvar_up%xmol(:,iphase)
+      H_ave = gen_auxvar_up%H(iphase)
+      uH = H_ave
+    else
+      mobility = gen_auxvar_dn%mobility(iphase)
+      xmol(:) = gen_auxvar_dn%xmol(:,iphase)
+      H_ave = gen_auxvar_dn%H(iphase)
+      uH = H_ave
+    endif      
+
+    if (mobility > floweps) then
+      ! v_darcy[m/sec] = perm[m^2] / dist[m] * kr[-] / mu[Pa-sec]
+      !                    dP[Pa]]
+      v_darcy(iphase) = perm_ave_over_dist * mobility * delta_pressure
+      density_ave = GeneralAverageDensity(iphase, &
+                                          global_auxvar_up%istate, &
+                                          global_auxvar_dn%istate, &
+                                          gen_auxvar_up%den, &
+                                          gen_auxvar_dn%den)
+      ! q[m^3 phase/sec] = v_darcy[m/sec] * area[m^2]
+      q = v_darcy(iphase) * area  
+      ! mole_flux[kmol phase/sec] = q[m^3 phase/sec] * 
+      !                             density_ave[kmol phase/m^3 phase]        
+      mole_flux = q*density_ave
+      ! Res[kmol total/sec]
+      do icomp = 1, option%nflowspec
+        ! Res[kmol comp/sec] = mole_flux[kmol phase/sec] * 
+        !                      xmol[kmol comp/kmol phase]
+        Res(icomp) = Res(icomp) + mole_flux * xmol(icomp)
+      enddo
+#ifdef DEBUG_FLUXES  
+      do icomp = 1, option%nflowspec
+        adv_flux(icomp) = adv_flux(icomp) + mole_flux * xmol(icomp)
+      enddo      ! Res[MJ/sec] = mole_flux[kmol comp/sec] * H_ave[MJ/kmol comp]
+#endif
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+      do icomp = 1, option%nflowspec
+        debug_flux(icomp,iphase) = debug_flux(icomp,iphase) + mole_flux * xmol(icomp)
+      enddo      ! Res[MJ/sec] = mole_flux[kmol comp/sec] * H_ave[MJ/kmol comp]
+#endif
+      Res(energy_id) = Res(energy_id) + mole_flux * uH
+#ifdef DEBUG_FLUXES  
+      adv_flux(energy_id) = adv_flux(energy_id) + mole_flux * uH
+#endif
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+      debug_dphi(iphase) = delta_pressure
+      debug_flux(energy_id,iphase) = debug_flux(energy_id,iphase) + mole_flux * uH
+#endif
+    endif                   
+
+  enddo
+! CONVECTION
+#endif
+
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+  if (debug_flag > 0) then  
+    write(debug_unit,'(a,7es24.15)') 'delta pressure :', debug_dphi(:)
+    write(debug_unit,'(a,7es24.15)') 'adv flux (liquid):', debug_flux(:,1)
+    write(debug_unit,'(a,7es24.15)') 'adv flux (gas):', debug_flux(:,2)
+  endif
+  debug_flux = 0.d0
+#endif                    
+
+#ifdef DIFFUSION
+  ! add in gas component diffusion in gas and liquid phases
+  do iphase = 1, option%nphase
+    
+#ifndef LIQUID_DIFFUSION  
+    if (iphase == LIQUID_PHASE) cycle
+#endif    
+    
+    sat_up = gen_auxvar_up%sat(iphase)
+    sat_dn = gen_auxvar_dn%sat(iphase)
+    !geh: changed to .and. -> .or.
+    if (sqrt(sat_up*sat_dn) < eps) cycle
+    if (sat_up > eps .or. sat_dn > eps) then
+      ! for now, if liquid state neighboring gas, we allow for minute
+      ! diffusion in liquid phase.
+      if (iphase == option%liquid_phase) then
+        if ((sat_up > eps .and. sat_dn > eps) .or. &
+            (sat_up < eps .and. sat_dn < eps)) then
+          sat_up = max(sat_up,eps)
+          sat_dn = max(sat_dn,eps)
+        endif
+      endif
+      density_ave = GeneralAverageDensity(iphase, &
+                                          global_auxvar_up%istate, &
+                                          global_auxvar_dn%istate, &
+                                          gen_auxvar_up%den, &
+                                          gen_auxvar_dn%den)
+      stp_ave = sqrt(sat_up*sat_dn)* &
+                sqrt(material_auxvar_up%tortuosity* &
+                     material_auxvar_dn%tortuosity)* &
+                !TODO(geh): update that diffusion uses compressed porosity
+                sqrt(material_auxvar_up%porosity* &
+                     material_auxvar_dn%porosity)
+      delta_xmol = gen_auxvar_up%xmol(air_comp_id,iphase) - &
+                   gen_auxvar_dn%xmol(air_comp_id,iphase)
+      ! need to account for multiple phases
+      ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
+      if (iphase == option%liquid_phase) then
+        ! Eq. 1.9a.  The water density is added below
+        v_air = stp_ave * &
+                general_parameter%diffusion_coefficient(iphase) * delta_xmol
+      else
+        temp_ave = 0.5d0*(gen_auxvar_up%temp+gen_auxvar_dn%temp)
+        pressure_ave = 0.5d0*(gen_auxvar_up%pres(iphase)+gen_auxvar_dn%pres(iphase))
+        ! Eq. 1.9b.  The gas density is added below
+        v_air = stp_ave * &
+                ((temp_ave+273.15)/273.15d0)**1.8d0 * &
+                101325.d0 / pressure_ave * &
+                general_parameter%diffusion_coefficient(iphase) * delta_xmol      
+      endif      
+      q =  v_air * area
+      mole_flux = q * density_ave
+      Res(wat_comp_id) = Res(wat_comp_id) - mole_flux
+      Res(air_comp_id) = Res(air_comp_id) + mole_flux
+#ifdef DEBUG_FLUXES  
+      diff_flux(wat_comp_id) = diff_flux(wat_comp_id) - mole_flux
+      diff_flux(air_comp_id) = diff_flux(air_comp_id) + mole_flux      
+#endif
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+      debug_flux(wat_comp_id,iphase) = debug_flux(wat_comp_id,iphase) - mole_flux 
+      debug_flux(air_comp_id,iphase) = debug_flux(air_comp_id,iphase) + mole_flux 
+#endif
+    endif
+  enddo
+! DIFFUSION
+#endif
+
+#ifdef CONDUCTION
+  ! add heat conduction flux
+  ! based on Somerton et al., 1974:
+  ! k_eff = k_dry + sqrt(s_l)*(k_sat-k_dry)
+  k_eff_up = thermal_conductivity_up(1) + &
+             sqrt(gen_auxvar_up%sat(option%liquid_phase)) * &
+             (thermal_conductivity_up(2) - thermal_conductivity_up(1))
+  k_eff_dn = thermal_conductivity_dn(1) + &
+             sqrt(gen_auxvar_dn%sat(option%liquid_phase)) * &
+             (thermal_conductivity_dn(2) - thermal_conductivity_dn(1))
+  if (k_eff_up > 0.d0 .or. k_eff_up > 0.d0) then
+    k_eff_ave = (k_eff_up*k_eff_dn)/(k_eff_up*dd_dn+k_eff_dn*dd_up)
+  else
+    k_eff_ave = 0.d0
+  endif
+  ! units:
+  ! k_eff = W/K/m/m = J/s/K/m/m
+  ! delta_temp = K
+  ! area = m^2
+  ! heat_flux = J/s
+  delta_temp = gen_auxvar_up%temp - gen_auxvar_dn%temp
+  heat_flux = k_eff_ave * delta_temp * area
+  ! MJ/s
+  Res(energy_id) = Res(energy_id) + heat_flux * 1.d-6 ! J/s -> MJ/s
+! CONDUCTION
+#endif
+#ifdef DEBUG_FLUXES  
+  diff_flux(3) = diff_flux(3) + heat_flux * 1.d-6
+
+  if (option%iflag == 1) then  
+    write(*,'(a,7es12.4)') 'in: ', adv_flux(:)*dist(3), diff_flux(:)*dist(3)
+  endif
+#endif
+
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+  debug_flux(energy_id,1) = debug_flux(energy_id,1) + heat_flux * 1.d-6
+  if (debug_flag > 0) then  
+    write(debug_unit,'(a,7es24.15)') 'dif flux (liquid):', debug_flux(:,1)
+    write(debug_unit,'(a,7es24.15)') 'dif flux (gas):', debug_flux(:,2)
+  endif
+#endif
+
+end subroutine GeneralFlux
+
+! ************************************************************************** !
+
+subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
+                         gen_auxvar_up,global_auxvar_up, &
+                         gen_auxvar_dn,global_auxvar_dn, &
+                         material_auxvar_dn, &
+                         sir_dn, &
+                         thermal_conductivity_dn, &
+                         area,dist,general_parameter, &
+                         option,v_darcy,Res)
+  ! 
+  ! Computes the boundary flux terms for the residual
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
+  use Option_module                              
+  use Material_Aux_class
+  
+  implicit none
+  
+  type(general_auxvar_type) :: gen_auxvar_up, gen_auxvar_dn
+  type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
+  class(material_auxvar_type) :: material_auxvar_dn
+  type(option_type) :: option
+  PetscReal :: sir_dn(:)
+  PetscReal :: auxvars(:) ! from aux_real_var array
+  PetscReal :: v_darcy(option%nphase), area
+  type(general_parameter_type) :: general_parameter
+  PetscReal :: dist(-1:3)
+  PetscReal :: Res(1:option%nflowdof)
+  PetscInt :: ibndtype(1:option%nflowdof)
+  PetscInt :: auxvar_mapping(GENERAL_MAX_INDEX)
+  PetscReal :: thermal_conductivity_dn(2)
+  
+  PetscInt :: wat_comp_id, air_comp_id, energy_id
+  PetscInt :: icomp, iphase
+  PetscInt :: bc_type
+  PetscReal :: xmol(option%nflowspec)  
+  PetscReal :: density_ave, density_kg_ave
+  PetscReal :: H_ave, uH
+  PetscReal :: perm_ave_over_dist, dist_gravity
+  PetscReal :: delta_pressure, delta_xmol, delta_temp
+  PetscReal :: gravity_term
+  PetscReal :: mobility, mole_flux, q
+  PetscReal :: sat_dn, perm_dn
+  PetscReal :: temp_ave, stp_ave, v_air, pres_ave
+  PetscReal :: k_eff_up, k_eff_dn, k_eff_ave, heat_flux
+  PetscReal :: adv_flux(3), diff_flux(3)
+  PetscReal :: debug_flux(3,3), debug_dphi(2)
+  PetscReal :: boundary_pressure
+  
+  PetscInt :: idof
+  PetscBool :: neumann_bc_present
+  
+  wat_comp_id = option%water_id
+  air_comp_id = option%air_id
+  energy_id = option%energy_id
+
+  Res = 0.d0
+  v_darcy = 0.d0  
+#ifdef DEBUG_FLUXES    
+  adv_flux = 0.d0
+  diff_flux = 0.d0
+#endif
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+  debug_flux = 0.d0
+  debug_dphi = 0.d0
+#endif
+
+  neumann_bc_present = PETSC_FALSE
+  
+  call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
+  
+#ifdef CONVECTION  
+  do iphase = 1, option%nphase
+ 
+     bc_type = ibndtype(iphase)
+     select case(bc_type)
+      ! figure out the direction of flow
+      case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
+
+      ! dist(0) = scalar - magnitude of distance
+      ! gravity = vector(3)
+      ! dist(1:3) = vector(3) - unit vector
+      dist_gravity = dist(0) * dot_product(option%gravity,dist(1:3))
+      
+      if (bc_type == CONDUCTANCE_BC) then
+          select case(iphase)
+            case(LIQUID_PHASE)
+              idof = auxvar_mapping(GENERAL_LIQUID_CONDUCTANCE_INDEX)
+            case(GAS_PHASE)
+              idof = auxvar_mapping(GENERAL_GAS_CONDUCTANCE_INDEX)
+          end select        
+          perm_ave_over_dist = auxvars(idof)
+        else
+          perm_ave_over_dist = perm_dn / dist(0)
+        endif
+        
+          
+        ! using residual saturation cannot be correct! - geh
+        ! reusing sir_dn for bounary auxvar
+#define BAD_MOVE1 ! this works
+#ifndef BAD_MOVE1       
+        if (gen_auxvar_up%sat(iphase) > sir_dn(iphase) .or. &
+            gen_auxvar_dn%sat(iphase) > sir_dn(iphase)) then
+#endif
+          boundary_pressure = gen_auxvar_up%pres(iphase)
+          if (iphase == LIQUID_PHASE .and. &
+              global_auxvar_up%istate == GAS_STATE) then
+            ! the idea here is to accommodate a free surface boundary
+            ! face.  this will not work for an interior grid cell as
+            ! there should be capillary pressure in force.
+            boundary_pressure = gen_auxvar_up%pres(option%gas_phase)
+          endif
+          density_kg_ave = GeneralAverageDensity(iphase, &
+                                                 global_auxvar_up%istate, &
+                                                 global_auxvar_dn%istate, &
+                                                 gen_auxvar_up%den_kg, &
+                                                 gen_auxvar_dn%den_kg)
+          gravity_term = density_kg_ave * dist_gravity
+          delta_pressure = boundary_pressure - &
+                           gen_auxvar_dn%pres(iphase) + &
+                           gravity_term
+
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+          debug_dphi(iphase) = delta_pressure
+#endif
+
+          if (bc_type == SEEPAGE_BC .or. &
+              bc_type == CONDUCTANCE_BC) then
+                ! flow in         ! boundary cell is <= pref
+            if (delta_pressure > 0.d0 .and. &
+                gen_auxvar_up%pres(iphase) - &
+                 option%reference_pressure < eps) then
+              delta_pressure = 0.d0
+            endif
+          endif
+            
+          if (delta_pressure >= 0.D0) then
+            mobility = gen_auxvar_up%mobility(iphase)
+            xmol(:) = gen_auxvar_up%xmol(:,iphase)
+            uH = gen_auxvar_up%H(iphase)
+          else
+            mobility = gen_auxvar_dn%mobility(iphase)
+            xmol(:) = gen_auxvar_dn%xmol(:,iphase)
+            uH = gen_auxvar_dn%H(iphase)
+          endif      
+
+          if (mobility > floweps) then
+            ! v_darcy[m/sec] = perm[m^2] / dist[m] * kr[-] / mu[Pa-sec]
+            !                    dP[Pa]]
+            v_darcy(iphase) = perm_ave_over_dist * mobility * delta_pressure
+            ! only need average density if velocity > 0.
+            density_ave = GeneralAverageDensity(iphase, &
+                                                global_auxvar_up%istate, &
+                                                global_auxvar_dn%istate, &
+                                                gen_auxvar_up%den, &
+                                                gen_auxvar_dn%den)
+          endif
+#ifndef BAD_MOVE1        
+        endif ! sat > eps
+#endif
+
+      case(NEUMANN_BC)
+        select case(iphase)
+          case(LIQUID_PHASE)
+            idof = auxvar_mapping(GENERAL_LIQUID_FLUX_INDEX)
+          case(GAS_PHASE)
+            idof = auxvar_mapping(GENERAL_GAS_FLUX_INDEX)
+        end select
+        
+        neumann_bc_present = PETSC_TRUE
+        xmol = 0.d0
+        xmol(iphase) = 1.d0
+        if (dabs(auxvars(idof)) > floweps) then
+          v_darcy(iphase) = auxvars(idof)
+          if (v_darcy(iphase) > 0.d0) then 
+            density_ave = gen_auxvar_up%den(iphase)
+            uH = gen_auxvar_up%H(iphase)
+          else 
+            density_ave = gen_auxvar_dn%den(iphase)
+            uH = gen_auxvar_dn%H(iphase)
+          endif 
+        endif
+      case default
+        option%io_buffer = &
+          'Boundary condition type not recognized in GeneralBCFlux phase loop.'
+        call printErrMsg(option)
+    end select
+
+    if (dabs(v_darcy(iphase)) > 0.d0) then
+      ! q[m^3 phase/sec] = v_darcy[m/sec] * area[m^2]
+      q = v_darcy(iphase) * area
+      ! mole_flux[kmol phase/sec] = q[m^3 phase/sec] * 
+      !                              density_ave[kmol phase/m^3 phase]
+      mole_flux = q*density_ave       
+      ! Res[kmol total/sec]
+      do icomp = 1, option%nflowspec
+        ! Res[kmol comp/sec] = mole_flux[kmol phase/sec] * 
+        !                      xmol[kmol comp/mol phase]
+        Res(icomp) = Res(icomp) + mole_flux * xmol(icomp)
+      enddo
+#ifdef DEBUG_FLUXES  
+      do icomp = 1, option%nflowspec
+        adv_flux(icomp) = adv_flux(icomp) + mole_flux * xmol(icomp)
+      enddo
+#endif
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+      do icomp = 1, option%nflowspec
+        debug_flux(icomp,iphase) = debug_flux(icomp,iphase) + mole_flux * xmol(icomp)
+      enddo
+#endif
+      ! Res[MJ/sec] = mole_flux[kmol comp/sec] * H_ave[MJ/kmol comp]
+      Res(energy_id) = Res(energy_id) + mole_flux * uH ! H_ave
+#ifdef DEBUG_FLUXES  
+      adv_flux(energy_id) = adv_flux(energy_id) + mole_flux * uH
+#endif
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+      debug_flux(energy_id,iphase) = debug_flux(energy_id,iphase) + mole_flux * uH
+#endif
+    endif
+  enddo
+! CONVECTION
+#endif
+  
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+  if (debug_flag > 0) then 
+    write(debug_unit,'(a,7es24.15)') 'bc delta pressure :', debug_dphi(:)  
+    write(debug_unit,'(a,7es24.15)') 'bc adv flux (liquid):', debug_flux(:,1)
+    write(debug_unit,'(a,7es24.15)') 'bc adv flux (gas):', debug_flux(:,2)
+  endif
+  debug_flux = 0.d0
+#endif  
+
+#ifdef DIFFUSION
+  ! add in gas component diffusion in gas and liquid phases
+  do iphase = 1, option%nphase
+  
+#ifdef LIQUID_DIFFUSION    
+!    if (neumann_bc_present) cycle
+    if (ibndtype(iphase) == NEUMANN_BC) cycle
+#else
+    if (iphase == LIQUID_PHASE) cycle
+#endif
+    
+    ! diffusion all depends upon the downwind cell.  phase diffusion only
+    ! occurs if a phase exists in both auxvars (boundary and internal) or
+    ! a liquid phase exists in the internal cell. so, one could say that
+    ! liquid diffusion always exists as the internal cell has a liquid phase,
+    ! but gas phase diffusion only occurs if the internal cell has a gas
+    ! phase.
+    if (gen_auxvar_dn%sat(iphase) > eps) then
+      sat_dn = gen_auxvar_dn%sat(iphase)
+      density_ave = GeneralAverageDensity(iphase, &
+                                          global_auxvar_up%istate, &
+                                          global_auxvar_dn%istate, &
+                                          gen_auxvar_up%den, &
+                                          gen_auxvar_dn%den)
+      ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) 
+      !       = m^3 water/m^4 bulk 
+      !    stp_ave = tor_dn*por_dn*(sat_up*sat_dn)/ &
+      !              ((sat_up+sat_dn)*dd_dn)
+      ! should saturation be distance weighted?
+      stp_ave = material_auxvar_dn%tortuosity * &
+                material_auxvar_dn%porosity * &
+                sat_dn / dist(0)
+      delta_xmol = gen_auxvar_up%xmol(air_comp_id,iphase) - &
+                   gen_auxvar_dn%xmol(air_comp_id,iphase)
+      ! need to account for multiple phases
+      ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
+      if (iphase == option%liquid_phase) then
+        ! Eq. 1.9a.  The water density is added below
+        v_air = stp_ave * &
+                general_parameter%diffusion_coefficient(iphase) * delta_xmol
+      else
+        temp_ave = 0.5d0*(gen_auxvar_up%temp + gen_auxvar_dn%temp)
+        pres_ave = 0.5d0*(gen_auxvar_up%pres(iphase)+gen_auxvar_dn%pres(iphase))
+        ! Eq. 1.9b.  The gas density is added below
+        v_air = stp_ave * &
+                ((temp_ave+273.15)/273.15d0)**1.8d0 * &
+                101325.d0 / &
+                pres_ave * &
+                general_parameter%diffusion_coefficient(iphase) * delta_xmol      
+      endif
+      q =  v_air * area
+      mole_flux = q * density_ave
+      Res(wat_comp_id) = Res(wat_comp_id) - mole_flux
+      Res(air_comp_id) = Res(air_comp_id) + mole_flux
+#ifdef DEBUG_FLUXES  
+      ! equal but opposite
+      diff_flux(wat_comp_id) = diff_flux(wat_comp_id) - mole_flux
+      diff_flux(air_comp_id) = diff_flux(air_comp_id) + mole_flux
+#endif
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+      debug_flux(wat_comp_id,iphase) = debug_flux(wat_comp_id,iphase) - mole_flux
+      debug_flux(air_comp_id,iphase) = debug_flux(air_comp_id,iphase) + mole_flux
+#endif
+    endif
+  enddo
+! DIFFUSION
+#endif
+
+#ifdef CONDUCTION
+  ! add heat conduction flux
+  select case (ibndtype(GENERAL_ENERGY_EQUATION_INDEX))
+    case (DIRICHLET_BC)
+      ! based on Somerton et al., 1974:
+      ! k_eff = k_dry + sqrt(s_l)*(k_sat-k_dry)
+      k_eff_dn = thermal_conductivity_dn(1) + &
+                 sqrt(gen_auxvar_dn%sat(option%liquid_phase)) * &
+                 (thermal_conductivity_dn(2) - thermal_conductivity_dn(1))
+      ! units:
+      ! k_eff = W/K/m/m = J/s/m/m
+      ! delta_temp = K
+      ! area = m^2
+      ! heat_flux = MJ/s
+      k_eff_ave = k_eff_dn / dist(0)
+      delta_temp = gen_auxvar_up%temp - gen_auxvar_dn%temp
+      heat_flux = k_eff_ave * delta_temp * area
+    case(NEUMANN_BC)
+      heat_flux = auxvars(auxvar_mapping(GENERAL_LIQUID_FLUX_INDEX))
+
+    case default
+      option%io_buffer = 'Boundary condition type not recognized in ' // &
+        'GeneralBCFlux heat conduction loop.'
+      call printErrMsg(option)
+  end select
+  Res(energy_id) = Res(energy_id) + heat_flux * 1.d-6 ! J/s -> MJ/s
+! CONDUCTION
+#endif
+
+#ifdef DEBUG_FLUXES  
+  diff_flux(3) = diff_flux(3) + heat_flux * 1.d-6
+  if (option%iflag == 1) then
+    write(*,'(a,7es12.4)') 'bc: ', adv_flux(:)*dist(3), diff_flux(:)*dist(3)
+  endif
+#endif
+
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+  debug_flux(energy_id,1) = debug_flux(energy_id,1) + heat_flux * 1.d-6
+  if (debug_flag > 0) then  
+    write(debug_unit,'(a,7es24.15)') 'bc dif flux (liquid):', debug_flux(:,1)*dist(3)
+    write(debug_unit,'(a,7es24.15)') 'bc dif flux (gas):', debug_flux(:,2)*dist(3)
+  endif
+#endif
+  
+end subroutine GeneralBCFlux
+
+! ************************************************************************** !
+
+subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
+                          gen_auxvar,global_auxvar,scale,Res)
+  ! 
+  ! Computes the source/sink terms for the residual
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
+
+  use Option_module
+  
+  use Gas_EOS_module
+  use EOS_Water_module
+
+  implicit none
+
+  type(option_type) :: option
+  PetscReal :: qsrc(:)
+  PetscInt :: flow_src_sink_type
+  type(general_auxvar_type) :: gen_auxvar
+  type(global_auxvar_type) :: global_auxvar
+  PetscReal :: scale
+  PetscReal :: Res(option%nflowdof)
+      
+  PetscReal :: qsrc_mol(option%nphase)
+  PetscReal :: den, den_kg, enthalpy, internal_energy
+  PetscReal :: cell_pressure, dummy_pressure
+  PetscInt :: icomp, ierr
+  PetscReal, parameter :: fmw_comp(2) = [FMWH2O,FMWAIR]
+
+  Res = 0.d0
+  do icomp = 1, option%nflowspec
+    select case(flow_src_sink_type)
+      case(MASS_RATE_SS)
+        qsrc_mol(icomp) = qsrc(icomp)/fmw_comp(icomp) ! kg/sec -> kmol/sec
+      case(SCALED_MASS_RATE_SS)                       ! kg/sec -> kmol/sec
+        qsrc_mol(icomp) = qsrc(icomp)/fmw_comp(icomp)*scale 
+      case(VOLUMETRIC_RATE_SS)  ! assume local density for now
+        ! qsrc1 = m^3/sec
+        qsrc_mol(icomp) = qsrc(icomp)*gen_auxvar%den(icomp) ! den = kmol/m^3
+      case(SCALED_VOLUMETRIC_RATE_SS)  ! assume local density for now
+        ! qsrc1 = m^3/sec             ! den = kmol/m^3
+        qsrc_mol(icomp) = qsrc(icomp)*gen_auxvar%den(icomp)*scale 
+    end select
+    Res(icomp) = qsrc_mol(icomp)
+  enddo
+  ! energy units: MJ/sec
+  if (size(qsrc) == THREE_INTEGER) then
+    if (dabs(qsrc(THREE_INTEGER)) < 1.d-40) then
+      cell_pressure = &
+        maxval(gen_auxvar%pres(option%liquid_phase:option%gas_phase))
+      if (dabs(qsrc(ONE_INTEGER)) > 0.d0) then
+        call EOSWaterDensityEnthalpy(gen_auxvar%temp,cell_pressure, &
+                                     den_kg,den,enthalpy,ierr)
+        enthalpy = enthalpy * 1.d-6 ! J/kmol -> whatever units
+        ! enthalpy units: MJ/kmol
+        Res(option%energy_id) = Res(option%energy_id) + &
+                                qsrc_mol(ONE_INTEGER) * enthalpy
+      endif
+      if (dabs(qsrc(TWO_INTEGER)) > 0.d0) then
+        ! this is pure air, we use the enthalpy of air, NOT the air/water
+        ! mixture in gas
+        ! air enthalpy is only a function of temperature and the 
+        dummy_pressure = 0.d0
+        call ideal_gaseos_noderiv(dummy_pressure,gen_auxvar%temp, &
+                                  den,enthalpy,internal_energy)
+        enthalpy = enthalpy * 1.d-6 ! J/kmol -> MJ/kmol                                  
+        ! enthalpy units: MJ/kmol
+        Res(option%energy_id) = Res(option%energy_id) + &
+          qsrc_mol(TWO_INTEGER) * enthalpy
+      endif
+    else
+      Res(option%energy_id) = qsrc(THREE_INTEGER) ! MJ/s
+    endif
+  endif
+  
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+  if (debug_flag > 0) then  
+    write(debug_unit,'(a,7es24.15)') 'src/sink:', Res(1)-Res(2),Res(12:3)
+  endif
+#endif   
+  
+end subroutine GeneralSrcSink
 
 ! ************************************************************************** !
 
@@ -1011,242 +1738,13 @@ subroutine GeneralAccumDerivative(gen_auxvar,global_auxvar,material_auxvar, &
     enddo !irow
   enddo ! idof
 
-end subroutine GeneralAccumDerivative
-
-! ************************************************************************** !
-
-subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
-                       material_auxvar_up, &
-                       sir_up, &
-                       thermal_conductivity_up, &
-                       gen_auxvar_dn,global_auxvar_dn, &
-                       material_auxvar_dn, &
-                       sir_dn, &
-                       thermal_conductivity_dn, &
-                       area, dist, general_parameter, &
-                       option,v_darcy,Res)
-  ! 
-  ! Computes the internal flux terms for the residual
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/09/11
-  ! 
-  use Option_module
-  use Material_Aux_class
-  use Connection_module
-    
-  implicit none
-  
-  type(general_auxvar_type) :: gen_auxvar_up, gen_auxvar_dn
-  type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
-  class(material_auxvar_type) :: material_auxvar_up, material_auxvar_dn
-  type(option_type) :: option
-  PetscReal :: sir_up(:), sir_dn(:)
-  PetscReal :: v_darcy(option%nphase)
-  PetscReal :: area
-  PetscReal :: dist(-1:3)
-  type(general_parameter_type) :: general_parameter
-  PetscReal :: thermal_conductivity_dn(2)
-  PetscReal :: thermal_conductivity_up(2)
-  PetscReal :: Res(option%nflowdof)
-
-  PetscReal :: dist_gravity  ! distance along gravity vector
-  PetscReal :: dd_up, dd_dn
-  PetscReal :: upweight
-  PetscReal :: upweight_adj
-  PetscInt :: wat_comp_id, air_comp_id, energy_id
-  PetscInt :: icomp, iphase
-  
-  PetscReal :: fmw_phase(option%nphase)
-  PetscReal :: xmol(option%nflowspec)
-  PetscReal :: perm_up, perm_dn
-  PetscReal :: den
-  PetscReal :: density_ave
-  PetscReal :: uH
-  PetscReal :: H_ave
-  PetscReal :: perm_ave_over_dist
-  PetscReal :: delta_pressure, delta_xmol, delta_temp
-  PetscReal :: pressure_ave
-  PetscReal :: gravity_term
-  PetscReal :: mobility, mole_flux, q
-  PetscReal :: stp_up, stp_dn
-  PetscReal :: sat_up, sat_dn
-  PetscReal :: temp_ave, stp_ave, theta, v_air
-  PetscReal :: k_eff_up, k_eff_dn, k_eff_ave, heat_flux
-  
-  wat_comp_id = option%water_id
-  air_comp_id = option%air_id
-  energy_id = option%energy_id
-
-  fmw_phase(option%liquid_phase) = FMWH2O
-  fmw_phase(option%gas_phase) = FMWAIR
-
-  call ConnectionCalculateDistances(dist,option%gravity,dd_up,dd_dn, &
-                                    dist_gravity,upweight)
-  call material_auxvar_up%PermeabilityTensorToScalar(dist,perm_up)
-  call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
-  
-  perm_ave_over_dist = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
-
-  Res = 0.d0
-  v_darcy = 0.d0
-  
-#if 1
-  do iphase = 1, option%nphase
- 
-#if 0   
-    if (gen_auxvar_up%sat(iphase) > sir_up(iphase) .or. &
-        gen_auxvar_dn%sat(iphase) > sir_dn(iphase)) then
-      upweight_adj = upweight
-      if (gen_auxvar_up%sat(iphase) < eps) then 
-        upweight_adj=0.d0
-      else if (gen_auxvar_dn%sat(iphase) < eps) then 
-        upweight_adj=1.d0
-      endif
-! trying to rule out the averaging of density, etc. causing problems
-      density_ave = upweight_adj*gen_auxvar_up%den(iphase)+ &
-                    (1.D0-upweight_adj)*gen_auxvar_dn%den(iphase)
-      ! MJ/kmol
-      H_ave = upweight_adj*gen_auxvar_up%H(iphase)+ &
-              (1.D0-upweight_adj)*gen_auxvar_dn%H(iphase)
-
-      !geh: dist_gravity is the distance * gravity in the direction of 
-      !     gravity (negative if gravity is down)      
-      gravity_term = (upweight_adj*gen_auxvar_up%den(iphase) + &
-                     (1.D0-upweight)*gen_auxvar_dn%den(iphase)) &
-                     * fmw_phase(iphase) * dist_gravity
-#endif
-      density_ave = 0.5d0*(gen_auxvar_up%den(iphase) + gen_auxvar_dn%den(iphase))
-      H_ave = 0.5d0*(gen_auxvar_up%H(iphase) + gen_auxvar_dn%H(iphase))
-      gravity_term = density_ave * fmw_phase(iphase) * dist_gravity
-      
-      delta_pressure = gen_auxvar_up%pres(iphase) - &
-                       gen_auxvar_dn%pres(iphase) + &
-                       gravity_term
-
-      if (delta_pressure >= 0.D0) then
-        mobility = gen_auxvar_up%mobility(iphase)
-        xmol(:) = gen_auxvar_up%xmol(:,iphase)
-        den = density_ave
-        uH = H_ave
-      else
-        mobility = gen_auxvar_dn%mobility(iphase)
-        xmol(:) = gen_auxvar_dn%xmol(:,iphase)
-        den = density_ave
-        uH = H_ave
-      endif      
-
-      if (mobility > floweps) then
-        ! v_darcy[m/sec] = perm[m^2] / dist[m] * kr[-] / mu[Pa-sec]
-        !                    dP[Pa]]
-        v_darcy(iphase) = perm_ave_over_dist * mobility * delta_pressure
-        ! q[m^3 phase/sec] = v_darcy[m/sec] * area[m^2]
-        q = v_darcy(iphase) * area  
-        ! mole_flux[kmol phase/sec] = q[m^3 phase/sec] * 
-        !                             density_ave[kmol phase/m^3 phase]        
-        mole_flux = q*den       
-        ! Res[kmol total/sec]
-        Res(1) = Res(1) + mole_flux
-        do icomp = 2, option%nflowspec
-          ! Res[kmol comp/sec] = mole_flux[kmol phase/sec] * 
-          !                      xmol[kmol comp/kmol phase]
-          Res(icomp) = Res(icomp) + mole_flux * xmol(icomp)
-        enddo
-        ! Res[MJ/sec] = mole_flux[kmol comp/sec] * H_ave[MJ/kmol comp]
-        Res(energy_id) = Res(energy_id) + mole_flux * uH
-      endif                   
-#if 0
-    endif ! sat > eps
-#endif
-  enddo
-#endif
-
-#if 1
-  ! add in gas component diffusion in gas and liquid phases
-  do iphase = 1, option%nphase
-    theta = 1.8d0
-    sat_up = gen_auxvar_up%sat(iphase)
-    sat_dn = gen_auxvar_dn%sat(iphase)
-    !geh: changed to .and. -> .or.
-    if (sat_up > eps .or. sat_dn > eps) then
-      upweight_adj = upweight
-      ! for now, if liquid state neighboring gas, we allow for minute
-      ! diffusion in liquid phase.
-      if (iphase == option%liquid_phase) then
-        if ((sat_up > eps .and. sat_dn > eps) .or. &
-            (sat_up < eps .and. sat_dn < eps)) then
-          sat_up = max(sat_up,eps)
-          sat_dn = max(sat_dn,eps)
-        endif
-      endif
-      if (gen_auxvar_up%sat(iphase) < eps) then 
-        upweight_adj=0.d0
-      else if (gen_auxvar_dn%sat(iphase) < eps) then 
-        upweight_adj=1.d0
-      endif   
-      ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) 
-      !       = m^3 water/m^4 bulk 
-      density_ave = upweight_adj*gen_auxvar_up%den(iphase)+ &
-                    (1.D0-upweight_adj)*gen_auxvar_dn%den(iphase)
-      stp_ave = sqrt(sat_up*sat_dn)* &
-                sqrt(material_auxvar_up%tortuosity* &
-                     material_auxvar_dn%tortuosity)* &
-                !TODO(geh): update that diffusion uses compressed porosity
-                sqrt(material_auxvar_up%porosity* &
-                     material_auxvar_dn%porosity)
-      delta_xmol = gen_auxvar_up%xmol(air_comp_id,iphase) - &
-                   gen_auxvar_dn%xmol(air_comp_id,iphase)
-      ! need to account for multiple phases
-      ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-      if (iphase == option%liquid_phase) then
-        ! Eq. 1.9a.  The water density is added below
-        v_air = stp_ave * &
-                general_parameter%diffusion_coefficient(iphase) * delta_xmol
-      else
-        temp_ave = upweight_adj*gen_auxvar_up%temp + &
-                   (1.d0-upweight_adj)*gen_auxvar_dn%temp
-        pressure_ave = upweight_adj*gen_auxvar_up%pres(iphase)+ &
-                       (1.D0-upweight_adj)*gen_auxvar_dn%pres(iphase)
-        ! Eq. 1.9b.  The gas density is added below
-        v_air = stp_ave * &
-                ((temp_ave+273.15)/273.15d0)**theta * &
-                option%reference_pressure / pressure_ave * &
-                general_parameter%diffusion_coefficient(iphase) * delta_xmol      
-      endif      
-      q =  v_air * area
-      mole_flux = q * density_ave
-      Res(air_comp_id) = Res(air_comp_id) + mole_flux
-    endif
-  enddo
-#endif
-
-#if 1
-  ! add heat conduction flux
-  ! based on Somerton et al., 1974:
-  ! k_eff = k_dry + sqrt(s_l)*(k_sat-k_dry)
-  k_eff_up = thermal_conductivity_up(1) + &
-             sqrt(gen_auxvar_up%sat(option%liquid_phase)) * &
-             (thermal_conductivity_up(2) - thermal_conductivity_up(1))
-  k_eff_dn = thermal_conductivity_dn(1) + &
-             sqrt(gen_auxvar_dn%sat(option%liquid_phase)) * &
-             (thermal_conductivity_dn(2) - thermal_conductivity_dn(1))
-  if (k_eff_up > 0.d0 .or. k_eff_up > 0.d0) then
-    k_eff_ave = (k_eff_up*k_eff_dn)/(k_eff_up*dd_dn+k_eff_dn*dd_up)
-  else
-    k_eff_ave = 0.d0
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+  if (debug_flag > 0) then
+    write(debug_unit,'(a,10es24.15)') 'accum deriv:', J
   endif
-  ! units:
-  ! k_eff = W/K/m/m = J/s/m/m
-  ! delta_temp = K
-  ! area = m^2
-  ! heat_flux = J/s
-  delta_temp = gen_auxvar_up%temp - gen_auxvar_dn%temp
-  heat_flux = k_eff_ave * delta_temp * area
-  ! MJ/s
-  Res(energy_id) = Res(energy_id) + heat_flux * option%scale ! J/s -> MJ/s
 #endif
-    
-end subroutine GeneralFlux
+  
+end subroutine GeneralAccumDerivative
 
 ! ************************************************************************** !
 
@@ -1289,8 +1787,11 @@ subroutine GeneralFluxDerivative(gen_auxvar_up,global_auxvar_up, &
   PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
   PetscInt :: idof, irow
 
+  Jup = 0.d0
+  Jdn = 0.d0
+  
 !geh:print *, 'GeneralFluxDerivative'
-
+  option%iflag = -2
   call GeneralFlux(gen_auxvar_up(ZERO_INTEGER),global_auxvar_up, &
                    material_auxvar_up,sir_up, &
                    thermal_conductivity_up, &
@@ -1332,288 +1833,13 @@ subroutine GeneralFluxDerivative(gen_auxvar_up,global_auxvar_up, &
     enddo !irow
   enddo ! idof
 
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+  if (debug_flag > 0) then
+    write(debug_unit,'(a,20es24.15)') 'flux deriv:', Jup, Jdn
+  endif
+#endif
+  
 end subroutine GeneralFluxDerivative
-
-! ************************************************************************** !
-
-subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
-                         gen_auxvar_up,global_auxvar_up, &
-                         gen_auxvar_dn,global_auxvar_dn, &
-                         material_auxvar_dn, &
-                         sir_dn, &
-                         thermal_conductivity_dn, &
-                         area,dist,general_parameter, &
-                         option,v_darcy,Res)
-  ! 
-  ! Computes the boundary flux terms for the residual
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/09/11
-  ! 
-  use Option_module                              
-  use Material_Aux_class
-  
-  implicit none
-  
-  type(general_auxvar_type) :: gen_auxvar_up, gen_auxvar_dn
-  type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
-  class(material_auxvar_type) :: material_auxvar_dn
-  type(option_type) :: option
-  PetscReal :: sir_dn(:)
-  PetscReal :: auxvars(:) ! from aux_real_var array
-  PetscReal :: v_darcy(option%nphase), area
-  type(general_parameter_type) :: general_parameter
-  PetscReal :: dist(-1:3)
-  PetscReal :: Res(1:option%nflowdof)
-  PetscInt :: ibndtype(1:option%nflowdof)
-  PetscInt :: auxvar_mapping(GENERAL_MAX_INDEX)
-  PetscReal :: thermal_conductivity_dn(2)
-  
-  PetscReal :: upweight
-  PetscInt :: wat_comp_id, air_comp_id, energy_id
-  PetscInt :: icomp, iphase
-  PetscInt :: bc_type
-  PetscReal :: fmw_phase(option%nphase)
-  PetscReal :: xmol(option%nflowspec)  
-  PetscReal :: density_ave
-  PetscReal :: H_ave, uH
-  PetscReal :: perm_ave_over_dist, dist_gravity
-  PetscReal :: delta_pressure, delta_xmol, delta_temp
-  PetscReal :: gravity_term
-  PetscReal :: mobility, mole_flux, q
-  PetscReal :: sat_dn, perm_dn
-  PetscReal :: temp_ave, stp_ave, theta, v_air
-  PetscReal :: k_eff_up, k_eff_dn, k_eff_ave, heat_flux
-  
-  PetscInt :: idof
-  
-  wat_comp_id = option%water_id
-  air_comp_id = option%air_id
-  energy_id = option%energy_id
-
-  fmw_phase(option%liquid_phase) = FMWH2O
-  fmw_phase(option%gas_phase) = FMWAIR
-
-  Res = 0.d0
-  v_darcy = 0.d0
-  
-  call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
-  
-  do iphase = 1, option%nphase
- 
-     bc_type = ibndtype(iphase)
-     select case(bc_type)
-      ! figure out the direction of flow
-      case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
-
-      ! dist(0) = scalar - magnitude of distance
-      ! gravity = vector(3)
-      ! dist(1:3) = vector(3) - unit vector
-      dist_gravity = dist(0) * dot_product(option%gravity,dist(1:3))
-      
-      if (bc_type == CONDUCTANCE_BC) then
-          select case(iphase)
-            case(LIQUID_PHASE)
-              idof = auxvar_mapping(GENERAL_LIQUID_CONDUCTANCE_INDEX)
-            case(GAS_PHASE)
-              idof = auxvar_mapping(GENERAL_GAS_CONDUCTANCE_INDEX)
-          end select        
-          perm_ave_over_dist = auxvars(idof)
-        else
-          perm_ave_over_dist = perm_dn / dist(0)
-        endif
-        
-          
-        ! using residual saturation cannot be correct! - geh
-        ! reusing sir_dn for bounary auxvar
-#define BAD_MOVE1 ! this works
-#ifndef BAD_MOVE1       
-        if (gen_auxvar_up%sat(iphase) > sir_dn(iphase) .or. &
-            gen_auxvar_dn%sat(iphase) > sir_dn(iphase)) then
-#endif
-          upweight = 1.d0
-          if (gen_auxvar_up%sat(iphase) < eps) then 
-            upweight=0.d0
-          else if (gen_auxvar_dn%sat(iphase) < eps) then 
-            upweight=1.d0
-          endif 
-#if 0                  
-          density_ave = upweight*gen_auxvar_up%den(iphase)+ &
-                        (1.D0-upweight)*gen_auxvar_dn%den(iphase)
-          ! MJ/kmol
-!geh          H_ave = upweight*gen_auxvar_up%H(iphase)+ &
-!geh                  (1.D0-upweight)*gen_auxvar_dn%H(iphase)
-
-          gravity_term = (upweight*gen_auxvar_up%den(iphase) + &
-                         (1.D0-upweight)*gen_auxvar_dn%den(iphase)) &
-                          * fmw_phase(iphase) * dist_gravity 
-#endif                    
-
-          density_ave = 0.5d0*(gen_auxvar_up%den(iphase) + gen_auxvar_dn%den(iphase))
-          gravity_term = density_ave * fmw_phase(iphase) * dist_gravity
-      
-          delta_pressure = gen_auxvar_up%pres(iphase) - &
-                           gen_auxvar_dn%pres(iphase) + &
-                           gravity_term
-
-          if (bc_type == SEEPAGE_BC .or. &
-              bc_type == CONDUCTANCE_BC) then
-                ! flow in         ! boundary cell is <= pref
-            if (delta_pressure > 0.d0 .and. &
-                gen_auxvar_up%pres(iphase) - &
-                 option%reference_pressure < eps) then
-              delta_pressure = 0.d0
-            endif
-          endif
-            
-          if (delta_pressure >= 0.D0) then
-            mobility = gen_auxvar_up%mobility(iphase)
-            xmol(:) = gen_auxvar_up%xmol(:,iphase)
-            uH = gen_auxvar_up%H(iphase)
-          else
-            mobility = gen_auxvar_dn%mobility(iphase)
-            xmol(:) = gen_auxvar_dn%xmol(:,iphase)
-            uH = gen_auxvar_dn%H(iphase)
-          endif      
-
-          if (mobility > floweps) then
-            ! v_darcy[m/sec] = perm[m^2] / dist[m] * kr[-] / mu[Pa-sec]
-            !                    dP[Pa]]
-            v_darcy(iphase) = perm_ave_over_dist * mobility * delta_pressure
-          endif
-#ifndef BAD_MOVE1        
-        endif ! sat > eps
-#endif
-
-      case(NEUMANN_BC)
-        select case(iphase)
-          case(LIQUID_PHASE)
-            idof = auxvar_mapping(GENERAL_LIQUID_FLUX_INDEX)
-          case(GAS_PHASE)
-            idof = auxvar_mapping(GENERAL_GAS_FLUX_INDEX)
-        end select
-      
-        xmol = 0.d0
-        xmol(iphase) = 1.d0
-        if (dabs(auxvars(idof)) > floweps) then
-          v_darcy(iphase) = auxvars(idof)
-          if (v_darcy(iphase) > 0.d0) then 
-            density_ave = gen_auxvar_up%den(iphase)
-            uH = gen_auxvar_up%H(iphase)
-          else 
-            density_ave = gen_auxvar_dn%den(iphase)
-            uH = gen_auxvar_dn%H(iphase)
-          endif 
-        endif
-      case default
-        option%io_buffer = &
-          'Boundary condition type not recognized in GeneralBCFlux phase loop.'
-        call printErrMsg(option)
-    end select
-
-    if (dabs(v_darcy(iphase)) > 0.d0) then
-      ! q[m^3 phase/sec] = v_darcy[m/sec] * area[m^2]
-      q = v_darcy(iphase) * area
-      ! mole_flux[kmol phase/sec] = q[m^3 phase/sec] * 
-      !                              density_ave[kmol phase/m^3 phase]
-      mole_flux = q*density_ave       
-      ! Res[kmol total/sec]
-      Res(1) = Res(1) + mole_flux
-      do icomp = 2, option%nflowspec
-        ! Res[kmol comp/sec] = mole_flux[kmol phase/sec] * 
-        !                      xmol[kmol comp/mol phase]
-        Res(icomp) = Res(icomp) + mole_flux * xmol(icomp)
-      enddo
-      ! Res[MJ/sec] = mole_flux[kmol comp/sec] * H_ave[MJ/kmol comp]
-      Res(energy_id) = Res(energy_id) + mole_flux * uH ! H_ave
-    endif
-  enddo
-
-#if 1
-  ! add in gas component diffusion in gas and liquid phases
-  do iphase = 1, option%nphase
-    theta = 1.d0
-  
-    if (ibndtype(iphase) == NEUMANN_BC) then
-      cycle
-    endif
-    
-    ! diffusion all depends upon the downwind cell.  phase diffusion only
-    ! occurs if a phase exists in both auxvars (boundary and internal) or
-    ! a liquid phase exists in the internal cell. so, one could say that
-    ! liquid diffusion always exists as the internal cell has a liquid phase,
-    ! but gas phase diffusion only occurs if the internal cell has a gas
-    ! phase.
-    if (gen_auxvar_dn%sat(iphase) > eps) then
-      upweight = 1.d0
-      sat_dn = gen_auxvar_dn%sat(iphase)
-      if (gen_auxvar_up%sat(iphase) < eps) then 
-        upweight = 0.d0
-      else if (gen_auxvar_dn%sat(iphase) < eps) then 
-        upweight = 1.d0
-      endif
-      ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) 
-      !       = m^3 water/m^4 bulk 
-      temp_ave = upweight*gen_auxvar_up%temp + &
-              (1.d0-upweight)*gen_auxvar_dn%temp
-      density_ave = upweight*gen_auxvar_up%den(iphase)+ &
-                    (1.D0-upweight)*gen_auxvar_dn%den(iphase)             
-  !    stp_ave = tor_dn*por_dn*(sat_up*sat_dn)/ &
-  !              ((sat_up+sat_dn)*dd_dn)
-      ! should saturation be distance weighted?
-      stp_ave = material_auxvar_dn%tortuosity * &
-                material_auxvar_dn%porosity * &
-                sat_dn / dist(0)
-      delta_xmol = gen_auxvar_up%xmol(air_comp_id,iphase) - &
-                   gen_auxvar_dn%xmol(air_comp_id,iphase)
-      ! need to account for multiple phases
-      ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-      if (iphase == option%liquid_phase) then
-        ! Eq. 1.9a.  The water density is added below
-        v_air = stp_ave * &
-                general_parameter%diffusion_coefficient(iphase) * delta_xmol
-      else
-        ! Eq. 1.9b.  The gas density is added below
-        v_air = stp_ave * &
-                (temp_ave/273.15d0)**theta * &
-                option%reference_pressure / &
-                gen_auxvar_dn%pres(iphase) * &
-                general_parameter%diffusion_coefficient(iphase) * delta_xmol      
-      endif
-      q =  v_air * area
-      mole_flux = q * density_ave
-      Res(air_comp_id) = Res(air_comp_id) + mole_flux
-    endif
-  enddo
-#endif
-
-  ! add heat conduction flux
-  select case (ibndtype(GENERAL_ENERGY_EQUATION_INDEX))
-    case (DIRICHLET_BC)
-      ! based on Somerton et al., 1974:
-      ! k_eff = k_dry + sqrt(s_l)*(k_sat-k_dry)
-      k_eff_dn = thermal_conductivity_dn(1) + &
-                 sqrt(gen_auxvar_dn%sat(option%liquid_phase)) * &
-                 (thermal_conductivity_dn(2) - thermal_conductivity_dn(1))
-      ! units:
-      ! k_eff = W/K/m/m = J/s/m/m
-      ! delta_temp = K
-      ! area = m^2
-      ! heat_flux = MJ/s
-      k_eff_ave = k_eff_dn / dist(0)
-      delta_temp = gen_auxvar_up%temp - gen_auxvar_dn%temp
-      heat_flux = k_eff_ave * delta_temp * area
-    case(NEUMANN_BC)
-      heat_flux = auxvars(auxvar_mapping(GENERAL_LIQUID_FLUX_INDEX))
- 
-    case default
-      option%io_buffer = 'Boundary condition type not recognized in ' // &
-        'GeneralBCFlux heat conduction loop.'
-      call printErrMsg(option)
-  end select
-  Res(energy_id) = Res(energy_id) + heat_flux * option%scale ! J/s -> MJ/s
-
-end subroutine GeneralBCFlux
 
 ! ************************************************************************** !
 
@@ -1657,8 +1883,10 @@ subroutine GeneralBCFluxDerivative(ibndtype,auxvar_mapping,auxvars, &
   PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
   PetscInt :: idof, irow
 
+  Jdn = 0.d0
 !geh:print *, 'GeneralBCFluxDerivative'
 
+  option%iflag = -2
   call GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
                      gen_auxvar_up,global_auxvar_up, &
                      gen_auxvar_dn(ZERO_INTEGER),global_auxvar_dn, &
@@ -1683,95 +1911,13 @@ subroutine GeneralBCFluxDerivative(ibndtype,auxvar_mapping,auxvars, &
     enddo !irow
   enddo ! idof
 
-end subroutine GeneralBCFluxDerivative
-
-! ************************************************************************** !
-
-subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
-                          gen_auxvar,global_auxvar,scale,res)
-  ! 
-  ! Computes the source/sink terms for the residual
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/09/11
-  ! 
-
-  use Option_module
-  
-  use Gas_EOS_module
-  use EOS_Water_module
-
-  implicit none
-
-  type(option_type) :: option
-  PetscReal :: qsrc(:)
-  PetscInt :: flow_src_sink_type
-  type(general_auxvar_type) :: gen_auxvar
-  type(global_auxvar_type) :: global_auxvar
-  PetscReal :: scale
-  PetscReal :: res(option%nflowdof)
-      
-  PetscReal :: fmw_phase(option%nphase)
-  PetscReal :: qsrc_mol(option%nphase)
-  PetscReal :: den, den_kg, enthalpy, internal_energy
-  PetscInt :: icomp, ierr
-  
-
-  fmw_phase(option%liquid_phase) = FMWH2O
-  fmw_phase(option%gas_phase) = FMWAIR
-
-  res = 0.d0
-  do icomp = 1, option%nflowspec
-    select case(flow_src_sink_type)
-      case(MASS_RATE_SS)
-        qsrc_mol(icomp) = qsrc(icomp)/fmw_phase(icomp) ! kg/sec -> kmol/sec
-      case(SCALED_MASS_RATE_SS)                        ! kg/sec -> kmol/sec
-        qsrc_mol(icomp) = qsrc(icomp)/fmw_phase(icomp)*scale 
-      case(VOLUMETRIC_RATE_SS)  ! assume local density for now
-        ! qsrc1 = m^3/sec
-        qsrc_mol(icomp) = qsrc(icomp)*gen_auxvar%den(icomp) ! den = kmol/m^3
-      case(SCALED_VOLUMETRIC_RATE_SS)  ! assume local density for now
-        ! qsrc1 = m^3/sec             ! den = kmol/m^3
-        qsrc_mol(icomp) = qsrc(icomp)*gen_auxvar%den(icomp)*scale 
-    end select
-    res(icomp) = qsrc_mol(icomp)
-    if (icomp > ONE_INTEGER) then
-      res(ONE_INTEGER) = res(ONE_INTEGER) + qsrc_mol(icomp)
-    endif
-  enddo
-  ! energy units: MJ/sec
-  if (size(qsrc) == THREE_INTEGER) then
-    if (dabs(qsrc(THREE_INTEGER)) < 1.d-40) then
-      if (dabs(qsrc(ONE_INTEGER)) > 0.d0) then
-        call EOSWaterDensityEnthalpy(gen_auxvar%temp, &
-                                     gen_auxvar%pres(option%liquid_phase), &
-                                     den_kg,den,enthalpy,ierr)
-        enthalpy = enthalpy * 1.d-6 ! J/kmol -> whatever units
-        ! enthalpy units: MJ/kmol
-        res(option%energy_id) = res(option%energy_id) + &
-                                qsrc_mol(ONE_INTEGER) * enthalpy
-      endif
-      if (dabs(qsrc(TWO_INTEGER)) > 0.d0) then
-        if (gen_auxvar%sat(option%gas_phase) < eps) then
-          ! if no gas exists, the enthalpy calculated in GeneralAuxVarCompute()
-          ! is unrealistic, use pure air enthalpy instead.
-          call ideal_gaseos_noderiv(gen_auxvar%pres(option%air_pressure_id), &
-                                    gen_auxvar%temp,den,enthalpy, &
-                                    internal_energy)
-          enthalpy = enthalpy * 1.d-6 ! J/kmol -> MJ/kmol
-        else
-          enthalpy = gen_auxvar%h(option%gas_phase)
-        endif
-        ! enthalpy units: MJ/kmol
-        res(option%energy_id) = res(option%energy_id) + &
-          qsrc_mol(TWO_INTEGER) * enthalpy
-      endif
-    else
-      res(option%energy_id) = qsrc(THREE_INTEGER)
-    endif
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+  if (debug_flag > 0) then
+    write(debug_unit,'(a,10es24.15)') 'bc flux deriv:', Jdn
   endif
+#endif
   
-end subroutine GeneralSrcSink
+end subroutine GeneralBCFluxDerivative
 
 ! ************************************************************************** !
 
@@ -1799,6 +1945,7 @@ subroutine GeneralSrcSinkDerivative(option,qsrc,flow_src_sink_type, &
   PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
   PetscInt :: idof, irow
 
+  option%iflag = -3
   call GeneralSrcSink(option,qsrc,flow_src_sink_type, &
                       gen_auxvars(ZERO_INTEGER),global_auxvar,scale,res)
   ! downgradient derivatives
@@ -1809,6 +1956,12 @@ subroutine GeneralSrcSinkDerivative(option,qsrc,flow_src_sink_type, &
       Jac(irow,idof) = (res_pert(irow)-res(irow))/gen_auxvars(idof)%pert
     enddo !irow
   enddo ! idof
+  
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+  if (debug_flag > 0) then
+    write(debug_unit,'(a,20es24.15)') 'src/sink deriv:', Jac
+  endif
+#endif  
   
 end subroutine GeneralSrcSinkDerivative
 
@@ -1870,6 +2023,9 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   PetscReal, pointer :: r_p(:)
   PetscReal, pointer :: accum_p(:)
   PetscReal, pointer :: volume_p(:)
+  
+  character(len=MAXWORDLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word
 
   PetscInt :: icap_up, icap_dn
   PetscReal :: Res(realization%option%nflowdof)
@@ -1888,15 +2044,30 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   global_auxvars_bc => patch%aux%Global%auxvars_bc
   material_auxvars => patch%aux%Material%auxvars
   
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+  if (debug_flag > 0) then
+    debug_iteration_count = debug_iteration_count + 1
+    write(word,*) debug_timestep_count
+    string = 'residual_debug_data_' // trim(adjustl(word))
+    write(word,*) debug_timestep_cut_count
+    string = trim(string) // '_' // trim(adjustl(word))
+    write(word,*) debug_iteration_count
+    debug_filename = trim(string) // '_' // trim(adjustl(word)) // '.txt'
+    open(debug_unit, file=debug_filename, action="write", status="unknown")
+    open(debug_info_unit, file='debug_info.txt', action="write", &
+         position="append", status="unknown")
+    write(debug_info_unit,*) 'residual ', debug_timestep_count, &
+      debug_timestep_cut_count, debug_iteration_count
+    close(debug_info_unit)
+  endif
+#endif
+
   ! Communication -----------------------------------------
   ! These 3 must be called before GeneralUpdateAuxVars()
   call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
   call DiscretizationLocalToLocal(discretization,field%iphas_loc, &
                                   field%iphas_loc,ONEDOF)
   
-!  call GeneralResidualPatch1(snes,xx,r,realization,ierr)
-
-
   option%variables_swapped = PETSC_FALSE
                                              ! do update state
   call GeneralUpdateAuxVars(realization,PETSC_TRUE)
@@ -1913,10 +2084,31 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
     call GeneralZeroMassBalanceDelta(realization)
   endif
 
+  option%iflag = 1
   ! now assign access pointer to local variables
   call VecGetArrayF90(r, r_p, ierr)
 
-  r_p = 0.d0
+  ! Accumulation terms ------------------------------------
+  ! accumulation at t(k) (doesn't change during Newton iteration)
+  call VecGetArrayReadF90(field%flow_accum, accum_p, ierr)
+  r_p = -accum_p
+  call VecRestoreArrayReadF90(field%flow_accum, accum_p, ierr)
+  
+  ! accumulation at t(k+1)
+  do local_id = 1, grid%nlmax  ! For each local node do...
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    imat = patch%imat(ghosted_id)
+    if (imat <= 0) cycle
+    local_end = local_id * option%nflowdof
+    local_start = local_end - option%nflowdof + 1
+    call GeneralAccumulation(gen_auxvars(ZERO_INTEGER,ghosted_id), &
+                              global_auxvars(ghosted_id), &
+                              material_auxvars(ghosted_id), &
+                              material_parameter%soil_heat_capacity(imat), &
+                              option,Res) 
+    r_p(local_start:local_end) =  r_p(local_start:local_end) + Res(:)
+  enddo
 
   ! Interior Flux Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
@@ -1955,6 +2147,9 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
                        general_parameter,option,v_darcy,Res)
 
       patch%internal_velocities(:,sum_connection) = v_darcy
+      if (associated(patch%internal_fluxes)) then
+        patch%internal_fluxes(:,1,sum_connection) = Res(:)
+      endif
       
       if (local_id_up > 0) then
         local_end = local_id_up * option%nflowdof
@@ -2013,12 +2208,9 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
       patch%boundary_velocities(:,sum_connection) = v_darcy
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
-!        global_auxvars_bc(sum_connection)%mass_balance_delta(1,iphase) = &
-!          global_auxvars_bc(sum_connection)%mass_balance_delta(1,iphase) - &
-!          Res(1)
-        ! contribution to internal 
-!        global_auxvars(ghosted_id)%mass_balance_delta(1) = &
-!          global_auxvars(ghosted_id)%mass_balance_delta(1) + Res(1)
+        global_auxvars_bc(sum_connection)%mass_balance_delta(1:2,1) = &
+          global_auxvars_bc(sum_connection)%mass_balance_delta(1:2,1) - &
+          Res(1:2)
       endif
 
       local_end = local_id * option%nflowdof
@@ -2027,26 +2219,6 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
 
     enddo
     boundary_condition => boundary_condition%next
-  enddo
-
-  ! Accumulation terms ------------------------------------
-  call VecGetArrayReadF90(field%flow_accum, accum_p, ierr)
-  r_p = r_p - accum_p
-  call VecRestoreArrayReadF90(field%flow_accum, accum_p, ierr)
-    
-  do local_id = 1, grid%nlmax  ! For each local node do...
-    ghosted_id = grid%nL2G(local_id)
-    !geh - Ignore inactive cells with inactive materials
-    imat = patch%imat(ghosted_id)
-    if (imat <= 0) cycle
-    local_end = local_id * option%nflowdof
-    local_start = local_end - option%nflowdof + 1
-    call GeneralAccumulation(gen_auxvars(ZERO_INTEGER,ghosted_id), &
-                              global_auxvars(ghosted_id), &
-                              material_auxvars(ghosted_id), &
-                              material_parameter%soil_heat_capacity(imat), &
-                              option,Res) 
-    r_p(local_start:local_end) =  r_p(local_start:local_end) + Res(:)
   enddo
 
   ! Source/sink terms -------------------------------------
@@ -2078,6 +2250,13 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
                         scale,Res)
 
       r_p(local_start:local_end) =  r_p(local_start:local_end) - Res(:)
+      
+      if (option%compute_mass_balance_new) then
+        ! contribution to boundary
+        global_auxvars_bc(sum_connection)%mass_balance_delta(1:2,1) = &
+          global_auxvars_bc(sum_connection)%mass_balance_delta(1:2,1) - &
+          Res(1:2)
+      endif
 
     enddo
     source_sink => source_sink%next
@@ -2089,6 +2268,19 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
     enddo
   endif
 
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+  call VecGetArrayReadF90(field%flow_accum, accum_p, ierr)
+  do local_id = 1, grid%nlmax
+    write(debug_unit,'(a,i5,7es24.15)') 'fixed residual:', local_id, &
+      accum_p((local_id-1)*option%nflowdof+1:local_id*option%nflowdof)
+  enddo
+  call VecRestoreArrayReadF90(field%flow_accum, accum_p, ierr)
+  do local_id = 1, grid%nlmax
+    write(debug_unit,'(a,i5,7es24.15)') 'residual:', local_id, &
+      r_p((local_id-1)*option%nflowdof+1:local_id*option%nflowdof)
+  enddo
+#endif
+  
   call VecRestoreArrayF90(r, r_p, ierr)
    
   if (realization%debug%vecview_residual) then
@@ -2104,8 +2296,11 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
 
-!  call VecView(xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
-!  call VecView(r,PETSC_VIEWER_STDOUT_WORLD,ierr)
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+  if (debug_flag > 0) then
+    close(debug_unit)
+  endif
+#endif
   
 end subroutine GeneralResidual
 
@@ -2148,7 +2343,6 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
   PetscInt :: imat, imat_up, imat_dn
   PetscReal :: dd_up, dd_dn
   PetscReal :: perm_up, perm_dn
-  PetscReal :: upweight
   PetscInt :: local_id, ghosted_id
   PetscInt :: local_id_up, local_id_dn
   PetscInt :: ghosted_id_up, ghosted_id_dn
@@ -2172,6 +2366,9 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
   type(general_auxvar_type), pointer :: gen_auxvars(:,:), gen_auxvars_bc(:)
   type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:) 
   class(material_auxvar_type), pointer :: material_auxvars(:)
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word
   
   patch => realization%patch
   grid => patch%grid
@@ -2197,6 +2394,23 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
 
   call MatZeroEntries(J,ierr)
 
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+  if (debug_flag > 0) then
+    write(word,*) debug_timestep_count
+    string = 'jacobian_debug_data_' // trim(adjustl(word))
+    write(word,*) debug_timestep_cut_count
+    string = trim(string) // '_' // trim(adjustl(word))
+    write(word,*) debug_iteration_count
+    debug_filename = trim(string) // '_' // trim(adjustl(word)) // '.txt'
+    open(debug_unit, file=debug_filename, action="write", status="unknown")
+    open(debug_info_unit, file='debug_info.txt', action="write", &
+         position="append", status="unknown")
+    write(debug_info_unit,*) 'jacobian ', debug_timestep_count, &
+      debug_timestep_cut_count, debug_iteration_count
+    close(debug_info_unit)
+  endif
+#endif
+
   ! Perturb aux vars
   do ghosted_id = 1, grid%ngmax  ! For each local node do...
     if (patch%imat(ghosted_id) <= 0) cycle
@@ -2211,6 +2425,22 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
 #ifdef DEBUG_GENERAL_LOCAL
   call GeneralOutputAuxVars(gen_auxvars,global_auxvars,option)
 #endif 
+
+  ! Accumulation terms ------------------------------------
+  do local_id = 1, grid%nlmax  ! For each local node do...
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    imat = patch%imat(ghosted_id)
+    if (imat <= 0) cycle
+    call GeneralAccumDerivative(gen_auxvars(:,ghosted_id), &
+                              global_auxvars(ghosted_id), &
+                              material_auxvars(ghosted_id), &
+                              material_parameter%soil_heat_capacity(imat), &
+                              option, &
+                              Jup) 
+    call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
+                                  ADD_VALUES,ierr)
+  enddo
 
   ! Interior Flux Terms -----------------------------------  
   connection_set_list => grid%internal_connection_set_list
@@ -2328,23 +2558,6 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
 
-  ! Accumulation terms ------------------------------------
-
-  do local_id = 1, grid%nlmax  ! For each local node do...
-    ghosted_id = grid%nL2G(local_id)
-    !geh - Ignore inactive cells with inactive materials
-    imat = patch%imat(ghosted_id)
-    if (imat <= 0) cycle
-    call GeneralAccumDerivative(gen_auxvars(:,ghosted_id), &
-                              global_auxvars(ghosted_id), &
-                              material_auxvars(ghosted_id), &
-                              material_parameter%soil_heat_capacity(imat), &
-                              option, &
-                              Jup) 
-    call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
-                                  ADD_VALUES,ierr)
-  enddo
-
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -2439,6 +2652,21 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
   endif
 #endif
 
+#ifdef DEBUG_GENERAL_FILEOUTPUT
+  if (debug_flag > 0) then
+    write(word,*) debug_timestep_count
+    string = 'jacobian_' // trim(adjustl(word))
+    write(word,*) debug_timestep_cut_count
+    string = trim(string) // '_' // trim(adjustl(word))
+    write(word,*) debug_iteration_count
+    string = trim(string) // '_' // trim(adjustl(word)) // '.out'
+    call PetscViewerASCIIOpen(realization%option%mycomm,trim(string), &
+                              viewer,ierr)
+    call MatView(J,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+    close(debug_unit)
+  endif
+#endif
 
 end subroutine GeneralJacobian
 
@@ -2598,14 +2826,14 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
 
   changed = PETSC_TRUE
   
-!#define LIMIT_MAX_PRESSURE_CHANGE
+#define LIMIT_MAX_PRESSURE_CHANGE
 #define LIMIT_MAX_SATURATION_CHANGE
-!#define LIMIT_MAX_TEMPERATURE_CHANGE
-#define TRUNCATE_LIQUID_PRESSURE
-! TRUNCATE_GAS/AIR_PRESSURE is needed for times when the solve wants
-! to pull them negative.
-#define TRUNCATE_GAS_PRESSURE
-#define TRUNCATE_AIR_PRESSURE
+!!#define LIMIT_MAX_TEMPERATURE_CHANGE
+!#define TRUNCATE_LIQUID_PRESSURE
+!! TRUNCATE_GAS/AIR_PRESSURE is needed for times when the solve wants
+!! to pull them negative.
+!#define TRUNCATE_GAS_PRESSURE
+!#define TRUNCATE_AIR_PRESSURE
 
 #ifdef DEBUG_GENERAL_INFO
   cell_locator = 0
@@ -2745,6 +2973,33 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
         del_saturation = dX_p(saturation_index)
         saturation0 = X_p(saturation_index)
         saturation1 = saturation0 - del_saturation
+#ifdef LIMIT_MAX_PRESSURE_CHANGE
+        if (dabs(del_gas_pressure) > max_pressure_change) then
+          temp_real = dabs(max_pressure_change/del_gas_pressure)
+#ifdef DEBUG_GENERAL_INFO
+          if (cell_locator(0) < max_cell_id) then
+            cell_locator(0) = cell_locator(0) + 1
+            cell_locator(cell_locator(0)) = ghosted_id
+          endif
+          string = trim(cell_id_word) // &
+            'Gas pressure change scaled to truncate at max_pressure_change: '
+          call printMsg(option,string)
+          write(string2,*) gas_pressure0
+          string = '  Gas Pressure 0    : ' // adjustl(string2)
+          call printMsg(option,string)
+          write(string2,*) gas_pressure1
+          string = '  Gas Pressure 1    : ' // adjustl(string2)
+          call printMsg(option,string)
+          write(string2,*) -1.d0*del_gas_pressure
+          string = 'Gas Pressure change : ' // adjustl(string2)
+          call printMsg(option,string)
+          write(string2,*) temp_real
+          string = '          scaling  : ' // adjustl(string2)
+          call printMsg(option,string)
+#endif
+          temp_scale = min(temp_scale,temp_real)
+        endif
+#endif
 #ifdef TRUNCATE_GAS_PRESSURE
         if (gas_pressure1 <= 0.d0) then
           if (dabs(del_gas_pressure) > 1.d-40) then
@@ -2969,7 +3224,7 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   PetscBool :: dX_changed
   PetscBool :: X1_changed
   
-  PetscReal, pointer :: X1_p(:)
+  PetscReal, pointer :: X0_p(:)
   PetscReal, pointer :: dX_p(:)
   PetscReal, pointer :: r_p(:)
   PetscReal, pointer :: accum_p(:)
@@ -2987,10 +3242,26 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   PetscInt :: icell_max(3), istate_max(3)
   character(len=2) :: state_char
   PetscReal :: R_A_max(3), A_max(3), R_max(3) 
-  PetscReal :: dX_X1_max(3), dX_max(3), X1_max(3)
+  PetscReal :: dX_X0_max(3), dX_max(3), X0_max(3)
 #endif
-  PetscReal :: dX_X1, R_A
+  PetscReal :: dX_X0, R_A
   PetscReal :: inf_norm(3), global_inf_norm(3)
+  PetscReal :: inf_norm_update(3,3), global_inf_norm_update(3,3)
+  PetscReal, parameter :: inf_pres_tol = 1.d-1
+  PetscReal, parameter :: inf_temp_tol = 1.d-5
+  PetscReal, parameter :: inf_sat_tol = 1.d-6
+  PetscReal, parameter :: inf_xmol_tol = 1.d-6
+  PetscReal, parameter :: inf_norm_update_tol(3,3) = &
+    reshape([inf_pres_tol,inf_xmol_tol,inf_temp_tol, &
+             inf_pres_tol,inf_pres_tol,inf_temp_tol, &
+             inf_pres_tol,inf_pres_tol,inf_sat_tol], &
+            shape(inf_norm_update_tol)) * &
+            0.d0
+  PetscReal :: temp(3,4), global_temp(3,4)
+  PetscMPIInt :: mpi_int
+  PetscBool :: converged_abs_update
+  PetscBool :: converged_rel_update
+  PetscInt :: istate
   PetscErrorCode :: ierr
   
   grid => realization%patch%grid
@@ -3005,19 +3276,21 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   dX_changed = PETSC_FALSE
   X1_changed = PETSC_FALSE
   
+  inf_norm_update = 0.d0
+  
   option%converged = PETSC_FALSE
   if (option%flow%check_post_convergence) then
     call VecGetArrayReadF90(dX,dX_p,ierr)
-    call VecGetArrayReadF90(X1,X1_p,ierr)
+    call VecGetArrayReadF90(X0,X0_p,ierr)
     call VecGetArrayReadF90(field%flow_r,r_p,ierr)
     call VecGetArrayReadF90(field%flow_accum,accum_p,ierr)
 #ifdef DEBUG_GENERAL_INFO
     R_A_max = 0.d0
     A_max = 0.d0
     R_max = 0.d0
-    dX_X1_max = 0.d0
+    dX_X0_max = 0.d0
     dX_max = 0.d0
-    X1_max = 0.d0
+    X0_max = 0.d0
     istate_max = 0
     icell_max = 0
 #endif
@@ -3026,32 +3299,49 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
       offset = (local_id-1)*option%nflowdof
       ghosted_id = grid%nL2G(local_id)
       if (realization%patch%imat(ghosted_id) <= 0) cycle
+      istate = global_auxvars(ghosted_id)%istate
       do idof = 1, option%nflowdof
         ival = offset+idof
         R_A = dabs(r_p(ival)/accum_p(ival))
-        dX_X1 = dabs(dX_p(ival)/X1_p(ival))
-        if (inf_norm(idof) < min(dX_X1,R_A)) then
-          inf_norm(idof) = min(dX_X1,R_A)
+        dX_X0 = dabs(dX_p(ival)/X0_p(ival))
+        inf_norm_update(idof,istate) = max(inf_norm_update(idof,istate), &
+                                           dabs(dX_p(ival)))
+        if (inf_norm(idof) < min(dX_X0,R_A)) then
+          inf_norm(idof) = min(dX_X0,R_A)
 #ifdef DEBUG_GENERAL_INFO
           icell_max(idof) = grid%nG2A(ghosted_id)
           istate_max(idof) = global_auxvars(ghosted_id)%istate
-          A_max(idof) = Res(idof)
+          A_max(idof) = accum_p(idof)
           R_max(idof) = r_p(ival)
           R_A_max(idof) = R_A
           dX_max(idof) = dX_p(ival)
-          X1_max(idof) = X1_p(ival)
-          dX_X1_max(idof) = dX_X1 
+          X0_max(idof) = X0_p(ival)
+          dX_X0_max(idof) = dX_X0 
 #endif
         endif
       enddo
     enddo
-    call MPI_Allreduce(inf_norm,global_inf_norm,THREE_INTEGER_MPI, &
+    temp(1:3,1:3) = inf_norm_update(:,:)
+    temp(1:3,4) = inf_norm(:)
+    mpi_int = 12
+    call MPI_Allreduce(temp,global_temp,mpi_int, &
                        MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
-    option%converged = PETSC_TRUE
+    global_inf_norm_update(:,:) = global_temp(1:3,1:3)
+    global_inf_norm(:) = global_temp(1:3,4)
+    converged_abs_update = PETSC_TRUE
+    do istate = 1, 3
+      do idof = 1, option%nflowdof
+        if (global_inf_norm_update(idof,istate) > &
+          inf_norm_update_tol(idof,istate)) then
+          converged_abs_update = PETSC_FALSE
+        endif
+      enddo  
+    enddo  
+    converged_rel_update = PETSC_TRUE
     do idof = 1, option%nflowdof
       if (global_inf_norm(idof) > option%flow%post_convergence_tol) then
-        option%converged = PETSC_FALSE
-#if 1
+        converged_rel_update = PETSC_FALSE
+#if 0
 #ifdef DEBUG_GENERAL_INFO
         select case(istate_max(idof))
           case(1)
@@ -3071,8 +3361,12 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
 #endif
       endif
     enddo
+    option%converged = PETSC_FALSE
+    if (converged_rel_update .or. converged_abs_update) then
+      option%converged = PETSC_TRUE
+    endif
     call VecRestoreArrayReadF90(dX,dX_p,ierr)
-    call VecRestoreArrayReadF90(X1,X1_p,ierr)
+    call VecRestoreArrayReadF90(X0,X0_p,ierr)
     call VecRestoreArrayReadF90(field%flow_r,r_p,ierr)
     call VecRestoreArrayReadF90(field%flow_accum,accum_p,ierr)
   endif
@@ -3312,6 +3606,45 @@ subroutine GeneralSetPlotVariables(realization)
          realization%output_option%output_variable_list,output_variable)   
   
 end subroutine GeneralSetPlotVariables
+
+! ************************************************************************** !
+
+function GeneralAverageDensity(iphase,istate_up,istate_dn, &
+                               density_up,density_dn)
+  ! 
+  ! Averages density, using opposite cell density if phase non-existent
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/07/14
+  ! 
+
+  implicit none
+
+  PetscInt :: iphase
+  PetscInt :: istate_up, istate_dn
+  PetscReal :: density_up(:), density_dn(:)
+
+  PetscReal :: GeneralAverageDensity
+
+  if (iphase == LIQUID_PHASE) then
+    if (istate_up == GAS_STATE) then
+      GeneralAverageDensity = density_dn(iphase)
+    else if (istate_dn == GAS_STATE) then
+      GeneralAverageDensity = density_up(iphase)
+    else
+      GeneralAverageDensity = 0.5d0*(density_up(iphase)+density_dn(iphase))
+    endif
+  else if (iphase == GAS_PHASE) then
+    if (istate_up == LIQUID_STATE) then
+      GeneralAverageDensity = density_dn(iphase)
+    else if (istate_dn == LIQUID_STATE) then
+      GeneralAverageDensity = density_up(iphase)
+    else
+      GeneralAverageDensity = 0.5d0*(density_up(iphase)+density_dn(iphase))
+    endif
+  endif
+
+end function GeneralAverageDensity
 
 ! ************************************************************************** !
 

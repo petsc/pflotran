@@ -242,7 +242,7 @@ END   \bluecomment{! <-- closes out REGION card}
 
 \newpage
 REGION west           \bluecomment{! define region:} \greencomment{west}
-  FACE west           \bluecomment{! define the face of the grid cell}
+  FACE WEST           \bluecomment{! define the face of the grid cell}
   COORDINATES         \bluecomment{! using \redcomment{surface} coordinates}
     0.d0 0.d0 0.d0
     0.d0 1.d0 1.d0
@@ -250,8 +250,8 @@ REGION west           \bluecomment{! define region:} \greencomment{west}
 END
 
 REGION east           \bluecomment{! define region:} \greencomment{east}
-  FACE east           \redcomment{! west, east, south, north,}
-  COORDINATES         \redcomment{!   bottom, top} \bluecomment{ are keywords}
+  FACE EAST           \redcomment{! WEST, EAST, SOUTH, NORTH,}
+  COORDINATES         \redcomment{!   BOTTOM, TOP} \bluecomment{ are keywords}
     100.d0 0.d0 0.d0  \bluecomment{!   in PFLOTRAN.}
     100.d0 1.d0 1.d0
   /
@@ -897,7 +897,7 @@ REGION all
 END
 
 \newpage\magentacomment{REGION top
-  FACE top
+  FACE TOP
   COORDINATES
     0.d0 0.d0 10.d0
     1.d0 1.d0 10.d0
@@ -905,7 +905,7 @@ END
 END}
 
 \magentacomment{REGION bottom
-  FACE bottom
+  FACE BOTTOM
   COORDINATES
     0.d0 0.d0 0.d0
     1.d0 1.d0 0.d0

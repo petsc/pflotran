@@ -10,11 +10,7 @@ module Simulation_module
 #endif
 
 #ifdef GEOMECH
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
 #endif
 
   use PFLOTRAN_Constants_module

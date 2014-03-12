@@ -8,42 +8,12 @@ module PFLOTRAN_Factory_module
 
 #include "finclude/petscsys.h"
 
-  public :: PFLOTRANInitialize, &
-            PFLOTRANInitializePrePetsc, &
+  public :: PFLOTRANInitializePrePetsc, &
             PFLOTRANInitializePostPetsc, &
-#ifndef PROCESS_MODEL
-            PFLOTRANRun, &
-#endif
             PFLOTRANFinalize
 
 contains
 
-! ************************************************************************** !
-
-subroutine PFLOTRANInitialize(option)
-  ! 
-  ! Sets up PFLOTRAN subsurface simulation
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 06/10/13
-  ! 
-
-  use Option_module
-  use Input_Aux_module
-  
-  implicit none
-  
-  type(option_type), pointer :: option
-
-#ifndef PROCESS_MODEL
-  call PFLOTRANInitializePrePetsc(option)
-  ! initialize stochastic realizations here
-  call OptionInitPetsc(option)
-#endif
-
-end subroutine PFLOTRANInitialize
-
-#ifdef PROCESS_MODEL
 ! ************************************************************************** !
 
 subroutine PFLOTRANInitializePrePetsc(multisimulation,option)
@@ -60,18 +30,6 @@ subroutine PFLOTRANInitializePrePetsc(multisimulation,option)
   implicit none
   
   type(multi_simulation_type), pointer :: multisimulation
-#else
-
-! ************************************************************************** !
-
-subroutine PFLOTRANInitializePrePetsc(option)
-
-  use Option_module
-  use Input_Aux_module
-  
-  implicit none
-  
-#endif
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
@@ -82,7 +40,6 @@ subroutine PFLOTRANInitializePrePetsc(option)
   !       has not yet been initialized.
   
   call PFLOTRANInitCommandLineSettings(option)
-#ifdef PROCESS_MODEL
   ! initialize stochastic realizations here
   string = '-stochastic'
   call InputGetCommandLineTruth(string,bool_flag,option_found,option)
@@ -90,11 +47,9 @@ subroutine PFLOTRANInitializePrePetsc(option)
     multisimulation => MultiSimulationCreate()
     call MultiSimulationInitialize(multisimulation,option)
   endif
-#endif
   
 end subroutine PFLOTRANInitializePrePetsc
 
-#ifdef PROCESS_MODEL
 ! ************************************************************************** !
 
 subroutine PFLOTRANInitializePostPetsc(multisimulation,option)
@@ -115,129 +70,7 @@ subroutine PFLOTRANInitializePostPetsc(multisimulation,option)
   call MultiSimulationIncrement(multisimulation,option)
   call OptionBeginTiming(option)
   
-#else
-
-! ************************************************************************** !
-
-subroutine PFLOTRANInitializePostPetsc(simulation, master_stepper, option, &
-                                       init_status)
-
-  use Simulation_module
-  use Timestepper_module
-  use Option_module
-  use Init_module
-#ifdef GEOMECH  
-  use Geomechanics_Timestepper_module
-#endif
-  
-  implicit none
-
-  type(simulation_type), pointer :: simulation
-  type(stepper_type), pointer :: master_stepper
-  type(option_type), pointer :: option
-  PetscInt :: init_status
-
-  call OptionBeginTiming(option)
-  simulation => SimulationCreate(option)
-  call Init(simulation)
-#ifdef SURFACE_FLOW
-  call TimestepperInitializeRun(simulation%realization, &
-                                simulation%surf_realization, &
-                                master_stepper, &
-                                simulation%flow_stepper, &
-                                simulation%tran_stepper, &
-                                simulation%surf_flow_stepper, &
-                                init_status)
-#elif GEOMECH
-  call GeomechTimestepperInitializeRun(simulation%realization, &
-                                simulation%geomech_realization, &
-                                master_stepper, &
-                                simulation%flow_stepper, &
-                                simulation%tran_stepper, &
-                                simulation%geomech_stepper, &
-                                init_status)
-
-#else
-  call TimestepperInitializeRun(simulation%realization, &
-                                master_stepper, &
-                                simulation%flow_stepper, &
-                                simulation%tran_stepper, &
-                                init_status)
-#endif 
-#endif 
 end subroutine PFLOTRANInitializePostPetsc
-
-#ifndef PROCESS_MODEL
-
-! ************************************************************************** !
-
-subroutine PFLOTRANRun(simulation, master_stepper, init_status)
-  ! 
-  ! Runs the PFLOTRAN simulation
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 06/07/13
-  ! 
-
-  use Simulation_module
-  use Timestepper_module
-#ifdef GEOMECH  
-  use Geomechanics_Timestepper_module
-#endif
-  
-  implicit none
-
-  type(simulation_type) :: simulation
-  type(stepper_type), pointer :: master_stepper
-  PetscInt :: init_status
-
-  select case(init_status)
-    case(TIMESTEPPER_INIT_PROCEED)
-#ifdef SURFACE_FLOW
-      call  TimestepperExecuteRun(simulation%realization, &
-                                  simulation%surf_realization, &
-                                  master_stepper, &
-                                  simulation%flow_stepper, &
-                                  simulation%tran_stepper, &
-                                  simulation%surf_flow_stepper)
-      call  TimestepperFinalizeRun(simulation%realization, &
-                                    simulation%surf_realization, &
-                                    master_stepper, &
-                                    simulation%flow_stepper, &
-                                    simulation%tran_stepper, &
-                                    simulation%surf_flow_stepper)
-#elif GEOMECH
-      call  GeomechTimestepperExecuteRun(simulation%realization, &
-                                  simulation%geomech_realization, &
-                                  master_stepper, &
-                                  simulation%flow_stepper, &
-                                  simulation%tran_stepper, &
-                                  simulation%geomech_stepper)
-      call  GeomechTimestepperFinalizeRun(simulation%realization, &
-                                    simulation%geomech_realization, &
-                                    master_stepper, &
-                                    simulation%flow_stepper, &
-                                    simulation%tran_stepper, &
-                                    simulation%geomech_stepper)
-                                    
-#else
-      call  TimestepperExecuteRun(simulation%realization, &
-                                  master_stepper, &
-                                  simulation%flow_stepper, &
-                                  simulation%tran_stepper)
-      call  TimestepperFinalizeRun(simulation%realization, &
-                                    master_stepper, &
-                                    simulation%flow_stepper, &
-                                    simulation%tran_stepper)
-#endif 
-    case(TIMESTEPPER_INIT_FAIL)
-    case(TIMESTEPPER_INIT_DONE)
-  end select
-
-end subroutine PFLOTRANRun
-#endif
-
-#ifdef PROCESS_MODEL
 
 ! ************************************************************************** !
 
@@ -257,30 +90,6 @@ subroutine PFLOTRANFinalize(option)
   if (option%myrank == option%io_rank .and. option%print_to_file) then
     close(option%fid_out)
   endif
-#else
-
-! ************************************************************************** !
-
-subroutine PFLOTRANFinalize(simulation,option)
-
-  use Simulation_module
-  use Regression_module
-  use Option_module
-  implicit none
-
-  type(simulation_type), pointer :: simulation
-  type(option_type) :: option
-
-  call RegressionOutput(simulation%regression,simulation%realization, &
-                        simulation%flow_stepper,simulation%tran_stepper)
-
-! Clean things up.
-  call SimulationDestroy(simulation)
-  call OptionEndTiming(option)
-  if (option%myrank == option%io_rank .and. option%print_to_file) then
-    close(option%fid_out)
-  endif
-#endif
 
 end subroutine PFLOTRANFinalize
 

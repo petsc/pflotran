@@ -340,6 +340,7 @@ subroutine PMGeneralUpdateTimestep(this,dt,dt_max,iacceleration, &
   PetscReal :: tfac(:)
   
   PetscReal :: fac
+  PetscInt :: ifac
   PetscReal :: up, ut, ux, us, umin
   PetscReal :: dtt
   
@@ -358,8 +359,9 @@ subroutine PMGeneralUpdateTimestep(this,dt,dt_max,iacceleration, &
     us = this%dSmax_allowable/(this%dSmax+1.d-5)
     umin = min(up,ut,ux,us)
   endif
+  ifac = max(min(num_newton_iterations,size(tfac)),1)
   dtt = fac * dt * (1.d0 + umin)
-  dt = min(dtt,2.d0*dt,dt_max)
+  dt = min(dtt,tfac(ifac)*dt,dt_max)
   
 end subroutine PMGeneralUpdateTimestep
 
