@@ -772,9 +772,9 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,auxvar, &
   PetscReal :: coeff_right_copy(reaction%naqcomp,reaction%naqcomp, &
                            sec_transport_vars%ncells)
 
-  PetscReal :: total_sorb_upd(reaction%neqsorb,sec_transport_vars%ncells) 
-  PetscReal :: total_sorb_prev(reaction%neqsorb,sec_transport_vars%ncells)
-  PetscReal :: dtotal_sorb_upd(reaction%neqsorb,reaction%neqsorb,sec_transport_vars%ncells)
+  PetscReal :: total_sorb_upd(reaction%naqcomp,sec_transport_vars%ncells) 
+  PetscReal :: total_sorb_prev(reaction%naqcomp,sec_transport_vars%ncells)
+  PetscReal :: dtotal_sorb_upd(reaction%naqcomp,reaction%naqcomp,sec_transport_vars%ncells)
 
   class(material_auxvar_type), allocatable :: material_auxvar
   
