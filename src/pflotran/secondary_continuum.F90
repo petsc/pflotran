@@ -1630,6 +1630,9 @@ subroutine SecondaryRTCheckResidual(sec_transport_vars,auxvar, &
   PetscReal :: pordt, pordiff
   PetscReal :: inf_norm_sec
   class(material_auxvar_type), allocatable :: material_auxvar
+
+  PetscReal :: total_sorb_upd(reaction%naqcomp,sec_transport_vars%ncells) 
+  PetscReal :: total_sorb_prev(reaction%naqcomp,sec_transport_vars%ncells)
   
   ngcells = sec_transport_vars%ncells
   area = sec_transport_vars%area
@@ -1642,6 +1645,9 @@ subroutine SecondaryRTCheckResidual(sec_transport_vars,auxvar, &
   do j = 1, ncomp
     do i = 1, ngcells
       total_prev(j,i) = sec_transport_vars%sec_rt_auxvar(i)%total(j,1)
+      if (reaction%neqsorb > 0) then
+        total_sorb_prev(j,i) = sec_transport_vars%sec_rt_auxvar(i)%total_sorb_eq(j)
+      endif
     enddo
   enddo
   conc_upd = sec_transport_vars%updated_conc
@@ -1661,7 +1667,13 @@ subroutine SecondaryRTCheckResidual(sec_transport_vars,auxvar, &
     call RTAuxVarCopy(rt_auxvar,sec_transport_vars%sec_rt_auxvar(i),option)
     rt_auxvar%pri_molal = conc_upd(:,i)
     call RTotal(rt_auxvar,global_auxvar,reaction,option)
+    if (reaction%neqsorb > 0) then
+      call SecondaryRTotalSorb(rt_auxvar,global_auxvar,material_auxvar,reaction,option)
+    endif
     total_upd(:,i) = rt_auxvar%total(:,1)
+    if (reaction%neqsorb > 0) then 
+      total_sorb_upd(:,i) = rt_auxvar%total_sorb_eq(:)
+    endif
   enddo
                                     
 !================ Calculate the secondary residual =============================        
@@ -1672,6 +1684,9 @@ subroutine SecondaryRTCheckResidual(sec_transport_vars,auxvar, &
     do i = 1, ngcells
       n = j + (i-1)*ncomp
       res(n) = pordt*(total_upd(j,i) - total_prev(j,i))*vol(i)    ! in mol/L*m3/s
+      if (reaction%neqsorb > 0) then 
+        res(n) = res(n) + vol(i)/option%tran_dt*(total_sorb_upd(j,i) - total_sorb_prev(j,i))
+      endif 
     enddo
   
     ! Flux terms
