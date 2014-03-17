@@ -192,7 +192,8 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
   !call PetscLogEventBegin(logging%event_read_datset_hdf5,ierr)
 
   first_time = (this%data_dim == DIM_NULL)
-  
+
+#define BROADCAST_DATASET
 #ifdef BROADCAST_DATASET
   if (first_time .or. option%myrank == option%io_rank) then
 #endif
