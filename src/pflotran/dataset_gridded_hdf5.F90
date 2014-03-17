@@ -181,14 +181,21 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
   PetscInt :: i, temp_int, temp_array(4)
   PetscInt :: num_spatial_dims, time_dim, num_times
   PetscInt :: num_dims_in_h5_file, num_times_in_h5_file
-  PetscMPIInt :: array_rank_mpi
+  PetscMPIInt :: array_rank_mpi, mpi_int
   PetscBool :: attribute_exists
+  PetscBool :: first_time
   PetscMPIInt :: hdf5_err
   PetscErrorCode :: ierr
   character(len=MAXWORDLENGTH) :: attribute_name, dataset_name, word
 
   !TODO(geh): add to event log
   !call PetscLogEventBegin(logging%event_read_datset_hdf5,ierr)
+
+  first_time = (this%data_dim == DIM_NULL)
+  
+#ifdef BROADCAST_DATASET
+  if (first_time .or. option%myrank == option%io_rank) then
+#endif
 
   ! open the file
   call h5open_f(hdf5_err)
@@ -342,6 +349,10 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
     endif
   endif
 
+#ifdef BROADCAST_DATASET
+  endif
+#endif
+
   call PetscLogEventBegin(logging%event_h5dread_f,ierr)
 
   if (associated(this%time_storage)) then
@@ -360,6 +371,11 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
   else
     length(1) = size(this%rarray)
   endif
+
+#ifdef BROADCAST_DATASET
+  if (option%myrank == option%io_rank) then
+#endif
+
   call h5screate_simple_f(array_rank_mpi,length,memory_space_id,hdf5_err,length)    
 
   length = 1
@@ -408,8 +424,24 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
   call h5sclose_f(file_space_id,hdf5_err)
   call h5dclose_f(dataset_id,hdf5_err)  
 
+#ifdef BROADCAST_DATASET
+  endif !if (option%myrank == option%io_rank) then
+  if (associated(this%rbuffer)) then
+    mpi_int = size(this%rbuffer)
+    call MPI_Bcast(this%rbuffer,mpi_int,MPI_DOUBLE_PRECISION,option%io_rank, &
+                   option%mycomm,ierr)
+  else
+    mpi_int = size(this%rarray)
+    call MPI_Bcast(this%rarray,mpi_int,MPI_DOUBLE_PRECISION,option%io_rank, &
+                   option%mycomm,ierr)
+  endif
+#endif
+  
   call PetscLogEventEnd(logging%event_h5dread_f,ierr) 
 
+#ifdef BROADCAST_DATASET
+  if (first_time .or. option%myrank == option%io_rank) then
+#endif  
   option%io_buffer = 'Closing group: ' // trim(this%hdf5_dataset_name)
   call printMsg(option)  
   call h5gclose_f(grp_id,hdf5_err)  
@@ -417,6 +449,9 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
   call printMsg(option)  
   call h5fclose_f(file_id,hdf5_err)
   call h5close_f(hdf5_err)
+#ifdef BROADCAST_DATASET
+  endif
+#endif  
   
   !TODO(geh): add to event log
   !call PetscLogEventEnd(logging%event_read_ndim_real_array_hdf5,ierr)
