@@ -151,9 +151,8 @@ GRID
   TYPE structured
   NXYZ 32 32 1
   BOUNDS
-    0.d0 16.d0
-    0.d0 16.d0
-    0.d0 128.d0
+    0.d0 0.d0 0.d0
+    16.d0 16.d0 128.d0
   /
 END
 

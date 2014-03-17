@@ -824,7 +824,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,auxvar, &
     rt_auxvar%pri_molal = conc_upd(:,i)
     call RTotal(rt_auxvar,global_auxvar,reaction,option)
     if (reaction%neqsorb > 0) then
-      call RTotalSorb(rt_auxvar,global_auxvar,material_auxvar,reaction,option)
+      call SecondaryRTotalSorb(rt_auxvar,global_auxvar,material_auxvar,reaction,option)
     endif
     total_upd(:,i) = rt_auxvar%total(:,1)
     dtotal(:,:,i) = rt_auxvar%aqueous%dtotal(:,:,1)
