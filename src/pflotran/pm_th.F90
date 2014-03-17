@@ -334,7 +334,6 @@ subroutine PMTHUpdateTimestep(this,dt,dt_max,iacceleration, &
   PetscReal :: ut
   PetscReal :: up
   PetscReal :: utmp
-  PetscReal :: uus
   PetscReal :: dtt
   PetscReal :: dt_p
   PetscReal :: dt_tfac
@@ -351,8 +350,7 @@ subroutine PMTHUpdateTimestep(this,dt,dt_max,iacceleration, &
   else
     up = this%option%dpmxe/(this%option%dpmax+0.1)
     utmp = this%option%dtmpmxe/(this%option%dtmpmax+1.d-5)
-    uus= this%option%dsmxe/(this%option%dsmax+1.d-6)
-    ut = min(up,utmp,uus)
+    ut = min(up,utmp)
   endif
   dtt = fac * dt * (1.d0 + ut)
 
