@@ -52,7 +52,7 @@ program pflotran
 #endif
   use PFLOTRAN_Constants_module
   use Output_Aux_module, only : INSTANTANEOUS_VARS
-  use PFLOTRAN_Provenance_module, only : PrintProvenanceToScreen, WriteProvenanceToHDF5
+  use PFLOTRAN_Provenance_module, only : PrintProvenanceToScreen
 
   implicit none
 
@@ -96,15 +96,6 @@ program pflotran
         option%io_buffer = 'Simulation Mode not recognized.'
         call printErrMsg(option)
     end select
-
-    ! NOTE(bja, 2014-03) WriteProvenanceToHDF5 not part of
-    ! output_hdf5.F90 because pflotran_provenance.F90 is recompiled
-    ! every time pflotran is recompiled. output_hfd5.F90 is a "low
-    ! level" module that is touched by a number of other modules. This
-    ! results a long recompile because of the (~30) module
-    ! dependencies. This only writes to the first hdf5 file in
-    ! multi-file output!
-    call WriteProvenanceToHDF5(option, simulation%output_option, INSTANTANEOUS_VARS)
 
     call simulation%InitializeRun()
 

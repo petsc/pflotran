@@ -142,9 +142,9 @@ ifdef mfd_ugrid
   MYFLAGS += -DMFD_UGRID
 endif
 
-PROVENANCE=1
-ifdef no_provenance
-  PROVENANCE=0
+UPDATE_PROVENANCE=0
+ifdef provenance
+  UPDATE_PROVENANCE=1
 endif
 
 CFLAGS   = 
@@ -429,13 +429,13 @@ pflotran_rxn : libpflotranchem.a $(pflotran_rxn_obj)
 	${FLINKER} -o $@ $(pflotran_rxn_obj) -L. -lpflotranchem ${PETSC_LIB} ${LIBS} 
 
 pflotran_provenance.F90 : FORCE
-ifeq ($(PROVENANCE),1)
+ifeq ($(UPDATE_PROVENANCE),1)
 	@-rm pflotran_provenance.o pflotran_provenance_module.mod pflotran_provenance.F90
 	$(PYTHON) ./pflotran-provenance.py \
 		--pflotran-fflags "${FC_FLAGS} ${FFLAGS} ${FCPPFLAGS}" \
 		--petsc-config "${CONFIGURE_OPTIONS}"
 else
-	cp pflotran_no_provenance.F90 pflotran_provenance.F90
+	@[[ -f pflotran_provenance.F90 ]] || cp pflotran_no_provenance.F90 pflotran_provenance.F90
 endif
 
 # do these files exist anymore?
@@ -759,7 +759,7 @@ output_geomechanics.o : geomech_grid.o geomech_grid_aux.o \
                         unstructured_cell.o variables.o
 output_hdf5.o : connection.o coupler.o discretization.o field.o grid.o hdf5.o \
                 hdf5_aux.o input_aux.o logging.o option.o output_aux.o output_common.o \
-                patch.o pflotran_constants.o \
+                patch.o pflotran_constants.o pflotran_provenance.o \
                 reaction_aux.o realization_base.o \
                 string.o unstructured_cell.o unstructured_grid_aux.o \
                 variables.o
@@ -804,7 +804,7 @@ pflotran.o : geomechanics_factory.o hydrogeophysics_factory.o \
              surface_factory.o surfsubsurface_factory.o \
              pflotran_provenance.o
 pflotran_constants.o :
-pflotran_provenance.o : input_aux.o output_hdf5.o option.o output_aux.o
+pflotran_provenance.o :
 pflotran_factory.o : geomechanics_timestepper.o init.o input_aux.o \
                      multisimulation.o option.o pflotran_constants.o \
                      regression.o simulation.o string.o timestepper.o

@@ -12,6 +12,7 @@ import copy
 import os
 import os.path
 import re
+import socket
 from string import Template
 import subprocess
 import sys
@@ -197,7 +198,10 @@ def clean_details(details, max_string_length):
 def determine_pflotran_provenance(provenance, details, fflags):
     """
     """
+
     provenance["pflotran_compile_date_time"] = time.strftime("%Y-%m-%d %H:%M:%S")
+    provenance["pflotran_compile_user"] = os.getenv("USER")
+    provenance["pflotran_compile_hostname"] = socket.gethostname()
 
     cmd = ["hg", "parent", "--template", "{node}"]
     provenance["pflotran_changeset"] = subprocess.check_output(cmd)

@@ -174,6 +174,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
 
   grid => patch%grid
   if (first) then
+    call OutputHDF5Provenance(option, output_option, file_id)
 
     ! create a group for the coordinates data set
 #if defined(SCORPIO_WRITE)
@@ -3199,6 +3200,195 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id,var_list_type
 ! #ifdef SCORPIO_WRITE
 
 end subroutine WriteHDF5FlowratesUGrid
+
+! ************************************************************************** !
+
+subroutine OutputHDF5Provenance(option, output_option, file_id)
+  !
+  ! write pflotran and petsc provenance information including a copy
+  ! of the inputfile
+  !
+
+  use Option_module, only : option_type
+  use Output_Aux_module, only : output_option_type
+  use PFLOTRAN_Provenance_module, only : provenance_max_str_len
+
+#include "finclude/petscsysdef.h"
+
+  use hdf5
+
+  implicit none
+
+  type(option_type), intent(in) :: option
+  type(output_option_type), intent(in) :: output_option
+  integer(HID_T), intent(in) :: file_id
+
+  character(len=32) :: filename, name
+  integer(HID_T) :: prop_id, provenance_id, string_type
+  integer :: hdf5_err
+  PetscBool :: first
+
+  ! create the provenance group
+  name = "Provenance"
+  call h5gcreate_f(file_id, name, provenance_id, hdf5_err, OBJECT_NAMELEN_DEFAULT_F)
+
+  ! create fixed length string datatype
+  call h5tcopy_f(H5T_FORTRAN_S1, string_type, hdf5_err)
+  call h5tset_size_f(string_type, provenance_max_str_len, hdf5_err)
+
+  call OutputHDF5Provenance_PFLOTRAN(option, provenance_id, string_type)
+  call OutputHDF5Provenance_PETSc(provenance_id, string_type)
+
+  ! close the provenance group
+  call h5tclose_f(string_type, hdf5_err)
+  call h5gclose_f(provenance_id, hdf5_err)
+
+end subroutine OutputHDF5Provenance
+
+! ************************************************************************** !
+
+subroutine OutputHDF5Provenance_PFLOTRAN(option, provenance_id, string_type)
+  !
+  ! write the pflotran provenance data as attributes (small) or
+  ! datasets (big details)
+  !
+
+  use Option_module, only : option_type
+  use PFLOTRAN_Provenance_module
+
+  use hdf5
+
+  implicit none
+
+  type(option_type), intent(in) :: option
+  integer(HID_T), intent(in) :: provenance_id
+  integer(HID_T), intent(in) :: string_type
+
+  character(len=32) :: name
+  integer(HID_T) :: pflotran_id
+  integer :: hdf5_err
+
+  ! Create the pflotran group under provenance
+  name = "PFLOTRAN"
+  call h5gcreate_f(provenance_id, name, pflotran_id, hdf5_err, OBJECT_NAMELEN_DEFAULT_F)
+
+  call OutputHDF5DatasetStringArray(pflotran_id, string_type, "pflotran_compile_date_time", &
+       1, pflotran_compile_date_time)
+
+  call OutputHDF5DatasetStringArray(pflotran_id, string_type, "pflotran_compile_user", &
+       1, pflotran_compile_user)
+
+  call OutputHDF5DatasetStringArray(pflotran_id, string_type, "pflotran_compile_hostname", &
+       1, pflotran_compile_hostname)
+
+  call OutputHDF5AttributeStringArray(pflotran_id, string_type, "pflotran_status", &
+       1, pflotran_status)
+
+  call OutputHDF5AttributeStringArray(pflotran_id, string_type, "pflotran_changeset", &
+       1, pflotran_changeset)
+
+  call OutputHDF5DatasetStringArray(pflotran_id, string_type, "detail_pflotran_fflags", &
+       detail_pflotran_fflags_len, detail_pflotran_fflags)
+
+  call OutputHDF5DatasetStringArray(pflotran_id, string_type, "detail_pflotran_status", &
+       detail_pflotran_status_len, detail_pflotran_status)
+
+  call OutputHDF5DatasetStringArray(pflotran_id, string_type, "detail_pflotran_parent", &
+       detail_pflotran_parent_len, detail_pflotran_parent)
+
+  ! FIXME(bja, 2013-11-25): break gcc when diffs are present  
+  call OutputHDF5DatasetStringArray(pflotran_id, string_type, "detail_pflotran_diff", &
+       detail_pflotran_diff_len, detail_pflotran_diff)
+
+  call OutputHDF5Provenance_input(option, pflotran_id)
+
+  ! close pflotran group
+  call h5gclose_f(pflotran_id, hdf5_err)
+
+end subroutine OutputHDF5Provenance_PFLOTRAN
+
+! ************************************************************************** !
+
+subroutine OutputHDF5Provenance_input(option, pflotran_id)
+  !
+  ! open the pflotran input file, figure out how long it is, read it
+  ! into a buffer, then write the buffer as a pflotran provenance
+  ! group dataset.
+  !
+  use hdf5
+  use Input_Aux_module, only : input_type, InputCreate, InputDestroy, &
+       InputGetLineCount, InputReadToBuffer
+  use Option_module, only : option_type
+  use PFLOTRAN_Constants_module, only : IN_UNIT, MAXSTRINGLENGTH
+
+  implicit none
+
+  type(option_type), intent(in) :: option
+  integer(HID_T), intent(in) :: pflotran_id
+
+  integer(HID_T) :: input_string_type
+  type(input_type), pointer :: input
+  integer :: i, input_line_count
+  character(len=MAXSTRINGLENGTH), allocatable :: input_buffer(:)
+  integer :: hdf5_err
+
+  input => InputCreate(IN_UNIT, option%input_filename, option)
+  input_line_count = InputGetLineCount(input)
+  allocate(input_buffer(input_line_count))
+  call InputReadToBuffer(input, input_buffer)
+  call h5tcopy_f(H5T_FORTRAN_S1, input_string_type, hdf5_err)
+  call h5tset_size_f(input_string_type, int(MAXSTRINGLENGTH, kind=8), hdf5_err)
+  call OutputHDF5DatasetStringArray(pflotran_id, input_string_type, "pflotran_input_file", &
+       input_line_count, input_buffer)
+  call h5tclose_f(input_string_type, hdf5_err)
+  deallocate(input_buffer)
+  call InputDestroy(input)
+
+end subroutine OutputHDF5Provenance_input
+
+! ************************************************************************** !
+
+subroutine OutputHDF5Provenance_PETSc(provenance_id, string_type)
+  !
+  ! write the petsc provenance data as attributes (small) or datasets
+  ! (big details)
+  !
+
+  use PFLOTRAN_Provenance_module
+  use hdf5
+
+  implicit none
+
+  integer(HID_T), intent(in) :: provenance_id
+  integer(HID_T), intent(in) :: string_type
+
+  character(len=32) :: name
+  integer(HID_T) :: petsc_id
+  integer :: hdf5_err
+
+  ! create the petsc group under provenance
+  name = "PETSc"
+  call h5gcreate_f(provenance_id, name, petsc_id, hdf5_err, OBJECT_NAMELEN_DEFAULT_F)
+
+  call OutputHDF5AttributeStringArray(petsc_id, string_type, "petsc_status", &
+       1, petsc_status)
+
+  call OutputHDF5AttributeStringArray(petsc_id, string_type, "petsc_changeset", &
+       1, petsc_changeset)
+
+  call OutputHDF5DatasetStringArray(petsc_id, string_type, "detail_petsc_status", &
+       detail_petsc_status_len, detail_petsc_status)
+
+  call OutputHDF5DatasetStringArray(petsc_id, string_type, "detail_petsc_parent", &
+       detail_petsc_parent_len, detail_petsc_parent)
+
+  call OutputHDF5DatasetStringArray(petsc_id, string_type, "detail_petsc_config", &
+       detail_petsc_config_len, detail_petsc_config)
+
+  ! close the petsc group
+  call h5gclose_f(petsc_id, hdf5_err)
+
+end subroutine OutputHDF5Provenance_PETSc
 
 ! ************************************************************************** !
 
