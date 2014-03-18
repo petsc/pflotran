@@ -51,6 +51,8 @@ program pflotran
   use Geomechanics_Factory_module
 #endif
   use PFLOTRAN_Constants_module
+  use Output_Aux_module, only : INSTANTANEOUS_VARS
+  use PFLOTRAN_Provenance_module, only : PrintProvenanceToScreen
 
   implicit none
 
@@ -69,6 +71,10 @@ program pflotran
   call OptionInitMPI(option)
   call PFLOTRANInitializePrePetsc(multisimulation,option)
   call OptionInitPetsc(option)
+  if (option%myrank == option%io_rank .and. option%print_to_screen) then
+    call PrintProvenanceToScreen()
+  endif
+
   do ! multi-simulation loop
     call PFLOTRANInitializePostPetsc(multisimulation,option)
     select case(option%simulation_mode)
@@ -90,6 +96,7 @@ program pflotran
         option%io_buffer = 'Simulation Mode not recognized.'
         call printErrMsg(option)
     end select
+
     call simulation%InitializeRun()
 
     if (option%status == PROCEED) then
