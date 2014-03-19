@@ -96,7 +96,9 @@ module Input_Aux_module
             InputGetCommandLineReal, &
             InputGetCommandLineTruth, &
             InputGetCommandLineString, &
-            InputReadFilenames
+            InputReadFilenames, &
+            InputGetLineCount, &
+            InputReadToBuffer
 
 contains
 
@@ -1573,6 +1575,48 @@ subroutine InputReadFilenames(option,filenames)
   call InputDestroy(input)
 
 end subroutine InputReadFilenames
+
+! ************************************************************************** !
+function InputGetLineCount(input)
+
+  implicit none
+  
+  type(input_type), pointer :: input
+  integer :: line_count
+  integer :: InputGetLineCount
+
+  rewind(input%fid)
+
+  do
+    read(input%fid, '(a512)', iostat=input%ierr)
+    if (InputError(input)) exit
+    line_count = line_count + 1
+  enddo
+  
+  InputGetLineCount = line_count
+  
+end function InputGetLineCount
+
+! ************************************************************************** !
+!
+subroutine InputReadToBuffer(input, buffer)
+
+  implicit none
+  
+  type(input_type), pointer :: input
+  character(len=MAXSTRINGLENGTH) :: buffer(:)
+  integer :: line
+
+  rewind(input%fid)
+  line = 1
+  do
+     read(input%fid, '(a512)', iostat=input%ierr) buffer(line)
+     if (InputError(input)) exit
+     line = line + 1
+  end do
+  
+  
+end subroutine InputReadToBuffer
 
 ! ************************************************************************** !
 

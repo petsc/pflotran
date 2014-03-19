@@ -829,7 +829,7 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
               case(G_MODE)
                 allocate(coupler%flow_aux_mapping(GENERAL_MAX_INDEX))
                 allocate(coupler%flow_bc_type(THREE_INTEGER))
-                allocate(coupler%flow_aux_real_var(FOUR_INTEGER,num_connections))
+                allocate(coupler%flow_aux_real_var(FIVE_INTEGER,num_connections))
                 allocate(coupler%flow_aux_int_var(ONE_INTEGER,num_connections))
                 coupler%flow_aux_mapping = 0
                 coupler%flow_bc_type = 0
@@ -2735,10 +2735,10 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
          LIQUID_SATURATION,GAS_SATURATION,ICE_SATURATION, &
          LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
          LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,LIQUID_VISCOSITY, &
-         GAS_VISCOSITY,CAPILLARY_PRESSURE, &
+         GAS_VISCOSITY,CAPILLARY_PRESSURE,LIQUID_DENSITY_MOL, &
          LIQUID_MOBILITY,GAS_MOBILITY,SC_FUGA_COEFF,STATE,ICE_DENSITY, &
          TRANSIENT_POROSITY)
-         
+
       if (associated(patch%aux%TH)) then
         select case(ivar)
           case(TEMPERATURE)
@@ -3145,6 +3145,11 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
               vec_ptr(local_id) = patch%aux%General%auxvars(ZERO_INTEGER, &
                   grid%nL2G(local_id))%den_kg(option%liquid_phase)
             enddo
+          case(LIQUID_DENSITY_MOL)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%General%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%den(option%liquid_phase)
+            enddo
           case(LIQUID_ENERGY)
             if (isubvar == ZERO_INTEGER) then
               do local_id=1,grid%nlmax
@@ -3187,6 +3192,11 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%General%auxvars(ZERO_INTEGER, &
                   grid%nL2G(local_id))%den_kg(option%gas_phase)
+            enddo
+          case(GAS_DENSITY_MOL) 
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%General%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%den(option%gas_phase)
             enddo
           case(GAS_MOLE_FRACTION)
             do local_id=1,grid%nlmax
@@ -3811,7 +3821,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
          LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,LIQUID_VISCOSITY, &
          GAS_VISCOSITY,AIR_PRESSURE,CAPILLARY_PRESSURE, &
          LIQUID_MOBILITY,GAS_MOBILITY,SC_FUGA_COEFF,STATE,ICE_DENSITY, &
-         SECONDARY_TEMPERATURE,TRANSIENT_POROSITY)
+         SECONDARY_TEMPERATURE,LIQUID_DENSITY_MOL,TRANSIENT_POROSITY)
          
      if (associated(patch%aux%TH)) then
         select case(ivar)
@@ -4053,6 +4063,9 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           case(LIQUID_DENSITY)
             value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                       den_kg(option%liquid_phase)
+          case(LIQUID_DENSITY_MOL)
+            value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+                      den(option%liquid_phase)
           case(LIQUID_ENERGY)
             if (isubvar == ZERO_INTEGER) then
               value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
@@ -4072,6 +4085,9 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           case(GAS_DENSITY) 
             value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                       den_kg(option%gas_phase)
+          case(GAS_DENSITY_MOL) 
+            value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+                      den(option%gas_phase)
           case(GAS_ENERGY)
             if (isubvar == ZERO_INTEGER) then
               value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
