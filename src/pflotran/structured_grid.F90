@@ -516,6 +516,12 @@ subroutine StructGridReadArrayNew(array,array_size,axis,input,option)
         call InputErrorMsg(input,option,'value','StructGridReadArrayNew')
         do i=1, num_values
           count = count + 1
+          if (count > array_size) then
+            option%io_buffer = 'Too many values read for ' // &
+                               trim(axis) // &
+                               ' direction in DXYZ card'
+            call printErrMsg(option)
+          endif
           array(count) = value
         enddo
       else
@@ -523,6 +529,12 @@ subroutine StructGridReadArrayNew(array,array_size,axis,input,option)
         call InputReadDouble(string2,option,value,input%ierr)
         call InputErrorMsg(input,option,'value','StructGridReadDXYZ')
         count = count + 1
+        if (count > array_size) then
+          option%io_buffer = 'Too many values read for ' // &
+                              trim(axis) // &
+                              ' direction in DXYZ card'
+          call printErrMsg(option)
+        endif
         array(count) = value
       endif
     enddo
