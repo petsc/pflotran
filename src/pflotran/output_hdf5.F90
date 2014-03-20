@@ -163,7 +163,8 @@ subroutine OutputHDF5(realization_base,var_list_type)
   field => realization_base%field
   output_option => realization_base%output_option
 
-  call OutputHDF5OpenFile(option, output_option, var_list_type, file_id, first)
+  call OutputHDF5OpenFile(option, output_option, var_list_type, file_id, &
+                          filename, first)
 
   if (first) then
     option%io_buffer = '--> creating hdf5 output file: ' // trim(filename)
@@ -388,7 +389,8 @@ end subroutine OutputHDF5
 
 ! ************************************************************************** !
 
-subroutine OutputHDF5OpenFile(option, output_option, var_list_type, file_id, first)
+subroutine OutputHDF5OpenFile(option, output_option, var_list_type, file_id, &
+                              filename, first)
   !
   ! Determine the propper hdf5 output file name and open it.
   !
@@ -405,6 +407,7 @@ subroutine OutputHDF5OpenFile(option, output_option, var_list_type, file_id, fir
   type(option_type), intent(in) :: option
   type(output_option_type), intent(in) :: output_option
   PetscInt, intent(in) :: var_list_type
+  character(len=MAXSTRINGLENGTH) :: filename
   PetscBool, intent(out) :: first
 
 #if defined(SCORPIO_WRITE)
@@ -415,7 +418,6 @@ subroutine OutputHDF5OpenFile(option, output_option, var_list_type, file_id, fir
   integer(HID_T) :: prop_id
 #endif
   
-  character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string,string2,string3
   PetscMPIInt :: hdf5_err
 
