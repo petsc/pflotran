@@ -2779,6 +2779,7 @@ subroutine setFlowMode(option)
       option%nflowdof = 2
       option%nflowspec = 1
       option%use_isothermal = PETSC_FALSE
+      option%use_refactored_material_auxvars = PETSC_TRUE
     case('MIS','MISCIBLE')
       option%iflowmode = MIS_MODE
       option%nphase = 1
