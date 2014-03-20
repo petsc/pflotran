@@ -11,9 +11,9 @@ module General_Aux_module
 !#define FIXED_COEFFICIENTS
 ! DO NOT undefine this.  The code seems to run much better with the more accurate
 ! update of saturation
-#define ALTERNATIVE_UPDATE
+!#define ALTERNATIVE_UPDATE
   
-
+  PetscReal, public :: window_epsilon = 1.d-4
 
   ! thermodynamic state of fluid ids
   PetscInt, parameter, public :: NULL_STATE = 0
@@ -553,8 +553,8 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   if (global_auxvar%istate == GAS_STATE .or. &
       global_auxvar%istate == TWO_PHASE_STATE) then
     ! this does not need to be calculated for GAS_STATE (=1)
-    call SatFuncGetRelPermFromSat(gen_auxvar%sat(gid),krg,dkrg_Se, &
-                                  saturation_function,gid,PETSC_FALSE,option)
+    call SatFuncGetGasRelPermFromSat(gen_auxvar%sat(lid),krl,krg, &
+                                     saturation_function,option)
 #ifndef FIXED_COEFFICIENTS
     ! STOMP uses separate functions for calculating viscosity of vapor and
     ! and air (WATGSV,AIRGSV) and then uses GASVIS to calculate mixture 
@@ -573,6 +573,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
     write(*,'(a,i3,7f13.4,a3)') 'i/l/g/a/c/v/s/t: ', &
       ghosted_id, gen_auxvar%pres(1:5), gen_auxvar%sat(1), gen_auxvar%temp, &
       trim(state_char)
+#if 0
     if (gen_auxvar%sat(2) > 0.d0) then
       write(*,'(a,7es13.6)') 'kmol/kmol/kmol/MJ/MJ/MJ: ', &
         gen_auxvar%den(1)*gen_auxvar%sat(1)*gen_auxvar%xmol(1,1) + &
@@ -596,7 +597,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
         gen_auxvar%sat(1)*gen_auxvar%den(1)*gen_auxvar%U(1), 0.d0, &
         gen_auxvar%sat(1)*gen_auxvar%den(1)*gen_auxvar%U(1)
     endif
-
+#endif
     endif
   endif
 #endif
@@ -634,7 +635,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
 
 ! based on min_pressure in CheckPre set to zero
   PetscReal, parameter :: epsilon = 1.d-6
-  PetscReal, parameter :: window_epsilon = 1.d-4
+!  PetscReal, parameter :: window_epsilon = 1.d-4
 !  PetscReal, parameter :: epsilon = 1.d0 ! crash
 !  PetscReal, parameter :: epsilon = 1.d-1 ! 4.74000E+01, 12235 NI, 73 cuts
 !  PetscReal, parameter :: epsilon = 1.d-2 ! 4.39074E+01, 13600 NI, 201 cuts

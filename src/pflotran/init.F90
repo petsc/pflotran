@@ -1293,6 +1293,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
   use Patch_module
   use Realization_class
 
+  use General_module
   use Reaction_module  
   use Reaction_Aux_module  
 
@@ -1325,6 +1326,10 @@ subroutine InitReadRequiredCardsFromInput(realization)
     ! read in keyword 
     call InputReadWord(input,option,option%flowmode,PETSC_TRUE)
     call InputErrorMsg(input,option,'flowmode','mode')
+    select case(trim(option%flowmode))
+      case('GENERAL')
+        call GeneralRead(input,option)
+    end select
   endif
 
 !.........................................................................
@@ -1629,6 +1634,11 @@ subroutine InitReadInput(simulation)
                option%io_buffer = ' TH: must specify FREEZING or NO_FREEZING submode!'
                call printErrMsg(option)
             endif
+         else if (trim(word) == 'GENERAL') then
+           call InputReadWord(input, option, word, PETSC_TRUE)
+           if (input%ierr == 0) then
+             call InputSkipToEnd(input,option,card)
+           endif
          endif  
         
 !....................

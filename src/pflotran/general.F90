@@ -40,7 +40,8 @@ module General_module
   PetscInt :: debug_timestep_count
 #endif
 
-  public GeneralSetup, &
+  public GeneralRead, &
+         GeneralSetup, &
          GeneralInitializeTimestep, &
          GeneralUpdateSolution, &
          GeneralTimeCut,&
@@ -56,6 +57,58 @@ module General_module
          GeneralDestroy
 
 contains
+
+! ************************************************************************** !
+
+subroutine GeneralRead(input,option)
+  ! 
+  ! Reads parameters for general phase
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/21/09
+  ! 
+
+  use Option_module
+  use Input_Aux_module
+  use String_module
+
+  implicit none
+  
+  type(input_type) :: input
+  type(option_type) :: option
+  
+  character(len=MAXWORDLENGTH) :: keyword, word
+
+  call InputReadWord(input,option,keyword,PETSC_TRUE)
+  if (input%ierr /= 0) then
+    return
+  endif
+  
+  input%ierr = 0
+  do
+  
+    call InputReadPflotranString(input,option)
+
+    if (InputCheckExit(input,option)) exit  
+
+    call InputReadWord(input,option,keyword,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword','FLUID_PROPERTY')
+    call StringToUpper(keyword)   
+      
+    select case(trim(keyword))
+    
+      case('WINDOW_EPSILON') 
+        call InputReadDouble(input,option,window_epsilon)
+        call InputErrorMsg(input,option,'diffusion coefficient','FLUID_PROPERTY')
+      case default
+        option%io_buffer = 'Keyword: ' // trim(keyword) // &
+                           ' not recognized in General Mode'    
+        call printErrMsg(option)
+    end select
+    
+  enddo  
+
+end subroutine GeneralRead
 
 ! ************************************************************************** !
 

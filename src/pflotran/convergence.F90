@@ -197,6 +197,12 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
     reason = -9
   endif
    
+  if (solver%check_post_convergence .and. option%converged) then
+    reason = 12
+    ! set back to false
+    option%converged = PETSC_FALSE
+  endif
+    
 !  if (reason <= 0 .and. solver%check_infinity_norm) then
   if (solver%check_infinity_norm) then
   
@@ -223,12 +229,6 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
       reason = -10
     endif
  
-    if (solver%check_post_convergence .and. option%converged) then
-      reason = 12
-      ! set back to false
-      option%converged = PETSC_FALSE
-    endif
-    
     ! This is to check if the secondary continuum residual convergences
     ! for nonlinear problems specifically transport
     if (solver%itype == TRANSPORT_CLASS .and. option%use_mc .and. &
