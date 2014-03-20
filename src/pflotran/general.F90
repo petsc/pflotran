@@ -1791,12 +1791,17 @@ subroutine GeneralAccumDerivative(gen_auxvar,global_auxvar,material_auxvar, &
     enddo !irow
   enddo ! idof
 
+  if (option%use_isothermal) then
+    J(GENERAL_ENERGY_EQUATION_INDEX,:) = 0.d0
+    J(:,GENERAL_ENERGY_EQUATION_INDEX) = 0.d0
+  endif
+  
 #ifdef DEBUG_GENERAL_FILEOUTPUT
   if (debug_flag > 0) then
     write(debug_unit,'(a,10es24.15)') 'accum deriv:', J
   endif
 #endif
-  
+
 end subroutine GeneralAccumDerivative
 
 ! ************************************************************************** !
@@ -1886,6 +1891,13 @@ subroutine GeneralFluxDerivative(gen_auxvar_up,global_auxvar_up, &
     enddo !irow
   enddo ! idof
 
+  if (option%use_isothermal) then
+    Jup(GENERAL_ENERGY_EQUATION_INDEX,:) = 0.d0
+    Jup(:,GENERAL_ENERGY_EQUATION_INDEX) = 0.d0
+    Jdn(GENERAL_ENERGY_EQUATION_INDEX,:) = 0.d0
+    Jdn(:,GENERAL_ENERGY_EQUATION_INDEX) = 0.d0
+  endif
+
 #ifdef DEBUG_GENERAL_FILEOUTPUT
   if (debug_flag > 0) then
     write(debug_unit,'(a,20es24.15)') 'flux deriv:', Jup, Jdn
@@ -1964,6 +1976,11 @@ subroutine GeneralBCFluxDerivative(ibndtype,auxvar_mapping,auxvars, &
     enddo !irow
   enddo ! idof
 
+  if (option%use_isothermal) then
+    Jdn(GENERAL_ENERGY_EQUATION_INDEX,:) = 0.d0
+    Jdn(:,GENERAL_ENERGY_EQUATION_INDEX) = 0.d0
+  endif
+  
 #ifdef DEBUG_GENERAL_FILEOUTPUT
   if (debug_flag > 0) then
     write(debug_unit,'(a,10es24.15)') 'bc flux deriv:', Jdn
@@ -2010,12 +2027,17 @@ subroutine GeneralSrcSinkDerivative(option,qsrc,flow_src_sink_type, &
     enddo !irow
   enddo ! idof
   
+  if (option%use_isothermal) then
+    Jac(GENERAL_ENERGY_EQUATION_INDEX,:) = 0.d0
+    Jac(:,GENERAL_ENERGY_EQUATION_INDEX) = 0.d0
+  endif
+  
 #ifdef DEBUG_GENERAL_FILEOUTPUT
   if (debug_flag > 0) then
     write(debug_unit,'(a,20es24.15)') 'src/sink deriv:', Jac
   endif
-#endif  
-  
+#endif
+
 end subroutine GeneralSrcSinkDerivative
 
 ! ************************************************************************** !
@@ -2320,6 +2342,13 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
       r_p(patch%aux%General%zero_rows_local(i)) = 0.d0
     enddo
   endif
+  
+  if (option%use_isothermal) then
+    ! zero energy residual
+    do local_id = 1, grid%nlmax
+      r_p((local_id-1)*option%nflowdof+GENERAL_ENERGY_EQUATION_INDEX) =  0.d0
+    enddo
+  endif
 
 #ifdef DEBUG_GENERAL_FILEOUTPUT
   call VecGetArrayReadF90(field%flow_accum, accum_p, ierr)
@@ -2397,6 +2426,7 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
   PetscReal :: dd_up, dd_dn
   PetscReal :: perm_up, perm_dn
   PetscInt :: local_id, ghosted_id
+  PetscInt :: irow
   PetscInt :: local_id_up, local_id_dn
   PetscInt :: ghosted_id_up, ghosted_id_dn
   
@@ -2672,6 +2702,18 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
                           qsrc,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
   endif
 
+  if (option%use_isothermal) then
+    ! zero energy residual
+    do local_id = 1, grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
+      irow = (ghosted_id-1)*option%nflowdof+GENERAL_ENERGY_EQUATION_INDEX 
+      irow = irow-1 ! zero-based indexing
+      qsrc = 1.d0 ! solely a temporary variable in this conditional
+      call MatZeroRowsLocal(A,ONE_INTEGER,irow, &
+                            qsrc,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+    enddo
+  endif
+  
   if (realization%debug%matview_Jacobian) then
 #if 1  
     call PetscViewerASCIIOpen(realization%option%mycomm,'Gjacobian.out', &
