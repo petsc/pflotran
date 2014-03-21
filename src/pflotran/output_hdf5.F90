@@ -142,7 +142,6 @@ subroutine OutputHDF5(realization_base,var_list_type)
   Vec :: natural_vec
   PetscReal, pointer :: v_ptr
   
-  character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
   character(len=2) :: free_mol_char, tot_mol_char, sec_mol_char
@@ -164,13 +163,6 @@ subroutine OutputHDF5(realization_base,var_list_type)
   output_option => realization_base%output_option
 
   call OutputHDF5OpenFile(option, output_option, var_list_type, file_id, first)
-
-  if (first) then
-    option%io_buffer = '--> creating hdf5 output file: ' // trim(filename)
-  else
-    option%io_buffer = '--> appending to hdf5 output file: ' // trim(filename)
-  endif
-  call printMsg(option)
 
   grid => patch%grid
   if (first) then
@@ -395,14 +387,14 @@ subroutine OutputHDF5OpenFile(option, output_option, var_list_type, file_id, fir
   ! Return the file handle and 'first' flag indicating if this is the
   ! first time the file has been opened.
   !
-  use Option_module, only : option_type
+  use Option_module, only : option_type, printMsg
   use hdf5
 
 #include "finclude/petscsysdef.h"
 
   implicit none
 
-  type(option_type), intent(in) :: option
+  type(option_type), intent(inout) :: option
   type(output_option_type), intent(in) :: output_option
   PetscInt, intent(in) :: var_list_type
   PetscBool, intent(out) :: first
@@ -491,6 +483,13 @@ subroutine OutputHDF5OpenFile(option, output_option, var_list_type, file_id, fir
   call h5pclose_f(prop_id,hdf5_err)
 #endif
 ! SCORPIO_WRITE
+
+  if (first) then
+    option%io_buffer = '--> creating hdf5 output file: ' // trim(filename)
+  else
+    option%io_buffer = '--> appending to hdf5 output file: ' // trim(filename)
+  endif
+  call printMsg(option)
 
 end subroutine OutputHDF5OpenFile
 
