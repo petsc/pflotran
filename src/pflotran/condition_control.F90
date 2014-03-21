@@ -19,9 +19,7 @@ module Condition_Control_module
 
   public :: CondControlAssignFlowInitCond, &
             CondControlAssignTranInitCond, &
-#ifdef SURFACE_FLOW
             CondControlAssignFlowInitCondSurface, &
-#endif
             CondControlScaleSourceSink
  
 contains
@@ -1061,9 +1059,6 @@ subroutine CondControlScaleSourceSink(realization)
 end subroutine CondControlScaleSourceSink
 
 ! ************************************************************************** !
-#ifdef SURFACE_FLOW
-
-! ************************************************************************** !
 
 subroutine CondControlAssignFlowInitCondSurface(surf_realization)
 
@@ -1209,7 +1204,5 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
                                    surf_field%flow_xx_loc, NFLOWDOF)
 
 end subroutine CondControlAssignFlowInitCondSurface
-#endif
-! SURFACE_FLOW
 
 end module Condition_Control_module

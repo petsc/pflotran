@@ -1,4 +1,3 @@
-#ifdef SURFACE_FLOW
 module Surface_Factory_module
 
   use Surface_Simulation_class
@@ -426,4 +425,3 @@ subroutine HijackTimestepper(stepper_old,stepper_base)
 end subroutine HijackTimestepper
 
 end module Surface_Factory_module
-#endif

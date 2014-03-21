@@ -62,7 +62,6 @@ module Option_module
     PetscInt :: nsec_cells
     PetscBool :: use_th_freezing
 
-#ifdef SURFACE_FLOW
     PetscInt :: nsurfflowdof
     PetscInt :: subsurf_surf_coupling
     PetscInt :: surface_flow_formulation
@@ -73,7 +72,6 @@ module Option_module
     PetscBool :: surf_restart_flag
     character(len=MAXSTRINGLENGTH) :: surf_initialize_flow_filename
     character(len=MAXSTRINGLENGTH) :: surf_restart_filename
-#endif
 
 #ifdef GEOMECH
     PetscInt  :: ngeomechdof
@@ -419,7 +417,6 @@ subroutine OptionInitRealization(option)
   option%nsec_cells = 0
   option%use_th_freezing = PETSC_FALSE
 
-#ifdef SURFACE_FLOW
   option%nsurfflowdof = 0
   option%subsurf_surf_coupling = DECOUPLED
   option%surface_flow_formulation = DIFFUSION_WAVE
@@ -431,7 +428,6 @@ subroutine OptionInitRealization(option)
   option%surf_restart_filename = ""
   option%surf_restart_flag = PETSC_FALSE
   option%surf_restart_time = -999.0
-#endif
 
 #ifdef GEOMECH
   option%ngeomechdof = 0

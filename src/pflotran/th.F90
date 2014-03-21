@@ -4943,8 +4943,6 @@ subroutine THUpdateSurfaceBC(realization)
 
   type(realization_type) :: realization
 
-#ifdef SURFACE_FLOW
-
   PetscInt :: ghosted_id
   PetscInt :: local_id
   PetscInt :: sum_connection
@@ -5056,8 +5054,6 @@ subroutine THUpdateSurfaceBC(realization)
     boundary_condition => boundary_condition%next
 
   enddo
-
-#endif
 
 end subroutine THUpdateSurfaceBC
 

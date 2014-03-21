@@ -11,11 +11,9 @@ module Patch_module
   use Material_module
   use Field_module
   use Saturation_Function_module
-#ifdef SURFACE_FLOW
   use Surface_Field_module
   use Surface_Material_module
   use Surface_Auxiliary_module
-#endif
   
   use Auxiliary_module
 
@@ -71,7 +69,6 @@ module Patch_module
 
     PetscInt :: surf_or_subsurf_flag  ! Flag to identify if the current patch
                                       ! is a surface or subsurface (default)
-#ifdef SURFACE_FLOW
     type(surface_material_property_type), pointer     :: surf_material_properties
     type(surface_material_property_ptr_type), pointer :: surf_material_property_array(:)
     type(surface_field_type),pointer                  :: surf_field
@@ -79,7 +76,6 @@ module Patch_module
     
     PetscReal,pointer :: surf_internal_fluxes(:,:)
     PetscReal,pointer :: surf_boundary_fluxes(:,:)
-#endif
 
   end type patch_type
 
@@ -100,9 +96,7 @@ module Patch_module
     
   interface PatchGetVariable
     module procedure PatchGetVariable1
-#ifdef SURFACE_FLOW
     module procedure PatchGetVariable2
-#endif
   end interface
 
   public :: PatchCreate, PatchDestroy, PatchCreateList, PatchDestroyList, &
@@ -180,14 +174,12 @@ function PatchCreate()
   
   nullify(patch%next)
   
-#ifdef SURFACE_FLOW
-    nullify(patch%surf_material_properties)
-    nullify(patch%surf_material_property_array)
-    nullify(patch%surf_field)
-    nullify(patch%surf_internal_fluxes)
-    nullify(patch%surf_boundary_fluxes)
-    call SurfaceAuxInit(patch%surf_aux)
-#endif
+  nullify(patch%surf_material_properties)
+  nullify(patch%surf_material_property_array)
+  nullify(patch%surf_field)
+  nullify(patch%surf_internal_fluxes)
+  nullify(patch%surf_boundary_fluxes)
+  call SurfaceAuxInit(patch%surf_aux)
 
   PatchCreate => patch
   
@@ -565,7 +557,6 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
           endif
         endif
 
-#ifdef SURFACE_FLOW
         if(patch%surf_or_subsurf_flag == SURFACE) then
           strata%surf_material_property => &
             SurfaceMaterialPropGetPtrFromArray(strata%material_property_name, &
@@ -577,7 +568,6 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
             call printErrMsg(option)
           endif
         endif
-#endif
 
       endif
     else
@@ -660,7 +650,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     patch%internal_fluxes = 0.d0
     patch%boundary_fluxes = 0.d0
   endif
-#ifdef SURFACE_FLOW
+
   if (patch%surf_or_subsurf_flag == SURFACE) then
     !if (option%store_flowrate) then
       allocate(patch%surf_internal_fluxes(option%nflowdof,temp_int))
@@ -671,7 +661,6 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   ! to store data for hydrograph output
   allocate(patch%surf_boundary_fluxes(option%nflowdof,temp_int))
   patch%surf_boundary_fluxes = 0.d0
-#endif
  
   if (patch%grid%itype == STRUCTURED_GRID_MIMETIC.or. &
       patch%grid%discretization_itype == UNSTRUCTURED_GRID_MIMETIC ) then
@@ -5524,7 +5513,6 @@ subroutine PatchDestroy(patch)
   ! Since this linked list will be destroyed by realization, just nullify here
   nullify(patch%saturation_functions)
 
-#ifdef SURFACE_FLOW
   nullify(patch%surf_field)
   if (associated(patch%surf_material_property_array)) &
     deallocate(patch%surf_material_property_array)
@@ -5534,7 +5522,6 @@ subroutine PatchDestroy(patch)
   if (associated(patch%surf_boundary_fluxes)) deallocate(patch%surf_boundary_fluxes)
   nullify(patch%surf_internal_fluxes)
   nullify(patch%surf_boundary_fluxes)
-#endif
 
   ! solely nullify grid since destroyed in discretization
   nullify(patch%grid)
@@ -5560,8 +5547,6 @@ subroutine PatchDestroy(patch)
   nullify(patch)
   
 end subroutine PatchDestroy
-
-#ifdef SURFACE_FLOW
 
 ! ************************************************************************** !
 
@@ -5635,9 +5620,6 @@ subroutine PatchGetVariable2(patch,surf_field,option,output_option,vec,ivar, &
   end select
 
 end subroutine PatchGetVariable2
-
-#endif
-! SURFACE_FLOW
 
 ! ************************************************************************** !
 

@@ -1,4 +1,3 @@
-#ifdef SURFACE_FLOW
 module PMC_Surface_class
 
   use PMC_Base_class
@@ -640,4 +639,3 @@ recursive subroutine Destroy(this)
 end subroutine Destroy
 
 end module PMC_Surface_class
-#endif

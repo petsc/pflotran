@@ -1,5 +1,3 @@
-#ifdef SURFACE_FLOW
-
 module Surface_Init_module
 
   use PFLOTRAN_Constants_module
@@ -1079,5 +1077,3 @@ subroutine SurfaceInitReadRegionFiles(surf_realization)
 end subroutine SurfaceInitReadRegionFiles
 
 end module Surface_Init_module
-
-#endif

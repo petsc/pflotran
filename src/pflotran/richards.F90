@@ -2577,7 +2577,6 @@ subroutine RichardsUpdateSurfacePress(realization)
 
   type(realization_type) :: realization
 
-#ifdef SURFACE_FLOW
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
@@ -2643,7 +2642,6 @@ subroutine RichardsUpdateSurfacePress(realization)
     boundary_condition => boundary_condition%next
 
   enddo
-#endif
 
 end subroutine RichardsUpdateSurfacePress
 

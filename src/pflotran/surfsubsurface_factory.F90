@@ -1,4 +1,3 @@
-#ifdef SURFACE_FLOW
 module Surf_Subsurf_Factory_module
 
   use Surf_Subsurf_Simulation_class
@@ -789,5 +788,3 @@ subroutine SurfSubsurfInitCommandLineSettings(option)
 end subroutine SurfSubsurfInitCommandLineSettings
 
 end module Surf_Subsurf_Factory_module
-
-#endif

@@ -8,7 +8,6 @@ unit_test_dir = ./unittests
 
 MYFLAGS = -I.
 MYFLAGS += -DPROCESS_MODEL
-MYFLAGS += -DSURFACE_FLOW
 MYFLAGS += -DCHUAN_CO2
 MYFLAGS += -DGEOMECH
 
@@ -121,10 +120,6 @@ endif
 
 ifdef ugrid_debug
   MYFLAGS += -DUGRID_DEBUG
-endif
-
-ifdef surface_flow
-  MYFLAGS += -DSURFACE_FLOW -w -g
 endif
 
 ifdef amanzi_bgd

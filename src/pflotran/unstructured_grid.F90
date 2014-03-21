@@ -34,11 +34,9 @@ module Unstructured_Grid_module
 #if defined(SCORPIO)
             UGridReadHDF5PIOLib, &
 #endif
-#ifdef SURFACE_FLOW
             UGridReadSurfGrid, &
 #if defined(PETSC_HAVE_HDF5)
             UGridReadHDF5SurfGrid, &
-#endif
 #endif
             UGridDecompose, &
             UGridComputeInternConnect, &
@@ -283,9 +281,6 @@ subroutine UGridRead(unstructured_grid,filename,option)
   call InputDestroy(input)
 
 end subroutine UGridRead
-
-
-#ifdef SURFACE_FLOW
 
 ! ************************************************************************** !
 
@@ -850,10 +845,6 @@ end subroutine UGridReadHDF5SurfGrid
 
 #endif
 ! End PETSC_HAVE_HDF5
-
-
-#endif
-!SURFACE_FLOW
 
 #if defined(PETSC_HAVE_HDF5)
 

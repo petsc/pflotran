@@ -1,5 +1,3 @@
-#ifdef SURFACE_FLOW
-
 module Surface_TH_Aux_module
 
   use PFLOTRAN_Constants_module
@@ -296,5 +294,3 @@ subroutine SurfaceTHAuxDestroy(aux)
   end subroutine SurfaceTHAuxDestroy
 
 end module Surface_TH_Aux_module
-
-#endif
