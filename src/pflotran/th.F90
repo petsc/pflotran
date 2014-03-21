@@ -1672,9 +1672,6 @@ subroutine THAccumulation(auxvar,global_auxvar, &
      u_g = C_g*(global_auxvar%temp(1) + 273.15d0)       ! in MJ/kmol
      mol(1) = mol(1) + (sat_g*den_g*mol_g + sat_i*den_i)*porXvol
      eng = eng + (sat_g*den_g*u_g + sat_i*den_i*u_i)*porXvol
-#ifdef REMOVE_SATURATION
-     !mol(2) = global_auxvar%den(1)*auxvar%xmol(2)*porXvol
-#endif
   endif
 
   Res(1:option%nflowdof-1) = mol(:)/option%flow_dt
@@ -2067,17 +2064,6 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
 !                         (auxvar_up%xmol(2) - auxvar_dn%xmol(2))
 !  Jdn(2,2) = Jdn(2,2) + ddifff_dt_dn*0.5d0*(Diff_up + Diff_dn)* &
 !                         (auxvar_up%xmol(2) - auxvar_dn%xmol(2))
-                         
-#ifdef REMOVE_SATURATION 
-
-       difff = diffdp * 0.5D0* &
-            (global_auxvar_up%den(1)+global_auxvar_dn%den(1))
-       ddifff_dp_up = diffdp * 0.5d0 * auxvar_up%dden_dp
-       ddifff_dp_dn = diffdp * 0.5d0 * auxvar_dn%dden_dp
-       ddifff_dt_up = diffdp * 0.5d0 * auxvar_up%dden_dt
-       ddifff_dt_dn = diffdp * 0.5d0 * auxvar_dn%dden_dt
-  
-#endif
     endif ! if(use_th_freezing)
 
         
@@ -2496,12 +2482,7 @@ subroutine THFlux(auxvar_up,global_auxvar_up, &
 #endif
 
      endif
-#ifdef REMOVE_SATURATION 
-     difff = diffdp * 0.5D0* &
-          (global_auxvar_up%den(1)+global_auxvar_dn%den(1))
-!  fluxm(2) = fluxm(2) + difff * .5D0 * (Diff_up + Diff_dn)* &
-!                 (auxvar_up%xmol(2) - auxvar_dn%xmol(2)) 
-#endif
+
   endif ! if (use_th_freezing)
 
 ! conduction term  
@@ -4984,8 +4965,6 @@ subroutine THUpdateSurfaceBC(realization)
 
   type(realization_type) :: realization
 
-#ifdef SURFACE_FLOW
-
   PetscInt :: ghosted_id
   PetscInt :: local_id
   PetscInt :: sum_connection
@@ -5097,8 +5076,6 @@ subroutine THUpdateSurfaceBC(realization)
     boundary_condition => boundary_condition%next
 
   enddo
-
-#endif
 
 end subroutine THUpdateSurfaceBC
 

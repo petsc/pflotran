@@ -34,11 +34,9 @@ module Unstructured_Grid_module
 #if defined(SCORPIO)
             UGridReadHDF5PIOLib, &
 #endif
-#ifdef SURFACE_FLOW
             UGridReadSurfGrid, &
 #if defined(PETSC_HAVE_HDF5)
             UGridReadHDF5SurfGrid, &
-#endif
 #endif
             UGridDecompose, &
             UGridComputeInternConnect, &
@@ -283,9 +281,6 @@ subroutine UGridRead(unstructured_grid,filename,option)
   call InputDestroy(input)
 
 end subroutine UGridRead
-
-
-#ifdef SURFACE_FLOW
 
 ! ************************************************************************** !
 
@@ -850,10 +845,6 @@ end subroutine UGridReadHDF5SurfGrid
 
 #endif
 ! End PETSC_HAVE_HDF5
-
-
-#endif
-!SURFACE_FLOW
 
 #if defined(PETSC_HAVE_HDF5)
 
@@ -2942,56 +2933,81 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nG2A,nl2G,option)
 
       if (distance > 0.d0) then
         ! need to swap so that distance is negative (point lies below plane)
-#ifndef GB_DEBUG
-        option%io_buffer = 'Cell '
-        write(string,'(i13)') nG2A(nL2G(local_id))
-        option%io_buffer = trim(option%io_buffer) // trim(adjustl(string)) // &
-          'of type "' // trim(UCellTypeToWord(cell_type,option)) // &
-          '" with vertices:'
-        do i = 1, num_vertices
-          write(string,'(i13)') &
-            unstructured_grid%vertex_ids_natural(cell_vertex_ids_before(i))
-          option%io_buffer = trim(option%io_buffer) // ' ' // &
-            trim(adjustl(string))
-        enddo
-        option%io_buffer = trim(option%io_buffer) // &
-          ' violates right hand rule at face "' // &
-          trim(UCellFaceTypeToWord(face_type,option)) // &
-          '" based on face vertices:'
-        do i = 1, num_face_vertices
-          write(string,'(i13)') face_vertex_ids(i)
-          option%io_buffer = trim(option%io_buffer) // ' ' // &
-            trim(adjustl(string))
-        enddo
-        do ivertex = 1, unstructured_grid%cell_vertices(0,ghosted_id)
-          vertex_id = unstructured_grid%cell_vertices(ivertex,ghosted_id)
-          vertex_8(ivertex)%x = &
-            unstructured_grid%vertices(vertex_id)%x
-          vertex_8(ivertex)%y = &
-            unstructured_grid%vertices(vertex_id)%y
-          vertex_8(ivertex)%z = &
-            unstructured_grid%vertices(vertex_id)%z
-        enddo        
-        write(string,'(f8.2)') &
-          UCellComputeVolume(cell_type,vertex_8,option)
-        option%io_buffer = trim(option%io_buffer) // ' and volume: ' // &
-          trim(adjustl(string)) // '.'
-        call printMsgAnyRank(option)
-        error_found = PETSC_TRUE
-#else
-        write(option%io_buffer,'(''Cell '',i3,'' of type "'',a, &
-            & ''" with vertices: '',8i6, &
-            & '' violates right hand rule at face "'',a, &
-            & ''" for face vertices '', &
-            & '' based on face vertices '',3i3)') &
-            nG2A(nL2G(local_id)), &
-            trim(UCellTypeToWord(cell_type,option)), &
-        (unstructured_grid%vertex_ids_natural(cell_vertex_ids_before(i)), &
-           i = 1,8), &
-            trim(UCellFaceTypeToWord(face_type,option)), &
-        (face_vertex_ids(i),i = 1,3) 
-        call printErrMsgByRank(option)
-#endif
+        if (cell_type == TRI_TYPE .or. cell_type == QUAD_TYPE) then
+          ! Error message for 2D cell type
+          option%io_buffer = 'Cell: '
+          write(string,'(i13)') nG2A(nL2G(local_id))
+          option%io_buffer = trim(option%io_buffer) // trim(adjustl(string)) // &
+            ' of type "' // trim(UCellTypeToWord(cell_type,option)) // &
+            '" with vertices:'
+          do i = 1, num_vertices
+            write(string,'(i13)') &
+              unstructured_grid%vertex_ids_natural(cell_vertex_ids_before(i))
+            option%io_buffer = trim(option%io_buffer) // ' ' // &
+              trim(adjustl(string))
+          enddo
+          option%io_buffer = trim(option%io_buffer) // &
+            ' violates right hand rule at face "' // &
+            trim(UCellFaceTypeToWord(face_type,option)) // &
+            '" based on face vertices:'
+          do i = 1, num_face_vertices
+            write(string,'(i13)') face_vertex_ids(i)
+            option%io_buffer = trim(option%io_buffer) // ' ' // &
+              trim(adjustl(string))
+          enddo
+          do ivertex = 1, unstructured_grid%cell_vertices(0,ghosted_id)
+            vertex_id = unstructured_grid%cell_vertices(ivertex,ghosted_id)
+            vertex_8(ivertex)%x = &
+              unstructured_grid%vertices(vertex_id)%x
+            vertex_8(ivertex)%y = &
+              unstructured_grid%vertices(vertex_id)%y
+            vertex_8(ivertex)%z = &
+              unstructured_grid%vertices(vertex_id)%z
+          enddo
+          write(string,'(f8.2)') &
+            UCellComputeArea(cell_type,vertex_8,option)
+          option%io_buffer = trim(option%io_buffer) // ' and area: ' // &
+            trim(adjustl(string)) // '.'
+          call printMsgAnyRank(option)
+          error_found = PETSC_TRUE
+        else
+          ! Error message for 3D cell type
+          option%io_buffer = 'Cell: '
+          write(string,'(i13)') nG2A(nL2G(local_id))
+          option%io_buffer = trim(option%io_buffer) // trim(adjustl(string)) // &
+            'of type "' // trim(UCellTypeToWord(cell_type,option)) // &
+            '" with vertices:'
+          do i = 1, num_vertices
+            write(string,'(i13)') &
+              unstructured_grid%vertex_ids_natural(cell_vertex_ids_before(i))
+            option%io_buffer = trim(option%io_buffer) // ' ' // &
+              trim(adjustl(string))
+          enddo
+          option%io_buffer = trim(option%io_buffer) // &
+            ' violates right hand rule at face "' // &
+            trim(UCellFaceTypeToWord(face_type,option)) // &
+            '" based on face vertices:'
+          do i = 1, num_face_vertices
+            write(string,'(i13)') face_vertex_ids(i)
+            option%io_buffer = trim(option%io_buffer) // ' ' // &
+              trim(adjustl(string))
+          enddo
+          do ivertex = 1, unstructured_grid%cell_vertices(0,ghosted_id)
+            vertex_id = unstructured_grid%cell_vertices(ivertex,ghosted_id)
+            vertex_8(ivertex)%x = &
+              unstructured_grid%vertices(vertex_id)%x
+            vertex_8(ivertex)%y = &
+              unstructured_grid%vertices(vertex_id)%y
+            vertex_8(ivertex)%z = &
+              unstructured_grid%vertices(vertex_id)%z
+          enddo
+          write(string,'(f8.2)') &
+            UCellComputeVolume(cell_type,vertex_8,option)
+          option%io_buffer = trim(option%io_buffer) // ' and volume: ' // &
+            trim(adjustl(string)) // '.'
+          call printMsgAnyRank(option)
+          error_found = PETSC_TRUE
+        endif
       endif
     enddo
   enddo

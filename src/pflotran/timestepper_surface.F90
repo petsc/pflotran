@@ -1,5 +1,3 @@
-#ifdef SURFACE_FLOW
-
 module Timestepper_Surface_class
 
   use Timestepper_Base_class
@@ -444,5 +442,3 @@ subroutine TimestepperSurfaceReset(this)
 end subroutine TimestepperSurfaceReset
 
 end module Timestepper_Surface_class
-
-#endif

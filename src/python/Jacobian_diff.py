@@ -81,6 +81,8 @@ for line1 in file1:
       icount2 += 1
   row_count += 1
 
+file1.close()
+file2.close()
 print('done')
         
 

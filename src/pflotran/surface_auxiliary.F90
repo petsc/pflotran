@@ -1,5 +1,3 @@
-#ifdef SURFACE_FLOW
-
 module Surface_Auxiliary_module
 
   use Surface_Global_Aux_module
@@ -66,5 +64,3 @@ subroutine SurfaceAuxDestroy(surf_aux)
 end subroutine SurfaceAuxDestroy
 
 end module Surface_Auxiliary_module
-
-#endif

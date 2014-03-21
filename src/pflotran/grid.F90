@@ -1597,13 +1597,6 @@ subroutine GridLocalizeRegionsFromCellIDsUGrid(grid, region, option)
       tmp_scl_array(count) = 1.d0
     enddo
 
-#if GB_DEBUG
-    call PetscViewerASCIIOpen(option%mycomm, 'vec_cell_ids_bef.out', &
-                              viewer, ierr)
-    call VecView(vec_cell_ids, viewer, ierr)
-    call PetscViewerDestroy(viewer, ierr)
-#endif
-
     call VecSetValues(vec_cell_ids, region%num_cells, tmp_int_array, &
                       tmp_scl_array, ADD_VALUES, ierr)
     
@@ -1612,13 +1605,6 @@ subroutine GridLocalizeRegionsFromCellIDsUGrid(grid, region, option)
 
     call VecAssemblyBegin(vec_cell_ids, ierr)
     call VecAssemblyEnd(vec_cell_ids, ierr)
-
-#if GB_DEBUG
-    call PetscViewerASCIIOpen(option%mycomm, 'vec_cell_ids_aft.out', &
-                              viewer, ierr)
-    call VecView(vec_cell_ids, viewer, ierr)
-    call PetscViewerDestroy(viewer, ierr)
-#endif
 
     allocate(tmp_int_array(ugrid%nlmax))
     count = 0
@@ -1655,13 +1641,6 @@ subroutine GridLocalizeRegionsFromCellIDsUGrid(grid, region, option)
                         INSERT_VALUES, SCATTER_FORWARD, ierr)
     call VecScatterDestroy(vec_scat, ierr)
 
-#if GB_DEBUG
-    call PetscViewerASCIIOpen(option%mycomm, 'vec_cell_ids_loc.out', &
-                              viewer, ierr)
-    call VecView(vec_cell_ids_loc, viewer, ierr)
-    call PetscViewerDestroy(viewer, ierr)
-#endif
-    
     call VecGetArrayF90(vec_cell_ids_loc, v_loc_p, ierr)
     count = 0
     do ii=1, ugrid%nlmax

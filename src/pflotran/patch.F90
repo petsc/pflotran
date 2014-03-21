@@ -11,11 +11,9 @@ module Patch_module
   use Material_module
   use Field_module
   use Saturation_Function_module
-#ifdef SURFACE_FLOW
   use Surface_Field_module
   use Surface_Material_module
   use Surface_Auxiliary_module
-#endif
   
   use Auxiliary_module
 
@@ -71,7 +69,6 @@ module Patch_module
 
     PetscInt :: surf_or_subsurf_flag  ! Flag to identify if the current patch
                                       ! is a surface or subsurface (default)
-#ifdef SURFACE_FLOW
     type(surface_material_property_type), pointer     :: surf_material_properties
     type(surface_material_property_ptr_type), pointer :: surf_material_property_array(:)
     type(surface_field_type),pointer                  :: surf_field
@@ -79,7 +76,6 @@ module Patch_module
     
     PetscReal,pointer :: surf_internal_fluxes(:,:)
     PetscReal,pointer :: surf_boundary_fluxes(:,:)
-#endif
 
   end type patch_type
 
@@ -100,9 +96,7 @@ module Patch_module
     
   interface PatchGetVariable
     module procedure PatchGetVariable1
-#ifdef SURFACE_FLOW
     module procedure PatchGetVariable2
-#endif
   end interface
 
   public :: PatchCreate, PatchDestroy, PatchCreateList, PatchDestroyList, &
@@ -180,14 +174,12 @@ function PatchCreate()
   
   nullify(patch%next)
   
-#ifdef SURFACE_FLOW
-    nullify(patch%surf_material_properties)
-    nullify(patch%surf_material_property_array)
-    nullify(patch%surf_field)
-    nullify(patch%surf_internal_fluxes)
-    nullify(patch%surf_boundary_fluxes)
-    call SurfaceAuxInit(patch%surf_aux)
-#endif
+  nullify(patch%surf_material_properties)
+  nullify(patch%surf_material_property_array)
+  nullify(patch%surf_field)
+  nullify(patch%surf_internal_fluxes)
+  nullify(patch%surf_boundary_fluxes)
+  call SurfaceAuxInit(patch%surf_aux)
 
   PatchCreate => patch
   
@@ -565,7 +557,6 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
           endif
         endif
 
-#ifdef SURFACE_FLOW
         if(patch%surf_or_subsurf_flag == SURFACE) then
           strata%surf_material_property => &
             SurfaceMaterialPropGetPtrFromArray(strata%material_property_name, &
@@ -577,7 +568,6 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
             call printErrMsg(option)
           endif
         endif
-#endif
 
       endif
     else
@@ -660,7 +650,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     patch%internal_fluxes = 0.d0
     patch%boundary_fluxes = 0.d0
   endif
-#ifdef SURFACE_FLOW
+
   if (patch%surf_or_subsurf_flag == SURFACE) then
     !if (option%store_flowrate) then
       allocate(patch%surf_internal_fluxes(option%nflowdof,temp_int))
@@ -671,7 +661,6 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   ! to store data for hydrograph output
   allocate(patch%surf_boundary_fluxes(option%nflowdof,temp_int))
   patch%surf_boundary_fluxes = 0.d0
-#endif
  
   if (patch%grid%itype == STRUCTURED_GRID_MIMETIC.or. &
       patch%grid%discretization_itype == UNSTRUCTURED_GRID_MIMETIC ) then
@@ -829,7 +818,7 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
               case(G_MODE)
                 allocate(coupler%flow_aux_mapping(GENERAL_MAX_INDEX))
                 allocate(coupler%flow_bc_type(THREE_INTEGER))
-                allocate(coupler%flow_aux_real_var(FOUR_INTEGER,num_connections))
+                allocate(coupler%flow_aux_real_var(FIVE_INTEGER,num_connections))
                 allocate(coupler%flow_aux_int_var(ONE_INTEGER,num_connections))
                 coupler%flow_aux_mapping = 0
                 coupler%flow_bc_type = 0
@@ -2735,10 +2724,10 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
          LIQUID_SATURATION,GAS_SATURATION,ICE_SATURATION, &
          LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
          LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,LIQUID_VISCOSITY, &
-         GAS_VISCOSITY,CAPILLARY_PRESSURE, &
+         GAS_VISCOSITY,CAPILLARY_PRESSURE,LIQUID_DENSITY_MOL, &
          LIQUID_MOBILITY,GAS_MOBILITY,SC_FUGA_COEFF,STATE,ICE_DENSITY, &
          TRANSIENT_POROSITY)
-         
+
       if (associated(patch%aux%TH)) then
         select case(ivar)
           case(TEMPERATURE)
@@ -3145,6 +3134,11 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
               vec_ptr(local_id) = patch%aux%General%auxvars(ZERO_INTEGER, &
                   grid%nL2G(local_id))%den_kg(option%liquid_phase)
             enddo
+          case(LIQUID_DENSITY_MOL)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%General%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%den(option%liquid_phase)
+            enddo
           case(LIQUID_ENERGY)
             if (isubvar == ZERO_INTEGER) then
               do local_id=1,grid%nlmax
@@ -3187,6 +3181,11 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%General%auxvars(ZERO_INTEGER, &
                   grid%nL2G(local_id))%den_kg(option%gas_phase)
+            enddo
+          case(GAS_DENSITY_MOL) 
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%General%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%den(option%gas_phase)
             enddo
           case(GAS_MOLE_FRACTION)
             do local_id=1,grid%nlmax
@@ -3811,7 +3810,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
          LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,LIQUID_VISCOSITY, &
          GAS_VISCOSITY,AIR_PRESSURE,CAPILLARY_PRESSURE, &
          LIQUID_MOBILITY,GAS_MOBILITY,SC_FUGA_COEFF,STATE,ICE_DENSITY, &
-         SECONDARY_TEMPERATURE,TRANSIENT_POROSITY)
+         SECONDARY_TEMPERATURE,LIQUID_DENSITY_MOL,TRANSIENT_POROSITY)
          
      if (associated(patch%aux%TH)) then
         select case(ivar)
@@ -4053,6 +4052,9 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           case(LIQUID_DENSITY)
             value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                       den_kg(option%liquid_phase)
+          case(LIQUID_DENSITY_MOL)
+            value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+                      den(option%liquid_phase)
           case(LIQUID_ENERGY)
             if (isubvar == ZERO_INTEGER) then
               value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
@@ -4072,6 +4074,9 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           case(GAS_DENSITY) 
             value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                       den_kg(option%gas_phase)
+          case(GAS_DENSITY_MOL) 
+            value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+                      den(option%gas_phase)
           case(GAS_ENERGY)
             if (isubvar == ZERO_INTEGER) then
               value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
@@ -5508,7 +5513,6 @@ subroutine PatchDestroy(patch)
   ! Since this linked list will be destroyed by realization, just nullify here
   nullify(patch%saturation_functions)
 
-#ifdef SURFACE_FLOW
   nullify(patch%surf_field)
   if (associated(patch%surf_material_property_array)) &
     deallocate(patch%surf_material_property_array)
@@ -5518,7 +5522,6 @@ subroutine PatchDestroy(patch)
   if (associated(patch%surf_boundary_fluxes)) deallocate(patch%surf_boundary_fluxes)
   nullify(patch%surf_internal_fluxes)
   nullify(patch%surf_boundary_fluxes)
-#endif
 
   ! solely nullify grid since destroyed in discretization
   nullify(patch%grid)
@@ -5544,8 +5547,6 @@ subroutine PatchDestroy(patch)
   nullify(patch)
   
 end subroutine PatchDestroy
-
-#ifdef SURFACE_FLOW
 
 ! ************************************************************************** !
 
@@ -5619,9 +5620,6 @@ subroutine PatchGetVariable2(patch,surf_field,option,output_option,vec,ivar, &
   end select
 
 end subroutine PatchGetVariable2
-
-#endif
-! SURFACE_FLOW
 
 ! ************************************************************************** !
 

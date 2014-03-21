@@ -34,6 +34,7 @@ module Output_Aux_module
     PetscInt :: tecplot_format
     PetscBool :: print_tecplot_velocities
     PetscBool :: print_tecplot_flux_velocities
+    PetscBool :: print_fluxes
     
     PetscBool :: print_vtk 
     PetscBool :: print_vtk_velocities
@@ -70,10 +71,8 @@ module Output_Aux_module
     PetscInt :: plot_number
     character(len=MAXWORDLENGTH) :: plot_name
 
-#ifdef SURFACE_FLOW
     PetscBool :: print_hydrograph
     PetscInt  :: surf_xmf_vert_len
-#endif
 
   end type output_option_type
   
@@ -163,6 +162,7 @@ function OutputOptionCreate()
   output_option%print_tecplot = PETSC_FALSE
   output_option%tecplot_format = 0
   output_option%print_tecplot_velocities = PETSC_FALSE
+  output_option%print_fluxes = PETSC_FALSE
   output_option%print_tecplot_flux_velocities = PETSC_FALSE
   output_option%print_vtk = PETSC_FALSE
   output_option%print_vtk_velocities = PETSC_FALSE
@@ -194,9 +194,7 @@ function OutputOptionCreate()
   output_option%tconv = 1.d0
   output_option%tunit = 's'
   
-#ifdef SURFACE_FLOW
   output_option%print_hydrograph = PETSC_FALSE
-#endif
 
   OutputOptionCreate => output_option
   
@@ -629,10 +627,22 @@ subroutine OutputVariableRead(input,option,output_variable_list)
                                      LIQUID_SATURATION)
       case ('LIQUID_DENSITY')
         name = 'Liquid Density'
-        units = 'kg/m^3'
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          if (StringCompareIgnoreCase(word,'MOLAR')) then
+            units = 'kmol/m^3'
+            temp_int = LIQUID_DENSITY_MOL
+          else
+            call InputErrorMsg(input,option,'optional keyword', &
+                               'VARIABLES,LIQUID_DENSITY')
+          endif
+        else
+          units = 'kg/m^3'
+          temp_int = LIQUID_DENSITY
+        endif
         call OutputVariableAddToList(output_variable_list,name, &
                                      OUTPUT_GENERIC,units, &
-                                     LIQUID_DENSITY)
+                                     temp_int)
       case ('LIQUID_MOBILITY')
         name = 'Liquid Mobility'
         units = '1/Pa-s'
@@ -672,10 +682,22 @@ subroutine OutputVariableRead(input,option,output_variable_list)
                                      GAS_SATURATION)
       case ('GAS_DENSITY')
         name = 'Gas Density'
-        units = 'kg/m^3'
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          if (StringCompareIgnoreCase(word,'MOLAR')) then
+            units = 'kmol/m^3'
+            temp_int = GAS_DENSITY_MOL
+          else
+            call InputErrorMsg(input,option,'optional keyword', &
+                               'VARIABLES,GAS_DENSITY')
+          endif
+        else
+          units = 'kg/m^3'
+          temp_int = GAS_DENSITY
+        endif
         call OutputVariableAddToList(output_variable_list,name, &
                                      OUTPUT_GENERIC,units, &
-                                     GAS_DENSITY)
+                                     temp_int)
       case ('GAS_MOBILITY')
         name = 'Gas Mobility'
         units = '1/Pa-s'

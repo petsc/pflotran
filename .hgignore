@@ -19,6 +19,7 @@ src/.DS_Store
 src/pflotran/*.o
 src/pflotran/*.MOD
 src/pflotran/pflotran
+src/pflotran/pflotran_provenance.F90
 src/pflotran/pflotran_fc
 src/pflotran/pflow
 src/pflotran/ptran

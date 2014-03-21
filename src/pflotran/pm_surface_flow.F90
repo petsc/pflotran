@@ -1,5 +1,3 @@
-#ifdef SURFACE_FLOW
-
 module PM_Surface_Flow_class
 
   use PM_Base_class
@@ -451,5 +449,3 @@ subroutine PMSurfaceFlowDestroy(this)
 end subroutine PMSurfaceFlowDestroy
 
 end module PM_Surface_Flow_class
-
-#endif

@@ -165,9 +165,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
   print *, 'PMCSubsurfaceGetAuxData()'
 #endif
 
-#ifdef SURFACE_FLOW
   dt = this%option%surf_subsurf_coupling_flow_dt
-#endif  
 
   if (associated(this%sim_aux)) then
 

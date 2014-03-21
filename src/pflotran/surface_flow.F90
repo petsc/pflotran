@@ -1,5 +1,3 @@
-#ifdef SURFACE_FLOW
-
 module Surface_Flow_module
 
   use Global_Aux_module
@@ -1048,5 +1046,3 @@ end subroutine SurfaceFlowUpdateSurfState
 ! ************************************************************************** !
 
 end module Surface_Flow_module
-
-#endif
