@@ -206,7 +206,9 @@ def determine_pflotran_provenance(provenance, details, fflags):
     cmd = ["hg", "parent", "--template", "{node}"]
     provenance["pflotran_changeset"] = subprocess.check_output(cmd)
 
-    cmd = ["hg", "parent"]
+    #X#cmd = ["hg", "parent"]
+    cmd = ["hg", "parent", "--template",
+           "changeset:\t{rev}:{node|short}\nuser:\t\t{author}\ndate:\t\t{date|rfc822date}\n"]
     details["pflotran_parent"] = subprocess.check_output(cmd)
 
     cmd = ["hg", "status", "-q"]
@@ -249,7 +251,7 @@ def determine_petsc_provenance(provenance, details, petsc_config):
             provenance["petsc_changeset"] = subprocess.check_output(cmd)
 
             #X#cmd = ["git", "log", "-1", "HEAD"]
-            cmd = ["git", "log", "-1", "HEAD", '--pretty=commit %H%nAuthor: %an%nDate:   %ai%n']
+            cmd = ["git", "log", "-1", "HEAD", '--pretty=commit: %H%nAuthor: %an%nDate:   %ai%n']
             details["petsc_parent"] = subprocess.check_output(cmd)
 
             cmd = ["git", "status", "-u", "no"]
