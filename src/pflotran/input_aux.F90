@@ -1587,6 +1587,7 @@ function InputGetLineCount(input)
 
   rewind(input%fid)
 
+  line_count = 0
   do
     read(input%fid, '(a512)', iostat=input%ierr)
     if (InputError(input)) exit
