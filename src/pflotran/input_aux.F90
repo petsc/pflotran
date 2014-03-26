@@ -1582,8 +1582,8 @@ function InputGetLineCount(input)
   implicit none
   
   type(input_type), pointer :: input
-  integer :: line_count
-  integer :: InputGetLineCount
+  PetscInt :: line_count
+  PetscInt :: InputGetLineCount
 
   rewind(input%fid)
 
@@ -1606,7 +1606,7 @@ subroutine InputReadToBuffer(input, buffer)
   
   type(input_type), pointer :: input
   character(len=MAXSTRINGLENGTH) :: buffer(:)
-  integer :: line
+  PetscInt :: line
 
   rewind(input%fid)
   line = 1
