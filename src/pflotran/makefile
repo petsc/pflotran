@@ -427,7 +427,7 @@ ifeq ($(UPDATE_PROVENANCE),1)
 		--pflotran-fflags "${FC_FLAGS} ${FFLAGS} ${FCPPFLAGS}" \
 		--petsc-config "${CONFIGURE_OPTIONS}"
 else
-	@[[ -f pflotran_provenance.F90 ]] || cp pflotran_no_provenance.F90 pflotran_provenance.F90
+	@if test ! -f pflotran_provenance.F90; then cp pflotran_no_provenance.F90 pflotran_provenance.F90; fi
 endif
 
 # do these files exist anymore?
