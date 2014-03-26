@@ -4606,20 +4606,22 @@ subroutine THSetPlotVariables(realization)
                                LIQUID_SATURATION)
 
   if (realization%option%use_th_freezing) then
-     name = 'Gas Saturation'
-     units = ''
-     call OutputVariableAddToList(list,name,OUTPUT_SATURATION,units, &
+    if (realization%option%ice_model /= DALL_AMICO) then
+      name = 'Gas Saturation'
+      units = ''
+      call OutputVariableAddToList(list,name,OUTPUT_SATURATION,units, &
           GAS_SATURATION)
+    endif
 
-     name = 'Ice Saturation'
-     units = ''
-     call OutputVariableAddToList(list,name,OUTPUT_SATURATION,units, &
-          ICE_SATURATION)
+    name = 'Ice Saturation'
+    units = ''
+    call OutputVariableAddToList(list,name,OUTPUT_SATURATION,units, &
+        ICE_SATURATION)
 
-     name = 'Ice Density'
-     units = 'kg/m^3'
-     call OutputVariableAddToList(list,name,OUTPUT_SATURATION,units, &
-          ICE_DENSITY)
+    name = 'Ice Density'
+    units = 'kg/m^3'
+    call OutputVariableAddToList(list,name,OUTPUT_SATURATION,units, &
+        ICE_DENSITY)
   endif
 
   name = 'Liquid Density'
