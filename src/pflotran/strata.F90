@@ -2,9 +2,7 @@ module Strata_module
 
   use Region_module
   use Material_module
-#ifdef SURFACE_FLOW
   use Surface_Material_module
-#endif
  
   use PFLOTRAN_Constants_module
 
@@ -26,10 +24,8 @@ module Strata_module
     PetscInt :: iregion                                  ! id of region in region array/list
     type(material_property_type), pointer :: material_property ! pointer to material in material array/list
     type(region_type), pointer :: region                ! pointer to region in region array/list
-#ifdef SURFACE_FLOW
     type(surface_material_property_type),pointer :: surf_material_property
     PetscInt                                     :: isurf_material_property ! id of material in material array/list
-#endif
     PetscInt :: surf_or_subsurf_flag
     type(strata_type), pointer :: next            ! pointer to next strata
   end type strata_type
@@ -85,10 +81,8 @@ function StrataCreate1()
   nullify(strata%region)
   nullify(strata%material_property)
 
-#ifdef SURFACE_FLOW
   nullify(strata%surf_material_property)
   strata%isurf_material_property = 0
-#endif
   nullify(strata%next)
   
   StrataCreate1 => strata
@@ -125,9 +119,7 @@ function StrataCreateFromStrata(strata)
   nullify(new_strata%region)
   nullify(new_strata%material_property)
 
-#ifdef SURFACE_FLOW
   nullify(new_strata%surf_material_property)
-#endif
 
   nullify(new_strata%next)
   

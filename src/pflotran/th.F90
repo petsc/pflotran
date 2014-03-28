@@ -514,8 +514,6 @@ subroutine THCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
   
   PetscReal, pointer :: P1_p(:)
   PetscReal, pointer :: dP_p(:)
-  PetscReal, pointer :: volume_p(:)
-  PetscReal, pointer :: porosity_loc_p(:)
   PetscReal, pointer :: ithrm_loc_p(:)
   PetscReal, pointer :: r_p(:)
   type(grid_type), pointer :: grid
@@ -1230,8 +1228,7 @@ subroutine THUpdateFixedAccumPatch(realization)
 
   PetscInt :: ghosted_id, local_id, istart, iend, iphase
   PetscReal, pointer :: xx_p(:), icap_loc_p(:), iphase_loc_p(:)
-  PetscReal, pointer :: porosity_loc_p(:), tor_loc_p(:), volume_p(:), &
-                          ithrm_loc_p(:), accum_p(:), perm_xx_loc_p(:)
+  PetscReal, pointer :: ithrm_loc_p(:), accum_p(:)
   PetscReal :: vol_frac_prim
                           
   PetscErrorCode :: ierr
@@ -1425,7 +1422,7 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar, &
 
   type(TH_auxvar_type) :: TH_auxvar
   type(global_auxvar_type) :: global_auxvar
-  type(material_auxvar_type) :: material_auxvar
+  class(material_auxvar_type) :: material_auxvar
   type(option_type) :: option
   PetscReal :: vol,por,rock_dencpr
   type(saturation_function_type) :: sat_func
@@ -1437,6 +1434,7 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar, &
   PetscInt :: iphase, ideriv
   type(TH_auxvar_type) :: TH_auxvar_pert
   type(global_auxvar_type) :: global_auxvar_pert
+  ! leave as type
   type(material_auxvar_type) :: material_auxvar_pert
   PetscReal :: x(option%nflowdof), x_pert(option%nflowdof), pert
   PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
@@ -1615,7 +1613,7 @@ subroutine THAccumulation(auxvar,global_auxvar, &
 
   type(TH_auxvar_type) :: auxvar
   type(global_auxvar_type) :: global_auxvar
-  type(material_auxvar_type) :: material_auxvar
+  class(material_auxvar_type) :: material_auxvar
   type(option_type) :: option
   PetscReal :: Res(1:option%nflowdof) 
   PetscReal ::rock_dencpr,por1
@@ -1879,11 +1877,19 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
     dgravity_dden_up = upweight*auxvar_up%avgmw*dist_gravity
     dgravity_dden_dn = (1.d0-upweight)*auxvar_dn%avgmw*dist_gravity
 
+    if (option%ice_model /= DALL_AMICO) then
     dphi = global_auxvar_up%pres(1) - global_auxvar_dn%pres(1) + gravity
     dphi_dp_up = 1.d0 + dgravity_dden_up*auxvar_up%dden_dp
     dphi_dp_dn = -1.d0 + dgravity_dden_dn*auxvar_dn%dden_dp
     dphi_dt_up = dgravity_dden_up*auxvar_up%dden_dt
     dphi_dt_dn = dgravity_dden_dn*auxvar_dn%dden_dt
+    else
+      dphi = auxvar_up%pres_fh2o - auxvar_dn%pres_fh2o + gravity
+      dphi_dp_up =  auxvar_up%dpres_fh2o_dp + dgravity_dden_up*auxvar_up%dden_dp
+      dphi_dp_dn = -auxvar_dn%dpres_fh2o_dp + dgravity_dden_dn*auxvar_dn%dden_dp
+      dphi_dt_up =  auxvar_up%dpres_fh2o_dt + dgravity_dden_up*auxvar_up%dden_dt
+      dphi_dt_dn = -auxvar_dn%dpres_fh2o_dt + dgravity_dden_dn*auxvar_dn%dden_dt
+    endif
 
 ! note uxmol only contains one phase xmol
     if (dphi>=0.D0) then
@@ -2394,7 +2400,11 @@ subroutine THFlux(auxvar_up,global_auxvar_up, &
               (1.D0-upweight)*global_auxvar_dn%den(1)*auxvar_dn%avgmw) &
               * dist_gravity
 
+    if (option%ice_model /= DALL_AMICO) then
     dphi = global_auxvar_up%pres(1) - global_auxvar_dn%pres(1) + gravity
+    else
+      dphi = auxvar_up%pres_fh2o - auxvar_dn%pres_fh2o + gravity
+    endif
 
 !   note uxmol only contains one component xmol
     if (dphi >= 0.D0) then
@@ -2659,9 +2669,15 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
                   * dist_gravity
         dgravity_dden_dn = (1.d0-upweight)*auxvar_dn%avgmw*dist_gravity
 
+        if (option%ice_model /= DALL_AMICO) then
         dphi = global_auxvar_up%pres(1) - global_auxvar_dn%pres(1) + gravity
         dphi_dp_dn = -1.d0 + dgravity_dden_dn*auxvar_dn%dden_dp
         dphi_dt_dn = dgravity_dden_dn*auxvar_dn%dden_dt
+        else
+          dphi = auxvar_up%pres_fh2o - auxvar_dn%pres_fh2o + gravity
+          dphi_dp_dn = -auxvar_dn%dpres_fh2o_dp + dgravity_dden_dn*auxvar_dn%dden_dp
+          dphi_dt_dn = -auxvar_dn%dpres_fh2o_dt + dgravity_dden_dn*auxvar_dn%dden_dt
+        endif
 
         if (ibndtype(TH_PRESSURE_DOF) == SEEPAGE_BC .or. &
             ibndtype(TH_PRESSURE_DOF) == HET_SURF_SEEPAGE_BC) then
@@ -3046,7 +3062,11 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
                   (1.D0-upweight)*global_auxvar_dn%den(1)*auxvar_dn%avgmw) &
                   * dist_gravity
 
+        if (option%ice_model /= DALL_AMICO) then
         dphi = global_auxvar_up%pres(1) - global_auxvar_dn%pres(1) + gravity
+        else
+          dphi = auxvar_up%pres_fh2o - auxvar_dn%pres_fh2o + gravity
+        endif
 
         if (ibndtype(TH_PRESSURE_DOF) == SEEPAGE_BC .or. &
             ibndtype(TH_PRESSURE_DOF) == HET_SURF_SEEPAGE_BC) then
@@ -3287,12 +3307,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
 
   PetscReal, pointer :: accum_p(:)
 
-  PetscReal, pointer :: r_p(:), porosity_loc_p(:), volume_p(:), &
-               xx_loc_p(:), xx_p(:), yy_p(:),&
-               tor_loc_p(:),&
-               perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
-                          
-               
+  PetscReal, pointer :: r_p(:), xx_loc_p(:), xx_p(:), yy_p(:)
   PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
 
   PetscInt :: iphase
@@ -3810,9 +3825,7 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   PetscInt :: ithrm_up, ithrm_dn, i
   PetscInt :: ip1, ip2 
 
-  PetscReal, pointer :: porosity_loc_p(:), volume_p(:), &
-                          xx_loc_p(:), tor_loc_p(:),&
-                          perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
+  PetscReal, pointer :: xx_loc_p(:)
   PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
   PetscInt :: icap,iphas,icap_up,icap_dn
   PetscInt :: ii, jj
@@ -4584,20 +4597,22 @@ subroutine THSetPlotVariables(realization)
                                LIQUID_SATURATION)
 
   if (realization%option%use_th_freezing) then
-     name = 'Gas Saturation'
-     units = ''
-     call OutputVariableAddToList(list,name,OUTPUT_SATURATION,units, &
+    if (realization%option%ice_model /= DALL_AMICO) then
+      name = 'Gas Saturation'
+      units = ''
+      call OutputVariableAddToList(list,name,OUTPUT_SATURATION,units, &
           GAS_SATURATION)
+    endif
 
-     name = 'Ice Saturation'
-     units = ''
-     call OutputVariableAddToList(list,name,OUTPUT_SATURATION,units, &
-          ICE_SATURATION)
+    name = 'Ice Saturation'
+    units = ''
+    call OutputVariableAddToList(list,name,OUTPUT_SATURATION,units, &
+        ICE_SATURATION)
 
-     name = 'Ice Density'
-     units = 'kg/m^3'
-     call OutputVariableAddToList(list,name,OUTPUT_SATURATION,units, &
-          ICE_DENSITY)
+    name = 'Ice Density'
+    units = 'kg/m^3'
+    call OutputVariableAddToList(list,name,OUTPUT_SATURATION,units, &
+        ICE_DENSITY)
   endif
 
   name = 'Liquid Density'
@@ -4943,8 +4958,6 @@ subroutine THUpdateSurfaceBC(realization)
 
   type(realization_type) :: realization
 
-#ifdef SURFACE_FLOW
-
   PetscInt :: ghosted_id
   PetscInt :: local_id
   PetscInt :: sum_connection
@@ -5056,8 +5069,6 @@ subroutine THUpdateSurfaceBC(realization)
     boundary_condition => boundary_condition%next
 
   enddo
-
-#endif
 
 end subroutine THUpdateSurfaceBC
 

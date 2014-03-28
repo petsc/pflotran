@@ -168,6 +168,8 @@ subroutine PMMphaseInitializeTimestep(this)
 
   use Mphase_module, only : MphaseInitializeTimestep
   use Global_module
+  use Material_module
+  use Variables_module, only : POROSITY
   
   implicit none
   
@@ -181,8 +183,10 @@ subroutine PMMphaseInitializeTimestep(this)
 
 #ifndef SIMPLIFY  
   ! update porosity
-  call this%comm1%LocalToLocal(this%realization%field%porosity_loc, &
-                              this%realization%field%porosity_loc)
+  call MaterialAuxVarCommunicate(this%comm1, &
+                                 this%realization%patch%aux%Material, &
+                                 this%realization%field%work_loc, &
+                                 POROSITY,ZERO_INTEGER)
 #endif
 
   if (this%option%print_screen_flag) then

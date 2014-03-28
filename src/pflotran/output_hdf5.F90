@@ -142,7 +142,6 @@ subroutine OutputHDF5(realization_base,var_list_type)
   Vec :: natural_vec
   PetscReal, pointer :: v_ptr
   
-  character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
   character(len=2) :: free_mol_char, tot_mol_char, sec_mol_char
@@ -165,13 +164,6 @@ subroutine OutputHDF5(realization_base,var_list_type)
 
   call OutputHDF5OpenFile(option, output_option, var_list_type, file_id, &
                           filename, first)
-
-  if (first) then
-    option%io_buffer = '--> creating hdf5 output file: ' // trim(filename)
-  else
-    option%io_buffer = '--> appending to hdf5 output file: ' // trim(filename)
-  endif
-  call printMsg(option)
 
   grid => patch%grid
   if (first) then
@@ -397,14 +389,14 @@ subroutine OutputHDF5OpenFile(option, output_option, var_list_type, file_id, &
   ! Return the file handle and 'first' flag indicating if this is the
   ! first time the file has been opened.
   !
-  use Option_module, only : option_type
+  use Option_module, only : option_type, printMsg
   use hdf5
 
 #include "finclude/petscsysdef.h"
 
   implicit none
 
-  type(option_type), intent(in) :: option
+  type(option_type), intent(inout) :: option
   type(output_option_type), intent(in) :: output_option
   PetscInt, intent(in) :: var_list_type
   character(len=MAXSTRINGLENGTH) :: filename
@@ -493,6 +485,13 @@ subroutine OutputHDF5OpenFile(option, output_option, var_list_type, file_id, &
   call h5pclose_f(prop_id,hdf5_err)
 #endif
 ! SCORPIO_WRITE
+
+  if (first) then
+    option%io_buffer = '--> creating hdf5 output file: ' // trim(filename)
+  else
+    option%io_buffer = '--> appending to hdf5 output file: ' // trim(filename)
+  endif
+  call printMsg(option)
 
 end subroutine OutputHDF5OpenFile
 
@@ -3227,8 +3226,9 @@ subroutine OutputHDF5Provenance(option, output_option, file_id)
 
   character(len=32) :: filename, name
   integer(HID_T) :: prop_id, provenance_id, string_type
-  integer :: hdf5_err
+  PetscMPIInt :: hdf5_err
   PetscBool :: first
+  integer(SIZE_T) :: size_t_int
 
   ! create the provenance group
   name = "Provenance"
@@ -3236,7 +3236,8 @@ subroutine OutputHDF5Provenance(option, output_option, file_id)
 
   ! create fixed length string datatype
   call h5tcopy_f(H5T_FORTRAN_S1, string_type, hdf5_err)
-  call h5tset_size_f(string_type, provenance_max_str_len, hdf5_err)
+  size_t_int = provenance_max_str_len
+  call h5tset_size_f(string_type, size_t_int, hdf5_err)
 
   call OutputHDF5Provenance_PFLOTRAN(option, provenance_id, string_type)
   call OutputHDF5Provenance_PETSc(provenance_id, string_type)
@@ -3268,7 +3269,7 @@ subroutine OutputHDF5Provenance_PFLOTRAN(option, provenance_id, string_type)
 
   character(len=32) :: name
   integer(HID_T) :: pflotran_id
-  integer :: hdf5_err
+  PetscMPIInt :: hdf5_err
 
   ! Create the pflotran group under provenance
   name = "PFLOTRAN"
@@ -3330,16 +3331,18 @@ subroutine OutputHDF5Provenance_input(option, pflotran_id)
 
   integer(HID_T) :: input_string_type
   type(input_type), pointer :: input
-  integer :: i, input_line_count
+  PetscInt :: i, input_line_count
   character(len=MAXSTRINGLENGTH), allocatable :: input_buffer(:)
-  integer :: hdf5_err
+  PetscMPIInt :: hdf5_err
+  integer(SIZE_T) :: size_t_int
 
   input => InputCreate(IN_UNIT, option%input_filename, option)
   input_line_count = InputGetLineCount(input)
   allocate(input_buffer(input_line_count))
   call InputReadToBuffer(input, input_buffer)
   call h5tcopy_f(H5T_FORTRAN_S1, input_string_type, hdf5_err)
-  call h5tset_size_f(input_string_type, int(MAXSTRINGLENGTH, kind=8), hdf5_err)
+  size_t_int = MAXWORDLENGTH
+  call h5tset_size_f(input_string_type, size_t_int, hdf5_err)
   call OutputHDF5DatasetStringArray(pflotran_id, input_string_type, "pflotran_input_file", &
        input_line_count, input_buffer)
   call h5tclose_f(input_string_type, hdf5_err)
@@ -3366,7 +3369,7 @@ subroutine OutputHDF5Provenance_PETSc(provenance_id, string_type)
 
   character(len=32) :: name
   integer(HID_T) :: petsc_id
-  integer :: hdf5_err
+  PetscMPIInt :: hdf5_err
 
   ! create the petsc group under provenance
   name = "PETSc"
@@ -3404,12 +3407,12 @@ subroutine OutputHDF5AttributeStringArray(parent_id, type, name, length, data)
 
   integer(HID_T), intent(in) ::  parent_id, type
   character(len=*), intent(in) :: name
-  integer, intent(in) :: length
+  PetscInt, intent(in) :: length
   character(len=*), intent(in) :: data(length)
 
   integer(HID_T) :: dataspace_id, attribute_id
   integer(HSIZE_T), dimension(1:1) :: dims
-  integer :: hdf5_err
+  PetscMPIInt :: hdf5_err
 
   dims = length
   call h5screate_simple_f(1, dims, dataspace_id, hdf5_err)
@@ -3432,12 +3435,12 @@ subroutine OutputHDF5DatasetStringArray(parent_id, type, name, length, data)
 
   integer(HID_T), intent(in) ::  parent_id, type
   character(len=*), intent(in) :: name
-  integer, intent(in) :: length
+  PetscInt, intent(in) :: length
   character(len=*), intent(in) :: data(length)
 
   integer(HID_T) :: dataspace_id, attribute_id
   integer(HSIZE_T), dimension(1:1) :: dims
-  integer :: hdf5_err
+  PetscMPIInt :: hdf5_err
 
   dims = length
   call h5screate_simple_f(1, dims, dataspace_id, hdf5_err)

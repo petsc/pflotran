@@ -1,4 +1,3 @@
-#ifdef SURFACE_FLOW
 module Surf_Subsurf_Simulation_class
 
   use Surface_Simulation_class
@@ -302,4 +301,3 @@ subroutine SurfSubsurfaceSimulationDestroy(simulation)
 end subroutine SurfSubsurfaceSimulationDestroy
 
 end module Surf_Subsurf_Simulation_class
-#endif

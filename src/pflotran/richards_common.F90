@@ -56,7 +56,7 @@ subroutine RichardsAccumDerivative(rich_auxvar,global_auxvar, &
 
   type(richards_auxvar_type) :: rich_auxvar
   type(global_auxvar_type) :: global_auxvar
-  type(material_auxvar_type) :: material_auxvar
+  class(material_auxvar_type) :: material_auxvar
   type(option_type) :: option
   type(saturation_function_type) :: sat_func
   PetscReal :: J(option%nflowdof,option%nflowdof)
@@ -71,6 +71,7 @@ subroutine RichardsAccumDerivative(rich_auxvar,global_auxvar, &
   PetscInt :: iphase, ideriv
   type(richards_auxvar_type) :: rich_auxvar_pert
   type(global_auxvar_type) :: global_auxvar_pert
+  ! leave as type
   type(material_auxvar_type) :: material_auxvar_pert
   PetscReal :: x(1), x_pert(1), pert, res(1), res_pert(1), J_pert(1,1)
 
@@ -154,7 +155,7 @@ subroutine RichardsAccumulation(rich_auxvar,global_auxvar, &
 
   type(richards_auxvar_type) :: rich_auxvar
   type(global_auxvar_type) :: global_auxvar
-  type(material_auxvar_type) :: material_auxvar
+  class(material_auxvar_type) :: material_auxvar
   type(option_type) :: option
   PetscReal :: Res(1:option%nflowdof)
   
@@ -226,6 +227,7 @@ subroutine RichardsFluxDerivative(rich_auxvar_up,global_auxvar_up, &
   PetscInt :: iphase, ideriv
   type(richards_auxvar_type) :: rich_auxvar_pert_up, rich_auxvar_pert_dn
   type(global_auxvar_type) :: global_auxvar_pert_up, global_auxvar_pert_dn
+  ! leave as type
   type(material_auxvar_type) :: material_auxvar_pert_up, material_auxvar_pert_dn
   PetscReal :: x_up(1), x_dn(1), x_pert_up(1), x_pert_dn(1), pert_up, pert_dn, &
             res(1), res_pert_up(1), res_pert_dn(1), J_pert_up(1,1), J_pert_dn(1,1)
@@ -511,9 +513,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,auxvars, &
   use Option_module
   use Saturation_Function_module
   use Material_Aux_class
-#ifdef SURFACE_FLOW
   use EOS_Water_module
-#endif
  
   implicit none
   
@@ -558,9 +558,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,auxvars, &
   PetscReal :: perturbation
   PetscReal :: x_dn(1), x_up(1), x_pert_dn(1), x_pert_up(1), pert_dn, res(1), &
             res_pert_dn(1), J_pert_dn(1,1)
-#ifdef SURFACE_FLOW
   PetscReal :: rho, v_darcy_allowable
-#endif
   
   v_darcy = 0.d0
   ukvr = 0.d0
@@ -655,7 +653,6 @@ subroutine RichardsBCFluxDerivative(ibndtype,auxvars, &
      
         if (ukvr*Dq>floweps) then
           v_darcy = Dq * ukvr * dphi
-#ifdef SURFACE_FLOW
           ! If running with surface-flow model, ensure (darcy_velocity*dt) does
           ! not exceed depth of standing water.
           if(pressure_bc_type == HET_SURF_SEEPAGE_BC .and. option%nsurfflowdof>0) then
@@ -669,7 +666,6 @@ subroutine RichardsBCFluxDerivative(ibndtype,auxvars, &
               v_darcy = v_darcy_allowable
             endif
           endif
-#endif
           q = v_darcy * area
           dq_dp_dn = Dq*(dukvr_dp_dn*dphi + ukvr*dphi_dp_dn)*area
         endif
@@ -806,9 +802,7 @@ subroutine RichardsBCFlux(ibndtype,auxvars, &
   ! 
   use Option_module
   use Material_Aux_class
-#ifdef SURFACE_FLOW
   use EOS_Water_module
-#endif
  
   implicit none
   
@@ -836,9 +830,7 @@ subroutine RichardsBCFlux(ibndtype,auxvars, &
   PetscReal :: upweight,cond,gravity,dphi
   PetscInt :: pressure_bc_type
   PetscReal :: dphi_x,dphi_y,dphi_z
-#ifdef SURFACE_FLOW
   PetscReal :: rho, v_darcy_allowable
-#endif
   
   fluxm = 0.d0
   v_darcy = 0.d0
@@ -917,16 +909,14 @@ subroutine RichardsBCFlux(ibndtype,auxvars, &
         
        if (ukvr*Dq>floweps) then
         v_darcy = Dq * ukvr * dphi
-#ifdef SURFACE_FLOW
-          ! If running with surface-flow model, ensure (darcy_velocity*dt) does
-          ! not exceed depth of standing water.
-          if(pressure_bc_type == HET_SURF_SEEPAGE_BC .and. option%nsurfflowdof>0) then
-            call EOSWaterdensity(option%reference_temperature,option%reference_pressure,rho)
-            v_darcy_allowable = (global_auxvar_up%pres(1)-option%reference_pressure) &
-                                /option%flow_dt/(-option%gravity(3))/rho
-            if (v_darcy > v_darcy_allowable) v_darcy = v_darcy_allowable
-          endif
-#endif
+        ! If running with surface-flow model, ensure (darcy_velocity*dt) does
+        ! not exceed depth of standing water.
+        if(pressure_bc_type == HET_SURF_SEEPAGE_BC .and. option%nsurfflowdof>0) then
+          call EOSWaterdensity(option%reference_temperature,option%reference_pressure,rho)
+          v_darcy_allowable = (global_auxvar_up%pres(1)-option%reference_pressure) &
+                              /option%flow_dt/(-option%gravity(3))/rho
+          if (v_darcy > v_darcy_allowable) v_darcy = v_darcy_allowable
+        endif
        endif
       endif 
 

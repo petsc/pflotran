@@ -13,13 +13,15 @@ module PFLOTRAN_Provenance_module
 ! information, then modify your build system to compile and link this
 ! file instead of pflotran_provenance.F90
 !
- 
+
+#include "finclude/petscsysdef.h"
+
   implicit none
 
   public
 
   ! Size of provenance information
-  integer(kind=8), parameter :: provenance_max_str_len = 7
+  PetscInt, parameter :: provenance_max_str_len = 7
 
 
   ! PFLOTRAN provenance information
@@ -29,20 +31,20 @@ module PFLOTRAN_Provenance_module
   character(len=*), parameter :: pflotran_changeset = "unknown"
   character(len=*), parameter :: pflotran_status = "unknown"
 
-  integer, parameter :: detail_pflotran_fflags_len = 1
+  PetscInt, parameter :: detail_pflotran_fflags_len = 1
   character(len=provenance_max_str_len), parameter :: &
        detail_pflotran_fflags(detail_pflotran_fflags_len) = (/ "unknown" /)
 
-  integer, parameter :: detail_pflotran_status_len = 1
+  PetscInt, parameter :: detail_pflotran_status_len = 1
   character(len=provenance_max_str_len), parameter :: &
        detail_pflotran_status(detail_pflotran_status_len) = (/ "unknown" /)
 
-  integer, parameter :: detail_pflotran_parent_len = 1
+  PetscInt, parameter :: detail_pflotran_parent_len = 1
   character(len=provenance_max_str_len), parameter :: &
        detail_pflotran_parent(detail_pflotran_parent_len) = (/ "unknown" /)
 
   ! FIXME(bja, 2013-11-25): break gcc when diffs are present
-  integer, parameter :: detail_pflotran_diff_len = 1
+  PetscInt, parameter :: detail_pflotran_diff_len = 1
   character(len=provenance_max_str_len), parameter :: &
        detail_pflotran_diff(detail_pflotran_diff_len) = (/ "unknown" /)
 
@@ -50,15 +52,15 @@ module PFLOTRAN_Provenance_module
   character(len=*), parameter :: petsc_status = "unknown"
   character(len=*), parameter :: petsc_changeset = "unknown"
 
-  integer, parameter :: detail_petsc_status_len = 1
+  PetscInt, parameter :: detail_petsc_status_len = 1
   character(len=provenance_max_str_len), parameter :: &
        detail_petsc_status(detail_petsc_status_len) = (/ "unknown" /)
 
-  integer, parameter :: detail_petsc_parent_len = 1
+  PetscInt, parameter :: detail_petsc_parent_len = 1
   character(len=provenance_max_str_len), parameter :: &
        detail_petsc_parent(detail_petsc_parent_len) = (/ "unknown" /)
 
-  integer, parameter :: detail_petsc_config_len = 1
+  PetscInt, parameter :: detail_petsc_config_len = 1
   character(len=provenance_max_str_len), parameter :: &
        detail_petsc_config(detail_petsc_config_len) = (/ "unknown" /)
 
@@ -70,7 +72,7 @@ subroutine PrintProvenanceToScreen()
 
   implicit none
 
-  integer i
+  PetscInt i
 
   write(*, '(''------------------------------ Provenance --------------------------------------'')')
 

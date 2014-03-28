@@ -1,4 +1,3 @@
-#ifdef SURFACE_FLOW
 module Surface_Factory_module
 
   use Surface_Simulation_class
@@ -297,7 +296,6 @@ subroutine SurfaceJumpStart(simulation)
 
   ! pushed in Init()
   call PetscLogStagePop(ierr)
-  option%init_stage = PETSC_FALSE
 
   ! popped in TimestepperFinalizeRun()
   call PetscLogStagePush(logging%stage(TS_STAGE),ierr)
@@ -426,4 +424,3 @@ subroutine HijackTimestepper(stepper_old,stepper_base)
 end subroutine HijackTimestepper
 
 end module Surface_Factory_module
-#endif

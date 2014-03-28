@@ -60,7 +60,8 @@ module Saturation_Function_module
             SatFuncComputeIcePExplicit, &
             CapillaryPressureThreshold, &
             SatFuncComputeIcePKImplicit, &
-            SatFuncComputeIcePKExplicit
+            SatFuncComputeIcePKExplicit, &
+            SatFuncComputeIceDallAmico
             
   ! Saturation function 
   PetscInt, parameter :: VAN_GENUCHTEN = 1
@@ -1631,6 +1632,159 @@ implicit none
 #endif
 
 end subroutine SatFuncComputeIcePKExplicit
+
+! ************************************************************************** !
+
+subroutine SatFuncComputeIceDallAmico(pl, T, &
+                                      p_fh2o, &
+                                      dp_fh2o_dP, &
+                                      dp_fh2o_dT, &
+                                      s_i, s_l, s_g, &
+                                      kr, &
+                                      dsl_dpl, dsl_dT, &
+                                      dsg_dpl, dsg_dT, &
+                                      dsi_dpl, dsi_dT, &
+                                      dkr_dpl, dkr_dT, &
+                                      saturation_function, &
+                                      option)
+  !
+  ! Calculates the saturations of water phases  and their derivative with
+  ! respect to liquid pressure and temperature.
+  !
+  ! Model used: Dall'Amico (2010) and Dall' Amico et al. (2011)
+  !
+  ! Author: Gautam Bisht
+  ! Date: 02/24/14
+  !
+
+  use Option_module
+
+  implicit none
+
+  PetscReal :: pl, T
+  PetscReal :: p_fh2o, dp_fh2o_dP, dp_fh2o_dT
+  PetscReal :: s_i, s_g, s_l
+  PetscReal :: kr
+  PetscReal :: dsl_dpl, dsl_dT
+  PetscReal :: dsi_dpl, dsi_dT
+  PetscReal :: dsg_dpl, dsg_dT
+  PetscReal :: dkr_dpl, dkr_dT
+  type(saturation_function_type) :: saturation_function
+  type(option_type) :: option
+
+  PetscReal :: Se,Sr
+  PetscReal :: dkr_dsl, dkr_dSe
+  PetscReal :: alpha
+  PetscReal :: m
+  PetscReal :: Pc0, Pc1
+  PetscReal :: one_over_m
+  PetscReal :: liq_sat_one_over_m
+  PetscReal :: S0,S1
+  PetscReal :: dS0,dS1
+  PetscReal :: H, dH_dT
+  PetscReal :: T_star
+  PetscReal :: theta
+  PetscReal :: x
+  PetscReal :: dummy
+  PetscBool :: switch
+
+  !PetscReal, parameter :: beta = 2.2           ! dimensionless -- ratio of surf. tension
+  PetscReal, parameter :: beta = 1             ! dimensionless [assumed as 1.d0]
+  PetscReal, parameter :: rho_l = 9.998d2      ! in kg/m^3
+  PetscReal, parameter :: T_0 = 273.15         ! in K
+  PetscReal, parameter :: L_f = 3.34d5         ! in J/kg
+  PetscReal, parameter :: k = 1.d6
+
+  s_g = 0.d0
+  dsg_dpl = 0.d0
+  dsg_dT = 0.d0
+
+  select case(saturation_function%saturation_function_itype)
+    case(VAN_GENUCHTEN)
+
+      T = T + T_0  ! convert to K
+      alpha = saturation_function%alpha
+      m = saturation_function%m
+
+      Pc0 = option%reference_pressure - pl
+
+      T_star = T_0 - 1.d0/beta*T_0/L_f/rho_l*Pc0
+
+      if (T<T_star) then
+        H = 1.d0
+        dH_dT = 0.d0
+      else
+        H = 0.d0
+        dH_dT = 0.d0
+      endif
+
+      !GB: Add an option to swich between step-function and smooth approximation
+      !    of step function.
+      !x = (T - T_star)*k
+      !H = 0.5d0 - atan(x)/PI
+
+      theta = (T - T_star)/T_star
+      Pc1 = Pc0 - beta*theta*L_f*rho_l*H
+
+      p_fh2o = option%reference_pressure - Pc1
+      dp_fh2o_dT = -beta*L_f*rho_l*H/T_star
+      dp_fh2o_dP = 1.d0 - T*T_0/T_star/T_star*H
+      p_fh2o = pl
+      dp_fh2o_dT = 0.d0
+      dp_fh2o_dP = 1.d0
+
+      ! dummy and switch are not used here
+      call SaturationFunctionCompute2(Pc0,S0,dummy,dS0,dummy,saturation_function,dummy,dummy,switch,option)
+      call SaturationFunctionCompute2(Pc1,S1,dummy,dS1,dummy,saturation_function,dummy,dummy,switch,option)
+
+      ! convert dS/dpsi to dS/dpl
+      dS0 = -dS0
+      dS1 = -dS1
+
+      s_l = S1
+      s_i = S0 - S1
+
+      dsl_dpl = -dS1*(1.0d0 - T*T_0/T_star/T_star*H)
+      dsi_dpl = -dS0 - dsl_dpl
+
+      dsl_dT = dS1*(-beta*L_f*rho_l*H/T_star - beta*theta*L_f*rho_l*dH_dT)
+      dsi_dT = -dsl_dT
+
+      T = T - T_0 ! change back to C
+
+    case default
+      option%io_buffer = 'Only van Genuchten supported with ice'
+      call printErrMsg(option)
+  end select
+
+  ! Calculate relative permeability
+  select case(saturation_function%permeability_function_itype)
+    case(MUALEM)
+      Sr = saturation_function%Sr(1)
+      Sr = 0.d0
+      Se = (s_l-Sr)/(1.0d0-Sr)
+      if ( abs(Se-1.d0) < 1.0d-12 ) then
+        kr = 1.d0
+        dkr_dsl = 0.d0
+      else
+        m = saturation_function%m
+        one_over_m = 1.d0/m
+        liq_sat_one_over_m = Se**one_over_m
+        kr = sqrt(Se)*(1.d0 - (1.d0 - liq_sat_one_over_m)**m)**2.d0
+        dkr_dSe = 0.5d0*kr/Se + &
+                  2.d0*Se**(one_over_m - 0.5d0)* &
+                 (1.d0 - liq_sat_one_over_m)**(m - 1.d0)* &
+                 (1.d0 - (1.d0 - liq_sat_one_over_m)**m)
+        dkr_dsl = dkr_dSe / ( 1.0d0 - Sr )
+      endif
+      dkr_dpl = dkr_dsl*dsl_dpl
+      dkr_dT = dkr_dsl*dsl_dT
+    case default
+      option%io_buffer = 'Ice module only supports Mualem'
+      call printErrMsg(option)
+  end select
+
+end subroutine SatFuncComputeIceDallAmico
 
 ! ************************************************************************** !
 

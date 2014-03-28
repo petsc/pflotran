@@ -285,6 +285,7 @@ subroutine ImmisComputeMassBalancePatch(realization,mass_balance)
   use Patch_module
   use Field_module
   use Grid_module
+  use Material_Aux_class
  
   implicit none
   
@@ -297,7 +298,7 @@ subroutine ImmisComputeMassBalancePatch(realization,mass_balance)
   type(field_type), pointer :: field
   type(grid_type), pointer :: grid
   type(immis_auxvar_type), pointer :: immis_auxvars(:)
-  PetscReal, pointer :: volume_p(:), porosity_loc_p(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
 
   PetscErrorCode :: ierr
   PetscInt :: local_id
@@ -309,11 +310,9 @@ subroutine ImmisComputeMassBalancePatch(realization,mass_balance)
   patch => realization%patch
   grid => patch%grid
   field => realization%field
+  material_auxvars => realization%patch%aux%Material%auxvars
 
   immis_auxvars => patch%aux%immis%auxvars
-
-  call VecGetArrayF90(field%volume,volume_p,ierr)
-  call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
@@ -327,13 +326,11 @@ subroutine ImmisComputeMassBalancePatch(realization,mass_balance)
       mass_balance(ispec,1) = mass_balance(ispec,1) + &
           immis_auxvars(ghosted_id)%auxvar_elem(0)%den(iphase)* &
           immis_auxvars(ghosted_id)%auxvar_elem(0)%sat(iphase)* &
-          porosity_loc_p(ghosted_id)*volume_p(local_id)
+          material_auxvars(ghosted_id)%porosity* &
+          material_auxvars(ghosted_id)%volume
     enddo
   enddo
 
-  call VecRestoreArrayF90(field%volume,volume_p,ierr)
-  call VecRestoreArrayF90(field%porosity_loc,porosity_loc_p,ierr)
-  
 end subroutine ImmisComputeMassBalancePatch
 
 ! ************************************************************************** !
@@ -1032,9 +1029,9 @@ subroutine ImmisUpdateFixedAccumPatch(realization)
     
   call VecGetArrayF90(field%flow_xx,xx_p, ierr)
   call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
-  call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
-  call VecGetArrayF90(field%tortuosity_loc,tortuosity_loc_p,ierr)
-  call VecGetArrayF90(field%volume,volume_p,ierr)
+!geh: refactor  call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
+!geh: refactor  call VecGetArrayF90(field%tortuosity_loc,tortuosity_loc_p,ierr)
+!geh: refactor  call VecGetArrayF90(field%volume,volume_p,ierr)
   call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
 
   call VecGetArrayF90(field%flow_accum, accum_p, ierr)
@@ -1057,9 +1054,9 @@ subroutine ImmisUpdateFixedAccumPatch(realization)
 
   call VecRestoreArrayF90(field%flow_xx,xx_p, ierr)
   call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
-  call VecRestoreArrayF90(field%porosity_loc,porosity_loc_p,ierr)
-  call VecRestoreArrayF90(field%tortuosity_loc,tortuosity_loc_p,ierr)
-  call VecRestoreArrayF90(field%volume,volume_p,ierr)
+!geh refactor  call VecRestoreArrayF90(field%porosity_loc,porosity_loc_p,ierr)
+!geh refactor  call VecRestoreArrayF90(field%tortuosity_loc,tortuosity_loc_p,ierr)
+!geh refactor  call VecRestoreArrayF90(field%volume,volume_p,ierr)
   call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
 
   call VecRestoreArrayF90(field%flow_accum, accum_p, ierr)
@@ -1675,9 +1672,9 @@ subroutine ImmisResidual(snes,xx,r,realization,ierr)
   call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
   call DiscretizationLocalToLocal(discretization,field%icap_loc,field%icap_loc,ONEDOF)
 
-  call DiscretizationLocalToLocal(discretization,field%perm_xx_loc,field%perm_xx_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%perm_yy_loc,field%perm_yy_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
+!geh refactor  call DiscretizationLocalToLocal(discretization,field%perm_xx_loc,field%perm_xx_loc,ONEDOF)
+!geh refactor  call DiscretizationLocalToLocal(discretization,field%perm_yy_loc,field%perm_yy_loc,ONEDOF)
+!geh refactor  call DiscretizationLocalToLocal(discretization,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%ithrm_loc,field%ithrm_loc,ONEDOF)
   
   cur_patch => realization%patch_list%first
@@ -1801,12 +1798,12 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
   call VecGetArrayF90(field%flow_accum, accum_p, ierr)
  
 ! call VecGetArrayF90(field%flow_yy,yy_p,ierr)
-  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayF90(field%tortuosity_loc, tortuosity_loc_p, ierr)
-  call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecGetArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecGetArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecGetArrayF90(field%volume, volume_p, ierr)
+!geh refactor  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
+!geh refactor  call VecGetArrayF90(field%tortuosity_loc, tortuosity_loc_p, ierr)
+!geh refactor  call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
+!geh refactor  call VecGetArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
+!geh refactor  call VecGetArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
+!geh refactor  call VecGetArrayF90(field%volume, volume_p, ierr)
   call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
  
@@ -2181,12 +2178,12 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
 ! call VecRestoreArrayF90(field%flow_yy, yy_p, ierr)
   call VecRestoreArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
   call VecRestoreArrayF90(field%flow_accum, accum_p, ierr)
-  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayF90(field%tortuosity_loc, tortuosity_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecRestoreArrayF90(field%volume, volume_p, ierr)
+!geh refactor  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
+!geh refactor  call VecRestoreArrayF90(field%tortuosity_loc, tortuosity_loc_p, ierr)
+!geh refactor  call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
+!geh refactor  call VecRestoreArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
+!geh refactor  call VecRestoreArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
+!geh refactor  call VecRestoreArrayF90(field%volume, volume_p, ierr)
   call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr)
 
@@ -2357,12 +2354,12 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   call MatZeroEntries(A,ierr)
 
   call VecGetArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
-  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayF90(field%tortuosity_loc, tortuosity_loc_p, ierr)
-  call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecGetArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecGetArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecGetArrayF90(field%volume, volume_p, ierr)
+!geh refactor  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
+!geh refactor  call VecGetArrayF90(field%tortuosity_loc, tortuosity_loc_p, ierr)
+!geh refactor  call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
+!geh refactor  call VecGetArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
+!geh refactor  call VecGetArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
+!geh refactor  call VecGetArrayF90(field%volume, volume_p, ierr)
 
   call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
@@ -2719,12 +2716,12 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 #endif
   
   call VecRestoreArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
-  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayF90(field%tortuosity_loc, tortuosity_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecRestoreArrayF90(field%volume, volume_p, ierr)
+!geh refactor  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
+!geh refactor  call VecRestoreArrayF90(field%tortuosity_loc, tortuosity_loc_p, ierr)
+!geh refactor  call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
+!geh refactor  call VecRestoreArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
+!geh refactor  call VecRestoreArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
+!geh refactor  call VecRestoreArrayF90(field%volume, volume_p, ierr)
 
    
   call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)

@@ -1,5 +1,3 @@
-#ifdef SURFACE_FLOW
-
 module Surface_Field_module
 
 ! IMPORTANT NOTE: This module can have no dependencies on other modules!!!
@@ -152,5 +150,3 @@ subroutine SurfaceFieldDestroy(surface_field)
 end subroutine SurfaceFieldDestroy
 
 end module Surface_Field_module
-
-#endif

@@ -71,10 +71,8 @@ module Output_Aux_module
     PetscInt :: plot_number
     character(len=MAXWORDLENGTH) :: plot_name
 
-#ifdef SURFACE_FLOW
     PetscBool :: print_hydrograph
     PetscInt  :: surf_xmf_vert_len
-#endif
 
   end type output_option_type
   
@@ -196,9 +194,7 @@ function OutputOptionCreate()
   output_option%tconv = 1.d0
   output_option%tunit = 's'
   
-#ifdef SURFACE_FLOW
   output_option%print_hydrograph = PETSC_FALSE
-#endif
 
   OutputOptionCreate => output_option
   

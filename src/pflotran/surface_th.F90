@@ -1,5 +1,3 @@
-#ifdef SURFACE_FLOW
-
 module Surface_TH_module
 
   use Surface_Global_Aux_module
@@ -1247,5 +1245,3 @@ end subroutine SurfaceTHUpdateSolution
 
 
 end module Surface_TH_module
-
-#endif

@@ -19,9 +19,7 @@ module Condition_Control_module
 
   public :: CondControlAssignFlowInitCond, &
             CondControlAssignTranInitCond, &
-#ifdef SURFACE_FLOW
             CondControlAssignFlowInitCondSurface, &
-#endif
             CondControlScaleSourceSink
  
 contains
@@ -460,7 +458,9 @@ subroutine CondControlAssignFlowInitCond(realization)
     call VecCopy(field%flow_xx_faces, field%flow_yy_faces, ierr)
     call MFDInitializeMassMatrices(realization%discretization%grid,&
                                   realization%field, &
-                                  realization%discretization%MFD, realization%option)
+                                  realization%discretization%MFD, &
+                                  realization%patch%aux%Material%auxvars,
+                                  realization%option)
     patch%aux%Richards%auxvars_cell_pressures_up_to_date = PETSC_TRUE
 
   endif
@@ -925,7 +925,8 @@ subroutine CondControlScaleSourceSink(realization)
   use Condition_module
   use Grid_module
   use Patch_module
-  
+  use Material_Aux_class
+
   implicit none
 
 #include "finclude/petscvec.h"
@@ -944,10 +945,9 @@ subroutine CondControlScaleSourceSink(realization)
   type(discretization_type), pointer :: discretization
   type(coupler_type), pointer :: cur_source_sink
   type(connection_set_type), pointer :: cur_connection_set
-  
+  class(material_auxvar_type), pointer :: material_auxvars(:)
   type(patch_type), pointer :: cur_patch
   PetscReal, pointer :: vec_ptr(:)
-  PetscReal, pointer :: perm_loc_ptr(:)
   PetscInt :: local_id
   PetscInt :: ghosted_id, neighbor_ghosted_id
   PetscInt :: iconn
@@ -962,10 +962,10 @@ subroutine CondControlScaleSourceSink(realization)
   discretization => realization%discretization
   field => realization%field
   patch => realization%patch
-
+  material_auxvars => realization%patch%aux%Material%auxvars
+  
   ! GB: grid was uninitialized
   grid => patch%grid
-  call VecGetArrayF90(field%perm_xx_loc,perm_loc_ptr,ierr)
 
   cur_patch => realization%patch_list%first
   do
@@ -1001,7 +1001,8 @@ subroutine CondControlScaleSourceSink(realization)
               do while (icount < x_count)
                 icount = icount + 1
                 neighbor_ghosted_id = ghosted_neighbors(icount)
-                sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
+                sum = sum + material_auxvars(neighbor_ghosted_id)% &
+                              permeability(perm_xx_index)* &
                             grid%structured_grid%dy(neighbor_ghosted_id)* &
                             grid%structured_grid%dz(neighbor_ghosted_id)
                  
@@ -1010,7 +1011,8 @@ subroutine CondControlScaleSourceSink(realization)
               do while (icount < x_count + y_count)
                 icount = icount + 1
                 neighbor_ghosted_id = ghosted_neighbors(icount)                 
-                sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
+                sum = sum + material_auxvars(neighbor_ghosted_id)% &
+                              permeability(perm_xx_index)* &
                             grid%structured_grid%dx(neighbor_ghosted_id)* &
                             grid%structured_grid%dz(neighbor_ghosted_id)
                  
@@ -1019,7 +1021,8 @@ subroutine CondControlScaleSourceSink(realization)
               do while (icount < x_count + y_count + z_count)
                 icount = icount + 1
                 neighbor_ghosted_id = ghosted_neighbors(icount)                 
-                sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
+                sum = sum + material_auxvars(neighbor_ghosted_id)% &
+                              permeability(perm_xx_index)* &
                             grid%structured_grid%dx(neighbor_ghosted_id)* &
                             grid%structured_grid%dy(neighbor_ghosted_id)
               enddo
@@ -1060,12 +1063,7 @@ subroutine CondControlScaleSourceSink(realization)
     cur_patch => cur_patch%next
   enddo
 
-  call VecRestoreArrayF90(field%perm_xx_loc,perm_loc_ptr, ierr)
-   
 end subroutine CondControlScaleSourceSink
-
-! ************************************************************************** !
-#ifdef SURFACE_FLOW
 
 ! ************************************************************************** !
 
@@ -1213,7 +1211,5 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
                                    surf_field%flow_xx_loc, NFLOWDOF)
 
 end subroutine CondControlAssignFlowInitCondSurface
-#endif
-! SURFACE_FLOW
 
 end module Condition_Control_module
