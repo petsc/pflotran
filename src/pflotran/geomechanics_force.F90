@@ -51,11 +51,7 @@ subroutine GeomechForceSetup(geomech_realization)
   ! Date: 06/17/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
 
   type(geomech_realization_type) :: geomech_realization
 
@@ -74,11 +70,7 @@ subroutine GeomechForceSetupPatch(geomech_realization)
   ! Date: 09/11/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Patch_module
   use Option_module
  
@@ -134,11 +126,7 @@ subroutine GeomechForceSetPlotVariables(geomech_realization)
   ! Date: 06/17/13
   ! 
   
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Output_Aux_module
   use Variables_module
     
@@ -259,11 +247,7 @@ subroutine GeomechanicsForceInitialGuess(geomech_realization)
   ! Date: 06/19/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Field_module
   use Option_module
   use Geomechanics_Grid_Aux_module
@@ -358,11 +342,7 @@ subroutine GeomechForceUpdateAuxVars(geomech_realization)
   ! Date: 06/18/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Patch_module
   use Option_module
   use Geomechanics_Field_module
@@ -441,11 +421,7 @@ subroutine GeomechForceResidual(snes,xx,r,geomech_realization,ierr)
   ! Date: 06/21/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Field_module
   use Geomechanics_Discretization_module
   use Geomechanics_Logging_module
@@ -505,11 +481,7 @@ subroutine GeomechForceResidualPatch(snes,xx,r,geomech_realization,ierr)
   ! Date: 06/24/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Field_module
   use Geomechanics_Discretization_module
   use Geomechanics_Logging_module
@@ -1287,11 +1259,7 @@ subroutine GeomechForceJacobian(snes,xx,A,B,flag,geomech_realization,ierr)
   ! Date: 06/21/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Patch_module
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
@@ -1367,11 +1335,7 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,geomech_realization,ierr)
   ! Date: 06/21/13
   ! 
        
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Patch_module
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
@@ -1587,11 +1551,7 @@ subroutine GeomechUpdateFromSubsurf(realization,geomech_realization)
   use Realization_class
   use Grid_module
   use Field_module
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
   use Geomechanics_Field_module
@@ -1695,11 +1655,7 @@ subroutine GeomechUpdateSubsurfFromGeomech(realization,geomech_realization)
   use Discretization_module
   use Grid_module
   use Field_module
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
   use Geomechanics_Field_module
@@ -1773,11 +1729,7 @@ subroutine GeomechCreateGeomechSubsurfVec(realization,geomech_realization)
 
   use Grid_module
   use Geomechanics_Discretization_module
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Grid_Aux_module
   use Geomechanics_Grid_module
   use Geomechanics_Field_module
@@ -1826,11 +1778,7 @@ subroutine GeomechCreateSubsurfStressStrainVec(realization,geomech_realization)
 
   use Grid_module
   use Geomechanics_Discretization_module
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Grid_Aux_module
   use Geomechanics_Grid_module
   use Geomechanics_Field_module
@@ -1899,11 +1847,7 @@ subroutine GeomechForceStressStrain(geomech_realization)
   ! Date: 09/17/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Field_module
   use Geomechanics_Discretization_module
   use Geomechanics_Logging_module
@@ -2210,11 +2154,7 @@ subroutine GeomechUpdateSolution(geomech_realization)
   ! Date: 09/17/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Field_module
   
   implicit none 
@@ -2242,11 +2182,7 @@ subroutine geomechupdatesolutionpatch(geomech_realization)
   ! Date: 09/17/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
     
   implicit none 
   
@@ -2267,11 +2203,7 @@ subroutine GeomechStoreInitialPressTemp(geomech_realization)
   ! Date: 09/24/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
     
   implicit none 
   
@@ -2298,11 +2230,7 @@ subroutine GeomechStoreInitialPorosity(realization,geomech_realization)
   ! Date: 10/22/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Realization_class
   use Discretization_module
     
@@ -2315,7 +2243,7 @@ subroutine GeomechStoreInitialPorosity(realization,geomech_realization)
   PetscErrorCode :: ierr
 
   call DiscretizationDuplicateVector(discretization, &
-                                     realization%field%porosity_loc, &
+                                     realization%field%work_loc, &
                                      geomech_realization%geomech_field% &
                                      porosity_init_loc)
    
@@ -2332,11 +2260,7 @@ subroutine GeomechStoreInitialDisp(geomech_realization)
   ! Date: 09/30/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
     
   implicit none 
   
@@ -2367,11 +2291,10 @@ subroutine GeomechUpdateSubsurfPorosity(realization,geomech_realization)
   use Grid_module
   use Discretization_module
   use Geomechanics_Field_module
-#ifdef PROCESS_MODEL
+  use Material_Aux_class
+  use Material_module
+  use Variables_module, only : POROSITY
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
 
   implicit none
   
@@ -2382,9 +2305,10 @@ subroutine GeomechUpdateSubsurfPorosity(realization,geomech_realization)
   type(patch_type), pointer :: patch
   type(geomech_field_type), pointer :: geomech_field
   type(grid_type), pointer :: grid
+  class(material_auxvar_type), pointer :: material_auxvars(:)
 
   PetscReal :: trace_epsilon
-  PetscReal, pointer :: por0_loc_p(:), por_loc_p(:), strain_loc_p(:)
+  PetscReal, pointer :: por0_loc_p(:), strain_loc_p(:)
   PetscInt :: ghosted_id
   PetscErrorCode :: ierr
 
@@ -2393,6 +2317,7 @@ subroutine GeomechUpdateSubsurfPorosity(realization,geomech_realization)
   patch => realization%patch
   grid => patch%grid
   geomech_field => geomech_realization%geomech_field
+  material_auxvars => realization%patch%aux%Material%auxvars
 
   if (.not.associated(patch%imat)) then
     option%io_buffer = 'Materials IDs not present in run.  Material ' // &
@@ -2401,23 +2326,25 @@ subroutine GeomechUpdateSubsurfPorosity(realization,geomech_realization)
   endif
   
   call VecGetArrayF90(geomech_field%porosity_init_loc,por0_loc_p,ierr)
-  call VecGetArrayF90(field%porosity_loc,por_loc_p,ierr)
   call VecGetArrayF90(geomech_field%strain_subsurf_loc,strain_loc_p,ierr)
   
   do ghosted_id = 1, grid%ngmax
     trace_epsilon = strain_loc_p((ghosted_id-1)*SIX_INTEGER+ONE_INTEGER) + &
                     strain_loc_p((ghosted_id-1)*SIX_INTEGER+TWO_INTEGER) + &
                     strain_loc_p((ghosted_id-1)*SIX_INTEGER+THREE_INTEGER)
-    por_loc_p(ghosted_id) = por0_loc_p(ghosted_id)/ &
-                            (1.d0 + (1.d0 - por0_loc_p(ghosted_id))*trace_epsilon)
+    material_auxvars(ghosted_id)%tortuosity = por0_loc_p(ghosted_id)/ &
+      (1.d0 + (1.d0 - por0_loc_p(ghosted_id))*trace_epsilon)
   enddo
   
   call VecRestoreArrayF90(geomech_field%porosity_init_loc,por0_loc_p,ierr)
-  call VecRestoreArrayF90(field%porosity_loc,por_loc_p,ierr)
   call VecRestoreArrayF90(geomech_field%strain_subsurf_loc,strain_loc_p,ierr)
 
-  call DiscretizationLocalToLocal(realization%discretization,field%porosity_loc, &
-                                  field%porosity_loc,ONEDOF)
+  call MaterialGetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                               POROSITY,ZERO_INTEGER)
+  call DiscretizationLocalToLocal(realization%discretization,field%work_loc, &
+                                  field%work_loc,ONEDOF)
+  call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                               POROSITY,ZERO_INTEGER)
 
 end subroutine GeomechUpdateSubsurfPorosity
 
