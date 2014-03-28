@@ -163,7 +163,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
   output_option => realization_base%output_option
 
   call OutputHDF5OpenFile(option, output_option, var_list_type, file_id, &
-                          filename, first)
+                          first)
 
   grid => patch%grid
   if (first) then
@@ -382,7 +382,7 @@ end subroutine OutputHDF5
 ! ************************************************************************** !
 
 subroutine OutputHDF5OpenFile(option, output_option, var_list_type, file_id, &
-                              filename, first)
+                              first)
   !
   ! Determine the propper hdf5 output file name and open it.
   !
