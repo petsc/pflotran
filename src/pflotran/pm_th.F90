@@ -622,10 +622,8 @@ subroutine PMTHUpdateSolution(this)
   endif  
   ! end from RealizationUpdate()
   call THUpdateSolution(this%realization)
-#ifdef SURFACE_FLOW
   if(this%option%nsurfflowdof>0) &
     call THUpdateSurfaceBC(this%realization)
-#endif
 
 end subroutine PMTHUpdateSolution     
 

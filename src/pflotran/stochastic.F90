@@ -232,10 +232,8 @@ subroutine StochasticRun(stochastic,option)
     endif
 #endif
 
-#ifdef SURFACE_FLOW
     option%io_buffer = 'Stochastic mode not tested for surface-flow'
     call printErrMsgByRank(option)
-#endif
 
     call PFLOTRANInitializePostPETSc(simulation,master_stepper,option, &
                                      init_status)

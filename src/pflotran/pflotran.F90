@@ -43,10 +43,8 @@ program pflotran
   use PFLOTRAN_Factory_module
   use Subsurface_Factory_module
   use Hydrogeophysics_Factory_module
-#ifdef SURFACE_FLOW  
   use Surface_Factory_module
   use Surf_Subsurf_Factory_module
-#endif  
 #ifdef GEOMECH
   use Geomechanics_Factory_module
 #endif
@@ -82,12 +80,10 @@ program pflotran
         call SubsurfaceInitialize(simulation,option)
       case('HYDROGEOPHYSICS')
         call HydrogeophysicsInitialize(simulation,option)
-#ifdef SURFACE_FLOW      
       case('SURFACE')
         call SurfaceInitialize(simulation,option)
       case('SURFACE_SUBSURFACE')
         call SurfSubsurfaceInitialize(simulation,option)
-#endif
 #ifdef GEOMECH
       case ('GEOMECHANICS')
         call GeomechanicsInitialize(simulation,option)

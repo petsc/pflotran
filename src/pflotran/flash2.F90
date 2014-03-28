@@ -743,7 +743,8 @@ subroutine Flash2UpdateFixedAccumPatch(realization)
   use Option_module
   use Field_module
   use Grid_module
-
+  use Material_Aux_class
+  
   implicit none
   
   type(realization_type) :: realization
@@ -755,11 +756,11 @@ subroutine Flash2UpdateFixedAccumPatch(realization)
   type(Flash2_parameter_type), pointer :: Flash2_parameter
   type(Flash2_auxvar_type), pointer :: auxvars(:)
   type(global_auxvar_type), pointer :: global_auxvars(:)
-
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+  
   PetscInt :: ghosted_id, local_id, istart, iend, iphase
   PetscReal, pointer :: xx_p(:), icap_loc_p(:), iphase_loc_p(:)
-  PetscReal, pointer :: porosity_loc_p(:), tortuosity_loc_p(:), volume_p(:), &
-                        ithrm_loc_p(:), accum_p(:)
+  PetscReal, pointer :: ithrm_loc_p(:), accum_p(:)
                           
   PetscErrorCode :: ierr
   
@@ -772,12 +773,10 @@ subroutine Flash2UpdateFixedAccumPatch(realization)
   global_auxvars => patch%aux%Global%auxvars
   Flash2_parameter => patch%aux%Flash2%Flash2_parameter
   auxvars => patch%aux%Flash2%auxvars
+  material_auxvars => patch%aux%Material%auxvars
     
   call VecGetArrayF90(field%flow_xx,xx_p, ierr)
   call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
-  call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
-  call VecGetArrayF90(field%tortuosity_loc,tortuosity_loc_p,ierr)
-  call VecGetArrayF90(field%volume,volume_p,ierr)
   call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
 
   call VecGetArrayF90(field%flow_accum, accum_p, ierr)
@@ -793,17 +792,14 @@ subroutine Flash2UpdateFixedAccumPatch(realization)
 
     call Flash2Accumulation(auxvars(ghosted_id)%auxvar_elem(0), &
                               global_auxvars(ghosted_id), &
-                              porosity_loc_p(ghosted_id), &
-                              volume_p(local_id), &
+                              material_auxvars(ghosted_id)%porosity, &
+                              material_auxvars(ghosted_id)%volume, &
                               Flash2_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
                               option,ZERO_INTEGER, accum_p(istart:iend)) 
   enddo
 
   call VecRestoreArrayF90(field%flow_xx,xx_p, ierr)
   call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
-  call VecRestoreArrayF90(field%porosity_loc,porosity_loc_p,ierr)
-  call VecRestoreArrayF90(field%tortuosity_loc,tortuosity_loc_p,ierr)
-  call VecRestoreArrayF90(field%volume,volume_p,ierr)
   call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
 
   call VecRestoreArrayF90(field%flow_accum, accum_p, ierr)
@@ -1735,7 +1731,9 @@ subroutine Flash2Residual(snes,xx,r,realization,ierr)
   use Option_module
   use Grid_module 
   use Logging_module
-
+  use Material_module
+  use Variables_module, only : PERMEABILITY_X, PERMEABILITY_Y, PERMEABILITY_Z
+  
   implicit none
 
   SNES :: snes
@@ -1749,13 +1747,14 @@ subroutine Flash2Residual(snes,xx,r,realization,ierr)
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
-  type(patch_type), pointer :: cur_patch
+  type(patch_type), pointer :: patch
   PetscInt :: ichange  
 
   field => realization%field
   grid => realization%patch%grid
   option => realization%option
   discretization => realization%discretization
+  patch => realization%patch
   
   call PetscLogEventBegin(logging%event_r_residual,ierr)  
  
@@ -1776,37 +1775,35 @@ subroutine Flash2Residual(snes,xx,r,realization,ierr)
 !  call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
   call DiscretizationLocalToLocal(discretization,field%icap_loc,field%icap_loc,ONEDOF)
 
-  call DiscretizationLocalToLocal(discretization,field%perm_xx_loc,field%perm_xx_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%perm_yy_loc,field%perm_yy_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
+  call MaterialGetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                               PERMEABILITY_X,ZERO_INTEGER)
+  call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                  field%work_loc,ONEDOF)
+  call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                               PERMEABILITY_X,ZERO_INTEGER)
+  call MaterialGetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                               PERMEABILITY_Y,ZERO_INTEGER)
+  call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                  field%work_loc,ONEDOF)
+  call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                               PERMEABILITY_Y,ZERO_INTEGER)
+  call MaterialGetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                               PERMEABILITY_Z,ZERO_INTEGER)
+  call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                  field%work_loc,ONEDOF)
+  call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                               PERMEABILITY_Z,ZERO_INTEGER)
+
   call DiscretizationLocalToLocal(discretization,field%ithrm_loc,field%ithrm_loc,ONEDOF)
 
 ! pass #0 prepare numerical increment  
-  cur_patch => realization%patch_list%first
-  do
-    if (.not.associated(cur_patch)) exit
-    realization%patch => cur_patch
-    call Flash2ResidualPatch0(snes,xx,r,realization,ierr)
-    cur_patch => cur_patch%next
-  enddo
+  call Flash2ResidualPatch0(snes,xx,r,realization,ierr)
 
 ! pass #1 internal and boundary flux terms
-  cur_patch => realization%patch_list%first
-  do
-    if (.not.associated(cur_patch)) exit
-    realization%patch => cur_patch
-    call Flash2ResidualPatch1(snes,xx,r,realization,ierr)
-    cur_patch => cur_patch%next
-  enddo
+  call Flash2ResidualPatch1(snes,xx,r,realization,ierr)
 
 ! pass #2 for everything else
-  cur_patch => realization%patch_list%first
-  do
-    if (.not.associated(cur_patch)) exit
-    realization%patch => cur_patch
-    call Flash2ResidualPatch2(snes,xx,r,realization,ierr)
-    cur_patch => cur_patch%next
-  enddo
+  call Flash2ResidualPatch2(snes,xx,r,realization,ierr)
 
   if (realization%debug%vecview_residual) then
     call PetscViewerASCIIOpen(realization%option%mycomm,'Rresidual.out', &
@@ -1844,6 +1841,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
   use Coupler_module  
   use Field_module
   use Debug_module
+  use Material_Aux_class
   
   implicit none
 
@@ -1859,10 +1857,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
 
   PetscReal, pointer ::accum_p(:)
 
-  PetscReal, pointer :: r_p(:), porosity_loc_p(:), volume_p(:), &
-               xx_loc_p(:), xx_p(:), yy_p(:),&
-               tortuosity_loc_p(:),&
-               perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
+  PetscReal, pointer :: r_p(:), xx_loc_p(:), xx_p(:), yy_p(:)
                           
                
   PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
@@ -1895,6 +1890,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
   type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
+  class(material_auxvar_type), pointer :: material_auxvars(:)
   PetscBool :: enthalpy_flag
   PetscInt :: ng
   PetscInt :: iconn, idof, istart, iend
@@ -1913,7 +1909,8 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
   auxvars_bc => patch%aux%Flash2%auxvars_bc
   global_auxvars => patch%aux%Global%auxvars
   global_auxvars_bc => patch%aux%Global%auxvars_bc
-
+  material_auxvars => patch%aux%Material%auxvars
+  
  ! call Flash2UpdateAuxVarsPatchNinc(realization)
   ! override flags since they will soon be out of date  
  ! patch%Flash2Aux%auxvars_up_to_date = PETSC_FALSE 
@@ -1924,12 +1921,6 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
   call VecGetArrayF90(field%flow_accum, accum_p, ierr)
  
   call VecGetArrayF90(field%flow_yy,yy_p,ierr)
-  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayF90(field%tortuosity_loc, tortuosity_loc_p, ierr)
-  call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecGetArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecGetArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecGetArrayF90(field%volume, volume_p, ierr)
   call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
 !  call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
@@ -2021,8 +2012,8 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
     istart = iend-option%nflowdof+1
     call Flash2Accumulation(auxvars(ghosted_id)%auxvar_elem(0),&
                             global_auxvars(ghosted_id), &
-                            porosity_loc_p(ghosted_id), &
-                            volume_p(local_id), &
+                            material_auxvars(ghosted_id)%porosity, &
+                            material_auxvars(ghosted_id)%volume, &
                             Flash2_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
                             option,ONE_INTEGER,Res) 
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
@@ -2124,9 +2115,12 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
       D_dn = Flash2_parameter%ckwet(ithrm_dn)
 
       ! for now, just assume diagonal tensor
-      perm_dn = perm_xx_loc_p(ghosted_id)*abs(cur_connection_set%dist(1,iconn))+ &
-                perm_yy_loc_p(ghosted_id)*abs(cur_connection_set%dist(2,iconn))+ &
-                perm_zz_loc_p(ghosted_id)*abs(cur_connection_set%dist(3,iconn))
+      perm_dn = material_auxvars(ghosted_id)%permeability(perm_xx_index)* &
+                abs(cur_connection_set%dist(1,iconn))+ &
+                material_auxvars(ghosted_id)%permeability(perm_yy_index)* &
+                abs(cur_connection_set%dist(2,iconn))+ &
+                material_auxvars(ghosted_id)%permeability(perm_zz_index)* &
+                abs(cur_connection_set%dist(3,iconn))
       ! dist(0,iconn) = scalar - magnitude of distance
       ! gravity = vector(3)
       ! dist(1:3,iconn) = vector(3) - unit vector
@@ -2176,8 +2170,8 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
          boundary_condition%flow_aux_real_var(:,iconn), &
          auxvars_bc(sum_connection)%auxvar_elem(0), &
          auxvars(ghosted_id)%auxvar_elem(0), &
-         porosity_loc_p(ghosted_id), &
-         tortuosity_loc_p(ghosted_id), &
+         material_auxvars(ghosted_id)%porosity, &
+         material_auxvars(ghosted_id)%tortuosity, &
          Flash2_parameter%sir(:,icap_dn), &
          cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
          cur_connection_set%area(iconn), &
@@ -2230,13 +2224,19 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
       upweight = dd_dn/(dd_up+dd_dn)
         
       ! for now, just assume diagonal tensor
-      perm_up = perm_xx_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(1,iconn))+ &
-                perm_yy_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(2,iconn))+ &
-                perm_zz_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(3,iconn))
+      perm_up = material_auxvars(ghosted_id_up)%permeability(perm_xx_index)* &
+                abs(cur_connection_set%dist(1,iconn))+ &
+                material_auxvars(ghosted_id_up)%permeability(perm_yy_index)* &
+                abs(cur_connection_set%dist(2,iconn))+ &
+                material_auxvars(ghosted_id_up)%permeability(perm_zz_index)* &
+                abs(cur_connection_set%dist(3,iconn))
 
-      perm_dn = perm_xx_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(1,iconn))+ &
-                perm_yy_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(2,iconn))+ &
-                perm_zz_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(3,iconn))
+      perm_dn = material_auxvars(ghosted_id_dn)%permeability(perm_xx_index)* &
+                abs(cur_connection_set%dist(1,iconn))+ &
+                material_auxvars(ghosted_id_dn)%permeability(perm_yy_index)* &
+                abs(cur_connection_set%dist(2,iconn))+ &
+                material_auxvars(ghosted_id_dn)%permeability(perm_zz_index)* &
+                abs(cur_connection_set%dist(3,iconn))
 
       ithrm_up = int(ithrm_loc_p(ghosted_id_up))
       ithrm_dn = int(ithrm_loc_p(ghosted_id_dn))
@@ -2246,14 +2246,18 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
       D_up = Flash2_parameter%ckwet(ithrm_up)
       D_dn = Flash2_parameter%ckwet(ithrm_dn)
 
-      call Flash2Flux(auxvars(ghosted_id_up)%auxvar_elem(0),porosity_loc_p(ghosted_id_up), &
-                          tortuosity_loc_p(ghosted_id_up),Flash2_parameter%sir(:,icap_up), &
-                          dd_up,perm_up,D_up, &
-                          auxvars(ghosted_id_dn)%auxvar_elem(0),porosity_loc_p(ghosted_id_dn), &
-                          tortuosity_loc_p(ghosted_id_dn),Flash2_parameter%sir(:,icap_dn), &
-                          dd_dn,perm_dn,D_dn, &
-                          cur_connection_set%area(iconn),distance_gravity, &
-                          upweight,option,v_darcy,Res)
+      call Flash2Flux(auxvars(ghosted_id_up)%auxvar_elem(0), &
+                      material_auxvars(ghosted_id_up)%porosity, &
+                      material_auxvars(ghosted_id_up)%tortuosity, &
+                      Flash2_parameter%sir(:,icap_up), &
+                      dd_up,perm_up,D_up, &
+                      auxvars(ghosted_id_dn)%auxvar_elem(0), &
+                      material_auxvars(ghosted_id_dn)%porosity, &
+                      material_auxvars(ghosted_id_dn)%tortuosity, &
+                      Flash2_parameter%sir(:,icap_dn), &
+                      dd_dn,perm_dn,D_dn, &
+                      cur_connection_set%area(iconn),distance_gravity, &
+                      upweight,option,v_darcy,Res)
 
       patch%internal_velocities(:,sum_connection) = v_darcy(:)
       patch%aux%Flash2%Resold_FL(sum_connection,1:option%nflowdof)= Res(1:option%nflowdof)
@@ -2287,9 +2291,12 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
      if (associated(patch%imat)) then
         if (patch%imat(grid%nL2G(local_id)) <= 0) cycle
      endif
-
+     ghosted_id = grid%nL2G(local_id)
      istart = 1 + (local_id-1)*option%nflowdof
-     if(volume_p(local_id)>1.D0) r_p (istart:istart+2)=r_p(istart:istart+2)/volume_p(local_id)
+     if(material_auxvars(ghosted_id)%volume>1.D0) then
+       r_p (istart:istart+2)=r_p(istart:istart+2) / &
+         material_auxvars(ghosted_id)%volume
+     endif
      if(r_p(istart) >1E20 .or. r_p(istart) <-1E20) print *, r_p (istart:istart+2)
 !     print *,'flash res', local_id, r_p (istart:istart+2)
   enddo
@@ -2317,12 +2324,6 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
   call VecRestoreArrayF90(field%flow_yy, yy_p, ierr)
   call VecRestoreArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
   call VecRestoreArrayF90(field%flow_accum, accum_p, ierr)
-  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayF90(field%tortuosity_loc, tortuosity_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecRestoreArrayF90(field%volume, volume_p, ierr)
   call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr)
 !  call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
@@ -2358,6 +2359,7 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
   use Coupler_module  
   use Field_module
   use Debug_module
+  use Material_Aux_class
   
   implicit none
   
@@ -2378,10 +2380,7 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
 
   PetscReal, pointer ::accum_p(:)
 
-  PetscReal, pointer :: r_p(:), porosity_loc_p(:), volume_p(:), &
-               xx_loc_p(:), tortuosity_loc_p(:),&
-               perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
-                          
+  PetscReal, pointer :: r_p(:), xx_loc_p(:)
                
   PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
 
@@ -2408,6 +2407,7 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
   type(Flash2_auxvar_type), pointer :: auxvars(:), auxvars_bc(:)
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
   PetscBool :: enthalpy_flag
@@ -2419,7 +2419,6 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
   PetscReal :: distance, fraction_upwind
   PetscReal :: distance_gravity
   
-  
   patch => realization%patch
   grid => patch%grid
   option => realization%option
@@ -2430,7 +2429,8 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
   auxvars_bc => patch%aux%Flash2%auxvars_bc
   global_auxvars => patch%aux%Global%auxvars
   global_auxvars_bc => patch%aux%Global%auxvars_bc
-
+  material_auxvars => patch%aux%Material%auxvars
+  
  ! call Flash2UpdateAuxVarsPatchNinc(realization)
   ! override flags since they will soon be out of date  
  ! patch%Flash2Aux%auxvars_up_to_date = PETSC_FALSE 
@@ -2438,12 +2438,6 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
 ! now assign access pointer to local variables
   call VecGetArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
   call VecGetArrayF90( r, r_p, ierr)
-  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayF90(field%tortuosity_loc, tortuosity_loc_p, ierr)
-  call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecGetArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecGetArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecGetArrayF90(field%volume, volume_p, ierr)
   call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
 
@@ -2476,9 +2470,12 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
       D_dn = Flash2_parameter%ckwet(ithrm_dn)
 
       ! for now, just assume diagonal tensor
-      perm_dn = perm_xx_loc_p(ghosted_id)*abs(cur_connection_set%dist(1,iconn))+ &
-                perm_yy_loc_p(ghosted_id)*abs(cur_connection_set%dist(2,iconn))+ &
-                perm_zz_loc_p(ghosted_id)*abs(cur_connection_set%dist(3,iconn))
+      perm_dn = material_auxvars(ghosted_id)%permeability(perm_xx_index)* &
+                abs(cur_connection_set%dist(1,iconn))+ &
+                material_auxvars(ghosted_id)%permeability(perm_yy_index)* &
+                abs(cur_connection_set%dist(2,iconn))+ &
+                material_auxvars(ghosted_id)%permeability(perm_zz_index)* &
+                abs(cur_connection_set%dist(3,iconn))
       ! dist(0,iconn) = scalar - magnitude of distance
       ! gravity = vector(3)
       ! dist(1:3,iconn) = vector(3) - unit vector
@@ -2527,8 +2524,8 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
          boundary_condition%flow_aux_real_var(:,iconn), &
          auxvars_bc(sum_connection)%auxvar_elem(0), &
          auxvars(ghosted_id)%auxvar_elem(0), &
-         porosity_loc_p(ghosted_id), &
-         tortuosity_loc_p(ghosted_id), &
+         material_auxvars(ghosted_id)%porosity, &
+         material_auxvars(ghosted_id)%tortuosity, &
          Flash2_parameter%sir(:,icap_dn), &
          cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
          cur_connection_set%area(iconn), &
@@ -2583,13 +2580,19 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
       upweight = dd_dn/(dd_up+dd_dn)
         
       ! for now, just assume diagonal tensor
-      perm_up = perm_xx_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(1,iconn))+ &
-                perm_yy_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(2,iconn))+ &
-                perm_zz_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(3,iconn))
+      perm_up = material_auxvars(ghosted_id_up)%permeability(perm_xx_index)* &
+                abs(cur_connection_set%dist(1,iconn))+ &
+                material_auxvars(ghosted_id_up)%permeability(perm_yy_index)* &
+                abs(cur_connection_set%dist(2,iconn))+ &
+                material_auxvars(ghosted_id_up)%permeability(perm_zz_index)* &
+                abs(cur_connection_set%dist(3,iconn))
 
-      perm_dn = perm_xx_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(1,iconn))+ &
-                perm_yy_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(2,iconn))+ &
-                perm_zz_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(3,iconn))
+      perm_dn = material_auxvars(ghosted_id_dn)%permeability(perm_xx_index)* &
+                abs(cur_connection_set%dist(1,iconn))+ &
+                material_auxvars(ghosted_id_dn)%permeability(perm_yy_index)* &
+                abs(cur_connection_set%dist(2,iconn))+ &
+                material_auxvars(ghosted_id_dn)%permeability(perm_zz_index)* &
+                abs(cur_connection_set%dist(3,iconn))
 
       ithrm_up = int(ithrm_loc_p(ghosted_id_up))
       ithrm_dn = int(ithrm_loc_p(ghosted_id_dn))
@@ -2599,14 +2602,18 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
       D_up = Flash2_parameter%ckwet(ithrm_up)
       D_dn = Flash2_parameter%ckwet(ithrm_dn)
 
-      call Flash2Flux(auxvars(ghosted_id_up)%auxvar_elem(0),porosity_loc_p(ghosted_id_up), &
-                          tortuosity_loc_p(ghosted_id_up),Flash2_parameter%sir(:,icap_up), &
-                          dd_up,perm_up,D_up, &
-                          auxvars(ghosted_id_dn)%auxvar_elem(0),porosity_loc_p(ghosted_id_dn), &
-                          tortuosity_loc_p(ghosted_id_dn),Flash2_parameter%sir(:,icap_dn), &
-                          dd_dn,perm_dn,D_dn, &
-                          cur_connection_set%area(iconn),distance_gravity, &
-                          upweight,option,v_darcy,Res)
+      call Flash2Flux(auxvars(ghosted_id_up)%auxvar_elem(0), &
+                      material_auxvars(ghosted_id_up)%porosity, &
+                      material_auxvars(ghosted_id_up)%tortuosity, &
+                      Flash2_parameter%sir(:,icap_up), &
+                      dd_up,perm_up,D_up, &
+                      auxvars(ghosted_id_dn)%auxvar_elem(0), &
+                      material_auxvars(ghosted_id_dn)%porosity, &
+                      material_auxvars(ghosted_id_dn)%tortuosity, &
+                      Flash2_parameter%sir(:,icap_dn), &
+                      dd_dn,perm_dn,D_dn, &
+                      cur_connection_set%area(iconn),distance_gravity, &
+                      upweight,option,v_darcy,Res)
 
       patch%internal_velocities(:,sum_connection) = v_darcy(:)
       patch%aux%Flash2%Resold_FL(sum_connection,1:option%nflowdof)= Res(1:option%nflowdof)
@@ -2629,12 +2636,6 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
 
   call VecRestoreArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
   call VecRestoreArrayF90( r, r_p, ierr)
-  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayF90(field%tortuosity_loc, tortuosity_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecRestoreArrayF90(field%volume, volume_p, ierr)
   call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr)
 
@@ -2673,12 +2674,7 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
 
   PetscReal, pointer ::accum_p(:)
 
-  PetscReal, pointer :: r_p(:), porosity_loc_p(:), volume_p(:), &
-               xx_loc_p(:), xx_p(:), yy_p(:),&
-               tortuosity_loc_p(:),&
-               perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
-                          
-               
+  PetscReal, pointer :: r_p(:), xx_loc_p(:), xx_p(:), yy_p(:)
   PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:)
 
   PetscReal :: dw_kg, dw_mol,dddt,dddp
@@ -2816,6 +2812,7 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
   use Coupler_module  
   use Field_module
   use Debug_module
+  use Material_Aux_class
   
   implicit none
 
@@ -2831,7 +2828,7 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
   
   PetscReal, pointer ::accum_p(:)
 
-  PetscReal, pointer :: r_p(:), porosity_loc_p(:), volume_p(:)
+  PetscReal, pointer :: r_p(:)
                
   PetscReal, pointer :: ithrm_loc_p(:)
 
@@ -2855,6 +2852,7 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
   type(global_auxvar_type), pointer :: global_auxvars(:)
   type(global_auxvar_type), pointer :: global_auxvars_bc(:)
   type(global_auxvar_type), pointer :: global_auxvars_ss(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
   PetscBool :: enthalpy_flag
@@ -2875,6 +2873,7 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
   global_auxvars => patch%aux%Global%auxvars
   global_auxvars_bc => patch%aux%Global%auxvars_bc
   global_auxvars_ss => patch%aux%Global%auxvars_ss
+  material_auxvars => patch%aux%Material%auxvars
   
  ! call Flash2UpdateAuxVarsPatchNinc(realization)
   ! override flags since they will soon be out of date  
@@ -2883,8 +2882,6 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
 ! now assign access pointer to local variables
   call VecGetArrayF90(r, r_p, ierr)
   call VecGetArrayF90(field%flow_accum, accum_p, ierr)
-  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayF90(field%volume, volume_p, ierr)
   call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
  
   ! Accumulation terms (include reaction------------------------------------
@@ -2902,8 +2899,8 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
     istart = iend-option%nflowdof+1
     call Flash2Accumulation(auxvars(ghosted_id)%auxvar_elem(0),&
                             global_auxvars(ghosted_id), &
-                            porosity_loc_p(ghosted_id), &
-                            volume_p(local_id), &
+                            material_auxvars(ghosted_id)%porosity, &
+                            material_auxvars(ghosted_id)%volume, &
                             Flash2_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
                             option,ONE_INTEGER,Res) 
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
@@ -2999,9 +2996,12 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
      if (associated(patch%imat)) then
         if (patch%imat(grid%nL2G(local_id)) <= 0) cycle
      endif
-
+     ghosted_id = grid%nL2G(local_id)
      istart = 1 + (local_id-1)*option%nflowdof
-     if(volume_p(local_id)>1.D0) r_p (istart:istart+2)=r_p(istart:istart+2)/volume_p(local_id)
+     if(material_auxvars(ghosted_id)%volume>1.D0) then
+       r_p (istart:istart+2)=r_p(istart:istart+2) / &
+       material_auxvars(ghosted_id)%volume
+     endif
      if(r_p(istart) >1E20 .or. r_p(istart) <-1E20) print *, r_p (istart:istart+2)
 !     print *,'flash res', local_id, r_p (istart:istart+2)
   enddo
@@ -3026,8 +3026,6 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
  
   call VecRestoreArrayF90(r, r_p, ierr)
   call VecRestoreArrayF90(field%flow_accum, accum_p, ierr)
-  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayF90(field%volume, volume_p, ierr)
   call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
  
 end subroutine Flash2ResidualPatch2
@@ -3143,6 +3141,7 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
   use Coupler_module
   use Field_module
   use Debug_module
+  use Material_Aux_class
   
   implicit none
 
@@ -3157,9 +3156,7 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
   PetscInt :: ithrm_up, ithrm_dn, i
   PetscInt :: ip1, ip2 
 
-  PetscReal, pointer :: porosity_loc_p(:), volume_p(:), &
-                          xx_loc_p(:), tortuosity_loc_p(:),&
-                          perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
+  PetscReal, pointer :: xx_loc_p(:), tortuosity_loc_p(:)
   PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
   PetscInt :: icap,iphas,iphas_up,iphas_dn,icap_up,icap_dn
   PetscInt :: ii, jj
@@ -3201,7 +3198,8 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
   type(Flash2_parameter_type), pointer :: Flash2_parameter
   type(Flash2_auxvar_type), pointer :: auxvars(:), auxvars_bc(:)
   type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)
-
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+  
   PetscReal :: vv_darcy(realization%option%nphase), voltemp
   PetscReal :: ra(1:realization%option%nflowdof,1:realization%option%nflowdof*2)
   PetscInt nsrcpara 
@@ -3232,7 +3230,8 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
   auxvars_bc => patch%aux%Flash2%auxvars_bc
   global_auxvars => patch%aux%Global%auxvars
   global_auxvars_bc => patch%aux%Global%auxvars_bc
-
+  material_auxvars => patch%aux%Material%auxvars
+  
 ! dropped derivatives:
 !   1.D0 gas phase viscocity to all p,t,c,s
 !   2. Average molecular weights to p,t,s
@@ -3246,12 +3245,6 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
   call MatZeroEntries(A,ierr)
 
   call VecGetArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
-  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayF90(field%tortuosity_loc, tortuosity_loc_p, ierr)
-  call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecGetArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecGetArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecGetArrayF90(field%volume, volume_p, ierr)
 
   call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
@@ -3273,8 +3266,8 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
      do nvar =1, option%nflowdof
         call Flash2Accumulation(auxvars(ghosted_id)%auxvar_elem(nvar), &
              global_auxvars(ghosted_id),& 
-             porosity_loc_p(ghosted_id), &
-             volume_p(local_id), &
+             material_auxvars(ghosted_id)%porosity, &
+             material_auxvars(ghosted_id)%volume, &
              Flash2_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
              option,ONE_INTEGER, res) 
         ResInc( local_id,:,nvar) =  ResInc(local_id,:,nvar) + Res(:)
@@ -3376,9 +3369,12 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
       D_dn = Flash2_parameter%ckwet(ithrm_dn)
 
       ! for now, just assume diagonal tensor
-      perm_dn = perm_xx_loc_p(ghosted_id)*abs(cur_connection_set%dist(1,iconn))+ &
-                perm_yy_loc_p(ghosted_id)*abs(cur_connection_set%dist(2,iconn))+ &
-                perm_zz_loc_p(ghosted_id)*abs(cur_connection_set%dist(3,iconn))
+      perm_dn = material_auxvars(ghosted_id)%permeability(perm_xx_index)* &
+                abs(cur_connection_set%dist(1,iconn))+ &
+                material_auxvars(ghosted_id)%permeability(perm_yy_index)* &
+                abs(cur_connection_set%dist(2,iconn))+ &
+                material_auxvars(ghosted_id)%permeability(perm_zz_index)* &
+                abs(cur_connection_set%dist(3,iconn))
       ! dist(0,iconn) = scalar - magnitude of distance
       ! gravity = vector(3)
       ! dist(1:3,iconn) = vector(3) - unit vector
@@ -3425,8 +3421,8 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
          boundary_condition%flow_aux_real_var(:,iconn), &
          auxvars_bc(sum_connection)%auxvar_elem(nvar), &
          auxvars(ghosted_id)%auxvar_elem(nvar), &
-         porosity_loc_p(ghosted_id), &
-         tortuosity_loc_p(ghosted_id), &
+         material_auxvars(ghosted_id)%porosity, &
+         material_auxvars(ghosted_id)%tortuosity, &
          Flash2_parameter%sir(:,icap_dn), &
          cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
          cur_connection_set%area(iconn), &
@@ -3464,7 +3460,7 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
     end select
 
      Jup=ra(1:option%nflowdof,1:option%nflowdof)
-     if(volume_p(local_id)>1.D0 ) Jup=Jup / volume_p(local_id)
+     if(material_auxvars(ghosted_id)%volume>1.D0 ) Jup=Jup / material_auxvars(ghosted_id)%volume
    
 !      if(local_id==1) print *, 'flash jac', volume_p(local_id), ra
      call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
@@ -3517,13 +3513,19 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
       upweight = dd_dn/(dd_up+dd_dn)
     
       ! for now, just assume diagonal tensor
-      perm_up = perm_xx_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(1,iconn))+ &
-                perm_yy_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(2,iconn))+ &
-                perm_zz_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(3,iconn))
+      perm_up = material_auxvars(ghosted_id_up)%permeability(perm_xx_index)* &
+                abs(cur_connection_set%dist(1,iconn))+ &
+                material_auxvars(ghosted_id_up)%permeability(perm_yy_index)* &
+                abs(cur_connection_set%dist(2,iconn))+ &
+                material_auxvars(ghosted_id_up)%permeability(perm_zz_index)* &
+                abs(cur_connection_set%dist(3,iconn))
 
-      perm_dn = perm_xx_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(1,iconn))+ &
-                perm_yy_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(2,iconn))+ &
-                perm_zz_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(3,iconn))
+      perm_dn = material_auxvars(ghosted_id_dn)%permeability(perm_xx_index)* &
+                abs(cur_connection_set%dist(1,iconn))+ &
+                material_auxvars(ghosted_id_dn)%permeability(perm_yy_index)* &
+                abs(cur_connection_set%dist(2,iconn))+ &
+                material_auxvars(ghosted_id_dn)%permeability(perm_zz_index)* &
+                abs(cur_connection_set%dist(3,iconn))
     
       ithrm_up = int(ithrm_loc_p(ghosted_id_up))
       ithrm_dn = int(ithrm_loc_p(ghosted_id_dn))
@@ -3534,24 +3536,32 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
       icap_dn = int(icap_loc_p(ghosted_id_dn))
       
       do nvar = 1, option%nflowdof 
-         call Flash2Flux(auxvars(ghosted_id_up)%auxvar_elem(nvar),porosity_loc_p(ghosted_id_up), &
-                          tortuosity_loc_p(ghosted_id_up),Flash2_parameter%sir(:,icap_up), &
-                          dd_up,perm_up,D_up, &
-                          auxvars(ghosted_id_dn)%auxvar_elem(0),porosity_loc_p(ghosted_id_dn), &
-                          tortuosity_loc_p(ghosted_id_dn),Flash2_parameter%sir(:,icap_dn), &
-                          dd_dn,perm_dn,D_dn, &
-                          cur_connection_set%area(iconn),distance_gravity, &
-                          upweight, option, vv_darcy, Res)
+         call Flash2Flux(auxvars(ghosted_id_up)%auxvar_elem(nvar), &
+                         material_auxvars(ghosted_id_up)%porosity, &
+                         material_auxvars(ghosted_id_up)%tortuosity, &
+                         Flash2_parameter%sir(:,icap_up), &
+                         dd_up,perm_up,D_up, &
+                         auxvars(ghosted_id_dn)%auxvar_elem(0), &
+                         material_auxvars(ghosted_id_dn)%porosity, &
+                         material_auxvars(ghosted_id_dn)%tortuosity, &
+                         Flash2_parameter%sir(:,icap_dn), &
+                         dd_dn,perm_dn,D_dn, &
+                         cur_connection_set%area(iconn),distance_gravity, &
+                         upweight, option, vv_darcy, Res)
             ra(:,nvar)= (Res(:)-patch%aux%Flash2%ResOld_FL(iconn,:))&
               /patch%aux%Flash2%delx(nvar,ghosted_id_up)
-         call Flash2Flux(auxvars(ghosted_id_up)%auxvar_elem(0),porosity_loc_p(ghosted_id_up), &
-                          tortuosity_loc_p(ghosted_id_up),Flash2_parameter%sir(:,icap_up), &
-                          dd_up,perm_up,D_up, &
-                          auxvars(ghosted_id_dn)%auxvar_elem(nvar),porosity_loc_p(ghosted_id_dn),&
-                          tortuosity_loc_p(ghosted_id_dn),Flash2_parameter%sir(:,icap_dn), &
-                          dd_dn,perm_dn,D_dn, &
-                          cur_connection_set%area(iconn),distance_gravity, &
-                          upweight, option, vv_darcy, Res)
+         call Flash2Flux(auxvars(ghosted_id_up)%auxvar_elem(0), &
+                         material_auxvars(ghosted_id_up)%porosity, &
+                         material_auxvars(ghosted_id_up)%tortuosity, &
+                         Flash2_parameter%sir(:,icap_up), &
+                         dd_up,perm_up,D_up, &
+                         auxvars(ghosted_id_dn)%auxvar_elem(nvar), &
+                         material_auxvars(ghosted_id_dn)%porosity, &
+                         material_auxvars(ghosted_id_dn)%tortuosity, &
+                         Flash2_parameter%sir(:,icap_dn), &
+                         dd_dn,perm_dn,D_dn, &
+                         cur_connection_set%area(iconn),distance_gravity, &
+                         upweight, option, vv_darcy, Res)
          ra(:,nvar+option%nflowdof)= (Res(:)-patch%aux%Flash2%ResOld_FL(iconn,:))&
            /patch%aux%Flash2%delx(nvar,ghosted_id_dn)
     enddo
@@ -3565,8 +3575,8 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
     
     if (local_id_up > 0) then
        voltemp=1.D0
-       if(volume_p(local_id_up)>1.D0)then
-         voltemp = 1.D0/volume_p(local_id_up)
+       if(material_auxvars(ghosted_id_up)%volume>1.D0)then
+         voltemp = 1.D0/material_auxvars(ghosted_id_up)%volume
        endif
        Jup(:,1:option%nflowdof)= ra(:,1:option%nflowdof)*voltemp !11
        jdn(:,1:option%nflowdof)= ra(:, 1 + option%nflowdof:2 * option%nflowdof)*voltemp !12
@@ -3578,8 +3588,8 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
     endif
     if (local_id_dn > 0) then
        voltemp=1.D0
-       if(volume_p(local_id_dn)>1.D0)then
-         voltemp=1.D0/volume_p(local_id_dn)
+       if(material_auxvars(ghosted_id_dn)%volume>1.D0)then
+         voltemp=1.D0/material_auxvars(ghosted_id_dn)%volume
        endif
        Jup(:,1:option%nflowdof)= -ra(:,1:option%nflowdof)*voltemp !21
        jdn(:,1:option%nflowdof)= -ra(:, 1 + option%nflowdof:2 * option%nflowdof)*voltemp !22
@@ -3613,14 +3623,6 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
 #endif
   
   call VecRestoreArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
-  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayF90(field%tortuosity_loc, tortuosity_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecRestoreArrayF90(field%volume, volume_p, ierr)
-
-   
   call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr)
 ! call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
@@ -3700,6 +3702,7 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   use Coupler_module
   use Field_module
   use Debug_module
+  use Material_Aux_class
   
   implicit none
 
@@ -3714,9 +3717,7 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   PetscInt :: ithrm_up, ithrm_dn, i
   PetscInt :: ip1, ip2 
 
-  PetscReal, pointer :: porosity_loc_p(:), volume_p(:), &
-                          xx_loc_p(:), tortuosity_loc_p(:),&
-                          perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
+  PetscReal, pointer :: xx_loc_p(:), tortuosity_loc_p(:)
   PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
   PetscInt :: icap,iphas,iphas_up,iphas_dn,icap_up,icap_dn
   PetscInt :: ii, jj
@@ -3758,7 +3759,8 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   type(Flash2_parameter_type), pointer :: Flash2_parameter
   type(Flash2_auxvar_type), pointer :: auxvars(:), auxvars_bc(:)
   type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)
-
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+  
   PetscReal :: vv_darcy(realization%option%nphase), voltemp
   PetscReal :: ra(1:realization%option%nflowdof,1:realization%option%nflowdof*2) 
   PetscReal :: msrc(1:realization%option%nflowspec)
@@ -3788,7 +3790,7 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   auxvars_bc => patch%aux%Flash2%auxvars_bc
   global_auxvars => patch%aux%Global%auxvars
   global_auxvars_bc => patch%aux%Global%auxvars_bc
-
+  material_auxvars => patch%aux%Material%auxvars
 ! dropped derivatives:
 !   1.D0 gas phase viscocity to all p,t,c,s
 !   2. Average molecular weights to p,t,s
@@ -3803,13 +3805,6 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
  !  call MatZeroEntries(A,ierr)
 
   call VecGetArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
-  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayF90(field%tortuosity_loc, tortuosity_loc_p, ierr)
-  call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecGetArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecGetArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecGetArrayF90(field%volume, volume_p, ierr)
-
   call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
 !  call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
@@ -3845,9 +3840,12 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       D_dn = Flash2_parameter%ckwet(ithrm_dn)
 
       ! for now, just assume diagonal tensor
-      perm_dn = perm_xx_loc_p(ghosted_id)*abs(cur_connection_set%dist(1,iconn))+ &
-                perm_yy_loc_p(ghosted_id)*abs(cur_connection_set%dist(2,iconn))+ &
-                perm_zz_loc_p(ghosted_id)*abs(cur_connection_set%dist(3,iconn))
+      perm_dn = material_auxvars(ghosted_id)%permeability(perm_xx_index)* &
+                abs(cur_connection_set%dist(1,iconn))+ &
+                material_auxvars(ghosted_id)%permeability(perm_yy_index)* &
+                abs(cur_connection_set%dist(2,iconn))+ &
+                material_auxvars(ghosted_id)%permeability(perm_zz_index)* &
+                abs(cur_connection_set%dist(3,iconn))
       ! dist(0,iconn) = scalar - magnitude of distance
       ! gravity = vector(3)
       ! dist(1:3,iconn) = vector(3) - unit vector
@@ -3894,8 +3892,8 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
          boundary_condition%flow_aux_real_var(:,iconn), &
          auxvars_bc(sum_connection)%auxvar_elem(nvar), &
          auxvars(ghosted_id)%auxvar_elem(nvar), &
-         porosity_loc_p(ghosted_id), &
-         tortuosity_loc_p(ghosted_id), &
+         material_auxvars(ghosted_id)%porosity, &
+         material_auxvars(ghosted_id)%tortuosity, &
          Flash2_parameter%sir(:,icap_dn), &
          cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
          cur_connection_set%area(iconn), &
@@ -3933,7 +3931,7 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
     end select
 
      Jup=ra(1:option%nflowdof,1:option%nflowdof)
-     if(volume_p(local_id)>1.D0 ) Jup=Jup / volume_p(local_id)
+     if(material_auxvars(ghosted_id)%volume>1.D0 ) Jup=Jup / material_auxvars(ghosted_id)%volume
    
 !      if(local_id==1) print *, 'flash jac', volume_p(local_id), ra
      call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
@@ -3987,13 +3985,19 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       upweight = dd_dn/(dd_up+dd_dn)
     
       ! for now, just assume diagonal tensor
-      perm_up = perm_xx_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(1,iconn))+ &
-        perm_yy_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(2,iconn))+ &
-        perm_zz_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(3,iconn))
+      perm_up = material_auxvars(ghosted_id_up)%permeability(perm_xx_index)* &
+                abs(cur_connection_set%dist(1,iconn))+ &
+                material_auxvars(ghosted_id_up)%permeability(perm_yy_index)* &
+                abs(cur_connection_set%dist(2,iconn))+ &
+                material_auxvars(ghosted_id_up)%permeability(perm_zz_index)* &
+                abs(cur_connection_set%dist(3,iconn))
 
-      perm_dn = perm_xx_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(1,iconn))+ &
-        perm_yy_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(2,iconn))+ &
-        perm_zz_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(3,iconn))
+      perm_dn = material_auxvars(ghosted_id_dn)%permeability(perm_xx_index)* &
+                abs(cur_connection_set%dist(1,iconn))+ &
+                material_auxvars(ghosted_id_dn)%permeability(perm_yy_index)* &
+                abs(cur_connection_set%dist(2,iconn))+ &
+                material_auxvars(ghosted_id_dn)%permeability(perm_zz_index)* &
+                abs(cur_connection_set%dist(3,iconn))
     
 !     iphas_up = iphase_loc_p(ghosted_id_up)
 !     iphas_dn = iphase_loc_p(ghosted_id_dn)
@@ -4007,24 +4011,32 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       icap_dn = int(icap_loc_p(ghosted_id_dn))
       
       do nvar = 1, option%nflowdof 
-         call Flash2Flux(auxvars(ghosted_id_up)%auxvar_elem(nvar),porosity_loc_p(ghosted_id_up), &
-                          tortuosity_loc_p(ghosted_id_up),Flash2_parameter%sir(:,icap_up), &
-                          dd_up,perm_up,D_up, &
-                          auxvars(ghosted_id_dn)%auxvar_elem(0),porosity_loc_p(ghosted_id_dn), &
-                          tortuosity_loc_p(ghosted_id_dn),Flash2_parameter%sir(:,icap_dn), &
-                          dd_dn,perm_dn,D_dn, &
-                          cur_connection_set%area(iconn),distance_gravity, &
-                          upweight, option, vv_darcy, Res)
+         call Flash2Flux(auxvars(ghosted_id_up)%auxvar_elem(nvar), &
+                         material_auxvars(ghosted_id_up)%porosity, &
+                         material_auxvars(ghosted_id_up)%tortuosity, &
+                         Flash2_parameter%sir(:,icap_up), &
+                         dd_up,perm_up,D_up, &
+                         auxvars(ghosted_id_dn)%auxvar_elem(0), &
+                         material_auxvars(ghosted_id_dn)%porosity, &
+                         material_auxvars(ghosted_id_dn)%tortuosity, &
+                         Flash2_parameter%sir(:,icap_dn), &
+                         dd_dn,perm_dn,D_dn, &
+                         cur_connection_set%area(iconn),distance_gravity, &
+                         upweight, option, vv_darcy, Res)
             ra(:,nvar)= (Res(:)-patch%aux%Flash2%ResOld_FL(iconn,:))&
               /patch%aux%Flash2%delx(nvar,ghosted_id_up)
-         call Flash2Flux(auxvars(ghosted_id_up)%auxvar_elem(0),porosity_loc_p(ghosted_id_up), &
-                          tortuosity_loc_p(ghosted_id_up),Flash2_parameter%sir(:,icap_up), &
-                          dd_up,perm_up,D_up, &
-                          auxvars(ghosted_id_dn)%auxvar_elem(nvar),porosity_loc_p(ghosted_id_dn),&
-                          tortuosity_loc_p(ghosted_id_dn),Flash2_parameter%sir(:,icap_dn), &
-                          dd_dn,perm_dn,D_dn, &
-                          cur_connection_set%area(iconn),distance_gravity, &
-                          upweight, option, vv_darcy, Res)
+         call Flash2Flux(auxvars(ghosted_id_up)%auxvar_elem(0), &
+                         material_auxvars(ghosted_id_up)%porosity, &
+                         material_auxvars(ghosted_id_up)%tortuosity, &
+                         Flash2_parameter%sir(:,icap_up), &
+                         dd_up,perm_up,D_up, &
+                         auxvars(ghosted_id_dn)%auxvar_elem(nvar), &
+                         material_auxvars(ghosted_id_dn)%porosity, &
+                         material_auxvars(ghosted_id_dn)%tortuosity, &
+                         Flash2_parameter%sir(:,icap_dn), &
+                         dd_dn,perm_dn,D_dn, &
+                         cur_connection_set%area(iconn),distance_gravity, &
+                         upweight, option, vv_darcy, Res)
          ra(:,nvar+option%nflowdof)= (Res(:)-patch%aux%Flash2%ResOld_FL(iconn,:))&
            /patch%aux%Flash2%delx(nvar,ghosted_id_dn)
     enddo
@@ -4038,8 +4050,8 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
     
     if (local_id_up > 0) then
        voltemp=1.D0
-       if(volume_p(local_id_up)>1.D0)then
-         voltemp = 1.D0/volume_p(local_id_up)
+       if(material_auxvars(ghosted_id_up)%volume>1.D0)then
+         voltemp = 1.D0/material_auxvars(ghosted_id_up)%volume
        endif
        Jup(:,1:option%nflowdof)= ra(:,1:option%nflowdof)*voltemp !11
        jdn(:,1:option%nflowdof)= ra(:, 1 + option%nflowdof:2 * option%nflowdof)*voltemp !12
@@ -4051,8 +4063,8 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
     endif
     if (local_id_dn > 0) then
        voltemp=1.D0
-       if(volume_p(local_id_dn)>1.D0)then
-         voltemp=1.D0/volume_p(local_id_dn)
+       if(material_auxvars(ghosted_id_dn)%volume>1.D0)then
+         voltemp=1.D0/material_auxvars(ghosted_id_dn)%volume
        endif
        Jup(:,1:option%nflowdof)= -ra(:,1:option%nflowdof)*voltemp !21
        jdn(:,1:option%nflowdof)= -ra(:, 1 + option%nflowdof:2 * option%nflowdof)*voltemp !22
@@ -4077,14 +4089,6 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   endif
   
   call VecRestoreArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
-  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayF90(field%tortuosity_loc, tortuosity_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecRestoreArrayF90(field%volume, volume_p, ierr)
-
-   
   call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr)
 
@@ -4108,6 +4112,7 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   use Coupler_module
   use Field_module
   use Debug_module
+  use Material_Aux_class
   
   implicit none
 
@@ -4122,9 +4127,7 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   PetscInt :: ithrm_up, ithrm_dn, i
   PetscInt :: ip1, ip2 
 
-  PetscReal, pointer :: porosity_loc_p(:), volume_p(:), &
-                          xx_loc_p(:), tortuosity_loc_p(:),&
-                          perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
+  PetscReal, pointer :: xx_loc_p(:), tortuosity_loc_p(:)
   PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
   PetscInt :: icap,iphas,iphas_up,iphas_dn,icap_up,icap_dn
   PetscInt :: ii, jj
@@ -4166,7 +4169,8 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   type(Flash2_parameter_type), pointer :: Flash2_parameter
   type(Flash2_auxvar_type), pointer :: auxvars(:), auxvars_bc(:)
   type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)
-
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+  
   PetscReal :: vv_darcy(realization%option%nphase), voltemp
   PetscReal :: ra(1:realization%option%nflowdof,1:realization%option%nflowdof*2) 
   PetscReal, pointer :: msrc(:)
@@ -4196,7 +4200,8 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   auxvars_bc => patch%aux%Flash2%auxvars_bc
   global_auxvars => patch%aux%Global%auxvars
   global_auxvars_bc => patch%aux%Global%auxvars_bc
-
+  material_auxvars => patch%aux%Material%auxvars
+  
 ! dropped derivatives:
 !   1.D0 gas phase viscocity to all p,t,c,s
 !   2. Average molecular weights to p,t,s
@@ -4209,8 +4214,6 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,flag,realization,ierr)
  ! print *,'*********** In Jacobian ********************** '
 !  call MatZeroEntries(A,ierr)
 
-  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-   call VecGetArrayF90(field%volume, volume_p, ierr)
   call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
 !  call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
@@ -4231,8 +4234,8 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,flag,realization,ierr)
      do nvar =1, option%nflowdof
         call Flash2Accumulation(auxvars(ghosted_id)%auxvar_elem(nvar), &
              global_auxvars(ghosted_id),& 
-             porosity_loc_p(ghosted_id), &
-             volume_p(local_id), &
+             material_auxvars(ghosted_id)%porosity, &
+             material_auxvars(ghosted_id)%volume, &
              Flash2_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
              option,ONE_INTEGER, res) 
         ResInc( local_id,:,nvar) =  ResInc(local_id,:,nvar) + Res(:)
@@ -4331,7 +4334,7 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,flag,realization,ierr)
     end select
 
      Jup=ra(1:option%nflowdof,1:option%nflowdof)
-     if(volume_p(local_id)>1.D0 ) Jup=Jup / volume_p(local_id)
+     if(material_auxvars(ghosted_id)%volume>1.D0 ) Jup=Jup / material_auxvars(ghosted_id)%volume
    
 !      if(local_id==1) print *, 'flash jac', volume_p(local_id), ra
      call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
@@ -4345,8 +4348,6 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,flag,realization,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
   
-  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayF90(field%volume, volume_p, ierr)
   call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr)
 ! call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)

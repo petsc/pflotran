@@ -2166,7 +2166,7 @@ subroutine SecondaryRTotalSorb(rt_auxvar,global_auxvar,material_auxvar,reaction,
   
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
-  type(material_auxvar_type) :: material_auxvar
+  class(material_auxvar_type) :: material_auxvar
   type(reaction_type) :: reaction
   type(option_type) :: option
   
@@ -2203,7 +2203,7 @@ subroutine SecondaryRTotalSorbKD(rt_auxvar,global_auxvar,material_auxvar,reactio
 
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
-  type(material_auxvar_type) :: material_auxvar
+  class(material_auxvar_type) :: material_auxvar
   type(reaction_type) :: reaction
   type(option_type) :: option
   

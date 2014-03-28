@@ -71,7 +71,6 @@ subroutine RichardsUpdateLSMAuxVarsPatch(realization)
   PetscInt :: ghosted_id, local_id, sum_connection, idof, iconn
   PetscInt :: iphasebc, iphase, i
   PetscReal, pointer :: xx_loc_p(:), xx_p(:)
-  PetscReal, pointer :: perm_xx_loc_p(:), porosity_loc_p(:)  
   PetscReal :: xxbc(realization%option%nflowdof)
   PetscErrorCode :: ierr
   PetscInt :: max_stencil_width
@@ -98,8 +97,6 @@ subroutine RichardsUpdateLSMAuxVarsPatch(realization)
   global_auxvars_ss => patch%aux%Global%auxvars_ss
     
   call VecGetArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
-  call VecGetArrayF90(field%perm_xx_loc,perm_xx_loc_p,ierr)
-  call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)  
 
   select case(grid%itype)
     case(STRUCTURED_GRID)
@@ -159,8 +156,6 @@ subroutine RichardsUpdateLSMAuxVarsPatch(realization)
   enddo
 
   call VecRestoreArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_xx_loc,perm_xx_loc_p,ierr)
-  call VecRestoreArrayF90(field%porosity_loc,porosity_loc_p,ierr)
 
 end subroutine RichardsUpdateLSMAuxVarsPatch
 

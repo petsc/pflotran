@@ -1,5 +1,3 @@
-#ifdef SURFACE_FLOW
-
 module Surface_Material_module
 
   use PFLOTRAN_Constants_module
@@ -302,6 +300,3 @@ function SurfaceMaterialPropGetPtrFromArray(surf_material_property_name, &
 end function SurfaceMaterialPropGetPtrFromArray
 
 end module Surface_Material_module
-
-#endif
-! SURFACE_FLOW

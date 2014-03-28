@@ -99,7 +99,13 @@ subroutine GeneralRead(input,option)
     
       case('WINDOW_EPSILON') 
         call InputReadDouble(input,option,window_epsilon)
-        call InputErrorMsg(input,option,'diffusion coefficient','FLUID_PROPERTY')
+        call InputErrorMsg(input,option,'diffusion coefficient','GENERAL_MODE')
+      case('TWO_PHASE_ENERGY_DOF')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'two_phase_energy_dof','GENERAL_MODE')
+        call GeneralAuxSetEnergyDOF(word,option)
+      case('ISOTHERMAL')
+        general_isothermal = PETSC_TRUE
       case default
         option%io_buffer = 'Keyword: ' // trim(keyword) // &
                            ' not recognized in General Mode'    
@@ -476,7 +482,6 @@ subroutine GeneralComputeMassBalance(realization,mass_balance)
   type(grid_type), pointer :: grid
   type(general_auxvar_type), pointer :: general_auxvars(:,:)
   class(material_auxvar_type), pointer :: material_auxvars(:)
-  PetscReal, pointer :: volume_p(:), porosity_loc_p(:)
 
   PetscErrorCode :: ierr
   PetscInt :: local_id
@@ -642,7 +647,6 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
   PetscReal :: saturation_pressure, temperature
   PetscInt :: real_index, variable
   PetscReal, pointer :: xx_loc_p(:)
-  PetscReal, pointer :: perm_xx_loc_p(:), porosity_loc_p(:)  
   PetscReal :: xxbc(realization%option%nflowdof)
   PetscErrorCode :: ierr
   
@@ -875,8 +879,7 @@ subroutine GeneralUpdateFixedAccum(realization)
   PetscInt :: ghosted_id, local_id, local_start, local_end
   PetscInt :: imat
   PetscReal, pointer :: xx_p(:), iphase_loc_p(:)
-  PetscReal, pointer :: porosity_loc_p(:), tor_loc_p(:), volume_p(:), &
-                          accum_p(:), perm_xx_loc_p(:)
+  PetscReal, pointer :: accum_p(:)
                           
   PetscErrorCode :: ierr
   
@@ -1791,12 +1794,17 @@ subroutine GeneralAccumDerivative(gen_auxvar,global_auxvar,material_auxvar, &
     enddo !irow
   enddo ! idof
 
+  if (general_isothermal) then
+    J(GENERAL_ENERGY_EQUATION_INDEX,:) = 0.d0
+    J(:,GENERAL_ENERGY_EQUATION_INDEX) = 0.d0
+  endif
+  
 #ifdef DEBUG_GENERAL_FILEOUTPUT
   if (debug_flag > 0) then
     write(debug_unit,'(a,10es24.15)') 'accum deriv:', J
   endif
 #endif
-  
+
 end subroutine GeneralAccumDerivative
 
 ! ************************************************************************** !
@@ -1886,6 +1894,13 @@ subroutine GeneralFluxDerivative(gen_auxvar_up,global_auxvar_up, &
     enddo !irow
   enddo ! idof
 
+  if (general_isothermal) then
+    Jup(GENERAL_ENERGY_EQUATION_INDEX,:) = 0.d0
+    Jup(:,GENERAL_ENERGY_EQUATION_INDEX) = 0.d0
+    Jdn(GENERAL_ENERGY_EQUATION_INDEX,:) = 0.d0
+    Jdn(:,GENERAL_ENERGY_EQUATION_INDEX) = 0.d0
+  endif
+
 #ifdef DEBUG_GENERAL_FILEOUTPUT
   if (debug_flag > 0) then
     write(debug_unit,'(a,20es24.15)') 'flux deriv:', Jup, Jdn
@@ -1964,6 +1979,11 @@ subroutine GeneralBCFluxDerivative(ibndtype,auxvar_mapping,auxvars, &
     enddo !irow
   enddo ! idof
 
+  if (general_isothermal) then
+    Jdn(GENERAL_ENERGY_EQUATION_INDEX,:) = 0.d0
+    Jdn(:,GENERAL_ENERGY_EQUATION_INDEX) = 0.d0
+  endif
+  
 #ifdef DEBUG_GENERAL_FILEOUTPUT
   if (debug_flag > 0) then
     write(debug_unit,'(a,10es24.15)') 'bc flux deriv:', Jdn
@@ -2010,12 +2030,17 @@ subroutine GeneralSrcSinkDerivative(option,qsrc,flow_src_sink_type, &
     enddo !irow
   enddo ! idof
   
+  if (general_isothermal) then
+    Jac(GENERAL_ENERGY_EQUATION_INDEX,:) = 0.d0
+    Jac(:,GENERAL_ENERGY_EQUATION_INDEX) = 0.d0
+  endif
+  
 #ifdef DEBUG_GENERAL_FILEOUTPUT
   if (debug_flag > 0) then
     write(debug_unit,'(a,20es24.15)') 'src/sink deriv:', Jac
   endif
-#endif  
-  
+#endif
+
 end subroutine GeneralSrcSinkDerivative
 
 ! ************************************************************************** !
@@ -2075,7 +2100,6 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
 
   PetscReal, pointer :: r_p(:)
   PetscReal, pointer :: accum_p(:)
-  PetscReal, pointer :: volume_p(:)
   
   character(len=MAXWORDLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
@@ -2320,6 +2344,13 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
       r_p(patch%aux%General%zero_rows_local(i)) = 0.d0
     enddo
   endif
+  
+  if (general_isothermal) then
+    ! zero energy residual
+    do local_id = 1, grid%nlmax
+      r_p((local_id-1)*option%nflowdof+GENERAL_ENERGY_EQUATION_INDEX) =  0.d0
+    enddo
+  endif
 
 #ifdef DEBUG_GENERAL_FILEOUTPUT
   call VecGetArrayReadF90(field%flow_accum, accum_p, ierr)
@@ -2397,6 +2428,7 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
   PetscReal :: dd_up, dd_dn
   PetscReal :: perm_up, perm_dn
   PetscInt :: local_id, ghosted_id
+  PetscInt :: irow
   PetscInt :: local_id_up, local_id_dn
   PetscInt :: ghosted_id_up, ghosted_id_dn
   
@@ -2672,6 +2704,18 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
                           qsrc,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
   endif
 
+  if (general_isothermal) then
+    ! zero energy residual
+    do local_id = 1, grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
+      irow = (ghosted_id-1)*option%nflowdof+GENERAL_ENERGY_EQUATION_INDEX 
+      irow = irow-1 ! zero-based indexing
+      qsrc = 1.d0 ! solely a temporary variable in this conditional
+      call MatZeroRowsLocal(A,ONE_INTEGER,irow, &
+                            qsrc,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+    enddo
+  endif
+  
   if (realization%debug%matview_Jacobian) then
 #if 1  
     call PetscViewerASCIIOpen(realization%option%mycomm,'Gjacobian.out', &
@@ -2903,8 +2947,8 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
 #endif
     select case(global_auxvars(ghosted_id)%istate)
       case(LIQUID_STATE)
-        liquid_pressure_index  = offset + 1
-        temperature_index  = offset + 3
+        liquid_pressure_index  = offset + GENERAL_LIQUID_PRESSURE_DOF
+        temperature_index  = offset + GENERAL_ENERGY_DOF
         dX_p(liquid_pressure_index) = dX_p(liquid_pressure_index) * &
                                       general_pressure_scale
         temp_scale = 1.d0
@@ -3009,20 +3053,21 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
         endif
 #endif !LIMIT_MAX_TEMPERATURE_CHANGE        
       case(TWO_PHASE_STATE)
-        gas_pressure_index = offset + 1
-        air_pressure_index = offset + 2
-        saturation_index = offset + 3
+        gas_pressure_index = offset + GENERAL_GAS_PRESSURE_DOF
+!        air_pressure_index = offset + 2
+        saturation_index = offset + GENERAL_GAS_SATURATION_DOF
+        temperature_index  = offset + GENERAL_ENERGY_DOF
         dX_p(gas_pressure_index) = dX_p(gas_pressure_index) * &
                                    general_pressure_scale
-        dX_p(air_pressure_index) = dX_p(air_pressure_index) * &
-                                   general_pressure_scale
+!        dX_p(air_pressure_index) = dX_p(air_pressure_index) * &
+!                                   general_pressure_scale
         temp_scale = 1.d0
         del_gas_pressure = dX_p(gas_pressure_index)
         gas_pressure0 = X_p(gas_pressure_index)
         gas_pressure1 = gas_pressure0 - del_gas_pressure
-        del_air_pressure = dX_p(air_pressure_index)
-        air_pressure0 = X_p(air_pressure_index)
-        air_pressure1 = air_pressure0 - del_air_pressure
+!        del_air_pressure = dX_p(air_pressure_index)
+!        air_pressure0 = X_p(air_pressure_index)
+!        air_pressure1 = air_pressure0 - del_air_pressure
         del_saturation = dX_p(saturation_index)
         saturation0 = X_p(saturation_index)
         saturation1 = saturation0 - del_saturation
@@ -3196,7 +3241,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
         endif
 #endif !LIMIT_MAX_SATURATION_CHANGE        
       case(GAS_STATE) 
-        gas_pressure_index = offset + 1
+        gas_pressure_index = offset + GENERAL_GAS_PRESSURE_DOF
         air_pressure_index = offset + 2
         dX_p(gas_pressure_index) = dX_p(gas_pressure_index) * &
                                    general_pressure_scale

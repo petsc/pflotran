@@ -1233,7 +1233,7 @@ end subroutine MaterialSetAuxVarVecLoc
 
 subroutine MaterialGetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
   ! 
-  ! Sets values of material auxvar data using a vector.
+  ! Gets values of material auxvar data using a vector.
   ! 
   ! Author: Glenn Hammond
   ! Date: 01/09/14

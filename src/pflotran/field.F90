@@ -16,20 +16,18 @@ module Field_module
     
     !get material id
     ! 1 degree of freedom
-    Vec :: porosity0, porosity_loc
-    Vec :: tortuosity0, tortuosity_loc
+    Vec :: porosity0
+    Vec :: tortuosity0
     Vec :: ithrm_loc
     Vec :: icap_loc
     Vec :: iphas_loc, iphas_old_loc
 
-    Vec :: perm_xx_loc, perm_yy_loc, perm_zz_loc
-    Vec :: perm_xz_loc, perm_xy_loc, perm_yz_loc
     Vec :: perm0_xx, perm0_yy, perm0_zz
     Vec :: perm0_xz, perm0_xy, perm0_yz
     
     Vec :: work, work_loc
 
-    Vec :: volume, volume0
+    Vec :: volume0
     
     ! residual vectors
     Vec :: flow_r          
@@ -95,23 +93,15 @@ function FieldCreate()
   
   ! nullify PetscVecs
   field%porosity0 = 0
-  field%porosity_loc = 0
   field%tortuosity0 = 0
-  field%tortuosity_loc = 0
   field%ithrm_loc = 0
   field%icap_loc = 0
   field%iphas_loc = 0
   field%iphas_old_loc = 0
 
-  field%perm_xx_loc = 0
-  field%perm_yy_loc = 0
-  field%perm_zz_loc = 0
   field%perm0_xx = 0
   field%perm0_yy = 0
   field%perm0_zz = 0
-  field%perm_xz_loc = 0
-  field%perm_xy_loc = 0
-  field%perm_yz_loc = 0
   field%perm0_xz = 0
   field%perm0_xy = 0
   field%perm0_yz = 0
@@ -119,7 +109,6 @@ function FieldCreate()
   field%work = 0
   field%work_loc = 0
 
-  field%volume = 0
   field%volume0 = 0
   
   field%flow_r = 0
@@ -188,23 +177,15 @@ subroutine FieldDestroy(field)
 
   ! Destroy PetscVecs
   if (field%porosity0 /= 0) call VecDestroy(field%porosity0,ierr)
-  if (field%porosity_loc /= 0) call VecDestroy(field%porosity_loc,ierr)
   if (field%tortuosity0 /= 0) call VecDestroy(field%tortuosity0,ierr)
-  if (field%tortuosity_loc /= 0) call VecDestroy(field%tortuosity_loc,ierr)
   if (field%ithrm_loc /= 0) call VecDestroy(field%ithrm_loc,ierr)
   if (field%icap_loc /= 0) call VecDestroy(field%icap_loc,ierr)
   if (field%iphas_loc /= 0) call VecDestroy(field%iphas_loc,ierr)
   if (field%iphas_old_loc /= 0) call VecDestroy(field%iphas_old_loc,ierr)
 
-  if (field%perm_xx_loc /= 0) call VecDestroy(field%perm_xx_loc,ierr)
-  if (field%perm_yy_loc /= 0) call VecDestroy(field%perm_yy_loc,ierr)
-  if (field%perm_zz_loc /= 0) call VecDestroy(field%perm_zz_loc,ierr)
   if (field%perm0_xx /= 0) call VecDestroy(field%perm0_xx,ierr)
   if (field%perm0_yy /= 0) call VecDestroy(field%perm0_yy,ierr)
   if (field%perm0_zz /= 0) call VecDestroy(field%perm0_zz,ierr)
-  if (field%perm_xz_loc /= 0) call VecDestroy(field%perm_xz_loc,ierr)
-  if (field%perm_xy_loc /= 0) call VecDestroy(field%perm_xy_loc,ierr)
-  if (field%perm_yz_loc /= 0) call VecDestroy(field%perm_yz_loc,ierr)
   if (field%perm0_xz /= 0) call VecDestroy(field%perm0_xz,ierr)
   if (field%perm0_xy /= 0) call VecDestroy(field%perm0_xy,ierr)
   if (field%perm0_yz /= 0) call VecDestroy(field%perm0_yz,ierr)
@@ -212,7 +193,6 @@ subroutine FieldDestroy(field)
   if (field%work /= 0) call VecDestroy(field%work,ierr)
   if (field%work_loc /= 0) call VecDestroy(field%work_loc,ierr)
 
-  if (field%volume /= 0) call VecDestroy(field%volume,ierr)
   if (field%volume0 /= 0) call VecDestroy(field%volume0,ierr)
   
   if (field%flow_r /= 0) call VecDestroy(field%flow_r,ierr)

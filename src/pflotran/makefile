@@ -8,7 +8,6 @@ unit_test_dir = ./unittests
 
 MYFLAGS = -I.
 MYFLAGS += -DPROCESS_MODEL
-MYFLAGS += -DSURFACE_FLOW
 MYFLAGS += -DCHUAN_CO2
 MYFLAGS += -DGEOMECH
 
@@ -121,10 +120,6 @@ endif
 
 ifdef ugrid_debug
   MYFLAGS += -DUGRID_DEBUG
-endif
-
-ifdef surface_flow
-  MYFLAGS += -DSURFACE_FLOW -w -g
 endif
 
 ifdef amanzi_bgd
@@ -432,7 +427,7 @@ ifeq ($(UPDATE_PROVENANCE),1)
 		--pflotran-fflags "${FC_FLAGS} ${FFLAGS} ${FCPPFLAGS}" \
 		--petsc-config "${CONFIGURE_OPTIONS}"
 else
-	@[[ -f pflotran_provenance.F90 ]] || cp pflotran_no_provenance.F90 pflotran_provenance.F90
+	@if test ! -f pflotran_provenance.F90; then cp pflotran_no_provenance.F90 pflotran_provenance.F90; fi
 endif
 
 # do these files exist anymore?

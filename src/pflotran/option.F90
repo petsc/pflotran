@@ -62,7 +62,6 @@ module Option_module
     PetscInt :: nsec_cells
     PetscBool :: use_th_freezing
 
-#ifdef SURFACE_FLOW
     PetscInt :: nsurfflowdof
     PetscInt :: subsurf_surf_coupling
     PetscInt :: surface_flow_formulation
@@ -73,7 +72,6 @@ module Option_module
     PetscBool :: surf_restart_flag
     character(len=MAXSTRINGLENGTH) :: surf_initialize_flow_filename
     character(len=MAXSTRINGLENGTH) :: surf_restart_filename
-#endif
 
 #ifdef GEOMECH
     PetscInt  :: ngeomechdof
@@ -98,7 +96,7 @@ module Option_module
     PetscInt :: iflag
     PetscInt :: status
     !geh: remove once legacy code is gone.
-    PetscBool :: init_stage
+!    PetscBool :: init_stage
     ! these flags are for printing outside of time step loop
     PetscBool :: print_to_screen
     PetscBool :: print_to_file
@@ -203,10 +201,6 @@ module Option_module
     PetscBool :: use_upwinding
     PetscBool :: out_of_table
     
-    PetscBool :: use_process_model
-    !TODO(geh): remove this once all modes have bee refactored
-    PetscBool :: use_refactored_material_auxvars
-        
     ! Specify secondary continuum solver
     PetscBool :: print_explicit_primal_grid    ! prints primal grid if true
     PetscBool :: print_explicit_dual_grid      ! prints voronoi (dual) grid if true
@@ -369,8 +363,6 @@ subroutine OptionInitAll(option)
   option%out_of_table = PETSC_FALSE
   
   option%simulation_mode = 'SUBSURFACE'
-  option%use_process_model = PETSC_FALSE
-  option%use_refactored_material_auxvars = PETSC_FALSE
   option%subsurface_simulation_type = SUBSURFACE_SIM_TYPE
  
   call OptionInitRealization(option)
@@ -419,7 +411,6 @@ subroutine OptionInitRealization(option)
   option%nsec_cells = 0
   option%use_th_freezing = PETSC_FALSE
 
-#ifdef SURFACE_FLOW
   option%nsurfflowdof = 0
   option%subsurf_surf_coupling = DECOUPLED
   option%surface_flow_formulation = DIFFUSION_WAVE
@@ -431,7 +422,6 @@ subroutine OptionInitRealization(option)
   option%surf_restart_filename = ""
   option%surf_restart_flag = PETSC_FALSE
   option%surf_restart_time = -999.0
-#endif
 
 #ifdef GEOMECH
   option%ngeomechdof = 0
@@ -563,7 +553,6 @@ subroutine OptionInitRealization(option)
 
   option%use_matrix_buffer = PETSC_FALSE
   option%status = PROCEED 
-  option%init_stage = PETSC_FALSE 
   option%force_newton_iteration = PETSC_FALSE
   option%mimetic = PETSC_FALSE
   option%variables_swapped = PETSC_FALSE

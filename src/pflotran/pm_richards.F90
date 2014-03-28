@@ -598,10 +598,8 @@ subroutine PMRichardsUpdateSolution(this)
   endif  
   ! end from RealizationUpdate()
   call RichardsUpdateSolution(this%realization)
-#ifdef SURFACE_FLOW
   if(this%option%nsurfflowdof>0) &
     call RichardsUpdateSurfacePress(this%realization)
-#endif
 
 end subroutine PMRichardsUpdateSolution     
 

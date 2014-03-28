@@ -1,4 +1,3 @@
-#ifdef SURFACE_FLOW
 module Output_Surface_module
 
   use Logging_module 
@@ -2290,5 +2289,3 @@ end subroutine WriteHDF5SurfaceFlowratesUGrid
 #endif
 
 end module Output_Surface_module
-
-#endif

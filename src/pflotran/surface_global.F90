@@ -1,5 +1,3 @@
-#ifdef SURFACE_FLOW
-
 module Surface_Global_module
 
   use Surface_Global_Aux_module
@@ -393,5 +391,3 @@ subroutine SurfaceGlobalUpdateAuxVars(surf_realization,time_level)
 end subroutine SurfaceGlobalUpdateAuxVars
 
 end module Surface_Global_module
-
-#endif
