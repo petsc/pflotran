@@ -425,6 +425,12 @@ subroutine MaterialPropertyRead(material_property,input,option)
               call printErrMsg(option)
           end select
         enddo
+        if (dabs(material_property%permeability(1,1) - &
+                 material_property%permeability(2,2)) > 1.d-40 .or. &
+            dabs(material_property%permeability(1,1) - &
+                 material_property%permeability(3,3)) > 1.d-40) then
+          material_property%isotropic_permeability = PETSC_FALSE
+        endif
       case('PERM_FACTOR') 
       ! Permfactor is the multiplier to permeability to increase perm
       ! The perm increase could be due to pressure or other variable
