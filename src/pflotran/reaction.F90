@@ -4017,7 +4017,7 @@ subroutine RTotalSorb(rt_auxvar,global_auxvar,material_auxvar,reaction,option)
   
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
-  type(material_auxvar_type) :: material_auxvar
+  class(material_auxvar_type) :: material_auxvar
   type(reaction_type) :: reaction
   type(option_type) :: option
   
@@ -4057,7 +4057,7 @@ subroutine RTotalSorbKD(rt_auxvar,global_auxvar,material_auxvar,reaction, &
 
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
-  type(material_auxvar_type) :: material_auxvar
+  class(material_auxvar_type) :: material_auxvar
   type(reaction_type) :: reaction
   type(option_type) :: option
   
@@ -4738,7 +4738,7 @@ subroutine RTAuxVarCompute(rt_auxvar,global_auxvar,material_auxvar,reaction, &
   type(reaction_type) :: reaction
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
-  type(material_auxvar_type) :: material_auxvar
+  class(material_auxvar_type) :: material_auxvar
   
 #if 0  
   PetscReal :: Res_orig(reaction%ncomp)

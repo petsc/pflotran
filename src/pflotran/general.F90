@@ -423,7 +423,6 @@ subroutine GeneralComputeMassBalance(realization,mass_balance)
   type(grid_type), pointer :: grid
   type(general_auxvar_type), pointer :: general_auxvars(:,:)
   class(material_auxvar_type), pointer :: material_auxvars(:)
-  PetscReal, pointer :: volume_p(:), porosity_loc_p(:)
 
   PetscErrorCode :: ierr
   PetscInt :: local_id
@@ -589,7 +588,6 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
   PetscReal :: saturation_pressure, temperature
   PetscInt :: real_index, variable
   PetscReal, pointer :: xx_loc_p(:)
-  PetscReal, pointer :: perm_xx_loc_p(:), porosity_loc_p(:)  
   PetscReal :: xxbc(realization%option%nflowdof)
   PetscErrorCode :: ierr
   
@@ -822,8 +820,7 @@ subroutine GeneralUpdateFixedAccum(realization)
   PetscInt :: ghosted_id, local_id, local_start, local_end
   PetscInt :: imat
   PetscReal, pointer :: xx_p(:), iphase_loc_p(:)
-  PetscReal, pointer :: porosity_loc_p(:), tor_loc_p(:), volume_p(:), &
-                          accum_p(:), perm_xx_loc_p(:)
+  PetscReal, pointer :: accum_p(:)
                           
   PetscErrorCode :: ierr
   
@@ -2022,7 +2019,6 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
 
   PetscReal, pointer :: r_p(:)
   PetscReal, pointer :: accum_p(:)
-  PetscReal, pointer :: volume_p(:)
   
   character(len=MAXWORDLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word

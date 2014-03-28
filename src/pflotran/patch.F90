@@ -2006,8 +2006,6 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
   type(field_type), pointer :: field
   
   PetscReal, pointer :: vec_ptr(:)
-  PetscReal, pointer :: perm_loc_ptr(:)
-  PetscReal, pointer :: vol_ptr(:)
   PetscInt :: local_id
   PetscInt :: ghosted_id, neighbor_ghosted_id
   PetscInt :: iconn
@@ -2022,12 +2020,6 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
   grid => patch%grid
   material_auxvars => patch%aux%Material%auxvars
 
-  !geh: remove
-  if (.not.option%use_refactored_material_auxvars) then
-    call VecGetArrayF90(field%perm_xx_loc,perm_loc_ptr,ierr)
-    call VecGetArrayF90(field%volume,vol_ptr,ierr)
-  endif
-
   grid => patch%grid
 
   call VecZeroEntries(field%work,ierr)
@@ -2041,30 +2033,17 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
     case(SCALE_BY_VOLUME)
       do iconn = 1, cur_connection_set%num_connections
         local_id = cur_connection_set%id_dn(iconn)
-        !geh: remove
-        if (.not.option%use_refactored_material_auxvars) then
-          !geh: remove
-          vec_ptr(local_id) = vec_ptr(local_id) + vol_ptr(local_id)
-        else
-          ghosted_id = grid%nL2G(local_id)
-          vec_ptr(local_id) = vec_ptr(local_id) + &
-            material_auxvars(ghosted_id)%volume
-        endif
+        ghosted_id = grid%nL2G(local_id)
+        vec_ptr(local_id) = vec_ptr(local_id) + &
+          material_auxvars(ghosted_id)%volume
       enddo
     case(SCALE_BY_PERM)
       do iconn = 1, cur_connection_set%num_connections
         local_id = cur_connection_set%id_dn(iconn)
         ghosted_id = grid%nL2G(local_id)
-        !geh: remove
-        if (.not.option%use_refactored_material_auxvars) then
-          !geh: remove
-          vec_ptr(local_id) = vec_ptr(local_id) + perm_loc_ptr(ghosted_id) * &
-                                                  vol_ptr(local_id)
-        else
-          vec_ptr(local_id) = vec_ptr(local_id) + &
-            material_auxvars(ghosted_id)%permeability(perm_xx_index) * &
-            material_auxvars(ghosted_id)%volume
-        endif
+        vec_ptr(local_id) = vec_ptr(local_id) + &
+          material_auxvars(ghosted_id)%permeability(perm_xx_index) * &
+          material_auxvars(ghosted_id)%volume
       enddo
     case(SCALE_BY_NEIGHBOR_PERM)
       do iconn = 1, cur_connection_set%num_connections
@@ -2081,52 +2060,28 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
         do while (icount < x_count)
           icount = icount + 1
           neighbor_ghosted_id = ghosted_neighbors(icount)
-          !geh: remove
-          if (.not.option%use_refactored_material_auxvars) then
-            !geh: remove
-            sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
-                        grid%structured_grid%dy(neighbor_ghosted_id)* &
-                        grid%structured_grid%dz(neighbor_ghosted_id)
-          else
-            sum = sum + &
-                  material_auxvars(neighbor_ghosted_id)%permeability(perm_xx_index)* &
-                  grid%structured_grid%dy(neighbor_ghosted_id)* &
-                  grid%structured_grid%dz(neighbor_ghosted_id)
-          endif
+          sum = sum + &
+                material_auxvars(neighbor_ghosted_id)%permeability(perm_xx_index)* &
+                grid%structured_grid%dy(neighbor_ghosted_id)* &
+                grid%structured_grid%dz(neighbor_ghosted_id)
         enddo
         ! y-direction
         do while (icount < x_count + y_count)
           icount = icount + 1
           neighbor_ghosted_id = ghosted_neighbors(icount)                 
-          !geh: remove
-          if (.not.option%use_refactored_material_auxvars) then
-            !geh: remove
-            sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
-                        grid%structured_grid%dx(neighbor_ghosted_id)* &
-                        grid%structured_grid%dz(neighbor_ghosted_id)
-          else
-            sum = sum + &
-                  material_auxvars(neighbor_ghosted_id)%permeability(perm_xx_index)* &
-                  grid%structured_grid%dx(neighbor_ghosted_id)* &
-                  grid%structured_grid%dz(neighbor_ghosted_id)
-          endif   
+          sum = sum + &
+                material_auxvars(neighbor_ghosted_id)%permeability(perm_xx_index)* &
+                grid%structured_grid%dx(neighbor_ghosted_id)* &
+                grid%structured_grid%dz(neighbor_ghosted_id)
         enddo
         ! z-direction
         do while (icount < x_count + y_count + z_count)
           icount = icount + 1
           neighbor_ghosted_id = ghosted_neighbors(icount)                 
-          !geh: remove
-          if (.not.option%use_refactored_material_auxvars) then
-            !geh: remove
-            sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
-                        grid%structured_grid%dx(neighbor_ghosted_id)* &
-                        grid%structured_grid%dy(neighbor_ghosted_id)
-          else
-            sum = sum + &
-                  material_auxvars(neighbor_ghosted_id)%permeability(perm_xx_index)* &
-                  grid%structured_grid%dx(neighbor_ghosted_id)* &
-                  grid%structured_grid%dy(neighbor_ghosted_id)
-          endif   
+          sum = sum + &
+                material_auxvars(neighbor_ghosted_id)%permeability(perm_xx_index)* &
+                grid%structured_grid%dx(neighbor_ghosted_id)* &
+                grid%structured_grid%dy(neighbor_ghosted_id)
         enddo
         vec_ptr(local_id) = vec_ptr(local_id) + sum
       enddo
@@ -2154,12 +2109,6 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
   enddo
   call VecRestoreArrayF90(field%work,vec_ptr,ierr)
 
-  !geh: remove
-  if (.not.option%use_refactored_material_auxvars) then
-    call VecRestoreArrayF90(field%perm_xx_loc,perm_loc_ptr, ierr)
-    call VecRestoreArrayF90(field%volume,vol_ptr, ierr)
-  endif
-   
 end subroutine PatchScaleSourceSink
 
 ! ************************************************************************** !
@@ -3584,102 +3533,39 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
           enddo        
       end select
     case(POROSITY)
-      if (.not.option%use_refactored_material_auxvars) then
-        !geh: remove    
-        call VecGetArrayF90(field%porosity_loc,vec_ptr2,ierr)
-        do local_id=1,grid%nlmax
-          vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
-        enddo
-        call VecRestoreArrayF90(field%porosity_loc,vec_ptr2,ierr)
-      else
-        do local_id=1,grid%nlmax
-          vec_ptr(local_id) = material_auxvars(grid%nL2G(local_id))%porosity
-        enddo
-      endif
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = material_auxvars(grid%nL2G(local_id))%porosity
+      enddo
     case(PERMEABILITY,PERMEABILITY_X)
-      if (.not.option%use_refactored_material_auxvars) then
-        !geh: remove    
-        call VecGetArrayF90(field%perm_xx_loc,vec_ptr2,ierr)
-        do local_id=1,grid%nlmax
-          vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
-        enddo
-        call VecRestoreArrayF90(field%perm_xx_loc,vec_ptr2,ierr)
-      else
-        do local_id=1,grid%nlmax
-          vec_ptr(local_id) = &
-            material_auxvars(grid%nL2G(local_id))%permeability(perm_xx_index)
-        enddo
-      endif
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = &
+          material_auxvars(grid%nL2G(local_id))%permeability(perm_xx_index)
+      enddo
     case(PERMEABILITY_Y)
-      if (.not.option%use_refactored_material_auxvars) then
-        !geh: remove    
-        call VecGetArrayF90(field%perm_yy_loc,vec_ptr2,ierr)
-        do local_id=1,grid%nlmax
-          vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
-        enddo
-        call VecRestoreArrayF90(field%perm_yy_loc,vec_ptr2,ierr)
-      else
-        do local_id=1,grid%nlmax
-          vec_ptr(local_id) = &
-            material_auxvars(grid%nL2G(local_id))%permeability(perm_yy_index)
-        enddo
-      endif
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = &
+          material_auxvars(grid%nL2G(local_id))%permeability(perm_yy_index)
+      enddo
     case(PERMEABILITY_Z)
-      if (.not.option%use_refactored_material_auxvars) then
-        !geh: remove    
-        call VecGetArrayF90(field%perm_zz_loc,vec_ptr2,ierr)
-        do local_id=1,grid%nlmax
-          vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
-        enddo
-        call VecRestoreArrayF90(field%perm_zz_loc,vec_ptr2,ierr)
-      else
-        do local_id=1,grid%nlmax
-          vec_ptr(local_id) = &
-            material_auxvars(grid%nL2G(local_id))%permeability(perm_zz_index)
-        enddo
-      endif
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = &
+          material_auxvars(grid%nL2G(local_id))%permeability(perm_zz_index)
+      enddo
     case(PERMEABILITY_XY)
-      if (.not.option%use_refactored_material_auxvars) then
-        !geh: remove    
-        call VecGetArrayF90(field%perm_xy_loc,vec_ptr2,ierr)
-        do local_id=1,grid%nlmax
-          vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
-        enddo
-        call VecRestoreArrayF90(field%perm_xy_loc,vec_ptr2,ierr)
-      else
-        do local_id=1,grid%nlmax
-          vec_ptr(local_id) = &
-            material_auxvars(grid%nL2G(local_id))%permeability(perm_xy_index)
-        enddo
-      endif
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = &
+          material_auxvars(grid%nL2G(local_id))%permeability(perm_xy_index)
+      enddo
     case(PERMEABILITY_XZ)
-      if (.not.option%use_refactored_material_auxvars) then
-        !geh: remove    
-        call VecGetArrayF90(field%perm_xz_loc,vec_ptr2,ierr)
-        do local_id=1,grid%nlmax
-          vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
-        enddo
-        call VecRestoreArrayF90(field%perm_xz_loc,vec_ptr2,ierr)
-      else
-        do local_id=1,grid%nlmax
-          vec_ptr(local_id) = &
-            material_auxvars(grid%nL2G(local_id))%permeability(perm_xz_index)
-        enddo
-      endif    
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = &
+          material_auxvars(grid%nL2G(local_id))%permeability(perm_xz_index)
+      enddo
     case(PERMEABILITY_YZ)
-      if (.not.option%use_refactored_material_auxvars) then
-        !geh: remove  
-        call VecGetArrayF90(field%perm_yz_loc,vec_ptr2,ierr)
-        do local_id=1,grid%nlmax
-          vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
-        enddo
-        call VecRestoreArrayF90(field%perm_yz_loc,vec_ptr2,ierr)
-      else
-        do local_id=1,grid%nlmax
-          vec_ptr(local_id) = &
-            material_auxvars(grid%nL2G(local_id))%permeability(perm_yz_index)
-        enddo      
-      endif
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = &
+          material_auxvars(grid%nL2G(local_id))%permeability(perm_yz_index)
+      enddo      
     case(PHASE)
       call VecGetArrayF90(field%iphas_loc,vec_ptr2,ierr)
       do local_id=1,grid%nlmax
@@ -3695,33 +3581,15 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
         vec_ptr(local_id) = option%myrank
       enddo
     case(VOLUME)
-      if (.not.option%use_refactored_material_auxvars) then
-        !geh: remove        
-        call VecGetArrayF90(field%volume,vec_ptr2,ierr)
-        do local_id=1,grid%nlmax
-          vec_ptr(local_id) = vec_ptr2(local_id)
-        enddo
-        call VecRestoreArrayF90(field%volume,vec_ptr2,ierr)
-      else
-        do local_id=1,grid%nlmax
-          vec_ptr(local_id) = &
-            material_auxvars(grid%nL2G(local_id))%volume
-        enddo      
-      endif
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = &
+          material_auxvars(grid%nL2G(local_id))%volume
+      enddo      
     case(TORTUOSITY)
-      if (.not.option%use_refactored_material_auxvars) then
-        !geh: remove        
-        call VecGetArrayF90(field%tortuosity_loc,vec_ptr2,ierr)
-        do local_id=1,grid%nlmax
-          vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
-        enddo
-        call VecRestoreArrayF90(field%tortuosity_loc,vec_ptr2,ierr)
-      else
-        do local_id=1,grid%nlmax
-          vec_ptr(local_id) = &
-            material_auxvars(grid%nL2G(local_id))%tortuosity
-        enddo      
-      endif
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = &
+          material_auxvars(grid%nL2G(local_id))%tortuosity
+      enddo      
     case default
       write(option%io_buffer, &
             '(''IVAR ('',i3,'') not found in PatchGetVariable'')') ivar
@@ -4325,41 +4193,13 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           endif
       end select
     case(POROSITY)
-      if (.not.option%use_refactored_material_auxvars) then
-        !geh: remove    
-        call VecGetArrayF90(field%porosity_loc,vec_ptr2,ierr)
-        value = vec_ptr2(ghosted_id)
-        call VecRestoreArrayF90(field%porosity_loc,vec_ptr2,ierr)
-      else
-        value = material_auxvars(ghosted_id)%porosity
-      endif
+      value = material_auxvars(ghosted_id)%porosity
     case(PERMEABILITY,PERMEABILITY_X)
-      if (.not.option%use_refactored_material_auxvars) then
-        !geh: remove    
-        call VecGetArrayF90(field%perm_xx_loc,vec_ptr2,ierr)
-        value = vec_ptr2(ghosted_id)
-        call VecRestoreArrayF90(field%perm_xx_loc,vec_ptr2,ierr)
-      else
-        value = material_auxvars(ghosted_id)%permeability(perm_xx_index)
-      endif
+      value = material_auxvars(ghosted_id)%permeability(perm_xx_index)
     case(PERMEABILITY_Y)
-      if (.not.option%use_refactored_material_auxvars) then
-        !geh: remove    
-        call VecGetArrayF90(field%perm_yy_loc,vec_ptr2,ierr)
-        value = vec_ptr2(ghosted_id)
-        call VecRestoreArrayF90(field%perm_yy_loc,vec_ptr2,ierr)
-      else
-        value = material_auxvars(ghosted_id)%permeability(perm_yy_index)
-      endif
+      value = material_auxvars(ghosted_id)%permeability(perm_yy_index)
     case(PERMEABILITY_Z)
-      if (.not.option%use_refactored_material_auxvars) then
-        !geh: remove    
-        call VecGetArrayF90(field%perm_zz_loc,vec_ptr2,ierr)
-        value = vec_ptr2(ghosted_id)
-        call VecRestoreArrayF90(field%perm_zz_loc,vec_ptr2,ierr)
-      else
-        value = material_auxvars(ghosted_id)%permeability(perm_zz_index)
-      endif
+      value = material_auxvars(ghosted_id)%permeability(perm_zz_index)
     case(PHASE)
       call VecGetArrayF90(field%iphas_loc,vec_ptr2,ierr)
       value = vec_ptr2(ghosted_id)
@@ -4379,24 +4219,9 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
       value = patch%aux%SC_RT%sec_transport_vars(local_id)% &
               sec_rt_auxvar(isubvar)%mnrl_volfrac(isubvar1)
     case(TORTUOSITY)
-      if (.not.option%use_refactored_material_auxvars) then
-            !geh: remove
-        call VecGetArrayF90(field%tortuosity_loc,vec_ptr2,ierr)
-        value = vec_ptr2(ghosted_id)
-        call VecRestoreArrayF90(field%tortuosity_loc,vec_ptr2,ierr)
-      else
-        value = material_auxvars(ghosted_id)%tortuosity
-      endif
+      value = material_auxvars(ghosted_id)%tortuosity
     case(VOLUME)
-      if (.not.option%use_refactored_material_auxvars) then
-            !geh: remove
-        call VecGetArrayF90(field%volume,vec_ptr2,ierr)
-        local_id = grid%nG2L(ghosted_id)
-        value = vec_ptr2(local_id)
-        call VecRestoreArrayF90(field%volume,vec_ptr2,ierr)
-      else
-        value = material_auxvars(ghosted_id)%volume
-      endif
+      value = material_auxvars(ghosted_id)%volume
      case default
       write(option%io_buffer, &
             '(''IVAR ('',i3,'') not found in PatchGetVariableValueAtCell'')') &
@@ -5133,29 +4958,14 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
           call printErrMsg(option,'Setting of immobile colloid concentration at grid cell not supported.')
       end select
     case(POROSITY)
-      if (.not.option%use_refactored_material_auxvars) then
-        !geh: remove      
-        if (vec_format == GLOBAL) then
-          call VecGetArrayF90(field%porosity_loc,vec_ptr2,ierr)
-          do local_id=1,grid%nlmax
-            vec_ptr2(grid%nL2G(local_id)) = vec_ptr(local_id)
-          enddo
-          call VecRestoreArrayF90(field%porosity_loc,vec_ptr2,ierr)
-        else if (vec_format == LOCAL) then
-          call VecGetArrayF90(field%porosity_loc,vec_ptr2,ierr)
-          vec_ptr2(1:grid%ngmax) = vec_ptr(1:grid%ngmax)
-          call VecRestoreArrayF90(field%porosity_loc,vec_ptr2,ierr)
-        endif
-      else
-        if (vec_format == GLOBAL) then
-          do local_id=1,grid%nlmax
-            material_auxvars(grid%nL2G(local_id))%porosity = vec_ptr(local_id)
-          enddo
-        else if (vec_format == LOCAL) then
-          do ghosted_id=1,grid%ngmax
-            material_auxvars(ghosted_id)%porosity = vec_ptr(ghosted_id)
-          enddo
-        endif
+      if (vec_format == GLOBAL) then
+        do local_id=1,grid%nlmax
+          material_auxvars(grid%nL2G(local_id))%porosity = vec_ptr(local_id)
+        enddo
+      else if (vec_format == LOCAL) then
+        do ghosted_id=1,grid%ngmax
+          material_auxvars(ghosted_id)%porosity = vec_ptr(ghosted_id)
+        enddo
       endif
     case(PERMEABILITY,PERMEABILITY_X,PERMEABILITY_Y,PERMEABILITY_Z)
       option%io_buffer = 'Setting of permeability in "PatchSetVariable"' // &
@@ -5265,7 +5075,6 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
   PetscInt :: ghosted_id_up, ghosted_id_dn
   PetscInt :: iphase
 
-  PetscReal, pointer :: porosity_loc_p(:)
   PetscReal :: dt_cfl_1
   PetscErrorCode :: ierr
 
@@ -5273,11 +5082,6 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
   global_auxvars => patch%aux%Global%auxvars
   material_auxvars => patch%aux%Material%auxvars
   grid => patch%grid
-
-  !geh: remove
-  if (.not.option%use_refactored_material_auxvars) then
-  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  endif
 
   max_dt_cfl_1 = 1.d20
   
@@ -5297,8 +5101,6 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
       distance = cur_connection_set%dist(0,iconn)
       fraction_upwind = cur_connection_set%dist(-1,iconn)
       do iphase = 1, option%nphase
-        if (option%iflowmode == RICHARDS_MODE .or. &
-            option%iflowmode == G_MODE) then
         por_sat_min = min(material_auxvars(ghosted_id_up)%porosity* &
                           global_auxvars(ghosted_id_up)%sat(iphase), &
                           material_auxvars(ghosted_id_dn)%porosity* &
@@ -5309,16 +5111,6 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
                       (1.d0-fraction_upwind)* &
                       material_auxvars(ghosted_id_dn)%porosity* &
                       global_auxvars(ghosted_id_dn)%sat(iphase))
-        else
-        por_sat_min = min(porosity_loc_p(ghosted_id_up)* &
-                          global_auxvars(ghosted_id_up)%sat(iphase), &
-                          porosity_loc_p(ghosted_id_dn)* &
-                          global_auxvars(ghosted_id_dn)%sat(iphase))
-        por_sat_ave = (fraction_upwind*porosity_loc_p(ghosted_id_up)* &
-                       global_auxvars(ghosted_id_up)%sat(iphase) + &
-                      (1.d0-fraction_upwind)*porosity_loc_p(ghosted_id_dn)* &
-                      global_auxvars(ghosted_id_dn)%sat(iphase))
-        endif
         v_darcy = patch%internal_velocities(iphase,sum_connection)
         v_pore_max = v_darcy / por_sat_min
         v_pore_ave = v_darcy / por_sat_ave
@@ -5346,14 +5138,8 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
       !geh: since on boundary, dist must be scaled by 2.d0
       distance = 2.d0*cur_connection_set%dist(0,iconn)
       do iphase = 1, option%nphase
-        if (option%iflowmode == RICHARDS_MODE .or. &
-            option%iflowmode == G_MODE) then
         por_sat_ave = material_auxvars(ghosted_id_dn)%porosity* &
                       global_auxvars(ghosted_id_dn)%sat(iphase)
-        else
-        por_sat_ave = porosity_loc_p(ghosted_id_dn)* &
-                      global_auxvars(ghosted_id_dn)%sat(iphase)
-        endif
         v_darcy = patch%boundary_velocities(iphase,sum_connection)
         v_pore_ave = v_darcy / por_sat_ave
         dt_cfl_1 = distance / dabs(v_pore_ave)
@@ -5362,11 +5148,6 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
     enddo
     boundary_condition => boundary_condition%next
   enddo
-
-  !geh: remove
-  if (.not.option%use_refactored_material_auxvars) then
-  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  endif
 
 end subroutine PatchCalculateCFL1Timestep
 

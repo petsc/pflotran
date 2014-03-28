@@ -296,7 +296,6 @@ subroutine SurfaceJumpStart(simulation)
 
   ! pushed in Init()
   call PetscLogStagePop(ierr)
-  option%init_stage = PETSC_FALSE
 
   ! popped in TimestepperFinalizeRun()
   call PetscLogStagePush(logging%stage(TS_STAGE),ierr)

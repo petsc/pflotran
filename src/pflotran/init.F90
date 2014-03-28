@@ -217,7 +217,6 @@ subroutine Init(simulation)
     option%nphase = 1
     option%liquid_phase = 1
     option%use_isothermal = PETSC_TRUE  ! assume default isothermal when only transport
-    option%use_refactored_material_auxvars = PETSC_TRUE
     call TimestepperDestroy(simulation%flow_stepper)
     nullify(flow_stepper)
   endif
@@ -2744,7 +2743,6 @@ subroutine setFlowMode(option)
       option%nflowdof = 2
       option%nflowspec = 1
       option%use_isothermal = PETSC_FALSE
-      option%use_refactored_material_auxvars = PETSC_TRUE
     case('MIS','MISCIBLE')
       option%iflowmode = MIS_MODE
       option%nphase = 1
@@ -2752,6 +2750,8 @@ subroutine setFlowMode(option)
       option%gas_phase = 2      
       option%nflowdof = 2
       option%nflowspec = 2
+      option%io_buffer = 'Material Auxvars must be refactored for MISCIBLE.'
+      call printErrMsg(option)
     case('RICHARDS')
       option%iflowmode = RICHARDS_MODE
       option%nphase = 1
@@ -2759,7 +2759,6 @@ subroutine setFlowMode(option)
       option%nflowdof = 1
       option%nflowspec = 1
       option%use_isothermal = PETSC_TRUE
-      option%use_refactored_material_auxvars = PETSC_TRUE
     case('MPH','MPHASE')
       option%iflowmode = MPH_MODE
       option%nphase = 2
@@ -2786,6 +2785,8 @@ subroutine setFlowMode(option)
       option%nflowdof = 3
       option%nflowspec = 2
       option%itable = 2
+      option%io_buffer = 'Material Auxvars must be refactored for IMMIS.'
+      call printErrMsg(option)
     case('GENERAL')
       option%iflowmode = G_MODE
       option%nphase = 2
@@ -2804,7 +2805,6 @@ subroutine setFlowMode(option)
       option%nflowdof = 3
       option%nflowspec = 2
       option%use_isothermal = PETSC_FALSE
-      option%use_refactored_material_auxvars = PETSC_TRUE
     case default
       option%io_buffer = 'Mode: '//trim(option%flowmode)//' not recognized.'
       call printErrMsg(option)
@@ -2984,12 +2984,7 @@ subroutine assignMaterialPropToRegions(realization)
     call VecGetArrayF90(field%porosity0,por0_p,ierr)
     call VecGetArrayF90(field%tortuosity0,tor0_p,ierr)
         
-    !geh: remove
-    if (option%use_refactored_material_auxvars) then
-      material_auxvars => cur_patch%aux%Material%auxvars
-    else
-      nullify(material_auxvars)
-    endif
+    material_auxvars => cur_patch%aux%Material%auxvars
 
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
@@ -3123,25 +3118,6 @@ subroutine assignMaterialPropToRegions(realization)
       call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
                                    PERMEABILITY_YZ,0)
     endif
-    !geh: remove
-    if (.not.option%use_refactored_material_auxvars) then
-      call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
-                                       field%perm_xx_loc,ONEDOF)  
-      call DiscretizationGlobalToLocal(discretization,field%perm0_yy, &
-                                       field%perm_yy_loc,ONEDOF)  
-      call DiscretizationGlobalToLocal(discretization,field%perm0_zz, &
-                                       field%perm_zz_loc,ONEDOF)   
-    
-      if (option%mimetic) then
-        call DiscretizationGlobalToLocal(discretization,field%perm0_xz, &
-                                         field%perm_xz_loc,ONEDOF)  
-        call DiscretizationGlobalToLocal(discretization,field%perm0_xy, &
-                                         field%perm_xy_loc,ONEDOF)  
-        call DiscretizationGlobalToLocal(discretization,field%perm0_yz, &
-                                         field%perm_yz_loc,ONEDOF)   
-      endif
-    endif
-     
     call DiscretizationLocalToLocal(discretization,field%icap_loc, &
                                     field%icap_loc,ONEDOF)   
     call DiscretizationLocalToLocal(discretization,field%ithrm_loc, &
@@ -3177,14 +3153,6 @@ subroutine assignMaterialPropToRegions(realization)
     call VecRestoreArrayF90(field%work_loc,vec_p,ierr)
   enddo
   
-  !geh: remove
-  if (.not.option%use_refactored_material_auxvars) then
-    call DiscretizationGlobalToLocal(discretization,field%porosity0, &
-                                     field%porosity_loc,ONEDOF)
-    call DiscretizationGlobalToLocal(discretization,field%tortuosity0, &
-                                     field%tortuosity_loc,ONEDOF)
-  endif    
-
 end subroutine assignMaterialPropToRegions
 
 ! ************************************************************************** !

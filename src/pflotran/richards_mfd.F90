@@ -57,9 +57,7 @@ subroutine RichardsCheckMassBalancePatch(realization)
 
   PetscInt :: local_id, ghosted_cell_id
 
-  PetscReal, pointer :: porosity_loc_p(:), &
-                        volume_p(:), &
-                        accum_p(:), xx_faces_loc_p(:)
+  PetscReal, pointer :: accum_p(:), xx_faces_loc_p(:)
 
   type(realization_type) :: realization
 
@@ -338,7 +336,7 @@ subroutine RichardsUpdateCellPressurePatch(realization)
   PetscInt :: iphasebc, iphase
   PetscInt :: ghost_face_id, iface, jface, numfaces
   PetscReal, pointer :: xx_p(:), xx_loc_faces_p(:), work_loc_faces_p(:)
-  PetscReal, pointer ::  volume_p(:), porosity_p(:), accum_p(:)
+  PetscReal, pointer ::  accum_p(:)
   PetscReal, pointer :: sq_faces(:), faces_DELTA_pr(:), faces_pr(:) 
   PetscReal :: Res(realization%option%nflowdof), source_f(realization%option%nflowdof)
   PetscErrorCode :: ierr
@@ -434,6 +432,7 @@ subroutine RichardsUpdateAuxVarsPatchMFDLP(realization)
   use Logging_module
   use MFD_module
   use MFD_Aux_module
+  use Material_Aux_class
   
   implicit none
 
@@ -450,12 +449,11 @@ subroutine RichardsUpdateAuxVarsPatchMFDLP(realization)
   type(richards_auxvar_type), pointer :: rich_auxvars(:)
   type(global_auxvar_type), pointer :: global_auxvars(:)
   type(mfd_auxvar_type), pointer :: mfd_auxvar
-
+  class(material_auxvar_type), pointer :: material_auxvars(:)
   PetscInt :: ghosted_id, local_id, sum_connection, idof, iconn, i,j
   PetscInt :: iphasebc, iphase, LP_cell_id, LP_face_id
   PetscInt :: ghost_face_id, iface, jface, numfaces
   PetscReal, pointer :: xx_p(:), xx_LP_loc_p(:), bc_loc_p(:)
-  PetscReal, pointer :: perm_xx_loc_p(:), porosity_loc_p(:)  
   PetscReal, pointer :: sq_faces(:), darcy_v(:), faces_pr(:)
   PetscReal :: Res(realization%option%nflowdof), source_f(realization%option%nflowdof)
   PetscErrorCode :: ierr
@@ -476,12 +474,10 @@ subroutine RichardsUpdateAuxVarsPatchMFDLP(realization)
   rich_auxvars_bc => patch%aux%Richards%auxvars_bc
   global_auxvars => patch%aux%Global%auxvars
   global_auxvars_bc => patch%aux%Global%auxvars_bc
-
+  material_auxvars => patch%aux%Material%auxvars
+  
   call VecGetArrayF90(field%flow_xx, xx_p, ierr)
   call VecGetArrayF90(field%flow_xx_loc_faces, xx_LP_loc_p, ierr)
-  call VecGetArrayF90(field%perm_xx_loc,perm_xx_loc_p,ierr)
-  call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)  
-
 
   do ghosted_id = 1, grid%ngmax
     if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
@@ -497,7 +493,8 @@ subroutine RichardsUpdateAuxVarsPatchMFDLP(realization)
     call RichardsAuxVarCompute(xx_LP_loc_p(LP_cell_id:LP_cell_id),rich_auxvars(ghosted_id), &
                        global_auxvars(ghosted_id), &
                        patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
-                       porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                       
+                       material_auxvars(ghosted_id)%porosity, &
+                       material_auxvars(ghosted_id)%permeability(perm_xx_index), &                       
                        option)
 
     local_id = grid%nG2L(ghosted_id)
@@ -528,7 +525,8 @@ subroutine RichardsUpdateAuxVarsPatchMFDLP(realization)
       call RichardsAuxVarCompute(xxbc(1),rich_auxvars_bc(sum_connection), &
                          global_auxvars_bc(sum_connection), &
                          patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
-                         porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                         
+                         material_auxvars(ghosted_id)%porosity, &
+                         material_auxvars(ghosted_id)%permeability(perm_xx_index), &                       
                          option)
     enddo
     boundary_condition => boundary_condition%next
@@ -538,8 +536,6 @@ subroutine RichardsUpdateAuxVarsPatchMFDLP(realization)
 
   call VecRestoreArrayF90(field%flow_xx, xx_p, ierr)
   call VecRestoreArrayF90(field%flow_xx_loc_faces, xx_LP_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p,ierr)
-  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p,ierr)  
 
 #endif
 
@@ -563,6 +559,8 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
   use Option_module
   use Grid_module
   use Connection_module
+  use Variables_module, only : PERMEABILITY_X, PERMEABILITY_Y, PERMEABILITY_Z, &
+                               PERMEABILITY_XY, PERMEABILITY_XZ, PERMEABILITY_YZ
 
   implicit none
 
@@ -611,12 +609,42 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
 
   call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)
 
-  call DiscretizationLocalToLocal(discretization,field%perm_xx_loc,field%perm_xx_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%perm_yy_loc,field%perm_yy_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%perm_xz_loc,field%perm_xz_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%perm_xy_loc,field%perm_xy_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%perm_yz_loc,field%perm_yz_loc,ONEDOF)
+    call MaterialGetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                 PERMEABILITY_X,ZERO_INTEGER)
+    call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                    field%work_loc,ONEDOF)
+    call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                 PERMEABILITY_X,ZERO_INTEGER)
+    call MaterialGetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                 PERMEABILITY_Y,ZERO_INTEGER)
+    call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                    field%work_loc,ONEDOF)
+    call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                 PERMEABILITY_Y,ZERO_INTEGER)
+    call MaterialGetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                 PERMEABILITY_Z,ZERO_INTEGER)
+    call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                    field%work_loc,ONEDOF)
+    call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                 PERMEABILITY_Z,ZERO_INTEGER)
+    call MaterialGetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                 PERMEABILITY_XZ,ZERO_INTEGER)
+    call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                    field%work_loc,ONEDOF)
+    call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                 PERMEABILITY_XZ,ZERO_INTEGER)
+    call MaterialGetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                 PERMEABILITY_XY,ZERO_INTEGER)
+    call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                    field%work_loc,ONEDOF)
+    call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                 PERMEABILITY_XY,ZERO_INTEGER)
+    call MaterialGetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                 PERMEABILITY_YZ,ZERO_INTEGER)
+    call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                    field%work_loc,ONEDOF)
+    call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                 PERMEABILITY_YZ,ZERO_INTEGER)
 
   if (realization%discretization%itype == STRUCTURED_GRID_MIMETIC) then
          call RichardsUpdateCellPressure(realization)
@@ -798,7 +826,7 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
   use Debug_module
   use MFD_Aux_module
   use MFD_module
-
+  use Material_Aux_class
   
   implicit none
 
@@ -817,10 +845,8 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
   PetscInt :: local_id, ghosted_id
   PetscInt :: local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
 
-  PetscReal, pointer :: r_p(:), porosity_loc_p(:), &
-                        perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:),&
-                        volume_p(:), xx_loc_faces_p(:), xx_p(:), work_loc_faces_p(:), &
-                        perm_xz_loc_p(:), perm_xy_loc_p(:), perm_yz_loc_p(:)
+  PetscReal, pointer :: r_p(:), xx_loc_faces_p(:), xx_p(:), &
+                        work_loc_faces_p(:)
 
   PetscReal, pointer :: face_fluxes_p(:), bc_faces_p(:)
 
@@ -833,6 +859,7 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
   type(richards_parameter_type), pointer :: richards_parameter
   type(richards_auxvar_type), pointer :: rich_auxvars(:)
   type(global_auxvar_type), pointer :: global_auxvars(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: iconn
@@ -861,7 +888,8 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
   rich_auxvars => patch%aux%Richards%auxvars
   global_auxvars => patch%aux%Global%auxvars
   discretization => realization%discretization 
-
+  material_auxvars => patch%aux%Material%auxvars
+  
   call RichardsUpdateAuxVarsPatchMFDLP(realization)
 
   patch%aux%Richards%auxvars_up_to_date = PETSC_FALSE ! override flags since they will soon be out of date
@@ -876,12 +904,6 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
   call VecGetArrayF90(field%flow_xx_loc_faces, xx_loc_faces_p, ierr)
   call VecGetArrayF90(grid%e2n, e2n_local, ierr)
   call VecGetArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr)
-  call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecGetArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecGetArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecGetArrayF90(field%perm_xz_loc, perm_xz_loc_p, ierr)
-  call VecGetArrayF90(field%perm_xy_loc, perm_xy_loc_p, ierr)
-  call VecGetArrayF90(field%perm_yz_loc, perm_yz_loc_p, ierr)
 
   numfaces = 6 ! hex only
   allocate(sq_faces(numfaces))
@@ -920,12 +942,12 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
     if (patch%imat(ghosted_id) <= 0) cycle
 
     PermTensor = 0.
-    PermTensor(1,1) = perm_xx_loc_p(ghosted_id)
-    PermTensor(2,2) = perm_yy_loc_p(ghosted_id)
-    PermTensor(3,3) = perm_zz_loc_p(ghosted_id)
-    PermTensor(1,3) = perm_xz_loc_p(ghosted_id)
-    PermTensor(1,2) = perm_xy_loc_p(ghosted_id)
-    PermTensor(2,3) = perm_yz_loc_p(ghosted_id)
+    PermTensor(1,1) = material_auxvars(ghosted_id)%permeability(perm_xx_index)
+    PermTensor(2,2) = material_auxvars(ghosted_id)%permeability(perm_yy_index)
+    PermTensor(3,3) = material_auxvars(ghosted_id)%permeability(perm_zz_index)
+    PermTensor(1,3) = material_auxvars(ghosted_id)%permeability(perm_xz_index)
+    PermTensor(1,2) = material_auxvars(ghosted_id)%permeability(perm_xy_index)
+    PermTensor(2,3) = material_auxvars(ghosted_id)%permeability(perm_yz_index)
     PermTensor(2,1) = PermTensor(1,2)
     PermTensor(3,1) = PermTensor(1,3)
     PermTensor(3,2) = PermTensor(2,3)
@@ -943,12 +965,6 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
   call VecRestoreArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr)
   call VecRestoreArrayF90(field%flow_xx_loc_faces, xx_loc_faces_p, ierr)
   call VecRestoreArrayF90(grid%e2n, e2n_local, ierr)
-  call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_xz_loc, perm_xz_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_xy_loc, perm_xy_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_yz_loc, perm_yz_loc_p, ierr)
 
   deallocate(sq_faces)
   deallocate(face_pr)
@@ -984,6 +1000,7 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
   use Debug_module
   use MFD_module
   use MFD_Aux_module
+  use Material_Aux_class
   
   implicit none
 
@@ -1001,16 +1018,10 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
   PetscInt :: i,j
   PetscInt :: local_id, ghosted_id
   
-
-
-  PetscScalar, pointer :: r_p(:), porosity_loc_p(:), volume_p(:),  accum_p(:), bc_faces_p(:)
-  PetscScalar, pointer ::  perm_xx_loc_p(:),  perm_yy_loc_p(:), perm_zz_loc_p(:), flow_xx_p(:)
-  PetscScalar, pointer ::  perm_xz_loc_p(:),  perm_xy_loc_p(:), perm_yz_loc_p(:)
-  PetscScalar, pointer :: xx_loc_faces_p(:)
-
+  PetscScalar, pointer :: r_p(:), accum_p(:), bc_faces_p(:)
+  PetscScalar, pointer :: xx_loc_faces_p(:), flow_xx_p(:)
 
   PetscScalar :: qsrc, qsrc_mol
-
 
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch
@@ -1019,6 +1030,7 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
   type(richards_parameter_type), pointer :: richards_parameter
   type(richards_auxvar_type), pointer :: rich_auxvars(:), rich_auxvars_bc(:)
   type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
   type(coupler_type), pointer :: source_sink, boundary_condition
   type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: iconn, sum_connection, bc_type, stride
@@ -1048,7 +1060,8 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
   rich_auxvars_bc => patch%aux%Richards%auxvars_bc
   global_auxvars => patch%aux%Global%auxvars
   global_auxvars_bc => patch%aux%Global%auxvars_bc
-
+  material_auxvars => patch%aux%Material%auxvars
+  
 ! now assign access pointer to local variables
   call VecGetArrayF90(field%flow_r_loc_faces, r_p, ierr)
   call VecGetArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr)
@@ -1056,15 +1069,6 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
   call VecGetArrayF90(field%flow_xx_loc_faces, xx_loc_faces_p, ierr)
   call VecGetArrayF90(field%flow_xx, flow_xx_p, ierr)
   call VecGetArrayF90(field%flow_accum, accum_p, ierr)
-  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayF90(field%volume, volume_p, ierr)
-  call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecGetArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecGetArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecGetArrayF90(field%perm_xz_loc, perm_xz_loc_p, ierr)
-  call VecGetArrayF90(field%perm_xy_loc, perm_xy_loc_p, ierr)
-  call VecGetArrayF90(field%perm_yz_loc, perm_yz_loc_p, ierr)
-
 
   numfaces = 6 ! hex only
 #if 0  
@@ -1148,20 +1152,20 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
     if (patch%imat(ghosted_id) <= 0) cycle
     call RichardsAccumulation(rich_auxvars(ghosted_id), &
                               global_auxvars(ghosted_id), &
-                              porosity_loc_p(ghosted_id), &
-                              volume_p(local_id), &
+                              material_auvars(ghosted_id)%porosity, &
+                              material_auvars(ghosted_id)%volume, &
                               option, Res)
 
     Accum(1) = Res(1) - accum_p(local_id)
  
     source_f = 0.
     PermTensor = 0.
-    PermTensor(1,1) = perm_xx_loc_p(ghosted_id)
-    PermTensor(2,2) = perm_yy_loc_p(ghosted_id)
-    PermTensor(3,3) = perm_zz_loc_p(ghosted_id)
-    PermTensor(1,3) = perm_xz_loc_p(ghosted_id)
-    PermTensor(1,2) = perm_xy_loc_p(ghosted_id)
-    PermTensor(2,3) = perm_yz_loc_p(ghosted_id)
+    PermTensor(1,1) = material_auxvars(ghosted_id)%permeability(perm_xx_index)
+    PermTensor(2,2) = material_auxvars(ghosted_id)%permeability(perm_yy_index)
+    PermTensor(3,3) = material_auxvars(ghosted_id)%permeability(perm_zz_index)
+    PermTensor(1,3) = material_auxvars(ghosted_id)%permeability(perm_xz_index)
+    PermTensor(1,2) = material_auxvars(ghosted_id)%permeability(perm_xy_index)
+    PermTensor(2,3) = material_auxvars(ghosted_id)%permeability(perm_yz_index)
     PermTensor(3,1) = PermTensor(1,3)
     PermTensor(2,1) = PermTensor(1,2)
     PermTensor(3,2) = PermTensor(2,3)
@@ -1200,15 +1204,7 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
   call VecRestoreArrayF90(grid%e2n, e2n_local, ierr)
   call VecRestoreArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr)
   call VecRestoreArrayF90(field%flow_accum, accum_p, ierr)
-  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayF90(field%volume, volume_p, ierr)
   call VecRestoreArrayF90(field%flow_xx, flow_xx_p, ierr)
-  call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_xz_loc, perm_xz_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_xy_loc, perm_xy_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_yz_loc, perm_yz_loc_p, ierr)
 
   call PetscLogEventEnd(logging%event_flow_residual_mfd2, ierr)
 
@@ -1241,7 +1237,7 @@ subroutine RichardsResidualPatchMFDLP1(snes,xx,r,realization,ierr)
   use Debug_module
   use MFD_Aux_module
   use MFD_module
-
+  use Material_Aux_class
   
   implicit none
 
@@ -1260,10 +1256,7 @@ subroutine RichardsResidualPatchMFDLP1(snes,xx,r,realization,ierr)
   PetscInt :: local_id, ghosted_id
   PetscInt :: local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
 
-  PetscReal, pointer :: r_p(:), porosity_loc_p(:), &
-                        perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:),&
-                        volume_p(:), xx_loc_faces_p(:), xx_p(:), work_loc_faces_p(:), &
-                        perm_xz_loc_p(:), perm_xy_loc_p(:), perm_yz_loc_p(:)
+  PetscReal, pointer :: r_p(:), xx_loc_faces_p(:), xx_p(:), work_loc_faces_p(:)
 
   PetscReal, pointer :: face_fluxes_p(:), bc_faces_p(:)
 
@@ -1279,6 +1272,7 @@ subroutine RichardsResidualPatchMFDLP1(snes,xx,r,realization,ierr)
   type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)
   type(richards_auxvar_type) :: test_rich_auxvars
   type(global_auxvar_type) :: test_global_auxvars
+  class(material_auxvars_type), pointer :: material_auxvars(:)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: iconn
@@ -1309,7 +1303,8 @@ subroutine RichardsResidualPatchMFDLP1(snes,xx,r,realization,ierr)
   global_auxvars => patch%aux%Global%auxvars
   global_auxvars_bc => patch%aux%Global%auxvars_bc
   discretization => realization%discretization 
-
+  material_auxvars => patch%aux%Material%auxvars
+  
   call RichardsUpdateAuxVarsPatchMFDLP(realization)
 
   patch%aux%Richards%auxvars_up_to_date = PETSC_FALSE ! override flags since they will soon be out of date
@@ -1322,14 +1317,6 @@ subroutine RichardsResidualPatchMFDLP1(snes,xx,r,realization,ierr)
   call VecGetArrayF90(field%flow_xx_loc_faces, xx_loc_faces_p, ierr)
   call VecGetArrayF90(grid%e2n, e2n_local, ierr)
   call VecGetArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr)
-  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecGetArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecGetArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecGetArrayF90(field%perm_xz_loc, perm_xz_loc_p, ierr)
-  call VecGetArrayF90(field%perm_xy_loc, perm_xy_loc_p, ierr)
-  call VecGetArrayF90(field%perm_yz_loc, perm_yz_loc_p, ierr)
-
 
   numfaces = 6 ! hex only
   allocate(sq_faces(numfaces))
@@ -1373,7 +1360,8 @@ subroutine RichardsResidualPatchMFDLP1(snes,xx,r,realization,ierr)
           call RichardsAuxVarCompute(neig_pres(j:j), test_rich_auxvars, &
                        test_global_auxvars, &
                        patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
-                       porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &
+                       material_auxvars(ghosted_id)%porosity, &
+                       material_auxvars(ghosted_id)%permeability(perm_xx_index), &
                        option)
         endif
 
@@ -1409,12 +1397,12 @@ subroutine RichardsResidualPatchMFDLP1(snes,xx,r,realization,ierr)
     if (patch%imat(ghosted_id) <= 0) cycle
 
     PermTensor = 0.
-    PermTensor(1,1) = perm_xx_loc_p(ghosted_id)
-    PermTensor(2,2) = perm_yy_loc_p(ghosted_id)
-    PermTensor(3,3) = perm_zz_loc_p(ghosted_id)
-    PermTensor(1,3) = perm_xz_loc_p(ghosted_id)
-    PermTensor(1,2) = perm_xy_loc_p(ghosted_id)
-    PermTensor(2,3) = perm_yz_loc_p(ghosted_id)
+    PermTensor(1,1) = material_auxvars(ghosted_id)%permeability(perm_xx_index)
+    PermTensor(2,2) = material_auxvars(ghosted_id)%permeability(perm_yy_index)
+    PermTensor(3,3) = material_auxvars(ghosted_id)%permeability(perm_zz_index)
+    PermTensor(1,3) = material_auxvars(ghosted_id)%permeability(perm_xz_index)
+    PermTensor(1,2) = material_auxvars(ghosted_id)%permeability(perm_xy_index)
+    PermTensor(2,3) = material_auxvars(ghosted_id)%permeability(perm_yz_index)
     PermTensor(2,1) = PermTensor(1,2)
     PermTensor(3,1) = PermTensor(1,3)
     PermTensor(3,2) = PermTensor(2,3)
@@ -1435,13 +1423,6 @@ subroutine RichardsResidualPatchMFDLP1(snes,xx,r,realization,ierr)
   call VecRestoreArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr)
   call VecRestoreArrayF90(field%flow_xx_loc_faces, xx_loc_faces_p, ierr)
   call VecRestoreArrayF90(grid%e2n, e2n_local, ierr)
-  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_xz_loc, perm_xz_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_xy_loc, perm_xy_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_yz_loc, perm_yz_loc_p, ierr)
 
   deallocate(sq_faces)
   deallocate(face_pr)
@@ -1479,6 +1460,7 @@ subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
   use Debug_module
   use MFD_module
   use MFD_Aux_module
+  use Material_Aux_class
   
   implicit none
 
@@ -1496,10 +1478,8 @@ subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
   PetscInt :: i,j
   PetscInt :: local_id, ghosted_id
 
-  PetscScalar, pointer :: r_p(:), porosity_loc_p(:), volume_p(:),  accum_p(:), bc_faces_p(:)
-  PetscScalar, pointer ::  perm_xx_loc_p(:),  perm_yy_loc_p(:), perm_zz_loc_p(:), flow_xx_p(:)
-  PetscScalar, pointer ::  perm_xz_loc_p(:),  perm_xy_loc_p(:), perm_yz_loc_p(:)
-  PetscScalar, pointer :: xx_loc_faces_p(:)
+  PetscScalar, pointer :: r_p(:),  accum_p(:), bc_faces_p(:)
+  PetscScalar, pointer :: xx_loc_faces_p(:), flow_xx_p(:)
 
   PetscScalar :: qsrc, qsrc_mol, tempreal
 
@@ -1512,6 +1492,7 @@ subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
   type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)
   type(richards_auxvar_type) :: test_rich_auxvars
   type(global_auxvar_type) :: test_global_auxvars
+  class(material_auxvar_type), pointer :: material_auxvars(:)
   type(coupler_type), pointer :: source_sink, boundary_condition
   type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: iconn, sum_connection, bc_type, stride
@@ -1538,7 +1519,7 @@ subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
   rich_auxvars_bc => patch%aux%Richards%auxvars_bc
   global_auxvars => patch%aux%Global%auxvars
   global_auxvars_bc => patch%aux%Global%auxvars_bc
-
+  material_auxvars => patch%aux%Material%auxvars
 
   ! now assign access pointer to local variables
   call VecGetArrayF90(field%flow_r_loc_faces, r_p, ierr)
@@ -1547,14 +1528,6 @@ subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
   call VecGetArrayF90(field%flow_xx_loc_faces, xx_loc_faces_p, ierr)
   call VecGetArrayF90(field%flow_xx, flow_xx_p, ierr)
   call VecGetArrayF90(field%flow_accum, accum_p, ierr)
-  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayF90(field%volume, volume_p, ierr)
-  call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecGetArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecGetArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecGetArrayF90(field%perm_xz_loc, perm_xz_loc_p, ierr)
-  call VecGetArrayF90(field%perm_xy_loc, perm_xy_loc_p, ierr)
-  call VecGetArrayF90(field%perm_yz_loc, perm_yz_loc_p, ierr)
 
   numfaces = 6 ! hex only
   stride = 6 !hex only
@@ -1597,7 +1570,8 @@ subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
           call RichardsAuxVarCompute(neig_pres(j:j), test_rich_auxvars, &
                 test_global_auxvars, &
                 patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
-                porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &
+                material_auxvars(ghosted_id)%porosity, &
+                materail_auxvars(ghosted_id)%permeaiblity(perm_xx_index), &
                 option)
         endif
 
@@ -1632,20 +1606,20 @@ subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
     if (patch%imat(ghosted_id) <= 0) cycle
     call RichardsAccumulation(rich_auxvars(ghosted_id), &
                               global_auxvars(ghosted_id), &
-                              porosity_loc_p(ghosted_id), &
-                              volume_p(local_id), &
+                              material_auxvars(ghosted_id)%porosity, &
+                              material_auxvars(ghosted_id)%volume, &
                               option, Res)
 
     Accum(1) = Res(1) - accum_p(local_id)
  
     source_f = 0.
     PermTensor = 0.
-    PermTensor(1,1) = perm_xx_loc_p(ghosted_id)
-    PermTensor(2,2) = perm_yy_loc_p(ghosted_id)
-    PermTensor(3,3) = perm_zz_loc_p(ghosted_id)
-    PermTensor(1,3) = perm_xz_loc_p(ghosted_id)
-    PermTensor(1,2) = perm_xy_loc_p(ghosted_id)
-    PermTensor(2,3) = perm_yz_loc_p(ghosted_id)
+    PermTensor(1,1) = material_auxvars(ghosted_id)%permeability(perm_xx_index)
+    PermTensor(2,2) = material_auxvars(ghosted_id)%permeability(perm_yy_index)
+    PermTensor(3,3) = material_auxvars(ghosted_id)%permeability(perm_zz_index)
+    PermTensor(1,3) = material_auxvars(ghosted_id)%permeability(perm_xz_index)
+    PermTensor(1,2) = material_auxvars(ghosted_id)%permeability(perm_xy_index)
+    PermTensor(2,3) = material_auxvars(ghosted_id)%permeability(perm_yz_index)
     PermTensor(3,1) = PermTensor(1,3)
     PermTensor(2,1) = PermTensor(1,2)
     PermTensor(3,2) = PermTensor(2,3)
@@ -1658,7 +1632,8 @@ subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
                               rich_auxvars(ghosted_id),&
                               global_auxvars(ghosted_id),&
                               Accum, &
-                              porosity_loc_p(ghosted_id), volume_p(local_id),&
+                              material_auxvars(ghosted_id)%porosity, &
+                              material_auxvars(ghosted_id)%volume,&
                               xx_loc_faces_p(LP_cell_id:LP_cell_id), face_pres, bnd,&
                               sq_faces, neig_den, neig_kvr, neig_dkvr_dp, neig_pres, option, rhs)
 
@@ -1725,15 +1700,7 @@ subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
   call VecRestoreArrayF90(grid%e2n, e2n_local, ierr)
   call VecRestoreArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr)
   call VecRestoreArrayF90(field%flow_accum, accum_p, ierr)
-  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayF90(field%volume, volume_p, ierr)
   call VecRestoreArrayF90(field%flow_xx, flow_xx_p, ierr)
-  call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_xz_loc, perm_xz_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_xy_loc, perm_xy_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_yz_loc, perm_yz_loc_p, ierr)
 
   call PetscLogEventEnd(logging%event_flow_residual_mfd2, ierr)
 
@@ -1931,7 +1898,8 @@ subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
   use Field_module
   use Debug_module
   use MFD_module
-    
+  use Material_Aux_class
+  
   implicit none
 
   SNES, intent(in) :: snes
@@ -1945,9 +1913,6 @@ subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
 
 #ifdef DASVYAT
 
-  PetscReal, pointer :: porosity_loc_p(:), &
-                        perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:), &
-                        perm_xz_loc_p(:), perm_xy_loc_p(:), perm_yz_loc_p(:)
   PetscReal, pointer :: accum_p(:), xx_p(:)
   PetscReal :: dd_up, dd_dn
   PetscReal :: perm_up, perm_dn
@@ -1966,7 +1931,7 @@ subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
   PetscReal :: ukvr, den, dden_dp, dkr_dp, dp_dlmd, dkvr_x_dp, PermTensor(3,3) 
   PetscInt, pointer :: ghosted_face_id(:), bound_id(:)
   PetscReal, pointer :: bc_faces_p(:), e2n_local(:)
-  PetscReal, pointer :: face_pres(:), xx_faces_p(:), volume_p(:), sq_faces(:)
+  PetscReal, pointer :: face_pres(:), xx_faces_p(:), sq_faces(:)
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option 
@@ -1974,6 +1939,7 @@ subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
   type(richards_parameter_type), pointer :: richards_parameter
   type(richards_auxvar_type), pointer :: rich_auxvars(:)
   type(global_auxvar_type), pointer :: global_auxvars(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
   type(mfd_auxvar_type), pointer :: auxvar
   type(connection_set_type), pointer :: conn
 
@@ -1986,21 +1952,14 @@ subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
   richards_parameter => patch%aux%Richards%richards_parameter
   rich_auxvars => patch%aux%Richards%auxvars
   global_auxvars => patch%aux%Global%auxvars
-
+  material_auxvars => patch%aux%Material%auxvars
+  
   call VecGetArrayF90(field%flow_xx_loc_faces, xx_faces_p, ierr)
   call VecGetArrayF90(field%flow_xx_loc, xx_p, ierr)
-  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayF90(field%volume, volume_p, ierr)
   call VecGetArrayF90(field%flow_accum, accum_p, ierr)
   call VecGetArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr)
   call VecGetArrayF90(grid%e2n, e2n_local, ierr)
-  call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecGetArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecGetArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecGetArrayF90(field%perm_xz_loc, perm_xz_loc_p, ierr)
-  call VecGetArrayF90(field%perm_xy_loc, perm_xy_loc_p, ierr)
-  call VecGetArrayF90(field%perm_yz_loc, perm_yz_loc_p, ierr)
-
+  
   numfaces = 6
 
   allocate(J(numfaces*numfaces))
@@ -2039,12 +1998,12 @@ subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
     enddo
 
     PermTensor = 0.
-    PermTensor(1,1) = perm_xx_loc_p(ghosted_id)
-    PermTensor(2,2) = perm_yy_loc_p(ghosted_id)
-    PermTensor(3,3) = perm_zz_loc_p(ghosted_id)
-    PermTensor(1,3) = perm_xz_loc_p(ghosted_id)
-    PermTensor(1,2) = perm_xy_loc_p(ghosted_id)
-    PermTensor(2,3) = perm_yz_loc_p(ghosted_id)
+    PermTensor(1,1) = material_auxvars(ghosted_id)%permeability(perm_xx_index)
+    PermTensor(2,2) = material_auxvars(ghosted_id)%permeability(perm_yy_index)
+    PermTensor(3,3) = material_auxvars(ghosted_id)%permeability(perm_zz_index)
+    PermTensor(1,3) = material_auxvars(ghosted_id)%permeability(perm_xz_index)
+    PermTensor(1,2) = material_auxvars(ghosted_id)%permeability(perm_xy_index)
+    PermTensor(2,3) = material_auxvars(ghosted_id)%permeability(perm_yz_index)
     PermTensor(3,1) = PermTensor(1,3)
     PermTensor(2,1) = PermTensor(1,2)
     PermTensor(3,2) = PermTensor(2,3)
@@ -2089,17 +2048,8 @@ subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
   
   call VecRestoreArrayF90(field%flow_xx_loc, xx_p, ierr)
   call VecRestoreArrayF90(field%flow_xx_loc_faces, xx_faces_p, ierr)
-  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayF90(field%volume, volume_p, ierr)
   call VecRestoreArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr)
   call VecRestoreArrayF90(grid%e2n, e2n_local, ierr)
-  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_xz_loc, perm_xz_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_xy_loc, perm_xy_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_yz_loc, perm_yz_loc_p, ierr)
   call VecRestoreArrayF90(field%flow_accum, accum_p, ierr)
 
 #endif

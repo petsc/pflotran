@@ -56,7 +56,7 @@ subroutine RichardsAccumDerivative(rich_auxvar,global_auxvar, &
 
   type(richards_auxvar_type) :: rich_auxvar
   type(global_auxvar_type) :: global_auxvar
-  type(material_auxvar_type) :: material_auxvar
+  class(material_auxvar_type) :: material_auxvar
   type(option_type) :: option
   type(saturation_function_type) :: sat_func
   PetscReal :: J(option%nflowdof,option%nflowdof)
@@ -71,6 +71,7 @@ subroutine RichardsAccumDerivative(rich_auxvar,global_auxvar, &
   PetscInt :: iphase, ideriv
   type(richards_auxvar_type) :: rich_auxvar_pert
   type(global_auxvar_type) :: global_auxvar_pert
+  ! leave as type
   type(material_auxvar_type) :: material_auxvar_pert
   PetscReal :: x(1), x_pert(1), pert, res(1), res_pert(1), J_pert(1,1)
 
@@ -154,7 +155,7 @@ subroutine RichardsAccumulation(rich_auxvar,global_auxvar, &
 
   type(richards_auxvar_type) :: rich_auxvar
   type(global_auxvar_type) :: global_auxvar
-  type(material_auxvar_type) :: material_auxvar
+  class(material_auxvar_type) :: material_auxvar
   type(option_type) :: option
   PetscReal :: Res(1:option%nflowdof)
   
@@ -226,6 +227,7 @@ subroutine RichardsFluxDerivative(rich_auxvar_up,global_auxvar_up, &
   PetscInt :: iphase, ideriv
   type(richards_auxvar_type) :: rich_auxvar_pert_up, rich_auxvar_pert_dn
   type(global_auxvar_type) :: global_auxvar_pert_up, global_auxvar_pert_dn
+  ! leave as type
   type(material_auxvar_type) :: material_auxvar_pert_up, material_auxvar_pert_dn
   PetscReal :: x_up(1), x_dn(1), x_pert_up(1), x_pert_dn(1), pert_up, pert_dn, &
             res(1), res_pert_up(1), res_pert_dn(1), J_pert_up(1,1), J_pert_dn(1,1)

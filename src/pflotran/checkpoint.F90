@@ -172,42 +172,26 @@ subroutine CheckpointFlowProcessModel(viewer,realization)
     ! Porosity and permeability.
     ! (We only write diagonal terms of the permeability tensor for now, 
     ! since we have yet to add the full-tensor formulation.)
-    if (.not.option%use_refactored_material_auxvars) then
-      call DiscretizationLocalToGlobal(discretization,field%porosity_loc, &
-                                       global_vec,ONEDOF)
-      call VecView(global_vec,viewer,ierr)
-      call DiscretizationLocalToGlobal(discretization,field%perm_xx_loc, &
-                                       global_vec,ONEDOF)
-      call VecView(global_vec,viewer,ierr)
-      call DiscretizationLocalToGlobal(discretization,field%perm_yy_loc, &
-                                       global_vec,ONEDOF)
-      call VecView(global_vec,viewer,ierr)
-      call DiscretizationLocalToGlobal(discretization,field%perm_zz_loc, &
-                                       global_vec,ONEDOF)
-      call VecView(global_vec,viewer,ierr)
-    else
-      call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
-                                   field%work_loc,POROSITY,ZERO_INTEGER)
-      call DiscretizationLocalToGlobal(discretization,field%work_loc, &
-                                       global_vec,ONEDOF)
-      call VecView(global_vec,viewer,ierr)
-      call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
-                                   field%work_loc,PERMEABILITY_X,ZERO_INTEGER)
-      call DiscretizationLocalToGlobal(discretization,field%work_loc, &
-                                       global_vec,ONEDOF)
-      call VecView(global_vec,viewer,ierr)
-      call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
-                                   field%work_loc,PERMEABILITY_Y,ZERO_INTEGER)
-      call DiscretizationLocalToGlobal(discretization,field%work_loc, &
-                                       global_vec,ONEDOF)
-      call VecView(global_vec,viewer,ierr)
-      call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
-                                   field%work_loc,PERMEABILITY_Z,ZERO_INTEGER)
-      call DiscretizationLocalToGlobal(discretization,field%work_loc, &
-                                       global_vec,ONEDOF)
-      call VecView(global_vec,viewer,ierr)
-    endif
-
+    call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                  field%work_loc,POROSITY,ZERO_INTEGER)
+    call DiscretizationLocalToGlobal(discretization,field%work_loc, &
+                                      global_vec,ONEDOF)
+    call VecView(global_vec,viewer,ierr)
+    call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                  field%work_loc,PERMEABILITY_X,ZERO_INTEGER)
+    call DiscretizationLocalToGlobal(discretization,field%work_loc, &
+                                      global_vec,ONEDOF)
+    call VecView(global_vec,viewer,ierr)
+    call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                  field%work_loc,PERMEABILITY_Y,ZERO_INTEGER)
+    call DiscretizationLocalToGlobal(discretization,field%work_loc, &
+                                      global_vec,ONEDOF)
+    call VecView(global_vec,viewer,ierr)
+    call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                  field%work_loc,PERMEABILITY_Z,ZERO_INTEGER)
+    call DiscretizationLocalToGlobal(discretization,field%work_loc, &
+                                      global_vec,ONEDOF)
+    call VecView(global_vec,viewer,ierr)
 
     if (grid%itype == STRUCTURED_GRID_MIMETIC) then 
       if (option%iflowmode /= RICHARDS_MODE) then
@@ -318,41 +302,26 @@ subroutine RestartFlowProcessModel(viewer,realization)
       case default
     end select
     
-    if (.not.option%use_refactored_material_auxvars) then
-      call VecLoad(global_vec,viewer,ierr)
-      call DiscretizationGlobalToLocal(discretization,global_vec, &
-                                       field%porosity_loc,ONEDOF)
-      call VecLoad(global_vec,viewer,ierr)
-      call DiscretizationGlobalToLocal(discretization,global_vec, &
-                                       field%perm_xx_loc,ONEDOF)
-      call VecLoad(global_vec,viewer,ierr)
-      call DiscretizationGlobalToLocal(discretization,global_vec, &
-                                       field%perm_yy_loc,ONEDOF)
-      call VecLoad(global_vec,viewer,ierr)
-      call DiscretizationGlobalToLocal(discretization,global_vec, &
-                                       field%perm_zz_loc,ONEDOF)
-    else
-      call VecLoad(global_vec,viewer,ierr)
-      call DiscretizationGlobalToLocal(discretization,global_vec, &
-                                       field%work_loc,ONEDOF)
-      call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
-                                   field%work_loc,POROSITY,ZERO_INTEGER)
-      call VecLoad(global_vec,viewer,ierr)
-      call DiscretizationGlobalToLocal(discretization,global_vec, &
-                                       field%work_loc,ONEDOF)
-      call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
-                                   field%work_loc,PERMEABILITY_X,ZERO_INTEGER)
-      call VecLoad(global_vec,viewer,ierr)
-      call DiscretizationGlobalToLocal(discretization,global_vec, &
-                                       field%work_loc,ONEDOF)
-      call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
-                                   field%work_loc,PERMEABILITY_Y,ZERO_INTEGER)
-      call VecLoad(global_vec,viewer,ierr)
-      call DiscretizationGlobalToLocal(discretization,global_vec, &
-                                       field%work_loc,ONEDOF)
-      call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
-                                   field%work_loc,PERMEABILITY_Z,ZERO_INTEGER)
-    endif
+    call VecLoad(global_vec,viewer,ierr)
+    call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                      field%work_loc,ONEDOF)
+    call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                  field%work_loc,POROSITY,ZERO_INTEGER)
+    call VecLoad(global_vec,viewer,ierr)
+    call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                      field%work_loc,ONEDOF)
+    call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                  field%work_loc,PERMEABILITY_X,ZERO_INTEGER)
+    call VecLoad(global_vec,viewer,ierr)
+    call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                      field%work_loc,ONEDOF)
+    call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                  field%work_loc,PERMEABILITY_Y,ZERO_INTEGER)
+    call VecLoad(global_vec,viewer,ierr)
+    call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                      field%work_loc,ONEDOF)
+    call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                  field%work_loc,PERMEABILITY_Z,ZERO_INTEGER)
     
     if (grid%itype == STRUCTURED_GRID_MIMETIC) then
       if (option%iflowmode /= RICHARDS_MODE) then
