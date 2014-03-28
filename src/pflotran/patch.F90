@@ -1083,12 +1083,17 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
       real_count = real_count + 1
       select case(general%temperature%itype)
         case(DIRICHLET_BC)
-          coupler%flow_aux_mapping(GENERAL_AIR_PRESSURE_INDEX) = real_count
+          coupler%flow_aux_mapping(general_2ph_energy_dof) = real_count
           temperature = general%temperature%dataset%rarray(1)
-          call EOSWaterSaturationPressure(temperature,p_sat,ierr)
-          coupler%flow_aux_real_var(real_count,1:num_connections) = &
-            general%gas_pressure%dataset%rarray(1) - p_sat
-          dof2 = PETSC_TRUE
+          if (general_2ph_energy_dof == GENERAL_TEMPERATURE_INDEX) then
+            coupler%flow_aux_real_var(real_count,1:num_connections) = &
+              temperature
+          else
+            call EOSWaterSaturationPressure(temperature,p_sat,ierr)
+            coupler%flow_aux_real_var(real_count,1:num_connections) = &
+              general%gas_pressure%dataset%rarray(1) - p_sat
+          endif
+          dof3 = PETSC_TRUE
         case default
           option%io_buffer = 'Unknown case (general%temperature%itype,' // &
             'TWO_PHASE_STATE,DIRICHLET_BC)'
@@ -1101,7 +1106,7 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
           coupler%flow_aux_mapping(GENERAL_GAS_SATURATION_INDEX) = real_count
           coupler%flow_aux_real_var(real_count,1:num_connections) = &
             general%gas_saturation%dataset%rarray(1)
-          dof3 = PETSC_TRUE
+          dof2 = PETSC_TRUE
         case default
           option%io_buffer = 'Unknown case (general%gas_saturation%itype,' // &
             'TWO_PHASE_STATE,DIRICHLET_BC)'
@@ -1128,6 +1133,13 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
         call HydrostaticUpdateCoupler(coupler,option,patch%grid)
         do iconn=1,coupler%connection_set%num_connections
           if (coupler%flow_aux_int_var(ONE_INTEGER,iconn) == TWO_PHASE_STATE) then
+            !geh: This cannot possibly be working.  real_count needs to be incremented
+            !     but what variable is mapped?  Need to figure out how real_count
+            !     factors into the hydrostatic condition
+            option%io_buffer = 'Need to fix PatchUpdateCouplerAuxVarsG() ' // &
+              'for a variable saturated hydrostatic condition.'
+            call printErrMsg(option)
+          
             ! we have to remap the capillary pressure to saturation and 
             ! temperature to air pressure
             local_id = coupler%connection_set%id_dn(iconn)
@@ -1148,11 +1160,17 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
             temperature = coupler%flow_aux_real_var( &
                             coupler%flow_aux_mapping( &
                               GENERAL_TEMPERATURE_INDEX),iconn)
-            call EOSWaterSaturationPressure(temperature,p_sat,ierr)
-            coupler%flow_aux_real_var( &
-              coupler%flow_aux_mapping( &
-                GENERAL_AIR_PRESSURE_INDEX),iconn) = &
-              p_gas - p_sat ! air pressure
+            coupler%flow_aux_mapping(general_2ph_energy_dof) = real_count
+            if (general_2ph_energy_dof == GENERAL_TEMPERATURE_INDEX) then
+              coupler%flow_aux_real_var(real_count,1:num_connections) = &
+                temperature
+            else
+              call EOSWaterSaturationPressure(temperature,p_sat,ierr)
+              coupler%flow_aux_real_var( &
+                coupler%flow_aux_mapping( &
+                  GENERAL_AIR_PRESSURE_INDEX),iconn) = &
+                    p_gas - p_sat ! air pressure
+            endif
             call SaturationFunctionCompute(p_cap,s_liq, &
                                             patch%saturation_function_array( &
                                               patch%sat_func_id(ghosted_id))%ptr, &

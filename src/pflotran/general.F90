@@ -99,7 +99,13 @@ subroutine GeneralRead(input,option)
     
       case('WINDOW_EPSILON') 
         call InputReadDouble(input,option,window_epsilon)
-        call InputErrorMsg(input,option,'diffusion coefficient','FLUID_PROPERTY')
+        call InputErrorMsg(input,option,'diffusion coefficient','GENERAL_MODE')
+      case('TWO_PHASE_ENERGY_DOF')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'two_phase_energy_dof','GENERAL_MODE')
+        call GeneralAuxSetEnergyDOF(word,option)
+      case('ISOTHERMAL')
+        general_isothermal = PETSC_TRUE
       case default
         option%io_buffer = 'Keyword: ' // trim(keyword) // &
                            ' not recognized in General Mode'    
@@ -1791,7 +1797,7 @@ subroutine GeneralAccumDerivative(gen_auxvar,global_auxvar,material_auxvar, &
     enddo !irow
   enddo ! idof
 
-  if (option%use_isothermal) then
+  if (general_isothermal) then
     J(GENERAL_ENERGY_EQUATION_INDEX,:) = 0.d0
     J(:,GENERAL_ENERGY_EQUATION_INDEX) = 0.d0
   endif
@@ -1891,7 +1897,7 @@ subroutine GeneralFluxDerivative(gen_auxvar_up,global_auxvar_up, &
     enddo !irow
   enddo ! idof
 
-  if (option%use_isothermal) then
+  if (general_isothermal) then
     Jup(GENERAL_ENERGY_EQUATION_INDEX,:) = 0.d0
     Jup(:,GENERAL_ENERGY_EQUATION_INDEX) = 0.d0
     Jdn(GENERAL_ENERGY_EQUATION_INDEX,:) = 0.d0
@@ -1976,7 +1982,7 @@ subroutine GeneralBCFluxDerivative(ibndtype,auxvar_mapping,auxvars, &
     enddo !irow
   enddo ! idof
 
-  if (option%use_isothermal) then
+  if (general_isothermal) then
     Jdn(GENERAL_ENERGY_EQUATION_INDEX,:) = 0.d0
     Jdn(:,GENERAL_ENERGY_EQUATION_INDEX) = 0.d0
   endif
@@ -2027,7 +2033,7 @@ subroutine GeneralSrcSinkDerivative(option,qsrc,flow_src_sink_type, &
     enddo !irow
   enddo ! idof
   
-  if (option%use_isothermal) then
+  if (general_isothermal) then
     Jac(GENERAL_ENERGY_EQUATION_INDEX,:) = 0.d0
     Jac(:,GENERAL_ENERGY_EQUATION_INDEX) = 0.d0
   endif
@@ -2343,7 +2349,7 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
     enddo
   endif
   
-  if (option%use_isothermal) then
+  if (general_isothermal) then
     ! zero energy residual
     do local_id = 1, grid%nlmax
       r_p((local_id-1)*option%nflowdof+GENERAL_ENERGY_EQUATION_INDEX) =  0.d0
@@ -2702,7 +2708,7 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
                           qsrc,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
   endif
 
-  if (option%use_isothermal) then
+  if (general_isothermal) then
     ! zero energy residual
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
@@ -2945,8 +2951,8 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
 #endif
     select case(global_auxvars(ghosted_id)%istate)
       case(LIQUID_STATE)
-        liquid_pressure_index  = offset + 1
-        temperature_index  = offset + 3
+        liquid_pressure_index  = offset + GENERAL_LIQUID_PRESSURE_DOF
+        temperature_index  = offset + GENERAL_ENERGY_DOF
         dX_p(liquid_pressure_index) = dX_p(liquid_pressure_index) * &
                                       general_pressure_scale
         temp_scale = 1.d0
@@ -3051,20 +3057,21 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
         endif
 #endif !LIMIT_MAX_TEMPERATURE_CHANGE        
       case(TWO_PHASE_STATE)
-        gas_pressure_index = offset + 1
-        air_pressure_index = offset + 2
-        saturation_index = offset + 3
+        gas_pressure_index = offset + GENERAL_GAS_PRESSURE_DOF
+!        air_pressure_index = offset + 2
+        saturation_index = offset + GENERAL_GAS_SATURATION_DOF
+        temperature_index  = offset + GENERAL_ENERGY_DOF
         dX_p(gas_pressure_index) = dX_p(gas_pressure_index) * &
                                    general_pressure_scale
-        dX_p(air_pressure_index) = dX_p(air_pressure_index) * &
-                                   general_pressure_scale
+!        dX_p(air_pressure_index) = dX_p(air_pressure_index) * &
+!                                   general_pressure_scale
         temp_scale = 1.d0
         del_gas_pressure = dX_p(gas_pressure_index)
         gas_pressure0 = X_p(gas_pressure_index)
         gas_pressure1 = gas_pressure0 - del_gas_pressure
-        del_air_pressure = dX_p(air_pressure_index)
-        air_pressure0 = X_p(air_pressure_index)
-        air_pressure1 = air_pressure0 - del_air_pressure
+!        del_air_pressure = dX_p(air_pressure_index)
+!        air_pressure0 = X_p(air_pressure_index)
+!        air_pressure1 = air_pressure0 - del_air_pressure
         del_saturation = dX_p(saturation_index)
         saturation0 = X_p(saturation_index)
         saturation1 = saturation0 - del_saturation
@@ -3238,7 +3245,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
         endif
 #endif !LIMIT_MAX_SATURATION_CHANGE        
       case(GAS_STATE) 
-        gas_pressure_index = offset + 1
+        gas_pressure_index = offset + GENERAL_GAS_PRESSURE_DOF
         air_pressure_index = offset + 2
         dX_p(gas_pressure_index) = dX_p(gas_pressure_index) * &
                                    general_pressure_scale

@@ -8,11 +8,6 @@ module General_Aux_module
 
 #include "finclude/petscsys.h"
 
-!#define FIXED_COEFFICIENTS
-! DO NOT undefine this.  The code seems to run much better with the more accurate
-! update of saturation
-!#define ALTERNATIVE_UPDATE
-  
   PetscReal, public :: window_epsilon = 1.d-4
 
   ! thermodynamic state of fluid ids
@@ -27,13 +22,11 @@ module General_Aux_module
 
   PetscInt, parameter, public :: GENERAL_LIQUID_PRESSURE_DOF = 1
   PetscInt, parameter, public :: GENERAL_GAS_PRESSURE_DOF = 1
-  PetscInt, parameter, public :: GENERAL_AIR_PRESSURE_DOF = 2
-  PetscInt, parameter, public :: GENERAL_GAS_SATURATION_DOF = 3
+  PetscInt, parameter, public :: GENERAL_2PH_STATE_AIR_PRESSURE_DOF = 3
+  PetscInt, parameter, public :: GENERAL_GAS_STATE_AIR_PRESSURE_DOF = 2
+  PetscInt, parameter, public :: GENERAL_GAS_SATURATION_DOF = 2
   
-  PetscInt, parameter, public :: GENERAL_LIQUID_STATE_ENERGY_DOF = 3
-  PetscInt, parameter, public :: GENERAL_GAS_STATE_ENERGY_DOF = 3
-  PetscInt, parameter, public :: GENERAL_2PHASE_STATE_ENERGY_DOF = 2
-  
+  PetscInt, parameter, public :: GENERAL_ENERGY_DOF = 3
   PetscInt, parameter, public :: GENERAL_LIQUID_STATE_X_MOLE_DOF = 2
   
   PetscInt, parameter, public :: GENERAL_STATE_INDEX = 1
@@ -53,16 +46,13 @@ module General_Aux_module
   PetscInt, parameter, public :: GENERAL_LIQUID_CONDUCTANCE_INDEX = 11
   PetscInt, parameter, public :: GENERAL_GAS_CONDUCTANCE_INDEX = 12
   PetscInt, parameter, public :: GENERAL_MAX_INDEX = 13
-  
-  PetscInt, parameter, public :: dof_to_primary_variable(3,3) = &
-    reshape([GENERAL_LIQUID_PRESSURE_INDEX, GENERAL_MOLE_FRACTION_INDEX, &
-             GENERAL_TEMPERATURE_INDEX, &
-             GENERAL_GAS_PRESSURE_INDEX, GENERAL_AIR_PRESSURE_INDEX, &
-             GENERAL_TEMPERATURE_INDEX, &
-             GENERAL_GAS_PRESSURE_INDEX, GENERAL_AIR_PRESSURE_INDEX, &
-             GENERAL_GAS_SATURATION_INDEX],shape(dof_to_primary_variable))
 
   PetscReal, parameter, public :: general_pressure_scale = 1.d0
+  
+  ! these variables, which are global to general, can be modified
+  PetscInt, public :: dof_to_primary_variable(3,3)
+  PetscInt, public :: general_2ph_energy_dof = GENERAL_TEMPERATURE_INDEX
+  PetscBool, public :: general_isothermal = PETSC_FALSE
   
   type, public :: general_auxvar_type
     PetscInt :: istate_store(2) ! 1 = previous timestep; 2 = previous iteration
@@ -115,6 +105,7 @@ module General_Aux_module
   
   public :: GeneralAuxCreate, &
             GeneralAuxDestroy, &
+            GeneralAuxSetEnergyDOF, &
             GeneralAuxVarCompute, &
             GeneralAuxVarInit, &
             GeneralAuxVarCopy, &
@@ -147,6 +138,14 @@ function GeneralAuxCreate(option)
   
   type(general_type), pointer :: aux
 
+  dof_to_primary_variable(1:3,1:3) = &
+    reshape([GENERAL_LIQUID_PRESSURE_INDEX, GENERAL_MOLE_FRACTION_INDEX, &
+             GENERAL_TEMPERATURE_INDEX, &
+             GENERAL_GAS_PRESSURE_INDEX, GENERAL_AIR_PRESSURE_INDEX, &
+             GENERAL_TEMPERATURE_INDEX, &
+             GENERAL_GAS_PRESSURE_INDEX, GENERAL_GAS_SATURATION_INDEX, &
+             general_2ph_energy_dof],shape(dof_to_primary_variable))
+  
   allocate(aux) 
   aux%auxvars_up_to_date = PETSC_FALSE
   aux%inactive_cells_exist = PETSC_FALSE
@@ -242,6 +241,38 @@ subroutine GeneralAuxVarCopy(auxvar,auxvar2,option)
   auxvar2%pert = auxvar%pert
 
 end subroutine GeneralAuxVarCopy
+
+! ************************************************************************** !
+
+subroutine GeneralAuxSetEnergyDOF(energy_keyword,option)
+  ! 
+  ! Sets the two phase primary dependent variable for energy based on user 
+  ! input.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/25/14
+  ! 
+  use Option_module
+  use String_module
+
+  implicit none
+  
+  character(len=MAXWORDLENGTH) :: energy_keyword
+  type(option_type) :: option
+
+  call StringToUpper(energy_keyword)
+  select case(energy_keyword)
+    case('TEMPERATURE')
+      general_2ph_energy_dof = GENERAL_TEMPERATURE_INDEX
+    case('AIR_PRESSURE')
+      general_2ph_energy_dof = GENERAL_AIR_PRESSURE_INDEX
+    case default
+      option%io_buffer = 'Energy Keyword: ' // trim(energy_keyword) // &
+                          ' not recognized in General Mode'    
+      call printErrMsg(option)
+  end select
+
+end subroutine GeneralAuxSetEnergyDOF
 
 ! ************************************************************************** !
 
@@ -358,7 +389,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
     case(LIQUID_STATE)
       gen_auxvar%pres(lid) = x(GENERAL_LIQUID_PRESSURE_DOF)
       gen_auxvar%xmol(acid,lid) = x(GENERAL_LIQUID_STATE_X_MOLE_DOF)
-      gen_auxvar%temp = x(GENERAL_LIQUID_STATE_ENERGY_DOF)
+      gen_auxvar%temp = x(GENERAL_ENERGY_DOF)
 
       gen_auxvar%xmol(wid,lid) = 1.d0 - gen_auxvar%xmol(acid,lid)
       ! with the gas state, we must calculate the mole fraction of air in 
@@ -399,8 +430,8 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       
     case(GAS_STATE)
       gen_auxvar%pres(gid) = x(GENERAL_GAS_PRESSURE_DOF)
-      gen_auxvar%pres(apid) = x(GENERAL_AIR_PRESSURE_DOF)
-      gen_auxvar%temp = x(GENERAL_GAS_STATE_ENERGY_DOF)
+      gen_auxvar%pres(apid) = x(GENERAL_GAS_STATE_AIR_PRESSURE_DOF)
+      gen_auxvar%temp = x(GENERAL_ENERGY_DOF)
 
       gen_auxvar%sat(lid) = 0.d0
       gen_auxvar%sat(gid) = 1.d0
@@ -435,17 +466,26 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       
     case(TWO_PHASE_STATE)
       gen_auxvar%pres(gid) = x(GENERAL_GAS_PRESSURE_DOF)
-      gen_auxvar%pres(apid) = x(GENERAL_AIR_PRESSURE_DOF)
       gen_auxvar%sat(gid) = x(GENERAL_GAS_SATURATION_DOF)
+      if (general_2ph_energy_dof == GENERAL_TEMPERATURE_INDEX) then
+        gen_auxvar%temp = x(GENERAL_ENERGY_DOF)
+        call EOSWaterSaturationPressure(gen_auxvar%temp, &
+                                        gen_auxvar%pres(spid),ierr)
+        gen_auxvar%pres(vpid) = gen_auxvar%pres(spid)
+        gen_auxvar%pres(apid) = gen_auxvar%pres(gid) - gen_auxvar%pres(vpid)
       
+      else
+        gen_auxvar%pres(apid) = x(GENERAL_ENERGY_DOF)
+        gen_auxvar%pres(vpid) = gen_auxvar%pres(gid) - gen_auxvar%pres(apid)
+      
+        gen_auxvar%pres(spid) = gen_auxvar%pres(vpid)
+        guess = gen_auxvar%temp
+        call EOSWaterSaturationTemperature(gen_auxvar%temp, &
+                                           gen_auxvar%pres(spid),dummy, &
+                                           guess,ierr)
+      endif
+
       gen_auxvar%sat(lid) = 1.d0 - gen_auxvar%sat(gid)
-      gen_auxvar%pres(vpid) = gen_auxvar%pres(gid) - gen_auxvar%pres(apid)
-      
-      gen_auxvar%pres(spid) = gen_auxvar%pres(vpid)
-      guess = gen_auxvar%temp
-      call EOSWaterSaturationTemperature(gen_auxvar%temp, &
-                                         gen_auxvar%pres(spid),dummy, &
-                                         guess,ierr)
       
       call SatFuncGetCapillaryPressure(gen_auxvar%pres(cpid), &
                                        gen_auxvar%sat(lid), &
@@ -472,16 +512,10 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
 
   ! Liquid phase thermodynamic properties
   ! must use cell_pressure as the pressure, not %pres(lid)
-#ifndef FIXED_COEFFICIENTS
   call EOSWaterDensityEnthalpy(gen_auxvar%temp,cell_pressure, &
                                gen_auxvar%den_kg(lid),gen_auxvar%den(lid), &
                                gen_auxvar%H(lid),ierr)
   gen_auxvar%H(lid) = gen_auxvar%H(lid) * 1.d-6 ! J/kmol -> MJ/kmol
-#else
-  gen_auxvar%den(lid) = 55.35d0
-  gen_auxvar%den_kg(lid) = 55.35d0*FMWH2O
-  gen_auxvar%H(lid) = 1.89d0
-#endif
   ! MJ/kmol comp
   gen_auxvar%U(lid) = gen_auxvar%H(lid) - &
                        ! Pa / kmol/m^3 * 1.e-6 = MJ/kmol
@@ -497,7 +531,6 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
     else
       water_vapor_pressure = gen_auxvar%pres(spid)
     endif
-#ifndef FIXED_COEFFICIENTS
     call ideal_gaseos_noderiv(gen_auxvar%pres(apid),gen_auxvar%temp, &
                               den_air,h_air,u_air)
     h_air = h_air * 1.d-6
@@ -506,14 +539,6 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
                                       den_kg_water_vapor,den_water_vapor, &
                                       h_water_vapor,ierr)
     h_water_vapor = h_water_vapor * 1.d-6                                  
-#else
-    den_water_vapor = 1.279d-3
-    den_kg_water_vapor = den_water_vapor*FMWH2O
-    den_air = 3.9d-2
-    h_water_vapor = 45.89d0
-    h_air = 6.21d0
-#endif
-  
     gen_auxvar%den(gid) = den_water_vapor + den_air
     gen_auxvar%den_kg(gid) = den_kg_water_vapor + den_air*FMWAIR
     ! if xmol not set for gas phase, as is the case for LIQUID_STATE, 
@@ -540,13 +565,9 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
     ! this does not need to be calculated for LIQUID_STATE (=1)
     call SatFuncGetRelPermFromSat(gen_auxvar%sat(lid),krl,dkrl_Se, &
                                   saturation_function,lid,PETSC_FALSE,option)
-#ifndef FIXED_COEFFICIENTS   
     ! use cell_pressure; cell_pressure - psat calculated internally
     call EOSWaterViscosity(gen_auxvar%temp,cell_pressure, &
                            gen_auxvar%pres(spid),visl,ierr)
-#else
-    visl = 8.9d-4
-#endif
     gen_auxvar%mobility(lid) = krl/visl
   endif
 
@@ -555,15 +576,11 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
     ! this does not need to be calculated for GAS_STATE (=1)
     call SatFuncGetGasRelPermFromSat(gen_auxvar%sat(lid),krl,krg, &
                                      saturation_function,option)
-#ifndef FIXED_COEFFICIENTS
     ! STOMP uses separate functions for calculating viscosity of vapor and
     ! and air (WATGSV,AIRGSV) and then uses GASVIS to calculate mixture 
     ! viscosity.
     call visgas_noderiv(gen_auxvar%temp,gen_auxvar%pres(apid), &
                         gen_auxvar%pres(gid),den_air,visg)
-#else
-    visg = 1.83d-5
-#endif
     gen_auxvar%mobility(gid) = krg/visg
   endif
 
@@ -635,22 +652,6 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
 
 ! based on min_pressure in CheckPre set to zero
   PetscReal, parameter :: epsilon = 1.d-6
-!  PetscReal, parameter :: window_epsilon = 1.d-4
-!  PetscReal, parameter :: epsilon = 1.d0 ! crash
-!  PetscReal, parameter :: epsilon = 1.d-1 ! 4.74000E+01, 12235 NI, 73 cuts
-!  PetscReal, parameter :: epsilon = 1.d-2 ! 4.39074E+01, 13600 NI, 201 cuts
-!  PetscReal, parameter :: epsilon = 1.d-3 ! 4.59412E+01, 12296 NI, 152 cuts
-!  PetscReal, parameter :: epsilon = 1.d-4 ! 4.49121E+01, 13397 NI, 241 cuts
-!  PetscReal, parameter :: epsilon = 1.d-5 ! 3.97810E+01, 16109 NI, 453 cuts
-!  PetscReal, parameter :: epsilon = 1.d-6 ! 2.10722E+01, 17382 NI, 516 cuts
-!  PetscReal, parameter :: epsilon = 1.d-7 ! 2.07994E+01, 22788 NI, 575 cuts
-!  PetscReal, parameter :: epsilon = 1.d-8 ! 1.84605E+01, 17033 NI, 569 cuts
-!  PetscReal, parameter :: epsilon = 1.d-9 ! 3.46836E+01, 16227 NI, 401 cuts
-!  PetscReal, parameter :: epsilon = 1.d-10 ! 4.32237E+01, 12924 NI, 188 cuts
-!  PetscReal, parameter :: epsilon = 1.d-11 ! 4.32884E+01, 13356 NI, 172 cuts
-!  PetscReal, parameter :: epsilon = 1.d-12 ! 3.95233E+01, 16165 NI, 240 cuts
-!  PetscReal, parameter :: epsilon = 1.d-13 ! Zero pivots
-!  PetscReal, parameter :: epsilon = 0.d0 ! crash
   PetscReal :: liquid_epsilon
   PetscReal :: two_phase_epsilon
   PetscReal :: x(option%nflowdof)
@@ -700,23 +701,8 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         endif
 !#endif      
         global_auxvar%istate = TWO_PHASE_STATE
-                         ! based on epsilon = 0.1, two_phase_epsilon = 0.
-!        liquid_epsilon = 1.d1*epsilon ! crash
-!        liquid_epsilon = epsilon ! 4.97500E+01, 10003 NI, 0 cuts
-!        liquid_epsilon = 1.d-1*epsilon ! 4.96899E+01, 9840 NI, 0 cuts
-!        liquid_epsilon = 1.d-2*epsilon ! 4.95999E+01, 9882 NI, 0 cuts
-!        liquid_epsilon = 1.d-3*epsilon ! 4.93193E+01, 10832 NI, 0 cuts
-!        liquid_epsilon = 1.d-4*epsilon ! 4.93099E+01, 10304 NI, 8 cuts
-!        liquid_epsilon = 1.d-5*epsilon ! 4.64900E+01, 10808 NI, 109 cuts
-!        liquid_epsilon = 1.d-6*epsilon ! 4.14949E+01, 12891 NI, 314 cuts
-!        liquid_epsilon = 1.d-7*epsilon ! 4.38624E+01, 10927 NI, 227 cuts
-                    ! lots of crashes below when min_pressure = 0 in CheckPre
-!        liquid_epsilon = 1.d-8*epsilon ! 4.44247E+01, 14910 NI, 90 cuts
-!        liquid_epsilon = 1.d-9*epsilon ! 4.68555E+01, 13209 NI, 62 cuts
-!        liquid_epsilon = 1.d-10*epsilon ! 4.65514E+01, 13464 NI, 62 cuts
         liquid_epsilon = epsilon
         ! gas pressure can never be less than zero.
-#if !defined(ALTERNATIVE_UPDATE)
         x(GENERAL_GAS_PRESSURE_DOF) = &
           gen_auxvar%pres(lid) * (1.d0 + liquid_epsilon)
         if (x(GENERAL_GAS_PRESSURE_DOF) <= 0.d0) then
@@ -727,87 +713,23 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
           call printMsg(option)
           x(GENERAL_GAS_PRESSURE_DOF) = gen_auxvar%pres(spid)
         endif
-        ! pa = pg - ps
-        x(GENERAL_AIR_PRESSURE_DOF) = &
-          x(GENERAL_GAS_PRESSURE_DOF) - gen_auxvar%pres(spid)
-        if (x(GENERAL_AIR_PRESSURE_DOF) <= 0.d0) then
-          write(string,*) ghosted_id
-          option%io_buffer = 'Negative air pressure during state change ' // &
-            'at ' // trim(adjustl(string))
-!          call printErrMsg(option)
-          call printMsg(option)
-          x(GENERAL_AIR_PRESSURE_DOF) = 0.01d0*x(GENERAL_GAS_PRESSURE_DOF)
+        if (general_2ph_energy_dof == GENERAL_TEMPERATURE_INDEX) then
+          ! do nothing as the energy dof has not changed
+        else
+          ! pa = pg - ps
+          x(GENERAL_2PH_STATE_AIR_PRESSURE_DOF) = &
+            x(GENERAL_GAS_PRESSURE_DOF) - gen_auxvar%pres(spid)
+          if (x(GENERAL_2PH_STATE_AIR_PRESSURE_DOF) <= 0.d0) then
+            write(string,*) ghosted_id
+            option%io_buffer = 'Negative air pressure during state change ' // &
+              'at ' // trim(adjustl(string))
+  !          call printErrMsg(option)
+            call printMsg(option)
+            x(GENERAL_2PH_STATE_AIR_PRESSURE_DOF) = &
+              0.01d0*x(GENERAL_GAS_PRESSURE_DOF)
+          endif
         endif
         x(GENERAL_GAS_SATURATION_DOF) = liquid_epsilon
-#else
-        x(GENERAL_GAS_PRESSURE_DOF) = &
-          max(gen_auxvar%pres(lid) * (1.d0 + liquid_epsilon),epsilon)
-        ! assume air pressure is pg - ps, but has to be greater than epsilon.
-        x(GENERAL_AIR_PRESSURE_DOF) = &
-          x(GENERAL_GAS_PRESSURE_DOF) - gen_auxvar%pres(spid)
-        if (x(GENERAL_AIR_PRESSURE_DOF) < 1.d-20) then
-          x(GENERAL_AIR_PRESSURE_DOF) = 1.d-20
-          write(string,*) x(GENERAL_AIR_PRESSURE_DOF)
-          state_change_string = trim(state_change_string) // &
-            ' - air pressure truncated: ' // trim(adjustl(string))
-        endif
-        ! determine # moles air.  at this point, the water is supersaturated
-        ! with respect to air and all air is in the liquid phase
-        n_air_in_liquid = gen_auxvar%xmol(acid,lid) * &
-                          gen_auxvar%den(lid) * &
-                          material_auxvar%porosity*material_auxvar%volume
-        ! but n_air_in_liquid is current supersaturated
-        n_air = n_air_in_liquid
-        ! recalculate mole air in liquid at saturation
-        call Henry_air_noderiv(dummy,gen_auxvar%temp, &
-                               gen_auxvar%pres(spid),K_H_tilde)
-        n_air_in_liquid = (gen_auxvar%pres(lid)-gen_auxvar%pres(spid)) / &
-                           K_H_tilde * &
-                           gen_auxvar%den(lid) * &
-                           material_auxvar%porosity*material_auxvar%volume 
-        ! based on gas pressure, calculate new saturation
-        RT = (8.31415d0*(gen_auxvar%temp+293.15d0))
-!        V_gas = gas_saturation* material_auxvar%porosity* &
-!                material_auxvar%volume
-!        n_water_in_gas = gen_auxvar%pres(spid) * V_gas / RT
-!        n_air_in_gas = gen_auxvar%pres(apid) * V_gas / RT
-        n_air_in_gas = n_air - n_air_in_liquid
-        if (n_air_in_gas <= 0.d0) then
-          option%io_buffer = 'We got problems in GeneralAuxVarUpdateState()'
-          call printErrMsg(option)
-        endif
-!        p_gas = (n_water_in_gas + n_air_in_gas) / V_gas * RT
-        theta = RT / (x(GENERAL_GAS_PRESSURE_DOF) * &
-                      material_auxvar%porosity* &
-                      material_auxvar%volume)
-        x(GENERAL_GAS_SATURATION_DOF) = &
-          n_air_in_gas * theta / &
-          (1.d0 - gen_auxvar%pres(spid) / x(GENERAL_GAS_PRESSURE_DOF)) * &
-          (1.d0 + liquid_epsilon)
-!        x(GENERAL_GAS_SATURATION_DOF) = &
-!                         (n_water_in_gas + n_air_in_gas) / &
-!                         x(GENERAL_GAS_PRESSURE_DOF) * RT / &
-!                         material_auxvar%porosity*material_auxvar%volume * &
-!                         (1.d0 + liquid_epsilon)
-#if 0
-        ! pa = pg - ps
-        x(GENERAL_AIR_PRESSURE_DOF) = &
-          x(GENERAL_GAS_PRESSURE_DOF) - gen_auxvar%pres(spid)
-        ! if the saturation pressure is relatively high, we could get a 
-        ! negative air pressure.  thus, ensure positivity using the air 
-        ! pressure in that case.
-        if (x(GENERAL_AIR_PRESSURE_DOF) <= 0.d0) then
-!#ifdef DEBUG_GENERAL
-          write(string,*) x(GENERAL_AIR_PRESSURE_DOF)
-          state_change_string = trim(state_change_string) // &
-            ' - air pressure truncated: ' // trim(adjustl(string))
-!#endif
-          x(GENERAL_AIR_PRESSURE_DOF) = &
-            gen_auxvar%pres(apid) * (1.d0 + liquid_epsilon)
-        endif
-        x(GENERAL_GAS_SATURATION_DOF) = liquid_epsilon
-#endif
-#endif
         flag = PETSC_TRUE
       endif
     case(GAS_STATE)
@@ -834,6 +756,11 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
 !#endif      
         global_auxvar%istate = TWO_PHASE_STATE
         ! first two primary dependent variables do not change
+        if (general_2ph_energy_dof == GENERAL_TEMPERATURE_INDEX) then
+          ! do nothing as energy dof has not changed
+        else
+          X(GENERAL_ENERGY_DOF) = gen_auxvar%pres(apid)*(1.d0-epsilon)
+        endif
         x(GENERAL_GAS_SATURATION_DOF) = 1.d0 - epsilon
         flag = PETSC_TRUE
       endif
@@ -856,25 +783,6 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
                                     & i5)') ghosted_id
         endif
 !#endif      
-                           ! based on epsilon = 0.1
-!        two_phase_epsilon = epsilon ! crash
-!        two_phase_epsilon = 1.d-1*epsilon ! 4.90600E+01, 10768 NI, 23 cuts
-!        two_phase_epsilon = 1.d-2*epsilon ! 4.86000E+01, 11003 NI, 36 cuts
-!        two_phase_epsilon = 1.d-3*epsilon ! 4.94000E+01, 9723 NI, 12 cuts
-!        two_phase_epsilon = 1.d-4*epsilon ! 4.96000E+01, 9037 NI, 5 cuts 
-!        two_phase_epsilon = 1.d-5*epsilon ! 4.94500E+01, 8800 NI, 10 cuts
-!        two_phase_epsilon = 1.d-6*epsilon ! 4.97100E+01, 8449 NI, 2 cuts
-!        two_phase_epsilon = 1.d-7*epsilon ! 4.96499E+01, 10550 NI, 2 cuts
-!        two_phase_epsilon = 1.d-8*epsilon ! 4.96700E+01, 10067 NI, 1 cut
-!        two_phase_epsilon = 1.d-9*epsilon ! 4.97500E+01, 10000 NI, 0 cuts
-!        two_phase_epsilon = 1.d-10*epsilon ! 4.96600E+01, 10062 NI, 1 cut
-!        two_phase_epsilon = 1.d-11*epsilon ! 4.96798E+01, 10071 NI, 2 cuts
-!        two_phase_epsilon = 1.d-12*epsilon ! 4.97200E+01, 10063 NI, 0 cuts
-!        two_phase_epsilon = 1.d-13*epsilon ! 4.97099E+01, 9662 NI, 1 cut
-!        two_phase_epsilon = 1.d-14*epsilon ! 4.97300E+01, 10002 NI, 0 cuts
-!        two_phase_epsilon = 1.d-15*epsilon ! 4.96699E+01, 9852 NI, 1 cut
-!        two_phase_epsilon = 1.d-16*epsilon ! 4.97500E+01, 10003 NI, 0 cuts
-!        two_phase_epsilon = 0.d0*epsilon ! 4.97500E+01, 10003 NI, 0 cuts
         two_phase_epsilon = epsilon
         ! convert to liquid state
         global_auxvar%istate = LIQUID_STATE
@@ -891,15 +799,10 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
           call printMsg(option)
           x(GENERAL_LIQUID_STATE_X_MOLE_DOF) = two_phase_epsilon
         endif
-        x(GENERAL_LIQUID_STATE_ENERGY_DOF) = &
-          gen_auxvar%temp * (1.d0 - two_phase_epsilon) ! 4.94500E+01, 8800 NI, 10 cuts
-!          gen_auxvar%temp ! 4.95700E+01, 9074 NI, 6 cuts
-        if (x(GENERAL_LIQUID_STATE_ENERGY_DOF) <= 0.d0) then
-          write(string,*) ghosted_id
-          option%io_buffer = 'Negative temperature during state change ' // &
-            'at ' // trim(adjustl(string))
-          call printMsg(option)
-          x(GENERAL_LIQUID_STATE_ENERGY_DOF) = two_phase_epsilon
+        if (general_2ph_energy_dof == GENERAL_TEMPERATURE_INDEX) then
+          ! do nothing as energy dof has not changed
+        else
+          X(GENERAL_ENERGY_DOF) = gen_auxvar%temp*(1.d0-two_phase_epsilon)
         endif
         flag = PETSC_TRUE
       else if (gen_auxvar%sat(gid) > 1.d0) then
@@ -923,9 +826,13 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         two_phase_epsilon = epsilon !
         ! convert to gas state
         global_auxvar%istate = GAS_STATE
-        ! first two primary dependent variables do not change
-        x(GENERAL_GAS_STATE_ENERGY_DOF) = &
-          gen_auxvar%temp * (1.d0 + two_phase_epsilon)
+        if (general_2ph_energy_dof == GENERAL_TEMPERATURE_INDEX) then
+          ! first two primary dependent variables do not change
+          x(GENERAL_GAS_STATE_AIR_PRESSURE_DOF) = &
+            gen_auxvar%pres(apid) * (1.d0 + two_phase_epsilon)
+        else
+          X(GENERAL_ENERGY_DOF) = gen_auxvar%temp*(1.d0+two_phase_epsilon)
+        endif
         flag = PETSC_TRUE
       endif
   end select
@@ -994,7 +901,7 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
          gen_auxvar(ZERO_INTEGER)%pres(option%liquid_phase)
        x(GENERAL_LIQUID_STATE_X_MOLE_DOF) = &
          gen_auxvar(ZERO_INTEGER)%xmol(option%air_id,option%liquid_phase)
-       x(GENERAL_LIQUID_STATE_ENERGY_DOF) = &
+       x(GENERAL_ENERGY_DOF) = &
          gen_auxvar(ZERO_INTEGER)%temp
        ! if the liquid state, the liquid pressure will always be greater
        ! than zero.
@@ -1003,49 +910,62 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
              perturbation_tolerance)
        pert(GENERAL_LIQUID_STATE_X_MOLE_DOF) = &
          -1.d0*perturbation_tolerance*x(GENERAL_LIQUID_STATE_X_MOLE_DOF)
-       pert(GENERAL_LIQUID_STATE_ENERGY_DOF) = &
-         -1.d0*perturbation_tolerance*x(GENERAL_LIQUID_STATE_ENERGY_DOF)
+       pert(GENERAL_ENERGY_DOF) = &
+         -1.d0*perturbation_tolerance*x(GENERAL_ENERGY_DOF)
     case(GAS_STATE)
        x(GENERAL_GAS_PRESSURE_DOF) = &
          gen_auxvar(ZERO_INTEGER)%pres(option%gas_phase)
-       x(GENERAL_AIR_PRESSURE_DOF) = &
+       x(GENERAL_GAS_STATE_AIR_PRESSURE_DOF) = &
          gen_auxvar(ZERO_INTEGER)%pres(option%air_pressure_id)
-       x(GENERAL_GAS_STATE_ENERGY_DOF) = gen_auxvar(ZERO_INTEGER)%temp
+       x(GENERAL_ENERGY_DOF) = gen_auxvar(ZERO_INTEGER)%temp
        ! gas pressure [p(g)] must always be perturbed down as p(v) = p(g) - p(a)
        ! and p(v) >= Psat (i.e. an increase in p(v)) results in two phase.
        pert(GENERAL_GAS_PRESSURE_DOF) = &
          -1.d0*perturbation_tolerance*x(GENERAL_GAS_PRESSURE_DOF)
        ! perturb air pressure towards gas pressure unless the perturbed
        ! air pressure exceeds the gas pressure
-       if (x(GENERAL_GAS_PRESSURE_DOF) - x(GENERAL_AIR_PRESSURE_DOF) > &
-           perturbation_tolerance*x(GENERAL_AIR_PRESSURE_DOF)) then 
-         pert(GENERAL_AIR_PRESSURE_DOF) = &
-           perturbation_tolerance*x(GENERAL_AIR_PRESSURE_DOF)
+       if (x(GENERAL_GAS_PRESSURE_DOF) - &
+           x(GENERAL_GAS_STATE_AIR_PRESSURE_DOF) > &
+           perturbation_tolerance* &
+           x(GENERAL_GAS_STATE_AIR_PRESSURE_DOF)) then 
+         pert(GENERAL_GAS_STATE_AIR_PRESSURE_DOF) = &
+           perturbation_tolerance*x(GENERAL_GAS_STATE_AIR_PRESSURE_DOF)
        else
-         pert(GENERAL_AIR_PRESSURE_DOF) = &
-           -1.d0*perturbation_tolerance*x(GENERAL_AIR_PRESSURE_DOF)
+         pert(GENERAL_GAS_STATE_AIR_PRESSURE_DOF) = &
+           -1.d0*perturbation_tolerance*x(GENERAL_GAS_STATE_AIR_PRESSURE_DOF)
        endif
-       pert(GENERAL_GAS_STATE_ENERGY_DOF) = &
-         perturbation_tolerance*x(GENERAL_GAS_STATE_ENERGY_DOF)
+       pert(GENERAL_ENERGY_DOF) = &
+         perturbation_tolerance*x(GENERAL_ENERGY_DOF)
     case(TWO_PHASE_STATE)
        x(GENERAL_GAS_PRESSURE_DOF) = &
          gen_auxvar(ZERO_INTEGER)%pres(option%gas_phase)
-       x(GENERAL_AIR_PRESSURE_DOF) = &
-         gen_auxvar(ZERO_INTEGER)%pres(option%air_pressure_id)
+!       x(GENERAL_AIR_PRESSURE_DOF) = &
+!         gen_auxvar(ZERO_INTEGER)%pres(option%air_pressure_id)
        x(GENERAL_GAS_SATURATION_DOF) = &
          gen_auxvar(ZERO_INTEGER)%sat(option%gas_phase)
+       if (general_2ph_energy_dof == GENERAL_TEMPERATURE_INDEX) then
+         x(GENERAL_ENERGY_DOF) = &
+           gen_auxvar(ZERO_INTEGER)%temp
+         pert(GENERAL_ENERGY_DOF) = &
+           perturbation_tolerance*x(GENERAL_ENERGY_DOF)
+       else
+         ! here GENERAL_2PH_STATE_AIR_PRESSURE_DOF = GENERAL_ENERGY_DOF
+         x(GENERAL_ENERGY_DOF) = &
+           gen_auxvar(ZERO_INTEGER)%pres(option%air_pressure_id)
+         ! perturb air pressure towards gas pressure unless the perturbed
+         ! air pressure exceeds the gas pressure
+         if (x(GENERAL_GAS_PRESSURE_DOF) - &
+             x(GENERAL_2PH_STATE_AIR_PRESSURE_DOF) > &
+             perturbation_tolerance*x(GENERAL_2PH_STATE_AIR_PRESSURE_DOF)) then
+           pert(GENERAL_2PH_STATE_AIR_PRESSURE_DOF) = &
+             perturbation_tolerance*x(GENERAL_2PH_STATE_AIR_PRESSURE_DOF)
+         else
+           pert(GENERAL_2PH_STATE_AIR_PRESSURE_DOF) = &
+             -1.d0*perturbation_tolerance*x(GENERAL_2PH_STATE_AIR_PRESSURE_DOF)
+         endif
+       endif
        pert(GENERAL_GAS_PRESSURE_DOF) = &
          perturbation_tolerance*x(GENERAL_GAS_PRESSURE_DOF)
-       ! perturb air pressure towards gas pressure unless the perturbed
-       ! air pressure exceeds the gas pressure
-       if (x(GENERAL_GAS_PRESSURE_DOF) - x(GENERAL_AIR_PRESSURE_DOF) > &
-           perturbation_tolerance*x(GENERAL_AIR_PRESSURE_DOF)) then 
-         pert(GENERAL_AIR_PRESSURE_DOF) = &
-           perturbation_tolerance*x(GENERAL_AIR_PRESSURE_DOF)
-       else
-         pert(GENERAL_AIR_PRESSURE_DOF) = &
-           -1.d0*perturbation_tolerance*x(GENERAL_AIR_PRESSURE_DOF)
-       endif
        ! always perturb toward 0.5
        if (x(GENERAL_GAS_SATURATION_DOF) > 0.5d0) then 
          pert(GENERAL_GAS_SATURATION_DOF) = &
@@ -1096,8 +1016,11 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
     case(TWO_PHASE_STATE,GAS_STATE)
       gen_auxvar(GENERAL_GAS_PRESSURE_DOF)%pert = &
         gen_auxvar(GENERAL_GAS_PRESSURE_DOF)%pert / general_pressure_scale
-      gen_auxvar(GENERAL_AIR_PRESSURE_DOF)%pert = &
-        gen_auxvar(GENERAL_AIR_PRESSURE_DOF)%pert / general_pressure_scale
+      if (general_2ph_energy_dof == GENERAL_AIR_PRESSURE_INDEX) then
+        gen_auxvar(GENERAL_2PH_STATE_AIR_PRESSURE_DOF)%pert = &
+          gen_auxvar(GENERAL_2PH_STATE_AIR_PRESSURE_DOF)%pert / &
+          general_pressure_scale
+      endif
   end select
   
 #ifdef DEBUG_GENERAL
