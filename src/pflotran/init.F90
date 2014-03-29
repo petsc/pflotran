@@ -1043,8 +1043,8 @@ subroutine Init(simulation)
   if (associated(surf_flow_solver)) then
     string = 'Surface Flow TS Solver:'
     if (OptionPrintToScreen(option)) then
-      write(*,*),' '
-      write(*,*),string
+      write(*,*) ' '
+      write(*,*) string
     endif
     call TSView(surf_flow_solver%ts,PETSC_VIEWER_STDOUT_WORLD,ierr)
   endif

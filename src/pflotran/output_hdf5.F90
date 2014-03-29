@@ -437,7 +437,7 @@ subroutine OutputHDF5OpenFile(option, output_option, var_list_type, file_id, &
       case (AVERAGED_VARS)
         if (mod((option%time-output_option%periodic_output_time_incr)/ &
                 output_option%periodic_output_time_incr, &
-                real(output_option%times_per_h5_file))==0) then
+                dble(output_option%times_per_h5_file))==0) then
           first = PETSC_TRUE
         else
           first = PETSC_FALSE
@@ -978,7 +978,7 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
       case (AVERAGED_VARS)
         if (mod((option%time-output_option%periodic_output_time_incr)/ &
                 output_option%periodic_output_time_incr, &
-                real(output_option%times_per_h5_file))==0) then
+                dble(output_option%times_per_h5_file))==0) then
           first = PETSC_TRUE
         else
           first = PETSC_FALSE
@@ -1306,7 +1306,7 @@ subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
       case (AVERAGED_VARS)
         if (mod((option%time-output_option%periodic_output_time_incr)/ &
                 output_option%periodic_output_time_incr, &
-                real(output_option%times_per_h5_file))==0) then
+                dble(output_option%times_per_h5_file))==0) then
           first = PETSC_TRUE
         else
           first = PETSC_FALSE
@@ -1907,7 +1907,7 @@ subroutine WriteHDF5CoordinatesUGrid(grid,option,file_id)
   call VecGetArrayF90(global_z_vertex_vec,vec_z_ptr,ierr)
 
 #if defined(SCORPIO_WRITE)
-  write(*,*),'SCORPIO_WRITE'
+  write(*,*) 'SCORPIO_WRITE'
   option%io_buffer = 'WriteHDF5CoordinatesUGrid not supported for SCORPIO_WRITE'
   call printErrMsg(option)
 #else
@@ -2021,7 +2021,7 @@ subroutine WriteHDF5CoordinatesUGrid(grid,option,file_id)
 
   local_size = grid%unstructured_grid%nlmax
 #if defined(SCORPIO_WRITE)
-  write(*,*),'SCORPIO_WRITE'
+  write(*,*) 'SCORPIO_WRITE'
   option%io_buffer = 'WriteHDF5CoordinatesUGrid not supported for SCORPIO_WRITE'
   call printErrMsg(option)
 #else
@@ -2227,7 +2227,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
   call VecGetArrayF90(global_z_vertex_vec,vec_z_ptr,ierr)
 
 #if defined(SCORPIO_WRITE)
-  write(*,*),'SCORPIO_WRITE'
+  write(*,*) 'SCORPIO_WRITE'
   option%io_buffer = 'WriteHDF5CoordinatesUGrid not supported for SCORPIO_WRITE'
   call printErrMsg(option)
 #else
@@ -2744,7 +2744,7 @@ subroutine WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option,file_id
   enddo
  
 #if defined(SCORPIO_WRITE)
-  write(*,*),'SCORPIO_WRITE'
+  write(*,*) 'SCORPIO_WRITE'
   option%io_buffer = 'WriteHDF5CoordinatesUGrid not supported for SCORPIO_WRITE'
   call printErrMsg(option)
 #else
@@ -3049,7 +3049,7 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id,var_list_type
   field => realization_base%field
 
 #if defined(SCORPIO_WRITE)
-  write(*,*),'SCORPIO_WRITE'
+  write(*,*) 'SCORPIO_WRITE'
   option%io_buffer = 'WriteHDF5FlowratesUGrid not supported for SCORPIO_WRITE'
   call printErrMsg(option)
 #else

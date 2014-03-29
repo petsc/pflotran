@@ -1,27 +1,27 @@
-c Updated 10/24/2001.
-c
-ccccccccccccccccccccccccc     Program 4.4     cccccccccccccccccccccccccc
-c
-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-c                                                                      c
-c Please Note:                                                         c
-c                                                                      c
-c (1) This computer program is part of the book, "An Introduction to   c
-c     Computational Physics," written by Tao Pang and published and    c
-c     copyrighted by Cambridge University Press in 1997.               c
-c                                                                      c
-c (2) No warranties, express or implied, are made for this program.    c
-c                                                                      c
-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-c
+! Updated 10/24/2001.
+!
+!cccccccccccccccccccccccc     Program 4.4     cccccccccccccccccccccccccc
+!
+!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+!                                                                      c
+! Please Note:                                                         c
+!                                                                      c
+! (1) This computer program is part of the book, "An Introduction to   c
+!     Computational Physics," written by Tao Pang and published and    c
+!     copyrighted by Cambridge University Press in 1997.               c
+!                                                                      c
+! (2) No warranties, express or implied, are made for this program.    c
+!                                                                      c
+!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+!
       SUBROUTINE MIGS(A,N,X,INDX)
-C
-C Subroutine to invert matrix A(N,N) with the inverse stored
-C in X(N,N) in the output.
+!
+! Subroutine to invert matrix A(N,N) with the inverse stored
+! in X(N,N) in the output.
 
-C
+!
       DIMENSION A(N,N),X(N,N),INDX(N),B(N,N)
-C
+!
 
       DO      20 I = 1, N
         DO    10 J = 1, N
@@ -31,18 +31,17 @@ C
       DO      30 I = 1, N
           B(I,I) = 1.0
    30 CONTINUE
-C
+!
       CALL ELGS(A,N,INDX)
-C
+!
       DO     100 I = 1, N-1
         DO    90 J = I+1, N
           DO  80 K = 1, N
-            B(INDX(J),K) = B(INDX(J),K)
-     *                    -A(INDX(J),I)*B(INDX(I),K)
+            B(INDX(J),K) = B(INDX(J),K)-A(INDX(J),I)*B(INDX(I),K)
    80     CONTINUE
    90   CONTINUE
   100 CONTINUE
-C
+!
       DO     200 I = 1, N
         X(N,I) = B(INDX(N),I)/A(INDX(N),N)
         DO   190 J = N-1, 1, -1
@@ -53,28 +52,28 @@ C
           X(J,I) =  X(J,I)/A(INDX(J),J)
   190   CONTINUE
   200 CONTINUE
-C
+!
       RETURN
       END
-C
+!
       SUBROUTINE ELGS(A,N,INDX)
-C
-C Subroutine to perform the partial-pivoting Gaussian elimination.
-C A(N,N) is the original matrix in the input and transformed
-C matrix plus the pivoting element ratios below the diagonal in
-C the output.  INDX(N) records the pivoting order.
+!
+! Subroutine to perform the partial-pivoting Gaussian elimination.
+! A(N,N) is the original matrix in the input and transformed
+! matrix plus the pivoting element ratios below the diagonal in
+! the output.  INDX(N) records the pivoting order.
 
-C
+!
       DIMENSION A(N,N),INDX(N),C(N)
-C
-C Initialize the index
-C
+!
+! Initialize the index
+!
       DO     50    I = 1, N
         INDX(I) = I
    50 CONTINUE
-C
-C Find the rescaling factors, one from each row
-C
+!
+! Find the rescaling factors, one from each row
+!
         DO     100   I = 1, N
           C1= 0.0
           DO    90   J = 1, N
@@ -82,9 +81,9 @@ C
    90     CONTINUE
           C(I) = C1
   100   CONTINUE
-C
-C Search the pivoting (largest) element from each column
-C
+!
+! Search the pivoting (largest) element from each column
+!
       DO     200   J = 1, N-1
         PI1 = 0.0
         DO   150   I = J, N
@@ -95,26 +94,26 @@ C
           ELSE
           ENDIF
   150   CONTINUE
-C
-C Interchange the rows via INDX(N) to record pivoting order
-C
+!
+! Interchange the rows via INDX(N) to record pivoting order
+!
         ITMP    = INDX(J)
         INDX(J) = INDX(K)
         INDX(K) = ITMP
         DO   170   I = J+1, N
           PJ  = A(INDX(I),J)/A(INDX(J),J)
-C
-C Record pivoting ratios below the diagonal
-C
+!
+! Record pivoting ratios below the diagonal
+!
           A(INDX(I),J) = PJ
-C
-C Modify other elements accordingly
-C
+!
+! Modify other elements accordingly
+!
           DO 160   K = J+1, N
             A(INDX(I),K) = A(INDX(I),K)-PJ*A(INDX(J),K)
   160     CONTINUE
   170   CONTINUE
   200 CONTINUE
-C
+!
       RETURN
       END

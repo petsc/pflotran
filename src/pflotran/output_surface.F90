@@ -841,7 +841,7 @@ subroutine OutputSurfaceHDF5UGridXDMF(surf_realization,realization, &
       case (AVERAGED_VARS)
         if (mod((option%time-output_option%periodic_output_time_incr)/ &
                 output_option%periodic_output_time_incr, &
-                real(output_option%times_per_h5_file))==0) then
+                dble(output_option%times_per_h5_file))==0) then
           first = PETSC_TRUE
         else
           first = PETSC_FALSE
@@ -1102,7 +1102,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF(surf_realization,realization, &
   subsurf_grid => realization%patch%grid
 
 #if defined(SCORPIO_WRITE)
-  write(*,*),'SCORPIO_WRITE'
+  write(*,*) 'SCORPIO_WRITE'
   option%io_buffer = 'WriteHDF5CoordinatesUGrid not supported for SCORPIO_WRITE'
   call printErrMsg(option)
 #else
@@ -2137,7 +2137,7 @@ subroutine WriteHDF5SurfaceFlowratesUGrid(surf_realization,file_id,var_list_type
   surf_field => surf_realization%surf_field
 
 #if defined(SCORPIO_WRITE)
-  write(*,*),'SCORPIO_WRITE'
+  write(*,*) 'SCORPIO_WRITE'
   option%io_buffer = 'WriteHDF5FlowratesUGrid not supported for SCORPIO_WRITE'
   call printErrMsg(option)
 #else
