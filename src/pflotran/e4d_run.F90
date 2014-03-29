@@ -326,7 +326,8 @@ num_calls = num_calls + 1
     
     !Set up the KSP context
     call KSPCreate(PETSC_COMM_SELF,KS,perr)
-    call KSPSetOperators(KS,A,A,SAME_PRECONDITIONER,perr)
+!    call KSPSetOperators(KS,A,A,SAME_PRECONDITIONER,perr)
+    call KSPSetOperators(KS,A,A,perr)
     call KSPGetPC(KS,P,perr)
     !call KSPSetType(KS,KSPGMRES,perr) !use default
     !call KSPGMRESSetRestart(KS,1000,perr);
