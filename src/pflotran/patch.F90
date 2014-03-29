@@ -2083,7 +2083,7 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
           icount = icount + 1
           neighbor_ghosted_id = ghosted_neighbors(icount)
           sum = sum + &
-                MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
+                MaterialAuxVarGetValue(material_auxvars(neighbor_ghosted_id), &
                                        PERMEABILITY_X) * &
                 grid%structured_grid%dy(neighbor_ghosted_id)* &
                 grid%structured_grid%dz(neighbor_ghosted_id)
@@ -2093,7 +2093,7 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
           icount = icount + 1
           neighbor_ghosted_id = ghosted_neighbors(icount)                 
           sum = sum + &
-                MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
+                MaterialAuxVarGetValue(material_auxvars(neighbor_ghosted_id), &
                                        PERMEABILITY_X) * &
                 grid%structured_grid%dx(neighbor_ghosted_id)* &
                 grid%structured_grid%dz(neighbor_ghosted_id)
@@ -2103,7 +2103,7 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
           icount = icount + 1
           neighbor_ghosted_id = ghosted_neighbors(icount)                 
           sum = sum + &
-                MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
+                MaterialAuxVarGetValue(material_auxvars(neighbor_ghosted_id), &
                                        PERMEABILITY_X) * &
                 grid%structured_grid%dx(neighbor_ghosted_id)* &
                 grid%structured_grid%dy(neighbor_ghosted_id)
