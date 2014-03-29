@@ -2006,6 +2006,7 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
   use Condition_module
   use Grid_module
   use Material_Aux_class
+  use Variables_module, only : PERMEABILITY_X
   
   implicit none
 
@@ -2060,7 +2061,10 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
         local_id = cur_connection_set%id_dn(iconn)
         ghosted_id = grid%nL2G(local_id)
         vec_ptr(local_id) = vec_ptr(local_id) + &
-          material_auxvars(ghosted_id)%permeability(perm_xx_index) * &
+          ! this function protects from error in gfortran compiler when indexing
+          ! the permeability array
+          MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
+                                 PERMEABILITY_X) * &
           material_auxvars(ghosted_id)%volume
       enddo
     case(SCALE_BY_NEIGHBOR_PERM)
@@ -2079,7 +2083,8 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
           icount = icount + 1
           neighbor_ghosted_id = ghosted_neighbors(icount)
           sum = sum + &
-                material_auxvars(neighbor_ghosted_id)%permeability(perm_xx_index)* &
+                MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
+                                       PERMEABILITY_X) * &
                 grid%structured_grid%dy(neighbor_ghosted_id)* &
                 grid%structured_grid%dz(neighbor_ghosted_id)
         enddo
@@ -2088,7 +2093,8 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
           icount = icount + 1
           neighbor_ghosted_id = ghosted_neighbors(icount)                 
           sum = sum + &
-                material_auxvars(neighbor_ghosted_id)%permeability(perm_xx_index)* &
+                MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
+                                       PERMEABILITY_X) * &
                 grid%structured_grid%dx(neighbor_ghosted_id)* &
                 grid%structured_grid%dz(neighbor_ghosted_id)
         enddo
@@ -2097,7 +2103,8 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
           icount = icount + 1
           neighbor_ghosted_id = ghosted_neighbors(icount)                 
           sum = sum + &
-                material_auxvars(neighbor_ghosted_id)%permeability(perm_xx_index)* &
+                MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
+                                       PERMEABILITY_X) * &
                 grid%structured_grid%dx(neighbor_ghosted_id)* &
                 grid%structured_grid%dy(neighbor_ghosted_id)
         enddo
@@ -3552,37 +3559,45 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
       end select
     case(POROSITY)
       do local_id=1,grid%nlmax
-        vec_ptr(local_id) = material_auxvars(grid%nL2G(local_id))%porosity
+        vec_ptr(local_id) = &
+          MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
+                                 POROSITY)
       enddo
     case(PERMEABILITY,PERMEABILITY_X)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = &
-          material_auxvars(grid%nL2G(local_id))%permeability(perm_xx_index)
+          MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
+                                 PERMEABILITY_X)
       enddo
     case(PERMEABILITY_Y)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = &
-          material_auxvars(grid%nL2G(local_id))%permeability(perm_yy_index)
+          MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
+                                 PERMEABILITY_Y)
       enddo
     case(PERMEABILITY_Z)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = &
-          material_auxvars(grid%nL2G(local_id))%permeability(perm_zz_index)
+          MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
+                                 PERMEABILITY_Z)
       enddo
     case(PERMEABILITY_XY)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = &
-          material_auxvars(grid%nL2G(local_id))%permeability(perm_xy_index)
+          MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
+                                 PERMEABILITY_XY)
       enddo
     case(PERMEABILITY_XZ)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = &
-          material_auxvars(grid%nL2G(local_id))%permeability(perm_xz_index)
+          MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
+                                 PERMEABILITY_XZ)
       enddo
     case(PERMEABILITY_YZ)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = &
-          material_auxvars(grid%nL2G(local_id))%permeability(perm_yz_index)
+          MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
+                                 PERMEABILITY_YZ)
       enddo      
     case(PHASE)
       call VecGetArrayF90(field%iphas_loc,vec_ptr2,ierr)
@@ -3601,12 +3616,14 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
     case(VOLUME)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = &
-          material_auxvars(grid%nL2G(local_id))%volume
+          MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
+                                 VOLUME)
       enddo      
     case(TORTUOSITY)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = &
-          material_auxvars(grid%nL2G(local_id))%tortuosity
+          MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
+                                 TORTUOSITY)
       enddo      
     case default
       write(option%io_buffer, &
@@ -4211,13 +4228,17 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           endif
       end select
     case(POROSITY)
-      value = material_auxvars(ghosted_id)%porosity
+      value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
+                                     POROSITY)
     case(PERMEABILITY,PERMEABILITY_X)
-      value = material_auxvars(ghosted_id)%permeability(perm_xx_index)
+      value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
+                                     PERMEABILITY_X)
     case(PERMEABILITY_Y)
-      value = material_auxvars(ghosted_id)%permeability(perm_yy_index)
+      value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
+                                     PERMEABILITY_Y)
     case(PERMEABILITY_Z)
-      value = material_auxvars(ghosted_id)%permeability(perm_zz_index)
+      value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
+                                     PERMEABILITY_Z)
     case(PHASE)
       call VecGetArrayF90(field%iphas_loc,vec_ptr2,ierr)
       value = vec_ptr2(ghosted_id)
@@ -4237,8 +4258,11 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
       value = patch%aux%SC_RT%sec_transport_vars(local_id)% &
               sec_rt_auxvar(isubvar)%mnrl_volfrac(isubvar1)
     case(TORTUOSITY)
-      value = material_auxvars(ghosted_id)%tortuosity
+      value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
+                                     TORTUOSITY)
     case(VOLUME)
+      value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
+                                     VOLUME)
       value = material_auxvars(ghosted_id)%volume
      case default
       write(option%io_buffer, &
@@ -4978,11 +5002,13 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
     case(POROSITY)
       if (vec_format == GLOBAL) then
         do local_id=1,grid%nlmax
-          material_auxvars(grid%nL2G(local_id))%porosity = vec_ptr(local_id)
+          call MaterialAuxVarSetValue(material_auxvars(grid%nL2G(local_id)), &
+                                      POROSITY,vec_ptr(local_id))
         enddo
       else if (vec_format == LOCAL) then
         do ghosted_id=1,grid%ngmax
-          material_auxvars(ghosted_id)%porosity = vec_ptr(ghosted_id)
+          call MaterialAuxVarSetValue(material_auxvars(ghosted_id), &
+                                      POROSITY,vec_ptr(ghosted_id))
         enddo
       endif
     case(PERMEABILITY,PERMEABILITY_X,PERMEABILITY_Y,PERMEABILITY_Z)

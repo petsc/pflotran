@@ -51,6 +51,8 @@ module Material_Aux_class
             MaterialAuxVarInit, &
             MaterialAuxVarCopy, &
             MaterialAuxVarStrip, &
+            MaterialAuxVarGetValue, &
+            MaterialAuxVarSetValue, &
             MaterialAuxDestroy
   
 contains
@@ -186,6 +188,90 @@ subroutine MaterialPermTensorToScalar(material_auxvar,dist, &
             material_auxvar%permeability(perm_zz_index)*dabs(dist(3))
 
 end subroutine MaterialPermTensorToScalar
+
+! ************************************************************************** !
+
+function MaterialAuxVarGetValue(material_auxvar,ivar)
+  ! 
+  ! Returns the value of an entry in material_auxvar_type based on ivar.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/28/14
+  ! 
+
+  use Variables_module
+  
+  implicit none
+
+  class(material_auxvar_type) :: material_auxvar 
+  PetscInt :: ivar
+
+  PetscReal :: MaterialAuxVarGetValue
+
+  MaterialAuxVarGetValue = -999.d0
+  select case(ivar)
+    case(VOLUME)
+      MaterialAuxVarGetValue = material_auxvar%volume
+    case(POROSITY)
+      MaterialAuxVarGetValue = material_auxvar%porosity
+    case(TORTUOSITY)
+      MaterialAuxVarGetValue = material_auxvar%tortuosity
+    case(PERMEABILITY_X)
+      MaterialAuxVarGetValue = material_auxvar%permeability(perm_xx_index)
+    case(PERMEABILITY_Y)
+      MaterialAuxVarGetValue = material_auxvar%permeability(perm_yy_index)
+    case(PERMEABILITY_Z)
+      MaterialAuxVarGetValue = material_auxvar%permeability(perm_zz_index)
+    case(PERMEABILITY_XY)
+      MaterialAuxVarGetValue = material_auxvar%permeability(perm_xy_index)
+    case(PERMEABILITY_YZ)
+      MaterialAuxVarGetValue = material_auxvar%permeability(perm_yz_index)
+    case(PERMEABILITY_XZ)
+      MaterialAuxVarGetValue = material_auxvar%permeability(perm_xz_index)
+  end select
+  
+end function MaterialAuxVarGetValue
+
+! ************************************************************************** !
+
+subroutine MaterialAuxVarSetValue(material_auxvar,ivar,value)
+  ! 
+  ! Sets the value of an entry in material_auxvar_type based on ivar.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/28/14
+  ! 
+
+  use Variables_module
+  
+  implicit none
+
+  class(material_auxvar_type) :: material_auxvar 
+  PetscInt :: ivar
+  PetscReal :: value
+
+  select case(ivar)
+    case(VOLUME)
+      material_auxvar%volume = value
+    case(POROSITY)
+      material_auxvar%porosity = value
+    case(TORTUOSITY)
+      material_auxvar%tortuosity = value
+    case(PERMEABILITY_X)
+      material_auxvar%permeability(perm_xx_index) = value
+    case(PERMEABILITY_Y)
+      material_auxvar%permeability(perm_yy_index) = value
+    case(PERMEABILITY_Z)
+      material_auxvar%permeability(perm_zz_index) = value
+    case(PERMEABILITY_XY)
+      material_auxvar%permeability(perm_xy_index) = value
+    case(PERMEABILITY_YZ)
+      material_auxvar%permeability(perm_yz_index) = value
+    case(PERMEABILITY_XZ)
+      material_auxvar%permeability(perm_xz_index) = value
+  end select
+  
+end subroutine MaterialAuxVarSetValue
 
 ! ************************************************************************** !
 

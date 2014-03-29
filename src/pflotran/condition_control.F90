@@ -926,6 +926,7 @@ subroutine CondControlScaleSourceSink(realization)
   use Grid_module
   use Patch_module
   use Material_Aux_class
+  use Variables_module, only : PERMEABILITY_X
 
   implicit none
 
@@ -1001,8 +1002,8 @@ subroutine CondControlScaleSourceSink(realization)
               do while (icount < x_count)
                 icount = icount + 1
                 neighbor_ghosted_id = ghosted_neighbors(icount)
-                sum = sum + material_auxvars(neighbor_ghosted_id)% &
-                              permeability(perm_xx_index)* &
+                sum = sum + MaterialAuxVarGetValue(material_auxvars( &
+                              neighbor_ghosted_id),PERMEABILITY_X) * &
                             grid%structured_grid%dy(neighbor_ghosted_id)* &
                             grid%structured_grid%dz(neighbor_ghosted_id)
                  
@@ -1011,8 +1012,8 @@ subroutine CondControlScaleSourceSink(realization)
               do while (icount < x_count + y_count)
                 icount = icount + 1
                 neighbor_ghosted_id = ghosted_neighbors(icount)                 
-                sum = sum + material_auxvars(neighbor_ghosted_id)% &
-                              permeability(perm_xx_index)* &
+                sum = sum + MaterialAuxVarGetValue(material_auxvars( &
+                              neighbor_ghosted_id),PERMEABILITY_X) * &
                             grid%structured_grid%dx(neighbor_ghosted_id)* &
                             grid%structured_grid%dz(neighbor_ghosted_id)
                  
@@ -1021,8 +1022,8 @@ subroutine CondControlScaleSourceSink(realization)
               do while (icount < x_count + y_count + z_count)
                 icount = icount + 1
                 neighbor_ghosted_id = ghosted_neighbors(icount)                 
-                sum = sum + material_auxvars(neighbor_ghosted_id)% &
-                              permeability(perm_xx_index)* &
+                sum = sum + MaterialAuxVarGetValue(material_auxvars( &
+                              neighbor_ghosted_id),PERMEABILITY_X) * &
                             grid%structured_grid%dx(neighbor_ghosted_id)* &
                             grid%structured_grid%dy(neighbor_ghosted_id)
               enddo
