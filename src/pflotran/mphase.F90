@@ -2913,12 +2913,8 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       D_dn = mphase_parameter%ckwet(ithrm_dn)
 
       ! for now, just assume diagonal tensor
-      perm_dn = material_auxvars(ghosted_id)%permeability(perm_xx_index)* &
-                abs(cur_connection_set%dist(1,iconn))+ &
-                material_auxvars(ghosted_id)%permeability(perm_yy_index)* &
-                abs(cur_connection_set%dist(2,iconn))+ &
-                material_auxvars(ghosted_id)%permeability(perm_zz_index)* &
-                abs(cur_connection_set%dist(3,iconn))
+      call material_auxvars(ghosted_id)%PermeabilityTensorToScalar( &
+                            cur_connection_set%dist(:,iconn),perm_dn)
       ! dist(0,iconn) = scalar - magnitude of distance
       ! gravity = vector(3)
       ! dist(1:3,iconn) = vector(3) - unit vector
@@ -3047,19 +3043,10 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       upweight = dd_dn/(dd_up+dd_dn)
         
       ! for now, just assume diagonal tensor
-      perm_up = material_auxvars(ghosted_id_up)%permeability(perm_xx_index)* &
-                abs(cur_connection_set%dist(1,iconn))+ &
-                material_auxvars(ghosted_id_up)%permeability(perm_yy_index)* &
-                abs(cur_connection_set%dist(2,iconn))+ &
-                material_auxvars(ghosted_id_up)%permeability(perm_zz_index)* &
-                abs(cur_connection_set%dist(3,iconn))
-
-      perm_dn = material_auxvars(ghosted_id_dn)%permeability(perm_xx_index)* &
-                abs(cur_connection_set%dist(1,iconn))+ &
-                material_auxvars(ghosted_id_dn)%permeability(perm_yy_index)* &
-                abs(cur_connection_set%dist(2,iconn))+ &
-                material_auxvars(ghosted_id_dn)%permeability(perm_zz_index)* &
-                abs(cur_connection_set%dist(3,iconn))
+      call material_auxvars(ghosted_id_up)%PermeabilityTensorToScalar( &
+                            cur_connection_set%dist(:,iconn),perm_up)
+      call material_auxvars(ghosted_id_dn)%PermeabilityTensorToScalar( &
+                            cur_connection_set%dist(:,iconn),perm_dn)
 
       ithrm_up = int(ithrm_loc_p(ghosted_id_up))
       ithrm_dn = int(ithrm_loc_p(ghosted_id_dn))
@@ -3511,12 +3498,8 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       
  
       ! for now, just assume diagonal tensor
-      perm_dn = material_auxvars(ghosted_id)%permeability(perm_xx_index)* &
-                abs(cur_connection_set%dist(1,iconn))+ &
-                material_auxvars(ghosted_id)%permeability(perm_yy_index)* &
-                abs(cur_connection_set%dist(2,iconn))+ &
-                material_auxvars(ghosted_id)%permeability(perm_zz_index)* &
-                abs(cur_connection_set%dist(3,iconn))
+      call material_auxvars(ghosted_id)%PermeabilityTensorToScalar( &
+                            cur_connection_set%dist(:,iconn),perm_dn)
       ! dist(0,iconn) = scalar - magnitude of distance
       ! gravity = vector(3)
       ! dist(1:3,iconn) = vector(3) - unit vector
@@ -3683,19 +3666,10 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       upweight = dd_dn/(dd_up+dd_dn)
     
       ! for now, just assume diagonal tensor
-      perm_up = material_auxvars(ghosted_id_up)%permeability(perm_xx_index)* &
-                abs(cur_connection_set%dist(1,iconn))+ &
-                material_auxvars(ghosted_id_up)%permeability(perm_yy_index)* &
-                abs(cur_connection_set%dist(2,iconn))+ &
-                material_auxvars(ghosted_id_up)%permeability(perm_zz_index)* &
-                abs(cur_connection_set%dist(3,iconn))
-
-      perm_dn = material_auxvars(ghosted_id_dn)%permeability(perm_xx_index)* &
-                abs(cur_connection_set%dist(1,iconn))+ &
-                material_auxvars(ghosted_id_dn)%permeability(perm_yy_index)* &
-                abs(cur_connection_set%dist(2,iconn))+ &
-                material_auxvars(ghosted_id_dn)%permeability(perm_zz_index)* &
-                abs(cur_connection_set%dist(3,iconn))
+      call material_auxvars(ghosted_id_up)%PermeabilityTensorToScalar( &
+                            cur_connection_set%dist(:,iconn),perm_up)
+      call material_auxvars(ghosted_id_dn)%PermeabilityTensorToScalar( &
+                            cur_connection_set%dist(:,iconn),perm_dn)
     
       iphas_up = int(iphase_loc_p(ghosted_id_up))
       iphas_dn = int(iphase_loc_p(ghosted_id_dn))
