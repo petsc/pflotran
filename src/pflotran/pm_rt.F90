@@ -503,7 +503,7 @@ end subroutine PMRTResidual
 
 ! ************************************************************************** !
 
-subroutine PMRTJacobian(this,snes,xx,A,B,flag,ierr)
+subroutine PMRTJacobian(this,snes,xx,A,B,ierr)
   ! 
   ! Author: Glenn Hammond
   ! Date: 03/14/13
@@ -517,14 +517,13 @@ subroutine PMRTJacobian(this,snes,xx,A,B,flag,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  MatStructure flag
   PetscErrorCode :: ierr
   
 #ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%Jacobian()')  
 #endif
 
-  call RTJacobian(snes,xx,A,B,flag,this%realization,ierr)
+  call RTJacobian(snes,xx,A,B,this%realization,ierr)
 
 end subroutine PMRTJacobian
 

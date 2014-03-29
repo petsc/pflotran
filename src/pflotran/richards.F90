@@ -1742,7 +1742,7 @@ end subroutine RichardsResidualPatch2
 
 ! ************************************************************************** !
 
-subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
+subroutine RichardsJacobian(snes,xx,A,B,realization,ierr)
   ! 
   ! Computes the Jacobian
   ! 
@@ -1762,7 +1762,6 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
   Vec :: xx
   Mat :: A, B
   type(realization_type) :: realization
-  MatStructure flag
   PetscErrorCode :: ierr
   
   Mat :: J
@@ -1776,7 +1775,6 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
 
   option => realization%option
 
-  flag = SAME_NONZERO_PATTERN
   call MatGetType(A,mat_type,ierr)
   if (mat_type == MATMFFD) then
     J = B
@@ -1789,10 +1787,10 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
   call MatZeroEntries(J,ierr)
 
   ! pass #1 for internal and boundary flux terms
-  call RichardsJacobianPatch1(snes,xx,J,J,flag,realization,ierr)
+  call RichardsJacobianPatch1(snes,xx,J,J,realization,ierr)
 
   ! pass #2 for everything else
-  call RichardsJacobianPatch2(snes,xx,J,J,flag,realization,ierr)
+  call RichardsJacobianPatch2(snes,xx,J,J,realization,ierr)
 
   if (realization%debug%matview_Jacobian) then
 #if 1  
@@ -1840,7 +1838,7 @@ end subroutine RichardsJacobian
 
 ! ************************************************************************** !
 
-subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
+subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
   ! 
   ! Computes the interior flux and boundary flux
   ! terms of the Jacobian
@@ -1868,7 +1866,6 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   Vec, intent(in) :: xx
   Mat, intent(out) :: A, B
   type(realization_type) :: realization
-  MatStructure flag
 
   PetscErrorCode :: ierr
 
@@ -2130,7 +2127,7 @@ end subroutine RichardsJacobianPatch1
 
 ! ************************************************************************** !
 
-subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
+subroutine RichardsJacobianPatch2(snes,xx,A,B,realization,ierr)
   ! 
   ! Computes the accumulation and source/sink terms of
   ! the Jacobian
@@ -2156,7 +2153,6 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   Vec, intent(in) :: xx
   Mat, intent(out) :: A, B
   type(realization_type) :: realization
-  MatStructure flag
 
   PetscErrorCode :: ierr
 

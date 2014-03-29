@@ -451,7 +451,7 @@ end subroutine PMTHCResidual
 
 ! ************************************************************************** !
 
-subroutine PMTHCJacobian(this,snes,xx,A,B,flag,ierr)
+subroutine PMTHCJacobian(this,snes,xx,A,B,ierr)
   ! 
   ! This routine
   ! 
@@ -467,14 +467,13 @@ subroutine PMTHCJacobian(this,snes,xx,A,B,flag,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  MatStructure flag
   PetscErrorCode :: ierr
   
 #ifdef PM_THC_DEBUG
   call printMsg(this%option,'PMTHC%Jacobian()')
 #endif
   
-  call THCJacobian(snes,xx,A,B,flag,this%realization,ierr)
+  call THCJacobian(snes,xx,A,B,this%realization,ierr)
 
 end subroutine PMTHCJacobian
 

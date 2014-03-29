@@ -1251,7 +1251,7 @@ end subroutine GeomechGetBodyForce
 
 ! ************************************************************************** !
 
-subroutine GeomechForceJacobian(snes,xx,A,B,flag,geomech_realization,ierr)
+subroutine GeomechForceJacobian(snes,xx,A,B,geomech_realization,ierr)
   ! 
   ! Computes the Jacobian
   ! 
@@ -1272,7 +1272,6 @@ subroutine GeomechForceJacobian(snes,xx,A,B,flag,geomech_realization,ierr)
   Vec :: xx
   Mat :: A, B
   type(geomech_realization_type) :: geomech_realization
-  MatStructure flag
   PetscErrorCode :: ierr
   
   Mat :: J
@@ -1286,7 +1285,6 @@ subroutine GeomechForceJacobian(snes,xx,A,B,flag,geomech_realization,ierr)
 
   option => geomech_realization%option
 
-  flag = SAME_NONZERO_PATTERN
   call MatGetType(A,mat_type,ierr)
   if (mat_type == MATMFFD) then
     J = B
@@ -1298,7 +1296,7 @@ subroutine GeomechForceJacobian(snes,xx,A,B,flag,geomech_realization,ierr)
 
   call MatZeroEntries(J,ierr)
 
-  call GeomechForceJacobianPatch(snes,xx,J,J,flag,geomech_realization,ierr)
+  call GeomechForceJacobianPatch(snes,xx,J,J,geomech_realization,ierr)
 
   if (geomech_realization%geomech_debug%matview_Jacobian) then
     call PetscViewerASCIIOpen(geomech_realization%option%mycomm,'Geomech_jacobian.out', &
@@ -1327,7 +1325,7 @@ end subroutine GeomechForceJacobian
 
 ! ************************************************************************** !
 
-subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,geomech_realization,ierr)
+subroutine GeomechForceJacobianPatch(snes,xx,A,B,geomech_realization,ierr)
   ! 
   ! Computes the Jacobian on a patch
   ! 
@@ -1353,7 +1351,6 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,geomech_realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(in) :: xx
   Mat, intent(out) :: A, B
-  MatStructure flag
   PetscViewer :: viewer
 
   PetscErrorCode :: ierr

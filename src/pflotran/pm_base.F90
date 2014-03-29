@@ -101,14 +101,13 @@ module PM_Base_class
       PetscErrorCode :: ierr
     end subroutine PMBaseResidual
 
-    subroutine PMBaseJacobian(this,snes,xx,A,B,flag,ierr)
+    subroutine PMBaseJacobian(this,snes,xx,A,B,ierr)
       import pm_base_type
       implicit none
       class(pm_base_type) :: this
       SNES :: snes
       Vec :: xx
       Mat :: A, B
-      MatStructure flag
       PetscErrorCode :: ierr
     end subroutine PMBaseJacobian
 
@@ -273,13 +272,12 @@ end subroutine PMBaseResidual
 
 ! ************************************************************************** !
 
-subroutine PMBaseJacobian(this,snes,xx,A,B,flag,ierr)
+subroutine PMBaseJacobian(this,snes,xx,A,B,ierr)
   implicit none
   class(pm_base_type) :: this
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  MatStructure flag
   PetscErrorCode :: ierr
   print *, 'Must extend PMBaseJacobian.'
   stop

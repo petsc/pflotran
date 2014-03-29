@@ -462,7 +462,7 @@ end subroutine PMFlash2Residual
 
 ! ************************************************************************** !
 
-subroutine PMFlash2Jacobian(this,snes,xx,A,B,flag,ierr)
+subroutine PMFlash2Jacobian(this,snes,xx,A,B,ierr)
   ! 
   ! Author: Gautam Bisht
   ! Date: 11/27/13
@@ -476,7 +476,6 @@ subroutine PMFlash2Jacobian(this,snes,xx,A,B,flag,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  MatStructure flag
   PetscErrorCode :: ierr
   
 #ifdef PM_FLAHS2_DEBUG  
@@ -485,9 +484,9 @@ subroutine PMFlash2Jacobian(this,snes,xx,A,B,flag,ierr)
   
   select case(this%realization%discretization%itype)
     case(STRUCTURED_GRID_MIMETIC)
-!      call Flash2JacobianMFDLP(snes,xx,A,B,flag,this%realization,ierr)
+!      call Flash2JacobianMFDLP(snes,xx,A,B,this%realization,ierr)
     case default
-      call Flash2Jacobian(snes,xx,A,B,flag,this%realization,ierr)
+      call Flash2Jacobian(snes,xx,A,B,this%realization,ierr)
   end select
 
 end subroutine PMFlash2Jacobian

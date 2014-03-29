@@ -2201,7 +2201,7 @@ end subroutine ImmisResidualPatch
 
 ! ************************************************************************** !
 
-subroutine ImmisJacobian(snes,xx,A,B,flag,realization,ierr)
+subroutine ImmisJacobian(snes,xx,A,B,realization,ierr)
   ! 
   ! Computes the Jacobian
   ! 
@@ -2220,7 +2220,6 @@ subroutine ImmisJacobian(snes,xx,A,B,flag,realization,ierr)
   Vec :: xx
   Mat :: A, B, J
   type(realization_type) :: realization
-  MatStructure flag
   PetscErrorCode :: ierr
   
   type(patch_type), pointer :: cur_patch
@@ -2230,7 +2229,7 @@ subroutine ImmisJacobian(snes,xx,A,B,flag,realization,ierr)
   do
     if (.not.associated(cur_patch)) exit
     realization%patch => cur_patch
-    call ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
+    call ImmisJacobianPatch(snes,xx,A,B,realization,ierr)
     cur_patch => cur_patch%next
   enddo
 
@@ -2238,7 +2237,7 @@ end subroutine ImmisJacobian
 
 ! ************************************************************************** !
 
-subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
+subroutine ImmisJacobianPatch(snes,xx,A,B,realization,ierr)
   ! 
   ! Computes the Jacobian
   ! 
@@ -2261,7 +2260,6 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   Vec :: xx
   Mat :: A, B
   type(realization_type) :: realization
-  MatStructure flag
 
   PetscErrorCode :: ierr
   PetscInt :: nvar,neq,nr
@@ -2344,7 +2342,6 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 ! dropped derivatives:
 !   1.D0 gas phase viscocity to all p,t,c,s
 !   2. Average molecular weights to p,t,s
-  flag = SAME_NONZERO_PATTERN
 
 #if 0
 !  call ImmisNumericalJacobianTest(xx,realization)

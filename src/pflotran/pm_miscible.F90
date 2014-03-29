@@ -462,7 +462,7 @@ end subroutine PMMiscibleResidual
 
 ! ************************************************************************** !
 
-subroutine PMMiscibleJacobian(this,snes,xx,A,B,flag,ierr)
+subroutine PMMiscibleJacobian(this,snes,xx,A,B,ierr)
   ! 
   ! Author: Gautam Bisht
   ! Date: 11/27/13
@@ -476,7 +476,6 @@ subroutine PMMiscibleJacobian(this,snes,xx,A,B,flag,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  MatStructure flag
   PetscErrorCode :: ierr
   
 #ifdef PM_MISCIBLE_DEBUG  
@@ -485,9 +484,9 @@ subroutine PMMiscibleJacobian(this,snes,xx,A,B,flag,ierr)
   
   select case(this%realization%discretization%itype)
     case(STRUCTURED_GRID_MIMETIC)
-!      call MiscibleJacobianMFDLP(snes,xx,A,B,flag,this%realization,ierr)
+!      call MiscibleJacobianMFDLP(snes,xx,A,B,this%realization,ierr)
     case default
-      call MiscibleJacobian(snes,xx,A,B,flag,this%realization,ierr)
+      call MiscibleJacobian(snes,xx,A,B,this%realization,ierr)
   end select
 
 end subroutine PMMiscibleJacobian

@@ -3721,7 +3721,7 @@ end subroutine THResidualPatch
 
 ! ************************************************************************** !
 
-subroutine THJacobian(snes,xx,A,B,flag,realization,ierr)
+subroutine THJacobian(snes,xx,A,B,realization,ierr)
   ! 
   ! Computes the Jacobian
   ! 
@@ -3740,7 +3740,6 @@ subroutine THJacobian(snes,xx,A,B,flag,realization,ierr)
   Vec :: xx
   Mat :: A, B
   type(realization_type) :: realization
-  MatStructure flag
   PetscErrorCode :: ierr
   
   Mat :: J
@@ -3751,7 +3750,6 @@ subroutine THJacobian(snes,xx,A,B,flag,realization,ierr)
   type(option_type),  pointer :: option
   PetscReal :: norm
   
-  flag = SAME_NONZERO_PATTERN
   call MatGetType(A,mat_type,ierr)
   if (mat_type == MATMFFD) then
     J = B
@@ -3767,7 +3765,7 @@ subroutine THJacobian(snes,xx,A,B,flag,realization,ierr)
   do
     if (.not.associated(cur_patch)) exit
     realization%patch => cur_patch
-    call THJacobianPatch(snes,xx,J,J,flag,realization,ierr)
+    call THJacobianPatch(snes,xx,J,J,realization,ierr)
     cur_patch => cur_patch%next
   enddo
   
@@ -3794,7 +3792,7 @@ end subroutine THJacobian
 
 ! ************************************************************************** !
 
-subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
+subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
   ! 
   ! Computes the Jacobian
   ! 
@@ -3818,7 +3816,6 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   Vec :: xx
   Mat :: A, B
   type(realization_type) :: realization
-  MatStructure flag
 
   PetscErrorCode :: ierr
   PetscInt :: nvar,neq,nr

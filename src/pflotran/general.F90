@@ -2390,7 +2390,7 @@ end subroutine GeneralResidual
 
 ! ************************************************************************** !
 
-subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
+subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
   ! 
   ! Computes the Jacobian
   ! 
@@ -2414,7 +2414,6 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
   Vec :: xx
   Mat :: A, B
   type(realization_type) :: realization
-  MatStructure flag
   PetscErrorCode :: ierr
 
   Mat :: J
@@ -2467,7 +2466,6 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
   global_auxvars_bc => patch%aux%Global%auxvars_bc
   material_auxvars => patch%aux%Material%auxvars
 
-  flag = SAME_NONZERO_PATTERN
   call MatGetType(A,mat_type,ierr)
   if (mat_type == MATMFFD) then
     J = B

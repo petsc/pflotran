@@ -2126,7 +2126,7 @@ end subroutine MiscibleResidualPatch2
 
 ! ************************************************************************** !
 
-subroutine MiscibleJacobian(snes,xx,A,B,flag,realization,ierr)
+subroutine MiscibleJacobian(snes,xx,A,B,realization,ierr)
   ! 
   ! Computes the Jacobian
   ! 
@@ -2147,7 +2147,6 @@ subroutine MiscibleJacobian(snes,xx,A,B,flag,realization,ierr)
   Mat :: A, B, J
   MatType :: mat_type
   type(realization_type) :: realization
-  MatStructure flag
   PetscErrorCode :: ierr
   PetscViewer :: viewer
   type(patch_type), pointer :: cur_patch
@@ -2155,7 +2154,6 @@ subroutine MiscibleJacobian(snes,xx,A,B,flag,realization,ierr)
 
   call PetscLogEventBegin(logging%event_r_jacobian,ierr)
 
- flag = SAME_NONZERO_PATTERN
   call MatGetType(A,mat_type,ierr)
   if (mat_type == MATMFFD) then
     J = B
@@ -2173,7 +2171,7 @@ subroutine MiscibleJacobian(snes,xx,A,B,flag,realization,ierr)
   do
     if (.not.associated(cur_patch)) exit
     realization%patch => cur_patch
-    call MiscibleJacobianPatch1(snes,xx,J,J,flag,realization,ierr)
+    call MiscibleJacobianPatch1(snes,xx,J,J,realization,ierr)
     cur_patch => cur_patch%next
   enddo
 
@@ -2182,7 +2180,7 @@ subroutine MiscibleJacobian(snes,xx,A,B,flag,realization,ierr)
   do
     if (.not.associated(cur_patch)) exit
     realization%patch => cur_patch
-    call MiscibleJacobianPatch2(snes,xx,J,J,flag,realization,ierr)
+    call MiscibleJacobianPatch2(snes,xx,J,J,realization,ierr)
     cur_patch => cur_patch%next
   enddo
 
@@ -2220,7 +2218,7 @@ end subroutine MiscibleJacobian
 
 ! ************************************************************************** !
 
-subroutine MiscibleJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
+subroutine MiscibleJacobianPatch1(snes,xx,A,B,realization,ierr)
   ! 
   ! Computes the Jacobian: Flux term
   ! 
@@ -2243,7 +2241,6 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   Vec :: xx
   Mat :: A, B
   type(realization_type) :: realization
-  MatStructure flag
 
   PetscErrorCode :: ierr
   PetscInt :: nvar,neq,nr
@@ -2611,7 +2608,7 @@ end subroutine MiscibleJacobianPatch1
 
 ! ************************************************************************** !
 
-subroutine MiscibleJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
+subroutine MiscibleJacobianPatch2(snes,xx,A,B,realization,ierr)
   ! 
   ! Computes the Jacobian: Accum, source, reaction
   ! 
@@ -2634,7 +2631,6 @@ subroutine MiscibleJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   Vec :: xx
   Mat :: A, B
   type(realization_type) :: realization
-  MatStructure flag
 
   PetscErrorCode :: ierr
   PetscInt :: nvar,neq,nr

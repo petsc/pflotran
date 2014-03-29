@@ -462,7 +462,7 @@ end subroutine PMImmisResidual
 
 ! ************************************************************************** !
 
-subroutine PMImmisJacobian(this,snes,xx,A,B,flag,ierr)
+subroutine PMImmisJacobian(this,snes,xx,A,B,ierr)
   ! 
   ! Author: Gautam Bisht
   ! Date: 11/27/13
@@ -476,7 +476,6 @@ subroutine PMImmisJacobian(this,snes,xx,A,B,flag,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  MatStructure flag
   PetscErrorCode :: ierr
   
 #ifdef PM_IMMIS_DEBUG  
@@ -485,9 +484,9 @@ subroutine PMImmisJacobian(this,snes,xx,A,B,flag,ierr)
   
   select case(this%realization%discretization%itype)
     case(STRUCTURED_GRID_MIMETIC)
-!      call ImmisJacobianMFDLP(snes,xx,A,B,flag,this%realization,ierr)
+!      call ImmisJacobianMFDLP(snes,xx,A,B,this%realization,ierr)
     case default
-      call ImmisJacobian(snes,xx,A,B,flag,this%realization,ierr)
+      call ImmisJacobian(snes,xx,A,B,this%realization,ierr)
   end select
 
 end subroutine PMImmisJacobian

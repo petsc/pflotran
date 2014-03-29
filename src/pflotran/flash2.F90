@@ -3006,7 +3006,7 @@ end subroutine Flash2ResidualPatch2
 
 ! ************************************************************************** !
 
-subroutine Flash2Jacobian(snes,xx,A,B,flag,realization,ierr)
+subroutine Flash2Jacobian(snes,xx,A,B,realization,ierr)
   ! 
   ! Computes the Jacobian
   ! 
@@ -3027,7 +3027,6 @@ subroutine Flash2Jacobian(snes,xx,A,B,flag,realization,ierr)
   Mat :: A, B, J
   MatType :: mat_type
   type(realization_type) :: realization
-  MatStructure flag
   PetscErrorCode :: ierr
   PetscViewer :: viewer
   type(patch_type), pointer :: cur_patch
@@ -3035,7 +3034,6 @@ subroutine Flash2Jacobian(snes,xx,A,B,flag,realization,ierr)
 
   call PetscLogEventBegin(logging%event_r_jacobian,ierr)
 
- flag = SAME_NONZERO_PATTERN
   call MatGetType(A,mat_type,ierr)
   if (mat_type == MATMFFD) then
     J = B
@@ -3053,7 +3051,7 @@ subroutine Flash2Jacobian(snes,xx,A,B,flag,realization,ierr)
   do
     if (.not.associated(cur_patch)) exit
     realization%patch => cur_patch
-    call Flash2JacobianPatch1(snes,xx,J,J,flag,realization,ierr)
+    call Flash2JacobianPatch1(snes,xx,J,J,realization,ierr)
     cur_patch => cur_patch%next
   enddo
 
@@ -3062,7 +3060,7 @@ subroutine Flash2Jacobian(snes,xx,A,B,flag,realization,ierr)
   do
     if (.not.associated(cur_patch)) exit
     realization%patch => cur_patch
-    call Flash2JacobianPatch2(snes,xx,J,J,flag,realization,ierr)
+    call Flash2JacobianPatch2(snes,xx,J,J,realization,ierr)
     cur_patch => cur_patch%next
   enddo
 
@@ -3099,7 +3097,7 @@ end subroutine Flash2Jacobian
 
 ! ************************************************************************** !
 
-subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
+subroutine Flash2JacobianPatch(snes,xx,A,B,realization,ierr)
   ! 
   ! Computes the Jacobian
   ! 
@@ -3123,7 +3121,6 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
   Vec :: xx
   Mat :: A, B
   type(realization_type) :: realization
-  MatStructure flag
 
   PetscErrorCode :: ierr
   PetscInt :: nvar,neq,nr
@@ -3209,7 +3206,6 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
 ! dropped derivatives:
 !   1.D0 gas phase viscocity to all p,t,c,s
 !   2. Average molecular weights to p,t,s
-!  flag = SAME_NONZERO_PATTERN
 
 #if 0
 !  call Flash2NumericalJacobianTest(xx,realization)
@@ -3647,7 +3643,7 @@ end subroutine Flash2JacobianPatch
 
 ! ************************************************************************** !
 
-subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
+subroutine Flash2JacobianPatch1(snes,xx,A,B,realization,ierr)
   ! 
   ! Flash2JacobianPatch: Computes the Jacobian: Flux term
   ! 
@@ -3671,7 +3667,6 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   Vec :: xx
   Mat :: A, B
   type(realization_type) :: realization
-  MatStructure flag
 
   PetscErrorCode :: ierr
   PetscInt :: nvar,neq,nr
@@ -3755,7 +3750,6 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 ! dropped derivatives:
 !   1.D0 gas phase viscocity to all p,t,c,s
 !   2. Average molecular weights to p,t,s
-!  flag = SAME_NONZERO_PATTERN
 
 #if 0
 !  call Flash2NumericalJacobianTest(xx,realization)
@@ -4044,7 +4038,7 @@ end subroutine Flash2JacobianPatch1
 
 ! ************************************************************************** !
 
-subroutine Flash2JacobianPatch2(snes,xx,A,B,flag,realization,ierr)
+subroutine Flash2JacobianPatch2(snes,xx,A,B,realization,ierr)
   ! 
   ! Flash2JacobianPatch: Computes the Jacobian: Accum, source, reaction
   ! 
@@ -4068,7 +4062,6 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   Vec :: xx
   Mat :: A, B
   type(realization_type) :: realization
-  MatStructure flag
 
   PetscErrorCode :: ierr
   PetscInt :: nvar,neq,nr

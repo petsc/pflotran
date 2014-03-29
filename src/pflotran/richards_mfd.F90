@@ -1711,7 +1711,7 @@ end subroutine RichardsResidualPatchMFDLP2
 
 ! ************************************************************************** !
 
-subroutine RichardsJacobianMFD(snes,xx,A,B,flag,realization,ierr)
+subroutine RichardsJacobianMFD(snes,xx,A,B,realization,ierr)
   ! 
   ! RichardsJacobian: Computes the Jacobian for MFD Discretization
   ! 
@@ -1731,7 +1731,6 @@ subroutine RichardsJacobianMFD(snes,xx,A,B,flag,realization,ierr)
   Vec :: xx
   Mat :: A, B
   type(realization_type) :: realization
-  MatStructure flag
   PetscErrorCode :: ierr
   
   Mat :: J
@@ -1745,7 +1744,6 @@ subroutine RichardsJacobianMFD(snes,xx,A,B,flag,realization,ierr)
 
   option => realization%option
 
-  flag = SAME_NONZERO_PATTERN
   call MatGetType(A,mat_type,ierr)
   if (mat_type == MATMFFD) then
     J = B
@@ -1757,7 +1755,7 @@ subroutine RichardsJacobianMFD(snes,xx,A,B,flag,realization,ierr)
 
   call MatZeroEntries(J,ierr)
 
-  call RichardsJacobianPatchMFD(snes,xx,J,J,flag,realization,ierr)
+  call RichardsJacobianPatchMFD(snes,xx,J,J,realization,ierr)
 
   if (realization%debug%matview_Jacobian) then
 #if 0  
@@ -1789,7 +1787,7 @@ end subroutine RichardsJacobianMFD
 
 ! ************************************************************************** !
 
-subroutine RichardsJacobianMFDLP(snes,xx,A,B,flag,realization,ierr)
+subroutine RichardsJacobianMFDLP(snes,xx,A,B,realization,ierr)
 
   use Realization_class
   use Patch_module
@@ -1803,7 +1801,6 @@ subroutine RichardsJacobianMFDLP(snes,xx,A,B,flag,realization,ierr)
   Vec :: xx
   Mat :: A, B
   type(realization_type) :: realization
-  MatStructure flag
   PetscErrorCode :: ierr
   
   Mat :: J
@@ -1818,7 +1815,6 @@ subroutine RichardsJacobianMFDLP(snes,xx,A,B,flag,realization,ierr)
 
   option => realization%option
 
-  flag = SAME_NONZERO_PATTERN
   call MatGetType(A,mat_type,ierr)
   if (mat_type == MATMFFD) then
     J = B
@@ -1831,7 +1827,7 @@ subroutine RichardsJacobianMFDLP(snes,xx,A,B,flag,realization,ierr)
 
   call MatZeroEntries(J,ierr)
 
-  call RichardsJacobianPatchMFDLP(snes,xx,J,J,flag,realization,ierr)
+  call RichardsJacobianPatchMFDLP(snes,xx,J,J,realization,ierr)
 
   if (realization%debug%matview_Jacobian) then
 #if 1
@@ -1878,7 +1874,7 @@ end subroutine RichardsJacobianMFDLP
 
 ! ************************************************************************** !
 
-subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
+subroutine RichardsJacobianPatchMFD (snes,xx,A,B,realization,ierr)
   ! 
   ! RichardsJacobianPatch1: Computes local condensed matrices
   ! for the Jacobian
@@ -1906,7 +1902,6 @@ subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
   Vec, intent(in) :: xx
   Mat, intent(out) :: A, B
   type(realization_type) :: realization
-  MatStructure flag
 
   PetscErrorCode :: ierr
 
@@ -2058,7 +2053,7 @@ end subroutine RichardsJacobianPatchMFD
 
 ! ************************************************************************** !
 
-subroutine RichardsJacobianPatchMFDLP (snes,xx,A,B,flag,realization,ierr)
+subroutine RichardsJacobianPatchMFDLP (snes,xx,A,B,realization,ierr)
   ! 
   ! RichardsJacobianPatch1: Computes local condensed matrices
   ! for the Jacobian
@@ -2085,7 +2080,6 @@ subroutine RichardsJacobianPatchMFDLP (snes,xx,A,B,flag,realization,ierr)
   Vec, intent(in) :: xx
   Mat, intent(out) :: A, B
   type(realization_type) :: realization
-  MatStructure flag
 
   PetscErrorCode :: ierr
 

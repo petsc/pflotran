@@ -469,7 +469,7 @@ end subroutine PMTHResidual
 
 ! ************************************************************************** !
 
-subroutine PMTHJacobian(this,snes,xx,A,B,flag,ierr)
+subroutine PMTHJacobian(this,snes,xx,A,B,ierr)
   ! 
   ! This routine
   ! 
@@ -485,14 +485,13 @@ subroutine PMTHJacobian(this,snes,xx,A,B,flag,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  MatStructure flag
   PetscErrorCode :: ierr
   
 #ifdef PM_TH_DEBUG
   call printMsg(this%option,'PMTH%Jacobian()')
 #endif
   
-  call THJacobian(snes,xx,A,B,flag,this%realization,ierr)
+  call THJacobian(snes,xx,A,B,this%realization,ierr)
 
 end subroutine PMTHJacobian
 

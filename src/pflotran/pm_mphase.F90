@@ -462,7 +462,7 @@ end subroutine PMMphaseResidual
 
 ! ************************************************************************** !
 
-subroutine PMMphaseJacobian(this,snes,xx,A,B,flag,ierr)
+subroutine PMMphaseJacobian(this,snes,xx,A,B,ierr)
   ! 
   ! Author: Glenn Hammond
   ! Date: 03/14/13
@@ -476,7 +476,6 @@ subroutine PMMphaseJacobian(this,snes,xx,A,B,flag,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  MatStructure flag
   PetscErrorCode :: ierr
   
 #ifdef PM_MPHASE_DEBUG  
@@ -485,9 +484,9 @@ subroutine PMMphaseJacobian(this,snes,xx,A,B,flag,ierr)
   
   select case(this%realization%discretization%itype)
     case(STRUCTURED_GRID_MIMETIC)
-!      call MphaseJacobianMFDLP(snes,xx,A,B,flag,this%realization,ierr)
+!      call MphaseJacobianMFDLP(snes,xx,A,B,this%realization,ierr)
     case default
-      call MphaseJacobian(snes,xx,A,B,flag,this%realization,ierr)
+      call MphaseJacobian(snes,xx,A,B,this%realization,ierr)
   end select
 
 end subroutine PMMphaseJacobian

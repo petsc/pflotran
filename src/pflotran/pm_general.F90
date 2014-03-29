@@ -460,7 +460,7 @@ end subroutine PMGeneralResidual
 
 ! ************************************************************************** !
 
-subroutine PMGeneralJacobian(this,snes,xx,A,B,flag,ierr)
+subroutine PMGeneralJacobian(this,snes,xx,A,B,ierr)
   ! 
   ! Author: Glenn Hammond
   ! Date: 03/14/13
@@ -474,7 +474,6 @@ subroutine PMGeneralJacobian(this,snes,xx,A,B,flag,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  MatStructure flag
   PetscErrorCode :: ierr
   
 #ifdef PM_GENERAL_DEBUG  
@@ -483,9 +482,9 @@ subroutine PMGeneralJacobian(this,snes,xx,A,B,flag,ierr)
   
   select case(this%realization%discretization%itype)
     case(STRUCTURED_GRID_MIMETIC)
-!      call GeneralJacobianMFDLP(snes,xx,A,B,flag,this%realization,ierr)
+!      call GeneralJacobianMFDLP(snes,xx,A,B,this%realization,ierr)
     case default
-      call GeneralJacobian(snes,xx,A,B,flag,this%realization,ierr)
+      call GeneralJacobian(snes,xx,A,B,this%realization,ierr)
   end select
 
 end subroutine PMGeneralJacobian
