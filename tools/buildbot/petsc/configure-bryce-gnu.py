@@ -5,7 +5,7 @@ if __name__ == '__main__':
   sys.path.insert(0, os.path.abspath('config'))
   import configure
   configure_options = [
-    '--download-f-blas-lapack=yes',
+    '--download-fblaslapack=yes',
     '--download-metis=yes',
     '--download-parmetis=yes',
     '--download-hdf5=yes',

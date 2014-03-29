@@ -6,7 +6,7 @@ if __name__ == '__main__':
   import configure
   configure_options = [
     '--FFLAGS=',
-    '--download-f-blas-lapack=yes',
+    '--download-fblaslapack=yes',
     '--download-hypre=yes',
     '--download-metis=yes',
     '--download-parmetis=yes',

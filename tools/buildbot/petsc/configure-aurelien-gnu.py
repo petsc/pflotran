@@ -6,7 +6,7 @@ if __name__ == '__main__':
   import configure
   configure_options = [
     '--download-cmake=yes',
-    '--download-f-blas-lapack=yes',
+    '--download-fblaslapack=yes',
     '--download-metis=yes',
     '--download-parmetis=yes',
     '--with-hdf5-dir=/data/software/sl-6.x86_64/modules/gcc/4.7.3/hdf5/1.8.11-gcc-p',
