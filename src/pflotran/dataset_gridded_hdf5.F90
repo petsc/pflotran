@@ -361,7 +361,7 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
   call PetscTime(tend,ierr)
   write(option%io_buffer,'(f6.2," Seconds to set up dataset ",a32,".")') &
     tend-tstart, trim(this%hdf5_dataset_name)
-  call printMsg(option)
+  print *, trim(option%io_buffer)
 #endif
   
 #ifdef BROADCAST_DATASET
@@ -477,7 +477,7 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
   call PetscTime(tend,ierr)
   write(option%io_buffer,'(f6.2," Seconds to read dataset ",a32,".")') &
     tend-tstart, trim(this%hdf5_dataset_name)
-  call printMsg(option)
+  print *, trim(option%io_buffer)
 #endif
 
   
