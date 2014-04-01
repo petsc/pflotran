@@ -186,6 +186,7 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
   PetscBool :: first_time
   PetscMPIInt :: hdf5_err
   PetscErrorCode :: ierr
+  PetscLogDouble :: tstart, tend
   character(len=MAXWORDLENGTH) :: attribute_name, dataset_name, word
 
   !TODO(geh): add to event log
@@ -196,6 +197,11 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
 #define BROADCAST_DATASET
 #ifdef BROADCAST_DATASET
   if (first_time .or. option%myrank == option%io_rank) then
+#endif
+
+!#define TIME_DATASET
+#ifdef TIME_DATASET
+  call PetscTime(tstart,ierr)
 #endif
 
   ! open the file
@@ -350,8 +356,20 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
     endif
   endif
 
+#ifdef TIME_DATASET
+  call MPI_Barrier(option%mycomm,ierr)
+  call PetscTime(tend,ierr)
+  write(option%io_buffer,'(f6.2," Seconds to set up dataset ",a32,".")') &
+    tend-tstart, trim(this%hdf5_dataset_name)
+  call printMsg(option)
+#endif
+  
 #ifdef BROADCAST_DATASET
   endif
+#endif
+
+#ifdef TIME_DATASET
+  call PetscTime(tstart,ierr)
 #endif
 
   call PetscLogEventBegin(logging%event_h5dread_f,ierr)
@@ -452,7 +470,16 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
   call h5close_f(hdf5_err)
 #ifdef BROADCAST_DATASET
   endif
-#endif  
+#endif
+
+#ifdef TIME_DATASET
+  call MPI_Barrier(option%mycomm,ierr)
+  call PetscTime(tend,ierr)
+  write(option%io_buffer,'(f6.2," Seconds to read dataset ",a32,".")') &
+    tend-tstart, trim(this%hdf5_dataset_name)
+  call printMsg(option)
+#endif
+
   
   !TODO(geh): add to event log
   !call PetscLogEventEnd(logging%event_read_ndim_real_array_hdf5,ierr)
