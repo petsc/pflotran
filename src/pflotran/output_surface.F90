@@ -113,13 +113,11 @@ subroutine OutputSurface(surf_realization,realization,plot_flag, &
   endif
 
   if (plot_flag) then
-    if (surf_realization%output_option%print_hdf5 .and. &
-        option%subsurf_surf_coupling /= DECOUPLED ) then
+    if (surf_realization%output_option%print_hdf5) then
       call OutputSurfaceHDF5UGridXDMF(surf_realization,realization,INSTANTANEOUS_VARS)
     endif
   
-    if (surf_realization%output_option%print_tecplot .and. &
-        option%subsurf_surf_coupling /= DECOUPLED ) then
+    if (surf_realization%output_option%print_tecplot) then
       call PetscTime(tstart,ierr)
       call PetscLogEventBegin(logging%event_output_tecplot,ierr) 
       select case(surf_realization%output_option%tecplot_format)
@@ -140,10 +138,8 @@ subroutine OutputSurface(surf_realization,realization,plot_flag, &
 
   endif
 
-  if (option%subsurf_surf_coupling /= DECOUPLED) then
-    ! Output temporally average variables
-    call OutputSurfaceAvegVars(surf_realization,realization)
-  endif
+  ! Output temporally average variables
+  call OutputSurfaceAvegVars(surf_realization,realization)
 
   ! Increment the plot number
   if(plot_flag) then
