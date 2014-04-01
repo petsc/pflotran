@@ -70,7 +70,7 @@ subroutine SimulationBaseInit(this,option)
   ! Author: Glenn Hammond
   ! Date: 06/11/13
   ! 
-
+  use Timestepper_Base_class, only : TS_CONTINUE
   use Option_module
 
   implicit none
@@ -82,7 +82,7 @@ subroutine SimulationBaseInit(this,option)
   nullify(this%output_option)
   nullify(this%process_model_coupler_list)
   this%sim_aux => SimAuxCreate()
-  this%stop_flag = 0 
+  this%stop_flag = TS_CONTINUE
 
 end subroutine SimulationBaseInit
 
@@ -178,7 +178,7 @@ subroutine ExecuteRun(this)
       if (average_step_time + current_time > option%wallclock_stop_time) then
         call printMsg(option,"Wallclock stop time exceeded.  Exiting!!!")
         call printMsg(option,"")
-        stop_flag = 1
+        stop_flag = TS_STOP_END_SIMULATION
         return
       endif
 #endif    

@@ -257,9 +257,9 @@ class(pmc_base_type), target :: this
   ! Get data of other process-model
   call this%GetAuxData()
   
-  local_stop_flag = 0
+  local_stop_flag = TS_CONTINUE
   do
-    if (local_stop_flag > 0) exit ! end simulation
+    if (local_stop_flag /= TS_CONTINUE) exit ! end simulation
     if (this%timestepper%target_time >= sync_time) exit
     
     call SetOutputFlags(this)
@@ -272,7 +272,7 @@ class(pmc_base_type), target :: this
                                         transient_plot_flag,checkpoint_flag)
     call this%timestepper%StepDT(this%pm_list,local_stop_flag)
 
-    if (local_stop_flag > 1) exit ! failure
+    if (local_stop_flag == TS_STOP_FAILURE) exit ! failure
     ! Have to loop over all process models coupled in this object and update
     ! the time step size.  Still need code to force all process models to
     ! use the same time step size if tightly or iteratively coupled.

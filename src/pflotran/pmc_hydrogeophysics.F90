@@ -119,6 +119,7 @@ recursive subroutine PMCHydrogeophysicsRunToTime(this,sync_time,stop_flag)
   ! 
 
   use Hydrogeophysics_Wrapper_module, only : HydrogeophysicsWrapperStep
+  use Timestepper_Base_class, only : TS_CONTINUE
 
   implicit none
   
@@ -134,7 +135,7 @@ recursive subroutine PMCHydrogeophysicsRunToTime(this,sync_time,stop_flag)
   
   call this%GetAuxData()
   
-  local_stop_flag = 0
+  local_stop_flag = TS_CONTINUE
   
   call HydrogeophysicsWrapperStep(sync_time,this%solution_mpi, &
                                   this%solution_seq, &
