@@ -396,9 +396,12 @@ subroutine DatasetCommonHDF5ReadTimes(filename,dataset_name,time_storage, &
 #ifdef TIME_READING_TIMES
   call MPI_Barrier(option%mycomm,ierr)
   call PetscTime(tend,ierr)
-  write(option%io_buffer,'(f6.2," Seconds to read dataset times",a32,".")') &
-    tend-tstart, trim(dataset_name)
-  print *, trim(option%io_buffer)
+  write(option%io_buffer,'(f6.2," Seconds to read dataset times",a,".")') &
+    tend-tstart, trim(dataset_name) // ' (' // trim(option%group_prefix) // &
+    ')'
+  if (option%myrank == option%io_rank) then
+    print *, trim(option%io_buffer)
+  endif
 #endif
 
   call PetscLogEventEnd(logging%event_read_array_hdf5,ierr)

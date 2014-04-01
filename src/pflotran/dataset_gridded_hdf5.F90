@@ -212,7 +212,9 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
   ! set read file access property
   call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
 #ifndef SERIAL_HDF5
+  if (first_time) then
   call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
+  endif
 #endif
   call h5fopen_f(this%filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
   call h5pclose_f(prop_id,hdf5_err)
@@ -356,19 +358,19 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
     endif
   endif
 
-#ifdef TIME_DATASET
-  call MPI_Barrier(option%mycomm,ierr)
-  call PetscTime(tend,ierr)
-  write(option%io_buffer,'(f6.2," Seconds to set up dataset ",a32,".")') &
-    tend-tstart, trim(this%hdf5_dataset_name)
-  print *, trim(option%io_buffer)
-#endif
-  
 #ifdef BROADCAST_DATASET
   endif
 #endif
 
 #ifdef TIME_DATASET
+  call MPI_Barrier(option%mycomm,ierr)
+  call PetscTime(tend,ierr)
+  write(option%io_buffer,'(f6.2," Seconds to set up dataset ",a,".")') &
+    tend-tstart, trim(this%hdf5_dataset_name) // ' (' // &
+    trim(option%group_prefix) // ')'
+  if (option%myrank == option%io_rank) then
+    print *, trim(option%io_buffer)
+  endif
   call PetscTime(tstart,ierr)
 #endif
 
@@ -475,9 +477,12 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
 #ifdef TIME_DATASET
   call MPI_Barrier(option%mycomm,ierr)
   call PetscTime(tend,ierr)
-  write(option%io_buffer,'(f6.2," Seconds to read dataset ",a32,".")') &
-    tend-tstart, trim(this%hdf5_dataset_name)
-  print *, trim(option%io_buffer)
+  write(option%io_buffer,'(f6.2," Seconds to read dataset ",a,".")') &
+    tend-tstart, trim(this%hdf5_dataset_name) // ' (' // &
+    trim(option%group_prefix) // ')'
+  if (option%myrank == option%io_rank) then
+    print *, trim(option%io_buffer)
+  endif
 #endif
 
   
