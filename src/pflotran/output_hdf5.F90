@@ -3259,7 +3259,8 @@ subroutine OutputHDF5Provenance(option, filename, first)
 
 
   if (first .and. (option%myrank == option%io_rank)) then
-    dummy_first = first
+    ! want to open in append mode!
+    dummy_first = .false.
     call OutputHDF5OpenFile(option, PETSC_COMM_SELF, filename, dummy_first, file_id)
 
     ! create the provenance group
