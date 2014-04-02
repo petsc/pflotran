@@ -743,10 +743,10 @@ subroutine PMCBaseGetHeader(this,header)
   ! Check the value of 'times_per_h5_file'
   if (header%times_per_h5_file /= &
       this%pm_list%realization_base%output_option%times_per_h5_file) then
-    write(string,*),header%times_per_h5_file
+    write(string,*) header%times_per_h5_file
     this%option%io_buffer = 'From checkpoint file: times_per_h5_file ' // trim(string)
     call printMsg(this%option)
-    write(string,*),this%pm_list%realization_base%output_option%times_per_h5_file
+    write(string,*) this%pm_list%realization_base%output_option%times_per_h5_file
     this%option%io_buffer = 'From inputdeck      : times_per_h5_file ' // trim(string)
     call printMsg(this%option)
     this%option%io_buffer = 'times_per_h5_file specified in inputdeck does not ' // &

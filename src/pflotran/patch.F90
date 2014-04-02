@@ -1693,7 +1693,7 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
         string = GetSubConditionName(flow_condition%pressure%itype)
         option%io_buffer='For TH mode: flow_condition%pressure%itype = "' // &
           trim(adjustl(string)) // '", not implemented.'
-          write(*,*), trim(string)
+          write(*,*)  trim(string)
         call printErrMsg(option)
     end select
     if(associated(flow_condition%temperature)) then
@@ -1727,7 +1727,7 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
                   flow_condition%temperature%dataset, &
                   num_connections,TH_TEMPERATURE_DOF,option)
         case default
-          write(string,*),flow_condition%temperature%itype
+          write(string,*) flow_condition%temperature%itype
           string = GetSubConditionName(flow_condition%temperature%itype)
           option%io_buffer='For TH mode: flow_condition%temperature%itype = "' // &
             trim(adjustl(string)) // '", not implemented.'
@@ -1745,7 +1745,7 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
           coupler%flow_aux_real_var(TH_PRESSURE_DOF,1:num_connections) = &
                   flow_condition%rate%dataset%rarray(1)
       case default
-        write(string,*),flow_condition%rate%itype
+        write(string,*) flow_condition%rate%itype
         string = GetSubConditionName(flow_condition%rate%itype)
         option%io_buffer='For TH mode: flow_condition%rate%itype = "' // &
           trim(adjustl(string)) // '", not implemented.'
@@ -1765,7 +1765,7 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
         string = GetSubConditionName(flow_condition%energy_rate%itype)
         option%io_buffer='For TH mode: flow_condition%energy_rate%itype = "' // &
           trim(adjustl(string)) // '", not implemented.'
-          write(*,*), trim(string)
+          write(*,*)  trim(string)
         call printErrMsg(option)
     end select
   endif

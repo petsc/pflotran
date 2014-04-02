@@ -1098,7 +1098,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF(surf_realization,realization, &
   subsurf_grid => realization%patch%grid
 
 #if defined(SCORPIO_WRITE)
-  write(*,*),'SCORPIO_WRITE'
+  write(*,*) 'SCORPIO_WRITE'
   option%io_buffer = 'WriteHDF5CoordinatesUGrid not supported for SCORPIO_WRITE'
   call printErrMsg(option)
 #else
@@ -2133,7 +2133,7 @@ subroutine WriteHDF5SurfaceFlowratesUGrid(surf_realization,file_id,var_list_type
   surf_field => surf_realization%surf_field
 
 #if defined(SCORPIO_WRITE)
-  write(*,*),'SCORPIO_WRITE'
+  write(*,*) 'SCORPIO_WRITE'
   option%io_buffer = 'WriteHDF5FlowratesUGrid not supported for SCORPIO_WRITE'
   call printErrMsg(option)
 #else
