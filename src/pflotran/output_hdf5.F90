@@ -166,7 +166,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
 
   grid => patch%grid
   if (first) then
-    call OutputHDF5Provenance(option, output_option, file_id)
+    call OutputHDF5Provenance(option, file_id)
 
     ! create a group for the coordinates data set
 #if defined(SCORPIO_WRITE)
@@ -3203,14 +3203,13 @@ end subroutine WriteHDF5FlowratesUGrid
 
 ! ************************************************************************** !
 
-subroutine OutputHDF5Provenance(option, output_option, file_id)
+subroutine OutputHDF5Provenance(option, file_id)
   !
   ! write pflotran and petsc provenance information including a copy
   ! of the inputfile
   !
 
   use Option_module, only : option_type
-  use Output_Aux_module, only : output_option_type
   use PFLOTRAN_Provenance_module, only : provenance_max_str_len
 
 #include "finclude/petscsysdef.h"
@@ -3220,7 +3219,6 @@ subroutine OutputHDF5Provenance(option, output_option, file_id)
   implicit none
 
   type(option_type), intent(in) :: option
-  type(output_option_type), intent(in) :: output_option
   integer(HID_T), intent(in) :: file_id
 
   character(len=32) :: filename, name
@@ -3396,15 +3394,17 @@ end subroutine OutputHDF5Provenance_PETSc
 
 ! ************************************************************************** !
 
-subroutine OutputHDF5AttributeStringArray(parent_id, type, name, length, data)
+subroutine OutputHDF5AttributeStringArray(parent_id, data_type, name, length, data)
+  !
   ! create the dataspaces and attributes consisting of an array of
   ! strings, then write the data and cleanup
+  !
 
   use hdf5
 
   implicit none
 
-  integer(HID_T), intent(in) ::  parent_id, type
+  integer(HID_T), intent(in) ::  parent_id, data_type
   character(len=*), intent(in) :: name
   PetscInt, intent(in) :: length
   character(len=*), intent(in) :: data(length)
@@ -3415,8 +3415,8 @@ subroutine OutputHDF5AttributeStringArray(parent_id, type, name, length, data)
 
   dims = length
   call h5screate_simple_f(1, dims, dataspace_id, hdf5_err)
-  call h5acreate_f(parent_id, name, type, dataspace_id, attribute_id, hdf5_err)
-  call h5awrite_f(attribute_id, type, data, dims, hdf5_err)
+  call h5acreate_f(parent_id, name, data_type, dataspace_id, attribute_id, hdf5_err)
+  call h5awrite_f(attribute_id, data_type, data, dims, hdf5_err)
   call h5aclose_f(attribute_id, hdf5_err)
   call h5sclose_f(dataspace_id, hdf5_err)
 
@@ -3424,15 +3424,17 @@ end subroutine OutputHDF5AttributeStringArray
 
 ! ************************************************************************** !
 
-subroutine OutputHDF5DatasetStringArray(parent_id, type, name, length, data)
+subroutine OutputHDF5DatasetStringArray(parent_id, data_type, name, length, data)
+  !
   ! create the dataspaces and dataset consisting of an array of
   ! strings, then write the data and cleanup
+  !
 
   use hdf5
 
   implicit none
 
-  integer(HID_T), intent(in) ::  parent_id, type
+  integer(HID_T), intent(in) ::  parent_id, data_type
   character(len=*), intent(in) :: name
   PetscInt, intent(in) :: length
   character(len=*), intent(in) :: data(length)
@@ -3443,8 +3445,8 @@ subroutine OutputHDF5DatasetStringArray(parent_id, type, name, length, data)
 
   dims = length
   call h5screate_simple_f(1, dims, dataspace_id, hdf5_err)
-  call h5dcreate_f(parent_id, name, type, dataspace_id, attribute_id, hdf5_err)
-  call h5dwrite_f(attribute_id, type, data, dims, hdf5_err)
+  call h5dcreate_f(parent_id, name, data_type, dataspace_id, attribute_id, hdf5_err)
+  call h5dwrite_f(attribute_id, data_type, data, dims, hdf5_err)
   call h5dclose_f(attribute_id, hdf5_err)
   call h5sclose_f(dataspace_id, hdf5_err)
 
