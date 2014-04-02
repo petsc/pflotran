@@ -194,14 +194,14 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
 
   first_time = (this%data_dim == DIM_NULL)
 
-#define BROADCAST_DATASET
-#ifdef BROADCAST_DATASET
-  if (first_time .or. option%myrank == option%io_rank) then
-#endif
-
 !#define TIME_DATASET
 #ifdef TIME_DATASET
   call PetscTime(tstart,ierr)
+#endif
+
+#define BROADCAST_DATASET
+#ifdef BROADCAST_DATASET
+  if (first_time .or. option%myrank == option%io_rank) then
 #endif
 
   ! open the file
@@ -289,7 +289,13 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
       this%max_buffer_size = default_max_buffer_size
     endif
   endif ! this%data_dim == DIM_NULL
-  
+
+#ifdef BROADCAST_DATASET
+  endif
+#endif
+
+  ! num_times and time_dim must be calcualted by all processes; does not 
+  ! require communication  
   num_spatial_dims = DatasetGriddedHDF5GetNDimensions(this)
   time_dim = -1
   num_times = 1
@@ -298,6 +304,9 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
     time_dim = num_spatial_dims + 1
   endif
   
+#ifdef BROADCAST_DATASET
+  if (first_time .or. option%myrank == option%io_rank) then
+#endif
   ! open the "data" dataset
   dataset_name = 'Data'
   if (this%realization_dependent) then
