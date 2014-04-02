@@ -142,7 +142,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
   Vec :: natural_vec
   PetscReal, pointer :: v_ptr
   
-  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXSTRINGLENGTH) :: filename, string
   character(len=MAXWORDLENGTH) :: word
   character(len=2) :: free_mol_char, tot_mol_char, sec_mol_char
   PetscReal, pointer :: array(:)
@@ -162,12 +162,16 @@ subroutine OutputHDF5(realization_base,var_list_type)
   field => realization_base%field
   output_option => realization_base%output_option
 
-  call OutputHDF5OpenFile(option, output_option, var_list_type, file_id, first)
+  call OutputHDF5GetFilename(option, output_option, var_list_type, filename, first)
+
+#ifdef SCORPIO_WRITE
+  call OutputHDF5OpenFile(option, option%iowrite_group_id, filename, first, file_id)
+#else
+  call OutputHDF5OpenFile(option, option%mycomm, filename, first, file_id)
+#endif
 
   grid => patch%grid
   if (first) then
-    call OutputHDF5Provenance(option, file_id)
-
     ! create a group for the coordinates data set
 #if defined(SCORPIO_WRITE)
     string = "Coordinates" // CHAR(0)
@@ -376,19 +380,23 @@ subroutine OutputHDF5(realization_base,var_list_type)
 
   hdf5_first = PETSC_FALSE
 
+#ifndef SCORPIO
+  call OutputHDF5Provenance(option, filename, first)
+#endif
+
 end subroutine OutputHDF5
 
 ! ************************************************************************** !
 
-subroutine OutputHDF5OpenFile(option, output_option, var_list_type, file_id, &
-                              first)
+subroutine OutputHDF5GetFilename(option, output_option, var_list_type, filename, first)
   !
-  ! Determine the propper hdf5 output file name and open it.
+  ! Isolate logic to determine the propper hdf5 output file name.
   !
-  ! Return the file handle and 'first' flag indicating if this is the
+  ! Return the filename and 'first' flag indicating if this is the
   ! first time the file has been opened.
   !
   use Option_module, only : option_type, printMsg
+  use Output_Aux_module, only : output_option_type
   use hdf5
 
 #include "finclude/petscsysdef.h"
@@ -398,19 +406,10 @@ subroutine OutputHDF5OpenFile(option, output_option, var_list_type, file_id, &
   type(option_type), intent(inout) :: option
   type(output_option_type), intent(in) :: output_option
   PetscInt, intent(in) :: var_list_type
-  character(len=MAXSTRINGLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH), intent(out) :: filename
   PetscBool, intent(out) :: first
 
-#if defined(SCORPIO_WRITE)
-  integer, intent(out) :: file_id
-  integer:: prop_id
-#else
-  integer(HID_T), intent(out) :: file_id
-  integer(HID_T) :: prop_id
-#endif
-  
   character(len=MAXSTRINGLENGTH) :: string,string2,string3
-  PetscMPIInt :: hdf5_err
 
   select case (var_list_type)
     case (INSTANTANEOUS_VARS)
@@ -448,17 +447,46 @@ subroutine OutputHDF5OpenFile(option, output_option, var_list_type, file_id, &
                 '-' // trim(string) // trim(string2) // '.h5'
   endif
 
+end subroutine OutputHDF5GetFilename
+
+! ************************************************************************** !
+
+subroutine OutputHDF5OpenFile(option, comm, filename, first, file_id)
+  !
+  ! Determine the propper hdf5 output file name and open it.
+  !
+  ! Return the file handle.
+  !
+  use Option_module, only : option_type, printMsg
+  use hdf5
+
+#include "finclude/petscsysdef.h"
+
+  implicit none
+
+  type(option_type), intent(inout) :: option
+  PetscMPIInt, intent(in) :: comm
+  character(len=MAXSTRINGLENGTH), intent(in) :: filename
+  PetscBool, intent(inout) :: first
+
+  PetscMPIInt :: hdf5_err
+#if defined(SCORPIO_WRITE)
+  integer, intent(out) :: file_id
+  integer:: prop_id
+#else
+  integer(HID_T), intent(out) :: file_id
+  integer(HID_T) :: prop_id
+#endif
+  
 #if defined(SCORPIO_WRITE)
   if (.not.first) then
     filename = trim(filename) // CHAR(0)
-    call scorpio_open_file(filename, option%iowrite_group_id, &
-                              SCORPIO_FILE_READWRITE, file_id, ierr)
+    call scorpio_open_file(filename, comm, SCORPIO_FILE_READWRITE, file_id, ierr)
     if (file_id == -1) first = PETSC_TRUE
   endif
   if (first) then
     filename = trim(filename) // CHAR(0)
-    call scorpio_open_file(filename, option%iowrite_group_id, &
-                              SCORPIO_FILE_CREATE, file_id, ierr)
+    call scorpio_open_file(filename, comm, SCORPIO_FILE_CREATE, file_id, ierr)
   endif
 
 #else
@@ -469,7 +497,7 @@ subroutine OutputHDF5OpenFile(option, output_option, var_list_type, file_id, &
 
   call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
 #ifndef SERIAL_HDF5
-  call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
+  call h5pset_fapl_mpio_f(prop_id, comm, MPI_INFO_NULL, hdf5_err)
 #endif
   if (.not.first) then
     call h5eset_auto_f(OFF,hdf5_err)
@@ -505,7 +533,7 @@ subroutine OutputHDF5CloseFile(option, file_id)
 
   type(option_type), intent(in) :: option
   integer(HID_T), intent(in) :: file_id
-  integer :: hdf5_err
+  PetscMPIInt :: hdf5_err
   PetscErrorCode :: ierr
 
 #if defined(SCORPIO_WRITE)
@@ -3203,10 +3231,11 @@ end subroutine WriteHDF5FlowratesUGrid
 
 ! ************************************************************************** !
 
-subroutine OutputHDF5Provenance(option, file_id)
+subroutine OutputHDF5Provenance(option, filename, first)
   !
-  ! write pflotran and petsc provenance information including a copy
-  ! of the inputfile
+  ! Write pflotran and petsc provenance information including a copy
+  ! of the inputfile. Only write provenance info the first time the
+  ! file is opened and only on the io process.
   !
 
   use Option_module, only : option_type
@@ -3218,30 +3247,39 @@ subroutine OutputHDF5Provenance(option, file_id)
 
   implicit none
 
-  type(option_type), intent(in) :: option
-  integer(HID_T), intent(in) :: file_id
+  type(option_type), intent(inout) :: option
+  character(len=MAXSTRINGLENGTH), intent(in) :: filename
+  PetscBool, intent(in) :: first
 
-  character(len=32) :: filename, name
-  integer(HID_T) :: prop_id, provenance_id, string_type
+  character(len=32) :: name
+  integer(HID_T) :: file_id, prop_id, provenance_id, string_type
   PetscMPIInt :: hdf5_err
-  PetscBool :: first
+  PetscBool :: dummy_first
   integer(SIZE_T) :: size_t_int
 
-  ! create the provenance group
-  name = "Provenance"
-  call h5gcreate_f(file_id, name, provenance_id, hdf5_err, OBJECT_NAMELEN_DEFAULT_F)
 
-  ! create fixed length string datatype
-  call h5tcopy_f(H5T_FORTRAN_S1, string_type, hdf5_err)
-  size_t_int = provenance_max_str_len
-  call h5tset_size_f(string_type, size_t_int, hdf5_err)
+  if (first .and. (option%myrank == option%io_rank)) then
+    dummy_first = first
+    call OutputHDF5OpenFile(option, PETSC_COMM_SELF, filename, dummy_first, file_id)
 
-  call OutputHDF5Provenance_PFLOTRAN(option, provenance_id, string_type)
-  call OutputHDF5Provenance_PETSc(provenance_id, string_type)
+    ! create the provenance group
+    name = "Provenance"
+    call h5gcreate_f(file_id, name, provenance_id, hdf5_err, OBJECT_NAMELEN_DEFAULT_F)
 
-  ! close the provenance group
-  call h5tclose_f(string_type, hdf5_err)
-  call h5gclose_f(provenance_id, hdf5_err)
+    ! create fixed length string datatype
+    call h5tcopy_f(H5T_FORTRAN_S1, string_type, hdf5_err)
+    size_t_int = provenance_max_str_len
+    call h5tset_size_f(string_type, size_t_int, hdf5_err)
+
+    call OutputHDF5Provenance_PFLOTRAN(option, provenance_id, string_type)
+    call OutputHDF5Provenance_PETSc(provenance_id, string_type)
+
+    ! close the provenance group
+    call h5tclose_f(string_type, hdf5_err)
+    call h5gclose_f(provenance_id, hdf5_err)
+
+    call OutputHDF5CloseFile(option, file_id)
+  end if
 
 end subroutine OutputHDF5Provenance
 
