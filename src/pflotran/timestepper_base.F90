@@ -10,6 +10,10 @@ module Timestepper_Base_class
   
 #include "finclude/petscsys.h"
  
+  PetscInt, parameter, public :: TS_CONTINUE = 0
+  PetscInt, parameter, public :: TS_STOP_END_SIMULATION = 1
+  PetscInt, parameter, public :: TS_STOP_FAILURE = 2
+
   type, public :: stepper_base_type
   
     PetscInt :: steps         ! The number of time steps taken by the code.
@@ -457,7 +461,7 @@ subroutine TimestepperBaseSetTargetTime(this,sync_time,option, &
   if (associated(cur_waypoint)) then
     dt_max = cur_waypoint%dt_max
   else
-    stop_flag = 1 ! stop after end of time step
+    stop_flag = TS_STOP_END_SIMULATION ! stop after end of time step
   endif
   
   option%refactor_dt = dt

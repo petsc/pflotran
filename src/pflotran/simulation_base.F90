@@ -70,7 +70,7 @@ subroutine SimulationBaseInit(this,option)
   ! Author: Glenn Hammond
   ! Date: 06/11/13
   ! 
-
+  use Timestepper_Base_class, only : TS_CONTINUE
   use Option_module
 
   implicit none
@@ -82,7 +82,7 @@ subroutine SimulationBaseInit(this,option)
   nullify(this%output_option)
   nullify(this%process_model_coupler_list)
   this%sim_aux => SimAuxCreate()
-  this%stop_flag = 0 
+  this%stop_flag = TS_CONTINUE
 
 end subroutine SimulationBaseInit
 
@@ -157,35 +157,6 @@ subroutine ExecuteRun(this)
 
   final_time = SimulationGetFinalWaypointTime(this)
   call this%RunToTime(final_time)
-  
-#if 0  
-  type(waypoint_type), pointer :: cur_waypoint
-  
-  cur_waypoint => this%waypoints%first
-  do
-    if (.not.associated(cur_waypoint)) exit
-    call this%RunToTime(cur_waypoint%time)
-    cur_waypoint => cur_waypoint%next
-
-    if (this%option%wallclock_stop_flag) then
-    !TODO(geh): reformulate 
-#if 0    
-      call PetscTime(current_time, ierr)
-      average_step_time = (current_time-master_stepper%start_time)/ &
-                          real(master_stepper%steps-&
-                               master_stepper%start_time_step+1) &
-                          *2.d0  ! just to be safe, double it
-      if (average_step_time + current_time > option%wallclock_stop_time) then
-        call printMsg(option,"Wallclock stop time exceeded.  Exiting!!!")
-        call printMsg(option,"")
-        stop_flag = 1
-        return
-      endif
-#endif    
-    endif
-    
-  enddo
-#endif  
   
 end subroutine ExecuteRun
 
