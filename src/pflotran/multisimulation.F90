@@ -83,6 +83,12 @@ subroutine MultiSimulationInitialize(multisimulation,option)
   call InputGetCommandLineString(string,filename,option_found,option)
   if (option_found) then
     input => InputCreate(IUNIT_TEMP,filename,option)
+    if (multisimulation%num_realizations == 0) then
+      option%io_buffer = '"-num_realizations <int>" must be specified ' // &
+        'with an integer value matching the number of ids in ' // &
+        '"-realization_ids_file <string>".'
+      call printErrMsg(option)
+    endif
     allocate(realization_ids_from_file(multisimulation%num_realizations))
     realization_ids_from_file = 0
     string = &
