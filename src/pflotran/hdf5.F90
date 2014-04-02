@@ -1870,6 +1870,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   enddo
   call PetscLogEventEnd(logging%event_hash_map,ierr)
   region%cell_ids => integer_array
+  region%def_type = DEFINED_BY_CELL_IDS
                             
   allocate(integer_array(num_indices))
   integer_array = 0
@@ -1884,6 +1885,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
                               integer_array)
                             
     region%faces => integer_array
+    region%def_type = DEFINED_BY_CELL_IDS_WTIH_FACE_IDS
   endif
   region%num_cells = num_indices
   deallocate(indices)
