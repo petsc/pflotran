@@ -1244,7 +1244,6 @@ subroutine InputGetCommandLineInt(string,int_value,found,option)
   PetscInt :: int_value
 
   PetscInt :: iarg, narg
-  PetscInt :: len
   character(len=MAXSTRINGLENGTH) :: string2
   PetscErrorCode :: ierr
   
@@ -1253,10 +1252,9 @@ subroutine InputGetCommandLineInt(string,int_value,found,option)
   found = PETSC_FALSE
   narg = getCommandLineArgumentCount()
   string = adjustl(string)
-  len = len_trim(string)
   do iarg = 1, narg
     call getCommandLineArgument(iarg,string2)
-    if (StringCompare(string,string2,len)) then
+    if (StringCompare(string,string2)) then
       found = PETSC_TRUE
       if (iarg+1 <= narg) then
         call getCommandLineArgument(iarg+1,string2)
@@ -1297,7 +1295,6 @@ subroutine InputGetCommandLineReal(string,double_value,found,option)
   PetscReal :: double_value
 
   PetscInt :: iarg, narg
-  PetscInt :: len
   character(len=MAXSTRINGLENGTH) :: string2
   PetscErrorCode :: ierr
   
@@ -1306,10 +1303,9 @@ subroutine InputGetCommandLineReal(string,double_value,found,option)
   found = PETSC_FALSE
   narg = getCommandLineArgumentCount()
   string = adjustl(string)
-  len = len_trim(string)
   do iarg = 1, narg
     call getCommandLineArgument(iarg,string2)
-    if (StringCompare(string,string2,len)) then
+    if (StringCompare(string,string2)) then
       found = PETSC_TRUE
       if (iarg+1 <= narg) then
         call getCommandLineArgument(iarg+1,string2)
@@ -1350,7 +1346,6 @@ subroutine InputGetCommandLineString(string,string_value,found,option)
   character(len=MAXSTRINGLENGTH) :: string_value
 
   PetscInt :: iarg, narg
-  PetscInt :: len
   character(len=MAXSTRINGLENGTH) :: string2
   PetscErrorCode :: ierr
   
@@ -1359,10 +1354,9 @@ subroutine InputGetCommandLineString(string,string_value,found,option)
   found = PETSC_FALSE
   narg = getCommandLineArgumentCount()
   string = adjustl(string)
-  len = len_trim(string)
   do iarg = 1, narg
     call getCommandLineArgument(iarg,string2)
-    if (StringCompare(string,string2,len)) then
+    if (StringCompare(string,string2)) then
       found = PETSC_TRUE
       if (iarg+1 <= narg) then
         call getCommandLineArgument(iarg+1,string2)
@@ -1412,7 +1406,6 @@ subroutine InputGetCommandLineTruth(string,truth_value,found,option)
   PetscBool :: truth_value
 
   PetscInt :: iarg, narg
-  PetscInt :: len
   character(len=MAXSTRINGLENGTH) :: string2
   character(len=MAXWORDLENGTH) :: word
   PetscErrorCode :: ierr
@@ -1422,10 +1415,9 @@ subroutine InputGetCommandLineTruth(string,truth_value,found,option)
   found = PETSC_FALSE
   narg = getCommandLineArgumentCount()
   string = adjustl(string)
-  len = len_trim(string)
   do iarg = 1, narg
     call getCommandLineArgument(iarg,string2)
-    if (StringCompare(string,string2,len)) then
+    if (StringCompare(string,string2)) then
       found = PETSC_TRUE
       if (iarg+1 <= narg) then
         call getCommandLineArgument(iarg+1,string2)

@@ -622,6 +622,11 @@ subroutine ReactionReadPass1(reaction,input,option)
                       call InputErrorMsg(input,option,'Freundlich_N', &
                                          'CHEMISTRY,ISOTHERM_REACTIONS')
                       kd_rxn%itype = SORPTION_FREUNDLICH
+                    case('KD_MINERAL_NAME')
+                      call InputReadWord(input,option,word,PETSC_TRUE)
+                      call InputErrorMsg(input,option,'KD_MINERAL_NAME', &
+                                         'ISOTHERM_REACTIONS,KD_MINERAL_NAME')
+                      kd_rxn%kd_mineral_name = word                      
                     case default
                       option%io_buffer = &
                         'CHEMISTRY,SORPTION,ISOTHERM_REACTIONS keyword: ' // &
@@ -4065,34 +4070,46 @@ subroutine RTotalSorbKD(rt_auxvar,global_auxvar,material_auxvar,reaction, &
   PetscInt :: icomp
   PetscReal :: res
   PetscReal :: dres_dc
-  PetscReal :: activity
   PetscReal :: molality
   PetscReal :: tempreal
   PetscReal :: one_over_n
-  PetscReal :: activity_one_over_n
+  PetscReal :: molality_one_over_n
+  PetscReal :: kd_kgw_m3b  
 
-  ! Surface Complexation
+  PetscInt, parameter :: iphase = 1
+
   do irxn = 1, reaction%neqkdrxn
     icomp = reaction%eqkdspecid(irxn)
     molality = rt_auxvar%pri_molal(icomp)
-    activity = molality*rt_auxvar%pri_act_coef(icomp)
+    if (reaction%eqkdmineral(irxn) > 0) then
+      ! NOTE: mineral volume fraction here is solely a scaling factor.  It has 
+      ! nothing to do with the soil volume; that is calculated through as a 
+      ! function of porosity.
+      kd_kgw_m3b = reaction%eqkddistcoef(irxn) * & !KD units [mL water/g soil]
+                   global_auxvar%den_kg(iphase) * &
+                   (1.d0-material_auxvar%porosity) * &
+                   material_auxvar%soil_particle_density * &
+                   1.d-3 * & ! convert mL water/g soil to m^3 water/kg soil
+                   (rt_auxvar%mnrl_volfrac(reaction%eqkdmineral(irxn)))
+    else
+      kd_kgw_m3b = reaction%eqkddistcoef(irxn)
+    endif
     select case(reaction%eqkdtype(irxn))
       case(SORPTION_LINEAR)
         ! Csorb = Kd*Caq
-        res = reaction%eqkddistcoef(irxn)*activity
-        dres_dc = res/molality
+        res = kd_kgw_m3b*molality
+        dres_dc = kd_kgw_m3b
       case(SORPTION_LANGMUIR)
         ! Csorb = K*Caq*b/(1+K*Caq)
-        tempreal = reaction%eqkddistcoef(irxn)*activity
+        tempreal = kd_kgw_m3b*molality
         res = tempreal*reaction%eqkdlangmuirb(irxn) / (1.d0 + tempreal)
         dres_dc = res/molality - &
                   res / (1.d0 + tempreal) * tempreal / molality
       case(SORPTION_FREUNDLICH)
         ! Csorb = Kd*Caq**(1/n)
         one_over_n = 1.d0/reaction%eqkdfreundlichn(irxn)
-        activity_one_over_n = activity**one_over_n
-        res = reaction%eqkddistcoef(irxn)* &
-                activity**one_over_n
+        molality_one_over_n = molality**one_over_n
+        res = kd_kgw_m3b*molality**one_over_n
         dres_dc = res/molality*one_over_n
       case default
         res = 0.d0
