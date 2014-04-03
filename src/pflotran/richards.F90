@@ -1449,7 +1449,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       patch%internal_fluxes(RICHARDS_PRESSURE_DOF,1,sum_connection) = Res(1)
 #endif
 #ifdef STORE_FLOWRATES
-      patch%internal_fluxes(RICHARDS_PRESSURE_DOF,1,sum_connection) = Res(1)
+      patch%internal_fluxes(RICHARDS_PRESSURE_DOF,1,sum_connection) = Res(1)*FMWH2O
 #endif
       if (local_id_up>0) then
 #ifdef PM_RICHARDS_DEBUG
@@ -1509,7 +1509,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
                                 v_darcy,Res)
       patch%boundary_velocities(1,sum_connection) = v_darcy
 #ifdef STORE_FLOWRATES
-      patch%boundary_fluxes(1,1,sum_connection) = Res(1)
+      patch%boundary_fluxes(1,1,sum_connection) = Res(1)*FMWH2O
 #endif
 
       if (option%compute_mass_balance_new) then
