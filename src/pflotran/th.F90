@@ -3592,7 +3592,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
 
       patch%internal_velocities(1,sum_connection) = v_darcy
 #ifdef STORE_FLOWRATES
-      patch%internal_fluxes(TH_PRESSURE_DOF,1,sum_connection) = Res(TH_PRESSURE_DOF)
+      patch%internal_fluxes(TH_PRESSURE_DOF,1,sum_connection) = Res(TH_PRESSURE_DOF)*FMWH2O
       patch%internal_fluxes(TH_TEMPERATURE_DOF,1,sum_connection) = Res(TH_TEMPERATURE_DOF)
 #endif
 
@@ -3660,7 +3660,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
 
       patch%boundary_velocities(1,sum_connection) = v_darcy
 #ifdef STORE_FLOWRATES
-      patch%boundary_fluxes(TH_PRESSURE_DOF,1,sum_connection) = Res(TH_PRESSURE_DOF)
+      patch%boundary_fluxes(TH_PRESSURE_DOF,1,sum_connection) = Res(TH_PRESSURE_DOF)*FMWH2O
       patch%boundary_fluxes(TH_TEMPERATURE_DOF,1,sum_connection) = Res(TH_TEMPERATURE_DOF)
 #endif
 

@@ -1188,7 +1188,6 @@ subroutine OutputGetFlowrates(realization_base)
     if (.not.associated(boundary_condition)) exit
 
     cur_connection_set => boundary_condition%connection_set
-    sum_connection = 0
 
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
