@@ -92,7 +92,7 @@ subroutine GeneralRead(input,option)
     if (InputCheckExit(input,option)) exit  
 
     call InputReadWord(input,option,keyword,PETSC_TRUE)
-    call InputErrorMsg(input,option,'keyword','FLUID_PROPERTY')
+    call InputErrorMsg(input,option,'keyword','GENERAL_MODE')
     call StringToUpper(keyword)   
       
     select case(trim(keyword))
