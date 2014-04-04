@@ -27,8 +27,10 @@ module Output_HDF5_module
             OutputHDF5UGridXDMF, &
             OutputHDF5FilenameID, &
             OutputHDF5UGridXDMFExplicit, &
+#if defined(PETSC_HAVE_HDF5)
             OutputHDF5DatasetStringArray, &
             OutputHDF5AttributeStringArray, &
+#endif
             OutputHDF5OpenFile, &
             OutputHDF5CloseFile
 
@@ -388,10 +390,29 @@ subroutine OutputHDF5OpenFile(option, output_option, var_list_type, file_id, &
   ! Return the file handle and 'first' flag indicating if this is the
   ! first time the file has been opened.
   !
-  use Option_module, only : option_type, printMsg
-  use hdf5
+  use Option_module, only : option_type, printMsg, printErrMsg
 
 #include "finclude/petscsysdef.h"
+
+#if  !defined(PETSC_HAVE_HDF5)
+  implicit none
+
+  type(option_type), intent(inout) :: option
+  type(output_option_type), intent(in) :: output_option
+  PetscInt, intent(in) :: var_list_type
+  character(len=MAXSTRINGLENGTH) :: filename
+  integer, intent(out) :: file_id
+  integer:: prop_id
+  PetscBool, intent(in) :: first
+
+  call printMsg(option,'')
+  write(option%io_buffer, &
+        '("PFLOTRAN must be compiled with HDF5 to &
+        &write HDF5 formatted structured grids Darn.")')
+  call printErrMsg(option)
+#else
+
+  use hdf5
 
   implicit none
 
@@ -492,13 +513,31 @@ subroutine OutputHDF5OpenFile(option, output_option, var_list_type, file_id, &
   endif
   call printMsg(option)
 
+#endif
+!PETSC_HAVE_HDF5
+
 end subroutine OutputHDF5OpenFile
 
 ! ************************************************************************** !
 
 subroutine OutputHDF5CloseFile(option, file_id)
 
-  use Option_module, only : option_type
+  use Option_module, only : option_type, printMsg, printErrMsg
+
+#if  !defined(PETSC_HAVE_HDF5)
+  implicit none
+
+  type(option_type), intent(inout) :: option
+  integer, intent(in) :: file_id
+
+  call printMsg(option,'')
+  write(option%io_buffer, &
+        '("PFLOTRAN must be compiled with HDF5 to &
+        &write HDF5 formatted structured grids Darn.")')
+  call printErrMsg(option)
+
+#else
+
   use hdf5
 
   implicit none
@@ -514,6 +553,9 @@ subroutine OutputHDF5CloseFile(option, file_id)
   call h5fclose_f(file_id, hdf5_err)
   call h5close_f(hdf5_err)
 #endif
+
+#endif
+!PETSC_HAVE_HDF5
 
 end subroutine OutputHDF5CloseFile
 
