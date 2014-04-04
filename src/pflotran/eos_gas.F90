@@ -581,7 +581,7 @@ subroutine EOSGasEnergyIdeal(T,P,H,dH_dT,dH_dP,U,dU_dT,dU_dP,ierr)
   PetscReal, parameter:: Cv_air = 20.85 ! head capacity wiki
   PetscReal  T_kelvin
 
-  T_kelvin = T + 273.15
+  T_kelvin = T + 273.15d0
   H = Cv_air * T_kelvin * 1.d3  ! J/mol -> J/kmol
   U = (Cv_air - Rg) * T_kelvin * 1.d3 ! J/mol -> J/kmol
 
