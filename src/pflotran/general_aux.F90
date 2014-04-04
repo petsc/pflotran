@@ -287,7 +287,6 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
 
   use Option_module
   use Global_Aux_module
-!  use Gas_EOS_module
   use EOS_Water_module
   use EOS_Gas_module
   use Saturation_Function_module
@@ -532,8 +531,6 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
     else
       water_vapor_pressure = gen_auxvar%pres(spid)
     endif
-!    call ideal_gaseos_noderiv(gen_auxvar%pres(apid),gen_auxvar%temp, &
-!                              den_air,h_air,u_air)
     call EOSGasDensityEnergy(gen_auxvar%temp,gen_auxvar%pres(apid),den_air, &
                              h_air,u_air,ierr)
     h_air = h_air * 1.d-6
@@ -582,8 +579,6 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
     ! STOMP uses separate functions for calculating viscosity of vapor and
     ! and air (WATGSV,AIRGSV) and then uses GASVIS to calculate mixture 
     ! viscosity.
-!    call visgas_noderiv(gen_auxvar%temp,gen_auxvar%pres(apid), &
-!                        gen_auxvar%pres(gid),den_air,visg)
     call EOSGasViscosity(gen_auxvar%temp,gen_auxvar%pres(apid), &
                          gen_auxvar%pres(gid),den_air,visg,ierr)
     gen_auxvar%mobility(gid) = krg/visg
@@ -642,7 +637,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
   use Option_module
   use Global_Aux_module
   use EOS_Water_module
-  use Gas_EOS_module
+!  use Gas_EOS_module
   use Saturation_Function_module
   use Material_Aux_class
   

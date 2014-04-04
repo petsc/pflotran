@@ -1678,8 +1678,8 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
 
   use Option_module
   
-  use Gas_EOS_module
   use EOS_Water_module
+  use EOS_Gas_module
 
   implicit none
 
@@ -1731,9 +1731,10 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
         ! mixture in gas
         ! air enthalpy is only a function of temperature and the 
         dummy_pressure = 0.d0
-        call ideal_gaseos_noderiv(dummy_pressure,gen_auxvar%temp, &
-                                  den,enthalpy,internal_energy)
+        call EOSGasEnergy(gen_auxvar%temp,dummy_pressure, &
+                          enthalpy,internal_energy,ierr)
         enthalpy = enthalpy * 1.d-6 ! J/kmol -> MJ/kmol                                  
+print *, enthalpy
         ! enthalpy units: MJ/kmol
         Res(option%energy_id) = Res(option%energy_id) + &
           qsrc_mol(TWO_INTEGER) * enthalpy
