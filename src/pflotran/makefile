@@ -196,6 +196,7 @@ eos_obj = \
 	${common_src}co2_span_wagner.o \
 	${common_src}co2_span_wagner_spline.o \
 	${common_src}eos.o \
+	${common_src}eos_gas.o \
 	${common_src}eos_water.o \
 	${common_src}gas_eos_mod.o 
 
@@ -526,7 +527,7 @@ e4d_mat_inv.o :
 e4d_run.o : e4d_vars.o
 e4d_setup.o : e4d_vars.o
 e4d_vars.o :
-eos.o : eos_water.o input_aux.o option.o pflotran_constants.o string.o
+eos.o : eos_water.o input_aux.o option.o pflotran_constants.o string.o eos_gas.o
 eos_water.o : pflotran_constants.o
 field.o : pflotran_constants.o
 flash2.o : co2_span_wagner.o co2_span_wagner_spline.o co2_sw.o co2eos.o \
@@ -546,7 +547,7 @@ general.o : connection.o coupler.o debug.o discretization.o eos_water.o \
             pflotran_constants.o realization.o saturation_function.o \
             variables.o
 general_aux.o : eos_water.o gas_eos_mod.o global_aux.o material_aux.o option.o \
-                pflotran_constants.o saturation_function.o utility.o
+                pflotran_constants.o saturation_function.o utility.o eos_gas.o
 geomech_grid.o : gauss.o geomech_grid_aux.o geomechanics_region.o input_aux.o \
                  logging.o option.o pflotran_constants.o unstructured_cell.o \
                  unstructured_grid_aux.o utility.o
@@ -688,7 +689,8 @@ init.o : condition.o condition_control.o connection.o constraint.o \
          string.o structured_grid.o surface_field.o surface_flow.o \
          surface_global.o surface_init.o surface_realization.o surface_th.o \
          th.o timestepper.o uniform_velocity.o units.o \
-         unstructured_grid.o unstructured_grid_aux.o variables.o waypoint.o
+         unstructured_grid.o unstructured_grid_aux.o variables.o waypoint.o \
+         eos_gas.o
 input_aux.o : option.o pflotran_constants.o string.o
 logging.o : pflotran_constants.o
 mass_transfer.o : dataset_base.o dataset_common_hdf5.o dataset_global_hdf5.o \
