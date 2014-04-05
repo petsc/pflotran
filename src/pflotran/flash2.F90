@@ -236,25 +236,25 @@ subroutine Flash2ComputeMassBalance(realization,mass_balance,mass_trapped)
 ! Date: 02/22/08
 !
 
-use Realization_class
-use Patch_module
+  use Realization_class
+  use Patch_module
 
-type(realization_type) :: realization
-PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
-PetscReal :: mass_trapped(realization%option%nphase)
+  type(realization_type) :: realization
+  PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
+  PetscReal :: mass_trapped(realization%option%nphase)
 
-type(patch_type), pointer :: cur_patch
+  type(patch_type), pointer :: cur_patch
 
-mass_balance = 0.d0
-mass_trapped = 0.d0
+  mass_balance = 0.d0
+  mass_trapped = 0.d0
 
-cur_patch => realization%patch_list%first
-do
-if (.not.associated(cur_patch)) exit
-realization%patch => cur_patch
-call Flash2ComputeMassBalancePatch(realization,mass_balance,mass_trapped)
-cur_patch => cur_patch%next
-enddo
+  cur_patch => realization%patch_list%first
+  do
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call Flash2ComputeMassBalancePatch(realization,mass_balance,mass_trapped)
+    cur_patch => cur_patch%next
+  enddo
 
 end subroutine Flash2ComputeMassBalance
 
@@ -268,92 +268,92 @@ subroutine Flash2ComputeMassBalancePatch(realization,mass_balance,mass_trapped)
 ! Date: 12/19/08
 !
 
-use Realization_class
-use Option_module
-use Patch_module
-use Field_module
-use Grid_module
-use Material_Aux_class
+  use Realization_class
+  use Option_module
+  use Patch_module
+  use Field_module
+  use Grid_module
+  use Material_Aux_class
 ! use Saturation_Function_module
 ! use Flash2_pckr_module
 
-implicit none
+  implicit none
 
-type(realization_type) :: realization
+  type(realization_type) :: realization
 ! type(saturation_function_type) :: saturation_function_type
 
-PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
-PetscReal :: mass_trapped(realization%option%nphase)
+  PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
+  PetscReal :: mass_trapped(realization%option%nphase)
 
-type(option_type), pointer :: option
-type(patch_type), pointer :: patch
-type(field_type), pointer :: field
-type(grid_type), pointer :: grid
-type(Flash2_auxvar_type), pointer :: Flash2_auxvars(:)
-class(material_auxvar_type), pointer :: material_auxvars(:)
-PetscReal, pointer :: icap_loc_p(:)
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(field_type), pointer :: field
+  type(grid_type), pointer :: grid
+  type(Flash2_auxvar_type), pointer :: Flash2_auxvars(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+  PetscReal, pointer :: icap_loc_p(:)
 
-PetscErrorCode :: ierr
-PetscInt :: local_id
-PetscInt :: ghosted_id
-PetscInt :: iphase
-PetscInt :: ispec_start, ispec_end, ispec
-PetscReal :: pckr_sir(realization%option%nphase)
+  PetscErrorCode :: ierr
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: iphase
+  PetscInt :: ispec_start, ispec_end, ispec
+  PetscReal :: pckr_sir(realization%option%nphase)
 
-option => realization%option
-patch => realization%patch
-grid => patch%grid
-field => realization%field
+  option => realization%option
+  patch => realization%patch
+  grid => patch%grid
+  field => realization%field
 
-Flash2_auxvars => patch%aux%Flash2%auxvars
-material_auxvars => patch%aux%Material%auxvars
+  Flash2_auxvars => patch%aux%Flash2%auxvars
+  material_auxvars => patch%aux%Material%auxvars
 
-call VecGetArrayF90(field%icap_loc,icap_loc_p, ierr)
+  call VecGetArrayF90(field%icap_loc,icap_loc_p, ierr)
 
-do local_id = 1, grid%nlmax
-ghosted_id = grid%nL2G(local_id)
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
 
 !geh - Ignore inactive cells with inactive materials
-if (associated(patch%imat)) then
-if (patch%imat(ghosted_id) <= 0) cycle
-endif
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
+    endif
 
 ! mass = volume * saturation * density * mole fraction
-do iphase = 1, option%nphase
-do ispec = 1, option%nflowspec
-mass_balance(ispec,iphase) = mass_balance(ispec,iphase) + &
-Flash2_auxvars(ghosted_id)%auxvar_elem(0)%xmol(ispec+(iphase-1)*option%nflowspec)* &
-Flash2_auxvars(ghosted_id)%auxvar_elem(0)%den(iphase)* &
-Flash2_auxvars(ghosted_id)%auxvar_elem(0)%sat(iphase)* &
-material_auxvars(ghosted_id)%porosity*material_auxvars(ghosted_id)%volume
-enddo
+    do iphase = 1, option%nphase
+      do ispec = 1, option%nflowspec
+        mass_balance(ispec,iphase) = mass_balance(ispec,iphase) + &
+        Flash2_auxvars(ghosted_id)%auxvar_elem(0)%xmol(ispec+(iphase-1)*option%nflowspec)* &
+        Flash2_auxvars(ghosted_id)%auxvar_elem(0)%den(iphase)* &
+        Flash2_auxvars(ghosted_id)%auxvar_elem(0)%sat(iphase)* &
+        material_auxvars(ghosted_id)%porosity*material_auxvars(ghosted_id)%volume
+      enddo
 
-pckr_sir(iphase) = &
-realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr%sr(iphase)
+      pckr_sir(iphase) = &
+      realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr%sr(iphase)
 
-if (iphase == 1 .and. &
-Flash2_auxvars(ghosted_id)%auxvar_elem(0)%sat(iphase) <= pckr_sir(iphase)) then
-ispec = 1
-mass_trapped(iphase) = mass_trapped(iphase) + &
-Flash2_auxvars(ghosted_id)%auxvar_elem(0)%xmol(ispec+(iphase-1)*option%nflowspec)* &
-Flash2_auxvars(ghosted_id)%auxvar_elem(0)%den(iphase)* &
-Flash2_auxvars(ghosted_id)%auxvar_elem(0)%sat(iphase)* &
-material_auxvars(ghosted_id)%porosity*material_auxvars(ghosted_id)%volume
-endif
+      if (iphase == 1 .and. &
+        Flash2_auxvars(ghosted_id)%auxvar_elem(0)%sat(iphase) <= pckr_sir(iphase)) then
+        ispec = 1
+        mass_trapped(iphase) = mass_trapped(iphase) + &
+        Flash2_auxvars(ghosted_id)%auxvar_elem(0)%xmol(ispec+(iphase-1)*option%nflowspec)* &
+        Flash2_auxvars(ghosted_id)%auxvar_elem(0)%den(iphase)* &
+        Flash2_auxvars(ghosted_id)%auxvar_elem(0)%sat(iphase)* &
+        material_auxvars(ghosted_id)%porosity*material_auxvars(ghosted_id)%volume
+      endif
 
-if (iphase == 2 .and. &
-Flash2_auxvars(ghosted_id)%auxvar_elem(0)%sat(iphase) <= pckr_sir(iphase)) then
-ispec = 2
-mass_trapped(iphase) = mass_trapped(iphase) + &
-Flash2_auxvars(ghosted_id)%auxvar_elem(0)%xmol(ispec+(iphase-1)*option%nflowspec)* &
-Flash2_auxvars(ghosted_id)%auxvar_elem(0)%den(iphase)* &
-Flash2_auxvars(ghosted_id)%auxvar_elem(0)%sat(iphase)* &
-material_auxvars(ghosted_id)%porosity*material_auxvars(ghosted_id)%volume
-endif
-enddo
-enddo
+      if (iphase == 2 .and. &
+        Flash2_auxvars(ghosted_id)%auxvar_elem(0)%sat(iphase) <= pckr_sir(iphase)) then
+        ispec = 2
+        mass_trapped(iphase) = mass_trapped(iphase) + &
+        Flash2_auxvars(ghosted_id)%auxvar_elem(0)%xmol(ispec+(iphase-1)*option%nflowspec)* &
+        Flash2_auxvars(ghosted_id)%auxvar_elem(0)%den(iphase)* &
+        Flash2_auxvars(ghosted_id)%auxvar_elem(0)%sat(iphase)* &
+        material_auxvars(ghosted_id)%porosity*material_auxvars(ghosted_id)%volume
+      endif
+    enddo
+  enddo
 
-call VecRestoreArrayF90(field%icap_loc,icap_loc_p, ierr)
+  call VecRestoreArrayF90(field%icap_loc,icap_loc_p, ierr)
 
 end subroutine Flash2ComputeMassBalancePatch
 
@@ -367,47 +367,47 @@ subroutine FLASH2ZeroMassBalDeltaPatch(realization)
 ! Date: 12/19/08
 !
 
-use Realization_class
-use Option_module
-use Patch_module
-use Grid_module
+  use Realization_class
+  use Option_module
+  use Patch_module
+  use Grid_module
 
-implicit none
+  implicit none
 
-type(realization_type) :: realization
+  type(realization_type) :: realization
 
-type(option_type), pointer :: option
-type(patch_type), pointer :: patch
-type(global_auxvar_type), pointer :: global_auxvars_bc(:)
-type(global_auxvar_type), pointer :: global_auxvars_ss(:)
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(global_auxvar_type), pointer :: global_auxvars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars_ss(:)
 
-PetscInt :: iconn
+  PetscInt :: iconn
 
-option => realization%option
-patch => realization%patch
+  option => realization%option
+  patch => realization%patch
 
-global_auxvars_bc => patch%aux%Global%auxvars_bc
-global_auxvars_ss => patch%aux%Global%auxvars_ss
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
+  global_auxvars_ss => patch%aux%Global%auxvars_ss
 
 #ifdef COMPUTE_INTERNAL_MASS_FLUX
-do iconn = 1, patch%aux%FLASH2%num_aux
-patch%aux%Global%auxvars(iconn)%mass_balance_delta = 0.d0
-enddo
+  do iconn = 1, patch%aux%FLASH2%num_aux
+    patch%aux%Global%auxvars(iconn)%mass_balance_delta = 0.d0
+  enddo
 #endif
 
 ! Intel 10.1 on Chinook reports a SEGV if this conditional is not
 ! placed around the internal do loop - geh
-if (patch%aux%Flash2%num_aux_bc > 0) then
-do iconn = 1, patch%aux%FLASH2%num_aux_bc
-global_auxvars_bc(iconn)%mass_balance_delta = 0.d0
-enddo
-endif
+  if (patch%aux%Flash2%num_aux_bc > 0) then
+    do iconn = 1, patch%aux%FLASH2%num_aux_bc
+      global_auxvars_bc(iconn)%mass_balance_delta = 0.d0
+    enddo
+  endif
 
-if (patch%aux%FLASH2%num_aux_ss > 0) then
-do iconn = 1, patch%aux%FLASH2%num_aux_ss
-global_auxvars_ss(iconn)%mass_balance_delta = 0.d0
-enddo
-endif
+  if (patch%aux%FLASH2%num_aux_ss > 0) then
+    do iconn = 1, patch%aux%FLASH2%num_aux_ss
+      global_auxvars_ss(iconn)%mass_balance_delta = 0.d0
+    enddo
+  endif
 
 end subroutine FLASH2ZeroMassBalDeltaPatch
 
@@ -421,54 +421,54 @@ subroutine FLASH2UpdateMassBalancePatch(realization)
 ! Date: 12/19/08
 !
 
-use Realization_class
-use Option_module
-use Patch_module
-use Grid_module
+  use Realization_class
+  use Option_module
+  use Patch_module
+  use Grid_module
 
-implicit none
+  implicit none
 
-type(realization_type) :: realization
+  type(realization_type) :: realization
 
-type(option_type), pointer :: option
-type(patch_type), pointer :: patch
-type(global_auxvar_type), pointer :: global_auxvars_bc(:)
-type(global_auxvar_type), pointer :: global_auxvars_ss(:)
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(global_auxvar_type), pointer :: global_auxvars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars_ss(:)
 
-PetscInt :: iconn
+  PetscInt :: iconn
 
-option => realization%option
-patch => realization%patch
+  option => realization%option
+  patch => realization%patch
 
-global_auxvars_bc => patch%aux%Global%auxvars_bc
-global_auxvars_ss => patch%aux%Global%auxvars_ss
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
+  global_auxvars_ss => patch%aux%Global%auxvars_ss
 
 #ifdef COMPUTE_INTERNAL_MASS_FLUX
-do iconn = 1, patch%aux%Flash2%num_aux
-patch%aux%Global%auxvars(iconn)%mass_balance = &
-patch%aux%Global%auxvars(iconn)%mass_balance + &
-patch%aux%Global%auxvars(iconn)%mass_balance_delta* &
-option%flow_dt
-enddo
+  do iconn = 1, patch%aux%Flash2%num_aux
+    patch%aux%Global%auxvars(iconn)%mass_balance = &
+    patch%aux%Global%auxvars(iconn)%mass_balance + &
+    patch%aux%Global%auxvars(iconn)%mass_balance_delta* &
+    option%flow_dt
+  enddo
 #endif
 
 ! Intel 10.1 on Chinook reports a SEGV if this conditional is not
 ! placed around the internal do loop - geh
-if (patch%aux%FLASH2%num_aux_bc > 0) then
-do iconn = 1, patch%aux%Flash2%num_aux_bc
-global_auxvars_bc(iconn)%mass_balance = &
-global_auxvars_bc(iconn)%mass_balance + &
-global_auxvars_bc(iconn)%mass_balance_delta*option%flow_dt
-enddo
-endif
+  if (patch%aux%FLASH2%num_aux_bc > 0) then
+    do iconn = 1, patch%aux%Flash2%num_aux_bc
+      global_auxvars_bc(iconn)%mass_balance = &
+      global_auxvars_bc(iconn)%mass_balance + &
+      global_auxvars_bc(iconn)%mass_balance_delta*option%flow_dt
+    enddo
+  endif
 
-if (patch%aux%FLASH2%num_aux_ss > 0) then
-do iconn = 1, patch%aux%Flash2%num_aux_ss
-global_auxvars_ss(iconn)%mass_balance = &
-global_auxvars_ss(iconn)%mass_balance + &
-global_auxvars_ss(iconn)%mass_balance_delta*option%flow_dt
-enddo
-endif
+  if (patch%aux%FLASH2%num_aux_ss > 0) then
+    do iconn = 1, patch%aux%Flash2%num_aux_ss
+      global_auxvars_ss(iconn)%mass_balance = &
+      global_auxvars_ss(iconn)%mass_balance + &
+      global_auxvars_ss(iconn)%mass_balance_delta*option%flow_dt
+    enddo
+  endif
 
 end subroutine FLASH2UpdateMassBalancePatch
 
@@ -552,37 +552,37 @@ subroutine Flash2UpdateReasonPatch(reason,realization)
 
   re=1
  
-  if(re>0)then
-     call VecGetArrayF90(field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
-     call VecGetArrayF90(field%flow_yy, yy_p, ierr)
+  if (re > 0) then
+    call VecGetArrayF90(field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(field%flow_yy, yy_p, ierr)
 
-     do n = 1,grid%nlmax
+    do n = 1,grid%nlmax
 !**** clu-Ignore inactive cells with inactive materials **************
-        if (associated(patch%imat)) then
-           if (patch%imat(grid%nL2G(n)) <= 0) cycle
-        endif
-        n0=(n-1)* option%nflowdof
+      if (associated(patch%imat)) then
+        if (patch%imat(grid%nL2G(n)) <= 0) cycle
+      endif
+      n0=(n-1)* option%nflowdof
   
 ! ******** Too huge change in pressure ****************     
-        if(dabs(xx_p(n0 + 1)- yy_p(n0 + 1))> (10.0D0 * option%dpmxe))then
-           re=0; print *,'huge change in p', xx_p(n0 + 1), yy_p(n0 + 1)
-           exit
-        endif
+      if (dabs(xx_p(n0 + 1) - yy_p(n0 + 1)) > (10.0D0 * option%dpmxe)) then
+        re=0; print *,'huge change in p', xx_p(n0 + 1), yy_p(n0 + 1)
+        exit
+      endif
 
 ! ******** Too huge change in temperature ****************
-        if(dabs(xx_p(n0 + 2)- yy_p(n0 + 2))> (10.0D0 * option%dtmpmxe))then
-           re=0; print *,'huge change in T', xx_p(n0 + 2), yy_p(n0 + 2)
-           exit
-        endif
+      if (dabs(xx_p(n0 + 2) - yy_p(n0 + 2)) > (10.0D0 * option%dtmpmxe)) then
+        re=0; print *,'huge change in T', xx_p(n0 + 2), yy_p(n0 + 2)
+        exit
+      endif
  
 ! ******* Check 0<=total mass fraction <=1 **************************
-           if(xx_p(n0 + 3) > 1.D0)then
-              re=0; exit
-           endif
-           if(xx_p(n0 + 3) < 0.)then
-              re=0; exit
-           endif
-     end do
+      if (xx_p(n0 + 3) > 1.D0) then
+        re=0; exit
+        endif
+        if (xx_p(n0 + 3) < 0.d0) then
+          re=0; exit
+        endif
+     enddo
   
     !if(re<=0) print *,'Sat out of Region at: ',n,iipha,xx_p(n0+1:n0+3)
     call VecRestoreArrayF90(field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
@@ -647,7 +647,7 @@ end subroutine Flash2UpdateReason
   ! Date: 10/10/08
   ! 
    
-     use co2_span_wagner_module
+    use co2_span_wagner_module
      
     use Realization_class
     use Patch_module
@@ -677,25 +677,29 @@ end subroutine Flash2UpdateReason
     
     ipass=1
     do local_id = 1, grid%nlmax
-       ghosted_id = grid%nL2G(local_id)
-       !geh - Ignore inactive cells with inactive materials
-       if (associated(patch%imat)) then
-          if (patch%imat(ghosted_id) <= 0) cycle
-       endif
+      ghosted_id = grid%nL2G(local_id)
+      !geh - Ignore inactive cells with inactive materials
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
       
 !   insure zero liquid sat not passed to ptran (no effect on pflow)
-       if(xx_p((local_id-1)*option%nflowdof+3) < 0.D0)xx_p((local_id-1)*option%nflowdof+3) = zerocut
-       if(xx_p((local_id-1)*option%nflowdof+3) > 1.D0)xx_p((local_id-1)*option%nflowdof+3) = 1.D0 - zerocut
+      if (xx_p((local_id-1)*option%nflowdof+3) < 0.D0) &
+        xx_p((local_id-1)*option%nflowdof+3) = zerocut
+      if (xx_p((local_id-1)*option%nflowdof+3) > 1.D0) &
+        xx_p((local_id-1)*option%nflowdof+3) = 1.D0 - zerocut
     
 !   check if p,T within range of table  
-       if(xx_p((local_id-1)*option%nflowdof+1)< p0_tab*1D6 &
-            .or. xx_p((local_id-1)*option%nflowdof+1)>(ntab_p*dp_tab + p0_tab)*1D6)then
-          ipass=-1; exit  
-       endif
-       if(xx_p((local_id-1)*option%nflowdof+2)< t0_tab -273.15D0 &
-            .or. xx_p((local_id-1)*option%nflowdof+2)>ntab_t*dt_tab + t0_tab-273.15D0)then
-          ipass=-1; exit
-       endif
+      if (xx_p((local_id-1)*option%nflowdof+1) < p0_tab*1D6 &
+        .or. xx_p((local_id-1)*option%nflowdof+1) > &
+        (ntab_p*dp_tab + p0_tab)*1D6) then
+        ipass=-1; exit
+      endif
+      if (xx_p((local_id-1)*option%nflowdof+2) < t0_tab -273.15D0 &
+        .or. xx_p((local_id-1)*option%nflowdof+2) > &
+        ntab_t*dt_tab + t0_tab-273.15D0) then
+        ipass=-1; exit
+      endif
     enddo
 
     call VecRestoreArrayF90(field%flow_xx,xx_p, ierr)
@@ -1194,7 +1198,7 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype,R
           rho = auxvar%den(jco2)*FMWCO2  
           select case(option%itable)  
             case(0,1,2,4,5)
-              if( option%itable >=4) then
+              if (option%itable >= 4) then
                 call co2_sw_interp(auxvar%pres*1.D-6,&
                   tsrc,rho,dddt,dddp,fg,dfgdp,dfgdt, &
                   eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,option%itable)
@@ -1255,16 +1259,16 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype,R
 !     if(pressure_min < 0D0) pressure_min = 0D0 !not limited by pressure lower bound   
 
     ! production well (well status = -1)
-      if( dabs(well_status + 1D0) < 1D-1) then 
-        if(auxvar%pres > pressure_min) then
+      if (dabs(well_status + 1D0) < 1D-1) then
+        if (auxvar%pres > pressure_min) then
           Dq = well_factor 
           do np = 1, option%nphase
             dphi = auxvar%pres - auxvar%pc(np) - pressure_bh
-            if (dphi>=0.D0) then ! outflow only
+            if (dphi >= 0.D0) then ! outflow only
               ukvr = auxvar%kvr(np)
-              if(ukvr<1e-20) ukvr=0D0
-              v_darcy=0D0
-              if (ukvr*Dq>floweps) then
+              if(ukvr < 1e-20) ukvr=0D0
+              v_darcy = 0D0
+              if (ukvr*Dq > floweps) then
                 v_darcy = Dq * ukvr * dphi
                 ! store volumetric rate for ss_fluid_fluxes()
                 qsrc_phase(1) = -1.d0*v_darcy
@@ -1272,7 +1276,7 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype,R
                   auxvar%xmol((np-1)*option%nflowspec+1)*option%flow_dt
                 Res(2) = Res(2) - v_darcy* auxvar%den(np)* &
                   auxvar%xmol((np-1)*option%nflowspec+2)*option%flow_dt
-                if(energy_flag) Res(3) = Res(3) - v_darcy * auxvar%den(np)* &
+                if (energy_flag) Res(3) = Res(3) - v_darcy * auxvar%den(np)* &
                   auxvar%h(np)*option%flow_dt
               ! print *,'produce: ',np,v_darcy
               endif
@@ -1282,7 +1286,7 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype,R
       endif 
      !print *,'well-prod: ',  auxvar%pres,psrc(1), res
     ! injection well (well status = 2)
-      if ( dabs(well_status - 2D0) < 1D-1) then 
+      if (dabs(well_status - 2D0) < 1D-1) then
 
         call EOSWaterDensityEnthalpy(tsrc,auxvar%pres,dw_kg,dw_mol, &
                                      enth_src_h2o,ierr)
@@ -1290,13 +1294,13 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype,R
         Dq = msrc(2) ! well parameter, read in input file
                       ! Take the place of 2nd parameter 
         ! Flow term
-        if( auxvar%pres < pressure_max)then  
+        if (auxvar%pres < pressure_max) then
           do np = 1, option%nphase
             dphi = pressure_bh - auxvar%pres + auxvar%pc(np)
-            if (dphi>=0.D0) then ! outflow only
+            if (dphi >= 0.D0) then ! outflow only
               ukvr = auxvar%kvr(np)
               v_darcy=0.D0
-              if (ukvr*Dq>floweps) then
+              if (ukvr*Dq > floweps) then
                 v_darcy = Dq * ukvr * dphi
                 ! store volumetric rate for ss_fluid_fluxes()
                 qsrc_phase(1) = v_darcy
@@ -1365,83 +1369,83 @@ subroutine Flash2Flux(auxvar_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   
 ! Flow term
   do np = 1, option%nphase
-     if (auxvar_up%sat(np) > sir_up(np) .or. auxvar_dn%sat(np) > sir_dn(np)) then
-        upweight= dd_dn/(dd_up+dd_dn)
-        if (auxvar_up%sat(np) <eps) then 
-           upweight=0.d0
-        else if (auxvar_dn%sat(np) <eps) then 
-           upweight=1.d0
-        endif
-        density_ave = upweight*auxvar_up%den(np) + (1.D0-upweight)*auxvar_dn%den(np) 
+    if (auxvar_up%sat(np) > sir_up(np) .or. auxvar_dn%sat(np) > sir_dn(np)) then
+      upweight= dd_dn/(dd_up+dd_dn)
+      if (auxvar_up%sat(np) < eps) then
+        upweight=0.d0
+      else if (auxvar_dn%sat(np) < eps) then
+        upweight=1.d0
+      endif
+      density_ave = upweight*auxvar_up%den(np) + (1.D0-upweight)*auxvar_dn%den(np)
         
-        gravity = (upweight*auxvar_up%den(np) * auxvar_up%avgmw(np) + &
+      gravity = (upweight*auxvar_up%den(np) * auxvar_up%avgmw(np) + &
              (1.D0-upweight)*auxvar_dn%den(np) * auxvar_dn%avgmw(np)) &
              * dist_gravity
 
-        dphi = auxvar_up%pres - auxvar_dn%pres &
+      dphi = auxvar_up%pres - auxvar_dn%pres &
              - auxvar_up%pc(np) + auxvar_dn%pc(np) &
              + gravity
 
-        v_darcy = 0.D0
-        ukvr=0.D0
-        uh=0.D0
-        uxmol=0.D0
+      v_darcy = 0.D0
+      ukvr = 0.D0
+      uh = 0.D0
+      uxmol = 0.D0
 
-        ! note uxmol only contains one phase xmol
-        if (dphi >= 0.D0) then
-           ukvr = auxvar_up%kvr(np)
-           uxmol(:)=auxvar_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
+      ! note uxmol only contains one phase xmol
+      if (dphi >= 0.D0) then
+        ukvr = auxvar_up%kvr(np)
+        uxmol(:)=auxvar_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
            ! if(option%use_isothermal == PETSC_FALSE)&
-           uh = auxvar_up%h(np)
-        else
-           ukvr = auxvar_dn%kvr(np)
-           uxmol(:)=auxvar_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
+        uh = auxvar_up%h(np)
+      else
+        ukvr = auxvar_dn%kvr(np)
+        uxmol(:)=auxvar_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
            ! if(option%use_isothermal == PETSC_FALSE)&
-           uh = auxvar_dn%h(np)
-        endif
+        uh = auxvar_dn%h(np)
+      endif
    
 
-        if (ukvr>floweps) then
-           v_darcy= Dq * ukvr * dphi
-           vv_darcy(np) = v_darcy
-           q = v_darcy * area
-           do ispec = 1, option%nflowspec
-             fluxm(ispec) = fluxm(ispec) + q * density_ave * uxmol(ispec)
-           enddo  
-          ! if(option%use_isothermal == PETSC_FALSE) &
-            fluxe = fluxe + q*density_ave*uh 
-        endif
-     endif
+      if (ukvr>floweps) then
+        v_darcy= Dq * ukvr * dphi
+        vv_darcy(np) = v_darcy
+        q = v_darcy * area
+        do ispec = 1, option%nflowspec
+          fluxm(ispec) = fluxm(ispec) + q * density_ave * uxmol(ispec)
+        enddo
+        ! if(option%use_isothermal == PETSC_FALSE) &
+        fluxe = fluxe + q*density_ave*uh
+      endif
+    endif
 
 #if 1 
 ! Diffusion term   
 ! Note : average rule may not be correct  
-     if ((auxvar_up%sat(np) > eps) .and. (auxvar_dn%sat(np) > eps)) then
-        difff = diffdp * 0.25D0*(auxvar_up%sat(np) + auxvar_dn%sat(np))* &
+    if ((auxvar_up%sat(np) > eps) .and. (auxvar_dn%sat(np) > eps)) then
+      difff = diffdp * 0.25D0*(auxvar_up%sat(np) + auxvar_dn%sat(np))* &
              (auxvar_up%den(np) + auxvar_dn%den(np))
-        do ispec=1, option%nflowspec
-           ind = ispec + (np-1)*option%nflowspec
-           fluxm(ispec) = fluxm(ispec) + difff * .5D0 * &
-                (auxvar_up%diff(ind) + auxvar_dn%diff(ind))* &
-                (auxvar_up%xmol(ind) - auxvar_dn%xmol(ind))
-        enddo
-     endif
+      do ispec=1, option%nflowspec
+        ind = ispec + (np-1)*option%nflowspec
+        fluxm(ispec) = fluxm(ispec) + difff * .5D0 * &
+            (auxvar_up%diff(ind) + auxvar_dn%diff(ind))* &
+            (auxvar_up%xmol(ind) - auxvar_dn%xmol(ind))
+      enddo
+    endif
 #endif
   enddo
 
 ! conduction term
   !if(option%use_isothermal == PETSC_FALSE) then     
-     Dk = (Dk_up * Dk_dn) / (dd_dn*Dk_up + dd_up*Dk_dn)
-     cond = Dk*area*(auxvar_up%temp-auxvar_dn%temp) 
-     fluxe=fluxe + cond
+  Dk = (Dk_up * Dk_dn) / (dd_dn*Dk_up + dd_up*Dk_dn)
+  cond = Dk*area*(auxvar_up%temp-auxvar_dn%temp)
+  fluxe=fluxe + cond
  ! end if
 
   !if(option%use_isothermal)then
   !   Res(1:option%nflowdof) = fluxm(:) * option%flow_dt
  ! else
-     Res(1:option%nflowspec) = fluxm(:) * option%flow_dt
+  Res(1:option%nflowspec) = fluxm(:) * option%flow_dt
    ! if(option%use_isothermal == PETSC_FALSE)&
-     Res(option%nflowdof) = fluxe * option%flow_dt
+  Res(option%nflowdof) = fluxe * option%flow_dt
  ! end if
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  
@@ -1490,58 +1494,58 @@ subroutine Flash2FluxAdv(auxvar_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   
 ! Flow term
   do np = 1, option%nphase
-     if (auxvar_up%sat(np) > sir_up(np) .or. auxvar_dn%sat(np) > sir_dn(np)) then
-        upweight= dd_dn/(dd_up+dd_dn)
-        if (auxvar_up%sat(np) <eps) then 
-           upweight=0.d0
-        else if (auxvar_dn%sat(np) <eps) then 
-           upweight=1.d0
-        endif
-        density_ave = upweight*auxvar_up%den(np) + (1.D0-upweight)*auxvar_dn%den(np) 
+    if (auxvar_up%sat(np) > sir_up(np) .or. auxvar_dn%sat(np) > sir_dn(np)) then
+      upweight= dd_dn/(dd_up+dd_dn)
+      if (auxvar_up%sat(np) <eps) then
+        upweight=0.d0
+      else if (auxvar_dn%sat(np) <eps) then
+        upweight=1.d0
+      endif
+      density_ave = upweight*auxvar_up%den(np) + (1.D0-upweight)*auxvar_dn%den(np)
         
-        gravity = (upweight*auxvar_up%den(np) * auxvar_up%avgmw(np) + &
-             (1.D0-upweight)*auxvar_dn%den(np) * auxvar_dn%avgmw(np)) &
-             * dist_gravity
+      gravity = (upweight*auxvar_up%den(np) * auxvar_up%avgmw(np) + &
+          (1.D0-upweight)*auxvar_dn%den(np) * auxvar_dn%avgmw(np)) &
+          * dist_gravity
 
-        dphi = auxvar_up%pres - auxvar_dn%pres &
+      dphi = auxvar_up%pres - auxvar_dn%pres &
              - auxvar_up%pc(np) + auxvar_dn%pc(np) &
              + gravity
 
-        v_darcy = 0.D0
-        ukvr=0.D0
-        uh=0.D0
-        uxmol=0.D0
+      v_darcy = 0.D0
+      ukvr=0.D0
+      uh=0.D0
+      uxmol=0.D0
 
         ! note uxmol only contains one phase xmol
-        if (dphi>=0.D0) then
-           ukvr = auxvar_up%kvr(np)
-           uxmol(:)=auxvar_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
+      if (dphi >= 0.D0) then
+        ukvr = auxvar_up%kvr(np)
+        uxmol(:)=auxvar_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
            ! if(option%use_isothermal == PETSC_FALSE)&
-           uh = auxvar_up%h(np)
-        else
-           ukvr = auxvar_dn%kvr(np)
-           uxmol(:)=auxvar_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
+        uh = auxvar_up%h(np)
+      else
+        ukvr = auxvar_dn%kvr(np)
+        uxmol(:)=auxvar_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
            ! if(option%use_isothermal == PETSC_FALSE)&
-           uh = auxvar_dn%h(np)
-        endif
+        uh = auxvar_dn%h(np)
+      endif
    
 
-        if (ukvr>floweps) then
-           v_darcy= Dq * ukvr * dphi
-           vv_darcy(np)=v_darcy
-           q = v_darcy * area
-           do ispec =1, option%nflowspec
-             fluxm(ispec)=fluxm(ispec) + q * density_ave * uxmol(ispec)
-           enddo  
+      if (ukvr>floweps) then
+        v_darcy= Dq * ukvr * dphi
+        vv_darcy(np)=v_darcy
+        q = v_darcy * area
+        do ispec =1, option%nflowspec
+          fluxm(ispec)=fluxm(ispec) + q * density_ave * uxmol(ispec)
+        enddo
         ! if(option%use_isothermal == PETSC_FALSE)&
-            fluxe = fluxe + q*density_ave*uh 
-        endif
-     endif
-   end do
+        fluxe = fluxe + q*density_ave*uh
+      endif
+    endif
+  end do
      
-   Res(1:option%nflowspec) = fluxm(:) * option%flow_dt
+  Res(1:option%nflowspec) = fluxm(:) * option%flow_dt
 !  if(option%use_isothermal == PETSC_FALSE)&
-   Res(option%nflowdof) = fluxe * option%flow_dt
+  Res(option%nflowdof) = fluxe * option%flow_dt
  ! end if
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  
@@ -1593,31 +1597,31 @@ subroutine Flash2FluxDiffusion(auxvar_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_u
  
 ! Diffusion term   
 ! Note : average rule may not be correct  
-     if ((auxvar_up%sat(np) > eps) .and. (auxvar_dn%sat(np) > eps)) then
-        difff = diffdp * 0.25D0*(auxvar_up%sat(np) + auxvar_dn%sat(np))* &
+    if ((auxvar_up%sat(np) > eps) .and. (auxvar_dn%sat(np) > eps)) then
+      difff = diffdp * 0.25D0*(auxvar_up%sat(np) + auxvar_dn%sat(np))* &
              (auxvar_up%den(np) + auxvar_dn%den(np))
-        do ispec=1, option%nflowspec
-           ind = ispec + (np-1)*option%nflowspec
-           fluxm(ispec) = fluxm(ispec) + difff * .5D0 * &
-                (auxvar_up%diff(ind) + auxvar_dn%diff(ind))* &
-                (auxvar_up%xmol(ind) - auxvar_dn%xmol(ind))
-        enddo
-     endif
+      do ispec=1, option%nflowspec
+        ind = ispec + (np-1)*option%nflowspec
+        fluxm(ispec) = fluxm(ispec) + difff * .5D0 * &
+          (auxvar_up%diff(ind) + auxvar_dn%diff(ind))* &
+          (auxvar_up%xmol(ind) - auxvar_dn%xmol(ind))
+      enddo
+    endif
   enddo
 
 ! conduction term
   !if(option%use_isothermal == PETSC_FALSE) then     
-     Dk = (Dk_up * Dk_dn) / (dd_dn*Dk_up + dd_up*Dk_dn)
-     cond = Dk*area*(auxvar_up%temp-auxvar_dn%temp) 
-     fluxe=fluxe + cond
+  Dk = (Dk_up * Dk_dn) / (dd_dn*Dk_up + dd_up*Dk_dn)
+  cond = Dk*area*(auxvar_up%temp-auxvar_dn%temp)
+  fluxe=fluxe + cond
  ! end if
 
   !if(option%use_isothermal)then
   !   Res(1:option%nflowdof) = fluxm(:) * option%flow_dt
  ! else
-     Res(1:option%nflowspec) = fluxm(:) * option%flow_dt
+  Res(1:option%nflowspec) = fluxm(:) * option%flow_dt
  ! if(option%use_isothermal)    
-     Res(option%nflowdof) = fluxe * option%flow_dt
+  Res(option%nflowdof) = fluxe * option%flow_dt
  ! end if
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  
@@ -1664,75 +1668,75 @@ subroutine Flash2BCFlux(ibndtype,auxvars,auxvar_up,auxvar_dn, &
   ! Flow   
   diffdp = por_dn*tor_dn/dd_up*area
   do np = 1, option%nphase  
-     select case(ibndtype(1))
+    select case(ibndtype(1))
         ! figure out the direction of flow
-     case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
-        Dq = perm_dn / dd_up
+    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
+      Dq = perm_dn / dd_up
         ! Flow term
-        ukvr=0.D0
-        v_darcy=0.D0 
-        if (auxvar_up%sat(np) > sir_dn(np) .or. auxvar_dn%sat(np) > sir_dn(np)) then
-           upweight=1.D0
-           if (auxvar_up%sat(np) < eps) then 
-              upweight=0.d0
-           else if (auxvar_dn%sat(np) < eps) then 
+      ukvr=0.D0
+      v_darcy=0.D0
+      if (auxvar_up%sat(np) > sir_dn(np) .or. auxvar_dn%sat(np) > sir_dn(np)) then
+        upweight=1.D0
+        if (auxvar_up%sat(np) < eps) then
+          upweight=0.d0
+        else if (auxvar_dn%sat(np) < eps) then
               upweight=1.d0
-           endif
-           density_ave = upweight*auxvar_up%den(np) + (1.D0-upweight)*auxvar_dn%den(np)
+        endif
+        density_ave = upweight*auxvar_up%den(np) + (1.D0-upweight)*auxvar_dn%den(np)
 !           print *,'flbc den:', upweight, auxvar_up%den(np), auxvar_dn%den(np)
-           gravity = (upweight*auxvar_up%den(np) * auxvar_up%avgmw(np) + &
+        gravity = (upweight*auxvar_up%den(np) * auxvar_up%avgmw(np) + &
                 (1.D0-upweight)*auxvar_dn%den(np) * auxvar_dn%avgmw(np)) &
                 * dist_gravity
        
-           dphi = auxvar_up%pres - auxvar_dn%pres &
+        dphi = auxvar_up%pres - auxvar_dn%pres &
                 - auxvar_up%pc(np) + auxvar_dn%pc(np) &
                 + gravity
    
-           if (dphi>=0.D0) then
-              ukvr = auxvar_up%kvr(np)
-           else
-              ukvr = auxvar_dn%kvr(np)
-           endif
-     
-           if (ukvr*Dq>floweps) then
-              v_darcy = Dq * ukvr * dphi
-           endif
+        if (dphi >= 0.D0) then
+          ukvr = auxvar_up%kvr(np)
+        else
+          ukvr = auxvar_dn%kvr(np)
         endif
-
-     case(NEUMANN_BC) !may not work
-        v_darcy = 0.D0
-        if (dabs(auxvars(1)) > floweps) then
-           v_darcy = auxvars(MPH_PRESSURE_DOF)
-           if (v_darcy > 0.d0) then 
-              density_ave = auxvar_up%den(np)
-           else 
-              density_ave = auxvar_dn%den(np)
-           endif
+     
+        if (ukvr*Dq>floweps) then
+          v_darcy = Dq * ukvr * dphi
         endif
+      endif
 
-     end select
+    case(NEUMANN_BC) !may not work
+      v_darcy = 0.D0
+      if (dabs(auxvars(1)) > floweps) then
+        v_darcy = auxvars(MPH_PRESSURE_DOF)
+        if (v_darcy > 0.d0) then
+          density_ave = auxvar_up%den(np)
+        else
+          density_ave = auxvar_dn%den(np)
+        endif
+      endif
+
+    end select
      
-     q = v_darcy * area
-     vv_darcy(np) = v_darcy
-     uh=0.D0
-     uxmol=0.D0
+    q = v_darcy * area
+    vv_darcy(np) = v_darcy
+    uh=0.D0
+    uxmol=0.D0
      
-     if (v_darcy >= 0.D0) then
+    if (v_darcy >= 0.D0) then
         !if(option%use_isothermal == PETSC_FALSE)&
-         uh = auxvar_up%h(np)
-         uxmol(:)=auxvar_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
-     else
+      uh = auxvar_up%h(np)
+      uxmol(:)=auxvar_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
+    else
          !if(option%use_isothermal == PETSC_FALSE)&
-        uh = auxvar_dn%h(np)
-        uxmol(:)=auxvar_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
-     endif
-     do ispec=1, option%nflowspec
-       fluxm(ispec) = fluxm(ispec) + q*density_ave * uxmol(ispec)
-     end do 
+      uh = auxvar_dn%h(np)
+      uxmol(:)=auxvar_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
+    endif
+    do ispec=1, option%nflowspec
+      fluxm(ispec) = fluxm(ispec) + q*density_ave * uxmol(ispec)
+    end do
       !if(option%use_isothermal == PETSC_FALSE) &
-      fluxe = fluxe + q*density_ave*uh
+    fluxe = fluxe + q*density_ave*uh
 !     print *,'FLBC', ibndtype(1),np, ukvr, v_darcy, uh, uxmol, density_ave
-   enddo
+  enddo
 
 #if 1 
     ! Diffusion term   
@@ -1741,30 +1745,29 @@ subroutine Flash2BCFlux(ibndtype,auxvars,auxvar_up,auxvar_dn, &
      !if (auxvar_up%sat > eps .and. auxvar_dn%sat > eps) then
      !  diff = diffdp * 0.25D0*(auxvar_up%sat+auxvar_dn%sat)* &
      !  (auxvar_up%den+auxvar_dn%den)
-        do np = 1, option%nphase
-          if(auxvar_up%sat(np)>eps .and. auxvar_dn%sat(np)>eps) then
-            diff = diffdp * 0.25D0*(auxvar_up%sat(np)+auxvar_dn%sat(np))* &
+    do np = 1, option%nphase
+      if (auxvar_up%sat(np)>eps .and. auxvar_dn%sat(np)>eps) then
+        diff = diffdp * 0.25D0*(auxvar_up%sat(np)+auxvar_dn%sat(np))* &
               (auxvar_up%den(np)+auxvar_up%den(np))
-            do ispec = 1, option%nflowspec
-              fluxm(ispec) = fluxm(ispec) + diff * &
+        do ispec = 1, option%nflowspec
+          fluxm(ispec) = fluxm(ispec) + diff * &
                    auxvar_dn%diff((np-1)* option%nflowspec+ispec)* &
                    (auxvar_up%xmol((np-1)* option%nflowspec+ispec) &
                    -auxvar_dn%xmol((np-1)* option%nflowspec+ispec))
-            enddo
-          endif         
         enddo
-     
+      endif
+    enddo
   end select
 #endif
   ! Conduction term
 ! if(option%use_isothermal == PETSC_FALSE) then
   select case(ibndtype(2))
     case(DIRICHLET_BC)
-       Dk =  Dk_dn / dd_up
-       cond = Dk*area*(auxvar_up%temp - auxvar_dn%temp) 
-       fluxe = fluxe + cond
+      Dk =  Dk_dn / dd_up
+      cond = Dk*area*(auxvar_up%temp - auxvar_dn%temp)
+      fluxe = fluxe + cond
     case(NEUMANN_BC)
-       fluxe = fluxe + auxvars(2)*area*option%scale
+      fluxe = fluxe + auxvars(2)*area*option%scale
     case(ZERO_GRADIENT_BC)
       ! No change in fluxe
   end select
@@ -1815,76 +1818,76 @@ subroutine Flash2BCFluxAdv(ibndtype,auxvars,auxvar_up,auxvar_dn, &
   ! Flow   
 !  diffdp = por_dn*tor_dn/dd_up*area
   do np = 1, option%nphase  
-     select case(ibndtype(1))
+    select case(ibndtype(1))
         ! figure out the direction of flow
-     case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
-        Dq = perm_dn / dd_up
+    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
+      Dq = perm_dn / dd_up
         ! Flow term
-        ukvr=0.D0
-        v_darcy=0.D0 
-        if (auxvar_up%sat(np) > sir_dn(np) .or. auxvar_dn%sat(np) > sir_dn(np)) then
-           upweight=1.D0
-           if (auxvar_up%sat(np) < eps) then 
-              upweight=0.d0
-           else if (auxvar_dn%sat(np) < eps) then 
-              upweight=1.d0
-           endif
-           density_ave = upweight*auxvar_up%den(np) + (1.D0-upweight)*auxvar_dn%den(np)
+      ukvr = 0.D0
+      v_darcy = 0.D0
+      if (auxvar_up%sat(np) > sir_dn(np) .or. auxvar_dn%sat(np) > sir_dn(np)) then
+        upweight = 1.D0
+        if (auxvar_up%sat(np) < eps) then
+          upweight = 0.d0
+        else if (auxvar_dn%sat(np) < eps) then
+          upweight = 1.d0
+        endif
+        density_ave = upweight*auxvar_up%den(np) + (1.D0-upweight)*auxvar_dn%den(np)
            
-           gravity = (upweight*auxvar_up%den(np) * auxvar_up%avgmw(np) + &
+        gravity = (upweight*auxvar_up%den(np) * auxvar_up%avgmw(np) + &
                 (1.D0-upweight)*auxvar_dn%den(np) * auxvar_dn%avgmw(np)) &
                 * dist_gravity
        
-           dphi = auxvar_up%pres - auxvar_dn%pres &
+        dphi = auxvar_up%pres - auxvar_dn%pres &
                 - auxvar_up%pc(np) + auxvar_dn%pc(np) &
                 + gravity
    
-           if (dphi>=0.D0) then
-              ukvr = auxvar_up%kvr(np)
-           else
-              ukvr = auxvar_dn%kvr(np)
-           endif
-     
-           if (ukvr*Dq>floweps) then
-              v_darcy = Dq * ukvr * dphi
-           endif
+        if (dphi >= 0.D0) then
+          ukvr = auxvar_up%kvr(np)
+        else
+          ukvr = auxvar_dn%kvr(np)
         endif
-
-     case(NEUMANN_BC)
-        v_darcy = 0.D0
-        if (dabs(auxvars(1)) > floweps) then
-           v_darcy = auxvars(MPH_PRESSURE_DOF)
-           if (v_darcy > 0.d0) then 
-              density_ave = auxvar_up%den(np)
-           else 
-              density_ave = auxvar_dn%den(np)
-           endif
+     
+        if (ukvr*Dq > floweps) then
+          v_darcy = Dq * ukvr * dphi
         endif
+      endif
 
-     end select
+    case(NEUMANN_BC)
+      v_darcy = 0.D0
+      if (dabs(auxvars(1)) > floweps) then
+        v_darcy = auxvars(MPH_PRESSURE_DOF)
+        if (v_darcy > 0.d0) then
+          density_ave = auxvar_up%den(np)
+        else
+          density_ave = auxvar_dn%den(np)
+        endif
+      endif
+
+    end select
      
-     q = v_darcy * area
-     vv_darcy(np) = v_darcy
-     uh=0.D0
-     uxmol=0.D0
+    q = v_darcy * area
+    vv_darcy(np) = v_darcy
+    uh=0.D0
+    uxmol=0.D0
      
-     if (v_darcy >= 0.D0) then
+    if (v_darcy >= 0.D0) then
         !if(option%use_isothermal == PETSC_FALSE)&
-         uh = auxvar_up%h(np)
-         uxmol(:)=auxvar_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
-     else
+      uh = auxvar_up%h(np)
+      uxmol(:)=auxvar_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
+    else
          !if(option%use_isothermal == PETSC_FALSE)&
-        uh = auxvar_dn%h(np)
-        uxmol(:)=auxvar_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
-     endif
-     do ispec=1, option%nflowspec
-       fluxm(ispec) = fluxm(ispec) + q*density_ave * uxmol(ispec)
-     end do 
+      uh = auxvar_dn%h(np)
+      uxmol(:)=auxvar_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
+    endif
+    do ispec=1, option%nflowspec
+      fluxm(ispec) = fluxm(ispec) + q*density_ave * uxmol(ispec)
+    end do
 
       !if(option%use_isothermal == PETSC_FALSE) &
-      fluxe = fluxe + q*density_ave*uh
+    fluxe = fluxe + q*density_ave*uh
  !print *,'FLBC', ibndtype(1),np, ukvr, v_darcy, uh, uxmol
-   enddo
+  enddo
 
   Res(1:option%nflowspec)=fluxm(:)* option%flow_dt
   Res(option%nflowdof)=fluxe * option%flow_dt
@@ -1934,27 +1937,27 @@ subroutine Flash2BCFluxDiffusion(ibndtype,auxvars,auxvar_up,auxvar_dn, &
   case(DIRICHLET_BC) 
      !      if (auxvar_up%sat > eps .and. auxvar_dn%sat > eps) then
      !        diff = diffdp * 0.25D0*(auxvar_up%sat+auxvar_dn%sat)*(auxvar_up%den+auxvar_dn%den)
-        do np = 1, option%nphase
-          if(auxvar_up%sat(np)>eps .and. auxvar_dn%sat(np)>eps)then
+    do np = 1, option%nphase
+      if (auxvar_up%sat(np)>eps .and. auxvar_dn%sat(np) > eps) then
               diff =diffdp * 0.25D0*(auxvar_up%sat(np)+auxvar_dn%sat(np))*&
                     (auxvar_up%den(np)+auxvar_up%den(np))
-           do ispec = 1, option%nflowspec
+        do ispec = 1, option%nflowspec
               fluxm(ispec) = fluxm(ispec) + diff * auxvar_dn%diff((np-1)* option%nflowspec+ispec)* &
                    (auxvar_up%xmol((np-1)* option%nflowspec+ispec) &
                    -auxvar_dn%xmol((np-1)* option%nflowspec+ispec))
-           enddo
-          endif         
         enddo
+      endif
+    enddo
      
   end select
 ! Conduction term
 ! if(option%use_isothermal == PETSC_FALSE) then
-    select case(ibndtype(2))
-    case(DIRICHLET_BC, 4)
-       Dk =  Dk_dn / dd_up
-       cond = Dk*area*(auxvar_up%temp - auxvar_dn%temp) 
-       fluxe=fluxe + cond
-    end select
+  select case(ibndtype(2))
+  case(DIRICHLET_BC, 4)
+    Dk = Dk_dn / dd_up
+    cond = Dk*area*(auxvar_up%temp - auxvar_dn%temp)
+    fluxe = fluxe + cond
+  end select
 ! end if
 
   Res(1:option%nflowspec)=fluxm(:)* option%flow_dt
@@ -2178,58 +2181,58 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
 #if 1
   ! Pertubations for aux terms --------------------------------
   do ng = 1, grid%ngmax
-     if(grid%nG2L(ng)<0)cycle
-     if (associated(patch%imat)) then
+    if (grid%nG2L(ng) < 0)cycle
+    if (associated(patch%imat)) then
         if (patch%imat(ng) <= 0) cycle
-     endif
-     ghosted_id = ng   
-     istart =  (ng-1) * option%nflowdof +1 ; iend = istart -1 + option%nflowdof
+    endif
+    ghosted_id = ng
+    istart =  (ng-1) * option%nflowdof +1 ; iend = istart -1 + option%nflowdof
      ! iphase =int(iphase_loc_p(ng))
-     call Flash2AuxVarCompute_Ninc(xx_loc_p(istart:iend),auxvars(ng)%auxvar_elem(0),&
+    call Flash2AuxVarCompute_Ninc(xx_loc_p(istart:iend),auxvars(ng)%auxvar_elem(0),&
           global_auxvars(ng),&
           realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
           realization%fluid_properties,option, xphi)
-!    print *,'flash ', xx_loc_p(istart:iend),auxvars(ng)%auxvar_elem(0)%den
+!   print *,'flash ', xx_loc_p(istart:iend),auxvars(ng)%auxvar_elem(0)%den
 #if 1
-     if( associated(global_auxvars))then
-       global_auxvars(ghosted_id)%pres(:)= auxvars(ghosted_id)%auxvar_elem(0)%pres -&
+    if (associated(global_auxvars)) then
+      global_auxvars(ghosted_id)%pres(:)= auxvars(ghosted_id)%auxvar_elem(0)%pres -&
                auxvars(ghosted_id)%auxvar_elem(0)%pc(:)
-       global_auxvars(ghosted_id)%temp(:)=auxvars(ghosted_id)%auxvar_elem(0)%temp
-       global_auxvars(ghosted_id)%sat(:)=auxvars(ghosted_id)%auxvar_elem(0)%sat(:)
-!      global_auxvars(ghosted_id)%sat_store =
-       global_auxvars(ghosted_id)%fugacoeff(1)=xphi
-       global_auxvars(ghosted_id)%den(:)=auxvars(ghosted_id)%auxvar_elem(0)%den(:)
-       global_auxvars(ghosted_id)%den_kg(:) = auxvars(ghosted_id)%auxvar_elem(0)%den(:) &
+      global_auxvars(ghosted_id)%temp(:)=auxvars(ghosted_id)%auxvar_elem(0)%temp
+      global_auxvars(ghosted_id)%sat(:)=auxvars(ghosted_id)%auxvar_elem(0)%sat(:)
+!     global_auxvars(ghosted_id)%sat_store =
+      global_auxvars(ghosted_id)%fugacoeff(1)=xphi
+      global_auxvars(ghosted_id)%den(:)=auxvars(ghosted_id)%auxvar_elem(0)%den(:)
+      global_auxvars(ghosted_id)%den_kg(:) = auxvars(ghosted_id)%auxvar_elem(0)%den(:) &
                                           * auxvars(ghosted_id)%auxvar_elem(0)%avgmw(:)
 !       global_auxvars(ghosted_id)%reaction_rate(:)=0D0
 !      global_auxvars(ghosted_id)%pres(:)
-     else
-       print *,'Not associated global for Flash2'
-     endif
+    else
+      print *,'Not associated global for Flash2'
+    endif
 #endif
 
-     if (option%numerical_derivatives_flow) then
-        delx(1) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
-        delx(2) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
+    if (option%numerical_derivatives_flow) then
+      delx(1) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
+      delx(2) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
  
-        if(xx_loc_p((ng-1)*option%nflowdof+3) <=0.9)then
-           delx(3) = dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1 
-         else
+      if (xx_loc_p((ng-1)*option%nflowdof+3) <= 0.9) then
+        delx(3) = dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1
+      else
             delx(3) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1 
-         endif
-         if( delx(3) < 1D-8 .and.  delx(3)>=0.D0) delx(3) = 1D-8
-         if( delx(3) >-1D-8 .and.  delx(3)<0.D0) delx(3) =-1D-8
+      endif
+      if (delx(3) < 1D-8 .and. delx(3) >= 0.D0) delx(3) = 1D-8
+      if (delx(3) >-1D-8 .and. delx(3) < 0.D0) delx(3) = -1D-8
 
            
-         if(( delx(3)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0)then
-            delx(3) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+3))*1D-4
-         endif
-         if(( delx(3)+xx_loc_p((ng-1)*option%nflowdof+3))<0.D0)then
-            delx(3) = xx_loc_p((ng-1)*option%nflowdof+3)*1D-4
-         endif
+      if ((delx(3)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0) then
+        delx(3) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+3))*1D-4
+      endif
+      if ((delx(3)+xx_loc_p((ng-1)*option%nflowdof+3))<0.D0) then
+        delx(3) = xx_loc_p((ng-1)*option%nflowdof+3)*1D-4
+      endif
 
-         patch%aux%Flash2%delx(:,ng)=delx(:)
-         call Flash2AuxVarCompute_Winc(xx_loc_p(istart:iend),delx(:),&
+      patch%aux%Flash2%delx(:,ng)=delx(:)
+      call Flash2AuxVarCompute_Winc(xx_loc_p(istart:iend),delx(:),&
             auxvars(ng)%auxvar_elem(1:option%nflowdof),global_auxvars(ng),&
             realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
             realization%fluid_properties,option)
@@ -2237,14 +2240,14 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
 !            auxvars(ng)%auxvar_elem(0)%sat(2)<1D-12)then
 !            print *, 'Flash winc', delx(3,ng)
 !         endif   
-      endif
-   enddo
+    endif
+  enddo
 #endif
 
-   Resold_AR=0.D0; ResOld_FL=0.D0; r_p = 0.d0
-   patch%aux%Flash2%Resold_AR=0.D0
-   patch%aux%Flash2%Resold_BC=0.D0
-   patch%aux%Flash2%ResOld_FL=0.D0
+  Resold_AR=0.D0; ResOld_FL=0.D0; r_p = 0.d0
+  patch%aux%Flash2%Resold_AR=0.D0
+  patch%aux%Flash2%Resold_BC=0.D0
+  patch%aux%Flash2%ResOld_FL=0.D0
    
 #if 1
   ! Accumulation terms ------------------------------------
@@ -2282,9 +2285,9 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
    ! else
    !   enthalpy_flag = PETSC_FALSE
    ! endif
-   if (associated(source_sink%flow_condition%pressure)) then   
-    psrc(:) = source_sink%flow_condition%pressure%dataset%rarray(:)
-   endif 
+    if (associated(source_sink%flow_condition%pressure)) then
+      psrc(:) = source_sink%flow_condition%pressure%dataset%rarray(:)
+    endif
 !    qsrc1 = source_sink%flow_condition%pressure%dataset%rarray(1)
     tsrc1 = source_sink%flow_condition%temperature%dataset%rarray(1)
     csrc1 = source_sink%flow_condition%concentration%dataset%rarray(1)
@@ -2324,7 +2327,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
       r_p((local_id-1)*option%nflowdof + jco2) = r_p((local_id-1)*option%nflowdof + jco2)-Res(jco2)
       patch%aux%Flash2%Resold_AR(local_id,jh2o)= patch%aux%Flash2%Resold_AR(local_id,jh2o) - Res(jh2o)    
       patch%aux%Flash2%Resold_AR(local_id,jco2)= patch%aux%Flash2%Resold_AR(local_id,jco2) - Res(jco2)    
-      if (enthalpy_flag)then
+      if (enthalpy_flag) then
         r_p( local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - Res(option%nflowdof)
         patch%aux%Flash2%Resold_AR(local_id,option%nflowdof)=&
           patch%aux%Flash2%Resold_AR(local_id,option%nflowdof) - Res(option%nflowdof)
@@ -2374,43 +2377,43 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
 
       icap_dn = int(icap_loc_p(ghosted_id))  
 ! Then need fill up increments for BCs
-    do idof =1, option%nflowdof   
-       select case(boundary_condition%flow_condition%itype(idof))
-       case(DIRICHLET_BC)
+      do idof =1, option%nflowdof
+        select case(boundary_condition%flow_condition%itype(idof))
+        case(DIRICHLET_BC)
           xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
-       case(HYDROSTATIC_BC)
+        case(HYDROSTATIC_BC)
           xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
-          if(idof>=2)then
-             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
-          endif 
-       case(NEUMANN_BC, ZERO_GRADIENT_BC)
+          if (idof >= 2) then
+            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+          endif
+        case(NEUMANN_BC, ZERO_GRADIENT_BC)
           ! solve for pb from Darcy's law given qb /= 0
           xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
 !          iphase = int(iphase_loc_p(ghosted_id))
-       end select
-    enddo
+        end select
+      enddo
 
  
-    call Flash2AuxVarCompute_Ninc(xxbc,auxvars_bc(sum_connection)%auxvar_elem(0),&
+      call Flash2AuxVarCompute_Ninc(xxbc,auxvars_bc(sum_connection)%auxvar_elem(0),&
            global_auxvars_bc(sum_connection),&
            realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
            realization%fluid_properties, option)
 #if 1
-    if( associated(global_auxvars_bc))then
-      global_auxvars_bc(sum_connection)%pres(:)= auxvars_bc(sum_connection)%auxvar_elem(0)%pres -&
+      if (associated(global_auxvars_bc)) then
+        global_auxvars_bc(sum_connection)%pres(:)= auxvars_bc(sum_connection)%auxvar_elem(0)%pres -&
                      auxvars(ghosted_id)%auxvar_elem(0)%pc(:)
-      global_auxvars_bc(sum_connection)%temp(:)=auxvars_bc(sum_connection)%auxvar_elem(0)%temp
-      global_auxvars_bc(sum_connection)%sat(:)=auxvars_bc(sum_connection)%auxvar_elem(0)%sat(:)
-      !    global_auxvars(ghosted_id)%sat_store = 
-      global_auxvars_bc(sum_connection)%fugacoeff(1)=xphi
-      global_auxvars_bc(sum_connection)%den(:)=auxvars_bc(sum_connection)%auxvar_elem(0)%den(:)
-      global_auxvars_bc(sum_connection)%den_kg = auxvars_bc(sum_connection)%auxvar_elem(0)%den(:) &
+        global_auxvars_bc(sum_connection)%temp(:)=auxvars_bc(sum_connection)%auxvar_elem(0)%temp
+        global_auxvars_bc(sum_connection)%sat(:)=auxvars_bc(sum_connection)%auxvar_elem(0)%sat(:)
+        !    global_auxvars(ghosted_id)%sat_store =
+        global_auxvars_bc(sum_connection)%fugacoeff(1)=xphi
+        global_auxvars_bc(sum_connection)%den(:)=auxvars_bc(sum_connection)%auxvar_elem(0)%den(:)
+        global_auxvars_bc(sum_connection)%den_kg = auxvars_bc(sum_connection)%auxvar_elem(0)%den(:) &
                                           * auxvars_bc(sum_connection)%auxvar_elem(0)%avgmw(:)
   !   global_auxvars(ghosted_id)%den_kg_store
-    endif
+      endif
 #endif
 
-    call Flash2BCFlux(boundary_condition%flow_condition%itype, &
+      call Flash2BCFlux(boundary_condition%flow_condition%itype, &
          boundary_condition%flow_aux_real_var(:,iconn), &
          auxvars_bc(sum_connection)%auxvar_elem(0), &
          auxvars(ghosted_id)%auxvar_elem(0), &
@@ -2421,15 +2424,15 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
          cur_connection_set%area(iconn), &
          distance_gravity,option, &
          v_darcy,Res)
-    patch%boundary_velocities(:,sum_connection) = v_darcy(:)
-    iend = local_id*option%nflowdof
-    istart = iend-option%nflowdof+1
-    r_p(istart:iend)= r_p(istart:iend) - Res(1:option%nflowdof)
-    patch%aux%Flash2%Resold_AR(local_id,1:option%nflowdof) = &
+      patch%boundary_velocities(:,sum_connection) = v_darcy(:)
+      iend = local_id*option%nflowdof
+      istart = iend-option%nflowdof+1
+      r_p(istart:iend)= r_p(istart:iend) - Res(1:option%nflowdof)
+      patch%aux%Flash2%Resold_AR(local_id,1:option%nflowdof) = &
       patch%aux%Flash2%ResOld_AR(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
+    enddo
+    boundary_condition => boundary_condition%next
   enddo
-  boundary_condition => boundary_condition%next
- enddo
 #endif
 #if 1
   ! Interior Flux Terms -----------------------------------
@@ -2497,7 +2500,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
       patch%internal_velocities(:,sum_connection) = v_darcy(:)
       patch%aux%Flash2%Resold_FL(sum_connection,1:option%nflowdof)= Res(1:option%nflowdof)
  
-     if (local_id_up>0) then
+     if (local_id_up > 0) then
         iend = local_id_up*option%nflowdof
         istart = iend-option%nflowdof+1
         r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
@@ -2523,29 +2526,29 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
   end select
   
   do local_id = 1, grid%nlmax
-     if (associated(patch%imat)) then
-        if (patch%imat(grid%nL2G(local_id)) <= 0) cycle
-     endif
-     ghosted_id = grid%nL2G(local_id)
-     istart = 1 + (local_id-1)*option%nflowdof
-     if(material_auxvars(ghosted_id)%volume>1.D0) then
-       r_p (istart:istart+2)=r_p(istart:istart+2) / &
+    if (associated(patch%imat)) then
+      if (patch%imat(grid%nL2G(local_id)) <= 0) cycle
+    endif
+    ghosted_id = grid%nL2G(local_id)
+    istart = 1 + (local_id-1)*option%nflowdof
+    if(material_auxvars(ghosted_id)%volume>1.D0) then
+      r_p (istart:istart+2)=r_p(istart:istart+2) / &
          material_auxvars(ghosted_id)%volume
-     endif
-     if(r_p(istart) >1E20 .or. r_p(istart) <-1E20) print *, r_p (istart:istart+2)
+    endif
+    if(r_p(istart) >1E20 .or. r_p(istart) <-1E20) print *, r_p (istart:istart+2)
 !     print *,'flash res', local_id, r_p (istart:istart+2)
   enddo
 
 ! print *,'finished rp vol scale'
-  if(option%use_isothermal) then
-     do local_id = 1, grid%nlmax  ! For each local node do...
-        ghosted_id = grid%nL2G(local_id)   ! corresponding ghost index
-        if (associated(patch%imat)) then
-           if (patch%imat(ghosted_id) <= 0) cycle
-        endif
-        istart = 3 + (local_id-1)*option%nflowdof
-        r_p(istart) = 0.D0 ! xx_loc_p(2 + (ng-1)*option%nflowdof) - yy_p(p1-1)
-     enddo
+  if (option%use_isothermal) then
+    do local_id = 1, grid%nlmax  ! For each local node do...
+      ghosted_id = grid%nL2G(local_id)   ! corresponding ghost index
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
+      istart = 3 + (local_id-1)*option%nflowdof
+      r_p(istart) = 0.D0 ! xx_loc_p(2 + (ng-1)*option%nflowdof) - yy_p(p1-1)
+    enddo
   endif
 
 
@@ -2716,42 +2719,42 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
 
       icap_dn = int(icap_loc_p(ghosted_id))  
 ! Then need fill up increments for BCs
-    do idof =1, option%nflowdof   
-       select case(boundary_condition%flow_condition%itype(idof))
-       case(DIRICHLET_BC)
+      do idof = 1, option%nflowdof
+        select case(boundary_condition%flow_condition%itype(idof))
+        case(DIRICHLET_BC)
           xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
-       case(HYDROSTATIC_BC)
+        case(HYDROSTATIC_BC)
           xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
-          if(idof>=2)then
-             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
-          endif 
-       case(NEUMANN_BC, ZERO_GRADIENT_BC)
+          if (idof >= 2) then
+            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+          endif
+        case(NEUMANN_BC, ZERO_GRADIENT_BC)
           ! solve for pb from Darcy's law given qb /= 0
           xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
 !          iphase = int(iphase_loc_p(ghosted_id))
-       end select
-    enddo
+        end select
+      enddo
 
  
-    call Flash2AuxVarCompute_Ninc(xxbc,auxvars_bc(sum_connection)%auxvar_elem(0),&
+      call Flash2AuxVarCompute_Ninc(xxbc,auxvars_bc(sum_connection)%auxvar_elem(0),&
            global_auxvars_bc(sum_connection),&
            realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
            realization%fluid_properties, option,xphi)
 
-    if( associated(global_auxvars_bc))then
-      global_auxvars_bc(sum_connection)%pres(:)= auxvars_bc(sum_connection)%auxvar_elem(0)%pres -&
+      if (associated(global_auxvars_bc)) then
+        global_auxvars_bc(sum_connection)%pres(:)= auxvars_bc(sum_connection)%auxvar_elem(0)%pres -&
                      auxvars(ghosted_id)%auxvar_elem(0)%pc(:)
-      global_auxvars_bc(sum_connection)%temp(:)=auxvars_bc(sum_connection)%auxvar_elem(0)%temp
-      global_auxvars_bc(sum_connection)%sat(:)=auxvars_bc(sum_connection)%auxvar_elem(0)%sat(:)
+        global_auxvars_bc(sum_connection)%temp(:)=auxvars_bc(sum_connection)%auxvar_elem(0)%temp
+        global_auxvars_bc(sum_connection)%sat(:)=auxvars_bc(sum_connection)%auxvar_elem(0)%sat(:)
       !    global_auxvars(ghosted_id)%sat_store = 
-      global_auxvars_bc(sum_connection)%fugacoeff(1)=xphi
-      global_auxvars_bc(sum_connection)%den(:)=auxvars_bc(sum_connection)%auxvar_elem(0)%den(:)
-      global_auxvars_bc(sum_connection)%den_kg = auxvars_bc(sum_connection)%auxvar_elem(0)%den(:) &
+        global_auxvars_bc(sum_connection)%fugacoeff(1)=xphi
+        global_auxvars_bc(sum_connection)%den(:)=auxvars_bc(sum_connection)%auxvar_elem(0)%den(:)
+        global_auxvars_bc(sum_connection)%den_kg = auxvars_bc(sum_connection)%auxvar_elem(0)%den(:) &
                                           * auxvars_bc(sum_connection)%auxvar_elem(0)%avgmw(:)
   !   global_auxvars(ghosted_id)%den_kg_store
-    endif
+      endif
 
-    call Flash2BCFlux(boundary_condition%flow_condition%itype, &
+      call Flash2BCFlux(boundary_condition%flow_condition%itype, &
          boundary_condition%flow_aux_real_var(:,iconn), &
          auxvars_bc(sum_connection)%auxvar_elem(0), &
          auxvars(ghosted_id)%auxvar_elem(0), &
@@ -2762,16 +2765,16 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
          cur_connection_set%area(iconn), &
          distance_gravity,option, &
          v_darcy,Res)
-    patch%boundary_velocities(:,sum_connection) = v_darcy(:)
-    patch%aux%Flash2%Resold_BC(local_id,1:option%nflowdof) = &
-    patch%aux%Flash2%ResOld_BC(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
+      patch%boundary_velocities(:,sum_connection) = v_darcy(:)
+      patch%aux%Flash2%Resold_BC(local_id,1:option%nflowdof) = &
+      patch%aux%Flash2%ResOld_BC(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
 
-    iend = local_id*option%nflowdof
-    istart = iend-option%nflowdof+1
-    r_p(istart:iend)= r_p(istart:iend) - Res(1:option%nflowdof)
+      iend = local_id*option%nflowdof
+      istart = iend-option%nflowdof+1
+      r_p(istart:iend)= r_p(istart:iend) - Res(1:option%nflowdof)
+    enddo
+    boundary_condition => boundary_condition%next
   enddo
-  boundary_condition => boundary_condition%next
- enddo
 
 #if 1
 
@@ -3121,19 +3124,19 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
-     iend = local_id*option%nflowdof
-    istart = iend-option%nflowdof+1
-    call Flash2Accumulation(auxvars(ghosted_id)%auxvar_elem(0),&
+      iend = local_id*option%nflowdof
+      istart = iend-option%nflowdof+1
+      call Flash2Accumulation(auxvars(ghosted_id)%auxvar_elem(0),&
                             global_auxvars(ghosted_id), &
                             material_auxvars(ghosted_id)%porosity, &
                             material_auxvars(ghosted_id)%volume, &
                             Flash2_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
                             option,ONE_INTEGER,Res) 
-    r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
+      r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
     !print *,'REs, acm: ', res
-    patch%aux%Flash2%Resold_AR(local_id, :)= &
+      patch%aux%Flash2%Resold_AR(local_id, :)= &
       patch%aux%Flash2%Resold_AR(local_id, :)+ Res(1:option%nflowdof)
-  enddo
+    enddo
 #endif
   endif
 
@@ -3476,25 +3479,24 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,realization,ierr)
 #if 1
   ! Accumulation terms ------------------------------------
   do local_id = 1, grid%nlmax  ! For each local node do...
-     ghosted_id = grid%nL2G(local_id)
-     !geh - Ignore inactive cells with inactive materials
-     if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-     endif
-     iend = local_id*option%nflowdof
-     istart = iend-option%nflowdof+1
-     icap = int(icap_loc_p(ghosted_id))
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
+    endif
+    iend = local_id*option%nflowdof
+    istart = iend-option%nflowdof+1
+    icap = int(icap_loc_p(ghosted_id))
      
-     do nvar =1, option%nflowdof
-        call Flash2Accumulation(auxvars(ghosted_id)%auxvar_elem(nvar), &
+    do nvar =1, option%nflowdof
+      call Flash2Accumulation(auxvars(ghosted_id)%auxvar_elem(nvar), &
              global_auxvars(ghosted_id),& 
              material_auxvars(ghosted_id)%porosity, &
              material_auxvars(ghosted_id)%volume, &
              Flash2_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
              option,ONE_INTEGER, res) 
-        ResInc( local_id,:,nvar) =  ResInc(local_id,:,nvar) + Res(:)
-     enddo
-     
+      ResInc( local_id,:,nvar) =  ResInc(local_id,:,nvar) + Res(:)
+    enddo
   enddo
 #endif
 #if 1
@@ -3532,7 +3534,7 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,realization,ierr)
         stop  
     end select
  
-      cur_connection_set => source_sink%connection_set
+    cur_connection_set => source_sink%connection_set
  
     do iconn = 1, cur_connection_set%num_connections      
       sum_connection = sum_connection + 1 
@@ -3545,19 +3547,19 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,realization,ierr)
 !      if (enthalpy_flag) then
 !        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt   
 !      endif         
-     do nvar =1, option%nflowdof
-       call Flash2SourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1, auxvars(ghosted_id)%auxvar_elem(nvar),&
+      do nvar =1, option%nflowdof
+        call Flash2SourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1, auxvars(ghosted_id)%auxvar_elem(nvar),&
                             source_sink%flow_condition%itype(1), Res,&
                             ss_flow, &
                             enthalpy_flag, option)
       
-       ResInc(local_id,jh2o,nvar)=  ResInc(local_id,jh2o,nvar) - Res(jh2o)
-       ResInc(local_id,jco2,nvar)=  ResInc(local_id,jco2,nvar) - Res(jco2)
-       if (enthalpy_flag) & 
-           ResInc(local_id,option%nflowdof,nvar)=&
-           ResInc(local_id,option%nflowdof,nvar)- Res(option%nflowdof) 
+        ResInc(local_id,jh2o,nvar)=  ResInc(local_id,jh2o,nvar) - Res(jh2o)
+        ResInc(local_id,jco2,nvar)=  ResInc(local_id,jco2,nvar) - Res(jco2)
+        if (enthalpy_flag) &
+          ResInc(local_id,option%nflowdof,nvar)=&
+          ResInc(local_id,option%nflowdof,nvar)- Res(option%nflowdof)
 
-     enddo 
+      enddo
     enddo
     source_sink => source_sink%next
   enddo
@@ -3602,86 +3604,87 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,realization,ierr)
       icap_dn = int(icap_loc_p(ghosted_id))
 
 ! Then need fill up increments for BCs
-    delxbc=0.D0;
-    do idof =1, option%nflowdof   
-       select case(boundary_condition%flow_condition%itype(idof))
-       case(DIRICHLET_BC)
+      delxbc = 0.D0;
+      do idof = 1, option%nflowdof
+        select case(boundary_condition%flow_condition%itype(idof))
+        case(DIRICHLET_BC)
           xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
           delxbc(idof)=0.D0
-      case(HYDROSTATIC_BC)
+        case(HYDROSTATIC_BC)
           xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
-          if(idof>=2)then
+          if (idof >= 2) then
              xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
              delxbc(idof)=patch%aux%Flash2%delx(idof,ghosted_id)
           endif 
-       case(NEUMANN_BC, ZERO_GRADIENT_BC)
+        case(NEUMANN_BC, ZERO_GRADIENT_BC)
           ! solve for pb from Darcy's law given qb /= 0
           xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
           !iphasebc = int(iphase_loc_p(ghosted_id))
           delxbc(idof)=patch%aux%Flash2%delx(idof,ghosted_id)
-       end select
-    enddo
-    !print *,'BC:',boundary_condition%flow_condition%itype, xxbc, delxbc
+        end select
+      enddo
+      !print *,'BC:',boundary_condition%flow_condition%itype, xxbc, delxbc
 
  
-    call Flash2AuxVarCompute_Ninc(xxbc,auxvars_bc(sum_connection)%auxvar_elem(0),&
+      call Flash2AuxVarCompute_Ninc(xxbc,auxvars_bc(sum_connection)%auxvar_elem(0),&
          global_auxvars_bc(sum_connection),&
          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
          realization%fluid_properties, option)
-    call Flash2AuxVarCompute_Winc(xxbc,delxbc,&
+      call Flash2AuxVarCompute_Winc(xxbc,delxbc,&
          auxvars_bc(sum_connection)%auxvar_elem(1:option%nflowdof),&
          global_auxvars_bc(sum_connection),&
          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
          realization%fluid_properties,option)
     
-    do nvar=1,option%nflowdof
-       call Flash2BCFlux(boundary_condition%flow_condition%itype, &
-         boundary_condition%flow_aux_real_var(:,iconn), &
-         auxvars_bc(sum_connection)%auxvar_elem(nvar), &
-         auxvars(ghosted_id)%auxvar_elem(nvar), &
-         material_auxvars(ghosted_id)%porosity, &
-         material_auxvars(ghosted_id)%tortuosity, &
-         Flash2_parameter%sir(:,icap_dn), &
-         cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
-         cur_connection_set%area(iconn), &
-         distance_gravity,option, &
-         vv_darcy,Res)
-       ResInc(local_id,1:option%nflowdof,nvar) = ResInc(local_id,1:option%nflowdof,nvar) - Res(1:option%nflowdof)
+      do nvar=1,option%nflowdof
+        call Flash2BCFlux(boundary_condition%flow_condition%itype, &
+          boundary_condition%flow_aux_real_var(:,iconn), &
+          auxvars_bc(sum_connection)%auxvar_elem(nvar), &
+          auxvars(ghosted_id)%auxvar_elem(nvar), &
+          material_auxvars(ghosted_id)%porosity, &
+          material_auxvars(ghosted_id)%tortuosity, &
+          Flash2_parameter%sir(:,icap_dn), &
+          cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
+          cur_connection_set%area(iconn), &
+          distance_gravity,option, &
+          vv_darcy,Res)
+        ResInc(local_id,1:option%nflowdof,nvar) = &
+        ResInc(local_id,1:option%nflowdof,nvar) - Res(1:option%nflowdof)
+      enddo
     enddo
- enddo
     boundary_condition => boundary_condition%next
- enddo
+  enddo
 #endif
 ! Set matrix values related to single node terms: Accumulation, Source/Sink, BC
   do local_id = 1, grid%nlmax  ! For each local node do...
-     ghosted_id = grid%nL2G(local_id)
-     !geh - Ignore inactive cells with inactive materials
-     if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-     endif
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
+    endif
 
-     ra=0.D0
-     max_dev=0.D0
-     do neq=1, option%nflowdof
-        do nvar=1, option%nflowdof
-           ra(neq,nvar)=(ResInc(local_id,neq,nvar)-patch%aux%Flash2%ResOld_AR(local_id,neq))&
+    ra=0.D0
+    max_dev=0.D0
+    do neq=1, option%nflowdof
+      do nvar=1, option%nflowdof
+        ra(neq,nvar)=(ResInc(local_id,neq,nvar)-patch%aux%Flash2%ResOld_AR(local_id,neq))&
               /patch%aux%Flash2%delx(nvar,ghosted_id)
-           if(max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
-        enddo
-     enddo
+        if(max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
+      enddo
+    enddo
    
-   select case(option%idt_switch)
+    select case(option%idt_switch)
       case(1) 
         ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
       case(-1)
         if(option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:) /option%flow_dt
     end select
 
-     Jup=ra(1:option%nflowdof,1:option%nflowdof)
-     if(material_auxvars(ghosted_id)%volume>1.D0 ) Jup=Jup / material_auxvars(ghosted_id)%volume
+    Jup = ra(1:option%nflowdof,1:option%nflowdof)
+    if (material_auxvars(ghosted_id)%volume > 1.D0) Jup=Jup / material_auxvars(ghosted_id)%volume
    
 !      if(local_id==1) print *, 'flash jac', volume_p(local_id), ra
-     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
+    call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
   end do
 
   if (realization%debug%matview_Jacobian_detailed) then
@@ -3745,7 +3748,7 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,realization,ierr)
       icap_dn = int(icap_loc_p(ghosted_id_dn))
       
       do nvar = 1, option%nflowdof 
-         call Flash2Flux(auxvars(ghosted_id_up)%auxvar_elem(nvar), &
+        call Flash2Flux(auxvars(ghosted_id_up)%auxvar_elem(nvar), &
                          material_auxvars(ghosted_id_up)%porosity, &
                          material_auxvars(ghosted_id_up)%tortuosity, &
                          Flash2_parameter%sir(:,icap_up), &
@@ -3757,9 +3760,9 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,realization,ierr)
                          dd_dn,perm_dn,D_dn, &
                          cur_connection_set%area(iconn),distance_gravity, &
                          upweight, option, vv_darcy, Res)
-            ra(:,nvar)= (Res(:)-patch%aux%Flash2%ResOld_FL(iconn,:))&
+        ra(:,nvar)= (Res(:)-patch%aux%Flash2%ResOld_FL(iconn,:))&
               /patch%aux%Flash2%delx(nvar,ghosted_id_up)
-         call Flash2Flux(auxvars(ghosted_id_up)%auxvar_elem(0), &
+        call Flash2Flux(auxvars(ghosted_id_up)%auxvar_elem(0), &
                          material_auxvars(ghosted_id_up)%porosity, &
                          material_auxvars(ghosted_id_up)%tortuosity, &
                          Flash2_parameter%sir(:,icap_up), &
@@ -3771,45 +3774,45 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,realization,ierr)
                          dd_dn,perm_dn,D_dn, &
                          cur_connection_set%area(iconn),distance_gravity, &
                          upweight, option, vv_darcy, Res)
-         ra(:,nvar+option%nflowdof)= (Res(:)-patch%aux%Flash2%ResOld_FL(iconn,:))&
+        ra(:,nvar+option%nflowdof)= (Res(:)-patch%aux%Flash2%ResOld_FL(iconn,:))&
            /patch%aux%Flash2%delx(nvar,ghosted_id_dn)
-    enddo
+      enddo
 
-    select case(option%idt_switch)
-    case(1)
-       ra =ra / option%flow_dt
-    case(-1)  
-       if(option%flow_dt>1)  ra =ra / option%flow_dt
-    end select
+      select case(option%idt_switch)
+      case(1)
+        ra = ra / option%flow_dt
+      case(-1)
+        if(option%flow_dt > 1)  ra = ra / option%flow_dt
+      end select
     
-    if (local_id_up > 0) then
-       voltemp=1.D0
-       if(material_auxvars(ghosted_id_up)%volume>1.D0)then
-         voltemp = 1.D0/material_auxvars(ghosted_id_up)%volume
-       endif
-       Jup(:,1:option%nflowdof)= ra(:,1:option%nflowdof)*voltemp !11
-       jdn(:,1:option%nflowdof)= ra(:, 1 + option%nflowdof:2 * option%nflowdof)*voltemp !12
+      if (local_id_up > 0) then
+        voltemp=1.D0
+        if (material_auxvars(ghosted_id_up)%volume > 1.D0) then
+          voltemp = 1.D0/material_auxvars(ghosted_id_up)%volume
+        endif
+        Jup(:,1:option%nflowdof)= ra(:,1:option%nflowdof)*voltemp !11
+        jdn(:,1:option%nflowdof)= ra(:, 1 + option%nflowdof:2 * option%nflowdof)*voltemp !12
 
-       call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
+        call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
             Jup,ADD_VALUES,ierr)
-       call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
+        call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
             Jdn,ADD_VALUES,ierr)
-    endif
-    if (local_id_dn > 0) then
-       voltemp=1.D0
-       if(material_auxvars(ghosted_id_dn)%volume>1.D0)then
-         voltemp=1.D0/material_auxvars(ghosted_id_dn)%volume
-       endif
-       Jup(:,1:option%nflowdof)= -ra(:,1:option%nflowdof)*voltemp !21
-       jdn(:,1:option%nflowdof)= -ra(:, 1 + option%nflowdof:2 * option%nflowdof)*voltemp !22
+      endif
+      if (local_id_dn > 0) then
+        voltemp=1.D0
+        if (material_auxvars(ghosted_id_dn)%volume > 1.D0) then
+          voltemp = 1.D0/material_auxvars(ghosted_id_dn)%volume
+        endif
+        Jup(:,1:option%nflowdof)= -ra(:,1:option%nflowdof)*voltemp !21
+        jdn(:,1:option%nflowdof)= -ra(:, 1 + option%nflowdof:2 * option%nflowdof)*voltemp !22
 
  
-       call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
+        call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
             Jdn,ADD_VALUES,ierr)
-       call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
+        call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
             Jup,ADD_VALUES,ierr)
-    endif
- enddo
+      endif
+    enddo
     cur_connection_set => cur_connection_set%next
   enddo
 #endif
@@ -4058,55 +4061,55 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,realization,ierr)
       icap_dn = int(icap_loc_p(ghosted_id))
 
 ! Then need fill up increments for BCs
-    delxbc=0.D0;
-    do idof =1, option%nflowdof   
-       select case(boundary_condition%flow_condition%itype(idof))
-       case(DIRICHLET_BC)
+      delxbc = 0.D0;
+      do idof = 1, option%nflowdof
+        select case(boundary_condition%flow_condition%itype(idof))
+        case(DIRICHLET_BC)
           xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
           delxbc(idof)=0.D0
-      case(HYDROSTATIC_BC)
+        case(HYDROSTATIC_BC)
           xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
           if(idof>=2)then
              xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
              delxbc(idof)=patch%aux%Flash2%delx(idof,ghosted_id)
           endif 
-       case(NEUMANN_BC, ZERO_GRADIENT_BC)
+        case(NEUMANN_BC, ZERO_GRADIENT_BC)
           ! solve for pb from Darcy's law given qb /= 0
           xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
           !iphasebc = int(iphase_loc_p(ghosted_id))
           delxbc(idof)=patch%aux%Flash2%delx(idof,ghosted_id)
-       end select
-    enddo
+        end select
+      enddo
     !print *,'BC:',boundary_condition%flow_condition%itype, xxbc, delxbc
 
  
-    call Flash2AuxVarCompute_Ninc(xxbc,auxvars_bc(sum_connection)%auxvar_elem(0),&
+      call Flash2AuxVarCompute_Ninc(xxbc,auxvars_bc(sum_connection)%auxvar_elem(0),&
          global_auxvars_bc(sum_connection),&
          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
          realization%fluid_properties, option)
-    call Flash2AuxVarCompute_Winc(xxbc,delxbc,&
+      call Flash2AuxVarCompute_Winc(xxbc,delxbc,&
          auxvars_bc(sum_connection)%auxvar_elem(1:option%nflowdof),&
          global_auxvars_bc(sum_connection),&
          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
          realization%fluid_properties,option)
     
-    do nvar=1,option%nflowdof
-       call Flash2BCFlux(boundary_condition%flow_condition%itype, &
-         boundary_condition%flow_aux_real_var(:,iconn), &
-         auxvars_bc(sum_connection)%auxvar_elem(nvar), &
-         auxvars(ghosted_id)%auxvar_elem(nvar), &
-         material_auxvars(ghosted_id)%porosity, &
-         material_auxvars(ghosted_id)%tortuosity, &
-         Flash2_parameter%sir(:,icap_dn), &
-         cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
-         cur_connection_set%area(iconn), &
-         distance_gravity,option, &
-         vv_darcy,Res)
-       ResInc(local_id,1:option%nflowdof,nvar) = ResInc(local_id,1:option%nflowdof,nvar) - Res(1:option%nflowdof)
+      do nvar=1,option%nflowdof
+        call Flash2BCFlux(boundary_condition%flow_condition%itype, &
+          boundary_condition%flow_aux_real_var(:,iconn), &
+          auxvars_bc(sum_connection)%auxvar_elem(nvar), &
+          auxvars(ghosted_id)%auxvar_elem(nvar), &
+          material_auxvars(ghosted_id)%porosity, &
+          material_auxvars(ghosted_id)%tortuosity, &
+          Flash2_parameter%sir(:,icap_dn), &
+          cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
+          cur_connection_set%area(iconn), &
+          distance_gravity,option, &
+          vv_darcy,Res)
+        ResInc(local_id,1:option%nflowdof,nvar) = ResInc(local_id,1:option%nflowdof,nvar) - Res(1:option%nflowdof)
+      enddo
     enddo
- enddo
     boundary_condition => boundary_condition%next
- enddo
+  enddo
 #endif
 ! Set matrix values related to single node terms: Accumulation, Source/Sink, BC
   do local_id = 1, grid%nlmax  ! For each local node do...
@@ -4205,7 +4208,7 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,realization,ierr)
       icap_dn = int(icap_loc_p(ghosted_id_dn))
       
       do nvar = 1, option%nflowdof 
-         call Flash2Flux(auxvars(ghosted_id_up)%auxvar_elem(nvar), &
+        call Flash2Flux(auxvars(ghosted_id_up)%auxvar_elem(nvar), &
                          material_auxvars(ghosted_id_up)%porosity, &
                          material_auxvars(ghosted_id_up)%tortuosity, &
                          Flash2_parameter%sir(:,icap_up), &
@@ -4217,9 +4220,9 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,realization,ierr)
                          dd_dn,perm_dn,D_dn, &
                          cur_connection_set%area(iconn),distance_gravity, &
                          upweight, option, vv_darcy, Res)
-            ra(:,nvar)= (Res(:)-patch%aux%Flash2%ResOld_FL(iconn,:))&
+        ra(:,nvar) = (Res(:)-patch%aux%Flash2%ResOld_FL(iconn,:))&
               /patch%aux%Flash2%delx(nvar,ghosted_id_up)
-         call Flash2Flux(auxvars(ghosted_id_up)%auxvar_elem(0), &
+        call Flash2Flux(auxvars(ghosted_id_up)%auxvar_elem(0), &
                          material_auxvars(ghosted_id_up)%porosity, &
                          material_auxvars(ghosted_id_up)%tortuosity, &
                          Flash2_parameter%sir(:,icap_up), &
@@ -4231,45 +4234,45 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,realization,ierr)
                          dd_dn,perm_dn,D_dn, &
                          cur_connection_set%area(iconn),distance_gravity, &
                          upweight, option, vv_darcy, Res)
-         ra(:,nvar+option%nflowdof)= (Res(:)-patch%aux%Flash2%ResOld_FL(iconn,:))&
+        ra(:,nvar+option%nflowdof)= (Res(:)-patch%aux%Flash2%ResOld_FL(iconn,:))&
            /patch%aux%Flash2%delx(nvar,ghosted_id_dn)
-    enddo
+      enddo
 
-    select case(option%idt_switch)
-    case(1)
-       ra =ra / option%flow_dt
-    case(-1)  
-       if(option%flow_dt>1)  ra =ra / option%flow_dt
-    end select
+      select case(option%idt_switch)
+      case(1)
+        ra = ra / option%flow_dt
+      case(-1)
+       if(option%flow_dt>1) ra =ra / option%flow_dt
+      end select
     
-    if (local_id_up > 0) then
-       voltemp=1.D0
-       if(material_auxvars(ghosted_id_up)%volume>1.D0)then
-         voltemp = 1.D0/material_auxvars(ghosted_id_up)%volume
-       endif
-       Jup(:,1:option%nflowdof)= ra(:,1:option%nflowdof)*voltemp !11
-       jdn(:,1:option%nflowdof)= ra(:, 1 + option%nflowdof:2 * option%nflowdof)*voltemp !12
+      if (local_id_up > 0) then
+        voltemp=1.D0
+        if(material_auxvars(ghosted_id_up)%volume > 1.D0)then
+          voltemp = 1.D0/material_auxvars(ghosted_id_up)%volume
+        endif
+        Jup(:,1:option%nflowdof) = ra(:,1:option%nflowdof)*voltemp !11
+        jdn(:,1:option%nflowdof) = ra(:, 1 + option%nflowdof:2 * option%nflowdof)*voltemp !12
 
-       call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
+        call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
             Jup,ADD_VALUES,ierr)
-       call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
+        call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
             Jdn,ADD_VALUES,ierr)
-    endif
-    if (local_id_dn > 0) then
-       voltemp=1.D0
-       if(material_auxvars(ghosted_id_dn)%volume>1.D0)then
-         voltemp=1.D0/material_auxvars(ghosted_id_dn)%volume
-       endif
-       Jup(:,1:option%nflowdof)= -ra(:,1:option%nflowdof)*voltemp !21
-       jdn(:,1:option%nflowdof)= -ra(:, 1 + option%nflowdof:2 * option%nflowdof)*voltemp !22
+      endif
+      if (local_id_dn > 0) then
+        voltemp = 1.D0
+        if (material_auxvars(ghosted_id_dn)%volume>1.D0) then
+          voltemp = 1.D0/material_auxvars(ghosted_id_dn)%volume
+        endif
+        Jup(:,1:option%nflowdof) = -ra(:,1:option%nflowdof)*voltemp !21
+        jdn(:,1:option%nflowdof) = -ra(:, 1 + option%nflowdof:2 * option%nflowdof)*voltemp !22
 
  
-       call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
+        call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
             Jdn,ADD_VALUES,ierr)
-       call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
+        call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
             Jup,ADD_VALUES,ierr)
-    endif
- enddo
+      endif
+    enddo
     cur_connection_set => cur_connection_set%next
   enddo
 #endif
@@ -4415,25 +4418,24 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,realization,ierr)
 #if 1
   ! Accumulation terms ------------------------------------
   do local_id = 1, grid%nlmax  ! For each local node do...
-     ghosted_id = grid%nL2G(local_id)
-     !geh - Ignore inactive cells with inactive materials
-     if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-     endif
-     iend = local_id*option%nflowdof
-     istart = iend-option%nflowdof+1
-     icap = int(icap_loc_p(ghosted_id))
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
+    endif
+    iend = local_id*option%nflowdof
+    istart = iend-option%nflowdof+1
+    icap = int(icap_loc_p(ghosted_id))
      
-     do nvar =1, option%nflowdof
-        call Flash2Accumulation(auxvars(ghosted_id)%auxvar_elem(nvar), &
+    do nvar =1, option%nflowdof
+      call Flash2Accumulation(auxvars(ghosted_id)%auxvar_elem(nvar), &
              global_auxvars(ghosted_id),& 
              material_auxvars(ghosted_id)%porosity, &
              material_auxvars(ghosted_id)%volume, &
              Flash2_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
              option,ONE_INTEGER, res) 
-        ResInc( local_id,:,nvar) =  ResInc(local_id,:,nvar) + Res(:)
-     enddo
-     
+      ResInc( local_id,:,nvar) =  ResInc(local_id,:,nvar) + Res(:)
+    enddo
   enddo
 #endif
 #if 1
@@ -4495,7 +4497,7 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,realization,ierr)
            ResInc(local_id,option%nflowdof,nvar)=&
            ResInc(local_id,option%nflowdof,nvar)- Res(option%nflowdof) 
 
-     enddo 
+      enddo
     enddo
     source_sink => source_sink%next
   enddo
@@ -4503,34 +4505,35 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,realization,ierr)
 
 ! Set matrix values related to single node terms: Accumulation, Source/Sink, BC
   do local_id = 1, grid%nlmax  ! For each local node do...
-     ghosted_id = grid%nL2G(local_id)
-     !geh - Ignore inactive cells with inactive materials
-     if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-     endif
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
+    endif
 
-     ra=0.D0
-     max_dev=0.D0
-     do neq=1, option%nflowdof
-        do nvar=1, option%nflowdof
-           ra(neq,nvar)=(ResInc(local_id,neq,nvar)-patch%aux%Flash2%ResOld_AR(local_id,neq))&
+    ra=0.D0
+    max_dev=0.D0
+    do neq=1, option%nflowdof
+      do nvar=1, option%nflowdof
+        ra(neq,nvar)=(ResInc(local_id,neq,nvar)-patch%aux%Flash2%ResOld_AR(local_id,neq))&
               /patch%aux%Flash2%delx(nvar,ghosted_id)
-           if(max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
-        enddo
-     enddo
+        if(max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
+      enddo
+    enddo
    
-   select case(option%idt_switch)
-      case(1) 
-        ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
-      case(-1)
-        if(option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:) /option%flow_dt
+    select case(option%idt_switch)
+    case(1)
+      ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
+    case(-1)
+      if(option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:) /option%flow_dt
     end select
 
-     Jup=ra(1:option%nflowdof,1:option%nflowdof)
-     if(material_auxvars(ghosted_id)%volume>1.D0 ) Jup=Jup / material_auxvars(ghosted_id)%volume
+    Jup=ra(1:option%nflowdof,1:option%nflowdof)
+    if (material_auxvars(ghosted_id)%volume > 1.D0) &
+      Jup=Jup / material_auxvars(ghosted_id)%volume
    
 !      if(local_id==1) print *, 'flash jac', volume_p(local_id), ra
-     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
+    call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
   end do
 
   if (realization%debug%matview_Jacobian_detailed) then
