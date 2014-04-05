@@ -1180,9 +1180,12 @@ subroutine MphaseUpdateSolution(realization)
   
   field => realization%field
   
-  call VecCopy(realization%field%flow_xx,realization%field%flow_yy,ierr)   
-  call VecCopy(realization%field%iphas_loc,realization%field%iphas_old_loc,ierr)
+  call VecCopy(field%flow_xx,realization%field%flow_yy,ierr)
+  call VecCopy(field%iphas_loc,realization%field%iphas_old_loc,ierr)
   
+! call VecCopy(realization%field%flow_xx,realization%field%flow_yy,ierr)
+! call VecCopy(realization%field%iphas_loc,realization%field%iphas_old_loc,ierr)
+
   cur_patch => realization%patch_list%first
   do 
     if (.not.associated(cur_patch)) exit
