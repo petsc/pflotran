@@ -59,19 +59,19 @@ type, public :: Flash2_auxvar_elem_type
   end type Flash2_parameter_type
     
   type, public :: Flash2_type
-     PetscInt :: n_zero_rows
-     PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
-
-     PetscBool :: auxvars_up_to_date
-     PetscBool :: inactive_cells_exist
-     PetscInt :: num_aux, num_aux_bc
-     type(Flash2_parameter_type), pointer :: Flash2_parameter
-     type(Flash2_auxvar_type), pointer :: auxvars(:)
-     type(Flash2_auxvar_type), pointer :: auxvars_bc(:)
-     PetscReal , pointer :: Resold_AR(:,:)
-     PetscReal , pointer :: Resold_BC(:,:)
-     PetscReal , pointer :: Resold_FL(:,:)
-     PetscReal , pointer :: delx(:,:)
+    PetscInt :: n_zero_rows
+    PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
+    PetscBool :: auxvars_up_to_date
+    PetscBool :: inactive_cells_exist
+    PetscInt :: num_aux, num_aux_bc, num_aux_ss
+    type(Flash2_parameter_type), pointer :: Flash2_parameter
+    type(Flash2_auxvar_type), pointer :: auxvars(:)
+    type(Flash2_auxvar_type), pointer :: auxvars_bc(:)
+    type(Flash2_auxvar_type), pointer :: auxvars_ss(:)
+    PetscReal , pointer :: Resold_AR(:,:)
+    PetscReal , pointer :: Resold_BC(:,:)
+    PetscReal , pointer :: Resold_FL(:,:)
+    PetscReal , pointer :: delx(:,:)
   end type Flash2_type
 
   
@@ -107,6 +107,7 @@ function Flash2AuxCreate()
   aux%num_aux_bc = 0
   nullify(aux%auxvars)
   nullify(aux%auxvars_bc)
+  nullify(aux%auxvars_ss)
   aux%n_zero_rows = 0
   allocate(aux%Flash2_parameter)
   nullify(aux%Flash2_parameter%sir)
@@ -584,21 +585,32 @@ subroutine Flash2AuxDestroy(aux, option)
     do ielem= 0, option%nflowdof 
       call Flash2AuxVarDestroy(aux%auxvars(iaux)%auxvar_elem(ielem))
     enddo
-  enddo  
+  enddo
+
   do iaux = 1, aux%num_aux_bc
     do ielem= 0, option%nflowdof 
       call Flash2AuxVarDestroy(aux%auxvars_bc(iaux)%auxvar_elem(ielem))
     enddo
   enddo  
-  
+
+  do iaux = 1, aux%num_aux_ss
+    do ielem= 0, option%nflowdof 
+      call Flash2AuxVarDestroy(aux%auxvars_ss(iaux)%auxvar_elem(ielem))
+    enddo
+  enddo  
+
   if (associated(aux%auxvars)) deallocate(aux%auxvars)
   nullify(aux%auxvars)
   if (associated(aux%auxvars_bc)) deallocate(aux%auxvars_bc)
   nullify(aux%auxvars_bc)
+  if (associated(aux%auxvars_ss)) deallocate(aux%auxvars_ss)
+  nullify(aux%auxvars_ss)
+
   if (associated(aux%zero_rows_local)) deallocate(aux%zero_rows_local)
   nullify(aux%zero_rows_local)
   if (associated(aux%zero_rows_local_ghosted)) deallocate(aux%zero_rows_local_ghosted)
   nullify(aux%zero_rows_local_ghosted)
+
   if (associated(aux%Flash2_parameter)) then
     if (associated(aux%Flash2_parameter%dencpr)) deallocate(aux%Flash2_parameter%dencpr)
     nullify(aux%Flash2_parameter%dencpr)

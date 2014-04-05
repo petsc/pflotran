@@ -1529,6 +1529,7 @@ subroutine OutputMassBalance(realization_base)
   
   use Richards_module, only : RichardsComputeMassBalance
   use Mphase_module, only : MphaseComputeMassBalance
+  use Flash2_module, only : Flash2ComputeMassBalance
   use Immis_module, only : ImmisComputeMassBalance
   use Miscible_module, only : MiscibleComputeMassBalance
   use TH_module, only : THComputeMassBalance
@@ -1639,7 +1640,7 @@ subroutine OutputMassBalance(realization_base)
                                     'kg','',icol)
           call OutputAppendToHeader(header,'Global Air Mass in Gas Phase', &
                                     'kg','',icol)
-        case(MPH_MODE)
+        case(MPH_MODE,FLASH2_MODE)
           call OutputAppendToHeader(header,'Global Water Mass in Water Phase', &
                                     'kmol','',icol)
           call OutputAppendToHeader(header,'Global CO2 Mass in Water Phase', &
@@ -1731,7 +1732,7 @@ subroutine OutputMassBalance(realization_base)
             call OutputAppendToHeader(header,string,units,'',icol)
             string = trim(coupler%name) // ' Air Mass'
             call OutputAppendToHeader(header,string,units,'',icol)
-          case(MPH_MODE,IMS_MODE)
+          case(MPH_MODE,FLASH2_MODE,IMS_MODE)
             string = trim(coupler%name) // ' Water Mass'
             call OutputAppendToHeader(header,string,'kmol','',icol)
             string = trim(coupler%name) // ' CO2 Mass'
@@ -1838,6 +1839,8 @@ subroutine OutputMassBalance(realization_base)
             call MiscibleComputeMassBalance(realization_base,sum_kg(:,1))
           case(MPH_MODE)
             call MphaseComputeMassBalance(realization_base,sum_kg(:,:),sum_trapped(:))
+          case(FLASH2_MODE)
+            call Flash2ComputeMassBalance(realization_base,sum_kg(:,:),sum_trapped(:))
           case(IMS_MODE)
             call ImmisComputeMassBalance(realization_base,sum_kg(:,1))
           case(G_MODE)
@@ -2104,7 +2107,7 @@ subroutine OutputMassBalance(realization_base)
             endif
           enddo
 
-        case(MPH_MODE)
+        case(MPH_MODE,FLASH2_MODE)
         ! print out cumulative H2O & CO2 fluxes in kmol and kmol/time
           sum_kg = 0.d0
           do icomp = 1, option%nflowspec

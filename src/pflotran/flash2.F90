@@ -50,7 +50,7 @@ module Flash2_module
          Flash2Setup,Flash2UpdateReason,&
          Flash2MaxChange, Flash2UpdateSolution, &
          Flash2GetTecplotHeader, Flash2InitializeTimestep, &
-         Flash2UpdateAuxVars, Flash2Destroy
+         Flash2UpdateAuxVars, Flash2ComputeMassBalance, Flash2Destroy
 
 contains
 
@@ -230,18 +230,262 @@ end subroutine Flash2SetupPatch
 
 ! ************************************************************************** !
 
+subroutine Flash2ComputeMassBalance(realization,mass_balance,mass_trapped)
+!
+! Author: Glenn Hammond
+! Date: 02/22/08
+!
+
+use Realization_class
+use Patch_module
+
+type(realization_type) :: realization
+PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
+PetscReal :: mass_trapped(realization%option%nphase)
+
+type(patch_type), pointer :: cur_patch
+
+mass_balance = 0.d0
+mass_trapped = 0.d0
+
+cur_patch => realization%patch_list%first
+do
+if (.not.associated(cur_patch)) exit
+realization%patch => cur_patch
+call Flash2ComputeMassBalancePatch(realization,mass_balance,mass_trapped)
+cur_patch => cur_patch%next
+enddo
+
+end subroutine Flash2ComputeMassBalance
+
+! ************************************************************************** !
+
+subroutine Flash2ComputeMassBalancePatch(realization,mass_balance,mass_trapped)
+!
+! Initializes mass balance
+!
+! Author: Glenn Hammond
+! Date: 12/19/08
+!
+
+use Realization_class
+use Option_module
+use Patch_module
+use Field_module
+use Grid_module
+use Material_Aux_class
+! use Saturation_Function_module
+! use Flash2_pckr_module
+
+implicit none
+
+type(realization_type) :: realization
+! type(saturation_function_type) :: saturation_function_type
+
+PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
+PetscReal :: mass_trapped(realization%option%nphase)
+
+type(option_type), pointer :: option
+type(patch_type), pointer :: patch
+type(field_type), pointer :: field
+type(grid_type), pointer :: grid
+type(Flash2_auxvar_type), pointer :: Flash2_auxvars(:)
+class(material_auxvar_type), pointer :: material_auxvars(:)
+PetscReal, pointer :: icap_loc_p(:)
+
+PetscErrorCode :: ierr
+PetscInt :: local_id
+PetscInt :: ghosted_id
+PetscInt :: iphase
+PetscInt :: ispec_start, ispec_end, ispec
+PetscReal :: pckr_sir(realization%option%nphase)
+
+option => realization%option
+patch => realization%patch
+grid => patch%grid
+field => realization%field
+
+Flash2_auxvars => patch%aux%Flash2%auxvars
+material_auxvars => patch%aux%Material%auxvars
+
+call VecGetArrayF90(field%icap_loc,icap_loc_p, ierr)
+
+do local_id = 1, grid%nlmax
+ghosted_id = grid%nL2G(local_id)
+
+!geh - Ignore inactive cells with inactive materials
+if (associated(patch%imat)) then
+if (patch%imat(ghosted_id) <= 0) cycle
+endif
+
+! mass = volume * saturation * density * mole fraction
+do iphase = 1, option%nphase
+do ispec = 1, option%nflowspec
+mass_balance(ispec,iphase) = mass_balance(ispec,iphase) + &
+Flash2_auxvars(ghosted_id)%auxvar_elem(0)%xmol(ispec+(iphase-1)*option%nflowspec)* &
+Flash2_auxvars(ghosted_id)%auxvar_elem(0)%den(iphase)* &
+Flash2_auxvars(ghosted_id)%auxvar_elem(0)%sat(iphase)* &
+material_auxvars(ghosted_id)%porosity*material_auxvars(ghosted_id)%volume
+enddo
+
+pckr_sir(iphase) = &
+realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr%sr(iphase)
+
+if (iphase == 1 .and. &
+Flash2_auxvars(ghosted_id)%auxvar_elem(0)%sat(iphase) <= pckr_sir(iphase)) then
+ispec = 1
+mass_trapped(iphase) = mass_trapped(iphase) + &
+Flash2_auxvars(ghosted_id)%auxvar_elem(0)%xmol(ispec+(iphase-1)*option%nflowspec)* &
+Flash2_auxvars(ghosted_id)%auxvar_elem(0)%den(iphase)* &
+Flash2_auxvars(ghosted_id)%auxvar_elem(0)%sat(iphase)* &
+material_auxvars(ghosted_id)%porosity*material_auxvars(ghosted_id)%volume
+endif
+
+if (iphase == 2 .and. &
+Flash2_auxvars(ghosted_id)%auxvar_elem(0)%sat(iphase) <= pckr_sir(iphase)) then
+ispec = 2
+mass_trapped(iphase) = mass_trapped(iphase) + &
+Flash2_auxvars(ghosted_id)%auxvar_elem(0)%xmol(ispec+(iphase-1)*option%nflowspec)* &
+Flash2_auxvars(ghosted_id)%auxvar_elem(0)%den(iphase)* &
+Flash2_auxvars(ghosted_id)%auxvar_elem(0)%sat(iphase)* &
+material_auxvars(ghosted_id)%porosity*material_auxvars(ghosted_id)%volume
+endif
+enddo
+enddo
+
+call VecRestoreArrayF90(field%icap_loc,icap_loc_p, ierr)
+
+end subroutine Flash2ComputeMassBalancePatch
+
+! ************************************************************************** !
+
+subroutine FLASH2ZeroMassBalDeltaPatch(realization)
+!
+! Zeros mass balance delta array
+!
+! Author: Glenn Hammond
+! Date: 12/19/08
+!
+
+use Realization_class
+use Option_module
+use Patch_module
+use Grid_module
+
+implicit none
+
+type(realization_type) :: realization
+
+type(option_type), pointer :: option
+type(patch_type), pointer :: patch
+type(global_auxvar_type), pointer :: global_auxvars_bc(:)
+type(global_auxvar_type), pointer :: global_auxvars_ss(:)
+
+PetscInt :: iconn
+
+option => realization%option
+patch => realization%patch
+
+global_auxvars_bc => patch%aux%Global%auxvars_bc
+global_auxvars_ss => patch%aux%Global%auxvars_ss
+
+#ifdef COMPUTE_INTERNAL_MASS_FLUX
+do iconn = 1, patch%aux%FLASH2%num_aux
+patch%aux%Global%auxvars(iconn)%mass_balance_delta = 0.d0
+enddo
+#endif
+
+! Intel 10.1 on Chinook reports a SEGV if this conditional is not
+! placed around the internal do loop - geh
+if (patch%aux%Flash2%num_aux_bc > 0) then
+do iconn = 1, patch%aux%FLASH2%num_aux_bc
+global_auxvars_bc(iconn)%mass_balance_delta = 0.d0
+enddo
+endif
+
+if (patch%aux%FLASH2%num_aux_ss > 0) then
+do iconn = 1, patch%aux%FLASH2%num_aux_ss
+global_auxvars_ss(iconn)%mass_balance_delta = 0.d0
+enddo
+endif
+
+end subroutine FLASH2ZeroMassBalDeltaPatch
+
+! ************************************************************************** !
+
+subroutine FLASH2UpdateMassBalancePatch(realization)
+!
+! Updates mass balance
+!
+! Author: Glenn Hammond
+! Date: 12/19/08
+!
+
+use Realization_class
+use Option_module
+use Patch_module
+use Grid_module
+
+implicit none
+
+type(realization_type) :: realization
+
+type(option_type), pointer :: option
+type(patch_type), pointer :: patch
+type(global_auxvar_type), pointer :: global_auxvars_bc(:)
+type(global_auxvar_type), pointer :: global_auxvars_ss(:)
+
+PetscInt :: iconn
+
+option => realization%option
+patch => realization%patch
+
+global_auxvars_bc => patch%aux%Global%auxvars_bc
+global_auxvars_ss => patch%aux%Global%auxvars_ss
+
+#ifdef COMPUTE_INTERNAL_MASS_FLUX
+do iconn = 1, patch%aux%Flash2%num_aux
+patch%aux%Global%auxvars(iconn)%mass_balance = &
+patch%aux%Global%auxvars(iconn)%mass_balance + &
+patch%aux%Global%auxvars(iconn)%mass_balance_delta* &
+option%flow_dt
+enddo
+#endif
+
+! Intel 10.1 on Chinook reports a SEGV if this conditional is not
+! placed around the internal do loop - geh
+if (patch%aux%FLASH2%num_aux_bc > 0) then
+do iconn = 1, patch%aux%Flash2%num_aux_bc
+global_auxvars_bc(iconn)%mass_balance = &
+global_auxvars_bc(iconn)%mass_balance + &
+global_auxvars_bc(iconn)%mass_balance_delta*option%flow_dt
+enddo
+endif
+
+if (patch%aux%FLASH2%num_aux_ss > 0) then
+do iconn = 1, patch%aux%Flash2%num_aux_ss
+global_auxvars_ss(iconn)%mass_balance = &
+global_auxvars_ss(iconn)%mass_balance + &
+global_auxvars_ss(iconn)%mass_balance_delta*option%flow_dt
+enddo
+endif
+
+end subroutine FLASH2UpdateMassBalancePatch
+
+! ************************************************************************** !
+
   function  Flash2InitGuessCheck(realization)
-  ! 
+  !
   ! Flash2initguesscheckpatch:
-  ! 
+  !
   ! Author: Chuan Lu
   ! Date: 12/10/07
-  ! 
- 
+  !
+
   use Realization_class
   use Patch_module
   use Option_module
-  
+
   PetscInt ::  Flash2InitGuessCheck
   type(realization_type) :: realization
   type(option_type), pointer:: option
@@ -696,6 +940,10 @@ subroutine Flash2UpdateSolution(realization)
   call VecCopy(realization%field%flow_xx,realization%field%flow_yy,ierr)   
 
 ! make room for hysteric s-Pc-kr
+
+  if (realization%option%compute_mass_balance_new) then
+    call Flash2UpdateMassBalancePatch(realization)
+  endif
 
 end subroutine Flash2UpdateSolution
 
@@ -2684,6 +2932,10 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
  ! call Flash2UpdateAuxVarsPatchNinc(realization)
   ! override flags since they will soon be out of date  
  ! patch%Flash2Aux%auxvars_up_to_date = PETSC_FALSE 
+ 
+  if (option%compute_mass_balance_new) then
+    call Flash2ZeroMassBalDeltaPatch(realization)
+  endif
 
 ! now assign access pointer to local variables
   call VecGetArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
