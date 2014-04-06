@@ -147,24 +147,24 @@ subroutine Flash2SetupPatch(realization)
   option => realization%option
   patch => realization%patch
   grid => patch%grid
-  print *,' Flash2 setup get patch'
+  !print *,' Flash2 setup get patch'
   patch%aux%Flash2 => Flash2AuxCreate()
   
 !  option%io_buffer = 'Before Flash2 can be run, the thc_parameter object ' // &
 !                     'must be initialized with the proper variables ' // &
 !                     'Flash2AuxCreate() is called anyhwere.'
 !  call printErrMsg(option)
-  print *,' Flash2 setup get Aux', option%nphase, size(realization%saturation_function_array)     
+  !print *,' Flash2 setup get Aux', option%nphase, size(realization%saturation_function_array)
 ! Flash2_parameters create *********************************************
 ! Sir
   allocate(patch%aux%Flash2%Flash2_parameter%sir(option%nphase, &
                                   size(realization%saturation_function_array)))
-   print *,' Flash2 setup get patch: sir, allocated'                                
+   !print *,' Flash2 setup get patch: sir, allocated'
   do ipara = 1, size(realization%saturation_function_array)
     patch%aux%Flash2%Flash2_parameter%sir(:,realization%saturation_function_array(ipara)%ptr%id) = &
       realization%saturation_function_array(ipara)%ptr%Sr(:)
   enddo
-  print *,' Flash2 setup get patch: sir'
+  !print *,' Flash2 setup get patch: sir'
 ! dencpr  
   allocate(patch%aux%Flash2%Flash2_parameter%dencpr(size(realization%material_property_array)))
   do ipara = 1, size(realization%material_property_array)
@@ -182,19 +182,26 @@ subroutine Flash2SetupPatch(realization)
 
 ! allocate auxvar data structures for all grid cells  
   allocate(auxvars(grid%ngmax))
-  print *,' Flash2 setup get Aux alloc', grid%ngmax
+  !print *,' Flash2 setup get Aux alloc', grid%ngmax
   do ghosted_id = 1, grid%ngmax
     call Flash2AuxVarInit(auxvars(ghosted_id),option)
   enddo
   patch%aux%Flash2%auxvars => auxvars
   patch%aux%Flash2%num_aux = grid%ngmax
-  print *,' Flash2 setup get Aux init'
+  !print *,' Flash2 setup get Aux init'
 
 !  allocate(delx(option%nflowdof, grid%ngmax))
 !  allocate(Resold_AR(grid%nlmax,option%nflowdof))
 !  allocate(Resold_FL(ConnectionGetNumberInList(patch%grid%&
 !           internal_connection_set_list),option%nflowdof))
-  print *,' Flash2 setup allocate app array'
+
+#ifdef YE_FLUX
+  allocate(patch%internal_fluxes(3,1,ConnectionGetNumberInList(patch%grid%&
+           internal_connection_set_list)))
+  patch%internal_fluxes = 0.d0
+#endif
+
+  !print *,' Flash2 setup allocate app array'
    ! count the number of boundary connections and allocate
   ! auxvar data structures for them  
   boundary_condition => patch%boundary_conditions%first
@@ -206,7 +213,7 @@ subroutine Flash2SetupPatch(realization)
     boundary_condition => boundary_condition%next
   enddo
   allocate(auxvars_bc(sum_connection))
-  print *,' Flash2 setup get AuxBc alloc', sum_connection
+  !print *,' Flash2 setup get AuxBc alloc', sum_connection
   do iconn = 1, sum_connection
     call Flash2AuxVarInit(auxvars_bc(iconn),option)
   enddo
@@ -221,7 +228,7 @@ subroutine Flash2SetupPatch(realization)
   allocate(patch%aux%Flash2%Resold_FL(ConnectionGetNumberInList(patch%grid%&
            internal_connection_set_list),option%nflowdof))
   
-  print *,' Flash2 setup get AuxBc point'
+  !print *,' Flash2 setup get AuxBc point'
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)
   call Flash2CreateZeroArray(patch,option)
@@ -2511,6 +2518,11 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
         istart = iend-option%nflowdof+1
         r_p(istart:iend) = r_p(istart:iend) - Res(1:option%nflowdof)
       endif
+
+#ifdef YE_FLUX
+      patch%internal_fluxes(1:option%nflowdof,1,sum_connection) = &
+                                        Res(1:option%nflowdof)
+#endif
 
     enddo
     cur_connection_set => cur_connection_set%next
