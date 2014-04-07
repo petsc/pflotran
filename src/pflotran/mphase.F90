@@ -1180,9 +1180,12 @@ subroutine MphaseUpdateSolution(realization)
   
   field => realization%field
   
-  call VecCopy(realization%field%flow_xx,realization%field%flow_yy,ierr)   
-  call VecCopy(realization%field%iphas_loc,realization%field%iphas_old_loc,ierr)
+  call VecCopy(field%flow_xx,field%flow_yy,ierr)
+  call VecCopy(field%iphas_loc,field%iphas_old_loc,ierr)
   
+! call VecCopy(realization%field%flow_xx,realization%field%flow_yy,ierr)
+! call VecCopy(realization%field%iphas_loc,realization%field%iphas_old_loc,ierr)
+
   cur_patch => realization%patch_list%first
   do 
     if (.not.associated(cur_patch)) exit
@@ -1252,10 +1255,10 @@ subroutine MphaseUpdateSolutionPatch(realization)
   if (realization%option%compute_mass_balance_new) then
     call MphaseUpdateMassBalancePatch(realization)
   endif
-  
+
   if (option%use_mc) then
  
-   call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)  
+    call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
   
   ! Secondary continuum contribution (Added by SK 06/26/2012)
   ! only one secondary continuum for now for each primary continuum node
