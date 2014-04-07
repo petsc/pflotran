@@ -562,6 +562,34 @@ end subroutine EOSGasDensityIdeal
 
 ! ************************************************************************** !
 
+subroutine EOSGasDensityRKS(T,P,Rho_gas,dRho_dT,dRho_dP,ierr)
+! Redlich-Kwong-Soave (RKS) equation of state used in BRAGFLO.  See
+! Soave, Giorgio, 1972, "Equilibrium constants from a modified Redlich-Kwong
+! equation of state", Chem. Eng. Sci., V27, pp 1197-1203.
+  implicit none
+
+  PetscReal, intent(in) :: T        ! temperature [C]
+  PetscReal, intent(in) :: P        ! pressure [Pa]
+  PetscReal, intent(inout) :: Rho_gas ! gas density [kmol/m^3]
+  PetscReal, intent(out) :: dRho_dT ! derivative gas density wrt temperature
+  PetscReal, intent(out) :: dRho_dP ! derivative gas density wrt pressure
+  PetscErrorCode, intent(out) :: ierr
+
+  
+  
+  PetscReal, parameter:: Rg = 8.31415 
+  PetscReal  T_kelvin
+
+  T_kelvin = T + 273.15d0
+  
+  ! to be completed later
+  print *, 'RKS gas density not yet implemented.'
+  stop
+  
+end subroutine EOSGasDensityRKS
+
+! ************************************************************************** !
+
 subroutine EOSGasEnergyIdeal(T,P,H,dH_dT,dH_dP,U,dU_dT,dU_dP,ierr)
     
   implicit none
