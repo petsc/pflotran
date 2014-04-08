@@ -806,6 +806,7 @@ subroutine SurfaceTHBCFlux(ibndtype, &
       endif
     case default
       option%io_buffer = 'Uknown pressure_bc_type for surface flow '
+      call printErrMsg(option)
   end select
   
   flux = head_liq*vel
