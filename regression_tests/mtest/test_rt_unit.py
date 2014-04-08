@@ -10,6 +10,7 @@ import os
 import re
 import struct
 import subprocess
+import sys
 import unittest
 
 import h5py
@@ -178,30 +179,42 @@ class RegressionTest_SetTestData(unittest.TestCase):
     def test_set_criteria_default(self):
         key = "concentration"
         self.rt._set_criteria(key, self.criteria, self.test_data)
-        self.assertEqual(self.rt._tolerance[key], [1.0e-12, "absolute"])
+        self.assertEqual(self.rt._tolerance[key][self.rt._TOL_VALUE], 1.0e-12)
+        self.assertEqual(self.rt._tolerance[key][self.rt._TOL_TYPE], "absolute")
+        self.assertEqual(self.rt._tolerance[key][self.rt._TOL_MIN_THRESHOLD], 0.0)
+        self.assertEqual(self.rt._tolerance[key][self.rt._TOL_MAX_THRESHOLD], sys.float_info.max)
 
     def test_set_criteria_cfg_default(self):
         # cfg criteria overrides default
         key = "concentration"
-        self.criteria[key] = "1.0e-5 relative"
+        self.criteria[key] = "1.0e-5 relative ; min_threshold 1.0e-2 ; max_threshold 34.5"
         self.rt._set_criteria(key, self.criteria, self.test_data)
-        self.assertEqual(self.rt._tolerance[key], [1.0e-5, "relative"])
+        self.assertEqual(self.rt._tolerance[key][self.rt._TOL_VALUE], 1.0e-5)
+        self.assertEqual(self.rt._tolerance[key][self.rt._TOL_TYPE], "relative")
+        self.assertEqual(self.rt._tolerance[key][self.rt._TOL_MIN_THRESHOLD], 1.0e-2)
+        self.assertEqual(self.rt._tolerance[key][self.rt._TOL_MAX_THRESHOLD], 34.5)
 
     def test_set_criteria_test_default(self):
         # individual test criteria overrides default
         key = "concentration"
-        self.test_data[key] = "1.0e-7 percent"
+        self.test_data[key] = "1.0e-7 percent ; min_threshold 1.0e-11"
         self.rt._set_criteria(key, self.criteria, self.test_data)
-        self.assertEqual(self.rt._tolerance[key], [1.0e-7, "percent"])
+        self.assertEqual(self.rt._tolerance[key][self.rt._TOL_VALUE], 1.0e-7)
+        self.assertEqual(self.rt._tolerance[key][self.rt._TOL_TYPE], "percent")
+        self.assertEqual(self.rt._tolerance[key][self.rt._TOL_MIN_THRESHOLD], 1.0e-11)
+        self.assertEqual(self.rt._tolerance[key][self.rt._TOL_MAX_THRESHOLD], sys.float_info.max)
 
     def test_set_criteria_test_cfg_default(self):
         # individual test criteria overrides cfg default overrides
         # global default
         key = "concentration"
         self.test_data[key] = "1.0e-7 percent"
-        self.criteria[key] = "1.0e-5 relative"
+        self.criteria[key] = "1.0e-5 relative ; max_threshold 1234.0"
         self.rt._set_criteria(key, self.criteria, self.test_data)
-        self.assertEqual(self.rt._tolerance[key], [1.0e-7, "percent"])
+        self.assertEqual(self.rt._tolerance[key][self.rt._TOL_VALUE], 1.0e-7)
+        self.assertEqual(self.rt._tolerance[key][self.rt._TOL_TYPE], "percent")
+        self.assertEqual(self.rt._tolerance[key][self.rt._TOL_MIN_THRESHOLD], 0.0)
+        self.assertEqual(self.rt._tolerance[key][self.rt._TOL_MAX_THRESHOLD], sys.float_info.max)
 
     def test_set_criteria_cfg_empty_default(self):
         # an exception is thrown when cfg default criteria is not iterable (a dict)
@@ -214,23 +227,29 @@ class RegressionTest_SetTestData(unittest.TestCase):
     def test_validate_criteria_absolute(self):
         key = "velocity"
         criteria_str = "1.0e-4 absolute"
-        value, criteria = self.rt._validate_criteria(key, criteria_str)
-        self.assertAlmostEqual(value, 1.0e-4, delta=1.0e-16)
-        self.assertEqual(criteria, "absolute")
+        criteria = self.rt._validate_criteria(key, criteria_str)
+        self.assertAlmostEqual(criteria[self.rt._TOL_VALUE], 1.0e-4, delta=1.0e-16)
+        self.assertEqual(criteria[self.rt._TOL_TYPE], "absolute")
+        self.assertEqual(criteria[self.rt._TOL_MIN_THRESHOLD], None)
+        self.assertEqual(criteria[self.rt._TOL_MAX_THRESHOLD], None)
 
     def test_validate_criteria_relative(self):
         key = "velocity"
         criteria_str = "1.0e-4 relative"
-        value, criteria = self.rt._validate_criteria(key, criteria_str)
-        self.assertAlmostEqual(value, 1.0e-4, delta=1.0e-16)
-        self.assertEqual(criteria, "relative")
+        criteria = self.rt._validate_criteria(key, criteria_str)
+        self.assertAlmostEqual(criteria[self.rt._TOL_VALUE], 1.0e-4, delta=1.0e-16)
+        self.assertEqual(criteria[self.rt._TOL_TYPE], "relative")
+        self.assertEqual(criteria[self.rt._TOL_MIN_THRESHOLD], None)
+        self.assertEqual(criteria[self.rt._TOL_MAX_THRESHOLD], None)
 
     def test_validate_criteria_percent(self):
         key = "velocity"
         criteria_str = "20 percent"
-        value, criteria = self.rt._validate_criteria(key, criteria_str)
-        self.assertAlmostEqual(value, 20.0, delta=1.0e-16)
-        self.assertEqual(criteria, "percent")
+        criteria = self.rt._validate_criteria(key, criteria_str)
+        self.assertAlmostEqual(criteria[self.rt._TOL_VALUE], 20.0, delta=1.0e-16)
+        self.assertEqual(criteria[self.rt._TOL_TYPE], "percent")
+        self.assertEqual(criteria[self.rt._TOL_MIN_THRESHOLD], None)
+        self.assertEqual(criteria[self.rt._TOL_MAX_THRESHOLD], None)
 
     def test_validate_criteria_incorrect(self):
         key = "velocity"
@@ -243,6 +262,51 @@ class RegressionTest_SetTestData(unittest.TestCase):
         criteria_str = "absolute 1.0e-4"
         self.assertRaises(Exception,
                           self.rt._validate_criteria, key, criteria_str)
+
+    def test_validate_criteria_value_error(self):
+        key = "velocity"
+        criteria_str = "1.23,4 absolute"
+        self.assertRaises(Exception,
+                          self.rt._validate_criteria, key, criteria_str)
+
+    def test_validate_criteria_min_threshold(self):
+        key = "velocity"
+        criteria_str = "20 percent ; min_threshold 1.0e-11"
+        criteria = self.rt._validate_criteria(key, criteria_str)
+        self.assertAlmostEqual(criteria[self.rt._TOL_VALUE], 20.0, delta=1.0e-16)
+        self.assertEqual(criteria[self.rt._TOL_TYPE], "percent")
+        self.assertEqual(criteria[self.rt._TOL_MIN_THRESHOLD], 1.0e-11)
+        self.assertEqual(criteria[self.rt._TOL_MAX_THRESHOLD], None)
+
+    def test_validate_criteria_max_threshold(self):
+        key = "velocity"
+        criteria_str = "20 percent ; max_threshold 1.23e4"
+        criteria = self.rt._validate_criteria(key, criteria_str)
+        self.assertAlmostEqual(criteria[self.rt._TOL_VALUE], 20.0, delta=1.0e-16)
+        self.assertEqual(criteria[self.rt._TOL_TYPE], "percent")
+        self.assertEqual(criteria[self.rt._TOL_MIN_THRESHOLD], None)
+        self.assertEqual(criteria[self.rt._TOL_MAX_THRESHOLD], 1.23e4)
+
+    def test_validate_criteria_min_max_threshold(self):
+        key = "velocity"
+        criteria_str = "20 percent ; max_threshold 1.23e4 ; min_threshold 2.34e-5"
+        criteria = self.rt._validate_criteria(key, criteria_str)
+        self.assertAlmostEqual(criteria[self.rt._TOL_VALUE], 20.0, delta=1.0e-16)
+        self.assertEqual(criteria[self.rt._TOL_TYPE], "percent")
+        self.assertEqual(criteria[self.rt._TOL_MIN_THRESHOLD], 2.34e-5)
+        self.assertEqual(criteria[self.rt._TOL_MAX_THRESHOLD], 1.23e4)
+
+    def test_validate_criteria_unknown_threshold_error(self):
+        key = "velocity"
+        criteria_str = "20 percent ; cat 1234"
+        self.assertRaises(Exception, self.rt._validate_criteria,
+                          key ,criteria_str)
+
+    def test_validate_criteria_threshold_no_number_error(self):
+        key = "velocity"
+        criteria_str = "20 percent ; cat whiskers"
+        self.assertRaises(Exception, self.rt._validate_criteria,
+                          key ,criteria_str)
 
 
 class RegressionTest_GetSections(unittest.TestCase):
@@ -542,7 +606,7 @@ class RegressionTest_CompareValues(unittest.TestCase):
         data_type = "generic"
         gold_value = "0.0"
         current_value = "1.0e-9"
-        self.rt._tolerance["generic"] = [1.0e-5, "relative"]
+        self.rt._tolerance["generic"] = [1.0e-5, "relative", 0.0, sys.float_info.max]
         status = self.rt._compare_values(name_str, data_type, gold_value,
                                          current_value, self.testlog)
         self.assertEqual(status, 1)
@@ -554,7 +618,7 @@ class RegressionTest_CompareValues(unittest.TestCase):
         data_type = "generic"
         gold_value = "1.0e-9"
         current_value = "0.0"
-        self.rt._tolerance["generic"] = [1.0e-5, "relative"]
+        self.rt._tolerance["generic"] = [1.0e-5, "relative", 0.0, sys.float_info.max]
         status = self.rt._compare_values(name_str, data_type, gold_value,
                                          current_value, self.testlog)
         self.assertEqual(status, 1)
@@ -566,7 +630,7 @@ class RegressionTest_CompareValues(unittest.TestCase):
         data_type = "generic"
         gold_value = "0.0"
         current_value = "0.0"
-        self.rt._tolerance["generic"] = [1.0e-5, "relative"]
+        self.rt._tolerance["generic"] = [1.0e-5, "relative", 0.0, sys.float_info.max]
         status = self.rt._compare_values(name_str, data_type, gold_value,
                                          current_value, self.testlog)
         self.assertEqual(status, 0)
@@ -615,6 +679,34 @@ class RegressionTest_CompareValues(unittest.TestCase):
                                          current_value, self.testlog)
         self.assertEqual(status, 1)
 
+    def test_compare_values_skip_below_min_threshold(self):
+        """Correctly pass (skip) when gold value is less than min_threshold,
+        even if it would otherwise fail.
+
+        """
+        name_str = "Cats"
+        data_type = "generic"
+        gold_value = "1.0e-12"
+        current_value = "1.0e-9"
+        self.rt._tolerance["generic"] = [1.0e-5, "relative", 1.0e-10, sys.float_info.max]
+        status = self.rt._compare_values(name_str, data_type, gold_value,
+                                         current_value, self.testlog)
+        self.assertEqual(status, 0)
+
+    def test_compare_values_skip_above_max_threshold(self):
+        """Correctly pass (skip) when gold value is larger than max_threshold,
+        even if it would otherwise fail.
+
+        """
+        name_str = "Cats"
+        data_type = "generic"
+        gold_value = "10.0"
+        current_value = "0.1"
+        self.rt._tolerance["generic"] = [1.0e-5, "absolute", 0.0, 1.0]
+        status = self.rt._compare_values(name_str, data_type, gold_value,
+                                         current_value, self.testlog)
+        self.assertEqual(status, 0)
+
 class RegressionTest_CompareDiscrete(unittest.TestCase):
     """Tests to verify correct identification of discrete and discrete
     mean values.
@@ -635,10 +727,10 @@ class RegressionTest_CompareDiscrete(unittest.TestCase):
         """
         name_str = "Cats"
         gold_value = "1"
-        previous, current, tolerance_type, tolerance = (
-            self.rt._compare_discrete(name_str, gold_value, gold_value))
-        self.assertEqual(tolerance_type, "absolute")
-        self.assertEqual(tolerance, 0)
+        previous, current, tolerance = \
+            self.rt._compare_discrete(name_str, gold_value, gold_value)
+        self.assertEqual(tolerance[self.rt._TOL_TYPE], "absolute")
+        self.assertEqual(tolerance[self.rt._TOL_VALUE], 0)
         self.assertTrue(isinstance(previous, int))
         self.assertTrue(isinstance(current, int))
 
@@ -647,10 +739,10 @@ class RegressionTest_CompareDiscrete(unittest.TestCase):
         """
         name_str = "Mean"
         gold_value = "1.23"
-        previous, current, tolerance_type, tolerance = (
-            self.rt._compare_discrete(name_str, gold_value, gold_value))
-        self.assertEqual(tolerance_type, "absolute")
-        self.assertEqual(tolerance, 1.0e-12)
+        previous, current, tolerance = \
+            self.rt._compare_discrete(name_str, gold_value, gold_value)
+        self.assertEqual(tolerance[self.rt._TOL_TYPE], "absolute")
+        self.assertEqual(tolerance[self.rt._TOL_VALUE], 1.0e-12)
         self.assertTrue(isinstance(previous, float))
         self.assertTrue(isinstance(current, float))
 
@@ -693,10 +785,10 @@ class RegressionTest_CompareSolution(unittest.TestCase):
         """
         name_str = "Transport : Time (seconds)"
         gold_value = "1.0"
-        previous, current, tolerance_type, tolerance = (
-            self.rt._compare_solution(name_str, gold_value, gold_value))
-        self.assertEqual(tolerance_type, "percent")
-        self.assertEqual(tolerance, 5.0)
+        previous, current, tolerance = \
+            self.rt._compare_solution(name_str, gold_value, gold_value)
+        self.assertEqual(tolerance[self.rt._TOL_TYPE], "percent")
+        self.assertEqual(tolerance[self.rt._TOL_VALUE], 5.0)
         self.assertTrue(isinstance(previous, float))
         self.assertTrue(isinstance(current, float))
 
@@ -705,10 +797,10 @@ class RegressionTest_CompareSolution(unittest.TestCase):
         """
         name_str = "Transport : Time Steps"
         gold_value = "10"
-        previous, current, tolerance_type, tolerance = (
-            self.rt._compare_solution(name_str, gold_value, gold_value))
-        self.assertEqual(tolerance_type, "absolute")
-        self.assertEqual(tolerance, 0)
+        previous, current, tolerance = \
+            self.rt._compare_solution(name_str, gold_value, gold_value)
+        self.assertEqual(tolerance[self.rt._TOL_TYPE], "absolute")
+        self.assertEqual(tolerance[self.rt._TOL_VALUE], 0)
         self.assertTrue(isinstance(previous, int))
         self.assertTrue(isinstance(current, int))
 
@@ -717,10 +809,10 @@ class RegressionTest_CompareSolution(unittest.TestCase):
         """
         name_str = "Transport : Solver Iterations"
         gold_value = "10"
-        previous, current, tolerance_type, tolerance = (
-            self.rt._compare_solution(name_str, gold_value, gold_value))
-        self.assertEqual(tolerance_type, "absolute")
-        self.assertEqual(tolerance, 0)
+        previous, current, tolerance = \
+            self.rt._compare_solution(name_str, gold_value, gold_value)
+        self.assertEqual(tolerance[self.rt._TOL_TYPE], "absolute")
+        self.assertEqual(tolerance[self.rt._TOL_VALUE], 0)
         self.assertTrue(isinstance(previous, int))
         self.assertTrue(isinstance(current, int))
 
@@ -729,10 +821,10 @@ class RegressionTest_CompareSolution(unittest.TestCase):
         """
         name_str = "Transport : Time Step Cuts"
         gold_value = "10"
-        previous, current, tolerance_type, tolerance = (
-            self.rt._compare_solution(name_str, gold_value, gold_value))
-        self.assertEqual(tolerance_type, "absolute")
-        self.assertEqual(tolerance, 0)
+        previous, current, tolerance = \
+            self.rt._compare_solution(name_str, gold_value, gold_value)
+        self.assertEqual(tolerance[self.rt._TOL_TYPE], "absolute")
+        self.assertEqual(tolerance[self.rt._TOL_VALUE], 0)
         self.assertTrue(isinstance(previous, int))
         self.assertTrue(isinstance(current, int))
 
@@ -741,10 +833,10 @@ class RegressionTest_CompareSolution(unittest.TestCase):
         """
         name_str = "Transport : Solution 2-Norm"
         gold_value = "1.0"
-        previous, current, tolerance_type, tolerance = (
-            self.rt._compare_solution(name_str, gold_value, gold_value))
-        self.assertEqual(tolerance_type, "absolute")
-        self.assertEqual(tolerance, 1.0e-12)
+        previous, current, tolerance = \
+            self.rt._compare_solution(name_str, gold_value, gold_value)
+        self.assertEqual(tolerance[self.rt._TOL_TYPE], "absolute")
+        self.assertEqual(tolerance[self.rt._TOL_VALUE], 1.0e-12)
         self.assertTrue(isinstance(previous, float))
         self.assertTrue(isinstance(current, float))
 
@@ -753,10 +845,10 @@ class RegressionTest_CompareSolution(unittest.TestCase):
         """
         name_str = "Transport : Residual 2-Norm"
         gold_value = "1.0"
-        previous, current, tolerance_type, tolerance = (
-            self.rt._compare_solution(name_str, gold_value, gold_value))
-        self.assertEqual(tolerance_type, "absolute")
-        self.assertEqual(tolerance, 1.0e-12)
+        previous, current, tolerance = \
+            self.rt._compare_solution(name_str, gold_value, gold_value)
+        self.assertEqual(tolerance[self.rt._TOL_TYPE], "absolute")
+        self.assertEqual(tolerance[self.rt._TOL_VALUE], 1.0e-12)
         self.assertTrue(isinstance(previous, float))
         self.assertTrue(isinstance(current, float))
 
