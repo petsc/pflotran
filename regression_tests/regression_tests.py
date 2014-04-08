@@ -25,6 +25,13 @@ if sys.version_info[0] == 2:
 else:
     from configparser import ConfigParser as config_parser
 
+# optional libraries
+try:
+    import h5py
+except Exception as e:
+    h5py = None
+
+
 
 class TestStatus(object):
     """
@@ -83,6 +90,7 @@ class RegressionTest(object):
         self._pflotran_args = None
         self._stochastic_realizations = None
         self._restart_timestep = None
+        self._compare_hdf5 = False
         self._timeout = 60.0
         self._skip_check_gold = False
         self._check_performance = False
@@ -325,6 +333,12 @@ class RegressionTest(object):
         if self._restart_timestep is not None:
             self._check_restart(status, testlog)
 
+        if self._compare_hdf5:
+            if h5py is not None:
+                self._check_hdf5(status, testlog)
+            else:
+                print("    h5py not in python path. Skipping hdf5 check.", file=testlog)
+
     def _check_gold(self, status, run_id, testlog):
         """
         Test the output from the run against the known "gold standard"
@@ -449,6 +463,88 @@ class RegressionTest(object):
             print("".join(['\n', message, '\n']), file=testlog)
             status.fail = 1
         return hash_digest
+
+    def _check_hdf5(self, status, testlog):
+        """Check that output hdf5 file has not changed from the baseline.
+
+        Note: we open the files here and do the comparison in another
+        function so it can be unit tested.
+
+        """
+
+        filename="{0}.h5".format(self.name())
+        try:
+            h5_current = h5py.File(filename, 'r')
+        except Exception as e:
+            print("    FAIL: Could not open file: '{0}'".format(filename), file=testlog)
+            status.fail = 1
+            h5_current = None
+
+        filename = "{0}.gold".format(filename)
+        try:
+            h5_gold = h5py.File(filename, 'r')
+        except Exception as e:
+            print("    FAIL: Could not open file: '{0}'".format(filename), file=testlog)
+            status.fail = 1
+            h5_gold = None
+
+        if h5_gold is not None and h5_current is not None:
+            self._compare_hdf5_data(h5_current, h5_gold, status, testlog)
+        
+    def _compare_hdf5_data(self, h5_current, h5_gold, status, testlog):
+        """Check that output hdf5 file has not changed from the baseline.
+
+        The focus is on the meta-data, e.g. groups, datasets, vector
+        sizes, etc. We assume that the *data* in the hdf5 file
+        is already being checked the regression files.
+
+        Note: We can't just h5dump the file and diff or campare
+        hashes because the provenance information may have changed!
+
+        """
+
+        if len(h5_current.keys()) != len(h5_gold.keys()):
+            status.fail = 1
+            print("    FAIL: current and gold hdf5 files do not have the same number of groups!", file=testlog)
+            print("    h5_gold : {0}".format(h5_gold.keys()), file=testlog)
+            print("    h5_current : {0}".format(h5_current.keys()), file=testlog)
+            return
+
+        for group in h5_gold:
+            if group == "Provenance":
+                continue
+            if len(h5_current[group].keys()) != len(h5_gold[group].keys()):
+                status.fail = 1
+                print("    FAIL: group '{0}' does not have the same number of datasets!".format(group), file=testlog)
+                print("    h5_gold : {0} : {1}".format(
+                    group, h5_gold[group].keys()), file=testlog)
+                print("    h5_current : {0} : {1}".format(
+                    group, h5_current[group].keys()), file=testlog)
+            else:
+                for dataset in h5_gold[group].keys():
+                    if not h5_current[group].get(dataset):
+                        status.fail = 1
+                        print("    FAIL: current group '{0}' does not have dataset '{1}'!".format(group, dataset), file=testlog)
+                    else:
+                        if h5_gold[group][dataset].shape != h5_current[group][dataset].shape:
+                            status.fail = 1
+                            print("    FAIL: current dataset '/{0}/{1}' does not have the correct shape!".format(group, dataset), file=testlog)
+                            print("        gold : {0}".format(
+                                h5_gold[group][dataset].shape), file=testlog)
+                            print("        current : {0}".format(
+                                h5_current[group][dataset].shape), file=testlog)
+                        if h5_gold[group][dataset].dtype != h5_current[group][dataset].dtype:
+                            status.fail = 1
+                            print("    FAIL: current dataset '/{0}/{1}' does not have the correct data type!".format(group, dataset), file=testlog)
+                            print("        gold : {0}".format(
+                                h5_gold[group][dataset].dtype), file=testlog)
+                            print("        current : {0}".format(
+                                h5_current[group][dataset].dtype), file=testlog)
+                            
+                        
+        if status.fail == 0:
+            print("    Passed hdf5 check.", file=testlog)
+
 
     def update(self, status, testlog):
         """
@@ -808,6 +904,13 @@ class RegressionTest(object):
                 raise ValueError("ERROR: restart_timestep must be an integer value. "
                                 "test : {0}".format(self.name()))
 
+        self._compare_hdf5 = test_data.pop('compare_hdf5', None)
+        if self._compare_hdf5 is not None:
+            if self._compare_hdf5[0] in ["T", "t", "Y", "y"]:
+                self._compare_hdf5 = True
+            else:
+                self._compare_hdf5 = False
+
         self._skip_check_gold = test_data.pop('skip_check_gold', None)
         if self._skip_check_gold is not None:
             if self._skip_check_gold[0] in ["T", "t", "Y", "y"]:
@@ -875,6 +978,8 @@ class RegressionTest(object):
             raise Exception("ERROR : invalid test criteria string '{0}' "
                             "for '{1}'".format(criteria_type, key))
         return [value, criteria_type]
+
+
 
 
 class RegressionTestManager(object):

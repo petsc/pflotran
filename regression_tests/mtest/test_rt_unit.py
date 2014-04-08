@@ -12,6 +12,8 @@ import struct
 import subprocess
 import unittest
 
+import h5py
+
 from regression_tests import RegressionTest, TestStatus
 
 
@@ -979,6 +981,134 @@ class RegressionTest_CompareRestart(unittest.TestCase):
 
         os.remove(tmp_filename_1)
         os.remove(tmp_filename_2)
+
+class RegressionTest_CompareHDF5(unittest.TestCase):
+    """Tests to verify comparison of meta-data in hdf5 files.
+
+    """
+
+    def setUp(self):
+        self.testlog = open("dummy.testlog", 'w')
+        self.status = TestStatus()
+        self.rt = RegressionTest()
+        # test_data is the test section from a config file
+        test_data = {"name": "dummy_test_name", }
+        # timeout as specified by the command line arg
+        timeout = None
+        # check performance as specified by the command line arg
+        check_performance = False
+        # criteria is the default-test-criteria section from the config file
+        criteria = {}
+        self.rt.setup(criteria, test_data, timeout,
+                      check_performance, self.testlog)
+        self.h5_gold = h5py.File("dummy.h5.gold", 'w')
+        self.h5_gold.create_group("Provenance")
+        self.h5_gold.create_dataset("/Provenance/Bikes", shape=(2,))
+        self.h5_gold.create_group("Cat")
+        self.h5_gold.create_dataset("/Cat/Paws", shape=(2, 3))
+        self.h5_gold.create_dataset("/Cat/Whiskers", shape=(2, 4, 6))
+        self.h5_gold.create_group("Dog")
+        self.h5_gold.create_dataset("/Dog/Tail", shape=(3,4))
+        self.h5_gold.close()
+        self.h5_gold = h5py.File("dummy.h5.gold", 'r')
+
+    def tearDown(self):
+        self.testlog.close()
+        self.h5_gold.close()
+
+    def test_different_num_groups(self):
+        """Mark a test fail if the number of groups is different
+        """
+        h5_current = h5py.File("dummy.h5", 'w')
+        h5_current.create_group("Provenance")
+        h5_current.create_group("Cat")
+        h5_current.create_dataset("/Cat/Paws", shape=(2, 3))
+        h5_current.create_dataset("/Cat/Whiskers", shape=(2, 4, 6))
+        h5_current.close()
+        h5_current = h5py.File("dummy.h5", 'r')
+
+        self.rt._compare_hdf5_data(h5_current, self.h5_gold, self.status, self.testlog)
+        self.assertEqual(self.status.fail, 1)
+
+    def test_different_num_datasets(self):
+        """Mark a test fail if the number of datasets in a group is different
+        """
+        h5_current = h5py.File("dummy.h5", 'w')
+        h5_current.create_group("Provenance")
+        h5_current.create_group("Cat")
+        h5_current.create_dataset("/Cat/Paws", shape=(2, 3))
+        h5_current.create_dataset("/Cat/Whiskers", shape=(2, 4, 6))
+        h5_current.create_dataset("/Cat/Ears", shape=(2, 4, 3))
+        h5_current.create_group("Dog")
+        h5_current.create_dataset("/Dog/Tail", shape=(3,4))
+        h5_current.close()
+        h5_current = h5py.File("dummy.h5", 'r')
+
+        self.rt._compare_hdf5_data(h5_current, self.h5_gold, self.status, self.testlog)
+        self.assertEqual(self.status.fail, 1)
+        h5_current.close()
+
+    def test_different_dataset_names(self):
+        """Mark a test fail if the datasets in a group are different
+        """
+        h5_current = h5py.File("dummy.h5", 'w')
+        h5_current.create_group("Provenance")
+        h5_current.create_group("Cat")
+        h5_current.create_dataset("/Cat/Paws", shape=(2, 3))
+        h5_current.create_dataset("/Cat/Ears", shape=(2, 4, 6))
+        h5_current.create_group("Dog")
+        h5_current.create_dataset("/Dog/Tail", shape=(3,4))
+        h5_current.close()
+        h5_current = h5py.File("dummy.h5", 'r')
+
+        self.rt._compare_hdf5_data(h5_current, self.h5_gold, self.status, self.testlog)
+        self.assertEqual(self.status.fail, 1)
+        h5_current.close()
+
+    def test_different_dataset_shapes(self):
+        """Mark a test fail if the dataset shapes are different
+        """
+        h5_current = h5py.File("dummy.h5", 'w')
+        h5_current.create_group("Provenance")
+        h5_current.create_group("Cat")
+        h5_current.create_dataset("/Cat/Paws", shape=(2, 3))
+        h5_current.create_dataset("/Cat/Whiskers", shape=(2, 4, ))
+        h5_current.create_group("Dog")
+        h5_current.create_dataset("/Dog/Tail", shape=(3,4))
+        h5_current.close()
+        h5_current = h5py.File("dummy.h5", 'r')
+
+        self.rt._compare_hdf5_data(h5_current, self.h5_gold, self.status, self.testlog)
+        self.assertEqual(self.status.fail, 1)
+        h5_current.close()
+
+    def test_different_dataset_dtype(self):
+        """Mark a test fail if the dataset dtypes are different
+        """
+        h5_current = h5py.File("dummy.h5", 'w')
+        h5_current.create_group("Provenance")
+        h5_current.create_group("Cat")
+        h5_current.create_dataset("/Cat/Paws", shape=(2, 3))
+        h5_current.create_dataset("/Cat/Whiskers", shape=(2, 4, 6), dtype='i8')
+        h5_current.create_group("Dog")
+        h5_current.create_dataset("/Dog/Tail", shape=(3,4))
+        h5_current.close()
+        h5_current = h5py.File("dummy.h5", 'r')
+
+        self.rt._compare_hdf5_data(h5_current, self.h5_gold, self.status, self.testlog)
+        self.assertEqual(self.status.fail, 1)
+        h5_current.close()
+
+    def test_same_hdf5(self):
+        """Mark a test success if the hdf5 files have the same groups,
+        datasets and metadata.
+
+        """
+        h5_current = h5py.File("dummy.h5.gold", 'r')
+
+        self.rt._compare_hdf5_data(h5_current, self.h5_gold, self.status, self.testlog)
+        self.assertEqual(self.status.fail, 0)
+        h5_current.close()
 
 
 if __name__ == '__main__':
