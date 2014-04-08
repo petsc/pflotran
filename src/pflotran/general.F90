@@ -1734,7 +1734,6 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
         call EOSGasEnergy(gen_auxvar%temp,dummy_pressure, &
                           enthalpy,internal_energy,ierr)
         enthalpy = enthalpy * 1.d-6 ! J/kmol -> MJ/kmol                                  
-print *, enthalpy
         ! enthalpy units: MJ/kmol
         Res(option%energy_id) = Res(option%energy_id) + &
           qsrc_mol(TWO_INTEGER) * enthalpy
