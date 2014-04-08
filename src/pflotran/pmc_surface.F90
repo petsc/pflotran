@@ -365,6 +365,7 @@ subroutine PMCSurfaceSetAuxData(this)
   PetscReal, pointer :: surf_hflux_p(:)
   PetscBool :: found
   PetscReal :: esrc
+  PetscReal :: atm_temp
   PetscErrorCode :: ierr
 
   dt = this%option%surf_subsurf_coupling_flow_dt
@@ -425,15 +426,20 @@ subroutine PMCSurfaceSetAuxData(this)
                         esrc = source_sink%flow_condition%energy_rate%dataset%rarray(1)
                       case (HET_ENERGY_RATE_SS)
                         esrc = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
+                      case (DIRICHLET_BC)
+                        esrc = source_sink%flow_condition%temperature%dataset%rarray(1)
+                      case (HET_DIRICHLET)
+                        esrc = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
                       case default
                         this%option%io_buffer = 'atm_energy_ss does not have '// &
                           'a temperature condition that is either a ' // &
-                          ' ENERGY_RATE_SS or HET_ENERGY_RATE_SS'
+                          ' ENERGY_RATE_SS/HET_ENERGY_RATE_SSDIRICHLET_BC/HET_DIRICHLET'
+                        call printErrMsg(this%option)
                     end select
 
                     ! Only when no standing water is present, the atmospheric
                     ! energy flux is applied directly on subsurface domain.
-                    if (surf_head_p(local_id) == 0.d0) then
+                    if (surf_head_p(local_id) < 1.d-15) then
                       surf_hflux_p(local_id) = esrc
                     else
                       surf_hflux_p(local_id) = 0.d0

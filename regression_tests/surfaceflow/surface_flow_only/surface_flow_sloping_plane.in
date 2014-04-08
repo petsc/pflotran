@@ -51,7 +51,8 @@ END
 
 :=========================== times ============================================
 TIME
-  FINAL_TIME 18000.d0 s
+  :FINAL_TIME 18000.d0 s
+  FINAL_TIME 120.d0 s
   INITIAL_TIMESTEP_SIZE 60.0 s
   MAXIMUM_TIMESTEP_SIZE 60.0 s
 END
