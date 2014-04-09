@@ -25,6 +25,13 @@ if sys.version_info[0] == 2:
 else:
     from configparser import ConfigParser as config_parser
 
+# optional libraries
+try:
+    import h5py
+except Exception as e:
+    h5py = None
+
+
 
 class TestStatus(object):
     """
@@ -70,6 +77,8 @@ class RegressionTest(object):
         self._RESIDUAL = "residual"
         self._TOL_VALUE = 0
         self._TOL_TYPE = 1
+        self._TOL_MIN_THRESHOLD = 2
+        self._TOL_MAX_THRESHOLD = 3
         self._PFLOTRAN_SUCCESS = 86
         self._RESTART_PREFIX = "tmp-restart"
         # misc test parameters
@@ -83,22 +92,27 @@ class RegressionTest(object):
         self._pflotran_args = None
         self._stochastic_realizations = None
         self._restart_timestep = None
+        self._compare_hdf5 = False
         self._timeout = 60.0
         self._skip_check_gold = False
         self._check_performance = False
         self._num_failed = 0
         self._test_name = None
         # assign default tolerances for different classes of variables
+        # absolute min and max thresholds for determining whether to
+        # compare to baseline, i.e. if (min_threshold <= abs(value) <=
+        # max_threshold) then compare values. By default we use the
+        # python definitions for this platform
         self._tolerance = {}
-        self._tolerance[self._TIME] = [5.0, self._PERCENT]
-        self._tolerance[self._CONCENTRATION] = [1.0e-12, self._ABSOLUTE]
-        self._tolerance[self._GENERIC] = [1.0e-12, self._ABSOLUTE]
-        self._tolerance[self._DISCRETE] = [0, self._ABSOLUTE]
-        self._tolerance[self._RATE] = [1.0e-12, self._ABSOLUTE]
-        self._tolerance[self._VOLUME_FRACTION] = [1.0e-12, self._ABSOLUTE]
-        self._tolerance[self._PRESSURE] = [1.0e-12, self._ABSOLUTE]
-        self._tolerance[self._SATURATION] = [1.0e-12, self._ABSOLUTE]
-        self._tolerance[self._RESIDUAL] = [1.0e-12, self._ABSOLUTE]
+        self._tolerance[self._TIME] = [5.0, self._PERCENT, \
+                                       0.0, sys.float_info.max]
+        self._tolerance[self._DISCRETE] = [0, self._ABSOLUTE, 0, sys.maxsize]
+        common = [self._CONCENTRATION, self._GENERIC, self._RATE, self._VOLUME_FRACTION, \
+                  self._PRESSURE, self._SATURATION, self._RESIDUAL]
+        for t in common:
+            self._tolerance[t] = [1.0e-12, self._ABSOLUTE, \
+                                  0.0, sys.float_info.max]
+
 
     def __str__(self):
         message = "  {0} :\n".format(self.name())
@@ -109,26 +123,28 @@ class RegressionTest(object):
         message += "        optional : {0}\n".format(self._pflotran_args)
         message += "    test criteria :\n"
         for k in self._tolerance:
-            message += "        {0} : {1} [{2}]\n".format(
+            message += "        {0} : {1} [{2}] : {3} <= abs(value) <= {4}\n".format(
                 k,
                 self._tolerance[k][self._TOL_VALUE],
-                self._tolerance[k][self._TOL_TYPE])
+                self._tolerance[k][self._TOL_TYPE],
+                self._tolerance[k][self._TOL_MIN_THRESHOLD],
+                self._tolerance[k][self._TOL_MAX_THRESHOLD])
 
         return message
 
-    def setup(self, default_criteria, test_data,
+    def setup(self, cfg_criteria, test_data,
               timeout, check_performance, testlog):
         """
         Setup the test object
 
-        default_criteria - dict from cfg file
-        test_data - dict from cfg file
+        cfg_criteria - dict from cfg file, all tests in file
+        test_data - dict from cfg file, test specific
         timeout - list(?) from command line option
         check_performance - bool from command line option
         """
         self._test_name = test_data["name"]
 
-        self._set_test_data(default_criteria, test_data,
+        self._set_test_data(cfg_criteria, test_data,
                             timeout, check_performance, testlog)
 
     def name(self):
@@ -325,6 +341,12 @@ class RegressionTest(object):
         if self._restart_timestep is not None:
             self._check_restart(status, testlog)
 
+        if self._compare_hdf5:
+            if h5py is not None:
+                self._check_hdf5(status, testlog)
+            else:
+                print("    h5py not in python path. Skipping hdf5 check.", file=testlog)
+
     def _check_gold(self, status, run_id, testlog):
         """
         Test the output from the run against the known "gold standard"
@@ -449,6 +471,88 @@ class RegressionTest(object):
             print("".join(['\n', message, '\n']), file=testlog)
             status.fail = 1
         return hash_digest
+
+    def _check_hdf5(self, status, testlog):
+        """Check that output hdf5 file has not changed from the baseline.
+
+        Note: we open the files here and do the comparison in another
+        function so it can be unit tested.
+
+        """
+
+        filename="{0}.h5".format(self.name())
+        try:
+            h5_current = h5py.File(filename, 'r')
+        except Exception as e:
+            print("    FAIL: Could not open file: '{0}'".format(filename), file=testlog)
+            status.fail = 1
+            h5_current = None
+
+        filename = "{0}.gold".format(filename)
+        try:
+            h5_gold = h5py.File(filename, 'r')
+        except Exception as e:
+            print("    FAIL: Could not open file: '{0}'".format(filename), file=testlog)
+            status.fail = 1
+            h5_gold = None
+
+        if h5_gold is not None and h5_current is not None:
+            self._compare_hdf5_data(h5_current, h5_gold, status, testlog)
+        
+    def _compare_hdf5_data(self, h5_current, h5_gold, status, testlog):
+        """Check that output hdf5 file has not changed from the baseline.
+
+        The focus is on the meta-data, e.g. groups, datasets, vector
+        sizes, etc. We assume that the *data* in the hdf5 file
+        is already being checked the regression files.
+
+        Note: We can't just h5dump the file and diff or campare
+        hashes because the provenance information may have changed!
+
+        """
+
+        if len(h5_current.keys()) != len(h5_gold.keys()):
+            status.fail = 1
+            print("    FAIL: current and gold hdf5 files do not have the same number of groups!", file=testlog)
+            print("    h5_gold : {0}".format(h5_gold.keys()), file=testlog)
+            print("    h5_current : {0}".format(h5_current.keys()), file=testlog)
+            return
+
+        for group in h5_gold:
+            if group == "Provenance":
+                continue
+            if len(h5_current[group].keys()) != len(h5_gold[group].keys()):
+                status.fail = 1
+                print("    FAIL: group '{0}' does not have the same number of datasets!".format(group), file=testlog)
+                print("    h5_gold : {0} : {1}".format(
+                    group, h5_gold[group].keys()), file=testlog)
+                print("    h5_current : {0} : {1}".format(
+                    group, h5_current[group].keys()), file=testlog)
+            else:
+                for dataset in h5_gold[group].keys():
+                    if not h5_current[group].get(dataset):
+                        status.fail = 1
+                        print("    FAIL: current group '{0}' does not have dataset '{1}'!".format(group, dataset), file=testlog)
+                    else:
+                        if h5_gold[group][dataset].shape != h5_current[group][dataset].shape:
+                            status.fail = 1
+                            print("    FAIL: current dataset '/{0}/{1}' does not have the correct shape!".format(group, dataset), file=testlog)
+                            print("        gold : {0}".format(
+                                h5_gold[group][dataset].shape), file=testlog)
+                            print("        current : {0}".format(
+                                h5_current[group][dataset].shape), file=testlog)
+                        if h5_gold[group][dataset].dtype != h5_current[group][dataset].dtype:
+                            status.fail = 1
+                            print("    FAIL: current dataset '/{0}/{1}' does not have the correct data type!".format(group, dataset), file=testlog)
+                            print("        gold : {0}".format(
+                                h5_gold[group][dataset].dtype), file=testlog)
+                            print("        current : {0}".format(
+                                h5_current[group][dataset].dtype), file=testlog)
+                            
+                        
+        if status.fail == 0:
+            print("    Passed hdf5 check.", file=testlog)
+
 
     def update(self, status, testlog):
         """
@@ -635,8 +739,7 @@ class RegressionTest(object):
         to figure it out!
         """
         status = 0
-        tolerance_type = None
-        tolerance = None
+        tol = None
         key = key.lower()
         if (key == self._CONCENTRATION or
             key == self._GENERIC or
@@ -646,18 +749,22 @@ class RegressionTest(object):
                 key == self._SATURATION):
             previous = float(previous)
             current = float(current)
-            tolerance_type = self._tolerance[key][self._TOL_TYPE]
-            tolerance = self._tolerance[key][self._TOL_VALUE]
+            tol = self._tolerance[key]
         elif key.lower() == self._SOLUTION:
-            previous, current, tolerance_type, tolerance = \
+            previous, current, tol = \
                 self._compare_solution(name, previous, current)
         elif key.lower() == self._DISCRETE:
-            previous, current, tolerance_type, tolerance = \
+            previous, current, tol = \
                 self._compare_discrete(name, previous, current)
         else:
             raise Exception(
                 "WARNING: the data caterogy '{0}' for '{1}' is not a known "
                   "data category.".format(key, name))
+
+        tolerance_type = tol[self._TOL_TYPE]
+        tolerance = tol[self._TOL_VALUE]
+        min_threshold = tol[self._TOL_MIN_THRESHOLD]
+        max_threshold = tol[self._TOL_MAX_THRESHOLD]
 
         if tolerance_type == self._ABSOLUTE:
             delta = abs(previous - current)
@@ -677,15 +784,22 @@ class RegressionTest(object):
             raise Exception("ERROR: unknown test tolerance_type '{0}' for "
                             "variable '{1}, {2}.'".format(tolerance_type,
                                                           name, key))
-        if delta > tolerance:
-            status = 1
-            print("    FAIL: {0} : {1} > {2} [{3}]".format(
-                name, delta, tolerance,
-                tolerance_type), file=testlog)
-        elif self._debug:
-            print("    PASS: {0} : {1} <= {2} [{3}]".format(
-                name, delta, tolerance,
-                tolerance_type))
+
+        # base comparison to threshold on previous (gold) because it
+        # is the known correct value!
+        if min_threshold <= abs(previous) and abs(previous) <= max_threshold:
+            if delta > tolerance:
+                status = 1
+                print("    FAIL: {0} : {1} > {2} [{3}]".format(
+                    name, delta, tolerance, tolerance_type), file=testlog)
+            elif self._debug:
+                print("    PASS: {0} : {1} <= {2} [{3}]".format(
+                    name, delta, tolerance, tolerance_type), file=testlog)
+        else:
+            print("    SKIP: {0} : gold value ({1}) outside threshold range: "
+                  "{2} <= abs(value) <= {3}".format(
+                      name, previous, min_threshold, max_threshold),
+                  file=testlog)
 
         return status
 
@@ -701,43 +815,36 @@ class RegressionTest(object):
         if param == "Time (seconds)":
             previous = float(previous)
             current = float(current)
-            tolerance = self._tolerance[self._TIME][self._TOL_VALUE]
-            tolerance_type = self._tolerance[self._TIME][self._TOL_TYPE]
+            tolerance = self._tolerance[self._TIME]
         elif param == "Time Steps":
             previous = int(previous)
             current = int(current)
-            tolerance = self._tolerance[self._DISCRETE][self._TOL_VALUE]
-            tolerance_type = self._tolerance[self._DISCRETE][self._TOL_TYPE]
+            tolerance = self._tolerance[self._DISCRETE]
         elif param == "Newton Iterations":
             previous = int(previous)
             current = int(current)
-            tolerance = self._tolerance[self._DISCRETE][self._TOL_VALUE]
-            tolerance_type = self._tolerance[self._DISCRETE][self._TOL_TYPE]
+            tolerance = self._tolerance[self._DISCRETE]
         elif param == "Solver Iterations":
             previous = int(previous)
             current = int(current)
-            tolerance = self._tolerance[self._DISCRETE][self._TOL_VALUE]
-            tolerance_type = self._tolerance[self._DISCRETE][self._TOL_TYPE]
+            tolerance = self._tolerance[self._DISCRETE]
         elif param == "Time Step Cuts":
             previous = int(previous)
             current = int(current)
-            tolerance = self._tolerance[self._DISCRETE][self._TOL_VALUE]
-            tolerance_type = self._tolerance[self._DISCRETE][self._TOL_TYPE]
+            tolerance = self._tolerance[self._DISCRETE]
         elif param == "Solution 2-Norm":
             previous = float(previous)
             current = float(current)
-            tolerance = self._tolerance[self._GENERIC][self._TOL_VALUE]
-            tolerance_type = self._tolerance[self._GENERIC][self._TOL_TYPE]
+            tolerance = self._tolerance[self._GENERIC]
         elif param == "Residual 2-Norm":
             previous = float(previous)
             current = float(current)
-            tolerance = self._tolerance[self._RESIDUAL][self._TOL_VALUE]
-            tolerance_type = self._tolerance[self._RESIDUAL][self._TOL_TYPE]
+            tolerance = self._tolerance[self._RESIDUAL]
         else:
             raise Exception("ERROR: unknown variable '{0}' in solution "
                             "section '{1}'".format(param, section))
 
-        return previous, current, tolerance_type, tolerance
+        return previous, current, tolerance
 
     def _compare_discrete(self, name, previous, current):
         """
@@ -764,17 +871,15 @@ class RegressionTest(object):
                     "ERROR: discrete current value must be an int: '{0}' = {1}.".format(
                         name, current))
 
-            tolerance = self._tolerance[self._DISCRETE][self._TOL_VALUE]
-            tolerance_type = self._tolerance[self._DISCRETE][self._TOL_TYPE]
+            tolerance = self._tolerance[self._DISCRETE]
         else:
             previous = float(previous)
             current = float(current)
-            tolerance = self._tolerance[self._GENERIC][self._TOL_VALUE]
-            tolerance_type = self._tolerance[self._GENERIC][self._TOL_TYPE]
+            tolerance = self._tolerance[self._GENERIC]
 
-        return previous, current, tolerance_type, tolerance
+        return previous, current, tolerance
 
-    def _set_test_data(self, default_criteria, test_data, timeout,
+    def _set_test_data(self, cfg_criteria, test_data, timeout,
                        check_performance, testlog):
         """
         Set the test criteria for different categories of variables.
@@ -808,6 +913,13 @@ class RegressionTest(object):
                 raise ValueError("ERROR: restart_timestep must be an integer value. "
                                 "test : {0}".format(self.name()))
 
+        self._compare_hdf5 = test_data.pop('compare_hdf5', None)
+        if self._compare_hdf5 is not None:
+            if self._compare_hdf5[0] in ["T", "t", "Y", "y"]:
+                self._compare_hdf5 = True
+            else:
+                self._compare_hdf5 = False
+
         self._skip_check_gold = test_data.pop('skip_check_gold', None)
         if self._skip_check_gold is not None:
             if self._skip_check_gold[0] in ["T", "t", "Y", "y"]:
@@ -820,23 +932,23 @@ class RegressionTest(object):
         if timeout:
             self._timeout = float(timeout[0])
 
-        self._set_criteria(self._TIME, default_criteria, test_data)
+        self._set_criteria(self._TIME, cfg_criteria, test_data)
 
-        self._set_criteria(self._CONCENTRATION, default_criteria, test_data)
+        self._set_criteria(self._CONCENTRATION, cfg_criteria, test_data)
 
-        self._set_criteria(self._GENERIC, default_criteria, test_data)
+        self._set_criteria(self._GENERIC, cfg_criteria, test_data)
 
-        self._set_criteria(self._DISCRETE, default_criteria, test_data)
+        self._set_criteria(self._DISCRETE, cfg_criteria, test_data)
 
-        self._set_criteria(self._RATE, default_criteria, test_data)
+        self._set_criteria(self._RATE, cfg_criteria, test_data)
 
-        self._set_criteria(self._VOLUME_FRACTION, default_criteria, test_data)
+        self._set_criteria(self._VOLUME_FRACTION, cfg_criteria, test_data)
 
-        self._set_criteria(self._PRESSURE, default_criteria, test_data)
+        self._set_criteria(self._PRESSURE, cfg_criteria, test_data)
 
-        self._set_criteria(self._SATURATION, default_criteria, test_data)
+        self._set_criteria(self._SATURATION, cfg_criteria, test_data)
 
-    def _set_criteria(self, key, default_criteria, test_data):
+    def _set_criteria(self, key, cfg_criteria, test_data):
         """
         Our prefered order for selecting test criteria is:
         (1) test data section of the config file
@@ -844,37 +956,73 @@ class RegressionTest(object):
         (3) hard coded class default
         """
         if key in test_data:
-            self._tolerance[key] = \
-                self._validate_criteria(key, test_data[key])
-        elif key in default_criteria:
-            self._tolerance[key] = \
-                self._validate_criteria(key, default_criteria[key])
+            criteria = self._validate_criteria(key, test_data[key])
+        elif key in cfg_criteria:
+            criteria = self._validate_criteria(key, cfg_criteria[key])
         elif key in self._tolerance:
             # already a correctly formatted list and stored
-            pass
+            criteria = [None]
         else:
             raise Exception("ERROR : tolerance for data type '{0}' could "
                             "not be determined from the config file or "
                             "default values!".format(key))
+        for i, c in enumerate(criteria):
+            if c is not None:
+                self._tolerance[key][i] = c
 
-    def _validate_criteria(self, key, criteria):
+    def _validate_criteria(self, key, test_data):
         """
         Validate the criteria string from a config file.
+
+        Valid input configurations are:
+
+        * key = tolerance type
+
+        * key = tolerance type [, min_threshold value] [, max_threshold value]
+
+        where min_threshold and max_threshold are optional
+
         """
-        value = criteria.split()[0]
+        criteria = 4*[None]
+        test_data = test_data.split(",")
+        test_criteria = test_data[0]
+        value = test_criteria.split()[0]
         try:
             value = float(value)
         except Exception:
             raise Exception("ERROR : Could not convert '{0}' test criteria "
                             "value '{1}' into a float!".format(key, value))
+        criteria[self._TOL_VALUE] = value
 
-        criteria_type = criteria.split()[1]
+        criteria_type = test_criteria.split()[1]
         if (criteria_type.lower() != self._PERCENT and
             criteria_type.lower() != self._ABSOLUTE and
                 criteria_type.lower() != self._RELATIVE):
             raise Exception("ERROR : invalid test criteria string '{0}' "
                             "for '{1}'".format(criteria_type, key))
-        return [value, criteria_type]
+        criteria[self._TOL_TYPE] = criteria_type
+
+        thresholds = {}
+        for t in range(1, len(test_data)):
+            name = test_data[t].split()[0].strip()
+            value = test_data[t].split()[1].strip()
+            try:
+                value = float(value)
+            except Exception:
+                raise Exception(
+                    "ERROR : Could not convert '{0}' test threshold '{1}'"
+                    "value '{2}' into a float!".format(key, name, value))
+            thresholds[name] = value
+        value = thresholds.pop("min_threshold", None)
+        criteria[self._TOL_MIN_THRESHOLD] = value
+        value = thresholds.pop("max_threshold", None)
+        criteria[self._TOL_MAX_THRESHOLD] = value
+        if len(thresholds) > 0:
+            raise RuntimeError("ERROR: test {0} : unknown criteria threshold: {1}", key, thresholds)
+        
+        return criteria
+
+
 
 
 class RegressionTestManager(object):
