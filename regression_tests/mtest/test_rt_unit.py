@@ -187,7 +187,7 @@ class RegressionTest_SetTestData(unittest.TestCase):
     def test_set_criteria_cfg_default(self):
         # cfg criteria overrides default
         key = "concentration"
-        self.criteria[key] = "1.0e-5 relative ; min_threshold 1.0e-2 ; max_threshold 34.5"
+        self.criteria[key] = "1.0e-5 relative , min_threshold 1.0e-2 , max_threshold 34.5"
         self.rt._set_criteria(key, self.criteria, self.test_data)
         self.assertEqual(self.rt._tolerance[key][self.rt._TOL_VALUE], 1.0e-5)
         self.assertEqual(self.rt._tolerance[key][self.rt._TOL_TYPE], "relative")
@@ -197,7 +197,7 @@ class RegressionTest_SetTestData(unittest.TestCase):
     def test_set_criteria_test_default(self):
         # individual test criteria overrides default
         key = "concentration"
-        self.test_data[key] = "1.0e-7 percent ; min_threshold 1.0e-11"
+        self.test_data[key] = "1.0e-7 percent , min_threshold 1.0e-11"
         self.rt._set_criteria(key, self.criteria, self.test_data)
         self.assertEqual(self.rt._tolerance[key][self.rt._TOL_VALUE], 1.0e-7)
         self.assertEqual(self.rt._tolerance[key][self.rt._TOL_TYPE], "percent")
@@ -209,7 +209,7 @@ class RegressionTest_SetTestData(unittest.TestCase):
         # global default
         key = "concentration"
         self.test_data[key] = "1.0e-7 percent"
-        self.criteria[key] = "1.0e-5 relative ; max_threshold 1234.0"
+        self.criteria[key] = "1.0e-5 relative , max_threshold 1234.0"
         self.rt._set_criteria(key, self.criteria, self.test_data)
         self.assertEqual(self.rt._tolerance[key][self.rt._TOL_VALUE], 1.0e-7)
         self.assertEqual(self.rt._tolerance[key][self.rt._TOL_TYPE], "percent")
@@ -271,7 +271,7 @@ class RegressionTest_SetTestData(unittest.TestCase):
 
     def test_validate_criteria_min_threshold(self):
         key = "velocity"
-        criteria_str = "20 percent ; min_threshold 1.0e-11"
+        criteria_str = "20 percent , min_threshold 1.0e-11"
         criteria = self.rt._validate_criteria(key, criteria_str)
         self.assertAlmostEqual(criteria[self.rt._TOL_VALUE], 20.0, delta=1.0e-16)
         self.assertEqual(criteria[self.rt._TOL_TYPE], "percent")
@@ -280,7 +280,7 @@ class RegressionTest_SetTestData(unittest.TestCase):
 
     def test_validate_criteria_max_threshold(self):
         key = "velocity"
-        criteria_str = "20 percent ; max_threshold 1.23e4"
+        criteria_str = "20 percent , max_threshold 1.23e4"
         criteria = self.rt._validate_criteria(key, criteria_str)
         self.assertAlmostEqual(criteria[self.rt._TOL_VALUE], 20.0, delta=1.0e-16)
         self.assertEqual(criteria[self.rt._TOL_TYPE], "percent")
@@ -289,7 +289,7 @@ class RegressionTest_SetTestData(unittest.TestCase):
 
     def test_validate_criteria_min_max_threshold(self):
         key = "velocity"
-        criteria_str = "20 percent ; max_threshold 1.23e4 ; min_threshold 2.34e-5"
+        criteria_str = "20 percent , max_threshold 1.23e4 , min_threshold 2.34e-5"
         criteria = self.rt._validate_criteria(key, criteria_str)
         self.assertAlmostEqual(criteria[self.rt._TOL_VALUE], 20.0, delta=1.0e-16)
         self.assertEqual(criteria[self.rt._TOL_TYPE], "percent")
@@ -298,13 +298,13 @@ class RegressionTest_SetTestData(unittest.TestCase):
 
     def test_validate_criteria_unknown_threshold_error(self):
         key = "velocity"
-        criteria_str = "20 percent ; cat 1234"
+        criteria_str = "20 percent , cat 1234"
         self.assertRaises(Exception, self.rt._validate_criteria,
                           key ,criteria_str)
 
     def test_validate_criteria_threshold_no_number_error(self):
         key = "velocity"
-        criteria_str = "20 percent ; cat whiskers"
+        criteria_str = "20 percent , min_threshold whiskers"
         self.assertRaises(Exception, self.rt._validate_criteria,
                           key ,criteria_str)
 

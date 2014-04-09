@@ -978,13 +978,13 @@ class RegressionTest(object):
 
         * key = tolerance type
 
-        * key = tolerance type [; min_threshold value] [; max_threshold value]
+        * key = tolerance type [, min_threshold value] [, max_threshold value]
 
         where min_threshold and max_threshold are optional
 
         """
         criteria = 4*[None]
-        test_data = test_data.split(";")
+        test_data = test_data.split(",")
         test_criteria = test_data[0]
         value = test_criteria.split()[0]
         try:
