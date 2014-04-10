@@ -802,6 +802,12 @@ subroutine ReactionReadPass1(reaction,input,option)
         call InputReadDouble(input,option,reaction%max_dlnC)
         call InputErrorMsg(input,option,trim(word),'CHEMISTRY')
       case('OPERATOR_SPLIT','OPERATOR_SPLITTING')
+        option%io_buffer = 'OPERATOR_SPLIT functionality has not been ' // &
+          'reimplemented in the refactored PFLOTRAN at this time.  Please ' // &
+          'GLOBAL_IMPLICIT (remove OPERATOR_SPLIT(TING)) or ask for the ' // &
+          'capability through pflotran-dev@googlegroups.com if you really ' // &
+          'need it.'
+        call printErrMsg(option)
         option%transport%reactive_transport_coupling = OPERATOR_SPLIT    
       case('EXPLICIT_ADVECTION')
         option%itranmode = EXPLICIT_ADVECTION
