@@ -525,7 +525,7 @@ discretization.o : dm_kludge.o grid.o input_aux.o mfd.o mfd_aux.o option.o \
 dm_kludge.o : pflotran_constants.o unstructured_grid_aux.o
 e4d_mat_inv.o :
 e4d_run.o : e4d_vars.o
-e4d_setup.o : e4d_vars.o
+e4d_setup.o : e4d_vars.o e4d_mat_inv.o
 e4d_vars.o :
 eos.o : eos_water.o input_aux.o option.o pflotran_constants.o string.o eos_gas.o
 eos_water.o : pflotran_constants.o
