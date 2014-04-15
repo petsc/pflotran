@@ -7,6 +7,16 @@ Program to manage and run PFloTran regression tests.
 from __future__ import print_function
 from __future__ import division
 
+import sys
+
+if sys.hexversion < 0x02070000:
+    print(70*"*")
+    print("ERROR: PFLOTRAN's regression test manager requires python >= 2.7.x. ")
+    print("It appears that you are running python {0}.{1}.{2}".format(
+        sys.version_info[0], sys.version_info[1], sys.version_info[2]))
+    print(70*"*")
+    sys.exit(1)
+
 import argparse
 import datetime
 import hashlib
@@ -15,7 +25,6 @@ import pprint
 import re
 import shutil
 import subprocess
-import sys
 import textwrap
 import time
 import traceback
