@@ -1776,7 +1776,7 @@ subroutine OutputMassBalance(realization_base)
 !geh      do offset = 1, 4
 !geh        write(word,'(i6)') offset*100
         select case(option%iflowmode)
-          case(MPH_MODE)
+          case(FLASH2_MODE,MPH_MODE)
             write(fid,'(a)',advance="no") ',"' // &
               'Plane Water Flux [mol/s]","Plane CO2 Flux [mol/s]",' // &
               '"Plane Energy Flux [MJ/s]"'
