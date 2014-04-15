@@ -23,8 +23,11 @@ endif
 
 ifdef glenn
 #  MYFLAGS += -DXINGYUAN_BC
-#  MYFLAGS += -DYE_FLUX
-  MYFLAGS += -DBROADCAST_DATASET
+#  MYFLAGS += -DBROADCAST_DATASET
+endif
+
+ifdef ye_flux
+  MYFLAGS += -DYE_FLUX
 endif
 
 ifdef solid_solution
