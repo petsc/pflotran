@@ -231,6 +231,8 @@ subroutine RealizationCreateDiscretization(realization)
   ! 1 degree of freedom, local
   call DiscretizationCreateVector(discretization,ONEDOF,field%work_loc, &
                                   LOCAL,option)
+  call DiscretizationDuplicateVector(discretization,field%work_loc, &
+                                     field%porosityN_loc)
   
   if (option%nflowdof > 0) then
 

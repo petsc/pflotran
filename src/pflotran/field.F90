@@ -17,6 +17,7 @@ module Field_module
     !get material id
     ! 1 degree of freedom
     Vec :: porosity0
+    Vec :: porosityN_loc
     Vec :: tortuosity0
     Vec :: ithrm_loc
     Vec :: icap_loc
@@ -93,6 +94,7 @@ function FieldCreate()
   
   ! nullify PetscVecs
   field%porosity0 = 0
+  field%porosityN_loc = 0
   field%tortuosity0 = 0
   field%ithrm_loc = 0
   field%icap_loc = 0
@@ -177,6 +179,7 @@ subroutine FieldDestroy(field)
 
   ! Destroy PetscVecs
   if (field%porosity0 /= 0) call VecDestroy(field%porosity0,ierr)
+  if (field%porosityN_loc /= 0) call VecDestroy(field%porosityN_loc,ierr)
   if (field%tortuosity0 /= 0) call VecDestroy(field%tortuosity0,ierr)
   if (field%ithrm_loc /= 0) call VecDestroy(field%ithrm_loc,ierr)
   if (field%icap_loc /= 0) call VecDestroy(field%icap_loc,ierr)
