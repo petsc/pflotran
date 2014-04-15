@@ -1899,13 +1899,16 @@ subroutine OutputMassBalance(realization_base)
                     option%io_rank,option%mycomm,ierr)
 
     if (option%myrank == option%io_rank) then
-      do iphase = 1, option%nphase
+!geh: commenting out non-aqueous phase since we do not support it in reactive
+!     transport.
+!      do iphase = 1, option%nphase
+      iphase = 1
         do icomp = 1, reaction%naqcomp
           if (reaction%primary_species_print(icomp)) then
             write(fid,110,advance="no") sum_mol_global(icomp,iphase)
           endif
         enddo
-      enddo
+!      enddo
     endif
   endif
   
