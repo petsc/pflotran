@@ -1479,7 +1479,8 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar, &
   J(TH_PRESSURE_DOF,TH_TEMPERATURE_DOF) = global_auxvar%sat(1)*TH_auxvar%dden_dt*porXvol !*TH_auxvar%xmol(1)
   J(TH_TEMPERATURE_DOF,TH_PRESSURE_DOF) = (TH_auxvar%dsat_dp*global_auxvar%den(1)*TH_auxvar%u + &
             global_auxvar%sat(1)*TH_auxvar%dden_dp*TH_auxvar%u + &
-            global_auxvar%sat(1)*global_auxvar%den(1)*TH_auxvar%du_dp)*porXvol
+            global_auxvar%sat(1)*global_auxvar%den(1)*TH_auxvar%du_dp)*porXvol + &
+            (global_auxvar%den(1)*global_auxvar%sat(1)*TH_auxvar%u - rock_dencpr)*vol*dcompressed_porosity_dp
   J(TH_TEMPERATURE_DOF,TH_TEMPERATURE_DOF) = global_auxvar%sat(1)* &
            (TH_auxvar%dden_dt*TH_auxvar%u + &  ! pull %sat outside
             global_auxvar%den(1)*TH_auxvar%du_dt)*porXvol +  &
