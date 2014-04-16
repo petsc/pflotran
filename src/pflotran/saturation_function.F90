@@ -1930,8 +1930,15 @@ subroutine SatFuncGetGasRelPermFromSat(liquid_saturation, &
   Srg = saturation_function%Sr(GAS_PHASE)
   S_star = (liquid_saturation-Srl)/(1.d0-Srl)
   S_hat = (liquid_saturation-Srl)/(1.d0-Srl-Srg)
-  
+
   gas_relative_perm = 0.d0
+
+  if (S_hat >= 1.d0) then
+    return
+  else if (S_hat <= 0.d0) then
+    gas_relative_perm = 1.d0
+    return
+  endif
   
   ! compute relative permeability
   select case(saturation_function%saturation_function_itype)
@@ -1981,9 +1988,6 @@ subroutine SatFuncGetGasRelPermFromSat(liquid_saturation, &
       end select
   end select
 
-  ! truncate between 0 and 1
-  gas_relative_perm = min(max(gas_relative_perm,0.d0),1.d0)
-  
 end subroutine SatFuncGetGasRelPermFromSat
 
 ! ************************************************************************** !
