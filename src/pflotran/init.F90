@@ -3136,8 +3136,8 @@ subroutine assignMaterialPropToRegions(realization)
   endif
   
   call DiscretizationGlobalToLocal(discretization,field%porosity0, &
-                                    field%work_loc,ONEDOF)
-  call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                   field%porosity_mnrl_loc,ONEDOF)
+  call MaterialSetAuxVarVecLoc(patch%aux%Material,field%porosity_mnrl_loc, &
                                POROSITY,0)
   call DiscretizationGlobalToLocal(discretization,field%tortuosity0, &
                                     field%work_loc,ONEDOF)

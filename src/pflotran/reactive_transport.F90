@@ -86,6 +86,8 @@ subroutine RTTimeCut(realization)
   if (realization%option%nflowdof > 0) then
     call GlobalUpdateDenAndSat(realization, &
                                realization%option%transport%tran_weight_t0)
+    call MaterialWeightPorosity(realization, &
+                                realization%option%transport%tran_weight_t0)
   endif
   
   call RTInitializeTimestep(realization)  
@@ -96,6 +98,8 @@ subroutine RTTimeCut(realization)
   if (realization%option%nflowdof > 0) then
     call GlobalUpdateDenAndSat(realization, &
                                realization%option%transport%tran_weight_t1)
+    call MaterialWeightPorosity(realization, &
+                                realization%option%transport%tran_weight_t1)
   endif
 
   call RTUpdateTransportCoefs(realization)

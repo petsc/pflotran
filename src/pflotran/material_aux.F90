@@ -24,6 +24,8 @@ module Material_Aux_class
   type, public :: material_auxvar_type
     PetscReal :: volume
     PetscReal :: porosity
+    PetscReal :: porosity_store(2)
+    PetscReal :: dporosity_dp
     PetscReal :: tortuosity
     PetscReal :: soil_particle_density
     PetscReal, pointer :: permeability(:)
@@ -42,6 +44,7 @@ module Material_Aux_class
   end type material_parameter_type  
   
   type, public :: material_type
+    PetscReal :: time_t, time_tpdt  
     PetscInt :: num_aux
     type(material_parameter_type), pointer :: material_parameter
     class(material_auxvar_type), pointer :: auxvars(:)
@@ -82,6 +85,8 @@ function MaterialAuxCreate()
   nullify(aux%material_parameter%soil_heat_capacity)
   nullify(aux%material_parameter%soil_thermal_conductivity)
   aux%num_aux = 0
+  aux%time_t = 0.d0
+  aux%time_tpdt = 0.d0
 
   MaterialAuxCreate => aux
   
@@ -106,6 +111,8 @@ subroutine MaterialAuxVarInit(auxvar,option)
   
   auxvar%volume = -999.d0
   auxvar%porosity = -999.d0
+  auxvar%dporosity_dp = 0.d0
+  auxvar%porosity_store = 0.d0
   auxvar%tortuosity = -999.d0
   auxvar%soil_particle_density = -999.d0
   if (option%iflowmode /= NULL_MODE) then
