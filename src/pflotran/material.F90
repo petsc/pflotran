@@ -1334,7 +1334,7 @@ end subroutine MaterialGetAuxVarVecLoc
 
 ! ************************************************************************** !
 
-subroutine MaterialWeightPorosity(realization,weight)
+subroutine MaterialWeightPorosity(Material,weight)
   ! 
   ! Updates the porosities in auxiliary variables associated with 
   ! reactive transport
@@ -1343,21 +1343,19 @@ subroutine MaterialWeightPorosity(realization,weight)
   ! Date: 04/17/14
   ! 
 
-  use Realization_class
-  use Patch_module
   use Option_module
   
   implicit none
 
-  type(realization_type) :: realization
+  type(material_type) :: Material
   PetscReal :: weight
   
   class(material_auxvar_type), pointer :: material_auxvars(:)
   PetscInt :: ghosted_id
   
-  material_auxvars => realization%patch%aux%Material%auxvars
+  material_auxvars => Material%auxvars
 
-  do ghosted_id = 1, realization%patch%aux%Material%num_aux
+  do ghosted_id = 1, Material%num_aux
     ! interpolate porosity based on weight
     material_auxvars(ghosted_id)%porosity = &
       (weight*material_auxvars(ghosted_id)%porosity_store(TIME_TpDT)+ &
@@ -1368,7 +1366,7 @@ subroutine MaterialWeightPorosity(realization,weight)
  
 ! ************************************************************************** !
 
-subroutine MaterialUpdateAuxVars(realization,time_level,time)
+subroutine MaterialUpdateAuxVars(Material,comm1,vec_loc,time_level,time)
   ! 
   ! Updates material aux var variables for use in reactive transport
   ! 
@@ -1376,37 +1374,35 @@ subroutine MaterialUpdateAuxVars(realization,time_level,time)
   ! Date: 01/14/09
   ! 
 
-  use Realization_class
   use Field_module
   use Option_module
   use Discretization_module
   use Variables_module, only : POROSITY
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
   
-  type(realization_type) :: realization
+  type(material_type) :: Material
+  class(communicator_type) :: comm1
+  Vec :: vec_loc
   PetscReal :: time
   PetscInt :: time_level
   
-  type(field_type), pointer :: field
-  type(option_type), pointer :: option
-  class(material_auxvar_type), pointer :: material_auxvars(:)
-  
-  option => realization%option
-  field => realization%field
-  
   select case(time_level)
     case(TIME_T)
-      realization%patch%aux%Material%time_t = time
+      Material%time_t = time
     case(TIME_TpDT)
-      realization%patch%aux%Material%time_tpdt = time
+      Material%time_tpdt = time
   end select  
   
   ! porosity
-  call MaterialGetAuxVarVecLoc(realization%patch%aux%Material,field%work, &
-                               POROSITY,ZERO_INTEGER)
-  call DiscretizationGlobalToLocal(realization%discretization, &
-                                   field%work,field%work_loc,ONEDOF)
-  call MaterialSetAuxVarVecLoc(realization%patch%aux%Material,field%work, &
-                               POROSITY,time_level)
+  call MaterialGetAuxVarVecLoc(Material,vec_loc,POROSITY,ZERO_INTEGER)
+  call comm1%LocalToLocal(vec_loc,vec_loc)
+  ! note that 'time_level' is not ZERO_INTEGER.  thus, this differs
+  ! from MaterialAuxVarCommunicate.
+  call MaterialSetAuxVarVecLoc(Material,vec_loc,POROSITY,time_level)
 
 end subroutine MaterialUpdateAuxVars
 

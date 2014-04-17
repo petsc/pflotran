@@ -225,7 +225,9 @@ subroutine PMGeneralInitializeTimestep(this)
   
   if (this%option%ntrandof > 0) then ! store initial saturations for transport
     call GlobalUpdateAuxVars(this%realization,TIME_T,this%option%time)
-    call MaterialUpdateAuxVars(this%realization,TIME_T,this%option%time)
+    call MaterialUpdateAuxVars(this%realization%patch%aux%Material, &
+                               this%comm1,this%realization%field%work_loc, &
+                               TIME_T,this%option%time)
   endif  
   
   call GeneralInitializeTimestep(this%realization)
@@ -292,9 +294,12 @@ subroutine PMGeneralFinalizeTimestep(this)
   call printMsg(this%option,'PMGeneral%FinalizeTimestep()')
 #endif
   
-  if (this%option%ntrandof > 0) then ! store final saturations, etc. for transport
+  if (this%option%ntrandof > 0) then 
+    ! store final saturations, etc. for transport
     call GlobalUpdateAuxVars(this%realization,TIME_TpDT,this%option%time)
-    call MaterialUpdateAuxVars(this%realization,TIME_TpDT,this%option%time)
+    call MaterialUpdateAuxVars(this%realization%patch%aux%Material, &
+                               this%comm1,this%realization%field%work_loc, &
+                               TIME_TpDT,this%option%time)
   endif
   
   call this%MaxChange()
