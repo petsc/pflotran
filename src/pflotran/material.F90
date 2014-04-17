@@ -1376,7 +1376,6 @@ subroutine MaterialUpdateAuxVars(Material,comm1,vec_loc,time_level,time)
   ! Date: 01/14/09
   ! 
 
-  use Field_module
   use Option_module
   use Communicator_Base_module
   use Variables_module, only : POROSITY
