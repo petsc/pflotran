@@ -115,7 +115,9 @@ module Material_module
             MaterialPropertyRead, &
             MaterialInitAuxIndices, &
             MaterialAssignPropertyToAux, &
-            MaterialSetup
+            MaterialSetup, &
+            MaterialUpdateAuxVars, &
+            MaterialWeightAuxVars
   
 contains
 
@@ -1334,7 +1336,7 @@ end subroutine MaterialGetAuxVarVecLoc
 
 ! ************************************************************************** !
 
-subroutine MaterialWeightPorosity(Material,weight)
+subroutine MaterialWeightAuxVars(Material,weight)
   ! 
   ! Updates the porosities in auxiliary variables associated with 
   ! reactive transport
@@ -1362,7 +1364,7 @@ subroutine MaterialWeightPorosity(Material,weight)
        (1.d0-weight)*material_auxvars(ghosted_id)%porosity_store(TIME_T))
   enddo
   
- end subroutine MaterialWeightPorosity
+ end subroutine MaterialWeightAuxVars
  
 ! ************************************************************************** !
 
@@ -1376,7 +1378,7 @@ subroutine MaterialUpdateAuxVars(Material,comm1,vec_loc,time_level,time)
 
   use Field_module
   use Option_module
-  use Discretization_module
+  use Communicator_Base_module
   use Variables_module, only : POROSITY
 
   implicit none

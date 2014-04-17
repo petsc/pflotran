@@ -218,7 +218,6 @@ subroutine PMTHInitializeTimestep(this)
   
   if (this%option%ntrandof > 0) then ! store initial saturations for transport
     call GlobalUpdateAuxVars(this%realization,TIME_T,this%option%time)
-    call MaterialUpdateAuxVars(this%realization,TIME_T,this%option%time)
   endif  
   
   call THInitializeTimestep(this%realization)
@@ -289,7 +288,6 @@ subroutine PMTHFinalizeTimestep(this)
   
   if (this%option%ntrandof > 0) then ! store final saturations, etc. for transport
     call GlobalUpdateAuxVars(this%realization,TIME_TpDT,this%option%time)
-    call MaterialUpdateAuxVars(this%realization,TIME_TpDT,this%option%time)    
   endif
   
   call THMaxChange(this%realization)

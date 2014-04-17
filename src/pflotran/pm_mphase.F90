@@ -154,6 +154,9 @@ subroutine PMMphaseSetRealization(this,realization)
     this%residual_vec = realization%field%flow_r
   endif
   
+  ! set the communicator
+  realization%comm1 => this%comm1
+  
 end subroutine PMMphaseSetRealization
 
 ! ************************************************************************** !
@@ -195,7 +198,6 @@ subroutine PMMphaseInitializeTimestep(this)
   
   if (this%option%ntrandof > 0) then ! store initial saturations for transport
     call GlobalUpdateAuxVars(this%realization,TIME_T,this%option%time)
-    call MaterialUpdateAuxVars(this%realization,TIME_T,this%option%time)
   endif  
   
   call MphaseInitializeTimestep(this%realization)
@@ -265,7 +267,6 @@ subroutine PMMphaseFinalizeTimestep(this)
   
   if (this%option%ntrandof > 0) then ! store final saturations, etc. for transport
     call GlobalUpdateAuxVars(this%realization,TIME_TpDT,this%option%time)
-    call MaterialUpdateAuxVars(this%realization,TIME_TpDT,this%option%time)
   endif
   
   call MphaseMaxChange(this%realization)

@@ -154,6 +154,9 @@ subroutine PMRichardsSetRealization(this,realization)
     this%residual_vec = realization%field%flow_r
   endif
   
+  ! set the communicator
+  realization%comm1 => this%comm1
+  
 end subroutine PMRichardsSetRealization
 
 ! ************************************************************************** !
@@ -194,7 +197,6 @@ subroutine PMRichardsInitializeTimestep(this)
   
   if (this%option%ntrandof > 0) then ! store initial saturations for transport
     call GlobalUpdateAuxVars(this%realization,TIME_T,this%option%time)
-    call MaterialUpdateAuxVars(this%realization,TIME_T,this%option%time)
   endif  
   
   call RichardsInitializeTimestep(this%realization)
@@ -264,7 +266,6 @@ subroutine PMRichardsFinalizeTimestep(this)
   
   if (this%option%ntrandof > 0) then ! store final saturations, etc. for transport
     call GlobalUpdateAuxVars(this%realization,TIME_TpDT,this%option%time)
-    call MaterialUpdateAuxVars(this%realization,TIME_TpDT,this%option%time)
   endif
   
   call RichardsMaxChange(this%realization)
