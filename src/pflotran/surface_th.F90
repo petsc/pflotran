@@ -1247,7 +1247,7 @@ subroutine SurfaceTHUpdateSurfState(surf_realization)
                         (abs(option%gravity(3)))/den
     if(xx_p(ibeg)<1.d-15) then
       xx_p(ibeg) = 0.d0
-      xx_p(iend) = option%reference_temperature
+      xx_p(iend) = 0.d0
     else
       Cwi = surf_auxvars(ghosted_id)%Cwi
       temp_K = surftemp_p(count) + 273.15d0
