@@ -1442,6 +1442,11 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar, &
   PetscReal :: vol_frac_prim, tempreal
   PetscReal :: compressed_porosity, dcompressed_porosity_dp
   
+  PetscReal :: pres, temp
+  PetscReal :: sat, dsat_dp, dsat_dt
+  PetscReal :: den, dden_dp, dden_dt
+  PetscReal :: u, du_dp, du_dt
+
   ! ice variables
   PetscReal :: sat_g, p_g, den_g, p_sat, mol_g, u_g, C_g
   PetscReal :: dpsat_dt, ddeng_dt, dmolg_dt, dsatg_dp, dsatg_dt, dug_dt
@@ -1457,10 +1462,21 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar, &
   ! X = {p, T}; R = {R_p, R_T}
   
   vol = material_auxvar%volume
+  pres = global_auxvar%pres(1)
+  temp = global_auxvar%temp(1)
+  sat = global_auxvar%sat(1)
+  den = global_auxvar%den(1)
+  dden_dp = TH_auxvar%dden_dp
+  dden_dt = TH_auxvar%dden_dt
+  dsat_dp = TH_auxvar%dsat_dp
+  dsat_dt = TH_auxvar%dsat_dt
+  u = TH_auxvar%u
+  du_dt = TH_auxvar%du_dt
+  du_dp = TH_auxvar%du_dp
   
   if (soil_compressibility_index > 0) then
-    tempreal = global_auxvar%sat(1)*global_auxvar%den(1)
-    call MaterialCompressSoil(material_auxvar,global_auxvar%pres(1), &
+    tempreal = sat*den
+    call MaterialCompressSoil(material_auxvar,pres, &
                               compressed_porosity,dcompressed_porosity_dp)
     por = compressed_porosity
   else
@@ -1471,19 +1487,17 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar, &
   porXvol = por*vol
 
   ! d(por*sat*den)/dP * vol
-  J(TH_PRESSURE_DOF,TH_PRESSURE_DOF) = &
-    (global_auxvar%sat(1)*TH_auxvar%dden_dp + &
-     TH_auxvar%dsat_dp*global_auxvar%den(1))*porXvol + &
-    dcompressed_porosity_dp*global_auxvar%sat(1)*global_auxvar%den(1)*vol
+  J(TH_PRESSURE_DOF,TH_PRESSURE_DOF) = (sat*dden_dp + dsat_dp*den)*porXvol + &
+    dcompressed_porosity_dp*sat*den*vol
 
-  J(TH_PRESSURE_DOF,TH_TEMPERATURE_DOF) = global_auxvar%sat(1)*TH_auxvar%dden_dt*porXvol !*TH_auxvar%xmol(1)
-  J(TH_TEMPERATURE_DOF,TH_PRESSURE_DOF) = (TH_auxvar%dsat_dp*global_auxvar%den(1)*TH_auxvar%u + &
-            global_auxvar%sat(1)*TH_auxvar%dden_dp*TH_auxvar%u + &
-            global_auxvar%sat(1)*global_auxvar%den(1)*TH_auxvar%du_dp)*porXvol
-  J(TH_TEMPERATURE_DOF,TH_TEMPERATURE_DOF) = global_auxvar%sat(1)* &
-           (TH_auxvar%dden_dt*TH_auxvar%u + &  ! pull %sat outside
-            global_auxvar%den(1)*TH_auxvar%du_dt)*porXvol +  &
-           (1.d0 - por)*vol*rock_dencpr 
+  J(TH_PRESSURE_DOF,TH_TEMPERATURE_DOF) = sat*dden_dt*porXvol
+  J(TH_TEMPERATURE_DOF,TH_PRESSURE_DOF) = (dsat_dp*den*u + &
+                                           sat*dden_dp*u + &
+                                           sat*den*du_dp)*porXvol + &
+                        (den*sat*u - rock_dencpr)*vol*dcompressed_porosity_dp
+  J(TH_TEMPERATURE_DOF,TH_TEMPERATURE_DOF) = sat*(dden_dt*u + den*du_dt)*porXvol +  &
+                                             (1.d0 - por)*vol*rock_dencpr
+
 
   if (option%use_th_freezing) then
      ! SK, 11/17/11
