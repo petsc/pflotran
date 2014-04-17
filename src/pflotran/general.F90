@@ -100,6 +100,11 @@ subroutine GeneralRead(input,option)
       case('WINDOW_EPSILON') 
         call InputReadDouble(input,option,window_epsilon)
         call InputErrorMsg(input,option,'diffusion coefficient','GENERAL_MODE')
+      case('GAS_COMPONENT_FORMULA_WEIGHT')
+        !geh: assuming gas component is index 2
+        call InputReadDouble(input,option,fmw_comp(2))
+        call InputErrorMsg(input,option,'gas component formula wt.', &
+                           'GENERAL_MODE')
       case('TWO_PHASE_ENERGY_DOF')
         call InputReadWord(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,'two_phase_energy_dof','GENERAL_MODE')
@@ -488,7 +493,6 @@ subroutine GeneralComputeMassBalance(realization,mass_balance)
   PetscInt :: ghosted_id
   PetscInt :: iphase, icomp
   PetscReal :: vol_phase
-  PetscReal, parameter :: fmw_comp(2) = [FMWH2O,FMWAIR]  
 
   option => realization%option
   patch => realization%patch
@@ -581,7 +585,6 @@ subroutine GeneralUpdateMassBalance(realization)
   type(patch_type), pointer :: patch
   type(global_auxvar_type), pointer :: global_auxvars_bc(:)
   
-  PetscReal, parameter :: fmw_comp(2) = [FMWH2O,FMWAIR]
   PetscInt :: iconn
   PetscInt :: icomp
 
@@ -1695,7 +1698,6 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
   PetscReal :: den, den_kg, enthalpy, internal_energy
   PetscReal :: cell_pressure, dummy_pressure
   PetscInt :: icomp, ierr
-  PetscReal, parameter :: fmw_comp(2) = [FMWH2O,FMWAIR]
 
   Res = 0.d0
   do icomp = 1, option%nflowspec

@@ -9,6 +9,7 @@ module General_Aux_module
 #include "finclude/petscsys.h"
 
   PetscReal, public :: window_epsilon = 1.d-4
+  PetscReal, public :: fmw_comp(2) = [FMWH2O,FMWAIR]  
 
   ! thermodynamic state of fluid ids
   PetscInt, parameter, public :: NULL_STATE = 0
@@ -540,7 +541,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
                                       h_water_vapor,ierr)
     h_water_vapor = h_water_vapor * 1.d-6                                  
     gen_auxvar%den(gid) = den_water_vapor + den_air
-    gen_auxvar%den_kg(gid) = den_kg_water_vapor + den_air*FMWAIR
+    gen_auxvar%den_kg(gid) = den_kg_water_vapor + den_air*fmw_comp(gid)
     ! if xmol not set for gas phase, as is the case for LIQUID_STATE, 
     ! set based on densities
 !    if (gen_auxvar%xmol(acid,gid) < 1.d-40) then

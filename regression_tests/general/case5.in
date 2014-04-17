@@ -8,7 +8,13 @@ MODE GENERAL MORE
 /
 
 REGRESSION
-  CELLS_PER_PROCESS 10
+  CELLS_PER_PROCESS 5
+  CELLS
+    89
+    111
+    113
+    133
+  /
 END
 
 :=========================== debug settings ===================================

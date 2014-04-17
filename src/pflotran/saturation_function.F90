@@ -1942,7 +1942,7 @@ subroutine SatFuncGetGasRelPermFromSat(liquid_saturation, &
             'vG Burdine not yet supported in SatFuncGetGasRelPermFromSat.'
           call printErrMsg(option)
         case(MUALEM)
-          if (Srg > 0.d0) then
+          if (Srg <= 0.d0) then
             gas_relative_perm = 1.d0 - liquid_relative_perm
           else
             tempreal = 1.d0 - S_hat

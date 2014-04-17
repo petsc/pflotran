@@ -1,4 +1,4 @@
-module Reaction_Sandbox_Base_class
+module SrcSink_Sandbox_Base_class
   
   use PFLOTRAN_Constants_module
 
@@ -8,38 +8,36 @@ module Reaction_Sandbox_Base_class
   
 #include "finclude/petscsys.h"
 
-  type, abstract, public :: reaction_sandbox_base_type
-    class(reaction_sandbox_base_type), pointer :: next
+  type, abstract, public :: srcsink_sandbox_base_type
+    class(srcsink_sandbox_base_type), pointer :: next
   contains
-#if 0  
+#if 1  
     procedure(Base_Read), public, deferred :: ReadInput
     procedure(Base_Setup), public, deferred :: Setup 
-    procedure(Base_React), public, deferred :: Evaluate
+    procedure(Base_SrcSink), public, deferred :: Evaluate
     procedure(Base_Destroy), public, deferred :: Destroy
 #else
     procedure, public :: ReadInput => Base_Read
     procedure, public :: Setup => Base_Setup
-    procedure, public :: Evaluate => Base_React
+    procedure, public :: Evaluate => Base_SrcSink
     procedure, public :: Destroy => Base_Destroy    
 #endif
-  end type reaction_sandbox_base_type
+  end type srcsink_sandbox_base_type
   
 ! for some reason cannot use the interfaces when passing in "this"
 ! with Intel
-#if 0 
+#if 1 
   abstract interface
   
-    subroutine Base_Setup(this,reaction,option)
+    subroutine Base_Setup(this,option)
     
       use Option_module
-      use Reaction_Aux_module
   
-      import reaction_sandbox_base_type
+      import srcsink_sandbox_base_type
     
       implicit none
   
-      class(reaction_sandbox_base_type) :: this
-      type(reaction_type) :: reaction
+      class(srcsink_sandbox_base_type) :: this
       type(option_type) :: option
   
     end subroutine Base_Setup 
@@ -49,11 +47,11 @@ module Reaction_Sandbox_Base_class
       use Option_module
       use Input_Aux_module
   
-      import reaction_sandbox_base_type
+      import srcsink_sandbox_base_type
     
       implicit none
   
-      class(reaction_sandbox_base_type) :: this
+      class(srcsink_sandbox_base_type) :: this
       type(input_type) :: input
       type(option_type) :: option
   
@@ -64,49 +62,42 @@ module Reaction_Sandbox_Base_class
       use Option_module
       use Input_Aux_module
   
-      import reaction_sandbox_base_type
+      import srcsink_sandbox_base_type
     
       implicit none
   
-      class(reaction_sandbox_base_type) :: this
+      class(srcsink_sandbox_base_type) :: this
       type(input_type) :: input
       type(option_type) :: option
   
     end subroutine Base_SkipBlock 
     
-    subroutine Base_React(this,Res,Jac,compute_derivative,rt_auxvar, &
-                          global_auxvar,material_auxvar,reaction,option)
+    subroutine Base_SrcSink(this,Residual,Jacobian,compute_derivative, &
+                            material_auxvar,option)
 
       use Option_module
-      use Reaction_Aux_module
-      use Reactive_Transport_Aux_module
-      use Global_Aux_module
       use Material_Aux_class
   
-      import reaction_sandbox_base_type
+      import srcsink_sandbox_base_type
     
       implicit none
   
-      class(reaction_sandbox_base_type) :: this
+      class(srcsink_sandbox_base_type) :: this
       type(option_type) :: option
-      type(reaction_type) :: reaction
       PetscBool :: compute_derivative
-      ! the following arrays must be declared after reaction
-      PetscReal :: Res(reaction%ncomp)
-      PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
-      type(reactive_transport_auxvar_type) :: rt_auxvar
-      type(global_auxvar_type) :: global_auxvar
+      PetscReal :: Residual(option%nflowdof)
+      PetscReal :: Jacobian(option%nflowdof,option%nflowdof)
       class(material_auxvar_type) :: material_auxvar
       
     end subroutine
     
     subroutine Base_Destroy(this)
 
-      import reaction_sandbox_base_type
+      import srcsink_sandbox_base_type
     
       implicit none
   
-      class(reaction_sandbox_base_type) :: this
+      class(srcsink_sandbox_base_type) :: this
 
     end subroutine Base_Destroy   
     
@@ -118,15 +109,13 @@ contains
 
 ! ************************************************************************** !
 
-  subroutine Base_Setup(this,reaction,option)
+  subroutine Base_Setup(this,option)
     
     use Option_module
-    use Reaction_Aux_module
   
     implicit none
   
-    class(reaction_sandbox_base_type) :: this
-    type(reaction_type) :: reaction
+    class(srcsink_sandbox_base_type) :: this
     type(option_type) :: option
   
   end subroutine Base_Setup 
@@ -140,7 +129,7 @@ contains
   
     implicit none
   
-    class(reaction_sandbox_base_type) :: this
+    class(srcsink_sandbox_base_type) :: this
     type(input_type) :: input
     type(option_type) :: option
   
@@ -155,7 +144,7 @@ contains
   
     implicit none
   
-    class(reaction_sandbox_base_type) :: this
+    class(srcsink_sandbox_base_type) :: this
     type(input_type) :: input
     type(option_type) :: option
   
@@ -163,25 +152,18 @@ contains
 
 ! ************************************************************************** !
 
-  subroutine Base_React(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
-                        global_auxvar,material_auxvar,reaction,option)
+  subroutine Base_SrcSink(this,Residual,Jacobian,compute_derivative, &
+                          material_auxvar,option)
     use Option_module
-    use Reaction_Aux_module
-    use Reactive_Transport_Aux_module
-    use Global_Aux_module
     use Material_Aux_class
   
     implicit none
   
-    class(reaction_sandbox_base_type) :: this
+    class(srcsink_sandbox_base_type) :: this
     type(option_type) :: option
-    type(reaction_type) :: reaction
     PetscBool :: compute_derivative
-    ! the following arrays must be declared after reaction
-    PetscReal :: Residual(reaction%ncomp)
-    PetscReal :: Jacobian(reaction%ncomp,reaction%ncomp)
-    type(reactive_transport_auxvar_type) :: rt_auxvar
-    type(global_auxvar_type) :: global_auxvar
+    PetscReal :: Residual(option%nflowdof)
+    PetscReal :: Jacobian(option%nflowdof,option%nflowdof)
     class(material_auxvar_type) :: material_auxvar
       
   end subroutine
@@ -192,9 +174,9 @@ contains
 
     implicit none
   
-    class(reaction_sandbox_base_type) :: this
+    class(srcsink_sandbox_base_type) :: this
 
   end subroutine Base_Destroy  
 #endif
 
-end module Reaction_Sandbox_Base_class
+end module SrcSink_Sandbox_Base_class
