@@ -218,6 +218,7 @@ subroutine PMRTInitializeTimestep(this)
     call this%SetTranWeights()
     ! set densities and saturations to t
     call GlobalUpdateDenAndSat(this%realization,this%tran_weight_t0)
+    call MaterialWeigthAuxVars(this%realization,this%tran_weight_t0)
   endif
 
   call RTInitializeTimestep(this%realization)
@@ -227,6 +228,7 @@ subroutine PMRTInitializeTimestep(this)
   ! set densities and saturations to t+dt
   if (this%option%nflowdof > 0 .and. .not. this%steady_flow) then
     call GlobalUpdateDenAndSat(this%realization,this%tran_weight_t1)
+    call MaterialWeigthAuxVars(this%realization,this%tran_weight_t1)
   endif
 
   call RTUpdateTransportCoefs(this%realization)
@@ -261,6 +263,7 @@ subroutine PMRTPreSolve(this)
   ! set densities and saturations to t+dt
   if (this%option%nflowdof > 0 .and. .not. this%steady_flow) then
     call GlobalUpdateDenAndSat(this%realization,this%tran_weight_t1)
+    call MaterialWeigthAuxVars(this%realization,this%tran_weight_t1)
   endif
 
   call RTUpdateTransportCoefs(this%realization)

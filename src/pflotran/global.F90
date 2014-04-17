@@ -10,8 +10,11 @@ module Global_module
 
 #include "finclude/petscsys.h"
   
-  public GlobalSetup, GlobalSetAuxVarScalar, GlobalSetAuxVarVecLoc, &
-         GlobalUpdateDenAndSat, GlobalUpdateAuxVars
+  public GlobalSetup, &
+         GlobalSetAuxVarScalar, &
+         GlobalSetAuxVarVecLoc, &
+         GlobalUpdateDenAndSat, &
+         GlobalUpdateAuxVars
 
 contains
 
