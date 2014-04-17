@@ -573,7 +573,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
                                        field%work,field%work_loc,ONEDOF)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,SC_FUGA_COEFF, &
                                  time_level)
-    case(TH_MODE)
+    case(TH_MODE,G_MODE)
       ! pressure
       call RealizationGetVariable(realization,field%work,LIQUID_PRESSURE, &
                                  ZERO_INTEGER)
@@ -669,7 +669,6 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
                                        field%work,field%work_loc,ONEDOF)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,TEMPERATURE, &
                                  time_level)
-    case(G_MODE)
   end select
 
 end subroutine GlobalUpdateAuxVars
