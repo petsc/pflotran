@@ -139,6 +139,9 @@ subroutine PMGeneralInit(this)
   call this%comm1%SetDM(this%realization%discretization%dm_1dof)
 #endif
 
+  ! set the communicator
+  this%realization%comm1 => this%comm1
+  
 end subroutine PMGeneralInit
 
 ! ************************************************************************** !
@@ -171,9 +174,6 @@ subroutine PMGeneralSetRealization(this,realization)
     this%solution_vec = realization%field%flow_xx
     this%residual_vec = realization%field%flow_r
   endif
-  
-  ! set the communicator
-  realization%comm1 => this%comm1
   
 end subroutine PMGeneralSetRealization
 

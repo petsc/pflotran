@@ -126,6 +126,9 @@ subroutine PMTHInit(this)
   call this%commN%SetDM(this%realization%discretization%dm_nflowdof)
 #endif
 
+  ! set the communicator
+  this%realization%comm1 => this%comm1
+  
 end subroutine PMTHInit
 
 ! ************************************************************************** !

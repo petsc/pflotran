@@ -142,6 +142,9 @@ subroutine PMRTInit(this)
   call this%commN%SetDM(this%realization%discretization%dm_ntrandof)
 #endif
 
+  ! set the communicator
+  this%realization%comm1 => this%comm1
+  
 end subroutine PMRTInit
 
 ! ************************************************************************** !
@@ -172,9 +175,6 @@ subroutine PMRTSetRealization(this,realization)
     this%solution_vec = realization%field%tran_xx
   endif
   this%residual_vec = realization%field%tran_r
-  
-  ! set the communicator
-  realization%comm1 => this%comm1
   
 end subroutine PMRTSetRealization
 
