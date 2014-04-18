@@ -47,6 +47,8 @@ module TH_Aux_module
     PetscReal :: pres_fh2o
     PetscReal :: dpres_fh2o_dp
     PetscReal :: dpres_fh2o_dt
+    ! For surface-flow
+    PetscBool :: surf_wat
   end type TH_auxvar_type
 
   type, public :: TH_parameter_type
@@ -192,6 +194,7 @@ subroutine THAuxVarInit(auxvar,option)
   auxvar%pres_fh2o = 0.d0
   auxvar%dpres_fh2o_dp = 0.d0
   auxvar%dpres_fh2o_dt = 0.d0
+  auxvar%surf_wat = PETSC_FALSE
 
 end subroutine THAuxVarInit
 
@@ -254,6 +257,7 @@ subroutine THAuxVarCopy(auxvar,auxvar2,option)
      auxvar2%pres_fh2o = auxvar%pres_fh2o
      auxvar2%dpres_fh2o_dp = auxvar%dpres_fh2o_dp
      auxvar2%dpres_fh2o_dt = auxvar%dpres_fh2o_dt
+     auxvar2%surf_wat = auxvar%surf_wat
   endif
 
 end subroutine THAuxVarCopy

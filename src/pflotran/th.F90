@@ -1023,7 +1023,8 @@ subroutine THUpdateAuxVarsPatch(realization)
 
   patch%aux%TH%auxvars_up_to_date = PETSC_TRUE
 
-!  deallocate(gradient)
+  ! Update a flag marking presence or absence of standing water for BC grid cells
+  if (option%nsurfflowdof > 0) call THUpdateSurfaceWaterFlag(realization)
 
 end subroutine THUpdateAuxVarsPatch
 
@@ -2645,8 +2646,7 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
   dq_dt_dn = 0.d0
   duxmol_dxmol_dn = 0.d0
 
-  hw_present = PETSC_TRUE ! assume standing water is present when running with
-                          ! surface-flow
+  hw_present = auxvar_dn%surf_wat
         
   dist_gravity = dist(0) * dot_product(option%gravity,dist(1:3))
   dd_up = dist(0)
@@ -2700,7 +2700,6 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
             dphi = 0.d0
             dphi_dp_dn = 0.d0
             dphi_dt_dn = 0.d0
-            if (ibndtype(TH_PRESSURE_DOF) == HET_SURF_SEEPAGE_BC) hw_present = PETSC_FALSE
           endif
         endif        
         
@@ -2778,11 +2777,11 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
 
   ! Conduction term
   select case(ibndtype(TH_TEMPERATURE_DOF))
-    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,HET_SURF_SEEPAGE_BC)
+    case(DIRICHLET_BC,HET_DIRICHLET)
       Dk =  Dk_dn / dd_up
       !cond = Dk*area*(global_auxvar_up%temp(1)-global_auxvar_dn%temp(1))
 
-      if (ibndtype(TH_TEMPERATURE_DOF) /= HET_SURF_SEEPAGE_BC) then
+      if (ibndtype(TH_PRESSURE_DOF) /= HET_SURF_SEEPAGE_BC .and. .not.(hw_present)) then
         Jdn(option%nflowdof,2) = Jdn(option%nflowdof,2)+Dk*area*(-1.d0)
       else
         ! Only add contribution to Jacboian term for heat equation if
@@ -2994,7 +2993,7 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
                     dist, &
                     option,v_darcy,Diff_dn, &
                     Res)
-  ! 
+  !
   ! Computes the  boundary flux terms for the residual
   ! 
   ! Author: ???
@@ -3047,7 +3046,8 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
   v_darcy = 0.d0
   density_ave = 0.d0
   q = 0.d0
-  hw_present = PETSC_TRUE ! assume standing water is present
+
+  hw_present = auxvar_dn%surf_wat
 
   dist_gravity = dist(0) * dot_product(option%gravity,dist(1:3))
   dd_up = dist(0)
@@ -3077,7 +3077,7 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
                   * dist_gravity
 
         if (option%ice_model /= DALL_AMICO) then
-        dphi = global_auxvar_up%pres(1) - global_auxvar_dn%pres(1) + gravity
+          dphi = global_auxvar_up%pres(1) - global_auxvar_dn%pres(1) + gravity
         else
           dphi = auxvar_up%pres_fh2o - auxvar_dn%pres_fh2o + gravity
         endif
@@ -3087,7 +3087,6 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
           ! flow in         ! boundary cell is <= pref
           if (dphi > 0.d0 .and. global_auxvar_up%pres(1) - option%reference_pressure < eps) then
             dphi = 0.d0
-            if(ibndtype(TH_PRESSURE_DOF) == HET_SURF_SEEPAGE_BC) hw_present = PETSC_FALSE
           endif
         endif
         
@@ -3139,7 +3138,7 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
 
   ! Conduction term
   select case(ibndtype(TH_TEMPERATURE_DOF))
-    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,HET_DIRICHLET)
+    case(DIRICHLET_BC,HET_DIRICHLET)
       Dk = Dk_dn / dd_up
       cond = Dk*area*(global_auxvar_up%temp(1)-global_auxvar_dn%temp(1))
 
@@ -3147,6 +3146,10 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
       ! there is no standing water, set heat conduction to be zero.
       if (ibndtype(TH_PRESSURE_DOF) == HET_SURF_SEEPAGE_BC .and. &
           .not.(hw_present)) then
+        cond = 0.d0
+      endif
+      if (ibndtype(TH_PRESSURE_DOF) /= HET_SURF_SEEPAGE_BC .and. &
+          (hw_present)) then
         cond = 0.d0
       endif
 
@@ -5082,6 +5085,85 @@ subroutine THUpdateSurfaceBC(realization)
   enddo
 
 end subroutine THUpdateSurfaceBC
+
+! ************************************************************************** !
+subroutine THUpdateSurfaceWaterFlag(realization)
+  !
+  ! For BC cells, set the flag for presence or absence of standing water
+  !
+  ! Author: Gautam Bisht
+  ! Date: 04/17/14
+  !
+
+  use Realization_class
+  use Patch_module
+  use Option_module
+  use Grid_module
+  use Coupler_module
+  use Connection_module
+  use String_module
+
+  implicit none
+
+  type(realization_type) :: realization
+
+  type(coupler_type), pointer :: boundary_condition
+  type(TH_auxvar_type), pointer :: TH_auxvars_bc(:)
+  type(TH_auxvar_type), pointer :: TH_auxvars(:)
+  type(global_auxvar_type), pointer :: global_auxvars_bc(:)
+  type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option
+  type(connection_set_type), pointer :: cur_connection_set
+
+  PetscInt :: ghosted_id
+  PetscInt :: local_id
+  PetscInt :: sum_connection
+  PetscInt :: iconn
+
+  option => realization%option
+  patch => realization%patch
+  grid => patch%grid
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
+  TH_auxvars_bc => patch%aux%TH%auxvars_bc
+  TH_auxvars => patch%aux%TH%auxvars
+
+  boundary_condition => patch%boundary_conditions%first
+  sum_connection = 0
+  do
+    if (.not.associated(boundary_condition)) exit
+
+    cur_connection_set => boundary_condition%connection_set
+
+    if (StringCompare(boundary_condition%name,'from_surface_bc')) then
+
+      sum_connection = sum_connection + 1
+      do iconn = 1, cur_connection_set%num_connections
+        local_id = cur_connection_set%id_dn(iconn)
+        ghosted_id = grid%nL2G(local_id)
+        if (associated(patch%imat)) then
+          if (patch%imat(ghosted_id) <= 0) cycle
+        endif
+
+        if (global_auxvars_bc(sum_connection)%pres(1) - option%reference_pressure < eps) then
+          TH_auxvars_bc(sum_connection)%surf_wat = PETSC_FALSE
+          TH_auxvars(ghosted_id)%surf_wat = PETSC_FALSE
+        else
+          TH_auxvars_bc(sum_connection)%surf_wat = PETSC_TRUE
+          TH_auxvars(ghosted_id)%surf_wat = PETSC_TRUE
+        endif
+      enddo
+
+    else
+
+      sum_connection = sum_connection + cur_connection_set%num_connections
+
+    endif
+
+    boundary_condition => boundary_condition%next
+  enddo
+
+end subroutine THUpdateSurfaceWaterFlag
 
 ! ************************************************************************** !
 
