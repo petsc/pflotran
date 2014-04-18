@@ -1203,9 +1203,25 @@ subroutine MaterialSetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
         Material%auxvars(ghosted_id)%volume = vec_loc_p(ghosted_id)
       enddo
     case(POROSITY)
-      do ghosted_id=1, Material%num_aux
-        Material%auxvars(ghosted_id)%porosity = vec_loc_p(ghosted_id)
-      enddo
+!      do ghosted_id=1, Material%num_aux
+!        Material%auxvars(ghosted_id)%porosity = vec_loc_p(ghosted_id)
+!      enddo
+      select case(isubvar)
+        case(TIME_T)
+          do ghosted_id=1, Material%num_aux
+            Material%auxvars(ghosted_id)%porosity_store(TIME_T) = &
+              vec_loc_p(ghosted_id)
+          enddo
+        case(TIME_TpDT)
+          do ghosted_id=1, Material%num_aux
+            Material%auxvars(ghosted_id)%porosity_store(TIME_TpDT) = &
+              vec_loc_p(ghosted_id)
+          enddo
+        case default
+          do ghosted_id=1, Material%num_aux
+            Material%auxvars(ghosted_id)%porosity = vec_loc_p(ghosted_id)
+          enddo
+      end select
     case(TORTUOSITY)
       do ghosted_id=1, Material%num_aux
         Material%auxvars(ghosted_id)%tortuosity = vec_loc_p(ghosted_id)
