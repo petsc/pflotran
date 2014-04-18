@@ -155,6 +155,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
   PetscReal                            :: den
   PetscReal                            :: dt
   PetscReal                            :: surfpress
+  PetscReal                            :: dum1
   PetscReal, pointer                   :: mflux_p(:)
   PetscReal, pointer                   :: hflux_p(:)
   PetscReal, pointer                   :: head_p(:)
@@ -201,7 +202,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
                                pmc%sim_aux%subsurf_pres_top_bc, &
                                INSERT_VALUES,SCATTER_FORWARD,ierr)
             call EOSWaterdensity(option%reference_temperature, &
-                                 option%reference_pressure, den)
+                                 option%reference_pressure,den,dum1,ierr)
 
 #if 0
             coupler_list => patch%source_sinks
@@ -307,7 +308,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
                     ! be surf_press and not reference_pressure. But,
                     ! surf_pressure depends on density.
                     call EOSWaterdensity(temp_p(iconn), option%reference_pressure, &
-                                         den)
+                                         den,dum1,ierr)
 
                     surfpress = head_p(iconn)*(abs(option%gravity(3)))*den + &
                                 option%reference_pressure
@@ -402,6 +403,7 @@ subroutine PMCSubsurfaceSetAuxDataForSurf(this)
   PetscInt                             :: istart
   PetscInt                             :: iend
   PetscReal                            :: den
+  PetscReal                            :: dum1
   PetscReal, pointer                   :: xx_loc_p(:)
   PetscReal, pointer                   :: pres_top_bc_p(:)
   PetscReal, pointer                   :: temp_top_bc_p(:)
@@ -480,7 +482,7 @@ subroutine PMCSubsurfaceSetAuxDataForSurf(this)
 #endif
 
           call EOSWaterdensity(option%reference_temperature, option%reference_pressure, &
-                               den)
+                               den,dum1,ierr)
           coupler_list => patch%boundary_conditions
           coupler => coupler_list%first
           do

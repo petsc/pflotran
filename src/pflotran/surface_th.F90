@@ -1077,6 +1077,7 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
   PetscInt :: iter
   PetscInt :: niter
   PetscReal :: den
+  PetscReal :: dum1
   PetscErrorCode :: ierr
 
   option => surf_realization%option
@@ -1111,7 +1112,7 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
           temp = xx_loc_p(iend)/xx_loc_p(istart)/ &
                   surf_global_auxvars(local_id)%den_kg(1)/ &
                   surf_auxvars(local_id)%Cwi - 273.15d0
-          call EOSWaterdensity(temp,option%reference_pressure,den)
+          call EOSWaterdensity(temp,option%reference_pressure,den,dum1,ierr)
           surf_global_auxvars(local_id)%den_kg(1) = den
         enddo
       endif
@@ -1211,6 +1212,7 @@ subroutine SurfaceTHUpdateSurfState(surf_realization)
   PetscInt                :: sum_connection
 
   PetscReal               :: den
+  PetscReal               :: dum1
   PetscReal, pointer      :: avg_vdarcy_p(:)   ! avg darcy velocity [m/s]
   PetscReal, pointer      :: xx_p(:)           ! head [m]
   PetscReal, pointer      :: surfpress_p(:)
@@ -1242,12 +1244,12 @@ subroutine SurfaceTHUpdateSurfState(surf_realization)
 
     ! Compute density
     count = count + 1
-    call EOSWaterdensity(surftemp_p(count),option%reference_pressure,den)
+    call EOSWaterdensity(surftemp_p(count),option%reference_pressure,den,dum1,ierr)
     xx_p(ibeg) = (surfpress_p(count)-option%reference_pressure)/ &
                         (abs(option%gravity(3)))/den
     if(xx_p(ibeg)<1.d-15) then
       xx_p(ibeg) = 0.d0
-      xx_p(iend) = option%reference_temperature
+      xx_p(iend) = 0.d0
     else
       Cwi = surf_auxvars(ghosted_id)%Cwi
       temp_K = surftemp_p(count) + 273.15d0
