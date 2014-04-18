@@ -1171,10 +1171,10 @@ subroutine MFDComputeDensity(global_auxvar, pres, den, dden_dp, option)
   call EOSWaterDensity(global_auxvar%temp(1),pw,dw_kg,dw_mol, &
                        dw_dp,dw_dt,ierr)
 #else
-  call EOSWaterDensity(global_auxvar%temp(1),pw,dw_kg)
+  call EOSWaterDensity(global_auxvar%temp(1),pw,dw_kg,dw_mol,ierr)
   pert = tol*pw
   pw_pert = pw + pert
-  call EOSWaterDensity(global_auxvar%temp(1),pw_pert,dw_kg_pert)
+  call EOSWaterDensity(global_auxvar%temp(1),pw_pert,dw_kg_pert,dw_mol,ierr)
   dw_dp = (dw_kg_pert-dw_kg)/pert
   ! dw_kg = kg/m^3
   ! dw_mol = kmol/m^3

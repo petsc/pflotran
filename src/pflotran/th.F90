@@ -4981,6 +4981,7 @@ subroutine THUpdateSurfaceBC(realization)
   PetscReal :: eflux
   PetscReal :: area
   PetscReal :: den
+  PetscReal :: dum1
   PetscReal :: energy_old
   PetscReal :: energy_new
   PetscReal :: head_old
@@ -5041,7 +5042,7 @@ subroutine THUpdateSurfaceBC(realization)
           boundary_condition%flow_aux_real_var(TH_PRESSURE_DOF,iconn)
         surftemp_old = &
           boundary_condition%flow_aux_real_var(TH_TEMPERATURE_DOF,iconn)
-        call EOSWaterdensity(surftemp_old,option%reference_pressure,den)
+        call EOSWaterdensity(surftemp_old,option%reference_pressure,den,dum1,ierr)
 
         head_old = (surfpress_old - option%reference_pressure)/den/abs(option%gravity(3)) ! [m]
         head_new = head_old - &

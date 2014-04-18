@@ -111,7 +111,7 @@ module EOS_Water_module
     procedure EOSWaterSatPresDerive
   end interface
   interface EOSWaterDensity
-    procedure EOSWaterDensityGautam
+!    procedure EOSWaterDensityGautam
     procedure EOSWaterDensityNoDerive
     procedure EOSWaterDensityDerive
   end interface
@@ -2038,59 +2038,5 @@ subroutine EOSWaterDensityEnthalpyPainter(T, P, den_water_kg, den_water_kmol, &
   endif
    
 end subroutine EOSWaterDensityEnthalpyPainter
-
-! ************************************************************************** !
-
-subroutine EOSWaterDensityGautam (tc,p,d)
-  !-units: tc - degrees c, p - pascals, d - kg/m^3
-  !-compute density and internal energy of liquid water as
-  ! function of temperature and pressure, using the steam
-  ! table equations as given by the international formulation
-  ! committee (1967).
-  implicit none
-
-  PetscReal :: tc, p, d, par1, par2, par3, par4, par5, pnmr, tkr, &
-            v, vmkr, y, z, zp, zero = 0.d0
-  PetscReal :: a(23),sa(12)
-
-  data a/ &
-    6.824687741d3,  -5.422063673d2, -2.096666205d4,  3.941286787d4,&
-    -6.733277739d4,   9.902381028d4, -1.093911774d5,  8.590841667d4,&
-    -4.511168742d4,   1.418138926d4, -2.017271113d3,  7.982692717d0,&
-    -2.616571843d-2,  1.522411790d-3, 2.284279054d-2, 2.421647003d2,&
-    1.269716088d-10, 2.074838328d-7, 2.174020350d-8, 1.105710498d-9,&
-    1.293441934d1,   1.308119072d-5, 6.047626338d-14/
-  data sa/ &
-    8.438375405d-1, 5.362162162d-4, 1.7200000d0,    7.342278489d-2,&
-    4.975858870d-2, 6.537154300d-1, 1.150d-6,       1.51080d-5,&
-    1.41880d-1,     7.002753165d0,  2.995284926d-4, 2.040d-1/
-
-  tkr = (tc + 273.15d0)/647.3d0
-  pnmr = p/2.212d7   ! *1.d+5    mss nov, 97
-  y = 1.d0 - sa(1)*tkr*tkr - sa(2)/tkr**6
-  zp = (sa(3)*y*y - 2.d0*sa(4)*tkr + 2.d0*sa(5)*pnmr)
-  if (zp.lt.zero) goto 1
-  z = y + sqrt(zp)
-  par1 = a(12)*sa(5)/z**(5.d0/17.d0)
-  par2 = a(13) + a(14)*tkr + a(15)*tkr*tkr + a(16)*(sa(6) - tkr)**10 + &
-    a(17)/(sa(7) + tkr**19)
-  par3 = (a(18) + 2.d0*a(19)*pnmr + 3.d0*a(20)*pnmr*pnmr)/(sa(8) + tkr**11)
-  par4 = a(21)*tkr**18*(sa(9) + tkr*tkr)*(-3.d0/(sa(10) + pnmr)**4 + sa(11))
-  par5 = 3.d0*a(22)*(sa(12) - tkr)*pnmr*pnmr + 4.d0*a(23)/tkr**20*pnmr**3
-  vmkr = par1 + par2 - par3 - par4 + par5
-  v = vmkr*3.17d-3
-  d = 1.d0/v
-    
-  if (d.le.zero) then
-    print *,'stop! negative density  = ',d    
-    stop
-  end if
-  return
-    
-1 continue
-  print 2,tc
-2 format (' Temperature = ',d12.5,'  Out of Range in DENSITY')
-
-end subroutine EOSWaterDensityGautam
 
 end module EOS_Water_module
