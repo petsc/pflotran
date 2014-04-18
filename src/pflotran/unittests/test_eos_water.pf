@@ -135,6 +135,7 @@ contains
 
     class (Test_EOS_Water), intent(inout) :: this
 
+    PetscReal :: dum1
     PetscErrorCode :: ierr
     character(len=MAXSTRINGLENGTH) :: error_string
 
@@ -143,7 +144,7 @@ contains
     PetscReal, parameter :: pressure = 101325.0d0
     PetscReal :: density
 
-    call EOSWaterDensity(temperature, pressure, density, ierr)
+    call EOSWaterDensity(temperature, pressure, density, dum1, ierr)
     @assertEqual(density, stp_density, 1.0d-16)
 
   end subroutine testEOSWater_DensitySTP
