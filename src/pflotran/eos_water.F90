@@ -111,7 +111,6 @@ module EOS_Water_module
     procedure EOSWaterSatPresDerive
   end interface
   interface EOSWaterDensity
-!    procedure EOSWaterDensityGautam
     procedure EOSWaterDensityNoDerive
     procedure EOSWaterDensityDerive
   end interface
