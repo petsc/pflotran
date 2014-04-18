@@ -1364,13 +1364,15 @@ subroutine MaterialWeightAuxVars(Material,weight)
   class(material_auxvar_type), pointer :: material_auxvars(:)
   PetscInt :: ghosted_id
   
-  material_auxvars => Material%auxvars
+!  material_auxvars => Material%auxvars
+!geh: can't use this pointer as gfortran does not like it.  Must use
+!     Material%auxvars%....
 
   do ghosted_id = 1, Material%num_aux
     ! interpolate porosity based on weight
-    material_auxvars(ghosted_id)%porosity = &
-      (weight*material_auxvars(ghosted_id)%porosity_store(TIME_TpDT)+ &
-       (1.d0-weight)*material_auxvars(ghosted_id)%porosity_store(TIME_T))
+    Material%auxvars(ghosted_id)%porosity = &
+      (weight*Material%auxvars(ghosted_id)%porosity_store(TIME_TpDT)+ &
+       (1.d0-weight)*Material%auxvars(ghosted_id)%porosity_store(TIME_T))
   enddo
   
  end subroutine MaterialWeightAuxVars
