@@ -1003,6 +1003,7 @@ subroutine SurfaceFlowUpdateSurfState(surf_realization)
   PetscInt                :: sum_connection
 
   PetscReal               :: den
+  PetscReal               :: dum1
   PetscReal, pointer      :: avg_vdarcy_p(:)   ! avg darcy velocity [m/s]
   PetscReal, pointer      :: hw_p(:)           ! head [m]
   PetscReal, pointer      :: surfpress_p(:)
@@ -1014,7 +1015,8 @@ subroutine SurfaceFlowUpdateSurfState(surf_realization)
   surf_field => surf_realization%surf_field
   surf_grid  => surf_realization%discretization%grid
   
-  call EOSWaterdensity(option%reference_temperature,option%reference_pressure,den)
+  call EOSWaterdensity(option%reference_temperature, &
+                       option%reference_pressure,den,dum1,ierr)
 
   call VecGetArrayF90(surf_field%flow_xx, hw_p, ierr)
   call VecGetArrayF90(surf_field%press_subsurf, surfpress_p, ierr)

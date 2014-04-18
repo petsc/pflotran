@@ -559,7 +559,9 @@ subroutine RichardsBCFluxDerivative(ibndtype,auxvars, &
   PetscReal :: x_dn(1), x_up(1), x_pert_dn(1), x_pert_up(1), pert_dn, res(1), &
             res_pert_dn(1), J_pert_dn(1,1)
   PetscReal :: rho, v_darcy_allowable
-  
+  PetscReal :: dum1
+  PetscErrorCode :: ierr
+
   v_darcy = 0.d0
   ukvr = 0.d0
   density_ave = 0.d0
@@ -656,7 +658,8 @@ subroutine RichardsBCFluxDerivative(ibndtype,auxvars, &
           ! If running with surface-flow model, ensure (darcy_velocity*dt) does
           ! not exceed depth of standing water.
           if(pressure_bc_type == HET_SURF_SEEPAGE_BC .and. option%nsurfflowdof>0) then
-            call EOSWaterdensity(option%reference_temperature,option%reference_pressure,rho)
+            call EOSWaterdensity(option%reference_temperature, &
+                                 option%reference_pressure,rho,dum1,ierr)
             v_darcy_allowable = (global_auxvar_up%pres(1)-option%reference_pressure) &
                                 /option%flow_dt/(-option%gravity(3))/rho
             if(v_darcy > v_darcy_allowable) then
@@ -831,6 +834,8 @@ subroutine RichardsBCFlux(ibndtype,auxvars, &
   PetscInt :: pressure_bc_type
   PetscReal :: dphi_x,dphi_y,dphi_z
   PetscReal :: rho, v_darcy_allowable
+  PetscReal :: dum1
+  PetscErrorCode :: ierr
   
   fluxm = 0.d0
   v_darcy = 0.d0
@@ -912,7 +917,8 @@ subroutine RichardsBCFlux(ibndtype,auxvars, &
         ! If running with surface-flow model, ensure (darcy_velocity*dt) does
         ! not exceed depth of standing water.
         if(pressure_bc_type == HET_SURF_SEEPAGE_BC .and. option%nsurfflowdof>0) then
-          call EOSWaterdensity(option%reference_temperature,option%reference_pressure,rho)
+          call EOSWaterdensity(option%reference_temperature, &
+                               option%reference_pressure,rho,dum1,ierr)
           v_darcy_allowable = (global_auxvar_up%pres(1)-option%reference_pressure) &
                               /option%flow_dt/(-option%gravity(3))/rho
           if (v_darcy > v_darcy_allowable) v_darcy = v_darcy_allowable

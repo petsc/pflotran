@@ -1178,6 +1178,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
                       surf_global_auxvars(ghosted_id)%temp(1) = temp
                   end select
                 enddo
+                xx_p(ibegin:iend) = 0.0d0
               enddo
             else
               do iconn=1,initial_condition%connection_set%num_connections

@@ -1924,13 +1924,21 @@ subroutine SatFuncGetGasRelPermFromSat(liquid_saturation, &
   PetscReal :: Srl, Srg
   PetscReal :: S_star, S_hat
   PetscReal :: tempreal
+  PetscReal :: lambda
   
   Srl = saturation_function%Sr(LIQUID_PHASE)
   Srg = saturation_function%Sr(GAS_PHASE)
   S_star = (liquid_saturation-Srl)/(1.d0-Srl)
   S_hat = (liquid_saturation-Srl)/(1.d0-Srl-Srg)
-  
+
   gas_relative_perm = 0.d0
+
+  if (S_hat >= 1.d0) then
+    return
+  else if (S_hat <= 0.d0) then
+    gas_relative_perm = 1.d0
+    return
+  endif
   
   ! compute relative permeability
   select case(saturation_function%saturation_function_itype)
@@ -1953,12 +1961,16 @@ subroutine SatFuncGetGasRelPermFromSat(liquid_saturation, &
           call printErrMsg(option)
       end select
     case(BROOKS_COREY)
-      option%io_buffer = &
-        'Brooks-Corey not yet supported in SatFuncGetGasRelPermFromSat.'
-      call printErrMsg(option)
       select case(saturation_function%permeability_function_itype)
         case(BURDINE)
+          lambda = saturation_function%lambda
+          tempreal = 1.d0-S_hat
+          gas_relative_perm = tempreal*tempreal* &
+                              (1.d0-S_hat**(1.d0+2.d0/lambda))
         case(MUALEM)
+          option%io_buffer = &
+            'BC Mualem not yet supported in SatFuncGetGasRelPermFromSat.'
+      call printErrMsg(option)
         case default
           option%io_buffer = 'Unknown relative permeabilty function'
           call printErrMsg(option)
@@ -1975,7 +1987,7 @@ subroutine SatFuncGetGasRelPermFromSat(liquid_saturation, &
           call printErrMsg(option)
       end select
   end select
-  
+
 end subroutine SatFuncGetGasRelPermFromSat
 
 ! ************************************************************************** !

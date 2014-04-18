@@ -1850,7 +1850,7 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
   if (option%nflowdof > 0 .and. .not.steady_flow) then
     call TimestepperSetTranWeights(option,flow_t0, flow_t1)
     ! set densities and saturations to t
-    call GlobalUpdateDenAndSat(realization,option%tran_weight_t0)
+    call GlobalWeightAuxVars(realization,option%tran_weight_t0)
   endif
 
   call RTInitializeTimestep(realization)
@@ -1858,7 +1858,7 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
 
   ! set densities and saturations to t+dt
   if (option%nflowdof > 0 .and. .not.steady_flow) then
-    call GlobalUpdateDenAndSat(realization,option%tran_weight_t1)
+    call GlobalWeightAuxVars(realization,option%tran_weight_t1)
   endif
 
   call RTUpdateTransportCoefs(realization)
@@ -2145,7 +2145,7 @@ subroutine StepperStepTransportDT_OS(realization,stepper, &
   if (option%nflowdof > 0 .and. .not.steady_flow) then
     call TimestepperSetTranWeights(option,flow_t0,flow_t1)
     ! set densities and saturations to t
-    call GlobalUpdateDenAndSat(realization,option%tran_weight_t0)
+    call GlobalWeightAuxVars(realization,option%tran_weight_t0)
   endif
 
   ! update time derivative on RHS
@@ -2156,7 +2156,7 @@ subroutine StepperStepTransportDT_OS(realization,stepper, &
     call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE,PETSC_FALSE)
     ! set densities and saturations to t+dt
     if (option%nflowdof > 0 .and. .not.steady_flow) then
-      call GlobalUpdateDenAndSat(realization,option%tran_weight_t1)
+      call GlobalWeightAuxVars(realization,option%tran_weight_t1)
     endif
     call RTExplicitAdvection(realization)
   else
@@ -2174,7 +2174,7 @@ subroutine StepperStepTransportDT_OS(realization,stepper, &
     
     ! set densities and saturations to t+dt
     if (option%nflowdof > 0 .and. .not.steady_flow) then
-      call GlobalUpdateDenAndSat(realization,option%tran_weight_t1)
+      call GlobalWeightAuxVars(realization,option%tran_weight_t1)
     endif
 
     ! update diffusion/dispersion coefficients
@@ -2614,7 +2614,7 @@ subroutine StepperSolveTranSteadyState(realization,stepper,failure)
   use Patch_module
   use Grid_module
     
-  use Global_module, only : GlobalUpdateDenAndSat
+  use Global_module, only : GlobalWeightAuxVars
   use Reactive_Transport_module, only : RTUpdateAuxVars  
   use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
 
@@ -2676,7 +2676,7 @@ subroutine StepperSolveTranSteadyState(realization,stepper,failure)
                                  TORTUOSITY,ZERO_INTEGER)
   endif
 
-  call GlobalUpdateDenAndSat(realization,1.d0)
+  call GlobalWeightAuxVars(realization,1.d0)
   num_newton_iterations = 0
   num_linear_iterations = 0
 

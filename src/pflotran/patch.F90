@@ -2496,7 +2496,7 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
                              dum1,ierr)
 #else
         call EOSWaterdensity(global_auxvar%temp(1),global_auxvar%pres(1), &
-                             global_auxvar%den_kg(1))
+                             global_auxvar%den_kg(1),dum1,ierr)
 #endif                     
       else
         global_auxvar%pres = option%reference_pressure

@@ -139,6 +139,9 @@ subroutine PMGeneralInit(this)
   call this%comm1%SetDM(this%realization%discretization%dm_1dof)
 #endif
 
+  ! set the communicator
+  this%realization%comm1 => this%comm1
+  
 end subroutine PMGeneralInit
 
 ! ************************************************************************** !
@@ -291,7 +294,8 @@ subroutine PMGeneralFinalizeTimestep(this)
   call printMsg(this%option,'PMGeneral%FinalizeTimestep()')
 #endif
   
-  if (this%option%ntrandof > 0) then ! store final saturations, etc. for transport
+  if (this%option%ntrandof > 0) then 
+    ! store final saturations, etc. for transport
     call GlobalUpdateAuxVars(this%realization,TIME_TpDT,this%option%time)
   endif
   

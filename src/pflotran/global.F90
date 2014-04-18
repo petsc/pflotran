@@ -10,8 +10,11 @@ module Global_module
 
 #include "finclude/petscsys.h"
   
-  public GlobalSetup, GlobalSetAuxVarScalar, GlobalSetAuxVarVecLoc, &
-         GlobalUpdateDenAndSat, GlobalUpdateAuxVars
+  public GlobalSetup, &
+         GlobalSetAuxVarScalar, &
+         GlobalSetAuxVarVecLoc, &
+         GlobalWeightAuxVars, &
+         GlobalUpdateAuxVars
 
 contains
 
@@ -386,7 +389,7 @@ end subroutine GlobalSetAuxVarVecLoc
 
 ! ************************************************************************** !
 
-subroutine GlobalUpdateDenAndSat(realization,weight)
+subroutine GlobalWeightAuxVars(realization,weight)
   ! 
   ! Updates the densities and saturations in auxiliary
   ! variables associated with reactive transport
@@ -396,8 +399,8 @@ subroutine GlobalUpdateDenAndSat(realization,weight)
   ! 
 
   use Realization_class
-  use Patch_module
   use Option_module
+  use Material_module, only : MaterialWeightAuxVars
   
   implicit none
 
@@ -405,63 +408,62 @@ subroutine GlobalUpdateDenAndSat(realization,weight)
   PetscReal :: weight
   
   type(option_type), pointer :: option
-  type(patch_type), pointer :: patch
+  type(global_auxvar_type), pointer :: auxvars(:)
   PetscInt :: ghosted_id
   
   option => realization%option
-  patch => realization%patch
+  auxvars => realization%patch%aux%Global%auxvars
   
-  do ghosted_id = 1, patch%aux%Global%num_aux
+  ! weight material properties (e.g. porosity)
+  call MaterialWeightAuxVars(realization%patch%aux%Material,weight)
+  
+  do ghosted_id = 1, realization%patch%aux%Global%num_aux
     ! interpolate density and saturation based on weight
-    patch%aux%Global%auxvars(ghosted_id)%den_kg(:) = &
-      (weight*patch%aux%Global%auxvars(ghosted_id)%den_kg_store(:,TIME_TpDT)+ &
-       (1.d0-weight)*patch%aux%Global%auxvars(ghosted_id)%den_kg_store(:,TIME_T))
-    patch%aux%Global%auxvars(ghosted_id)%sat(:) = &
-      (weight*patch%aux%Global%auxvars(ghosted_id)%sat_store(:,TIME_TpDT)+ &
-       (1.d0-weight)*patch%aux%Global%auxvars(ghosted_id)%sat_store(:,TIME_T))
+    auxvars(ghosted_id)%den_kg(:) = &
+      (weight*auxvars(ghosted_id)%den_kg_store(:,TIME_TpDT)+ &
+       (1.d0-weight)*auxvars(ghosted_id)%den_kg_store(:,TIME_T))
+    auxvars(ghosted_id)%sat(:) = &
+      (weight*auxvars(ghosted_id)%sat_store(:,TIME_TpDT)+ &
+       (1.d0-weight)*auxvars(ghosted_id)%sat_store(:,TIME_T))
   enddo
   
     ! need future implementation for ims_mode too    
   if (option%iflowmode == MPH_MODE) then
-    do ghosted_id = 1, patch%aux%Global%num_aux
-      patch%aux%Global%auxvars(ghosted_id)%pres(:) = &
-        (weight*patch%aux%Global%auxvars(ghosted_id)%pres_store(:,TIME_TpDT)+ &
-         (1.d0-weight)*patch%aux%Global%auxvars(ghosted_id)%pres_store(:,TIME_T))
-      patch%aux%Global%auxvars(ghosted_id)%temp(:) = &
-        (weight*patch%aux%Global%auxvars(ghosted_id)%temp_store(:,TIME_TpDT)+ &
-         (1.d0-weight)*patch%aux%Global%auxvars(ghosted_id)%temp_store(:,TIME_T))
-      patch%aux%Global%auxvars(ghosted_id)%fugacoeff(:) = &
-        (weight*patch%aux%Global%auxvars(ghosted_id)%fugacoeff_store(:,TIME_TpDT)+ &
-         (1.d0-weight)*patch%aux%Global%auxvars(ghosted_id)%fugacoeff_store(:,TIME_T))
-      if (weight<1D-12) patch%aux%Global%auxvars(ghosted_id)%reaction_rate(:)=0D0
-!      patch%aux%Global%auxvars(ghosted_id)%den(:) = &
-!        (weight*patch%aux%Global%auxvars(ghosted_id)%den_store(:,TIME_TpDT)+ &
-!         (1.d0-weight)*patch%aux%Global%auxvars(ghosted_id)%den_store(:,TIME_T))
+    do ghosted_id = 1, realization%patch%aux%Global%num_aux
+      auxvars(ghosted_id)%pres(:) = &
+        (weight*auxvars(ghosted_id)%pres_store(:,TIME_TpDT)+ &
+         (1.d0-weight)*auxvars(ghosted_id)%pres_store(:,TIME_T))
+      auxvars(ghosted_id)%temp(:) = &
+        (weight*auxvars(ghosted_id)%temp_store(:,TIME_TpDT)+ &
+         (1.d0-weight)*auxvars(ghosted_id)%temp_store(:,TIME_T))
+      auxvars(ghosted_id)%fugacoeff(:) = &
+        (weight*auxvars(ghosted_id)%fugacoeff_store(:,TIME_TpDT)+ &
+         (1.d0-weight)*auxvars(ghosted_id)%fugacoeff_store(:,TIME_T))
+      if (weight<1D-12) auxvars(ghosted_id)%reaction_rate(:)=0D0
+!      auxvars(ghosted_id)%den(:) = &
+!        (weight*auxvars(ghosted_id)%den_store(:,TIME_TpDT)+ &
+!         (1.d0-weight)*auxvars(ghosted_id)%den_store(:,TIME_T))
     enddo     
   endif 
   if (option%iflowmode == FLASH2_MODE) then
-    do ghosted_id = 1, patch%aux%Global%num_aux
-      patch%aux%Global%auxvars(ghosted_id)%pres(:) = &
-        (weight*patch%aux%Global%auxvars(ghosted_id)%pres_store(:,TIME_TpDT)+ &
-         (1.d0-weight)*patch%aux%Global%auxvars(ghosted_id)%pres_store(:,TIME_T))
-      patch%aux%Global%auxvars(ghosted_id)%temp(:) = &
-        (weight*patch%aux%Global%auxvars(ghosted_id)%temp_store(:,TIME_TpDT)+ &
-         (1.d0-weight)*patch%aux%Global%auxvars(ghosted_id)%temp_store(:,TIME_T))
-      patch%aux%Global%auxvars(ghosted_id)%fugacoeff(:) = &
-        (weight*patch%aux%Global%auxvars(ghosted_id)%fugacoeff_store(:,TIME_TpDT)+ &
-         (1.d0-weight)*patch%aux%Global%auxvars(ghosted_id)%fugacoeff_store(:,TIME_T))
-      if (weight<1D-12) patch%aux%Global%auxvars(ghosted_id)%reaction_rate(:)=0D0
-!      patch%aux%Global%auxvars(ghosted_id)%den(:) = &
-!        (weight*patch%aux%Global%auxvars(ghosted_id)%den_store(:,TIME_TpDT)+ &
-!         (1.d0-weight)*patch%aux%Global%auxvars(ghosted_id)%den_store(:,TIME_T))
+    do ghosted_id = 1, realization%patch%aux%Global%num_aux
+      auxvars(ghosted_id)%pres(:) = &
+        (weight*auxvars(ghosted_id)%pres_store(:,TIME_TpDT)+ &
+         (1.d0-weight)*auxvars(ghosted_id)%pres_store(:,TIME_T))
+      auxvars(ghosted_id)%temp(:) = &
+        (weight*auxvars(ghosted_id)%temp_store(:,TIME_TpDT)+ &
+         (1.d0-weight)*auxvars(ghosted_id)%temp_store(:,TIME_T))
+      auxvars(ghosted_id)%fugacoeff(:) = &
+        (weight*auxvars(ghosted_id)%fugacoeff_store(:,TIME_TpDT)+ &
+         (1.d0-weight)*auxvars(ghosted_id)%fugacoeff_store(:,TIME_T))
+      if (weight<1D-12) auxvars(ghosted_id)%reaction_rate(:)=0D0
+!      auxvars(ghosted_id)%den(:) = &
+!        (weight*auxvars(ghosted_id)%den_store(:,TIME_TpDT)+ &
+!         (1.d0-weight)*auxvars(ghosted_id)%den_store(:,TIME_T))
     enddo     
   endif
-  if (option%iflowmode == G_MODE) then
-    do ghosted_id = 1, patch%aux%Global%num_aux
-    enddo
-  endif  
   
-end subroutine GlobalUpdateDenAndSat
+end subroutine GlobalWeightAuxVars
 
 ! ************************************************************************** !
 
@@ -478,7 +480,8 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
   use Realization_Base_class, only : RealizationGetVariable
   use Field_module
   use Option_module
-  use Discretization_module
+  use Communicator_Base_module
+  use Material_module, only : MaterialUpdateAuxVars
   use Variables_module, only : LIQUID_PRESSURE, LIQUID_SATURATION, &
                                LIQUID_DENSITY, GAS_PRESSURE, &
                                GAS_DENSITY, GAS_SATURATION, &
@@ -499,21 +502,24 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
       realization%patch%aux%Global%time_t = time
     case(TIME_TpDT)
       realization%patch%aux%Global%time_tpdt = time
-  end select   
+  end select  
+  
+  ! update material properties (e.g. porosity)
+  call MaterialUpdateAuxVars(realization%patch%aux%Material, &
+                             realization%comm1,field%work_loc, &
+                             time_level,option%time)
   
   ! liquid density
   call RealizationGetVariable(realization,field%work,LIQUID_DENSITY, &
                              ZERO_INTEGER)
-  call DiscretizationGlobalToLocal(realization%discretization, &
-                                   field%work,field%work_loc,ONEDOF)
+  call realization%comm1%GlobalToLocal(field%work,field%work_loc)
   call GlobalSetAuxVarVecLoc(realization,field%work_loc,LIQUID_DENSITY, &
                              time_level)
 
   ! liquid saturation
   call RealizationGetVariable(realization,field%work,LIQUID_SATURATION, &
                              ZERO_INTEGER)
-  call DiscretizationGlobalToLocal(realization%discretization, &
-                                   field%work,field%work_loc,ONEDOF)
+  call realization%comm1%GlobalToLocal(field%work,field%work_loc)
   call GlobalSetAuxVarVecLoc(realization,field%work_loc,LIQUID_SATURATION, &
                              time_level)
   select case(option%iflowmode)
@@ -521,72 +527,62 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
       ! Gas density
       call RealizationGetVariable(realization,field%work,GAS_DENSITY, &
                                  ZERO_INTEGER)
-      call DiscretizationGlobalToLocal(realization%discretization, &
-                                       field%work,field%work_loc,ONEDOF)
+      call realization%comm1%GlobalToLocal(field%work,field%work_loc)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_DENSITY, &
                                  time_level)
       call RealizationGetVariable(realization,field%work,GAS_DENSITY_MOL, &
-                                 ZERO_INTEGER)
-      call DiscretizationGlobalToLocal(realization%discretization, &
-                                       field%work,field%work_loc,ONEDOF)
+                                  ZERO_INTEGER)
+      call realization%comm1%GlobalToLocal(field%work,field%work_loc)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_DENSITY_MOL, &
                                  time_level)
  
  
       ! Gas saturation
       call RealizationGetVariable(realization,field%work,GAS_SATURATION, &
-                                 ZERO_INTEGER)
-      call DiscretizationGlobalToLocal(realization%discretization, &
-                                       field%work,field%work_loc,ONEDOF)
+                                  ZERO_INTEGER)
+      call realization%comm1%GlobalToLocal(field%work,field%work_loc)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_SATURATION, &
                                  time_level)                         
    
       ! liquid pressure
       call RealizationGetVariable(realization,field%work,LIQUID_PRESSURE, &
-                                 ZERO_INTEGER)
-      call DiscretizationGlobalToLocal(realization%discretization, &
-                                       field%work,field%work_loc,ONEDOF)
+                                  ZERO_INTEGER)
+      call realization%comm1%GlobalToLocal(field%work,field%work_loc)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,LIQUID_PRESSURE, &
                                  time_level)                      
  
       ! gas pressure
       call RealizationGetVariable(realization,field%work,GAS_PRESSURE, &
-                                 ZERO_INTEGER)
-      call DiscretizationGlobalToLocal(realization%discretization, &
-                                       field%work,field%work_loc,ONEDOF)
+                                  ZERO_INTEGER)
+      call realization%comm1%GlobalToLocal(field%work,field%work_loc)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_PRESSURE, &
                                  time_level)
  
       ! temperature
       call RealizationGetVariable(realization,field%work,TEMPERATURE, &
-                                 ZERO_INTEGER)
-      call DiscretizationGlobalToLocal(realization%discretization, &
-                                       field%work,field%work_loc,ONEDOF)
+                                  ZERO_INTEGER)
+      call realization%comm1%GlobalToLocal(field%work,field%work_loc)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,TEMPERATURE, &
                                  time_level)
       
       ! fugacity coeff
       call RealizationGetVariable(realization,field%work,SC_FUGA_COEFF, &
-                                 ZERO_INTEGER)
-      
-      call DiscretizationGlobalToLocal(realization%discretization, &
-                                       field%work,field%work_loc,ONEDOF)
+                                  ZERO_INTEGER)
+      call realization%comm1%GlobalToLocal(field%work,field%work_loc)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,SC_FUGA_COEFF, &
                                  time_level)
-    case(TH_MODE)
+    case(TH_MODE,G_MODE)
       ! pressure
       call RealizationGetVariable(realization,field%work,LIQUID_PRESSURE, &
-                                 ZERO_INTEGER)
-      call DiscretizationGlobalToLocal(realization%discretization, &
-                                       field%work,field%work_loc,ONEDOF)
+                                  ZERO_INTEGER)
+      call realization%comm1%GlobalToLocal(field%work,field%work_loc)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,LIQUID_PRESSURE, &
                                  time_level)
  
       ! temperature
       call RealizationGetVariable(realization,field%work,TEMPERATURE, &
-                                 ZERO_INTEGER)
-      call DiscretizationGlobalToLocal(realization%discretization, &
-                                       field%work,field%work_loc,ONEDOF)
+                                  ZERO_INTEGER)
+      call realization%comm1%GlobalToLocal(field%work,field%work_loc)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,TEMPERATURE, &
                                  time_level)
       
@@ -594,14 +590,12 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
       ! Gas density
       call RealizationGetVariable(realization,field%work,GAS_DENSITY, &
                                  ZERO_INTEGER)
-      call DiscretizationGlobalToLocal(realization%discretization, &
-                                       field%work,field%work_loc,ONEDOF)
+      call realization%comm1%GlobalToLocal(field%work,field%work_loc)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_DENSITY, &
                                  time_level)
       call RealizationGetVariable(realization,field%work,GAS_DENSITY_MOL, &
                                  ZERO_INTEGER)
-      call DiscretizationGlobalToLocal(realization%discretization, &
-                                       field%work,field%work_loc,ONEDOF)
+      call realization%comm1%GlobalToLocal(field%work,field%work_loc)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_DENSITY_MOL, &
                                  time_level)
  
@@ -609,24 +603,21 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
       ! Gas saturation
       call RealizationGetVariable(realization,field%work,GAS_SATURATION, &
                                  ZERO_INTEGER)
-      call DiscretizationGlobalToLocal(realization%discretization, &
-                                       field%work,field%work_loc,ONEDOF)
+      call realization%comm1%GlobalToLocal(field%work,field%work_loc)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_SATURATION, &
                                  time_level)
    
       ! pressure
       call RealizationGetVariable(realization,field%work,LIQUID_PRESSURE, &
                                  ZERO_INTEGER)
-      call DiscretizationGlobalToLocal(realization%discretization, &
-                                   field%work,field%work_loc,ONEDOF)
+      call realization%comm1%GlobalToLocal(field%work,field%work_loc)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,LIQUID_PRESSURE, &
                                  time_level)
  
       ! temperature
       call RealizationGetVariable(realization,field%work,TEMPERATURE, &
                                  ZERO_INTEGER)
-      call DiscretizationGlobalToLocal(realization%discretization, &
-                                   field%work,field%work_loc,ONEDOF)
+      call realization%comm1%GlobalToLocal(field%work,field%work_loc)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,TEMPERATURE, &
                                  time_level)
 
@@ -634,14 +625,12 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
       ! Gas density
       call RealizationGetVariable(realization,field%work,GAS_DENSITY, &
                                  ZERO_INTEGER)
-      call DiscretizationGlobalToLocal(realization%discretization, &
-                                   field%work,field%work_loc,ONEDOF)
+      call realization%comm1%GlobalToLocal(field%work,field%work_loc)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_DENSITY, &
                                  time_level)
       call RealizationGetVariable(realization,field%work,GAS_DENSITY_MOL, &
                                  ZERO_INTEGER)
-      call DiscretizationGlobalToLocal(realization%discretization, &
-                                       field%work,field%work_loc,ONEDOF)
+      call realization%comm1%GlobalToLocal(field%work,field%work_loc)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_DENSITY_MOL, &
                                  time_level)
  
@@ -649,27 +638,23 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
       ! Gas saturation
       call RealizationGetVariable(realization,field%work,GAS_SATURATION, &
                                  ZERO_INTEGER)
-      call DiscretizationGlobalToLocal(realization%discretization, &
-                                       field%work,field%work_loc,ONEDOF)
+      call realization%comm1%GlobalToLocal(field%work,field%work_loc)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_SATURATION, &
                                  time_level)                  
    
       ! pressure
       call RealizationGetVariable(realization,field%work,LIQUID_PRESSURE, &
                                  ZERO_INTEGER)
-      call DiscretizationGlobalToLocal(realization%discretization, &
-                                       field%work,field%work_loc,ONEDOF)
+      call realization%comm1%GlobalToLocal(field%work,field%work_loc)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,LIQUID_PRESSURE, &
                                  time_level)
  
       ! temperature
       call RealizationGetVariable(realization,field%work,TEMPERATURE, &
                                  ZERO_INTEGER)
-      call DiscretizationGlobalToLocal(realization%discretization, &
-                                       field%work,field%work_loc,ONEDOF)
+      call realization%comm1%LocalToLocal(field%work_loc,field%work_loc)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,TEMPERATURE, &
                                  time_level)
-    case(G_MODE)
   end select
 
 end subroutine GlobalUpdateAuxVars

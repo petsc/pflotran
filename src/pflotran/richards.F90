@@ -2585,6 +2585,7 @@ subroutine RichardsUpdateSurfacePress(realization)
   PetscInt :: sum_connection
   PetscInt :: iconn
   PetscReal :: den
+  PetscReal :: dum1
   PetscReal :: surfpress_old
   PetscReal :: surfpress_new
   PetscErrorCode :: ierr
@@ -2595,9 +2596,9 @@ subroutine RichardsUpdateSurfacePress(realization)
 
   rich_auxvars_bc => patch%aux%Richards%auxvars_bc
   global_auxvars_bc => patch%aux%Global%auxvars_bc
-    
 
-  call EOSWaterdensity(option%reference_temperature,option%reference_pressure,den)
+  call EOSWaterdensity(option%reference_temperature, &
+                       option%reference_pressure,den,dum1,ierr)
 
   ! boundary conditions
   boundary_condition => patch%boundary_conditions%first

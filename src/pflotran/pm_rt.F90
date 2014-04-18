@@ -142,6 +142,9 @@ subroutine PMRTInit(this)
   call this%commN%SetDM(this%realization%discretization%dm_ntrandof)
 #endif
 
+  ! set the communicator
+  this%realization%comm1 => this%comm1
+  
 end subroutine PMRTInit
 
 ! ************************************************************************** !
@@ -217,7 +220,7 @@ subroutine PMRTInitializeTimestep(this)
   if (this%option%nflowdof > 0 .and. .not. this%steady_flow) then
     call this%SetTranWeights()
     ! set densities and saturations to t
-    call GlobalUpdateDenAndSat(this%realization,this%tran_weight_t0)
+    call GlobalWeightAuxvars(this%realization,this%tran_weight_t0)
   endif
 
   call RTInitializeTimestep(this%realization)
@@ -226,7 +229,7 @@ subroutine PMRTInitializeTimestep(this)
 #if 1
   ! set densities and saturations to t+dt
   if (this%option%nflowdof > 0 .and. .not. this%steady_flow) then
-    call GlobalUpdateDenAndSat(this%realization,this%tran_weight_t1)
+    call GlobalWeightAuxVars(this%realization,this%tran_weight_t1)
   endif
 
   call RTUpdateTransportCoefs(this%realization)
@@ -260,7 +263,7 @@ subroutine PMRTPreSolve(this)
 #if 0
   ! set densities and saturations to t+dt
   if (this%option%nflowdof > 0 .and. .not. this%steady_flow) then
-    call GlobalUpdateDenAndSat(this%realization,this%tran_weight_t1)
+    call GlobalWeightAuxVars(this%realization,this%tran_weight_t1)
   endif
 
   call RTUpdateTransportCoefs(this%realization)

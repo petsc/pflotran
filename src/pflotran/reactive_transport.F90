@@ -84,7 +84,7 @@ subroutine RTTimeCut(realization)
   
   ! set densities and saturations to t
   if (realization%option%nflowdof > 0) then
-    call GlobalUpdateDenAndSat(realization, &
+    call GlobalWeightAuxVars(realization, &
                                realization%option%transport%tran_weight_t0)
   endif
   
@@ -94,7 +94,7 @@ subroutine RTTimeCut(realization)
   
   ! set densities and saturations to t+dt
   if (realization%option%nflowdof > 0) then
-    call GlobalUpdateDenAndSat(realization, &
+    call GlobalWeightAuxVars(realization, &
                                realization%option%transport%tran_weight_t1)
   endif
 

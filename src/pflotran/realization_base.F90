@@ -10,6 +10,7 @@ module Realization_Base_class
   use Field_module
   use Reaction_Aux_module
   use Mass_Transfer_module
+  use Communicator_Base_module
 
   use PFLOTRAN_Constants_module
 
@@ -22,6 +23,7 @@ module Realization_Base_class
 
     PetscInt :: id
     type(discretization_type), pointer :: discretization
+    class(communicator_type), pointer :: comm1
     type(patch_list_type), pointer :: patch_list
     type(patch_type), pointer :: patch
 
@@ -68,6 +70,7 @@ subroutine RealizationBaseInit(realization_base,option)
   endif
   nullify(realization_base%input)
   realization_base%discretization => DiscretizationCreate()
+  nullify(realization_base%comm1)
   realization_base%field => FieldCreate()
   realization_base%debug => DebugCreate()
   realization_base%output_option => OutputOptionCreate()
