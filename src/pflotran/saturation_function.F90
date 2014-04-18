@@ -1761,7 +1761,6 @@ subroutine SatFuncComputeIceDallAmico(pl, T, &
   select case(saturation_function%permeability_function_itype)
     case(MUALEM)
       Sr = saturation_function%Sr(1)
-      Sr = 0.d0
       Se = (s_l-Sr)/(1.0d0-Sr)
       if ( abs(Se-1.d0) < 1.0d-12 ) then
         kr = 1.d0
