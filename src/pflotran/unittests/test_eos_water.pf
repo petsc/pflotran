@@ -143,7 +143,7 @@ contains
     PetscReal, parameter :: pressure = 101325.0d0
     PetscReal :: density
 
-    call EOSWaterDensity(temperature, pressure, density)
+    call EOSWaterDensity(temperature, pressure, density, ierr)
     @assertEqual(density, stp_density, 1.0d-16)
 
   end subroutine testEOSWater_DensitySTP
