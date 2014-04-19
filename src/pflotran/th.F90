@@ -889,14 +889,14 @@ subroutine THUpdateAuxVarsPatch(realization)
     iphase = int(iphase_loc_p(ghosted_id))
 
     if (option%use_th_freezing) then
-       call THAuxVarComputeIce(xx_loc_p(istart:iend), &
+       call THAuxVarComputeFreezing(xx_loc_p(istart:iend), &
             TH_auxvars(ghosted_id),global_auxvars(ghosted_id), &
             material_auxvars(ghosted_id), &
             iphase, &
             realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
             option)
     else
-       call THAuxVarCompute(xx_loc_p(istart:iend), &
+       call THAuxVarComputeNoFreezing(xx_loc_p(istart:iend), &
             TH_auxvars(ghosted_id),global_auxvars(ghosted_id), &
             material_auxvars(ghosted_id), &
             iphase, &
@@ -937,14 +937,14 @@ subroutine THUpdateAuxVarsPatch(realization)
       end select
 
       if (option%use_th_freezing) then
-         call THAuxVarComputeIce(xxbc,TH_auxvars_bc(sum_connection), &
+         call THAuxVarComputeFreezing(xxbc,TH_auxvars_bc(sum_connection), &
               global_auxvars_bc(sum_connection), &
               material_auxvars(sum_connection), &
               iphasebc, &
               realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
               option)
       else
-         call THAuxVarCompute(xxbc,TH_auxvars_bc(sum_connection), &
+         call THAuxVarComputeNoFreezing(xxbc,TH_auxvars_bc(sum_connection), &
               global_auxvars_bc(sum_connection), &
               material_auxvars(sum_connection), &
               iphasebc, &
@@ -998,14 +998,14 @@ subroutine THUpdateAuxVarsPatch(realization)
       xx(2) = tsrc1
 
       if (option%use_th_freezing) then
-         call THAuxVarComputeIce(xx, &
+         call THAuxVarComputeFreezing(xx, &
               TH_auxvars_ss(sum_connection),global_auxvars_ss(sum_connection), &
               material_auxvars(sum_connection), &
               iphase, &
               realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
               option)
       else
-         call THAuxVarCompute(xx, &
+         call THAuxVarComputeNoFreezing(xx, &
               TH_auxvars_ss(sum_connection),global_auxvars_ss(sum_connection), &
               material_auxvars(sum_connection), &
               iphase, &
@@ -1267,14 +1267,14 @@ subroutine THUpdateFixedAccumPatch(realization)
     iphase = int(iphase_loc_p(ghosted_id))
 
     if (option%use_th_freezing) then
-       call THAuxVarComputeIce(xx_p(istart:iend), &
+       call THAuxVarComputeFreezing(xx_p(istart:iend), &
             TH_auxvars(ghosted_id),global_auxvars(ghosted_id), &
             material_auxvars(ghosted_id), &
             iphase, &
             realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
             option)
     else
-       call THAuxVarCompute(xx_p(istart:iend), &
+       call THAuxVarComputeNoFreezing(xx_p(istart:iend), &
             TH_auxvars(ghosted_id),global_auxvars(ghosted_id), &
             material_auxvars(ghosted_id), &
             iphase, &
@@ -1582,12 +1582,12 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar, &
       endif
 
       if (option%use_th_freezing) then
-         call THAuxVarComputeIce(x_pert,TH_auxvar_pert, &
+         call THAuxVarComputeFreezing(x_pert,TH_auxvar_pert, &
                                  global_auxvar_pert,material_auxvar_pert, &
                                  iphase,sat_func, &
                                  option)
       else
-         call THAuxVarCompute(x_pert,TH_auxvar_pert,&
+         call THAuxVarComputeNoFreezing(x_pert,TH_auxvar_pert,&
                               global_auxvar_pert,material_auxvar_pert,&
                               iphase,sat_func, &
                               option)
@@ -2251,20 +2251,20 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
       endif
 
       if (option%use_th_freezing) then
-         call THAuxVarComputeIce(x_pert_up,auxvar_pert_up, &
+         call THAuxVarComputeFreezing(x_pert_up,auxvar_pert_up, &
               global_auxvar_pert_up, material_auxvar_pert_up, &
               iphase,sat_func_up, &
               option)
-         call THAuxVarComputeIce(x_pert_dn,auxvar_pert_dn, &
+         call THAuxVarComputeFreezing(x_pert_dn,auxvar_pert_dn, &
               global_auxvar_pert_dn, material_auxvar_pert_up, &
               iphase,sat_func_dn, &
               option)
       else
-         call THAuxVarCompute(x_pert_up,auxvar_pert_up, &
+         call THAuxVarComputeNoFreezing(x_pert_up,auxvar_pert_up, &
               global_auxvar_pert_up, material_auxvar_pert_up, &
               iphase,sat_func_up, &
               option)
-         call THAuxVarCompute(x_pert_dn,auxvar_pert_dn, &
+         call THAuxVarComputeNoFreezing(x_pert_dn,auxvar_pert_dn, &
               global_auxvar_pert_dn,material_auxvar_pert_dn, &
               iphase,sat_func_dn, &
               option)
@@ -2873,23 +2873,23 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
       endif
     enddo
     if (option%use_th_freezing) then
-       call THAuxVarComputeIce(x_dn,auxvar_dn, &
+       call THAuxVarComputeFreezing(x_dn,auxvar_dn, &
             global_auxvar_dn, &
             material_auxvar_dn, &
             iphase,sat_func_dn, &
             option)
-       call THAuxVarComputeIce(x_up,auxvar_up, &
+       call THAuxVarComputeFreezing(x_up,auxvar_up, &
             global_auxvar_up, &
             material_auxvar_up, &
             iphase,sat_func_dn, &
             option)
     else
-       call THAuxVarCompute(x_dn,auxvar_dn, &
+       call THAuxVarComputeNoFreezing(x_dn,auxvar_dn, &
             global_auxvar_dn, &
             material_auxvar_dn, &
             iphase,sat_func_dn, &
             option)
-       call THAuxVarCompute(x_up,auxvar_up, &
+       call THAuxVarComputeNoFreezing(x_up,auxvar_up, &
             global_auxvar_up, &
             material_auxvar_up, &
             iphase,sat_func_dn, &
@@ -2940,23 +2940,23 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
       endif   
 
       if (option%use_th_freezing) then
-         call THAuxVarComputeIce(x_pert_dn,auxvar_pert_dn, &
+         call THAuxVarComputeFreezing(x_pert_dn,auxvar_pert_dn, &
               global_auxvar_pert_dn, &
               material_auxvar_pert_dn, &
               iphase,sat_func_dn, &
               option)
-         call THAuxVarComputeIce(x_pert_up,auxvar_pert_up, &
+         call THAuxVarComputeFreezing(x_pert_up,auxvar_pert_up, &
               global_auxvar_pert_up, &
               material_auxvar_pert_up, &
               iphase,sat_func_dn, &
               option)
       else
-         call THAuxVarCompute(x_pert_dn,auxvar_pert_dn, &
+         call THAuxVarComputeNoFreezing(x_pert_dn,auxvar_pert_dn, &
               global_auxvar_pert_dn, &
               material_auxvar_pert_dn, &
               iphase,sat_func_dn, &
               option)
-         call THAuxVarCompute(x_pert_up,auxvar_pert_up, &
+         call THAuxVarComputeNoFreezing(x_pert_up,auxvar_pert_up, &
               global_auxvar_pert_up, &
               material_auxvar_pert_up, &
               iphase,sat_func_dn, &
