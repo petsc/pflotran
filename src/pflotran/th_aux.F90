@@ -77,10 +77,10 @@ module TH_Aux_module
 
 
   public :: THAuxCreate, THAuxDestroy, &
-            THAuxVarCompute, THAuxVarInit, &
+            THAuxVarComputeNoFreezing, THAuxVarInit, &
             THAuxVarCopy
 
-  public :: THAuxVarComputeIce
+  public :: THAuxVarComputeFreezing
 
 contains
 
@@ -264,10 +264,10 @@ end subroutine THAuxVarCopy
 
 ! ************************************************************************** !
 
-subroutine THAuxVarCompute(x,auxvar,global_auxvar, &
-                           material_auxvar, &
-                            iphase,saturation_function, &
-                            option)
+subroutine THAuxVarComputeNoFreezing(x,auxvar,global_auxvar, &
+                                     material_auxvar, &
+                                     iphase,saturation_function, &
+                                     option)
   ! 
   ! Computes auxiliary variables for each grid cell
   ! 
@@ -403,15 +403,15 @@ subroutine THAuxVarCompute(x,auxvar,global_auxvar, &
   auxvar%dh_dt = hw_dt
   auxvar%du_dt = hw_dt + pw/(dw_mol*dw_mol)*option%scale*dw_dt
   
-end subroutine THAuxVarCompute
+end subroutine THAuxVarComputeNoFreezing
 
 ! ************************************************************************** !
 
-subroutine THAuxVarComputeIce(x, auxvar, global_auxvar, &
-                              material_auxvar, &
-                              iphase, &
-                              saturation_function, &
-                              option)
+subroutine THAuxVarComputeFreezing(x, auxvar, global_auxvar, &
+                                   material_auxvar, &
+                                   iphase, &
+                                   saturation_function, &
+                                   option)
   ! 
   ! Computes auxillary variables for each grid cell when
   ! ice and vapor phases are present
@@ -611,7 +611,7 @@ subroutine THAuxVarComputeIce(x, auxvar, global_auxvar, &
     auxvar%du_ice_dt = auxvar%du_dt
   endif
 
-end subroutine THAuxVarComputeIce
+end subroutine THAuxVarComputeFreezing
 
 ! ************************************************************************** !
 
