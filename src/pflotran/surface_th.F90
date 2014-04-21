@@ -419,8 +419,8 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
       ! I think using the weighted average of liquid and ice densities and Cwi 
       ! is correct here, but I should check.
       ff_p(iend) = ff_p(iend) + esrc + &
-                    surf_global_auxvars_ss(local_id)%den_kg(1)* &
-                    (surf_global_auxvars_ss(local_id)%temp(1) + 273.15d0)* &
+                    surf_global_auxvars_ss(sum_connection)%den_kg(1)* &
+                    (surf_global_auxvars_ss(sum_connection)%temp(1) + 273.15d0)* &
                     surf_auxvars(local_id)%Cwi* &
                     qsrc/area_p(local_id)
     enddo
