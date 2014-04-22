@@ -545,7 +545,7 @@ subroutine THAuxVarComputeFreezing(x, auxvar, global_auxvar, &
 !  call EOSWaterDensityEnthalpy(global_auxvar%temp(1),pw,dw_kg,dw_mol,hw, &
 !                               dw_dp,dw_dt,hw_dp,hw_dt,ierr)
 
-  call EOSWaterDensityEnthalpyPainter(global_auxvar%temp(1),pw,dw_kg,dw_mol, &
+  call EOSWaterDensityEnthalpyPainterOld(global_auxvar%temp(1),pw,dw_kg,dw_mol, &
                                       hw,PETSC_TRUE,dw_dp,dw_dt,hw_dp,hw_dt,ierr)
   ! J/kmol -> MJ/kmol
   hw = hw * 1.d-6
@@ -592,8 +592,9 @@ subroutine THAuxVarComputeFreezing(x, auxvar, global_auxvar, &
   auxvar%dsat_gas_dt = dsg_temp
   
 ! Calculate the density, internal energy and derivatives for ice
-  call EOSWaterDensityIce(global_auxvar%temp(1), global_auxvar%pres(1), &
-                          den_ice, dden_ice_dT, dden_ice_dP)
+  call EOSWaterDensityIcePainter(global_auxvar%temp(1), global_auxvar%pres(1), &
+                                  den_ice, PETSC_TRUE, &
+                                  dden_ice_dT, dden_ice_dP, ierr)
 
   call EOSWaterInternalEnergyIce(global_auxvar%temp(1), u_ice, du_ice_dT)
 

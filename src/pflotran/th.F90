@@ -284,7 +284,6 @@ subroutine THSetupPatch(realization)
     boundary_condition => boundary_condition%next
   enddo
 
-!  write(*,*)'Sum_connection', sum_connection
   if (sum_connection > 0) then 
     allocate(TH_auxvars_bc(sum_connection))
     do iconn = 1, sum_connection
@@ -2622,6 +2621,7 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
   PetscReal :: dsatg_dp_dn
   PetscReal :: Diffg_ref, p_ref, T_ref
   PetscErrorCode :: ierr
+  PetscReal :: v_darcy_allowable
   
   fluxm = 0.d0
   fluxe = 0.d0
@@ -2701,7 +2701,20 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
             dphi_dp_dn = 0.d0
             dphi_dt_dn = 0.d0
           endif
-        endif        
+
+          if (ibndtype(TH_PRESSURE_DOF) == HET_SURF_SEEPAGE_BC .and. option%nsurfflowdof>0) then
+            ! ---------------------------
+            ! Surface-subsurface simulation
+            ! ---------------------------
+
+            ! If surface-water is frozen, zero out the darcy velocity
+            if (global_auxvar_up%temp(1) < 0.d0) then
+              dphi = 0.d0
+              dphi_dp_dn = 0.d0
+              dphi_dt_dn = 0.d0
+            endif
+          endif
+        endif
         
         if (ibndtype(TH_TEMPERATURE_DOF) == ZERO_GRADIENT_BC) then
                                    !( dgravity_dden_up                   ) (dden_dt_up)
@@ -2722,6 +2735,26 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
         if (ukvr*Dq>floweps) then
           v_darcy = Dq * ukvr * dphi
           q = v_darcy * area
+
+          if (ibndtype(TH_PRESSURE_DOF) == HET_SURF_SEEPAGE_BC .and. option%nsurfflowdof>0) then
+
+            ! ---------------------------
+            ! Surface-subsurface simulation
+            ! ---------------------------
+
+            ! Limit maximum darcy velocity such that within a subsurface
+            ! timestep at max the total amount of standing water can
+            ! infiltrated with the subsurface domain
+            v_darcy_allowable = (global_auxvar_up%pres(1)-option%reference_pressure) &
+                              /option%flow_dt/(-option%gravity(3))/global_auxvar_up%den(1)
+            if (v_darcy > v_darcy_allowable) then
+              ! Since darcy velocity is limiited, dq_dp_dn needs to be zero.
+              !  Dq = 0 ==> dq_dp_dn = 0
+              Dq = 0.d0
+              v_darcy = v_darcy_allowable
+            endif
+          endif
+
           dq_dp_dn = Dq*(dukvr_dp_dn*dphi+ukvr*dphi_dp_dn)*area
           dq_dt_dn = Dq*(dukvr_dt_dn*dphi+ukvr*dphi_dt_dn)*area
         endif
@@ -2781,13 +2814,27 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
       Dk =  Dk_dn / dd_up
       !cond = Dk*area*(global_auxvar_up%temp(1)-global_auxvar_dn%temp(1))
 
-      if (ibndtype(TH_PRESSURE_DOF) /= HET_SURF_SEEPAGE_BC .and. .not.(hw_present)) then
+      if (option%nsurfflowdof == 0) then
+        ! ---------------------------
+        ! Subsurface only simulation
+        ! ---------------------------
         Jdn(option%nflowdof,2) = Jdn(option%nflowdof,2)+Dk*area*(-1.d0)
       else
-        ! Only add contribution to Jacboian term for heat equation if
-        ! standing water is present
-        if (hw_present) then
-          Jdn(option%nflowdof,2) = Jdn(option%nflowdof,2) + Dk*area*(-1.d0)
+        ! ---------------------------
+        ! Surface-subsurface simulation
+        ! ---------------------------
+        if (ibndtype(TH_PRESSURE_DOF) /= HET_SURF_SEEPAGE_BC) then
+          if (.not.(hw_present)) then
+            Jdn(option%nflowdof,2) = Jdn(option%nflowdof,2)+Dk*area*(-1.d0)
+          else
+            Jdn = 0.d0
+          endif
+        else
+          ! Only add contribution to Jacboian term for heat equation if
+          ! standing water is present
+          if (hw_present) then
+            Jdn(option%nflowdof,2) = Jdn(option%nflowdof,2) + Dk*area*(-1.d0)
+          endif
         endif
       endif
       if (option%use_th_freezing) then
@@ -3040,6 +3087,7 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
   PetscErrorCode :: ierr
   PetscReal :: fv_up, fv_dn
   PetscReal, parameter :: R_gas_constant = 8.3144621 ! Gas constant in J/mol/K
+  PetscReal :: v_darcy_allowable
   
   fluxm = 0.d0
   fluxe = 0.d0
@@ -3088,6 +3136,18 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
           if (dphi > 0.d0 .and. global_auxvar_up%pres(1) - option%reference_pressure < eps) then
             dphi = 0.d0
           endif
+
+          if (ibndtype(TH_PRESSURE_DOF) == HET_SURF_SEEPAGE_BC .and. option%nsurfflowdof>0) then
+            ! ---------------------------
+            ! Surface-subsurface simulation
+            ! ---------------------------
+
+            ! If surface-water is frozen, zero out the darcy velocity
+            if (global_auxvar_up%temp(1) < 0.d0) then
+              dphi = 0.d0
+            endif
+          endif
+
         endif
         
         if (dphi>=0.D0) then
@@ -3098,6 +3158,23 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
      
         if (ukvr*Dq>floweps) then
           v_darcy = Dq * ukvr * dphi
+
+          if (ibndtype(TH_PRESSURE_DOF) == HET_SURF_SEEPAGE_BC .and. &
+              option%nsurfflowdof>0) then
+            ! ---------------------------
+            ! Surface-subsurface simulation
+            ! ---------------------------
+
+            ! Limit maximum darcy velocity such that within a subsurface
+            ! timestep at max the total amount of standing water can
+            ! infiltrated with the subsurface domain
+            v_darcy_allowable = (global_auxvar_up%pres(1)-option%reference_pressure) &
+                              /option%flow_dt/(-option%gravity(3))/global_auxvar_up%den(1)
+            if (v_darcy > v_darcy_allowable) then
+              v_darcy = v_darcy_allowable
+            endif
+          endif
+
         endif
       endif 
 
@@ -3142,15 +3219,23 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
       Dk = Dk_dn / dd_up
       cond = Dk*area*(global_auxvar_up%temp(1)-global_auxvar_dn%temp(1))
 
-      ! Check if the pressure BC is associated with surface-flow model and
-      ! there is no standing water, set heat conduction to be zero.
-      if (ibndtype(TH_PRESSURE_DOF) == HET_SURF_SEEPAGE_BC .and. &
-          .not.(hw_present)) then
-        cond = 0.d0
-      endif
-      if (ibndtype(TH_PRESSURE_DOF) /= HET_SURF_SEEPAGE_BC .and. &
-          (hw_present)) then
-        cond = 0.d0
+      if (option%nsurfflowdof>0) then
+
+        ! ---------------------------
+        ! Surface-subsurface simulation
+        ! ---------------------------
+
+        ! Check if the pressure BC is associated with surface-flow model and
+        ! there is no standing water, set heat conduction to be zero.
+        if (ibndtype(TH_PRESSURE_DOF) == HET_SURF_SEEPAGE_BC .and. &
+            .not.(hw_present)) then
+          cond = 0.d0
+        endif
+
+        if (ibndtype(TH_PRESSURE_DOF) /= HET_SURF_SEEPAGE_BC .and. &
+            (hw_present)) then
+          cond = 0.d0
+        endif
       endif
 
       fluxe = fluxe + cond
