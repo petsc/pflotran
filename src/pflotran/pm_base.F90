@@ -48,6 +48,7 @@ module PM_Base_class
     procedure(PMBaseCheckUpdatePost), public, deferred :: CheckUpdatePost
     procedure(PMBaseThisOnly), public, deferred :: TimeCut
     procedure(PMBaseThisOnly), public, deferred :: UpdateSolution
+    procedure(PMBaseThisOnly), public, deferred :: UpdateAuxvars
     procedure(PMBaseThisOnly), public, deferred :: MaxChange
     procedure(PMBaseComputeMassBalance), public, deferred :: ComputeMassBalance
     procedure(PMBaseThisOnly), public, deferred :: Destroy

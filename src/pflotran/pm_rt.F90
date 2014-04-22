@@ -673,7 +673,7 @@ subroutine PMRTUpdateSolution2(this, update_kinetics)
       this%realization%reaction%update_tortuosity .or. &
       this%realization%reaction%update_permeability .or. &
       this%realization%reaction%update_mineral_surface_area) then
-    call RealizationUpdateProperties(this%realization)
+    call RealizationUpdatePropertiesTS(this%realization)
   endif
   
   call MassTransferUpdate(this%realization%rt_mass_transfer_list, &
@@ -1058,13 +1058,7 @@ subroutine PMRTDestroy(this)
   
   class(pm_rt_type) :: this
 
-#ifdef PM_RT_DEBUG  
-  call printMsg(this%option,'PMRTDestroy()')
-#endif
-  
-#ifndef SIMPLIFY 
   call RTDestroy(this%realization)
-#endif
 
 end subroutine PMRTDestroy
   
