@@ -201,11 +201,9 @@ subroutine SurfaceTHAuxVarCompute(xx,auxvar,global_auxvar, &
   hw = hw * option%scale
   
   global_auxvar%den_kg(1) = dw_kg
-  di_kg = 917.d0 ![kg/m^3]
-    ! RTM: WARNING!  We are hard-coding the density of ice at atmospheric 
-    ! pressure here.  We should actually compute this according to the 
-    ! reference pressure in case someone wants to use PFLOTRAN for planetary 
-    ! science.
+  !di_kg = 917.d0 ![kg/m^3]
+  di_kg = dw_kg
+
   k_therm_w = 0.57d0 ! [J/s/m/K]
   k_therm_i = 2.18d0 ! [J/s/m/K]
     ! RTM: Same warning for thermal conductivities--these should be computed.
