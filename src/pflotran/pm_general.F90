@@ -29,10 +29,13 @@ module PM_General_class
     PetscInt, pointer :: max_change_ivar(:)
     PetscInt, pointer :: max_change_isubvar(:)
   contains
+    procedure, public :: InitializeRun => PMGeneralInitializeRun
     procedure, public :: InitializeTimestep => PMGeneralInitializeTimestep
     procedure, public :: Residual => PMGeneralResidual
     procedure, public :: Jacobian => PMGeneralJacobian
     procedure, public :: UpdateTimestep => PMGeneralUpdateTimestep
+    procedure, public :: PreSolve => PMGeneralPreSolve
+    procedure, public :: PostSolve => PMGeneralPostSolve
     procedure, public :: CheckUpdatePre => PMGeneralCheckUpdatePre
     procedure, public :: CheckUpdatePost => PMGeneralCheckUpdatePost
     procedure, public :: TimeCut => PMGeneralTimeCut
@@ -158,6 +161,32 @@ subroutine PMGeneralInitializeTimestep(this)
   call GeneralInitializeTimestep(this%realization)
   
 end subroutine PMGeneralInitializeTimestep
+
+! ************************************************************************** !
+
+subroutine PMGeneralPreSolve(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+
+  implicit none
+
+  class(pm_general_type) :: this
+
+end subroutine PMGeneralPreSolve
+
+! ************************************************************************** !
+
+subroutine PMGeneralPostSolve(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+
+  implicit none
+
+  class(pm_general_type) :: this
+
+end subroutine PMGeneralPostSolve
 
 ! ************************************************************************** !
 
@@ -469,6 +498,11 @@ subroutine PMGeneralDestroy(this)
   if (associated(this%next)) then
     call this%next%Destroy()
   endif
+
+  deallocate(this%max_change_ivar)
+  nullify(this%max_change_ivar)
+  deallocate(this%max_change_isubvar)
+  nullify(this%max_change_isubvar)
 
   ! preserve this ordering
   call GeneralDestroy(this%realization)

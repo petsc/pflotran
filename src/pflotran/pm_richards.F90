@@ -106,8 +106,6 @@ end subroutine PMRichardsPreSolve
 
 subroutine PMRichardsPostSolve(this)
   ! 
-  ! PMRichardsUpdatePostSolve:
-  ! 
   ! Author: Glenn Hammond
   ! Date: 03/14/13
 
