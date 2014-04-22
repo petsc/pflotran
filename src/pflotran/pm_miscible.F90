@@ -1,9 +1,7 @@
 module PM_Miscible_class
 
   use PM_Base_class
-  use Realization_class
-  use Communicator_Base_module
-  use Option_module
+  use PM_Subsurface_class
   
   use PFLOTRAN_Constants_module
 
@@ -20,31 +18,22 @@ module PM_Miscible_class
 #include "finclude/petscsnes.h"
 
   type, public, extends(pm_base_type) :: pm_miscible_type
-    class(realization_type), pointer :: realization
-    class(communicator_type), pointer :: comm1
   contains
-    procedure, public :: Init => PMMiscibleInit
-    procedure, public :: PMMiscibleSetRealization
-    procedure, public :: InitializeRun => PMMiscibleInitializeRun
-    procedure, public :: FinalizeRun => PMMiscibleFinalizeRun
     procedure, public :: InitializeTimestep => PMMiscibleInitializeTimestep
-    procedure, public :: FinalizeTimestep => PMMiscibleFinalizeTimeStep
     procedure, public :: Residual => PMMiscibleResidual
     procedure, public :: Jacobian => PMMiscibleJacobian
     procedure, public :: UpdateTimestep => PMMiscibleUpdateTimestep
     procedure, public :: PreSolve => PMMisciblePreSolve
     procedure, public :: PostSolve => PMMisciblePostSolve
-    procedure, public :: AcceptSolution => PMMiscibleAcceptSolution
 #if 0
     procedure, public :: CheckUpdatePre => PMMiscibleCheckUpdatePre
     procedure, public :: CheckUpdatePost => PMMiscibleCheckUpdatePost
 #endif
     procedure, public :: TimeCut => PMMiscibleTimeCut
     procedure, public :: UpdateSolution => PMMiscibleUpdateSolution
+    procedure, public :: UpdateAuxvars => PMMiscibleUpdateAuxvars
     procedure, public :: MaxChange => PMMiscibleMaxChange
     procedure, public :: ComputeMassBalance => PMMiscibleComputeMassBalance
-    procedure, public :: Checkpoint => PMMiscibleCheckpoint    
-    procedure, public :: Restart => PMMiscibleRestart  
     procedure, public :: Destroy => PMMiscibleDestroy
   end type pm_miscible_type
   
@@ -73,91 +62,13 @@ function PMMiscibleCreate()
 #endif  
 
   allocate(miscible_pm)
-  nullify(miscible_pm%option)
-  nullify(miscible_pm%output_option)
-  nullify(miscible_pm%realization)
-  nullify(miscible_pm%comm1)
 
-  call PMBaseCreate(miscible_pm)
+  call PMSubsurfaceCreate(miscible_pm)
   miscible_pm%name = 'PMMiscible'
 
   PMMiscibleCreate => miscible_pm
   
 end function PMMiscibleCreate
-
-! ************************************************************************** !
-
-subroutine PMMiscibleInit(this)
-  ! 
-  ! Initializes variables associated with Richard
-  ! 
-  ! Author: Gautam Bisht
-  ! Date: 11/27/13
-  ! 
-
-#ifndef SIMPLIFY  
-  use Discretization_module
-  use Structured_Communicator_class
-  use Unstructured_Communicator_class
-  use Grid_module 
-#endif
-
-  implicit none
-  
-  class(pm_miscible_type) :: this
-
-#ifdef PM_MISCIBLE_DEBUG
-  call printMsg(this%option,'PMMiscible%Init()')
-#endif
-  
-#ifndef SIMPLIFY  
-  ! set up communicator
-  select case(this%realization%discretization%itype)
-    case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
-      this%comm1 => StructuredCommunicatorCreate()
-    case(UNSTRUCTURED_GRID)
-      this%comm1 => UnstructuredCommunicatorCreate()
-  end select
-  call this%comm1%SetDM(this%realization%discretization%dm_1dof)
-#endif
-
-  ! set the communicator
-  this%realization%comm1 => this%comm1
-  
-end subroutine PMMiscibleInit
-
-! ************************************************************************** !
-
-subroutine PMMiscibleSetRealization(this,realization)
-  ! 
-  ! Author: Gautam Bisht
-  ! Date: 11/27/13
-  ! 
-
-  use Realization_class
-  use Grid_module
-
-  implicit none
-  
-  class(pm_miscible_type) :: this
-  class(realization_type), pointer :: realization
-
-#ifdef PM_miscible_DEBUG  
-  call printMsg(this%option,'PMMiscible%SetRealization()')
-#endif
-  
-  this%realization => realization
-  this%realization_base => realization
-
-  if (realization%discretization%itype == STRUCTURED_GRID_MIMETIC) then 
-    this%solution_vec = realization%field%flow_xx_faces
-    this%residual_vec = realization%field%flow_r_faces
-  else
-    this%solution_vec = realization%field%flow_xx
-    this%residual_vec = realization%field%flow_r
-  endif
-    
-end subroutine PMMiscibleSetRealization
 
 ! ************************************************************************** !
 
@@ -170,35 +81,16 @@ subroutine PMMiscibleInitializeTimestep(this)
   ! 
 
   use Miscible_module, only : MiscibleInitializeTimestep
-  use Global_module
-  use Material_module
-  use Variables_module, only : POROSITY
   
   implicit none
   
   class(pm_miscible_type) :: this
 
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscible%InitializeTimestep()')
-#endif
-
-  this%option%flow_dt = this%option%dt
-
-#ifndef SIMPLIFY  
-  ! update porosity
-  call MaterialAuxVarCommunicate(this%comm1, &
-                                 this%realization%patch%aux%Material, &
-                                 this%realization%field%work_loc, &
-                                 POROSITY,ZERO_INTEGER)
-#endif
+  call PMSubsurfaceInitializeTimestep(this)         
 
   if (this%option%print_screen_flag) then
     write(*,'(/,2("=")," MISCIBLE FLOW ",62("="))')
   endif
-  
-  if (this%option%ntrandof > 0) then ! store initial saturations for transport
-    call GlobalUpdateAuxVars(this%realization,TIME_T,this%option%time)
-  endif  
   
   call MiscibleInitializeTimestep(this%realization)
   
@@ -212,16 +104,10 @@ subroutine PMMisciblePreSolve(this)
   ! Date: 11/27/13
   ! 
 
-  use Global_module
-
   implicit none
   
   class(pm_miscible_type) :: this
   
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscible%PreSolve()')
-#endif
-
 end subroutine PMMisciblePreSolve
 
 ! ************************************************************************** !
@@ -234,78 +120,11 @@ subroutine PMMisciblePostSolve(this)
   ! Date: 11/27/13
   ! 
 
-  use Global_module
-
   implicit none
   
   class(pm_miscible_type) :: this
-  
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscible%PostSolve()')
-#endif
   
 end subroutine PMMisciblePostSolve
-
-! ************************************************************************** !
-
-subroutine PMMiscibleFinalizeTimestep(this)
-  ! 
-  ! Author: Gautam Bisht
-  ! Date: 11/27/13
-  ! 
-
-  use Miscible_module, only : MiscibleMaxChange
-  use Global_module
-
-  implicit none
-  
-  class(pm_miscible_type) :: this
-  
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscible%FinalizeTimestep()')
-#endif
-  
-  if (this%option%ntrandof > 0) then ! store final saturations, etc. for transport
-    call GlobalUpdateAuxVars(this%realization,TIME_TpDT,this%option%time)
-  endif
-  
-  call MiscibleMaxChange(this%realization)
-  if (this%option%print_screen_flag) then
-    write(*,'("  --> max chng: dpmx= ",1pe12.4, &
-      & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
-          this%option%dpmax,this%option%dtmpmax,this%option%dcmax, &
-          this%option%dsmax
-  endif
-  if (this%option%print_file_flag) then
-    write(this%option%fid_out,'("  --> max chng: dpmx= ",1pe12.4, &
-      & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
-      this%option%dpmax,this%option%dtmpmax,this%option%dcmax, &
-      this%option%dsmax
-  endif  
-  
-end subroutine PMMiscibleFinalizeTimestep
-
-! ************************************************************************** !
-
-function PMMiscibleAcceptSolution(this)
-  ! 
-  ! Author: Gautam Bisht
-  ! Date: 11/27/13
-  ! 
-
-  implicit none
-  
-  class(pm_miscible_type) :: this
-  
-  PetscBool :: PMMiscibleAcceptSolution
-  
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscible%AcceptSolution()')
-#endif
-  ! do nothing
-  PMMiscibleAcceptSolution = PETSC_TRUE
-  
-end function PMMiscibleAcceptSolution
 
 ! ************************************************************************** !
 
@@ -375,65 +194,6 @@ end subroutine PMMiscibleUpdateTimestep
 
 ! ************************************************************************** !
 
-recursive subroutine PMMiscibleInitializeRun(this)
-  ! 
-  ! Initializes the time stepping
-  ! 
-  ! Author: Gautam Bisht
-  ! Date: 11/27/13
-  ! 
-
-  use Miscible_module, only : MiscibleUpdateSolution
-
-  implicit none
-  
-  class(pm_miscible_type) :: this
-  
- 
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscible%InitializeRun()')
-#endif
-  
-  ! restart
-  ! init to steady state
-  
-#if 0  
-  if (flow_read .and. option%overwrite_restart_flow) then
-    call RealizationRevertFlowParameters(realization)
-  endif  
-  call MiscibleUpdateSolution(this%realization)
-#endif  
-    
-end subroutine PMMiscibleInitializeRun
-
-! ************************************************************************** !
-
-recursive subroutine PMMiscibleFinalizeRun(this)
-  ! 
-  ! Finalizes the time stepping
-  ! 
-  ! Author: Gautam Bisht
-  ! Date: 11/27/13
-  ! 
-
-  implicit none
-  
-  class(pm_miscible_type) :: this
-  
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscible%FinalizeRun()')
-#endif
-  
-  ! do something here
-  
-  if (associated(this%next)) then
-    call this%next%FinalizeRun()
-  endif  
-  
-end subroutine PMMiscibleFinalizeRun
-
-! ************************************************************************** !
-
 subroutine PMMiscibleResidual(this,snes,xx,r,ierr)
   ! 
   ! Author: Gautam Bisht
@@ -450,16 +210,7 @@ subroutine PMMiscibleResidual(this,snes,xx,r,ierr)
   Vec :: r
   PetscErrorCode :: ierr
   
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscible%Residual()')
-#endif
-  
-  select case(this%realization%discretization%itype)
-    case(STRUCTURED_GRID_MIMETIC)
-!      call MiscibleResidualMFDLP(snes,xx,r,this%realization,ierr)
-    case default
-      call MiscibleResidual(snes,xx,r,this%realization,ierr)
-  end select
+  call MiscibleResidual(snes,xx,r,this%realization,ierr)
 
 end subroutine PMMiscibleResidual
 
@@ -481,16 +232,7 @@ subroutine PMMiscibleJacobian(this,snes,xx,A,B,ierr)
   Mat :: A, B
   PetscErrorCode :: ierr
   
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscible%Jacobian()')
-#endif
-  
-  select case(this%realization%discretization%itype)
-    case(STRUCTURED_GRID_MIMETIC)
-!      call MiscibleJacobianMFDLP(snes,xx,A,B,this%realization,ierr)
-    case default
-      call MiscibleJacobian(snes,xx,A,B,this%realization,ierr)
-  end select
+  call MiscibleJacobian(snes,xx,A,B,this%realization,ierr)
 
 end subroutine PMMiscibleJacobian
     
@@ -515,13 +257,7 @@ subroutine PMMiscibleCheckUpdatePre(this,line_search,P,dP,changed,ierr)
   PetscBool :: changed
   PetscErrorCode :: ierr
   
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscible%CheckUpdatePre()')
-#endif
-  
-#ifndef SIMPLIFY  
   call MiscibleCheckUpdatePre(line_search,P,dP,changed,this%realization,ierr)
-#endif
 
 end subroutine PMMiscibleCheckUpdatePre
 
@@ -547,14 +283,8 @@ subroutine PMMiscibleCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
   PetscBool :: P1_changed
   PetscErrorCode :: ierr
   
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscible%CheckUpdatePost()')
-#endif
-  
-#ifndef SIMPLIFY  
   call MiscibleCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
                                P1_changed,this%realization,ierr)
-#endif
 
 end subroutine PMMiscibleCheckUpdatePost
 #endif
@@ -573,12 +303,7 @@ subroutine PMMiscibleTimeCut(this)
   
   class(pm_miscible_type) :: this
   
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscible%TimeCut()')
-#endif
-  
-  this%option%flow_dt = this%option%dt
-
+  call SubsurfaceTimeCut(this)
   call MiscibleTimeCut(this%realization)
 
 end subroutine PMMiscibleTimeCut
@@ -592,31 +317,30 @@ subroutine PMMiscibleUpdateSolution(this)
   ! 
 
   use Miscible_module, only : MiscibleUpdateSolution
-  use Condition_module
 
   implicit none
   
   class(pm_miscible_type) :: this
   
-  PetscBool :: force_update_flag = PETSC_FALSE
-
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscible%UpdateSolution()')
-#endif
-
-  ! begin from RealizationUpdate()
-  call FlowConditionUpdate(this%realization%flow_conditions, &
-                           this%realization%option, &
-                           this%realization%option%time)
-  ! right now, RealizUpdateAllCouplerAuxVars only updates flow
-  call RealizUpdateAllCouplerAuxVars(this%realization,force_update_flag)
-  if (associated(this%realization%uniform_velocity_dataset)) then
-    call RealizUpdateUniformVelocity(this%realization)
-  endif  
-  ! end from RealizationUpdate()
+  call SubsurfaceUpdateSolution(this)
   call MiscibleUpdateSolution(this%realization)
 
 end subroutine PMMiscibleUpdateSolution     
+
+! ************************************************************************** !
+
+subroutine PMMiscibleUpdateAuxvars(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 04/21/14
+
+  implicit none
+  
+  class(pm_miscible_type) :: this
+
+  call MiscibleUpdateAuxVars(this%realization)
+
+end subroutine PMMiscibleUpdateAuxvars   
 
 ! ************************************************************************** !
 
@@ -634,11 +358,19 @@ subroutine PMMiscibleMaxChange(this)
   
   class(pm_miscible_type) :: this
   
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscible%MaxChange()')
-#endif
-
   call MiscibleMaxChange(this%realization)
+  if (this%option%print_screen_flag) then
+    write(*,'("  --> max chng: dpmx= ",1pe12.4, &
+      & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
+          this%option%dpmax,this%option%dtmpmax,this%option%dcmax, &
+          this%option%dsmax
+  endif
+  if (this%option%print_file_flag) then
+    write(this%option%fid_out,'("  --> max chng: dpmx= ",1pe12.4, &
+      & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
+      this%option%dpmax,this%option%dtmpmax,this%option%dcmax, &
+      this%option%dsmax
+  endif  
 
 end subroutine PMMiscibleMaxChange
 
@@ -657,63 +389,10 @@ subroutine PMMiscibleComputeMassBalance(this,mass_balance_array)
   class(pm_miscible_type) :: this
   PetscReal :: mass_balance_array(:)
   
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscible%ComputeMassBalance()')
-#endif
-
-#ifndef SIMPLIFY
   !geh: currently does not include "trapped" mass
   !call MiscibleComputeMassBalance(this%realization,mass_balance_array)
-#endif
 
 end subroutine PMMiscibleComputeMassBalance
-
-! ************************************************************************** !
-
-subroutine PMMiscibleCheckpoint(this,viewer)
-  ! 
-  ! Checkpoints data associated with Miscible PM
-  ! 
-  ! Author: Gautam Bisht
-  ! Date: 11/27/13
-  ! 
-
-  use Checkpoint_module
-
-  implicit none
-#include "finclude/petscviewer.h"      
-
-  class(pm_miscible_type) :: this
-  PetscViewer :: viewer
-  
-  call CheckpointFlowProcessModel(viewer,this%realization) 
-  
-end subroutine PMMiscibleCheckpoint
-
-! ************************************************************************** !
-
-subroutine PMMiscibleRestart(this,viewer)
-  ! 
-  ! Restarts data associated with Miscible PM
-  ! 
-  ! Author: Gautam Bisht
-  ! Date: 11/27/13
-  ! 
-
-  use Checkpoint_module
-  use Miscible_module, only : MiscibleUpdateAuxVars
-
-  implicit none
-#include "finclude/petscviewer.h"      
-
-  class(pm_miscible_type) :: this
-  PetscViewer :: viewer
-  
-  call RestartFlowProcessModel(viewer,this%realization)
-  call MiscibleUpdateAuxVars(this%realization)
-  call this%UpdateSolution()
-  
-end subroutine PMMiscibleRestart
 
 ! ************************************************************************** !
 
@@ -735,14 +414,9 @@ subroutine PMMiscibleDestroy(this)
     call this%next%Destroy()
   endif
 
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscibleDestroy()')
-#endif
-
-#ifndef SIMPLIFY 
+  ! preserve this ordering
   call MiscibleDestroy(this%realization)
-#endif
-  call this%comm1%Destroy()
+  call PMSubsurfaceDestroy(this)
   
 end subroutine PMMiscibleDestroy
   

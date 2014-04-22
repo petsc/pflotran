@@ -1,11 +1,7 @@
 module PM_General_class
 
   use PM_Base_class
-!geh: using General_module here fails with gfortran (internal compiler error)
-!  use General_module
-  use Realization_class
-  use Communicator_Base_module
-  use Option_module
+  use PM_Subsurface_class
   
   use PFLOTRAN_Constants_module
 
@@ -22,8 +18,6 @@ module PM_General_class
 #include "finclude/petscsnes.h"
 
   type, public, extends(pm_base_type) :: pm_general_type
-    class(realization_type), pointer :: realization
-    class(communicator_type), pointer :: comm1
     PetscReal :: dPmax
     PetscReal :: dTmax
     PetscReal :: dXmax
@@ -33,26 +27,17 @@ module PM_General_class
     PetscReal :: dXmax_allowable
     PetscReal :: dSmax_allowable
   contains
-    procedure, public :: Init => PMGeneralInit
-    procedure, public :: PMGeneralSetRealization
-    procedure, public :: InitializeRun => PMGeneralInitializeRun
-    procedure, public :: FinalizeRun => PMGeneralFinalizeRun
     procedure, public :: InitializeTimestep => PMGeneralInitializeTimestep
-    procedure, public :: FinalizeTimestep => PMGeneralFinalizeTimeStep
     procedure, public :: Residual => PMGeneralResidual
     procedure, public :: Jacobian => PMGeneralJacobian
     procedure, public :: UpdateTimestep => PMGeneralUpdateTimestep
-    procedure, public :: PreSolve => PMGeneralPreSolve
-    procedure, public :: PostSolve => PMGeneralPostSolve
-    procedure, public :: AcceptSolution => PMGeneralAcceptSolution
     procedure, public :: CheckUpdatePre => PMGeneralCheckUpdatePre
     procedure, public :: CheckUpdatePost => PMGeneralCheckUpdatePost
     procedure, public :: TimeCut => PMGeneralTimeCut
     procedure, public :: UpdateSolution => PMGeneralUpdateSolution
+    procedure, public :: UpdateAuxvars => PMGeneralUpdateAuxvars
     procedure, public :: MaxChange => PMGeneralMaxChange
     procedure, public :: ComputeMassBalance => PMGeneralComputeMassBalance
-    procedure, public :: Checkpoint => PMGeneralCheckpoint    
-    procedure, public :: Restart => PMGeneralRestart  
     procedure, public :: Destroy => PMGeneralDestroy
   end type pm_general_type
   
@@ -81,10 +66,7 @@ function PMGeneralCreate()
 #endif  
 
   allocate(general_pm)
-  nullify(general_pm%option)
-  nullify(general_pm%output_option)
-  nullify(general_pm%realization)
-  nullify(general_pm%comm1)
+
   general_pm%dPmax = 0.d0
   general_pm%dTmax = 0.d0
   general_pm%dXmax = 0.d0
@@ -94,7 +76,7 @@ function PMGeneralCreate()
   general_pm%dXmax_allowable = 0.5d0
   general_pm%dSmax_allowable = 1.d0
   
-  call PMBaseCreate(general_pm)
+  call PMSubsurfaceCreate(general_pm)
   general_pm%name = 'PMGeneral'
 
   PMGeneralCreate => general_pm
@@ -103,79 +85,31 @@ end function PMGeneralCreate
 
 ! ************************************************************************** !
 
-subroutine PMGeneralInit(this)
+recursive subroutine PMSubsurfaceInitializeRun(this)
   ! 
-  ! Initializes variables associated with Richard
+  ! Initializes the time stepping
   ! 
   ! Author: Glenn Hammond
-  ! Date: 03/14/13
-  ! 
-
-#ifndef SIMPLIFY  
-  use Discretization_module
-  use Structured_Communicator_class
-  use Unstructured_Communicator_class
-  use Grid_module 
-#endif
+  ! Date: 04/21/14 
 
   implicit none
   
-  class(pm_general_type) :: this
+  class(pm_subsurface_type) :: this
   
+  PetscInt :: i
   PetscErrorCode :: ierr
 
-#ifdef PM_GENERAL_DEBUG  
-  call printMsg(this%option,'PMGeneral%Init()')
-#endif
-
-#ifndef SIMPLIFY  
-  ! set up communicator
-  select case(this%realization%discretization%itype)
-    case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
-      this%comm1 => StructuredCommunicatorCreate()
-    case(UNSTRUCTURED_GRID)
-      this%comm1 => UnstructuredCommunicatorCreate()
-  end select
-  call this%comm1%SetDM(this%realization%discretization%dm_1dof)
-#endif
-
-  ! set the communicator
-  this%realization%comm1 => this%comm1
-  
-end subroutine PMGeneralInit
-
-! ************************************************************************** !
-
-subroutine PMGeneralSetRealization(this,realization)
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/14/13
-  ! 
-
-  use Realization_class
-  use Grid_module
-
-  implicit none
-  
-  class(pm_general_type) :: this
-  class(realization_type), pointer :: realization
-
-#ifdef PM_GENERAL_DEBUG  
-  call printMsg(this%option,'PMGeneral%SetRealization()')
-#endif
-  
-  this%realization => realization
-  this%realization_base => realization
-
-  if (realization%discretization%itype == STRUCTURED_GRID_MIMETIC) then 
-    this%solution_vec = realization%field%flow_xx_faces
-    this%residual_vec = realization%field%flow_r_faces
-  else
-    this%solution_vec = realization%field%flow_xx
-    this%residual_vec = realization%field%flow_r
-  endif
-  
-end subroutine PMGeneralSetRealization
+  ! need to allocate vectors for max change
+  call VecDuplicateVecsF90(this%realization%field%work,SIX_INTEGER, &
+                           this%realization%field%max_change_vecs,ierr)
+  ! set initial values
+  do i = 1, 6
+    call RealizationGetVariable(this%realization, &
+                                this%realization%field%max_change_vecs(i), &
+                                max_change_ivar(i),max_change_isubvar(i))
+  enddo
+    
+end subroutine PMSubsurfaceInitializeRun
 
 ! ************************************************************************** !
 
@@ -189,141 +123,26 @@ subroutine PMGeneralInitializeTimestep(this)
 
   use General_module, only : GeneralInitializeTimestep
   use Global_module
-  use Variables_module, only : POROSITY, TORTUOSITY, PERMEABILITY_X, &
-                               PERMEABILITY_Y, PERMEABILITY_Z
+  use Variables_module, only : TORTUOSITY
   use Material_module, only : MaterialAuxVarCommunicate
   
   implicit none
   
   class(pm_general_type) :: this
 
-#ifdef PM_GENERAL_DEBUG  
-  call printMsg(this%option,'PMGeneral%InitializeTimestep()')
-#endif
-
-  this%option%flow_dt = this%option%dt
-
-  call MaterialAuxVarCommunicate(this%comm1, &
-                                 this%realization%patch%aux%Material, &
-                                 this%realization%field%work_loc,POROSITY,0)
+  call PMSubsurfaceInitializeTimestep(this)                                 
+!geh:remove   everywhere                                
   call MaterialAuxVarCommunicate(this%comm1, &
                                  this%realization%patch%aux%Material, &
                                  this%realization%field%work_loc,TORTUOSITY,0)
-  call MaterialAuxVarCommunicate(this%comm1, &
-                                 this%realization%patch%aux%Material, &
-                                 this%realization%field%work_loc, &
-                                 PERMEABILITY_X,0)
-  call MaterialAuxVarCommunicate(this%comm1, &
-                                 this%realization%patch%aux%Material, &
-                                 this%realization%field%work_loc, &
-                                 PERMEABILITY_Y,0)
-  call MaterialAuxVarCommunicate(this%comm1, &
-                                 this%realization%patch%aux%Material, &
-                                 this%realization%field%work_loc, &
-                                 PERMEABILITY_Z,0)
-
+                                 
   if (this%option%print_screen_flag) then
     write(*,'(/,2("=")," GENERAL FLOW ",62("="))')
   endif
   
-  if (this%option%ntrandof > 0) then ! store initial saturations for transport
-    call GlobalUpdateAuxVars(this%realization,TIME_T,this%option%time)
-  endif  
-  
   call GeneralInitializeTimestep(this%realization)
   
 end subroutine PMGeneralInitializeTimestep
-
-! ************************************************************************** !
-
-subroutine PMGeneralPreSolve(this)
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/14/13
-  ! 
-
-  use Global_module
-
-  implicit none
-  
-  class(pm_general_type) :: this
-  
-#ifdef PM_GENERAL_DEBUG  
-  call printMsg(this%option,'PMGeneral%PreSolve()')
-#endif
-
-end subroutine PMGeneralPreSolve
-
-! ************************************************************************** !
-
-subroutine PMGeneralPostSolve(this)
-  ! 
-  ! PMGeneralUpdatePostSolve:
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/14/13
-  ! 
-
-  use Global_module
-
-  implicit none
-  
-  class(pm_general_type) :: this
-  
-#ifdef PM_GENERAL_DEBUG  
-  call printMsg(this%option,'PMGeneral%PostSolve()')
-#endif
-  
-end subroutine PMGeneralPostSolve
-
-! ************************************************************************** !
-
-subroutine PMGeneralFinalizeTimestep(this)
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/14/13
-  ! 
-
-  use Global_module
-
-  implicit none
-  
-  class(pm_general_type) :: this
-  
-#ifdef PM_GENERAL_DEBUG  
-  call printMsg(this%option,'PMGeneral%FinalizeTimestep()')
-#endif
-  
-  if (this%option%ntrandof > 0) then 
-    ! store final saturations, etc. for transport
-    call GlobalUpdateAuxVars(this%realization,TIME_TpDT,this%option%time)
-  endif
-  
-  call this%MaxChange()
-  
-end subroutine PMGeneralFinalizeTimestep
-
-! ************************************************************************** !
-
-function PMGeneralAcceptSolution(this)
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/14/13
-  ! 
-
-  implicit none
-  
-  class(pm_general_type) :: this
-  
-  PetscBool :: PMGeneralAcceptSolution
-  
-#ifdef PM_GENERAL_DEBUG  
-  call printMsg(this%option,'PMGeneral%AcceptSolution()')
-#endif
-  ! do nothing
-  PMGeneralAcceptSolution = PETSC_TRUE
-  
-end function PMGeneralAcceptSolution
 
 ! ************************************************************************** !
 
@@ -371,68 +190,6 @@ end subroutine PMGeneralUpdateTimestep
 
 ! ************************************************************************** !
 
-recursive subroutine PMGeneralInitializeRun(this)
-  ! 
-  ! Initializes the time stepping
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/18/13
-  ! 
-
-  use General_module, only : GeneralUpdateSolution
-
-  implicit none
-  
-  class(pm_general_type) :: this
-  
- 
-#ifdef PM_GENERAL_DEBUG  
-  call printMsg(this%option,'PMGeneral%InitializeRun()')
-#endif
-  
-  ! restart
-  ! init to steady state
-  
-#if 0  
-  if (flow_read .and. option%overwrite_restart_flow) then
-    call RealizationRevertFlowParameters(realization)
-  endif  
-  call GeneralUpdateSolution(this%realization)
-#endif  
-
-  ! need to initialize values store in max change vectors
-  call this%MaxChange()
-    
-end subroutine PMGeneralInitializeRun
-
-! ************************************************************************** !
-
-recursive subroutine PMGeneralFinalizeRun(this)
-  ! 
-  ! Finalizes the time stepping
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/18/13
-  ! 
-
-  implicit none
-  
-  class(pm_general_type) :: this
-  
-#ifdef PM_GENERAL_DEBUG  
-  call printMsg(this%option,'PMGeneral%FinalizeRun()')
-#endif
-  
-  ! do something here
-  
-  if (associated(this%next)) then
-    call this%next%FinalizeRun()
-  endif  
-  
-end subroutine PMGeneralFinalizeRun
-
-! ************************************************************************** !
-
 subroutine PMGeneralResidual(this,snes,xx,r,ierr)
   ! 
   ! Author: Glenn Hammond
@@ -449,16 +206,8 @@ subroutine PMGeneralResidual(this,snes,xx,r,ierr)
   Vec :: r
   PetscErrorCode :: ierr
   
-#ifdef PM_GENERAL_DEBUG  
-  call printMsg(this%option,'PMGeneral%Residual()')
-#endif
-  
-  select case(this%realization%discretization%itype)
-    case(STRUCTURED_GRID_MIMETIC)
-!      call GeneralResidualMFDLP(snes,xx,r,this%realization,ierr)
-    case default
-      call GeneralResidual(snes,xx,r,this%realization,ierr)
-  end select
+  call SubsurfaceUpdatePropertiesNI(this)
+  call GeneralResidual(snes,xx,r,this%realization,ierr)
 
 end subroutine PMGeneralResidual
 
@@ -480,16 +229,7 @@ subroutine PMGeneralJacobian(this,snes,xx,A,B,ierr)
   Mat :: A, B
   PetscErrorCode :: ierr
   
-#ifdef PM_GENERAL_DEBUG  
-  call printMsg(this%option,'PMGeneral%Jacobian()')
-#endif
-  
-  select case(this%realization%discretization%itype)
-    case(STRUCTURED_GRID_MIMETIC)
-!      call GeneralJacobianMFDLP(snes,xx,A,B,this%realization,ierr)
-    case default
-      call GeneralJacobian(snes,xx,A,B,this%realization,ierr)
-  end select
+  call GeneralJacobian(snes,xx,A,B,this%realization,ierr)
 
 end subroutine PMGeneralJacobian
 
@@ -512,20 +252,14 @@ subroutine PMGeneralCheckUpdatePre(this,line_search,P,dP,changed,ierr)
   PetscBool :: changed
   PetscErrorCode :: ierr
   
-#ifdef PM_GENERAL_DEBUG  
-  call printMsg(this%option,'PMGeneral%CheckUpdatePre()')
-#endif
-  
-#ifndef SIMPLIFY  
   call GeneralCheckUpdatePre(line_search,P,dP,changed,this%realization,ierr)
-#endif
 
 end subroutine PMGeneralCheckUpdatePre
 
 ! ************************************************************************** !
 
 subroutine PMGeneralCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
-                                  P1_changed,ierr)
+                                    P1_changed,ierr)
   ! 
   ! Author: Glenn Hammond
   ! Date: 03/14/13
@@ -544,14 +278,8 @@ subroutine PMGeneralCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
   PetscBool :: P1_changed
   PetscErrorCode :: ierr
   
-#ifdef PM_GENERAL_DEBUG  
-  call printMsg(this%option,'PMGeneral%CheckUpdatePost()')
-#endif
-  
-#ifndef SIMPLIFY  
   call GeneralCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
                                P1_changed,this%realization,ierr)
-#endif
 
 end subroutine PMGeneralCheckUpdatePost
 
@@ -569,12 +297,7 @@ subroutine PMGeneralTimeCut(this)
   
   class(pm_general_type) :: this
   
-#ifdef PM_GENERAL_DEBUG  
-  call printMsg(this%option,'PMGeneral%TimeCut()')
-#endif
-  
-  this%option%flow_dt = this%option%dt
-
+  call SubsurfaceTimeCut(this)
   call GeneralTimeCut(this%realization)
 
 end subroutine PMGeneralTimeCut
@@ -588,31 +311,30 @@ subroutine PMGeneralUpdateSolution(this)
   ! 
 
   use General_module, only : GeneralUpdateSolution
-  use Condition_module
 
   implicit none
   
   class(pm_general_type) :: this
   
-  PetscBool :: force_update_flag = PETSC_FALSE
-
-#ifdef PM_GENERAL_DEBUG  
-  call printMsg(this%option,'PMGeneral%UpdateSolution()')
-#endif
-
-  ! begin from RealizationUpdate()
-  call FlowConditionUpdate(this%realization%flow_conditions, &
-                           this%realization%option, &
-                           this%realization%option%time)
-  ! right now, RealizUpdateAllCouplerAuxVars only updates flow
-  call RealizUpdateAllCouplerAuxVars(this%realization,force_update_flag)
-  if (associated(this%realization%uniform_velocity_dataset)) then
-    call RealizUpdateUniformVelocity(this%realization)
-  endif  
-  ! end from RealizationUpdate()
+  call SubsurfaceUpdateSolution(this)
   call GeneralUpdateSolution(this%realization)
 
 end subroutine PMGeneralUpdateSolution     
+
+! ************************************************************************** !
+
+subroutine PMGeneralUpdateAuxvars(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 04/21/14
+
+  implicit none
+  
+  class(pm_general_type) :: this
+
+  call GeneralUpdateAuxVars(this%realization,PETSC_FALSE)
+
+end subroutine PMGeneralUpdateAuxvars   
 
 ! ************************************************************************** !
 
@@ -647,13 +369,7 @@ subroutine PMGeneralMaxChange(this)
   PetscInt :: i
   PetscInt :: local_id, ghosted_id
 
-  PetscInt, parameter :: ivar(6) = [LIQUID_PRESSURE, GAS_PRESSURE, &
-                                    AIR_PRESSURE, LIQUID_MOLE_FRACTION, &
-                                    TEMPERATURE, GAS_SATURATION]
-  ! based on option%water_id = 1
-  PetscInt, parameter :: isubvar(6) = [0,0,0,1,0,0]
   
-
   PetscErrorCode :: ierr
   
   realization => this%realization
@@ -661,52 +377,39 @@ subroutine PMGeneralMaxChange(this)
   field => realization%field
   grid => realization%patch%grid
 
-#ifdef PM_GENERAL_DEBUG  
-  call printMsg(this%option,'PMGeneral%MaxChange()')
-#endif
-
   max_change_global = 0.d0
   max_change_local = 0.d0
-  if (associated(field%max_change_vecs)) then
-    do i = 1, 6
-      call RealizationGetVariable(realization,field%work,ivar(i),isubvar(i))
-      ! yes, we could use VecWAXPY and a norm here, but we need the ability
-      ! to customize
-      call VecGetArrayF90(field%work,vec_ptr,ierr)
-      call VecGetArrayF90(field%max_change_vecs(i),vec_ptr2,ierr)
-      max_change_local(i) = maxval(dabs(vec_ptr(:)-vec_ptr2(:)))
-      call VecRestoreArrayF90(field%work,vec_ptr,ierr)
-      call VecRestoreArrayF90(field%max_change_vecs(i),vec_ptr2,ierr)
-      call VecCopy(field%work,field%max_change_vecs(i),ierr)
-    enddo
-    call MPI_Allreduce(max_change_local,max_change_global,SIX_INTEGER, &
-                       MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
-    ! print them out
-    if (OptionPrintToScreen(option)) then
-      write(*,'("  --> max chng: dpl= ",1pe12.4, " dpg= ",1pe12.4,&
-        & " dpa= ",1pe12.4,/,15x," dxa= ",1pe12.4,"  dt= ",1pe12.4,&
-        & " dsg= ",1pe12.4)') &
-        max_change_global(1:6)
-    endif
-    if (OptionPrintToScreen(option)) then
-      write(option%fid_out,'("  --> max chng: dpl= ",1pe12.4, " dpg= ",1pe12.4,&
-        & " dpa= ",1pe12.4,/,15x," dxa= ",1pe12.4,"  dt= ",1pe12.4, &
-        & " dsg= ",1pe12.4)') &
-        max_change_global(1:6)
-    endif
-    this%dPmax = maxval(max_change_global(1:3))
-    this%dXmax = max_change_global(4)
-    this%dTmax = max_change_global(5)
-    this%dSmax = max_change_global(6)
-  else
-    call VecDuplicateVecsF90(field%work,SIX_INTEGER, &
-                             field%max_change_vecs,ierr)
-    ! set initial values
-    do i = 1, 6
-      call RealizationGetVariable(realization,field%max_change_vecs(i), &
-                                  ivar(i),isubvar(i))
-    enddo
+  do i = 1, 6
+    call RealizationGetVariable(realization,field%work,max_change_ivar(i), &
+                                max_change_isubvar(i))
+    ! yes, we could use VecWAXPY and a norm here, but we need the ability
+    ! to customize
+    call VecGetArrayF90(field%work,vec_ptr,ierr)
+    call VecGetArrayF90(field%max_change_vecs(i),vec_ptr2,ierr)
+    max_change_local(i) = maxval(dabs(vec_ptr(:)-vec_ptr2(:)))
+    call VecRestoreArrayF90(field%work,vec_ptr,ierr)
+    call VecRestoreArrayF90(field%max_change_vecs(i),vec_ptr2,ierr)
+    call VecCopy(field%work,field%max_change_vecs(i),ierr)
+  enddo
+  call MPI_Allreduce(max_change_local,max_change_global,SIX_INTEGER, &
+                      MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
+  ! print them out
+  if (OptionPrintToScreen(option)) then
+    write(*,'("  --> max chng: dpl= ",1pe12.4, " dpg= ",1pe12.4,&
+      & " dpa= ",1pe12.4,/,15x," dxa= ",1pe12.4,"  dt= ",1pe12.4,&
+      & " dsg= ",1pe12.4)') &
+      max_change_global(1:6)
   endif
+  if (OptionPrintToFile(option)) then
+    write(option%fid_out,'("  --> max chng: dpl= ",1pe12.4, " dpg= ",1pe12.4,&
+      & " dpa= ",1pe12.4,/,15x," dxa= ",1pe12.4,"  dt= ",1pe12.4, &
+      & " dsg= ",1pe12.4)') &
+      max_change_global(1:6)
+  endif
+  this%dPmax = maxval(max_change_global(1:3))
+  this%dXmax = max_change_global(4)
+  this%dTmax = max_change_global(5)
+  this%dSmax = max_change_global(6)
   
 end subroutine PMGeneralMaxChange
 
@@ -725,62 +428,9 @@ subroutine PMGeneralComputeMassBalance(this,mass_balance_array)
   class(pm_general_type) :: this
   PetscReal :: mass_balance_array(:)
   
-#ifdef PM_GENERAL_DEBUG  
-  call printMsg(this%option,'PMGeneral%ComputeMassBalance()')
-#endif
-
-#ifndef SIMPLIFY  
   call GeneralComputeMassBalance(this%realization,mass_balance_array)
-#endif
 
 end subroutine PMGeneralComputeMassBalance
-
-! ************************************************************************** !
-
-subroutine PMGeneralCheckpoint(this,viewer)
-  ! 
-  ! Checkpoints data associated with General PM
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 07/26/13
-  ! 
-
-  use Checkpoint_module
-
-  implicit none
-#include "finclude/petscviewer.h"      
-
-  class(pm_general_type) :: this
-  PetscViewer :: viewer
-  
-  call CheckpointFlowProcessModel(viewer,this%realization) 
-  
-end subroutine PMGeneralCheckpoint
-
-! ************************************************************************** !
-
-subroutine PMGeneralRestart(this,viewer)
-  ! 
-  ! Restarts data associated with General PM
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 07/30/13
-  ! 
-
-  use Checkpoint_module
-  use General_module, only : GeneralUpdateAuxVars
-
-  implicit none
-#include "finclude/petscviewer.h"      
-
-  class(pm_general_type) :: this
-  PetscViewer :: viewer
-  
-  call RestartFlowProcessModel(viewer,this%realization)
-  call GeneralUpdateAuxVars(this%realization,PETSC_FALSE)
-  call this%UpdateSolution()
-  
-end subroutine PMGeneralRestart
 
 ! ************************************************************************** !
 
@@ -802,14 +452,9 @@ subroutine PMGeneralDestroy(this)
     call this%next%Destroy()
   endif
 
-#ifdef PM_GENERAL_DEBUG  
-  call printMsg(this%option,'PMGeneralDestroy()')
-#endif
-
-#ifndef SIMPLIFY 
+  ! preserve this ordering
   call GeneralDestroy(this%realization)
-#endif
-  call this%comm1%Destroy()
+  call PMSubsurfaceDestroy(this)
   
 end subroutine PMGeneralDestroy
   

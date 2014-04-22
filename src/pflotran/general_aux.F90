@@ -1,6 +1,9 @@
 module General_Aux_module
 
   use PFLOTRAN_Constants_module
+  use Variables_module, only : LIQUID_PRESSURE, GAS_PRESSURE, AIR_PRESSURE, &
+                               LIQUID_MOLE_FRACTION, TEMPERATURE, &
+                               GAS_SATURATION
 
   implicit none
   
@@ -10,6 +13,12 @@ module General_Aux_module
 
   PetscReal, public :: window_epsilon = 1.d-4
   PetscReal, public :: fmw_comp(2) = [FMWH2O,FMWAIR]  
+  PetscInt, parameter, public :: max_change_ivar(6) = [LIQUID_PRESSURE, &
+                                           GAS_PRESSURE, AIR_PRESSURE, &
+                                           LIQUID_MOLE_FRACTION, TEMPERATURE, &
+                                           GAS_SATURATION]
+  ! based on option%water_id = 1
+  PetscInt, parameter :: max_change_isubvar(6) = [0,0,0,1,0,0]  
 
   ! thermodynamic state of fluid ids
   PetscInt, parameter, public :: NULL_STATE = 0

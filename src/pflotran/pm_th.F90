@@ -1,6 +1,7 @@
 module PM_TH_class
 
   use PM_Base_class
+  use PM_Subsurface_class
 !geh: using TH_module here fails with gfortran (internal compiler error)
 !  use TH_module
   use Realization_class
@@ -22,30 +23,22 @@ module PM_TH_class
 #include "finclude/petscsnes.h"
 
   type, public, extends(pm_base_type) :: pm_th_type
-    class(realization_type), pointer :: realization
-    class(communicator_type), pointer :: comm1
     class(communicator_type), pointer :: commN
   contains
     procedure, public :: Init => PMTHInit
-    procedure, public :: PMTHSetRealization
-    procedure, public :: InitializeRun => PMTHInitializeRun
-    procedure, public :: FinalizeRun => PMTHFinalizeRun
     procedure, public :: InitializeTimestep => PMTHInitializeTimestep
-    procedure, public :: FinalizeTimestep => PMTHFinalizeTimeStep
     procedure, public :: Residual => PMTHResidual
     procedure, public :: Jacobian => PMTHJacobian
     procedure, public :: UpdateTimestep => PMTHUpdateTimestep
     procedure, public :: PreSolve => PMTHPreSolve
     procedure, public :: PostSolve => PMTHPostSolve
-    procedure, public :: AcceptSolution => PMTHAcceptSolution
     procedure, public :: CheckUpdatePre => PMTHCheckUpdatePre
     procedure, public :: CheckUpdatePost => PMTHCheckUpdatePost
     procedure, public :: TimeCut => PMTHTimeCut
     procedure, public :: UpdateSolution => PMTHUpdateSolution
+    procedure, public :: UpdateAuxvars => PMTHUpdateAuxvars
     procedure, public :: MaxChange => PMTHMaxChange
     procedure, public :: ComputeMassBalance => PMTHComputeMassBalance
-    procedure, public :: Checkpoint => PMTHCheckpoint
-    procedure, public :: Restart => PMTHRestart
     procedure, public :: Destroy => PMTHDestroy
   end type pm_th_type
   
@@ -74,13 +67,10 @@ function PMTHCreate()
 #endif  
 
   allocate(th_pm)
-  nullify(th_pm%option)
-  nullify(th_pm%output_option)
-  nullify(th_pm%realization)
-  nullify(th_pm%comm1)
+
   nullify(th_pm%commN)
 
-  call PMBaseCreate(th_pm)
+  call PMSubsurfaceCreate(th_pm)
   th_pm%name = 'PMTH'
 
   PMTHCreate => th_pm
@@ -97,69 +87,27 @@ subroutine PMTHInit(this)
   ! Date: 03/90/13
   ! 
 
-#ifndef SIMPLIFY  
   use Discretization_module
   use Structured_Communicator_class
   use Unstructured_Communicator_class
   use Grid_module 
-#endif
 
   implicit none
   
   class(pm_th_type) :: this
 
-#ifdef PM_TH_DEBUG
-  call printMsg(this%option,'PMTH%Init()')
-#endif
+  call PMSubsurfaceInit(this)
   
-#ifndef SIMPLIFY  
   ! set up communicator
   select case(this%realization%discretization%itype)
     case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
-      this%comm1 => StructuredCommunicatorCreate()
       this%commN => StructuredCommunicatorCreate()
     case(UNSTRUCTURED_GRID)
-      this%comm1 => UnstructuredCommunicatorCreate()
       this%commN => UnstructuredCommunicatorCreate()
   end select
-  call this%comm1%SetDM(this%realization%discretization%dm_1dof)
   call this%commN%SetDM(this%realization%discretization%dm_nflowdof)
-#endif
 
-  ! set the communicator
-  this%realization%comm1 => this%comm1
-  
 end subroutine PMTHInit
-
-! ************************************************************************** !
-
-subroutine PMTHSetRealization(this,realization)
-  ! 
-  ! This routine
-  ! 
-  ! Author: Gautam Bisht, LBNL
-  ! Date: 03/90/13
-  ! 
-
-  use Realization_class
-  use Grid_module
-
-  implicit none
-  
-  class(pm_th_type) :: this
-  class(realization_type), pointer :: realization
-
-#ifdef PM_TH_DEBUG
-  call printMsg(this%option,'PMTHSetRealization%SetRealization()')
-#endif
-  
-  this%realization => realization
-  this%realization_base => realization
-
-  this%solution_vec = realization%field%flow_xx
-  this%residual_vec = realization%field%flow_r
-  
-end subroutine PMTHSetRealization
 
 ! ************************************************************************** !
 
@@ -172,56 +120,24 @@ subroutine PMTHInitializeTimestep(this)
   ! 
 
   use TH_module, only : THInitializeTimestep
-  use Global_module
-  use Variables_module, only : POROSITY, TORTUOSITY, PERMEABILITY_X, &
-                               PERMEABILITY_Y, PERMEABILITY_Z
-  use Material_module, only : MaterialAuxVarCommunicate
 
   implicit none
   
   class(pm_th_type) :: this
 
-#ifdef PM_TH_DEBUG
-  call printMsg(this%option,'PMTHInitializeTimestep%InitializeTimestep()')
-#endif
+  call PMSubsurfaceInitializeTimestep(this)
 
-  this%option%flow_dt = this%option%dt
-
-#ifndef SIMPLIFY  
   ! update porosity
   call this%comm1%LocalToLocal(this%realization%field%icap_loc, &
-                              this%realization%field%icap_loc)
+                               this%realization%field%icap_loc)
   call this%comm1%LocalToLocal(this%realization%field%ithrm_loc, &
-                              this%realization%field%ithrm_loc)
+                               this%realization%field%ithrm_loc)
   call this%comm1%LocalToLocal(this%realization%field%iphas_loc, &
-                              this%realization%field%iphas_loc)
-  call MaterialAuxVarCommunicate(this%comm1, &
-                                 this%realization%patch%aux%Material, &
-                                 this%realization%field%work_loc,POROSITY,0)
-  call MaterialAuxVarCommunicate(this%comm1, &
-                                 this%realization%patch%aux%Material, &
-                                 this%realization%field%work_loc,TORTUOSITY,0)
-  call MaterialAuxVarCommunicate(this%comm1, &
-                                 this%realization%patch%aux%Material, &
-                                 this%realization%field%work_loc, &
-                                 PERMEABILITY_X,0)
-  call MaterialAuxVarCommunicate(this%comm1, &
-                                 this%realization%patch%aux%Material, &
-                                 this%realization%field%work_loc, &
-                                 PERMEABILITY_Y,0)
-  call MaterialAuxVarCommunicate(this%comm1, &
-                                 this%realization%patch%aux%Material, &
-                                 this%realization%field%work_loc, &
-                                 PERMEABILITY_Z,0)
-#endif
+                               this%realization%field%iphas_loc)
 
   if (this%option%print_screen_flag) then
     write(*,'(/,2("=")," TH FLOW ",62("="))')
   endif
-  
-  if (this%option%ntrandof > 0) then ! store initial saturations for transport
-    call GlobalUpdateAuxVars(this%realization,TIME_T,this%option%time)
-  endif  
   
   call THInitializeTimestep(this%realization)
   
@@ -243,10 +159,6 @@ subroutine PMTHPreSolve(this)
   
   class(pm_th_type) :: this
 
-#ifdef PM_TH_DEBUG
-  call printMsg(this%option,'PMTHPreSolve%PreSolve()')
-#endif
-
 end subroutine PMTHPreSolve
 
 ! ************************************************************************** !
@@ -262,73 +174,7 @@ subroutine PMTHPostSolve(this)
   
   class(pm_th_type) :: this
   
-#ifdef PM_TH_DEBUG  
-  call printMsg(this%option,'PMTH%PostSolve()')
-#endif
-  
 end subroutine PMTHPostSolve
-
-! ************************************************************************** !
-
-subroutine PMTHFinalizeTimestep(this)
-  ! 
-  ! This routine
-  ! 
-  ! Author: Gautam Bisht, LBNL
-  ! Date: 03/90/13
-  ! 
-
-  use TH_module, only : THMaxChange
-  use Global_module
-
-  implicit none
-  
-  class(pm_th_type) :: this
-  
-#ifdef PM_TH_DEBUG
-  call printMsg(this%option,'PMTH%FinalizeTimestep()')
-#endif
-  
-  if (this%option%ntrandof > 0) then ! store final saturations, etc. for transport
-    call GlobalUpdateAuxVars(this%realization,TIME_TpDT,this%option%time)
-  endif
-  
-  call THMaxChange(this%realization)
-  if (this%option%print_screen_flag) then
-    write(*,'("  --> max chng: dpmx= ",1pe12.4," dtmpmx= ",1pe12.4)') &
-      this%option%dpmax,this%option%dtmpmax
-  endif
-  if (this%option%print_file_flag) then
-    write(this%option%fid_out,'("  --> max chng: dpmx= ",1pe12.4, &
-      & " dtmpmx= ",1pe12.4)') &
-      this%option%dpmax,this%option%dtmpmax
-  endif  
-  
-end subroutine PMTHFinalizeTimestep
-
-! ************************************************************************** !
-
-function PMTHAcceptSolution(this)
-  ! 
-  ! This routine
-  ! 
-  ! Author: Gautam Bisht, LBNL
-  ! Date: 03/90/13
-  ! 
-
-  implicit none
-  
-  class(pm_th_type) :: this
-  
-  PetscBool :: PMTHAcceptSolution
-  
-#ifdef PM_TH_DEBUG
-  call printMsg(this%option,'PMTHs%AcceptSolution()')
-#endif
-  ! do nothing
-  PMTHAcceptSolution = PETSC_TRUE
-  
-end function PMTHAcceptSolution
 
 ! ************************************************************************** !
 
@@ -385,65 +231,6 @@ end subroutine PMTHUpdateTimestep
 
 ! ************************************************************************** !
 
-recursive subroutine PMTHInitializeRun(this)
-  ! 
-  ! This routine
-  ! 
-  ! Author: Gautam Bisht, LBNL
-  ! Date: 03/90/13
-  ! 
-
-  use TH_module, only : THUpdateSolution
-
-  implicit none
-  
-  class(pm_th_type) :: this
-  
- 
-#ifdef PM_TH_DEBUG
-  call printMsg(this%option,'PMTH%InitializeRun()')
-#endif
-  
-  ! restart
-  ! init to steady state
-  
-#if 0  
-  if (flow_read .and. option%overwrite_restart_flow) then
-    call RealizationRevertFlowParameters(realization)
-  endif  
-  call THUpdateSolution(this%realization)
-#endif  
-    
-end subroutine PMTHInitializeRun
-
-! ************************************************************************** !
-
-recursive subroutine PMTHFinalizeRun(this)
-  ! 
-  ! This routine
-  ! 
-  ! Author: Gautam Bisht, LBNL
-  ! Date: 03/90/13
-  ! 
-
-  implicit none
-  
-  class(pm_th_type) :: this
-  
-#ifdef PM_TH_DEBUG
-  call printMsg(this%option,'PMTH%FinalizeRun()')
-#endif
-  
-  ! do something here
-  
-  if (associated(this%next)) then
-    call this%next%FinalizeRun()
-  endif  
-  
-end subroutine PMTHFinalizeRun
-
-! ************************************************************************** !
-
 subroutine PMTHResidual(this,snes,xx,r,ierr)
   ! 
   ! This routine
@@ -461,10 +248,6 @@ subroutine PMTHResidual(this,snes,xx,r,ierr)
   Vec :: xx
   Vec :: r
   PetscErrorCode :: ierr
-  
-#ifdef PM_TH_DEBUG
-  call printMsg(this%option,'PMTH%Residual()')
-#endif
   
   call THResidual(snes,xx,r,this%realization,ierr)
 
@@ -489,10 +272,6 @@ subroutine PMTHJacobian(this,snes,xx,A,B,ierr)
   Vec :: xx
   Mat :: A, B
   PetscErrorCode :: ierr
-  
-#ifdef PM_TH_DEBUG
-  call printMsg(this%option,'PMTH%Jacobian()')
-#endif
   
   call THJacobian(snes,xx,A,B,this%realization,ierr)
 
@@ -519,13 +298,7 @@ subroutine PMTHCheckUpdatePre(this,line_search,P,dP,changed,ierr)
   PetscBool :: changed
   PetscErrorCode :: ierr
   
-#ifdef PM_TH_DEBUG  
-  call printMsg(this%option,'PMTH%CheckUpdatePre()')
-#endif
-  
-#ifndef SIMPLIFY  
   call THCheckUpdatePre(line_search,P,dP,changed,this%realization,ierr)
-#endif
 
 end subroutine PMTHCheckUpdatePre
 
@@ -553,14 +326,8 @@ subroutine PMTHCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
   PetscBool :: P1_changed
   PetscErrorCode :: ierr
   
-#ifdef PM_TH_DEBUG  
-  call printMsg(this%option,'PMTH%CheckUpdatePost()')
-#endif
-  
-#ifndef SIMPLIFY  
   call THCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
                                P1_changed,this%realization,ierr)
-#endif
 
 end subroutine PMTHCheckUpdatePost
 
@@ -580,12 +347,7 @@ subroutine PMTHTimeCut(this)
   
   class(pm_th_type) :: this
   
-#ifdef PM_TH_DEBUG  
-  call printMsg(this%option,'PMTH%TimeCut()')
-#endif
-  
-  this%option%flow_dt = this%option%dt
-
+  call SubsurfaceTimeCut(this)
   call THTimeCut(this%realization)
 
 end subroutine PMTHTimeCut
@@ -601,33 +363,32 @@ subroutine PMTHUpdateSolution(this)
   ! 
 
   use TH_module, only : THUpdateSolution, THUpdateSurfaceBC
-  use Condition_module
 
   implicit none
   
   class(pm_th_type) :: this
   
-  PetscBool :: force_update_flag = PETSC_FALSE
-
-#ifdef PM_TH_DEBUG  
-  call printMsg(this%option,'PMTH%UpdateSolution()')
-#endif
-
-  ! begin from RealizationUpdate()
-  call FlowConditionUpdate(this%realization%flow_conditions, &
-                           this%realization%option, &
-                           this%realization%option%time)
-  ! right now, RealizUpdateAllCouplerAuxVars only updates flow
-  call RealizUpdateAllCouplerAuxVars(this%realization,force_update_flag)
-  if (associated(this%realization%uniform_velocity_dataset)) then
-    call RealizUpdateUniformVelocity(this%realization)
-  endif  
-  ! end from RealizationUpdate()
+  call SubsurfaceUpdateSolution(this)
   call THUpdateSolution(this%realization)
-  if(this%option%nsurfflowdof>0) &
+  if (this%option%nsurfflowdof > 0) &
     call THUpdateSurfaceBC(this%realization)
 
 end subroutine PMTHUpdateSolution     
+
+! ************************************************************************** !
+
+subroutine PMTHUpdateAuxvars(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 04/21/14
+
+  implicit none
+  
+  class(pm_th_type) :: this
+
+  call THUpdateAuxVars(this%realization)
+
+end subroutine PMTHUpdateAuxvars   
 
 ! ************************************************************************** !
 
@@ -645,11 +406,16 @@ subroutine PMTHMaxChange(this)
   
   class(pm_th_type) :: this
   
-#ifdef PM_TH_DEBUG  
-  call printMsg(this%option,'PMTH%MaxChange()')
-#endif
-
   call THMaxChange(this%realization)
+    if (this%option%print_screen_flag) then
+    write(*,'("  --> max chng: dpmx= ",1pe12.4," dtmpmx= ",1pe12.4)') &
+      this%option%dpmax,this%option%dtmpmax
+  endif
+  if (this%option%print_file_flag) then
+    write(this%option%fid_out,'("  --> max chng: dpmx= ",1pe12.4, &
+      & " dtmpmx= ",1pe12.4)') &
+      this%option%dpmax,this%option%dtmpmax
+  endif 
 
 end subroutine PMTHMaxChange
 
@@ -670,62 +436,9 @@ subroutine PMTHComputeMassBalance(this,mass_balance_array)
   class(pm_th_type) :: this
   PetscReal :: mass_balance_array(:)
   
-#ifdef PM_TH_DEBUG  
-  call printMsg(this%option,'PMTH%ComputeMassBalance()')
-#endif
-
-#ifndef SIMPLIFY  
   call THComputeMassBalance(this%realization,mass_balance_array)
-#endif
 
 end subroutine PMTHComputeMassBalance
-
-! ************************************************************************** !
-
-subroutine PMTHCheckpoint(this,viewer)
-  ! 
-  ! Checkpoints data associated with TH PM
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 07/26/13
-  ! 
-
-  use Checkpoint_module
-
-  implicit none
-#include "finclude/petscviewer.h"      
-
-  class(pm_th_type) :: this
-  PetscViewer :: viewer
-  
-  call CheckpointFlowProcessModel(viewer,this%realization) 
-  
-end subroutine PMTHCheckpoint
-
-! ************************************************************************** !
-
-subroutine PMTHRestart(this,viewer)
-  ! 
-  ! Restarts data associated with TH PM
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 07/30/13
-  ! 
-
-  use Checkpoint_module
-  use TH_module, only : THUpdateAuxVars
-
-  implicit none
-#include "finclude/petscviewer.h"      
-
-  class(pm_th_type) :: this
-  PetscViewer :: viewer
-  
-  call RestartFlowProcessModel(viewer,this%realization)
-  call THUpdateAuxVars(this%realization)
-  call this%UpdateSolution()
-  
-end subroutine PMTHRestart
 
 ! ************************************************************************** !
 
@@ -747,15 +460,11 @@ subroutine PMTHDestroy(this)
     call this%next%Destroy()
   endif
 
-#ifdef PM_TH_DEBUG  
-  call printMsg(this%option,'PMTHDestroy()')
-#endif
-
-#ifndef SIMPLIFY 
-  call THDestroy(this%realization%patch)
-#endif
-  call this%comm1%Destroy()
   call this%commN%Destroy()
+
+  ! preserve this ordering
+  call THDestroy(this%realization)
+  call PMSubsurfaceDestroy(this)
 
 end subroutine PMTHDestroy
 

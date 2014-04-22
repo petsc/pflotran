@@ -1058,13 +1058,7 @@ subroutine PMRTDestroy(this)
   
   class(pm_rt_type) :: this
 
-#ifdef PM_RT_DEBUG  
-  call printMsg(this%option,'PMRTDestroy()')
-#endif
-  
-#ifndef SIMPLIFY 
   call RTDestroy(this%realization)
-#endif
 
 end subroutine PMRTDestroy
   
