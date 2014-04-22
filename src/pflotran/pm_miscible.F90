@@ -17,7 +17,7 @@ module PM_Miscible_class
 #include "finclude/petscmat.h90"
 #include "finclude/petscsnes.h"
 
-  type, public, extends(pm_base_type) :: pm_miscible_type
+  type, public, extends(pm_subsurface_type) :: pm_miscible_type
   contains
     procedure, public :: InitializeTimestep => PMMiscibleInitializeTimestep
     procedure, public :: Residual => PMMiscibleResidual
@@ -303,7 +303,7 @@ subroutine PMMiscibleTimeCut(this)
   
   class(pm_miscible_type) :: this
   
-  call SubsurfaceTimeCut(this)
+  call PMSubsurfaceTimeCut(this)
   call MiscibleTimeCut(this%realization)
 
 end subroutine PMMiscibleTimeCut
@@ -322,7 +322,7 @@ subroutine PMMiscibleUpdateSolution(this)
   
   class(pm_miscible_type) :: this
   
-  call SubsurfaceUpdateSolution(this)
+  call PMSubsurfaceUpdateSolution(this)
   call MiscibleUpdateSolution(this%realization)
 
 end subroutine PMMiscibleUpdateSolution     
@@ -334,6 +334,8 @@ subroutine PMMiscibleUpdateAuxvars(this)
   ! Author: Glenn Hammond
   ! Date: 04/21/14
 
+  use Miscible_module, only : MiscibleUpdateAuxVars
+  
   implicit none
   
   class(pm_miscible_type) :: this

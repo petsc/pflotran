@@ -17,7 +17,7 @@ module PM_Richards_class
 #include "finclude/petscmat.h90"
 #include "finclude/petscsnes.h"
 
-  type, public, extends(pm_base_type) :: pm_richards_type
+  type, public, extends(pm_subsurface_type) :: pm_richards_type
   contains
     procedure, public :: InitializeTimestep => PMRichardsInitializeTimestep
     procedure, public :: Residual => PMRichardsResidual
@@ -191,7 +191,7 @@ subroutine PMRichardsResidual(this,snes,xx,r,ierr)
   Vec :: r
   PetscErrorCode :: ierr
   
-  call SubsurfaceUpdatePropertiesNI(this)
+  call PMSubsurfaceUpdatePropertiesNI(this)
   select case(this%realization%discretization%itype)
     case(STRUCTURED_GRID_MIMETIC)
 !      call RichardsResidualMFDLP(snes,xx,r,this%realization,ierr)
@@ -292,7 +292,7 @@ subroutine PMRichardsTimeCut(this)
   
   class(pm_richards_type) :: this
   
-  call SubsurfaceTimeCut(this)
+  call PMSubsurfaceTimeCut(this)
   call RichardsTimeCut(this%realization)
 
 end subroutine PMRichardsTimeCut
@@ -312,7 +312,7 @@ subroutine PMRichardsUpdateSolution(this)
   
   class(pm_richards_type) :: this
   
-  call SubsurfaceUpdateSolution(this)
+  call PMSubsurfaceUpdateSolution(this)
   call RichardsUpdateSolution(this%realization)
   if(this%option%nsurfflowdof>0) &
     call RichardsUpdateSurfacePress(this%realization)
@@ -326,6 +326,8 @@ subroutine PMRichardsUpdateAuxvars(this)
   ! Author: Glenn Hammond
   ! Date: 04/21/14
 
+  use Richards_module, only : RichardsUpdateAuxVars
+  
   implicit none
   
   class(pm_richards_type) :: this

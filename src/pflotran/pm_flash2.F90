@@ -294,7 +294,7 @@ subroutine PMFlash2TimeCut(this)
   
   class(pm_flash2_type) :: this
   
-  call SubsurfaceTimeCut(this)
+  call PMSubsurfaceTimeCut(this)
   call Flash2TimeCut(this%realization)
 
 end subroutine PMFlash2TimeCut
@@ -313,7 +313,7 @@ subroutine PMFlash2UpdateSolution(this)
   
   class(pm_flash2_type) :: this
   
-  call SubsurfaceUpdateSolution(this)
+  call PMSubsurfaceUpdateSolution(this)
   call Flash2UpdateSolution(this%realization)
 
 end subroutine PMFlash2UpdateSolution     
@@ -324,6 +324,8 @@ subroutine PMFlash2UpdateAuxvars(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/21/14
+
+  use Flash2_module, only : Flash2UpdateAuxVars
 
   implicit none
   

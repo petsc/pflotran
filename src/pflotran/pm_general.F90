@@ -17,7 +17,7 @@ module PM_General_class
 #include "finclude/petscmat.h90"
 #include "finclude/petscsnes.h"
 
-  type, public, extends(pm_base_type) :: pm_general_type
+  type, public, extends(pm_subsurface_type) :: pm_general_type
     PetscReal :: dPmax
     PetscReal :: dTmax
     PetscReal :: dXmax
@@ -26,6 +26,8 @@ module PM_General_class
     PetscReal :: dTmax_allowable
     PetscReal :: dXmax_allowable
     PetscReal :: dSmax_allowable
+    PetscInt, pointer :: max_change_ivar(:)
+    PetscInt, pointer :: max_change_isubvar(:)
   contains
     procedure, public :: InitializeTimestep => PMGeneralInitializeTimestep
     procedure, public :: Residual => PMGeneralResidual
@@ -54,7 +56,9 @@ function PMGeneralCreate()
   ! Author: Glenn Hammond
   ! Date: 03/14/13
   ! 
-
+  use Variables_module, only : LIQUID_PRESSURE, GAS_PRESSURE, AIR_PRESSURE, &
+                               LIQUID_MOLE_FRACTION, TEMPERATURE, &
+                               GAS_SATURATION
   implicit none
   
   class(pm_general_type), pointer :: PMGeneralCreate
@@ -75,6 +79,14 @@ function PMGeneralCreate()
   general_pm%dTmax_allowable = 5.d0
   general_pm%dXmax_allowable = 0.5d0
   general_pm%dSmax_allowable = 1.d0
+  allocate(general_pm%max_change_ivar(6))
+  general_pm%max_change_ivar = [LIQUID_PRESSURE, GAS_PRESSURE, AIR_PRESSURE, &
+                                LIQUID_MOLE_FRACTION, TEMPERATURE, &
+                                GAS_SATURATION]
+  allocate(general_pm%max_change_isubvar(6))
+  ! based on option%water_id = 1
+  general_pm%max_change_isubvar = [0,0,0,1,0,0]  
+  
   
   call PMSubsurfaceCreate(general_pm)
   general_pm%name = 'PMGeneral'
@@ -85,16 +97,18 @@ end function PMGeneralCreate
 
 ! ************************************************************************** !
 
-recursive subroutine PMSubsurfaceInitializeRun(this)
+recursive subroutine PMGeneralInitializeRun(this)
   ! 
   ! Initializes the time stepping
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/21/14 
 
+  use Realization_Base_class
+  
   implicit none
   
-  class(pm_subsurface_type) :: this
+  class(pm_general_type) :: this
   
   PetscInt :: i
   PetscErrorCode :: ierr
@@ -106,10 +120,11 @@ recursive subroutine PMSubsurfaceInitializeRun(this)
   do i = 1, 6
     call RealizationGetVariable(this%realization, &
                                 this%realization%field%max_change_vecs(i), &
-                                max_change_ivar(i),max_change_isubvar(i))
+                                this%max_change_ivar(i), &
+                                this%max_change_isubvar(i))
   enddo
     
-end subroutine PMSubsurfaceInitializeRun
+end subroutine PMGeneralInitializeRun
 
 ! ************************************************************************** !
 
@@ -206,7 +221,7 @@ subroutine PMGeneralResidual(this,snes,xx,r,ierr)
   Vec :: r
   PetscErrorCode :: ierr
   
-  call SubsurfaceUpdatePropertiesNI(this)
+  call PMSubsurfaceUpdatePropertiesNI(this)
   call GeneralResidual(snes,xx,r,this%realization,ierr)
 
 end subroutine PMGeneralResidual
@@ -297,7 +312,7 @@ subroutine PMGeneralTimeCut(this)
   
   class(pm_general_type) :: this
   
-  call SubsurfaceTimeCut(this)
+  call PMSubsurfaceTimeCut(this)
   call GeneralTimeCut(this%realization)
 
 end subroutine PMGeneralTimeCut
@@ -316,7 +331,7 @@ subroutine PMGeneralUpdateSolution(this)
   
   class(pm_general_type) :: this
   
-  call SubsurfaceUpdateSolution(this)
+  call PMSubsurfaceUpdateSolution(this)
   call GeneralUpdateSolution(this%realization)
 
 end subroutine PMGeneralUpdateSolution     
@@ -327,6 +342,7 @@ subroutine PMGeneralUpdateAuxvars(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/21/14
+  use General_module, only : GeneralUpdateAuxVars
 
   implicit none
   
@@ -347,6 +363,7 @@ subroutine PMGeneralMaxChange(this)
   ! 
 
   use Realization_Base_class
+  use Realization_class
   use Option_module
   use Field_module
   use Grid_module
@@ -380,8 +397,9 @@ subroutine PMGeneralMaxChange(this)
   max_change_global = 0.d0
   max_change_local = 0.d0
   do i = 1, 6
-    call RealizationGetVariable(realization,field%work,max_change_ivar(i), &
-                                max_change_isubvar(i))
+    call RealizationGetVariable(realization,field%work, &
+                                this%max_change_ivar(i), &
+                                this%max_change_isubvar(i))
     ! yes, we could use VecWAXPY and a norm here, but we need the ability
     ! to customize
     call VecGetArrayF90(field%work,vec_ptr,ierr)

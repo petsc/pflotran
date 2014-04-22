@@ -22,7 +22,7 @@ module PM_TH_class
 #include "finclude/petscmat.h90"
 #include "finclude/petscsnes.h"
 
-  type, public, extends(pm_base_type) :: pm_th_type
+  type, public, extends(pm_subsurface_type) :: pm_th_type
     class(communicator_type), pointer :: commN
   contains
     procedure, public :: Init => PMTHInit
@@ -347,7 +347,7 @@ subroutine PMTHTimeCut(this)
   
   class(pm_th_type) :: this
   
-  call SubsurfaceTimeCut(this)
+  call PMSubsurfaceTimeCut(this)
   call THTimeCut(this%realization)
 
 end subroutine PMTHTimeCut
@@ -368,7 +368,7 @@ subroutine PMTHUpdateSolution(this)
   
   class(pm_th_type) :: this
   
-  call SubsurfaceUpdateSolution(this)
+  call PMSubsurfaceUpdateSolution(this)
   call THUpdateSolution(this%realization)
   if (this%option%nsurfflowdof > 0) &
     call THUpdateSurfaceBC(this%realization)
@@ -382,6 +382,8 @@ subroutine PMTHUpdateAuxvars(this)
   ! Author: Glenn Hammond
   ! Date: 04/21/14
 
+  use TH_module, only : THUpdateAuxVars
+  
   implicit none
   
   class(pm_th_type) :: this
@@ -463,7 +465,7 @@ subroutine PMTHDestroy(this)
   call this%commN%Destroy()
 
   ! preserve this ordering
-  call THDestroy(this%realization)
+  call THDestroy(this%realization%patch)
   call PMSubsurfaceDestroy(this)
 
 end subroutine PMTHDestroy

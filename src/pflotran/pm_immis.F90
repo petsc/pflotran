@@ -17,7 +17,7 @@ module PM_Immis_class
 #include "finclude/petscmat.h90"
 #include "finclude/petscsnes.h"
 
-  type, public, extends(pm_base_type) :: pm_immis_type
+  type, public, extends(pm_subsurface_type) :: pm_immis_type
   contains
     procedure, public :: InitializeTimestep => PMImmisInitializeTimestep
     procedure, public :: Residual => PMImmisResidual
@@ -295,7 +295,7 @@ subroutine PMImmisTimeCut(this)
   
   class(pm_immis_type) :: this
   
-  call SubsurfaceTimeCut(this)
+  call PMSubsurfaceTimeCut(this)
   call ImmisTimeCut(this%realization)
 
 end subroutine PMImmisTimeCut
@@ -314,7 +314,7 @@ subroutine PMImmisUpdateSolution(this)
   
   class(pm_immis_type) :: this
   
-  call SubsurfaceUpdateSolution(this)
+  call PMSubsurfaceUpdateSolution(this)
   call ImmisUpdateSolution(this%realization)
 
 end subroutine PMImmisUpdateSolution     
@@ -326,6 +326,8 @@ subroutine PMImmisUpdateAuxvars(this)
   ! Author: Glenn Hammond
   ! Date: 04/21/14
 
+  use Immis_module, only : ImmisUpdateAuxVars
+    
   implicit none
   
   class(pm_immis_type) :: this

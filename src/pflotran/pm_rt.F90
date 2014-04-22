@@ -673,7 +673,7 @@ subroutine PMRTUpdateSolution2(this, update_kinetics)
       this%realization%reaction%update_tortuosity .or. &
       this%realization%reaction%update_permeability .or. &
       this%realization%reaction%update_mineral_surface_area) then
-    call RealizationUpdateProperties(this%realization)
+    call RealizationUpdatePropertiesTS(this%realization)
   endif
   
   call MassTransferUpdate(this%realization%rt_mass_transfer_list, &

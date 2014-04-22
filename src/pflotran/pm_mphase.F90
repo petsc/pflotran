@@ -17,9 +17,7 @@ module PM_Mphase_class
 #include "finclude/petscmat.h90"
 #include "finclude/petscsnes.h"
 
-  type, public, extends(pm_base_type) :: pm_mphase_type
-    class(realization_type), pointer :: realization
-    class(communicator_type), pointer :: comm1
+  type, public, extends(pm_subsurface_type) :: pm_mphase_type
   contains
     procedure, public :: InitializeTimestep => PMMphaseInitializeTimestep
     procedure, public :: Residual => PMMphaseResidual
@@ -295,7 +293,7 @@ subroutine PMMphaseTimeCut(this)
   
   class(pm_mphase_type) :: this
   
-  call SubsurfaceTimeCut(this)
+  call PMSubsurfaceTimeCut(this)
   call MphaseTimeCut(this%realization)
 
 end subroutine PMMphaseTimeCut
@@ -314,7 +312,7 @@ subroutine PMMphaseUpdateSolution(this)
   
   class(pm_mphase_type) :: this
   
-  call SubsurfaceUpdateSolution(this)
+  call PMSubsurfaceUpdateSolution(this)
   call MphaseUpdateSolution(this%realization)
 
 end subroutine PMMphaseUpdateSolution     
@@ -326,6 +324,8 @@ subroutine PMMphaseUpdateAuxvars(this)
   ! Author: Glenn Hammond
   ! Date: 04/21/14
 
+  use Mphase_module, only : MphaseUpdateAuxVars
+  
   implicit none
   
   class(pm_mphase_type) :: this
