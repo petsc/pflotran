@@ -83,7 +83,8 @@ private
             RealizationInitConstraints, &
             RealProcessMatPropAndSatFunc, &
             RealProcessFluidProperties, &
-            RealizationUpdateProperties, &
+            RealizationUpdatePropertiesTS, &
+            RealizationUpdatePropertiesNI, &
             RealizationCountCells, &
             RealizationPrintGridStatistics, &
             RealizationSetUpBC4Faces, &
@@ -1683,7 +1684,7 @@ end subroutine RealizationAddWaypointsToList
 
 ! ************************************************************************** !
 
-subroutine RealizationUpdateProperties(realization)
+subroutine RealizationUpdatePropertiesTS(realization)
   ! 
   ! Updates coupled properties at each grid cell
   ! 
@@ -1875,7 +1876,7 @@ subroutine RealizationUpdateProperties(realization)
     if (reaction%update_mnrl_surf_with_porosity) then
       call VecRestoreArrayF90(field%work,vec_p,ierr)
     endif
-
+!geh:remove
     call MaterialGetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
                                  TORTUOSITY,ZERO_INTEGER)
     call DiscretizationLocalToLocal(discretization,field%work_loc, &
@@ -1976,7 +1977,65 @@ subroutine RealizationUpdateProperties(realization)
     call printErrMsg(option)
   endif
    
-end subroutine RealizationUpdateProperties
+end subroutine RealizationUpdatePropertiesTS
+
+! ************************************************************************** !
+
+subroutine RealizationUpdatePropertiesNI(realization)
+  ! 
+  ! Updates coupled properties at each grid cell
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/05/09
+  ! 
+
+  use Grid_module
+  use Reactive_Transport_Aux_module
+  use Material_Aux_class
+  use Variables_module, only : POROSITY, TORTUOSITY, PERMEABILITY_X, &
+                               PERMEABILITY_Y, PERMEABILITY_Z
+ 
+  implicit none
+  
+  type(realization_type) :: realization
+
+#if 0
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(field_type), pointer :: field
+  type(reaction_type), pointer :: reaction
+  type(grid_type), pointer :: grid
+  type(material_property_ptr_type), pointer :: material_property_array(:)
+  type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:) 
+  type(discretization_type), pointer :: discretization
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: imnrl, imnrl1, imnrl_armor, imat
+  PetscReal :: sum_volfrac
+  PetscReal :: scale, porosity_scale, volfrac_scale
+  PetscBool :: porosity_updated
+  PetscReal, pointer :: vec_p(:)
+  PetscReal, pointer :: porosity0_p(:)
+  PetscReal, pointer :: porosity_mnrl_loc_p(:)
+  PetscReal, pointer :: tortuosity0_p(:)
+  PetscReal, pointer :: perm0_xx_p(:), perm0_yy_p(:), perm0_zz_p(:)
+  PetscReal :: min_value  
+  PetscInt :: ivalue
+  PetscErrorCode :: ierr
+
+  option => realization%option
+  discretization => realization%discretization
+  patch => realization%patch
+  field => realization%field
+  reaction => realization%reaction
+  grid => patch%grid
+  material_property_array => realization%material_property_array
+  rt_auxvars => patch%aux%RT%auxvars
+  material_auxvars => patch%aux%Material%auxvars
+#endif
+
+end subroutine RealizationUpdatePropertiesNI
 
 ! ************************************************************************** !
 
