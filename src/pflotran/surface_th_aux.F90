@@ -103,7 +103,8 @@ subroutine SurfaceTHAuxVarInit(auxvar,option)
   auxvar%u = 0.d0
   auxvar%pc = 0.d0
   auxvar%Cw = 4.188d3     ! [J/kg/K]
-  auxvar%Ci = 2.050d3     ! [J/kg/K]
+  !auxvar%Ci = 2.050d3     ! [J/kg/K]
+  auxvar%Ci = 4.188d3     ! [J/kg/K]
   auxvar%Cwi = 4.188d3     ! [J/kg/K]
   auxvar%k_therm = 0.57d0 ! [J/s/m/K]
   auxvar%unfrozen_fraction = 1.d0
