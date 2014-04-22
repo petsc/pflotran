@@ -1456,6 +1456,7 @@ subroutine InitReadInput(simulation)
   use Output_Tecplot_module
   use Mass_Transfer_module
   use EOS_module
+  use EOS_Water_module
   
   use Surface_Flow_module
   use Surface_Init_module, only : SurfaceInitReadInput
@@ -1599,6 +1600,9 @@ subroutine InitReadInput(simulation)
                option%use_th_freezing = PETSC_TRUE
                option%io_buffer = ' TH: using FREEZING submode!'
                call printMsg(option)
+               ! Override the default setting for TH-mode with freezing
+               !call EOSWaterSetDensityPainter()
+               !call EOSWaterSetEnthalpyPainter()
             else if ('NO_FREEZING' == trim(word)) then
                option%use_th_freezing = PETSC_FALSE
                option%io_buffer = ' TH: using NO_FREEZING submode!'
