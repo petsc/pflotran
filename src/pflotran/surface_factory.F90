@@ -77,7 +77,7 @@ subroutine SurfaceInitializePostPETSc(simulation, option)
   ! no longer need simulation
   deallocate(simulation_old)
   call SurfaceJumpStart(simulation)
-  
+
 end subroutine SurfaceInitializePostPETSc
 
 ! ************************************************************************** !
@@ -99,6 +99,7 @@ subroutine HijackSurfaceSimulation(simulation_old,simulation)
   use Simulation_Base_class
   use PM_Surface_Flow_class
   use PM_Surface_TH_class
+  use PM_Surface_class
   use PM_Base_class
   use PM_module
   use Timestepper_Surface_class
@@ -169,13 +170,8 @@ subroutine HijackSurfaceSimulation(simulation_old,simulation)
       do
         if (.not.associated(cur_process_model)) exit
         select type(cur_process_model)
-          class is (pm_surface_flow_type)
-            call cur_process_model%PMSurfaceFlowSetRealization(surf_realization)
-            call cur_process_model_coupler%SetTimestepper( &
-                    surf_flow_process_model_coupler%timestepper)
-            surf_flow_process_model_coupler%timestepper%dt = option%surf_flow_dt
-          class is (pm_surface_th_type)
-            call cur_process_model%PMSurfaceTHSetRealization(surf_realization)
+          class is (pm_surface_type)
+            call cur_process_model%PMSurfaceSetRealization(surf_realization)
             call cur_process_model_coupler%SetTimestepper( &
                     surf_flow_process_model_coupler%timestepper)
             surf_flow_process_model_coupler%timestepper%dt = option%surf_flow_dt
@@ -183,7 +179,7 @@ subroutine HijackSurfaceSimulation(simulation_old,simulation)
 
         call cur_process_model%Init()
         select type(cur_process_model)
-          class is (pm_surface_flow_type)
+          class is (pm_surface_type)
             select type(ts => cur_process_model_coupler%timestepper)
               class is (timestepper_surface_type)
                 call TSSetRHSFunction( &
