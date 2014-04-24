@@ -224,6 +224,7 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   PetscReal :: qsrc, qsrc_flow
   PetscReal :: esrc
   PetscReal :: den
+  PetscReal :: dum1
 
   PetscViewer :: viewer
   character(len=MAXSTRINGLENGTH)       :: string,string2
@@ -304,7 +305,7 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
                          zc(ghosted_id_dn), &
                          mannings_loc_p(ghosted_id_dn), &
                          dist, cur_connection_set%area(iconn), &
-                         option,vel,Res)
+                         option,vel,dum1,Res)
 
       patch%internal_velocities(1,sum_connection) = vel
       patch%surf_internal_fluxes(TH_PRESSURE_DOF,sum_connection) = Res(TH_PRESSURE_DOF)
@@ -356,7 +357,7 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
                          mannings_loc_p(ghosted_id_dn), &
                          dist, &
                          cur_connection_set%area(iconn), &
-                         option,vel,Res)
+                         option,vel,dum1,Res)
 
       patch%boundary_velocities(1,sum_connection) = vel
       patch%surf_boundary_fluxes(TH_PRESSURE_DOF,sum_connection) = Res(TH_PRESSURE_DOF)
@@ -553,14 +554,12 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
                          zc(ghosted_id_dn), &
                          mannings_loc_p(ghosted_id_dn), &
                          dist, cur_connection_set%area(iconn), &
-                         option,vel,Res)
+                         option,vel,dt,Res)
 
       patch%internal_velocities(1,sum_connection) = vel
       patch%surf_internal_fluxes(:,sum_connection) = Res(:)
-      if(abs(vel)>eps) then
-        dt = dist/abs(vel)/4.d0
-        max_allowable_dt = min(max_allowable_dt, dt)
-      endif
+
+      max_allowable_dt = min(max_allowable_dt, dt)
 
     enddo
     cur_connection_set => cur_connection_set%next
@@ -596,21 +595,19 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
                          mannings_loc_p(ghosted_id_dn), &
                          dist, &
                          cur_connection_set%area(iconn), &
-                         option,vel,Res)
+                         option,vel,dt,Res)
 
       patch%boundary_velocities(1,sum_connection) = vel
       patch%surf_boundary_fluxes(:,sum_connection) = Res(:)
 
-      if(abs(vel)>eps) then
-        dt = dist/abs(vel)/4.d0
-        max_allowable_dt = min(max_allowable_dt, dt)
-      endif
+      max_allowable_dt = min(max_allowable_dt, dt)
     enddo
     boundary_condition => boundary_condition%next
   enddo
   
   call VecRestoreArrayF90(surf_field%mannings_loc,mannings_loc_p,ierr)
   call VecRestoreArrayF90(surf_field%area,area_p,ierr)
+  write(*,*),'max_allowable_dt = ',max_allowable_dt
   
 end subroutine SurfaceTHComputeMaxDt
 
@@ -628,6 +625,7 @@ subroutine SurfaceTHFlux(surf_auxvar_up, &
                          length, &
                          option, &
                          vel, &
+                         dt_max, &
                          Res)
   ! 
   ! This routine computes the internal flux term for under
@@ -654,6 +652,7 @@ subroutine SurfaceTHFlux(surf_auxvar_up, &
   PetscReal :: head_up, head_dn
   PetscReal :: dist, length
   PetscReal :: vel                      ! units: m/s
+  PetscReal :: dt_max
   PetscReal :: Res(1:option%nflowdof)   ! units: m^3/s
   
   PetscReal :: flux       ! units: m^2/s
@@ -667,9 +666,11 @@ subroutine SurfaceTHFlux(surf_auxvar_up, &
   PetscReal :: dtemp
   PetscReal :: Cw
   PetscReal :: k_therm
+  PetscReal :: dt
 
   ! initialize
   flux = 0.d0
+  dt_max = 1.d10
 
   ! Flow equation
   head_up = surf_global_auxvar_up%head(1) + zc_up
@@ -753,6 +754,13 @@ subroutine SurfaceTHFlux(surf_auxvar_up, &
   Res(TH_TEMPERATURE_DOF) = (den_aveg*vel*temp_half*Cw*hw_liq_half + &
                              k_therm*dtemp/dist*hw_half)*length
 
+  if(abs(vel)>eps) then
+    dt     = dist/abs(vel)/3.d0
+    dt_max = min(dt_max, dt)
+  endif
+
+  dt_max = min(dt_max,(dist**2.d0)*Cw*den_aveg/(2.d0*k_therm))
+
 end subroutine SurfaceTHFlux
 
 ! ************************************************************************** !
@@ -769,13 +777,14 @@ subroutine SurfaceTHBCFlux(ibndtype, &
                            length, &
                            option, &
                            vel, &
+                           dt_max, &
                            Res)
   ! 
   ! This routine computes flux for boundary cells.
   ! 
   ! Author: Gautam Bisht, LBNL
   ! Date: 03/07/13
-  ! 
+  !
 
   use Option_module
   
@@ -793,8 +802,8 @@ subroutine SurfaceTHBCFlux(ibndtype, &
   PetscReal :: flux
   PetscInt  :: ibndtype(:)
   PetscReal :: vel
+  PetscReal :: dt_max
   PetscReal :: Res(1:option%nflowdof)
-  PetscReal :: den_aveg
   PetscReal :: dist
 
   PetscInt :: pressure_bc_type
@@ -802,15 +811,17 @@ subroutine SurfaceTHBCFlux(ibndtype, &
   PetscReal :: head_liq
   PetscReal :: den
   PetscReal :: temp_half
-  PetscReal :: Cwi
+  PetscReal :: Cw
   PetscReal :: dtemp
   PetscReal :: hw_half
   PetscReal :: k_therm
+  PetscReal :: dt
 
   flux = 0.d0
   vel = 0.d0
   hw_half = 0.d0
   dtemp = 0.d0
+  Cw = 0.d0
   
   ! RTM: I've multiplied the head (ponded water depth, actually) by the 
   ! unfrozen fraction.  I believe this makes sense, but I should think a bit 
@@ -833,7 +844,7 @@ subroutine SurfaceTHBCFlux(ibndtype, &
         hw_half = head
       endif
       den = surf_global_auxvar_dn%den_kg(1)
-      Cwi = surf_auxvar_dn%Cwi
+      Cw = surf_auxvar_dn%Cw
     case (NEUMANN_BC)
       vel = auxvars(TH_PRESSURE_DOF)
       den = (surf_global_auxvar_up%den_kg(1) + &
@@ -864,8 +875,16 @@ subroutine SurfaceTHBCFlux(ibndtype, &
 
   ! Temperature
   ! RTM: See note about in SufaceTHFlux() about how frozen/unfrozen are handled here.
-  Res(TH_TEMPERATURE_DOF) = den*temp_half*Cwi*vel*head_liq*length + &
+  Res(TH_TEMPERATURE_DOF) = den*temp_half*Cw*vel*head_liq*length + &
                             k_therm*dtemp/dist*hw_half*length
+
+  ! Find maximum allowable timestep
+  if(abs(vel)>eps) then
+    dt     = dist/abs(vel)/3.d0
+    dt_max = min(dt_max, dt)
+  endif
+
+  dt_max = min(dt_max,(dist**2.d0)*Cw*den/(2.d0*k_therm))
 
 end subroutine SurfaceTHBCFlux
 
