@@ -27,7 +27,7 @@ module Saturation_Function_module
     PetscInt :: hysteresis_params(6)
     PetscReal :: sat_spline_low
     PetscReal :: sat_spline_high
-    PetscReal :: sat_spline_coefficients(4)
+    PetscReal :: sat_spline_coefficients(3)
     PetscReal :: pres_spline_low
     PetscReal :: pres_spline_high
     PetscReal :: pres_spline_coefficients(4)
@@ -410,11 +410,13 @@ subroutine SaturationFunctionComputeSpline(option,saturation_function)
       saturation_function%pres_spline_low = pressure_1
       saturation_function%pres_spline_high = pressure_2
   
+      b = 0.d0
+
       ! saturation at 1
-      b(1) = (pressure_1*saturation_function%alpha)** &
-               (-saturation_function%lambda)
+      b(1) = 1.d0
       ! saturation at 2
-      b(2) = 1.d0
+      b(2) = (pressure_2*saturation_function%alpha)** &
+               (-saturation_function%lambda)
       ! derivative of pressure at 1
       b(3) = 0.d0 
       ! derivative of pressure at 2
@@ -434,6 +436,8 @@ subroutine SaturationFunctionComputeSpline(option,saturation_function)
       saturation_function%sat_spline_low = saturation_1
       saturation_function%sat_spline_high = saturation_2
   
+      b = 0.d0
+
       ! capillary pressure at 1
       b(1) = 1.05d0/saturation_function%alpha 
       ! capillary pressure at 2
