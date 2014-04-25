@@ -608,7 +608,6 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
   
   call VecRestoreArrayF90(surf_field%mannings_loc,mannings_loc_p,ierr)
   call VecRestoreArrayF90(surf_field%area,area_p,ierr)
-  write(*,*),'max_allowable_dt = ',max_allowable_dt
   
 end subroutine SurfaceTHComputeMaxDt
 
