@@ -250,4 +250,7 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: PAINTER_KARRA_EXPLICIT = 3
   PetscInt, parameter, public :: DALL_AMICO = 4
 
+  ! Dummy value
+  PetscReal, parameter, public :: DUMMY_VALUE = -999.d0
+
 end module PFLOTRAN_Constants_module

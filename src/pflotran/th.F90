@@ -5052,6 +5052,7 @@ subroutine THUpdateSurfaceBC(realization)
   use Secondary_Continuum_module
   use String_module
   use EOS_Water_module
+  use PFLOTRAN_Constants_module, only : DUMMY_VALUE
 
   implicit none
 
@@ -5135,7 +5136,8 @@ subroutine THUpdateSurfaceBC(realization)
 
         if (head_new <= 0.d0) then
           surfpress_new = option%reference_pressure
-          surftemp_new = option%reference_temperature
+          !surftemp_new = option%reference_temperature
+          surftemp_new = DUMMY_VALUE
         else
           ! GB: Do not update temperature of BC because eflux needs to be split
           !     into heat flux associated with:
