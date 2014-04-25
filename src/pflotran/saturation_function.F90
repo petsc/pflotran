@@ -25,9 +25,12 @@ module Saturation_Function_module
     PetscReal :: power
     PetscInt :: hysteresis_id
     PetscInt :: hysteresis_params(6)
-    PetscReal :: spline_low
-    PetscReal :: spline_high
-    PetscReal :: spline_coefficients(4)
+    PetscReal :: sat_spline_low
+    PetscReal :: sat_spline_high
+    PetscReal :: sat_spline_coefficients(4)
+    PetscReal :: pres_spline_low
+    PetscReal :: pres_spline_high
+    PetscReal :: pres_spline_coefficients(4)
     PetscReal :: ani_A       ! parameters for anisotropic relative permeability model
     PetscReal :: ani_B       ! parameters for anisotropic relative permeability model
     PetscReal :: ani_C       ! parameters for anisotropic relative permeability model
@@ -114,9 +117,12 @@ function SaturationFunctionCreate(option)
   saturation_function%power = 0.d0
   saturation_function%hysteresis_id = 0
   saturation_function%hysteresis_params = 0
-  saturation_function%spline_low = 0.d0
-  saturation_function%spline_high = 0.d0
-  saturation_function%spline_coefficients = 0.d0
+  saturation_function%sat_spline_low = 0.d0
+  saturation_function%sat_spline_high = 0.d0
+  saturation_function%sat_spline_coefficients = 0.d0
+  saturation_function%pres_spline_low = 0.d0
+  saturation_function%pres_spline_high = 0.d0
+  saturation_function%pres_spline_coefficients = 0.d0
   saturation_function%ani_A = 0.d0
   saturation_function%ani_B = 0.d0
   saturation_function%ani_C = 0.d0
@@ -295,9 +301,78 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
                        'properly in saturation function "' // &
                        trim(saturation_function%name) // '".'
     call printErrMsg(option)
-  endif 
+  endif
+  
+  call SaturationFunctionSetTypes(saturation_function,option)
 
 end subroutine SaturationFunctionRead
+
+! ************************************************************************** !
+
+subroutine SaturationFunctionSetTypes(saturation_function,option)
+  ! 
+  ! Sets the integer values that map the saturation and permeability  
+  ! functions to a specific type
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 04/23/14
+
+  use Option_module
+  use String_module
+  
+  implicit none
+
+  type(saturation_function_type) :: saturation_function
+  type(option_type) :: option
+
+  ! set permeability function integer type
+  call StringToUpper(saturation_function%permeability_function_ctype)
+  select case(trim(saturation_function%permeability_function_ctype))
+    case('DEFAULT')
+      saturation_function%permeability_function_itype = DEFAULT
+    case('BURDINE')
+      saturation_function%permeability_function_itype = BURDINE
+    case('MUALEM')
+      saturation_function%permeability_function_itype = MUALEM
+    case('NMT_EXP')
+      saturation_function%permeability_function_itype = NMT_EXP
+    case('PRUESS_1')
+      saturation_function%permeability_function_itype = PRUESS_1
+    case default
+      option%io_buffer = 'Permeability function type "' // &
+                          trim(saturation_function%permeability_function_ctype) // &
+                          '" not recognized ' // &
+                          ' in saturation function ' // &
+                          trim(saturation_function%name)
+      call printErrMsg(option)
+  end select
+    
+  ! set saturation function integer type
+  call StringToUpper(saturation_function%saturation_function_ctype)
+  select case(trim(saturation_function%saturation_function_ctype))
+    case('VAN_GENUCHTEN')
+      saturation_function%saturation_function_itype = VAN_GENUCHTEN
+    case('BROOKS_COREY')
+      saturation_function%saturation_function_itype = BROOKS_COREY
+    case('LINEAR_MODEL')
+      saturation_function%saturation_function_itype = LINEAR_MODEL
+    case('THOMEER_COREY')
+      saturation_function%saturation_function_itype = THOMEER_COREY
+    case('NMT_EXP')
+      saturation_function%saturation_function_itype = NMT_EXP
+    case('PRUESS_1')
+      saturation_function%saturation_function_itype = PRUESS_1
+       
+    case default
+      option%io_buffer = 'Saturation function type "' // &
+                          trim(saturation_function%saturation_function_ctype) // &
+                          '" not recognized ' // &
+                          ' in saturation function ' // &
+                          trim(saturation_function%name)
+      call printErrMsg(option)
+  end select  
+
+end subroutine SaturationFunctionSetTypes
 
 ! ************************************************************************** !
 
@@ -319,31 +394,62 @@ subroutine SaturationFunctionComputeSpline(option,saturation_function)
   type(saturation_function_type) :: saturation_function
   
   PetscReal :: b(4)
-  PetscReal :: pressure_high, pressure_low
+  PetscReal :: pressure_1, pressure_2
+  PetscReal :: saturation_1, saturation_2
   
   PetscReal :: n
 
   select case(saturation_function%saturation_function_itype) 
     case(BROOKS_COREY)
 
+      ! polynomial fitting saturation as a function of pc
       ! fill matix with values
-      pressure_high = 1.d0/saturation_function%alpha*2.d0
-      pressure_low = 1.d0/saturation_function%alpha*0.5d0
+      pressure_1 = 1.d0/saturation_function%alpha*0.5d0
+      pressure_2 = 1.d0/saturation_function%alpha*2.d0
   
-      saturation_function%spline_low = pressure_low
-      saturation_function%spline_high = pressure_high
+      saturation_function%pres_spline_low = pressure_1
+      saturation_function%pres_spline_high = pressure_2
   
-      b(1) = (pressure_high*saturation_function%alpha)** &
+      ! saturation at 1
+      b(1) = (pressure_1*saturation_function%alpha)** &
                (-saturation_function%lambda)
+      ! saturation at 2
       b(2) = 1.d0
-      b(3) = -saturation_function%lambda/pressure_high* &
-               (pressure_high*saturation_function%alpha)** &
+      ! derivative of pressure at 1
+      b(3) = 0.d0 
+      ! derivative of pressure at 2
+      b(4) = -saturation_function%lambda/pressure_2* &
+               (pressure_2*saturation_function%alpha)** &
                  (-saturation_function%lambda)
-      b(4) = 0.d0
 
-      call CubicPolynomialSetup(pressure_high,pressure_low,b)
+      call CubicPolynomialSetup(pressure_1,pressure_2,b)
       
-      saturation_function%spline_coefficients(1:4) = b(1:4)
+      saturation_function%pres_spline_coefficients(1:4) = b(1:4)
+      
+      ! polynomial fitting pc as a function of saturation
+      ! fill matix with values
+      saturation_1 = 1.05d0**(-saturation_function%lambda)
+      saturation_2 = 1.d0
+  
+      saturation_function%sat_spline_low = saturation_1
+      saturation_function%sat_spline_high = saturation_2
+  
+      ! capillary pressure at 1
+      b(1) = 1.05d0/saturation_function%alpha 
+      ! capillary pressure at 2
+      b(2) = 0.d0
+      ! derivative of pressure at saturation_1
+      ! pc = Se**(-1/lambda)/alpha
+      ! dpc_dSe = -1/lambda*Se**(-1/lambda-1)/alpha
+      b(3) = -1.d0/saturation_function%lambda* &
+             saturation_1**(-1.d0/saturation_function%lambda-1.d0)/ &
+             saturation_function%alpha
+
+      call QuadraticPolynomialSetup(saturation_1,saturation_2,b(1:3), &
+                                    ! indicates derivative given at 1
+                                    PETSC_TRUE) 
+      
+      saturation_function%sat_spline_coefficients(1:3) = b(1:3)
       
   case(VAN_GENUCHTEN)
  
@@ -495,54 +601,6 @@ subroutine SaturatFuncConvertListToArray(list,array,option)
   do 
     if (.not.associated(cur_saturation_function)) exit
     count = count + 1
-    
-    ! set permeability function integer type
-    call StringToUpper(cur_saturation_function%permeability_function_ctype)
-    select case(trim(cur_saturation_function%permeability_function_ctype))
-      case('DEFAULT')
-        cur_saturation_function%permeability_function_itype = DEFAULT
-      case('BURDINE')
-        cur_saturation_function%permeability_function_itype = BURDINE
-      case('MUALEM')
-        cur_saturation_function%permeability_function_itype = MUALEM
-      case('NMT_EXP')
-        cur_saturation_function%permeability_function_itype = NMT_EXP
-      case('PRUESS_1')
-        cur_saturation_function%permeability_function_itype = PRUESS_1
-      case default
-        option%io_buffer = 'Permeability function type "' // &
-                           trim(cur_saturation_function%permeability_function_ctype) // &
-                           '" not recognized ' // &
-                           ' in saturation function ' // &
-                           trim(cur_saturation_function%name)
-        call printErrMsg(option)
-    end select
-    
-    ! set saturation function integer type
-    call StringToUpper(cur_saturation_function%saturation_function_ctype)
-    select case(trim(cur_saturation_function%saturation_function_ctype))
-      case('VAN_GENUCHTEN')
-        cur_saturation_function%saturation_function_itype = VAN_GENUCHTEN
-      case('BROOKS_COREY')
-        cur_saturation_function%saturation_function_itype = BROOKS_COREY
-      case('LINEAR_MODEL')
-        cur_saturation_function%saturation_function_itype = LINEAR_MODEL
-      case('THOMEER_COREY')
-        cur_saturation_function%saturation_function_itype = THOMEER_COREY
-      case('NMT_EXP')
-        cur_saturation_function%saturation_function_itype = NMT_EXP
-      case('PRUESS_1')
-        cur_saturation_function%saturation_function_itype = PRUESS_1
-       
-      case default
-        option%io_buffer = 'Saturation function type "' // &
-                           trim(cur_saturation_function%saturation_function_ctype) // &
-                           '" not recognized ' // &
-                           ' in saturation function ' // &
-                           trim(cur_saturation_function%name)
-        call printErrMsg(option)
-    end select
-    
     cur_saturation_function => cur_saturation_function%next
   enddo
   
@@ -610,6 +668,11 @@ subroutine SaturationFunctionCompute2(capillary_pressure,saturation, &
   ! (and associated derivatives) as a function of
   ! capillary pressure
   ! 
+  ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
+  !     of two-fluid capillary pressure-saturation and permeability functions",
+  !     Advances in Water Resources, Vol. 22, No. 5, pp 479-493,
+  !     http://dx.doi.org/10.1016/S0309-1708(98)00025-6.
+  !                                    
   ! Author: Glenn Hammond
   ! Date: 12/11/07
   ! 
@@ -643,6 +706,7 @@ subroutine SaturationFunctionCompute2(capillary_pressure,saturation, &
   ! compute saturation
   select case(saturation_function%saturation_function_itype)
     case(VAN_GENUCHTEN)
+      ! reference #1
 #if 0
       if (pc < saturation_function%spline_low) then
         saturation = 1.d0
@@ -694,6 +758,7 @@ subroutine SaturationFunctionCompute2(capillary_pressure,saturation, &
       ! compute relative permeability
       select case(saturation_function%permeability_function_itype)
         case(BURDINE)
+          ! reference #1
           one_over_m = 1.d0/m
           Se_one_over_m = Se**one_over_m
           relative_perm = Se*Se*(1.d0-(1.d0-Se_one_over_m)**m)
@@ -701,6 +766,7 @@ subroutine SaturationFunctionCompute2(capillary_pressure,saturation, &
                    Se*Se_one_over_m*(1.d0-Se_one_over_m)**(m-1.d0)
           dkr_pc = dkr_Se*dSe_pc
         case(MUALEM)
+          ! reference #1
 #ifdef MUALEM_SPLINE
           if (Se > saturation_function%spline_low) then
             call CubicPolynomialEvaluate( &
@@ -724,19 +790,21 @@ subroutine SaturationFunctionCompute2(capillary_pressure,saturation, &
           call printErrMsg(option)
       end select
     case(BROOKS_COREY)
+      ! reference #1
       alpha = saturation_function%alpha
       one_over_alpha = 1.d0/alpha
       pc = capillary_pressure
-#if 0
-      if (pc < saturation_function%spline_low) then
+#if 1
+      if (pc < saturation_function%pres_spline_low) then
         saturation = 1.d0
         relative_perm = 1.d0
         switch_to_saturated = PETSC_TRUE
         return
-      else if (pc < saturation_function%spline_high) then
+      else if (pc < saturation_function%pres_spline_high) then
         Sr = saturation_function%Sr(iphase)
-        call CublicPolynomialEvaluate(saturation_function%spline_coefficients, &
-                                      pc,Se,dSe_pc)
+        call CubicPolynomialEvaluate(saturation_function% &
+                                     pres_spline_coefficients, &
+                                     pc,Se,dSe_pc)
         saturation = Sr + (1.d0-Sr)*Se
         dsat_pc = (1.d0-Sr)*dSe_pc
 #else
@@ -764,11 +832,13 @@ subroutine SaturationFunctionCompute2(capillary_pressure,saturation, &
       ! compute relative permeability
       select case(saturation_function%permeability_function_itype)
         case(BURDINE)
+          ! reference #1
           power = 3.d0+2.d0/lambda
           relative_perm = Se**power
           dkr_Se = power*relative_perm/Se
           dkr_pc = dkr_Se*dSe_pc
         case(MUALEM)
+          ! reference #1
           power = 2.5d0+2.d0/lambda
           relative_perm = Se**power
           dkr_Se = power*relative_perm/Se
@@ -1793,6 +1863,11 @@ subroutine SatFuncGetRelPermFromSat(saturation,relative_perm,dkr_Se, &
   ! 
   ! Calculates relative permeability from
   ! phase saturation
+  !                                    
+  ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
+  !     of two-fluid capillary pressure-saturation and permeability functions",
+  !     Advances in Water Resources, Vol. 22, No. 5, pp 479-493,
+  !     http://dx.doi.org/10.1016/S0309-1708(98)00025-6.
   ! 
   ! Author: Glenn Hammond
   ! Date: 03/05/11
@@ -1832,6 +1907,7 @@ subroutine SatFuncGetRelPermFromSat(saturation,relative_perm,dkr_Se, &
     ! compute relative permeability
       select case(saturation_function%permeability_function_itype)
         case(BURDINE)
+          ! reference #1
           m = saturation_function%m
           one_over_m = 1.d0/m
           Se_one_over_m = Se**one_over_m
@@ -1841,6 +1917,7 @@ subroutine SatFuncGetRelPermFromSat(saturation,relative_perm,dkr_Se, &
                  Se*Se_one_over_m*(1.d0-Se_one_over_m)**(m-1.d0)
           endif
         case(MUALEM)
+          ! reference #1
           m = saturation_function%m
           one_over_m = 1.d0/m
           Se_one_over_m = Se**one_over_m
@@ -1858,11 +1935,13 @@ subroutine SatFuncGetRelPermFromSat(saturation,relative_perm,dkr_Se, &
     case(BROOKS_COREY)
       select case(saturation_function%permeability_function_itype)
         case(BURDINE)
+          ! reference #1
           lambda = saturation_function%lambda
           power = 3.d0+2.d0/lambda
           relative_perm = Se**power
           dkr_Se = power*relative_perm/Se
         case(MUALEM)
+          ! reference #1
           lambda = saturation_function%lambda
           power = 2.5d0+2.d0/lambda
           relative_perm = Se**power
@@ -1905,6 +1984,11 @@ subroutine SatFuncGetGasRelPermFromSat(liquid_saturation, &
   ! 
   ! Calculates relative permeability from
   ! phase saturation
+  !
+  ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
+  !     of two-fluid capillary pressure-saturation and permeability functions",
+  !     Advances in Water Resources, Vol. 22, No. 5, pp 479-493,
+  !     http://dx.doi.org/10.1016/S0309-1708(98)00025-6.
   ! 
   ! Author: Glenn Hammond
   ! Date: 03/05/11
@@ -1922,8 +2006,9 @@ subroutine SatFuncGetGasRelPermFromSat(liquid_saturation, &
 
   PetscReal :: Srl, Srg
   PetscReal :: S_star, S_hat
-  PetscReal :: tempreal
+  PetscReal :: Sg
   PetscReal :: lambda
+  PetscReal :: m
   
   Srl = saturation_function%Sr(LIQUID_PHASE)
   Srg = saturation_function%Sr(GAS_PHASE)
@@ -1938,38 +2023,35 @@ subroutine SatFuncGetGasRelPermFromSat(liquid_saturation, &
     gas_relative_perm = 1.d0
     return
   endif
+  Sg = 1.d0-S_hat
   
   ! compute relative permeability
   select case(saturation_function%saturation_function_itype)
     case(VAN_GENUCHTEN)
     ! compute relative permeability
+      m = saturation_function%m
       select case(saturation_function%permeability_function_itype)
         case(BURDINE)
-          option%io_buffer = &
-            'vG Burdine not yet supported in SatFuncGetGasRelPermFromSat.'
-          call printErrMsg(option)
+          ! reference #1
+          gas_relative_perm = Sg*Sg*(1.d0-S_hat**(1.d0/m))**m
         case(MUALEM)
-          if (Srg <= 0.d0) then
-            gas_relative_perm = 1.d0 - liquid_relative_perm
-          else
-            tempreal = 1.d0 - S_hat
-            gas_relative_perm = tempreal*tempreal*(1.d0-S_hat*S_hat)
-          endif
+          ! reference #1
+          gas_relative_perm = sqrt(Sg)*(1.d0-S_hat**(1.d0/m))**(2.d0*m)
         case default
           option%io_buffer = 'Unknown relative permeabilty function' 
           call printErrMsg(option)
       end select
     case(BROOKS_COREY)
+      lambda = saturation_function%lambda
       select case(saturation_function%permeability_function_itype)
         case(BURDINE)
-          lambda = saturation_function%lambda
-          tempreal = 1.d0-S_hat
-          gas_relative_perm = tempreal*tempreal* &
+          ! reference #1
+          gas_relative_perm = Sg*Sg* &
                               (1.d0-S_hat**(1.d0+2.d0/lambda))
         case(MUALEM)
-          option%io_buffer = &
-            'BC Mualem not yet supported in SatFuncGetGasRelPermFromSat.'
-      call printErrMsg(option)
+          ! reference #1
+          gas_relative_perm = sqrt(Sg)* &
+                              (1.d0-S_hat**(1.d0+1.d0/lambda))**2.d0
         case default
           option%io_buffer = 'Unknown relative permeabilty function'
           call printErrMsg(option)
@@ -2094,6 +2176,7 @@ subroutine SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
   ! 
 
   use Option_module
+  use Utility_module, only : QuadraticPolynomialEvaluate
   
   implicit none
 
@@ -2103,7 +2186,7 @@ subroutine SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
 
   PetscInt :: iphase
   PetscReal :: alpha, lambda, m, n, Sr, one_over_alpha
-  PetscReal :: pc, Se
+  PetscReal :: Se, derivative
   PetscReal :: pc_alpha, pc_alpha_n, one_plus_pc_alpha_n
   PetscReal :: pc_alpha_neg_lambda, pcmax
   
@@ -2113,52 +2196,41 @@ subroutine SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
   if (saturation <= Sr) then
     capillary_pressure = saturation_function%pcwmax
     return
+  else if (saturation >= 1.d0) then
+    capillary_pressure = 0.d0
+    return
   endif
     
-  ! compute saturation
   select case(saturation_function%saturation_function_itype)
     case(VAN_GENUCHTEN)
-      if (saturation >= 1.d0) then
-        capillary_pressure = 0.d0
-        return
-      else
-        alpha = saturation_function%alpha
-        m = saturation_function%m
-        n = 1.d0/(1.d0-m)
-        Se = (saturation-Sr)/(1.d0-Sr)
-        one_plus_pc_alpha_n = Se**(-1.d0/m)
-        pc_alpha_n = one_plus_pc_alpha_n - 1.d0
-        pc_alpha = pc_alpha_n**(1.d0/n)
-        capillary_pressure = pc_alpha/alpha
-      endif
-      ! compute relative permeability
+      alpha = saturation_function%alpha
+      m = saturation_function%m
+      n = 1.d0/(1.d0-m)
+      Se = (saturation-Sr)/(1.d0-Sr)
+      one_plus_pc_alpha_n = Se**(-1.d0/m)
+      pc_alpha_n = one_plus_pc_alpha_n - 1.d0
+      pc_alpha = pc_alpha_n**(1.d0/n)
+      capillary_pressure = pc_alpha/alpha
     case(BROOKS_COREY)
       alpha = saturation_function%alpha
-      one_over_alpha = 1.d0/alpha
-!      pc = option%reference_pressure-pressure
-      if (saturation >= 1.d0) then
-        capillary_pressure = one_over_alpha
-        return
+      lambda = saturation_function%lambda
+      Sr = saturation_function%Sr(iphase)
+      Se = (saturation-Sr)/(1.d0-Sr)
+      if (Se > saturation_function%sat_spline_low) then
+        call QuadraticPolynomialEvaluate(saturation_function% &
+                                         sat_spline_coefficients(1:3), &
+                                         Se,capillary_pressure,derivative)
       else
-        lambda = saturation_function%lambda
-        Sr = saturation_function%Sr(iphase)
-        Se = (saturation-Sr)/(1.d0-Sr)
         pc_alpha_neg_lambda = Se
         capillary_pressure = (pc_alpha_neg_lambda**(-1.d0/lambda))/alpha
       endif
     case(LINEAR_MODEL)
       alpha = saturation_function%alpha
       one_over_alpha = 1.d0/alpha
-!      pc = option%reference_pressure-pressure
-      if (saturation >= 1.d0) then
-        capillary_pressure = one_over_alpha
-        return
-      else
-        pcmax = saturation_function%pcwmax
-        Sr = saturation_function%Sr(iphase)
-        Se = (saturation-Sr)/(1.d0-Sr)
-        capillary_pressure = (one_over_alpha-pcmax)*Se + pcmax
-      endif
+      pcmax = saturation_function%pcwmax
+      Sr = saturation_function%Sr(iphase)
+      Se = (saturation-Sr)/(1.d0-Sr)
+      capillary_pressure = (one_over_alpha-pcmax)*Se + pcmax
 #if 0
     case(THOMEER_COREY)
       pc = option%reference_pressure-pressure
