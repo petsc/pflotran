@@ -244,6 +244,13 @@ subroutine PMSurfaceTHPostSolve(this)
   call SurfaceTHUpdateTemperature(this%surf_realization)
   call SurfaceTHUpdateAuxVars(this%surf_realization)
 
+  ! Update the temperature due to atmospheric forcing using an implicit
+  ! time integration.
+  call SurfaceTHImplicitAtmForcing(this%surf_realization)
+  call SurfaceTHUpdateAuxVars(this%surf_realization)
+  call DiscretizationGlobalToLocal(this%surf_realization%discretization, &
+          surf_field%flow_xx,surf_field%flow_xx_loc,NFLOWDOF)
+
 end subroutine PMSurfaceTHPostSolve
 
 ! ************************************************************************** !

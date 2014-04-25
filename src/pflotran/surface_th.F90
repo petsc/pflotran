@@ -30,7 +30,8 @@ module Surface_TH_module
          SurfaceTHUpdateAuxVars, &
          SurfaceTHUpdateSolution, &
          SurfaceTHUpdateTemperature, &
-         SurfaceTHUpdateSurfState
+         SurfaceTHUpdateSurfState, &
+         SurfaceTHImplicitAtmForcing
 
 contains
 
@@ -1174,7 +1175,7 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
     source_sink => source_sink%next
   enddo
 
-  call VecGetArrayF90(surf_field%flow_xx_loc,xx_loc_p,ierr)
+  call VecRestoreArrayF90(surf_field%flow_xx_loc,xx_loc_p,ierr)
 
 end subroutine SurfaceTHUpdateTemperature
 
@@ -1287,6 +1288,137 @@ subroutine SurfaceTHUpdateSurfState(surf_realization)
   call SurfaceTHUpdateAuxVars(surf_realization)
 
 end subroutine SurfaceTHUpdateSurfState
+
+! ************************************************************************** !
+
+subroutine SurfaceTHImplicitAtmForcing(surf_realization)
+  !
+  ! Updates the temperature of surface-water implicitly due to conduction.
+  !
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 04/24/2014
+  !
+
+  use Surface_Realization_class
+  use Patch_module
+  use Option_module
+  use Surface_Field_module
+  use Grid_module
+  use Coupler_module
+  use Connection_module
+  use Surface_Material_module
+  use EOS_Water_module
+  use String_module
+
+  implicit none
+
+  type(surface_realization_type) :: surf_realization
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(surface_field_type), pointer :: surf_field
+  type(coupler_type), pointer :: boundary_condition
+  type(coupler_type), pointer :: source_sink
+  type(connection_set_type), pointer :: cur_connection_set
+  type(Surface_TH_auxvar_type), pointer :: surf_auxvars(:)
+  type(Surface_TH_auxvar_type), pointer :: surf_auxvars_bc(:)
+  type(Surface_TH_auxvar_type), pointer :: surf_auxvars_ss(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars_bc(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars_ss(:)
+
+  PetscInt :: ghosted_id, local_id, istart, iend, sum_connection, idof, iconn
+  PetscInt :: iphasebc, iphase
+  PetscReal, pointer :: xx_loc_p(:), xx_p(:)
+  PetscReal, pointer :: perm_xx_loc_p(:), porosity_loc_p(:)
+  PetscReal :: xxbc(surf_realization%option%nflowdof)
+  PetscReal :: xxss(surf_realization%option%nflowdof)
+  PetscReal :: temp
+  PetscInt :: iter
+  PetscInt :: niter
+  PetscReal :: den
+  PetscReal :: dum1
+  PetscReal :: den_iter
+  PetscReal :: den_old
+  PetscReal :: k_therm
+  PetscReal :: Cw
+  PetscReal :: temp_old
+  PetscReal :: head
+  PetscReal :: beta
+  PetscErrorCode :: ierr
+
+  option => surf_realization%option
+  patch => surf_realization%patch
+  grid => patch%grid
+  surf_field => surf_realization%surf_field
+
+  surf_global_auxvars => patch%surf_aux%SurfaceGlobal%auxvars
+  surf_global_auxvars_ss => patch%surf_aux%SurfaceGlobal%auxvars_ss
+  surf_auxvars => patch%surf_aux%SurfaceTH%auxvars
+  surf_auxvars_bc => patch%surf_aux%SurfaceTH%auxvars_bc
+
+  ! niter = max(m)
+  niter = 20
+
+  call VecGetArrayF90(surf_field%flow_xx,xx_p,ierr)
+
+  ! Update source/sink aux vars
+  source_sink => patch%source_sinks%first
+  sum_connection = 0
+  do
+    if (.not.associated(source_sink)) exit
+
+    cur_connection_set => source_sink%connection_set
+
+    if (StringCompare(source_sink%name,'atm_energy_ss')) then
+
+      if (source_sink%flow_condition%itype(TH_TEMPERATURE_DOF) == HET_DIRICHLET) then
+
+        do iconn = 1, cur_connection_set%num_connections
+
+          sum_connection = sum_connection + 1
+
+          local_id = cur_connection_set%id_dn(iconn)
+          ghosted_id = grid%nL2G(local_id)
+
+          head     = surf_global_auxvars(ghosted_id)%head(1)
+          temp_old = surf_global_auxvars(ghosted_id)%temp(1)
+          k_therm  = surf_auxvars(ghosted_id)%k_therm
+          Cw       = surf_auxvars(ghosted_id)%Cw
+          call EOSWaterdensity(temp_old,option%reference_pressure,den_old,dum1,ierr)
+          call EOSWaterdensity(temp_old,option%reference_pressure,den_iter,dum1,ierr)
+
+          if (head > eps) then
+            do iter = 1,niter
+              beta = (2.d0*k_therm*option%surf_flow_dt)/(Cw*head**2.d0)
+              temp = (den_old*(temp_old + 273.15d0) + &
+                      beta*(surf_global_auxvars_ss(sum_connection)%temp(1)+273.15))/&
+                      (den_iter + beta) - 273.15d0
+              call EOSWaterdensity(temp,option%reference_pressure,den_iter,dum1,ierr)
+            enddo
+            surf_global_auxvars(ghosted_id)%temp(1) = temp
+
+            iend = local_id*option%nflowdof
+            istart = iend - option%nflowdof + 1
+            xx_p(iend) = den_iter*Cw*(temp + 273.15d0)*xx_p(istart)
+          endif
+
+        enddo
+
+      else
+        sum_connection = sum_connection + cur_connection_set%num_connections
+      endif
+
+    else
+      sum_connection = sum_connection + cur_connection_set%num_connections
+    endif
+
+    source_sink => source_sink%next
+  enddo
+
+  call VecRestoreArrayF90(surf_field%flow_xx,xx_p,ierr)
+
+end subroutine SurfaceTHImplicitAtmForcing
 
 ! ************************************************************************** !
 
