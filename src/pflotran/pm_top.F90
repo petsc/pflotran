@@ -64,7 +64,7 @@ end subroutine PMResidual
 
 ! ************************************************************************** !
 
-subroutine PMJacobian(snes,xx,A,B,flag,this,ierr)
+subroutine PMJacobian(snes,xx,A,B,this,ierr)
   ! 
   ! Author: Glenn Hammond
   ! Date: 03/14/13
@@ -82,7 +82,6 @@ subroutine PMJacobian(snes,xx,A,B,flag,this,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  MatStructure flag
   type(pm_pointer_type) :: this
   PetscErrorCode :: ierr
   
@@ -90,7 +89,7 @@ subroutine PMJacobian(snes,xx,A,B,flag,this,ierr)
   print *, 'PMJacobian()'
 #endif
 
-  call this%ptr%Jacobian(snes,xx,A,B,flag,ierr)
+  call this%ptr%Jacobian(snes,xx,A,B,ierr)
     
 end subroutine PMJacobian
 

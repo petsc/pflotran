@@ -35,7 +35,11 @@ module EOS_Water_module
   procedure(EOSWaterEnthalpyDummy), pointer :: EOSWaterEnthalpyPtr => null()
   procedure(EOSWaterSteamDenEnthDummy), pointer :: &
     EOSWaterSteamDensityEnthalpyPtr => null()
-  
+  procedure(EOSWaterDensityIceDummy), pointer :: &
+    EOSWaterDensityIcePtr => null()
+  procedure(EOSWaterDensityEnthalpyIceDummy), pointer :: &
+    EOSWaterDensityEnthalpyIcePtr => null()
+
   ! interface blocks
   interface
     subroutine EOSWaterViscosityDummy(T, P, PS, dPS_dT, VW, &
@@ -58,50 +62,67 @@ module EOS_Water_module
     end subroutine EOSWaterSatPressDummy
     subroutine EOSWaterDensityDummy(t,p,dw,dwmol, &
                                     calculate_derivatives, &
-                                    dwp,dwt,scale,ierr)
+                                    dwp,dwt,ierr)
       implicit none
       PetscReal, intent(in) :: t
       PetscReal, intent(in) :: p
       PetscBool, intent(in) :: calculate_derivatives
       PetscReal, intent(out) :: dw,dwmol,dwp,dwt
-      PetscReal, intent(in) :: scale
       PetscErrorCode, intent(out) :: ierr
     end subroutine EOSWaterDensityDummy
     subroutine EOSWaterEnthalpyDummy(t,p,hw, &
                                      calculate_derivatives, &
-                                     hwp,hwt,scale,ierr)
+                                     hwp,hwt,ierr)
       implicit none
       PetscReal, intent(in) :: t
       PetscReal, intent(in) :: p
       PetscBool, intent(in) :: calculate_derivatives
       PetscReal, intent(out) :: hw,hwp,hwt
-      PetscReal, intent(in) :: scale
       PetscErrorCode, intent(out) :: ierr
     end subroutine EOSWaterEnthalpyDummy
     subroutine EOSWaterDensityEnthalpyDummy(t,p,dw,dwmol,hw, &
                                             calculate_derivatives, &
-                                            dwp,dwt,hwp,hwt,scale,ierr)
+                                            dwp,dwt,hwp,hwt,ierr)
       implicit none
       PetscReal, intent(in) :: t
       PetscReal, intent(in) :: p
       PetscBool, intent(in) :: calculate_derivatives
       PetscReal, intent(out) :: dw,dwmol,dwp,dwt
       PetscReal, intent(out) :: hw,hwp,hwt
-      PetscReal, intent(in) :: scale
       PetscErrorCode, intent(out) :: ierr
     end subroutine EOSWaterDensityEnthalpyDummy
-    subroutine EOSWaterSteamDenEnthDummy(t,p,pa,dg,dgmol,hg, &
+    subroutine EOSWaterSteamDenEnthDummy(t,p,dg,dgmol,hg, &
                                          calculate_derivatives, &
-                                         dgp,dgt,hgp,hgt,scale,ierr)
+                                         dgp,dgt,hgp,hgt,ierr)
       implicit none
       PetscReal, intent(in) :: t
-      PetscReal, intent(in) :: p,pa
+      PetscReal, intent(in) :: p
       PetscBool, intent(in) :: calculate_derivatives
       PetscReal, intent(out) :: dg,dgmol,dgp,dgt
       PetscReal, intent(out) :: hg,hgp,hgt
-      PetscReal, intent(in) :: scale
       PetscErrorCode, intent(out) :: ierr 
     end subroutine EOSWaterSteamDenEnthDummy
+    subroutine EOSWaterDensityIceDummy(t,p,dw, &
+                                       calculate_derivatives, &
+                                       dwp,dwt,ierr)
+      implicit none
+      PetscReal, intent(in) :: t
+      PetscReal, intent(in) :: p
+      PetscBool, intent(in) :: calculate_derivatives
+      PetscReal, intent(out) :: dw,dwp,dwt
+      PetscErrorCode, intent(out) :: ierr
+    end subroutine EOSWaterDensityIceDummy
+    subroutine EOSWaterDensityEnthalpyIceDummy(t,p,dw,dwmol,hw, &
+                                            calculate_derivatives, &
+                                            dwp,dwt,hwp,hwt,ierr)
+      implicit none
+      PetscReal, intent(in) :: t
+      PetscReal, intent(in) :: p
+      PetscBool, intent(in) :: calculate_derivatives
+      PetscReal, intent(out) :: dw,dwmol,dwp,dwt
+      PetscReal, intent(out) :: hw,hwp,hwt
+      PetscErrorCode, intent(out) :: ierr
+    end subroutine EOSWaterDensityEnthalpyIceDummy
   end interface
   
   ! interfaces for derivative/non-derivative versions that are visible outside
@@ -115,7 +136,6 @@ module EOS_Water_module
     procedure EOSWaterSatPresDerive
   end interface
   interface EOSWaterDensity
-    procedure EOSWaterDensityGautam
     procedure EOSWaterDensityNoDerive
     procedure EOSWaterDensityDerive
   end interface
@@ -140,13 +160,13 @@ module EOS_Water_module
             EOSWaterDensity, &
             EOSWaterEnthalpy, &
             EOSWaterDensityEnthalpy, &
-            EOSWaterDensityEnthalpyPainter, &
+            EOSWaterDensityEnthalpyPainterOld, &
             EOSWaterSteamDensityEnthalpy, &
             EOSWaterDuanMixture, &
             EOSWaterDensityNaCl, &
             EOSWaterViscosityNaCl, &
             EOSWaterInternalEnergyIce, &
-            EOSWaterDensityIce, &
+            EOSWaterDensityIcePainter, &
             EOSWaterSaturationTemperature
   
   public :: EOSWaterSetDensityIFC67, &
@@ -154,7 +174,9 @@ module EOS_Water_module
             EOSWaterSetDensityConstant, &
             EOSWaterSetEnthalpyConstant, &
             EOSWaterSetViscosityConstant, &
-            EOSWaterSetDensityExponential
+            EOSWaterSetDensityExponential, &
+            EOSWaterSetDensityPainter, &
+            EOSWaterSetEnthalpyPainter
  
   contains
 
@@ -178,6 +200,7 @@ subroutine EOSWaterInit()
   EOSWaterViscosityPtr => EOSWaterViscosity1
   EOSWaterSaturationPressurePtr => EOSWaterSaturationPressureIFC67
   EOSWaterSteamDensityEnthalpyPtr => EOSWaterSteamDensityEnthalpyIFC67
+  EOSWaterDensityIcePtr => EOSWaterDensityIcePainter
   
 end subroutine EOSWaterInit
 
@@ -378,7 +401,9 @@ subroutine EOSWaterViscosity1(T, P, PS, dPS_dT, VW, calculate_derivatives, &
   
   EX  = 247.8d0/(T+133.15d0)
   PHI = 1.0467d0*(T-31.85d0)
-  AM  = 1.d0+PHI*(P-PS)*1.d-11
+  !geh: added max(P,PS)-PS in place of P-PS
+  !geh: here P should be the maximum of Pl and Pg
+  AM  = 1.d0+PHI*(max(P,PS)-PS)*1.d-11
   pwr = 10.d0**EX
   VW = 1.d-7*AM*241.4d0*pwr
     
@@ -512,76 +537,72 @@ end subroutine EOSWaterSaturationPressureIFC67
 
 ! ************************************************************************** !
 
-subroutine EOSWaterDensityNoDerive(t,p,dw,dwmol,scale,ierr)
+subroutine EOSWaterDensityNoDerive(t,p,dw,dwmol,ierr)
 
   implicit none
 
-  PetscReal, intent(in) :: t   ! Temperature in centigrade
-  PetscReal, intent(in) :: p   ! Pressure in Pascals
+  PetscReal, intent(in) :: t
+  PetscReal, intent(in) :: p
   PetscReal, intent(out) :: dw,dwmol
-  PetscReal, intent(in) :: scale
   PetscErrorCode, intent(out) :: ierr
   
   PetscReal :: dum1, dum2
   
   call EOSWaterDensityPtr(t,p,dw,dwmol,PETSC_FALSE, &
-                          dum1,dum2,scale,ierr)
+                          dum1,dum2,ierr)
   
 end subroutine EOSWaterDensityNoDerive
 
 ! ************************************************************************** !
 
 subroutine EOSWaterDensityDerive(t,p,dw,dwmol, &
-                                 dwp,dwt,scale,ierr)
+                                 dwp,dwt,ierr)
   implicit none
 
-  PetscReal, intent(in) :: t   ! Temperature in centigrade
-  PetscReal, intent(in) :: p   ! Pressure in Pascals
+  PetscReal, intent(in) :: t
+  PetscReal, intent(in) :: p
   PetscReal, intent(out) :: dw,dwmol,dwp,dwt
-  PetscReal, intent(in) :: scale
   PetscErrorCode, intent(out) :: ierr
   
   call EOSWaterDensityPtr(t,p,dw,dwmol,PETSC_TRUE, &
-                          dwp,dwt,scale,ierr)
+                          dwp,dwt,ierr)
   
 end subroutine EOSWaterDensityDerive
 
 ! ************************************************************************** !
 
-subroutine EOSWaterEnthalpyNoDerive(t,p,hw,scale,ierr)
+subroutine EOSWaterEnthalpyNoDerive(t,p,hw,ierr)
 
   implicit none
 
-  PetscReal, intent(in) :: t   ! Temperature in centigrade
-  PetscReal, intent(in) :: p   ! Pressure in Pascals
+  PetscReal, intent(in) :: t
+  PetscReal, intent(in) :: p
   PetscReal, intent(out) :: hw
-  PetscReal, intent(in) :: scale
   PetscErrorCode, intent(out) :: ierr
   
   PetscReal :: dum1, dum2
   
-  call EOSWaterEnthalpyPtr(t,p,hw,PETSC_FALSE,dum1,dum2,scale,ierr)
+  call EOSWaterEnthalpyPtr(t,p,hw,PETSC_FALSE,dum1,dum2,ierr)
   
 end subroutine EOSWaterEnthalpyNoDerive
 
 ! ************************************************************************** !
 
-subroutine EOSWaterEnthalpyDerive(t,p,hw,hwp,hwt,scale,ierr)
+subroutine EOSWaterEnthalpyDerive(t,p,hw,hwp,hwt,ierr)
   implicit none
 
-  PetscReal, intent(in) :: t   ! Temperature in centigrade
-  PetscReal, intent(in) :: p   ! Pressure in Pascals
+  PetscReal, intent(in) :: t
+  PetscReal, intent(in) :: p
   PetscReal, intent(out) :: hw,hwp,hwt
-  PetscReal, intent(in) :: scale
   PetscErrorCode, intent(out) :: ierr
   
-  call EOSWaterEnthalpyPtr(t,p,hw,PETSC_TRUE,hwp,hwt,scale,ierr)
+  call EOSWaterEnthalpyPtr(t,p,hw,PETSC_TRUE,hwp,hwt,ierr)
   
 end subroutine EOSWaterEnthalpyDerive
 
 ! ************************************************************************** !
 
-subroutine EOSWaterDenEnthNoDerive(t,p,dw,dwmol,hw,scale,ierr)
+subroutine EOSWaterDenEnthNoDerive(t,p,dw,dwmol,hw,ierr)
 
   implicit none
 
@@ -589,31 +610,29 @@ subroutine EOSWaterDenEnthNoDerive(t,p,dw,dwmol,hw,scale,ierr)
   PetscReal, intent(in) :: p   ! Pressure in Pascals
   PetscReal, intent(out) :: dw,dwmol
   PetscReal, intent(out) :: hw
-  PetscReal, intent(in) :: scale
   PetscErrorCode, intent(out) :: ierr
   
   PetscReal :: dum1, dum2, dum3, dum4
   
   call EOSWaterDensityEnthalpyPtr(t,p,dw,dwmol,hw,PETSC_FALSE, &
-                                  dum1,dum2,dum3,dum4,scale,ierr)
+                                  dum1,dum2,dum3,dum4,ierr)
   
 end subroutine EOSWaterDenEnthNoDerive
 
 ! ************************************************************************** !
 
 subroutine EOSWaterDenEnthDerive(t,p,dw,dwmol,hw, &
-                                 dwp,dwt,hwp,hwt,scale,ierr)
+                                 dwp,dwt,hwp,hwt,ierr)
   implicit none
 
   PetscReal, intent(in) :: t   ! Temperature in centigrade
   PetscReal, intent(in) :: p   ! Pressure in Pascals
   PetscReal, intent(out) :: dw,dwmol,dwp,dwt
   PetscReal, intent(out) :: hw,hwp,hwt
-  PetscReal, intent(in) :: scale
   PetscErrorCode, intent(out) :: ierr
   
   call EOSWaterDensityEnthalpyPtr(t,p,dw,dwmol,hw,PETSC_TRUE, &
-                                  dwp,dwt,hwp,hwt,scale,ierr)
+                                  dwp,dwt,hwp,hwt,ierr)
   
 end subroutine EOSWaterDenEnthDerive
 
@@ -621,7 +640,7 @@ end subroutine EOSWaterDenEnthDerive
 
 subroutine EOSWaterDensityEnthalpyGeneral(t,p,dw,dwmol,hw, &
                                         calculate_derivatives, &
-                                        dwp,dwt,hwp,hwt,scale,ierr)
+                                        dwp,dwt,hwp,hwt,ierr)
   implicit none
   
   PetscReal, intent(in) :: t   ! Temperature in centigrade
@@ -629,15 +648,14 @@ subroutine EOSWaterDensityEnthalpyGeneral(t,p,dw,dwmol,hw, &
   PetscBool, intent(in) :: calculate_derivatives
   PetscReal, intent(out) :: dw,dwmol,dwp,dwt
   PetscReal, intent(out) :: hw,hwp,hwt
-  PetscReal, intent(in) :: scale
   PetscErrorCode, intent(out) :: ierr
   
   call EOSWaterDensityPtr(t,p,dw,dwmol, &
                             calculate_derivatives, &
-                            dwp,dwt,scale,ierr)
+                            dwp,dwt,ierr)
   call EOSWaterEnthalpyPtr(t,p,hw, &
                            calculate_derivatives, &
-                           hwp,hwt,scale,ierr)  
+                           hwp,hwt,ierr)  
   
 end subroutine EOSWaterDensityEnthalpyGeneral
 
@@ -645,7 +663,7 @@ end subroutine EOSWaterDensityEnthalpyGeneral
 
 subroutine EOSWaterDensityEnthalpyIFC67(t,p,dw,dwmol,hw, &
                                         calculate_derivatives, &
-                                        dwp,dwt,hwp,hwt,scale,ierr)
+                                        dwp,dwt,hwp,hwt,ierr)
 
 !  This subroutine calculates water and steam-gas mixture properties.
 !  The water and steam properties are valid in the range of:
@@ -671,16 +689,15 @@ subroutine EOSWaterDensityEnthalpyIFC67(t,p,dw,dwmol,hw, &
   PetscBool, intent(in) :: calculate_derivatives
   PetscReal, intent(out) :: dw,dwmol,dwp,dwt
   PetscReal, intent(out) :: hw,hwp,hwt
-  PetscReal, intent(in) :: scale
   PetscErrorCode, intent(out) :: ierr
   
 #if 1
   call EOSWaterDensityIFC67(t,p,dw,dwmol, &
                             calculate_derivatives, &
-                            dwp,dwt,scale,ierr)
+                            dwp,dwt,ierr)
   call EOSWaterEnthalpyIFC67(t,p,hw, &
                              calculate_derivatives, &
-                             hwp,hwt,scale,ierr)  
+                             hwp,hwt,ierr)  
 #else
   PetscInt :: i
     
@@ -701,7 +718,7 @@ subroutine EOSWaterDensityEnthalpyIFC67(t,p,dw,dwmol,hw, &
                term5,term5t,term5p,term6,term6t,term6p,term7,term7t,term7p
   PetscReal :: dv2t,dv2p,dv3t
   PetscReal :: vr,ypt,yptt,zpt,zpp,vrpt,vrpp,cnv
-  PetscReal :: tc1,pc1,vc1,utc1,upc1,vc1mol,vc1molh
+  PetscReal :: tc1,pc1,vc1,utc1,upc1,vc1mol
   PetscReal, parameter :: zero = 0.d0
   PetscReal, parameter :: one = 1.d0
   PetscReal, parameter :: two = 2.d0
@@ -870,13 +887,8 @@ subroutine EOSWaterDensityEnthalpyIFC67(t,p,dw,dwmol,hw, &
   v2_5 = aa(21)*a12*beta2x*beta
   term7 = v1_5+v2_5  
     
-  ! The scale (usually 1e-6) should be applied below to pc1 to convert
-  ! from Pa -> MPa.  Applying it to critical volume does the same, but is
-  ! misleading - geh
-  vc1molh = vc1mol*scale
-    
   ! "v" section 6
-  v1_6 = pc1*vc1molh ! MPa * m^3/kmol = MJ/kmol assuming scale = 1e-6
+  v1_6 = pc1*vc1mol
   hw = (term1-term2+term3+term4-term5+term6+term7)*v1_6
     
   if (calculate_derivatives) then
@@ -906,7 +918,7 @@ subroutine EOSWaterDensityEnthalpyIFC67(t,p,dw,dwmol,hw, &
     term7p = beta2x*(three*aa(21)*a12+84.d0*aa(22)*beta/theta20)
     term7t = -420.d0*aa(22)*beta4/(theta20*theta)
 
-    hwp = (term3p+term4p-term5p+term6p+term7p)*vc1molh
+    hwp = (term3p+term4p-term5p+term6p+term7p)*vc1mol
     hwt = (aa(0)-term2t+term3t+term4t-term5t+term6t+term7t)*v1_6*utc1
   else
     hwp = -999.d0
@@ -920,7 +932,7 @@ end subroutine EOSWaterDensityEnthalpyIFC67
 
 subroutine EOSWaterDensityIFC67(t,p,dw,dwmol, &
                                 calculate_derivatives, &
-                                dwp,dwt,scale,ierr)
+                                dwp,dwt,ierr)
 
 !  This subroutine calculates water and steam-gas mixture properties.
 !  The water and steam properties are valid in the range of:
@@ -945,7 +957,6 @@ subroutine EOSWaterDensityIFC67(t,p,dw,dwmol, &
   PetscReal, intent(in) :: p   ! Pressure in Pascals
   PetscBool, intent(in) :: calculate_derivatives
   PetscReal, intent(out) :: dw,dwmol,dwp,dwt
-  PetscReal, intent(in) :: scale
   PetscErrorCode, intent(out) :: ierr
   
   PetscInt :: i
@@ -967,7 +978,7 @@ subroutine EOSWaterDensityIFC67(t,p,dw,dwmol, &
 !               term5,term5t,term5p,term6,term6t,term6p,term7,term7t,term7p
 !  PetscReal :: dv2t,dv2p,dv3t
   PetscReal :: vr,ypt,yptt,zpt,zpp,vrpt,vrpp,cnv
-  PetscReal :: tc1,pc1,vc1,utc1,upc1,vc1mol,vc1molh
+  PetscReal :: tc1,pc1,vc1,utc1,upc1,vc1mol
   PetscReal, parameter :: zero = 0.d0
   PetscReal, parameter :: one = 1.d0
   PetscReal, parameter :: two = 2.d0
@@ -1079,7 +1090,7 @@ end subroutine EOSWaterDensityIFC67
 
 subroutine EOSWaterEnthalpyIFC67(t,p,hw, &
                                  calculate_derivatives, &
-                                 hwp,hwt,scale,ierr)
+                                 hwp,hwt,ierr)
 
 !  This subroutine calculates water and steam-gas mixture properties.
 !  The water and steam properties are valid in the range of:
@@ -1104,7 +1115,6 @@ subroutine EOSWaterEnthalpyIFC67(t,p,hw, &
   PetscReal, intent(in) :: p   ! Pressure in Pascals
   PetscBool, intent(in) :: calculate_derivatives
   PetscReal, intent(out) :: hw,hwp,hwt
-  PetscReal, intent(in) :: scale
   PetscErrorCode, intent(out) :: ierr
   
   PetscInt :: i
@@ -1127,7 +1137,7 @@ subroutine EOSWaterEnthalpyIFC67(t,p,hw, &
   PetscReal :: dv2t,dv2p,dv3t
 !  PetscReal :: vr,ypt,yptt,zpt,zpp,vrpt,vrpp,cnv
   PetscReal :: ypt,yptt,zpt,zpp
-  PetscReal :: tc1,pc1,vc1,utc1,upc1,vc1mol,vc1molh
+  PetscReal :: tc1,pc1,vc1,utc1,upc1,vc1mol
   PetscReal, parameter :: zero = 0.d0
   PetscReal, parameter :: one = 1.d0
   PetscReal, parameter :: two = 2.d0
@@ -1290,13 +1300,8 @@ subroutine EOSWaterEnthalpyIFC67(t,p,hw, &
   v2_5 = aa(21)*a12*beta2x*beta
   term7 = v1_5+v2_5  
     
-  ! The scale (usually 1e-6) should be applied below to pc1 to convert
-  ! from Pa -> MPa.  Applying it to critical volume does the same, but is
-  ! misleading - geh
-  vc1molh = vc1mol*scale
-    
   ! "v" section 6
-  v1_6 = pc1*vc1molh ! MPa * m^3/kmol = MJ/kmol assuming scale = 1e-6
+  v1_6 = pc1*vc1mol
   hw = (term1-term2+term3+term4-term5+term6+term7)*v1_6
     
   if (calculate_derivatives) then
@@ -1329,7 +1334,7 @@ subroutine EOSWaterEnthalpyIFC67(t,p,hw, &
     term7p = beta2x*(three*aa(21)*a12+84.d0*aa(22)*beta/theta20)
     term7t = -420.d0*aa(22)*beta4/(theta20*theta)
 
-    hwp = (term3p+term4p-term5p+term6p+term7p)*vc1molh
+    hwp = (term3p+term4p-term5p+term6p+term7p)*vc1mol
     hwt = (aa(0)-term2t+term3t+term4t-term5t+term6t+term7t)*v1_6*utc1
   else
     hwp = -999.d0
@@ -1342,14 +1347,13 @@ end subroutine EOSWaterEnthalpyIFC67
 
 subroutine EOSWaterDensityConstant(t,p,dw,dwmol, &
                                    calculate_derivatives, &
-                                   dwp,dwt,scale,ierr)
+                                   dwp,dwt,ierr)
   implicit none
   
-  PetscReal, intent(in) :: t   ! Temperature in centigrade
-  PetscReal, intent(in) :: p   ! Pressure in Pascals
+  PetscReal, intent(in) :: t
+  PetscReal, intent(in) :: p
   PetscBool, intent(in) :: calculate_derivatives
   PetscReal, intent(out) :: dw,dwmol,dwp,dwt
-  PetscReal, intent(in) :: scale
   PetscErrorCode, intent(out) :: ierr
   
   dw = constant_density ! kg/m^3
@@ -1364,14 +1368,13 @@ end subroutine EOSWaterDensityConstant
 
 subroutine EOSWaterEnthalpyConstant(t,p,hw, &
                                     calculate_derivatives, &
-                                    hwp,hwt,scale,ierr)
+                                    hwp,hwt,ierr)
   implicit none
   
   PetscReal, intent(in) :: t   ! Temperature in centigrade
   PetscReal, intent(in) :: p   ! Pressure in Pascals
   PetscBool, intent(in) :: calculate_derivatives
   PetscReal, intent(out) :: hw,hwp,hwt
-  PetscReal, intent(in) :: scale
   PetscErrorCode, intent(out) :: ierr
   
   hw = constant_enthalpy ! MJ/kmol
@@ -1385,14 +1388,13 @@ end subroutine EOSWaterEnthalpyConstant
 
 subroutine EOSWaterDensityExponential(t,p,dw,dwmol, &
                                       calculate_derivatives, &
-                                      dwp,dwt,scale,ierr)
+                                      dwp,dwt,ierr)
   implicit none
   
   PetscReal, intent(in) :: t   ! Temperature in centigrade
   PetscReal, intent(in) :: p   ! Pressure in Pascals
   PetscBool, intent(in) :: calculate_derivatives
   PetscReal, intent(out) :: dw,dwmol,dwp,dwt
-  PetscReal, intent(in) :: scale
   PetscErrorCode, intent(out) :: ierr
   
   ! kg/m^3
@@ -1411,56 +1413,53 @@ end subroutine EOSWaterDensityExponential
 
 ! ************************************************************************** !
 
-subroutine EOSWaterSteamDenEnthNoDerive(t,p,pa,dg,dgmol,hg,scale,ierr)
+subroutine EOSWaterSteamDenEnthNoDerive(t,p,dg,dgmol,hg,ierr)
 
   implicit none
 
   PetscReal, intent(in) :: t   ! Temperature in centigrade.
-  PetscReal, intent(in) :: p,pa   ! Pressure in Pascals.
+  PetscReal, intent(in) :: p   ! Vapor Pressure in Pascals.
   PetscReal, intent(out) :: dg,dgmol
   PetscReal, intent(out) :: hg
-  PetscReal, intent(in) :: scale
   PetscErrorCode, intent(out) :: ierr
   
   PetscReal :: dum1, dum2, dum3, dum4
   
-  call EOSWaterSteamDensityEnthalpyPtr(t,p,pa,dg,dgmol,hg,PETSC_FALSE, &
-                                       dum1,dum2,dum3,dum4,scale,ierr)
+  call EOSWaterSteamDensityEnthalpyPtr(t,p,dg,dgmol,hg,PETSC_FALSE, &
+                                       dum1,dum2,dum3,dum4,ierr)
   
 end subroutine EOSWaterSteamDenEnthNoDerive
 
 ! ************************************************************************** !
 
-subroutine EOSWaterSteamDenEnthDerive(t,p,pa,dg,dgmol,hg, &
-                                      dgp,dgt,hgp,hgt,scale,ierr)
+subroutine EOSWaterSteamDenEnthDerive(t,pv,dg,dgmol,hg, &
+                                      dgp,dgt,hgp,hgt,ierr)
   implicit none
 
   PetscReal, intent(in) :: t   ! Temperature in centigrade.
-  PetscReal, intent(in) :: p,pa   ! Pressure in Pascals.
+  PetscReal, intent(in) :: pv  ! Vapor Pressure in Pascals.
   PetscReal, intent(out) :: dg,dgmol,dgp,dgt
   PetscReal, intent(out) :: hg,hgp,hgt
-  PetscReal, intent(in) :: scale
   PetscErrorCode, intent(out) :: ierr
   
-  call EOSWaterSteamDensityEnthalpyPtr(t,p,pa,dg,dgmol,hg,PETSC_TRUE, &
-                                       dgp,dgt,hgp,hgt,scale,ierr)
+  call EOSWaterSteamDensityEnthalpyPtr(t,pv,dg,dgmol,hg,PETSC_TRUE, &
+                                       dgp,dgt,hgp,hgt,ierr)
   
 end subroutine EOSWaterSteamDenEnthDerive
 
 ! ************************************************************************** !
 
-subroutine EOSWaterSteamDensityEnthalpyIFC67(t,p,pa,dg,dgmol,hg, &
+subroutine EOSWaterSteamDensityEnthalpyIFC67(t,pv,dg,dgmol,hg, &
                                          calculate_derivatives, &
-                                         dgp,dgt,hgp,hgt,scale,ierr)
+                                         dgp,dgt,hgp,hgt,ierr)
 ! t/C  p/Pa dgmol/(mol/m^3)  h/MJ/mol
   implicit none
   
   PetscReal, intent(in) :: t   ! Temperature in centigrade.
-  PetscReal, intent(in) :: p,pa   ! Pressure in Pascals.
+  PetscReal, intent(in) :: pv  ! Vapor Pressure in Pascals.
   PetscBool, intent(in) :: calculate_derivatives
   PetscReal, intent(out) :: dg,dgmol,dgp,dgt
   PetscReal, intent(out) :: hg,hgp,hgt
-  PetscReal, intent(in) :: scale
   PetscErrorCode, intent(out) :: ierr
   
   PetscInt, save :: n(8),ll(8),x(8,2),z(8,3)
@@ -1480,7 +1479,7 @@ subroutine EOSWaterSteamDensityEnthalpyIFC67(t,p,pa,dg,dgmol,hg, &
             term3,term3t,term3p,term4,term4t,term4p,term5,term5t,term5p
   PetscReal :: hr,hrp,hrt,hrpt,hrpp
   PetscReal :: vr,vrpt,vrpp
-  PetscReal :: tc1,pc1,vc1,utc1,upc1,vc1mol,vc1molh
+  PetscReal :: tc1,pc1,vc1,utc1,upc1,vc1mol
   PetscReal, parameter :: zero = 0.d0
   PetscReal, parameter :: one = 1.d0
   PetscReal, parameter :: two = 2.d0
@@ -1544,10 +1543,9 @@ subroutine EOSWaterSteamDensityEnthalpyIFC67(t,p,pa,dg,dgmol,hg, &
   utc1 = one/tc1
   upc1 = one/pc1
   vc1mol = vc1*18.0153d0
-  vc1molh = vc1mol*scale   
 
   theta  = (t+273.15d0)*utc1
-  beta   = (p-pa)*upc1
+  beta   = pv*upc1
   ubeta  = one/beta
   utheta = one/theta
   xx = exp(b(1,1)*(one-theta))
@@ -1742,12 +1740,12 @@ subroutine EOSWaterSteamDensityEnthalpyIFC67(t,p,pa,dg,dgmol,hg, &
   hrpt = (hrt-hr)/delt
   hrpp = (hrp-hr)/delp
     
-  v1 = pc1*vc1molh
+  v1 = pc1*vc1mol
   hg = hr*v1
   
   if (calculate_derivatives) then
     hgt = hrpt*v1*utc1
-    hgp = hrpp*vc1molh
+    hgp = hrpp*vc1mol
   else
     hgt = -999.d0
     hgp = -999.d0
@@ -1771,8 +1769,7 @@ subroutine EOSWaterDuanMixture(t,p,xmol,y_nacl,avgmw,dw_kg,denmix)
 
   !duan mixing **************************
   tk = t + 273.15D0; xco2 = xmol;
-  call EOSWaterDensityNaCl(t, p*1.D-6, 0.D0, pw_kg)
-  pw_kg = pw_kg*1.D3;
+  call EOSWaterDensityNaCl(t, p, 0.D0, pw_kg)
   x1 = 1.D0-xco2;
   vphi_a1 = (0.3838402D-3*tk - 0.5595385D0)*tk + 0.30429268D3 + &
             (-0.72044305D5 + 0.63003388D7/tk)/tk;  
@@ -1787,44 +1784,58 @@ end subroutine EOSWaterDuanMixture
 
 ! ************************************************************************** !
 
-subroutine EOSWaterDensityNaCl(t,p,xnacl,dnacl)
+subroutine EOSWaterDensityNaCl(t,p_Pa,xnacl,dnacl_kg_m3)
 
   ! density: Batzle & Wang (1992)
 
   implicit none
 
-  PetscReal :: rw0,dnacl,t,p,xnacl
+  PetscReal, intent(in) :: t            ! [C]
+  PetscReal, intent(in) :: p_Pa         ! [Pa]
+  PetscReal, intent(in) :: xnacl        ! [-]
+  PetscReal, intent(out) :: dnacl_kg_m3 ! [kg/m^3]
+  
+  
+  PetscReal :: rw0_kg_m3
   PetscReal :: rw_mol, hw
   PetscReal :: dum1,dum2
+  PetscReal :: p_MPa, rw0_g_cm3, dnacl_g_cm3
   PetscErrorCode  :: ierr
-  !units: t [C], p [MPa], xnacl [mass fraction NaCl], dnacl [g/cm^3]
+  !units: t [C], p [Pa], xnacl [mass fraction NaCl], dnacl [kg/m^3]
 
   !rw0 = 1.d0 + 1.d-6*(-80.d0*t - 3.3d0*t**2 + 0.00175d0*t**3 &
   !      + 489.d0*p - 2.d0*t*p + 0.016d0*t**2*p - 1.3d-5*t**3*p &
   !      - 0.333d0*p**2 - 0.002d0*t*p**2)
-  call EOSWaterDensityPtr(t,p*1D6,rw0,rw_mol,PETSC_FALSE, &
-                          dum1,dum2,1.D-6,ierr)
-  rw0=rw0*1.d-3
-  dnacl = rw0 + xnacl*(0.668d0 + 0.44d0*xnacl &
-          + 1.d-6*(300.d0*p - 2400.d0*p*xnacl + t*(80.d0 &
-          + 3.d0*t - 3300.d0*xnacl - 13.d0*p + 47.d0*p*xnacl)))
-
+  call EOSWaterDensity(t,p_Pa,rw0_kg_m3,rw_mol,ierr)
+  ! For Eq. 27b, Batzle and Wang use MPa units for pressure
+  p_MPa = p_Pa * 1.d-6
+  rw0_g_cm3 = rw0_kg_m3 * 1.d-3
+  dnacl_g_cm3 = rw0_g_cm3 + xnacl*(0.668d0 + 0.44d0*xnacl &
+                + 1.d-6*(300.d0*p_MPa - 2400.d0*p_MPa*xnacl + t*(80.d0 &
+                + 3.d0*t - 3300.d0*xnacl - 13.d0*p_MPa + 47.d0*p_MPa*xnacl)))
+  dnacl_kg_m3 = dnacl_g_cm3 * 1.d3
+  
 end subroutine EOSWaterDensityNaCl
 
 ! ************************************************************************** !
 
-subroutine EOSWaterViscosityNaCl (t,p,xnacl,visnacl)
+subroutine EOSWaterViscosityNaCl (t,p_Pa,xnacl,visnacl)
 
   !viscosity: Kestin et al. (1981)
 
   implicit none
 
-  !units: t [C], p [MPa], xnacl [mass fraction NaCl], visnacl [Pa s]
-
+  PetscReal, intent(in) :: t        ! [C]
+  PetscReal, intent(in) :: p_Pa     ! [Pa]
+  PetscReal, intent(in) :: xnacl    ! [-]
+  PetscReal, intent(out) :: visnacl ! [Pa-s]
+  
+  
   PetscReal, save :: a1,a2,a3,b1,b2,b3,c1,c2,c3,c4,wnacl
   PetscReal :: ak,bk,ck
   PetscReal :: beta,betap,betas,betaw
-  PetscReal :: t,tt,p,mnacl,xnacl,visnacl,fac,mu0,ms
+  PetscReal :: tt,mnacl,fac,mu0,ms
+  PetscReal :: p_GPa
 
   data a1,a2,a3 / 3.324d-2, 3.624d-3, -1.879d-4 /
   data b1,b2,b3 / -3.96d-2, 1.02d-2, -7.02d-4 /
@@ -1833,7 +1844,7 @@ subroutine EOSWaterViscosityNaCl (t,p,xnacl,visnacl)
   data wnacl / 58.44277d-3 / ! (kg/mol NaCl)
 
   !convert pressure to GPa
-  p = p*1.d-3
+  p_GPa = p_Pa*1.d-9
 
   mnacl = xnacl/(1.d0-xnacl)/wnacl
 
@@ -1851,7 +1862,7 @@ subroutine EOSWaterViscosityNaCl (t,p,xnacl,visnacl)
 
   mu0 = 1001.74d-6 * 10.d0**(ak + ck*(bk + 1.d0))
 
-  visnacl = mu0*(1.d0 + beta*p)
+  visnacl = mu0*(1.d0 + beta*p_GPa)
 
 end subroutine EOSWaterViscosityNaCl
 
@@ -1938,26 +1949,36 @@ end subroutine EOSWaterSaturationTemperature
 
 ! ************************************************************************** !
 
-subroutine EOSWaterDensityIce(T, P, den_ice, dden_ice_dT, dden_ice_dP)
+subroutine EOSWaterDensityIcePainter(T, P, den_ice, calculate_derivatives, &
+                                     dden_ice_dT, dden_ice_dP, ierr)
   ! Subroutine to calculate the density of ice at given temperature
   ! and pressure
   ! T is in deg C, P is in Pa, density is in kmol/m3
   implicit none
   
-  PetscReal :: T
-  PetscReal :: P
-  PetscReal :: den_ice
-  PetscReal :: dden_ice_dT, dden_ice_dP 
-  PetscInt :: ierr
+  PetscReal, intent(in) :: T
+  PetscReal, intent(in) :: P
+  PetscBool, intent(in) :: calculate_derivatives
+
+  PetscReal, intent(out) :: den_ice
+  PetscReal, intent(out) :: dden_ice_dT
+  PetscReal, intent(out) :: dden_ice_dP
+  PetscInt, intent(out) :: ierr
+
   PetscReal, parameter :: P_ref = 1.d5
   PetscReal, parameter :: alpha = 3.3d-10
   PetscReal, parameter :: beta = 1.53d-4
 
   den_ice = 5.09424d1*(1.d0 + alpha*(P - P_ref) - beta*(T)) !in Kmol/m3
-  dden_ice_dT = 5.09424d1*(-beta)
-  dden_ice_dP = 5.09424d1*alpha
+  if (calculate_derivatives) then
+    dden_ice_dT = 5.09424d1*(-beta)
+    dden_ice_dP = 5.09424d1*alpha
+  else
+    dden_ice_dT = -999.d0
+    dden_ice_dP = -999.d0
+  endif
   
-end subroutine EOSWaterDensityIce
+end subroutine EOSWaterDensityIcePainter
 
 ! ************************************************************************** !
 
@@ -1988,8 +2009,8 @@ end subroutine EOSWaterInternalEnergyIce
 
 ! ************************************************************************** !
 
-subroutine EOSWaterDensityEnthalpyPainter(T, P, den_water_kg, den_water_kmol, &
-                                          h_MJ_kmol, &
+subroutine EOSWaterDensityEnthalpyPainterOld(T, P, den_water_kg, den_water_kmol, &
+                                          h_J_kmol, &
                                           calculate_derivatives, dden_water_dp, &
                                           dden_water_dt, dh_dp, dh_dt, ierr)
 ! wateos_simple: Simple water equation of state from Scott Painter
@@ -2001,7 +2022,7 @@ subroutine EOSWaterDensityEnthalpyPainter(T, P, den_water_kg, den_water_kmol, &
   PetscReal, intent(in) :: T
   PetscReal, intent(in) :: P
   PetscBool, intent(in) :: calculate_derivatives
-  PetscReal, intent(out) :: den_water_kg, den_water_kmol, h_MJ_kmol
+  PetscReal, intent(out) :: den_water_kg, den_water_kmol, h_J_kmol
   PetscReal, intent(out) :: dden_water_dp, dden_water_dt
   PetscReal, intent(out) :: dh_dp, dh_dt
   
@@ -2032,7 +2053,7 @@ subroutine EOSWaterDensityEnthalpyPainter(T, P, den_water_kg, den_water_kmol, &
   u_J_mol = 76.0d0*(T_K - T_ref)        ! in J/mol
   u_J_kg = 4.217*1.0d3*(T_K - T_ref)    ! in J/kg
   h_J_kg = u_J_kg + P/den_water_kg    ! in J/kg
-  h_MJ_kmol = h_J_kg*FMWH2O*1.d-6     ! in MJ/kmol
+  h_J_kmol = h_J_kg*FMWH2O     ! in J/kmol
   
   if (calculate_derivatives) then
     ! Derivatives of density
@@ -2041,10 +2062,10 @@ subroutine EOSWaterDensityEnthalpyPainter(T, P, den_water_kg, den_water_kmol, &
                               3.d0*d*(T_K - T_ref)**(2.d0))      ! in Kmol/K
                             
     ! Derivatives of enthalpy
-    dh_dp = FMWH2O*1.d-6/den_water_kg   ! in MJ/kmol/Pa
+    dh_dp = FMWH2O/den_water_kg   ! in J/kmol/Pa
     du_dt = 4.217*1.d3                  ! in J/kg/K
-    dh_dt = FMWH2O*1.d-6*(du_dt + P*(-1.d0/den_water_kg**(2.d0))* &
-                          dden_water_dt*FMWH2O)    ! in MJ/kmol/K
+    dh_dt = FMWH2O*(du_dt + P*(-1.d0/den_water_kg**(2.d0))* &
+                    dden_water_dt*FMWH2O)    ! in MJ/kmol/K
   else
     dden_water_dp = -999.d0
     dden_water_dp = -999.d0
@@ -2053,60 +2074,211 @@ subroutine EOSWaterDensityEnthalpyPainter(T, P, den_water_kg, den_water_kmol, &
     dh_dt = -999.d0
   endif
    
+end subroutine EOSWaterDensityEnthalpyPainterOld
+
+! ************************************************************************** !
+
+subroutine EOSWaterSetDensityPainter()
+
+  implicit none
+
+  EOSWaterDensityEnthalpyPtr => EOSWaterDensityEnthalpyPainter
+  EOSWaterDensityPtr => EOSWaterDensityPainter
+
+end subroutine EOSWaterSetDensityPainter
+
+! ************************************************************************** !
+
+subroutine EOSWaterSetEnthalpyPainter()
+
+  implicit none
+
+  EOSWaterDensityEnthalpyPtr => EOSWaterDensityEnthalpyPainter
+  EOSWaterDensityPtr => EOSWaterDensityPainter
+
+end subroutine EOSWaterSetEnthalpyPainter
+
+! ************************************************************************** !
+subroutine EOSWaterDensityEnthalpyPainter(t,p,dw,dwmol,hw, &
+                                          calculate_derivatives, &
+                                          dwp,dwt,hwp,hwt,ierr)
+  implicit none
+
+  PetscReal, intent(in) :: t   ! Temperature in centigrade
+  PetscReal, intent(in) :: p   ! Pressure in Pascals
+  PetscBool, intent(in) :: calculate_derivatives
+  PetscReal, intent(out) :: dw,dwmol,dwp,dwt
+  PetscReal, intent(out) :: hw,hwp,hwt
+  PetscErrorCode, intent(out) :: ierr
+
+  call EOSWaterDensityPainter(t,p,dw,dwmol, &
+                              calculate_derivatives, &
+                              dwp,dwt,ierr)
+
+  call EOSWaterEnthalpyPainter(t,p,hw, &
+                               calculate_derivatives, &
+                               hwp,hwt,ierr)
+
+
 end subroutine EOSWaterDensityEnthalpyPainter
 
 ! ************************************************************************** !
 
-subroutine EOSWaterDensityGautam (tc,p,d)
-  !-units: tc - degrees c, p - pascals, d - kg/m^3
-  !-compute density and internal energy of liquid water as
-  ! function of temperature and pressure, using the steam
-  ! table equations as given by the international formulation
-  ! committee (1967).
+subroutine EOSWaterDensityPainter(t,p,dw,dwmol, &
+                              calculate_derivatives, &
+                              dwp,dwt,ierr)
+
+! wateos_simple: Simple water equation of state from Scott Painter
+! Author: Satish Karra, LANL
+! Date: 02/1/12
+! T in C, P in Pa
   implicit none
 
-  PetscReal :: tc, p, d, par1, par2, par3, par4, par5, pnmr, tkr, &
-            v, vmkr, y, z, zp, zero = 0.d0
-  PetscReal :: a(23),sa(12)
+  PetscReal, intent(in) :: t   ! Temperature in centigrade
+  PetscReal, intent(in) :: p   ! Pressure in Pascals
+  PetscBool, intent(in) :: calculate_derivatives
+  PetscReal, intent(out) :: dw,dwmol,dwp,dwt
+  PetscErrorCode, intent(out) :: ierr
 
-  data a/ &
-    6.824687741d3,  -5.422063673d2, -2.096666205d4,  3.941286787d4,&
-    -6.733277739d4,   9.902381028d4, -1.093911774d5,  8.590841667d4,&
-    -4.511168742d4,   1.418138926d4, -2.017271113d3,  7.982692717d0,&
-    -2.616571843d-2,  1.522411790d-3, 2.284279054d-2, 2.421647003d2,&
-    1.269716088d-10, 2.074838328d-7, 2.174020350d-8, 1.105710498d-9,&
-    1.293441934d1,   1.308119072d-5, 6.047626338d-14/
-  data sa/ &
-    8.438375405d-1, 5.362162162d-4, 1.7200000d0,    7.342278489d-2,&
-    4.975858870d-2, 6.537154300d-1, 1.150d-6,       1.51080d-5,&
-    1.41880d-1,     7.002753165d0,  2.995284926d-4, 2.040d-1/
+  PetscReal, parameter :: a = 999.915d0
+  PetscReal, parameter :: b = 0.0416516d0
+  PetscReal, parameter :: c = -0.0100836d0
+  PetscReal, parameter :: d = 0.000206355
+  PetscReal, parameter :: alpha = 5.0d-10     ! in Pa^(-1)
+  PetscReal, parameter :: T_ref = 273.15d0    ! in K
+  PetscReal, parameter :: P_ref = 1.0d5       ! in Pa
 
-  tkr = (tc + 273.15d0)/647.3d0
-  pnmr = p/2.212d7   ! *1.d+5    mss nov, 97
-  y = 1.d0 - sa(1)*tkr*tkr - sa(2)/tkr**6
-  zp = (sa(3)*y*y - 2.d0*sa(4)*tkr + 2.d0*sa(5)*pnmr)
-  if (zp.lt.zero) goto 1
-  z = y + sqrt(zp)
-  par1 = a(12)*sa(5)/z**(5.d0/17.d0)
-  par2 = a(13) + a(14)*tkr + a(15)*tkr*tkr + a(16)*(sa(6) - tkr)**10 + &
-    a(17)/(sa(7) + tkr**19)
-  par3 = (a(18) + 2.d0*a(19)*pnmr + 3.d0*a(20)*pnmr*pnmr)/(sa(8) + tkr**11)
-  par4 = a(21)*tkr**18*(sa(9) + tkr*tkr)*(-3.d0/(sa(10) + pnmr)**4 + sa(11))
-  par5 = 3.d0*a(22)*(sa(12) - tkr)*pnmr*pnmr + 4.d0*a(23)/tkr**20*pnmr**3
-  vmkr = par1 + par2 - par3 - par4 + par5
-  v = vmkr*3.17d-3
-  d = 1.d0/v
-    
-  if (d.le.zero) then
-    print *,'stop! negative density  = ',d    
-    stop
-  end if
-  return
-    
-1 continue
-  print 2,tc
-2 format (' Temperature = ',d12.5,'  Out of Range in DENSITY')
+  PetscReal :: den_w_one_bar, T_K
+  PetscReal :: u_J_mol, u_J_kg, h_J_kg
+  PetscReal :: du_dt
 
-end subroutine EOSWaterDensityGautam
+  ierr = 0
+
+  ! Density of water
+  T_K = T + T_ref    ! convert to Kelvin
+  den_w_one_bar = a + b*(T_K - T_ref) + c*(T_K - T_ref)**(2.d0) + &
+                  d*(T_K - T_ref)**(3.d0)
+  dw = den_w_one_bar*(1 + alpha*(P - P_ref))
+  dwmol = dw/FMWH2O     ! in mol
+
+  ! Internal energy
+  u_J_mol = 76.0d0*(T_K - T_ref)        ! in J/mol
+  u_J_kg = 4.217*1.0d3*(T_K - T_ref)    ! in J/kg
+  h_J_kg = u_J_kg + P/dw    ! in J/kg
+
+  if (calculate_derivatives) then
+    ! Derivatives of density
+    dwp = 1/FMWH2O*den_w_one_bar*alpha    ! in Kmol/Pa
+    dwt = 1/FMWH2O*(1 + alpha*(P - P_ref))*(b + 2.d0*c*(T_K - T_ref) + &
+                              3.d0*d*(T_K - T_ref)**(2.d0))      ! in Kmol/K
+  else
+    dwp = -999.d0
+    dwt = -999.d0
+  endif
+
+end subroutine EOSWaterDensityPainter
+
+! ************************************************************************** !
+
+subroutine EOSWaterEnthalpyPainter(T, P, &
+                                   h_J_kmol, &
+                                   calculate_derivatives, &
+                                   dh_dp, dh_dt, ierr)
+
+! wateos_simple: Simple water equation of state from Scott Painter
+! Author: Satish Karra, LANL
+! Date: 02/1/12
+! T in C, P in Pa
+  implicit none
+
+  PetscReal, intent(in) :: T
+  PetscReal, intent(in) :: P
+  PetscBool, intent(in) :: calculate_derivatives
+  PetscReal, intent(out) :: h_J_kmol
+  PetscReal :: den_water_kg, den_water_kmol
+  PetscReal :: dden_water_dp, dden_water_dt
+  PetscReal, intent(out) :: dh_dp, dh_dt
+
+  PetscErrorCode, intent(out) :: ierr
+
+  PetscReal, parameter :: a = 999.915d0
+  PetscReal, parameter :: b = 0.0416516d0
+  PetscReal, parameter :: c = -0.0100836d0
+  PetscReal, parameter :: d = 0.000206355
+  PetscReal, parameter :: alpha = 5.0d-10     ! in Pa^(-1)
+  PetscReal, parameter :: T_ref = 273.15d0    ! in K
+  PetscReal, parameter :: P_ref = 1.0d5       ! in Pa
+
+  PetscReal :: den_w_one_bar, T_K
+  PetscReal :: u_J_mol, u_J_kg, h_J_kg
+  PetscReal :: du_dt
+
+  ierr = 0
+
+  ! Density of water
+  T_K = T + T_ref    ! convert to Kelvin
+  den_w_one_bar = a + b*(T_K - T_ref) + c*(T_K - T_ref)**(2.d0) + &
+                  d*(T_K - T_ref)**(3.d0)
+  den_water_kg = den_w_one_bar*(1 + alpha*(P - P_ref))
+  den_water_kmol = den_water_kg/FMWH2O     ! in mol
+
+  ! Internal energy
+  u_J_mol = 76.0d0*(T_K - T_ref)        ! in J/mol
+  u_J_kg = 4.217*1.0d3*(T_K - T_ref)    ! in J/kg
+  h_J_kg = u_J_kg + P/den_water_kg    ! in J/kg
+  h_J_kmol = h_J_kg*FMWH2O     ! in J/kmol
+
+  if (calculate_derivatives) then
+    ! Derivatives of density
+    dden_water_dp = 1/FMWH2O*den_w_one_bar*alpha    ! in Kmol/Pa
+    dden_water_dt = 1/FMWH2O*(1 + alpha*(P - P_ref))*(b + 2.d0*c*(T_K - T_ref) + &
+                              3.d0*d*(T_K - T_ref)**(2.d0))      ! in Kmol/K
+
+    ! Derivatives of enthalpy
+    dh_dp = FMWH2O/den_water_kg   ! in J/kmol/Pa
+    du_dt = 4.217*1.d3                  ! in J/kg/K
+    dh_dt = FMWH2O*(du_dt + P*(-1.d0/den_water_kg**(2.d0))* &
+                    dden_water_dt*FMWH2O)    ! in MJ/kmol/K
+  else
+    dden_water_dp = -999.d0
+    dden_water_dp = -999.d0
+    dh_dp = -999.d0
+    du_dt = -999.d0
+    dh_dt = -999.d0
+  endif
+
+end subroutine EOSWaterEnthalpyPainter
+
+! ************************************************************************** !
+
+subroutine EOSWaterDensityIceNoDerive(t,p,dw,ierr)
+
+  implicit none
+
+  PetscReal, intent(in) :: t
+  PetscReal, intent(in) :: p
+  PetscReal, intent(out) :: dw
+  PetscErrorCode, intent(out) :: ierr
+
+  PetscReal :: dum1, dum2
+
+  call EOSWaterDensityIcePtr(t,p,dw,PETSC_FALSE, &
+                             dum1,dum2,ierr)
+
+end subroutine EOSWaterDensityIceNoDerive
+
+! ************************************************************************** !
+
+subroutine EOSWaterDensityIceDerive(t,p,dw,dwp,dwt,ierr)
+  implicit none
+
+  PetscReal, intent(in) :: t
+  PetscReal, intent(in) :: p
+  PetscReal, intent(out) :: dw,dwp,dwt
+  PetscErrorCode, intent(out) :: ierr
+
+  call EOSWaterDensityIcePtr(t,p,dw,PETSC_TRUE,dwp,dwt,ierr)
+
+end subroutine EOSWaterDensityIceDerive
 
 end module EOS_Water_module

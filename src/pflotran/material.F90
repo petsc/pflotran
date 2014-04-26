@@ -115,7 +115,9 @@ module Material_module
             MaterialPropertyRead, &
             MaterialInitAuxIndices, &
             MaterialAssignPropertyToAux, &
-            MaterialSetup
+            MaterialSetup, &
+            MaterialUpdateAuxVars, &
+            MaterialWeightAuxVars
   
 contains
 
@@ -425,6 +427,12 @@ subroutine MaterialPropertyRead(material_property,input,option)
               call printErrMsg(option)
           end select
         enddo
+        if (dabs(material_property%permeability(1,1) - &
+                 material_property%permeability(2,2)) > 1.d-40 .or. &
+            dabs(material_property%permeability(1,1) - &
+                 material_property%permeability(3,3)) > 1.d-40) then
+          material_property%isotropic_permeability = PETSC_FALSE
+        endif
       case('PERM_FACTOR') 
       ! Permfactor is the multiplier to permeability to increase perm
       ! The perm increase could be due to pressure or other variable
@@ -600,7 +608,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
     end select 
   enddo
 
-  if ((option%iflowmode == TH_MODE) .or. (option%iflowmode == THC_MODE)) then
+  if (option%iflowmode == TH_MODE) then
      if (option%use_th_freezing .eqv. PETSC_TRUE) then
         if (.not. therm_k_frz) then
            option%io_buffer = 'THERMAL_CONDUCTIVITY_FROZEN must be set ' // &
@@ -613,6 +621,21 @@ subroutine MaterialPropertyRead(material_property,input,option)
            call printErrMsg(option)
         endif
      endif
+  endif
+
+  if (len(trim(material_property%soil_compressibility_function)) > 0) then
+    if (material_property%soil_compressibility<-998.d0) then
+      option%io_buffer = 'SOIL_COMPRESSIBILITY_FUNCTION is specified in ' // &
+        'inputdeck for MATERIAL_PROPERTY card, but SOIL_COMPRESSIBILITY ' // &
+        'is not defined.'
+      call printErrMsg(option)
+    endif
+    if (material_property%soil_reference_pressure<-998.d0) then
+      option%io_buffer = 'SOIL_COMPRESSIBILITY_FUNCTION is specified in ' // &
+        'inputdeck for MATERIAL_PROPERTY card, but SOIL_REFERENCE_PRESSURE ' // &
+        'is not defined.'
+      call printErrMsg(option)
+    endif
   endif
 
 end subroutine MaterialPropertyRead
@@ -1095,7 +1118,12 @@ subroutine MaterialSetAuxVarScalar(Material,value,ivar)
   PetscInt :: ivar
 
   PetscInt :: i
+  class(material_auxvar_type), pointer :: material_auxvars(:)
   
+!  material_auxvars => Material%auxvars
+!geh: can't use this pointer as gfortran does not like it.  Must use
+!     Material%auxvars%....
+
   select case(ivar)
     case(VOLUME)
       do i=1, Material%num_aux
@@ -1161,8 +1189,12 @@ subroutine MaterialSetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
   
   PetscInt :: ghosted_id
   PetscReal, pointer :: vec_loc_p(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
   PetscErrorCode :: ierr
   
+!  material_auxvars => Material%auxvars
+!geh: can't use this pointer as gfortran does not like it.  Must use
+!     Material%auxvars%....
   call VecGetArrayReadF90(vec_loc,vec_loc_p,ierr)
   
   select case(ivar)
@@ -1171,9 +1203,25 @@ subroutine MaterialSetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
         Material%auxvars(ghosted_id)%volume = vec_loc_p(ghosted_id)
       enddo
     case(POROSITY)
-      do ghosted_id=1, Material%num_aux
-        Material%auxvars(ghosted_id)%porosity = vec_loc_p(ghosted_id)
-      enddo
+!      do ghosted_id=1, Material%num_aux
+!        Material%auxvars(ghosted_id)%porosity = vec_loc_p(ghosted_id)
+!      enddo
+      select case(isubvar)
+        case(TIME_T)
+          do ghosted_id=1, Material%num_aux
+            Material%auxvars(ghosted_id)%porosity_store(TIME_T) = &
+              vec_loc_p(ghosted_id)
+          enddo
+        case(TIME_TpDT)
+          do ghosted_id=1, Material%num_aux
+            Material%auxvars(ghosted_id)%porosity_store(TIME_TpDT) = &
+              vec_loc_p(ghosted_id)
+          enddo
+        case default
+          do ghosted_id=1, Material%num_aux
+            Material%auxvars(ghosted_id)%porosity = vec_loc_p(ghosted_id)
+          enddo
+      end select
     case(TORTUOSITY)
       do ghosted_id=1, Material%num_aux
         Material%auxvars(ghosted_id)%tortuosity = vec_loc_p(ghosted_id)
@@ -1218,7 +1266,7 @@ end subroutine MaterialSetAuxVarVecLoc
 
 subroutine MaterialGetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
   ! 
-  ! Sets values of material auxvar data using a vector.
+  ! Gets values of material auxvar data using a vector.
   ! 
   ! Author: Glenn Hammond
   ! Date: 01/09/14
@@ -1238,8 +1286,12 @@ subroutine MaterialGetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
   
   PetscInt :: ghosted_id
   PetscReal, pointer :: vec_loc_p(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
   PetscErrorCode :: ierr
   
+!  material_auxvars => Material%auxvars
+!geh: can't use this pointer as gfortran does not like it.  Must use
+!     Material%auxvars%....
   call VecGetArrayReadF90(vec_loc,vec_loc_p,ierr)
   
   select case(ivar)
@@ -1293,6 +1345,81 @@ end subroutine MaterialGetAuxVarVecLoc
 
 ! ************************************************************************** !
 
+subroutine MaterialWeightAuxVars(Material,weight)
+  ! 
+  ! Updates the porosities in auxiliary variables associated with 
+  ! reactive transport
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 04/17/14
+  ! 
+
+  use Option_module
+  
+  implicit none
+
+  type(material_type) :: Material
+  PetscReal :: weight
+  
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+  PetscInt :: ghosted_id
+  
+!  material_auxvars => Material%auxvars
+!geh: can't use this pointer as gfortran does not like it.  Must use
+!     Material%auxvars%....
+
+  do ghosted_id = 1, Material%num_aux
+    ! interpolate porosity based on weight
+    Material%auxvars(ghosted_id)%porosity = &
+      (weight*Material%auxvars(ghosted_id)%porosity_store(TIME_TpDT)+ &
+       (1.d0-weight)*Material%auxvars(ghosted_id)%porosity_store(TIME_T))
+  enddo
+  
+ end subroutine MaterialWeightAuxVars
+ 
+! ************************************************************************** !
+
+subroutine MaterialUpdateAuxVars(Material,comm1,vec_loc,time_level,time)
+  ! 
+  ! Updates material aux var variables for use in reactive transport
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/14/09
+  ! 
+
+  use Option_module
+  use Communicator_Base_module
+  use Variables_module, only : POROSITY
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+  
+  type(material_type) :: Material
+  class(communicator_type) :: comm1
+  Vec :: vec_loc
+  PetscReal :: time
+  PetscInt :: time_level
+  
+  select case(time_level)
+    case(TIME_T)
+      Material%time_t = time
+    case(TIME_TpDT)
+      Material%time_tpdt = time
+  end select  
+  
+  ! porosity
+  call MaterialGetAuxVarVecLoc(Material,vec_loc,POROSITY,ZERO_INTEGER)
+  call comm1%LocalToLocal(vec_loc,vec_loc)
+  ! note that 'time_level' is not ZERO_INTEGER.  thus, this differs
+  ! from MaterialAuxVarCommunicate.
+  call MaterialSetAuxVarVecLoc(Material,vec_loc,POROSITY,time_level)
+
+end subroutine MaterialUpdateAuxVars
+
+! ************************************************************************** !
+
 subroutine MaterialAuxVarCommunicate(comm,Material,vec_loc,ivar,isubvar)
   ! 
   ! Sets values of material auxvar data using a vector.
@@ -1320,6 +1447,51 @@ subroutine MaterialAuxVarCommunicate(comm,Material,vec_loc,ivar,isubvar)
 
 end subroutine MaterialAuxVarCommunicate
 
+! ************************************************************************** !
+
+subroutine MaterialUpdatePorosity(Material,global_auxvars,porosity_loc)
+  ! 
+  ! Gets values of material auxvar data using a vector.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/09/14
+  ! 
+
+  use Variables_module
+  use Global_Aux_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  type(material_type) :: Material ! from realization%patch%aux%Material
+  type(global_auxvar_type) :: global_auxvars(:)
+  Vec :: porosity_loc
+  
+  PetscReal, pointer :: porosity_loc_p(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+  PetscInt :: ghosted_id
+  PetscReal :: compressed_porosity
+  PetscReal :: dcompressed_porosity_dp
+  PetscErrorCode :: ierr
+  
+  if (soil_compressibility_index > 0) then
+    material_auxvars => Material%auxvars
+    call VecGetArrayReadF90(porosity_loc,porosity_loc_p,ierr)
+    do ghosted_id = 1, Material%num_aux
+      material_auxvars(ghosted_id)%porosity = porosity_loc_p(ghosted_id)
+      call MaterialCompressSoil(material_auxvars(ghosted_id), &
+                                maxval(global_auxvars(ghosted_id)%pres), &
+                                compressed_porosity,dcompressed_porosity_dp)
+      material_auxvars(ghosted_id)%porosity = compressed_porosity
+      material_auxvars(ghosted_id)%dporosity_dp = dcompressed_porosity_dp
+    enddo
+    call VecRestoreArrayReadF90(porosity_loc,porosity_loc_p,ierr)
+  endif
+  
+end subroutine MaterialUpdatePorosity
+  
 ! ************************************************************************** !
 
 subroutine MaterialCompressSoilLeijnse(auxvar,pressure, &

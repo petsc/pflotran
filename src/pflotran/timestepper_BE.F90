@@ -327,6 +327,10 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
       ! The Newton solver diverged, so try reducing the time step.
       icut = icut + 1
       this%time_step_cut_flag = PETSC_TRUE
+      ! if a cut occurs on the last time step, the stop_flag will have been
+      ! set to TS_STOP_END_SIMULATION.  Set back to TS_CONTINUE to prevent
+      ! premature ending of simulation.
+      stop_flag = TS_CONTINUE
 
       if (icut > this%max_time_step_cuts .or. &
           this%dt < 1.d-20) then
@@ -342,7 +346,7 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
         plot_flag = PETSC_TRUE
         transient_plot_flag = PETSC_FALSE
         call Output(process_model%realization_base,plot_flag,transient_plot_flag)
-        stop_flag = 2
+        stop_flag = TS_STOP_FAILURE
         return
       endif
  

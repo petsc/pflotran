@@ -2,6 +2,7 @@ module EOS_module
  
   use PFLOTRAN_Constants_module
   use EOS_Water_module
+  use EOS_Gas_module
   
   implicit none
 
@@ -21,6 +22,7 @@ subroutine EOSInit()
   implicit none
   
   call EOSWaterInit()
+  call EOSGasInit()
   
 end subroutine EOSInit
 
@@ -129,6 +131,79 @@ subroutine EOSRead(input,option)
       call EOSWaterVerify(ierr,string)
       if (ierr /= 0) then
         option%io_buffer = 'Error in Water EOS'    
+        if (len_trim(string) > 1) then
+          option%io_buffer = trim(option%io_buffer) // ': ' // trim(string)
+        endif
+        call printErrMsg(option)
+      endif
+    case('GAS')
+      do
+        call InputReadPflotranString(input,option)
+        if (InputCheckExit(input,option)) exit  
+        call InputReadWord(input,option,keyword,PETSC_TRUE)
+        call InputErrorMsg(input,option,'keyword','EOS,GAS')
+        call StringToUpper(keyword)   
+        select case(trim(keyword))
+          case('DENSITY') 
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputErrorMsg(input,option,'DENSITY','EOS,GAS')
+            call StringToUpper(word)   
+            select case(trim(word))
+              case('CONSTANT')
+                call InputReadDouble(input,option,tempreal)
+                call InputErrorMsg(input,option,'VALUE', &
+                                   'EOS,GAS,DENSITY,CONSTANT')
+                call EOSGasSetDensityConstant(tempreal)
+              case('IDEAL','DEFAULT')
+                call EOSGasSetDensityIdeal()
+              case default
+                option%io_buffer = 'Keyword: ' // trim(word) // &
+                                   ' not recognized in EOS,GAS,DENSITY'    
+                call printErrMsg(option)
+            end select
+          case('ENTHALPY') 
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputErrorMsg(input,option,'ENTHALPY','EOS,GAS')
+            call StringToUpper(word)   
+            select case(trim(word))
+              case('CONSTANT')
+                call InputReadDouble(input,option,tempreal)
+                call InputErrorMsg(input,option,'VALUE', &
+                                   'EOS,GAS,ENTHALPY,CONSTANT')
+                call EOSGasSetEnergyConstant(tempreal)
+              case('IDEAL','DEFAULT')
+                call EOSGasSetEnergyIdeal()
+              case default
+                option%io_buffer = 'Keyword: ' // trim(word) // &
+                                   ' not recognized in EOS,GAS,ENTHALPY'    
+                call printErrMsg(option)
+            end select
+          case('VISCOSITY') 
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputErrorMsg(input,option,'VISCOSITY','EOS,GAS')
+            call StringToUpper(word)   
+            select case(trim(word))
+              case('CONSTANT')
+                call InputReadDouble(input,option,tempreal)
+                call InputErrorMsg(input,option,'VALUE', &
+                                   'EOS,GAS,VISCOSITY,CONSTANT')
+                call EOSGasSetViscosityConstant(tempreal)
+              case('DEFAULT')
+              case default
+                option%io_buffer = 'Keyword: ' // trim(word) // &
+                                   ' not recognized in EOS,GAS,VISCOSITY'    
+                call printErrMsg(option)
+            end select
+          case default
+            option%io_buffer = 'Keyword: ' // trim(keyword) // &
+                               ' not recognized in EOS,GAS'    
+            call printErrMsg(option)
+        end select
+      enddo
+      string = ''
+      call EOSGasVerify(ierr,string)
+      if (ierr /= 0) then
+        option%io_buffer = 'Error in Gas EOS'    
         if (len_trim(string) > 1) then
           option%io_buffer = trim(option%io_buffer) // ': ' // trim(string)
         endif

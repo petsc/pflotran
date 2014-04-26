@@ -1188,7 +1188,6 @@ subroutine OutputGetFlowrates(realization_base)
     if (.not.associated(boundary_condition)) exit
 
     cur_connection_set => boundary_condition%connection_set
-    sum_connection = 0
 
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
@@ -1530,7 +1529,6 @@ subroutine OutputGetExplicitAuxVars(realization_base,count,vec_proc,density)
   PetscReal, pointer :: vec_proc_ptr(:)
   PetscReal, pointer :: flowrates(:,:)
   PetscReal, pointer :: darcy(:)
-  PetscReal, pointer :: porosity_loc_p(:)
   PetscReal, pointer :: density(:)
   PetscInt :: offset
   PetscInt :: iconn
@@ -1636,7 +1634,6 @@ subroutine OutputGetExplicitCellInfo(realization_base,num_cells,ids,sat,por, &
   type(global_auxvar_type), pointer :: global_auxvar(:)
 
 
-  PetscReal, pointer :: porosity_loc_p(:)
   PetscErrorCode :: ierr
   PetscInt :: num_cells
   PetscReal, pointer :: sat(:)
@@ -1652,10 +1649,6 @@ subroutine OutputGetExplicitCellInfo(realization_base,num_cells,ids,sat,por, &
   grid => patch%grid
   global_auxvar => patch%aux%Global%auxvars
   
-  if (.not.option%use_refactored_material_auxvars) then
-  call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
-  endif
-  
   num_cells = grid%nlmax
   allocate(sat(num_cells))
   allocate(por(num_cells))
@@ -1667,18 +1660,10 @@ subroutine OutputGetExplicitCellInfo(realization_base,num_cells,ids,sat,por, &
     ghosted_id = grid%nL2G(local_id)
     ids(local_id) = grid%nG2A(ghosted_id)
     sat(local_id) = global_auxvar(ghosted_id)%sat(1)
-    if (.not.option%use_refactored_material_auxvars) then
-    por(local_id) = porosity_loc_p(ghosted_id)
-    else
     por(local_id) = patch%aux%Material%auxvars(ghosted_id)%porosity
-    endif
     density(local_id) = global_auxvar(ghosted_id)%den(1)
     pressure(local_id) = global_auxvar(ghosted_id)%pres(1)
   enddo
-
-  if (.not.option%use_refactored_material_auxvars) then
-  call VecRestoreArrayF90(field%porosity_loc,porosity_loc_p,ierr)
-  endif
 
 end subroutine OutputGetExplicitCellInfo
 

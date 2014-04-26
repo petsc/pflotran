@@ -122,7 +122,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
   PetscReal, allocatable :: min_residual_val(:)
   PetscReal, pointer :: vec_ptr(:)
   
-  character(len=MAXSTRINGLENGTH) :: string, string2, string3
+  character(len=MAXSTRINGLENGTH) :: string, string2, string3, sec_string
   PetscBool :: print_sol_norm_info = PETSC_FALSE
   PetscBool :: print_upd_norm_info = PETSC_FALSE
   PetscBool :: print_res_norm_info = PETSC_FALSE
@@ -131,6 +131,8 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
   PetscBool :: print_1_norm_info = PETSC_FALSE
   PetscBool :: print_2_norm_info = PETSC_FALSE
   PetscBool :: print_inf_norm_info = PETSC_FALSE
+
+  PetscInt :: sec_reason
 
 !typedef enum {/* converged */
 !              SNES_CONVERGED_FNORM_ABS         =  2, /* F < F_minabs */
@@ -190,17 +192,17 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
 !geh: inorm_residual is being used without being calculated.
 !      if (fnorm > solver%max_norm .or. pnorm > solver%max_norm .or. &
 !        inorm_residual > solver%max_norm) then
- 
-  if (solver%check_post_convergence .and. option%converged) then
-    reason = 12
-    ! set back to false
-    option%converged = PETSC_FALSE
-  endif
   
   if (option%out_of_table) then
     reason = -9
   endif
    
+  if (solver%check_post_convergence .and. option%converged) then
+    reason = 12
+    ! set back to false
+    option%converged = PETSC_FALSE
+  endif
+    
 !  if (reason <= 0 .and. solver%check_infinity_norm) then
   if (solver%check_infinity_norm) then
   
@@ -226,13 +228,13 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
     if (inorm_residual > solver%max_norm) then
       reason = -10
     endif
-    
+ 
     ! This is to check if the secondary continuum residual convergences
     ! for nonlinear problems specifically transport
     if (solver%itype == TRANSPORT_CLASS .and. option%use_mc .and. &
        reason > 0 .and. it > 0) then
       if (option%infnorm_res_sec < solver%newton_inf_res_tol_sec) then
-        reason = 13
+        sec_reason = 1
       else
         reason = 0
       endif
@@ -257,22 +259,27 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
           string = 'itol_upd'
         case(12)
           string = 'itol_post_check'
-        case(13)
-          string = 'itol_res_sec'
         case default
           write(string,'(i3)') reason
       end select
       if (option%use_mc .and. option%ntrandof > 0 .and. solver%itype == &
           TRANSPORT_CLASS) then
+        i = int(sec_reason) 
+        select case(i)
+          case(1)
+            sec_string = 'itol_res_sec'
+          case default
+            write(sec_string,'(i3)') sec_reason
+        end select
         write(*,'(i3," fnrm:",es9.2, &
                 & " xnrm:",es9.2, &
                 & " pnrm:",es9.2, &
                 & " inrmr:",es9.2, &
                 & " inrmu:",es9.2, &
                 & " inrmrsec:",es9.2, &
-                & " rsn: ",a)') it, fnorm, xnorm, pnorm, inorm_residual, &
+                & " rsn: ",a, ", ",a)') it, fnorm, xnorm, pnorm, inorm_residual, &
                                 inorm_update, option%infnorm_res_sec, &
-                                trim(string)
+                                trim(string), trim(sec_string)
       else
         write(*,'(i3," fnrm:",es9.2, &
                 & " xnrm:",es9.2, &

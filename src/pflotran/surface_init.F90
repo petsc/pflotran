@@ -1,5 +1,3 @@
-#ifdef SURFACE_FLOW
-
 module Surface_Init_module
 
   use PFLOTRAN_Constants_module
@@ -281,7 +279,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
     call InputReadWord(input,option,word,PETSC_TRUE)
     call InputErrorMsg(input,option,'keyword','SURFACE_FLOW')
     call StringToUpper(word)
-    write(*,*),'word :: ',trim(word)
+    write(*,*) 'word :: ',trim(word)
 
     select case(trim(word))
       !.........................................................................
@@ -441,7 +439,6 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
                     waypoint => WaypointCreate()
                     waypoint%time = temp_real*units_conversion
                     waypoint%print_output = PETSC_TRUE
-                    write(*,*),'Inserting waypoint in surf_realization: ',waypoint%time
                     call WaypointInsertInList(waypoint,surf_realization%waypoints)
                   endif
                 enddo
@@ -527,7 +524,6 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
                         waypoint => WaypointCreate()
                         waypoint%time = temp_real
                         waypoint%print_output = PETSC_TRUE
-                        write(*,*),'Inserting waypoint in surf_realization: >>>>>>>> ',waypoint%time
                         call WaypointInsertInList(waypoint,surf_realization%waypoints)
                         temp_real = temp_real + output_option%periodic_output_time_incr
                         if (temp_real > temp_real2) exit
@@ -595,6 +591,22 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
                         output_option%print_single_h5_file = PETSC_TRUE
                       case('MULTIPLE_FILES')
                         output_option%print_single_h5_file = PETSC_FALSE
+                        output_option%times_per_h5_file = 1
+                        call InputReadWord(input,option,word,PETSC_TRUE)
+                        if (len_trim(word)>0) then
+                          select case(trim(word))
+                            case('TIMES_PER_FILE')
+                              call InputReadInt(input,option, &
+                                              output_option%times_per_h5_file)
+                              call InputErrorMsg(input,option,'timestep increment', &
+                                        'OUTPUT,FORMAT,MULTIPLE_FILES,TIMES_PER_FILE')
+                            case default
+                              option%io_buffer = 'Keyword: ' // trim(word) // &
+                                     ' not recognized in OUTPUT,'// &
+                                     'FORMAT,MULTIPLE_FILES,TIMES_PER_FILE.'
+                              call printErrMsg(option)
+                          end select
+                        endif
                       case default
                         option%io_buffer = 'HDF5 keyword (' // trim(word) // &
                           ') not recongnized.  Use "SINGLE_FILE" or ' // &
@@ -1079,5 +1091,3 @@ subroutine SurfaceInitReadRegionFiles(surf_realization)
 end subroutine SurfaceInitReadRegionFiles
 
 end module Surface_Init_module
-
-#endif

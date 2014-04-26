@@ -19,9 +19,7 @@ module Condition_Control_module
 
   public :: CondControlAssignFlowInitCond, &
             CondControlAssignTranInitCond, &
-#ifdef SURFACE_FLOW
             CondControlAssignFlowInitCondSurface, &
-#endif
             CondControlScaleSourceSink
  
 contains
@@ -200,25 +198,29 @@ subroutine CondControlAssignFlowInitCond(realization)
                   xx_p(ibegin+GENERAL_GAS_SATURATION_DOF) = &
                     general%gas_saturation%dataset%rarray(1)
                   temperature = general%temperature%dataset%rarray(1)
-                  call EOSWaterSaturationPressure(temperature,p_sat,ierr)
-                  ! p_a = p_g - p_s(T)
-                  xx_p(ibegin+GENERAL_AIR_PRESSURE_DOF) = &
-                    general%gas_pressure%dataset%rarray(1) - &
-                    p_sat
+                  if (general_2ph_energy_dof == GENERAL_TEMPERATURE_INDEX) then
+                    xx_p(ibegin+GENERAL_ENERGY_DOF) = temperature
+                  else
+                    call EOSWaterSaturationPressure(temperature,p_sat,ierr)
+                    ! p_a = p_g - p_s(T)
+                    xx_p(ibegin+GENERAL_2PH_STATE_AIR_PRESSURE_DOF) = &
+                      general%gas_pressure%dataset%rarray(1) - &
+                      p_sat
+                  endif
                 case(LIQUID_STATE)
                   xx_p(ibegin+GENERAL_LIQUID_PRESSURE_DOF) = &
                     general%liquid_pressure%dataset%rarray(1)
                   xx_p(ibegin+GENERAL_LIQUID_STATE_X_MOLE_DOF) = &
                     general%mole_fraction%dataset%rarray(1)
-                  xx_p(ibegin+GENERAL_LIQUID_STATE_ENERGY_DOF) = &
+                  xx_p(ibegin+GENERAL_ENERGY_DOF) = &
                     general%temperature%dataset%rarray(1)
                 case(GAS_STATE)
                   xx_p(ibegin+GENERAL_GAS_PRESSURE_DOF) = &
                     general%gas_pressure%dataset%rarray(1)
-                  xx_p(ibegin+GENERAL_AIR_PRESSURE_DOF) = &
+                  xx_p(ibegin+GENERAL_GAS_STATE_AIR_PRESSURE_DOF) = &
                     general%gas_pressure%dataset%rarray(1) * &
                     general%mole_fraction%dataset%rarray(1)
-                  xx_p(ibegin+GENERAL_GAS_STATE_ENERGY_DOF) = &
+                  xx_p(ibegin+GENERAL_ENERGY_DOF) = &
                     general%temperature%dataset%rarray(1)
               end select
               iphase_loc_p(ghosted_id) = initial_condition%flow_condition%iphase
@@ -456,7 +458,9 @@ subroutine CondControlAssignFlowInitCond(realization)
     call VecCopy(field%flow_xx_faces, field%flow_yy_faces, ierr)
     call MFDInitializeMassMatrices(realization%discretization%grid,&
                                   realization%field, &
-                                  realization%discretization%MFD, realization%option)
+                                  realization%discretization%MFD, &
+                                  realization%patch%aux%Material%auxvars,
+                                  realization%option)
     patch%aux%Richards%auxvars_cell_pressures_up_to_date = PETSC_TRUE
 
   endif
@@ -921,7 +925,9 @@ subroutine CondControlScaleSourceSink(realization)
   use Condition_module
   use Grid_module
   use Patch_module
-  
+  use Material_Aux_class
+  use Variables_module, only : PERMEABILITY_X
+
   implicit none
 
 #include "finclude/petscvec.h"
@@ -940,10 +946,9 @@ subroutine CondControlScaleSourceSink(realization)
   type(discretization_type), pointer :: discretization
   type(coupler_type), pointer :: cur_source_sink
   type(connection_set_type), pointer :: cur_connection_set
-  
+  class(material_auxvar_type), pointer :: material_auxvars(:)
   type(patch_type), pointer :: cur_patch
   PetscReal, pointer :: vec_ptr(:)
-  PetscReal, pointer :: perm_loc_ptr(:)
   PetscInt :: local_id
   PetscInt :: ghosted_id, neighbor_ghosted_id
   PetscInt :: iconn
@@ -958,10 +963,10 @@ subroutine CondControlScaleSourceSink(realization)
   discretization => realization%discretization
   field => realization%field
   patch => realization%patch
-
+  material_auxvars => realization%patch%aux%Material%auxvars
+  
   ! GB: grid was uninitialized
   grid => patch%grid
-  call VecGetArrayF90(field%perm_xx_loc,perm_loc_ptr,ierr)
 
   cur_patch => realization%patch_list%first
   do
@@ -997,7 +1002,8 @@ subroutine CondControlScaleSourceSink(realization)
               do while (icount < x_count)
                 icount = icount + 1
                 neighbor_ghosted_id = ghosted_neighbors(icount)
-                sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
+                sum = sum + MaterialAuxVarGetValue(material_auxvars( &
+                              neighbor_ghosted_id),PERMEABILITY_X) * &
                             grid%structured_grid%dy(neighbor_ghosted_id)* &
                             grid%structured_grid%dz(neighbor_ghosted_id)
                  
@@ -1006,7 +1012,8 @@ subroutine CondControlScaleSourceSink(realization)
               do while (icount < x_count + y_count)
                 icount = icount + 1
                 neighbor_ghosted_id = ghosted_neighbors(icount)                 
-                sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
+                sum = sum + MaterialAuxVarGetValue(material_auxvars( &
+                              neighbor_ghosted_id),PERMEABILITY_X) * &
                             grid%structured_grid%dx(neighbor_ghosted_id)* &
                             grid%structured_grid%dz(neighbor_ghosted_id)
                  
@@ -1015,13 +1022,13 @@ subroutine CondControlScaleSourceSink(realization)
               do while (icount < x_count + y_count + z_count)
                 icount = icount + 1
                 neighbor_ghosted_id = ghosted_neighbors(icount)                 
-                sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
+                sum = sum + MaterialAuxVarGetValue(material_auxvars( &
+                              neighbor_ghosted_id),PERMEABILITY_X) * &
                             grid%structured_grid%dx(neighbor_ghosted_id)* &
                             grid%structured_grid%dy(neighbor_ghosted_id)
               enddo
               vec_ptr(local_id) = vec_ptr(local_id) + sum
           case(TH_MODE)
-          case(THC_MODE)
           case(MPH_MODE)
           case(IMS_MODE)
           case(MIS_MODE)
@@ -1043,7 +1050,6 @@ subroutine CondControlScaleSourceSink(realization)
             cur_source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = &
               vec_ptr(local_id)
           case(TH_MODE)
-          case(THC_MODE)
           case(MPH_MODE)
           case(IMS_MODE)
           case(MIS_MODE)
@@ -1058,12 +1064,7 @@ subroutine CondControlScaleSourceSink(realization)
     cur_patch => cur_patch%next
   enddo
 
-  call VecRestoreArrayF90(field%perm_xx_loc,perm_loc_ptr, ierr)
-   
 end subroutine CondControlScaleSourceSink
-
-! ************************************************************************** !
-#ifdef SURFACE_FLOW
 
 ! ************************************************************************** !
 
@@ -1168,8 +1169,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
                         sub_condition_ptr(idof)%ptr%dataset%rarray(1)
                       pw = option%reference_pressure
                         
-                      call EOSWaterDensity(temp,pw,dw_kg,dw_mol, &
-                                           option%scale, ierr)
+                      call EOSWaterDensity(temp,pw,dw_kg,dw_mol,ierr)
                       ! [rho*h*T*Cw]
                       xx_p(ibegin+idof-1) = dw_kg*xx_p(ibegin)* &
                                             (temp + 273.15d0)* &
@@ -1178,6 +1178,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
                       surf_global_auxvars(ghosted_id)%temp(1) = temp
                   end select
                 enddo
+                xx_p(ibegin:iend) = 0.0d0
               enddo
             else
               do iconn=1,initial_condition%connection_set%num_connections
@@ -1212,7 +1213,5 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
                                    surf_field%flow_xx_loc, NFLOWDOF)
 
 end subroutine CondControlAssignFlowInitCondSurface
-#endif
-! SURFACE_FLOW
 
 end module Condition_Control_module

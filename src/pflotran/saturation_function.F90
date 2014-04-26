@@ -54,12 +54,14 @@ module Saturation_Function_module
             PermFunctionComputeSpline, &
             SaturationFunctionRead, &
             SatFuncGetRelPermFromSat, &
+            SatFuncGetGasRelPermFromSat, &
             SatFuncGetCapillaryPressure, &
             SaturationFunctionGetID, &
             SatFuncComputeIcePExplicit, &
             CapillaryPressureThreshold, &
             SatFuncComputeIcePKImplicit, &
-            SatFuncComputeIcePKExplicit
+            SatFuncComputeIcePKExplicit, &
+            SatFuncComputeIceDallAmico
             
   ! Saturation function 
   PetscInt, parameter :: VAN_GENUCHTEN = 1
@@ -145,6 +147,8 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
   PetscInt :: iphase
   
   character(len=MAXWORDLENGTH) :: keyword, word
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscReal :: tempreal
 
   input%ierr = 0
   do
@@ -214,7 +218,41 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
             call InputReadDouble(input,option,saturation_function%Sr(iphase))
             word = trim(keyword) // ' residual saturation'
             call InputErrorMsg(input,option,word,'SATURATION_FUNCTION')
-          case(RICHARDS_MODE,TH_MODE,THC_MODE,G_MODE)
+          case(G_MODE)
+            iphase = 0
+            string = input%buf
+            call InputReadDouble(input,option,tempreal)
+!            call InputErrorMsg(input,option,'residual saturation','SATURATION_FUNCTION')
+            if (input%ierr /= 0) then
+              input%ierr = 0
+              input%buf = string
+              call InputReadWord(input,option,keyword,PETSC_TRUE)
+              call InputErrorMsg(input,option,'phase', &
+                                 'SATURATION_FUNCTION,RESIDUAL_SATURATION')
+              call StringToUpper(keyword)   
+              select case(trim(keyword))
+                case('LIQUID','LIQUID_PHASE')
+                  iphase = 1
+                case('GAS','GAS_PHASE')
+                  iphase = 2
+                case default
+                  option%io_buffer = 'Keyword "' // trim(keyword) // &
+                    '" not recognized for RESIDUAL_SATURATION phase.'
+                  call printErrMsg(option)
+              end select
+              call InputReadDouble(input,option,tempreal)
+              word = trim(keyword) // ' residual saturation'
+              call InputErrorMsg(input,option,word,'SATURATION_FUNCTION')
+            else
+              ! if missing phase keyword, assume for all phases and set
+              ! buffer to value
+            endif
+            if (iphase > 0) then
+              saturation_function%Sr(iphase) = tempreal
+            else
+              saturation_function%Sr(:) = tempreal
+            endif
+          case(RICHARDS_MODE,TH_MODE)
             call InputReadDouble(input,option,saturation_function%Sr(1))
             call InputErrorMsg(input,option,'residual saturation','SATURATION_FUNCTION')
         end select
@@ -1018,10 +1056,14 @@ end subroutine SatFuncComputeIcePExplicit
 
 ! ************************************************************************** !
 
-subroutine ComputeEffSatVG(alpha,lambda,Pc,S,dS)
+subroutine ComputeVGAndDerivative(alpha,lambda,Pc,S,dS_dPc)
   ! 
   ! Evaluates van Genunchten saturation function and
-  ! its derivative at given capillary pressure
+  ! its derivative with respect to capillary pressure
+  ! for given capillary pressure
+  !
+  ! Note: Derivative wrt capillary pressure and not liquid pressure 
+  ! is evaluated
   ! 
   ! Author: Satish Karra
   ! Date: 10/16/12
@@ -1030,26 +1072,26 @@ subroutine ComputeEffSatVG(alpha,lambda,Pc,S,dS)
   implicit none
 
   PetscReal :: alpha, lambda, gamma  
-  PetscReal :: Pc, S, dS
+  PetscReal :: Pc, S, dS_dPc
   
   gamma = 1.d0/(1.d0 - lambda)
   if (Pc > 0.d0) then
     S =  (1.d0 + (alpha*Pc)**gamma)**(-lambda)
-    dS = (-lambda)*((1.d0 + (alpha*Pc)**gamma)**(-lambda - 1.d0))* &
+    dS_dPc = (-lambda)*((1.d0 + (alpha*Pc)**gamma)**(-lambda - 1.d0))* &
          (gamma*alpha*(alpha*Pc)**(gamma - 1.d0))
   else
     S = 1.d0
-    dS = 0.d0
+    dS_dPc = 0.d0
   endif
  
-end subroutine ComputeEffSatVG
+end subroutine ComputeVGAndDerivative
 
 ! ************************************************************************** !
 
-subroutine ComputeInvSatVG(alpha,lambda,sat,Sinv,dSinv)
+subroutine ComputeInvVGAndDerivative(alpha,lambda,sat,Sinv,dSinv_dsat)
   ! 
   ! Evaluates inverse of van Genunchten saturation function
-  ! and its derivative at given saturation
+  ! and its derivative with respect to saturation at a given saturation
   ! 
   ! Author: Satish Karra
   ! Date: 10/16/12
@@ -1058,19 +1100,19 @@ subroutine ComputeInvSatVG(alpha,lambda,sat,Sinv,dSinv)
   implicit none
   
   PetscReal :: alpha, lambda, gamma
-  PetscReal :: sat, Sinv, dSinv
+  PetscReal :: sat, Sinv, dSinv_dsat
   
   gamma = 1.d0/(1.d0 - lambda)
   if (sat == 1.d0) then
     Sinv = 0.d0
-    dSinv = 0.d0
+    dSinv_dsat = 0.d0
   else
     Sinv = 1.d0/alpha*((sat)**(-1.d0/lambda) - 1.d0)**(1.d0/gamma)
-    dSinv = 1.d0/alpha*1.d0/gamma*((sat**(-1.d0/lambda) - 1.d0)**(1.d0/gamma - &
+    dSinv_dsat = 1.d0/alpha*1.d0/gamma*((sat**(-1.d0/lambda) - 1.d0)**(1.d0/gamma - &
       1.d0))*(-1.d0/lambda)*(sat**(-1.d0/lambda - 1.d0))
   endif
   
-end subroutine ComputeInvSatVG
+end subroutine ComputeInvVGAndDerivative
 
 ! ************************************************************************** !
 
@@ -1100,11 +1142,11 @@ subroutine CalculateImplicitIceFunc(alpha,lambda,Pcgl,T,s_i,func_val,dfunc_val)
   else
     temp_term = -beta*rho_i*HEAT_OF_FUSION*T/T_0
   endif
-  call ComputeEffSatVG(alpha,lambda,Pcgl,sat,dsat)
+  call ComputeVGAndDerivative(alpha,lambda,Pcgl,sat,dsat)
   sat_term = (s_i + (1.d0 - s_i)*sat)
-  call ComputeInvSatVG(alpha,lambda,sat_term,sat_inv,dsat_inv)
+  call ComputeInvVGAndDerivative(alpha,lambda,sat_term,sat_inv,dsat_inv)
   PC = temp_term + sat_inv
-  call ComputeEffSatVG(alpha,lambda,PC,sat_PC,dsat_PC)
+  call ComputeVGAndDerivative(alpha,lambda,PC,sat_PC,dsat_PC)
   func_val = (1.d0 - s_i)*sat - sat_PC
   dfunc_val = -sat - dsat_PC*dsat_inv*(1.d0 - sat)
   
@@ -1152,7 +1194,7 @@ subroutine CalcPhasePartitionIceNewt(alpha,lambda,Pcgl,T,s_g,s_i,s_l)
     enddo
   endif
   
-  call ComputeEffSatVG(alpha,lambda,Pcgl,sat,dsat)
+  call ComputeVGAndDerivative(alpha,lambda,Pcgl,sat,dsat)
   s_i = x
   s_l = (1.d0 - x)*sat
   s_g = 1.d0 - s_l - s_i
@@ -1215,7 +1257,7 @@ subroutine CalcPhasePartitionIceBis(alpha,lambda,Pcgl,T,s_g,s_i,s_l)
     enddo
   endif
     
-  call ComputeEffSatVG(alpha,lambda,Pcgl,sat,dsat)
+  call ComputeVGAndDerivative(alpha,lambda,Pcgl,sat,dsat)
   s_i = sol
   s_l = (1.d0 - sol)*sat
   s_g = 1.d0 - s_l - s_i
@@ -1285,10 +1327,10 @@ subroutine CalcPhasePartitionIceDeriv(alpha,lambda,Pcgl,T,s_g,s_i,s_l, &
   else
     temp_term = -beta*rho_i*HEAT_OF_FUSION*T/T_0
   endif
-  call ComputeInvSatVG(alpha,lambda,(s_i + s_l),sat_inv,dsat_inv)
+  call ComputeInvVGAndDerivative(alpha,lambda,(s_i + s_l),sat_inv,dsat_inv)
   PC = temp_term + sat_inv 
-  call ComputeEffSatVG(alpha,lambda,PC,sat_PC,dsat_PC)
-  call ComputeEffSatVG(alpha,lambda,Pcgl,sat,dsat)
+  call ComputeVGAndDerivative(alpha,lambda,PC,sat_PC,dsat_PC)
+  call ComputeVGAndDerivative(alpha,lambda,Pcgl,sat,dsat)
   G = dsat_PC*dsat_inv
   dS_dpl = dsat*(-1.d0)
   if (G == 1.d0) then
@@ -1509,13 +1551,13 @@ implicit none
       alpha = saturation_function%alpha
       Pcgl = option%reference_pressure - pl
       m = saturation_function%m      
-      call ComputeEffSatVG(alpha,m,Pcgl,S,dS)
-      call ComputeInvSatVG(alpha,m,S,Sinv,dSinv)
+      call ComputeVGAndDerivative(alpha,m,Pcgl,S,dS)
+      call ComputeInvVGAndDerivative(alpha,m,S,Sinv,dSinv)
       T_f = T_0 - 1.d0/beta*T_0/L_f/rho_l*Sinv
       theta = (T-T_0)/T_0
       if (T < T_f) then
         X = -beta*theta*L_f*rho_l
-        call ComputeEffSatVG(alpha,m,X,s_l,dS_dX)
+        call ComputeVGAndDerivative(alpha,m,X,s_l,dS_dX)
         s_i = 1.d0 - s_l/S
         dsl_dT = 1.d0/T_0*dS_dX*(-beta*rho_l*L_f)
         dsl_dpl = 0.d0
@@ -1590,6 +1632,158 @@ implicit none
 #endif
 
 end subroutine SatFuncComputeIcePKExplicit
+
+! ************************************************************************** !
+
+subroutine SatFuncComputeIceDallAmico(pl, T, &
+                                      p_fh2o, &
+                                      dp_fh2o_dP, &
+                                      dp_fh2o_dT, &
+                                      s_i, s_l, s_g, &
+                                      kr, &
+                                      dsl_dpl, dsl_dT, &
+                                      dsg_dpl, dsg_dT, &
+                                      dsi_dpl, dsi_dT, &
+                                      dkr_dpl, dkr_dT, &
+                                      saturation_function, &
+                                      option)
+  !
+  ! Calculates the saturations of water phases  and their derivative with
+  ! respect to liquid pressure and temperature.
+  !
+  ! Model used: Dall'Amico (2010) and Dall' Amico et al. (2011)
+  !
+  ! Author: Gautam Bisht
+  ! Date: 02/24/14
+  !
+
+  use Option_module
+
+  implicit none
+
+  PetscReal :: pl, T
+  PetscReal :: p_fh2o, dp_fh2o_dP, dp_fh2o_dT
+  PetscReal :: s_i, s_g, s_l
+  PetscReal :: kr
+  PetscReal :: dsl_dpl, dsl_dT
+  PetscReal :: dsi_dpl, dsi_dT
+  PetscReal :: dsg_dpl, dsg_dT
+  PetscReal :: dkr_dpl, dkr_dT
+  type(saturation_function_type) :: saturation_function
+  type(option_type) :: option
+
+  PetscReal :: Se,Sr
+  PetscReal :: dkr_dsl, dkr_dSe
+  PetscReal :: alpha
+  PetscReal :: m
+  PetscReal :: Pc0, Pc1
+  PetscReal :: one_over_m
+  PetscReal :: liq_sat_one_over_m
+  PetscReal :: S0,S1
+  PetscReal :: dS0,dS1
+  PetscReal :: H, dH_dT
+  PetscReal :: T_star
+  PetscReal :: theta
+  PetscReal :: x
+  PetscReal :: dummy
+  PetscBool :: switch
+
+  !PetscReal, parameter :: beta = 2.2           ! dimensionless -- ratio of surf. tension
+  PetscReal, parameter :: beta = 1             ! dimensionless [assumed as 1.d0]
+  PetscReal, parameter :: rho_l = 9.998d2      ! in kg/m^3
+  PetscReal, parameter :: T_0 = 273.15         ! in K
+  PetscReal, parameter :: L_f = 3.34d5         ! in J/kg
+  PetscReal, parameter :: k = 1.d6
+
+  s_g = 0.d0
+  dsg_dpl = 0.d0
+  dsg_dT = 0.d0
+
+  select case(saturation_function%saturation_function_itype)
+    case(VAN_GENUCHTEN)
+
+      T = T + T_0  ! convert to K
+      alpha = saturation_function%alpha
+      m = saturation_function%m
+
+      Pc0 = option%reference_pressure - pl
+
+      T_star = T_0 - 1.d0/beta*T_0/L_f/rho_l*Pc0
+
+      if (T<T_star) then
+        H = 1.d0
+        dH_dT = 0.d0
+      else
+        H = 0.d0
+        dH_dT = 0.d0
+      endif
+
+      !GB: Add an option to swich between step-function and smooth approximation
+      !    of step function.
+      !x = (T - T_star)*k
+      !H = 0.5d0 - atan(x)/PI
+
+      theta = (T - T_star)/T_star
+      Pc1 = Pc0 - beta*theta*L_f*rho_l*H
+
+      p_fh2o = option%reference_pressure - Pc1
+      dp_fh2o_dT = -beta*L_f*rho_l*H/T_star
+      dp_fh2o_dP = 1.d0 - T*T_0/T_star/T_star*H
+      p_fh2o = pl
+      dp_fh2o_dT = 0.d0
+      dp_fh2o_dP = 1.d0
+
+      ! dummy and switch are not used here
+      call SaturationFunctionCompute2(Pc0,S0,dummy,dS0,dummy,saturation_function,dummy,dummy,switch,option)
+      call SaturationFunctionCompute2(Pc1,S1,dummy,dS1,dummy,saturation_function,dummy,dummy,switch,option)
+
+      ! convert dS/dpsi to dS/dpl
+      dS0 = -dS0
+      dS1 = -dS1
+
+      s_l = S1
+      s_i = S0 - S1
+
+      dsl_dpl = -dS1*(1.0d0 - T*T_0/T_star/T_star*H)
+      dsi_dpl = -dS0 - dsl_dpl
+
+      dsl_dT = dS1*(-beta*L_f*rho_l*H/T_star - beta*theta*L_f*rho_l*dH_dT)
+      dsi_dT = -dsl_dT
+
+      T = T - T_0 ! change back to C
+
+    case default
+      option%io_buffer = 'Only van Genuchten supported with ice'
+      call printErrMsg(option)
+  end select
+
+  ! Calculate relative permeability
+  select case(saturation_function%permeability_function_itype)
+    case(MUALEM)
+      Sr = saturation_function%Sr(1)
+      Se = (s_l-Sr)/(1.0d0-Sr)
+      if ( abs(Se-1.d0) < 1.0d-12 ) then
+        kr = 1.d0
+        dkr_dsl = 0.d0
+      else
+        m = saturation_function%m
+        one_over_m = 1.d0/m
+        liq_sat_one_over_m = Se**one_over_m
+        kr = sqrt(Se)*(1.d0 - (1.d0 - liq_sat_one_over_m)**m)**2.d0
+        dkr_dSe = 0.5d0*kr/Se + &
+                  2.d0*Se**(one_over_m - 0.5d0)* &
+                 (1.d0 - liq_sat_one_over_m)**(m - 1.d0)* &
+                 (1.d0 - (1.d0 - liq_sat_one_over_m)**m)
+        dkr_dsl = dkr_dSe / ( 1.0d0 - Sr )
+      endif
+      dkr_dpl = dkr_dsl*dsl_dpl
+      dkr_dT = dkr_dsl*dsl_dT
+    case default
+      option%io_buffer = 'Ice module only supports Mualem'
+      call printErrMsg(option)
+  end select
+
+end subroutine SatFuncComputeIceDallAmico
 
 ! ************************************************************************** !
 
@@ -1701,6 +1895,99 @@ subroutine SatFuncGetRelPermFromSat(saturation,relative_perm,dkr_Se, &
   end select
   
 end subroutine SatFuncGetRelPermFromSat
+
+! ************************************************************************** !
+
+subroutine SatFuncGetGasRelPermFromSat(liquid_saturation, &
+                                       liquid_relative_perm, &
+                                       gas_relative_perm, &
+                                       saturation_function,option)
+  ! 
+  ! Calculates relative permeability from
+  ! phase saturation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/05/11
+  ! 
+
+  use Option_module
+  
+  implicit none
+
+  PetscReal :: liquid_saturation
+  PetscReal :: gas_relative_perm, liquid_relative_perm
+  type(saturation_function_type) :: saturation_function
+  PetscBool :: derivative
+  type(option_type) :: option
+
+  PetscReal :: Srl, Srg
+  PetscReal :: S_star, S_hat
+  PetscReal :: tempreal
+  PetscReal :: lambda
+  
+  Srl = saturation_function%Sr(LIQUID_PHASE)
+  Srg = saturation_function%Sr(GAS_PHASE)
+  S_star = (liquid_saturation-Srl)/(1.d0-Srl)
+  S_hat = (liquid_saturation-Srl)/(1.d0-Srl-Srg)
+
+  gas_relative_perm = 0.d0
+
+  if (S_hat >= 1.d0) then
+    return
+  else if (S_hat <= 0.d0) then
+    gas_relative_perm = 1.d0
+    return
+  endif
+  
+  ! compute relative permeability
+  select case(saturation_function%saturation_function_itype)
+    case(VAN_GENUCHTEN)
+    ! compute relative permeability
+      select case(saturation_function%permeability_function_itype)
+        case(BURDINE)
+          option%io_buffer = &
+            'vG Burdine not yet supported in SatFuncGetGasRelPermFromSat.'
+          call printErrMsg(option)
+        case(MUALEM)
+          if (Srg <= 0.d0) then
+            gas_relative_perm = 1.d0 - liquid_relative_perm
+          else
+            tempreal = 1.d0 - S_hat
+            gas_relative_perm = tempreal*tempreal*(1.d0-S_hat*S_hat)
+          endif
+        case default
+          option%io_buffer = 'Unknown relative permeabilty function' 
+          call printErrMsg(option)
+      end select
+    case(BROOKS_COREY)
+      select case(saturation_function%permeability_function_itype)
+        case(BURDINE)
+          lambda = saturation_function%lambda
+          tempreal = 1.d0-S_hat
+          gas_relative_perm = tempreal*tempreal* &
+                              (1.d0-S_hat**(1.d0+2.d0/lambda))
+        case(MUALEM)
+          option%io_buffer = &
+            'BC Mualem not yet supported in SatFuncGetGasRelPermFromSat.'
+      call printErrMsg(option)
+        case default
+          option%io_buffer = 'Unknown relative permeabilty function'
+          call printErrMsg(option)
+      end select
+    case(LINEAR_MODEL)
+      option%io_buffer = &
+        'Linear model not yet supported in SatFuncGetGasRelPermFromSat.'
+      call printErrMsg(option)
+      select case(saturation_function%permeability_function_itype)
+        case(BURDINE)
+        case(MUALEM)
+        case default
+          option%io_buffer = 'Unknown relative permeabilty function'
+          call printErrMsg(option)
+      end select
+  end select
+
+end subroutine SatFuncGetGasRelPermFromSat
 
 ! ************************************************************************** !
 

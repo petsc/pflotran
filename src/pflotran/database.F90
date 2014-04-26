@@ -3368,6 +3368,8 @@ subroutine BasisInit(reaction,option)
     reaction%eqkdlangmuirb = 0.d0
     allocate(reaction%eqkdfreundlichn(reaction%neqkdrxn))
     reaction%eqkdfreundlichn = 0.d0
+    allocate(reaction%eqkdmineral(reaction%neqkdrxn))
+    reaction%eqkdmineral = 0
 
     cur_kd_rxn => reaction%kd_rxn_list
     
@@ -3406,6 +3408,18 @@ subroutine BasisInit(reaction,option)
         call printErrMsg(option)     
       endif
       reaction%eqkdtype(irxn) = cur_kd_rxn%itype
+      ! associate mineral id
+      if (len_trim(cur_kd_rxn%kd_mineral_name) > 1) then
+        reaction%eqkdmineral(irxn) = &
+          GetKineticMineralIDFromName(reaction%mineral, &
+                                      cur_kd_rxn%kd_mineral_name)
+        if (reaction%eqkdmineral(irxn) < 0) then
+          option%io_buffer = 'Mineral ' // trim(cur_ionx_rxn%mineral_name) // &
+                             ' listed in kd (linear sorption)' // &
+                             'reaction not found in mineral list'
+          call printErrMsg(option)
+        endif
+      endif      
       reaction%eqkddistcoef(irxn) = cur_kd_rxn%Kd
       reaction%eqkdlangmuirb(irxn) = cur_kd_rxn%Langmuir_b
       reaction%eqkdfreundlichn(irxn) = cur_kd_rxn%Freundlich_n
@@ -4120,7 +4134,7 @@ subroutine BasisPrint(reaction,title,option)
       if (.not.associated(cur_mineral)) exit
       write(option%fid_out,100) '  ' // trim(cur_mineral%name)
       write(option%fid_out,110) '    Molar Mass: ', cur_mineral%molar_weight,' [g/mol]'
-      write(option%fid_out,150) '    Molar Volume: ', cur_mineral%molar_volume,' [cm^3/mol]'
+      write(option%fid_out,150) '    Molar Volume: ', cur_mineral%molar_volume,' [m^3/mol]'
       if (associated(cur_mineral%tstrxn)) then
         write(option%fid_out,100) '    Mineral Reaction: '
         write(option%fid_out,120) '      ', -1.d0, cur_mineral%name

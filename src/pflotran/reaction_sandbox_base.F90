@@ -94,8 +94,6 @@ module Reaction_Sandbox_Base_class
       ! the following arrays must be declared after reaction
       PetscReal :: Res(reaction%ncomp)
       PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
-      PetscReal :: porosity
-      PetscReal :: volume
       type(reactive_transport_auxvar_type) :: rt_auxvar
       type(global_auxvar_type) :: global_auxvar
       class(material_auxvar_type) :: material_auxvar
@@ -182,8 +180,6 @@ contains
     ! the following arrays must be declared after reaction
     PetscReal :: Residual(reaction%ncomp)
     PetscReal :: Jacobian(reaction%ncomp,reaction%ncomp)
-    PetscReal :: porosity
-    PetscReal :: volume
     type(reactive_transport_auxvar_type) :: rt_auxvar
     type(global_auxvar_type) :: global_auxvar
     class(material_auxvar_type) :: material_auxvar

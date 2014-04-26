@@ -1,4 +1,3 @@
-#ifdef SURFACE_FLOW
 module Output_Surface_module
 
   use Logging_module 
@@ -114,13 +113,11 @@ subroutine OutputSurface(surf_realization,realization,plot_flag, &
   endif
 
   if (plot_flag) then
-    if (surf_realization%output_option%print_hdf5 .and. &
-        option%subsurf_surf_coupling /= DECOUPLED ) then
+    if (surf_realization%output_option%print_hdf5) then
       call OutputSurfaceHDF5UGridXDMF(surf_realization,realization,INSTANTANEOUS_VARS)
     endif
   
-    if (surf_realization%output_option%print_tecplot .and. &
-        option%subsurf_surf_coupling /= DECOUPLED ) then
+    if (surf_realization%output_option%print_tecplot) then
       call PetscTime(tstart,ierr)
       call PetscLogEventBegin(logging%event_output_tecplot,ierr) 
       select case(surf_realization%output_option%tecplot_format)
@@ -141,10 +138,8 @@ subroutine OutputSurface(surf_realization,realization,plot_flag, &
 
   endif
 
-  if (option%subsurf_surf_coupling /= DECOUPLED) then
-    ! Output temporally average variables
-    call OutputSurfaceAvegVars(surf_realization,realization)
-  endif
+  ! Output temporally average variables
+  call OutputSurfaceAvegVars(surf_realization,realization)
 
   ! Increment the plot number
   if(plot_flag) then
@@ -842,7 +837,7 @@ subroutine OutputSurfaceHDF5UGridXDMF(surf_realization,realization, &
       case (AVERAGED_VARS)
         if (mod((option%time-output_option%periodic_output_time_incr)/ &
                 output_option%periodic_output_time_incr, &
-                real(output_option%times_per_h5_file))==0) then
+                dble(output_option%times_per_h5_file))==0) then
           first = PETSC_TRUE
         else
           first = PETSC_FALSE
@@ -1103,7 +1098,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF(surf_realization,realization, &
   subsurf_grid => realization%patch%grid
 
 #if defined(SCORPIO_WRITE)
-  write(*,*),'SCORPIO_WRITE'
+  write(*,*) 'SCORPIO_WRITE'
   option%io_buffer = 'WriteHDF5CoordinatesUGrid not supported for SCORPIO_WRITE'
   call printErrMsg(option)
 #else
@@ -2138,7 +2133,7 @@ subroutine WriteHDF5SurfaceFlowratesUGrid(surf_realization,file_id,var_list_type
   surf_field => surf_realization%surf_field
 
 #if defined(SCORPIO_WRITE)
-  write(*,*),'SCORPIO_WRITE'
+  write(*,*) 'SCORPIO_WRITE'
   option%io_buffer = 'WriteHDF5FlowratesUGrid not supported for SCORPIO_WRITE'
   call printErrMsg(option)
 #else
@@ -2290,5 +2285,3 @@ end subroutine WriteHDF5SurfaceFlowratesUGrid
 #endif
 
 end module Output_Surface_module
-
-#endif

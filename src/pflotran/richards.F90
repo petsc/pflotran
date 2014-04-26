@@ -1449,7 +1449,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       patch%internal_fluxes(RICHARDS_PRESSURE_DOF,1,sum_connection) = Res(1)
 #endif
 #ifdef STORE_FLOWRATES
-      patch%internal_fluxes(RICHARDS_PRESSURE_DOF,1,sum_connection) = Res(1)
+      patch%internal_fluxes(RICHARDS_PRESSURE_DOF,1,sum_connection) = Res(1)*FMWH2O
 #endif
       if (local_id_up>0) then
 #ifdef PM_RICHARDS_DEBUG
@@ -1509,7 +1509,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
                                 v_darcy,Res)
       patch%boundary_velocities(1,sum_connection) = v_darcy
 #ifdef STORE_FLOWRATES
-      patch%boundary_fluxes(1,1,sum_connection) = Res(1)
+      patch%boundary_fluxes(1,1,sum_connection) = Res(1)*FMWH2O
 #endif
 
       if (option%compute_mass_balance_new) then
@@ -1742,7 +1742,7 @@ end subroutine RichardsResidualPatch2
 
 ! ************************************************************************** !
 
-subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
+subroutine RichardsJacobian(snes,xx,A,B,realization,ierr)
   ! 
   ! Computes the Jacobian
   ! 
@@ -1762,7 +1762,6 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
   Vec :: xx
   Mat :: A, B
   type(realization_type) :: realization
-  MatStructure flag
   PetscErrorCode :: ierr
   
   Mat :: J
@@ -1776,7 +1775,6 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
 
   option => realization%option
 
-  flag = SAME_NONZERO_PATTERN
   call MatGetType(A,mat_type,ierr)
   if (mat_type == MATMFFD) then
     J = B
@@ -1789,10 +1787,10 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
   call MatZeroEntries(J,ierr)
 
   ! pass #1 for internal and boundary flux terms
-  call RichardsJacobianPatch1(snes,xx,J,J,flag,realization,ierr)
+  call RichardsJacobianPatch1(snes,xx,J,J,realization,ierr)
 
   ! pass #2 for everything else
-  call RichardsJacobianPatch2(snes,xx,J,J,flag,realization,ierr)
+  call RichardsJacobianPatch2(snes,xx,J,J,realization,ierr)
 
   if (realization%debug%matview_Jacobian) then
 #if 1  
@@ -1840,7 +1838,7 @@ end subroutine RichardsJacobian
 
 ! ************************************************************************** !
 
-subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
+subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
   ! 
   ! Computes the interior flux and boundary flux
   ! terms of the Jacobian
@@ -1868,7 +1866,6 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   Vec, intent(in) :: xx
   Mat, intent(out) :: A, B
   type(realization_type) :: realization
-  MatStructure flag
 
   PetscErrorCode :: ierr
 
@@ -2130,7 +2127,7 @@ end subroutine RichardsJacobianPatch1
 
 ! ************************************************************************** !
 
-subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
+subroutine RichardsJacobianPatch2(snes,xx,A,B,realization,ierr)
   ! 
   ! Computes the accumulation and source/sink terms of
   ! the Jacobian
@@ -2156,7 +2153,6 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   Vec, intent(in) :: xx
   Mat, intent(out) :: A, B
   type(realization_type) :: realization
-  MatStructure flag
 
   PetscErrorCode :: ierr
 
@@ -2577,7 +2573,6 @@ subroutine RichardsUpdateSurfacePress(realization)
 
   type(realization_type) :: realization
 
-#ifdef SURFACE_FLOW
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
@@ -2590,6 +2585,7 @@ subroutine RichardsUpdateSurfacePress(realization)
   PetscInt :: sum_connection
   PetscInt :: iconn
   PetscReal :: den
+  PetscReal :: dum1
   PetscReal :: surfpress_old
   PetscReal :: surfpress_new
   PetscErrorCode :: ierr
@@ -2600,9 +2596,9 @@ subroutine RichardsUpdateSurfacePress(realization)
 
   rich_auxvars_bc => patch%aux%Richards%auxvars_bc
   global_auxvars_bc => patch%aux%Global%auxvars_bc
-    
 
-  call EOSWaterdensity(option%reference_temperature,option%reference_pressure,den)
+  call EOSWaterdensity(option%reference_temperature, &
+                       option%reference_pressure,den,dum1,ierr)
 
   ! boundary conditions
   boundary_condition => patch%boundary_conditions%first
@@ -2643,7 +2639,6 @@ subroutine RichardsUpdateSurfacePress(realization)
     boundary_condition => boundary_condition%next
 
   enddo
-#endif
 
 end subroutine RichardsUpdateSurfacePress
 

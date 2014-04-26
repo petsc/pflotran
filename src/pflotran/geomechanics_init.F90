@@ -409,7 +409,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
                     waypoint => WaypointCreate()
                     waypoint%time = temp_real*units_conversion
                     waypoint%print_output = PETSC_TRUE
-                    write(*,*),'Inserting waypoint in geomech_realization: ',waypoint%time
+                    write(*,*) 'Inserting waypoint in geomech_realization: ',waypoint%time
                     call WaypointInsertInList(waypoint,geomech_realization%waypoints)
                   endif
                 enddo
@@ -495,7 +495,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
                         waypoint => WaypointCreate()
                         waypoint%time = temp_real
                         waypoint%print_output = PETSC_TRUE
-                        write(*,*),'Inserting waypoint in geomech_realization: >>>>>>>> ',waypoint%time
+                        write(*,*) 'Inserting waypoint in geomech_realization: >>>>>>>> ',waypoint%time
                         call WaypointInsertInList(waypoint,geomech_realization%waypoints)
                         temp_real = temp_real + output_option%periodic_output_time_incr
                         if (temp_real > temp_real2) exit

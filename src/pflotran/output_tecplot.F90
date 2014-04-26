@@ -342,29 +342,64 @@ subroutine OutputTecplotBlock(realization_base)
   if (output_option%print_tecplot_flux_velocities) then
     if (grid%structured_grid%nx > 1) then
       call OutputFluxVelocitiesTecplotBlk(realization_base,LIQUID_PHASE, &
-                                          X_DIRECTION)
+                                          X_DIRECTION,PETSC_FALSE)
       select case(option%iflowmode)
         case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputFluxVelocitiesTecplotBlk(realization_base,GAS_PHASE, &
-                                              X_DIRECTION)
+                                              X_DIRECTION,PETSC_FALSE)
       end select
     endif
     if (grid%structured_grid%ny > 1) then
       call OutputFluxVelocitiesTecplotBlk(realization_base,LIQUID_PHASE, &
-                                          Y_DIRECTION)
+                                          Y_DIRECTION,PETSC_FALSE)
       select case(option%iflowmode)
         case(MPH_MODE, IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputFluxVelocitiesTecplotBlk(realization_base,GAS_PHASE, &
-                                              Y_DIRECTION)
+                                              Y_DIRECTION,PETSC_FALSE)
       end select
     endif
     if (grid%structured_grid%nz > 1) then
       call OutputFluxVelocitiesTecplotBlk(realization_base,LIQUID_PHASE, &
-                                          Z_DIRECTION)
+                                          Z_DIRECTION,PETSC_FALSE)
       select case(option%iflowmode)
         case(MPH_MODE, IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputFluxVelocitiesTecplotBlk(realization_base,GAS_PHASE, &
-                                              Z_DIRECTION)
+                                              Z_DIRECTION,PETSC_FALSE)
+      end select
+    endif
+  endif
+  if (output_option%print_fluxes) then
+    if (grid%structured_grid%nx > 1) then
+      select case(option%iflowmode)
+        case(G_MODE)
+          call OutputFluxVelocitiesTecplotBlk(realization_base,ONE_INTEGER, &
+                                              X_DIRECTION,PETSC_TRUE)
+          call OutputFluxVelocitiesTecplotBlk(realization_base,TWO_INTEGER, &
+                                              X_DIRECTION,PETSC_TRUE)
+          call OutputFluxVelocitiesTecplotBlk(realization_base,THREE_INTEGER, &
+                                              X_DIRECTION,PETSC_TRUE)
+      end select
+    endif
+    if (grid%structured_grid%ny > 1) then
+      select case(option%iflowmode)
+        case(G_MODE)
+          call OutputFluxVelocitiesTecplotBlk(realization_base,ONE_INTEGER, &
+                                              Y_DIRECTION,PETSC_TRUE)
+          call OutputFluxVelocitiesTecplotBlk(realization_base,TWO_INTEGER, &
+                                              Y_DIRECTION,PETSC_TRUE)
+          call OutputFluxVelocitiesTecplotBlk(realization_base,THREE_INTEGER, &
+                                              Y_DIRECTION,PETSC_TRUE)
+      end select
+    endif
+    if (grid%structured_grid%nz > 1) then
+      select case(option%iflowmode)
+        case(G_MODE)
+          call OutputFluxVelocitiesTecplotBlk(realization_base,ONE_INTEGER, &
+                                              Z_DIRECTION,PETSC_TRUE)
+          call OutputFluxVelocitiesTecplotBlk(realization_base,TWO_INTEGER, &
+                                              Z_DIRECTION,PETSC_TRUE)
+          call OutputFluxVelocitiesTecplotBlk(realization_base,THREE_INTEGER, &
+                                              Z_DIRECTION,PETSC_TRUE)
       end select
     endif
   endif
@@ -518,7 +553,7 @@ end subroutine OutputVelocitiesTecplotBlock
 ! ************************************************************************** !
 
 subroutine OutputFluxVelocitiesTecplotBlk(realization_base,iphase, &
-                                            direction)
+                                          direction,output_flux)
   ! 
   ! Print intercellular fluxes to Tecplot file
   ! in BLOCK format
@@ -541,6 +576,7 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization_base,iphase, &
   class(realization_base_type) :: realization_base
   PetscInt :: iphase
   PetscInt :: direction
+  PetscBool :: output_flux
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -588,12 +624,23 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization_base,iphase, &
     filename = trim(option%global_prefix) // trim(option%group_prefix) // '-'
   endif
   
-  select case(iphase)
-    case(LIQUID_PHASE)
-      filename = trim(filename) // 'ql'
-    case(GAS_PHASE)
-      filename = trim(filename) // 'qg'
-  end select
+  if (output_flux) then
+    select case(iphase)
+      case(ONE_INTEGER)
+        filename = trim(filename) // 'qw'
+      case(TWO_INTEGER)
+        filename = trim(filename) // 'qa'
+      case(THREE_INTEGER)
+        filename = trim(filename) // 'qh'
+    end select
+  else
+    select case(iphase)
+      case(LIQUID_PHASE)
+        filename = trim(filename) // 'ql'
+      case(GAS_PHASE)
+        filename = trim(filename) // 'qg'
+    end select
+  endif
   
   select case(direction)
     case(X_DIRECTION)
@@ -623,21 +670,41 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization_base,iphase, &
              '"X [m]",' // &
              '"Y [m]",' // &
              '"Z [m]",'
-    select case(iphase)
-      case(LIQUID_PHASE)
-        string = trim(string) // '"Liquid'
-      case(GAS_PHASE)
-        string = trim(string) // '"Gas'
-    end select
+             
+    if (output_flux) then
+      select case(iphase)
+        case(ONE_INTEGER)
+          filename = trim(filename) // 'Water'
+        case(TWO_INTEGER)
+          filename = trim(filename) // 'Air'
+        case(THREE_INTEGER)
+          filename = trim(filename) // 'Energy'
+      end select
+    else
+      select case(iphase)
+        case(LIQUID_PHASE)
+          string = trim(string) // '"Liquid'
+        case(GAS_PHASE)
+          string = trim(string) // '"Gas'
+      end select
+    endif
   
     select case(direction)
       case(X_DIRECTION)
-        string = trim(string) // ' qlx [m/' // trim(output_option%tunit) // ']"'
+        string = trim(string) // ' qx ['
       case(Y_DIRECTION)
-        string = trim(string) // ' qly [m/' // trim(output_option%tunit) // ']"'
+        string = trim(string) // ' qy ['
       case(Z_DIRECTION)
-        string = trim(string) // ' qlz [m/' // trim(output_option%tunit) // ']"'
+        string = trim(string) // ' qz ['
     end select 
+    
+    ! mass units
+    if (output_flux) then
+      string = trim(string) // 'mol/'
+    else
+      string = trim(string) // 'm/'
+    endif
+    string = trim(string) // trim(output_option%tunit) // ']"'
     
     write(OUTPUT_UNIT,'(a)') trim(string)
   
@@ -794,7 +861,12 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization_base,iphase, &
       ! velocities are stored as the downwind face of the upwind cell
       if (local_id <= 0 .or. &
           dabs(cur_connection_set%dist(direction,iconn)) < 0.99d0) cycle
-      vec_ptr(local_id) = patch%internal_velocities(iphase,sum_connection)
+      if (output_flux) then
+        ! iphase here is really teh dof
+        vec_ptr(local_id) = patch%internal_fluxes(iphase,1,sum_connection)
+      else
+        vec_ptr(local_id) = patch%internal_velocities(iphase,sum_connection)
+      endif
     enddo
     cur_connection_set => cur_connection_set%next
   enddo
@@ -2246,7 +2318,7 @@ subroutine OutputSecondaryContinuumTecplot(realization_base)
       rt_sec_tranport_vars => patch%aux%SC_RT%sec_transport_vars
       reaction => realization_base%reaction
     endif
-    if (option%iflowmode == TH_MODE .or. option%iflowmode == THC_MODE &
+    if (option%iflowmode == TH_MODE &
         .or. option%iflowmode == MPH_MODE) then
       sec_heat_vars => patch%aux%SC_heat%sec_heat_vars
     endif
@@ -2517,7 +2589,7 @@ subroutine WriteTecplotHeaderSec(fid,realization_base,cell_string, &
   ! add secondary temperature to header
   if (print_secondary_data(1)) then
     select case (option%iflowmode) 
-      case (TH_MODE,THC_MODE, MPH_MODE)
+      case (TH_MODE, MPH_MODE)
         header = ''
         string = 'T'
         call OutputAppendToHeader(header,string,'C',cell_string,icolumn)

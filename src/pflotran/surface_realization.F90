@@ -1,5 +1,3 @@
-#ifdef SURFACE_FLOW
-
 module Surface_Realization_class
 
   use Realization_Base_class
@@ -1419,5 +1417,3 @@ subroutine SurfRealizAddWaypointsToList(surf_realization)
 end subroutine SurfRealizAddWaypointsToList
 
 end module Surface_Realization_class
-
-#endif

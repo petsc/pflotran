@@ -1389,7 +1389,7 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
       case (AVERAGED_VARS)
         if (mod((option%time-output_option%periodic_output_time_incr)/ &
                 output_option%periodic_output_time_incr, &
-                real(output_option%times_per_h5_file))==0) then
+                dble(output_option%times_per_h5_file))==0) then
           first = PETSC_TRUE
         else
           first = PETSC_FALSE

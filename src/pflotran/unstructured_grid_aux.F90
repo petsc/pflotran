@@ -139,14 +139,12 @@ module Unstructured_Grid_Aux_module
     ISLocalToGlobalMapping :: mapping_ltogb ! block form of mapping_ltog
     Vec :: global_vec ! global vec (no ghost cells), petsc-ordering
     Vec :: local_vec ! local vec (includes local and ghosted cells), local ordering
-#ifdef SURFACE_FLOW
     VecScatter :: scatter_bet_grids ! scatter context between surface and subsurface
                                     ! grids
     VecScatter :: scatter_bet_grids_1dof ! scatter context between surface and
                                          ! subsurface grids for 1-DOF
     VecScatter :: scatter_bet_grids_ndof ! scatter context between surface and
                                          ! subsurface grids for N-DOFs
-#endif
   end type ugdm_type
 
   !  PetscInt, parameter :: HEX_TYPE          = 1
@@ -206,11 +204,9 @@ function UGDMCreate()
   ugdm%mapping_ltogb = 0
   ugdm%global_vec = 0
   ugdm%local_vec = 0
-#ifdef SURFACE_FLOW
   ugdm%scatter_bet_grids = 0
   ugdm%scatter_bet_grids_1dof = 0
   ugdm%scatter_bet_grids_ndof = 0
-#endif
   UGDMCreate => ugdm
 
 end function UGDMCreate
@@ -1708,11 +1704,9 @@ subroutine UGridDMDestroy(ugdm)
     call ISLocalToGlobalMappingDestroy(ugdm%mapping_ltogb,ierr)
   call VecDestroy(ugdm%global_vec,ierr)
   call VecDestroy(ugdm%local_vec,ierr)
-#ifdef SURFACE_FLOW
   call VecScatterDestroy(ugdm%scatter_bet_grids,ierr)
   call VecScatterDestroy(ugdm%scatter_bet_grids_1dof,ierr)
   call VecScatterDestroy(ugdm%scatter_bet_grids_ndof,ierr)
-#endif
   deallocate(ugdm)
   nullify(ugdm)
 

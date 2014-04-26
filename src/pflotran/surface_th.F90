@@ -1,5 +1,3 @@
-#ifdef SURFACE_FLOW
-
 module Surface_TH_module
 
   use Surface_Global_Aux_module
@@ -345,13 +343,18 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
       dx = xc(ghosted_id_dn) - cur_connection_set%intercp(1,iconn)
       dy = yc(ghosted_id_dn) - cur_connection_set%intercp(2,iconn)
       dz = zc(ghosted_id_dn) - cur_connection_set%intercp(3,iconn)
+      dist = sqrt(dx*dx + dy*dy + dz*dz)
       slope_dn = dz/sqrt(dx*dx + dy*dy + dz*dz)
 
       call SurfaceTHBCFlux(boundary_condition%flow_condition%itype, &
+                         boundary_condition%flow_aux_real_var(:,iconn), &
                          surf_auxvars_bc(sum_connection), &
                          surf_global_auxvars_bc(sum_connection), &
+                         surf_auxvars(ghosted_id_dn), &
+                         surf_global_auxvars(ghosted_id_dn), &
                          slope_dn, &
                          mannings_loc_p(ghosted_id_dn), &
+                         dist, &
                          cur_connection_set%area(iconn), &
                          option,vel,Res)
 
@@ -416,8 +419,8 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
       ! I think using the weighted average of liquid and ice densities and Cwi 
       ! is correct here, but I should check.
       ff_p(iend) = ff_p(iend) + esrc + &
-                    surf_global_auxvars_ss(local_id)%den_kg(1)* &
-                    (surf_global_auxvars_ss(local_id)%temp(1) + 273.15d0)* &
+                    surf_global_auxvars_ss(sum_connection)%den_kg(1)* &
+                    (surf_global_auxvars_ss(sum_connection)%temp(1) + 273.15d0)* &
                     surf_auxvars(local_id)%Cwi* &
                     qsrc/area_p(local_id)
     enddo
@@ -570,7 +573,7 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
     if (.not.associated(boundary_condition)) exit
     
     cur_connection_set => boundary_condition%connection_set
-    
+
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
     
@@ -580,13 +583,18 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
       dx = xc(ghosted_id_dn) - cur_connection_set%intercp(1,iconn)
       dy = yc(ghosted_id_dn) - cur_connection_set%intercp(2,iconn)
       dz = zc(ghosted_id_dn) - cur_connection_set%intercp(3,iconn)
+      dist = sqrt(dx*dx + dy*dy + dz*dz)
       slope_dn = dz/sqrt(dx*dx + dy*dy + dz*dz)
 
       call SurfaceTHBCFlux(boundary_condition%flow_condition%itype, &
+                         boundary_condition%flow_aux_real_var(:,iconn), &
                          surf_auxvars_bc(sum_connection), &
                          surf_global_auxvars_bc(sum_connection), &
+                         surf_auxvars(ghosted_id_dn), &
+                         surf_global_auxvars(ghosted_id_dn), &
                          slope_dn, &
                          mannings_loc_p(ghosted_id_dn), &
+                         dist, &
                          cur_connection_set%area(iconn), &
                          option,vel,Res)
 
@@ -750,10 +758,14 @@ end subroutine SurfaceTHFlux
 ! ************************************************************************** !
 
 subroutine SurfaceTHBCFlux(ibndtype, &
-                           surf_auxvar, &
-                           surf_global_auxvar, &
+                           auxvars, &
+                           surf_auxvar_up, &
+                           surf_global_auxvar_up, &
+                           surf_auxvar_dn, &
+                           surf_global_auxvar_dn, &
                            slope, &
                            mannings, &
+                           dist, &
                            length, &
                            option, &
                            vel, &
@@ -770,8 +782,11 @@ subroutine SurfaceTHBCFlux(ibndtype, &
   implicit none
 
   type(option_type) :: option
-  type(Surface_TH_auxvar_type) :: surf_auxvar
-  type(surface_global_auxvar_type) :: surf_global_auxvar
+  type(Surface_TH_auxvar_type) :: surf_auxvar_up
+  type(surface_global_auxvar_type) :: surf_global_auxvar_up
+  type(Surface_TH_auxvar_type) :: surf_auxvar_dn
+  type(surface_global_auxvar_type) :: surf_global_auxvar_dn
+  PetscReal :: auxvars(:) ! from aux_real_var array
   PetscReal :: slope
   PetscReal :: mannings
   PetscReal :: length
@@ -780,13 +795,22 @@ subroutine SurfaceTHBCFlux(ibndtype, &
   PetscReal :: vel
   PetscReal :: Res(1:option%nflowdof)
   PetscReal :: den_aveg
+  PetscReal :: dist
 
   PetscInt :: pressure_bc_type
   PetscReal :: head
   PetscReal :: head_liq
+  PetscReal :: den
+  PetscReal :: temp_half
+  PetscReal :: Cwi
+  PetscReal :: dtemp
+  PetscReal :: hw_half
+  PetscReal :: k_therm
 
   flux = 0.d0
   vel = 0.d0
+  hw_half = 0.d0
+  dtemp = 0.d0
   
   ! RTM: I've multiplied the head (ponded water depth, actually) by the 
   ! unfrozen fraction.  I believe this makes sense, but I should think a bit 
@@ -795,7 +819,8 @@ subroutine SurfaceTHBCFlux(ibndtype, &
 
   ! Flow  
   pressure_bc_type = ibndtype(TH_PRESSURE_DOF)
-  head = surf_global_auxvar%head(1)
+  head = surf_global_auxvar_dn%head(1)
+  k_therm = surf_auxvar_dn%k_therm
   
   select case(pressure_bc_type)
     case (ZERO_GRADIENT_BC)
@@ -803,22 +828,44 @@ subroutine SurfaceTHBCFlux(ibndtype, &
         vel =  0.d0
         head_liq = 0.d0
       else
-        head_liq = surf_auxvar%unfrozen_fraction * head
+        head_liq = surf_auxvar_dn%unfrozen_fraction * head
         vel = -sqrt(dabs(slope))/mannings*(head_liq**(2.d0/3.d0))
+        hw_half = head
       endif
+      den = surf_global_auxvar_dn%den_kg(1)
+      Cwi = surf_auxvar_dn%Cwi
+    case (NEUMANN_BC)
+      vel = auxvars(TH_PRESSURE_DOF)
+      den = (surf_global_auxvar_up%den_kg(1) + &
+             surf_global_auxvar_dn%den_kg(1))/2.d0
     case default
-      option%io_buffer = 'Uknown pressure_bc_type for surface flow '
+      option%io_buffer = 'Unknown pressure_bc_type for surface flow '
+      call printErrMsg(option)
   end select
-  
+
+  if (vel>0.d0) then
+    temp_half = surf_global_auxvar_up%temp(1) + 273.15d0
+  else
+    temp_half = surf_global_auxvar_dn%temp(1) + 273.15d0
+  endif
+
+  if (pressure_bc_type /= ZERO_GRADIENT_BC) then
+    select case (ibndtype(TH_TEMPERATURE_DOF))
+      case (DIRICHLET_BC)
+        dtemp = surf_global_auxvar_up%temp(1) - surf_global_auxvar_dn%temp(1)
+      case default
+        option%io_buffer = 'Unknown temperature_bc_type for surface flow '
+        call printErrMsg(option)
+    end select
+  endif
+
   flux = head_liq*vel
   Res(TH_PRESSURE_DOF) = flux*length
 
   ! Temperature
   ! RTM: See note about in SufaceTHFlux() about how frozen/unfrozen are handled here.
-  Res(TH_TEMPERATURE_DOF) = surf_global_auxvar%den_kg(1)* &
-                            (surf_global_auxvar%temp(1) + 273.15d0)* &
-                            surf_auxvar%Cwi* &
-                            vel*head_liq*length
+  Res(TH_TEMPERATURE_DOF) = den*temp_half*Cwi*vel*head_liq*length + &
+                            k_therm*dtemp/dist*hw_half*length
 
 end subroutine SurfaceTHBCFlux
 
@@ -921,13 +968,13 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
 
       do idof=1,option%nflowdof
         select case(boundary_condition%flow_condition%itype(idof))
-          case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,HET_DIRICHLET)
+          case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,HET_DIRICHLET,NEUMANN_BC)
             xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
-          case(NEUMANN_BC,ZERO_GRADIENT_BC)
+          case(ZERO_GRADIENT_BC)
             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
         end select
       enddo
-      
+
       surf_global_auxvars_bc(sum_connection)%temp(1) = xxbc(2)
       call SurfaceTHAuxVarCompute(xxbc, &
                                   surf_th_auxvars_bc(sum_connection), &
@@ -1030,6 +1077,7 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
   PetscInt :: iter
   PetscInt :: niter
   PetscReal :: den
+  PetscReal :: dum1
   PetscErrorCode :: ierr
 
   option => surf_realization%option
@@ -1064,7 +1112,7 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
           temp = xx_loc_p(iend)/xx_loc_p(istart)/ &
                   surf_global_auxvars(local_id)%den_kg(1)/ &
                   surf_auxvars(local_id)%Cwi - 273.15d0
-          call EOSWaterdensity(temp,option%reference_pressure,den)
+          call EOSWaterdensity(temp,option%reference_pressure,den,dum1,ierr)
           surf_global_auxvars(local_id)%den_kg(1) = den
         enddo
       endif
@@ -1164,6 +1212,7 @@ subroutine SurfaceTHUpdateSurfState(surf_realization)
   PetscInt                :: sum_connection
 
   PetscReal               :: den
+  PetscReal               :: dum1
   PetscReal, pointer      :: avg_vdarcy_p(:)   ! avg darcy velocity [m/s]
   PetscReal, pointer      :: xx_p(:)           ! head [m]
   PetscReal, pointer      :: surfpress_p(:)
@@ -1195,12 +1244,12 @@ subroutine SurfaceTHUpdateSurfState(surf_realization)
 
     ! Compute density
     count = count + 1
-    call EOSWaterdensity(surftemp_p(count),option%reference_pressure,den)
+    call EOSWaterdensity(surftemp_p(count),option%reference_pressure,den,dum1,ierr)
     xx_p(ibeg) = (surfpress_p(count)-option%reference_pressure)/ &
                         (abs(option%gravity(3)))/den
     if(xx_p(ibeg)<1.d-15) then
       xx_p(ibeg) = 0.d0
-      xx_p(iend) = option%reference_temperature
+      xx_p(iend) = 0.d0
     else
       Cwi = surf_auxvars(ghosted_id)%Cwi
       temp_K = surftemp_p(count) + 273.15d0
@@ -1247,5 +1296,3 @@ end subroutine SurfaceTHUpdateSolution
 
 
 end module Surface_TH_module
-
-#endif

@@ -257,9 +257,9 @@ class(pmc_base_type), target :: this
   ! Get data of other process-model
   call this%GetAuxData()
   
-  local_stop_flag = 0
+  local_stop_flag = TS_CONTINUE
   do
-    if (local_stop_flag > 0) exit ! end simulation
+    if (local_stop_flag /= TS_CONTINUE) exit ! end simulation
     if (this%timestepper%target_time >= sync_time) exit
     
     call SetOutputFlags(this)
@@ -272,7 +272,7 @@ class(pmc_base_type), target :: this
                                         transient_plot_flag,checkpoint_flag)
     call this%timestepper%StepDT(this%pm_list,local_stop_flag)
 
-    if (local_stop_flag > 1) exit ! failure
+    if (local_stop_flag == TS_STOP_FAILURE) exit ! failure
     ! Have to loop over all process models coupled in this object and update
     ! the time step size.  Still need code to force all process models to
     ! use the same time step size if tightly or iteratively coupled.
@@ -320,7 +320,6 @@ class(pmc_base_type), target :: this
     endif
     
     if (this%is_master) then
-      if (checkpoint_flag) exit
       if (this%option%checkpoint_flag .and. this%option%checkpoint_frequency > 0) then
         if (mod(this%timestepper%steps,this%option%checkpoint_frequency) == 0) then
            checkpoint_flag = PETSC_TRUE
@@ -743,10 +742,10 @@ subroutine PMCBaseGetHeader(this,header)
   ! Check the value of 'times_per_h5_file'
   if (header%times_per_h5_file /= &
       this%pm_list%realization_base%output_option%times_per_h5_file) then
-    write(string,*),header%times_per_h5_file
+    write(string,*) header%times_per_h5_file
     this%option%io_buffer = 'From checkpoint file: times_per_h5_file ' // trim(string)
     call printMsg(this%option)
-    write(string,*),this%pm_list%realization_base%output_option%times_per_h5_file
+    write(string,*) this%pm_list%realization_base%output_option%times_per_h5_file
     this%option%io_buffer = 'From inputdeck      : times_per_h5_file ' // trim(string)
     call printMsg(this%option)
     this%option%io_buffer = 'times_per_h5_file specified in inputdeck does not ' // &

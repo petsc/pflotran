@@ -687,6 +687,10 @@ function UCellTypeToWord(cell_type,option)
       UCellTypeToWord = 'pyramid'
     case(TET_TYPE)
       UCellTypeToWord = 'tetrahedron'
+    case(QUAD_TYPE)
+      UCellTypeToWord = 'quadrilateral'
+    case(TRI_TYPE)
+      UCellTypeToWord = 'triangle'
     case default
       option%io_buffer = 'Cell type not recognized'
       call printErrMsg(option)
@@ -717,6 +721,8 @@ function UCellFaceTypeToWord(face_type,option)
       UCellFaceTypeToWord = 'triangle'
     case(QUAD_FACE_TYPE)
       UCellFaceTypeToWord = 'quadrilateral'
+    case(LINE_FACE_TYPE)
+      UCellFaceTypeToWord = 'line'
     case default
       option%io_buffer = 'Face type not recognized'
       call printErrMsg(option)

@@ -225,19 +225,20 @@ subroutine StructGridCreateDM(structured_grid,da,ndof,stencil_width, &
   ! Generate the DM object that will manage communication.
   !-----------------------------------------------------------------------
   ! This code is for the DMDACreate3D() interface in PETSc versions >= 3.2 --RTM
-  call DMDACreate3D(option%mycomm,DMDA_BOUNDARY_NONE,DMDA_BOUNDARY_NONE, &
-                  DMDA_BOUNDARY_NONE,stencil_type, &
-                  structured_grid%nx,structured_grid%ny,structured_grid%nz, &
-                  structured_grid%npx,structured_grid%npy,structured_grid%npz, &
-                  ndof,stencil_width, &
-                  PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-                  da,ierr)
-  call DMDAGetInfo(da,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-                 PETSC_NULL_INTEGER,structured_grid%npx_final, &
-                 structured_grid%npy_final,structured_grid%npz_final, &
-                 PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-                 PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-                 PETSC_NULL_INTEGER,ierr)
+  call DMDACreate3D(option%mycomm,DM_BOUNDARY_NONE,DM_BOUNDARY_NONE, &
+                    DM_BOUNDARY_NONE,stencil_type, &
+                    structured_grid%nx,structured_grid%ny,structured_grid%nz, &
+                    structured_grid%npx,structured_grid%npy, &
+                    structured_grid%npz,ndof,stencil_width, &
+                    PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+                    da,ierr)
+  call DMDAGetInfo(da,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+                   PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+                   structured_grid%npx_final,structured_grid%npy_final, &
+                   structured_grid%npz_final, &
+                   PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+                   PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+                   PETSC_NULL_INTEGER,ierr)
 
 end subroutine StructGridCreateDM
 
@@ -516,6 +517,12 @@ subroutine StructGridReadArrayNew(array,array_size,axis,input,option)
         call InputErrorMsg(input,option,'value','StructGridReadArrayNew')
         do i=1, num_values
           count = count + 1
+          if (count > array_size) then
+            option%io_buffer = 'Too many values read for ' // &
+                               trim(axis) // &
+                               ' direction in DXYZ card'
+            call printErrMsg(option)
+          endif
           array(count) = value
         enddo
       else
@@ -523,6 +530,12 @@ subroutine StructGridReadArrayNew(array,array_size,axis,input,option)
         call InputReadDouble(string2,option,value,input%ierr)
         call InputErrorMsg(input,option,'value','StructGridReadDXYZ')
         count = count + 1
+        if (count > array_size) then
+          option%io_buffer = 'Too many values read for ' // &
+                              trim(axis) // &
+                              ' direction in DXYZ card'
+          call printErrMsg(option)
+        endif
         array(count) = value
       endif
     enddo

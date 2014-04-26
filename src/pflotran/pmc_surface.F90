@@ -1,4 +1,3 @@
-#ifdef SURFACE_FLOW
 module PMC_Surface_class
 
   use PMC_Base_class
@@ -122,9 +121,9 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   ! Get data of other process-model
   call this%GetAuxData()
 
-  local_stop_flag = 0
+  local_stop_flag = TS_CONTINUE
   do
-    if (local_stop_flag > 0) exit ! end simulation
+    if (local_stop_flag /= TS_CONTINUE) exit ! end simulation
     if (this%timestepper%target_time >= sync_time) exit
     
     call SetOutputFlags(this)
@@ -162,7 +161,7 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
 
     call this%timestepper%StepDT(this%pm_list,local_stop_flag)
 
-    if (local_stop_flag > 1) exit ! failure
+    if (local_stop_flag  == TS_STOP_FAILURE) exit ! failure
     ! Have to loop over all process models coupled in this object and update
     ! the time step size.  Still need code to force all process models to
     ! use the same time step size if tightly or iteratively coupled.
@@ -366,6 +365,7 @@ subroutine PMCSurfaceSetAuxData(this)
   PetscReal, pointer :: surf_hflux_p(:)
   PetscBool :: found
   PetscReal :: esrc
+  PetscReal :: atm_temp
   PetscErrorCode :: ierr
 
   dt = this%option%surf_subsurf_coupling_flow_dt
@@ -426,15 +426,20 @@ subroutine PMCSurfaceSetAuxData(this)
                         esrc = source_sink%flow_condition%energy_rate%dataset%rarray(1)
                       case (HET_ENERGY_RATE_SS)
                         esrc = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
+                      case (DIRICHLET_BC)
+                        esrc = source_sink%flow_condition%temperature%dataset%rarray(1)
+                      case (HET_DIRICHLET)
+                        esrc = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
                       case default
                         this%option%io_buffer = 'atm_energy_ss does not have '// &
                           'a temperature condition that is either a ' // &
-                          ' ENERGY_RATE_SS or HET_ENERGY_RATE_SS'
+                          ' ENERGY_RATE_SS/HET_ENERGY_RATE_SSDIRICHLET_BC/HET_DIRICHLET'
+                        call printErrMsg(this%option)
                     end select
 
                     ! Only when no standing water is present, the atmospheric
                     ! energy flux is applied directly on subsurface domain.
-                    if (surf_head_p(local_id) == 0.d0) then
+                    if (surf_head_p(local_id) < 1.d-15) then
                       surf_hflux_p(local_id) = esrc
                     else
                       surf_hflux_p(local_id) = 0.d0
@@ -499,6 +504,7 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
   PetscReal, pointer      :: surftemp_p(:)
   PetscInt :: istart, iend
   PetscReal :: den
+  PetscReal :: dum1
   PetscErrorCode :: ierr
   type(Surface_TH_auxvar_type), pointer :: surf_auxvars(:)
 
@@ -510,7 +516,8 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
         select case(this%option%iflowmode)
           case (RICHARDS_MODE)
 
-            call EOSWaterdensity(this%option%reference_temperature,this%option%reference_pressure,den)
+            call EOSWaterdensity(this%option%reference_temperature, &
+                                 this%option%reference_pressure,den,dum1,ierr)
 
             call VecGetArrayF90(pmc%surf_realization%surf_field%flow_xx, xx_p, ierr)
             call VecGetArrayF90(pmc%surf_realization%surf_field%press_subsurf, surfpress_p, ierr)
@@ -543,7 +550,8 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
             ! reference-temperature). Presently, SurfaceCheckpointProcessModel()
             ! does not output surface-water temperature for TH-Mode and the
             ! subroutine needs to be modified in future.
-            call EOSWaterdensity(this%option%reference_temperature,this%option%reference_pressure,den)
+            call EOSWaterdensity(this%option%reference_temperature, &
+                                 this%option%reference_pressure,den,dum1,ierr)
 
             surf_auxvars => pmc%surf_realization%patch%surf_aux%SurfaceTH%auxvars
 
@@ -640,4 +648,3 @@ recursive subroutine Destroy(this)
 end subroutine Destroy
 
 end module PMC_Surface_class
-#endif

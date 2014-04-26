@@ -233,7 +233,7 @@ end subroutine PMGeomechForceResidual
 
 ! ************************************************************************** !
 
-subroutine PMGeomechForceJacobian(this,snes,xx,A,B,flag,ierr)
+subroutine PMGeomechForceJacobian(this,snes,xx,A,B,ierr)
   ! 
   ! This routine
   ! 
@@ -249,14 +249,13 @@ subroutine PMGeomechForceJacobian(this,snes,xx,A,B,flag,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  MatStructure flag
   PetscErrorCode :: ierr
   
 #ifdef PM_GEOMECH_FORCE_DEBUG  
   call printMsg(this%option,'PMGeomechForce%Jacobian()')
 #endif
   
-  call GeomechForceJacobian(snes,xx,A,B,flag,this%geomech_realization,ierr)
+  call GeomechForceJacobian(snes,xx,A,B,this%geomech_realization,ierr)
 
 end subroutine PMGeomechForceJacobian
 

@@ -61,7 +61,6 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   ! 
 
   use Simulation_module
-  use Timestepper_module
   use Option_module
   use Init_module
   
@@ -78,12 +77,13 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   simulation_old => SimulationCreate(option)
   call Init(simulation_old)
   call HijackSimulation(simulation_old,simulation)
+  call SubsurfaceJumpStart(simulation)
+  
   ! no longer need simulation
   ! nullify realization and regression so that it is not destroyed
   nullify(simulation_old%realization)
   nullify(simulation_old%regression)
   call SimulationDestroy(simulation_old)
-  call SubsurfaceJumpStart(simulation)
   
 end subroutine SubsurfaceInitializePostPetsc
 
@@ -139,6 +139,7 @@ subroutine HijackSimulation(simulation_old,simulation)
   use PMC_Base_class
   use PMC_Subsurface_class  
   use Simulation_Base_class
+  use PM_Base_class
   use PM_General_class
   use PM_Flash2_class
   use PM_Immis_class
@@ -146,9 +147,8 @@ subroutine HijackSimulation(simulation_old,simulation)
   use PM_Miscible_class
   use PM_Richards_class
   use PM_RT_class
+  use PM_Subsurface_class
   use PM_TH_class
-  use PM_THC_class
-  use PM_Base_class
   use PM_module
   use Timestepper_BE_class
   
@@ -197,8 +197,6 @@ subroutine HijackSimulation(simulation_old,simulation)
         cur_process_model => PMRichardsCreate()
       case(TH_MODE)
         cur_process_model => PMTHCreate()
-      case(THC_MODE)
-        cur_process_model => PMTHCCreate()
     end select
     cur_process_model%option => realization%option
     cur_process_model%output_option => realization%output_option
@@ -260,24 +258,10 @@ subroutine HijackSimulation(simulation_old,simulation)
         if (.not.associated(cur_process_model)) exit
         ! set realization
         select type(cur_process_model)
-          class is (pm_general_type)
-            call cur_process_model%PMGeneralSetRealization(realization)
-          class is (pm_flash2_type)
-            call cur_process_model%PMFlash2SetRealization(realization)
-          class is (pm_immis_type)
-            call cur_process_model%PMImmisSetRealization(realization)
-          class is (pm_mphase_type)
-            call cur_process_model%PMMphaseSetRealization(realization)
-          class is (pm_miscible_type)
-            call cur_process_model%PMMiscibleSetRealization(realization)
-          class is (pm_richards_type)
-            call cur_process_model%PMRichardsSetRealization(realization)
+          class is (pm_subsurface_type)
+            call cur_process_model%PMSubsurfaceSetRealization(realization)
           class is (pm_rt_type)
             call cur_process_model%PMRTSetRealization(realization)
-          class is (pm_th_type)
-            call cur_process_model%PMTHSetRealization(realization)
-          class is (pm_thc_type)
-            call cur_process_model%PMTHCSetRealization(realization)
         end select
         ! set time stepper
         select type(cur_process_model)

@@ -1,5 +1,3 @@
-#ifdef SURFACE_FLOW
-
 module Surface_Flow_module
 
   use Global_Aux_module
@@ -368,7 +366,7 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
       
       if(surf_global_auxvars(ghosted_id_up)%head(1)<0.d0 .or. &
          surf_global_auxvars(ghosted_id_dn)%head(1)<0.d0) then
-        write(*,*),'In SurfaceFlowFlux: ', surf_global_auxvars(ghosted_id_up)%head(1), &
+        write(*,*) 'In SurfaceFlowFlux: ', surf_global_auxvars(ghosted_id_up)%head(1), &
           surf_global_auxvars(ghosted_id_dn)%head(1),ghosted_id_up,ghosted_id_dn
           option%io_buffer='stopping: -ve head values '
           call printErrMsg(option)
@@ -1000,13 +998,12 @@ subroutine SurfaceFlowUpdateSurfState(surf_realization)
   type(patch_type),pointer            :: patch,surf_patch
   type(surface_field_type),pointer    :: surf_field
 
-  PetscInt                :: count
-  PetscInt                :: ghosted_id
   PetscInt                :: iconn
   PetscInt                :: local_id
   PetscInt                :: sum_connection
 
   PetscReal               :: den
+  PetscReal               :: dum1
   PetscReal, pointer      :: avg_vdarcy_p(:)   ! avg darcy velocity [m/s]
   PetscReal, pointer      :: hw_p(:)           ! head [m]
   PetscReal, pointer      :: surfpress_p(:)
@@ -1018,20 +1015,17 @@ subroutine SurfaceFlowUpdateSurfState(surf_realization)
   surf_field => surf_realization%surf_field
   surf_grid  => surf_realization%discretization%grid
   
-  call EOSWaterdensity(option%reference_temperature,option%reference_pressure,den)
+  call EOSWaterdensity(option%reference_temperature, &
+                       option%reference_pressure,den,dum1,ierr)
 
   call VecGetArrayF90(surf_field%flow_xx, hw_p, ierr)
   call VecGetArrayF90(surf_field%press_subsurf, surfpress_p, ierr)
-  count = 0
-  do ghosted_id = 1,surf_grid%ngmax
 
-    local_id = surf_grid%nG2L(ghosted_id)
-    if(local_id <= 0) cycle
+  do local_id = 1,surf_grid%nlmax
 
-    count = count + 1
-    hw_p(ghosted_id) = (surfpress_p(count)-option%reference_pressure)/ &
+    hw_p(local_id) = (surfpress_p(local_id)-option%reference_pressure)/ &
                         (abs(option%gravity(3)))/den
-    if(hw_p(ghosted_id)<1.d-15) hw_p(ghosted_id) = 0.d0
+    if(hw_p(local_id)<1.d-15) hw_p(local_id) = 0.d0
 
   enddo
   call VecRestoreArrayF90(surf_field%flow_xx, hw_p, ierr)
@@ -1048,5 +1042,3 @@ end subroutine SurfaceFlowUpdateSurfState
 ! ************************************************************************** !
 
 end module Surface_Flow_module
-
-#endif

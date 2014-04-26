@@ -1,5 +1,3 @@
-#ifdef SURFACE_FLOW
-
 module Timestepper_Surface_class
 
   use Timestepper_Base_class
@@ -196,7 +194,7 @@ subroutine TimestepperSurfaceSetTargetTime(this,sync_time, &
   this%dt = dt
   this%target_time = target_time
   this%cur_waypoint => cur_waypoint
-  if (.not.associated(cur_waypoint)) stop_flag = 1
+  if (.not.associated(cur_waypoint)) stop_flag = TS_STOP_END_SIMULATION
 
 end subroutine TimestepperSurfaceSetTargetTime
 
@@ -444,5 +442,3 @@ subroutine TimestepperSurfaceReset(this)
 end subroutine TimestepperSurfaceReset
 
 end module Timestepper_Surface_class
-
-#endif

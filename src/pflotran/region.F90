@@ -853,7 +853,7 @@ subroutine RegionReadFromFileId(region,input,option)
     if (.not.InputError(input)) then
       count = count + 1
       temp_int_array(count) = temp_int
-      write(*,*),count,temp_int
+      write(*,*) count,temp_int
     endif
     if (count+1 > max_size) then ! resize temporary array
       call reallocateIntArray(temp_int_array,max_size)

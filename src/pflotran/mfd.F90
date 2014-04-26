@@ -389,11 +389,12 @@ end subroutine MFDCreateJacobianLP
 ! ************************************************************************** !
 
 subroutine MFDInitializeMassMatrices(grid, field, &
-                                             mfd_aux, option)
+                                     mfd_aux, material_auxvars, option)
 
  use Option_module
  use Grid_module
  use MFD_Aux_module
+ use Material_Aux_class
  use Field_module
 
   implicit none
@@ -412,51 +413,36 @@ subroutine MFDInitializeMassMatrices(grid, field, &
   type(field_type) :: field
   type(mfd_type) :: mfd_aux
   type(option_type) :: option
-
+  class(material_auxvar_type), pointer :: material_auxvars(:)
 
   type(mfd_auxvar_type), pointer :: auxvar
   PetscInt :: ghosted_cell_id, icell, i, j
   PetscErrorCode :: ierr
   PetscReal :: PermTensor(3,3) 
-  PetscReal, pointer :: volume_p(:), perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
-  PetscReal, pointer :: perm_xz_loc_p(:), perm_xy_loc_p(:), perm_yz_loc_p(:)
 
-  call VecGetArrayF90(field%volume, volume_p, ierr)
-  call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecGetArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecGetArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecGetArrayF90(field%perm_xz_loc, perm_xz_loc_p, ierr)
-  call VecGetArrayF90(field%perm_xy_loc, perm_xy_loc_p, ierr)
-  call VecGetArrayF90(field%perm_yz_loc, perm_yz_loc_p, ierr)
 
   do icell = 1, grid%nlmax
 
     ghosted_cell_id = grid%nL2G(icell)
 
     PermTensor = 0.
-    PermTensor(1,1) = perm_xx_loc_p(ghosted_cell_id)
-    PermTensor(2,2) = perm_yy_loc_p(ghosted_cell_id)
-    PermTensor(3,3) = perm_zz_loc_p(ghosted_cell_id)
-    PermTensor(1,3) = perm_xz_loc_p(ghosted_cell_id)
-    PermTensor(1,2) = perm_xy_loc_p(ghosted_cell_id)
-    PermTensor(2,3) = perm_yz_loc_p(ghosted_cell_id)
+    PermTensor(1,1) = material_auxvars(ghosted_cell_id)%permeability(perm_xx_index)
+    PermTensor(2,2) = material_auxvars(ghosted_cell_id)%permeability(perm_yy_index)
+    PermTensor(3,3) = material_auxvars(ghosted_cell_id)%permeability(perm_zz_index)
+    PermTensor(1,3) = material_auxvars(ghosted_cell_id)%permeability(perm_xz_index)
+    PermTensor(1,2) = material_auxvars(ghosted_cell_id)%permeability(perm_xy_index)
+    PermTensor(2,3) = material_auxvars(ghosted_cell_id)%permeability(perm_yz_index)
     PermTensor(2,1) = PermTensor(1,2)
     PermTensor(3,1) = PermTensor(1,3)
     PermTensor(3,2) = PermTensor(2,3)
 
     auxvar => mfd_aux%auxvars(icell)
-    call MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id, auxvar, volume_p(icell), PermTensor, option)
+    call MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id, auxvar, &
+                                     material_auxvars(ghosted_cell_id)%volume, &
+                                     PermTensor, option)
     call MFDAuxInitResidDerivArrays(auxvar, option)
     call MFDAuxComputeGeometricValues (grid, ghosted_cell_id, auxvar, PermTensor, option)
   enddo
-
-  call VecRestoreArrayF90(field%volume, volume_p, ierr)
-  call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_xz_loc, perm_xz_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_xy_loc, perm_xy_loc_p, ierr)
-  call VecRestoreArrayF90(field%perm_yz_loc, perm_yz_loc_p, ierr)
 
 end subroutine MFDInitializeMassMatrices
 
@@ -1183,12 +1169,12 @@ subroutine MFDComputeDensity(global_auxvar, pres, den, dden_dp, option)
 
 #ifndef DONT_USE_WATEOS
   call EOSWaterDensity(global_auxvar%temp(1),pw,dw_kg,dw_mol, &
-                       dw_dp,dw_dt,option%scale,ierr)
+                       dw_dp,dw_dt,ierr)
 #else
-  call EOSWaterdensity(global_auxvar%temp(1),pw,dw_kg)
+  call EOSWaterDensity(global_auxvar%temp(1),pw,dw_kg,dw_mol,ierr)
   pert = tol*pw
   pw_pert = pw + pert
-  call EOSWaterdensity(global_auxvar%temp(1),pw_pert,dw_kg_pert)
+  call EOSWaterDensity(global_auxvar%temp(1),pw_pert,dw_kg_pert,dw_mol,ierr)
   dw_dp = (dw_kg_pert-dw_kg)/pert
   ! dw_kg = kg/m^3
   ! dw_mol = kmol/m^3

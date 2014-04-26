@@ -92,6 +92,7 @@ module Reaction_Aux_module
     PetscInt :: id
     PetscInt :: itype
     character(len=MAXWORDLENGTH) :: species_name
+    character(len=MAXWORDLENGTH) :: kd_mineral_name
     PetscReal :: Kd
     PetscReal :: Langmuir_B
     PetscReal :: Freundlich_n
@@ -316,6 +317,7 @@ module Reaction_Aux_module
     PetscInt :: neqkdrxn
     PetscInt, pointer :: eqkdspecid(:)
     PetscInt, pointer :: eqkdtype(:)
+    PetscInt, pointer :: eqkdmineral(:)
     PetscReal, pointer :: eqkddistcoef(:)
     PetscReal, pointer :: eqkdlangmuirb(:)
     PetscReal, pointer :: eqkdfreundlichn(:)
@@ -580,6 +582,7 @@ function ReactionCreate()
   reaction%neqkdrxn = 0
   nullify(reaction%eqkdspecid)
   nullify(reaction%eqkdtype)
+  nullify(reaction%eqkdmineral)
   nullify(reaction%eqkddistcoef)
   nullify(reaction%eqkdlangmuirb)
   nullify(reaction%eqkdfreundlichn)
@@ -873,6 +876,7 @@ function KDRxnCreate()
   rxn%id = 0
   rxn%itype = 0
   rxn%species_name = ''
+  rxn%kd_mineral_name = ''
   rxn%Kd = 0.d0
   rxn%Langmuir_B = 0.d0
   rxn%Freundlich_n = 0.d0
@@ -2116,6 +2120,7 @@ subroutine ReactionDestroy(reaction)
   
   call DeallocateArray(reaction%eqkdspecid)
   call DeallocateArray(reaction%eqkdtype)
+  call DeallocateArray(reaction%eqkdmineral)
   call DeallocateArray(reaction%eqkddistcoef)
   call DeallocateArray(reaction%eqkdlangmuirb)
   call DeallocateArray(reaction%eqkdfreundlichn)

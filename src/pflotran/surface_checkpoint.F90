@@ -1,5 +1,3 @@
-#ifdef SURFACE_FLOW
-
 module Surface_Checkpoint_Header_module
 
   implicit none
@@ -528,4 +526,3 @@ subroutine SurfaceRestartProcessModel(viewer,surf_realization)
 end subroutine SurfaceRestartProcessModel
 
 end module Surface_Checkpoint_module
-#endif

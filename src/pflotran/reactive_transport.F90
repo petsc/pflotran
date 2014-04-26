@@ -84,7 +84,7 @@ subroutine RTTimeCut(realization)
   
   ! set densities and saturations to t
   if (realization%option%nflowdof > 0) then
-    call GlobalUpdateDenAndSat(realization, &
+    call GlobalWeightAuxVars(realization, &
                                realization%option%transport%tran_weight_t0)
   endif
   
@@ -94,7 +94,7 @@ subroutine RTTimeCut(realization)
   
   ! set densities and saturations to t+dt
   if (realization%option%nflowdof > 0) then
-    call GlobalUpdateDenAndSat(realization, &
+    call GlobalWeightAuxVars(realization, &
                                realization%option%transport%tran_weight_t1)
   endif
 
@@ -402,7 +402,8 @@ subroutine RTCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   use Field_module
   use Patch_module
   use Option_module
- 
+  use Secondary_Continuum_module, only : SecondaryRTUpdateIterate
+
   implicit none
   
   SNESLineSearch :: line_search
@@ -460,7 +461,13 @@ subroutine RTCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
       option%converged = PETSC_TRUE
     endif
   endif
-    
+  
+  
+  if (option%use_mc) then  
+    call SecondaryRTUpdateIterate(line_search,X0,dX,X1,dX_changed, &
+                                  X1_changed,realization,ierr)
+  endif
+       
 end subroutine RTCheckUpdatePost
 
 ! ************************************************************************** !
@@ -2891,7 +2898,7 @@ end subroutine RTResidualNonFlux
 
 ! ************************************************************************** !
 
-subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
+subroutine RTJacobian(snes,xx,A,B,realization,ierr)
   ! 
   ! Computes the Jacobian
   ! 
@@ -2912,7 +2919,6 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
   Vec :: xx
   Mat :: A, B
   type(realization_type) :: realization
-  MatStructure flag
   PetscErrorCode :: ierr
 
   Mat :: J
@@ -2926,7 +2932,6 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
   call RTNumericalJacobianTest(realization)
 #endif
 
-  flag = SAME_NONZERO_PATTERN
   call MatGetType(A,mat_type,ierr)
   if (mat_type == MATMFFD) then
     J = B
@@ -2943,13 +2948,13 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
 
 
   ! pass #1 for internal and boundary flux terms  
-  call RTJacobianFlux(snes,xx,J,J,flag,realization,ierr)
+  call RTJacobianFlux(snes,xx,J,J,realization,ierr)
 
   call PetscLogEventEnd(logging%event_rt_jacobian1,ierr)
   call PetscLogEventBegin(logging%event_rt_jacobian2,ierr)
   
   ! pass #2 for everything else
-  call RTJacobianNonFlux(snes,xx,J,J,flag,realization,ierr)
+  call RTJacobianNonFlux(snes,xx,J,J,realization,ierr)
 
   call PetscLogEventEnd(logging%event_rt_jacobian2,ierr)
     
@@ -2988,7 +2993,7 @@ end subroutine RTJacobian
 
 ! ************************************************************************** !
 
-subroutine RTJacobianFlux(snes,xx,A,B,flag,realization,ierr)
+subroutine RTJacobianFlux(snes,xx,A,B,realization,ierr)
   ! 
   ! Computes the flux term entries in the Jacobian for
   ! reactive transport
@@ -3014,7 +3019,6 @@ subroutine RTJacobianFlux(snes,xx,A,B,flag,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  MatStructure flag  
   type(realization_type) :: realization  
   PetscErrorCode :: ierr
   
@@ -3234,7 +3238,7 @@ end subroutine RTJacobianFlux
 
 ! ************************************************************************** !
 
-subroutine RTJacobianNonFlux(snes,xx,A,B,flag,realization,ierr)
+subroutine RTJacobianNonFlux(snes,xx,A,B,realization,ierr)
   ! 
   ! Computes non-flux term entries in the Jacobian for
   ! reactive transport
@@ -3261,7 +3265,6 @@ subroutine RTJacobianNonFlux(snes,xx,A,B,flag,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  MatStructure flag  
   type(realization_type) :: realization  
   PetscErrorCode :: ierr
   

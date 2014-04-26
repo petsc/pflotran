@@ -59,7 +59,6 @@ subroutine Init(simulation)
   use Richards_module
   use Richards_MFD_module
   use TH_module
-  use THC_module
   use General_module
   
   use Reactive_Transport_module
@@ -77,7 +76,6 @@ subroutine Init(simulation)
   use Output_Aux_module
   use Regression_module
     
-#ifdef SURFACE_FLOW
   use Surface_Field_module
   use Surface_Flow_module
   use Surface_Global_module
@@ -87,14 +85,9 @@ subroutine Init(simulation)
   use Surface_Realization_class
   use Surface_TH_module
   use Unstructured_Grid_module
-#endif
 
 #ifdef GEOMECH
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Init_module, only : GeomechicsInitReadRequiredCards, &
                                        GeomechInitMatPropToGeomechRegions
   use Geomechanics_Grid_module
@@ -132,12 +125,10 @@ subroutine Init(simulation)
   PetscReal :: dum1
   PetscReal :: min_value
   SNESLineSearch :: linesearch
-#ifdef SURFACE_FLOW
   type(stepper_type), pointer               :: surf_flow_stepper
   type(solver_type), pointer                :: surf_flow_solver
   type(surface_field_type), pointer         :: surf_field
   type(surface_realization_type), pointer   :: surf_realization
-#endif
 #ifdef GEOMECH
   type(solver_type), pointer                :: geomech_solver
   type(stepper_type), pointer               :: geomech_stepper
@@ -158,11 +149,9 @@ subroutine Init(simulation)
   field => realization%field
   debug => realization%debug
   input => realization%input
-#ifdef SURFACE_FLOW
   surf_realization  => simulation%surf_realization
   surf_flow_stepper => simulation%surf_flow_stepper
   surf_field        => surf_realization%surf_field  
-#endif
 #ifdef GEOMECH
   geomech_realization => simulation%geomech_realization
   geomech_stepper => simulation%geomech_stepper
@@ -195,12 +184,10 @@ subroutine Init(simulation)
   
   ! read required cards
   call InitReadRequiredCardsFromInput(realization)
-#ifdef SURFACE_FLOW
   !geh: surf_realization%input is never freed
   surf_realization%input => InputCreate(IN_UNIT,option%input_filename,option)
   surf_realization%subsurf_filename = realization%discretization%filename
   call SurfaceInitReadRequiredCards(simulation%surf_realization)
-#endif
 
 #ifdef GEOMECH
   geomech_realization%input => InputCreate(IN_UNIT,option%input_filename,option)
@@ -223,14 +210,13 @@ subroutine Init(simulation)
   
   ! initialize flow mode
   if (len_trim(option%flowmode) > 0) then
-    ! set the operational mode (e.g. THC_MODE, MPH_MODE, etc)
+    ! set the operational mode (e.g.  MPH_MODE, etc)
     call setFlowMode(option)
     flow_solver => flow_stepper%solver
   else
     option%nphase = 1
     option%liquid_phase = 1
     option%use_isothermal = PETSC_TRUE  ! assume default isothermal when only transport
-    option%use_refactored_material_auxvars = PETSC_TRUE
     call TimestepperDestroy(simulation%flow_stepper)
     nullify(flow_stepper)
   endif
@@ -243,7 +229,6 @@ subroutine Init(simulation)
     nullify(tran_stepper)
   endif
 
-#ifdef SURFACE_FLOW
   ! initialize surface-flow mode
   if (option%nsurfflowdof > 0) then
     surf_flow_solver => surf_flow_stepper%solver
@@ -253,7 +238,6 @@ subroutine Init(simulation)
     call TimestepperDestroy(simulation%surf_flow_stepper)
     nullify(surf_flow_solver)
   endif
-#endif
 
 #ifdef GEOMECH
   ! initialize surface-flow mode
@@ -270,13 +254,11 @@ subroutine Init(simulation)
   ! initialize plot variables
   realization%output_option%output_variable_list => OutputVariableListCreate()
   realization%output_option%aveg_output_variable_list => OutputVariableListCreate()
-#ifdef SURFACE_FLOW
   ! initialize plot variables
   simulation%surf_realization%output_option%output_variable_list => &
     OutputVariableListCreate()
   simulation%surf_realization%output_option%aveg_output_variable_list => &
     OutputVariableListCreate()
-#endif
 #ifdef GEOMECH
   geomech_realization%output_option%output_variable_list => &
     OutputVariableListCreate()
@@ -292,10 +274,10 @@ subroutine Init(simulation)
     call EOSWaterDensity(option%reference_temperature, &
                          option%reference_pressure, &
                          option%reference_water_density, &
-                         dum1,option%scale, ierr)    
+                         dum1,ierr)    
 #else
     call EOSWaterdensity(option%reference_temperature,option%reference_pressure, &
-                 option%reference_water_density)
+                 option%reference_water_density,dum1,ierr)
 #endif                 
   endif
   
@@ -330,11 +312,9 @@ subroutine Init(simulation)
   
   ! create grid and allocate vectors
   call RealizationCreateDiscretization(realization)
-#ifdef SURFACE_FLOW
   if (option%nsurfflowdof>0) then
     call SurfRealizCreateDiscretization(simulation%surf_realization)
   endif
-#endif  
 
 #ifdef GEOMECH
   if (option%ngeomechdof > 0) then
@@ -371,7 +351,7 @@ subroutine Init(simulation)
   
     if (flow_solver%J_mat_type == MATAIJ) then
       select case(option%iflowmode)
-        case(MPH_MODE,TH_MODE,THC_MODE,IMS_MODE, FLASH2_MODE, G_MODE, MIS_MODE)
+        case(MPH_MODE,TH_MODE,IMS_MODE, FLASH2_MODE, G_MODE, MIS_MODE)
           option%io_buffer = 'AIJ matrix not supported for current mode: '// &
                              option%flowmode
           call printErrMsg(option)
@@ -392,8 +372,6 @@ subroutine Init(simulation)
           write(*,'(" mode = MIS: p, Xs")')
         case(TH_MODE)
           write(*,'(" mode = TH: p, T")')
-        case(THC_MODE)
-          write(*,'(" mode = THC: p, T, s/X")')
         case(RICHARDS_MODE)
           write(*,'(" mode = Richards: p")')  
         case(G_MODE)    
@@ -438,9 +416,6 @@ subroutine Init(simulation)
       case(TH_MODE)
         call SNESSetFunction(flow_solver%snes,field%flow_r,THResidual, &
                              realization,ierr)
-      case(THC_MODE)
-        call SNESSetFunction(flow_solver%snes,field%flow_r,THCResidual, &
-                             realization,ierr)
       case(RICHARDS_MODE)
         select case(realization%discretization%itype)
           case(STRUCTURED_GRID_MIMETIC,UNSTRUCTURED_GRID_MIMETIC)
@@ -477,9 +452,6 @@ subroutine Init(simulation)
       case(TH_MODE)
         call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
                              THJacobian,realization,ierr)
-      case(THC_MODE)
-        call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
-                             THCJacobian,realization,ierr)
       case(RICHARDS_MODE)
         select case(realization%discretization%itype)
           case(STRUCTURED_GRID_MIMETIC,UNSTRUCTURED_GRID_MIMETIC)
@@ -567,14 +539,6 @@ subroutine Init(simulation)
                                          THCheckUpdatePre, &
                                          realization,ierr)
         endif
-      case(THC_MODE)
-        if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
-            dabs(option%pressure_change_limit) > 0.d0 .or. &
-            dabs(option%temperature_change_limit) > 0.d0) then
-          call SNESLineSearchSetPreCheck(linesearch, &
-                                         THCCheckUpdatePre, &
-                                         realization,ierr)
-        endif
     end select
     
     
@@ -593,17 +557,12 @@ subroutine Init(simulation)
           call SNESLineSearchSetPostCheck(linesearch, &
                                           THCheckUpdatePost, &
                                           realization,ierr)
-        case(THC_MODE)
-          call SNESLineSearchSetPostCheck(linesearch, &
-                                          THCCheckUpdatePost, &
-                                          realization,ierr)
       end select
     endif
         
     
     call printMsg(option,"  Finished setting up FLOW SNES ")
 
-#ifdef SURFACE_FLOW
     if(option%nsurfflowdof>0) then
 
       ! Setup PETSc TS for explicit surface flow solution
@@ -625,7 +584,6 @@ subroutine Init(simulation)
                          simulation%surf_realization%waypoints%last%time,ierr)
 
     endif ! if(option%nsurfflowdof>0)
-#endif
 
   endif
 
@@ -862,8 +820,6 @@ subroutine Init(simulation)
     select case(option%iflowmode)
       case(TH_MODE)
         call THSetup(realization)
-      case(THC_MODE)
-        call THCSetup(realization)
       case(RICHARDS_MODE)
         call RichardsSetup(realization)
       case(MPH_MODE)
@@ -894,8 +850,6 @@ subroutine Init(simulation)
     select case(option%iflowmode)
       case(TH_MODE)
         call THUpdateAuxVars(realization)
-      case(THC_MODE)
-        call THCUpdateAuxVars(realization)
       case(RICHARDS_MODE)
 #ifdef DASVYAT
        if (option%mimetic) then
@@ -1042,12 +996,10 @@ subroutine Init(simulation)
     string = 'Transport Stepper:'
     call TimestepperPrintInfo(tran_stepper,option%fid_out,string,option)
   endif    
-#ifdef SURFACE_FLOW
    if (option%nsurfflowdof>0) then
     string = 'Surface Flow Stepper:'
     call TimestepperPrintInfo(surf_flow_stepper,option%fid_out,string,option)
   endif
-#endif
 
   if (associated(flow_solver)) then
     string = 'Flow Newton Solver:'
@@ -1088,16 +1040,14 @@ subroutine Init(simulation)
     endif
   endif
 #endif
-#ifdef SURFACE_FLOW
   if (associated(surf_flow_solver)) then
     string = 'Surface Flow TS Solver:'
     if (OptionPrintToScreen(option)) then
-      write(*,*),' '
-      write(*,*),string
+      write(*,*) ' '
+      write(*,*) string
     endif
     call TSView(surf_flow_solver%ts,PETSC_VIEWER_STDOUT_WORLD,ierr)
   endif
-#endif
 
   if (debug%print_couplers) then
     call verifyAllCouplers(realization)
@@ -1122,7 +1072,6 @@ subroutine Init(simulation)
 #endif
 !PETSC_HAVE_HDF5
 
-#ifdef SURFACE_FLOW
   if(option%nsurfflowdof > 0) then
     ! Check if surface-flow is compatible with the given flowmode
     select case(option%iflowmode)
@@ -1192,8 +1141,6 @@ subroutine Init(simulation)
     call OutputVariableAddToList( &
            simulation%surf_realization%output_option%output_variable_list,output_variable)
   endif
-
-#endif
 
 #ifdef GEOMECH
   if (option%ngeomechdof > 0) then
@@ -1322,6 +1269,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
   use Patch_module
   use Realization_class
 
+  use General_module
   use Reaction_module  
   use Reaction_Aux_module  
 
@@ -1354,6 +1302,10 @@ subroutine InitReadRequiredCardsFromInput(realization)
     ! read in keyword 
     call InputReadWord(input,option,option%flowmode,PETSC_TRUE)
     call InputErrorMsg(input,option,'flowmode','mode')
+    select case(trim(option%flowmode))
+      case('GENERAL')
+        call GeneralRead(input,option)
+    end select
   endif
 
 !.........................................................................
@@ -1504,18 +1456,13 @@ subroutine InitReadInput(simulation)
   use Output_Tecplot_module
   use Mass_Transfer_module
   use EOS_module
+  use EOS_Water_module
   
-#ifdef SURFACE_FLOW
   use Surface_Flow_module
   use Surface_Init_module, only : SurfaceInitReadInput
-#endif
 #ifdef GEOMECH
   use Geomechanics_Init_module, only : GeomechanicsInitReadInput
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
 #endif
 #ifdef SOLID_SOLUTION
   use Solid_Solution_module, only : SolidSolutionReadFromInputFile
@@ -1539,6 +1486,7 @@ subroutine InitReadInput(simulation)
   
   PetscBool :: velocities
   PetscBool :: flux_velocities
+  PetscBool :: fluxes
   PetscBool :: mass_flowrate
   PetscBool :: energy_flowrate
   PetscBool :: aveg_mass_flowrate
@@ -1644,23 +1592,31 @@ subroutine InitReadInput(simulation)
       case ('MODE')
          call InputReadWord(input, option, word, PETSC_FALSE)
          call StringToUpper(word)
-         if ('TH' == trim(word) .or. 'THC' == trim(word)) then
+         if ('TH' == trim(word)) then
             call InputReadWord(input, option, word, PETSC_TRUE)
-            call InputErrorMsg(input, option, 'th(c) freezing mode', 'mode th(c)')
+            call InputErrorMsg(input, option, 'th freezing mode', 'mode th')
             call StringToUpper(word)
             if ('FREEZING' == trim(word)) then
                option%use_th_freezing = PETSC_TRUE
-               option%io_buffer = ' TH(C): using FREEZING submode!'
+               option%io_buffer = ' TH: using FREEZING submode!'
                call printMsg(option)
+               ! Override the default setting for TH-mode with freezing
+               !call EOSWaterSetDensityPainter()
+               !call EOSWaterSetEnthalpyPainter()
             else if ('NO_FREEZING' == trim(word)) then
                option%use_th_freezing = PETSC_FALSE
-               option%io_buffer = ' TH(C): using NO_FREEZING submode!'
+               option%io_buffer = ' TH: using NO_FREEZING submode!'
                call printMsg(option)
             else
                ! NOTE(bja, 2013-12) use_th_freezing defaults to false, can skip this....
-               option%io_buffer = ' TH(C): must specify FREEZING or NO_FREEZING submode!'
+               option%io_buffer = ' TH: must specify FREEZING or NO_FREEZING submode!'
                call printErrMsg(option)
             endif
+         else if (trim(word) == 'GENERAL') then
+           call InputReadWord(input, option, word, PETSC_TRUE)
+           if (input%ierr == 0) then
+             call InputSkipToEnd(input,option,card)
+           endif
          endif  
         
 !....................
@@ -1674,6 +1630,8 @@ subroutine InitReadInput(simulation)
             option%ice_model = PAINTER_KARRA_IMPLICIT
           case ('PAINTER_KARRA_EXPLICIT')
             option%ice_model = PAINTER_KARRA_EXPLICIT
+          case ('DALL_AMICO')
+            option%ice_model = DALL_AMICO
           case default
             option%io_buffer = 'Cannot identify the specificed ice model.' // &
              'Specify PAINTER_EXPLICIT or PAINTER_KARRA_IMPLICIT' // &
@@ -2286,6 +2244,7 @@ subroutine InitReadInput(simulation)
       case ('OUTPUT')
         velocities = PETSC_FALSE
         flux_velocities = PETSC_FALSE
+        fluxes = PETSC_FALSE
         mass_flowrate = PETSC_FALSE
         energy_flowrate = PETSC_FALSE
         aveg_mass_flowrate = PETSC_FALSE
@@ -2543,6 +2502,8 @@ subroutine InitReadInput(simulation)
               velocities = PETSC_TRUE
             case('FLUXES_VELOCITIES')
               flux_velocities = PETSC_TRUE
+            case('FLUXES')
+              fluxes = PETSC_TRUE
             case('FLOWRATES','FLOWRATE')
               mass_flowrate = PETSC_TRUE
               energy_flowrate = PETSC_TRUE
@@ -2585,6 +2546,9 @@ subroutine InitReadInput(simulation)
             output_option%print_tecplot_flux_velocities = PETSC_TRUE
           if (output_option%print_hdf5) &
            output_option%print_hdf5_flux_velocities = PETSC_TRUE
+        endif
+        if (fluxes) then
+          output_option%print_fluxes = PETSC_TRUE
         endif
         if(output_option%aveg_output_variable_list%nvars>0) then
           if(output_option%periodic_output_time_incr==0.d0) then
@@ -2703,7 +2667,6 @@ subroutine InitReadInput(simulation)
         option%flow_dt = default_stepper%dt_min
         option%tran_dt = default_stepper%dt_min
       
-#ifdef SURFACE_FLOW
 !.....................
       case ('SURFACE_FLOW')
         call SurfaceInitReadInput(simulation%surf_realization, &
@@ -2724,7 +2687,6 @@ subroutine InitReadInput(simulation)
         waypoint%time = realization%waypoints%last%time
         waypoint%print_output = PETSC_TRUE
         call WaypointInsertInList(waypoint,simulation%surf_realization%waypoints)
-#endif
 
 !......................
 #ifdef GEOMECH
@@ -2795,14 +2757,6 @@ subroutine setFlowMode(option)
       option%nflowdof = 2
       option%nflowspec = 1
       option%use_isothermal = PETSC_FALSE
-    case('THC')
-      option%iflowmode = THC_MODE
-      option%nphase = 1
-      option%liquid_phase = 1      
-      option%gas_phase = 2      
-      option%nflowdof = 3
-      option%nflowspec = 2
-      option%use_isothermal = PETSC_FALSE
     case('MIS','MISCIBLE')
       option%iflowmode = MIS_MODE
       option%nphase = 1
@@ -2810,6 +2764,8 @@ subroutine setFlowMode(option)
       option%gas_phase = 2      
       option%nflowdof = 2
       option%nflowspec = 2
+      option%io_buffer = 'Material Auxvars must be refactored for MISCIBLE.'
+      call printErrMsg(option)
     case('RICHARDS')
       option%iflowmode = RICHARDS_MODE
       option%nphase = 1
@@ -2817,7 +2773,6 @@ subroutine setFlowMode(option)
       option%nflowdof = 1
       option%nflowspec = 1
       option%use_isothermal = PETSC_TRUE
-      option%use_refactored_material_auxvars = PETSC_TRUE
     case('MPH','MPHASE')
       option%iflowmode = MPH_MODE
       option%nphase = 2
@@ -2844,6 +2799,8 @@ subroutine setFlowMode(option)
       option%nflowdof = 3
       option%nflowspec = 2
       option%itable = 2
+      option%io_buffer = 'Material Auxvars must be refactored for IMMIS.'
+      call printErrMsg(option)
     case('GENERAL')
       option%iflowmode = G_MODE
       option%nphase = 2
@@ -2862,7 +2819,6 @@ subroutine setFlowMode(option)
       option%nflowdof = 3
       option%nflowspec = 2
       option%use_isothermal = PETSC_FALSE
-      option%use_refactored_material_auxvars = PETSC_TRUE
     case default
       option%io_buffer = 'Mode: '//trim(option%flowmode)//' not recognized.'
       call printErrMsg(option)
@@ -3042,12 +2998,7 @@ subroutine assignMaterialPropToRegions(realization)
     call VecGetArrayF90(field%porosity0,por0_p,ierr)
     call VecGetArrayF90(field%tortuosity0,tor0_p,ierr)
         
-    !geh: remove
-    if (option%use_refactored_material_auxvars) then
-      material_auxvars => cur_patch%aux%Material%auxvars
-    else
-      nullify(material_auxvars)
-    endif
+    material_auxvars => cur_patch%aux%Material%auxvars
 
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
@@ -3181,25 +3132,6 @@ subroutine assignMaterialPropToRegions(realization)
       call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
                                    PERMEABILITY_YZ,0)
     endif
-    !geh: remove
-    if (.not.option%use_refactored_material_auxvars) then
-      call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
-                                       field%perm_xx_loc,ONEDOF)  
-      call DiscretizationGlobalToLocal(discretization,field%perm0_yy, &
-                                       field%perm_yy_loc,ONEDOF)  
-      call DiscretizationGlobalToLocal(discretization,field%perm0_zz, &
-                                       field%perm_zz_loc,ONEDOF)   
-    
-      if (option%mimetic) then
-        call DiscretizationGlobalToLocal(discretization,field%perm0_xz, &
-                                         field%perm_xz_loc,ONEDOF)  
-        call DiscretizationGlobalToLocal(discretization,field%perm0_xy, &
-                                         field%perm_xy_loc,ONEDOF)  
-        call DiscretizationGlobalToLocal(discretization,field%perm0_yz, &
-                                         field%perm_yz_loc,ONEDOF)   
-      endif
-    endif
-     
     call DiscretizationLocalToLocal(discretization,field%icap_loc, &
                                     field%icap_loc,ONEDOF)   
     call DiscretizationLocalToLocal(discretization,field%ithrm_loc, &
@@ -3208,8 +3140,8 @@ subroutine assignMaterialPropToRegions(realization)
   endif
   
   call DiscretizationGlobalToLocal(discretization,field%porosity0, &
-                                    field%work_loc,ONEDOF)
-  call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                   field%porosity_mnrl_loc,ONEDOF)
+  call MaterialSetAuxVarVecLoc(patch%aux%Material,field%porosity_mnrl_loc, &
                                POROSITY,0)
   call DiscretizationGlobalToLocal(discretization,field%tortuosity0, &
                                     field%work_loc,ONEDOF)
@@ -3235,14 +3167,6 @@ subroutine assignMaterialPropToRegions(realization)
     call VecRestoreArrayF90(field%work_loc,vec_p,ierr)
   enddo
   
-  !geh: remove
-  if (.not.option%use_refactored_material_auxvars) then
-    call DiscretizationGlobalToLocal(discretization,field%porosity0, &
-                                     field%porosity_loc,ONEDOF)
-    call DiscretizationGlobalToLocal(discretization,field%tortuosity0, &
-                                     field%tortuosity_loc,ONEDOF)
-  endif    
-
 end subroutine assignMaterialPropToRegions
 
 ! ************************************************************************** !

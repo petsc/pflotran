@@ -331,8 +331,12 @@ subroutine THCAuxVarCompute(x,auxvar,global_auxvar, &
 
 !  call wateos_noderiv(option%temp,pw,dw_kg,dw_mol,hw,option%scale,ierr)
   call EOSWaterDensityEnthalpy(global_auxvar%temp(1),pw,dw_kg,dw_mol,hw, &
-                               dw_dp,dw_dt,hw_dp,hw_dt,option%scale,ierr)
-
+                               dw_dp,dw_dt,hw_dp,hw_dt,ierr)
+  ! J/kmol -> whatever units
+  hw = hw * option%scale
+  hw_dp = hw_dp * option%scale
+  hw_dt = hw_dt * option%scale
+  
 ! may need to compute dpsat_dt to pass to VISW
   call EOSWaterSaturationPressure(global_auxvar%temp(1),sat_pressure,dpsat_dt,ierr)
   call EOSWaterViscosity(global_auxvar%temp(1),pw,sat_pressure,dpsat_dt,visl, &
@@ -505,8 +509,11 @@ subroutine THCAuxVarComputeIce(x, auxvar, global_auxvar, iphase, &
 
   call EOSWaterDensityEnthalpyPainter(global_auxvar%temp(1),pw,dw_kg,dw_mol, &
                                       hw,PETSC_TRUE,dw_dp,dw_dt,hw_dp,hw_dt,ierr)
-
-                         
+  ! J/kmol -> MJ/kmol
+  hw = hw * 1.d-6
+  hw_dp = hw_dp * 1.d-6
+  hw_dt = hw_dt * 1.d-6
+  
   call EOSWaterSaturationPressure(global_auxvar%temp(1), sat_pressure, &
                                   dpsat_dt, ierr)
   call EOSWaterViscosity(global_auxvar%temp(1), pw, sat_pressure, dpsat_dt, &

@@ -1,5 +1,5 @@
 module Flash2_Aux_module
-use Mphase_pckr_module
+  use Mphase_pckr_module
   use PFLOTRAN_Constants_module
 
   implicit none
@@ -10,8 +10,8 @@ use Mphase_pckr_module
 
 #include "finclude/petscsys.h"
 
-type, public :: Flash2_auxvar_elem_type
-   PetscReal :: pres
+  type, public :: Flash2_auxvar_elem_type
+    PetscReal :: pres
     PetscReal :: temp
     PetscReal , pointer :: sat(:)
     PetscReal , pointer :: den(:)
@@ -32,7 +32,7 @@ type, public :: Flash2_auxvar_elem_type
 
   type, public :: Flash2_auxvar_type
     
-    type(Flash2_auxvar_elem_type), pointer :: auxvar_elem(:) 
+  type(Flash2_auxvar_elem_type), pointer :: auxvar_elem(:)
 #if 0
     PetscReal , pointer :: davgmw_dx(:)
     PetscReal , pointer :: dden_dp(:)
@@ -59,19 +59,19 @@ type, public :: Flash2_auxvar_elem_type
   end type Flash2_parameter_type
     
   type, public :: Flash2_type
-     PetscInt :: n_zero_rows
-     PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
-
-     PetscBool :: auxvars_up_to_date
-     PetscBool :: inactive_cells_exist
-     PetscInt :: num_aux, num_aux_bc
-     type(Flash2_parameter_type), pointer :: Flash2_parameter
-     type(Flash2_auxvar_type), pointer :: auxvars(:)
-     type(Flash2_auxvar_type), pointer :: auxvars_bc(:)
-     PetscReal , pointer :: Resold_AR(:,:)
-     PetscReal , pointer :: Resold_BC(:,:)
-     PetscReal , pointer :: Resold_FL(:,:)
-     PetscReal , pointer :: delx(:,:)
+    PetscInt :: n_zero_rows
+    PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
+    PetscBool :: auxvars_up_to_date
+    PetscBool :: inactive_cells_exist
+    PetscInt :: num_aux, num_aux_bc, num_aux_ss
+    type(Flash2_parameter_type), pointer :: Flash2_parameter
+    type(Flash2_auxvar_type), pointer :: auxvars(:)
+    type(Flash2_auxvar_type), pointer :: auxvars_bc(:)
+    type(Flash2_auxvar_type), pointer :: auxvars_ss(:)
+    PetscReal , pointer :: Resold_AR(:,:)
+    PetscReal , pointer :: Resold_BC(:,:)
+    PetscReal , pointer :: Resold_FL(:,:)
+    PetscReal , pointer :: delx(:,:)
   end type Flash2_type
 
   
@@ -107,6 +107,7 @@ function Flash2AuxCreate()
   aux%num_aux_bc = 0
   nullify(aux%auxvars)
   nullify(aux%auxvars_bc)
+  nullify(aux%auxvars_ss)
   aux%n_zero_rows = 0
   allocate(aux%Flash2_parameter)
   nullify(aux%Flash2_parameter%sir)
@@ -143,35 +144,35 @@ subroutine Flash2AuxVarInit(auxvar,option)
   allocate(auxvar%auxvar_elem(0)%hysdat(4))
  
   do nvar = 0, option%nflowdof
-     allocate ( auxvar%auxvar_elem(nvar)%sat(option%nphase))
-     allocate ( auxvar%auxvar_elem(nvar)%den(option%nphase))
-     allocate ( auxvar%auxvar_elem(nvar)%avgmw(option%nphase))
-     allocate ( auxvar%auxvar_elem(nvar)%vis(option%nphase))
-     allocate ( auxvar%auxvar_elem(nvar)%h(option%nphase))
-     allocate ( auxvar%auxvar_elem(nvar)%u(option%nphase))
-     allocate ( auxvar%auxvar_elem(nvar)%pc(option%nphase))
-     allocate ( auxvar%auxvar_elem(nvar)%kvr(option%nphase))
-     allocate ( auxvar%auxvar_elem(nvar)%xmol(option%nphase*option%nflowspec))
-     allocate ( auxvar%auxvar_elem(nvar)%diff(option%nphase*option%nflowspec))
-     if(nvar>0)&
-     auxvar%auxvar_elem(nvar)%hysdat => auxvar%auxvar_elem(0)%hysdat
+    allocate ( auxvar%auxvar_elem(nvar)%sat(option%nphase))
+    allocate ( auxvar%auxvar_elem(nvar)%den(option%nphase))
+    allocate ( auxvar%auxvar_elem(nvar)%avgmw(option%nphase))
+    allocate ( auxvar%auxvar_elem(nvar)%vis(option%nphase))
+    allocate ( auxvar%auxvar_elem(nvar)%h(option%nphase))
+    allocate ( auxvar%auxvar_elem(nvar)%u(option%nphase))
+    allocate ( auxvar%auxvar_elem(nvar)%pc(option%nphase))
+    allocate ( auxvar%auxvar_elem(nvar)%kvr(option%nphase))
+    allocate ( auxvar%auxvar_elem(nvar)%xmol(option%nphase*option%nflowspec))
+    allocate ( auxvar%auxvar_elem(nvar)%diff(option%nphase*option%nflowspec))
+    if (nvar > 0) &
+      auxvar%auxvar_elem(nvar)%hysdat => auxvar%auxvar_elem(0)%hysdat
 
-     auxvar%auxvar_elem(nvar)%pres = 0.d0
-     auxvar%auxvar_elem(nvar)%temp = 0.d0
-     auxvar%auxvar_elem(nvar)%sat = 0.d0
-     auxvar%auxvar_elem(nvar)%den = 0.d0
-     auxvar%auxvar_elem(nvar)%avgmw = 0.d0
-     auxvar%auxvar_elem(nvar)%vis = 0.d0
-     auxvar%auxvar_elem(nvar)%h = 0.d0
-     auxvar%auxvar_elem(nvar)%u = 0.d0
-     auxvar%auxvar_elem(nvar)%pc = 0.d0
-     auxvar%auxvar_elem(nvar)%kvr = 0.d0
-     auxvar%auxvar_elem(nvar)%xmol = 0.d0
-     auxvar%auxvar_elem(nvar)%diff = 0.d0
+    auxvar%auxvar_elem(nvar)%pres = 0.d0
+    auxvar%auxvar_elem(nvar)%temp = 0.d0
+    auxvar%auxvar_elem(nvar)%sat = 0.d0
+    auxvar%auxvar_elem(nvar)%den = 0.d0
+    auxvar%auxvar_elem(nvar)%avgmw = 0.d0
+    auxvar%auxvar_elem(nvar)%vis = 0.d0
+    auxvar%auxvar_elem(nvar)%h = 0.d0
+    auxvar%auxvar_elem(nvar)%u = 0.d0
+    auxvar%auxvar_elem(nvar)%pc = 0.d0
+    auxvar%auxvar_elem(nvar)%kvr = 0.d0
+    auxvar%auxvar_elem(nvar)%xmol = 0.d0
+    auxvar%auxvar_elem(nvar)%diff = 0.d0
 #if 0
-     auxvar%auxvar_elem(nvar)%dsat_dp = 0.d0
-     auxvar%auxvar_elem(nvar)%dden_dp = 0.d0
-     auxvar%auxvar_elem(nvar)%dkvr_dp = 0.d0
+    auxvar%auxvar_elem(nvar)%dsat_dp = 0.d0
+    auxvar%auxvar_elem(nvar)%dden_dp = 0.d0
+    auxvar%auxvar_elem(nvar)%dkvr_dp = 0.d0
 #endif
   enddo
 
@@ -295,7 +296,7 @@ subroutine Flash2AuxVarCompute_NINC(x,auxvar,global_auxvar, &
     err=1.D0
     p2 = p
 
-    if(p2 >= 5.d4)then
+    if (p2 >= 5.d4) then
       if (option%co2eos == EOS_SPAN_WAGNER) then
 ! ************ Span-Wagner EOS ********************             
         select case(option%itable)  
@@ -334,7 +335,10 @@ subroutine Flash2AuxVarCompute_NINC(x,auxvar,global_auxvar, &
         call printErrMsg(option,'pflow Flash2 ERROR: Need specify CO2 EOS')
       endif
     else      
-      call ideal_gaseos_noderiv(p2, t,option%scale,dg,hg,eng)
+      call ideal_gaseos_noderiv(p2, t,dg,hg,eng)
+      ! J/kmol -> whatever
+      hg = hg * option%scale
+      eng = eng * option%scale        
       call visco2(t,dg*FMWCO2,visg)
       fg=p2
       xphi = 1.D0
@@ -390,7 +394,8 @@ subroutine Flash2AuxVarCompute_NINC(x,auxvar,global_auxvar, &
 ! **************  Gas phase properties ********************
     auxvar%avgmw(2) = auxvar%xmol(3)*FMWH2O + auxvar%xmol(4)*FMWCO2
     pw = p
-    call EOSWaterDensityEnthalpy(t,pw,dw_kg,dw_mol,hw,option%scale,ierr)
+    call EOSWaterDensityEnthalpy(t,pw,dw_kg,dw_mol,hw,ierr)
+    hw = hw * option%scale ! J/kmol -> whatever units
     auxvar%den(2) = 1.D0/(auxvar%xmol(4)/dg + auxvar%xmol(3)/dw_mol)
     auxvar%h(2) = hg  
     auxvar%u(2) = hg - p/dg * option%scale
@@ -415,13 +420,12 @@ subroutine Flash2AuxVarCompute_NINC(x,auxvar,global_auxvar, &
   
     xm_nacl = m_nacl * FMWNACL
     xm_nacl = xm_nacl /(1.D3 + xm_nacl)
-    call EOSWaterDensityNaCl(t, p*1D-6, xm_nacl, dw_kg) 
-    dw_kg = dw_kg * 1D3
-    call EOSWaterViscosityNaCl(t,p*1D-6,xm_nacl,visl)
+    call EOSWaterDensityNaCl(t, p, xm_nacl, dw_kg) 
+    call EOSWaterViscosityNaCl(t,p,xm_nacl,visl)
     
-    y_nacl =  m_nacl/( m_nacl + 1D3/FMWH2O)
+    y_nacl = m_nacl/( m_nacl + 1D3/FMWH2O)
 !   y_nacl is the mole fraction
-    auxvar%avgmw(1)= auxvar%xmol(1)*((1D0 - y_nacl) * FMWH2O &
+    auxvar%avgmw(1) = auxvar%xmol(1)*((1D0 - y_nacl) * FMWH2O &
        + y_nacl * FMWNACL) + auxvar%xmol(2) * FMWCO2
 
 !duan mixing **************************
@@ -432,11 +436,11 @@ subroutine Flash2AuxVarCompute_NINC(x,auxvar,global_auxvar, &
 
 ! Garcia mixing **************************
 #ifdef GARCIA
-  vphi=1D-6*(37.51D0 + t&
+  vphi = 1D-6*(37.51D0 + t&
        *(-9.585D-2 + t*(8.74D-4 - t*5.044D-7)))
-  auxvar%den(1)=dw_kg/(1D0-(FMWCO2*1D-3-dw_kg*vphi)&
+  auxvar%den(1) = dw_kg/(1D0-(FMWCO2*1D-3-dw_kg*vphi)&
        *auxvar%xmol(2)/(auxvar%avgmw(1)*1D-3))
-  auxvar%den(1)=auxvar%den(1)/auxvar%avgmw(1)
+  auxvar%den(1) = auxvar%den(1)/auxvar%avgmw(1)
 #endif  
        
 
@@ -581,21 +585,32 @@ subroutine Flash2AuxDestroy(aux, option)
     do ielem= 0, option%nflowdof 
       call Flash2AuxVarDestroy(aux%auxvars(iaux)%auxvar_elem(ielem))
     enddo
-  enddo  
+  enddo
+
   do iaux = 1, aux%num_aux_bc
     do ielem= 0, option%nflowdof 
       call Flash2AuxVarDestroy(aux%auxvars_bc(iaux)%auxvar_elem(ielem))
     enddo
   enddo  
-  
+
+  do iaux = 1, aux%num_aux_ss
+    do ielem= 0, option%nflowdof 
+      call Flash2AuxVarDestroy(aux%auxvars_ss(iaux)%auxvar_elem(ielem))
+    enddo
+  enddo  
+
   if (associated(aux%auxvars)) deallocate(aux%auxvars)
   nullify(aux%auxvars)
   if (associated(aux%auxvars_bc)) deallocate(aux%auxvars_bc)
   nullify(aux%auxvars_bc)
+  if (associated(aux%auxvars_ss)) deallocate(aux%auxvars_ss)
+  nullify(aux%auxvars_ss)
+
   if (associated(aux%zero_rows_local)) deallocate(aux%zero_rows_local)
   nullify(aux%zero_rows_local)
   if (associated(aux%zero_rows_local_ghosted)) deallocate(aux%zero_rows_local_ghosted)
   nullify(aux%zero_rows_local_ghosted)
+
   if (associated(aux%Flash2_parameter)) then
     if (associated(aux%Flash2_parameter%dencpr)) deallocate(aux%Flash2_parameter%dencpr)
     nullify(aux%Flash2_parameter%dencpr)

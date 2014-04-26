@@ -1,4 +1,3 @@
-#ifdef SURFACE_FLOW
 module Surface_Simulation_class
 
   use Simulation_Base_class
@@ -206,4 +205,3 @@ subroutine SurfaceSimulationDestroy(simulation)
 end subroutine SurfaceSimulationDestroy
 
 end module Surface_Simulation_class
-#endif

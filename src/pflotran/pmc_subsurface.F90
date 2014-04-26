@@ -155,6 +155,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
   PetscReal                            :: den
   PetscReal                            :: dt
   PetscReal                            :: surfpress
+  PetscReal                            :: dum1
   PetscReal, pointer                   :: mflux_p(:)
   PetscReal, pointer                   :: hflux_p(:)
   PetscReal, pointer                   :: head_p(:)
@@ -165,9 +166,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
   print *, 'PMCSubsurfaceGetAuxData()'
 #endif
 
-#ifdef SURFACE_FLOW
   dt = this%option%surf_subsurf_coupling_flow_dt
-#endif  
 
   if (associated(this%sim_aux)) then
 
@@ -203,7 +202,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
                                pmc%sim_aux%subsurf_pres_top_bc, &
                                INSERT_VALUES,SCATTER_FORWARD,ierr)
             call EOSWaterdensity(option%reference_temperature, &
-                                 option%reference_pressure, den)
+                                 option%reference_pressure,den,dum1,ierr)
 
 #if 0
             coupler_list => patch%source_sinks
@@ -309,7 +308,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
                     ! be surf_press and not reference_pressure. But,
                     ! surf_pressure depends on density.
                     call EOSWaterdensity(temp_p(iconn), option%reference_pressure, &
-                                         den)
+                                         den,dum1,ierr)
 
                     surfpress = head_p(iconn)*(abs(option%gravity(3)))*den + &
                                 option%reference_pressure
@@ -404,6 +403,7 @@ subroutine PMCSubsurfaceSetAuxDataForSurf(this)
   PetscInt                             :: istart
   PetscInt                             :: iend
   PetscReal                            :: den
+  PetscReal                            :: dum1
   PetscReal, pointer                   :: xx_loc_p(:)
   PetscReal, pointer                   :: pres_top_bc_p(:)
   PetscReal, pointer                   :: temp_top_bc_p(:)
@@ -482,7 +482,7 @@ subroutine PMCSubsurfaceSetAuxDataForSurf(this)
 #endif
 
           call EOSWaterdensity(option%reference_temperature, option%reference_pressure, &
-                               den)
+                               den,dum1,ierr)
           coupler_list => patch%boundary_conditions
           coupler => coupler_list%first
           do
@@ -555,6 +555,9 @@ subroutine PMCSubsurfaceGetAuxDataFromGeomech(this)
   use Option_module
   use Realization_class
   use PFLOTRAN_Constants_module
+  use Material_Aux_class
+  use Material_module
+  use Variables_module, only : POROSITY
 
   implicit none
 
@@ -569,8 +572,8 @@ subroutine PMCSubsurfaceGetAuxDataFromGeomech(this)
   type(option_type), pointer  :: option
   type(field_type), pointer   :: subsurf_field
 
-  PetscScalar, pointer        :: sub_por_loc_p(:)
   PetscScalar, pointer        :: sim_por_p(:)
+  class(material_auxvar_type), pointer :: subsurf_material_auxvars(:)
 
   PetscInt                    :: local_id
   PetscInt                    :: ghosted_id
@@ -584,35 +587,41 @@ subroutine PMCSubsurfaceGetAuxDataFromGeomech(this)
         option        => pmc%option
         subsurf_grid  => pmc%realization%discretization%grid
         subsurf_field => pmc%realization%field
+        subsurf_material_auxvars => pmc%realization%patch%aux%Material%auxvars
 
         if (pmc%timestepper%steps == 0) return
 
         if (option%geomech_subsurf_coupling == GEOMECH_TWO_WAY_COUPLED) then
 
-          call VecGetArrayF90(subsurf_field%porosity_loc, sub_por_loc_p, ierr)
           call VecGetArrayF90(pmc%sim_aux%subsurf_por, sim_por_p, ierr)
 
           do local_id = 1, subsurf_grid%nlmax
             ghosted_id = subsurf_grid%nL2G(local_id)
-            sub_por_loc_p(ghosted_id) = sim_por_p(local_id)
+            subsurf_material_auxvars(ghosted_id)%porosity = sim_por_p(local_id)
           enddo
 
-          call VecRestoreArrayF90(subsurf_field%porosity_loc, sub_por_loc_p, ierr)
           call VecRestoreArrayF90(pmc%sim_aux%subsurf_por, sim_por_p, ierr)
 
           call PetscViewerBinaryOpen(pmc%realization%option%mycomm, &
                                      'por_before.bin',FILE_MODE_WRITE,viewer,ierr)
-          call VecView(subsurf_field%porosity_loc,viewer,ierr)
+          call MaterialGetAuxVarVecLoc(pmc%realization%patch%aux%Material, &
+                                       subsurf_field%work_loc, &
+                                       POROSITY,ZERO_INTEGER)
+
+          call VecView(subsurf_field%work_loc,viewer,ierr)
           call PetscViewerDestroy(viewer,ierr)
 
           call DiscretizationLocalToLocal(pmc%realization%discretization, &
-                                          subsurf_field%porosity_loc, &
-                                          subsurf_field%porosity_loc, ONEDOF)
-
+                                          subsurf_field%work_loc, &
+                                          subsurf_field%work_loc,ONEDOF)
           call PetscViewerBinaryOpen(pmc%realization%option%mycomm, &
                                      'por_after.bin',FILE_MODE_WRITE,viewer,ierr)
-          call VecView(subsurf_field%porosity_loc,viewer,ierr)
+          call VecView(subsurf_field%work_loc,viewer,ierr)
           call PetscViewerDestroy(viewer,ierr)
+
+          call MaterialSetAuxVarVecLoc(pmc%realization%patch%aux%Material, &
+                                       subsurf_field%work_loc, &
+                                       POROSITY,ZERO_INTEGER)
 
         endif
     end select
@@ -635,6 +644,7 @@ subroutine PMCSubsurfaceSetAuxDataForGeomech(this)
   use Realization_class
   use Grid_module
   use Field_module
+  use Material_Aux_class
   use PFLOTRAN_Constants_module
 
   implicit none
@@ -660,15 +670,14 @@ subroutine PMCSubsurfaceSetAuxDataForGeomech(this)
   PetscInt                                     :: pres_dof
   PetscInt                                     :: temp_dof
 
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+
   PetscErrorCode                               :: ierr
 
   select case(this%option%iflowmode)
     case (TH_MODE)
       pres_dof = TH_PRESSURE_DOF
       temp_dof = TH_TEMPERATURE_DOF
-    case (THC_MODE)
-      pres_dof = THC_PRESSURE_DOF
-      temp_dof = THC_TEMPERATURE_DOF
     case (MPH_MODE)
       pres_dof = MPH_PRESSURE_DOF
       temp_dof = MPH_TEMPERATURE_DOF
@@ -704,13 +713,12 @@ subroutine PMCSubsurfaceSetAuxDataForGeomech(this)
         call VecRestoreArrayF90(pmc%sim_aux%subsurf_temp, temp_p, ierr)
 
         if (pmc%timestepper%steps == 0) then
-          call VecGetArrayF90(subsurf_field%porosity_loc, sub_por_loc_p, ierr)
+          material_auxvars => pmc%realization%patch%aux%Material%auxvars
           call VecGetArrayF90(pmc%sim_aux%subsurf_por0, sim_por0_p, ierr)
           do local_id = 1, subsurf_grid%nlmax
             ghosted_id = subsurf_grid%nL2G(local_id)
-            sim_por0_p(local_id) = sub_por_loc_p(ghosted_id)
+            sim_por0_p(local_id) = material_auxvars(ghosted_id)%porosity
           enddo
-          call VecRestoreArrayF90(subsurf_field%porosity_loc, sub_por_loc_p, ierr)
           call VecRestoreArrayF90(pmc%sim_aux%subsurf_por0, sim_por0_p, ierr)
         endif
     end select

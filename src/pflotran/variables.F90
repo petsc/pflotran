@@ -107,6 +107,8 @@ module Variables_module
   PetscInt, parameter, public :: AIR_PRESSURE            = 92
   PetscInt, parameter, public :: CAPILLARY_PRESSURE      = 93
 
+  PetscInt, parameter, public :: TRANSIENT_POROSITY      = 94
+
 !  PetscInt, parameter, public :: LIQUID_VELOCITY_CELL_CENT = 58
 !  PetscInt, parameter, public :: LIQUID_VELOCITY_CELL_FACE = 59
 

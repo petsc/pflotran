@@ -1,5 +1,3 @@
-#ifdef SURFACE_FLOW
-
 module Surface_TH_Aux_module
 
   use PFLOTRAN_Constants_module
@@ -105,7 +103,8 @@ subroutine SurfaceTHAuxVarInit(auxvar,option)
   auxvar%u = 0.d0
   auxvar%pc = 0.d0
   auxvar%Cw = 4.188d3     ! [J/kg/K]
-  auxvar%Ci = 2.050d3     ! [J/kg/K]
+  !auxvar%Ci = 2.050d3     ! [J/kg/K]
+  auxvar%Ci = 4.188d3     ! [J/kg/K]
   auxvar%Cwi = 4.188d3     ! [J/kg/K]
   auxvar%k_therm = 0.57d0 ! [J/s/m/K]
   auxvar%unfrozen_fraction = 1.d0
@@ -198,14 +197,14 @@ subroutine SurfaceTHAuxVarCompute(xx,auxvar,global_auxvar, &
   ds_dp = 0.d0
   dkr_dp = 0.d0
 
-  call EOSWaterDensityEnthalpy(global_auxvar%temp(1),pw,dw_kg,dw_mol,hw, &
-                               option%scale,ierr)
+  call EOSWaterDensityEnthalpy(global_auxvar%temp(1),pw,dw_kg,dw_mol,hw,ierr)
+  ! J/kmol -> whatever units
+  hw = hw * option%scale
+  
   global_auxvar%den_kg(1) = dw_kg
-  di_kg = 917.d0 ![kg/m^3]
-    ! RTM: WARNING!  We are hard-coding the density of ice at atmospheric 
-    ! pressure here.  We should actually compute this according to the 
-    ! reference pressure in case someone wants to use PFLOTRAN for planetary 
-    ! science.
+  !di_kg = 917.d0 ![kg/m^3]
+  di_kg = dw_kg
+
   k_therm_w = 0.57d0 ! [J/s/m/K]
   k_therm_i = 2.18d0 ! [J/s/m/K]
     ! RTM: Same warning for thermal conductivities--these should be computed.
@@ -294,5 +293,3 @@ subroutine SurfaceTHAuxDestroy(aux)
   end subroutine SurfaceTHAuxDestroy
 
 end module Surface_TH_Aux_module
-
-#endif
