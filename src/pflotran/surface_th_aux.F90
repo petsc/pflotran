@@ -156,12 +156,10 @@ subroutine SurfaceTHAuxVarCompute(xx,auxvar,global_auxvar, &
   use Surface_Global_Aux_module
   
   use EOS_Water_module
-  use Saturation_Function_module  
   
   implicit none
 
   type(option_type) :: option
-  type(saturation_function_type) :: saturation_function
   PetscReal :: xx(option%nflowdof)
   type(Surface_TH_auxvar_type) :: auxvar
   type(surface_global_auxvar_type) :: global_auxvar

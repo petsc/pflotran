@@ -1301,10 +1301,56 @@ end function BestFloat
 
 ! ************************************************************************** !
 
-subroutine CubicPolynomialSetup(upper_value,lower_value,coefficients)
+subroutine QuadraticPolynomialSetup(value_1,value_2,coefficients, &
+                                    derivative_at_1)
   ! 
-  ! Sets up a cubic polynomial for smoothing
-  ! discontinuous functions
+  ! Sets up a quadratic polynomial for smoothing discontinuous functions
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 04/25/14
+  ! 
+
+  implicit none
+
+  PetscReal :: value_1
+  PetscReal :: value_2
+  PetscReal :: coefficients(3)
+  PetscBool :: derivative_at_1
+  
+  PetscReal :: A(3,3)
+  PetscInt :: indx(3)
+  PetscInt :: d
+
+  A(1,1) = 1.d0
+  A(2,1) = 1.d0
+  A(3,1) = 0.d0
+  
+  A(1,2) = value_1
+  A(2,2) = value_2
+  A(3,2) = 1.d0
+  
+  A(1,3) = value_1**2.d0
+  A(2,3) = value_2**2.d0
+  if (derivative_at_1) then
+    A(3,3) = 2.d0*value_1
+  else
+    A(3,3) = 2.d0*value_2
+  endif
+  
+  ! coefficients(1): value at 1
+  ! coefficients(2): value at 2
+  ! coefficients(3): derivative at 1 or 2
+  
+  call ludcmp(A,THREE_INTEGER,indx,d)
+  call lubksb(A,THREE_INTEGER,indx,coefficients)
+
+end subroutine QuadraticPolynomialSetup
+
+! ************************************************************************** !
+
+subroutine QuadraticPolynomialEvaluate(coefficients,x,f,df_dx)
+  ! 
+  ! Evaluates value in quadratic polynomial
   ! 
   ! Author: Glenn Hammond
   ! Date: 03/12/12
@@ -1312,8 +1358,33 @@ subroutine CubicPolynomialSetup(upper_value,lower_value,coefficients)
 
   implicit none
 
-  PetscReal :: upper_value
-  PetscReal :: lower_value
+  PetscReal :: coefficients(3)
+  PetscReal :: x
+  PetscReal :: f
+  PetscReal :: df_dx
+
+  f = coefficients(1) + &
+      coefficients(2)*x + &
+      coefficients(3)*x*x
+  
+  df_dx = coefficients(2) + &
+          coefficients(3)*2.d0*x
+  
+end subroutine QuadraticPolynomialEvaluate
+
+! ************************************************************************** !
+
+subroutine CubicPolynomialSetup(value_1,value_2,coefficients)
+  ! 
+  ! Sets up a cubic polynomial for smoothing discontinuous functions
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/12/12
+
+  implicit none
+
+  PetscReal :: value_1
+  PetscReal :: value_2
   PetscReal :: coefficients(4)
   
   PetscReal :: A(4,4)
@@ -1325,25 +1396,25 @@ subroutine CubicPolynomialSetup(upper_value,lower_value,coefficients)
   A(3,1) = 0.d0
   A(4,1) = 0.d0
   
-  A(1,2) = upper_value
-  A(2,2) = lower_value
+  A(1,2) = value_1
+  A(2,2) = value_2
   A(3,2) = 1.d0
   A(4,2) = 1.d0
   
-  A(1,3) = upper_value**2.d0
-  A(2,3) = lower_value**2.d0
-  A(3,3) = 2.d0*upper_value
-  A(4,3) = 2.d0*lower_value
+  A(1,3) = value_1**2.d0
+  A(2,3) = value_2**2.d0
+  A(3,3) = 2.d0*value_1
+  A(4,3) = 2.d0*value_2
   
-  A(1,4) = upper_value**3.d0
-  A(2,4) = lower_value**3.d0
-  A(3,4) = 3.d0*upper_value**2.d0
-  A(4,4) = 3.d0*lower_value**2.d0
+  A(1,4) = value_1**3.d0
+  A(2,4) = value_2**3.d0
+  A(3,4) = 3.d0*value_1**2.d0
+  A(4,4) = 3.d0*value_2**2.d0
   
-  ! coefficients(1): value at upper_value
-  ! coefficients(2): value at lower_value
-  ! coefficients(3): derivative at upper_value
-  ! coefficients(4): derivative at lower_value
+  ! coefficients(1): value at 1
+  ! coefficients(2): value at 2
+  ! coefficients(3): derivative at 1
+  ! coefficients(4): derivative at 2
   
   call ludcmp(A,FOUR_INTEGER,indx,d)
   call lubksb(A,FOUR_INTEGER,indx,coefficients)
