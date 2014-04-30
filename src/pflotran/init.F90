@@ -1630,6 +1630,8 @@ subroutine InitReadInput(simulation)
             option%ice_model = PAINTER_KARRA_IMPLICIT
           case ('PAINTER_KARRA_EXPLICIT')
             option%ice_model = PAINTER_KARRA_EXPLICIT
+          case ('PAINTER_KARRA_EXPLICIT_NOCRYO')
+            option%ice_model = PAINTER_KARRA_EXPLICIT_NOCRYO
           case ('DALL_AMICO')
             option%ice_model = DALL_AMICO
           case default
