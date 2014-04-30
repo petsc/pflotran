@@ -53,8 +53,8 @@ module Saturation_Function_module
             SaturationFunctionAddToList, &
             SaturationFunctionCompute, &
             SaturatFuncConvertListToArray, &
-            SaturationFunctionComputeSpline, &
-            PermFunctionComputeSpline, &
+            SatFunctionComputePolynomial, &
+            PermFunctionComputePolynomial, &
             SaturationFunctionRead, &
             SatFuncGetRelPermFromSat, &
             SatFuncGetGasRelPermFromSat, &
@@ -376,7 +376,7 @@ end subroutine SaturationFunctionSetTypes
 
 ! ************************************************************************** !
 
-subroutine SaturationFunctionComputeSpline(option,saturation_function)
+subroutine SatFunctionComputePolynomial(option,saturation_function)
   ! 
   ! Computes a spline spanning the
   ! discontinuity in Brooks Corey
@@ -402,38 +402,15 @@ subroutine SaturationFunctionComputeSpline(option,saturation_function)
   select case(saturation_function%saturation_function_itype) 
     case(BROOKS_COREY)
 
-      ! polynomial fitting saturation as a function of pc
-      ! fill matix with values
-      pressure_1 = 1.d0/saturation_function%alpha*0.5d0
-      pressure_2 = 1.d0/saturation_function%alpha*2.d0
-  
-      saturation_function%pres_spline_low = pressure_1
-      saturation_function%pres_spline_high = pressure_2
-  
-      ! saturation at 1
-      b(1) = (pressure_1*saturation_function%alpha)** &
-               (-saturation_function%lambda)
-      ! saturation at 2
-      b(2) = 1.d0
-      ! derivative of pressure at 1
-      b(3) = 0.d0 
-      ! derivative of pressure at 2
-      b(4) = -saturation_function%lambda/pressure_2* &
-               (pressure_2*saturation_function%alpha)** &
-                 (-saturation_function%lambda)
-
-      call CubicPolynomialSetup(pressure_1,pressure_2,b)
-      
-      saturation_function%pres_spline_coefficients(1:4) = b(1:4)
-      
       ! polynomial fitting pc as a function of saturation
-      ! fill matix with values
+      ! 1.05 is essentially pc*alpha (i.e. pc = 1.05/alpha)
       saturation_1 = 1.05d0**(-saturation_function%lambda)
       saturation_2 = 1.d0
   
       saturation_function%sat_spline_low = saturation_1
       saturation_function%sat_spline_high = saturation_2
   
+      ! fill right hand side
       ! capillary pressure at 1
       b(1) = 1.05d0/saturation_function%alpha 
       ! capillary pressure at 2
@@ -450,6 +427,33 @@ subroutine SaturationFunctionComputeSpline(option,saturation_function)
                                     PETSC_TRUE) 
       
       saturation_function%sat_spline_coefficients(1:3) = b(1:3)
+
+      ! polynomial fitting saturation as a function of pc
+      !geh: cannot invert the pressure/saturation relationship above
+      !     since it can result in saturations > 1 with both
+      !     quadratic and cubic polynomials
+      ! fill matix with values
+      pressure_1 = 0.95/saturation_function%alpha
+      pressure_2 = 1.05/saturation_function%alpha
+      
+      saturation_function%pres_spline_low = pressure_1
+      saturation_function%pres_spline_high = pressure_2
+  
+      ! Se at 1
+      b(1) = 1.d0
+      ! Se at 2
+      b(2) = (pressure_2*saturation_function%alpha)** &
+             (-saturation_function%lambda)
+      ! derivative of Se at 1
+      b(3) = 0.d0 
+      ! derivative of Se at 2
+      b(4) = -saturation_function%lambda/pressure_2* &
+               (pressure_2*saturation_function%alpha)** &
+                 (-saturation_function%lambda)
+
+      call CubicPolynomialSetup(pressure_1,pressure_2,b)
+
+      saturation_function%pres_spline_coefficients(1:4) = b(1:4)
       
   case(VAN_GENUCHTEN)
  
@@ -484,11 +488,11 @@ subroutine SaturationFunctionComputeSpline(option,saturation_function)
 
   end select
   
-end subroutine SaturationFunctionComputeSpline
+end subroutine SatFunctionComputePolynomial
 
 ! ************************************************************************** !
 
-subroutine PermFunctionComputeSpline(option,saturation_function)
+subroutine PermFunctionComputePolynomial(option,saturation_function)
   ! 
   ! Computes a spline spanning the
   ! discontinuity in Brooks Corey
@@ -540,7 +544,7 @@ subroutine PermFunctionComputeSpline(option,saturation_function)
 
   end select
   
-end subroutine PermFunctionComputeSpline
+end subroutine PermFunctionComputePolynomial
 
 ! ************************************************************************** !
 
@@ -613,6 +617,9 @@ subroutine SaturatFuncConvertListToArray(list,array,option)
     count = count + 1
     cur_saturation_function%id = count
     array(count)%ptr => cur_saturation_function
+    if (option%myrank == option%io_rank) then
+      call SaturationFunctionVerify(cur_saturation_function,option)
+    endif
     cur_saturation_function => cur_saturation_function%next
   enddo
 
@@ -794,26 +801,19 @@ subroutine SaturationFunctionCompute2(capillary_pressure,saturation, &
       alpha = saturation_function%alpha
       one_over_alpha = 1.d0/alpha
       pc = capillary_pressure
-#if 1
       if (pc < saturation_function%pres_spline_low) then
         saturation = 1.d0
         relative_perm = 1.d0
         switch_to_saturated = PETSC_TRUE
         return
       else if (pc < saturation_function%pres_spline_high) then
+        lambda = saturation_function%lambda
         Sr = saturation_function%Sr(iphase)
         call CubicPolynomialEvaluate(saturation_function% &
                                      pres_spline_coefficients, &
                                      pc,Se,dSe_pc)
         saturation = Sr + (1.d0-Sr)*Se
         dsat_pc = (1.d0-Sr)*dSe_pc
-#else
-      if (pc < one_over_alpha) then
-        saturation = 1.d0
-        relative_perm = 1.d0
-        switch_to_saturated = PETSC_TRUE
-        return
-#endif        
       else
         lambda = saturation_function%lambda
         Sr = saturation_function%Sr(iphase)
@@ -2315,6 +2315,79 @@ function SaturationFunctionGetID(saturation_function_list, &
 
 end function SaturationFunctionGetID
 
+! ************************************************************************** !
+
+subroutine SaturationFunctionVerify(saturation_function,option)
+  ! 
+  ! Evaluates saturation function curves for plotting external to PFLOTRAN
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 04/28/14
+  ! 
+
+  use Option_module
+  
+  implicit none
+
+  type(saturation_function_type) :: saturation_function
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscReal :: pc, pc_increment, pc_max
+  PetscReal :: sat, sat_increment, sat_max
+  PetscInt :: count, i
+  PetscReal :: x(101), y(101)
+  
+  ! calculate saturation as a function of capillary pressure
+  ! start at 1 Pa up to maximum capillary pressure
+  pc_max = 1.d6
+  pc = 1.d0
+  pc_increment = 1.d0
+  count = 0
+  do
+    if (pc > pc_max) exit
+    count = count + 1
+    call SaturationFunctionCompute(pc,sat,saturation_function,option)
+    x(count) = pc
+    y(count) = sat
+    if (pc > 0.99*pc_increment*10.d0) pc_increment = pc_increment*10.d0
+    pc = pc + pc_increment
+  enddo
+  
+  write(string,*) saturation_function%name
+  string = trim(saturation_function%name) // '_pc_sat.dat'
+  open(unit=86,file=string)
+  write(86,*) '"capillary pressure", "saturation"' 
+  do i = 1, count
+    write(86,'(2es14.6)') x(count), y(count)
+  enddo
+  close(86)
+  
+  ! calculate capillary pressure as a function of saturation
+  sat = saturation_function%Sr(1)
+  sat_max = 1.d0
+  sat_increment = 0.01d0
+  count = 0
+  do
+    if (sat > sat_max) exit
+    count = count + 1
+    call SatFuncGetCapillaryPressure(pc,sat,saturation_function,option)
+    x(count) = sat
+    y(count) = pc
+    sat = sat + sat_increment
+  enddo  
+  
+  write(string,*) saturation_function%name
+  string = trim(saturation_function%name) // '_sat_pc.dat'
+  open(unit=86,file=string)
+  write(86,*) '"saturation", "capillary pressure"' 
+  do i = 1, count
+    write(86,'(2es14.6)') x(count), y(count)
+  enddo
+  close(86)
+  
+end subroutine SaturationFunctionVerify  
+  
 ! ************************************************************************** !
 
 recursive subroutine SaturationFunctionDestroy(saturation_function)
