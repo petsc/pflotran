@@ -2339,7 +2339,12 @@ subroutine SaturationFunctionVerify(saturation_function,option)
   PetscReal :: sat, sat_increment, sat_max
   PetscInt :: count, i
   PetscReal :: x(101), y(101)
-  
+
+  if (.not.(saturation_function%saturation_function_itype == VAN_GENUCHTEN .or.&
+            saturation_function%saturation_function_itype == BROOKS_COREY)) then
+    return
+  endif
+
   ! calculate saturation as a function of capillary pressure
   ! start at 1 Pa up to maximum capillary pressure
   pc_max = 1.d6
