@@ -16,6 +16,7 @@ module Saturation_Function_module
     PetscInt :: saturation_function_itype
     character(len=MAXWORDLENGTH) :: permeability_function_ctype
     PetscInt :: permeability_function_itype
+    PetscBool :: print_me
     PetscReal, pointer :: Sr(:)
     PetscReal :: m
     PetscReal :: lambda
@@ -107,6 +108,7 @@ function SaturationFunctionCreate(option)
   saturation_function%saturation_function_itype = VAN_GENUCHTEN
   saturation_function%permeability_function_ctype = 'MUALEM'
   saturation_function%permeability_function_itype = MUALEM
+  saturation_function%print_me = PETSC_FALSE
   allocate(saturation_function%Sr(option%nphase))
   saturation_function%Sr = 0.d0
   saturation_function%m = 0.d0
@@ -287,6 +289,8 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
       case('ANI_C') 
         call InputReadDouble(input,option,saturation_function%ani_C)
         call InputErrorMsg(input,option,'ani_C','SATURATION_FUNCTION')
+      case('VERIFY') 
+        saturation_function%print_me = PETSC_TRUE
       case default
         option%io_buffer = 'Keyword: ' // trim(keyword) // &
                            ' not recognized in saturation_function'    
@@ -619,7 +623,8 @@ subroutine SaturatFuncConvertListToArray(list,array,option)
     count = count + 1
     cur_saturation_function%id = count
     array(count)%ptr => cur_saturation_function
-    if (option%myrank == option%io_rank) then
+    if (cur_saturation_function%print_me .and. &
+        option%myrank == option%io_rank) then
       call SaturationFunctionVerify(cur_saturation_function,option)
     endif
     cur_saturation_function => cur_saturation_function%next
