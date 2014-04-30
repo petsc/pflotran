@@ -2341,7 +2341,7 @@ subroutine SaturationFunctionVerify(saturation_function,option)
   
   character(len=MAXSTRINGLENGTH) :: string
   PetscReal :: pc, pc_increment, pc_max
-  PetscReal :: sat, sat_increment, sat_max
+  PetscReal :: sat
   PetscInt :: count, i
   PetscReal :: x(101), y(101)
 
@@ -2352,7 +2352,7 @@ subroutine SaturationFunctionVerify(saturation_function,option)
 
   ! calculate saturation as a function of capillary pressure
   ! start at 1 Pa up to maximum capillary pressure
-  pc_max = 1.d6
+  pc_max = saturation_function%pcwmax
   pc = 1.d0
   pc_increment = 1.d0
   count = 0
@@ -2371,30 +2371,25 @@ subroutine SaturationFunctionVerify(saturation_function,option)
   open(unit=86,file=string)
   write(86,*) '"capillary pressure", "saturation"' 
   do i = 1, count
-    write(86,'(2es14.6)') x(count), y(count)
+    write(86,'(2es14.6)') x(i), y(i)
   enddo
   close(86)
   
   ! calculate capillary pressure as a function of saturation
-  sat = saturation_function%Sr(1)
-  sat_max = 1.d0
-  sat_increment = 0.01d0
-  count = 0
-  do
-    if (sat > sat_max) exit
-    count = count + 1
+  do i = 1, 101
+    sat = dble(i-1)*0.01d0
     call SatFuncGetCapillaryPressure(pc,sat,saturation_function,option)
-    x(count) = sat
-    y(count) = pc
-    sat = sat + sat_increment
+    x(i) = sat
+    y(i) = pc
   enddo  
+  count = 101
   
   write(string,*) saturation_function%name
   string = trim(saturation_function%name) // '_sat_pc.dat'
   open(unit=86,file=string)
   write(86,*) '"saturation", "capillary pressure"' 
   do i = 1, count
-    write(86,'(2es14.6)') x(count), y(count)
+    write(86,'(2es14.6)') x(i), y(i)
   enddo
   close(86)
   
