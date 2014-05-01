@@ -24,6 +24,7 @@ PFLOTRAN_OBJS = \
 	$(SRC_DIR)/option.o \
 	$(SRC_DIR)/option_flow.o \
 	$(SRC_DIR)/option_transport.o \
+	$(SRC_DIR)/saturation_function.o \
 	$(SRC_DIR)/string.o \
 	$(SRC_DIR)/utility.o
 

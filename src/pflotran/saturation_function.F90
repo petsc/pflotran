@@ -68,8 +68,8 @@ module Saturation_Function_module
             SatFuncComputeIceDallAmico
             
   ! Saturation function 
-  PetscInt, parameter :: VAN_GENUCHTEN = 1
-  PetscInt, parameter :: BROOKS_COREY = 2
+  PetscInt, parameter, public :: VAN_GENUCHTEN = 1
+  PetscInt, parameter, public :: BROOKS_COREY = 2
   PetscInt, parameter :: THOMEER_COREY = 3
   PetscInt, parameter :: NMT_EXP = 4
   PetscInt, parameter :: PRUESS_1 = 5
@@ -77,8 +77,8 @@ module Saturation_Function_module
 
   ! Permeability function
   PetscInt, parameter :: DEFAULT = 0
-  PetscInt, parameter :: BURDINE = 1
-  PetscInt, parameter :: MUALEM = 2
+  PetscInt, parameter, public :: BURDINE = 1
+  PetscInt, parameter, public :: MUALEM = 2
   
 contains
 
@@ -1985,12 +1985,10 @@ end subroutine SatFuncGetRelPermFromSat
 ! ************************************************************************** !
 
 subroutine SatFuncGetGasRelPermFromSat(liquid_saturation, &
-                                       liquid_relative_perm, &
                                        gas_relative_perm, &
                                        saturation_function,option)
   ! 
-  ! Calculates relative permeability from
-  ! phase saturation
+  ! Calculates gas phase relative permeability from liquid saturation
   !
   ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
   !     of two-fluid capillary pressure-saturation and permeability functions",
@@ -2006,7 +2004,7 @@ subroutine SatFuncGetGasRelPermFromSat(liquid_saturation, &
   implicit none
 
   PetscReal :: liquid_saturation
-  PetscReal :: gas_relative_perm, liquid_relative_perm
+  PetscReal :: gas_relative_perm
   type(saturation_function_type) :: saturation_function
   PetscBool :: derivative
   type(option_type) :: option
