@@ -2707,13 +2707,14 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
             ! Surface-subsurface simulation
             ! ---------------------------
 
-            ! If surface-water is frozen, zero out the darcy velocity
-            if (global_auxvar_up%temp(1) < 0.d0) then
+            ! If surface-water or subsurface control volume is frozen, zero out the darcy velocity
+            if (global_auxvar_up%temp(1) < 0.d0 .or. global_auxvar_dn%temp(1) < 0.d0) then
               dphi = 0.d0
               dphi_dp_dn = 0.d0
               dphi_dt_dn = 0.d0
             endif
           endif
+
         endif
         
         if (ibndtype(TH_TEMPERATURE_DOF) == ZERO_GRADIENT_BC) then
@@ -3142,8 +3143,8 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
             ! Surface-subsurface simulation
             ! ---------------------------
 
-            ! If surface-water is frozen, zero out the darcy velocity
-            if (global_auxvar_up%temp(1) < 0.d0) then
+            ! If surface-water or subsurface control volume is frozen, zero out the darcy velocity
+            if (global_auxvar_up%temp(1) < 0.d0 .or. global_auxvar_dn%temp(1) < 0.d0) then
               dphi = 0.d0
             endif
           endif
