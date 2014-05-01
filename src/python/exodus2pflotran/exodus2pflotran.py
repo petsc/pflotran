@@ -5,6 +5,9 @@
 ## Author: Jitendra (Jitu) Kumar (jkumar@climatemodeling.org)
 ## Environmental Sciences Division, Oak Ridge National Laboratory
 ## Date: 09/18/2013
+## Modified by Satish Karra, LANL 10/09/13 to remove sidesets read
+## Changed the type from wedge to hex
+## Added check on the degenerate vertices of cells
 ##########################################################################
 
 
@@ -39,8 +42,8 @@ def exodus_to_pflotran_mesh():
 	num_vert=len(exofile.dimensions['num_nodes'])
 	# Read number of elements
 	num_elem=len(exofile.dimensions['num_elem'])
-	# Number of side sets
-	num_sidesets=len(exofile.dimensions['num_side_sets'])
+        # Number of side sets
+        num_sidesets=len(exofile.dimensions['num_side_sets'])
 	# Number of material blocks
 	num_blocks=len(exofile.dimensions['num_el_blk'])
 	
@@ -74,13 +77,26 @@ def exodus_to_pflotran_mesh():
 			cell_array = numpy.zeros((num_elem, (block_size[i,1]+1)), int)
 
 		varname='connect'+str(i+1)
-		block = exofile.variables[varname][:]
+		if (exofile.variables[varname].elem_type == 'HEX'):
+                       num_vert_per_elem = 8
+                elif (exofile.variabbles[varname].elem_type == 'WEDGE'):
+                       num_vert_per_elem = 6
+                 
+                block = exofile.variables[varname][:]
 		
 		for j in range(block_size[i,0]):
 			mat_id[counter] = i+1
-			cell_array[counter, 0] = 6 
-			for k in range(6):
+			cell_array[counter, 0] = num_vert_per_elem 
+			for k in range(num_vert_per_elem):
 				cell_array[counter, k+1] = block[j,k]
+                        # Check for repetitions
+                        outlist = []
+                        for ele in cell_array[counter,1:len(cell_array[counter,:])]:
+                                if ele not in outlist:
+                                        outlist.append(ele)
+                        cell_array[counter,:] = 0 
+                        cell_array[counter,0] = len(outlist) 
+                        cell_array[counter,1:len(outlist)+1] = outlist 
 			counter += 1
 
 
@@ -99,54 +115,85 @@ def exodus_to_pflotran_mesh():
 	h5dset = pflotranfile.create_dataset('Materials/Cell Ids', data=int_array)
 	h5dset = pflotranfile.create_dataset('Materials/Material Ids', data=mat_id)
 
-	print "Preparing sidesets"
-
-	
 	# Write sidesets
 	for i in range(num_sidesets):
 		varname='elem_ss'+str(i+1)
 		elem = exofile.variables[varname][:]
 		varname='side_ss'+str(i+1)
 		side = exofile.variables[varname][:]
-		
+
 		print numpy.shape(elem)
 
 		if elem.size != side.size:
 	   		print "Inconsistent size in the data set: "+str(varname)
 			sys.exit(0)
-		sideset = numpy.zeros((side.size,5), int)
 		
+                 
+		sideset = numpy.zeros((side.size,5), int)
 		# We will check which face of the element is at the boundary and
 		# create our sidesets accordingly
 		for j in range(len(elem)):
 			sideset[j,0] = 4
 			jelem = elem[j] -1
-		   	#print jelem	
-			if side[j] == 1:
-				sideset[j,1] = cell_array[jelem,1]
-				sideset[j,2] = cell_array[jelem,2]
-				sideset[j,3] = cell_array[jelem,5]
-				sideset[j,4] = cell_array[jelem,4]
-			elif side[j] == 2:
-				sideset[j,1] = cell_array[jelem,2]
-				sideset[j,2] = cell_array[jelem,3]
-				sideset[j,3] = cell_array[jelem,6]
-				sideset[j,4] = cell_array[jelem,5]
-			elif side[j] == 3:
-				sideset[j,1] = cell_array[jelem,3]
-				sideset[j,2] = cell_array[jelem,1]
-				sideset[j,3] = cell_array[jelem,4]
-				sideset[j,4] = cell_array[jelem,6]
-			elif side[j] == 4:
-				sideset[j,0] = 3 
-				sideset[j,1] = cell_array[jelem,3]
-				sideset[j,2] = cell_array[jelem,2]
-				sideset[j,3] = cell_array[jelem,1]
-			elif side[j] == 5:
-				sideset[j,0] = 3 
-				sideset[j,1] = cell_array[jelem,4]
-				sideset[j,2] = cell_array[jelem,5]
-				sideset[j,3] = cell_array[jelem,6]
+                        if (cell_array[jelem,0] == 6):
+		                if side[j] == 1:
+			        	sideset[j,1] = cell_array[jelem,1]
+				        sideset[j,2] = cell_array[jelem,2]
+					sideset[j,3] = cell_array[jelem,5]
+					sideset[j,4] = cell_array[jelem,4]
+				elif side[j] == 2:
+					sideset[j,1] = cell_array[jelem,2]
+					sideset[j,2] = cell_array[jelem,3]
+					sideset[j,3] = cell_array[jelem,6]
+					sideset[j,4] = cell_array[jelem,5]
+				elif side[j] == 3:
+					sideset[j,1] = cell_array[jelem,3]
+					sideset[j,2] = cell_array[jelem,1]
+					sideset[j,3] = cell_array[jelem,4]
+					sideset[j,4] = cell_array[jelem,6]
+				elif side[j] == 4:
+					sideset[j,0] = 3
+					sideset[j,1] = cell_array[jelem,3]
+					sideset[j,2] = cell_array[jelem,2]
+					sideset[j,3] = cell_array[jelem,1]
+				elif side[j] == 5:
+					sideset[j,0] = 3
+					sideset[j,1] = cell_array[jelem,4]
+					sideset[j,2] = cell_array[jelem,5]
+					sideset[j,3] = cell_array[jelem,6]
+                        elif (cell_array[jelem,0] == 8):
+				if side[j] == 1:
+					sideset[j,1] = cell_array[jelem,1]
+					sideset[j,2] = cell_array[jelem,2]
+					sideset[j,3] = cell_array[jelem,6]
+					sideset[j,4] = cell_array[jelem,5]
+				elif side[j] == 2:
+					sideset[j,1] = cell_array[jelem,2]
+					sideset[j,2] = cell_array[jelem,3]
+					sideset[j,3] = cell_array[jelem,7]
+					sideset[j,4] = cell_array[jelem,6]
+				elif side[j] == 3:
+					sideset[j,1] = cell_array[jelem,3]
+					sideset[j,2] = cell_array[jelem,7]
+					sideset[j,3] = cell_array[jelem,8]
+					sideset[j,4] = cell_array[jelem,4]
+				elif side[j] == 4:
+					sideset[j,1] = cell_array[jelem,4]
+					sideset[j,2] = cell_array[jelem,8]
+					sideset[j,3] = cell_array[jelem,5]
+					sideset[j,4] = cell_array[jelem,1]
+				elif side[j] == 5:
+					sideset[j,1] = cell_array[jelem,1]
+					sideset[j,2] = cell_array[jelem,2]
+					sideset[j,3] = cell_array[jelem,3]
+					sideset[j,4] = cell_array[jelem,4]
+				elif side[j] == 6:
+					sideset[j,1] = cell_array[jelem,5]
+					sideset[j,2] = cell_array[jelem,6]
+					sideset[j,3] = cell_array[jelem,7]
+					sideset[j,4] = cell_array[jelem,8]
+
+
 		dataset_name = 'Regions/Sideset%d' % (i+1)
 		h5dset = pflotranfile.create_dataset(dataset_name, data=sideset)
 
