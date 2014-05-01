@@ -537,6 +537,14 @@ subroutine THAuxVarComputeFreezing(x, auxvar, global_auxvar, &
                                       kr, ds_dp, dsl_temp, dsg_pl, dsg_temp, &
                                       dsi_pl, dsi_temp, dkr_dp, dkr_dt, &
                                       saturation_function, option)
+    case (PAINTER_KARRA_EXPLICIT_NOCRYO)
+      ! Explicit model from Painter & Karra, VJZ (2013) and removed cryosuction
+      call SatFuncComputeIcePKExplicitNoCryo(global_auxvar%pres(1), & 
+                                       global_auxvar%temp(1), ice_saturation, &
+                                       global_auxvar%sat(1), gas_saturation, &
+                                       kr, ds_dp, dsl_temp, dsg_pl, dsg_temp, &
+                                       dsi_pl, dsi_temp, dkr_dp, dkr_dt, &
+                                       saturation_function, p_th, option) 
     case default
       option%io_buffer = 'THCAuxVarComputeIce: Ice model not recognized.'
       call printErrMsg(option)
