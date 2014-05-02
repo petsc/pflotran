@@ -3107,6 +3107,9 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
   PetscReal, parameter :: R_gas_constant = 8.3144621 ! Gas constant in J/mol/K
   PetscReal :: v_darcy_allowable
   
+  PetscReal :: T_th,hack,fct
+  T_th  = 2.d0
+
   fluxm = 0.d0
   fluxe = 0.d0
   v_darcy = 0.d0
@@ -3159,10 +3162,20 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
             ! ---------------------------
             ! Surface-subsurface simulation
             ! ---------------------------
-
-            ! If surface-water or subsurface control volume is frozen, zero out the darcy velocity
-            if (global_auxvar_up%temp(1) < 0.d0 .or. global_auxvar_dn%temp(1) < 0.d0) then
+            if (global_auxvar_up%temp(1) < 0.d0) then 
+              ! surface water is frozen, so no flow can occur
               dphi = 0.d0
+            else 
+              ! if subsurface is close to frozen, smoothly throttle down the flow
+              if (global_auxvar_dn%temp(1) < 0.d0) then
+                hack = 0.d0
+              else if (global_auxvar_dn%temp(1) > T_th) then
+                hack = 1.d0
+              else
+                fct  = 1.d0-(global_auxvar_dn%temp(1)/T_th)**2.d0
+                hack = 1.d0-fct**2.d0
+              endif
+              dphi = dphi*hack
             endif
           endif
 
