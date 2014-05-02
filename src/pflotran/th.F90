@@ -2716,7 +2716,10 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
               dphi_dt_dn = 0.d0
             else 
               ! if subsurface is close to frozen, smoothly throttle down the flow
-              if (global_auxvar_dn%temp(1) < 0.d0 .or. global_auxvar_dn%temp(1) > T_th) then
+              if (global_auxvar_dn%temp(1) < 0.d0) then
+                hack      = 0.d0
+                dhack_dt  = 0.d0
+              else if (global_auxvar_dn%temp(1) > T_th) then
                 hack      = 1.d0
                 dhack_dt  = 0.d0
               else
