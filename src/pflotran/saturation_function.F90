@@ -69,8 +69,8 @@ module Saturation_Function_module
             SatFuncComputeIcePKExplicitNoCryo
             
   ! Saturation function 
-  PetscInt, parameter :: VAN_GENUCHTEN = 1
-  PetscInt, parameter :: BROOKS_COREY = 2
+  PetscInt, parameter, public :: VAN_GENUCHTEN = 1
+  PetscInt, parameter, public :: BROOKS_COREY = 2
   PetscInt, parameter :: THOMEER_COREY = 3
   PetscInt, parameter :: NMT_EXP = 4
   PetscInt, parameter :: PRUESS_1 = 5
@@ -78,8 +78,8 @@ module Saturation_Function_module
 
   ! Permeability function
   PetscInt, parameter :: DEFAULT = 0
-  PetscInt, parameter :: BURDINE = 1
-  PetscInt, parameter :: MUALEM = 2
+  PetscInt, parameter, public :: BURDINE = 1
+  PetscInt, parameter, public :: MUALEM = 2
   
 contains
 
@@ -2120,12 +2120,10 @@ end subroutine SatFuncGetRelPermFromSat
 ! ************************************************************************** !
 
 subroutine SatFuncGetGasRelPermFromSat(liquid_saturation, &
-                                       liquid_relative_perm, &
                                        gas_relative_perm, &
                                        saturation_function,option)
   ! 
-  ! Calculates relative permeability from
-  ! phase saturation
+  ! Calculates gas phase relative permeability from liquid saturation
   !
   ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
   !     of two-fluid capillary pressure-saturation and permeability functions",
@@ -2141,7 +2139,7 @@ subroutine SatFuncGetGasRelPermFromSat(liquid_saturation, &
   implicit none
 
   PetscReal :: liquid_saturation
-  PetscReal :: gas_relative_perm, liquid_relative_perm
+  PetscReal :: gas_relative_perm
   type(saturation_function_type) :: saturation_function
   PetscBool :: derivative
   type(option_type) :: option
@@ -2476,7 +2474,7 @@ subroutine SaturationFunctionVerify(saturation_function,option)
   
   character(len=MAXSTRINGLENGTH) :: string
   PetscReal :: pc, pc_increment, pc_max
-  PetscReal :: sat, sat_increment, sat_max
+  PetscReal :: sat
   PetscInt :: count, i
   PetscReal :: x(101), y(101)
 
@@ -2487,7 +2485,7 @@ subroutine SaturationFunctionVerify(saturation_function,option)
 
   ! calculate saturation as a function of capillary pressure
   ! start at 1 Pa up to maximum capillary pressure
-  pc_max = 1.d6
+  pc_max = saturation_function%pcwmax
   pc = 1.d0
   pc_increment = 1.d0
   count = 0
@@ -2506,30 +2504,25 @@ subroutine SaturationFunctionVerify(saturation_function,option)
   open(unit=86,file=string)
   write(86,*) '"capillary pressure", "saturation"' 
   do i = 1, count
-    write(86,'(2es14.6)') x(count), y(count)
+    write(86,'(2es14.6)') x(i), y(i)
   enddo
   close(86)
   
   ! calculate capillary pressure as a function of saturation
-  sat = saturation_function%Sr(1)
-  sat_max = 1.d0
-  sat_increment = 0.01d0
-  count = 0
-  do
-    if (sat > sat_max) exit
-    count = count + 1
+  do i = 1, 101
+    sat = dble(i-1)*0.01d0
     call SatFuncGetCapillaryPressure(pc,sat,saturation_function,option)
-    x(count) = sat
-    y(count) = pc
-    sat = sat + sat_increment
+    x(i) = sat
+    y(i) = pc
   enddo  
+  count = 101
   
   write(string,*) saturation_function%name
   string = trim(saturation_function%name) // '_sat_pc.dat'
   open(unit=86,file=string)
   write(86,*) '"saturation", "capillary pressure"' 
   do i = 1, count
-    write(86,'(2es14.6)') x(count), y(count)
+    write(86,'(2es14.6)') x(i), y(i)
   enddo
   close(86)
   
