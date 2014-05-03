@@ -1858,7 +1858,7 @@ function UGridPolyhedraComputeInternConnect(ugrid, grid_x, &
         intercept%z = 0.d0
 
         do iintercp = 0, nintercp - 1 
-          idx = ugrid%face_to_vertex(1,face_id)
+          idx = ugrid%face_to_vertex(1 + iintercp,face_id)
           point1 = ugrid%vertices(idx)
           idx = ugrid%face_to_vertex(2 + iintercp,face_id)
           point2 = ugrid%vertices(idx)
