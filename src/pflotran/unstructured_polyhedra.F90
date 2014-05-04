@@ -2375,6 +2375,11 @@ subroutine UGridPolyhedraComputeOutputInfo(ugrid, nL2G, nG2L, nG2A, option)
   allocate(pgrid%uface_left_natcellids(pgrid%ugrid_num_faces_local))
   allocate(pgrid%uface_right_natcellids(pgrid%ugrid_num_faces_local))
 
+  pgrid%uface_localids = -1
+  pgrid%uface_nverts = -1
+  pgrid%uface_left_natcellids = -1
+  pgrid%uface_right_natcellids = -1
+
   call VecGetArrayF90(ghosted_cv_proc_rank, v_loc_p, ierr)
   pgrid%num_ufaces_local = 0
   pgrid%uface_nverts = 0
