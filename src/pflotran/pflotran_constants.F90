@@ -250,5 +250,6 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: PAINTER_KARRA_IMPLICIT = 2
   PetscInt, parameter, public :: PAINTER_KARRA_EXPLICIT = 3
   PetscInt, parameter, public :: DALL_AMICO = 4
+  PetscInt, parameter, public :: PAINTER_KARRA_EXPLICIT_NOCRYO = 5
 
 end module PFLOTRAN_Constants_module

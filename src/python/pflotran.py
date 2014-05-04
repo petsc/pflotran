@@ -38,6 +38,13 @@ def get_tec_filenames(prefix,ids):
     filenames.append(filename)
   return filenames
       
+def get_observation_tec_filenames(prefix,ids):
+  filenames = []
+  for i in range(len(ids)):
+    ifile = ids[i]
+    filename = '%s-%d.tec' %(prefix,ifile)
+    filenames.append(filename)
+  return filenames
 
 class Dataset:
   def __init__(self,filename,xcol,ycol):
