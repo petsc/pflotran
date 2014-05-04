@@ -1442,6 +1442,7 @@ function UGridPolyhedraComputeInternConnect(ugrid, grid_x, &
   PetscInt, allocatable :: vertex_to_cell(:,:)
   PetscInt, allocatable :: temp_int(:)
   PetscInt, allocatable :: temp_int_2d(:,:)
+  PetscInt, allocatable :: temp_int_3d(:)
   PetscInt, allocatable :: vertex_ids(:)
   PetscInt, allocatable :: dup_face_id(:)
   PetscBool, allocatable :: local_boundary_face(:)
@@ -1719,6 +1720,7 @@ function UGridPolyhedraComputeInternConnect(ugrid, grid_x, &
   deallocate(face_to_vertex)
   ! reallocate face_to_cell to proper size
   allocate(temp_int_2d(2,face_count))
+  allocate(temp_int_3d(face_count))
   allocate(temp_int(size(face_to_cell,2)))
   temp_int = 0
   face_count = 0
@@ -1726,6 +1728,7 @@ function UGridPolyhedraComputeInternConnect(ugrid, grid_x, &
     if (face_to_cell(1,iface) > 0) then
       face_count = face_count + 1
       temp_int_2d(:,face_count) = face_to_cell(:,iface)
+      temp_int_3d(face_count) = pgrid%face_nverts(iface)
       temp_int(iface) = face_count
     endif
   enddo
@@ -1733,6 +1736,11 @@ function UGridPolyhedraComputeInternConnect(ugrid, grid_x, &
   allocate(face_to_cell(2,face_count))
   face_to_cell = temp_int_2d
   deallocate(temp_int_2d)
+
+  deallocate(pgrid%face_nverts)
+  allocate(pgrid%face_nverts(face_count))
+  pgrid%face_nverts = temp_int_3d
+  deallocate(temp_int_3d)
 
   ! remap faces in cells using temp_int from above
   do iface = 1, size(face_to_cell,2)
