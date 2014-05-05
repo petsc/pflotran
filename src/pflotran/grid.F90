@@ -3,6 +3,7 @@ module Grid_module
   use Structured_Grid_module
   use Unstructured_Grid_module
   use Unstructured_Grid_Aux_module
+  use Unstructured_Polyhedra_module
   use Connection_module
   use MFD_Aux_module
  
@@ -305,6 +306,7 @@ subroutine GridComputeInternalConnect(grid,option,ugdm)
   use Connection_module
   use Option_module
   use Unstructured_Explicit_module
+  use Unstructured_Polyhedra_module
     
   implicit none
   
@@ -331,6 +333,13 @@ subroutine GridComputeInternalConnect(grid,option,ugdm)
       connection_set => &
         UGridExplicitSetInternConnect(grid%unstructured_grid%explicit_grid, &
                                         option)
+    case(POLYHEDRA_UNSTRUCTURED_GRID)
+      connection_set => &
+        UGridPolyhedraComputeInternConnect(grid%unstructured_grid, &
+                                           grid%x, grid%y, grid%z, &
+                                           option)
+      call UGridPolyhedraComputeOutputInfo(grid%unstructured_grid, grid%nL2G, grid%nG2L, &
+                                            grid%nG2A, option)
   end select
   
   allocate(grid%internal_connection_set_list)
@@ -420,6 +429,9 @@ subroutine GridPopulateConnection(grid,connection,iface,iconn,cell_id_local, &
     case(IMPLICIT_UNSTRUCTURED_GRID)
       call UGridPopulateConnection(grid%unstructured_grid,connection,iface,&
                                    iconn,cell_id_ghosted,option)
+    case(POLYHEDRA_UNSTRUCTURED_GRID)
+      call UGridPolyhedraPopulateConnection(grid%unstructured_grid,connection,iface, &
+                                            iconn,cell_id_ghosted,option)
   end select
 
 end subroutine GridPopulateConnection
@@ -1143,7 +1155,8 @@ subroutine GridMapIndices(grid, dm_ptr, sgrid_stencil_type, lsm_flux_method, &
         deallocate(int_tmp)
       endif
 #endif
-    case(IMPLICIT_UNSTRUCTURED_GRID,EXPLICIT_UNSTRUCTURED_GRID)
+    case(IMPLICIT_UNSTRUCTURED_GRID,EXPLICIT_UNSTRUCTURED_GRID, &
+         POLYHEDRA_UNSTRUCTURED_GRID)
       call UGridMapIndices(grid%unstructured_grid, &
                            dm_ptr%ugdm, &
                            grid%nG2L,grid%nL2G,grid%nG2A,grid%nG2P,option)
@@ -1189,6 +1202,7 @@ subroutine GridComputeCoordinates(grid,origin_global,option,ugdm)
 
   use Option_module
   use Unstructured_Explicit_module
+  use Unstructured_Polyhedra_module
   
   implicit none
 
@@ -1228,6 +1242,13 @@ subroutine GridComputeCoordinates(grid,origin_global,option,ugdm)
                              grid%x_min_local,grid%x_max_local, &
                              grid%y_min_local,grid%y_max_local, &
                              grid%z_min_local,grid%z_max_local)
+    case(POLYHEDRA_UNSTRUCTURED_GRID)
+      call UGridPolyhedraSetCellCentroids(grid%unstructured_grid%polyhedra_grid, &
+                                          grid%x,grid%y,grid%z, &
+                                          grid%x_min_local,grid%x_max_local, &
+                                          grid%y_min_local,grid%y_max_local, &
+                                          grid%z_min_local,grid%z_max_local,option)
+
   end select
 
   if (associated(grid%structured_grid)) then
@@ -1277,6 +1298,7 @@ subroutine GridComputeVolumes(grid,volume,option)
 
   use Option_module
   use Unstructured_Explicit_module
+  use Unstructured_Polyhedra_module
   
   implicit none
 
@@ -1297,6 +1319,8 @@ subroutine GridComputeVolumes(grid,volume,option)
     case(EXPLICIT_UNSTRUCTURED_GRID)
       call UGridExplicitComputeVolumes(grid%unstructured_grid, &
                                        option,volume)
+    case(POLYHEDRA_UNSTRUCTURED_GRID)
+      call UGridPolyhedraComputeVolumes(grid%unstructured_grid,option,volume)
   end select
 
 end subroutine GridComputeVolumes
@@ -2621,6 +2645,9 @@ subroutine GridLocalizeRegionFromCoordinates(grid,region,option)
           else
             region%num_cells = 0
           endif
+        case(POLYHEDRA_UNSTRUCTURED_GRID)
+           option%io_buffer = 'add code POLYHDERA in GridLocalizeRegionFromCoordinates'
+           call printErrMsg(option)
       end select
     endif
   else ! 2 coordinates
@@ -2748,7 +2775,7 @@ subroutine GridLocalizeRegionFromCoordinates(grid,region,option)
           else
             iflag = 1
           endif
-        case(IMPLICIT_UNSTRUCTURED_GRID,EXPLICIT_UNSTRUCTURED_GRID)
+        case(IMPLICIT_UNSTRUCTURED_GRID,EXPLICIT_UNSTRUCTURED_GRID,POLYHEDRA_UNSTRUCTURED_GRID)
           del_x = x_max-x_min
           del_y = y_max-y_min
           del_z = z_max-z_min
@@ -2793,11 +2820,21 @@ subroutine GridLocalizeRegionFromCoordinates(grid,region,option)
                    del_z > 1.d-10) .or. &
                   (del_x > 1.d-10 .and. del_y > 1.d-10 .and. &
                    del_z < 1.d-10)) then
-            call UGridGetCellsInRectangle(x_min,x_max,y_min,y_max, &
-                                          z_min,z_max, &
-                                          grid%unstructured_grid,option, &
-                                          region%num_cells,region%cell_ids, &
-                                          region%faces)
+            if (grid%itype == IMPLICIT_UNSTRUCTURED_GRID .or. &
+                grid%itype == EXPLICIT_UNSTRUCTURED_GRID) then
+              call UGridGetCellsInRectangle(x_min,x_max,y_min,y_max, &
+                                            z_min,z_max, &
+                                            grid%unstructured_grid,option, &
+                                            region%num_cells,region%cell_ids, &
+                                            region%faces)
+            else
+              call UGridPolyhedraGetCellsInRectangle(x_min,x_max,y_min,y_max, &
+                                                     z_min,z_max, &
+                                                     grid%unstructured_grid,option, &
+                                                     region%num_cells,region%cell_ids, &
+                                                     region%faces)
+            endif
+
           endif
       end select
     endif

@@ -1601,8 +1601,8 @@ subroutine InitReadInput(simulation)
                option%io_buffer = ' TH: using FREEZING submode!'
                call printMsg(option)
                ! Override the default setting for TH-mode with freezing
-               !call EOSWaterSetDensityPainter()
-               !call EOSWaterSetEnthalpyPainter()
+               call EOSWaterSetDensityPainter()
+               call EOSWaterSetEnthalpyPainter()
             else if ('NO_FREEZING' == trim(word)) then
                option%use_th_freezing = PETSC_FALSE
                option%io_buffer = ' TH: using NO_FREEZING submode!'
