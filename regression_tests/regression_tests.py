@@ -272,11 +272,17 @@ class RegressionTest(object):
                     name=test_name, status=pflotran_status))
             print("".join(['\n', message, '\n']), file=testlog)
             print("~~~~~ {0}.stdout ~~~~~".format(test_name), file=testlog)
-            with open("{0}.stdout".format(test_name), 'r') as tempfile:
-                shutil.copyfileobj(tempfile, testlog)
+            try:
+                with open("{0}.stdout".format(test_name), 'r') as tempfile:
+                    shutil.copyfileobj(tempfile, testlog)
+            except Exception as e:
+                print("   Error opening file: {0}.stdout\n    {1}".format(test_name, e))
             print("~~~~~ {0}.out ~~~~~".format(test_name), file=testlog)
-            with open("{0}.out".format(test_name), 'r') as tempfile:
-                shutil.copyfileobj(tempfile, testlog)
+            try:
+                with open("{0}.out".format(test_name), 'r') as tempfile:
+                    shutil.copyfileobj(tempfile, testlog)
+            except Exception as e:
+                print("   Error opening file: {0}.out\n    {1}".format(test_name, e))
             print("~~~~~~~~~~", file=testlog)
 
     def _cleanup_generated_files(self):
@@ -1928,7 +1934,8 @@ def main(options):
             message = txtwrap.fill(
                 "ERROR: a problem occured in file '{0}'.  This is "
                 "probably an error with commandline options, the "
-                "configuration file, or an internal error.  The "
+                "configuration file, or an internal error.  Please send "
+                "this log file to pflotran-dev mailing list. The "
                 "error is:\n{1}".format(config_file, str(error)))
             print(''.join(['\n', message, '\n']), file=testlog)
             if options.backtrace:
