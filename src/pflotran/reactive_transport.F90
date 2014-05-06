@@ -487,7 +487,6 @@ subroutine RTComputeMassBalance(realization,mass_balance)
   type(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%ntrandof, &
                             realization%option%nphase)
-  
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(field_type), pointer :: field
@@ -503,8 +502,6 @@ subroutine RTComputeMassBalance(realization,mass_balance)
   PetscInt :: iphase
   PetscInt :: i, icomp, imnrl, ncomp, irate, irxn
 
-  mass_balance = 0.d0
-  
   iphase = 1
   option => realization%option
   patch => realization%patch
@@ -516,6 +513,8 @@ subroutine RTComputeMassBalance(realization,mass_balance)
   rt_auxvars => patch%aux%RT%auxvars
   global_auxvars => patch%aux%Global%auxvars
   material_auxvars => patch%aux%Material%auxvars
+
+  mass_balance = 0.d0
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
@@ -555,11 +554,11 @@ subroutine RTComputeMassBalance(realization,mass_balance)
             do i = 1, ncomp
               icomp = reaction%mineral%kinmnrlspecid(i,imnrl)
               mass_balance(icomp,iphase) = mass_balance(icomp,iphase) &
-              + reaction%mineral%kinmnrlstoich(i,imnrl)                  &
-              * rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl)      &
+              + reaction%mineral%kinmnrlstoich(i,imnrl) &
+              * rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl) &
               * material_auxvars(ghosted_id)%volume &
               / reaction%mineral%kinmnrl_molar_vol(imnrl)
-            enddo 
+            enddo
           enddo
         endif
       endif
