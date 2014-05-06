@@ -1539,7 +1539,8 @@ subroutine OutputMassBalance(realization_base)
   use Global_Aux_module
   use Reactive_Transport_Aux_module
   use Reaction_Aux_module
-  
+  use Material_Aux_class
+
   implicit none
 
   class(realization_base_type), target :: realization_base
@@ -1547,12 +1548,15 @@ subroutine OutputMassBalance(realization_base)
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
-  type(reaction_type), pointer :: reaction
-  type(output_option_type), pointer :: output_option  
+  type(output_option_type), pointer :: output_option
   type(coupler_type), pointer :: coupler
   type(global_auxvar_type), pointer :: global_auxvars_bc_or_ss(:)
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars_bc_or_ss(:)
-  
+  type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
+
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+  type(reaction_type), pointer :: reaction
+
   character(len=MAXHEADERLENGTH) :: header
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXWORDLENGTH) :: word, units
@@ -1567,13 +1571,19 @@ subroutine OutputMassBalance(realization_base)
   PetscInt :: iconn
   PetscInt :: offset
   PetscInt :: iphase, ispec
-  PetscInt :: icomp
+  PetscInt :: icomp, imnrl
   PetscReal :: sum_area(4)
   PetscReal :: sum_area_global(4)
-  PetscReal :: sum_kg(realization_base%option%nflowspec,realization_base%option%nphase)
-  PetscReal :: sum_kg_global(realization_base%option%nflowspec,realization_base%option%nphase)
-  PetscReal :: sum_mol(realization_base%option%ntrandof,realization_base%option%nphase)
-  PetscReal :: sum_mol_global(realization_base%option%ntrandof,realization_base%option%nphase)
+  PetscReal :: sum_kg(realization_base%option%nflowspec, &
+               realization_base%option%nphase)
+  PetscReal :: sum_kg_global(realization_base%option%nflowspec, &
+               realization_base%option%nphase)
+  PetscReal :: sum_mol(realization_base%option%ntrandof, &
+               realization_base%option%nphase)
+  PetscReal :: sum_mol_global(realization_base%option%ntrandof, &
+               realization_base%option%nphase)
+  PetscReal :: sum_mol_mnrl(realization_base%reaction%mineral%nkinmnrl)
+  PetscReal :: sum_mol_mnrl_global(realization_base%reaction%mineral%nkinmnrl)
   PetscReal :: sum_trapped(realization_base%option%nphase)
   PetscReal :: sum_trapped_global(realization_base%option%nphase)
   PetscReal :: sum_mol_ye(3), sum_mol_global_ye(3)
@@ -1587,7 +1597,11 @@ subroutine OutputMassBalance(realization_base)
   option => realization_base%option
   reaction => realization_base%reaction
   output_option => realization_base%output_option
- 
+
+  rt_auxvars => patch%aux%RT%auxvars
+
+  material_auxvars => patch%aux%Material%auxvars
+
   if (len_trim(output_option%plot_name) > 2) then
     filename = trim(output_option%plot_name) // '-mas.dat'
   else
@@ -1675,6 +1689,16 @@ subroutine OutputMassBalance(realization_base)
           endif
         enddo
         write(fid,'(a)',advance="no") trim(header)
+
+        if (option%mass_bal_detailed) then
+          do i=1,reaction%mineral%nkinmnrl
+            if (reaction%mineral%kinmnrl_print(i)) then
+              string = 'Global ' // trim(reaction%mineral%kinmnrl_names(i))
+              call OutputAppendToHeader(header,string,'mol','',icol)
+            endif
+          enddo
+          write(fid,'(a)',advance="no") trim(header)
+        endif
       endif
       
       coupler => patch%boundary_conditions%first
@@ -1910,8 +1934,37 @@ subroutine OutputMassBalance(realization_base)
         enddo
 !      enddo
     endif
+
+!   print out mineral contribution to mass balance
+    if (option%mass_bal_detailed) then
+
+!     store integral over mineral volume fractions
+      sum_mol_mnrl = 0.d0
+      do local_id = 1, grid%nlmax
+        ghosted_id = grid%nL2G(local_id)
+
+        do imnrl = 1, reaction%mineral%nkinmnrl
+          sum_mol_mnrl(imnrl) = sum_mol_mnrl(imnrl) &
+            + rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl) &
+            * material_auxvars(ghosted_id)%volume &
+            / reaction%mineral%kinmnrl_molar_vol(imnrl)
+        enddo
+      enddo
+
+      int_mpi = reaction%mineral%nkinmnrl
+      call MPI_Reduce(sum_mol_mnrl,sum_mol_mnrl_global,int_mpi, &
+                    MPI_DOUBLE_PRECISION,MPI_SUM, &
+                    option%io_rank,option%mycomm,ierr)
+      if (option%myrank == option%io_rank) then
+        do imnrl = 1, reaction%mineral%nkinmnrl
+          if (reaction%mineral%kinmnrl_print(imnrl)) then
+            write(fid,110,advance="no") sum_mol_mnrl_global(imnrl)
+          endif
+        enddo
+      endif
+    endif
   endif
-  
+
   coupler => patch%boundary_conditions%first
   global_auxvars_bc_or_ss => patch%aux%Global%auxvars_bc
   if (option%ntrandof > 0) then
