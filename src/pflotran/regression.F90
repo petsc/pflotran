@@ -234,6 +234,7 @@ subroutine RegressionCreateMapping(regression,realization)
       call printWrnMsg(option)
       count = 0
       allocate(int_array(size(regression%natural_cell_ids)))
+      int_array = 0
       do i = 1, size(regression%natural_cell_ids)
         if (regression%natural_cell_ids(i) <= grid%nmax) then
           count = count + 1
@@ -243,7 +244,10 @@ subroutine RegressionCreateMapping(regression,realization)
       ! reallocate array
       deallocate(regression%natural_cell_ids)
       allocate(regression%natural_cell_ids(count))
-      regression%natural_cell_ids = int_array
+      !geh: Since natural_cell_ids and int_array may now be of different sizes,
+      !     we need to be explicit about the values to copy.  gfortran has
+      !     issues with this while Intel figures it out. Better to be explicit.
+      regression%natural_cell_ids = int_array(1:count)
       deallocate(int_array)
     endif
     call VecCreate(PETSC_COMM_SELF,regression%natural_cell_id_vec,ierr)

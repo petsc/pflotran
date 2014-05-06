@@ -1695,19 +1695,19 @@ end subroutine THAccumulation
 
 subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
                             material_auxvar_up, &
-                             sir_up, &
-                             Dk_up, &
-                             auxvar_dn,global_auxvar_dn, &
-                             material_auxvar_dn, &
-                             sir_dn, &
-                             Dk_dn, &
-                             area, &
-                             dist, upweight, &
-                             option,sat_func_up,sat_func_dn, &
-                             Diff_up,Diff_dn,Dk_dry_up,Dk_dry_dn, &
-                             Dk_ice_up,Dk_ice_dn, &
-                             alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
-                             Jup,Jdn)
+                            sir_up, &
+                            Dk_up, &
+                            auxvar_dn,global_auxvar_dn, &
+                            material_auxvar_dn, &
+                            sir_dn, &
+                            Dk_dn, &
+                            area, &
+                            dist, upweight, &
+                            option,sat_func_up,sat_func_dn, &
+                            Diff_up,Diff_dn,Dk_dry_up,Dk_dry_dn, &
+                            Dk_ice_up,Dk_ice_dn, &
+                            alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
+                            Jup,Jdn)
 
   !
   ! Computes the derivatives of the internal flux terms
@@ -1862,19 +1862,19 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
   dDk_dp_dn = 0.d0
   
   if (option%use_th_freezing) then
-     dfv_dt_up = 0.d0
-     dfv_dt_dn = 0.d0
-     dfv_dp_up = 0.d0
-     dfv_dp_dn = 0.d0
-     dmolg_dp_up = 0.d0
-     dmolg_dp_dn = 0.d0
-     dmolg_dt_up = 0.d0
-     dmolg_dt_dn = 0.d0
+    dfv_dt_up = 0.d0
+    dfv_dt_dn = 0.d0
+    dfv_dp_up = 0.d0
+    dfv_dp_dn = 0.d0
+    dmolg_dp_up = 0.d0
+    dmolg_dp_dn = 0.d0
+    dmolg_dt_up = 0.d0
+    dmolg_dt_dn = 0.d0
   endif
-  
-! Flow term
+
+  ! Flow term
   if (global_auxvar_up%sat(1) > sir_up .or. global_auxvar_dn%sat(1) > sir_dn) then
-    if (global_auxvar_up%sat(1) <eps) then 
+    if (global_auxvar_up%sat(1) <eps) then
       upweight=0.d0
     else if (global_auxvar_dn%sat(1) <eps) then 
       upweight=1.d0
@@ -1892,11 +1892,11 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
     dgravity_dden_dn = (1.d0-upweight)*auxvar_dn%avgmw*dist_gravity
 
     if (option%ice_model /= DALL_AMICO) then
-    dphi = global_auxvar_up%pres(1) - global_auxvar_dn%pres(1) + gravity
-    dphi_dp_up = 1.d0 + dgravity_dden_up*auxvar_up%dden_dp
-    dphi_dp_dn = -1.d0 + dgravity_dden_dn*auxvar_dn%dden_dp
-    dphi_dt_up = dgravity_dden_up*auxvar_up%dden_dt
-    dphi_dt_dn = dgravity_dden_dn*auxvar_dn%dden_dt
+      dphi = global_auxvar_up%pres(1) - global_auxvar_dn%pres(1) + gravity
+      dphi_dp_up = 1.d0 + dgravity_dden_up*auxvar_up%dden_dp
+      dphi_dp_dn = -1.d0 + dgravity_dden_dn*auxvar_dn%dden_dp
+      dphi_dt_up = dgravity_dden_up*auxvar_up%dden_dt
+      dphi_dt_dn = dgravity_dden_dn*auxvar_dn%dden_dt
     else
       dphi = auxvar_up%pres_fh2o - auxvar_dn%pres_fh2o + gravity
       dphi_dp_up =  auxvar_up%dpres_fh2o_dp + dgravity_dden_up*auxvar_up%dden_dp
@@ -1905,7 +1905,7 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
       dphi_dt_dn = -auxvar_dn%dpres_fh2o_dt + dgravity_dden_dn*auxvar_dn%dden_dt
     endif
 
-! note uxmol only contains one phase xmol
+    ! note uxmol only contains one phase xmol
     if (dphi>=0.D0) then
       ukvr = auxvar_up%kvr
       dukvr_dp_up = auxvar_up%dkvr_dp
@@ -1956,130 +1956,128 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
     endif
   endif 
 
-    difff = diffdp*0.25D0*(global_auxvar_up%sat(1) + global_auxvar_dn%sat(1))* &
-                            (global_auxvar_up%den(1) + global_auxvar_dn%den(1))
-    ddifff_dp_up = diffdp*0.25D0*(auxvar_up%dsat_dp*(global_auxvar_up%den(1) + global_auxvar_dn%den(1))+ &
-                  (global_auxvar_up%sat(1) + global_auxvar_dn%sat(1))*auxvar_up%dden_dp)
-    ddifff_dt_up = diffdp*0.25D0*(global_auxvar_up%sat(1) + global_auxvar_dn%sat(1))*auxvar_up%dden_dt
+  difff = diffdp*0.25D0*(global_auxvar_up%sat(1) + global_auxvar_dn%sat(1))* &
+                          (global_auxvar_up%den(1) + global_auxvar_dn%den(1))
+  ddifff_dp_up = diffdp*0.25D0*(auxvar_up%dsat_dp*(global_auxvar_up%den(1) + global_auxvar_dn%den(1))+ &
+                (global_auxvar_up%sat(1) + global_auxvar_dn%sat(1))*auxvar_up%dden_dp)
+  ddifff_dt_up = diffdp*0.25D0*(global_auxvar_up%sat(1) + global_auxvar_dn%sat(1))*auxvar_up%dden_dt
 
-    ddifff_dp_dn = diffdp*0.25D0*(auxvar_dn%dsat_dp*(global_auxvar_up%den(1) + global_auxvar_dn%den(1))+ &
-                  (global_auxvar_up%sat(1) + global_auxvar_dn%sat(1))*auxvar_dn%dden_dp)
-    ddifff_dt_dn = diffdp*0.25D0*(global_auxvar_up%sat(1) + global_auxvar_dn%sat(1))*auxvar_dn%dden_dt
+  ddifff_dp_dn = diffdp*0.25D0*(auxvar_dn%dsat_dp*(global_auxvar_up%den(1) + global_auxvar_dn%den(1))+ &
+                (global_auxvar_up%sat(1) + global_auxvar_dn%sat(1))*auxvar_dn%dden_dp)
+  ddifff_dt_dn = diffdp*0.25D0*(global_auxvar_up%sat(1) + global_auxvar_dn%sat(1))*auxvar_dn%dden_dt
 
-    if (option%use_th_freezing) then
-       ! Added by Satish Karra, updated 11/11/11
-       satg_up = auxvar_up%sat_gas
-       satg_dn = auxvar_dn%sat_gas
-       if ((satg_up > eps) .and. (satg_dn > eps)) then
-          p_g = option%reference_pressure  ! set to reference pressure
-          deng_up = p_g/(IDEAL_GAS_CONST*(global_auxvar_up%temp(1) + 273.15d0))*1.d-3
-          deng_dn = p_g/(IDEAL_GAS_CONST*(global_auxvar_dn%temp(1) + 273.15d0))*1.d-3
-    
-          Diffg_ref = 2.13D-5 ! Reference diffusivity, need to read from input file
-          p_ref = 1.01325d5   ! in Pa
-          T_ref = 25.d0       ! in deg C
-    
-          Diffg_up = Diffg_ref*(p_ref/p_g)*((global_auxvar_up%temp(1) + 273.15d0)/ &
-               (T_ref + 273.15d0))**(1.8)  
-          Diffg_dn = Diffg_ref*(p_ref/p_g)*((global_auxvar_dn%temp(1) + 273.15d0)/ &
-               (T_ref + 273.15d0))**(1.8)    
+  if (option%use_th_freezing) then
+    ! Added by Satish Karra, updated 11/11/11
+    satg_up = auxvar_up%sat_gas
+    satg_dn = auxvar_dn%sat_gas
+    if ((satg_up > eps) .and. (satg_dn > eps)) then
+      p_g = option%reference_pressure  ! set to reference pressure
+      deng_up = p_g/(IDEAL_GAS_CONST*(global_auxvar_up%temp(1) + 273.15d0))*1.d-3
+      deng_dn = p_g/(IDEAL_GAS_CONST*(global_auxvar_dn%temp(1) + 273.15d0))*1.d-3
 
-             
-          Ddiffgas_up = por_up*tor_up*satg_up*deng_up*Diffg_up
-          Ddiffgas_dn = por_dn*tor_dn*satg_dn*deng_dn*Diffg_dn
-          call EOSWaterSaturationPressure(global_auxvar_up%temp(1), psat_up, dpsat_dt_up, ierr)
-          call EOSWaterSaturationPressure(global_auxvar_dn%temp(1), psat_dn, dpsat_dt_dn, ierr)
-  
-          ! vapor pressure lowering due to capillary pressure
-          fv_up = exp(-auxvar_up%pc/(global_auxvar_up%den(1)* &
-               R_gas_constant*(global_auxvar_up%temp(1) + 273.15d0)))
-          fv_dn = exp(-auxvar_dn%pc/(global_auxvar_dn%den(1)* &
-               R_gas_constant*(global_auxvar_dn%temp(1) + 273.15d0)))
-  
-          molg_up = psat_up*fv_up/p_g
-          molg_dn = psat_dn*fv_dn/p_g
-  
-          dfv_dt_up = fv_up*(auxvar_up%pc/R_gas_constant/(global_auxvar_up%den(1)* &
-               (global_auxvar_up%temp(1) + 273.15d0))**2)* &
-               (auxvar_up%dden_dt*(global_auxvar_up%temp(1) + 273.15d0) &
-               + global_auxvar_up%den(1))
-          dfv_dt_dn = fv_dn*(auxvar_dn%pc/R_gas_constant/(global_auxvar_dn%den(1)* &
-               (global_auxvar_dn%temp(1) + 273.15d0))**2)* &
-               (auxvar_dn%dden_dt*(global_auxvar_dn%temp(1) + 273.15d0) &
-               + global_auxvar_dn%den(1))
-  
-          dfv_dp_up = fv_up*(auxvar_up%pc/R_gas_constant/(global_auxvar_up%den(1))**2/ &
-               (global_auxvar_up%temp(1) + 273.15d0)*auxvar_up%dden_dp &
-               + 1.d0/R_gas_constant/global_auxvar_up%den(1)/ &
-               (global_auxvar_up%temp(1) + 273.15d0)) 
-          dfv_dp_dn = fv_dn*(auxvar_dn%pc/R_gas_constant/(global_auxvar_dn%den(1))**2/ &
-               (global_auxvar_dn%temp(1) + 273.15d0)*auxvar_dn%dden_dp &
-               + 1.d0/R_gas_constant/global_auxvar_dn%den(1)/ &
-               (global_auxvar_dn%temp(1) + 273.15d0))             
+      Diffg_ref = 2.13D-5 ! Reference diffusivity, need to read from input file
+      p_ref = 1.01325d5   ! in Pa
+      T_ref = 25.d0       ! in deg C
 
-          dmolg_dt_up = (1/p_g)*dpsat_dt_up*fv_up + psat_up/p_g*dfv_dt_up
-          dmolg_dt_dn = (1/p_g)*dpsat_dt_dn*fv_dn + psat_dn/p_g*dfv_dt_dn
-  
-          dmolg_dp_up = psat_up/p_g*dfv_dp_up
-          dmolg_dp_dn = psat_dn/p_g*dfv_dp_dn
-  
-          ddeng_dt_up = - p_g/(IDEAL_GAS_CONST*(global_auxvar_up%temp(1) + &
-               273.15d0)**2)*1.d-3
-          ddeng_dt_dn = - p_g/(IDEAL_GAS_CONST*(global_auxvar_dn%temp(1) + &
-               273.15d0)**2)*1.d-3
-  
-          dDiffg_dt_up = 1.8*Diffg_up/(global_auxvar_up%temp(1) + 273.15d0)
-          dDiffg_dt_dn = 1.8*Diffg_dn/(global_auxvar_dn%temp(1) + 273.15d0)
-  
-          dDiffg_dp_up = 0.d0
-          dDiffg_dp_dn = 0.d0
-  
-          dsatg_dp_up = auxvar_up%dsat_gas_dp
-          dsatg_dp_dn = auxvar_dn%dsat_gas_dp
-     
-          if (molg_up > molg_dn) then 
-             upweight = 0.d0
-          else 
-             upweight = 1.d0
-          endif
+      Diffg_up = Diffg_ref*(p_ref/p_g)*((global_auxvar_up%temp(1) + 273.15d0)/ &
+           (T_ref + 273.15d0))**(1.8)  
+      Diffg_dn = Diffg_ref*(p_ref/p_g)*((global_auxvar_dn%temp(1) + 273.15d0)/ &
+           (T_ref + 273.15d0))**(1.8)
 
-          Ddiffgas_avg = upweight*Ddiffgas_up + (1.D0 - upweight)*Ddiffgas_dn 
+      Ddiffgas_up = por_up*tor_up*satg_up*deng_up*Diffg_up
+      Ddiffgas_dn = por_dn*tor_dn*satg_dn*deng_dn*Diffg_dn
+      call EOSWaterSaturationPressure(global_auxvar_up%temp(1), psat_up, dpsat_dt_up, ierr)
+      call EOSWaterSaturationPressure(global_auxvar_dn%temp(1), psat_dn, dpsat_dt_dn, ierr)
+
+      ! vapor pressure lowering due to capillary pressure
+      fv_up = exp(-auxvar_up%pc/(global_auxvar_up%den(1)* &
+           R_gas_constant*(global_auxvar_up%temp(1) + 273.15d0)))
+      fv_dn = exp(-auxvar_dn%pc/(global_auxvar_dn%den(1)* &
+           R_gas_constant*(global_auxvar_dn%temp(1) + 273.15d0)))
+
+      molg_up = psat_up*fv_up/p_g
+      molg_dn = psat_dn*fv_dn/p_g
+
+      dfv_dt_up = fv_up*(auxvar_up%pc/R_gas_constant/(global_auxvar_up%den(1)* &
+           (global_auxvar_up%temp(1) + 273.15d0))**2)* &
+           (auxvar_up%dden_dt*(global_auxvar_up%temp(1) + 273.15d0) &
+           + global_auxvar_up%den(1))
+      dfv_dt_dn = fv_dn*(auxvar_dn%pc/R_gas_constant/(global_auxvar_dn%den(1)* &
+           (global_auxvar_dn%temp(1) + 273.15d0))**2)* &
+           (auxvar_dn%dden_dt*(global_auxvar_dn%temp(1) + 273.15d0) &
+           + global_auxvar_dn%den(1))
+
+      dfv_dp_up = fv_up*(auxvar_up%pc/R_gas_constant/(global_auxvar_up%den(1))**2/ &
+           (global_auxvar_up%temp(1) + 273.15d0)*auxvar_up%dden_dp &
+           + 1.d0/R_gas_constant/global_auxvar_up%den(1)/ &
+           (global_auxvar_up%temp(1) + 273.15d0))
+      dfv_dp_dn = fv_dn*(auxvar_dn%pc/R_gas_constant/(global_auxvar_dn%den(1))**2/ &
+           (global_auxvar_dn%temp(1) + 273.15d0)*auxvar_dn%dden_dp &
+           + 1.d0/R_gas_constant/global_auxvar_dn%den(1)/ &
+           (global_auxvar_dn%temp(1) + 273.15d0))
+
+      dmolg_dt_up = (1/p_g)*dpsat_dt_up*fv_up + psat_up/p_g*dfv_dt_up
+      dmolg_dt_dn = (1/p_g)*dpsat_dt_dn*fv_dn + psat_dn/p_g*dfv_dt_dn
+
+      dmolg_dp_up = psat_up/p_g*dfv_dp_up
+      dmolg_dp_dn = psat_dn/p_g*dfv_dp_dn
+
+      ddeng_dt_up = - p_g/(IDEAL_GAS_CONST*(global_auxvar_up%temp(1) + &
+           273.15d0)**2)*1.d-3
+      ddeng_dt_dn = - p_g/(IDEAL_GAS_CONST*(global_auxvar_dn%temp(1) + &
+           273.15d0)**2)*1.d-3
+
+      dDiffg_dt_up = 1.8*Diffg_up/(global_auxvar_up%temp(1) + 273.15d0)
+      dDiffg_dt_dn = 1.8*Diffg_dn/(global_auxvar_dn%temp(1) + 273.15d0)
+
+      dDiffg_dp_up = 0.d0
+      dDiffg_dp_dn = 0.d0
+
+      dsatg_dp_up = auxvar_up%dsat_gas_dp
+      dsatg_dp_dn = auxvar_dn%dsat_gas_dp
+ 
+      if (molg_up > molg_dn) then
+         upweight = 0.d0
+      else
+         upweight = 1.d0
+      endif
+
+      Ddiffgas_avg = upweight*Ddiffgas_up + (1.D0 - upweight)*Ddiffgas_dn
 
 #ifndef NO_VAPOR_DIFFUION  
-          Jup(1,1) = Jup(1,1) + (upweight*por_up*tor_up*deng_up*(Diffg_up*dsatg_dp_up &
-               + satg_up*dDiffg_dp_up)* &
-               (molg_up - molg_dn) + Ddiffgas_up*dmolg_dp_up)/ &
-               (dd_up + dd_dn)*area 
+      Jup(1,1) = Jup(1,1) + (upweight*por_up*tor_up*deng_up*(Diffg_up*dsatg_dp_up &
+           + satg_up*dDiffg_dp_up)* &
+           (molg_up - molg_dn) + Ddiffgas_up*dmolg_dp_up)/ &
+           (dd_up + dd_dn)*area
 
-          Jup(1,2) = Jup(1,2) + (upweight*por_up*tor_up*satg_up*(Diffg_up* &
-               ddeng_dt_up + deng_up*dDiffg_dt_up)*(molg_up - molg_dn) &
-               + Ddiffgas_avg*dmolg_dt_up)/(dd_up + dd_dn)*area
-  
-          Jdn(1,1) = Jdn(1,1) + ((1.D0 - upweight)*por_dn*tor_dn*deng_dn* &
-               (Diffg_dn*dsatg_dp_dn + satg_dn*dDiffg_dp_dn)* &
-               (molg_up - molg_dn) + Ddiffgas_avg*(-dmolg_dp_dn))/ &
-               (dd_up + dd_dn)*area
-              
-          Jdn(1,2) = Jdn(1,2) + ((1.D0 - upweight)*por_dn*tor_dn*satg_dn*(Diffg_dn* &
-               ddeng_dt_dn + deng_dn*dDiffg_dp_dn)*(molg_up - molg_dn) &
-               + Ddiffgas_avg*(-dmolg_dt_dn))/(dd_up + dd_dn)*area
+      Jup(1,2) = Jup(1,2) + (upweight*por_up*tor_up*satg_up*(Diffg_up* &
+           ddeng_dt_up + deng_up*dDiffg_dt_up)*(molg_up - molg_dn) &
+           + Ddiffgas_avg*dmolg_dt_up)/(dd_up + dd_dn)*area
+
+      Jdn(1,1) = Jdn(1,1) + ((1.D0 - upweight)*por_dn*tor_dn*deng_dn* &
+           (Diffg_dn*dsatg_dp_dn + satg_dn*dDiffg_dp_dn)* &
+           (molg_up - molg_dn) + Ddiffgas_avg*(-dmolg_dp_dn))/ &
+           (dd_up + dd_dn)*area
+          
+      Jdn(1,2) = Jdn(1,2) + ((1.D0 - upweight)*por_dn*tor_dn*satg_dn*(Diffg_dn* &
+           ddeng_dt_dn + deng_dn*dDiffg_dp_dn)*(molg_up - molg_dn) &
+           + Ddiffgas_avg*(-dmolg_dt_dn))/(dd_up + dd_dn)*area
 #endif
-       endif
+   endif
 
+   ddifff_dt_up = diffdp*0.25d0*(auxvar_up%dsat_dt)*&
+        (global_auxvar_up%den(1) + global_auxvar_dn%den(1))
+   ddifff_dt_dn = diffdp*0.25d0*(auxvar_dn%dsat_dt)*&
+        (global_auxvar_up%den(1) + global_auxvar_dn%den(1))
 
-       ddifff_dt_up = diffdp*0.25d0*(auxvar_up%dsat_dt)*&
-            (global_auxvar_up%den(1) + global_auxvar_dn%den(1))
-       ddifff_dt_dn = diffdp*0.25d0*(auxvar_dn%dsat_dt)*&
-            (global_auxvar_up%den(1) + global_auxvar_dn%den(1))
-
-!  Jup(2,2) = Jup(2,2) + ddifff_dt_up*0.5d0*(Diff_up + Diff_dn)* &
-!                         (auxvar_up%xmol(2) - auxvar_dn%xmol(2))
-!  Jdn(2,2) = Jdn(2,2) + ddifff_dt_dn*0.5d0*(Diff_up + Diff_dn)* &
-!                         (auxvar_up%xmol(2) - auxvar_dn%xmol(2))
-    endif ! if(use_th_freezing)
+  !  Jup(2,2) = Jup(2,2) + ddifff_dt_up*0.5d0*(Diff_up + Diff_dn)* &
+  !                         (auxvar_up%xmol(2) - auxvar_dn%xmol(2))
+  !  Jdn(2,2) = Jdn(2,2) + ddifff_dt_dn*0.5d0*(Diff_up + Diff_dn)* &
+  !                         (auxvar_up%xmol(2) - auxvar_dn%xmol(2))
+  endif ! if(use_th_freezing)
 
         
-! conduction term  
+  ! conduction term
   Ke_up = (global_auxvar_up%sat(1) + epsilon)**(alpha_up)   !unfrozen soil Kersten number
   Ke_dn = (global_auxvar_dn%sat(1) + epsilon)**(alpha_dn)
   
@@ -2090,65 +2088,65 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
   
   if (option%use_th_freezing) then
             
-     Ke_fr_up = (auxvar_up%sat_ice + epsilon)**(alpha_fr_up)
-     Ke_fr_dn = (auxvar_dn%sat_ice + epsilon)**(alpha_fr_dn)
+    Ke_fr_up = (auxvar_up%sat_ice + epsilon)**(alpha_fr_up)
+    Ke_fr_dn = (auxvar_dn%sat_ice + epsilon)**(alpha_fr_dn)
 
-     Dk_eff_up = Dk_up*Ke_up + Dk_ice_up*Ke_fr_up + &
-          (1.d0 - Ke_up - Ke_fr_up)*Dk_dry_up
-     Dk_eff_dn = Dk_dn*Ke_dn + Dk_ice_dn*Ke_fr_dn + &
-          (1.d0 - Ke_dn - Ke_fr_dn)*Dk_dry_dn
+    Dk_eff_up = Dk_up*Ke_up + Dk_ice_up*Ke_fr_up + &
+        (1.d0 - Ke_up - Ke_fr_up)*Dk_dry_up
+    Dk_eff_dn = Dk_dn*Ke_dn + Dk_ice_dn*Ke_fr_dn + &
+        (1.d0 - Ke_dn - Ke_fr_dn)*Dk_dry_dn
 
-     dKe_dt_up = alpha_up*(global_auxvar_up%sat(1) + epsilon)**(alpha_up - 1.d0)* &
-          auxvar_up%dsat_dt
-     dKe_dt_dn = alpha_dn*(global_auxvar_dn%sat(1) + epsilon)**(alpha_dn - 1.d0)* &
-          auxvar_dn%dsat_dt
+    dKe_dt_up = alpha_up*(global_auxvar_up%sat(1) + epsilon)**(alpha_up - 1.d0)* &
+        auxvar_up%dsat_dt
+    dKe_dt_dn = alpha_dn*(global_auxvar_dn%sat(1) + epsilon)**(alpha_dn - 1.d0)* &
+        auxvar_dn%dsat_dt
+
+    dKe_fr_dt_up = alpha_fr_up*(global_auxvar_up%sat(1) + epsilon)** &
+        (alpha_fr_up - 1.d0)*auxvar_up%dsat_dt
+    dKe_fr_dt_dn = alpha_fr_dn*(global_auxvar_dn%sat(1) + epsilon)** &
+        (alpha_fr_dn - 1.d0)*auxvar_dn%dsat_dt
                
-     dKe_fr_dt_up = alpha_fr_up*(global_auxvar_up%sat(1) + epsilon)** &
-          (alpha_fr_up - 1.d0)*auxvar_up%dsat_dt
-     dKe_fr_dt_dn = alpha_fr_dn*(global_auxvar_dn%sat(1) + epsilon)** &
-          (alpha_fr_dn - 1.d0)*auxvar_dn%dsat_dt
-                 
-     dKe_fr_dp_up = alpha_fr_up*(global_auxvar_up%sat(1) + epsilon)** &
-          (alpha_fr_up - 1.d0)*auxvar_up%dsat_dp
-     dKe_fr_dp_dn = alpha_fr_dn*(global_auxvar_dn%sat(1) + epsilon)** &
-          (alpha_fr_dn - 1.d0)*auxvar_dn%dsat_dp
-                 
+    dKe_fr_dp_up = alpha_fr_up*(global_auxvar_up%sat(1) + epsilon)** &
+        (alpha_fr_up - 1.d0)*auxvar_up%dsat_dp
+    dKe_fr_dp_dn = alpha_fr_dn*(global_auxvar_dn%sat(1) + epsilon)** &
+        (alpha_fr_dn - 1.d0)*auxvar_dn%dsat_dp
+
   else 
 
-     Dk_eff_up = Dk_dry_up + (Dk_up - Dk_dry_up)*Ke_up
-     Dk_eff_dn = Dk_dry_dn + (Dk_dn - Dk_dry_dn)*Ke_dn 
-  
-     dKe_dt_up = 0.d0
-     dKe_dt_dn = 0.d0
-       
+    Dk_eff_up = Dk_dry_up + (Dk_up - Dk_dry_up)*Ke_up
+    Dk_eff_dn = Dk_dry_dn + (Dk_dn - Dk_dry_dn)*Ke_dn
+
+    dKe_dt_up = 0.d0
+    dKe_dt_dn = 0.d0
+
   endif
  
   Dk = (Dk_eff_up * Dk_eff_dn) / (dd_dn*Dk_eff_up + dd_up*Dk_eff_dn)
   
   if (option%use_th_freezing) then
 
-     dDk_dt_up = Dk**2/Dk_eff_up**2*dd_up*(Dk_up*dKe_dt_up + &
-          Dk_ice_up*dKe_fr_dt_up + (- dKe_dt_up - dKe_fr_dt_up)* &
-          Dk_dry_up)
-     dDk_dt_dn = Dk**2/Dk_eff_dn**2*dd_dn*(Dk_dn*dKe_dt_dn + &
-          Dk_ice_dn*dKe_fr_dt_dn + (- dKe_dt_dn - dKe_fr_dt_dn)* &
-          Dk_dry_dn)
-              
-     dDk_dp_up = Dk**2/Dk_eff_up**2*dd_up*(Dk_up*dKe_dp_up + &
-          Dk_ice_up*dKe_fr_dp_up + (- dKe_dp_up - dKe_fr_dp_up)* &
-          Dk_dry_up)
-              
-     dDk_dp_dn = Dk**2/Dk_eff_dn**2*dd_dn*(Dk_dn*dKe_dp_dn + &
-          Dk_ice_dn*dKe_fr_dp_dn + (- dKe_dp_dn - dKe_fr_dp_dn)* &
-          Dk_dry_dn)  
+    dDk_dt_up = Dk**2/Dk_eff_up**2*dd_up*(Dk_up*dKe_dt_up + &
+        Dk_ice_up*dKe_fr_dt_up + (- dKe_dt_up - dKe_fr_dt_up)* &
+        Dk_dry_up)
+    dDk_dt_dn = Dk**2/Dk_eff_dn**2*dd_dn*(Dk_dn*dKe_dt_dn + &
+        Dk_ice_dn*dKe_fr_dt_dn + (- dKe_dt_dn - dKe_fr_dt_dn)* &
+        Dk_dry_dn)
+
+    dDk_dp_up = Dk**2/Dk_eff_up**2*dd_up*(Dk_up*dKe_dp_up + &
+        Dk_ice_up*dKe_fr_dp_up + (- dKe_dp_up - dKe_fr_dp_up)* &
+        Dk_dry_up)
+            
+    dDk_dp_dn = Dk**2/Dk_eff_dn**2*dd_dn*(Dk_dn*dKe_dp_dn + &
+        Dk_ice_dn*dKe_fr_dp_dn + (- dKe_dp_dn - dKe_fr_dp_dn)* &
+        Dk_dry_dn)
 
   else
   
-     dDk_dt_up = Dk**2/Dk_eff_up**2*dd_up*(Dk_up - Dk_dry_up)*dKe_dt_up
-     dDk_dt_dn = Dk**2/Dk_eff_dn**2*dd_dn*(Dk_dn - Dk_dry_dn)*dKe_dt_dn
-  
-     dDk_dp_up = Dk**2/Dk_eff_up**2*dd_up*(Dk_up - Dk_dry_up)*dKe_dp_up
-     dDk_dp_dn = Dk**2/Dk_eff_dn**2*dd_dn*(Dk_dn - Dk_dry_dn)*dKe_dp_dn
+    dDk_dt_up = Dk**2/Dk_eff_up**2*dd_up*(Dk_up - Dk_dry_up)*dKe_dt_up
+    dDk_dt_dn = Dk**2/Dk_eff_dn**2*dd_dn*(Dk_dn - Dk_dry_dn)*dKe_dt_dn
+
+    dDk_dp_up = Dk**2/Dk_eff_up**2*dd_up*(Dk_up - Dk_dry_up)*dKe_dp_up
+    dDk_dp_dn = Dk**2/Dk_eff_dn**2*dd_dn*(Dk_dn - Dk_dry_dn)*dKe_dp_dn
 
   endif
     
@@ -2167,8 +2165,8 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
                            area*(global_auxvar_up%temp(1) - & 
                            global_auxvar_dn%temp(1))*dDk_dt_dn 
 
- ! note: Res is the flux contribution, for node up J = J + Jup
- !                                              dn J = J - Jdn  
+  ! note: Res is the flux contribution, for node up J = J + Jup
+  !                                              dn J = J - Jdn  
 
   if (option%numerical_derivatives_flow) then
     allocate(auxvar_pert_up%xmol(option%nflowspec),auxvar_pert_up%diff(option%nflowspec))
@@ -2215,34 +2213,34 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
       x_pert_dn = x_dn
 
       if (option%use_th_freezing) then
-         if (ideriv == 1) then
-            if (x_pert_up(ideriv) < option%reference_pressure) then
-               pert_up = - pert_up
-            endif
-            x_pert_up(ideriv) = x_pert_up(ideriv) + pert_up
-            
-            if (x_pert_dn(ideriv) < option%reference_pressure) then
-               pert_dn = - pert_dn
-            endif
-            x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
-         endif
-         
-         if (ideriv == 2) then
-            if (x_pert_up(ideriv) < 0.d0) then
-               pert_up = - 1.d-5
-            else
-               pert_up = 1.d-5
-            endif
-            x_pert_up(ideriv) = x_pert_up(ideriv) + pert_up
-        
-            if (x_pert_dn(ideriv) < 0.d0) then
-               pert_dn = - 1.d-5
-            else
-               pert_dn = 1.d-5
-            endif
-            x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
-         endif
-      
+        if (ideriv == 1) then
+          if (x_pert_up(ideriv) < option%reference_pressure) then
+            pert_up = - pert_up
+          endif
+          x_pert_up(ideriv) = x_pert_up(ideriv) + pert_up
+          
+          if (x_pert_dn(ideriv) < option%reference_pressure) then
+            pert_dn = - pert_dn
+          endif
+          x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
+        endif
+
+        if (ideriv == 2) then
+          if (x_pert_up(ideriv) < 0.d0) then
+            pert_up = - 1.d-5
+          else
+            pert_up = 1.d-5
+          endif
+          x_pert_up(ideriv) = x_pert_up(ideriv) + pert_up
+
+          if (x_pert_dn(ideriv) < 0.d0) then
+            pert_dn = - 1.d-5
+          else
+            pert_dn = 1.d-5
+          endif
+          x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
+        endif
+
       else
          x_pert_up(ideriv) = x_pert_up(ideriv) + pert_up
          x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
@@ -2250,23 +2248,23 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
       endif
 
       if (option%use_th_freezing) then
-         call THAuxVarComputeFreezing(x_pert_up,auxvar_pert_up, &
-              global_auxvar_pert_up, material_auxvar_pert_up, &
-              iphase,sat_func_up, &
-              option)
-         call THAuxVarComputeFreezing(x_pert_dn,auxvar_pert_dn, &
-              global_auxvar_pert_dn, material_auxvar_pert_up, &
-              iphase,sat_func_dn, &
-              option)
+        call THAuxVarComputeFreezing(x_pert_up,auxvar_pert_up, &
+             global_auxvar_pert_up, material_auxvar_pert_up, &
+             iphase,sat_func_up, &
+             option)
+        call THAuxVarComputeFreezing(x_pert_dn,auxvar_pert_dn, &
+             global_auxvar_pert_dn, material_auxvar_pert_up, &
+             iphase,sat_func_dn, &
+             option)
       else
-         call THAuxVarComputeNoFreezing(x_pert_up,auxvar_pert_up, &
-              global_auxvar_pert_up, material_auxvar_pert_up, &
-              iphase,sat_func_up, &
-              option)
-         call THAuxVarComputeNoFreezing(x_pert_dn,auxvar_pert_dn, &
-              global_auxvar_pert_dn,material_auxvar_pert_dn, &
-              iphase,sat_func_dn, &
-              option)
+        call THAuxVarComputeNoFreezing(x_pert_up,auxvar_pert_up, &
+             global_auxvar_pert_up, material_auxvar_pert_up, &
+             iphase,sat_func_up, &
+             option)
+        call THAuxVarComputeNoFreezing(x_pert_dn,auxvar_pert_dn, &
+             global_auxvar_pert_dn,material_auxvar_pert_dn, &
+             iphase,sat_func_dn, &
+             option)
       endif
 
       call THFlux(auxvar_pert_up,global_auxvar_pert_up, &
@@ -2401,7 +2399,7 @@ subroutine THFlux(auxvar_up,global_auxvar_up, &
   fluxe = 0.D0
   v_darcy = 0.D0  
 
-! Flow term
+  ! Flow term
   if (global_auxvar_up%sat(1) > sir_up .or. global_auxvar_dn%sat(1) > sir_dn) then
     if (global_auxvar_up%sat(1) < eps) then 
       upweight=0.d0
@@ -2415,12 +2413,12 @@ subroutine THFlux(auxvar_up,global_auxvar_up, &
               * dist_gravity
 
     if (option%ice_model /= DALL_AMICO) then
-    dphi = global_auxvar_up%pres(1) - global_auxvar_dn%pres(1) + gravity
+      dphi = global_auxvar_up%pres(1) - global_auxvar_dn%pres(1) + gravity
     else
       dphi = auxvar_up%pres_fh2o - auxvar_dn%pres_fh2o + gravity
     endif
 
-!   note uxmol only contains one component xmol
+    !   note uxmol only contains one component xmol
     if (dphi >= 0.D0) then
       ukvr = auxvar_up%kvr
       uh = auxvar_up%h
@@ -2450,70 +2448,70 @@ subroutine THFlux(auxvar_up,global_auxvar_up, &
 
 
   if (option%use_th_freezing) then
-     ! Added by Satish Karra, 10/24/11
-     satg_up = auxvar_up%sat_gas
-     satg_dn = auxvar_dn%sat_gas
-     if ((satg_up > eps) .and. (satg_dn > eps)) then
-        p_g = option%reference_pressure ! set to reference pressure
-        deng_up = p_g/(IDEAL_GAS_CONST*(global_auxvar_up%temp(1) + 273.15d0))*1.d-3
-        deng_dn = p_g/(IDEAL_GAS_CONST*(global_auxvar_dn%temp(1) + 273.15d0))*1.d-3
-    
-        Diffg_ref = 2.13D-5 ! Reference diffusivity, need to read from input file
-        p_ref = 1.01325d5 ! in Pa
-        T_ref = 25.d0 ! in deg C
-    
-        Diffg_up = Diffg_ref*(p_ref/p_g)*((global_auxvar_up%temp(1) + 273.15d0)/ &
-             (T_ref + 273.15d0))**(1.8)  
-        Diffg_dn = Diffg_ref*(p_ref/p_g)*((global_auxvar_dn%temp(1) + 273.15d0)/ &
-             (T_ref + 273.15d0))**(1.8)
-             
-        Ddiffgas_up = por_up*tor_up*satg_up*deng_up*Diffg_up
-        Ddiffgas_dn = por_dn*tor_dn*satg_dn*deng_dn*Diffg_dn
-        call EOSWaterSaturationPressure(global_auxvar_up%temp(1), psat_up, ierr)
-        call EOSWaterSaturationPressure(global_auxvar_dn%temp(1), psat_dn, ierr)
-  
-        ! vapor pressure lowering due to capillary pressure
-        fv_up = exp(-auxvar_up%pc/(global_auxvar_up%den(1)* &
-             R_gas_constant*(global_auxvar_up%temp(1) + 273.15d0)))
-        fv_dn = exp(-auxvar_dn%pc/(global_auxvar_dn%den(1)* &
-             R_gas_constant*(global_auxvar_dn%temp(1) + 273.15d0)))
-  
-        molg_up = psat_up*fv_up/p_g
-        molg_dn = psat_dn*fv_dn/p_g
-          
-        if (molg_up > molg_dn) then 
-           upweight = 0.d0
-        else 
-           upweight = 1.d0
-        endif
-    
-        Ddiffgas_avg = upweight*Ddiffgas_up + (1.D0 - upweight)*Ddiffgas_dn 
+    ! Added by Satish Karra, 10/24/11
+    satg_up = auxvar_up%sat_gas
+    satg_dn = auxvar_dn%sat_gas
+    if ((satg_up > eps) .and. (satg_dn > eps)) then
+      p_g = option%reference_pressure ! set to reference pressure
+      deng_up = p_g/(IDEAL_GAS_CONST*(global_auxvar_up%temp(1) + 273.15d0))*1.d-3
+      deng_dn = p_g/(IDEAL_GAS_CONST*(global_auxvar_dn%temp(1) + 273.15d0))*1.d-3
+
+      Diffg_ref = 2.13D-5 ! Reference diffusivity, need to read from input file
+      p_ref = 1.01325d5 ! in Pa
+      T_ref = 25.d0 ! in deg C
+
+      Diffg_up = Diffg_ref*(p_ref/p_g)*((global_auxvar_up%temp(1) + 273.15d0)/ &
+           (T_ref + 273.15d0))**(1.8)  
+      Diffg_dn = Diffg_ref*(p_ref/p_g)*((global_auxvar_dn%temp(1) + 273.15d0)/ &
+           (T_ref + 273.15d0))**(1.8)
+           
+      Ddiffgas_up = por_up*tor_up*satg_up*deng_up*Diffg_up
+      Ddiffgas_dn = por_dn*tor_dn*satg_dn*deng_dn*Diffg_dn
+      call EOSWaterSaturationPressure(global_auxvar_up%temp(1), psat_up, ierr)
+      call EOSWaterSaturationPressure(global_auxvar_dn%temp(1), psat_dn, ierr)
+
+      ! vapor pressure lowering due to capillary pressure
+      fv_up = exp(-auxvar_up%pc/(global_auxvar_up%den(1)* &
+           R_gas_constant*(global_auxvar_up%temp(1) + 273.15d0)))
+      fv_dn = exp(-auxvar_dn%pc/(global_auxvar_dn%den(1)* &
+           R_gas_constant*(global_auxvar_dn%temp(1) + 273.15d0)))
+
+      molg_up = psat_up*fv_up/p_g
+      molg_dn = psat_dn*fv_dn/p_g
+        
+      if (molg_up > molg_dn) then 
+        upweight = 0.d0
+      else 
+        upweight = 1.d0
+      endif
+
+      Ddiffgas_avg = upweight*Ddiffgas_up + (1.D0 - upweight)*Ddiffgas_dn 
 #ifndef NO_VAPOR_DIFFUSION
-        fluxm(1) = fluxm(1) + Ddiffgas_avg*area*(molg_up - molg_dn)/ &
-             (dd_up + dd_dn)
+      fluxm(1) = fluxm(1) + Ddiffgas_avg*area*(molg_up - molg_dn)/ &
+           (dd_up + dd_dn)
 #endif
 
-     endif
+    endif
 
   endif ! if (use_th_freezing)
 
-! conduction term  
+  ! conduction term  
   Ke_up = (global_auxvar_up%sat(1) + epsilon)**(alpha_up)   !unfrozen soil Kersten number
   Ke_dn = (global_auxvar_dn%sat(1) + epsilon)**(alpha_dn)
      
   if (option%use_th_freezing) then
 
-     Ke_fr_up = (auxvar_up%sat_ice + epsilon)**(alpha_fr_up)
-     Ke_fr_dn = (auxvar_dn%sat_ice + epsilon)**(alpha_fr_dn)
+    Ke_fr_up = (auxvar_up%sat_ice + epsilon)**(alpha_fr_up)
+    Ke_fr_dn = (auxvar_dn%sat_ice + epsilon)**(alpha_fr_dn)
 
-     Dk_eff_up = Dk_up*Ke_up + Dk_ice_up*Ke_fr_up + &
-          (1.d0 - Ke_up - Ke_fr_up)*Dk_dry_up
-     Dk_eff_dn = Dk_dn*Ke_dn + Dk_ice_dn*Ke_fr_dn + &
-          (1.d0 - Ke_dn - Ke_fr_dn)*Dk_dry_dn
+    Dk_eff_up = Dk_up*Ke_up + Dk_ice_up*Ke_fr_up + &
+        (1.d0 - Ke_up - Ke_fr_up)*Dk_dry_up
+    Dk_eff_dn = Dk_dn*Ke_dn + Dk_ice_dn*Ke_fr_dn + &
+        (1.d0 - Ke_dn - Ke_fr_dn)*Dk_dry_dn
   else
 
-     Dk_eff_up = Dk_dry_up + (Dk_up - Dk_dry_up)*Ke_up
-     Dk_eff_dn = Dk_dry_dn + (Dk_dn - Dk_dry_dn)*Ke_dn      
+    Dk_eff_up = Dk_dry_up + (Dk_up - Dk_dry_up)*Ke_up
+    Dk_eff_dn = Dk_dry_dn + (Dk_dn - Dk_dry_dn)*Ke_dn
 
   endif
  
@@ -2684,9 +2682,9 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
         dgravity_dden_dn = (1.d0-upweight)*auxvar_dn%avgmw*dist_gravity
 
         if (option%ice_model /= DALL_AMICO) then
-        dphi = global_auxvar_up%pres(1) - global_auxvar_dn%pres(1) + gravity
-        dphi_dp_dn = -1.d0 + dgravity_dden_dn*auxvar_dn%dden_dp
-        dphi_dt_dn = dgravity_dden_dn*auxvar_dn%dden_dt
+          dphi = global_auxvar_up%pres(1) - global_auxvar_dn%pres(1) + gravity
+          dphi_dp_dn = -1.d0 + dgravity_dden_dn*auxvar_dn%dden_dp
+          dphi_dt_dn = dgravity_dden_dn*auxvar_dn%dden_dt
         else
           dphi = auxvar_up%pres_fh2o - auxvar_dn%pres_fh2o + gravity
           dphi_dp_dn = -auxvar_dn%dpres_fh2o_dp + dgravity_dden_dn*auxvar_dn%dden_dp
@@ -2851,11 +2849,11 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
             Diffg_ref = 2.13D-5 ! Reference diffusivity, need to read from input file
             p_ref = 1.01325d5 ! in Pa
             T_ref = 25.d0 ! in deg C 
-        
+
             Diffg_up = Diffg_ref*(p_ref/p_g)*((global_auxvar_up%temp(1) + &
                  273.15d0)/(T_ref + 273.15d0))**(1.8)  
             Diffg_dn = Diffg_ref*(p_ref/p_g)*((global_auxvar_dn%temp(1) + &
-                 273.15d0)/(T_ref + 273.15d0))**(1.8)  
+                 273.15d0)/(T_ref + 273.15d0))**(1.8)
             Ddiffgas_up = satg_up*deng_up*Diffg_up
             Ddiffgas_dn = satg_dn*deng_dn*Diffg_dn
             call EOSWaterSaturationPressure(global_auxvar_up%temp(1), psat_up, ierr)
@@ -3522,7 +3520,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   enddo
 
 
-! ================== Secondary continuum heat source terms =====================
+  ! ================== Secondary continuum heat source terms =====================
   if (option%use_mc) then
   ! Secondary continuum contribution (Added by SK 06/02/2012)
   ! only one secondary continuum for now for each primary continuum node
@@ -3546,9 +3544,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
       r_p(iend) = r_p(iend) - res_sec_heat*material_auxvars(local_id)%volume
     enddo   
   endif
-
-
-! ============== end secondary continuum heat source ===========================
+  ! ============== end secondary continuum heat source ===========================
 
   ! Source/sink terms -------------------------------------
   source_sink => patch%source_sinks%first 
@@ -4256,19 +4252,19 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
       icap_dn = int(icap_loc_p(ghosted_id))
 	  
       call THBCFluxDerivative(boundary_condition%flow_condition%itype, &
-                                boundary_condition%flow_aux_real_var(:,iconn), &
-                                auxvars_bc(sum_connection), &
-                                global_auxvars_bc(sum_connection), &
-                                auxvars(ghosted_id), &
-                                global_auxvars(ghosted_id), &
-                                material_auxvars(ghosted_id), &
-                                TH_parameter%sir(1,icap_dn), &
-                                D_dn, &
-                                cur_connection_set%area(iconn), &
-                                cur_connection_set%dist(-1:3,iconn), &
-                                option, &
-                                realization%saturation_function_array(icap_dn)%ptr,&
-                                Jdn)
+                              boundary_condition%flow_aux_real_var(:,iconn), &
+                              auxvars_bc(sum_connection), &
+                              global_auxvars_bc(sum_connection), &
+                              auxvars(ghosted_id), &
+                              global_auxvars(ghosted_id), &
+                              material_auxvars(ghosted_id), &
+                              TH_parameter%sir(1,icap_dn), &
+                              D_dn, &
+                              cur_connection_set%area(iconn), &
+                              cur_connection_set%dist(-1:3,iconn), &
+                              option, &
+                              realization%saturation_function_array(icap_dn)%ptr,&
+                              Jdn)
     Jdn = -Jdn
   
       !  scale by the volume of the cell
