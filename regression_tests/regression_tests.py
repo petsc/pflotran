@@ -618,7 +618,7 @@ class RegressionTest(object):
 
         # check if the gold file exists already
 #        if os.path.isfile(gold_name):
-#            raise Exception("ERROR: test '{0}' was classified as new, "
+#            raise RuntimeError("ERROR: test '{0}' was classified as new, "
 #                            "but a gold file already "
 #                            "exists!".format(self.name()))
 
@@ -684,10 +684,10 @@ class RegressionTest(object):
         Compare the fields of the current section.
         """
         if gold_section["name"] != current_section["name"]:
-            raise Exception("ERROR: an internal error occured. "
-                            "compare_sections receive different sections. "
-                            "gold = '{0}' current = '{1}'".format(
-                                gold_section["name"], current_section["name"]))
+            raise RuntimeError("ERROR: an internal error occured. "
+                               "compare_sections receive different sections. "
+                               "gold = '{0}' current = '{1}'".format(
+                                   gold_section["name"], current_section["name"]))
         name = gold_section['name']
         data_type = gold_section['type']
         section_status = 0
@@ -772,9 +772,9 @@ class RegressionTest(object):
             previous, current, tol = \
                 self._compare_discrete(name, previous, current)
         else:
-            raise Exception(
+            raise RuntimeError(
                 "WARNING: the data caterogy '{0}' for '{1}' is not a known "
-                  "data category.".format(key, name))
+                "data category.".format(key, name))
 
         tolerance_type = tol[self._TOL_TYPE]
         tolerance = tol[self._TOL_VALUE]
@@ -796,8 +796,8 @@ class RegressionTest(object):
                 delta *= 100.0
         else:
             # should never get here....
-            raise Exception("ERROR: unknown test tolerance_type '{0}' for "
-                            "variable '{1}, {2}.'".format(tolerance_type,
+            raise RuntimeError("ERROR: unknown test tolerance_type '{0}' for "
+                               "variable '{1}, {2}.'".format(tolerance_type,
                                                           name, key))
 
         # base comparison to threshold on previous (gold) because it
@@ -856,8 +856,8 @@ class RegressionTest(object):
             current = float(current)
             tolerance = self._tolerance[self._RESIDUAL]
         else:
-            raise Exception("ERROR: unknown variable '{0}' in solution "
-                            "section '{1}'".format(param, section))
+            raise RuntimeError("ERROR: unknown variable '{0}' in solution "
+                               "section '{1}'".format(param, section))
 
         return previous, current, tolerance
 
@@ -876,13 +876,13 @@ class RegressionTest(object):
             try:
                 previous = int(previous)
             except ValueError:
-                raise Exception(
+                raise RuntimeError(
                     "ERROR: discrete gold value must be an int: '{0}' = {1}.".format(
                         name, previous))
             try:
                 current = int(current)
             except ValueError:
-                raise Exception(
+                raise RuntimeError(
                     "ERROR: discrete current value must be an int: '{0}' = {1}.".format(
                         name, current))
 
@@ -912,10 +912,10 @@ class RegressionTest(object):
                     if len(self._pflotran_args) > index + 1:
                         self._stochastic_realizations = int(self._pflotran_args[index + 1])
                     else:
-                        raise Exception(
+                        raise RuntimeError(
                             "ERROR: num_realizations requires an integer parameter N")
                 else:
-                    raise Exception(
+                    raise RuntimeError(
                         "ERROR : stochastic simulations require a "
                         "num_realizations flag as well. "
                         "test : {0}".format(self.name()))
@@ -978,9 +978,9 @@ class RegressionTest(object):
             # already a correctly formatted list and stored
             criteria = [None]
         else:
-            raise Exception("ERROR : tolerance for data type '{0}' could "
-                            "not be determined from the config file or "
-                            "default values!".format(key))
+            raise RuntimeError("ERROR : tolerance for data type '{0}' could "
+                               "not be determined from the config file or "
+                               "default values!".format(key))
         for i, c in enumerate(criteria):
             if c is not None:
                 self._tolerance[key][i] = c
@@ -1005,16 +1005,16 @@ class RegressionTest(object):
         try:
             value = float(value)
         except Exception:
-            raise Exception("ERROR : Could not convert '{0}' test criteria "
-                            "value '{1}' into a float!".format(key, value))
+            raise RuntimeError("ERROR : Could not convert '{0}' test criteria "
+                               "value '{1}' into a float!".format(key, value))
         criteria[self._TOL_VALUE] = value
 
         criteria_type = test_criteria.split()[1]
         if (criteria_type.lower() != self._PERCENT and
             criteria_type.lower() != self._ABSOLUTE and
                 criteria_type.lower() != self._RELATIVE):
-            raise Exception("ERROR : invalid test criteria string '{0}' "
-                            "for '{1}'".format(criteria_type, key))
+            raise RuntimeError("ERROR : invalid test criteria string '{0}' "
+                               "for '{1}'".format(criteria_type, key))
         criteria[self._TOL_TYPE] = criteria_type
 
         thresholds = {}
@@ -1024,7 +1024,7 @@ class RegressionTest(object):
             try:
                 value = float(value)
             except Exception:
-                raise Exception(
+                raise RuntimeError(
                     "ERROR : Could not convert '{0}' test threshold '{1}'"
                     "value '{2}' into a float!".format(key, name, value))
             thresholds[name] = value
@@ -1033,7 +1033,8 @@ class RegressionTest(object):
         value = thresholds.pop("max_threshold", None)
         criteria[self._TOL_MAX_THRESHOLD] = value
         if len(thresholds) > 0:
-            raise RuntimeError("ERROR: test {0} : unknown criteria threshold: {1}", key, thresholds)
+            raise RuntimeError("ERROR: test {0} : unknown criteria threshold: {1}",
+                               key, thresholds)
         
         return criteria
 
@@ -1324,7 +1325,7 @@ class RegressionTestManager(object):
         All other sections are assumed to be test names.
         """
         if config_file is None:
-            raise Exception("Error, must provide a config filename")
+            raise RuntimeError("Error, must provide a config filename")
         self._config_filename = config_file
         config = config_parser()
         config.read(self._config_filename)
@@ -1409,9 +1410,9 @@ class RegressionTestManager(object):
                   ": '{1}'".format(self._config_filename, suite))
 
         if len(invalid_tests) != 0:
-            raise Exception("ERROR : suites contain unknown tests in "
-                            "configuration file '{0}' : {1}".format(
-                                self._config_filename, invalid_tests))
+            raise RuntimeError("ERROR : suites contain unknown tests in "
+                               "configuration file '{0}' : {1}".format(
+                                   self._config_filename, invalid_tests))
 
     def _validate_user_lists(self, user_suites, user_tests, testlog):
         """
@@ -1466,9 +1467,9 @@ class RegressionTestManager(object):
                                check_performance, testlog)
                 self._tests.append(new_test)
             except Exception as error:
-                raise Exception("ERROR : could not create test '{0}' from "
-                                "config file '{1}'. {2}".format(
-                                    test, self._config_filename, str(error)))
+                raise RuntimeError("ERROR : could not create test '{0}' from "
+                                   "config file '{1}'. {2}".format(
+                                       test, self._config_filename, str(error)))
 
 
 def commandline_options():
@@ -1568,9 +1569,9 @@ def generate_config_file_list(options):
             if os.path.isdir(base_dir):
                 search_for_config_files(base_dir, config_file_list)
             else:
-                raise Exception("ERROR: can not search for config files "
-                                "in '{0}' because it is not a "
-                                "directory.".format(base_dir))
+                raise RuntimeError("ERROR: can not search for config files "
+                                   "in '{0}' because it is not a "
+                                   "directory.".format(base_dir))
 
     # add the explicitly listed config files
     if options.config_files is not None:
@@ -1580,8 +1581,8 @@ def generate_config_file_list(options):
             if os.path.isfile(config_file):
                 config_file_list.append(config_file)
             else:
-                raise Exception("ERROR: specified config file '{0}' is not a "
-                                "file!".format(config_file))
+                raise RuntimeError("ERROR: specified config file '{0}' is not a "
+                                   "file!".format(config_file))
 
     if options.debug:
         print("\nKnown config files:")
@@ -1589,9 +1590,9 @@ def generate_config_file_list(options):
             print("    {0}".format(config_file))
 
     if len(config_file_list) == 0:
-        raise Exception("ERROR: no config files were found. Please specify a "
-                        "config file with '--config' or search for files "
-                        "with '--recursive-search'.")
+        raise RuntimeError("ERROR: no config files were found. Please specify a "
+                           "config file with '--config' or search for files "
+                           "with '--recursive-search'.")
 
     return config_file_list
 
@@ -1627,12 +1628,12 @@ def check_options(options):
     # recursive search for config files
     if options.update and options.recursive_search is not None:
         if not options.advanced:
-            raise Exception("ERROR: can not update gold regression files "
-                            "during a recursive search for config files.")
+            raise RuntimeError("ERROR: can not update gold regression files "
+                               "during a recursive search for config files.")
 
     if options.update and options.new_tests:
-        raise Exception("ERROR: can not create new tests and update gold "
-                        "regression files at the same time.")
+        raise RuntimeError("ERROR: can not create new tests and update gold "
+                           "regression files at the same time.")
 
 
 def check_for_executable(options):
@@ -1648,8 +1649,8 @@ def check_for_executable(options):
         executable = os.path.abspath(options.executable[0])
         # is it a valid file?
         if not os.path.isfile(executable):
-            raise Exception("ERROR: executable is not a valid file: "
-                            "'{0}'".format(executable))
+            raise RuntimeError("ERROR: executable is not a valid file: "
+                               "'{0}'".format(executable))
     return executable
 
 
@@ -1687,7 +1688,7 @@ def check_for_mpiexec(options, testlog):
         os.remove(tempfile)
         # is it a valid file?
 ###       if not os.path.isfile(mpiexec):
-###           raise Exception("ERROR: mpiexec is not a valid file: "
+###           raise RuntimeError("ERROR: mpiexec is not a valid file: "
 ###                           "'{0}'".format(mpiexec))
     else:
         message = ("\n** WARNING ** : mpiexec was not provided on the command line.\n"
