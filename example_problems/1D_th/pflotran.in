@@ -1,6 +1,7 @@
 :Description: 1D test problem for THC mode
 :===================== THC mode ===============================
 MODE TH NO_FREEZING
+RELATIVE_PERMEABILITY_AVERAGE HARMONIC
 
 :===================== Discretization =========================
 GRID

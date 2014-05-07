@@ -1721,6 +1721,7 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
   use Saturation_Function_module             
   use Connection_module
   use EOS_Water_module
+  use Utility_module
   
   implicit none
   
@@ -1929,7 +1930,29 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
       uxmol(1:option%nflowspec) = auxvar_dn%xmol(1:option%nflowspec)
       duxmol_dxmol_dn = 1.d0
     endif      
-   
+
+    call InterfaceApprox(auxvar_up%kvr, auxvar_dn%kvr, &
+                         auxvar_up%dkvr_dp, auxvar_dn%dkvr_dp, &
+                         dphi, &
+                         option%rel_perm_aveg, &
+                         ukvr, dukvr_dp_up, dukvr_dp_dn)
+    call InterfaceApprox(auxvar_up%kvr, auxvar_dn%kvr, &
+                         auxvar_up%dkvr_dt, auxvar_dn%dkvr_dt, &
+                         dphi, &
+                         option%rel_perm_aveg, &
+                         ukvr, dukvr_dt_up, dukvr_dt_dn)
+
+    !call InterfaceApprox(auxvar_up%h, auxvar_dn%h, &
+    !                     auxvar_up%dh_dp, auxvar_dn%dh_dp, &
+    !                     dphi, &
+    !                     option%rel_perm_aveg, &
+    !                     uh, duh_dp_up, duh_dp_dn)
+    !call InterfaceApprox(auxvar_up%h, auxvar_dn%h, &
+    !                     auxvar_up%dh_dt, auxvar_dn%dh_dt, &
+    !                     dphi, &
+    !                     option%rel_perm_aveg, &
+    !                     uh, duh_dt_up, duh_dp_dn)
+
     if (ukvr>floweps) then
       v_darcy= Dq * ukvr * dphi
    
@@ -2338,6 +2361,7 @@ subroutine THFlux(auxvar_up,global_auxvar_up, &
   use Option_module                              
   use Connection_module
   use EOS_Water_module
+  use Utility_module
 
   implicit none
   
@@ -2430,6 +2454,11 @@ subroutine THFlux(auxvar_up,global_auxvar_up, &
       uh = auxvar_dn%h
       uxmol(1:option%nflowspec) = auxvar_dn%xmol(1:option%nflowspec)
     endif
+
+    call InterfaceApprox(auxvar_up%kvr, auxvar_dn%kvr, dphi, &
+                         option%rel_perm_aveg, ukvr)
+    !call InterfaceApprox(auxvar_up%h, auxvar_dn%h, dphi, &
+    !                     option%rel_perm_aveg, uh)
 
     if (ukvr > floweps) then
       v_darcy = Dq * ukvr * dphi
@@ -2554,7 +2583,8 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
   use Saturation_Function_module
   use Connection_module
   use EOS_Water_module
- 
+  use Utility_module
+
   implicit none
   
   PetscInt :: ibndtype(:)
@@ -2622,6 +2652,7 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
   PetscReal :: Diffg_ref, p_ref, T_ref
   PetscErrorCode :: ierr
   PetscReal :: v_darcy_allowable
+  PetscReal :: dum1
   
   fluxm = 0.d0
   fluxe = 0.d0
@@ -2731,7 +2762,18 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
           dukvr_dp_dn = auxvar_dn%dkvr_dp
           dukvr_dt_dn = auxvar_dn%dkvr_dt
         endif      
-     
+
+        call InterfaceApprox(auxvar_up%kvr, auxvar_dn%kvr, &
+                             auxvar_up%dkvr_dp, auxvar_dn%dkvr_dp, &
+                             dphi, &
+                             option%rel_perm_aveg, &
+                             ukvr, dum1, dukvr_dp_dn)
+        call InterfaceApprox(auxvar_up%kvr, auxvar_dn%kvr, &
+                             auxvar_up%dkvr_dt, auxvar_dn%dkvr_dt, &
+                             dphi, &
+                             option%rel_perm_aveg, &
+                             ukvr, dum1, dukvr_dt_dn)
+
         if (ukvr*Dq>floweps) then
           v_darcy = Dq * ukvr * dphi
           q = v_darcy * area
@@ -2798,6 +2840,18 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
     uxmol(:)=auxvar_dn%xmol(1:option%nflowspec)
     duxmol_dxmol_dn = 1.d0
   endif      
+
+  !call InterfaceApprox(auxvar_up%h, auxvar_dn%h, &
+  !                     auxvar_up%dh_dp, auxvar_dn%dh_dp, &
+  !                     dphi, &
+  !                     option%rel_perm_aveg, &
+  !                     uh, dum1, duh_dp_dn)
+  !call InterfaceApprox(auxvar_up%h, auxvar_dn%h, &
+  !                     auxvar_up%dh_dt, auxvar_dn%dh_dt, &
+  !                     dphi, &
+  !                     option%rel_perm_aveg, &
+  !                     uh, dum1, duh_dt_dn)
+
 
   Jdn(1,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)
   Jdn(1,2) = (dq_dt_dn*density_ave+q*dden_ave_dt_dn)
@@ -3050,6 +3104,7 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
   use Connection_module
   use EOS_Water_module
   use Condition_module
+  use Utility_module
  
   implicit none
   
@@ -3155,7 +3210,11 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
         else
           ukvr = auxvar_dn%kvr
         endif      
-     
+        call InterfaceApprox(auxvar_up%kvr, auxvar_dn%kvr, &
+                             dphi, &
+                             option%rel_perm_aveg, &
+                             ukvr)
+
         if (ukvr*Dq>floweps) then
           v_darcy = Dq * ukvr * dphi
 
@@ -3207,7 +3266,8 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
     uh = auxvar_dn%h
     uxmol(:)=auxvar_dn%xmol(1:option%nflowspec)
   endif      
-    
+
+
   do ispec=1, option%nflowspec 
     fluxm(ispec) = fluxm(ispec) + q*density_ave*uxmol(ispec)
   enddo
@@ -3380,7 +3440,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   ! 
   ! Author: ???
   ! Date: 12/10/07
-  ! 
+  !
 
   
 
