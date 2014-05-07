@@ -2579,7 +2579,7 @@ subroutine RealizationDestroyLegacy(realization)
   
   call DiscretizationDestroy(realization%discretization)
   
-  call ReactionDestroy(realization%reaction)
+  call ReactionDestroy(realization%reaction,realization%option)
   
   call TranConstraintDestroy(realization%sec_transport_constraint)
   call MassTransferDestroy(realization%flow_mass_transfer_list)
@@ -2634,7 +2634,7 @@ subroutine RealizationStrip(this)
   
   call UniformVelocityDatasetDestroy(this%uniform_velocity_dataset)
   
-  call ReactionDestroy(this%reaction)
+  call ReactionDestroy(this%reaction,this%option)
   
   call TranConstraintDestroy(this%sec_transport_constraint)
   
