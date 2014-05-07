@@ -181,6 +181,7 @@ module Option_module
     PetscBool :: numerical_derivatives_multi_coupling
     PetscBool :: compute_statistics
     PetscBool :: compute_mass_balance_new
+    PetscBool :: mass_bal_detailed
     PetscBool :: use_touch_options
     PetscBool :: overwrite_restart_transport
     PetscBool :: overwrite_restart_flow
@@ -200,7 +201,7 @@ module Option_module
     PetscBool :: ani_relative_permeability
     PetscBool :: use_upwinding
     PetscBool :: out_of_table
-    
+
     ! Specify secondary continuum solver
     PetscBool :: print_explicit_primal_grid    ! prints primal grid if true
     PetscBool :: print_explicit_dual_grid      ! prints voronoi (dual) grid if true
@@ -364,7 +365,7 @@ subroutine OptionInitAll(option)
   option%use_upwinding = PETSC_TRUE
 
   option%out_of_table = PETSC_FALSE
-  
+
   option%simulation_mode = 'SUBSURFACE'
   option%subsurface_simulation_type = SUBSURFACE_SIM_TYPE
  
@@ -524,6 +525,7 @@ subroutine OptionInitRealization(option)
   option%numerical_derivatives_multi_coupling = PETSC_FALSE
   option%compute_statistics = PETSC_FALSE
   option%compute_mass_balance_new = PETSC_FALSE
+  option%mass_bal_detailed = PETSC_FALSE
   option%store_flowrate = PETSC_FALSE
 #ifdef STORE_FLOWRATES
   option%store_flowrate = PETSC_TRUE
