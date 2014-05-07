@@ -2651,7 +2651,9 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
   PetscErrorCode :: ierr
   PetscReal :: v_darcy_allowable
   PetscReal :: dum1
-  
+  PetscReal :: T_th,fct,hack,dhack_dt
+  T_th  = 2.d0
+
   fluxm = 0.d0
   fluxe = 0.d0
   v_darcy = 0.d0
@@ -2732,17 +2734,32 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
           endif
 
           if (ibndtype(TH_PRESSURE_DOF) == HET_SURF_SEEPAGE_BC .and. option%nsurfflowdof>0) then
-            ! ---------------------------
+            ! -----------------------------
             ! Surface-subsurface simulation
-            ! ---------------------------
-
-            ! If surface-water is frozen, zero out the darcy velocity
-            if (global_auxvar_up%temp(1) < 0.d0) then
+            ! -----------------------------
+            if (global_auxvar_up%temp(1) < 0.d0) then 
+              ! surface water is frozen, so no flow can occur
               dphi = 0.d0
               dphi_dp_dn = 0.d0
               dphi_dt_dn = 0.d0
+            else 
+              ! if subsurface is close to frozen, smoothly throttle down the flow
+              if (global_auxvar_dn%temp(1) < 0.d0) then
+                hack      = 0.d0
+                dhack_dt  = 0.d0
+              else if (global_auxvar_dn%temp(1) > T_th) then
+                hack      = 1.d0
+                dhack_dt  = 0.d0
+              else
+                fct      = 1.d0-(global_auxvar_dn%temp(1)/T_th)**2.d0
+                hack     = 1.d0-fct**2.d0
+                dhack_dt = 4.d0*global_auxvar_dn%temp(1)/(T_th*T_th)*fct
+              endif
+              dphi       = dphi*hack
+              dphi_dt_dn = dphi_dt_dn*hack + dphi*dhack_dt
             endif
           endif
+
         endif
         
         if (ibndtype(TH_TEMPERATURE_DOF) == ZERO_GRADIENT_BC) then
@@ -3142,6 +3159,9 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
   PetscReal, parameter :: R_gas_constant = 8.3144621 ! Gas constant in J/mol/K
   PetscReal :: v_darcy_allowable
   
+  PetscReal :: T_th,hack,fct
+  T_th  = 2.d0
+
   fluxm = 0.d0
   fluxe = 0.d0
   v_darcy = 0.d0
@@ -3194,10 +3214,20 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
             ! ---------------------------
             ! Surface-subsurface simulation
             ! ---------------------------
-
-            ! If surface-water is frozen, zero out the darcy velocity
-            if (global_auxvar_up%temp(1) < 0.d0) then
+            if (global_auxvar_up%temp(1) < 0.d0) then 
+              ! surface water is frozen, so no flow can occur
               dphi = 0.d0
+            else 
+              ! if subsurface is close to frozen, smoothly throttle down the flow
+              if (global_auxvar_dn%temp(1) < 0.d0) then
+                hack = 0.d0
+              else if (global_auxvar_dn%temp(1) > T_th) then
+                hack = 1.d0
+              else
+                fct  = 1.d0-(global_auxvar_dn%temp(1)/T_th)**2.d0
+                hack = 1.d0-fct**2.d0
+              endif
+              dphi = dphi*hack
             endif
           endif
 
@@ -5108,6 +5138,7 @@ subroutine THUpdateSurfaceBC(realization)
   use Secondary_Continuum_module
   use String_module
   use EOS_Water_module
+  use PFLOTRAN_Constants_module, only : DUMMY_VALUE
 
   implicit none
 
@@ -5191,7 +5222,8 @@ subroutine THUpdateSurfaceBC(realization)
 
         if (head_new <= 0.d0) then
           surfpress_new = option%reference_pressure
-          surftemp_new = option%reference_temperature
+          !surftemp_new = option%reference_temperature
+          surftemp_new = DUMMY_VALUE
         else
           ! GB: Do not update temperature of BC because eflux needs to be split
           !     into heat flux associated with:

@@ -77,6 +77,7 @@ subroutine SurfaceGlobalAuxVarInit(auxvar,option)
   ! 
 
   use Option_module
+  use PFLOTRAN_Constants_module, only : DUMMY_VALUE
 
   implicit none
   
@@ -88,7 +89,7 @@ subroutine SurfaceGlobalAuxVarInit(auxvar,option)
   allocate(auxvar%head(option%nphase))
   auxvar%head = 0.d0
   allocate(auxvar%temp(ONE_INTEGER))
-  auxvar%temp = option%reference_temperature
+  auxvar%temp = DUMMY_VALUE
   allocate(auxvar%den_kg(option%nphase))
   auxvar%den_kg = 0.d0
 

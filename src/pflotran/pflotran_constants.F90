@@ -257,4 +257,7 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public:: HARMONIC = 2
   PetscInt, parameter, public:: DYNAMIC_HARMONIC = 3
 
+  ! Dummy value
+  PetscReal, parameter, public :: DUMMY_VALUE = -999.d0
+
 end module PFLOTRAN_Constants_module

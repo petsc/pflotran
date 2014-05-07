@@ -755,11 +755,13 @@ subroutine SurfaceTHFlux(surf_auxvar_up, &
                              k_therm*dtemp/dist*hw_half)*length
 
   if(abs(vel)>eps) then
+    ! 1) Restriction due to flow equation
     dt     = dist/abs(vel)/3.d0
     dt_max = min(dt_max, dt)
-  endif
 
-  dt_max = min(dt_max,(dist**2.d0)*Cw*den_aveg/(2.d0*k_therm))
+    ! 2) Restriction due to energy equation
+    dt_max = min(dt_max,(dist**2.d0)*Cw*den_aveg/(2.d0*k_therm))
+  endif
 
 end subroutine SurfaceTHFlux
 
@@ -879,12 +881,15 @@ subroutine SurfaceTHBCFlux(ibndtype, &
                             k_therm*dtemp/dist*hw_half*length
 
   ! Find maximum allowable timestep
-  if(abs(vel)>eps) then
+  if (abs(vel)>eps) then
     dt     = dist/abs(vel)/3.d0
     dt_max = min(dt_max, dt)
   endif
 
-  dt_max = min(dt_max,(dist**2.d0)*Cw*den/(2.d0*k_therm))
+  if (head_liq > eps) then
+    ! Restriction due to energy equation
+    dt_max = min(dt_max,(dist**2.d0)*Cw*den/(2.d0*k_therm))
+  endif
 
 end subroutine SurfaceTHBCFlux
 
@@ -1068,6 +1073,7 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
   use Connection_module
   use Surface_Material_module
   use EOS_Water_module
+  use PFLOTRAN_Constants_module, only : DUMMY_VALUE
 
   implicit none
 
@@ -1124,7 +1130,8 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
       iend = local_id*option%nflowdof
       istart = iend-option%nflowdof+1
       if (xx_loc_p(istart) < 1.d-15) then
-        temp = option%reference_temperature
+        !temp = option%reference_temperature
+        temp = DUMMY_VALUE
       else
         ! T^{t+1,m} = (rho Cwi hw T)^{t+1} / rho^{t+1,m-1} Cw)^{t} (hw)^{t+1}
         do iter = 1,niter
