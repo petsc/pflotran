@@ -1939,11 +1939,10 @@ subroutine OutputMassBalance(realization_base)
     if (option%mass_bal_detailed) then
 
 !     store integral over mineral volume fractions
-      sum_mol_mnrl = 0.d0
-      do local_id = 1, grid%nlmax
-        ghosted_id = grid%nL2G(local_id)
-
-        do imnrl = 1, reaction%mineral%nkinmnrl
+      do imnrl = 1, reaction%mineral%nkinmnrl
+        sum_mol_mnrl(imnrl) = 0.d0
+        do local_id = 1, grid%nlmax
+          ghosted_id = grid%nL2G(local_id)
           sum_mol_mnrl(imnrl) = sum_mol_mnrl(imnrl) &
             + rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl) &
             * material_auxvars(ghosted_id)%volume &
