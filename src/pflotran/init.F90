@@ -1601,8 +1601,8 @@ subroutine InitReadInput(simulation)
                option%io_buffer = ' TH: using FREEZING submode!'
                call printMsg(option)
                ! Override the default setting for TH-mode with freezing
-               !call EOSWaterSetDensityPainter()
-               !call EOSWaterSetEnthalpyPainter()
+               call EOSWaterSetDensityPainter()
+               call EOSWaterSetEnthalpyPainter()
             else if ('NO_FREEZING' == trim(word)) then
                option%use_th_freezing = PETSC_FALSE
                option%io_buffer = ' TH: using NO_FREEZING submode!'
@@ -1630,12 +1630,31 @@ subroutine InitReadInput(simulation)
             option%ice_model = PAINTER_KARRA_IMPLICIT
           case ('PAINTER_KARRA_EXPLICIT')
             option%ice_model = PAINTER_KARRA_EXPLICIT
+          case ('PAINTER_KARRA_EXPLICIT_NOCRYO')
+            option%ice_model = PAINTER_KARRA_EXPLICIT_NOCRYO
           case ('DALL_AMICO')
             option%ice_model = DALL_AMICO
           case default
             option%io_buffer = 'Cannot identify the specificed ice model.' // &
              'Specify PAINTER_EXPLICIT or PAINTER_KARRA_IMPLICIT' // &
              ' or PAINTER_KARRA_EXPLICIT.'
+          end select
+
+!....................
+      case ('RELATIVE_PERMEABILITY_AVERAGE')
+        call InputReadWord(input,option,word,PETSC_FALSE)
+        call StringToUpper(word)
+        select case (trim(word))
+          case ('UPWIND')
+            option%rel_perm_aveg = UPWIND
+          case ('HARMONIC')
+            option%rel_perm_aveg = HARMONIC
+          case ('DYNAMIC_HARMONIC')
+            option%rel_perm_aveg = DYNAMIC_HARMONIC
+          case default
+            option%io_buffer = 'Cannot identify the specificed ' // &
+              'RELATIVE_PERMEABILITY_AVERAGE.'
+            call printErrMsg(option)
           end select
 
 !....................
@@ -1651,7 +1670,7 @@ subroutine InitReadInput(simulation)
         call InputReadNChars(input,option, &
                              realization%nonuniform_velocity_filename, &
                              MAXSTRINGLENGTH,PETSC_TRUE)
-        call InputErrorMsg(input,option,'filename','NONUNIFORM_VELOCITY') 
+        call InputErrorMsg(input,option,'filename','NONUNIFORM_VELOCITY')
 
       case ('UNIFORM_VELOCITY')
         uniform_velocity_dataset => UniformVelocityDatasetCreate()
@@ -2172,8 +2191,8 @@ subroutine InitReadInput(simulation)
         call InputReadWord(input,option,saturation_function%name,PETSC_TRUE)
         call InputErrorMsg(input,option,'name','SATURATION_FUNCTION')
         call SaturationFunctionRead(saturation_function,input,option)
-        call SaturationFunctionComputeSpline(option,saturation_function)
-        call PermFunctionComputeSpline(option,saturation_function)
+        call SatFunctionComputePolynomial(option,saturation_function)
+        call PermFunctionComputePolynomial(option,saturation_function)
         call SaturationFunctionAddToList(saturation_function, &
                                          realization%saturation_functions)
         nullify(saturation_function)   

@@ -575,7 +575,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   if (global_auxvar%istate == GAS_STATE .or. &
       global_auxvar%istate == TWO_PHASE_STATE) then
     ! this does not need to be calculated for GAS_STATE (=1)
-    call SatFuncGetGasRelPermFromSat(gen_auxvar%sat(lid),krl,krg, &
+    call SatFuncGetGasRelPermFromSat(gen_auxvar%sat(lid),krg, &
                                      saturation_function,option)
     ! STOMP uses separate functions for calculating viscosity of vapor and
     ! and air (WATGSV,AIRGSV) and then uses GASVIS to calculate mixture 

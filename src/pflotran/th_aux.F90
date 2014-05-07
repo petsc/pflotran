@@ -537,16 +537,21 @@ subroutine THAuxVarComputeFreezing(x, auxvar, global_auxvar, &
                                       kr, ds_dp, dsl_temp, dsg_pl, dsg_temp, &
                                       dsi_pl, dsi_temp, dkr_dp, dkr_dt, &
                                       saturation_function, option)
+    case (PAINTER_KARRA_EXPLICIT_NOCRYO)
+      ! Explicit model from Painter & Karra, VJZ (2013) and removed cryosuction
+      call SatFuncComputeIcePKExplicitNoCryo(global_auxvar%pres(1), & 
+                                       global_auxvar%temp(1), ice_saturation, &
+                                       global_auxvar%sat(1), gas_saturation, &
+                                       kr, ds_dp, dsl_temp, dsg_pl, dsg_temp, &
+                                       dsi_pl, dsi_temp, dkr_dp, dkr_dt, &
+                                       saturation_function, p_th, option) 
     case default
       option%io_buffer = 'THCAuxVarComputeIce: Ice model not recognized.'
       call printErrMsg(option)
   end select
 
-!  call EOSWaterDensityEnthalpy(global_auxvar%temp(1),pw,dw_kg,dw_mol,hw, &
-!                               dw_dp,dw_dt,hw_dp,hw_dt,ierr)
-
-  call EOSWaterDensityEnthalpyPainterOld(global_auxvar%temp(1),pw,dw_kg,dw_mol, &
-                                      hw,PETSC_TRUE,dw_dp,dw_dt,hw_dp,hw_dt,ierr)
+  call EOSWaterDensityEnthalpy(global_auxvar%temp(1),pw,dw_kg,dw_mol,hw, &
+                               dw_dp,dw_dt,hw_dp,hw_dt,ierr)
   ! J/kmol -> MJ/kmol
   hw = hw * 1.d-6
   hw_dp = hw_dp * 1.d-6
@@ -592,9 +597,8 @@ subroutine THAuxVarComputeFreezing(x, auxvar, global_auxvar, &
   auxvar%dsat_gas_dt = dsg_temp
   
 ! Calculate the density, internal energy and derivatives for ice
-  call EOSWaterDensityIcePainter(global_auxvar%temp(1), global_auxvar%pres(1), &
-                                  den_ice, PETSC_TRUE, &
-                                  dden_ice_dT, dden_ice_dP, ierr)
+  call EOSWaterDensityIce(global_auxvar%temp(1), global_auxvar%pres(1), &
+                          den_ice, dden_ice_dT, dden_ice_dP, ierr)
 
   call EOSWaterInternalEnergyIce(global_auxvar%temp(1), u_ice, du_ice_dT)
 

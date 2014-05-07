@@ -226,6 +226,7 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: IMPLICIT_UNSTRUCTURED_GRID = 4
   PetscInt, parameter, public :: EXPLICIT_UNSTRUCTURED_GRID = 5
   PetscInt, parameter, public :: UNSTRUCTURED_GRID_MIMETIC = 6
+  PetscInt, parameter, public :: POLYHEDRA_UNSTRUCTURED_GRID = 7
   PetscInt, parameter, public :: ONE_DIM_GRID = 1
   PetscInt, parameter, public :: TWO_DIM_GRID = 2
   PetscInt, parameter, public :: THREE_DIM_GRID = 3
@@ -249,5 +250,11 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: PAINTER_KARRA_IMPLICIT = 2
   PetscInt, parameter, public :: PAINTER_KARRA_EXPLICIT = 3
   PetscInt, parameter, public :: DALL_AMICO = 4
+  PetscInt, parameter, public :: PAINTER_KARRA_EXPLICIT_NOCRYO = 5
+
+  ! Relative permeability averaging
+  PetscInt, parameter, public:: UPWIND = 1
+  PetscInt, parameter, public:: HARMONIC = 2
+  PetscInt, parameter, public:: DYNAMIC_HARMONIC = 3
 
 end module PFLOTRAN_Constants_module

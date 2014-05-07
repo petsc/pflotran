@@ -151,6 +151,10 @@ module EOS_Water_module
     procedure EOSWaterSteamDenEnthNoDerive
     procedure EOSWaterSteamDenEnthDerive
   end interface
+  interface EOSWaterDensityIce
+    procedure EOSWaterDensityIceNoDerive
+    procedure EOSWaterDensityIceDerive
+  end interface
 
   ! the "public" definition that makes subroutines visible outside.
   public :: EOSWaterInit, &
@@ -160,14 +164,14 @@ module EOS_Water_module
             EOSWaterDensity, &
             EOSWaterEnthalpy, &
             EOSWaterDensityEnthalpy, &
-            EOSWaterDensityEnthalpyPainterOld, &
             EOSWaterSteamDensityEnthalpy, &
             EOSWaterDuanMixture, &
             EOSWaterDensityNaCl, &
             EOSWaterViscosityNaCl, &
             EOSWaterInternalEnergyIce, &
             EOSWaterDensityIcePainter, &
-            EOSWaterSaturationTemperature
+            EOSWaterSaturationTemperature, &
+            EOSWaterDensityIce
   
   public :: EOSWaterSetDensityIFC67, &
             EOSWaterSetEnthalpyIFC67, &
@@ -2006,75 +2010,6 @@ subroutine EOSWaterInternalEnergyIce(T, u_ice, du_ice_dT)
   du_ice_dT = a + b*(T + T_ref) + c/((T + T_ref)**(2.d0)) !kJ/kmol/K
   
 end subroutine EOSWaterInternalEnergyIce
-
-! ************************************************************************** !
-
-subroutine EOSWaterDensityEnthalpyPainterOld(T, P, den_water_kg, den_water_kmol, &
-                                          h_J_kmol, &
-                                          calculate_derivatives, dden_water_dp, &
-                                          dden_water_dt, dh_dp, dh_dt, ierr)
-! wateos_simple: Simple water equation of state from Scott Painter
-! Author: Satish Karra, LANL
-! Date: 02/1/12
-! T in C, P in Pa
-  implicit none
-
-  PetscReal, intent(in) :: T
-  PetscReal, intent(in) :: P
-  PetscBool, intent(in) :: calculate_derivatives
-  PetscReal, intent(out) :: den_water_kg, den_water_kmol, h_J_kmol
-  PetscReal, intent(out) :: dden_water_dp, dden_water_dt
-  PetscReal, intent(out) :: dh_dp, dh_dt
-  
-  PetscErrorCode, intent(out) :: ierr  
-  
-  PetscReal, parameter :: a = 999.915d0
-  PetscReal, parameter :: b = 0.0416516d0
-  PetscReal, parameter :: c = -0.0100836d0
-  PetscReal, parameter :: d = 0.000206355
-  PetscReal, parameter :: alpha = 5.0d-10     ! in Pa^(-1)
-  PetscReal, parameter :: T_ref = 273.15d0    ! in K
-  PetscReal, parameter :: P_ref = 1.0d5       ! in Pa
- 
-  PetscReal :: den_w_one_bar, T_K
-  PetscReal :: u_J_mol, u_J_kg, h_J_kg
-  PetscReal :: du_dt
-
-  ierr = 0
-
-  ! Density of water
-  T_K = T + T_ref    ! convert to Kelvin
-  den_w_one_bar = a + b*(T_K - T_ref) + c*(T_K - T_ref)**(2.d0) + &
-                  d*(T_K - T_ref)**(3.d0)
-  den_water_kg = den_w_one_bar*(1 + alpha*(P - P_ref))
-  den_water_kmol = den_water_kg/FMWH2O     ! in mol
-  
-  ! Internal energy
-  u_J_mol = 76.0d0*(T_K - T_ref)        ! in J/mol
-  u_J_kg = 4.217*1.0d3*(T_K - T_ref)    ! in J/kg
-  h_J_kg = u_J_kg + P/den_water_kg    ! in J/kg
-  h_J_kmol = h_J_kg*FMWH2O     ! in J/kmol
-  
-  if (calculate_derivatives) then
-    ! Derivatives of density
-    dden_water_dp = 1/FMWH2O*den_w_one_bar*alpha    ! in Kmol/Pa
-    dden_water_dt = 1/FMWH2O*(1 + alpha*(P - P_ref))*(b + 2.d0*c*(T_K - T_ref) + &
-                              3.d0*d*(T_K - T_ref)**(2.d0))      ! in Kmol/K
-                            
-    ! Derivatives of enthalpy
-    dh_dp = FMWH2O/den_water_kg   ! in J/kmol/Pa
-    du_dt = 4.217*1.d3                  ! in J/kg/K
-    dh_dt = FMWH2O*(du_dt + P*(-1.d0/den_water_kg**(2.d0))* &
-                    dden_water_dt*FMWH2O)    ! in MJ/kmol/K
-  else
-    dden_water_dp = -999.d0
-    dden_water_dp = -999.d0
-    dh_dp = -999.d0
-    du_dt = -999.d0
-    dh_dt = -999.d0
-  endif
-   
-end subroutine EOSWaterDensityEnthalpyPainterOld
 
 ! ************************************************************************** !
 

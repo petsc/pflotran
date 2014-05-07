@@ -41,6 +41,11 @@ module Utility_module
     module procedure DeallocateArray2DString
   end interface
   
+  interface InterfaceApprox
+    module procedure InterfaceApproxWithDeriv
+    module procedure InterfaceApproxWithoutDeriv
+  end interface
+
 contains
 
 ! ************************************************************************** !
@@ -1301,10 +1306,56 @@ end function BestFloat
 
 ! ************************************************************************** !
 
-subroutine CubicPolynomialSetup(upper_value,lower_value,coefficients)
+subroutine QuadraticPolynomialSetup(value_1,value_2,coefficients, &
+                                    derivative_at_1)
   ! 
-  ! Sets up a cubic polynomial for smoothing
-  ! discontinuous functions
+  ! Sets up a quadratic polynomial for smoothing discontinuous functions
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 04/25/14
+  ! 
+
+  implicit none
+
+  PetscReal :: value_1
+  PetscReal :: value_2
+  PetscReal :: coefficients(3)
+  PetscBool :: derivative_at_1
+  
+  PetscReal :: A(3,3)
+  PetscInt :: indx(3)
+  PetscInt :: d
+
+  A(1,1) = 1.d0
+  A(2,1) = 1.d0
+  A(3,1) = 0.d0
+  
+  A(1,2) = value_1
+  A(2,2) = value_2
+  A(3,2) = 1.d0
+  
+  A(1,3) = value_1**2.d0
+  A(2,3) = value_2**2.d0
+  if (derivative_at_1) then
+    A(3,3) = 2.d0*value_1
+  else
+    A(3,3) = 2.d0*value_2
+  endif
+  
+  ! coefficients(1): value at 1
+  ! coefficients(2): value at 2
+  ! coefficients(3): derivative at 1 or 2
+  
+  call ludcmp(A,THREE_INTEGER,indx,d)
+  call lubksb(A,THREE_INTEGER,indx,coefficients)
+
+end subroutine QuadraticPolynomialSetup
+
+! ************************************************************************** !
+
+subroutine QuadraticPolynomialEvaluate(coefficients,x,f,df_dx)
+  ! 
+  ! Evaluates value in quadratic polynomial
   ! 
   ! Author: Glenn Hammond
   ! Date: 03/12/12
@@ -1312,8 +1363,33 @@ subroutine CubicPolynomialSetup(upper_value,lower_value,coefficients)
 
   implicit none
 
-  PetscReal :: upper_value
-  PetscReal :: lower_value
+  PetscReal :: coefficients(3)
+  PetscReal :: x
+  PetscReal :: f
+  PetscReal :: df_dx
+
+  f = coefficients(1) + &
+      coefficients(2)*x + &
+      coefficients(3)*x*x
+  
+  df_dx = coefficients(2) + &
+          coefficients(3)*2.d0*x
+  
+end subroutine QuadraticPolynomialEvaluate
+
+! ************************************************************************** !
+
+subroutine CubicPolynomialSetup(value_1,value_2,coefficients)
+  ! 
+  ! Sets up a cubic polynomial for smoothing discontinuous functions
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/12/12
+
+  implicit none
+
+  PetscReal :: value_1
+  PetscReal :: value_2
   PetscReal :: coefficients(4)
   
   PetscReal :: A(4,4)
@@ -1325,25 +1401,25 @@ subroutine CubicPolynomialSetup(upper_value,lower_value,coefficients)
   A(3,1) = 0.d0
   A(4,1) = 0.d0
   
-  A(1,2) = upper_value
-  A(2,2) = lower_value
+  A(1,2) = value_1
+  A(2,2) = value_2
   A(3,2) = 1.d0
   A(4,2) = 1.d0
   
-  A(1,3) = upper_value**2.d0
-  A(2,3) = lower_value**2.d0
-  A(3,3) = 2.d0*upper_value
-  A(4,3) = 2.d0*lower_value
+  A(1,3) = value_1**2.d0
+  A(2,3) = value_2**2.d0
+  A(3,3) = 2.d0*value_1
+  A(4,3) = 2.d0*value_2
   
-  A(1,4) = upper_value**3.d0
-  A(2,4) = lower_value**3.d0
-  A(3,4) = 3.d0*upper_value**2.d0
-  A(4,4) = 3.d0*lower_value**2.d0
+  A(1,4) = value_1**3.d0
+  A(2,4) = value_2**3.d0
+  A(3,4) = 3.d0*value_1**2.d0
+  A(4,4) = 3.d0*value_2**2.d0
   
-  ! coefficients(1): value at upper_value
-  ! coefficients(2): value at lower_value
-  ! coefficients(3): derivative at upper_value
-  ! coefficients(4): derivative at lower_value
+  ! coefficients(1): value at 1
+  ! coefficients(2): value at 2
+  ! coefficients(3): derivative at 1
+  ! coefficients(4): derivative at 2
   
   call ludcmp(A,FOUR_INTEGER,indx,d)
   call lubksb(A,FOUR_INTEGER,indx,coefficients)
@@ -1711,5 +1787,97 @@ subroutine Determinant(A,detA)
   
 
 end subroutine Determinant
+
+! ************************************************************************** !
+subroutine InterfaceApproxWithDeriv(v_up, v_dn, dv_up, dv_dn, dv_up2dn, &
+                                    approx_type, v_interf, &
+                                    dv_interf_dv_up, dv_interf_dv_dn)
+  ! 
+  ! Approximates interface value and it's derivative from values specified
+  ! up and down of a face based on the approximation type
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 05/05/2014
+  ! 
+
+  implicit none
+  
+  PetscReal, intent(in) :: v_up, v_dn
+  PetscReal, intent(in) :: dv_up, dv_dn
+  PetscReal, intent(in) :: dv_up2dn
+  PetscInt, intent(in) :: approx_type
+  PetscReal, intent(out) :: v_interf, dv_interf_dv_up, dv_interf_dv_dn
+
+  PetscReal :: denom
+  PetscReal :: eps = 1.d-15
+
+
+  if (dv_up2dn > 0.d0) then
+    v_interf = v_up
+    dv_interf_dv_up = dv_up
+    dv_interf_dv_dn = 0.d0
+  else
+    v_interf = v_dn
+    dv_interf_dv_up = 0.d0
+    dv_interf_dv_up = dv_dn
+  endif
+
+  select case (approx_type)
+
+    case (UPWIND)
+      if (dv_up2dn > 0.d0) then
+        v_interf = v_up
+        dv_interf_dv_up = dv_up
+        dv_interf_dv_dn = 0.d0
+      else
+        v_interf = v_dn
+        dv_interf_dv_up = 0.d0
+        dv_interf_dv_dn = dv_dn
+      endif
+
+    case (HARMONIC)
+      if (v_up < eps .or. v_dn < eps) then
+        v_interf = 0.d0
+        dv_interf_dv_up = 0.d0
+        dv_interf_dv_dn = 0.d0
+      else
+        denom = (v_up + v_dn)
+        v_interf = 2.d0*v_up*v_dn/denom
+        dv_interf_dv_up = 2.d0*(denom*dv_up*v_dn - v_up*v_dn*dv_up)/(denom**2.d0)
+        dv_interf_dv_dn = 2.d0*(denom*v_up*dv_dn - v_up*v_dn*dv_dn)/(denom**2.d0)
+      endif
+
+  end select
+
+end subroutine InterfaceApproxWithDeriv
+
+! ************************************************************************** !
+
+subroutine InterfaceApproxWithoutDeriv(v_up, v_dn, dv_up2dn, &
+                                       approx_type, v_interf)
+  ! 
+  ! Approximates interface value from values specified
+  ! up and down of a face based on the approximation type
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 05/05/2014
+  ! 
+
+  implicit none
+  
+  PetscReal, intent(in) :: v_up, v_dn
+  PetscReal, intent(in) :: dv_up2dn
+  PetscInt, intent(in) :: approx_type
+  PetscReal, intent(out) :: v_interf
+
+  PetscReal :: dummy_in
+  PetscReal :: dummy_out
+
+  dummy_in = 1.d0
+
+  call InterfaceApproxWithDeriv(v_up, v_dn, dummy_in, dummy_in, dv_up2dn, &
+                                approx_type, v_interf, dummy_out, dummy_out)
+
+end subroutine InterfaceApproxWithoutDeriv
 
 end module Utility_module

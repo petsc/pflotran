@@ -1,0 +1,215 @@
+module Test_Saturation_Function_module
+
+  use pFUnit_mod
+  use Saturation_Function_module
+  use Option_module
+
+  implicit none
+
+#include "finclude/petscsys.h"
+
+  public :: Test_Saturation_Function
+
+  interface Test_Saturation_Function
+     module procedure newTest_Saturation_Function
+  end interface Test_Saturation_Function
+
+  @TestCase
+  type, extends(TestCase) :: Test_Saturation_Function
+     type(option_type), pointer :: option
+     type(saturation_function_type), pointer :: sf_Brooks_Corey_Burdine
+     procedure(runMethod), pointer :: userMethod => null()
+   contains
+     procedure :: setUp
+     procedure :: tearDown
+     procedure :: runMethod
+  end type Test_Saturation_Function
+
+contains
+
+! ************************************************************************** !
+
+  function newTest_Saturation_Function(name, userMethod) result(test)
+
+    implicit none
+
+    character(len=*), intent(in) :: name
+    procedure(runMethod) :: userMethod
+
+    type(Test_Saturation_Function) :: test
+
+    call test%setName(name)
+    test%userMethod => userMethod
+
+  end function newTest_Saturation_Function
+
+! ************************************************************************** !
+
+  subroutine setUp(this)
+    implicit none
+    class (Test_Saturation_Function), intent(inout) :: this
+
+    this%option => OptionCreate()
+    this%option%nphase = 2
+    ! Brooks Corey with Burdine relative permeability
+    this%sf_Brooks_Corey_Burdine => SaturationFunctionCreate(this%option)
+    this%sf_Brooks_Corey_Burdine%saturation_function_ctype = 'BROOKS_COREY'
+    this%sf_Brooks_Corey_Burdine%saturation_function_itype = BROOKS_COREY
+    this%sf_Brooks_Corey_Burdine%permeability_function_ctype = 'BURDINE'
+    this%sf_Brooks_Corey_Burdine%permeability_function_itype = BURDINE
+    this%sf_Brooks_Corey_Burdine%alpha = 9.869d-6
+    this%sf_Brooks_Corey_Burdine%lambda = 0.7d0
+    this%sf_Brooks_Corey_Burdine%Sr(1) = 0.2d0
+    this%sf_Brooks_Corey_Burdine%Sr(2) = 1.d-5
+    this%sf_Brooks_Corey_Burdine%pcwmax = 0.999d8
+    call SatFunctionComputePolynomial(this%option,this%sf_Brooks_Corey_Burdine)
+    call PermFunctionComputePolynomial(this%option,this%sf_Brooks_Corey_Burdine)
+
+  end subroutine setUp
+
+! ************************************************************************** !
+
+  subroutine tearDown(this)
+    implicit none
+    class (Test_Saturation_Function), intent(inout) :: this
+
+    call SaturationFunctionDestroy(this%sf_Brooks_Corey_Burdine)
+    call OptionDestroy(this%option)
+
+  end subroutine tearDown
+
+! ************************************************************************** !
+
+  subroutine runMethod(this)
+    implicit none
+    class (Test_Saturation_Function), intent(inout) :: this
+    call this%userMethod()
+  end subroutine runMethod
+
+! ************************************************************************** !
+
+  @Test
+  subroutine testBrooks_Corey_Burdine(this)
+
+    implicit none
+
+    class (Test_Saturation_Function), intent(inout) :: this
+
+    PetscReal :: capillary_pressure
+    PetscReal :: saturation
+    PetscReal :: relative_perm
+    PetscReal :: dsat_pres
+    PetscReal :: dkr_pres
+    PetscReal :: dkr_Se
+    PetscReal :: dummy_real1, dummy_real2
+    PetscBool :: dummy_bool
+    character(len=128) :: string
+
+    ! saturation = f(capillary_pressure) below the polynomial fit
+    capillary_pressure = 0.94d0/this%sf_Brooks_Corey_Burdine%alpha
+    call SaturationFunctionCompute(capillary_pressure,saturation, &
+                                   relative_perm, dsat_pres, dkr_pres, &
+                                   this%sf_Brooks_Corey_Burdine, &
+                                   dummy_real1, dummy_real2, dummy_bool, &
+                                   this%option)
+    string = 'Brooks-Corey-Burdine saturation as a function of capillary ' // &
+             'pressure below polynomial fit'
+    @assertEqual(saturation, 1.d0, 1.d-8, string)
+    string = 'Brooks-Corey-Burdine relative permeability as a function of ' // &
+             'capillary pressure below polynomial fit'
+    @assertEqual(relative_perm, 1.d0, 1.d-8, string)
+    string = 'Brooks-Corey-Burdine derivative of saturation as a function ' // &
+             'of capillary pressure below polynomial fit'
+    @assertEqual(dsat_pres, 0.d0, 1.d-8, string)
+    string = 'Brooks-Corey-Burdine derivative of relative permeability as ' // &
+             'a function of capillary pressure below polynomial fit'
+    @assertEqual(dkr_pres, 0.d0, 1.d-8, string)
+
+    ! saturation = f(capillary_pressure) within the polynomial fit
+    capillary_pressure = 0.96d0/this%sf_Brooks_Corey_Burdine%alpha
+    call SaturationFunctionCompute(capillary_pressure,saturation, &
+                                   relative_perm, dsat_pres, dkr_pres, &
+                                   this%sf_Brooks_Corey_Burdine, &
+                                   dummy_real1, dummy_real2, dummy_bool, &
+                                   this%option)
+    string = 'Brooks-Corey-Burdine saturation as a function of capillary ' // &
+             'pressure within polynomial fit'
+    @assertEqual(saturation, 0.99971176979312304d0, 1.d-8, string)
+    string = 'Brooks-Corey-Burdine relative permeability as a function of ' // &
+             'capillary pressure within polynomial fit'
+    @assertEqual(relative_perm, 0.99789158871529349d0, 1.d-8, string)
+    string = 'Brooks-Corey-Burdine derivative of saturation as a function ' // &
+             'of capillary pressure within polynomial fit'
+    @assertEqual(dsat_pres, 5.6675690490728353d-7, 1.d-8, string)
+    string = 'Brooks-Corey-Burdine derivative of relative permeability as ' // &
+             'a function of capillary pressure within polynomial fit'
+    @assertEqual(dkr_pres, 4.1422137957785640d-6, 1.d-8, string)
+
+    ! saturation = f(capillary_pressure) above the polynomial fit
+    capillary_pressure = 1.06d0/this%sf_Brooks_Corey_Burdine%alpha
+    call SaturationFunctionCompute(capillary_pressure,saturation, &
+                                   relative_perm, dsat_pres, dkr_pres, &
+                                   this%sf_Brooks_Corey_Burdine, &
+                                   dummy_real1, dummy_real2, dummy_bool, &
+                                   this%option)
+    string = 'Brooks-Corey-Burdine saturation as a function of capillary ' // &
+             'pressure above polynomial fit'
+    @assertEqual(saturation, 0.96802592722174041d0, 1.d-8, string)
+    string = 'Brooks-Corey-Burdine relative permeability as a function of ' // &
+             'capillary pressure above polynomial fit'
+    @assertEqual(relative_perm, 0.78749164071142996d0, 1.d-8, string)
+    string = 'Brooks-Corey-Burdine derivative of saturation as a function ' // &
+             'of capillary pressure above polynomial fit'
+    @assertEqual(dsat_pres, 5.0054278424773111d-6, 1.d-8, string)
+    string = 'Brooks-Corey-Burdine derivative of relative permeability as ' // &
+             'a function of capillary pressure above polynomial fit'
+    @assertEqual(dkr_pres, 3.0060561800889165d-5, 1.d-8, string)
+
+    ! capillary pressure = f(saturation) well within polynomial fit
+    saturation = 1.00001d0**(-this%sf_Brooks_Corey_Burdine%lambda)
+    call SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
+                                     this%sf_Brooks_Corey_Burdine,this%option)
+    string = 'Brooks-Corey-Burdine capillary pressure as a function of ' // &
+             'saturation well within polynomial fit'
+    @assertEqual(capillary_pressure, 54.068777590990067d0, 1.d-4, string)
+
+    ! capillary pressure = f(saturation) slightly within polynomial fit
+    saturation = 1.04d0**(-this%sf_Brooks_Corey_Burdine%lambda)
+    call SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
+                                     this%sf_Brooks_Corey_Burdine,this%option)
+    string = 'Brooks-Corey-Burdine capillary pressure as a function of ' // &
+             'saturation slightly within polynomial fit'
+    @assertEqual(capillary_pressure, 106436.99642977261d0, 1.d-2, string)
+
+    ! capillary pressure = f(saturation) above polynomial fit
+    saturation = 1.06d0**(-this%sf_Brooks_Corey_Burdine%lambda)
+    call SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
+                                     this%sf_Brooks_Corey_Burdine,this%option)
+    string = 'Brooks-Corey-Burdine capillary pressure as a function of ' // &
+             'saturation above polynomial fit'
+    @assertEqual(capillary_pressure, 109024.42772683989d0, 1.d-2, string)
+
+    ! liquid relative permeability = f(saturation)
+    saturation = 0.5d0
+    call SatFuncGetRelPermFromSat(saturation,relative_perm,dkr_Se, &
+                                  this%sf_Brooks_Corey_Burdine,1, &
+                                  PETSC_TRUE,this%option)
+    string = 'Brooks-Corey-Burdine liquid relative permeability as a ' // &
+             'function of liquid saturation'
+    @assertEqual(relative_perm, 3.1991918327000197d-3, 1.d-8, string)
+    string = 'Brooks-Corey-Burdine derivative of liquid relative ' // &
+             'permeability as a function of liquid saturation'
+    @assertEqual(dkr_Se, 4.9968329577409848d-2, 1.d-8, string)
+
+    ! gas relative permeability = f(saturation)
+    call SatFuncGetGasRelPermFromSat(saturation,relative_perm, &
+                                     this%sf_Brooks_Corey_Burdine, &
+                                     this%option)
+    string = 'Brooks-Corey-Burdine gas relative permeability as a ' // &
+             'function of liquid saturation'
+    @assertEqual(relative_perm, 0.38173220142506209d0, 1.d-8, string)
+
+  end subroutine testBrooks_Corey_Burdine
+
+end module Test_Saturation_Function_module
+

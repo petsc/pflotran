@@ -692,7 +692,7 @@ subroutine MPhaseUpdateReasonPatch(reason,realization)
 
   re = 1
  
-  if (re > 0) then
+! if (re > 0) then
     call VecGetArrayF90(field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
     call VecGetArrayF90(field%flow_yy, yy_p, ierr)
     call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr); 
@@ -702,56 +702,56 @@ subroutine MPhaseUpdateReasonPatch(reason,realization)
       if (associated(patch%imat)) then
         if (patch%imat(grid%nL2G(n)) <= 0) cycle
       endif
-      n0 = (n-1)* option%nflowdof
-      iipha=int(iphase_loc_p(grid%nL2G(n)))
+      n0 = (n-1)*option%nflowdof
+      iipha = int(iphase_loc_p(grid%nL2G(n)))
   
 ! ******** Too huge change in pressure ****************     
       if (dabs(xx_p(n0 + 1) - yy_p(n0 + 1)) > (1000.0D0 * option%dpmxe)) then
-        re = 0; print *,'huge change in p', xx_p(n0 + 1), yy_p(n0 + 1)
+        re = 0; print *,'large change in p', xx_p(n0 + 1), yy_p(n0 + 1)
         exit
       endif
 
 ! ******** Too huge change in temperature ****************
       if (dabs(xx_p(n0 + 2) - yy_p(n0 + 2)) > (10.0D0 * option%dtmpmxe)) then
-        re = 0; print *,'huge change in T', xx_p(n0 + 2), yy_p(n0 + 2)
+        re = 0; print *,'large change in T', xx_p(n0 + 2), yy_p(n0 + 2)
         exit
       endif
  
 ! ******* Check 0 <= sat/con <= 1 **************************
       select case(iipha)
-        case (1)
+        case (1) ! liquid
           if (xx_p(n0 + 3) > 1.0D0) then
             re = 0; exit
           endif
-          if (xx_p(n0 + 3) < 0D0) then
-            if (xx_p(n0 + 3) > -1D-14) then
-              xx_p(n0 + 3) = 0.D0
-            else
-!             print *,'MPhaseUpdate: ',iipha,n,n0,option%nflowdof,xx_p(n0+3)
+          if (xx_p(n0 + 3) < 0.D0) then
+!           if (xx_p(n0 + 3) > -1D-14) then
+!             xx_p(n0 + 3) = 0.D0
+!           else
+!!            print *,'MPhaseUpdate: ',iipha,n,n0,option%nflowdof,xx_p(n0+3)
               re = 0; exit
-            endif          ! clu removed 05/02/2011
+!           endif          ! clu removed 05/02/2011
           endif
-        case (2)
+        case (2) ! gas
           if (xx_p(n0 + 3) > 1.0D0) then
             re=0; exit
           endif
-          if (xx_p(n0 + 3) < 0D-0) then
-            if (xx_p(n0 + 3) > -1D-14) then
-              xx_p(n0 + 3) = 0.D0
-            else  
+          if (xx_p(n0 + 3) < 0.D-0) then
+!           if (xx_p(n0 + 3) > -1D-14) then
+!             xx_p(n0 + 3) = 0.D0
+!           else
               re = 0; exit
-            endif 
+!           endif
           endif
-        case (3)
+        case (3) ! two-phase
           if (xx_p(n0 + 3) > 1.D0) then
             re=0; exit
           endif
           if (xx_p(n0 + 3) < 0.) then
-            if (xx_p(n0 + 3) > -1D-14) then
-              xx_p(n0 + 3) = 0.D0
-            else  
+!           if (xx_p(n0 + 3) > -1D-14) then
+!             xx_p(n0 + 3) = 0.D0
+!           else
               re = 0; exit
-            endif  
+!           endif
           endif
       end select
     end do
@@ -761,7 +761,7 @@ subroutine MPhaseUpdateReasonPatch(reason,realization)
     call VecRestoreArrayF90(field%flow_yy, yy_p, ierr)
     call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr); 
 
-  endif
+! endif
   ! print *,' update reason', grid%myrank, re,n,grid%nlmax
   reason=re
   
@@ -1865,7 +1865,7 @@ subroutine MphaseFlux(auxvar_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
 !   print *,'mphaseflux: ',np,auxvar_up%sat(np),auxvar_dn%sat(np),eps, &
 !     auxvar_up%den(np),auxvar_dn%den(np),diffdp
 
-!   if ((auxvar_up%sat(np) > eps) .and. (auxvar_dn%sat(np) > eps)) then
+    if ((auxvar_up%sat(np) > eps) .and. (auxvar_dn%sat(np) > eps)) then
       difff = diffdp * 0.25D0*(auxvar_up%sat(np) + auxvar_dn%sat(np))* &
              (auxvar_up%den(np) + auxvar_dn%den(np))
       do ispec=1, option%nflowspec
@@ -1875,7 +1875,7 @@ subroutine MphaseFlux(auxvar_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
                 (auxvar_up%xmol(ind) - auxvar_dn%xmol(ind))
 !       print *,'mphaseflux1: ',ind,auxvar_up%diff(ind),auxvar_dn%diff(ind)
       enddo
-!   endif
+    endif
 
 #endif
 
