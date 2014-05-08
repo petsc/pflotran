@@ -1217,8 +1217,7 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization_base,vector)
   type(patch_type), pointer :: patch  
   Vec :: natural_vec
   Vec :: global_vec
-  PetscInt, parameter :: fid=86
-  PetscErrorCode :: ierr  
+  PetscErrorCode :: ierr
 
   call PetscLogEventBegin(logging%event_output_vec_tecplot,ierr) 
 
@@ -1232,11 +1231,11 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization_base,vector)
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write tecplot output file: ' // trim(filename)
     call printMsg(option)
-    open(unit=fid,file=filename,action="write")
+    open(unit=OUTPUT_UNIT,file=filename,action="write")
   
     ! write header
     ! write title
-    write(fid,'(''TITLE = "PFLOTRAN Vector"'')')
+    write(OUTPUT_UNIT,'(''TITLE = "PFLOTRAN Vector"'')')
     ! write variables
     string = 'VARIABLES=' // &
              '"X [m]",' // &
@@ -1244,13 +1243,13 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization_base,vector)
              '"Z [m]",'
     string = trim(string) // '"' // trim(dataset_name) // '"'
     string = trim(string) // ',"Material_ID"'
-    write(fid,'(a)') trim(string)
+    write(OUTPUT_UNIT,'(a)') trim(string)
   
     !geh: due to pgi bug, cannot embed functions with calls to write() within
     !     write statement
     string = OutputTecplotZoneHeader(realization_base,FIVE_INTEGER, &
                                      TECPLOT_BLOCK_FORMAT)
-    write(fid,'(a)') trim(string)
+    write(OUTPUT_UNIT,'(a)') trim(string)
   endif
   
   ! write blocks
@@ -1264,17 +1263,17 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization_base,vector)
 
   if (realization_base%discretization%itype == STRUCTURED_GRID .or. &
       realization_base%discretization%itype == STRUCTURED_GRID_MIMETIC)  then
-    call WriteTecplotStructuredGrid(fid,realization_base)
+    call WriteTecplotStructuredGrid(OUTPUT_UNIT,realization_base)
   else  
-    call WriteTecplotUGridVertices(fid,realization_base)
+    call WriteTecplotUGridVertices(OUTPUT_UNIT,realization_base)
   endif    
 
   call DiscretizationGlobalToNatural(discretization,vector,natural_vec,ONEDOF)
-  call WriteTecplotDataSetFromVec(fid,realization_base,natural_vec,TECPLOT_REAL)
+  call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization_base,natural_vec,TECPLOT_REAL)
 
   call OutputGetVarFromArray(realization_base,global_vec,MATERIAL_ID,ZERO_INTEGER)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-  call WriteTecplotDataSetFromVec(fid,realization_base,natural_vec,TECPLOT_INTEGER)
+  call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization_base,natural_vec,TECPLOT_INTEGER)
   
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
@@ -1282,10 +1281,10 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization_base,vector)
   if (realization_base%discretization%itype == UNSTRUCTURED_GRID .and. &
       realization_base%discretization%grid%itype == &
       IMPLICIT_UNSTRUCTURED_GRID)  then
-    call WriteTecplotUGridElements(fid,realization_base)
+    call WriteTecplotUGridElements(OUTPUT_UNIT,realization_base)
   endif    
 
-  close(fid)
+  close(OUTPUT_UNIT)
 
   call PetscLogEventEnd(logging%event_output_vec_tecplot,ierr) 
                             
@@ -2305,7 +2304,7 @@ subroutine OutputSecondaryContinuumTecplot(realization_base)
   PetscReal :: value
   PetscInt :: ivar, isubvar, var_type
   PetscErrorCode :: ierr  
-  PetscInt :: count, icell, fid, sec_id
+  PetscInt :: count, icell, sec_id
   PetscInt :: ghosted_id, local_id
   PetscInt :: naqcomp, nkinmnrl
   PetscReal, pointer :: dist(:)
@@ -2358,8 +2357,7 @@ subroutine OutputSecondaryContinuumTecplot(realization_base)
     endif
     
     ! open file
-    fid = 86
-    open(unit=fid,file=filename,action="write")
+    open(unit=OUTPUT_UNIT,file=filename,action="write")
 
     ! must initialize icolumn here so that icolumn does not restart with
     ! each observation point
@@ -2371,14 +2369,14 @@ subroutine OutputSecondaryContinuumTecplot(realization_base)
     
     ! write header
     ! write title
-    write(fid,'(''TITLE = "'',1es13.5," [",a1,'']"'')') &
+    write(OUTPUT_UNIT,'(''TITLE = "'',1es13.5," [",a1,'']"'')') &
               option%time/output_option%tconv,output_option%tunit
 
     ! initial portion of header
     header = 'VARIABLES=' // &
               '"dist [m]"'
                
-    write(fid,'(a)',advance='no') trim(header)
+    write(OUTPUT_UNIT,'(a)',advance='no') trim(header)
                       
     if (associated(observation%region%coordinates) .and. &
             .not.observation%at_cell_center) then
@@ -2386,14 +2384,14 @@ subroutine OutputSecondaryContinuumTecplot(realization_base)
               'functioning properly for minerals.  Perhaps due to ' // &
               'non-ghosting of vol frac....>? - geh'
       call printErrMsg(option)
-      call WriteTecplotHeaderForCoordSec(fid,realization_base, &
+      call WriteTecplotHeaderForCoordSec(OUTPUT_UNIT,realization_base, &
                                          observation%region, &
                                          observation% &
                                          print_secondary_data, &
                                          icolumn)
     else
       do icell = 1,observation%region%num_cells
-        call WriteTecplotHeaderForCellSec(fid,realization_base, &
+        call WriteTecplotHeaderForCellSec(OUTPUT_UNIT,realization_base, &
                                           observation%region,icell, &
                                           observation% &
                                           print_secondary_data, &
@@ -2401,22 +2399,22 @@ subroutine OutputSecondaryContinuumTecplot(realization_base)
       enddo
     endif
 
-    write(fid,'(a)',advance='yes') ""
+    write(OUTPUT_UNIT,'(a)',advance='yes') ""
     ! write zone header
     write(string,'(''ZONE T="'',1es13.5,''",'','' I='',i5)') &
                   option%time/output_option%tconv, &
                   option%nsec_cells
     string = trim(string) // ',J=1, K=1, DATAPACKING=POINT'
-    write(fid,'(a)',advance='no') trim(string)     
-    write(fid,1009)
+    write(OUTPUT_UNIT,'(a)',advance='no') trim(string)
+    write(OUTPUT_UNIT,1009)
    
     do sec_id = 1,option%nsec_cells
-      write(fid,1000,advance='no') dist(sec_id)  
+      write(OUTPUT_UNIT,1000,advance='no') dist(sec_id)
       do icell = 1,observation%region%num_cells
         local_id = observation%region%cell_ids(icell)
         ghosted_id = grid%nL2G(local_id)
         if (observation%print_secondary_data(1)) then
-          write(fid,1000,advance='no') &
+          write(OUTPUT_UNIT,1000,advance='no') &
           RealizGetVariableValueAtCell(realization_base,SECONDARY_TEMPERATURE, &
                                       sec_id,ghosted_id)        
         endif
@@ -2424,7 +2422,7 @@ subroutine OutputSecondaryContinuumTecplot(realization_base)
           if (associated(reaction)) then
             if (reaction%naqcomp > 0) then
               do naqcomp = 1, reaction%naqcomp
-                write(fid,1000,advance='no') &
+                write(OUTPUT_UNIT,1000,advance='no') &
                 RealizGetVariableValueAtCell(realization_base, &
                                              SECONDARY_CONCENTRATION, &
                                              sec_id,ghosted_id,naqcomp)
@@ -2437,7 +2435,7 @@ subroutine OutputSecondaryContinuumTecplot(realization_base)
             if (associated(reaction%mineral)) then
               if (reaction%mineral%nkinmnrl > 0) then
                 do nkinmnrl = 1, reaction%mineral%nkinmnrl
-                  write(fid,1000,advance='no') &
+                  write(OUTPUT_UNIT,1000,advance='no') &
                   RealizGetVariableValueAtCell(realization_base,SEC_MIN_VOLFRAC, &
                                                sec_id,ghosted_id,nkinmnrl) 
                 enddo
@@ -2446,10 +2444,10 @@ subroutine OutputSecondaryContinuumTecplot(realization_base)
           endif
         endif        
       enddo
-      write(fid,1009)
+      write(OUTPUT_UNIT,1009)
     enddo         
        
-    close(fid)  
+    close(OUTPUT_UNIT)
     observation => observation%next
     count = count + 1    
   enddo
