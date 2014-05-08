@@ -2284,7 +2284,7 @@ subroutine InitReadInput(simulation)
                   case('DEFAULT')
                     option%io_buffer = 'Keyword: ' // trim(word) // &
                       ' not recognized in OUTPUT,'// &
-                      'MASS_BALANCED,DETAILED.'
+                      'MASS_BALANCE,DETAILED.'
                     call printErrMsg(option)
                 end select
               endif
