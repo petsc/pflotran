@@ -1582,8 +1582,13 @@ subroutine OutputMassBalance(realization_base)
                realization_base%option%nphase)
   PetscReal :: sum_mol_global(realization_base%option%ntrandof, &
                realization_base%option%nphase)
-  PetscReal :: sum_mol_mnrl(realization_base%reaction%mineral%nkinmnrl)
-  PetscReal :: sum_mol_mnrl_global(realization_base%reaction%mineral%nkinmnrl)
+
+! PetscReal :: sum_mol_mnrl(realization_base%reaction%mineral%nkinmnrl)
+! PetscReal :: sum_mol_mnrl_global(realization_base%reaction%mineral%nkinmnrl)
+
+  PetscReal :: sum_mol_mnrl(100)
+  PetscReal :: sum_mol_mnrl_global(100)
+
   PetscReal :: sum_trapped(realization_base%option%nphase)
   PetscReal :: sum_trapped_global(realization_base%option%nphase)
   PetscReal :: sum_mol_ye(3), sum_mol_global_ye(3)
@@ -1598,9 +1603,10 @@ subroutine OutputMassBalance(realization_base)
   reaction => realization_base%reaction
   output_option => realization_base%output_option
 
-  rt_auxvars => patch%aux%RT%auxvars
-
-  material_auxvars => patch%aux%Material%auxvars
+  if (option%ntrandof > 0) then
+    rt_auxvars => patch%aux%RT%auxvars
+    material_auxvars => patch%aux%Material%auxvars
+  endif
 
   if (len_trim(output_option%plot_name) > 2) then
     filename = trim(output_option%plot_name) // '-mas.dat'
