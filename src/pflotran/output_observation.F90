@@ -1583,11 +1583,8 @@ subroutine OutputMassBalance(realization_base)
   PetscReal :: sum_mol_global(realization_base%option%ntrandof, &
                realization_base%option%nphase)
 
-! PetscReal :: sum_mol_mnrl(realization_base%reaction%mineral%nkinmnrl)
-! PetscReal :: sum_mol_mnrl_global(realization_base%reaction%mineral%nkinmnrl)
-
-  PetscReal :: sum_mol_mnrl(100)
-  PetscReal :: sum_mol_mnrl_global(100)
+  PetscReal, allocatable :: sum_mol_mnrl(:)
+  PetscReal, allocatable :: sum_mol_mnrl_global(:)
 
   PetscReal :: sum_trapped(realization_base%option%nphase)
   PetscReal :: sum_trapped_global(realization_base%option%nphase)
@@ -1944,12 +1941,15 @@ subroutine OutputMassBalance(realization_base)
 
 !   print out mineral contribution to mass balance
     if (option%mass_bal_detailed) then
+      allocate(sum_mol_mnrl(realization_base%reaction%mineral%nkinmnrl))
+      allocate(sum_mol_mnrl_global(realization_base%reaction%mineral%nkinmnrl))
 
 !     store integral over mineral volume fractions
       do imnrl = 1, reaction%mineral%nkinmnrl
         sum_mol_mnrl(imnrl) = 0.d0
         do local_id = 1, grid%nlmax
           ghosted_id = grid%nL2G(local_id)
+          if (patch%imat(ghosted_id) <= 0) cycle
           sum_mol_mnrl(imnrl) = sum_mol_mnrl(imnrl) &
             + rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl) &
             * material_auxvars(ghosted_id)%volume &
@@ -1968,6 +1968,8 @@ subroutine OutputMassBalance(realization_base)
           endif
         enddo
       endif
+      deallocate(sum_mol_mnrl)
+      deallocate(sum_mol_mnrl_global)
     endif
   endif
 
