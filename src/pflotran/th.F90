@@ -2652,6 +2652,7 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
   PetscReal :: v_darcy_allowable
   PetscReal :: dum1
   PetscReal :: T_th,fct,hack,dhack_dt
+  PetscReal :: rho
   T_th  = 2.d0
 
   fluxm = 0.d0
@@ -2695,7 +2696,7 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
       ! Flow term
       if (global_auxvar_up%sat(1) > sir_dn .or. global_auxvar_dn%sat(1) > sir_dn) then
         upweight=1.D0
-        if (global_auxvar_up%sat(1) < eps) then 
+        if (global_auxvar_up%sat(1) < eps) then
           upweight=0.d0
         else if (global_auxvar_dn%sat(1) < eps) then 
           upweight=1.d0
@@ -2791,7 +2792,6 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
 
         if (ukvr*Dq>floweps) then
           v_darcy = Dq * ukvr * dphi
-          q = v_darcy * area
 
           if (ibndtype(TH_PRESSURE_DOF) == HET_SURF_SEEPAGE_BC .and. option%nsurfflowdof>0) then
 
@@ -2802,8 +2802,10 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
             ! Limit maximum darcy velocity such that within a subsurface
             ! timestep at max the total amount of standing water can
             ! infiltrated with the subsurface domain
+            call EOSWaterdensity(global_auxvar_up%temp(1), &
+                                 global_auxvar_up%pres(1),rho,dum1,ierr)
             v_darcy_allowable = (global_auxvar_up%pres(1)-option%reference_pressure) &
-                              /option%flow_dt/(-option%gravity(3))/global_auxvar_up%den(1)
+                              /option%flow_dt/(-option%gravity(3))/rho
             if (v_darcy > v_darcy_allowable) then
               ! Since darcy velocity is limiited, dq_dp_dn needs to be zero.
               !  Dq = 0 ==> dq_dp_dn = 0
@@ -2812,6 +2814,7 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
             endif
           endif
 
+          q = v_darcy * area
           dq_dp_dn = Dq*(dukvr_dp_dn*dphi+ukvr*dphi_dp_dn)*area
           dq_dt_dn = Dq*(dukvr_dt_dn*dphi+ukvr*dphi_dt_dn)*area
         endif
@@ -2866,7 +2869,6 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
   !                     dphi, &
   !                     option%rel_perm_aveg, &
   !                     uh, dum1, duh_dt_dn)
-
 
   Jdn(1,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)
   Jdn(1,2) = (dq_dt_dn*density_ave+q*dden_ave_dt_dn)
@@ -3158,6 +3160,7 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
   PetscReal :: fv_up, fv_dn
   PetscReal, parameter :: R_gas_constant = 8.3144621 ! Gas constant in J/mol/K
   PetscReal :: v_darcy_allowable
+  PetscReal :: rho,dum1
   
   PetscReal :: T_th,hack,fct
   T_th  = 2.d0
@@ -3255,8 +3258,10 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
             ! Limit maximum darcy velocity such that within a subsurface
             ! timestep at max the total amount of standing water can
             ! infiltrated with the subsurface domain
+            call EOSWaterdensity(global_auxvar_up%temp(1), &
+                                 global_auxvar_up%pres(1),rho,dum1,ierr)
             v_darcy_allowable = (global_auxvar_up%pres(1)-option%reference_pressure) &
-                              /option%flow_dt/(-option%gravity(3))/global_auxvar_up%den(1)
+                              /option%flow_dt/(-option%gravity(3))/rho
             if (v_darcy > v_darcy_allowable) then
               v_darcy = v_darcy_allowable
             endif
