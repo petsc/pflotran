@@ -177,10 +177,10 @@ subroutine OutputObservationTecplotColumnTXT(realization_base)
           case(OBSERVATION_SCALAR)
             if (associated(observation%region%coordinates) .and. &
                 .not.observation%at_cell_center) then
-              option%io_buffer = 'Writing of data at coordinates not ' // &
-                'functioning properly for minerals.  Perhaps due to ' // &
-                'non-ghosting of vol frac....>? - geh'
-              call printErrMsg(option)
+ !             option%io_buffer = 'Writing of data at coordinates not ' // &
+ !               'functioning properly for minerals.  Perhaps due to ' // &
+ !               'non-ghosting of vol frac....>? - geh'
+ !             call printErrMsg(option)
               call WriteObservationHeaderForCoord(fid,realization_base, &
                                                   observation%region, &
                                                   observation%print_velocities, &
