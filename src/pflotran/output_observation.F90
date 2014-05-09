@@ -1697,6 +1697,7 @@ subroutine OutputMassBalance(realization_base)
         write(fid,'(a)',advance="no") trim(header)
 
         if (option%mass_bal_detailed) then
+          header = ''
           do i=1,reaction%mineral%nkinmnrl
             if (reaction%mineral%kinmnrl_print(i)) then
               string = 'Global ' // trim(reaction%mineral%kinmnrl_names(i))
