@@ -982,11 +982,11 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
     endif
    
     call MphaseAuxVarCompute_NINC(xx_loc_p(istart:iend), &
-                                  auxvars(ghosted_id)%auxvar_elem(0),&
-                                  global_auxvars(ghosted_id), &
-                                  iphase, &
+        auxvars(ghosted_id)%auxvar_elem(0),&
+        global_auxvars(ghosted_id), &
+        iphase, &
         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
-                                  realization%fluid_properties,option, xphi)
+        realization%fluid_properties,option,xphi)
 ! update global variables
     if (associated(global_auxvars)) then
       global_auxvars(ghosted_id)%pres(:) = auxvars(ghosted_id)%auxvar_elem(0)%pres
@@ -1006,8 +1006,8 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
       global_auxvars(ghosted_id)%den_kg(:) = auxvars(ghosted_id)%auxvar_elem(0)%den(:) &
                                           * auxvars(ghosted_id)%auxvar_elem(0)%avgmw(:)
       
-      mnacl= global_auxvars(ghosted_id)%m_nacl(1)
-      if(global_auxvars(ghosted_id)%m_nacl(2)>mnacl) mnacl= global_auxvars(ghosted_id)%m_nacl(2)
+      mnacl = global_auxvars(ghosted_id)%m_nacl(1)
+      if (global_auxvars(ghosted_id)%m_nacl(2) > mnacl) mnacl = global_auxvars(ghosted_id)%m_nacl(2)
       ynacl = mnacl/(1.d3/FMWH2O + mnacl)
       global_auxvars(ghosted_id)%xmass(1) = (1.d0-ynacl) &
         *auxvars(ghosted_id)%auxvar_elem(0)%xmol(1) * FMWH2O &
@@ -1065,9 +1065,9 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
       end select
 	  
       call MphaseAuxVarCompute_NINC(xxbc,auxvars_bc(sum_connection)%auxvar_elem(0), &
-                          global_auxvars_bc(sum_connection),iphase, &
-                         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
-                         realization%fluid_properties, option, xphi)
+          global_auxvars_bc(sum_connection),iphase, &
+          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+          realization%fluid_properties, option, xphi)
     
       if (associated(global_auxvars_bc)) then
         global_auxvars_bc(sum_connection)%pres(:) = auxvars_bc(sum_connection)%auxvar_elem(0)%pres -&
@@ -1469,12 +1469,13 @@ subroutine MphaseAccumulation(auxvar,global_auxvar,por,vol,rock_dencpr, &
 
   if(option%ntrandof > 0)then 
     if (iireac > 0) then
-     !H2O
-      mol(1) = mol(1) + vol * global_auxvar%reaction_rate_store(1) * &
-               option%flow_dt*1D-3 
+      !H2O
+      mol(1) = mol(1) + vol * global_auxvar%reaction_rate_store(1)*1.d-3
+!       option%flow_dt*1D-3 (div. by flow_dt removed from def. of
+!       reaction_rate in RUpdateKineticState-pcl)
       !CO2     
-      mol(2) = mol(2) + vol * global_auxvar%reaction_rate_store(2) * &
-               option%flow_dt*1D-3
+      mol(2) = mol(2) + vol * global_auxvar%reaction_rate_store(2)*1.d-3
+!       option%flow_dt*1D-3
     endif
   endif
   
