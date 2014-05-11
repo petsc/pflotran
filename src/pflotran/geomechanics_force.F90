@@ -139,6 +139,10 @@ subroutine GeomechForceSetPlotVariables(geomech_realization)
   
   list => geomech_realization%output_option%output_variable_list
   
+  if (associated(list%first)) then
+    return
+  endif
+
   name = 'disp_x'
   units = 'm'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
