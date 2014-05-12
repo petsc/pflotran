@@ -3913,10 +3913,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   if (iphase > option%nphase) return 
   rt_auxvar%total(:,iphase) = 0.D0
   rt_auxvar%aqueous%dtotal(:,:,iphase) = 0.D0
-!  do icomp = 1, reaction%naqcomp
-!    rt_auxvar%dtotal(icomp,icomp,iphase) = 1.d0
-!  enddo
-    
+
 !  den_kg_per_L = global_auxvar%den_kg(iphase)*1.d-3     
 
   if (global_auxvar%sat(iphase) > 1.D-20) then
@@ -3925,7 +3922,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
       pressure = global_auxvar%pres(2)
       temperature = global_auxvar%temp(1)
       xphico2 = global_auxvar%fugacoeff(1)
-      den = global_auxvar%den(2)
+!     den = global_auxvar%den(2)
  
       call EOSWaterSaturationPressure(temperature, sat_pressure, ierr)
       pco2 = pressure - sat_pressure
@@ -3968,8 +3965,14 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
         
       rt_auxvar%gas_molal(ieqgas) = &
           exp(lnQK+lngamco2)*rt_auxvar%pri_molal(icomp) &
-!          rt_auxvar%pri_act_coef(icomp)*exp(lnQK)*rt_auxvar%pri_molal(icomp)&
-          /pressure/xphico2*den
+!          rt_auxvar%pri_act_coef(icomp)*exp(lnQK)*rt_auxvar%pri_molal(icomp) &
+!         /pressure/xphico2*den
+          /(IDEAL_GAS_CONST*1.d-2*(temperature+273.15D0)*xphico2)
+
+!     print *,'ideal-gas: ',ieqgas,icomp,pressure,rt_auxvar%gas_molal(ieqgas), &
+!         rt_auxvar%pri_molal(icomp), &
+!         IDEAL_GAS_CONST*(temperature+273.15D0)*1.d-2
+
       rt_auxvar%total(icomp,iphase) = rt_auxvar%total(icomp,iphase) + &
           reaction%eqgasstoich(1,ieqgas)* &
           rt_auxvar%gas_molal(ieqgas)
@@ -3979,8 +3982,10 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
    !     enddo
 
    ! contribute to %dtotal
-   !      tempreal = exp(lnQK+lngamco2)/pressure /xphico2* den 
-      tempreal = rt_auxvar%pri_act_coef(icomp)*exp(lnQK)/pressure/xphico2*den
+   !      tempreal = exp(lnQK+lngamco2)/pressure/xphico2*den
+!     tempreal = rt_auxvar%pri_act_coef(icomp)*exp(lnQK) &
+!         /pressure/xphico2*den
+      tempreal = rt_auxvar%gas_molal(ieqgas)/rt_auxvar%pri_molal(icomp)
       rt_auxvar%aqueous%dtotal(icomp,icomp,iphase) = &
           rt_auxvar%aqueous%dtotal(icomp,icomp,iphase) + &
           reaction%eqgasstoich(1,ieqgas)*tempreal
