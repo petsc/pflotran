@@ -142,8 +142,6 @@ subroutine GlobalAuxVarInit(auxvar,option)
       auxvar%reaction_rate = 0.d0
       allocate(auxvar%reaction_rate_store(option%nflowspec))
       auxvar%reaction_rate_store = 0.d0
-    ! allocate(auxvar%reaction_rate_store(option%nflowspec,TWO_INTEGER))
-    ! auxvar%reaction_rate_store = 0.d0
     case(TH_MODE)
     ! allocate(auxvar%xmass(option%nphase))
     ! auxvar%xmass = 1.d0
@@ -159,12 +157,6 @@ subroutine GlobalAuxVarInit(auxvar,option)
       auxvar%den_store = 0.d0
     ! allocate(auxvar%m_nacl(TWO_INTEGER))
     ! auxvar%m_nacl = option%m_nacl
-    ! allocate(auxvar%reaction_rate(option%nflowspec))
-    ! auxvar%reaction_rate = 0.d0
-    ! allocate(auxvar%reaction_rate_store(option%nflowspec))
-    ! auxvar%reaction_rate_store = 0.d0
-    ! allocate(auxvar%reaction_rate_store(option%nflowspec,TWO_INTEGER))
-    ! auxvar%reaction_rate_store = 0.d0
       nullify(auxvar%xmass)
       nullify(auxvar%fugacoeff)
       nullify(auxvar%fugacoeff_store)
@@ -241,12 +233,7 @@ subroutine GlobalAuxVarCopy(auxvar,auxvar2,option)
       associated(auxvar2%m_nacl)) then
     auxvar2%m_nacl = auxvar%m_nacl
   endif
-  
-  if (associated(auxvar%reaction_rate) .and. &
-      associated(auxvar2%reaction_rate)) then
-  endif
-  
-  
+
   if (associated(auxvar%fugacoeff) .and. &
       associated(auxvar2%fugacoeff)) then
     auxvar2%fugacoeff = auxvar%fugacoeff  
