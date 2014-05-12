@@ -2066,6 +2066,7 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   use Coupler_module  
   use Debug_module
   use Material_Aux_class
+  use SrcSink_Sandbox_module
 
   implicit none
 
@@ -2076,6 +2077,7 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   PetscViewer :: viewer
   PetscErrorCode :: ierr
   
+  Mat, parameter :: null_mat = 0
   type(discretization_type), pointer :: discretization
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch
@@ -2347,11 +2349,18 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
     enddo
   endif
   
+  call VecRestoreArrayF90(r, r_p, ierr)
+  
+  call SSSandbox(r,null_mat,PETSC_FALSe,grid,material_auxvars, &
+                 gen_auxvars,option)
+  
   if (general_isothermal) then
+    call VecGetArrayF90(r, r_p, ierr)
     ! zero energy residual
     do local_id = 1, grid%nlmax
       r_p((local_id-1)*option%nflowdof+GENERAL_ENERGY_EQUATION_INDEX) =  0.d0
     enddo
+    call VecRestoreArrayF90(r, r_p, ierr)
   endif
 
 #ifdef DEBUG_GENERAL_FILEOUTPUT
@@ -2367,8 +2376,7 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   enddo
 #endif
   
-  call VecRestoreArrayF90(r, r_p, ierr)
-   
+  
   if (realization%debug%vecview_residual) then
     call PetscViewerASCIIOpen(realization%option%mycomm,'Gresidual.out', &
                               viewer,ierr)
@@ -2409,6 +2417,7 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
   use Field_module
   use Debug_module
   use Material_Aux_class
+  use SrcSink_Sandbox_module
 
   implicit none
 
@@ -2432,6 +2441,7 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
   PetscInt :: irow
   PetscInt :: local_id_up, local_id_dn
   PetscInt :: ghosted_id_up, ghosted_id_dn
+  Vec, parameter :: null_vec = 0
   
   PetscReal :: Jup(realization%option%nflowdof,realization%option%nflowdof), &
                Jdn(realization%option%nflowdof,realization%option%nflowdof)
@@ -2684,6 +2694,9 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
     enddo
     source_sink => source_sink%next
   enddo
+  
+  call SSSandbox(null_vec,A,PETSC_TRUE,grid,material_auxvars, &
+                 gen_auxvars,option)
 
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
