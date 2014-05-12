@@ -4676,6 +4676,10 @@ subroutine THSetPlotVariables(realization)
   
   list => realization%output_option%output_variable_list
   
+  if (associated(list%first)) then
+    return
+  endif
+
   name = 'Temperature'
   units = 'C'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &

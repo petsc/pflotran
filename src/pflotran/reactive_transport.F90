@@ -487,7 +487,6 @@ subroutine RTComputeMassBalance(realization,mass_balance)
   type(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%ntrandof, &
                             realization%option%nphase)
-  
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(field_type), pointer :: field
@@ -503,8 +502,6 @@ subroutine RTComputeMassBalance(realization,mass_balance)
   PetscInt :: iphase
   PetscInt :: i, icomp, imnrl, ncomp, irate, irxn
 
-  mass_balance = 0.d0
-  
   iphase = 1
   option => realization%option
   patch => realization%patch
@@ -517,17 +514,20 @@ subroutine RTComputeMassBalance(realization,mass_balance)
   global_auxvars => patch%aux%Global%auxvars
   material_auxvars => patch%aux%Material%auxvars
 
+  mass_balance = 0.d0
+
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
     if (patch%imat(ghosted_id) <= 0) cycle
     do iphase = 1, option%nphase
-      mass_balance(:,iphase) = mass_balance(:,iphase) + &
+!     mass_balance(:,iphase) = mass_balance(:,iphase) + &
+      mass_balance(:,1) = mass_balance(:,1) + &
         rt_auxvars(ghosted_id)%total(:,iphase) * &
         global_auxvars(ghosted_id)%sat(iphase) * &
         material_auxvars(ghosted_id)%porosity * &
         material_auxvars(ghosted_id)%volume*1000.d0
-        
+
       if (iphase == 1) then
       ! add contribution of equilibrium sorption
         if (reaction%neqsorb > 0) then
@@ -535,7 +535,6 @@ subroutine RTComputeMassBalance(realization,mass_balance)
             rt_auxvars(ghosted_id)%total_sorb_eq(:) * &
             material_auxvars(ghosted_id)%volume
         endif
-
 
       ! add contribution of kinetic multirate sorption
         if (reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then
@@ -547,7 +546,7 @@ subroutine RTComputeMassBalance(realization,mass_balance)
             enddo
           enddo
         endif
-               
+
       ! add contribution from mineral volume fractions
         if (reaction%mineral%nkinmnrl > 0) then
           do imnrl = 1, reaction%mineral%nkinmnrl
@@ -555,11 +554,11 @@ subroutine RTComputeMassBalance(realization,mass_balance)
             do i = 1, ncomp
               icomp = reaction%mineral%kinmnrlspecid(i,imnrl)
               mass_balance(icomp,iphase) = mass_balance(icomp,iphase) &
-              + reaction%mineral%kinmnrlstoich(i,imnrl)                  &
-              * rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl)      &
+              + reaction%mineral%kinmnrlstoich(i,imnrl) &
+              * rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl) &
               * material_auxvars(ghosted_id)%volume &
               / reaction%mineral%kinmnrl_molar_vol(imnrl)
-            enddo 
+            enddo
           enddo
         endif
       endif

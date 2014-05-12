@@ -39,7 +39,7 @@ module PFLOTRAN_Constants_module
   PetscReal, parameter, public :: LN_TO_LOG = 0.434294481904d0  
   
   ! constants
-  PetscReal, parameter, public :: IDEAL_GAS_CONST = 8.314472d0   
+  PetscReal, parameter, public :: IDEAL_GAS_CONST = 8.314472d0 ! J/mol/K
   PetscReal, parameter, public :: HEAT_OF_FUSION = 3.34d5  ! J/kg
   PetscReal, parameter, public :: PI = 3.14159265359d0
   PetscReal, parameter, public :: Faraday = 96485.3365d0 ! C/mol

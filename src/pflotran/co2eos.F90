@@ -698,7 +698,7 @@ subroutine Henry_duan_sun(tc,p,keqco2,phico2,lngamco2,mc,ma,psat,co2_aq_actcoef)
   temparray = coef(3,:)
   call duan_sun_param(t,p,temparray,lamca) ! zeta_CO2-Na-Cl Pitzer 3rd order int. param.
   
-  !activity coef. co2
+  !activity coef. aqueous co2
   lngamco2 = 2.d0*lamc*mc + lamca*mc*ma ! = log(gam(jco2))
   if (present(co2_aq_actcoef)) then
     co2_aq_actcoef = exp(lngamco2)

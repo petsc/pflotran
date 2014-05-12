@@ -2280,6 +2280,21 @@ subroutine InitReadInput(simulation)
               output_option%print_tortuosity = PETSC_TRUE
             case('MASS_BALANCE')
               option%compute_mass_balance_new = PETSC_TRUE
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputDefaultMsg(input,option, &
+                                 'MASS_BALANCE,DETAILED,OUTPUT')
+              if (len_trim(word) > 0) then
+                call StringToUpper(word)
+                select case(trim(word))
+                  case('DETAILED')
+                    option%mass_bal_detailed = PETSC_TRUE
+                  case('DEFAULT')
+                    option%io_buffer = 'Keyword: ' // trim(word) // &
+                      ' not recognized in OUTPUT,'// &
+                      'MASS_BALANCE,DETAILED.'
+                    call printErrMsg(option)
+                end select
+              endif
             case('PRINT_COLUMN_IDS')
               output_option%print_column_ids = PETSC_TRUE
             case('TIMES')
@@ -2469,7 +2484,7 @@ subroutine InitReadInput(simulation)
                         endif
                       case default
                         option%io_buffer = 'HDF5 keyword (' // trim(word) // &
-                          ') not recongnized.  Use "SINGLE_FILE" or ' // &
+                          ') not recognized.  Use "SINGLE_FILE" or ' // &
                           '"MULTIPLE_FILES".'
                         call printErrMsg(option)
                     end select

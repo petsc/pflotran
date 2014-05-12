@@ -1921,7 +1921,7 @@ end subroutine ColloidConstraintDestroy
 
 ! ************************************************************************** !
 
-subroutine ReactionDestroy(reaction)
+subroutine ReactionDestroy(reaction,option)
   ! 
   ! Deallocates a reaction object
   ! 
@@ -1930,6 +1930,7 @@ subroutine ReactionDestroy(reaction)
   ! 
 
   use Utility_module, only: DeallocateArray
+  use option_module
   
   implicit none
 
@@ -1945,6 +1946,7 @@ subroutine ReactionDestroy(reaction)
   type(radioactive_decay_rxn_type), pointer :: radioactive_decay_rxn, &
                                                prev_radioactive_decay_rxn
   type(kd_rxn_type), pointer :: kd_rxn, prev_kd_rxn
+  type(option_type) :: option
 
   if (.not.associated(reaction)) return
   
@@ -2022,15 +2024,17 @@ subroutine ReactionDestroy(reaction)
   nullify(reaction%kd_rxn_list)
 
   ! kd reactions secondary continuum
-  kd_rxn => reaction%sec_cont_kd_rxn_list
-  do
-    if (.not.associated(kd_rxn)) exit
-    prev_kd_rxn => kd_rxn
-    kd_rxn => kd_rxn%next
-    call KDRxnDestroy(prev_kd_rxn)
-  enddo    
-  nullify(reaction%sec_cont_kd_rxn_list)
-  
+  if (option%use_mc) then
+    kd_rxn => reaction%sec_cont_kd_rxn_list
+    do
+      if (.not.associated(kd_rxn)) exit
+      prev_kd_rxn => kd_rxn
+      kd_rxn => kd_rxn%next
+      call KDRxnDestroy(prev_kd_rxn)
+    enddo
+    nullify(reaction%sec_cont_kd_rxn_list)
+  endif
+
   call SurfaceComplexationDestroy(reaction%surface_complexation)
   call MineralDestroy(reaction%mineral)
   call MicrobialDestroy(reaction%microbial)
