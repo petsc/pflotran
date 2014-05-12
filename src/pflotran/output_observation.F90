@@ -1927,9 +1927,7 @@ subroutine OutputMassBalance(realization_base)
                     option%io_rank,option%mycomm,ierr)
 
     if (option%myrank == option%io_rank) then
-!geh: commenting out non-aqueous phase since we do not support it in reactive
-!     transport.
-!      do iphase = 1, option%nphase
+!     do iphase = 1, option%nphase
       iphase = 1
         do icomp = 1, reaction%naqcomp
           if (reaction%primary_species_print(icomp)) then
