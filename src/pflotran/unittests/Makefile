@@ -62,9 +62,11 @@ $(PFUNIT_DIR)/source/libpfunit.a :
 #
 # cleanup: note, this removes F90 files!
 #
-clean-tests :
+clean-tests : clean-pfunit
+	-rm -f unittests *~ *.F90 *.o *.mod
+
+clean-pfunit :
 	./build-pfunit.sh -c $(FC) -d $(PFUNIT_DIR) -n
-	-rm unittests *~ *.F90 *.o *.mod
 
 # uncomment the PRECIOUS rule to keep the intermediate F90 files
 #.PRECIOUS : %.F90
