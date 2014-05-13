@@ -300,6 +300,7 @@ subroutine SSSandboxGeneral(residual,Jacobian,compute_derivative, &
                                   option)
         if (compute_derivative) then
           do idof = 1, option%nflowdof
+            res_pert = 0.d0
             call cur_srcsink%Evaluate(res_pert,Jac,PETSC_FALSE, &
                                       material_auxvars(ghosted_id), &
                                       general_auxvars(idof,ghosted_id)% &
@@ -314,7 +315,7 @@ subroutine SSSandboxGeneral(residual,Jacobian,compute_derivative, &
         else
           iend = local_id*option%nflowdof
           istart = iend - option%nflowdof + 1
-          r_p(istart:iend) = r_p(istart:iend) + res
+          r_p(istart:iend) = r_p(istart:iend) - res
         endif
       enddo
     cur_srcsink => cur_srcsink%next

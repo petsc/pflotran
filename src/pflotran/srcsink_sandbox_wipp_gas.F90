@@ -181,7 +181,7 @@ subroutine WIPPGasGenerationSrcSink(this,Residual,Jacobian, &
   q_h2 = s_H2_Fe * q_rc + s_H2_CH2O * q_rm
   
   ! gas production is a negative source (same as injection)
-  Residual(TWO_INTEGER) = -1.d0*q_h2
+  Residual(TWO_INTEGER) = q_h2
   
   if (compute_derivative) then
     
