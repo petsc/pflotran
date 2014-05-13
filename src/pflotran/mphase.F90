@@ -1467,7 +1467,7 @@ subroutine MphaseAccumulation(auxvar,global_auxvar,por,vol,rock_dencpr, &
 ! Reaction terms here
 ! Note if iireac > 0, then it is the node global index
 
-  if(option%ntrandof > 0)then 
+  if (option%ntrandof > 0) then
     if (iireac > 0) then
       !H2O
       mol(1) = mol(1) + vol * global_auxvar%reaction_rate_store(1)*1.d-3
