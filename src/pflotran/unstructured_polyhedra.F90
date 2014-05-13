@@ -1420,7 +1420,7 @@ function UGridPolyhedraComputeInternConnect(ugrid, grid_x, &
 
   use Connection_module
   use Option_module
-  use Unstructured_grid_module
+  use Unstructured_Grid_module
   use Utility_module, only : DotProduct, CrossProduct
 
   implicit none

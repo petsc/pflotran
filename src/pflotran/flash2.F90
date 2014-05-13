@@ -1096,7 +1096,7 @@ subroutine Flash2Accumulation(auxvar,global_auxvar,por,vol,rock_dencpr,option,ii
  ! if (present(ireac)) iireac=ireac
 
   porXvol = por*vol
-  mol=0.d0; eng=0.D0
+  mol=0.d0; eng=0.d0
   do np = 1, option%nphase
     do ispec = 1, option%nflowspec  
       mol(ispec) = mol(ispec) + auxvar%sat(np) * &
@@ -1111,19 +1111,21 @@ subroutine Flash2Accumulation(auxvar,global_auxvar,por,vol,rock_dencpr,option,ii
   eng = eng * porXvol + (1.d0 - por)* vol * rock_dencpr * auxvar%temp 
  
 ! Reaction terms here
-! Note if iireac >0, then it is the node global index
- ! if (option%run_coupled == PETSC_TRUE .and. iireac>0) then
-!H2O
- !    mol(1)= mol(1) - option%flow_dt * option%rtot(iireac,1)
- !    mol(2)= mol(2) - option%flow_dt * option%rtot(iireac,2)
- ! endif
-  
-   !if(option%use_isothermal)then
-   !   Res(1:option%nflowdof)=mol(:)
-   !else
-      Res(1:option%nflowspec)=mol(:)
-      Res(option%nflowdof)=eng
-  ! endif
+! Note if iireac > 0, then it is the node global index
+  if (option%ntrandof > 0) then
+    if (iireac > 0) then
+!     H2O
+      mol(1) = mol(1) + vol * global_auxvar%reaction_rate_store(1)*1.d-3
+!     CO2
+      mol(2) = mol(2) + vol * global_auxvar%reaction_rate_store(2)*1.d-3
+    endif
+  endif
+! if (option%use_isothermal) then
+!   Res(1:option%nflowdof) = mol(:)
+! else
+    Res(1:option%nflowdof-1) = mol(:)
+    Res(option%nflowdof) = eng
+! endif
 end subroutine Flash2Accumulation
 
 ! ************************************************************************** !
