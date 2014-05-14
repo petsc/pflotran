@@ -378,7 +378,8 @@ subroutine GeneralUpdateSolution(realization)
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     iphas_loc_p(ghosted_id) = global_auxvars(ghosted_id)%istate
-    gen_auxvars%istate_store(PREV_TS) = global_auxvars(ghosted_id)%istate
+    gen_auxvars(ZERO_INTEGER,ghosted_id)%istate_store(PREV_TS) = &
+      global_auxvars(ghosted_id)%istate
   enddo
   call VecRestoreArrayF90(field%iphas_loc,iphas_loc_p,ierr)
   
@@ -3072,15 +3073,18 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
         temperature_index  = offset + GENERAL_ENERGY_DOF
         dX_p(gas_pressure_index) = dX_p(gas_pressure_index) * &
                                    general_pressure_scale
-!        dX_p(air_pressure_index) = dX_p(air_pressure_index) * &
-!                                   general_pressure_scale
+        if (general_2ph_energy_dof == GENERAL_AIR_PRESSURE_INDEX) then                                   
+          air_pressure_index = offset + GENERAL_ENERGY_DOF
+          dX_p(air_pressure_index) = dX_p(air_pressure_index) * &
+                                     general_pressure_scale
+          del_air_pressure = dX_p(air_pressure_index)
+          air_pressure0 = X_p(air_pressure_index)
+          air_pressure1 = air_pressure0 - del_air_pressure
+        endif
         temp_scale = 1.d0
         del_gas_pressure = dX_p(gas_pressure_index)
         gas_pressure0 = X_p(gas_pressure_index)
         gas_pressure1 = gas_pressure0 - del_gas_pressure
-!        del_air_pressure = dX_p(air_pressure_index)
-!        air_pressure0 = X_p(air_pressure_index)
-!        air_pressure1 = air_pressure0 - del_air_pressure
         del_saturation = dX_p(saturation_index)
         saturation0 = X_p(saturation_index)
         saturation1 = saturation0 - del_saturation
@@ -3255,7 +3259,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
 #endif !LIMIT_MAX_SATURATION_CHANGE        
       case(GAS_STATE) 
         gas_pressure_index = offset + GENERAL_GAS_PRESSURE_DOF
-        air_pressure_index = offset + 2
+        air_pressure_index = offset + GENERAL_GAS_STATE_AIR_PRESSURE_DOF
         dX_p(gas_pressure_index) = dX_p(gas_pressure_index) * &
                                    general_pressure_scale
         dX_p(air_pressure_index) = dX_p(air_pressure_index) * &
