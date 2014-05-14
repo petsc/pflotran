@@ -1,16 +1,16 @@
-:Description: 3D infiltration problem for Markus Flury
+#Description: 3D infiltration problem for Markus Flury
  
-: == debugging ================================================================
+# == debugging ================================================================
 DEBUG
-:MATVIEW_JACOBIAN
-:VECVIEW_RESIDUAL
-:VECVIEW_SOLUTION
+#MATVIEW_JACOBIAN
+#VECVIEW_RESIDUAL
+#VECVIEW_SOLUTION
 /
 
-: == mode =====================================================================
+# == mode =====================================================================
 MODE RICHARDS
 
-: == chemistry ================================================================
+# == chemistry ================================================================
 skip
 CHEMISTRY
 PRIMARY_SPECIES
@@ -22,15 +22,15 @@ All
 /
 noskip
 
-: == reference variables ======================================================
+# == reference variables ======================================================
 REFERENCE_POROSITY 0.25d0
 
-: == time stepping ============================================================
+# == time stepping ============================================================
 TIMESTEPPER
 TS_ACCELERATION 8
 /
 
-: == discretization ===========================================================
+# == discretization ===========================================================
 GRID
 TYPE structured
 NXYZ 20 20 80
@@ -41,46 +41,46 @@ DXYZ
 /
 /
 
-: == flow solvers =============================================================
+# == flow solvers =============================================================
 NEWTON_SOLVER FLOW
 PRECONDITIONER_MATRIX_TYPE AIJ
 RTOL 1.d-8
 ATOL 1.d-8
 STOL 1.d-30
 ITOL_UPDATE 1.d0
-:NO_INFINITY_NORM
-:NO_PRINT_CONVERGENCE
-:PRINT_DETAILED_CONVERGENCE
+#NO_INFINITY_NORM
+#NO_PRINT_CONVERGENCE
+#PRINT_DETAILED_CONVERGENCE
 /
 
 LINEAR_SOLVER FLOW
-:KSP_TYPE FGMRES
-:KSP_TYPE PREONLY
-:PC_TYPE LU
+#KSP_TYPE FGMRES
+#KSP_TYPE PREONLY
+#PC_TYPE LU
 /
 
-: == transport solvers ========================================================
+# == transport solvers ========================================================
 NEWTON_SOLVER TRANSPORT
 PRECONDITIONER_MATRIX_TYPE AIJ
 RTOL 1.d-12
 ATOL 1.d-12
 STOL 1.d-30
-:NO_INFINITY_NORM
-:NO_PRINT_CONVERGENCE
-:PRINT_DETAILED_CONVERGENCE
+#NO_INFINITY_NORM
+#NO_PRINT_CONVERGENCE
+#PRINT_DETAILED_CONVERGENCE
 /
 
 LINEAR_SOLVER TRANSPORT
-:KSP_TYPE PREONLY
-:PC_TYPE LU
+#KSP_TYPE PREONLY
+#PC_TYPE LU
 /
 
-: == fluid properties =========================================================
+# == fluid properties =========================================================
 FLUID_PROPERTY
 DIFFUSION_COEFFICIENT 1.d-9
 /
 
-: == material properties ======================================================
+# == material properties ======================================================
 MATERIAL_PROPERTY HD
 ID 1
 SATURATION_FUNCTION HD
@@ -161,7 +161,7 @@ PERM_ISO 9.63d-14
 /
 /
 
-: == saturation / permeability functions ======================================
+# == saturation / permeability functions ======================================
 SATURATION_FUNCTION HD
 SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
 RESIDUAL_SATURATION 0.115
@@ -218,21 +218,21 @@ LAMBDA 0.402
 ALPHA 1.4295d-4
 /
 
-: == output ===================================================================
+# == output ===================================================================
 OUTPUT
-:PERIODIC TIMESTEP 1
+#PERIODIC TIMESTEP 1
 PERIODIC TIME .1 y
 FORMAT TECPLOT BLOCK
 /
 
-: == times ====================================================================
+# == times ====================================================================
 TIME
 FINAL_TIME 1. y
 INITIAL_TIMESTEP_SIZE 1. d
 MAXIMUM_TIMESTEP_SIZE 1. d
 /
 
-: == regions ==================================================================
+# == regions ==================================================================
 REGION all
 COORDINATES
 -1.d20 -1.d20 0.d0
@@ -312,14 +312,14 @@ COORDINATES
 /
 /
 
-: == flow conditions ==========================================================
+# == flow conditions ==========================================================
 FLOW_CONDITION Inlet
 TYPE
 FLUX neumann
 /
-:FLUX 0.317098d-7 ! 1 m/y
+#FLUX 0.317098d-7 ! 1 m/y
 FLUX 1.5855d-9 ! 5 cm/y
-:FLUX file 200w_recharge_1951-2000_daily.dat
+#FLUX file 200w_recharge_1951-2000_daily.dat
 /
 
 FLOW_CONDITION Initial
@@ -331,7 +331,7 @@ PRESSURE 101325.d0
 /
 
 
-: == transport conditions =====================================================
+# == transport conditions =====================================================
 skip
 TRANSPORT_CONDITION Inlet
 TYPE dirichlet
@@ -347,7 +347,7 @@ CONSTRAINT_LIST
 /
 /
 
-: == transport constraints ====================================================
+# == transport constraints ====================================================
 CONSTRAINT Initial
 CONCENTRATIONS
 Tracer   1.e-10            F
@@ -361,26 +361,26 @@ Tracer   1.e-1             F
 /
 noskip
 
-: == couplers =================================================================
+# == couplers =================================================================
 BOUNDARY_CONDITION Inlet
 FLOW_CONDITION Inlet
-:TRANSPORT_CONDITION Inlet
+#TRANSPORT_CONDITION Inlet
 REGION Top
 /
 
 BOUNDARY_CONDITION Outlet
 FLOW_CONDITION Initial
-:TRANSPORT_CONDITION Initial
+#TRANSPORT_CONDITION Initial
 REGION Bottom
 /
 
 INITIAL_CONDITION Initial
 FLOW_CONDITION Initial
-:TRANSPORT_CONDITION Initial
+#TRANSPORT_CONDITION Initial
 REGION all
 /
 
-: == stratigraphy =============================================================
+# == stratigraphy =============================================================
 STRATA
 MATERIAL HD
 REGION HD

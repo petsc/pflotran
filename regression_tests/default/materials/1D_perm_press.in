@@ -1,15 +1,15 @@
-:Description: 1D test problem for permeability update with pressure
-:Satish Karra
-:01/15/2014 
-:===================== richards mode ===============================================
+#Description: 1D test problem for permeability update with pressure
+#Satish Karra
+#01/15/2014 
+#===================== richards mode ===============================================
 MODE RICHARDS 
 
-:updating permeability based on pressure
+#updating permeability based on pressure
 UPDATE_FLOW_PERMEABILITY
 
-:=========================== regression =======================================
+#=========================== regression =======================================
 REGRESSION
-  :CELLS_PER_PROCESS 2
+  #CELLS_PER_PROCESS 2
   CELLS
     1
     20
@@ -28,7 +28,7 @@ REGRESSION
     100
   /
 END
-:===================== Discretization =========================================
+#===================== Discretization =========================================
 GRID
   TYPE structured
   ORIGIN 0.d0 0.d0 0.d0
@@ -39,7 +39,7 @@ GRID
   /
 END
 
-:===================== Solver options =========================================
+#===================== Solver options =========================================
 NEWTON_SOLVER FLOW
   ATOL 1D-12
   RTOL 1D-8
@@ -51,13 +51,13 @@ END
 
 
 LINEAR_SOLVER FLOW
-:PC_TYPE LU
-:KSP_TYPE PREONLY
+#PC_TYPE LU
+#KSP_TYPE PREONLY
 END
 
 LINEAR_SOLVER TRANSPORT
-:PC_TYPE LU
-:KSP_TYPE PREONLY
+#PC_TYPE LU
+#KSP_TYPE PREONLY
 END
 
 NEWTON_SOLVER TRANSPORT
@@ -68,7 +68,7 @@ END
 FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 END
-:========================= material properties ================================
+#========================= material properties ================================
 MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.5d0
@@ -85,7 +85,7 @@ MATERIAL_PROPERTY soil1
   /
 END
 
-:========================= saturation functions ===============================
+#========================= saturation functions ===============================
 SATURATION_FUNCTION default
   SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
   RESIDUAL_SATURATION 0.5d-1
@@ -93,7 +93,7 @@ SATURATION_FUNCTION default
   ALPHA 1.d-3
 END
 
-:========================= output options =====================================
+#========================= output options =====================================
 OUTPUT
   TIMES y  0.001 0.1 0.5 1 1.5 2
   SCREEN PERIODIC 1
@@ -103,14 +103,14 @@ OUTPUT
   VELOCITIES
 END
 
-:======================== times ===============================================
+#======================== times ===============================================
 TIME
   FINAL_TIME 2 y
   INITIAL_TIMESTEP_SIZE 1.d-8 y
   MAXIMUM_TIMESTEP_SIZE 1.d1  y
 END
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
@@ -134,7 +134,7 @@ REGION east
   /
 END
 
-:======================= flow conditions ======================================
+#======================= flow conditions ======================================
 FLOW_CONDITION initial
   UNITS Pa, C, yr
   TYPE
@@ -156,26 +156,26 @@ FLOW_CONDITION west
   /
   PRESSURE 10.0D5
 END
-:========================== initial and boundary conditions ===================
-: initial condition
+#========================== initial and boundary conditions ===================
+# initial condition
 INITIAL_CONDITION
   FLOW_CONDITION initial
   REGION all
 END
 
-: west boundary condition
+# west boundary condition
 BOUNDARY_CONDITION
   FLOW_CONDITION west
   REGION west
 END
 
-: east boundary condition
+# east boundary condition
 BOUNDARY_CONDITION
   FLOW_CONDITION initial
   REGION east
 END
 
-:===================== stratigraphy couplers ==================================
+#===================== stratigraphy couplers ==================================
 STRATA
   REGION all
   MATERIAL soil1

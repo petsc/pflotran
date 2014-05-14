@@ -1,28 +1,28 @@
-:Description: 3D 5-spot copper leaching problem
+#Description: 3D 5-spot copper leaching problem
  
-: == debugging ================================================================
-:DEBUG
-:MATVIEW_JACOBIAN
-:VECVIEW_RESIDUAL
-:VECVIEW_SOLUTION
-:/
+# == debugging ================================================================
+#DEBUG
+#MATVIEW_JACOBIAN
+#VECVIEW_RESIDUAL
+#VECVIEW_SOLUTION
+#/
 
-: == mode =====================================================================
-:MODE RICHARDS
+# == mode =====================================================================
+#MODE RICHARDS
 
-:UNIFORM_VELOCITY 0.317098d-7 0.d0 0.d0
+#UNIFORM_VELOCITY 0.317098d-7 0.d0 0.d0
 UNIFORM_VELOCITY 5.69333e-4 0.d0 0.d0
 
-:=========================== runtime ==========================================
-:CHECKPOINT 100
-:WALLCLOCK_STOP 11.75
+#=========================== runtime ==========================================
+#CHECKPOINT 100
+#WALLCLOCK_STOP 11.75
 
-: == chemistry ================================================================
+# == chemistry ================================================================
 CHEMISTRY
-:OPERATOR_SPLIT
+#OPERATOR_SPLIT
 PRIMARY_SPECIES
 Na+
-:K+
+#K+
 Ca++
 Mg++
 H+
@@ -42,7 +42,7 @@ MgCO3(aq)
 MgHCO3+
 MgCl+
 HCl(aq)
-:KCl(aq)
+#KCl(aq)
 NaCl(aq)
 NaOH(aq)
 /
@@ -52,7 +52,7 @@ CO2(g)
 MINERALS
 Halite
 /
-:
+#
 MINERAL_KINETICS
 Halite
 RATE_CONSTANT 1.e-30
@@ -61,7 +61,7 @@ RATE_CONSTANT 1.e-30
 SORPTION
 ION_EXCHANGE_RXN
 MINERAL Halite
-:CEC 68.676  ! mol/m^3
+#CEC 68.676  ! mol/m^3
 CEC 71.004
 CATIONS
 Na+   7.94328
@@ -79,17 +79,17 @@ All
 /
 /
 
-: == reference variables ======================================================
+# == reference variables ======================================================
 REFERENCE_POROSITY 0.61d0
 
-: == time stepping ============================================================
+# == time stepping ============================================================
 TIMESTEPPER
 TS_ACCELERATION 8
 MAX_STEPS 100000
-:MAX_STEPS 1
+#MAX_STEPS 1
 /
 
-: == discretization ===========================================================
+# == discretization ===========================================================
 GRID
 TYPE structured 
 NXYZ 250 1 1
@@ -100,62 +100,62 @@ BOUNDS
 /
 /
 
-: == flow solvers =============================================================
+# == flow solvers =============================================================
 NEWTON_SOLVER FLOW
 PRECONDITIONER_MATRIX_TYPE AIJ
 RTOL 1.d-8
 ATOL 1.d-8
 STOL 1.d-30
 ITOL_UPDATE 1.d0
-:NO_INFINITY_NORM
-:NO_PRINT_CONVERGENCE
-:PRINT_DETAILED_CONVERGENCE
+#NO_INFINITY_NORM
+#NO_PRINT_CONVERGENCE
+#PRINT_DETAILED_CONVERGENCE
 /
 
 LINEAR_SOLVER FLOW
-:KSP_TYPE PREONLY
-:PC_TYPE LU
-:KSP_TYPE FGMRES !samrai
-:PC_TYPE SHELL !samrai
+#KSP_TYPE PREONLY
+#PC_TYPE LU
+#KSP_TYPE FGMRES !samrai
+#PC_TYPE SHELL !samrai
 /
 
-: == transport solvers ========================================================
+# == transport solvers ========================================================
 NEWTON_SOLVER TRANSPORT
 PRECONDITIONER_MATRIX_TYPE AIJ
 RTOL 1.d-8
 ATOL 1.d-8
 STOL 1.d-30
-:NO_INFINITY_NORM
-:NO_PRINT_CONVERGENCE
-:PRINT_DETAILED_CONVERGENCE
+#NO_INFINITY_NORM
+#NO_PRINT_CONVERGENCE
+#PRINT_DETAILED_CONVERGENCE
 /
 
 LINEAR_SOLVER TRANSPORT
-:PC_TYPE LU
-:KSP_TYPE PREONLY
-:KSP_TYPE FGMRES ! samrai
-:PC_TYPE SHELL !samrai
+#PC_TYPE LU
+#KSP_TYPE PREONLY
+#KSP_TYPE FGMRES ! samrai
+#PC_TYPE SHELL !samrai
 /
 
-: == fluid properties =========================================================
+# == fluid properties =========================================================
 FLUID_PROPERTY
 DIFFUSION_COEFFICIENT 1.d-9
-:DIFFUSION_COEFFICIENT 9.33333e-7
+#DIFFUSION_COEFFICIENT 9.33333e-7
 /
 
-: == material properties ======================================================
+# == material properties ======================================================
 MATERIAL_PROPERTY HD
 ID 1
 SATURATION_FUNCTION default
 POROSITY 0.61
 TORTUOSITY 1.0
-:LONGITUDINAL_DISPERSIVITY 0.001
+#LONGITUDINAL_DISPERSIVITY 0.001
 PERMEABILITY
 PERM_ISO 5.43d-13
 /
 /
 
-: == saturation / permeability functions ======================================
+# == saturation / permeability functions ======================================
 SATURATION_FUNCTION HD
 SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
 RESIDUAL_SATURATION 0.115
@@ -163,23 +163,23 @@ LAMBDA 0.286
 ALPHA 1.9401d-4
 /
 
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION default
 /
 
-: == output ===================================================================
+# == output ===================================================================
 OUTPUT
 TIMES s 10307.1 33498.2 41228.6
 PERIODIC_OBSERVATION TIMESTEP 1
-:PERIODIC TIMESTEP 1
-:PERIODIC TIME 0.04 y
+#PERIODIC TIMESTEP 1
+#PERIODIC TIME 0.04 y
 SCREEN PERIODIC 10
-:FORMAT HDF5
+#FORMAT HDF5
 FORMAT TECPLOT POINT
 VELOCITIES
 /
 
-: == times ====================================================================
+# == times ====================================================================
 TIME
 FINAL_TIME 41228.6 s
 INITIAL_TIMESTEP_SIZE 1. s
@@ -190,7 +190,7 @@ MAXIMUM_TIMESTEP_SIZE 1. s at 33300 s
 MAXIMUM_TIMESTEP_SIZE 20. s at 33600 s
 /
 
-: == regions ==================================================================
+# == regions ==================================================================
 REGION all
 COORDINATES
 0.d0 0.d0 0.d0
@@ -218,15 +218,15 @@ OBSERVATION
 REGION east
 /
 
-: == flow conditions ==========================================================
+# == flow conditions ==========================================================
 skip
 FLOW_CONDITION west
 TYPE
 FLUX neumann
 /
 FLUX 0.317098d-7 ! 1 m/y
-:FLUX 1.5855d-9 ! 5 cm/y
-:FLUX file 200w_recharge_1951-2000_daily.dat
+#FLUX 1.5855d-9 ! 5 cm/y
+#FLUX file 200w_recharge_1951-2000_daily.dat
 /
 noskip
 
@@ -254,7 +254,7 @@ DATUM 0.d0 0.d0 0.d0
 PRESSURE 101325.d0
 END
 
-: == transport conditions =====================================================
+# == transport conditions =====================================================
 TRANSPORT_CONDITION Initial
 TYPE dirichlet
 CONSTRAINT_LIST
@@ -278,37 +278,37 @@ CONSTRAINT_LIST
 /
 /
 
-: == couplers =================================================================
+# == couplers =================================================================
 
 INITIAL_CONDITION Initial
-:FLOW_CONDITION Initial
+#FLOW_CONDITION Initial
 TRANSPORT_CONDITION Initial
 REGION all
 /
 
 BOUNDARY_CONDITION
-:FLOW_CONDITION west
+#FLOW_CONDITION west
 TRANSPORT_CONDITION west
 REGION west
 END
 
 BOUNDARY_CONDITION
-:FLOW_CONDITION east
+#FLOW_CONDITION east
 TRANSPORT_CONDITION east
 REGION east
 END
 
-: == stratigraphy =============================================================
+# == stratigraphy =============================================================
 STRATA
 MATERIAL HD
 REGION all
 /
 
-: == transport constraints ====================================================
+# == transport constraints ====================================================
 CONSTRAINT Initial
 CONCENTRATIONS
 Na+           4.65d-3  T
-:K+            2.d-4    T
+#K+            2.d-4    T
 Ca++          5.2d-3   T
 Mg++          4.55e-3  T
 H+            4.6     pH
@@ -324,7 +324,7 @@ Halite        0.5 1.
 CONSTRAINT Inlet1
 CONCENTRATIONS
 Na+           1.d-16  T
-:K+            1.d-10  T
+#K+            1.d-10  T
 Ca++          5.3d-3  T
 Mg++          1.e-16  T
 H+            4.6    pH
@@ -337,7 +337,7 @@ Tracer        9.4d-3  T
 CONSTRAINT Inlet2
 CONCENTRATIONS
 Na+           4.6d-3  T
-:K+            1.d-10  T
+#K+            1.d-10  T
 Ca++          1.d-16  T
 Mg++          2.4e-3  T
 H+            4.6    pH
@@ -350,7 +350,7 @@ Tracer        9.4d-3  T
 CONSTRAINT Inlet3
 CONCENTRATIONS
 Na+           4.65d-3 T
-:K+            1.d-10  T
+#K+            1.d-10  T
 Ca++          5.2d-3  T
 Mg++          4.55e-3 T
 H+            4.6    pH

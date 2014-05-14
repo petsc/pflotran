@@ -1,19 +1,19 @@
-:Description: 
+#Description: 
 
-:=========================== flow mode ========================================
+#=========================== flow mode ========================================
 MODE TH no_freezing
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
   TYPE unstructured sloping_plane_400X_320Y_80dx_80dy_0.2000dz_0.0005slope.h5
 END
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
   ID 1
   ROCK_DENSITY 2.8E3
@@ -32,7 +32,7 @@ MATERIAL_PROPERTY soil1
   /
 END
 
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION sf1
   SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
   RESIDUAL_SATURATION 0.2d0
@@ -41,20 +41,20 @@ SATURATION_FUNCTION sf1
   MAX_CAPILLARY_PRESSURE 1.d8
 END
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
   PERIODIC TIME 60. s
-:  FORMAT HDF5
+#  FORMAT HDF5
 END
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
   FINAL_TIME 18000.d0 s
   INITIAL_TIMESTEP_SIZE 60.0 s
   MAXIMUM_TIMESTEP_SIZE 60.0 s        ! produces CFL ~<= 1.
 END
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
   COORDINATES
     0.d0 0.d0 -1.d0
@@ -67,7 +67,7 @@ REGION top
   GRID unstructured
 END
 
-:=========================== flow conditions ==================================
+#=========================== flow conditions ==================================
 FLOW_CONDITION initial
   TYPE
     PRESSURE hydrostatic
@@ -100,8 +100,8 @@ FLOW_CONDITION from_atm_subsurface
   TEMPERATURE 0.d0
 /
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION initial_copuler
   FLOW_CONDITION initial
   REGION all
@@ -117,15 +117,15 @@ BOUNDARY_CONDITION from_atm_subsurface_bc
   REGION top
 /
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
   REGION all
   MATERIAL soil1
 END
 
-:===============================================================================
-:=========================== surface flow ======================================
-:===============================================================================
+#===============================================================================
+#=========================== surface flow ======================================
+#===============================================================================
 SURFACE_FLOW
 
 SURF_GRID
@@ -149,13 +149,13 @@ SURF_TIME
   COUPLING_TIMESTEP_SIZE 60.0 s
 END
 
-:=========================== output ==========================================
+#=========================== output ==========================================
 SURF_OUTPUT
   PERIODIC TIME 60 s
   HYDROGRAPH
 END
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 SURF_REGION surf_all
   COORDINATES
     0.d0 0.d0 0.d0
@@ -168,7 +168,7 @@ SURF_REGION surf_east
   GRID unstructured
 END
 
-:=========================== flow conditions ==========================================
+#=========================== flow conditions ==========================================
 SURF_FLOW_CONDITION atm_rain_forcing
   TYPE
     RATE volumetric_rate
@@ -212,8 +212,8 @@ SURF_FLOW_CONDITION outflow
   TEMPERATURE 1.d0
 END
 
-:=========================== condition couplers ===============================
-: source condition
+#=========================== condition couplers ===============================
+# source condition
 SURF_SOURCE_SINK atm_rain_ss
   SURF_FLOW_CONDITION atm_rain_forcing
   SURF_REGION surf_all
@@ -224,7 +224,7 @@ SURF_SOURCE_SINK atm_energy_ss
   SURF_REGION surf_all
 /
 
-: initial condition
+# initial condition
 SURF_INITIAL_CONDITION surf_initial_coupler
   FLOW_CONDITION surf_initial
   REGION surf_all
@@ -235,7 +235,7 @@ SURF_BOUNDARY_CONDITION surf_east_bc
   SURF_REGION surf_east
 END
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
   SURF_REGION surf_all
   MATERIAL surf1

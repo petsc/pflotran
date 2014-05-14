@@ -1,19 +1,19 @@
-:Description: Unit test problem for testing EOS
+#Description: Unit test problem for testing EOS
 
-:=========================== regression =======================================
+#=========================== regression =======================================
 REGRESSION
   CELLS_PER_PROCESS 1
 END
 
-:=========================== flow mode ========================================
+#=========================== flow mode ========================================
 MODE RICHARDS
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 LINEAR_SOLVER FLOW
   SOLVER DIRECT
 END
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
   TYPE structured
   NXYZ 1 1 1
@@ -23,17 +23,17 @@ GRID
   /
 END
 
-:=========================== EOS ==============================================
+#=========================== EOS ==============================================
 EOS WATER
   DENSITY EXPONENTIAL 997.16d0 101325.d0 1.d-8
 END
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY 
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.25d0
@@ -43,11 +43,11 @@ MATERIAL_PROPERTY soil1
   SATURATION_FUNCTION default
 END
 
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION default
 END
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
   VARIABLES
     LIQUID_PRESSURE
@@ -57,14 +57,14 @@ OUTPUT
   /
 END
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
   FINAL_TIME 1.d0 d
   INITIAL_TIMESTEP_SIZE 1.d-3 d
   MAXIMUM_TIMESTEP_SIZE 1.d0 d
 END
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
@@ -80,7 +80,7 @@ REGION west
   /
 END
 
-:=========================== flow conditions ==================================
+#=========================== flow conditions ==================================
 FLOW_CONDITION initial
   TYPE
     PRESSURE hydrostatic
@@ -89,20 +89,20 @@ FLOW_CONDITION initial
   PRESSURE 101325.d0 ! Pa
 END
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
   FLOW_CONDITION initial
   REGION all
 END
 
-: west boundary condition
+# west boundary condition
 BOUNDARY_CONDITION west
   FLOW_CONDITION initial
   REGION west
 END
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
   MATERIAL soil1
   REGION all
