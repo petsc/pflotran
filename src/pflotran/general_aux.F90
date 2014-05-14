@@ -1014,7 +1014,7 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
     case(LIQUID_STATE)
       gen_auxvar(GENERAL_LIQUID_PRESSURE_DOF)%pert = &
         gen_auxvar(GENERAL_LIQUID_PRESSURE_DOF)%pert / general_pressure_scale
-    case(TWO_PHASE_STATE,GAS_STATE)
+    case(TWO_PHASE_STATE)
       gen_auxvar(GENERAL_GAS_PRESSURE_DOF)%pert = &
         gen_auxvar(GENERAL_GAS_PRESSURE_DOF)%pert / general_pressure_scale
       if (general_2ph_energy_dof == GENERAL_AIR_PRESSURE_INDEX) then
@@ -1022,6 +1022,11 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
           gen_auxvar(GENERAL_2PH_STATE_AIR_PRESSURE_DOF)%pert / &
           general_pressure_scale
       endif
+    case(GAS_STATE)
+      gen_auxvar(GENERAL_GAS_PRESSURE_DOF)%pert = &
+        gen_auxvar(GENERAL_GAS_PRESSURE_DOF)%pert / general_pressure_scale
+      gen_auxvar(GENERAL_GAS_STATE_AIR_PRESSURE_DOF)%pert = &
+        gen_auxvar(GENERAL_GAS_STATE_AIR_PRESSURE_DOF)%pert / general_pressure_scale
   end select
   
 #ifdef DEBUG_GENERAL
