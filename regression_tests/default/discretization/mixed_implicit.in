@@ -1,7 +1,7 @@
-:Description: 3D test problem for unstructured richards equation with mixed 
-:             elements in explicit format
+#Description: 3D test problem for unstructured richards equation with mixed 
+#             elements in explicit format
 
-:=========================== regression =======================================
+#=========================== regression =======================================
 REGRESSION
   CELLS
     1
@@ -10,10 +10,10 @@ REGRESSION
   /
 END
 
-:=========================== flow mode ========================================
+#=========================== flow mode ========================================
 MODE RICHARDS
 
-:=========================== chemistry ========================================
+#=========================== chemistry ========================================
 CHEMISTRY
   PRIMARY_SPECIES
     Tracer
@@ -22,21 +22,21 @@ CHEMISTRY
   /
 END
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
   TYPE unstructured ./mixed.ugi
 END
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 TIMESTEPPER
 END
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.25d0
@@ -49,7 +49,7 @@ MATERIAL_PROPERTY soil1
   /
 END
 
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION default
   SATURATION_FUNCTION_TYPE BROOKS_COREY
   RESIDUAL_SATURATION 0.1d0
@@ -57,14 +57,14 @@ SATURATION_FUNCTION default
   ALPHA 1.d-4
 END
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
   FORMAT TECPLOT BLOCK
   FORMAT HDF5
   VELOCITIES
 END
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
   FINAL_TIME 40.d0 d
   MAXIMUM_TIMESTEP_SIZE 10.d0 d
@@ -72,7 +72,7 @@ END
 
 REFERENCE_PRESSURE 101325.
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
@@ -96,12 +96,12 @@ REGION middle
   COORDINATE 2.50001d0 2.50001d0 2.50001d0
 END 
 
-:=========================== observation points ===============================
+#=========================== observation points ===============================
 OBSERVATION
   REGION middle
 /
 
-:=========================== flow conditions ==================================
+#=========================== flow conditions ==================================
 FLOW_CONDITION initial
   TYPE
     PRESSURE hydrostatic
@@ -139,7 +139,7 @@ FLOW_CONDITION well
   RATE 0.1 l/min
 END
 
-:=========================== transport conditions =============================
+#=========================== transport conditions =============================
 TRANSPORT_CONDITION initial
   TYPE dirichlet_zero_gradient
   CONSTRAINT initial
@@ -184,8 +184,8 @@ TRANSPORT_CONDITION tracer3
   /
 END
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
   FLOW_CONDITION initial
   TRANSPORT_CONDITION initial
@@ -211,7 +211,7 @@ SOURCE_SINK
   REGION center_of_13
 END
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
   REGION all 
   MATERIAL soil1

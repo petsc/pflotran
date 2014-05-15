@@ -1,13 +1,13 @@
-: 3D CO2 injection by Hannah
+# 3D CO2 injection by Hannah
 MODE MPHASE
 
-:CHECKPOINT 100
-:RESTART pflotran.chk500
+#CHECKPOINT 100
+#RESTART pflotran.chk500
 
-:=====define the grid======
+#=====define the grid======
 GRID
   TYPE structured
-:  GRAVITY 0.d0 0.d0 -9.81d0
+#  GRAVITY 0.d0 0.d0 -9.81d0
   ORIGIN 0.d0 0.d0 0.d0
   NXYZ 51 1 100 
   BOUNDS
@@ -17,8 +17,8 @@ GRID
   /
 END
 
-:
-:=======define solver======
+#
+#=======define solver======
 TIMESTEPPER
   TS_ACCELERATION 8
 /
@@ -27,32 +27,32 @@ NEWTON_SOLVER FLOW
 MAXIT 10
 END
 
-:=====times======
+#=====times======
 TIME
   FINAL_TIME 250.d0 y
   INITIAL_TIMESTEP_SIZE 1.d-6 y
-:  MAXIMUM_TIMESTEP_SIZE 1.d-2 y
+#  MAXIMUM_TIMESTEP_SIZE 1.d-2 y
   MAXIMUM_TIMESTEP_SIZE 1.0 y
   MAXIMUM_TIMESTEP_SIZE 5.0 y at 10 y
 /
 
-:======output options====
+#======output options====
 OUTPUT
   TIMES y 0.5 1. 1.5 2 2.5 3 3.5 4. 4.5 5 5.5 6. 6.5 7 7.5 8 8.5 9 9.5 
   PERIODIC TIME 5. y
   SCREEN PERIODIC 10
-  :PERIODIC_OBSERVATION TIMESTEP 1
+  #PERIODIC_OBSERVATION TIMESTEP 1
   FORMAT HDF5
-:  FORMAT TECPLOT POINT
+#  FORMAT TECPLOT POINT
   VELOCITIES
 /
 
-:=====fluid properties=====
+#=====fluid properties=====
 FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 /
 
-:====== material properties=====
+#====== material properties=====
 MATERIAL_PROPERTY sandstone
   ID 1
   POROSITY 0.10d0 
@@ -100,7 +100,7 @@ MATERIAL_PROPERTY int
   /
 END
 
-:======saturation functions
+#======saturation functions
 SATURATION_FUNCTION sf2
   PERMEABILITY_FUNCTION_TYPE MUALEM
   SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
@@ -111,7 +111,7 @@ SATURATION_FUNCTION sf2
   MAX_CAPILLARY_PRESSURE 1.d6
 /
 
-:=======regions===
+#=======regions===
 
 REGION all
   COORDINATES
@@ -196,7 +196,7 @@ REGION well
   /
 END
 
-:====flow conditions====
+#====flow conditions====
 FLOW_CONDITION initial
   UNITS Pa,C,M,yr
   TYPE
@@ -221,14 +221,14 @@ FLOW_CONDITION source
     CONCENTRATION dirichlet
     ENTHALPY dirichlet
   /
-: PRESSURE 2.5d7 2.5d7
+# PRESSURE 2.5d7 2.5d7
   RATE file c2i.txt ! kg/s
   TEMPERATURE 62.d0
   CONCENTRATION 0.d0 
   ENTHALPY 0.d0 0.d0
 /
 
-:==== condition couplers=====
+#==== condition couplers=====
 
 INITIAL_CONDITION dol
   FLOW_CONDITION initial
@@ -260,7 +260,7 @@ SOURCE_SINK
   REGION well
 END
 
-:==== stratigraphy couplers ==
+#==== stratigraphy couplers ==
 STRATA
   REGION sstop
   MATERIAL sandstone

@@ -1,9 +1,9 @@
-:Description: 1D test problem for tracer transport
+#Description: 1D test problem for tracer transport
 
-:=========================== flow mode ========================================
+#=========================== flow mode ========================================
 MODE RICHARDS
 
-:=========================== chemistry ========================================
+#=========================== chemistry ========================================
 skip
 CHEMISTRY
 PRIMARY_SPECIES
@@ -12,54 +12,54 @@ Tracer
 /
 noskip
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 TIMESTEPPER
 TS_ACCELERATION 8
 /
 
 NEWTON_SOLVER FLOW
-:RTOL 1.d-4
-:ATOL 1.d-4
-:STOL 1.e-60
-:DTOL 1.e4
+#RTOL 1.d-4
+#ATOL 1.d-4
+#STOL 1.e-60
+#DTOL 1.e4
 ITOL_UPDATE 1.d0
-:NO_INFINITY_NORM
-::NO_PRINT_CONVERGENCE
-:PRINT_DETAILED_CONVERGENCE
+#NO_INFINITY_NORM
+#:NO_PRINT_CONVERGENCE
+#PRINT_DETAILED_CONVERGENCE
 /
 
 LINEAR_SOLVER FLOW
 KSP_TYPE GMRES
 PC_TYPE NONE
-:KSP_TYPE PREONLY
-:PC_TYPE LU
-:SOLVER GMRES
+#KSP_TYPE PREONLY
+#PC_TYPE LU
+#SOLVER GMRES
 /
 
 NEWTON_SOLVER TRANSPORT
-:RTOL 1.d-4
-:ATOL 1.d-4
-:STOL 1.e-60
-:DTOL 1.e4
-:ITOL_UPDATE 1.d-4
+#RTOL 1.d-4
+#ATOL 1.d-4
+#STOL 1.e-60
+#DTOL 1.e4
+#ITOL_UPDATE 1.d-4
 NO_INFINITY_NORM
-:NO_PRINT_CONVERGENCE
-:PRINT_DETAILED_CONVERGENCE
+#NO_PRINT_CONVERGENCE
+#PRINT_DETAILED_CONVERGENCE
 /
 
 LINEAR_SOLVER TRANSPORT
 KSP_TYPE GMRES
 PC_TYPE NONE
-:KSP_TYPE PREONLY
-:PC_TYPE LU
-:SOLVER GMRES
+#KSP_TYPE PREONLY
+#PC_TYPE LU
+#SOLVER GMRES
 /
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
 TYPE structured
 ORIGIN 0.d0 0.d0 0.d0
-:NXYZ 8 8 8
+#NXYZ 8 8 8
 NXYZ 32 32 32
 BOUNDS
 0.d0 100.d0
@@ -68,12 +68,12 @@ BOUNDS
 /
 END
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY 
 DIFFUSION_COEFFICIENT 1.d-9
 /
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
 ID 1
 POROSITY 0.25d0
@@ -90,7 +90,7 @@ MATERIAL_PROPERTY soil2
 ID 2
 POROSITY 0.25d0
 TORTUOSITY 1.d0
-:SATURATION_FUNCTION sf2
+#SATURATION_FUNCTION sf2
 SATURATION_FUNCTION sf1
 PERMEABILITY
 PERM_X 1.d-13
@@ -99,11 +99,11 @@ PERM_Z 1.d-13
 /
 /
 
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION sf1
 SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
 RESIDUAL_SATURATION 0.2d0
-:LAMBDA 0.25d0
+#LAMBDA 0.25d0
 LAMBDA 0.75d0
 ALPHA 1.d-4
 MAX_CAPILLARY_PRESSURE 1.d8
@@ -121,23 +121,23 @@ BETAC 0.d0
 POWER 1.d0
 /
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
-:MASS_BALANCE
-:TIMES y 0.25d0 0.5d0 0.75d0
+#MASS_BALANCE
+#TIMES y 0.25d0 0.5d0 0.75d0
 PERIODIC TIME 0.5 y
 FORMAT TECPLOT BLOCK
 VELOCITIES
 /
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
 FINAL_TIME 10.d0 y
 INITIAL_TIMESTEP_SIZE 1.d-6 y
 MAXIMUM_TIMESTEP_SIZE 1.d-1 y
 /
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
 COORDINATES
 0.d0 0.d0 0.d0
@@ -200,7 +200,7 @@ COORDINATES
 /
 END
 
-: Layer 1
+# Layer 1
 REGION region_1_1_1
 COORDINATES
 0.d0 0.d0 0.d0
@@ -313,7 +313,7 @@ COORDINATES
 /
 END
 
-: Layer 2
+# Layer 2
 REGION region_1_1_2
 COORDINATES
 0.d0 0.d0 25.d0
@@ -426,7 +426,7 @@ COORDINATES
 /
 END
 
-: Layer 3
+# Layer 3
 REGION region_1_1_3
 COORDINATES
 0.d0 0.d0 50.d0
@@ -539,7 +539,7 @@ COORDINATES
 /
 END
 
-: Layer 4
+# Layer 4
 REGION region_1_1_4
 COORDINATES
 0.d0 0.d0 75.d0
@@ -652,7 +652,7 @@ COORDINATES
 /
 END
 
-:=========================== flow conditions ==================================
+#=========================== flow conditions ==================================
 FLOW_CONDITION initial
 TYPE
 PRESSURE hydrostatic
@@ -693,7 +693,7 @@ RATE 2.77777778d-3  ! 10 m^3/hr
 /
 noskip
 
-:=========================== transport conditions =============================
+#=========================== transport conditions =============================
 skip
 TRANSPORT_CONDITION initial
 TYPE zero_gradient
@@ -709,7 +709,7 @@ CONSTRAINT_LIST
 /
 /
 
-:=========================== constraints ======================================
+#=========================== constraints ======================================
 CONSTRAINT well
 CONCENTRATIONS
 Tracer 1.d0 T
@@ -723,37 +723,37 @@ Tracer 1.d-40 T
 END
 noskip
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
 FLOW_CONDITION initial
-:TRANSPORT_CONDITION initial
+#TRANSPORT_CONDITION initial
 REGION all
 END
 
 skip
-: west boundary condition
+# west boundary condition
 BOUNDARY_CONDITION west
 FLOW_CONDITION initial
 TRANSPORT_CONDITION initial
 REGION west
 END
 
-: east boundary condition
+# east boundary condition
 BOUNDARY_CONDITION east
 FLOW_CONDITION initial
 TRANSPORT_CONDITION initial
 REGION east
 END
 
-: north boundary condition
+# north boundary condition
 BOUNDARY_CONDITION north
 FLOW_CONDITION initial
 TRANSPORT_CONDITION initial
 REGION north
 END
 
-: south boundary condition
+# south boundary condition
 BOUNDARY_CONDITION south
 FLOW_CONDITION initial
 TRANSPORT_CONDITION initial
@@ -761,24 +761,24 @@ REGION south
 END
 noskip
 
-: top boundary condition
+# top boundary condition
 BOUNDARY_CONDITION top
 FLOW_CONDITION recharge
-:TRANSPORT_CONDITION initial
+#TRANSPORT_CONDITION initial
 REGION top
 END
 
-: bottom boundary condition
+# bottom boundary condition
 BOUNDARY_CONDITION bottom
-:FLOW_CONDITION initial
+#FLOW_CONDITION initial
 FLOW_CONDITION variable
-:FLOW_CONDITION atmospheric
-:TRANSPORT_CONDITION initial
+#FLOW_CONDITION atmospheric
+#TRANSPORT_CONDITION initial
 REGION bottom
 END
 
 skip
-: well source/sink
+# well source/sink
 SOURCE_SINK well
 FLOW_CONDITION source
 TRANSPORT_CONDITION source
@@ -786,8 +786,8 @@ REGION well
 END
 noskip
 
-:=========================== stratigraphy couplers ============================
-: Layer 1
+#=========================== stratigraphy couplers ============================
+# Layer 1
 STRATA
 REGION region_1_1_1
 MATERIAL soil1
@@ -868,7 +868,7 @@ REGION region_4_4_1
 MATERIAL soil1
 END
 
-: Layer 2
+# Layer 2
 STRATA
 REGION region_1_1_2
 MATERIAL soil2
@@ -949,7 +949,7 @@ REGION region_4_4_2
 MATERIAL soil2
 END
 
-: Layer 3
+# Layer 3
 STRATA
 REGION region_1_1_3
 MATERIAL soil1
@@ -1030,7 +1030,7 @@ REGION region_4_4_3
 MATERIAL soil1
 END
 
-: Layer 4
+# Layer 4
 STRATA
 REGION region_1_1_4
 MATERIAL soil2

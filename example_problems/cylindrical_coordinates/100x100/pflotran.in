@@ -1,11 +1,11 @@
-:Description: Cylindrical injection scenario for Richards mode
-:
-: Tracer concentration = 0.5 should reach 289.7 meters at 1 year. 
-:
-:=========================== flow mode ========================================
+#Description: Cylindrical injection scenario for Richards mode
+#
+# Tracer concentration = 0.5 should reach 289.7 meters at 1 year. 
+#
+#=========================== flow mode ========================================
 MODE RICHARDS
 
-:=========================== chemistry ========================================
+#=========================== chemistry ========================================
 CHEMISTRY
   PRIMARY_SPECIES
     Tracer
@@ -15,7 +15,7 @@ CHEMISTRY
   /
 END
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 LINEAR_SOLVER FLOW
   SOLVER DIRECT
 END
@@ -24,7 +24,7 @@ LINEAR_SOLVER TRANSPORT
   SOLVER DIRECT
 END
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
   TYPE structured cylindrical
   NXYZ 100 1 100
@@ -55,12 +55,12 @@ GRID
   /
 END
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY 
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.12d0
@@ -71,24 +71,24 @@ MATERIAL_PROPERTY soil1
   SATURATION_FUNCTION default
 END
 
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION default
 END
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
   FORMAT TECPLOT BLOCK
   VELOCITIES
 END
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
   FINAL_TIME 1.d0 y
   INITIAL_TIMESTEP_SIZE 1.d0 h
   MAXIMUM_TIMESTEP_SIZE 100.d0 h
 END
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
   BLOCK 1 100 1 1 1 100
 END
@@ -102,7 +102,7 @@ REGION east
   BLOCK 100 100 1 1 1 100
 END
 
-:=========================== flow conditions ==================================
+#=========================== flow conditions ==================================
 FLOW_CONDITION initial
   TYPE
     PRESSURE dirichlet
@@ -118,7 +118,7 @@ FLOW_CONDITION injection_well
 END
 
 
-:=========================== transport conditions =============================
+#=========================== transport conditions =============================
 TRANSPORT_CONDITION initial
   TYPE zero_gradient
   CONSTRAINT_LIST
@@ -133,7 +133,7 @@ TRANSPORT_CONDITION inlet
   /
 END
 
-:=========================== transport constraints ============================
+#=========================== transport constraints ============================
 CONSTRAINT initial
   CONCENTRATIONS
     Tracer 1.d-8 T
@@ -146,8 +146,8 @@ CONSTRAINT inlet
   /
 END
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
   FLOW_CONDITION initial
   TRANSPORT_CONDITION initial
@@ -166,7 +166,7 @@ SOURCE_SINK well
   REGION west
 END
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
   REGION all
   MATERIAL soil1

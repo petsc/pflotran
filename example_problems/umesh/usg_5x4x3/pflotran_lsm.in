@@ -1,25 +1,25 @@
-:Description: 3D toy problem for richards equation
+#Description: 3D toy problem for richards equation
 
-:=========================== flow mode ========================================
+#=========================== flow mode ========================================
 MODE RICHARDS
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 TIMESTEPPER
-:MAX_STEPS 10
+#MAX_STEPS 10
 END
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
 TYPE unstructured dat/usg_5x4x3.mesh
 FLUX_METHOD HYDRAULICS LSM_FLUX
 END
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY
 DIFFUSION_COEFFICIENT 1.d-9
 /
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
 ID 1
 POROSITY 0.25d0
@@ -32,7 +32,7 @@ PERM_Z 1.d-12
 /
 /
 
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION default
 SATURATION_FUNCTION_TYPE BROOKS_COREY
 RESIDUAL_SATURATION 0.1d0
@@ -40,13 +40,13 @@ LAMBDA 0.3d0
 ALPHA 1.d-4
 /
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
 FORMAT TECPLOT BLOCK
 HDF5_WRITE_GROUP_SIZE 1
 /
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
 FINAL_TIME 1.d0 s
 MAXIMUM_TIMESTEP_SIZE 10.d0 d
@@ -54,7 +54,7 @@ MAXIMUM_TIMESTEP_SIZE 10.d0 d
 
 REFERENCE_PRESSURE 101325.
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 
 REGION All
   COORDINATES
@@ -93,7 +93,7 @@ FILE dat/West_sidesets.ss
 GRID unstructured
 END 
 
-:=========================== flow conditions ==================================
+#=========================== flow conditions ==================================
 FLOW_CONDITION initial
 TYPE
 PRESSURE hydrostatic
@@ -110,8 +110,8 @@ FLUX neumann
 FLUX 5.5d-7
 END
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
 FLOW_CONDITION initial
 REGION All
@@ -122,7 +122,7 @@ BOUNDARY_CONDITION rain
   REGION Top_sidesets
 END
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
 REGION All 
 MATERIAL soil1

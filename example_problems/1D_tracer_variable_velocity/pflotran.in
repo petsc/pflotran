@@ -1,4 +1,4 @@
-:Description: 1D test problem for tracer transport
+#Description: 1D test problem for tracer transport
 
 CHEMISTRY
 PRIMARY_SPECIES
@@ -22,27 +22,27 @@ PC_TYPE LU
 KSP_TYPE PREONLY
 END
 
-:UNIFORM_VELOCITY 3.170979198d-8 0.d0 0.d0  ! 1 m/yr
+#UNIFORM_VELOCITY 3.170979198d-8 0.d0 0.d0  ! 1 m/yr
 
-:skip
-: scenario 1
+#skip
+# scenario 1
 VELOCITY_DATASET
 UNITS m/yr
 CYCLIC ! cycles the data set using last time as offset
-:INTERPOLATION STEP ! interpolation method (step [default] or linear)
+#INTERPOLATION STEP ! interpolation method (step [default] or linear)
 VELOCITY
-:time velx vely velz
-:time units = time unit in velocity units
+#time velx vely velz
+#time units = time unit in velocity units
 0.d0 250.d0 0.d0 0.d0 
 0.25d0 -250.d0 0.d0 0.d0 
 0.75d0 250.d0 0.d0 0.d0 
 1.d0 250.d0 0.d0 0.d0 
 /
 /
-:noskip
+#noskip
 
 skip
-: scenario 2
+# scenario 2
 VELOCITY_DATASET
 UNITS m/yr
 VELOCITY file velocity.txt
@@ -50,7 +50,7 @@ VELOCITY file velocity.txt
 noskip
 
 skip
-: scenario 3
+# scenario 3
 VELOCITY_DATASET
 UNITS m/yr
 VELOCITY 1.d0 0.d0 0.d0
@@ -72,9 +72,9 @@ SATURATION_FUNCTION default
 /
 
 OUTPUT
-:TIMES y 0.25d0 0.5d0 0.75d0
+#TIMES y 0.25d0 0.5d0 0.75d0
 PERIODIC TIME 0.1 y
-:FORMAT TECPLOT POINT
+#FORMAT TECPLOT POINT
 FORMAT TECPLOT BLOCK
 VELOCITIES
 /
@@ -148,25 +148,25 @@ Tracer 1.d-40 T
 /
 END
 
-: initial condition
+# initial condition
 INITIAL_CONDITION
 TRANSPORT_CONDITION initial
 REGION all
 END
 
-: pulse condition
+# pulse condition
 INITIAL_CONDITION
 TRANSPORT_CONDITION pulse
 REGION middle
 END
 
-: west boundary condition
+# west boundary condition
 BOUNDARY_CONDITION
 TRANSPORT_CONDITION west
 REGION west
 END
 
-: east boundary condition
+# east boundary condition
 BOUNDARY_CONDITION
 TRANSPORT_CONDITION initial
 REGION east

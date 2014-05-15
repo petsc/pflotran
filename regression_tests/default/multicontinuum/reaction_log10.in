@@ -1,9 +1,9 @@
-: Description: reaction with linear kinetics
-: Benchmark from Lichtner & Kang (2007)
-: P.C.Lichtner/S. Karra
-: 11/5/12
+# Description: reaction with linear kinetics
+# Benchmark from Lichtner & Kang (2007)
+# P.C.Lichtner/S. Karra
+# 11/5/12
 
-:=========================== regression =======================================
+#=========================== regression =======================================
 REGRESSION
   CELLS_PER_PROCESS 5
 END
@@ -12,7 +12,7 @@ UNIFORM_VELOCITY 14.4d0 0.d0 0.d0 m/yr
 
 MULTIPLE_CONTINUUM
 
-:=========================== chemistry ========================================
+#=========================== chemistry ========================================
 CHEMISTRY
   PRIMARY_SPECIES
     A(aq)
@@ -25,7 +25,7 @@ CHEMISTRY
   MINERAL_KINETICS
     A(s)
      RATE_CONSTANT 1.d-6
-  :   ACTIVATION_ENERGY 89.d0
+  #   ACTIVATION_ENERGY 89.d0
    /
  /
 
@@ -36,7 +36,7 @@ CHEMISTRY
   /
 /
 
-:===================== Discretization =========================
+#===================== Discretization =========================
 GRID
   TYPE structured
   ORIGIN 0.d0 0.d0 0.d0
@@ -47,7 +47,7 @@ GRID
   /
 END
 
-:===================== Solver options ========================
+#===================== Solver options ========================
 TIMESTEPPER
   TS_ACCELERATION 25
   MAX_TS_CUTS 10
@@ -69,7 +69,7 @@ FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 /
 
-:========================= material properties ===================
+#========================= material properties ===================
 MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 1.d0
@@ -94,7 +94,7 @@ MATERIAL_PROPERTY soil1
    /
 /
 
-:========================= saturation functions ==================
+#========================= saturation functions ==================
 SATURATION_FUNCTION default
    SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
    RESIDUAL_SATURATION LIQUID_PHASE 0.1
@@ -104,24 +104,24 @@ SATURATION_FUNCTION default
    MAX_CAPILLARY_PRESSURE 1.D6
 /
 
-:========================= output options =========================
+#========================= output options =========================
 OUTPUT
-:  TIMES s 2.6042e4 3.9063e4 5.2083e4
-:  PERIODIC_OBSERVATION TIMESTEP 1 
-:  PRINT_COLUMN_IDS
-:  FORMAT TECPLOT POINT
+#  TIMES s 2.6042e4 3.9063e4 5.2083e4
+#  PERIODIC_OBSERVATION TIMESTEP 1 
+#  PRINT_COLUMN_IDS
+#  FORMAT TECPLOT POINT
 /
 
-:======================== times ====================================
+#======================== times ====================================
 TIME
   FINAL_TIME 5.2083e4 s
   INITIAL_TIMESTEP_SIZE 1.d-6 s
   MAXIMUM_TIMESTEP_SIZE 10.d0 s
   MAXIMUM_TIMESTEP_SIZE 1.d2 s at 5.d3 s
-  :MAXIMUM_TIMESTEP_SIZE 1.d3 s at 5.e4 s
+  #MAXIMUM_TIMESTEP_SIZE 1.d3 s at 5.e4 s
 /
 
-:=========================== regions ===============================
+#=========================== regions ===============================
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
@@ -158,7 +158,7 @@ OBSERVATION
   SECONDARY_MINERAL_VOLFRAC
 /
 
-:==== transport conditions=====================================================
+#==== transport conditions=====================================================
 TRANSPORT_CONDITION initial
   TYPE dirichlet_zero_gradient
   CONSTRAINT_LIST
@@ -180,41 +180,41 @@ TRANSPORT_CONDITION east
   / 
 /
 
-:========================== initial and boundary conditions =================
-: initial condition
+#========================== initial and boundary conditions =================
+# initial condition
 INITIAL_CONDITION
 FLOW_CONDITION initial
 TRANSPORT_CONDITION initial
 REGION all
 END
 
-: west boundary condition
+# west boundary condition
 BOUNDARY_CONDITION
 FLOW_CONDITION west
 TRANSPORT_CONDITION west
 REGION west
 END
 
-: east boundary condition
+# east boundary condition
 BOUNDARY_CONDITION
 FLOW_CONDITION east
 TRANSPORT_CONDITION east
 REGION east
 END
 
-:===================== stratigraphy couplers ==============================
+#===================== stratigraphy couplers ==============================
 STRATA
 REGION all
 MATERIAL soil1
 END
 
-:=========================== constraints ======================================
+#=========================== constraints ======================================
 CONSTRAINT initial
 CONCENTRATIONS
 A(aq)  0.1  M A(s)
 /
 MINERALS
-:mineral vol. frac. area
+#mineral vol. frac. area
 A(s)       1.d5     7.d2
 /
 /
@@ -231,13 +231,13 @@ A(aq)  1.E-02  T
 /
 /
 
-:==================== secondary continuum initial constraint ==================
+#==================== secondary continuum initial constraint ==================
 SECONDARY_CONSTRAINT sec
 CONCENTRATIONS
 A(aq)  0.1  M A(s)
 /
 MINERALS
-:mineral vol. frac. area
+#mineral vol. frac. area
 A(s)      0.5d5    17.857d2
 /
 /

@@ -1,19 +1,19 @@
-:Description: 3D toy problem for richards equation
+#Description: 3D toy problem for richards equation
 
-:=========================== flow mode ========================================
+#=========================== flow mode ========================================
 MODE RICHARDS
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 TIMESTEPPER
-:MAX_STEPS 10
+#MAX_STEPS 10
 END
 
 LINEAR_SOLVER FLOW
-:PC_TYPE LU
-:KSP_TYPE PREONLY
+#PC_TYPE LU
+#KSP_TYPE PREONLY
 END
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
 TYPE structured
 ORIGIN 0.d0 0.d0 0.d0
@@ -25,12 +25,12 @@ BOUNDS
 /
 END
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY
 DIFFUSION_COEFFICIENT 1.d-9
 /
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
 ID 1
 POROSITY 0.25d0
@@ -43,18 +43,18 @@ PERM_Z 1.d-12
 /
 /
 
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION default
 /
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
 FORMAT TECPLOT POINT
 FORMAT HDF5
 VELOCITIES
 /
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
 FINAL_TIME 100.d0 d
 INITIAL_TIMESTEP_SIZE 1.d-2 d
@@ -63,7 +63,7 @@ MAXIMUM_TIMESTEP_SIZE 0.25d0 d
 
 REFERENCE_PRESSURE 101325.
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
 COORDINATES
 0.d0 0.d0 0.d0
@@ -97,7 +97,7 @@ REGION breakthrough
 END
 noskip
 
-:=========================== flow conditions ==================================
+#=========================== flow conditions ==================================
 skip
 FLOW_CONDITION west
 TYPE
@@ -128,42 +128,42 @@ END
 FLOW_CONDITION source
 TYPE
 RATE mass_rate
-:RATE volumetric_rate
+#RATE volumetric_rate
 END
 RATE 1.155463d-2  ! kg/s
-:RATE 1.157407d-5 ! m^3/s
+#RATE 1.157407d-5 ! m^3/s
 END
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
 FLOW_CONDITION initial
 REGION all
 END
 
 skip
-: west boundary condition
+# west boundary condition
 BOUNDARY_CONDITION
 FLOW_CONDITION west
 REGION West
 END
 noskip
 
-: east boundary condition
+# east boundary condition
 BOUNDARY_CONDITION
 FLOW_CONDITION initial
 REGION East
 END
 
-:skip
-: source sink
+#skip
+# source sink
 SOURCE_SINK
 FLOW_CONDITION source
 REGION West
 END
-:noskip
+#noskip
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
 REGION all
 MATERIAL soil1

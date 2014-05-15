@@ -1,46 +1,46 @@
-:Description: 1D test problem for tracer transport
+#Description: 1D test problem for tracer transport
 
-:=========================== flow mode ========================================
+#=========================== flow mode ========================================
 MODE RICHARDS
 
-:=========================== chemistry ========================================
+#=========================== chemistry ========================================
 CHEMISTRY
 PRIMARY_SPECIES
 Tracer
 /
 /
 
-:=========================== runtime ==========================================
-:CHECKPOINT 1000
-:RESTART restart.chk 0.d0
-:OVERWRITE_RESTART_TRANSPORT
-:WALLCLOCK_STOP 11.75
+#=========================== runtime ==========================================
+#CHECKPOINT 1000
+#RESTART restart.chk 0.d0
+#OVERWRITE_RESTART_TRANSPORT
+#WALLCLOCK_STOP 11.75
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 TIMESTEPPER
-:MAX_STEPS -1
+#MAX_STEPS -1
 TS_ACCELERATION 8
 INITIALIZE_TO_STEADY_STATE 1.d0
 /
 
 NEWTON_SOLVER FLOW
-:RTOL 1.d-12
+#RTOL 1.d-12
 RTOL 1.d-20
-:ATOL 1.d-12
-:STOL 1.e-60
-:DTOL 1.e4
+#ATOL 1.d-12
+#STOL 1.e-60
+#DTOL 1.e4
 ITOL_UPDATE 1.d0
-:NO_INFINITY_NORM
-::NO_PRINT_CONVERGENCE
-:PRINT_DETAILED_CONVERGENCE
+#NO_INFINITY_NORM
+#:NO_PRINT_CONVERGENCE
+#PRINT_DETAILED_CONVERGENCE
 /
 
 LINEAR_SOLVER FLOW
-:KSP_TYPE GMRES
-:PC_TYPE NONE
-:KSP_TYPE PREONLY
-:PC_TYPE LU
-:SOLVER GMRES
+#KSP_TYPE GMRES
+#PC_TYPE NONE
+#KSP_TYPE PREONLY
+#PC_TYPE LU
+#SOLVER GMRES
 /
 
 NEWTON_SOLVER TRANSPORT
@@ -48,21 +48,21 @@ RTOL 1.d-12
 ATOL 1.d-12
 STOL 1.e-60
 DTOL 1.e4
-:ITOL_UPDATE 1.d-4
-:NO_INFINITY_NORM
-:NO_PRINT_CONVERGENCE
-:PRINT_DETAILED_CONVERGENCE
+#ITOL_UPDATE 1.d-4
+#NO_INFINITY_NORM
+#NO_PRINT_CONVERGENCE
+#PRINT_DETAILED_CONVERGENCE
 /
 
 LINEAR_SOLVER TRANSPORT
-:KSP_TYPE GMRES
-:PC_TYPE NONE
-:KSP_TYPE PREONLY
-:PC_TYPE LU
-:SOLVER GMRES
+#KSP_TYPE GMRES
+#PC_TYPE NONE
+#KSP_TYPE PREONLY
+#PC_TYPE LU
+#SOLVER GMRES
 /
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
 TYPE structured
 ORIGIN 0.d0 0.d0 0.d0
@@ -74,12 +74,12 @@ BOUNDS
 /
 END
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY 
 DIFFUSION_COEFFICIENT 1.d-9
 /
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY Backfill
 ID 1
 POROSITY 0.2585d0
@@ -139,7 +139,7 @@ PERM_Z 2.00395e-13
 /
 /
 
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION BF
 SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
 PERMEABILITY_FUNCTION_TYPE MUALEM
@@ -195,24 +195,24 @@ BETAC 0.d0
 POWER 1.d0
 /
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
-:SCREEN PERIODIC 10
-:MASS_BALANCE
-:TIMES y 0.5 1.0 2.0 5.0 10.0
+#SCREEN PERIODIC 10
+#MASS_BALANCE
+#TIMES y 0.5 1.0 2.0 5.0 10.0
 TIMES y  100. 250. 500. 750. 1000.
 FORMAT TECPLOT POINT
 VELOCITIES
 /
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
 FINAL_TIME 1000.d0 y
 INITIAL_TIMESTEP_SIZE 1.d-6 y
 MAXIMUM_TIMESTEP_SIZE 1.d-0 y
 /
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
 COORDINATES
 0.d0 0.d0 0.d0
@@ -255,7 +255,7 @@ COORDINATES
 /
 END
 
-:=============boundaries=================
+#=============boundaries=================
 
 REGION west
 FACE WEST
@@ -312,7 +312,7 @@ COORDINATES
 /
 END
 
-:=========================== flow conditions ==================================
+#=========================== flow conditions ==================================
 FLOW_CONDITION initial
 TYPE
 PRESSURE hydrostatic
@@ -348,7 +348,7 @@ RATE mass_rate
 RATE 8.0215d-5 ! kg/s
 /
 
-:=========================== transport conditions =============================
+#=========================== transport conditions =============================
 TRANSPORT_CONDITION initial
 TYPE zero_gradient
 CONSTRAINT_LIST
@@ -377,8 +377,8 @@ CONSTRAINT_LIST
 /
 /
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
 FLOW_CONDITION initial
 TRANSPORT_CONDITION initial
@@ -386,28 +386,28 @@ REGION all
 END
 
 skip
-: west boundary condition
+# west boundary condition
 BOUNDARY_CONDITION west
 FLOW_CONDITION boundary
 TRANSPORT_CONDITION boundary
 REGION west
 END
 
-: east boundary condition
+# east boundary condition
 BOUNDARY_CONDITION east
 FLOW_CONDITION boundary
 TRANSPORT_CONDITION boundary
 REGION east
 END
 
-: north boundary condition
+# north boundary condition
 BOUNDARY_CONDITION north
 FLOW_CONDITION boundary
 TRANSPORT_CONDITION boundary
 REGION north
 END
 
-: south boundary condition
+# south boundary condition
 BOUNDARY_CONDITION south
 FLOW_CONDITION boundary
 TRANSPORT_CONDITION boundary
@@ -415,22 +415,22 @@ REGION south
 END
 noskip
 
-: top boundary condition
+# top boundary condition
 BOUNDARY_CONDITION top
-:FLOW_CONDITION initial
+#FLOW_CONDITION initial
 FLOW_CONDITION boundary
 TRANSPORT_CONDITION initial
 REGION top
 END
 
-: bottom boundary condition
+# bottom boundary condition
 BOUNDARY_CONDITION bottom
 FLOW_CONDITION water_table
 TRANSPORT_CONDITION initial
 REGION bottom
 END
 
-: well source/sink
+# well source/sink
 skip
 SOURCE_SINK well
 FLOW_CONDITION source
@@ -439,7 +439,7 @@ REGION well
 END
 noskip
 
-: infiltration source/sink
+# infiltration source/sink
 skip
 SOURCE_SINK infil
 FLOW_CONDITION infiltration
@@ -448,7 +448,7 @@ REGION top
 END
 noskip
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
 REGION MRG
 MATERIAL Middle-Ringold-Gravel
@@ -481,7 +481,7 @@ MATERIAL Middle-Ringold-Gravel
 END
 noskip
 
-:=========================== constraints ======================================
+#=========================== constraints ======================================
 
 CONSTRAINT well
 CONCENTRATIONS

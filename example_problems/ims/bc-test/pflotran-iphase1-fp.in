@@ -1,10 +1,10 @@
 MODE IMMIS
 
-: =================== discretization ===================
+# =================== discretization ===================
 GRID
   TYPE structured
   ORIGIN 0.0d0 0.0d0 0.0d0
-  : final point: 0.2d0 0.001d0 .001d0
+  # final point: 0.2d0 0.001d0 .001d0
   NXYZ 20 1 1
   DXYZ ! 1 mm
     0.01d0
@@ -13,13 +13,13 @@ GRID
   /
 END
 
-: =================== time ===================
+# =================== time ===================
 TIME
   FINAL_TIME 100.d0 s
   MAXIMUM_TIMESTEP_SIZE 10.d0 s
 /
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
 FORMAT HDF5
 PERIODIC TIME 10. s
@@ -27,17 +27,17 @@ POROSITY
 VELOCITIES
 /
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY
 DIFFUSION_COEFFICIENT 1.d-9
 /
 
-: note these must be provided to accurately turn a viscosity into a tau
-: within the LBM
+# note these must be provided to accurately turn a viscosity into a tau
+# within the LBM
 REFERENCE_TEMPERATURE 50.d0 C
 REFERENCE_PRESSURE 2.d6 Pa
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
 ID 1
 POROSITY 0.65d0
@@ -53,7 +53,7 @@ PERM_Y 1.d-14
 PERM_Z 1.d-14
 /
 /
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION sf2
 PERMEABILITY_FUNCTION_TYPE NMT_EXP
 SATURATION_FUNCTION_TYPE NMT_EXP
@@ -69,8 +69,8 @@ POWER 7.d0
 SATURATION_FUNCTION default
 /
 
-:=========================== regions ==========================================
-: =================== regions ===================
+#=========================== regions ==========================================
+# =================== regions ===================
 REGION all
   COORDINATES
     0.0d0 0.0d0 0.0d0
@@ -133,9 +133,9 @@ REGION boundary_zp
   FACE TOP
 /
 
-:=========================== flow conditions ==================================
+#=========================== flow conditions ==================================
 FLOW_CONDITION initial
-:UNITS Pa,C,M,s
+#UNITS Pa,C,M,s
 TYPE
 PRESSURE hydrostatic
 TEMPERATURE dirichlet
@@ -150,7 +150,7 @@ CONCENTRATION 0.d0
 /
 
 FLOW_CONDITION outlet
-:UNITS Pa,C,M,yr
+#UNITS Pa,C,M,yr
 TYPE
 PRESSURE dirichlet
 TEMPERATURE zero_gradient
@@ -165,16 +165,16 @@ ENTHALPY 0.d0 0.d0
 /
 
 FLOW_CONDITION inlet
-:UNITS Pa,C,M,yr
+#UNITS Pa,C,M,yr
 TYPE
-:PRESSURE dirichlet
+#PRESSURE dirichlet
 FLUX neumann
 TEMPERATURE zero_gradient
 ENTHALPY dirichlet
 CONCENTRATION dirichlet
 /
 IPHASE 1
-:PRESSURE 2.1D7 2.1D7
+#PRESSURE 2.1D7 2.1D7
 TEMPERATURE 50
 ENTHALPY 0.d0 0.d0
 FLUX 1.d-4 0.d0
@@ -184,28 +184,28 @@ CONCENTRATION 0.d0
 
 
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
 FLOW_CONDITION initial
 REGION all
 END
 
-: top boundary condition
+# top boundary condition
 BOUNDARY_CONDITION boundary_xm
 FLOW_CONDITION inlet
 REGION boundary_xm
 END
 
-: top boundary condition
+# top boundary condition
 BOUNDARY_CONDITION boundary_xp
 FLOW_CONDITION outlet
 REGION boundary_xp
 END
 
 
-:
-:=========================== stratigraphy couplers ============================
+#
+#=========================== stratigraphy couplers ============================
 STRATA
 REGION all
 MATERIAL soil1
