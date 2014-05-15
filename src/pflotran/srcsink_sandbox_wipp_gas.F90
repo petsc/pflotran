@@ -11,12 +11,14 @@ module SrcSink_Sandbox_WIPP_Gas_class
   
 #include "finclude/petscsys.h"
 
+  PetscInt, parameter, public :: WIPP_GAS_WATER_SATURATION_INDEX = 1
+
   type, public, &
     extends(srcsink_sandbox_base_type) :: srcsink_sandbox_wipp_gas_type
   contains
     procedure, public :: ReadInput => WIPPGasGenerationRead
     procedure, public :: Setup => WIPPGasGenerationSetup
-    procedure, public :: Evaluate2 => WIPPGasGenerationSrcSink
+    procedure, public :: Evaluate => WIPPGasGenerationSrcSink
     procedure, public :: Destroy => WIPPGasGenerationDestroy
   end type srcsink_sandbox_wipp_gas_type
 
@@ -117,24 +119,6 @@ end subroutine WIPPGasGenerationSetup
 
 ! ************************************************************************** !
 
-subroutine Base_SrcSink1(this,Residual,Jacobian,compute_derivative, &
-                         material_auxvar,option)
-  use Option_module
-  use Material_Aux_class
-  
-  implicit none
-  
-  class(srcsink_sandbox_wipp_gas_type) :: this
-  type(option_type) :: option
-  PetscBool :: compute_derivative
-  PetscReal :: Residual(option%nflowdof)
-  PetscReal :: Jacobian(option%nflowdof,option%nflowdof)
-  class(material_auxvar_type) :: material_auxvar
-      
-end subroutine Base_SrcSink1
-
-! ************************************************************************** !
-
 subroutine WIPPGasGenerationSrcSink(this,Residual,Jacobian, &
                                     compute_derivative, &
                                     material_auxvar,aux_real,option)
@@ -157,7 +141,7 @@ subroutine WIPPGasGenerationSrcSink(this,Residual,Jacobian, &
   PetscReal :: Residual(option%nflowdof)
   PetscReal :: Jacobian(option%nflowdof,option%nflowdof)
   class(material_auxvar_type) :: material_auxvar
-  PetscReal :: aux_real
+  PetscReal :: aux_real(:)
   
   PetscReal :: water_saturation
   PetscReal :: r_ci, r_mi
@@ -167,7 +151,7 @@ subroutine WIPPGasGenerationSrcSink(this,Residual,Jacobian, &
   PetscReal :: q_rc, q_rm
   PetscReal :: q_h2
   
-  water_saturation = aux_real
+  water_saturation = aux_real(WIPP_GAS_WATER_SATURATION_INDEX)
   r_ci = 3.d-8  ! mol Fe/m^3/s
   r_mi = 1.5d-7 ! mol CH2O/m^3/s
   f_c = 1.d-3
@@ -179,9 +163,9 @@ subroutine WIPPGasGenerationSrcSink(this,Residual,Jacobian, &
   s_H2_Fe = 1.3081d0
   s_H2_CH2O = 1.1100d0
   q_h2 = s_H2_Fe * q_rc + s_H2_CH2O * q_rm
-  
-  ! gas production is a negative source (same as injection)
-  Residual(TWO_INTEGER) = -1.d0*q_h2
+
+  ! positive is inflow
+  Residual(TWO_INTEGER) = q_h2
   
   if (compute_derivative) then
     
