@@ -71,8 +71,7 @@ function ObservationCreate1()
   observation%id = 0
   observation%itype = OBSERVATION_SCALAR
   observation%print_velocities = PETSC_FALSE
-  observation%at_cell_center = PETSC_FALSE
-!  observation%at_cell_center = PETSC_TRUE
+  observation%at_cell_center = PETSC_TRUE
   observation%print_secondary_data = PETSC_FALSE
   nullify(observation%region)
   nullify(observation%next)
@@ -188,6 +187,8 @@ subroutine ObservationRead(observation,input,option)
 
       case('AT_CELL_CENTER')
         observation%at_cell_center = PETSC_TRUE
+      case('AT_COORDINATE')
+        observation%at_cell_center = PETSC_FALSE
       case default
         option%io_buffer = 'Keyword (' // trim(keyword) // &
                            ') not recognized under' // &
