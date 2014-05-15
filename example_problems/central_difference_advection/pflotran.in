@@ -1,31 +1,31 @@
-:Description: 1D test problem for tracer transport with central difference
-:             approximation for advection
+#Description: 1D test problem for tracer transport with central difference
+#             approximation for advection
 
-:=========================== flow mode ========================================
-: Uniform velocity (see below). No flow mode specified.
+#=========================== flow mode ========================================
+# Uniform velocity (see below). No flow mode specified.
 
-:=========================== useful tranport parameters mode ==================
+#=========================== useful tranport parameters mode ==================
 UNIFORM_VELOCITY 3.170979d-8 0.d0 0.d0 ! 1. meter/yr
 CENTRAL_DIFFERENCE  ! comment out for upwinding
 REFERENCE_DENSITY 1000.d0  ! uniform density...good for debugging
 
-:=========================== debug settings ===================================
+#=========================== debug settings ===================================
 DEBUG
-:  PRINT_JACOBIAN
-:  PRINT_RESIDUAL
-:  PRINT_SOLUTION
+#  PRINT_JACOBIAN
+#  PRINT_RESIDUAL
+#  PRINT_SOLUTION
 /
 
-:=========================== chemistry =======================================
+#=========================== chemistry =======================================
 CHEMISTRY
   PRIMARY_SPECIES
     Tracer
   /
   NO_CHECK_UPDATE  ! prevents truncation of negative concentrations
-:  OPERATOR_SPLIT
+#  OPERATOR_SPLIT
 /
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
   TYPE structured
   ORIGIN 0.d0 0.d0 0.d0
@@ -37,7 +37,7 @@ GRID
   /
 END
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 LINEAR_SOLVER TRANSPORT
   PC_TYPE LU
   KSP_TYPE PREONLY
@@ -48,12 +48,12 @@ NEWTON_SOLVER TRANSPORT
   PRECONDITIONER_MATRIX_TYPE AIJ
 END
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 0.d0
 /
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 1.d0
@@ -62,26 +62,26 @@ MATERIAL_PROPERTY soil1
   SATURATION_FUNCTION default
 /
 
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION default
 /
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
   TIMES y 250.d0 500.d0 750.d0 1000.d0
   PERIODIC_OBSERVATION TIMESTEP 1
   FORMAT TECPLOT POINT
-:  VELOCITIES
+#  VELOCITIES
 /
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
   FINAL_TIME 1000.d0 y
   INITIAL_TIMESTEP_SIZE 1.d0 y
   MAXIMUM_TIMESTEP_SIZE 1.d0 y
 /
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
@@ -112,13 +112,13 @@ REGION middle
   /
 END
 
-:=========================== observation points ===============================
+#=========================== observation points ===============================
 OBSERVATION 
   REGION east
-:  VELOCITY
+#  VELOCITY
 /
 
-:=========================== transport conditions =============================
+#=========================== transport conditions =============================
 TRANSPORT_CONDITION solute
   TYPE dirichlet
   CONSTRAINT_LIST
@@ -135,7 +135,7 @@ TRANSPORT_CONDITION initial
   /
 END
 
-:=========================== constraints ======================================
+#=========================== constraints ======================================
 CONSTRAINT solute
   CONCENTRATIONS
     Tracer 1.d0 T
@@ -148,8 +148,8 @@ CONSTRAINT initial
   /
 END
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
   TRANSPORT_CONDITION initial
   REGION all
@@ -162,19 +162,19 @@ INITIAL_CONDITION
 END
 noskip
 
-: west boundary condition
+# west boundary condition
 BOUNDARY_CONDITION
   TRANSPORT_CONDITION solute
   REGION west
 END
 
-: east boundary condition
+# east boundary condition
 BOUNDARY_CONDITION
   TRANSPORT_CONDITION initial
   REGION east
 END
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
   REGION all
   MATERIAL soil1

@@ -1,23 +1,23 @@
-:Description: 1D problem for testing geochemistry (aqueous speciation, mineral
-:             precipitation/dissolution, surface complexation)
+#Description: 1D problem for testing geochemistry (aqueous speciation, mineral
+#             precipitation/dissolution, surface complexation)
 
-:=========================== flow mode ========================================
+#=========================== flow mode ========================================
 MODE RICHARDS
 
-:=========================== debug settings ===================================
-:DEBUG
-:MATVIEW_JACOBIAN
-:VECVIEW_RESIDUAL
-:VECVIEW_SOLUTION
-:/
+#=========================== debug settings ===================================
+#DEBUG
+#MATVIEW_JACOBIAN
+#VECVIEW_RESIDUAL
+#VECVIEW_SOLUTION
+#/
 
-:=========================== chemistry =======================================
+#=========================== chemistry =======================================
 CHEMISTRY
-:
+#
   ! set CHUNK_SIZE and NUM_THREADS to desired values
   CHUNK_SIZE 8
   NUM_THREADS 2
-:
+#
   PRIMARY_SPECIES
     H+
     Ca++
@@ -180,7 +180,7 @@ skip
         1.3806E-07  1.6944E-07  2.1111E-07  2.6861E-07  3.5000E-07 \
         4.7778E-07  6.8611E-07  1.0778E-06  2.0278E-06  6.6944E-06
 noskip
-:      MULTIRATE_SCALE_FACTOR 1000.d0
+#      MULTIRATE_SCALE_FACTOR 1000.d0
       MINERAL Calcite
       SITE >SOH 15.264 ! 2.0 m^2/g, por = 0.25
       COMPLEXES
@@ -203,12 +203,12 @@ noskip
   /
 /
 
-:=========================== time stepper options =============================
+#=========================== time stepper options =============================
 TIMESTEPPER
-:  MAX_STEPS -1
+#  MAX_STEPS -1
 /
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
   TYPE structured
   NXYZ 114 1 1
@@ -230,7 +230,7 @@ GRID
   /
 /
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 NEWTON_SOLVER FLOW
   RTOL 1.d-8
   ATOL 1.d-8
@@ -238,8 +238,8 @@ NEWTON_SOLVER FLOW
 /
 
 LINEAR_SOLVER FLOW
-:  KSP_TYPE PREONLY
-:  PC_TYPE LU
+#  KSP_TYPE PREONLY
+#  PC_TYPE LU
 /
 
 NEWTON_SOLVER TRANSPORT
@@ -249,16 +249,16 @@ NEWTON_SOLVER TRANSPORT
 /
 
 LINEAR_SOLVER TRANSPORT
-:  KSP_TYPE PREONLY
-:  PC_TYPE LU
+#  KSP_TYPE PREONLY
+#  PC_TYPE LU
 /
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 /
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY  Hanford
   ID 1
   SATURATION_FUNCTION sf1
@@ -271,7 +271,7 @@ MATERIAL_PROPERTY  Hanford
   /
 /
 
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION sf1
   SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
   RESIDUAL_SATURATION 0.1d0
@@ -282,29 +282,29 @@ SATURATION_FUNCTION sf1
   POWER 1.d0
 /
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
-:  SCREEN PERIODIC 50
-:  PERIODIC TIME 50 h
-:  PERIODIC TIME 10 h
-:  PERIODIC_OBSERVATION TIMESTEP 1
-:  TIMES h 10.
-:  PERIODIC_OBSERVATION TIME 50 h
+#  SCREEN PERIODIC 50
+#  PERIODIC TIME 50 h
+#  PERIODIC TIME 10 h
+#  PERIODIC_OBSERVATION TIMESTEP 1
+#  TIMES h 10.
+#  PERIODIC_OBSERVATION TIME 50 h
   FORMAT TECPLOT POINT
   FORMAT HDF5
-:  VELOCITIES
-:  MASS_BALANCE
+#  VELOCITIES
+#  MASS_BALANCE
 /
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
   FINAL_TIME 200. h
   INITIAL_TIMESTEP_SIZE 1.d-3 h
   MAXIMUM_TIMESTEP_SIZE 1.d0 h
-:  MAXIMUM_TIMESTEP_SIZE 1.d-1 h
+#  MAXIMUM_TIMESTEP_SIZE 1.d-1 h
 /
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
   BLOCK 1 114 1 1 1 1
 /
@@ -333,14 +333,14 @@ REGION breakthrough
   /
 /
 
-:=========================== observation points ===============================
+#=========================== observation points ===============================
 OBSERVATION 
   REGION breakthrough
   VELOCITY
 /
 
-:=========================== flow conditions ==================================
-:inland
+#=========================== flow conditions ==================================
+#inland
 FLOW_CONDITION Inlet
   TYPE
     FLUX dirichlet
@@ -348,7 +348,7 @@ FLOW_CONDITION Inlet
   PRESSURE 1.03106d6 ! adjusted to give ave. flow to river of 250 m/y
 /
 
-:Columbia River
+#Columbia River
 FLOW_CONDITION Outlet
   TYPE
     FLUX dirichlet
@@ -365,7 +365,7 @@ FLOW_CONDITION initial
   PRESSURE 1030356.08241d0 ! ave. pressure
 /
 
-:=========================== transport conditions =============================
+#=========================== transport conditions =============================
 TRANSPORT_CONDITION columbia_river
   TYPE dirichlet_zero_gradient
   CONSTRAINT_LIST
@@ -394,15 +394,15 @@ TRANSPORT_CONDITION initial_dwn
   /
 /
 
-:=========================== condition couplers ===============================
-:inland
+#=========================== condition couplers ===============================
+#inland
 BOUNDARY_CONDITION inlet
   FLOW_CONDITION Inlet
   TRANSPORT_CONDITION initial_c
   REGION West
 /
 
-:Columbia river
+#Columbia river
 BOUNDARY_CONDITION river
   FLOW_CONDITION Outlet
   TRANSPORT_CONDITION columbia_river
@@ -427,14 +427,14 @@ INITIAL_CONDITION
   REGION down_stream
 /
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
   MATERIAL Hanford
   REGION all
 /
 
 
-:=========================== geochemical constraints ==========================
+#=========================== geochemical constraints ==========================
 CONSTRAINT initial
   CONCENTRATIONS
     H+       7.3             pH
@@ -496,7 +496,7 @@ CONSTRAINT initial_src
     Tracer   1.e-6            F
   /
   MINERALS
-    :Quartz         0.35   1.
+    #Quartz         0.35   1.
     Calcite        0.1    1.
     Metatorbernite 1.e-4  1.
   /

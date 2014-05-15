@@ -1,14 +1,14 @@
-:================================================
-: Description: DFN with 2 intersecting fractures
-: Test problem for richards equation
-: Satish Karra, LANL
-: Email: satkarra@lanl.gov
-: April 08, 2013
-:================================================
+#================================================
+# Description: DFN with 2 intersecting fractures
+# Test problem for richards equation
+# Satish Karra, LANL
+# Email: satkarra@lanl.gov
+# April 08, 2013
+#================================================
 
 DFN
 
-:========================== regression ========================================
+#========================== regression ========================================
 REGRESSION
   CELLS
     1
@@ -22,22 +22,22 @@ REGRESSION
   /
 END
 
-:=========================== flow mode ========================================
+#=========================== flow mode ========================================
 MODE RICHARDS
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
   TYPE unstructured_explicit dfn.uge
 END
 
 PRINT_PRIMAL_GRID
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.25d0
@@ -48,7 +48,7 @@ MATERIAL_PROPERTY soil1
   /
 END
 
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION default
   SATURATION_FUNCTION_TYPE BROOKS_COREY
   RESIDUAL_SATURATION 0.1d0
@@ -56,13 +56,13 @@ SATURATION_FUNCTION default
   ALPHA 1.d-4
 END
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
   FORMAT TECPLOT BLOCK
   HDF5_WRITE_GROUP_SIZE 1
 END
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
   FINAL_TIME 100.d0 s
   MAXIMUM_TIMESTEP_SIZE 10.d0 d
@@ -70,7 +70,7 @@ END
 
 REFERENCE_PRESSURE 101325.
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION All
   COORDINATES
     -1.d20 -1.d20 -1.d20
@@ -83,7 +83,7 @@ REGION Front
   FILE dfn_front.ex
 END 
 
-:=========================== flow conditions ==================================
+#=========================== flow conditions ==================================
 FLOW_CONDITION initial
   TYPE
      PRESSURE hydrostatic
@@ -100,8 +100,8 @@ FLOW_CONDITION front
   PRESSURE 2.d5
 END
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
   FLOW_CONDITION initial
   REGION All
@@ -114,7 +114,7 @@ BOUNDARY_CONDITION Front
 END
 
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
   REGION All 
   MATERIAL soil1

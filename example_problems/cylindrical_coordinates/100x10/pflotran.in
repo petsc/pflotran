@@ -1,14 +1,14 @@
-:Description: 2D injection scenario with cylindrical coordinates
+#Description: 2D injection scenario with cylindrical coordinates
 
-:=========================== debugging ========================================
-:DEBUG
-:  PRINT_COUPLERS
-:END
+#=========================== debugging ========================================
+#DEBUG
+#  PRINT_COUPLERS
+#END
 
-:=========================== flow mode ========================================
+#=========================== flow mode ========================================
 MODE RICHARDS
 
-:=========================== chemistry ========================================
+#=========================== chemistry ========================================
 CHEMISTRY
   PRIMARY_SPECIES
     Tracer
@@ -18,7 +18,7 @@ CHEMISTRY
   /
 END
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 LINEAR_SOLVER FLOW
   SOLVER DIRECT
 END
@@ -27,7 +27,7 @@ LINEAR_SOLVER TRANSPORT
   SOLVER DIRECT
 END
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
   TYPE structured cylindrical
   NXYZ 100 1 10
@@ -37,12 +37,12 @@ GRID
   /
 END
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY 
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.25d0
@@ -53,7 +53,7 @@ MATERIAL_PROPERTY soil1
   SATURATION_FUNCTION sf1
 END
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 SATURATION_FUNCTION sf1
   SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
   RESIDUAL_SATURATION 0.1d0
@@ -62,24 +62,24 @@ SATURATION_FUNCTION sf1
   MAX_CAPILLARY_PRESSURE 1.d8
 END
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
-: For testing purposes, the tracer plume >0.5 concentration should extend to
-:     Time[y]: 5.    10.   15.   20.   25.   50.
-: Distance[m]: 15.2  21.6  26.4  30.5  34.1  48.2
+# For testing purposes, the tracer plume >0.5 concentration should extend to
+#     Time[y]: 5.    10.   15.   20.   25.   50.
+# Distance[m]: 15.2  21.6  26.4  30.5  34.1  48.2
   TIMES y 5. 10. 15. 20. 25.
   FORMAT TECPLOT BLOCK
   VELOCITIES
 END
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
   FINAL_TIME 50.d0 y
   INITIAL_TIMESTEP_SIZE 1.d0 h
   MAXIMUM_TIMESTEP_SIZE 2.5d-1 y
 END
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
@@ -110,7 +110,7 @@ REGION outside
   /
 END
 
-:=========================== flow conditions ==================================
+#=========================== flow conditions ==================================
 FLOW_CONDITION initial
   TYPE
     PRESSURE hydrostatic
@@ -126,7 +126,7 @@ FLOW_CONDITION well
   RATE 1. m^3/d
 END
 
-:=========================== transport conditions =============================
+#=========================== transport conditions =============================
 TRANSPORT_CONDITION initial
   TYPE zero_gradient
   CONSTRAINT_LIST
@@ -141,7 +141,7 @@ TRANSPORT_CONDITION inlet
   /
 END
 
-:=========================== constraints ======================================
+#=========================== constraints ======================================
 CONSTRAINT initial
   CONCENTRATIONS
     Tracer   1.d-10   T
@@ -154,8 +154,8 @@ CONSTRAINT inlet
   /
 END
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
   FLOW_CONDITION initial
   TRANSPORT_CONDITION initial
@@ -174,7 +174,7 @@ SOURCE_SINK well
   REGION center
 END
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
   REGION all
   MATERIAL soil1

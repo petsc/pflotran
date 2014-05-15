@@ -1,9 +1,9 @@
-:Description: 
+#Description: 
 
-:=========================== flow mode ========================================
+#=========================== flow mode ========================================
 MODE GENERAL
 
-:=========================== regression =======================================
+#=========================== regression =======================================
 REGRESSION
   CELLS
     5
@@ -14,7 +14,7 @@ REGRESSION
   CELLS_PER_PROCESS 1
 END
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
   TYPE structured
   NXYZ 9 1 10
@@ -24,7 +24,7 @@ GRID
   /
 /
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 NEWTON_SOLVER FLOW
   RTOL 1.d-8
   ATOL 1.d-8
@@ -33,15 +33,15 @@ NEWTON_SOLVER FLOW
 /
 
 LINEAR_SOLVER FLOW
-:  SOLVER DIRECT
+#  SOLVER DIRECT
 /
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 /
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY  soil
   ID 1
   SATURATION_FUNCTION sf1
@@ -74,10 +74,10 @@ MATERIAL_PROPERTY  impermeable
   /
 /
 
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION sf1
   SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-:  RESIDUAL_SATURATION 0.1d0
+#  RESIDUAL_SATURATION 0.1d0
   RESIDUAL_SATURATION LIQUID 0.d0
   RESIDUAL_SATURATION GAS 1.d-40
   LAMBDA 0.5d0
@@ -87,14 +87,14 @@ SATURATION_FUNCTION sf1
 
 SATURATION_FUNCTION sf2
   SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-:  RESIDUAL_SATURATION 0.1d0
+#  RESIDUAL_SATURATION 0.1d0
   RESIDUAL_SATURATION 0.01d0
   LAMBDA 0.55d0
   ALPHA 2.d-4
   MAX_CAPILLARY_PRESSURE 1.d6
 /
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
 skip
   PERIODIC TIME 20 h
@@ -112,14 +112,14 @@ skip
 noskip
 /
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
   FINAL_TIME 1. y
   INITIAL_TIMESTEP_SIZE 1.d0 s
   MAXIMUM_TIMESTEP_SIZE 0.01d0 y
 /
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
@@ -158,7 +158,7 @@ REGION bottom_pt
   COORDINATE 4.5d0 0.5d0 0.d0
 /
 
-:=========================== observation points ===============================
+#=========================== observation points ===============================
 OBSERVATION 
   REGION bottom_pt
 /
@@ -167,7 +167,7 @@ OBSERVATION
   REGION top_pt
 /
 
-:=========================== flow conditions ==================================
+#=========================== flow conditions ==================================
 FLOW_CONDITION bottom_pressure
   TYPE
     LIQUID_PRESSURE dirichlet
@@ -206,7 +206,7 @@ FLOW_CONDITION injection
   /
 /
 
-:=========================== condition couplers ===============================
+#=========================== condition couplers ===============================
 INITIAL_CONDITION
   FLOW_CONDITION bottom_pressure
   REGION all
@@ -227,7 +227,7 @@ SOURCE_SINK well
   REGION bottom_pt
 /
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
   MATERIAL soil
   REGION all

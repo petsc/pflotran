@@ -1,9 +1,9 @@
-:Description: 1D infiltration
+#Description: 1D infiltration
 
-:=========================== flow mode ========================================
+#=========================== flow mode ========================================
 MODE RICHARDS
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
 TYPE structured
 ORIGIN 0.d0 0.d0 0.d0
@@ -15,7 +15,7 @@ DXYZ
 /
 END
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY soil
 ID 1
 POROSITY 0.33
@@ -28,7 +28,7 @@ PERM_Z 1.d-10
 /
 /
 
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION default
 SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
 RESIDUAL_SATURATION 0.1d0
@@ -36,18 +36,18 @@ LAMBDA 0.8d0
 ALPHA 1.d-4
 /
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
 FORMAT TECPLOT POINT
 /
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
 FINAL_TIME 10.d0 y
 MAXIMUM_TIMESTEP_SIZE 0.1d0 y
 /
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
 COORDINATES
 0.d0 0.d0 0.d0
@@ -71,7 +71,7 @@ COORDINATES
 FACE BOTTOM
 END
 
-:=========================== flow conditions ==================================
+#=========================== flow conditions ==================================
 FLOW_CONDITION top
 TYPE
 FLUX neumann
@@ -86,26 +86,26 @@ PRESSURE hydrostatic
 PRESSURE 101325.d0
 END
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
 FLOW_CONDITION initial
 REGION all
 END
 
-: top boundary condition
+# top boundary condition
 BOUNDARY_CONDITION
 FLOW_CONDITION top
 REGION top
 END
 
-: bottom boundary condition
+# bottom boundary condition
 BOUNDARY_CONDITION
 FLOW_CONDITION initial
 REGION bottom
 END
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
 REGION all
 MATERIAL soil

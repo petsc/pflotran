@@ -1,9 +1,9 @@
-:Description: 3D toy problem for richards equation
+#Description: 3D toy problem for richards equation
 
-:=========================== flow mode ========================================
+#=========================== flow mode ========================================
 MODE RICHARDS
 
-:=========================== chemistry ========================================
+#=========================== chemistry ========================================
 skip
 CHEMISTRY
 PRIMARY_SPECIES
@@ -13,19 +13,19 @@ plume_c
 /
 /
 noskip
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 TIMESTEPPER
-:MAX_STEPS 10
+#MAX_STEPS 10
 END
 
 NEWTON_SOLVER FLOW
-:MATRIX_TYPE MFFD
-:PRECONDITIONER_MATRIX_TYPE AIJ
+#MATRIX_TYPE MFFD
+#PRECONDITIONER_MATRIX_TYPE AIJ
 END
 
 LINEAR_SOLVER FLOW
-:PC_TYPE lu
-:KSP_TYPE preonly
+#PC_TYPE lu
+#KSP_TYPE preonly
 END
 
 LINEAR_SOLVER TRANSPORT
@@ -33,17 +33,17 @@ PC_TYPE lu
 KSP_TYPE preonly
 END
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
 TYPE unstructured hex_wedge.dat
 END
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY
 DIFFUSION_COEFFICIENT 1.d-9
 /
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
 ID 1
 POROSITY 0.25d0
@@ -68,7 +68,7 @@ PERM_Z 1.d-13
 /
 /
 
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION default
 SATURATION_FUNCTION_TYPE BROOKS_COREY
 RESIDUAL_SATURATION 0.1d0
@@ -76,22 +76,22 @@ LAMBDA 0.3d0
 ALPHA 1.d-4
 /
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
 FORMAT TECPLOT BLOCK
 HDF5_WRITE_GROUP_SIZE 1
 /
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
 FINAL_TIME 1.d0 s
-:INITIAL_TIMESTEP_SIZE 1.d-2 d
+#INITIAL_TIMESTEP_SIZE 1.d-2 d
 MAXIMUM_TIMESTEP_SIZE 10.d0 d
 /
 
 REFERENCE_PRESSURE 101325.
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
 FILE hex_wedge_region.dat 
 END 
@@ -113,7 +113,7 @@ COORDINATES
 FACE EAST
 END
 
-:=========================== flow conditions ==================================
+#=========================== flow conditions ==================================
 skip
 FLOW_CONDITION west
 TYPE
@@ -134,7 +134,7 @@ DATUM 0.d0 0.d0 60.d0
 PRESSURE 101325.d0
 END
 
-:=========================== transport conditions =============================
+#=========================== transport conditions =============================
 skip
 TRANSPORT_CONDITION west_c
 TYPE dirichlet
@@ -155,7 +155,7 @@ END
 END
 noskip
 
-:=========================== constraints ======================================
+#=========================== constraints ======================================
 skip
 CONSTRAINT west
 CONCENTRATIONS
@@ -166,29 +166,29 @@ END
 END
 noskip
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
 FLOW_CONDITION initial
-:TRANSPORT_CONDITION initial_c
+#TRANSPORT_CONDITION initial_c
 REGION all
 END
 
-: west boundary condition
-:BOUNDARY_CONDITION
-:FLOW_CONDITION west
-:TRANSPORT_CONDITION west_c
-:REGION West
-:END
+# west boundary condition
+#BOUNDARY_CONDITION
+#FLOW_CONDITION west
+#TRANSPORT_CONDITION west_c
+#REGION West
+#END
 
-: east boundary condition
-:BOUNDARY_CONDITION
-:FLOW_CONDITION initial
-:TRANSPORT_CONDITION initial_c
-:REGION East
-:END
+# east boundary condition
+#BOUNDARY_CONDITION
+#FLOW_CONDITION initial
+#TRANSPORT_CONDITION initial_c
+#REGION East
+#END
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
 REGION all 
 MATERIAL soil1

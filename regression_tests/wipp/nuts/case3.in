@@ -1,4 +1,4 @@
-:Description: Tracer adsorption decay test case
+#Description: Tracer adsorption decay test case
 
 REGRESSION
   CELLS
@@ -6,10 +6,10 @@ REGRESSION
   /
 END
 
-:=========================== useful tranport parameters ==================
+#=========================== useful tranport parameters ==================
 REFERENCE_DENSITY  997.d0   ! water density kg/m^3 
 
-:=========================== chemistry ========================================
+#=========================== chemistry ========================================
 CHEMISTRY
   PRIMARY_SPECIES
     Tracer1
@@ -29,7 +29,7 @@ CHEMISTRY
       /
     /
   /
-: First order decay of Tracer2 to Tracer3
+# First order decay of Tracer2 to Tracer3
   RADIOACTIVE_DECAY_REACTION
     REACTION Tracer1 <-> Tracer2 
     RATE_CONSTANT  8.0225d-7   ! half life of 8.64d+5 seconds
@@ -42,12 +42,12 @@ CHEMISTRY
   /
 END
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 LINEAR_SOLVER TRANSPORT
   SOLVER DIRECT
 END
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
   TYPE structured
   NXYZ 1 1 1
@@ -57,39 +57,39 @@ GRID
   /
 END
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY 
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY rock1
   ID 1
   POROSITY 0.2d0
   ROCK_DENSITY 1650.d0
 END
 
-:=========================== observation points ===============================
+#=========================== observation points ===============================
 OBSERVATION
   REGION all
 END
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
-  :TIMES y 5. 10. 15. 20.
-:  PERIODIC TIME  8.64d3 s
+  #TIMES y 5. 10. 15. 20.
+#  PERIODIC TIME  8.64d3 s
   PERIODIC_OBSERVATION TIMESTEP 1
-:  FORMAT TECPLOT POINT
+#  FORMAT TECPLOT POINT
 END
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
   FINAL_TIME 8.64d5 s
   INITIAL_TIMESTEP_SIZE 8.64d3 s
   MAXIMUM_TIMESTEP_SIZE 8.64d3 s
 END
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
@@ -97,25 +97,25 @@ REGION all
   /
 END
 
-:=========================== transport conditions =============================
+#=========================== transport conditions =============================
 TRANSPORT_CONDITION initial
   TYPE zero_gradient
-:  TYPE equilibrium
+#  TYPE equilibrium
   CONSTRAINT_LIST
     0.d0 initial_constraint
   /
 END
 
 TRANSPORT_CONDITION inlet_conc
-:  TYPE dirichlet_zero_gradient
-:  TYPE equilibrium
+#  TYPE dirichlet_zero_gradient
+#  TYPE equilibrium
   TYPE mole_rate
   CONSTRAINT_LIST
     0.d0 inlet_constraint
   /
 END
 
-:=========================== constraints ======================================
+#=========================== constraints ======================================
 CONSTRAINT initial_constraint
   CONCENTRATIONS
     Tracer1      1.d-90      T
@@ -130,8 +130,8 @@ CONSTRAINT inlet_constraint
   /
 END
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
   TRANSPORT_CONDITION initial
   REGION all
@@ -142,7 +142,7 @@ SOURCE_SINK inlet
   REGION all
 END
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
   REGION all
   MATERIAL rock1

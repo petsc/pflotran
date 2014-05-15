@@ -3,7 +3,7 @@ MODE MPHASE
 
 CO2_DATABASE ../../../../database/co2data0.dat 
 
-:=========================== regression test ========================================
+#=========================== regression test ========================================
 REGRESSION
   CELLS
     2086
@@ -11,7 +11,7 @@ REGRESSION
   CELLS_PER_PROCESS 2
 END
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
 TYPE structured
 ORIGIN 0.d0 0.d0 0.d0
@@ -21,8 +21,8 @@ BOUNDS
 321.d0 1.d0 51.d0
 /
 END
-:
-:=========================== solver options ===================================
+#
+#=========================== solver options ===================================
 TIMESTEPPER
 TS_ACCELERATION 8
 /
@@ -36,43 +36,43 @@ ITOL 1D-8
 MAXIT 25
 MAXF 100
 END
-:
+#
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
 FINAL_TIME 0.25d0 y
 INITIAL_TIMESTEP_SIZE 1.d-6 y
 MAXIMUM_TIMESTEP_SIZE 50.d0 y
-:MAXIMUM_TIMESTEP_SIZE 50.d0 y at 15. y
+#MAXIMUM_TIMESTEP_SIZE 50.d0 y at 15. y
 MAXIMUM_TIMESTEP_SIZE 200.d0 y at 50. y
 MAXIMUM_TIMESTEP_SIZE 500.d0 y at 20000. y
 MAXIMUM_TIMESTEP_SIZE 1000.d0 y at 50000. y
 MAXIMUM_TIMESTEP_SIZE 5000.d0 y at 100000. y
 /
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 skip
 OUTPUT
 MASS_BALANCE
 PRINT_COLUMN_IDS
 PERIODIC_OBSERVATION TIMESTEP 1
-:TIMES y 0.01 0.1 0.25 0.5 0.75 1.0 2.5 5. 7.5 10. \
-:25. 50. 75. 100. 250. 500. 750. 1000. 2500. 5000. \
-:7500. 1.e4 12500. 15000. 17500. 20000. 25000. 30000. 35000. 40000. \
-:55000. 50000. 60000. 70000. 80000. 90000. 100000. 250000. 500000. \
-:750000. 1000000.
+#TIMES y 0.01 0.1 0.25 0.5 0.75 1.0 2.5 5. 7.5 10. \
+#25. 50. 75. 100. 250. 500. 750. 1000. 2500. 5000. \
+#7500. 1.e4 12500. 15000. 17500. 20000. 25000. 30000. 35000. 40000. \
+#55000. 50000. 60000. 70000. 80000. 90000. 100000. 250000. 500000. \
+#750000. 1000000.
 FORMAT TECPLOT POINT
 FORMAT HDF5
 VELOCITIES
 /
 noskip
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY 
 DIFFUSION_COEFFICIENT 1.d-9
 /
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
 ID 1
 POROSITY 0.15d0
@@ -88,7 +88,7 @@ PERM_Y 1.d-15
 PERM_Z 1.d-17
 /
 /
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION sf2
 PERMEABILITY_FUNCTION_TYPE NMT_EXP
 SATURATION_FUNCTION_TYPE NMT_EXP
@@ -101,7 +101,7 @@ BETAC 2.d0
 POWER 7.d0
 /
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
 COORDINATES
 0.d0 0.d0 0.d0
@@ -140,7 +140,7 @@ COORDINATES
 /
 END
 
-:=========================== flow conditions ==================================
+#=========================== flow conditions ==================================
 FLOW_CONDITION initial
 UNITS Pa,C,M,yr
 TYPE
@@ -193,8 +193,8 @@ CONCENTRATION 0.D0
 ENTHALPY 0.d0 0.d0
 /
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
 FLOW_CONDITION initial
 REGION all
@@ -214,8 +214,8 @@ SOURCE_SINK
 FLOW_CONDITION source
 REGION well
 END
-:
-:=========================== stratigraphy couplers ============================
+#
+#=========================== stratigraphy couplers ============================
 STRATA
 REGION all
 MATERIAL soil1

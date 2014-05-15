@@ -1,42 +1,42 @@
-:     igeom  nx   ny  nz
+#     igeom  nx   ny  nz
 GRID    1    30   30   1
-:    npx  npy  npz
-:PROC  8    8    1
-:
+#    npx  npy  npz
+#PROC  8    8    1
+#
 DBASe
-:/Users/lichtner/flotran/database/hanford.dat
+#/Users/lichtner/flotran/database/hanford.dat
 ./hanford.dat
-:
-:   iact  loglin  iaccel  icomprs  iblkfmt isurf isolidss
+#
+#   iact  loglin  iaccel  icomprs  iblkfmt isurf isolidss
 OPTS 1     0       5         0        1      1      0
-:
-:   kmax  newton_mx  icut_mx  tolexp iwarn iprint
+#
+#   kmax  newton_mx  icut_mx  tolexp iwarn iprint
 TOLR 1000    16          8      5.d0   0     1
-:
-:    iphase isothrm iread_vel  vx   vy            vz   iread_sat  fsat
+#
+#    iphase isothrm iread_vel  vx   vy            vz   iread_sat  fsat
 SYST   1    0   1  pflow_vlx1.dat pflow_vly1.dat  none    0       none
-:
-:    eps    atol_petsc rtol_petsc dtol_petsc maxits_petsc
+#
+#    eps    atol_petsc rtol_petsc dtol_petsc maxits_petsc
 SOLV 1.d-12     1.d-16   1.d-8     1.d15        100
-:
+#
 DXYZ 
 0.5d0 
 0.5d0 
 1.d0
-:
-:dif[cm^2/s] delhaq[kJ/mol] difgas[cm^2/s] dgexp por0 tor0 sat0 temp0 pref0
+#
+#dif[cm^2/s] delhaq[kJ/mol] difgas[cm^2/s] dgexp por0 tor0 sat0 temp0 pref0
 DIFF 1.d-5         12.6        2.13d-1    1.8  0.05  1.d0 1.d0  25.d0  1.d5
-:
-:     vlx0 vly0 vlz0 vgx0 vgy0 vgz0 [m/y]
+#
+#     vlx0 vly0 vlz0 vgx0 vgy0 vgz0 [m/y]
 FLOW  0.   0.   0.   0.   0.   0.
-:
+#
 COMP
-:
-:i1  i2  j1  j2  k1  k2 
+#
+#i1  i2  j1  j2  k1  k2 
   1  30   1  30   1   1
 .
-:
-:species      itype  ctot      mineral/gas
+#
+#species      itype  ctot      mineral/gas
 Na+             1    5.e-3     Calcite
 K+              3    1.e-4     Muscovite
 Ca++            3    1.22e-3   Calcite
@@ -51,14 +51,14 @@ Cl-            -1    3.e-4
 O2(aq)          4    0.2       O2(g)
 .
 .
-:
+#
 BCON
-:ibndtyp iface temp 
+#ibndtyp iface temp 
     3      1   25. 
-:i1  i2  j1  j2  k1  k2
+#i1  i2  j1  j2  k1  k2
   1   1   1  30   1   1
 /
-:species      itype     ctot   mineral/gas
+#species      itype     ctot   mineral/gas
 Na+             1    5.e-3
 K+              3    1.e-4     Jarosite
 Ca++            3    1.22e-3   Gypsum
@@ -71,13 +71,13 @@ HCO3-           4    1.e-2     CO2(g)
 SO4--          -1    5.e-4
 Cl-             1    5.e-3
 O2(aq)          4    0.2       O2(g)
-:
-:ibndtyp iface temp 
+#
+#ibndtyp iface temp 
     3      2   25. 
-:i1  i2  j1  j2  k1  k2
+#i1  i2  j1  j2  k1  k2
  30  30   1  30   1   1
 /
-:species      itype     ctot   mineral/gas
+#species      itype     ctot   mineral/gas
 Na+             1    5.e-3
 K+              3    1.e-4     Muscovite
 Ca++            3    1.22e-3   Calcite
@@ -90,13 +90,13 @@ HCO3-           4    1.e-3     CO2(g)
 SO4--           1    5.e-4
 Cl-            -1    3.e-4
 O2(aq)          4    0.2       O2(g)
-:
-:ibndtyp iface temp
+#
+#ibndtyp iface temp
     3      5   25.
-:i1  i2  j1  j2  k1  k2
+#i1  i2  j1  j2  k1  k2
   1  30   1   1   1   1
 /
-:species      itype     ctot   mineral/gas
+#species      itype     ctot   mineral/gas
 Na+             1    5.e-3
 K+              3    1.e-4     Muscovite
 Ca++            3    1.22e-3   Calcite
@@ -109,13 +109,13 @@ HCO3-           4    1.e-3     CO2(g)
 SO4--           1    5.e-4
 Cl-            -1    3.e-4
 O2(aq)          4    0.2       O2(g)
-:
-:ibndtyp iface temp
+#
+#ibndtyp iface temp
     3      6   25.
-:i1  i2  j1  j2  k1  k2
+#i1  i2  j1  j2  k1  k2
   1  30  30  30   1   1
 /
-:species      itype     ctot   mineral/gas
+#species      itype     ctot   mineral/gas
 Na+             1    5.e-3
 K+              3    1.e-4     Muscovite
 Ca++            3    1.22e-3   Calcite
@@ -129,15 +129,15 @@ SO4--           1    5.e-4
 Cl-            -1    3.e-4
 O2(aq)          4    0.2       O2(g)
 /
-:
+#
 SOUR
-:is1 is2 js1 js2 ks1 ks2
+#is1 is2 js1 js2 ks1 ks2
    1   1   1   1   1   1
-: timeq(sec)   T/qht[oC/(J/s)] water  co2(kg/s) (kg/s)
+# timeq(sec)   T/qht[oC/(J/s)] water  co2(kg/s) (kg/s)
    .0          25.0             5.24248e-3  0.
 1.e20          25.0             5.24248e-3  0.
 /
-:species      itype     ctot   mineral/gas
+#species      itype     ctot   mineral/gas
 Na+             1    5.e-3
 K+              3    1.e-4     Jarosite
 Ca++            3    1.22e-3   Gypsum
@@ -150,14 +150,14 @@ HCO3-           4    1.e-2     CO2(g)
 SO4--          -1    5.e-4
 Cl-             1    5.e-3
 O2(aq)          4    0.2       O2(g)
-:
-:is1 is2 js1 js2 ks1 ks2
+#
+#is1 is2 js1 js2 ks1 ks2
   30  30  30  30   1   1
-: timeq(sec)   T/qht[oC/(J/s)] water  co2(kg/s) (kg/s)
+# timeq(sec)   T/qht[oC/(J/s)] water  co2(kg/s) (kg/s)
    .0          25.0            -5.24248e-3  0.
 1.e20          25.0            -5.24248e-3  0.
 /
-:species      itype     ctot   mineral/gas
+#species      itype     ctot   mineral/gas
 Na+             1    5.e-3
 K+              3    1.e-4     Muscovite
 Ca++            3    1.22e-3   Calcite
@@ -171,7 +171,7 @@ SO4--           1    5.e-4
 Cl-            -1    3.e-4
 O2(aq)          4    0.2       O2(g)
 /
-:
+#
 AQCX
 OH-
 CO3--
@@ -207,15 +207,15 @@ Fe(OH)3-
 Fe(OH)4-
 FeSO4(aq)
 FeSO4+
-:FeHSO4++
+#FeHSO4++
 Fe(SO4)2-
 .
-:
+#
 GAS
 CO2(g)
 O2(g)
 .
-:
+#
 MNRL
 Chrysocolla
 Chrysocolla2
@@ -242,15 +242,15 @@ Brochantite
 Antlerite
 Malachite
 .
-:
+#
 MNIR
-:mineral   npar  fkin  delh  tau
+#mineral   npar  fkin  delh  tau
 Chrysocolla2  1   1.0    0.  1.e-3
-:itypkin npri  nsec  sig  rk
-: 20      0     0    1.  -10.
+#itypkin npri  nsec  sig  rk
+# 20      0     0    1.  -10.
   20      1     0    1.  -10.
 H+ 0.39
-:i1 i2 j1 j2 k1 k2  vol    area
+#i1 i2 j1 j2 k1 k2  vol    area
   1  30  1  30  1  1    0.005  1.
 /
 SiO2(am)      1   1.0    0.  1.e-3
@@ -290,16 +290,16 @@ Alunite       1   1.0    0.  1.e-3
   1  30  1  30  1  1    0.     1.
 /
 /
-:
+#
 SKIP
 FELD
-:i1  i2  j1  j2  k1  k2  por   pref  temp
+#i1  i2  j1  j2  k1  k2  por   pref  temp
   1   30   1   30   1   1  1.d0  1.d5  25.d0
 .
 NOSKIP
-:
+#
 TIME y 10
 0.05 0.1 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5
-:dt      dtmax 
+#dt      dtmax 
 1.d-10   1.e-2
-:
+#

@@ -1,8 +1,8 @@
-:Description: 1D test problem for THC mode
-:===================== THC mode ===============================================
+#Description: 1D test problem for THC mode
+#===================== THC mode ===============================================
 MODE THC no_freezing
 
-:=========================== regression =======================================
+#=========================== regression =======================================
 REGRESSION
   CELLS_PER_PROCESS 2
   CELLS
@@ -12,7 +12,7 @@ REGRESSION
   /
 END
 
-:=========================== chemistry ========================================
+#=========================== chemistry ========================================
 CHEMISTRY
   PRIMARY_SPECIES
     H+
@@ -25,7 +25,7 @@ CHEMISTRY
     CO2(aq)
     CaCO3(aq)
     CaHCO3+
-:   CaOH+
+#   CaOH+
   /
   GAS_SPECIES
     CO2(g)
@@ -41,7 +41,7 @@ CHEMISTRY
   /
   DATABASE ../../../database/hanford.dat
   LOG_FORMULATION
-:  OPERATOR_SPLITTING
+#  OPERATOR_SPLITTING
   ACTIVITY_COEFFICIENTS TIMESTEP
   OUTPUT
     PH
@@ -49,7 +49,7 @@ CHEMISTRY
   /
 END
 
-:===================== Discretization =========================================
+#===================== Discretization =========================================
 GRID
   TYPE structured
   ORIGIN 0.d0 0.d0 0.d0
@@ -60,7 +60,7 @@ GRID
   /
 END
 
-:===================== Solver options =========================================
+#===================== Solver options =========================================
 NEWTON_SOLVER FLOW
   ATOL 1D-12
   RTOL 1D-8
@@ -72,13 +72,13 @@ END
 
 
 LINEAR_SOLVER FLOW
-:PC_TYPE LU
-:KSP_TYPE PREONLY
+#PC_TYPE LU
+#KSP_TYPE PREONLY
 END
 
 LINEAR_SOLVER TRANSPORT
-:PC_TYPE LU
-:KSP_TYPE PREONLY
+#PC_TYPE LU
+#KSP_TYPE PREONLY
 END
 
 NEWTON_SOLVER TRANSPORT
@@ -89,7 +89,7 @@ END
 FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 END
-:========================= material properties ================================
+#========================= material properties ================================
 MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.5d0
@@ -107,7 +107,7 @@ MATERIAL_PROPERTY soil1
   /
 END
 
-:========================= saturation functions ===============================
+#========================= saturation functions ===============================
 SATURATION_FUNCTION default
   SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
   RESIDUAL_SATURATION 0.5d-1
@@ -115,10 +115,10 @@ SATURATION_FUNCTION default
   ALPHA 1.d-3
 END
 
-:========================= output options =====================================
+#========================= output options =====================================
 OUTPUT
-:  TIMES y 100. 250. 500. 1000. 5000. 1.e4
-:  SCREEN PERIODIC 1
+#  TIMES y 100. 250. 500. 1000. 5000. 1.e4
+#  SCREEN PERIODIC 1
   PERIODIC_OBSERVATION TIMESTEP 1 
   PRINT_COLUMN_IDS
   FORMAT TECPLOT POINT
@@ -126,14 +126,14 @@ OUTPUT
   VELOCITIES
 END
 
-:======================== times ===============================================
+#======================== times ===============================================
 TIME
   FINAL_TIME 1.e3 y
   INITIAL_TIMESTEP_SIZE 1.d-8 y
   MAXIMUM_TIMESTEP_SIZE 1.d1  y
 END
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
@@ -162,7 +162,7 @@ OBSERVATION
   VELOCITY
 END
 
-:======================= flow conditions ======================================
+#======================= flow conditions ======================================
 FLOW_CONDITION initial
   UNITS Pa, C, M, yr
   TYPE
@@ -190,7 +190,7 @@ FLOW_CONDITION west
   ENTHALPY 0.D0 
 END
 
-:=========================== transport conditions =============================
+#=========================== transport conditions =============================
 TRANSPORT_CONDITION background_conc
   TYPE zero_gradient
   CONSTRAINT_LIST
@@ -205,36 +205,36 @@ TRANSPORT_CONDITION inlet_conc
   /
 END
 
-:========================== initial and boundary conditions ===================
-: initial condition
+#========================== initial and boundary conditions ===================
+# initial condition
 INITIAL_CONDITION
   FLOW_CONDITION initial
   TRANSPORT_CONDITION background_conc
   REGION all
 END
 
-: west boundary condition
+# west boundary condition
 BOUNDARY_CONDITION
   FLOW_CONDITION west
   TRANSPORT_CONDITION inlet_conc
   REGION west
 END
 
-: east boundary condition
+# east boundary condition
 BOUNDARY_CONDITION
   FLOW_CONDITION initial
   TRANSPORT_CONDITION background_conc
   REGION east
 END
 
-:===================== stratigraphy couplers ==================================
+#===================== stratigraphy couplers ==================================
 STRATA
   REGION all
   MATERIAL soil1
 END
 
 
-:=========================== constraints ======================================
+#=========================== constraints ======================================
 CONSTRAINT initial_constraint
   CONCENTRATIONS
     H+     1.d-8      F

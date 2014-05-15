@@ -1,9 +1,9 @@
-:Description: 2D 5-spot copper leaching problem
+#Description: 2D 5-spot copper leaching problem
 
-: == mode =====================================================================
+# == mode =====================================================================
 MODE RICHARDS
 
-: == chemistry ================================================================
+# == chemistry ================================================================
 CHEMISTRY
 
 OPERATOR_SPLIT
@@ -30,7 +30,7 @@ Chrysocolla
 Chrysocolla1
 Chrysocolla2
 /
-:
+#
 MINERAL_KINETICS
 Chrysocolla2
 RATE_CONSTANT 5.e-12 mol/cm^2-sec
@@ -43,7 +43,7 @@ Quartz
 RATE_CONSTANT 1.e-18 mol/cm^2-sec
 /
 /
-:
+#
 DATABASE ../../../database/hanford.dat
 LOG_FORMULATION
 ACTIVITY_COEFFICIENTS ! NEWTON_ITERATION
@@ -54,17 +54,17 @@ All
 UPDATE_MINERAL_SURFACE_AREA
 /
 
-: == reference variables ======================================================
+# == reference variables ======================================================
 REFERENCE_POROSITY 0.25d0
 
-: == time stepping ============================================================
+# == time stepping ============================================================
 TIMESTEPPER
 TS_ACCELERATION 8
 MAX_STEPS 100000
-:MAX_STEPS 1
+#MAX_STEPS 1
 /
 
-: == discretization ===========================================================
+# == discretization ===========================================================
 GRID
 TYPE structured 
 NXYZ 30 30 1
@@ -74,49 +74,49 @@ BOUNDS
 /
 /
 
-: == flow solvers =============================================================
+# == flow solvers =============================================================
 NEWTON_SOLVER FLOW
 PRECONDITIONER_MATRIX_TYPE AIJ
 RTOL 1.d-8
 ATOL 1.d-8
 STOL 1.d-30
 ITOL_UPDATE 1.d0
-:NO_INFINITY_NORM
-:NO_PRINT_CONVERGENCE
-:PRINT_DETAILED_CONVERGENCE
+#NO_INFINITY_NORM
+#NO_PRINT_CONVERGENCE
+#PRINT_DETAILED_CONVERGENCE
 /
 
 LINEAR_SOLVER FLOW
-:KSP_TYPE PREONLY
-:PC_TYPE LU
-:KSP_TYPE FGMRES !samrai
-:PC_TYPE SHELL !samrai
+#KSP_TYPE PREONLY
+#PC_TYPE LU
+#KSP_TYPE FGMRES !samrai
+#PC_TYPE SHELL !samrai
 /
 
-: == transport solvers ========================================================
+# == transport solvers ========================================================
 NEWTON_SOLVER TRANSPORT
 PRECONDITIONER_MATRIX_TYPE AIJ
 RTOL 1.d-10
 ATOL 1.d-10
 STOL 1.d-30
-:NO_INFINITY_NORM
-:NO_PRINT_CONVERGENCE
-:PRINT_DETAILED_CONVERGENCE
+#NO_INFINITY_NORM
+#NO_PRINT_CONVERGENCE
+#PRINT_DETAILED_CONVERGENCE
 /
 
 LINEAR_SOLVER TRANSPORT
-:PC_TYPE LU
-:KSP_TYPE PREONLY
-:KSP_TYPE FGMRES ! samrai
-:PC_TYPE SHELL !samrai
+#PC_TYPE LU
+#KSP_TYPE PREONLY
+#KSP_TYPE FGMRES ! samrai
+#PC_TYPE SHELL !samrai
 /
 
-: == fluid properties =========================================================
+# == fluid properties =========================================================
 FLUID_PROPERTY
 DIFFUSION_COEFFICIENT 1.d-9
 /
 
-: == material properties ======================================================
+# == material properties ======================================================
 MATERIAL_PROPERTY HD
 ID 1
 SATURATION_FUNCTION default
@@ -127,7 +127,7 @@ PERM_ISO 5.43d-13
 /
 /
 
-: == saturation / permeability functions ======================================
+# == saturation / permeability functions ======================================
 SATURATION_FUNCTION HD
 SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
 RESIDUAL_SATURATION 0.115
@@ -135,29 +135,29 @@ LAMBDA 0.286
 ALPHA 1.9401d-4
 /
 
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION default
 /
 
-: == output ===================================================================
+# == output ===================================================================
 OUTPUT
 MASS_BALANCE
 SCREEN PERIODIC 10
-:PERIODIC TIMESTEP 1
+#PERIODIC TIMESTEP 1
 PERIODIC TIME 0.02 y
 FORMAT HDF5
 FORMAT TECPLOT BLOCK
-:VELOCITIES
+#VELOCITIES
 /
 
-: == times ====================================================================
+# == times ====================================================================
 TIME
 FINAL_TIME 2.d0 y
 INITIAL_TIMESTEP_SIZE 1.e-9 y
 MAXIMUM_TIMESTEP_SIZE 2.e-3 y
 /
 
-: == regions ==================================================================
+# == regions ==================================================================
 REGION all
 COORDINATES
 0.d0 0.d0 0.d0
@@ -179,7 +179,7 @@ COORDINATES
 /
 /
 
-: == flow conditions ==========================================================
+# == flow conditions ==========================================================
 FLOW_CONDITION Initial
 TYPE
 PRESSURE hydrostatic
@@ -191,7 +191,7 @@ PRESSURE 101325.d0
 FLOW_CONDITION injection
 TYPE
 RATE mass_rate
-:RATE volumetric_rate
+#RATE volumetric_rate
 END
 RATE 5.24248e-4 ! kg/s
 END
@@ -199,12 +199,12 @@ END
 FLOW_CONDITION extraction
 TYPE
 RATE mass_rate
-:RATE volumetric_rate
+#RATE volumetric_rate
 END
 RATE -5.24248e-4
 END
 
-: == transport conditions =====================================================
+# == transport conditions =====================================================
 TRANSPORT_CONDITION injection
 TYPE dirichlet
 CONSTRAINT_LIST
@@ -226,7 +226,7 @@ CONSTRAINT_LIST
 /
 /
 
-: == couplers =================================================================
+# == couplers =================================================================
 
 INITIAL_CONDITION Initial
 FLOW_CONDITION Initial
@@ -246,13 +246,13 @@ TRANSPORT_CONDITION withdrawal
 REGION extraction
 END
 
-: == stratigraphy =============================================================
+# == stratigraphy =============================================================
 STRATA
 MATERIAL HD
 REGION all
 /
 
-: == transport constraints ====================================================
+# == transport constraints ====================================================
 CONSTRAINT Initial
 CONCENTRATIONS
 H+            8.0   pH
