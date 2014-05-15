@@ -16,9 +16,7 @@ module SrcSink_Sandbox_Base_class
   contains
     procedure, public :: ReadInput => Base_Read
     procedure, public :: Setup => SSSandboxBaseSetup
-    procedure, public :: Evaluate1 => Base_SrcSink1
-    procedure, public :: Evaluate2 => Base_SrcSink2
-    generic :: Evaluate => Evaluate1, Evaluate2
+    procedure, public :: Evaluate => Base_SrcSink
     procedure, public :: Destroy => SSSandboxBaseDestroy    
   end type srcsink_sandbox_base_type
   
@@ -109,8 +107,8 @@ end subroutine Base_Read
 
 ! ************************************************************************** !
 
-subroutine Base_SrcSink1(this,Residual,Jacobian,compute_derivative, &
-                         material_auxvar,option)
+subroutine Base_SrcSink(this,Residual,Jacobian,compute_derivative, &
+                        material_auxvar,aux_real,option)
   use Option_module
   use Material_Aux_class
   
@@ -122,27 +120,9 @@ subroutine Base_SrcSink1(this,Residual,Jacobian,compute_derivative, &
   PetscReal :: Residual(option%nflowdof)
   PetscReal :: Jacobian(option%nflowdof,option%nflowdof)
   class(material_auxvar_type) :: material_auxvar
+  PetscReal :: aux_real(:)
       
-end subroutine Base_SrcSink1
-
-! ************************************************************************** !
-
-subroutine Base_SrcSink2(this,Residual,Jacobian,compute_derivative, &
-                         material_auxvar,aux_real,option)
-  use Option_module
-  use Material_Aux_class
-  
-  implicit none
-  
-  class(srcsink_sandbox_base_type) :: this
-  type(option_type) :: option
-  PetscBool :: compute_derivative
-  PetscReal :: Residual(option%nflowdof)
-  PetscReal :: Jacobian(option%nflowdof,option%nflowdof)
-  class(material_auxvar_type) :: material_auxvar
-  PetscReal :: aux_real
-      
-end subroutine Base_SrcSink2
+end subroutine Base_SrcSink
 
 ! ************************************************************************** !
 

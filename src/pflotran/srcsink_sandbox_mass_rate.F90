@@ -19,7 +19,7 @@ module SrcSink_Sandbox_Mass_Rate_class
   contains
     procedure, public :: ReadInput => MassRateRead
     procedure, public :: Setup => MassRateSetup
-    procedure, public :: Evaluate1 => MassRateSrcSink
+    procedure, public :: Evaluate => MassRateSrcSink
     procedure, public :: Destroy => MassRateDestroy
   end type srcsink_sandbox_mass_rate_type
 
@@ -78,7 +78,7 @@ subroutine MassRateRead(this,input,option)
 
     call InputReadWord(input,option,word,PETSC_TRUE)
     call InputErrorMsg(input,option,'keyword', &
-                       'MASS_RATE')
+                       'SOURCE_SINK_SANDBOX,MASS_RATE')
     call StringToUpper(word)   
 
     ! reads the REGION
@@ -105,7 +105,7 @@ subroutine MassRateRead(this,input,option)
               call printErrMsg(option)
           end select
           call InputReadDouble(input,option,this%rate(i))
-          call InputErrorMsg(input,option,word,'MASS_RATE')
+          call InputErrorMsg(input,option,word,'SOURCE_SINK_SANDBOX,MASS_RATE')
         enddo
       case default
         option%io_buffer = 'SRCSINK_SANDBOX,MASS_RATE keyword: ' // &
@@ -156,7 +156,7 @@ end subroutine MassRateSetup
 ! ************************************************************************** !
 
 subroutine MassRateSrcSink(this,Residual,Jacobian,compute_derivative, &
-                                    material_auxvar,option)
+                           material_auxvar,aux_real,option)
   ! 
   ! Evaluates src/sink storing residual and/or Jacobian
   ! 
@@ -175,6 +175,7 @@ subroutine MassRateSrcSink(this,Residual,Jacobian,compute_derivative, &
   PetscReal :: Residual(option%nflowdof)
   PetscReal :: Jacobian(option%nflowdof,option%nflowdof)
   class(material_auxvar_type) :: material_auxvar
+  PetscReal :: aux_real(:)
   
   PetscInt :: idof
   

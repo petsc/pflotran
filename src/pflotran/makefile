@@ -304,7 +304,8 @@ srcsink_obj = \
 	${common_src}srcsink_sandbox.o \
 	${common_src}srcsink_sandbox_base.o \
 	${common_src}srcsink_sandbox_mass_rate.o \
-	${common_src}srcsink_sandbox_wipp_gas.o
+	${common_src}srcsink_sandbox_wipp_gas.o \
+	${common_src}srcsink_sandbox_wipp_well.o
 
 io_obj = \
 	${common_src}hdf5.o \
@@ -553,7 +554,9 @@ general.o : connection.o coupler.o debug.o discretization.o eos_gas.o \
             eos_water.o field.o fluid.o general_aux.o global_aux.o grid.o \
             input_aux.o material.o material_aux.o option.o output_aux.o \
             patch.o pflotran_constants.o realization.o saturation_function.o \
-            srcsink_sandbox.o string.o variables.o
+            srcsink_sandbox.o srcsink_sandbox_base.o \
+            srcsink_sandbox_wipp_gas.o srcsink_sandbox_wipp_well.o string.o \
+            variables.o
 general_aux.o : eos_gas.o eos_water.o global_aux.o material_aux.o option.o \
                 pflotran_constants.o saturation_function.o string.o utility.o
 geomech_grid.o : gauss.o geomech_grid_aux.o geomechanics_region.o input_aux.o \
@@ -772,9 +775,9 @@ output_hdf5.o : connection.o coupler.o discretization.o field.o grid.o hdf5.o \
                 variables.o
 output_observation.o : connection.o coupler.o discretization.o field.o \
                        flash2.o general.o global_aux.o grid.o immis.o \
-                       logging.o miscible.o mphase.o observation.o option.o \
-                       output_aux.o output_common.o patch.o \
-                       pflotran_constants.o reaction_aux.o \
+                       logging.o material_aux.o miscible.o mphase.o \
+                       observation.o option.o output_aux.o output_common.o \
+                       patch.o pflotran_constants.o reaction_aux.o \
                        reactive_transport.o reactive_transport_aux.o \
                        realization.o realization_base.o region.o richards.o \
                        structured_grid.o th.o utility.o variables.o
@@ -987,10 +990,10 @@ solid_solution.o : input_aux.o mineral.o mineral_aux.o option.o \
 solid_solution_aux.o : mineral_aux.o pflotran_constants.o
 solver.o : input_aux.o option.o pflotran_constants.o string.o
 spline.o : pflotran_constants.o
-srcsink_sandbox.o : general_aux.o grid.o input_aux.o material_aux.o option.o \
-                    pflotran_constants.o srcsink_sandbox_base.o \
+srcsink_sandbox.o : grid.o input_aux.o material_aux.o option.o \
+                    pflotran_constants.o region.o srcsink_sandbox_base.o \
                     srcsink_sandbox_mass_rate.o srcsink_sandbox_wipp_gas.o \
-                    string.o utility.o
+                    srcsink_sandbox_wipp_well.o string.o utility.o
 srcsink_sandbox_base.o : input_aux.o material_aux.o option.o \
                          pflotran_constants.o region.o
 srcsink_sandbox_mass_rate.o : general_aux.o input_aux.o material_aux.o \
@@ -999,6 +1002,9 @@ srcsink_sandbox_mass_rate.o : general_aux.o input_aux.o material_aux.o \
 srcsink_sandbox_wipp_gas.o : input_aux.o material_aux.o option.o \
                              pflotran_constants.o reaction_aux.o region.o \
                              srcsink_sandbox_base.o string.o units.o
+srcsink_sandbox_wipp_well.o : input_aux.o material_aux.o option.o \
+                              pflotran_constants.o reaction_aux.o region.o \
+                              srcsink_sandbox_base.o string.o units.o
 strata.o : input_aux.o material.o option.o pflotran_constants.o region.o \
            string.o surface_material.o
 string.o : pflotran_constants.o

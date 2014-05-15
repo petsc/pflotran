@@ -1930,7 +1930,7 @@ subroutine ReactionDestroy(reaction,option)
   ! 
 
   use Utility_module, only: DeallocateArray
-  use option_module
+  use Option_module
   
   implicit none
 

@@ -1,6 +1,6 @@
-module SrcSink_Sandbox_WIPP_Gas_class
+module SrcSink_Sandbox_WIPP_Well_class
 
-! Sandbox srcsink for WIPP gas generation source terms
+! Sandbox srcsink for WIPP well source terms
   
   use PFLOTRAN_Constants_module
   use SrcSink_Sandbox_Base_class
@@ -11,26 +11,31 @@ module SrcSink_Sandbox_WIPP_Gas_class
   
 #include "finclude/petscsys.h"
 
-  PetscInt, parameter, public :: WIPP_GAS_WATER_SATURATION_INDEX = 1
+  PetscInt, parameter, public :: WIPP_WELL_LIQUID_MOBILITY = 1
+  PetscInt, parameter, public :: WIPP_WELL_GAS_MOBILITY = 2
+  PetscInt, parameter, public :: WIPP_WELL_LIQUID_PRESSURE = 3
+  PetscInt, parameter, public :: WIPP_WELL_GAS_PRESSURE = 4
 
   type, public, &
-    extends(srcsink_sandbox_base_type) :: srcsink_sandbox_wipp_gas_type
+    extends(srcsink_sandbox_base_type) :: srcsink_sandbox_wipp_well_type
+    PetscReal :: well_pressure      ! Pa
+    PetscReal :: productivity_index ! m^3
   contains
-    procedure, public :: ReadInput => WIPPGasGenerationRead
-    procedure, public :: Setup => WIPPGasGenerationSetup
-    procedure, public :: Evaluate => WIPPGasGenerationSrcSink
-    procedure, public :: Destroy => WIPPGasGenerationDestroy
-  end type srcsink_sandbox_wipp_gas_type
+    procedure, public :: ReadInput => WIPPWellRead
+    procedure, public :: Setup => WIPPWellSetup
+    procedure, public :: Evaluate => WIPPWellSrcSink
+    procedure, public :: Destroy => WIPPWellDestroy
+  end type srcsink_sandbox_wipp_well_type
 
-  public :: WIPPGasGenerationCreate
+  public :: WIPPWellCreate
 
 contains
 
 ! ************************************************************************** !
 
-function WIPPGasGenerationCreate()
+function WIPPWellCreate()
   ! 
-  ! Allocates WIPP gas generation src/sink object.
+  ! Allocates WIPP well src/sink object.
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/11/14
@@ -38,19 +43,19 @@ function WIPPGasGenerationCreate()
 
   implicit none
   
-  class(srcsink_sandbox_wipp_gas_type), pointer :: WIPPGasGenerationCreate
+  class(srcsink_sandbox_wipp_well_type), pointer :: WIPPWellCreate
 
-  allocate(WIPPGasGenerationCreate)
-  call SSSandboxBaseInit(WIPPGasGenerationCreate)  
-  nullify(WIPPGasGenerationCreate%next)  
+  allocate(WIPPWellCreate)
+  call SSSandboxBaseInit(WIPPWellCreate)  
+  nullify(WIPPWellCreate%next)  
       
-end function WIPPGasGenerationCreate
+end function WIPPWellCreate
 
 ! ************************************************************************** !
 
-subroutine WIPPGasGenerationRead(this,input,option)
+subroutine WIPPWellRead(this,input,option)
   ! 
-  ! Reads input deck for WIPP gas generation src/sink parameters
+  ! Reads input deck for WIPP well src/sink parameters
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/11/14
@@ -63,7 +68,7 @@ subroutine WIPPGasGenerationRead(this,input,option)
   
   implicit none
   
-  class(srcsink_sandbox_wipp_gas_type) :: this
+  class(srcsink_sandbox_wipp_well_type) :: this
   type(input_type) :: input
   type(option_type) :: option
 
@@ -86,6 +91,12 @@ subroutine WIPPGasGenerationRead(this,input,option)
     if (found) cycle
     
     select case(trim(word))
+      case('WELL_PRESSURE')
+        call InputReadDouble(input,option,this%well_pressure)
+        call InputErrorMsg(input,option,word,'SOURCE_SINK_SANDBOX,WIPP,WELL')
+      case('WELL_PRODUCTIVITY_INDEX')
+        call InputReadDouble(input,option,this%productivity_index)
+        call InputErrorMsg(input,option,word,'SOURCE_SINK_SANDBOX,WIPP,WELL')
       case default
         option%io_buffer = 'SRCSINK_SANDBOX,WIPP keyword: ' // &
           trim(word) // ' not recognized.'
@@ -93,13 +104,13 @@ subroutine WIPPGasGenerationRead(this,input,option)
     end select
   enddo
 
-end subroutine WIPPGasGenerationRead
+end subroutine WIPPWellRead
 
 ! ************************************************************************** !
 
-subroutine WIPPGasGenerationSetup(this,region_list,option)
+subroutine WIPPWellSetup(this,region_list,option)
   ! 
-  ! Sets up the WIPP gas generation src/sink
+  ! Sets up the WIPP well src/sink
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/11/14
@@ -109,19 +120,18 @@ subroutine WIPPGasGenerationSetup(this,region_list,option)
 
   implicit none
   
-  class(srcsink_sandbox_wipp_gas_type) :: this
+  class(srcsink_sandbox_wipp_well_type) :: this
   type(region_list_type) :: region_list  
   type(option_type) :: option
   
   call SSSandboxBaseSetup(this,region_list,option)
 
-end subroutine WIPPGasGenerationSetup 
+end subroutine WIPPWellSetup 
 
 ! ************************************************************************** !
 
-subroutine WIPPGasGenerationSrcSink(this,Residual,Jacobian, &
-                                    compute_derivative, &
-                                    material_auxvar,aux_real,option)
+subroutine WIPPWellSrcSink(this,Residual,Jacobian,compute_derivative, &
+                           material_auxvar,aux_real,option)
   ! 
   ! Evaluates src/sink storing residual and/or Jacobian
   ! 
@@ -135,7 +145,7 @@ subroutine WIPPGasGenerationSrcSink(this,Residual,Jacobian, &
   
   implicit none
   
-  class(srcsink_sandbox_wipp_gas_type) :: this  
+  class(srcsink_sandbox_wipp_well_type) :: this  
   type(option_type) :: option
   PetscBool :: compute_derivative
   PetscReal :: Residual(option%nflowdof)
@@ -143,29 +153,20 @@ subroutine WIPPGasGenerationSrcSink(this,Residual,Jacobian, &
   class(material_auxvar_type) :: material_auxvar
   PetscReal :: aux_real(:)
   
-  PetscReal :: water_saturation
-  PetscReal :: r_ci, r_mi
-  PetscReal :: f_c, f_m
-  PetscReal :: s_H2_Fe, s_H2_CH2O
-  PetscReal :: r_ch, r_mh
-  PetscReal :: q_rc, q_rm
-  PetscReal :: q_h2
+  PetscReal :: q_water, q_air
   
-  water_saturation = aux_real(WIPP_GAS_WATER_SATURATION_INDEX)
-  r_ci = 3.d-8  ! mol Fe/m^3/s
-  r_mi = 1.5d-7 ! mol CH2O/m^3/s
-  f_c = 1.d-3
-  f_m = 0.2d0
-  r_ch = f_c * r_ci
-  r_mh = f_m * r_mi
-  q_rc = r_ci * water_saturation + r_ch * (1.d0-water_saturation)
-  q_rm = r_mi * water_saturation + r_mh * (1.d0-water_saturation)
-  s_H2_Fe = 1.3081d0
-  s_H2_CH2O = 1.1100d0
-  q_h2 = s_H2_Fe * q_rc + s_H2_CH2O * q_rm
-
+  ! q_i = I*(kr_i/mu_i)*(p_i-p_well)
+  q_water = -1.d0 * &
+            this%productivity_index * &
+            aux_real(WIPP_WELL_LIQUID_MOBILITY) * &
+            (aux_real(WIPP_WELL_LIQUID_PRESSURE) - this%well_pressure)
+  q_air = -1.d0 * &
+          this%productivity_index * &
+          aux_real(WIPP_WELL_GAS_MOBILITY) * &
+          (aux_real(WIPP_WELL_GAS_PRESSURE) - this%well_pressure)
   ! positive is inflow
-  Residual(TWO_INTEGER) = q_h2
+  Residual(ONE_INTEGER) = q_water
+  Residual(TWO_INTEGER) = q_air
   
   if (compute_derivative) then
     
@@ -173,11 +174,11 @@ subroutine WIPPGasGenerationSrcSink(this,Residual,Jacobian, &
 
   endif
   
-end subroutine WIPPGasGenerationSrcSink
+end subroutine WIPPWellSrcSink
 
 ! ************************************************************************** !
 
-subroutine WIPPGasGenerationDestroy(this)
+subroutine WIPPWellDestroy(this)
   ! 
   ! Destroys allocatable or pointer objects created in this
   ! module
@@ -188,10 +189,10 @@ subroutine WIPPGasGenerationDestroy(this)
 
   implicit none
   
-  class(srcsink_sandbox_wipp_gas_type) :: this
+  class(srcsink_sandbox_wipp_well_type) :: this
   
   call SSSandboxBaseDestroy(this)
 
-end subroutine WIPPGasGenerationDestroy
+end subroutine WIPPWellDestroy
 
-end module SrcSink_Sandbox_WIPP_Gas_class
+end module SrcSink_Sandbox_WIPP_Well_class
