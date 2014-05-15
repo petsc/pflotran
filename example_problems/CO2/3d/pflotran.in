@@ -1,10 +1,10 @@
 MODE MPHASE
-:
-:=========================== discretization ===================================
+#
+#=========================== discretization ===================================
 GRID
 TYPE structured
 ORIGIN 0.d0 0.d0 0.d0
-:NXYZ 107 107  51
+#NXYZ 107 107  51
 NXYZ 51 51 25
 BOUNDS
 0.d0 321.d0
@@ -12,8 +12,8 @@ BOUNDS
 0.d0 51.d0
 /
 END
-:
-:=========================== solver options ===================================
+#
+#=========================== solver options ===================================
 TIMESTEPPER
 TS_ACCELERATION 8
 /
@@ -27,29 +27,29 @@ ITOL 1D-8
 MAXIT 25
 MAXF 100
 END
-:
+#
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
 FINAL_TIME 5.d3 y
 INITIAL_TIMESTEP_SIZE 1.d-2 y
 MAXIMUM_TIMESTEP_SIZE 50.d0 y
 /
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
-:MASS_BALANCE
+#MASS_BALANCE
 TIMES y 1.0  5.  10. 50.  100.  500.  1000.  5000.
 FORMAT TECPLOT BLOCK
-:VELOCITIES
+#VELOCITIES
 /
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY 
 DIFFUSION_COEFFICIENT 1.d-9
 /
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
 ID 1
 POROSITY 0.15d0
@@ -65,7 +65,7 @@ PERM_Y 1.d-15
 PERM_Z 1.d-17
 /
 /
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION sf2
 PERMEABILITY_FUNCTION_TYPE NMT_EXP
 SATURATION_FUNCTION_TYPE NMT_EXP
@@ -78,7 +78,7 @@ BETAC 2.d0
 POWER 7.d0
 /
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
 COORDINATES
 0.d0 0.d0 0.d0
@@ -101,7 +101,7 @@ COORDINATES
 /
 END
 
-:=========================== flow conditions ==================================
+#=========================== flow conditions ==================================
 FLOW_CONDITION initial
 UNITS Pa,C,M,yr
 TYPE
@@ -148,14 +148,14 @@ CONCENTRATION 0.D0
 ENTHALPY 0.d0 0.d0
 /
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
 FLOW_CONDITION initial
 REGION all
 END
 
-: top boundary condition
+# top boundary condition
 BOUNDARY_CONDITION top
 FLOW_CONDITION top
 REGION top
@@ -165,8 +165,8 @@ SOURCE_SINK
 FLOW_CONDITION source
 REGION well
 END
-:
-:=========================== stratigraphy couplers ============================
+#
+#=========================== stratigraphy couplers ============================
 STRATA
 REGION all
 MATERIAL soil1

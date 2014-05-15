@@ -1,8 +1,8 @@
-:Description: Tracer Convection-Dispersion-Decay test case
-: This problem has been changed from NUTS test case 4 by increasing the
-: coefficient of molecular diffusion and decreasing the half-life
+#Description: Tracer Convection-Dispersion-Decay test case
+# This problem has been changed from NUTS test case 4 by increasing the
+# coefficient of molecular diffusion and decreasing the half-life
 
-:=========================== regression =======================================
+#=========================== regression =======================================
 REGRESSION
   CELLS 
     1
@@ -15,15 +15,15 @@ REGRESSION
   CELLS_PER_PROCESS 8
 END
 
-:=========================== flow =============================================
+#=========================== flow =============================================
 UNIFORM_VELOCITY 1.d-7 0.d0 0.d0 ! m/s
 
-:=========================== chemistry ========================================
+#=========================== chemistry ========================================
 CHEMISTRY
   PRIMARY_SPECIES
     Tracer1
   /
-  : First order decay of Tracer1 to Tracer2
+  # First order decay of Tracer1 to Tracer2
   RADIOACTIVE_DECAY_REACTION
     REACTION Tracer1 <->
     HALF_LIFE 1.d6
@@ -34,12 +34,12 @@ CHEMISTRY
   /
 END
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 LINEAR_SOLVER TRANSPORT
   SOLVER DIRECT
 END
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
   TYPE structured
   NXYZ 60 1 1
@@ -49,12 +49,12 @@ GRID
   /
 END
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY 
   DIFFUSION_COEFFICIENT 7.5d-6
 END
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY rock1
   ID 1
   SATURATION_FUNCTION default
@@ -66,21 +66,21 @@ MATERIAL_PROPERTY rock1
   /
 END
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
   PERIODIC_OBSERVATION TIMESTEP  1
   TIMES s 1.d4
   FORMAT TECPLOT POINT
 END
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
   FINAL_TIME 8.64d6 s
   INITIAL_TIMESTEP_SIZE 8.64d5 s
   MAXIMUM_TIMESTEP_SIZE 8.64d5 s
 END
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
@@ -111,7 +111,7 @@ REGION outlet
   /
 END
 
-:=========================== transport conditions =============================
+#=========================== transport conditions =============================
 TRANSPORT_CONDITION media_initial
   TYPE zero_gradient
   CONSTRAINT_LIST
@@ -126,7 +126,7 @@ TRANSPORT_CONDITION inlet_conc
   /
 END
 
-:=========================== constraints ======================================
+#=========================== constraints ======================================
 CONSTRAINT media_initial_constraint
   CONCENTRATIONS
     Tracer1      1.d-90      T
@@ -139,8 +139,8 @@ CONSTRAINT inlet_constraint
   /
 END
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
   TRANSPORT_CONDITION media_initial
   REGION all
@@ -156,7 +156,7 @@ BOUNDARY_CONDITION outlet
   REGION outlet
 END
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
   REGION all
   MATERIAL rock1

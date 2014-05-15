@@ -1,4 +1,4 @@
-:Description: 1D test problem for tracer transport
+#Description: 1D test problem for tracer transport
 
 CHEMISTRY
 PRIMARY_SPECIES
@@ -18,13 +18,13 @@ BOUNDS
 END
 
 LINEAR_SOLVER FLOW
-:PC_TYPE LU
-:KSP_TYPE PREONLY
+#PC_TYPE LU
+#KSP_TYPE PREONLY
 END
 
 LINEAR_SOLVER TRANSPORT
-:PC_TYPE LU
-:KSP_TYPE PREONLY
+#PC_TYPE LU
+#KSP_TYPE PREONLY
 END
 
 NEWTON_SOLVER TRANSPORT
@@ -54,7 +54,7 @@ TIMES y 0.25d0 0.5d0 0.75d0 2.d0
 SCREEN PERIODIC 10
 PERIODIC_OBSERVATION TIMESTEP 1
 FORMAT TECPLOT POINT
-:VELOCITIES
+#VELOCITIES
 /
 
 TIME
@@ -88,7 +88,7 @@ END
 
 OBSERVATION 
 REGION east
-:VELOCITY
+#VELOCITY
 /
 
 TRANSPORT_CONDITION west
@@ -117,19 +117,19 @@ Tracer 1.d-8 T
 /
 END
 
-: initial condition
+# initial condition
 INITIAL_CONDITION
 TRANSPORT_CONDITION initial
 REGION all
 END
 
-: west boundary condition
+# west boundary condition
 BOUNDARY_CONDITION
 TRANSPORT_CONDITION west
 REGION west
 END
 
-: east boundary condition
+# east boundary condition
 BOUNDARY_CONDITION
 TRANSPORT_CONDITION initial
 REGION east

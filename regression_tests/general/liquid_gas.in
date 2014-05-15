@@ -1,6 +1,6 @@
-:Description: 
+#Description: 
 
-:=========================== regression =======================================
+#=========================== regression =======================================
 REGRESSION
   CELLS
     1
@@ -8,24 +8,24 @@ REGRESSION
   /
 END
 
-:=========================== flow mode ========================================
+#=========================== flow mode ========================================
 MODE GENERAL
 
-:=========================== debug settings ===================================
-:USE_TOUCH_OPTIONS
+#=========================== debug settings ===================================
+#USE_TOUCH_OPTIONS
 
-:DEBUG
-:MATVIEW_JACOBIAN
-:VECVIEW_RESIDUAL
-:VECVIEW_SOLUTION
-:/
+#DEBUG
+#MATVIEW_JACOBIAN
+#VECVIEW_RESIDUAL
+#VECVIEW_SOLUTION
+#/
 
-:=========================== time stepper options =============================
+#=========================== time stepper options =============================
 TIMESTEPPER
-:  MAX_STEPS -1
+#  MAX_STEPS -1
 /
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
   TYPE structured
   NXYZ 2 1 1
@@ -35,7 +35,7 @@ GRID
   /
 /
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 NEWTON_SOLVER FLOW
   RTOL 1.d-8
   ATOL 1.d-8
@@ -46,12 +46,12 @@ LINEAR_SOLVER FLOW
   SOLVER DIRECT
 /
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 /
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY  Hanford
   ID 1
   SATURATION_FUNCTION sf1
@@ -68,7 +68,7 @@ MATERIAL_PROPERTY  Hanford
   /
 /
 
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION sf1
   SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
   RESIDUAL_SATURATION LIQUID 0.d0
@@ -78,23 +78,23 @@ SATURATION_FUNCTION sf1
   MAX_CAPILLARY_PRESSURE 1.d6
 /
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
-:  PERIODIC TIME 20 h
-:  TIMES y 0.24
-:  PERIODIC_OBSERVATION TIMESTEP 1
-:  FORMAT TECPLOT POINT
+#  PERIODIC TIME 20 h
+#  TIMES y 0.24
+#  PERIODIC_OBSERVATION TIMESTEP 1
+#  FORMAT TECPLOT POINT
   VELOCITIES
 /
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
   FINAL_TIME 1. y
   INITIAL_TIMESTEP_SIZE 1.d0 s
   MAXIMUM_TIMESTEP_SIZE 0.001d0 y
 /
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
@@ -126,7 +126,7 @@ REGION gas_side
   COORDINATE 1.5d0 0.5d0 0.5d0
 /
 
-:=========================== observation points ===============================
+#=========================== observation points ===============================
 OBSERVATION 
   REGION liquid_side
   VELOCITY
@@ -137,7 +137,7 @@ OBSERVATION
   VELOCITY
 /
 
-:=========================== flow conditions ==================================
+#=========================== flow conditions ==================================
 FLOW_CONDITION liquid_phase
   TYPE
     LIQUID_PRESSURE dirichlet
@@ -165,7 +165,7 @@ FLOW_CONDITION gas_phase
   TEMPERATURE 25.d0
 /
 
-:=========================== condition couplers ===============================
+#=========================== condition couplers ===============================
 INITIAL_CONDITION
   FLOW_CONDITION liquid_phase
   REGION west
@@ -176,7 +176,7 @@ INITIAL_CONDITION
   REGION east
 /
 
-:skip
+#skip
 BOUNDARY_CONDITION west
   FLOW_CONDITION liquid_phase
   REGION west
@@ -186,9 +186,9 @@ BOUNDARY_CONDITION east
   FLOW_CONDITION gas_phase
   REGION east
 /
-:noskip
+#noskip
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
   MATERIAL Hanford
   REGION all

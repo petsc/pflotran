@@ -150,5 +150,5 @@ PflotranApplicationStrategy{
 }
 
 TimerManager{
-   timer_list = "xfer::*::*", "FAC::*::*", "AMRUtilities::*::*", "apps::main::main", "RD2T::*::*", "LevelSolver::*::*"
+   timer_list = "xfer#:*::*", "FAC::*::*", "AMRUtilities::*::*", "apps::main::main", "RD2T::*::*", "LevelSolver::*::*"
 }

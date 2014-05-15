@@ -1,4 +1,4 @@
-:Description: 1D problem for testing geochemistry
+#Description: 1D problem for testing geochemistry
  
 CHEMISTRY
 PRIMARY_SPECIES
@@ -68,14 +68,14 @@ NH3(aq)
 HN3(aq)
 N3-
 H2PO4-
-:P2O7----
+#P2O7----
 PO4---
 H3PO4(aq)
 H2F2(aq)
 H2PO3F(aq)
-:O2(aq)
-:aluminum
-:Al+++
+#O2(aq)
+#aluminum
+#Al+++
 AlOH++
 Al(OH)2+
 Al(OH)3(aq)
@@ -87,11 +87,11 @@ AlF4-
 AlH2PO4++
 AlHPO4+
 AlSO4+
-:silica
+#silica
 H3SiO4-
 H2SiO4--
-:
-:copper species
+#
+#copper species
 Cu+
 Cu(CO3)2--
 Cu(NO2)2(aq)
@@ -111,12 +111,12 @@ CuO2--
 CuOH+
 CuPO4-
 CuSO4(aq)
-:
-:sulfur
+#
+#sulfur
 HS-
 H2S(aq)
-:
-:iron
+#
+#iron
 Fe+++
  Fe(SO4)2-
  Fe2(OH)2++++
@@ -149,13 +149,13 @@ Fe+++
  FePO4-
  FeSO4(aq)
  FeSO4+
-:
-:uranium species
+#
+#uranium species
 U+++
 U++++
 UO2+
-:(UO2)3(CO3)6(6-)
-:
+#(UO2)3(CO3)6(6-)
+#
 UO2OH+
 UO2(OH)2(aq)
 UO2(OH)3-
@@ -166,27 +166,27 @@ UO2(OH)4--
 (UO2)3(OH)5+
 (UO2)3(OH)7-
 (UO2)4(OH)7+
-:
+#
 UO2CO3(aq)
 UO2(CO3)2--
 UO2(CO3)3----
 (UO2)2CO3(OH)3-
-:
+#
 Ca2UO2(CO3)3(aq)
 CaUO2(CO3)3--
-:
+#
 UO2NO3+
 UO2Cl+
 UO2Cl2(aq)
 UO2SO4(aq)
 UO2(SO4)2--
-:
+#
 UO2F+
 UO2F2(aq)
 UO2F3-
 UO2F4--
-:
-:25 C
+#
+#25 C
 UO2(H2PO4)(H3PO4)+
 UO2(H2PO4)2(aq)
 UO2HPO4(aq)
@@ -223,11 +223,11 @@ Paragonite
 Gibbsite
 Rutherfordine
 Schoepite
-:(UO2)3(PO4)2
-:(UO2)3(PO4)2.4H2O
+#(UO2)3(PO4)2
+#(UO2)3(PO4)2.4H2O
 UO2(OH)2(beta)
 UO2CO3
-:UO2(PO3)2
+#UO2(PO3)2
 CaUO4
  Boltwoodite
  Boltwoodite-Na
@@ -262,13 +262,13 @@ CaUO4
  Strengite
  Torbernite
 /
-:
+#
 MINERAL_KINETICS
 Quartz 1.e-22 
 Calcite 1.e-12 
 Metatorbernite 1.e-17 
 /
-:skip
+#skip
 SORPTION
 SURFACE_COMPLEXATION_RXN
 MINERAL Calcite
@@ -280,17 +280,17 @@ COMPLEXES
 /
 /
 noskip
-:DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
+#DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
 DATABASE /Users/lichtner/flotran/database/hanford.dat
-:DATABASE ../../../database/hanford.dat
+#DATABASE ../../../database/hanford.dat
 LOG_FORMULATION
-:ACTIVITY_COEFFICIENTS
+#ACTIVITY_COEFFICIENTS
 /
-:
-:MOLAL
-:
-:CHECKPOINT 1
-:RESTART pflotran.chk1
+#
+#MOLAL
+#
+#CHECKPOINT 1
+#RESTART pflotran.chk1
 UNIFORM_VELOCITY 0.317098d-4 0.d0 0.d0
 
 TIMESTEPPER
@@ -298,19 +298,19 @@ MAX_STEPS 100000
 TS_ACCELERATION 3
 /
 
-:NUMERICAL_JACOBIAN
-:INEXACT_NEWTON
-:STATISTICS
-:
-:CHECKPOINT 50
-:WALLCLOCK_STOP 0.05
-:
+#NUMERICAL_JACOBIAN
+#INEXACT_NEWTON
+#STATISTICS
+#
+#CHECKPOINT 50
+#WALLCLOCK_STOP 0.05
+#
 DEBUG
-:MATVIEW_JACOBIAN
-:VECVIEW_RESIDUAL
-:VECVIEW_SOLUTION
+#MATVIEW_JACOBIAN
+#VECVIEW_RESIDUAL
+#VECVIEW_SOLUTION
 /
-:
+#
 GRID
 TYPE structured
 NXYZ 100 1 1
@@ -320,57 +320,57 @@ DXYZ
 1.
 /
 /
-:
+#
 LINEAR_SOLVER TRANSPORT
-:KSP_TYPE PREONLY
-:PC_TYPE LU
+#KSP_TYPE PREONLY
+#PC_TYPE LU
 SOLVER GMRES
 /
-:
+#
 NEWTON_SOLVER TRANSPORT
-:MATRIX_TYPE MFFD
-:PRECONDITIONER_MATRIX_TYPE AIJ
+#MATRIX_TYPE MFFD
+#PRECONDITIONER_MATRIX_TYPE AIJ
 RTOL 1.d-8
 ATOL 1.d-10
 STOL 1.e-60
 DTOL 1.e4
-:NO_INFINITY_NORM
-:NO_PRINT_CONVERGENCE
-:PRINT_DETAILED_CONVERGENCE
+#NO_INFINITY_NORM
+#NO_PRINT_CONVERGENCE
+#PRINT_DETAILED_CONVERGENCE
 /
-:
-:STATISTICS
-:
+#
+#STATISTICS
+#
 TECPLOT POINT VELO
-:TECPLOT BLOCK VELO
-:
+#TECPLOT BLOCK VELO
+#
 DIFF  1.D-9       12.6
-:
+#
 SATURATION_FUNCTIONS
-:id itype swir   lambda alpha     pcwmax betac pwr
+#id itype swir   lambda alpha     pcwmax betac pwr
  1  2     0.10   2.67   2.042d-4  1.e8   0.d0  1.d0
 /
 
 THERMAL_PROPERTIES
-:ithm rho    cpr     ckdry cksat tau cdiff   cexp
+#ithm rho    cpr     ckdry cksat tau cdiff   cexp
   1   2.75e3 1000.e0 0.5   0.5   0.5 2.13d-5 1.8
 /
-:
+#
 MATERIALS
-:name   id icap ithm por  tau   permx     permy     permz     permpwr
+#name   id icap ithm por  tau   permx     permy     permz     permpwr
 Soil1   1  1    1    0.2  1.0   1.d-12    1.d-12    1.d-13    1.d0
 /
-:
+#
 IMOD 1
-:
-:TIME d every 10
+#
+#TIME d every 10
 TIME y
 0.1 0.5 1. 2. 5. 10.
-:
+#
 DTST 1.d-8
 1.0 0.01 10. 0.1
 
-:
+#
 REGION all
 BLOCK 1 100 1 1 1 1
 /
@@ -413,7 +413,7 @@ H+       7.3             pH
 O2(aq)   1.78132e-4       T
 Al+++    1.e-9            M K-Feldspar
 Ca++     1.20644e-3       T
-:Cu++     1.e-5            M Metatorbernite
+#Cu++     1.e-5            M Metatorbernite
 Cu++     1.e-5            T
 Fe++     1.e-9            M Ferrihydrite
 Mg++     5.09772e-4       T

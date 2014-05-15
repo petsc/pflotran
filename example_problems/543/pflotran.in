@@ -1,4 +1,4 @@
-!Description: 3D test problem for variably saturated flow and tracer transport
+!Description# 3D test problem for variably saturated flow and tracer transport
 
 #=========================== flow mode ========================================
 MODE RICHARDS
@@ -37,7 +37,7 @@ GRID
   ORIGIN 0.d0 0.d0 0.d0
   NXYZ 5 4 3
   DXYZ
-   ! Five values for 'dx'. Note: Backslash for line continuation
+   ! Five values for 'dx'. Note# Backslash for line continuation
     10. 11. 12. \
     13. 14.
 
