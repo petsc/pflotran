@@ -15,6 +15,12 @@ module SrcSink_Sandbox_WIPP_Gas_class
 
   type, public, &
     extends(srcsink_sandbox_base_type) :: srcsink_sandbox_wipp_gas_type
+    PetscReal :: inundated_corrosion_rate
+    PetscReal :: inundated_degradation_rate
+    PetscReal :: humid_corrosion_factor
+    PetscReal :: humid_degradation_factor
+    PetscReal :: h2_fe_ratio
+    PetscReal :: h2_ch2o_ratio    
   contains
     procedure, public :: ReadInput => WIPPGasGenerationRead
     procedure, public :: Setup => WIPPGasGenerationSetup
@@ -32,8 +38,8 @@ function WIPPGasGenerationCreate()
   ! 
   ! Allocates WIPP gas generation src/sink object.
   ! 
-  ! Author: Glenn Hammond
-  ! Date: 04/11/14
+  ! Author: Glenn Hammond, Edit: Heeho Park
+  ! Date: 04/11/14, 05/15/14
   ! 
 
   implicit none
@@ -41,7 +47,13 @@ function WIPPGasGenerationCreate()
   class(srcsink_sandbox_wipp_gas_type), pointer :: WIPPGasGenerationCreate
 
   allocate(WIPPGasGenerationCreate)
-  call SSSandboxBaseInit(WIPPGasGenerationCreate)  
+  call SSSandboxBaseInit(WIPPGasGenerationCreate)
+  WIPPGasGenerationCreate%inundated_corrosion_rate = 3.0d-8
+  WIPPGasGenerationCreate%inundated_degradation_rate = 1.5d-7
+  WIPPGasGenerationCreate%humid_corrosion_factor = 1.0d-3
+  WIPPGasGenerationCreate%humid_degradation_factor = 0.2d0
+  WIPPGasGenerationCreate%h2_fe_ratio = 1.3081d0
+  WIPPGasGenerationCreate%h2_ch2o_ratio = 1.1100d0
   nullify(WIPPGasGenerationCreate%next)  
       
 end function WIPPGasGenerationCreate
@@ -52,8 +64,8 @@ subroutine WIPPGasGenerationRead(this,input,option)
   ! 
   ! Reads input deck for WIPP gas generation src/sink parameters
   ! 
-  ! Author: Glenn Hammond
-  ! Date: 04/11/14
+  ! Author: Glenn Hammond, Edit: Heeho Park
+  ! Date: 04/11/14, 05/15/14
   ! 
 
   use Option_module
@@ -86,9 +98,27 @@ subroutine WIPPGasGenerationRead(this,input,option)
     if (found) cycle
     
     select case(trim(word))
+      case('INUNDATED_CORROSION_RATE')
+        call InputReadDouble(input,option,this%inundated_corrosion_rate)
+        call InputDefaultMsg(input,option,'inundated_corrosion_rate')
+      case('INUNDATED_DEGRADATION_RATE')
+        call InputReadDouble(input,option,this%inundated_degradation_rate)
+        call InputDefaultMsg(input,option,'inundated_degradation_rate')
+      case('HUMID_CORROSION_FACTOR')
+        call InputReadDouble(input,option,this%humid_corrosion_factor)
+        call InputDefaultMsg(input,option,'humid_corrosion_factor')
+      case('HUMID_DEGREDATION_FACTOR')
+        call InputReadDouble(input,option,this%humid_degradation_factor)
+        call InputDefaultMsg(input,option,'humid_degradation_factor')
+      case('H2_FE_RATIO')
+        call InputReadDouble(input,option,this%h2_fe_ratio)
+        call InputDefaultMsg(input,option,'h2_fe_ratio')
+      case('H2_CH2O_RATIO')
+        call InputReadDouble(input,option,this%h2_ch2o_ratio)
+        call InputDefaultMsg(input,option,'h2_ch2o_ratio')
       case default
-        option%io_buffer = 'SRCSINK_SANDBOX,WIPP keyword: ' // &
-          trim(word) // ' not recognized.'
+        option%io_buffer = 'SRCSINK_SANDBOX,WIPP-GAS_GENERATION keyword: ' // &
+            trim(word) // ' not recognized.'
         call printErrMsg(option)
     end select
   enddo
@@ -103,7 +133,6 @@ subroutine WIPPGasGenerationSetup(this,region_list,option)
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/11/14
-
   use Option_module
   use Region_module
 
@@ -125,8 +154,8 @@ subroutine WIPPGasGenerationSrcSink(this,Residual,Jacobian, &
   ! 
   ! Evaluates src/sink storing residual and/or Jacobian
   ! 
-  ! Author: Glenn Hammond
-  ! Date: 04/11/14
+  ! Author: Glenn Hammond, Edited: Heeho Park
+  ! Date: 04/11/14, 05/15/14
   ! 
 
   use Option_module
@@ -144,28 +173,24 @@ subroutine WIPPGasGenerationSrcSink(this,Residual,Jacobian, &
   PetscReal :: aux_real(:)
   
   PetscReal :: water_saturation
-  PetscReal :: r_ci, r_mi
-  PetscReal :: f_c, f_m
-  PetscReal :: s_H2_Fe, s_H2_CH2O
-  PetscReal :: r_ch, r_mh
-  PetscReal :: q_rc, q_rm
-  PetscReal :: q_h2
+  PetscReal :: humid_corrosion_rate
+  PetscReal :: humid_degradation_rate
+  PetscReal :: corrosion_gas_rate
+  PetscReal :: degradation_gas_rate
+  PetscReal :: gas_generation_rate
   
   water_saturation = aux_real(WIPP_GAS_WATER_SATURATION_INDEX)
-  r_ci = 3.d-8  ! mol Fe/m^3/s
-  r_mi = 1.5d-7 ! mol CH2O/m^3/s
-  f_c = 1.d-3
-  f_m = 0.2d0
-  r_ch = f_c * r_ci
-  r_mh = f_m * r_mi
-  q_rc = r_ci * water_saturation + r_ch * (1.d0-water_saturation)
-  q_rm = r_mi * water_saturation + r_mh * (1.d0-water_saturation)
-  s_H2_Fe = 1.3081d0
-  s_H2_CH2O = 1.1100d0
-  q_h2 = s_H2_Fe * q_rc + s_H2_CH2O * q_rm
+  humid_corrosion_rate = this%humid_corrosion_factor * this%inundated_corrosion_rate
+  humid_degradation_rate = this%humid_degradation_factor * this%inundated_degradation_rate
+  corrosion_gas_rate = this%inundated_corrosion_rate * &
+                        water_saturation + humid_corrosion_rate * (1.d0-water_saturation)
+  degradation_gas_rate = this%inundated_degradation_rate * &
+                          water_saturation + humid_degradation_rate * (1.d0-water_saturation)
+  gas_generation_rate = this%h2_fe_ratio * corrosion_gas_rate + &
+                         this%h2_ch2o_ratio * degradation_gas_rate
 
   ! positive is inflow
-  Residual(TWO_INTEGER) = q_h2
+  Residual(TWO_INTEGER) = gas_generation_rate
   
   if (compute_derivative) then
     
