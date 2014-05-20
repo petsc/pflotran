@@ -3833,6 +3833,10 @@ subroutine GeneralSSSandbox(residual,Jacobian,compute_derivative, &
                                general_auxvars(idof,ghosted_id)%pert
             enddo
           enddo
+          if (general_isothermal) then
+            Jac(GENERAL_ENERGY_EQUATION_INDEX,:) = 0.d0
+            Jac(:,GENERAL_ENERGY_EQUATION_INDEX) = 0.d0
+          endif          
           call MatSetValuesBlockedLocal(Jacobian,1,ghosted_id-1,1, &
                                         ghosted_id-1,Jac,ADD_VALUES,ierr)
         else
@@ -3880,6 +3884,14 @@ subroutine GeneralSSSandboxLoadAuxReal(srcsink,aux_real,gen_auxvar,option)
         gen_auxvar%pres(option%liquid_phase)
       aux_real(WIPP_WELL_GAS_PRESSURE) = &
         gen_auxvar%pres(option%gas_phase)
+      aux_real(WIPP_WELL_LIQUID_ENTHALPY) = &
+        gen_auxvar%H(option%liquid_phase)
+      aux_real(WIPP_WELL_GAS_ENTHALPY) = &
+        gen_auxvar%H(option%gas_phase)
+      aux_real(WIPP_WELL_XMOL_AIR_IN_LIQUID) = &
+        gen_auxvar%xmol(option%air_id,option%liquid_phase)
+      aux_real(WIPP_WELL_XMOL_WATER_IN_GAS) = &
+        gen_auxvar%xmol(option%water_id,option%gas_phase)
   end select
   
 end subroutine GeneralSSSandboxLoadAuxReal
