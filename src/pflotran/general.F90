@@ -111,6 +111,10 @@ subroutine GeneralRead(input,option)
         call GeneralAuxSetEnergyDOF(word,option)
       case('ISOTHERMAL')
         general_isothermal = PETSC_TRUE
+      case('MAXIMUM_PRESSURE_CHANGE')
+        call InputReadDouble(input,option,general_max_pressure_change)
+        call InputErrorMsg(input,option,'maximum pressure change', &
+                           'GENERAL_MODE')
       case default
         option%io_buffer = 'Keyword: ' // trim(keyword) // &
                            ' not recognized in General Mode'    
@@ -2908,7 +2912,6 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   PetscReal :: temperature0, temperature1, del_temperature
   PetscReal :: saturation0, saturation1, del_saturation
   PetscReal :: xmol_air_in_water0, xmol_air_in_water1, del_xmol_air_in_water
-  PetscReal :: max_pressure_change = 5.d4
   PetscReal :: max_saturation_change = 0.125d0
   PetscReal :: max_temperature_change = 10.d0
   PetscReal :: min_pressure
@@ -2971,8 +2974,8 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
         temperature0 = X_p(temperature_index)
         temperature1 = temperature0 - del_temperature
 #ifdef LIMIT_MAX_PRESSURE_CHANGE
-        if (dabs(del_liquid_pressure) > max_pressure_change) then
-          temp_real = dabs(max_pressure_change/del_liquid_pressure)
+        if (dabs(del_liquid_pressure) > general_max_pressure_change) then
+          temp_real = dabs(general_max_pressure_change/del_liquid_pressure)
 #ifdef DEBUG_GENERAL_INFO
           if (cell_locator(0) < max_cell_id) then
             cell_locator(0) = cell_locator(0) + 1
@@ -3087,8 +3090,8 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
         saturation0 = X_p(saturation_index)
         saturation1 = saturation0 - del_saturation
 #ifdef LIMIT_MAX_PRESSURE_CHANGE
-        if (dabs(del_gas_pressure) > max_pressure_change) then
-          temp_real = dabs(max_pressure_change/del_gas_pressure)
+        if (dabs(del_gas_pressure) > general_max_pressure_change) then
+          temp_real = dabs(general_max_pressure_change/del_gas_pressure)
 #ifdef DEBUG_GENERAL_INFO
           if (cell_locator(0) < max_cell_id) then
             cell_locator(0) = cell_locator(0) + 1

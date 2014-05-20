@@ -9,7 +9,8 @@ module General_Aux_module
 #include "finclude/petscsys.h"
 
   PetscReal, public :: window_epsilon = 1.d-4
-  PetscReal, public :: fmw_comp(2) = [FMWH2O,FMWAIR]  
+  PetscReal, public :: fmw_comp(2) = [FMWH2O,FMWAIR]
+  PetscReal, public :: general_max_pressure_change = 5.d4
 
   ! thermodynamic state of fluid ids
   PetscInt, parameter, public :: NULL_STATE = 0
