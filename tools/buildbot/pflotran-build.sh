@@ -200,7 +200,7 @@ do
   case ${FLAG} in
     b) BUILD_FLAGS=${OPTARG};;
     c) COMPILER=${OPTARG};;
-    h) usage;;
+    h) usage; exit 0;;
     p) PFLOTRAN_DIR=${OPTARG};;
     s) BUILD_STAGE=${OPTARG};;
   esac

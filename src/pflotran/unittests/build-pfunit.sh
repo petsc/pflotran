@@ -69,7 +69,7 @@ do
   case ${FLAG} in
     c) COMPILER=${OPTARG};;
     d) PFUNIT_DIR=${OPTARG};;
-    h) usage;;
+    h) usage; exit 0 ;;
     n) DISTCLEAN=1;;
   esac
 done

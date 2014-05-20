@@ -777,6 +777,7 @@ subroutine Init(simulation)
   call RealProcessMatPropAndSatFunc(realization)
   call RealizationProcessCouplers(realization)
   call RealizationProcessConditions(realization)
+  call SandboxesSetup(realization)
   call RealProcessFluidProperties(realization)
   call assignMaterialPropToRegions(realization)
   ! assignVolumesToMaterialAuxVars() must be called after 
@@ -1457,6 +1458,7 @@ subroutine InitReadInput(simulation)
   use Mass_Transfer_module
   use EOS_module
   use EOS_Water_module
+  use SrcSink_Sandbox_module
   
   use Surface_Flow_module
   use Surface_Init_module, only : SurfaceInitReadInput
@@ -1794,6 +1796,11 @@ subroutine InitReadInput(simulation)
         call CouplerRead(coupler,input,option)
         call RealizationAddCoupler(realization,coupler)
         nullify(coupler)        
+      
+!....................
+      case ('SOURCE_SINK_SANDBOX')
+        call SSSandboxInit(option)
+        call SSSandboxRead(input,option)
       
 !....................
       case ('FLOW_MASS_TRANSFER')
@@ -4196,5 +4203,23 @@ subroutine InitReadVelocityField(realization)
   enddo
   
 end subroutine InitReadVelocityField
+
+! ************************************************************************** !
+
+subroutine SandboxesSetup(realization)
+  ! 
+  ! Initializes sandbox objects.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/06/14
+
+  use Realization_class
+  use SrcSink_Sandbox_module
+  
+  type(realization_type) :: realization
+  
+  call SSSandboxSetup(realization%patch%regions,realization%option)
+  
+end subroutine SandboxesSetup
 
 end module Init_module

@@ -353,7 +353,7 @@ subroutine Flash2AuxVarCompute_NINC(x,auxvar,global_auxvar, &
       if (m_cl> m_na) m_nacl = m_cl
     endif  
 
-!** Calculate solubility of CO2 in aqueoues phase *************
+!** Calculate solubility of CO2 in aqueous phase *************
     call Henry_duan_sun(t, p2 *1D-5, henry, xphi, lngamco2, &
            m_na,m_cl,sat_pressure*1D-5)
 

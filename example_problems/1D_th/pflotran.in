@@ -1,8 +1,8 @@
-:Description: 1D test problem for THC mode
-:===================== THC mode ===============================
+#Description: 1D test problem for THC mode
+#===================== THC mode ===============================
 MODE TH NO_FREEZING
 
-:===================== Discretization =========================
+#===================== Discretization =========================
 GRID
 TYPE structured
 ORIGIN 0.d0 0.d0 0.d0
@@ -13,7 +13,7 @@ BOUNDS
 /
 END
 
-:===================== Solver options ========================
+#===================== Solver options ========================
 NEWTON_SOLVER FLOW
 ATOL 1D-12
 RTOL 1D-8
@@ -25,13 +25,13 @@ END
 
 
 LINEAR_SOLVER FLOW
-:PC_TYPE LU
-:KSP_TYPE PREONLY
+#PC_TYPE LU
+#KSP_TYPE PREONLY
 END
 
 LINEAR_SOLVER TRANSPORT
-:PC_TYPE LU
-:KSP_TYPE PREONLY
+#PC_TYPE LU
+#KSP_TYPE PREONLY
 END
 
 NEWTON_SOLVER TRANSPORT
@@ -39,12 +39,12 @@ MATRIX_TYPE AIJ
 PRECONDITIONER_MATRIX_TYPE AIJ
 END
 
-:UNIFORM_VELOCITY 7.9274479960d-9 0.d0 0.d0
+#UNIFORM_VELOCITY 7.9274479960d-9 0.d0 0.d0
 
 FLUID_PROPERTY
 DIFFUSION_COEFFICIENT 1.d-9
 /
-:========================= material properties ===================
+#========================= material properties ===================
 MATERIAL_PROPERTY soil1
 ID 1
 POROSITY 0.5d0
@@ -62,7 +62,7 @@ PERM_Z 1.d-15
 /
 /
 
-:========================= saturation functions ==================
+#========================= saturation functions ==================
 SATURATION_FUNCTION default
 SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
 RESIDUAL_SATURATION 0.5d-1
@@ -70,24 +70,24 @@ LAMBDA 0.75
 ALPHA 1.d-3
 /
 
-:========================= output options =========================
+#========================= output options =========================
 OUTPUT
-:TIMES y 0.25d0 0.5d0 0.75d0 2.d0
+#TIMES y 0.25d0 0.5d0 0.75d0 2.d0
 SCREEN PERIODIC 10
 PERIODIC_OBSERVATION TIMESTEP 1 
-:FORMAT TECPLOT POINT
+#FORMAT TECPLOT POINT
 FORMAT HDF5
-:VELOCITIES
+#VELOCITIES
 /
 
-:======================== times ====================================
+#======================== times ====================================
 TIME
 FINAL_TIME 2.d0 y
 INITIAL_TIMESTEP_SIZE 1.d-6 y
 MAXIMUM_TIMESTEP_SIZE 1.d-1 y
 /
 
-:=========================== regions ===============================
+#=========================== regions ===============================
 REGION all
 COORDINATES
 0.d0 0.d0 0.d0
@@ -113,53 +113,53 @@ END
 
 OBSERVATION 
 REGION east
-:VELOCITY
+#VELOCITY
 /
 
-:======================= flow conditions ===============================
+#======================= flow conditions ===============================
 FLOW_CONDITION initial
 UNITS Pa, C, yr
 TYPE
 PRESSURE dirichlet
 TEMPERATURE dirichlet
-:ENTHALPY dirichlet
+#ENTHALPY dirichlet
 /
 PRESSURE 1.5D5
 TEMPERATURE 100.D0
-:ENTHALPY 0.D0
+#ENTHALPY 0.D0
 END
 
 FLOW_CONDITION west
 TYPE 
 PRESSURE dirichlet
 TEMPERATURE dirichlet
-:ENTHALPY dirichlet
+#ENTHALPY dirichlet
 /
 PRESSURE 1.D5
 TEMPERATURE 25.D0
-:ENTHALPY 0.D0 
+#ENTHALPY 0.D0 
 END
 
-:========================== initial and boundary conditions =================
-: initial condition
+#========================== initial and boundary conditions =================
+# initial condition
 INITIAL_CONDITION
 FLOW_CONDITION initial
 REGION all
 END
 
-: west boundary condition
+# west boundary condition
 BOUNDARY_CONDITION
 FLOW_CONDITION west
 REGION west
 END
 
-: east boundary condition
+# east boundary condition
 BOUNDARY_CONDITION
 FLOW_CONDITION initial
 REGION east
 END
 
-:===================== stratigraphy couplers ==============================
+#===================== stratigraphy couplers ==============================
 STRATA
 REGION all
 MATERIAL soil1

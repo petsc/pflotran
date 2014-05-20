@@ -378,7 +378,8 @@ subroutine GeneralUpdateSolution(realization)
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     iphas_loc_p(ghosted_id) = global_auxvars(ghosted_id)%istate
-    gen_auxvars%istate_store(PREV_TS) = global_auxvars(ghosted_id)%istate
+    gen_auxvars(ZERO_INTEGER,ghosted_id)%istate_store(PREV_TS) = &
+      global_auxvars(ghosted_id)%istate
   enddo
   call VecRestoreArrayF90(field%iphas_loc,iphas_loc_p,ierr)
   
@@ -918,9 +919,8 @@ subroutine GeneralUpdateFixedAccum(realization)
                               ghosted_id, &
                               option)
     call GeneralAccumulation(gen_auxvars(ZERO_INTEGER,ghosted_id), &
-                             global_auxvars(ghosted_id), &
                              material_auxvars(ghosted_id), &
-                            material_parameter%soil_heat_capacity(imat), &
+                             material_parameter%soil_heat_capacity(imat), &
                              option,accum_p(local_start:local_end)) 
   enddo
 
@@ -932,7 +932,7 @@ end subroutine GeneralUpdateFixedAccum
 
 ! ************************************************************************** !
 
-subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
+subroutine GeneralAccumulation(gen_auxvar,material_auxvar, &
                                soil_heat_capacity,option,Res)
   ! 
   ! Computes the non-fixed portion of the accumulation
@@ -949,7 +949,6 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
   implicit none
 
   type(general_auxvar_type) :: gen_auxvar
-  type(global_auxvar_type) :: global_auxvar
   class(material_auxvar_type) :: material_auxvar
   PetscReal :: soil_heat_capacity
   type(option_type) :: option
@@ -971,7 +970,7 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
   porosity = material_auxvar%porosity
   if (soil_compressibility_index > 0) then
     call MaterialCompressSoil(material_auxvar, &
-                              maxval(global_auxvar%pres(1:2)), &
+                              maxval(gen_auxvar%pres(1:2)), &
                               compressed_porosity,dcompressed_porosity_dp)
     porosity = compressed_porosity
   endif
@@ -1755,7 +1754,7 @@ end subroutine GeneralSrcSink
 
 ! ************************************************************************** !
 
-subroutine GeneralAccumDerivative(gen_auxvar,global_auxvar,material_auxvar, &
+subroutine GeneralAccumDerivative(gen_auxvar,material_auxvar, &
                                   soil_heat_capacity,option,J)
   ! 
   ! Computes derivatives of the accumulation
@@ -1772,7 +1771,6 @@ subroutine GeneralAccumDerivative(gen_auxvar,global_auxvar,material_auxvar, &
   implicit none
 
   type(general_auxvar_type) :: gen_auxvar(0:)
-  type(global_auxvar_type) :: global_auxvar
   class(material_auxvar_type) :: material_auxvar
   type(option_type) :: option
   PetscReal :: soil_heat_capacity
@@ -1783,11 +1781,11 @@ subroutine GeneralAccumDerivative(gen_auxvar,global_auxvar,material_auxvar, &
 
 !geh:print *, 'GeneralAccumDerivative'
 
-  call GeneralAccumulation(gen_auxvar(ZERO_INTEGER),global_auxvar, &
+  call GeneralAccumulation(gen_auxvar(ZERO_INTEGER), &
                            material_auxvar,soil_heat_capacity,option,res)
                            
   do idof = 1, option%nflowdof
-    call GeneralAccumulation(gen_auxvar(idof),global_auxvar, &
+    call GeneralAccumulation(gen_auxvar(idof), &
                              material_auxvar,soil_heat_capacity, &
                              option,res_pert)
     do irow = 1, option%nflowdof
@@ -2076,6 +2074,7 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   PetscViewer :: viewer
   PetscErrorCode :: ierr
   
+  Mat, parameter :: null_mat = 0
   type(discretization_type), pointer :: discretization
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch
@@ -2182,7 +2181,6 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
     local_end = local_id * option%nflowdof
     local_start = local_end - option%nflowdof + 1
     call GeneralAccumulation(gen_auxvars(ZERO_INTEGER,ghosted_id), &
-                              global_auxvars(ghosted_id), &
                               material_auxvars(ghosted_id), &
                               material_parameter%soil_heat_capacity(imat), &
                               option,Res) 
@@ -2347,11 +2345,18 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
     enddo
   endif
   
+  call VecRestoreArrayF90(r, r_p, ierr)
+  
+  call GeneralSSSandbox(r,null_mat,PETSC_FALSE,grid,material_auxvars, &
+                        gen_auxvars,option)
+  
   if (general_isothermal) then
+    call VecGetArrayF90(r, r_p, ierr)
     ! zero energy residual
     do local_id = 1, grid%nlmax
       r_p((local_id-1)*option%nflowdof+GENERAL_ENERGY_EQUATION_INDEX) =  0.d0
     enddo
+    call VecRestoreArrayF90(r, r_p, ierr)
   endif
 
 #ifdef DEBUG_GENERAL_FILEOUTPUT
@@ -2367,8 +2372,7 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   enddo
 #endif
   
-  call VecRestoreArrayF90(r, r_p, ierr)
-   
+  
   if (realization%debug%vecview_residual) then
     call PetscViewerASCIIOpen(realization%option%mycomm,'Gresidual.out', &
                               viewer,ierr)
@@ -2432,6 +2436,7 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
   PetscInt :: irow
   PetscInt :: local_id_up, local_id_dn
   PetscInt :: ghosted_id_up, ghosted_id_dn
+  Vec, parameter :: null_vec = 0
   
   PetscReal :: Jup(realization%option%nflowdof,realization%option%nflowdof), &
                Jdn(realization%option%nflowdof,realization%option%nflowdof)
@@ -2518,7 +2523,6 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
     imat = patch%imat(ghosted_id)
     if (imat <= 0) cycle
     call GeneralAccumDerivative(gen_auxvars(:,ghosted_id), &
-                              global_auxvars(ghosted_id), &
                               material_auxvars(ghosted_id), &
                               material_parameter%soil_heat_capacity(imat), &
                               option, &
@@ -2684,6 +2688,9 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
     enddo
     source_sink => source_sink%next
   enddo
+  
+  call GeneralSSSandbox(null_vec,A,PETSC_TRUE,grid,material_auxvars, &
+                        gen_auxvars,option)
 
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -3059,15 +3066,18 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
         temperature_index  = offset + GENERAL_ENERGY_DOF
         dX_p(gas_pressure_index) = dX_p(gas_pressure_index) * &
                                    general_pressure_scale
-!        dX_p(air_pressure_index) = dX_p(air_pressure_index) * &
-!                                   general_pressure_scale
+        if (general_2ph_energy_dof == GENERAL_AIR_PRESSURE_INDEX) then                                   
+          air_pressure_index = offset + GENERAL_ENERGY_DOF
+          dX_p(air_pressure_index) = dX_p(air_pressure_index) * &
+                                     general_pressure_scale
+          del_air_pressure = dX_p(air_pressure_index)
+          air_pressure0 = X_p(air_pressure_index)
+          air_pressure1 = air_pressure0 - del_air_pressure
+        endif
         temp_scale = 1.d0
         del_gas_pressure = dX_p(gas_pressure_index)
         gas_pressure0 = X_p(gas_pressure_index)
         gas_pressure1 = gas_pressure0 - del_gas_pressure
-!        del_air_pressure = dX_p(air_pressure_index)
-!        air_pressure0 = X_p(air_pressure_index)
-!        air_pressure1 = air_pressure0 - del_air_pressure
         del_saturation = dX_p(saturation_index)
         saturation0 = X_p(saturation_index)
         saturation1 = saturation0 - del_saturation
@@ -3242,7 +3252,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
 #endif !LIMIT_MAX_SATURATION_CHANGE        
       case(GAS_STATE) 
         gas_pressure_index = offset + GENERAL_GAS_PRESSURE_DOF
-        air_pressure_index = offset + 2
+        air_pressure_index = offset + GENERAL_GAS_STATE_AIR_PRESSURE_DOF
         dX_p(gas_pressure_index) = dX_p(gas_pressure_index) * &
                                    general_pressure_scale
         dX_p(air_pressure_index) = dX_p(air_pressure_index) * &
@@ -3743,6 +3753,131 @@ function GeneralAverageDensity(iphase,istate_up,istate_dn, &
   endif
 
 end function GeneralAverageDensity
+
+! ************************************************************************** !
+
+subroutine GeneralSSSandbox(residual,Jacobian,compute_derivative, &
+                            grid,material_auxvars,general_auxvars,option)
+  ! 
+  ! Evaluates source/sink term storing residual and/or Jacobian
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 04/11/14
+  ! 
+
+  use Option_module
+  use Grid_module
+  use Material_Aux_class, only: material_auxvar_type
+  use SrcSink_Sandbox_module
+  use SrcSink_Sandbox_Base_class
+  
+  implicit none
+  
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
+
+  PetscBool :: compute_derivative
+  Vec :: residual
+  Mat :: Jacobian
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+  type(general_auxvar_type), pointer :: general_auxvars(:,:)
+  
+  type(grid_type) :: grid
+  type(option_type) :: option
+  
+  PetscReal, pointer :: r_p(:)
+  PetscReal :: res(option%nflowdof)
+  PetscReal :: Jac(option%nflowdof,option%nflowdof)
+  class(srcsink_sandbox_base_type), pointer :: cur_srcsink
+  PetscInt :: i, local_id, ghosted_id, istart, iend, idof, irow
+  PetscReal :: res_pert(option%nflowdof)
+  PetscReal :: aux_real(10)
+  PetscErrorCode :: ierr
+  
+  if (.not.compute_derivative) then
+    call VecGetArrayF90(residual,r_p,ierr) 
+  endif
+  
+  cur_srcsink => sandbox_list
+  do
+    if (.not.associated(cur_srcsink)) exit
+      aux_real = 0.d0
+
+      do i = 1, size(cur_srcsink%region%cell_ids)
+        local_id = cur_srcsink%region%cell_ids(i)
+        ghosted_id = grid%nL2G(local_id)
+        res = 0.d0
+        Jac = 0.d0
+        call GeneralSSSandboxLoadAuxReal(cur_srcsink,aux_real, &
+                          general_auxvars(ZERO_INTEGER,ghosted_id),option)
+        call cur_srcsink%Evaluate(res,Jac,PETSC_FALSE, &
+                                  material_auxvars(ghosted_id), &
+                                  aux_real,option)
+        if (compute_derivative) then
+          do idof = 1, option%nflowdof
+            res_pert = 0.d0
+            call GeneralSSSandboxLoadAuxReal(cur_srcsink,aux_real, &
+                                       general_auxvars(idof,ghosted_id),option)
+            call cur_srcsink%Evaluate(res_pert,Jac,PETSC_FALSE, &
+                                      material_auxvars(ghosted_id), &
+                                      aux_real,option)
+            do irow = 1, option%nflowdof
+              Jac(irow,idof) = (res_pert(irow)-res(irow)) / &
+                               general_auxvars(idof,ghosted_id)%pert
+            enddo
+          enddo
+          call MatSetValuesBlockedLocal(Jacobian,1,ghosted_id-1,1, &
+                                        ghosted_id-1,Jac,ADD_VALUES,ierr)
+        else
+          iend = local_id*option%nflowdof
+          istart = iend - option%nflowdof + 1
+          r_p(istart:iend) = r_p(istart:iend) - res
+        endif
+      enddo
+    cur_srcsink => cur_srcsink%next
+  enddo
+  
+  if (.not.compute_derivative) then
+    call VecRestoreArrayF90(residual,r_p,ierr)
+  endif
+
+end subroutine GeneralSSSandbox
+
+! ************************************************************************** !
+
+subroutine GeneralSSSandboxLoadAuxReal(srcsink,aux_real,gen_auxvar,option)
+
+  use Option_module
+  use SrcSink_Sandbox_Base_class
+  use SrcSink_Sandbox_WIPP_Gas_class
+  use SrcSink_Sandbox_WIPP_Well_class
+
+  implicit none
+
+  class(srcsink_sandbox_base_type) :: srcsink
+  PetscReal :: aux_real(:)
+  type(general_auxvar_type) gen_auxvar
+  type(option_type) :: option
+  
+  aux_real = 0.d0
+  select type(srcsink)
+    class is(srcsink_sandbox_wipp_gas_type)
+      aux_real(WIPP_GAS_WATER_SATURATION_INDEX) = &
+        gen_auxvar%sat(option%liquid_phase)
+    class is(srcsink_sandbox_wipp_well_type)
+      aux_real(WIPP_WELL_LIQUID_MOBILITY) = &
+        gen_auxvar%mobility(option%liquid_phase)
+      aux_real(WIPP_WELL_GAS_MOBILITY) = &
+        gen_auxvar%mobility(option%gas_phase)
+      aux_real(WIPP_WELL_LIQUID_PRESSURE) = &
+        gen_auxvar%pres(option%liquid_phase)
+      aux_real(WIPP_WELL_GAS_PRESSURE) = &
+        gen_auxvar%pres(option%gas_phase)
+  end select
+  
+end subroutine GeneralSSSandboxLoadAuxReal
 
 ! ************************************************************************** !
 

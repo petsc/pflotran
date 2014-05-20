@@ -1,10 +1,10 @@
-: 0D batch reactor
-: sphere of radius 1m inside a cube of side 1m
-: primary at 100C and secondary and 50C
-: Multiple continuum test for MPHASE
-: Satish Karra
-: 02/15/2014
-:--------------------------------------------------------------------
+# 0D batch reactor
+# sphere of radius 1m inside a cube of side 1m
+# primary at 100C and secondary and 50C
+# Multiple continuum test for MPHASE
+# Satish Karra
+# 02/15/2014
+#--------------------------------------------------------------------
 
 MODE MPHASE 
 
@@ -12,7 +12,7 @@ MULTIPLE_CONTINUUM
 
 CO2_DATABASE ../../../database/co2data0.dat
 
-:=========================== regression ===================================
+#=========================== regression ===================================
 REGRESSION
   CELLS
     1
@@ -20,7 +20,7 @@ REGRESSION
   CELLS_PER_PROCESS 5
 END
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
 TYPE structured
 ORIGIN 0.d0 0.d0 0.d0
@@ -31,7 +31,7 @@ BOUNDS
 /
 END
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 TIMESTEPPER
   TS_ACCELERATION 5
   MAX_PRESSURE_CHANGE 1.e5
@@ -48,14 +48,14 @@ NEWTON_SOLVER FLOW
   MAXF 100
 END
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
 FINAL_TIME 100.d0 y
 INITIAL_TIMESTEP_SIZE 1.d-8 y
 MAXIMUM_TIMESTEP_SIZE 0.1d0 y
 /
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
   TIMES y 0.005 0.01 0.02 0.03 0.04 0.05 0.06 0.07 0.08 0.09 0.1 \
   0.25 0.5 0.75 1.0 2.5 5. 7.5 10. \
@@ -64,16 +64,16 @@ OUTPUT
   PERIODIC_OBSERVATION TIMESTEP 1
   SCREEN PERIODIC 10
   PRINT_COLUMN_IDS
-  :FORMAT TECPLOT POINT
-  :FORMAT HDF5
+  #FORMAT TECPLOT POINT
+  #FORMAT HDF5
 /
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY 
 DIFFUSION_COEFFICIENT 1.d-9
 /
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY rock1 
 ID 1
 POROSITY 1.d-4
@@ -89,7 +89,7 @@ PERM_Z 1.d-13
 /
 SECONDARY_CONTINUUM
   TYPE NESTED_SPHERES
-  :LOG_GRID_SPACING
+  #LOG_GRID_SPACING
   RADIUS                1.d0
   NUM_CELLS             10
   OUTER_SPACING         5.d-4
@@ -99,7 +99,7 @@ SECONDARY_CONTINUUM
 /
 END
 
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 
 SATURATION_FUNCTION sf2
   PERMEABILITY_FUNCTION_TYPE MUALEM
@@ -111,7 +111,7 @@ SATURATION_FUNCTION sf2
   MAX_CAPILLARY_PRESSURE 1.d6
 /
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 
 REGION all
 COORDINATES
@@ -138,7 +138,7 @@ END
 
 
 
-:=========================== flow conditions ==================================
+#=========================== flow conditions ==================================
 FLOW_CONDITION initial
   UNITS Pa,C,M,yr
   TYPE
@@ -155,15 +155,15 @@ FLOW_CONDITION initial
 /
 
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
   FLOW_CONDITION initial
   REGION all
 END
 
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
   REGION all
   MATERIAL rock1

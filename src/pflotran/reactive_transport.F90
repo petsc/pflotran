@@ -527,12 +527,13 @@ subroutine RTComputeMassBalance(realization,mass_balance)
     !geh - Ignore inactive cells with inactive materials
     if (patch%imat(ghosted_id) <= 0) cycle
     do iphase = 1, option%nphase
-      mass_balance(:,iphase) = mass_balance(:,iphase) + &
+!     mass_balance(:,iphase) = mass_balance(:,iphase) + &
+      mass_balance(:,1) = mass_balance(:,1) + &
         rt_auxvars(ghosted_id)%total(:,iphase) * &
         global_auxvars(ghosted_id)%sat(iphase) * &
         material_auxvars(ghosted_id)%porosity * &
         material_auxvars(ghosted_id)%volume*1000.d0
-        
+
       if (iphase == 1) then
       ! add contribution of equilibrium sorption
         if (reaction%neqsorb > 0) then
@@ -540,7 +541,6 @@ subroutine RTComputeMassBalance(realization,mass_balance)
             rt_auxvars(ghosted_id)%total_sorb_eq(:) * &
             material_auxvars(ghosted_id)%volume
         endif
-
 
       ! add contribution of kinetic multirate sorption
         if (reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then
@@ -552,7 +552,7 @@ subroutine RTComputeMassBalance(realization,mass_balance)
             enddo
           enddo
         endif
-               
+
       ! add contribution from mineral volume fractions
         if (reaction%mineral%nkinmnrl > 0) then
           do imnrl = 1, reaction%mineral%nkinmnrl

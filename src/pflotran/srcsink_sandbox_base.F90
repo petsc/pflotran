@@ -1,6 +1,7 @@
 module SrcSink_Sandbox_Base_class
   
   use PFLOTRAN_Constants_module
+  use Region_module
 
   implicit none
   
@@ -9,174 +10,130 @@ module SrcSink_Sandbox_Base_class
 #include "finclude/petscsys.h"
 
   type, abstract, public :: srcsink_sandbox_base_type
+    character(len=MAXWORDLENGTH) :: region_name
+    type(region_type), pointer :: region
     class(srcsink_sandbox_base_type), pointer :: next
   contains
-#if 1  
-    procedure(Base_Read), public, deferred :: ReadInput
-    procedure(Base_Setup), public, deferred :: Setup 
-    procedure(Base_SrcSink), public, deferred :: Evaluate
-    procedure(Base_Destroy), public, deferred :: Destroy
-#else
     procedure, public :: ReadInput => Base_Read
-    procedure, public :: Setup => Base_Setup
+    procedure, public :: Setup => SSSandboxBaseSetup
     procedure, public :: Evaluate => Base_SrcSink
-    procedure, public :: Destroy => Base_Destroy    
-#endif
+    procedure, public :: Destroy => SSSandboxBaseDestroy    
   end type srcsink_sandbox_base_type
   
-! for some reason cannot use the interfaces when passing in "this"
-! with Intel
-#if 1 
-  abstract interface
+  public :: SSSandboxBaseInit, &
+            SSSandboxBaseSetup, &
+            SSSandboxBaseRead, &
+            SSSandboxBaseDestroy
   
-    subroutine Base_Setup(this,option)
-    
-      use Option_module
-  
-      import srcsink_sandbox_base_type
-    
-      implicit none
-  
-      class(srcsink_sandbox_base_type) :: this
-      type(option_type) :: option
-  
-    end subroutine Base_Setup 
-
-    subroutine Base_Read(this,input,option)
-    
-      use Option_module
-      use Input_Aux_module
-  
-      import srcsink_sandbox_base_type
-    
-      implicit none
-  
-      class(srcsink_sandbox_base_type) :: this
-      type(input_type) :: input
-      type(option_type) :: option
-  
-    end subroutine Base_Read 
-    
-    subroutine Base_SkipBlock(this,input,option)
-    
-      use Option_module
-      use Input_Aux_module
-  
-      import srcsink_sandbox_base_type
-    
-      implicit none
-  
-      class(srcsink_sandbox_base_type) :: this
-      type(input_type) :: input
-      type(option_type) :: option
-  
-    end subroutine Base_SkipBlock 
-    
-    subroutine Base_SrcSink(this,Residual,Jacobian,compute_derivative, &
-                            material_auxvar,option)
-
-      use Option_module
-      use Material_Aux_class
-  
-      import srcsink_sandbox_base_type
-    
-      implicit none
-  
-      class(srcsink_sandbox_base_type) :: this
-      type(option_type) :: option
-      PetscBool :: compute_derivative
-      PetscReal :: Residual(option%nflowdof)
-      PetscReal :: Jacobian(option%nflowdof,option%nflowdof)
-      class(material_auxvar_type) :: material_auxvar
-      
-    end subroutine
-    
-    subroutine Base_Destroy(this)
-
-      import srcsink_sandbox_base_type
-    
-      implicit none
-  
-      class(srcsink_sandbox_base_type) :: this
-
-    end subroutine Base_Destroy   
-    
-  end interface
-
-#else
-
 contains
 
 ! ************************************************************************** !
 
-  subroutine Base_Setup(this,option)
+subroutine SSSandboxBaseInit(this)
     
-    use Option_module
+  implicit none
   
-    implicit none
+  class(srcsink_sandbox_base_type) :: this
+    
+  this%region_name = ''
+  nullify(this%region)
+  nullify(this%next)
   
-    class(srcsink_sandbox_base_type) :: this
-    type(option_type) :: option
-  
-  end subroutine Base_Setup 
+end subroutine SSSandboxBaseInit
 
 ! ************************************************************************** !
 
-  subroutine Base_Read(this,input,option)
+subroutine SSSandboxBaseSetup(this,region_list,option)
     
-    use Option_module
-    use Input_Aux_module
+  use Option_module
   
-    implicit none
+  implicit none
   
-    class(srcsink_sandbox_base_type) :: this
-    type(input_type) :: input
-    type(option_type) :: option
+  class(srcsink_sandbox_base_type) :: this
+  type(region_list_type) :: region_list
+  type(option_type) :: option
   
-  end subroutine Base_Read
+  this%region => &
+    RegionGetPtrFromList(this%region_name,region_list)
+  if (.not.associated(this%region)) then
+    option%io_buffer = 'Source/Sink Sandbox region "' // &
+                       trim(this%region_name) // &
+                         '" not found in list of regions.'
+    call printErrMsg(option)
+  endif  
+  
+end subroutine SSSandboxBaseSetup 
 
 ! ************************************************************************** !
 
-  subroutine Base_SkipBlock(this,input,option)
+subroutine SSSandboxBaseRead(this,input,option,keyword,found)
     
-    use Option_module
-    use Input_Aux_module
+  use Option_module
+  use Input_Aux_module
   
-    implicit none
+  implicit none
   
-    class(srcsink_sandbox_base_type) :: this
-    type(input_type) :: input
-    type(option_type) :: option
+  class(srcsink_sandbox_base_type) :: this
+  type(input_type) :: input
+  type(option_type) :: option
+  character(len=MAXWORDLENGTH) :: keyword
+  PetscBool :: found
   
-  end subroutine Base_SkipBlock   
+  found = PETSC_TRUE
+  select case(trim(keyword))
+    case('REGION')
+      call InputReadWord(input,option,this%region_name,PETSC_TRUE)
+      call InputErrorMsg(input,option,'REGION','SOURCE_SINK_SANDBOX')
+    case default
+      found = PETSC_FALSE
+  end select   
+  
+end subroutine SSSandboxBaseRead
 
 ! ************************************************************************** !
 
-  subroutine Base_SrcSink(this,Residual,Jacobian,compute_derivative, &
-                          material_auxvar,option)
-    use Option_module
-    use Material_Aux_class
+subroutine Base_Read(this,input,option)
+    
+  use Option_module
+  use Input_Aux_module
   
-    implicit none
+  implicit none
   
-    class(srcsink_sandbox_base_type) :: this
-    type(option_type) :: option
-    PetscBool :: compute_derivative
-    PetscReal :: Residual(option%nflowdof)
-    PetscReal :: Jacobian(option%nflowdof,option%nflowdof)
-    class(material_auxvar_type) :: material_auxvar
+  class(srcsink_sandbox_base_type) :: this
+  type(input_type) :: input
+  type(option_type) :: option
+  
+end subroutine Base_Read   
+
+! ************************************************************************** !
+
+subroutine Base_SrcSink(this,Residual,Jacobian,compute_derivative, &
+                        material_auxvar,aux_real,option)
+  use Option_module
+  use Material_Aux_class
+  
+  implicit none
+  
+  class(srcsink_sandbox_base_type) :: this
+  type(option_type) :: option
+  PetscBool :: compute_derivative
+  PetscReal :: Residual(option%nflowdof)
+  PetscReal :: Jacobian(option%nflowdof,option%nflowdof)
+  class(material_auxvar_type) :: material_auxvar
+  PetscReal :: aux_real(:)
       
-  end subroutine
+end subroutine Base_SrcSink
 
 ! ************************************************************************** !
 
-  subroutine Base_Destroy(this)
+subroutine SSSandboxBaseDestroy(this)
 
-    implicit none
+  implicit none
   
-    class(srcsink_sandbox_base_type) :: this
+  class(srcsink_sandbox_base_type) :: this
+  
+  nullify(this%region)
 
-  end subroutine Base_Destroy  
-#endif
+end subroutine SSSandboxBaseDestroy  
 
 end module SrcSink_Sandbox_Base_class

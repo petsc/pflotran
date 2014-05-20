@@ -1,16 +1,16 @@
-:Description: 3D groundwater flow and solute transport
+#Description: 3D groundwater flow and solute transport
 
-:=========================== regression =======================================
+#=========================== regression =======================================
 REGRESSION
   CELLS_PER_PROCESS 10
 END
 
-:=========================== flow mode ========================================
+#=========================== flow mode ========================================
 MODE RICHARDS
-:CHECKPOINT 1000000
-:RESTART restart.chk
+#CHECKPOINT 1000000
+#RESTART restart.chk
 
-:=========================== chemistry ========================================
+#=========================== chemistry ========================================
 CHEMISTRY
   PRIMARY_SPECIES
     Tracer
@@ -18,7 +18,7 @@ CHEMISTRY
   /
 END
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 TIMESTEPPER
 END
 
@@ -35,7 +35,7 @@ END
 LINEAR_SOLVER TRANSPORT
 END
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
   TYPE structured
   NXYZ 10 5 4
@@ -45,20 +45,20 @@ GRID
   /
 END
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
 
-:=========================== data sets ========================================
+#=========================== data sets ========================================
 DATASET perm_field
   FILENAME ./perm_fields_10x5x4.h5
   REALIZATION_DEPENDENT
 /
 
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.25d0
@@ -106,7 +106,7 @@ MATERIAL_PROPERTY soil4
   /
 END
 
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION sf1
   SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
   RESIDUAL_SATURATION 0.1d0
@@ -116,7 +116,7 @@ SATURATION_FUNCTION sf1
 
 END
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
 skip
   TIMES y 1.25 1.5 1.75
@@ -129,14 +129,14 @@ skip
 noskip
 END
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
   FINAL_TIME 2.d0 y
   INITIAL_TIMESTEP_SIZE 1.d-2 d
   MAXIMUM_TIMESTEP_SIZE 0.1 y        ! produces CFL ~<= 1.
 END
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
@@ -234,7 +234,7 @@ REGION Obs_pt_south
   COORDINATE 2500.d0 625.d0 60.d0
 END
 
-:=========================== observation points ===============================
+#=========================== observation points ===============================
 OBSERVATION
   REGION Obs_pt_center
   AT_CELL_CENTER
@@ -271,7 +271,7 @@ OBSERVATION
   VELOCITY
 END
  
-:=========================== flow conditions ==================================
+#=========================== flow conditions ==================================
 FLOW_CONDITION initial
   TYPE
     PRESSURE hydrostatic
@@ -324,7 +324,7 @@ FLOW_CONDITION extraction
   RATE -1.d5 m^3/day
 END
 
-:=========================== transport conditions =============================
+#=========================== transport conditions =============================
 TRANSPORT_CONDITION initial
   TYPE dirichlet_zero_gradient
   CONSTRAINT initial
@@ -355,50 +355,50 @@ TRANSPORT_CONDITION injection
   /
 END
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
   FLOW_CONDITION initial
   TRANSPORT_CONDITION initial
   REGION all
 END
 
-: west boundary condition
+# west boundary condition
 BOUNDARY_CONDITION west
   FLOW_CONDITION initial
   TRANSPORT_CONDITION west
   REGION west
 END
 
-: east boundary condition
+# east boundary condition
 BOUNDARY_CONDITION east
   FLOW_CONDITION river
   TRANSPORT_CONDITION initial
   REGION east
 END
 
-: top boundary condition
+# top boundary condition
 BOUNDARY_CONDITION top
   FLOW_CONDITION recharge
   TRANSPORT_CONDITION initial
   REGION top
 END
 
-: source 
+# source 
 SOURCE_SINK injection_well
   FLOW_CONDITION injection
   TRANSPORT_CONDITION injection
   REGION injection_well
 END
 
-: sink 
+# sink 
 SOURCE_SINK extraction_well
   FLOW_CONDITION extraction
   TRANSPORT_CONDITION initial
   REGION extraction_well
 END
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
   REGION layer1
   MATERIAL soil1

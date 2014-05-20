@@ -11,8 +11,16 @@ module SrcSink_Sandbox_WIPP_Gas_class
   
 #include "finclude/petscsys.h"
 
+  PetscInt, parameter, public :: WIPP_GAS_WATER_SATURATION_INDEX = 1
+
   type, public, &
     extends(srcsink_sandbox_base_type) :: srcsink_sandbox_wipp_gas_type
+    PetscReal :: inundated_corrosion_rate
+    PetscReal :: inundated_degradation_rate
+    PetscReal :: humid_corrosion_factor
+    PetscReal :: humid_degradation_factor
+    PetscReal :: h2_fe_ratio
+    PetscReal :: h2_ch2o_ratio    
   contains
     procedure, public :: ReadInput => WIPPGasGenerationRead
     procedure, public :: Setup => WIPPGasGenerationSetup
@@ -30,8 +38,8 @@ function WIPPGasGenerationCreate()
   ! 
   ! Allocates WIPP gas generation src/sink object.
   ! 
-  ! Author: Glenn Hammond
-  ! Date: 04/11/14
+  ! Author: Glenn Hammond, Edit: Heeho Park
+  ! Date: 04/11/14, 05/15/14
   ! 
 
   implicit none
@@ -39,6 +47,13 @@ function WIPPGasGenerationCreate()
   class(srcsink_sandbox_wipp_gas_type), pointer :: WIPPGasGenerationCreate
 
   allocate(WIPPGasGenerationCreate)
+  call SSSandboxBaseInit(WIPPGasGenerationCreate)
+  WIPPGasGenerationCreate%inundated_corrosion_rate = 3.0d-8
+  WIPPGasGenerationCreate%inundated_degradation_rate = 1.5d-7
+  WIPPGasGenerationCreate%humid_corrosion_factor = 1.0d-3
+  WIPPGasGenerationCreate%humid_degradation_factor = 0.2d0
+  WIPPGasGenerationCreate%h2_fe_ratio = 1.3081d0
+  WIPPGasGenerationCreate%h2_ch2o_ratio = 1.1100d0
   nullify(WIPPGasGenerationCreate%next)  
       
 end function WIPPGasGenerationCreate
@@ -49,8 +64,8 @@ subroutine WIPPGasGenerationRead(this,input,option)
   ! 
   ! Reads input deck for WIPP gas generation src/sink parameters
   ! 
-  ! Author: Glenn Hammond
-  ! Date: 04/11/14
+  ! Author: Glenn Hammond, Edit: Heeho Park
+  ! Date: 04/11/14, 05/15/14
   ! 
 
   use Option_module
@@ -66,6 +81,7 @@ subroutine WIPPGasGenerationRead(this,input,option)
 
   PetscInt :: i
   character(len=MAXWORDLENGTH) :: word
+  PetscBool :: found
   
   do 
     call InputReadPflotranString(input,option)
@@ -77,50 +93,56 @@ subroutine WIPPGasGenerationRead(this,input,option)
                        'SRCSINK_SANDBOX,WIPP')
     call StringToUpper(word)   
 
+    ! reads the REGION
+    call SSSandboxBaseRead(this,input,option,word,found)
+    if (found) cycle
+    
     select case(trim(word))
-
-!      case('AQUEOUS_SPECIES_NAME')
-!        call InputReadWord(input,option,this%aqueous_species_name,PETSC_TRUE)  
-!        call InputReadDouble(input,option,this%rate_constant)
-!        call InputErrorMsg(input,option,'aqueous species_name', &
-!                           'CHEMISTRY,REACTION_SANDBOX,UFD_WP')    
-!        ! Read the units
-!        call InputReadWord(input,option,word,PETSC_TRUE)
-!        if (InputError(input)) then
-!          ! If units do not exist, assume default units of 1/s which are the
-!          ! standard internal PFLOTRAN units for this rate constant.
-!          input%err_buf = 'REACTION_SANDBOX,UFD-WP,RATE CONSTANT UNITS'
-!          call InputDefaultMsg(input,option)
-!        else              
-!          ! If units exist, convert to internal units of 1/s
-!          this%rate_constant = this%rate_constant * &
-!            UnitsConvertToInternal(word,option)
-!        endif
+      case('INUNDATED_CORROSION_RATE')
+        call InputReadDouble(input,option,this%inundated_corrosion_rate)
+        call InputDefaultMsg(input,option,'inundated_corrosion_rate')
+      case('INUNDATED_DEGRADATION_RATE')
+        call InputReadDouble(input,option,this%inundated_degradation_rate)
+        call InputDefaultMsg(input,option,'inundated_degradation_rate')
+      case('HUMID_CORROSION_FACTOR')
+        call InputReadDouble(input,option,this%humid_corrosion_factor)
+        call InputDefaultMsg(input,option,'humid_corrosion_factor')
+      case('HUMID_DEGREDATION_FACTOR')
+        call InputReadDouble(input,option,this%humid_degradation_factor)
+        call InputDefaultMsg(input,option,'humid_degradation_factor')
+      case('H2_FE_RATIO')
+        call InputReadDouble(input,option,this%h2_fe_ratio)
+        call InputDefaultMsg(input,option,'h2_fe_ratio')
+      case('H2_CH2O_RATIO')
+        call InputReadDouble(input,option,this%h2_ch2o_ratio)
+        call InputDefaultMsg(input,option,'h2_ch2o_ratio')
       case default
-        option%io_buffer = 'SRCSINK_SANDBOX,WIPP keyword: ' // &
-          trim(word) // ' not recognized.'
+        option%io_buffer = 'SRCSINK_SANDBOX,WIPP-GAS_GENERATION keyword: ' // &
+            trim(word) // ' not recognized.'
         call printErrMsg(option)
     end select
   enddo
-  
+
 end subroutine WIPPGasGenerationRead
 
 ! ************************************************************************** !
 
-subroutine WIPPGasGenerationSetup(this,option)
+subroutine WIPPGasGenerationSetup(this,region_list,option)
   ! 
   ! Sets up the WIPP gas generation src/sink
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/11/14
-  ! 
-
   use Option_module
+  use Region_module
 
   implicit none
   
   class(srcsink_sandbox_wipp_gas_type) :: this
+  type(region_list_type) :: region_list  
   type(option_type) :: option
+  
+  call SSSandboxBaseSetup(this,region_list,option)
 
 end subroutine WIPPGasGenerationSetup 
 
@@ -128,12 +150,12 @@ end subroutine WIPPGasGenerationSetup
 
 subroutine WIPPGasGenerationSrcSink(this,Residual,Jacobian, &
                                     compute_derivative, &
-                                    material_auxvar,option)
+                                    material_auxvar,aux_real,option)
   ! 
   ! Evaluates src/sink storing residual and/or Jacobian
   ! 
-  ! Author: Glenn Hammond
-  ! Date: 04/11/14
+  ! Author: Glenn Hammond, Edited: Heeho Park
+  ! Date: 04/11/14, 05/15/14
   ! 
 
   use Option_module
@@ -148,8 +170,27 @@ subroutine WIPPGasGenerationSrcSink(this,Residual,Jacobian, &
   PetscReal :: Residual(option%nflowdof)
   PetscReal :: Jacobian(option%nflowdof,option%nflowdof)
   class(material_auxvar_type) :: material_auxvar
+  PetscReal :: aux_real(:)
   
-  ! residual something
+  PetscReal :: water_saturation
+  PetscReal :: humid_corrosion_rate
+  PetscReal :: humid_degradation_rate
+  PetscReal :: corrosion_gas_rate
+  PetscReal :: degradation_gas_rate
+  PetscReal :: gas_generation_rate
+  
+  water_saturation = aux_real(WIPP_GAS_WATER_SATURATION_INDEX)
+  humid_corrosion_rate = this%humid_corrosion_factor * this%inundated_corrosion_rate
+  humid_degradation_rate = this%humid_degradation_factor * this%inundated_degradation_rate
+  corrosion_gas_rate = this%inundated_corrosion_rate * &
+                        water_saturation + humid_corrosion_rate * (1.d0-water_saturation)
+  degradation_gas_rate = this%inundated_degradation_rate * &
+                          water_saturation + humid_degradation_rate * (1.d0-water_saturation)
+  gas_generation_rate = this%h2_fe_ratio * corrosion_gas_rate + &
+                         this%h2_ch2o_ratio * degradation_gas_rate
+
+  ! positive is inflow
+  Residual(TWO_INTEGER) = gas_generation_rate
   
   if (compute_derivative) then
     
@@ -172,7 +213,9 @@ subroutine WIPPGasGenerationDestroy(this)
 
   implicit none
   
-  class(srcsink_sandbox_wipp_gas_type) :: this  
+  class(srcsink_sandbox_wipp_gas_type) :: this
+  
+  call SSSandboxBaseDestroy(this)
 
 end subroutine WIPPGasGenerationDestroy
 

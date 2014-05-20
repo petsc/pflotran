@@ -816,18 +816,18 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
  ! update global variables
     if( associated(global_auxvars))then
     
-      global_auxvars(ghosted_id)%pres(:)= auxvars(ghosted_id)%auxvar_elem(0)%pres -&
+      global_auxvars(ghosted_id)%pres(:) = auxvars(ghosted_id)%auxvar_elem(0)%pres -&
                auxvars(ghosted_id)%auxvar_elem(0)%pc(:)
-      global_auxvars(ghosted_id)%temp=auxvars(ghosted_id)%auxvar_elem(0)%temp
+      global_auxvars(ghosted_id)%temp = auxvars(ghosted_id)%auxvar_elem(0)%temp
       global_auxvars(ghosted_id)%sat(:)=auxvars(ghosted_id)%auxvar_elem(0)%sat(:)
-!     global_auxvars(ghosted_id)%fugacoeff(1)=xphi
-      global_auxvars(ghosted_id)%den(:)=auxvars(ghosted_id)%auxvar_elem(0)%den(:)
+!     global_auxvars(ghosted_id)%fugacoeff(1) = xphi
+      global_auxvars(ghosted_id)%den(:) = auxvars(ghosted_id)%auxvar_elem(0)%den(:)
       global_auxvars(ghosted_id)%den_kg(:) = auxvars(ghosted_id)%auxvar_elem(0)%den(:) &
                                           * auxvars(ghosted_id)%auxvar_elem(0)%avgmw(:)
       mnacl= global_auxvars(ghosted_id)%m_nacl(1)
-      if(global_auxvars(ghosted_id)%m_nacl(2)>mnacl) mnacl= global_auxvars(ghosted_id)%m_nacl(2)
-      ynacl =  mnacl/(1.d3/FMWH2O + mnacl)
-      global_auxvars(ghosted_id)%xmass(1)= (1.d0-ynacl)&
+      if(global_auxvars(ghosted_id)%m_nacl(2) > mnacl) mnacl = global_auxvars(ghosted_id)%m_nacl(2)
+      ynacl = mnacl/(1.d3/FMWH2O + mnacl)
+      global_auxvars(ghosted_id)%xmass(1) = (1.d0-ynacl)&
                               *auxvars(ghosted_id)%auxvar_elem(0)%xmol(1) * FMWH2O&
                               /((1.d0-ynacl)*auxvars(ghosted_id)%auxvar_elem(0)%xmol(1) * FMWH2O &
                               +auxvars(ghosted_id)%auxvar_elem(0)%xmol(2) * FMWCO2 &
@@ -835,7 +835,8 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
       global_auxvars(ghosted_id)%xmass(2)=auxvars(ghosted_id)%auxvar_elem(0)%xmol(3) * FMWH2O&
                               /(auxvars(ghosted_id)%auxvar_elem(0)%xmol(3) * FMWH2O&
                               +auxvars(ghosted_id)%auxvar_elem(0)%xmol(4) * FMWCO2) 
-
+      global_auxvars(ghosted_id)%reaction_rate_store(:) = global_auxvars(ghosted_id)%reaction_rate(:)
+      global_auxvars(ghosted_id)%reaction_rate(:) = 0.D0
     else
       print *,'Not associated global for FLASH2'
     endif
@@ -855,25 +856,25 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
-    do idof=1,option%nflowdof
-      select case(boundary_condition%flow_condition%itype(idof))
-      case(DIRICHLET_BC)
-         xxbc(:) = boundary_condition%flow_aux_real_var(:,iconn)
-      case(HYDROSTATIC_BC)
-         xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
+      do idof=1,option%nflowdof
+        select case(boundary_condition%flow_condition%itype(idof))
+        case(DIRICHLET_BC)
+          xxbc(:) = boundary_condition%flow_aux_real_var(:,iconn)
+        case(HYDROSTATIC_BC)
+          xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
           xxbc(2:option%nflowdof) = &
                xx_loc_p((ghosted_id-1)*option%nflowdof+2:ghosted_id*option%nflowdof)
-      case(NEUMANN_BC,ZERO_GRADIENT_BC)
-         xxbc(:) = xx_loc_p((ghosted_id-1)*option%nflowdof+1:ghosted_id*option%nflowdof)
-      end select
+        case(NEUMANN_BC,ZERO_GRADIENT_BC)
+          xxbc(:) = xx_loc_p((ghosted_id-1)*option%nflowdof+1:ghosted_id*option%nflowdof)
+        end select
       enddo
  
-     call Flash2AuxVarCompute_NINC(xxbc,auxvars_bc(sum_connection)%auxvar_elem(0), &
+      call Flash2AuxVarCompute_NINC(xxbc,auxvars_bc(sum_connection)%auxvar_elem(0), &
                          global_auxvars_bc(sum_connection), &
                          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                          realization%fluid_properties, option, xphi)
 
-     if( associated(global_auxvars_bc))then
+      if (associated(global_auxvars_bc)) then
         global_auxvars_bc(sum_connection)%pres(:)= auxvars_bc(sum_connection)%auxvar_elem(0)%pres -&
                      auxvars(ghosted_id)%auxvar_elem(0)%pc(:)
         global_auxvars_bc(sum_connection)%temp=auxvars_bc(sum_connection)%auxvar_elem(0)%temp
@@ -882,23 +883,22 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
         global_auxvars_bc(sum_connection)%fugacoeff(1)=xphi
         global_auxvars_bc(sum_connection)%den(:)=auxvars_bc(sum_connection)%auxvar_elem(0)%den(:)
         global_auxvars_bc(sum_connection)%den_kg = auxvars_bc(sum_connection)%auxvar_elem(0)%den(:) &
-                                          * auxvars_bc(sum_connection)%auxvar_elem(0)%avgmw(:)
+                              * auxvars_bc(sum_connection)%auxvar_elem(0)%avgmw(:)
         mnacl= global_auxvars_bc(sum_connection)%m_nacl(1)
         if(global_auxvars_bc(sum_connection)%m_nacl(2)>mnacl) mnacl= global_auxvars_bc(sum_connection)%m_nacl(2)
-        ynacl =  mnacl/(1.d3/FMWH2O + mnacl)
-        global_auxvars_bc(sum_connection)%xmass(1)= (1.d0-ynacl)&
+        ynacl = mnacl/(1.d3/FMWH2O + mnacl)
+        global_auxvars_bc(sum_connection)%xmass(1) = (1.d0-ynacl)&
                               *auxvars_bc(sum_connection)%auxvar_elem(0)%xmol(1) * FMWH2O&
                               /((1.d0-ynacl)*auxvars_bc(sum_connection)%auxvar_elem(0)%xmol(1) * FMWH2O &
                               +auxvars_bc(sum_connection)%auxvar_elem(0)%xmol(2) * FMWCO2 &
                               +ynacl*auxvars_bc(sum_connection)%auxvar_elem(0)%xmol(1)*FMWNACL)
-      global_auxvars_bc(sum_connection)%xmass(2)=auxvars_bc(sum_connection)%auxvar_elem(0)%xmol(3) * FMWH2O&
+        global_auxvars_bc(sum_connection)%xmass(2) = auxvars_bc(sum_connection)%auxvar_elem(0)%xmol(3) * FMWH2O&
                               /(auxvars_bc(sum_connection)%auxvar_elem(0)%xmol(3) * FMWH2O&
                               +auxvars_bc(sum_connection)%auxvar_elem(0)%xmol(4) * FMWCO2) 
  
 
   !    global_auxvars(ghosted_id)%den_kg_store
       endif
-
     enddo
     boundary_condition => boundary_condition%next
   enddo
@@ -1096,7 +1096,7 @@ subroutine Flash2Accumulation(auxvar,global_auxvar,por,vol,rock_dencpr,option,ii
  ! if (present(ireac)) iireac=ireac
 
   porXvol = por*vol
-  mol=0.d0; eng=0.D0
+  mol=0.d0; eng=0.d0
   do np = 1, option%nphase
     do ispec = 1, option%nflowspec  
       mol(ispec) = mol(ispec) + auxvar%sat(np) * &
@@ -1111,19 +1111,21 @@ subroutine Flash2Accumulation(auxvar,global_auxvar,por,vol,rock_dencpr,option,ii
   eng = eng * porXvol + (1.d0 - por)* vol * rock_dencpr * auxvar%temp 
  
 ! Reaction terms here
-! Note if iireac >0, then it is the node global index
- ! if (option%run_coupled == PETSC_TRUE .and. iireac>0) then
-!H2O
- !    mol(1)= mol(1) - option%flow_dt * option%rtot(iireac,1)
- !    mol(2)= mol(2) - option%flow_dt * option%rtot(iireac,2)
- ! endif
-  
-   !if(option%use_isothermal)then
-   !   Res(1:option%nflowdof)=mol(:)
-   !else
-      Res(1:option%nflowspec)=mol(:)
-      Res(option%nflowdof)=eng
-  ! endif
+! Note if iireac > 0, then it is the node global index
+  if (option%ntrandof > 0) then
+    if (iireac > 0) then
+!     H2O
+      mol(1) = mol(1) + vol * global_auxvar%reaction_rate_store(1)*1.d-3
+!     CO2
+      mol(2) = mol(2) + vol * global_auxvar%reaction_rate_store(2)*1.d-3
+    endif
+  endif
+! if (option%use_isothermal) then
+!   Res(1:option%nflowdof) = mol(:)
+! else
+    Res(1:option%nflowdof-1) = mol(:)
+    Res(option%nflowdof) = eng
+! endif
 end subroutine Flash2Accumulation
 
 ! ************************************************************************** !
@@ -4944,6 +4946,10 @@ subroutine Flash2SetPlotVariables(realization)
   
   list => realization%output_option%output_variable_list
   
+  if (associated(list%first)) then
+    return
+  endif
+
   name = 'Temperature'
   units = 'C'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &

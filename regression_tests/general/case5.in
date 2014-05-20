@@ -1,8 +1,8 @@
-:Description: 
+#Description: 
 
-:=========================== flow mode ========================================
+#=========================== flow mode ========================================
 MODE GENERAL MORE
-:  WINDOW_EPSILON 1.d-4
+#  WINDOW_EPSILON 1.d-4
   ISOTHERMAL
   TWO_PHASE_ENERGY_DOF TEMPERATURE  
 /
@@ -17,24 +17,24 @@ REGRESSION
   /
 END
 
-:=========================== debug settings ===================================
+#=========================== debug settings ===================================
 
 skip
 USE_TOUCH_OPTIONS
 DEBUG
   MATVIEW_JACOBIAN
   VECVIEW_RESIDUAL
-:  VECVIEW_SOLUTION
+#  VECVIEW_SOLUTION
 /
 noskip
 
-:=========================== time stepper options =============================
+#=========================== time stepper options =============================
 TIMESTEPPER FLOW
   TS_ACCELERATION 8
   MAX_TS_CUTS 10
 /
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
   TYPE structured
   NXYZ 11 1 21
@@ -45,14 +45,14 @@ GRID
   /
 /
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 TIMESTEPPER FLOW
-:  DT_FACTOR 2.d0 1.8d0 1.6d0 1.4d0 1.2d0 1.d0 0.8d0 0.6d0 0.4d0
+#  DT_FACTOR 2.d0 1.8d0 1.6d0 1.4d0 1.2d0 1.d0 0.8d0 0.6d0 0.4d0
 END
 
 NEWTON_SOLVER FLOW
-:  ATOL 1.d-30
-:  RTOL 1.d-30
+#  ATOL 1.d-30
+#  RTOL 1.d-30
   ATOL 1.d-8
   RTOL 1.d-8
   STOL 1.d-30
@@ -65,7 +65,7 @@ LINEAR_SOLVER FLOW
   SOLVER DIRECT
 /
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 /
@@ -76,7 +76,7 @@ EOS WATER
   ENTHALPY CONSTANT 1.8890d6
 /
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY soil
   ID 1
   SATURATION_FUNCTION sf1
@@ -94,10 +94,10 @@ MATERIAL_PROPERTY soil
   /
 /
 
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION sf1
   SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-:  SATURATION_FUNCTION_TYPE BROOKS_COREY
+#  SATURATION_FUNCTION_TYPE BROOKS_COREY
   RESIDUAL_SATURATION LIQUID 0.2d0
   RESIDUAL_SATURATION GAS 1.d-5
   LAMBDA 0.7d0
@@ -105,7 +105,7 @@ SATURATION_FUNCTION sf1
   MAX_CAPILLARY_PRESSURE 1.d8
 /
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
 skip
   PERIODIC_OBSERVATION TIMESTEP 1
@@ -127,7 +127,7 @@ skip
 noskip
 /
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
   FINAL_TIME 1.d7 s ! 0.317... y
   INITIAL_TIMESTEP_SIZE 1.d0 s
@@ -135,7 +135,7 @@ TIME
   MAXIMUM_TIMESTEP_SIZE 1.d5 y at 5000 s
 /
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
@@ -239,12 +239,12 @@ REGION 21
   BLOCK 1 11 1 1 21 21
 END
 
-:=========================== observation points ===============================
+#=========================== observation points ===============================
 OBSERVATION 
   REGION injection_point
 /
 
-:=========================== flow conditions ==================================
+#=========================== flow conditions ==================================
 FLOW_CONDITION 1
   TYPE
     GAS_PRESSURE dirichlet
@@ -496,7 +496,7 @@ FLOW_CONDITION well
   RATE 0.d0 1.d-5 0.d0
 /
 
-:=========================== condition couplers ===============================
+#=========================== condition couplers ===============================
 INITIAL_CONDITION
   FLOW_CONDITION 1
   REGION 1
@@ -614,7 +614,7 @@ SOURCE_SINK well
   REGION injection_point
 /
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
   MATERIAL soil
   REGION all

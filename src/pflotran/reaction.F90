@@ -3904,26 +3904,25 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   
   ! units of dtotal = kg water/L water
   rt_auxvar%aqueous%dtotal = rt_auxvar%aqueous%dtotal*den_kg_per_L
- !*********** Add SC phase contribution ***************************  
+
+! *********** Add SC phase and gas contributions ***********************  
 #ifdef CHUAN_CO2
 
   iphase = 2           
 
   if (iphase > option%nphase) return 
-  rt_auxvar%total(:,iphase) = 0D0
-  rt_auxvar%aqueous%dtotal(:,:,iphase)=0D0
-!  do icomp = 1, reaction%naqcomp
-!    rt_auxvar%dtotal(icomp,icomp,iphase) = 1.d0
-!  enddo
-    
+  rt_auxvar%total(:,iphase) = 0.D0
+  rt_auxvar%aqueous%dtotal(:,:,iphase) = 0.D0
+
 !  den_kg_per_L = global_auxvar%den_kg(iphase)*1.d-3     
-  if (global_auxvar%sat(iphase)>1D-20) then
+
+  if (global_auxvar%sat(iphase) > 1.D-20) then
     do ieqgas = 1, reaction%ngas ! all gas phase species are secondary
-   
+
       pressure = global_auxvar%pres(2)
       temperature = global_auxvar%temp(1)
       xphico2 = global_auxvar%fugacoeff(1)
-      den = global_auxvar%den(2)
+!     den = global_auxvar%den(2)
  
       call EOSWaterSaturationPressure(temperature, sat_pressure, ierr)
       pco2 = pressure - sat_pressure
@@ -3962,31 +3961,39 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
    !     do i = 1, ncomp
    ! removed loop over species, suppose only one primary species is related
       icomp = reaction%eqgasspecid(1,ieqgas)
-      pressure =pressure *1D-5
+      pressure = pressure * 1.D-5
         
       rt_auxvar%gas_molal(ieqgas) = &
-          exp(lnQK+lngamco2)*rt_auxvar%pri_molal(icomp)&
-!          rt_auxvar%pri_act_coef(icomp)*exp(lnQK)*rt_auxvar%pri_molal(icomp)&
-          /pressure /xphico2* den
+          exp(lnQK+lngamco2)*rt_auxvar%pri_molal(icomp) &
+!          rt_auxvar%pri_act_coef(icomp)*exp(lnQK)*rt_auxvar%pri_molal(icomp) &
+!         /pressure/xphico2*den
+          /(IDEAL_GAS_CONST*1.d-2*(temperature+273.15D0)*xphico2)
+
+!     print *,'ideal-gas: ',ieqgas,icomp,pressure,rt_auxvar%gas_molal(ieqgas), &
+!         rt_auxvar%pri_molal(icomp), &
+!         IDEAL_GAS_CONST*(temperature+273.15D0)*1.d-2
+
       rt_auxvar%total(icomp,iphase) = rt_auxvar%total(icomp,iphase) + &
-                                        reaction%eqgasstoich(1,ieqgas)* &
-                                        rt_auxvar%gas_molal(ieqgas)
+          reaction%eqgasstoich(1,ieqgas)* &
+          rt_auxvar%gas_molal(ieqgas)
 !       print *,'Ttotal',pressure, temperature, xphico2, den, lnQk,rt_auxvar%pri_molal(icomp),&
 !        global_auxvar%sat(2),rt_auxvar%gas_molal(ieqgas)
    !     if (rt_auxvar%total(icomp,iphase) > den)rt_auxvar%total(icomp,iphase) = den* .99D0
    !     enddo
 
    ! contribute to %dtotal
-   !      tempreal = exp(lnQK+lngamco2)/pressure /xphico2* den 
-      tempreal = rt_auxvar%pri_act_coef(icomp)*exp(lnQK)/pressure /xphico2* den 
-      rt_auxvar%aqueous%dtotal(icomp,icomp,iphase) = rt_auxvar%aqueous%dtotal(icomp,icomp,iphase) + &
-                                               reaction%eqgasstoich(1,ieqgas)*tempreal
-    
+   !      tempreal = exp(lnQK+lngamco2)/pressure/xphico2*den
+!     tempreal = rt_auxvar%pri_act_coef(icomp)*exp(lnQK) &
+!         /pressure/xphico2*den
+      tempreal = rt_auxvar%gas_molal(ieqgas)/rt_auxvar%pri_molal(icomp)
+      rt_auxvar%aqueous%dtotal(icomp,icomp,iphase) = &
+          rt_auxvar%aqueous%dtotal(icomp,icomp,iphase) + &
+          reaction%eqgasstoich(1,ieqgas)*tempreal
     enddo
-   ! rt_auxvar%total(:,iphase) = rt_auxvar%total(:,iphase)!*den_kg_per_L
-    ! units of dtotal = kg water/L water
-   ! rt_auxvar%dtotal(:, :,iphase) = rt_auxvar%dtotal(:,:,iphase)!*den_kg_per_L
-   endif   
+  ! rt_auxvar%total(:,iphase) = rt_auxvar%total(:,iphase)!*den_kg_per_L
+  ! units of dtotal = kg water/L water
+  ! rt_auxvar%dtotal(:, :,iphase) = rt_auxvar%dtotal(:,:,iphase)!*den_kg_per_L
+  endif
   
 #endif  
 end subroutine RTotal
@@ -5154,12 +5161,12 @@ subroutine RUpdateKineticState(rt_auxvar,global_auxvar,material_auxvar, &
             global_auxvar%reaction_rate(2) &
               = global_auxvar%reaction_rate(2) & 
               + rt_auxvar%mnrl_rate(imnrl)*option%tran_dt &
-              * reaction%mineral%mnrlstoich(ncomp,imnrl)/option%flow_dt
+              * reaction%mineral%mnrlstoich(icomp,imnrl) !/option%flow_dt
           else if (icomp == reaction%species_idx%h2o_aq_id) then
             global_auxvar%reaction_rate(1) &
-              = global_auxvar%reaction_rate(1)& 
-              + rt_auxvar%mnrl_rate(imnrl)* option%tran_dt&
-              * reaction%mineral%mnrlstoich(ncomp,imnrl)/option%flow_dt
+              = global_auxvar%reaction_rate(1) &
+              + rt_auxvar%mnrl_rate(imnrl)*option%tran_dt &
+              * reaction%mineral%mnrlstoich(icomp,imnrl) !/option%flow_dt
           endif
         enddo 
       endif   
