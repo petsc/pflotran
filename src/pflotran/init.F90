@@ -4218,7 +4218,7 @@ subroutine SandboxesSetup(realization)
   
   type(realization_type) :: realization
   
-  call SSSandboxSetup(realization%patch%regions,realization%option)
+   call SSSandboxSetup(realization%patch%regions,realization%option)
   
 end subroutine SandboxesSetup
 
