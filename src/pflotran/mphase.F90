@@ -1467,6 +1467,7 @@ subroutine MphaseAccumulation(auxvar,global_auxvar,por,vol,rock_dencpr, &
 ! Reaction terms here
 ! Note if iireac > 0, then it is the node global index
 
+!#if 0
   if (option%ntrandof > 0) then
     if (iireac > 0) then
       !H2O
@@ -1478,7 +1479,7 @@ subroutine MphaseAccumulation(auxvar,global_auxvar,por,vol,rock_dencpr, &
 !       option%flow_dt*1D-3
     endif
   endif
-  
+!#endif
 ! if (option%use_isothermal)then
 !   Res(1:option%nflowdof) = mol(:)
 ! else
@@ -1937,6 +1938,7 @@ subroutine MphaseBCFlux(ibndtype,auxvars,auxvar_up,auxvar_dn, &
   fluxm = 0.d0
   fluxe = 0.d0
   v_darcy = 0.d0
+  vv_darcy = 0.d0
   density_ave = 0.d0
   q = 0.d0
   ukvr = 0.d0
