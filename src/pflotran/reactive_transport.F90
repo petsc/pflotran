@@ -189,6 +189,12 @@ subroutine RTSetup(realization)
   !           history and the communicator can be passed down.
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
+
+    ! Ignore inactive cells with inactive materials
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
+    endif    
+    
     if (material_auxvars(ghosted_id)%volume < 0.d0 .and. flag(1) == 0) then
       flag(1) = 1
       option%io_buffer = 'Non-initialized cell volume.'
@@ -3830,27 +3836,31 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
               !     for use_prev_soln_as_guess.  If the previous solution is zero,
               !     the code will crash.
               if (patch%aux%RT%auxvars_bc(sum_connection)%pri_molal(1) < 1.d-200) then
-                patch%aux%RT%auxvars_bc(sum_connection)%pri_molal = 1.d-9
+!               patch%aux%RT%auxvars_bc(sum_connection)%pri_molal = 1.d-9
+                patch%aux%RT%auxvars_bc(sum_connection)%pri_molal = &
+                    xx_loc_p(istartaq:iendaq)
               endif
             case(DIRICHLET_ZERO_GRADIENT_BC)
-                if (patch%boundary_velocities(iphase,sum_connection) >= 0.d0) then
+              if (patch%boundary_velocities(iphase,sum_connection) >= 0.d0) then
                   ! don't need to do anything as the constraint below provides all
                   ! the concentrations, etc.
                   
                 if (patch%aux%RT%auxvars_bc(sum_connection)%pri_molal(1) < 1.d-200) then
-                  patch%aux%RT%auxvars_bc(sum_connection)%pri_molal = 1.d-9
-                endif                  
-                else
-                  ! same as zero_gradient below
-                  skip_equilibrate_constraint = PETSC_TRUE
+!                 patch%aux%RT%auxvars_bc(sum_connection)%pri_molal = 1.d-9
                   patch%aux%RT%auxvars_bc(sum_connection)%pri_molal = &
                     xx_loc_p(istartaq:iendaq)
-                  if (reaction%ncoll > 0) then
-                    patch%aux%RT%auxvars_bc(sum_connection)%colloid%conc_mob = &
-                      xx_loc_p(istartcoll:iendcoll)* &
-                      patch%aux%Global%auxvars_bc(sum_connection)%den_kg(1)*1.d-3
-                  endif                  
                 endif
+              else
+                ! same as zero_gradient below
+                skip_equilibrate_constraint = PETSC_TRUE
+                patch%aux%RT%auxvars_bc(sum_connection)%pri_molal = &
+                  xx_loc_p(istartaq:iendaq)
+                if (reaction%ncoll > 0) then
+                  patch%aux%RT%auxvars_bc(sum_connection)%colloid%conc_mob = &
+                    xx_loc_p(istartcoll:iendcoll)* &
+                      patch%aux%Global%auxvars_bc(sum_connection)%den_kg(1)*1.d-3
+                endif
+              endif
             case(ZERO_GRADIENT_BC)
               skip_equilibrate_constraint = PETSC_TRUE
               patch%aux%RT%auxvars_bc(sum_connection)%pri_molal = &
