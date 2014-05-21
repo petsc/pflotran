@@ -2,7 +2,7 @@
 
 \setcounter{equation}{0}
 
-The PFLOTRAN input file construction is based on keywords. Lines beginning with a colon (:) are treated as comments. Each entry to the input file must begin in the first column. Keywords {\tt SKIP} and {\tt NOSKIP} are used to skip over sections of the input file. Blank lines may occur in input file. Alternate keyword spelling is indicated in round brackets (~). Input options are indicated in square brackets [~], as well as default values. Curly brackets \{~\} indicate the result of invoking the corresponding keyword. Always refer to source code when in doubt!
+The PFLOTRAN input file construction is based on keywords. Lines beginning with \# are treated as comments. Each entry to the input file must begin in the first column. Keywords {\tt SKIP} and {\tt NOSKIP} are used to skip over sections of the input file. Blank lines may occur in input file. Alternate keyword spelling is indicated in round brackets (~). Input options are indicated in square brackets [~], as well as default values. Curly brackets \{~\} indicate the result of invoking the corresponding keyword. Always refer to source code when in doubt!
 
 Initial and boundary conditions and material properties are assigned to spatial regions using a novel {\em coupler} approach. In this approach, initial and boundary conditions (keyword CONDITION) are assigned to regions (keyword REGION) using keywords INITIAL\_CONDITION and BOUNDARY\_CONDITION. Material properties (keyword MATERIAL) are assigned to regions using the keyword STRATIGRAPHY.
 
@@ -2154,7 +2154,7 @@ LINEAR_SOLVER TRANSPORT
 \item[PERM\_Y] \ {\tt <float>} \ Diagonal permeability $k_{yy}$ [m$^2$]
 \item[PERM\_Z] \ {\tt <float>} \ Diagonal permeability $k_{zz}$ [m$^2$]
 \item[PERM\_ISO] \ {\tt <float>} \ Isotropic permeability values [m$^2$]
-\item[PERM\_XY] \ {\tt <float>} \ Off-diagonal permeability $k_{xy}$ for use with MFD (mimetic\_unstructured grid) [m$^2$]
+\item[PERM\_XY] \ {\tt <float>} \ Off-diagonal permeability $k_{xy}$ for use with MFD \\(mimetic\_unstructured grid) [m$^2$] (not currently supported)
 \item[PERM\_XZ] \ {\tt <float>} [m$^2$] \ Off-diagonal permeability $k_{xz}$
 \item[PERM\_YZ] \ {\tt <float>} [m$^2$] \ Off-diagonal permeability $k_{yz}$
 \end{deflist}
@@ -2163,7 +2163,7 @@ LINEAR_SOLVER TRANSPORT
 \item[PERMEABILITY\_CRIT\_POR] \ {\tt <float>} \ (see Eqn.\eqref{permf})
 \item[PERMEABILITY\_MIN\_SCALE\_FAC] \ {\tt <float>} \ (see Eqn.\eqref{fmin})
 \item[TORTUOSITY\_POWER] \ {\tt <float>}
-\item[MINERAL\_SURFACE\_AREA\_POWER] ~ toggle to update mineral surface area (see {\tt MINERAL\_KINETICS} keyword for setting porosity or volume fraction power)
+\item[MINERAL\_SURFACE\_AREA\_POWER] ~ toggle to update mineral surface area \\(see {\tt MINERAL\_KINETICS} keyword for setting porosity or volume fraction power)
 %\begin{deflist}{000}
 %\item[VOLUME\_FRACTION] \ {\tt <float>} \ Volume fraction power in mineral surface area
 %\item[POROSITY] \ {\tt <float>} \ Porosity power in mineral surface area
@@ -2706,11 +2706,13 @@ END
 %\item[FORMAT \ HDF5]
 %\item[FORMAT \ MAD]
 %\item[FORMAT \ VTK]
-\item[VOLUME] output cell volume
-\item[PERMEABILITY]
-\item[POROSITY]
-\item[FLUXES]
-\item[VELOCITIES]
+\begin{deflist}{0000000000000000000000000}
+\item[VOLUME] -Output cell volume
+\item[PERMEABILITY] -Output cell permeability
+\item[POROSITY] -Output cell porosity
+\item[FLUXES] -Output interface fluxes
+\item[VELOCITIES] -Output interface velocities
+\end{deflist}
 \item[MASS\_BALANCE:] \ output the mass balance of the system if this card is activated. It includes global mass balance as well as fluxes at all boundaries for water and chemical species specified for output in the CHEMISTRY card. For the MPHASE mode only global mass balances are provided including supercritical CO$_2$. Output times are controlled by {\tt PERIODIC\_OBSERVATION TIMESTEP and TIME}, and printout times.
 \end{deflist}
 \item[\keyend]

@@ -2700,7 +2700,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
          LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,LIQUID_VISCOSITY, &
          GAS_VISCOSITY,CAPILLARY_PRESSURE,LIQUID_DENSITY_MOL, &
          LIQUID_MOBILITY,GAS_MOBILITY,SC_FUGA_COEFF,STATE,ICE_DENSITY, &
-         TRANSIENT_POROSITY)
+         TRANSIENT_POROSITY,LIQUID_HEAD)
 
       if (associated(patch%aux%TH)) then
         select case(ivar)
@@ -2799,6 +2799,12 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = &
                 patch%aux%Global%auxvars(grid%nL2G(local_id))%pres(1)
+            enddo
+          case(LIQUID_HEAD)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = &
+                patch%aux%Global%auxvars(grid%nL2G(local_id))%pres(1)/9.81/ &
+                patch%aux%Global%auxvars(grid%nL2G(local_id))%den_kg(1)                
             enddo
           case(LIQUID_SATURATION)
             do local_id=1,grid%nlmax
@@ -3713,7 +3719,8 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
          LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,LIQUID_VISCOSITY, &
          GAS_VISCOSITY,AIR_PRESSURE,CAPILLARY_PRESSURE, &
          LIQUID_MOBILITY,GAS_MOBILITY,SC_FUGA_COEFF,STATE,ICE_DENSITY, &
-         SECONDARY_TEMPERATURE,LIQUID_DENSITY_MOL,TRANSIENT_POROSITY)
+         SECONDARY_TEMPERATURE,LIQUID_DENSITY_MOL,TRANSIENT_POROSITY, &
+         LIQUID_HEAD)
          
      if (associated(patch%aux%TH)) then
         select case(ivar)
@@ -3775,6 +3782,9 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
             call printErrMsg(option,'TRANSIENT_POROSITY not supported by Richards')
           case(LIQUID_PRESSURE)
             value = patch%aux%Global%auxvars(ghosted_id)%pres(1)
+          case(LIQUID_HEAD)
+            value = patch%aux%Global%auxvars(ghosted_id)%pres(1)/9.81/ &
+                    patch%aux%Global%auxvars(ghosted_id)%den_kg(1)
           case(LIQUID_SATURATION)
             value = patch%aux%Global%auxvars(ghosted_id)%sat(1)
           case(LIQUID_DENSITY)

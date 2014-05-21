@@ -925,9 +925,8 @@ subroutine GeneralUpdateFixedAccum(realization)
                               ghosted_id, &
                               option)
     call GeneralAccumulation(gen_auxvars(ZERO_INTEGER,ghosted_id), &
-                             global_auxvars(ghosted_id), &
                              material_auxvars(ghosted_id), &
-                            material_parameter%soil_heat_capacity(imat), &
+                             material_parameter%soil_heat_capacity(imat), &
                              option,accum_p(local_start:local_end)) 
   enddo
 
@@ -939,7 +938,7 @@ end subroutine GeneralUpdateFixedAccum
 
 ! ************************************************************************** !
 
-subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
+subroutine GeneralAccumulation(gen_auxvar,material_auxvar, &
                                soil_heat_capacity,option,Res)
   ! 
   ! Computes the non-fixed portion of the accumulation
@@ -956,7 +955,6 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
   implicit none
 
   type(general_auxvar_type) :: gen_auxvar
-  type(global_auxvar_type) :: global_auxvar
   class(material_auxvar_type) :: material_auxvar
   PetscReal :: soil_heat_capacity
   type(option_type) :: option
@@ -1762,7 +1760,7 @@ end subroutine GeneralSrcSink
 
 ! ************************************************************************** !
 
-subroutine GeneralAccumDerivative(gen_auxvar,global_auxvar,material_auxvar, &
+subroutine GeneralAccumDerivative(gen_auxvar,material_auxvar, &
                                   soil_heat_capacity,option,J)
   ! 
   ! Computes derivatives of the accumulation
@@ -1779,7 +1777,6 @@ subroutine GeneralAccumDerivative(gen_auxvar,global_auxvar,material_auxvar, &
   implicit none
 
   type(general_auxvar_type) :: gen_auxvar(0:)
-  type(global_auxvar_type) :: global_auxvar
   class(material_auxvar_type) :: material_auxvar
   type(option_type) :: option
   PetscReal :: soil_heat_capacity
@@ -1790,11 +1787,11 @@ subroutine GeneralAccumDerivative(gen_auxvar,global_auxvar,material_auxvar, &
 
 !geh:print *, 'GeneralAccumDerivative'
 
-  call GeneralAccumulation(gen_auxvar(ZERO_INTEGER),global_auxvar, &
+  call GeneralAccumulation(gen_auxvar(ZERO_INTEGER), &
                            material_auxvar,soil_heat_capacity,option,res)
                            
   do idof = 1, option%nflowdof
-    call GeneralAccumulation(gen_auxvar(idof),global_auxvar, &
+    call GeneralAccumulation(gen_auxvar(idof), &
                              material_auxvar,soil_heat_capacity, &
                              option,res_pert)
     do irow = 1, option%nflowdof
@@ -2212,7 +2209,6 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
     local_end = local_id * option%nflowdof
     local_start = local_end - option%nflowdof + 1
     call GeneralAccumulation(gen_auxvars(ZERO_INTEGER,ghosted_id), &
-                              global_auxvars(ghosted_id), &
                               material_auxvars(ghosted_id), &
                               material_parameter%soil_heat_capacity(imat), &
                               option,Res) 
@@ -2563,7 +2559,6 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
     imat = patch%imat(ghosted_id)
     if (imat <= 0) cycle
     call GeneralAccumDerivative(gen_auxvars(:,ghosted_id), &
-                              global_auxvars(ghosted_id), &
                               material_auxvars(ghosted_id), &
                               material_parameter%soil_heat_capacity(imat), &
                               option, &
