@@ -625,6 +625,13 @@ subroutine OutputVariableRead(input,option,output_variable_list)
         call OutputVariableAddToList(output_variable_list,name, &
                                      OUTPUT_SATURATION,units, &
                                      LIQUID_SATURATION)
+      case ('LIQUID_HEAD')
+        name = 'Liquid Head'
+        units = 'm'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     LIQUID_HEAD)
+        
       case ('LIQUID_DENSITY')
         name = 'Liquid Density'
         call InputReadWord(input,option,word,PETSC_TRUE)
