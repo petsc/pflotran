@@ -15,6 +15,10 @@ module SrcSink_Sandbox_WIPP_Well_class
   PetscInt, parameter, public :: WIPP_WELL_GAS_MOBILITY = 2
   PetscInt, parameter, public :: WIPP_WELL_LIQUID_PRESSURE = 3
   PetscInt, parameter, public :: WIPP_WELL_GAS_PRESSURE = 4
+  PetscInt, parameter, public :: WIPP_WELL_LIQUID_ENTHALPY = 5
+  PetscInt, parameter, public :: WIPP_WELL_GAS_ENTHALPY = 6
+  PetscInt, parameter, public :: WIPP_WELL_XMOL_AIR_IN_LIQUID = 7
+  PetscInt, parameter, public :: WIPP_WELL_XMOL_WATER_IN_GAS = 8
 
   type, public, &
     extends(srcsink_sandbox_base_type) :: srcsink_sandbox_wipp_well_type
@@ -153,20 +157,24 @@ subroutine WIPPWellSrcSink(this,Residual,Jacobian,compute_derivative, &
   class(material_auxvar_type) :: material_auxvar
   PetscReal :: aux_real(:)
   
-  PetscReal :: q_water, q_air
+  PetscReal :: q_liquid, q_gas
   
   ! q_i = I*(kr_i/mu_i)*(p_i-p_well)
-  q_water = -1.d0 * &
+  q_liquid = -1.d0 * &
             this%productivity_index * &
             aux_real(WIPP_WELL_LIQUID_MOBILITY) * &
             (aux_real(WIPP_WELL_LIQUID_PRESSURE) - this%well_pressure)
-  q_air = -1.d0 * &
+  q_gas = -1.d0 * &
           this%productivity_index * &
           aux_real(WIPP_WELL_GAS_MOBILITY) * &
           (aux_real(WIPP_WELL_GAS_PRESSURE) - this%well_pressure)
   ! positive is inflow
-  Residual(ONE_INTEGER) = q_water
-  Residual(TWO_INTEGER) = q_air
+  Residual(ONE_INTEGER) = q_liquid*(1.d0-aux_real(WIPP_WELL_XMOL_AIR_IN_LIQUID)) + &
+                          q_gas*aux_real(WIPP_WELL_XMOL_WATER_IN_GAS)
+  Residual(TWO_INTEGER) = q_liquid*aux_real(WIPP_WELL_XMOL_AIR_IN_LIQUID) + &
+                          q_gas*(1.d0-aux_real(WIPP_WELL_XMOL_WATER_IN_GAS))
+  Residual(THREE_INTEGER) = q_liquid*aux_real(WIPP_WELL_LIQUID_ENTHALPY) + &
+                            q_gas*aux_real(WIPP_WELL_GAS_ENTHALPY)
   
   if (compute_derivative) then
     
