@@ -55,6 +55,7 @@ module General_Aux_module
   PetscInt, public :: dof_to_primary_variable(3,3)
   PetscInt, public :: general_2ph_energy_dof = GENERAL_TEMPERATURE_INDEX
   PetscBool, public :: general_isothermal = PETSC_FALSE
+  PetscBool, public :: general_no_air = PETSC_FALSE
   
   type, public :: general_auxvar_type
     PetscInt :: istate_store(2) ! 1 = previous timestep; 2 = previous iteration

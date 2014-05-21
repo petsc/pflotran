@@ -111,6 +111,8 @@ subroutine GeneralRead(input,option)
         call GeneralAuxSetEnergyDOF(word,option)
       case('ISOTHERMAL')
         general_isothermal = PETSC_TRUE
+      case('NO_AIR')
+        general_no_air = PETSC_TRUE
       case('MAXIMUM_PRESSURE_CHANGE')
         call InputReadDouble(input,option,general_max_pressure_change)
         call InputErrorMsg(input,option,'maximum pressure change', &
@@ -976,7 +978,7 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
   porosity = material_auxvar%porosity
   if (soil_compressibility_index > 0) then
     call MaterialCompressSoil(material_auxvar, &
-                              maxval(global_auxvar%pres(1:2)), &
+                              maxval(gen_auxvar%pres(1:2)), &
                               compressed_porosity,dcompressed_porosity_dp)
     porosity = compressed_porosity
   endif
@@ -1806,6 +1808,11 @@ subroutine GeneralAccumDerivative(gen_auxvar,global_auxvar,material_auxvar, &
     J(:,GENERAL_ENERGY_EQUATION_INDEX) = 0.d0
   endif
   
+  if (general_no_air) then
+    J(GENERAL_GAS_EQUATION_INDEX,:) = 0.d0
+    J(:,GENERAL_GAS_EQUATION_INDEX) = 0.d0
+  endif
+  
 #ifdef DEBUG_GENERAL_FILEOUTPUT
   if (debug_flag > 0) then
     write(debug_unit,'(a,10es24.15)') 'accum deriv:', J
@@ -1907,6 +1914,13 @@ subroutine GeneralFluxDerivative(gen_auxvar_up,global_auxvar_up, &
     Jdn(GENERAL_ENERGY_EQUATION_INDEX,:) = 0.d0
     Jdn(:,GENERAL_ENERGY_EQUATION_INDEX) = 0.d0
   endif
+  
+  if (general_no_air) then
+    Jup(GENERAL_GAS_EQUATION_INDEX,:) = 0.d0
+    Jup(:,GENERAL_GAS_EQUATION_INDEX) = 0.d0
+    Jdn(GENERAL_GAS_EQUATION_INDEX,:) = 0.d0
+    Jdn(:,GENERAL_GAS_EQUATION_INDEX) = 0.d0
+  endif  
 
 #ifdef DEBUG_GENERAL_FILEOUTPUT
   if (debug_flag > 0) then
@@ -1991,6 +2005,11 @@ subroutine GeneralBCFluxDerivative(ibndtype,auxvar_mapping,auxvars, &
     Jdn(:,GENERAL_ENERGY_EQUATION_INDEX) = 0.d0
   endif
   
+  if (general_no_air) then
+    Jdn(GENERAL_GAS_EQUATION_INDEX,:) = 0.d0
+    Jdn(:,GENERAL_GAS_EQUATION_INDEX) = 0.d0
+  endif  
+  
 #ifdef DEBUG_GENERAL_FILEOUTPUT
   if (debug_flag > 0) then
     write(debug_unit,'(a,10es24.15)') 'bc flux deriv:', Jdn
@@ -2041,6 +2060,11 @@ subroutine GeneralSrcSinkDerivative(option,qsrc,flow_src_sink_type, &
     Jac(GENERAL_ENERGY_EQUATION_INDEX,:) = 0.d0
     Jac(:,GENERAL_ENERGY_EQUATION_INDEX) = 0.d0
   endif
+  
+  if (general_no_air) then
+    Jac(GENERAL_GAS_EQUATION_INDEX,:) = 0.d0
+    Jac(:,GENERAL_GAS_EQUATION_INDEX) = 0.d0
+  endif  
   
 #ifdef DEBUG_GENERAL_FILEOUTPUT
   if (debug_flag > 0) then
@@ -2366,6 +2390,14 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
     enddo
     call VecRestoreArrayF90(r, r_p, ierr)
   endif
+  if (general_no_air) then
+    call VecGetArrayF90(r, r_p, ierr)
+    ! zero energy residual
+    do local_id = 1, grid%nlmax
+      r_p((local_id-1)*option%nflowdof+GENERAL_GAS_EQUATION_INDEX) =  0.d0
+    enddo
+    call VecRestoreArrayF90(r, r_p, ierr)
+  endif  
 
 #ifdef DEBUG_GENERAL_FILEOUTPUT
   call VecGetArrayReadF90(field%flow_accum, accum_p, ierr)
@@ -2725,6 +2757,18 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       irow = (ghosted_id-1)*option%nflowdof+GENERAL_ENERGY_EQUATION_INDEX 
+      irow = irow-1 ! zero-based indexing
+      qsrc = 1.d0 ! solely a temporary variable in this conditional
+      call MatZeroRowsLocal(A,ONE_INTEGER,irow, &
+                            qsrc,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+    enddo
+  endif
+
+  if (general_no_air) then
+    ! zero energy residual
+    do local_id = 1, grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
+      irow = (ghosted_id-1)*option%nflowdof+GENERAL_GAS_EQUATION_INDEX 
       irow = irow-1 ! zero-based indexing
       qsrc = 1.d0 ! solely a temporary variable in this conditional
       call MatZeroRowsLocal(A,ONE_INTEGER,irow, &
@@ -3839,6 +3883,10 @@ subroutine GeneralSSSandbox(residual,Jacobian,compute_derivative, &
           if (general_isothermal) then
             Jac(GENERAL_ENERGY_EQUATION_INDEX,:) = 0.d0
             Jac(:,GENERAL_ENERGY_EQUATION_INDEX) = 0.d0
+          endif         
+          if (general_no_air) then
+            Jac(GENERAL_GAS_EQUATION_INDEX,:) = 0.d0
+            Jac(:,GENERAL_GAS_EQUATION_INDEX) = 0.d0
           endif          
           call MatSetValuesBlockedLocal(Jacobian,1,ghosted_id-1,1, &
                                         ghosted_id-1,Jac,ADD_VALUES,ierr)
