@@ -3938,6 +3938,10 @@ subroutine GeneralSSSandboxLoadAuxReal(srcsink,aux_real,gen_auxvar,option)
         gen_auxvar%xmol(option%air_id,option%liquid_phase)
       aux_real(WIPP_WELL_XMOL_WATER_IN_GAS) = &
         gen_auxvar%xmol(option%water_id,option%gas_phase)
+      aux_real(WIPP_WELL_LIQUID_DENSITY) = &
+        gen_auxvar%den(option%liquid_phase)
+      aux_real(WIPP_WELL_GAS_DENSITY) = &
+        gen_auxvar%den(option%gas_phase)
   end select
   
 end subroutine GeneralSSSandboxLoadAuxReal
