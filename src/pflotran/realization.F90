@@ -88,7 +88,7 @@ private
             RealizationCountCells, &
             RealizationPrintGridStatistics, &
             RealizationSetUpBC4Faces, &
-            RealizatonPassPtrsToPatches, &
+            RealizationPassPtrsToPatches, &
             RealLocalToLocalWithArray, &
             RealizationCalculateCFL1Timestep, &
             RealizationNonInitializedData, &
@@ -519,7 +519,7 @@ end subroutine RealizationLocalizeRegions
 
 ! ************************************************************************** !
 
-subroutine RealizatonPassPtrsToPatches(realization)
+subroutine RealizationPassPtrsToPatches(realization)
   ! 
   ! Sets patch%field => realization%field
   ! 
@@ -537,7 +537,7 @@ subroutine RealizatonPassPtrsToPatches(realization)
   realization%patch%datasets => realization%datasets
   realization%patch%reaction => realization%reaction
   
-end subroutine RealizatonPassPtrsToPatches
+end subroutine RealizationPassPtrsToPatches
 
 ! ************************************************************************** !
 
