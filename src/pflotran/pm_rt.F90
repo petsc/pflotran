@@ -1056,6 +1056,11 @@ subroutine PMRTDestroy(this)
   class(pm_rt_type) :: this
 
   call RTDestroy(this%realization)
+  ! destroyed in realization
+  nullify(this%comm1)
+  call this%commN%Destroy()
+  if (associated(this%commN)) deallocate(this%commN)
+  nullify(this%commN)  
 
 end subroutine PMRTDestroy
   

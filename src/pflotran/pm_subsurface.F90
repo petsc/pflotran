@@ -424,7 +424,8 @@ subroutine PMSubsurfaceDestroy(this)
   
   class(pm_subsurface_type) :: this
   
-  call this%comm1%Destroy()
+  ! destroyed in realization
+  nullify(this%comm1)
   
 end subroutine PMSubsurfaceDestroy
   

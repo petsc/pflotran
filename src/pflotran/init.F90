@@ -894,6 +894,7 @@ subroutine Init(simulation)
                                  LIQUID_DENSITY)
     else
       call GlobalUpdateAuxVars(realization,TIME_T,0.d0)
+      call GlobalWeightAuxVars(realization,0.d0)
     endif
 
     ! initial concentrations must be assigned after densities are set !!!

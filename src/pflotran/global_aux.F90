@@ -28,9 +28,8 @@ module Global_Aux_module
     PetscReal, pointer :: mass_balance_delta(:,:) ! kmol
     PetscReal, pointer :: reaction_rate(:)
     PetscReal, pointer :: reaction_rate_store(:)
-!   PetscReal, pointer :: reaction_rate_store(:,:)
-    PetscReal, pointer :: dphi(:,:)
-    PetscReal :: scco2_eq_logK ! SC CO2
+    PetscReal, pointer :: dphi(:,:) !geh: why here?
+!geh    PetscReal :: scco2_eq_logK ! SC CO2
   end type global_auxvar_type
   
   type, public :: global_type
@@ -103,26 +102,54 @@ subroutine GlobalAuxVarInit(auxvar,option)
   
   auxvar%istate = 0
 
-  allocate(auxvar%pres(option%nphase))
-  auxvar%pres = 0.d0
+  ! nullify everthing to begin with and allocate later
+  nullify(auxvar%pres)
+  nullify(auxvar%temp)
+  nullify(auxvar%sat)
+  nullify(auxvar%den)
+  nullify(auxvar%den_kg)
+  nullify(auxvar%pres_store)
+  nullify(auxvar%temp_store)
+  nullify(auxvar%sat_store)
+  nullify(auxvar%den_store)
+  nullify(auxvar%den_kg_store)
+  nullify(auxvar%fugacoeff)
+  nullify(auxvar%fugacoeff_store)
+  nullify(auxvar%m_nacl)
+  nullify(auxvar%xmass)
+  nullify(auxvar%reaction_rate)
+  nullify(auxvar%reaction_rate_store)
+  nullify(auxvar%mass_balance)
+  nullify(auxvar%mass_balance_delta)
+  nullify(auxvar%dphi)
+
+  if (option%nflowdof > 0) then
+    allocate(auxvar%den(option%nphase))
+    auxvar%den = 0.d0
+    allocate(auxvar%pres(option%nphase))
+    auxvar%pres = 0.d0
+  endif
   allocate(auxvar%temp(ONE_INTEGER))
   auxvar%temp = 0.d0
   allocate(auxvar%sat(option%nphase))
   auxvar%sat = 0.d0
-  allocate(auxvar%den(option%nphase))
-  auxvar%den = 0.d0
   allocate(auxvar%den_kg(option%nphase))
   auxvar%den_kg = 0.d0
-  allocate(auxvar%sat_store(option%nphase,TWO_INTEGER))
-  auxvar%sat_store = 0.d0
-  allocate(auxvar%den_kg_store(option%nphase,TWO_INTEGER))
-  auxvar%den_kg_store = 0.d0
-  allocate(auxvar%dphi(option%nphase,THREE_INTEGER))
-  auxvar%dphi = 0.d0
 
-  auxvar%scco2_eq_logK = 0.d0
-
+  ! need these for reactive transport only if if flow if computed
+  if (option%nflowdof > 0 .and. option%ntrandof > 0) then
+    allocate(auxvar%sat_store(option%nphase,TWO_INTEGER))
+    auxvar%sat_store = 0.d0
+    allocate(auxvar%den_kg_store(option%nphase,TWO_INTEGER))
+    auxvar%den_kg_store = 0.d0
+  endif
+ 
   select case(option%iflowmode)
+    case(RICHARDS_MODE)
+!      if (option%ntrandof > 0) then
+!        allocate(auxvar%den_store(option%nphase,TWO_INTEGER))
+!        auxvar%den_store = 0.d0
+!      endif
     case(IMS_MODE, MPH_MODE, FLASH2_MODE)
       allocate(auxvar%xmass(option%nphase))
       auxvar%xmass = 1.d0
@@ -164,25 +191,15 @@ subroutine GlobalAuxVarInit(auxvar,option)
       nullify(auxvar%reaction_rate)
       nullify(auxvar%reaction_rate_store)  
     case (G_MODE)
-      nullify(auxvar%xmass)
-      nullify(auxvar%pres_store)
-      nullify(auxvar%temp_store)
-      nullify(auxvar%fugacoeff)
-      nullify(auxvar%fugacoeff_store)
-      nullify(auxvar%den_store)
-      nullify(auxvar%m_nacl)
-      nullify(auxvar%reaction_rate)
-      nullify(auxvar%reaction_rate_store)  
+      if (option%ntrandof > 0) then
+        allocate(auxvar%pres_store(option%nphase,TWO_INTEGER))
+        auxvar%pres_store = 0.d0
+        allocate(auxvar%temp_store(option%nphase,TWO_INTEGER))
+        auxvar%temp_store = 0.d0
+        allocate(auxvar%den_kg_store(option%nphase,TWO_INTEGER))
+        auxvar%den_kg_store = 0.d0
+      endif
     case default
-      nullify(auxvar%xmass)
-      nullify(auxvar%pres_store)
-      nullify(auxvar%temp_store)
-      nullify(auxvar%fugacoeff)
-      nullify(auxvar%fugacoeff_store)
-      nullify(auxvar%den_store)
-      nullify(auxvar%m_nacl)
-      nullify(auxvar%reaction_rate)
-      nullify(auxvar%reaction_rate_store)
   end select
   
   if (option%iflag /= 0 .and. option%compute_mass_balance_new) then
@@ -190,9 +207,6 @@ subroutine GlobalAuxVarInit(auxvar,option)
     auxvar%mass_balance = 0.d0
     allocate(auxvar%mass_balance_delta(option%nflowspec,option%nphase))
     auxvar%mass_balance_delta = 0.d0
-  else
-    nullify(auxvar%mass_balance)
-    nullify(auxvar%mass_balance_delta)
   endif
   
 end subroutine GlobalAuxVarInit
