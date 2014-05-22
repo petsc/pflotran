@@ -1766,6 +1766,12 @@ subroutine RealizationUpdatePropertiesTS(realization)
       call VecRestoreArrayF90(field%porosity_mnrl_loc,porosity_mnrl_loc_p,ierr)
     endif
     
+    call MaterialGetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                 POROSITY,ZERO_INTEGER)
+    call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                    field%work_loc,ONEDOF)
+    call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                 POROSITY,ZERO_INTEGER)
   endif
   
   if ((porosity_updated .and. &

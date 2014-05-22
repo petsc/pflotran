@@ -312,6 +312,7 @@ subroutine Init(simulation)
   
   ! create grid and allocate vectors
   call RealizationCreateDiscretization(realization)
+  
   if (option%nsurfflowdof>0) then
     call SurfRealizCreateDiscretization(simulation%surf_realization)
   endif
