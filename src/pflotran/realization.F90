@@ -998,7 +998,6 @@ subroutine RealProcessFlowConditions(realization)
                            cur_flow_condition%default_time_storage, &
                            string,option)
     select case(option%iflowmode)
-      case(G_MODE)
       case default
         do i = 1, size(cur_flow_condition%sub_condition_ptr)
           ! find dataset
