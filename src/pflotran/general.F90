@@ -486,7 +486,7 @@ subroutine GeneralComputeMassBalance(realization,mass_balance)
   
   type(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%nflowspec, &
-                            realization%option%nflowdof)
+                            realization%option%nphase)
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
