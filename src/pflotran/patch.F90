@@ -1016,6 +1016,8 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
   use Grid_module
   use Dataset_Common_HDF5_class
   use Dataset_Gridded_HDF5_class
+  use Dataset_Ascii_class
+  use Dataset_module
 
   implicit none
   
@@ -1026,7 +1028,6 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
   type(flow_condition_type), pointer :: flow_condition
   type(tran_condition_type), pointer :: tran_condition
   type(flow_general_condition_type), pointer :: general
-  class(dataset_common_hdf5_type), pointer :: dataset
   PetscBool :: update
   PetscBool :: dof1, dof2, dof3
   PetscReal :: temperature, p_sat, p_air, p_gas, p_cap, s_liq
@@ -1178,9 +1179,21 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
         select case(general%liquid_pressure%itype)
           case(DIRICHLET_BC)
             coupler%flow_aux_mapping(GENERAL_LIQUID_PRESSURE_INDEX) = real_count
-            coupler%flow_aux_real_var(real_count,1:num_connections) = &
-              general%liquid_pressure%dataset%rarray(1)
-            dof1 = PETSC_TRUE
+            select type(selector => general%liquid_pressure%dataset)
+              class is(dataset_ascii_type)
+                coupler%flow_aux_real_var(real_count,1:num_connections) = &
+                  selector%rarray(1)
+                dof1 = PETSC_TRUE
+              class is(dataset_gridded_hdf5_type)
+                call PatchUpdateCouplerFromDataset(coupler,option, &
+                                                   patch%grid,selector, &
+                                                   real_count)
+                dof1 = PETSC_TRUE
+              class default
+                option%io_buffer = 'Unknown dataset class (general%liquid_' // &
+                  'pressure%itype,LIQUID_STATE,DIRICHLET_BC)'
+                call printErrMsg(option)
+            end select
           case default
             option%io_buffer = 'Unknown case (general%liquid_pressure%itype,' // &
               'LIQUID_STATE,DIRICHLET_BC)'
@@ -1202,9 +1215,21 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
         select case(general%temperature%itype)
           case(DIRICHLET_BC)
             coupler%flow_aux_mapping(GENERAL_TEMPERATURE_INDEX) = real_count
-            coupler%flow_aux_real_var(real_count,1:num_connections) = &
-              general%temperature%dataset%rarray(1)
-            dof3 = PETSC_TRUE
+            select type(selector =>general%temperature%dataset)
+              class is(dataset_ascii_type)
+                coupler%flow_aux_real_var(real_count,1:num_connections) = &
+                  selector%rarray(1)
+                dof3 = PETSC_TRUE
+              class is(dataset_gridded_hdf5_type)
+                call PatchUpdateCouplerFromDataset(coupler,option, &
+                                                   patch%grid,selector, &
+                                                   real_count)
+                dof3 = PETSC_TRUE
+              class default
+                option%io_buffer = 'Unknown dataset class (general%' // &
+                  'temperature%itype,LIQUID_STATE,DIRICHLET_BC)'
+                call printErrMsg(option)
+            end select
           case default
             option%io_buffer = 'Unknown case (general%temperature%itype,' // &
               'LIQUID_STATE,DIRICHLET_BC)'
