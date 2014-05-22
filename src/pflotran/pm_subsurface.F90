@@ -95,17 +95,8 @@ subroutine PMSubsurfaceInit(this)
   
   PetscErrorCode :: ierr
 
-  ! set up communicator
-  select case(this%realization%discretization%itype)
-    case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
-      this%comm1 => StructuredCommunicatorCreate()
-    case(UNSTRUCTURED_GRID)
-      this%comm1 => UnstructuredCommunicatorCreate()
-  end select
-  call this%comm1%SetDM(this%realization%discretization%dm_1dof)
-
   ! set the communicator
-  this%realization%comm1 => this%comm1
+  this%comm1 => this%realization%comm1
   
 end subroutine PMSubsurfaceInit
 

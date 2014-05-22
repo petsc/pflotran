@@ -190,6 +190,8 @@ subroutine RealizationCreateDiscretization(realization)
   use Unstructured_Cell_module
   use DM_Kludge_module
   use Variables_module, only : VOLUME
+  use Structured_Communicator_class, only : StructuredCommunicatorCreate
+  use Unstructured_Communicator_class, only : UnstructuredCommunicatorCreate
   
   implicit none
   
@@ -470,6 +472,14 @@ subroutine RealizationCreateDiscretization(realization)
         PETSC_DETERMINE,field%flowrate_aveg,ierr)
     call VecSet(field%flowrate_aveg,0.d0,ierr)
   endif
+
+  select case(realization%discretization%itype)
+    case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
+      realization%comm1 => StructuredCommunicatorCreate()
+    case(UNSTRUCTURED_GRID)
+      realization%comm1 => UnstructuredCommunicatorCreate()
+  end select
+  call realization%comm1%SetDM(discretization%dm_1dof)
 
 end subroutine RealizationCreateDiscretization
 
