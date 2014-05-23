@@ -3955,6 +3955,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
         lnQk = - log(muco2)-lngamco2
            
       else   
+        lngamco2 = 0.d0
         lnQK = -reaction%eqgas_logK(ieqgas)*LOG_TO_LN
       endif 
           
@@ -5167,12 +5168,14 @@ subroutine RUpdateKineticState(rt_auxvar,global_auxvar,material_auxvar, &
             global_auxvar%reaction_rate(2) &
               = global_auxvar%reaction_rate(2) & 
               + rt_auxvar%mnrl_rate(imnrl)*option%tran_dt &
-              * reaction%mineral%mnrlstoich(icomp,imnrl) !/option%flow_dt
+              * reaction%mineral%mnrlstoich(iaqspec,imnrl) !/option%flow_dt
+!              * reaction%mineral%mnrlstoich(icomp,imnrl) !/option%flow_dt
           else if (icomp == reaction%species_idx%h2o_aq_id) then
             global_auxvar%reaction_rate(1) &
               = global_auxvar%reaction_rate(1) &
               + rt_auxvar%mnrl_rate(imnrl)*option%tran_dt &
-              * reaction%mineral%mnrlstoich(icomp,imnrl) !/option%flow_dt
+              * reaction%mineral%mnrlstoich(iaqspec,imnrl) !/option%flow_dt
+!              * reaction%mineral%mnrlstoich(icomp,imnrl) !/option%flow_dt
           endif
         enddo 
       endif   
