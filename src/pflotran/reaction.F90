@@ -1700,7 +1700,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 
             reaction%eqgas_logK(igas) = -lnQK*LN_TO_LOG
 !           reaction%scco2_eq_logK = -lnQK*LN_TO_LOG
-            global_auxvar%scco2_eq_logK = -lnQK*LN_TO_LOG
+!geh: scco2_eq_logK is only used in one location.  Why add to global_auxvar???
+!geh            global_auxvar%scco2_eq_logK = -lnQK*LN_TO_LOG
                         
             ! activity of water
             if (reaction%eqgash2oid(igas) > 0) then
@@ -2066,7 +2067,12 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
               CONSTRAINT_SUPERCRIT_CO2) then
             igas = aq_species_constraint%constraint_spec_id(i)
             if (abs(reaction%species_idx%co2_gas_id) == igas) then
-              reaction%eqgas_logK(igas) = global_auxvar%scco2_eq_logK
+              option%io_buffer = 'Adding "scco2_eq_logK" to ' // &
+                'global_auxvar_type solely so you can set reaction%' // &
+                '%eqgas_logK(igas) within ReactionPrintConstraint is not ' // &
+                'acceptable.  Find another way! - Regards, Glenn'
+              call printErrMsg(option)
+!geh              reaction%eqgas_logK(igas) = global_auxvar%scco2_eq_logK
             endif
           endif
         enddo

@@ -126,9 +126,9 @@ subroutine GlobalAuxVarInit(auxvar,option)
   if (option%nflowdof > 0) then
     allocate(auxvar%den(option%nphase))
     auxvar%den = 0.d0
-    allocate(auxvar%pres(option%nphase))
-    auxvar%pres = 0.d0
   endif
+  allocate(auxvar%pres(option%nphase))
+  auxvar%pres = 0.d0
   allocate(auxvar%temp(ONE_INTEGER))
   auxvar%temp = 0.d0
   allocate(auxvar%sat(option%nphase))
@@ -234,47 +234,42 @@ subroutine GlobalAuxVarCopy(auxvar,auxvar2,option)
   auxvar2%sat = auxvar%sat
   auxvar2%den = auxvar%den
   auxvar2%den_kg = auxvar%den_kg
-  auxvar2%sat_store = auxvar%sat_store
-  auxvar2%den_kg_store = auxvar%den_kg_store
 !  auxvar2%dphi = auxvar%dphi
   
-  if (associated(auxvar%reaction_rate) .and. &
-      associated(auxvar2%reaction_rate)) then
+  if (associated(auxvar2%reaction_rate)) then
     auxvar2%reaction_rate = auxvar%reaction_rate
   endif
   
-  if (associated(auxvar%m_nacl) .and. &
-      associated(auxvar2%m_nacl)) then
+  if (associated(auxvar2%m_nacl)) then
     auxvar2%m_nacl = auxvar%m_nacl
   endif
 
-  if (associated(auxvar%fugacoeff) .and. &
-      associated(auxvar2%fugacoeff)) then
+  if (associated(auxvar2%fugacoeff)) then
     auxvar2%fugacoeff = auxvar%fugacoeff  
   endif
-  if (associated(auxvar%xmass) .and. &
-      associated(auxvar2%xmass)) then
+  if (associated(auxvar2%xmass)) then
     auxvar2%xmass = auxvar%xmass  
   endif
-  if (associated(auxvar%pres_store) .and. &
-      associated(auxvar2%pres_store)) then
+  if (associated(auxvar2%pres_store)) then
     auxvar2%pres_store = auxvar%pres_store  
   endif
-  if (associated(auxvar%den_store) .and. &
-      associated(auxvar2%den_store)) then
+  if (associated(auxvar2%den_store)) then
     auxvar2%den_store = auxvar%den_store  
   endif
-  if (associated(auxvar%temp_store) .and. &
-      associated(auxvar2%temp_store)) then
+  if (associated(auxvar2%sat_store)) then
+    auxvar2%sat_store = auxvar%sat_store  
+  endif
+  if (associated(auxvar2%den_kg_store)) then
+    auxvar2%den_kg_store = auxvar%den_kg_store
+  endif
+  if (associated(auxvar2%temp_store)) then
     auxvar2%temp_store = auxvar%temp_store  
   endif
-  if (associated(auxvar%fugacoeff_store) .and. &
-      associated(auxvar2%fugacoeff_store)) then
+  if (associated(auxvar2%fugacoeff_store)) then
     auxvar2%fugacoeff_store = auxvar%fugacoeff_store  
   endif
 
-  if (associated(auxvar%mass_balance) .and. &
-      associated(auxvar2%mass_balance)) then
+  if (associated(auxvar2%mass_balance)) then
     auxvar2%mass_balance = auxvar%mass_balance
     auxvar2%mass_balance_delta = auxvar%mass_balance_delta
   endif
