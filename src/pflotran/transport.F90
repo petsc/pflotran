@@ -186,8 +186,8 @@ subroutine TDispersion(global_auxvar_up,material_auxvar_up, &
 #endif
   endif
 
+  ! CO2-specific
 ! Add in multiphase, clu 12/29/08
-#ifdef CHUAN_CO2  
   if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
        .or. option%iflowmode == FLASH2_MODE) then
     do
@@ -230,7 +230,6 @@ subroutine TDispersion(global_auxvar_up,material_auxvar_up, &
       endif
     enddo
   endif
-#endif  
   
 end subroutine TDispersion
 
@@ -355,9 +354,8 @@ subroutine TDispersionBC(ibndtype, &
   end select
 
 
-
+  ! CO2-specific
 ! Add in multiphase, clu 12/29/08
-#ifdef CHUAN_CO2  
   if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
       .or. option%iflowmode == FLASH2_MODE) then
     do 
@@ -415,7 +413,6 @@ subroutine TDispersionBC(ibndtype, &
       end select
     enddo
   endif
-#endif
 
 end subroutine TDispersionBC
 
@@ -481,8 +478,8 @@ subroutine TFlux(rt_parameter, &
     enddo
   endif
   
+  ! CO2-specific
 ! Add in multiphase, clu 12/29/08
-#ifdef CHUAN_CO2
   if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
       .or. option%iflowmode == FLASH2_MODE) then
     do
@@ -496,7 +493,6 @@ subroutine TFlux(rt_parameter, &
                 coef_dn(iphase)*rt_auxvar_dn%total(1:ndof,iphase)
     enddo
   endif
-#endif
 
 end subroutine TFlux
 
@@ -570,8 +566,8 @@ subroutine TFlux_CD(rt_parameter, &
     enddo
   endif
   
+  ! CO2-specific
 ! Add in multiphase, clu 12/29/08
-#ifdef CHUAN_CO2
   if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
       .or. option%iflowmode == FLASH2_MODE) then
     do
@@ -588,7 +584,6 @@ subroutine TFlux_CD(rt_parameter, &
                        coef_22(iphase)*rt_auxvar_dn%total(1:ndof,iphase)
     enddo
   endif
-#endif
 
 end subroutine TFlux_CD
 
@@ -666,8 +661,8 @@ subroutine TFluxDerivative(rt_parameter, &
     ! dRic_dCj
   endif
 
+  ! CO2-specific
 ! Add in multiphase, clu 12/29/08
-#ifdef CHUAN_CO2  
   if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
       .or. option%iflowmode == FLASH2_MODE) then
     do 
@@ -693,7 +688,6 @@ subroutine TFluxDerivative(rt_parameter, &
       endif
     enddo
   endif
-#endif
 
 end subroutine TFluxDerivative
 
@@ -781,8 +775,8 @@ subroutine TFluxDerivative_CD(rt_parameter, &
     ! dRic_dCj
   endif
 
+  ! CO2-specific
 ! Add in multiphase, clu 12/29/08
-#ifdef CHUAN_CO2  
   if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
       .or. option%iflowmode == FLASH2_MODE) then
     do 
@@ -812,7 +806,6 @@ subroutine TFluxDerivative_CD(rt_parameter, &
       endif
     enddo
   endif
-#endif
 
 end subroutine TFluxDerivative_CD
 
@@ -868,8 +861,8 @@ subroutine TFluxCoef(option,area,velocity,diffusion,fraction_upwind,T_up,T_dn)
   T_up(iphase) = coef_up*area*1000.d0  ! 1000 converts m^3 -> L
   T_dn(iphase) = coef_dn*area*1000.d0
 
+  ! CO2-specific
 ! Add in multiphase, clu 12/29/08
-#ifdef CHUAN_CO2  
   if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
       .or. option%iflowmode == FLASH2_MODE) then
     do
@@ -900,7 +893,6 @@ subroutine TFluxCoef(option,area,velocity,diffusion,fraction_upwind,T_up,T_dn)
   
     enddo
   endif
-#endif
 
 end subroutine TFluxCoef
 

@@ -1237,10 +1237,11 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   use Constraint_module
   use EOS_Water_module
   use Material_Aux_class
-#ifdef CHUAN_CO2
+
+  ! CO2-specific
   use co2eos_module, only: Henry_duan_sun
   use co2_span_wagner_module, only: co2_span_wagner
-#endif  
+
   implicit none
   
   type(reactive_transport_auxvar_type) :: rt_auxvar
@@ -1303,12 +1304,11 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 
   PetscInt :: num_it_act_coef_turned_on
   
-#ifdef CHUAN_CO2  
+  ! CO2-specific
   PetscReal :: dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,&
                yco2,pco2,sat_pressure,lngamco2
   PetscInt :: iflag
   PetscErrorCode :: ierr
-#endif
 
   surface_complexation => reaction%surface_complexation
   mineral_reaction => reaction%mineral
@@ -1636,15 +1636,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 !                                reaction%eqgasstoich(jcomp,igas)
             Jac(icomp,comp_id) = reaction%eqgasstoich(jcomp,igas)/ &
               rt_auxvar%pri_molal(comp_id)
-
-!#ifdef CHUAN_CO2
-!            print *,'Gas CO2 constraint Jac,',igas, icomp, comp_id, &
-!              reaction%eqgasstoich(jcomp,igas),&
-!              Jac(icomp,comp_id), rt_auxvar%pri_molal(comp_id), lnQK
-!#endif
           enddo
 
-#ifdef CHUAN_CO2        
+        ! CO2-specific
         case(CONSTRAINT_SUPERCRIT_CO2)
           
           igas = constraint_id(icomp)
@@ -1729,7 +1723,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
               
             enddo
          endif       
-#endif           
+        ! end CO2-specific
       end select
     enddo
     
@@ -2058,9 +2052,11 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     enddo
   else
 
-    if (.not.option%use_isothermal) then
+    ! CO2-specific
+    if (.not.option%use_isothermal .and. &
+        (option%iflowmode == MPH_MODE .or. &
+         option%iflowmode == FLASH2_MODE)) then
       call RUpdateTempDependentCoefs(global_auxvar,reaction,PETSC_TRUE,option)
-#ifdef CHUAN_CO2
       if (associated(reaction%eqgas_logKcoef)) then
         do i = 1, reaction%naqcomp
           if (aq_species_constraint%constraint_type(i) == &
@@ -2077,7 +2073,6 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
           endif
         enddo
       endif
-#endif                                     
     endif
 
 200 format('')
@@ -2169,7 +2164,8 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
       mole_fraction_h2o,' [---]'
     write(option%fid_out,'(a20,1pe12.4,a9)') 'mass fraction H2O: ', &
       mass_fraction_h2o,' [---]'
-#ifdef CHUAN_CO2
+
+    ! CO2-specific
     if (option%iflowmode == MPH_MODE .or. option%iflowmode == FLASH2_MODE) then
       if (global_auxvar%den_kg(2) > 0.d0) then
         write(option%fid_out,'(a20,f8.2,a9)') '     density CO2: ', &
@@ -2189,7 +2185,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
         endif
       endif
     endif
-#endif
+    ! end CO2-specific
 
     write(option%fid_out,90)
 
@@ -3536,9 +3532,7 @@ subroutine CO2AqActCoeff(rt_auxvar,global_auxvar,reaction,option)
   ! 
     
   use Option_module
-#ifdef CHUAN_CO2  
   use co2eos_module
-#endif
 
   implicit none
 
@@ -3563,10 +3557,8 @@ subroutine CO2AqActCoeff(rt_auxvar,global_auxvar,reaction,option)
      m_cl = rt_auxvar%pri_molal(reaction%species_idx%cl_ion_id)
   endif
 
-#ifdef CHUAN_CO2  
   call Henry_duan_sun(tc,pco2*1D-5,henry, 1.D0,lngamco2, &
          m_na,m_cl,sat_pressure*1D-5,co2aqact)
-#endif
   
   if (reaction%species_idx%co2_aq_id /= 0) then
     rt_auxvar%pri_act_coef(reaction%species_idx%co2_aq_id) = co2aqact
@@ -3822,10 +3814,10 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   ! 
 
   use Option_module
-#ifdef CHUAN_CO2  
+
+  ! CO2-specific
   use co2eos_module, only: Henry_duan_sun
   use EOS_Water_module
-#endif  
   
   implicit none
   
@@ -3842,11 +3834,10 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   PetscReal :: den_kg_per_L, xmass
   PetscReal :: pressure, temperature, xphico2, muco2, den, m_na, m_cl
   
-#ifdef CHUAN_CO2  
+  ! CO2-specific
   PetscReal :: dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,&
                yco2,pco2,sat_pressure,lngamco2
   rt_auxvar%total = 0.d0 !debugging 
-#endif
   
   iphase = 1           
 !  den_kg_per_L = global_auxvar%den_kg(iphase)*1.d-3              
@@ -3911,9 +3902,9 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   ! units of dtotal = kg water/L water
   rt_auxvar%aqueous%dtotal = rt_auxvar%aqueous%dtotal*den_kg_per_L
 
+  ! CO2-specific
+  if (option%iflowmode == G_MODE) return
 ! *********** Add SC phase and gas contributions ***********************  
-#ifdef CHUAN_CO2
-
   iphase = 2           
 
   if (iphase > option%nphase) return 
@@ -4001,7 +3992,6 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   ! rt_auxvar%dtotal(:, :,iphase) = rt_auxvar%dtotal(:,:,iphase)!*den_kg_per_L
   endif
   
-#endif  
 end subroutine RTotal
 
 ! ************************************************************************** !
@@ -4909,8 +4899,9 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,material_auxvar, &
     enddo
   endif
 
+  ! CO2-specific
+  if (option%iflowmode == G_MODE) return
 ! Add in multiphase, clu 12/29/08
-#ifdef CHUAN_CO2
   do 
     iphase = iphase + 1
     if (iphase > option%nphase) exit
@@ -4924,7 +4915,6 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,material_auxvar, &
     endif 
 ! add code for other phases here
   enddo
-#endif
   
 end subroutine RTAccumulation
 
@@ -5001,8 +4991,9 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
     enddo
   endif
 
+  ! CO2-specific
+  if (option%iflowmode == G_MODE) return
 ! Add in multiphase, clu 12/29/08
-#ifdef CHUAN_CO2
   do
     iphase = iphase +1 
     if (iphase > option%nphase) exit
@@ -5023,7 +5014,6 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
       endif   
     endif
   enddo
-#endif
 
 end subroutine RTAccumulationDerivative
 
@@ -5158,8 +5148,9 @@ subroutine RUpdateKineticState(rt_auxvar,global_auxvar,material_auxvar, &
       if (rt_auxvar%mnrl_volfrac(imnrl) < 0.d0) &
         rt_auxvar%mnrl_volfrac(imnrl) = 0.d0
 
-#ifdef CHUAN_CO2
-      if (option%iflowmode == MPH_MODE .or. option%iflowmode == FLASH2_MODE) then
+      ! CO2-specific
+      if (option%iflowmode == MPH_MODE .or. &
+          option%iflowmode == FLASH2_MODE) then
         ncomp = reaction%mineral%kinmnrlspecid(0,imnrl)
         do iaqspec = 1, ncomp  
           icomp = reaction%mineral%kinmnrlspecid(iaqspec,imnrl)
@@ -5176,7 +5167,6 @@ subroutine RUpdateKineticState(rt_auxvar,global_auxvar,material_auxvar, &
           endif
         enddo 
       endif   
-#endif
     enddo
   endif
 
