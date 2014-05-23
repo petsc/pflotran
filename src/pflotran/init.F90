@@ -1411,6 +1411,16 @@ subroutine InitReadRequiredCardsFromInput(realization)
   if (.not.InputError(input)) then
     call ReactionInit(realization%reaction,input,option)
   endif
+
+#ifdef CHUAN_CO2
+  ! catch the misuse of two phase reactive transport
+  if (StringCompareIgnoreCase(option%flowmode,'GENERAL') &
+      .and. option%ntrandof > 0) then
+    option%io_buffer = 'Cannot run reactive transport ' // &
+      'coupled to general multiphase with CHUAN_CO2 defined.'
+    call printErrMsg(option)
+  endif
+#endif
     
 end subroutine InitReadRequiredCardsFromInput
 
