@@ -1445,7 +1445,8 @@ subroutine FlowConditionGeneralRead(condition,input,option)
       condition%iphase = ANY_STATE
     elseif (associated(general%liquid_flux) .and. &
             associated(general%gas_flux) .and. &
-            associated(general%energy_flux)) then
+            (associated(general%energy_flux) .or. &
+             associated(general%temperature))) then
       condition%iphase = ANY_STATE
     else
       ! some sort of dirichlet-based pressure, temperature, etc.

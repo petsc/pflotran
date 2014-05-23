@@ -54,6 +54,7 @@ module General_module
          GeneralSetPlotVariables, &
          GeneralCheckUpdatePre, &
          GeneralCheckUpdatePost, &
+         GeneralMapBCAuxvarsToGlobal, &
          GeneralDestroy
 
 contains
@@ -3945,6 +3946,62 @@ subroutine GeneralSSSandboxLoadAuxReal(srcsink,aux_real,gen_auxvar,option)
   end select
   
 end subroutine GeneralSSSandboxLoadAuxReal
+
+! ************************************************************************** !
+
+subroutine GeneralMapBCAuxvarsToGlobal(realization)
+  ! 
+  ! Deallocates variables associated with Richard
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
+
+  use Realization_class
+  use Option_module
+  use Patch_module
+  use Coupler_module
+  use Connection_module
+
+  implicit none
+
+  type(realization_type) :: realization
+  
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(coupler_type), pointer :: boundary_condition
+  type(connection_set_type), pointer :: cur_connection_set
+  type(general_auxvar_type), pointer :: gen_auxvars_bc(:)  
+  type(global_auxvar_type), pointer :: global_auxvars_bc(:)  
+
+  PetscInt :: sum_connection, iconn
+  
+  option => realization%option
+  patch => realization%patch
+
+  if (option%ntrandof == 0) return ! no need to update
+  
+  gen_auxvars_bc => patch%aux%General%auxvars_bc
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
+  
+  boundary_condition => patch%boundary_conditions%first
+  sum_connection = 0    
+  do 
+    if (.not.associated(boundary_condition)) exit
+    cur_connection_set => boundary_condition%connection_set
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      global_auxvars_bc(sum_connection)%sat = &
+        gen_auxvars_bc(sum_connection)%sat
+      global_auxvars_bc(sum_connection)%den_kg = &
+        gen_auxvars_bc(sum_connection)%den_kg
+      global_auxvars_bc(sum_connection)%temp = &
+        gen_auxvars_bc(sum_connection)%temp
+    enddo
+    boundary_condition => boundary_condition%next
+  enddo
+  
+end subroutine GeneralMapBCAuxvarsToGlobal
 
 ! ************************************************************************** !
 

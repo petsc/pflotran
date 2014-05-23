@@ -88,7 +88,7 @@ private
             RealizationCountCells, &
             RealizationPrintGridStatistics, &
             RealizationSetUpBC4Faces, &
-            RealizatonPassPtrsToPatches, &
+            RealizationPassPtrsToPatches, &
             RealLocalToLocalWithArray, &
             RealizationCalculateCFL1Timestep, &
             RealizationNonInitializedData, &
@@ -190,6 +190,8 @@ subroutine RealizationCreateDiscretization(realization)
   use Unstructured_Cell_module
   use DM_Kludge_module
   use Variables_module, only : VOLUME
+  use Structured_Communicator_class, only : StructuredCommunicatorCreate
+  use Unstructured_Communicator_class, only : UnstructuredCommunicatorCreate
   
   implicit none
   
@@ -471,6 +473,14 @@ subroutine RealizationCreateDiscretization(realization)
     call VecSet(field%flowrate_aveg,0.d0,ierr)
   endif
 
+  select case(realization%discretization%itype)
+    case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
+      realization%comm1 => StructuredCommunicatorCreate()
+    case(UNSTRUCTURED_GRID)
+      realization%comm1 => UnstructuredCommunicatorCreate()
+  end select
+  call realization%comm1%SetDM(discretization%dm_1dof)
+
 end subroutine RealizationCreateDiscretization
 
 ! ************************************************************************** !
@@ -519,7 +529,7 @@ end subroutine RealizationLocalizeRegions
 
 ! ************************************************************************** !
 
-subroutine RealizatonPassPtrsToPatches(realization)
+subroutine RealizationPassPtrsToPatches(realization)
   ! 
   ! Sets patch%field => realization%field
   ! 
@@ -537,7 +547,7 @@ subroutine RealizatonPassPtrsToPatches(realization)
   realization%patch%datasets => realization%datasets
   realization%patch%reaction => realization%reaction
   
-end subroutine RealizatonPassPtrsToPatches
+end subroutine RealizationPassPtrsToPatches
 
 ! ************************************************************************** !
 
@@ -1766,6 +1776,12 @@ subroutine RealizationUpdatePropertiesTS(realization)
       call VecRestoreArrayF90(field%porosity_mnrl_loc,porosity_mnrl_loc_p,ierr)
     endif
     
+    call MaterialGetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                 POROSITY,ZERO_INTEGER)
+    call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                    field%work_loc,ONEDOF)
+    call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                 POROSITY,ZERO_INTEGER)
   endif
   
   if ((porosity_updated .and. &
