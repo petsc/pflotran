@@ -999,7 +999,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
 !        auxvars(ghosted_id)%auxvar_elem(0)%pc(:),auxvars(ghosted_id)%auxvar_elem(0)%pres, &
 !        global_auxvars(ghosted_id)%pres(:)
 
-      global_auxvars(ghosted_id)%temp(:) = auxvars(ghosted_id)%auxvar_elem(0)%temp
+      global_auxvars(ghosted_id)%temp = auxvars(ghosted_id)%auxvar_elem(0)%temp
       global_auxvars(ghosted_id)%sat(:) = auxvars(ghosted_id)%auxvar_elem(0)%sat(:)
       global_auxvars(ghosted_id)%fugacoeff(1) = xphi
       global_auxvars(ghosted_id)%den(:) = auxvars(ghosted_id)%auxvar_elem(0)%den(:)
@@ -1072,7 +1072,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
       if (associated(global_auxvars_bc)) then
         global_auxvars_bc(sum_connection)%pres(:) = auxvars_bc(sum_connection)%auxvar_elem(0)%pres -&
                      auxvars_bc(sum_connection)%auxvar_elem(0)%pc(:)
-        global_auxvars_bc(sum_connection)%temp(:) = auxvars_bc(sum_connection)%auxvar_elem(0)%temp
+        global_auxvars_bc(sum_connection)%temp = auxvars_bc(sum_connection)%auxvar_elem(0)%temp
         global_auxvars_bc(sum_connection)%sat(:) = auxvars_bc(sum_connection)%auxvar_elem(0)%sat(:)
         !    global_auxvars(ghosted_id)%sat_store = 
         global_auxvars_bc(sum_connection)%fugacoeff(1) = xphi
@@ -2672,7 +2672,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
     if (associated(global_auxvars)) then
        global_auxvars(ghosted_id)%pres(:) = auxvars(ghosted_id)%auxvar_elem(0)%pres - &
                auxvars(ghosted_id)%auxvar_elem(0)%pc(:)
-       global_auxvars(ghosted_id)%temp(:) = auxvars(ghosted_id)%auxvar_elem(0)%temp
+       global_auxvars(ghosted_id)%temp = auxvars(ghosted_id)%auxvar_elem(0)%temp
        global_auxvars(ghosted_id)%sat(:) = auxvars(ghosted_id)%auxvar_elem(0)%sat(:)
        global_auxvars(ghosted_id)%fugacoeff(1) = xphi
        global_auxvars(ghosted_id)%den(:) = auxvars(ghosted_id)%auxvar_elem(0)%den(:)
@@ -2965,7 +2965,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       if( associated(global_auxvars_bc))then
         global_auxvars_bc(sum_connection)%pres(:) = auxvars_bc(sum_connection)%auxvar_elem(0)%pres -&
                      auxvars(ghosted_id)%auxvar_elem(0)%pc(:)
-        global_auxvars_bc(sum_connection)%temp(:) = auxvars_bc(sum_connection)%auxvar_elem(0)%temp
+        global_auxvars_bc(sum_connection)%temp = auxvars_bc(sum_connection)%auxvar_elem(0)%temp
         global_auxvars_bc(sum_connection)%sat(:) = auxvars_bc(sum_connection)%auxvar_elem(0)%sat(:)
       !    global_auxvars(ghosted_id)%sat_store = 
         global_auxvars_bc(sum_connection)%fugacoeff(1) = xphi
@@ -4384,7 +4384,7 @@ subroutine MphaseSecondaryHeat(sec_heat_vars,auxvar,global_auxvar, &
   dm_plus = sec_heat_vars%dm_plus
   dm_minus = sec_heat_vars%dm_minus
   area_fm = sec_heat_vars%interfacial_area
-! temp_primary_node = global_auxvar%temp(1)
+! temp_primary_node = global_auxvar%temp
   temp_primary_node = auxvar%temp
 
   coeff_left = 0.d0

@@ -1656,7 +1656,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             pres = conc(icomp)*1.D5
             global_auxvar%pres(2) = pres
             
-            tc = global_auxvar%temp(1)
+            tc = global_auxvar%temp
 
             call EOSWaterSaturationPressure(tc, sat_pressure, ierr)
             
@@ -2008,14 +2008,14 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     case(FLASH2_MODE,MPH_MODE,IMS_MODE,MIS_MODE)
     case(NULL_MODE)
       global_auxvar%den_kg(iphase) = option%reference_water_density
-      global_auxvar%temp(1) = option%reference_temperature
+      global_auxvar%temp = option%reference_temperature
       global_auxvar%sat(iphase) = option%reference_saturation
     case(RICHARDS_MODE)
-      global_auxvar%temp(1) = option%reference_temperature
+      global_auxvar%temp = option%reference_temperature
   end select
         
 !  global_auxvar%den_kg(iphase) = option%reference_water_density
-!  global_auxvar%temp(1) = option%reference_temperature
+!  global_auxvar%temp = option%reference_temperature
 !  global_auxvar%sat(iphase) = option%reference_saturation
   bulk_vol_to_fluid_vol = option%reference_porosity* &
                           global_auxvar%sat(iphase)*1000.d0
@@ -2123,7 +2123,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
                       log(rt_auxvar%pri_molal(comp_id)*rt_auxvar%pri_act_coef(comp_id))
         enddo
 
-        tk = global_auxvar%temp(1)+273.15d0
+        tk = global_auxvar%temp+273.15d0
         ehfac = IDEAL_GAS_CONST*tk*LOG_TO_LN/faraday
         eh = ehfac*(-4.d0*ph+lnQKgas(ifo2)*LN_TO_LOG+logKeh(tk))/4.d0
         pe = eh/ehfac
@@ -2160,7 +2160,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     write(option%fid_out,'(a20,1pe12.4,a5)') '        pressure: ', &
       global_auxvar%pres(1),' [Pa]'
     write(option%fid_out,'(a20,f8.2,a4)') '     temperature: ', &
-      global_auxvar%temp(1),' [C]'
+      global_auxvar%temp,' [C]'
     write(option%fid_out,'(a20,f8.2,a9)') '     density H2O: ', &
       global_auxvar%den_kg(1),' [kg/m^3]'
     write(option%fid_out,'(a20,1p2e12.4,a9)') 'ln / activity H2O: ', &
@@ -2697,8 +2697,8 @@ subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
     global_auxvar => constraint_coupler%global_auxvar
 
     iphase = 1
-    global_auxvar%temp(iphase) = option%reference_temperature
-    tempk = tk + global_auxvar%temp(iphase)
+    global_auxvar%temp = option%reference_temperature
+    tempk = tk + global_auxvar%temp
     
     potential = 0.1d0 ! initial guess
     boltzmann = exp(-faraday*potential/(rgas*tempk))
@@ -3553,7 +3553,7 @@ subroutine CO2AqActCoeff(rt_auxvar,global_auxvar,reaction,option)
 
 ! print *,'CO2AqActCoeff: ', global_auxvar%pres(:)
 
-  tc = global_auxvar%temp(1)
+  tc = global_auxvar%temp
   pco2 = global_auxvar%pres(2)
   sat_pressure =0D0
 
@@ -3926,7 +3926,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
     do ieqgas = 1, reaction%ngas ! all gas phase species are secondary
 
       pressure = global_auxvar%pres(2)
-      temperature = global_auxvar%temp(1)
+      temperature = global_auxvar%temp
       xphico2 = global_auxvar%fugacoeff(1)
 !     den = global_auxvar%den(2)
  
@@ -5241,7 +5241,7 @@ subroutine RUpdateTempDependentCoefs(global_auxvar,reaction, &
   PetscInt, parameter :: iphase = 1
   
   if (.not.reaction%use_geothermal_hpt)then
-    temp = global_auxvar%temp(iphase)
+    temp = global_auxvar%temp
     pres = 0.d0
     if (associated(reaction%eqcplx_logKcoef)) then
       call ReactionInterpolateLogK(reaction%eqcplx_logKcoef, &
@@ -5267,7 +5267,7 @@ subroutine RUpdateTempDependentCoefs(global_auxvar,reaction, &
                                 reaction%surface_complexation%nsrfcplx)      
     endif
   else ! high pressure and temperature
-    temp = global_auxvar%temp(iphase)
+    temp = global_auxvar%temp
     pres = global_auxvar%pres(iphase)
     if (associated(reaction%eqcplx_logKcoef)) then
       call ReactionInterpolateLogK_hpt(reaction%eqcplx_logKcoef, &

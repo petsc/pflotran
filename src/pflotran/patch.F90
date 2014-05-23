@@ -2548,12 +2548,12 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
         endif
 
 #ifndef DONT_USE_WATEOS
-        call EOSWaterDensity(global_auxvar%temp(1), &
+        call EOSWaterDensity(global_auxvar%temp, &
                              global_auxvar%pres(1), &
                              global_auxvar%den_kg(1), &
                              dum1,ierr)
 #else
-        call EOSWaterdensity(global_auxvar%temp(1),global_auxvar%pres(1), &
+        call EOSWaterdensity(global_auxvar%temp,global_auxvar%pres(1), &
                              global_auxvar%den_kg(1),dum1,ierr)
 #endif                     
       else
@@ -2764,7 +2764,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
         select case(ivar)
           case(TEMPERATURE)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%Global%auxvars(grid%nL2G(local_id))%temp(1)
+              vec_ptr(local_id) = patch%aux%Global%auxvars(grid%nL2G(local_id))%temp
             enddo
           case(LIQUID_PRESSURE)
             do local_id=1,grid%nlmax
@@ -2884,7 +2884,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
         select case(ivar)
           case(TEMPERATURE)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%Global%auxvars(grid%nL2G(local_id))%temp(1)
+              vec_ptr(local_id) = patch%aux%Global%auxvars(grid%nL2G(local_id))%temp
             enddo
           case(LIQUID_PRESSURE)
             do local_id=1,grid%nlmax
@@ -2958,7 +2958,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
         
           case(TEMPERATURE)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%Global%auxvars(grid%nL2G(local_id))%temp(1)
+              vec_ptr(local_id) = patch%aux%Global%auxvars(grid%nL2G(local_id))%temp
             enddo
           case(LIQUID_PRESSURE)
             do local_id=1,grid%nlmax
@@ -3036,7 +3036,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
         
 !         case(TEMPERATURE)
 !           do local_id=1,grid%nlmax
-!             vec_ptr(local_id) = patch%aux%Global%auxvars(grid%nL2G(local_id))%temp(1)
+!             vec_ptr(local_id) = patch%aux%Global%auxvars(grid%nL2G(local_id))%temp
 !           enddo
           case(LIQUID_PRESSURE)
             do local_id=1,grid%nlmax
@@ -3061,7 +3061,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
         select case(ivar)
           case(TEMPERATURE)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%Global%auxvars(grid%nL2G(local_id))%temp(1)
+              vec_ptr(local_id) = patch%aux%Global%auxvars(grid%nL2G(local_id))%temp
             enddo
           case(LIQUID_PRESSURE)
             do local_id=1,grid%nlmax
@@ -3279,7 +3279,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
                       log(patch%aux%RT%auxvars(ghosted_id)%pri_molal(comp_id)* &
                         patch%aux%RT%auxvars(ghosted_id)%pri_act_coef(comp_id))
               enddo
-              tk = patch%aux%Global%auxvars(grid%nL2G(local_id))%temp(1) + &
+              tk = patch%aux%Global%auxvars(grid%nL2G(local_id))%temp + &
                    273.15d0
               ehfac = IDEAL_GAS_CONST*tk*LOG_TO_LN/faraday
               eh0 = ehfac*(-4.d0*ph0+lnQKgas*LN_TO_LOG+logKeh(tk))/4.d0
@@ -3313,7 +3313,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
                       log(patch%aux%RT%auxvars(ghosted_id)%pri_molal(comp_id)* &
                         patch%aux%RT%auxvars(ghosted_id)%pri_act_coef(comp_id))
               enddo
-              tk = patch%aux%Global%auxvars(grid%nL2G(local_id))%temp(1) + &
+              tk = patch%aux%Global%auxvars(grid%nL2G(local_id))%temp + &
                    273.15d0
               ehfac = IDEAL_GAS_CONST*tk*LOG_TO_LN/faraday
               eh0 = ehfac*(-4.d0*ph0+lnQKgas*LN_TO_LOG+logKeh(tk))/4.d0
@@ -3783,7 +3783,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
      if (associated(patch%aux%TH)) then
         select case(ivar)
           case(TEMPERATURE)
-            value = patch%aux%Global%auxvars(ghosted_id)%temp(1)
+            value = patch%aux%Global%auxvars(ghosted_id)%temp
           case(LIQUID_PRESSURE)
             value = patch%aux%Global%auxvars(ghosted_id)%pres(1)
           case(LIQUID_SATURATION)
@@ -3853,7 +3853,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
       else if (associated(patch%aux%Flash2)) then
         select case(ivar)
           case(TEMPERATURE)
-            value = patch%aux%Global%auxvars(ghosted_id)%temp(1)
+            value = patch%aux%Global%auxvars(ghosted_id)%temp
           case(LIQUID_PRESSURE)
             value = patch%aux%Global%auxvars(ghosted_id)%pres(1)
           case(LIQUID_SATURATION)
@@ -3890,7 +3890,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
       else if (associated(patch%aux%Mphase)) then
         select case(ivar)
           case(TEMPERATURE)
-            value = patch%aux%Global%auxvars(ghosted_id)%temp(1)
+            value = patch%aux%Global%auxvars(ghosted_id)%temp
           case(LIQUID_PRESSURE)
             value = patch%aux%Global%auxvars(ghosted_id)%pres(1)
           case(GAS_PRESSURE)
@@ -3938,7 +3938,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
       else if (associated(patch%aux%Immis)) then
         select case(ivar)
           case(TEMPERATURE)
-            value = patch%aux%Global%auxvars(ghosted_id)%temp(1)
+            value = patch%aux%Global%auxvars(ghosted_id)%temp
           case(LIQUID_PRESSURE)
             value = patch%aux%Global%auxvars(ghosted_id)%pres(1)
           case(GAS_PRESSURE)
@@ -3969,7 +3969,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
       else if (associated(patch%aux%Miscible)) then
         select case(ivar)
 !         case(TEMPERATURE)
-!           value = patch%aux%Global%auxvars(ghosted_id)%temp(1)
+!           value = patch%aux%Global%auxvars(ghosted_id)%temp
           case(LIQUID_PRESSURE)
             value = patch%aux%Global%auxvars(ghosted_id)%pres(1)
 !         case(LIQUID_SATURATION)
@@ -4100,7 +4100,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
                         patch%aux%RT%auxvars(ghosted_id)%pri_act_coef(comp_id))
           enddo
 
-          tk = patch%aux%Global%auxvars(grid%nL2G(ghosted_id))%temp(1)+273.15d0
+          tk = patch%aux%Global%auxvars(grid%nL2G(ghosted_id))%temp+273.15d0
           ehfac = IDEAL_GAS_CONST*tk*LOG_TO_LN/faraday
           eh0 = ehfac*(-4.d0*ph0+lnQKgas*LN_TO_LOG+logKeh(tk))/4.d0
 
@@ -4128,7 +4128,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
                         patch%aux%RT%auxvars(ghosted_id)%pri_act_coef(comp_id))
           enddo
 
-          tk = patch%aux%Global%auxvars(grid%nL2G(ghosted_id))%temp(1)+273.15d0
+          tk = patch%aux%Global%auxvars(grid%nL2G(ghosted_id))%temp+273.15d0
           ehfac = IDEAL_GAS_CONST*tk*LOG_TO_LN/faraday
           eh0 = ehfac*(-4.d0*ph0+lnQKgas*LN_TO_LOG+logKeh(tk))/4.d0
           pe0 = eh0/ehfac
@@ -5496,7 +5496,7 @@ subroutine PatchGetVariable2(patch,surf_field,option,output_option,vec,ivar, &
       enddo
     case(SURFACE_LIQUID_TEMPERATURE)
       do local_id=1,grid%nlmax
-        vec_ptr(local_id) = patch%surf_aux%SurfaceGlobal%auxvars(grid%nL2G(local_id))%temp(1)
+        vec_ptr(local_id) = patch%surf_aux%SurfaceGlobal%auxvars(grid%nL2G(local_id))%temp
       enddo
     case(MATERIAL_ID)
       do local_id=1,grid%nlmax

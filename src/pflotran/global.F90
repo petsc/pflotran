@@ -267,17 +267,17 @@ subroutine GlobalSetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
       select case(isubvar)
         case(TIME_T)
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%auxvars(ghosted_id)%temp_store(1,TIME_T) = &
+            patch%aux%Global%auxvars(ghosted_id)%temp_store(TIME_T) = &
               vec_loc_p(ghosted_id)
           enddo
         case(TIME_TpDT)
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%auxvars(ghosted_id)%temp_store(1,TIME_TpDT) = &
+            patch%aux%Global%auxvars(ghosted_id)%temp_store(TIME_TpDT) = &
               vec_loc_p(ghosted_id)
           enddo
         case default
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%auxvars(ghosted_id)%temp(1) = vec_loc_p(ghosted_id)
+            patch%aux%Global%auxvars(ghosted_id)%temp = vec_loc_p(ghosted_id)
           enddo
       end select
     case(LIQUID_DENSITY)
@@ -438,9 +438,9 @@ subroutine GlobalWeightAuxVars(realization,weight)
         auxvars(ghosted_id)%pres(:) = &
           (weight*auxvars(ghosted_id)%pres_store(:,TIME_TpDT)+ &
            (1.d0-weight)*auxvars(ghosted_id)%pres_store(:,TIME_T))
-        auxvars(ghosted_id)%temp(:) = &
-          (weight*auxvars(ghosted_id)%temp_store(:,TIME_TpDT)+ &
-           (1.d0-weight)*auxvars(ghosted_id)%temp_store(:,TIME_T))
+        auxvars(ghosted_id)%temp = &
+          (weight*auxvars(ghosted_id)%temp_store(TIME_TpDT)+ &
+           (1.d0-weight)*auxvars(ghosted_id)%temp_store(TIME_T))
       enddo  
     case(MPH_MODE,FLASH2_MODE)
       ! need future implementation for ims_mode too    
@@ -448,9 +448,9 @@ subroutine GlobalWeightAuxVars(realization,weight)
         auxvars(ghosted_id)%pres(:) = &
           (weight*auxvars(ghosted_id)%pres_store(:,TIME_TpDT)+ &
            (1.d0-weight)*auxvars(ghosted_id)%pres_store(:,TIME_T))
-        auxvars(ghosted_id)%temp(:) = &
-          (weight*auxvars(ghosted_id)%temp_store(:,TIME_TpDT)+ &
-           (1.d0-weight)*auxvars(ghosted_id)%temp_store(:,TIME_T))
+        auxvars(ghosted_id)%temp = &
+          (weight*auxvars(ghosted_id)%temp_store(TIME_TpDT)+ &
+           (1.d0-weight)*auxvars(ghosted_id)%temp_store(TIME_T))
         auxvars(ghosted_id)%fugacoeff(:) = &
           (weight*auxvars(ghosted_id)%fugacoeff_store(:,TIME_TpDT)+ &
            (1.d0-weight)*auxvars(ghosted_id)%fugacoeff_store(:,TIME_T))

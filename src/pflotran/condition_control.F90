@@ -1175,7 +1175,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
                                             (temp + 273.15d0)* &
                                             surf_th_auxvars(ghosted_id)%Cw
                       surf_global_auxvars(ghosted_id)%den_kg(1) = dw_kg
-                      surf_global_auxvars(ghosted_id)%temp(1) = temp
+                      surf_global_auxvars(ghosted_id)%temp = temp
                   end select
                 enddo
                 xx_p(ibegin:iend) = 0.0d0

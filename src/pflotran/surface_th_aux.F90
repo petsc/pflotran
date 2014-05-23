@@ -184,7 +184,7 @@ subroutine SurfaceTHAuxVarCompute(xx,auxvar,global_auxvar, &
   kr = 0.d0
  
   global_auxvar%head(1) = xx(1)
-  !global_auxvar%temp(1) = xx(2)
+  !global_auxvar%temp = xx(2)
     ! RTM: Why is the above commented out?  Is one of these internal 
     ! energy instead of temperature?
  
@@ -195,7 +195,7 @@ subroutine SurfaceTHAuxVarCompute(xx,auxvar,global_auxvar, &
   ds_dp = 0.d0
   dkr_dp = 0.d0
 
-  call EOSWaterDensityEnthalpy(global_auxvar%temp(1),pw,dw_kg,dw_mol,hw,ierr)
+  call EOSWaterDensityEnthalpy(global_auxvar%temp,pw,dw_kg,dw_mol,hw,ierr)
   ! J/kmol -> whatever units
   hw = hw * option%scale
   
@@ -215,7 +215,7 @@ subroutine SurfaceTHAuxVarCompute(xx,auxvar,global_auxvar, &
 
   ! Compute unfrozen fraction, and then compute the weighted averages of 
   ! density, specific heat capacity, thermal conductivity
-  unfrozen_fraction = SurfaceTHAuxVarComputeUnfrozen(global_auxvar%temp(1))
+  unfrozen_fraction = SurfaceTHAuxVarComputeUnfrozen(global_auxvar%temp)
   auxvar%unfrozen_fraction = unfrozen_fraction
   global_auxvar%den_kg(1) = unfrozen_fraction * dw_kg + (1.d0 - unfrozen_fraction) * di_kg
   auxvar%Cwi = unfrozen_fraction * auxvar%Cw + (1.d0 - unfrozen_fraction) * auxvar%Ci
