@@ -129,7 +129,7 @@ subroutine GlobalSetAuxVarScalar(realization,value,ivar)
   use Variables_module, only : LIQUID_PRESSURE, LIQUID_SATURATION, &
                                LIQUID_DENSITY, GAS_PRESSURE, &
                                GAS_DENSITY, GAS_SATURATION, &
-                               TEMPERATURE
+                               TEMPERATURE, LIQUID_DENSITY_MOL
   
   implicit none
 
@@ -163,10 +163,15 @@ subroutine GlobalSetAuxVarScalar(realization,value,ivar)
     case(LIQUID_DENSITY)
       do i=1, patch%aux%Global%num_aux
         patch%aux%Global%auxvars(i)%den_kg(option%liquid_phase) = value
-        patch%aux%Global%auxvars(i)%den(option%liquid_phase) = value/FMWH2O
       enddo
       do i=1, realization%patch%aux%Global%num_aux_bc
         patch%aux%Global%auxvars_bc(i)%den_kg(option%liquid_phase) = value
+      enddo
+    case(LIQUID_DENSITY_MOL)
+      do i=1, patch%aux%Global%num_aux
+        patch%aux%Global%auxvars(i)%den(option%liquid_phase) = value/FMWH2O
+      enddo
+      do i=1, realization%patch%aux%Global%num_aux_bc
         patch%aux%Global%auxvars_bc(i)%den(option%liquid_phase) = value/FMWH2O
       enddo
     case(LIQUID_SATURATION)

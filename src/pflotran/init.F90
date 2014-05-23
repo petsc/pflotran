@@ -312,6 +312,7 @@ subroutine Init(simulation)
   
   ! create grid and allocate vectors
   call RealizationCreateDiscretization(realization)
+  
   if (option%nsurfflowdof>0) then
     call SurfRealizCreateDiscretization(simulation%surf_realization)
   endif
@@ -772,7 +773,7 @@ subroutine Init(simulation)
   call readRegionFiles(realization)
   ! clip regions and set up boundary connectivity, distance  
   call RealizationLocalizeRegions(realization)
-  call RealizatonPassPtrsToPatches(realization)
+  call RealizationPassPtrsToPatches(realization)
   ! link conditions with regions through couplers and generate connectivity
   call RealProcessMatPropAndSatFunc(realization)
   call RealizationProcessCouplers(realization)
@@ -891,6 +892,9 @@ subroutine Init(simulation)
                                  LIQUID_SATURATION)
       call GlobalSetAuxVarScalar(realization,option%reference_water_density, &
                                  LIQUID_DENSITY)
+    else
+      call GlobalUpdateAuxVars(realization,TIME_T,0.d0)
+      call GlobalWeightAuxVars(realization,0.d0)
     endif
 
     ! initial concentrations must be assigned after densities are set !!!

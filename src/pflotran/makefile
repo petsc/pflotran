@@ -932,8 +932,9 @@ realization.o : condition.o connection.o constraint.o coupler.o dataset.o \
                 option.o output_aux.o patch.o pflotran_constants.o reaction.o \
                 reaction_aux.o reactive_transport_aux.o realization_base.o \
                 region.o saturation_function.o strata.o string.o \
-                structured_grid.o time_storage.o uniform_velocity.o \
-                unstructured_cell.o unstructured_grid.o \
+                structured_communicator.o structured_grid.o time_storage.o \
+                uniform_velocity.o unstructured_cell.o \
+                unstructured_communicator.o unstructured_grid.o \
                 unstructured_grid_aux.o variables.o waypoint.o
 realization_base.o : communicator_base.o debug.o discretization.o field.o \
                      input_aux.o mass_transfer.o option.o output_aux.o patch.o \
