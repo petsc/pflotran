@@ -269,7 +269,10 @@ subroutine GlobalAuxVarCopy(auxvar,auxvar2,option)
     auxvar2%fugacoeff_store = auxvar%fugacoeff_store  
   endif
 
-  if (associated(auxvar2%mass_balance)) then
+  !geh: here we have to check on both as mass_balance often exists for bcs and
+  !     src/sinks but not regular cells.
+  if (associated(auxvar%mass_balance) .and. &
+      associated(auxvar2%mass_balance)) then
     auxvar2%mass_balance = auxvar%mass_balance
     auxvar2%mass_balance_delta = auxvar%mass_balance_delta
   endif
