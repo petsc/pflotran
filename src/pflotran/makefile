@@ -11,7 +11,6 @@ include ${PETSC_DIR}/conf/rules
 
 MYFLAGS = -I.
 MYFLAGS += ${FC_DEFINE_FLAG}PROCESS_MODEL
-MYFLAGS += ${FC_DEFINE_FLAG}CHUAN_CO2
 MYFLAGS += ${FC_DEFINE_FLAG}GEOMECH
 
 # if compiling pflotran_rxn or libpflotranchem.a, need to toggle 
@@ -83,10 +82,6 @@ endif
 
 ifdef no_vapor_diffusion
   MYFLAGS += ${FC_DEFINE_FLAG}NO_VAPOR_DIFFUSION
-endif
-
-ifdef scco2
-  MYFLAGS += ${FC_DEFINE_FLAG}CHUAN_CO2
 endif
 
 ifdef debug_gen
