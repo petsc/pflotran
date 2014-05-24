@@ -3961,21 +3961,21 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
       icomp = reaction%eqgasspecid(1,ieqgas)
       pressure = pressure * 1.D-5
         
-      rt_auxvar%gas_molal(ieqgas) = &
+      rt_auxvar%gas_molar(ieqgas) = &
           exp(lnQK+lngamco2)*rt_auxvar%pri_molal(icomp) &
 !          rt_auxvar%pri_act_coef(icomp)*exp(lnQK)*rt_auxvar%pri_molal(icomp) &
 !         /pressure/xphico2*den
           /(IDEAL_GAS_CONST*1.d-2*(temperature+273.15D0)*xphico2)
 
-!     print *,'ideal-gas: ',ieqgas,icomp,pressure,rt_auxvar%gas_molal(ieqgas), &
+!     print *,'ideal-gas: ',ieqgas,icomp,pressure,rt_auxvar%gas_molar(ieqgas), &
 !         rt_auxvar%pri_molal(icomp), &
 !         IDEAL_GAS_CONST*(temperature+273.15D0)*1.d-2
 
       rt_auxvar%total(icomp,iphase) = rt_auxvar%total(icomp,iphase) + &
           reaction%eqgasstoich(1,ieqgas)* &
-          rt_auxvar%gas_molal(ieqgas)
+          rt_auxvar%gas_molar(ieqgas)
 !       print *,'Ttotal',pressure, temperature, xphico2, den, lnQk,rt_auxvar%pri_molal(icomp),&
-!        global_auxvar%sat(2),rt_auxvar%gas_molal(ieqgas)
+!        global_auxvar%sat(2),rt_auxvar%gas_molar(ieqgas)
    !     if (rt_auxvar%total(icomp,iphase) > den)rt_auxvar%total(icomp,iphase) = den* .99D0
    !     enddo
 
@@ -3983,7 +3983,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
    !      tempreal = exp(lnQK+lngamco2)/pressure/xphico2*den
 !     tempreal = rt_auxvar%pri_act_coef(icomp)*exp(lnQK) &
 !         /pressure/xphico2*den
-      tempreal = rt_auxvar%gas_molal(ieqgas)/rt_auxvar%pri_molal(icomp)
+      tempreal = rt_auxvar%gas_molar(ieqgas)/rt_auxvar%pri_molal(icomp)
       rt_auxvar%aqueous%dtotal(icomp,icomp,iphase) = &
           rt_auxvar%aqueous%dtotal(icomp,icomp,iphase) + &
           reaction%eqgasstoich(1,ieqgas)*tempreal
@@ -4797,7 +4797,7 @@ subroutine RTAuxVarCompute(rt_auxvar,global_auxvar,material_auxvar,reaction, &
       rt_auxvar%sec_molal = 0.d0
     endif
     if (reaction%ngas > 0) then
-      rt_auxvar%gas_molal = 0.d0
+      rt_auxvar%gas_molar = 0.d0
     endif
     if (reaction%neqsrfcplxrxn > 0) then
       rt_auxvar_pert%eqsrfcplx_free_site_conc = 1.d-9
