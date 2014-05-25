@@ -36,7 +36,7 @@ module Output_Common_module
             OutputXMFHeader, &
             OutputXMFAttribute, &
             OutputXMFFooter, &
-            OutputGetFlowrates, &
+            OutputGetFlowratesUGrid, &
             ExplicitGetCellCoordinates, &
             OutputGetExplicitFlowrates, &
             GetCellConnectionsExplicit, &
@@ -1047,7 +1047,7 @@ end subroutine OutputXMFAttributeExplicit
 
 ! ************************************************************************** !
 
-subroutine OutputGetFlowrates(realization_base)
+subroutine OutputGetFlowratesUGrid(realization_base)
   ! 
   ! This returns mass/energy flowrate at all faces of a control volume
   ! 
@@ -1250,7 +1250,7 @@ subroutine OutputGetFlowrates(realization_base)
   call VecDestroy(natural_flowrates_vec,ierr)
   call UGridDMDestroy(ugdm)
   
-end subroutine OutputGetFlowrates
+end subroutine OutputGetFlowratesUGrid
 
 ! ************************************************************************** !
 

@@ -1207,7 +1207,7 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
 
     select case (var_list_type)
       case (INSTANTANEOUS_VARS)
-        call OutputGetFlowrates(realization_base)
+        call OutputGetFlowratesUGrid(realization_base)
         if(output_option%print_hdf5_mass_flowrate.or.&
            output_option%print_hdf5_energy_flowrate) then
           call WriteHDF5FlowratesUGrid(realization_base,option,grp_id,var_list_type)
