@@ -2206,7 +2206,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
     if (associated(global_auxvars)) then
       global_auxvars(ghosted_id)%pres(:)= auxvars(ghosted_id)%auxvar_elem(0)%pres -&
                auxvars(ghosted_id)%auxvar_elem(0)%pc(:)
-      global_auxvars(ghosted_id)%temp(:)=auxvars(ghosted_id)%auxvar_elem(0)%temp
+      global_auxvars(ghosted_id)%temp=auxvars(ghosted_id)%auxvar_elem(0)%temp
       global_auxvars(ghosted_id)%sat(:)=auxvars(ghosted_id)%auxvar_elem(0)%sat(:)
 !     global_auxvars(ghosted_id)%sat_store =
       global_auxvars(ghosted_id)%fugacoeff(1)=xphi
@@ -2411,7 +2411,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
       if (associated(global_auxvars_bc)) then
         global_auxvars_bc(sum_connection)%pres(:)= auxvars_bc(sum_connection)%auxvar_elem(0)%pres -&
                      auxvars(ghosted_id)%auxvar_elem(0)%pc(:)
-        global_auxvars_bc(sum_connection)%temp(:)=auxvars_bc(sum_connection)%auxvar_elem(0)%temp
+        global_auxvars_bc(sum_connection)%temp=auxvars_bc(sum_connection)%auxvar_elem(0)%temp
         global_auxvars_bc(sum_connection)%sat(:)=auxvars_bc(sum_connection)%auxvar_elem(0)%sat(:)
         !    global_auxvars(ghosted_id)%sat_store =
         global_auxvars_bc(sum_connection)%fugacoeff(1)=xphi
@@ -2758,7 +2758,7 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
       if (associated(global_auxvars_bc)) then
         global_auxvars_bc(sum_connection)%pres(:)= auxvars_bc(sum_connection)%auxvar_elem(0)%pres -&
                      auxvars(ghosted_id)%auxvar_elem(0)%pc(:)
-        global_auxvars_bc(sum_connection)%temp(:)=auxvars_bc(sum_connection)%auxvar_elem(0)%temp
+        global_auxvars_bc(sum_connection)%temp=auxvars_bc(sum_connection)%auxvar_elem(0)%temp
         global_auxvars_bc(sum_connection)%sat(:)=auxvars_bc(sum_connection)%auxvar_elem(0)%sat(:)
       !    global_auxvars(ghosted_id)%sat_store = 
         global_auxvars_bc(sum_connection)%fugacoeff(1)=xphi
@@ -2984,7 +2984,7 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
     if(associated(global_auxvars)) then
       global_auxvars(ghosted_id)%pres(:)= auxvars(ghosted_id)%auxvar_elem(0)%pres -&
                auxvars(ghosted_id)%auxvar_elem(0)%pc(:)
-      global_auxvars(ghosted_id)%temp(:)=auxvars(ghosted_id)%auxvar_elem(0)%temp
+      global_auxvars(ghosted_id)%temp=auxvars(ghosted_id)%auxvar_elem(0)%temp
       global_auxvars(ghosted_id)%sat(:)=auxvars(ghosted_id)%auxvar_elem(0)%sat(:)
 !      global_auxvars(ghosted_id)%sat_store =
       global_auxvars(ghosted_id)%fugacoeff(1)=xphi

@@ -404,7 +404,7 @@ subroutine PMCSurfaceSetAuxData(this)
                 surf_temp_p(local_id) = this%option%reference_temperature
               else
                 surf_head_p(local_id) = xx_loc_p(istart)
-                surf_temp_p(local_id) = surf_global_auxvars(ghosted_id)%temp(1)
+                surf_temp_p(local_id) = surf_global_auxvars(ghosted_id)%temp
               endif
             enddo
 

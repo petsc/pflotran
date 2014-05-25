@@ -10,10 +10,10 @@ module Global_Aux_module
 
   type, public :: global_auxvar_type
     PetscInt :: istate
+    PetscReal :: temp
     PetscReal, pointer :: pres(:)
     PetscReal, pointer :: pres_store(:,:)
-    PetscReal, pointer :: temp(:)
-    PetscReal, pointer :: temp_store(:,:)
+    PetscReal, pointer :: temp_store(:)
     PetscReal, pointer :: sat(:)
     PetscReal, pointer :: sat_store(:,:)
     PetscReal, pointer :: den(:)  ! kmol/m^3
@@ -101,10 +101,10 @@ subroutine GlobalAuxVarInit(auxvar,option)
   type(option_type) :: option
   
   auxvar%istate = 0
+  auxvar%temp = 0.d0
 
   ! nullify everthing to begin with and allocate later
   nullify(auxvar%pres)
-  nullify(auxvar%temp)
   nullify(auxvar%sat)
   nullify(auxvar%den)
   nullify(auxvar%den_kg)
@@ -129,8 +129,6 @@ subroutine GlobalAuxVarInit(auxvar,option)
   endif
   allocate(auxvar%pres(option%nphase))
   auxvar%pres = 0.d0
-  allocate(auxvar%temp(ONE_INTEGER))
-  auxvar%temp = 0.d0
   allocate(auxvar%sat(option%nphase))
   auxvar%sat = 0.d0
   allocate(auxvar%den_kg(option%nphase))
@@ -155,7 +153,7 @@ subroutine GlobalAuxVarInit(auxvar,option)
       auxvar%xmass = 1.d0
       allocate(auxvar%pres_store(option%nphase,TWO_INTEGER))
       auxvar%pres_store = option%reference_pressure
-      allocate(auxvar%temp_store(ONE_INTEGER,TWO_INTEGER))
+      allocate(auxvar%temp_store(TWO_INTEGER))
       auxvar%temp_store = 0.d0
       allocate(auxvar%fugacoeff(ONE_INTEGER))
       auxvar%fugacoeff = 1.d0
@@ -174,7 +172,7 @@ subroutine GlobalAuxVarInit(auxvar,option)
     ! auxvar%xmass = 1.d0
       allocate(auxvar%pres_store(option%nphase,TWO_INTEGER))
       auxvar%pres_store = 0.d0
-      allocate(auxvar%temp_store(ONE_INTEGER,TWO_INTEGER))
+      allocate(auxvar%temp_store(TWO_INTEGER))
       auxvar%temp_store = 0.d0
     ! allocate(auxvar%fugacoeff(ONE_INTEGER))
     ! auxvar%fugacoeff = 1.d0
@@ -194,7 +192,7 @@ subroutine GlobalAuxVarInit(auxvar,option)
       if (option%ntrandof > 0) then
         allocate(auxvar%pres_store(option%nphase,TWO_INTEGER))
         auxvar%pres_store = 0.d0
-        allocate(auxvar%temp_store(option%nphase,TWO_INTEGER))
+        allocate(auxvar%temp_store(TWO_INTEGER))
         auxvar%temp_store = 0.d0
         allocate(auxvar%den_kg_store(option%nphase,TWO_INTEGER))
         auxvar%den_kg_store = 0.d0
@@ -344,7 +342,6 @@ subroutine GlobalAuxVarStrip(auxvar)
   type(global_auxvar_type) :: auxvar
   
   call DeallocateArray(auxvar%pres)
-  call DeallocateArray(auxvar%temp)
   call DeallocateArray(auxvar%sat)
   call DeallocateArray(auxvar%den)
   call DeallocateArray(auxvar%fugacoeff)
