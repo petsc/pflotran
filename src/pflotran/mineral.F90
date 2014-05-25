@@ -732,7 +732,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
           if (mineral%kinmnrl_pref_activation_energy(ipref,imnrl) > 0.d0) then
             arrhenius_factor = &
               exp(mineral%kinmnrl_pref_activation_energy(ipref,imnrl)/rgas &
-                  *(1.d0/(25.d0+273.15d0)-1.d0/(global_auxvar%temp(iphase)+ &
+                  *(1.d0/(25.d0+273.15d0)-1.d0/(global_auxvar%temp+ &
                                                 273.15d0)))
           endif
           sum_prefactor_rate = sum_prefactor_rate + prefactor(ipref)* &
@@ -744,7 +744,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
         arrhenius_factor = 1.d0
         if (mineral%kinmnrl_activation_energy(imnrl) > 0.d0) then
           arrhenius_factor = exp(mineral%kinmnrl_activation_energy(imnrl)/rgas &
-            *(1.d0/(25.d0+273.15d0)-1.d0/(global_auxvar%temp(iphase)+273.15d0)))
+            *(1.d0/(25.d0+273.15d0)-1.d0/(global_auxvar%temp+273.15d0)))
         endif
         sum_prefactor_rate = mineral%kinmnrl_rate(imnrl)*arrhenius_factor
       endif
@@ -848,7 +848,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
         if (mineral%kinmnrl_pref_activation_energy(ipref,imnrl) > 0.d0) then
           arrhenius_factor = &
             exp(mineral%kinmnrl_pref_activation_energy(ipref,imnrl)/rgas &
-                *(1.d0/(25.d0+273.15d0)-1.d0/(global_auxvar%temp(iphase)+ &
+                *(1.d0/(25.d0+273.15d0)-1.d0/(global_auxvar%temp+ &
                                               273.15d0)))
         endif
         ! prefactor() saved in residual calc above
@@ -1066,7 +1066,7 @@ subroutine RMineralRate(imnrl,ln_act,ln_sec_act,rt_auxvar,global_auxvar, &
         if (mineral%kinmnrl_pref_activation_energy(ipref,imnrl) > 0.d0) then
           arrhenius_factor = &
             exp(mineral%kinmnrl_pref_activation_energy(ipref,imnrl)/rgas &
-                *(1.d0/(25.d0+273.15d0)-1.d0/(global_auxvar%temp(iphase)+ &
+                *(1.d0/(25.d0+273.15d0)-1.d0/(global_auxvar%temp+ &
                                               273.15d0)))
         endif
         sum_prefactor_rate = sum_prefactor_rate + prefactor(ipref)* &
@@ -1078,7 +1078,7 @@ subroutine RMineralRate(imnrl,ln_act,ln_sec_act,rt_auxvar,global_auxvar, &
       arrhenius_factor = 1.d0
       if (mineral%kinmnrl_activation_energy(imnrl) > 0.d0) then
         arrhenius_factor = exp(mineral%kinmnrl_activation_energy(imnrl)/rgas &
-          *(1.d0/(25.d0+273.15d0)-1.d0/(global_auxvar%temp(iphase)+273.15d0)))
+          *(1.d0/(25.d0+273.15d0)-1.d0/(global_auxvar%temp+273.15d0)))
       endif
       sum_prefactor_rate = mineral%kinmnrl_rate(imnrl)*arrhenius_factor
     endif
@@ -1137,7 +1137,7 @@ function RMineralSaturationIndex(imnrl,rt_auxvar,global_auxvar,reaction,option)
   mineral => reaction%mineral
 
   if (.not.option%use_isothermal) then
-    call MineralUpdateTempDepCoefs(global_auxvar%temp(iphase), &
+    call MineralUpdateTempDepCoefs(global_auxvar%temp, &
                                    global_auxvar%pres(iphase), &
                                    reaction%mineral, &
                                    reaction%use_geothermal_hpt, &

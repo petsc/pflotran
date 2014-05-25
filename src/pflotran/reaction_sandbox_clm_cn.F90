@@ -538,7 +538,7 @@ subroutine CLM_CN_React(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
   
   ! inhibition due to temperature
   ! Equation: F_t = exp(308.56*(1/17.02 - 1/(T - 227.13)))
-  temp_K = global_auxvar%temp(1) + 273.15d0
+  temp_K = global_auxvar%temp + 273.15d0
 
   if(temp_K > 227.15d0) then
     F_t = exp(308.56d0*(one_over_71_02 - 1.d0/(temp_K - 227.13d0)))

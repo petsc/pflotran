@@ -267,17 +267,17 @@ subroutine GlobalSetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
       select case(isubvar)
         case(TIME_T)
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%auxvars(ghosted_id)%temp_store(1,TIME_T) = &
+            patch%aux%Global%auxvars(ghosted_id)%temp_store(TIME_T) = &
               vec_loc_p(ghosted_id)
           enddo
         case(TIME_TpDT)
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%auxvars(ghosted_id)%temp_store(1,TIME_TpDT) = &
+            patch%aux%Global%auxvars(ghosted_id)%temp_store(TIME_TpDT) = &
               vec_loc_p(ghosted_id)
           enddo
         case default
           do ghosted_id=1, grid%ngmax
-            patch%aux%Global%auxvars(ghosted_id)%temp(1) = vec_loc_p(ghosted_id)
+            patch%aux%Global%auxvars(ghosted_id)%temp = vec_loc_p(ghosted_id)
           enddo
       end select
     case(LIQUID_DENSITY)
@@ -432,41 +432,34 @@ subroutine GlobalWeightAuxVars(realization,weight)
        (1.d0-weight)*auxvars(ghosted_id)%sat_store(:,TIME_T))
   enddo
   
-    ! need future implementation for ims_mode too    
-  if (option%iflowmode == MPH_MODE) then
-    do ghosted_id = 1, realization%patch%aux%Global%num_aux
-      auxvars(ghosted_id)%pres(:) = &
-        (weight*auxvars(ghosted_id)%pres_store(:,TIME_TpDT)+ &
-         (1.d0-weight)*auxvars(ghosted_id)%pres_store(:,TIME_T))
-      auxvars(ghosted_id)%temp(:) = &
-        (weight*auxvars(ghosted_id)%temp_store(:,TIME_TpDT)+ &
-         (1.d0-weight)*auxvars(ghosted_id)%temp_store(:,TIME_T))
-      auxvars(ghosted_id)%fugacoeff(:) = &
-        (weight*auxvars(ghosted_id)%fugacoeff_store(:,TIME_TpDT)+ &
-         (1.d0-weight)*auxvars(ghosted_id)%fugacoeff_store(:,TIME_T))
-      if (weight<1D-12) auxvars(ghosted_id)%reaction_rate(:)=0D0
-!      auxvars(ghosted_id)%den(:) = &
-!        (weight*auxvars(ghosted_id)%den_store(:,TIME_TpDT)+ &
-!         (1.d0-weight)*auxvars(ghosted_id)%den_store(:,TIME_T))
-    enddo     
-  endif 
-  if (option%iflowmode == FLASH2_MODE) then
-    do ghosted_id = 1, realization%patch%aux%Global%num_aux
-      auxvars(ghosted_id)%pres(:) = &
-        (weight*auxvars(ghosted_id)%pres_store(:,TIME_TpDT)+ &
-         (1.d0-weight)*auxvars(ghosted_id)%pres_store(:,TIME_T))
-      auxvars(ghosted_id)%temp(:) = &
-        (weight*auxvars(ghosted_id)%temp_store(:,TIME_TpDT)+ &
-         (1.d0-weight)*auxvars(ghosted_id)%temp_store(:,TIME_T))
-      auxvars(ghosted_id)%fugacoeff(:) = &
-        (weight*auxvars(ghosted_id)%fugacoeff_store(:,TIME_TpDT)+ &
-         (1.d0-weight)*auxvars(ghosted_id)%fugacoeff_store(:,TIME_T))
-      if (weight<1D-12) auxvars(ghosted_id)%reaction_rate(:)=0D0
-!      auxvars(ghosted_id)%den(:) = &
-!        (weight*auxvars(ghosted_id)%den_store(:,TIME_TpDT)+ &
-!         (1.d0-weight)*auxvars(ghosted_id)%den_store(:,TIME_T))
-    enddo     
-  endif
+  select case(option%iflowmode) 
+    case(G_MODE)
+      do ghosted_id = 1, realization%patch%aux%Global%num_aux
+        auxvars(ghosted_id)%pres(:) = &
+          (weight*auxvars(ghosted_id)%pres_store(:,TIME_TpDT)+ &
+           (1.d0-weight)*auxvars(ghosted_id)%pres_store(:,TIME_T))
+        auxvars(ghosted_id)%temp = &
+          (weight*auxvars(ghosted_id)%temp_store(TIME_TpDT)+ &
+           (1.d0-weight)*auxvars(ghosted_id)%temp_store(TIME_T))
+      enddo  
+    case(MPH_MODE,FLASH2_MODE)
+      ! need future implementation for ims_mode too    
+      do ghosted_id = 1, realization%patch%aux%Global%num_aux
+        auxvars(ghosted_id)%pres(:) = &
+          (weight*auxvars(ghosted_id)%pres_store(:,TIME_TpDT)+ &
+           (1.d0-weight)*auxvars(ghosted_id)%pres_store(:,TIME_T))
+        auxvars(ghosted_id)%temp = &
+          (weight*auxvars(ghosted_id)%temp_store(TIME_TpDT)+ &
+           (1.d0-weight)*auxvars(ghosted_id)%temp_store(TIME_T))
+        auxvars(ghosted_id)%fugacoeff(:) = &
+          (weight*auxvars(ghosted_id)%fugacoeff_store(:,TIME_TpDT)+ &
+           (1.d0-weight)*auxvars(ghosted_id)%fugacoeff_store(:,TIME_T))
+        if (weight<1D-12) auxvars(ghosted_id)%reaction_rate(:)=0D0
+  !      auxvars(ghosted_id)%den(:) = &
+  !        (weight*auxvars(ghosted_id)%den_store(:,TIME_TpDT)+ &
+  !         (1.d0-weight)*auxvars(ghosted_id)%den_store(:,TIME_T))
+      enddo  
+  end select
   
 end subroutine GlobalWeightAuxVars
 

@@ -1411,7 +1411,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
   if (.not.InputError(input)) then
     call ReactionInit(realization%reaction,input,option)
   endif
-    
+
 end subroutine InitReadRequiredCardsFromInput
 
 ! ************************************************************************** !
