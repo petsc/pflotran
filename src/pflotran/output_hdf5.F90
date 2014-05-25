@@ -860,14 +860,14 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
   end select
 
   !Output flowrates
-  if(output_option%print_hdf5_mass_flowrate.or. &
+  if (output_option%print_hdf5_mass_flowrate.or. &
      output_option%print_hdf5_energy_flowrate.or. &
      output_option%print_hdf5_aveg_mass_flowrate.or. &
      output_option%print_hdf5_aveg_energy_flowrate) then
 
     select case (var_list_type)
       case (INSTANTANEOUS_VARS)
-        call OutputGetFlowratesUGrid(realization_base)
+        call OutputGetFaceVelOrFlowrateUGrid(realization_base,PETSC_FALSE)
         if(output_option%print_hdf5_mass_flowrate.or.&
            output_option%print_hdf5_energy_flowrate) then
           call WriteHDF5FlowratesUGrid(realization_base,option,grp_id,var_list_type)
@@ -952,6 +952,19 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
           call OutputXMFAttribute(OUTPUT_UNIT,grid%nmax,string,att_datasetname)
         endif
     endif
+  endif
+
+  ! Output velocity at cell-face
+  if (output_option%print_hdf5_vel_face) then
+
+    select case (var_list_type)
+      case (INSTANTANEOUS_VARS)
+        call OutputGetFaceVelOrFlowrateUGrid(realization_base,PETSC_TRUE)
+        if (output_option%print_hdf5_vel_face) then
+          call WriteHDF5FaceVelUGrid(realization_base,option,grp_id,var_list_type)
+        endif
+      case (AVERAGED_VARS)
+    end select
   endif
 
   call VecDestroy(global_vec,ierr)
@@ -3016,6 +3029,257 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id,var_list_type
 ! #ifdef SCORPIO_WRITE
 
 end subroutine WriteHDF5FlowratesUGrid
+
+! ************************************************************************** !
+
+subroutine WriteHDF5FaceVelUGrid(realization_base,option,file_id,var_list_type)
+  !
+  ! This routine writes velocity at cell faces for unstructured grid.
+  !
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 05/25/2014
+  !
+
+  use hdf5
+  use Realization_Base_class, only : realization_base_type
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Unstructured_Grid_Aux_module
+  use Unstructured_Cell_module
+  use Variables_module
+  use Connection_module
+  use Coupler_module
+  use HDF5_Aux_module
+  use Output_Aux_module
+  use Field_module
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petsclog.h"
+#include "finclude/petscsys.h"
+
+  class(realization_base_type) :: realization_base
+  type(option_type), pointer :: option
+  PetscInt :: var_list_type
+
+#if defined(SCORPIO_WRITE)
+  integer:: file_id
+  integer:: data_type
+  integer:: grp_id
+  integer:: file_space_id
+  integer:: memory_space_id
+  integer:: data_set_id
+  integer:: realization_set_id
+  integer:: prop_id
+  integer:: dims(3)
+  integer :: start(3), length(3), stride(3),istart
+  integer :: rank_mpi,file_space_rank_mpi
+  integer :: hdf5_flag
+  integer, parameter :: ON=1, OFF=0
+#else
+  integer(HID_T) :: file_id
+  integer(HID_T) :: data_type
+  integer(HID_T) :: grp_id
+  integer(HID_T) :: file_space_id
+  integer(HID_T) :: realization_set_id
+  integer(HID_T) :: memory_space_id
+  integer(HID_T) :: data_set_id
+  integer(HID_T) :: prop_id
+  integer(HSIZE_T) :: dims(3)
+  integer(HSIZE_T) :: start(3), length(3), stride(3),istart
+  PetscMPIInt :: rank_mpi,file_space_rank_mpi
+  PetscMPIInt :: hdf5_flag
+  PetscMPIInt, parameter :: ON=1, OFF=0
+#endif
+
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(unstructured_grid_type),pointer :: ugrid
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
+  type(coupler_type), pointer :: boundary_condition
+  type(ugdm_type),pointer :: ugdm
+  type(output_option_type), pointer :: output_option
+  type(field_type), pointer :: field
+
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: idual
+  PetscInt :: iconn
+  PetscInt :: face_id
+  PetscInt :: local_id_up,local_id_dn
+  PetscInt :: ghosted_id_up,ghosted_id_dn
+  PetscInt :: iface_up,iface_dn
+  PetscInt :: iphase
+  PetscInt :: sum_connection
+  PetscInt :: offset
+  PetscInt :: cell_type
+  PetscInt :: local_size
+  PetscInt :: i
+  PetscInt :: idir
+  PetscInt :: iface
+
+  PetscReal, pointer :: flowrates(:,:,:)
+  PetscReal, pointer :: vx_ptr(:)
+  PetscReal, pointer :: vy_ptr(:)
+  PetscReal, pointer :: vz_ptr(:)
+  PetscReal, pointer :: vec_ptr1(:)
+  PetscReal, pointer :: double_array(:)
+  PetscReal :: dtime
+
+  Vec :: global_flowrates_vec
+  Vec :: natural_flowrates_vec
+
+  PetscMPIInt :: hdf5_err
+  PetscErrorCode :: ierr
+
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: unit_string
+  character(len=1) :: string_dir
+
+  patch => realization_base%patch
+  grid => patch%grid
+  ugrid => grid%unstructured_grid
+  output_option =>realization_base%output_option
+  field => realization_base%field
+
+#if defined(SCORPIO_WRITE)
+  write(*,*) 'SCORPIO_WRITE'
+  option%io_buffer = 'WriteHDF5FaceVelUGrid not supported for SCORPIO_WRITE'
+  call printErrMsg(option)
+#else
+
+  call VecGetLocalSize(field%vx_face_inst,local_size,ierr)
+  local_size = local_size/(option%nphase*MAX_FACE_PER_CELL + 1)
+
+  allocate(double_array(local_size*(MAX_FACE_PER_CELL+1)))
+  double_array = 0.d0
+
+  offset = option%nphase*MAX_FACE_PER_CELL+1
+
+  do idir = 1,3
+
+    select case (idir)
+      case (1)
+        string_dir = 'X'
+        call VecGetArrayF90(field%vx_face_inst,vec_ptr1,ierr)
+      case (2)
+        string_dir = 'Y'
+        call VecGetArrayF90(field%vy_face_inst,vec_ptr1,ierr)
+      case (3)
+        string_dir = 'Z'
+        call VecGetArrayF90(field%vz_face_inst,vec_ptr1,ierr)
+    end select
+
+    do iphase = 1,option%nphase
+
+      select case (iphase)
+        case (LIQUID_PHASE)
+          string = "Liquid " // string_dir // "-Velocity at cell face [m_per_" &
+            // trim(output_option%tunit) // "]"
+        case (GAS_PHASE)
+          string = "Gas " // string_dir // "-Velocity at cell face [m_per_" // &
+            trim(output_option%tunit) // "]"
+      end select
+
+      ! memory space which is a 1D vector
+      rank_mpi = 1
+      dims = 0
+      dims(1) = local_size*(MAX_FACE_PER_CELL+1)
+      call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
+
+      ! file space which is a 2D block
+      rank_mpi = 2
+      dims = 0
+      dims(2) = ugrid%nmax
+      dims(1) = MAX_FACE_PER_CELL + 1
+      call h5pcreate_f(H5P_DATASET_CREATE_F,prop_id,hdf5_err)
+
+      call h5eset_auto_f(OFF,hdf5_err)
+      call h5dopen_f(file_id,trim(string),data_set_id,hdf5_err)
+      hdf5_flag = hdf5_err
+      call h5eset_auto_f(ON,hdf5_err)
+      if (hdf5_flag < 0) then
+        call h5screate_simple_f(rank_mpi,dims,file_space_id,hdf5_err,dims)
+        call h5dcreate_f(file_id,trim(string),H5T_NATIVE_DOUBLE,file_space_id, &
+                        data_set_id,hdf5_err,prop_id)
+      else
+        call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
+      endif
+
+      call h5pclose_f(prop_id,hdf5_err)
+
+      istart = 0
+      call MPI_Exscan(local_size, istart, ONE_INTEGER_MPI, &
+                    MPIU_INTEGER, MPI_SUM, option%mycomm, ierr)
+
+      start(2) = istart
+      start(1) = 0
+
+      length(2) = local_size
+      length(1) = MAX_FACE_PER_CELL + 1
+
+      stride = 1
+      call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,start,length, &
+                                hdf5_err,stride,stride)
+      ! write the data
+      call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+      call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F, &
+                              hdf5_err)
+#endif
+
+      select case (var_list_type)
+        case (INSTANTANEOUS_VARS)
+
+          do i=1,local_size
+            ! Num. of faces for each cell
+            double_array((i-1)*(MAX_FACE_PER_CELL+1)+1) = &
+              vec_ptr1((i-1)*offset+1)
+            ! Flowrate values for each face
+            do iface = 1,MAX_FACE_PER_CELL
+              double_array((i-1)*(MAX_FACE_PER_CELL+1)+iface+1) = &
+              vec_ptr1((i-1)*offset + (iphase-1)*MAX_FACE_PER_CELL + iface + 1)* &
+              realization_base%output_option%tconv
+            enddo
+          enddo
+
+        case (AVERAGED_VARS)
+
+      end select
+
+      call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+      call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,double_array,dims, &
+                      hdf5_err,memory_space_id,file_space_id,prop_id)
+      call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+
+      call h5pclose_f(prop_id,hdf5_err)
+
+      call h5dclose_f(data_set_id,hdf5_err)
+      call h5sclose_f(file_space_id,hdf5_err)
+
+    enddo
+
+    select case (idir)
+      case (1)
+        call VecRestoreArrayF90(field%vx_face_inst,vec_ptr1,ierr)
+      case (2)
+        call VecRestoreArrayF90(field%vy_face_inst,vec_ptr1,ierr)
+      case (3)
+        call VecRestoreArrayF90(field%vz_face_inst,vec_ptr1,ierr)
+    end select
+
+  enddo
+
+  ! Free up memory
+  deallocate(double_array)
+#endif
+! #ifdef SCORPIO_WRITE
+
+end subroutine WriteHDF5FaceVelUGrid
 
 ! ************************************************************************** !
 

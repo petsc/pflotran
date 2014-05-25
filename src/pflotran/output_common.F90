@@ -36,7 +36,7 @@ module Output_Common_module
             OutputXMFHeader, &
             OutputXMFAttribute, &
             OutputXMFFooter, &
-            OutputGetFlowratesUGrid, &
+            OutputGetFaceVelOrFlowrateUGrid, &
             ExplicitGetCellCoordinates, &
             OutputGetExplicitFlowrates, &
             GetCellConnectionsExplicit, &
@@ -1047,9 +1047,11 @@ end subroutine OutputXMFAttributeExplicit
 
 ! ************************************************************************** !
 
-subroutine OutputGetFlowratesUGrid(realization_base)
+subroutine OutputGetFaceVelOrFlowrateUGrid(realization_base, save_velocity)
   ! 
-  ! This returns mass/energy flowrate at all faces of a control volume
+  ! This subroutine saves:
+  !  - Face elocities at x/y/z directions, or
+  !  - Mass/energy flowrate at all faces of a control volume
   ! 
   ! Author: Gautam Bisht, LBNL
   ! Date: 03/21/2013
@@ -1077,8 +1079,9 @@ subroutine OutputGetFlowratesUGrid(realization_base)
 #include "finclude/petscsys.h"
 
   class(realization_base_type) :: realization_base
-  type(option_type), pointer :: option
+  PetscBool :: save_velocity
 
+  type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(unstructured_grid_type),pointer :: ugrid
@@ -1105,15 +1108,26 @@ subroutine OutputGetFlowratesUGrid(realization_base)
   PetscInt :: i
   PetscInt :: iface
   PetscInt :: ndof
+  PetscInt :: idx
 
   PetscReal, pointer :: flowrates(:,:,:)
+  PetscReal, pointer :: vx(:,:,:)
+  PetscReal, pointer :: vy(:,:,:)
+  PetscReal, pointer :: vz(:,:,:)
   PetscReal, pointer :: vec_ptr(:)
   PetscReal, pointer :: vec_ptr2(:)
   PetscReal, pointer :: vec_ptr3(:)
+  PetscReal, pointer :: vx_ptr(:)
+  PetscReal, pointer :: vy_ptr(:)
+  PetscReal, pointer :: vz_ptr(:)
   PetscReal, pointer :: double_array(:)
+  PetscReal :: vel_vector(3)
   PetscReal :: dtime
 
   Vec :: natural_flowrates_vec
+  Vec :: natural_vx_vec
+  Vec :: natural_vy_vec
+  Vec :: natural_vz_vec
 
   PetscMPIInt :: hdf5_err
   PetscErrorCode :: ierr
@@ -1132,23 +1146,64 @@ subroutine OutputGetFlowratesUGrid(realization_base)
   call UGridCreateUGDM(grid%unstructured_grid,ugdm, &
                        (option%nflowdof*MAX_FACE_PER_CELL + 1),option)
 
-  ! Create a flowrate vector in natural order
-  call UGridDMCreateVector(grid%unstructured_grid,ugdm,natural_flowrates_vec, &
-                           NATURAL,option)
+  if (save_velocity) then
 
+    ! Create vectors in natural order for velocity in x/y/z direction
+    call UGridDMCreateVector(grid%unstructured_grid,ugdm,natural_vx_vec, &
+                             NATURAL,option)
+    call UGridDMCreateVector(grid%unstructured_grid,ugdm,natural_vy_vec, &
+                             NATURAL,option)
+    call UGridDMCreateVector(grid%unstructured_grid,ugdm,natural_vz_vec, &
+                             NATURAL,option)
 
-  allocate(flowrates(option%nflowdof,MAX_FACE_PER_CELL,ugrid%nlmax))
-  flowrates = 0.d0
-  call VecGetArrayF90(field%flowrate_inst,vec_ptr,ierr)
-  vec_ptr = 0.d0
-  
-  offset = 1+option%nflowdof*MAX_FACE_PER_CELL
-  ! Save the number of faces of all cell
-  do local_id = 1,grid%nlmax
-    ghosted_id = grid%nL2G(local_id)
-    cell_type = ugrid%cell_type(ghosted_id)
-    vec_ptr((local_id-1)*offset+1) = UCellGetNFaces(cell_type,option)
-  enddo
+    allocate(vx(option%nflowdof,MAX_FACE_PER_CELL,ugrid%nlmax))
+    allocate(vy(option%nflowdof,MAX_FACE_PER_CELL,ugrid%nlmax))
+    allocate(vz(option%nflowdof,MAX_FACE_PER_CELL,ugrid%nlmax))
+
+    vx = 0.d0
+    vy = 0.d0
+    vz = 0.d0
+
+    call VecGetArrayF90(field%vx_face_inst,vx_ptr,ierr)
+    call VecGetArrayF90(field%vx_face_inst,vy_ptr,ierr)
+    call VecGetArrayF90(field%vx_face_inst,vz_ptr,ierr)
+
+    vx_ptr = 0.d0
+    vy_ptr = 0.d0
+    vz_ptr = 0.d0
+
+    offset = 1 + option%nflowdof*MAX_FACE_PER_CELL
+    ! Save the number of faces of all cell
+    do local_id = 1,grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
+      cell_type = ugrid%cell_type(ghosted_id)
+
+      vx_ptr((local_id-1)*offset+1) = UCellGetNFaces(cell_type,option)
+      vy_ptr((local_id-1)*offset+1) = UCellGetNFaces(cell_type,option)
+      vz_ptr((local_id-1)*offset+1) = UCellGetNFaces(cell_type,option)
+    enddo
+
+  else
+
+    ! Create a flowrate vector in natural order
+    call UGridDMCreateVector(grid%unstructured_grid,ugdm,natural_flowrates_vec, &
+                             NATURAL,option)
+
+    allocate(flowrates(option%nflowdof,MAX_FACE_PER_CELL,ugrid%nlmax))
+    flowrates = 0.d0
+
+    call VecGetArrayF90(field%flowrate_inst,vec_ptr,ierr)
+    vec_ptr = 0.d0
+
+    offset = 1 + option%nflowdof*MAX_FACE_PER_CELL
+    ! Save the number of faces of all cell
+    do local_id = 1,grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
+      cell_type = ugrid%cell_type(ghosted_id)
+      vec_ptr((local_id-1)*offset+1) = UCellGetNFaces(cell_type,option)
+    enddo
+  endif
+
 
   ! Interior Flowrates Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
@@ -1164,29 +1219,67 @@ subroutine OutputGetFlowratesUGrid(realization_base)
       local_id_up = grid%nG2L(ghosted_id_up)
       local_id_dn = grid%nG2L(ghosted_id_dn)
       do iface_up = 1,MAX_FACE_PER_CELL
-        if(face_id==ugrid%cell_to_face_ghosted(iface_up,local_id_up)) exit
+        if (face_id==ugrid%cell_to_face_ghosted(iface_up,local_id_up)) exit
       enddo
       iface_dn=-1
-      if(local_id_dn>0) then
+      if (local_id_dn>0) then
         do iface_dn = 1,MAX_FACE_PER_CELL
-          if(face_id==ugrid%cell_to_face_ghosted(iface_dn,local_id_dn)) exit
+          if (face_id==ugrid%cell_to_face_ghosted(iface_dn,local_id_dn)) exit
         enddo
       endif
       
       do dof=1,option%nflowdof
-        ! Save flowrate for iface_up of local_id_up cell using flowrate up-->dn
-        flowrates(dof,iface_up,local_id_up) = patch%internal_fluxes(dof,1,sum_connection)
-        vec_ptr((local_id_up-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface_up + 1) = &
-          patch%internal_fluxes(dof,1,sum_connection)
 
-        if(iface_dn>0) then
-          ! Save flowrate for iface_dn of local_id_dn cell using -ve flowrate up-->dn
-          flowrates(dof,iface_dn,local_id_dn) = -patch%internal_fluxes(dof,1,sum_connection)
-          vec_ptr((local_id_dn-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface_dn + 1) = &
-            -patch%internal_fluxes(dof,1,sum_connection)
+        if (save_velocity) then
+
+          ! Save velocity for iface_up of local_id_up cell using flowrate up-->dn
+          vel_vector = cur_connection_set%dist(1:3,iconn)* &
+                       patch%internal_velocities(dof,sum_connection)
+
+          vx(dof,iface_up,local_id_up) = vel_vector(1)
+          vy(dof,iface_up,local_id_up) = vel_vector(2)
+          vz(dof,iface_up,local_id_up) = vel_vector(3)
+
+          idx = (local_id_up-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface_up + 1
+
+          vx_ptr(idx) = vel_vector(1)
+          vy_ptr(idx) = vel_vector(2)
+          vz_ptr(idx) = vel_vector(3)
+
+          if (iface_dn>0) then
+
+            ! Save velocity for iface_dn of local_id_dn cell using -ve flowrate up-->dn
+
+            idx = (local_id_dn-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface_dn + 1
+
+            vx(dof,iface_dn,local_id_dn) = -vel_vector(1)
+            vy(dof,iface_dn,local_id_dn) = -vel_vector(2)
+            vz(dof,iface_dn,local_id_dn) = -vel_vector(3)
+
+            vx_ptr(idx) = -vel_vector(1)
+            vx_ptr(idx) = -vel_vector(2)
+            vx_ptr(idx) = -vel_vector(3)
+
+          endif
+
+        else
+
+          ! Save flowrate for iface_up of local_id_up cell using flowrate up-->dn
+          flowrates(dof,iface_up,local_id_up) = patch%internal_fluxes(dof,1,sum_connection)
+
+          idx = (local_id_up-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface_up + 1
+          vec_ptr(idx) = patch%internal_fluxes(dof,1,sum_connection)
+
+          if(iface_dn>0) then
+            ! Save flowrate for iface_dn of local_id_dn cell using -ve flowrate up-->dn
+            flowrates(dof,iface_dn,local_id_dn) = -patch%internal_fluxes(dof,1,sum_connection)
+
+            idx = (local_id_dn-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface_dn + 1
+            vec_ptr(idx) = -patch%internal_fluxes(dof,1,sum_connection)
+          endif
+
         endif
       enddo
-      
     enddo
     cur_connection_set => cur_connection_set%next
   enddo
@@ -1209,48 +1302,124 @@ subroutine OutputGetFlowratesUGrid(realization_base)
       enddo
 
       do dof=1,option%nflowdof
-        ! Save flowrate for iface_dn of local_id_dn cell using -ve flowrate up-->dn
-        flowrates(dof,iface_dn,local_id_dn) = -patch%boundary_fluxes(dof,1,sum_connection)
-        vec_ptr((local_id_dn-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface_dn + 1) = &
-          -patch%boundary_fluxes(dof,1,sum_connection)
+        if (save_velocity) then
+
+          ! Save velocity for iface_dn of local_id_dn cell using -ve flowrate up-->dn
+          vel_vector = cur_connection_set%dist(1:3,iconn)* &
+                       patch%boundary_velocities(dof,sum_connection)
+
+          idx = (local_id_dn-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface_dn + 1
+
+          vx(dof,iface_dn,local_id_dn) = -vel_vector(1)
+          vy(dof,iface_dn,local_id_dn) = -vel_vector(2)
+          vz(dof,iface_dn,local_id_dn) = -vel_vector(3)
+
+          vx_ptr(idx) = -vel_vector(1)
+          vx_ptr(idx) = -vel_vector(2)
+          vx_ptr(idx) = -vel_vector(3)
+
+        else
+
+          ! Save flowrate for iface_dn of local_id_dn cell using -ve flowrate up-->dn
+          idx = (local_id_dn-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface_dn + 1
+          flowrates(dof,iface_dn,local_id_dn) = -patch%boundary_fluxes(dof,1,sum_connection)
+          vec_ptr(idx) = -patch%boundary_fluxes(dof,1,sum_connection)
+        endif
       enddo
     enddo
     boundary_condition => boundary_condition%next
   enddo
 
-  deallocate(flowrates)
+  if (save_velocity) then
 
-  call VecRestoreArrayF90(field%flowrate_inst,vec_ptr,ierr)
+    deallocate(vx)
+    deallocate(vy)
+    deallocate(vz)
 
-  ! Scatter flowrate from Global --> Natural order
-  call VecScatterBegin(ugdm%scatter_gton,field%flowrate_inst,natural_flowrates_vec, &
+    call VecRestoreArrayF90(field%vx_face_inst,vx_ptr,ierr)
+    call VecRestoreArrayF90(field%vx_face_inst,vy_ptr,ierr)
+    call VecRestoreArrayF90(field%vx_face_inst,vz_ptr,ierr)
+
+    ! Scatter flowrate from Global --> Natural order
+    call VecScatterBegin(ugdm%scatter_gton,field%vx_face_inst,natural_vx_vec, &
+                          INSERT_VALUES,SCATTER_FORWARD,ierr)
+    call VecScatterEnd(ugdm%scatter_gton,field%vx_face_inst,natural_vx_vec, &
                         INSERT_VALUES,SCATTER_FORWARD,ierr)
-  call VecScatterEnd(ugdm%scatter_gton,field%flowrate_inst,natural_flowrates_vec, &
-                      INSERT_VALUES,SCATTER_FORWARD,ierr)
 
-  call VecGetArrayF90(natural_flowrates_vec,vec_ptr,ierr)
-  call VecGetArrayF90(field%flowrate_inst,vec_ptr2,ierr)
+    call VecScatterBegin(ugdm%scatter_gton,field%vy_face_inst,natural_vy_vec, &
+                          INSERT_VALUES,SCATTER_FORWARD,ierr)
+    call VecScatterEnd(ugdm%scatter_gton,field%vy_face_inst,natural_vy_vec, &
+                        INSERT_VALUES,SCATTER_FORWARD,ierr)
 
-  ! Copy the vectors
-  vec_ptr2 = vec_ptr
-  
-  if(output_option%print_hdf5_aveg_mass_flowrate.or. &
-    output_option%print_hdf5_aveg_energy_flowrate) then
+    call VecScatterBegin(ugdm%scatter_gton,field%vz_face_inst,natural_vz_vec, &
+                          INSERT_VALUES,SCATTER_FORWARD,ierr)
+    call VecScatterEnd(ugdm%scatter_gton,field%vz_face_inst,natural_vz_vec, &
+                        INSERT_VALUES,SCATTER_FORWARD,ierr)
 
-    dtime = option%time-output_option%aveg_var_time
-    call VecGetArrayF90(field%flowrate_aveg,vec_ptr3,ierr)
-    vec_ptr3 = vec_ptr3 + vec_ptr2/dtime
-    call VecRestoreArrayF90(field%flowrate_aveg,vec_ptr3,ierr)
-      
+    ! X-direction
+    call VecGetArrayF90(natural_vx_vec,vec_ptr,ierr)
+    call VecGetArrayF90(field%vx_face_inst,vec_ptr2,ierr)
+    ! Copy the vectors
+    vec_ptr2 = vec_ptr
+    call VecRestoreArrayF90(natural_vx_vec,vec_ptr,ierr)
+    call VecRestoreArrayF90(field%vx_face_inst,vec_ptr2,ierr)
+
+    ! Y-direction
+    call VecGetArrayF90(natural_vy_vec,vec_ptr,ierr)
+    call VecGetArrayF90(field%vy_face_inst,vec_ptr2,ierr)
+    ! Copy the vectors
+    vec_ptr2 = vec_ptr
+    call VecRestoreArrayF90(natural_vy_vec,vec_ptr,ierr)
+    call VecRestoreArrayF90(field%vy_face_inst,vec_ptr2,ierr)
+
+    ! Z-direction
+    call VecGetArrayF90(natural_vz_vec,vec_ptr,ierr)
+    call VecGetArrayF90(field%vz_face_inst,vec_ptr2,ierr)
+    ! Copy the vectors
+    vec_ptr2 = vec_ptr
+    call VecRestoreArrayF90(natural_vz_vec,vec_ptr,ierr)
+    call VecRestoreArrayF90(field%vz_face_inst,vec_ptr2,ierr)
+
+    call VecDestroy(natural_vx_vec,ierr)
+    call VecDestroy(natural_vy_vec,ierr)
+    call VecDestroy(natural_vz_vec,ierr)
+
+  else
+
+    deallocate(flowrates)
+    call VecRestoreArrayF90(field%flowrate_inst,vec_ptr,ierr)
+
+    ! Scatter flowrate from Global --> Natural order
+    call VecScatterBegin(ugdm%scatter_gton,field%flowrate_inst,natural_flowrates_vec, &
+                          INSERT_VALUES,SCATTER_FORWARD,ierr)
+    call VecScatterEnd(ugdm%scatter_gton,field%flowrate_inst,natural_flowrates_vec, &
+                        INSERT_VALUES,SCATTER_FORWARD,ierr)
+
+    call VecGetArrayF90(natural_flowrates_vec,vec_ptr,ierr)
+    call VecGetArrayF90(field%flowrate_inst,vec_ptr2,ierr)
+
+    ! Copy the vectors
+    vec_ptr2 = vec_ptr
+
+    if (output_option%print_hdf5_aveg_mass_flowrate.or. &
+      output_option%print_hdf5_aveg_energy_flowrate) then
+
+      dtime = option%time-output_option%aveg_var_time
+      call VecGetArrayF90(field%flowrate_aveg,vec_ptr3,ierr)
+      vec_ptr3 = vec_ptr3 + vec_ptr2/dtime
+      call VecRestoreArrayF90(field%flowrate_aveg,vec_ptr3,ierr)
+    endif
+
+    call VecRestoreArrayF90(natural_flowrates_vec,vec_ptr,ierr)
+    call VecRestoreArrayF90(field%flowrate_inst,vec_ptr2,ierr)
+
+    call VecDestroy(natural_flowrates_vec,ierr)
+
   endif
 
-  call VecRestoreArrayF90(natural_flowrates_vec,vec_ptr,ierr)
-  call VecRestoreArrayF90(field%flowrate_inst,vec_ptr2,ierr)
-
-  call VecDestroy(natural_flowrates_vec,ierr)
   call UGridDMDestroy(ugdm)
   
-end subroutine OutputGetFlowratesUGrid
+end subroutine OutputGetFaceVelOrFlowrateUGrid
 
 ! ************************************************************************** !
 

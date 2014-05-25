@@ -454,9 +454,22 @@ subroutine RealizationCreateDiscretization(realization)
         (option%nflowdof*MAX_FACE_PER_CELL+1)*realization%patch%grid%nlmax, &
         PETSC_DETERMINE,field%flowrate_inst,ierr)
     call VecSet(field%flowrate_inst,0.d0,ierr)
-
   endif
-  
+
+  ! Allocate vectors to hold velocity at face
+  if (realization%output_option%print_hdf5_vel_face) then
+
+    ! vx
+    call VecCreateMPI(option%mycomm, &
+        (option%nflowdof*MAX_FACE_PER_CELL+1)*realization%patch%grid%nlmax, &
+        PETSC_DETERMINE,field%vx_face_inst,ierr)
+    call VecSet(field%vx_face_inst,0.d0,ierr)
+
+    ! vy and vz
+    call VecDuplicate(field%vx_face_inst,field%vy_face_inst,ierr)
+    call VecDuplicate(field%vx_face_inst,field%vz_face_inst,ierr)
+  endif
+
   if (realization%output_option%print_explicit_flowrate) then
     call VecCreateMPI(option%mycomm, &
          size(grid%unstructured_grid%explicit_grid%connections,2), &
