@@ -141,6 +141,9 @@ subroutine OutputHDF5(realization_base,var_list_type)
   type(output_variable_type), pointer :: cur_variable
   
   Vec :: global_vec
+  Vec :: global_vec_vx
+  Vec :: global_vec_vy
+  Vec :: global_vec_vz
   Vec :: natural_vec
   PetscReal, pointer :: v_ptr
   
@@ -248,7 +251,9 @@ subroutine OutputHDF5(realization_base,var_list_type)
   ! write out data sets 
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
                                   option)
-
+  call DiscretizationDuplicateVector(discretization,global_vec,global_vec_vx)
+  call DiscretizationDuplicateVector(discretization,global_vec,global_vec_vy)
+  call DiscretizationDuplicateVector(discretization,global_vec,global_vec_vz)
 
   select case (var_list_type)
 
@@ -298,34 +303,36 @@ subroutine OutputHDF5(realization_base,var_list_type)
   if (output_option%print_hdf5_velocities.and.(var_list_type==INSTANTANEOUS_VARS)) then
 
     ! velocities
-    call OutputGetCellCenteredVelocities(realization_base,global_vec,LIQUID_PHASE,X_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization_base, global_vec_vx, &
+                                         global_vec_vy,global_vec_vz, &
+                                         LIQUID_PHASE)
+
     string = "Liquid X-Velocity"
-    call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec,grp_id, &
-          H5T_NATIVE_DOUBLE)
-    call OutputGetCellCenteredVelocities(realization_base,global_vec,LIQUID_PHASE,Y_DIRECTION)
-    string = "Liquid Y-Velocity"
-    call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec,grp_id, &
+    call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec_vx,grp_id, &
           H5T_NATIVE_DOUBLE)
 
-    call OutputGetCellCenteredVelocities(realization_base,global_vec,LIQUID_PHASE,Z_DIRECTION)
+    string = "Liquid Y-Velocity"
+    call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec_vy,grp_id, &
+          H5T_NATIVE_DOUBLE)
+
     string = "Liquid Z-Velocity"
-    call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec,grp_id, &
+    call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec_vz,grp_id, &
           H5T_NATIVE_DOUBLE)
 
     if (option%nphase > 1) then
-        call OutputGetCellCenteredVelocities(realization_base,global_vec,GAS_PHASE,X_DIRECTION)
+        call OutputGetCellCenteredVelocities(realization_base,global_vec_vx, &
+                                             global_vec_vy,global_vec_vz, &
+                                             GAS_PHASE)
         string = "Gas X-Velocity"
-        call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec,grp_id, &
+        call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec_vx,grp_id, &
             H5T_NATIVE_DOUBLE)
 
-        call OutputGetCellCenteredVelocities(realization_base,global_vec,GAS_PHASE,Y_DIRECTION)
         string = "Gas Y-Velocity"
-        call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec,grp_id, &
+        call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec_vy,grp_id, &
             H5T_NATIVE_DOUBLE)
 
-        call OutputGetCellCenteredVelocities(realization_base,global_vec,GAS_PHASE,Z_DIRECTION)
         string = "Gas Z-Velocity"
-        call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec,grp_id, &
+        call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec_vz,grp_id, &
             H5T_NATIVE_DOUBLE)
     endif
   endif
@@ -363,6 +370,9 @@ subroutine OutputHDF5(realization_base,var_list_type)
   endif
 
   call VecDestroy(global_vec,ierr)
+  call VecDestroy(global_vec_vx,ierr)
+  call VecDestroy(global_vec_vy,ierr)
+  call VecDestroy(global_vec_vz,ierr)
 
 #if defined(SCORPIO_WRITE)
     call scorpio_close_dataset_group(pio_dataset_groupid, file_id, &
@@ -651,6 +661,9 @@ subroutine OutputHDF5UGrid(realization_base)
   type(output_variable_type), pointer :: cur_variable
   
   Vec :: global_vec
+  Vec :: global_vec_vx
+  Vec :: global_vec_vy
+  Vec :: global_vec_vz
   Vec :: natural_vec
   PetscReal, pointer :: v_ptr
   Vec :: global_x_vertex_vec,global_y_vertex_vec,global_z_vertex_vec
@@ -793,6 +806,9 @@ subroutine OutputHDF5UGrid(realization_base)
   ! write out data sets
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
                                   option)
+  call DiscretizationDuplicateVector(discretization,global_vec,global_vec_vx)
+  call DiscretizationDuplicateVector(discretization,global_vec,global_vec_vy)
+  call DiscretizationDuplicateVector(discretization,global_vec,global_vec_vz)
 
   ! loop over variables and write to file
   cur_variable => output_option%output_variable_list%first
@@ -820,35 +836,48 @@ subroutine OutputHDF5UGrid(realization_base)
   if (output_option%print_hdf5_velocities) then
 
     ! velocities
-    call OutputGetCellCenteredVelocities(realization_base,global_vec,LIQUID_PHASE,X_DIRECTION)
-    string = "Liquid X-Velocity"
-    call HDF5WriteUnstructuredDataSetFromVec(string,option,global_vec,grp_id, &
-          H5T_NATIVE_DOUBLE)
-    call OutputGetCellCenteredVelocities(realization_base,global_vec,LIQUID_PHASE,Y_DIRECTION)
-    string = "Liquid Y-Velocity"
-    call HDF5WriteUnstructuredDataSetFromVec(string,option,global_vec,grp_id, &
-          H5T_NATIVE_DOUBLE)
+    call OutputGetCellCenteredVelocities(realization_base,global_vec_vx, &
+                                         global_vec_vy,global_vec_vz,LIQUID_PHASE)
 
-    call OutputGetCellCenteredVelocities(realization_base,global_vec,LIQUID_PHASE,Z_DIRECTION)
+    string = "Liquid X-Velocity"
+    call DiscretizationGlobalToNatural(discretization,global_vec_vx, &
+                                       natural_vec,ONEDOF)
+    call HDF5WriteUnstructuredDataSetFromVec(string,option,natural_vec,grp_id, &
+                                                 H5T_NATIVE_DOUBLE)
+
+    string = "Liquid Y-Velocity"
+    call DiscretizationGlobalToNatural(discretization,global_vec_vy, &
+                                       natural_vec,ONEDOF)
+    call HDF5WriteUnstructuredDataSetFromVec(string,option,natural_vec,grp_id, &
+                                                 H5T_NATIVE_DOUBLE)
+
     string = "Liquid Z-Velocity"
-    call HDF5WriteUnstructuredDataSetFromVec(string,option,global_vec,grp_id, &
-          H5T_NATIVE_DOUBLE)
+    call DiscretizationGlobalToNatural(discretization,global_vec_vz, &
+                                       natural_vec,ONEDOF)
+    call HDF5WriteUnstructuredDataSetFromVec(string,option,natural_vec,grp_id, &
+                                                 H5T_NATIVE_DOUBLE)
 
     if (option%nphase > 1) then
-        call OutputGetCellCenteredVelocities(realization_base,global_vec,GAS_PHASE,X_DIRECTION)
+        call OutputGetCellCenteredVelocities(realization_base,global_vec_vx, &
+                                             global_vec_vy,global_vec_vz,GAS_PHASE)
+
         string = "Gas X-Velocity"
-        call HDF5WriteUnstructuredDataSetFromVec(string,option,global_vec,grp_id, &
-            H5T_NATIVE_DOUBLE)
+        call DiscretizationGlobalToNatural(discretization,global_vec_vx, &
+                                           natural_vec,ONEDOF)
+        call HDF5WriteUnstructuredDataSetFromVec(string,option,natural_vec,grp_id, &
+                                                 H5T_NATIVE_DOUBLE)
 
-        call OutputGetCellCenteredVelocities(realization_base,global_vec,GAS_PHASE,Y_DIRECTION)
         string = "Gas Y-Velocity"
-        call HDF5WriteUnstructuredDataSetFromVec(string,option,global_vec,grp_id, &
-            H5T_NATIVE_DOUBLE)
+        call DiscretizationGlobalToNatural(discretization,global_vec_vy, &
+                                           natural_vec,ONEDOF)
+        call HDF5WriteUnstructuredDataSetFromVec(string,option,natural_vec,grp_id, &
+                                                 H5T_NATIVE_DOUBLE)
 
-        call OutputGetCellCenteredVelocities(realization_base,global_vec,GAS_PHASE,Z_DIRECTION)
         string = "Gas Z-Velocity"
-        call HDF5WriteUnstructuredDataSetFromVec(string,option,global_vec,grp_id, &
-            H5T_NATIVE_DOUBLE)
+        call DiscretizationGlobalToNatural(discretization,global_vec_vz, &
+                                           natural_vec,ONEDOF)
+        call HDF5WriteUnstructuredDataSetFromVec(string,option,natural_vec,grp_id, &
+                                                 H5T_NATIVE_DOUBLE)
     endif
   endif
 
@@ -858,6 +887,9 @@ subroutine OutputHDF5UGrid(realization_base)
   endif
 
   call VecDestroy(global_vec,ierr)
+  call VecDestroy(global_vec_vx,ierr)
+  call VecDestroy(global_vec_vy,ierr)
+  call VecDestroy(global_vec_vz,ierr)
 
 #if defined(SCORPIO_WRITE)
 !    call scorpio_close_dataset_group(pio_dataset_groupid, file_id, &
@@ -968,6 +1000,7 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
   type(output_variable_type), pointer :: cur_variable
 
   Vec :: global_vec
+  Vec :: global_vec_vx,global_vec_vy,global_vec_vz
   Vec :: natural_vec
   PetscReal, pointer :: v_ptr
 
@@ -1106,6 +1139,9 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
                                   option)
   call DiscretizationCreateVector(discretization,ONEDOF,natural_vec,NATURAL, &
                                   option)
+  call DiscretizationDuplicateVector(discretization,global_vec,global_vec_vx)
+  call DiscretizationDuplicateVector(discretization,global_vec,global_vec_vy)
+  call DiscretizationDuplicateVector(discretization,global_vec,global_vec_vz)
 
   select case (var_list_type)
 
@@ -1186,6 +1222,10 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
 
   call VecDestroy(global_vec,ierr)
   call VecDestroy(natural_vec,ierr)
+  call VecDestroy(global_vec_vx,ierr)
+  call VecDestroy(global_vec_vy,ierr)
+  call VecDestroy(global_vec_vz,ierr)
+
   call h5gclose_f(grp_id,hdf5_err)
 
   call h5fclose_f(file_id,hdf5_err)

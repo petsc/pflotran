@@ -195,6 +195,7 @@ subroutine OutputVelocitiesVTK(realization_base)
   character(len=MAXWORDLENGTH) :: word
   Vec :: global_vec
   Vec :: natural_vec
+  Vec :: global_vec_vx,global_vec_vy,global_vec_vz
   PetscErrorCode :: ierr
 
   PetscReal, pointer :: vec_ptr(:)
@@ -230,39 +231,41 @@ subroutine OutputVelocitiesVTK(realization_base)
                                   option)  
   call DiscretizationCreateVector(discretization,ONEDOF,natural_vec,NATURAL, &
                                   option)    
+  call DiscretizationDuplicateVector(discretization,global_vec,global_vec_vx)
+  call DiscretizationDuplicateVector(discretization,global_vec,global_vec_vy)
+  call DiscretizationDuplicateVector(discretization,global_vec,global_vec_vz)
 
   ! write out coordinates
   call WriteVTKGrid(OUTPUT_UNIT,realization_base)
 
   word = 'Vlx'
-  call OutputGetCellCenteredVelocities(realization_base,global_vec,LIQUID_PHASE,X_DIRECTION)
-  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+  call OutputGetCellCenteredVelocities(realization_base,global_vec_vx, &
+                                       global_vec_vy,global_vec_vz,LIQUID_PHASE)
+
+  call DiscretizationGlobalToNatural(discretization,global_vec_vx,natural_vec,ONEDOF)
   call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_REAL)
 
   word = 'Vly'
-  call OutputGetCellCenteredVelocities(realization_base,global_vec,LIQUID_PHASE,Y_DIRECTION)
-  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+  call DiscretizationGlobalToNatural(discretization,global_vec_vy,natural_vec,ONEDOF)
   call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_REAL)
 
   word = 'Vlz'
-  call OutputGetCellCenteredVelocities(realization_base,global_vec,LIQUID_PHASE,Z_DIRECTION)
-  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+  call DiscretizationGlobalToNatural(discretization,global_vec_vz,natural_vec,ONEDOF)
   call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_REAL)
 
   if (option%nphase > 1) then
     word = 'Vgx'
-    call OutputGetCellCenteredVelocities(realization_base,global_vec,GAS_PHASE,X_DIRECTION)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+    call OutputGetCellCenteredVelocities(realization_base,global_vec_vx, &
+                                         global_vec_vy,global_vec_vz,GAS_PHASE)
+    call DiscretizationGlobalToNatural(discretization,global_vec_vx,natural_vec,ONEDOF)
     call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_REAL)
 
     word = 'Vgy'
-    call OutputGetCellCenteredVelocities(realization_base,global_vec,GAS_PHASE,Y_DIRECTION)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+    call DiscretizationGlobalToNatural(discretization,global_vec_vy,natural_vec,ONEDOF)
     call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_REAL)
 
     word = 'Vgz'
-    call OutputGetCellCenteredVelocities(realization_base,global_vec,GAS_PHASE,Z_DIRECTION)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+    call DiscretizationGlobalToNatural(discretization,global_vec_vz,natural_vec,ONEDOF)
     call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_REAL)
   endif
 
@@ -274,6 +277,9 @@ subroutine OutputVelocitiesVTK(realization_base)
   
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
+  call VecDestroy(global_vec_vx,ierr)
+  call VecDestroy(global_vec_vy,ierr)
+  call VecDestroy(global_vec_vz,ierr)
 
   if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
   

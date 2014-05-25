@@ -299,8 +299,8 @@ end function OutputGetVarFromArrayAtCoord
 
 ! ************************************************************************** !
 
-subroutine OutputGetCellCenteredVelocities(realization_base,vec,iphase, &
-                                           direction)
+subroutine OutputGetCellCenteredVelocities(realization_base,vec_x,vec_y, &
+                                           vec_z, iphase)
   ! 
   ! Computes the cell-centered velocity component
   ! as an averages of cell face velocities
@@ -318,22 +318,32 @@ subroutine OutputGetCellCenteredVelocities(realization_base,vec,iphase, &
 #include "finclude/petscvec.h90"
 
   class(realization_base_type) :: realization_base
-  Vec :: vec
+  Vec :: vec_x,vec_y,vec_z
   PetscInt :: direction
   PetscInt :: iphase
   
   PetscErrorCode :: ierr
   
-  PetscReal, pointer :: vec_ptr(:)
+  PetscReal, pointer :: vec_x_ptr(:),vec_y_ptr(:),vec_z_ptr(:)
   PetscReal, allocatable :: velocities(:,:)
   
   call PetscLogEventBegin(logging%event_output_get_cell_vel,ierr) 
                             
   allocate(velocities(3,realization_base%patch%grid%nlmax))
   call PatchGetCellCenteredVelocities(realization_base%patch,iphase,velocities)
-  call VecGetArrayF90(vec,vec_ptr,ierr)
-  vec_ptr(:) = velocities(direction,:)*realization_base%output_option%tconv
-  call VecRestoreArrayF90(vec,vec_ptr,ierr)
+
+  call VecGetArrayF90(vec_x,vec_x_ptr,ierr)
+  call VecGetArrayF90(vec_y,vec_y_ptr,ierr)
+  call VecGetArrayF90(vec_z,vec_z_ptr,ierr)
+
+  vec_x_ptr(:) = velocities(X_DIRECTION,:)*realization_base%output_option%tconv
+  vec_y_ptr(:) = velocities(Y_DIRECTION,:)*realization_base%output_option%tconv
+  vec_z_ptr(:) = velocities(Z_DIRECTION,:)*realization_base%output_option%tconv
+
+  call VecRestoreArrayF90(vec_x,vec_x_ptr,ierr)
+  call VecRestoreArrayF90(vec_y,vec_y_ptr,ierr)
+  call VecRestoreArrayF90(vec_z,vec_z_ptr,ierr)
+
   deallocate(velocities)
   
   call PetscLogEventEnd(logging%event_output_get_cell_vel,ierr) 
