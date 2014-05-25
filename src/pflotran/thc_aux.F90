@@ -330,7 +330,7 @@ subroutine THCAuxVarCompute(x,auxvar,global_auxvar, &
   endif  
 
 !  call wateos_noderiv(option%temp,pw,dw_kg,dw_mol,hw,option%scale,ierr)
-  call EOSWaterDensityEnthalpy(global_auxvar%temp(1),pw,dw_kg,dw_mol,hw, &
+  call EOSWaterDensityEnthalpy(global_auxvar%temp,pw,dw_kg,dw_mol,hw, &
                                dw_dp,dw_dt,hw_dp,hw_dt,ierr)
   ! J/kmol -> whatever units
   hw = hw * option%scale
@@ -338,8 +338,8 @@ subroutine THCAuxVarCompute(x,auxvar,global_auxvar, &
   hw_dt = hw_dt * option%scale
   
 ! may need to compute dpsat_dt to pass to VISW
-  call EOSWaterSaturationPressure(global_auxvar%temp(1),sat_pressure,dpsat_dt,ierr)
-  call EOSWaterViscosity(global_auxvar%temp(1),pw,sat_pressure,dpsat_dt,visl, &
+  call EOSWaterSaturationPressure(global_auxvar%temp,sat_pressure,dpsat_dt,ierr)
+  call EOSWaterViscosity(global_auxvar%temp,pw,sat_pressure,dpsat_dt,visl, &
                          dvis_dt,dvis_dp,dvis_dpsat,ierr)
   if (iphase == 3) then !kludge since pw is constant in the unsat zone
     dvis_dp = 0.d0
@@ -477,7 +477,7 @@ subroutine THCAuxVarComputeIce(x, auxvar, global_auxvar, iphase, &
     case (PAINTER_EXPLICIT)
       ! Model from Painter, Comp. Geosci. (2011)
       call SatFuncComputeIcePExplicit(global_auxvar%pres(1), & 
-                                      global_auxvar%temp(1), ice_saturation, &
+                                      global_auxvar%temp, ice_saturation, &
                                       global_auxvar%sat(1), gas_saturation, &
                                       kr, ds_dp, dsl_temp, dsg_pl, dsg_temp, &
                                       dsi_pl, dsi_temp, dkr_dp, dkr_dt, &
@@ -485,7 +485,7 @@ subroutine THCAuxVarComputeIce(x, auxvar, global_auxvar, iphase, &
     case (PAINTER_KARRA_IMPLICIT)
       ! Implicit model from Painter & Karra, VJZ (2013)
       call SatFuncComputeIcePKImplicit(global_auxvar%pres(1), & 
-                                       global_auxvar%temp(1), ice_saturation, &
+                                       global_auxvar%temp, ice_saturation, &
                                        global_auxvar%sat(1), gas_saturation, &
                                        kr, ds_dp, dsl_temp, dsg_pl, dsg_temp, &
                                        dsi_pl, dsi_temp, dkr_dp, dkr_dt, &
@@ -493,7 +493,7 @@ subroutine THCAuxVarComputeIce(x, auxvar, global_auxvar, iphase, &
     case (PAINTER_KARRA_EXPLICIT)
       ! Explicit model from Painter & Karra, VJZ (2013)
       call SatFuncComputeIcePKExplicit(global_auxvar%pres(1), & 
-                                       global_auxvar%temp(1), ice_saturation, &
+                                       global_auxvar%temp, ice_saturation, &
                                        global_auxvar%sat(1), gas_saturation, &
                                        kr, ds_dp, dsl_temp, dsg_pl, dsg_temp, &
                                        dsi_pl, dsi_temp, dkr_dp, dkr_dt, &
@@ -504,19 +504,19 @@ subroutine THCAuxVarComputeIce(x, auxvar, global_auxvar, iphase, &
       call printErrMsg(option)
   end select
 
-!  call EOSWaterDensityEnthalpy(global_auxvar%temp(1),pw,dw_kg,dw_mol,hw, &
+!  call EOSWaterDensityEnthalpy(global_auxvar%temp,pw,dw_kg,dw_mol,hw, &
 !                               dw_dp,dw_dt,hw_dp,hw_dt,option%scale,ierr)
 
-  call EOSWaterDensityEnthalpyPainter(global_auxvar%temp(1),pw,dw_kg,dw_mol, &
+  call EOSWaterDensityEnthalpyPainter(global_auxvar%temp,pw,dw_kg,dw_mol, &
                                       hw,PETSC_TRUE,dw_dp,dw_dt,hw_dp,hw_dt,ierr)
   ! J/kmol -> MJ/kmol
   hw = hw * 1.d-6
   hw_dp = hw_dp * 1.d-6
   hw_dt = hw_dt * 1.d-6
   
-  call EOSWaterSaturationPressure(global_auxvar%temp(1), sat_pressure, &
+  call EOSWaterSaturationPressure(global_auxvar%temp, sat_pressure, &
                                   dpsat_dt, ierr)
-  call EOSWaterViscosity(global_auxvar%temp(1), pw, sat_pressure, dpsat_dt, &
+  call EOSWaterViscosity(global_auxvar%temp, pw, sat_pressure, dpsat_dt, &
                          visl, dvis_dt,dvis_dp, dvis_dpsat, ierr)
 
   
@@ -556,10 +556,10 @@ subroutine THCAuxVarComputeIce(x, auxvar, global_auxvar, iphase, &
   auxvar%dsat_gas_dt = dsg_temp
   
 ! Calculate the density, internal energy and derivatives for ice
-  call EOSWaterDensityIce(global_auxvar%temp(1), global_auxvar%pres(1), &
+  call EOSWaterDensityIce(global_auxvar%temp, global_auxvar%pres(1), &
                           den_ice, dden_ice_dT, dden_ice_dP)
 
-  call EOSWaterInternalEnergyIce(global_auxvar%temp(1), u_ice, du_ice_dT)
+  call EOSWaterInternalEnergyIce(global_auxvar%temp, u_ice, du_ice_dT)
 
   auxvar%den_ice = den_ice
   auxvar%dden_ice_dt = dden_ice_dT
