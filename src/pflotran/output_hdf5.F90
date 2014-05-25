@@ -1220,6 +1220,80 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
     end select
   endif
 
+  if (output_option%print_hdf5_vel_cent .and. (var_list_type==INSTANTANEOUS_VARS)) then
+
+    ! velocities
+    call OutputGetCellCenteredVelocities(realization_base,global_vec_vx, &
+                                         global_vec_vy,global_vec_vz, &
+                                         LIQUID_PHASE)
+
+    string = "Liquid X-Velocity [m_per_" // trim(output_option%tunit) // "]"
+    call DiscretizationGlobalToNatural(discretization,global_vec_vx, &
+                                       natural_vec,ONEDOF)
+    call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+                                              natural_vec,grp_id,H5T_NATIVE_DOUBLE)
+    att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
+    if (option%myrank == option%io_rank) then
+      call OutputXMFAttribute(OUTPUT_UNIT,grid%nmax,string,att_datasetname)
+    endif
+
+    string = "Liquid Y-Velocity [m_per_" // trim(output_option%tunit) // "]"
+    call DiscretizationGlobalToNatural(discretization,global_vec_vy, &
+                                       natural_vec,ONEDOF)
+    call HDF5WriteUnstructuredDataSetFromVec(string,option,natural_vec,grp_id, &
+                                             H5T_NATIVE_DOUBLE)
+    att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
+    if (option%myrank == option%io_rank) then
+      call OutputXMFAttribute(OUTPUT_UNIT,grid%nmax,string,att_datasetname)
+    endif
+
+    string = "Liquid Z-Velocity [m_per_" // trim(output_option%tunit) // "]"
+    call DiscretizationGlobalToNatural(discretization,global_vec_vz, &
+                                       natural_vec,ONEDOF)
+    call HDF5WriteUnstructuredDataSetFromVec(string,option,natural_vec,grp_id, &
+                                             H5T_NATIVE_DOUBLE)
+    att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
+    if (option%myrank == option%io_rank) then
+      call OutputXMFAttribute(OUTPUT_UNIT,grid%nmax,string,att_datasetname)
+    endif
+
+    if (option%nphase > 1) then
+        call OutputGetCellCenteredVelocities(realization_base,global_vec_vx, &
+                                             global_vec_vy,global_vec_vz, &
+                                             GAS_PHASE)
+
+        string = "Gas X-Velocity [m_per_" // trim(output_option%tunit) // "]"
+        call DiscretizationGlobalToNatural(discretization,global_vec_vx, &
+                                           natural_vec,ONEDOF)
+        call HDF5WriteUnstructuredDataSetFromVec(string,option,natural_vec,grp_id, &
+                                                 H5T_NATIVE_DOUBLE)
+        att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
+        if (option%myrank == option%io_rank) then
+          call OutputXMFAttribute(OUTPUT_UNIT,grid%nmax,string,att_datasetname)
+        endif
+
+        string = "Gas Y-Velocity [m_per_" // trim(output_option%tunit) // "]"
+        call DiscretizationGlobalToNatural(discretization,global_vec_vy, &
+                                           natural_vec,ONEDOF)
+        call HDF5WriteUnstructuredDataSetFromVec(string,option,natural_vec,grp_id, &
+                                                 H5T_NATIVE_DOUBLE)
+        att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
+        if (option%myrank == option%io_rank) then
+          call OutputXMFAttribute(OUTPUT_UNIT,grid%nmax,string,att_datasetname)
+        endif
+
+        string = "Gas Z-Velocity [m_per_" // trim(output_option%tunit) // "]"
+        call DiscretizationGlobalToNatural(discretization,global_vec_vz, &
+                                           natural_vec,ONEDOF)
+        call HDF5WriteUnstructuredDataSetFromVec(string,option,natural_vec,grp_id, &
+                                                 H5T_NATIVE_DOUBLE)
+        att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
+        if (option%myrank == option%io_rank) then
+          call OutputXMFAttribute(OUTPUT_UNIT,grid%nmax,string,att_datasetname)
+        endif
+    endif
+  endif
+
   call VecDestroy(global_vec,ierr)
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec_vx,ierr)
