@@ -339,7 +339,8 @@ subroutine OutputTecplotBlock(realization_base)
     call OutputVelocitiesTecplotBlock(realization_base)
   endif
   
-  if (output_option%print_fluxes) then
+  if (output_option%print_fluxes .and. &
+      realization_base%discretization%itype == STRUCTURED_GRID) then
     if (grid%structured_grid%nx > 1) then
       call OutputFluxVelocitiesTecplotBlk(realization_base,LIQUID_PHASE, &
                                           X_DIRECTION,PETSC_FALSE)
@@ -368,7 +369,8 @@ subroutine OutputTecplotBlock(realization_base)
       end select
     endif
   endif
-  if (output_option%print_fluxes) then
+  if (output_option%print_fluxes .and. &
+      realization_base%discretization%itype == STRUCTURED_GRID) then
     if (grid%structured_grid%nx > 1) then
       select case(option%iflowmode)
         case(G_MODE)
