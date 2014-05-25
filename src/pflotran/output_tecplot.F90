@@ -335,7 +335,7 @@ subroutine OutputTecplotBlock(realization_base)
 
   if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
   
-  if (output_option%print_tecplot_velocities) then
+  if (output_option%print_tecplot_vel_cent) then
     call OutputVelocitiesTecplotBlock(realization_base)
   endif
   
@@ -1011,7 +1011,7 @@ subroutine OutputTecplotPoint(realization_base)
   
   if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
   
-  if (output_option%print_tecplot_velocities) then
+  if (output_option%print_tecplot_vel_cent) then
     call OutputVelocitiesTecplotPoint(realization_base)
   endif
   

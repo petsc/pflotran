@@ -1490,7 +1490,7 @@ subroutine InitReadInput(simulation)
   PetscInt :: temp_int
   PetscInt :: count, id
   
-  PetscBool :: velocities
+  PetscBool :: vel_cent
   PetscBool :: flux_velocities
   PetscBool :: fluxes
   PetscBool :: mass_flowrate
@@ -2255,7 +2255,7 @@ subroutine InitReadInput(simulation)
       
 !....................
       case ('OUTPUT')
-        velocities = PETSC_FALSE
+        vel_cent = PETSC_FALSE
         flux_velocities = PETSC_FALSE
         fluxes = PETSC_FALSE
         mass_flowrate = PETSC_FALSE
@@ -2526,8 +2526,8 @@ subroutine InitReadInput(simulation)
                                      ' not recognized in OUTPUT,FORMAT.'
                   call printErrMsg(option)
               end select
-            case('VELOCITIES')
-              velocities = PETSC_TRUE
+            case('VELOCITY_AT_CENTER')
+              vel_cent = PETSC_TRUE
             case('FLUXES_VELOCITIES')
               flux_velocities = PETSC_TRUE
             case('FLUXES')
@@ -2561,13 +2561,13 @@ subroutine InitReadInput(simulation)
               call printErrMsg(option)              
           end select
         enddo
-        if (velocities) then
+        if (vel_cent) then
           if (output_option%print_tecplot) &
-            output_option%print_tecplot_velocities = PETSC_TRUE
+            output_option%print_tecplot_vel_cent = PETSC_TRUE
           if (output_option%print_hdf5) &
-            output_option%print_hdf5_velocities = PETSC_TRUE
+            output_option%print_hdf5_vel_cent = PETSC_TRUE
           if (output_option%print_vtk) &
-            output_option%print_vtk_velocities = PETSC_TRUE
+            output_option%print_vtk_vel_cent = PETSC_TRUE
         endif
         if (flux_velocities) then
           if (output_option%print_tecplot) &

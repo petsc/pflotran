@@ -601,8 +601,8 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
   enddo
   
   ! velocities
-  if ((realization%output_option%print_tecplot_velocities .or. &
-       realization%output_option%print_hdf5_velocities) .and. &
+  if ((realization%output_option%print_tecplot_vel_cent .or. &
+       realization%output_option%print_hdf5_vel_cent) .and. &
       option%nflowdof > 0) then
     if (associated(regression%natural_cell_ids)) then
       call VecDuplicate(regression%natural_cell_id_vec,x_vel_natural,ierr)

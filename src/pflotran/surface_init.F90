@@ -648,7 +648,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
                   call printErrMsg(option)
               end select
 
-            case('VELOCITIES')
+            case('VELOCITY_AT_CENTER')
               velocities = PETSC_TRUE
             case('FLUXES')
               fluxes = PETSC_TRUE
@@ -686,11 +686,11 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
 
         if (velocities) then
           if (output_option%print_tecplot) &
-            output_option%print_tecplot_velocities = PETSC_TRUE
+            output_option%print_tecplot_vel_cent = PETSC_TRUE
           if (output_option%print_hdf5) &
-            output_option%print_hdf5_velocities = PETSC_TRUE
+            output_option%print_hdf5_vel_cent = PETSC_TRUE
           if (output_option%print_vtk) &
-            output_option%print_vtk_velocities = PETSC_TRUE
+            output_option%print_vtk_vel_cent = PETSC_TRUE
         endif
         if (fluxes) then
           if (output_option%print_tecplot) &

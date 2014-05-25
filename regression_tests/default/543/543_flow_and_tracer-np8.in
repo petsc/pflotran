@@ -158,7 +158,7 @@ OUTPUT
 #  PERIODIC TIME 1 d
   FORMAT TECPLOT BLOCK
   FORMAT HDF5
-  VELOCITIES
+  VELOCITY_AT_CENTER
 END
 
 #=========================== times ============================================

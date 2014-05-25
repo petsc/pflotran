@@ -61,7 +61,7 @@ END
 OUTPUT
   FORMAT TECPLOT BLOCK
   FORMAT HDF5
-  VELOCITIES
+  VELOCITY_AT_CENTER
 END
 
 #=========================== times ============================================

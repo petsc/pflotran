@@ -98,7 +98,7 @@ OUTPUT
   TIMES y 5. 10. 15. 20.
   FORMAT TECPLOT POINT
   FORMAT HDF5
-  VELOCITIES
+  VELOCITY_AT_CENTER
 END
 
 #=========================== times ============================================

@@ -300,7 +300,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
 
   end select
 
-  if (output_option%print_hdf5_velocities.and.(var_list_type==INSTANTANEOUS_VARS)) then
+  if (output_option%print_hdf5_vel_cent.and.(var_list_type==INSTANTANEOUS_VARS)) then
 
     ! velocities
     call OutputGetCellCenteredVelocities(realization_base, global_vec_vx, &
@@ -833,7 +833,7 @@ subroutine OutputHDF5UGrid(realization_base)
     cur_variable => cur_variable%next
   enddo
 
-  if (output_option%print_hdf5_velocities) then
+  if (output_option%print_hdf5_vel_cent) then
 
     ! velocities
     call OutputGetCellCenteredVelocities(realization_base,global_vec_vx, &

@@ -121,7 +121,7 @@ subroutine OutputVTK(realization_base)
   if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
 
 #if 1
-  if (output_option%print_tecplot_velocities) then
+  if (output_option%print_tecplot_vel_cent) then
     call OutputVelocitiesVTK(realization_base)
   endif
 #endif

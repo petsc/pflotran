@@ -20,7 +20,7 @@ module Output_Aux_module
     PetscBool :: print_final
   
     PetscBool :: print_hdf5
-    PetscBool :: print_hdf5_velocities
+    PetscBool :: print_hdf5_vel_cent
     PetscBool :: print_hdf5_flux_velocities
     PetscBool :: print_single_h5_file
     PetscInt  :: times_per_h5_file
@@ -32,12 +32,12 @@ module Output_Aux_module
 
     PetscBool :: print_tecplot 
     PetscInt :: tecplot_format
-    PetscBool :: print_tecplot_velocities
+    PetscBool :: print_tecplot_vel_cent
     PetscBool :: print_tecplot_flux_velocities
     PetscBool :: print_fluxes
     
     PetscBool :: print_vtk 
-    PetscBool :: print_vtk_velocities
+    PetscBool :: print_vtk_vel_cent
 
     PetscBool :: print_observation 
     PetscBool :: print_column_ids
@@ -150,7 +150,7 @@ function OutputOptionCreate()
   
   allocate(output_option)
   output_option%print_hdf5 = PETSC_FALSE
-  output_option%print_hdf5_velocities = PETSC_FALSE
+  output_option%print_hdf5_vel_cent = PETSC_FALSE
   output_option%print_hdf5_flux_velocities = PETSC_FALSE
   output_option%print_single_h5_file = PETSC_TRUE
   output_option%times_per_h5_file = 0
@@ -161,11 +161,11 @@ function OutputOptionCreate()
   output_option%print_explicit_flowrate = PETSC_FALSE
   output_option%print_tecplot = PETSC_FALSE
   output_option%tecplot_format = 0
-  output_option%print_tecplot_velocities = PETSC_FALSE
+  output_option%print_tecplot_vel_cent = PETSC_FALSE
   output_option%print_fluxes = PETSC_FALSE
   output_option%print_tecplot_flux_velocities = PETSC_FALSE
   output_option%print_vtk = PETSC_FALSE
-  output_option%print_vtk_velocities = PETSC_FALSE
+  output_option%print_vtk_vel_cent = PETSC_FALSE
   output_option%print_observation = PETSC_FALSE
   output_option%print_column_ids = PETSC_FALSE
   output_option%print_mad = PETSC_FALSE
