@@ -337,7 +337,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
     endif
   endif
 
-  if (output_option%print_hdf5_flux_velocities.and.(var_list_type==INSTANTANEOUS_VARS)) then
+  if (output_option%print_hdf5_vel_face .and. (var_list_type==INSTANTANEOUS_VARS)) then
 
     ! internal flux velocities
     if (grid%structured_grid%nx > 1) then
@@ -881,7 +881,7 @@ subroutine OutputHDF5UGrid(realization_base)
     endif
   endif
 
-  if (output_option%print_hdf5_flux_velocities) then
+  if (output_option%print_hdf5_vel_face) then
     option%io_buffer='WriteHDF5FluxVecolities() not implemented for unstructured grid.'
     call printErrMsg(option)
   endif

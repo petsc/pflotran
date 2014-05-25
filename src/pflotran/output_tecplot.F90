@@ -339,7 +339,7 @@ subroutine OutputTecplotBlock(realization_base)
     call OutputVelocitiesTecplotBlock(realization_base)
   endif
   
-  if (output_option%print_tecplot_flux_velocities .and. &
+  if (output_option%print_tecplot_vel_face .and. &
       realization_base%discretization%itype == STRUCTURED_GRID) then
     if (grid%structured_grid%nx > 1) then
       call OutputFluxVelocitiesTecplotBlk(realization_base,LIQUID_PHASE, &

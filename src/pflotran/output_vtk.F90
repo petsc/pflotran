@@ -127,7 +127,7 @@ subroutine OutputVTK(realization_base)
 #endif
   
 #if 0  
-  if (output_option%print_tecplot_flux_velocities) then
+  if (output_option%print_tecplot_vel_face) then
     if (grid%structured_grid%nx > 1) then
       call OutputFluxVelocitiesVTK(realization_base,LIQUID_PHASE, &
                                           X_DIRECTION)
