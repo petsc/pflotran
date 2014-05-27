@@ -1490,8 +1490,8 @@ subroutine InitReadInput(simulation)
   PetscInt :: temp_int
   PetscInt :: count, id
   
-  PetscBool :: velocities
-  PetscBool :: flux_velocities
+  PetscBool :: vel_cent
+  PetscBool :: vel_face
   PetscBool :: fluxes
   PetscBool :: mass_flowrate
   PetscBool :: energy_flowrate
@@ -2255,8 +2255,8 @@ subroutine InitReadInput(simulation)
       
 !....................
       case ('OUTPUT')
-        velocities = PETSC_FALSE
-        flux_velocities = PETSC_FALSE
+        vel_cent = PETSC_FALSE
+        vel_face = PETSC_FALSE
         fluxes = PETSC_FALSE
         mass_flowrate = PETSC_FALSE
         energy_flowrate = PETSC_FALSE
@@ -2526,10 +2526,10 @@ subroutine InitReadInput(simulation)
                                      ' not recognized in OUTPUT,FORMAT.'
                   call printErrMsg(option)
               end select
-            case('VELOCITIES')
-              velocities = PETSC_TRUE
-            case('FLUXES_VELOCITIES')
-              flux_velocities = PETSC_TRUE
+            case('VELOCITY_AT_CENTER')
+              vel_cent = PETSC_TRUE
+            case('VELOCITY_AT_FACE')
+              vel_face = PETSC_TRUE
             case('FLUXES')
               fluxes = PETSC_TRUE
             case('FLOWRATES','FLOWRATE')
@@ -2561,19 +2561,19 @@ subroutine InitReadInput(simulation)
               call printErrMsg(option)              
           end select
         enddo
-        if (velocities) then
+        if (vel_cent) then
           if (output_option%print_tecplot) &
-            output_option%print_tecplot_velocities = PETSC_TRUE
+            output_option%print_tecplot_vel_cent = PETSC_TRUE
           if (output_option%print_hdf5) &
-            output_option%print_hdf5_velocities = PETSC_TRUE
+            output_option%print_hdf5_vel_cent = PETSC_TRUE
           if (output_option%print_vtk) &
-            output_option%print_vtk_velocities = PETSC_TRUE
+            output_option%print_vtk_vel_cent = PETSC_TRUE
         endif
-        if (flux_velocities) then
+        if (vel_face) then
           if (output_option%print_tecplot) &
-            output_option%print_tecplot_flux_velocities = PETSC_TRUE
+            output_option%print_tecplot_vel_face = PETSC_TRUE
           if (output_option%print_hdf5) &
-           output_option%print_hdf5_flux_velocities = PETSC_TRUE
+           output_option%print_hdf5_vel_face = PETSC_TRUE
         endif
         if (fluxes) then
           output_option%print_fluxes = PETSC_TRUE

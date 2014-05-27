@@ -100,7 +100,7 @@ OUTPUT
   PRINT_COLUMN_IDS
   FORMAT TECPLOT POINT
   PERMEABILITY
-  VELOCITIES
+  VELOCITY_AT_CENTER
 END
 
 #======================== times ===============================================

@@ -248,7 +248,6 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
   character(len=1) :: backslash
 
   PetscBool :: velocities
-  PetscBool :: fluxes
   PetscBool :: continuation_flag
   PetscBool :: mass_flowrate
   PetscBool :: energy_flowrate
@@ -399,7 +398,6 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
       !.........................................................................
       case ('SURF_OUTPUT')
         velocities = PETSC_FALSE
-        fluxes = PETSC_FALSE
         mass_flowrate = PETSC_FALSE
         energy_flowrate = PETSC_FALSE
         aveg_mass_flowrate = PETSC_FALSE
@@ -648,10 +646,8 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
                   call printErrMsg(option)
               end select
 
-            case('VELOCITIES')
+            case('VELOCITY_AT_CENTER')
               velocities = PETSC_TRUE
-            case('FLUXES')
-              fluxes = PETSC_TRUE
             case ('HDF5_WRITE_GROUP_SIZE')
               call InputReadInt(input,option,option%hdf5_write_group_size)
               call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE','Group size')
@@ -686,17 +682,11 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
 
         if (velocities) then
           if (output_option%print_tecplot) &
-            output_option%print_tecplot_velocities = PETSC_TRUE
+            output_option%print_tecplot_vel_cent = PETSC_TRUE
           if (output_option%print_hdf5) &
-            output_option%print_hdf5_velocities = PETSC_TRUE
+            output_option%print_hdf5_vel_cent = PETSC_TRUE
           if (output_option%print_vtk) &
-            output_option%print_vtk_velocities = PETSC_TRUE
-        endif
-        if (fluxes) then
-          if (output_option%print_tecplot) &
-            output_option%print_tecplot_flux_velocities = PETSC_TRUE
-          if (output_option%print_hdf5) &
-           output_option%print_hdf5_flux_velocities = PETSC_TRUE
+            output_option%print_vtk_vel_cent = PETSC_TRUE
         endif
         if (mass_flowrate.or.energy_flowrate.or.aveg_mass_flowrate.or.aveg_energy_flowrate) then
           if (output_option%print_hdf5) then

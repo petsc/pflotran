@@ -84,7 +84,7 @@ OUTPUT
 #  TIMES y 0.24
 #  PERIODIC_OBSERVATION TIMESTEP 1
 #  FORMAT TECPLOT POINT
-  VELOCITIES
+  VELOCITY_AT_CENTER
 /
 
 #=========================== times ============================================
