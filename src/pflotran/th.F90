@@ -2757,6 +2757,7 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
                 dhack_dt = 4.d0*global_auxvar_dn%temp(1)/(T_th*T_th)*fct
               endif
               dphi       = dphi*hack
+              dphi_dp_dn = dphi_dp_dn*hack
               dphi_dt_dn = dphi_dt_dn*hack + dphi*dhack_dt
             endif
           endif
@@ -3170,6 +3171,7 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
   v_darcy = 0.d0
   density_ave = 0.d0
   q = 0.d0
+  hack = 0.d0
 
   hw_present = auxvar_dn%surf_wat
 
