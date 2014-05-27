@@ -2807,12 +2807,12 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
                                  global_auxvar_up%pres(1),rho,dum1,ierr)
             v_darcy_allowable = (global_auxvar_up%pres(1)-option%reference_pressure) &
                               /option%flow_dt/(-option%gravity(3))/rho
-            if (v_darcy > v_darcy_allowable) then
-              ! Since darcy velocity is limiited, dq_dp_dn needs to be zero.
-              !  Dq = 0 ==> dq_dp_dn = 0
-              Dq = 0.d0
-              v_darcy = v_darcy_allowable
-            endif
+            !if (v_darcy > v_darcy_allowable) then
+            !  ! Since darcy velocity is limiited, dq_dp_dn needs to be zero.
+            !  !  Dq = 0 ==> dq_dp_dn = 0
+            !  Dq = 0.d0
+            !  v_darcy = v_darcy_allowable
+            !endif
           endif
 
           q = v_darcy * area
@@ -3264,9 +3264,9 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
                                  global_auxvar_up%pres(1),rho,dum1,ierr)
             v_darcy_allowable = (global_auxvar_up%pres(1)-option%reference_pressure) &
                               /option%flow_dt/(-option%gravity(3))/rho
-            if (v_darcy > v_darcy_allowable) then
-              v_darcy = v_darcy_allowable
-            endif
+            !if (v_darcy > v_darcy_allowable) then
+            !  v_darcy = v_darcy_allowable
+            !endif
           endif
 
         endif
