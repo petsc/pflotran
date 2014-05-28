@@ -2368,8 +2368,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
       endif  
     endif
 
-    call Henry_duan_sun(t,p2*1.D-5,henry,xphi,lngamco2, &
-      m_na,m_cl,sat_pressure)
+    call Henry_duan_sun(t,p2*1.D-5,henry,lngamco2,m_na,m_cl)
 
     Qkco2 = henry*xphi ! QkCO2 = xphi * exp(-mu0) / gamma
 
