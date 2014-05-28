@@ -433,7 +433,7 @@ subroutine RealizationCreateDiscretization(realization)
   call VecSet(field%porosity0,-999.d0,ierr)
 
   ! Allocate vectors to hold temporally average output quantites
-  if(realization%output_option%aveg_output_variable_list%nvars>0) then
+  if (realization%output_option%aveg_output_variable_list%nvars>0) then
 
     field%nvars = realization%output_option%aveg_output_variable_list%nvars
     allocate(field%avg_vars_vec(field%nvars))
@@ -446,7 +446,7 @@ subroutine RealizationCreateDiscretization(realization)
   endif
        
   ! Allocate vectors to hold flowrate quantities
-  if(realization%output_option%print_hdf5_mass_flowrate.or. &
+  if (realization%output_option%print_hdf5_mass_flowrate.or. &
      realization%output_option%print_hdf5_energy_flowrate.or. &
      realization%output_option%print_hdf5_aveg_mass_flowrate.or. &
      realization%output_option%print_hdf5_aveg_energy_flowrate) then
@@ -454,18 +454,31 @@ subroutine RealizationCreateDiscretization(realization)
         (option%nflowdof*MAX_FACE_PER_CELL+1)*realization%patch%grid%nlmax, &
         PETSC_DETERMINE,field%flowrate_inst,ierr)
     call VecSet(field%flowrate_inst,0.d0,ierr)
-
   endif
-  
-  if(realization%output_option%print_explicit_flowrate) then
+
+  ! Allocate vectors to hold velocity at face
+  if (realization%output_option%print_hdf5_vel_face) then
+
+    ! vx
+    call VecCreateMPI(option%mycomm, &
+        (option%nflowdof*MAX_FACE_PER_CELL+1)*realization%patch%grid%nlmax, &
+        PETSC_DETERMINE,field%vx_face_inst,ierr)
+    call VecSet(field%vx_face_inst,0.d0,ierr)
+
+    ! vy and vz
+    call VecDuplicate(field%vx_face_inst,field%vy_face_inst,ierr)
+    call VecDuplicate(field%vx_face_inst,field%vz_face_inst,ierr)
+  endif
+
+  if (realization%output_option%print_explicit_flowrate) then
     call VecCreateMPI(option%mycomm, &
          size(grid%unstructured_grid%explicit_grid%connections,2), &
          PETSC_DETERMINE,field%flowrate_inst,ierr)
     call VecSet(field%flowrate_inst,0.d0,ierr)
   endif
     
-    ! If average flowrate has to be saved, create a vector for it
-  if(realization%output_option%print_hdf5_aveg_mass_flowrate.or. &
+  ! If average flowrate has to be saved, create a vector for it
+  if (realization%output_option%print_hdf5_aveg_mass_flowrate.or. &
       realization%output_option%print_hdf5_aveg_energy_flowrate) then
     call VecCreateMPI(option%mycomm, &
         (option%nflowdof*MAX_FACE_PER_CELL+1)*realization%patch%grid%nlmax, &

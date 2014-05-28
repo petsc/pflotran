@@ -65,6 +65,11 @@ module Field_module
     Vec :: flowrate_inst
     Vec :: flowrate_aveg
 
+    ! vectors to save velocity at face
+    Vec :: vx_face_inst
+    Vec :: vy_face_inst
+    Vec :: vz_face_inst
+
     Vec, pointer :: max_change_vecs(:)
 
   end type field_type
@@ -153,6 +158,10 @@ function FieldCreate()
 
   field%flowrate_inst = 0
   field%flowrate_aveg = 0
+
+  field%vx_face_inst = 0
+  field%vy_face_inst = 0
+  field%vz_face_inst = 0
 
   nullify(field%max_change_vecs)
 
@@ -259,6 +268,10 @@ subroutine FieldDestroy(field)
 
   if (field%flowrate_inst/=0) call VecDestroy(field%flowrate_inst,ierr)
   if (field%flowrate_aveg/=0) call VecDestroy(field%flowrate_aveg,ierr)
+
+  if (field%vx_face_inst/=0) call VecDestroy(field%vx_face_inst,ierr)
+  if (field%vy_face_inst/=0) call VecDestroy(field%vy_face_inst,ierr)
+  if (field%vz_face_inst/=0) call VecDestroy(field%vz_face_inst,ierr)
 
   if (associated(field%max_change_vecs)) then
     call VecDestroyVecsF90(size(field%max_change_vecs), &
