@@ -1673,20 +1673,17 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             fg = fg*1.D6
             xphico2 = fg / pres
             global_auxvar%fugacoeff(1) = xphico2
-!          call Henry_duan_sun_0NaCl(pco2*1.d-5, tc, henry)
+
             m_na = 0.d0
             m_cl = 0.d0
             if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
               m_na = rt_auxvar%pri_molal(reaction%species_idx%na_ion_id)
               m_cl = rt_auxvar%pri_molal(reaction%species_idx%cl_ion_id)
-!              call Henry_duan_sun(tc,pco2*1D-5,henry,xphico2,lngamco2, &
-!                m_na,m_cl,sat_pressure*1D-5)
-              call Henry_duan_sun(tc,pres*1D-5,henry,xphico2,lngamco2, &
-                m_na,m_cl,sat_pressure*1D-5)
-
+!              call Henry_duan_sun(tc,pco2*1D-5,henry,lngamco2,m_na,m_cl)
+              call Henry_duan_sun(tc,pres*1D-5,henry,lngamco2,m_na,m_cl)
             else
-              call Henry_duan_sun(tc,pres*1D-5,henry,xphico2,lngamco2, &
-                option%m_nacl,option%m_nacl,sat_pressure*1D-5)
+              call Henry_duan_sun(tc,pres*1D-5,henry,lngamco2, &
+                option%m_nacl,option%m_nacl)
              !   print *, 'SC: mnacl=', option%m_nacl,'stioh2o=',reaction%eqgash2ostoich(igas)
             endif
             
@@ -2378,8 +2375,8 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
       if (finished) exit
     enddo
             
-    write(option%fid_out,'(//,''  NOTE: Only equilibrium surface complexa'', &
-      &''tion is considered below'')')
+    write(option%fid_out, &
+    '(//,''  NOTE: Only equilibrium surface complexation is considered below'')')
     write(option%fid_out,120)
     write(option%fid_out,90)
     do i = 1, size(eqsrfcplxsort)
@@ -3557,8 +3554,8 @@ subroutine CO2AqActCoeff(rt_auxvar,global_auxvar,reaction,option)
      m_cl = rt_auxvar%pri_molal(reaction%species_idx%cl_ion_id)
   endif
 
-  call Henry_duan_sun(tc,pco2*1D-5,henry, 1.D0,lngamco2, &
-         m_na,m_cl,sat_pressure*1D-5,co2aqact)
+  call Henry_duan_sun(tc,pco2*1D-5,henry,lngamco2, &
+         m_na,m_cl,co2aqact)
   
   if (reaction%species_idx%co2_aq_id /= 0) then
     rt_auxvar%pri_act_coef(reaction%species_idx%co2_aq_id) = co2aqact
@@ -3902,10 +3899,12 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   ! units of dtotal = kg water/L water
   rt_auxvar%aqueous%dtotal = rt_auxvar%aqueous%dtotal*den_kg_per_L
 
-  ! CO2-specific
   if (option%iflowmode == G_MODE) return
+
 ! *********** Add SC phase and gas contributions ***********************  
-  iphase = 2           
+  ! CO2-specific
+
+  iphase = 2
 
   if (iphase > option%nphase) return 
   rt_auxvar%total(:,iphase) = 0.D0
@@ -3919,7 +3918,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
       pressure = global_auxvar%pres(2)
       temperature = global_auxvar%temp
       xphico2 = global_auxvar%fugacoeff(1)
-!     den = global_auxvar%den(2)
+      den = global_auxvar%den(2)
  
       call EOSWaterSaturationPressure(temperature, sat_pressure, ierr)
       pco2 = pressure - sat_pressure
@@ -3932,15 +3931,15 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 
 
       if (abs(reaction%species_idx%co2_gas_id) == ieqgas ) then
-!          call Henry_duan_sun_0NaCl(pco2*1D-5, temperature, henry)
+
         if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
           m_na = rt_auxvar%pri_molal(reaction%species_idx%na_ion_id)
           m_cl = rt_auxvar%pri_molal(reaction%species_idx%cl_ion_id)
-          call Henry_duan_sun(temperature,pressure*1D-5,muco2,xphico2, &
-                lngamco2,m_na,m_cl,sat_pressure*1D-5)
+          call Henry_duan_sun(temperature,pressure*1D-5,muco2, &
+                lngamco2,m_na,m_cl)
         else
-          call Henry_duan_sun(temperature,pressure*1D-5,muco2,xphico2, &
-                lngamco2,option%m_nacl,option%m_nacl,sat_pressure*1D-5)
+          call Henry_duan_sun(temperature,pressure*1D-5,muco2, &
+                lngamco2,option%m_nacl,option%m_nacl)
         endif
         !lnQk = - log(muco2) 
         lnQk = - log(muco2)-lngamco2
@@ -3962,10 +3961,10 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
       pressure = pressure * 1.D-5
         
       rt_auxvar%gas_molar(ieqgas) = &
-          exp(lnQK+lngamco2)*rt_auxvar%pri_molal(icomp) &
-!          rt_auxvar%pri_act_coef(icomp)*exp(lnQK)*rt_auxvar%pri_molal(icomp) &
-!         /pressure/xphico2*den
-          /(IDEAL_GAS_CONST*1.d-2*(temperature+273.15D0)*xphico2)
+!         exp(lnQK+lngamco2)*rt_auxvar%pri_molal(icomp) &
+          exp(lnQK)*rt_auxvar%pri_act_coef(icomp)*rt_auxvar%pri_molal(icomp)* &
+          den/pressure/xphico2
+!         /(IDEAL_GAS_CONST*1.d-2*(temperature+273.15D0)*xphico2)
 
 !     print *,'ideal-gas: ',ieqgas,icomp,pressure,rt_auxvar%gas_molar(ieqgas), &
 !         rt_auxvar%pri_molal(icomp), &
@@ -3974,8 +3973,13 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
       rt_auxvar%total(icomp,iphase) = rt_auxvar%total(icomp,iphase) + &
           reaction%eqgasstoich(1,ieqgas)* &
           rt_auxvar%gas_molar(ieqgas)
-!       print *,'Ttotal',pressure, temperature, xphico2, den, lnQk,rt_auxvar%pri_molal(icomp),&
-!        global_auxvar%sat(2),rt_auxvar%gas_molar(ieqgas)
+
+!       print *,'RTotal: ',icomp,ieqgas,pressure, temperature, xphico2, &
+!         global_auxvar%sat(iphase),rt_auxvar%gas_molar(ieqgas), &
+!         rt_auxvar%pri_act_coef(icomp)*exp(lnQK)*rt_auxvar%pri_molal(icomp) &
+!         /pressure/xphico2*den
+!         rt_auxvar%pri_molal(icomp)
+
    !     if (rt_auxvar%total(icomp,iphase) > den)rt_auxvar%total(icomp,iphase) = den* .99D0
    !     enddo
 
