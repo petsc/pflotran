@@ -49,6 +49,11 @@ module TH_Aux_module
     PetscReal :: dpres_fh2o_dt
     ! For surface-flow
     PetscBool :: surf_wat
+    PetscReal :: P_min
+    PetscReal :: P_max
+    PetscReal :: coeff_for_cubic_approx(4)
+    PetscReal :: range_for_linear_approx(4)
+
   end type TH_auxvar_type
 
   type, public :: TH_parameter_type
@@ -195,6 +200,10 @@ subroutine THAuxVarInit(auxvar,option)
   auxvar%dpres_fh2o_dp = 0.d0
   auxvar%dpres_fh2o_dt = 0.d0
   auxvar%surf_wat = PETSC_FALSE
+  auxvar%P_min = 0.d0
+  auxvar%P_max = 0.d0
+  auxvar%coeff_for_cubic_approx(:) = 0.d0
+  auxvar%range_for_linear_approx(:) = 0.d0
 
 end subroutine THAuxVarInit
 
@@ -257,8 +266,12 @@ subroutine THAuxVarCopy(auxvar,auxvar2,option)
      auxvar2%pres_fh2o = auxvar%pres_fh2o
      auxvar2%dpres_fh2o_dp = auxvar%dpres_fh2o_dp
      auxvar2%dpres_fh2o_dt = auxvar%dpres_fh2o_dt
-     auxvar2%surf_wat = auxvar%surf_wat
   endif
+  auxvar2%surf_wat = auxvar%surf_wat
+  auxvar2%P_min = auxvar%P_min
+  auxvar2%P_max = auxvar%P_max
+  auxvar2%coeff_for_cubic_approx(:) = auxvar%coeff_for_cubic_approx(:)
+  auxvar2%range_for_linear_approx(:) = auxvar%range_for_linear_approx(:)
 
 end subroutine THAuxVarCopy
 

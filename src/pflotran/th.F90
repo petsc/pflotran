@@ -2651,9 +2651,12 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
   PetscErrorCode :: ierr
   PetscReal :: v_darcy_allowable
   PetscReal :: dum1
-  PetscReal :: T_th,fct,hack,dhack_dt
+  PetscReal :: T_th,fct,fctT,dfctT_dT
   PetscReal :: rho
-  T_th  = 2.d0
+  PetscReal :: dq_lin,dP_lin
+  PetscReal :: q_approx,dq_approx
+
+  T_th  = 0.5d0
 
   fluxm = 0.d0
   fluxe = 0.d0
@@ -2733,37 +2736,8 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
             dphi_dp_dn = 0.d0
             dphi_dt_dn = 0.d0
           endif
-
-          if (ibndtype(TH_PRESSURE_DOF) == HET_SURF_SEEPAGE_BC .and. option%nsurfflowdof>0) then
-            ! -----------------------------
-            ! Surface-subsurface simulation
-            ! -----------------------------
-            if (global_auxvar_up%temp(1) < 0.d0) then 
-              ! surface water is frozen, so no flow can occur
-              dphi = 0.d0
-              dphi_dp_dn = 0.d0
-              dphi_dt_dn = 0.d0
-            else 
-              ! if subsurface is close to frozen, smoothly throttle down the flow
-              if (global_auxvar_dn%temp(1) < 0.d0) then
-                hack      = 0.d0
-                dhack_dt  = 0.d0
-              else if (global_auxvar_dn%temp(1) > T_th) then
-                hack      = 1.d0
-                dhack_dt  = 0.d0
-              else
-                fct      = 1.d0-(global_auxvar_dn%temp(1)/T_th)**2.d0
-                hack     = 1.d0-fct**2.d0
-                dhack_dt = 4.d0*global_auxvar_dn%temp(1)/(T_th*T_th)*fct
-              endif
-              dphi       = dphi*hack
-              dphi_dp_dn = dphi_dp_dn*hack
-              dphi_dt_dn = dphi_dt_dn*hack + dphi*dhack_dt
-            endif
-          endif
-
         endif
-        
+
         if (ibndtype(TH_TEMPERATURE_DOF) == ZERO_GRADIENT_BC) then
                                    !( dgravity_dden_up                   ) (dden_dt_up)
           dphi_dt_dn = dphi_dt_dn + upweight*auxvar_up%avgmw*dist_gravity*auxvar_up%dden_dt
@@ -2793,31 +2767,74 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
 
         if (ukvr*Dq>floweps) then
           v_darcy = Dq * ukvr * dphi
+          q = v_darcy * area
+          dq_dp_dn = Dq*(dukvr_dp_dn*dphi+ukvr*dphi_dp_dn)*area
+          dq_dt_dn = Dq*(dukvr_dt_dn*dphi+ukvr*dphi_dt_dn)*area
 
-          if (ibndtype(TH_PRESSURE_DOF) == HET_SURF_SEEPAGE_BC .and. option%nsurfflowdof>0) then
+          if (ibndtype(TH_PRESSURE_DOF) == HET_SURF_SEEPAGE_BC .and. &
+              option%nsurfflowdof>0) then
 
             ! ---------------------------
             ! Surface-subsurface simulation
             ! ---------------------------
 
-            ! Limit maximum darcy velocity such that within a subsurface
-            ! timestep at max the total amount of standing water can
-            ! infiltrated with the subsurface domain
-            call EOSWaterdensity(global_auxvar_up%temp(1), &
-                                 global_auxvar_up%pres(1),rho,dum1,ierr)
-            v_darcy_allowable = (global_auxvar_up%pres(1)-option%reference_pressure) &
-                              /option%flow_dt/(-option%gravity(3))/rho
-            !if (v_darcy > v_darcy_allowable) then
-            !  ! Since darcy velocity is limiited, dq_dp_dn needs to be zero.
-            !  !  Dq = 0 ==> dq_dp_dn = 0
-            !  Dq = 0.d0
-            !  v_darcy = v_darcy_allowable
-            !endif
-          endif
+            ! Temperature-smoothing
+            fctT = 1.d0
+            dfctT_dT = 0.d0
+            if (global_auxvar_up%temp(1) < 0.d0) then
+              ! surface water is frozen, so no flow can occur
+              fctT = 0.d0
+              dfctT_dT = 0.d0
+            else
+              ! if subsurface is close to frozen, smoothly throttle down the flow
+              if (global_auxvar_dn%temp(1) < 0.d0) then
+                fctT      = 0.d0
+                dfctT_dT  = 0.d0
+              else if (global_auxvar_dn%temp(1) > T_th) then
+                fctT      = 1.d0
+                dfctT_dt  = 0.d0
+              else
+                fct      = 1.d0-(global_auxvar_dn%temp(1)/T_th)**2.d0
+                fctT     = 1.d0-fct**2.d0
+                dfctT_dT = 4.d0*global_auxvar_dn%temp(1)/(T_th*T_th)*fct
+              endif
+            endif
 
-          q = v_darcy * area
-          dq_dp_dn = Dq*(dukvr_dp_dn*dphi+ukvr*dphi_dp_dn)*area
-          dq_dt_dn = Dq*(dukvr_dt_dn*dphi+ukvr*dphi_dt_dn)*area
+            ! Pressure-smoothing
+            if (global_auxvar_dn%pres(1) <= auxvar_dn%P_min) then
+
+              ! Linear approximation
+              call Interpolate(auxvar_dn%range_for_linear_approx(2), &
+                               auxvar_dn%range_for_linear_approx(1), &
+                               global_auxvar_dn%pres(1), &
+                               auxvar_dn%range_for_linear_approx(4), &
+                               auxvar_dn%range_for_linear_approx(3), &
+                               q_approx)
+              v_darcy = q_approx/area
+              dP_lin = auxvar_dn%range_for_linear_approx(2) - &
+                       auxvar_dn%range_for_linear_approx(1)
+              dq_lin = auxvar_dn%range_for_linear_approx(4) - &
+                       auxvar_dn%range_for_linear_approx(3)
+              dq_dp_dn = dq_lin/dP_lin
+
+            else if (global_auxvar_dn%pres(1) <= auxvar_dn%P_max) then
+
+              ! Cubic approximation
+              call CubicPolynomialEvaluate(auxvar_dn%coeff_for_cubic_approx, &
+                                           global_auxvar_dn%pres(1), &
+                                           q_approx, dq_approx)
+              v_darcy = q_approx/area
+              dq_dp_dn = dq_approx
+              !dq_dt_dn = 0.d0
+            endif
+
+            ! Apply temperature smooth
+            v_darcy  = v_darcy*fctT
+            q        = q*fctT
+            dq_dp_dn = dq_dp_dn*fctT
+            dq_dt_dn = dq_dt_dn*fctT + q*dfctT_dT
+
+          endif
         endif
       endif 
 
@@ -3146,6 +3163,7 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
   PetscReal :: fluxm(option%nflowspec),fluxe,q,density_ave
   PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,diff,diffdp,DK,Dq
   PetscReal :: upweight,cond,gravity,dphi
+  PetscReal :: dphi_orig
   PetscBool :: hw_present
   
   ! ice variables
@@ -3162,16 +3180,16 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
   PetscReal, parameter :: R_gas_constant = 8.3144621 ! Gas constant in J/mol/K
   PetscReal :: v_darcy_allowable
   PetscReal :: rho,dum1
-  
-  PetscReal :: T_th,hack,fct
-  T_th  = 2.d0
+  PetscReal :: q_approx, dq_approx
+  PetscReal :: T_th,fctT,fct
+  T_th  = 0.5d0
 
   fluxm = 0.d0
   fluxe = 0.d0
   v_darcy = 0.d0
   density_ave = 0.d0
   q = 0.d0
-  hack = 0.d0
+  fctT = 0.d0
 
   hw_present = auxvar_dn%surf_wat
 
@@ -3215,27 +3233,6 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
             dphi = 0.d0
           endif
 
-          if (ibndtype(TH_PRESSURE_DOF) == HET_SURF_SEEPAGE_BC .and. option%nsurfflowdof>0) then
-            ! ---------------------------
-            ! Surface-subsurface simulation
-            ! ---------------------------
-            if (global_auxvar_up%temp(1) < 0.d0) then 
-              ! surface water is frozen, so no flow can occur
-              dphi = 0.d0
-            else 
-              ! if subsurface is close to frozen, smoothly throttle down the flow
-              if (global_auxvar_dn%temp(1) < 0.d0) then
-                hack = 0.d0
-              else if (global_auxvar_dn%temp(1) > T_th) then
-                hack = 1.d0
-              else
-                fct  = 1.d0-(global_auxvar_dn%temp(1)/T_th)**2.d0
-                hack = 1.d0-fct**2.d0
-              endif
-              dphi = dphi*hack
-            endif
-          endif
-
         endif
         
         if (dphi>=0.D0) then
@@ -3243,6 +3240,7 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
         else
           ukvr = auxvar_dn%kvr
         endif      
+
         call InterfaceApprox(auxvar_up%kvr, auxvar_dn%kvr, &
                              dphi, &
                              option%rel_perm_aveg, &
@@ -3253,20 +3251,51 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
 
           if (ibndtype(TH_PRESSURE_DOF) == HET_SURF_SEEPAGE_BC .and. &
               option%nsurfflowdof>0) then
+
             ! ---------------------------
             ! Surface-subsurface simulation
             ! ---------------------------
+              
+            ! Temperature-smoothing
+            fctT = 1.d0
+            if (global_auxvar_up%temp(1) < 0.d0) then
+              ! surface water is frozen, so no flow can occur
+              fctT = 0.d0
+            else 
+              ! if subsurface is close to frozen, smoothly throttle down the flow
+              if (global_auxvar_dn%temp(1) < 0.d0) then
+                fctT = 0.d0
+              else if (global_auxvar_dn%temp(1) > T_th) then
+                fctT = 1.d0
+              else
+                fct  = 1.d0-(global_auxvar_dn%temp(1)/T_th)**2.d0
+                fctT = 1.d0-fct**2.d0
+              endif
+            endif
 
-            ! Limit maximum darcy velocity such that within a subsurface
-            ! timestep at max the total amount of standing water can
-            ! infiltrated with the subsurface domain
-            call EOSWaterdensity(global_auxvar_up%temp(1), &
-                                 global_auxvar_up%pres(1),rho,dum1,ierr)
-            v_darcy_allowable = (global_auxvar_up%pres(1)-option%reference_pressure) &
-                              /option%flow_dt/(-option%gravity(3))/rho
-            !if (v_darcy > v_darcy_allowable) then
-            !  v_darcy = v_darcy_allowable
-            !endif
+            ! If needed, apply pressure-smoothing
+            if (global_auxvar_dn%pres(1) <= auxvar_dn%P_min) then
+
+              ! Linear approximation
+              call Interpolate(auxvar_dn%range_for_linear_approx(2), &
+                               auxvar_dn%range_for_linear_approx(1), &
+                               global_auxvar_dn%pres(1), &
+                               auxvar_dn%range_for_linear_approx(4), &
+                               auxvar_dn%range_for_linear_approx(3), &
+                               q_approx)
+              v_darcy = q_approx/area
+
+            else if (global_auxvar_dn%pres(1) <= auxvar_dn%P_max) then
+
+              ! Cubic approximation
+              call CubicPolynomialEvaluate(auxvar_dn%coeff_for_cubic_approx, &
+                                           global_auxvar_dn%pres(1), &
+                                           q_approx, dq_approx)
+              v_darcy = q_approx/area
+            endif
+
+            ! Now apply temperature-smoothing
+            v_darcy = v_darcy*fctT
           endif
 
         endif
@@ -3331,6 +3360,7 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
             (hw_present)) then
           cond = 0.d0
         endif
+        write(*,*)'Energy BC flux: ',cond,global_auxvar_up%temp(1),global_auxvar_dn%temp(1),hw_present
       endif
 
       fluxe = fluxe + cond
@@ -3586,6 +3616,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
   !print *,' Finished scattering non deriv'
   
+  if (option%nsurfflowdof>0) call THComputeCoeffsForSurfFlux(realization)
   
   ! Calculating volume fractions for primary and secondary continua
 
@@ -5177,10 +5208,12 @@ subroutine THUpdateSurfaceBC(realization)
   type(option_type), pointer :: option
   type(coupler_type), pointer :: boundary_condition
   type(connection_set_type), pointer :: cur_connection_set
+  type(global_auxvar_type), pointer :: global_auxvars(:)  
 
   option => realization%option
   patch => realization%patch
   grid => patch%grid
+  global_auxvars => realization%patch%aux%Global%auxvars
 
   ! GB: Should probably add this as a member of option
   Cwi = 4.188d3 ! [J/kg/K]
@@ -5255,6 +5288,10 @@ subroutine THUpdateSurfaceBC(realization)
           surfpress_new
         !boundary_condition%flow_aux_real_var(TH_TEMPERATURE_DOF,iconn) = &
         !  surftemp_new
+        write(*,*)'new_pressure: ',surfpress_new, &
+          global_auxvars(ghosted_id)%pres(1), &
+          boundary_condition%flow_aux_real_var(TH_TEMPERATURE_DOF,iconn), &
+          global_auxvars(ghosted_id)%temp(1)
       enddo
 
     else
@@ -5345,6 +5382,270 @@ subroutine THUpdateSurfaceWaterFlag(realization)
   enddo
 
 end subroutine THUpdateSurfaceWaterFlag
+
+! ************************************************************************** !
+
+subroutine THComputeCoeffsForSurfFlux(realization)
+  !
+  ! This routine computes coefficients for approximation boundary darcy
+  ! flux between surface and subsurface domains.
+  !
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 05/21/14
+  !
+
+  use Realization_class
+  use Patch_module
+  use Option_module
+  use Field_module
+  use Grid_module
+  use Coupler_module
+  use Connection_module
+  use Material_module
+  use Logging_module
+  use String_module
+  use EOS_Water_module
+  use Material_Aux_class
+  use Utility_module
+
+  implicit none
+
+  type(realization_type) :: realization
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+  type(coupler_type), pointer :: boundary_condition
+  type(connection_set_type), pointer :: cur_connection_set
+  type(th_auxvar_type), pointer :: th_auxvars_bc(:)
+  type(th_auxvar_type), pointer :: th_auxvars(:)
+  type(global_auxvar_type), pointer :: global_auxvars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+  type(th_parameter_type), pointer :: th_parameter
+  type(th_auxvar_type) :: th_auxvar_max
+  type(global_auxvar_type) :: global_auxvar_max
+  type(th_auxvar_type),pointer :: th_auxvar_up, th_auxvar_dn
+  type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+  class(material_auxvar_type), pointer :: material_auxvar_dn
+
+  PetscInt :: pressure_bc_type
+  PetscInt :: ghosted_id
+  PetscInt :: local_id
+  PetscInt :: sum_connection
+  PetscInt :: iconn
+  PetscInt :: icap_dn
+
+  PetscReal :: den
+  PetscReal :: dum1
+  PetscReal :: dist_gravity  ! distance along gravity vector
+  PetscReal :: dist(-1:3)
+  PetscReal :: upweight,gravity,dphi
+  PetscReal :: ukvr,Dq
+  PetscReal :: P_allowable
+  PetscReal :: sir_dn
+  PetscReal :: v_darcy_allowable,v_darcy
+  PetscReal :: dq_dp_dn
+  PetscReal :: P_max,P_min,dP
+  PetscReal :: density_ave
+  PetscReal :: dgravity_dden_dn
+  PetscReal :: dukvr_dp_dn
+  PetscReal :: dphi_dp_dn
+  PetscReal :: perm_dn
+  PetscReal :: area
+  PetscReal :: xxbc(realization%option%nflowdof)
+  PetscReal, pointer :: iphase_loc_p(:)
+  PetscInt :: iphase
+  PetscErrorCode :: ierr
+
+  ! Distance away from allowable pressure at which cubic approximation begins
+  dP = 10 ! [Pa]
+
+  option => realization%option
+  patch => realization%patch
+  grid => patch%grid
+  field => realization%field
+
+  th_parameter => patch%aux%TH%th_parameter
+  material_auxvars => patch%aux%Material%auxvars
+
+  th_auxvars => patch%aux%TH%auxvars
+  th_auxvars_bc => patch%aux%TH%auxvars_bc
+  global_auxvars => patch%aux%Global%auxvars
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
+
+  call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+
+  ! boundary conditions
+  boundary_condition => patch%boundary_conditions%first
+  sum_connection = 0
+  do
+    if (.not.associated(boundary_condition)) exit
+    cur_connection_set => boundary_condition%connection_set
+    if (StringCompare(boundary_condition%name,'from_surface_bc')) then
+
+      pressure_bc_type = boundary_condition%flow_condition%itype(TH_PRESSURE_DOF)
+
+      if (pressure_bc_type /= HET_SURF_SEEPAGE_BC) then
+        call printErrMsg(option,'from_surface_bc is not of type ' // &
+                        'HET_SURF_SEEPAGE_BC')
+      endif
+
+      do iconn = 1, cur_connection_set%num_connections
+
+        sum_connection = sum_connection + 1
+        local_id       = cur_connection_set%id_dn(iconn)
+        ghosted_id     = grid%nL2G(local_id)
+        iphase         = int(iphase_loc_p(ghosted_id))
+
+        ! Step-1: Find P_max/P_min for cubic polynomial approximation
+
+        global_auxvar_up = global_auxvars_bc(sum_connection)
+        global_auxvar_dn = global_auxvars(ghosted_id)
+
+        th_auxvar_up => th_auxvars_bc(sum_connection)
+        th_auxvar_dn => th_auxvars(ghosted_id)
+        material_auxvar_dn => material_auxvars(ghosted_id)
+
+        th_auxvar_dn%coeff_for_cubic_approx(:) = -99999.d0
+
+        dist = cur_connection_set%dist(:,iconn)
+
+        call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
+
+        dist_gravity = dist(0) * dot_product(option%gravity,dist(1:3))
+        Dq = perm_dn / dist(0)
+        area = cur_connection_set%area(iconn)
+
+        call EOSWaterdensity(global_auxvar_up%temp(1), &
+                             option%reference_pressure,den,dum1,ierr)
+
+        gravity = den * dist_gravity
+
+        dphi = global_auxvar_up%pres(1) - global_auxvar_dn%pres(1) + gravity
+
+        v_darcy_allowable = (global_auxvar_up%pres(1) - option%reference_pressure)/ &
+                             option%flow_dt/(-option%gravity(3))/den
+
+        if (dphi>=0.D0) then
+          ukvr = th_auxvar_up%kvr
+        else
+          ukvr = th_auxvar_dn%kvr
+        endif
+
+        P_allowable = global_auxvar_up%pres(1) + gravity - v_darcy_allowable/Dq/ukvr
+
+        P_max       = P_allowable + dP
+        P_min       = P_allowable
+
+        ! Step-2: Find derivative at P_max
+        icap_dn = patch%sat_func_id(ghosted_id)
+
+        xxbc(1) = P_max
+        xxbc(2) = global_auxvar_up%temp(1)
+
+        call GlobalAuxVarInit(global_auxvar_max,option)
+        call THAuxVarInit(th_auxvar_max,option)
+        if (option%use_th_freezing) then
+          call THAuxVarComputeFreezing(xxbc,th_auxvar_max, &
+                                       global_auxvar_max, &
+                                       material_auxvars(ghosted_id), &
+                                       iphase, &
+                                       patch%saturation_function_array(icap_dn)%ptr, &
+                                       option)
+        else
+          call THAuxVarComputeNoFreezing(xxbc,th_auxvar_max, &
+                                         global_auxvar_max, &
+                                         material_auxvars(ghosted_id), &
+                                         iphase, &
+                                         patch%saturation_function_array(icap_dn)%ptr, &
+                                         option)
+        endif
+
+        sir_dn = th_parameter%sir(1,icap_dn)
+
+        if (global_auxvar_up%sat(1) > sir_dn .or. global_auxvar_max%sat(1) > sir_dn) then
+
+          upweight=1.D0
+          if (global_auxvar_up%sat(1) < eps) then
+            upweight=0.d0
+          else if (global_auxvar_max%sat(1) < eps) then
+            upweight=1.d0
+          endif
+
+          density_ave = upweight*global_auxvar_up%den(1)+(1.D0-upweight)*global_auxvar_max%den(1)
+
+          gravity = (upweight*       global_auxvar_up%den(1) + &
+                     (1.D0-upweight)*global_auxvar_max%den(1)) &
+                    * FMWH2O * dist_gravity
+          dgravity_dden_dn = (1.d0-upweight)*FMWH2O*dist_gravity
+
+          dphi       = global_auxvar_up%pres(1) - global_auxvar_max%pres(1) + gravity
+          dphi_dp_dn = -1.d0 + dgravity_dden_dn*th_auxvar_max%dden_dp
+
+          if (pressure_bc_type == HET_SURF_SEEPAGE_BC) then
+            ! flow in         ! boundary cell is <= pref
+            if (dphi > 0.d0 .and. global_auxvar_up%pres(1)-option%reference_pressure < eps) then
+              dphi = 0.d0
+              dphi_dp_dn = 0.d0
+            endif
+          endif
+
+          if (dphi>=0.D0) then
+           ukvr = th_auxvar_up%kvr
+           dukvr_dp_dn = 0.d0
+          else
+            ukvr = th_auxvar_max%kvr
+            dukvr_dp_dn = th_auxvar_max%dkvr_dp
+          endif
+
+          dq_dp_dn = Dq*(dukvr_dp_dn*dphi + ukvr*dphi_dp_dn)*area
+
+          ! Step-3: Find coefficients of cubic polynomial curve
+          if (ukvr*Dq>floweps) then
+
+            v_darcy = Dq * ukvr * dphi
+
+            ! Values of function at min/max
+            th_auxvar_dn%coeff_for_cubic_approx(1) = 0.99d0*v_darcy_allowable*area
+            th_auxvar_dn%coeff_for_cubic_approx(2) = v_darcy*area
+
+            ! Values of function derivatives at min/max
+            th_auxvar_dn%coeff_for_cubic_approx(3) = 0.01d0*v_darcy_allowable*area/P_min
+            th_auxvar_dn%coeff_for_cubic_approx(4) = dq_dp_dn
+
+            ! min/max
+            th_auxvar_dn%P_min = P_min
+            th_auxvar_dn%P_max = P_max
+
+            call CubicPolynomialSetup(th_auxvar_dn%P_min, &
+                                      th_auxvar_dn%P_max, &
+                                      th_auxvar_dn%coeff_for_cubic_approx)
+
+            ! Step-4: Save values for linear approximation
+            th_auxvar_dn%range_for_linear_approx(1) = 0.d0
+            th_auxvar_dn%range_for_linear_approx(2) = P_min
+            th_auxvar_dn%range_for_linear_approx(3) = v_darcy_allowable*area
+            th_auxvar_dn%range_for_linear_approx(4) = 0.99d0*v_darcy_allowable*area
+          endif
+
+        endif
+      enddo
+
+    else
+
+      sum_connection = sum_connection + cur_connection_set%num_connections
+
+    endif
+
+    boundary_condition => boundary_condition%next
+
+  enddo
+
+  call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+
+end subroutine THComputeCoeffsForSurfFlux
 
 ! ************************************************************************** !
 
