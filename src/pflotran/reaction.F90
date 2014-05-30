@@ -3594,7 +3594,9 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
   if (reaction%use_activity_h2o) then
     sum_pri_molal = 0.d0
     do j = 1, reaction%naqcomp
-      sum_pri_molal = sum_pri_molal + rt_auxvar%pri_molal(j)
+      if (j /= reaction%species_idx%h2o_aq_id) then
+        sum_pri_molal = sum_pri_molal + rt_auxvar%pri_molal(j)
+      endif
     enddo
   endif
 
@@ -5163,17 +5165,19 @@ subroutine RUpdateKineticState(rt_auxvar,global_auxvar,material_auxvar, &
             global_auxvar%reaction_rate(2) &
               = global_auxvar%reaction_rate(2) & 
               + rt_auxvar%mnrl_rate(imnrl)*option%tran_dt &
-              * reaction%mineral%mnrlstoich(iaqspec,imnrl) !/option%flow_dt
-!              * reaction%mineral%mnrlstoich(icomp,imnrl) !/option%flow_dt
-          else if (icomp == reaction%species_idx%h2o_aq_id) then
-            global_auxvar%reaction_rate(1) &
-              = global_auxvar%reaction_rate(1) &
-              + rt_auxvar%mnrl_rate(imnrl)*option%tran_dt &
-              * reaction%mineral%mnrlstoich(iaqspec,imnrl) !/option%flow_dt
-!              * reaction%mineral%mnrlstoich(icomp,imnrl) !/option%flow_dt
+              * reaction%mineral%kinmnrlstoich(iaqspec,imnrl) /option%flow_dt
+            cycle
           endif
-        enddo 
-      endif   
+        enddo
+
+!       water rate
+        if (reaction%mineral%kinmnrlh2ostoich(imnrl) /= 0) then
+          global_auxvar%reaction_rate(1) &
+            = global_auxvar%reaction_rate(1) &
+            + rt_auxvar%mnrl_rate(imnrl)*option%tran_dt &
+            * reaction%mineral%kinmnrlh2ostoich(imnrl) /option%flow_dt
+        endif
+      endif
     enddo
   endif
 
