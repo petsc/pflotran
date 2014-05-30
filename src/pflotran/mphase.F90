@@ -1471,12 +1471,12 @@ subroutine MphaseAccumulation(auxvar,global_auxvar,por,vol,rock_dencpr, &
   if (option%ntrandof > 0) then
     if (iireac > 0) then
       !H2O
-      mol(1) = mol(1) + vol * global_auxvar%reaction_rate_store(1)*1.d-3
-!       option%flow_dt*1D-3 (div. by flow_dt removed from def. of
-!       reaction_rate in RUpdateKineticState-pcl)
+      mol(1) = mol(1) + vol * global_auxvar%reaction_rate_store(1) &
+        *option%flow_dt*1.D-3
+
       !CO2     
-      mol(2) = mol(2) + vol * global_auxvar%reaction_rate_store(2)*1.d-3
-!       option%flow_dt*1D-3
+      mol(2) = mol(2) + vol * global_auxvar%reaction_rate_store(2) &
+        *option%flow_dt*1.D-3
     endif
   endif
 !#endif
