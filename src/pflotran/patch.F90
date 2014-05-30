@@ -1701,6 +1701,7 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
   use Grid_module
   use Dataset_Common_HDF5_class
   use Dataset_Gridded_HDF5_class
+  use Dataset_Ascii_class
 
   implicit none
   
@@ -1736,8 +1737,19 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
                 flow_condition%iphase
     select case(flow_condition%pressure%itype)
       case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
-        coupler%flow_aux_real_var(TH_PRESSURE_DOF,1:num_connections) = &
-                flow_condition%pressure%dataset%rarray(1)
+        select type(selector =>flow_condition%pressure%dataset)
+          class is(dataset_ascii_type)
+            coupler%flow_aux_real_var(TH_PRESSURE_DOF,1:num_connections) = &
+              selector%rarray(1)
+          class is(dataset_gridded_hdf5_type)
+            call PatchUpdateCouplerFromDataset(coupler,option, &
+                                               patch%grid,selector, &
+                                               TH_PRESSURE_DOF)
+          class default
+            option%io_buffer = 'Unknown dataset class (TH%' // &
+              'pressure%itype,DIRICHLET_BC)'
+            call printErrMsg(option)
+        end select
       case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
         call HydrostaticUpdateCoupler(coupler,option,patch%grid)
       case(HET_DIRICHLET)
@@ -1774,24 +1786,38 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
           call printErrMsg(option)
       end select
     endif
-  else
-    if(associated(flow_condition%temperature)) then
-      select case(flow_condition%temperature%itype)
-        case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
-          coupler%flow_aux_real_var(TH_TEMPERATURE_DOF,1:num_connections) = &
-                    flow_condition%temperature%dataset%rarray(1)
-        case (HET_DIRICHLET)
-          call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
-                  flow_condition%temperature%dataset, &
-                  num_connections,TH_TEMPERATURE_DOF,option)
-        case default
-          write(string,*) flow_condition%temperature%itype
-          string = GetSubConditionName(flow_condition%temperature%itype)
-          option%io_buffer='For TH mode: flow_condition%temperature%itype = "' // &
-            trim(adjustl(string)) // '", not implemented.'
-          call printErrMsg(option)
-      end select
-    endif
+  endif
+  if ((associated(flow_condition%temperature) .and. &
+       flow_condition%pressure%itype /= HYDROSTATIC_BC) .or. &
+      (flow_condition%pressure%itype == HYDROSTATIC_BC .and. &
+       flow_condition%temperature%itype /= DIRICHLET_BC)) then
+    select case(flow_condition%temperature%itype)
+      case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+        select type(selector =>flow_condition%temperature%dataset)
+          class is(dataset_ascii_type)
+            coupler%flow_aux_real_var(TH_TEMPERATURE_DOF, &
+                                      1:num_connections) = &
+              selector%rarray(1)
+          class is(dataset_gridded_hdf5_type)
+            call PatchUpdateCouplerFromDataset(coupler,option, &
+                                               patch%grid,selector, &
+                                               TH_TEMPERATURE_DOF)
+          class default
+            option%io_buffer = 'Unknown dataset class (TH%' // &
+              'pressure%itype,DIRICHLET_BC)'
+            call printErrMsg(option)
+        end select
+      case (HET_DIRICHLET)
+        call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
+                flow_condition%temperature%dataset, &
+                num_connections,TH_TEMPERATURE_DOF,option)
+      case default
+        write(string,*) flow_condition%temperature%itype
+        string = GetSubConditionName(flow_condition%temperature%itype)
+        option%io_buffer='For TH mode: flow_condition%temperature%itype = "' // &
+          trim(adjustl(string)) // '", not implemented.'
+        call printErrMsg(option)
+    end select
   endif
   if (associated(flow_condition%rate)) then
     select case(flow_condition%rate%itype)
