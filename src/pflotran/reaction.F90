@@ -5165,17 +5165,17 @@ subroutine RUpdateKineticState(rt_auxvar,global_auxvar,material_auxvar, &
             global_auxvar%reaction_rate(2) &
               = global_auxvar%reaction_rate(2) & 
               + rt_auxvar%mnrl_rate(imnrl)*option%tran_dt &
-              * reaction%mineral%mnrlstoich(iaqspec,imnrl) /option%flow_dt
+              * reaction%mineral%kinmnrlstoich(iaqspec,imnrl) /option%flow_dt
             cycle
           endif
         enddo
 
 !       water rate
-        if (reaction%mineral%kinmnrlh2oid(imnrl) /= 0) then
+        if (reaction%mineral%kinmnrlh2ostoich(imnrl) /= 0) then
           global_auxvar%reaction_rate(1) &
             = global_auxvar%reaction_rate(1) &
             + rt_auxvar%mnrl_rate(imnrl)*option%tran_dt &
-            * reaction%mineral%mnrlh2ostoich(imnrl) /option%flow_dt
+            * reaction%mineral%kinmnrlh2ostoich(imnrl) /option%flow_dt
         endif
       endif
     enddo
