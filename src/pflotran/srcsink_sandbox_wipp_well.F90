@@ -162,25 +162,33 @@ subroutine WIPPWellSrcSink(this,Residual,Jacobian,compute_derivative, &
   PetscReal :: q_liquid, q_gas
   
   ! q_i = rho_i*I*(kr_i/mu_i)*(p_i-p_well)
-  ! units: kmol/s
-  q_liquid = -1.d0 * aux_real(WIPP_WELL_LIQUID_DENSITY) * &
+  ! units: m^3/s
+  q_liquid = -1.d0 * &
             this%productivity_index * &
             aux_real(WIPP_WELL_LIQUID_MOBILITY) * &
             (aux_real(WIPP_WELL_LIQUID_PRESSURE) - this%well_pressure)
-  q_gas = -1.d0 * aux_real(WIPP_WELL_GAS_DENSITY) * &
+  q_gas = -1.d0 * &
           this%productivity_index * &
           aux_real(WIPP_WELL_GAS_MOBILITY) * &
           (aux_real(WIPP_WELL_GAS_PRESSURE) - this%well_pressure)
   ! positive is inflow
   ! units = kmol/s
   ! water equation
-  Residual(ONE_INTEGER) = q_liquid*(1.d0-aux_real(WIPP_WELL_XMOL_AIR_IN_LIQUID)) + &
-                          q_gas*aux_real(WIPP_WELL_XMOL_WATER_IN_GAS)
+  Residual(ONE_INTEGER) = q_liquid * aux_real(WIPP_WELL_LIQUID_DENSITY) * &
+                          (1.d0-aux_real(WIPP_WELL_XMOL_AIR_IN_LIQUID)) + &
+                          q_gas * aux_real(WIPP_WELL_XMOL_WATER_IN_GAS) * &
+                          aux_real(WIPP_WELL_GAS_DENSITY)
   ! air equation
-  Residual(TWO_INTEGER) = q_liquid*aux_real(WIPP_WELL_XMOL_AIR_IN_LIQUID) + &
-                          q_gas*(1.d0-aux_real(WIPP_WELL_XMOL_WATER_IN_GAS))
-  Residual(THREE_INTEGER) = q_liquid*aux_real(WIPP_WELL_LIQUID_ENTHALPY) + &
-                            q_gas*aux_real(WIPP_WELL_GAS_ENTHALPY)
+  Residual(TWO_INTEGER) = q_liquid * aux_real(WIPP_WELL_XMOL_AIR_IN_LIQUID) * & 
+                          aux_real(WIPP_WELL_LIQUID_DENSITY) + &
+                          q_gas * aux_real(WIPP_WELL_GAS_DENSITY) * &
+                          (1.d0-aux_real(WIPP_WELL_XMOL_WATER_IN_GAS))
+  ! energy equation
+  ! units = MJ/s
+  Residual(THREE_INTEGER) = q_liquid * aux_real(WIPP_WELL_LIQUID_DENSITY) * &
+                            aux_real(WIPP_WELL_LIQUID_ENTHALPY) + &
+                            q_gas * aux_real(WIPP_WELL_GAS_DENSITY) * &
+                            aux_real(WIPP_WELL_GAS_ENTHALPY)
   
   if (compute_derivative) then
     
