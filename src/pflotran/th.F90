@@ -5446,6 +5446,7 @@ subroutine THComputeCoeffsForSurfFlux(realization)
   PetscReal :: P_allowable
   PetscReal :: sir_dn
   PetscReal :: v_darcy_allowable,v_darcy
+  PetscReal :: q_allowable,q
   PetscReal :: dq_dp_dn
   PetscReal :: P_max,P_min,dP
   PetscReal :: density_ave
@@ -5527,6 +5528,7 @@ subroutine THComputeCoeffsForSurfFlux(realization)
 
         v_darcy_allowable = (global_auxvar_up%pres(1) - option%reference_pressure)/ &
                              option%flow_dt/(-option%gravity(3))/den
+        q_allowable = v_darcy_allowable*area
 
         if (dphi>=0.D0) then
           ukvr = th_auxvar_up%kvr
@@ -5581,8 +5583,13 @@ subroutine THComputeCoeffsForSurfFlux(realization)
                     * FMWH2O * dist_gravity
           dgravity_dden_dn = (1.d0-upweight)*FMWH2O*dist_gravity
 
-          dphi       = global_auxvar_up%pres(1) - global_auxvar_max%pres(1) + gravity
-          dphi_dp_dn = -1.d0 + dgravity_dden_dn*th_auxvar_max%dden_dp
+          if (option%ice_model /= DALL_AMICO) then
+            dphi = global_auxvar_up%pres(1) - global_auxvar_dn%pres(1) + gravity
+            dphi_dp_dn = -1.d0 + dgravity_dden_dn*th_auxvar_dn%dden_dp
+          else
+            dphi = th_auxvar_up%pres_fh2o - th_auxvar_dn%pres_fh2o + gravity
+            dphi_dp_dn = -th_auxvar_dn%dpres_fh2o_dp + dgravity_dden_dn*th_auxvar_dn%dden_dp
+          endif
 
           if (pressure_bc_type == HET_SURF_SEEPAGE_BC) then
             ! flow in         ! boundary cell is <= pref
@@ -5593,26 +5600,34 @@ subroutine THComputeCoeffsForSurfFlux(realization)
           endif
 
           if (dphi>=0.D0) then
-           ukvr = th_auxvar_up%kvr
-           dukvr_dp_dn = 0.d0
+            ukvr = th_auxvar_up%kvr
+            dukvr_dp_dn = 0.d0
           else
             ukvr = th_auxvar_max%kvr
             dukvr_dp_dn = th_auxvar_max%dkvr_dp
           endif
 
-          dq_dp_dn = Dq*(dukvr_dp_dn*dphi + ukvr*dphi_dp_dn)*area
+          call InterfaceApprox(th_auxvar_up%kvr, th_auxvar_dn%kvr, &
+                               th_auxvar_up%dkvr_dp, th_auxvar_dn%dkvr_dp, &
+                               dphi, &
+                               option%rel_perm_aveg, &
+                               ukvr, dum1, dukvr_dp_dn)
 
-          ! Step-3: Find coefficients of cubic polynomial curve
           if (ukvr*Dq>floweps) then
 
             v_darcy = Dq * ukvr * dphi
+            q = v_darcy*area
+
+            dq_dp_dn = Dq*(dukvr_dp_dn*dphi + ukvr*dphi_dp_dn)*area
+
+            ! Step-3: Find coefficients of cubic polynomial curve
 
             ! Values of function at min/max
-            th_auxvar_dn%coeff_for_cubic_approx(1) = 0.99d0*v_darcy_allowable*area
-            th_auxvar_dn%coeff_for_cubic_approx(2) = v_darcy*area
+            th_auxvar_dn%coeff_for_cubic_approx(1) = 0.99d0*q_allowable
+            th_auxvar_dn%coeff_for_cubic_approx(2) = q
 
             ! Values of function derivatives at min/max
-            th_auxvar_dn%coeff_for_cubic_approx(3) = 0.01d0*v_darcy_allowable*area/P_min
+            th_auxvar_dn%coeff_for_cubic_approx(3) = 0.01d0*q_allowable/P_min
             th_auxvar_dn%coeff_for_cubic_approx(4) = dq_dp_dn
 
             ! min/max
@@ -5626,8 +5641,8 @@ subroutine THComputeCoeffsForSurfFlux(realization)
             ! Step-4: Save values for linear approximation
             th_auxvar_dn%range_for_linear_approx(1) = 0.d0
             th_auxvar_dn%range_for_linear_approx(2) = P_min
-            th_auxvar_dn%range_for_linear_approx(3) = v_darcy_allowable*area
-            th_auxvar_dn%range_for_linear_approx(4) = 0.99d0*v_darcy_allowable*area
+            th_auxvar_dn%range_for_linear_approx(3) = q_allowable
+            th_auxvar_dn%range_for_linear_approx(4) = 0.99d0*q_allowable
           endif
 
         endif
