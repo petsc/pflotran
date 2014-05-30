@@ -126,7 +126,7 @@ recursive subroutine PMGeneralInitializeRun(this)
                                 this%max_change_ivar(i), &
                                 this%max_change_isubvar(i))
   enddo
-    
+
 end subroutine PMGeneralInitializeRun
 
 ! ************************************************************************** !
@@ -217,7 +217,6 @@ subroutine PMGeneralUpdateTimestep(this,dt,dt_max,iacceleration, &
   
   fac = 0.5d0
   if (num_newton_iterations >= iacceleration) then
-    fac = 0.33d0
     umin = 0.d0
   else
     up = this%dPmax_allowable/(this%dPmax+0.1)
@@ -354,7 +353,8 @@ subroutine PMGeneralUpdateSolution(this)
   ! Date: 03/14/13
   ! 
 
-  use General_module, only : GeneralUpdateSolution
+  use General_module, only : GeneralUpdateSolution, &
+                             GeneralMapBCAuxvarsToGlobal
 
   implicit none
   
@@ -362,6 +362,7 @@ subroutine PMGeneralUpdateSolution(this)
   
   call PMSubsurfaceUpdateSolution(this)
   call GeneralUpdateSolution(this%realization)
+  call GeneralMapBCAuxvarsToGlobal(this%realization)
 
 end subroutine PMGeneralUpdateSolution     
 

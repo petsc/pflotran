@@ -810,12 +810,17 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \begin{deflist}{000000000000000000000000}
 \item[MOLALITY]
 \item[MOLARITY]
-\item[All]
+\item[ACTIVITY\_COEFFICIENTS]
+\item[ALL] 
+\item[OFF] Turn off printout
 \item[\tt Species Name] Primary or secondary species
 \item[FREE\_ION] Output all primary species concentrations
+\item[PRIMARY\_SPECIES] Output primary species including pH
 \item[SECONDARY\_SPECIES] Output all secondary species concentrations
+\item[GASES]
 \item[MINERALS] Output all kinetic mineral volume fractions and reaction rates
 \item[\tt Mineral Name] Output mineral saturation index
+\item[IMMOBILE]
 \item[pH] Output pH
 \item[pe] Output pe
 \item[Eh] Output Eh [V]
@@ -824,6 +829,11 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item[TOTAL\_SORBED\_MOBILE]
 \item[COLLOIDS]
 \item[KD]
+\item[TOTAL\_SORBED]
+\item[TOTAL\_BULK]
+\item[TOTAL\_SORBED\_MOBILE]
+\item[AGE] Output mean solute or water age
+\item[SITE\_DENSITY]
 \end{deflist}
 
 \item [\keyend]
@@ -2693,26 +2703,36 @@ END
 \item[NO\_PRINT\_INITIAL] \ the initial state of the system will not be printed to the output file if this card is activated
 \item[NO\_PRINT\_FINAL] \ the final state of the system will not be printed to the output file if this card is activated
 \item[PRINT\_COLUMN\_IDS] print column numbers in observation and mass balance output files
+
 \item[FORMAT] \ <file format>: \ specify the snapshot in time file type. File formats available are: 
-\begin{deflist}{0000000000000000000000000}
-\item[TECPLOT BLOCK] -TecPlot block format
-\item[TECPLOT POINT] -TecPlot point format (requires a single processor)
-\item[HDF5] -produces single HDF5 file {\tt pflotran.h5}
-\item[HDF5 MULTIPLE\_FILES] -produces a separate HDF5 file at each output time
-\item[MAD] - (not supported)
+
+\begin{deflist}{000000}
+\item[TECPLOT] ~
+\begin{deflist}{0000000000}
+\item[POINT] -TecPlot point format (requires a single processor)
+\item[BLOCK] -TecPlot block format
+\item[FEBRICK] -TecPlot finite element
+\end{deflist}
+
+\item[HDF5] ~
+\begin{deflist}{0000000000}
+\item[SINGLE\_FILE] -produces single HDF5 file {\tt pflotran.h5}
+\item[MULTIPLE\_FILES \ [TIMES\_PER\_FILE]] -produces a separate HDF5 file for number of times specified by TIMES\_PER\_FILE [default 1]
+\end{deflist}
+
+\item[MAD] -(not supported)
 \item[VTK] -VTK format
 \end{deflist}
-%\item[FORMAT \ TECPLOT \ BLOCK]
-%\item[FORMAT \ HDF5]
-%\item[FORMAT \ MAD]
-%\item[FORMAT \ VTK]
-\begin{deflist}{0000000000000000000000000}
+
 \item[VOLUME] -Output cell volume
 \item[PERMEABILITY] -Output cell permeability
 \item[POROSITY] -Output cell porosity
 \item[FLUXES] -Output interface fluxes
-\item[VELOCITIES] -Output interface velocities
-\end{deflist}
+\item[VELOCITY\_AT\_FACE] -Output interface velocities 
+\item[~] -Structured grid: velocity outputted at internal faces only. Visualization support is available via XDMF.
+\item[~] -Unstructured grid: velocity outputted for internal and boundary faces. Data is outputted in HDF5 format only with no visualization support via XDMF.
+\item[VELOCITY\_AT\_CENTER] -Output cell-centered velocities (supported for structured and unstructured grids, applies to TecPlot and HDF5 output formats)
+
 \item[MASS\_BALANCE:] \ output the mass balance of the system if this card is activated. It includes global mass balance as well as fluxes at all boundaries for water and chemical species specified for output in the CHEMISTRY card. For the MPHASE mode only global mass balances are provided including supercritical CO$_2$. Output times are controlled by {\tt PERIODIC\_OBSERVATION TIMESTEP and TIME}, and printout times.
 \end{deflist}
 \item[\keyend]

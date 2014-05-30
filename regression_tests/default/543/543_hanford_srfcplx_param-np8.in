@@ -348,7 +348,7 @@ OUTPUT
   PERMEABILITY
   POROSITY
   FORMAT TECPLOT BLOCK
-  VELOCITIES
+  VELOCITY_AT_CENTER
 END
 
 #=========================== times ============================================

@@ -27,7 +27,7 @@ module Reactive_Transport_Aux_module
     ! aqueous species
     ! aqueous complexes
     PetscReal, pointer :: sec_molal(:)
-    PetscReal, pointer :: gas_molal(:)
+    PetscReal, pointer :: gas_molar(:)
     
     ! sorption reactions
     PetscReal, pointer :: srfcplxrxn_free_site_conc(:)
@@ -234,10 +234,10 @@ subroutine RTAuxVarInit(auxvar,reaction,option)
   endif
   
   if (reaction%ngas > 0) then
-    allocate(auxvar%gas_molal(reaction%ngas))
-    auxvar%gas_molal = 0.d0
+    allocate(auxvar%gas_molar(reaction%ngas))
+    auxvar%gas_molar = 0.d0
   else
-    nullify(auxvar%gas_molal)
+    nullify(auxvar%gas_molar)
   endif
 
   if (reaction%neqsorb > 0) then  
@@ -409,8 +409,8 @@ subroutine RTAuxVarCopy(auxvar,auxvar2,option)
     auxvar%dtotal_sorb_eq = auxvar2%dtotal_sorb_eq
   endif
   
-  if (associated(auxvar%gas_molal)) &
-    auxvar%gas_molal = auxvar2%gas_molal
+  if (associated(auxvar%gas_molar)) &
+    auxvar%gas_molar = auxvar2%gas_molar
   
   if (associated(auxvar%srfcplxrxn_free_site_conc)) then
     auxvar%srfcplxrxn_free_site_conc = auxvar2%srfcplxrxn_free_site_conc
@@ -550,7 +550,7 @@ subroutine RTAuxVarStrip(auxvar)
   call MatrixBlockAuxVarDestroy(auxvar%aqueous)
 
   call DeallocateArray(auxvar%sec_molal)
-  call DeallocateArray(auxvar%gas_molal)
+  call DeallocateArray(auxvar%gas_molar)
   call DeallocateArray(auxvar%total_sorb_eq)
   call DeallocateArray(auxvar%dtotal_sorb_eq)
   

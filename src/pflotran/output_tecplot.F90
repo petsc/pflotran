@@ -335,11 +335,12 @@ subroutine OutputTecplotBlock(realization_base)
 
   if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
   
-  if (output_option%print_tecplot_velocities) then
+  if (output_option%print_tecplot_vel_cent) then
     call OutputVelocitiesTecplotBlock(realization_base)
   endif
   
-  if (output_option%print_tecplot_flux_velocities) then
+  if (output_option%print_tecplot_vel_face .and. &
+      realization_base%discretization%itype == STRUCTURED_GRID) then
     if (grid%structured_grid%nx > 1) then
       call OutputFluxVelocitiesTecplotBlk(realization_base,LIQUID_PHASE, &
                                           X_DIRECTION,PETSC_FALSE)
@@ -368,7 +369,8 @@ subroutine OutputTecplotBlock(realization_base)
       end select
     endif
   endif
-  if (output_option%print_fluxes) then
+  if (output_option%print_fluxes .and. &
+      realization_base%discretization%itype == STRUCTURED_GRID) then
     if (grid%structured_grid%nx > 1) then
       select case(option%iflowmode)
         case(G_MODE)
@@ -438,6 +440,7 @@ subroutine OutputVelocitiesTecplotBlock(realization_base)
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
   Vec :: global_vec
+  Vec :: global_vec_vx, global_vec_vy, global_vec_vz
   Vec :: natural_vec
   PetscErrorCode :: ierr
 
@@ -497,6 +500,9 @@ subroutine OutputVelocitiesTecplotBlock(realization_base)
                                   option)  
   call DiscretizationCreateVector(discretization,ONEDOF,natural_vec,NATURAL, &
                                   option)    
+  call DiscretizationDuplicateVector(discretization,global_vec,global_vec_vx)
+  call DiscretizationDuplicateVector(discretization,global_vec,global_vec_vy)
+  call DiscretizationDuplicateVector(discretization,global_vec,global_vec_vz)
 
   ! write out coorindates
   if (realization_base%discretization%itype == STRUCTURED_GRID .or. &
@@ -506,29 +512,29 @@ subroutine OutputVelocitiesTecplotBlock(realization_base)
     call WriteTecplotUGridVertices(OUTPUT_UNIT,realization_base)
   endif
   
-  call OutputGetCellCenteredVelocities(realization_base,global_vec,LIQUID_PHASE,X_DIRECTION)
-  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+  call OutputGetCellCenteredVelocities(realization_base,global_vec_vx, &
+                                       global_vec_vx,global_vec_vz,LIQUID_PHASE)
+
+  call DiscretizationGlobalToNatural(discretization,global_vec_vx,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization_base,natural_vec,TECPLOT_REAL)
 
-  call OutputGetCellCenteredVelocities(realization_base,global_vec,LIQUID_PHASE,Y_DIRECTION)
-  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+  call DiscretizationGlobalToNatural(discretization,global_vec_vy,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization_base,natural_vec,TECPLOT_REAL)
 
-  call OutputGetCellCenteredVelocities(realization_base,global_vec,LIQUID_PHASE,Z_DIRECTION)
-  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+  call DiscretizationGlobalToNatural(discretization,global_vec_vz,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization_base,natural_vec,TECPLOT_REAL)
 
   if (option%nphase > 1) then
-    call OutputGetCellCenteredVelocities(realization_base,global_vec,GAS_PHASE,X_DIRECTION)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+    call OutputGetCellCenteredVelocities(realization_base,global_vec_vx, &
+                                         global_vec_vx,global_vec_vz,GAS_PHASE)
+
+    call DiscretizationGlobalToNatural(discretization,global_vec_vx,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization_base,natural_vec,TECPLOT_REAL)
 
-    call OutputGetCellCenteredVelocities(realization_base,global_vec,GAS_PHASE,Y_DIRECTION)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+    call DiscretizationGlobalToNatural(discretization,global_vec_vy,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization_base,natural_vec,TECPLOT_REAL)
 
-    call OutputGetCellCenteredVelocities(realization_base,global_vec,GAS_PHASE,Z_DIRECTION)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+    call DiscretizationGlobalToNatural(discretization,global_vec_vz,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization_base,natural_vec,TECPLOT_REAL)
   endif
 
@@ -539,6 +545,9 @@ subroutine OutputVelocitiesTecplotBlock(realization_base)
   
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
+  call VecDestroy(global_vec_vx,ierr)
+  call VecDestroy(global_vec_vy,ierr)
+  call VecDestroy(global_vec_vz,ierr)
 
   if (realization_base%discretization%itype == UNSTRUCTURED_GRID .and. &
       realization_base%discretization%grid%itype == &
@@ -1004,7 +1013,7 @@ subroutine OutputTecplotPoint(realization_base)
   
   if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
   
-  if (output_option%print_tecplot_velocities) then
+  if (output_option%print_tecplot_vel_cent) then
     call OutputVelocitiesTecplotPoint(realization_base)
   endif
   
@@ -1106,9 +1115,8 @@ subroutine OutputVelocitiesTecplotPoint(realization_base)
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec_vz,GLOBAL, &
                                   option)  
   
-  call OutputGetCellCenteredVelocities(realization_base,global_vec_vx,LIQUID_PHASE,X_DIRECTION)
-  call OutputGetCellCenteredVelocities(realization_base,global_vec_vy,LIQUID_PHASE,Y_DIRECTION)
-  call OutputGetCellCenteredVelocities(realization_base,global_vec_vz,LIQUID_PHASE,Z_DIRECTION)
+  call OutputGetCellCenteredVelocities(realization_base,global_vec_vx, &
+                                       global_vec_vy,global_vec_vz,LIQUID_PHASE)
 
   call VecGetArrayF90(global_vec_vx,vec_ptr_vx,ierr)
   call VecGetArrayF90(global_vec_vy,vec_ptr_vy,ierr)
@@ -1128,9 +1136,8 @@ subroutine OutputVelocitiesTecplotPoint(realization_base)
     call DiscretizationCreateVector(discretization,ONEDOF,global_vec_vgz,GLOBAL, &
                                   option)  
   
-    call OutputGetCellCenteredVelocities(realization_base,global_vec_vgx,GAS_PHASE,X_DIRECTION)
-    call OutputGetCellCenteredVelocities(realization_base,global_vec_vgy,GAS_PHASE,Y_DIRECTION)
-    call OutputGetCellCenteredVelocities(realization_base,global_vec_vgz,GAS_PHASE,Z_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization_base,global_vec_vx, &
+                                         global_vec_vy,global_vec_vz,GAS_PHASE)
 
     call VecGetArrayF90(global_vec_vgx,vec_ptr_vgx,ierr)
     call VecGetArrayF90(global_vec_vgy,vec_ptr_vgy,ierr)

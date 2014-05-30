@@ -694,6 +694,7 @@ subroutine OutputPrintCouplers(realization_base,istep)
   use Patch_module
   use Grid_module
   use Input_Aux_module
+  use General_Aux_module
 
   class(realization_base_type) :: realization_base
   PetscInt :: istep
@@ -708,7 +709,9 @@ subroutine OutputPrintCouplers(realization_base,istep)
   character(len=MAXSTRINGLENGTH) :: string, coupler_string
   type(connection_set_type), pointer :: cur_connection_set
   PetscReal, pointer :: vec_ptr(:)
-  PetscInt :: local_id, iconn, iauxvar
+  PetscInt :: local_id, iconn, iaux
+  PetscInt, allocatable :: iauxvars(:)
+  character(len=MAXWORDLENGTH), allocatable :: auxvar_names(:)
   PetscErrorCode :: ierr
   
   
@@ -721,6 +724,23 @@ subroutine OutputPrintCouplers(realization_base,istep)
       'Coupler debugging requested, but no string of coupler names was included.'
     call printErrMsg(option)
   endif
+
+  select case(option%iflowmode)
+    case(RICHARDS_MODE)
+      allocate(iauxvars(1),auxvar_names(1))
+      iauxvars(1) = RICHARDS_PRESSURE_DOF
+      auxvar_names(1) = 'pressure'
+    case(G_MODE)
+      allocate(iauxvars(2),auxvar_names(2))
+      iauxvars(1) = GENERAL_LIQUID_PRESSURE_DOF
+      auxvar_names(1) = 'liquid_pressure'
+      iauxvars(2) = GENERAL_ENERGY_DOF
+      auxvar_names(2) = 'temperature'
+    case default
+      option%io_buffer = &
+        'OutputPrintCouplers() not yet supported for this flow mode'
+      call printErrMsg(option)
+  end select
   
   coupler_string = flow_debug%coupler_string
   ierr = 0
@@ -728,48 +748,45 @@ subroutine OutputPrintCouplers(realization_base,istep)
     call InputReadWord(coupler_string,word,PETSC_TRUE,ierr)
     if (ierr /= 0) exit
     
-    select case(option%iflowmode)
-      case(RICHARDS_MODE)
-        iauxvar = RICHARDS_PRESSURE_DOF
-      case default
-        option%io_buffer = &
-          'OutputPrintCouplers() not yet supported for this flow mode'
-        call printErrMsg(option)
-    end select
-    
-    cur_patch => realization_base%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      grid => cur_patch%grid
-      coupler => CouplerGetPtrFromList(word,cur_patch%boundary_conditions)
-      call VecZeroEntries(field%work,ierr)
-      call VecGetArrayF90(field%work,vec_ptr,ierr)
-      if (associated(coupler)) then
-        cur_connection_set => coupler%connection_set
-        do iconn = 1, cur_connection_set%num_connections
-          local_id = cur_connection_set%id_dn(iconn)
-          if (cur_patch%imat(grid%nL2G(local_id)) <= 0) cycle
-          vec_ptr(local_id) = coupler%flow_aux_real_var(iauxvar,iconn)
-        enddo
-      endif
-      call VecRestoreArrayF90(field%work,vec_ptr,ierr)
-      cur_patch => cur_patch%next
-    enddo
+    do iaux = 1, size(iauxvars)
+      cur_patch => realization_base%patch_list%first
+      do
+        if (.not.associated(cur_patch)) exit
+        grid => cur_patch%grid
+        coupler => CouplerGetPtrFromList(word,cur_patch%boundary_conditions)
+        call VecZeroEntries(field%work,ierr)
+        call VecGetArrayF90(field%work,vec_ptr,ierr)
+        if (associated(coupler)) then
+          cur_connection_set => coupler%connection_set
+          do iconn = 1, cur_connection_set%num_connections
+            local_id = cur_connection_set%id_dn(iconn)
+            if (cur_patch%imat(grid%nL2G(local_id)) <= 0) cycle
+            vec_ptr(local_id) = coupler%flow_aux_real_var(iauxvars(iaux),iconn)
+          enddo
+        endif
+        call VecRestoreArrayF90(field%work,vec_ptr,ierr)
+        cur_patch => cur_patch%next
+      enddo
 
-    if (istep > 0) then
-      write(string,*) istep
-      string = adjustl(string)
-    else 
-      string = ''
-    endif
-    string = trim(word) // trim(string)
-    if (len_trim(option%group_prefix) > 1) then
-      string = trim(string) // trim(option%group_prefix)
-    endif
-    string = trim(string) // '.tec'
-    call OutputVectorTecplot(string,word,realization_base,field%work)
+      if (istep > 0) then
+        write(string,*) istep
+        string = adjustl(string)
+        string = trim(word) // '_' // trim(auxvar_names(iaux)) // '_' // &
+                 trim(string)
+      else 
+        string = trim(word) // '_' // trim(auxvar_names(iaux))
+      endif
+      if (len_trim(option%group_prefix) > 1) then
+        string = trim(string) // trim(option%group_prefix)
+      endif
+      string = trim(string) // '.tec'
+      call OutputVectorTecplot(string,word,realization_base,field%work)
+    enddo
       
   enddo
+
+  deallocate(iauxvars)
+  deallocate(auxvar_names)
 
 end subroutine OutputPrintCouplers
 

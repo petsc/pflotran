@@ -1447,7 +1447,7 @@ subroutine RTCalculateRHS_t1(realization)
     source_sink => source_sink%next
   enddo
 
-#ifdef CHUAN_CO2
+  ! CO2-specific
   select case(option%iflowmode)
     case(MPH_MODE,IMS_MODE,FLASH2_MODE)
       source_sink => patch%source_sinks%first 
@@ -1485,8 +1485,6 @@ subroutine RTCalculateRHS_t1(realization)
         source_sink => source_sink%next
       enddo
   end select
-     
-#endif
 #endif
 
   ! Restore vectors
@@ -2331,10 +2329,9 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
   PetscReal :: Res(realization%reaction%ncomp)
 #endif
 
-#ifdef CHUAN_CO2
+  ! CO2-specific
   PetscReal :: msrc(1:realization%option%nflowspec)
   PetscInt :: icomp, ieqgas
-#endif
 
   option => realization%option
   field => realization%field
@@ -2627,10 +2624,10 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
   PetscReal :: Jup(realization%reaction%ncomp,realization%reaction%ncomp)
   PetscBool :: volumetric
   PetscInt :: sum_connection
-#ifdef CHUAN_CO2
+
+  ! CO2-specific
   PetscReal :: msrc(1:realization%option%nflowspec)
   PetscInt :: icomp, ieqgas
-#endif
 
   type(sec_transport_type), pointer :: rt_sec_transport_vars(:)
   PetscReal :: vol_frac_prim
@@ -2796,7 +2793,7 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
     source_sink => source_sink%next
   enddo
 
-#ifdef CHUAN_CO2
+  ! CO2-specific
   select case(option%iflowmode)
     case(MPH_MODE,IMS_MODE,FLASH2_MODE)
       source_sink => patch%source_sinks%first 
@@ -2837,8 +2834,6 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
         source_sink => source_sink%next
       enddo
   end select
-     
-#endif
 #endif
 
 #if 1  
