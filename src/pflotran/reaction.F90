@@ -2011,11 +2011,13 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   bulk_vol_to_fluid_vol = option%reference_porosity* &
                           global_auxvar%sat(iphase)*1000.d0
 
-! compute mass fraction of H2O
+! compute mole and mass fractions of H2O
   if (reaction%use_full_geochemistry) then
     sum_molality = 0.d0
     do icomp = 1, reaction%naqcomp
-      sum_molality = sum_molality + rt_auxvar%pri_molal(icomp)
+      if (icomp /= reaction%species_idx%h2o_aq_id) then
+        sum_molality = sum_molality + rt_auxvar%pri_molal(icomp)
+      endif
     enddo
     if (reaction%neqcplx > 0) then    
       do i = 1, reaction%neqcplx
@@ -2026,7 +2028,10 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
 
     sum_mass = 0.d0
     do icomp = 1, reaction%naqcomp
-      sum_mass = sum_mass + reaction%primary_spec_molar_wt(icomp)*rt_auxvar%pri_molal(icomp)
+      if (icomp /= reaction%species_idx%h2o_aq_id) then
+        sum_mass = sum_mass + &
+          reaction%primary_spec_molar_wt(icomp)*rt_auxvar%pri_molal(icomp)
+      endif
     enddo
     if (reaction%neqcplx > 0) then    
       do i = 1, reaction%neqcplx
