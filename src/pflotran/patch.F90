@@ -1733,8 +1733,6 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
   flow_condition => coupler%flow_condition
 
   if (associated(flow_condition%pressure)) then
-    coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
-                flow_condition%iphase
     select case(flow_condition%pressure%itype)
       case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
         select type(selector =>flow_condition%pressure%dataset)
@@ -1964,6 +1962,7 @@ subroutine PatchUpdateCouplerAuxVarsRich(patch,coupler,option)
   use Grid_module
   use Dataset_Common_HDF5_class
   use Dataset_Gridded_HDF5_class
+  use Dataset_Ascii_class
 
   implicit none
   
@@ -1995,23 +1994,28 @@ subroutine PatchUpdateCouplerAuxVarsRich(patch,coupler,option)
   if (associated(flow_condition%pressure)) then
     select case(flow_condition%pressure%itype)
       case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
-        if (associated(flow_condition%pressure%dataset)) then
-          coupler%flow_aux_real_var(RICHARDS_PRESSURE_DOF, &
-                                    1:num_connections) = &
-            flow_condition%pressure%dataset%rarray(1)
-        else
-          select type(dataset => &
-                      flow_condition%pressure%dataset)
-            class is(dataset_gridded_hdf5_type)
-              call PatchUpdateCouplerFromDataset(coupler,option, &
-                                              patch%grid,dataset, &
-                                              RICHARDS_PRESSURE_DOF)
-            class default
-          end select
-        endif
+        select type(selector =>flow_condition%pressure%dataset)
+          class is(dataset_ascii_type)
+            coupler%flow_aux_real_var(RICHARDS_PRESSURE_DOF, &
+                                      1:num_connections) = &
+              selector%rarray(1)
+          class is(dataset_gridded_hdf5_type)
+            call PatchUpdateCouplerFromDataset(coupler,option, &
+                                               patch%grid,selector, &
+                                               RICHARDS_PRESSURE_DOF)
+          class default
+            option%io_buffer = 'Unknown dataset class (Richards%' // &
+              'pressure%itype,DIRICHLET_BC)'
+            call printErrMsg(option)
+        end select
       case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
         call HydrostaticUpdateCoupler(coupler,option,patch%grid)
-   !  case(SATURATION_BC)
+      case default
+        string = GetSubConditionName(flow_condition%pressure%itype)
+        option%io_buffer='For Richards mode: flow_condition%pressure%' // &
+          'itype = "' // trim(adjustl(string)) // '", not implemented.'
+          write(*,*)  trim(string)
+        call printErrMsg(option)
     end select
   endif
   if (associated(flow_condition%saturation)) then
