@@ -2950,7 +2950,7 @@ subroutine ReactionReadOutput(reaction,input,option)
         reaction%print_total_sorb_mobile = PETSC_FALSE
         reaction%print_colloid = PETSC_FALSE
         reaction%print_act_coefs = PETSC_FALSE
-        reaction%print_total_component = PETSC_TRUE
+        reaction%print_total_component = PETSC_FALSE
         reaction%print_free_ion = PETSC_FALSE
       case('ALL')
         reaction%print_all_species = PETSC_TRUE
@@ -2983,6 +2983,8 @@ subroutine ReactionReadOutput(reaction,input,option)
         reaction%print_kd = PETSC_TRUE
       case('COLLOIDS')
         reaction%print_colloid = PETSC_TRUE
+      case('TOTAL')
+        reaction%print_total_component = PETSC_TRUE
       case('TOTAL_SORBED')
         reaction%print_total_sorb = PETSC_TRUE
       case('TOTAL_BULK')
@@ -2990,7 +2992,6 @@ subroutine ReactionReadOutput(reaction,input,option)
       case('TOTAL_SORBED_MOBILE')
         reaction%print_total_sorb_mobile = PETSC_TRUE
       case('FREE_ION')
-        reaction%print_total_component = PETSC_FALSE
         reaction%print_free_ion = PETSC_TRUE
       case('ACTIVITY_COEFFICIENTS')
         reaction%print_act_coefs = PETSC_TRUE

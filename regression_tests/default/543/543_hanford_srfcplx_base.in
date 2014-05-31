@@ -209,6 +209,7 @@ noskip
   OUTPUT
     All
     pH
+    TOTAL
     TOTAL_SORBED
     KD
   /
