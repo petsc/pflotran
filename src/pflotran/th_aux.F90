@@ -52,7 +52,9 @@ module TH_Aux_module
     PetscReal :: P_min
     PetscReal :: P_max
     PetscReal :: coeff_for_cubic_approx(4)
+    PetscReal :: coeff_for_deriv_cubic_approx(4)
     PetscReal :: range_for_linear_approx(4)
+    PetscReal :: dlinear_slope_dT
 
   end type TH_auxvar_type
 
@@ -203,7 +205,9 @@ subroutine THAuxVarInit(auxvar,option)
   auxvar%P_min = 0.d0
   auxvar%P_max = 0.d0
   auxvar%coeff_for_cubic_approx(:) = 0.d0
+  auxvar%coeff_for_deriv_cubic_approx(:) = 0.d0
   auxvar%range_for_linear_approx(:) = 0.d0
+  auxvar%dlinear_slope_dT = 0.d0
 
 end subroutine THAuxVarInit
 
@@ -271,7 +275,9 @@ subroutine THAuxVarCopy(auxvar,auxvar2,option)
   auxvar2%P_min = auxvar%P_min
   auxvar2%P_max = auxvar%P_max
   auxvar2%coeff_for_cubic_approx(:) = auxvar%coeff_for_cubic_approx(:)
+  auxvar2%coeff_for_deriv_cubic_approx(:) = auxvar%coeff_for_deriv_cubic_approx(:)
   auxvar2%range_for_linear_approx(:) = auxvar%range_for_linear_approx(:)
+  auxvar2%dlinear_slope_dT = auxvar%dlinear_slope_dT
 
 end subroutine THAuxVarCopy
 

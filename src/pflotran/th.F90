@@ -2817,6 +2817,21 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
                        auxvar_dn%range_for_linear_approx(3)
               dq_dp_dn = dq_lin/dP_lin
 
+              ! Approximation:
+              ! q_approx = q_min + slope*(P_dn - P_min)
+              !
+              ! Derivative of approximation w.r.t T_dn:
+              ! d(q_approx)/dT_dn = d(q_min)/dT_dn +
+              !                     d(slope)/dT_dn*(P_dn - P_min) +
+              !                     slope*(0 - d(P_min)/dT_dn)
+              ! Note: 
+              !   d(q_min)/dT_dn = 0
+              !   d(P_min)/dT_dn = 0
+              !                     slope*(0 - d(P_min)/dT_dn)
+              dq_dt_dn = auxvar_dn%dlinear_slope_dT* &
+                         (global_auxvar_dn%pres(1) - &
+                          auxvar_dn%range_for_linear_approx(1))
+
             else if (global_auxvar_dn%pres(1) <= auxvar_dn%P_max) then
 
               ! Cubic approximation
@@ -2825,18 +2840,21 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
                                            q_approx, dq_approx)
               v_darcy = q_approx/area
               dq_dp_dn = dq_approx
-              !dq_dt_dn = 0.d0
+
+              call CubicPolynomialEvaluate(auxvar_dn%coeff_for_deriv_cubic_approx, &
+                                           global_auxvar_dn%pres(1), &
+                                           dq_dt_dn, dum1)
             endif
 
-            ! Apply temperature smooth
+            ! Apply temperature smoothing
             v_darcy  = v_darcy*fctT
-            q        = q*fctT
+            q        = v_darcy*area
             dq_dp_dn = dq_dp_dn*fctT
             dq_dt_dn = dq_dt_dn*fctT + q*dfctT_dT
 
           endif
         endif
-      endif 
+      endif
 
     case(NEUMANN_BC)
       if (dabs(auxvars(TH_PRESSURE_DOF)) > floweps) then
@@ -3360,7 +3378,6 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
             (hw_present)) then
           cond = 0.d0
         endif
-        write(*,*)'Energy BC flux: ',cond,global_auxvar_up%temp(1),global_auxvar_dn%temp(1),hw_present
       endif
 
       fluxe = fluxe + cond
@@ -5288,10 +5305,6 @@ subroutine THUpdateSurfaceBC(realization)
           surfpress_new
         !boundary_condition%flow_aux_real_var(TH_TEMPERATURE_DOF,iconn) = &
         !  surftemp_new
-        write(*,*)'new_pressure: ',surfpress_new, &
-          global_auxvars(ghosted_id)%pres(1), &
-          boundary_condition%flow_aux_real_var(TH_TEMPERATURE_DOF,iconn), &
-          global_auxvars(ghosted_id)%temp(1)
       enddo
 
     else
@@ -5436,32 +5449,22 @@ subroutine THComputeCoeffsForSurfFlux(realization)
   PetscInt :: sum_connection
   PetscInt :: iconn
   PetscInt :: icap_dn
+  PetscInt :: iphase
 
-  PetscReal :: den
-  PetscReal :: dum1
   PetscReal :: dist_gravity  ! distance along gravity vector
   PetscReal :: dist(-1:3)
-  PetscReal :: upweight,gravity,dphi
-  PetscReal :: ukvr,Dq
-  PetscReal :: P_allowable
+  PetscReal :: gravity
+  PetscReal :: Dq
   PetscReal :: sir_dn
-  PetscReal :: v_darcy_allowable,v_darcy
-  PetscReal :: q_allowable,q
-  PetscReal :: dq_dp_dn
-  PetscReal :: P_max,P_min,dP
-  PetscReal :: density_ave
-  PetscReal :: dgravity_dden_dn
-  PetscReal :: dukvr_dp_dn
-  PetscReal :: dphi_dp_dn
+  PetscReal :: P_max_pert,P_min_pert,temp_pert
   PetscReal :: perm_dn
   PetscReal :: area
-  PetscReal :: xxbc(realization%option%nflowdof)
   PetscReal, pointer :: iphase_loc_p(:)
-  PetscInt :: iphase
+  PetscReal :: coeff_for_cubic_approx_pert(4)
+  PetscReal :: range_for_linear_approx_pert(4)
+  PetscReal :: slope_1, slope_2
+  PetscReal :: num, den
   PetscErrorCode :: ierr
-
-  ! Distance away from allowable pressure at which cubic approximation begins
-  dP = 10 ! [Pa]
 
   option => realization%option
   patch => realization%patch
@@ -5519,133 +5522,76 @@ subroutine THComputeCoeffsForSurfFlux(realization)
         Dq = perm_dn / dist(0)
         area = cur_connection_set%area(iconn)
 
-        call EOSWaterdensity(global_auxvar_up%temp(1), &
-                             option%reference_pressure,den,dum1,ierr)
-
-        gravity = den * dist_gravity
-
-        dphi = global_auxvar_up%pres(1) - global_auxvar_dn%pres(1) + gravity
-
-        v_darcy_allowable = (global_auxvar_up%pres(1) - option%reference_pressure)/ &
-                             option%flow_dt/(-option%gravity(3))/den
-        q_allowable = v_darcy_allowable*area
-
-        if (dphi>=0.D0) then
-          ukvr = th_auxvar_up%kvr
-        else
-          ukvr = th_auxvar_dn%kvr
-        endif
-
-        P_allowable = global_auxvar_up%pres(1) + gravity - v_darcy_allowable/Dq/ukvr
-
-        P_max       = P_allowable + dP
-        P_min       = P_allowable
-
-        ! Step-2: Find derivative at P_max
         icap_dn = patch%sat_func_id(ghosted_id)
-
-        xxbc(1) = P_max
-        xxbc(2) = global_auxvar_up%temp(1)
-
-        call GlobalAuxVarInit(global_auxvar_max,option)
-        call THAuxVarInit(th_auxvar_max,option)
-        if (option%use_th_freezing) then
-          call THAuxVarComputeFreezing(xxbc,th_auxvar_max, &
-                                       global_auxvar_max, &
-                                       material_auxvars(ghosted_id), &
-                                       iphase, &
-                                       patch%saturation_function_array(icap_dn)%ptr, &
-                                       option)
-        else
-          call THAuxVarComputeNoFreezing(xxbc,th_auxvar_max, &
-                                         global_auxvar_max, &
-                                         material_auxvars(ghosted_id), &
-                                         iphase, &
-                                         patch%saturation_function_array(icap_dn)%ptr, &
-                                         option)
-        endif
-
         sir_dn = th_parameter%sir(1,icap_dn)
 
-        if (global_auxvar_up%sat(1) > sir_dn .or. global_auxvar_max%sat(1) > sir_dn) then
+        ! Compute coeff
+        call ComputeCoeffsForApprox(global_auxvar_up%pres(1), &
+                                    global_auxvar_up%temp(1), &
+                                    global_auxvar_dn%pres(1), &
+                                    global_auxvar_dn%temp(1), &
+                                    material_auxvars(ghosted_id), &
+                                    iphase, &
+                                    patch%saturation_function_array(icap_dn)%ptr, &
+                                    dist_gravity, &
+                                    area, &
+                                    Dq, &
+                                    sir_dn, &
+                                    option, &
+                                    th_auxvar_dn%P_min, &
+                                    th_auxvar_dn%P_max, &
+                                    th_auxvar_dn%coeff_for_cubic_approx, &
+                                    th_auxvar_dn%range_for_linear_approx)
 
-          upweight=1.D0
-          if (global_auxvar_up%sat(1) < eps) then
-            upweight=0.d0
-          else if (global_auxvar_max%sat(1) < eps) then
-            upweight=1.d0
-          endif
+        temp_pert = global_auxvar_dn%temp(1)*perturbation_tolerance
 
-          density_ave = upweight*global_auxvar_up%den(1)+(1.D0-upweight)*global_auxvar_max%den(1)
+        call ComputeCoeffsForApprox(global_auxvar_up%pres(1), &
+                                   global_auxvar_up%temp(1), &
+                                   global_auxvar_dn%pres(1), &
+                                   global_auxvar_dn%temp(1) + temp_pert, &
+                                   material_auxvars(ghosted_id), &
+                                   iphase, &
+                                   patch%saturation_function_array(icap_dn)%ptr, &
+                                   dist_gravity, &
+                                   area, &
+                                   Dq, &
+                                   sir_dn, &
+                                   option, &
+                                   P_min_pert, &
+                                   P_max_pert, &
+                                   coeff_for_cubic_approx_pert, &
+                                   range_for_linear_approx_pert)
 
-          gravity = (upweight*       global_auxvar_up%den(1) + &
-                     (1.D0-upweight)*global_auxvar_max%den(1)) &
-                    * FMWH2O * dist_gravity
-          dgravity_dden_dn = (1.d0-upweight)*FMWH2O*dist_gravity
+        th_auxvar_dn%coeff_for_deriv_cubic_approx(1) = &
+                            (coeff_for_cubic_approx_pert(1) - &
+                             th_auxvar_dn%coeff_for_cubic_approx(1))/temp_pert
 
-          if (option%ice_model /= DALL_AMICO) then
-            dphi = global_auxvar_up%pres(1) - global_auxvar_dn%pres(1) + gravity
-            dphi_dp_dn = -1.d0 + dgravity_dden_dn*th_auxvar_dn%dden_dp
-          else
-            dphi = th_auxvar_up%pres_fh2o - th_auxvar_dn%pres_fh2o + gravity
-            dphi_dp_dn = -th_auxvar_dn%dpres_fh2o_dp + dgravity_dden_dn*th_auxvar_dn%dden_dp
-          endif
+        th_auxvar_dn%coeff_for_deriv_cubic_approx(2) = &
+                            (coeff_for_cubic_approx_pert(2) - &
+                             th_auxvar_dn%coeff_for_cubic_approx(2))/temp_pert
 
-          if (pressure_bc_type == HET_SURF_SEEPAGE_BC) then
-            ! flow in         ! boundary cell is <= pref
-            if (dphi > 0.d0 .and. global_auxvar_up%pres(1)-option%reference_pressure < eps) then
-              dphi = 0.d0
-              dphi_dp_dn = 0.d0
-            endif
-          endif
+        th_auxvar_dn%coeff_for_deriv_cubic_approx(3) = &
+                            (coeff_for_cubic_approx_pert(3) - &
+                             th_auxvar_dn%coeff_for_cubic_approx(3))/temp_pert
 
-          if (dphi>=0.D0) then
-            ukvr = th_auxvar_up%kvr
-            dukvr_dp_dn = 0.d0
-          else
-            ukvr = th_auxvar_max%kvr
-            dukvr_dp_dn = th_auxvar_max%dkvr_dp
-          endif
+        th_auxvar_dn%coeff_for_deriv_cubic_approx(4) = &
+                            (coeff_for_cubic_approx_pert(4) - &
+                             th_auxvar_dn%coeff_for_cubic_approx(4))/temp_pert
 
-          call InterfaceApprox(th_auxvar_up%kvr, th_auxvar_dn%kvr, &
-                               th_auxvar_up%dkvr_dp, th_auxvar_dn%dkvr_dp, &
-                               dphi, &
-                               option%rel_perm_aveg, &
-                               ukvr, dum1, dukvr_dp_dn)
+        num = (th_auxvar_dn%range_for_linear_approx(4) - &
+               th_auxvar_dn%range_for_linear_approx(3))
+        den = (th_auxvar_dn%range_for_linear_approx(2) - &
+               th_auxvar_dn%range_for_linear_approx(1))
+        slope_1 = num/den
 
-          if (ukvr*Dq>floweps) then
+        num = (range_for_linear_approx_pert(4) - &
+               range_for_linear_approx_pert(3))
+        den = (range_for_linear_approx_pert(2) - &
+               range_for_linear_approx_pert(1))
+        slope_2 = num/den
 
-            v_darcy = Dq * ukvr * dphi
-            q = v_darcy*area
+        th_auxvar_dn%dlinear_slope_dT = (slope_2-slope_1)/temp_pert
 
-            dq_dp_dn = Dq*(dukvr_dp_dn*dphi + ukvr*dphi_dp_dn)*area
-
-            ! Step-3: Find coefficients of cubic polynomial curve
-
-            ! Values of function at min/max
-            th_auxvar_dn%coeff_for_cubic_approx(1) = 0.99d0*q_allowable
-            th_auxvar_dn%coeff_for_cubic_approx(2) = q
-
-            ! Values of function derivatives at min/max
-            th_auxvar_dn%coeff_for_cubic_approx(3) = 0.01d0*q_allowable/P_min
-            th_auxvar_dn%coeff_for_cubic_approx(4) = dq_dp_dn
-
-            ! min/max
-            th_auxvar_dn%P_min = P_min
-            th_auxvar_dn%P_max = P_max
-
-            call CubicPolynomialSetup(th_auxvar_dn%P_min, &
-                                      th_auxvar_dn%P_max, &
-                                      th_auxvar_dn%coeff_for_cubic_approx)
-
-            ! Step-4: Save values for linear approximation
-            th_auxvar_dn%range_for_linear_approx(1) = 0.d0
-            th_auxvar_dn%range_for_linear_approx(2) = P_min
-            th_auxvar_dn%range_for_linear_approx(3) = q_allowable
-            th_auxvar_dn%range_for_linear_approx(4) = 0.99d0*q_allowable
-          endif
-
-        endif
       enddo
 
     else
@@ -5661,6 +5607,262 @@ subroutine THComputeCoeffsForSurfFlux(realization)
   call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
 
 end subroutine THComputeCoeffsForSurfFlux
+
+
+! ************************************************************************** !
+
+subroutine ComputeCoeffsForApprox(P_up, T_up, &
+                                  P_dn, T_dn, &
+                                  material_auxvar, &
+                                  iphase, &
+                                  saturation_function, &
+                                  dist_gravity, &
+                                  area, &
+                                  Dq, &
+                                  sir_dn, &
+                                  option, &
+                                  P_min, P_max, &
+                                  coeff_for_cubic_approx, &
+                                  range_for_linear_approx)
+  !
+  ! To smoothly approximation boundary darcy flux, this routine computes 
+  !  (i) coefficients for polynomial approximation and
+  !  (ii) range for linear approximation
+  !
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 05/30/14
+  !
+
+  use EOS_Water_module
+  use Field_module
+  use Material_Aux_class
+  use Option_module
+  use Saturation_Function_module
+  use String_module
+  use Utility_module
+
+  implicit none
+
+  PetscReal :: P_up, T_up
+  PetscReal :: P_dn, T_dn
+  class(material_auxvar_type) :: material_auxvar
+  PetscInt :: iphase
+  type(saturation_function_type) :: saturation_function
+  PetscReal :: dist_gravity
+  PetscReal :: area
+  PetscReal :: Dq
+  PetscReal :: sir_dn
+  type(option_type) :: option
+  PetscReal, intent(out) :: P_min
+  PetscReal, intent(out) :: P_max
+  PetscReal, intent(out) :: coeff_for_cubic_approx(4)
+  PetscReal, intent(out) :: range_for_linear_approx(4)
+
+  type(global_auxvar_type) :: global_auxvar_up
+  type(global_auxvar_type) :: global_auxvar_dn
+  type(global_auxvar_type) :: global_auxvar_max
+  type(th_auxvar_type) :: th_auxvar_up
+  type(th_auxvar_type) :: th_auxvar_dn
+  type(th_auxvar_type) :: th_auxvar_max
+
+  PetscReal :: xx(option%nflowdof)
+  PetscReal :: den
+  PetscReal :: dum1
+  PetscReal :: upweight,gravity,dphi
+  PetscReal :: ukvr
+  PetscReal :: P_allowable
+  PetscReal :: v_darcy_allowable,v_darcy
+  PetscReal :: q_allowable,q
+  PetscReal :: dq_dp_dn
+  PetscReal :: dP
+  PetscReal :: density_ave
+  PetscReal :: dgravity_dden_dn
+  PetscReal :: dukvr_dp_dn
+  PetscReal :: dphi_dp_dn
+  PetscReal :: perm_dn
+  PetscErrorCode :: ierr
+
+  ! Distance away from allowable pressure at which cubic approximation begins
+  dP = 10 ! [Pa]
+
+  call GlobalAuxVarInit(global_auxvar_up,option)
+  call GlobalAuxVarInit(global_auxvar_dn,option)
+  call GlobalAuxVarInit(global_auxvar_max,option)
+
+  call THAuxVarInit(th_auxvar_up,option)
+  call THAuxVarInit(th_auxvar_dn,option)
+  call THAuxVarInit(th_auxvar_max,option)
+
+  ! Step-1: Set auxvars (global and th) for up/dn
+  if (option%use_th_freezing) then
+
+    xx(1) = P_up
+    xx(2) = T_up
+    call THAuxVarComputeFreezing(xx, &
+                                 th_auxvar_up, &
+                                 global_auxvar_up, &
+                                 material_auxvar, &
+                                 iphase, &
+                                 saturation_function, &
+                                 option)
+
+    xx(1) = P_dn
+    xx(2) = T_dn
+    call THAuxVarComputeFreezing(xx, &
+                                 th_auxvar_dn, &
+                                 global_auxvar_dn, &
+                                 material_auxvar, &
+                                 iphase, &
+                                 saturation_function, &
+                                 option)
+  else
+
+    xx(1) = P_up
+    xx(2) = T_up
+    call THAuxVarComputeNoFreezing(xx, &
+                                   th_auxvar_up, &
+                                   global_auxvar_up, &
+                                   material_auxvar, &
+                                   iphase, &
+                                   saturation_function, &
+                                   option)
+
+    xx(1) = P_dn
+    xx(2) = T_dn
+    call THAuxVarComputeNoFreezing(xx, &
+                                   th_auxvar_dn, &
+                                   global_auxvar_dn, &
+                                   material_auxvar, &
+                                   iphase, &
+                                   saturation_function, &
+                                   option)
+  endif
+
+  ! Step-2: Find P_max/P_min for cubic polynomial approximation
+  call EOSWaterdensity(global_auxvar_up%temp(1),option%reference_pressure,den,dum1,ierr)
+
+  gravity = den * dist_gravity
+
+  dphi = global_auxvar_up%pres(1) - global_auxvar_dn%pres(1) + gravity
+
+  v_darcy_allowable = (global_auxvar_up%pres(1) - option%reference_pressure)/ &
+                      option%flow_dt/(-option%gravity(3))/den
+  q_allowable = v_darcy_allowable*area
+
+  if (dphi>=0.D0) then
+    ukvr = th_auxvar_up%kvr
+  else
+    ukvr = th_auxvar_dn%kvr
+  endif
+
+  P_allowable = global_auxvar_up%pres(1) + gravity - v_darcy_allowable/Dq/ukvr
+
+  P_max       = P_allowable + dP
+  P_min       = P_allowable
+
+  ! Step-3: Find derivative at P_max
+
+  if (option%use_th_freezing) then
+
+    xx(1) = P_max
+    xx(2) = T_up
+    call THAuxVarComputeFreezing(xx, &
+                                 th_auxvar_up, &
+                                 global_auxvar_max, &
+                                 material_auxvar, &
+                                 iphase, &
+                                 saturation_function, &
+                                 option)
+  else
+
+    xx(1) = P_max
+    xx(2) = T_up
+    call THAuxVarComputeNoFreezing(xx, &
+                                   th_auxvar_max, &
+                                   global_auxvar_max, &
+                                   material_auxvar, &
+                                   iphase, &
+                                   saturation_function, &
+                                   option)
+  endif
+
+  if (global_auxvar_up%sat(1) > sir_dn .or. global_auxvar_max%sat(1) > sir_dn) then
+
+    upweight=1.D0
+    if (global_auxvar_up%sat(1) < eps) then
+      upweight=0.d0
+    else if (global_auxvar_max%sat(1) < eps) then
+      upweight=1.d0
+    endif
+
+    density_ave = upweight*global_auxvar_up%den(1)+(1.D0-upweight)*global_auxvar_max%den(1)
+
+    gravity = (upweight*       global_auxvar_up%den(1) + &
+               (1.D0-upweight)*global_auxvar_max%den(1)) &
+              * FMWH2O * dist_gravity
+    dgravity_dden_dn = (1.d0-upweight)*FMWH2O*dist_gravity
+
+    if (option%ice_model /= DALL_AMICO) then
+      dphi = global_auxvar_up%pres(1) - global_auxvar_dn%pres(1) + gravity
+      dphi_dp_dn = -1.d0 + dgravity_dden_dn*th_auxvar_dn%dden_dp
+    else
+      dphi = th_auxvar_up%pres_fh2o - th_auxvar_dn%pres_fh2o + gravity
+      dphi_dp_dn = -th_auxvar_dn%dpres_fh2o_dp + dgravity_dden_dn*th_auxvar_dn%dden_dp
+    endif
+
+    !if (pressure_bc_type == HET_SURF_SEEPAGE_BC) then
+    ! flow in         ! boundary cell is <= pref
+    if (dphi > 0.d0 .and. global_auxvar_up%pres(1) - option%reference_pressure < eps) then
+      dphi = 0.d0
+      dphi_dp_dn = 0.d0
+    endif
+    !endif
+
+    if (dphi>=0.D0) then
+      ukvr = th_auxvar_up%kvr
+      dukvr_dp_dn = 0.d0
+    else
+      ukvr = th_auxvar_max%kvr
+      dukvr_dp_dn = th_auxvar_max%dkvr_dp
+    endif
+
+    call InterfaceApprox(th_auxvar_up%kvr, th_auxvar_dn%kvr, &
+                         th_auxvar_up%dkvr_dp, th_auxvar_dn%dkvr_dp, &
+                         dphi, &
+                         option%rel_perm_aveg, &
+                         ukvr, dum1, dukvr_dp_dn)
+
+    if (ukvr*Dq>floweps) then
+
+      v_darcy = Dq * ukvr * dphi
+      q = v_darcy*area
+
+      dq_dp_dn = Dq*(dukvr_dp_dn*dphi + ukvr*dphi_dp_dn)*area
+
+      ! Step-3: Find coefficients of cubic polynomial curve
+
+      ! Values of function at min/max
+      coeff_for_cubic_approx(1) = 0.99d0*q_allowable
+      coeff_for_cubic_approx(2) = q
+
+      ! Values of function derivatives at min/max
+      coeff_for_cubic_approx(3) = 0.01d0*q_allowable/P_min
+      coeff_for_cubic_approx(4) = dq_dp_dn
+
+      call CubicPolynomialSetup(P_min, &
+                                P_max, &
+                                coeff_for_cubic_approx)
+
+      ! Step-4: Save values for linear approximation
+      range_for_linear_approx(1) = 0.d0
+      range_for_linear_approx(2) = P_min
+      range_for_linear_approx(3) = q_allowable
+      range_for_linear_approx(4) = 0.99d0*q_allowable
+    endif
+
+  endif
+
+end subroutine ComputeCoeffsForApprox
 
 ! ************************************************************************** !
 
