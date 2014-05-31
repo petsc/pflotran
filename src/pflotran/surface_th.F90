@@ -1273,7 +1273,7 @@ subroutine SurfaceTHUpdateSurfState(surf_realization)
     call EOSWaterdensity(surftemp_p(count),option%reference_pressure,den,dum1,ierr)
     xx_p(ibeg) = (surfpress_p(count)-option%reference_pressure)/ &
                         (abs(option%gravity(3)))/den
-    if(xx_p(ibeg)<1.d-15) then
+    if (surfpress_p(count)-option%reference_pressure < 1.0d-8) then
       xx_p(ibeg) = 0.d0
       xx_p(iend) = 0.d0
     else

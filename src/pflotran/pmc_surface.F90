@@ -399,7 +399,7 @@ subroutine PMCSurfaceSetAuxData(this)
               if (local_id < 1) cycle
               iend = local_id*this%option%nflowdof
               istart = iend - this%option%nflowdof+1
-              if (xx_loc_p(istart) < 1.d-15) then
+              if (xx_loc_p(istart) < 1.d-8) then
                 surf_head_p(local_id) = 0.d0
                 surf_temp_p(local_id) = this%option%reference_temperature
               else
@@ -439,7 +439,7 @@ subroutine PMCSurfaceSetAuxData(this)
 
                     ! Only when no standing water is present, the atmospheric
                     ! energy flux is applied directly on subsurface domain.
-                    if (surf_head_p(local_id) < 1.d-15) then
+                    if (surf_head_p(local_id) < 1.d-8) then
                       surf_hflux_p(local_id) = esrc
                     else
                       surf_hflux_p(local_id) = 0.d0
