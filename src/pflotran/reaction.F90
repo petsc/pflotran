@@ -217,7 +217,7 @@ subroutine ReactionReadPass1(reaction,input,option)
           
           species => AqueousSpeciesCreate()
           call InputReadWord(input,option,species%name,PETSC_TRUE)  
-          call InputErrorMsg(input,option,'keyword','CHEMISTRY,PRIMARY_SPECIES')    
+          call InputErrorMsg(input,option,'keyword','CHEMISTRY,SECONDARY_SPECIES')
           if (.not.associated(reaction%secondary_species_list)) then
             reaction%secondary_species_list => species
             species%id = 1
@@ -3959,7 +3959,6 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
           
       if (reaction%eqgash2oid(ieqgas) > 0) then
         lnQK = lnQK + reaction%eqgash2ostoich(ieqgas)*rt_auxvar%ln_act_h2o
-!       print *,'Ttotal', reaction%eqgash2ostoich(ieqgas), rt_auxvar%ln_act_h2o
       endif
    
    ! contribute to %total          
@@ -3968,15 +3967,14 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
       icomp = reaction%eqgasspecid(1,ieqgas)
       pressure = pressure * 1.D-5
         
-      rt_auxvar%gas_molar(ieqgas) = &
+!     rt_auxvar%gas_molar(ieqgas) = &
 !         exp(lnQK+lngamco2)*rt_auxvar%pri_molal(icomp) &
-          exp(lnQK)*rt_auxvar%pri_act_coef(icomp)*rt_auxvar%pri_molal(icomp)* &
-          den/pressure/xphico2
 !         /(IDEAL_GAS_CONST*1.d-2*(temperature+273.15D0)*xphico2)
 
-!     print *,'ideal-gas: ',ieqgas,icomp,pressure,rt_auxvar%gas_molar(ieqgas), &
-!         rt_auxvar%pri_molal(icomp), &
-!         IDEAL_GAS_CONST*(temperature+273.15D0)*1.d-2
+!     This form includes factor Z in pV = ZRT for nonideal gas
+      rt_auxvar%gas_molar(ieqgas) = &
+          exp(lnQK)*rt_auxvar%pri_act_coef(icomp)*rt_auxvar%pri_molal(icomp)* &
+          den/pressure/xphico2
 
       rt_auxvar%total(icomp,iphase) = rt_auxvar%total(icomp,iphase) + &
           reaction%eqgasstoich(1,ieqgas)* &
@@ -3986,10 +3984,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 !         global_auxvar%sat(iphase),rt_auxvar%gas_molar(ieqgas), &
 !         rt_auxvar%pri_act_coef(icomp)*exp(lnQK)*rt_auxvar%pri_molal(icomp) &
 !         /pressure/xphico2*den
-!         rt_auxvar%pri_molal(icomp)
 
-   !     if (rt_auxvar%total(icomp,iphase) > den)rt_auxvar%total(icomp,iphase) = den* .99D0
-   !     enddo
 
    ! contribute to %dtotal
    !      tempreal = exp(lnQK+lngamco2)/pressure/xphico2*den

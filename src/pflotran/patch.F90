@@ -3468,6 +3468,11 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
               endif
             enddo
           endif
+        case(GAS_CONCENTRATION)
+          do local_id=1,grid%nlmax
+            vec_ptr(local_id) = &
+              patch%aux%RT%auxvars(grid%nL2G(local_id))%gas_molar(isubvar)
+          enddo
         case(MINERAL_VOLUME_FRACTION)
           do local_id=1,grid%nlmax
             vec_ptr(local_id) = &
@@ -4095,11 +4100,12 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
       endif
       
     case(PH,PE,EH,O2,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY, &
-         SECONDARY_MOLARITY, TOTAL_MOLALITY,TOTAL_MOLARITY, &
+         SECONDARY_MOLARITY,TOTAL_MOLALITY,TOTAL_MOLARITY, &
          MINERAL_VOLUME_FRACTION,MINERAL_RATE,MINERAL_SATURATION_INDEX, &
+         GAS_CONCENTRATION, &
          SURFACE_CMPLX,SURFACE_CMPLX_FREE,SURFACE_SITE_DENSITY, &
-         KIN_SURFACE_CMPLX,KIN_SURFACE_CMPLX_FREE, PRIMARY_ACTIVITY_COEF, &
-         SECONDARY_ACTIVITY_COEF,PRIMARY_KD, TOTAL_SORBED, &
+         KIN_SURFACE_CMPLX,KIN_SURFACE_CMPLX_FREE,PRIMARY_ACTIVITY_COEF, &
+         SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED, &
          TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE,AGE,TOTAL_BULK, &
          IMMOBILE_SPECIES)
          
@@ -4222,6 +4228,8 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
               enddo            
             endif
           endif          
+        case(GAS_CONCENTRATION)
+          value = patch%aux%RT%auxvars(ghosted_id)%gas_molar(isubvar)
         case(MINERAL_VOLUME_FRACTION)
           value = patch%aux%RT%auxvars(ghosted_id)%mnrl_volfrac(isubvar)
         case(MINERAL_RATE)
