@@ -25,6 +25,9 @@ CHEMISTRY
     Tracer2
     Tracer3
   /
+  OUTPUT
+    TOTAL
+  /
 END
 
 #=========================== discretization ===================================
@@ -66,7 +69,7 @@ END
 OUTPUT
   FORMAT TECPLOT BLOCK
   FORMAT HDF5
-  VELOCITIES
+  VELOCITY_AT_CENTER
 END
 
 #=========================== times ============================================

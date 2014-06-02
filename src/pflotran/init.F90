@@ -312,6 +312,7 @@ subroutine Init(simulation)
   
   ! create grid and allocate vectors
   call RealizationCreateDiscretization(realization)
+  
   if (option%nsurfflowdof>0) then
     call SurfRealizCreateDiscretization(simulation%surf_realization)
   endif
@@ -772,11 +773,12 @@ subroutine Init(simulation)
   call readRegionFiles(realization)
   ! clip regions and set up boundary connectivity, distance  
   call RealizationLocalizeRegions(realization)
-  call RealizatonPassPtrsToPatches(realization)
+  call RealizationPassPtrsToPatches(realization)
   ! link conditions with regions through couplers and generate connectivity
   call RealProcessMatPropAndSatFunc(realization)
-  call RealizationProcessCouplers(realization)
+  ! must process conditions before couplers in order to determine dataset types
   call RealizationProcessConditions(realization)
+  call RealizationProcessCouplers(realization)
   call SandboxesSetup(realization)
   call RealProcessFluidProperties(realization)
   call assignMaterialPropToRegions(realization)
@@ -891,6 +893,9 @@ subroutine Init(simulation)
                                  LIQUID_SATURATION)
       call GlobalSetAuxVarScalar(realization,option%reference_water_density, &
                                  LIQUID_DENSITY)
+    else
+      call GlobalUpdateAuxVars(realization,TIME_T,0.d0)
+      call GlobalWeightAuxVars(realization,0.d0)
     endif
 
     ! initial concentrations must be assigned after densities are set !!!
@@ -1407,7 +1412,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
   if (.not.InputError(input)) then
     call ReactionInit(realization%reaction,input,option)
   endif
-    
+
 end subroutine InitReadRequiredCardsFromInput
 
 ! ************************************************************************** !
@@ -1486,8 +1491,8 @@ subroutine InitReadInput(simulation)
   PetscInt :: temp_int
   PetscInt :: count, id
   
-  PetscBool :: velocities
-  PetscBool :: flux_velocities
+  PetscBool :: vel_cent
+  PetscBool :: vel_face
   PetscBool :: fluxes
   PetscBool :: mass_flowrate
   PetscBool :: energy_flowrate
@@ -2251,8 +2256,8 @@ subroutine InitReadInput(simulation)
       
 !....................
       case ('OUTPUT')
-        velocities = PETSC_FALSE
-        flux_velocities = PETSC_FALSE
+        vel_cent = PETSC_FALSE
+        vel_face = PETSC_FALSE
         fluxes = PETSC_FALSE
         mass_flowrate = PETSC_FALSE
         energy_flowrate = PETSC_FALSE
@@ -2522,10 +2527,10 @@ subroutine InitReadInput(simulation)
                                      ' not recognized in OUTPUT,FORMAT.'
                   call printErrMsg(option)
               end select
-            case('VELOCITIES')
-              velocities = PETSC_TRUE
-            case('FLUXES_VELOCITIES')
-              flux_velocities = PETSC_TRUE
+            case('VELOCITY_AT_CENTER')
+              vel_cent = PETSC_TRUE
+            case('VELOCITY_AT_FACE')
+              vel_face = PETSC_TRUE
             case('FLUXES')
               fluxes = PETSC_TRUE
             case('FLOWRATES','FLOWRATE')
@@ -2557,19 +2562,19 @@ subroutine InitReadInput(simulation)
               call printErrMsg(option)              
           end select
         enddo
-        if (velocities) then
+        if (vel_cent) then
           if (output_option%print_tecplot) &
-            output_option%print_tecplot_velocities = PETSC_TRUE
+            output_option%print_tecplot_vel_cent = PETSC_TRUE
           if (output_option%print_hdf5) &
-            output_option%print_hdf5_velocities = PETSC_TRUE
+            output_option%print_hdf5_vel_cent = PETSC_TRUE
           if (output_option%print_vtk) &
-            output_option%print_vtk_velocities = PETSC_TRUE
+            output_option%print_vtk_vel_cent = PETSC_TRUE
         endif
-        if (flux_velocities) then
+        if (vel_face) then
           if (output_option%print_tecplot) &
-            output_option%print_tecplot_flux_velocities = PETSC_TRUE
+            output_option%print_tecplot_vel_face = PETSC_TRUE
           if (output_option%print_hdf5) &
-           output_option%print_hdf5_flux_velocities = PETSC_TRUE
+           output_option%print_hdf5_vel_face = PETSC_TRUE
         endif
         if (fluxes) then
           output_option%print_fluxes = PETSC_TRUE
@@ -4218,7 +4223,7 @@ subroutine SandboxesSetup(realization)
   
   type(realization_type) :: realization
   
-  call SSSandboxSetup(realization%patch%regions,realization%option)
+   call SSSandboxSetup(realization%patch%regions,realization%option)
   
 end subroutine SandboxesSetup
 

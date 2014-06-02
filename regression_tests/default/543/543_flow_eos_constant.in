@@ -142,7 +142,7 @@ END
 
 #=========================== output options ===================================
 OUTPUT
-  VELOCITIES
+  VELOCITY_AT_CENTER
   VARIABLES
     LIQUID_PRESSURE
     LIQUID_SATURATION

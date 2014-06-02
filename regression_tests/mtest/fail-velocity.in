@@ -43,7 +43,7 @@ END
 
 #=========================== output options ===================================
 OUTPUT
-  VELOCITIES
+  VELOCITY_AT_CENTER
   TIMES y 0.01 0.1 1.0
   FORMAT TECPLOT POINT
 END

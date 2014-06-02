@@ -141,6 +141,9 @@ subroutine OutputHDF5(realization_base,var_list_type)
   type(output_variable_type), pointer :: cur_variable
   
   Vec :: global_vec
+  Vec :: global_vec_vx
+  Vec :: global_vec_vy
+  Vec :: global_vec_vz
   Vec :: natural_vec
   PetscReal, pointer :: v_ptr
   
@@ -248,7 +251,9 @@ subroutine OutputHDF5(realization_base,var_list_type)
   ! write out data sets 
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
                                   option)
-
+  call DiscretizationDuplicateVector(discretization,global_vec,global_vec_vx)
+  call DiscretizationDuplicateVector(discretization,global_vec,global_vec_vy)
+  call DiscretizationDuplicateVector(discretization,global_vec,global_vec_vz)
 
   select case (var_list_type)
 
@@ -295,42 +300,44 @@ subroutine OutputHDF5(realization_base,var_list_type)
 
   end select
 
-  if (output_option%print_hdf5_velocities.and.(var_list_type==INSTANTANEOUS_VARS)) then
+  if (output_option%print_hdf5_vel_cent.and.(var_list_type==INSTANTANEOUS_VARS)) then
 
     ! velocities
-    call OutputGetCellCenteredVelocities(realization_base,global_vec,LIQUID_PHASE,X_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization_base, global_vec_vx, &
+                                         global_vec_vy,global_vec_vz, &
+                                         LIQUID_PHASE)
+
     string = "Liquid X-Velocity"
-    call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec,grp_id, &
-          H5T_NATIVE_DOUBLE)
-    call OutputGetCellCenteredVelocities(realization_base,global_vec,LIQUID_PHASE,Y_DIRECTION)
-    string = "Liquid Y-Velocity"
-    call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec,grp_id, &
+    call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec_vx,grp_id, &
           H5T_NATIVE_DOUBLE)
 
-    call OutputGetCellCenteredVelocities(realization_base,global_vec,LIQUID_PHASE,Z_DIRECTION)
+    string = "Liquid Y-Velocity"
+    call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec_vy,grp_id, &
+          H5T_NATIVE_DOUBLE)
+
     string = "Liquid Z-Velocity"
-    call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec,grp_id, &
+    call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec_vz,grp_id, &
           H5T_NATIVE_DOUBLE)
 
     if (option%nphase > 1) then
-        call OutputGetCellCenteredVelocities(realization_base,global_vec,GAS_PHASE,X_DIRECTION)
+        call OutputGetCellCenteredVelocities(realization_base,global_vec_vx, &
+                                             global_vec_vy,global_vec_vz, &
+                                             GAS_PHASE)
         string = "Gas X-Velocity"
-        call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec,grp_id, &
+        call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec_vx,grp_id, &
             H5T_NATIVE_DOUBLE)
 
-        call OutputGetCellCenteredVelocities(realization_base,global_vec,GAS_PHASE,Y_DIRECTION)
         string = "Gas Y-Velocity"
-        call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec,grp_id, &
+        call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec_vy,grp_id, &
             H5T_NATIVE_DOUBLE)
 
-        call OutputGetCellCenteredVelocities(realization_base,global_vec,GAS_PHASE,Z_DIRECTION)
         string = "Gas Z-Velocity"
-        call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec,grp_id, &
+        call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec_vz,grp_id, &
             H5T_NATIVE_DOUBLE)
     endif
   endif
 
-  if (output_option%print_hdf5_flux_velocities.and.(var_list_type==INSTANTANEOUS_VARS)) then
+  if (output_option%print_hdf5_vel_face .and. (var_list_type==INSTANTANEOUS_VARS)) then
 
     ! internal flux velocities
     if (grid%structured_grid%nx > 1) then
@@ -363,6 +370,9 @@ subroutine OutputHDF5(realization_base,var_list_type)
   endif
 
   call VecDestroy(global_vec,ierr)
+  call VecDestroy(global_vec_vx,ierr)
+  call VecDestroy(global_vec_vy,ierr)
+  call VecDestroy(global_vec_vz,ierr)
 
 #if defined(SCORPIO_WRITE)
     call scorpio_close_dataset_group(pio_dataset_groupid, file_id, &
@@ -561,324 +571,6 @@ end subroutine OutputHDF5CloseFile
 
 ! ************************************************************************** !
 
-subroutine OutputHDF5UGrid(realization_base)
-  ! 
-  ! This subroutine prints a HDF5 file.
-  ! 
-  ! Author: Gautam Bisht, ORNL
-  ! Date: 05/31/12
-  ! 
-
-  use Realization_Base_class, only : realization_base_type
-  use Discretization_module
-  use Option_module
-  use Grid_module
-  use Field_module
-  use Patch_module
-  use Reaction_Aux_module
-  use Variables_module
-  use String_module
-
-#if  !defined(PETSC_HAVE_HDF5)
-  implicit none
-  
-  class(realization_base_type) :: realization_base
-
-  call printMsg(realization_base%option,'')
-  write(realization_base%option%io_buffer, &
-        '("PFLOTRAN must be compiled with HDF5 to &
-        &write HDF5 formatted structured grids Darn.")')
-  call printErrMsg(realization_base%option)
-#else
-
-! 64-bit stuff
-#ifdef PETSC_USE_64BIT_INDICES
-!#define HDF_NATIVE_INTEGER H5T_STD_I64LE
-#define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
-#else
-#define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
-#endif
-
-  use hdf5
-  use HDF5_module, only : HDF5WriteUnstructuredDataSetFromVec
-  use HDF5_Aux_module
-  
-  implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petsclog.h"
-
-  class(realization_base_type) :: realization_base
-
-#if defined(SCORPIO_WRITE)
-  integer:: file_id
-  integer:: data_type
-  integer:: grp_id
-  integer:: file_space_id
-  integer:: memory_space_id
-  integer:: data_set_id
-  integer:: realization_set_id
-  integer:: prop_id
-  PetscMPIInt :: rank
-  integer :: rank_mpi,file_space_rank_mpi
-  integer:: dims(3)
-  integer :: start(3), length(3), stride(3),istart
-  integer :: pio_dataset_groupid
-#else
-  integer(HID_T) :: file_id
-  integer(HID_T) :: data_type
-  integer(HID_T) :: grp_id
-  integer(HID_T) :: file_space_id
-  integer(HID_T) :: realization_set_id
-  integer(HID_T) :: memory_space_id
-  integer(HID_T) :: data_set_id
-  integer(HID_T) :: prop_id
-  PetscMPIInt :: rank
-  PetscMPIInt :: rank_mpi,file_space_rank_mpi
-  integer(HSIZE_T) :: dims(3)
-  integer(HSIZE_T) :: start(3), length(3), stride(3),istart
-#endif
-  
-  PetscMPIInt :: hdf5_flag
-
-  type(grid_type), pointer :: grid
-  type(discretization_type), pointer :: discretization
-  type(option_type), pointer :: option
-  type(field_type), pointer :: field
-  type(patch_type), pointer :: patch
-  type(output_option_type), pointer :: output_option
-  type(output_variable_type), pointer :: cur_variable
-  
-  Vec :: global_vec
-  Vec :: natural_vec
-  PetscReal, pointer :: v_ptr
-  Vec :: global_x_vertex_vec,global_y_vertex_vec,global_z_vertex_vec
-  PetscReal, pointer :: vec_x_ptr(:),vec_y_ptr(:),vec_z_ptr(:)
-  PetscInt :: local_size
-  PetscReal, pointer :: double_array(:)
-  
-  character(len=MAXSTRINGLENGTH) :: filename
-  character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXWORDLENGTH) :: word
-  character(len=2) :: free_mol_char, tot_mol_char, sec_mol_char
-  PetscReal, pointer :: array(:)
-  PetscInt :: i
-  PetscInt :: nviz_flow, nviz_tran, nviz_dof
-  PetscInt :: current_component
-  PetscMPIInt, parameter :: ON=1, OFF=0
-  PetscMPIInt :: hdf5_err  
-  PetscFortranAddr :: app_ptr
-  PetscBool :: first
-  PetscInt :: ivar, isubvar, var_type
-  PetscErrorCode :: ierr  
-
-  discretization => realization_base%discretization
-  patch => realization_base%patch
-  option => realization_base%option
-  field => realization_base%field
-  output_option => realization_base%output_option
-
-
-  if (output_option%print_single_h5_file) then
-    first = hdf5_first
-    filename = trim(option%global_prefix) // trim(option%group_prefix) // '.h5'
-  else
-    string = OutputFilenameID(output_option,option)
-    first = PETSC_TRUE
-    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-                '-' // trim(string) // '.h5'
-  endif
-
-  grid => patch%grid
-
-#if defined(SCORPIO_WRITE)
-
-  if (.not.first) then
-    filename = trim(filename) // CHAR(0)
-    call scorpio_open_file(filename, option%iowrite_group_id, &
-                              SCORPIO_FILE_READWRITE, file_id, ierr)
-    if (file_id == -1) first = PETSC_TRUE
-  endif
-  if (first) then
-    filename = trim(filename) // CHAR(0)
-    call scorpio_open_file(filename, option%iowrite_group_id, &
-                              SCORPIO_FILE_CREATE, file_id, ierr)
-  endif
-
-  if (first) then
-    option%io_buffer = '--> creating hdf5 output file: ' // trim(filename)
-  else
-    option%io_buffer = '--> appending to hdf5 output file: ' // trim(filename)
-  endif
-  call printMsg(option)
-
-  if (first) then
-    ! create a group for the coordinates data set
-    string = "Domain" // CHAR(0)
-    call scorpio_create_dataset_group(pio_dataset_groupid, string, file_id, &
-                                         option%iowrite_group_id, ierr)
-    ! set grp_id here
-    ! As we already created the group, we will use file_id as group_id
-    grp_id = file_id
-    call WriteHDF5CoordinatesUGrid(grid,option,grp_id)
-    call scorpio_close_dataset_group(pio_dataset_groupid, file_id, &
-            option%iowrite_group_id, ierr)
-  endif
-
-#else
-
-  !
-  !        not(SCORPIO_WRITE)
-  !
-
-  ! initialize fortran interface
-  call h5open_f(hdf5_err)
-
-  call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
-#ifndef SERIAL_HDF5
-  call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
-#endif
-  if (.not.first) then
-    call h5eset_auto_f(OFF,hdf5_err)
-    call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id,hdf5_err,prop_id)
-    if (hdf5_err /= 0) first = PETSC_TRUE
-    call h5eset_auto_f(ON,hdf5_err)
-  endif
-  if (first) then
-    call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,hdf5_err, &
-                      H5P_DEFAULT_F,prop_id)
-  endif
-  call h5pclose_f(prop_id,hdf5_err)
-
-  if (first) then
-    option%io_buffer = '--> creating hdf5 output file: ' // trim(filename)
-  else
-    option%io_buffer = '--> appending to hdf5 output file: ' // trim(filename)
-  endif
-  call printMsg(option)
-
-  if (first) then
-    ! create a group for the coordinates data set
-    string = "Domain"
-    call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
-    call WriteHDF5CoordinatesUGrid(grid,option,grp_id)
-    call h5gclose_f(grp_id,hdf5_err)
-  endif
-#endif
-! SCORPIO_WRITE
-
-    ! create a group for the data set
-    write(string,'(''Time:'',es13.5,x,a1)') &
-          option%time/output_option%tconv,output_option%tunit
-    if (len_trim(output_option%plot_name) > 2) then
-      string = trim(string) // ' ' // output_option%plot_name
-    endif
-#if defined(SCORPIO_WRITE)
-    string = trim(string) //CHAR(0)
-      ! This opens existing dataset and creates it if needed
-    call scorpio_create_dataset_group(pio_dataset_groupid, string, file_id, &
-                                          option%iowrite_group_id, ierr)
-    grp_id = file_id
-#else
-    call h5eset_auto_f(OFF,hdf5_err)
-    call h5gopen_f(file_id,string,grp_id,hdf5_err)
-    if (hdf5_err /= 0) then
-      call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
-    endif
-    call h5eset_auto_f(ON,hdf5_err)
-#endif
-! SCORPIO_WRITE
-
-  ! write out data sets
-  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
-                                  option)
-
-  ! loop over variables and write to file
-  cur_variable => output_option%output_variable_list%first
-  do
-    if (.not.associated(cur_variable)) exit
-    call OutputGetVarFromArray(realization_base,global_vec,cur_variable%ivar, &
-                                cur_variable%isubvar)
-    string = cur_variable%name
-    call StringSwapChar(string," ","_")
-    if (len_trim(cur_variable%units) > 0) then
-      word = cur_variable%units
-      call HDF5MakeStringCompatible(word)
-      string = trim(string) // ' [' // trim(word) // ']'
-    endif
-    if (cur_variable%iformat == 0) then
-      call HDF5WriteUnstructuredDataSetFromVec(string,option, &
-                                         global_vec,grp_id,H5T_NATIVE_DOUBLE)
-    else
-      call HDF5WriteUnstructuredDataSetFromVec(string,option, &
-                                         global_vec,grp_id,H5T_NATIVE_INTEGER)
-    endif
-    cur_variable => cur_variable%next
-  enddo
-
-  if (output_option%print_hdf5_velocities) then
-
-    ! velocities
-    call OutputGetCellCenteredVelocities(realization_base,global_vec,LIQUID_PHASE,X_DIRECTION)
-    string = "Liquid X-Velocity"
-    call HDF5WriteUnstructuredDataSetFromVec(string,option,global_vec,grp_id, &
-          H5T_NATIVE_DOUBLE)
-    call OutputGetCellCenteredVelocities(realization_base,global_vec,LIQUID_PHASE,Y_DIRECTION)
-    string = "Liquid Y-Velocity"
-    call HDF5WriteUnstructuredDataSetFromVec(string,option,global_vec,grp_id, &
-          H5T_NATIVE_DOUBLE)
-
-    call OutputGetCellCenteredVelocities(realization_base,global_vec,LIQUID_PHASE,Z_DIRECTION)
-    string = "Liquid Z-Velocity"
-    call HDF5WriteUnstructuredDataSetFromVec(string,option,global_vec,grp_id, &
-          H5T_NATIVE_DOUBLE)
-
-    if (option%nphase > 1) then
-        call OutputGetCellCenteredVelocities(realization_base,global_vec,GAS_PHASE,X_DIRECTION)
-        string = "Gas X-Velocity"
-        call HDF5WriteUnstructuredDataSetFromVec(string,option,global_vec,grp_id, &
-            H5T_NATIVE_DOUBLE)
-
-        call OutputGetCellCenteredVelocities(realization_base,global_vec,GAS_PHASE,Y_DIRECTION)
-        string = "Gas Y-Velocity"
-        call HDF5WriteUnstructuredDataSetFromVec(string,option,global_vec,grp_id, &
-            H5T_NATIVE_DOUBLE)
-
-        call OutputGetCellCenteredVelocities(realization_base,global_vec,GAS_PHASE,Z_DIRECTION)
-        string = "Gas Z-Velocity"
-        call HDF5WriteUnstructuredDataSetFromVec(string,option,global_vec,grp_id, &
-            H5T_NATIVE_DOUBLE)
-    endif
-  endif
-
-  if (output_option%print_hdf5_flux_velocities) then
-    option%io_buffer='WriteHDF5FluxVecolities() not implemented for unstructured grid.'
-    call printErrMsg(option)
-  endif
-
-  call VecDestroy(global_vec,ierr)
-
-#if defined(SCORPIO_WRITE)
-!    call scorpio_close_dataset_group(pio_dataset_groupid, file_id, &
-!            option%iowrite_group_id, ierr)
-!    call scorpio_close_file(file_id, option%iowrite_group_id, ierr)
-#else
-  call h5gclose_f(grp_id,hdf5_err)
-  call h5fclose_f(file_id,hdf5_err)
-  call h5close_f(hdf5_err)
-#endif
-!SCORPIO_WRITE
-
-  hdf5_first = PETSC_FALSE
-
-#endif
-! !defined(PETSC_HAVE_HDF5)
-
-end subroutine OutputHDF5UGrid
-
-! ************************************************************************** !
-
 subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
   ! 
   ! This routine writes unstructured grid data in HDF5 XDMF format.
@@ -968,6 +660,7 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
   type(output_variable_type), pointer :: cur_variable
 
   Vec :: global_vec
+  Vec :: global_vec_vx,global_vec_vy,global_vec_vz
   Vec :: natural_vec
   PetscReal, pointer :: v_ptr
 
@@ -1106,6 +799,9 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
                                   option)
   call DiscretizationCreateVector(discretization,ONEDOF,natural_vec,NATURAL, &
                                   option)
+  call DiscretizationDuplicateVector(discretization,global_vec,global_vec_vx)
+  call DiscretizationDuplicateVector(discretization,global_vec,global_vec_vy)
+  call DiscretizationDuplicateVector(discretization,global_vec,global_vec_vz)
 
   select case (var_list_type)
 
@@ -1164,14 +860,14 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
   end select
 
   !Output flowrates
-  if(output_option%print_hdf5_mass_flowrate.or. &
+  if (output_option%print_hdf5_mass_flowrate.or. &
      output_option%print_hdf5_energy_flowrate.or. &
      output_option%print_hdf5_aveg_mass_flowrate.or. &
      output_option%print_hdf5_aveg_energy_flowrate) then
 
     select case (var_list_type)
       case (INSTANTANEOUS_VARS)
-        call OutputGetFlowrates(realization_base)
+        call OutputGetFaceVelOrFlowrateUGrid(realization_base,PETSC_FALSE)
         if(output_option%print_hdf5_mass_flowrate.or.&
            output_option%print_hdf5_energy_flowrate) then
           call WriteHDF5FlowratesUGrid(realization_base,option,grp_id,var_list_type)
@@ -1184,8 +880,99 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
     end select
   endif
 
+  if (output_option%print_hdf5_vel_cent .and. (var_list_type==INSTANTANEOUS_VARS)) then
+
+    ! velocities
+    call OutputGetCellCenteredVelocities(realization_base,global_vec_vx, &
+                                         global_vec_vy,global_vec_vz, &
+                                         LIQUID_PHASE)
+
+    string = "Liquid X-Velocity [m_per_" // trim(output_option%tunit) // "]"
+    call DiscretizationGlobalToNatural(discretization,global_vec_vx, &
+                                       natural_vec,ONEDOF)
+    call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+                                              natural_vec,grp_id,H5T_NATIVE_DOUBLE)
+    att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
+    if (option%myrank == option%io_rank) then
+      call OutputXMFAttribute(OUTPUT_UNIT,grid%nmax,string,att_datasetname)
+    endif
+
+    string = "Liquid Y-Velocity [m_per_" // trim(output_option%tunit) // "]"
+    call DiscretizationGlobalToNatural(discretization,global_vec_vy, &
+                                       natural_vec,ONEDOF)
+    call HDF5WriteUnstructuredDataSetFromVec(string,option,natural_vec,grp_id, &
+                                             H5T_NATIVE_DOUBLE)
+    att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
+    if (option%myrank == option%io_rank) then
+      call OutputXMFAttribute(OUTPUT_UNIT,grid%nmax,string,att_datasetname)
+    endif
+
+    string = "Liquid Z-Velocity [m_per_" // trim(output_option%tunit) // "]"
+    call DiscretizationGlobalToNatural(discretization,global_vec_vz, &
+                                       natural_vec,ONEDOF)
+    call HDF5WriteUnstructuredDataSetFromVec(string,option,natural_vec,grp_id, &
+                                             H5T_NATIVE_DOUBLE)
+    att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
+    if (option%myrank == option%io_rank) then
+      call OutputXMFAttribute(OUTPUT_UNIT,grid%nmax,string,att_datasetname)
+    endif
+
+    if (option%nphase > 1) then
+        call OutputGetCellCenteredVelocities(realization_base,global_vec_vx, &
+                                             global_vec_vy,global_vec_vz, &
+                                             GAS_PHASE)
+
+        string = "Gas X-Velocity [m_per_" // trim(output_option%tunit) // "]"
+        call DiscretizationGlobalToNatural(discretization,global_vec_vx, &
+                                           natural_vec,ONEDOF)
+        call HDF5WriteUnstructuredDataSetFromVec(string,option,natural_vec,grp_id, &
+                                                 H5T_NATIVE_DOUBLE)
+        att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
+        if (option%myrank == option%io_rank) then
+          call OutputXMFAttribute(OUTPUT_UNIT,grid%nmax,string,att_datasetname)
+        endif
+
+        string = "Gas Y-Velocity [m_per_" // trim(output_option%tunit) // "]"
+        call DiscretizationGlobalToNatural(discretization,global_vec_vy, &
+                                           natural_vec,ONEDOF)
+        call HDF5WriteUnstructuredDataSetFromVec(string,option,natural_vec,grp_id, &
+                                                 H5T_NATIVE_DOUBLE)
+        att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
+        if (option%myrank == option%io_rank) then
+          call OutputXMFAttribute(OUTPUT_UNIT,grid%nmax,string,att_datasetname)
+        endif
+
+        string = "Gas Z-Velocity [m_per_" // trim(output_option%tunit) // "]"
+        call DiscretizationGlobalToNatural(discretization,global_vec_vz, &
+                                           natural_vec,ONEDOF)
+        call HDF5WriteUnstructuredDataSetFromVec(string,option,natural_vec,grp_id, &
+                                                 H5T_NATIVE_DOUBLE)
+        att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
+        if (option%myrank == option%io_rank) then
+          call OutputXMFAttribute(OUTPUT_UNIT,grid%nmax,string,att_datasetname)
+        endif
+    endif
+  endif
+
+  ! Output velocity at cell-face
+  if (output_option%print_hdf5_vel_face) then
+
+    select case (var_list_type)
+      case (INSTANTANEOUS_VARS)
+        call OutputGetFaceVelOrFlowrateUGrid(realization_base,PETSC_TRUE)
+        if (output_option%print_hdf5_vel_face) then
+          call WriteHDF5FaceVelUGrid(realization_base,option,grp_id,var_list_type)
+        endif
+      case (AVERAGED_VARS)
+    end select
+  endif
+
   call VecDestroy(global_vec,ierr)
   call VecDestroy(natural_vec,ierr)
+  call VecDestroy(global_vec_vx,ierr)
+  call VecDestroy(global_vec_vy,ierr)
+  call VecDestroy(global_vec_vz,ierr)
+
   call h5gclose_f(grp_id,hdf5_err)
 
   call h5fclose_f(file_id,hdf5_err)
@@ -3242,6 +3029,257 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id,var_list_type
 ! #ifdef SCORPIO_WRITE
 
 end subroutine WriteHDF5FlowratesUGrid
+
+! ************************************************************************** !
+
+subroutine WriteHDF5FaceVelUGrid(realization_base,option,file_id,var_list_type)
+  !
+  ! This routine writes velocity at cell faces for unstructured grid.
+  !
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 05/25/2014
+  !
+
+  use hdf5
+  use Realization_Base_class, only : realization_base_type
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Unstructured_Grid_Aux_module
+  use Unstructured_Cell_module
+  use Variables_module
+  use Connection_module
+  use Coupler_module
+  use HDF5_Aux_module
+  use Output_Aux_module
+  use Field_module
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petsclog.h"
+#include "finclude/petscsys.h"
+
+  class(realization_base_type) :: realization_base
+  type(option_type), pointer :: option
+  PetscInt :: var_list_type
+
+#if defined(SCORPIO_WRITE)
+  integer:: file_id
+  integer:: data_type
+  integer:: grp_id
+  integer:: file_space_id
+  integer:: memory_space_id
+  integer:: data_set_id
+  integer:: realization_set_id
+  integer:: prop_id
+  integer:: dims(3)
+  integer :: start(3), length(3), stride(3),istart
+  integer :: rank_mpi,file_space_rank_mpi
+  integer :: hdf5_flag
+  integer, parameter :: ON=1, OFF=0
+#else
+  integer(HID_T) :: file_id
+  integer(HID_T) :: data_type
+  integer(HID_T) :: grp_id
+  integer(HID_T) :: file_space_id
+  integer(HID_T) :: realization_set_id
+  integer(HID_T) :: memory_space_id
+  integer(HID_T) :: data_set_id
+  integer(HID_T) :: prop_id
+  integer(HSIZE_T) :: dims(3)
+  integer(HSIZE_T) :: start(3), length(3), stride(3),istart
+  PetscMPIInt :: rank_mpi,file_space_rank_mpi
+  PetscMPIInt :: hdf5_flag
+  PetscMPIInt, parameter :: ON=1, OFF=0
+#endif
+
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(unstructured_grid_type),pointer :: ugrid
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
+  type(coupler_type), pointer :: boundary_condition
+  type(ugdm_type),pointer :: ugdm
+  type(output_option_type), pointer :: output_option
+  type(field_type), pointer :: field
+
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: idual
+  PetscInt :: iconn
+  PetscInt :: face_id
+  PetscInt :: local_id_up,local_id_dn
+  PetscInt :: ghosted_id_up,ghosted_id_dn
+  PetscInt :: iface_up,iface_dn
+  PetscInt :: iphase
+  PetscInt :: sum_connection
+  PetscInt :: offset
+  PetscInt :: cell_type
+  PetscInt :: local_size
+  PetscInt :: i
+  PetscInt :: idir
+  PetscInt :: iface
+
+  PetscReal, pointer :: flowrates(:,:,:)
+  PetscReal, pointer :: vx_ptr(:)
+  PetscReal, pointer :: vy_ptr(:)
+  PetscReal, pointer :: vz_ptr(:)
+  PetscReal, pointer :: vec_ptr1(:)
+  PetscReal, pointer :: double_array(:)
+  PetscReal :: dtime
+
+  Vec :: global_flowrates_vec
+  Vec :: natural_flowrates_vec
+
+  PetscMPIInt :: hdf5_err
+  PetscErrorCode :: ierr
+
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: unit_string
+  character(len=1) :: string_dir
+
+  patch => realization_base%patch
+  grid => patch%grid
+  ugrid => grid%unstructured_grid
+  output_option =>realization_base%output_option
+  field => realization_base%field
+
+#if defined(SCORPIO_WRITE)
+  write(*,*) 'SCORPIO_WRITE'
+  option%io_buffer = 'WriteHDF5FaceVelUGrid not supported for SCORPIO_WRITE'
+  call printErrMsg(option)
+#else
+
+  call VecGetLocalSize(field%vx_face_inst,local_size,ierr)
+  local_size = local_size/(option%nphase*MAX_FACE_PER_CELL + 1)
+
+  allocate(double_array(local_size*(MAX_FACE_PER_CELL+1)))
+  double_array = 0.d0
+
+  offset = option%nphase*MAX_FACE_PER_CELL+1
+
+  do idir = 1,3
+
+    select case (idir)
+      case (1)
+        string_dir = 'X'
+        call VecGetArrayF90(field%vx_face_inst,vec_ptr1,ierr)
+      case (2)
+        string_dir = 'Y'
+        call VecGetArrayF90(field%vy_face_inst,vec_ptr1,ierr)
+      case (3)
+        string_dir = 'Z'
+        call VecGetArrayF90(field%vz_face_inst,vec_ptr1,ierr)
+    end select
+
+    do iphase = 1,option%nphase
+
+      select case (iphase)
+        case (LIQUID_PHASE)
+          string = "Liquid " // string_dir // "-Velocity at cell face [m_per_" &
+            // trim(output_option%tunit) // "]"
+        case (GAS_PHASE)
+          string = "Gas " // string_dir // "-Velocity at cell face [m_per_" // &
+            trim(output_option%tunit) // "]"
+      end select
+
+      ! memory space which is a 1D vector
+      rank_mpi = 1
+      dims = 0
+      dims(1) = local_size*(MAX_FACE_PER_CELL+1)
+      call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
+
+      ! file space which is a 2D block
+      rank_mpi = 2
+      dims = 0
+      dims(2) = ugrid%nmax
+      dims(1) = MAX_FACE_PER_CELL + 1
+      call h5pcreate_f(H5P_DATASET_CREATE_F,prop_id,hdf5_err)
+
+      call h5eset_auto_f(OFF,hdf5_err)
+      call h5dopen_f(file_id,trim(string),data_set_id,hdf5_err)
+      hdf5_flag = hdf5_err
+      call h5eset_auto_f(ON,hdf5_err)
+      if (hdf5_flag < 0) then
+        call h5screate_simple_f(rank_mpi,dims,file_space_id,hdf5_err,dims)
+        call h5dcreate_f(file_id,trim(string),H5T_NATIVE_DOUBLE,file_space_id, &
+                        data_set_id,hdf5_err,prop_id)
+      else
+        call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
+      endif
+
+      call h5pclose_f(prop_id,hdf5_err)
+
+      istart = 0
+      call MPI_Exscan(local_size, istart, ONE_INTEGER_MPI, &
+                    MPIU_INTEGER, MPI_SUM, option%mycomm, ierr)
+
+      start(2) = istart
+      start(1) = 0
+
+      length(2) = local_size
+      length(1) = MAX_FACE_PER_CELL + 1
+
+      stride = 1
+      call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,start,length, &
+                                hdf5_err,stride,stride)
+      ! write the data
+      call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+      call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F, &
+                              hdf5_err)
+#endif
+
+      select case (var_list_type)
+        case (INSTANTANEOUS_VARS)
+
+          do i=1,local_size
+            ! Num. of faces for each cell
+            double_array((i-1)*(MAX_FACE_PER_CELL+1)+1) = &
+              vec_ptr1((i-1)*offset+1)
+            ! Flowrate values for each face
+            do iface = 1,MAX_FACE_PER_CELL
+              double_array((i-1)*(MAX_FACE_PER_CELL+1)+iface+1) = &
+              vec_ptr1((i-1)*offset + (iphase-1)*MAX_FACE_PER_CELL + iface + 1)* &
+              realization_base%output_option%tconv
+            enddo
+          enddo
+
+        case (AVERAGED_VARS)
+
+      end select
+
+      call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+      call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,double_array,dims, &
+                      hdf5_err,memory_space_id,file_space_id,prop_id)
+      call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+
+      call h5pclose_f(prop_id,hdf5_err)
+
+      call h5dclose_f(data_set_id,hdf5_err)
+      call h5sclose_f(file_space_id,hdf5_err)
+
+    enddo
+
+    select case (idir)
+      case (1)
+        call VecRestoreArrayF90(field%vx_face_inst,vec_ptr1,ierr)
+      case (2)
+        call VecRestoreArrayF90(field%vy_face_inst,vec_ptr1,ierr)
+      case (3)
+        call VecRestoreArrayF90(field%vz_face_inst,vec_ptr1,ierr)
+    end select
+
+  enddo
+
+  ! Free up memory
+  deallocate(double_array)
+#endif
+! #ifdef SCORPIO_WRITE
+
+end subroutine WriteHDF5FaceVelUGrid
 
 ! ************************************************************************** !
 

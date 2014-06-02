@@ -1445,7 +1445,8 @@ subroutine FlowConditionGeneralRead(condition,input,option)
       condition%iphase = ANY_STATE
     elseif (associated(general%liquid_flux) .and. &
             associated(general%gas_flux) .and. &
-            associated(general%energy_flux)) then
+            (associated(general%energy_flux) .or. &
+             associated(general%temperature))) then
       condition%iphase = ANY_STATE
     else
       ! some sort of dirichlet-based pressure, temperature, etc.
@@ -1835,6 +1836,14 @@ subroutine ConditionReadValues(input,option,keyword,string,dataset_base,units)
   ! dataset_base, though of type dataset_base_type, should always be created
   ! as dataset_ascii_type.
   dataset_ascii => DatasetAsciiCast(dataset_base)
+  if (.not.associated(dataset_ascii)) then
+    ! The dataset was not of type dataset_asci and was likely set to a different
+    ! type.  There is a bug in the input file.
+    option%io_buffer = 'Dataset associated with ' // trim(keyword) // &
+      ' in the input file is already associated with a different dataset ' // &
+      'type.  Check for duplicate definitions of ' // trim(keyword) // '.'
+    call printErrMsg(option)
+  endif
 
   nullify(input2)
   filename = ''

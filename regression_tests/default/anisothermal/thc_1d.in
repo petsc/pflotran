@@ -45,6 +45,7 @@ CHEMISTRY
   ACTIVITY_COEFFICIENTS TIMESTEP
   OUTPUT
     PH
+    TOTAL
     all
   /
 END
@@ -123,7 +124,7 @@ OUTPUT
   PRINT_COLUMN_IDS
   FORMAT TECPLOT POINT
   FORMAT HDF5
-  VELOCITIES
+  VELOCITY_AT_CENTER
 END
 
 #======================== times ===============================================

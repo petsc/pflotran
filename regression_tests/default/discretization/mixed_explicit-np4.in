@@ -25,6 +25,9 @@ CHEMISTRY
     Tracer2
     Tracer3
   /
+  OUTPUT
+    TOTAL
+  /
 END
 
 #=========================== discretization ===================================
@@ -65,7 +68,7 @@ END
 #=========================== output options ===================================
 OUTPUT
   FORMAT TECPLOT BLOCK
-  VELOCITIES
+  VELOCITY_AT_CENTER
 END
 
 #=========================== times ============================================

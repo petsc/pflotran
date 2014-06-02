@@ -16,6 +16,9 @@ CHEMISTRY
     Tracer
     Tracer2
   /
+  OUTPUT
+    TOTAL
+  /
 END
 
 #=========================== solver options ===================================
@@ -125,7 +128,7 @@ skip
   FORMAT TECPLOT BLOCK
   FORMAT HDF5
   PRINT_COLUMN_IDS
-  VELOCITIES
+  VELOCITY_AT_CENTER
 noskip
 END
 

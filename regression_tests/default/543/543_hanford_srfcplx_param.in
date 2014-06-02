@@ -209,6 +209,7 @@ noskip
   OUTPUT
     All
     pH
+    TOTAL
     TOTAL_SORBED
     KD
   /
@@ -352,7 +353,7 @@ OUTPUT
   PERMEABILITY
   POROSITY
   FORMAT TECPLOT BLOCK
-  VELOCITIES
+  VELOCITY_AT_CENTER
 END
 
 #=========================== times ============================================

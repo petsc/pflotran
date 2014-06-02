@@ -42,6 +42,7 @@ subroutine CondControlAssignFlowInitCond(realization)
   use Coupler_module
   use Condition_module
   use Dataset_Base_class
+  use Dataset_Gridded_HDF5_class
   use Dataset_Common_HDF5_class
   use Grid_module
   use Patch_module
@@ -366,6 +367,8 @@ subroutine CondControlAssignFlowInitCond(realization)
               dataset =>  initial_condition%flow_condition% &
                                 sub_condition_ptr(idof)%ptr%dataset
               select type(dataset_ptr => dataset)
+                class is(dataset_gridded_hdf5_type)
+                  ! already mapped to flow_aux_real_var
                 class is(dataset_common_hdf5_type)
                   use_dataset = PETSC_TRUE
                   dataset_flag(idof) = PETSC_TRUE
@@ -1175,7 +1178,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
                                             (temp + 273.15d0)* &
                                             surf_th_auxvars(ghosted_id)%Cw
                       surf_global_auxvars(ghosted_id)%den_kg(1) = dw_kg
-                      surf_global_auxvars(ghosted_id)%temp(1) = temp
+                      surf_global_auxvars(ghosted_id)%temp = temp
                   end select
                 enddo
                 xx_p(ibegin:iend) = 0.0d0

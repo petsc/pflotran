@@ -353,6 +353,8 @@ subroutine CouplerComputeConnections(grid,option,coupler)
   use Option_module
   use Region_module
   use Grid_module
+  use Dataset_Base_class
+  use Dataset_Gridded_HDF5_class
   use Unstructured_Grid_Aux_module
   use Unstructured_Explicit_module, only : UGridExplicitSetBoundaryConnect, &
                                            UGridExplicitSetConnections
@@ -383,7 +385,11 @@ subroutine CouplerComputeConnections(grid,option,coupler)
           if (coupler%flow_condition%pressure%itype /= HYDROSTATIC_BC .and. &
               coupler%flow_condition%pressure%itype /= SEEPAGE_BC .and. &
               coupler%flow_condition%pressure%itype /= CONDUCTANCE_BC) then
-            nullify_connection_set = PETSC_TRUE
+            select type(selector => coupler%flow_condition%pressure%dataset)
+              class is(dataset_gridded_hdf5_type)
+              class default
+                nullify_connection_set = PETSC_TRUE
+            end select
           endif
         else if (associated(coupler%flow_condition%concentration)) then
           ! need to calculate connection set

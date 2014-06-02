@@ -251,9 +251,6 @@ module Reaction_Aux_module
     PetscReal, pointer :: eqgash2ostoich(:)  ! stoichiometry of water, if present
     PetscReal, pointer :: eqgas_logK(:)
     PetscReal, pointer :: eqgas_logKcoef(:,:)
-!#ifdef CHUAN_CO2
-!   PetscReal :: scco2_eq_logK ! SC CO2 
-!#endif
 
     PetscInt :: nsorb
     PetscInt :: neqsorb
@@ -451,7 +448,7 @@ function ReactionCreate()
   reaction%calculate_tracer_age = PETSC_FALSE
   reaction%calculate_water_age = PETSC_FALSE
   reaction%print_age = PETSC_FALSE
-  reaction%print_total_component = PETSC_TRUE
+  reaction%print_total_component = PETSC_FALSE
   reaction%print_free_ion = PETSC_FALSE
   reaction%print_total_bulk = PETSC_FALSE
   reaction%use_geothermal_hpt = PETSC_FALSE
@@ -520,9 +517,6 @@ function ReactionCreate()
   nullify(reaction%eqgash2ostoich)
   nullify(reaction%eqgas_logK)
   nullify(reaction%eqgas_logKcoef)
-!#ifdef CHUAN_CO2
-! reaction%scco2_eq_logK = 0.d0
-!#endif
   
   reaction%neqcplx = 0
   nullify(reaction%eqcplxspecid)

@@ -315,7 +315,7 @@ subroutine SurfaceGlobalSetAuxVarVecLocPatch(surf_realization,vec_loc,ivar,isubv
       select case(isubvar)
         case default
           do ghosted_id=1, grid%ngmax
-            patch%surf_aux%SurfaceGlobal%auxvars(ghosted_id)%temp(1) = vec_loc_p(ghosted_id)
+            patch%surf_aux%SurfaceGlobal%auxvars(ghosted_id)%temp = vec_loc_p(ghosted_id)
           enddo
       end select
     case(SURFACE_LIQUID_DENSITY)

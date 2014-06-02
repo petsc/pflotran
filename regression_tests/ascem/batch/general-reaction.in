@@ -31,6 +31,7 @@ CHEMISTRY
 #  LOG_FORMULATION
   OUTPUT
     All
+    TOTAL
   /
 /
 

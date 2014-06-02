@@ -40,6 +40,8 @@ CHEMISTRY
   ACTIVITY_COEFFICIENTS TIMESTEP
   OUTPUT
     PH
+    TOTAL
+    FREE_ION
     all
   /
 END
@@ -87,7 +89,7 @@ END
 OUTPUT
   TIMES y 5. 10. 15. 20.
   FORMAT TECPLOT POINT
-  VELOCITIES
+  VELOCITY_AT_CENTER
 END
 
 #=========================== times ============================================
