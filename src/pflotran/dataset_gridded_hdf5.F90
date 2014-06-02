@@ -108,6 +108,8 @@ function DatasetGriddedHDF5Cast(this)
   select type (this)
     class is (dataset_gridded_hdf5_type)
       DatasetGriddedHDF5Cast => this
+    class default
+      ! to catch a class that is not gridded.
   end select
     
 end function DatasetGriddedHDF5Cast

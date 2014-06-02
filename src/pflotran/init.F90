@@ -776,8 +776,9 @@ subroutine Init(simulation)
   call RealizationPassPtrsToPatches(realization)
   ! link conditions with regions through couplers and generate connectivity
   call RealProcessMatPropAndSatFunc(realization)
-  call RealizationProcessCouplers(realization)
+  ! must process conditions before couplers in order to determine dataset types
   call RealizationProcessConditions(realization)
+  call RealizationProcessCouplers(realization)
   call SandboxesSetup(realization)
   call RealProcessFluidProperties(realization)
   call assignMaterialPropToRegions(realization)
@@ -4222,7 +4223,7 @@ subroutine SandboxesSetup(realization)
   
   type(realization_type) :: realization
   
-  call SSSandboxSetup(realization%patch%regions,realization%option)
+   call SSSandboxSetup(realization%patch%regions,realization%option)
   
 end subroutine SandboxesSetup
 

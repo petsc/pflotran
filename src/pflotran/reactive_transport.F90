@@ -4149,6 +4149,15 @@ subroutine RTSetPlotVariables(realization)
     enddo
   endif  
   
+  if (reaction%print_all_gas_species) then
+    do i=1,reaction%ngas
+      name = 'Gas species ' // trim(reaction%gas_species_names(i))
+      units = trim('mol/m^3')
+      call OutputVariableAddToList(list,name,OUTPUT_CONCENTRATION,units, &
+          GAS_CONCENTRATION,i)
+    enddo
+  endif
+
   if (reaction%print_total_bulk) then
     do i=1,reaction%naqcomp
       if (reaction%primary_species_print(i)) then
@@ -4321,8 +4330,7 @@ subroutine RTSetPlotVariables(realization)
       endif
     enddo
   endif
-  
-  
+
   if (reaction%print_age) then
     if (reaction%species_idx%tracer_age_id > 0) then
       name = 'Tracer Age'

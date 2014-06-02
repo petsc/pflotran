@@ -76,6 +76,8 @@ function DatasetAsciiCast(this)
   select type (this)
     class is (dataset_ascii_type)
       DatasetAsciiCast => this
+    class default
+      !geh: have default here to pass a null pointer if not of type ascii
   end select
     
 end function DatasetAsciiCast

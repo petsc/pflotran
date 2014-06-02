@@ -556,6 +556,7 @@ subroutine GeneralZeroMassBalanceDelta(realization)
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(global_auxvar_type), pointer :: global_auxvars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars_ss(:)
 
   PetscInt :: iconn
 
@@ -563,9 +564,13 @@ subroutine GeneralZeroMassBalanceDelta(realization)
   patch => realization%patch
 
   global_auxvars_bc => patch%aux%Global%auxvars_bc
+  global_auxvars_ss => patch%aux%Global%auxvars_ss
 
   do iconn = 1, patch%aux%General%num_aux_bc
     global_auxvars_bc(iconn)%mass_balance_delta = 0.d0
+  enddo
+  do iconn = 1, patch%aux%General%num_aux_ss
+    global_auxvars_ss(iconn)%mass_balance_delta = 0.d0
   enddo
 
 end subroutine GeneralZeroMassBalanceDelta
@@ -592,6 +597,7 @@ subroutine GeneralUpdateMassBalance(realization)
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(global_auxvar_type), pointer :: global_auxvars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars_ss(:)
   
   PetscInt :: iconn
   PetscInt :: icomp
@@ -600,12 +606,21 @@ subroutine GeneralUpdateMassBalance(realization)
   patch => realization%patch
 
   global_auxvars_bc => patch%aux%Global%auxvars_bc
+  global_auxvars_ss => patch%aux%Global%auxvars_ss
 
   do iconn = 1, patch%aux%General%num_aux_bc
     do icomp = 1, option%nflowspec
       global_auxvars_bc(iconn)%mass_balance(icomp,:) = &
         global_auxvars_bc(iconn)%mass_balance(icomp,:) + &
         global_auxvars_bc(iconn)%mass_balance_delta(icomp,:)* &
+        fmw_comp(icomp)*option%flow_dt
+    enddo
+  enddo
+  do iconn = 1, patch%aux%General%num_aux_ss
+    do icomp = 1, option%nflowspec
+      global_auxvars_ss(iconn)%mass_balance(icomp,:) = &
+        global_auxvars_ss(iconn)%mass_balance(icomp,:) + &
+        global_auxvars_ss(iconn)%mass_balance_delta(icomp,:)* &
         fmw_comp(icomp)*option%flow_dt
     enddo
   enddo
@@ -2114,7 +2129,9 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   type(material_parameter_type), pointer :: material_parameter
   type(general_parameter_type), pointer :: general_parameter
   type(general_auxvar_type), pointer :: gen_auxvars(:,:), gen_auxvars_bc(:)
-  type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+  type(global_auxvar_type), pointer :: global_auxvars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars_ss(:)
   class(material_auxvar_type), pointer :: material_auxvars(:)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
@@ -2149,6 +2166,7 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   general_parameter => patch%aux%General%general_parameter
   global_auxvars => patch%aux%Global%auxvars
   global_auxvars_bc => patch%aux%Global%auxvars_bc
+  global_auxvars_ss => patch%aux%Global%auxvars_ss
   material_auxvars => patch%aux%Material%auxvars
   
 #ifdef DEBUG_GENERAL_FILEOUTPUT
@@ -2329,12 +2347,14 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
 
   ! Source/sink terms -------------------------------------
   source_sink => patch%source_sinks%first 
+  sum_connection = 0
   do 
     if (.not.associated(source_sink)) exit
     
     cur_connection_set => source_sink%connection_set
     
     do iconn = 1, cur_connection_set%num_connections      
+      sum_connection = sum_connection + 1
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
       if (patch%imat(ghosted_id) <= 0) cycle
@@ -2359,8 +2379,8 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
       
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
-        global_auxvars_bc(sum_connection)%mass_balance_delta(1:2,1) = &
-          global_auxvars_bc(sum_connection)%mass_balance_delta(1:2,1) - &
+        global_auxvars_ss(sum_connection)%mass_balance_delta(1:2,1) = &
+          global_auxvars_ss(sum_connection)%mass_balance_delta(1:2,1) - &
           Res(1:2)
       endif
 

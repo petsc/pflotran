@@ -217,7 +217,7 @@ subroutine ReactionReadPass1(reaction,input,option)
           
           species => AqueousSpeciesCreate()
           call InputReadWord(input,option,species%name,PETSC_TRUE)  
-          call InputErrorMsg(input,option,'keyword','CHEMISTRY,PRIMARY_SPECIES')    
+          call InputErrorMsg(input,option,'keyword','CHEMISTRY,SECONDARY_SPECIES')
           if (.not.associated(reaction%secondary_species_list)) then
             reaction%secondary_species_list => species
             species%id = 1
@@ -1673,20 +1673,17 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             fg = fg*1.D6
             xphico2 = fg / pres
             global_auxvar%fugacoeff(1) = xphico2
-!          call Henry_duan_sun_0NaCl(pco2*1.d-5, tc, henry)
+
             m_na = 0.d0
             m_cl = 0.d0
             if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
               m_na = rt_auxvar%pri_molal(reaction%species_idx%na_ion_id)
               m_cl = rt_auxvar%pri_molal(reaction%species_idx%cl_ion_id)
-!              call Henry_duan_sun(tc,pco2*1D-5,henry,xphico2,lngamco2, &
-!                m_na,m_cl,sat_pressure*1D-5)
-              call Henry_duan_sun(tc,pres*1D-5,henry,xphico2,lngamco2, &
-                m_na,m_cl,sat_pressure*1D-5)
-
+!              call Henry_duan_sun(tc,pco2*1D-5,henry,lngamco2,m_na,m_cl)
+              call Henry_duan_sun(tc,pres*1D-5,henry,lngamco2,m_na,m_cl)
             else
-              call Henry_duan_sun(tc,pres*1D-5,henry,xphico2,lngamco2, &
-                option%m_nacl,option%m_nacl,sat_pressure*1D-5)
+              call Henry_duan_sun(tc,pres*1D-5,henry,lngamco2, &
+                option%m_nacl,option%m_nacl)
              !   print *, 'SC: mnacl=', option%m_nacl,'stioh2o=',reaction%eqgash2ostoich(igas)
             endif
             
@@ -2014,11 +2011,13 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   bulk_vol_to_fluid_vol = option%reference_porosity* &
                           global_auxvar%sat(iphase)*1000.d0
 
-! compute mass fraction of H2O
+! compute mole and mass fractions of H2O
   if (reaction%use_full_geochemistry) then
     sum_molality = 0.d0
     do icomp = 1, reaction%naqcomp
-      sum_molality = sum_molality + rt_auxvar%pri_molal(icomp)
+      if (icomp /= reaction%species_idx%h2o_aq_id) then
+        sum_molality = sum_molality + rt_auxvar%pri_molal(icomp)
+      endif
     enddo
     if (reaction%neqcplx > 0) then    
       do i = 1, reaction%neqcplx
@@ -2029,7 +2028,10 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
 
     sum_mass = 0.d0
     do icomp = 1, reaction%naqcomp
-      sum_mass = sum_mass + reaction%primary_spec_molar_wt(icomp)*rt_auxvar%pri_molal(icomp)
+      if (icomp /= reaction%species_idx%h2o_aq_id) then
+        sum_mass = sum_mass + &
+          reaction%primary_spec_molar_wt(icomp)*rt_auxvar%pri_molal(icomp)
+      endif
     enddo
     if (reaction%neqcplx > 0) then    
       do i = 1, reaction%neqcplx
@@ -2378,8 +2380,8 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
       if (finished) exit
     enddo
             
-    write(option%fid_out,'(//,''  NOTE: Only equilibrium surface complexa'', &
-      &''tion is considered below'')')
+    write(option%fid_out, &
+    '(//,''  NOTE: Only equilibrium surface complexation is considered below'')')
     write(option%fid_out,120)
     write(option%fid_out,90)
     do i = 1, size(eqsrfcplxsort)
@@ -2948,7 +2950,7 @@ subroutine ReactionReadOutput(reaction,input,option)
         reaction%print_total_sorb_mobile = PETSC_FALSE
         reaction%print_colloid = PETSC_FALSE
         reaction%print_act_coefs = PETSC_FALSE
-        reaction%print_total_component = PETSC_TRUE
+        reaction%print_total_component = PETSC_FALSE
         reaction%print_free_ion = PETSC_FALSE
       case('ALL')
         reaction%print_all_species = PETSC_TRUE
@@ -2981,6 +2983,8 @@ subroutine ReactionReadOutput(reaction,input,option)
         reaction%print_kd = PETSC_TRUE
       case('COLLOIDS')
         reaction%print_colloid = PETSC_TRUE
+      case('TOTAL')
+        reaction%print_total_component = PETSC_TRUE
       case('TOTAL_SORBED')
         reaction%print_total_sorb = PETSC_TRUE
       case('TOTAL_BULK')
@@ -2988,7 +2992,6 @@ subroutine ReactionReadOutput(reaction,input,option)
       case('TOTAL_SORBED_MOBILE')
         reaction%print_total_sorb_mobile = PETSC_TRUE
       case('FREE_ION')
-        reaction%print_total_component = PETSC_FALSE
         reaction%print_free_ion = PETSC_TRUE
       case('ACTIVITY_COEFFICIENTS')
         reaction%print_act_coefs = PETSC_TRUE
@@ -3557,8 +3560,8 @@ subroutine CO2AqActCoeff(rt_auxvar,global_auxvar,reaction,option)
      m_cl = rt_auxvar%pri_molal(reaction%species_idx%cl_ion_id)
   endif
 
-  call Henry_duan_sun(tc,pco2*1D-5,henry, 1.D0,lngamco2, &
-         m_na,m_cl,sat_pressure*1D-5,co2aqact)
+  call Henry_duan_sun(tc,pco2*1D-5,henry,lngamco2, &
+         m_na,m_cl,co2aqact)
   
   if (reaction%species_idx%co2_aq_id /= 0) then
     rt_auxvar%pri_act_coef(reaction%species_idx%co2_aq_id) = co2aqact
@@ -3597,7 +3600,9 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
   if (reaction%use_activity_h2o) then
     sum_pri_molal = 0.d0
     do j = 1, reaction%naqcomp
-      sum_pri_molal = sum_pri_molal + rt_auxvar%pri_molal(j)
+      if (j /= reaction%species_idx%h2o_aq_id) then
+        sum_pri_molal = sum_pri_molal + rt_auxvar%pri_molal(j)
+      endif
     enddo
   endif
 
@@ -3902,10 +3907,12 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   ! units of dtotal = kg water/L water
   rt_auxvar%aqueous%dtotal = rt_auxvar%aqueous%dtotal*den_kg_per_L
 
-  ! CO2-specific
   if (option%iflowmode == G_MODE) return
+
 ! *********** Add SC phase and gas contributions ***********************  
-  iphase = 2           
+  ! CO2-specific
+
+  iphase = 2
 
   if (iphase > option%nphase) return 
   rt_auxvar%total(:,iphase) = 0.D0
@@ -3919,7 +3926,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
       pressure = global_auxvar%pres(2)
       temperature = global_auxvar%temp
       xphico2 = global_auxvar%fugacoeff(1)
-!     den = global_auxvar%den(2)
+      den = global_auxvar%den(2)
  
       call EOSWaterSaturationPressure(temperature, sat_pressure, ierr)
       pco2 = pressure - sat_pressure
@@ -3932,15 +3939,15 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 
 
       if (abs(reaction%species_idx%co2_gas_id) == ieqgas ) then
-!          call Henry_duan_sun_0NaCl(pco2*1D-5, temperature, henry)
+
         if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
           m_na = rt_auxvar%pri_molal(reaction%species_idx%na_ion_id)
           m_cl = rt_auxvar%pri_molal(reaction%species_idx%cl_ion_id)
-          call Henry_duan_sun(temperature,pressure*1D-5,muco2,xphico2, &
-                lngamco2,m_na,m_cl,sat_pressure*1D-5)
+          call Henry_duan_sun(temperature,pressure*1D-5,muco2, &
+                lngamco2,m_na,m_cl)
         else
-          call Henry_duan_sun(temperature,pressure*1D-5,muco2,xphico2, &
-                lngamco2,option%m_nacl,option%m_nacl,sat_pressure*1D-5)
+          call Henry_duan_sun(temperature,pressure*1D-5,muco2, &
+                lngamco2,option%m_nacl,option%m_nacl)
         endif
         !lnQk = - log(muco2) 
         lnQk = - log(muco2)-lngamco2
@@ -3952,7 +3959,6 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
           
       if (reaction%eqgash2oid(ieqgas) > 0) then
         lnQK = lnQK + reaction%eqgash2ostoich(ieqgas)*rt_auxvar%ln_act_h2o
-!       print *,'Ttotal', reaction%eqgash2ostoich(ieqgas), rt_auxvar%ln_act_h2o
       endif
    
    ! contribute to %total          
@@ -3961,23 +3967,24 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
       icomp = reaction%eqgasspecid(1,ieqgas)
       pressure = pressure * 1.D-5
         
-      rt_auxvar%gas_molar(ieqgas) = &
-          exp(lnQK+lngamco2)*rt_auxvar%pri_molal(icomp) &
-!          rt_auxvar%pri_act_coef(icomp)*exp(lnQK)*rt_auxvar%pri_molal(icomp) &
-!         /pressure/xphico2*den
-          /(IDEAL_GAS_CONST*1.d-2*(temperature+273.15D0)*xphico2)
+!     rt_auxvar%gas_molar(ieqgas) = &
+!         exp(lnQK+lngamco2)*rt_auxvar%pri_molal(icomp) &
+!         /(IDEAL_GAS_CONST*1.d-2*(temperature+273.15D0)*xphico2)
 
-!     print *,'ideal-gas: ',ieqgas,icomp,pressure,rt_auxvar%gas_molar(ieqgas), &
-!         rt_auxvar%pri_molal(icomp), &
-!         IDEAL_GAS_CONST*(temperature+273.15D0)*1.d-2
+!     This form includes factor Z in pV = ZRT for nonideal gas
+      rt_auxvar%gas_molar(ieqgas) = &
+          exp(lnQK)*rt_auxvar%pri_act_coef(icomp)*rt_auxvar%pri_molal(icomp)* &
+          den/pressure/xphico2
 
       rt_auxvar%total(icomp,iphase) = rt_auxvar%total(icomp,iphase) + &
           reaction%eqgasstoich(1,ieqgas)* &
           rt_auxvar%gas_molar(ieqgas)
-!       print *,'Ttotal',pressure, temperature, xphico2, den, lnQk,rt_auxvar%pri_molal(icomp),&
-!        global_auxvar%sat(2),rt_auxvar%gas_molar(ieqgas)
-   !     if (rt_auxvar%total(icomp,iphase) > den)rt_auxvar%total(icomp,iphase) = den* .99D0
-   !     enddo
+
+!       print *,'RTotal: ',icomp,ieqgas,pressure, temperature, xphico2, &
+!         global_auxvar%sat(iphase),rt_auxvar%gas_molar(ieqgas), &
+!         rt_auxvar%pri_act_coef(icomp)*exp(lnQK)*rt_auxvar%pri_molal(icomp) &
+!         /pressure/xphico2*den
+
 
    ! contribute to %dtotal
    !      tempreal = exp(lnQK+lngamco2)/pressure/xphico2*den
@@ -5159,17 +5166,19 @@ subroutine RUpdateKineticState(rt_auxvar,global_auxvar,material_auxvar, &
             global_auxvar%reaction_rate(2) &
               = global_auxvar%reaction_rate(2) & 
               + rt_auxvar%mnrl_rate(imnrl)*option%tran_dt &
-              * reaction%mineral%mnrlstoich(iaqspec,imnrl) !/option%flow_dt
-!              * reaction%mineral%mnrlstoich(icomp,imnrl) !/option%flow_dt
-          else if (icomp == reaction%species_idx%h2o_aq_id) then
-            global_auxvar%reaction_rate(1) &
-              = global_auxvar%reaction_rate(1) &
-              + rt_auxvar%mnrl_rate(imnrl)*option%tran_dt &
-              * reaction%mineral%mnrlstoich(iaqspec,imnrl) !/option%flow_dt
-!              * reaction%mineral%mnrlstoich(icomp,imnrl) !/option%flow_dt
+              * reaction%mineral%kinmnrlstoich(iaqspec,imnrl) /option%flow_dt
+            cycle
           endif
-        enddo 
-      endif   
+        enddo
+
+!       water rate
+        if (reaction%mineral%kinmnrlh2ostoich(imnrl) /= 0) then
+          global_auxvar%reaction_rate(1) &
+            = global_auxvar%reaction_rate(1) &
+            + rt_auxvar%mnrl_rate(imnrl)*option%tran_dt &
+            * reaction%mineral%kinmnrlh2ostoich(imnrl) /option%flow_dt
+        endif
+      endif
     enddo
   endif
 

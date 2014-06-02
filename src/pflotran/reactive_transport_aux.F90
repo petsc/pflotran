@@ -232,7 +232,7 @@ subroutine RTAuxVarInit(auxvar,reaction,option)
   else
     nullify(auxvar%sec_molal)
   endif
-  
+
   if (reaction%ngas > 0) then
     allocate(auxvar%gas_molar(reaction%ngas))
     auxvar%gas_molar = 0.d0
@@ -240,7 +240,7 @@ subroutine RTAuxVarInit(auxvar,reaction,option)
     nullify(auxvar%gas_molar)
   endif
 
-  if (reaction%neqsorb > 0) then  
+  if (reaction%neqsorb > 0) then
     allocate(auxvar%total_sorb_eq(reaction%naqcomp))
     auxvar%total_sorb_eq = 0.d0
     allocate(auxvar%dtotal_sorb_eq(reaction%naqcomp,reaction%naqcomp))
