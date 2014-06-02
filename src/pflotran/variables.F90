@@ -110,6 +110,8 @@ module Variables_module
   PetscInt, parameter, public :: TRANSIENT_POROSITY      = 94
   PetscInt, parameter, public :: LIQUID_HEAD             = 95
 
+  PetscInt, parameter, public :: GAS_CONCENTRATION       = 96
+
 !  PetscInt, parameter, public :: LIQUID_VELOCITY_CELL_CENT = 58
 !  PetscInt, parameter, public :: LIQUID_VELOCITY_CELL_FACE = 59
 

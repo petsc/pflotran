@@ -16,6 +16,9 @@ CHEMISTRY
   PRIMARY_SPECIES
     Tracer
   /
+  OUTPUT
+    TOTAL
+  /
 /
 
 #=========================== solver options ===================================

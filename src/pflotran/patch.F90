@@ -1701,6 +1701,7 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
   use Grid_module
   use Dataset_Common_HDF5_class
   use Dataset_Gridded_HDF5_class
+  use Dataset_Ascii_class
 
   implicit none
   
@@ -1732,12 +1733,21 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
   flow_condition => coupler%flow_condition
 
   if (associated(flow_condition%pressure)) then
-    coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
-                flow_condition%iphase
     select case(flow_condition%pressure%itype)
       case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
-        coupler%flow_aux_real_var(TH_PRESSURE_DOF,1:num_connections) = &
-                flow_condition%pressure%dataset%rarray(1)
+        select type(selector =>flow_condition%pressure%dataset)
+          class is(dataset_ascii_type)
+            coupler%flow_aux_real_var(TH_PRESSURE_DOF,1:num_connections) = &
+              selector%rarray(1)
+          class is(dataset_gridded_hdf5_type)
+            call PatchUpdateCouplerFromDataset(coupler,option, &
+                                               patch%grid,selector, &
+                                               TH_PRESSURE_DOF)
+          class default
+            option%io_buffer = 'Unknown dataset class (TH%' // &
+              'pressure%itype,DIRICHLET_BC)'
+            call printErrMsg(option)
+        end select
       case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
         call HydrostaticUpdateCoupler(coupler,option,patch%grid)
       case(HET_DIRICHLET)
@@ -1774,24 +1784,38 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
           call printErrMsg(option)
       end select
     endif
-  else
-    if(associated(flow_condition%temperature)) then
-      select case(flow_condition%temperature%itype)
-        case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
-          coupler%flow_aux_real_var(TH_TEMPERATURE_DOF,1:num_connections) = &
-                    flow_condition%temperature%dataset%rarray(1)
-        case (HET_DIRICHLET)
-          call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
-                  flow_condition%temperature%dataset, &
-                  num_connections,TH_TEMPERATURE_DOF,option)
-        case default
-          write(string,*) flow_condition%temperature%itype
-          string = GetSubConditionName(flow_condition%temperature%itype)
-          option%io_buffer='For TH mode: flow_condition%temperature%itype = "' // &
-            trim(adjustl(string)) // '", not implemented.'
-          call printErrMsg(option)
-      end select
-    endif
+  endif
+  if ((associated(flow_condition%temperature) .and. &
+       flow_condition%pressure%itype /= HYDROSTATIC_BC) .or. &
+      (flow_condition%pressure%itype == HYDROSTATIC_BC .and. &
+       flow_condition%temperature%itype /= DIRICHLET_BC)) then
+    select case(flow_condition%temperature%itype)
+      case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+        select type(selector =>flow_condition%temperature%dataset)
+          class is(dataset_ascii_type)
+            coupler%flow_aux_real_var(TH_TEMPERATURE_DOF, &
+                                      1:num_connections) = &
+              selector%rarray(1)
+          class is(dataset_gridded_hdf5_type)
+            call PatchUpdateCouplerFromDataset(coupler,option, &
+                                               patch%grid,selector, &
+                                               TH_TEMPERATURE_DOF)
+          class default
+            option%io_buffer = 'Unknown dataset class (TH%' // &
+              'pressure%itype,DIRICHLET_BC)'
+            call printErrMsg(option)
+        end select
+      case (HET_DIRICHLET)
+        call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
+                flow_condition%temperature%dataset, &
+                num_connections,TH_TEMPERATURE_DOF,option)
+      case default
+        write(string,*) flow_condition%temperature%itype
+        string = GetSubConditionName(flow_condition%temperature%itype)
+        option%io_buffer='For TH mode: flow_condition%temperature%itype = "' // &
+          trim(adjustl(string)) // '", not implemented.'
+        call printErrMsg(option)
+    end select
   endif
   if (associated(flow_condition%rate)) then
     select case(flow_condition%rate%itype)
@@ -1938,6 +1962,7 @@ subroutine PatchUpdateCouplerAuxVarsRich(patch,coupler,option)
   use Grid_module
   use Dataset_Common_HDF5_class
   use Dataset_Gridded_HDF5_class
+  use Dataset_Ascii_class
 
   implicit none
   
@@ -1969,23 +1994,28 @@ subroutine PatchUpdateCouplerAuxVarsRich(patch,coupler,option)
   if (associated(flow_condition%pressure)) then
     select case(flow_condition%pressure%itype)
       case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
-        if (associated(flow_condition%pressure%dataset)) then
-          coupler%flow_aux_real_var(RICHARDS_PRESSURE_DOF, &
-                                    1:num_connections) = &
-            flow_condition%pressure%dataset%rarray(1)
-        else
-          select type(dataset => &
-                      flow_condition%pressure%dataset)
-            class is(dataset_gridded_hdf5_type)
-              call PatchUpdateCouplerFromDataset(coupler,option, &
-                                              patch%grid,dataset, &
-                                              RICHARDS_PRESSURE_DOF)
-            class default
-          end select
-        endif
+        select type(selector =>flow_condition%pressure%dataset)
+          class is(dataset_ascii_type)
+            coupler%flow_aux_real_var(RICHARDS_PRESSURE_DOF, &
+                                      1:num_connections) = &
+              selector%rarray(1)
+          class is(dataset_gridded_hdf5_type)
+            call PatchUpdateCouplerFromDataset(coupler,option, &
+                                               patch%grid,selector, &
+                                               RICHARDS_PRESSURE_DOF)
+          class default
+            option%io_buffer = 'Unknown dataset class (Richards%' // &
+              'pressure%itype,DIRICHLET_BC)'
+            call printErrMsg(option)
+        end select
       case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
         call HydrostaticUpdateCoupler(coupler,option,patch%grid)
-   !  case(SATURATION_BC)
+      case default
+        string = GetSubConditionName(flow_condition%pressure%itype)
+        option%io_buffer='For Richards mode: flow_condition%pressure%' // &
+          'itype = "' // trim(adjustl(string)) // '", not implemented.'
+          write(*,*)  trim(string)
+        call printErrMsg(option)
     end select
   endif
   if (associated(flow_condition%saturation)) then
@@ -3438,6 +3468,11 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
               endif
             enddo
           endif
+        case(GAS_CONCENTRATION)
+          do local_id=1,grid%nlmax
+            vec_ptr(local_id) = &
+              patch%aux%RT%auxvars(grid%nL2G(local_id))%gas_molar(isubvar)
+          enddo
         case(MINERAL_VOLUME_FRACTION)
           do local_id=1,grid%nlmax
             vec_ptr(local_id) = &
@@ -4065,11 +4100,12 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
       endif
       
     case(PH,PE,EH,O2,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY, &
-         SECONDARY_MOLARITY, TOTAL_MOLALITY,TOTAL_MOLARITY, &
+         SECONDARY_MOLARITY,TOTAL_MOLALITY,TOTAL_MOLARITY, &
          MINERAL_VOLUME_FRACTION,MINERAL_RATE,MINERAL_SATURATION_INDEX, &
+         GAS_CONCENTRATION, &
          SURFACE_CMPLX,SURFACE_CMPLX_FREE,SURFACE_SITE_DENSITY, &
-         KIN_SURFACE_CMPLX,KIN_SURFACE_CMPLX_FREE, PRIMARY_ACTIVITY_COEF, &
-         SECONDARY_ACTIVITY_COEF,PRIMARY_KD, TOTAL_SORBED, &
+         KIN_SURFACE_CMPLX,KIN_SURFACE_CMPLX_FREE,PRIMARY_ACTIVITY_COEF, &
+         SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED, &
          TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE,AGE,TOTAL_BULK, &
          IMMOBILE_SPECIES)
          
@@ -4192,6 +4228,8 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
               enddo            
             endif
           endif          
+        case(GAS_CONCENTRATION)
+          value = patch%aux%RT%auxvars(ghosted_id)%gas_molar(isubvar)
         case(MINERAL_VOLUME_FRACTION)
           value = patch%aux%RT%auxvars(ghosted_id)%mnrl_volfrac(isubvar)
         case(MINERAL_RATE)
