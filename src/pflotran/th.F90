@@ -5680,6 +5680,7 @@ subroutine ComputeCoeffsForApprox(P_up, T_up, &
   PetscReal :: dukvr_dp_dn
   PetscReal :: dphi_dp_dn
   PetscReal :: perm_dn
+  PetscReal :: slope
   PetscErrorCode :: ierr
 
   ! Distance away from allowable pressure at which cubic approximation begins
@@ -5767,7 +5768,7 @@ subroutine ComputeCoeffsForApprox(P_up, T_up, &
     xx(1) = P_max
     xx(2) = T_up
     call THAuxVarComputeFreezing(xx, &
-                                 th_auxvar_up, &
+                                 th_auxvar_max, &
                                  global_auxvar_max, &
                                  material_auxvar, &
                                  iphase, &
@@ -5803,11 +5804,11 @@ subroutine ComputeCoeffsForApprox(P_up, T_up, &
     dgravity_dden_dn = (1.d0-upweight)*FMWH2O*dist_gravity
 
     if (option%ice_model /= DALL_AMICO) then
-      dphi = global_auxvar_up%pres(1) - global_auxvar_dn%pres(1) + gravity
-      dphi_dp_dn = -1.d0 + dgravity_dden_dn*th_auxvar_dn%dden_dp
+      dphi = global_auxvar_up%pres(1) - global_auxvar_max%pres(1) + gravity
+      dphi_dp_dn = -1.d0 + dgravity_dden_dn*th_auxvar_max%dden_dp
     else
-      dphi = th_auxvar_up%pres_fh2o - th_auxvar_dn%pres_fh2o + gravity
-      dphi_dp_dn = -th_auxvar_dn%dpres_fh2o_dp + dgravity_dden_dn*th_auxvar_dn%dden_dp
+      dphi = th_auxvar_up%pres_fh2o - th_auxvar_max%pres_fh2o + gravity
+      dphi_dp_dn = -th_auxvar_max%dpres_fh2o_dp + dgravity_dden_dn*th_auxvar_max%dden_dp
     endif
 
     !if (pressure_bc_type == HET_SURF_SEEPAGE_BC) then
@@ -5826,8 +5827,8 @@ subroutine ComputeCoeffsForApprox(P_up, T_up, &
       dukvr_dp_dn = th_auxvar_max%dkvr_dp
     endif
 
-    call InterfaceApprox(th_auxvar_up%kvr, th_auxvar_dn%kvr, &
-                         th_auxvar_up%dkvr_dp, th_auxvar_dn%dkvr_dp, &
+    call InterfaceApprox(th_auxvar_up%kvr, th_auxvar_max%kvr, &
+                         th_auxvar_up%dkvr_dp, th_auxvar_max%dkvr_dp, &
                          dphi, &
                          option%rel_perm_aveg, &
                          ukvr, dum1, dukvr_dp_dn)
@@ -5846,7 +5847,9 @@ subroutine ComputeCoeffsForApprox(P_up, T_up, &
       coeff_for_cubic_approx(2) = q
 
       ! Values of function derivatives at min/max
-      coeff_for_cubic_approx(3) = 0.01d0*q_allowable/P_min
+      slope = min(-0.01d0*q_allowable/P_min, -1.d-8)
+      slope = -0.01d0*q_allowable/P_min
+      coeff_for_cubic_approx(3) = slope
       coeff_for_cubic_approx(4) = dq_dp_dn
 
       call CubicPolynomialSetup(P_min, &
@@ -5854,10 +5857,11 @@ subroutine ComputeCoeffsForApprox(P_up, T_up, &
                                 coeff_for_cubic_approx)
 
       ! Step-4: Save values for linear approximation
-      range_for_linear_approx(1) = 0.d0
+      range_for_linear_approx(1) = 0.01d0*q_allowable/slope + P_min
       range_for_linear_approx(2) = P_min
       range_for_linear_approx(3) = q_allowable
       range_for_linear_approx(4) = 0.99d0*q_allowable
+
     endif
 
   endif
