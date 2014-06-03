@@ -612,8 +612,9 @@ subroutine THAuxVarComputeFreezing(x, auxvar, global_auxvar, &
     auxvar%den_ice = dw_mol
     auxvar%dden_ice_dt = auxvar%dden_dt
     auxvar%dden_ice_dp = auxvar%dden_dp
-    auxvar%u_ice = auxvar%u
-    auxvar%du_ice_dt = auxvar%du_dt
+!    auxvar%u_ice = auxvar%u  ! commented out by S.Karra 06/02/14. setting
+!    internal energy of ice and water might not be correct.
+!    auxvar%du_ice_dt = auxvar%du_dt
   endif
 
 end subroutine THAuxVarComputeFreezing
