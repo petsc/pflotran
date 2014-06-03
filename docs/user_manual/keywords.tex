@@ -811,13 +811,14 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item[MOLALITY]
 \item[MOLARITY]
 \item[ACTIVITY\_COEFFICIENTS]
-\item[ALL] 
+\item[ALL] Output all primary species
 \item[OFF] Turn off printout
 \item[\tt Species Name] Primary or secondary species
-\item[FREE\_ION] Output all primary species concentrations
+\item[FREE\_ION] Output free-ion primary species concentrations
+\item[TOTAL] Output total primary species concentrations
 \item[PRIMARY\_SPECIES] Output primary species including pH
 \item[SECONDARY\_SPECIES] Output all secondary species concentrations
-\item[GASES]
+\item[GASES] Output gas species
 \item[MINERALS] Output all kinetic mineral volume fractions and reaction rates
 \item[\tt Mineral Name] Output mineral saturation index
 \item[IMMOBILE]
@@ -852,7 +853,20 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 %}
 
 \noindent
-{\bf Explanation:}
+{\bf Example:} Output total and free-ion primary species concentrations.
+
+\begin{mdframed}
+
+\begin{verbatim}
+ OUTPUT
+   ...
+   ALL
+   FREE_ION
+   TOTAL
+   ...
+ /
+\end{verbatim}
+\end{mdframed}
 
 \begin{center}
 \begin{tabularx}{\linewidth}{lX}
