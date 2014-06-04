@@ -19,16 +19,16 @@
       save
       
 !     table lookup parameters t[k], p[MPa]
-      PetscReal,  public :: t0_tab = 35.d0+273.15D0, p0_tab = 0.01d0
 
-      PetscInt, public :: ntab_t = 150, ntab_p = 500
+!     t = 35 - 410 C, p = 0.01 - 250 bars
+      PetscInt,   public :: ntab_t = 150, ntab_p = 500
+      PetscReal,  public :: t0_tab = 35.d0+273.15D0, p0_tab = 0.01d0
       PetscReal,  public :: dt_tab = 2.5d0, dp_tab = 0.5d0
 
-!     PetscInt, public :: ntab_t = 100, ntab_p = 1000
-!     PetscReal,  public :: dt_tab = 2.5d0, dp_tab = 0.25d0
-
-!     PetscInt, public :: ntab_t = 250, ntab_p = 2500
-!     PetscReal,  public :: dt_tab = 1.d0, dp_tab = 0.1d0
+!     t = 25 - 375 C, p = 0.01 - 1250.01 bars
+!     PetscInt,   public :: ntab_t = 150, ntab_p = 500
+!     PetscReal,  public :: t0_tab = 25.d0+273.15D0, p0_tab = 0.01d0
+!     PetscReal,  public :: dt_tab = 2.5d0, dp_tab = 2.5d0
 
       PetscReal, private :: n(42),ti(40),gamma(5),phic(8),c(40),d(40),a(8)
       PetscReal, private :: alpha(5),beta(8),delta(4),epsilon(5)
@@ -67,7 +67,9 @@ subroutine initialize_span_wagner(itable,myrank,option)
       
       PetscReal :: temparray(15)
       PetscInt :: status
-      
+
+      character(len=MAXSTRINGLENGTH) :: co2_database_filename
+
       type(option_type) :: option
       
       tab = char(9)
@@ -303,13 +305,13 @@ subroutine initialize_span_wagner(itable,myrank,option)
       capd(3) = 275.d0
   
   if (myrank==0) print *,'Preparing Table...',iitable
-  if(iitable == 1) then
+  if (iitable == 1) then
       ! Generate the table: 3 dimensional array
          !  1 p,     2  T
          !  3 rho    4 dddt,  5 dddp,
          !  6 fg,    7 dfgdp, 8 dfgdt
          !  9 eng,  
-         ! 10 ent,  11 dhdt,  12 dhdp,
+         ! 10 ent,  11 dhdt, 12 dhdp,
          ! 13 visc, 14 dvdt, 15 dvdp
           
     tmp2=0.D0    
@@ -418,12 +420,13 @@ subroutine initialize_span_wagner(itable,myrank,option)
   
   if (myrank == 0) then
     if (iitable == 1) then
-      print *,'Writing Table lookup file ...'
+      co2_database_filename = 'co2data.dat'
+      print *,'Writing Table lookup file in working directory...'
       if (myrank==0) print *,'--> open CO2 database file: ', &
-                             trim(option%co2_database_filename)
-      open(unit=IUNIT_TEMP,file=option%co2_database_filename,status='unknown',iostat=status)
+                             trim(co2_database_filename)
+      open(unit=IUNIT_TEMP,file=co2_database_filename,status='unknown',iostat=status)
       if (status /= 0) then
-        print *, 'file: ', trim(option%co2_database_filename), ' not found.'
+        print *, 'file: ', trim(co2_database_filename), ' not found.'
         stop
       endif
       write(IUNIT_TEMP,'(''TITLE= "'',''co2data.dat'',''"'')')
@@ -521,8 +524,8 @@ subroutine co2_span_wagner(pl,tl,rho,dddt,dddp,fg,dfgdp,dfgdt, &
 
 !*************************** Table Lookup *********************
 
-! tablelook:  if(iitable==1)then
-  tablelook:  if(iitable>=1)then
+! tablelookup:  if (iitable == 1) then
+  tablelookup:  if (iitable >= 1) then
 
   isucc=1
   tmp = (p - p0_tab) / dp_tab; i1 = floor(tmp); i2 = ceiling(tmp); iindex=tmp 
@@ -629,7 +632,7 @@ subroutine co2_span_wagner(pl,tl,rho,dddt,dddp,fg,dfgdp,dfgdt, &
 ! print *,'sp:tab: ', p,t,rho,ent, factor
     return 
     endif     
-  endif tablelook
+  endif tablelookup
 
 
 !*************************** Solving EOS *********************

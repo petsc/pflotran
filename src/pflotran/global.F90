@@ -202,7 +202,8 @@ subroutine GlobalSetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
   use Variables_module, only : LIQUID_PRESSURE, LIQUID_SATURATION, &
                                LIQUID_DENSITY, GAS_PRESSURE, &
                                GAS_DENSITY, GAS_SATURATION, &
-                               TEMPERATURE, SC_FUGA_COEFF, GAS_DENSITY_MOL
+                               TEMPERATURE, SC_FUGA_COEFF, GAS_DENSITY_MOL, &
+                               STATE
   
   implicit none
 
@@ -386,6 +387,11 @@ subroutine GlobalSetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
             patch%aux%Global%auxvars(ghosted_id)%fugacoeff(1) = vec_loc_p(ghosted_id)
           enddo
       end select
+    case(STATE)
+      do ghosted_id=1, grid%ngmax
+        patch%aux%Global%auxvars(ghosted_id)%istate = &
+          int(vec_loc_p(ghosted_id)+1.d-10)
+      enddo
   end select
 
   call VecRestoreArrayReadF90(vec_loc,vec_loc_p,ierr)

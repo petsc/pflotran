@@ -2809,7 +2809,8 @@ subroutine setFlowMode(option)
       option%gas_phase = 2      
       option%nflowdof = 3
       option%nflowspec = 2
-      option%itable = 2
+      option%itable = 2 ! read CO2DATA0.dat
+!     option%itable = 1 ! create CO2 database co2data.dat
       option%use_isothermal = PETSC_FALSE
     case('FLA2','FLASH2')
       option%iflowmode = FLASH2_MODE
