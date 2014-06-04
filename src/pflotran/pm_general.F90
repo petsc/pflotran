@@ -126,7 +126,7 @@ recursive subroutine PMGeneralInitializeRun(this)
                                 this%max_change_ivar(i), &
                                 this%max_change_isubvar(i))
   enddo
-    
+
 end subroutine PMGeneralInitializeRun
 
 ! ************************************************************************** !
@@ -354,7 +354,8 @@ subroutine PMGeneralUpdateSolution(this)
   ! Date: 03/14/13
   ! 
 
-  use General_module, only : GeneralUpdateSolution
+  use General_module, only : GeneralUpdateSolution, &
+                             GeneralMapBCAuxvarsToGlobal
 
   implicit none
   
@@ -362,6 +363,7 @@ subroutine PMGeneralUpdateSolution(this)
   
   call PMSubsurfaceUpdateSolution(this)
   call GeneralUpdateSolution(this%realization)
+  call GeneralMapBCAuxvarsToGlobal(this%realization)
 
 end subroutine PMGeneralUpdateSolution     
 

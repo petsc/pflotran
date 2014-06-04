@@ -2,7 +2,8 @@ module SrcSink_Sandbox_module
 
   use SrcSink_Sandbox_Base_class
   use SrcSink_Sandbox_WIPP_Gas_class
-  
+  use SrcSink_Sandbox_Mass_Rate_class
+  use SrcSink_Sandbox_WIPP_Well_class
   use PFLOTRAN_Constants_module
 
   implicit none
@@ -53,7 +54,7 @@ end subroutine SSSandboxInit
 
 ! ************************************************************************** !
 
-subroutine SSSandboxSetup(option)
+subroutine SSSandboxSetup(region_list,option)
   ! 
   ! Calls all the initialization routines for all source/sinks in
   ! the sandbox list
@@ -63,10 +64,12 @@ subroutine SSSandboxSetup(option)
   ! 
 
   use Option_module
+  use Region_module
   
   implicit none
   
   type(option_type) :: option
+  type(region_list_type) :: region_list
   
   class(srcsink_sandbox_base_type), pointer :: cur_sandbox  
 
@@ -74,7 +77,7 @@ subroutine SSSandboxSetup(option)
   cur_sandbox => sandbox_list
   do
     if (.not.associated(cur_sandbox)) exit
-    call cur_sandbox%Setup(option)
+    call cur_sandbox%Setup(region_list,option)
     cur_sandbox => cur_sandbox%next
   enddo 
 
@@ -136,12 +139,16 @@ subroutine SSSandboxRead2(local_sandbox_list,input,option)
     if (InputCheckExit(input,option)) exit
 
     call InputReadWord(input,option,word,PETSC_TRUE)
-    call InputErrorMsg(input,option,'keyword','CHEMISTRY,REACTION_SANDBOX')
+    call InputErrorMsg(input,option,'keyword','SOURCE_SINK_SANDBOX')
     call StringToUpper(word)   
 
     select case(trim(word))
+      case('WIPP-WELL')
+        new_sandbox => WIPPWellCreate()
       case('WIPP-GAS_GENERATION')
         new_sandbox => WIPPGasGenerationCreate()
+      case('MASS_RATE')
+        new_sandbox => MassRateCreate()
       case default
         option%io_buffer = 'SRCSINK_SANDBOX keyword: ' // &
           trim(word) // ' not recognized.'
@@ -166,8 +173,8 @@ end subroutine SSSandboxRead2
 
 ! ************************************************************************** !
 
-subroutine SSSandbox(Residual,Jacobian,compute_derivative,material_auxvar, &
-                     option)
+subroutine SSSandbox(residual,Jacobian,compute_derivative, &
+                     grid,material_auxvars,option)
   ! 
   ! Evaluates source/sink term storing residual and/or Jacobian
   ! 
@@ -176,27 +183,61 @@ subroutine SSSandbox(Residual,Jacobian,compute_derivative,material_auxvar, &
   ! 
 
   use Option_module
+  use Grid_module
   use Material_Aux_class, only: material_auxvar_type
   
   implicit none
-
-  type(option_type) :: option
-  PetscBool :: compute_derivative
-  PetscReal :: Residual(option%nflowdof)
-  PetscReal :: Jacobian(option%nflowdof,option%nflowdof)
-  PetscReal :: porosity
-  PetscReal :: volume
-  class(material_auxvar_type) :: material_auxvar
   
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
+
+  PetscBool :: compute_derivative
+  Vec :: residual
+  Mat :: Jacobian
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+  type(grid_type) :: grid
+  type(option_type) :: option
+  
+  PetscReal, pointer :: r_p(:)
+  PetscReal :: res(option%nflowdof)
+  PetscReal :: Jac(option%nflowdof,option%nflowdof)
   class(srcsink_sandbox_base_type), pointer :: cur_srcsink
+  PetscInt :: i, local_id, ghosted_id, istart, iend
+  PetscReal :: aux_real(0)
+  PetscErrorCode :: ierr
+  
+  if (.not.compute_derivative) then
+    call VecGetArrayF90(residual,r_p,ierr) 
+  endif
   
   cur_srcsink => sandbox_list
   do
     if (.not.associated(cur_srcsink)) exit
-      call cur_srcsink%Evaluate(Residual,Jacobian,compute_derivative, &
-                                material_auxvar,option)
+      do i = 1, size(cur_srcsink%region%cell_ids)
+        local_id = cur_srcsink%region%cell_ids(i)
+        ghosted_id = grid%nL2G(local_id)
+        res = 0.d0
+        Jac = 0.d0
+        call cur_srcsink%Evaluate(res,Jac,compute_derivative, &
+                                  material_auxvars(ghosted_id), &
+                                  aux_real,option)
+        if (compute_derivative) then
+          call MatSetValuesBlockedLocal(Jacobian,1,ghosted_id-1,1, &
+                                        ghosted_id-1,Jac,ADD_VALUES,ierr)
+        else
+          iend = local_id*option%nflowdof
+          istart = iend - option%nflowdof + 1
+          r_p(istart:iend) = r_p(istart:iend) + res
+        endif
+      enddo
     cur_srcsink => cur_srcsink%next
   enddo
+  
+  if (.not.compute_derivative) then
+    call VecRestoreArrayF90(residual,r_p,ierr)
+  endif
 
 end subroutine SSSandbox
 

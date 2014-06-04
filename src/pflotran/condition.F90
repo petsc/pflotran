@@ -1330,6 +1330,10 @@ subroutine FlowConditionGeneralRead(condition,input,option)
               sub_condition_ptr%itype = NEUMANN_BC
             case('hydrostatic')
               sub_condition_ptr%itype = HYDROSTATIC_BC
+            case('conductance')
+              sub_condition_ptr%itype = CONDUCTANCE_BC
+            case('seepage')
+              sub_condition_ptr%itype = SEEPAGE_BC
             case('mass_rate')
               sub_condition_ptr%itype = MASS_RATE_SS
             case('scaled_mass_rate')
@@ -1387,6 +1391,15 @@ subroutine FlowConditionGeneralRead(condition,input,option)
                                        sub_condition_ptr%gradient,word)
           nullify(sub_condition_ptr)
         enddo
+      case('CONDUCTANCE')
+        word = 'LIQUID_PRESSURE'
+        select case(option%iflowmode)
+          case(G_MODE)
+            sub_condition_ptr => FlowGeneralSubConditionPtr(word,general, &
+                                                            option)
+        end select
+        call InputReadDouble(input,option,sub_condition_ptr%aux_real(1))
+        call InputErrorMsg(input,option,'LIQUID_CONDUCTANCE','CONDITION')   
       case('LIQUID_PRESSURE','GAS_PRESSURE','LIQUID_SATURATION', &
            'GAS_SATURATION','TEMPERATURE','MOLE_FRACTION','RATE', &
            'LIQUID_FLUX','GAS_FLUX','ENERGY_FLUX')
@@ -1445,7 +1458,8 @@ subroutine FlowConditionGeneralRead(condition,input,option)
       condition%iphase = ANY_STATE
     elseif (associated(general%liquid_flux) .and. &
             associated(general%gas_flux) .and. &
-            associated(general%energy_flux)) then
+            (associated(general%energy_flux) .or. &
+             associated(general%temperature))) then
       condition%iphase = ANY_STATE
     else
       ! some sort of dirichlet-based pressure, temperature, etc.
@@ -1835,6 +1849,14 @@ subroutine ConditionReadValues(input,option,keyword,string,dataset_base,units)
   ! dataset_base, though of type dataset_base_type, should always be created
   ! as dataset_ascii_type.
   dataset_ascii => DatasetAsciiCast(dataset_base)
+  if (.not.associated(dataset_ascii)) then
+    ! The dataset was not of type dataset_asci and was likely set to a different
+    ! type.  There is a bug in the input file.
+    option%io_buffer = 'Dataset associated with ' // trim(keyword) // &
+      ' in the input file is already associated with a different dataset ' // &
+      'type.  Check for duplicate definitions of ' // trim(keyword) // '.'
+    call printErrMsg(option)
+  endif
 
   nullify(input2)
   filename = ''

@@ -1,4 +1,4 @@
-:Description: 3D toy problem for testing TAO optimization
+#Description: 3D toy problem for testing TAO optimization
  
 MODE RICHARDS_LITE
  
@@ -16,24 +16,24 @@ DXYZ
 1.d0
 1.d0
  
-:  d0[m^2/s] delhaq[kJ/mol]
+#  d0[m^2/s] delhaq[kJ/mol]
 DIFF  1.D-9       12.6
  
-: Richards Equation Pref
+# Richards Equation Pref
 RICH 101325.
  
 SATURATION_FUNCTIONS
-:id itype swir   lambda alpha     pcwmax betac pwr
+#id itype swir   lambda alpha     pcwmax betac pwr
  1  1     0.1471 0.7465 4.4317d-4 1.e8   0.d0  1.d0
 END
 
 THERMAL_PROPERTIES
-:ithm rho    cpr     ckdry cksat tau cdiff   cexp
+#ithm rho    cpr     ckdry cksat tau cdiff   cexp
   1   2.75e3 1000.e0 0.5   0.5   0.5 2.13d-5 1.8
 END
  
 MATERIALS
-:name id icap ithm por  tau permx  permy  permz  permpwr
+#name id icap ithm por  tau permx  permy  permz  permpwr
 soil1 1  1    1    0.25 0.5 1.d-13 1.d-13 1.d-13 1.d0
 soil2 2  1    1    0.25 0.5 1.d-14 1.d-14 1.d-14 1.d0
 END
@@ -150,19 +150,19 @@ DATUM 0.d0 0.d0 10.d0
 PRESSURE 101325.d0
 END
 
-: initial condition
+# initial condition
 INITIAL_CONDITION
 FLOW_CONDITION initial
 REGION all
 END
 
-: west boundary condition
+# west boundary condition
 BOUNDARY_CONDITION
 FLOW_CONDITION west
 REGION West
 END
 
-: east boundary condition
+# east boundary condition
 BOUNDARY_CONDITION
 FLOW_CONDITION initial
 REGION East

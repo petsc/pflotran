@@ -1,20 +1,20 @@
-:Description: 1D infiltration problem for the SX-115 tank at Hanford
+#Description: 1D infiltration problem for the SX-115 tank at Hanford
  
-: == debugging ================================================================
+# == debugging ================================================================
 DEBUG
-:MATVIEW_JACOBIAN
-:VECVIEW_RESIDUAL
-:VECVIEW_SOLUTION
+#MATVIEW_JACOBIAN
+#VECVIEW_RESIDUAL
+#VECVIEW_SOLUTION
 /
 
-: == mode =====================================================================
+# == mode =====================================================================
 MODE RICHARDS
 
-:================ runtime ==================
+#================ runtime ==================
 CHECKPOINT 100000
 RESTART restart.chk 0.d0
 
-: == chemistry ================================================================
+# == chemistry ================================================================
 CHEMISTRY
 PRIMARY_SPECIES
 Tracer
@@ -24,23 +24,23 @@ All
 /
 /
 
-: == reference variables ======================================================
+# == reference variables ======================================================
 REFERENCE_POROSITY 0.25d0
 
-: == time stepping ============================================================
+# == time stepping ============================================================
 TIMESTEPPER
 TS_ACCELERATION 8
 /
 
-: == discretization ===========================================================
+# == discretization ===========================================================
 GRID
 TYPE structured
 NXYZ 1 1 136
-:DXYZ
-:1.
-:1.
-:0.5
-:/
+#DXYZ
+#1.
+#1.
+#0.5
+#/
 BOUNDS
 0.d0 1.d0
 0.d0 1.d0
@@ -48,46 +48,46 @@ BOUNDS
 /
 /
 
-: == flow solvers =============================================================
+# == flow solvers =============================================================
 NEWTON_SOLVER FLOW
 PRECONDITIONER_MATRIX_TYPE AIJ
 RTOL 1.d-8
 ATOL 1.d-8
 STOL 1.d-30
 ITOL_UPDATE 1.d0
-:NO_INFINITY_NORM
-:NO_PRINT_CONVERGENCE
-:PRINT_DETAILED_CONVERGENCE
+#NO_INFINITY_NORM
+#NO_PRINT_CONVERGENCE
+#PRINT_DETAILED_CONVERGENCE
 /
 
 LINEAR_SOLVER FLOW
-:KSP_TYPE FGMRES
-:KSP_TYPE PREONLY
-:PC_TYPE LU
+#KSP_TYPE FGMRES
+#KSP_TYPE PREONLY
+#PC_TYPE LU
 /
 
-: == transport solvers ========================================================
+# == transport solvers ========================================================
 NEWTON_SOLVER TRANSPORT
 PRECONDITIONER_MATRIX_TYPE AIJ
 RTOL 1.d-12
 ATOL 1.d-12
 STOL 1.d-30
-:NO_INFINITY_NORM
-:NO_PRINT_CONVERGENCE
-:PRINT_DETAILED_CONVERGENCE
+#NO_INFINITY_NORM
+#NO_PRINT_CONVERGENCE
+#PRINT_DETAILED_CONVERGENCE
 /
 
 LINEAR_SOLVER TRANSPORT
-:KSP_TYPE PREONLY
-:PC_TYPE LU
+#KSP_TYPE PREONLY
+#PC_TYPE LU
 /
 
-: == fluid properties =========================================================
+# == fluid properties =========================================================
 FLUID_PROPERTY
 DIFFUSION_COEFFICIENT 1.d-9
 /
 
-: == material properties ======================================================
+# == material properties ======================================================
 MATERIAL_PROPERTY BF
 ID 1
 SATURATION_FUNCTION BF
@@ -138,7 +138,7 @@ PERM_ISO 2.00395e-13
 /
 /
 
-: == saturation / permeability functions ======================================
+# == saturation / permeability functions ======================================
 SATURATION_FUNCTION BF
 SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
 RESIDUAL_SATURATION 0.0774
@@ -174,32 +174,32 @@ LAMBDA 0.39215
 ALPHA 6.34015e-5
 /
 
-: == output ===================================================================
+# == output ===================================================================
 OUTPUT
-:PERIODIC TIMESTEP 1
-:PERIODIC TIME 0.025 y
+#PERIODIC TIMESTEP 1
+#PERIODIC TIME 0.025 y
 times y 1. 10. 100. 
 FORMAT TECPLOT POINT
 FORMAT HDF5
 /
 
-: == times ====================================================================
+# == times ====================================================================
 TIME
 FINAL_TIME 100. y
 INITIAL_TIMESTEP_SIZE 1.e-6 y
 MAXIMUM_TIMESTEP_SIZE 1.e-1 y
 /
 
-: == regions ==================================================================
+# == regions ==================================================================
 REGION all
-:BLOCK 1 1 1 1 1 136
+#BLOCK 1 1 1 1 1 136
 COORDINATES
 0.d0 0.d0 0.d0
 1.d0 1.d0 68.d0
 /
 /
 REGION Top
-:BLOCK 1 1 1 1 136 136
+#BLOCK 1 1 1 1 136 136
 FACE TOP
 COORDINATES
 0.d0 0.d0 68.d0
@@ -207,7 +207,7 @@ COORDINATES
 /
 /
 REGION Bottom
-:BLOCK 1 1 1 1 1 1
+#BLOCK 1 1 1 1 1 1
 FACE BOTTOM
 COORDINATES
 0.d0 0.d0 0.d0
@@ -215,58 +215,58 @@ COORDINATES
 /
 /
 REGION BF
-:BLOCK 1 1 1 1 105 136
+#BLOCK 1 1 1 1 105 136
 COORDINATES
 0.d0 0.d0 52.d0
 1.d0 1.d0 68.d0
 /
 /
 REGION HF
-:BLOCK 1 1 1 1 59 104
+#BLOCK 1 1 1 1 59 104
 COORDINATES
 0.d0 0.d0 29.d0
 1.d0 1.d0 52.d0
 /
 /
 REGION PP
-:BLOCK 1 1 1 1 47 58
+#BLOCK 1 1 1 1 47 58
 COORDINATES
 0.d0 0.d0 23.d0
 1.d0 1.d0 29.d0
 /
 /
 REGION URG
-:BLOCK 1 1 1 1 41 46
+#BLOCK 1 1 1 1 41 46
 COORDINATES
 0.d0 0.d0 20.d0
 1.d0 1.d0 23.d0
 /
 /
 REGION MRG
-:BLOCK 1 1 1 1 1 40
+#BLOCK 1 1 1 1 1 40
 COORDINATES
 0.d0 0.d0 0.d0
 1.d0 1.d0 20.d0
 /
 /
 REGION Leak
-:BLOCK 1 1 1 1 103 103
+#BLOCK 1 1 1 1 103 103
 COORDINATES
 0.d0 0.d0 51.d0
 1.d0 1.d0 51.d0
 /
 /
 
-: == flow conditions ==========================================================
+# == flow conditions ==========================================================
 FLOW_CONDITION Inlet
 TYPE
 FLUX neumann
 /
-:FLUX 3.17098d-10 ! 1 cm/y
-:FLUX 1.5855d-10 ! 5 mm/y
+#FLUX 3.17098d-10 ! 1 cm/y
+#FLUX 1.5855d-10 ! 5 mm/y
 FLUX 2.53678e-10 ![m/s] (8 mm/y)
-:FLUX 0.d0
-:FLUX file 200w_recharge_1951-2000_daily.dat
+#FLUX 0.d0
+#FLUX file 200w_recharge_1951-2000_daily.dat
 /
 
 FLOW_CONDITION Initial
@@ -287,7 +287,7 @@ RATE file src.dat ! 8.4e-4 kg/s for 2 weeks (60,000 gallons)
 /
 noskip
 
-: == transport conditions =====================================================
+# == transport conditions =====================================================
 TRANSPORT_CONDITION Inlet
 TYPE dirichlet
 CONSTRAINT_LIST
@@ -309,7 +309,7 @@ CONSTRAINT_LIST
 /
 /
 
-: == transport constraints ====================================================
+# == transport constraints ====================================================
 CONSTRAINT Initial
 CONCENTRATIONS
 Tracer   1.e-10            F
@@ -326,7 +326,7 @@ Tracer 1.d0 T
 /
 /
 
-: == couplers =================================================================
+# == couplers =================================================================
 BOUNDARY_CONDITION Inlet
 FLOW_CONDITION Inlet
 TRANSPORT_CONDITION Inlet
@@ -342,15 +342,15 @@ FLOW_CONDITION Initial
 TRANSPORT_CONDITION Initial
 REGION all
 /
-:skip
+#skip
 SOURCE_SINK Source
 FLOW_CONDITION source
 TRANSPORT_CONDITION source
 REGION Leak
 /
-:noskip
+#noskip
 
-: == stratigraphy =============================================================
+# == stratigraphy =============================================================
 STRATA
 MATERIAL BF
 REGION BF

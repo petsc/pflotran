@@ -1,17 +1,17 @@
-:Description: 1D Ion Exchange Problem
+#Description: 1D Ion Exchange Problem
 
 UNIFORM_VELOCITY 5.69333e-4 0.d0 0.d0
 
-:=========================== runtime ==========================================
-:CHECKPOINT 100
-:WALLCLOCK_STOP 11.75
+#=========================== runtime ==========================================
+#CHECKPOINT 100
+#WALLCLOCK_STOP 11.75
 
-: == chemistry ================================================================
+# == chemistry ================================================================
 CHEMISTRY
-:  OPERATOR_SPLIT
+#  OPERATOR_SPLIT
   PRIMARY_SPECIES
     Na+
-:    K+
+#    K+
     Ca++
     Mg++
     H+
@@ -31,7 +31,7 @@ CHEMISTRY
     MgHCO3+
     MgCl+
     HCl(aq)
-:    KCl(aq)
+#    KCl(aq)
     NaCl(aq)
     NaOH(aq)
   /
@@ -41,7 +41,7 @@ CHEMISTRY
   MINERALS
     Halite
   /
-:
+#
   MINERAL_KINETICS
     Halite
       RATE_CONSTANT 1.e-30 mol/cm^2-sec
@@ -67,17 +67,17 @@ CHEMISTRY
   /
 END
 
-: == reference variables ======================================================
+# == reference variables ======================================================
 REFERENCE_POROSITY 0.61d0
 
-: == time stepping ============================================================
+# == time stepping ============================================================
 TIMESTEPPER
   TS_ACCELERATION 8
   MAX_STEPS 100000
-:  MAX_STEPS 1
+#  MAX_STEPS 1
 END
 
-: == discretization ===========================================================
+# == discretization ===========================================================
 GRID
   TYPE structured 
   NXYZ 250 1 1
@@ -87,40 +87,40 @@ GRID
   /
 END
 
-: == transport solvers ========================================================
+# == transport solvers ========================================================
 NEWTON_SOLVER TRANSPORT
   PRECONDITIONER_MATRIX_TYPE AIJ
   RTOL 1.d-8
   ATOL 1.d-8
   STOL 1.d-30
-:  NO_INFINITY_NORM
-:  NO_PRINT_CONVERGENCE
-:  PRINT_DETAILED_CONVERGENCE
+#  NO_INFINITY_NORM
+#  NO_PRINT_CONVERGENCE
+#  PRINT_DETAILED_CONVERGENCE
 END
 
 LINEAR_SOLVER TRANSPORT
-:  SOLVER DIRECT
+#  SOLVER DIRECT
 END
 
-: == fluid properties =========================================================
+# == fluid properties =========================================================
 FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
-:  DIFFUSION_COEFFICIENT 9.33333e-7
+#  DIFFUSION_COEFFICIENT 9.33333e-7
 END
 
-: == material properties ======================================================
+# == material properties ======================================================
 MATERIAL_PROPERTY HD
   ID 1
   SATURATION_FUNCTION default
   POROSITY 0.61
   TORTUOSITY 1.0
-:  LONGITUDINAL_DISPERSIVITY 0.001
+#  LONGITUDINAL_DISPERSIVITY 0.001
   PERMEABILITY
     PERM_ISO 5.43d-13
   /
 END
 
-: == saturation / permeability functions ======================================
+# == saturation / permeability functions ======================================
 SATURATION_FUNCTION HD
   SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
   RESIDUAL_SATURATION 0.115
@@ -128,23 +128,23 @@ SATURATION_FUNCTION HD
   ALPHA 1.9401d-4
 END
 
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION default
 END
 
-: == output ===================================================================
+# == output ===================================================================
 OUTPUT
   TIMES s 10307.1 33498.2 41228.6
   PERIODIC_OBSERVATION TIMESTEP 1
-:  PERIODIC TIMESTEP 1
-:  PERIODIC TIME 0.04 y
+#  PERIODIC TIMESTEP 1
+#  PERIODIC TIME 0.04 y
   SCREEN PERIODIC 10
-:  FORMAT HDF5
+#  FORMAT HDF5
   FORMAT TECPLOT POINT
   VELOCITIES
 END
 
-: == times ====================================================================
+# == times ====================================================================
 TIME
   FINAL_TIME 41228.6 s
   INITIAL_TIMESTEP_SIZE 1. s
@@ -155,7 +155,7 @@ TIME
   MAXIMUM_TIMESTEP_SIZE 20. s at 33600 s
 END
 
-: == regions ==================================================================
+# == regions ==================================================================
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
@@ -183,7 +183,7 @@ OBSERVATION
   REGION east
 END
 
-: == transport conditions =====================================================
+# == transport conditions =====================================================
 TRANSPORT_CONDITION Initial
   TYPE dirichlet
   CONSTRAINT_LIST
@@ -207,7 +207,7 @@ TRANSPORT_CONDITION west
   /
 END
 
-: == couplers =================================================================
+# == couplers =================================================================
 
 INITIAL_CONDITION Initial
   TRANSPORT_CONDITION Initial
@@ -224,17 +224,17 @@ BOUNDARY_CONDITION
   REGION east
 END
 
-: == stratigraphy =============================================================
+# == stratigraphy =============================================================
 STRATA
   MATERIAL HD
   REGION all
 END
 
-: == transport constraints ====================================================
+# == transport constraints ====================================================
 CONSTRAINT Initial
   CONCENTRATIONS
     Na+           4.65d-3  T
-:    K+            2.d-4    T
+#    K+            2.d-4    T
     Ca++          5.2d-3   T
     Mg++          4.55e-3  T
     H+            4.6     pH
@@ -250,7 +250,7 @@ END
 CONSTRAINT Inlet1
   CONCENTRATIONS
     Na+           1.d-16  T
-:    K+            1.d-10  T
+#    K+            1.d-10  T
     Ca++          5.3d-3  T
     Mg++          1.e-16  T
     H+            4.6    pH
@@ -263,7 +263,7 @@ END
 CONSTRAINT Inlet2
   CONCENTRATIONS
     Na+           4.6d-3  T
-:    K+            1.d-10  T
+#    K+            1.d-10  T
     Ca++          1.d-16  T
     Mg++          2.4e-3  T
     H+            4.6    pH
@@ -276,7 +276,7 @@ END
 CONSTRAINT Inlet3
   CONCENTRATIONS
     Na+           4.65d-3 T
-:    K+            1.d-10  T
+#    K+            1.d-10  T
     Ca++          5.2d-3  T
     Mg++          4.55e-3 T
     H+            4.6    pH

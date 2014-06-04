@@ -189,6 +189,12 @@ subroutine RTSetup(realization)
   !           history and the communicator can be passed down.
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
+
+    ! Ignore inactive cells with inactive materials
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
+    endif    
+    
     if (material_auxvars(ghosted_id)%volume < 0.d0 .and. flag(1) == 0) then
       flag(1) = 1
       option%io_buffer = 'Non-initialized cell volume.'
@@ -521,12 +527,13 @@ subroutine RTComputeMassBalance(realization,mass_balance)
     !geh - Ignore inactive cells with inactive materials
     if (patch%imat(ghosted_id) <= 0) cycle
     do iphase = 1, option%nphase
-      mass_balance(:,iphase) = mass_balance(:,iphase) + &
+!     mass_balance(:,iphase) = mass_balance(:,iphase) + &
+      mass_balance(:,1) = mass_balance(:,1) + &
         rt_auxvars(ghosted_id)%total(:,iphase) * &
         global_auxvars(ghosted_id)%sat(iphase) * &
         material_auxvars(ghosted_id)%porosity * &
         material_auxvars(ghosted_id)%volume*1000.d0
-        
+
       if (iphase == 1) then
       ! add contribution of equilibrium sorption
         if (reaction%neqsorb > 0) then
@@ -534,7 +541,6 @@ subroutine RTComputeMassBalance(realization,mass_balance)
             rt_auxvars(ghosted_id)%total_sorb_eq(:) * &
             material_auxvars(ghosted_id)%volume
         endif
-
 
       ! add contribution of kinetic multirate sorption
         if (reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then
@@ -546,7 +552,7 @@ subroutine RTComputeMassBalance(realization,mass_balance)
             enddo
           enddo
         endif
-               
+
       ! add contribution from mineral volume fractions
         if (reaction%mineral%nkinmnrl > 0) then
           do imnrl = 1, reaction%mineral%nkinmnrl
@@ -1441,7 +1447,7 @@ subroutine RTCalculateRHS_t1(realization)
     source_sink => source_sink%next
   enddo
 
-#ifdef CHUAN_CO2
+  ! CO2-specific
   select case(option%iflowmode)
     case(MPH_MODE,IMS_MODE,FLASH2_MODE)
       source_sink => patch%source_sinks%first 
@@ -1479,8 +1485,6 @@ subroutine RTCalculateRHS_t1(realization)
         source_sink => source_sink%next
       enddo
   end select
-     
-#endif
 #endif
 
   ! Restore vectors
@@ -2325,10 +2329,9 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
   PetscReal :: Res(realization%reaction%ncomp)
 #endif
 
-#ifdef CHUAN_CO2
+  ! CO2-specific
   PetscReal :: msrc(1:realization%option%nflowspec)
   PetscInt :: icomp, ieqgas
-#endif
 
   option => realization%option
   field => realization%field
@@ -2621,10 +2624,10 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
   PetscReal :: Jup(realization%reaction%ncomp,realization%reaction%ncomp)
   PetscBool :: volumetric
   PetscInt :: sum_connection
-#ifdef CHUAN_CO2
+
+  ! CO2-specific
   PetscReal :: msrc(1:realization%option%nflowspec)
   PetscInt :: icomp, ieqgas
-#endif
 
   type(sec_transport_type), pointer :: rt_sec_transport_vars(:)
   PetscReal :: vol_frac_prim
@@ -2790,7 +2793,7 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
     source_sink => source_sink%next
   enddo
 
-#ifdef CHUAN_CO2
+  ! CO2-specific
   select case(option%iflowmode)
     case(MPH_MODE,IMS_MODE,FLASH2_MODE)
       source_sink => patch%source_sinks%first 
@@ -2831,8 +2834,6 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
         source_sink => source_sink%next
       enddo
   end select
-     
-#endif
 #endif
 
 #if 1  
@@ -3830,27 +3831,31 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
               !     for use_prev_soln_as_guess.  If the previous solution is zero,
               !     the code will crash.
               if (patch%aux%RT%auxvars_bc(sum_connection)%pri_molal(1) < 1.d-200) then
-                patch%aux%RT%auxvars_bc(sum_connection)%pri_molal = 1.d-9
+!               patch%aux%RT%auxvars_bc(sum_connection)%pri_molal = 1.d-9
+                patch%aux%RT%auxvars_bc(sum_connection)%pri_molal = &
+                    xx_loc_p(istartaq:iendaq)
               endif
             case(DIRICHLET_ZERO_GRADIENT_BC)
-                if (patch%boundary_velocities(iphase,sum_connection) >= 0.d0) then
+              if (patch%boundary_velocities(iphase,sum_connection) >= 0.d0) then
                   ! don't need to do anything as the constraint below provides all
                   ! the concentrations, etc.
                   
                 if (patch%aux%RT%auxvars_bc(sum_connection)%pri_molal(1) < 1.d-200) then
-                  patch%aux%RT%auxvars_bc(sum_connection)%pri_molal = 1.d-9
-                endif                  
-                else
-                  ! same as zero_gradient below
-                  skip_equilibrate_constraint = PETSC_TRUE
+!                 patch%aux%RT%auxvars_bc(sum_connection)%pri_molal = 1.d-9
                   patch%aux%RT%auxvars_bc(sum_connection)%pri_molal = &
                     xx_loc_p(istartaq:iendaq)
-                  if (reaction%ncoll > 0) then
-                    patch%aux%RT%auxvars_bc(sum_connection)%colloid%conc_mob = &
-                      xx_loc_p(istartcoll:iendcoll)* &
-                      patch%aux%Global%auxvars_bc(sum_connection)%den_kg(1)*1.d-3
-                  endif                  
                 endif
+              else
+                ! same as zero_gradient below
+                skip_equilibrate_constraint = PETSC_TRUE
+                patch%aux%RT%auxvars_bc(sum_connection)%pri_molal = &
+                  xx_loc_p(istartaq:iendaq)
+                if (reaction%ncoll > 0) then
+                  patch%aux%RT%auxvars_bc(sum_connection)%colloid%conc_mob = &
+                    xx_loc_p(istartcoll:iendcoll)* &
+                      patch%aux%Global%auxvars_bc(sum_connection)%den_kg(1)*1.d-3
+                endif
+              endif
             case(ZERO_GRADIENT_BC)
               skip_equilibrate_constraint = PETSC_TRUE
               patch%aux%RT%auxvars_bc(sum_connection)%pri_molal = &
@@ -4144,6 +4149,15 @@ subroutine RTSetPlotVariables(realization)
     enddo
   endif  
   
+  if (reaction%print_all_gas_species) then
+    do i=1,reaction%ngas
+      name = 'Gas species ' // trim(reaction%gas_species_names(i))
+      units = trim('mol/m^3')
+      call OutputVariableAddToList(list,name,OUTPUT_CONCENTRATION,units, &
+          GAS_CONCENTRATION,i)
+    enddo
+  endif
+
   if (reaction%print_total_bulk) then
     do i=1,reaction%naqcomp
       if (reaction%primary_species_print(i)) then
@@ -4316,8 +4330,7 @@ subroutine RTSetPlotVariables(realization)
       endif
     enddo
   endif
-  
-  
+
   if (reaction%print_age) then
     if (reaction%species_idx%tracer_age_id > 0) then
       name = 'Tracer Age'

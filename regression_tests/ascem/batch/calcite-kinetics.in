@@ -1,11 +1,11 @@
-:Description: Batch carbonate equilibrium speciation reaction
+#Description: Batch carbonate equilibrium speciation reaction
 
-:=========================== regression =======================================
+#=========================== regression =======================================
 REGRESSION
   CELLS_PER_PROCESS 1
 END
 
-:=========================== chemistry ========================================
+#=========================== chemistry ========================================
 CHEMISTRY
   PRIMARY_SPECIES
     H+
@@ -33,15 +33,16 @@ CHEMISTRY
   ACTIVITY_COEFFICIENTS TIMESTEP
   OUTPUT
     All
+    TOTAL
   /
 END
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 TIMESTEPPER
   TS_ACCELERATION 8
 /
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
   TYPE structured
   ORIGIN 0.d0 0.d0 0.d0
@@ -52,36 +53,36 @@ GRID
   /
 END
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY 
   DIFFUSION_COEFFICIENT 1.d-9
 /
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.5d0
 /
 
-:=========================== observation points ===============================
+#=========================== observation points ===============================
 OBSERVATION
   REGION all
   AT_CELL_CENTER
 /
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
   PERIODIC_OBSERVATION TIMESTEP 1
 /
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
   FINAL_TIME 250.d0 s
   INITIAL_TIMESTEP_SIZE 0.5d0 s
   MAXIMUM_TIMESTEP_SIZE 0.5d0 s
 /
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
@@ -89,7 +90,7 @@ REGION all
   /
 END
 
-:=========================== transport conditions =============================
+#=========================== transport conditions =============================
 TRANSPORT_CONDITION initial
   TYPE zero_gradient
   CONSTRAINT_LIST
@@ -98,7 +99,7 @@ TRANSPORT_CONDITION initial
 END
 
 
-:=========================== constraints ======================================
+#=========================== constraints ======================================
 CONSTRAINT initial
   CONCENTRATIONS
     H+     -1.d-5     T
@@ -110,14 +111,14 @@ CONSTRAINT initial
   /
 END
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
   TRANSPORT_CONDITION initial
   REGION all
 END
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
   REGION all
   MATERIAL soil1

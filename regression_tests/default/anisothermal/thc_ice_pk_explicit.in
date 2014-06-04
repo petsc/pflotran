@@ -1,14 +1,14 @@
-:Description: 1D test problem for THC mode with ice
-:vertical domain
-:08/5/2012
-:Satish Karra
+#Description: 1D test problem for THC mode with ice
+#vertical domain
+#08/5/2012
+#Satish Karra
 
-:===================== THC mode ===============================
+#===================== THC mode ===============================
 MODE THC freezing
 
 ICE_MODEL PAINTER_KARRA_EXPLICIT
 
-:=========================== regression =======================================
+#=========================== regression =======================================
 REGRESSION
   CELLS_PER_PROCESS 2
   CELLS
@@ -18,7 +18,7 @@ REGRESSION
   /
 /
 
-:===================== Discretization =========================
+#===================== Discretization =========================
 GRID
 TYPE structured
 ORIGIN 0.d0 0.d0 0.d0
@@ -28,7 +28,7 @@ BOUNDS
 1.d0 1.d0 10.d0
 /
 END
-:===================== Solver options ========================
+#===================== Solver options ========================
 
 TIMESTEPPER
 TS_ACCELERATION 25
@@ -50,7 +50,7 @@ END
 FLUID_PROPERTY
 DIFFUSION_COEFFICIENT 1.d-9
 /
-:========================= material properties ===================
+#========================= material properties ===================
 MATERIAL_PROPERTY soil1
 ID 1
 POROSITY 0.45d0
@@ -71,7 +71,7 @@ PERM_Z 1.3d-13
 /
 /
 
-:========================= saturation functions ==================
+#========================= saturation functions ==================
 SATURATION_FUNCTION default
 SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
 RESIDUAL_SATURATION 0.005
@@ -79,26 +79,26 @@ LAMBDA 0.721d0
 ALPHA 2.83d-4 
 /
 
-:========================= output options =========================
+#========================= output options =========================
 skip
 OUTPUT
 TIMES y 0.25d0 0.5d0 0.75d0 1.d0 2.d0 3.d0 4.d0 5.d0 6.d0 7.d0 8.d0 9.d0 10.d0
 SCREEN PERIODIC 10
 PERIODIC_OBSERVATION TIMESTEP 1
 FORMAT TECPLOT POINT
-:FORMAT HDF5
-:VELOCITIES
+#FORMAT HDF5
+#VELOCITY_AT_CENTER
 /
 noskip
 
-:======================== times ====================================
+#======================== times ====================================
 TIME
 FINAL_TIME 0.25d0 y
 INITIAL_TIMESTEP_SIZE 1.d-12 y
 MAXIMUM_TIMESTEP_SIZE 1.d-1 y
 /
 
-:=========================== regions ===============================
+#=========================== regions ===============================
 REGION all
 COORDINATES
 0.d0 0.d0 0.d0
@@ -122,7 +122,7 @@ COORDINATES
 /
 END
 
-:======================= flow conditions ===============================
+#======================= flow conditions ===============================
 FLOW_CONDITION initial
 UNITS Pa, C, M, yr
 TYPE
@@ -171,26 +171,26 @@ CONCENTRATION 1.D-12
 ENTHALPY 0.D0 
 END
 
-:========================== initial and boundary conditions =================
-: initial condition
+#========================== initial and boundary conditions =================
+# initial condition
 INITIAL_CONDITION
 FLOW_CONDITION initial
 REGION all
 END
 
-: top boundary condition
+# top boundary condition
 BOUNDARY_CONDITION
 FLOW_CONDITION top
 REGION top
 END
 
-: bottom boundary condition
+# bottom boundary condition
 BOUNDARY_CONDITION
 FLOW_CONDITION bottom
 REGION bottom
 END
 
-:===================== stratigraphy couplers ==============================
+#===================== stratigraphy couplers ==============================
 STRATA
 REGION all
 MATERIAL soil1

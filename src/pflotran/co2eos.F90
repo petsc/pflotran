@@ -662,18 +662,18 @@ end subroutine Henry_duan_sun_0NaCl
 
 ! ************************************************************************** !
 
-subroutine Henry_duan_sun(tc,p,keqco2,phico2,lngamco2,mc,ma,psat,co2_aq_actcoef)
+subroutine Henry_duan_sun(tc,p,keqco2,lngamco2,mc,ma,co2_aq_actcoef)
   
 ! t[c], p[bar], mco2[mol/Kg-H2O], mc[cation: mol/kg-H2O], 
 ! ma[anion: mol/kg-H2O], psat[bars]
 
   implicit none
   PetscReal, save :: coef(3,11)
-  PetscReal :: tc,p,keqco2,phico2,mc,ma,psat, t
+  PetscReal :: tc,p,keqco2,mc,ma,t
   PetscReal, optional :: co2_aq_actcoef
   PetscReal :: temparray(11)
 
-  PetscReal :: lngamco2, tmp, mu0, lamc, lamca, yco2
+  PetscReal :: lngamco2, tmp, mu0, lamc, lamca
 
   data coef / 28.9447706, -0.411370585, 3.36389723e-4, &
   -0.0354581768,  6.07632013e-4,  -1.98298980e-5, &
@@ -698,21 +698,21 @@ subroutine Henry_duan_sun(tc,p,keqco2,phico2,lngamco2,mc,ma,psat,co2_aq_actcoef)
   temparray = coef(3,:)
   call duan_sun_param(t,p,temparray,lamca) ! zeta_CO2-Na-Cl Pitzer 3rd order int. param.
   
-  !activity coef. co2
+  !activity coef. aqueous co2
   lngamco2 = 2.d0*lamc*mc + lamca*mc*ma ! = log(gam(jco2))
   if (present(co2_aq_actcoef)) then
     co2_aq_actcoef = exp(lngamco2)
   endif 
-  tmp = mu0 + lngamco2 !- log(phico2) [ln y P/m = mu0 + ln gamma - ln phico2]
+  tmp = mu0 + lngamco2 !- ln(phico2) [ln y P/m = mu0 + ln gamma - ln phico2]
   
-  yco2 = (p-psat)/p ! mole fraction of CO2 in supercritical CO2 phase: based on 
+  ! yco2 = (p-psat)/p ! mole fraction of CO2 in supercritical CO2 phase: based on
                     ! assumption that mole fraction of H2O in SC CO2 = Psat(T)/P.
   
   ! mco2 = molality co2
   ! mco2 = phico2 * yco2 * p * exp(-mu0) / gamma
   
   keqco2 = exp(-tmp) ! = K_co2 / gamco2
-  !print *, 'keqco2: ', mu0,lngamco2,phico2,psat,yco2,t,p
+  !print *, 'keqco2: ', mu0,lngamco2,t,p
   return
 end subroutine Henry_duan_sun
 

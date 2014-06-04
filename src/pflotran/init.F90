@@ -312,6 +312,7 @@ subroutine Init(simulation)
   
   ! create grid and allocate vectors
   call RealizationCreateDiscretization(realization)
+  
   if (option%nsurfflowdof>0) then
     call SurfRealizCreateDiscretization(simulation%surf_realization)
   endif
@@ -772,11 +773,13 @@ subroutine Init(simulation)
   call readRegionFiles(realization)
   ! clip regions and set up boundary connectivity, distance  
   call RealizationLocalizeRegions(realization)
-  call RealizatonPassPtrsToPatches(realization)
+  call RealizationPassPtrsToPatches(realization)
   ! link conditions with regions through couplers and generate connectivity
   call RealProcessMatPropAndSatFunc(realization)
-  call RealizationProcessCouplers(realization)
+  ! must process conditions before couplers in order to determine dataset types
   call RealizationProcessConditions(realization)
+  call RealizationProcessCouplers(realization)
+  call SandboxesSetup(realization)
   call RealProcessFluidProperties(realization)
   call assignMaterialPropToRegions(realization)
   ! assignVolumesToMaterialAuxVars() must be called after 
@@ -890,6 +893,9 @@ subroutine Init(simulation)
                                  LIQUID_SATURATION)
       call GlobalSetAuxVarScalar(realization,option%reference_water_density, &
                                  LIQUID_DENSITY)
+    else
+      call GlobalUpdateAuxVars(realization,TIME_T,0.d0)
+      call GlobalWeightAuxVars(realization,0.d0)
     endif
 
     ! initial concentrations must be assigned after densities are set !!!
@@ -1406,7 +1412,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
   if (.not.InputError(input)) then
     call ReactionInit(realization%reaction,input,option)
   endif
-    
+
 end subroutine InitReadRequiredCardsFromInput
 
 ! ************************************************************************** !
@@ -1457,6 +1463,7 @@ subroutine InitReadInput(simulation)
   use Mass_Transfer_module
   use EOS_module
   use EOS_Water_module
+  use SrcSink_Sandbox_module
   
   use Surface_Flow_module
   use Surface_Init_module, only : SurfaceInitReadInput
@@ -1484,8 +1491,8 @@ subroutine InitReadInput(simulation)
   PetscInt :: temp_int
   PetscInt :: count, id
   
-  PetscBool :: velocities
-  PetscBool :: flux_velocities
+  PetscBool :: vel_cent
+  PetscBool :: vel_face
   PetscBool :: fluxes
   PetscBool :: mass_flowrate
   PetscBool :: energy_flowrate
@@ -1811,6 +1818,11 @@ subroutine InitReadInput(simulation)
         call CouplerRead(coupler,input,option)
         call RealizationAddCoupler(realization,coupler)
         nullify(coupler)        
+      
+!....................
+      case ('SOURCE_SINK_SANDBOX')
+        call SSSandboxInit(option)
+        call SSSandboxRead(input,option)
       
 !....................
       case ('FLOW_MASS_TRANSFER')
@@ -2261,8 +2273,8 @@ subroutine InitReadInput(simulation)
       
 !....................
       case ('OUTPUT')
-        velocities = PETSC_FALSE
-        flux_velocities = PETSC_FALSE
+        vel_cent = PETSC_FALSE
+        vel_face = PETSC_FALSE
         fluxes = PETSC_FALSE
         mass_flowrate = PETSC_FALSE
         energy_flowrate = PETSC_FALSE
@@ -2301,7 +2313,7 @@ subroutine InitReadInput(simulation)
                   case('DEFAULT')
                     option%io_buffer = 'Keyword: ' // trim(word) // &
                       ' not recognized in OUTPUT,'// &
-                      'MASS_BALANCED,DETAILED.'
+                      'MASS_BALANCE,DETAILED.'
                     call printErrMsg(option)
                 end select
               endif
@@ -2532,10 +2544,10 @@ subroutine InitReadInput(simulation)
                                      ' not recognized in OUTPUT,FORMAT.'
                   call printErrMsg(option)
               end select
-            case('VELOCITIES')
-              velocities = PETSC_TRUE
-            case('FLUXES_VELOCITIES')
-              flux_velocities = PETSC_TRUE
+            case('VELOCITY_AT_CENTER')
+              vel_cent = PETSC_TRUE
+            case('VELOCITY_AT_FACE')
+              vel_face = PETSC_TRUE
             case('FLUXES')
               fluxes = PETSC_TRUE
             case('FLOWRATES','FLOWRATE')
@@ -2567,19 +2579,19 @@ subroutine InitReadInput(simulation)
               call printErrMsg(option)              
           end select
         enddo
-        if (velocities) then
+        if (vel_cent) then
           if (output_option%print_tecplot) &
-            output_option%print_tecplot_velocities = PETSC_TRUE
+            output_option%print_tecplot_vel_cent = PETSC_TRUE
           if (output_option%print_hdf5) &
-            output_option%print_hdf5_velocities = PETSC_TRUE
+            output_option%print_hdf5_vel_cent = PETSC_TRUE
           if (output_option%print_vtk) &
-            output_option%print_vtk_velocities = PETSC_TRUE
+            output_option%print_vtk_vel_cent = PETSC_TRUE
         endif
-        if (flux_velocities) then
+        if (vel_face) then
           if (output_option%print_tecplot) &
-            output_option%print_tecplot_flux_velocities = PETSC_TRUE
+            output_option%print_tecplot_vel_face = PETSC_TRUE
           if (output_option%print_hdf5) &
-           output_option%print_hdf5_flux_velocities = PETSC_TRUE
+           output_option%print_hdf5_vel_face = PETSC_TRUE
         endif
         if (fluxes) then
           output_option%print_fluxes = PETSC_TRUE
@@ -2814,7 +2826,8 @@ subroutine setFlowMode(option)
       option%gas_phase = 2      
       option%nflowdof = 3
       option%nflowspec = 2
-      option%itable = 2
+      option%itable = 2 ! read CO2DATA0.dat
+!     option%itable = 1 ! create CO2 database co2data.dat
       option%use_isothermal = PETSC_FALSE
     case('FLA2','FLASH2')
       option%iflowmode = FLASH2_MODE
@@ -4213,5 +4226,23 @@ subroutine InitReadVelocityField(realization)
   enddo
   
 end subroutine InitReadVelocityField
+
+! ************************************************************************** !
+
+subroutine SandboxesSetup(realization)
+  ! 
+  ! Initializes sandbox objects.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/06/14
+
+  use Realization_class
+  use SrcSink_Sandbox_module
+  
+  type(realization_type) :: realization
+  
+   call SSSandboxSetup(realization%patch%regions,realization%option)
+  
+end subroutine SandboxesSetup
 
 end module Init_module

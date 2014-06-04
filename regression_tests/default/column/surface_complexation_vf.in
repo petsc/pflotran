@@ -1,7 +1,7 @@
-:Description: 1D solute trasport test problem for testing chemical reactions
-:             based on chemistry from Hammond and Lichtner, WRR, 2010
+#Description: 1D solute trasport test problem for testing chemical reactions
+#             based on chemistry from Hammond and Lichtner, WRR, 2010
 
-:=========================== regression =======================================
+#=========================== regression =======================================
 REGRESSION
   CELLS
     1
@@ -13,15 +13,15 @@ REGRESSION
   /
 END
 
-:=========================== flow mode ========================================
-: Uniform velocity (see below). No flow mode specified.
+#=========================== flow mode ========================================
+# Uniform velocity (see below). No flow mode specified.
 
-:=========================== useful tranport parameters =======================
+#=========================== useful tranport parameters =======================
 UNIFORM_VELOCITY 1.d0 0.d0 0.d0 m/yr
 
 REFERENCE_DENSITY 1000.d0
 
-:=========================== chemistry ========================================
+#=========================== chemistry ========================================
 CHEMISTRY
   PRIMARY_SPECIES
   H+
@@ -199,12 +199,12 @@ skip
         5.7778E-08  6.7778E-08  8.0000E-08  9.5000E-08  1.1389E-07 \
         1.3806E-07  1.6944E-07  2.1111E-07  2.6861E-07  3.5000E-07 \
         4.7778E-07  6.8611E-07  1.0778E-06  2.0278E-06  6.6944E-06
-  :MULTIRATE_SCALE_FACTOR 1000.d0
+  #MULTIRATE_SCALE_FACTOR 1000.d0
 noskip
       MINERAL Calcite
 ! recall that this is being scaled by the Calcite vol frac
       SITE >SOH 152.64d0 ! 20 m^2/g, por = 0.25
-:      SITE >SOH 15.264d0 ! 2.0 m^2/g, por = 0.25
+#      SITE >SOH 15.264d0 ! 2.0 m^2/g, por = 0.25
       COMPLEXES
         >SOUO2OH
         >SOHUO2CO3
@@ -218,12 +218,13 @@ noskip
   OUTPUT
     All
     pH
+    TOTAL
     TOTAL_SORBED
     KD
   /
 END
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 NEWTON_SOLVER TRANSPORT
 END
 
@@ -231,7 +232,7 @@ LINEAR_SOLVER TRANSPORT
 !  SOLVER DIRECT
 END
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
   TYPE structured
   NXYZ 20 1 1
@@ -241,12 +242,12 @@ GRID
   /
 END
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY 
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.25d0
@@ -261,19 +262,19 @@ MATERIAL_PROPERTY soil2
   ROCK_DENSITY 2000.d0
 END
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
   FORMAT TECPLOT POINT
 END
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
   FINAL_TIME 15.d0 y
   INITIAL_TIMESTEP_SIZE 1.d0 h
   MAXIMUM_TIMESTEP_SIZE 2.5d-1 y
 END
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
@@ -304,7 +305,7 @@ REGION east
   /
 END
 
-:=========================== transport conditions =============================
+#=========================== transport conditions =============================
 TRANSPORT_CONDITION inlet
   TYPE dirichlet_zero_gradient
   CONSTRAINT_LIST
@@ -326,7 +327,7 @@ TRANSPORT_CONDITION groundwater
   /
 END
 
-:=========================== transport constraints ============================
+#=========================== transport constraints ============================
 CONSTRAINT groundwater
   CONCENTRATIONS
     H+       1.d-7            M Calcite
@@ -395,8 +396,8 @@ CONSTRAINT river_water
   /
 END
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
   TRANSPORT_CONDITION groundwater
   REGION all
@@ -407,19 +408,19 @@ INITIAL_CONDITION
   REGION middle
 END
 
-: west boundary condition
+# west boundary condition
 BOUNDARY_CONDITION west
   TRANSPORT_CONDITION inlet
   REGION west
 END
 
-: east boundary condition
+# east boundary condition
 BOUNDARY_CONDITION east
   TRANSPORT_CONDITION groundwater
   REGION east
 END
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
   REGION all
   MATERIAL soil1

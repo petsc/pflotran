@@ -1,59 +1,59 @@
-:Description: 1D test problem for tracer transport
+#Description: 1D test problem for tracer transport
 
-:=========================== flow mode ========================================
+#=========================== flow mode ========================================
 MODE RICHARDS
 
-:=========================== chemistry ========================================
+#=========================== chemistry ========================================
 CHEMISTRY
   PRIMARY_SPECIES
     Tracer
   /
 /
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 TIMESTEPPER
   TS_ACCELERATION 8
 /
 
 NEWTON_SOLVER FLOW
-  :RTOL 1.d-4
-  :ATOL 1.d-4
-  :STOL 1.e-60
-  :DTOL 1.e4
-  :ITOL_UPDATE 1.d0
-  :NO_INFINITY_NORM
-  ::NO_PRINT_CONVERGENCE
-  :PRINT_DETAILED_CONVERGENCE
+  #RTOL 1.d-4
+  #ATOL 1.d-4
+  #STOL 1.e-60
+  #DTOL 1.e4
+  #ITOL_UPDATE 1.d0
+  #NO_INFINITY_NORM
+  #:NO_PRINT_CONVERGENCE
+  #PRINT_DETAILED_CONVERGENCE
 /
 
 LINEAR_SOLVER FLOW
   KSP_TYPE GMRES
-  :PC_TYPE NONE
-  :KSP_TYPE PREONLY
-  :PC_TYPE LU
-  :SOLVER GMRES
+  #PC_TYPE NONE
+  #KSP_TYPE PREONLY
+  #PC_TYPE LU
+  #SOLVER GMRES
 /
 
 NEWTON_SOLVER TRANSPORT
-  :RTOL 1.d-4
-  :ATOL 1.d-4
-  :STOL 1.e-60
-  :DTOL 1.e4
-  :ITOL_UPDATE 1.d-4
-  :NO_INFINITY_NORM
-  :NO_PRINT_CONVERGENCE
-  :PRINT_DETAILED_CONVERGENCE
+  #RTOL 1.d-4
+  #ATOL 1.d-4
+  #STOL 1.e-60
+  #DTOL 1.e4
+  #ITOL_UPDATE 1.d-4
+  #NO_INFINITY_NORM
+  #NO_PRINT_CONVERGENCE
+  #PRINT_DETAILED_CONVERGENCE
 /
 
 LINEAR_SOLVER TRANSPORT
   KSP_TYPE GMRES
-  :PC_TYPE NONE
-  :KSP_TYPE PREONLY
-  :PC_TYPE LU
-  :SOLVER GMRES
+  #PC_TYPE NONE
+  #KSP_TYPE PREONLY
+  #PC_TYPE LU
+  #SOLVER GMRES
 /
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
   TYPE structured
   ORIGIN 0.d0 0.d0 0.d0
@@ -65,12 +65,12 @@ GRID
   /
 END
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY 
   DIFFUSION_COEFFICIENT 1.d-9
 /
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.25d0
@@ -95,26 +95,26 @@ MATERIAL_PROPERTY soil2
   /
 /
 
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION default
 /
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
-  :MASS_BALANCE
+  #MASS_BALANCE
   TIMES y 0.25d0 0.5d0 0.75d0
   FORMAT TECPLOT BLOCK
   VELOCITIES
 /
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
   FINAL_TIME 1.d0 y
   INITIAL_TIMESTEP_SIZE 1.d-3 y
   MAXIMUM_TIMESTEP_SIZE 1.d-1 y
 /
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
@@ -191,7 +191,7 @@ REGION well
   /
 END
 
-:=========================== flow conditions ==================================
+#=========================== flow conditions ==================================
 FLOW_CONDITION initial
   TYPE
     PRESSURE hydrostatic
@@ -206,7 +206,7 @@ FLOW_CONDITION source
   RATE 2.77777778d-3  ! 10 m^3/hr
 /
 
-:=========================== transport conditions =============================
+#=========================== transport conditions =============================
 TRANSPORT_CONDITION initial
   TYPE zero_gradient
   CONSTRAINT_LIST
@@ -221,7 +221,7 @@ TRANSPORT_CONDITION source
   /
 /
 
-:=========================== constraints ======================================
+#=========================== constraints ======================================
 CONSTRAINT well
   CONCENTRATIONS
     Tracer 1.d0 T
@@ -234,64 +234,64 @@ CONSTRAINT initial
   /
 END
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
   FLOW_CONDITION initial
   TRANSPORT_CONDITION initial
   REGION all
 END
 
-: west boundary condition
+# west boundary condition
 BOUNDARY_CONDITION west
   FLOW_CONDITION initial
   TRANSPORT_CONDITION initial
   REGION west
 END
 
-: east boundary condition
+# east boundary condition
 BOUNDARY_CONDITION east
   FLOW_CONDITION initial
   TRANSPORT_CONDITION initial
   REGION east
 END
 
-: north boundary condition
+# north boundary condition
 BOUNDARY_CONDITION north
   FLOW_CONDITION initial
   TRANSPORT_CONDITION initial
   REGION north
 END
 
-: south boundary condition
+# south boundary condition
 BOUNDARY_CONDITION south
   FLOW_CONDITION initial
   TRANSPORT_CONDITION initial
   REGION south
 END
 
-: top boundary condition
+# top boundary condition
 BOUNDARY_CONDITION top
   FLOW_CONDITION initial
   TRANSPORT_CONDITION initial
   REGION top
 END
 
-: bottom boundary condition
+# bottom boundary condition
 BOUNDARY_CONDITION bottom
   FLOW_CONDITION initial
   TRANSPORT_CONDITION initial
   REGION bottom
 END
 
-: well source/sink
+# well source/sink
 SOURCE_SINK well
   FLOW_CONDITION source
   TRANSPORT_CONDITION source
   REGION well
 END
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
   REGION top_layer
   MATERIAL soil1

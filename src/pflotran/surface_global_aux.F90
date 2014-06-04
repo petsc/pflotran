@@ -11,7 +11,7 @@ module Surface_Global_Aux_module
   type, public :: surface_global_auxvar_type
     PetscInt :: istate
     PetscReal, pointer :: head(:)   ! [m]
-    PetscReal, pointer :: temp(:)   ! [C]
+    PetscReal :: temp   ! [C]
     PetscReal, pointer :: den_kg(:) ! [kg/m^3]
   end type surface_global_auxvar_type
   
@@ -88,8 +88,7 @@ subroutine SurfaceGlobalAuxVarInit(auxvar,option)
 
   allocate(auxvar%head(option%nphase))
   auxvar%head = 0.d0
-  allocate(auxvar%temp(ONE_INTEGER))
-  auxvar%temp = DUMMY_VALUE
+  auxvar%temp = option%reference_temperature
   allocate(auxvar%den_kg(option%nphase))
   auxvar%den_kg = 0.d0
 
@@ -184,7 +183,6 @@ subroutine SurfaceGlobalAuxVarStrip(auxvar)
   type(surface_global_auxvar_type) :: auxvar
   
   call DeallocateArray(auxvar%head)
-  call DeallocateArray(auxvar%temp)
   call DeallocateArray(auxvar%den_kg)
 
 

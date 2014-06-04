@@ -70,7 +70,7 @@ subroutine RealizationBaseInit(realization_base,option)
   endif
   nullify(realization_base%input)
   realization_base%discretization => DiscretizationCreate()
-  nullify(realization_base%comm1)
+  nullify(realization_base%comm1)  
   realization_base%field => FieldCreate()
   realization_base%debug => DebugCreate()
   realization_base%output_option => OutputOptionCreate()
@@ -199,6 +199,12 @@ subroutine RealizationBaseStrip(this)
   call OutputOptionDestroy(this%output_option)
   
   call DiscretizationDestroy(this%discretization)
+  
+  if (associated(this%comm1)) then
+    call this%comm1%Destroy()
+    deallocate(this%comm1)
+  endif
+  nullify(this%comm1)
   
   call PatchDestroyList(this%patch_list)
   nullify(this%patch)

@@ -1,0 +1,220 @@
+#Description: 1D Calcite dissolution problem
+
+#=========================== regression =======================================
+REGRESSION
+  CELLS_PER_PROCESS 5
+END
+
+#=========================== flow mode ========================================
+MODE GENERAL MORE
+  MAXIMUM_PRESSURE_CHANGE 1.d8
+END
+
+#=========================== chemistry ========================================
+CHEMISTRY
+  PRIMARY_SPECIES
+    H+
+    HCO3-
+    Ca++
+  /
+  SECONDARY_SPECIES
+    OH-
+    CO3--
+    CO2(aq)
+    CaCO3(aq)
+    CaHCO3+
+#    CaOH+
+  /
+  GAS_SPECIES
+    CO2(g)
+  /
+  MINERALS
+    Calcite
+  /
+  MINERAL_KINETICS
+    Calcite
+      RATE_CONSTANT 1.d-6 mol/m^2-sec
+    /
+  /
+  DATABASE ../../database/hanford.dat
+  LOG_FORMULATION
+#  OPERATOR_SPLITTING
+  ACTIVITY_COEFFICIENTS TIMESTEP
+  OUTPUT
+    PH
+    all
+    TOTAL
+  /
+END
+
+#=========================== solver options ===================================
+LINEAR_SOLVER FLOW
+  SOLVER DIRECT
+END
+
+LINEAR_SOLVER TRANSPORT
+  SOLVER DIRECT
+END
+
+#=========================== discretization ===================================
+GRID
+  TYPE structured
+  NXYZ 100 1 1
+  BOUNDS
+    0.d0 0.d0 0.d0
+    100.d0 1.d0 1.d0
+  /
+END
+
+#=========================== fluid properties =================================
+FLUID_PROPERTY 
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+  ROCK_DENSITY 2650.d0
+  THERMAL_CONDUCTIVITY_DRY 0.5d0
+  THERMAL_CONDUCTIVITY_WET 2.d0
+  HEAT_CAPACITY 830.d0  
+  PERMEABILITY
+    PERM_ISO 1.d-12
+  /
+  SATURATION_FUNCTION sf1
+END
+
+#=========================== saturation functions =============================
+SATURATION_FUNCTION sf1
+  RESIDUAL_SATURATION LIQUID 0.1d0
+  RESIDUAL_SATURATION GAS 0.1d0
+  ALPHA 1.d-4
+  LAMBDA 0.5d0
+END
+
+#=========================== output options ===================================
+OUTPUT
+  TIMES y 5. 10. 15. 20.
+  FORMAT TECPLOT POINT
+  FORMAT HDF5
+  VELOCITY_AT_CENTER
+END
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 25.d0 y
+  INITIAL_TIMESTEP_SIZE 1.d0 h
+  MAXIMUM_TIMESTEP_SIZE 2.5d-1 y
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    100.d0 1.d0 1.d0
+  /
+END
+
+REGION west
+  FACE WEST
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 1.d0 1.d0
+  /
+END
+
+REGION east
+  FACE EAST
+  COORDINATES
+    100.d0 0.d0 0.d0
+    100.d0 1.d0 1.d0
+  /
+END
+
+#=========================== flow conditions ==================================
+FLOW_CONDITION initial_pressure
+  TYPE
+    LIQUID_PRESSURE dirichlet
+    MOLE_FRACTION dirichlet
+    TEMPERATURE dirichlet
+  /
+  LIQUID_PRESSURE 201325.d0
+  MOLE_FRACTION 1.d-10
+  TEMPERATURE 25.d0
+END
+
+FLOW_CONDITION recharge
+  TYPE
+    LIQUID_FLUX neumann
+    GAS_FLUX neumann
+    TEMPERATURE dirichlet
+  /
+  LIQUID_FLUX 1.d0 m/y
+  GAS_FLUX 0.d0 m/y
+  TEMPERATURE 25.d0
+END
+
+#=========================== transport conditions =============================
+TRANSPORT_CONDITION background_conc
+  TYPE zero_gradient
+  CONSTRAINT_LIST
+    0.d0 initial_constraint
+  /
+END
+
+TRANSPORT_CONDITION inlet_conc
+  TYPE dirichlet_zero_gradient
+  CONSTRAINT_LIST
+    0.d0 inlet_constraint
+  /
+END
+
+#=========================== constraints ======================================
+CONSTRAINT initial_constraint
+  CONCENTRATIONS
+    H+     1.d-8      F
+    HCO3-  1.d-3      G  CO2(g)
+    Ca++   5.d-4      M  Calcite
+  /
+  MINERALS
+    Calcite 1.d-5 1.d0 m^2/m^3
+  /
+END
+
+CONSTRAINT inlet_constraint
+  CONCENTRATIONS
+    H+     5.         P
+    HCO3-  1.d-3      T 
+    Ca++   1.d-6      Z 
+  /
+END
+
+#=========================== condition couplers ===============================
+# initial condition
+INITIAL_CONDITION
+  FLOW_CONDITION initial_pressure
+  TRANSPORT_CONDITION background_conc
+  REGION all
+END
+
+BOUNDARY_CONDITION outlet
+  FLOW_CONDITION initial_pressure
+  TRANSPORT_CONDITION background_conc
+  REGION east
+END
+
+BOUNDARY_CONDITION inlet
+  FLOW_CONDITION recharge
+  TRANSPORT_CONDITION inlet_conc
+  REGION west
+END
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  REGION all
+  MATERIAL soil1
+END
+
+

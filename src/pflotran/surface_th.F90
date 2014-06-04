@@ -147,6 +147,10 @@ subroutine SurfaceTHSetPlotVariables(surf_realization)
   
   list => surf_realization%output_option%output_variable_list
   
+  if (associated(list%first)) then
+    return
+  endif
+
   name = 'H'
   units = 'm'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
@@ -422,7 +426,7 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
       ! is correct here, but I should check.
       ff_p(iend) = ff_p(iend) + esrc + &
                     surf_global_auxvars_ss(sum_connection)%den_kg(1)* &
-                    (surf_global_auxvars_ss(sum_connection)%temp(1) + 273.15d0)* &
+                    (surf_global_auxvars_ss(sum_connection)%temp + 273.15d0)* &
                     surf_auxvars(local_id)%Cwi* &
                     qsrc/area_p(local_id)
     enddo
@@ -678,7 +682,7 @@ subroutine SurfaceTHFlux(surf_auxvar_up, &
 
   if (head_up>head_dn) then
     mannings_half = mannings_up
-    temp_half = surf_global_auxvar_up%temp(1) + 273.15d0
+    temp_half = surf_global_auxvar_up%temp + 273.15d0
     unfrozen_fraction_half = surf_auxvar_up%unfrozen_fraction
     if (surf_global_auxvar_up%head(1)>eps) then
       hw_half = surf_global_auxvar_up%head(1)
@@ -687,7 +691,7 @@ subroutine SurfaceTHFlux(surf_auxvar_up, &
     endif
   else
     mannings_half = mannings_dn
-    temp_half = surf_global_auxvar_dn%temp(1) + 273.15d0
+    temp_half = surf_global_auxvar_dn%temp + 273.15d0
     unfrozen_fraction_half = surf_auxvar_dn%unfrozen_fraction
     if (surf_global_auxvar_dn%head(1)>eps) then
       hw_half = surf_global_auxvar_dn%head(1)
@@ -742,7 +746,7 @@ subroutine SurfaceTHFlux(surf_auxvar_up, &
   den_aveg = (surf_global_auxvar_up%den_kg(1) + &
               surf_global_auxvar_dn%den_kg(1))/2.d0
   ! Temperature difference
-  dtemp = surf_global_auxvar_up%temp(1) - surf_global_auxvar_dn%temp(1)
+  dtemp = surf_global_auxvar_up%temp - surf_global_auxvar_dn%temp
 
   ! Note, Cw and k_therm are same for up and downwind
   Cw = surf_auxvar_up%Cw
@@ -857,15 +861,15 @@ subroutine SurfaceTHBCFlux(ibndtype, &
   end select
 
   if (vel>0.d0) then
-    temp_half = surf_global_auxvar_up%temp(1) + 273.15d0
+    temp_half = surf_global_auxvar_up%temp + 273.15d0
   else
-    temp_half = surf_global_auxvar_dn%temp(1) + 273.15d0
+    temp_half = surf_global_auxvar_dn%temp + 273.15d0
   endif
 
   if (pressure_bc_type /= ZERO_GRADIENT_BC) then
     select case (ibndtype(TH_TEMPERATURE_DOF))
       case (DIRICHLET_BC)
-        dtemp = surf_global_auxvar_up%temp(1) - surf_global_auxvar_dn%temp(1)
+        dtemp = surf_global_auxvar_up%temp - surf_global_auxvar_dn%temp
       case default
         option%io_buffer = 'Unknown temperature_bc_type for surface flow '
         call printErrMsg(option)
@@ -972,7 +976,7 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
     ! [rho*h*T*Cwi]
     xx_loc_p(istart+1) = surf_global_auxvars(ghosted_id)%den_kg(1)* &
                          xx_loc_p(istart)* &
-                         (surf_global_auxvars(ghosted_id)%temp(1) + 273.15d0)* &
+                         (surf_global_auxvars(ghosted_id)%temp + 273.15d0)* &
                          surf_th_auxvars(ghosted_id)%Cwi
   enddo
    
@@ -999,7 +1003,7 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
         end select
       enddo
 
-      surf_global_auxvars_bc(sum_connection)%temp(1) = xxbc(2)
+      surf_global_auxvars_bc(sum_connection)%temp = xxbc(2)
       call SurfaceTHAuxVarCompute(xxbc, &
                                   surf_th_auxvars_bc(sum_connection), &
                                   surf_global_auxvars_bc(sum_connection), &
@@ -1033,13 +1037,13 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
         endif
       else
         tsrc1 = xx_loc_p((ghosted_id-1)*option%nflowdof+1)
-        tsrc1 = surf_global_auxvars(ghosted_id)%temp(1)
+        tsrc1 = surf_global_auxvars(ghosted_id)%temp
       endif
 
       xxss = xx_loc_p(istart:iend)
       xxss(2) = tsrc1
 
-      surf_global_auxvars_ss(sum_connection)%temp(1) = tsrc1
+      surf_global_auxvars_ss(sum_connection)%temp = tsrc1
       call SurfaceTHAuxVarCompute(xxss, &
                                   surf_th_auxvars_ss(sum_connection), &
                                   surf_global_auxvars_ss(sum_connection), &
@@ -1142,7 +1146,7 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
           surf_global_auxvars(local_id)%den_kg(1) = den
         enddo
       endif
-      surf_global_auxvars(ghosted_id)%temp(1) = temp
+      surf_global_auxvars(ghosted_id)%temp = temp
     endif
   enddo
 
@@ -1157,8 +1161,8 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
       
-      surf_global_auxvars_bc(sum_connection)%temp(1) = &
-        surf_global_auxvars(ghosted_id)%temp(1)
+      surf_global_auxvars_bc(sum_connection)%temp = &
+        surf_global_auxvars(ghosted_id)%temp
     enddo
     boundary_condition => boundary_condition%next
   enddo
@@ -1174,8 +1178,8 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
-      surf_global_auxvars_ss(sum_connection)%temp(1) = &
-        surf_global_auxvars(ghosted_id)%temp(1)
+      surf_global_auxvars_ss(sum_connection)%temp = &
+        surf_global_auxvars(ghosted_id)%temp
 
     enddo
     source_sink => source_sink%next
@@ -1388,7 +1392,7 @@ subroutine SurfaceTHImplicitAtmForcing(surf_realization)
           ghosted_id = grid%nL2G(local_id)
 
           head     = surf_global_auxvars(ghosted_id)%head(1)
-          temp_old = surf_global_auxvars(ghosted_id)%temp(1)
+          temp_old = surf_global_auxvars(ghosted_id)%temp
           k_therm  = surf_auxvars(ghosted_id)%k_therm
           Cw       = surf_auxvars(ghosted_id)%Cw
           call EOSWaterdensity(temp_old,option%reference_pressure,den_old,dum1,ierr)
@@ -1398,11 +1402,11 @@ subroutine SurfaceTHImplicitAtmForcing(surf_realization)
             do iter = 1,niter
               beta = (2.d0*k_therm*option%surf_flow_dt)/(Cw*head**2.d0)
               temp = (den_old*(temp_old + 273.15d0) + &
-                      beta*(surf_global_auxvars_ss(sum_connection)%temp(1)+273.15))/&
+                      beta*(surf_global_auxvars_ss(sum_connection)%temp + 273.15d0))/&
                       (den_iter + beta) - 273.15d0
               call EOSWaterdensity(temp,option%reference_pressure,den_iter,dum1,ierr)
             enddo
-            surf_global_auxvars(ghosted_id)%temp(1) = temp
+            surf_global_auxvars(ghosted_id)%temp = temp
 
             iend = local_id*option%nflowdof
             istart = iend - option%nflowdof + 1

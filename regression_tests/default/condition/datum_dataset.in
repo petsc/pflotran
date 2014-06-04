@@ -1,7 +1,7 @@
-:Description: Test problem for verifying functionality of datasets in the 
-:             context of datums.
+#Description: Test problem for verifying functionality of datasets in the 
+#             context of datums.
 
-:=========================== regression =======================================
+#=========================== regression =======================================
 REGRESSION
   CELLS
     ! eight corners
@@ -23,19 +23,19 @@ REGRESSION
   /
 END
 
-:=========================== flow mode ========================================
+#=========================== flow mode ========================================
 MODE RICHARDS
 
 DEBUG
-:  PRINT_COUPLERS outlet east_bc
+#  PRINT_COUPLERS outlet east_bc
 END
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 LINEAR_SOLVER FLOW
   SOLVER DIRECT
 END
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
   TYPE structured
   NXYZ 5 5 5
@@ -61,7 +61,7 @@ DATASET x_dataset
   HDF5_DATASET_NAME x_line
 END
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.25d0
@@ -71,7 +71,7 @@ MATERIAL_PROPERTY soil1
   SATURATION_FUNCTION sf1
 END
 
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION sf1
   SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
   RESIDUAL_SATURATION 0.1d0
@@ -83,21 +83,21 @@ OBSERVATION obs
   REGION obs_pt
 /
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
-:  TIMES y 0.01 0.1 1.0
-:  FORMAT TECPLOT POINT
-:  PERIODIC_OBSERVATION TIMESTEP 1
+#  TIMES y 0.01 0.1 1.0
+#  FORMAT TECPLOT POINT
+#  PERIODIC_OBSERVATION TIMESTEP 1
 END
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
   FINAL_TIME 50.d0 s
   INITIAL_TIMESTEP_SIZE 2.5d0 s
   MAXIMUM_TIMESTEP_SIZE 10.d0 s 
 END
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
@@ -141,7 +141,7 @@ REGION bottom
   /
 END
 
-:=========================== flow conditions ==================================
+#=========================== flow conditions ==================================
 FLOW_CONDITION initial
   TYPE
     PRESSURE hydrostatic
@@ -173,8 +173,8 @@ FLOW_CONDITION recharge
   FLUX 10 cm/y
 END
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
   FLOW_CONDITION initial
   REGION all
@@ -200,7 +200,7 @@ BOUNDARY_CONDITION initial
   REGION top
 END
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
   REGION all
   MATERIAL soil1

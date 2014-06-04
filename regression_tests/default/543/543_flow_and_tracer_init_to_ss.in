@@ -1,7 +1,7 @@
-:Description: 3D test problem for testing chemical reactions
-:             based on chemistry from Hammond and Lichtner, WRR, 2010
+#Description: 3D test problem for testing chemical reactions
+#             based on chemistry from Hammond and Lichtner, WRR, 2010
 
-:=========================== regression =======================================
+#=========================== regression =======================================
 REGRESSION
   CELLS_PER_PROCESS 2
   CELLS
@@ -9,10 +9,10 @@ REGRESSION
   /
 END
 
-:=========================== flow mode ========================================
+#=========================== flow mode ========================================
 MODE RICHARDS
 
-:=========================== chemistry ========================================
+#=========================== chemistry ========================================
 CHEMISTRY
   PRIMARY_SPECIES
   Tracer
@@ -20,10 +20,11 @@ CHEMISTRY
   /
   OUTPUT
     All
+    TOTAL
   /
 END
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 TIMESTEPPER
   TS_ACCELERATION 8
   INITIALIZE_TO_STEADY_STATE
@@ -45,7 +46,7 @@ LINEAR_SOLVER TRANSPORT
   PC_TYPE LU
 END
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
   TYPE structured
   ORIGIN 0.d0 0.d0 0.d0
@@ -57,12 +58,12 @@ GRID
   /
 END
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY 
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
-:=========================== datasets =========================================
+#=========================== datasets =========================================
 skip
 DATASET U
   HDF5_DATASET_NAME U 
@@ -75,7 +76,7 @@ DATASET Calcite
 END
 noskip
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.25d0
@@ -124,7 +125,7 @@ MATERIAL_PROPERTY soil4
   /
 END
 
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION sf1
   SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
   RESIDUAL_SATURATION 0.115
@@ -153,22 +154,22 @@ SATURATION_FUNCTION sf4
   ALPHA 5.1054d-5
 END
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
-:  TIMES d 0.001 0.01 0.1 1. 10. 
-:  PERIODIC TIME 1 d
+#  TIMES d 0.001 0.01 0.1 1. 10. 
+#  PERIODIC TIME 1 d
   FORMAT TECPLOT BLOCK
-  VELOCITIES
+  VELOCITY_AT_CENTER
 END
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
   FINAL_TIME 1.d0 d
   INITIAL_TIMESTEP_SIZE 1.d-6 d
   MAXIMUM_TIMESTEP_SIZE 10.d0 d
 END
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
@@ -232,7 +233,7 @@ REGION well
   BLOCK 4 4 2 3 3 3 
 END
 
-:=========================== flow conditions ==================================
+#=========================== flow conditions ==================================
 FLOW_CONDITION initial
   TYPE
     PRESSURE hydrostatic
@@ -273,7 +274,7 @@ FLOW_CONDITION injection_well
   RATE 1 m^3/hr
 END
 
-:=========================== transport conditions =============================
+#=========================== transport conditions =============================
 TRANSPORT_CONDITION columbia_river
   TYPE dirichlet_zero_gradient
   CONSTRAINT_LIST
@@ -311,7 +312,7 @@ TRANSPORT_CONDITION source_zone
   /
 END
 
-:=========================== transport constraints ============================
+#=========================== transport constraints ============================
 CONSTRAINT groundwater
   CONCENTRATIONS
     Tracer   1.e-7            F
@@ -340,8 +341,8 @@ CONSTRAINT well_tracer
   /
 END
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
   FLOW_CONDITION initial
   TRANSPORT_CONDITION groundwater
@@ -354,35 +355,35 @@ INITIAL_CONDITION
   REGION plume
 END
 
-: west boundary condition
+# west boundary condition
 BOUNDARY_CONDITION west
   FLOW_CONDITION initial
   TRANSPORT_CONDITION groundwater
   REGION west
 END
 
-: east boundary condition
+# east boundary condition
 BOUNDARY_CONDITION east
   FLOW_CONDITION east
   TRANSPORT_CONDITION columbia_river
   REGION east
 END
 
-: top boundary condition
+# top boundary condition
 BOUNDARY_CONDITION top
   FLOW_CONDITION recharge
   TRANSPORT_CONDITION rainwater
   REGION top
 END
 
-: well source/sink
+# well source/sink
 SOURCE_SINK well
   FLOW_CONDITION injection_well
   TRANSPORT_CONDITION tracer_pulse
   REGION well
 END
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
   MATERIAL ./543.h5
 END

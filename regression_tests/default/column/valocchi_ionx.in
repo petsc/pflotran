@@ -1,9 +1,9 @@
-:Description: 1D geochemical transport with ion exchange based on Valocchi's
-:             work.
+#Description: 1D geochemical transport with ion exchange based on Valocchi's
+#             work.
 
-:=========================== regression =======================================
+#=========================== regression =======================================
 REGRESSION
-:  CELLS_PER_PROCESS 5
+#  CELLS_PER_PROCESS 5
   CELLS
     1
     20 
@@ -23,13 +23,13 @@ REGRESSION
   /
 END
 
-:=========================== flow mode ========================================
-: Uniform velocity (see below). No flow mode specified.
+#=========================== flow mode ========================================
+# Uniform velocity (see below). No flow mode specified.
 
-:=========================== useful tranport parameters ==================
+#=========================== useful tranport parameters ==================
 UNIFORM_VELOCITY 1.d0 0.d0 0.d0 m/yr
 
-:=========================== chemistry ========================================
+#=========================== chemistry ========================================
 CHEMISTRY
   PRIMARY_SPECIES
     Na+
@@ -60,16 +60,17 @@ CHEMISTRY
   LOG_FORMULATION
   OUTPUT
     all
+    TOTAL
     TOTAL_SORBED
   /
 END
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 LINEAR_SOLVER TRANSPORT
   SOLVER DIRECT
 END
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
   TYPE structured
   NXYZ 100 1 1
@@ -79,33 +80,33 @@ GRID
   /
 END
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY 
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.25d0
   TORTUOSITY 1.d0
 END
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
-:  TIMES y 5. 10. 15. 20.
+#  TIMES y 5. 10. 15. 20.
   FORMAT TECPLOT POINT
 END
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
-:  FINAL_TIME 25.d0 y
+#  FINAL_TIME 25.d0 y
   FINAL_TIME 12.5d0 y            ! tracer at 50m midpoint
   INITIAL_TIMESTEP_SIZE 1.d0 h
   MAXIMUM_TIMESTEP_SIZE 2.5d-1 y
 END
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
@@ -129,7 +130,7 @@ REGION east
   /
 END
 
-:=========================== transport conditions =============================
+#=========================== transport conditions =============================
 TRANSPORT_CONDITION initial
   TYPE zero_gradient
   CONSTRAINT_LIST
@@ -144,12 +145,12 @@ TRANSPORT_CONDITION inlet
   /
 END
 
-:=========================== constraints ======================================
+#=========================== constraints ======================================
 CONSTRAINT initial
   CONCENTRATIONS
-:    Na+     0.2465  S
-:    Ca++    0.1602  S
-:    Mg++    0.1641  S
+#    Na+     0.2465  S
+#    Ca++    0.1602  S
+#    Mg++    0.1641  S
     Na+     8.65d-2 T
     Ca++    1.82d-2 T
     Mg++    1.11d-2 T
@@ -169,8 +170,8 @@ CONSTRAINT inlet
   /
 END
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
   TRANSPORT_CONDITION initial
   REGION all
@@ -186,7 +187,7 @@ BOUNDARY_CONDITION inlet
   REGION west
 END
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
   REGION all
   MATERIAL soil1

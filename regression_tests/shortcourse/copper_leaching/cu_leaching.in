@@ -1,16 +1,16 @@
-:Description: 5 Spot Copper Leaching problem
+#Description: 5 Spot Copper Leaching problem
 
-:=========================== regression =======================================
+#=========================== regression =======================================
 REGRESSION
   CELLS_PER_PROCESS 5
 END
 
-:=========================== flow mode ========================================
+#=========================== flow mode ========================================
 MODE RICHARDS
 
-:=========================== checkpointing ====================================
+#=========================== checkpointing ====================================
 
-:=========================== chemistry ========================================
+#=========================== chemistry ========================================
 CHEMISTRY
   PRIMARY_SPECIES
     Na+
@@ -133,25 +133,26 @@ CHEMISTRY
   /
   DATABASE ../../../database/hanford.dat
   LOG_FORMULATION
-:  OPERATOR_SPLITTING
+#  OPERATOR_SPLITTING
   ACTIVITY_COEFFICIENTS TIMESTEP
   OUTPUT
     PH
+    TOTAL
     all
   /
 END
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 TIMESTEPPER FLOW
-:  INITIALIZE_TO_STEADY_STATE
-:  RUN_AS_STEADY_STATE
+#  INITIALIZE_TO_STEADY_STATE
+#  RUN_AS_STEADY_STATE
 END
 
 TIMESTEPPER TRANSPORT
   TS_ACCELERATION 32
 END
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
   TYPE structured
   NXYZ 8 8 1
@@ -161,12 +162,12 @@ GRID
   /
 END
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY 
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY oxide-ore
   ID 1
   POROSITY 0.05d0
@@ -177,27 +178,27 @@ MATERIAL_PROPERTY oxide-ore
   SATURATION_FUNCTION default
 END
 
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION default
 END
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
   PERIODIC_OBSERVATION TIMESTEP 1
   FORMAT TECPLOT BLOCK
-  VELOCITIES
+  VELOCITY_AT_CENTER
   PRINT_COLUMN_IDS
   SCREEN PERIODIC 10
 END
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
   FINAL_TIME 0.25d0 y
   INITIAL_TIMESTEP_SIZE 1.d-3 s
   MAXIMUM_TIMESTEP_SIZE 0.01 y
 END
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
@@ -223,12 +224,12 @@ REGION obs_outlet
   COORDINATE 16.d0 16.d0 64.d0
 END
 
-:=========================== observation points ===============================
+#=========================== observation points ===============================
 OBSERVATION
   REGION obs_outlet
 END
 
-:=========================== flow conditions ==================================
+#=========================== flow conditions ==================================
 FLOW_CONDITION initial
   TYPE
     PRESSURE hydrostatic
@@ -237,7 +238,7 @@ FLOW_CONDITION initial
   DATUM 0.d0 0.d0 128.d0
 END
 
-! Note: Do not use scaled_volumetric_rate below.  The mass balance blows up.
+! Note# Do not use scaled_volumetric_rate below.  The mass balance blows up.
 
 FLOW_CONDITION inlet
   TYPE
@@ -253,7 +254,7 @@ FLOW_CONDITION outlet
   RATE -0.68 kg/s
 END
 
-:=========================== transport conditions =============================
+#=========================== transport conditions =============================
 TRANSPORT_CONDITION initial
   TYPE zero_gradient
   CONSTRAINT_LIST
@@ -268,7 +269,7 @@ TRANSPORT_CONDITION inlet
   /
 END
 
-:=========================== constraints ======================================
+#=========================== constraints ======================================
 CONSTRAINT initial
   CONCENTRATIONS
     Na+        5.0d-3   T
@@ -315,8 +316,8 @@ CONSTRAINT inlet
   /
 END
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
   FLOW_CONDITION initial
   TRANSPORT_CONDITION initial
@@ -335,7 +336,7 @@ SOURCE_SINK outlet
   REGION outlet
 END
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
   REGION all
   MATERIAL oxide-ore

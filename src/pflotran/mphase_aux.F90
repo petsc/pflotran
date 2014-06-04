@@ -390,8 +390,7 @@ subroutine MphaseAuxVarCompute_NINC(x,auxvar,global_auxvar,iphase,saturation_fun
     endif  
 
 
-    call Henry_duan_sun(t,p2*1.D-5,henry,xphi,lngamco2,m_na,m_cl, &
-      sat_pressure*1.D-5)
+    call Henry_duan_sun(t,p2*1.D-5,henry,lngamco2,m_na,m_cl)
     Qkco2 = henry*xphi  ! convert from bar to Pa
     henry = 1.D0/(FMWH2O*1.D-3)/(henry*1.D-5)/xphi 
     if(present(xphico2)) xphico2 = xphi

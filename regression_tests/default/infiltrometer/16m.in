@@ -1,14 +1,14 @@
-:Description: 3D variably saturated flow with infiltration at top
+#Description: 3D variably saturated flow with infiltration at top
 
-:=========================== regression =======================================
+#=========================== regression =======================================
 REGRESSION
   CELLS_PER_PROCESS 4
 END
 
-:=========================== flow mode ========================================
+#=========================== flow mode ========================================
 MODE RICHARDS
 
-:=========================== chemistry ========================================
+#=========================== chemistry ========================================
 skip
 CHEMISTRY
   PRIMARY_SPECIES
@@ -17,7 +17,7 @@ CHEMISTRY
 END
 noskip
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 TIMESTEPPER
   TS_ACCELERATION 8
   MAX_TS_CUTS 5
@@ -29,58 +29,58 @@ NEWTON_SOLVER FLOW
   ATOL 1.d-50
   STOL 1.e-60
   ITOL_UPDATE 1.d0
-:  NO_INFINITY_NORM
-:  NO_PRINT_CONVERGENCE
-:  PRINT_DETAILED_CONVERGENCE
+#  NO_INFINITY_NORM
+#  NO_PRINT_CONVERGENCE
+#  PRINT_DETAILED_CONVERGENCE
 END
 
 LINEAR_SOLVER FLOW
 END
 
 NEWTON_SOLVER TRANSPORT
-:  RTOL 1.d-4
-:  ATOL 1.d-4
-:  STOL 1.e-60
-:  DTOL 1.e4
-:  ITOL_UPDATE 1.d-4
+#  RTOL 1.d-4
+#  ATOL 1.d-4
+#  STOL 1.e-60
+#  DTOL 1.e4
+#  ITOL_UPDATE 1.d-4
   NO_INFINITY_NORM
-:  NO_PRINT_CONVERGENCE
-:  PRINT_DETAILED_CONVERGENCE
+#  NO_PRINT_CONVERGENCE
+#  PRINT_DETAILED_CONVERGENCE
 END
 
 LINEAR_SOLVER TRANSPORT
 END
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
   TYPE structured
   ORIGIN 0.d0 0.d0 0.d0
-:changeme - change number of grid cells in each direction
+#changeme - change number of grid cells in each direction
   NXYZ 16 16 16
   BOUNDS
     0.d0 0.d0 0.d0
-:changeme - change global bounds
+#changeme - change global bounds
     16.d0 16.d0 16.d0
   /
 END
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY 
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
-:=========================== datasets =========================================
+#=========================== datasets =========================================
 DATASET porosity
-:changeme - change filename to ("parameters-%d.h5", NXYZ)
+#changeme - change filename to ("parameters-%d.h5", NXYZ)
   FILENAME ./parameters-16.h5
 END
 
 DATASET permeability
-:changeme - change filename to ("parameters-%d.h5", NXYZ)
+#changeme - change filename to ("parameters-%d.h5", NXYZ)
   FILENAME ./parameters-16.h5
 END
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
   ID 1
   POROSITY DATASET porosity
@@ -91,7 +91,7 @@ MATERIAL_PROPERTY soil1
   /
 END
 
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION default
   SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
   RESIDUAL_SATURATION 0.1d0
@@ -100,34 +100,34 @@ SATURATION_FUNCTION default
   MAX_CAPILLARY_PRESSURE 1.d8
 END
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
-:  MASS_BALANCE
-:  PERMEABILITY
-:  POROSITY
-:  TIMES y 0.25d0 0.5d0 0.75d0
-:  PERIODIC TIME 1. d
-:  FORMAT TECPLOT BLOCK
-:  FORMAT HDF5
-:  VELOCITIES
+#  MASS_BALANCE
+#  PERMEABILITY
+#  POROSITY
+#  TIMES y 0.25d0 0.5d0 0.75d0
+#  PERIODIC TIME 1. d
+#  FORMAT TECPLOT BLOCK
+#  FORMAT HDF5
+#  VELOCITY_AT_CENTER
   FORMAT TECPLOT BLOCK
-:  PERIODIC TIME .1 y
+#  PERIODIC TIME .1 y
 END
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
-:STEADY_STATE
-:  FINAL_TIME 10 y
+#STEADY_STATE
+#  FINAL_TIME 10 y
   FINAL_TIME 1 y
   INITIAL_TIMESTEP_SIZE 1.d0 h
   MAXIMUM_TIMESTEP_SIZE 1.d0 y at 1.d0 h
 END
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
-:changeme - change global bounds
+#changeme - change global bounds
     16.d0 16.d0 16.d0
   /
 END
@@ -136,29 +136,29 @@ REGION bottom
   FACE BOTTOM
   COORDINATES
     0.d0 0.d0 0.d0
-:changeme - change global bounds for X and Y
+#changeme - change global bounds for X and Y
     16.d0 16.d0 0.d0
   /
 END
 
-: infiltrometer covers center 6.25% of domain: 0.25 length X 0.25 length
-:16m domain: 6-10m
-:32m domain: 12-20m
-:64m domain: 24-40m
-:128m domain: 48-80m
-:256m domain: 96-160m
-:512m domain: 192-320m
-:1024m domain: 384-640m
+# infiltrometer covers center 6.25% of domain: 0.25 length X 0.25 length
+#16m domain: 6-10m
+#32m domain: 12-20m
+#64m domain: 24-40m
+#128m domain: 48-80m
+#256m domain: 96-160m
+#512m domain: 192-320m
+#1024m domain: 384-640m
 REGION infiltrometer 
   FACE TOP
   COORDINATES
-:changeme - change X, Y and Z to fit domain
+#changeme - change X, Y and Z to fit domain
     6.d0 6.d0 16.d0
     10.d0 10.d0 16.d0
   /
 END
 
-:=========================== flow conditions ==================================
+#=========================== flow conditions ==================================
 
 MINIMUM_HYDROSTATIC_PRESSURE -1.d0
 
@@ -170,18 +170,18 @@ FLOW_CONDITION initial
   PRESSURE 101325.d0
 END
 
-: Variably Saturated Scenario
+# Variably Saturated Scenario
 FLOW_CONDITION infiltration
   TYPE
   FLUX neumann
   /
-:  FLUX 1 cm/yr
+#  FLUX 1 cm/yr
   FLUX 10 cm/yr
-:  FLUX 1 m/yr
-:  FLUX 10 m/yr
+#  FLUX 1 m/yr
+#  FLUX 10 m/yr
 END
 
-:=========================== transport conditions =============================
+#=========================== transport conditions =============================
 skip
 TRANSPORT_CONDITION initial
   TYPE zero_gradient
@@ -198,7 +198,7 @@ TRANSPORT_CONDITION solute
 END
 noskip
 
-:=========================== constraints ======================================
+#=========================== constraints ======================================
 skip
 CONSTRAINT solute_concentration
   CONCENTRATIONS
@@ -213,28 +213,28 @@ CONSTRAINT initial
 END
 noskip
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
   FLOW_CONDITION initial
-:  TRANSPORT_CONDITION initial
+#  TRANSPORT_CONDITION initial
   REGION all
 END
 
-: bottom boundary condition
+# bottom boundary condition
 BOUNDARY_CONDITION bottom
   FLOW_CONDITION initial
-:  TRANSPORT_CONDITION initial
+#  TRANSPORT_CONDITION initial
   REGION bottom
 END
 
 BOUNDARY_CONDITION infiltrometer
   FLOW_CONDITION infiltration
-:  TRANSPORT_CONDITION source
+#  TRANSPORT_CONDITION source
   REGION infiltrometer
 END
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
   REGION all
   MATERIAL soil1

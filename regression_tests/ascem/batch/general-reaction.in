@@ -1,21 +1,21 @@
-:Description: 1D problem for testing 
+#Description: 1D problem for testing 
 
-:=========================== regression =======================================
+#=========================== regression =======================================
 REGRESSION
   CELLS_PER_PROCESS 1
 END
  
-: == debugging ================================================================
+# == debugging ================================================================
 DEBUG
-:MATVIEW_JACOBIAN
-:VECVIEW_RESIDUAL
-:VECVIEW_SOLUTION
+#MATVIEW_JACOBIAN
+#VECVIEW_RESIDUAL
+#VECVIEW_SOLUTION
 /
 
-: == mode =====================================================================
+# == mode =====================================================================
 UNIFORM_VELOCITY 0.d0 0.d0 0.d0
 
-: == chemistry ================================================================
+# == chemistry ================================================================
 CHEMISTRY
   PRIMARY_SPECIES
     A(aq)
@@ -27,22 +27,23 @@ CHEMISTRY
     BACKWARD_RATE 0.d0
   /
   DATABASE ./hanford.dat
-:  OPERATOR_SPLIT
-:  LOG_FORMULATION
+#  OPERATOR_SPLIT
+#  LOG_FORMULATION
   OUTPUT
     All
+    TOTAL
   /
 /
 
-: == reference variables ======================================================
+# == reference variables ======================================================
 REFERENCE_POROSITY 0.25d0
 
-: == time stepping ============================================================
+# == time stepping ============================================================
 TIMESTEPPER
   TS_ACCELERATION 0
 /
 
-: == discretization ===========================================================
+# == discretization ===========================================================
 GRID
   TYPE structured
   NXYZ 1 1 1
@@ -52,27 +53,27 @@ GRID
   /
 /
 
-: == transport solvers ========================================================
+# == transport solvers ========================================================
 NEWTON_SOLVER TRANSPORT
   PRECONDITIONER_MATRIX_TYPE AIJ
   RTOL 1.d-12
   ATOL 1.d-12
   STOL 1.d-30
-:NO_INFINITY_NORM
-:NO_PRINT_CONVERGENCE
-:PRINT_DETAILED_CONVERGENCE
+#NO_INFINITY_NORM
+#NO_PRINT_CONVERGENCE
+#PRINT_DETAILED_CONVERGENCE
 /
 
 LINEAR_SOLVER TRANSPORT
   SOLVER DIRECT
 /
 
-: == fluid properties =========================================================
+# == fluid properties =========================================================
 FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 /
 
-: == material properties ======================================================
+# == material properties ======================================================
 MATERIAL_PROPERTY  Hanford
   ID 1
   SATURATION_FUNCTION sf1
@@ -81,7 +82,7 @@ MATERIAL_PROPERTY  Hanford
 /
 
 skip
-: == saturation / permeability functions ======================================
+# == saturation / permeability functions ======================================
 SATURATION_FUNCTION sf1
   SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
   RESIDUAL_SATURATION 0.1d0
@@ -90,23 +91,23 @@ SATURATION_FUNCTION sf1
 /
 noskip
 
-: == output ===================================================================
+# == output ===================================================================
 OUTPUT
   PERIODIC_OBSERVATION TIMESTEP 5
-:  FORMAT TECPLOT POINT
-:  FORMAT TECPLOT BLOCK
-:  FORMAT HDF5
-  :PROCESSOR_ID
+#  FORMAT TECPLOT POINT
+#  FORMAT TECPLOT BLOCK
+#  FORMAT HDF5
+  #PROCESSOR_ID
 /
 
-: == times ====================================================================
+# == times ====================================================================
 TIME
   FINAL_TIME 50 d
   INITIAL_TIMESTEP_SIZE 0.1 d
   MAXIMUM_TIMESTEP_SIZE 0.1 d
 /
 
-: == regions ==================================================================
+# == regions ==================================================================
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
@@ -114,12 +115,12 @@ REGION all
   /
 /
 
-: == observation ==============================================================
+# == observation ==============================================================
 OBSERVATION
   REGION all
 /
 
-: == transport conditions =====================================================
+# == transport conditions =====================================================
 TRANSPORT_CONDITION Initial
   TYPE zero_gradient
   CONSTRAINT_LIST
@@ -127,7 +128,7 @@ TRANSPORT_CONDITION Initial
   /
 /
 
-: == transport constraints ====================================================
+# == transport constraints ====================================================
 CONSTRAINT Initial
   CONCENTRATIONS
     A(aq)    1.d-4            F
@@ -135,13 +136,13 @@ CONSTRAINT Initial
   /
 /
 
-: == couplers =================================================================
+# == couplers =================================================================
 INITIAL_CONDITION Initial
   TRANSPORT_CONDITION Initial
   REGION all
 /
 
-: == stratigraphy =============================================================
+# == stratigraphy =============================================================
 STRATA
   MATERIAL Hanford
   REGION all

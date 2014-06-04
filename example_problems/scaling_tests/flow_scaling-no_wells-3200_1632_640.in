@@ -1,11 +1,11 @@
-:Description: 3D groundwater flow and solute transport
+#Description: 3D groundwater flow and solute transport
 
-:=========================== flow mode ========================================
+#=========================== flow mode ========================================
 MODE RICHARDS
-:CHECKPOINT 1000000
-:RESTART restart.chk
+#CHECKPOINT 1000000
+#RESTART restart.chk
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 TIMESTEPPER
   MAX_STEPS 10
 END
@@ -17,7 +17,7 @@ END
 LINEAR_SOLVER FLOW
 END
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
   TYPE structured
   NXYZ 3200 1632 640
@@ -28,12 +28,12 @@ GRID
   /
 END
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.25d0
@@ -82,7 +82,7 @@ MATERIAL_PROPERTY soil4
   /
 END
 
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION sf1
   SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
   RESIDUAL_SATURATION 0.1d0
@@ -92,14 +92,14 @@ SATURATION_FUNCTION sf1
 
 END
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
   FINAL_TIME 10.d0 y
   INITIAL_TIMESTEP_SIZE 1.d-2 d
   MAXIMUM_TIMESTEP_SIZE 0.1 y        ! produces CFL ~<= 1.
 END
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
@@ -193,7 +193,7 @@ REGION Obs_pt_south
   COORDINATE 2500.d0 625.d0 60.d0
 END
 
-:=========================== observation points ===============================
+#=========================== observation points ===============================
 OBSERVATION
   REGION Obs_pt_center
   AT_CELL_CENTER
@@ -224,7 +224,7 @@ OBSERVATION
   VELOCITY
 END
  
-:=========================== flow conditions ==================================
+#=========================== flow conditions ==================================
 FLOW_CONDITION initial
   TYPE
     PRESSURE hydrostatic
@@ -277,32 +277,32 @@ FLOW_CONDITION extraction
   RATE -1.d5 m^3/day
 END
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
   FLOW_CONDITION initial
   REGION all
 END
 
-: west boundary condition
+# west boundary condition
 BOUNDARY_CONDITION west
   FLOW_CONDITION initial
   REGION west
 END
 
-: east boundary condition
+# east boundary condition
 BOUNDARY_CONDITION east
   FLOW_CONDITION river
   REGION east
 END
 
-: top boundary condition
+# top boundary condition
 BOUNDARY_CONDITION top
   FLOW_CONDITION recharge
   REGION top
 END
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
   REGION layer1
   MATERIAL soil1

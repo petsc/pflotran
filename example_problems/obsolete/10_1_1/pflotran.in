@@ -1,4 +1,4 @@
-:Description: 1D problem for testing geochemistry
+#Description: 1D problem for testing geochemistry
  
 MODE RICHARDS
 
@@ -28,27 +28,27 @@ Calcite 1.d-6
 END
 DATABASE ../../database/hanford.dat
 END
-:
-:CHECKPOINT 1
-:RESTART pflotran.chk1
+#
+#CHECKPOINT 1
+#RESTART pflotran.chk1
 
 TIMESTEPPER
-:MAX_STEPS 5
+#MAX_STEPS 5
 END
 
-:NUMERICAL_JACOBIAN
-:INEXACT_NEWTON
-:STATISTICS
-:
-:CHECKPOINT 50
-:WALLCLOCK_STOP 0.05
-:
+#NUMERICAL_JACOBIAN
+#INEXACT_NEWTON
+#STATISTICS
+#
+#CHECKPOINT 50
+#WALLCLOCK_STOP 0.05
+#
 DEBUG
-:MATVIEW_JACOBIAN
-:VECVIEW_RESIDUAL
-:VECVIEW_SOLUTION
+#MATVIEW_JACOBIAN
+#VECVIEW_RESIDUAL
+#VECVIEW_SOLUTION
 END
-:
+#
 GRID
 TYPE structured
 NXYZ 10 1 1
@@ -58,59 +58,59 @@ DXYZ
 1.
 END
 END
-:
+#
 NEWTON_SOLVER FLOW
-:MATRIX_TYPE MFFD
-:PRECONDITIONER_MATRIX_TYPE AIJ
-:RTOL 1.d-8
+#MATRIX_TYPE MFFD
+#PRECONDITIONER_MATRIX_TYPE AIJ
+#RTOL 1.d-8
 ATOL 1.d-6
 NO_INFINITY_NORM
-:NO_PRINT_CONVERGENCE
-:PRINT_DETAILED_CONVERGENCE
+#NO_PRINT_CONVERGENCE
+#PRINT_DETAILED_CONVERGENCE
 END
-:
+#
 LINEAR_SOLVER FLOW
-:KSP_TYPE FGMRES
-:KSP_TYPE PREONLY
-:PC_TYPE LU
+#KSP_TYPE FGMRES
+#KSP_TYPE PREONLY
+#PC_TYPE LU
 END
-:
+#
 LINEAR_SOLVER TRANSPORT
-:KSP_TYPE PREONLY
-:PC_TYPE LU
+#KSP_TYPE PREONLY
+#PC_TYPE LU
 END
-:
-:STATISTICS
-:
+#
+#STATISTICS
+#
 HDF5 VELO !FLUX
 TECPLOT BLOCK VELO !FLUX
-:VTK
-:
+#VTK
+#
 DIFF  1.D-9       12.6
-:
+#
 SATURATION_FUNCTIONS
-:id itype swir   lambda alpha     pcwmax betac pwr
+#id itype swir   lambda alpha     pcwmax betac pwr
  1  2     0.10   2.67   2.042d-4  1.e8   0.d0  1.d0
 END
 
 THERMAL_PROPERTIES
-:ithm rho    cpr     ckdry cksat tau cdiff   cexp
+#ithm rho    cpr     ckdry cksat tau cdiff   cexp
   1   2.75e3 1000.e0 0.5   0.5   0.5 2.13d-5 1.8
 END
-:
+#
 MATERIALS
-:name   id icap ithm por  tau permx     permy     permz     permpwr
+#name   id icap ithm por  tau permx     permy     permz     permpwr
 Soil1   1  1    1    0.25 0.5 1.d-12    1.d-12    1.d-13    1.d0
 END
-:
+#
 TIME d every 1
 40.
-:
-:DTST 1.d-6
+#
+#DTST 1.d-6
 DTST 1.d-6
-:50. 1.0d0 
+#50. 1.0d0 
 50. 0.1d0 
-:
+#
 REGION all
 BLOCK 1 10 1 1 1 1
 END

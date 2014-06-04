@@ -1,19 +1,19 @@
-:Description: 1D variably saturated flow problem
+#Description: 1D variably saturated flow problem
 
-:=========================== regression =======================================
+#=========================== regression =======================================
 REGRESSION
   CELLS_PER_PROCESS 5
 END
 
-:=========================== flow mode ========================================
+#=========================== flow mode ========================================
 MODE RICHARDS
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 LINEAR_SOLVER FLOW
   SOLVER DIRECT
 END
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
   TYPE structured
   NXYZ 1 1 100
@@ -23,7 +23,7 @@ GRID
   /
 END
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.25d0
@@ -33,7 +33,7 @@ MATERIAL_PROPERTY soil1
   SATURATION_FUNCTION sf1
 END
 
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION sf1
   SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
   RESIDUAL_SATURATION 0.1d0
@@ -41,20 +41,20 @@ SATURATION_FUNCTION sf1
   ALPHA 1.d-4
 END
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
   TIMES y 0.01 0.1 1.0
   FORMAT TECPLOT POINT
 END
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
   FINAL_TIME 10.d0 y
   INITIAL_TIMESTEP_SIZE 1.d0 h
   MAXIMUM_TIMESTEP_SIZE 5.d-2 y
 END
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
@@ -78,7 +78,7 @@ REGION bottom
   /
 END
 
-:=========================== flow conditions ==================================
+#=========================== flow conditions ==================================
 FLOW_CONDITION initial
   TYPE
     PRESSURE hydrostatic
@@ -94,8 +94,8 @@ FLOW_CONDITION recharge
   FLUX 10.d0 cm/y
 END
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
   FLOW_CONDITION initial
   REGION all
@@ -111,7 +111,7 @@ BOUNDARY_CONDITION inlet
   REGION top
 END
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
   REGION all
   MATERIAL soil1

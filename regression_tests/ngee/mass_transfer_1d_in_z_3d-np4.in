@@ -1,9 +1,9 @@
-:Description: 1D soil layer model for testing coupling with mass transfer
-:             source/sink.
+#Description: 1D soil layer model for testing coupling with mass transfer
+#             source/sink.
 
 PROC 2 2 1
 
-:=========================== regression =======================================
+#=========================== regression =======================================
 REGRESSION
   CELLS
     5
@@ -14,13 +14,13 @@ REGRESSION
   /
 END
 
-:=========================== flow mode ========================================
-: Uniform velocity (see below). No flow mode specified.
+#=========================== flow mode ========================================
+# Uniform velocity (see below). No flow mode specified.
 
-:=========================== useful tranport parameters ==================
+#=========================== useful tranport parameters ==================
 UNIFORM_VELOCITY 0.d0 0.d0 0.d0 m/yr
 
-:=========================== chemistry ========================================
+#=========================== chemistry ========================================
 CHEMISTRY
   PRIMARY_SPECIES
     A(aq)
@@ -34,15 +34,16 @@ CHEMISTRY
   ACTIVITY_COEFFICIENTS TIMESTEP
   OUTPUT
     all
+    TOTAL
   /
 END
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 LINEAR_SOLVER TRANSPORT
   SOLVER ITERATIVE
 END
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
   TYPE structured
   NXYZ 2 2 10
@@ -53,32 +54,32 @@ GRID
   /
 END
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY 
   DIFFUSION_COEFFICIENT 0.d0
 END
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.25d0
   TORTUOSITY 1.d0
 END
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
-:  PERIODIC TIME 0.25d0 y
-:  FORMAT TECPLOT POINT
+#  PERIODIC TIME 0.25d0 y
+#  FORMAT TECPLOT POINT
 END
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
   FINAL_TIME 1.d0 y
   INITIAL_TIMESTEP_SIZE 1.d0 h
   MAXIMUM_TIMESTEP_SIZE 5.d-2 y
 END
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
   BLOCK 1 2 1 2 1 10
 END
@@ -93,7 +94,7 @@ REGION top
   BLOCK 1 2 1 2 1 10
 END
 
-:=========================== transport conditions =============================
+#=========================== transport conditions =============================
 TRANSPORT_CONDITION background_conc
   TYPE zero_gradient
   CONSTRAINT_LIST
@@ -101,7 +102,7 @@ TRANSPORT_CONDITION background_conc
   /
 END
 
-:=========================== constraints ======================================
+#=========================== constraints ======================================
 CONSTRAINT initial_constraint
   CONCENTRATIONS
     A(aq)  1.d-4      F
@@ -113,7 +114,7 @@ CONSTRAINT initial_constraint
   /
 END
 
-:=========================== datasets =========================================
+#=========================== datasets =========================================
 DATASET GLOBAL A(im)
   FILENAME mass_transfer_1d_in_z_3d_data.h5
   HDF5_DATASET_NAME A(im)
@@ -129,7 +130,7 @@ DATASET GLOBAL C(im)
   HDF5_DATASET_NAME C(im)
 END
 
-:=========================== mass transfer ====================================
+#=========================== mass transfer ====================================
 RT_MASS_TRANSFER A(im)
   IDOF 2
   DATASET A(im)
@@ -145,14 +146,14 @@ RT_MASS_TRANSFER C(im)
   DATASET C(im)
 END
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
   TRANSPORT_CONDITION background_conc
   REGION all
 END
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
   REGION all
   MATERIAL soil1

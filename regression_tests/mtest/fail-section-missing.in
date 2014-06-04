@@ -1,11 +1,11 @@
-:Description: Batch carbonate equilibrium speciation reaction
+#Description: Batch carbonate equilibrium speciation reaction
 
-:=========================== regression =======================================
+#=========================== regression =======================================
 REGRESSION
   CELLS_PER_PROCESS 1
 END
 
-:=========================== chemistry ========================================
+#=========================== chemistry ========================================
 CHEMISTRY
 PRIMARY_SPECIES
 H+
@@ -18,40 +18,41 @@ CO2(aq)
 /
 DATABASE ../../database/hanford.dat
 LOG_FORMULATION
-:ACTIVITY_COEFFICIENTS TIMESTEP
+#ACTIVITY_COEFFICIENTS TIMESTEP
 
 OUTPUT
   ACTIVITY_COEFFICIENTS
   ALL
+  TOTAL
 /
 /
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 TIMESTEPPER
 TS_ACCELERATION 8
 MAX_STEPS -1
 /
 
 NEWTON_SOLVER TRANSPORT
-:RTOL 1.d-4
-:ATOL 1.d-4
-:STOL 1.e-60
-:DTOL 1.e4
-:ITOL_UPDATE 1.d-4
+#RTOL 1.d-4
+#ATOL 1.d-4
+#STOL 1.e-60
+#DTOL 1.e4
+#ITOL_UPDATE 1.d-4
 NO_INFINITY_NORM
-:NO_PRINT_CONVERGENCE
-:PRINT_DETAILED_CONVERGENCE
+#NO_PRINT_CONVERGENCE
+#PRINT_DETAILED_CONVERGENCE
 /
 
 LINEAR_SOLVER TRANSPORT
-:KSP_TYPE GMRES
-:PC_TYPE NONE
-:KSP_TYPE PREONLY
-:PC_TYPE LU
-:SOLVER GMRES
+#KSP_TYPE GMRES
+#PC_TYPE NONE
+#KSP_TYPE PREONLY
+#PC_TYPE LU
+#SOLVER GMRES
 /
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
 TYPE structured
 ORIGIN 0.d0 0.d0 0.d0
@@ -62,12 +63,12 @@ BOUNDS
 /
 END
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY 
 DIFFUSION_COEFFICIENT 1.d-9
 /
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
 ID 1
 POROSITY 0.25d0
@@ -80,24 +81,24 @@ PERM_Z 1.d-12
 /
 /
 
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION default
 /
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
 PERIODIC TIME 1.d0 y
 FORMAT TECPLOT BLOCK
 /
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
 FINAL_TIME 1.d0 y
 INITIAL_TIMESTEP_SIZE 1.d-6 y
 MAXIMUM_TIMESTEP_SIZE 1.d-1 y
 /
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
 COORDINATES
 0.d0 0.d0 0.d0
@@ -105,7 +106,7 @@ COORDINATES
 /
 END
 
-:=========================== transport conditions =============================
+#=========================== transport conditions =============================
 TRANSPORT_CONDITION initial
 TYPE zero_gradient
 CONSTRAINT_LIST
@@ -114,7 +115,7 @@ CONSTRAINT_LIST
 END
 
 
-:=========================== constraints ======================================
+#=========================== constraints ======================================
 CONSTRAINT initial
 CONCENTRATIONS
 H+     1.d-3      T
@@ -122,14 +123,14 @@ HCO3-  1.d-3      T
 /
 /
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
 TRANSPORT_CONDITION initial
 REGION all
 END
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
 REGION all
 MATERIAL soil1

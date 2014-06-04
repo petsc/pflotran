@@ -281,7 +281,7 @@ subroutine MiscibleAuxVarCompute_NINC(x,auxvar,global_auxvar, &
   
   auxvar%sat(1) = 1.d0
   auxvar%kvr(1) = 1.d0/visw
-  auxvar%h(1) = denw*4.18d-3*global_auxvar%temp(1)
+  auxvar%h(1) = denw*4.18d-3*global_auxvar%temp
   
 ! Glycol-Water mixture diffusivity (yh2o mass fraction water)
   auxvar%diff(2) = ((((-4.021d0*yh2o + 9.1181d0)*yh2o - 5.9703d0)*yh2o &

@@ -1,4 +1,4 @@
-:Description: 1D problem for testing geochemistry
+#Description: 1D problem for testing geochemistry
  
 MODE RICHARDS
 
@@ -70,14 +70,14 @@ NH3(aq)
 HN3(aq)
 N3-
 H2PO4-
-:P2O7----
+#P2O7----
 PO4---
 H3PO4(aq)
 H2F2(aq)
 H2PO3F(aq)
-:O2(aq)
-:aluminum
-:Al+++
+#O2(aq)
+#aluminum
+#Al+++
 AlOH++
 Al(OH)2+
 Al(OH)3(aq)
@@ -89,11 +89,11 @@ AlF4-
 AlH2PO4++
 AlHPO4+
 AlSO4+
-:silica
+#silica
 H3SiO4-
 H2SiO4--
-:
-:copper species
+#
+#copper species
 Cu+
 Cu(CO3)2--
 Cu(NO2)2(aq)
@@ -113,12 +113,12 @@ CuO2--
 CuOH+
 CuPO4-
 CuSO4(aq)
-:
-:sulfur
+#
+#sulfur
 HS-
 H2S(aq)
-:
-:iron
+#
+#iron
 Fe+++
  Fe(SO4)2-
  Fe2(OH)2++++
@@ -151,13 +151,13 @@ Fe+++
  FePO4-
  FeSO4(aq)
  FeSO4+
-:
-:uranium species
+#
+#uranium species
 U+++
 U++++
 UO2+
-:(UO2)3(CO3)6(6-)
-:
+#(UO2)3(CO3)6(6-)
+#
 UO2OH+
 UO2(OH)2(aq)
 UO2(OH)3-
@@ -168,27 +168,27 @@ UO2(OH)4--
 (UO2)3(OH)5+
 (UO2)3(OH)7-
 (UO2)4(OH)7+
-:
+#
 UO2CO3(aq)
 UO2(CO3)2--
 UO2(CO3)3----
 (UO2)2CO3(OH)3-
-:
+#
 Ca2UO2(CO3)3(aq)
 CaUO2(CO3)3--
-:
+#
 UO2NO3+
 UO2Cl+
 UO2Cl2(aq)
 UO2SO4(aq)
 UO2(SO4)2--
-:
+#
 UO2F+
 UO2F2(aq)
 UO2F3-
 UO2F4--
-:
-:25 C
+#
+#25 C
 UO2(H2PO4)(H3PO4)+
 UO2(H2PO4)2(aq)
 UO2HPO4(aq)
@@ -274,19 +274,19 @@ CaUO4
  Hydroxylapatite
  Torbernite
 /
-:
+#
 MINERAL_KINETICS
 Quartz 1.e-22 
 Calcite 1.e-12 
 Metatorbernite 1.e-16 
 /
-:skip
+#skip
 SORPTION
 SURFACE_COMPLEXATION_RXN
 MINERAL Calcite
 SITE >SOH 122.112 ! 20 m^2/g
-:SITE >SOH 164.851 ! 27 m^2/g
-:SITE >SOH 152.64 ! 25 m^2/g
+#SITE >SOH 164.851 ! 27 m^2/g
+#SITE >SOH 152.64 ! 25 m^2/g
 COMPLEXES
 >SOUO2OH
 >SOHUO2CO3
@@ -295,40 +295,40 @@ COMPLEXES
 /
 noskip
 DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
-:DATABASE /Users/lichtner/flotran/database/hanford.dat
-:DATABASE ../../../database/hanford.dat
+#DATABASE /Users/lichtner/flotran/database/hanford.dat
+#DATABASE ../../../database/hanford.dat
 LOG_FORMULATION
 ACTIVITY_COEFFICIENTS
 /
-:
+#
 
-:MOLAL
+#MOLAL
 
 IMOD 100
 
 REFERENCE_POROSITY 0.4d0
 
-:CHECKPOINT 1
-:RESTART pflotran.chk1
+#CHECKPOINT 1
+#RESTART pflotran.chk1
 
 TIMESTEPPER
-:MAX_STEPS -1
+#MAX_STEPS -1
 MAX_STEPS 1000000
 /
 
-:NUMERICAL_JACOBIAN
-:INEXACT_NEWTON
-:STATISTICS
-:
-:CHECKPOINT 50
-:WALLCLOCK_STOP 0.05
-:
+#NUMERICAL_JACOBIAN
+#INEXACT_NEWTON
+#STATISTICS
+#
+#CHECKPOINT 50
+#WALLCLOCK_STOP 0.05
+#
 DEBUG
-:MATVIEW_JACOBIAN
-:VECVIEW_RESIDUAL
-:VECVIEW_SOLUTION
+#MATVIEW_JACOBIAN
+#VECVIEW_RESIDUAL
+#VECVIEW_SOLUTION
 /
-:
+#
 GRID
 TYPE structured
 NXYZ 100 1 1
@@ -338,79 +338,79 @@ DXYZ
 1.
 /
 /
-:
+#
 NEWTON_SOLVER FLOW
-:MATRIX_TYPE MFFD
-:PRECONDITIONER_MATRIX_TYPE AIJ
+#MATRIX_TYPE MFFD
+#PRECONDITIONER_MATRIX_TYPE AIJ
 RTOL 1.d-8
 ATOL 1.d-8
 STOL 1.d-30
-:NO_INFINITY_NORM
-:NO_PRINT_CONVERGENCE
-:PRINT_DETAILED_CONVERGENCE
+#NO_INFINITY_NORM
+#NO_PRINT_CONVERGENCE
+#PRINT_DETAILED_CONVERGENCE
 /
-:
+#
 LINEAR_SOLVER FLOW
-:KSP_TYPE FGMRES
-:KSP_TYPE PREONLY
-:PC_TYPE LU
+#KSP_TYPE FGMRES
+#KSP_TYPE PREONLY
+#PC_TYPE LU
 /
-:
+#
 NEWTON_SOLVER TRANSPORT
-:MATRIX_TYPE MFFD
-:PRECONDITIONER_MATRIX_TYPE AIJ
+#MATRIX_TYPE MFFD
+#PRECONDITIONER_MATRIX_TYPE AIJ
 RTOL 1.d-8
 ATOL 1.d-8
 STOL 1.d-30
-:NO_INFINITY_NORM
-:NO_PRINT_CONVERGENCE
-:PRINT_DETAILED_CONVERGENCE
+#NO_INFINITY_NORM
+#NO_PRINT_CONVERGENCE
+#PRINT_DETAILED_CONVERGENCE
 /
 LINEAR_SOLVER TRANSPORT
-:KSP_TYPE PREONLY
-:PC_TYPE LU
+#KSP_TYPE PREONLY
+#PC_TYPE LU
 /
-:
-:STATISTICS
-:
-:HDF5 VELO !FLUX
+#
+#STATISTICS
+#
+#HDF5 VELO !FLUX
 TECPLOT POINT VELO 
-:TECPLOT BLOCK VELO 
-:
+#TECPLOT BLOCK VELO 
+#
 DIFF  1.D-10       12.6
-:
+#
 SATURATION_FUNCTIONS
-:id itype swir   lambda alpha     pcwmax betac pwr
+#id itype swir   lambda alpha     pcwmax betac pwr
  1  2     0.10   2.67   2.042d-4  1.e8   0.d0  1.d0
 /
 
 THERMAL_PROPERTIES
-:ithm rho    cpr     ckdry cksat tau cdiff   cexp
+#ithm rho    cpr     ckdry cksat tau cdiff   cexp
   1   2.75e3 1000.e0 0.5   0.5   0.5 2.13d-5 1.8
 /
-:
+#
 MATERIALS
-:name   id icap ithm por  tau   permx    permy    permz    permpwr
+#name   id icap ithm por  tau   permx    permy    permz    permpwr
 Hanford  1  1    1   0.4  0.5   5.d-9    5.d-9    5.d-9    1.d0
 /
-:
-:skip
+#
+#skip
 TIME h every 500
 87600.
-:
+#
 DTST 1.d-3
 1000. 1.
-:noskip
+#noskip
 
 skip
 Time s every 900000
 3.1536e6
-:
+#
 DTST 1.
 1.e10 3600.
 noskip
 
-:============================== regions ================================
+#============================== regions ================================
 
 REGION all
 BLOCK 1 100 1 1 1 1
@@ -434,7 +434,7 @@ BLOCK 100 100 1 1 1 1
 FACE east
 /
 
-:skip
+#skip
 REGION breakthrough
 COORDINATES 
 497.5 0. 0.
@@ -444,31 +444,31 @@ BREAKTHROUGH
 REGION breakthrough
 VELOCITY
 /
-:noskip
+#noskip
 
-:========================= flow conditions ==============================
+#========================= flow conditions ==============================
 
-:inland
+#inland
 FLOW_CONDITION Inlet
 TYPE
-:FLUX neumann
+#FLUX neumann
 FLUX dirichlet
 /
-:FLUX 2.8935185d-7 ! 0.1 m/day pore water
-:FLUX 0.317098d-7 ! 1 m/y
-:FLUX  1.58549e-4 ! 5000 m/y = 50 ft/d
+#FLUX 2.8935185d-7 ! 0.1 m/day pore water
+#FLUX 0.317098d-7 ! 1 m/y
+#FLUX  1.58549e-4 ! 5000 m/y = 50 ft/d
 PRESSURE 224380.d0 ! adjusted to give ave. flow to river of 566.772 m/y
 /
 
-:Columbia River
+#Columbia River
 FLOW_CONDITION Outlet
 TYPE
-:FLUX neumann
+#FLUX neumann
 FLUX dirichlet
 /
-:FLUX -2.8935185d-7 ! 0.1 m/day pore water
-:FLUX -0.317098d-7 ! (1 m/y)
-:FLUX -1.58549e-4 ! 5000 m/y = 50 ft/d
+#FLUX -2.8935185d-7 ! 0.1 m/day pore water
+#FLUX -0.317098d-7 ! (1 m/y)
+#FLUX -1.58549e-4 ! 5000 m/y = 50 ft/d
 INTERPOLATION linear
 CYCLIC
 PRESSURE FILE river.txt
@@ -476,13 +476,13 @@ PRESSURE FILE river.txt
 
 FLOW_CONDITION initial
 TYPE
-:PRESSURE hydrostatic
+#PRESSURE hydrostatic
 /
 DATUM 0.d0 0.d0 0 .d0
 PRESSURE 221556.d0 ! ave. pressure
 /
 
-:========================= transport conditions ==============================
+#========================= transport conditions ==============================
 
 TRANSPORT_CONDITION columbia_river
 TYPE dirichlet_zero_gradient
@@ -502,25 +502,25 @@ CONSTRAINT_LIST
 0.d0 initial_src
 /
 /
-:skip
+#skip
 TRANSPORT_CONDITION initial_dwn
 TYPE zero_gradient
 CONSTRAINT_LIST
 0.d0 initial_down_stream
 /
 /
-:noskip
+#noskip
 
-:============================= connections =====================
+#============================= connections =====================
 
-:inland
+#inland
 BOUNDARY_CONDITION
 FLOW_CONDITION Inlet
 TRANSPORT_CONDITION initial_c
 REGION West
 /
 
-:Columbia river
+#Columbia river
 BOUNDARY_CONDITION
 FLOW_CONDITION Outlet
 TRANSPORT_CONDITION columbia_river
@@ -539,13 +539,13 @@ TRANSPORT_CONDITION initial_s
 REGION source
 /
 
-:skip
+#skip
 INITIAL_CONDITION
 FLOW_CONDITION initial
 TRANSPORT_CONDITION initial_dwn
 REGION down_stream
 /
-:noskip
+#noskip
 
 STRATA
 MATERIAL Hanford
@@ -566,7 +566,7 @@ REGION East
 /
 noskip
 
-:============================= solution composition ========================
+#============================= solution composition ========================
 
 CONSTRAINT initial
 CONCENTRATIONS
@@ -596,7 +596,7 @@ Metatorbernite 0.    1.
 /
 /
 
-:skip
+#skip
 CONSTRAINT initial_down_stream
 CONCENTRATIONS
 H+       7.3             pH
@@ -624,7 +624,7 @@ Calcite        0.1   1.
 Metatorbernite 0.0   1.
 /
 /
-:noskip
+#noskip
 
 CONSTRAINT initial_src
 CONCENTRATIONS
@@ -676,4 +676,4 @@ SiO2(aq) 1.e-4            T
 Tracer   1.e-6            F
 /
 /
-:=====================================================
+#=====================================================

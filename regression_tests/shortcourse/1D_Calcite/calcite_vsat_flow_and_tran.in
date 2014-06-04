@@ -1,14 +1,14 @@
-:Description: 1D Calcite dissolution problem
+#Description: 1D Calcite dissolution problem
 
-:=========================== regression =======================================
+#=========================== regression =======================================
 REGRESSION
   CELLS_PER_PROCESS 5
 END
 
-:=========================== flow mode ========================================
+#=========================== flow mode ========================================
 MODE RICHARDS
 
-:=========================== chemistry ========================================
+#=========================== chemistry ========================================
 CHEMISTRY
   PRIMARY_SPECIES
     H+
@@ -36,15 +36,17 @@ CHEMISTRY
   /
   DATABASE ../../../database/hanford.dat
   LOG_FORMULATION
-:  OPERATOR_SPLITTING
+#  OPERATOR_SPLITTING
   ACTIVITY_COEFFICIENTS TIMESTEP
   OUTPUT
     PH
+    TOTAL
+    FREE_ION
     all
   /
 END
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 LINEAR_SOLVER FLOW
   SOLVER DIRECT
 END
@@ -53,7 +55,7 @@ LINEAR_SOLVER TRANSPORT
   SOLVER DIRECT
 END
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
   TYPE structured
   NXYZ 1 1 100
@@ -63,12 +65,12 @@ GRID
   /
 END
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY 
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.25d0
@@ -79,7 +81,7 @@ MATERIAL_PROPERTY soil1
   SATURATION_FUNCTION sf1
 END
 
-:=========================== saturation function ==============================
+#=========================== saturation function ==============================
 SATURATION_FUNCTION sf1
   SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
   RESIDUAL_SATURATION 0.1d0
@@ -88,21 +90,21 @@ SATURATION_FUNCTION sf1
   MAX_CAPILLARY_PRESSURE 1.d8
 /
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
   TIMES y 5. 10. 15. 20.
   FORMAT TECPLOT POINT
-  VELOCITIES
+  VELOCITY_AT_CENTER
 END
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
   FINAL_TIME 25.d0 y
   INITIAL_TIMESTEP_SIZE 1.d0 h
   MAXIMUM_TIMESTEP_SIZE 2.5d-1 y
 END
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
@@ -126,7 +128,7 @@ REGION bottom
   /
 END
 
-:=========================== flow conditions ==================================
+#=========================== flow conditions ==================================
 FLOW_CONDITION initial
   TYPE
     PRESSURE hydrostatic
@@ -142,7 +144,7 @@ FLOW_CONDITION recharge
   FLUX 10 cm/y
 END
 
-:=========================== transport conditions =============================
+#=========================== transport conditions =============================
 TRANSPORT_CONDITION initial
   TYPE zero_gradient
   CONSTRAINT_LIST
@@ -157,7 +159,7 @@ TRANSPORT_CONDITION inlet
   /
 END
 
-:=========================== constraints ======================================
+#=========================== constraints ======================================
 CONSTRAINT initial
   CONCENTRATIONS
     H+     1.d-8      F
@@ -177,8 +179,8 @@ CONSTRAINT inlet
   /
 END
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
   FLOW_CONDITION initial
   TRANSPORT_CONDITION initial
@@ -197,13 +199,13 @@ BOUNDARY_CONDITION inlet
   REGION top
 END
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
   REGION all
   MATERIAL soil1
 END
 
 
-:=========================== checkpoint / restart =============================
+#=========================== checkpoint / restart =============================
 CHECKPOINT 10
 

@@ -1,17 +1,17 @@
-:Description: 1D test problem based on Valocchi et al., 1981
+#Description: 1D test problem based on Valocchi et al., 1981
 
-:=========================== regression =======================================
+#=========================== regression =======================================
 REGRESSION
   CELLS_PER_PROCESS 1
 END
 
-:=========================== flow mode ========================================
-: Uniform velocity (see below). No flow mode specified.
+#=========================== flow mode ========================================
+# Uniform velocity (see below). No flow mode specified.
 
-:=========================== useful tranport parameters ==================
+#=========================== useful tranport parameters ==================
 UNIFORM_VELOCITY 3.170979d-8 0.d0 0.d0 ! 1. meter/yr
 
-:=========================== chemistry ========================================
+#=========================== chemistry ========================================
 CHEMISTRY
   PRIMARY_SPECIES
     Na+
@@ -40,19 +40,20 @@ CHEMISTRY
   /
   DATABASE hanford.dat
   LOG_FORMULATION
-:  ACTIVITY_COEFFICIENTS OFF
+#  ACTIVITY_COEFFICIENTS OFF
   OUTPUT
     all
+    TOTAL
     TOTAL_SORBED
   /
 END
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 LINEAR_SOLVER TRANSPORT
   SOLVER DIRECT
 END
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
   TYPE structured
   NXYZ 1 1 1
@@ -62,32 +63,32 @@ GRID
   /
 END
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY 
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.25d0
   TORTUOSITY 1.d0
 END
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
   TIMES y 5. 10. 15. 20.
   FORMAT TECPLOT POINT
 END
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
   FINAL_TIME 25.d0 y
   INITIAL_TIMESTEP_SIZE 1.d0 h
   MAXIMUM_TIMESTEP_SIZE 2.5d-1 y
 END
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
@@ -111,7 +112,7 @@ REGION east
   /
 END
 
-:=========================== transport conditions =============================
+#=========================== transport conditions =============================
 TRANSPORT_CONDITION initial
   TYPE zero_gradient
   CONSTRAINT_LIST
@@ -126,12 +127,12 @@ TRANSPORT_CONDITION inlet
   /
 END
 
-:=========================== transport constraints ============================
+#=========================== transport constraints ============================
 CONSTRAINT initial
   CONCENTRATIONS
-:    Na+     0.2465  S
-:    Ca++    0.1602  S
-:    Mg++    0.1641  S
+#    Na+     0.2465  S
+#    Ca++    0.1602  S
+#    Mg++    0.1641  S
     Na+     8.65d-2 T
     Ca++    1.82d-2 T
     Mg++    1.11d-2 T
@@ -151,8 +152,8 @@ CONSTRAINT inlet
   /
 END
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
   TRANSPORT_CONDITION initial
   REGION all
@@ -168,7 +169,7 @@ BOUNDARY_CONDITION inlet
   REGION west
 END
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
   REGION all
   MATERIAL soil1

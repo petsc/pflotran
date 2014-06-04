@@ -982,11 +982,11 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
     endif
    
     call MphaseAuxVarCompute_NINC(xx_loc_p(istart:iend), &
-                                  auxvars(ghosted_id)%auxvar_elem(0),&
-                                  global_auxvars(ghosted_id), &
-                                  iphase, &
+        auxvars(ghosted_id)%auxvar_elem(0),&
+        global_auxvars(ghosted_id), &
+        iphase, &
         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
-                                  realization%fluid_properties,option, xphi)
+        realization%fluid_properties,option,xphi)
 ! update global variables
     if (associated(global_auxvars)) then
       global_auxvars(ghosted_id)%pres(:) = auxvars(ghosted_id)%auxvar_elem(0)%pres
@@ -999,15 +999,15 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
 !        auxvars(ghosted_id)%auxvar_elem(0)%pc(:),auxvars(ghosted_id)%auxvar_elem(0)%pres, &
 !        global_auxvars(ghosted_id)%pres(:)
 
-      global_auxvars(ghosted_id)%temp(:) = auxvars(ghosted_id)%auxvar_elem(0)%temp
+      global_auxvars(ghosted_id)%temp = auxvars(ghosted_id)%auxvar_elem(0)%temp
       global_auxvars(ghosted_id)%sat(:) = auxvars(ghosted_id)%auxvar_elem(0)%sat(:)
       global_auxvars(ghosted_id)%fugacoeff(1) = xphi
       global_auxvars(ghosted_id)%den(:) = auxvars(ghosted_id)%auxvar_elem(0)%den(:)
       global_auxvars(ghosted_id)%den_kg(:) = auxvars(ghosted_id)%auxvar_elem(0)%den(:) &
                                           * auxvars(ghosted_id)%auxvar_elem(0)%avgmw(:)
       
-      mnacl= global_auxvars(ghosted_id)%m_nacl(1)
-      if(global_auxvars(ghosted_id)%m_nacl(2)>mnacl) mnacl= global_auxvars(ghosted_id)%m_nacl(2)
+      mnacl = global_auxvars(ghosted_id)%m_nacl(1)
+      if (global_auxvars(ghosted_id)%m_nacl(2) > mnacl) mnacl = global_auxvars(ghosted_id)%m_nacl(2)
       ynacl = mnacl/(1.d3/FMWH2O + mnacl)
       global_auxvars(ghosted_id)%xmass(1) = (1.d0-ynacl) &
         *auxvars(ghosted_id)%auxvar_elem(0)%xmol(1) * FMWH2O &
@@ -1065,14 +1065,14 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
       end select
 	  
       call MphaseAuxVarCompute_NINC(xxbc,auxvars_bc(sum_connection)%auxvar_elem(0), &
-                          global_auxvars_bc(sum_connection),iphase, &
-                         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
-                         realization%fluid_properties, option, xphi)
+          global_auxvars_bc(sum_connection),iphase, &
+          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+          realization%fluid_properties, option, xphi)
     
       if (associated(global_auxvars_bc)) then
         global_auxvars_bc(sum_connection)%pres(:) = auxvars_bc(sum_connection)%auxvar_elem(0)%pres -&
                      auxvars_bc(sum_connection)%auxvar_elem(0)%pc(:)
-        global_auxvars_bc(sum_connection)%temp(:) = auxvars_bc(sum_connection)%auxvar_elem(0)%temp
+        global_auxvars_bc(sum_connection)%temp = auxvars_bc(sum_connection)%auxvar_elem(0)%temp
         global_auxvars_bc(sum_connection)%sat(:) = auxvars_bc(sum_connection)%auxvar_elem(0)%sat(:)
         !    global_auxvars(ghosted_id)%sat_store = 
         global_auxvars_bc(sum_connection)%fugacoeff(1) = xphi
@@ -1467,17 +1467,19 @@ subroutine MphaseAccumulation(auxvar,global_auxvar,por,vol,rock_dencpr, &
 ! Reaction terms here
 ! Note if iireac > 0, then it is the node global index
 
-  if(option%ntrandof > 0)then 
+!#if 0
+  if (option%ntrandof > 0) then
     if (iireac > 0) then
-     !H2O
-      mol(1) = mol(1) + vol * global_auxvar%reaction_rate_store(1) * &
-               option%flow_dt*1D-3 
+      !H2O
+      mol(1) = mol(1) + vol * global_auxvar%reaction_rate_store(1) &
+        *option%flow_dt*1.D-3
+
       !CO2     
-      mol(2) = mol(2) + vol * global_auxvar%reaction_rate_store(2) * &
-               option%flow_dt*1D-3
+      mol(2) = mol(2) + vol * global_auxvar%reaction_rate_store(2) &
+        *option%flow_dt*1.D-3
     endif
   endif
-  
+!#endif
 ! if (option%use_isothermal)then
 !   Res(1:option%nflowdof) = mol(:)
 ! else
@@ -1936,6 +1938,7 @@ subroutine MphaseBCFlux(ibndtype,auxvars,auxvar_up,auxvar_dn, &
   fluxm = 0.d0
   fluxe = 0.d0
   v_darcy = 0.d0
+  vv_darcy = 0.d0
   density_ave = 0.d0
   q = 0.d0
   ukvr = 0.d0
@@ -2365,8 +2368,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
       endif  
     endif
 
-    call Henry_duan_sun(t,p2*1.D-5,henry,xphi,lngamco2, &
-      m_na,m_cl,sat_pressure)
+    call Henry_duan_sun(t,p2*1.D-5,henry,lngamco2,m_na,m_cl)
 
     Qkco2 = henry*xphi ! QkCO2 = xphi * exp(-mu0) / gamma
 
@@ -2669,7 +2671,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
     if (associated(global_auxvars)) then
        global_auxvars(ghosted_id)%pres(:) = auxvars(ghosted_id)%auxvar_elem(0)%pres - &
                auxvars(ghosted_id)%auxvar_elem(0)%pc(:)
-       global_auxvars(ghosted_id)%temp(:) = auxvars(ghosted_id)%auxvar_elem(0)%temp
+       global_auxvars(ghosted_id)%temp = auxvars(ghosted_id)%auxvar_elem(0)%temp
        global_auxvars(ghosted_id)%sat(:) = auxvars(ghosted_id)%auxvar_elem(0)%sat(:)
        global_auxvars(ghosted_id)%fugacoeff(1) = xphi
        global_auxvars(ghosted_id)%den(:) = auxvars(ghosted_id)%auxvar_elem(0)%den(:)
@@ -2962,7 +2964,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       if( associated(global_auxvars_bc))then
         global_auxvars_bc(sum_connection)%pres(:) = auxvars_bc(sum_connection)%auxvar_elem(0)%pres -&
                      auxvars(ghosted_id)%auxvar_elem(0)%pc(:)
-        global_auxvars_bc(sum_connection)%temp(:) = auxvars_bc(sum_connection)%auxvar_elem(0)%temp
+        global_auxvars_bc(sum_connection)%temp = auxvars_bc(sum_connection)%auxvar_elem(0)%temp
         global_auxvars_bc(sum_connection)%sat(:) = auxvars_bc(sum_connection)%auxvar_elem(0)%sat(:)
       !    global_auxvars(ghosted_id)%sat_store = 
         global_auxvars_bc(sum_connection)%fugacoeff(1) = xphi
@@ -4238,6 +4240,10 @@ subroutine MphaseSetPlotVariables(realization)
   
   list => realization%output_option%output_variable_list
   
+  if (associated(list%first)) then
+    return
+  endif
+
   name = 'Temperature'
   units = 'C'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
@@ -4377,7 +4383,7 @@ subroutine MphaseSecondaryHeat(sec_heat_vars,auxvar,global_auxvar, &
   dm_plus = sec_heat_vars%dm_plus
   dm_minus = sec_heat_vars%dm_minus
   area_fm = sec_heat_vars%interfacial_area
-! temp_primary_node = global_auxvar%temp(1)
+! temp_primary_node = global_auxvar%temp
   temp_primary_node = auxvar%temp
 
   coeff_left = 0.d0
