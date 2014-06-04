@@ -1791,8 +1791,10 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
     endif
   endif
   if ((associated(flow_condition%temperature) .and. &
+       associated(flow_condition%pressure) .and. &
        flow_condition%pressure%itype /= HYDROSTATIC_BC) .or. &
-      (flow_condition%pressure%itype == HYDROSTATIC_BC .and. &
+      (associated(flow_condition%pressure) .and. &
+       flow_condition%pressure%itype == HYDROSTATIC_BC .and. &
        flow_condition%temperature%itype /= DIRICHLET_BC)) then
     select case(flow_condition%temperature%itype)
       case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
