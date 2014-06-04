@@ -29,6 +29,11 @@ module Richards_Aux_module
     PetscReal :: dsat_dp
     PetscReal :: dden_dp
 
+    PetscReal :: P_min
+    PetscReal :: P_max
+    PetscReal :: coeff_for_cubic_approx(4)
+    PetscReal :: range_for_linear_approx(4)
+
   end type richards_auxvar_type
   
   type, public :: richards_parameter_type
@@ -135,6 +140,12 @@ subroutine RichardsAuxVarInit(auxvar,option)
   auxvar%dsat_dp = 0.d0
   auxvar%dden_dp = 0.d0
 
+  auxvar%P_min = 0.d0
+  auxvar%P_max = 0.d0
+  auxvar%coeff_for_cubic_approx(:) = 0.d0
+  auxvar%range_for_linear_approx(:) = 0.d0
+  
+
 end subroutine RichardsAuxVarInit
 
 ! ************************************************************************** !
@@ -171,6 +182,11 @@ subroutine RichardsAuxVarCopy(auxvar,auxvar2,option)
   auxvar2%dsat_dp = auxvar%dsat_dp
   auxvar2%dden_dp = auxvar%dden_dp
  
+  auxvar2%P_min = auxvar%P_min
+  auxvar2%P_max = auxvar%P_max
+  auxvar2%coeff_for_cubic_approx(:) = auxvar%coeff_for_cubic_approx(:)
+  auxvar2%range_for_linear_approx(:) = auxvar%range_for_linear_approx(:)
+
 end subroutine RichardsAuxVarCopy
 
 ! ************************************************************************** !
