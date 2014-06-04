@@ -1648,6 +1648,23 @@ subroutine InitReadInput(simulation)
           end select
 
 !....................
+      case ('RELATIVE_PERMEABILITY_AVERAGE')
+        call InputReadWord(input,option,word,PETSC_FALSE)
+        call StringToUpper(word)
+        select case (trim(word))
+          case ('UPWIND')
+            option%rel_perm_aveg = UPWIND
+          case ('HARMONIC')
+            option%rel_perm_aveg = HARMONIC
+          case ('DYNAMIC_HARMONIC')
+            option%rel_perm_aveg = DYNAMIC_HARMONIC
+          case default
+            option%io_buffer = 'Cannot identify the specificed ' // &
+              'RELATIVE_PERMEABILITY_AVERAGE.'
+            call printErrMsg(option)
+          end select
+
+!....................
       case ('GRID')
         call DiscretizationRead(realization%discretization,input,option)
 
@@ -1660,7 +1677,7 @@ subroutine InitReadInput(simulation)
         call InputReadNChars(input,option, &
                              realization%nonuniform_velocity_filename, &
                              MAXSTRINGLENGTH,PETSC_TRUE)
-        call InputErrorMsg(input,option,'filename','NONUNIFORM_VELOCITY') 
+        call InputErrorMsg(input,option,'filename','NONUNIFORM_VELOCITY')
 
       case ('UNIFORM_VELOCITY')
         uniform_velocity_dataset => UniformVelocityDatasetCreate()

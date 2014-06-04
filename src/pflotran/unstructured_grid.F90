@@ -1481,8 +1481,9 @@ subroutine UGridDecompose(unstructured_grid,option)
   call printMsg(option)
 #endif
   
-  call MatRestoreRowIJF90(Dual_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE, &
-                          num_rows,ia_ptr,ja_ptr,success,ierr)
+  if (unstructured_grid%max_ndual_per_cell > 0) &
+    call MatRestoreRowIJF90(Dual_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE, &
+                            num_rows,ia_ptr,ja_ptr,success,ierr)
   
   ! in order to redistributed vertex/cell data among ranks, I package it
   ! in a crude way within a strided petsc vec and pass it.  The stride 
@@ -1568,8 +1569,9 @@ subroutine UGridDecompose(unstructured_grid,option)
   enddo
   call VecRestoreArrayF90(elements_old,vec_ptr,ierr)
   
-  call MatRestoreRowIJF90(Dual_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE, &
-                          num_rows,ia_ptr,ja_ptr,success,ierr)
+  if (unstructured_grid%max_ndual_per_cell > 0) &
+    call MatRestoreRowIJF90(Dual_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE, &
+                            num_rows,ia_ptr,ja_ptr,success,ierr)
   call MatDestroy(Dual_mat,ierr)
  
   

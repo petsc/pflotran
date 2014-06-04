@@ -77,6 +77,7 @@ subroutine SurfaceGlobalAuxVarInit(auxvar,option)
   ! 
 
   use Option_module
+  use PFLOTRAN_Constants_module, only : DUMMY_VALUE
 
   implicit none
   
