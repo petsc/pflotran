@@ -252,4 +252,12 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: DALL_AMICO = 4
   PetscInt, parameter, public :: PAINTER_KARRA_EXPLICIT_NOCRYO = 5
 
+  ! Relative permeability averaging
+  PetscInt, parameter, public:: UPWIND = 1
+  PetscInt, parameter, public:: HARMONIC = 2
+  PetscInt, parameter, public:: DYNAMIC_HARMONIC = 3
+
+  ! Dummy value
+  PetscReal, parameter, public :: DUMMY_VALUE = -999.d0
+
 end module PFLOTRAN_Constants_module

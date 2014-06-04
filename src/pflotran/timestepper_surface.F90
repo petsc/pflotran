@@ -146,22 +146,20 @@ subroutine TimestepperSurfaceSetTargetTime(this,sync_time, &
   equal_to_or_exceeds_waypoint = target_time + tolerance*dt >= cur_waypoint%time
   equal_to_or_exceeds_sync_time = target_time + tolerance*dt >= sync_time
 
-  if(equal_to_or_exceeds_sync_time .or. &
+  if (equal_to_or_exceeds_sync_time .or. &
       (equal_to_or_exceeds_waypoint .and. force_to_match_waypoint)) then
 
-      max_time = min(sync_time,cur_waypoint%time)
-      ! decrement by time step size
-      target_time = target_time - dt
-      ! set new time step size based on max time
-      dt = max_time - target_time
-      target_time = target_time + dt
+    max_time = min(sync_time,cur_waypoint%time)
+    ! decrement by time step size
+    target_time = target_time - dt
+    ! set new time step size based on max time
+    dt = max_time - target_time
+    target_time = target_time + dt
 
-      if(max_time == cur_waypoint%time) then
-        if(cur_waypoint%print_output) plot_flag = PETSC_TRUE
-        if (cur_waypoint%print_checkpoint) checkpoint_flag = PETSC_TRUE
-      endif
-
-  else
+    if (max_time == cur_waypoint%time) then
+      if (cur_waypoint%print_output) plot_flag = PETSC_TRUE
+      if (cur_waypoint%print_checkpoint) checkpoint_flag = PETSC_TRUE
+    endif
 
     if (equal_to_or_exceeds_sync_time) then
       max_time = sync_time
@@ -182,7 +180,7 @@ subroutine TimestepperSurfaceSetTargetTime(this,sync_time, &
 
       target_time = target_time + dt
 
-      if(cur_waypoint%print_output) plot_flag = PETSC_TRUE
+      if (cur_waypoint%print_output) plot_flag = PETSC_TRUE
       if (cur_waypoint%print_checkpoint) checkpoint_flag = PETSC_TRUE
     endif
   

@@ -30,6 +30,7 @@ module PM_Surface_TH_class
     procedure, public :: UpdateSolution => PMSurfaceTHUpdateSolution
     procedure, public :: Destroy => PMSurfaceTHDestroy
     procedure, public :: RHSFunction => PMSurfaceTHRHSFunction
+    procedure, public :: UpdateAuxvars => PMSurfaceTHUpdateAuxvars
   end type pm_surface_th_type
 
   public :: PMSurfaceTHCreate, &
@@ -244,7 +245,30 @@ subroutine PMSurfaceTHPostSolve(this)
   call SurfaceTHUpdateTemperature(this%surf_realization)
   call SurfaceTHUpdateAuxVars(this%surf_realization)
 
+  ! Update the temperature due to atmospheric forcing using an implicit
+  ! time integration.
+  call SurfaceTHImplicitAtmForcing(this%surf_realization)
+  call SurfaceTHUpdateAuxVars(this%surf_realization)
+  call DiscretizationGlobalToLocal(this%surf_realization%discretization, &
+          surf_field%flow_xx,surf_field%flow_xx_loc,NFLOWDOF)
+
 end subroutine PMSurfaceTHPostSolve
+
+! ************************************************************************** !
+subroutine PMSurfaceTHUpdateAuxvars(this)
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 04/30/14
+
+  use Surface_TH_module
+
+  implicit none
+
+  class(pm_surface_th_type) :: this
+
+  call SurfaceTHUpdateAuxVars(this%surf_realization)
+
+end subroutine PMSurfaceTHUpdateAuxvars
 
 ! ************************************************************************** !
 

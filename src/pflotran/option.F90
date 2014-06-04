@@ -209,6 +209,9 @@ module Option_module
     
     PetscInt :: subsurface_simulation_type
 
+    ! Type of averaging scheme for relative permeability
+    PetscInt :: rel_perm_aveg
+
   end type option_type
   
   PetscInt, parameter, public :: SUBSURFACE_SIM_TYPE = 1
@@ -366,6 +369,8 @@ subroutine OptionInitAll(option)
   option%simulation_mode = 'SUBSURFACE'
   option%subsurface_simulation_type = SUBSURFACE_SIM_TYPE
  
+  option%rel_perm_aveg = UPWIND
+
   call OptionInitRealization(option)
 
 end subroutine OptionInitAll
