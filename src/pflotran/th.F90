@@ -2830,6 +2830,7 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
                        auxvar_dn%range_for_linear_approx(1)
               dq_lin = auxvar_dn%range_for_linear_approx(4) - &
                        auxvar_dn%range_for_linear_approx(3)
+              if (abs(dP_lin) < 1.d-10) dP_lin = 1.d-10
               dq_dp_dn = dq_lin/dP_lin
 
               ! Approximation:
@@ -5612,15 +5613,17 @@ subroutine THComputeCoeffsForSurfFlux(realization)
                th_auxvar_dn%range_for_linear_approx(3))
         den = (th_auxvar_dn%range_for_linear_approx(2) - &
                th_auxvar_dn%range_for_linear_approx(1))
+        if (abs(den) < 1.d-10) den = 1.d-10
         slope_1 = num/den
 
         num = (range_for_linear_approx_pert(4) - &
                range_for_linear_approx_pert(3))
         den = (range_for_linear_approx_pert(2) - &
                range_for_linear_approx_pert(1))
+        if (abs(den) < 1.d-10) den = 1.d-10
         slope_2 = num/den
 
-        th_auxvar_dn%dlinear_slope_dT = (slope_2-slope_1)/temp_pert
+        th_auxvar_dn%dlinear_slope_dT = (slope_2 - slope_1)/temp_pert
 
       enddo
 
@@ -5878,7 +5881,7 @@ subroutine ComputeCoeffsForApprox(P_up, T_up, &
 
       ! Values of function derivatives at min/max
       slope = min(-0.01d0*q_allowable/P_min, -1.d-8)
-      slope = -0.01d0*q_allowable/P_min
+      !slope = -0.01d0*q_allowable/P_min
       coeff_for_cubic_approx(3) = slope
       coeff_for_cubic_approx(4) = dq_dp_dn
 
