@@ -41,6 +41,11 @@ module Utility_module
     module procedure DeallocateArray2DString
   end interface
   
+  interface InterfaceApprox
+    module procedure InterfaceApproxWithDeriv
+    module procedure InterfaceApproxWithoutDeriv
+  end interface
+
 contains
 
 ! ************************************************************************** !
@@ -1782,5 +1787,97 @@ subroutine Determinant(A,detA)
   
 
 end subroutine Determinant
+
+! ************************************************************************** !
+subroutine InterfaceApproxWithDeriv(v_up, v_dn, dv_up, dv_dn, dv_up2dn, &
+                                    approx_type, v_interf, &
+                                    dv_interf_dv_up, dv_interf_dv_dn)
+  ! 
+  ! Approximates interface value and it's derivative from values specified
+  ! up and down of a face based on the approximation type
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 05/05/2014
+  ! 
+
+  implicit none
+  
+  PetscReal, intent(in) :: v_up, v_dn
+  PetscReal, intent(in) :: dv_up, dv_dn
+  PetscReal, intent(in) :: dv_up2dn
+  PetscInt, intent(in) :: approx_type
+  PetscReal, intent(out) :: v_interf, dv_interf_dv_up, dv_interf_dv_dn
+
+  PetscReal :: denom
+  PetscReal :: eps = 1.d-15
+
+
+  if (dv_up2dn > 0.d0) then
+    v_interf = v_up
+    dv_interf_dv_up = dv_up
+    dv_interf_dv_dn = 0.d0
+  else
+    v_interf = v_dn
+    dv_interf_dv_up = 0.d0
+    dv_interf_dv_up = dv_dn
+  endif
+
+  select case (approx_type)
+
+    case (UPWIND)
+      if (dv_up2dn > 0.d0) then
+        v_interf = v_up
+        dv_interf_dv_up = dv_up
+        dv_interf_dv_dn = 0.d0
+      else
+        v_interf = v_dn
+        dv_interf_dv_up = 0.d0
+        dv_interf_dv_dn = dv_dn
+      endif
+
+    case (HARMONIC)
+      if (v_up < eps .or. v_dn < eps) then
+        v_interf = 0.d0
+        dv_interf_dv_up = 0.d0
+        dv_interf_dv_dn = 0.d0
+      else
+        denom = (v_up + v_dn)
+        v_interf = 2.d0*v_up*v_dn/denom
+        dv_interf_dv_up = 2.d0*(denom*dv_up*v_dn - v_up*v_dn*dv_up)/(denom**2.d0)
+        dv_interf_dv_dn = 2.d0*(denom*v_up*dv_dn - v_up*v_dn*dv_dn)/(denom**2.d0)
+      endif
+
+  end select
+
+end subroutine InterfaceApproxWithDeriv
+
+! ************************************************************************** !
+
+subroutine InterfaceApproxWithoutDeriv(v_up, v_dn, dv_up2dn, &
+                                       approx_type, v_interf)
+  ! 
+  ! Approximates interface value from values specified
+  ! up and down of a face based on the approximation type
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 05/05/2014
+  ! 
+
+  implicit none
+  
+  PetscReal, intent(in) :: v_up, v_dn
+  PetscReal, intent(in) :: dv_up2dn
+  PetscInt, intent(in) :: approx_type
+  PetscReal, intent(out) :: v_interf
+
+  PetscReal :: dummy_in
+  PetscReal :: dummy_out
+
+  dummy_in = 1.d0
+
+  call InterfaceApproxWithDeriv(v_up, v_dn, dummy_in, dummy_in, dv_up2dn, &
+                                approx_type, v_interf, dummy_out, dummy_out)
+
+end subroutine InterfaceApproxWithoutDeriv
 
 end module Utility_module

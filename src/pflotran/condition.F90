@@ -1330,6 +1330,10 @@ subroutine FlowConditionGeneralRead(condition,input,option)
               sub_condition_ptr%itype = NEUMANN_BC
             case('hydrostatic')
               sub_condition_ptr%itype = HYDROSTATIC_BC
+            case('conductance')
+              sub_condition_ptr%itype = CONDUCTANCE_BC
+            case('seepage')
+              sub_condition_ptr%itype = SEEPAGE_BC
             case('mass_rate')
               sub_condition_ptr%itype = MASS_RATE_SS
             case('scaled_mass_rate')
@@ -1387,6 +1391,15 @@ subroutine FlowConditionGeneralRead(condition,input,option)
                                        sub_condition_ptr%gradient,word)
           nullify(sub_condition_ptr)
         enddo
+      case('CONDUCTANCE')
+        word = 'LIQUID_PRESSURE'
+        select case(option%iflowmode)
+          case(G_MODE)
+            sub_condition_ptr => FlowGeneralSubConditionPtr(word,general, &
+                                                            option)
+        end select
+        call InputReadDouble(input,option,sub_condition_ptr%aux_real(1))
+        call InputErrorMsg(input,option,'LIQUID_CONDUCTANCE','CONDITION')   
       case('LIQUID_PRESSURE','GAS_PRESSURE','LIQUID_SATURATION', &
            'GAS_SATURATION','TEMPERATURE','MOLE_FRACTION','RATE', &
            'LIQUID_FLUX','GAS_FLUX','ENERGY_FLUX')
