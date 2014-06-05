@@ -661,15 +661,15 @@ subroutine DiscretizationCreateDMs(discretization,option)
       discretization%dm_index_to_ndof(NTRANDOF) = option%ntrandof
     case(UNSTRUCTURED_GRID,UNSTRUCTURED_GRID_MIMETIC)
 
-      ! petsc will call parmetis to calculate the graph/dual
-#if !defined(PETSC_HAVE_PARMETIS)
-      option%io_buffer = &
-        'Must compile with Parmetis in order to use unstructured grids.'
-      call printErrMsg(option)
-#endif
     
       select case(discretization%grid%itype)
         case(IMPLICIT_UNSTRUCTURED_GRID)
+          ! petsc will call parmetis to calculate the graph/dual
+#if !defined(PETSC_HAVE_PARMETIS)
+            option%io_buffer = &
+             'Must compile with Parmetis in order to use implicit unstructured grids.'
+            call printErrMsg(option)
+#endif
           call UGridDecompose(discretization%grid%unstructured_grid, &
                               option)
           if(discretization%lsm_flux_method) then
@@ -679,9 +679,19 @@ subroutine DiscretizationCreateDMs(discretization,option)
                                          option)
           endif
         case(EXPLICIT_UNSTRUCTURED_GRID)
+#if !defined(PETSC_HAVE_PARMETIS) && !defined(PETSC_HAVE_PTSCOTCH)
+            option%io_buffer = &
+             'Must compile with either Parmetis or PTSCOTCH in order to use explicit unstructured grids.'
+            call printErrMsg(option)
+#endif
           ugrid => discretization%grid%unstructured_grid
           call UGridExplicitDecompose(ugrid,option)
         case(POLYHEDRA_UNSTRUCTURED_GRID)
+#if !defined(PETSC_HAVE_PARMETIS)
+            option%io_buffer = &
+             'Must compile with Parmetis in order to use implicit unstructured grids.'
+            call printErrMsg(option)
+#endif
           ugrid => discretization%grid%unstructured_grid
           call UGridPolyhedraDecompose(ugrid,option)
       end select
