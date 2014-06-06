@@ -177,13 +177,13 @@ function OutputTecplotZoneHeader(realization_base,variable_count,tecplot_format)
         case (IMPLICIT_UNSTRUCTURED_GRID)
           string2 = ', N=' // &
                     trim(StringFormatInt(grid%unstructured_grid%num_vertices_global)) // &
-                    ', ELEMENTS=' // &
+                    ', E=' // &
                     trim(StringFormatInt(grid%unstructured_grid%nmax))
           string2 = trim(string2) // ', ZONETYPE=FEBRICK'
         case (EXPLICIT_UNSTRUCTURED_GRID)
           string2 = ', N=' // &
                     trim(StringFormatInt(grid%unstructured_grid%nmax)) // &
-                    ', ELEMENTS=' // &
+                    ', E=' // &
                     trim(StringFormatInt(grid%unstructured_grid%explicit_grid%num_elems))
           string2 = trim(string2) // ', ZONETYPE=FEBRICK'
         case (POLYHEDRA_UNSTRUCTURED_GRID)
@@ -191,7 +191,7 @@ function OutputTecplotZoneHeader(realization_base,variable_count,tecplot_format)
                     trim(StringFormatInt(grid%unstructured_grid%num_vertices_global)) // &
                     ', FACES=' // &
                     trim(StringFormatInt(grid%unstructured_grid%polyhedra_grid%num_ufaces_global)) // &
-                    ', ELEMENTS=' // &
+                    ', E=' // &
                     trim(StringFormatInt(grid%unstructured_grid%nmax)) // &
                     ', TotalNumFaceNodes=' // &
                     trim(StringFormatInt(grid%unstructured_grid%polyhedra_grid%num_verts_of_ufaces_global)) // &
