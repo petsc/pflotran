@@ -1599,6 +1599,7 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
   PetscReal :: pressure_min
   PetscReal :: well_inj_water
   PetscReal :: Dq, dphi, v_darcy, ukvr
+  Mat, parameter :: null_mat = 0
   
   patch => realization%patch
   grid => patch%grid
@@ -1726,6 +1727,9 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
     source_sink => source_sink%next
   enddo
 
+  call RichardsSSSandbox(r,null_mat,PETSC_FALSE,grid,material_auxvars, &
+                         global_auxvars,option)
+  
   if (patch%aux%Richards%inactive_cells_exist) then
     do i=1,patch%aux%Richards%n_zero_rows
       r_p(patch%aux%Richards%zero_rows_local(i)) = 0.d0
@@ -2184,6 +2188,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,realization,ierr)
   PetscReal :: pressure_max
   PetscReal :: pressure_min
   PetscReal :: ukvr, Dq, dphi, v_darcy
+  Vec, parameter :: null_vec = 0
   
   patch => realization%patch
   grid => patch%grid
@@ -2317,6 +2322,10 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,realization,ierr)
     source_sink => source_sink%next
   enddo
 #endif
+
+  call RichardsSSSandbox(null_vec,A,PETSC_TRUE,grid,material_auxvars, &
+                         global_auxvars,option)
+
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -2892,6 +2901,113 @@ subroutine RichardsComputeCoeffsForSurfFlux(realization)
   enddo
 
 end subroutine RichardsComputeCoeffsForSurfFlux
+
+! ************************************************************************** !
+
+subroutine RichardsSSSandbox(residual,Jacobian,compute_derivative, &
+                             grid,material_auxvars,global_auxvars,option)
+  ! 
+  ! Evaluates source/sink term storing residual and/or Jacobian
+  ! 
+  ! Author: Guoping Tang
+  ! Date: 06/03/14
+  ! 
+
+  use Option_module
+  use Grid_module
+  use Material_Aux_class, only: material_auxvar_type
+  use SrcSink_Sandbox_module
+  use SrcSink_Sandbox_Base_class
+  
+  implicit none
+  
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
+
+  PetscBool :: compute_derivative
+  Vec :: residual
+  Mat :: Jacobian
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+  
+  type(grid_type) :: grid
+  type(option_type) :: option
+  
+  PetscReal, pointer :: r_p(:)
+  PetscReal :: res(option%nflowdof)
+  PetscReal :: Jac(option%nflowdof,option%nflowdof)
+  class(srcsink_sandbox_base_type), pointer :: cur_srcsink
+  PetscInt :: i, local_id, ghosted_id, istart, iend, idof, irow
+  PetscReal :: aux_real(10)
+  PetscErrorCode :: ierr
+  
+  if (.not.compute_derivative) then
+    call VecGetArrayF90(residual,r_p,ierr) 
+  endif
+  
+  cur_srcsink => sandbox_list
+  do
+    if (.not.associated(cur_srcsink)) exit
+      aux_real = 0.d0
+
+      do i = 1, size(cur_srcsink%region%cell_ids)
+        local_id = cur_srcsink%region%cell_ids(i)
+        ghosted_id = grid%nL2G(local_id)
+        res = 0.d0
+        Jac = 0.d0
+        call RichardsSSSandboxLoadAuxReal(cur_srcsink,aux_real, &
+                          global_auxvars(ghosted_id),option)
+        call cur_srcsink%Evaluate(res,Jac,PETSC_FALSE, &
+                                  material_auxvars(ghosted_id), &
+                                  aux_real,option)
+        if (compute_derivative) then
+          call RichardsSSSandboxLoadAuxReal(cur_srcsink,aux_real, &
+                                            global_auxvars(ghosted_id),option)
+          call cur_srcsink%Evaluate(res,Jac,PETSC_TRUE, &
+                                    material_auxvars(ghosted_id), &
+                                    aux_real,option)
+          call MatSetValuesBlockedLocal(Jacobian,1,ghosted_id-1,1, &
+                                        ghosted_id-1,Jac,ADD_VALUES,ierr)
+        else
+          iend = local_id*option%nflowdof
+          istart = iend - option%nflowdof + 1
+          r_p(istart:iend) = r_p(istart:iend) - res
+        endif
+      enddo
+    cur_srcsink => cur_srcsink%next
+  enddo
+  
+  if (.not.compute_derivative) then
+    call VecRestoreArrayF90(residual,r_p,ierr)
+  endif
+
+end subroutine RichardsSSSandbox
+
+! ************************************************************************** !
+
+subroutine RichardsSSSandboxLoadAuxReal(srcsink,aux_real,global_auxvar,option)
+
+  use Option_module
+  use SrcSink_Sandbox_Base_class
+  use SrcSink_Sandbox_Downreg_class
+
+  implicit none
+
+  class(srcsink_sandbox_base_type) :: srcsink
+  PetscReal :: aux_real(:)
+  type(global_auxvar_type) :: global_auxvar
+  type(option_type) :: option
+  
+  aux_real = 0.d0
+
+  select type(srcsink)
+    class is(srcsink_sandbox_downreg_type)
+      aux_real(1) = global_auxvar%pres(1)
+  end select
+  
+end subroutine RichardsSSSandboxLoadAuxReal
 
 ! ************************************************************************** !
 
