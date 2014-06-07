@@ -48,8 +48,8 @@ module Mphase_module
          MphaseSetup,MphaseUpdateReason, &
          MphaseMaxChange,MphaseUpdateSolution, &
          MphaseGetTecplotHeader,MphaseInitializeTimestep, &
-         MphaseUpdateAuxVars, init_span_wanger, &
-         MphaseSecondaryHeat, MphaseSecondaryHeatJacobian, &
+         MphaseUpdateAuxVars,init_span_wanger, &
+         MphaseSecondaryHeat,MphaseSecondaryHeatJacobian, &
          MphaseComputeMassBalance,MphaseDestroy
 
 contains
@@ -2311,11 +2311,11 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 ! Pure CO2 phase properties ------------------------------------------    
     p2 = p
 !   p2 = p*xmol(4)
-    if(p2 >= 5.d4)then
-      if(option%co2eos == EOS_SPAN_WAGNER)then
+    if (p2 >= 5.d4) then
+      if (option%co2eos == EOS_SPAN_WAGNER) then
         select case(option%itable)  
           case(0,1,2,4,5)
-            if(option%itable >=4) then
+            if (option%itable >=4) then
               call co2_sw_interp(p2*1.D-6,t,dg,dddt,dddp,fg, &
                   dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
             else
@@ -2327,17 +2327,17 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
                 return
               endif
             endif
-            dg= dg / FMWCO2
-            fg= fg * 1.D6 
-            hg= hg * FMWCO2
+            dg = dg / FMWCO2
+            fg = fg * 1.D6
+            hg = hg * FMWCO2
 ! Span-Wagner EOS with Bi-Cubic Spline interpolation
           case(3) 
             call sw_prop(t,p2*1D-6,dg,hg, eng, fg)
-            dg= dg / FMWCO2
-            fg= fg * 1.D6 
-            hg= hg * FMWCO2
+            dg = dg / FMWCO2
+            fg = fg * 1.D6
+            hg = hg * FMWCO2
         end select     
-      elseif(option%co2eos == EOS_MRK)then
+      elseif (option%co2eos == EOS_MRK) then
 ! MRK eos [modified version from  Kerrick and Jacobs (1981) and Weir et al. (1996).]     
         call CO2( t,p2, dg,fg, xphi, hg)
         dg = dg / FMWCO2
@@ -2356,7 +2356,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
     sat_pressure = sat_pressure/1.D5
   
     m_na=option%m_nacl; m_cl=m_na; m_nacl = m_na 
-    if(associated(realization%reaction))then
+    if (associated(realization%reaction)) then
       if (associated(realization%reaction%species_idx)) then
         if (realization%reaction%species_idx%na_ion_id /= 0 .and. &
           realization%reaction%species_idx%cl_ion_id /= 0) then
@@ -2391,9 +2391,9 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 
 !         print *,'phase chg: ',xmol(2),xco2eq,mco2,m_nacl,p,t
 
-!         if(xmol(4)+ wat_sat_x > 1.05d0) then
-!         if(xmol(2) > xco2eq) then
-          if(xmol(2) >= xco2eq) then
+!         if (xmol(4)+ wat_sat_x > 1.05d0) then
+!         if (xmol(2) > xco2eq) then
+          if (xmol(2) >= xco2eq) then
 
         !   Rachford-Rice initial guess: 1=H2O, 2=CO2
             k1 = wat_sat_x !sat_pressure*1.D5/p
@@ -2405,7 +2405,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
             
        !    calculate initial guess for sg
             sg = vmco2*xg/(vmco2*xg+vmh2o*(1.d0-xg))
-            if(sg>1.D-4) then          
+            if (sg > 1.D-4) then
               write(*,'('' Liq -> 2ph '',''rank='',i6,'' n='',i8,'' p='',1pe10.4, &
        &      '' T='',1pe10.4,'' Xl='',1pe11.4, &
        &      '' Xco2eq='',1pe11.4,'' sg='',1pe11.4)') &
@@ -2438,13 +2438,13 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 
 !           print *,'gas -> 2ph: ',xmol(3),wat_sat_x,xco2eq,sat_pressure
           
-!         if (xmol(3) > (1.d0+1.d-6)*tmp .and. iipha==2)then
+!         if (xmol(3) > (1.d0+1.d-6)*tmp .and. iipha==2) then
             write(*,'('' Gas -> 2ph '',''rank='',i6,'' n='',i8, &
-       &  '' p= '',1pe10.4,'' T= '',1pe10.4,'' Xg= '',1pe11.4,'' Ps/P='', 1pe11.4)') &
+       &    '' p= '',1pe10.4,'' T= '',1pe10.4,'' Xg= '',1pe11.4,'' Ps/P='', 1pe11.4)') &
             option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3),wat_sat_x
 
             iphase_loc_p(ghosted_id) = 3 ! Gas -> 2ph
-           xx_p(dof_offset+3) = 1.D0-formeps
+            xx_p(dof_offset+3) = 1.D0-formeps
 !            xx_p(dof_offset+3) = 1.D0
             ichange = 1
           endif
@@ -2458,14 +2458,14 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 !         xmol(3)= xmol(1)*tmp
 !         xmol(4)= 1.D0-xmol(3)
 
-          xmol(1) = 1.D0 - xco2eq
-          xmol(2) = xco2eq
-          xmol(3) = tmp
-          xmol(4) = 1.D0-tmp          
+          xmol(1) = 1.D0 - xco2eq  ! x_h2o^h2o
+          xmol(2) = xco2eq         ! x_co2^h2o
+          xmol(3) = tmp            ! x_h2o^co2
+          xmol(4) = 1.D0 - tmp     ! x_co2^co2
 
-!         if(satu(2) >= 1.D0) then
-!         if(satu(2) >= 1.01D0) then
-          if(satu(2) >= 1.001D0) then
+!         if (satu(2) >= 1.D0) then
+!         if (satu(2) >= 1.01D0) then
+          if (satu(2) >= 1.001D0) then
 
             write(*,'('' 2ph -> Gas '',''rank='',i6,'' n='',i8, &
        &  '' p='',1pe10.4,'' T='',1pe10.4,'' sg='',1pe11.4)') &
@@ -2476,7 +2476,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
             xx_p(dof_offset+3) = 1.D0
             ichange = 1
             
-          else if(satu(2) <= 0.D0) then
+          else if (satu(2) <= 0.D0) then
           
             write(*,'('' 2ph -> Liq '',''rank= '',i6,'' n='',i8,'' p='',1pe10.4, &
       &     '' T='',1pe10.4,'' sg ='',1pe11.4,'' Xco2eq='',1pe11.4)')  &
@@ -3115,9 +3115,12 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 
     istart = 1 + (local_id-1)*option%nflowdof
 !   if(volume_p(local_id) > 1.D0) &    ! karra added 05/06/2013
+
+!   scale residual with volume
     r_p (istart:istart+option%nflowdof-1) = &
         r_p(istart:istart+option%nflowdof-1) / &
         material_auxvars(grid%nL2G(local_id))%volume
+
     if(r_p(istart) > 1E20 .or. r_p(istart) < -1E20) print *,'mphase residual: ', r_p (istart:istart+2)
   enddo
 
