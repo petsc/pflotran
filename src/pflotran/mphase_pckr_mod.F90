@@ -264,13 +264,14 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
   implicit none 
 
   
-  PetscInt :: ipckrtype
+  PetscInt, intent(in) :: ipckrtype
    !formation type, in pflow should be referred by grid%icap_loc
-  PetscReal :: pckr_sir(:)
-  PetscReal :: pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax
-  PetscReal :: pckr_beta,pckr_pwr
-  PetscReal :: sg
-  PetscReal :: pc(1:2),kr(1:2)
+  PetscReal, intent(in) :: pckr_sir(:)
+  PetscReal, intent(in) :: pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax
+  PetscReal, intent(in) :: pckr_beta,pckr_pwr
+  PetscReal, intent(in) :: sg
+  PetscReal, intent(out) :: pc(1:2)
+  PetscReal, intent(out) :: kr(1:2)
        
   PetscReal :: se,swir,sgir,sw0,lam,ala,um,un,upc,upc_s,kr_s,krg_s
   PetscReal :: temp,ser,pcmax,sw
