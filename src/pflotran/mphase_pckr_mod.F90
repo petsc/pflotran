@@ -264,12 +264,14 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
   implicit none 
 
   
-  PetscInt :: ipckrtype
+  PetscInt, intent(in) :: ipckrtype
    !formation type, in pflow should be referred by grid%icap_loc
-  PetscReal :: pckr_sir(:),pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax
-  PetscReal :: pckr_beta,pckr_pwr
-  PetscReal :: sg
-  PetscReal :: pc(1:2),kr(1:2)
+  PetscReal, intent(in) :: pckr_sir(:)
+  PetscReal, intent(in) :: pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax
+  PetscReal, intent(in) :: pckr_beta,pckr_pwr
+  PetscReal, intent(in) :: sg
+  PetscReal, intent(out) :: pc(1:2)
+  PetscReal, intent(out) :: kr(1:2)
        
   PetscReal :: se,swir,sgir,sw0,lam,ala,um,un,upc,upc_s,kr_s,krg_s
   PetscReal :: temp,ser,pcmax,sw
@@ -396,13 +398,13 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
             kr(2) = (1.D0 - se)**2.D0 * (1.D0 - se**(2.D0/lam + 1.D0)) 
             upc = upc0 + (sw - 1.05D0 * swir) * upc_s0
 
-              ! kr_s=(2.d0/lam+3.d0)*kr(1)/se
-             ! krg_s = -2.D0*kr(2)/(1.D0-se) -(2.D0+lam)/lam*(1.D0-se)**2.D0*(se**(2.D0/lam)) 
-              ! ser=(sw-swir)/(1.D0-swir)
+          ! kr_s=(2.d0/lam+3.d0)*kr(1)/se
+          ! krg_s = -2.D0*kr(2)/(1.D0-se) -(2.D0+lam)/lam*(1.D0-se)**2.D0*(se**(2.D0/lam))
+          ! ser=(sw-swir)/(1.D0-swir)
             
-              !kr(1)=kr(1)+(ser-se)*kr_s
-        !    kr(2)=kr(2)+(ser-se)*krg_s
-              !kr(2)=1.D0-kr(1)
+          ! kr(1)=kr(1)+(ser-se)*kr_s
+        !   kr(2)=kr(2)+(ser-se)*krg_s
+          ! kr(2)=1.D0-kr(1)
           else
             upc = upc0 + (sw - 1.05D0 * swir) * upc_s0
             kr(1) = 0.D0
@@ -502,14 +504,14 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
         lam = pckr_lambda
         ala = pckr_alpha
        ! swir=pckr_swir
-        ala = pckr_alpha
-       ! swir=pckr_swir
 
 ! Water phase using van Genuchten  
         um = pckr_m
         un = 1.D0/(1.D0 - um)
-        se = (sw - 0.03D0)/(sw0 - 0.03D0)
-        if (se > 1.d-6) then
+!       se = (sw - 0.03D0)/(sw0 - 0.03D0)
+        se = (sw - swir)/(sw0 - swir)
+!       if (se > 1.d-6) then
+        if (sw > swir) then
           temp = se**(-1.D0/um)
           if (temp < 1.D0+1e-6) temp = 1.D0+1e-6
           upc = (temp - 1.D0)**(1.d0/un)/ala
@@ -517,21 +519,23 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
         else
           upc = pcmax
         endif
-        se = (sw - swir)/(sw0 - swir)
-        if (se < 0.D0) then 
+!       se = (sw - swir)/(sw0 - swir)
+!       if (se < 0.D0) then
+        if (sw < swir) then
           se = 0.D0
           kr(1) = 0.D0
         else 
           temp = se**(-1.D0/um)
-         ! kr(1) = sqrt(se)*(1.D0-(1.D0-1.D0/temp)**um)**2.d0
-             kr(1) = sqrt(se)*(1.D0 - (1.D0 - se**(1.D0/um))**pckr_m)**2.D0
+        ! kr(1) = sqrt(se)*(1.D0 - (1.D0-1.D0/temp)**um)**2.d0
+          kr(1) = sqrt(se)*(1.D0 - (1.D0 - se**(1.D0/um))**pckr_m)**2.D0
         endif
 
 ! Gas phase using BC         
            
         se = (sw - swir)/(1.D0 - swir - sgir)
            
-        if (se < 1.D-6) then
+!       if (se < 1.D-6) then
+        if (sw < swir) then
           se = 0.D0
           kr(2) = 1.0 
         elseif (se >= 1.D0-1d-6) then
@@ -572,7 +576,8 @@ subroutine pckrNH_noderiv(sat, pc, kr, saturation_function, option)
   type(option_type) :: option
   PetscReal :: sat(option%nphase),pc(option%nphase),kr(option%nphase)
 
-  PetscReal :: pckr_sir(option%nphase),pckr_lambda, &
+  PetscReal :: pckr_sir(option%nphase)
+  PetscReal :: pckr_lambda, &
        pckr_alpha,pckr_m,pckr_pcmax,sg ,pckr_beta,pckr_pwr
   
   

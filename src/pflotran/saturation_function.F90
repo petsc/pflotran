@@ -75,6 +75,7 @@ module Saturation_Function_module
   PetscInt, parameter :: NMT_EXP = 4
   PetscInt, parameter :: PRUESS_1 = 5
   PetscInt, parameter :: LINEAR_MODEL = 6
+  PetscInt, parameter :: MODIFIED_BROOKS_COREY = 6
 
   ! Permeability function
   PetscInt, parameter :: DEFAULT = 0
@@ -343,6 +344,8 @@ subroutine SaturationFunctionSetTypes(saturation_function,option)
       saturation_function%permeability_function_itype = NMT_EXP
     case('PRUESS_1')
       saturation_function%permeability_function_itype = PRUESS_1
+    case('MODIFIED_BROOKS_COREY')
+      saturation_function%permeability_function_itype = MODIFIED_BROOKS_COREY
     case default
       option%io_buffer = 'Permeability function type "' // &
                           trim(saturation_function%permeability_function_ctype) // &
@@ -367,7 +370,9 @@ subroutine SaturationFunctionSetTypes(saturation_function,option)
       saturation_function%saturation_function_itype = NMT_EXP
     case('PRUESS_1')
       saturation_function%saturation_function_itype = PRUESS_1
-       
+    case('MODIFIED_BROOKS_COREY')
+      saturation_function%saturation_function_itype = MODIFIED_BROOKS_COREY
+
     case default
       option%io_buffer = 'Saturation function type "' // &
                           trim(saturation_function%saturation_function_ctype) // &
