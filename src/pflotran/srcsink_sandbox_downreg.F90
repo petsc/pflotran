@@ -3,9 +3,19 @@ module SrcSink_Sandbox_Downreg_class
 ! Source/sink Sandbox for downregulating source or sink terms to avoid 
 ! overpressurization (too big a pressure, + or -)
 ! the source is regulated by multiplying it by 
-!   pressure_max/(pressure + pressure_max)
+!   (1 - x^2)^2 
+! with 
+!   x = (pressure - pref - pressure_max - delta/2)/delta
+! for pressure in between of x*delta and (x+1)*delta
 ! the sink is regulated by multiplying it by 
-!   pressure_min/(pressure + pressure_min)
+!   1 - (1 - x^2)^2 
+! with 
+!   x = (pressure - pref - pressure_min - delta/2)/delta
+! for pressure in between of x*delta and (x+1)*delta
+! for transpiration sink, the physical interpretation can be that the soil water
+! extration rate is decreased from q to 0 as pressure decreases from 
+! pressure_min - delta/2 to pressure_min + delta/2
+
 ! extended from srcsink_sandbox_mass_rate
 ! currently work in RICHARDS mode
   
@@ -23,6 +33,7 @@ module SrcSink_Sandbox_Downreg_class
     PetscReal, pointer :: rate(:)
     PetscReal :: pressure_min       ! Pa
     PetscReal :: pressure_max       ! Pa
+    PetscReal :: pressure_delta     ! Pa
   contains
     procedure, public :: ReadInput => DownregRead
     procedure, public :: Setup => DownregSetup
@@ -52,6 +63,7 @@ function DownregCreate()
   nullify(DownregCreate%rate)
   DownregCreate%pressure_min = -1.0d9
   DownregCreate%pressure_max = 1.0d9
+  DownregCreate%pressure_delta = 1.0d4
   
 end function DownregCreate
 
@@ -119,11 +131,19 @@ subroutine DownregRead(this,input,option)
         call InputReadDouble(input,option,this%pressure_max)
         call InputErrorMsg(input,option,'maximum pressure (Pa)', &
           'SOURCE_SINK_SANDBOX,DOWNREG')
-
       case('NEGATIVE_REG_PRESSURE')
         call InputReadDouble(input,option,this%pressure_min)
         call InputErrorMsg(input,option,'minimum pressure (Pa)', &
           'SOURCE_SINK_SANDBOX,DOWNREG')
+      case('DELTA_REG_PRESSURE')
+        call InputReadDouble(input,option,this%pressure_delta)
+        call InputErrorMsg(input,option,'delta pressure (Pa)', &
+          'SOURCE_SINK_SANDBOX,DOWNREG')
+        if (this%pressure_delta <= 1.0d-10) then
+          option%io_buffer = 'SRCSINK_SANDBOX,DOWNREG,DELTA_REG_PRESSURE' // &
+            ': the pressure delta is too close to 0 Pa.'
+          call printErrMsg(option)
+        endif 
       case default
         option%io_buffer = 'SRCSINK_SANDBOX,DOWNREG keyword: ' // &
           trim(word) // ' not recognized.'
@@ -180,6 +200,7 @@ subroutine DownregSrcSink(this,Residual,Jacobian,compute_derivative, &
   ! Author: Guoping Tang
   ! Date: 06/04/14
   ! Glenn suggested to use reference pressure for RICHARDS mode 
+  ! Gautam suggested to use Nathan's smooth function (6/8/2014)
 
   use Option_module
   use Reaction_Aux_module
@@ -195,6 +216,7 @@ subroutine DownregSrcSink(this,Residual,Jacobian,compute_derivative, &
   class(material_auxvar_type) :: material_auxvar
   PetscReal :: aux_real(:)
   PetscReal :: pressure
+  PetscReal :: pressure_lower, pressure_upper, x
   PetscReal :: rate_regulator  
   PetscReal :: drate_regulator  
   PetscReal :: temp_real
@@ -206,24 +228,39 @@ subroutine DownregSrcSink(this,Residual,Jacobian,compute_derivative, &
       ! regulate liquid pressure in Richards mode
       pressure = aux_real(1)
       if (this%rate(idof) > 0.0d0) then
-        ! source (try to avoid this%pressure_max + pressure = 0)
-        ! regulate the source under wet (not dry) condition 
-        ! not the case with too much infiltration to dry soil
-        if (pressure > option%reference_pressure) then
-          rate_regulator = this%pressure_max / &
-            (this%pressure_max + pressure - option%reference_pressure)
-        else
-          rate_regulator = 1.0d0 
-        endif
-          Residual(idof) = this%rate(idof) * rate_regulator
-      else
-        ! sink (try to avoid this%pressure_min + pressure = 0)
-        ! regulate the sink under dry (not wet) condition, 
-        if (pressure < option%reference_pressure) then
-          rate_regulator = this%pressure_min / &
-            (this%pressure_min + pressure - option%reference_pressure)
-        else
+        ! source
+        pressure_lower = this%pressure_max - this%pressure_delta/2.0d0 &
+                                           - option%reference_pressure
+        pressure_upper = pressure_lower + this%pressure_delta
+        if (pressure <= pressure_lower) then
           rate_regulator = 1.0d0
+          drate_regulator = 0.0d0
+        elseif (pressure >= pressure_upper) then
+          rate_regulator = 0.0d0
+          drate_regulator = 0.0d0
+        else
+          x = (pressure - pressure_lower)/this%pressure_delta
+          rate_regulator = (1.0d0 - x * x) * (1.0d0 - x * x) 
+          drate_regulator = 2.0d0 * (1.0d0 - x * x) * (-2.0d0) * x / &
+            this%pressure_delta
+        endif
+        Residual(idof) = this%rate(idof) * rate_regulator
+      else
+        ! sink
+        pressure_lower = this%pressure_min - this%pressure_delta/2.0d0 &
+                                           - option%reference_pressure
+        pressure_upper = pressure_lower + this%pressure_delta
+        if (pressure <= pressure_lower) then
+          rate_regulator = 0.0d0
+          drate_regulator = 0.0d0
+        elseif (pressure >= pressure_upper) then
+          rate_regulator = 1.0d0
+          drate_regulator = 0.0d0
+        else
+          x = (pressure - pressure_lower)/this%pressure_delta
+          rate_regulator = 1.0d0 - (1.0d0 - x * x) * (1.0d0 - x * x) 
+          drate_regulator = (-2.0d0) * (1.0d0 - x * x) * (-2.0d0) * x / &
+            this%pressure_delta
         endif
         Residual(idof) = this%rate(idof) * rate_regulator
       endif
@@ -237,29 +274,7 @@ subroutine DownregSrcSink(this,Residual,Jacobian,compute_derivative, &
     do idof = 1, option%nflowdof
       if (option%iflowmode == RICHARDS_MODE .and. idof == ONE_INTEGER) then
         ! regulate liquid pressure in Richards mode
-        pressure = aux_real(1)
-        if (this%rate(idof) > 0.0d0) then
-          ! source
-          if (pressure > option%reference_pressure) then
-            temp_real = this%pressure_max - option%reference_pressure 
-            drate_regulator = (-1.0d0) * this%pressure_max / &
-              (temp_real + pressure) / (temp_real + pressure)
-          else
-            drate_regulator = 0.0d0
-          endif
-
-          Jacobian(idof,idof) = -1.0d0 * this%rate(idof) * drate_regulator
-        else
-          ! sink           
-          if (pressure < option%reference_pressure) then
-            temp_real = this%pressure_min - option%reference_pressure 
-            drate_regulator = -1.0d0 * this%pressure_min / &
-              (temp_real + pressure) / (temp_real + pressure)
-          else
-            drate_regulator = 0.0d0
-          endif
-          Jacobian(idof,idof) = -1.0d0 * this%rate(idof) * drate_regulator
-        endif
+        Jacobian(idof,idof) = -1.0d0 * this%rate(idof) * drate_regulator
       else
         ! since the rates are constant, there is no derivative
       endif
