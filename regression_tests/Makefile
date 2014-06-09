@@ -189,3 +189,8 @@ clean-tests :
 	-rm -f default/543/543_flow_and_tracer.h5
 	-rm -f default/discretization/mixed_implicit-np4.h5
 	-rm -f default/discretization/mixed_implicit.h5
+	-rm -f general/calcite_flow_and_tran_general.h5
+	-rm -f ngee/sink-mas.dat 
+	-rm -f ngee/sink.h5 
+	-rm -f ngee/source-mas.dat
+	-rm -f ngee/source.h5

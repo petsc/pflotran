@@ -3,6 +3,7 @@ module SrcSink_Sandbox_module
   use SrcSink_Sandbox_Base_class
   use SrcSink_Sandbox_WIPP_Gas_class
   use SrcSink_Sandbox_Mass_Rate_class
+  use SrcSink_Sandbox_Downreg_class
   use SrcSink_Sandbox_WIPP_Well_class
   use PFLOTRAN_Constants_module
 
@@ -149,6 +150,8 @@ subroutine SSSandboxRead2(local_sandbox_list,input,option)
         new_sandbox => WIPPGasGenerationCreate()
       case('MASS_RATE')
         new_sandbox => MassRateCreate()
+      case('MASS_RATE_DOWNREGULATED')
+        new_sandbox => DownregCreate()
       case default
         option%io_buffer = 'SRCSINK_SANDBOX keyword: ' // &
           trim(word) // ' not recognized.'

@@ -1,0 +1,126 @@
+# Description: sink example for srcsink_sandbox_mass_rate_downregulated.F90 
+
+#=========================== regression =======================================
+REGRESSION
+  CELLS_PER_PROCESS 4
+END
+
+#=========================== flow mode ========================================
+MODE RICHARDS
+
+#=========================== solver options ===================================
+
+#=========================== discretization ===================================
+GRID
+  TYPE structured
+  ORIGIN 0.d0 0.d0 0.d0
+  NXYZ 1 1 38
+  DXYZ 
+    1.d0 
+    1.d0 
+    0.1d0
+  /
+END
+
+#=========================== fluid properties =================================
+FLUID_PROPERTY 
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.55d0
+  TORTUOSITY 0.5d0
+  ROCK_DENSITY 2.8E3
+  SPECIFIC_HEAT 1E3
+  THERMAL_CONDUCTIVITY_DRY 0.5
+  THERMAL_CONDUCTIVITY_WET 0.5
+  SATURATION_FUNCTION sf1
+  PERMEABILITY
+    PERM_X 7.918d-11
+    PERM_Y 7.918d-11
+    PERM_Z 7.918d-13
+  /
+END
+
+#=========================== saturation functions =============================
+SATURATION_FUNCTION sf1
+  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+  RESIDUAL_SATURATION 0.05d0
+  LAMBDA 0.2593d0
+  ALPHA 1.53391d-04
+  MAX_CAPILLARY_PRESSURE 1.d8
+END
+
+#=========================== output options ===================================
+OUTPUT
+  PERIODIC TIMESTEP 1
+  FORMAT HDF5
+  MASS_BALANCE
+END
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 1.d0 y
+  INITIAL_TIMESTEP_SIZE 1.d0 s
+  MAXIMUM_TIMESTEP_SIZE 1.d0 d
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    1.d0 1.d0 3.8d0
+  /
+END
+
+REGION sink_point
+  COORDINATE 0.5d0 0.5d0 3.75d0
+END
+
+#=========================== flow conditions ==================================
+FLOW_CONDITION initial
+  TYPE
+    PRESSURE hydrostatic
+  /
+  INTERPOLATION linear
+  DATUM 0.d0 0.d0 -16.0d0
+  PRESSURE 101325.d0
+END
+
+FLOW_CONDITION sink
+  TYPE
+    RATE mass_rate
+  /
+  RATE -1.0d-6
+END
+
+#=========================== condition couplers ===============================
+# initial condition
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  REGION all
+END
+
+skip
+SOURCE_SINK
+  FLOW_CONDITION sink
+  REGION sink_point
+END
+
+noskip
+SOURCE_SINK_SANDBOX
+  MASS_RATE_DOWNREGULATED
+    RATE -1.d-6
+    NEGATIVE_REG_PRESSURE -1.d6
+    REGION sink_point
+  /
+END
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  REGION all
+  MATERIAL soil1
+END
+
