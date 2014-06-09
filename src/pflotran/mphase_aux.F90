@@ -300,7 +300,7 @@ subroutine MphaseAuxVarCompute_NINC(x,auxvar,global_auxvar,iphase,saturation_fun
       kr(2)= 0.D0
     case(2)
 !******* gas phase exists ***********
-      auxvar%xmol(4)=x(3)
+      auxvar%xmol(4) = x(3)
 !      if(auxvar%xmol(4) < 0.D0) print *,'tran:',iphase, x(1:3)
 !      if(auxvar%xmol(4) > 1.D0) print *,'tran:',iphase, x(1:3)
       auxvar%xmol(3) = 1.D0 - auxvar%xmol(4)
