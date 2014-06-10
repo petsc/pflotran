@@ -330,7 +330,7 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
       ! if a cut occurs on the last time step, the stop_flag will have been
       ! set to TS_STOP_END_SIMULATION.  Set back to TS_CONTINUE to prevent
       ! premature ending of simulation.
-      stop_flag = TS_CONTINUE
+      if (stop_flag /= TS_STOP_MAX_TIME_STEP) stop_flag = TS_CONTINUE
 
       if (icut > this%max_time_step_cuts .or. &
           this%dt < 1.d-20) then
