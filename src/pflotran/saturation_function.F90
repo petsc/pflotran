@@ -75,7 +75,7 @@ module Saturation_Function_module
   PetscInt, parameter :: NMT_EXP = 4
   PetscInt, parameter :: PRUESS_1 = 5
   PetscInt, parameter :: LINEAR_MODEL = 6
-  PetscInt, parameter :: MODIFIED_BROOKS_COREY = 6
+  PetscInt, parameter :: MODIFIED_BROOKS_COREY = 7
 
   ! Permeability function
   PetscInt, parameter :: DEFAULT = 0
