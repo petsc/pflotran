@@ -384,7 +384,7 @@ subroutine LoggingCreateStage(stage_name,stage_id)
   PetscErrorCode :: ierr
   
   logging%stage_count = logging%stage_count + 1
-  full_stage_name = stage_name // ' Stage'
+  full_stage_name = trim(stage_name) // ' Stage'
   call PetscLogStageRegister(full_stage_name,stage_id,ierr)
   stage_id = logging%stage_count
   
