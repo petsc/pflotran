@@ -57,7 +57,7 @@ module Saturation_Function_module
             SatFunctionComputePolynomial, &
             PermFunctionComputePolynomial, &
             SaturationFunctionRead, &
-            SatFuncGetRelPermFromSat, &
+            SatFuncGetLiqRelPermFromSat, &
             SatFuncGetGasRelPermFromSat, &
             SatFuncGetCapillaryPressure, &
             SaturationFunctionGetID, &
@@ -75,7 +75,7 @@ module Saturation_Function_module
   PetscInt, parameter :: NMT_EXP = 4
   PetscInt, parameter :: PRUESS_1 = 5
   PetscInt, parameter :: LINEAR_MODEL = 6
-  PetscInt, parameter :: MODIFIED_BROOKS_COREY = 6
+  PetscInt, parameter :: MODIFIED_BROOKS_COREY = 7
 
   ! Permeability function
   PetscInt, parameter :: DEFAULT = 0
@@ -2004,9 +2004,9 @@ end subroutine SatFuncComputeIceDallAmico
 
 ! ************************************************************************** !
 
-subroutine SatFuncGetRelPermFromSat(saturation,relative_perm,dkr_Se, &
-                                    saturation_function,iphase, &
-                                    derivative,option)
+subroutine SatFuncGetLiqRelPermFromSat(saturation,relative_perm,dkr_Se, &
+                                       saturation_function,iphase, &
+                                       derivative,option)
   ! 
   ! Calculates relative permeability from
   ! phase saturation
@@ -2120,7 +2120,7 @@ subroutine SatFuncGetRelPermFromSat(saturation,relative_perm,dkr_Se, &
       end select
   end select
   
-end subroutine SatFuncGetRelPermFromSat
+end subroutine SatFuncGetLiqRelPermFromSat
 
 ! ************************************************************************** !
 
