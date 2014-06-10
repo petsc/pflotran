@@ -1380,7 +1380,8 @@ subroutine Flash2Flux(auxvar_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   
 ! Flow term
   do np = 1, option%nphase
-    if (auxvar_up%sat(np) > sir_up(np) .or. auxvar_dn%sat(np) > sir_dn(np)) then
+!   if (auxvar_up%sat(np) > sir_up(np) .or. auxvar_dn%sat(np) > sir_dn(np)) then
+    if ((auxvar_up%kvr(np) + auxvar_dn%kvr(np)) > eps) then
       upweight= dd_dn/(dd_up+dd_dn)
       if (auxvar_up%sat(np) < eps) then
         upweight=0.d0
@@ -1686,7 +1687,8 @@ subroutine Flash2BCFlux(ibndtype,auxvars,auxvar_up,auxvar_dn, &
         ! Flow term
       ukvr=0.D0
       v_darcy=0.D0
-      if (auxvar_up%sat(np) > sir_dn(np) .or. auxvar_dn%sat(np) > sir_dn(np)) then
+!     if (auxvar_up%sat(np) > sir_dn(np) .or. auxvar_dn%sat(np) > sir_dn(np)) then
+      if ((auxvar_up%kvr(np) + auxvar_dn%kvr(np)) > eps) then
         upweight=1.D0
         if (auxvar_up%sat(np) < eps) then
           upweight=0.d0

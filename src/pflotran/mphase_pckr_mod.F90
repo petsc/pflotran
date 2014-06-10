@@ -499,7 +499,7 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
           kr(2) = 0.d0
         end if
 
-      case(6) ! Modified Brooks-Corey
+      case(7) ! Modified Brooks-Corey
        
         lam = pckr_lambda
         ala = pckr_alpha

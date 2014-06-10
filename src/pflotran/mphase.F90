@@ -1399,14 +1399,15 @@ subroutine MphaseUpdateFixedAccumPatch(realization)
 !    iphase_loc_p(ghosted_id) = iphase
    ! print *, 'MphaseUpdateFixedAccumPatch1'
     !if(.not.associated(auxvars(ghosted_id))) print *,'no var'
-    if(.not.associated(mphase_parameter%dencpr)) print *,'no para'    
+    if(.not.associated(mphase_parameter%dencpr)) print *,'no para'
+
     call MphaseAccumulation(auxvars(ghosted_id)%auxvar_elem(0), &
                               global_auxvars(ghosted_id), &
                               material_auxvars(ghosted_id)%porosity, &
                               material_auxvars(ghosted_id)%volume, &
                               mphase_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
                               option,ZERO_INTEGER,vol_frac_prim, &
-                              accum_p(istart:iend)) 
+                              accum_p(istart:iend))
   enddo
 
   call VecRestoreArrayF90(field%flow_xx,xx_p, ierr)
@@ -1463,7 +1464,7 @@ subroutine MphaseAccumulation(auxvar,global_auxvar,por,vol,rock_dencpr, &
   mol = mol * porXvol
  ! if(option%use_isothermal == PETSC_FALSE) &
   eng = eng * porXvol + (1.d0 - por) * vol * rock_dencpr * auxvar%temp 
- 
+
 ! Reaction terms here
 ! Note if iireac > 0, then it is the node global index
 
@@ -1485,6 +1486,7 @@ subroutine MphaseAccumulation(auxvar,global_auxvar,por,vol,rock_dencpr, &
 ! else
     Res(1:option%nflowdof-1) = vol_frac_prim * mol(:)
     Res(option%nflowdof) = vol_frac_prim * eng
+
 ! endif
 end subroutine MphaseAccumulation
 
@@ -1771,7 +1773,8 @@ subroutine MphaseFlux(auxvar_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
 ! Flow term
   do np = 1, option%nphase
     
-    if (auxvar_up%sat(np) > sir_up(np) .or. auxvar_dn%sat(np) > sir_dn(np)) then
+!   if (auxvar_up%sat(np) > sir_up(np) .or. auxvar_dn%sat(np) > sir_dn(np)) then
+    if ((auxvar_up%kvr(np) + auxvar_dn%kvr(np)) > eps) then
       upweight = dd_dn/(dd_up+dd_dn)
       if (auxvar_up%sat(np) < eps) then 
         upweight = 0.d0
@@ -1968,7 +1971,8 @@ subroutine MphaseBCFlux(ibndtype,auxvars,auxvar_up,auxvar_dn, &
 !       print *,'Seepage BC: pc/sat ',np, &
 !         auxvar_up%pc(np),auxvar_dn%pc(np),auxvar_up%sat(np),auxvar_dn%sat(np)
 
-       if (auxvar_up%sat(np) > sir_dn(np) .or. auxvar_dn%sat(np) > sir_dn(np)) then
+!      if (auxvar_up%sat(np) > sir_dn(np) .or. auxvar_dn%sat(np) > sir_dn(np)) then
+       if ((auxvar_up%kvr(np) + auxvar_dn%kvr(np)) > eps) then
           upweight = 1.D0
           if (auxvar_up%sat(np) < eps) then 
             upweight = 0.d0
@@ -2557,7 +2561,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   PetscInt :: ip1, ip2
   PetscInt :: local_id, ghosted_id, local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
 
-  PetscReal, pointer ::accum_p(:)
+  PetscReal, pointer :: accum_p(:)
 
   PetscReal, pointer :: r_p(:), xx_loc_p(:), xx_p(:), yy_p(:)
 
@@ -2755,7 +2759,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
     if (option%use_mc) then
       vol_frac_prim = mphase_sec_heat_vars(local_id)%epsilon
     endif
-    
+
     call MphaseAccumulation(auxvars(ghosted_id)%auxvar_elem(0), &
                             global_auxvars(ghosted_id), &
                             material_auxvars(ghosted_id)%porosity, &
@@ -2763,7 +2767,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
                             mphase_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
                             option,ONE_INTEGER,vol_frac_prim,Res) 
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
- !   print *,'REs, acm: ', res
+
     mphase%res_old_AR(local_id, :)= Res(1:option%nflowdof)
   enddo
 #endif
@@ -2877,7 +2881,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       mphase%res_old_AR(local_id,jh2o) = mphase%res_old_AR(local_id,jh2o) - Res(jh2o)    
       mphase%res_old_AR(local_id,jco2) = mphase%res_old_AR(local_id,jco2) - Res(jco2)    
       if (enthalpy_flag) then
-        r_p( local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - &
+        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - &
           Res(option%nflowdof)
         mphase%res_old_AR(local_id,option%nflowdof) = &
           mphase%res_old_AR(local_id,option%nflowdof) - Res(option%nflowdof)
@@ -2998,7 +3002,8 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 
       mphase%res_old_AR(local_id,1:option%nflowdof) = &
            mphase%res_old_AR(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
-   !  print *, 'REs BC: ',r_p(istart:iend)
+
+!     print *, 'REs BC: ',r_p(istart:iend)
 
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
@@ -3077,7 +3082,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 
       patch%internal_velocities(:,sum_connection) = v_darcy(:)
       mphase%res_old_FL(sum_connection,1:option%nflowdof)= Res(1:option%nflowdof)
-      
+
       if (local_id_up > 0) then
         iend = local_id_up*option%nflowdof
         istart = iend-option%nflowdof+1
@@ -3122,6 +3127,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
         material_auxvars(grid%nL2G(local_id))%volume
 
     if(r_p(istart) > 1E20 .or. r_p(istart) < -1E20) print *,'mphase residual: ', r_p (istart:istart+2)
+
   enddo
 
 ! print *,'finished rp vol scale'
