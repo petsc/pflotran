@@ -33,12 +33,12 @@ module Flash2_module
 #include "finclude/petscerror.h"
 
 ! Cutoff parameters
-  PetscReal, parameter :: formeps   = 1.D-4
-  PetscReal, parameter :: eps = 1.D-5 
-  PetscReal, parameter :: dfac = 1D-8
-  PetscReal, parameter :: floweps   = 1.D-24
+  PetscReal, parameter :: formeps = 1.D-4
+  PetscReal, parameter :: eps = 1.D-8
+  PetscReal, parameter :: dfac = 1.D-8
+  PetscReal, parameter :: floweps = 1.D-24
 !  PetscReal, parameter :: satcuteps = 1.D-5
-  PetscReal, parameter :: zerocut =0.D0  !1D-8
+  PetscReal, parameter :: zerocut = 0.D0  !1D-8
   
 
   PetscInt, parameter :: jh2o=1, jco2=2

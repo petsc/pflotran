@@ -265,7 +265,6 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
 
   
   PetscInt, intent(in) :: ipckrtype
-   !formation type, in pflow should be referred by grid%icap_loc
   PetscReal, intent(in) :: pckr_sir(:)
   PetscReal, intent(in) :: pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax
   PetscReal, intent(in) :: pckr_beta,pckr_pwr
@@ -278,7 +277,6 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
   PetscReal :: uum,pckr_betac,betac,st
   PetscReal :: se0,upc0,upc_s0
      
-    ! if(present(pckr_beta))
       pckr_betac = pckr_beta
       sw = 1.D0 - sg
       if (sw > 1.D0) sw = 1.D0
@@ -317,7 +315,6 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
       case(1) ! van Genuchten
 
         ala = pckr_alpha
-      ! swir=pckr_swir
         um = pckr_m
         un = 1.D0/(1.D0 - um)
         if (sw > pckr_sat_water_cut) then
@@ -465,7 +462,7 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
           st = 1.D0
           if (sw >= swir) then
             kr(1) = sqrt(se)*(1.D0 - (1.D0 - se**uum)**um)**2.D0
-!         kr(2)= sqrt(st-se)*((1.D0-se**uum)**um)**7.D0
+!           kr(2)= sqrt(st-se)*((1.D0-se**uum)**um)**7.D0
             kr(2) = sqrt(st-se)*((1.D0-se**uum)**um)**pckr_pwr
           else
 !         if (se <= 0.D0) se = 1.D-7
@@ -499,50 +496,50 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
           kr(2) = 0.d0
         end if
 
-      case(7) ! Modified Brooks-Corey
+      case(7) ! van Genuchten-Parker
        
-lam = pckr_lambda
-ala = pckr_alpha
+        lam = pckr_lambda
+        ala = pckr_alpha
 
-! Water phase using van Genuchten
-um = pckr_m
-un = 1.D0/(1.D0 - um)
+!       Water phase using van Genuchten
+        um = pckr_m
+        un = 1.D0/(1.D0 - um)
 
-se = (sw - swir)/(sw0 - swir)
+        se = (sw - swir)/(sw0 - swir)
 
-if (sw > swir) then
-temp = se**(-1.D0/um)
+        if (sw > swir) then
+          temp = se**(-1.D0/um)
 !         if (temp < 1.D0+1e-6) temp = 1.D0+1e-6
-upc = (temp - 1.D0)**(1.d0/un)/ala
-if (upc > pcmax) upc = pcmax
+          upc = (temp - 1.D0)**(1.d0/un)/ala
+          if (upc > pcmax) upc = pcmax
 
 !         Mualem rel. perm.
-kr(1) = sqrt(se)*(1.D0 - (1.D0-1.D0/temp)**um)**2.d0
-else
-upc = pcmax
-se = 0.D0
-kr(1) = 0.D0
-endif
+          kr(1) = sqrt(se)*(1.D0 - (1.D0-1.D0/temp)**um)**2.d0
+        else
+          upc = pcmax
+          se = 0.D0
+          kr(1) = 0.D0
+        endif
 
 ! Gas phase using BC
 
-se = (sw - swir)/(1.D0 - swir - sgir)
+        se = (sw - swir)/(1.D0 - swir - sgir)
 
-if (sw < swir) then
-se = 0.D0
-kr(2) = 1.0
-elseif (se >= 1.D0-1d-6) then
-kr(2) = 0.D0
-else
-kr(2) = (1.D0 - se)**0.5D0 * (1.D0 - se**(1.D0/um))**(2.D0*um)
+        if (sw < swir) then
+          se = 0.D0
+          kr(2) = 1.0
+        elseif (se >= 1.D0-1d-6) then
+          kr(2) = 0.D0
+        else
+          kr(2) = (1.D0 - se)**0.5D0 * (1.D0 - se**(1.D0/um))**(2.D0*um)
 !         kr(2) = (1.D0 - se)**0.33333333D0 * (1.D0 - se**(1.D0/um))**(2.D0*um)
-endif
+        endif
 
-end select
+    end select
 
-pc(1) = upc; pc(2) = 0.d0;
+    pc(1) = upc; pc(2) = 0.d0;
 
-return
+  return
 
 end subroutine pflow_pckr_noderiv_exec
 
