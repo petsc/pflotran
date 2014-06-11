@@ -501,67 +501,55 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
 
       case(7) ! Modified Brooks-Corey
        
-        lam = pckr_lambda
-        ala = pckr_alpha
-       ! swir=pckr_swir
+lam = pckr_lambda
+ala = pckr_alpha
 
-! Water phase using van Genuchten  
-        um = pckr_m
-        un = 1.D0/(1.D0 - um)
-!       se = (sw - 0.03D0)/(sw0 - 0.03D0)
-        se = (sw - swir)/(sw0 - swir)
-!       if (se > 1.d-6) then
-        if (sw > swir) then
-          temp = se**(-1.D0/um)
-          if (temp < 1.D0+1e-6) temp = 1.D0+1e-6
-          upc = (temp - 1.D0)**(1.d0/un)/ala
-          if (upc > pcmax) upc = pcmax
-        else
-          upc = pcmax
-        endif
-!       se = (sw - swir)/(sw0 - swir)
-!       if (se < 0.D0) then
-        if (sw < swir) then
-          se = 0.D0
-          kr(1) = 0.D0
-        else 
-          temp = se**(-1.D0/um)
-        ! kr(1) = sqrt(se)*(1.D0 - (1.D0-1.D0/temp)**um)**2.d0
-          kr(1) = sqrt(se)*(1.D0 - (1.D0 - se**(1.D0/um))**pckr_m)**2.D0
-        endif
+! Water phase using van Genuchten
+um = pckr_m
+un = 1.D0/(1.D0 - um)
 
-! Gas phase using BC         
-           
-        se = (sw - swir)/(1.D0 - swir - sgir)
-           
-!       if (se < 1.D-6) then
-        if (sw < swir) then
-          se = 0.D0
-          kr(2) = 1.0 
-        elseif (se >= 1.D0-1d-6) then
-          kr(2) = 0.D0
-        else  
-          kr(2) = (1.D0 - se)**0.33333333D0 * (1.D0 - se**(1.D0/um))**(2.D0*um) 
-        endif
+se = (sw - swir)/(sw0 - swir)
 
-      end select
+if (sw > swir) then
+temp = se**(-1.D0/um)
+!         if (temp < 1.D0+1e-6) temp = 1.D0+1e-6
+upc = (temp - 1.D0)**(1.d0/un)/ala
+if (upc > pcmax) upc = pcmax
 
+!         Mualem rel. perm.
+kr(1) = sqrt(se)*(1.D0 - (1.D0-1.D0/temp)**um)**2.d0
+else
+upc = pcmax
+se = 0.D0
+kr(1) = 0.D0
+endif
 
-      pc(1) = upc; pc(2) = 0.d0;
+! Gas phase using BC
 
-    ! print *,'sat-fnc: ',ipckrtype,sw,se,kr,sgir,swir,sw0,pcmax
+se = (sw - swir)/(1.D0 - swir - sgir)
 
-    ! if (sw < pckr_sat_water_cut) print *, sg,pc,kr
-    ! print *,'Ven ::',pc,kr
-       
-      return
-       
+if (sw < swir) then
+se = 0.D0
+kr(2) = 1.0
+elseif (se >= 1.D0-1d-6) then
+kr(2) = 0.D0
+else
+kr(2) = (1.D0 - se)**0.5D0 * (1.D0 - se**(1.D0/um))**(2.D0*um)
+!         kr(2) = (1.D0 - se)**0.33333333D0 * (1.D0 - se**(1.D0/um))**(2.D0*um)
+endif
+
+end select
+
+pc(1) = upc; pc(2) = 0.d0;
+
+return
+
 end subroutine pflow_pckr_noderiv_exec
 
 ! ************************************************************************** !
 
 subroutine pckrNH_noderiv(sat, pc, kr, saturation_function, option)
-  ! 
+  !
   ! pckrHY_noderiv: Hysteric S-Pc-kr relation driver
   ! 
   ! Author: Chuan Lu
