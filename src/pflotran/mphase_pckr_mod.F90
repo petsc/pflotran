@@ -534,11 +534,11 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
           kr(2) = (1.D0 - se)**0.5D0 * (1.D0 - se**(1.D0/um))**(2.D0*um)
 !         kr(2) = (1.D0 - se)**0.33333333D0 * (1.D0 - se**(1.D0/um))**(2.D0*um)
         endif
-!!!!!!PAOLO  7-6-2014 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!! to be tested after the sgir bug is found 
-!! Doughty (2007) - Van Genutchen Mualem model adjuxted for sgir/=0
-      case(8)
 
+      case(8)
+        !!!!!!PAOLO  7-6-2014 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        !! to be tested after the sgir bug is found 
+        !! Doughty (2007) - Van Genutchen Mualem model adjuxted for sgir/=0
         ala = pckr_alpha
         um = pckr_m
         un = 1.D0/(1.D0 - um)
@@ -594,7 +594,7 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
             kr(2) = 1.D0
           end if
         end if
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     end select
 
     pc(1) = upc; pc(2) = 0.d0;
