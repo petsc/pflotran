@@ -1065,11 +1065,11 @@ COMPUTE_STATISTICS
 
 \noindent
 {\bf Description:}
-CO2\_DATABASE  is for specifying the path to CO$_2$ database file. This keyword is required for MPHASE, FLASH2 and IMMIS modes.
+The keyword CO2\_DATABASE is for specifying the path to CO$_2$ database file providing a lookup table for CO$_2$ fluid properties density, viscosity, fugacity and fugacity coefficient derived from the Span-Wagner (1996) EOS. The temperature-pressure range in the default lookup table is $T: 0-375$\degc\ and $P: 0.01-1250$ bars. This keyword is required for MPHASE, FLASH2 and IMMIS modes. 
 
 \noindent{\bf Input:}
 \begin{deflist}{000}
-\item [CO2\_DATABASE] \{\tt Path/Database\_Name\}
+\item [CO2\_DATABASE] \{{\tt Path/Database\_Name}\} \normalsize The default database file is \linebreak {\tt ./pflotran-dev/database/co2\_data0.dat}
 \end{deflist}
 
 \hyperlink{target_key}{\return}
@@ -3046,7 +3046,9 @@ RESTART pflotran.chk3000
 
 \subsection{Keyword: SATURATION\_FUNCTION}
 
-\noindent{\bf Description:}
+\includegraphics[scale=0.25]{./figs/under-construction.png}
+
+\noindent{\bf Description:} Currently being revised to use a common set of saturation and relative permeability functions across all modes. Check source code for up-to-date implementation.
 
 \noindent{\bf Input:}
 \begin{deflist}{000}
@@ -3055,17 +3057,20 @@ RESTART pflotran.chk3000
 \begin{deflist}{000}
 \item[SATURATION\_FUNCTION\_TYPE] \ [{\bf VAN\_GENUCHTEN}, \ {\bf BROOKS\_COREY}, 
 
-{\bf THOMEER\_COREY}, \ {\bf NMT\_EXP}, \ {\bf PRUESS\_1}]
+{\bf THOMEER\_COREY}, \ {\bf NMT\_EXP}, \ {\bf PRUESS\_1}, \ {\bf VAN\_GENUCHTEN\_PARKER}]
 
-\item[PERMEABILITY\_FUNCTION\_TYPE] \ [{\bf VAN\_GENUCHTEN}, \ {\bf MUALEM}, \ {\bf BURDINE}, \ {\bf NMT\_EXP}, \ {\bf PRUESS\_1}]
+\item[PERMEABILITY\_FUNCTION\_TYPE] \ [{\bf MUALEM}, \ {\bf BURDINE}]
 \item[RESIDUAL\_SATURATION] \ {\tt <Value>} \ \ MODES: RICHARDS, TH, THC
 \item[RESIDUAL\_SATURATION\_LIQUID] \ {\tt <Value>} \ \ MODES: MPHASE
-\item[RESIDUAL\_SATURATION\_GAS] \ {\tt <Value>} \ \ MODES: MPHASE
+\item[RESIDUAL\_SATURATION\_GAS] \ {\tt <Value>} 
+
+MODES: MPHASE ({\bf VAN\_GENUCHTEN\_PARKER})
+
 \item[LAMBDA] \ {\tt <Value>} [---]
 \item[ALPHA] \ {\tt <Value>} [Pa$^{-1}$]
 \item[MAX\_CAPILLARY\_PRESSURE] \ {\tt <Value>} [Pa]
-\item[BETAC] \ {\tt <Value>} [---]
-\item[POWER] \ {\tt <Value>} [---]
+\item[BETAC] \ {\tt <Value>} [---] (Only used in {\bf NMT\_EXP})
+\item[POWER] \ {\tt <Value>} [---] (Only used in {\bf NMT\_EXP})
 \end{deflist}
 \item[\keyend]
 \end{deflist}
@@ -3082,8 +3087,6 @@ SATURATION_FUNCTION sf1
   LAMBDA 2.67d0
   ALPHA 2.042d-4
   MAX_CAPILLARY_PRESSURE 1d8
-  BETAC 0.d0
-  POWER 1.d0
 END
 \end{verbatim}
 
