@@ -535,66 +535,6 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
 !         kr(2) = (1.D0 - se)**0.33333333D0 * (1.D0 - se**(1.D0/um))**(2.D0*um)
         endif
 
-      case(8)
-        !!!!!!PAOLO  7-6-2014 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        !! to be tested after the sgir bug is found 
-        !! Doughty (2007) - Van Genutchen Mualem model adjuxted for sgir/=0
-        ala = pckr_alpha
-        um = pckr_m
-        un = 1.D0/(1.D0 - um)
-        if (sw > pckr_sat_water_cut) then
-          upc = 0.D0; kr(1) = 1.d0; kr(2) = 0.d0;
-        elseif (sw > (1.05D0*swir)) then
-          !! krg - Corey
-          se = (sw - sgir - swir)/(1.D0 - swir)
-          kr(2) = sqrt(1.D0 - se) * (1.D0 - se**(2.D0))  
-          !! for Krl no sgir included following 
-          se = (sw - swir)/(1.D0 - swir)
-          temp = se**(-1.D0/um)
-          kr(1) = sqrt(se)*(1.D0 - (1.D0 - 1.D0/temp)**um)**2.d0
-          if(sgir>0.0) kr(2) = 1.D0-kr(1)  
-          !! capillary pressure 
-          if(sw <= ( 0.99*(1 - sgir) )) then   
-          !if (sw <= 0.99D0) then
-            se = (sw - sgir - swir)/(1.D0 - swir)
-            temp = se**(-1.D0/um)
-            upc = (temp - 1.D0)**(1.d0/un)/ala
-          else
-            !se = (0.99D0 - swir)/(1.D0 - swir)
-            se = ( 0.99*(1.0D0 - sgir) - sgir - swir)/(1.D0 - swir)
-            temp = se**(-1.D0/um)
-            upc = (temp - 1.D0)**(1.d0/un)/ala
-            !upc = upc*(1.D0 - sw)/1.D-2
-            upc = upc*(1.D0 - sw)/(1.0D0 - 0.99*(1.0D0 - sgir))
-          endif  
-  
-        else  ! use linear extropolation
-          !se0 = (0.05D0*swir)/(1.D0 - swir)
-          se0 = (0.05D0*swir)/(1.D0 - sgir - swir)
-          temp = se0**(-1.D0/um)
-          upc0 = (temp - 1.D0)**(1.d0/un)/ala
-          upc_s0 = -1.D0/um/un*upc0*(se0**(-1.D0 - 1.D0/um))/(se0**(-1.D0/um) - 1.d0)
-          !upc_s0 = upc_s0 /(1.D0 - swir)
-          upc_s0 = upc_s0 /(1.D0 - sgir - swir)
-          if (sw > swir) then
-            !! krl
-            se = (sw - swir)/(1.D0 - swir)
-            temp = se**(-1.D0/um)
-            kr(1) = sqrt(se)*(1.D0 - (1.D0 - 1.D0/temp)**um)**2.d0
-            !se = (sw - swir)/(1.D0 - swir)
-            ! krg  
-            se = (sw - swir)/(1.D0 - sgir - swir) 
-            kr(2) = sqrt(1.D0 - se) * (1.D0 - se**(2.D0))   
-            if(sgir>0.0) kr(2) = 1.D0-kr(1)
-            !! pressure 
-            upc = upc0 + (sw - 1.05D0 * swir) * upc_s0   
-          else
-            upc = upc0 + (sw - 1.05D0 * swir) * upc_s0
-            kr(1) = 0.D0
-            kr(2) = 1.D0
-          end if
-        end if
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     end select
 
     pc(1) = upc; pc(2) = 0.d0;
