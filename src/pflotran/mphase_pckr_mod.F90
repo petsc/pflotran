@@ -547,7 +547,7 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
 !!!!!!PAOLO  7-6-2014 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !! to be tested after the sgir bug is found 
 !! Doughty (2007) - Van Genutchen Mualem model adjuxted for sgir/=0
-        case(7)
+        case(8)
         ala = pckr_alpha
         um = pckr_m
         un = 1.D0/(1.D0 - um)
