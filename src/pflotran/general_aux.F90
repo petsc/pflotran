@@ -566,8 +566,8 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   if (global_auxvar%istate == LIQUID_STATE .or. &
       global_auxvar%istate == TWO_PHASE_STATE) then
     ! this does not need to be calculated for LIQUID_STATE (=1)
-    call SatFuncGetRelPermFromSat(gen_auxvar%sat(lid),krl,dkrl_Se, &
-                                  saturation_function,lid,PETSC_FALSE,option)
+    call SatFuncGetLiqRelPermFromSat(gen_auxvar%sat(lid),krl,dkrl_Se, &
+                                     saturation_function,lid,PETSC_FALSE,option)
     ! use cell_pressure; cell_pressure - psat calculated internally
     call EOSWaterViscosity(gen_auxvar%temp,cell_pressure, &
                            gen_auxvar%pres(spid),visl,ierr)
