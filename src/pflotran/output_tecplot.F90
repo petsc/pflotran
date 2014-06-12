@@ -1465,7 +1465,7 @@ subroutine WriteTecplotUGridVertices(fid,realization_base)
       call GetVertexCoordinates(grid, global_vertex_vec,X_COORDINATE,option)
       call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
       if (option%myrank == option%io_rank) &
-        write(fid,'(a)'),'# vertex x-coordinate'
+        write(fid,'(a)') '# vertex x-coordinate'
       call WriteTecplotDataSet(fid,realization_base,vec_ptr,TECPLOT_REAL, &
       local_size)
       call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
@@ -1473,7 +1473,7 @@ subroutine WriteTecplotUGridVertices(fid,realization_base)
       call GetVertexCoordinates(grid,global_vertex_vec,Y_COORDINATE,option)
       call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
       if (option%myrank == option%io_rank) &
-        write(fid,'(a)'),'# vertex y-coordinate'
+        write(fid,'(a)') '# vertex y-coordinate'
       call WriteTecplotDataSet(fid,realization_base,vec_ptr,TECPLOT_REAL, &
       local_size)
       call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
@@ -1481,7 +1481,7 @@ subroutine WriteTecplotUGridVertices(fid,realization_base)
       call GetVertexCoordinates(grid,global_vertex_vec, Z_COORDINATE,option)
       call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
       if (option%myrank == option%io_rank) &
-        write(fid,'(a)'),'# vertex z-coordinate'
+        write(fid,'(a)') '# vertex z-coordinate'
       call WriteTecplotDataSet(fid,realization_base,vec_ptr,TECPLOT_REAL, &
       local_size)
       call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
@@ -2670,28 +2670,28 @@ subroutine WriteTecplotPolyUGridElements(fid,realization_base)
   grid => patch%grid
   option => realization_base%option
 
-  write(fid,'(a)'),'# number of vertices/nodes per face'
+  write(fid,'(a)') '# number of vertices/nodes per face'
   call WriteTecplotDataSetNumPerLine(fid, realization_base, &
                         grid%unstructured_grid%polyhedra_grid%uface_nverts*1.d0, &
                         TECPLOT_INTEGER, &
                         grid%unstructured_grid%polyhedra_grid%num_ufaces_local, &
                         10)
 
-  write(fid,'(a)'),'# id of vertices/nodes forming a face'
+  write(fid,'(a)') '# id of vertices/nodes forming a face'
   call WriteTecplotDataSetNumPerLine(fid, realization_base, &
                         grid%unstructured_grid%polyhedra_grid%uface_natvertids*1.d0, &
                         TECPLOT_INTEGER, &
                         grid%unstructured_grid%polyhedra_grid%num_verts_of_ufaces_local, &
                         4)
 
-  write(fid,'(a)'),'# id of control-volume/element left of a face'
+  write(fid,'(a)') '# id of control-volume/element left of a face'
   call WriteTecplotDataSetNumPerLine(fid, realization_base, &
                         grid%unstructured_grid%polyhedra_grid%uface_left_natcellids*1.d0, &
                         TECPLOT_INTEGER, &
                         grid%unstructured_grid%polyhedra_grid%num_ufaces_local, &
                         10)
 
-  write(fid,'(a)'),'# id of control-volume/element right of a face'
+  write(fid,'(a)') '# id of control-volume/element right of a face'
   call WriteTecplotDataSetNumPerLine(fid, realization_base, &
                         grid%unstructured_grid%polyhedra_grid%uface_right_natcellids*1.d0, &
                         TECPLOT_INTEGER, &
