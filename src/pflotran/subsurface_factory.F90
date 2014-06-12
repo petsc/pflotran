@@ -151,6 +151,7 @@ subroutine HijackSimulation(simulation_old,simulation)
   use PM_TH_class
   use PM_module
   use Timestepper_BE_class
+  use Logging_module
   
   implicit none
   
@@ -165,6 +166,7 @@ subroutine HijackSimulation(simulation_old,simulation)
   
   class(realization_type), pointer :: realization
   type(option_type), pointer :: option
+  character(len=MAXSTRINGLENGTH) :: string
   PetscErrorCode :: ierr
   
   realization => simulation_old%realization
@@ -179,7 +181,7 @@ subroutine HijackSimulation(simulation_old,simulation)
 
   nullify(flow_process_model_coupler)
   nullify(tran_process_model_coupler)
-
+  
   ! Create Subsurface-flow ProcessModel & ProcessModelCoupler
   if (option%nflowdof > 0) then
     select case(option%iflowmode)
@@ -209,6 +211,9 @@ subroutine HijackSimulation(simulation_old,simulation)
     flow_process_model_coupler%realization => realization
     call HijackTimestepper(simulation_old%flow_stepper, &
                            flow_process_model_coupler%timestepper)
+    ! set up logging stage
+    string = trim(cur_process_model%name) // 'Flow'
+    call LoggingCreateStage(string,flow_process_model_coupler%stage)
     nullify(cur_process_model)
   endif
 
@@ -226,6 +231,9 @@ subroutine HijackSimulation(simulation_old,simulation)
     tran_process_model_coupler%realization => realization
     call HijackTimestepper(simulation_old%tran_stepper, &
                            tran_process_model_coupler%timestepper)
+    ! set up logging stage
+    string = 'Reactive Transport'
+    call LoggingCreateStage(string,tran_process_model_coupler%stage)
     nullify(cur_process_model)
   endif
 

@@ -34,7 +34,7 @@ module Immis_module
 
 ! Cutoff parameters
   PetscReal, parameter :: formeps   = 1.D-4
-  PetscReal, parameter :: eps = 1.D-5 
+  PetscReal, parameter :: eps = 1.D-8
   PetscReal, parameter :: dfac = 1D-8
   PetscReal, parameter :: floweps   = 1.D-24
 !  PetscReal, parameter :: satcuteps = 1.D-5
@@ -1386,7 +1386,8 @@ subroutine ImmisFlux(auxvar_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   
 ! Flow term
   do np = 1, option%nphase
-    if (auxvar_up%sat(np) > sir_up(np) .or. auxvar_dn%sat(np) > sir_dn(np)) then
+!   if (auxvar_up%sat(np) > sir_up(np) .or. auxvar_dn%sat(np) > sir_dn(np)) then
+    if ((auxvar_up%kvr(np) + auxvar_dn%kvr(np)) > eps) then
       upweight= dd_dn/(dd_up+dd_dn)
       if (auxvar_up%sat(np) <eps) then
         upweight=0.d0
@@ -1404,12 +1405,12 @@ subroutine ImmisFlux(auxvar_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
              + gravity
 
       v_darcy = 0.D0
-      ukvr=0.D0
-      uh=0.D0
-      uxmol=0.D0
+      ukvr = 0.D0
+      uh = 0.D0
+      uxmol = 0.D0
 
       ! note uxmol only contains one phase xmol
-      if (dphi>=0.D0) then
+      if (dphi >= 0.D0) then
         ukvr = auxvar_up%kvr(np)
         ! if(option%use_isothermal == PETSC_FALSE)&
         uh = auxvar_up%h(np)
@@ -1421,8 +1422,8 @@ subroutine ImmisFlux(auxvar_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
    
 
       if (ukvr > floweps) then
-        v_darcy= Dq * ukvr * dphi
-        vv_darcy(np)=v_darcy
+        v_darcy = Dq * ukvr * dphi
+        vv_darcy(np) = v_darcy
         q = v_darcy * area
         fluxm(np)=fluxm(np) + q * density_ave
         ! if(option%use_isothermal == PETSC_FALSE)&
@@ -1450,7 +1451,7 @@ subroutine ImmisFlux(auxvar_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   !if(option%use_isothermal == PETSC_FALSE) then     
   Dk = (Dk_up * Dk_dn) / (dd_dn*Dk_up + dd_up*Dk_dn)
   cond = Dk*area*(auxvar_up%temp-auxvar_dn%temp)
-  fluxe=fluxe + cond
+  fluxe = fluxe + cond
  ! end if
 
   !if(option%use_isothermal)then
@@ -1508,14 +1509,15 @@ subroutine ImmisBCFlux(ibndtype,auxvars,auxvar_up,auxvar_dn, &
       Dq = perm_dn / dd_up
 
       ! only consider phase that exists, this also deals with IPHASE=1,2
-      if (auxvar_up%sat(np) > sir_dn(np) .or. auxvar_dn%sat(np) > sir_dn(np)) then
+!     if (auxvar_up%sat(np) > sir_dn(np) .or. auxvar_dn%sat(np) > sir_dn(np)) then
+      if ((auxvar_up%kvr(np) + auxvar_dn%kvr(np)) > eps) then
 
         ! upweight according to saturation?
-        upweight=1.D0
+        upweight = 1.D0
         if (auxvar_up%sat(np) < eps) then 
-          upweight=0.d0
+          upweight = 0.d0
         else if (auxvar_dn%sat(np) < eps) then 
-          upweight=1.d0
+          upweight = 1.d0
         endif
         density_ave = upweight*auxvar_up%den(np) + (1.D0-upweight)*auxvar_dn%den(np)
 

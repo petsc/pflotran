@@ -12,7 +12,8 @@ module Timestepper_Base_class
  
   PetscInt, parameter, public :: TS_CONTINUE = 0
   PetscInt, parameter, public :: TS_STOP_END_SIMULATION = 1
-  PetscInt, parameter, public :: TS_STOP_FAILURE = 2
+  PetscInt, parameter, public :: TS_STOP_MAX_TIME_STEP = 2
+  PetscInt, parameter, public :: TS_STOP_FAILURE = 3
 
   type, public :: stepper_base_type
   
@@ -455,12 +456,13 @@ subroutine TimestepperBaseSetTargetTime(this,sync_time,option, &
   
   if (cumulative_time_steps >= max_time_step-1) then
     nullify(cur_waypoint)
+    stop_flag = TS_STOP_MAX_TIME_STEP
   endif
 
   ! update maximum time step size to current waypoint value
   if (associated(cur_waypoint)) then
     dt_max = cur_waypoint%dt_max
-  else
+  else if (stop_flag /= TS_STOP_MAX_TIME_STEP) then
     stop_flag = TS_STOP_END_SIMULATION ! stop after end of time step
   endif
   
