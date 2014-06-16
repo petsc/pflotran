@@ -1570,6 +1570,8 @@ subroutine WriteTecplotExpGridElements(fid,realization_base)
  
   allocate(temp_int(grid%unstructured_grid%max_nvert_per_cell))
   
+  if (.not.associated(grid%unstructured_grid%explicit_grid%cell_connectivity)) return
+
   if (option%myrank == option%io_rank) then
     do iconn = 1, num_elems
       num_vertices = grid%unstructured_grid%explicit_grid% &
