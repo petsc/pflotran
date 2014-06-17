@@ -2600,6 +2600,9 @@ recursive subroutine SaturationFunctionDestroy(saturation_function)
     
   if (associated(saturation_function%Sr)) deallocate(saturation_function%Sr)
   nullify(saturation_function%Sr)
+
+  if (associated(saturation_function%Kr0)) deallocate(saturation_function%Kr0)
+  nullify(saturation_function%Kr0)
     
   deallocate(saturation_function)
   nullify(saturation_function)
