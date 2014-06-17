@@ -18,6 +18,7 @@ module Saturation_Function_module
     PetscInt :: permeability_function_itype
     PetscBool :: print_me
     PetscReal, pointer :: Sr(:)
+    PetscReal, pointer :: Kr0(:)
     PetscReal :: m
     PetscReal :: lambda
     PetscReal :: alpha
@@ -76,6 +77,7 @@ module Saturation_Function_module
   PetscInt, parameter :: PRUESS_1 = 5
   PetscInt, parameter :: LINEAR_MODEL = 6
   PetscInt, parameter :: VAN_GENUCHTEN_PARKER = 7
+  PetscInt, parameter :: VAN_GENUCHTEN_DOUGHTY = 8
 
   ! Permeability function
   PetscInt, parameter :: DEFAULT = 0
@@ -113,6 +115,8 @@ function SaturationFunctionCreate(option)
   saturation_function%print_me = PETSC_FALSE
   allocate(saturation_function%Sr(option%nphase))
   saturation_function%Sr = 0.d0
+  allocate(saturation_function%Kr0(option%nphase))
+  saturation_function%Kr0 = 1.0d0
   saturation_function%m = 0.d0
   saturation_function%lambda = 0.d0
   saturation_function%alpha = 0.d0
@@ -185,6 +189,48 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
                            PETSC_TRUE)
         call InputErrorMsg(input,option,'saturation function type', &
                            'SATURATION_FUNCTION')
+      case('PERMEABILITY_END_POINT')
+        select case(option%iflowmode)
+          case(FLASH2_MODE)
+            call InputReadWord(input,option,keyword,PETSC_TRUE)
+            call InputErrorMsg(input,option,'keyword','PERMEABILITY_FUNCTION')
+            call StringToUpper(keyword)   
+            select case(trim(keyword))
+              case('WATER','WATER_PHASE','LIQUID','LIQUID_PHASE')
+                iphase = 1
+              case('CO2','CO2_PHASE','GAS','GAS_PHASE')
+                iphase = 2
+            end select
+            call InputReadDouble(input,option,saturation_function%Kr0(iphase))
+            word = trim(keyword) // 'permeabiliy end point'
+            call InputErrorMsg(input,option,word,'PERMEABILITY_FUNCTION')
+          case(MPH_MODE)
+            call InputReadWord(input,option,keyword,PETSC_TRUE)
+            call InputErrorMsg(input,option,'keyword','PERMEABILITY_FUNCTION')
+            call StringToUpper(keyword)   
+            select case(trim(keyword))
+              case('WATER','WATER_PHASE','LIQUID','LIQUID_PHASE')
+                iphase = 1
+              case('CO2','CO2_PHASE','GAS','GAS_PHASE')
+                iphase = 2
+            end select
+            call InputReadDouble(input,option,saturation_function%Kr0(iphase))
+            word = trim(keyword) // 'permeabiliy end point'
+            call InputErrorMsg(input,option,word,'PERMEABILITY_FUNCTION')
+          case(IMS_MODE)
+            call InputReadWord(input,option,keyword,PETSC_TRUE)
+            call InputErrorMsg(input,option,'keyword','PERMEABILITY_FUNCTION')
+            call StringToUpper(keyword)   
+            select case(trim(keyword))
+              case('WATER','WATER_PHASE','LIQUID','LIQUID_PHASE')
+                iphase = 1
+              case('CO2','CO2_PHASE','GAS','GAS_PHASE')
+                iphase = 2
+            end select
+            call InputReadDouble(input,option,saturation_function%Kr0(iphase))
+            word = trim(keyword) // 'permeabiliy end point'
+            call InputErrorMsg(input,option,word,'PERMEABILITY_FUNCTION')
+        end select
       case('RESIDUAL_SATURATION') 
         select case(option%iflowmode)
           case(FLASH2_MODE)
@@ -372,7 +418,8 @@ subroutine SaturationFunctionSetTypes(saturation_function,option)
       saturation_function%saturation_function_itype = PRUESS_1
     case('VAN_GENUCHTEN_PARKER')
       saturation_function%saturation_function_itype = VAN_GENUCHTEN_PARKER
-
+    case('VAN_GENUCHTEN_DOUGHTY')
+      saturation_function%saturation_function_itype = VAN_GENUCHTEN_DOUGHTY
     case default
       option%io_buffer = 'Saturation function type "' // &
                           trim(saturation_function%saturation_function_ctype) // &
