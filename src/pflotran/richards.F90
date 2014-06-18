@@ -777,7 +777,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   class(material_auxvar_type), pointer :: material_auxvars(:)
   PetscInt :: ghosted_id, local_id, sum_connection, idof, iconn
   PetscInt :: iphasebc, iphase, i
-  PetscReal, pointer :: xx_loc_p(:), xx_p(:)
+  PetscReal, pointer :: xx_loc_p(:)
   PetscReal :: xxbc(realization%option%nflowdof)
   PetscErrorCode :: ierr
   Vec :: phi
@@ -797,7 +797,6 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   global_auxvars_ss => patch%aux%Global%auxvars_ss
   material_auxvars => patch%aux%Material%auxvars
     
-  call VecGetArrayF90(field%flow_xx, xx_p, ierr)
   call VecGetArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
 
   do ghosted_id = 1, grid%ngmax
@@ -867,7 +866,6 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
     source_sink => source_sink%next
   enddo
 
-  call VecRestoreArrayF90(field%flow_xx, xx_p, ierr)
   call VecRestoreArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
 
   ! Compute gradient using a least squares approach at each control volume
@@ -1048,8 +1046,6 @@ subroutine RichardsUpdateFixedAccumPatch(realization)
     
   call VecGetArrayF90(field%flow_xx,xx_p, ierr)
 
-!  call VecGetArrayF90(field%flow_xx_loc_faces, xx_faces_p, ierr)
-
   call VecGetArrayF90(field%flow_accum, accum_p, ierr)
 
 !  numfaces = 6     ! hex only
@@ -1075,13 +1071,7 @@ subroutine RichardsUpdateFixedAccumPatch(realization)
   call VecRestoreArrayF90(field%flow_xx,xx_p, ierr)
 
 
-!  call VecRestoreArrayF90(field%flow_xx_loc_faces, xx_faces_p, ierr)
-
   call VecRestoreArrayF90(field%flow_accum, accum_p, ierr)
-
-#if 0
-!  call RichardsNumericalJacTest(field%flow_xx,realization)
-#endif
 
 end subroutine RichardsUpdateFixedAccumPatch
 
