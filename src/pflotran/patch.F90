@@ -4366,6 +4366,18 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
       local_id = grid%nG2L(ghosted_id)        
       value = patch%aux%SC_RT%sec_transport_vars(local_id)% &
               sec_rt_auxvar(isubvar)%mnrl_volfrac(isubvar1)
+    case(SEC_MIN_RATE)
+      local_id = grid%nG2L(ghosted_id)        
+      value = patch%aux%SC_RT%sec_transport_vars(local_id)% &
+              sec_rt_auxvar(isubvar)%mnrl_rate(isubvar1)
+    case(SEC_MIN_SI)
+      local_id = grid%nG2L(ghosted_id)  
+      value = RMineralSaturationIndex(isubvar1,&
+                                      patch%aux%SC_RT% &
+                                      sec_transport_vars(local_id)% &
+                                      sec_rt_auxvar(isubvar), &
+                                      patch%aux%Global%auxvars(ghosted_id),&
+                                      reaction,option)      
     case(TORTUOSITY)
       value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
                                      TORTUOSITY)
