@@ -20,6 +20,7 @@ module PMC_Base_class
   ! process model coupler type
   type, public :: pmc_base_type
     character(len=MAXWORDLENGTH) :: name
+    PetscInt :: stage
     PetscBool :: is_master
     type(option_type), pointer :: option
     class(stepper_base_type), pointer :: timestepper
@@ -126,6 +127,7 @@ subroutine PMCBaseInit(this)
 #endif
   
   this%name = 'PMCBase'
+  this%stage = 0
   this%is_master = PETSC_FALSE
   nullify(this%option)
   nullify(this%timestepper)
@@ -251,6 +253,7 @@ class(pmc_base_type), target :: this
   PetscViewer :: viewer
   PetscErrorCode :: ierr
   
+  if (this%stage /= 0) call PetscLogStagePush(this%stage,ierr)
   this%option%io_buffer = trim(this%name) // ':' // trim(this%pm_list%name)  
   call printVerboseMsg(this%option)
   
@@ -352,6 +355,8 @@ class(pmc_base_type), target :: this
   endif
 
   stop_flag = max(stop_flag,local_stop_flag)
+  
+  if (this%stage /= 0) call PetscLogStagePop(ierr)
   
 end subroutine PMCBaseRunToTime
 
