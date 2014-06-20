@@ -646,6 +646,7 @@ subroutine THComputeMassBalancePatch(realization,mass_balance)
   type(grid_type), pointer :: grid
   type(global_auxvar_type), pointer :: global_auxvars(:)
   class(material_auxvar_type), pointer :: material_auxvars(:)
+  type(TH_auxvar_type),pointer :: TH_auxvars(:)
 
   PetscErrorCode :: ierr
   PetscInt :: local_id
@@ -671,6 +672,16 @@ subroutine THComputeMassBalancePatch(realization,mass_balance)
       global_auxvars(ghosted_id)%sat* &
       material_auxvars(ghosted_id)%porosity* &
       material_auxvars(ghosted_id)%volume
+
+    if (option%use_th_freezing) then
+      ! mass = volume*saturation_ice*density_ice
+      mass_balance = mass_balance + &
+        TH_auxvars(ghosted_id)%den_ice*FMWH2O* &
+        TH_auxvars(ghosted_id)%sat_ice* &
+        material_auxvars(ghosted_id)%porosity* &
+        material_auxvars(ghosted_id)%volume
+    endif
+
   enddo
 
 end subroutine THComputeMassBalancePatch
