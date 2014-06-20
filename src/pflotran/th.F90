@@ -659,6 +659,7 @@ subroutine THComputeMassBalancePatch(realization,mass_balance)
 
   global_auxvars => patch%aux%Global%auxvars
   material_auxvars => patch%aux%Material%auxvars
+  TH_auxvars => patch%aux%TH%auxvars
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
