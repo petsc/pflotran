@@ -10,16 +10,15 @@ module Logging_module
 
 #include "finclude/petscsys.h"
 
-! stages
-PetscInt, parameter, public :: INIT_STAGE = 1
-PetscInt, parameter, public :: TS_STAGE = 2
-PetscInt, parameter, public :: FLOW_STAGE = 3
-PetscInt, parameter, public :: TRAN_STAGE = 4
-PetscInt, parameter, public :: OUTPUT_STAGE = 5
-PetscInt, parameter, public :: FINAL_STAGE = 6
+  ! stages
+  PetscInt, parameter, public :: INIT_STAGE = 1
+  PetscInt, parameter, public :: TS_STAGE = 2
+  PetscInt, parameter, public :: OUTPUT_STAGE = 3
+  PetscInt, parameter, public :: FINAL_STAGE = 4
 
   type, public :: logging_type 
   
+    PetscInt :: stage_count
     PetscLogStage :: stage(10)
     
     PetscClassId :: class_pflotran
@@ -112,6 +111,7 @@ PetscInt, parameter, public :: FINAL_STAGE = 6
   type(logging_type), pointer, public :: logging
   
   public :: LoggingCreate, &
+            LoggingCreateStage, &
             LoggingDestroy
 
 contains
@@ -132,14 +132,12 @@ subroutine LoggingCreate()
   
   allocate(logging)
 
+  logging%stage_count = FINAL_STAGE
+  
   call PetscLogStageRegister('Init Stage',  & 
                              logging%stage(INIT_STAGE),ierr)
   call PetscLogStageRegister('Time Step Stage', &
                              logging%stage(TS_STAGE),ierr)
-  call PetscLogStageRegister('Flow Stage', &
-                             logging%stage(FLOW_STAGE),ierr)
-  call PetscLogStageRegister('Transport Stage', &
-                             logging%stage(TRAN_STAGE),ierr)
   call PetscLogStageRegister('Output Stage', &
                              logging%stage(OUTPUT_STAGE),ierr)
   call PetscLogStageRegister('Finalization Stage', &
@@ -367,6 +365,31 @@ subroutine LoggingCreate()
   
 end subroutine LoggingCreate
 
+! ************************************************************************** !
+
+subroutine LoggingCreateStage(stage_name,stage_id)
+  ! 
+  ! OptionDestroy: Deallocates a logging object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/07
+  ! 
+
+  implicit none
+  
+  character(len=MAXSTRINGLENGTH) :: stage_name
+  PetscInt :: stage_id
+  
+  character(len=MAXSTRINGLENGTH) :: full_stage_name
+  PetscErrorCode :: ierr
+  
+  logging%stage_count = logging%stage_count + 1
+  full_stage_name = trim(stage_name) // ' Stage'
+  call PetscLogStageRegister(full_stage_name,stage_id,ierr)
+  stage_id = logging%stage_count
+  
+end subroutine LoggingCreateStage
+  
 ! ************************************************************************** !
 
 subroutine LoggingDestroy()

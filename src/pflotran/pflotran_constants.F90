@@ -213,6 +213,8 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: PRINT_SEC_TEMP =           0
   PetscInt, parameter, public :: PRINT_SEC_CONC =           1
   PetscInt, parameter, public :: PRINT_SEC_MIN_VOLFRAC =    2
+  PetscInt, parameter, public :: PRINT_SEC_MIN_RATE =       3
+  PetscInt, parameter, public :: PRINT_SEC_MIN_SI =         4
   
   PetscInt, parameter, public :: PROCEED = 0
   PetscInt, parameter, public :: DONE = 1

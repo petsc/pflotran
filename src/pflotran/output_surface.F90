@@ -398,7 +398,7 @@ function OutputTecplotZoneHeader(surf_realization,variable_count,tecplot_format)
       else
         string2 = ', N=' // &
                   trim(StringFormatInt(grid%unstructured_grid%num_vertices_global)) // &
-                  ', ELEMENTS=' // &
+                  ', E=' // &
                   trim(StringFormatInt(grid%unstructured_grid%nmax))
         string2 = trim(string2) // ', ZONETYPE=FEQUADRILATERAL'
       endif

@@ -21,7 +21,7 @@ module Observation_module
     PetscInt :: id
     PetscInt :: itype
     PetscBool :: print_velocities
-    PetscBool :: print_secondary_data(3)          ! first entry is for temp., second is for conc. and third is for mineral vol frac.
+    PetscBool :: print_secondary_data(5)          ! first entry is for temp., second is for conc. and third is for mineral vol frac., fourth is rate, fifth is SI
     PetscBool :: at_cell_center
     character(len=MAXWORDLENGTH) :: name
     character(len=MAXWORDLENGTH) :: linkage_name
@@ -181,6 +181,22 @@ subroutine ObservationRead(observation,input,option)
         observation%print_secondary_data(3) = PETSC_TRUE
       else
         option%io_buffer = 'Keyword SECONDARY_MINERAL_VOLFRAC can only be used' // &
+                           ' MULTIPLE_CONTINUUM keyword'
+        call printErrMsg(option)
+      endif
+      case('SECONDARY_MINERAL_RATE')
+      if (option%use_mc) then
+        observation%print_secondary_data(4) = PETSC_TRUE
+      else
+        option%io_buffer = 'Keyword SECONDARY_MINERAL_RATE can only be used' // &
+                           ' MULTIPLE_CONTINUUM keyword'
+        call printErrMsg(option)
+      endif
+      case('SECONDARY_MINERAL_SI')
+      if (option%use_mc) then
+        observation%print_secondary_data(5) = PETSC_TRUE
+      else
+        option%io_buffer = 'Keyword SECONDARY_MINERAL_SIcan only be used' // &
                            ' MULTIPLE_CONTINUUM keyword'
         call printErrMsg(option)
       endif

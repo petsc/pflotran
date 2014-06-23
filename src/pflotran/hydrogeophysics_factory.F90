@@ -312,6 +312,7 @@ subroutine HydrogeophysicsInitPostPetsc(simulation, option)
   use Subsurface_Factory_module
   use PMC_Hydrogeophysics_class
   use Option_module
+  use Logging_module
   
   implicit none
   
@@ -322,6 +323,7 @@ subroutine HydrogeophysicsInitPostPetsc(simulation, option)
   type(option_type), pointer :: option
   
   class(pmc_hydrogeophysics_type), pointer :: hydrogeophysics_coupler
+  character(len=MAXSTRINGLENGTH) :: string
   PetscErrorCode :: ierr
   
   ! Init() is called in SubsurfaceInitializePostPetsc
@@ -332,6 +334,9 @@ subroutine HydrogeophysicsInitPostPetsc(simulation, option)
   hydrogeophysics_coupler%option => simulation%option
   hydrogeophysics_coupler%realization => simulation%realization
   simulation%hydrogeophysics_coupler => hydrogeophysics_coupler
+  ! set up logging stage
+  string = 'Hydrogeophysics'
+  call LoggingCreateStage(string,hydrogeophysics_coupler%stage)
   if (associated(simulation%process_model_coupler_list%below)) then
     simulation%process_model_coupler_list%below%below => hydrogeophysics_coupler
   else

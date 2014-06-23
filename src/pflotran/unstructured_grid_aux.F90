@@ -292,6 +292,12 @@ function UGridExplicitCreate()
   nullify(explicit_grid%connections)
   nullify(explicit_grid%face_areas)
   nullify(explicit_grid%face_centroids)
+  nullify(explicit_grid%cell_connectivity)
+  nullify(explicit_grid%vertex_coordinates)
+
+  explicit_grid%num_cells_global = 0
+  explicit_grid%num_elems = 0
+  explicit_grid%num_elems_local = 0
 
   UGridExplicitCreate => explicit_grid
   

@@ -299,6 +299,7 @@ srcsink_obj = \
 	${common_src}srcsink_sandbox.o \
 	${common_src}srcsink_sandbox_base.o \
 	${common_src}srcsink_sandbox_mass_rate.o \
+	${common_src}srcsink_sandbox_downreg.o \
 	${common_src}srcsink_sandbox_wipp_gas.o \
 	${common_src}srcsink_sandbox_wipp_well.o
 
@@ -944,6 +945,8 @@ richards.o : connection.o coupler.o debug.o discretization.o eos_water.o \
              material_aux.o matrix_buffer.o option.o output_aux.o patch.o \
              pflotran_constants.o realization.o realization_base.o \
              richards_aux.o richards_common.o richards_lsm.o richards_mfd.o \
+             srcsink_sandbox.o srcsink_sandbox_base.o \
+             srcsink_sandbox_downreg.o \
              saturation_function.o string.o variables.o
 richards_aux.o : eos_water.o global_aux.o material_aux.o matrix_buffer.o \
                  option.o pflotran_constants.o saturation_function.o utility.o
@@ -989,10 +992,14 @@ spline.o : pflotran_constants.o
 srcsink_sandbox.o : grid.o input_aux.o material_aux.o option.o \
                     pflotran_constants.o region.o srcsink_sandbox_base.o \
                     srcsink_sandbox_mass_rate.o srcsink_sandbox_wipp_gas.o \
+                    srcsink_sandbox_downreg.o \
                     srcsink_sandbox_wipp_well.o string.o utility.o
 srcsink_sandbox_base.o : input_aux.o material_aux.o option.o \
                          pflotran_constants.o region.o
 srcsink_sandbox_mass_rate.o : general_aux.o input_aux.o material_aux.o \
+                              option.o pflotran_constants.o reaction_aux.o \
+                              region.o srcsink_sandbox_base.o string.o units.o
+srcsink_sandbox_downreg.o : general_aux.o input_aux.o material_aux.o \
                               option.o pflotran_constants.o reaction_aux.o \
                               region.o srcsink_sandbox_base.o string.o units.o
 srcsink_sandbox_wipp_gas.o : input_aux.o material_aux.o option.o \

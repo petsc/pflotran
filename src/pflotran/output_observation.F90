@@ -544,6 +544,16 @@ subroutine OutputObservationTecplotSecTXT(realization_base)
                                                         local_id, &
                                                         PRINT_SEC_MIN_VOLFRAC)
                 endif
+                if (observation%print_secondary_data(4)) then
+                  call WriteObservationSecondaryDataAtCell(fid,realization_base, &
+                                                        local_id, &
+                                                        PRINT_SEC_MIN_RATE)
+                endif
+                if (observation%print_secondary_data(5)) then
+                  call WriteObservationSecondaryDataAtCell(fid,realization_base, &
+                                                        local_id, &
+                                                        PRINT_SEC_MIN_SI)
+                endif
               enddo
       end select
       observation => observation%next
@@ -586,7 +596,7 @@ subroutine WriteObservationHeaderForCellSec(fid,realization_base,region,icell, &
   class(realization_base_type) :: realization_base
   type(region_type) :: region
   PetscInt :: icell
-  PetscBool :: print_secondary_data(3)
+  PetscBool :: print_secondary_data(5)
   PetscInt :: icolumn
   
   PetscInt :: local_id
@@ -638,7 +648,7 @@ subroutine WriteObservationHeaderForCoordSec(fid,realization_base,region, &
   PetscInt :: fid
   class(realization_base_type) :: realization_base
   type(region_type) :: region
-  PetscBool :: print_secondary_data(3)
+  PetscBool :: print_secondary_data(5)
   PetscInt :: icolumn
   
   character(len=MAXHEADERLENGTH) :: header
@@ -679,7 +689,7 @@ subroutine WriteObservationHeaderSec(fid,realization_base,cell_string, &
   PetscInt :: fid
   class(realization_base_type) :: realization_base
   type(reaction_type), pointer :: reaction 
-  PetscBool :: print_secondary_data(3)
+  PetscBool :: print_secondary_data(5)
   character(len=MAXSTRINGLENGTH) :: cell_string
   PetscInt :: icolumn
   
@@ -738,6 +748,35 @@ subroutine WriteObservationHeaderSec(fid,realization_base,cell_string, &
           enddo
       write(fid,'(a)',advance="no") trim(header)
     endif  
+    
+  ! add secondary mineral rates to header
+    if (print_secondary_data(4)) then
+          header = ''
+          do j = 1, reaction%mineral%nkinmnrl
+            do i = 1, option%nsec_cells
+              write(string,'(i2)') i
+              string = 'Rate(' // trim(adjustl(string)) // ') ' &
+                       // trim(reaction%mineral%mineral_names(j))
+              call OutputAppendToHeader(header,string,'',cell_string,icolumn)
+            enddo
+          enddo
+      write(fid,'(a)',advance="no") trim(header)
+    endif    
+    
+  ! add secondary mineral volume fractions to header
+    if (print_secondary_data(5)) then
+          header = ''
+          do j = 1, reaction%mineral%nkinmnrl
+            do i = 1, option%nsec_cells
+              write(string,'(i2)') i
+              string = 'SI(' // trim(adjustl(string)) // ') ' &
+                       // trim(reaction%mineral%mineral_names(j))
+              call OutputAppendToHeader(header,string,'',cell_string,icolumn)
+            enddo
+          enddo
+      write(fid,'(a)',advance="no") trim(header)
+    endif    
+    
   endif 
   
 end subroutine WriteObservationHeaderSec
@@ -1504,6 +1543,24 @@ subroutine WriteObservationSecondaryDataAtCell(fid,realization_base,local_id,iva
           enddo
         enddo
       endif
+       if (ivar == PRINT_SEC_MIN_RATE) then
+        do nkinmnrl = 1, reaction%mineral%nkinmnrl
+          do i = 1, option%nsec_cells 
+            write(fid,110,advance="no") &
+              RealizGetVariableValueAtCell(realization_base,SEC_MIN_RATE,i, &
+                                          ghosted_id,nkinmnrl)
+          enddo
+        enddo
+      endif
+      if (ivar == PRINT_SEC_MIN_SI) then
+        do nkinmnrl = 1, reaction%mineral%nkinmnrl
+          do i = 1, option%nsec_cells 
+            write(fid,110,advance="no") &
+              RealizGetVariableValueAtCell(realization_base,SEC_MIN_SI,i, &
+                                          ghosted_id,nkinmnrl)
+          enddo
+        enddo
+      endif           
     endif 
    endif 
    
