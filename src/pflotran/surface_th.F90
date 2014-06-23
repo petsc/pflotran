@@ -974,10 +974,14 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
                                 surf_global_auxvars(ghosted_id), &
                                 option)
     ! [rho*h*T*Cwi]
-    xx_loc_p(istart+1) = surf_global_auxvars(ghosted_id)%den_kg(1)* &
-                         xx_loc_p(istart)* &
-                         (surf_global_auxvars(ghosted_id)%temp + 273.15d0)* &
-                         surf_th_auxvars(ghosted_id)%Cwi
+    if (xx_loc_p(istart) < 1.d-15) then
+      xx_loc_p(istart+1) = surf_global_auxvars(ghosted_id)%den_kg(1)* &
+                           xx_loc_p(istart)* &
+                           (surf_global_auxvars(ghosted_id)%temp + 273.15d0)* &
+                           surf_th_auxvars(ghosted_id)%Cwi
+    else
+      xx_loc_p(istart+1) = 0.d0
+    endif
   enddo
    
   ! Boundary aux vars
@@ -1136,15 +1140,23 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
       if (xx_loc_p(istart) < 1.d-15) then
         !temp = option%reference_temperature
         temp = DUMMY_VALUE
+        xx_loc_p(iend) = 0.d0
       else
+
+        if (surf_global_auxvars(ghosted_id)%temp == DUMMY_VALUE) then
+          call EOSWaterdensity(0.d0,option%reference_pressure,den,dum1,ierr)
+          surf_global_auxvars(ghosted_id)%den_kg(1) = den
+        endif
+
         ! T^{t+1,m} = (rho Cwi hw T)^{t+1} / rho^{t+1,m-1} Cw)^{t} (hw)^{t+1}
         do iter = 1,niter
           temp = xx_loc_p(iend)/xx_loc_p(istart)/ &
-                  surf_global_auxvars(local_id)%den_kg(1)/ &
-                  surf_auxvars(local_id)%Cwi - 273.15d0
+                  surf_global_auxvars(ghosted_id)%den_kg(1)/ &
+                  surf_auxvars(ghosted_id)%Cwi - 273.15d0
           call EOSWaterdensity(temp,option%reference_pressure,den,dum1,ierr)
-          surf_global_auxvars(local_id)%den_kg(1) = den
+          surf_global_auxvars(ghosted_id)%den_kg(1) = den
         enddo
+
       endif
       surf_global_auxvars(ghosted_id)%temp = temp
     endif
@@ -1395,10 +1407,12 @@ subroutine SurfaceTHImplicitAtmForcing(surf_realization)
           temp_old = surf_global_auxvars(ghosted_id)%temp
           k_therm  = surf_auxvars(ghosted_id)%k_therm
           Cw       = surf_auxvars(ghosted_id)%Cw
-          call EOSWaterdensity(temp_old,option%reference_pressure,den_old,dum1,ierr)
-          call EOSWaterdensity(temp_old,option%reference_pressure,den_iter,dum1,ierr)
 
           if (head > eps) then
+
+            call EOSWaterdensity(temp_old,option%reference_pressure,den_old,dum1,ierr)
+            call EOSWaterdensity(temp_old,option%reference_pressure,den_iter,dum1,ierr)
+
             do iter = 1,niter
               beta = (2.d0*k_therm*option%surf_flow_dt)/(Cw*head**2.d0)
               temp = (den_old*(temp_old + 273.15d0) + &

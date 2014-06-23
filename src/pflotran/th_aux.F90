@@ -55,6 +55,7 @@ module TH_Aux_module
     PetscReal :: coeff_for_deriv_cubic_approx(4)
     PetscReal :: range_for_linear_approx(4)
     PetscReal :: dlinear_slope_dT
+    PetscBool :: bcflux_default_scheme
 
   end type TH_auxvar_type
 
@@ -208,6 +209,7 @@ subroutine THAuxVarInit(auxvar,option)
   auxvar%coeff_for_deriv_cubic_approx(:) = 0.d0
   auxvar%range_for_linear_approx(:) = 0.d0
   auxvar%dlinear_slope_dT = 0.d0
+  auxvar%bcflux_default_scheme = PETSC_FALSE
 
 end subroutine THAuxVarInit
 
@@ -278,6 +280,7 @@ subroutine THAuxVarCopy(auxvar,auxvar2,option)
   auxvar2%coeff_for_deriv_cubic_approx(:) = auxvar%coeff_for_deriv_cubic_approx(:)
   auxvar2%range_for_linear_approx(:) = auxvar%range_for_linear_approx(:)
   auxvar2%dlinear_slope_dT = auxvar%dlinear_slope_dT
+  auxvar2%bcflux_default_scheme = auxvar%bcflux_default_scheme
 
 end subroutine THAuxVarCopy
 
