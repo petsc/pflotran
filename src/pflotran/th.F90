@@ -1465,8 +1465,6 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar, &
   PetscReal :: dsati_dp, dsati_dt
   PetscReal :: ddeni_dp, ddeni_dt
   PetscReal :: dui_dt
-  PetscReal, parameter :: C_a = 1.86d-3 ! in MJ/kg/K at 300K
-  PetscReal, parameter :: C_wv = 1.005d-3 ! in MJ/kg/K
   PetscErrorCode :: ierr
 
   
@@ -1512,41 +1510,52 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar, &
 
   if (option%use_th_freezing) then
      ! SK, 11/17/11
-     sat_g = TH_auxvar%sat_gas
-     sat_i = TH_auxvar%sat_ice
-     u_i = TH_auxvar%u_ice
-     den_i = TH_auxvar%den_ice
-     p_g = option%reference_pressure ! set to reference pressure
-     den_g = p_g/(IDEAL_GAS_CONST*(global_auxvar%temp + 273.15d0))*1.d-3
-     call EOSWaterSaturationPressure(global_auxvar%temp, p_sat, dpsat_dt, ierr)
-     mol_g = p_sat/p_g
-     C_g = C_wv*mol_g*FMWH2O + C_a*(1.d0 - mol_g)*FMWAIR !in MJ/kmol/K, expression might be different
-     u_g = C_g*(global_auxvar%temp + 273.15d0)
-     ddeng_dt = - p_g/(IDEAL_GAS_CONST*(global_auxvar%temp + 273.15d0)**2)*1.d-3
-     dmolg_dt = dpsat_dt/p_g
-     dsatg_dp = TH_auxvar%dsat_gas_dp
-     dsatg_dt = TH_auxvar%dsat_gas_dt
-     dug_dt = C_g + (C_wv*dmolg_dt*FMWH2O - C_a*dmolg_dt*FMWAIR)* &
-          (global_auxvar%temp + 273.15d0)
+     sat_g    = TH_auxvar%sat_gas
+     sat_i    = TH_auxvar%sat_ice
      dsati_dt = TH_auxvar%dsat_ice_dt
      dsati_dp = TH_auxvar%dsat_ice_dp
+     dsatg_dp = TH_auxvar%dsat_gas_dp
+     dsatg_dt = TH_auxvar%dsat_gas_dt
+
+     u_g      = TH_auxvar%u_gas
+     u_i      = TH_auxvar%u_ice
+     dug_dt   = TH_auxvar%du_gas_dt
+     dui_dt   = TH_auxvar%du_ice_dt
+
+     den_i    = TH_auxvar%den_ice
+     den_g    = TH_auxvar%den_gas
+     mol_g    = TH_auxvar%mol_gas
      ddeni_dt = TH_auxvar%dden_ice_dt
      ddeni_dp = TH_auxvar%dden_ice_dp
-     dui_dt = TH_auxvar%du_ice_dt
- 
-     J(TH_PRESSURE_DOF,TH_PRESSURE_DOF) = J(TH_PRESSURE_DOF,TH_PRESSURE_DOF) + (dsatg_dp*den_g*mol_g + dsati_dp*den_i + &
-          sat_i*ddeni_dp)*porXvol
-     J(TH_PRESSURE_DOF,TH_TEMPERATURE_DOF) = J(TH_PRESSURE_DOF,TH_TEMPERATURE_DOF) + (TH_auxvar%dsat_dt*global_auxvar%den(1) + &
-          dsatg_dt*den_g*mol_g + sat_g*ddeng_dt*mol_g + &
-          sat_g*den_g*dmolg_dt + dsati_dt*den_i + sat_i*ddeni_dt)* &
-          porXvol
-     J(TH_TEMPERATURE_DOF,TH_PRESSURE_DOF) = J(TH_TEMPERATURE_DOF,TH_PRESSURE_DOF) + (dsatg_dp*den_g*u_g + dsati_dp*den_i*u_i + &
-          sat_i*ddeni_dp*u_i)*porXvol
+     ddeng_dt = TH_auxvar%dden_gas_dt
+     dmolg_dt = TH_auxvar%dmol_gas_dt
+
+     J(TH_PRESSURE_DOF,TH_PRESSURE_DOF) = J(TH_PRESSURE_DOF,TH_PRESSURE_DOF) + &
+                                          (dsatg_dp*den_g*mol_g + &
+                                           dsati_dp*den_i       + &
+                                           sat_i   *ddeni_dp     )*porXvol
+
+     J(TH_PRESSURE_DOF,TH_TEMPERATURE_DOF) = J(TH_PRESSURE_DOF,TH_TEMPERATURE_DOF) + &
+                            (TH_auxvar%dsat_dt*global_auxvar%den(1) + &
+                             dsatg_dt * den_g    * mol_g            + &
+                             sat_g    * ddeng_dt * mol_g            + &
+                             sat_g    * den_g    * dmolg_dt         + &
+                             dsati_dt * den_i                       + &
+                             sat_i    * ddeni_dt                    )*porXvol
+
+     J(TH_TEMPERATURE_DOF,TH_PRESSURE_DOF) = J(TH_TEMPERATURE_DOF,TH_PRESSURE_DOF) + &
+                     (dsatg_dp * den_g    * u_g + &
+                      dsati_dp * den_i    * u_i + &
+                      sat_i    * ddeni_dp * u_i )*porXvol
+
      J(TH_TEMPERATURE_DOF,TH_TEMPERATURE_DOF) = J(TH_TEMPERATURE_DOF,TH_TEMPERATURE_DOF) + &
-          (TH_auxvar%dsat_dt*global_auxvar%den(1)*TH_auxvar%u + &
-          dsatg_dt*den_g*u_g + sat_g*ddeng_dt*u_g + &
-          sat_g*den_g*dug_dt + dsati_dt*den_i*u_i + &
-          sat_i*ddeni_dt*u_i + sat_i*den_i*dui_dt)*porXvol
+                (TH_auxvar%dsat_dt*global_auxvar%den(1)*TH_auxvar%u + &
+                  dsatg_dt * den_g    * u_g                         + &
+                  sat_g    * ddeng_dt * u_g                         + &
+                  sat_g    * den_g    * dug_dt                      + &
+                  dsati_dt * den_i    * u_i                         + &
+                  sat_i    * ddeni_dt * u_i                         + &
+                  sat_i    * den_i    * dui_dt                      )*porXvol
   endif
 
   J = J/option%flow_dt
@@ -1652,8 +1661,6 @@ subroutine THAccumulation(auxvar,global_auxvar, &
   ! ice variables
   PetscReal :: sat_g, p_g, den_g, p_sat, mol_g, u_g, C_g
   PetscReal :: sat_i, den_i, u_i
-  PetscReal, parameter :: C_a = 1.86d-3 ! in MJ/kg/K at 300K
-  PetscReal, parameter :: C_wv = 1.005d-3 ! in MJ/kg/K
   PetscErrorCode :: ierr
   
   vol = material_auxvar%volume
@@ -1685,14 +1692,11 @@ subroutine THAccumulation(auxvar,global_auxvar, &
      ! SK, 11/17/11
      sat_g = auxvar%sat_gas
      sat_i = auxvar%sat_ice
-     u_i = auxvar%u_ice
+     u_i   = auxvar%u_ice
      den_i = auxvar%den_ice
-     p_g = option%reference_pressure
-     den_g = p_g/(IDEAL_GAS_CONST*(global_auxvar%temp + 273.15d0))*1.d-3 !in kmol/m3
-     call EOSWaterSaturationPressure(global_auxvar%temp, p_sat, ierr)
-     mol_g = p_sat/p_g
-     C_g = C_wv*mol_g*FMWH2O + C_a*(1.d0 - mol_g)*FMWAIR ! in MJ/kmol/K
-     u_g = C_g*(global_auxvar%temp + 273.15d0)       ! in MJ/kmol
+     den_g = auxvar%den_gas
+     mol_g = auxvar%mol_gas
+     u_g = auxvar%u_gas
      mol(1) = mol(1) + (sat_g*den_g*mol_g + sat_i*den_i)*porXvol
      eng = eng + (sat_g*den_g*u_g + sat_i*den_i*u_i)*porXvol
   endif
