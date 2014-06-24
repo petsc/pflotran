@@ -72,12 +72,12 @@ module Saturation_Function_module
   ! Saturation function 
   PetscInt, parameter, public :: VAN_GENUCHTEN = 1
   PetscInt, parameter, public :: BROOKS_COREY = 2
-  PetscInt, parameter :: THOMEER_COREY = 3
-  PetscInt, parameter :: NMT_EXP = 4
-  PetscInt, parameter :: PRUESS_1 = 5
-  PetscInt, parameter :: LINEAR_MODEL = 6
-  PetscInt, parameter :: VAN_GENUCHTEN_PARKER = 7
-  PetscInt, parameter :: VAN_GENUCHTEN_DOUGHTY = 8
+  PetscInt, parameter, public :: THOMEER_COREY = 3
+  PetscInt, parameter, public :: NMT_EXP = 4
+  PetscInt, parameter, public :: PRUESS_1 = 5
+  PetscInt, parameter, public :: LINEAR_MODEL = 6
+  PetscInt, parameter, public :: VAN_GENUCHTEN_PARKER = 7
+  PetscInt, parameter, public :: VAN_GENUCHTEN_DOUGHTY = 8
 
   ! Permeability function
   PetscInt, parameter :: DEFAULT = 0

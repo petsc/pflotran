@@ -262,7 +262,7 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,ikrtype,pckr_sir,kr0, &
   ! Author: Chuan Lu
   ! Date: 05/12/08
   ! 
-      
+  use Saturation_Function_module
   implicit none 
 
   
@@ -315,7 +315,7 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,ikrtype,pckr_sir,kr0, &
        
         upc = 0.D0
 
-      case(1) ! van Genuchten
+      case(VAN_GENUCHTEN) ! van Genuchten
 
         ala = pckr_alpha
         um = pckr_m
@@ -375,7 +375,7 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,ikrtype,pckr_sir,kr0, &
           end if
         end if
 
-      case(2) !Brooks-Corey
+      case(BROOKS_COREY) !Brooks-Corey
        
         lam = pckr_lambda
         ala = pckr_alpha
@@ -413,7 +413,7 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,ikrtype,pckr_sir,kr0, &
         end if
 
            
-      case(3) !linear interpolation, need pcmax, assign krmax=1.
+      case(THOMEER_COREY) !linear interpolation, need pcmax, assign krmax=1.
         
         if (sw > swir) then
           se = (sw - swir)/(sw0 - swir)
@@ -437,7 +437,7 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,ikrtype,pckr_sir,kr0, &
           kr(2) = 0.d0
         end if
 
-      case(4)  ! po model with gas phase residual (NMT)
+      case(NMT_EXP)  ! po model with gas phase residual (NMT)
         
         if (sw > 1.D0) sw = 1.D0
         if (sw < 0.D-0) sw = 1.D-5
@@ -480,7 +480,7 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,ikrtype,pckr_sir,kr0, &
         if (kr(2) < 0.D0) kr(2)=0.D0!; kr(1)=1.D0
         if (kr(2) > 1.D0) kr(2)=1.D0!; kr(1)=0.D0
 
-      case(5) !linear interpolation, need pcmax, assign krmax=1 (Pruess_1).
+      case(PRUESS_1) !linear interpolation, need pcmax, assign krmax=1 (Pruess_1).
         
         if (sw > swir) then
           se = (sw - swir)/(sw0 - swir)
@@ -499,7 +499,7 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,ikrtype,pckr_sir,kr0, &
           kr(2) = 0.d0
         end if
 
-      case(7) ! van Genuchten-Parker
+      case(VAN_GENUCHTEN_PARKER) ! van Genuchten-Parker
        
         lam = pckr_lambda
         ala = pckr_alpha
@@ -538,7 +538,7 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,ikrtype,pckr_sir,kr0, &
 !         kr(2) = (1.D0 - se)**0.33333333D0 * (1.D0 - se**(1.D0/um))**(2.D0*um)
         endif
 
-      case(8) ! Doughty (2007) - Van Genutchen Mualem model adjusted for sgir/=0
+      case(VAN_GENUCHTEN_DOUGHTY) ! Doughty (2007) - Van Genutchen Mualem model adjusted for sgir/=0
         ! Modeling geologic storage of carbon dioxide: Comparison of non-hysteretic and
         ! hysteretic characteristic curves, Doughty (2007)
         ala = pckr_alpha
