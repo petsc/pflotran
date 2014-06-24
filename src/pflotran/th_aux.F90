@@ -43,6 +43,12 @@ module TH_Aux_module
     PetscReal :: dden_ice_dt
     PetscReal :: u_ice
     PetscReal :: du_ice_dt
+    PetscReal :: den_gas
+    PetscReal :: dden_gas_dt
+    PetscReal :: u_gas
+    PetscReal :: du_gas_dt
+    PetscReal :: mol_gas
+    PetscReal :: dmol_gas_dt
     ! For DallAmico model
     PetscReal :: pres_fh2o
     PetscReal :: dpres_fh2o_dp
@@ -198,6 +204,12 @@ subroutine THAuxVarInit(auxvar,option)
   auxvar%dden_ice_dt = 0.d0
   auxvar%u_ice = 0.d0
   auxvar%du_ice_dt = 0.d0
+  auxvar%den_gas = 0.d0
+  auxvar%dden_gas_dt = 0.d0
+  auxvar%u_gas = 0.d0
+  auxvar%du_gas_dt = 0.d0
+  auxvar%mol_gas = 0.d0
+  auxvar%dmol_gas_dt = 0.d0
   auxvar%pres_fh2o = 0.d0
   auxvar%dpres_fh2o_dp = 0.d0
   auxvar%dpres_fh2o_dt = 0.d0
@@ -270,6 +282,12 @@ subroutine THAuxVarCopy(auxvar,auxvar2,option)
      auxvar2%pres_fh2o = auxvar%pres_fh2o
      auxvar2%dpres_fh2o_dp = auxvar%dpres_fh2o_dp
      auxvar2%dpres_fh2o_dt = auxvar%dpres_fh2o_dt
+     auxvar2%den_gas = auxvar%den_gas
+     auxvar2%dden_gas_dt = auxvar%dden_gas_dt
+     auxvar2%u_gas = auxvar%u_gas
+     auxvar2%du_gas_dt = auxvar%du_gas_dt
+     auxvar2%mol_gas = auxvar%mol_gas
+     auxvar2%dmol_gas_dt = auxvar%dmol_gas_dt
   endif
   auxvar2%surf_wat = auxvar%surf_wat
   auxvar2%P_min = auxvar%P_min
@@ -473,7 +491,15 @@ subroutine THAuxVarComputeFreezing(x, auxvar, global_auxvar, &
   PetscReal :: u_ice, du_ice_dT
   PetscBool :: out_of_table_flag
   PetscReal :: p_th
-  
+
+  PetscReal :: p_g
+  PetscReal :: p_sat
+  PetscReal :: mol_g
+  PetscReal :: C_g
+  PetscReal :: dmolg_dt
+  PetscReal, parameter :: C_a = 1.86d-3 ! in MJ/kg/K at 300K
+  PetscReal, parameter :: C_wv = 1.005d-3 ! in MJ/kg/K
+
   out_of_table_flag = PETSC_FALSE
  
   global_auxvar%sat = 0.d0
@@ -615,7 +641,7 @@ subroutine THAuxVarComputeFreezing(x, auxvar, global_auxvar, &
   auxvar%dsat_ice_dt = dsi_temp
   auxvar%dsat_gas_dt = dsg_temp
   
-! Calculate the density, internal energy and derivatives for ice
+  ! Calculate the density, internal energy and derivatives for ice
   call EOSWaterDensityIce(global_auxvar%temp, global_auxvar%pres(1), &
                           den_ice, dden_ice_dT, dden_ice_dP, ierr)
 
@@ -626,6 +652,22 @@ subroutine THAuxVarComputeFreezing(x, auxvar, global_auxvar, &
   auxvar%dden_ice_dp = dden_ice_dP
   auxvar%u_ice = u_ice*1.d-3                  !kJ/kmol --> MJ/kmol
   auxvar%du_ice_dt = du_ice_dT*1.d-3          !kJ/kmol/K --> MJ/kmol/K 
+
+  ! Calculate the values and derivatives for density and internal energy
+  call EOSWaterSaturationPressure(global_auxvar%temp, p_sat, ierr)
+
+  p_g            = option%reference_pressure
+  auxvar%den_gas = p_g/(IDEAL_GAS_CONST*(global_auxvar%temp + 273.15d0))*1.d-3 !in kmol/m3
+  mol_g          = p_sat/p_g
+  C_g            = C_wv*mol_g*FMWH2O + C_a*(1.d0 - mol_g)*FMWAIR ! in MJ/kmol/K
+  auxvar%u_gas   = C_g*(global_auxvar%temp + 273.15d0)           ! in MJ/kmol
+  auxvar%mol_gas = mol_g
+
+  auxvar%dden_gas_dt = - p_g/(IDEAL_GAS_CONST*(global_auxvar%temp + 273.15d0)**2)*1.d-3
+  dmolg_dt           = dpsat_dt/p_g
+  auxvar%du_gas_dt   = C_g + (C_wv*dmolg_dt*FMWH2O - C_a*dmolg_dt*FMWAIR)* &
+                       (global_auxvar%temp + 273.15d0)
+  auxvar%dmol_gas_dt = dmolg_dt
 
   if (option%ice_model == DALL_AMICO) then
     auxvar%den_ice = dw_mol
