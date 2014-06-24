@@ -73,7 +73,7 @@ module Variables_module
   PetscInt, parameter, public :: SURFACE_LIQUID_HEAD        = 62
   PetscInt, parameter, public :: SURFACE_LIQUID_TEMPERATURE = 63
   PetscInt, parameter, public :: SURFACE_LIQUID_DENSITY     = 64
-
+  
   PetscInt, parameter, public :: EH = 65
   PetscInt, parameter, public :: PE = 66
   PetscInt, parameter, public :: O2 = 67
@@ -111,6 +111,10 @@ module Variables_module
   PetscInt, parameter, public :: LIQUID_HEAD             = 95
 
   PetscInt, parameter, public :: GAS_CONCENTRATION       = 96
+  
+  PetscInt, parameter, public :: SEC_MIN_RATE =            97
+  PetscInt, parameter, public :: SEC_MIN_SI =              98
+  
 
 !  PetscInt, parameter, public :: LIQUID_VELOCITY_CELL_CENT = 58
 !  PetscInt, parameter, public :: LIQUID_VELOCITY_CELL_FACE = 59
