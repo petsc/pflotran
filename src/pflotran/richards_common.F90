@@ -514,6 +514,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,auxvars, &
   use Saturation_Function_module
   use Material_Aux_class
   use EOS_Water_module
+  use Utility_module
  
   implicit none
   
@@ -558,8 +559,10 @@ subroutine RichardsBCFluxDerivative(ibndtype,auxvars, &
   PetscReal :: perturbation
   PetscReal :: x_dn(1), x_up(1), x_pert_dn(1), x_pert_up(1), pert_dn, res(1), &
             res_pert_dn(1), J_pert_dn(1,1)
-  PetscReal :: rho, v_darcy_allowable
+  PetscReal :: rho
   PetscReal :: dum1
+  PetscReal :: dq_lin,dP_lin
+  PetscReal :: q_approx, dq_approx
   PetscErrorCode :: ierr
 
   v_darcy = 0.d0
@@ -655,24 +658,52 @@ subroutine RichardsBCFluxDerivative(ibndtype,auxvars, &
      
         if (ukvr*Dq>floweps) then
           v_darcy = Dq * ukvr * dphi
-          ! If running with surface-flow model, ensure (darcy_velocity*dt) does
-          ! not exceed depth of standing water.
-          if(pressure_bc_type == HET_SURF_SEEPAGE_BC .and. option%nsurfflowdof>0) then
-            call EOSWaterdensity(option%reference_temperature, &
-                                 option%reference_pressure,rho,dum1,ierr)
-            v_darcy_allowable = (global_auxvar_up%pres(1)-option%reference_pressure) &
-                                /option%flow_dt/(-option%gravity(3))/rho
-            if(v_darcy > v_darcy_allowable) then
-              ! Since darcy velocity is limiited, dq_dp_dn needs to be zero.
-              !  Dq = 0 ==> dq_dp_dn = 0
-              Dq = 0.d0
-              v_darcy = v_darcy_allowable
-            endif
-          endif
           q = v_darcy * area
           dq_dp_dn = Dq*(dukvr_dp_dn*dphi + ukvr*dphi_dp_dn)*area
+
+          ! If running with surface-flow model, ensure (darcy_velocity*dt) does
+          ! not exceed depth of standing water.
+          if (.not. rich_auxvar_dn%bcflux_default_scheme) then
+            if (pressure_bc_type == HET_SURF_SEEPAGE_BC .and. option%nsurfflowdof>0) then
+              call EOSWaterdensity(option%reference_temperature, &
+                                   option%reference_pressure,rho,dum1,ierr)
+
+              if (global_auxvar_dn%pres(1) <= rich_auxvar_dn%P_min) then
+              
+                ! Linear approximation
+                call Interpolate(rich_auxvar_dn%range_for_linear_approx(2), &
+                                 rich_auxvar_dn%range_for_linear_approx(1), &
+                                 global_auxvar_dn%pres(1), &
+                                 rich_auxvar_dn%range_for_linear_approx(4), &
+                                 rich_auxvar_dn%range_for_linear_approx(3), &
+                                 q_approx)
+                v_darcy = q_approx/area
+                q       = q_approx
+
+                dP_lin = rich_auxvar_dn%range_for_linear_approx(2) - &
+                         rich_auxvar_dn%range_for_linear_approx(1)
+                dq_lin = rich_auxvar_dn%range_for_linear_approx(4) - &
+                         rich_auxvar_dn%range_for_linear_approx(3)
+                dq_dp_dn = dq_lin/dP_lin
+
+              else
+                if (global_auxvar_dn%pres(1) <= rich_auxvar_dn%P_max) then
+
+                  ! Cubic approximation
+                  call CubicPolynomialEvaluate(rich_auxvar_dn%coeff_for_cubic_approx, &
+                                               global_auxvar_dn%pres(1) - option%reference_pressure, &
+                                               q_approx, dq_approx)
+                  v_darcy = q_approx/area
+                  q = q_approx
+                  dq_dp_dn = dq_approx
+                endif
+              endif
+            endif
+          endif
+
         endif
-      endif 
+
+      endif
 
     case(NEUMANN_BC)
       if (dabs(auxvars(RICHARDS_PRESSURE_DOF)) > floweps) then
@@ -806,6 +837,7 @@ subroutine RichardsBCFlux(ibndtype,auxvars, &
   use Option_module
   use Material_Aux_class
   use EOS_Water_module
+  use Utility_module
  
   implicit none
   
@@ -833,8 +865,9 @@ subroutine RichardsBCFlux(ibndtype,auxvars, &
   PetscReal :: upweight,cond,gravity,dphi
   PetscInt :: pressure_bc_type
   PetscReal :: dphi_x,dphi_y,dphi_z
-  PetscReal :: rho, v_darcy_allowable
+  PetscReal :: rho
   PetscReal :: dum1
+  PetscReal :: q_approx, dq_approx
   PetscErrorCode :: ierr
   
   fluxm = 0.d0
@@ -914,14 +947,43 @@ subroutine RichardsBCFlux(ibndtype,auxvars, &
         
        if (ukvr*Dq>floweps) then
         v_darcy = Dq * ukvr * dphi
+
         ! If running with surface-flow model, ensure (darcy_velocity*dt) does
         ! not exceed depth of standing water.
-        if(pressure_bc_type == HET_SURF_SEEPAGE_BC .and. option%nsurfflowdof>0) then
+        if (pressure_bc_type == HET_SURF_SEEPAGE_BC .and. option%nsurfflowdof>0) then
           call EOSWaterdensity(option%reference_temperature, &
                                option%reference_pressure,rho,dum1,ierr)
-          v_darcy_allowable = (global_auxvar_up%pres(1)-option%reference_pressure) &
-                              /option%flow_dt/(-option%gravity(3))/rho
-          if (v_darcy > v_darcy_allowable) v_darcy = v_darcy_allowable
+
+          if (.not. rich_auxvar_dn%bcflux_default_scheme) then
+            if (global_auxvar_dn%pres(1) <= rich_auxvar_dn%P_min) then
+
+              if (rich_auxvar_dn%range_for_linear_approx(1) == -99999.d0) then
+                call printErrMsg(option,'Coeffs for linear approx for darcy flux not set')
+              endif
+
+              ! Linear approximation
+              call Interpolate(rich_auxvar_dn%range_for_linear_approx(2), &
+                               rich_auxvar_dn%range_for_linear_approx(1), &
+                               global_auxvar_dn%pres(1), &
+                               rich_auxvar_dn%range_for_linear_approx(4), &
+                               rich_auxvar_dn%range_for_linear_approx(3), &
+                               q_approx)
+              v_darcy = q_approx/area
+
+            else if (global_auxvar_dn%pres(1) <= rich_auxvar_dn%P_max) then
+
+              if (rich_auxvar_dn%coeff_for_cubic_approx(1) == -99999.d0) then
+                call printErrMsg(option,'Coeffs for cubic approx for darcy flux not set')
+              endif
+
+              ! Cubic approximation
+              call CubicPolynomialEvaluate(rich_auxvar_dn%coeff_for_cubic_approx, &
+                                           global_auxvar_dn%pres(1) - option%reference_pressure, &
+                                           q_approx, dq_approx)
+              v_darcy = q_approx/area
+            endif
+          endif
+
         endif
        endif
       endif 

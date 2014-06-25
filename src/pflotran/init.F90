@@ -776,8 +776,9 @@ subroutine Init(simulation)
   call RealizationPassPtrsToPatches(realization)
   ! link conditions with regions through couplers and generate connectivity
   call RealProcessMatPropAndSatFunc(realization)
-  call RealizationProcessCouplers(realization)
+  ! must process conditions before couplers in order to determine dataset types
   call RealizationProcessConditions(realization)
+  call RealizationProcessCouplers(realization)
   call SandboxesSetup(realization)
   call RealProcessFluidProperties(realization)
   call assignMaterialPropToRegions(realization)
@@ -1647,6 +1648,23 @@ subroutine InitReadInput(simulation)
           end select
 
 !....................
+      case ('RELATIVE_PERMEABILITY_AVERAGE')
+        call InputReadWord(input,option,word,PETSC_FALSE)
+        call StringToUpper(word)
+        select case (trim(word))
+          case ('UPWIND')
+            option%rel_perm_aveg = UPWIND
+          case ('HARMONIC')
+            option%rel_perm_aveg = HARMONIC
+          case ('DYNAMIC_HARMONIC')
+            option%rel_perm_aveg = DYNAMIC_HARMONIC
+          case default
+            option%io_buffer = 'Cannot identify the specificed ' // &
+              'RELATIVE_PERMEABILITY_AVERAGE.'
+            call printErrMsg(option)
+          end select
+
+!....................
       case ('GRID')
         call DiscretizationRead(realization%discretization,input,option)
 
@@ -1659,7 +1677,7 @@ subroutine InitReadInput(simulation)
         call InputReadNChars(input,option, &
                              realization%nonuniform_velocity_filename, &
                              MAXSTRINGLENGTH,PETSC_TRUE)
-        call InputErrorMsg(input,option,'filename','NONUNIFORM_VELOCITY') 
+        call InputErrorMsg(input,option,'filename','NONUNIFORM_VELOCITY')
 
       case ('UNIFORM_VELOCITY')
         uniform_velocity_dataset => UniformVelocityDatasetCreate()
@@ -2808,9 +2826,10 @@ subroutine setFlowMode(option)
       option%gas_phase = 2      
       option%nflowdof = 3
       option%nflowspec = 2
-      option%itable = 2
+      option%itable = 2 ! read CO2DATA0.dat
+!     option%itable = 1 ! create CO2 database: co2data.dat
       option%use_isothermal = PETSC_FALSE
-    case('FLA2','FLASH2')
+    case('FLASH2')
       option%iflowmode = FLASH2_MODE
       option%nphase = 2
       option%liquid_phase = 1      

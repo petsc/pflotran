@@ -177,13 +177,13 @@ function OutputTecplotZoneHeader(realization_base,variable_count,tecplot_format)
         case (IMPLICIT_UNSTRUCTURED_GRID)
           string2 = ', N=' // &
                     trim(StringFormatInt(grid%unstructured_grid%num_vertices_global)) // &
-                    ', ELEMENTS=' // &
+                    ', E=' // &
                     trim(StringFormatInt(grid%unstructured_grid%nmax))
           string2 = trim(string2) // ', ZONETYPE=FEBRICK'
         case (EXPLICIT_UNSTRUCTURED_GRID)
           string2 = ', N=' // &
                     trim(StringFormatInt(grid%unstructured_grid%nmax)) // &
-                    ', ELEMENTS=' // &
+                    ', E=' // &
                     trim(StringFormatInt(grid%unstructured_grid%explicit_grid%num_elems))
           string2 = trim(string2) // ', ZONETYPE=FEBRICK'
         case (POLYHEDRA_UNSTRUCTURED_GRID)
@@ -191,7 +191,7 @@ function OutputTecplotZoneHeader(realization_base,variable_count,tecplot_format)
                     trim(StringFormatInt(grid%unstructured_grid%num_vertices_global)) // &
                     ', FACES=' // &
                     trim(StringFormatInt(grid%unstructured_grid%polyhedra_grid%num_ufaces_global)) // &
-                    ', ELEMENTS=' // &
+                    ', E=' // &
                     trim(StringFormatInt(grid%unstructured_grid%nmax)) // &
                     ', TotalNumFaceNodes=' // &
                     trim(StringFormatInt(grid%unstructured_grid%polyhedra_grid%num_verts_of_ufaces_global)) // &
@@ -1465,7 +1465,7 @@ subroutine WriteTecplotUGridVertices(fid,realization_base)
       call GetVertexCoordinates(grid, global_vertex_vec,X_COORDINATE,option)
       call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
       if (option%myrank == option%io_rank) &
-        write(fid,'(a)'),'# vertex x-coordinate'
+        write(fid,'(a)') '# vertex x-coordinate'
       call WriteTecplotDataSet(fid,realization_base,vec_ptr,TECPLOT_REAL, &
       local_size)
       call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
@@ -1473,7 +1473,7 @@ subroutine WriteTecplotUGridVertices(fid,realization_base)
       call GetVertexCoordinates(grid,global_vertex_vec,Y_COORDINATE,option)
       call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
       if (option%myrank == option%io_rank) &
-        write(fid,'(a)'),'# vertex y-coordinate'
+        write(fid,'(a)') '# vertex y-coordinate'
       call WriteTecplotDataSet(fid,realization_base,vec_ptr,TECPLOT_REAL, &
       local_size)
       call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
@@ -1481,7 +1481,7 @@ subroutine WriteTecplotUGridVertices(fid,realization_base)
       call GetVertexCoordinates(grid,global_vertex_vec, Z_COORDINATE,option)
       call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
       if (option%myrank == option%io_rank) &
-        write(fid,'(a)'),'# vertex z-coordinate'
+        write(fid,'(a)') '# vertex z-coordinate'
       call WriteTecplotDataSet(fid,realization_base,vec_ptr,TECPLOT_REAL, &
       local_size)
       call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
@@ -1570,6 +1570,8 @@ subroutine WriteTecplotExpGridElements(fid,realization_base)
  
   allocate(temp_int(grid%unstructured_grid%max_nvert_per_cell))
   
+  if (.not.associated(grid%unstructured_grid%explicit_grid%cell_connectivity)) return
+
   if (option%myrank == option%io_rank) then
     do iconn = 1, num_elems
       num_vertices = grid%unstructured_grid%explicit_grid% &
@@ -2449,7 +2451,33 @@ subroutine OutputSecondaryContinuumTecplot(realization_base)
               endif
             endif
           endif
-        endif        
+        endif     
+        if (observation%print_secondary_data(4)) then
+          if (associated(reaction)) then
+            if (associated(reaction%mineral)) then
+              if (reaction%mineral%nkinmnrl > 0) then
+                do nkinmnrl = 1, reaction%mineral%nkinmnrl
+                  write(OUTPUT_UNIT,1000,advance='no') &
+                  RealizGetVariableValueAtCell(realization_base,SEC_MIN_RATE, &
+                                               sec_id,ghosted_id,nkinmnrl) 
+                enddo
+              endif
+            endif
+          endif
+        endif      
+        if (observation%print_secondary_data(5)) then
+          if (associated(reaction)) then
+            if (associated(reaction%mineral)) then
+              if (reaction%mineral%nkinmnrl > 0) then
+                do nkinmnrl = 1, reaction%mineral%nkinmnrl
+                  write(OUTPUT_UNIT,1000,advance='no') &
+                  RealizGetVariableValueAtCell(realization_base,SEC_MIN_SI, &
+                                               sec_id,ghosted_id,nkinmnrl) 
+                enddo
+              endif
+            endif
+          endif
+        endif                         
       enddo
       write(OUTPUT_UNIT,1009)
     enddo         
@@ -2488,7 +2516,7 @@ subroutine WriteTecplotHeaderForCellSec(fid,realization_base,region,icell, &
   class(realization_base_type) :: realization_base
   type(region_type) :: region
   PetscInt :: icell
-  PetscBool :: print_secondary_data(3)
+  PetscBool :: print_secondary_data(5)
   PetscInt :: icolumn
   
   PetscInt :: local_id
@@ -2540,7 +2568,7 @@ subroutine WriteTecplotHeaderForCoordSec(fid,realization_base,region, &
   PetscInt :: fid
   class(realization_base_type) :: realization_base
   type(region_type) :: region
-  PetscBool :: print_secondary_data(3)
+  PetscBool :: print_secondary_data(5)
   PetscInt :: icolumn
   
   character(len=MAXHEADERLENGTH) :: header
@@ -2581,7 +2609,7 @@ subroutine WriteTecplotHeaderSec(fid,realization_base,cell_string, &
   PetscInt :: fid
   class(realization_base_type) :: realization_base
   type(reaction_type), pointer :: reaction 
-  PetscBool :: print_secondary_data(3)
+  PetscBool :: print_secondary_data(5)
   character(len=MAXSTRINGLENGTH) :: cell_string
   PetscInt :: icolumn
   
@@ -2633,6 +2661,34 @@ subroutine WriteTecplotHeaderSec(fid,realization_base,cell_string, &
         write(fid,'(a)',advance="no") trim(header)
       endif
     endif
+    
+     ! add secondary mineral rates to header
+    if (print_secondary_data(4)) then
+      if (reaction%mineral%nkinmnrl > 0) then
+        header = ''
+        do j = 1, reaction%mineral%nkinmnrl
+          string = trim(reaction%mineral%mineral_names(j)) // ' Rate'
+          call OutputAppendToHeader(header,string,'',cell_string, &
+                                    icolumn)
+        enddo
+        write(fid,'(a)',advance="no") trim(header)
+      endif
+    endif
+
+    ! add secondary mineral SI to header
+    if (print_secondary_data(5)) then
+      if (reaction%mineral%nkinmnrl > 0) then
+        header = ''
+        do j = 1, reaction%mineral%nkinmnrl
+          string = trim(reaction%mineral%mineral_names(j)) // ' SI'
+          call OutputAppendToHeader(header,string,'',cell_string, &
+                                    icolumn)
+        enddo
+        write(fid,'(a)',advance="no") trim(header)
+      endif
+    endif
+   
+    
   endif 
   
 end subroutine WriteTecplotHeaderSec

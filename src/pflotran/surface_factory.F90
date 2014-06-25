@@ -103,6 +103,7 @@ subroutine HijackSurfaceSimulation(simulation_old,simulation)
   use PM_Base_class
   use PM_module
   use Timestepper_Surface_class
+  use Logging_module
 
   implicit none
   
@@ -116,6 +117,7 @@ subroutine HijackSurfaceSimulation(simulation_old,simulation)
   
   class(surface_realization_type), pointer :: surf_realization
   type(option_type), pointer :: option
+  character(len=MAXSTRINGLENGTH) :: string  
   PetscErrorCode :: ierr
   
   surf_realization => simulation_old%surf_realization
@@ -147,6 +149,9 @@ subroutine HijackSurfaceSimulation(simulation_old,simulation)
     surf_flow_process_model_coupler%pm_ptr%ptr => cur_process_model
     call HijackTimestepper(simulation_old%surf_flow_stepper, &
                            surf_flow_process_model_coupler%timestepper)
+    ! set up logging stage
+    string = 'Surface'
+    call LoggingCreateStage(string,surf_flow_process_model_coupler%stage)                           
     nullify(cur_process_model)
   endif
 

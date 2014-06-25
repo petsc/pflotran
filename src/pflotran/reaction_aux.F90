@@ -448,7 +448,7 @@ function ReactionCreate()
   reaction%calculate_tracer_age = PETSC_FALSE
   reaction%calculate_water_age = PETSC_FALSE
   reaction%print_age = PETSC_FALSE
-  reaction%print_total_component = PETSC_TRUE
+  reaction%print_total_component = PETSC_FALSE
   reaction%print_free_ion = PETSC_FALSE
   reaction%print_total_bulk = PETSC_FALSE
   reaction%use_geothermal_hpt = PETSC_FALSE

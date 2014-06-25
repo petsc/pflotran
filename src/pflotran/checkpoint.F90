@@ -243,10 +243,11 @@ subroutine RestartFlowProcessModel(viewer,realization)
   use Field_module
   use Discretization_module
   use Grid_module
+  use Global_module
   use Material_module
   use Variables_module, only : POROSITY, PERMEABILITY_X, PERMEABILITY_Y, &
                                PERMEABILITY_Z, PERMEABILITY_XY, &
-                               PERMEABILITY_YZ, PERMEABILITY_XZ
+                               PERMEABILITY_YZ, PERMEABILITY_XZ, STATE
   
   implicit none
 
@@ -289,6 +290,11 @@ subroutine RestartFlowProcessModel(viewer,realization)
         call VecCopy(field%iphas_loc,field%iphas_old_loc,ierr)
         call DiscretizationLocalToLocal(discretization,field%iphas_loc, &
                                         field%iphas_old_loc,ONEDOF)
+        if (option%iflowmode == G_MODE) then
+          ! need to copy iphase into global_auxvar%istate
+          call GlobalSetAuxVarVecLoc(realization,field%iphas_loc,STATE, &
+                                     ZERO_INTEGER)
+        endif
         if (option%iflowmode == MPH_MODE) then
         ! set vardof vec in mphase
         endif

@@ -25,6 +25,9 @@ CHEMISTRY
     Tracer2
     Tracer3
   /
+  OUTPUT
+    TOTAL
+  /
 END
 
 #=========================== discretization ===================================

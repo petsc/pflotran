@@ -1108,6 +1108,9 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
     case(LIQUID_STATE)
       coupler%flow_aux_int_var(GENERAL_STATE_INDEX,1:num_connections) = LIQUID_STATE
       if (general%liquid_pressure%itype == HYDROSTATIC_BC) then
+        option%io_buffer = 'Hydrostatic BC for general phase cannot possibly ' // &
+          'be set up correctly. - GEH'
+        call printErrMsg(option)
         if (general%mole_fraction%itype /= DIRICHLET_BC) then
           option%io_buffer = &
             'Hydrostatic liquid state pressure bc for flow condition "' // &
@@ -1719,6 +1722,7 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
   PetscReal :: x(option%nflowdof)
   character(len=MAXSTRINGLENGTH) :: string, string2
   PetscErrorCode :: ierr
+  PetscBool :: apply_temp_cond
   
   PetscInt :: idof, num_connections,sum_connection
   PetscInt :: iconn, local_id, ghosted_id
@@ -1787,10 +1791,21 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
       end select
     endif
   endif
-  if ((associated(flow_condition%temperature) .and. &
-       flow_condition%pressure%itype /= HYDROSTATIC_BC) .or. &
-      (flow_condition%pressure%itype == HYDROSTATIC_BC .and. &
-       flow_condition%temperature%itype /= DIRICHLET_BC)) then
+
+  apply_temp_cond = PETSC_FALSE
+  if (associated(flow_condition%temperature) .and. associated(flow_condition%pressure)) then
+    if (flow_condition%pressure%itype /= HYDROSTATIC_BC) then
+      apply_temp_cond = PETSC_TRUE
+    else
+      if (flow_condition%temperature%itype /= DIRICHLET_BC) then
+        apply_temp_cond = PETSC_TRUE
+      endif
+    endif
+  else
+    apply_temp_cond = PETSC_TRUE
+  endif
+
+  if (associated(flow_condition%temperature) .and. apply_temp_cond) then
     select case(flow_condition%temperature%itype)
       case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
         select type(selector =>flow_condition%temperature%dataset)
@@ -2313,8 +2328,8 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,dataset_base, &
       dataset_ascii => selector
 
       do iconn=1,cur_connection_set%num_connections
-          coupler%flow_aux_real_var(isub_condition,iconn) = &
-            dataset_ascii%rarray(1)
+        coupler%flow_aux_real_var(isub_condition,iconn) = &
+          dataset_ascii%rarray(1)
       enddo
 
     class default
@@ -4351,6 +4366,18 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
       local_id = grid%nG2L(ghosted_id)        
       value = patch%aux%SC_RT%sec_transport_vars(local_id)% &
               sec_rt_auxvar(isubvar)%mnrl_volfrac(isubvar1)
+    case(SEC_MIN_RATE)
+      local_id = grid%nG2L(ghosted_id)        
+      value = patch%aux%SC_RT%sec_transport_vars(local_id)% &
+              sec_rt_auxvar(isubvar)%mnrl_rate(isubvar1)
+    case(SEC_MIN_SI)
+      local_id = grid%nG2L(ghosted_id)  
+      value = RMineralSaturationIndex(isubvar1,&
+                                      patch%aux%SC_RT% &
+                                      sec_transport_vars(local_id)% &
+                                      sec_rt_auxvar(isubvar), &
+                                      patch%aux%Global%auxvars(ghosted_id),&
+                                      reaction,option)      
     case(TORTUOSITY)
       value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
                                      TORTUOSITY)

@@ -253,8 +253,8 @@ contains
        end if
        e_nods(i) = indb(1)
 
-1001   format(" WARNING: ELECTRODE ",I5," HAS BEEN MOVED ",F10.4," TO THE NEAREST NODE")	   
-    end	do
+1001   format(" WARNING: ELECTRODE ",I5," HAS BEEN MOVED ",F10.4," TO THE NEAREST NODE")
+    end do
     
   end subroutine get_electrode_nodes
   !____________________________________________________________________

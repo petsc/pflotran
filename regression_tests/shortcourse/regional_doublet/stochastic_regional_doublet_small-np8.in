@@ -16,6 +16,9 @@ CHEMISTRY
     Tracer
     Tracer2
   /
+  OUTPUT
+    TOTAL
+  /
 END
 
 #=========================== solver options ===================================

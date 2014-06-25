@@ -103,6 +103,7 @@ CHEMISTRY
   DATABASE ../../../database/hanford.dat
   OUTPUT
     all
+    TOTAL
   /
 END
 

@@ -250,9 +250,11 @@ subroutine pflow_pckr(ipckrtype,pckr_swir,pckr_lambda,pckr_alpha,&
 end subroutine pflow_pckr
 
 ! ************************************************************************** !
+!subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
+!     pckr_alpha,pckr_m,pckr_pcmax,sg,pc,kr,pckr_beta,pckr_pwr) 
 
-subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
-     pckr_alpha,pckr_m,pckr_pcmax,sg,pc,kr,pckr_beta,pckr_pwr) 
+subroutine pflow_pckr_noderiv_exec(ipckrtype,ikrtype,pckr_sir,kr0, &
+      pckr_lambda, pckr_alpha,pckr_m,pckr_pcmax,sg,pc,kr,pckr_beta,pckr_pwr) 
   ! 
   ! pckrNH_noderiv: Non-hysteric S-Pc-kr relation excuting routine
   ! Copied from pflotran_orig
@@ -260,23 +262,24 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
   ! Author: Chuan Lu
   ! Date: 05/12/08
   ! 
-      
+  use Saturation_Function_module
   implicit none 
 
   
-  PetscInt :: ipckrtype
-   !formation type, in pflow should be referred by grid%icap_loc
-  PetscReal :: pckr_sir(:),pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax
-  PetscReal :: pckr_beta,pckr_pwr
-  PetscReal :: sg
-  PetscReal :: pc(1:2),kr(1:2)
+  PetscInt, intent(in) :: ipckrtype, ikrtype
+  PetscReal, intent(in) :: pckr_sir(:)
+  PetscReal, intent(in) :: kr0(:)
+  PetscReal, intent(in) :: pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax
+  PetscReal, intent(in) :: pckr_beta,pckr_pwr
+  PetscReal, intent(in) :: sg
+  PetscReal, intent(out) :: pc(1:2)
+  PetscReal, intent(out) :: kr(1:2)
        
   PetscReal :: se,swir,sgir,sw0,lam,ala,um,un,upc,upc_s,kr_s,krg_s
   PetscReal :: temp,ser,pcmax,sw
   PetscReal :: uum,pckr_betac,betac,st
   PetscReal :: se0,upc0,upc_s0
      
-    ! if(present(pckr_beta))
       pckr_betac = pckr_beta
       sw = 1.D0 - sg
       if (sw > 1.D0) sw = 1.D0
@@ -312,10 +315,9 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
        
         upc = 0.D0
 
-      case(1) ! van Genuchten
+      case(VAN_GENUCHTEN) ! van Genuchten
 
         ala = pckr_alpha
-      ! swir=pckr_swir
         um = pckr_m
         un = 1.D0/(1.D0 - um)
         if (sw > pckr_sat_water_cut) then
@@ -373,7 +375,7 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
           end if
         end if
 
-      case(2) !Brooks-Corey
+      case(BROOKS_COREY) !Brooks-Corey
        
         lam = pckr_lambda
         ala = pckr_alpha
@@ -396,13 +398,13 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
             kr(2) = (1.D0 - se)**2.D0 * (1.D0 - se**(2.D0/lam + 1.D0)) 
             upc = upc0 + (sw - 1.05D0 * swir) * upc_s0
 
-              ! kr_s=(2.d0/lam+3.d0)*kr(1)/se
-             ! krg_s = -2.D0*kr(2)/(1.D0-se) -(2.D0+lam)/lam*(1.D0-se)**2.D0*(se**(2.D0/lam)) 
-              ! ser=(sw-swir)/(1.D0-swir)
+          ! kr_s=(2.d0/lam+3.d0)*kr(1)/se
+          ! krg_s = -2.D0*kr(2)/(1.D0-se) -(2.D0+lam)/lam*(1.D0-se)**2.D0*(se**(2.D0/lam))
+          ! ser=(sw-swir)/(1.D0-swir)
             
-              !kr(1)=kr(1)+(ser-se)*kr_s
-        !    kr(2)=kr(2)+(ser-se)*krg_s
-              !kr(2)=1.D0-kr(1)
+          ! kr(1)=kr(1)+(ser-se)*kr_s
+        !   kr(2)=kr(2)+(ser-se)*krg_s
+          ! kr(2)=1.D0-kr(1)
           else
             upc = upc0 + (sw - 1.05D0 * swir) * upc_s0
             kr(1) = 0.D0
@@ -411,7 +413,7 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
         end if
 
            
-      case(3) !linear interpolation, need pcmax, assign krmax=1.
+      case(THOMEER_COREY) !linear interpolation, need pcmax, assign krmax=1.
         
         if (sw > swir) then
           se = (sw - swir)/(sw0 - swir)
@@ -435,7 +437,7 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
           kr(2) = 0.d0
         end if
 
-      case(4)  ! po model with gas phase residual (NMT)
+      case(NMT_EXP)  ! po model with gas phase residual (NMT)
         
         if (sw > 1.D0) sw = 1.D0
         if (sw < 0.D-0) sw = 1.D-5
@@ -463,7 +465,7 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
           st = 1.D0
           if (sw >= swir) then
             kr(1) = sqrt(se)*(1.D0 - (1.D0 - se**uum)**um)**2.D0
-!         kr(2)= sqrt(st-se)*((1.D0-se**uum)**um)**7.D0
+!           kr(2)= sqrt(st-se)*((1.D0-se**uum)**um)**7.D0
             kr(2) = sqrt(st-se)*((1.D0-se**uum)**um)**pckr_pwr
           else
 !         if (se <= 0.D0) se = 1.D-7
@@ -478,7 +480,7 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
         if (kr(2) < 0.D0) kr(2)=0.D0!; kr(1)=1.D0
         if (kr(2) > 1.D0) kr(2)=1.D0!; kr(1)=0.D0
 
-      case(5) !linear interpolation, need pcmax, assign krmax=1 (Pruess_1).
+      case(PRUESS_1) !linear interpolation, need pcmax, assign krmax=1 (Pruess_1).
         
         if (sw > swir) then
           se = (sw - swir)/(sw0 - swir)
@@ -497,67 +499,118 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
           kr(2) = 0.d0
         end if
 
-      case(6) ! Modified Brooks-Corey
+      case(VAN_GENUCHTEN_PARKER) ! van Genuchten-Parker
        
         lam = pckr_lambda
         ala = pckr_alpha
-       ! swir=pckr_swir
-        ala = pckr_alpha
-       ! swir=pckr_swir
 
-! Water phase using van Genuchten  
+!       Water phase using van Genuchten
         um = pckr_m
         un = 1.D0/(1.D0 - um)
-        se = (sw - 0.03D0)/(sw0 - 0.03D0)
-        if (se > 1.d-6) then
+
+        se = (sw - swir)/(sw0 - swir)
+
+        if (sw > swir) then
           temp = se**(-1.D0/um)
-          if (temp < 1.D0+1e-6) temp = 1.D0+1e-6
+!         if (temp < 1.D0+1e-6) temp = 1.D0+1e-6
           upc = (temp - 1.D0)**(1.d0/un)/ala
           if (upc > pcmax) upc = pcmax
+
+!         Mualem rel. perm.
+          kr(1) = sqrt(se)*(1.D0 - (1.D0-1.D0/temp)**um)**2.d0
         else
           upc = pcmax
-        endif
-        se = (sw - swir)/(sw0 - swir)
-        if (se < 0.D0) then 
           se = 0.D0
           kr(1) = 0.D0
-        else 
-          temp = se**(-1.D0/um)
-         ! kr(1) = sqrt(se)*(1.D0-(1.D0-1.D0/temp)**um)**2.d0
-             kr(1) = sqrt(se)*(1.D0 - (1.D0 - se**(1.D0/um))**pckr_m)**2.D0
         endif
 
-! Gas phase using BC         
-           
+! Gas phase using BC
+
         se = (sw - swir)/(1.D0 - swir - sgir)
-           
-        if (se < 1.D-6) then
+
+        if (sw < swir) then
           se = 0.D0
-          kr(2) = 1.0 
+          kr(2) = 1.0
         elseif (se >= 1.D0-1d-6) then
           kr(2) = 0.D0
-        else  
-          kr(2) = (1.D0 - se)**0.33333333D0 * (1.D0 - se**(1.D0/um))**(2.D0*um) 
+        else
+          kr(2) = (1.D0 - se)**0.5D0 * (1.D0 - se**(1.D0/um))**(2.D0*um)
+!         kr(2) = (1.D0 - se)**0.33333333D0 * (1.D0 - se**(1.D0/um))**(2.D0*um)
         endif
 
-      end select
+      case(VAN_GENUCHTEN_DOUGHTY) ! Doughty (2007) - Van Genutchen Mualem model adjusted for sgir/=0
+        ! Modeling geologic storage of carbon dioxide: Comparison of non-hysteretic and
+        ! hysteretic characteristic curves, Doughty (2007)
+        ala = pckr_alpha
+        um = pckr_m
+        un = 1.D0/(1.D0 - um)
+        if (sw > pckr_sat_water_cut) then
+          upc = 0.D0; kr(1) = 1.d0; kr(2) = 0.d0;
+        elseif (sw > (1.05D0*swir)) then
+          select case(ikrtype)
+            case(2) 
+              ! Krl Van Genutchen-Mualem
+              se = (sw - swir)/(1.D0 - swir)
+              temp = se**(-1.D0/um)
+              kr(1) = sqrt(se)*(1.D0 - (1.D0 - 1.D0/temp)**um)**2.d0
+              ! Krg Corey - TOUGH2 
+              se = (sw - swir)/(1.D0 - sgir - swir)
+              kr(2) = (1.D0 - se)**2.0D0 * (1.D0 - se**(2.D0))  
+          end select    
+          !! capillary pressure 
+          if(sw <= ( 0.99*(1 - sgir) )) then   
+            se = (sw - swir)/(1.D0 - sgir - swir)
+            temp = se**(-1.D0/um)
+            upc = (temp - 1.D0)**(1.d0/un)/ala
+          else ! for sw > (1 - sgir) linear interpolation to pc = 0
+            se = ( 0.99*(1.0D0 - sgir) - swir)/(1.D0 - sgir - swir)
+            temp = se**(-1.D0/um)
+            upc = (temp - 1.D0)**(1.d0/un)/ala
+            upc = upc*(1.D0 - sw)/(1.0D0 - 0.99*(1.0D0 - sgir))
+          endif  
+  
+        else  ! use linear extropolation
+          se0 = (0.05D0*swir)/(1.D0 - sgir - swir)
+          temp = se0**(-1.D0/um)
+          upc0 = (temp - 1.D0)**(1.d0/un)/ala
+          upc_s0 = -1.D0/um/un*upc0*(se0**(-1.D0 - 1.D0/um))/(se0**(-1.D0/um) - 1.d0)
+          upc_s0 = upc_s0 /(1.D0 - sgir - swir)
+          if (sw > swir) then
+            select case(ikrtype)
+              case(2)
+                ! Krl Van Genutchen-Mualem
+                se = (sw - swir)/(1.D0 - swir)
+                temp = se**(-1.D0/um)
+                kr(1) = sqrt(se)*(1.D0 - (1.D0 - 1.D0/temp)**um)**2.d0
+                ! Krg Corey - TOUGH2
+                se = (sw - swir)/(1.D0 - sgir - swir) 
+                kr(2) = (1.D0 - se)**2.0D0 * (1.D0 - se**(2.D0))  
+            end select    
+            !! pressure 
+            upc = upc0 + (sw - 1.05D0 * swir) * upc_s0   
+          else
+            upc = upc0 + (sw - 1.05D0 * swir) * upc_s0
+            kr(1) = 0.D0
+            kr(2) = 1.D0
+          end if
+        end if
+        !if(upc > pcmax) upc = pcmax
+    end select
 
+    ! scaling kr with end points
+    kr(1) = kr(1) * Kr0(1)
+    kr(2) = kr(2) * Kr0(2)
 
-      pc(1) = upc; pc(2) = 0.d0;
+    pc(1) = upc; pc(2) = 0.d0;
 
-    ! print *,'sat-fnc: ',ipckrtype,sw,se,kr,sgir,swir,sw0,pcmax
+  return
 
-    ! if (sw < pckr_sat_water_cut) print *, sg,pc,kr
-    ! print *,'Ven ::',pc,kr
-       
-      return
-       
 end subroutine pflow_pckr_noderiv_exec
 
 ! ************************************************************************** !
 
 subroutine pckrNH_noderiv(sat, pc, kr, saturation_function, option)
-  ! 
+  !
   ! pckrHY_noderiv: Hysteric S-Pc-kr relation driver
   ! 
   ! Author: Chuan Lu
@@ -572,11 +625,14 @@ subroutine pckrNH_noderiv(sat, pc, kr, saturation_function, option)
   type(option_type) :: option
   PetscReal :: sat(option%nphase),pc(option%nphase),kr(option%nphase)
 
-  PetscReal :: pckr_sir(option%nphase),pckr_lambda, &
+  PetscReal :: pckr_sir(option%nphase)
+  PetscReal :: Kr0(option%nphase)
+  PetscReal :: pckr_lambda, &
        pckr_alpha,pckr_m,pckr_pcmax,sg ,pckr_beta,pckr_pwr
   
   
   pckr_sir(:) = saturation_function%Sr(:)
+  Kr0(:) = saturation_function%Kr0(:)
   pckr_m = saturation_function%m
   pckr_lambda = saturation_function%lambda
   pckr_alpha = saturation_function%alpha
@@ -586,8 +642,12 @@ subroutine pckrNH_noderiv(sat, pc, kr, saturation_function, option)
   
   sg = sat(2)
   
-  call pflow_pckr_noderiv_exec(saturation_function%saturation_function_itype,&  
-       pckr_sir,pckr_lambda, pckr_alpha,pckr_m,pckr_pcmax,sg,pc,kr,pckr_beta,pckr_pwr) 
+ ! call pflow_pckr_noderiv_exec(saturation_function%saturation_function_itype,&  
+ !      pckr_sir,pckr_lambda, pckr_alpha,pckr_m,pckr_pcmax,sg,pc,kr,pckr_beta,pckr_pwr) 
+
+  call pflow_pckr_noderiv_exec(saturation_function%saturation_function_itype,&
+       saturation_function%permeability_function_itype, pckr_sir, Kr0, & 
+       pckr_lambda, pckr_alpha,pckr_m,pckr_pcmax, sg,pc,kr,pckr_beta,pckr_pwr)
       
 end subroutine pckrNH_noderiv
 
