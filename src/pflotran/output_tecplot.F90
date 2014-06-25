@@ -1465,7 +1465,7 @@ subroutine WriteTecplotUGridVertices(fid,realization_base)
       call GetVertexCoordinates(grid, global_vertex_vec,X_COORDINATE,option)
       call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
       if (option%myrank == option%io_rank) &
-        write(fid,'(a)'),'# vertex x-coordinate'
+        write(fid,'(a)') '# vertex x-coordinate'
       call WriteTecplotDataSet(fid,realization_base,vec_ptr,TECPLOT_REAL, &
       local_size)
       call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
@@ -1473,7 +1473,7 @@ subroutine WriteTecplotUGridVertices(fid,realization_base)
       call GetVertexCoordinates(grid,global_vertex_vec,Y_COORDINATE,option)
       call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
       if (option%myrank == option%io_rank) &
-        write(fid,'(a)'),'# vertex y-coordinate'
+        write(fid,'(a)') '# vertex y-coordinate'
       call WriteTecplotDataSet(fid,realization_base,vec_ptr,TECPLOT_REAL, &
       local_size)
       call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
@@ -1481,7 +1481,7 @@ subroutine WriteTecplotUGridVertices(fid,realization_base)
       call GetVertexCoordinates(grid,global_vertex_vec, Z_COORDINATE,option)
       call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
       if (option%myrank == option%io_rank) &
-        write(fid,'(a)'),'# vertex z-coordinate'
+        write(fid,'(a)') '# vertex z-coordinate'
       call WriteTecplotDataSet(fid,realization_base,vec_ptr,TECPLOT_REAL, &
       local_size)
       call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
