@@ -1194,12 +1194,12 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   type(realization_type) :: realization
   PetscViewer :: viewer
   PetscErrorCode :: ierr
-  
+
   type(discretization_type), pointer :: discretization
   type(field_type), pointer :: field
   type(option_type), pointer :: option
   type(mass_transfer_type), pointer :: cur_mass_transfer
-  
+
   call PetscLogEventBegin(logging%event_r_residual,ierr)
   
   field => realization%field
@@ -1766,7 +1766,7 @@ subroutine RichardsJacobian(snes,xx,A,B,realization,ierr)
   type(grid_type),  pointer :: grid
   type(option_type), pointer :: option
   PetscReal :: norm
-  
+
   call PetscLogEventBegin(logging%event_r_jacobian,ierr)
 
   option => realization%option
@@ -2717,7 +2717,8 @@ subroutine RichardsComputeCoeffsForSurfFlux(realization)
   PetscReal :: area
   PetscReal :: slope
   PetscReal :: xxbc(realization%option%nflowdof)
-  
+  PetscReal, pointer :: xx_p(:)
+
   PetscErrorCode :: ierr
 
   option => realization%option
@@ -2733,10 +2734,12 @@ subroutine RichardsComputeCoeffsForSurfFlux(realization)
   global_auxvars_bc => patch%aux%Global%auxvars_bc
 
   ! Distance away from allowable pressure at which cubic approximation begins
-  dP = 10 ! [Pa]
+  dP = 10.d0 ! [Pa]
 
   call EOSWaterdensity(option%reference_temperature, &
                        option%reference_pressure,den,dum1,ierr)
+
+  call VecGetArrayF90(realization%field%flow_xx, xx_p, ierr)
 
   ! boundary conditions
   boundary_condition => patch%boundary_conditions%first
@@ -2758,6 +2761,11 @@ subroutine RichardsComputeCoeffsForSurfFlux(realization)
         sum_connection = sum_connection + 1
         local_id       = cur_connection_set%id_dn(iconn)
         ghosted_id     = grid%nL2G(local_id)
+        if (xx_p(ghosted_id) > 101000.d0) then
+          rich_auxvar_dn%bcflux_default_scheme = PETSC_TRUE
+        else
+          rich_auxvar_dn%bcflux_default_scheme = PETSC_FALSE
+        endif
 
         ! Step-1: Find P_max/P_min for polynomial curve
 
@@ -2793,7 +2801,9 @@ subroutine RichardsComputeCoeffsForSurfFlux(realization)
         P_allowable = global_auxvar_up%pres(1) + gravity - v_darcy_allowable/Dq/ukvr
 
         P_max       = P_allowable + dP
-        P_min       = P_allowable
+        !P_max       = global_auxvar_up%pres(1) + gravity
+        P_min       = P_allowable! - dP
+
 
         ! Step-2: Find derivative at P_max
         icap_dn = patch%sat_func_id(ghosted_id)
@@ -2858,6 +2868,7 @@ subroutine RichardsComputeCoeffsForSurfFlux(realization)
 
             ! Values of function derivatives at min/max
             slope = min(-0.01d0*q_allowable/P_min, -1.d-8)
+            slope = -0.01d0*q_allowable/P_min
 
             rich_auxvar_dn%coeff_for_cubic_approx(3) = slope
             rich_auxvar_dn%coeff_for_cubic_approx(4) = dq_dp_dn
@@ -2865,12 +2876,17 @@ subroutine RichardsComputeCoeffsForSurfFlux(realization)
             rich_auxvar_dn%P_min = P_min
             rich_auxvar_dn%P_max = P_max
 
-            call CubicPolynomialSetup(rich_auxvar_dn%P_min, &
-                                      rich_auxvar_dn%P_max, &
+            call CubicPolynomialSetup(rich_auxvar_dn%P_min - option%reference_pressure, &
+                                      rich_auxvar_dn%P_max - option%reference_pressure, &
                                       rich_auxvar_dn%coeff_for_cubic_approx)
 
             ! Step-4: Save values for linear approximation
             rich_auxvar_dn%range_for_linear_approx(1) = 0.01d0*q_allowable/slope + P_min
+            if (q_allowable == 0.d0) then
+              rich_auxvar_dn%range_for_linear_approx(1) = 0.d0
+            else
+              rich_auxvar_dn%range_for_linear_approx(1) = P_min + 0.01d0*q_allowable/slope
+            endif
             rich_auxvar_dn%range_for_linear_approx(2) = P_min
             rich_auxvar_dn%range_for_linear_approx(3) = q_allowable
             rich_auxvar_dn%range_for_linear_approx(4) = 0.99d0*q_allowable
@@ -2889,6 +2905,7 @@ subroutine RichardsComputeCoeffsForSurfFlux(realization)
     boundary_condition => boundary_condition%next
 
   enddo
+  call VecRestoreArrayF90(realization%field%flow_xx, xx_p, ierr)
 
 end subroutine RichardsComputeCoeffsForSurfFlux
 

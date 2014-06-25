@@ -774,6 +774,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
         if (input%ierr == 0) then
           call printErrMsg(option,'Setting time to value not supported in surface-flow')
         endif
+        option%first_step_after_restart = PETSC_TRUE
 
 !......................
 
