@@ -211,6 +211,7 @@ module Option_module
 
     ! Type of averaging scheme for relative permeability
     PetscInt :: rel_perm_aveg
+    PetscBool :: first_step_after_restart
 
   end type option_type
   
@@ -370,6 +371,7 @@ subroutine OptionInitAll(option)
   option%subsurface_simulation_type = SUBSURFACE_SIM_TYPE
  
   option%rel_perm_aveg = UPWIND
+  option%first_step_after_restart = PETSC_FALSE
 
   call OptionInitRealization(option)
 

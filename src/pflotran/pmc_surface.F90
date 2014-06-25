@@ -119,7 +119,11 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   call printVerboseMsg(this%option)
   
   ! Get data of other process-model
-  call this%GetAuxData()
+  if (this%option%restart_flag .and. this%option%first_step_after_restart) then
+    this%option%first_step_after_restart = PETSC_FALSE
+  else
+    call this%GetAuxData()
+  endif
 
   local_stop_flag = TS_CONTINUE
   do

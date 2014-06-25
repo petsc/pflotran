@@ -19,7 +19,6 @@ module TH_module
 #include "finclude/petscviewer.h"
 #include "finclude/petsclog.h"
 
-
 ! Cutoff parameters
   PetscReal, parameter :: eps       = 1.D-8
   PetscReal, parameter :: floweps   = 1.D-24
@@ -1466,8 +1465,6 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar, &
   PetscReal :: dsati_dp, dsati_dt
   PetscReal :: ddeni_dp, ddeni_dt
   PetscReal :: dui_dt
-  PetscReal, parameter :: C_a = 1.86d-3 ! in MJ/kg/K at 300K
-  PetscReal, parameter :: C_wv = 1.005d-3 ! in MJ/kg/K
   PetscErrorCode :: ierr
 
   
@@ -1513,41 +1510,52 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar, &
 
   if (option%use_th_freezing) then
      ! SK, 11/17/11
-     sat_g = TH_auxvar%sat_gas
-     sat_i = TH_auxvar%sat_ice
-     u_i = TH_auxvar%u_ice
-     den_i = TH_auxvar%den_ice
-     p_g = option%reference_pressure ! set to reference pressure
-     den_g = p_g/(IDEAL_GAS_CONST*(global_auxvar%temp + 273.15d0))*1.d-3
-     call EOSWaterSaturationPressure(global_auxvar%temp, p_sat, dpsat_dt, ierr)
-     mol_g = p_sat/p_g
-     C_g = C_wv*mol_g*FMWH2O + C_a*(1.d0 - mol_g)*FMWAIR !in MJ/kmol/K, expression might be different
-     u_g = C_g*(global_auxvar%temp + 273.15d0)
-     ddeng_dt = - p_g/(IDEAL_GAS_CONST*(global_auxvar%temp + 273.15d0)**2)*1.d-3
-     dmolg_dt = dpsat_dt/p_g
-     dsatg_dp = TH_auxvar%dsat_gas_dp
-     dsatg_dt = TH_auxvar%dsat_gas_dt
-     dug_dt = C_g + (C_wv*dmolg_dt*FMWH2O - C_a*dmolg_dt*FMWAIR)* &
-          (global_auxvar%temp + 273.15d0)
+     sat_g    = TH_auxvar%sat_gas
+     sat_i    = TH_auxvar%sat_ice
      dsati_dt = TH_auxvar%dsat_ice_dt
      dsati_dp = TH_auxvar%dsat_ice_dp
+     dsatg_dp = TH_auxvar%dsat_gas_dp
+     dsatg_dt = TH_auxvar%dsat_gas_dt
+
+     u_g      = TH_auxvar%u_gas
+     u_i      = TH_auxvar%u_ice
+     dug_dt   = TH_auxvar%du_gas_dt
+     dui_dt   = TH_auxvar%du_ice_dt
+
+     den_i    = TH_auxvar%den_ice
+     den_g    = TH_auxvar%den_gas
+     mol_g    = TH_auxvar%mol_gas
      ddeni_dt = TH_auxvar%dden_ice_dt
      ddeni_dp = TH_auxvar%dden_ice_dp
-     dui_dt = TH_auxvar%du_ice_dt
- 
-     J(TH_PRESSURE_DOF,TH_PRESSURE_DOF) = J(TH_PRESSURE_DOF,TH_PRESSURE_DOF) + (dsatg_dp*den_g*mol_g + dsati_dp*den_i + &
-          sat_i*ddeni_dp)*porXvol
-     J(TH_PRESSURE_DOF,TH_TEMPERATURE_DOF) = J(TH_PRESSURE_DOF,TH_TEMPERATURE_DOF) + (TH_auxvar%dsat_dt*global_auxvar%den(1) + &
-          dsatg_dt*den_g*mol_g + sat_g*ddeng_dt*mol_g + &
-          sat_g*den_g*dmolg_dt + dsati_dt*den_i + sat_i*ddeni_dt)* &
-          porXvol
-     J(TH_TEMPERATURE_DOF,TH_PRESSURE_DOF) = J(TH_TEMPERATURE_DOF,TH_PRESSURE_DOF) + (dsatg_dp*den_g*u_g + dsati_dp*den_i*u_i + &
-          sat_i*ddeni_dp*u_i)*porXvol
+     ddeng_dt = TH_auxvar%dden_gas_dt
+     dmolg_dt = TH_auxvar%dmol_gas_dt
+
+     J(TH_PRESSURE_DOF,TH_PRESSURE_DOF) = J(TH_PRESSURE_DOF,TH_PRESSURE_DOF) + &
+                                          (dsatg_dp*den_g*mol_g + &
+                                           dsati_dp*den_i       + &
+                                           sat_i   *ddeni_dp     )*porXvol
+
+     J(TH_PRESSURE_DOF,TH_TEMPERATURE_DOF) = J(TH_PRESSURE_DOF,TH_TEMPERATURE_DOF) + &
+                            (TH_auxvar%dsat_dt*global_auxvar%den(1) + &
+                             dsatg_dt * den_g    * mol_g            + &
+                             sat_g    * ddeng_dt * mol_g            + &
+                             sat_g    * den_g    * dmolg_dt         + &
+                             dsati_dt * den_i                       + &
+                             sat_i    * ddeni_dt                    )*porXvol
+
+     J(TH_TEMPERATURE_DOF,TH_PRESSURE_DOF) = J(TH_TEMPERATURE_DOF,TH_PRESSURE_DOF) + &
+                     (dsatg_dp * den_g    * u_g + &
+                      dsati_dp * den_i    * u_i + &
+                      sat_i    * ddeni_dp * u_i )*porXvol
+
      J(TH_TEMPERATURE_DOF,TH_TEMPERATURE_DOF) = J(TH_TEMPERATURE_DOF,TH_TEMPERATURE_DOF) + &
-          (TH_auxvar%dsat_dt*global_auxvar%den(1)*TH_auxvar%u + &
-          dsatg_dt*den_g*u_g + sat_g*ddeng_dt*u_g + &
-          sat_g*den_g*dug_dt + dsati_dt*den_i*u_i + &
-          sat_i*ddeni_dt*u_i + sat_i*den_i*dui_dt)*porXvol
+                (TH_auxvar%dsat_dt*global_auxvar%den(1)*TH_auxvar%u + &
+                  dsatg_dt * den_g    * u_g                         + &
+                  sat_g    * ddeng_dt * u_g                         + &
+                  sat_g    * den_g    * dug_dt                      + &
+                  dsati_dt * den_i    * u_i                         + &
+                  sat_i    * ddeni_dt * u_i                         + &
+                  sat_i    * den_i    * dui_dt                      )*porXvol
   endif
 
   J = J/option%flow_dt
@@ -1653,8 +1661,6 @@ subroutine THAccumulation(auxvar,global_auxvar, &
   ! ice variables
   PetscReal :: sat_g, p_g, den_g, p_sat, mol_g, u_g, C_g
   PetscReal :: sat_i, den_i, u_i
-  PetscReal, parameter :: C_a = 1.86d-3 ! in MJ/kg/K at 300K
-  PetscReal, parameter :: C_wv = 1.005d-3 ! in MJ/kg/K
   PetscErrorCode :: ierr
   
   vol = material_auxvar%volume
@@ -1686,14 +1692,11 @@ subroutine THAccumulation(auxvar,global_auxvar, &
      ! SK, 11/17/11
      sat_g = auxvar%sat_gas
      sat_i = auxvar%sat_ice
-     u_i = auxvar%u_ice
+     u_i   = auxvar%u_ice
      den_i = auxvar%den_ice
-     p_g = option%reference_pressure
-     den_g = p_g/(IDEAL_GAS_CONST*(global_auxvar%temp + 273.15d0))*1.d-3 !in kmol/m3
-     call EOSWaterSaturationPressure(global_auxvar%temp, p_sat, ierr)
-     mol_g = p_sat/p_g
-     C_g = C_wv*mol_g*FMWH2O + C_a*(1.d0 - mol_g)*FMWAIR ! in MJ/kmol/K
-     u_g = C_g*(global_auxvar%temp + 273.15d0)       ! in MJ/kmol
+     den_g = auxvar%den_gas
+     mol_g = auxvar%mol_gas
+     u_g = auxvar%u_gas
      mol(1) = mol(1) + (sat_g*den_g*mol_g + sat_i*den_i)*porXvol
      eng = eng + (sat_g*den_g*u_g + sat_i*den_i*u_i)*porXvol
   endif
@@ -2781,16 +2784,16 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
           dukvr_dt_dn = auxvar_dn%dkvr_dt
         endif      
 
-        call InterfaceApprox(auxvar_up%kvr, auxvar_dn%kvr, &
-                             auxvar_up%dkvr_dp, auxvar_dn%dkvr_dp, &
-                             dphi, &
-                             option%rel_perm_aveg, &
-                             ukvr, dum1, dukvr_dp_dn)
-        call InterfaceApprox(auxvar_up%kvr, auxvar_dn%kvr, &
-                             auxvar_up%dkvr_dt, auxvar_dn%dkvr_dt, &
-                             dphi, &
-                             option%rel_perm_aveg, &
-                             ukvr, dum1, dukvr_dt_dn)
+        !call InterfaceApprox(auxvar_up%kvr, auxvar_dn%kvr, &
+        !                     auxvar_up%dkvr_dp, auxvar_dn%dkvr_dp, &
+        !                     dphi, &
+        !                     option%rel_perm_aveg, &
+        !                     ukvr, dum1, dukvr_dp_dn)
+        !call InterfaceApprox(auxvar_up%kvr, auxvar_dn%kvr, &
+        !                     auxvar_up%dkvr_dt, auxvar_dn%dkvr_dt, &
+        !                     dphi, &
+        !                     option%rel_perm_aveg, &
+        !                     ukvr, dum1, dukvr_dt_dn)
 
         if (ukvr*Dq>floweps) then
           v_darcy = Dq * ukvr * dphi
@@ -2799,7 +2802,8 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
           dq_dt_dn = Dq*(dukvr_dt_dn*dphi+ukvr*dphi_dt_dn)*area
 
           if (ibndtype(TH_PRESSURE_DOF) == HET_SURF_SEEPAGE_BC .and. &
-              option%nsurfflowdof>0) then
+              option%nsurfflowdof>0 .and. &
+              option%subsurf_surf_coupling /= DECOUPLED) then
 
             ! ---------------------------
             ! Surface-subsurface simulation
@@ -2828,50 +2832,55 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
             endif
 
             ! Pressure-smoothing
-            if (global_auxvar_dn%pres(1) <= auxvar_dn%P_min) then
+            if (.not. auxvar_dn%bcflux_default_scheme) then
+              if (global_auxvar_dn%pres(1) <= auxvar_dn%P_min) then
 
-              ! Linear approximation
-              call Interpolate(auxvar_dn%range_for_linear_approx(2), &
-                               auxvar_dn%range_for_linear_approx(1), &
-                               global_auxvar_dn%pres(1), &
-                               auxvar_dn%range_for_linear_approx(4), &
-                               auxvar_dn%range_for_linear_approx(3), &
-                               q_approx)
-              v_darcy = q_approx/area
-              dP_lin = auxvar_dn%range_for_linear_approx(2) - &
-                       auxvar_dn%range_for_linear_approx(1)
-              dq_lin = auxvar_dn%range_for_linear_approx(4) - &
-                       auxvar_dn%range_for_linear_approx(3)
-              if (abs(dP_lin) < 1.d-10) dP_lin = 1.d-10
-              dq_dp_dn = dq_lin/dP_lin
+                ! Linear approximation
+                call Interpolate(auxvar_dn%range_for_linear_approx(2), &
+                                 auxvar_dn%range_for_linear_approx(1), &
+                                 global_auxvar_dn%pres(1), &
+                                 auxvar_dn%range_for_linear_approx(4), &
+                                 auxvar_dn%range_for_linear_approx(3), &
+                                 q_approx)
+                v_darcy = q_approx/area
 
-              ! Approximation:
-              ! q_approx = q_min + slope*(P_dn - P_min)
-              !
-              ! Derivative of approximation w.r.t T_dn:
-              ! d(q_approx)/dT_dn = d(q_min)/dT_dn +
-              !                     d(slope)/dT_dn*(P_dn - P_min) +
-              !                     slope*(0 - d(P_min)/dT_dn)
-              ! Note: 
-              !   d(q_min)/dT_dn = 0
-              !   d(P_min)/dT_dn = 0
-              !                     slope*(0 - d(P_min)/dT_dn)
-              dq_dt_dn = auxvar_dn%dlinear_slope_dT* &
-                         (global_auxvar_dn%pres(1) - &
-                          auxvar_dn%range_for_linear_approx(1))
+                dP_lin = auxvar_dn%range_for_linear_approx(2) - &
+                         auxvar_dn%range_for_linear_approx(1)
+                dq_lin = auxvar_dn%range_for_linear_approx(4) - &
+                         auxvar_dn%range_for_linear_approx(3)
+                if (abs(dP_lin) < 1.d-10) dP_lin = 1.d-10
 
-            else if (global_auxvar_dn%pres(1) <= auxvar_dn%P_max) then
+                dq_dp_dn = dq_lin/dP_lin
 
-              ! Cubic approximation
-              call CubicPolynomialEvaluate(auxvar_dn%coeff_for_cubic_approx, &
-                                           global_auxvar_dn%pres(1), &
-                                           q_approx, dq_approx)
-              v_darcy = q_approx/area
-              dq_dp_dn = dq_approx
+                ! Approximation:
+                ! q_approx = q_min + slope*(P_dn - P_min)
+                !
+                ! Derivative of approximation w.r.t T_dn:
+                ! d(q_approx)/dT_dn = d(q_min)/dT_dn +
+                !                     d(slope)/dT_dn*(P_dn - P_min) +
+                !                     slope*(0 - d(P_min)/dT_dn)
+                ! Note: 
+                !   d(q_min)/dT_dn = 0
+                !   d(P_min)/dT_dn = 0
+                !                     slope*(0 - d(P_min)/dT_dn)
+                dq_dt_dn = auxvar_dn%dlinear_slope_dT* &
+                           (global_auxvar_dn%pres(1) - &
+                            auxvar_dn%range_for_linear_approx(1))
 
-              call CubicPolynomialEvaluate(auxvar_dn%coeff_for_deriv_cubic_approx, &
-                                           global_auxvar_dn%pres(1), &
-                                           dq_dt_dn, dum1)
+              else if (global_auxvar_dn%pres(1) <= auxvar_dn%P_max) then
+
+                ! Cubic approximation
+                call CubicPolynomialEvaluate(auxvar_dn%coeff_for_cubic_approx, &
+                                             global_auxvar_dn%pres(1) - option%reference_pressure, &
+                                             q_approx, dq_approx)
+                v_darcy = q_approx/area
+                dq_dp_dn = dq_approx
+
+                call CubicPolynomialEvaluate(auxvar_dn%coeff_for_deriv_cubic_approx, &
+                                             global_auxvar_dn%pres(1) - option%reference_pressure, &
+                                             dq_dt_dn, dum1)
+
+              endif
             endif
 
             ! Apply temperature smoothing
@@ -3307,7 +3316,8 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
           v_darcy = Dq * ukvr * dphi
 
           if (ibndtype(TH_PRESSURE_DOF) == HET_SURF_SEEPAGE_BC .and. &
-              option%nsurfflowdof>0) then
+              option%nsurfflowdof>0 .and. &
+              option%subsurf_surf_coupling /= DECOUPLED) then
 
             ! ---------------------------
             ! Surface-subsurface simulation
@@ -3330,29 +3340,34 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
               endif
             endif
 
+
             ! If needed, apply pressure-smoothing
-            if (global_auxvar_dn%pres(1) <= auxvar_dn%P_min) then
+            if (.not. auxvar_dn%bcflux_default_scheme) then
+              if (global_auxvar_dn%pres(1) <= auxvar_dn%P_min) then
 
-              ! Linear approximation
-              call Interpolate(auxvar_dn%range_for_linear_approx(2), &
-                               auxvar_dn%range_for_linear_approx(1), &
-                               global_auxvar_dn%pres(1), &
-                               auxvar_dn%range_for_linear_approx(4), &
-                               auxvar_dn%range_for_linear_approx(3), &
-                               q_approx)
-              v_darcy = q_approx/area
+                ! Linear approximation
+                call Interpolate(auxvar_dn%range_for_linear_approx(2), &
+                                 auxvar_dn%range_for_linear_approx(1), &
+                                 global_auxvar_dn%pres(1), &
+                                 auxvar_dn%range_for_linear_approx(4), &
+                                 auxvar_dn%range_for_linear_approx(3), &
+                                 q_approx)
+                v_darcy = q_approx/area
 
-            else if (global_auxvar_dn%pres(1) <= auxvar_dn%P_max) then
+              else if (global_auxvar_dn%pres(1) <= auxvar_dn%P_max) then
 
-              ! Cubic approximation
-              call CubicPolynomialEvaluate(auxvar_dn%coeff_for_cubic_approx, &
-                                           global_auxvar_dn%pres(1), &
-                                           q_approx, dq_approx)
-              v_darcy = q_approx/area
+                ! Cubic approximation
+                call CubicPolynomialEvaluate(auxvar_dn%coeff_for_cubic_approx, &
+                                             global_auxvar_dn%pres(1)-option%reference_pressure, &
+                                             !global_auxvar_dn%pres(1), &
+                                             q_approx, dq_approx)
+                v_darcy = q_approx/area
+              endif
             endif
 
             ! Now apply temperature-smoothing
             v_darcy = v_darcy*fctT
+
           endif
 
         endif
@@ -5322,7 +5337,6 @@ subroutine THUpdateSurfaceBC(realization)
 
         if (head_new <= 0.d0) then
           surfpress_new = option%reference_pressure
-          !surftemp_new = option%reference_temperature
           surftemp_new = DUMMY_VALUE
         else
           ! GB: Do not update temperature of BC because eflux needs to be split
@@ -5361,6 +5375,7 @@ subroutine THUpdateSurfaceBC(realization)
 end subroutine THUpdateSurfaceBC
 
 ! ************************************************************************** !
+
 subroutine THUpdateSurfaceWaterFlag(realization)
   !
   ! For BC cells, set the flag for presence or absence of standing water
@@ -5508,6 +5523,7 @@ subroutine THComputeCoeffsForSurfFlux(realization)
   PetscReal :: slope_1, slope_2
   PetscReal :: num, den
   PetscErrorCode :: ierr
+  PetscReal, pointer :: xx_p(:)
 
   option => realization%option
   patch => realization%patch
@@ -5523,6 +5539,7 @@ subroutine THComputeCoeffsForSurfFlux(realization)
   global_auxvars_bc => patch%aux%Global%auxvars_bc
 
   call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+  call VecGetArrayF90(field%flow_yy, xx_p, ierr)
 
   ! boundary conditions
   boundary_condition => patch%boundary_conditions%first
@@ -5554,6 +5571,12 @@ subroutine THComputeCoeffsForSurfFlux(realization)
         th_auxvar_up => th_auxvars_bc(sum_connection)
         th_auxvar_dn => th_auxvars(ghosted_id)
         material_auxvar_dn => material_auxvars(ghosted_id)
+
+        if (xx_p(ghosted_id*option%nflowdof-1) > 100000.d0) then
+          th_auxvar_dn%bcflux_default_scheme = PETSC_TRUE
+        else
+          th_auxvar_dn%bcflux_default_scheme = PETSC_FALSE
+        endif
 
         th_auxvar_dn%coeff_for_cubic_approx(:) = -99999.d0
 
@@ -5650,6 +5673,7 @@ subroutine THComputeCoeffsForSurfFlux(realization)
   enddo
 
   call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+  call VecRestoreArrayF90(field%flow_yy, xx_p, ierr)
 
 end subroutine THComputeCoeffsForSurfFlux
 
@@ -5856,13 +5880,11 @@ subroutine ComputeCoeffsForApprox(P_up, T_up, &
       dphi_dp_dn = -th_auxvar_max%dpres_fh2o_dp + dgravity_dden_dn*th_auxvar_max%dden_dp
     endif
 
-    !if (pressure_bc_type == HET_SURF_SEEPAGE_BC) then
     ! flow in         ! boundary cell is <= pref
     if (dphi > 0.d0 .and. global_auxvar_up%pres(1) - option%reference_pressure < eps) then
       dphi = 0.d0
       dphi_dp_dn = 0.d0
     endif
-    !endif
 
     if (dphi>=0.D0) then
       ukvr = th_auxvar_up%kvr
@@ -5893,16 +5915,20 @@ subroutine ComputeCoeffsForApprox(P_up, T_up, &
 
       ! Values of function derivatives at min/max
       slope = min(-0.01d0*q_allowable/P_min, -1.d-8)
-      !slope = -0.01d0*q_allowable/P_min
+      slope = -0.01d0*q_allowable/P_min
       coeff_for_cubic_approx(3) = slope
       coeff_for_cubic_approx(4) = dq_dp_dn
 
-      call CubicPolynomialSetup(P_min, &
-                                P_max, &
+      call CubicPolynomialSetup(P_min - option%reference_pressure, &
+                                P_max - option%reference_pressure, &
                                 coeff_for_cubic_approx)
 
       ! Step-4: Save values for linear approximation
-      range_for_linear_approx(1) = 0.01d0*q_allowable/slope + P_min
+      if (q_allowable == 0.d0) then
+        range_for_linear_approx(1) = 0.d0
+      else
+        range_for_linear_approx(1) = P_min + 0.01d0*q_allowable/slope ! - option%reference_pressure
+      endif
       range_for_linear_approx(2) = P_min
       range_for_linear_approx(3) = q_allowable
       range_for_linear_approx(4) = 0.99d0*q_allowable
