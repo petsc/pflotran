@@ -12,7 +12,10 @@ module SrcSink_Sandbox_WIPP_Gas_class
 #include "finclude/petscsys.h"
 
   PetscInt, parameter, public :: WIPP_GAS_WATER_SATURATION_INDEX = 1
-
+  PetscInt, parameter, public :: WIPP_GAS_GAS_ENTHALPY = 2
+  PetscInt, parameter, public :: WIPP_GAS_GAS_DENSITY = 3
+  PetscInt, parameter, public :: WIPP_GAS_XMOL_WATER_IN_GAS = 4
+  
   type, public, &
     extends(srcsink_sandbox_base_type) :: srcsink_sandbox_wipp_gas_type
     PetscReal :: inundated_corrosion_rate
@@ -20,7 +23,8 @@ module SrcSink_Sandbox_WIPP_Gas_class
     PetscReal :: humid_corrosion_factor
     PetscReal :: humid_degradation_factor
     PetscReal :: h2_fe_ratio
-    PetscReal :: h2_ch2o_ratio    
+    PetscReal :: h2_ch2o_ratio   
+    PetscReal :: mw_h2
   contains
     procedure, public :: ReadInput => WIPPGasGenerationRead
     procedure, public :: Setup => WIPPGasGenerationSetup
@@ -42,6 +46,8 @@ function WIPPGasGenerationCreate()
   ! Date: 04/11/14, 05/15/14
   ! 
 
+  use General_Aux_module, only: fmw_comp
+
   implicit none
   
   class(srcsink_sandbox_wipp_gas_type), pointer :: WIPPGasGenerationCreate
@@ -54,6 +60,7 @@ function WIPPGasGenerationCreate()
   WIPPGasGenerationCreate%humid_degradation_factor = 0.2d0
   WIPPGasGenerationCreate%h2_fe_ratio = 1.3081d0
   WIPPGasGenerationCreate%h2_ch2o_ratio = 1.1100d0
+  WIPPGasGenerationCreate%mw_h2 = fmw_comp(2)
   nullify(WIPPGasGenerationCreate%next)  
       
 end function WIPPGasGenerationCreate
@@ -179,6 +186,8 @@ subroutine WIPPGasGenerationSrcSink(this,Residual,Jacobian, &
   PetscReal :: degradation_gas_rate
   PetscReal :: gas_generation_rate
   
+  ! call water saturation on each cell
+  ! equations are given in V&V doc.
   water_saturation = aux_real(WIPP_GAS_WATER_SATURATION_INDEX)
   humid_corrosion_rate = this%humid_corrosion_factor * this%inundated_corrosion_rate
   humid_degradation_rate = this%humid_degradation_factor * this%inundated_degradation_rate
@@ -186,12 +195,22 @@ subroutine WIPPGasGenerationSrcSink(this,Residual,Jacobian, &
                         water_saturation + humid_corrosion_rate * (1.d0-water_saturation)
   degradation_gas_rate = this%inundated_degradation_rate * &
                           water_saturation + humid_degradation_rate * (1.d0-water_saturation)
+  !gas generation unit: mol of H2 / (m^3 * s)
   gas_generation_rate = this%h2_fe_ratio * corrosion_gas_rate + &
                          this%h2_ch2o_ratio * degradation_gas_rate
+  !convert to m^/3 -> mol/(m^3 * s) * (volume of the cell) / (gas density (kmol/m^3)) * (1 kmol / 1000 mol)
+  gas_generation_rate = gas_generation_rate * 0.5d0 / aux_real(WIPP_GAS_GAS_DENSITY) / 1.d3 ! m^3/s
 
-  ! positive is inflow
-  Residual(TWO_INTEGER) = gas_generation_rate
-  
+  ! positive is inflow 
+  ! kmol/s
+  Residual(ONE_INTEGER) = gas_generation_rate * aux_real(WIPP_GAS_XMOL_WATER_IN_GAS) * &
+                          aux_real(WIPP_GAS_GAS_DENSITY)
+  Residual(TWO_INTEGER) = gas_generation_rate * aux_real(WIPP_GAS_GAS_DENSITY) * &
+                          (1.d0-aux_real(WIPP_GAS_XMOL_WATER_IN_GAS))
+  ! energy equation
+  ! units = MJ/s
+  Residual(THREE_INTEGER) = gas_generation_rate * aux_real(WIPP_GAS_GAS_DENSITY) * &
+                            aux_real(WIPP_GAS_GAS_ENTHALPY)
   if (compute_derivative) then
     
     ! jacobian something
