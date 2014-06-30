@@ -22,7 +22,6 @@ module SrcSink_Sandbox_WIPP_Gas_class
     PetscReal :: humid_degradation_factor
     PetscReal :: h2_fe_ratio
     PetscReal :: h2_ch2o_ratio   
-    PetscReal :: mw_h2
   contains
     procedure, public :: ReadInput => WIPPGasGenerationRead
     procedure, public :: Setup => WIPPGasGenerationSetup
@@ -214,7 +213,7 @@ subroutine WIPPGasGenerationSrcSink(this,Residual,Jacobian, &
   Residual(TWO_INTEGER) = gas_generation_rate 
   
   T = aux_real(WIPP_GAS_TEMPERATURE_INDEX)
-  call EOSGasEnergyIdeal(T,dummy_P,H,dH_dT,dH_dP,U,dU_dT,dU_dP,ierr)
+  call EOSGasEnergy(T,dummy_P,H,dH_dT,dH_dP,U,dU_dT,dU_dP,ierr)
   ! energy equation
   ! units = MJ/s -> enthalpy(J/kmol) * (MJ/1000J) * gas_generation_rate (kmol/s)
   Residual(THREE_INTEGER) = H * 1.d-3 * gas_generation_rate

@@ -107,8 +107,7 @@ module EOS_Gas_module
             EOSGasViscosity, &
             EOSGasDensity, &
             EOSGasEnergy, &
-            EOSGasDensityEnergy, &
-            EOSGasEnergyIdeal
+            EOSGasDensityEnergy
             
   public :: EOSGasSetDensityIdeal, &
             EOSGasSetEnergyIdeal, &
