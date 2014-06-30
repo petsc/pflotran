@@ -108,7 +108,8 @@ end subroutine Base_Read
 ! ************************************************************************** !
 
 subroutine Base_SrcSink(this,Residual,Jacobian,compute_derivative, &
-                        material_auxvar,aux_real,option)
+                        material_auxvar,aux_real,option,cell_volume)
+  
   use Option_module
   use Material_Aux_class
   
@@ -121,6 +122,8 @@ subroutine Base_SrcSink(this,Residual,Jacobian,compute_derivative, &
   PetscReal :: Jacobian(option%nflowdof,option%nflowdof)
   class(material_auxvar_type) :: material_auxvar
   PetscReal :: aux_real(:)
+  ! cell volume used for wipp-gas-generation model
+  PetscReal, intent(in), optional :: cell_volume
       
 end subroutine Base_SrcSink
 
