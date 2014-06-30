@@ -193,7 +193,7 @@ end subroutine DownregSetup
 ! ************************************************************************** !
 
 subroutine DownregSrcSink(this,Residual,Jacobian,compute_derivative, &
-                           material_auxvar,aux_real,option,cell_volume)
+                           material_auxvar,aux_real,option)
   ! 
   ! Evaluates src/sink storing residual and/or Jacobian
   ! 
@@ -220,8 +220,6 @@ subroutine DownregSrcSink(this,Residual,Jacobian,compute_derivative, &
   PetscReal :: rate_regulator  
   PetscReal :: drate_regulator  
   PetscReal :: temp_real
-  
-  PetscReal, intent(in), optional :: cell_volume
 
   PetscInt :: idof
   

@@ -156,7 +156,7 @@ end subroutine MassRateSetup
 ! ************************************************************************** !
 
 subroutine MassRateSrcSink(this,Residual,Jacobian,compute_derivative, &
-                           material_auxvar,aux_real,option,cell_volume)
+                           material_auxvar,aux_real,option)
   ! 
   ! Evaluates src/sink storing residual and/or Jacobian
   ! 
@@ -176,7 +176,6 @@ subroutine MassRateSrcSink(this,Residual,Jacobian,compute_derivative, &
   PetscReal :: Jacobian(option%nflowdof,option%nflowdof)
   class(material_auxvar_type) :: material_auxvar
   PetscReal :: aux_real(:)
-  PetscReal, intent(in), optional :: cell_volume
   
   PetscInt :: idof
   
