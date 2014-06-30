@@ -157,7 +157,7 @@ end subroutine WIPPGasGenerationSetup
 
 subroutine WIPPGasGenerationSrcSink(this,Residual,Jacobian, &
                                     compute_derivative, &
-                                    material_auxvar,aux_real,option)
+                                    material_auxvar,aux_real,option,cell_volume)
   ! 
   ! Evaluates src/sink storing residual and/or Jacobian
   ! 
@@ -185,6 +185,7 @@ subroutine WIPPGasGenerationSrcSink(this,Residual,Jacobian, &
   PetscReal :: corrosion_gas_rate
   PetscReal :: degradation_gas_rate
   PetscReal :: gas_generation_rate
+  PetscReal, optional :: cell_volume
   
   ! call water saturation on each cell
   ! equations are given in V&V doc.
@@ -199,7 +200,7 @@ subroutine WIPPGasGenerationSrcSink(this,Residual,Jacobian, &
   gas_generation_rate = this%h2_fe_ratio * corrosion_gas_rate + &
                          this%h2_ch2o_ratio * degradation_gas_rate
   !convert to m^/3 -> mol/(m^3 * s) * (volume of the cell) / (gas density (kmol/m^3)) * (1 kmol / 1000 mol)
-  gas_generation_rate = gas_generation_rate * 0.5d0 / aux_real(WIPP_GAS_GAS_DENSITY) / 1.d3 ! m^3/s
+  gas_generation_rate = gas_generation_rate * cell_volume / aux_real(WIPP_GAS_GAS_DENSITY) / 1.d3 ! m^3/s
 
   ! positive is inflow 
   ! kmol/s

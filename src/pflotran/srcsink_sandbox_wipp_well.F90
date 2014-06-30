@@ -137,7 +137,7 @@ end subroutine WIPPWellSetup
 ! ************************************************************************** !
 
 subroutine WIPPWellSrcSink(this,Residual,Jacobian,compute_derivative, &
-                           material_auxvar,aux_real,option)
+                           material_auxvar,aux_real,option,cell_volume)
   ! 
   ! Evaluates src/sink storing residual and/or Jacobian
   ! 
@@ -158,6 +158,7 @@ subroutine WIPPWellSrcSink(this,Residual,Jacobian,compute_derivative, &
   PetscReal :: Jacobian(option%nflowdof,option%nflowdof)
   class(material_auxvar_type) :: material_auxvar
   PetscReal :: aux_real(:)
+  PetscReal, optional :: cell_volume
   
   PetscReal :: q_liquid, q_gas
   
