@@ -215,8 +215,8 @@ subroutine WIPPGasGenerationSrcSink(this,Residual,Jacobian, &
   T = aux_real(WIPP_GAS_TEMPERATURE_INDEX)
   call EOSGasEnergy(T,dummy_P,H,dH_dT,dH_dP,U,dU_dT,dU_dP,ierr)
   ! energy equation
-  ! units = MJ/s -> enthalpy(J/kmol) * (MJ/1000J) * gas_generation_rate (kmol/s)
-  Residual(THREE_INTEGER) = H * 1.d-3 * gas_generation_rate
+  ! units = MJ/s -> enthalpy(J/kmol) * (MJ/1E+6J) * gas_generation_rate (kmol/s)
+  Residual(THREE_INTEGER) = H * 1.d-6 * gas_generation_rate
   
   if (compute_derivative) then
     
