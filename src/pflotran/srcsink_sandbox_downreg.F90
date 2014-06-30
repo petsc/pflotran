@@ -221,7 +221,7 @@ subroutine DownregSrcSink(this,Residual,Jacobian,compute_derivative, &
   PetscReal :: drate_regulator  
   PetscReal :: temp_real
   
-  PetscReal, optional :: cell_volume
+  PetscReal, intent(in), optional :: cell_volume
 
   PetscInt :: idof
   

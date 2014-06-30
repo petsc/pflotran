@@ -185,7 +185,7 @@ subroutine WIPPGasGenerationSrcSink(this,Residual,Jacobian, &
   PetscReal :: corrosion_gas_rate
   PetscReal :: degradation_gas_rate
   PetscReal :: gas_generation_rate
-  PetscReal, optional :: cell_volume
+  PetscReal, intent(in), optional :: cell_volume
   
   ! call water saturation on each cell
   ! equations are given in V&V doc.

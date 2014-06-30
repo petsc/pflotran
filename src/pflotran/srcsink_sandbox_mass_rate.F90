@@ -176,7 +176,7 @@ subroutine MassRateSrcSink(this,Residual,Jacobian,compute_derivative, &
   PetscReal :: Jacobian(option%nflowdof,option%nflowdof)
   class(material_auxvar_type) :: material_auxvar
   PetscReal :: aux_real(:)
-  PetscReal, optional :: cell_volume
+  PetscReal, intent(in), optional :: cell_volume
   
   PetscInt :: idof
   

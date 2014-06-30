@@ -123,7 +123,7 @@ subroutine Base_SrcSink(this,Residual,Jacobian,compute_derivative, &
   class(material_auxvar_type) :: material_auxvar
   PetscReal :: aux_real(:)
   ! cell volume used for wipp-gas-generation model
-  PetscReal, optional :: cell_volume
+  PetscReal, intent(in), optional :: cell_volume
       
 end subroutine Base_SrcSink
 
