@@ -3862,7 +3862,6 @@ subroutine GeneralSSSandbox(residual,Jacobian,compute_derivative, &
   PetscInt :: i, local_id, ghosted_id, istart, iend, idof, irow
   PetscReal :: res_pert(option%nflowdof)
   PetscReal :: aux_real(10)
-  PetscReal :: cell_volume
   PetscErrorCode :: ierr
   
   if (.not.compute_derivative) then
@@ -3881,12 +3880,9 @@ subroutine GeneralSSSandbox(residual,Jacobian,compute_derivative, &
         Jac = 0.d0
         call GeneralSSSandboxLoadAuxReal(cur_srcsink,aux_real, &
                           general_auxvars(ZERO_INTEGER,ghosted_id),option)
-        cell_volume = grid%structured_grid%dx(ghosted_id) * &
-                        grid%structured_grid%dy(ghosted_id) * &
-                        grid%structured_grid%dz(ghosted_id)
         call cur_srcsink%Evaluate(res,Jac,PETSC_FALSE, &
                                   material_auxvars(ghosted_id), &
-                                  aux_real,option,cell_volume)
+                                  aux_real,option)
         if (compute_derivative) then
           do idof = 1, option%nflowdof
             res_pert = 0.d0
