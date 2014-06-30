@@ -3942,12 +3942,8 @@ subroutine GeneralSSSandboxLoadAuxReal(srcsink,aux_real,gen_auxvar,option)
     class is(srcsink_sandbox_wipp_gas_type)
       aux_real(WIPP_GAS_WATER_SATURATION_INDEX) = &
         gen_auxvar%sat(option%liquid_phase)
-      aux_real(WIPP_GAS_GAS_ENTHALPY) = &
-        gen_auxvar%H(option%gas_phase)
-      aux_real(WIPP_GAS_GAS_DENSITY) = &
-        gen_auxvar%den(option%gas_phase)
-      aux_real(WIPP_GAS_XMOL_WATER_IN_GAS) = &
-        gen_auxvar%xmol(option%water_id,option%gas_phase)
+      aux_real(WIPP_GAS_TEMPERATURE_INDEX) = &
+        gen_auxvar%temp
     class is(srcsink_sandbox_wipp_well_type)
       aux_real(WIPP_WELL_LIQUID_MOBILITY) = &
         gen_auxvar%mobility(option%liquid_phase)

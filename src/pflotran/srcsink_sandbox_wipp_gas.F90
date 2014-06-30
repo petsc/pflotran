@@ -12,9 +12,7 @@ module SrcSink_Sandbox_WIPP_Gas_class
 #include "finclude/petscsys.h"
 
   PetscInt, parameter, public :: WIPP_GAS_WATER_SATURATION_INDEX = 1
-  PetscInt, parameter, public :: WIPP_GAS_GAS_ENTHALPY = 2
-  PetscInt, parameter, public :: WIPP_GAS_GAS_DENSITY = 3
-  PetscInt, parameter, public :: WIPP_GAS_XMOL_WATER_IN_GAS = 4
+  PetscInt, parameter, public :: WIPP_GAS_TEMPERATURE_INDEX = 2
   
   type, public, &
     extends(srcsink_sandbox_base_type) :: srcsink_sandbox_wipp_gas_type
@@ -46,8 +44,6 @@ function WIPPGasGenerationCreate()
   ! Date: 04/11/14, 05/15/14
   ! 
 
-  use General_Aux_module, only: fmw_comp
-
   implicit none
   
   class(srcsink_sandbox_wipp_gas_type), pointer :: WIPPGasGenerationCreate
@@ -60,7 +56,6 @@ function WIPPGasGenerationCreate()
   WIPPGasGenerationCreate%humid_degradation_factor = 0.2d0
   WIPPGasGenerationCreate%h2_fe_ratio = 1.3081d0
   WIPPGasGenerationCreate%h2_ch2o_ratio = 1.1100d0
-  WIPPGasGenerationCreate%mw_h2 = fmw_comp(2)
   nullify(WIPPGasGenerationCreate%next)  
       
 end function WIPPGasGenerationCreate
@@ -168,6 +163,7 @@ subroutine WIPPGasGenerationSrcSink(this,Residual,Jacobian, &
   use Option_module
   use Reaction_Aux_module
   use Material_Aux_class
+  use EOS_Gas_module
   
   implicit none
   
@@ -179,12 +175,24 @@ subroutine WIPPGasGenerationSrcSink(this,Residual,Jacobian, &
   class(material_auxvar_type) :: material_auxvar
   PetscReal :: aux_real(:)
   
+  !gas generation calculation variables
   PetscReal :: water_saturation
   PetscReal :: humid_corrosion_rate
   PetscReal :: humid_degradation_rate
   PetscReal :: corrosion_gas_rate
   PetscReal :: degradation_gas_rate
   PetscReal :: gas_generation_rate
+  
+  !Enthalpy calculation variables
+  PetscReal :: T        ! temperature [C]
+  PetscReal :: dummy_P  ! pressure [Pa]
+  PetscReal :: H       ! enthalpy [J/kmol]
+  PetscReal :: dH_dT   ! derivative enthalpy wrt temperature
+  PetscReal :: dH_dP   ! derivative enthalpy wrt pressure
+  PetscReal :: U       ! internal energy [J/kmol]
+  PetscReal :: dU_dT   ! deriv. internal energy wrt temperature
+  PetscReal :: dU_dP   ! deriv. internal energy wrt pressure
+  PetscErrorCode :: ierr
   
   ! call water saturation on each cell
   ! equations are given in V&V doc.
@@ -195,22 +203,22 @@ subroutine WIPPGasGenerationSrcSink(this,Residual,Jacobian, &
                         water_saturation + humid_corrosion_rate * (1.d0-water_saturation)
   degradation_gas_rate = this%inundated_degradation_rate * &
                           water_saturation + humid_degradation_rate * (1.d0-water_saturation)
-  !gas generation unit: mol of H2 / (m^3 * s)
+  ! gas generation unit: mol of H2 / (m^3 * s)
   gas_generation_rate = this%h2_fe_ratio * corrosion_gas_rate + &
                          this%h2_ch2o_ratio * degradation_gas_rate
-  !convert to m^/3 -> mol/(m^3 * s) * (volume of the cell) / (gas density (kmol/m^3)) * (1 kmol / 1000 mol)
-  gas_generation_rate = gas_generation_rate * 0.5d0 / aux_real(WIPP_GAS_GAS_DENSITY) / 1.d3 ! m^3/s
+  ! convert to kmol/s -> mol/(m^3 * s) * (volume of the cell) * (1 kmol/1000 mol)
+  gas_generation_rate = gas_generation_rate * material_auxvar%volume * 1.d-3
 
   ! positive is inflow 
   ! kmol/s
-  Residual(ONE_INTEGER) = gas_generation_rate * aux_real(WIPP_GAS_XMOL_WATER_IN_GAS) * &
-                          aux_real(WIPP_GAS_GAS_DENSITY)
-  Residual(TWO_INTEGER) = gas_generation_rate * aux_real(WIPP_GAS_GAS_DENSITY) * &
-                          (1.d0-aux_real(WIPP_GAS_XMOL_WATER_IN_GAS))
+  Residual(TWO_INTEGER) = gas_generation_rate 
+  
+  T = aux_real(WIPP_GAS_TEMPERATURE_INDEX)
+  call EOSGasEnergyIdeal(T,dummy_P,H,dH_dT,dH_dP,U,dU_dT,dU_dP,ierr)
   ! energy equation
-  ! units = MJ/s
-  Residual(THREE_INTEGER) = gas_generation_rate * aux_real(WIPP_GAS_GAS_DENSITY) * &
-                            aux_real(WIPP_GAS_GAS_ENTHALPY)
+  ! units = MJ/s -> enthalpy(J/kmol) * (MJ/1000J) * gas_generation_rate (kmol/s)
+  Residual(THREE_INTEGER) = H * 1.d-3 * gas_generation_rate
+  
   if (compute_derivative) then
     
     ! jacobian something
