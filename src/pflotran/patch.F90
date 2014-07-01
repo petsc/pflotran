@@ -631,6 +631,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   enddo
  
   temp_int = ConnectionGetNumberInList(patch%grid%internal_connection_set_list)
+  temp_int = max(temp_int,1)
   allocate(patch%internal_velocities(option%nphase,temp_int))
   patch%internal_velocities = 0.d0
   allocate(patch%internal_tran_coefs(option%nphase,temp_int))
