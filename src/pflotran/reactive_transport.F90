@@ -330,6 +330,7 @@ subroutine RTCheckUpdatePre(line_search,C,dC,changed,realization,ierr)
  
   use Realization_class
   use Grid_module
+  use Option_module
  
   implicit none
   
@@ -343,6 +344,8 @@ subroutine RTCheckUpdatePre(line_search,C,dC,changed,realization,ierr)
   PetscReal, pointer :: dC_p(:)
   type(grid_type), pointer :: grid
   PetscReal :: ratio, min_ratio
+  PetscReal, parameter :: min_allowable_scale = 1.d-10
+  character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: i, n
   PetscErrorCode :: ierr
   
@@ -353,11 +356,10 @@ subroutine RTCheckUpdatePre(line_search,C,dC,changed,realization,ierr)
   if (realization%reaction%use_log_formulation) then
     ! C and dC are actually lnC and dlnC
     dC_p = dsign(1.d0,dC_p)*min(dabs(dC_p),realization%reaction%max_dlnC)
-
-    ! at this point, it does not matter whether "changed" is set to true, since it 
-    ! is not check in PETSc.  Thus, I don't want to spend time checking for changes
-    ! and performing an allreduce for log formulation.
-  
+    ! at this point, it does not matter whether "changed" is set to true, 
+    ! since it is not checkied in PETSc.  Thus, I don't want to spend 
+    ! time checking for changes and performing an allreduce for log 
+    ! formulation.
   else
     call VecGetLocalSize(C,n,ierr)
     call VecGetArrayReadF90(C,C_p,ierr)
@@ -382,6 +384,21 @@ subroutine RTCheckUpdatePre(line_search,C,dC,changed,realization,ierr)
                        
     ! scale if necessary
     if (min_ratio < 1.d0) then
+      if (min_ratio < min_allowable_scale) then
+        write(string,'(es9.3)') min_ratio
+        string = 'The update of primary species concentration is being ' // &
+          'scaled by a very small value (i.e. ' // &
+          trim(adjustl(string)) // &
+          ') to prevent negative concentrations.  This value is too ' // &
+          'small and will likely cause the solver to mistakenly ' // &
+          'converge based on the infinity norm of the update vector. ' // &
+          'In this case, it is recommended that you use the ' // &
+          'LOG_FORMULATION for chemistry. If that does not work, please ' // &
+          'send your input deck to pflotran-dev@googlegroups.com and ' // &
+          'ask for help.'
+        realization%option%io_buffer = string
+        call printErrMsg(realization%option)
+      endif
       ! scale by 0.99 to make the update slightly smaller than the min_ratio
       dC_p = dC_p*min_ratio*0.99d0
       changed = PETSC_TRUE
