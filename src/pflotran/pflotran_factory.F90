@@ -60,6 +60,7 @@ subroutine PFLOTRANInitializePostPetsc(multisimulation,option)
 !
   use Option_module
   use Multi_Simulation_module
+  use Logging_module
   
   implicit none
   
@@ -67,6 +68,7 @@ subroutine PFLOTRANInitializePostPetsc(multisimulation,option)
   type(option_type) :: option
 
   ! must come after logging is created
+  call LoggingSetupComplete()
   call MultiSimulationIncrement(multisimulation,option)
   call OptionBeginTiming(option)
   
@@ -81,11 +83,15 @@ subroutine PFLOTRANFinalize(option)
 ! Date: 06/07/13
 !
   use Option_module
+  use Logging_module
   
   implicit none
   
   type(option_type) :: option
+  PetscErrorCode :: ierr
   
+  ! pushed in FinalizeRun()
+  call PetscLogStagePop(ierr)
   call OptionEndTiming(option)
   if (option%myrank == option%io_rank .and. option%print_to_file) then
     close(option%fid_out)
