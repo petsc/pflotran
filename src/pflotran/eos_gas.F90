@@ -111,7 +111,7 @@ module EOS_Gas_module
             
   public :: EOSGasSetDensityIdeal, &
             EOSGasSetEnergyIdeal, &
-!            EOSGasSetDensityRKS, &
+            EOSGasSetDensityRKS, &
             EOSGasSetDensityConstant, &
             EOSGasSetEnergyConstant, &
             EOSGasSetViscosityConstant, &
@@ -151,8 +151,8 @@ subroutine EOSGasVerify(ierr,error_string)
   error_string = ''
   if ((associated(EOSGasDensityPtr,EOSGasDensityIdeal) .and. &
         constant_density > -998.d0) .or. &
-!      (associated(EOSGasDensityPtr,EOSGasDensityRKS) .and. &
-!        constant_density > -998.d0) .or. &
+      (associated(EOSGasDensityPtr,EOSGasDensityRKS) .and. &
+        constant_density > -998.d0) .or. &
       (associated(EOSGasEnergyPtr,EOSGasEnergyIdeal) .and. &
         constant_enthalpy > -998.d0) &
      ) then
@@ -194,6 +194,17 @@ subroutine EOSGasSetDensityIdeal()
   EOSGasDensityPtr => EOSGasDensityIdeal
   
 end subroutine EOSGasSetDensityIdeal
+
+! ************************************************************************** !
+
+subroutine EOSGasSetDensityRKS()
+
+  implicit none
+  
+  EOSGasDensityEnergyPtr => EOSGasDensityEnergyGeneral
+  EOSGasDensityPtr => EOSGasDensityRKS
+  
+end subroutine EOSGasSetDensityRKS
 
 ! ************************************************************************** !
 
@@ -549,7 +560,7 @@ subroutine EOSGasDensityIdeal(T,P,Rho_gas,dRho_dT,dRho_dP,ierr)
   PetscReal, intent(out) :: dRho_dP ! derivative gas density wrt pressure
   PetscErrorCode, intent(out) :: ierr
 
-  PetscReal, parameter:: Rg = 8.31415 
+  PetscReal, parameter:: Rg = 8.31451 !8.31415 
   PetscReal  T_kelvin
 
   T_kelvin = T + 273.15d0
@@ -574,17 +585,67 @@ subroutine EOSGasDensityRKS(T,P,Rho_gas,dRho_dT,dRho_dP,ierr)
   PetscReal, intent(out) :: dRho_dT ! derivative gas density wrt temperature
   PetscReal, intent(out) :: dRho_dP ! derivative gas density wrt pressure
   PetscErrorCode, intent(out) :: ierr
-
   
+  PetscReal, parameter :: Rg = 8.31451 
+  PetscReal :: T_kelvin, RT, alpha, a, B , a_RT, p_RT
+  PetscReal :: b2, V, f, dfdV, dVd
+  PetscInt :: i
+  PetscReal, parameter :: coeff_a = 0.42747
+  PetscReal, parameter :: coeff_b = 0.08664
   
-  PetscReal, parameter:: Rg = 8.31415 
-  PetscReal  T_kelvin
-
+  !for hydrogen
+  PetscReal, parameter :: Tc = 43.6
+  PetscReal, parameter :: Pc = 2.047d6
+  
+  !solver
+  PetscReal :: coef(4)
+  PetscInt, parameter :: maxit = 50
+  
   T_kelvin = T + 273.15d0
+  RT = Rg * T_kelvin
+
   
-  ! to be completed later
-  print *, 'RKS gas density not yet implemented.'
-  stop
+  !only for hydrogen case
+  ! if hydrogen then
+  alpha = 1.202d0*EXP(-0.30288d0*(T_kelvin/Tc))
+  ! else
+  !   coeff_alpha = 0.48508d0 + acentric*(1.55171d0 - 0.15613*acentric)
+  !   alpha = (1.d0 + coeff_alpha*(1.d0 - SQRT(T_Kelvin/Tc)))**2
+  ! end if
+  
+  a = coeff_a * alpha * (Rg * Tc)**2 / Pc
+  b = coeff_b * Rg * Tc / Pc
+  
+  a_RT = a / RT
+  P_RT = P / RT
+  coef(4) = P / RT
+  coef(3) = 1.0d0
+  coef(2) = a_RT - b - P_RT*b**2
+  coef(1) = a_RT*b
+  V = RT/P  ! initial guess
+  
+  !Newton iteration to find a Volume of gas
+  do i = 1, maxit
+    f = V*(V*(coef(4)*V - coef(3)) + coef(2)) - coef(1)
+    dfdV = V*(3.0d0*coef(4)*V - 2.0d0*coef(3)) + coef(2)
+    if (dfdV .ne. 0.d0) then
+      dVd = F/dfdV
+      V = V - dVd
+      if (V .ne. 0.d0) then
+        if (abs(dVd/V) .lt. 1.d-10) then
+          Rho_gas = 1/V * 1d-3
+          exit
+        end if
+      else
+        print *, 'Error: RKS gas density cannot be solved'
+      end if 
+    else
+      print *, 'Error: Zero Slope in Equation of State'
+    end if
+  end do
+  
+  dRho_dP =  Rho_gas / P
+  dRho_dT = -Rho_gas / T_kelvin
   
 end subroutine EOSGasDensityRKS
 

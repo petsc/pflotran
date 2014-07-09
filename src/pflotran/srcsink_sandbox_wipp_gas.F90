@@ -193,20 +193,28 @@ subroutine WIPPGasGenerationSrcSink(this,Residual,Jacobian, &
   PetscReal :: dU_dP   ! deriv. internal energy wrt pressure
   PetscErrorCode :: ierr
   
+!  PetscReal :: test_value
+  
   ! call water saturation on each cell
   ! equations are given in V&V doc.
   water_saturation = aux_real(WIPP_GAS_WATER_SATURATION_INDEX)
-  humid_corrosion_rate = this%humid_corrosion_factor * this%inundated_corrosion_rate
-  humid_degradation_rate = this%humid_degradation_factor * this%inundated_degradation_rate
+  humid_corrosion_rate = this%humid_corrosion_factor * &
+                          this%inundated_corrosion_rate
+  humid_degradation_rate = this%humid_degradation_factor * & 
+                            this%inundated_degradation_rate
   corrosion_gas_rate = this%inundated_corrosion_rate * &
-                        water_saturation + humid_corrosion_rate * (1.d0-water_saturation)
+                        water_saturation + &
+                        humid_corrosion_rate * (1.d0-water_saturation)
   degradation_gas_rate = this%inundated_degradation_rate * &
-                          water_saturation + humid_degradation_rate * (1.d0-water_saturation)
+                          water_saturation + humid_degradation_rate * &
+                          (1.d0-water_saturation)
   ! gas generation unit: mol of H2 / (m^3 * s)
   gas_generation_rate = this%h2_fe_ratio * corrosion_gas_rate + &
                          this%h2_ch2o_ratio * degradation_gas_rate
-  ! convert to kmol/s -> mol/(m^3 * s) * (volume of the cell) * (1 kmol/1000 mol)
+  ! convert to kmol/s -> mol/(m^3 * s) * (volume of the cell) * 
+  !                       (1 kmol/1000 mol)
   gas_generation_rate = gas_generation_rate * material_auxvar%volume * 1.d-3
+!  test_value = gas_generation_rate * 2.01588d0 / material_auxvar%volume
 
   ! positive is inflow 
   ! kmol/s

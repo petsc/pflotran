@@ -154,6 +154,8 @@ subroutine EOSRead(input,option)
                 call InputErrorMsg(input,option,'VALUE', &
                                    'EOS,GAS,DENSITY,CONSTANT')
                 call EOSGasSetDensityConstant(tempreal)
+              case('RKS')
+                call EOSGasSetDensityRKS()
               case('IDEAL','DEFAULT')
                 call EOSGasSetDensityIdeal()
               case default
