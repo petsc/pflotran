@@ -1,8 +1,8 @@
-:time s[]  H2O    CO2
+#time s[]  H2O    CO2
 TIME_UNITS y
 DATA_UNITS kg/s
 50.d0 0.d0 1.e-2
-:0.         0.D0  1.e-2
-:3.1536E9   0.D0  1.e-2
-:3.153601E9 0.D0  0.e0
-:1D30       0.D0  0.e0 
+#0.         0.D0  1.e-2
+#3.1536E9   0.D0  1.e-2
+#3.153601E9 0.D0  0.e0
+#1D30       0.D0  0.e0 
