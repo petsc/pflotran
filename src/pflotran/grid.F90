@@ -2328,9 +2328,9 @@ subroutine GridDestroy(grid)
   call DeallocateArray(grid%fL2P)
   call DeallocateArray(grid%fL2B)
 
-  if (grid%e2f /= 0) Call VecDestroy(grid%e2f, ierr)
-  if (grid%e2n /= 0) Call VecDestroy(grid%e2n, ierr)
-  if (grid%e2n_LP /= 0) Call VecDestroy(grid%e2n_LP, ierr)
+  if (grid%e2f /= 0) call VecDestroy(grid%e2f, ierr)
+  if (grid%e2n /= 0) call VecDestroy(grid%e2n, ierr)
+  if (grid%e2n_LP /= 0) call VecDestroy(grid%e2n_LP, ierr)
 
   call MFDAuxDestroy(grid%MFD)
 #endif
