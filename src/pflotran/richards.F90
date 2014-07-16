@@ -2761,6 +2761,10 @@ subroutine RichardsComputeCoeffsForSurfFlux(realization)
         sum_connection = sum_connection + 1
         local_id       = cur_connection_set%id_dn(iconn)
         ghosted_id     = grid%nL2G(local_id)
+
+        rich_auxvar_up => rich_auxvars_bc(sum_connection)
+        rich_auxvar_dn => rich_auxvars(ghosted_id)
+
         if (xx_p(ghosted_id) > 101000.d0) then
           rich_auxvar_dn%bcflux_default_scheme = PETSC_TRUE
         else
@@ -2772,8 +2776,6 @@ subroutine RichardsComputeCoeffsForSurfFlux(realization)
         global_auxvar_up = global_auxvars_bc(sum_connection)
         global_auxvar_dn = global_auxvars(ghosted_id)
 
-        rich_auxvar_up => rich_auxvars_bc(sum_connection)
-        rich_auxvar_dn => rich_auxvars(ghosted_id)
         material_auxvar_dn => material_auxvars(ghosted_id)
 
         rich_auxvar_dn%coeff_for_cubic_approx(:) = -99999.d0

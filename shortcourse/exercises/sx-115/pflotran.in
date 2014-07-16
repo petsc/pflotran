@@ -68,9 +68,8 @@ TYPE structured
 ORIGIN 0.d0 0.d0 0.d0
 NXYZ 1 1 136
 BOUNDS
-0.d0 1.d0
-0.d0 1.d0
-0.d0 68.d0
+0.d0 0.d0 0.d0
+1.d0 1.d0 68.d0
 /
 END
 
@@ -201,7 +200,7 @@ OUTPUT
 #MASS_BALANCE
 TIMES y 0.5 1.0 2.0 5.0 10.0 35.0 100. 200.
 FORMAT TECPLOT POINT
-VELOCITIES
+VELOCITY_AT_CENTER
 /
 
 #=========================== times ============================================

@@ -106,12 +106,15 @@ module Logging_module
 
 #endif
 
+    PetscBool :: setup_complete
+
   end type logging_type
   
   type(logging_type), pointer, public :: logging
   
   public :: LoggingCreate, &
             LoggingCreateStage, &
+            LoggingSetupComplete, &
             LoggingDestroy
 
 contains
@@ -132,6 +135,7 @@ subroutine LoggingCreate()
   
   allocate(logging)
 
+  logging%setup_complete = PETSC_FALSE
   logging%stage_count = FINAL_STAGE
   
   call PetscLogStageRegister('Init Stage',  & 
@@ -369,7 +373,7 @@ end subroutine LoggingCreate
 
 subroutine LoggingCreateStage(stage_name,stage_id)
   ! 
-  ! OptionDestroy: Deallocates a logging object
+  ! Creates a new custom stage
   ! 
   ! Author: Glenn Hammond
   ! Date: 10/26/07
@@ -382,6 +386,10 @@ subroutine LoggingCreateStage(stage_name,stage_id)
   
   character(len=MAXSTRINGLENGTH) :: full_stage_name
   PetscErrorCode :: ierr
+
+  ! this conditional prevents duplicate stages that can be generated during
+  ! multirealization simulations.
+  if (logging%setup_complete) return
   
   logging%stage_count = logging%stage_count + 1
   full_stage_name = trim(stage_name) // ' Stage'
@@ -392,9 +400,25 @@ end subroutine LoggingCreateStage
   
 ! ************************************************************************** !
 
+subroutine LoggingSetupComplete()
+  ! 
+  ! Sets flag that indicates that setup is complete.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/30/14
+  ! 
+
+  implicit none
+
+  logging%setup_complete = PETSC_TRUE
+  
+end subroutine LoggingSetupComplete
+
+! ************************************************************************** !
+
 subroutine LoggingDestroy()
   ! 
-  ! OptionDestroy: Deallocates a logging object
+  ! Deallocates a logging object
   ! 
   ! Author: Glenn Hammond
   ! Date: 10/26/07

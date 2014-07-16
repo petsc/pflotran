@@ -581,7 +581,7 @@ subroutine EOSGasDensityRKS(T,P,Rho_gas,dRho_dT,dRho_dP,ierr)
 
   PetscReal, intent(in) :: T        ! temperature [C]
   PetscReal, intent(in) :: P        ! pressure [Pa]
-  PetscReal, intent(inout) :: Rho_gas ! gas density [kmol/m^3]
+  PetscReal, intent(out) :: Rho_gas ! gas density [kmol/m^3]
   PetscReal, intent(out) :: dRho_dT ! derivative gas density wrt temperature
   PetscReal, intent(out) :: dRho_dP ! derivative gas density wrt pressure
   PetscErrorCode, intent(out) :: ierr
