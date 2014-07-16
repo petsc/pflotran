@@ -633,7 +633,7 @@ subroutine EOSGasDensityRKS(T,P,Rho_gas,dRho_dT,dRho_dP,ierr)
       V = V - dVd
       if (V .ne. 0.d0) then
         if (abs(dVd/V) .lt. 1.d-10) then
-          Rho_gas = 1/V * 1d-3
+          Rho_gas = 1/V * 1d-3 ! mol/m^3 -> kmol/m^3
           exit
         end if
       else
