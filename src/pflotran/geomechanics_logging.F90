@@ -60,46 +60,59 @@ subroutine GeomechLoggingCreate()
 
   call PetscLogStageRegister('Geomech Init Stage',  & 
                              geomech_logging%stage(GEOMECH_INIT_STAGE),ierr)
+  CHKERRQ(ierr)
   call PetscLogStageRegister('Geomech Time Step Stage', &
                              geomech_logging%stage(GEOMECH_TS_STAGE),ierr)
+  CHKERRQ(ierr)
   call PetscLogStageRegister('Geomech Flow Stage', &
                              geomech_logging%stage(GEOMECH_SOLVE_STAGE),ierr)
+  CHKERRQ(ierr)
   call PetscLogStageRegister('Geomech Output Stage', &
                              geomech_logging%stage(GEOMECH_OUTPUT_STAGE),ierr)
+  CHKERRQ(ierr)
                              
   call PetscClassIdRegister('Geomech PFLOTRAN',geomech_logging%class_pflotran,ierr)
+  CHKERRQ(ierr)
 
   call PetscLogEventRegister('GeomechCondRead', &
                              geomech_logging%class_pflotran, &
                              geomech_logging%event_geomech_condition_read,ierr)
+  CHKERRQ(ierr)
  
   call PetscLogEventRegister('GeomechCondReadVals', &
                              geomech_logging%class_pflotran, &
                              geomech_logging%event_geomech_condition_read_values,ierr)
+  CHKERRQ(ierr)
 
   call PetscLogEventRegister('GeomechResidual', &
                              geomech_logging%class_pflotran, &
                              geomech_logging%event_geomech_residual,ierr)
+  CHKERRQ(ierr)
                             
   call PetscLogEventRegister('GeomechJacobian', &
                              geomech_logging%class_pflotran, &
                              geomech_logging%event_geomech_jacobian,ierr)
+  CHKERRQ(ierr)
                              
   call PetscLogEventRegister('GeomechOutputTecplot', &
                              geomech_logging%class_pflotran, &
                              geomech_logging%event_output_tecplot,ierr)
+  CHKERRQ(ierr)
                              
   call PetscLogEventRegister('GeomechOutputWriteTecplot', &
                              geomech_logging%class_pflotran, &
                              geomech_logging%event_output_write_tecplot,ierr)
+  CHKERRQ(ierr)
   
   call PetscLogEventRegister('GeomechOutputGetVarFromArray', &
                              geomech_logging%class_pflotran, &
                              geomech_logging%event_output_get_var_from_array,ierr)
+  CHKERRQ(ierr)
                              
   call PetscLogEventRegister('GeomechH5DWrite_F', &
                              geomech_logging%class_pflotran, &
-                             geomech_logging%event_h5dwrite_f,ierr)                             
+                             geomech_logging%event_h5dwrite_f,ierr)
+  CHKERRQ(ierr)                             
                              
 end subroutine GeomechLoggingCreate
 

@@ -65,6 +65,7 @@ subroutine HydrogeophysicsWrapperInit(option, &
   ! pflotran_solution_vec_seq only defined on master E4D process
   if (pflotran_solution_vec_seq > 0) then
     call VecGetSize(pflotran_solution_vec_seq,pflotran_solution_vec_size,ierr)
+    CHKERRQ(ierr)
   endif
 
   call setup_e4d
@@ -133,8 +134,10 @@ subroutine HydrogeophysicsWrapperStep(time,solution_mpi,solution_seq, &
   endif
   call VecScatterBegin(scatter,solution_mpi,solution_seq, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr)
+  CHKERRQ(ierr)
   call VecScatterEnd(scatter,solution_mpi,solution_seq, &
                      INSERT_VALUES,SCATTER_FORWARD,ierr)
+  CHKERRQ(ierr)
   
 end subroutine HydrogeophysicsWrapperStep
 

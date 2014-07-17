@@ -193,6 +193,7 @@ subroutine HijackSurfaceSimulation(simulation_old,simulation)
                           PMRHSFunction, &
                           cur_process_model_coupler%pm_ptr, &
                           ierr)
+                CHKERRQ(ierr)
             end select
         end select
         cur_process_model => cur_process_model%next
@@ -262,6 +263,7 @@ subroutine SurfaceJumpStart(simulation)
 
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-vecload_block_size", & 
                            failure, ierr)
+  CHKERRQ(ierr)
                              
   if (option%steady_state) then
     option%io_buffer = 'Running in steady-state not yet supported for surface-flow.'
@@ -290,6 +292,7 @@ subroutine SurfaceJumpStart(simulation)
       surf_flow_stepper%prev_dt = surf_flow_prev_dt
       surf_flow_stepper%target_time = option%surf_flow_time
       call TSSetTime(surf_flow_stepper%solver%ts,option%surf_flow_time,ierr)
+      CHKERRQ(ierr)
     endif
 
   endif
@@ -297,9 +300,11 @@ subroutine SurfaceJumpStart(simulation)
 
   ! pushed in Init()
   call PetscLogStagePop(ierr)
+  CHKERRQ(ierr)
 
   ! popped in TimestepperFinalizeRun()
   call PetscLogStagePush(logging%stage(TS_STAGE),ierr)
+  CHKERRQ(ierr)
 
   !if TIMESTEPPER->MAX_STEPS < 0, print out solution composition only
   if (master_stepper%max_time_step < 0) then

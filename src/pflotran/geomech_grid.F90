@@ -164,6 +164,7 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   enddo
   int_array2 = int_array2 - 1
   call PetscSortIntWithPermutation(vertex_count,int_array,int_array2,ierr)
+  CHKERRQ(ierr)
   int_array2 = int_array2+1
     
   ! Remove duplicates
@@ -259,24 +260,31 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
                     geomech_grid%nmax_node,option%mycommsize, &
                     option%mycommsize,PETSC_NULL_INTEGER, &
                     option%mycommsize,PETSC_NULL_INTEGER,Rank_Mat,ierr)
+  CHKERRQ(ierr)
   
   call MatZeroEntries(Rank_Mat,ierr)
+  CHKERRQ(ierr)
   
   rank = option%myrank + 1
   do ivertex = 1, geomech_grid%ngmax_node
     call MatSetValue(Rank_Mat,geomech_grid%node_ids_ghosted_natural(ivertex)-1, &
                      option%myrank,rank,INSERT_VALUES,ierr)
+    CHKERRQ(ierr)
   enddo
   call MatAssemblyBegin(Rank_Mat,MAT_FINAL_ASSEMBLY,ierr)
+  CHKERRQ(ierr)
   call MatAssemblyEnd(Rank_Mat,MAT_FINAL_ASSEMBLY,ierr)
+  CHKERRQ(ierr)
 
   allocate(val(option%mycommsize))
   allocate(cols(option%mycommsize))
   call MatGetOwnershipRange(Rank_Mat,istart,iend,ierr)
+  CHKERRQ(ierr)
   allocate(int_array(iend-istart))
   count = 0
   do row = istart, iend-1
     call MatGetRow(Rank_Mat,row,ncols,cols,val,ierr)
+    CHKERRQ(ierr)
       max_val = 0.d0
       do local_id = 1, ncols
         max_val = max(max_val,val(local_id))
@@ -284,10 +292,12 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
     count = count + 1
     int_array(count) = int(max_val)
     call MatRestoreRow(Rank_Mat,row,ncols,cols,val,ierr)
+    CHKERRQ(ierr)
   enddo
   deallocate(val)
   deallocate(cols)
   call MatDestroy(Rank_Mat,ierr)
+  CHKERRQ(ierr)
   
   ! Change rank to start from 0
   int_array = int_array - 1
@@ -343,12 +353,16 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
     
   call ISCreateGeneral(option%mycomm,count,int_array,PETSC_COPY_VALUES, &
                        is_rank,ierr)
+  CHKERRQ(ierr)
 
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'geomech_is_rank_nodes.out', &
                             viewer,ierr)
+  CHKERRQ(ierr)
   call ISView(is_rank,viewer,ierr)
+  CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr)
+  CHKERRQ(ierr)
 #endif  
   deallocate(int_array)
   
@@ -361,13 +375,17 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   enddo
   call ISCreateGeneral(option%mycomm,count,int_array,PETSC_COPY_VALUES, &
                        is_natural,ierr)
+  CHKERRQ(ierr)
   deallocate(int_array)
   
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'geomech_is_natural.out', &
                             viewer,ierr)
+  CHKERRQ(ierr)
   call ISView(is_natural,viewer,ierr)
+  CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr)
+  CHKERRQ(ierr)
 #endif       
 
   ! Find the global_offset for vertices on this rank
@@ -388,25 +406,36 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
 #endif
 
   call ISPartitioningToNumbering(is_rank,is_rank_new,ierr)
+  CHKERRQ(ierr)
   call ISDestroy(is_rank,ierr)
+  CHKERRQ(ierr)
 
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'geomech_is_rank_nodes_new.out', &
                             viewer,ierr)
+  CHKERRQ(ierr)
   call ISView(is_rank_new,viewer,ierr)
+  CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr)
+  CHKERRQ(ierr)
 #endif  
 
   !Create an application ordering
   call AOCreateBasicIS(is_natural,is_rank_new,ao_natural_to_petsc_nodes,ierr)
+  CHKERRQ(ierr)
   call ISDestroy(is_rank_new,ierr)
+  CHKERRQ(ierr)
   call ISDestroy(is_natural,ierr)
+  CHKERRQ(ierr)
 
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'geomech_ao_natural_to_petsc_nodes.out', &
                             viewer,ierr)
+  CHKERRQ(ierr)
   call AOView(ao_natural_to_petsc_nodes,viewer,ierr)
+  CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr)
+  CHKERRQ(ierr)
 #endif   
 
   ! Create a new IS with local PETSc numbering
@@ -416,32 +445,43 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   enddo
   call ISCreateGeneral(option%mycomm,geomech_grid%nlmax_node, &
                        int_array,PETSC_COPY_VALUES,is_natural,ierr)
+  CHKERRQ(ierr)
   deallocate(int_array)
   
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'geomech_is_petsc.out', &
                             viewer,ierr)
+  CHKERRQ(ierr)
   call ISView(is_natural,viewer,ierr)
+  CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr)
+  CHKERRQ(ierr)
 #endif   
   
   ! Rewrite the IS with natural numbering
   call AOPetscToApplicationIS(ao_natural_to_petsc_nodes,is_natural,ierr)
+  CHKERRQ(ierr)
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'geomech_is_natural_after_ordering.out', &
                             viewer,ierr)
+  CHKERRQ(ierr)
   call ISView(is_natural,viewer,ierr)
+  CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr)
+  CHKERRQ(ierr)
 #endif    
 
   ! Get the local indices (natural)
   allocate(geomech_grid%node_ids_local_natural(geomech_grid%nlmax_node))
   call ISGetIndicesF90(is_natural,int_ptr,ierr)
+  CHKERRQ(ierr)
   do local_id = 1, geomech_grid%nlmax_node
     geomech_grid%node_ids_local_natural(local_id) = int_ptr(local_id)
   enddo
   call ISRestoreIndicesF90(is_natural,int_ptr,ierr)
+  CHKERRQ(ierr)
   call ISDestroy(is_natural,ierr)
+  CHKERRQ(ierr)
   
   ! Changing to 1-based
   geomech_grid%node_ids_local_natural = geomech_grid%node_ids_local_natural + 1
@@ -498,21 +538,29 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   ! Create a new IS with local PETSc numbering
   call ISCreateGeneral(option%mycomm,geomech_grid%num_ghost_nodes, &
                        int_array2,PETSC_COPY_VALUES,is_ghost_petsc,ierr)
+  CHKERRQ(ierr)
   
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'geomech_is_ghost_natural.out', &
                             viewer,ierr)
+  CHKERRQ(ierr)
   call ISView(is_ghost_petsc,viewer,ierr)
+  CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr)
+  CHKERRQ(ierr)
 #endif   
   
   ! Rewrite the IS with natural numbering
   call AOApplicationtoPetscIS(ao_natural_to_petsc_nodes,is_ghost_petsc,ierr)
+  CHKERRQ(ierr)
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'geomech_is_ghost_petsc.out', &
                             viewer,ierr)
+  CHKERRQ(ierr)
   call ISView(is_ghost_petsc,viewer,ierr)
+  CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr)
+  CHKERRQ(ierr)
 #endif     
  
   if (allocated(int_array2)) then
@@ -526,12 +574,15 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   if (geomech_grid%num_ghost_nodes  > 0) then
     allocate(geomech_grid%ghosted_node_ids_petsc(geomech_grid%num_ghost_nodes))
     call ISGetIndicesF90(is_ghost_petsc,int_ptr,ierr)
+    CHKERRQ(ierr)
     do ghosted_id = 1, geomech_grid%num_ghost_nodes
       geomech_grid%ghosted_node_ids_petsc(ghosted_id) = int_ptr(ghosted_id) 
     enddo
     call ISRestoreIndicesF90(is_ghost_petsc,int_ptr,ierr)
+    CHKERRQ(ierr)
   endif
   call ISDestroy(is_ghost_petsc,ierr)
+  CHKERRQ(ierr)
   
   
   ! Changing back to 1-based
@@ -560,6 +611,7 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   int_array2 = int_array2 - 1
   call PetscSortIntWithPermutation(geomech_grid%ngmax_node,int_array, &
                                    int_array2,ierr)
+  CHKERRQ(ierr)
   int_array2 = int_array2+1
    
   do local_id = 1, geomech_grid%nlmax_elem
@@ -669,18 +721,26 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
  
   ! local vector
   call VecCreate(PETSC_COMM_SELF,geomech_grid%no_elems_sharing_node_loc,ierr)
+  CHKERRQ(ierr)
   call VecSetSizes(geomech_grid%no_elems_sharing_node_loc,geomech_grid%ngmax_node, &
                    PETSC_DECIDE,ierr)
+  CHKERRQ(ierr)
   call VecSetFromOptions(geomech_grid%no_elems_sharing_node_loc,ierr)
+  CHKERRQ(ierr)
 
   ! global vector
   call VecCreate(option%mycomm,geomech_grid%no_elems_sharing_node,ierr)
+  CHKERRQ(ierr)
   call VecSetSizes(geomech_grid%no_elems_sharing_node,geomech_grid%nlmax_node, &
                    PETSC_DECIDE,ierr)
+  CHKERRQ(ierr)
   call VecSetFromOptions(geomech_grid%no_elems_sharing_node,ierr)
+  CHKERRQ(ierr)
 
   call VecSet(geomech_grid%no_elems_sharing_node_loc,0,ierr)
+  CHKERRQ(ierr)
   call VecSet(geomech_grid%no_elems_sharing_node,0,ierr)
+  CHKERRQ(ierr)
  
 end subroutine CopySubsurfaceGridtoGeomechGrid
 
@@ -787,9 +847,12 @@ subroutine GeomechGridLocalizeRegFromVertIDs(geomech_grid,geomech_region, &
   if (associated(geomech_region%vertex_ids)) then
     call VecCreateMPI(option%mycomm,geomech_grid%nlmax_node,PETSC_DECIDE, &
                       vec_vertex_ids,ierr)
+    CHKERRQ(ierr)
     call VecCreateMPI(option%mycomm,geomech_grid%nlmax_node,PETSC_DECIDE,&
                       vec_vertex_ids_loc,ierr)
+    CHKERRQ(ierr)
     call VecZeroEntries(vec_vertex_ids,ierr)
+    CHKERRQ(ierr)
     
     allocate(tmp_int_array(geomech_region%num_verts))
     allocate(tmp_scl_array(geomech_region%num_verts))
@@ -804,24 +867,33 @@ subroutine GeomechGridLocalizeRegFromVertIDs(geomech_grid,geomech_region, &
 #ifdef GEOMECH_DEBUG
     call PetscViewerASCIIOpen(option%mycomm,'vec_vertex_ids_bef.out', &
                               viewer,ierr)
+    CHKERRQ(ierr)
     call VecView(vec_vertex_ids,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)  
+    CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr)
+    CHKERRQ(ierr)  
 #endif    
 
     call VecSetValues(vec_vertex_ids,geomech_region%num_verts,tmp_int_array, &
                       tmp_scl_array,ADD_VALUES,ierr)
+    CHKERRQ(ierr)
     
     deallocate(tmp_int_array)
     deallocate(tmp_scl_array)
 
     call VecAssemblyBegin(vec_vertex_ids,ierr)
+    CHKERRQ(ierr)
     call VecAssemblyEnd(vec_vertex_ids,ierr)
+    CHKERRQ(ierr)
     
 #ifdef GEOMECH_DEBUG
     call PetscViewerASCIIOpen(option%mycomm,'vec_vertex_ids_aft.out', &
                               viewer,ierr)
+    CHKERRQ(ierr)
     call VecView(vec_vertex_ids,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)  
+    CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr)
+    CHKERRQ(ierr)  
 #endif       
     
   endif
@@ -839,8 +911,10 @@ subroutine GeomechGridLocalizeRegFromVertIDs(geomech_grid,geomech_region, &
   tmp_int_array = tmp_int_array - 1
   call ISCreateBlock(option%mycomm,1,geomech_grid%nlmax_node, &
                      tmp_int_array,PETSC_COPY_VALUES,is_from,ierr)
+  CHKERRQ(ierr)
 
   call VecGetOwnershipRange(vec_vertex_ids_loc,istart,iend,ierr)
+  CHKERRQ(ierr)
   do ii = 1,geomech_grid%nlmax_node
     tmp_int_array(ii) = ii + istart
   enddo
@@ -851,29 +925,40 @@ subroutine GeomechGridLocalizeRegFromVertIDs(geomech_grid,geomech_region, &
   tmp_int_array = tmp_int_array - 1 
   call ISCreateBlock(option%mycomm,1,geomech_grid%nlmax_node,&
                      tmp_int_array,PETSC_COPY_VALUES,is_to,ierr)
+  CHKERRQ(ierr)
 
   deallocate(tmp_int_array)
   
   call VecScatterCreate(vec_vertex_ids,is_from,vec_vertex_ids_loc,is_to, &
                         vec_scat,ierr)
+  CHKERRQ(ierr)
 
   call ISDestroy(is_from,ierr)
+  CHKERRQ(ierr)
   call ISDestroy(is_to,ierr)
+  CHKERRQ(ierr)
   
   call VecScatterBegin(vec_scat,vec_vertex_ids,vec_vertex_ids_loc, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr)
+  CHKERRQ(ierr)
   call VecScatterEnd(vec_scat,vec_vertex_ids,vec_vertex_ids_loc, &
                      INSERT_VALUES,SCATTER_FORWARD,ierr)
+  CHKERRQ(ierr)
   call VecScatterDestroy(vec_scat,ierr)
+  CHKERRQ(ierr)
   
 #if GEOMECH_DEBUG
     call PetscViewerASCIIOpen(option%mycomm,'vec_vertex_ids_loc.out', &
                               viewer,ierr)
+    CHKERRQ(ierr)
     call VecView(vec_vertex_ids_loc,viewer,ierr)
+    CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr)
+    CHKERRQ(ierr)
 #endif
 
   call VecGetArrayF90(vec_vertex_ids_loc,v_loc_p,ierr)
+  CHKERRQ(ierr)
   count = 0
   do ii = 1,geomech_grid%nlmax_node
     if (v_loc_p(ii) == 1) count = count + 1
@@ -909,9 +994,12 @@ subroutine GeomechGridLocalizeRegFromVertIDs(geomech_grid,geomech_region, &
 #endif     
   
   call VecRestoreArrayF90(vec_vertex_ids_loc,v_loc_p,ierr)
+  CHKERRQ(ierr)
   
   call VecDestroy(vec_vertex_ids,ierr)
+  CHKERRQ(ierr)
   call VecDestroy(vec_vertex_ids_loc,ierr)
+  CHKERRQ(ierr)
    
 end subroutine GeomechGridLocalizeRegFromVertIDs
 
@@ -965,6 +1053,7 @@ subroutine GeomechGridVecGetArrayF90(grid,vec,f90ptr,ierr)
   PetscErrorCode :: ierr
 
   call VecGetArrayF90(vec,f90ptr,ierr)
+  CHKERRQ(ierr)
 
 end subroutine GeomechGridVecGetArrayF90
 
@@ -988,6 +1077,7 @@ subroutine GeomechGridVecRestoreArrayF90(grid,vec,f90ptr,ierr)
   PetscErrorCode :: ierr
 
   call VecRestoreArrayF90(vec,f90ptr,ierr)
+  CHKERRQ(ierr)
   
 end subroutine GeomechGridVecRestoreArrayF90
 
@@ -1094,6 +1184,7 @@ subroutine GeomechSubsurfMapFromFileId(grid,input,option)
   PetscErrorCode :: ierr
 
   call PetscLogEventBegin(logging%event_region_read_ascii,ierr)
+  CHKERRQ(ierr)
     
   max_size = 1000
   backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
@@ -1194,6 +1285,7 @@ subroutine GeomechSubsurfMapFromFileId(grid,input,option)
 #endif    
     
   call PetscLogEventEnd(logging%event_region_read_ascii,ierr)
+  CHKERRQ(ierr)
 
 end subroutine GeomechSubsurfMapFromFileId
 

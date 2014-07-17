@@ -92,6 +92,7 @@ subroutine PFLOTRANFinalize(option)
   
   ! pushed in FinalizeRun()
   call PetscLogStagePop(ierr)
+  CHKERRQ(ierr)
   call OptionEndTiming(option)
   if (option%myrank == option%io_rank .and. option%print_to_file) then
     close(option%fid_out)

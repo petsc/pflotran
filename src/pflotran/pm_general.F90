@@ -119,6 +119,7 @@ recursive subroutine PMGeneralInitializeRun(this)
   ! need to allocate vectors for max change
   call VecDuplicateVecsF90(this%realization%field%work,SIX_INTEGER, &
                            this%realization%field%max_change_vecs,ierr)
+  CHKERRQ(ierr)
   ! set initial values
   do i = 1, 6
     call RealizationGetVariable(this%realization, &
@@ -434,11 +435,16 @@ subroutine PMGeneralMaxChange(this)
     ! yes, we could use VecWAXPY and a norm here, but we need the ability
     ! to customize
     call VecGetArrayF90(field%work,vec_ptr,ierr)
+    CHKERRQ(ierr)
     call VecGetArrayF90(field%max_change_vecs(i),vec_ptr2,ierr)
+    CHKERRQ(ierr)
     max_change_local(i) = maxval(dabs(vec_ptr(:)-vec_ptr2(:)))
     call VecRestoreArrayF90(field%work,vec_ptr,ierr)
+    CHKERRQ(ierr)
     call VecRestoreArrayF90(field%max_change_vecs(i),vec_ptr2,ierr)
+    CHKERRQ(ierr)
     call VecCopy(field%work,field%max_change_vecs(i),ierr)
+    CHKERRQ(ierr)
   enddo
   call MPI_Allreduce(max_change_local,max_change_global,SIX_INTEGER, &
                       MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)

@@ -306,19 +306,25 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
     call process_model%PreSolve()
     
     call PetscTime(log_start_time, ierr)
+    CHKERRQ(ierr)
 
     call SNESSolve(solver%snes,PETSC_NULL_OBJECT, &
                    process_model%solution_vec,ierr)
+    CHKERRQ(ierr)
 
     call PetscTime(log_end_time, ierr)
+    CHKERRQ(ierr)
 
     this%cumulative_solver_time = &
       this%cumulative_solver_time + &
       (log_end_time - log_start_time)
 
     call SNESGetIterationNumber(solver%snes,num_newton_iterations,ierr)
+    CHKERRQ(ierr)
     call SNESGetLinearSolveIterations(solver%snes,num_linear_iterations,ierr)
+    CHKERRQ(ierr)
     call SNESGetConvergedReason(solver%snes,snes_reason,ierr)
+    CHKERRQ(ierr)
 
     sum_newton_iterations = sum_newton_iterations + num_newton_iterations
     sum_linear_iterations = sum_linear_iterations + num_linear_iterations
@@ -383,7 +389,9 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
   
 ! print screen output
   call SNESGetFunctionNorm(solver%snes,fnorm,ierr)
+  CHKERRQ(ierr)
   call VecNorm(process_model%residual_vec,NORM_INFINITY,inorm,ierr)
+  CHKERRQ(ierr)
   if (option%print_screen_flag) then
     write(*, '(/," Step ",i6," Time= ",1pe12.5," Dt= ",1pe12.5," [",a1,"]", &
       & " snes_conv_reason: ",i4,/,"  newton = ",i3," [",i8,"]", &
@@ -500,11 +508,15 @@ subroutine TimestepperBECheckpoint(this,viewer,option)
   PetscErrorCode :: ierr
 
   call PetscBagCreate(option%mycomm,bagsize,bag,ierr)
+  CHKERRQ(ierr)
   call PetscBagGetData(bag,header,ierr)
+  CHKERRQ(ierr)
   call TimestepperBERegisterHeader(this,bag,header)
   call TimestepperBESetHeader(this,bag,header)
   call PetscBagView(bag,viewer,ierr)
-  call PetscBagDestroy(bag,ierr)  
+  CHKERRQ(ierr)
+  call PetscBagDestroy(bag,ierr)
+  CHKERRQ(ierr)  
 
 end subroutine TimestepperBECheckpoint
 
@@ -534,10 +546,13 @@ subroutine TimestepperBERegisterHeader(this,bag,header)
   ! bagsize = 3 * 8 bytes = 24 bytes
   call PetscBagRegisterInt(bag,header%cumulative_newton_iterations,0, &
                            "cumulative_newton_iterations","",ierr)
+  CHKERRQ(ierr)
   call PetscBagRegisterInt(bag,header%cumulative_linear_iterations,0, &
                            "cumulative_linear_iterations","",ierr)
+  CHKERRQ(ierr)
   call PetscBagRegisterInt(bag,header%num_newton_iterations,0, &
                            "num_newton_iterations","",ierr)
+  CHKERRQ(ierr)
 
   call TimestepperBaseRegisterHeader(this,bag,header)
   
@@ -601,11 +616,15 @@ subroutine TimestepperBERestart(this,viewer,option)
   PetscErrorCode :: ierr
   
   call PetscBagCreate(option%mycomm,bagsize,bag,ierr)
+  CHKERRQ(ierr)
   call PetscBagGetData(bag,header,ierr)
+  CHKERRQ(ierr)
   call TimestepperBERegisterHeader(this,bag,header)
   call PetscBagLoad(viewer,bag,ierr)
+  CHKERRQ(ierr)
   call TimestepperBEGetHeader(this,header)
-  call PetscBagDestroy(bag,ierr)  
+  call PetscBagDestroy(bag,ierr)
+  CHKERRQ(ierr)  
 
 end subroutine TimestepperBERestart
 
