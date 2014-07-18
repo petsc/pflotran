@@ -361,6 +361,7 @@ subroutine SurfRealizCreateDiscretization(surf_realization)
   call DiscretizationCreateVector(discretization,NFLOWDOF,surf_field%flow_xx, &
                                   GLOBAL,option)
   call VecSet(surf_field%flow_xx,0.d0,ierr)
+  CHKERRQ(ierr)
 
   call DiscretizationDuplicateVector(discretization,surf_field%flow_xx, &
                                      surf_field%flow_yy)
@@ -377,6 +378,7 @@ subroutine SurfRealizCreateDiscretization(surf_realization)
   call DiscretizationCreateVector(discretization,ONEDOF,surf_field%mannings0, &
                                   GLOBAL,option)
   call VecSet(surf_field%mannings0,0.d0,ierr)
+  CHKERRQ(ierr)
 
    call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
                                      surf_field%area)
@@ -388,6 +390,7 @@ subroutine SurfRealizCreateDiscretization(surf_realization)
   call DiscretizationCreateVector(discretization,NFLOWDOF,surf_field%flow_xx_loc, &
                                   LOCAL,option)
   call VecSet(surf_field%flow_xx_loc,0.d0,ierr)
+  CHKERRQ(ierr)
   call DiscretizationDuplicateVector(discretization,surf_field%flow_xx_loc, &
                                      surf_field%work_loc)
 
@@ -395,6 +398,7 @@ subroutine SurfRealizCreateDiscretization(surf_realization)
   call DiscretizationCreateVector(discretization,ONEDOF,surf_field%mannings_loc, &
                                   LOCAL,option)
   call VecSet(surf_field%mannings_loc,0.d0,ierr)
+  CHKERRQ(ierr)
 
   grid => discretization%grid
 
@@ -419,7 +423,9 @@ subroutine SurfRealizCreateDiscretization(surf_realization)
     call VecCreateMPI(option%mycomm, &
          (option%nflowdof*MAX_FACE_PER_CELL_SURF+1)*surf_realization%patch%grid%nlmax, &
           PETSC_DETERMINE,surf_field%flowrate_inst,ierr)
+    CHKERRQ(ierr)
     call VecSet(surf_field%flowrate_inst,0.d0,ierr)
+    CHKERRQ(ierr)
 
     ! If average flowrate has to be saved, create a vector for it
     if(surf_realization%output_option%print_hdf5_aveg_mass_flowrate.or. &
@@ -427,7 +433,9 @@ subroutine SurfRealizCreateDiscretization(surf_realization)
       call VecCreateMPI(option%mycomm, &
           (option%nflowdof*MAX_FACE_PER_CELL_SURF+1)*surf_realization%patch%grid%nlmax, &
           PETSC_DETERMINE,surf_field%flowrate_aveg,ierr)
+      CHKERRQ(ierr)
     call VecSet(surf_field%flowrate_aveg,0.d0,ierr)
+    CHKERRQ(ierr)
     endif
   endif
 
@@ -762,6 +770,7 @@ subroutine SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
                        PETSC_NULL_INTEGER, &
                        Mat_vert_to_face_subsurf, &
                        ierr)
+  CHKERRQ(ierr)
 
    call MatCreateAIJ(option%mycomm, &
                      PETSC_DECIDE, &
@@ -774,13 +783,17 @@ subroutine SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
                      PETSC_NULL_INTEGER, &
                      Mat_vert_to_face_subsurf_transp, &
                      ierr)
+   CHKERRQ(ierr)
 
   call VecCreateMPI(option%mycomm,top_region%num_cells,PETSC_DETERMINE, &
-                    subsurf_petsc_ids,ierr)  
+                    subsurf_petsc_ids,ierr)
+  CHKERRQ(ierr)  
   call MatZeroEntries(Mat_vert_to_face_subsurf,ierr)
+  CHKERRQ(ierr)
   real_array4 = 1.d0
 
   call VecGetArrayF90(subsurf_petsc_ids,vec_ptr,ierr)
+  CHKERRQ(ierr)
 
   offset=0
   call MPI_Exscan(top_region%num_cells,offset, &
@@ -809,25 +822,35 @@ subroutine SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
                       nvertices,int_array4_0, &
                       real_array4, &
                       INSERT_VALUES,ierr)
+    CHKERRQ(ierr)
     call MatSetValues(Mat_vert_to_face_subsurf_transp, &
                       nvertices,int_array4_0, &
                       1,ii-1+offset, &
                       real_array4, &
                       INSERT_VALUES,ierr)
+    CHKERRQ(ierr)
   enddo
 
   call VecRestoreArrayF90(subsurf_petsc_ids,vec_ptr,ierr)
+  CHKERRQ(ierr)
 
   call MatAssemblyBegin(Mat_vert_to_face_subsurf,MAT_FINAL_ASSEMBLY,ierr)
+  CHKERRQ(ierr)
   call MatAssemblyEnd(Mat_vert_to_face_subsurf,MAT_FINAL_ASSEMBLY,ierr)
+  CHKERRQ(ierr)
   call MatAssemblyBegin(Mat_vert_to_face_subsurf_transp,MAT_FINAL_ASSEMBLY,ierr)
+  CHKERRQ(ierr)
   call MatAssemblyEnd(Mat_vert_to_face_subsurf_transp,MAT_FINAL_ASSEMBLY,ierr)
+  CHKERRQ(ierr)
 
 #if UGRID_DEBUG
   string = 'Mat_vert_to_face_subsurf.out'
   call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
+  CHKERRQ(ierr)
   call MatView(Mat_vert_to_face_subsurf,viewer,ierr)
+  CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr)
+  CHKERRQ(ierr)
 #endif  
 
   !call MatTranspose(Mat_vert_to_face_subsurf,MAT_INITIAL_MATRIX, &
@@ -836,13 +859,19 @@ subroutine SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
 #if UGRID_DEBUG
   string = 'Mat_vert_to_face_subsurf_transp.out'
   call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
+  CHKERRQ(ierr)
   call MatView(Mat_vert_to_face_subsurf_transp,viewer,ierr)
+  CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr)
+  CHKERRQ(ierr)
 
   string = 'subsurf_petsc_ids.out'
   call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
+  CHKERRQ(ierr)
   call VecView(subsurf_petsc_ids,viewer,ierr)
+  CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr)
+  CHKERRQ(ierr)
 #endif
 
   call MatCreateAIJ(option%mycomm, &
@@ -856,6 +885,7 @@ subroutine SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
                        PETSC_NULL_INTEGER, &
                        Mat_vert_to_face_surf, &
                        ierr)
+  CHKERRQ(ierr)
 
   call MatCreateAIJ(option%mycomm, &
                     PETSC_DECIDE, &
@@ -868,14 +898,17 @@ subroutine SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
                     PETSC_NULL_INTEGER, &
                     Mat_vert_to_face_surf_transp, &
                     ierr)
+  CHKERRQ(ierr)
 
   call VecCreateMPI(option%mycomm,surf_grid%nlmax,PETSC_DETERMINE, &
-                    surf_petsc_ids,ierr)  
+                    surf_petsc_ids,ierr)
+  CHKERRQ(ierr)  
   offset=0
   call MPI_Exscan(surf_grid%nlmax,offset, &
                   ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
 
   call VecGetArrayF90(surf_petsc_ids,vec_ptr,ierr)
+  CHKERRQ(ierr)
 
   do local_id = 1, surf_grid%nlmax
     cell_type = surf_grid%cell_type(local_id)
@@ -891,31 +924,44 @@ subroutine SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
    call MatSetValues(Mat_vert_to_face_surf,1,local_id-1+offset, &
                      nvertices,int_array4_0,real_array4, &
                      INSERT_VALUES,ierr)
+   CHKERRQ(ierr)
    call MatSetValues(Mat_vert_to_face_surf_transp, &
                      nvertices,int_array4_0, &
                      1,local_id-1+offset, &
                      real_array4, &
                      INSERT_VALUES,ierr)
+   CHKERRQ(ierr)
   enddo
 
   call VecRestoreArrayF90(surf_petsc_ids,vec_ptr,ierr)
+  CHKERRQ(ierr)
 
   call MatAssemblyBegin(Mat_vert_to_face_surf,MAT_FINAL_ASSEMBLY,ierr)
+  CHKERRQ(ierr)
   call MatAssemblyEnd(Mat_vert_to_face_surf,MAT_FINAL_ASSEMBLY,ierr)
+  CHKERRQ(ierr)
 
   call MatAssemblyBegin(Mat_vert_to_face_surf_transp,MAT_FINAL_ASSEMBLY,ierr)
+  CHKERRQ(ierr)
   call MatAssemblyEnd(Mat_vert_to_face_surf_transp,MAT_FINAL_ASSEMBLY,ierr)
+  CHKERRQ(ierr)
 
 #if UGRID_DEBUG
   string = 'Mat_vert_to_face_surf.out'
   call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
+  CHKERRQ(ierr)
   call MatView(Mat_vert_to_face_surf,viewer,ierr)
+  CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr)
+  CHKERRQ(ierr)
 
   string = 'surf_petsc_ids.out'
   call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
+  CHKERRQ(ierr)
   call VecView(surf_petsc_ids,viewer,ierr)
+  CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr)
+  CHKERRQ(ierr)
 #endif  
 
   !call MatTranspose(Mat_vert_to_face_surf,MAT_INITIAL_MATRIX, &
@@ -924,45 +970,64 @@ subroutine SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
 #if UGRID_DEBUG
   string = 'Mat_vert_to_face_surf_transp.out'
   call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
+  CHKERRQ(ierr)
   call MatView(Mat_vert_to_face_surf_transp,viewer,ierr)
+  CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr)
+  CHKERRQ(ierr)
 #endif  
   
   call MatMatMult(Mat_vert_to_face_subsurf,Mat_vert_to_face_surf_transp, &
                   MAT_INITIAL_MATRIX,PETSC_DEFAULT_REAL,prod,ierr)
+  CHKERRQ(ierr)
 
 #if UGRID_DEBUG
   string = 'prod.out'
   call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
+  CHKERRQ(ierr)
   call MatView(prod,viewer,ierr)
+  CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr)
+  CHKERRQ(ierr)
 #endif  
 
   call SurfRealizMapSurfSubsurfGrid(realization, surf_realization, prod, TWO_DIM_GRID, &
                                      surf_petsc_ids)
   call MatDestroy(prod,ierr)
+  CHKERRQ(ierr)
 
   call MatMatMult(Mat_vert_to_face_surf,Mat_vert_to_face_subsurf_transp, &
                   MAT_INITIAL_MATRIX,PETSC_DEFAULT_REAL,prod,ierr)
+  CHKERRQ(ierr)
 
 #if UGRID_DEBUG
   string = 'prod_2.out'
   call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
+  CHKERRQ(ierr)
   call MatView(prod,viewer,ierr)
+  CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr)
+  CHKERRQ(ierr)
 #endif  
   call SurfRealizMapSurfSubsurfGrid(realization, surf_realization, prod, THREE_DIM_GRID, &
                                         subsurf_petsc_ids)
 
   call MatDestroy(prod,ierr)
+  CHKERRQ(ierr)
 
   call MatDestroy(Mat_vert_to_face_subsurf,ierr)
+  CHKERRQ(ierr)
   call MatDestroy(Mat_vert_to_face_subsurf_transp,ierr)
+  CHKERRQ(ierr)
   call MatDestroy(Mat_vert_to_face_surf,ierr)
+  CHKERRQ(ierr)
   call MatDestroy(Mat_vert_to_face_surf_transp,ierr)
+  CHKERRQ(ierr)
 
   call VecDestroy(subsurf_petsc_ids,ierr)
+  CHKERRQ(ierr)
   call VecDestroy(surf_petsc_ids,ierr)
+  CHKERRQ(ierr)
   
 end subroutine SurfRealizMapSurfSubsurfGrids
 
@@ -1057,17 +1122,22 @@ subroutine SurfRealizMapSurfSubsurfGrid( &
   if(option%mycommsize > 1) then
     ! From the MPI-Matrix get the local-matrix
     call MatMPIAIJGetLocalMat(prod_mat,MAT_INITIAL_MATRIX,prod_loc_mat,ierr)
+    CHKERRQ(ierr)
     ! Get i and j indices of the local-matrix
     call MatGetRowIJF90(prod_loc_mat, ONE_INTEGER, PETSC_FALSE, PETSC_FALSE, &
                         nrow, ia_p, ja_p, done, ierr)
+    CHKERRQ(ierr)
     ! Get values stored in the local-matrix
     call MatSeqAIJGetArray(prod_loc_mat, aa, aaa, ierr)
+    CHKERRQ(ierr)
   else
     ! Get i and j indices of the local-matrix
     call MatGetRowIJF90(prod_mat, ONE_INTEGER, PETSC_FALSE, PETSC_FALSE, &
                         nrow, ia_p, ja_p, done, ierr)
+    CHKERRQ(ierr)
     ! Get values stored in the local-matrix
     call MatSeqAIJGetArray(prod_mat, aa, aaa, ierr)
+    CHKERRQ(ierr)
   endif
 
   ! For each row of the local-matrix, find the column with the largest value
@@ -1095,40 +1165,55 @@ subroutine SurfRealizMapSurfSubsurfGrid( &
   enddo
   call ISCreateGeneral(option%mycomm,nrow, &
                        int_array,PETSC_COPY_VALUES,is_tmp1,ierr)
+  CHKERRQ(ierr)
   call ISCreateBlock(option%mycomm,option%nflowdof,nrow, &
                      int_array,PETSC_COPY_VALUES,is_tmp3,ierr)
+  CHKERRQ(ierr)
 
   do ii = 1, nrow
     int_array(ii) = corr_v2_ids(ii)-1
   enddo
   call ISCreateGeneral(option%mycomm,nrow, &
                        int_array,PETSC_COPY_VALUES,is_tmp2,ierr)
+  CHKERRQ(ierr)
   call ISCreateBlock(option%mycomm,option%nflowdof,nrow, &
                      int_array,PETSC_COPY_VALUES,is_tmp4,ierr)
+  CHKERRQ(ierr)
   deallocate(int_array)
   
   call VecCreateMPI(option%mycomm,nrow,PETSC_DETERMINE, &
                     corr_dest_ids_vec,ierr)
+  CHKERRQ(ierr)
   call VecScatterCreate(source_petsc_ids,is_tmp2,corr_dest_ids_vec,is_tmp1, &
                         scatter,ierr)
+  CHKERRQ(ierr)
   call ISDestroy(is_tmp1,ierr)
+  CHKERRQ(ierr)
   call ISDestroy(is_tmp2,ierr)
+  CHKERRQ(ierr)
   
   call VecScatterBegin(scatter,source_petsc_ids,corr_dest_ids_vec, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr)
+  CHKERRQ(ierr)
   call VecScatterEnd(scatter,source_petsc_ids,corr_dest_ids_vec, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr)
+  CHKERRQ(ierr)
   select case(source_grid_flag)
     case(TWO_DIM_GRID)
       dm_ptr => DiscretizationGetDMPtrFromIndex(surf_realization%discretization,ONEDOF)
       call VecScatterCopy(scatter,dm_ptr%ugdm%scatter_bet_grids,ierr)
+      CHKERRQ(ierr)
       call VecScatterCopy(scatter,dm_ptr%ugdm%scatter_bet_grids_1dof,ierr)
+      CHKERRQ(ierr)
     case(THREE_DIM_GRID)
       dm_ptr => DiscretizationGetDMPtrFromIndex(realization%discretization,ONEDOF)
       call VecScatterCopy(scatter,dm_ptr%ugdm%scatter_bet_grids,ierr)
+      CHKERRQ(ierr)
       call VecScatterCopy(scatter,dm_ptr%ugdm%scatter_bet_grids_1dof,ierr)
+      CHKERRQ(ierr)
   end select
   call VecScatterDestroy(scatter,ierr)
+  CHKERRQ(ierr)
 
 #if UGRID_DEBUG
   if(source_grid_flag==TWO_DIM_GRID) write(string,*) 'surf'
@@ -1136,12 +1221,19 @@ subroutine SurfRealizMapSurfSubsurfGrid( &
   string = adjustl(string)
   string = 'corr_dest_ids_vec_' // trim(string) // '.out'
   call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
+  CHKERRQ(ierr)
   call VecView(corr_dest_ids_vec,viewer,ierr)
+  CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr)
+  CHKERRQ(ierr)
 #endif
 
   call VecDestroy(corr_dest_ids_vec,ierr)
-  if(option%mycommsize>1) call MatDestroy(prod_loc_mat,ierr)
+  CHKERRQ(ierr)
+  if(option%mycommsize>1) then
+    call MatDestroy(prod_loc_mat,ierr)
+    CHKERRQ(ierr)
+  endif
 
 #if UGRID_DEBUG
   if(source_grid_flag==TWO_DIM_GRID) write(string,*) 'surf'
@@ -1149,28 +1241,41 @@ subroutine SurfRealizMapSurfSubsurfGrid( &
   string = adjustl(string)
   string = 'scatter_bet_grids_' // trim(string) // '.out'
   call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
+  CHKERRQ(ierr)
   call VecScatterView(dm_ptr%ugdm%scatter_bet_grids,viewer,ierr)
+  CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr)
+  CHKERRQ(ierr)
 #endif
 
   ! Create stridded vectors
   call VecCreate(option%mycomm,corr_dest_ids_vec_ndof,ierr)
+  CHKERRQ(ierr)
   call VecSetSizes(corr_dest_ids_vec_ndof,nrow*option%nflowdof, &
-                  PETSC_DECIDE,ierr)  
+                  PETSC_DECIDE,ierr)
+  CHKERRQ(ierr)  
   call VecSetBlockSize(corr_dest_ids_vec_ndof,option%nflowdof,ierr)
+  CHKERRQ(ierr)
   call VecSetFromOptions(corr_dest_ids_vec_ndof,ierr)
+  CHKERRQ(ierr)
 
   call VecGetLocalSize(source_petsc_ids,nlocal,ierr)
+  CHKERRQ(ierr)
   call VecCreate(option%mycomm,source_petsc_ids_ndof,ierr)
+  CHKERRQ(ierr)
   call VecSetSizes(source_petsc_ids_ndof,nlocal*option%nflowdof, &
-                  PETSC_DECIDE,ierr)  
+                  PETSC_DECIDE,ierr)
+  CHKERRQ(ierr)  
   call VecSetBlockSize(source_petsc_ids_ndof,option%nflowdof,ierr)
+  CHKERRQ(ierr)
   call VecSetFromOptions(source_petsc_ids_ndof,ierr)
+  CHKERRQ(ierr)
 
   ! Create stridded vectors-scatter context
   call VecScatterCreate(source_petsc_ids_ndof,is_tmp4, &
                         corr_dest_ids_vec_ndof,is_tmp3, &
                         scatter_ndof,ierr)
+  CHKERRQ(ierr)
 
   ! Save the stridded vectors-scatter context
   select case(source_grid_flag)
@@ -1180,11 +1285,15 @@ subroutine SurfRealizMapSurfSubsurfGrid( &
       dm_ptr => DiscretizationGetDMPtrFromIndex(realization%discretization,NFLOWDOF)
   end select
   call VecScatterCopy(scatter_ndof,dm_ptr%ugdm%scatter_bet_grids_ndof,ierr)
+  CHKERRQ(ierr)
 
   ! Cleanup
   call VecScatterDestroy(scatter_ndof,ierr)
+  CHKERRQ(ierr)
   call VecDestroy(source_petsc_ids_ndof,ierr)
+  CHKERRQ(ierr)
   call VecDestroy(corr_dest_ids_vec_ndof,ierr)
+  CHKERRQ(ierr)
 
 end subroutine SurfRealizMapSurfSubsurfGrid
 

@@ -192,6 +192,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
   PetscReal :: tempreal
 
   call PetscLogEventBegin(logging%event_tran_constraint_read,ierr)
+  CHKERRQ(ierr)
 
   ! read the constraint
   input%ierr = 0
@@ -605,6 +606,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
   enddo  
   
   call PetscLogEventEnd(logging%event_tran_constraint_read,ierr)
+  CHKERRQ(ierr)
 
 end subroutine TranConstraintRead
 

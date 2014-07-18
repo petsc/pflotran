@@ -608,6 +608,7 @@ subroutine RegionReadFromFileId(region,input,option)
   PetscInt, parameter :: VERTEX_IDS = 3
 
   call PetscLogEventBegin(logging%event_region_read_ascii,ierr)
+  CHKERRQ(ierr)
   
   !TODO(geh): clean and optimize this subroutine
   
@@ -872,6 +873,7 @@ subroutine RegionReadFromFileId(region,input,option)
   deallocate(temp_int_array) 
 
   call PetscLogEventEnd(logging%event_region_read_ascii,ierr)
+  CHKERRQ(ierr)
 
 end subroutine RegionReadFromFileId
 

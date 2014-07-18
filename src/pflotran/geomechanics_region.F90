@@ -329,6 +329,7 @@ subroutine GeomechRegionReadFromFileId(region,input,option)
   PetscErrorCode :: ierr
 
   call PetscLogEventBegin(logging%event_region_read_ascii,ierr)
+  CHKERRQ(ierr)
     
   max_size = 1000
   backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
@@ -407,6 +408,7 @@ subroutine GeomechRegionReadFromFileId(region,input,option)
     
 
   call PetscLogEventEnd(logging%event_region_read_ascii,ierr)
+  CHKERRQ(ierr)
 
 end subroutine GeomechRegionReadFromFileId
 

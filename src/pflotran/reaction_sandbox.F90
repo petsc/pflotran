@@ -6,6 +6,8 @@ module Reaction_Sandbox_module
   use Reaction_Sandbox_Example_class
   
   ! Add new reacton sandbox classes here.
+  use Reaction_Sandbox_CLMDec_class
+  use Reaction_Sandbox_PlantN_class
   
   use PFLOTRAN_Constants_module
 
@@ -152,6 +154,10 @@ subroutine RSandboxRead2(local_sandbox_list,input,option)
       ! Add new cases statements for new reacton sandbox classes here.
       case('UFD-WP')
         new_sandbox => WastePackageCreate()
+      case('CLM-DECOMP')
+        new_sandbox => CLMDec_Create()
+      case('PLANTNTAKE')
+        new_sandbox => PlantNCreate()
       case('EXAMPLE')
         new_sandbox => EXAMPLECreate()
       case default
