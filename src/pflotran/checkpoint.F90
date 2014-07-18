@@ -72,10 +72,15 @@ subroutine OpenCheckpointFile(viewer,id,option,id_stamp)
   !call PetscViewerBinaryOpen(option%mycomm, filename, FILE_MODE_WRITE, &
   !                           viewer, ierr)
   call PetscViewerCreate(option%mycomm,viewer,ierr)
+  CHKERRQ(ierr)
   call PetscViewerSetType(viewer,PETSCVIEWERBINARY,ierr)
+  CHKERRQ(ierr)
   call PetscViewerFileSetMode(viewer,FILE_MODE_WRITE,ierr)
+  CHKERRQ(ierr)
   call PetscViewerBinarySkipInfo(viewer,ierr)
+  CHKERRQ(ierr)
   call PetscViewerFileSetName(viewer,filename,ierr)
+  CHKERRQ(ierr)
   
   write(option%io_buffer,'(" --> Dump checkpoint file: ", a64)') &
     trim(adjustl(filename))
@@ -102,7 +107,8 @@ subroutine CloseCheckpointFile(viewer)
   PetscViewer :: viewer
   PetscErrorCode :: ierr
 
-  call PetscViewerDestroy(viewer, ierr)  
+  call PetscViewerDestroy(viewer, ierr)
+  CHKERRQ(ierr)  
 
 end subroutine CloseCheckpointFile
 
@@ -155,6 +161,7 @@ subroutine CheckpointFlowProcessModel(viewer,realization)
     ! grid%flow_xx is the vector into which all of the primary variables are 
     ! packed for the SNESSolve().
     call VecView(field%flow_xx, viewer, ierr)
+    CHKERRQ(ierr)
 
 
     ! If we are running with multiple phases, we need to dump the vector 
@@ -166,6 +173,7 @@ subroutine CheckpointFlowProcessModel(viewer,realization)
         call DiscretizationLocalToGlobal(realization%discretization, &
                                          field%iphas_loc,global_vec,ONEDOF)
         call VecView(global_vec, viewer, ierr)
+        CHKERRQ(ierr)
        case default
     end select 
 
@@ -177,21 +185,25 @@ subroutine CheckpointFlowProcessModel(viewer,realization)
     call DiscretizationLocalToGlobal(discretization,field%work_loc, &
                                       global_vec,ONEDOF)
     call VecView(global_vec,viewer,ierr)
+    CHKERRQ(ierr)
     call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
                                   field%work_loc,PERMEABILITY_X,ZERO_INTEGER)
     call DiscretizationLocalToGlobal(discretization,field%work_loc, &
                                       global_vec,ONEDOF)
     call VecView(global_vec,viewer,ierr)
+    CHKERRQ(ierr)
     call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
                                   field%work_loc,PERMEABILITY_Y,ZERO_INTEGER)
     call DiscretizationLocalToGlobal(discretization,field%work_loc, &
                                       global_vec,ONEDOF)
     call VecView(global_vec,viewer,ierr)
+    CHKERRQ(ierr)
     call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
                                   field%work_loc,PERMEABILITY_Z,ZERO_INTEGER)
     call DiscretizationLocalToGlobal(discretization,field%work_loc, &
                                       global_vec,ONEDOF)
     call VecView(global_vec,viewer,ierr)
+    CHKERRQ(ierr)
 
     if (grid%itype == STRUCTURED_GRID_MIMETIC) then 
       if (option%iflowmode /= RICHARDS_MODE) then
@@ -204,26 +216,31 @@ subroutine CheckpointFlowProcessModel(viewer,realization)
       call DiscretizationLocalToGlobal(discretization,field%work_loc, &
                                        global_vec,ONEDOF)
       call VecView(global_vec,viewer,ierr)
+      CHKERRQ(ierr)
 
       call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
                                    field%work_loc,PERMEABILITY_XY,ZERO_INTEGER)
       call DiscretizationLocalToGlobal(discretization,field%work_loc, &
                                        global_vec,ONEDOF)
       call VecView(global_vec,viewer,ierr)
+      CHKERRQ(ierr)
 
       call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
                                    field%work_loc,PERMEABILITY_YZ,ZERO_INTEGER)
       call DiscretizationLocalToGlobal(discretization,field%work_loc, &
                                        global_vec,ONEDOF)
       call VecView(global_vec,viewer,ierr)
+      CHKERRQ(ierr)
 
-      call VecView(field%flow_xx_faces, viewer, ierr) 
+      call VecView(field%flow_xx_faces, viewer, ierr)
+      CHKERRQ(ierr) 
     end if
 
   endif
   
   if (global_vec /= 0) then
     call VecDestroy(global_vec,ierr)
+    CHKERRQ(ierr)
   endif  
   
 end subroutine CheckpointFlowProcessModel
@@ -277,17 +294,21 @@ subroutine RestartFlowProcessModel(viewer,realization)
                                     global_vec,GLOBAL,option)
   ! Load the PETSc vectors.
     call VecLoad(field%flow_xx,viewer,ierr)
+    CHKERRQ(ierr)
     call DiscretizationGlobalToLocal(discretization,field%flow_xx, &
                                      field%flow_xx_loc,NFLOWDOF)
-    call VecCopy(field%flow_xx,field%flow_yy,ierr)  
+    call VecCopy(field%flow_xx,field%flow_yy,ierr)
+    CHKERRQ(ierr)  
 
     select case(option%iflowmode)
       case(MPH_MODE,TH_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
            FLASH2_MODE,G_MODE)
-        call VecLoad(global_vec,viewer,ierr)      
+        call VecLoad(global_vec,viewer,ierr)
+        CHKERRQ(ierr)      
         call DiscretizationGlobalToLocal(discretization,global_vec, &
                                          field%iphas_loc,ONEDOF)
         call VecCopy(field%iphas_loc,field%iphas_old_loc,ierr)
+        CHKERRQ(ierr)
         call DiscretizationLocalToLocal(discretization,field%iphas_loc, &
                                         field%iphas_old_loc,ONEDOF)
         if (option%iflowmode == G_MODE) then
@@ -309,21 +330,25 @@ subroutine RestartFlowProcessModel(viewer,realization)
     end select
     
     call VecLoad(global_vec,viewer,ierr)
+    CHKERRQ(ierr)
     call DiscretizationGlobalToLocal(discretization,global_vec, &
                                       field%work_loc,ONEDOF)
     call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
                                   field%work_loc,POROSITY,ZERO_INTEGER)
     call VecLoad(global_vec,viewer,ierr)
+    CHKERRQ(ierr)
     call DiscretizationGlobalToLocal(discretization,global_vec, &
                                       field%work_loc,ONEDOF)
     call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
                                   field%work_loc,PERMEABILITY_X,ZERO_INTEGER)
     call VecLoad(global_vec,viewer,ierr)
+    CHKERRQ(ierr)
     call DiscretizationGlobalToLocal(discretization,global_vec, &
                                       field%work_loc,ONEDOF)
     call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
                                   field%work_loc,PERMEABILITY_Y,ZERO_INTEGER)
     call VecLoad(global_vec,viewer,ierr)
+    CHKERRQ(ierr)
     call DiscretizationGlobalToLocal(discretization,global_vec, &
                                       field%work_loc,ONEDOF)
     call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
@@ -336,31 +361,37 @@ subroutine RestartFlowProcessModel(viewer,realization)
       endif
 
       call VecLoad(global_vec,viewer,ierr)
+      CHKERRQ(ierr)
       call DiscretizationGlobalToLocal(discretization,global_vec, &
                                        field%work_loc,ONEDOF)
       call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
                                    field%work_loc,PERMEABILITY_XZ,ZERO_INTEGER)
       call VecLoad(global_vec,viewer,ierr)
+      CHKERRQ(ierr)
       call DiscretizationGlobalToLocal(discretization,global_vec, &
                                        field%work_loc,ONEDOF)
       call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
                                    field%work_loc,PERMEABILITY_XY,ZERO_INTEGER)
       call VecLoad(global_vec,viewer,ierr)
+      CHKERRQ(ierr)
       call DiscretizationGlobalToLocal(discretization,global_vec, &
                                        field%work_loc,ONEDOF)
       call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
                                    field%work_loc,PERMEABILITY_YZ,ZERO_INTEGER)
 
       call VecLoad(field%flow_xx_faces, viewer,ierr)
+      CHKERRQ(ierr)
       call DiscretizationGlobalToLocalLP(discretization, field%flow_xx_faces, &
                                          field%flow_xx_loc_faces, NFLOWDOF)
-      call VecCopy(field%flow_xx_faces,field%flow_yy_faces,ierr) 
+      call VecCopy(field%flow_xx_faces,field%flow_yy_faces,ierr)
+      CHKERRQ(ierr) 
     end if
     
   endif
   
   if (global_vec /= 0) then
     call VecDestroy(global_vec,ierr)
+    CHKERRQ(ierr)
   endif  
   
 end subroutine RestartFlowProcessModel

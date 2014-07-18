@@ -112,7 +112,7 @@ OUTPUT
   FORMAT TECPLOT BLOCK
   FORMAT HDF5
   PRINT_COLUMN_IDS
-  VELOCITIES
+  VELOCITY_AT_CENTER
 END
 
 #=========================== times ============================================

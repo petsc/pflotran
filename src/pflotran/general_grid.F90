@@ -115,10 +115,12 @@ subroutine ReadStructuredGridHDF5(realization)
   grid => patch%grid
 
   call PetscTime(time0, ierr)
+  CHKERRQ(ierr)
 
   filename = option%generalized_grid
   call PetscOptionsGetString(PETSC_NULL_CHARACTER, '-hdf5_grid', &
                              filename, option_found, ierr)
+  CHKERRQ(ierr)
  
   ! grab connection object
   connection_set_list => grid%internal_connection_set_list
@@ -151,10 +153,12 @@ subroutine ReadStructuredGridHDF5(realization)
   option%io_buffer = 'Setting up grid cell indices'
   call printMsg(option)
   call PetscTime(time3, ierr)
+  CHKERRQ(ierr)
   string = 'Cell Id'
   call HDF5MapLocalToNaturalIndices(grid,option,grp_id,string,grid%nmax, &
                                     indices,grid%nlmax)
   call PetscTime(time4, ierr)
+  CHKERRQ(ierr)
   time4 = time4 - time3
   write(option%io_buffer, &
         '(f6.2," seconds to set up grid cell indices for hdf5 file")') time4
@@ -265,7 +269,9 @@ subroutine ReadStructuredGridHDF5(realization)
   call VecRestoreArrayF90(field%tortuosity0,vec_ptr,ierr); CHKERRQ(ierr)
 
   call VecDestroy(global_vec,ierr)
+  CHKERRQ(ierr)
   call VecDestroy(local_vec,ierr)
+  CHKERRQ(ierr)
 
   ! update local vectors
   call UpdateGlobalToLocal(discretization,field)
@@ -284,8 +290,10 @@ subroutine ReadStructuredGridHDF5(realization)
   option%io_buffer = 'Setting up connection indices'
   call printMsg(option)   
   call PetscTime(time3, ierr)
+  CHKERRQ(ierr)
   call SetupConnectionIndices(grid,option,grp_id,indices)
   call PetscTime(time4, ierr)
+  CHKERRQ(ierr)
   time4 = time4 - time3
   write(option%io_buffer, &
         '(f6.2," seconds to set up connection indices for hdf5 file")') &
@@ -392,6 +400,7 @@ subroutine ReadStructuredGridHDF5(realization)
   call GridDestroyHashTable(grid)
 
   call PetscTime(time1, ierr)
+  CHKERRQ(ierr)
   time1 = time1 - time0
   write(option%io_buffer, &
         '(f6.2," seconds to read unstructured grid data from hdf5 file")') &
@@ -503,10 +512,12 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
 #ifdef HDF5_BROADCAST
     if (option%myrank == option%io_rank) then                           
 #endif
-      call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
+      call PetscLogEventBegin(logging%event_h5dread_f,ierr)
+      CHKERRQ(ierr)                              
       call h5dread_f(data_set_id_up,HDF_NATIVE_INTEGER,upwind_ids_i4,dims, &
                      hdf5_err,memory_space_id,file_space_id_up,prop_id)                     
-      call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
+      call PetscLogEventEnd(logging%event_h5dread_f,ierr)
+      CHKERRQ(ierr)                              
 #ifdef HDF5_BROADCAST
     endif
     if (option%mycommsize > 1) then
@@ -521,10 +532,12 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
 #ifdef HDF5_BROADCAST
     if (option%myrank == option%io_rank) then                           
 #endif
-      call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
+      call PetscLogEventBegin(logging%event_h5dread_f,ierr)
+      CHKERRQ(ierr)                              
       call h5dread_f(data_set_id_down,HDF_NATIVE_INTEGER,downwind_ids_i4,dims, &
                      hdf5_err,memory_space_id,file_space_id_down,prop_id)                     
-      call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
+      call PetscLogEventEnd(logging%event_h5dread_f,ierr)
+      CHKERRQ(ierr)                              
 #ifdef HDF5_BROADCAST
     endif
     if (option%mycommsize > 1) then

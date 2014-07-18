@@ -199,6 +199,7 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
 !#define TIME_DATASET
 #ifdef TIME_DATASET
   call PetscTime(tstart,ierr)
+  CHKERRQ(ierr)
 #endif
 
 #define BROADCAST_DATASET
@@ -377,6 +378,7 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
 #ifdef TIME_DATASET
   call MPI_Barrier(option%mycomm,ierr)
   call PetscTime(tend,ierr)
+  CHKERRQ(ierr)
   write(option%io_buffer,'(f6.2," Seconds to set up dataset ",a,".")') &
     tend-tstart, trim(this%hdf5_dataset_name) // ' (' // &
     trim(option%group_prefix) // ')'
@@ -384,9 +386,11 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
     print *, trim(option%io_buffer)
   endif
   call PetscTime(tstart,ierr)
+  CHKERRQ(ierr)
 #endif
 
   call PetscLogEventBegin(logging%event_h5dread_f,ierr)
+  CHKERRQ(ierr)
 
   if (associated(this%time_storage)) then
     num_dims_in_h5_file = this%rank + 1
@@ -470,7 +474,8 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
   endif
 #endif
   
-  call PetscLogEventEnd(logging%event_h5dread_f,ierr) 
+  call PetscLogEventEnd(logging%event_h5dread_f,ierr)
+  CHKERRQ(ierr) 
 
 #ifdef BROADCAST_DATASET
   if (first_time .or. option%myrank == option%io_rank) then
@@ -489,6 +494,7 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
 #ifdef TIME_DATASET
   call MPI_Barrier(option%mycomm,ierr)
   call PetscTime(tend,ierr)
+  CHKERRQ(ierr)
   write(option%io_buffer,'(f6.2," Seconds to read dataset ",a,".")') &
     tend-tstart, trim(this%hdf5_dataset_name) // ' (' // &
     trim(option%group_prefix) // ')'

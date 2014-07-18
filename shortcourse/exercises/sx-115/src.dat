@@ -1,4 +1,4 @@
-:time rate [kg/s]
+#time rate [kg/s]
 0.d0      0.187e-4
 1.21292e6 0.187e-4
 1.21293e6 0.

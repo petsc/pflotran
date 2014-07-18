@@ -197,28 +197,39 @@ subroutine PMCHydrogeophysicsSynchronize(this)
     do i = 1, this%realization%patch%grid%nmax
       call VecSetValues(natural_vec,1,i-1,i*1.d0, &
                         INSERT_VALUES,ierr)
+      CHKERRQ(ierr)
     enddo
   endif
-  call VecAssemblyBegin(natural_vec,ierr) 
-  call VecAssemblyEnd(natural_vec,ierr) 
+  call VecAssemblyBegin(natural_vec,ierr)
+  CHKERRQ(ierr) 
+  call VecAssemblyEnd(natural_vec,ierr)
+  CHKERRQ(ierr) 
   call DiscretizationNaturalToGlobal(this%realization%discretization, &
                                       natural_vec, &
                                       this%realization%field%work,ONEDOF)
   call VecDestroy(natural_vec,ierr)
+  CHKERRQ(ierr)
 #endif
   call VecGetArrayF90(this%realization%field%work,vec1_ptr,ierr)
+  CHKERRQ(ierr)
   call VecGetArrayF90(this%solution_mpi,vec2_ptr,ierr)
+  CHKERRQ(ierr)
 !      vec1_ptr(:) = vec1_ptr(:) + num_calls
   vec2_ptr(:) = vec1_ptr(:)
 !  print *, 'PMC update to solution', vec2_ptr(16)
   call VecRestoreArrayF90(this%realization%field%work,vec1_ptr,ierr)
+  CHKERRQ(ierr)
   call VecRestoreArrayF90(this%solution_mpi,vec2_ptr,ierr)
+  CHKERRQ(ierr)
 
 #if 0
   filename = 'pf_solution' // trim(StringFormatInt(num_calls)) // '.txt'
   call PetscViewerASCIIOpen(this%option%mycomm,filename,viewer,ierr)
+  CHKERRQ(ierr)
   call VecView(this%realization%field%work,viewer,ierr)
+  CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr)
+  CHKERRQ(ierr)
 #endif
 
   num_calls = num_calls + 1
@@ -267,12 +278,16 @@ subroutine PMCHydrogeophysicsStrip(this)
   call PMCBaseStrip(this)
   nullify(this%realization)
   ! created in HydrogeophysicsInitialize()
-  if (this%solution_seq /= 0) &
+  if (this%solution_seq /= 0) then
     call VecDestroy(this%solution_seq,ierr)
+    CHKERRQ(ierr)
+  endif
   this%solution_seq = 0
   ! created in HydrogeophysicsInitialize()
-  if (this%pf_to_e4d_scatter /= 0) &
+  if (this%pf_to_e4d_scatter /= 0) then
     call VecScatterDestroy(this%pf_to_e4d_scatter, ierr)
+    CHKERRQ(ierr)
+  endif
   this%pf_to_e4d_scatter = 0
   ! these are solely pointers set in HydrogeophysicsInitialize()
   this%pf_to_e4d_master_comm = 0

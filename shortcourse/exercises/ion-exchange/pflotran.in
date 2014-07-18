@@ -141,7 +141,7 @@ OUTPUT
   SCREEN PERIODIC 10
 #  FORMAT HDF5
   FORMAT TECPLOT POINT
-  VELOCITIES
+  VELOCITY_AT_CENTER
 END
 
 # == times ====================================================================

@@ -87,7 +87,7 @@ SATURATION_FUNCTION sf1
 OUTPUT
   TIMES y 5. 10. 15. 20.
   FORMAT TECPLOT POINT
-  VELOCITIES
+!  VELOCITIES
 END
 
 #=========================== times ============================================

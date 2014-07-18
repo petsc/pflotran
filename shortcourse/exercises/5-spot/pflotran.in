@@ -6,7 +6,8 @@ MODE RICHARDS
 # == chemistry ================================================================
 CHEMISTRY
 
-OPERATOR_SPLIT
+!OPERATOR_SPLIT
+!GLOBAL_IMPLICIT
 
 PRIMARY_SPECIES
 H+

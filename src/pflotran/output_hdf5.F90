@@ -370,9 +370,13 @@ subroutine OutputHDF5(realization_base,var_list_type)
   endif
 
   call VecDestroy(global_vec,ierr)
+  CHKERRQ(ierr)
   call VecDestroy(global_vec_vx,ierr)
+  CHKERRQ(ierr)
   call VecDestroy(global_vec_vy,ierr)
+  CHKERRQ(ierr)
   call VecDestroy(global_vec_vz,ierr)
+  CHKERRQ(ierr)
 
 #if defined(SCORPIO_WRITE)
     call scorpio_close_dataset_group(pio_dataset_groupid, file_id, &
@@ -968,10 +972,15 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
   endif
 
   call VecDestroy(global_vec,ierr)
+  CHKERRQ(ierr)
   call VecDestroy(natural_vec,ierr)
+  CHKERRQ(ierr)
   call VecDestroy(global_vec_vx,ierr)
+  CHKERRQ(ierr)
   call VecDestroy(global_vec_vy,ierr)
+  CHKERRQ(ierr)
   call VecDestroy(global_vec_vz,ierr)
+  CHKERRQ(ierr)
 
   call h5gclose_f(grp_id,hdf5_err)
 
@@ -1290,7 +1299,9 @@ subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
   end select
 
   call VecDestroy(global_vec,ierr)
+  CHKERRQ(ierr)
   call VecDestroy(natural_vec,ierr)
+  CHKERRQ(ierr)
   call h5gclose_f(grp_id,hdf5_err)
    
   call h5fclose_f(file_id,hdf5_err)    
@@ -1490,7 +1501,9 @@ subroutine WriteHDF5FluxVelocities(name,realization_base,iphase,direction,file_i
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
                                   option) 
   call VecZeroEntries(global_vec,ierr)
+  CHKERRQ(ierr)
   call VecGetArrayF90(global_vec,vec_ptr,ierr)
+  CHKERRQ(ierr)
   
   ! place interior velocities in a vector
   connection_set_list => grid%internal_connection_set_list
@@ -1519,8 +1532,10 @@ subroutine WriteHDF5FluxVelocities(name,realization_base,iphase,direction,file_i
     enddo
   enddo
   call VecRestoreArrayF90(global_vec,vec_ptr,ierr)
+  CHKERRQ(ierr)
   
   call VecDestroy(global_vec,ierr)
+  CHKERRQ(ierr)
   
   array(1:nx_local*ny_local*nz_local) = &  ! convert time units
     array(1:nx_local*ny_local*nz_local) * output_option%tconv
@@ -1582,7 +1597,8 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
   PetscMPIInt :: hdf5_err
   PetscErrorCode :: ierr
   
-  call PetscLogEventBegin(logging%event_output_coordinates_hdf5,ierr) 
+  call PetscLogEventBegin(logging%event_output_coordinates_hdf5,ierr)
+  CHKERRQ(ierr) 
 #if defined(SCORPIO_WRITE)
 
   name = trim(name) // CHAR(0)
@@ -1602,10 +1618,12 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
   endif
 
   call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+  CHKERRQ(ierr)
   call scorpio_write_dataset(array, SCORPIO_DOUBLE, rank, globaldims, dims, &
        file_id, name, option%iowrite_group_id, SCORPIO_NONUNIFORM_CONTIGUOUS_WRITE, &
        ierr)
   call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+  CHKERRQ(ierr)
 
 #else
 !SCORPIO_WRITE is not defined
@@ -1626,10 +1644,12 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
   call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F,hdf5_err) ! must be independent and only from p0
 #endif
   if (option%myrank == option%io_rank) then
-     call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)     
+     call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+     CHKERRQ(ierr)     
      call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,array,dims, &
                     hdf5_err,H5S_ALL_F,H5S_ALL_F,prop_id)
      call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+     CHKERRQ(ierr)
   endif
   call h5pclose_f(prop_id,hdf5_err)
   call h5dclose_f(data_set_id,hdf5_err)
@@ -1638,7 +1658,8 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
 #endif
 ! SCORPIO_WRITE
 
-  call PetscLogEventEnd(logging%event_output_coordinates_hdf5,ierr) 
+  call PetscLogEventEnd(logging%event_output_coordinates_hdf5,ierr)
+  CHKERRQ(ierr) 
 
 end subroutine WriteHDF5Coordinates
 
@@ -1716,24 +1737,33 @@ subroutine WriteHDF5CoordinatesUGrid(grid,option,file_id)
   call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
                     grid%unstructured_grid%num_vertices_global, &
                     global_x_vertex_vec,ierr)
+  CHKERRQ(ierr)
   call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
                     grid%unstructured_grid%num_vertices_global, &
                     global_y_vertex_vec,ierr)
+  CHKERRQ(ierr)
   call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
                     grid%unstructured_grid%num_vertices_global, &
                     global_z_vertex_vec,ierr)
+  CHKERRQ(ierr)
 
   call VecGetLocalSize(global_x_vertex_vec,local_size,ierr)
+  CHKERRQ(ierr)
   call VecGetLocalSize(global_y_vertex_vec,local_size,ierr)
+  CHKERRQ(ierr)
   call VecGetLocalSize(global_z_vertex_vec,local_size,ierr)
+  CHKERRQ(ierr)
 
   call GetVertexCoordinates(grid, global_x_vertex_vec,X_COORDINATE,option)
   call GetVertexCoordinates(grid, global_y_vertex_vec,Y_COORDINATE,option)
   call GetVertexCoordinates(grid, global_z_vertex_vec,Z_COORDINATE,option)
 
   call VecGetArrayF90(global_x_vertex_vec,vec_x_ptr,ierr)
+  CHKERRQ(ierr)
   call VecGetArrayF90(global_y_vertex_vec,vec_y_ptr,ierr)
+  CHKERRQ(ierr)
   call VecGetArrayF90(global_z_vertex_vec,vec_z_ptr,ierr)
+  CHKERRQ(ierr)
 
 #if defined(SCORPIO_WRITE)
   write(*,*) 'SCORPIO_WRITE'
@@ -1809,9 +1839,11 @@ subroutine WriteHDF5CoordinatesUGrid(grid,option,file_id)
   enddo
   
   call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+  CHKERRQ(ierr)
   call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,double_array,dims, &
                   hdf5_err,memory_space_id,file_space_id,prop_id)
   call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+  CHKERRQ(ierr)
 
   deallocate(double_array)
   call h5pclose_f(prop_id,hdf5_err)
@@ -1824,13 +1856,19 @@ subroutine WriteHDF5CoordinatesUGrid(grid,option,file_id)
 #endif
 
   call VecRestoreArrayF90(global_x_vertex_vec,vec_x_ptr,ierr)
+  CHKERRQ(ierr)
   call VecRestoreArrayF90(global_y_vertex_vec,vec_y_ptr,ierr)
+  CHKERRQ(ierr)
   call VecRestoreArrayF90(global_z_vertex_vec,vec_z_ptr,ierr)
+  CHKERRQ(ierr)
 
 
   call VecDestroy(global_x_vertex_vec,ierr)
+  CHKERRQ(ierr)
   call VecDestroy(global_y_vertex_vec,ierr)
+  CHKERRQ(ierr)
   call VecDestroy(global_z_vertex_vec,ierr)
+  CHKERRQ(ierr)
 
 
   !
@@ -1844,9 +1882,12 @@ subroutine WriteHDF5CoordinatesUGrid(grid,option,file_id)
   call GetCellConnections(grid,global_vec)
   call VecScatterBegin(ugdm_element%scatter_gton,global_vec,natural_vec, &
                         INSERT_VALUES,SCATTER_FORWARD,ierr)
+  CHKERRQ(ierr)
   call VecScatterEnd(ugdm_element%scatter_gton,global_vec,natural_vec, &
                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  CHKERRQ(ierr)
   call VecGetArrayF90(natural_vec,vec_ptr,ierr)
+  CHKERRQ(ierr)
 
   local_size = grid%unstructured_grid%nlmax
 #if defined(SCORPIO_WRITE)
@@ -1932,9 +1973,11 @@ subroutine WriteHDF5CoordinatesUGrid(grid,option,file_id)
   enddo
   
   call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+  CHKERRQ(ierr)
   call h5dwrite_f(data_set_id,H5T_NATIVE_INTEGER,int_array,dims, &
                   hdf5_err,memory_space_id,file_space_id,prop_id)
   call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+  CHKERRQ(ierr)
 
   deallocate(int_array)
   call h5pclose_f(prop_id,hdf5_err)
@@ -1946,8 +1989,11 @@ subroutine WriteHDF5CoordinatesUGrid(grid,option,file_id)
 #endif
 
   call VecRestoreArrayF90(natural_vec,vec_ptr,ierr)
+  CHKERRQ(ierr)
   call VecDestroy(global_vec,ierr)
+  CHKERRQ(ierr)
   call VecDestroy(natural_vec,ierr)
+  CHKERRQ(ierr)
   call UGridDMDestroy(ugdm_element)
 
 end subroutine WriteHDF5CoordinatesUGrid
@@ -2036,24 +2082,33 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
   call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
                     grid%unstructured_grid%num_vertices_global, &
                     global_x_vertex_vec,ierr)
+  CHKERRQ(ierr)
   call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
                     grid%unstructured_grid%num_vertices_global, &
                     global_y_vertex_vec,ierr)
+  CHKERRQ(ierr)
   call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
                     grid%unstructured_grid%num_vertices_global, &
                     global_z_vertex_vec,ierr)
+  CHKERRQ(ierr)
 
   call VecGetLocalSize(global_x_vertex_vec,local_size,ierr)
+  CHKERRQ(ierr)
   call VecGetLocalSize(global_y_vertex_vec,local_size,ierr)
+  CHKERRQ(ierr)
   call VecGetLocalSize(global_z_vertex_vec,local_size,ierr)
+  CHKERRQ(ierr)
 
   call GetVertexCoordinates(grid, global_x_vertex_vec,X_COORDINATE,option)
   call GetVertexCoordinates(grid, global_y_vertex_vec,Y_COORDINATE,option)
   call GetVertexCoordinates(grid, global_z_vertex_vec,Z_COORDINATE,option)
 
   call VecGetArrayF90(global_x_vertex_vec,vec_x_ptr,ierr)
+  CHKERRQ(ierr)
   call VecGetArrayF90(global_y_vertex_vec,vec_y_ptr,ierr)
+  CHKERRQ(ierr)
   call VecGetArrayF90(global_z_vertex_vec,vec_z_ptr,ierr)
+  CHKERRQ(ierr)
 
 #if defined(SCORPIO_WRITE)
   write(*,*) 'SCORPIO_WRITE'
@@ -2122,9 +2177,11 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
   enddo
 
   call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+  CHKERRQ(ierr)
   call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,double_array,dims, &
                   hdf5_err,memory_space_id,file_space_id,prop_id)
   call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+  CHKERRQ(ierr)
 
   deallocate(double_array)
   call h5pclose_f(prop_id,hdf5_err)
@@ -2133,13 +2190,19 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
   call h5sclose_f(file_space_id,hdf5_err)
 
   call VecRestoreArrayF90(global_x_vertex_vec,vec_x_ptr,ierr)
+  CHKERRQ(ierr)
   call VecRestoreArrayF90(global_y_vertex_vec,vec_y_ptr,ierr)
+  CHKERRQ(ierr)
   call VecRestoreArrayF90(global_z_vertex_vec,vec_z_ptr,ierr)
+  CHKERRQ(ierr)
 
 
   call VecDestroy(global_x_vertex_vec,ierr)
+  CHKERRQ(ierr)
   call VecDestroy(global_y_vertex_vec,ierr)
+  CHKERRQ(ierr)
   call VecDestroy(global_z_vertex_vec,ierr)
+  CHKERRQ(ierr)
 
   !
   !  Write elements
@@ -2152,9 +2215,12 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
   call GetCellConnections(grid,global_vec)
   call VecScatterBegin(ugdm_element%scatter_gton,global_vec,natural_vec, &
                         INSERT_VALUES,SCATTER_FORWARD,ierr)
+  CHKERRQ(ierr)
   call VecScatterEnd(ugdm_element%scatter_gton,global_vec,natural_vec, &
                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  CHKERRQ(ierr)
   call VecGetArrayF90(natural_vec,vec_ptr,ierr)
+  CHKERRQ(ierr)
 
   local_size = grid%unstructured_grid%nlmax
 
@@ -2238,9 +2304,11 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
   enddo
 
   call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+  CHKERRQ(ierr)
   call h5dwrite_f(data_set_id,H5T_NATIVE_INTEGER,int_array,dims, &
                   hdf5_err,memory_space_id,file_space_id,prop_id)
   call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+  CHKERRQ(ierr)
 
   deallocate(int_array)
   call h5pclose_f(prop_id,hdf5_err)
@@ -2249,20 +2317,26 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
   call h5sclose_f(file_space_id,hdf5_err)
 
   call VecRestoreArrayF90(natural_vec,vec_ptr,ierr)
+  CHKERRQ(ierr)
   call VecDestroy(global_vec,ierr)
+  CHKERRQ(ierr)
   call VecDestroy(natural_vec,ierr)
+  CHKERRQ(ierr)
   call UGridDMDestroy(ugdm_element)
 
   ! Cell center X/Y/Z
   call VecCreateMPI(option%mycomm,grid%nlmax, &
                     PETSC_DETERMINE, &
                     global_x_cell_vec,ierr)
+  CHKERRQ(ierr)
   call VecCreateMPI(option%mycomm,grid%nlmax, &
                     PETSC_DETERMINE, &
                     global_y_cell_vec,ierr)
+  CHKERRQ(ierr)
   call VecCreateMPI(option%mycomm,grid%nlmax, &
                     PETSC_DETERMINE, &
                     global_z_cell_vec,ierr)
+  CHKERRQ(ierr)
 
   call GetCellCoordinates(grid, global_x_cell_vec,X_COORDINATE)
   call GetCellCoordinates(grid, global_y_cell_vec,Y_COORDINATE)
@@ -2279,22 +2353,31 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
                            
   call VecScatterBegin(ugdm_cell%scatter_gton,global_x_cell_vec,natural_x_cell_vec, &
                         INSERT_VALUES,SCATTER_FORWARD,ierr)
+  CHKERRQ(ierr)
   call VecScatterEnd(ugdm_cell%scatter_gton,global_x_cell_vec,natural_x_cell_vec, &
                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  CHKERRQ(ierr)
 
   call VecScatterBegin(ugdm_cell%scatter_gton,global_y_cell_vec,natural_y_cell_vec, &
                         INSERT_VALUES,SCATTER_FORWARD,ierr)
+  CHKERRQ(ierr)
   call VecScatterEnd(ugdm_cell%scatter_gton,global_y_cell_vec,natural_y_cell_vec, &
                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  CHKERRQ(ierr)
 
   call VecScatterBegin(ugdm_cell%scatter_gton,global_z_cell_vec,natural_z_cell_vec, &
                         INSERT_VALUES,SCATTER_FORWARD,ierr)
+  CHKERRQ(ierr)
   call VecScatterEnd(ugdm_cell%scatter_gton,global_z_cell_vec,natural_z_cell_vec, &
                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  CHKERRQ(ierr)
 
   call VecGetArrayF90(natural_x_cell_vec,vec_x_ptr,ierr)
+  CHKERRQ(ierr)
   call VecGetArrayF90(natural_y_cell_vec,vec_y_ptr,ierr)
+  CHKERRQ(ierr)
   call VecGetArrayF90(natural_z_cell_vec,vec_z_ptr,ierr)
+  CHKERRQ(ierr)
   local_size = grid%unstructured_grid%nlmax
 
   ! XC
@@ -2343,9 +2426,11 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
 #endif
 
   call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+  CHKERRQ(ierr)
   call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,vec_x_ptr,dims, &
                   hdf5_err,memory_space_id,file_space_id,prop_id)
   call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+  CHKERRQ(ierr)
 
   call h5pclose_f(prop_id,hdf5_err)
 
@@ -2398,9 +2483,11 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
 #endif
 
   call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+  CHKERRQ(ierr)
   call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,vec_y_ptr,dims, &
                   hdf5_err,memory_space_id,file_space_id,prop_id)
   call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+  CHKERRQ(ierr)
 
   call h5pclose_f(prop_id,hdf5_err)
 
@@ -2453,9 +2540,11 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
 #endif
 
   call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+  CHKERRQ(ierr)
   call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,vec_z_ptr,dims, &
                   hdf5_err,memory_space_id,file_space_id,prop_id)
   call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+  CHKERRQ(ierr)
 
   call h5pclose_f(prop_id,hdf5_err)
 
@@ -2464,16 +2553,25 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
 
 
   call VecRestoreArrayF90(natural_x_cell_vec,vec_x_ptr,ierr)
+  CHKERRQ(ierr)
   call VecRestoreArrayF90(natural_y_cell_vec,vec_y_ptr,ierr)
+  CHKERRQ(ierr)
   call VecRestoreArrayF90(natural_z_cell_vec,vec_z_ptr,ierr)
+  CHKERRQ(ierr)
 
   call VecDestroy(global_x_cell_vec,ierr)
+  CHKERRQ(ierr)
   call VecDestroy(global_y_cell_vec,ierr)
+  CHKERRQ(ierr)
   call VecDestroy(global_z_cell_vec,ierr)
+  CHKERRQ(ierr)
 
   call VecDestroy(natural_x_cell_vec,ierr)
+  CHKERRQ(ierr)
   call VecDestroy(natural_y_cell_vec,ierr)
+  CHKERRQ(ierr)
   call VecDestroy(natural_z_cell_vec,ierr)
+  CHKERRQ(ierr)
 
   call UGridDMDestroy(ugdm_cell)
 
@@ -2634,9 +2732,11 @@ subroutine WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option,file_id
   enddo
                     
   call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+  CHKERRQ(ierr)
   call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,double_array,dims, &
                   hdf5_err,memory_space_id,file_space_id,prop_id)
   call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+  CHKERRQ(ierr)
   deallocate(double_array)
   
   call h5pclose_f(prop_id,hdf5_err)
@@ -2654,13 +2754,18 @@ subroutine WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option,file_id
   local_size = grid%unstructured_grid%explicit_grid%num_elems
 
   call VecCreate(PETSC_COMM_SELF,natural_vec,ierr)
+  CHKERRQ(ierr)
   call VecSetSizes(natural_vec,local_size*EIGHT_INTEGER, &
-                   PETSC_DECIDE,ierr)  
+                   PETSC_DECIDE,ierr)
+  CHKERRQ(ierr)  
   call VecSetBlockSize(natural_vec,EIGHT_INTEGER,ierr)
+  CHKERRQ(ierr)
   call VecSetFromOptions(natural_vec,ierr)
+  CHKERRQ(ierr)
 
   call GetCellConnectionsExplicit(grid,natural_vec)
   call VecGetArrayF90(natural_vec,vec_ptr,ierr)
+  CHKERRQ(ierr)
 
   vert_count=0
 
@@ -2742,9 +2847,11 @@ subroutine WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option,file_id
   enddo
 
   call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+  CHKERRQ(ierr)
   call h5dwrite_f(data_set_id,H5T_NATIVE_INTEGER,int_array,dims, &
                   hdf5_err,memory_space_id,file_space_id,prop_id)
   call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+  CHKERRQ(ierr)
 
   deallocate(int_array)
   
@@ -2754,7 +2861,9 @@ subroutine WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option,file_id
   call h5sclose_f(file_space_id,hdf5_err)
 
   call VecRestoreArrayF90(natural_vec,vec_ptr,ierr)
+  CHKERRQ(ierr)
   call VecDestroy(natural_vec,ierr)
+  CHKERRQ(ierr)
     
 #endif
 !if defined(SCORPIO_WRITE)
@@ -2894,6 +3003,7 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id,var_list_type
   end select
 
   call VecGetLocalSize(field%flowrate_inst,local_size,ierr)
+  CHKERRQ(ierr)
   local_size = local_size/(option%nflowdof*MAX_FACE_PER_CELL + 1)
 
   allocate(double_array(local_size*(MAX_FACE_PER_CELL+1)))
@@ -2904,11 +3014,14 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id,var_list_type
   select case (var_list_type)
     case (INSTANTANEOUS_VARS)
       call VecGetArrayF90(field%flowrate_inst,vec_ptr1,ierr)
+      CHKERRQ(ierr)
       mass_flowrate = output_option%print_hdf5_mass_flowrate
       energy_flowrate = output_option%print_hdf5_energy_flowrate
     case (AVERAGED_VARS)
       call VecGetArrayF90(field%flowrate_inst,vec_ptr1,ierr)
+      CHKERRQ(ierr)
       call VecGetArrayF90(field%flowrate_aveg,vec_ptr2,ierr)
+      CHKERRQ(ierr)
       mass_flowrate = output_option%print_hdf5_aveg_mass_flowrate
       energy_flowrate = output_option%print_hdf5_aveg_energy_flowrate
   end select
@@ -3012,9 +3125,11 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id,var_list_type
     end select
 
     call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+    CHKERRQ(ierr)
     call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,double_array,dims, &
                     hdf5_err,memory_space_id,file_space_id,prop_id)
     call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+    CHKERRQ(ierr)
 
     call h5pclose_f(prop_id,hdf5_err)
 
@@ -3153,6 +3268,7 @@ subroutine WriteHDF5FaceVelUGrid(realization_base,option,file_id,var_list_type)
 #else
 
   call VecGetLocalSize(field%vx_face_inst,local_size,ierr)
+  CHKERRQ(ierr)
   local_size = local_size/(option%nphase*MAX_FACE_PER_CELL + 1)
 
   allocate(double_array(local_size*(MAX_FACE_PER_CELL+1)))
@@ -3166,12 +3282,15 @@ subroutine WriteHDF5FaceVelUGrid(realization_base,option,file_id,var_list_type)
       case (1)
         string_dir = 'X'
         call VecGetArrayF90(field%vx_face_inst,vec_ptr1,ierr)
+        CHKERRQ(ierr)
       case (2)
         string_dir = 'Y'
         call VecGetArrayF90(field%vy_face_inst,vec_ptr1,ierr)
+        CHKERRQ(ierr)
       case (3)
         string_dir = 'Z'
         call VecGetArrayF90(field%vz_face_inst,vec_ptr1,ierr)
+        CHKERRQ(ierr)
     end select
 
     do iphase = 1,option%nphase
@@ -3252,9 +3371,11 @@ subroutine WriteHDF5FaceVelUGrid(realization_base,option,file_id,var_list_type)
       end select
 
       call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+      CHKERRQ(ierr)
       call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,double_array,dims, &
                       hdf5_err,memory_space_id,file_space_id,prop_id)
       call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+      CHKERRQ(ierr)
 
       call h5pclose_f(prop_id,hdf5_err)
 
@@ -3266,10 +3387,13 @@ subroutine WriteHDF5FaceVelUGrid(realization_base,option,file_id,var_list_type)
     select case (idir)
       case (1)
         call VecRestoreArrayF90(field%vx_face_inst,vec_ptr1,ierr)
+        CHKERRQ(ierr)
       case (2)
         call VecRestoreArrayF90(field%vy_face_inst,vec_ptr1,ierr)
+        CHKERRQ(ierr)
       case (3)
         call VecRestoreArrayF90(field%vz_face_inst,vec_ptr1,ierr)
+        CHKERRQ(ierr)
     end select
 
   enddo

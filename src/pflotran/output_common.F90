@@ -177,11 +177,13 @@ subroutine OutputGetVarFromArray(realization_base,vec,ivar,isubvar,isubvar1)
   
   PetscErrorCode :: ierr
 
-  call PetscLogEventBegin(logging%event_output_get_var_from_array,ierr) 
+  call PetscLogEventBegin(logging%event_output_get_var_from_array,ierr)
+  CHKERRQ(ierr) 
                         
   call RealizationGetVariable(realization_base,vec,ivar,isubvar,isubvar1)
 
-  call PetscLogEventEnd(logging%event_output_get_var_from_array,ierr) 
+  call PetscLogEventEnd(logging%event_output_get_var_from_array,ierr)
+  CHKERRQ(ierr) 
   
 end subroutine OutputGetVarFromArray
 
@@ -213,27 +215,37 @@ subroutine ConvertArrayToNatural(indices,array,local_size,global_size,option)
   PetscErrorCode :: ierr
   
   call VecCreate(option%mycomm,natural_vec,ierr)
+  CHKERRQ(ierr)
   call VecSetSizes(natural_vec,PETSC_DECIDE,global_size,ierr)
+  CHKERRQ(ierr)
   call VecSetType(natural_vec,VECMPI,ierr)
+  CHKERRQ(ierr)
 
   allocate(indices_zero_based(local_size))
   indices_zero_based(1:local_size) = indices(1:local_size)-1
 
   call VecSetValues(natural_vec,local_size,indices_zero_based, &
                     array,INSERT_VALUES,ierr)
+  CHKERRQ(ierr)
 
   call VecAssemblyBegin(natural_vec,ierr)
+  CHKERRQ(ierr)
   call VecAssemblyEnd(natural_vec,ierr)
+  CHKERRQ(ierr)
 
   call VecGetLocalSize(natural_vec,local_size,ierr)
+  CHKERRQ(ierr)
   deallocate(array)
   allocate(array(local_size))
   
   call VecGetArrayF90(natural_vec,vec_ptr,ierr)
+  CHKERRQ(ierr)
   array(1:local_size) = vec_ptr(1:local_size)
   call VecRestoreArrayF90(natural_vec,vec_ptr,ierr)
+  CHKERRQ(ierr)
 
   call VecDestroy(natural_vec,ierr)
+  CHKERRQ(ierr)
   
 end subroutine ConvertArrayToNatural
 
@@ -327,26 +339,34 @@ subroutine OutputGetCellCenteredVelocities(realization_base,vec_x,vec_y, &
   PetscReal, pointer :: vec_x_ptr(:),vec_y_ptr(:),vec_z_ptr(:)
   PetscReal, allocatable :: velocities(:,:)
   
-  call PetscLogEventBegin(logging%event_output_get_cell_vel,ierr) 
+  call PetscLogEventBegin(logging%event_output_get_cell_vel,ierr)
+  CHKERRQ(ierr) 
                             
   allocate(velocities(3,realization_base%patch%grid%nlmax))
   call PatchGetCellCenteredVelocities(realization_base%patch,iphase,velocities)
 
   call VecGetArrayF90(vec_x,vec_x_ptr,ierr)
+  CHKERRQ(ierr)
   call VecGetArrayF90(vec_y,vec_y_ptr,ierr)
+  CHKERRQ(ierr)
   call VecGetArrayF90(vec_z,vec_z_ptr,ierr)
+  CHKERRQ(ierr)
 
   vec_x_ptr(:) = velocities(X_DIRECTION,:)*realization_base%output_option%tconv
   vec_y_ptr(:) = velocities(Y_DIRECTION,:)*realization_base%output_option%tconv
   vec_z_ptr(:) = velocities(Z_DIRECTION,:)*realization_base%output_option%tconv
 
   call VecRestoreArrayF90(vec_x,vec_x_ptr,ierr)
+  CHKERRQ(ierr)
   call VecRestoreArrayF90(vec_y,vec_y_ptr,ierr)
+  CHKERRQ(ierr)
   call VecRestoreArrayF90(vec_z,vec_z_ptr,ierr)
+  CHKERRQ(ierr)
 
   deallocate(velocities)
   
-  call PetscLogEventEnd(logging%event_output_get_cell_vel,ierr) 
+  call PetscLogEventEnd(logging%event_output_get_cell_vel,ierr)
+  CHKERRQ(ierr) 
 
 end subroutine OutputGetCellCenteredVelocities
 
@@ -377,6 +397,7 @@ subroutine GetCellCoordinates(grid,vec,direction)
   PetscReal, pointer :: vec_ptr(:)
   
   call VecGetArrayF90(vec,vec_ptr,ierr)
+  CHKERRQ(ierr)
   
   if (direction == X_COORDINATE) then
     do i = 1,grid%nlmax
@@ -393,6 +414,7 @@ subroutine GetCellCoordinates(grid,vec,direction)
   endif
   
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
+  CHKERRQ(ierr)
   
 end subroutine GetCellCoordinates
 
@@ -428,6 +450,7 @@ subroutine GetVertexCoordinates(grid,vec,direction,option)
   
   if (option%mycommsize == 1) then
     call VecGetArrayF90(vec,vec_ptr,ierr)
+    CHKERRQ(ierr)
     select case(direction)
       case(X_COORDINATE)
         do ivertex = 1,grid%unstructured_grid%num_vertices_local
@@ -443,9 +466,11 @@ subroutine GetVertexCoordinates(grid,vec,direction,option)
         enddo
     end select
     call VecRestoreArrayF90(vec,vec_ptr,ierr)
+    CHKERRQ(ierr)
   else
     ! initialize to -999 to catch bugs
     call VecSet(vec,-999.d0,ierr)
+    CHKERRQ(ierr)
     allocate(values(grid%unstructured_grid%num_vertices_local))
     allocate(indices(grid%unstructured_grid%num_vertices_local))
     select case(direction)
@@ -465,10 +490,13 @@ subroutine GetVertexCoordinates(grid,vec,direction,option)
     indices(:) = grid%unstructured_grid%vertex_ids_natural(:)-1
     call VecSetValues(vec,grid%unstructured_grid%num_vertices_local, &
                       indices,values,INSERT_VALUES,ierr)
+    CHKERRQ(ierr)
     call VecAssemblyBegin(vec,ierr)
+    CHKERRQ(ierr)
     deallocate(values)
     deallocate(indices)
     call VecAssemblyEnd(vec,ierr)
+    CHKERRQ(ierr)
   endif
   
 end subroutine GetVertexCoordinates
@@ -506,6 +534,7 @@ subroutine ExplicitGetCellCoordinates(grid,vec,direction,option)
   
   if (option%mycommsize == 1) then
     call VecGetArrayF90(vec,vec_ptr,ierr)
+    CHKERRQ(ierr)
     select case(direction)
       case(X_COORDINATE)
         do ivertex = 1,grid%ngmax
@@ -521,9 +550,11 @@ subroutine ExplicitGetCellCoordinates(grid,vec,direction,option)
         enddo
     end select
     call VecRestoreArrayF90(vec,vec_ptr,ierr)
+    CHKERRQ(ierr)
   else
     ! initialize to -999 to catch bugs
     call VecSet(vec,-999.d0,ierr)
+    CHKERRQ(ierr)
     allocate(values(grid%nlmax))
     allocate(indices(grid%nlmax))
     select case(direction)
@@ -542,10 +573,13 @@ subroutine ExplicitGetCellCoordinates(grid,vec,direction,option)
     end select
     indices(:) = grid%unstructured_grid%cell_ids_natural(:)-1
     call VecSetValues(vec,grid%nlmax,indices,values,INSERT_VALUES,ierr)
+    CHKERRQ(ierr)
     call VecAssemblyBegin(vec,ierr)
+    CHKERRQ(ierr)
     deallocate(values)
     deallocate(indices)
     call VecAssemblyEnd(vec,ierr)
+    CHKERRQ(ierr)
   endif
   
   
@@ -584,6 +618,7 @@ subroutine GetCellConnections(grid, vec)
   ugrid => grid%unstructured_grid
   
   call VecGetArrayF90( vec, vec_ptr, ierr)
+  CHKERRQ(ierr)
 
   ! initialize
   vec_ptr = -999.d0
@@ -640,6 +675,7 @@ subroutine GetCellConnections(grid, vec)
   enddo
 
   call VecRestoreArrayF90( vec, vec_ptr, ierr)
+  CHKERRQ(ierr)
 
 end subroutine GetCellConnections
 
@@ -676,6 +712,7 @@ subroutine GetCellConnectionsExplicit(grid, vec)
   explicit_grid => ugrid%explicit_grid
   
   call VecGetArrayF90( vec, vec_ptr, ierr)
+  CHKERRQ(ierr)
 
   ! initialize
   vec_ptr = -999.d0
@@ -737,6 +774,7 @@ subroutine GetCellConnectionsExplicit(grid, vec)
   enddo
 
   call VecRestoreArrayF90( vec, vec_ptr, ierr)
+  CHKERRQ(ierr)
 
 end subroutine GetCellConnectionsExplicit
 
@@ -1165,8 +1203,11 @@ subroutine OutputGetFaceVelOrFlowrateUGrid(realization_base, save_velocity)
     vz = 0.d0
 
     call VecGetArrayF90(field%vx_face_inst,vx_ptr,ierr)
+    CHKERRQ(ierr)
     call VecGetArrayF90(field%vx_face_inst,vy_ptr,ierr)
+    CHKERRQ(ierr)
     call VecGetArrayF90(field%vx_face_inst,vz_ptr,ierr)
+    CHKERRQ(ierr)
 
     vx_ptr = 0.d0
     vy_ptr = 0.d0
@@ -1193,6 +1234,7 @@ subroutine OutputGetFaceVelOrFlowrateUGrid(realization_base, save_velocity)
     flowrates = 0.d0
 
     call VecGetArrayF90(field%flowrate_inst,vec_ptr,ierr)
+    CHKERRQ(ierr)
     vec_ptr = 0.d0
 
     offset = 1 + option%nflowdof*MAX_FACE_PER_CELL
@@ -1337,66 +1379,95 @@ subroutine OutputGetFaceVelOrFlowrateUGrid(realization_base, save_velocity)
     deallocate(vz)
 
     call VecRestoreArrayF90(field%vx_face_inst,vx_ptr,ierr)
+    CHKERRQ(ierr)
     call VecRestoreArrayF90(field%vx_face_inst,vy_ptr,ierr)
+    CHKERRQ(ierr)
     call VecRestoreArrayF90(field%vx_face_inst,vz_ptr,ierr)
+    CHKERRQ(ierr)
 
     ! Scatter flowrate from Global --> Natural order
     call VecScatterBegin(ugdm%scatter_gton,field%vx_face_inst,natural_vx_vec, &
                           INSERT_VALUES,SCATTER_FORWARD,ierr)
+    CHKERRQ(ierr)
     call VecScatterEnd(ugdm%scatter_gton,field%vx_face_inst,natural_vx_vec, &
                         INSERT_VALUES,SCATTER_FORWARD,ierr)
+    CHKERRQ(ierr)
 
     call VecScatterBegin(ugdm%scatter_gton,field%vy_face_inst,natural_vy_vec, &
                           INSERT_VALUES,SCATTER_FORWARD,ierr)
+    CHKERRQ(ierr)
     call VecScatterEnd(ugdm%scatter_gton,field%vy_face_inst,natural_vy_vec, &
                         INSERT_VALUES,SCATTER_FORWARD,ierr)
+    CHKERRQ(ierr)
 
     call VecScatterBegin(ugdm%scatter_gton,field%vz_face_inst,natural_vz_vec, &
                           INSERT_VALUES,SCATTER_FORWARD,ierr)
+    CHKERRQ(ierr)
     call VecScatterEnd(ugdm%scatter_gton,field%vz_face_inst,natural_vz_vec, &
                         INSERT_VALUES,SCATTER_FORWARD,ierr)
+    CHKERRQ(ierr)
 
     ! X-direction
     call VecGetArrayF90(natural_vx_vec,vec_ptr,ierr)
+    CHKERRQ(ierr)
     call VecGetArrayF90(field%vx_face_inst,vec_ptr2,ierr)
+    CHKERRQ(ierr)
     ! Copy the vectors
     vec_ptr2 = vec_ptr
     call VecRestoreArrayF90(natural_vx_vec,vec_ptr,ierr)
+    CHKERRQ(ierr)
     call VecRestoreArrayF90(field%vx_face_inst,vec_ptr2,ierr)
+    CHKERRQ(ierr)
 
     ! Y-direction
     call VecGetArrayF90(natural_vy_vec,vec_ptr,ierr)
+    CHKERRQ(ierr)
     call VecGetArrayF90(field%vy_face_inst,vec_ptr2,ierr)
+    CHKERRQ(ierr)
     ! Copy the vectors
     vec_ptr2 = vec_ptr
     call VecRestoreArrayF90(natural_vy_vec,vec_ptr,ierr)
+    CHKERRQ(ierr)
     call VecRestoreArrayF90(field%vy_face_inst,vec_ptr2,ierr)
+    CHKERRQ(ierr)
 
     ! Z-direction
     call VecGetArrayF90(natural_vz_vec,vec_ptr,ierr)
+    CHKERRQ(ierr)
     call VecGetArrayF90(field%vz_face_inst,vec_ptr2,ierr)
+    CHKERRQ(ierr)
     ! Copy the vectors
     vec_ptr2 = vec_ptr
     call VecRestoreArrayF90(natural_vz_vec,vec_ptr,ierr)
+    CHKERRQ(ierr)
     call VecRestoreArrayF90(field%vz_face_inst,vec_ptr2,ierr)
+    CHKERRQ(ierr)
 
     call VecDestroy(natural_vx_vec,ierr)
+    CHKERRQ(ierr)
     call VecDestroy(natural_vy_vec,ierr)
+    CHKERRQ(ierr)
     call VecDestroy(natural_vz_vec,ierr)
+    CHKERRQ(ierr)
 
   else
 
     deallocate(flowrates)
     call VecRestoreArrayF90(field%flowrate_inst,vec_ptr,ierr)
+    CHKERRQ(ierr)
 
     ! Scatter flowrate from Global --> Natural order
     call VecScatterBegin(ugdm%scatter_gton,field%flowrate_inst,natural_flowrates_vec, &
                           INSERT_VALUES,SCATTER_FORWARD,ierr)
+    CHKERRQ(ierr)
     call VecScatterEnd(ugdm%scatter_gton,field%flowrate_inst,natural_flowrates_vec, &
                         INSERT_VALUES,SCATTER_FORWARD,ierr)
+    CHKERRQ(ierr)
 
     call VecGetArrayF90(natural_flowrates_vec,vec_ptr,ierr)
+    CHKERRQ(ierr)
     call VecGetArrayF90(field%flowrate_inst,vec_ptr2,ierr)
+    CHKERRQ(ierr)
 
     ! Copy the vectors
     vec_ptr2 = vec_ptr
@@ -1406,14 +1477,19 @@ subroutine OutputGetFaceVelOrFlowrateUGrid(realization_base, save_velocity)
 
       dtime = option%time-output_option%aveg_var_time
       call VecGetArrayF90(field%flowrate_aveg,vec_ptr3,ierr)
+      CHKERRQ(ierr)
       vec_ptr3 = vec_ptr3 + vec_ptr2/dtime
       call VecRestoreArrayF90(field%flowrate_aveg,vec_ptr3,ierr)
+      CHKERRQ(ierr)
     endif
 
     call VecRestoreArrayF90(natural_flowrates_vec,vec_ptr,ierr)
+    CHKERRQ(ierr)
     call VecRestoreArrayF90(field%flowrate_inst,vec_ptr2,ierr)
+    CHKERRQ(ierr)
 
     call VecDestroy(natural_flowrates_vec,ierr)
+    CHKERRQ(ierr)
 
   endif
 
@@ -1486,7 +1562,9 @@ subroutine OutputGetExplicitIDsFlowrates(realization_base,count,vec_proc, &
   call VecCreateMPI(option%mycomm, &
                     size(grid%unstructured_grid%explicit_grid%connections,2), &
                     PETSC_DETERMINE,vec_proc,ierr)
-  call VecSet(vec_proc,0.d0,ierr)  
+  CHKERRQ(ierr)
+  call VecSet(vec_proc,0.d0,ierr)
+  CHKERRQ(ierr)  
   
   call UGridCreateUGDM(grid%unstructured_grid,ugdm,ONE_INTEGER,option)
   call UGridDMCreateVector(grid%unstructured_grid,ugdm,global_vec, &
@@ -1494,16 +1572,22 @@ subroutine OutputGetExplicitIDsFlowrates(realization_base,count,vec_proc, &
   call UGridDMCreateVector(grid%unstructured_grid,ugdm,local_vec, &
                            LOCAL,option)
   call VecGetArrayF90(global_vec,vec_ptr,ierr)
+  CHKERRQ(ierr)
   vec_ptr = option%myrank
   call VecRestoreArrayF90(global_vec,vec_ptr,ierr)
+  CHKERRQ(ierr)
   
   call VecScatterBegin(ugdm%scatter_gtol,global_vec,local_vec, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr)
+  CHKERRQ(ierr)
   call VecScatterEnd(ugdm%scatter_gtol,global_vec,local_vec, &
                      INSERT_VALUES,SCATTER_FORWARD,ierr)
+  CHKERRQ(ierr)
                      
   call VecGetArrayF90(local_vec,vec_ptr2,ierr)
-  call VecGetArrayF90(vec_proc,vec_proc_ptr,ierr) 
+  CHKERRQ(ierr)
+  call VecGetArrayF90(vec_proc,vec_proc_ptr,ierr)
+  CHKERRQ(ierr) 
   
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
@@ -1528,13 +1612,18 @@ subroutine OutputGetExplicitIDsFlowrates(realization_base,count,vec_proc, &
   enddo
 
   call VecRestoreArrayF90(local_vec,vec_ptr2,ierr)
+  CHKERRQ(ierr)
   call VecRestoreArrayF90(vec_proc,vec_proc_ptr,ierr)
+  CHKERRQ(ierr)
 
   call VecAssemblyBegin(vec_proc,ierr)
-  call VecAssemblyEnd(vec_proc,ierr)   
+  CHKERRQ(ierr)
+  call VecAssemblyEnd(vec_proc,ierr)
+  CHKERRQ(ierr)   
   
   ! Count the number of connections on a local process
   call VecGetArrayF90(vec_proc,vec_proc_ptr,ierr)
+  CHKERRQ(ierr)
   cur_connection_set => connection_set_list%first
   sum_connection = 0  
   count = 0
@@ -1548,12 +1637,14 @@ subroutine OutputGetExplicitIDsFlowrates(realization_base,count,vec_proc, &
     cur_connection_set => cur_connection_set%next
   enddo  
   call VecRestoreArrayF90(vec_proc,vec_proc_ptr,ierr)
+  CHKERRQ(ierr)
   
 
   ! Count the number of connections on a local process
   allocate(ids_up(count))
   allocate(ids_dn(count))
   call VecGetArrayF90(vec_proc,vec_proc_ptr,ierr)
+  CHKERRQ(ierr)
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
   sum_connection = 0  
@@ -1575,6 +1666,7 @@ subroutine OutputGetExplicitIDsFlowrates(realization_base,count,vec_proc, &
     cur_connection_set => cur_connection_set%next
   enddo  
   call VecRestoreArrayF90(vec_proc,vec_proc_ptr,ierr)
+  CHKERRQ(ierr)
 
 end subroutine OutputGetExplicitIDsFlowrates
 
@@ -1638,6 +1730,7 @@ subroutine OutputGetExplicitFlowrates(realization_base,count,vec_proc, &
   allocate(flowrates(count,option%nflowdof))
   allocate(darcy(count))
   call VecGetArrayF90(vec_proc,vec_proc_ptr,ierr)
+  CHKERRQ(ierr)
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
   sum_connection = 0  
@@ -1662,6 +1755,7 @@ subroutine OutputGetExplicitFlowrates(realization_base,count,vec_proc, &
     cur_connection_set => cur_connection_set%next
   enddo  
   call VecRestoreArrayF90(vec_proc,vec_proc_ptr,ierr)
+  CHKERRQ(ierr)
 
 end subroutine OutputGetExplicitFlowrates
 
@@ -1734,6 +1828,7 @@ subroutine OutputGetExplicitAuxVars(realization_base,count,vec_proc,density)
  
   allocate(density(count))
   call VecGetArrayF90(vec_proc,vec_proc_ptr,ierr)
+  CHKERRQ(ierr)
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
   sum_connection = 0  
@@ -1772,6 +1867,7 @@ subroutine OutputGetExplicitAuxVars(realization_base,count,vec_proc,density)
   enddo
       
   call VecRestoreArrayF90(vec_proc,vec_proc_ptr,ierr)
+  CHKERRQ(ierr)
 
 
 end subroutine OutputGetExplicitAuxVars
