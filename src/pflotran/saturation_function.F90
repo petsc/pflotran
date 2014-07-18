@@ -1037,6 +1037,7 @@ subroutine SatFuncComputeIcePExplicit(liquid_pressure, temperature, &
   ! 
 
   use Option_module
+  use PFLOTRAN_Constants_module
  
 implicit none
 
@@ -1063,7 +1064,6 @@ implicit none
   PetscReal :: liq_sat_one_over_m, dkr_ds_liq, dkr_temp
   PetscReal :: pth, dSe_pc_at_pth
   PetscReal, parameter :: den_ice = 9.167d2 !in kg/m3 at 273.15K
-  PetscReal, parameter :: heat_of_fusion = 3.34d5 !in J/kg at 273.15K
   PetscReal, parameter :: interfacial_tensions_ratio = 2.33
   PetscReal, parameter :: T_0 = 273.15d0 !in K
   
@@ -1109,7 +1109,7 @@ implicit none
         function_A = 1.d0
         dfunc_A_temp = 0.d0
       else
-        gamma = den_ice*heat_of_fusion*interfacial_tensions_ratio
+        gamma = den_ice*HEAT_OF_FUSION*interfacial_tensions_ratio
         pc_il = gamma*(-(temperature))/T_0
         alpha = saturation_function%alpha
         m = saturation_function%m
