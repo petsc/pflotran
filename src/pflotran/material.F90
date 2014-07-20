@@ -297,12 +297,12 @@ subroutine MaterialPropertyRead(material_property,input,option)
                              material_property%alpha_fr)
         call InputErrorMsg(input,option,'thermal conductivity frozen exponent', &
                            'MATERIAL_PROPERTY')
-      case('PORE_COMPRESSIBILITY') 
-        call InputReadDouble(input,option, &
-                             material_property%pore_compressibility)
-        call InputErrorMsg(input,option,'pore compressibility', &
-                           'MATERIAL_PROPERTY')
-      case('SOIL_COMPRESSIBILITY_FUNCTION') 
+      !case('PORE_COMPRESSIBILITY')
+      !  call InputReadDouble(input,option, &
+      !                       material_property%pore_compressibility)
+      !  call InputErrorMsg(input,option,'pore compressibility', &
+      !                     'MATERIAL_PROPERTY')
+      case('SOIL_COMPRESSIBILITY_FUNCTION')
         call InputReadWord(input,option, &
                            material_property%soil_compressibility_function, &
                            PETSC_TRUE)
