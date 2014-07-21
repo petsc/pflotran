@@ -655,6 +655,7 @@ subroutine THComputeMassBalancePatch(realization,mass_balance)
   use Patch_module
   use Field_module
   use Grid_module
+  use Material_module, only : MaterialCompressSoil
  
   implicit none
   
@@ -672,6 +673,9 @@ subroutine THComputeMassBalancePatch(realization,mass_balance)
   PetscErrorCode :: ierr
   PetscInt :: local_id
   PetscInt :: ghosted_id
+  PetscReal :: compressed_porosity
+  PetscReal :: por
+  PetscReal :: dum1
 
   option => realization%option
   patch => realization%patch
@@ -689,10 +693,20 @@ subroutine THComputeMassBalancePatch(realization,mass_balance)
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
     ! mass = volume*saturation*density
+
+    if (soil_compressibility_index > 0) then
+      call MaterialCompressSoil(material_auxvars(ghosted_id), &
+                                global_auxvars(ghosted_id)%pres(1), &
+                                compressed_porosity,dum1)
+      por = compressed_porosity
+    else
+      por = material_auxvars(ghosted_id)%porosity
+    endif
+
     mass_balance = mass_balance + &
       global_auxvars(ghosted_id)%den_kg* &
       global_auxvars(ghosted_id)%sat* &
-      material_auxvars(ghosted_id)%porosity* &
+      por* &
       material_auxvars(ghosted_id)%volume
 
     if (option%use_th_freezing) then
@@ -700,7 +714,7 @@ subroutine THComputeMassBalancePatch(realization,mass_balance)
       mass_balance = mass_balance + &
         TH_auxvars(ghosted_id)%den_ice*FMWH2O* &
         TH_auxvars(ghosted_id)%sat_ice* &
-        material_auxvars(ghosted_id)%porosity* &
+        por* &
         material_auxvars(ghosted_id)%volume
     endif
 
