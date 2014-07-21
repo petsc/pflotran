@@ -1598,7 +1598,9 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar, &
      J(TH_PRESSURE_DOF,TH_PRESSURE_DOF) = J(TH_PRESSURE_DOF,TH_PRESSURE_DOF) + &
                                           (dsatg_dp*den_g*mol_g + &
                                            dsati_dp*den_i       + &
-                                           sat_i   *ddeni_dp     )*porXvol
+                                           sat_i   *ddeni_dp     )*porXvol + &
+                                          (sat_g   *den_g*mol_g + &
+                                           sat_i   *den_i        )*dcompressed_porosity_dp*vol
 
      J(TH_PRESSURE_DOF,TH_TEMPERATURE_DOF) = J(TH_PRESSURE_DOF,TH_TEMPERATURE_DOF) + &
                             (TH_auxvar%dsat_dt*global_auxvar%den(1) + &
@@ -1611,7 +1613,9 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar, &
      J(TH_TEMPERATURE_DOF,TH_PRESSURE_DOF) = J(TH_TEMPERATURE_DOF,TH_PRESSURE_DOF) + &
                      (dsatg_dp * den_g    * u_g + &
                       dsati_dp * den_i    * u_i + &
-                      sat_i    * ddeni_dp * u_i )*porXvol
+                      sat_i    * ddeni_dp * u_i )*porXvol + &
+                     (sat_g    * den_g    * u_g + &
+                      sat_i    * den_i    * u_i )*dcompressed_porosity_dp*vol
 
      J(TH_TEMPERATURE_DOF,TH_TEMPERATURE_DOF) = J(TH_TEMPERATURE_DOF,TH_TEMPERATURE_DOF) + &
                 (TH_auxvar%dsat_dt*global_auxvar%den(1)*TH_auxvar%u + &
