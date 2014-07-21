@@ -64,6 +64,7 @@ $(PFUNIT_DIR)/source/libpfunit.a :
 #
 clean-tests : clean-pfunit
 	-rm -f unittests *~ *.F90 *.o *.mod
+	-rm -rf unittests.dSYM
 
 clean-pfunit :
 	./build-pfunit.sh -c $(FC) -d $(PFUNIT_DIR) -n
