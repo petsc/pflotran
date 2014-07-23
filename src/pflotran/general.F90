@@ -823,6 +823,16 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
 !                          '" needs saturation defined.'
 !                        call printErrMsg(option)
                       endif
+                    case(GENERAL_TEMPERATURE_INDEX)
+                      real_index = boundary_condition%flow_aux_mapping(variable)
+                      if (real_index /= 0) then
+                        xxbc(idof) = boundary_condition%flow_aux_real_var(real_index,iconn)
+                      else
+                        option%io_buffer = 'Mixed FLOW_CONDITION "' // &
+                          trim(boundary_condition%flow_condition%name) // &
+                          '" needs temperature defined.'
+                        call printErrMsg(option)
+                      endif
                   end select
                 case(NEUMANN_BC)
                 case default
