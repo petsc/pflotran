@@ -2084,7 +2084,7 @@ subroutine EOSWaterDensityPainter(t,p,dw,dwmol, &
   PetscReal, parameter :: P_ref = 1.0d5       ! in Pa
 
   PetscReal :: den_w_one_bar, T_K
-  PetscReal :: u_J_mol, u_J_kg, h_J_kg
+  PetscReal :: u_J_kg, h_J_kg
   PetscReal :: du_dt
 
   ierr = 0
@@ -2097,7 +2097,6 @@ subroutine EOSWaterDensityPainter(t,p,dw,dwmol, &
   dwmol = dw/FMWH2O     ! in mol
 
   ! Internal energy
-  u_J_mol = 76.0d0*(T_K - T_ref)        ! in J/mol
   u_J_kg = 4.217*1.0d3*(T_K - T_ref)    ! in J/kg
   h_J_kg = u_J_kg + P/dw    ! in J/kg
 
@@ -2145,7 +2144,7 @@ subroutine EOSWaterEnthalpyPainter(T, P, &
   PetscReal, parameter :: P_ref = 1.0d5       ! in Pa
 
   PetscReal :: den_w_one_bar, T_K
-  PetscReal :: u_J_mol, u_J_kg, h_J_kg
+  PetscReal :: u_J_kg, h_J_kg
   PetscReal :: du_dt
 
   ierr = 0
@@ -2158,7 +2157,6 @@ subroutine EOSWaterEnthalpyPainter(T, P, &
   den_water_kmol = den_water_kg/FMWH2O     ! in mol
 
   ! Internal energy
-  u_J_mol = 76.0d0*(T_K - T_ref)        ! in J/mol
   u_J_kg = 4.217*1.0d3*(T_K - T_ref)    ! in J/kg
   h_J_kg = u_J_kg + P/den_water_kg    ! in J/kg
   h_J_kmol = h_J_kg*FMWH2O     ! in J/kmol
