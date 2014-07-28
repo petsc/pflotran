@@ -86,6 +86,7 @@ subroutine CondControlAssignFlowInitCond(realization)
   PetscInt :: offset, istate
   PetscReal :: x(realization%option%nflowdof)
   PetscReal :: temperature, p_sat
+  PetscReal :: tempreal
 
   option => realization%option
   discretization => realization%discretization
@@ -112,6 +113,7 @@ subroutine CondControlAssignFlowInitCond(realization)
         CHKERRQ(ierr)
       
         xx_p = -999.d0
+        iphase_loc_p = -999.d0
       
         initial_condition => cur_patch%initial_conditions%first
         do
@@ -259,6 +261,12 @@ subroutine CondControlAssignFlowInitCond(realization)
         CHKERRQ(ierr)
         call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
         CHKERRQ(ierr)
+        call VecMin(field%iphas_loc,PETSC_NULL_INTEGER,tempreal,ierr)
+        CHKERRQ(ierr)
+        if (tempreal < 0.d0) then
+          option%io_buffer = 'Uninitialized cells in domain.'
+          call printErrMsg(option)
+        endif
               
       case default
         ! assign initial conditions values to domain
