@@ -86,11 +86,17 @@ subroutine CondControlAssignFlowInitCond(realization)
   PetscInt :: offset, istate
   PetscReal :: x(realization%option%nflowdof)
   PetscReal :: temperature, p_sat
+  PetscReal :: tempreal
 
   option => realization%option
   discretization => realization%discretization
   field => realization%field
   patch => realization%patch
+
+  ! to catch uninitialized grid cells.  see VecMin check at bottom.
+  call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr); CHKERRQ(ierr)
+  iphase_loc_p = -999.d0
+  call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr); CHKERRQ(ierr)
 
   if (option%iflowmode == G_MODE) then
     call GlobalAuxVarInit(global_aux,option)
@@ -265,7 +271,8 @@ subroutine CondControlAssignFlowInitCond(realization)
         if (discretization%itype == STRUCTURED_GRID_MIMETIC.or. &
             discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
           call VecGetArrayF90(field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
-          call VecGetArrayF90(field%flow_xx_faces, xx_faces_p, ierr); CHKERRQ(ierr)        
+          call VecGetArrayF90(field%flow_xx_faces, xx_faces_p, ierr)
+          CHKERRQ(ierr)        
         else
           call VecGetArrayF90(field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
         end if
@@ -315,7 +322,8 @@ subroutine CondControlAssignFlowInitCond(realization)
                         sub_condition_ptr(idof)%ptr%rarray(1)
                   endif
                 enddo
-                xx_faces_p(ibegin:iend) = xx_p(ibegin:iend) ! for LP -formulation
+                ! for LP -formulation
+                xx_faces_p(ibegin:iend) = xx_p(ibegin:iend) 
                 xx_faces_p(grid%nlmax_faces + &
                           ibegin:grid%nlmax_faces + iend) = &
                               xx_p(ibegin:iend) ! for LP -formulation
@@ -354,13 +362,13 @@ subroutine CondControlAssignFlowInitCond(realization)
                 xx_p(ibegin:iend) = &
                   initial_condition%flow_aux_real_var(1:option%nflowdof, &
                                                       iconn + &
-                                                      initial_condition%numfaces_set)
+                                                 initial_condition%numfaces_set)
                 xx_faces_p(grid%nlmax_faces + &
                           ibegin:grid%nlmax_faces + iend) = &
                               xx_p(ibegin:iend) ! for LP -formulation
                 iphase_loc_p(ghosted_id) = &
                   initial_condition%flow_aux_int_var(1,iconn + &
-                                                    initial_condition%numfaces_set)
+                                                 initial_condition%numfaces_set)
               enddo
             endif
 #endif
@@ -447,13 +455,15 @@ subroutine CondControlAssignFlowInitCond(realization)
   endif  
    
   ! update dependent vectors
-  call DiscretizationGlobalToLocal(discretization,field%flow_xx,field%flow_xx_loc,NFLOWDOF)  
-  
+  call DiscretizationGlobalToLocal(discretization,field%flow_xx, &
+                                   field%flow_xx_loc,NFLOWDOF)  
 
   call VecCopy(field%flow_xx, field%flow_yy, ierr)
   CHKERRQ(ierr)
-  call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)  
-  call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_old_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%iphas_loc, &
+                                  field%iphas_loc,ONEDOF)  
+  call DiscretizationLocalToLocal(discretization,field%iphas_loc, &
+                                  field%iphas_old_loc,ONEDOF)
 
 #ifdef DASVYAT
   if (discretization%itype == STRUCTURED_GRID_MIMETIC.or. &
@@ -464,7 +474,8 @@ subroutine CondControlAssignFlowInitCond(realization)
     call RealizationSetUpBC4Faces(realization)
 
     !call DiscretizationGlobalToLocalFaces(discretization, field%flow_xx_faces, field%flow_xx_loc_faces, NFLOWDOF)
-    call DiscretizationGlobalToLocalLP(discretization, field%flow_xx_faces, field%flow_xx_loc_faces, NFLOWDOF)
+    call DiscretizationGlobalToLocalLP(discretization, field%flow_xx_faces, &
+                                       field%flow_xx_loc_faces, NFLOWDOF)
     call VecCopy(field%flow_xx_faces, field%flow_yy_faces, ierr)
     CHKERRQ(ierr)
     call MFDInitializeMassMatrices(realization%discretization%grid,&
@@ -476,7 +487,19 @@ subroutine CondControlAssignFlowInitCond(realization)
 
   endif
 #endif
-!  stop
+
+  ! cannot perform VecMin on local vector as the ghosted corner values are not
+  ! updated during the local to local update.
+  call DiscretizationLocalToGlobal(discretization,field%iphas_loc,field%work, &
+                                   ONEDOF)
+  call VecMin(field%work,PETSC_NULL_INTEGER,tempreal,ierr)
+  CHKERRQ(ierr)
+  if (tempreal < 0.d0) then
+!    print *, tempreal
+    option%io_buffer = 'Uninitialized cells in domain.'
+    call printErrMsg(option)
+  endif
+
 end subroutine CondControlAssignFlowInitCond
 
 ! ************************************************************************** !
