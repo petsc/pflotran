@@ -1951,6 +1951,12 @@ subroutine SatFuncComputeIceDallAmico(pl, T, &
   PetscReal :: x
   PetscReal :: dummy
   PetscBool :: switch
+  PetscReal :: numer
+  PetscReal :: denom
+  PetscReal :: fct
+  PetscReal :: T_star_th
+  PetscReal :: T_star_min
+  PetscReal :: T_star_max
 
   !PetscReal, parameter :: beta = 2.2           ! dimensionless -- ratio of surf. tension
   PetscReal, parameter :: beta = 1             ! dimensionless [assumed as 1.d0]
@@ -1958,6 +1964,8 @@ subroutine SatFuncComputeIceDallAmico(pl, T, &
   PetscReal, parameter :: T_0 = 273.15         ! in K
   PetscReal, parameter :: L_f = 3.34d5         ! in J/kg
   PetscReal, parameter :: k = 1.d6
+
+  T_star_th = 5.d0 ! [K]
 
   s_g = 0.d0
   dsg_dpl = 0.d0
@@ -1986,6 +1994,22 @@ subroutine SatFuncComputeIceDallAmico(pl, T, &
       !    of step function.
       !x = (T - T_star)*k
       !H = 0.5d0 - atan(x)/PI
+      T_star_min = T_star - T_star_th
+      T_star_max = T_star
+
+      if (T < T_star_min) then
+        H = 1.d0
+        dH_dT = 0.d0
+      else if (T > T_star_max) then
+        H = 0.d0
+        dH_dT = 0.d0
+      else
+        numer = T          - T_star_min
+        denom = T_star_max - T_star_min
+        fct   = 1.d0 - (numer/denom)**2.d0
+        H     = fct**2.d0
+        dH_dT = -4.d0*numer*fct/(denom*denom)
+      endif
 
       theta = (T - T_star)/T_star
       Pc1 = Pc0 - beta*theta*L_f*rho_l*H
