@@ -276,9 +276,7 @@ subroutine PMRTPreSolve(this)
   if (this%realization%reaction%use_log_formulation) then
     call VecCopy(this%realization%field%tran_xx, &
                  this%realization%field%tran_log_xx,ierr)
-    CHKERRQ(ierr)
     call VecLog(this%realization%field%tran_log_xx,ierr)
-    CHKERRQ(ierr)
   endif
   
 end subroutine PMRTPreSolve
@@ -830,15 +828,11 @@ subroutine PMRTCheckpoint(this,viewer)
   global_vec = 0
   
   call PetscBagCreate(option%mycomm,bagsize,bag,ierr)
-  CHKERRQ(ierr)
   call PetscBagGetData(bag,header,ierr)
-  CHKERRQ(ierr)
   call PetscBagRegisterInt(bag,header%checkpoint_activity_coefs,0, &
                            "checkpoint_activity_coefs","",ierr)
-  CHKERRQ(ierr)
   call PetscBagRegisterInt(bag,header%ndof,0, &
                            "ndof","",ierr)
-  CHKERRQ(ierr)    
   if (associated(realization%reaction)) then
     if (realization%reaction%checkpoint_activity_coefs .and. &
         realization%reaction%act_coef_update_frequency /= &
@@ -854,13 +848,10 @@ subroutine PMRTCheckpoint(this,viewer)
   !     as long as option%ntrandof is used.
   header%ndof = option%ntrandof
   call PetscBagView(bag,viewer,ierr)
-  CHKERRQ(ierr)
   call PetscBagDestroy(bag,ierr)
-  CHKERRQ(ierr)   
   
   if (option%ntrandof > 0) then
     call VecView(field%tran_xx, viewer, ierr)
-    CHKERRQ(ierr)
     ! create a global vec for writing below 
     if (global_vec == 0) then
       call DiscretizationCreateVector(realization%discretization,ONEDOF, &
@@ -874,13 +865,11 @@ subroutine PMRTCheckpoint(this,viewer)
         call RealizationGetVariable(realization,global_vec, &
                                    PRIMARY_ACTIVITY_COEF,i)
         call VecView(global_vec,viewer,ierr)
-        CHKERRQ(ierr)
       enddo
       do i = 1, realization%reaction%neqcplx
         call RealizationGetVariable(realization,global_vec, &
                                    SECONDARY_ACTIVITY_COEF,i)
         call VecView(global_vec,viewer,ierr)
-        CHKERRQ(ierr)
       enddo
     endif
     ! mineral volume fractions for kinetic minerals
@@ -889,7 +878,6 @@ subroutine PMRTCheckpoint(this,viewer)
         call RealizationGetVariable(realization,global_vec, &
                                    MINERAL_VOLUME_FRACTION,i)
         call VecView(global_vec,viewer,ierr)
-        CHKERRQ(ierr)
       enddo
     endif
     ! sorbed concentrations for multirate kinetic sorption
@@ -902,7 +890,6 @@ subroutine PMRTCheckpoint(this,viewer)
 
   if (global_vec /= 0) then
     call VecDestroy(global_vec,ierr)
-    CHKERRQ(ierr)
   endif
   
 end subroutine PMRTCheckpoint
@@ -976,25 +963,18 @@ subroutine PMRTRestart(this,viewer)
   local_vec = 0
   
   call PetscBagCreate(this%option%mycomm, bagsize, bag, ierr)
-  CHKERRQ(ierr)
   call PetscBagGetData(bag, header, ierr)
-  CHKERRQ(ierr)
   call PetscBagRegisterInt(bag,header%checkpoint_activity_coefs,0, &
                            "checkpoint_activity_coefs","",ierr)
-  CHKERRQ(ierr)  
   call PetscBagRegisterInt(bag,header%ndof,0, &
                            "ndof","",ierr)
-  CHKERRQ(ierr)  
   call PetscBagLoad(viewer, bag, ierr)
-  CHKERRQ(ierr)  
   option%ntrandof = header%ndof
   
   call VecLoad(field%tran_xx,viewer,ierr)
-  CHKERRQ(ierr)
   call DiscretizationGlobalToLocal(discretization,field%tran_xx, &
                                     field%tran_xx_loc,NTRANDOF)
   call VecCopy(field%tran_xx,field%tran_yy,ierr)
-  CHKERRQ(ierr)
 
   if (global_vec == 0) then
     call DiscretizationCreateVector(realization%discretization,ONEDOF, &
@@ -1005,7 +985,6 @@ subroutine PMRTRestart(this,viewer)
                                     LOCAL,option)
     do i = 1, realization%reaction%naqcomp
       call VecLoad(global_vec,viewer,ierr)
-      CHKERRQ(ierr)
       call DiscretizationGlobalToLocal(discretization,global_vec, &
                                         local_vec,ONEDOF)
       call RealizationSetVariable(realization,local_vec,LOCAL, &
@@ -1013,7 +992,6 @@ subroutine PMRTRestart(this,viewer)
     enddo
     do i = 1, realization%reaction%neqcplx
       call VecLoad(global_vec,viewer,ierr)
-      CHKERRQ(ierr)
       call DiscretizationGlobalToLocal(discretization,global_vec, &
                                         local_vec,ONEDOF)
       call RealizationSetVariable(realization,local_vec,LOCAL, &
@@ -1025,7 +1003,6 @@ subroutine PMRTRestart(this,viewer)
     do i = 1, realization%reaction%mineral%nkinmnrl
       ! have to load the vecs no matter what
       call VecLoad(global_vec,viewer,ierr)
-      CHKERRQ(ierr)
       if (.not.option%transport%no_restart_mineral_vol_frac) then
         call RealizationSetVariable(realization,global_vec,GLOBAL, &
                                     MINERAL_VOLUME_FRACTION,i)
@@ -1046,15 +1023,12 @@ subroutine PMRTRestart(this,viewer)
   ! We are finished, so clean up.
   if (global_vec /= 0) then
     call VecDestroy(global_vec,ierr)
-    CHKERRQ(ierr)
   endif
   if (local_vec /= 0) then
     call VecDestroy(local_vec,ierr)
-    CHKERRQ(ierr)
   endif
   
   call PetscBagDestroy(bag,ierr)
-  CHKERRQ(ierr)
   
   if (realization%reaction%use_full_geochemistry) then
                                      ! cells     bcs        act coefs.

@@ -129,11 +129,9 @@ subroutine InitializeRun(this)
   
   ! pushed in Init()
   call PetscLogStagePop(ierr)
-  CHKERRQ(ierr)
 
   ! popped in FinalizeRun()
   call PetscLogStagePush(logging%stage(TS_STAGE),ierr)
-  CHKERRQ(ierr)
   
 end subroutine InitializeRun
 
@@ -224,10 +222,8 @@ subroutine SimulationBaseFinalizeRun(this)
   
   ! pushed in InitializeRun()
   call PetscLogStagePop(ierr)
-  CHKERRQ(ierr)
   ! popped in OptionFinalize()
   call PetscLogStagePush(logging%stage(FINAL_STAGE),ierr)
-  CHKERRQ(ierr)
   
 end subroutine SimulationBaseFinalizeRun
 

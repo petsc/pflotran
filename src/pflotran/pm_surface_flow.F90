@@ -217,12 +217,10 @@ subroutine PMSurfaceFlowPostSolve(this)
 
   ! Ensure evolved solution is +ve
   call VecGetArrayF90(surf_field%flow_xx,xx_p,ierr)
-  CHKERRQ(ierr)
   do local_id = 1,this%surf_realization%discretization%grid%nlmax
     if(xx_p(local_id)<1.d-15) xx_p(local_id) = 0.d0
   enddo
   call VecRestoreArrayF90(surf_field%flow_xx,xx_p,ierr)
-  CHKERRQ(ierr)
 
   ! First, update the solution vector
   call DiscretizationGlobalToLocal(this%surf_realization%discretization, &

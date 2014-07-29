@@ -720,7 +720,6 @@ subroutine GeomechInitMatPropToGeomechRegions(geomech_realization)
   ! create null material property for inactive cells
   null_geomech_material_property => GeomechanicsMaterialPropertyCreate()
   call VecGetArrayF90(field%imech_loc,imech_loc_p,ierr)
-  CHKERRQ(ierr)
   do local_id = 1, grid%nlmax_node
     ghosted_id = grid%nL2G(local_id)
     geomech_material_id = patch%imat(ghosted_id)
@@ -759,7 +758,6 @@ subroutine GeomechInitMatPropToGeomechRegions(geomech_realization)
     imech_loc_p(ghosted_id) = geomech_material_property%id
   enddo ! local_id - loop
   call VecRestoreArrayF90(field%imech_loc,imech_loc_p,ierr)
-  CHKERRQ(ierr)
   
   call GeomechanicsMaterialPropertyDestroy(null_geomech_material_property)
   nullify(null_geomech_material_property)

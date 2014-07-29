@@ -508,7 +508,6 @@ subroutine FlowConditionRead(condition,input,option)
   PetscErrorCode :: ierr
 
   call PetscLogEventBegin(logging%event_flow_condition_read,ierr)
-  CHKERRQ(ierr)
 
   default_time = 0.d0
   default_iphase = 0
@@ -1214,7 +1213,6 @@ subroutine FlowConditionRead(condition,input,option)
   condition%default_time_storage => default_time_storage
   
   call PetscLogEventEnd(logging%event_flow_condition_read,ierr)
-  CHKERRQ(ierr)
 
 end subroutine FlowConditionRead
 
@@ -1259,7 +1257,6 @@ subroutine FlowConditionGeneralRead(condition,input,option)
   PetscErrorCode :: ierr
 
   call PetscLogEventBegin(logging%event_flow_condition_read,ierr)
-  CHKERRQ(ierr)
 
 
   default_time = 0.d0
@@ -1614,7 +1611,6 @@ subroutine FlowConditionGeneralRead(condition,input,option)
   condition%default_time_storage => default_time_storage
     
   call PetscLogEventEnd(logging%event_flow_condition_read,ierr)
-  CHKERRQ(ierr)
 
 end subroutine FlowConditionGeneralRead
 
@@ -1658,7 +1654,6 @@ subroutine TranConditionRead(condition,constraint_list,reaction,input,option)
   PetscReal :: conversion
 
   call PetscLogEventBegin(logging%event_tran_condition_read,ierr)
-  CHKERRQ(ierr)
 
   default_time = 0.d0
   default_iphase = 0
@@ -1796,7 +1791,6 @@ subroutine TranConditionRead(condition,constraint_list,reaction,input,option)
   endif
 
   call PetscLogEventEnd(logging%event_tran_condition_read,ierr)
-  CHKERRQ(ierr)
 
 end subroutine TranConditionRead
 
@@ -1851,7 +1845,6 @@ subroutine ConditionReadValues(input,option,keyword,string,dataset_base,units)
 #endif
 
   call PetscLogEventBegin(logging%event_flow_condition_read_values,ierr)
-  CHKERRQ(ierr)
   
   ! dataset_base, though of type dataset_base_type, should always be created
   ! as dataset_ascii_type.
@@ -1998,7 +1991,6 @@ subroutine ConditionReadValues(input,option,keyword,string,dataset_base,units)
     endif
   endif
   call PetscLogEventEnd(logging%event_flow_condition_read_values,ierr)
-  CHKERRQ(ierr)    
 
 end subroutine ConditionReadValues
 

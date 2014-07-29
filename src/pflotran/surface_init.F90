@@ -982,7 +982,6 @@ subroutine SurfaceInitMatPropToRegions(surf_realization)
     if (.not.associated(cur_patch)) exit
 
     call VecGetArrayF90(surf_field%mannings0,man0_p,ierr)
-    CHKERRQ(ierr)
 
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
@@ -1021,7 +1020,6 @@ subroutine SurfaceInitMatPropToRegions(surf_realization)
     enddo ! local_id - loop
 
     call VecRestoreArrayF90(surf_field%mannings0,man0_p,ierr)
-    CHKERRQ(ierr)
       
     cur_patch => cur_patch%next
   enddo ! looping over patches

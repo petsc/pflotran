@@ -2142,9 +2142,7 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
   grid => patch%grid
 
   call VecZeroEntries(field%work,ierr)
-  CHKERRQ(ierr)
   call VecGetArrayF90(field%work,vec_ptr,ierr)
-  CHKERRQ(ierr)
 
   cur_connection_set => source_sink%connection_set
 
@@ -2215,15 +2213,11 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
   end select
 
   call VecRestoreArrayF90(field%work,vec_ptr,ierr)
-  CHKERRQ(ierr)
   call VecNorm(field%work,NORM_1,scale,ierr)
-  CHKERRQ(ierr)
   scale = 1.d0/scale
   call VecScale(field%work,scale,ierr)
-  CHKERRQ(ierr)
 
   call VecGetArrayF90(field%work,vec_ptr, ierr)
-  CHKERRQ(ierr)
   do iconn = 1, cur_connection_set%num_connections      
     local_id = cur_connection_set%id_dn(iconn)
     select case(option%iflowmode)
@@ -2239,7 +2233,6 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
 
   enddo
   call VecRestoreArrayF90(field%work,vec_ptr,ierr)
-  CHKERRQ(ierr)
 
 end subroutine PatchScaleSourceSink
 
@@ -2395,11 +2388,8 @@ subroutine PatchCreateFlowConditionDatasetMap(grid,dataset_map_hdf5,cell_ids,nce
   call MPI_Allreduce(nloc,nglo,ONE_INTEGER,MPIU_INTEGER,MPI_Max,option%mycomm,ierr)
   call VecCreateMPI(option%mycomm,dataset_map_hdf5%map_dims_local(2),&
                     PETSC_DETERMINE,map_ids_1,ierr)
-  CHKERRQ(ierr)
   call VecCreateMPI(option%mycomm,PETSC_DECIDE,nglo,map_ids_2,ierr)
-  CHKERRQ(ierr)
   call VecSet(map_ids_2,0,ierr)
-  CHKERRQ(ierr)
 
   istart = 0
   call MPI_Exscan(dataset_map_hdf5%map_dims_local(2), istart, ONE_INTEGER_MPI, &
@@ -2413,7 +2403,6 @@ subroutine PatchCreateFlowConditionDatasetMap(grid,dataset_map_hdf5,cell_ids,nce
   
   call ISCreateBlock(option%mycomm,1,dataset_map_hdf5%map_dims_local(2), &
                      int_array,PETSC_COPY_VALUES,is_from,ierr)
-  CHKERRQ(ierr)
   deallocate(int_array)
   
   allocate(int_array(dataset_map_hdf5%map_dims_local(2)))
@@ -2424,7 +2413,6 @@ subroutine PatchCreateFlowConditionDatasetMap(grid,dataset_map_hdf5,cell_ids,nce
 
   call ISCreateBlock(option%mycomm,1,dataset_map_hdf5%map_dims_local(2), &
                      int_array,PETSC_COPY_VALUES,is_to,ierr)
-  CHKERRQ(ierr)
   deallocate(int_array)
 
   !call VecCreateSeq(PETSC_COMM_SELF,dataset_map%map_dims_global(2),map_ids_1,ierr)
@@ -2432,28 +2420,20 @@ subroutine PatchCreateFlowConditionDatasetMap(grid,dataset_map_hdf5,cell_ids,nce
   !call VecSet(map_ids_2,0,ierr)
 
   call VecScatterCreate(map_ids_1,is_from,map_ids_2,is_to,vec_scatter,ierr)
-  CHKERRQ(ierr)
   call ISDestroy(is_from,ierr)
-  CHKERRQ(ierr)
   call ISDestroy(is_to,ierr)
-  CHKERRQ(ierr)
 
   call VecGetArrayF90(map_ids_1,vec_ptr,ierr)
-  CHKERRQ(ierr)
   do ii=1,dataset_map_hdf5%map_dims_local(2)
     vec_ptr(ii)=dataset_map_hdf5%mapping(1,ii)
   enddo
   call VecRestoreArrayF90(map_ids_1,vec_ptr,ierr)
-  CHKERRQ(ierr)
 
   call VecScatterBegin(vec_scatter,map_ids_1,map_ids_2, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr)
-  CHKERRQ(ierr)
   call VecScatterEnd(vec_scatter,map_ids_1,map_ids_2, &
                      INSERT_VALUES,SCATTER_FORWARD,ierr)
-  CHKERRQ(ierr)
   call VecScatterDestroy(vec_scatter,ierr)
-  CHKERRQ(ierr)
 
   ! Step-2: Get ids in map dataset for cells
   allocate(int_array(ncells))
@@ -2461,7 +2441,6 @@ subroutine PatchCreateFlowConditionDatasetMap(grid,dataset_map_hdf5,cell_ids,nce
   int_array=cell_ids-1
 
   call ISCreateBlock(option%mycomm,1,ncells,int_array,PETSC_COPY_VALUES,is_from,ierr)
-  CHKERRQ(ierr)
     
   istart = 0
   call MPI_Exscan(ncells, istart, ONE_INTEGER_MPI, &
@@ -2473,45 +2452,32 @@ subroutine PatchCreateFlowConditionDatasetMap(grid,dataset_map_hdf5,cell_ids,nce
   int_array=int_array-1
   
   call ISCreateBlock(option%mycomm,1,ncells,int_array,PETSC_COPY_VALUES,is_to,ierr)
-  CHKERRQ(ierr)
   deallocate(int_array)
   
   !call VecCreateSeq(PETSC_COMM_SELF,ncells,map_ids_3,ierr)
   call VecCreateMPI(option%mycomm,ncells,PETSC_DETERMINE,map_ids_3,ierr)
-  CHKERRQ(ierr)
   
   call VecScatterCreate(map_ids_2,is_from,map_ids_3,is_to,vec_scatter,ierr)
-  CHKERRQ(ierr)
   call ISDestroy(is_from,ierr)
-  CHKERRQ(ierr)
   call ISDestroy(is_to,ierr)
-  CHKERRQ(ierr)
 
   call VecScatterBegin(vec_scatter,map_ids_2,map_ids_3, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr)
-  CHKERRQ(ierr)
   call VecScatterEnd(vec_scatter,map_ids_2,map_ids_3, &
                      INSERT_VALUES,SCATTER_FORWARD,ierr)
-  CHKERRQ(ierr)
   call VecScatterDestroy(vec_scatter,ierr)
-  CHKERRQ(ierr)
 
   ! Step-3: Save the datatocell_ids
   allocate(dataset_map_hdf5%datatocell_ids(ncells))
   call VecGetArrayF90(map_ids_3,vec_ptr,ierr)
-  CHKERRQ(ierr)
   do local_id=1,ncells
     dataset_map_hdf5%datatocell_ids(local_id) = int(vec_ptr(local_id))
   enddo
   call VecRestoreArrayF90(map_ids_3,vec_ptr,ierr)
-  CHKERRQ(ierr)
   
   call VecDestroy(map_ids_1,ierr)
-  CHKERRQ(ierr)
   call VecDestroy(map_ids_2,ierr)
-  CHKERRQ(ierr)
   call VecDestroy(map_ids_3,ierr)
-  CHKERRQ(ierr)
 
 end subroutine PatchCreateFlowConditionDatasetMap
 
@@ -2825,7 +2791,6 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
   material_auxvars => patch%aux%Material%auxvars
   
   call VecGetArrayF90(vec,vec_ptr,ierr)
-  CHKERRQ(ierr)
 
   iphase = 1
   select case(ivar)
@@ -3742,12 +3707,10 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
       enddo      
     case(PHASE)
       call VecGetArrayF90(field%iphas_loc,vec_ptr2,ierr)
-      CHKERRQ(ierr)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
       enddo
       call VecRestoreArrayF90(field%iphas_loc,vec_ptr2,ierr)
-      CHKERRQ(ierr)
     case(MATERIAL_ID)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = patch%imat(grid%nL2G(local_id))
@@ -3775,7 +3738,6 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
   end select
 
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
-  CHKERRQ(ierr)
   
 end subroutine PatchGetVariable1
 
@@ -4389,10 +4351,8 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
                                      PERMEABILITY_Z)
     case(PHASE)
       call VecGetArrayF90(field%iphas_loc,vec_ptr2,ierr)
-      CHKERRQ(ierr)
       value = vec_ptr2(ghosted_id)
       call VecRestoreArrayF90(field%iphas_loc,vec_ptr2,ierr)
-      CHKERRQ(ierr)
     case(MATERIAL_ID)
       value = patch%imat(ghosted_id)
     case(PROCESSOR_ID)
@@ -4478,7 +4438,6 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
   material_auxvars => patch%aux%Material%auxvars
   
   call VecGetArrayF90(vec,vec_ptr,ierr)
-  CHKERRQ(ierr)
 
   if (vec_format == NATURAL) then
     call printErrMsg(option,&
@@ -5181,18 +5140,14 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
     case(PHASE)
       if (vec_format == GLOBAL) then
         call VecGetArrayF90(field%iphas_loc,vec_ptr2,ierr)
-        CHKERRQ(ierr)
         do local_id=1,grid%nlmax
           vec_ptr2(grid%nL2G(local_id)) = vec_ptr(local_id)
         enddo
         call VecRestoreArrayF90(field%iphas_loc,vec_ptr2,ierr)
-        CHKERRQ(ierr)
       else if (vec_format == LOCAL) then
         call VecGetArrayF90(field%iphas_loc,vec_ptr2,ierr)
-        CHKERRQ(ierr)
         vec_ptr2(1:grid%ngmax) = vec_ptr(1:grid%ngmax)
         call VecRestoreArrayF90(field%iphas_loc,vec_ptr2,ierr)
-        CHKERRQ(ierr)
       endif
     case(MATERIAL_ID)
       if (vec_format == GLOBAL) then
@@ -5208,7 +5163,6 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
   end select
 
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
-  CHKERRQ(ierr)
   
 end subroutine PatchSetVariable
 
@@ -5586,7 +5540,6 @@ subroutine PatchGetVariable2(patch,surf_field,option,output_option,vec,ivar, &
   grid => patch%grid
 
   call VecGetArrayF90(vec,vec_ptr,ierr)
-  CHKERRQ(ierr)
   
   iphase = 1
   

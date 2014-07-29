@@ -289,34 +289,28 @@ subroutine PMCSurfaceGetAuxData(this)
                                  pmc%sim_aux%subsurf_pres_top_bc, &
                                  pmc%surf_realization%surf_field%press_subsurf, &
                                  INSERT_VALUES,SCATTER_FORWARD,ierr)
-            CHKERRQ(ierr)
             call VecScatterEnd(pmc%sim_aux%subsurf_to_surf, &
                                pmc%sim_aux%subsurf_pres_top_bc, &
                                pmc%surf_realization%surf_field%press_subsurf, &
                                INSERT_VALUES,SCATTER_FORWARD,ierr)
-            CHKERRQ(ierr)
             call SurfaceFlowUpdateSurfState(pmc%surf_realization)
           case (TH_MODE)
             call VecScatterBegin(pmc%sim_aux%subsurf_to_surf, &
                                  pmc%sim_aux%subsurf_pres_top_bc, &
                                  pmc%surf_realization%surf_field%press_subsurf, &
                                  INSERT_VALUES,SCATTER_FORWARD,ierr)
-            CHKERRQ(ierr)
             call VecScatterEnd(pmc%sim_aux%subsurf_to_surf, &
                                pmc%sim_aux%subsurf_pres_top_bc, &
                                pmc%surf_realization%surf_field%press_subsurf, &
                                INSERT_VALUES,SCATTER_FORWARD,ierr)
-            CHKERRQ(ierr)
             call VecScatterBegin(pmc%sim_aux%subsurf_to_surf, &
                                  pmc%sim_aux%subsurf_temp_top_bc, &
                                  pmc%surf_realization%surf_field%temp_subsurf, &
                                  INSERT_VALUES,SCATTER_FORWARD,ierr)
-            CHKERRQ(ierr)
             call VecScatterEnd(pmc%sim_aux%subsurf_to_surf, &
                                pmc%sim_aux%subsurf_temp_top_bc, &
                                pmc%surf_realization%surf_field%temp_subsurf, &
                                INSERT_VALUES,SCATTER_FORWARD,ierr)
-            CHKERRQ(ierr)
             call SurfaceTHUpdateSurfState(pmc%surf_realization)
         end select
     end select
@@ -389,7 +383,6 @@ subroutine PMCSurfaceSetAuxData(this)
           case (RICHARDS_MODE)
             call VecCopy(pmc%surf_realization%surf_field%flow_xx, &
                          pmc%sim_aux%surf_head, ierr)
-            CHKERRQ(ierr)
           case (TH_MODE)
 
             surf_realization => pmc%surf_realization
@@ -400,14 +393,10 @@ subroutine PMCSurfaceSetAuxData(this)
 
             call VecGetArrayF90(pmc%surf_realization%surf_field%flow_xx_loc, &
                                 xx_loc_p,ierr)
-            CHKERRQ(ierr)
             call VecGetArrayF90(pmc%sim_aux%surf_head, surf_head_p, ierr)
-            CHKERRQ(ierr)
             call VecGetArrayF90(pmc%sim_aux%surf_temp, surf_temp_p, ierr)
-            CHKERRQ(ierr)
             call VecGetArrayF90(pmc%sim_aux%surf_hflux_exchange_with_subsurf, &
                                 surf_hflux_p, ierr)
-            CHKERRQ(ierr)
 
             do ghosted_id = 1, surf_grid%ngmax
               local_id = surf_grid%nG2L(ghosted_id)
@@ -472,14 +461,10 @@ subroutine PMCSurfaceSetAuxData(this)
 
             call VecRestoreArrayF90(pmc%surf_realization%surf_field%flow_xx_loc, &
                                     xx_loc_p,ierr)
-            CHKERRQ(ierr)
             call VecRestoreArrayF90(pmc%sim_aux%surf_head, surf_head_p,ierr)
-            CHKERRQ(ierr)
             call VecRestoreArrayF90(pmc%sim_aux%surf_temp, surf_temp_p,ierr)
-            CHKERRQ(ierr)
             call VecRestoreArrayF90(pmc%sim_aux%surf_hflux_exchange_with_subsurf, &
                                 surf_hflux_p, ierr)
-            CHKERRQ(ierr)
 
             if (.not.(found)) then
               this%option%io_buffer = 'atm_energy_ss not found in surface-flow model'
@@ -539,9 +524,7 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
                                  this%option%reference_pressure,den,dum1,ierr)
 
             call VecGetArrayF90(pmc%surf_realization%surf_field%flow_xx, xx_p, ierr)
-            CHKERRQ(ierr)
             call VecGetArrayF90(pmc%surf_realization%surf_field%press_subsurf, surfpress_p, ierr)
-            CHKERRQ(ierr)
             count = 0
             do ghosted_id = 1, pmc%surf_realization%discretization%grid%ngmax
 
@@ -553,20 +536,16 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
                                    this%option%reference_pressure
             enddo
             call VecRestoreArrayF90(pmc%surf_realization%surf_field%flow_xx, xx_p, ierr)
-            CHKERRQ(ierr)
             call VecRestoreArrayF90(pmc%surf_realization%surf_field%press_subsurf, surfpress_p, ierr)
-            CHKERRQ(ierr)
 
             call VecScatterBegin(pmc%sim_aux%subsurf_to_surf, &
                                  pmc%surf_realization%surf_field%press_subsurf, &
                                  pmc%sim_aux%subsurf_pres_top_bc, &
                                  INSERT_VALUES,SCATTER_REVERSE,ierr)
-            CHKERRQ(ierr)
             call VecScatterEnd(pmc%sim_aux%subsurf_to_surf, &
                                pmc%surf_realization%surf_field%press_subsurf, &
                                pmc%sim_aux%subsurf_pres_top_bc, &
                                INSERT_VALUES,SCATTER_REVERSE,ierr)
-            CHKERRQ(ierr)
 
           case (TH_MODE)
 
@@ -581,11 +560,8 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
             surf_auxvars => pmc%surf_realization%patch%surf_aux%SurfaceTH%auxvars
 
             call VecGetArrayF90(pmc%surf_realization%surf_field%flow_xx, xx_p, ierr)
-            CHKERRQ(ierr)
             call VecGetArrayF90(pmc%surf_realization%surf_field%press_subsurf, surfpress_p, ierr)
-            CHKERRQ(ierr)
             call VecGetArrayF90(pmc%surf_realization%surf_field%temp_subsurf, surftemp_p, ierr)
-            CHKERRQ(ierr)
 
             count = 0
             do ghosted_id = 1, pmc%surf_realization%discretization%grid%ngmax
@@ -602,32 +578,25 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
                       surf_auxvars(ghosted_id)%Cwi - 273.15d0
             enddo
             call VecRestoreArrayF90(pmc%surf_realization%surf_field%flow_xx, xx_p, ierr)
-            CHKERRQ(ierr)
             call VecRestoreArrayF90(pmc%surf_realization%surf_field%press_subsurf, surfpress_p, ierr)
-            CHKERRQ(ierr)
             call VecRestoreArrayF90(pmc%surf_realization%surf_field%temp_subsurf, surftemp_p, ierr)
-            CHKERRQ(ierr)
 
             call VecScatterBegin(pmc%sim_aux%subsurf_to_surf, &
                                  pmc%sim_aux%subsurf_pres_top_bc, &
                                  pmc%surf_realization%surf_field%press_subsurf, &
                                  INSERT_VALUES,SCATTER_FORWARD,ierr)
-            CHKERRQ(ierr)
             call VecScatterEnd(pmc%sim_aux%subsurf_to_surf, &
                                pmc%sim_aux%subsurf_pres_top_bc, &
                                pmc%surf_realization%surf_field%press_subsurf, &
                                INSERT_VALUES,SCATTER_FORWARD,ierr)
-            CHKERRQ(ierr)
             call VecScatterBegin(pmc%sim_aux%subsurf_to_surf, &
                                  pmc%sim_aux%subsurf_temp_top_bc, &
                                  pmc%surf_realization%surf_field%temp_subsurf, &
                                  INSERT_VALUES,SCATTER_FORWARD,ierr)
-            CHKERRQ(ierr)
             call VecScatterEnd(pmc%sim_aux%subsurf_to_surf, &
                                pmc%sim_aux%subsurf_temp_top_bc, &
                                pmc%surf_realization%surf_field%temp_subsurf, &
                                INSERT_VALUES,SCATTER_FORWARD,ierr)
-            CHKERRQ(ierr)
         end select
     end select
   endif

@@ -82,7 +82,6 @@ subroutine ImmisTimeCut(realization)
   field => realization%field
 
   call VecCopy(field%flow_yy,field%flow_xx,ierr)
-  CHKERRQ(ierr)
 
 end subroutine ImmisTimeCut
 
@@ -468,9 +467,8 @@ subroutine ImmisUpdateReasonPatch(reason,realization)
   re=1
  
   if(re>0)then
-     call VecGetArrayF90(field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
+     call VecGetArrayF90(field%flow_xx, xx_p, ierr)
      call VecGetArrayF90(field%flow_yy, yy_p, ierr)
-     CHKERRQ(ierr)
 
      do n = 1,grid%nlmax
 !**** clu-Ignore inactive cells with inactive materials **************
@@ -501,9 +499,8 @@ subroutine ImmisUpdateReasonPatch(reason,realization)
      end do
   
     if(re<=0) print *,'Sat out of Region at: ',n,xx_p(n0+1:n0+3)
-    call VecRestoreArrayF90(field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
+    call VecRestoreArrayF90(field%flow_xx, xx_p, ierr)
     call VecRestoreArrayF90(field%flow_yy, yy_p, ierr)
-    CHKERRQ(ierr)
 
    endif
   
@@ -591,7 +588,6 @@ end subroutine ImmisUpdateReason
     field => realization%field
     
     call VecGetArrayF90(field%flow_xx,xx_p, ierr)
-    CHKERRQ(ierr)
     
     ipass=1
     do local_id = 1, grid%nlmax
@@ -617,7 +613,6 @@ end subroutine ImmisUpdateReason
     enddo
 
     call VecRestoreArrayF90(field%flow_xx,xx_p, ierr)
-    CHKERRQ(ierr)
     ImmisInitGuessCheckPatch = ipass
   end function ImmisInitGuessCheckPatch
 
@@ -707,9 +702,7 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
 
   
   call VecGetArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
-  CHKERRQ(ierr)
   call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
-  CHKERRQ(ierr)
 
   do ghosted_id = 1, grid%ngmax
     if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
@@ -822,9 +815,7 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
 
 
   call VecRestoreArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
-  CHKERRQ(ierr)
   call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
-  CHKERRQ(ierr)
   
   patch%aux%Immis%auxvars_up_to_date = PETSC_TRUE
 
@@ -876,7 +867,6 @@ subroutine ImmisUpdateSolution(realization)
   field => realization%field
   
   call VecCopy(realization%field%flow_xx,realization%field%flow_yy,ierr)
-  CHKERRQ(ierr)   
 
   cur_patch => realization%patch_list%first
   do
@@ -1038,17 +1028,13 @@ subroutine ImmisUpdateFixedAccumPatch(realization)
   auxvars => patch%aux%Immis%auxvars
     
   call VecGetArrayF90(field%flow_xx,xx_p, ierr)
-  CHKERRQ(ierr)
   call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
-  CHKERRQ(ierr)
 !geh: refactor  call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
 !geh: refactor  call VecGetArrayF90(field%tortuosity_loc,tortuosity_loc_p,ierr)
 !geh: refactor  call VecGetArrayF90(field%volume,volume_p,ierr)
   call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
-  CHKERRQ(ierr)
 
   call VecGetArrayF90(field%flow_accum, accum_p, ierr)
-  CHKERRQ(ierr)
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
@@ -1067,17 +1053,13 @@ subroutine ImmisUpdateFixedAccumPatch(realization)
   enddo
 
   call VecRestoreArrayF90(field%flow_xx,xx_p, ierr)
-  CHKERRQ(ierr)
   call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
-  CHKERRQ(ierr)
 !geh refactor  call VecRestoreArrayF90(field%porosity_loc,porosity_loc_p,ierr)
 !geh refactor  call VecRestoreArrayF90(field%tortuosity_loc,tortuosity_loc_p,ierr)
 !geh refactor  call VecRestoreArrayF90(field%volume,volume_p,ierr)
   call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
-  CHKERRQ(ierr)
 
   call VecRestoreArrayF90(field%flow_accum, accum_p, ierr)
-  CHKERRQ(ierr)
 
 #if 0
 !  call ImmisNumericalJacobianTest(field%flow_xx,realization)
@@ -1814,11 +1796,8 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
 
 ! now assign access pointer to local variables
   call VecGetArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
-  CHKERRQ(ierr)
   call VecGetArrayF90(r, r_p, ierr)
-  CHKERRQ(ierr)
   call VecGetArrayF90(field%flow_accum, accum_p, ierr)
-  CHKERRQ(ierr)
  
 ! call VecGetArrayF90(field%flow_yy,yy_p,ierr)
 !geh refactor  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
@@ -1828,9 +1807,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
 !geh refactor  call VecGetArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
 !geh refactor  call VecGetArrayF90(field%volume, volume_p, ierr)
   call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
-  CHKERRQ(ierr)
   call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
-  CHKERRQ(ierr)
  
  
 ! Multiphase flash calculation is more expensive, so calculate once per iteration
@@ -2200,12 +2177,9 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
   endif
 
   call VecRestoreArrayF90(r, r_p, ierr)
-  CHKERRQ(ierr)
 ! call VecRestoreArrayF90(field%flow_yy, yy_p, ierr)
   call VecRestoreArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
-  CHKERRQ(ierr)
   call VecRestoreArrayF90(field%flow_accum, accum_p, ierr)
-  CHKERRQ(ierr)
 !geh refactor  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
 !geh refactor  call VecRestoreArrayF90(field%tortuosity_loc, tortuosity_loc_p, ierr)
 !geh refactor  call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
@@ -2213,25 +2187,17 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
 !geh refactor  call VecRestoreArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
 !geh refactor  call VecRestoreArrayF90(field%volume, volume_p, ierr)
   call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
-  CHKERRQ(ierr)
   call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr)
-  CHKERRQ(ierr)
 
   if (realization%debug%vecview_residual) then
     call PetscViewerASCIIOpen(option%mycomm,'Rresidual.out',viewer,ierr)
-    CHKERRQ(ierr)
     call VecView(r,viewer,ierr)
-    CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr)
-    CHKERRQ(ierr)
   endif
   if (realization%debug%vecview_solution) then
     call PetscViewerASCIIOpen(option%mycomm,'Rxx.out',viewer,ierr)
-    CHKERRQ(ierr)
     call VecView(xx,viewer,ierr)
-    CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr)
-    CHKERRQ(ierr)
   endif
 end subroutine ImmisResidualPatch
 
@@ -2385,10 +2351,8 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,realization,ierr)
 
  ! print *,'*********** In Jacobian ********************** '
   call MatZeroEntries(A,ierr)
-  CHKERRQ(ierr)
 
   call VecGetArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
-  CHKERRQ(ierr)
 !geh refactor  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
 !geh refactor  call VecGetArrayF90(field%tortuosity_loc, tortuosity_loc_p, ierr)
 !geh refactor  call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
@@ -2397,9 +2361,7 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,realization,ierr)
 !geh refactor  call VecGetArrayF90(field%volume, volume_p, ierr)
 
   call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
-  CHKERRQ(ierr)
   call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
-  CHKERRQ(ierr)
 
  ResInc = 0.D0
 #if 1
@@ -2609,20 +2571,14 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,realization,ierr)
    
      ! if(n==1) print *,  blkmat11, volume_p(n), ra
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
-    CHKERRQ(ierr)
   end do
 
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-    CHKERRQ(ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-    CHKERRQ(ierr)
     call PetscViewerASCIIOpen(option%mycomm,'jacobian_srcsink.out',viewer,ierr)
-    CHKERRQ(ierr)
     call MatView(A,PETSC_VIEWER_STDOUT_WORLD,ierr)
-    CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr)
-    CHKERRQ(ierr)
   endif
 #if 1
   ! Interior Flux Terms -----------------------------------  
@@ -2719,10 +2675,8 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,realization,ierr)
 
        call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
             Jup,ADD_VALUES,ierr)
-       CHKERRQ(ierr)
        call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
             Jdn,ADD_VALUES,ierr)
-       CHKERRQ(ierr)
     endif
     if (local_id_dn > 0) then
        voltemp=1.D0
@@ -2735,10 +2689,8 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,realization,ierr)
  
        call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
             Jdn,ADD_VALUES,ierr)
-       CHKERRQ(ierr)
        call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
             Jup,ADD_VALUES,ierr)
-       CHKERRQ(ierr)
     endif
  enddo
     cur_connection_set => cur_connection_set%next
@@ -2747,33 +2699,22 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,realization,ierr)
   if (realization%debug%matview_Jacobian_detailed) then
  ! print *,'end inter flux'
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-    CHKERRQ(ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-    CHKERRQ(ierr)
     call PetscViewerASCIIOpen(option%mycomm,'jacobian_flux.out',viewer,ierr)
-    CHKERRQ(ierr)
     call MatView(A,PETSC_VIEWER_STDOUT_WORLD,ierr)
-    CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr)
-    CHKERRQ(ierr)
   endif
 #if 0
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-    CHKERRQ(ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-    CHKERRQ(ierr)
     call PetscViewerASCIIOpen(option%mycomm,'jacobian_bcflux.out',viewer,ierr)
-    CHKERRQ(ierr)
     call MatView(A,viewer,ierr)
-    CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr)
-    CHKERRQ(ierr)
   endif
 #endif
   
   call VecRestoreArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
-  CHKERRQ(ierr)
 !geh refactor  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
 !geh refactor  call VecRestoreArrayF90(field%tortuosity_loc, tortuosity_loc_p, ierr)
 !geh refactor  call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
@@ -2783,14 +2724,10 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,realization,ierr)
 
    
   call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
-  CHKERRQ(ierr)
   call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr)
-  CHKERRQ(ierr)
 ! print *,'end jac'
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-  CHKERRQ(ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-  CHKERRQ(ierr)
  ! call MatView(A,PETSC_VIEWER_STDOUT_WORLD,ierr)
 #if 0
 ! zero out isothermal and inactive cells
@@ -2798,7 +2735,6 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,realization,ierr)
   zero = 0.d0
   call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,zero, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
-  CHKERRQ(ierr) 
   do i=1, n_zero_rows
     ii = mod(zero_rows_local(i),option%nflowdof)
     ip1 = zero_rows_local_ghosted(i)
@@ -2810,13 +2746,10 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,realization,ierr)
       ip2 = ip1
     endif
     call MatSetValuesLocal(A,1,ip1,1,ip2,1.d0,INSERT_VALUES,ierr)
-    CHKERRQ(ierr)
   enddo
 
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-  CHKERRQ(ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-  CHKERRQ(ierr)
 #else
 #endif
 #endif
@@ -2826,28 +2759,21 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,realization,ierr)
     call MatZeroRowsLocal(A,patch%aux%Immis%n_zero_rows, &
                           patch%aux%Immis%zero_rows_local_ghosted,f_up, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
-    CHKERRQ(ierr) 
   endif
 
   if (realization%debug%matview_Jacobian) then
     call PetscViewerASCIIOpen(option%mycomm,'Rjacobian.out',viewer,ierr)
-    CHKERRQ(ierr)
     call MatView(A,viewer,ierr)
-    CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr)
-    CHKERRQ(ierr)
   endif
   if (realization%debug%norm_Jacobian) then
     call MatNorm(A,NORM_1,norm,ierr)
-    CHKERRQ(ierr)
     write(option%io_buffer,'("1 norm: ",es11.4)') norm
     call printMsg(option)
     call MatNorm(A,NORM_FROBENIUS,norm,ierr)
-    CHKERRQ(ierr)
     write(option%io_buffer,'("2 norm: ",es11.4)') norm
     call printMsg(option)
     call MatNorm(A,NORM_INFINITY,norm,ierr)
-    CHKERRQ(ierr)
     write(option%io_buffer,'("inf norm: ",es11.4)') norm
     call printMsg(option)
 !    call GridCreateVector(grid,ONEDOF,debug_vec,GLOBAL)
@@ -2995,13 +2921,9 @@ subroutine ImmisMaxChange(realization)
   dsmax=0.D0
 
   call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
-  CHKERRQ(ierr)
   call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
-  CHKERRQ(ierr)
   call VecStrideNorm(field%flow_dxx,ONE_INTEGER,NORM_INFINITY,option%dtmpmax,ierr)
-  CHKERRQ(ierr)
   call VecStrideNorm(field%flow_dxx,TWO_INTEGER,NORM_INFINITY,option%dsmax,ierr)
-  CHKERRQ(ierr)
 
   !print *, 'Max changes=', option%dpmax,option%dtmpmax, option%dcmax,option%dsmax
 end subroutine ImmisMaxChange
@@ -3297,9 +3219,7 @@ subroutine ImmisCheckpointWrite(discretization, viewer)
   PetscErrorCode :: ierr
   
   call VecView(global_var,viewer,ierr)
-  CHKERRQ(ierr)
   call VecDestroy(global_var,ierr)
-  CHKERRQ(ierr)
   
   
 end subroutine ImmisCheckpointWrite
@@ -3323,9 +3243,7 @@ subroutine ImmisCheckpointRead(discretization,viewer)
   PetscErrorCode :: ierr
   
   call VecLoad(global_var, viewer, ierr)
-  CHKERRQ(ierr)
   call VecDestroy(global_var,ierr)
-  CHKERRQ(ierr)
   
 end subroutine ImmisCheckpointRead
 

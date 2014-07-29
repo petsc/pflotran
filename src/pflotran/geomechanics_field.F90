@@ -117,101 +117,78 @@ subroutine GeomechFieldDestroy(geomech_field)
   ! Destroy PetscVecs
   if (geomech_field%work /= 0) then
     call VecDestroy(geomech_field%work,ierr)
-    CHKERRQ(ierr)
   endif
   if (geomech_field%work_loc  /= 0) then
     call VecDestroy(geomech_field%work_loc,ierr)
-    CHKERRQ(ierr)
   endif
 
   if (geomech_field%disp_r /= 0) then
     call VecDestroy(geomech_field%disp_r,ierr)
-    CHKERRQ(ierr)
   endif
   if (geomech_field%disp_xx /= 0) then
     call VecDestroy(geomech_field%disp_xx,ierr)
-    CHKERRQ(ierr)
   endif
   if (geomech_field%disp_xx_loc /= 0) then
     call VecDestroy(geomech_field%disp_xx_loc,ierr)
-    CHKERRQ(ierr)
   endif
   if (geomech_field%disp_xx_init_loc /= 0) then
     call VecDestroy(geomech_field%disp_xx_init_loc,ierr)
-    CHKERRQ(ierr)
   endif
   
   if (geomech_field%press /= 0) then
     call VecDestroy(geomech_field%press,ierr)
-    CHKERRQ(ierr)
   endif
   if (geomech_field%press_loc /= 0) then
     call VecDestroy(geomech_field%press_loc,ierr)
-    CHKERRQ(ierr)
   endif
   if (geomech_field%press_init_loc /= 0) then
     call VecDestroy(geomech_field%press_init_loc,ierr)
-    CHKERRQ(ierr)
   endif
   if (geomech_field%temp /= 0) then
     call VecDestroy(geomech_field%temp,ierr)
-    CHKERRQ(ierr)
   endif
   if (geomech_field%temp_loc /= 0) then
     call VecDestroy(geomech_field%temp_loc,ierr)
-    CHKERRQ(ierr)
   endif
   if (geomech_field%temp_init_loc /= 0) then
     call VecDestroy(geomech_field%temp_init_loc,ierr)
-    CHKERRQ(ierr)
   endif
 
   if (geomech_field%subsurf_vec_1dof /= 0 ) then
     call VecDestroy(geomech_field%subsurf_vec_1dof,ierr)
-    CHKERRQ(ierr)
   endif
   if (geomech_field%imech_loc /= 0) then
     call VecDestroy(geomech_field%imech_loc,ierr)
-    CHKERRQ(ierr)
   endif
 
   if (geomech_field%strain /= 0) then
     call VecDestroy(geomech_field%strain,ierr)
-    CHKERRQ(ierr)
   endif
   if (geomech_field%strain_loc /= 0) then
     call VecDestroy(geomech_field%strain_loc,ierr)
-    CHKERRQ(ierr)
   endif
   if (geomech_field%stress /= 0) then
     call VecDestroy(geomech_field%stress,ierr)
-    CHKERRQ(ierr)
   endif
   if (geomech_field%stress_loc /= 0) then
     call VecDestroy(geomech_field%stress_loc,ierr)
-    CHKERRQ(ierr)
   endif
 
   if (geomech_field%strain_subsurf /= 0) then
     call VecDestroy(geomech_field%strain_subsurf,ierr)
-    CHKERRQ(ierr)
   endif
   if (geomech_field%stress_subsurf /= 0) then
     call VecDestroy(geomech_field%stress_subsurf,ierr)
-    CHKERRQ(ierr)
   endif
   if (geomech_field%strain_subsurf_loc /= 0) then
     call VecDestroy(geomech_field%strain_subsurf_loc,ierr)
-    CHKERRQ(ierr)
   endif
   if (geomech_field%stress_subsurf_loc /= 0) then
     call VecDestroy(geomech_field%stress_subsurf_loc,ierr)
-    CHKERRQ(ierr)
   endif
 
   if (geomech_field%porosity_init_loc /= 0) then
     call VecDestroy(geomech_field%porosity_init_loc,ierr)
-    CHKERRQ(ierr)
   endif
 
 end subroutine GeomechFieldDestroy

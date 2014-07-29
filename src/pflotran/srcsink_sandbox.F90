@@ -213,7 +213,6 @@ subroutine SSSandbox(residual,Jacobian,compute_derivative, &
   
   if (.not.compute_derivative) then
     call VecGetArrayF90(residual,r_p,ierr)
-    CHKERRQ(ierr) 
   endif
   
   cur_srcsink => sandbox_list
@@ -230,7 +229,6 @@ subroutine SSSandbox(residual,Jacobian,compute_derivative, &
         if (compute_derivative) then
           call MatSetValuesBlockedLocal(Jacobian,1,ghosted_id-1,1, &
                                         ghosted_id-1,Jac,ADD_VALUES,ierr)
-          CHKERRQ(ierr)
         else
           iend = local_id*option%nflowdof
           istart = iend - option%nflowdof + 1
@@ -242,7 +240,6 @@ subroutine SSSandbox(residual,Jacobian,compute_derivative, &
   
   if (.not.compute_derivative) then
     call VecRestoreArrayF90(residual,r_p,ierr)
-    CHKERRQ(ierr)
   endif
 
 end subroutine SSSandbox

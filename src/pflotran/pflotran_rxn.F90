@@ -296,7 +296,6 @@ program pflotran_rxn
 
   PETSC_COMM_WORLD = MPI_COMM_WORLD
   call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
-  CHKERRQ(ierr)
 
   input => InputCreate(IN_UNIT, option%input_filename, option)
 
@@ -358,7 +357,6 @@ program pflotran_rxn
   call InputDestroy(input)
   call OptionDestroy(option)
   call PetscFinalize(ierr)
-  CHKERRQ(ierr)
   call MPI_Finalize(ierr)
 
 end program pflotran_rxn

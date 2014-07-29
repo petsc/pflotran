@@ -255,7 +255,6 @@ class(pmc_base_type), target :: this
   
   if (this%stage /= 0) then
     call PetscLogStagePush(this%stage,ierr)
-    CHKERRQ(ierr)
   endif
   this%option%io_buffer = trim(this%name) // ':' // trim(this%pm_list%name)  
   call printVerboseMsg(this%option)
@@ -361,7 +360,6 @@ class(pmc_base_type), target :: this
   
   if (this%stage /= 0) then
     call PetscLogStagePop(ierr)
-    CHKERRQ(ierr)
   endif
   
 end subroutine PMCBaseRunToTime
@@ -526,11 +524,8 @@ recursive subroutine PMCBaseCheckpoint(this,viewer,id,id_stamp)
   ! if the top PMC, 
   if (this%is_master) then
     call PetscLogStagePush(logging%stage(OUTPUT_STAGE),ierr)
-    CHKERRQ(ierr)
     call PetscLogEventBegin(logging%event_checkpoint,ierr)
-    CHKERRQ(ierr)  
     call PetscTime(tstart,ierr)
-    CHKERRQ(ierr)   
     if (present(id_stamp)) then
        call OpenCheckpointFile(viewer,id,this%option,id_stamp)
     else
@@ -538,15 +533,11 @@ recursive subroutine PMCBaseCheckpoint(this,viewer,id,id_stamp)
     endif
     ! create header for storing local information specific to PMc
     call PetscBagCreate(this%option%mycomm,bagsize,bag,ierr)
-    CHKERRQ(ierr)
     call PetscBagGetData(bag,header,ierr)
-    CHKERRQ(ierr)
     call PMCBaseRegisterHeader(this,bag,header)
     call PMCBaseSetHeader(this,bag,header)
     call PetscBagView(bag,viewer,ierr)
-    CHKERRQ(ierr)
     call PetscBagDestroy(bag,ierr)
-    CHKERRQ(ierr)     
   endif
   
   call this%timestepper%Checkpoint(viewer,this%option)
@@ -568,15 +559,12 @@ recursive subroutine PMCBaseCheckpoint(this,viewer,id,id_stamp)
   if (this%is_master) then
     call CloseCheckpointFile(viewer)
     call PetscTime(tend,ierr)
-    CHKERRQ(ierr)
     write(this%option%io_buffer, &
           '("      Seconds to write to checkpoint file: ", f10.2)') &
       tend-tstart
     call printMsg(this%option)
     call PetscLogEventEnd(logging%event_checkpoint,ierr)
-    CHKERRQ(ierr)  
     call PetscLogStagePop(ierr)
-    CHKERRQ(ierr)   
   endif
     
 end subroutine PMCBaseCheckpoint
@@ -607,10 +595,8 @@ subroutine PMCBaseRegisterHeader(this,bag,header)
   ! bagsize = 2 * 8 bytes = 16 bytes
   call PetscBagRegisterInt(bag,header%plot_number,0, &
                            "plot number","",ierr)
-  CHKERRQ(ierr)
   call PetscBagRegisterInt(bag,header%times_per_h5_file,0, &
                            "times_per_h5_file","",ierr)
-  CHKERRQ(ierr)
 
 end subroutine PMCBaseRegisterHeader
 
@@ -675,28 +661,20 @@ recursive subroutine PMCBaseRestart(this,viewer)
   ! if the top PMC, 
   if (this%is_master) then
     call PetscLogEventBegin(logging%event_restart,ierr)
-    CHKERRQ(ierr)  
     call PetscTime(tstart,ierr)
-    CHKERRQ(ierr)   
     call PetscViewerBinaryOpen(this%option%mycomm, &
                                this%option%restart_filename, &
                                FILE_MODE_READ,viewer,ierr)
-    CHKERRQ(ierr)
     ! skip reading info file when loading, but not working
     call PetscViewerBinarySetSkipOptions(viewer,PETSC_TRUE,ierr)
-    CHKERRQ(ierr)
 
     ! read pmc header
     call PetscBagCreate(this%option%mycomm,bagsize,bag,ierr)
-    CHKERRQ(ierr)
     call PetscBagGetData(bag,header,ierr)
-    CHKERRQ(ierr)
     call PMCBaseRegisterHeader(this,bag,header)
     call PetscBagLoad(viewer,bag,ierr)
-    CHKERRQ(ierr)
     call PMCBaseGetHeader(this,header)
     call PetscBagDestroy(bag,ierr)
-    CHKERRQ(ierr)  
   endif
   
   call this%timestepper%Restart(viewer,this%option)
@@ -735,15 +713,12 @@ recursive subroutine PMCBaseRestart(this,viewer)
   
   if (this%is_master) then
     call PetscViewerDestroy(viewer,ierr)
-    CHKERRQ(ierr)
     call PetscTime(tend,ierr)
-    CHKERRQ(ierr)
     write(this%option%io_buffer, &
           '("      Seconds to read from restart file: ", f10.2)') &
       tend-tstart
     call printMsg(this%option)
     call PetscLogEventEnd(logging%event_restart,ierr)
-    CHKERRQ(ierr)  
   endif
     
 end subroutine PMCBaseRestart

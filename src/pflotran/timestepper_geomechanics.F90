@@ -137,14 +137,10 @@ subroutine TimestepperGeomechanicsStepDT(this, process_model, stop_flag)
 
   call SNESSolve(solver%snes, PETSC_NULL_OBJECT, &
                  process_model%solution_vec, ierr)
-  CHKERRQ(ierr)
      
   call SNESGetIterationNumber(solver%snes, num_newton_iterations, ierr)
-  CHKERRQ(ierr)
   call SNESGetLinearSolveIterations(solver%snes, num_linear_iterations, ierr)
-  CHKERRQ(ierr)
   call SNESGetConvergedReason(solver%snes, snes_reason, ierr)
-  CHKERRQ(ierr)
 
   if (snes_reason <= 0) then
     if (option%print_screen_flag) then
@@ -171,9 +167,7 @@ subroutine TimestepperGeomechanicsStepDT(this, process_model, stop_flag)
 
   ! print screen output
   call SNESGetFunctionNorm(solver%snes,fnorm,ierr)
-  CHKERRQ(ierr)
   call VecNorm(process_model%residual_vec,NORM_INFINITY,inorm,ierr)
-  CHKERRQ(ierr)
   if (option%print_screen_flag) then
     select type(pm => process_model)
       class is(pm_geomech_force_type)

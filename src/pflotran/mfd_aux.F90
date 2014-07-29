@@ -279,102 +279,79 @@ subroutine MFDAuxDestroy(aux)
   
   if (aux%is_ghosted_local_faces /= 0) then
          call ISDestroy(aux%is_ghosted_local_faces, ierr)
-         CHKERRQ(ierr)
        endif
   if (aux%is_local_local_faces /= 0) then
            call ISDestroy(aux%is_local_local_faces, ierr)
-           CHKERRQ(ierr)
          endif
   if (aux%is_ghosted_petsc_faces /= 0) then
            call ISDestroy(aux%is_ghosted_petsc_faces, ierr)
-           CHKERRQ(ierr)
          endif
   if (aux%is_local_petsc_faces /= 0) then
            call ISDestroy(aux%is_local_petsc_faces, ierr)
-           CHKERRQ(ierr)
          endif
   if (aux%is_ghosts_local_faces /= 0) then
            call ISDestroy(aux%is_ghosts_local_faces, ierr)
-           CHKERRQ(ierr)
          endif
   if (aux%is_ghosts_petsc_faces /= 0) then
            call ISDestroy(aux%is_ghosts_petsc_faces, ierr)
-           CHKERRQ(ierr)
          endif
 
   if (aux%is_ghosted_local_LP /= 0) then
                  call ISDestroy(aux%is_ghosted_local_LP, ierr)
-                 CHKERRQ(ierr)
                endif
   if (aux%is_local_local_LP /= 0)  then
                  call ISDestroy(aux%is_local_local_LP, ierr)
-                 CHKERRQ(ierr)
                endif
   if (aux%is_ghosted_petsc_LP /= 0) then 
                  call ISDestroy(aux%is_ghosted_petsc_LP, ierr)
-                 CHKERRQ(ierr)
                endif
   if (aux%is_local_petsc_LP /= 0)  then
                  call ISDestroy(aux%is_local_petsc_LP, ierr)
-                 CHKERRQ(ierr) 
                endif
   if (aux%is_ghosts_local_LP /= 0)  then
                  call ISDestroy(aux%is_ghosts_local_LP, ierr)
-                 CHKERRQ(ierr)
                endif
 
   if (aux%is_ghosts_petsc_LP /= 0)  then
                  call ISDestroy(aux%is_ghosts_petsc_LP, ierr)
-                 CHKERRQ(ierr)
                endif
 
   if (aux%scatter_ltog_faces /= 0) then
                  call VecScatterDestroy(aux%scatter_ltog_faces, ierr)
-                 CHKERRQ(ierr)
                endif
   if (aux%scatter_gtol_faces /= 0) then
                  call VecScatterDestroy(aux%scatter_gtol_faces, ierr)
-                 CHKERRQ(ierr)
                endif
   if (aux%scatter_ltol_faces /= 0) then
                  call VecScatterDestroy(aux%scatter_ltol_faces, ierr)
-                 CHKERRQ(ierr)
                endif
   if (aux%scatter_gtogh_faces /= 0) then
                  call VecScatterDestroy(aux%scatter_gtogh_faces, ierr)
-                 CHKERRQ(ierr)
                endif
   if (aux%scatter_gtol_LP /= 0) then
                  call VecScatterDestroy(aux%scatter_gtol_LP, ierr)
-                 CHKERRQ(ierr)
                endif
   if (aux%scatter_ltog_LP /= 0) then
                  call VecScatterDestroy(aux%scatter_ltog_LP, ierr)
-                 CHKERRQ(ierr)
                endif
   if (aux%scatter_ltol_LP /= 0) then
                  call VecScatterDestroy(aux%scatter_ltol_LP, ierr)
-                 CHKERRQ(ierr)
                endif
 
   if (aux%mapping_ltog_faces /= 0) then
                  call ISLocalToGlobalMappingDestroy(aux%mapping_ltog_faces, ierr)
-                 CHKERRQ(ierr) 
                endif
   
   if (aux%mapping_ltogb_faces /= 0) then
                  call ISLocalToGlobalMappingDestroy(aux%mapping_ltogb_faces , ierr)
-                 CHKERRQ(ierr) 
                endif
   
   if (aux%mapping_ltog_LP /= 0) then
                  call ISLocalToGlobalMappingDestroy(aux%mapping_ltog_LP, ierr)
-                 CHKERRQ(ierr) 
                endif
   
   if (aux%mapping_ltogb_LP /= 0) then
                  call ISLocalToGlobalMappingDestroy(aux%mapping_ltogb_LP , ierr)
-                 CHKERRQ(ierr) 
                endif
   
     

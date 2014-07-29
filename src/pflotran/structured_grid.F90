@@ -232,7 +232,6 @@ subroutine StructGridCreateDM(structured_grid,da,ndof,stencil_width, &
                     structured_grid%npz,ndof,stencil_width, &
                     PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                     da,ierr)
-  CHKERRQ(ierr)
   call DMDAGetInfo(da,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                    PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                    structured_grid%npx_final,structured_grid%npy_final, &
@@ -240,7 +239,6 @@ subroutine StructGridCreateDM(structured_grid,da,ndof,stencil_width, &
                    PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                    PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                    PETSC_NULL_INTEGER,ierr)
-  CHKERRQ(ierr)
 
 end subroutine StructGridCreateDM
 
@@ -274,7 +272,6 @@ subroutine StructGridComputeLocalBounds(structured_grid,da,option)
   call DMDAGetCorners(da, structured_grid%lxs, &
       structured_grid%lys, structured_grid%lzs, structured_grid%nlx, &
       structured_grid%nly, structured_grid%nlz, ierr)
-  CHKERRQ(ierr)
      
   structured_grid%lxe = structured_grid%lxs + structured_grid%nlx
   structured_grid%lye = structured_grid%lys + structured_grid%nly
@@ -288,7 +285,6 @@ subroutine StructGridComputeLocalBounds(structured_grid,da,option)
   call DMDAGetGhostCorners(da, structured_grid%gxs, &
       structured_grid%gys, structured_grid%gzs, structured_grid%ngx, &
       structured_grid%ngy, structured_grid%ngz, ierr)
-  CHKERRQ(ierr)
      
   structured_grid%gxe = structured_grid%gxs + structured_grid%ngx
   structured_grid%gye = structured_grid%gys + structured_grid%ngy
@@ -325,13 +321,10 @@ subroutine StructGridCreateVecFromDM(da,vector,vector_type)
   select case (vector_type)
     case(GLOBAL)
       call DMCreateGlobalVector(da,vector,ierr)
-      CHKERRQ(ierr)
     case(LOCAL)
       call DMCreateLocalVector(da,vector,ierr)
-      CHKERRQ(ierr)
     case(NATURAL)
       call DMDACreateNaturalVector(da,vector,ierr)
-      CHKERRQ(ierr)
   end select
 
 end subroutine StructGridCreateVecFromDM
@@ -1751,7 +1744,6 @@ subroutine StructGridComputeVolumes(radius,structured_grid,option,nL2G,volume)
   PetscErrorCode :: ierr
   
   call VecGetArrayF90(volume,volume_p, ierr)
-  CHKERRQ(ierr)
   
   select case(structured_grid%itype)
     case(CARTESIAN_GRID)
@@ -1780,7 +1772,6 @@ subroutine StructGridComputeVolumes(radius,structured_grid,option,nL2G,volume)
   end select
   
   call VecRestoreArrayF90(volume,volume_p, ierr)
-  CHKERRQ(ierr)
   
   if (OptionPrintToScreen(option) .and. &
       option%mycommsize > 1 .and. option%mycommsize <= 16) then
@@ -2231,9 +2222,7 @@ subroutine StructGridCreateTVDGhosts(structured_grid,ndof,global_vec, &
   endif
   
   call VecCreateSeq(PETSC_COMM_SELF,vector_size*ndof,ghost_vec,ierr)
-  CHKERRQ(ierr)
   call VecSetBlockSize(ghost_vec,ndof,ierr)
-  CHKERRQ(ierr)
   
   ! Create an IS composed of the petsc indexing of the ghost cells
   allocate(global_indices_from(vector_size))
@@ -2252,12 +2241,10 @@ subroutine StructGridCreateTVDGhosts(structured_grid,ndof,global_vec, &
     global_indices_of_local_ghosted(i) = i-1
   enddo
   call DMGetLocalToGlobalMapping(dm_1dof,mapping_ltog,ierr)
-  CHKERRQ(ierr)
   ! in and out integer arrays can be the same
   call ISLocalToGlobalMappingApply(mapping_ltog,structured_grid%ngmax, &
                                    global_indices_of_local_ghosted, &
                                    global_indices_of_local_ghosted,ierr)
-  CHKERRQ(ierr)
   ! leave global_indices_of_local_ghosted() in zero-based for the below
   
   ! Need to make a list of all indices that will receive updates through
@@ -2359,46 +2346,34 @@ subroutine StructGridCreateTVDGhosts(structured_grid,ndof,global_vec, &
   ! since global_indices_from was base-zero, global_indices_from is base-zero.
   call ISCreateBlock(option%mycomm,ndof,vector_size, &
                       global_indices_from,PETSC_COPY_VALUES,is_petsc,ierr)
-  CHKERRQ(ierr)
   deallocate(global_indices_from)
 
 #if TVD_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'is_petsc_tvd.out', &
                             viewer,ierr)
-  CHKERRQ(ierr)
   call ISView(is_petsc,viewer,ierr)
-  CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr)
-  CHKERRQ(ierr)
 #endif
 
   ! already zero-based
   call ISCreateBlock(option%mycomm,ndof,vector_size, &
                       tvd_ghost_indices_to,PETSC_COPY_VALUES,is_ghost,ierr)
-  CHKERRQ(ierr)
   deallocate(tvd_ghost_indices_to)
 
 #if TVD_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'is_ghost_tvd.out', &
                             viewer,ierr)
-  CHKERRQ(ierr)
   call ISView(is_ghost,viewer,ierr)
-  CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr)
-  CHKERRQ(ierr)
 #endif
 
   call VecScatterCreate(global_vec,is_petsc,ghost_vec,is_ghost, &
                         scatter_ctx,ierr)
-  CHKERRQ(ierr)
 
 #if TVD_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'tvd_ghost_scatter.out',viewer,ierr)
-  CHKERRQ(ierr)
   call VecScatterView(scatter_ctx,viewer,ierr)
-  CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr)
-  CHKERRQ(ierr)
 #endif
 
 end subroutine StructGridCreateTVDGhosts  
@@ -2579,7 +2554,6 @@ subroutine StructGridComputeNeighbors(structured_grid,nG2L,is_bnd_vec,option)
   structured_grid%cell_neighbors = 0
 
   call VecGetArrayF90(is_bnd_vec,vec_ptr,ierr)
-  CHKERRQ(ierr)
   do ghosted_id = 1,structured_grid%ngmax
     local_id=nG2L(ghosted_id)
     call StructGridGetGhostedNeighborsCorners(structured_grid,ghosted_id, &
@@ -2601,7 +2575,6 @@ subroutine StructGridComputeNeighbors(structured_grid,nG2L,is_bnd_vec,option)
     endif
   enddo
   call VecRestoreArrayF90(is_bnd_vec,vec_ptr,ierr)
-  CHKERRQ(ierr)
   
 end subroutine StructGridComputeNeighbors
 

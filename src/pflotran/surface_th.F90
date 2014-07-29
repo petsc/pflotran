@@ -270,11 +270,8 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   patch%surf_aux%SurfaceTH%auxvars_up_to_date = PETSC_FALSE
 
   call VecGetArrayF90(ff,ff_p, ierr)
-  CHKERRQ(ierr)
   call VecGetArrayF90(surf_field%mannings_loc,mannings_loc_p, ierr)
-  CHKERRQ(ierr)
   call VecGetArrayF90(surf_field%area,area_p,ierr)
-  CHKERRQ(ierr)
 
   ff_p = 0.d0
   Res  = 0.d0
@@ -437,30 +434,21 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   enddo
 
   call VecRestoreArrayF90(ff,ff_p, ierr)
-  CHKERRQ(ierr)
   call VecRestoreArrayF90(surf_field%mannings_loc,mannings_loc_p,ierr)
-  CHKERRQ(ierr)
   call VecRestoreArrayF90(surf_field%area,area_p,ierr)
-  CHKERRQ(ierr)
 
   if (surf_realization%debug%vecview_solution) then
     string = 'Surf_xx_' // trim(adjustl(string2)) // '.bin'
     call PetscViewerBinaryOpen(surf_realization%option%mycomm,string, &
                               FILE_MODE_WRITE,viewer,ierr)
-    CHKERRQ(ierr)
     call VecView(xx,viewer,ierr)
-    CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr)
-    CHKERRQ(ierr)
 
     string = 'Surf_ff_' // trim(adjustl(string2)) // '.bin'
     call PetscViewerBinaryOpen(surf_realization%option%mycomm,string, &
                               FILE_MODE_WRITE,viewer,ierr)
-    CHKERRQ(ierr)
     call VecView(ff,viewer,ierr)
-    CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr)
-    CHKERRQ(ierr)
   endif
 
 end subroutine SurfaceTHRHSFunction
@@ -531,9 +519,7 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
   surf_global_auxvars_bc => patch%surf_aux%SurfaceGlobal%auxvars_bc
 
   call VecGetArrayF90(surf_field%mannings_loc,mannings_loc_p, ierr)
-  CHKERRQ(ierr)
   call VecGetArrayF90(surf_field%area,area_p,ierr)
-  CHKERRQ(ierr)
 
   Res  = 0.d0
   max_allowable_dt = 1.d10
@@ -625,9 +611,7 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
   enddo
   
   call VecRestoreArrayF90(surf_field%mannings_loc,mannings_loc_p,ierr)
-  CHKERRQ(ierr)
   call VecRestoreArrayF90(surf_field%area,area_p,ierr)
-  CHKERRQ(ierr)
   
 end subroutine SurfaceTHComputeMaxDt
 
@@ -973,7 +957,6 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
   surf_global_auxvars_ss => patch%surf_aux%SurfaceGlobal%auxvars_ss
   
   call VecGetArrayF90(surf_field%flow_xx_loc,xx_loc_p, ierr)
-  CHKERRQ(ierr)
 
   ! Internal aux vars
   do ghosted_id = 1, grid%ngmax
@@ -1076,7 +1059,6 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
   patch%surf_aux%SurfaceTH%auxvars_up_to_date = PETSC_TRUE
 
   call VecRestoreArrayF90(surf_field%flow_xx_loc,xx_loc_p, ierr)
-  CHKERRQ(ierr)
 
 end subroutine SurfaceTHUpdateAuxVars
 
@@ -1148,7 +1130,6 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
   niter = 20
 
   call VecGetArrayF90(surf_field%flow_xx_loc,xx_loc_p,ierr)
-  CHKERRQ(ierr)
 
   ! Update internal aux vars
   do ghosted_id = 1,grid%ngmax
@@ -1217,7 +1198,6 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
   enddo
 
   call VecRestoreArrayF90(surf_field%flow_xx_loc,xx_loc_p,ierr)
-  CHKERRQ(ierr)
 
 end subroutine SurfaceTHUpdateTemperature
 
@@ -1292,11 +1272,8 @@ subroutine SurfaceTHUpdateSurfState(surf_realization)
   surf_auxvars => patch%surf_aux%SurfaceTH%auxvars
 
   call VecGetArrayF90(surf_field%flow_xx, xx_p, ierr)
-  CHKERRQ(ierr)
   call VecGetArrayF90(surf_field%press_subsurf, surfpress_p, ierr)
-  CHKERRQ(ierr)
   call VecGetArrayF90(surf_field%temp_subsurf, surftemp_p, ierr)
-  CHKERRQ(ierr)
 
   count = 0
   do ghosted_id = 1,surf_grid%ngmax
@@ -1323,11 +1300,8 @@ subroutine SurfaceTHUpdateSurfState(surf_realization)
 
   enddo
   call VecRestoreArrayF90(surf_field%flow_xx, xx_p, ierr)
-  CHKERRQ(ierr)
   call VecRestoreArrayF90(surf_field%press_subsurf, surfpress_p, ierr)
-  CHKERRQ(ierr)
   call VecRestoreArrayF90(surf_field%temp_subsurf, surftemp_p, ierr)
-  CHKERRQ(ierr)
 
   call DiscretizationGlobalToLocal(surf_realization%discretization, &
                                    surf_field%flow_xx, &
@@ -1409,7 +1383,6 @@ subroutine SurfaceTHImplicitAtmForcing(surf_realization)
   niter = 20
 
   call VecGetArrayF90(surf_field%flow_xx,xx_p,ierr)
-  CHKERRQ(ierr)
 
   ! Update source/sink aux vars
   source_sink => patch%source_sinks%first
@@ -1468,7 +1441,6 @@ subroutine SurfaceTHImplicitAtmForcing(surf_realization)
   enddo
 
   call VecRestoreArrayF90(surf_field%flow_xx,xx_p,ierr)
-  CHKERRQ(ierr)
 
 end subroutine SurfaceTHImplicitAtmForcing
 
@@ -1494,7 +1466,6 @@ subroutine SurfaceTHUpdateSolution(surf_realization)
 
   surf_field => surf_realization%surf_field
   call VecCopy(surf_field%flow_xx,surf_field%flow_yy,ierr)
-  CHKERRQ(ierr)
 
 end subroutine SurfaceTHUpdateSolution
 

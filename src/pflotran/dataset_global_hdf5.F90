@@ -207,22 +207,17 @@ subroutine DatasetGlobalHDF5ReadData(this,option,data_type)
   PetscViewer :: viewer
   
   call PetscLogEventBegin(logging%event_read_array_hdf5,ierr)
-  CHKERRQ(ierr)
 
   if (this%dm_wrapper%dm /= 0) then
     call DMCreateGlobalVector(this%dm_wrapper%dm,global_vec,ierr)
-    CHKERRQ(ierr)
     call DMDACreateNaturalVector(this%dm_wrapper%dm,natural_vec,ierr)
-    CHKERRQ(ierr)
   else
     option%io_buffer = 'ugdm not yet supported in DatasetGlobalHDF5ReadData()'
     call printErrMsg(option)
   endif
   
   call VecZeroEntries(natural_vec,ierr)
-  CHKERRQ(ierr)
   call VecZeroEntries(global_vec,ierr)
-  CHKERRQ(ierr)
 
   ! open the file
   call h5open_f(hdf5_err)
@@ -332,19 +327,15 @@ subroutine DatasetGlobalHDF5ReadData(this,option,data_type)
   
   if (data_type == H5T_NATIVE_DOUBLE) then
     call PetscLogEventBegin(logging%event_h5dread_f,ierr)
-    CHKERRQ(ierr)                              
     call h5dread_f(data_set_id,H5T_NATIVE_DOUBLE,this%rbuffer,dims, &
                    hdf5_err,memory_space_id,file_space_id,prop_id)
     call PetscLogEventEnd(logging%event_h5dread_f,ierr)
-    CHKERRQ(ierr)                              
   else if (data_type == H5T_NATIVE_INTEGER) then
     allocate(integer_buffer_i4(size(this%rbuffer)))
     call PetscLogEventBegin(logging%event_h5dread_f,ierr)
-    CHKERRQ(ierr)                              
     call h5dread_f(data_set_id,H5T_NATIVE_INTEGER,integer_buffer_i4,dims, &
                    hdf5_err,memory_space_id,file_space_id,prop_id)
     call PetscLogEventEnd(logging%event_h5dread_f,ierr)
-    CHKERRQ(ierr)                              
     do i = 1, min(buffer_size, &
                   this%local_size*(file_rank2_size-this%buffer_slice_offset))
       this%rbuffer(i) = real(integer_buffer_i4(i))
@@ -367,10 +358,8 @@ subroutine DatasetGlobalHDF5ReadData(this,option,data_type)
   istart = 0
   do i = 1, min(buffer_rank2_size,file_rank2_size-this%buffer_slice_offset)
     call VecGetArrayF90(natural_vec,vec_ptr,ierr)
-    CHKERRQ(ierr)
     vec_ptr(:) = this%rbuffer(istart+1:istart+this%local_size)
     call VecRestoreArrayF90(natural_vec,vec_ptr,ierr)
-    CHKERRQ(ierr)
 
     !geh: for debugging purposes
     !write(string,*) i
@@ -382,15 +371,11 @@ subroutine DatasetGlobalHDF5ReadData(this,option,data_type)
 
     call DMDANaturalToGlobalBegin(this%dm_wrapper%dm,natural_vec, &
                                   INSERT_VALUES,global_vec,ierr)
-    CHKERRQ(ierr)
     call DMDANaturalToGlobalEnd(this%dm_wrapper%dm,natural_vec, &
                                 INSERT_VALUES,global_vec,ierr)
-    CHKERRQ(ierr)
     call VecGetArrayF90(global_vec,vec_ptr,ierr)
-    CHKERRQ(ierr)
     this%rbuffer(istart+1:istart+this%local_size) = vec_ptr(:)
     call VecRestoreArrayF90(global_vec,vec_ptr,ierr)
-    CHKERRQ(ierr)
 
     !geh: for debugging purposes
     !write(string,*) i
@@ -404,12 +389,9 @@ subroutine DatasetGlobalHDF5ReadData(this,option,data_type)
   enddo
 
   call VecDestroy(natural_vec,ierr)
-  CHKERRQ(ierr)
   call VecDestroy(global_vec,ierr)
-  CHKERRQ(ierr)
   
   call PetscLogEventEnd(logging%event_read_array_hdf5,ierr)
-  CHKERRQ(ierr)
 ! End of Default HDF5 Mechanism
 
 end subroutine DatasetGlobalHDF5ReadData

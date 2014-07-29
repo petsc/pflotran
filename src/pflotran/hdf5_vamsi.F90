@@ -96,7 +96,6 @@ subroutine HDF5MapLocToNatIndicesVamsi(grid,option,file_id, &
   PetscInt :: indices_array_size
 
   call PetscLogEventBegin(logging%event_map_indices_hdf5,ierr)
-  CHKERRQ(ierr)
 
   dims = 0
   cell_count = 0
@@ -156,11 +155,9 @@ subroutine HDF5MapLocToNatIndicesVamsi(grid,option,file_id, &
        call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset,length, &
                                   hdf5_err,stride,stride) 
        call PetscLogEventBegin(logging%event_h5dread_f,ierr)
-       CHKERRQ(ierr)
        call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,cell_ids_i4,dims,hdf5_err, &
                       memory_space_id,file_space_id,prop_id)                     
        call PetscLogEventEnd(logging%event_h5dread_f,ierr)
-       CHKERRQ(ierr)
     endif
     if (option%mycommsize > 1) then
       int_mpi = dims(1)
@@ -170,7 +167,6 @@ subroutine HDF5MapLocToNatIndicesVamsi(grid,option,file_id, &
     endif
   
     call PetscLogEventBegin(logging%event_hash_map,ierr)
-    CHKERRQ(ierr)
 
     do i=1,dims(1)
       cell_count = cell_count + 1
@@ -198,7 +194,6 @@ subroutine HDF5MapLocToNatIndicesVamsi(grid,option,file_id, &
   enddo
 
   call PetscLogEventEnd(logging%event_hash_map,ierr)
-  CHKERRQ(ierr)
 
   deallocate(cell_ids_i4)
   if (mod(option%myrank,option%hdf5_read_group_size) == 0) then
@@ -229,7 +224,6 @@ subroutine HDF5MapLocToNatIndicesVamsi(grid,option,file_id, &
   if (num_indices <= 0) num_indices = index_count
 
   call PetscLogEventEnd(logging%event_map_indices_hdf5,ierr)
-  CHKERRQ(ierr)
 ! End of Vamsi's HDF5 Mechanism  
 
 end subroutine HDF5MapLocToNatIndicesVamsi
@@ -280,7 +274,6 @@ subroutine HDF5ReadIntegerArrayVamsi(option,file_id,dataset_name, &
   PetscInt :: read_block_size
 
   call PetscLogEventBegin(logging%event_read_int_array_hdf5,ierr)
-  CHKERRQ(ierr)
 
   read_block_size = HDF5_READ_BUFFER_SIZE
   allocate(integer_buffer_i4(read_block_size))
@@ -329,11 +322,9 @@ subroutine HDF5ReadIntegerArrayVamsi(option,file_id,dataset_name, &
            call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
                                       length,hdf5_err,stride,stride) 
            call PetscLogEventBegin(logging%event_h5dread_f,ierr)
-           CHKERRQ(ierr)                              
            call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer_i4,dims, &
                           hdf5_err,memory_space_id,file_space_id,prop_id)   
            call PetscLogEventEnd(logging%event_h5dread_f,ierr)
-           CHKERRQ(ierr)                              
         endif  
         if (option%mycommsize > 1) then
           int_mpi = dims(1)
@@ -364,11 +355,9 @@ subroutine HDF5ReadIntegerArrayVamsi(option,file_id,dataset_name, &
        call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
                                   length,hdf5_err,stride,stride) 
        call PetscLogEventBegin(logging%event_h5dread_f,ierr)
-       CHKERRQ(ierr)                              
        call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer_i4,dims, &
                       hdf5_err,memory_space_id,file_space_id,prop_id)   
        call PetscLogEventEnd(logging%event_h5dread_f,ierr)
-       CHKERRQ(ierr)                              
     endif 
     if (option%mycommsize > 1) then 
       int_mpi = dims(1)
@@ -387,7 +376,6 @@ subroutine HDF5ReadIntegerArrayVamsi(option,file_id,dataset_name, &
   endif
 
   call PetscLogEventEnd(logging%event_read_int_array_hdf5,ierr)
-  CHKERRQ(ierr)
 ! End of Vamsi's HDF5 Mechanism  
                           
 end subroutine HDF5ReadIntegerArrayVamsi
@@ -447,7 +435,6 @@ subroutine HDF5WriteStructuredDataSetVamsi(name,array,file_id,data_type,option, 
   PetscReal, pointer :: group_double_array(:)
 
   call PetscLogEventBegin(logging%event_write_struct_dataset_hdf5,ierr)
-  CHKERRQ(ierr)
 #define INVERT  
 
   group_size = option%write_grp_size                      
@@ -637,18 +624,14 @@ subroutine HDF5WriteStructuredDataSetVamsi(name,array,file_id,data_type,option, 
         if (num_to_write_mpi > 0) then
            if (data_type == HDF_NATIVE_INTEGER) then
               call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
-              CHKERRQ(ierr)                              
               call h5dwrite_f(data_set_id,data_type,group_int_array_i4(disp_mpi(i)+1),mem_dims, &
                               hdf5_err,memory_space_id,file_space_id,prop_id)
               call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
-              CHKERRQ(ierr)                              
            else
               call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
-              CHKERRQ(ierr)         
               call h5dwrite_f(data_set_id,data_type,group_double_array(disp_mpi(i)+1),mem_dims, &
                               hdf5_err,memory_space_id,file_space_id,prop_id)  
               call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
-              CHKERRQ(ierr)   
            endif
         endif
         ! if (option%myrank == 0) write (*,'("  Finished h5dwrite_f - ",i4)') i   
@@ -675,7 +658,6 @@ subroutine HDF5WriteStructuredDataSetVamsi(name,array,file_id,data_type,option, 
   endif
 
   call PetscLogEventEnd(logging%event_write_struct_dataset_hdf5,ierr)
-  CHKERRQ(ierr)
                          
 end subroutine HDF5WriteStructuredDataSetVamsi
 
@@ -725,7 +707,6 @@ subroutine HDF5ReadIndicesVamsi(grid,option,file_id,dataset_name,dataset_size, &
   PetscInt :: group_size 
   
   call PetscLogEventBegin(logging%event_read_indices_hdf5,ierr)
-  CHKERRQ(ierr)
 
   istart = 0  ! this will be zero-based
   iend = 0
@@ -814,11 +795,9 @@ subroutine HDF5ReadIndicesVamsi(grid,option,file_id,dataset_name,dataset_size, &
         call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,offset, &
                                     group_length(1),hdf5_err,stride,stride)
         call PetscLogEventBegin(logging%event_h5dread_f,ierr)
-        CHKERRQ(ierr)                              
         call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,group_indices_i4(1:group_length(1)), &
                        dims,hdf5_err,memory_space_id,file_space_id,prop_id)
         call PetscLogEventEnd(logging%event_h5dread_f,ierr)
-        CHKERRQ(ierr)                              
     endif
   endif
 
@@ -842,7 +821,6 @@ subroutine HDF5ReadIndicesVamsi(grid,option,file_id,dataset_name,dataset_size, &
   endif
 
   call PetscLogEventEnd(logging%event_read_indices_hdf5,ierr)
-  CHKERRQ(ierr)
 ! End of Vamsi's HDF5 Mechansim  
   
 end subroutine HDF5ReadIndicesVamsi
@@ -905,7 +883,6 @@ subroutine HDF5ReadArrayVamsi(discretization,grid,option,file_id,dataset_name, &
   PetscInt :: group_size
 
   call PetscLogEventBegin(logging%event_read_array_hdf5,ierr)
-  CHKERRQ(ierr)
                           
   istart = 0
   iend = 0
@@ -975,20 +952,16 @@ subroutine HDF5ReadArrayVamsi(discretization,grid,option,file_id,dataset_name, &
            allocate(real_group_buffer(group_length(1)))
 
            call PetscLogEventBegin(logging%event_h5dread_f,ierr)
-           CHKERRQ(ierr)                              
            call h5dread_f(data_set_id,H5T_NATIVE_DOUBLE,real_group_buffer,dims, &
                            hdf5_err,memory_space_id,file_space_id,prop_id)
            call PetscLogEventEnd(logging%event_h5dread_f,ierr)
-           CHKERRQ(ierr)                              
         else if (data_type == HDF_NATIVE_INTEGER) then
            allocate(integer_group_buffer_i4(group_length(1)))
 
            call PetscLogEventBegin(logging%event_h5dread_f,ierr)
-           CHKERRQ(ierr)                              
            call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_group_buffer_i4,dims, &
                           hdf5_err,memory_space_id,file_space_id,prop_id)
            call PetscLogEventEnd(logging%event_h5dread_f,ierr)
-           CHKERRQ(ierr)                              
         endif
      endif
 
@@ -1031,10 +1004,8 @@ subroutine HDF5ReadArrayVamsi(discretization,grid,option,file_id,dataset_name, &
    call DiscretizationCreateVector(discretization,ONEDOF, &
                                   natural_vec,NATURAL,option)
    call VecZeroEntries(natural_vec,ierr)
-   CHKERRQ(ierr)
    call VecSetValues(natural_vec,iend-istart,indices0, &
                      real_buffer,INSERT_VALUES,ierr)
-   CHKERRQ(ierr) 
    deallocate(indices0)
    deallocate(real_buffer)
 
@@ -1048,16 +1019,12 @@ subroutine HDF5ReadArrayVamsi(discretization,grid,option,file_id,dataset_name, &
   endif
 
   call VecAssemblyBegin(natural_vec,ierr)
-  CHKERRQ(ierr)
   call VecAssemblyEnd(natural_vec,ierr)
-  CHKERRQ(ierr)
   call DiscretizationNaturalToGlobal(discretization,natural_vec,global_vec, &
                                      ONEDOF)
   call VecDestroy(natural_vec,ierr)
-  CHKERRQ(ierr)
   
   call PetscLogEventEnd(logging%event_read_array_hdf5,ierr)
-  CHKERRQ(ierr)
 ! End of Vamsi's HDF5 Mechanism  
                             
 end subroutine HDF5ReadArrayVamsi
@@ -1122,7 +1089,6 @@ subroutine HDF5ReadRegionFromFileVamsi(realization,region,filename)
   grid => patch%grid
 
   call PetscLogEventBegin(logging%event_region_read_hdf5,ierr)
-  CHKERRQ(ierr)
                           
   ! create hash table for fast lookup
   call GridCreateNaturalToGhostedHash(grid,option)
@@ -1159,12 +1125,10 @@ subroutine HDF5ReadRegionFromFileVamsi(realization,region,filename)
 
   ! convert cell ids from natural to local
   call PetscLogEventBegin(logging%event_hash_map,ierr)
-  CHKERRQ(ierr)
   do i=1,num_indices
     integer_array(i) = grid%nG2L(GridGetLocalGhostedIdFromHash(grid,integer_array(i))) 
   enddo
   call PetscLogEventEnd(logging%event_hash_map,ierr)
-  CHKERRQ(ierr)
   region%cell_ids => integer_array
                             
   allocate(integer_array(num_indices))
@@ -1236,12 +1200,10 @@ subroutine HDF5ReadRegionFromFileVamsi(realization,region,filename)
 
   ! convert cell ids from natural to local
   call PetscLogEventBegin(logging%event_hash_map,ierr)
-  CHKERRQ(ierr)
   do i=1,num_indices
     integer_array(i) = grid%nG2L(GridGetLocalGhostedIdFromHash(grid,integer_array(i))) 
   enddo
   call PetscLogEventEnd(logging%event_hash_map,ierr)
-  CHKERRQ(ierr)
   region%cell_ids => integer_array
                             
   allocate(integer_array(num_indices))
@@ -1276,7 +1238,6 @@ subroutine HDF5ReadRegionFromFileVamsi(realization,region,filename)
 #endif !PETSC_HAVE_HDF5
 
   call PetscLogEventEnd(logging%event_region_read_hdf5,ierr)
-  CHKERRQ(ierr)
 
 end subroutine HDF5ReadRegionFromFileVamsi
 
@@ -1352,7 +1313,6 @@ subroutine HDF5ReadCellIndxIntArrayVamsi(realization,global_vec,filename, &
   field => realization%field
 
   call PetscLogEventBegin(logging%event_cell_indx_int_read_hdf5,ierr)
-  CHKERRQ(ierr)
   
  ! initialize fortran hdf5 interface
   call h5open_f(hdf5_err)
@@ -1381,7 +1341,6 @@ subroutine HDF5ReadCellIndxIntArrayVamsi(realization,global_vec,filename, &
 
   ! Read Cell Ids
   call PetscTime(tstart,ierr)
-  CHKERRQ(ierr)
   string = "Cell Ids"
   if (grp_id /= file_id) then
     option%io_buffer = 'Reading dataset: ' // trim(group_name) // '/' &
@@ -1392,13 +1351,11 @@ subroutine HDF5ReadCellIndxIntArrayVamsi(realization,global_vec,filename, &
   call printMsg(option)   
   call HDF5ReadIndices(grid,option,grp_id,string,grid%nmax,indices)
   call PetscTime(tend,ierr)
-  CHKERRQ(ierr)
   write(option%io_buffer,'(f6.2," Seconds to set up indices")') tend-tstart
   call printMsg(option)
 
 
   call PetscTime(tstart,ierr)
-  CHKERRQ(ierr)
   string = ''
   if (append_realization_id) then
     write(string,'(i6)') option%id
@@ -1415,7 +1372,6 @@ subroutine HDF5ReadCellIndxIntArrayVamsi(realization,global_vec,filename, &
                      indices,global_vec,HDF_NATIVE_INTEGER)
   
   call PetscTime(tend,ierr)
-  CHKERRQ(ierr)
   write(option%io_buffer,'(f6.2," Seconds to read integer array.")') &
     tend-tstart
   call printMsg(option)  
@@ -1438,7 +1394,6 @@ subroutine HDF5ReadCellIndxIntArrayVamsi(realization,global_vec,filename, &
 #endif  ! PETSC_HAVE_HDF5
 
   call PetscLogEventEnd(logging%event_cell_indx_int_read_hdf5,ierr)
-  CHKERRQ(ierr)
                           
 end subroutine HDF5ReadCellIndxIntArrayVamsi
 
@@ -1513,7 +1468,6 @@ subroutine HDF5ReadCellIndxRealArrayVamsi(realization,global_vec,filename, &
   field => realization%field
 
   call PetscLogEventBegin(logging%event_cell_indx_real_read_hdf5,ierr)
-  CHKERRQ(ierr)
 
   ! initialize fortran hdf5 interface
   call h5open_f(hdf5_err)
@@ -1542,7 +1496,6 @@ subroutine HDF5ReadCellIndxRealArrayVamsi(realization,global_vec,filename, &
 
   ! Read Cell Ids
   call PetscTime(tstart,ierr)
-  CHKERRQ(ierr)
   string = "Cell Ids"
   if (grp_id /= file_id) then
     option%io_buffer = 'Reading dataset: ' // trim(group_name) // '/' &
@@ -1553,12 +1506,10 @@ subroutine HDF5ReadCellIndxRealArrayVamsi(realization,global_vec,filename, &
   call printMsg(option)   
   call HDF5ReadIndices(grid,option,grp_id,string,grid%nmax,indices)
   call PetscTime(tend,ierr)
-  CHKERRQ(ierr)
   write(option%io_buffer,'(f6.2," Seconds to set up indices")') tend-tstart
   call printMsg(option)
 
   call PetscTime(tstart,ierr)
-  CHKERRQ(ierr)
   string = ''
   if (append_realization_id) then
     write(string,'(i6)') option%id
@@ -1575,7 +1526,6 @@ subroutine HDF5ReadCellIndxRealArrayVamsi(realization,global_vec,filename, &
                      indices,global_vec,H5T_NATIVE_DOUBLE)
   
   call PetscTime(tend,ierr)
-  CHKERRQ(ierr)
   write(option%io_buffer,'(f6.2," Seconds to read real array")') &
     tend-tstart
   call printMsg(option)  
@@ -1598,7 +1548,6 @@ subroutine HDF5ReadCellIndxRealArrayVamsi(realization,global_vec,filename, &
 #endif ! PETSC_HAVE_HDF5
 
   call PetscLogEventEnd(logging%event_cell_indx_real_read_hdf5,ierr)
-  CHKERRQ(ierr)
                           
 end subroutine HDF5ReadCellIndxRealArrayVamsi
 
