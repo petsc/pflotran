@@ -1685,7 +1685,8 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
       delta_temp = gen_auxvar_up%temp - gen_auxvar_dn%temp
       heat_flux = k_eff_ave * delta_temp * area
     case(NEUMANN_BC)
-      heat_flux = auxvars(auxvar_mapping(GENERAL_LIQUID_FLUX_INDEX))
+                  ! flux prescribed as MW/m^2
+      heat_flux = auxvars(auxvar_mapping(GENERAL_ENERGY_FLUX_INDEX)) * area
 
     case default
       option%io_buffer = 'Boundary condition type not recognized in ' // &
