@@ -12,6 +12,8 @@ module EOS_Water_module
   PetscReal :: constant_density
   PetscReal :: constant_enthalpy
   PetscReal :: constant_viscosity
+  PetscReal :: constant_steam_density
+  PetscReal :: constant_steam_enthalpy
 
   ! exponential
   PetscReal :: exponent_reference_density
@@ -178,6 +180,8 @@ module EOS_Water_module
             EOSWaterSetDensityConstant, &
             EOSWaterSetEnthalpyConstant, &
             EOSWaterSetViscosityConstant, &
+            EOSWaterSetSteamDensityConst, &
+            EOSWaterSetSteamEnthalpyConst, &
             EOSWaterSetDensityExponential, &
             EOSWaterSetDensityPainter, &
             EOSWaterSetEnthalpyPainter
@@ -193,7 +197,8 @@ subroutine EOSWaterInit()
   constant_density = -999.d0
   constant_viscosity = -999.d0
   constant_enthalpy = -999.d0
-
+  constant_steam_density = -999.d0
+  constant_steam_enthalpy = -999.d0
   exponent_reference_density = -999.d0
   exponent_reference_pressure = -999.d0
   exponent_water_compressibility = -999.d0
@@ -260,6 +265,21 @@ subroutine EOSWaterVerify(ierr,error_string)
       (associated(EOSWaterViscosityPtr, &
                   EOSWaterViscosity1) .and. &
        constant_viscosity > -998.d0)) then
+    ierr = 1
+  endif
+  
+  if (associated(EOSWaterSteamDensityEnthalpyPtr, &
+                 EOSWaterSteamDenEnthConstant) .and. &
+      (constant_steam_density < -998.d0 .or. &
+       constant_steam_enthalpy < -998.d0)) then
+    if (constant_steam_density < -998.d0) then
+      error_string = trim(error_string) // &
+        ' CONSTANT steam density not set.'
+    endif
+    if (constant_steam_enthalpy < -998.d0) then
+      error_string = trim(error_string) // &
+        ' CONSTANT steam enthalpy not set.'
+    endif
     ierr = 1
   endif
   
@@ -346,6 +366,32 @@ subroutine EOSWaterSetDensityExponential(density0,pressure0, &
   EOSWaterDensityPtr => EOSWaterDensityExponential
   
 end subroutine EOSWaterSetDensityExponential
+
+! ************************************************************************** !
+
+subroutine EOSWaterSetSteamDensityConst(density)
+
+  implicit none
+  
+  PetscReal :: density
+  
+  constant_steam_density = density  
+  EOSWaterSteamDensityEnthalpyPtr => EOSWaterSteamDenEnthConstant
+  
+end subroutine EOSWaterSetSteamDensityConst
+
+! ************************************************************************** !
+
+subroutine EOSWaterSetSteamEnthalpyConst(enthalpy)
+
+  implicit none
+  
+  PetscReal :: enthalpy
+  
+  constant_steam_enthalpy = enthalpy  
+  EOSWaterSteamDensityEnthalpyPtr => EOSWaterSteamDenEnthConstant
+  
+end subroutine EOSWaterSetSteamEnthalpyConst
 
 ! ************************************************************************** !
 
@@ -1546,7 +1592,7 @@ subroutine EOSWaterSteamDensityEnthalpyIFC67(t,pv,dg,dgmol,hg, &
   vc1 = 0.00317d0
   utc1 = one/tc1
   upc1 = one/pc1
-  vc1mol = vc1*18.0153d0
+  vc1mol = vc1*FMWH2O
 
   theta  = (t+273.15d0)*utc1
   beta   = pv*upc1
@@ -1756,6 +1802,41 @@ subroutine EOSWaterSteamDensityEnthalpyIFC67(t,pv,dg,dgmol,hg, &
   endif
 
 end subroutine EOSWaterSteamDensityEnthalpyIFC67
+
+! ************************************************************************** !
+
+subroutine EOSWaterSteamDenEnthConstant(t,pv,dg,dgmol,hg, &
+                                         calculate_derivatives, &
+                                         dgp,dgt,hgp,hgt,ierr)
+! t/C  p/Pa dgmol/(mol/m^3)  h/MJ/mol
+  implicit none
+  
+  PetscReal, intent(in) :: t   ! Temperature in centigrade.
+  PetscReal, intent(in) :: pv  ! Vapor Pressure in Pascals.
+  PetscBool, intent(in) :: calculate_derivatives
+  PetscReal, intent(out) :: dg,dgmol,dgp,dgt
+  PetscReal, intent(out) :: hg,hgp,hgt
+  PetscErrorCode, intent(out) :: ierr
+  
+  ierr = 0
+  
+  dg = constant_steam_density
+  dgmol = dg/FMWH2O
+  hg = constant_steam_enthalpy
+  
+  if (calculate_derivatives) then
+    dgt = 0.d0
+    dgp = 0.d0
+    hgt = 0.d0
+    hgp = 0.d0
+  else
+    dgt = -999.d0
+    dgp = -999.d0
+    hgt = -999.d0
+    hgp = -999.d0
+  endif
+  
+end subroutine EOSWaterSteamDenEnthConstant
 
 ! ************************************************************************** !
 
