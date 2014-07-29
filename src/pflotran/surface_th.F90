@@ -617,6 +617,13 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
                           ierr);CHKERRQ(ierr)
   call VecRestoreArrayF90(surf_field%area,area_p,ierr);CHKERRQ(ierr)
   
+  if (max_allowable_dt < 0.d0) then
+    write(option%io_buffer, &
+          '("surface_th.F90: SurfaceTHComputeMaxDt --> negative max_allowable_dt!",es15.7)') &
+          max_allowable_dt
+    call printErrMsg(option)     
+  endif
+
 end subroutine SurfaceTHComputeMaxDt
 
 ! ************************************************************************** !
@@ -646,6 +653,7 @@ subroutine SurfaceTHFlux(surf_auxvar_up, &
   use Surface_TH_Aux_module
   use Surface_Global_Aux_module
   use Option_module
+  use PFLOTRAN_Constants_module, only : MIN_SURFACE_WATER_HEIGHT
 
   implicit none
 
@@ -688,7 +696,7 @@ subroutine SurfaceTHFlux(surf_auxvar_up, &
     mannings_half = mannings_up
     temp_half = surf_global_auxvar_up%temp + 273.15d0
     unfrozen_fraction_half = surf_auxvar_up%unfrozen_fraction
-    if (surf_global_auxvar_up%head(1)>eps) then
+    if (surf_global_auxvar_up%head(1)>MIN_SURFACE_WATER_HEIGHT) then
       hw_half = surf_global_auxvar_up%head(1)
     else
       hw_half = 0.d0
@@ -697,7 +705,7 @@ subroutine SurfaceTHFlux(surf_auxvar_up, &
     mannings_half = mannings_dn
     temp_half = surf_global_auxvar_dn%temp + 273.15d0
     unfrozen_fraction_half = surf_auxvar_dn%unfrozen_fraction
-    if (surf_global_auxvar_dn%head(1)>eps) then
+    if (surf_global_auxvar_dn%head(1)>MIN_SURFACE_WATER_HEIGHT) then
       hw_half = surf_global_auxvar_dn%head(1)
     else
       hw_half = 0.d0
@@ -745,8 +753,6 @@ subroutine SurfaceTHFlux(surf_auxvar_up, &
 
   ! Average density
   ! Here we only consider the LIQUID fraction.
-  den_aveg = (surf_auxvar_up%den_water_kg + &
-              surf_auxvar_dn%den_water_kg)/2.d0
   den_aveg = (surf_global_auxvar_up%den_kg(1) + &
               surf_global_auxvar_dn%den_kg(1))/2.d0
   ! Temperature difference
@@ -797,7 +803,8 @@ subroutine SurfaceTHBCFlux(ibndtype, &
   !
 
   use Option_module
-  
+  use PFLOTRAN_Constants_module, only : MIN_SURFACE_WATER_HEIGHT
+
   implicit none
 
   type(option_type) :: option
@@ -894,7 +901,7 @@ subroutine SurfaceTHBCFlux(ibndtype, &
     dt_max = min(dt_max, dt)
   endif
 
-  if (head_liq > eps) then
+  if (head_liq > MIN_SURFACE_WATER_HEIGHT) then
     ! Restriction due to energy equation
     dt_max = min(dt_max,(dist**2.d0)*Cw*den/(2.d0*k_therm))
   endif
@@ -1085,7 +1092,7 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
   use Connection_module
   use Surface_Material_module
   use EOS_Water_module
-  use PFLOTRAN_Constants_module, only : DUMMY_VALUE
+  use PFLOTRAN_Constants_module, only : DUMMY_VALUE,MIN_SURFACE_WATER_HEIGHT
 
   implicit none
 
@@ -1141,12 +1148,13 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
     if(local_id>0) then
       iend = local_id*option%nflowdof
       istart = iend-option%nflowdof+1
-      if (xx_loc_p(istart) < 1.d-15) then
+      if (xx_loc_p(istart) < MIN_SURFACE_WATER_HEIGHT) then
+        surf_global_auxvars(ghosted_id)%is_dry = PETSC_TRUE
         !temp = option%reference_temperature
         temp = DUMMY_VALUE
         xx_loc_p(iend) = 0.d0
       else
-
+        surf_global_auxvars(ghosted_id)%is_dry = PETSC_FALSE
         if (surf_global_auxvars(ghosted_id)%temp == DUMMY_VALUE) then
           call EOSWaterdensity(0.d0,option%reference_pressure,den,dum1,ierr)
           surf_global_auxvars(ghosted_id)%den_kg(1) = den
@@ -1338,7 +1346,7 @@ subroutine SurfaceTHImplicitAtmForcing(surf_realization)
   use Surface_Material_module
   use EOS_Water_module
   use String_module
-
+  use PFLOTRAN_Constants_module, only : MIN_SURFACE_WATER_HEIGHT
   implicit none
 
   type(surface_realization_type) :: surf_realization
@@ -1415,7 +1423,7 @@ subroutine SurfaceTHImplicitAtmForcing(surf_realization)
           k_therm  = surf_auxvars(ghosted_id)%k_therm
           Cw       = surf_auxvars(ghosted_id)%Cw
 
-          if (head > eps) then
+          if (head > MIN_SURFACE_WATER_HEIGHT) then
 
             call EOSWaterdensity(temp_old,option%reference_pressure,den_old,dum1,ierr)
             call EOSWaterdensity(temp_old,option%reference_pressure,den_iter,dum1,ierr)
