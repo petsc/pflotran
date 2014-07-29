@@ -94,9 +94,9 @@ subroutine CondControlAssignFlowInitCond(realization)
   patch => realization%patch
 
   ! to catch uninitialized grid cells.  see VecMin check at bottom.
-  call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+  call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr);CHKERRQ(ierr)
   iphase_loc_p = -999.d0
-  call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+  call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr);CHKERRQ(ierr)
 
   if (option%iflowmode == G_MODE) then
     call GlobalAuxVarInit(global_aux,option)
@@ -113,8 +113,8 @@ subroutine CondControlAssignFlowInitCond(realization)
       
       case(G_MODE) ! general phase mode
 
-        call VecGetArrayF90(field%flow_xx,xx_p, ierr)
-        call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+        call VecGetArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
+        call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr);CHKERRQ(ierr)
       
         xx_p = -999.d0
       
@@ -260,19 +260,21 @@ subroutine CondControlAssignFlowInitCond(realization)
           initial_condition => initial_condition%next
         enddo
      
-        call VecRestoreArrayF90(field%flow_xx,xx_p, ierr)
-        call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+        call VecRestoreArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
+        call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p, &
+                                ierr);CHKERRQ(ierr)
               
       case default
         ! assign initial conditions values to domain
         if (discretization%itype == STRUCTURED_GRID_MIMETIC.or. &
             discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
-          call VecGetArrayF90(field%flow_xx, xx_p, ierr)
-          call VecGetArrayF90(field%flow_xx_faces, xx_faces_p, ierr)
+          call VecGetArrayF90(field%flow_xx, xx_p, ierr);CHKERRQ(ierr)
+          call VecGetArrayF90(field%flow_xx_faces, xx_faces_p,  &
+                              ierr);CHKERRQ(ierr)
         else
-          call VecGetArrayF90(field%flow_xx,xx_p, ierr)
+          call VecGetArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
         end if
-        call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+        call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr);CHKERRQ(ierr)
       
         xx_p = -999.d0
       
@@ -436,7 +438,7 @@ subroutine CondControlAssignFlowInitCond(realization)
           initial_condition => initial_condition%next
         enddo
      
-        call VecRestoreArrayF90(field%flow_xx,xx_p, ierr)
+        call VecRestoreArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
 
     end select 
    
@@ -452,7 +454,7 @@ subroutine CondControlAssignFlowInitCond(realization)
   call DiscretizationGlobalToLocal(discretization,field%flow_xx, &
                                    field%flow_xx_loc,NFLOWDOF)  
 
-  call VecCopy(field%flow_xx, field%flow_yy, ierr)
+  call VecCopy(field%flow_xx, field%flow_yy, ierr);CHKERRQ(ierr)
   call DiscretizationLocalToLocal(discretization,field%iphas_loc, &
                                   field%iphas_loc,ONEDOF)  
   call DiscretizationLocalToLocal(discretization,field%iphas_loc, &
@@ -462,13 +464,14 @@ subroutine CondControlAssignFlowInitCond(realization)
   if (discretization%itype == STRUCTURED_GRID_MIMETIC.or. &
       discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
 
-    call VecRestoreArrayF90(field%flow_xx_faces,xx_faces_p, ierr)
+    call VecRestoreArrayF90(field%flow_xx_faces,xx_faces_p,  &
+                            ierr);CHKERRQ(ierr)
     call RealizationSetUpBC4Faces(realization)
 
     !call DiscretizationGlobalToLocalFaces(discretization, field%flow_xx_faces, field%flow_xx_loc_faces, NFLOWDOF)
     call DiscretizationGlobalToLocalLP(discretization, field%flow_xx_faces, &
                                        field%flow_xx_loc_faces, NFLOWDOF)
-    call VecCopy(field%flow_xx_faces, field%flow_yy_faces, ierr)
+    call VecCopy(field%flow_xx_faces, field%flow_yy_faces, ierr);CHKERRQ(ierr)
     call MFDInitializeMassMatrices(realization%discretization%grid,&
                                   realization%field, &
                                   realization%discretization%MFD, &
@@ -483,7 +486,7 @@ subroutine CondControlAssignFlowInitCond(realization)
   ! updated during the local to local update.
   call DiscretizationLocalToGlobal(discretization,field%iphas_loc,field%work, &
                                    ONEDOF)
-  call VecMin(field%work,PETSC_NULL_INTEGER,tempreal,ierr)
+  call VecMin(field%work,PETSC_NULL_INTEGER,tempreal,ierr);CHKERRQ(ierr)
   if (tempreal < 0.d0) then
 !    print *, tempreal
     option%io_buffer = 'Uninitialized cells in domain.'
@@ -576,7 +579,7 @@ subroutine CondControlAssignTranInitCond(realization)
     material_auxvars => cur_patch%aux%Material%auxvars
 
     ! assign initial conditions values to domain
-    call VecGetArrayF90(field%tran_xx,xx_p,ierr)
+    call VecGetArrayF90(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
       
     xx_p = -999.d0
       
@@ -618,14 +621,14 @@ subroutine CondControlAssignTranInitCond(realization)
             idof = ONE_INTEGER
             call ConditionControlMapDatasetToVec(realization,dataset,idof, &
                                                   field%work_loc,LOCAL)
-            call VecGetArrayF90(field%work_loc,vec_p,ierr)
+            call VecGetArrayF90(field%work_loc,vec_p,ierr);CHKERRQ(ierr)
             do icell=1,initial_condition%region%num_cells
               local_id = initial_condition%region%cell_ids(icell)
               ghosted_id = grid%nL2G(local_id)
               rt_auxvars(ghosted_id)%mnrl_volfrac0(imnrl) = vec_p(ghosted_id)
               rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl) = vec_p(ghosted_id)
             enddo
-            call VecRestoreArrayF90(field%work_loc,vec_p,ierr)
+            call VecRestoreArrayF90(field%work_loc,vec_p,ierr);CHKERRQ(ierr)
           endif
         enddo
       endif
@@ -642,13 +645,13 @@ subroutine CondControlAssignTranInitCond(realization)
             idof = ONE_INTEGER
             call ConditionControlMapDatasetToVec(realization,dataset,idof, &
                                                   field%work_loc,LOCAL)
-            call VecGetArrayF90(field%work_loc,vec_p,ierr)
+            call VecGetArrayF90(field%work_loc,vec_p,ierr);CHKERRQ(ierr)
             do icell=1,initial_condition%region%num_cells
               local_id = initial_condition%region%cell_ids(icell)
               ghosted_id = grid%nL2G(local_id)
               rt_auxvars(ghosted_id)%immobile(iimmobile) = vec_p(ghosted_id)
             enddo
-            call VecRestoreArrayF90(field%work_loc,vec_p,ierr)
+            call VecRestoreArrayF90(field%work_loc,vec_p,ierr);CHKERRQ(ierr)
           endif
         enddo
       endif
@@ -658,8 +661,8 @@ subroutine CondControlAssignTranInitCond(realization)
       endif
         
       if (use_aq_dataset) then
-        call VecGetArrayF90(field%tran_xx_loc,xx_loc_p,ierr)
-        call PetscTime(tstart,ierr)
+        call VecGetArrayF90(field%tran_xx_loc,xx_loc_p,ierr);CHKERRQ(ierr)
+        call PetscTime(tstart,ierr);CHKERRQ(ierr)
       endif
         
       ave_num_iterations = 0.d0
@@ -796,8 +799,8 @@ subroutine CondControlAssignTranInitCond(realization)
         endif
       enddo ! icell=1,initial_condition%region%num_cells
       if (use_aq_dataset) then
-        call PetscTime(tend,ierr)
-        call VecRestoreArrayF90(field%tran_xx_loc,xx_loc_p,ierr)
+        call PetscTime(tend,ierr);CHKERRQ(ierr)
+        call VecRestoreArrayF90(field%tran_xx_loc,xx_loc_p,ierr);CHKERRQ(ierr)
         ave_num_iterations = ave_num_iterations / &
           initial_condition%region%num_cells
         write(option%io_buffer,&
@@ -811,21 +814,22 @@ subroutine CondControlAssignTranInitCond(realization)
       initial_condition => initial_condition%next
     enddo
       
-    call VecRestoreArrayF90(field%tran_xx,xx_p, ierr)
+    call VecRestoreArrayF90(field%tran_xx,xx_p, ierr);CHKERRQ(ierr)
 
     cur_patch => cur_patch%next
   enddo
   
   ! check to ensure that minimum concentration is not less than or equal
   ! to zero
-  call VecMin(field%tran_xx,PETSC_NULL_INTEGER,tempreal,ierr)
+  call VecMin(field%tran_xx,PETSC_NULL_INTEGER,tempreal,ierr);CHKERRQ(ierr)
   if (tempreal <= 0.d0) then
     option%io_buffer = 'ERROR: Zero concentrations found in initial ' // &
       'transport solution.'
     call printMsg(option)
     ! now figure out which species have zero concentrations
     do idof = 1, option%ntrandof
-      call VecStrideMin(field%tran_xx,idof-1,offset,tempreal,ierr)
+      call VecStrideMin(field%tran_xx,idof-1,offset,tempreal, &
+                        ierr);CHKERRQ(ierr)
       if (tempreal <= 0.d0) then
         write(string,*) tempreal
         if (idof <= reaction%naqcomp) then
@@ -858,7 +862,7 @@ subroutine CondControlAssignTranInitCond(realization)
   ! update dependent vectors
   call DiscretizationGlobalToLocal(discretization,field%tran_xx, &
                                    field%tran_xx_loc,NTRANDOF)  
-  call VecCopy(field%tran_xx, field%tran_yy, ierr)
+  call VecCopy(field%tran_xx, field%tran_yy, ierr);CHKERRQ(ierr)
 
 end subroutine CondControlAssignTranInitCond
 
@@ -912,13 +916,13 @@ subroutine ConditionControlMapDatasetToVec(realization,dataset,idof, &
                                           dataset%realization_dependent)
         if (vec_type == GLOBAL) then
           call VecStrideScatter(field%work,idof-1,mdof_vec, &
-                                INSERT_VALUES,ierr)
+                                INSERT_VALUES,ierr);CHKERRQ(ierr)
         else
           call DiscretizationGlobalToLocal(realization%discretization, &
                                            field%work, &
                                            field%work_loc,ONEDOF)
           call VecStrideScatter(field%work_loc,idof-1,mdof_vec, &
-                                INSERT_VALUES,ierr)
+                                INSERT_VALUES,ierr);CHKERRQ(ierr)
         endif
       class default
         option%io_buffer = 'Dataset "' // trim(dataset%name) // &
@@ -1004,8 +1008,8 @@ subroutine CondControlScaleSourceSink(realization)
     do
       if (.not.associated(cur_source_sink)) exit
 
-      call VecZeroEntries(field%work,ierr)
-      call VecGetArrayF90(field%work,vec_ptr,ierr)
+      call VecZeroEntries(field%work,ierr);CHKERRQ(ierr)
+      call VecGetArrayF90(field%work,vec_ptr,ierr);CHKERRQ(ierr)
 
       cur_connection_set => cur_source_sink%connection_set
     
@@ -1061,12 +1065,12 @@ subroutine CondControlScaleSourceSink(realization)
 
       enddo
         
-      call VecRestoreArrayF90(field%work,vec_ptr,ierr)
-      call VecNorm(field%work,NORM_1,scale,ierr)
+      call VecRestoreArrayF90(field%work,vec_ptr,ierr);CHKERRQ(ierr)
+      call VecNorm(field%work,NORM_1,scale,ierr);CHKERRQ(ierr)
       scale = 1.d0/scale
-      call VecScale(field%work,scale,ierr)
+      call VecScale(field%work,scale,ierr);CHKERRQ(ierr)
 
-      call VecGetArrayF90(field%work,vec_ptr, ierr)
+      call VecGetArrayF90(field%work,vec_ptr, ierr);CHKERRQ(ierr)
       do iconn = 1, cur_connection_set%num_connections      
         local_id = cur_connection_set%id_dn(iconn)
         select case(option%iflowmode)
@@ -1081,7 +1085,7 @@ subroutine CondControlScaleSourceSink(realization)
         end select
 
       enddo
-      call VecRestoreArrayF90(field%work,vec_ptr,ierr)
+      call VecRestoreArrayF90(field%work,vec_ptr,ierr);CHKERRQ(ierr)
         
       cur_source_sink => cur_source_sink%next
     enddo
@@ -1158,7 +1162,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
 
       case (RICHARDS_MODE,TH_MODE)
         ! assign initial conditions values to domain
-        call VecGetArrayF90(surf_field%flow_xx,xx_p, ierr)
+        call VecGetArrayF90(surf_field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
     
         xx_p = -999.d0
       
@@ -1222,7 +1226,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
           initial_condition => initial_condition%next
         enddo
      
-        call VecRestoreArrayF90(surf_field%flow_xx,xx_p, ierr)
+        call VecRestoreArrayF90(surf_field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
       case default
         option%io_buffer = 'CondControlAssignFlowInitCondSurface not ' // &
           'for this mode'

@@ -81,8 +81,8 @@ subroutine MphaseTimeCut(realization)
   option => realization%option
   field => realization%field
 
-  call VecCopy(field%flow_yy,field%flow_xx,ierr)
-  call VecCopy(field%iphas_old_loc,field%iphas_loc,ierr)
+  call VecCopy(field%flow_yy,field%flow_xx,ierr);CHKERRQ(ierr)
+  call VecCopy(field%iphas_old_loc,field%iphas_loc,ierr);CHKERRQ(ierr)
 
 end subroutine MphaseTimeCut
 
@@ -453,7 +453,7 @@ subroutine MphaseComputeMassBalancePatch(realization,mass_balance,mass_trapped)
   mphase_auxvars => patch%aux%MPhase%auxvars
   material_auxvars => patch%aux%Material%auxvars
   
-  call VecGetArrayF90(field%icap_loc,icap_loc_p, ierr)
+  call VecGetArrayF90(field%icap_loc,icap_loc_p, ierr);CHKERRQ(ierr)
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
@@ -498,7 +498,7 @@ subroutine MphaseComputeMassBalancePatch(realization,mass_balance,mass_trapped)
     enddo
   enddo
 
-  call VecRestoreArrayF90(field%icap_loc,icap_loc_p, ierr)
+  call VecRestoreArrayF90(field%icap_loc,icap_loc_p, ierr);CHKERRQ(ierr)
   
 end subroutine MphaseComputeMassBalancePatch
 
@@ -693,9 +693,9 @@ subroutine MPhaseUpdateReasonPatch(reason,realization)
   re = 1
  
 ! if (re > 0) then
-    call VecGetArrayF90(field%flow_xx, xx_p, ierr)
-    call VecGetArrayF90(field%flow_yy, yy_p, ierr)
-    call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
+    call VecGetArrayF90(field%flow_xx, xx_p, ierr);CHKERRQ(ierr)
+    call VecGetArrayF90(field%flow_yy, yy_p, ierr);CHKERRQ(ierr)
+    call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr);CHKERRQ(ierr)
   
     do n = 1,grid%nlmax
 !**** clu-Ignore inactive cells with inactive materials **************
@@ -757,9 +757,9 @@ subroutine MPhaseUpdateReasonPatch(reason,realization)
     end do
   
 !   if (re <= 0) print *,'Sat or Con out of Region at: ',n,iipha,xx_p(n0+1:n0+3)
-    call VecRestoreArrayF90(field%flow_xx, xx_p, ierr)
-    call VecRestoreArrayF90(field%flow_yy, yy_p, ierr)
-    call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
+    call VecRestoreArrayF90(field%flow_xx, xx_p, ierr);CHKERRQ(ierr)
+    call VecRestoreArrayF90(field%flow_yy, yy_p, ierr);CHKERRQ(ierr)
+    call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr);CHKERRQ(ierr)
 
 ! endif
   ! print *,' update reason', grid%myrank, re,n,grid%nlmax
@@ -849,7 +849,7 @@ end subroutine MPhaseUpdateReason
     option => realization%option
     field => realization%field
     
-    call VecGetArrayF90(field%flow_xx,xx_p, ierr)
+    call VecGetArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
     
     ipass=1
     do local_id = 1, grid%nlmax
@@ -874,7 +874,7 @@ end subroutine MPhaseUpdateReason
       endif
     enddo
 
-    call VecRestoreArrayF90(field%flow_xx,xx_p, ierr)
+    call VecRestoreArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
     MphaseInitGuessCheckPatch = ipass
   end function MphaseInitGuessCheckPatch
 
@@ -964,9 +964,9 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
   global_auxvars_bc => patch%aux%Global%auxvars_bc
   global_auxvars_ss => patch%aux%Global%auxvars_ss
   
-  call VecGetArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
-  call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
-  call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+  call VecGetArrayF90(field%flow_xx_loc,xx_loc_p, ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr);CHKERRQ(ierr)
   
   do ghosted_id = 1, grid%ngmax
     if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
@@ -1126,9 +1126,9 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
   enddo
 
 
-  call VecRestoreArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
-  call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
-  call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+  call VecRestoreArrayF90(field%flow_xx_loc,xx_loc_p, ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr);CHKERRQ(ierr)
   
   patch%aux%Mphase%auxvars_up_to_date = PETSC_TRUE
 
@@ -1180,8 +1180,8 @@ subroutine MphaseUpdateSolution(realization)
   
   field => realization%field
   
-  call VecCopy(field%flow_xx,field%flow_yy,ierr)
-  call VecCopy(field%iphas_loc,field%iphas_old_loc,ierr)
+  call VecCopy(field%flow_xx,field%flow_yy,ierr);CHKERRQ(ierr)
+  call VecCopy(field%iphas_loc,field%iphas_old_loc,ierr);CHKERRQ(ierr)
   
 ! call VecCopy(realization%field%flow_xx,realization%field%flow_yy,ierr)
 ! call VecCopy(realization%field%iphas_loc,realization%field%iphas_old_loc,ierr)
@@ -1258,7 +1258,7 @@ subroutine MphaseUpdateSolutionPatch(realization)
 
   if (option%use_mc) then
  
-    call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
+    call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr);CHKERRQ(ierr)
   
   ! Secondary continuum contribution (Added by SK 06/26/2012)
   ! only one secondary continuum for now for each primary continuum node
@@ -1280,7 +1280,7 @@ subroutine MphaseUpdateSolutionPatch(realization)
                         option)
     enddo   
     
-    call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
+    call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr);CHKERRQ(ierr)
     
   endif  
 
@@ -1368,12 +1368,12 @@ subroutine MphaseUpdateFixedAccumPatch(realization)
   mphase_sec_heat_vars => patch%aux%SC_heat%sec_heat_vars
   material_auxvars => patch%aux%Material%auxvars
       
-  call VecGetArrayF90(field%flow_xx,xx_p, ierr)
-  call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
-  call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
-  call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
+  call VecGetArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr);CHKERRQ(ierr)
 
-  call VecGetArrayF90(field%flow_accum, accum_p, ierr)
+  call VecGetArrayF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
 
   vol_frac_prim = 1.d0
 
@@ -1410,12 +1410,12 @@ subroutine MphaseUpdateFixedAccumPatch(realization)
                               accum_p(istart:iend))
   enddo
 
-  call VecRestoreArrayF90(field%flow_xx,xx_p, ierr)
-  call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
-  call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
-  call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
+  call VecRestoreArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr);CHKERRQ(ierr)
 
-  call VecRestoreArrayF90(field%flow_accum, accum_p, ierr)
+  call VecRestoreArrayF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
 
 #if 0
 !  call MphaseNumericalJacobianTest(field%flow_xx,realization)
@@ -2156,7 +2156,7 @@ subroutine MphaseResidual(snes,xx,r,realization,ierr)
   if(ierr<0)then
     !ierr = PETSC_ERR_ARG_OUTOFRANGE
     if (option%myrank==0) print *,'table out of range: ',ierr
-    call SNESSetFunctionDomainError(snes,ierr)
+    call SNESSetFunctionDomainError(snes,ierr);CHKERRQ(ierr)
     return
   endif 
   ! end check ---------------------------------------------------------
@@ -2168,7 +2168,7 @@ subroutine MphaseResidual(snes,xx,r,realization,ierr)
                       MPI_MIN,option%mycomm,ierr)
   ichange = i 
   if (ichange < 0) then
-    call SNESSetFunctionDomainError(snes,ierr)
+    call SNESSetFunctionDomainError(snes,ierr);CHKERRQ(ierr)
     return
   endif
 ! end switching ------------------------------------------------------
@@ -2271,7 +2271,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 #if 0
   option%force_newton_iteration = PETSC_FALSE
   ! checking for negative saturation/mole fraction
-  call VecStrideMin(xx,TWO_INTEGER,idum,min_value,ierr)
+  call VecStrideMin(xx,TWO_INTEGER,idum,min_value,ierr);CHKERRQ(ierr)
   if (min_value < 0.d0) then
     write(option%io_buffer,*) 'Warning: saturation or mole fraction negative at cell ', &
       idum, min_value 
@@ -2281,9 +2281,9 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 #endif
     
 ! mphase code need assemble 
-  call VecGetArrayF90(xx, xx_p, ierr)
-  call VecGetArrayF90(field%flow_yy, yy_p, ierr)
-  call VecGetArrayF90(field%iphas_loc, iphase_loc_p,ierr)
+  call VecGetArrayF90(xx, xx_p, ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(field%flow_yy, yy_p, ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(field%iphas_loc, iphase_loc_p,ierr);CHKERRQ(ierr)
   
   ichange = 0   
   do local_id = 1,grid%nlmax
@@ -2521,9 +2521,9 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
     end select
   enddo
 
-  call VecRestoreArrayF90(xx, xx_p, ierr)
-  call VecRestoreArrayF90(field%flow_yy, yy_p, ierr)
-  call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p,ierr)
+  call VecRestoreArrayF90(xx, xx_p, ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%flow_yy, yy_p, ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p,ierr);CHKERRQ(ierr)
 
 end subroutine MphaseVarSwitchPatch
 
@@ -2643,14 +2643,14 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   endif
 
 ! now assign access pointer to local variables
-  call VecGetArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
-  call VecGetArrayF90(r, r_p, ierr)
-  call VecGetArrayF90(field%flow_accum, accum_p, ierr)
+  call VecGetArrayF90(field%flow_xx_loc, xx_loc_p, ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(r, r_p, ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
  
 ! call VecGetArrayF90(field%flow_yy,yy_p,ierr)
-  call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
-  call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
-  call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
+  call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr);CHKERRQ(ierr)
  
 
   vol_frac_prim = 1.d0
@@ -3150,23 +3150,25 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
     enddo
   endif
 
-  call VecRestoreArrayF90(r, r_p, ierr)
+  call VecRestoreArrayF90(r, r_p, ierr);CHKERRQ(ierr)
 ! call VecRestoreArrayF90(field%flow_yy, yy_p, ierr)
-  call VecRestoreArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
-  call VecRestoreArrayF90(field%flow_accum, accum_p, ierr)
-  call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
-  call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr)
-  call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
+  call VecRestoreArrayF90(field%flow_xx_loc, xx_loc_p, ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr);CHKERRQ(ierr)
 
   if (realization%debug%vecview_residual) then
-    call PetscViewerASCIIOpen(option%mycomm,'Rresidual.out',viewer,ierr)
-    call VecView(r,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'Rresidual.out',viewer, &
+                              ierr);CHKERRQ(ierr)
+    call VecView(r,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
   if (realization%debug%vecview_solution) then
-    call PetscViewerASCIIOpen(option%mycomm,'MPHxx.out',viewer,ierr)
-    call VecView(xx,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'MPHxx.out',viewer, &
+                              ierr);CHKERRQ(ierr)
+    call VecView(xx,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
 end subroutine MphaseResidualPatch
 
@@ -3201,16 +3203,16 @@ subroutine MphaseJacobian(snes,xx,A,B,realization,ierr)
   type(option_type), pointer :: option
   PetscReal :: norm
   
-  call MatGetType(A,mat_type,ierr)
+  call MatGetType(A,mat_type,ierr);CHKERRQ(ierr)
   if (mat_type == MATMFFD) then
     J = B
-    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
   else
     J = A
   endif
 
-  call MatZeroEntries(J,ierr)
+  call MatZeroEntries(J,ierr);CHKERRQ(ierr)
   
   cur_patch => realization%patch_list%first
   do
@@ -3222,19 +3224,19 @@ subroutine MphaseJacobian(snes,xx,A,B,realization,ierr)
 
   if (realization%debug%matview_Jacobian) then
     call PetscViewerASCIIOpen(realization%option%mycomm,'MPHjacobian.out', &
-                              viewer,ierr)
-    call MatView(J,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+                              viewer,ierr);CHKERRQ(ierr)
+    call MatView(J,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
   if (realization%debug%norm_Jacobian) then
     option => realization%option
-    call MatNorm(J,NORM_1,norm,ierr)
+    call MatNorm(J,NORM_1,norm,ierr);CHKERRQ(ierr)
     write(option%io_buffer,'("1 norm: ",es11.4)') norm
     call printMsg(option)    
-    call MatNorm(J,NORM_FROBENIUS,norm,ierr)
+    call MatNorm(J,NORM_FROBENIUS,norm,ierr);CHKERRQ(ierr)
     write(option%io_buffer,'("2 norm: ",es11.4)') norm
     call printMsg(option)    
-    call MatNorm(J,NORM_INFINITY,norm,ierr)
+    call MatNorm(J,NORM_INFINITY,norm,ierr);CHKERRQ(ierr)
     write(option%io_buffer,'("inf norm: ",es11.4)') norm
     call printMsg(option)
   endif
@@ -3371,11 +3373,11 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,realization,ierr)
 #endif
 
  ! print *,'*********** In Jacobian ********************** '
-  call VecGetArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
+  call VecGetArrayF90(field%flow_xx_loc, xx_loc_p, ierr);CHKERRQ(ierr)
 
-  call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
-  call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
-  call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
+  call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr);CHKERRQ(ierr)
 
   ResInc = 0.D0
   vol_frac_prim = 1.d0
@@ -3627,15 +3629,17 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,realization,ierr)
       Jup = Jup / material_auxvars(ghosted_id)%volume
 
      ! if(n==1) print *,  blkmat11, volume_p(n), ra
-    call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
+    call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES, &
+                                  ierr);CHKERRQ(ierr)
   end do
 
   if (realization%debug%matview_Jacobian_detailed) then
-    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-    call PetscViewerASCIIOpen(option%mycomm,'jacobian_srcsink.out',viewer,ierr)
-    call MatView(A,PETSC_VIEWER_STDOUT_WORLD,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'jacobian_srcsink.out',viewer, &
+                              ierr);CHKERRQ(ierr)
+    call MatView(A,PETSC_VIEWER_STDOUT_WORLD,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
 #if 1
   ! Interior Flux Terms -----------------------------------  
@@ -3746,9 +3750,9 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,realization,ierr)
           ra(:,1 + option%nflowdof:2 * option%nflowdof)*voltemp !12
 
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
-            Jup,ADD_VALUES,ierr)
+            Jup,ADD_VALUES,ierr);CHKERRQ(ierr)
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
-            Jdn,ADD_VALUES,ierr)
+            Jdn,ADD_VALUES,ierr);CHKERRQ(ierr)
       endif
       if (local_id_dn > 0) then
         voltemp = 1.D0
@@ -3759,9 +3763,9 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,realization,ierr)
         Jdn(:,1:option%nflowdof) = -ra(:, 1 + option%nflowdof:2 * option%nflowdof)*voltemp !22
 
         call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
-            Jdn,ADD_VALUES,ierr)
+            Jdn,ADD_VALUES,ierr);CHKERRQ(ierr)
         call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
-            Jup,ADD_VALUES,ierr)
+            Jup,ADD_VALUES,ierr);CHKERRQ(ierr)
       endif
     enddo
     cur_connection_set => cur_connection_set%next
@@ -3769,37 +3773,40 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,realization,ierr)
 #endif
   if (realization%debug%matview_Jacobian_detailed) then
  ! print *,'end inter flux'
-    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-    call PetscViewerASCIIOpen(option%mycomm,'jacobian_flux.out',viewer,ierr)
-    call MatView(A,PETSC_VIEWER_STDOUT_WORLD,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'jacobian_flux.out',viewer, &
+                              ierr);CHKERRQ(ierr)
+    call MatView(A,PETSC_VIEWER_STDOUT_WORLD,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
 #if 0
   if (realization%debug%matview_Jacobian_detailed) then
-    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-    call PetscViewerASCIIOpen(option%mycomm,'jacobian_bcflux.out',viewer,ierr)
-    call MatView(A,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'jacobian_bcflux.out',viewer, &
+                              ierr);CHKERRQ(ierr)
+    call MatView(A,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
 #endif
   
-  call VecRestoreArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
+  call VecRestoreArrayF90(field%flow_xx_loc, xx_loc_p, ierr);CHKERRQ(ierr)
    
-  call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
-  call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr)
-  call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
+  call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr);CHKERRQ(ierr)
  !print *,'end jac'
-  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
  ! call MatView(A,PETSC_VIEWER_STDOUT_WORLD,ierr)
 #if 0
 ! zero out isothermal and inactive cells
 #ifdef ISOTHERMAL
   zero = 0.d0
   call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,zero, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        ierr);CHKERRQ(ierr)
   do i=1, n_zero_rows
     ii = mod(zero_rows_local(i),option%nflowdof)
     ip1 = zero_rows_local_ghosted(i)
@@ -3810,11 +3817,12 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,realization,ierr)
     else
       ip2 = ip1
     endif
-    call MatSetValuesLocal(A,1,ip1,1,ip2,1.d0,INSERT_VALUES,ierr)
+    call MatSetValuesLocal(A,1,ip1,1,ip2,1.d0,INSERT_VALUES, &
+                           ierr);CHKERRQ(ierr)
   enddo
 
-  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
 #else
 #endif
 #endif
@@ -3823,7 +3831,8 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,realization,ierr)
     f_up = 1.d0
     call MatZeroRowsLocal(A,mphase%n_zero_rows, &
                           mphase%zero_rows_local_ghosted,f_up, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          ierr);CHKERRQ(ierr)
   endif
 
 end subroutine MphaseJacobianPatch
@@ -3966,9 +3975,12 @@ subroutine MphaseMaxChange(realization)
   dcmax=0.D0
   dsmax=0.D0
 
-  call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
-  call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
-  call VecStrideNorm(field%flow_dxx,ONE_INTEGER,NORM_INFINITY,option%dtmpmax,ierr)
+  call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy, &
+                ierr);CHKERRQ(ierr)
+  call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax, &
+                     ierr);CHKERRQ(ierr)
+  call VecStrideNorm(field%flow_dxx,ONE_INTEGER,NORM_INFINITY,option%dtmpmax, &
+                     ierr);CHKERRQ(ierr)
 
   cur_patch => realization%patch_list%first
   do
@@ -4027,10 +4039,11 @@ subroutine MphaseMaxChangePatch(realization,  max_c, max_s)
   
  
 
-  call VecGetArrayF90(field%flow_xx,xx_p, ierr)
-  call VecGetArrayF90(field%flow_yy,yy_p, ierr)
-  call VecGetArrayF90(field%iphas_loc,iphase_loc_p, ierr)
-  call VecGetArrayF90(field%iphas_old_loc,iphase_old_loc_p, ierr)
+  call VecGetArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(field%flow_yy,yy_p, ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(field%iphas_loc,iphase_loc_p, ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(field%iphas_old_loc,iphase_old_loc_p,  &
+                      ierr);CHKERRQ(ierr)
 
   do local_id =1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
@@ -4049,10 +4062,11 @@ subroutine MphaseMaxChangePatch(realization,  max_c, max_s)
    end if
   end do
 
-  call VecRestoreArrayF90(field%flow_xx,xx_p, ierr)
-  call VecRestoreArrayF90(field%flow_yy,yy_p, ierr)
-  call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p, ierr)
-  call VecRestoreArrayF90(field%iphas_old_loc,iphase_old_loc_p, ierr)
+  call VecRestoreArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%flow_yy,yy_p, ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p, ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%iphas_old_loc,iphase_old_loc_p,  &
+                          ierr);CHKERRQ(ierr)
 
 
   
@@ -4572,12 +4586,12 @@ subroutine MphaseCheckpointWrite(discretization, viewer)
   Vec :: global_var
   PetscErrorCode :: ierr
   
-  call VecView(global_var,viewer,ierr)
-  call VecDestroy(global_var,ierr)
+  call VecView(global_var,viewer,ierr);CHKERRQ(ierr)
+  call VecDestroy(global_var,ierr);CHKERRQ(ierr)
   
   ! solid volume fraction
   if (mphase_option%rk > 0.d0) then
-    call VecView(mphase_field%phis, viewer, ierr)
+    call VecView(mphase_field%phis, viewer, ierr);CHKERRQ(ierr)
   endif  
   
 end subroutine MphaseCheckpointWrite
@@ -4598,11 +4612,11 @@ subroutine MphaseCheckpointRead(discretization,viewer)
   Vec :: global_var
   PetscErrorCode :: ierr
   
-  call VecLoad(global_var, viewer, ierr)
-  call VecDestroy(global_var,ierr)
+  call VecLoad(global_var, viewer, ierr);CHKERRQ(ierr)
+  call VecDestroy(global_var,ierr);CHKERRQ(ierr)
   ! solid volume fraction
   if (mphase_option%rk > 0.d0) then
-    call VecLoad(mphase_field%phis, viewer, ierr)
+    call VecLoad(mphase_field%phis, viewer, ierr);CHKERRQ(ierr)
   endif  
   
 end subroutine MphaseCheckpointRead

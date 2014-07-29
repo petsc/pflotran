@@ -300,7 +300,7 @@ subroutine SurfaceGlobalSetAuxVarVecLocPatch(surf_realization,vec_loc,ivar,isubv
   grid => patch%grid
   option => surf_realization%option
   
-  call VecGetArrayF90(vec_loc,vec_loc_p,ierr)
+  call VecGetArrayF90(vec_loc,vec_loc_p,ierr);CHKERRQ(ierr)
   
   select case(ivar)
     case(SURFACE_LIQUID_HEAD)
@@ -328,7 +328,7 @@ subroutine SurfaceGlobalSetAuxVarVecLocPatch(surf_realization,vec_loc,ivar,isubv
       end select
   end select
 
-  call VecRestoreArrayF90(vec_loc,vec_loc_p,ierr)
+  call VecRestoreArrayF90(vec_loc,vec_loc_p,ierr);CHKERRQ(ierr)
 
 end subroutine SurfaceGlobalSetAuxVarVecLocPatch
 

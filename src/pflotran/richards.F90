@@ -74,12 +74,12 @@ subroutine RichardsTimeCut(realization)
   field => realization%field
 
   
-  call VecCopy(field%flow_yy,field%flow_xx,ierr)
+  call VecCopy(field%flow_yy,field%flow_xx,ierr);CHKERRQ(ierr)
 
   if (option%mimetic) then
-    call VecCopy(field%flow_yy_faces, field%flow_xx_faces, ierr)
+    call VecCopy(field%flow_yy_faces, field%flow_xx_faces, ierr);CHKERRQ(ierr)
     call RichardsUpdateAuxVars(realization)
-    call VecCopy(field%flow_yy,field%flow_xx,ierr)
+    call VecCopy(field%flow_yy,field%flow_xx,ierr);CHKERRQ(ierr)
 !    read(*,*)    
 
   endif
@@ -247,8 +247,8 @@ subroutine RichardsCheckUpdatePre(line_search,P,dP,changed,realization,ierr)
     changed = PETSC_TRUE
     patch => realization%patch
 
-    call VecGetArrayF90(dP,dP_p,ierr)
-    call VecGetArrayF90(P,P_p,ierr)
+    call VecGetArrayF90(dP,dP_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayF90(P,P_p,ierr);CHKERRQ(ierr)
 
     pert =dabs(option%saturation_change_limit)
     do local_id = 1, grid%nlmax
@@ -271,8 +271,8 @@ subroutine RichardsCheckUpdatePre(line_search,P,dP,changed,realization,ierr)
       dP_p(local_id) = delP
     enddo
     
-    call VecRestoreArrayF90(dP,dP_p,ierr)
-    call VecRestoreArrayF90(P,P_p,ierr)
+    call VecRestoreArrayF90(dP,dP_p,ierr);CHKERRQ(ierr)
+    call VecRestoreArrayF90(P,P_p,ierr);CHKERRQ(ierr)
 
   endif
 
@@ -282,9 +282,9 @@ subroutine RichardsCheckUpdatePre(line_search,P,dP,changed,realization,ierr)
     P_R = option%reference_pressure
     scale = option%pressure_dampening_factor
 
-    call VecGetArrayF90(dP,dP_p,ierr)
-    call VecGetArrayF90(P,P_p,ierr)
-    call VecGetArrayF90(field%flow_r,r_p,ierr)
+    call VecGetArrayF90(dP,dP_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayF90(P,P_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayF90(field%flow_r,r_p,ierr);CHKERRQ(ierr)
     do local_id = 1, grid%nlmax
       delP = dP_p(local_id)
       P0 = P_p(local_id)
@@ -317,9 +317,9 @@ subroutine RichardsCheckUpdatePre(line_search,P,dP,changed,realization,ierr)
         dP_p(local_id) = scale*delP
       endif
     enddo
-    call VecRestoreArrayF90(dP,dP_p,ierr)
-    call VecRestoreArrayF90(P,P_p,ierr)
-    call VecGetArrayF90(field%flow_r,r_p,ierr)
+    call VecRestoreArrayF90(dP,dP_p,ierr);CHKERRQ(ierr)
+    call VecRestoreArrayF90(P,P_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayF90(field%flow_r,r_p,ierr);CHKERRQ(ierr)
   endif
 
 end subroutine RichardsCheckUpdatePre
@@ -377,9 +377,9 @@ subroutine RichardsCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
   
   option%converged = PETSC_FALSE
   if (option%flow%check_post_convergence) then
-    call VecGetArrayF90(dP,dP_p,ierr)
-    call VecGetArrayF90(P1,P1_p,ierr)
-    call VecGetArrayF90(field%flow_r,r_p,ierr)
+    call VecGetArrayF90(dP,dP_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayF90(P1,P1_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayF90(field%flow_r,r_p,ierr);CHKERRQ(ierr)
     
     inf_norm = 0.d0
     do local_id = 1, grid%nlmax
@@ -399,9 +399,9 @@ subroutine RichardsCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
     option%converged = PETSC_TRUE
     if (global_inf_norm > option%flow%post_convergence_tol) &
       option%converged = PETSC_FALSE
-    call VecRestoreArrayF90(dP,dP_p,ierr)
-    call VecRestoreArrayF90(P1,P1_p,ierr)
-    call VecGetArrayF90(field%flow_r,r_p,ierr)
+    call VecRestoreArrayF90(dP,dP_p,ierr);CHKERRQ(ierr)
+    call VecRestoreArrayF90(P1,P1_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayF90(field%flow_r,r_p,ierr);CHKERRQ(ierr)
   endif
   
 end subroutine RichardsCheckUpdatePost
@@ -647,10 +647,10 @@ subroutine RichardsUpdatePermPatch(realization)
     call printErrMsg(option)
   endif
   
-  call VecGetArrayF90(field%perm0_xx,perm0_xx_p,ierr)
-  call VecGetArrayF90(field%perm0_zz,perm0_zz_p,ierr)
-  call VecGetArrayF90(field%perm0_yy,perm0_yy_p,ierr)
-  call VecGetArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
+  call VecGetArrayF90(field%perm0_xx,perm0_xx_p,ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(field%perm0_zz,perm0_zz_p,ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(field%perm0_yy,perm0_yy_p,ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(field%flow_xx_loc,xx_loc_p, ierr);CHKERRQ(ierr)
   
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
@@ -683,10 +683,10 @@ subroutine RichardsUpdatePermPatch(realization)
 !      perm0_zz_p(local_id)*scale
   enddo
   
-  call VecRestoreArrayF90(field%perm0_xx,perm0_xx_p,ierr)
-  call VecRestoreArrayF90(field%perm0_zz,perm0_zz_p,ierr)
-  call VecRestoreArrayF90(field%perm0_yy,perm0_yy_p,ierr)
-  call VecRestoreArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
+  call VecRestoreArrayF90(field%perm0_xx,perm0_xx_p,ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%perm0_zz,perm0_zz_p,ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%perm0_yy,perm0_yy_p,ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%flow_xx_loc,xx_loc_p, ierr);CHKERRQ(ierr)
 
   call MaterialGetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
                                PERMEABILITY_X,ZERO_INTEGER)
@@ -782,7 +782,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   PetscErrorCode :: ierr
   Vec :: phi
   
-  call PetscLogEventBegin(logging%event_r_auxvars,ierr)
+  call PetscLogEventBegin(logging%event_r_auxvars,ierr);CHKERRQ(ierr)
 
   option => realization%option
   patch => realization%patch
@@ -797,7 +797,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   global_auxvars_ss => patch%aux%Global%auxvars_ss
   material_auxvars => patch%aux%Material%auxvars
     
-  call VecGetArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
+  call VecGetArrayF90(field%flow_xx_loc,xx_loc_p, ierr);CHKERRQ(ierr)
 
   do ghosted_id = 1, grid%ngmax
     if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
@@ -812,9 +812,9 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
                        option)   
   enddo
 
-  call PetscLogEventEnd(logging%event_r_auxvars,ierr)
+  call PetscLogEventEnd(logging%event_r_auxvars,ierr);CHKERRQ(ierr)
 
-  call PetscLogEventBegin(logging%event_r_auxvars_bc,ierr)
+  call PetscLogEventBegin(logging%event_r_auxvars_bc,ierr);CHKERRQ(ierr)
 
   ! boundary conditions
   boundary_condition => patch%boundary_conditions%first
@@ -866,7 +866,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
     source_sink => source_sink%next
   enddo
 
-  call VecRestoreArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
+  call VecRestoreArrayF90(field%flow_xx_loc,xx_loc_p, ierr);CHKERRQ(ierr)
 
   ! Compute gradient using a least squares approach at each control volume
   if(realization%discretization%lsm_flux_method) then
@@ -875,7 +875,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
 
   patch%aux%Richards%auxvars_up_to_date = PETSC_TRUE
 
-  call PetscLogEventEnd(logging%event_r_auxvars_bc,ierr)
+  call PetscLogEventEnd(logging%event_r_auxvars_bc,ierr);CHKERRQ(ierr)
 
 end subroutine RichardsUpdateAuxVarsPatch
 
@@ -945,10 +945,11 @@ subroutine RichardsUpdateSolution(realization)
   field => realization%field
  
   if (realization%option%mimetic) then 
-     call VecCopy(field%flow_xx_faces, field%flow_yy_faces, ierr)
+     call VecCopy(field%flow_xx_faces, field%flow_yy_faces,  &
+                  ierr);CHKERRQ(ierr)
   end if
 
-  call VecCopy(field%flow_xx,field%flow_yy,ierr)
+  call VecCopy(field%flow_xx,field%flow_yy,ierr);CHKERRQ(ierr)
 
   call RichardsUpdateSolutionPatch(realization)
 
@@ -1044,9 +1045,9 @@ subroutine RichardsUpdateFixedAccumPatch(realization)
   global_auxvars => patch%aux%Global%auxvars
   material_auxvars => patch%aux%Material%auxvars
     
-  call VecGetArrayF90(field%flow_xx,xx_p, ierr)
+  call VecGetArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
 
-  call VecGetArrayF90(field%flow_accum, accum_p, ierr)
+  call VecGetArrayF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
 
 !  numfaces = 6     ! hex only
 !  allocate(sq_faces(numfaces))
@@ -1068,10 +1069,10 @@ subroutine RichardsUpdateFixedAccumPatch(realization)
                               option,accum_p(local_id:local_id))
   enddo
 
-  call VecRestoreArrayF90(field%flow_xx,xx_p, ierr)
+  call VecRestoreArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
 
 
-  call VecRestoreArrayF90(field%flow_accum, accum_p, ierr)
+  call VecRestoreArrayF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
 
 end subroutine RichardsUpdateFixedAccumPatch
 
@@ -1119,50 +1120,53 @@ subroutine RichardsNumericalJacTest(xx,realization)
   option => realization%option
   field => realization%field
   
-  call VecDuplicate(xx,xx_pert,ierr)
-  call VecDuplicate(xx,res,ierr)
-  call VecDuplicate(xx,res_pert,ierr)
+  call VecDuplicate(xx,xx_pert,ierr);CHKERRQ(ierr)
+  call VecDuplicate(xx,res,ierr);CHKERRQ(ierr)
+  call VecDuplicate(xx,res_pert,ierr);CHKERRQ(ierr)
   
-  call MatCreate(option%mycomm,A,ierr)
-  call MatSetSizes(A,PETSC_DECIDE,PETSC_DECIDE,grid%nlmax*option%nflowdof,grid%nlmax*option%nflowdof,ierr)
-  call MatSetType(A,MATAIJ,ierr)
-  call MatSetFromOptions(A,ierr)
+  call MatCreate(option%mycomm,A,ierr);CHKERRQ(ierr)
+  call MatSetSizes(A,PETSC_DECIDE,PETSC_DECIDE,grid%nlmax*option%nflowdof,grid%nlmax*option%nflowdof, &
+                   ierr);CHKERRQ(ierr)
+  call MatSetType(A,MATAIJ,ierr);CHKERRQ(ierr)
+  call MatSetFromOptions(A,ierr);CHKERRQ(ierr)
     
   call RichardsResidual(PETSC_NULL_OBJECT,xx,res,realization,ierr)
-  call VecGetArrayF90(res,vec2_p,ierr)
+  call VecGetArrayF90(res,vec2_p,ierr);CHKERRQ(ierr)
   do icell = 1,grid%nlmax
     if (patch%imat(grid%nL2G(icell)) <= 0) cycle
      idof = icell
 !    do idof = (icell-1)*option%nflowdof+1,icell*option%nflowdof 
-      call veccopy(xx,xx_pert,ierr)
-      call vecgetarrayf90(xx_pert,vec_p,ierr)
+      call veccopy(xx,xx_pert,ierr);CHKERRQ(ierr)
+      call vecgetarrayf90(xx_pert,vec_p,ierr);CHKERRQ(ierr)
       perturbation = vec_p(idof)*perturbation_tolerance
       vec_p(idof) = vec_p(idof)+perturbation
-      call vecrestorearrayf90(xx_pert,vec_p,ierr)
+      call vecrestorearrayf90(xx_pert,vec_p,ierr);CHKERRQ(ierr)
       call RichardsResidual(PETSC_NULL_OBJECT,xx_pert,res_pert,realization,ierr)
-      call vecgetarrayf90(res_pert,vec_p,ierr)
+      call vecgetarrayf90(res_pert,vec_p,ierr);CHKERRQ(ierr)
       do idof2 = 1, grid%nlmax*option%nflowdof
         derivative = (vec_p(idof2)-vec2_p(idof2))/perturbation
         if (dabs(derivative) > 1.d-30) then
-          call matsetvalue(a,idof2-1,idof-1,derivative,insert_values,ierr)
+          call matsetvalue(a,idof2-1,idof-1,derivative,insert_values, &
+                           ierr);CHKERRQ(ierr)
         endif
       enddo
-      call VecRestoreArrayF90(res_pert,vec_p,ierr)
+      call VecRestoreArrayF90(res_pert,vec_p,ierr);CHKERRQ(ierr)
 !    enddo
   enddo
-  call VecRestoreArrayF90(res,vec2_p,ierr)
+  call VecRestoreArrayF90(res,vec2_p,ierr);CHKERRQ(ierr)
 
-  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-  call PetscViewerASCIIOpen(option%mycomm,'numerical_jacobian.out',viewer,ierr)
-  call MatView(A,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+  call PetscViewerASCIIOpen(option%mycomm,'numerical_jacobian.out',viewer, &
+                            ierr);CHKERRQ(ierr)
+  call MatView(A,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 
-  call MatDestroy(A,ierr)
+  call MatDestroy(A,ierr);CHKERRQ(ierr)
   
-  call VecDestroy(xx_pert,ierr)
-  call VecDestroy(res,ierr)
-  call VecDestroy(res_pert,ierr)
+  call VecDestroy(xx_pert,ierr);CHKERRQ(ierr)
+  call VecDestroy(res,ierr);CHKERRQ(ierr)
+  call VecDestroy(res_pert,ierr);CHKERRQ(ierr)
   
 end subroutine RichardsNumericalJacTest
 
@@ -1200,7 +1204,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   type(option_type), pointer :: option
   type(mass_transfer_type), pointer :: cur_mass_transfer
 
-  call PetscLogEventBegin(logging%event_r_residual,ierr)
+  call PetscLogEventBegin(logging%event_r_residual,ierr);CHKERRQ(ierr)
   
   field => realization%field
   discretization => realization%discretization
@@ -1239,18 +1243,18 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
 
   if (realization%debug%vecview_residual) then
     call PetscViewerASCIIOpen(realization%option%mycomm,'Rresidual.out', &
-                              viewer,ierr)
-    call VecView(r,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+                              viewer,ierr);CHKERRQ(ierr)
+    call VecView(r,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
   if (realization%debug%vecview_solution) then
     call PetscViewerASCIIOpen(realization%option%mycomm,'Rxx.out', &
-                              viewer,ierr)
-    call VecView(xx,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+                              viewer,ierr);CHKERRQ(ierr)
+    call VecView(xx,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
 
-  call PetscLogEventEnd(logging%event_r_residual,ierr)
+  call PetscLogEventEnd(logging%event_r_residual,ierr);CHKERRQ(ierr)
 
   ! Mass Transfer
   if (associated(realization%flow_mass_transfer_list)) then
@@ -1258,7 +1262,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
     do
       if (.not.associated(cur_mass_transfer)) exit
       call VecStrideScatter(cur_mass_transfer%vec,cur_mass_transfer%idof-1, &
-                            r,ADD_VALUES,ierr)
+                            r,ADD_VALUES,ierr);CHKERRQ(ierr)
       cur_mass_transfer => cur_mass_transfer%next
     enddo
   endif
@@ -1363,7 +1367,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
 !  write(*,*) "RichardsResidual"
 !  read(*,*)
 ! now assign access pointer to local variables
-  call VecGetArrayF90(r, r_p, ierr)
+  call VecGetArrayF90(r, r_p, ierr);CHKERRQ(ierr)
 
   r_p = 0.d0
 
@@ -1524,7 +1528,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
     boundary_condition => boundary_condition%next
   enddo
 
-  call VecRestoreArrayF90(r, r_p, ierr)
+  call VecRestoreArrayF90(r, r_p, ierr);CHKERRQ(ierr)
 
   !read(*,*) local_id
 
@@ -1603,8 +1607,8 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
   material_auxvars => patch%aux%Material%auxvars
 
   ! now assign access pointer to local variables
-  call VecGetArrayF90(r, r_p, ierr)
-  call VecGetArrayF90(field%flow_accum, accum_p, ierr)
+  call VecGetArrayF90(r, r_p, ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
 
   ! Accumulation terms ------------------------------------
   if (.not.option%steady_state) then
@@ -1731,8 +1735,8 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
   print *, r_p(:)
 #endif
 
-  call VecRestoreArrayF90(r, r_p, ierr)
-  call VecRestoreArrayF90(field%flow_accum, accum_p, ierr)
+  call VecRestoreArrayF90(r, r_p, ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
   
 end subroutine RichardsResidualPatch2
 
@@ -1767,20 +1771,20 @@ subroutine RichardsJacobian(snes,xx,A,B,realization,ierr)
   type(option_type), pointer :: option
   PetscReal :: norm
 
-  call PetscLogEventBegin(logging%event_r_jacobian,ierr)
+  call PetscLogEventBegin(logging%event_r_jacobian,ierr);CHKERRQ(ierr)
 
   option => realization%option
 
-  call MatGetType(A,mat_type,ierr)
+  call MatGetType(A,mat_type,ierr);CHKERRQ(ierr)
   if (mat_type == MATMFFD) then
     J = B
-    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
   else
     J = A
   endif
 
-  call MatZeroEntries(J,ierr)
+  call MatZeroEntries(J,ierr);CHKERRQ(ierr)
 
   ! pass #1 for internal and boundary flux terms
   call RichardsJacobianPatch1(snes,xx,J,J,realization,ierr)
@@ -1791,42 +1795,42 @@ subroutine RichardsJacobian(snes,xx,A,B,realization,ierr)
   if (realization%debug%matview_Jacobian) then
 #if 1  
     call PetscViewerASCIIOpen(realization%option%mycomm,'Rjacobian.out', &
-                              viewer,ierr)
+                              viewer,ierr);CHKERRQ(ierr)
 #else
 !    call PetscViewerBinaryOpen(realization%option%mycomm,'Rjacobian.bin', &
 !                               FILE_MODE_WRITE,viewer,ierr)
 #endif    
-    call MatView(J,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+    call MatView(J,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
   if (realization%debug%norm_Jacobian) then
     option => realization%option
-    call MatNorm(J,NORM_1,norm,ierr)
+    call MatNorm(J,NORM_1,norm,ierr);CHKERRQ(ierr)
     write(option%io_buffer,'("1 norm: ",es11.4)') norm
     call printMsg(option) 
-    call MatNorm(J,NORM_FROBENIUS,norm,ierr)
+    call MatNorm(J,NORM_FROBENIUS,norm,ierr);CHKERRQ(ierr)
     write(option%io_buffer,'("2 norm: ",es11.4)') norm
     call printMsg(option) 
-    call MatNorm(J,NORM_INFINITY,norm,ierr)
+    call MatNorm(J,NORM_INFINITY,norm,ierr);CHKERRQ(ierr)
     write(option%io_buffer,'("inf norm: ",es11.4)') norm
     call printMsg(option) 
   endif
 
 #if 0
     call PetscViewerASCIIOpen(realization%option%mycomm,'flow_dxx.out', &
-                              viewer,ierr)
-    call VecView(realization%field%flow_dxx,viewer,ierr)
+                              viewer,ierr);CHKERRQ(ierr)
+    call VecView(realization%field%flow_dxx,viewer,ierr);CHKERRQ(ierr)
 
-    call PetscViewerDestroy(viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
  
 
     call PetscViewerASCIIOpen(realization%option%mycomm,'flow_yy.out', &
-                              viewer,ierr)
-    call VecView(realization%field%flow_yy,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+                              viewer,ierr);CHKERRQ(ierr)
+    call VecView(realization%field%flow_yy,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif
 
-  call PetscLogEventEnd(logging%event_r_jacobian,ierr)
+  call PetscLogEventEnd(logging%event_r_jacobian,ierr);CHKERRQ(ierr)
 !  call printErrMsg(option)
 
   
@@ -2006,9 +2010,9 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
         else
 #endif
           call MatSetValuesLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
-                                        Jup,ADD_VALUES,ierr)
+                                        Jup,ADD_VALUES,ierr);CHKERRQ(ierr)
           call MatSetValuesLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
-                                        Jdn,ADD_VALUES,ierr)
+                                        Jdn,ADD_VALUES,ierr);CHKERRQ(ierr)
 #ifdef BUFFER_MATRIX
         endif
 #endif
@@ -2029,9 +2033,9 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
         else
 #endif
           call MatSetValuesLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
-                                        Jdn,ADD_VALUES,ierr)
+                                        Jdn,ADD_VALUES,ierr);CHKERRQ(ierr)
           call MatSetValuesLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
-                                        Jup,ADD_VALUES,ierr)
+                                        Jup,ADD_VALUES,ierr);CHKERRQ(ierr)
 #ifdef BUFFER_MATRIX
         endif
 #endif
@@ -2041,14 +2045,16 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
   enddo
 #endif
   if (realization%debug%matview_Jacobian_detailed) then
-    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-    call PetscViewerASCIIOpen(option%mycomm,'jacobian_flux.out',viewer,ierr)
-    call MatView(A,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
-    call PetscViewerBinaryOpen(option%mycomm,'jacobian_flux.bin',FILE_MODE_WRITE,viewer,ierr)
-    call MatView(A,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'jacobian_flux.out',viewer, &
+                              ierr);CHKERRQ(ierr)
+    call MatView(A,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerBinaryOpen(option%mycomm,'jacobian_flux.bin',FILE_MODE_WRITE,viewer, &
+                               ierr);CHKERRQ(ierr)
+    call MatView(A,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
 #if 1
   ! Boundary Flux Terms -----------------------------------
@@ -2099,7 +2105,7 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
       else
 #endif
         call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jdn, &
-                               ADD_VALUES,ierr)
+                               ADD_VALUES,ierr);CHKERRQ(ierr)
 #ifdef BUFFER_MATRIX
       endif
 #endif
@@ -2109,14 +2115,16 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
   enddo
 #endif
   if (realization%debug%matview_Jacobian_detailed) then
-    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-    call PetscViewerASCIIOpen(option%mycomm,'jacobian_bcflux.out',viewer,ierr)
-    call MatView(A,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
-    call PetscViewerBinaryOpen(option%mycomm,'jacobian_bcflux.bin',FILE_MODE_WRITE,viewer,ierr)
-    call MatView(A,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'jacobian_bcflux.out',viewer, &
+                              ierr);CHKERRQ(ierr)
+    call MatView(A,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerBinaryOpen(option%mycomm,'jacobian_bcflux.bin',FILE_MODE_WRITE,viewer, &
+                               ierr);CHKERRQ(ierr)
+    call MatView(A,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
   
 end subroutine RichardsJacobianPatch1
@@ -2214,7 +2222,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,realization,ierr)
     else
 #endif
       call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
-                             ADD_VALUES,ierr)
+                             ADD_VALUES,ierr);CHKERRQ(ierr)
 #ifdef BUFFER_MATRIX
     endif
 #endif
@@ -2222,14 +2230,16 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,realization,ierr)
 #endif
   endif
   if (realization%debug%matview_Jacobian_detailed) then
-    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-    call PetscViewerASCIIOpen(option%mycomm,'jacobian_accum.out',viewer,ierr)
-    call MatView(A,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
-    call PetscViewerBinaryOpen(option%mycomm,'jacobian_accum.bin',FILE_MODE_WRITE,viewer,ierr)
-    call MatView(A,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'jacobian_accum.out',viewer, &
+                              ierr);CHKERRQ(ierr)
+    call MatView(A,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerBinaryOpen(option%mycomm,'jacobian_accum.bin',FILE_MODE_WRITE,viewer, &
+                               ierr);CHKERRQ(ierr)
+    call MatView(A,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
 #if 1
   ! Source/sink terms -------------------------------------
@@ -2304,7 +2314,8 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,realization,ierr)
                              ghosted_id,Jup(1,1))
       else
 #endif
-        call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
+        call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES, &
+                               ierr);CHKERRQ(ierr)
 #ifdef BUFFER_MATRIX
       endif
 #endif
@@ -2317,14 +2328,16 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,realization,ierr)
                          global_auxvars,option)
 
   if (realization%debug%matview_Jacobian_detailed) then
-    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-    call PetscViewerASCIIOpen(option%mycomm,'jacobian_srcsink.out',viewer,ierr)
-    call MatView(A,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
-    call PetscViewerBinaryOpen(option%mycomm,'jacobian_srcsink.bin',FILE_MODE_WRITE,viewer,ierr)
-    call MatView(A,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'jacobian_srcsink.out',viewer, &
+                              ierr);CHKERRQ(ierr)
+    call MatView(A,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerBinaryOpen(option%mycomm,'jacobian_srcsink.bin',FILE_MODE_WRITE,viewer, &
+                               ierr);CHKERRQ(ierr)
+    call MatView(A,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
   
 #ifdef BUFFER_MATRIX
@@ -2338,8 +2351,8 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,realization,ierr)
   endif
 #endif
 
-  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
 
 ! zero out isothermal and inactive cells
 #ifdef BUFFER_MATRIX
@@ -2349,7 +2362,8 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,realization,ierr)
       qsrc = 1.d0 ! solely a temporary variable in this conditional
       call MatZeroRowsLocal(A,patch%aux%Richards%n_zero_rows, &
                             patch%aux%Richards%zero_rows_local_ghosted, &
-                            qsrc,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+                            qsrc,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                            ierr);CHKERRQ(ierr)
     endif
 #ifdef BUFFER_MATRIX
   endif
@@ -2462,16 +2476,22 @@ subroutine RichardsMaxChange(realization)
 
   if (option%mimetic) then
 
-    call VecWAXPY(field%flow_dxx_faces,-1.d0,field%flow_xx_faces,field%flow_yy_faces,ierr)
-    call VecStrideNorm(field%flow_dxx_faces,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
+    call VecWAXPY(field%flow_dxx_faces,-1.d0,field%flow_xx_faces,field%flow_yy_faces, &
+                  ierr);CHKERRQ(ierr)
+    call VecStrideNorm(field%flow_dxx_faces,ZERO_INTEGER,NORM_INFINITY,option%dpmax, &
+                       ierr);CHKERRQ(ierr)
 
-    call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
-    call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
+    call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy, &
+                  ierr);CHKERRQ(ierr)
+    call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax, &
+                       ierr);CHKERRQ(ierr)
 
   else
 
-     call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
-     call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
+     call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy, &
+                   ierr);CHKERRQ(ierr)
+     call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax, &
+                        ierr);CHKERRQ(ierr)
 
   end if
 
@@ -2739,7 +2759,7 @@ subroutine RichardsComputeCoeffsForSurfFlux(realization)
   call EOSWaterdensity(option%reference_temperature, &
                        option%reference_pressure,den,dum1,ierr)
 
-  call VecGetArrayF90(realization%field%flow_xx, xx_p, ierr)
+  call VecGetArrayF90(realization%field%flow_xx, xx_p, ierr);CHKERRQ(ierr)
 
   ! boundary conditions
   boundary_condition => patch%boundary_conditions%first
@@ -2907,7 +2927,7 @@ subroutine RichardsComputeCoeffsForSurfFlux(realization)
     boundary_condition => boundary_condition%next
 
   enddo
-  call VecRestoreArrayF90(realization%field%flow_xx, xx_p, ierr)
+  call VecRestoreArrayF90(realization%field%flow_xx, xx_p, ierr);CHKERRQ(ierr)
 
 end subroutine RichardsComputeCoeffsForSurfFlux
 
@@ -2953,7 +2973,7 @@ subroutine RichardsSSSandbox(residual,Jacobian,compute_derivative, &
   PetscErrorCode :: ierr
   
   if (.not.compute_derivative) then
-    call VecGetArrayF90(residual,r_p,ierr)
+    call VecGetArrayF90(residual,r_p,ierr);CHKERRQ(ierr)
   endif
   
   cur_srcsink => sandbox_list
@@ -2978,7 +2998,8 @@ subroutine RichardsSSSandbox(residual,Jacobian,compute_derivative, &
                                     material_auxvars(ghosted_id), &
                                     aux_real,option)
           call MatSetValuesBlockedLocal(Jacobian,1,ghosted_id-1,1, &
-                                        ghosted_id-1,Jac,ADD_VALUES,ierr)
+                                        ghosted_id-1,Jac,ADD_VALUES, &
+                                        ierr);CHKERRQ(ierr)
         else
           iend = local_id*option%nflowdof
           istart = iend - option%nflowdof + 1
@@ -2989,7 +3010,7 @@ subroutine RichardsSSSandbox(residual,Jacobian,compute_derivative, &
   enddo
   
   if (.not.compute_derivative) then
-    call VecRestoreArrayF90(residual,r_p,ierr)
+    call VecRestoreArrayF90(residual,r_p,ierr);CHKERRQ(ierr)
   endif
 
 end subroutine RichardsSSSandbox

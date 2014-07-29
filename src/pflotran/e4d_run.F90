@@ -76,13 +76,14 @@ contains
 !geh    call MPI_RECV(pf_sol,nelem,MPI_REAL,0,0,PFE4D_COMM,status,ierr)
     call VecScatterBegin(pflotran_scatter,pflotran_solution_vec_mpi, &
                          pflotran_solution_vec_seq, &
-                         INSERT_VALUES,SCATTER_FORWARD,ierr)
+                         INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
     call VecScatterEnd(pflotran_scatter,pflotran_solution_vec_mpi, &
                        pflotran_solution_vec_seq, &
-                       INSERT_VALUES,SCATTER_FORWARD,ierr)
-    call VecGetArrayF90(pflotran_solution_vec_seq,vec_ptr,ierr)
+                       INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+    call VecGetArrayF90(pflotran_solution_vec_seq,vec_ptr,ierr);CHKERRQ(ierr)
     pf_sol = vec_ptr
-    call VecRestoreArrayF90(pflotran_solution_vec_seq,vec_ptr,ierr)
+    call VecRestoreArrayF90(pflotran_solution_vec_seq,vec_ptr, &
+                            ierr);CHKERRQ(ierr)
   end subroutine get_pf_sol
   !____________________________________________________________________
 
@@ -350,9 +351,9 @@ num_calls = num_calls + 1
     do i=1,my_ne
        !call cpu_time(tstart)
        
-       call VecGetArrayF90(psol,vloc,ierr)
+       call VecGetArrayF90(psol,vloc,ierr);CHKERRQ(ierr)
        vloc(1:nnodes)=dble(poles(:,i))
-       call VecRestoreArrayF90(psol,vloc,ierr)
+       call VecRestoreArrayF90(psol,vloc,ierr);CHKERRQ(ierr)
        enum=eind(my_rank,1)+i-1
           
        val=0.0
@@ -372,9 +373,9 @@ num_calls = num_calls + 1
        
        call KSPSolve(KS,B,psol,perr)
        
-       call VecGetArrayF90(psol,vloc,ierr)
+       call VecGetArrayF90(psol,vloc,ierr);CHKERRQ(ierr)
        poles(:,i)= real(vloc(1:nnodes))
-       call VecRestoreArrayF90(psol,vloc,ierr)
+       call VecRestoreArrayF90(psol,vloc,ierr);CHKERRQ(ierr)
        
        call KSPGetIterationNumber(KS,niter,perr)
        call cpu_time(tend)

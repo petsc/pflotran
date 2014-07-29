@@ -227,7 +227,7 @@ subroutine GlobalSetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
   grid => patch%grid
   option => realization%option
   
-  call VecGetArrayReadF90(vec_loc,vec_loc_p,ierr)
+  call VecGetArrayReadF90(vec_loc,vec_loc_p,ierr);CHKERRQ(ierr)
   
   select case(ivar)
     case(LIQUID_PRESSURE)
@@ -394,7 +394,7 @@ subroutine GlobalSetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
       enddo
   end select
 
-  call VecRestoreArrayReadF90(vec_loc,vec_loc_p,ierr)
+  call VecRestoreArrayReadF90(vec_loc,vec_loc_p,ierr);CHKERRQ(ierr)
 
 end subroutine GlobalSetAuxVarVecLoc
 

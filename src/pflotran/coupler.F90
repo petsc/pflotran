@@ -730,10 +730,10 @@ subroutine CouplerAssignBCtoCells(grid,option,coupler)
   if (.not.associated(coupler)) return
   if (coupler%itype /= BOUNDARY_COUPLER_TYPE) return
 
-  call VecGetSize(grid%e2n, e2n_size, ierr)
+  call VecGetSize(grid%e2n, e2n_size, ierr);CHKERRQ(ierr)
 
   if (e2n_size > 0) then 
-      call VecGetArrayF90(grid%e2n, e2n_local, ierr)
+      call VecGetArrayF90(grid%e2n, e2n_local, ierr);CHKERRQ(ierr)
   end if
 
   region => coupler%region
@@ -762,7 +762,7 @@ subroutine CouplerAssignBCtoCells(grid,option,coupler)
   end do
 
   if (e2n_size > 0) then
-    call VecRestoreArrayF90(grid%e2n, e2n_local, ierr)
+    call VecRestoreArrayF90(grid%e2n, e2n_local, ierr);CHKERRQ(ierr)
   endif
 
 #endif 

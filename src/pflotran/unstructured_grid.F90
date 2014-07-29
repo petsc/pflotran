@@ -1411,19 +1411,22 @@ subroutine UGridDecompose(unstructured_grid,option)
   call MatCreateMPIAdj(option%mycomm,num_cells_local_old, &
                        unstructured_grid%num_vertices_global, &
                        local_vertex_offset, &
-                       local_vertices,PETSC_NULL_INTEGER,Adj_mat,ierr)
+                       local_vertices,PETSC_NULL_INTEGER,Adj_mat, &
+                       ierr);CHKERRQ(ierr)
 
   ! do not free local_vertices; MatAdjDestroy will do it
   ! do not free local_vertex_offset; MatAdjDestroy will do it
 
 #if UGRID_DEBUG
   if (unstructured_grid%grid_type == THREE_DIM_GRID) then
-    call PetscViewerASCIIOpen(option%mycomm,'Adj_subsurf.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'Adj_subsurf.out',viewer, &
+                              ierr);CHKERRQ(ierr)
   else
-    call PetscViewerASCIIOpen(option%mycomm,'Adj_surf.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'Adj_surf.out',viewer, &
+                              ierr);CHKERRQ(ierr)
   endif
-  call MatView(Adj_mat,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+  call MatView(Adj_mat,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif
 
 #if UGRID_DEBUG
@@ -1431,18 +1434,21 @@ subroutine UGridDecompose(unstructured_grid,option)
 #endif
 
 #if defined(PETSC_HAVE_PARMETIS)
-  call MatMeshToCellGraph(Adj_mat,num_common_vertices,Dual_mat,ierr)
+  call MatMeshToCellGraph(Adj_mat,num_common_vertices,Dual_mat, &
+                          ierr);CHKERRQ(ierr)
 #endif
-  call MatDestroy(Adj_mat,ierr)
+  call MatDestroy(Adj_mat,ierr);CHKERRQ(ierr)
   
 #if UGRID_DEBUG
   if (unstructured_grid%grid_type == THREE_DIM_GRID) then
-    call PetscViewerASCIIOpen(option%mycomm,'Dual_subsurf.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'Dual_subsurf.out',viewer, &
+                              ierr);CHKERRQ(ierr)
   else
-    call PetscViewerASCIIOpen(option%mycomm,'Dual_surf.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'Dual_surf.out',viewer, &
+                              ierr);CHKERRQ(ierr)
   endif
-  call MatView(Dual_mat,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+  call MatView(Dual_mat,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif
   
   call UGridPartition(unstructured_grid,option,Dual_mat,is_new, &
@@ -1454,7 +1460,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   ! second argument of ZERO_INTEGER means to use 0-based indexing
   ! MagGetRowIJF90 returns row and column pointers for compressed matrix data
   call MatGetRowIJF90(Dual_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE,num_rows, &
-                      ia_ptr,ja_ptr,success,ierr)
+                      ia_ptr,ja_ptr,success,ierr);CHKERRQ(ierr)
 
   if (.not.success .or. num_rows /= num_cells_local_old) then
     print *, option%myrank, num_rows, success, num_cells_local_old
@@ -1483,7 +1489,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   
   if (unstructured_grid%max_ndual_per_cell > 0) then
     call MatRestoreRowIJF90(Dual_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE, &
-                            num_rows,ia_ptr,ja_ptr,success,ierr)
+                            num_rows,ia_ptr,ja_ptr,success,ierr);CHKERRQ(ierr)
   endif
   
   ! in order to redistributed vertex/cell data among ranks, I package it
@@ -1520,9 +1526,9 @@ subroutine UGridDecompose(unstructured_grid,option)
   ! 0 = 0-based indexing
   ! MagGetRowIJF90 returns row and column pointers for compressed matrix data
   call MatGetRowIJF90(Dual_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE,num_rows, &
-                      ia_ptr,ja_ptr,success,ierr)
+                      ia_ptr,ja_ptr,success,ierr);CHKERRQ(ierr)
 
-  call VecGetArrayF90(elements_old,vec_ptr,ierr)
+  call VecGetArrayF90(elements_old,vec_ptr,ierr);CHKERRQ(ierr)
   count = 0
   vertex_count = 0
   do local_id = 1, num_cells_local_old
@@ -1568,13 +1574,13 @@ subroutine UGridDecompose(unstructured_grid,option)
     ! final separator
     vec_ptr(count) = -999999  ! help differentiate
   enddo
-  call VecRestoreArrayF90(elements_old,vec_ptr,ierr)
+  call VecRestoreArrayF90(elements_old,vec_ptr,ierr);CHKERRQ(ierr)
   
   if (unstructured_grid%max_ndual_per_cell > 0) then
     call MatRestoreRowIJF90(Dual_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE, &
-                            num_rows,ia_ptr,ja_ptr,success,ierr)
+                            num_rows,ia_ptr,ja_ptr,success,ierr);CHKERRQ(ierr)
   endif
-  call MatDestroy(Dual_mat,ierr)
+  call MatDestroy(Dual_mat,ierr);CHKERRQ(ierr)
  
   
   call UGridNaturalToPetsc(unstructured_grid,option, &
@@ -1589,7 +1595,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   vertex_count = 0
   ! yep - load them all into a petsc vector
   ! note that the vertices are still in natural numbering
-  call VecGetArrayF90(elements_local,vec_ptr,ierr)
+  call VecGetArrayF90(elements_local,vec_ptr,ierr);CHKERRQ(ierr)
   do local_id=1, unstructured_grid%ngmax
     do ivertex = 1, unstructured_grid%max_nvert_per_cell
       vertex_id = int(vec_ptr(ivertex + vertex_ids_offset + (local_id-1)*stride))
@@ -1602,7 +1608,7 @@ subroutine UGridDecompose(unstructured_grid,option)
       int_array_pointer(vertex_count) = vertex_id
     enddo
   enddo
-  call VecRestoreArrayF90(elements_local,vec_ptr,ierr)
+  call VecRestoreArrayF90(elements_local,vec_ptr,ierr);CHKERRQ(ierr)
 
   ! sort the vertex ids
   allocate(int_array(vertex_count))
@@ -1614,7 +1620,8 @@ subroutine UGridDecompose(unstructured_grid,option)
   deallocate(int_array_pointer)
   nullify(int_array_pointer)
   int_array2 = int_array2-1
-  call PetscSortIntWithPermutation(vertex_count,int_array,int_array2,ierr)
+  call PetscSortIntWithPermutation(vertex_count,int_array,int_array2, &
+                                   ierr);CHKERRQ(ierr)
   int_array2 = int_array2+1
 
   ! remove duplicates
@@ -1653,7 +1660,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   unstructured_grid%cell_vertices = 0
   
   ! permute the local ids calculated earlier in the int_array4
-  call VecGetArrayF90(elements_local,vec_ptr,ierr)
+  call VecGetArrayF90(elements_local,vec_ptr,ierr);CHKERRQ(ierr)
   do ghosted_id = 1, unstructured_grid%ngmax
     do ivertex = 1, unstructured_grid%max_nvert_per_cell
       ! extract the original vertex id
@@ -1668,7 +1675,7 @@ subroutine UGridDecompose(unstructured_grid,option)
         int_array4(vertex_id)
     enddo
   enddo
-  call VecRestoreArrayF90(elements_local,vec_ptr,ierr)
+  call VecRestoreArrayF90(elements_local,vec_ptr,ierr);CHKERRQ(ierr)
   deallocate(int_array2)
   deallocate(int_array3)
   deallocate(int_array4)
@@ -1680,11 +1687,12 @@ subroutine UGridDecompose(unstructured_grid,option)
   else
     string = 'elements_vert_local' // trim(adjustl(string)) // '_surf.out'
   endif
-  call PetscViewerASCIIOpen(PETSC_COMM_SELF,trim(string),viewer,ierr)
-  call VecView(elements_local,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+  call PetscViewerASCIIOpen(PETSC_COMM_SELF,trim(string),viewer, &
+                            ierr);CHKERRQ(ierr)
+  call VecView(elements_local,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif  
-  call VecDestroy(elements_local,ierr)
+  call VecDestroy(elements_local,ierr);CHKERRQ(ierr)
 
   ! now we need to work on aligning the original vertex coordinates with 
   ! the current ordering or permuted/rearranged ordering.
@@ -1698,24 +1706,25 @@ subroutine UGridDecompose(unstructured_grid,option)
 
   ! include cell ids (use block ids, not indices)
   call ISCreateBlock(option%mycomm,3,vertex_count, &
-                     int_array,PETSC_COPY_VALUES,is_gather,ierr)
+                     int_array,PETSC_COPY_VALUES,is_gather,ierr);CHKERRQ(ierr)
   deallocate(int_array)
 
   ! create a parallel petsc vector with a stride of 3.
   !call VecCreateMPI(option%mycomm,unstructured_grid%num_vertices_local*3, &
   !                  PETSC_DETERMINE,vertices_old,ierr)
-  call VecCreate(option%mycomm,vertices_old,ierr)
+  call VecCreate(option%mycomm,vertices_old,ierr);CHKERRQ(ierr)
   call VecSetSizes(vertices_old,unstructured_grid%num_vertices_local*3, &
-                  PETSC_DECIDE,ierr)
-  call VecSetBlockSize(vertices_old,3,ierr)
-  call VecSetFromOptions(vertices_old,ierr)
+                  PETSC_DECIDE,ierr);CHKERRQ(ierr)
+  call VecSetBlockSize(vertices_old,3,ierr);CHKERRQ(ierr)
+  call VecSetFromOptions(vertices_old,ierr);CHKERRQ(ierr)
 
   ! create serial petsc vector with a stride of 3
   !call VecCreateSeq(PETSC_COMM_SELF,vertex_count*3,vertices_new,ierr)
-  call VecCreate(PETSC_COMM_SELF,vertices_new,ierr)
-  call VecSetSizes(vertices_new,vertex_count*3,PETSC_DECIDE,ierr)
-  call VecSetBlockSize(vertices_new,3,ierr)
-  call VecSetFromOptions(vertices_new,ierr)
+  call VecCreate(PETSC_COMM_SELF,vertices_new,ierr);CHKERRQ(ierr)
+  call VecSetSizes(vertices_new,vertex_count*3,PETSC_DECIDE, &
+                   ierr);CHKERRQ(ierr)
+  call VecSetBlockSize(vertices_new,3,ierr);CHKERRQ(ierr)
+  call VecSetFromOptions(vertices_new,ierr);CHKERRQ(ierr)
 
 !  call VecCreate(option%mycomm,vertices_new,ierr)
 !  call VecSetSizes(vertices_new, &
@@ -1727,13 +1736,13 @@ subroutine UGridDecompose(unstructured_grid,option)
 !                   3*unstructured_grid%num_vertices_local,PETSC_DECIDE,ierr)
 !  call VecSetFromOptions(vertices_old,ierr)
 ! load up the coordinates
-  call VecGetArrayF90(vertices_old,vec_ptr,ierr)
+  call VecGetArrayF90(vertices_old,vec_ptr,ierr);CHKERRQ(ierr)
   do ivertex = 1, unstructured_grid%num_vertices_local
     vec_ptr((ivertex-1)*3+1) = unstructured_grid%vertices(ivertex)%x
     vec_ptr((ivertex-1)*3+2) = unstructured_grid%vertices(ivertex)%y
     vec_ptr((ivertex-1)*3+3) = unstructured_grid%vertices(ivertex)%z
   enddo
-  call VecRestoreArrayF90(vertices_old,vec_ptr,ierr)
+  call VecRestoreArrayF90(vertices_old,vec_ptr,ierr);CHKERRQ(ierr)
   deallocate(unstructured_grid%vertices)
   nullify(unstructured_grid%vertices)
 
@@ -1744,7 +1753,8 @@ subroutine UGridDecompose(unstructured_grid,option)
   enddo
   ! include cell ids
   call ISCreateBlock(option%mycomm,3,vertex_count, &
-                     int_array,PETSC_COPY_VALUES,is_scatter,ierr)
+                     int_array,PETSC_COPY_VALUES,is_scatter, &
+                     ierr);CHKERRQ(ierr)
   deallocate(int_array)
 
   ! resize vertex array to new size
@@ -1759,52 +1769,58 @@ subroutine UGridDecompose(unstructured_grid,option)
 
 #if UGRID_DEBUG
   if (unstructured_grid%grid_type == THREE_DIM_GRID) then
-    call PetscViewerASCIIOpen(option%mycomm,'is_scatter_vert_old_to_new_subsurf.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'is_scatter_vert_old_to_new_subsurf.out',viewer, &
+                              ierr);CHKERRQ(ierr)
   else
-    call PetscViewerASCIIOpen(option%mycomm,'is_scatter_vert_old_to_new_surf.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'is_scatter_vert_old_to_new_surf.out',viewer, &
+                              ierr);CHKERRQ(ierr)
   endif
-  call ISView(is_scatter,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+  call ISView(is_scatter,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   if (unstructured_grid%grid_type == THREE_DIM_GRID) then
-    call PetscViewerASCIIOpen(option%mycomm,'is_gather_vert_old_to_new_subsurf.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'is_gather_vert_old_to_new_subsurf.out',viewer, &
+                              ierr);CHKERRQ(ierr)
   else
-    call PetscViewerASCIIOpen(option%mycomm,'is_gather_vert_old_to_new_surf.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'is_gather_vert_old_to_new_surf.out',viewer, &
+                              ierr);CHKERRQ(ierr)
   endif
-  call ISView(is_gather,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+  call ISView(is_gather,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif
 
   call VecScatterCreate(vertices_old,is_scatter,vertices_new,is_gather, &
-                        vec_scatter,ierr)
-  call ISDestroy(is_scatter,ierr)
-  call ISDestroy(is_gather,ierr)
+                        vec_scatter,ierr);CHKERRQ(ierr)
+  call ISDestroy(is_scatter,ierr);CHKERRQ(ierr)
+  call ISDestroy(is_gather,ierr);CHKERRQ(ierr)
   call VecScatterBegin(vec_scatter,vertices_old,vertices_new, &
-                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+                       INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   call VecScatterEnd(vec_scatter,vertices_old,vertices_new, &
-                     INSERT_VALUES,SCATTER_FORWARD,ierr)
-  call VecScatterDestroy(vec_scatter,ierr)
+                     INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+  call VecScatterDestroy(vec_scatter,ierr);CHKERRQ(ierr)
 
 #if UGRID_DEBUG
   if (unstructured_grid%grid_type == THREE_DIM_GRID) then
-    call PetscViewerASCIIOpen(option%mycomm,'vertex_coord_old_subsurf.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'vertex_coord_old_subsurf.out',viewer, &
+                              ierr);CHKERRQ(ierr)
   else
-    call PetscViewerASCIIOpen(option%mycomm,'vertex_coord_old_surf.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'vertex_coord_old_surf.out',viewer, &
+                              ierr);CHKERRQ(ierr)
   endif
-  call VecView(vertices_old,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+  call VecView(vertices_old,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif
 
-  call VecDestroy(vertices_old,ierr)
+  call VecDestroy(vertices_old,ierr);CHKERRQ(ierr)
 
 
-  call VecGetArrayF90(vertices_new,vec_ptr,ierr)
+  call VecGetArrayF90(vertices_new,vec_ptr,ierr);CHKERRQ(ierr)
   do ivertex = 1, unstructured_grid%num_vertices_local
     unstructured_grid%vertices(ivertex)%id = needed_vertices_petsc(ivertex)
     unstructured_grid%vertices(ivertex)%x = vec_ptr((ivertex-1)*3+1)
     unstructured_grid%vertices(ivertex)%y = vec_ptr((ivertex-1)*3+2)
     unstructured_grid%vertices(ivertex)%z = vec_ptr((ivertex-1)*3+3)
   enddo
-  call VecRestoreArrayF90(vertices_new,vec_ptr,ierr)
+  call VecRestoreArrayF90(vertices_new,vec_ptr,ierr);CHKERRQ(ierr)
   
 #if UGRID_DEBUG
   write(string,*) option%myrank
@@ -1813,12 +1829,13 @@ subroutine UGridDecompose(unstructured_grid,option)
   else
     string = 'vertex_coord_new' // trim(adjustl(string)) // '_surf.out'
   endif
-  call PetscViewerASCIIOpen(PETSC_COMM_SELF,trim(string),viewer,ierr)
-  call VecView(vertices_new,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+  call PetscViewerASCIIOpen(PETSC_COMM_SELF,trim(string),viewer, &
+                            ierr);CHKERRQ(ierr)
+  call VecView(vertices_new,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif
 
-  call VecDestroy(vertices_new,ierr)
+  call VecDestroy(vertices_new,ierr);CHKERRQ(ierr)
 
 #if UGRID_DEBUG
   call printMsg(option,'Setting cell types')
@@ -2710,7 +2727,7 @@ subroutine UGridComputeVolumes(unstructured_grid,option,volume)
   PetscReal, pointer :: volume_p(:)
   PetscErrorCode :: ierr
 
-  call VecGetArrayF90(volume,volume_p,ierr)
+  call VecGetArrayF90(volume,volume_p,ierr);CHKERRQ(ierr)
 
   do local_id = 1, unstructured_grid%nlmax
     ! ghosted_id = local_id on unstructured grids
@@ -2728,7 +2745,7 @@ subroutine UGridComputeVolumes(unstructured_grid,option,volume)
                            ghosted_id),vertex_8,option)
   enddo
       
-  call VecRestoreArrayF90(volume,volume_p,ierr)
+  call VecRestoreArrayF90(volume,volume_p,ierr);CHKERRQ(ierr)
 
 end subroutine UGridComputeVolumes
 
@@ -2759,7 +2776,7 @@ subroutine UGridComputeAreas(unstructured_grid,option,area)
   PetscReal, pointer :: area_p(:)
   PetscErrorCode :: ierr
 
-  call VecGetArrayF90(area,area_p,ierr)
+  call VecGetArrayF90(area,area_p,ierr);CHKERRQ(ierr)
 
   do local_id = 1, unstructured_grid%nlmax
     ! ghosted_id = local_id on unstructured grids
@@ -2781,7 +2798,7 @@ subroutine UGridComputeAreas(unstructured_grid,option,area)
                            ghosted_id),vertex_4,option)
   enddo
       
-  call VecRestoreArrayF90(area,area_p,ierr)
+  call VecRestoreArrayF90(area,area_p,ierr);CHKERRQ(ierr)
 
 end subroutine UGridComputeAreas
 
@@ -3280,8 +3297,8 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
                        4, &
                        PETSC_NULL_INTEGER, &
                        Mat_vert_to_face, &
-                       ierr)
-  call MatZeroEntries(Mat_vert_to_face,ierr)
+                       ierr);CHKERRQ(ierr)
+  call MatZeroEntries(Mat_vert_to_face,ierr);CHKERRQ(ierr)
   real_array4 = 1.d0
 
   offset=0
@@ -3314,13 +3331,14 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
         enddo
         call MatSetValues(Mat_vert_to_face,1,boundary_face_count-1+offset, &
                           nvertices,int_array4_0,real_array4, &
-                          INSERT_VALUES,ierr)
+                          INSERT_VALUES,ierr);CHKERRQ(ierr)
       endif
     enddo
   enddo
 
-  call MatAssemblyBegin(Mat_vert_to_face,MAT_FINAL_ASSEMBLY,ierr)
-  call MatAssemblyEnd(Mat_vert_to_face,MAT_FINAL_ASSEMBLY,ierr)
+  call MatAssemblyBegin(Mat_vert_to_face,MAT_FINAL_ASSEMBLY, &
+                        ierr);CHKERRQ(ierr)
+  call MatAssemblyEnd(Mat_vert_to_face,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
 
 #if UGRID_DEBUG
   write(string,*) option%myrank
@@ -3332,17 +3350,17 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
     string = 'Mat_vert_to_face_' // trim(region_name) // '_global' // &
             '_surf.out'
   endif
-  call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
-  call MatView(Mat_vert_to_face,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+  call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr);CHKERRQ(ierr)
+  call MatView(Mat_vert_to_face,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif  
 
   call VecCreateMPI(option%mycomm,PETSC_DETERMINE, &
                     unstructured_grid%num_vertices_global, &
-                    Vertex_vec,ierr)
-  call VecZeroEntries(Vertex_vec,ierr)
-  call VecAssemblyBegin(Vertex_vec,ierr)
-  call VecAssemblyEnd(Vertex_vec,ierr)
+                    Vertex_vec,ierr);CHKERRQ(ierr)
+  call VecZeroEntries(Vertex_vec,ierr);CHKERRQ(ierr)
+  call VecAssemblyBegin(Vertex_vec,ierr);CHKERRQ(ierr)
+  call VecAssemblyEnd(Vertex_vec,ierr);CHKERRQ(ierr)
 
   ! For this vector:
   !   irow = natural (global) vertex id
@@ -3364,7 +3382,7 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
     int_array(local_id) = (local_id-1)+offset
   enddo
   call ISCreateGeneral(option%mycomm,nvertices, &
-                       int_array,PETSC_COPY_VALUES,is_tmp1,ierr)
+                       int_array,PETSC_COPY_VALUES,is_tmp1,ierr);CHKERRQ(ierr)
 
 #if UGRID_DEBUG
   write(string,*) option%myrank
@@ -3374,9 +3392,9 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
   else
     string = 'is_tmp1_' // trim(region_name) // '_surf.out'
   endif
-  call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
-  call ISView(is_tmp1,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+  call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr);CHKERRQ(ierr)
+  call ISView(is_tmp1,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif
   
   nvertices = 0
@@ -3390,7 +3408,7 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
   enddo
 
   call ISCreateGeneral(option%mycomm,nvertices, &
-                       int_array,PETSC_COPY_VALUES,is_tmp2,ierr)
+                       int_array,PETSC_COPY_VALUES,is_tmp2,ierr);CHKERRQ(ierr)
   deallocate(int_array)
 
 #if UGRID_DEBUG
@@ -3401,19 +3419,19 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
   else
     string = 'is_tmp2_' // trim(region_name) // '_surf.out'
   endif
-  call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
-  call ISView(is_tmp2,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+  call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr);CHKERRQ(ierr)
+  call ISView(is_tmp2,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif
   
   call VecCreateMPI(option%mycomm,nvertices, PETSC_DETERMINE, &
-                    sideset_vert_vec,ierr)
-  call VecSet(sideset_vert_vec,1.d0,ierr)
+                    sideset_vert_vec,ierr);CHKERRQ(ierr)
+  call VecSet(sideset_vert_vec,1.d0,ierr);CHKERRQ(ierr)
 
   call VecScatterCreate(sideset_vert_vec,is_tmp1, &
-                        Vertex_vec,is_tmp2,scatter_gton,ierr)
-  call ISDestroy(is_tmp1,ierr)
-  call ISDestroy(is_tmp2,ierr)
+                        Vertex_vec,is_tmp2,scatter_gton,ierr);CHKERRQ(ierr)
+  call ISDestroy(is_tmp1,ierr);CHKERRQ(ierr)
+  call ISDestroy(is_tmp2,ierr);CHKERRQ(ierr)
   
 #if UGRID_DEBUG
   if (unstructured_grid%grid_type == THREE_DIM_GRID) then
@@ -3421,16 +3439,17 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
   else
     string = 'scatter_gton_' // trim(region_name) // '_surf.out'
   endif
-  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
-  call VecScatterView(scatter_gton,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer, &
+                            ierr);CHKERRQ(ierr)
+  call VecScatterView(scatter_gton,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif
   
   call VecScatterBegin(scatter_gton,sideset_vert_vec,Vertex_vec, &
-                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+                       INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   call VecScatterEnd(scatter_gton,sideset_vert_vec,Vertex_vec, &
-                     INSERT_VALUES,SCATTER_FORWARD,ierr)
-  call VecScatterDestroy(scatter_gton,ierr)
+                     INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+  call VecScatterDestroy(scatter_gton,ierr);CHKERRQ(ierr)
 
 #if UGRID_DEBUG
   write(string,*) option%myrank
@@ -3442,13 +3461,14 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
     string = 'Vertex_vec_' // trim(region_name) // '_global' // &
               '_surf.out'
   endif
-  call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
-  call VecView(Vertex_vec,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+  call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr);CHKERRQ(ierr)
+  call VecView(Vertex_vec,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif  
 
-  call VecCreateMPI(option%mycomm,boundary_face_count,PETSC_DETERMINE,Face_vec,ierr)
-  call MatMult(Mat_vert_to_face,Vertex_vec,Face_vec,ierr)
+  call VecCreateMPI(option%mycomm,boundary_face_count,PETSC_DETERMINE,Face_vec, &
+                    ierr);CHKERRQ(ierr)
+  call MatMult(Mat_vert_to_face,Vertex_vec,Face_vec,ierr);CHKERRQ(ierr)
   
 #if UGRID_DEBUG
   write(string,*) option%myrank
@@ -3457,9 +3477,9 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
   else
     string = 'Face_vec_' // trim(region_name) // '_global_surf.out'
   endif
-  call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
-  call VecView(Face_vec,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+  call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr);CHKERRQ(ierr)
+  call VecView(Face_vec,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif  
 
   allocate(temp_int(MAX_FACE_PER_CELL,boundary_face_count))
@@ -3472,7 +3492,7 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
     min_verts_req = 2.d0
   endif
   
-  call VecGetArrayF90(Face_vec,vec_ptr,ierr)
+  call VecGetArrayF90(Face_vec,vec_ptr,ierr);CHKERRQ(ierr)
   ! resulting vec contains the number of natural vertices in the sideset that
   ! intersect a local face
   do iface = 1, boundary_face_count
@@ -3501,7 +3521,7 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
       endif
     endif
   enddo
-  call VecRestoreArrayF90(Face_vec,vec_ptr,ierr)
+  call VecRestoreArrayF90(Face_vec,vec_ptr,ierr);CHKERRQ(ierr)
   deallocate(boundary_faces)
   
   allocate(cell_ids(mapped_face_count))
@@ -3510,10 +3530,10 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
   cell_ids(:) = temp_int(1,1:mapped_face_count)
   face_ids(:) = temp_int(2,1:mapped_face_count)
 
-  call MatDestroy(Mat_vert_to_face,ierr)
-  call VecDestroy(Face_vec,ierr)
-  call VecDestroy(Vertex_vec,ierr)
-  call VecDestroy(sideset_vert_vec,ierr)
+  call MatDestroy(Mat_vert_to_face,ierr);CHKERRQ(ierr)
+  call VecDestroy(Face_vec,ierr);CHKERRQ(ierr)
+  call VecDestroy(Vertex_vec,ierr);CHKERRQ(ierr)
+  call VecDestroy(sideset_vert_vec,ierr);CHKERRQ(ierr)
   
 end subroutine UGridMapSideSet
 
@@ -3786,9 +3806,9 @@ subroutine UGridGrowStencilSupport(unstructured_grid,stencil_width, &
                     unstructured_grid%max_nvert_per_cell, &
                     PETSC_NULL_INTEGER, &
                     Mat_vert_to_cell, &
-                    ierr)
+                    ierr);CHKERRQ(ierr)
 
-  call MatZeroEntries(Mat_vert_to_cell,ierr)
+  call MatZeroEntries(Mat_vert_to_cell,ierr);CHKERRQ(ierr)
 
   offset=0
   call MPI_Exscan(unstructured_grid%nlmax,offset, &
@@ -3805,22 +3825,23 @@ subroutine UGridGrowStencilSupport(unstructured_grid,stencil_width, &
     enddo
     call MatSetValues(Mat_vert_to_cell,1,local_id-1+offset, &
                       nvertices,int_arrayV,real_arrayV, &
-                      INSERT_VALUES,ierr)
+                      INSERT_VALUES,ierr);CHKERRQ(ierr)
   enddo
 
-  call MatAssemblyBegin(Mat_vert_to_cell,MAT_FINAL_ASSEMBLY,ierr)
-  call MatAssemblyEnd(Mat_vert_to_cell,MAT_FINAL_ASSEMBLY,ierr)
+  call MatAssemblyBegin(Mat_vert_to_cell,MAT_FINAL_ASSEMBLY, &
+                        ierr);CHKERRQ(ierr)
+  call MatAssemblyEnd(Mat_vert_to_cell,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
   
   ! Create a vector which has natural cell ids in PETSc order
   call VecCreateMPI(option%mycomm,unstructured_grid%nlmax, &
                     PETSC_DETERMINE, &
-                    Vec_cids_local,ierr)
+                    Vec_cids_local,ierr);CHKERRQ(ierr)
 
-  call VecGetArrayF90(Vec_cids_local,vec_ptr,ierr)
+  call VecGetArrayF90(Vec_cids_local,vec_ptr,ierr);CHKERRQ(ierr)
   do local_id = 1,unstructured_grid%nlmax
     vec_ptr(local_id) = unstructured_grid%cell_ids_natural(local_id)
   enddo
-  call VecRestoreArrayF90(Vec_cids_local,vec_ptr,ierr)
+  call VecRestoreArrayF90(Vec_cids_local,vec_ptr,ierr);CHKERRQ(ierr)
 
   ! Now begin expanding stencil support
   do swidth = 1,stencil_width
@@ -3837,9 +3858,9 @@ subroutine UGridGrowStencilSupport(unstructured_grid,stencil_width, &
                       unstructured_grid%num_vertices_global, &
                       PETSC_NULL_INTEGER, &
                       Mat_vert_to_proc, &
-                      ierr)
+                      ierr);CHKERRQ(ierr)
 
-    call MatZeroEntries(Mat_vert_to_proc,ierr)
+    call MatZeroEntries(Mat_vert_to_proc,ierr);CHKERRQ(ierr)
 
     if(swidth==1) then
       ! When the stencil width counter = 1, loop over only local cells present
@@ -3849,7 +3870,8 @@ subroutine UGridGrowStencilSupport(unstructured_grid,stencil_width, &
         do ivertex=1,nvertices
           vertex_id_local=unstructured_grid%cell_vertices(ivertex,local_id)
           vertex_id_nat=unstructured_grid%vertex_ids_natural(vertex_id_local)
-          call MatSetValues(Mat_vert_to_proc,1,option%myrank,1,vertex_id_nat-1,1.d0,INSERT_VALUES,ierr)
+          call MatSetValues(Mat_vert_to_proc,1,option%myrank,1,vertex_id_nat-1,1.d0,INSERT_VALUES, &
+                            ierr);CHKERRQ(ierr)
         enddo
       enddo
     else
@@ -3860,19 +3882,22 @@ subroutine UGridGrowStencilSupport(unstructured_grid,stencil_width, &
         do ivertex=1,nvertices
           vertex_id_local=unstructured_grid%cell_vertices(ivertex,ghosted_id)
           vertex_id_nat=unstructured_grid%vertex_ids_natural(vertex_id_local)
-          call MatSetValues(Mat_vert_to_proc,1,option%myrank,1,vertex_id_nat-1,1.d0,INSERT_VALUES,ierr)
+          call MatSetValues(Mat_vert_to_proc,1,option%myrank,1,vertex_id_nat-1,1.d0,INSERT_VALUES, &
+                            ierr);CHKERRQ(ierr)
         enddo
       enddo
     endif
 
     ! Assemble the matrix
-    call MatAssemblyBegin(Mat_vert_to_proc,MAT_FINAL_ASSEMBLY,ierr)
-    call MatAssemblyEnd(Mat_vert_to_proc,MAT_FINAL_ASSEMBLY,ierr)
+    call MatAssemblyBegin(Mat_vert_to_proc,MAT_FINAL_ASSEMBLY, &
+                          ierr);CHKERRQ(ierr)
+    call MatAssemblyEnd(Mat_vert_to_proc,MAT_FINAL_ASSEMBLY, &
+                        ierr);CHKERRQ(ierr)
 
     ! Transpose the matrix
     call MatTranspose(Mat_vert_to_proc,MAT_INITIAL_MATRIX, &
-                      Mat_proc_to_vert,ierr)
-    call MatDestroy(Mat_vert_to_proc,ierr)
+                      Mat_proc_to_vert,ierr);CHKERRQ(ierr)
+    call MatDestroy(Mat_vert_to_proc,ierr);CHKERRQ(ierr)
 
     ! Find the number and natural ids of cells (local+ghost) when stencil width
     ! is increased by one.
@@ -3929,16 +3954,16 @@ subroutine UGridGrowStencilSupport(unstructured_grid,stencil_width, &
     endif
     
     ! Free up the memory
-    call MatDestroy(Mat_vert_to_proc,ierr)
-    call MatDestroy(Mat_proc_to_vert,ierr)
+    call MatDestroy(Mat_vert_to_proc,ierr);CHKERRQ(ierr)
+    call MatDestroy(Mat_proc_to_vert,ierr);CHKERRQ(ierr)
     deallocate(ghost_cids_new)
     deallocate(ghost_cids_new_petsc)
     deallocate(cids_new)
 
   enddo
 
-  call MatDestroy(Mat_vert_to_cell,ierr)
-  call VecDestroy(Vec_cids_local,ierr)
+  call MatDestroy(Mat_vert_to_cell,ierr);CHKERRQ(ierr)
+  call VecDestroy(Vec_cids_local,ierr);CHKERRQ(ierr)
 
 end subroutine UGridGrowStencilSupport
 
@@ -4014,28 +4039,30 @@ subroutine UGridFindCellIDsAfterGrowingStencilWidthByOne(Mat_vert_to_cell, &
   
   ! Perform a matrix-matrix multiplication
   call MatMatMult(Mat_vert_to_cell,Mat_proc_to_vert, &
-                    MAT_INITIAL_MATRIX,PETSC_DEFAULT_REAL,Mat_proc_to_cell,ierr)
+                    MAT_INITIAL_MATRIX,PETSC_DEFAULT_REAL,Mat_proc_to_cell, &
+                  ierr);CHKERRQ(ierr)
 
   ! Transpose of the result gives: cell ids that are needed after growing stencil
   ! width by one
   call MatTranspose(Mat_proc_to_cell,MAT_INITIAL_MATRIX, &
-                    Mat_cell_to_proc,ierr)
-  call MatDestroy(Mat_proc_to_cell,ierr)
+                    Mat_cell_to_proc,ierr);CHKERRQ(ierr)
+  call MatDestroy(Mat_proc_to_cell,ierr);CHKERRQ(ierr)
 
   if(option%mycommsize > 1) then
     ! From the MPI-Matrix get the local-matrix
-    call MatMPIAIJGetLocalMat(Mat_cell_to_proc,MAT_INITIAL_MATRIX,Mat_cell_to_proc_loc,ierr)
+    call MatMPIAIJGetLocalMat(Mat_cell_to_proc,MAT_INITIAL_MATRIX,Mat_cell_to_proc_loc, &
+                              ierr);CHKERRQ(ierr)
     ! Get i and j indices of the local-matrix
     call MatGetRowIJF90(Mat_cell_to_proc_loc, ONE_INTEGER, PETSC_FALSE, PETSC_FALSE, &
-                        nrow, ia_p, ja_p, done, ierr)
+                        nrow, ia_p, ja_p, done, ierr);CHKERRQ(ierr)
     ! Get values stored in the local-matrix
-    call MatSeqAIJGetArray(Mat_cell_to_proc_loc, aa, aaa, ierr)
+    call MatSeqAIJGetArray(Mat_cell_to_proc_loc, aa, aaa, ierr);CHKERRQ(ierr)
   else
     ! Get i and j indices of the local-matrix
     call MatGetRowIJF90(Mat_cell_to_proc, ONE_INTEGER, PETSC_FALSE, PETSC_FALSE, &
-                        nrow, ia_p, ja_p, done, ierr)
+                        nrow, ia_p, ja_p, done, ierr);CHKERRQ(ierr)
     ! Get values stored in the local-matrix
-    call MatSeqAIJGetArray(Mat_cell_to_proc, aa, aaa, ierr)
+    call MatSeqAIJGetArray(Mat_cell_to_proc, aa, aaa, ierr);CHKERRQ(ierr)
   endif
 
   ! Obtain the PETSc index of all cells required.
@@ -4051,7 +4078,8 @@ subroutine UGridFindCellIDsAfterGrowingStencilWidthByOne(Mat_vert_to_cell, &
   ! by scattering the 'Vec_cids_local'
   
   ! Create MPI vector to save natural ids of cells required
-  call VecCreateMPI(option%mycomm,ngmax_new,PETSC_DETERMINE,Vec_cids_ghosted,ierr)
+  call VecCreateMPI(option%mycomm,ngmax_new,PETSC_DETERMINE,Vec_cids_ghosted, &
+                    ierr);CHKERRQ(ierr)
 
   offset=0
   call MPI_Exscan(ngmax_new,offset, &
@@ -4065,40 +4093,41 @@ subroutine UGridFindCellIDsAfterGrowingStencilWidthByOne(Mat_vert_to_cell, &
   
   ! Create a index set to scatter to
   call ISCreateGeneral(option%mycomm,ngmax_new, &
-                       int_array,PETSC_COPY_VALUES,is_to,ierr)
+                       int_array,PETSC_COPY_VALUES,is_to,ierr);CHKERRQ(ierr)
   deallocate(int_array)
 
   ! Create a index set to scatter from
   cell_ids_petsc = cell_ids_petsc - 1
   call ISCreateGeneral(option%mycomm,ngmax_new, &
-                       cell_ids_petsc,PETSC_COPY_VALUES,is_from,ierr)
+                       cell_ids_petsc,PETSC_COPY_VALUES,is_from, &
+                       ierr);CHKERRQ(ierr)
   cell_ids_petsc = cell_ids_petsc + 1
 
   ! Create a vec-scatter contex
   call VecScatterCreate(Vec_cids_local,is_from,Vec_cids_ghosted,is_to, &
-                        vec_scatter,ierr)
-  call ISDestroy(is_from,ierr)
-  call ISDestroy(is_to,ierr)
+                        vec_scatter,ierr);CHKERRQ(ierr)
+  call ISDestroy(is_from,ierr);CHKERRQ(ierr)
+  call ISDestroy(is_to,ierr);CHKERRQ(ierr)
 
   ! Scatter the data
   call VecScatterBegin(vec_scatter,Vec_cids_local,Vec_cids_ghosted, &
-                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+                       INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   call VecScatterEnd(vec_scatter,Vec_cids_local,Vec_cids_ghosted, &
-                       INSERT_VALUES,SCATTER_FORWARD,ierr)
-  call VecScatterDestroy(vec_scatter,ierr)
+                       INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+  call VecScatterDestroy(vec_scatter,ierr);CHKERRQ(ierr)
 
   ! Save the natural ids of all cells required after growning the stencil
   ! width by one.
   allocate(cids_new(ngmax_new))
-  call VecGetArrayF90(Vec_cids_ghosted,vec_ptr,ierr)
+  call VecGetArrayF90(Vec_cids_ghosted,vec_ptr,ierr);CHKERRQ(ierr)
   do jj=1,ngmax_new
     cids_new(jj) = INT(vec_ptr(jj))
   enddo
-  call VecRestoreArrayF90(Vec_cids_ghosted,vec_ptr,ierr)
+  call VecRestoreArrayF90(Vec_cids_ghosted,vec_ptr,ierr);CHKERRQ(ierr)
   
-  call MatDestroy(Mat_cell_to_proc,ierr)
-  call MatDestroy(Mat_cell_to_proc_loc,ierr)
-  call VecDestroy(Vec_cids_ghosted,ierr)
+  call MatDestroy(Mat_cell_to_proc,ierr);CHKERRQ(ierr)
+  call MatDestroy(Mat_cell_to_proc_loc,ierr);CHKERRQ(ierr)
+  call VecDestroy(Vec_cids_ghosted,ierr);CHKERRQ(ierr)
 
 end subroutine UGridFindCellIDsAfterGrowingStencilWidthByOne
 
@@ -4162,7 +4191,8 @@ subroutine UGridFindNewGhostCellIDsAfterGrowingStencilWidth(unstructured_grid, &
   ! Step-1: Find additional ghost cells
 
   ! 1.0) Find which cells in 'cids_new' are local or ghost
-  call VecCreateMPI(option%mycomm,unstructured_grid%nlmax,PETSC_DETERMINE,cells_on_proc,ierr)
+  call VecCreateMPI(option%mycomm,unstructured_grid%nlmax,PETSC_DETERMINE,cells_on_proc, &
+                    ierr);CHKERRQ(ierr)
   
   allocate(int_array1(unstructured_grid%nlmax))
   allocate(tmp_scl_array(unstructured_grid%nlmax))
@@ -4172,19 +4202,22 @@ subroutine UGridFindNewGhostCellIDsAfterGrowingStencilWidth(unstructured_grid, &
   enddo
   int_array1=int_array1-1
   
-  call VecSetValues(cells_on_proc,unstructured_grid%nlmax,int_array1,tmp_scl_array,INSERT_VALUES,ierr)
+  call VecSetValues(cells_on_proc,unstructured_grid%nlmax,int_array1,tmp_scl_array,INSERT_VALUES, &
+                    ierr);CHKERRQ(ierr)
   deallocate(int_array1)
   deallocate(tmp_scl_array)
-  call VecAssemblyBegin(cells_on_proc,ierr)
-  call VecAssemblyEnd(cells_on_proc,ierr)
+  call VecAssemblyBegin(cells_on_proc,ierr);CHKERRQ(ierr)
+  call VecAssemblyEnd(cells_on_proc,ierr);CHKERRQ(ierr)
   
   allocate(int_array1(ngmax_new))
   int_array1=cids_new-1
   call ISCreateGeneral(option%mycomm,ngmax_new, &
-                       int_array1,PETSC_COPY_VALUES,is_from,ierr)
+                       int_array1,PETSC_COPY_VALUES,is_from, &
+                       ierr);CHKERRQ(ierr)
   deallocate(int_array1)
   
-  call VecCreateMPI(option%mycomm,ngmax_new,PETSC_DETERMINE,cids_on_proc,ierr)
+  call VecCreateMPI(option%mycomm,ngmax_new,PETSC_DETERMINE,cids_on_proc, &
+                    ierr);CHKERRQ(ierr)
 
   offset=0
   call MPI_Exscan(ngmax_new,offset, &
@@ -4195,18 +4228,19 @@ subroutine UGridFindNewGhostCellIDsAfterGrowingStencilWidth(unstructured_grid, &
     int_array1(ii)=ii-1+offset
   enddo
   call ISCreateGeneral(option%mycomm,ngmax_new, &
-                       int_array1,PETSC_COPY_VALUES,is_to,ierr)
+                       int_array1,PETSC_COPY_VALUES,is_to,ierr);CHKERRQ(ierr)
 
-  call VecScatterCreate(cells_on_proc,is_from,cids_on_proc,is_to,vec_scatter,ierr)
-  call ISDestroy(is_from,ierr)
-  call ISDestroy(is_to,ierr)
+  call VecScatterCreate(cells_on_proc,is_from,cids_on_proc,is_to,vec_scatter, &
+                        ierr);CHKERRQ(ierr)
+  call ISDestroy(is_from,ierr);CHKERRQ(ierr)
+  call ISDestroy(is_to,ierr);CHKERRQ(ierr)
 
   call VecScatterBegin(vec_scatter,cells_on_proc,cids_on_proc, &
-                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+                       INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   call VecScatterEnd(vec_scatter,cells_on_proc,cids_on_proc, &
-                       INSERT_VALUES,SCATTER_FORWARD,ierr)
-  call VecScatterDestroy(vec_scatter,ierr)
-  call VecDestroy(cells_on_proc,ierr)
+                       INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+  call VecScatterDestroy(vec_scatter,ierr);CHKERRQ(ierr)
+  call VecDestroy(cells_on_proc,ierr);CHKERRQ(ierr)
   
   deallocate(int_array1)
 
@@ -4227,7 +4261,7 @@ subroutine UGridFindNewGhostCellIDsAfterGrowingStencilWidth(unstructured_grid, &
     int_array2(count)=count
   enddo
   
-  call VecGetArrayF90(cids_on_proc,vec_ptr,ierr)
+  call VecGetArrayF90(cids_on_proc,vec_ptr,ierr);CHKERRQ(ierr)
   do ii=1,ngmax_new
     if(vec_ptr(ii)/=option%myrank) then
       count=count+1
@@ -4235,13 +4269,13 @@ subroutine UGridFindNewGhostCellIDsAfterGrowingStencilWidth(unstructured_grid, &
       int_array2(count)=count
     endif
   enddo
-  call VecRestoreArrayF90(cids_on_proc,vec_ptr,ierr)
-  call VecDestroy(cids_on_proc,ierr)
+  call VecRestoreArrayF90(cids_on_proc,vec_ptr,ierr);CHKERRQ(ierr)
+  call VecDestroy(cids_on_proc,ierr);CHKERRQ(ierr)
 
   ! 1.2) Sort the array
   int_array2 = int_array2-1
   call PetscSortIntWithPermutation(count,int_array1, &
-                                   int_array2,ierr)
+                                   int_array2,ierr);CHKERRQ(ierr)
   int_array2 = int_array2+1
 
   ! 1.3) Count the entries in the sorted array which appear only once.
@@ -4287,7 +4321,7 @@ subroutine UGridFindNewGhostCellIDsAfterGrowingStencilWidth(unstructured_grid, &
   call VecCreateMPI(option%mycomm, &
                     unstructured_grid%nlmax, &
                     PETSC_DETERMINE, &
-                    cids_petsc,ierr)
+                    cids_petsc,ierr);CHKERRQ(ierr)
   
   offset=0
   call MPI_Exscan(unstructured_grid%nlmax,offset, &
@@ -4302,19 +4336,22 @@ subroutine UGridFindNewGhostCellIDsAfterGrowingStencilWidth(unstructured_grid, &
     tmp_scl_array(local_id)=local_id+offset+0.d0
   enddo
   
-  call VecSetValues(cids_petsc,unstructured_grid%nlmax,int_array1,tmp_scl_array,INSERT_VALUES,ierr)
+  call VecSetValues(cids_petsc,unstructured_grid%nlmax,int_array1,tmp_scl_array,INSERT_VALUES, &
+                    ierr);CHKERRQ(ierr)
   deallocate(int_array1)
   deallocate(tmp_scl_array)
   
-  call VecAssemblyBegin(cids_petsc,ierr)
-  call VecAssemblyEnd(cids_petsc,ierr)
+  call VecAssemblyBegin(cids_petsc,ierr);CHKERRQ(ierr)
+  call VecAssemblyEnd(cids_petsc,ierr);CHKERRQ(ierr)
 
-  call VecCreateMPI(option%mycomm,nghost_new,PETSC_DETERMINE,ghosts_petsc,ierr)
+  call VecCreateMPI(option%mycomm,nghost_new,PETSC_DETERMINE,ghosts_petsc, &
+                    ierr);CHKERRQ(ierr)
   allocate(int_array1(nghost_new))
 
   int_array1=ghost_cids_new-1
   call ISCreateGeneral(option%mycomm,nghost_new, &
-                       int_array1,PETSC_COPY_VALUES,is_from,ierr)
+                       int_array1,PETSC_COPY_VALUES,is_from, &
+                       ierr);CHKERRQ(ierr)
 
   offset=0
   call MPI_Exscan(nghost_new,offset, &
@@ -4324,28 +4361,29 @@ subroutine UGridFindNewGhostCellIDsAfterGrowingStencilWidth(unstructured_grid, &
     int_array1(ii)=ii-1+offset
   enddo
   call ISCreateGeneral(option%mycomm,nghost_new, &
-                       int_array1,PETSC_COPY_VALUES,is_to,ierr)
+                       int_array1,PETSC_COPY_VALUES,is_to,ierr);CHKERRQ(ierr)
   deallocate(int_array1)
   
-  call VecScatterCreate(cids_petsc,is_from,ghosts_petsc,is_to,vec_scatter,ierr)
-  call ISDestroy(is_from,ierr)
-  call ISDestroy(is_to,ierr)
+  call VecScatterCreate(cids_petsc,is_from,ghosts_petsc,is_to,vec_scatter, &
+                        ierr);CHKERRQ(ierr)
+  call ISDestroy(is_from,ierr);CHKERRQ(ierr)
+  call ISDestroy(is_to,ierr);CHKERRQ(ierr)
 
   call VecScatterBegin(vec_scatter,cids_petsc,ghosts_petsc, &
-                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+                       INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   call VecScatterEnd(vec_scatter,cids_petsc,ghosts_petsc, &
-                       INSERT_VALUES,SCATTER_FORWARD,ierr)
-  call VecScatterDestroy(vec_scatter,ierr)
+                       INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+  call VecScatterDestroy(vec_scatter,ierr);CHKERRQ(ierr)
   
   allocate(ghost_cids_new_petsc(nghost_new))
-  call VecGetArrayF90(ghosts_petsc,vec_ptr,ierr)
+  call VecGetArrayF90(ghosts_petsc,vec_ptr,ierr);CHKERRQ(ierr)
   do ii=1,nghost_new
     ghost_cids_new_petsc(ii)=INT(vec_ptr(ii))
   enddo
-  call VecRestoreArrayF90(ghosts_petsc,vec_ptr,ierr)
+  call VecRestoreArrayF90(ghosts_petsc,vec_ptr,ierr);CHKERRQ(ierr)
 
-  call VecDestroy(cids_petsc,ierr)
-  call VecDestroy(ghosts_petsc,ierr)
+  call VecDestroy(cids_petsc,ierr);CHKERRQ(ierr)
+  call VecDestroy(ghosts_petsc,ierr);CHKERRQ(ierr)
 
 end subroutine UGridFindNewGhostCellIDsAfterGrowingStencilWidth
 
@@ -4424,9 +4462,9 @@ subroutine UGridUpdateMeshAfterGrowingStencilWidth(unstructured_grid, &
   call VecCreateMPI(option%mycomm, &
                     unstructured_grid%nlmax*unstructured_grid%max_nvert_per_cell, &
                     PETSC_DETERMINE, &
-                    elements_petsc,ierr)
+                    elements_petsc,ierr);CHKERRQ(ierr)
 
-  call VecGetArrayF90(elements_petsc,vec_ptr,ierr)
+  call VecGetArrayF90(elements_petsc,vec_ptr,ierr);CHKERRQ(ierr)
   vec_ptr = -9999
   do local_id=1,unstructured_grid%nlmax
     do ivertex = 1, unstructured_grid%cell_vertices(0,local_id)
@@ -4435,7 +4473,7 @@ subroutine UGridUpdateMeshAfterGrowingStencilWidth(unstructured_grid, &
       vec_ptr((local_id-1)*unstructured_grid%max_nvert_per_cell+ivertex)=vertex_id_nat
     enddo
   enddo
-  call VecRestoreArrayF90(elements_petsc,vec_ptr,ierr)
+  call VecRestoreArrayF90(elements_petsc,vec_ptr,ierr);CHKERRQ(ierr)
 
   offset=0
   call MPI_Exscan(nghost_new,offset, &
@@ -4451,13 +4489,14 @@ subroutine UGridUpdateMeshAfterGrowingStencilWidth(unstructured_grid, &
   enddo
 
   call ISCreateGeneral(option%mycomm,nghost_new*unstructured_grid%max_nvert_per_cell, &
-                       int_array1,PETSC_COPY_VALUES,is_from,ierr)
+                       int_array1,PETSC_COPY_VALUES,is_from, &
+                       ierr);CHKERRQ(ierr)
   deallocate(int_array1)
 
   call VecCreateMPI(option%mycomm, &
                     nghost_new*unstructured_grid%max_nvert_per_cell, &
                     PETSC_DETERMINE, &
-                    elements_ghost_cells,ierr)
+                    elements_ghost_cells,ierr);CHKERRQ(ierr)
   
   allocate(int_array1(nghost_new*unstructured_grid%max_nvert_per_cell))
   do ii=1,nghost_new
@@ -4468,19 +4507,20 @@ subroutine UGridUpdateMeshAfterGrowingStencilWidth(unstructured_grid, &
     enddo
   enddo
   call ISCreateGeneral(option%mycomm,nghost_new*unstructured_grid%max_nvert_per_cell, &
-                       int_array1,PETSC_COPY_VALUES,is_to,ierr)
+                       int_array1,PETSC_COPY_VALUES,is_to,ierr);CHKERRQ(ierr)
 
   deallocate(int_array1)
   
-  call VecScatterCreate(elements_petsc,is_from,elements_ghost_cells,is_to,vec_scatter,ierr)
-  call ISDestroy(is_from,ierr)
-  call ISDestroy(is_to,ierr)
+  call VecScatterCreate(elements_petsc,is_from,elements_ghost_cells,is_to,vec_scatter, &
+                        ierr);CHKERRQ(ierr)
+  call ISDestroy(is_from,ierr);CHKERRQ(ierr)
+  call ISDestroy(is_to,ierr);CHKERRQ(ierr)
 
   call VecScatterBegin(vec_scatter,elements_petsc,elements_ghost_cells, &
-                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+                       INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   call VecScatterEnd(vec_scatter,elements_petsc,elements_ghost_cells, &
-                       INSERT_VALUES,SCATTER_FORWARD,ierr)
-  call VecScatterDestroy(vec_scatter,ierr)
+                       INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+  call VecScatterDestroy(vec_scatter,ierr);CHKERRQ(ierr)
 
   ! Step-2: Given already existing vertices + vertices of new ghost
   !         cells, find additional vertices that need to be now saved.
@@ -4507,7 +4547,7 @@ subroutine UGridUpdateMeshAfterGrowingStencilWidth(unstructured_grid, &
   enddo
   
   ! save vertices of new ghost cells
-  call VecGetArrayF90(elements_ghost_cells,vec_ptr,ierr)
+  call VecGetArrayF90(elements_ghost_cells,vec_ptr,ierr);CHKERRQ(ierr)
   do ii =1,nghost_new
     do jj=1,unstructured_grid%max_nvert_per_cell
       if(vec_ptr((ii-1)*unstructured_grid%max_nvert_per_cell+jj)/=-9999) then
@@ -4517,10 +4557,11 @@ subroutine UGridUpdateMeshAfterGrowingStencilWidth(unstructured_grid, &
       endif
     enddo
   enddo
-  call VecRestoreArrayF90(elements_ghost_cells,vec_ptr,ierr)
+  call VecRestoreArrayF90(elements_ghost_cells,vec_ptr,ierr);CHKERRQ(ierr)
 
   int_array2 = int_array2-1
-  call PetscSortIntWithPermutation(count,int_array1,int_array2,ierr)
+  call PetscSortIntWithPermutation(count,int_array1,int_array2, &
+                                   ierr);CHKERRQ(ierr)
   int_array2 = int_array2+1
 
   ! remove duplicates
@@ -4558,7 +4599,7 @@ subroutine UGridUpdateMeshAfterGrowingStencilWidth(unstructured_grid, &
     enddo
   enddo
 
-  call VecGetArrayF90(elements_ghost_cells,vec_ptr,ierr)
+  call VecGetArrayF90(elements_ghost_cells,vec_ptr,ierr);CHKERRQ(ierr)
   do ii =1,nghost_new
     do jj=1,unstructured_grid%max_nvert_per_cell
       if(vec_ptr((ii-1)*unstructured_grid%max_nvert_per_cell+jj)/=-9999) then
@@ -4568,7 +4609,7 @@ subroutine UGridUpdateMeshAfterGrowingStencilWidth(unstructured_grid, &
       endif
     enddo
   enddo
-  call VecRestoreArrayF90(elements_ghost_cells,vec_ptr,ierr)
+  call VecRestoreArrayF90(elements_ghost_cells,vec_ptr,ierr);CHKERRQ(ierr)
 
   ! Make local copies of array which need to be updated.
   
@@ -4588,7 +4629,7 @@ subroutine UGridUpdateMeshAfterGrowingStencilWidth(unstructured_grid, &
   call VecCreateMPI(option%mycomm, &
                     PETSC_DETERMINE, &
                     unstructured_grid%num_vertices_global*3, &
-                    vertices_nat,ierr)
+                    vertices_nat,ierr);CHKERRQ(ierr)
 
   allocate(tmp_scl_array(unstructured_grid%num_vertices_local*3))
   allocate(int_array1(unstructured_grid%num_vertices_local*3))
@@ -4608,9 +4649,9 @@ subroutine UGridUpdateMeshAfterGrowingStencilWidth(unstructured_grid, &
   enddo
   
   call VecSetValues(vertices_nat,count,int_array1, &
-                      tmp_scl_array,INSERT_VALUES,ierr)
-  call VecAssemblyBegin(vertices_nat,ierr)
-  call VecAssemblyEnd(vertices_nat,ierr)
+                      tmp_scl_array,INSERT_VALUES,ierr);CHKERRQ(ierr)
+  call VecAssemblyBegin(vertices_nat,ierr);CHKERRQ(ierr)
+  call VecAssemblyEnd(vertices_nat,ierr);CHKERRQ(ierr)
   
   deallocate(int_array1)
   deallocate(tmp_scl_array)
@@ -4623,7 +4664,8 @@ subroutine UGridUpdateMeshAfterGrowingStencilWidth(unstructured_grid, &
   enddo
 
   call ISCreateGeneral(option%mycomm,count2*3, &
-                       int_array1,PETSC_COPY_VALUES,is_from,ierr)
+                       int_array1,PETSC_COPY_VALUES,is_from, &
+                       ierr);CHKERRQ(ierr)
   deallocate(int_array1)
   
   offset=0
@@ -4635,23 +4677,24 @@ subroutine UGridUpdateMeshAfterGrowingStencilWidth(unstructured_grid, &
     int_array1(ii)=ii-1+offset
   enddo
   call ISCreateGeneral(option%mycomm,count2*3, &
-                       int_array1,PETSC_COPY_VALUES,is_to,ierr)
+                       int_array1,PETSC_COPY_VALUES,is_to,ierr);CHKERRQ(ierr)
 
   call VecCreateMPI(option%mycomm, &
                     count2*3, &
                     PETSC_DETERMINE, &
-                    vertices_loc,ierr)
+                    vertices_loc,ierr);CHKERRQ(ierr)
 
-  call VecScatterCreate(vertices_nat,is_from,vertices_loc,is_to,vec_scatter,ierr)
-  call ISDestroy(is_from,ierr)
-  call ISDestroy(is_to,ierr)
+  call VecScatterCreate(vertices_nat,is_from,vertices_loc,is_to,vec_scatter, &
+                        ierr);CHKERRQ(ierr)
+  call ISDestroy(is_from,ierr);CHKERRQ(ierr)
+  call ISDestroy(is_to,ierr);CHKERRQ(ierr)
 
   call VecScatterBegin(vec_scatter,vertices_nat,vertices_loc, &
-                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+                       INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   call VecScatterEnd(vec_scatter,vertices_nat,vertices_loc, &
-                       INSERT_VALUES,SCATTER_FORWARD,ierr)
-  call VecScatterDestroy(vec_scatter,ierr)
-  call VecDestroy(vertices_nat,ierr)
+                       INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+  call VecScatterDestroy(vec_scatter,ierr);CHKERRQ(ierr)
+  call VecDestroy(vertices_nat,ierr);CHKERRQ(ierr)
 
   ! Update the mesh
 
@@ -4677,7 +4720,7 @@ subroutine UGridUpdateMeshAfterGrowingStencilWidth(unstructured_grid, &
   deallocate(unstructured_grid%vertices)
   allocate(unstructured_grid%vertices(count2))
   
-  call VecGetArrayF90(vertices_loc,vec_ptr,ierr)
+  call VecGetArrayF90(vertices_loc,vec_ptr,ierr);CHKERRQ(ierr)
   unstructured_grid%num_vertices_local=count2
   do ii=1,count2
     unstructured_grid%vertices(ii)%id = int_array3(ii)
@@ -4685,8 +4728,8 @@ subroutine UGridUpdateMeshAfterGrowingStencilWidth(unstructured_grid, &
     unstructured_grid%vertices(ii)%y = vec_ptr((ii-1)*3+2)
     unstructured_grid%vertices(ii)%z = vec_ptr((ii-1)*3+3)
   enddo
-  call VecRestoreArrayF90(vertices_loc,vec_ptr,ierr)
-  call VecDestroy(vertices_loc,ierr)
+  call VecRestoreArrayF90(vertices_loc,vec_ptr,ierr);CHKERRQ(ierr)
+  call VecDestroy(vertices_loc,ierr);CHKERRQ(ierr)
   
   ! ghost cell update
   unstructured_grid%num_ghost_cells=unstructured_grid%ngmax-unstructured_grid%nlmax
@@ -4734,8 +4777,8 @@ subroutine UGridUpdateMeshAfterGrowingStencilWidth(unstructured_grid, &
       call printErrMsg(option)
   end select
 
-  call VecDestroy(elements_petsc,ierr)
-  call VecDestroy(elements_ghost_cells,ierr)
+  call VecDestroy(elements_petsc,ierr);CHKERRQ(ierr)
+  call VecDestroy(elements_ghost_cells,ierr);CHKERRQ(ierr)
 
 end subroutine UGridUpdateMeshAfterGrowingStencilWidth
 

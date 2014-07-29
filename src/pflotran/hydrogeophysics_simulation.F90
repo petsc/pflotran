@@ -235,7 +235,7 @@ subroutine HydrogeophysicsStrip(this)
   endif
   ! created in HydrogeophysicsInitialize()
   if (this%solution_mpi /= 0) then
-    call VecDestroy(this%solution_mpi ,ierr)
+    call VecDestroy(this%solution_mpi ,ierr);CHKERRQ(ierr)
   endif
   this%solution_mpi = 0
 

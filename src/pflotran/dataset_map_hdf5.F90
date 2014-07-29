@@ -331,7 +331,7 @@ subroutine DatasetMapHDF5ReadData(this,option)
     endif
   endif
 
-  call PetscLogEventBegin(logging%event_h5dread_f,ierr)
+  call PetscLogEventBegin(logging%event_h5dread_f,ierr);CHKERRQ(ierr)
 
   if (associated(this%time_storage)) then
     num_dims_in_h5_file = this%rank + 1
@@ -394,7 +394,7 @@ subroutine DatasetMapHDF5ReadData(this,option)
   call h5sclose_f(file_space_id,hdf5_err)
   call h5dclose_f(dataset_id,hdf5_err)  
 
-  call PetscLogEventEnd(logging%event_h5dread_f,ierr)
+  call PetscLogEventEnd(logging%event_h5dread_f,ierr);CHKERRQ(ierr)
 
   option%io_buffer = 'Closing group: ' // trim(this%hdf5_dataset_name)
   call printMsg(option)  

@@ -96,7 +96,7 @@ subroutine RichardsUpdateLSMAuxVarsPatch(realization)
   global_auxvars_bc => patch%aux%Global%auxvars_bc
   global_auxvars_ss => patch%aux%Global%auxvars_ss
     
-  call VecGetArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
+  call VecGetArrayF90(field%flow_xx_loc,xx_loc_p, ierr);CHKERRQ(ierr)
 
   select case(grid%itype)
     case(STRUCTURED_GRID)
@@ -108,8 +108,9 @@ subroutine RichardsUpdateLSMAuxVarsPatch(realization)
 
   do ghosted_id=1,grid%ngmax
     if(grid%ghosted_level(ghosted_id)<max_stencil_width) then
-      call VecCreateSeq(PETSC_COMM_SELF,cell_neighbors(0,ghosted_id),phi,ierr)
-      call VecGetArrayF90(phi,phi_p,ierr)
+      call VecCreateSeq(PETSC_COMM_SELF,cell_neighbors(0,ghosted_id),phi, &
+                        ierr);CHKERRQ(ierr)
+      call VecGetArrayF90(phi,phi_p,ierr);CHKERRQ(ierr)
       do nid=1,cell_neighbors(0,ghosted_id)
         distance_gravity = option%gravity(1)*grid%x(cell_neighbors(nid,ghosted_id)) + &
                            option%gravity(2)*grid%y(cell_neighbors(nid,ghosted_id)) + &
@@ -131,14 +132,14 @@ subroutine RichardsUpdateLSMAuxVarsPatch(realization)
         if(abs(phi_p(nid))<1.D-20) phi_p(nid) = 0.d0
       enddo
 
-      call VecRestoreArrayF90(phi,phi_p,ierr)
+      call VecRestoreArrayF90(phi,phi_p,ierr);CHKERRQ(ierr)
 
-      call VecCreateSeq(PETSC_COMM_SELF,3,A,ierr)
-      call MatMult(grid%dispT(ghosted_id),phi,A,ierr)
+      call VecCreateSeq(PETSC_COMM_SELF,3,A,ierr);CHKERRQ(ierr)
+      call MatMult(grid%dispT(ghosted_id),phi,A,ierr);CHKERRQ(ierr)
 
-      call VecCreateSeq(PETSC_COMM_SELF,3,B,ierr)
-      call MatMult(grid%Minv(ghosted_id),A,B,ierr)
-      call VecGetArrayF90(B,b_p,ierr)
+      call VecCreateSeq(PETSC_COMM_SELF,3,B,ierr);CHKERRQ(ierr)
+      call MatMult(grid%Minv(ghosted_id),A,B,ierr);CHKERRQ(ierr)
+      call VecGetArrayF90(B,b_p,ierr);CHKERRQ(ierr)
 
       ! If the gradient is too small, make it zero
       if(abs(b_p(1))<1.D-20) b_p(1) = 0.d0
@@ -147,15 +148,15 @@ subroutine RichardsUpdateLSMAuxVarsPatch(realization)
 
       global_auxvars(ghosted_id)%dphi(1,:) = b_p(:)
 
-      call VecRestoreArrayF90(B,b_p,ierr)
+      call VecRestoreArrayF90(B,b_p,ierr);CHKERRQ(ierr)
 
-      call VecDestroy(phi,ierr)
-      call VecDestroy(A,ierr)
-      call VecDestroy(B,ierr)
+      call VecDestroy(phi,ierr);CHKERRQ(ierr)
+      call VecDestroy(A,ierr);CHKERRQ(ierr)
+      call VecDestroy(B,ierr);CHKERRQ(ierr)
     endif
   enddo
 
-  call VecRestoreArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
+  call VecRestoreArrayF90(field%flow_xx_loc,xx_loc_p, ierr);CHKERRQ(ierr)
 
 end subroutine RichardsUpdateLSMAuxVarsPatch
 
