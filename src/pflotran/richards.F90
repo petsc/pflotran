@@ -1362,7 +1362,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       call printErrMsg(option)
   end select
 
-  if (option%nsurfflowdof>0) call RichardsComputeCoeffsForSurfFlux(realization)
+  if (option%surf_flow_on) call RichardsComputeCoeffsForSurfFlux(realization)
 
 !  write(*,*) "RichardsResidual"
 !  read(*,*)

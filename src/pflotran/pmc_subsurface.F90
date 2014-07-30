@@ -88,7 +88,7 @@ subroutine PMCSubsurfaceGetAuxData(this)
 
   class(pmc_subsurface_type) :: this
 
-  if (this%option%nsurfflowdof > 0) call PMCSubsurfaceGetAuxDataFromSurf(this)
+  if (this%option%surf_flow_on) call PMCSubsurfaceGetAuxDataFromSurf(this)
 #ifdef GEOMECH
   if (this%option%ngeomechdof > 0) call PMCSubsurfaceGetAuxDataFromGeomech(this)
 #endif
@@ -107,7 +107,7 @@ subroutine PMCSubsurfaceSetAuxData(this)
 
   class(pmc_subsurface_type) :: this
 
-  if (this%option%nsurfflowdof > 0) call PMCSubsurfaceSetAuxDataForSurf(this)
+  if (this%option%surf_flow_on) call PMCSubsurfaceSetAuxDataForSurf(this)
 #ifdef GEOMECH
   if (this%option%ngeomechdof > 0) call PMCSubsurfaceSetAuxDataForGeomech(this)
 #endif
