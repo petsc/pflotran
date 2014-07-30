@@ -1151,10 +1151,10 @@ subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,ghosted_id, &
   
   write(string2,*) ghosted_id
   string2 = trim(adjustl(string)) // '_' // trim(adjustl(string2)) // '.txt'
-  if (addend) then
-    open(unit=86,file=string2)
-  else
+  if (append) then
     open(unit=86,file=string2,position='append')
+  else
+    open(unit=86,file=string2)
   endif
 
   write(86,*) '--------------------------------------------------------'
