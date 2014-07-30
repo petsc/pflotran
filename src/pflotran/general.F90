@@ -1322,10 +1322,10 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
     k_eff_ave = 0.d0
   endif
   ! units:
-  ! k_eff = W/K/m/m = J/s/K/m/m
+  ! k_eff = W/K-m = J/s/K-m
   ! delta_temp = K
   ! area = m^2
-  ! heat_flux = J/s
+  ! heat_flux = k_eff * delta_temp * area = J/s
   delta_temp = gen_auxvar_up%temp - gen_auxvar_dn%temp
   heat_flux = k_eff_ave * delta_temp * area
   ! MJ/s
@@ -1663,15 +1663,15 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
                  sqrt(gen_auxvar_dn%sat(option%liquid_phase)) * &
                  (thermal_conductivity_dn(2) - thermal_conductivity_dn(1))
       ! units:
-      ! k_eff = W/K/m/m = J/s/m/m
+      ! k_eff = W/K/m/m = J/s/K/m/m
       ! delta_temp = K
       ! area = m^2
-      ! heat_flux = MJ/s
+      ! heat_flux = J/s
       k_eff_ave = k_eff_dn / dist(0)
       delta_temp = gen_auxvar_up%temp - gen_auxvar_dn%temp
       heat_flux = k_eff_ave * delta_temp * area
     case(NEUMANN_BC)
-                  ! flux prescribed as MW/m^2
+                  ! flux prescribed as W/m^2
       heat_flux = auxvars(auxvar_mapping(GENERAL_ENERGY_FLUX_INDEX)) * area
 
     case default
