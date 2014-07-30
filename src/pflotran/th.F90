@@ -1048,7 +1048,7 @@ subroutine THUpdateAuxVarsPatch(realization)
   patch%aux%TH%auxvars_up_to_date = PETSC_TRUE
 
   ! Update a flag marking presence or absence of standing water for BC grid cells
-  if (option%nsurfflowdof > 0) call THUpdateSurfaceWaterFlag(realization)
+  if (option%surf_flow_on) call THUpdateSurfaceWaterFlag(realization)
 
 end subroutine THUpdateAuxVarsPatch
 
@@ -2774,7 +2774,8 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
           endif
 
 
-          if (ibndtype(TH_PRESSURE_DOF) == HET_SURF_SEEPAGE_BC .and. option%nsurfflowdof>0) then
+          if (ibndtype(TH_PRESSURE_DOF) == HET_SURF_SEEPAGE_BC .and. &
+              option%surf_flow_on) then
             ! ---------------------------
             ! Surface-subsurface simulation
             ! ---------------------------
@@ -2823,7 +2824,7 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
           dq_dt_dn = Dq*(dukvr_dt_dn*dphi+ukvr*dphi_dt_dn)*area
 
           if (ibndtype(TH_PRESSURE_DOF) == HET_SURF_SEEPAGE_BC .and. &
-              option%nsurfflowdof>0 .and. &
+              option%surf_flow_on .and. &
               option%subsurf_surf_coupling /= DECOUPLED) then
 
             ! ---------------------------
@@ -2979,7 +2980,7 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
       Dk =  Dk_dn / dd_up
       !cond = Dk*area*(global_auxvar_up%temp-global_auxvar_dn%temp)
 
-      if (option%nsurfflowdof == 0) then
+      if (.not. option%surf_flow_on) then
         ! ---------------------------
         ! Subsurface only simulation
         ! ---------------------------
@@ -3309,7 +3310,8 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
             dphi = 0.d0
           endif
 
-          if (ibndtype(TH_PRESSURE_DOF) == HET_SURF_SEEPAGE_BC .and. option%nsurfflowdof>0) then
+          if (ibndtype(TH_PRESSURE_DOF) == HET_SURF_SEEPAGE_BC .and. &
+              option%surf_flow_on) then
             ! ---------------------------
             ! Surface-subsurface simulation
             ! ---------------------------
@@ -3337,7 +3339,7 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
           v_darcy = Dq * ukvr * dphi
 
           if (ibndtype(TH_PRESSURE_DOF) == HET_SURF_SEEPAGE_BC .and. &
-              option%nsurfflowdof>0 .and. &
+              option%surf_flow_on .and. &
               option%subsurf_surf_coupling /= DECOUPLED) then
 
             ! ---------------------------
@@ -3436,7 +3438,7 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
       Dk = Dk_dn / dd_up
       cond = Dk*area*(global_auxvar_up%temp-global_auxvar_dn%temp)
 
-      if (option%nsurfflowdof>0) then
+      if (option%surf_flow_on) then
 
         ! ---------------------------
         ! Surface-subsurface simulation
@@ -3708,7 +3710,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr);CHKERRQ(ierr)
   !print *,' Finished scattering non deriv'
   
-  if (option%nsurfflowdof>0) call THComputeCoeffsForSurfFlux(realization)
+  if (option%surf_flow_on) call THComputeCoeffsForSurfFlux(realization)
   
   ! Calculating volume fractions for primary and secondary continua
 

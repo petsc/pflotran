@@ -62,6 +62,7 @@ module Option_module
     PetscInt :: nsec_cells
     PetscBool :: use_th_freezing
 
+    PetscBool :: surf_flow_on
     PetscInt :: nsurfflowdof
     PetscInt :: subsurf_surf_coupling
     PetscInt :: surface_flow_formulation
@@ -420,6 +421,7 @@ subroutine OptionInitRealization(option)
   option%use_th_freezing = PETSC_FALSE
 
   option%nsurfflowdof = 0
+  option%surf_flow_on = PETSC_FALSE
   option%subsurf_surf_coupling = DECOUPLED
   option%surface_flow_formulation = DIFFUSION_WAVE
   option%surf_flow_dt = 0.d0
