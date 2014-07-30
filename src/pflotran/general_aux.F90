@@ -1115,7 +1115,7 @@ end subroutine GeneralPrintAuxVars
 ! ************************************************************************** !
 
 subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,ghosted_id, &
-                                string,option)
+                                string,append,option)
   ! 
   ! Prints out the contents of an auxvar to a file
   ! 
@@ -1132,6 +1132,7 @@ subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,ghosted_id, &
   type(global_auxvar_type) :: global_auxvar
   PetscInt :: ghosted_id
   character(len=*) :: string
+  PetscBool :: append
   type(option_type) :: option
 
   character(len=MAXSTRINGLENGTH) :: string2
@@ -1150,7 +1151,11 @@ subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,ghosted_id, &
   
   write(string2,*) ghosted_id
   string2 = trim(adjustl(string)) // '_' // trim(adjustl(string2)) // '.txt'
-  open(unit=86,file=string2)
+  if (addend) then
+    open(unit=86,file=string2)
+  else
+    open(unit=86,file=string2,position='append')
+  endif
 
   write(86,*) '--------------------------------------------------------'
   write(86,*) trim(string)
