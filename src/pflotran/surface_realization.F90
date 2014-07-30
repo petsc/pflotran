@@ -355,7 +355,10 @@ subroutine SurfRealizCreateDiscretization(surf_realization)
   surf_field => surf_realization%surf_field
   discretization => surf_realization%discretization
 
-  call DiscretizationCreateDMs(discretization,option)
+  call DiscretizationCreateDMs(discretization, option%nflowdof, &
+                               option%ntrandof, option%nphase, &
+                               option%ngeomechdof, option%n_stress_strain_dof, &
+                               option)
 
   ! n degree of freedom, global
   call DiscretizationCreateVector(discretization,NFLOWDOF,surf_field%flow_xx, &
