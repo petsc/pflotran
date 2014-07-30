@@ -123,8 +123,7 @@ subroutine OutputObservationTecplotColumnTXT(realization_base)
   PetscInt :: icolumn
   PetscErrorCode :: ierr
 
-  call PetscLogEventBegin(logging%event_output_observation,ierr)
-  CHKERRQ(ierr)    
+  call PetscLogEventBegin(logging%event_output_observation,ierr);CHKERRQ(ierr)
   
   patch => realization_base%patch
   grid => patch%grid
@@ -245,8 +244,7 @@ subroutine OutputObservationTecplotColumnTXT(realization_base)
 
   observation_first = PETSC_FALSE
   
-  call PetscLogEventEnd(logging%event_output_observation,ierr)
-  CHKERRQ(ierr)    
+  call PetscLogEventEnd(logging%event_output_observation,ierr);CHKERRQ(ierr)
       
 end subroutine OutputObservationTecplotColumnTXT
 
@@ -442,8 +440,7 @@ subroutine OutputObservationTecplotSecTXT(realization_base)
   PetscInt :: icolumn
   PetscErrorCode :: ierr
 
-  call PetscLogEventBegin(logging%event_output_observation,ierr)
-  CHKERRQ(ierr)    
+  call PetscLogEventBegin(logging%event_output_observation,ierr);CHKERRQ(ierr)
   
   patch => realization_base%patch
   grid => patch%grid
@@ -568,8 +565,7 @@ subroutine OutputObservationTecplotSecTXT(realization_base)
 
   secondary_observation_first = PETSC_FALSE
   
-  call PetscLogEventEnd(logging%event_output_observation,ierr)
-  CHKERRQ(ierr)    
+  call PetscLogEventEnd(logging%event_output_observation,ierr);CHKERRQ(ierr)
       
 end subroutine OutputObservationTecplotSecTXT
 

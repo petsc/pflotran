@@ -93,8 +93,7 @@ subroutine MatrixBufferInit(A,matrix_buffer,grid)
   matrix_buffer%grid => grid
   structured_grid => grid%structured_grid
 
-  call MatGetType(A,mat_type,ierr)
-  CHKERRQ(ierr)
+  call MatGetType(A,mat_type,ierr);CHKERRQ(ierr)
 
   select case(mat_type)
     case(MATMPIAIJ,MATSEQAIJ,MATMPIBAIJ,MATSEQBAIJ)
@@ -291,8 +290,8 @@ subroutine MatrixBufferSetValuesHypre(A,matrix_buffer)
 
   do icol = 1, 7
     call MatSetValuesLocal(A,1,0,1,icol-1, &
-                           matrix_buffer%values(icol,:),INSERT_VALUES,ierr)
-    CHKERRQ(ierr)
+                           matrix_buffer%values(icol,:),INSERT_VALUES, &
+                           ierr);CHKERRQ(ierr)
   enddo
 
 end subroutine MatrixBufferSetValuesHypre
@@ -321,8 +320,7 @@ subroutine MatrixBufferSetValuesAij(A,matrix_buffer)
                            size(matrix_buffer%icol,1), &
                            matrix_buffer%icol(:,ghosted_id), &
                            matrix_buffer%values(:,ghosted_id),INSERT_VALUES, &
-                           ierr)
-    CHKERRQ(ierr)
+                           ierr);CHKERRQ(ierr)
   enddo
 
 end subroutine MatrixBufferSetValuesAij

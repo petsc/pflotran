@@ -126,8 +126,7 @@ subroutine SurfaceCheckpoint(surf_realization, &
   grid => discretization%grid 
 
   ! Open the checkpoint file.
-  call PetscTime(tstart,ierr)
-  CHKERRQ(ierr)   
+  call PetscTime(tstart,ierr);CHKERRQ(ierr)
   if (id < 0) then
     filename = trim(option%global_prefix) // trim(option%group_prefix) // &
                '-restart-surf.chk'
@@ -137,19 +136,14 @@ subroutine SurfaceCheckpoint(surf_realization, &
                '-surf.chk' // trim(adjustl(id_string))
   endif
 
-  call PetscViewerCreate(option%mycomm,viewer,ierr)
-  CHKERRQ(ierr)
-  call PetscViewerSetType(viewer,PETSCVIEWERBINARY,ierr)
-  CHKERRQ(ierr)
-  call PetscViewerFileSetMode(viewer,FILE_MODE_WRITE,ierr)
-  CHKERRQ(ierr)
-  call PetscViewerBinarySkipInfo(viewer,ierr)
-  CHKERRQ(ierr)
-  call PetscViewerFileSetName(viewer,filename,ierr)
-  CHKERRQ(ierr)
+  call PetscViewerCreate(option%mycomm,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerSetType(viewer,PETSCVIEWERBINARY,ierr);CHKERRQ(ierr)
+  call PetscViewerFileSetMode(viewer,FILE_MODE_WRITE,ierr);CHKERRQ(ierr)
+  call PetscViewerBinarySkipInfo(viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerFileSetName(viewer,filename,ierr);CHKERRQ(ierr)
 
-  call PetscBagCreate(option%mycomm,surface_bagsize, bag, ierr)
-  call PetscBagGetData(bag, surf_header, ierr); CHKERRQ(ierr)
+  call PetscBagCreate(option%mycomm,surface_bagsize, bag, ierr);CHKERRQ(ierr)
+  call PetscBagGetData(bag, surf_header, ierr);CHKERRQ(ierr)
 
   call SurfCheckpointRegisterBagHeader(bag,surf_header)
 
@@ -167,10 +161,8 @@ subroutine SurfaceCheckpoint(surf_realization, &
   surf_header%surf_subsurf_coupling_flow_dt = option%surf_subsurf_coupling_flow_dt
 
   ! Actually write the components of the PetscBag and then free it.
-  call PetscBagView(bag, viewer, ierr)
-  CHKERRQ(ierr)
-  call PetscBagDestroy(bag, ierr)
-  CHKERRQ(ierr)
+  call PetscBagView(bag, viewer, ierr);CHKERRQ(ierr)
+  call PetscBagDestroy(bag, ierr);CHKERRQ(ierr)
 
   !--------------------------------------------------------------------
   ! Dump all the relevant vectors.
@@ -181,30 +173,25 @@ subroutine SurfaceCheckpoint(surf_realization, &
                                     global_vec,GLOBAL,option)
     ! grid%flow_xx is the vector into which all of the primary variables are 
     ! packed for the TSSolve().
-    call VecView(surf_field%flow_xx, viewer, ierr)
-    CHKERRQ(ierr)
+    call VecView(surf_field%flow_xx, viewer, ierr);CHKERRQ(ierr)
 
     ! Mannings coefficient.
     call DiscretizationLocalToGlobal(discretization,surf_field%mannings_loc, &
                                      global_vec,ONEDOF)
-    call VecView(global_vec,viewer,ierr)
-    CHKERRQ(ierr)
+    call VecView(global_vec,viewer,ierr);CHKERRQ(ierr)
   endif
 
   if (global_vec /= 0) then
-    call VecDestroy(global_vec,ierr)
-    CHKERRQ(ierr)
+    call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
   endif
 
   ! We are finished, so clean up.
-  call PetscViewerDestroy(viewer, ierr)
-  CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer, ierr);CHKERRQ(ierr)
 
   write(option%io_buffer,'(" --> Dump checkpoint file: ", a32)') trim(filename)
   call printMsg(option)
 
-  call PetscTime(tend,ierr)
-  CHKERRQ(ierr)
+  call PetscTime(tend,ierr);CHKERRQ(ierr)
   write(option%io_buffer, &
         '("      Seconds to write to checkpoint file: ", f10.2)') tend-tstart
   call printMsg(option)
@@ -255,26 +242,20 @@ subroutine SurfaceRestart(surf_realization, surf_flow_prev_dt, surf_flow_read)
   discretization => surf_realization%discretization
   grid => discretization%grid 
 
-  call PetscTime(tstart,ierr)
-  CHKERRQ(ierr)
+  call PetscTime(tstart,ierr);CHKERRQ(ierr)
   option%io_buffer = '--> Open checkpoint file: ' // &
                      trim(option%surf_restart_filename)
   call printMsg(option)
   call PetscViewerBinaryOpen(option%mycomm,option%surf_restart_filename, &
-                             FILE_MODE_READ,viewer,ierr)
-  CHKERRQ(ierr)
+                             FILE_MODE_READ,viewer,ierr);CHKERRQ(ierr)
   ! skip reading info file when loading, but not working
-  call PetscViewerBinarySetSkipOptions(viewer,PETSC_TRUE,ierr)
-  CHKERRQ(ierr)
+  call PetscViewerBinarySetSkipOptions(viewer,PETSC_TRUE,ierr);CHKERRQ(ierr)
 
   ! Get the header data.
-  call PetscBagCreate(option%mycomm, surface_bagsize, bag, ierr)
-  CHKERRQ(ierr)
-  call PetscBagGetData(bag, surf_header, ierr)
-  CHKERRQ(ierr)
+  call PetscBagCreate(option%mycomm, surface_bagsize, bag, ierr);CHKERRQ(ierr)
+  call PetscBagGetData(bag, surf_header, ierr);CHKERRQ(ierr)
   call SurfCheckpointRegisterBagHeader(bag,surf_header)
-  call PetscBagLoad(viewer, bag, ierr)
-  CHKERRQ(ierr)
+  call PetscBagLoad(viewer, bag, ierr);CHKERRQ(ierr)
   
   if (surf_header%revision_number /= CHECKPOINT_REVISION_NUMBER) then
     write(string,*) surf_header%revision_number
@@ -338,32 +319,25 @@ subroutine SurfaceRestart(surf_realization, surf_flow_prev_dt, surf_flow_read)
     call DiscretizationCreateVector(discretization,ONEDOF, &
                                     global_vec,GLOBAL,option)
     ! Load the PETSc vectors.
-    call VecLoad(surf_field%flow_xx,viewer,ierr)
-    CHKERRQ(ierr)
+    call VecLoad(surf_field%flow_xx,viewer,ierr);CHKERRQ(ierr)
     call DiscretizationGlobalToLocal(discretization,surf_field%flow_xx, &
                                      surf_field%flow_xx_loc,NFLOWDOF)
-    call VecCopy(surf_field%flow_xx,surf_field%flow_yy,ierr)
-    CHKERRQ(ierr)  
+    call VecCopy(surf_field%flow_xx,surf_field%flow_yy,ierr);CHKERRQ(ierr)
 
-    call VecLoad(global_vec,viewer,ierr)
-    CHKERRQ(ierr)
+    call VecLoad(global_vec,viewer,ierr);CHKERRQ(ierr)
     call DiscretizationGlobalToLocal(discretization,global_vec, &
                                      surf_field%mannings_loc,ONEDOF)
   endif
 
   ! We are finished, so clean up.
   if (global_vec /= 0) then
-    call VecDestroy(global_vec,ierr)
-    CHKERRQ(ierr)
+    call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
   endif
 
-  call PetscViewerDestroy(viewer, ierr)
-  CHKERRQ(ierr)
-  call PetscTime(tend,ierr)
-  CHKERRQ(ierr) 
+  call PetscViewerDestroy(viewer, ierr);CHKERRQ(ierr)
+  call PetscTime(tend,ierr);CHKERRQ(ierr)
 
-  call PetscBagDestroy(bag, ierr)
-  CHKERRQ(ierr)
+  call PetscBagDestroy(bag, ierr);CHKERRQ(ierr)
 
   write(option%io_buffer, &
         '("      Seconds to read to checkpoint file: ", f6.2)') tend-tstart
@@ -395,56 +369,48 @@ subroutine SurfCheckpointRegisterBagHeader(bag,header)
   call PetscBagRegisterInt(bag,header%revision_number,i, &
                            "revision_number", &
                            "revision_number", &
-                           ierr)
-  CHKERRQ(ierr)
+                           ierr);CHKERRQ(ierr)
   ! Register variables that are passed into timestepper().
   call PetscBagRegisterInt(bag,header%grid_discretization_type, 0, &
                            "grid_discretization_type", &
                            "grid_discretization_type", &
-                           ierr)
-  CHKERRQ(ierr) 
+                           ierr);CHKERRQ(ierr)
   ! Surface-flow
   call PetscBagRegisterInt(bag,header%nsurfflowdof,0, &
                            "nsurfflowdof", &
-                           "Number of surface flow degrees of freedom",ierr)
-  CHKERRQ(ierr)
+                           "Number of surface flow degrees of freedom", &
+                           ierr);CHKERRQ(ierr)
   call PetscBagRegisterInt(bag,header%surface_flow_formulation,0, &
                            "surface_flow_formulation", &
-                           "Type of surface-flow formulation",ierr)
-  CHKERRQ(ierr)
+                           "Type of surface-flow formulation", &
+                           ierr);CHKERRQ(ierr)
   
   call PetscBagRegisterReal(bag,header%surf_flow_time,0.d0, &
                             "surf_flow_time", &
                             "Surface Flow Simulation time (seconds)", &
-                            ierr)
-  CHKERRQ(ierr)
+                            ierr);CHKERRQ(ierr)
   call PetscBagRegisterReal(bag,header%surf_flow_dt,0.d0, &
                             "surf_flow_dt", &
                             "Current size of surface flow timestep (seconds)", &
-                            ierr)
-  CHKERRQ(ierr)
+                            ierr);CHKERRQ(ierr)
   call PetscBagRegisterReal(bag,header%surf_flow_prev_dt,0.d0, &
                             "surf_flow_prev_dt", &
                             "Previous size of surfae flow timestep (seconds)", &
-                            ierr)
-  CHKERRQ(ierr)
+                            ierr);CHKERRQ(ierr)
 
   ! Surface-Subsurface coupling
   call PetscBagRegisterReal(bag,header%subsurf_surf_coupling,0, &
                             "subsurf_surf_coupling", &
                             "Type of surface-subsurface coupling", &
-                            ierr)
-  CHKERRQ(ierr)
+                            ierr);CHKERRQ(ierr)
   call PetscBagRegisterReal(bag,header%surf_subsurf_coupling_time,0.d0, &
                             "surf_subsurf_coupling_time", &
                             "Surface-Subsurface coupling time (seconds)", &
-                            ierr)
-  CHKERRQ(ierr)
+                            ierr);CHKERRQ(ierr)
   call PetscBagRegisterReal(bag,header%surf_subsurf_coupling_flow_dt,0.d0, &
                             "surf_subsurf_coupling_flow_dt", &
                             "Surface-Subsurface coupling timestep (seconds)", &
-                            ierr)
-  CHKERRQ(ierr)
+                            ierr);CHKERRQ(ierr)
 
 end subroutine SurfCheckpointRegisterBagHeader
 
@@ -497,19 +463,16 @@ subroutine SurfaceCheckpointProcessModel(viewer, surf_realization)
                                     global_vec,GLOBAL,option)
     ! grid%flow_xx is the vector into which all of the primary variables are
     ! packed for the TSSolve().
-    call VecView(surf_field%flow_xx, viewer, ierr)
-    CHKERRQ(ierr)
+    call VecView(surf_field%flow_xx, viewer, ierr);CHKERRQ(ierr)
 
     ! Mannings coefficient.
     call DiscretizationLocalToGlobal(discretization,surf_field%mannings_loc, &
                                      global_vec,ONEDOF)
-    call VecView(global_vec,viewer,ierr)
-    CHKERRQ(ierr)
+    call VecView(global_vec,viewer,ierr);CHKERRQ(ierr)
   endif
 
   if (global_vec /= 0) then
-    call VecDestroy(global_vec,ierr)
-    CHKERRQ(ierr)
+    call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
   endif
 
 end subroutine SurfaceCheckpointProcessModel
@@ -555,23 +518,19 @@ subroutine SurfaceRestartProcessModel(viewer,surf_realization)
     call DiscretizationCreateVector(discretization,ONEDOF, &
                                     global_vec,GLOBAL,option)
     ! Load the PETSc vectors.
-    call VecLoad(surf_field%flow_xx,viewer,ierr)
-    CHKERRQ(ierr)
+    call VecLoad(surf_field%flow_xx,viewer,ierr);CHKERRQ(ierr)
     call DiscretizationGlobalToLocal(discretization,surf_field%flow_xx, &
                                      surf_field%flow_xx_loc,NFLOWDOF)
-    call VecCopy(surf_field%flow_xx,surf_field%flow_yy,ierr)
-    CHKERRQ(ierr)
+    call VecCopy(surf_field%flow_xx,surf_field%flow_yy,ierr);CHKERRQ(ierr)
 
-    call VecLoad(global_vec,viewer,ierr)
-    CHKERRQ(ierr)
+    call VecLoad(global_vec,viewer,ierr);CHKERRQ(ierr)
     call DiscretizationGlobalToLocal(discretization,global_vec, &
                                      surf_field%mannings_loc,ONEDOF)
   endif
 
   ! We are finished, so clean up.
   if (global_vec /= 0) then
-    call VecDestroy(global_vec,ierr)
-    CHKERRQ(ierr)
+    call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
   endif
 
 end subroutine SurfaceRestartProcessModel

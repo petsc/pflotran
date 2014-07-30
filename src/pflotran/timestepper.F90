@@ -925,36 +925,33 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
 
   do
       
-    call PetscTime(log_start_time, ierr)
-    CHKERRQ(ierr)
+    call PetscTime(log_start_time, ierr);CHKERRQ(ierr)
 
     select case(option%iflowmode)
       case(MPH_MODE,TH_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
-        call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
-        CHKERRQ(ierr)
+        call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx,  &
+                       ierr);CHKERRQ(ierr)
       case(RICHARDS_MODE)
         if (discretization%itype == STRUCTURED_GRID_MIMETIC.or. &
             discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
-          call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx_faces, ierr)
-          CHKERRQ(ierr)
+          call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx_faces,  &
+                         ierr);CHKERRQ(ierr)
         else 
-          call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
-          CHKERRQ(ierr)
+          call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx,  &
+                         ierr);CHKERRQ(ierr)
         end if
 
     end select
-    call PetscTime(log_end_time, ierr)
-    CHKERRQ(ierr)
+    call PetscTime(log_end_time, ierr);CHKERRQ(ierr)
     stepper%cumulative_solver_time = stepper%cumulative_solver_time + &
                                       (log_end_time - log_start_time)
 
 ! do we really need all this? - geh 
-    call SNESGetIterationNumber(solver%snes,num_newton_iterations, ierr)
-    CHKERRQ(ierr)
-    call SNESGetLinearSolveIterations(solver%snes,num_linear_iterations, ierr)
-    CHKERRQ(ierr)
-    call SNESGetConvergedReason(solver%snes, snes_reason, ierr)
-    CHKERRQ(ierr)
+    call SNESGetIterationNumber(solver%snes,num_newton_iterations,  &
+                                ierr);CHKERRQ(ierr)
+    call SNESGetLinearSolveIterations(solver%snes,num_linear_iterations,  &
+                                      ierr);CHKERRQ(ierr)
+    call SNESGetConvergedReason(solver%snes, snes_reason, ierr);CHKERRQ(ierr)
 
     sum_newton_iterations = sum_newton_iterations + num_newton_iterations
     sum_linear_iterations = sum_linear_iterations + num_linear_iterations
@@ -1025,8 +1022,7 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
         case(G_MODE)
           call GeneralTimeCut(realization)
       end select
-      call VecCopy(field%iphas_old_loc, field%iphas_loc, ierr)
-      CHKERRQ(ierr)
+      call VecCopy(field%iphas_old_loc, field%iphas_loc, ierr);CHKERRQ(ierr)
 
     else
       ! The Newton solver converged, so we can exit.
@@ -1050,10 +1046,8 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
   endif
     
 ! print screen output
-  call SNESGetFunctionNorm(solver%snes,fnorm,ierr)
-  CHKERRQ(ierr)
-  call VecNorm(field%flow_r,NORM_INFINITY,inorm,ierr)
-  CHKERRQ(ierr)
+  call SNESGetFunctionNorm(solver%snes,fnorm,ierr);CHKERRQ(ierr)
+  call VecNorm(field%flow_r,NORM_INFINITY,inorm,ierr);CHKERRQ(ierr)
   if (option%print_screen_flag) then
     write(*, '(/," FLOW ",i6," Time= ",1pe12.5," Dt= ",1pe12.5," [",a1,"]", &
       & " snes_conv_reason: ",i4,/,"  newton = ",i3," [",i8,"]", &
@@ -1199,10 +1193,9 @@ subroutine FlowStepperStepToSteadyState(realization,stepper,failure)
     stepper%steps = stepper%steps - 1      
     call StepperStepFlowDT(realization,stepper,failure)
   
-    call SNESGetSolutionUpdate(solver%snes,update_vec,ierr)
-    CHKERRQ(ierr)
-    call VecStrideNorm(update_vec,ZERO_INTEGER,NORM_INFINITY,inorm,ierr)
-    CHKERRQ(ierr)
+    call SNESGetSolutionUpdate(solver%snes,update_vec,ierr);CHKERRQ(ierr)
+    call VecStrideNorm(update_vec,ZERO_INTEGER,NORM_INFINITY,inorm, &
+                       ierr);CHKERRQ(ierr)
     dif_norm = inorm-prev_norm
     rel_norm = dif_norm/prev_norm
     if (stepper%cumulative_newton_iterations > 20 .and. &
@@ -1446,47 +1439,41 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
     
     do
       
-      call PetscTime(log_start_time, ierr)
-      CHKERRQ(ierr)
+      call PetscTime(log_start_time, ierr);CHKERRQ(ierr)
 
       select case(option%iflowmode)
         case(MPH_MODE,TH_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
-          call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
-          CHKERRQ(ierr)
+          call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx,  &
+                         ierr);CHKERRQ(ierr)
         case(RICHARDS_MODE)
           if (discretization%itype == STRUCTURED_GRID_MIMETIC) then 
-            call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx_faces, ierr)
-            CHKERRQ(ierr)
+            call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx_faces,  &
+                           ierr);CHKERRQ(ierr)
           else 
-            call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
-            CHKERRQ(ierr)
+            call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx,  &
+                           ierr);CHKERRQ(ierr)
           end if
 
 #if DASVYAT_DEBUG
           call PetscViewerASCIIOpen(realization%option%mycomm,'timestepp_flow_xx_after.out', &
-                                viewer,ierr)
-          CHKERRQ(ierr)
+                                viewer,ierr);CHKERRQ(ierr)
           if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
             !call VecView(field%flow_xx_faces, viewer, ierr)
             !call VecView(field%flow_xx, viewer, ierr)
             !call VecView(field%flow_r_faces, viewer, ierr)
-            call VecNorm(field%flow_r_faces, NORM_2, tempreal, ierr)
-            CHKERRQ(ierr)
+            call VecNorm(field%flow_r_faces, NORM_2, tempreal,  &
+                         ierr);CHKERRQ(ierr)
             write(*,*) "MFD residual", tempreal
           else
-            call VecView(field%flow_xx, viewer, ierr)
-            CHKERRQ(ierr)
+            call VecView(field%flow_xx, viewer, ierr);CHKERRQ(ierr)
         endif
 
         call RichardsResidual(solver%snes,field%flow_xx, field%flow_r,realization,ierr)
-        call VecView(field%flow_r, viewer, ierr)
-        CHKERRQ(ierr)
-        call VecNorm(field%flow_r, NORM_2, tempreal2, ierr)
-        CHKERRQ(ierr)
+        call VecView(field%flow_r, viewer, ierr);CHKERRQ(ierr)
+        call VecNorm(field%flow_r, NORM_2, tempreal2, ierr);CHKERRQ(ierr)
 
         write(*,*) "FV residual", tempreal2
-        call PetscViewerDestroy(viewer,ierr)
-        CHKERRQ(ierr)
+        call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
         write(*,*) "After SNESSolve"
         read(*,*)     
 #endif
@@ -1494,18 +1481,17 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
 
 
       end select
-      call PetscTime(log_end_time, ierr)
-      CHKERRQ(ierr)
+      call PetscTime(log_end_time, ierr);CHKERRQ(ierr)
       stepper%cumulative_solver_time = stepper%cumulative_solver_time + &
                                        (log_end_time - log_start_time)
 
   ! do we really need all this? - geh 
-      call SNESGetIterationNumber(solver%snes,num_newton_iterations, ierr)
-      CHKERRQ(ierr)
-      call SNESGetLinearSolveIterations(solver%snes,num_linear_iterations, ierr)
-      CHKERRQ(ierr)
-      call SNESGetConvergedReason(solver%snes, snes_reason, ierr)
-      CHKERRQ(ierr)
+      call SNESGetIterationNumber(solver%snes,num_newton_iterations,  &
+                                  ierr);CHKERRQ(ierr)
+      call SNESGetLinearSolveIterations(solver%snes,num_linear_iterations,  &
+                                        ierr);CHKERRQ(ierr)
+      call SNESGetConvergedReason(solver%snes, snes_reason,  &
+                                  ierr);CHKERRQ(ierr)
 
       sum_newton_iterations = sum_newton_iterations + num_newton_iterations
       sum_linear_iterations = sum_linear_iterations + num_linear_iterations
@@ -1585,8 +1571,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
           case(G_MODE)
             call GeneralTimeCut(realization)
         end select
-        call VecCopy(field%iphas_old_loc, field%iphas_loc, ierr)
-        CHKERRQ(ierr)
+        call VecCopy(field%iphas_old_loc, field%iphas_loc, ierr);CHKERRQ(ierr)
 
       else
         ! The Newton solver converged, so we can exit.
@@ -1598,10 +1583,9 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
       exit
     else
     
-      call SNESGetSolutionUpdate(solver%snes,update_vec,ierr)
-      CHKERRQ(ierr)
-      call VecStrideNorm(update_vec,ZERO_INTEGER,NORM_INFINITY,inorm,ierr)
-      CHKERRQ(ierr)
+      call SNESGetSolutionUpdate(solver%snes,update_vec,ierr);CHKERRQ(ierr)
+      call VecStrideNorm(update_vec,ZERO_INTEGER,NORM_INFINITY,inorm, &
+                         ierr);CHKERRQ(ierr)
       dif_norm = inorm-prev_norm
       rel_norm = dif_norm/prev_norm
       if (sum_newton_iterations > 20 .and. &
@@ -1693,10 +1677,8 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
   endif
     
 ! print screen output
-  call SNESGetFunctionNorm(solver%snes,fnorm,ierr)
-  CHKERRQ(ierr)
-  call VecNorm(field%flow_r,NORM_INFINITY,inorm,ierr)
-  CHKERRQ(ierr)
+  call SNESGetFunctionNorm(solver%snes,fnorm,ierr);CHKERRQ(ierr)
+  call VecNorm(field%flow_r,NORM_INFINITY,inorm,ierr);CHKERRQ(ierr)
   if (option%print_screen_flag) then
     write(*, '(/," FLOW ",i6," Time= ",1pe12.5," Dt= ",1pe12.5," [",a1,"]", &
       & " snes_conv_reason: ",i4,/,"  newton = ",i3," [",i8,"]", &
@@ -1911,42 +1893,33 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
 !       patch%aux%RT%auxvars_up_to_date = PETSC_TRUE 
     endif
     if (realization%reaction%use_log_formulation) then
-      call VecCopy(field%tran_xx,field%tran_log_xx,ierr)
-      CHKERRQ(ierr)
-      call VecLog(field%tran_log_xx,ierr)
-      CHKERRQ(ierr)
+      call VecCopy(field%tran_xx,field%tran_log_xx,ierr);CHKERRQ(ierr)
+      call VecLog(field%tran_log_xx,ierr);CHKERRQ(ierr)
 
-      call PetscTime(log_start_time, ierr)
-      CHKERRQ(ierr)
-      call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%tran_log_xx, ierr)
-      CHKERRQ(ierr)
-      call PetscTime(log_end_time, ierr)
-      CHKERRQ(ierr)
+      call PetscTime(log_start_time, ierr);CHKERRQ(ierr)
+      call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%tran_log_xx,  &
+                     ierr);CHKERRQ(ierr)
+      call PetscTime(log_end_time, ierr);CHKERRQ(ierr)
       stepper%cumulative_solver_time = stepper%cumulative_solver_time + &
         (log_end_time - log_start_time)          
         
-      call VecCopy(field%tran_log_xx,field%tran_xx,ierr)
-      CHKERRQ(ierr)
-      call VecExp(field%tran_xx,ierr)
-      CHKERRQ(ierr)
+      call VecCopy(field%tran_log_xx,field%tran_xx,ierr);CHKERRQ(ierr)
+      call VecExp(field%tran_xx,ierr);CHKERRQ(ierr)
     else
-      call PetscTime(log_start_time, ierr)
-      CHKERRQ(ierr)
-      call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%tran_xx, ierr)
-      CHKERRQ(ierr)
-      call PetscTime(log_end_time, ierr)
-      CHKERRQ(ierr)
+      call PetscTime(log_start_time, ierr);CHKERRQ(ierr)
+      call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%tran_xx,  &
+                     ierr);CHKERRQ(ierr)
+      call PetscTime(log_end_time, ierr);CHKERRQ(ierr)
       stepper%cumulative_solver_time = stepper%cumulative_solver_time + &
         (log_end_time - log_start_time)          
     endif
 
 ! do we really need all this? - geh 
-    call SNESGetIterationNumber(solver%snes,num_newton_iterations, ierr)
-    CHKERRQ(ierr)
-    call SNESGetLinearSolveIterations(solver%snes,num_linear_iterations, ierr)
-    CHKERRQ(ierr)
-    call SNESGetConvergedReason(solver%snes, snes_reason, ierr)
-    CHKERRQ(ierr)
+    call SNESGetIterationNumber(solver%snes,num_newton_iterations,  &
+                                ierr);CHKERRQ(ierr)
+    call SNESGetLinearSolveIterations(solver%snes,num_linear_iterations,  &
+                                      ierr);CHKERRQ(ierr)
+    call SNESGetConvergedReason(solver%snes, snes_reason, ierr);CHKERRQ(ierr)
 
     sum_newton_iterations = sum_newton_iterations + num_newton_iterations
     sum_linear_iterations = sum_linear_iterations + num_linear_iterations
@@ -2009,10 +1982,8 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
   stepper%num_linear_iterations = num_linear_iterations
 
   ! print screen output
-  call SNESGetFunctionNorm(solver%snes,fnorm,ierr)
-  CHKERRQ(ierr)
-  call VecNorm(field%tran_r,NORM_INFINITY,inorm,ierr)
-  CHKERRQ(ierr)
+  call SNESGetFunctionNorm(solver%snes,fnorm,ierr);CHKERRQ(ierr)
+  call VecNorm(field%tran_r,NORM_INFINITY,inorm,ierr);CHKERRQ(ierr)
   if (option%print_screen_flag) then
   
     if (option%nflowdof > 0 .and. .not.steady_flow) then
@@ -2187,8 +2158,7 @@ subroutine StepperStepTransportDT_OS(realization,stepper, &
   call DiscretizationGlobalToLocal(discretization,field%tran_xx, &
                                    field%tran_xx_loc,NTRANDOF)
 
-  call PetscTime(log_start_time, ierr)
-  CHKERRQ(ierr)
+  call PetscTime(log_start_time, ierr);CHKERRQ(ierr)
 
   if (option%nflowdof > 0 .and. .not.steady_flow) then
     call TimestepperSetTranWeights(option,flow_t0,flow_t1)
@@ -2233,20 +2203,16 @@ subroutine StepperStepTransportDT_OS(realization,stepper, &
 
     if (realization%debug%vecview_residual) then
       call PetscViewerASCIIOpen(realization%option%mycomm,'Trhs.out', &
-                                viewer,ierr)
-      CHKERRQ(ierr)
-      call VecView(field%tran_rhs,viewer,ierr)
-      CHKERRQ(ierr)
-      call PetscViewerDestroy(viewer,ierr)
-      CHKERRQ(ierr)
+                                viewer,ierr);CHKERRQ(ierr)
+      call VecView(field%tran_rhs,viewer,ierr);CHKERRQ(ierr)
+      call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
     endif
 
     ! RTCalculateTransportMatrix() calculates flux coefficients and the
     ! t^(k+1) coefficient in accumulation term
     call RTCalculateTransportMatrix(realization,solver%J) 
     call KSPSetOperators(solver%ksp,solver%J,solver%Jpre, &
-                         SAME_NONZERO_PATTERN,ierr)
-    CHKERRQ(ierr)
+                         SAME_NONZERO_PATTERN,ierr);CHKERRQ(ierr)
 
   !  call VecGetArrayF90(field%tran_xx,vec_ptr,ierr)
   !  call VecRestoreArrayF90(field%tran_xx,vec_ptr,ierr)
@@ -2257,46 +2223,36 @@ subroutine StepperStepTransportDT_OS(realization,stepper, &
   ! for debugging
 #if 0    
       call RealizationGetVariable(realization,field%work,TOTAL_MOLARITY,idof)
-      call VecGetArrayF90(field%work,vec_ptr,ierr)
-      CHKERRQ(ierr)
-      call VecRestoreArrayF90(field%work,vec_ptr,ierr)
-      CHKERRQ(ierr)
+      call VecGetArrayF90(field%work,vec_ptr,ierr);CHKERRQ(ierr)
+      call VecRestoreArrayF90(field%work,vec_ptr,ierr);CHKERRQ(ierr)
   
       call RealizationGetVariable(realization,field%work,TOTAL_MOLALITY,idof)
-      call VecGetArrayF90(field%work,vec_ptr,ierr)
-      CHKERRQ(ierr)
-      call VecRestoreArrayF90(field%work,vec_ptr,ierr)
-      CHKERRQ(ierr)
+      call VecGetArrayF90(field%work,vec_ptr,ierr);CHKERRQ(ierr)
+      call VecRestoreArrayF90(field%work,vec_ptr,ierr);CHKERRQ(ierr)
   
       call RealizationGetVariable(realization,field%work,PRIMARY_MOLALITY,idof)
-      call VecGetArrayF90(field%work,vec_ptr,ierr)
-      CHKERRQ(ierr)
-      call VecRestoreArrayF90(field%work,vec_ptr,ierr)
-      CHKERRQ(ierr)
+      call VecGetArrayF90(field%work,vec_ptr,ierr);CHKERRQ(ierr)
+      call VecRestoreArrayF90(field%work,vec_ptr,ierr);CHKERRQ(ierr)
 #endif
     
-      call VecStrideGather(field%tran_rhs,idof-1,field%work,INSERT_VALUES,ierr)
-      CHKERRQ(ierr)
+      call VecStrideGather(field%tran_rhs,idof-1,field%work,INSERT_VALUES, &
+                           ierr);CHKERRQ(ierr)
       option%rt_idof = idof
-      call KSPSolve(solver%ksp,field%work,field%work,ierr)
-      CHKERRQ(ierr)
+      call KSPSolve(solver%ksp,field%work,field%work,ierr);CHKERRQ(ierr)
       ! tran_xx will contain transported totals
       ! tran_xx_loc will still contain free-ion from previous solution
-      call VecStrideScatter(field%work,idof-1,field%tran_xx,INSERT_VALUES,ierr)
-      CHKERRQ(ierr)
+      call VecStrideScatter(field%work,idof-1,field%tran_xx,INSERT_VALUES, &
+                            ierr);CHKERRQ(ierr)
 
   ! for debugging
 #if 0
-      call VecGetArrayF90(field%work,vec_ptr,ierr)
-      CHKERRQ(ierr)
-      call VecRestoreArrayF90(field%work,vec_ptr,ierr)
-      CHKERRQ(ierr)
+      call VecGetArrayF90(field%work,vec_ptr,ierr);CHKERRQ(ierr)
+      call VecRestoreArrayF90(field%work,vec_ptr,ierr);CHKERRQ(ierr)
 #endif      
 
-      call KSPGetIterationNumber(solver%ksp,num_linear_iterations,ierr)
-      CHKERRQ(ierr)
-      call KSPGetConvergedReason(solver%ksp,ksp_reason,ierr)
-      CHKERRQ(ierr)
+      call KSPGetIterationNumber(solver%ksp,num_linear_iterations, &
+                                 ierr);CHKERRQ(ierr)
+      call KSPGetConvergedReason(solver%ksp,ksp_reason,ierr);CHKERRQ(ierr)
       sum_linear_iterations = sum_linear_iterations + num_linear_iterations
     enddo
     sum_linear_iterations = int(dble(sum_linear_iterations) / option%ntrandof)
@@ -2306,12 +2262,9 @@ subroutine StepperStepTransportDT_OS(realization,stepper, &
 
   if (realization%debug%vecview_solution) then
     call PetscViewerASCIIOpen(realization%option%mycomm,'Txx.out', &
-                              viewer,ierr)
-    CHKERRQ(ierr)
-    call VecView(field%tran_xx,viewer,ierr)
-    CHKERRQ(ierr)
-    call PetscViewerDestroy(viewer,ierr)
-    CHKERRQ(ierr)
+                              viewer,ierr);CHKERRQ(ierr)
+    call VecView(field%tran_xx,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
 
   ! activity coefficients are updated within RReact!  DO NOT updated
@@ -2321,18 +2274,13 @@ subroutine StepperStepTransportDT_OS(realization,stepper, &
   
   if (realization%debug%vecview_solution) then
     call PetscViewerASCIIOpen(realization%option%mycomm,'RTxx.out', &
-                              viewer,ierr)
-    CHKERRQ(ierr)
-    call VecView(field%tran_xx,viewer,ierr)
-    CHKERRQ(ierr)
-    call PetscViewerDestroy(viewer,ierr)
-    CHKERRQ(ierr)
+                              viewer,ierr);CHKERRQ(ierr)
+    call VecView(field%tran_xx,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
 
-  call PetscBarrier(solver%ksp,ierr)
-  CHKERRQ(ierr)
-  call PetscTime(log_end_time, ierr)
-  CHKERRQ(ierr)
+  call PetscBarrier(solver%ksp,ierr);CHKERRQ(ierr)
+  call PetscTime(log_end_time, ierr);CHKERRQ(ierr)
   stepper%cumulative_solver_time = stepper%cumulative_solver_time + &
                                    (log_end_time - log_start_time)          
 
@@ -2417,8 +2365,7 @@ subroutine StepperRunSteadyState(realization,flow_stepper,tran_stepper)
   transient_plot_flag = PETSC_FALSE
   failure = PETSC_FALSE
 
-  call PetscLogStagePush(logging%stage(TS_STAGE),ierr)
-  CHKERRQ(ierr)
+  call PetscLogStagePush(logging%stage(TS_STAGE),ierr);CHKERRQ(ierr)
 
   ! print initial condition output if not a restarted sim
   if (associated(flow_stepper)) then
@@ -2448,15 +2395,11 @@ subroutine StepperRunSteadyState(realization,flow_stepper,tran_stepper)
   plot_flag = PETSC_TRUE
     
   if (associated(flow_stepper)) then
-    call PetscTime(start_time, ierr)
-    CHKERRQ(ierr)
-    call PetscLogStagePush(logging%stage(FLOW_STAGE),ierr)
-    CHKERRQ(ierr)
+    call PetscTime(start_time, ierr);CHKERRQ(ierr)
+    call PetscLogStagePush(logging%stage(FLOW_STAGE),ierr);CHKERRQ(ierr)
     call StepperSolveFlowSteadyState(realization,flow_stepper,failure)
-    call PetscLogStagePop(ierr)
-    CHKERRQ(ierr)
-    call PetscTime(end_time, ierr)
-    CHKERRQ(ierr)
+    call PetscLogStagePop(ierr);CHKERRQ(ierr)
+    call PetscTime(end_time, ierr);CHKERRQ(ierr)
     if (OptionPrintToScreen(option)) then
       write(*, &
          &  '(/,1pe12.4," seconds to solve steady state flow problem",/)') &
@@ -2471,15 +2414,11 @@ subroutine StepperRunSteadyState(realization,flow_stepper,tran_stepper)
   endif
 
   if (associated(tran_stepper)) then
-    call PetscTime(start_time, ierr)
-    CHKERRQ(ierr)
-    call PetscLogStagePush(logging%stage(TRAN_STAGE),ierr)
-    CHKERRQ(ierr)
+    call PetscTime(start_time, ierr);CHKERRQ(ierr)
+    call PetscLogStagePush(logging%stage(TRAN_STAGE),ierr);CHKERRQ(ierr)
     call StepperSolveTranSteadyState(realization,tran_stepper,failure)
-    call PetscLogStagePop(ierr)
-    CHKERRQ(ierr)
-    call PetscTime(end_time, ierr)
-    CHKERRQ(ierr)
+    call PetscLogStagePop(ierr);CHKERRQ(ierr)
+    call PetscTime(end_time, ierr);CHKERRQ(ierr)
     if (OptionPrintToScreen(option)) then
       write(*, &
          &'(/,1pe12.4," seconds to solve steady state transport problem",/)') &
@@ -2527,8 +2466,7 @@ subroutine StepperRunSteadyState(realization,flow_stepper,tran_stepper)
     endif            
   endif
 
-  call PetscLogStagePop(ierr)
-  CHKERRQ(ierr)
+  call PetscLogStagePop(ierr);CHKERRQ(ierr)
 
 
 end subroutine StepperRunSteadyState
@@ -2628,26 +2566,25 @@ subroutine StepperSolveFlowSteadyState(realization,stepper,failure)
 
   select case(option%iflowmode)
     case(MPH_MODE,TH_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
-      call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
-      CHKERRQ(ierr)
+      call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx,  &
+                     ierr);CHKERRQ(ierr)
     case(RICHARDS_MODE)
       if (discretization%itype == STRUCTURED_GRID_MIMETIC.or. &
           discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
-        call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx_faces, ierr)
-        CHKERRQ(ierr)
+        call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx_faces,  &
+                       ierr);CHKERRQ(ierr)
       else
-        call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
-        CHKERRQ(ierr)
+        call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx,  &
+                       ierr);CHKERRQ(ierr)
       end if
 
   end select
 
-  call SNESGetIterationNumber(solver%snes,num_newton_iterations, ierr)
-  CHKERRQ(ierr)
-  call SNESGetLinearSolveIterations(solver%snes,num_linear_iterations, ierr)
-  CHKERRQ(ierr)
-  call SNESGetConvergedReason(solver%snes, snes_reason, ierr)
-  CHKERRQ(ierr)
+  call SNESGetIterationNumber(solver%snes,num_newton_iterations,  &
+                              ierr);CHKERRQ(ierr)
+  call SNESGetLinearSolveIterations(solver%snes,num_linear_iterations,  &
+                                    ierr);CHKERRQ(ierr)
+  call SNESGetConvergedReason(solver%snes, snes_reason, ierr);CHKERRQ(ierr)
 
   if (snes_reason <= 0) then
     if (option%print_screen_flag) then
@@ -2667,10 +2604,8 @@ subroutine StepperSolveFlowSteadyState(realization,stepper,failure)
   endif
     
 ! print screen output
-  call SNESGetFunctionNorm(solver%snes,fnorm,ierr)
-  CHKERRQ(ierr)
-  call VecNorm(field%flow_r,NORM_INFINITY,inorm,ierr)
-  CHKERRQ(ierr)
+  call SNESGetFunctionNorm(solver%snes,fnorm,ierr);CHKERRQ(ierr)
+  call VecNorm(field%flow_r,NORM_INFINITY,inorm,ierr);CHKERRQ(ierr)
   if (option%print_screen_flag) then
     if (associated(discretization%grid)) then
        scaled_fnorm = fnorm/discretization%grid%nmax 
@@ -2778,28 +2713,23 @@ subroutine StepperSolveTranSteadyState(realization,stepper,failure)
   endif
 
   if (realization%reaction%use_log_formulation) then
-    call VecCopy(field%tran_xx,field%tran_log_xx,ierr)
-    CHKERRQ(ierr)
-    call VecLog(field%tran_log_xx,ierr)
-    CHKERRQ(ierr)
-    call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%tran_log_xx, ierr)
-    CHKERRQ(ierr)
-    call VecCopy(field%tran_log_xx,field%tran_xx,ierr)
-    CHKERRQ(ierr)
-    call VecExp(field%tran_xx,ierr)
-    CHKERRQ(ierr)
+    call VecCopy(field%tran_xx,field%tran_log_xx,ierr);CHKERRQ(ierr)
+    call VecLog(field%tran_log_xx,ierr);CHKERRQ(ierr)
+    call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%tran_log_xx,  &
+                   ierr);CHKERRQ(ierr)
+    call VecCopy(field%tran_log_xx,field%tran_xx,ierr);CHKERRQ(ierr)
+    call VecExp(field%tran_xx,ierr);CHKERRQ(ierr)
   else
-    call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%tran_xx, ierr)
-    CHKERRQ(ierr)
+    call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%tran_xx,  &
+                   ierr);CHKERRQ(ierr)
   endif
 
   ! do we really need all this? - geh 
-  call SNESGetIterationNumber(solver%snes,num_newton_iterations, ierr)
-  CHKERRQ(ierr)
-  call SNESGetLinearSolveIterations(solver%snes,num_linear_iterations, ierr)
-  CHKERRQ(ierr)
-  call SNESGetConvergedReason(solver%snes, snes_reason, ierr)
-  CHKERRQ(ierr)
+  call SNESGetIterationNumber(solver%snes,num_newton_iterations,  &
+                              ierr);CHKERRQ(ierr)
+  call SNESGetLinearSolveIterations(solver%snes,num_linear_iterations,  &
+                                    ierr);CHKERRQ(ierr)
+  call SNESGetConvergedReason(solver%snes, snes_reason, ierr);CHKERRQ(ierr)
 
   if (snes_reason <= 0) then
     if (option%print_screen_flag) then
@@ -2813,10 +2743,8 @@ subroutine StepperSolveTranSteadyState(realization,stepper,failure)
   stepper%cumulative_linear_iterations = num_linear_iterations
 
   ! print screen output
-  call SNESGetFunctionNorm(solver%snes,fnorm,ierr)
-  CHKERRQ(ierr)
-  call VecNorm(field%tran_r,NORM_INFINITY,inorm,ierr)
-  CHKERRQ(ierr)
+  call SNESGetFunctionNorm(solver%snes,fnorm,ierr);CHKERRQ(ierr)
+  call VecNorm(field%tran_r,NORM_INFINITY,inorm,ierr);CHKERRQ(ierr)
   if (option%print_screen_flag) then
     if (associated(discretization%grid)) then
        scaled_fnorm = fnorm/discretization%grid%nmax   
@@ -3098,8 +3026,7 @@ subroutine StepperSandbox(realization)
                                    ! cells     bcs        act coefs.
   call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE,PETSC_TRUE)
 
-  call VecGetArrayF90(field%tran_xx,tran_xx_p,ierr)
-  CHKERRQ(ierr)
+  call VecGetArrayF90(field%tran_xx,tran_xx_p,ierr);CHKERRQ(ierr)
   
   vol_frac_prim = 1.d0
 
@@ -3138,8 +3065,7 @@ subroutine StepperSandbox(realization)
     tran_xx_p(istart:iend) = rt_auxvars(ghosted_id)%pri_molal
   enddo
 
-  call VecRestoreArrayF90(field%tran_xx,tran_xx_p,ierr)
-  CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%tran_xx,tran_xx_p,ierr);CHKERRQ(ierr)
   call DiscretizationGlobalToLocal(discretization,field%tran_xx, &
                                    field%tran_xx_loc,NTRANDOF)
 

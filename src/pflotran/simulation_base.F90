@@ -128,12 +128,10 @@ subroutine InitializeRun(this)
   endif
   
   ! pushed in Init()
-  call PetscLogStagePop(ierr)
-  CHKERRQ(ierr)
+  call PetscLogStagePop(ierr);CHKERRQ(ierr)
 
   ! popped in FinalizeRun()
-  call PetscLogStagePush(logging%stage(TS_STAGE),ierr)
-  CHKERRQ(ierr)
+  call PetscLogStagePush(logging%stage(TS_STAGE),ierr);CHKERRQ(ierr)
   
 end subroutine InitializeRun
 
@@ -223,11 +221,9 @@ subroutine SimulationBaseFinalizeRun(this)
   call this%process_model_coupler_list%FinalizeRun()
   
   ! pushed in InitializeRun()
-  call PetscLogStagePop(ierr)
-  CHKERRQ(ierr)
+  call PetscLogStagePop(ierr);CHKERRQ(ierr)
   ! popped in OptionFinalize()
-  call PetscLogStagePush(logging%stage(FINAL_STAGE),ierr)
-  CHKERRQ(ierr)
+  call PetscLogStagePush(logging%stage(FINAL_STAGE),ierr);CHKERRQ(ierr)
   
 end subroutine SimulationBaseFinalizeRun
 

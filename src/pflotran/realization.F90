@@ -219,7 +219,10 @@ subroutine RealizationCreateDiscretization(realization)
  
   discretization => realization%discretization
   
-  call DiscretizationCreateDMs(discretization,option)
+  call DiscretizationCreateDMs(discretization, option%nflowdof, &
+                               option%ntrandof, option%nphase, &
+                               option%ngeomechdof, option%n_stress_strain_dof, &
+                               option)
 
   ! 1 degree of freedom, global
   call DiscretizationCreateVector(discretization,ONEDOF,field%work, &
@@ -364,8 +367,7 @@ subroutine RealizationCreateDiscretization(realization)
         call GridComputeNeighbors(grid,field%work_loc,option)
         call DiscretizationLocalToLocal(discretization,field%work_loc,is_bnd_vec,ONEDOF)
         call GridSaveBoundaryCellInfo(discretization%grid,is_bnd_vec,option)
-        call VecDestroy(is_bnd_vec,ierr)
-        CHKERRQ(ierr)
+        call VecDestroy(is_bnd_vec,ierr);CHKERRQ(ierr)
       endif
     case(UNSTRUCTURED_GRID,UNSTRUCTURED_GRID_MIMETIC)
       grid => discretization%grid
@@ -399,10 +401,9 @@ subroutine RealizationCreateDiscretization(realization)
     if (option%nflowdof > 0) then
       num_LP_dof = (grid%nlmax_faces + grid%nlmax)*option%nflowdof
       call VecCreateMPI(option%mycomm, num_LP_dof, &
-                  PETSC_DETERMINE,field%flow_xx_faces,ierr)
-      CHKERRQ(ierr)
-      call VecSetBlockSize(field%flow_xx_faces,option%nflowdof,ierr)
-      CHKERRQ(ierr)
+                  PETSC_DETERMINE,field%flow_xx_faces,ierr);CHKERRQ(ierr)
+      call VecSetBlockSize(field%flow_xx_faces,option%nflowdof, &
+                           ierr);CHKERRQ(ierr)
 
       call DiscretizationDuplicateVector(discretization, field%flow_xx_faces, &
                                         field%flow_r_faces)
@@ -412,10 +413,10 @@ subroutine RealizationCreateDiscretization(realization)
                                         field%flow_yy_faces)
 
       call VecCreateSeq(PETSC_COMM_SELF, (grid%ngmax_faces + grid%ngmax)*option%nflowdof, &
-                                              field%flow_xx_loc_faces, ierr)
-      CHKERRQ(ierr)
-      call VecSetBlockSize(field%flow_xx_loc_faces,option%nflowdof,ierr)
-      CHKERRQ(ierr)
+                                              field%flow_xx_loc_faces,  &
+                        ierr);CHKERRQ(ierr)
+      call VecSetBlockSize(field%flow_xx_loc_faces,option%nflowdof, &
+                           ierr);CHKERRQ(ierr)
 
       call DiscretizationDuplicateVector(discretization, field%flow_xx_loc_faces, &
                                           field%flow_r_loc_faces)
@@ -435,8 +436,7 @@ subroutine RealizationCreateDiscretization(realization)
  
   ! initialize to -999.d0 for check later that verifies all values 
   ! have been set
-  call VecSet(field%porosity0,-999.d0,ierr)
-  CHKERRQ(ierr)
+  call VecSet(field%porosity0,-999.d0,ierr);CHKERRQ(ierr)
 
   ! Allocate vectors to hold temporally average output quantites
   if (realization%output_option%aveg_output_variable_list%nvars>0) then
@@ -447,8 +447,7 @@ subroutine RealizationCreateDiscretization(realization)
     do ivar=1,field%nvars
       call DiscretizationDuplicateVector(discretization,field%work, &
                                          field%avg_vars_vec(ivar))
-      call VecSet(field%avg_vars_vec(ivar),0.d0,ierr)
-      CHKERRQ(ierr)
+      call VecSet(field%avg_vars_vec(ivar),0.d0,ierr);CHKERRQ(ierr)
     enddo
   endif
        
@@ -459,10 +458,8 @@ subroutine RealizationCreateDiscretization(realization)
      realization%output_option%print_hdf5_aveg_energy_flowrate) then
     call VecCreateMPI(option%mycomm, &
         (option%nflowdof*MAX_FACE_PER_CELL+1)*realization%patch%grid%nlmax, &
-        PETSC_DETERMINE,field%flowrate_inst,ierr)
-    CHKERRQ(ierr)
-    call VecSet(field%flowrate_inst,0.d0,ierr)
-    CHKERRQ(ierr)
+        PETSC_DETERMINE,field%flowrate_inst,ierr);CHKERRQ(ierr)
+    call VecSet(field%flowrate_inst,0.d0,ierr);CHKERRQ(ierr)
   endif
 
   ! Allocate vectors to hold velocity at face
@@ -471,25 +468,21 @@ subroutine RealizationCreateDiscretization(realization)
     ! vx
     call VecCreateMPI(option%mycomm, &
         (option%nflowdof*MAX_FACE_PER_CELL+1)*realization%patch%grid%nlmax, &
-        PETSC_DETERMINE,field%vx_face_inst,ierr)
-    CHKERRQ(ierr)
-    call VecSet(field%vx_face_inst,0.d0,ierr)
-    CHKERRQ(ierr)
+        PETSC_DETERMINE,field%vx_face_inst,ierr);CHKERRQ(ierr)
+    call VecSet(field%vx_face_inst,0.d0,ierr);CHKERRQ(ierr)
 
     ! vy and vz
-    call VecDuplicate(field%vx_face_inst,field%vy_face_inst,ierr)
-    CHKERRQ(ierr)
-    call VecDuplicate(field%vx_face_inst,field%vz_face_inst,ierr)
-    CHKERRQ(ierr)
+    call VecDuplicate(field%vx_face_inst,field%vy_face_inst, &
+                      ierr);CHKERRQ(ierr)
+    call VecDuplicate(field%vx_face_inst,field%vz_face_inst, &
+                      ierr);CHKERRQ(ierr)
   endif
 
   if (realization%output_option%print_explicit_flowrate) then
     call VecCreateMPI(option%mycomm, &
          size(grid%unstructured_grid%explicit_grid%connections,2), &
-         PETSC_DETERMINE,field%flowrate_inst,ierr)
-    CHKERRQ(ierr)
-    call VecSet(field%flowrate_inst,0.d0,ierr)
-    CHKERRQ(ierr)
+         PETSC_DETERMINE,field%flowrate_inst,ierr);CHKERRQ(ierr)
+    call VecSet(field%flowrate_inst,0.d0,ierr);CHKERRQ(ierr)
   endif
     
   ! If average flowrate has to be saved, create a vector for it
@@ -497,10 +490,8 @@ subroutine RealizationCreateDiscretization(realization)
       realization%output_option%print_hdf5_aveg_energy_flowrate) then
     call VecCreateMPI(option%mycomm, &
         (option%nflowdof*MAX_FACE_PER_CELL+1)*realization%patch%grid%nlmax, &
-        PETSC_DETERMINE,field%flowrate_aveg,ierr)
-    CHKERRQ(ierr)
-    call VecSet(field%flowrate_aveg,0.d0,ierr)
-    CHKERRQ(ierr)
+        PETSC_DETERMINE,field%flowrate_aveg,ierr);CHKERRQ(ierr)
+    call VecSet(field%flowrate_aveg,0.d0,ierr);CHKERRQ(ierr)
   endif
 
   select case(realization%discretization%itype)
@@ -688,14 +679,12 @@ subroutine RealizationCreatenG2LP(realization)
                                   GLOBAL,option)
   call DiscretizationCreateVector(discretization,ONEDOF,vec_LP_cell_id_loc, &
                                   LOCAL,option)
-  call VecGetArrayF90(vec_LP_cell_id,lp_cell_ids,ierr)
-  CHKERRQ(ierr)
+  call VecGetArrayF90(vec_LP_cell_id,lp_cell_ids,ierr);CHKERRQ(ierr)
   do local_id=1,grid%nlmax
     grid%nG2LP(grid%nL2G(local_id))=global_offset+grid%nlmax_faces+local_id-1
     lp_cell_ids(local_id)=global_offset+grid%nlmax_faces+local_id
   enddo
-  call VecRestoreArrayF90(vec_LP_cell_id,lp_cell_ids,ierr)
-  CHKERRQ(ierr)
+  call VecRestoreArrayF90(vec_LP_cell_id,lp_cell_ids,ierr);CHKERRQ(ierr)
 
   allocate(int_tmp_gh(grid%ngmax-grid%nlmax))
   allocate(int_tmp_gl(grid%ngmax-grid%nlmax))
@@ -710,44 +699,35 @@ subroutine RealizationCreatenG2LP(realization)
   enddo
 
   call ISCreateBlock(option%mycomm, ONEDOF, grid%ngmax - grid%nlmax, &
-                     int_tmp_gh, PETSC_COPY_VALUES, is_ghosted, ierr)
-  CHKERRQ(ierr)
+                     int_tmp_gh, PETSC_COPY_VALUES, is_ghosted,  &
+                     ierr);CHKERRQ(ierr)
   call ISCreateBlock(option%mycomm, ONEDOF, grid%ngmax - grid%nlmax, &
-                     int_tmp_gl, PETSC_COPY_VALUES, is_global, ierr)
-  CHKERRQ(ierr)
+                     int_tmp_gl, PETSC_COPY_VALUES, is_global,  &
+                     ierr);CHKERRQ(ierr)
   call VecScatterCreate(vec_LP_cell_id, is_global, vec_LP_cell_id_loc, &
-                        is_ghosted, VC_global2ghosted, ierr)
-  CHKERRQ(ierr)
+                        is_ghosted, VC_global2ghosted, ierr);CHKERRQ(ierr)
   deallocate(int_tmp_gh)
   deallocate(int_tmp_gl)
 
   call VecScatterBegin(VC_global2ghosted, vec_LP_cell_id, vec_LP_cell_id_loc, &
-                      INSERT_VALUES,SCATTER_FORWARD,ierr)
-  CHKERRQ(ierr)
+                      INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   call VecScatterEnd(VC_global2ghosted, vec_LP_cell_id, vec_LP_cell_id_loc, &
-                      INSERT_VALUES,SCATTER_FORWARD,ierr)
-  CHKERRQ(ierr)
+                      INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
 
-  call VecGetArrayF90(vec_LP_cell_id_loc,lp_cell_ids_loc,ierr)
-  CHKERRQ(ierr)
+  call VecGetArrayF90(vec_LP_cell_id_loc,lp_cell_ids_loc,ierr);CHKERRQ(ierr)
   do ghosted_id=1,grid%ngmax
     if (grid%nG2L(ghosted_id)<1) then
       grid%nG2LP(ghosted_id)=int(lp_cell_ids_loc(ghosted_id))-1
     endif
   end do
-  call VecRestoreArrayF90(vec_LP_cell_id_loc,lp_cell_ids_loc,ierr)
-  CHKERRQ(ierr)
+  call VecRestoreArrayF90(vec_LP_cell_id_loc,lp_cell_ids_loc, &
+                          ierr);CHKERRQ(ierr)
 
-  call VecDestroy(vec_LP_cell_id, ierr)
-  CHKERRQ(ierr)
-  call VecDestroy(vec_LP_cell_id_loc, ierr)
-  CHKERRQ(ierr)
-  call VecScatterDestroy(VC_global2ghosted , ierr)
-  CHKERRQ(ierr)
-  call ISDestroy(is_ghosted, ierr)
-  CHKERRQ(ierr)
-  call ISDestroy(is_global, ierr)
-  CHKERRQ(ierr)
+  call VecDestroy(vec_LP_cell_id, ierr);CHKERRQ(ierr)
+  call VecDestroy(vec_LP_cell_id_loc, ierr);CHKERRQ(ierr)
+  call VecScatterDestroy(VC_global2ghosted , ierr);CHKERRQ(ierr)
+  call ISDestroy(is_ghosted, ierr);CHKERRQ(ierr)
+  call ISDestroy(is_global, ierr);CHKERRQ(ierr)
 
 end subroutine RealizationCreatenG2LP
 
@@ -1800,10 +1780,9 @@ subroutine RealizationUpdatePropertiesTS(realization)
     porosity_updated = PETSC_TRUE
   
     if (reaction%mineral%nkinmnrl > 0) then
-      call VecGetArrayF90(field%porosity0,porosity0_p,ierr)
-      CHKERRQ(ierr)
-      call VecGetArrayF90(field%porosity_mnrl_loc,porosity_mnrl_loc_p,ierr)
-      CHKERRQ(ierr)
+      call VecGetArrayF90(field%porosity0,porosity0_p,ierr);CHKERRQ(ierr)
+      call VecGetArrayF90(field%porosity_mnrl_loc,porosity_mnrl_loc_p, &
+                          ierr);CHKERRQ(ierr)
       do local_id = 1, grid%nlmax
         ghosted_id = grid%nL2G(local_id)
         ! Go ahead and compute for inactive cells since their porosity does
@@ -1818,10 +1797,9 @@ subroutine RealizationUpdatePropertiesTS(realization)
         porosity_mnrl_loc_p(ghosted_id) = &
           max(porosity0_p(local_id)-sum_volfrac,reaction%minimum_porosity)
       enddo
-      call VecRestoreArrayF90(field%porosity0,porosity0_p,ierr)
-      CHKERRQ(ierr)
-      call VecRestoreArrayF90(field%porosity_mnrl_loc,porosity_mnrl_loc_p,ierr)
-      CHKERRQ(ierr)
+      call VecRestoreArrayF90(field%porosity0,porosity0_p,ierr);CHKERRQ(ierr)
+      call VecRestoreArrayF90(field%porosity_mnrl_loc,porosity_mnrl_loc_p, &
+                              ierr);CHKERRQ(ierr)
     endif
     
     call MaterialGetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
@@ -1839,22 +1817,18 @@ subroutine RealizationUpdatePropertiesTS(realization)
       ! recalculate it every time.
       (reaction%update_mineral_surface_area .and. &
        reaction%update_mnrl_surf_with_porosity)) then
-    call VecGetArrayF90(field%porosity0,porosity0_p,ierr)
-    CHKERRQ(ierr)
-    call VecGetArrayF90(field%porosity_mnrl_loc,porosity_mnrl_loc_p,ierr)
-    CHKERRQ(ierr)
-    call VecGetArrayF90(field%work,vec_p,ierr)
-    CHKERRQ(ierr)
+    call VecGetArrayF90(field%porosity0,porosity0_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayF90(field%porosity_mnrl_loc,porosity_mnrl_loc_p, &
+                        ierr);CHKERRQ(ierr)
+    call VecGetArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       vec_p(local_id) = porosity_mnrl_loc_p(ghosted_id) / porosity0_p(local_id)
     enddo
-    call VecRestoreArrayF90(field%porosity0,porosity0_p,ierr)
-    CHKERRQ(ierr)
-    call VecRestoreArrayF90(field%porosity_mnrl_loc,porosity_mnrl_loc_p,ierr)
-    CHKERRQ(ierr)
-    call VecRestoreArrayF90(field%work,vec_p,ierr)
-    CHKERRQ(ierr)
+    call VecRestoreArrayF90(field%porosity0,porosity0_p,ierr);CHKERRQ(ierr)
+    call VecRestoreArrayF90(field%porosity_mnrl_loc,porosity_mnrl_loc_p, &
+                            ierr);CHKERRQ(ierr)
+    call VecRestoreArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
   endif      
 
   if (reaction%update_mineral_surface_area) then
@@ -1862,8 +1836,7 @@ subroutine RealizationUpdatePropertiesTS(realization)
     if (reaction%update_mnrl_surf_with_porosity) then
       ! placing the get/restore array calls within the condition will
       ! avoid improper access.
-      call VecGetArrayF90(field%work,vec_p,ierr)
-      CHKERRQ(ierr)
+      call VecGetArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
     endif
 
     do local_id = 1, grid%nlmax
@@ -1944,8 +1917,7 @@ subroutine RealizationUpdatePropertiesTS(realization)
     enddo
 
     if (reaction%update_mnrl_surf_with_porosity) then
-      call VecRestoreArrayF90(field%work,vec_p,ierr)
-      CHKERRQ(ierr)
+      call VecRestoreArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
     endif
 !geh:remove
     call MaterialGetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
@@ -1957,10 +1929,8 @@ subroutine RealizationUpdatePropertiesTS(realization)
   endif
       
   if (reaction%update_tortuosity) then
-    call VecGetArrayF90(field%tortuosity0,tortuosity0_p,ierr)
-    CHKERRQ(ierr)  
-    call VecGetArrayF90(field%work,vec_p,ierr)
-    CHKERRQ(ierr)
+    call VecGetArrayF90(field%tortuosity0,tortuosity0_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       scale = vec_p(local_id)** &
@@ -1968,10 +1938,9 @@ subroutine RealizationUpdatePropertiesTS(realization)
       material_auxvars(ghosted_id)%tortuosity = &
         tortuosity0_p(local_id)*scale
     enddo
-    call VecRestoreArrayF90(field%tortuosity0,tortuosity0_p,ierr)
-    CHKERRQ(ierr)  
-    call VecRestoreArrayF90(field%work,vec_p,ierr)
-    CHKERRQ(ierr)
+    call VecRestoreArrayF90(field%tortuosity0,tortuosity0_p, &
+                            ierr);CHKERRQ(ierr)
+    call VecRestoreArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
     call MaterialGetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
                                  TORTUOSITY,ZERO_INTEGER)
     call DiscretizationLocalToLocal(discretization,field%work_loc, &
@@ -1981,14 +1950,11 @@ subroutine RealizationUpdatePropertiesTS(realization)
   endif
       
   if (reaction%update_permeability) then
-    call VecGetArrayF90(field%porosity_mnrl_loc,porosity_mnrl_loc_p,ierr)
-    CHKERRQ(ierr)
-    call VecGetArrayF90(field%perm0_xx,perm0_xx_p,ierr)
-    CHKERRQ(ierr)
-    call VecGetArrayF90(field%perm0_zz,perm0_zz_p,ierr)
-    CHKERRQ(ierr)
-    call VecGetArrayF90(field%perm0_yy,perm0_yy_p,ierr)
-    CHKERRQ(ierr)
+    call VecGetArrayF90(field%porosity_mnrl_loc,porosity_mnrl_loc_p, &
+                        ierr);CHKERRQ(ierr)
+    call VecGetArrayF90(field%perm0_xx,perm0_xx_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayF90(field%perm0_zz,perm0_zz_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayF90(field%perm0_yy,perm0_yy_p,ierr);CHKERRQ(ierr)
 !   call VecGetArrayF90(field%work,vec_p,ierr)
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
@@ -2022,14 +1988,11 @@ subroutine RealizationUpdatePropertiesTS(realization)
       material_auxvars(ghosted_id)%permeability(perm_zz_index) = &
         perm0_zz_p(local_id)*scale
     enddo
-    call VecRestoreArrayF90(field%porosity_mnrl_loc,porosity_mnrl_loc_p,ierr)
-    CHKERRQ(ierr)
-    call VecRestoreArrayF90(field%perm0_xx,perm0_xx_p,ierr)
-    CHKERRQ(ierr)
-    call VecRestoreArrayF90(field%perm0_zz,perm0_zz_p,ierr)
-    CHKERRQ(ierr)
-    call VecRestoreArrayF90(field%perm0_yy,perm0_yy_p,ierr)
-    CHKERRQ(ierr)
+    call VecRestoreArrayF90(field%porosity_mnrl_loc,porosity_mnrl_loc_p, &
+                            ierr);CHKERRQ(ierr)
+    call VecRestoreArrayF90(field%perm0_xx,perm0_xx_p,ierr);CHKERRQ(ierr)
+    call VecRestoreArrayF90(field%perm0_zz,perm0_zz_p,ierr);CHKERRQ(ierr)
+    call VecRestoreArrayF90(field%perm0_yy,perm0_yy_p,ierr);CHKERRQ(ierr)
 
     call MaterialGetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
                                  PERMEABILITY_X,ZERO_INTEGER)
@@ -2053,8 +2016,7 @@ subroutine RealizationUpdatePropertiesTS(realization)
   
   ! perform check to ensure that porosity is bounded between 0 and 1
   ! since it is calculated as 1.d-sum_volfrac, it cannot be > 1
-  call VecMin(field%porosity_mnrl_loc,ivalue,min_value,ierr)
-  CHKERRQ(ierr)
+  call VecMin(field%porosity_mnrl_loc,ivalue,min_value,ierr);CHKERRQ(ierr)
   if (min_value < 0.d0) then
     write(option%io_buffer,*) 'Sum of mineral volume fractions has ' // &
       'exceeded 1.d0 at cell (note PETSc numbering): ', ivalue
@@ -2251,10 +2213,8 @@ subroutine RealizationSetUpBC4Faces(realization)
   grid => patch%grid
   field => realization%field
 
-  call VecGetArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr)
-  CHKERRQ(ierr)
-  call VecGetArrayF90(field%flow_xx_faces, xx_faces_p, ierr)
-  CHKERRQ(ierr)
+  call VecGetArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(field%flow_xx_faces, xx_faces_p, ierr);CHKERRQ(ierr)
 
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0
@@ -2293,10 +2253,9 @@ subroutine RealizationSetUpBC4Faces(realization)
     boundary_condition => boundary_condition%next
   enddo
 
-  call VecRestoreArrayF90(field%flow_xx_faces, xx_faces_p, ierr)
-  CHKERRQ(ierr)
-  call VecRestoreArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr)
-  CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%flow_xx_faces, xx_faces_p, ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%flow_bc_loc_faces, bc_faces_p,  &
+                          ierr);CHKERRQ(ierr)
 
 #endif
 
@@ -2573,14 +2532,12 @@ subroutine RealizationNonInitializedData(realization)
   
   min_value = 1.d20
   ! porosity
-  call VecGetArrayF90(field%porosity0,vec_p,ierr)
-  CHKERRQ(ierr)
+  call VecGetArrayF90(field%porosity0,vec_p,ierr);CHKERRQ(ierr)
   do local_id = 1, grid%nlmax
     if (patch%imat(grid%nL2G(local_id)) <= 0) cycle
     min_value = min(min_value,vec_p(local_id)) 
   enddo
-  call VecRestoreArrayF90(field%porosity0,vec_p,ierr)
-  CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%porosity0,vec_p,ierr);CHKERRQ(ierr)
   call MPI_Allreduce(min_value,global_value,ONE_INTEGER_MPI, &
                      MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
   
@@ -2591,24 +2548,18 @@ subroutine RealizationNonInitializedData(realization)
   endif
   
   if (option%iflowmode /= NULL_MODE) then
-    call VecGetArrayF90(field%perm0_xx,vec_p,ierr)
-    CHKERRQ(ierr)
-    call VecGetArrayF90(field%perm0_yy,vecy_p,ierr)
-    CHKERRQ(ierr)
-    call VecGetArrayF90(field%perm0_zz,vecz_p,ierr)
-    CHKERRQ(ierr)
+    call VecGetArrayF90(field%perm0_xx,vec_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayF90(field%perm0_yy,vecy_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayF90(field%perm0_zz,vecz_p,ierr);CHKERRQ(ierr)
     min_value = 1.d20
     do local_id = 1, grid%nlmax
       if (patch%imat(grid%nL2G(local_id)) <= 0) cycle
       min_value = min(min_value,vec_p(local_id),vecy_p(local_id), &
                       vecz_p(local_id)) 
     enddo        
-    call VecRestoreArrayF90(field%perm0_xx,vec_p,ierr)
-    CHKERRQ(ierr)
-    call VecRestoreArrayF90(field%perm0_yy,vecy_p,ierr)
-    CHKERRQ(ierr)
-    call VecRestoreArrayF90(field%perm0_zz,vecz_p,ierr)
-    CHKERRQ(ierr)
+    call VecRestoreArrayF90(field%perm0_xx,vec_p,ierr);CHKERRQ(ierr)
+    call VecRestoreArrayF90(field%perm0_yy,vecy_p,ierr);CHKERRQ(ierr)
+    call VecRestoreArrayF90(field%perm0_zz,vecz_p,ierr);CHKERRQ(ierr)
     call MPI_Allreduce(min_value,global_value,ONE_INTEGER_MPI, &
                        MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
     if (global_value < 1.d-60) then

@@ -29,6 +29,9 @@ class FortranCall:
             pclose += lines[row+self.shift].count(")")
         call = call.replace("\n","").replace("&","")
 
+        # strip off possible existing error checks
+        call = call.replace("CHKERRQ(ierr)","").replace(";","")
+
         # Now search for important information in that string
         single_call = re.search(r"(\s*)call\s(\w*)\((.*)\).*",call)
         if single_call:
@@ -38,8 +41,13 @@ class FortranCall:
             self.call_args = self.call_args.split(",")
             for i,arg in enumerate(self.call_args):
                 self.call_args[i] = arg.strip()
+
+        self.call = self.call_name + "(" + ",".join(self.call_args) + ")"
         return
     
+    def __str__(self):
+        return self.call
+
     def IsPETScCall(self):
         sub = self.call_name.lower()
         prefix = False
@@ -51,51 +59,56 @@ class FortranCall:
         return False
 
     def IsErrorChecked(self,lines):
-        try:
-            if (lines[self.row+self.shift+1].count("CHKERRQ(ierr)")>0): return True
-        except:
-            pass
+        if (lines[self.row+self.shift  ].count("CHKERRQ") == 1): return True        
+        if (lines[self.row+self.shift+1].count("CHKERRQ") == 1 and
+            lines[self.row+self.shift+1].count(" call ") == 0): return True        
         return False
 
-    def AddErrorCheck(self,lines):
+    def AddErrorCheck(self,lines,column_limit=80):
         if self.IsErrorChecked(lines): return
-        row   = self.row
-        shift = self.shift
+        row    = self.row
+        shift  = self.shift
+        lenchk = len(";CHKERRQ(ierr)")
 
-        # is the call part of a single-line if statement?
+        # If the call is part of a single-line 'if' statement, break it up
         single_if = re.search("(\s*)if.*(\s*)call\s.*",lines[row])
         if single_if:
-            lines[row] = lines[row].replace("call","then\n%s  call" % single_if.group(1))
-            lines[row+shift] = lines[row+shift] + "%s  CHKERRQ(ierr)\n%sendif\n" % (single_if.group(1),single_if.group(1))
-            return
+            lines[row]       = lines[row].replace("call","then\n%s  call" % single_if.group(1))
+            lines[row+shift] = lines[row+shift].replace("\n","\n%sendif\n" % self.call_tab[:-2])
 
-        # the line above the call could be a single-line if with continuation
+        # If the line above the call is a single-line 'if' with continuation, break it up
         contin_if = re.search("if.*&",lines[row-1])
         if contin_if:
             lines[row-1]     = lines[row-1].replace("&","then")
             lines[row+shift] = lines[row+shift].replace("\n","\n%sendif\n" % self.call_tab[:-2])
 
-        # standalone call replacement
-        lines[row+shift] = lines[row+shift].replace("ierr)","ierr)\n%sCHKERRQ(ierr)" % self.call_tab)
+        # stand-alone call replacement if the line isn't too long
+        if len(lines[row+shift]) < column_limit-lenchk:
+            lines[row+shift] = lines[row+shift].replace("ierr)","ierr);CHKERRQ(ierr)")
+            return False
+        
+        # wrap the last argument and add check
+        lines[row+shift] = lines[row+shift].replace("ierr)"," &\n%s%sierr);CHKERRQ(ierr)" % (self.call_tab," "*(len(self.call_name)+6)))
+        return True
 
-added = []
+added  = []
+nwraps = 0
 for (dirpath, dirnames, filenames) in os.walk("./"):
     for filename in filenames:
         if filename[-4:] != ".F90": continue
         lines = file(filename).readlines()
         for row,line in enumerate(lines):
             if IsCommentedLine(line): continue
-            if line.count("call") > 0:
+            if line.count(" call ") > 0:
                 fc = FortranCall(row,lines)
                 if fc.IsPETScCall():
                     if fc.IsErrorChecked(lines) == False:
                         added.append("%s:%d %s" % (filename,row+1,fc.call_name))
-                        fc.AddErrorCheck(lines)
+                        nwraps += fc.AddErrorCheck(lines)
         file(filename,"w").writelines(lines)
 
-for add in added:
-    print add
 if len(added) == 0:
     print "All PETSc calls have ierr checked"
 else:
-    print "Added CHKERRQ(ierr) to the above %d PETSc call(s)" % (len(added))
+    print "Added CHKERRQ(ierr) to %d PETSc call(s)" % (len(added))
+    print "Had to multiline %d call(s) due to a 80 character column limit violation" % (nwraps)

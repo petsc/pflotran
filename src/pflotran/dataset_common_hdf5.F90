@@ -272,13 +272,11 @@ subroutine DatasetCommonHDF5ReadTimes(filename,dataset_name,time_storage, &
   PetscLogDouble :: tstart, tend  
   PetscErrorCode :: ierr
   
-  call PetscLogEventBegin(logging%event_read_array_hdf5,ierr)
-  CHKERRQ(ierr)
+  call PetscLogEventBegin(logging%event_read_array_hdf5,ierr);CHKERRQ(ierr)
   
 !#define TIME_READING_TIMES
 #ifdef TIME_READING_TIMES
-  call PetscTime(tstart,ierr)
-  CHKERRQ(ierr)
+  call PetscTime(tstart,ierr);CHKERRQ(ierr)
 #endif  
   
   h5fopen_err = 0
@@ -397,8 +395,7 @@ subroutine DatasetCommonHDF5ReadTimes(filename,dataset_name,time_storage, &
 
 #ifdef TIME_READING_TIMES
   call MPI_Barrier(option%mycomm,ierr)
-  call PetscTime(tend,ierr)
-  CHKERRQ(ierr)
+  call PetscTime(tend,ierr);CHKERRQ(ierr)
   write(option%io_buffer,'(f6.2," Seconds to read dataset times",a,".")') &
     tend-tstart, trim(dataset_name) // ' (' // trim(option%group_prefix) // &
     ')'
@@ -407,8 +404,7 @@ subroutine DatasetCommonHDF5ReadTimes(filename,dataset_name,time_storage, &
   endif
 #endif
 
-  call PetscLogEventEnd(logging%event_read_array_hdf5,ierr)
-  CHKERRQ(ierr)
+  call PetscLogEventEnd(logging%event_read_array_hdf5,ierr);CHKERRQ(ierr)
   
 end subroutine DatasetCommonHDF5ReadTimes
 #endif

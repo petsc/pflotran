@@ -208,7 +208,9 @@ module PFLOTRAN_Constants_module
   
   PetscInt, parameter, public :: TWO_POINT_FLUX = 0
   PetscInt, parameter, public :: LSM_FLUX       = 1
-  
+
+  PetscReal, parameter, public :: MIN_SURFACE_WATER_HEIGHT = 1.0d-14
+
   ! print secondary continuum variable ids
   PetscInt, parameter, public :: PRINT_SEC_TEMP =           0
   PetscInt, parameter, public :: PRINT_SEC_CONC =           1

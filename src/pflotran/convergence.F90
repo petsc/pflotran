@@ -169,8 +169,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
   !geh: We must check the convergence here as it initializes
   !     snes->ttol for subsequent iterations.
   call SNESConvergedDefault(snes_,it,xnorm,pnorm,fnorm,reason, &
-                            PETSC_NULL_OBJECT,ierr)
-  CHKERRQ(ierr)
+                            PETSC_NULL_OBJECT,ierr);CHKERRQ(ierr)
 
   ! for some reason (e.g. negative saturation/mole fraction in multiphase),
   ! we are forcing extra newton iterations
@@ -208,16 +207,12 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
   if (solver%check_infinity_norm) then
   
     call SNESGetFunction(snes_,residual_vec,PETSC_NULL_OBJECT, &
-                         PETSC_NULL_INTEGER,ierr)
-    CHKERRQ(ierr)
+                         PETSC_NULL_INTEGER,ierr);CHKERRQ(ierr)
 
-    call VecNorm(residual_vec,NORM_INFINITY,inorm_residual,ierr)
-    CHKERRQ(ierr)
+    call VecNorm(residual_vec,NORM_INFINITY,inorm_residual,ierr);CHKERRQ(ierr)
 
-    call SNESGetSolutionUpdate(snes_,update_vec,ierr)
-    CHKERRQ(ierr)
-    call VecNorm(update_vec,NORM_INFINITY,inorm_update,ierr)
-    CHKERRQ(ierr)
+    call SNESGetSolutionUpdate(snes_,update_vec,ierr);CHKERRQ(ierr)
+    call VecNorm(update_vec,NORM_INFINITY,inorm_update,ierr);CHKERRQ(ierr)
 
     if (inorm_residual < solver%newton_inf_res_tol) then
       reason = 10
@@ -335,8 +330,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
               & 32x, &
               & " rsn: ",a)') it, fnorm, pnorm, trim(string)
       if (solver%print_linear_iterations) then
-        call KSPGetIterationNumber(solver%ksp,i,ierr)
-        CHKERRQ(ierr)
+        call KSPGetIterationNumber(solver%ksp,i,ierr);CHKERRQ(ierr)
         write(option%io_buffer,'("   Linear Solver Iterations: ",i6)') i
         call printMsg(option)
       endif
@@ -345,33 +339,23 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
 
   if (solver%print_detailed_convergence) then
 
-    call SNESGetSolution(snes_,solution_vec,ierr)
-    CHKERRQ(ierr)
+    call SNESGetSolution(snes_,solution_vec,ierr);CHKERRQ(ierr)
     ! the ctx object should really be PETSC_NULL_OBJECT.  A bug in petsc
     call SNESGetFunction(snes_,residual_vec,PETSC_NULL_OBJECT, &
                          PETSC_NULL_INTEGER, &
-                         ierr)
-    CHKERRQ(ierr)
-    call SNESGetSolutionUpdate(snes_,update_vec,ierr)
-    CHKERRQ(ierr)
+                         ierr);CHKERRQ(ierr)
+    call SNESGetSolutionUpdate(snes_,update_vec,ierr);CHKERRQ(ierr)
     
     ! infinity norms
-    call VecNorm(solution_vec,NORM_INFINITY,inorm_solution,ierr)
-    CHKERRQ(ierr)
-    call VecNorm(update_vec,NORM_INFINITY,inorm_update,ierr)
-    CHKERRQ(ierr)
-    call VecNorm(residual_vec,NORM_INFINITY,inorm_residual,ierr)
-    CHKERRQ(ierr)
+    call VecNorm(solution_vec,NORM_INFINITY,inorm_solution,ierr);CHKERRQ(ierr)
+    call VecNorm(update_vec,NORM_INFINITY,inorm_update,ierr);CHKERRQ(ierr)
+    call VecNorm(residual_vec,NORM_INFINITY,inorm_residual,ierr);CHKERRQ(ierr)
 
-    call VecNorm(solution_vec,NORM_1,norm1_solution,ierr)
-    CHKERRQ(ierr)
-    call VecNorm(update_vec,NORM_1,norm1_update,ierr)
-    CHKERRQ(ierr)
-    call VecNorm(residual_vec,NORM_1,norm1_residual,ierr)
-    CHKERRQ(ierr)
+    call VecNorm(solution_vec,NORM_1,norm1_solution,ierr);CHKERRQ(ierr)
+    call VecNorm(update_vec,NORM_1,norm1_update,ierr);CHKERRQ(ierr)
+    call VecNorm(residual_vec,NORM_1,norm1_residual,ierr);CHKERRQ(ierr)
     
-    call VecGetBlockSize(solution_vec,ndof,ierr)
-    CHKERRQ(ierr)
+    call VecGetBlockSize(solution_vec,ndof,ierr);CHKERRQ(ierr)
     
     allocate(fnorm_solution_stride(ndof))
     allocate(fnorm_update_stride(ndof))
@@ -397,33 +381,33 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
     allocate(min_update_val(ndof))
     allocate(min_residual_val(ndof))
 
-    call VecStrideNormAll(solution_vec,NORM_1,norm1_solution_stride,ierr)
-    CHKERRQ(ierr)
-    call VecStrideNormAll(update_vec,NORM_1,norm1_update_stride,ierr)
-    CHKERRQ(ierr)
-    call VecStrideNormAll(residual_vec,NORM_1,norm1_residual_stride,ierr)
-    CHKERRQ(ierr)
-    call VecStrideNormAll(solution_vec,NORM_2,fnorm_solution_stride,ierr)
-    CHKERRQ(ierr)
-    call VecStrideNormAll(update_vec,NORM_2,fnorm_update_stride,ierr)
-    CHKERRQ(ierr)
-    call VecStrideNormAll(residual_vec,NORM_2,fnorm_residual_stride,ierr)
-    CHKERRQ(ierr)
-    call VecStrideNormAll(solution_vec,NORM_INFINITY,inorm_solution_stride,ierr)
-    CHKERRQ(ierr)
-    call VecStrideNormAll(update_vec,NORM_INFINITY,inorm_update_stride,ierr)
-    CHKERRQ(ierr)
-    call VecStrideNormAll(residual_vec,NORM_INFINITY,inorm_residual_stride,ierr)
-    CHKERRQ(ierr)
+    call VecStrideNormAll(solution_vec,NORM_1,norm1_solution_stride, &
+                          ierr);CHKERRQ(ierr)
+    call VecStrideNormAll(update_vec,NORM_1,norm1_update_stride, &
+                          ierr);CHKERRQ(ierr)
+    call VecStrideNormAll(residual_vec,NORM_1,norm1_residual_stride, &
+                          ierr);CHKERRQ(ierr)
+    call VecStrideNormAll(solution_vec,NORM_2,fnorm_solution_stride, &
+                          ierr);CHKERRQ(ierr)
+    call VecStrideNormAll(update_vec,NORM_2,fnorm_update_stride, &
+                          ierr);CHKERRQ(ierr)
+    call VecStrideNormAll(residual_vec,NORM_2,fnorm_residual_stride, &
+                          ierr);CHKERRQ(ierr)
+    call VecStrideNormAll(solution_vec,NORM_INFINITY,inorm_solution_stride, &
+                          ierr);CHKERRQ(ierr)
+    call VecStrideNormAll(update_vec,NORM_INFINITY,inorm_update_stride, &
+                          ierr);CHKERRQ(ierr)
+    call VecStrideNormAll(residual_vec,NORM_INFINITY,inorm_residual_stride, &
+                          ierr);CHKERRQ(ierr)
     
     ! can't use VecStrideMaxAll since the index location is not currently supported.
     do i=1,ndof
-      call VecStrideMax(solution_vec,i-1,imax_solution(i),max_solution_val(i),ierr)
-      CHKERRQ(ierr)
-      call VecStrideMax(update_vec,i-1,imax_update(i),max_update_val(i),ierr)
-      CHKERRQ(ierr)
-      call VecStrideMax(residual_vec,i-1,imax_residual(i),max_residual_val(i),ierr)
-      CHKERRQ(ierr)
+      call VecStrideMax(solution_vec,i-1,imax_solution(i),max_solution_val(i), &
+                        ierr);CHKERRQ(ierr)
+      call VecStrideMax(update_vec,i-1,imax_update(i),max_update_val(i), &
+                        ierr);CHKERRQ(ierr)
+      call VecStrideMax(residual_vec,i-1,imax_residual(i),max_residual_val(i), &
+                        ierr);CHKERRQ(ierr)
       ! tweak the index to get the cell id from the mdof vector
       imax_solution(i) = GridIndexToCellID(solution_vec,imax_solution(i),grid,GLOBAL)
       imax_update(i) = GridIndexToCellID(update_vec,imax_update(i),grid,GLOBAL)
@@ -434,12 +418,12 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
     enddo
 
     do i=1,ndof
-      call VecStrideMin(solution_vec,i-1,imin_solution(i),min_solution_val(i),ierr)
-      CHKERRQ(ierr)
-      call VecStrideMin(update_vec,i-1,imin_update(i),min_update_val(i),ierr)
-      CHKERRQ(ierr)
-      call VecStrideMin(residual_vec,i-1,imin_residual(i),min_residual_val(i),ierr)
-      CHKERRQ(ierr)
+      call VecStrideMin(solution_vec,i-1,imin_solution(i),min_solution_val(i), &
+                        ierr);CHKERRQ(ierr)
+      call VecStrideMin(update_vec,i-1,imin_update(i),min_update_val(i), &
+                        ierr);CHKERRQ(ierr)
+      call VecStrideMin(residual_vec,i-1,imin_residual(i),min_residual_val(i), &
+                        ierr);CHKERRQ(ierr)
       ! tweak the index to get the cell id from the mdof vector
       imin_solution(i) = GridIndexToCellID(solution_vec,imin_solution(i),grid,GLOBAL)
       imin_update(i) = GridIndexToCellID(update_vec,imax_update(i),grid,GLOBAL)
@@ -501,10 +485,8 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
       print *
       print *, 'reason: ', reason, ' - ', trim(string)
       print *, 'SNES iteration :', it
-      call SNESGetKSP(snes_,ksp,ierr)
-      CHKERRQ(ierr)
-      call KSPGetIterationNumber(ksp,i,ierr)
-      CHKERRQ(ierr)
+      call SNESGetKSP(snes_,ksp,ierr);CHKERRQ(ierr)
+      call KSPGetIterationNumber(ksp,i,ierr);CHKERRQ(ierr)
       print *, 'KSP iterations :', i
       if (print_1_norm_info) then
         if (print_sol_norm_info) print *, 'norm_1_solution:   ', norm1_solution
