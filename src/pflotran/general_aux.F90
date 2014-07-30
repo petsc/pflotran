@@ -1136,7 +1136,7 @@ subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,ghosted_id, &
   type(option_type) :: option
 
   character(len=MAXSTRINGLENGTH) :: string2
-  PetscInt :: apid, cpid, vpid
+  PetscInt :: apid, cpid, vpid, spid
   PetscInt :: gid, lid, acid, wid, eid
 
   lid = option%liquid_phase
@@ -1144,6 +1144,7 @@ subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,ghosted_id, &
   apid = option%air_pressure_id
   cpid = option%capillary_pressure_id
   vpid = option%vapor_pressure_id
+  spid = option%saturation_pressure_id
 
   acid = option%air_id ! air component id
   wid = option%water_id
@@ -1173,6 +1174,7 @@ subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,ghosted_id, &
   write(86,*) '        air pressure: ', general_auxvar%pres(apid)
   write(86,*) '  capillary pressure: ', general_auxvar%pres(cpid)
   write(86,*) '      vapor pressure: ', general_auxvar%pres(vpid)
+  write(86,*) ' saturation pressure: ', general_auxvar%pres(spid)
   write(86,*) '     temperature [C]: ', general_auxvar%temp
   write(86,*) '   liquid saturation: ', general_auxvar%sat(lid)
   write(86,*) '      gas saturation: ', general_auxvar%sat(gid)
@@ -1196,6 +1198,7 @@ subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,ghosted_id, &
   write(86,*) general_auxvar%pres(apid)
   write(86,*) general_auxvar%pres(cpid)
   write(86,*) general_auxvar%pres(vpid)
+  write(86,*) general_auxvar%pres(spid)
   write(86,*) general_auxvar%temp
   write(86,*) general_auxvar%sat(lid)
   write(86,*) general_auxvar%sat(gid)
