@@ -577,6 +577,7 @@ subroutine EOSGasDensityRKS(T,P,Rho_gas,dRho_dT,dRho_dP,ierr)
 ! Redlich-Kwong-Soave (RKS) equation of state used in BRAGFLO.  See
 ! Soave, Giorgio, 1972, "Equilibrium constants from a modified Redlich-Kwong
 ! equation of state", Chem. Eng. Sci., V27, pp 1197-1203.
+! current version is for hydrogen only.
   implicit none
 
   PetscReal, intent(in) :: T        ! temperature [C]
@@ -594,20 +595,25 @@ subroutine EOSGasDensityRKS(T,P,Rho_gas,dRho_dT,dRho_dP,ierr)
   PetscReal, parameter :: coeff_b = 0.08664
   
   !for hydrogen
-  PetscReal, parameter :: Tc = 43.6
-  PetscReal, parameter :: Pc = 2.047d6
+  ! American Petroleum Institute,
+  ! "Technical Data Book-Petroleum Refining" (1977)
+  PetscReal, parameter :: Tc = 41.67d0
+  PetscReal, parameter :: Pc = 2.1029d6
   
   !solver
   PetscReal :: coef(4)
   PetscInt, parameter :: maxit = 50
   
+  
   T_kelvin = T + 273.15d0
   RT = Rg * T_kelvin
-
   
-  !only for hydrogen case
   ! if hydrogen then
-  alpha = 1.202d0*EXP(-0.30288d0*(T_kelvin/Tc))
+    ! suggested by Peter Lichtner
+    ! this function honors alpha(Tc)=1 while closely fitting Graboski curve from
+    ! "A Modified Soave Equation of State for Phase Equilibrium
+    !  Calculations. 3. Systems Containing Hydrogen"
+    alpha = EXP(0.340d0*(1-T_kelvin/Tc))
   ! else
   !   coeff_alpha = 0.48508d0 + acentric*(1.55171d0 - 0.15613*acentric)
   !   alpha = (1.d0 + coeff_alpha*(1.d0 - SQRT(T_Kelvin/Tc)))**2
@@ -644,10 +650,45 @@ subroutine EOSGasDensityRKS(T,P,Rho_gas,dRho_dT,dRho_dP,ierr)
     end if
   end do
   
-  dRho_dP =  Rho_gas / P
-  dRho_dT = -Rho_gas / T_kelvin
-  
 end subroutine EOSGasDensityRKS
+
+! ************************************************************************** !
+
+subroutine EOSGasFugacity(T,P,Rho_gas,fugacity,ierr)
+! current version is for hydrogen only. See
+! Soave, Giorgio, 1972, "Equilibrium constants from a modified Redlich-Kwong
+! equation of state", Chem. Eng. Sci., V27, pp 1197-1203.
+
+  PetscReal, intent(in) :: T        ! temperature [C]
+  PetscReal, intent(in) :: P        ! pressure [Pa]
+  PetscReal, intent(in) :: Rho_gas ! gas density [kmol/m^3]
+  PetscReal, intent(out) :: fugacity
+  PetscErrorCode, intent(out) :: ierr
+  PetscReal, parameter :: Rg = 8.31451
+
+  !for hydrogen
+  ! American Petroleum Institute,
+  ! "Technical Data Book-Petroleum Refining" (1977)
+  PetscReal, parameter :: Tc = 41.67d0
+  PetscReal, parameter :: Pc = 2.1029d6
+
+  PetscReal :: T_kelvin, Z, V, Tr, LHS
+  PetscReal :: A, B, alpha
+
+  V = 1 / Rho_gas * 1d-3
+  T_kelvin = T + 273.15d0
+  Tr = T_kelvin/Tc
+  alpha = EXP(0.340d0*(1-Tr))
+
+  A = 0.42747 * alpha * (P/Pc) / (T/Tc)**2
+  B = 0.08664 * (P/Pc) / (T/Tc)
+  Z = P*V / (Rg*T)
+  
+  ! Fugacity Coefficient
+  LHS = Z - 1 - LOG(Z-B) - A/B * LOG((Z+B)/Z)
+  fugacity = EXP(LHS)  ! dimensionless (Pa/Pa)
+  
+end subroutine EOSGasFugacity
 
 ! ************************************************************************** !
 
