@@ -601,9 +601,9 @@ subroutine THAuxVarComputeFreezing(x, auxvar, global_auxvar, &
   call EOSWaterDensityEnthalpy(global_auxvar%temp,pw,dw_kg,dw_mol,hw, &
                                dw_dp,dw_dt,hw_dp,hw_dt,ierr)
   ! J/kmol -> MJ/kmol
-  hw = hw * 1.d-6
-  hw_dp = hw_dp * 1.d-6
-  hw_dt = hw_dt * 1.d-6
+  hw = hw * option%scale
+  hw_dp = hw_dp * option%scale
+  hw_dt = hw_dt * option%scale
                          
   call EOSWaterSaturationPressure(global_auxvar%temp, sat_pressure, &
                                   dpsat_dt, ierr)

@@ -84,8 +84,7 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
   init_status = TIMESTEPPER_INIT_PROCEED
 
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-vecload_block_size", & 
-                           failure, ierr)
-  CHKERRQ(ierr)
+                           failure, ierr);CHKERRQ(ierr)
                              
   if (option%steady_state) then
     call StepperRunSteadyState(realization,flow_stepper,tran_stepper)
@@ -174,13 +173,12 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
   endif
   
   ! pushed in Init()
-  call PetscLogStagePop(ierr)
-  CHKERRQ(ierr)
+  call PetscLogStagePop(ierr);CHKERRQ(ierr)
   option%init_stage = PETSC_FALSE
 
   ! popped in TimeStepperFinalizeRun()
-  call PetscLogStagePush(geomech_logging%stage(GEOMECH_TS_STAGE),ierr)
-  CHKERRQ(ierr)
+  call PetscLogStagePush(geomech_logging%stage(GEOMECH_TS_STAGE), &
+                         ierr);CHKERRQ(ierr)
 
   !if TIMESTEPPER->MAX_STEPS < 0, print out solution composition only
   if (master_stepper%max_time_step < 0) then
@@ -367,8 +365,7 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
   endif
   checkpoint_flag = PETSC_FALSE
 
-  call PetscTime(master_stepper%start_time, ierr)
-  CHKERRQ(ierr)
+  call PetscTime(master_stepper%start_time, ierr);CHKERRQ(ierr)
 
   do
 
@@ -399,19 +396,16 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
     if (associated(flow_stepper) .and. .not.run_flow_as_steady_state) then
 
       flow_t0 = option%flow_time
-      call PetscLogStagePush(logging%stage(FLOW_STAGE),ierr)
-      CHKERRQ(ierr)
+      call PetscLogStagePush(logging%stage(FLOW_STAGE),ierr);CHKERRQ(ierr)
       call StepperStepFlowDT(realization,flow_stepper,failure)
-      call PetscLogStagePop(ierr)
-      CHKERRQ(ierr)
+      call PetscLogStagePop(ierr);CHKERRQ(ierr)
       if (failure) return ! if flow solve fails, exit
       option%flow_time = flow_stepper%target_time
     endif
 
     ! (reactive) transport solution
     if (associated(tran_stepper)) then
-      call PetscLogStagePush(logging%stage(TRAN_STAGE),ierr)
-      CHKERRQ(ierr)
+      call PetscLogStagePush(logging%stage(TRAN_STAGE),ierr);CHKERRQ(ierr)
       tran_dt_save = -999.d0
       ! reset transpor time step if flow time step is cut
       if (associated(flow_stepper) .and. .not.run_flow_as_steady_state) then
@@ -448,8 +442,7 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
                                          flow_t0,option%flow_time,failure)
         endif
         if (failure) then ! if transport solve fails, exit
-          call PetscLogStagePop(ierr)
-          CHKERRQ(ierr)
+          call PetscLogStagePop(ierr);CHKERRQ(ierr)
           return 
         endif
         
@@ -486,8 +479,7 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
       !geh: moved below
       !geh: if (tran_dt_save > -998.d0) option%tran_dt = tran_dt_save
       option%tran_time = tran_stepper%target_time
-      call PetscLogStagePop(ierr)
-      CHKERRQ(ierr)
+      call PetscLogStagePop(ierr);CHKERRQ(ierr)
     endif
 
     if (realization%debug%print_couplers) then
@@ -567,8 +559,7 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
     ! next time step will not exceed that value.  If it does, print the
     ! checkpoint and exit.
     if (option%wallclock_stop_flag) then
-      call PetscTime(current_time, ierr)
-      CHKERRQ(ierr)
+      call PetscTime(current_time, ierr);CHKERRQ(ierr)
       average_step_time = (current_time-master_stepper%start_time)/ &
                           real(master_stepper%steps-&
                                master_stepper%start_time_step+1) &
@@ -696,8 +687,7 @@ subroutine GeomechTimestepperFinalizeRun(realization,geomech_realization, &
   endif
 
   ! pushed in TimeStepperInitializeRun
-  call PetscLogStagePop(ierr)
-  CHKERRQ(ierr)
+  call PetscLogStagePop(ierr);CHKERRQ(ierr)
 
 end subroutine GeomechTimestepperFinalizeRun
 
@@ -761,15 +751,14 @@ subroutine StepperSolveGeomechSteadyState(geomech_realization,stepper,failure)
   call GeomechanicsForceInitialGuess(geomech_realization)
 
 
-  call SNESSolve(solver%snes,PETSC_NULL_OBJECT,field%disp_xx,ierr)
-  CHKERRQ(ierr)
+  call SNESSolve(solver%snes,PETSC_NULL_OBJECT,field%disp_xx, &
+                 ierr);CHKERRQ(ierr)
      
-  call SNESGetIterationNumber(solver%snes,num_newton_iterations,ierr)
-  CHKERRQ(ierr)
-  call SNESGetLinearSolveIterations(solver%snes,num_linear_iterations,ierr)
-  CHKERRQ(ierr)
-  call SNESGetConvergedReason(solver%snes,snes_reason,ierr)
-  CHKERRQ(ierr)
+  call SNESGetIterationNumber(solver%snes,num_newton_iterations, &
+                              ierr);CHKERRQ(ierr)
+  call SNESGetLinearSolveIterations(solver%snes,num_linear_iterations, &
+                                    ierr);CHKERRQ(ierr)
+  call SNESGetConvergedReason(solver%snes,snes_reason,ierr);CHKERRQ(ierr)
 
   if (snes_reason <= 0) then
     if (option%print_screen_flag) then
@@ -784,10 +773,8 @@ subroutine StepperSolveGeomechSteadyState(geomech_realization,stepper,failure)
 !  stepper%cumulative_linear_iterations = num_linear_iterations
 
   ! print screen output
-  call SNESGetFunctionNorm(solver%snes,fnorm,ierr)
-  CHKERRQ(ierr)
-  call VecNorm(field%disp_r,NORM_INFINITY,inorm,ierr)
-  CHKERRQ(ierr)
+  call SNESGetFunctionNorm(solver%snes,fnorm,ierr);CHKERRQ(ierr)
+  call VecNorm(field%disp_r,NORM_INFINITY,inorm,ierr);CHKERRQ(ierr)
   if (option%print_screen_flag) then
     if (associated(geomech_discretization%grid)) then
        scaled_fnorm = fnorm/geomech_discretization%grid%nmax_node

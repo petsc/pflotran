@@ -121,6 +121,36 @@ subroutine EOSRead(input,option)
                                    ' not recognized in EOS,WATER,VISCOSITY'    
                 call printErrMsg(option)
             end select
+          case('STEAM_DENSITY') 
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputErrorMsg(input,option,'STEAM_DENSITY','EOS,WATER')
+            call StringToUpper(word)   
+            select case(trim(word))
+              case('CONSTANT')
+                call InputReadDouble(input,option,tempreal)
+                call InputErrorMsg(input,option,'VALUE', &
+                                   'EOS,WATER,STEAM_DENSITY,CONSTANT')
+                call EOSWaterSetSteamDensityConst(tempreal)
+              case default
+                option%io_buffer = 'Keyword: ' // trim(word) // &
+                                   ' not recognized in EOS,WATER,STEAM_DENSITY'    
+                call printErrMsg(option)
+            end select
+          case('STEAM_ENTHALPY') 
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputErrorMsg(input,option,'STEAM_ENTHALPY','EOS,WATER')
+            call StringToUpper(word)   
+            select case(trim(word))
+              case('CONSTANT')
+                call InputReadDouble(input,option,tempreal)
+                call InputErrorMsg(input,option,'VALUE', &
+                                   'EOS,WATER,STEAM_ENTHALPY,CONSTANT')
+                call EOSWaterSetSteamEnthalpyConst(tempreal)
+              case default
+                option%io_buffer = 'Keyword: ' // trim(word) // &
+                                   ' not recognized in EOS,WATER,STEAM_ENTHALPY'    
+                call printErrMsg(option)
+            end select
           case default
             option%io_buffer = 'Keyword: ' // trim(keyword) // &
                                ' not recognized in EOS,WATER'    

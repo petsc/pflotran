@@ -133,7 +133,7 @@ subroutine HijackSurfaceSimulation(simulation_old,simulation)
   nullify(surf_flow_process_model_coupler)
 
   ! Create Surface-flow ProcessModel & ProcessModelCoupler
-  if (option%nsurfflowdof > 0) then
+  if (option%surf_flow_on) then
     select case(option%iflowmode)
       case(RICHARDS_MODE)
         cur_process_model => PMSurfaceFlowCreate()
@@ -192,8 +192,7 @@ subroutine HijackSurfaceSimulation(simulation_old,simulation)
                           cur_process_model%residual_vec, &
                           PMRHSFunction, &
                           cur_process_model_coupler%pm_ptr, &
-                          ierr)
-                CHKERRQ(ierr)
+                          ierr);CHKERRQ(ierr)
             end select
         end select
         cur_process_model => cur_process_model%next
@@ -262,8 +261,7 @@ subroutine SurfaceJumpStart(simulation)
   output_option => surf_realization%output_option
 
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-vecload_block_size", & 
-                           failure, ierr)
-  CHKERRQ(ierr)
+                           failure, ierr);CHKERRQ(ierr)
                              
   if (option%steady_state) then
     option%io_buffer = 'Running in steady-state not yet supported for surface-flow.'
@@ -291,20 +289,18 @@ subroutine SurfaceJumpStart(simulation)
     if (surf_flow_read) then
       surf_flow_stepper%prev_dt = surf_flow_prev_dt
       surf_flow_stepper%target_time = option%surf_flow_time
-      call TSSetTime(surf_flow_stepper%solver%ts,option%surf_flow_time,ierr)
-      CHKERRQ(ierr)
+      call TSSetTime(surf_flow_stepper%solver%ts,option%surf_flow_time, &
+                     ierr);CHKERRQ(ierr)
     endif
 
   endif
 #endif
 
   ! pushed in Init()
-  call PetscLogStagePop(ierr)
-  CHKERRQ(ierr)
+  call PetscLogStagePop(ierr);CHKERRQ(ierr)
 
   ! popped in TimestepperFinalizeRun()
-  call PetscLogStagePush(logging%stage(TS_STAGE),ierr)
-  CHKERRQ(ierr)
+  call PetscLogStagePush(logging%stage(TS_STAGE),ierr);CHKERRQ(ierr)
 
   !if TIMESTEPPER->MAX_STEPS < 0, print out solution composition only
   if (master_stepper%max_time_step < 0) then

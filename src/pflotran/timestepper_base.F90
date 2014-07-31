@@ -597,26 +597,21 @@ subroutine TimestepperBaseRegisterHeader(this,bag,header)
   PetscErrorCode :: ierr
   
   ! bagsize = 8 * 8 bytes = 64 bytes
-  call PetscBagRegisterReal(bag,header%time,0,"time","",ierr)
-  CHKERRQ(ierr)
-  call PetscBagRegisterReal(bag,header%dt,0,"dt","",ierr)
-  CHKERRQ(ierr)
-  call PetscBagRegisterReal(bag,header%prev_dt,0,"prev_dt","",ierr)
-  CHKERRQ(ierr)
-  call PetscBagRegisterInt(bag,header%num_steps,0,"num_steps","",ierr)
-  CHKERRQ(ierr)
+  call PetscBagRegisterReal(bag,header%time,0,"time","",ierr);CHKERRQ(ierr)
+  call PetscBagRegisterReal(bag,header%dt,0,"dt","",ierr);CHKERRQ(ierr)
+  call PetscBagRegisterReal(bag,header%prev_dt,0,"prev_dt","", &
+                            ierr);CHKERRQ(ierr)
+  call PetscBagRegisterInt(bag,header%num_steps,0,"num_steps","", &
+                           ierr);CHKERRQ(ierr)
   call PetscBagRegisterInt(bag,header%cumulative_time_step_cuts,0, &
-                           "cumulative_time_step_cuts","",ierr)
-  CHKERRQ(ierr)
+                           "cumulative_time_step_cuts","",ierr);CHKERRQ(ierr)
   call PetscBagRegisterInt(bag,header%num_constant_time_steps,0, &
-                           "num_constant_time_steps","",ierr)
-  CHKERRQ(ierr)
+                           "num_constant_time_steps","",ierr);CHKERRQ(ierr)
   call PetscBagRegisterInt(bag,header%num_contig_revert_due_to_sync,0, &
-                           "num_contig_revert_due_to_sync","",ierr)
-  CHKERRQ(ierr)
+                           "num_contig_revert_due_to_sync","", &
+                           ierr);CHKERRQ(ierr)
   call PetscBagRegisterInt(bag,header%revert_dt,0, &
-                           "revert_dt","",ierr)
-  CHKERRQ(ierr)
+                           "revert_dt","",ierr);CHKERRQ(ierr)
     
 end subroutine TimestepperBaseRegisterHeader
 

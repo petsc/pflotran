@@ -194,8 +194,7 @@ recursive subroutine MassTransferInit(mass_transfer, discretization, &
   mass_transfer%dataset%global_size = discretization%grid%nmax
   call DiscretizationCreateVector(discretization,ONEDOF,mass_transfer%vec, &
                                     GLOBAL,option)
-  call VecZeroEntries(mass_transfer%vec,ierr)
-  CHKERRQ(ierr)    
+  call VecZeroEntries(mass_transfer%vec,ierr);CHKERRQ(ierr)
   
   if (.not.associated(mass_transfer%dataset%time_storage)) then
 #if defined(PETSC_HAVE_HDF5)    
@@ -251,12 +250,10 @@ recursive subroutine MassTransferUpdate(mass_transfer, grid, option)
 
   call DatasetGlobalHDF5Load(mass_transfer%dataset,option)
 
-  call VecGetArrayF90(mass_transfer%vec,vec_ptr,ierr)
-  CHKERRQ(ierr)
+  call VecGetArrayF90(mass_transfer%vec,vec_ptr,ierr);CHKERRQ(ierr)
   ! multiply by -1.d0 for positive contribution to residual
   vec_ptr(:) = -1.d0*mass_transfer%dataset%rarray(:)
-  call VecRestoreArrayF90(mass_transfer%vec,vec_ptr,ierr)
-  CHKERRQ(ierr)
+  call VecRestoreArrayF90(mass_transfer%vec,vec_ptr,ierr);CHKERRQ(ierr)
   
   ! update the next one
   if (associated(mass_transfer%next)) then
@@ -287,8 +284,7 @@ recursive subroutine MassTransferDestroy(mass_transfer)
   ! destroyed separately.
   nullify(mass_transfer%dataset)
   if (mass_transfer%vec /= 0) then
-    call VecDestroy(mass_transfer%vec ,ierr)
-    CHKERRQ(ierr)
+    call VecDestroy(mass_transfer%vec ,ierr);CHKERRQ(ierr)
   endif
   call MassTransferDestroy(mass_transfer%next)
 

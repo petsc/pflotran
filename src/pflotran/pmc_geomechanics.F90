@@ -192,33 +192,29 @@ subroutine PMCGeomechanicsSetAuxData(this)
         call VecScatterBegin(pmc%sim_aux%geomechanics_to_subsurf, &
                              pmc%geomech_realization%geomech_field%strain, &
                              pmc%sim_aux%subsurf_strain, &
-                             INSERT_VALUES,SCATTER_FORWARD,ierr)
-        CHKERRQ(ierr)
+                             INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
         call VecScatterEnd(pmc%sim_aux%geomechanics_to_subsurf, &
                            pmc%geomech_realization%geomech_field%strain, &
                            pmc%sim_aux%subsurf_strain, &
-                           INSERT_VALUES,SCATTER_FORWARD,ierr)
-        CHKERRQ(ierr)
+                           INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
                              
         ! Save stress dataset in sim_aux%subsurf_stress
         call VecScatterBegin(pmc%sim_aux%geomechanics_to_subsurf, &
                              pmc%geomech_realization%geomech_field%stress, &
                              pmc%sim_aux%subsurf_stress, &
-                             INSERT_VALUES,SCATTER_FORWARD,ierr)
-        CHKERRQ(ierr)
+                             INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
         call VecScatterEnd(pmc%sim_aux%geomechanics_to_subsurf, &
                            pmc%geomech_realization%geomech_field%stress, &
                            pmc%sim_aux%subsurf_stress, &
-                           INSERT_VALUES,SCATTER_FORWARD,ierr)
-        CHKERRQ(ierr)
+                           INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
 
         ! Update porosity dataset in sim_aux%subsurf_por
-        call VecGetArrayF90(pmc%sim_aux%subsurf_por0, por0_p, ierr)
-        CHKERRQ(ierr)
-        call VecGetArrayF90(pmc%sim_aux%subsurf_por, por_p, ierr)
-        CHKERRQ(ierr)
-        call VecGetArrayF90(pmc%sim_aux%subsurf_strain, strain_p, ierr)
-        CHKERRQ(ierr)
+        call VecGetArrayF90(pmc%sim_aux%subsurf_por0, por0_p,  &
+                            ierr);CHKERRQ(ierr)
+        call VecGetArrayF90(pmc%sim_aux%subsurf_por, por_p,  &
+                            ierr);CHKERRQ(ierr)
+        call VecGetArrayF90(pmc%sim_aux%subsurf_strain, strain_p,  &
+                            ierr);CHKERRQ(ierr)
 
         do local_id = 1, grid%nlmax
           trace_epsilon = strain_p((local_id - 1)*SIX_INTEGER + ONE_INTEGER) + &
@@ -228,12 +224,12 @@ subroutine PMCGeomechanicsSetAuxData(this)
           por_p(local_id) = por_new
         enddo
 
-        call VecRestoreArrayF90(pmc%sim_aux%subsurf_por0, por0_p, ierr)
-        CHKERRQ(ierr)
-        call VecRestoreArrayF90(pmc%sim_aux%subsurf_strain, strain_p, ierr)
-        CHKERRQ(ierr)
-        call VecRestoreArrayF90(pmc%sim_aux%subsurf_por, por_p, ierr)
-        CHKERRQ(ierr)
+        call VecRestoreArrayF90(pmc%sim_aux%subsurf_por0, por0_p,  &
+                                ierr);CHKERRQ(ierr)
+        call VecRestoreArrayF90(pmc%sim_aux%subsurf_strain, strain_p,  &
+                                ierr);CHKERRQ(ierr)
+        call VecRestoreArrayF90(pmc%sim_aux%subsurf_por, por_p,  &
+                                ierr);CHKERRQ(ierr)
 
       endif
 
@@ -271,24 +267,20 @@ subroutine PMCGeomechanicsGetAuxData(this)
       call VecScatterBegin(pmc%sim_aux%subsurf_to_geomechanics, &
                            pmc%sim_aux%subsurf_pres, &
                            pmc%geomech_realization%geomech_field%press, &
-                           INSERT_VALUES,SCATTER_FORWARD,ierr)
-      CHKERRQ(ierr)
+                           INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
       call VecScatterEnd(pmc%sim_aux%subsurf_to_geomechanics, &
                          pmc%sim_aux%subsurf_pres, &
                          pmc%geomech_realization%geomech_field%press, &
-                         INSERT_VALUES,SCATTER_FORWARD,ierr)
-      CHKERRQ(ierr)
+                         INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
 
       call VecScatterBegin(pmc%sim_aux%subsurf_to_geomechanics, &
                            pmc%sim_aux%subsurf_temp, &
                            pmc%geomech_realization%geomech_field%temp, &
-                           INSERT_VALUES,SCATTER_FORWARD,ierr)
-      CHKERRQ(ierr)
+                           INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
       call VecScatterEnd(pmc%sim_aux%subsurf_to_geomechanics, &
                            pmc%sim_aux%subsurf_temp, &
                            pmc%geomech_realization%geomech_field%temp, &
-                         INSERT_VALUES,SCATTER_FORWARD,ierr)
-      CHKERRQ(ierr)
+                         INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
 
       call GeomechDiscretizationGlobalToLocal( &
                             pmc%geomech_realization%geomech_discretization, &

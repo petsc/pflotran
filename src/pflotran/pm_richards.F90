@@ -312,7 +312,7 @@ subroutine PMRichardsUpdateSolution(this)
   
   call PMSubsurfaceUpdateSolution(this)
   call RichardsUpdateSolution(this%realization)
-  if(this%option%nsurfflowdof>0) &
+  if (this%option%surf_flow_on) &
     call RichardsUpdateSurfacePress(this%realization)
 
 end subroutine PMRichardsUpdateSolution     

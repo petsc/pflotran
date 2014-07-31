@@ -100,8 +100,7 @@ subroutine CommCreateProcessorGroups(option,num_groups)
   call MPI_Comm_group(option%mycomm,option%mygroup,ierr)
 
   PETSC_COMM_WORLD = option%mycomm
-  call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
-  CHKERRQ(ierr)
+  call PetscInitialize(PETSC_NULL_CHARACTER, ierr);CHKERRQ(ierr)
   call MPI_Comm_rank(option%mycomm,option%myrank, ierr)
   call MPI_Comm_size(option%mycomm,option%mycommsize,ierr)
 

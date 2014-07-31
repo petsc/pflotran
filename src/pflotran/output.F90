@@ -95,8 +95,7 @@ subroutine Output(realization_base,plot_flag,transient_plot_flag)
 
   option => realization_base%option
   
-  call PetscLogStagePush(logging%stage(OUTPUT_STAGE),ierr)
-  CHKERRQ(ierr)
+  call PetscLogStagePush(logging%stage(OUTPUT_STAGE),ierr);CHKERRQ(ierr)
 
   ! check for plot request from active directory
   if (.not.plot_flag) then
@@ -114,10 +113,8 @@ subroutine Output(realization_base,plot_flag,transient_plot_flag)
   if (plot_flag) then
 
     if (realization_base%output_option%print_hdf5) then
-      call PetscTime(tstart,ierr)
-      CHKERRQ(ierr)
-      call PetscLogEventBegin(logging%event_output_hdf5,ierr)
-      CHKERRQ(ierr)    
+      call PetscTime(tstart,ierr);CHKERRQ(ierr)
+      call PetscLogEventBegin(logging%event_output_hdf5,ierr);CHKERRQ(ierr)
       if (realization_base%discretization%itype == UNSTRUCTURED_GRID .or. &
           realization_base%discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
         select case (realization_base%discretization%grid%itype)
@@ -133,10 +130,8 @@ subroutine Output(realization_base,plot_flag,transient_plot_flag)
       else
         call OutputHDF5(realization_base,INSTANTANEOUS_VARS)
       endif      
-      call PetscLogEventEnd(logging%event_output_hdf5,ierr)
-      CHKERRQ(ierr)    
-      call PetscTime(tend,ierr)
-      CHKERRQ(ierr)
+      call PetscLogEventEnd(logging%event_output_hdf5,ierr);CHKERRQ(ierr)
+      call PetscTime(tend,ierr);CHKERRQ(ierr)
 #ifdef SCORPIO_WRITE
       if (option%myrank == 0) write (*,'(" Parallel IO Write method is used in & 
                                &writing the output, HDF5_WRITE_GROUP_SIZE = ",i5)') &
@@ -147,67 +142,51 @@ subroutine Output(realization_base,plot_flag,transient_plot_flag)
     endif
    
     if (realization_base%output_option%print_tecplot) then
-      call PetscTime(tstart,ierr)
-      CHKERRQ(ierr) 
-      call PetscLogEventBegin(logging%event_output_tecplot,ierr)
-      CHKERRQ(ierr) 
+      call PetscTime(tstart,ierr);CHKERRQ(ierr)
+      call PetscLogEventBegin(logging%event_output_tecplot,ierr);CHKERRQ(ierr)
       select case(realization_base%output_option%tecplot_format)
         case (TECPLOT_POINT_FORMAT)
           call OutputTecplotPoint(realization_base)
         case (TECPLOT_BLOCK_FORMAT,TECPLOT_FEBRICK_FORMAT)
           call OutputTecplotBlock(realization_base)
       end select
-      call PetscLogEventEnd(logging%event_output_tecplot,ierr)
-      CHKERRQ(ierr)    
-      call PetscTime(tend,ierr)
-      CHKERRQ(ierr) 
+      call PetscLogEventEnd(logging%event_output_tecplot,ierr);CHKERRQ(ierr)
+      call PetscTime(tend,ierr);CHKERRQ(ierr)
       write(option%io_buffer,'(f10.2," Seconds to write to Tecplot file(s)")') &
             tend-tstart
       call printMsg(option)        
     endif
     
     if (realization_base%output_option%print_explicit_flowrate) then
-      call PetscTime(tstart,ierr)
-      CHKERRQ(ierr) 
-      call PetscLogEventBegin(logging%event_output_tecplot,ierr)
-      CHKERRQ(ierr) 
+      call PetscTime(tstart,ierr);CHKERRQ(ierr)
+      call PetscLogEventBegin(logging%event_output_tecplot,ierr);CHKERRQ(ierr)
       call OutputPrintExplicitFlowrates(realization_base)
-      call PetscLogEventEnd(logging%event_output_tecplot,ierr)
-      CHKERRQ(ierr)    
-      call PetscTime(tend,ierr)
-      CHKERRQ(ierr) 
+      call PetscLogEventEnd(logging%event_output_tecplot,ierr);CHKERRQ(ierr)
+      call PetscTime(tend,ierr);CHKERRQ(ierr)
       write(option%io_buffer,'(f10.2," Seconds to write to Rates file.")') &
             tend-tstart
       call printMsg(option)        
     endif
 
     if (realization_base%output_option%print_vtk) then
-      call PetscTime(tstart,ierr)
-      CHKERRQ(ierr) 
-      call PetscLogEventBegin(logging%event_output_vtk,ierr)
-      CHKERRQ(ierr) 
+      call PetscTime(tstart,ierr);CHKERRQ(ierr)
+      call PetscLogEventBegin(logging%event_output_vtk,ierr);CHKERRQ(ierr)
       call OutputVTK(realization_base)
 
-      call PetscLogEventEnd(logging%event_output_vtk,ierr)
-      CHKERRQ(ierr)    
-      call PetscTime(tend,ierr)
-      CHKERRQ(ierr) 
+      call PetscLogEventEnd(logging%event_output_vtk,ierr);CHKERRQ(ierr)
+      call PetscTime(tend,ierr);CHKERRQ(ierr)
       write(option%io_buffer,'(f10.2," Seconds to write to VTK file(s)")') &
             tend-tstart
       call printMsg(option) 
     endif
       
     if (realization_base%output_option%print_mad) then
-      call PetscTime(tstart,ierr)
-      CHKERRQ(ierr) 
-      call PetscLogEventBegin(logging%event_output_mad,ierr)
-      CHKERRQ(ierr) 
+      call PetscTime(tstart,ierr);CHKERRQ(ierr)
+      call PetscLogEventBegin(logging%event_output_mad,ierr);CHKERRQ(ierr)
       call OutputMAD(realization_base)
 
-      call PetscLogEventEnd(logging%event_output_mad,ierr)
-      CHKERRQ(ierr)    
-      call PetscTime(tend,ierr)
-      CHKERRQ(ierr) 
+      call PetscLogEventEnd(logging%event_output_mad,ierr);CHKERRQ(ierr)
+      call PetscTime(tend,ierr);CHKERRQ(ierr)
       write(option%io_buffer,'(f10.2," Seconds to write to MAD HDF5 file(s)")') &
             tend-tstart
       call printMsg(option) 
@@ -216,15 +195,13 @@ subroutine Output(realization_base,plot_flag,transient_plot_flag)
     ! Print secondary continuum variables vs sec. continuum dist.
     if (option%use_mc) then
       if (realization_base%output_option%print_tecplot) then
-        call PetscTime(tstart,ierr)
-        CHKERRQ(ierr) 
-        call PetscLogEventBegin(logging%event_output_secondary_tecplot,ierr)
-        CHKERRQ(ierr) 
+        call PetscTime(tstart,ierr);CHKERRQ(ierr)
+        call PetscLogEventBegin(logging%event_output_secondary_tecplot, &
+                                ierr);CHKERRQ(ierr)
         call OutputSecondaryContinuumTecplot(realization_base)
-        call PetscLogEventEnd(logging%event_output_secondary_tecplot,ierr)
-        CHKERRQ(ierr)    
-        call PetscTime(tend,ierr)
-        CHKERRQ(ierr) 
+        call PetscLogEventEnd(logging%event_output_secondary_tecplot, &
+                              ierr);CHKERRQ(ierr)
+        call PetscTime(tend,ierr);CHKERRQ(ierr)
         write(option%io_buffer,'(f10.2," Seconds to write to secondary' // &
               ' continuum Tecplot file(s)")') &
               tend-tstart
@@ -257,8 +234,7 @@ subroutine Output(realization_base,plot_flag,transient_plot_flag)
   transient_plot_flag = PETSC_FALSE
   realization_base%output_option%plot_name = ''
 
-  call PetscLogStagePop(ierr)
-  CHKERRQ(ierr)
+  call PetscLogStagePop(ierr);CHKERRQ(ierr)
 
 
 end subroutine Output
@@ -401,8 +377,7 @@ subroutine OutputMAD(realization_base)
 #endif
   call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec,file_id,H5T_NATIVE_DOUBLE)
 
-  call VecDestroy(global_vec,ierr)
-  CHKERRQ(ierr)
+  call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
 
   call h5fclose_f(file_id,hdf5_err)
   call h5close_f(hdf5_err)
@@ -470,10 +445,8 @@ subroutine ComputeFlowCellVelocityStats(realization_base)
     do direction = 1,3
     
       sum_area(1:grid%nlmax) = 0.d0
-      call VecSet(global_vec,0.d0,ierr)
-      CHKERRQ(ierr)
-      call VecGetArrayF90(global_vec,vec_ptr,ierr)
-      CHKERRQ(ierr)
+      call VecSet(global_vec,0.d0,ierr);CHKERRQ(ierr)
+      call VecGetArrayF90(global_vec,vec_ptr,ierr);CHKERRQ(ierr)
 
       ! interior velocities  
       connection_set_list => grid%internal_connection_set_list
@@ -518,22 +491,15 @@ subroutine ComputeFlowCellVelocityStats(realization_base)
         boundary_condition => boundary_condition%next
       enddo
 
-      call VecRestoreArrayF90(global_vec,vec_ptr,ierr)
-      CHKERRQ(ierr)
+      call VecRestoreArrayF90(global_vec,vec_ptr,ierr);CHKERRQ(ierr)
 
-      call VecSum(global_vec,sum,ierr)
-      CHKERRQ(ierr)
+      call VecSum(global_vec,sum,ierr);CHKERRQ(ierr)
       average = sum/real(grid%nmax)
-      call VecSet(global_vec2,average,ierr)
-      CHKERRQ(ierr)
-      call VecMax(global_vec,max_loc,max,ierr)
-      CHKERRQ(ierr)
-      call VecMin(global_vec,min_loc,min,ierr)
-      CHKERRQ(ierr)
-      call VecAYPX(global_vec2,-1.d0,global_vec,ierr)
-      CHKERRQ(ierr)
-      call VecNorm(global_vec2,NORM_2,std_dev,ierr)
-      CHKERRQ(ierr)
+      call VecSet(global_vec2,average,ierr);CHKERRQ(ierr)
+      call VecMax(global_vec,max_loc,max,ierr);CHKERRQ(ierr)
+      call VecMin(global_vec,min_loc,min,ierr);CHKERRQ(ierr)
+      call VecAYPX(global_vec2,-1.d0,global_vec,ierr);CHKERRQ(ierr)
+      call VecNorm(global_vec2,NORM_2,std_dev,ierr);CHKERRQ(ierr)
       select case(direction)
         case(X_DIRECTION)
           string = 'X-Direction,'
@@ -572,10 +538,8 @@ subroutine ComputeFlowCellVelocityStats(realization_base)
   enddo
   
   if (allocated(sum_area)) deallocate(sum_area)
-  call VecDestroy(global_vec,ierr)
-  CHKERRQ(ierr)
-  call VecDestroy(global_vec2,ierr)
-  CHKERRQ(ierr)
+  call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
+  call VecDestroy(global_vec2,ierr);CHKERRQ(ierr)
 
 end subroutine ComputeFlowCellVelocityStats
 
@@ -638,10 +602,8 @@ subroutine ComputeFlowFluxVelocityStats(realization_base)
   do iphase = 1,option%nphase
     do direction = 1,3
     
-      call VecZeroEntries(global_vec,ierr)
-      CHKERRQ(ierr)
-      call VecGetArrayF90(global_vec,vec_ptr,ierr)
-      CHKERRQ(ierr)
+      call VecZeroEntries(global_vec,ierr);CHKERRQ(ierr)
+      call VecGetArrayF90(global_vec,vec_ptr,ierr);CHKERRQ(ierr)
       
       ! place interior velocities in a vector
       connection_set_list => grid%internal_connection_set_list
@@ -661,23 +623,16 @@ subroutine ComputeFlowFluxVelocityStats(realization_base)
         cur_connection_set => cur_connection_set%next
       enddo
 
-      call VecRestoreArrayF90(global_vec,vec_ptr,ierr)
-      CHKERRQ(ierr)
+      call VecRestoreArrayF90(global_vec,vec_ptr,ierr);CHKERRQ(ierr)
       
       ! compute stats
-      call VecSum(global_vec,sum,ierr)
-      CHKERRQ(ierr)
+      call VecSum(global_vec,sum,ierr);CHKERRQ(ierr)
       average = sum/real(grid%nmax)
-      call VecSet(global_vec2,average,ierr)
-      CHKERRQ(ierr)
-      call VecMax(global_vec,max_loc,max,ierr)
-      CHKERRQ(ierr)
-      call VecMin(global_vec,min_loc,min,ierr)
-      CHKERRQ(ierr)
-      call VecAYPX(global_vec2,-1.d0,global_vec,ierr)
-      CHKERRQ(ierr)
-      call VecNorm(global_vec2,NORM_2,std_dev,ierr)
-      CHKERRQ(ierr)
+      call VecSet(global_vec2,average,ierr);CHKERRQ(ierr)
+      call VecMax(global_vec,max_loc,max,ierr);CHKERRQ(ierr)
+      call VecMin(global_vec,min_loc,min,ierr);CHKERRQ(ierr)
+      call VecAYPX(global_vec2,-1.d0,global_vec,ierr);CHKERRQ(ierr)
+      call VecNorm(global_vec2,NORM_2,std_dev,ierr);CHKERRQ(ierr)
       select case(direction)
         case(X_DIRECTION)
           string = 'X-Direction,'
@@ -713,10 +668,8 @@ subroutine ComputeFlowFluxVelocityStats(realization_base)
     enddo
   enddo
   
-  call VecDestroy(global_vec,ierr)
-  CHKERRQ(ierr)
-  call VecDestroy(global_vec2,ierr)
-  CHKERRQ(ierr)
+  call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
+  call VecDestroy(global_vec2,ierr);CHKERRQ(ierr)
   
 end subroutine ComputeFlowFluxVelocityStats
 
@@ -803,10 +756,8 @@ subroutine OutputPrintCouplers(realization_base,istep)
         if (.not.associated(cur_patch)) exit
         grid => cur_patch%grid
         coupler => CouplerGetPtrFromList(word,cur_patch%boundary_conditions)
-        call VecZeroEntries(field%work,ierr)
-        CHKERRQ(ierr)
-        call VecGetArrayF90(field%work,vec_ptr,ierr)
-        CHKERRQ(ierr)
+        call VecZeroEntries(field%work,ierr);CHKERRQ(ierr)
+        call VecGetArrayF90(field%work,vec_ptr,ierr);CHKERRQ(ierr)
         if (associated(coupler)) then
           cur_connection_set => coupler%connection_set
           do iconn = 1, cur_connection_set%num_connections
@@ -815,8 +766,7 @@ subroutine OutputPrintCouplers(realization_base,istep)
             vec_ptr(local_id) = coupler%flow_aux_real_var(iauxvars(iaux),iconn)
           enddo
         endif
-        call VecRestoreArrayF90(field%work,vec_ptr,ierr)
-        CHKERRQ(ierr)
+        call VecRestoreArrayF90(field%work,vec_ptr,ierr);CHKERRQ(ierr)
         cur_patch => cur_patch%next
       enddo
 
@@ -918,25 +868,21 @@ subroutine OutputAvegVars(realization_base)
 
     ! Cumulatively add the variable*dtime
     ivar = ivar + 1
-    call VecGetArrayF90(field%work,ival_p,ierr)
-    CHKERRQ(ierr)
-    call VecGetArrayF90(field%avg_vars_vec(ivar),aval_p,ierr)
-    CHKERRQ(ierr)
+    call VecGetArrayF90(field%work,ival_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayF90(field%avg_vars_vec(ivar),aval_p,ierr);CHKERRQ(ierr)
     aval_p = aval_p + ival_p*dtime
-    call VecRestoreArrayF90(field%work,ival_p,ierr)
-    CHKERRQ(ierr)
-    call VecRestoreArrayF90(field%avg_vars_vec(ivar),aval_p,ierr)
-    CHKERRQ(ierr)
+    call VecRestoreArrayF90(field%work,ival_p,ierr);CHKERRQ(ierr)
+    call VecRestoreArrayF90(field%avg_vars_vec(ivar),aval_p, &
+                            ierr);CHKERRQ(ierr)
 
     ! Check if it is time to output the temporally average variable
     if(aveg_plot_flag) then
 
       ! Divide vector values by 'time'
-      call VecGetArrayF90(field%avg_vars_vec(ivar),aval_p,ierr)
-      CHKERRQ(ierr)
+      call VecGetArrayF90(field%avg_vars_vec(ivar),aval_p,ierr);CHKERRQ(ierr)
       aval_p = aval_p/output_option%periodic_output_time_incr
-      call VecRestoreArrayF90(field%avg_vars_vec(ivar),aval_p,ierr)
-      CHKERRQ(ierr)
+      call VecRestoreArrayF90(field%avg_vars_vec(ivar),aval_p, &
+                              ierr);CHKERRQ(ierr)
 
     endif
     
@@ -946,28 +892,23 @@ subroutine OutputAvegVars(realization_base)
   if(aveg_plot_flag) then
 
     if (realization_base%output_option%print_hdf5) then
-      call PetscTime(tstart,ierr)
-      CHKERRQ(ierr)
-      call PetscLogEventBegin(logging%event_output_hdf5,ierr)
-      CHKERRQ(ierr)    
+      call PetscTime(tstart,ierr);CHKERRQ(ierr)
+      call PetscLogEventBegin(logging%event_output_hdf5,ierr);CHKERRQ(ierr)
       if (realization_base%discretization%itype == UNSTRUCTURED_GRID.or. &
           realization_base%discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
         call OutputHDF5UGridXDMF(realization_base,AVERAGED_VARS)
       else
         call OutputHDF5(realization_base,AVERAGED_VARS)
       endif      
-      call PetscLogEventEnd(logging%event_output_hdf5,ierr)
-      CHKERRQ(ierr)    
-      call PetscTime(tend,ierr)
-      CHKERRQ(ierr)
+      call PetscLogEventEnd(logging%event_output_hdf5,ierr);CHKERRQ(ierr)
+      call PetscTime(tend,ierr);CHKERRQ(ierr)
       write(option%io_buffer,'(f10.2," Seconds to write HDF5 file.")') tend-tstart
       call printMsg(option)
     endif
 
     ! Reset the vectors to zero
     do ivar=1,output_option%aveg_output_variable_list%nvars
-      call VecSet(field%avg_vars_vec(ivar),0.d0,ierr)
-      CHKERRQ(ierr)
+      call VecSet(field%avg_vars_vec(ivar),0.d0,ierr);CHKERRQ(ierr)
     enddo
 
     output_option%aveg_var_dtime=0.d0

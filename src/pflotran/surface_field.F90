@@ -118,84 +118,66 @@ subroutine SurfaceFieldDestroy(surface_field)
 
   ! Destroy PetscVecs
   if (surface_field%mannings0 /= 0) then
-    call VecDestroy(surface_field%mannings0,ierr)
-    CHKERRQ(ierr)
+    call VecDestroy(surface_field%mannings0,ierr);CHKERRQ(ierr)
   endif
   if (surface_field%mannings_loc /= 0) then
-    call VecDestroy(surface_field%mannings_loc,ierr)
-    CHKERRQ(ierr)
+    call VecDestroy(surface_field%mannings_loc,ierr);CHKERRQ(ierr)
   endif
 
   if (surface_field%work /= 0) then
-    call VecDestroy(surface_field%work,ierr)
-    CHKERRQ(ierr)
+    call VecDestroy(surface_field%work,ierr);CHKERRQ(ierr)
   endif
   if (surface_field%work_loc  /= 0) then
-    call VecDestroy(surface_field%work_loc,ierr)
-    CHKERRQ(ierr)
+    call VecDestroy(surface_field%work_loc,ierr);CHKERRQ(ierr)
   endif
 
   if (surface_field%area  /= 0) then
-    call VecDestroy(surface_field%area,ierr)
-    CHKERRQ(ierr)
+    call VecDestroy(surface_field%area,ierr);CHKERRQ(ierr)
   endif
   
   if (surface_field%press_subsurf /= 0) then
-    call VecDestroy(surface_field%press_subsurf,ierr)
-    CHKERRQ(ierr)
+    call VecDestroy(surface_field%press_subsurf,ierr);CHKERRQ(ierr)
   endif
 
   if (surface_field%flow_r /= 0) then
-    call VecDestroy(surface_field%flow_r,ierr)
-    CHKERRQ(ierr)
+    call VecDestroy(surface_field%flow_r,ierr);CHKERRQ(ierr)
   endif
   if (surface_field%flow_xx /= 0) then
-    call VecDestroy(surface_field%flow_xx,ierr)
-    CHKERRQ(ierr)
+    call VecDestroy(surface_field%flow_xx,ierr);CHKERRQ(ierr)
   endif
   if (surface_field%flow_xx_loc /= 0) then
-    call VecDestroy(surface_field%flow_xx_loc,ierr)
-    CHKERRQ(ierr)
+    call VecDestroy(surface_field%flow_xx_loc,ierr);CHKERRQ(ierr)
   endif
   if (surface_field%flow_dxx /= 0) then
-    call VecDestroy(surface_field%flow_dxx,ierr)
-    CHKERRQ(ierr)
+    call VecDestroy(surface_field%flow_dxx,ierr);CHKERRQ(ierr)
   endif
   if (surface_field%flow_yy /= 0) then
-    call VecDestroy(surface_field%flow_yy,ierr)
-    CHKERRQ(ierr)
+    call VecDestroy(surface_field%flow_yy,ierr);CHKERRQ(ierr)
   endif
   if (surface_field%flow_accum /= 0) then
-    call VecDestroy(surface_field%flow_accum,ierr)
-    CHKERRQ(ierr)
+    call VecDestroy(surface_field%flow_accum,ierr);CHKERRQ(ierr)
   endif
   
   if (surface_field%subsurf_temp_vec_1dof/=0) then
-    call VecDestroy(surface_field%subsurf_temp_vec_1dof,ierr)
-    CHKERRQ(ierr)
+    call VecDestroy(surface_field%subsurf_temp_vec_1dof,ierr);CHKERRQ(ierr)
   endif
   if (surface_field%subsurf_temp_vec_ndof/=0) then
-    call VecDestroy(surface_field%subsurf_temp_vec_ndof,ierr)
-    CHKERRQ(ierr)
+    call VecDestroy(surface_field%subsurf_temp_vec_ndof,ierr);CHKERRQ(ierr)
   endif
 
   do ivar = 1,surface_field%nvars
-    call VecDestroy(surface_field%avg_vars_vec(ivar),ierr)
-    CHKERRQ(ierr)
+    call VecDestroy(surface_field%avg_vars_vec(ivar),ierr);CHKERRQ(ierr)
   enddo
 
   if (surface_field%flowrate_inst/=0) then
-    call VecDestroy(surface_field%flowrate_inst,ierr)
-    CHKERRQ(ierr)
+    call VecDestroy(surface_field%flowrate_inst,ierr);CHKERRQ(ierr)
   endif
   if (surface_field%flowrate_aveg/=0) then
-    call VecDestroy(surface_field%flowrate_aveg,ierr)
-    CHKERRQ(ierr)
+    call VecDestroy(surface_field%flowrate_aveg,ierr);CHKERRQ(ierr)
   endif
 
   if (surface_field%temp_subsurf /=0 ) then
-    call VecDestroy(surface_field%temp_subsurf,ierr)
-    CHKERRQ(ierr)
+    call VecDestroy(surface_field%temp_subsurf,ierr);CHKERRQ(ierr)
   endif
 
 end subroutine SurfaceFieldDestroy
