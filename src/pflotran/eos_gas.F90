@@ -654,31 +654,31 @@ end subroutine EOSGasDensityRKS
 
 ! ************************************************************************** !
 
-subroutine EOSGasFugacity(T,P,Rho_gas,fugacity,ierr)
+subroutine EOSGasFugacity(T,P,Rho_gas,phi,ierr)
 ! current version is for hydrogen only. See
 ! Soave, Giorgio, 1972, "Equilibrium constants from a modified Redlich-Kwong
 ! equation of state", Chem. Eng. Sci., V27, pp 1197-1203.
 
   PetscReal, intent(in) :: T        ! temperature [C]
   PetscReal, intent(in) :: P        ! pressure [Pa]
-  PetscReal, intent(in) :: Rho_gas ! gas density [kmol/m^3]
-  PetscReal, intent(out) :: fugacity
+  PetscReal, intent(in) :: Rho_gas  ! gas density [kmol/m^3]
+  PetscReal, intent(out) :: phi     ! fugacity coefficient
   PetscErrorCode, intent(out) :: ierr
-  PetscReal, parameter :: Rg = 8.31451
+  PetscReal, parameter :: Rg = 8.31451  ! gas constant
 
   !for hydrogen
   ! American Petroleum Institute,
   ! "Technical Data Book-Petroleum Refining" (1977)
-  PetscReal, parameter :: Tc = 41.67d0
-  PetscReal, parameter :: Pc = 2.1029d6
+  PetscReal, parameter :: Tc = 41.67d0   ! critical temperature
+  PetscReal, parameter :: Pc = 2.1029d6  ! critical pressure
 
   PetscReal :: T_kelvin, Z, V, Tr, LHS
   PetscReal :: A, B, alpha
 
   V = 1.d0 / Rho_gas * 1.d-3
   T_kelvin = T + 273.15d0
-  Tr = T_kelvin/Tc
-  alpha = EXP(0.340d0*(1.d0-Tr))
+  Tr = T_kelvin/Tc  ! reduced temperature
+  alpha = EXP(0.340d0*(1.d0-Tr))  ! alpha(T)
 
   A = 0.42747 * alpha * (P/Pc) / (T/Tc)**2
   B = 0.08664 * (P/Pc) / (T/Tc)
@@ -686,7 +686,7 @@ subroutine EOSGasFugacity(T,P,Rho_gas,fugacity,ierr)
   
   ! Fugacity Coefficient
   LHS = Z - 1.d0 - LOG(Z-B) - A/B * LOG((Z+B)/Z)
-  fugacity = EXP(LHS)  ! dimensionless (Pa/Pa)
+  phi = EXP(LHS)  ! dimensionless (Pa/Pa)
   
 end subroutine EOSGasFugacity
 
