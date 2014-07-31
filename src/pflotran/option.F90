@@ -74,13 +74,15 @@ module Option_module
     character(len=MAXSTRINGLENGTH) :: surf_initialize_flow_filename
     character(len=MAXSTRINGLENGTH) :: surf_restart_filename
 
-#ifdef GEOMECH
+!geh: due to changes in changeset 21d65d3229848dcc77fccd722b8dbb2a60f5e6da 
+!     the DiscretizationCreateDMs argument list now requires these.
+!#ifdef GEOMECH
     PetscInt  :: ngeomechdof
     PetscInt  :: n_stress_strain_dof
     PetscReal :: geomech_time
     PetscInt  :: geomech_subsurf_coupling
     PetscReal :: geomech_gravity(3)
-#endif
+!#endif
     PetscBool :: sec_vars_update
     PetscInt :: air_pressure_id
     PetscInt :: capillary_pressure_id
