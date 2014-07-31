@@ -370,7 +370,7 @@ subroutine PMTHUpdateSolution(this)
   
   call PMSubsurfaceUpdateSolution(this)
   call THUpdateSolution(this%realization)
-  if (this%option%nsurfflowdof > 0) &
+  if (this%option%surf_flow_on) &
     call THUpdateSurfaceBC(this%realization)
 
 end subroutine PMTHUpdateSolution     

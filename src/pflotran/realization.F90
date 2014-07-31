@@ -219,7 +219,10 @@ subroutine RealizationCreateDiscretization(realization)
  
   discretization => realization%discretization
   
-  call DiscretizationCreateDMs(discretization,option)
+  call DiscretizationCreateDMs(discretization, option%nflowdof, &
+                               option%ntrandof, option%nphase, &
+                               option%ngeomechdof, option%n_stress_strain_dof, &
+                               option)
 
   ! 1 degree of freedom, global
   call DiscretizationCreateVector(discretization,ONEDOF,field%work, &

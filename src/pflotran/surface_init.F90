@@ -70,7 +70,8 @@ subroutine SurfaceInitReadRequiredCards(surf_realization)
   ! SURFACE_FLOW information
   string = "SURFACE_FLOW"
   call InputFindStringInFile(input,option,string)
-  if(InputError(input)) return
+  if (InputError(input)) return
+  option%surf_flow_on = PETSC_TRUE
   option%nsurfflowdof = 1
   
   string = "SURF_GRID"

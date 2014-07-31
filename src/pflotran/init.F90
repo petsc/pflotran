@@ -230,7 +230,8 @@ subroutine Init(simulation)
   endif
 
   ! initialize surface-flow mode
-  if (option%nsurfflowdof > 0) then
+  if (option%surf_flow_on) then
+    call setSurfaceFlowMode(option)
     surf_flow_solver => surf_flow_stepper%solver
     waypoint_list => WaypointListCreate()
     surf_realization%waypoints => waypoint_list
@@ -313,7 +314,7 @@ subroutine Init(simulation)
   ! create grid and allocate vectors
   call RealizationCreateDiscretization(realization)
   
-  if (option%nsurfflowdof>0) then
+  if (option%surf_flow_on) then
     call SurfRealizCreateDiscretization(simulation%surf_realization)
   endif
 
@@ -566,7 +567,7 @@ subroutine Init(simulation)
     
     call printMsg(option,"  Finished setting up FLOW SNES ")
 
-    if(option%nsurfflowdof>0) then
+    if (option%surf_flow_on) then
 
       ! Setup PETSc TS for explicit surface flow solution
       call printMsg(option,"  Beginning setup of SURF FLOW TS ")
@@ -590,7 +591,7 @@ subroutine Init(simulation)
                          simulation%surf_realization%waypoints%last%time, &
                          ierr);CHKERRQ(ierr)
 
-    endif ! if(option%nsurfflowdof>0)
+    endif ! if (option%surf_flow_on)
 
   endif
 
@@ -1014,7 +1015,7 @@ subroutine Init(simulation)
     string = 'Transport Stepper:'
     call TimestepperPrintInfo(tran_stepper,option%fid_out,string,option)
   endif    
-   if (option%nsurfflowdof>0) then
+   if (option%surf_flow_on) then
     string = 'Surface Flow Stepper:'
     call TimestepperPrintInfo(surf_flow_stepper,option%fid_out,string,option)
   endif
@@ -1091,7 +1092,7 @@ subroutine Init(simulation)
 #endif
 !PETSC_HAVE_HDF5
 
-  if(option%nsurfflowdof > 0) then
+  if (option%surf_flow_on) then
     ! Check if surface-flow is compatible with the given flowmode
     select case(option%iflowmode)
       case(RICHARDS_MODE,TH_MODE)
@@ -1150,7 +1151,7 @@ subroutine Init(simulation)
         option%io_buffer = 'For surface-flow only RICHARDS and TH mode implemented'
         call printErrMsgByRank(option)
     end select
-  endif ! option%nsurfflowdof > 0
+  endif ! option%surf_flow_on
 
   if (simulation%surf_realization%output_option%print_iproc) then
     output_variable => OutputVariableCreate('Processor ID',OUTPUT_DISCRETE,'', &
@@ -2885,6 +2886,36 @@ subroutine setFlowMode(option)
   end select
   
 end subroutine setFlowMode
+
+! ************************************************************************** !
+
+subroutine setSurfaceFlowMode(option)
+  ! 
+  ! Sets the flow mode for surface (richards, th, etc.)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 07/30/14
+  ! 
+
+  use Option_module
+  use String_module
+
+  implicit none 
+
+  type(option_type) :: option
+  
+  call StringToUpper(option%flowmode)
+  select case(option%flowmode)
+    case('RICHARDS')
+      option%nsurfflowdof = ONE_INTEGER
+    case('TH')
+      option%nsurfflowdof = TWO_INTEGER
+    case default
+      option%io_buffer = 'Mode: '//trim(option%flowmode)//' not recognized.'
+      call printErrMsg(option)
+  end select
+  
+end subroutine setSurfaceFlowMode
 
 ! ************************************************************************** !
 
