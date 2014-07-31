@@ -1012,9 +1012,10 @@ srcsink_sandbox_base.o : input_aux.o material_aux.o option.o \
 srcsink_sandbox_mass_rate.o : general_aux.o input_aux.o material_aux.o \
                               option.o pflotran_constants.o reaction_aux.o \
                               region.o srcsink_sandbox_base.o string.o units.o
-srcsink_sandbox_downreg.o : general_aux.o input_aux.o material_aux.o \
-                              option.o pflotran_constants.o reaction_aux.o \
-                              region.o srcsink_sandbox_base.o string.o units.o
+srcsink_sandbox_downreg.o : condition.o dataset_base.o dataset_ascii.o \
+                            general_aux.o input_aux.o material_aux.o \
+                            option.o pflotran_constants.o reaction_aux.o \
+                            region.o srcsink_sandbox_base.o string.o units.o
 srcsink_sandbox_wipp_gas.o : input_aux.o material_aux.o option.o \
                              pflotran_constants.o reaction_aux.o region.o \
                              srcsink_sandbox_base.o string.o units.o
