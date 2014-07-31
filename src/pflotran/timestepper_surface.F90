@@ -234,10 +234,10 @@ subroutine TimestepperSurfaceStepDT(this,process_model,stop_flag)
 
   call process_model%PreSolve()
 
-  call TSSetTimeStep(solver%ts,option%surf_flow_dt,ierr)
-  call TSSolve(solver%ts,process_model%solution_vec,ierr)
-  call TSGetTime(solver%ts,time,ierr)
-  call TSGetTimeStep(solver%ts,dtime,ierr)
+  call TSSetTimeStep(solver%ts,option%surf_flow_dt,ierr);CHKERRQ(ierr)
+  call TSSolve(solver%ts,process_model%solution_vec,ierr);CHKERRQ(ierr)
+  call TSGetTime(solver%ts,time,ierr);CHKERRQ(ierr)
+  call TSGetTimeStep(solver%ts,dtime,ierr);CHKERRQ(ierr)
 
   call process_model%PostSolve()
 
@@ -278,12 +278,12 @@ subroutine TimestepperSurfaceCheckpoint(this,viewer,option)
   PetscBag :: bag
   PetscErrorCode :: ierr
 
-  call PetscBagCreate(option%mycomm,bagsize,bag,ierr)
-  call PetscBagGetData(bag,header,ierr)
+  call PetscBagCreate(option%mycomm,bagsize,bag,ierr);CHKERRQ(ierr)
+  call PetscBagGetData(bag,header,ierr);CHKERRQ(ierr)
   call TimestepperSurfaceRegisterHeader(this,bag,header)
   call TimestepperSurfaceSetHeader(this,bag,header)
-  call PetscBagView(bag,viewer,ierr)
-  call PetscBagDestroy(bag,ierr)
+  call PetscBagView(bag,viewer,ierr);CHKERRQ(ierr)
+  call PetscBagDestroy(bag,ierr);CHKERRQ(ierr)
 
 end subroutine TimestepperSurfaceCheckpoint
 
@@ -312,12 +312,12 @@ subroutine TimestepperSurfaceRestart(this,viewer,option)
   PetscBag :: bag
   PetscErrorCode :: ierr
 
-  call PetscBagCreate(option%mycomm,bagsize,bag,ierr)
-  call PetscBagGetData(bag,header,ierr)
+  call PetscBagCreate(option%mycomm,bagsize,bag,ierr);CHKERRQ(ierr)
+  call PetscBagGetData(bag,header,ierr);CHKERRQ(ierr)
   call TimestepperSurfaceRegisterHeader(this,bag,header)
-  call PetscBagLoad(viewer,bag,ierr)
+  call PetscBagLoad(viewer,bag,ierr);CHKERRQ(ierr)
   call TimestepperSurfaceGetHeader(this,header)
-  call PetscBagDestroy(bag,ierr)
+  call PetscBagDestroy(bag,ierr);CHKERRQ(ierr)
 
 end subroutine TimestepperSurfaceRestart
 
@@ -346,9 +346,10 @@ subroutine TimestepperSurfaceRegisterHeader(this,bag,header)
 
   ! bagsize = 2 * 8 bytes = 16 bytes
   call PetscBagRegisterReal(bag,header%dt_max_allowable,0.d0, &
-                           "dt_max_allowable","",ierr)
+                           "dt_max_allowable","",ierr);CHKERRQ(ierr)
   call PetscBagRegisterReal(bag,header%surf_subsurf_coupling_flow_dt,0.d0, &
-                           "surf_subsurf_coupling_flow_dt","",ierr)
+                           "surf_subsurf_coupling_flow_dt","", &
+                            ierr);CHKERRQ(ierr)
 
   call TimestepperBaseRegisterHeader(this,bag,header)
 
@@ -410,7 +411,7 @@ subroutine TimestepperSurfaceGetHeader(this,header)
 
   call TimestepperBaseGetHeader(this,header)
 
-  call TSSetTime(this%solver%ts,this%target_time,ierr)
+  call TSSetTime(this%solver%ts,this%target_time,ierr);CHKERRQ(ierr)
 
 end subroutine TimestepperSurfaceGetHeader
 
@@ -434,7 +435,7 @@ subroutine TimestepperSurfaceReset(this)
 
   !TODO(Gautam): this%target_time is set to 0.d0 in TimestepperBaseReset(). Is
   !              that OK? - Glenn
-  call TSSetTime(this%solver%ts,this%target_time,ierr)
+  call TSSetTime(this%solver%ts,this%target_time,ierr);CHKERRQ(ierr)
 #endif
 
 end subroutine TimestepperSurfaceReset

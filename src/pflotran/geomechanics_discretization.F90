@@ -174,8 +174,9 @@ subroutine GeomechDiscretizationCreateDM(geomech_discretization,dm_ptr,ndof,opti
     case(UNSTRUCTURED_GRID)
       call GMCreateGMDM(geomech_discretization%grid, &
                         dm_ptr%gmdm,ndof,option)
-      call DMShellCreate(option%mycomm,dm_ptr%dm,ierr)
-      call DMShellSetGlobalToLocalVecScatter(dm_ptr%dm,dm_ptr%gmdm%scatter_gtol,ierr)
+      call DMShellCreate(option%mycomm,dm_ptr%dm,ierr);CHKERRQ(ierr)
+      call DMShellSetGlobalToLocalVecScatter(dm_ptr%dm,dm_ptr%gmdm%scatter_gtol, &
+                                             ierr);CHKERRQ(ierr)
   end select
 
 end subroutine GeomechDiscretizationCreateDM
@@ -209,7 +210,7 @@ subroutine GeomechDiscretizationCreateVector(geomech_discretization,dm_index,vec
   call GMGridDMCreateVector(geomech_discretization%grid,dm_ptr%gmdm,vector, &
                             vector_type,option)
                             
-  call VecSet(vector,0.d0,ierr)
+  call VecSet(vector,0.d0,ierr);CHKERRQ(ierr)
   
 end subroutine GeomechDiscretizationCreateVector
 
@@ -230,8 +231,8 @@ subroutine GeomechDiscretizationDuplicateVector(geomech_discretization,vector1,v
   Vec                                           :: vector2
   PetscErrorCode                                :: ierr
   
-  call VecDuplicate(vector1,vector2,ierr)
-  call VecCopy(vector1,vector2,ierr)
+  call VecDuplicate(vector1,vector2,ierr);CHKERRQ(ierr)
+  call VecCopy(vector1,vector2,ierr);CHKERRQ(ierr)
   
 end subroutine GeomechDiscretizationDuplicateVector
 
@@ -293,8 +294,9 @@ subroutine GeomechDiscretizationCreateJacobian(geomech_discretization,dm_index, 
 
   call GMGridDMCreateJacobian(geomech_discretization%grid,dm_ptr%gmdm, &
                               mat_type,Jacobian,option)
-  call MatSetOption(Jacobian,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE,ierr)
-  call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
+  call MatSetOption(Jacobian,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE, &
+                    ierr);CHKERRQ(ierr)
+  call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr);CHKERRQ(ierr)
 
 end subroutine GeomechDiscretizationCreateJacobian
 
@@ -321,8 +323,10 @@ subroutine GeomechDiscretizationGlobalToLocal(geomech_discretization,global_vec,
   
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
     
-  call DMGlobalToLocalBegin(dm_ptr%dm,global_vec,INSERT_VALUES,local_vec,ierr)
-  call DMGlobalToLocalEnd(dm_ptr%dm,global_vec,INSERT_VALUES,local_vec,ierr)
+  call DMGlobalToLocalBegin(dm_ptr%dm,global_vec,INSERT_VALUES,local_vec, &
+                            ierr);CHKERRQ(ierr)
+  call DMGlobalToLocalEnd(dm_ptr%dm,global_vec,INSERT_VALUES,local_vec, &
+                          ierr);CHKERRQ(ierr)
   
 end subroutine GeomechDiscretizationGlobalToLocal
 
@@ -350,9 +354,9 @@ subroutine GeomechDiscretizationLocalToGlobal(geomech_discretization,local_vec, 
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
   call VecScatterBegin(dm_ptr%gmdm%scatter_ltog,local_vec,global_vec, &
-                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+                       INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   call VecScatterEnd(dm_ptr%gmdm%scatter_ltog,local_vec,global_vec, &
-                     INSERT_VALUES,SCATTER_FORWARD,ierr)
+                     INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   
 end subroutine GeomechDiscretizationLocalToGlobal
 
@@ -380,9 +384,9 @@ subroutine GeomechDiscretizationLocalToGlobalAdd(geomech_discretization,local_ve
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
   call VecScatterBegin(dm_ptr%gmdm%scatter_ltog,local_vec,global_vec, &
-                       ADD_VALUES,SCATTER_FORWARD,ierr)
+                       ADD_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   call VecScatterEnd(dm_ptr%gmdm%scatter_ltog,local_vec,global_vec, &
-                     ADD_VALUES,SCATTER_FORWARD,ierr)
+                     ADD_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   
 end subroutine GeomechDiscretizationLocalToGlobalAdd
 
@@ -410,9 +414,9 @@ subroutine GeomechDiscretizationLocalToLocal(geomech_discretization,local_vec1, 
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
   call VecScatterBegin(dm_ptr%gmdm%scatter_ltol,local_vec1,local_vec2, &
-                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+                       INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   call VecScatterEnd(dm_ptr%gmdm%scatter_ltol,local_vec1,local_vec2, &
-                     INSERT_VALUES,SCATTER_FORWARD,ierr)    
+                     INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   
 end subroutine GeomechDiscretizationLocalToLocal
 
@@ -440,9 +444,9 @@ subroutine GeomechDiscretizationGlobalToNatural(geomech_discretization,global_ve
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
 
   call VecScatterBegin(dm_ptr%gmdm%scatter_gton,global_vec,natural_vec, &
-                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+                       INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   call VecScatterEnd(dm_ptr%gmdm%scatter_gton,global_vec,natural_vec, &
-                     INSERT_VALUES,SCATTER_FORWARD,ierr)       
+                     INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   
 end subroutine GeomechDiscretizationGlobalToNatural
 
@@ -470,9 +474,9 @@ subroutine GeomechDiscretizationNaturalToGlobal(geomech_discretization,natural_v
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
   call VecScatterBegin(dm_ptr%gmdm%scatter_ntog,natural_vec,global_vec, &
-                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+                       INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   call VecScatterEnd(dm_ptr%gmdm%scatter_ntog,natural_vec,global_vec, &
-                     INSERT_VALUES,SCATTER_FORWARD,ierr)
+                     INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   
 end subroutine GeomechDiscretizationNaturalToGlobal
 
@@ -500,7 +504,7 @@ subroutine GeomechDiscretizationGlobalToLocalBegin(geomech_discretization,global
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
   call VecScatterBegin(dm_ptr%gmdm%scatter_gtol,global_vec,local_vec, &
-                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+                       INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   
 end subroutine GeomechDiscretizationGlobalToLocalBegin
 
@@ -528,7 +532,7 @@ subroutine GeomechDiscretizationGlobalToLocalEnd(geomech_discretization,global_v
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
   call VecScatterEnd(dm_ptr%gmdm%scatter_gtol,global_vec,local_vec, &
-                     INSERT_VALUES,SCATTER_FORWARD,ierr)
+                     INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   
 end subroutine GeomechDiscretizationGlobalToLocalEnd
 
@@ -556,7 +560,7 @@ subroutine GeomechDiscretizationLocalToLocalBegin(geomech_discretization,local_v
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
   call VecScatterBegin(dm_ptr%gmdm%scatter_ltol,local_vec1,local_vec2, &
-                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+                       INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
 
 end subroutine GeomechDiscretizationLocalToLocalBegin
 
@@ -584,7 +588,7 @@ subroutine GeomechDiscretizationLocalToLocalEnd(geomech_discretization,local_vec
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
   call VecScatterEnd(dm_ptr%gmdm%scatter_ltol,local_vec1,local_vec2, &
-                     INSERT_VALUES,SCATTER_FORWARD,ierr)    
+                     INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
 
 end subroutine GeomechDiscretizationLocalToLocalEnd
 
@@ -612,7 +616,7 @@ subroutine GeomechDiscretizGlobalToNaturalBegin(geomech_discretization,global_ve
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
   call VecScatterBegin(dm_ptr%gmdm%scatter_gton,global_vec,natural_vec, &
-                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+                       INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   
 end subroutine GeomechDiscretizGlobalToNaturalBegin
 
@@ -640,7 +644,7 @@ subroutine GeomechDiscretizGlobalToNaturalEnd(geomech_discretization,global_vec,
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
   call VecScatterEnd(dm_ptr%gmdm%scatter_gton,global_vec,natural_vec, &
-                     INSERT_VALUES,SCATTER_FORWARD,ierr)       
+                     INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   
 end subroutine GeomechDiscretizGlobalToNaturalEnd
 
@@ -715,7 +719,7 @@ subroutine GeomechDiscretAOApplicationToPetsc(geomech_discretization,int_array)
   
   ao = geomech_discretization%grid%ao_natural_to_petsc_nodes
   
-  call AOApplicationToPetsc(ao,size(int_array),int_array,ierr)
+  call AOApplicationToPetsc(ao,size(int_array),int_array,ierr);CHKERRQ(ierr)
   
 end subroutine GeomechDiscretAOApplicationToPetsc
 

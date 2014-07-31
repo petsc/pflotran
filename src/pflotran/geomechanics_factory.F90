@@ -295,13 +295,15 @@ subroutine HijackGeomechanicsSimulation(simulation_old,simulation)
                                ts%solver%snes, &
                                cur_process_model%residual_vec, &
                                PMResidual, &
-                               cur_process_model_coupler%pm_ptr,ierr)
+                               cur_process_model_coupler%pm_ptr, &
+                                     ierr);CHKERRQ(ierr)
                 call SNESSetJacobian( &
                                ts%solver%snes, &
                                ts%solver%J, &
                                ts%solver%Jpre, &
                                PMJacobian, &
-                               cur_process_model_coupler%pm_ptr,ierr)
+                               cur_process_model_coupler%pm_ptr, &
+                                     ierr);CHKERRQ(ierr)
             end select
         end select
         cur_process_model => cur_process_model%next
@@ -368,7 +370,7 @@ subroutine GeomechanicsJumpStart(simulation)
   output_option => geomch_realization%output_option
 
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-vecload_block_size", &
-                           failure, ierr)
+                           failure, ierr);CHKERRQ(ierr)
                              
   if (option%steady_state) then
     option%io_buffer = 'Running in steady-state not yet supported for surface-flow.'

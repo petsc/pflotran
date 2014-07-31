@@ -62,6 +62,7 @@ module Option_module
     PetscInt :: nsec_cells
     PetscBool :: use_th_freezing
 
+    PetscBool :: surf_flow_on
     PetscInt :: nsurfflowdof
     PetscInt :: subsurf_surf_coupling
     PetscInt :: surface_flow_formulation
@@ -73,13 +74,15 @@ module Option_module
     character(len=MAXSTRINGLENGTH) :: surf_initialize_flow_filename
     character(len=MAXSTRINGLENGTH) :: surf_restart_filename
 
-#ifdef GEOMECH
+!geh: due to changes in changeset 21d65d3229848dcc77fccd722b8dbb2a60f5e6da 
+!     the DiscretizationCreateDMs argument list now requires these.
+!#ifdef GEOMECH
     PetscInt  :: ngeomechdof
     PetscInt  :: n_stress_strain_dof
     PetscReal :: geomech_time
     PetscInt  :: geomech_subsurf_coupling
     PetscReal :: geomech_gravity(3)
-#endif
+!#endif
     PetscBool :: sec_vars_update
     PetscInt :: air_pressure_id
     PetscInt :: capillary_pressure_id
@@ -420,6 +423,7 @@ subroutine OptionInitRealization(option)
   option%use_th_freezing = PETSC_FALSE
 
   option%nsurfflowdof = 0
+  option%surf_flow_on = PETSC_FALSE
   option%subsurf_surf_coupling = DECOUPLED
   option%surface_flow_formulation = DIFFUSION_WAVE
   option%surf_flow_dt = 0.d0
@@ -591,36 +595,36 @@ subroutine OptionCheckCommandLine(option)
   character(len=MAXSTRINGLENGTH) :: string
   
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-buffer_matrix", & 
-                           option%use_matrix_buffer, ierr)
+                           option%use_matrix_buffer, ierr);CHKERRQ(ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-snes_mf", & 
-                           option%use_matrix_free, ierr)
+                           option%use_matrix_free, ierr);CHKERRQ(ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_isothermal", &
-                           option%use_isothermal, ierr)
+                           option%use_isothermal, ierr);CHKERRQ(ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_mc", &
-                           option%use_mc, ierr)
+                           option%use_mc, ierr);CHKERRQ(ierr)
                            
   call PetscOptionsGetString(PETSC_NULL_CHARACTER, '-restart', &
                              option%restart_filename, &
-                             option%restart_flag, ierr)
+                             option%restart_flag, ierr);CHKERRQ(ierr)
   call PetscOptionsGetInt(PETSC_NULL_CHARACTER, '-chkptfreq', &
                           option%checkpoint_frequency, &
-                          option%checkpoint_flag, ierr)                           
+                          option%checkpoint_flag, ierr);CHKERRQ(ierr)
   ! check on possible modes                                                     
   option_found = PETSC_FALSE
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_richards", &
-                           option_found, ierr)
+                           option_found, ierr);CHKERRQ(ierr)
   if (option_found) option%flowmode = "richards"                           
   option_found = PETSC_FALSE
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_thc", &
-                           option_found, ierr)
+                           option_found, ierr);CHKERRQ(ierr)
   if (option_found) option%flowmode = "thc"     
   option_found = PETSC_FALSE
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_mph", &
-                           option_found, ierr)
+                           option_found, ierr);CHKERRQ(ierr)
   if (option_found) option%flowmode = "mph"                           
   option_found = PETSC_FALSE
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_flash2", &
-                           option_found, ierr)
+                           option_found, ierr);CHKERRQ(ierr)
   if (option_found) option%flowmode = "flash2"                           
  
 end subroutine OptionCheckCommandLine
@@ -667,8 +671,10 @@ subroutine printErrMsg2(option,string)
     print *, 'Stopping!'
   endif    
   call MPI_Barrier(option%mycomm,ierr)
-  call PetscInitialized(petsc_initialized, ierr)
-  if (petsc_initialized) call PetscFinalize(ierr)
+  call PetscInitialized(petsc_initialized, ierr);CHKERRQ(ierr)
+  if (petsc_initialized) then
+    call PetscFinalize(ierr);CHKERRQ(ierr)
+  endif
   stop
   
 end subroutine printErrMsg2
@@ -1114,12 +1120,12 @@ subroutine OptionInitPetsc(option)
   PetscErrorCode :: ierr
   
   PETSC_COMM_WORLD = option%mycomm
-  call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
+  call PetscInitialize(PETSC_NULL_CHARACTER, ierr);CHKERRQ(ierr)
   
   if (option%verbosity > 0) then 
-    call PetscLogBegin(ierr)
+    call PetscLogBegin(ierr);CHKERRQ(ierr)
     string = '-log_summary'
-    call PetscOptionsInsertString(string, ierr)
+    call PetscOptionsInsertString(string, ierr);CHKERRQ(ierr)
   endif 
 
   call LoggingCreate()
@@ -1147,7 +1153,7 @@ subroutine OptionBeginTiming(option)
   PetscLogDouble :: timex_wall
   PetscErrorCode :: ierr
   
-  call PetscTime(timex_wall, ierr)
+  call PetscTime(timex_wall, ierr);CHKERRQ(ierr)
   option%start_time = timex_wall
   
 end subroutine OptionBeginTiming
@@ -1174,7 +1180,7 @@ subroutine OptionEndTiming(option)
   PetscErrorCode :: ierr
   
   ! Final Time
-  call PetscTime(timex_wall, ierr)
+  call PetscTime(timex_wall, ierr);CHKERRQ(ierr)
     
   if (option%myrank == option%io_rank) then
 
@@ -1294,12 +1300,12 @@ subroutine OptionFinalize(option)
   PetscErrorCode :: ierr
   
   call LoggingDestroy()
-  call PetscOptionsSetValue('-options_left','no',ierr)
+  call PetscOptionsSetValue('-options_left','no',ierr);CHKERRQ(ierr)
   ! list any PETSc objects that have not been freed - for debugging
-  call PetscOptionsSetValue('-objects_left','yes',ierr)
+  call PetscOptionsSetValue('-objects_left','yes',ierr);CHKERRQ(ierr)
   call MPI_Barrier(option%global_comm,ierr)
   call OptionDestroy(option)
-  call PetscFinalize(ierr)
+  call PetscFinalize(ierr);CHKERRQ(ierr)
   call MPI_Finalize(ierr)
   call exit(86)
   

@@ -137,8 +137,8 @@ subroutine Init(simulation)
 #endif
 
   ! popped in TimestepperInitializeRun()
-  call PetscLogStagePush(logging%stage(INIT_STAGE),ierr)
-  call PetscLogEventBegin(logging%event_init,ierr)
+  call PetscLogStagePush(logging%stage(INIT_STAGE),ierr);CHKERRQ(ierr)
+  call PetscLogEventBegin(logging%event_init,ierr);CHKERRQ(ierr)
   
   ! set pointers to objects
   flow_stepper => simulation%flow_stepper
@@ -230,7 +230,8 @@ subroutine Init(simulation)
   endif
 
   ! initialize surface-flow mode
-  if (option%nsurfflowdof > 0) then
+  if (option%surf_flow_on) then
+    call setSurfaceFlowMode(option)
     surf_flow_solver => surf_flow_stepper%solver
     waypoint_list => WaypointListCreate()
     surf_realization%waypoints => waypoint_list
@@ -313,7 +314,7 @@ subroutine Init(simulation)
   ! create grid and allocate vectors
   call RealizationCreateDiscretization(realization)
   
-  if (option%nsurfflowdof>0) then
+  if (option%surf_flow_on) then
     call SurfRealizCreateDiscretization(simulation%surf_realization)
   endif
 
@@ -382,7 +383,7 @@ subroutine Init(simulation)
     call printMsg(option,"  Beginning setup of FLOW SNES ")
 
     call SolverCreateSNES(flow_solver,option%mycomm)  
-    call SNESSetOptionsPrefix(flow_solver%snes, "flow_",ierr)
+    call SNESSetOptionsPrefix(flow_solver%snes, "flow_",ierr);CHKERRQ(ierr)
     call SolverCheckCommandLine(flow_solver)
 
     if (flow_solver%Jpre_mat_type == '') then
@@ -398,7 +399,7 @@ subroutine Init(simulation)
                                       flow_solver%Jpre, &
                                       option)
 
-    call MatSetOptionsPrefix(flow_solver%Jpre,"flow_",ierr)
+    call MatSetOptionsPrefix(flow_solver%Jpre,"flow_",ierr);CHKERRQ(ierr)
 
     if (flow_solver%J_mat_type /= MATMFFD) then
       flow_solver%J = flow_solver%Jpre
@@ -416,77 +417,79 @@ subroutine Init(simulation)
     select case(option%iflowmode)
       case(TH_MODE)
         call SNESSetFunction(flow_solver%snes,field%flow_r,THResidual, &
-                             realization,ierr)
+                             realization,ierr);CHKERRQ(ierr)
       case(RICHARDS_MODE)
         select case(realization%discretization%itype)
           case(STRUCTURED_GRID_MIMETIC,UNSTRUCTURED_GRID_MIMETIC)
             call SNESSetFunction(flow_solver%snes,field%flow_r_faces, &
                                  RichardsResidualMFDLP, &
-                                 realization,ierr)
+                                 realization,ierr);CHKERRQ(ierr)
           case default
             call SNESSetFunction(flow_solver%snes,field%flow_r, &
                                  RichardsResidual, &
-                                 realization,ierr)
+                                 realization,ierr);CHKERRQ(ierr)
         end select
       case(MPH_MODE)
         call SNESSetFunction(flow_solver%snes,field%flow_r,MphaseResidual, &
-                             realization,ierr)
+                             realization,ierr);CHKERRQ(ierr)
       case(IMS_MODE)
         call SNESSetFunction(flow_solver%snes,field%flow_r,ImmisResidual, &
-                             realization,ierr)
+                             realization,ierr);CHKERRQ(ierr)
       case(MIS_MODE)
         call SNESSetFunction(flow_solver%snes,field%flow_r,MiscibleResidual, &
-                             realization,ierr)
+                             realization,ierr);CHKERRQ(ierr)
       case(FLASH2_MODE)
         call SNESSetFunction(flow_solver%snes,field%flow_r,FLASH2Residual, &
-                             realization,ierr)
+                             realization,ierr);CHKERRQ(ierr)
       case(G_MODE)
         call SNESSetFunction(flow_solver%snes,field%flow_r,GeneralResidual, &
-                             realization,ierr)
+                             realization,ierr);CHKERRQ(ierr)
     end select
     
     if (flow_solver%J_mat_type == MATMFFD) then
-      call MatCreateSNESMF(flow_solver%snes,flow_solver%J,ierr)
+      call MatCreateSNESMF(flow_solver%snes,flow_solver%J,ierr);CHKERRQ(ierr)
     endif
 
     select case(option%iflowmode)
       case(TH_MODE)
         call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
-                             THJacobian,realization,ierr)
+                             THJacobian,realization,ierr);CHKERRQ(ierr)
       case(RICHARDS_MODE)
         select case(realization%discretization%itype)
           case(STRUCTURED_GRID_MIMETIC,UNSTRUCTURED_GRID_MIMETIC)
             call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
-                             RichardsJacobianMFDLP,realization,ierr)
+                             RichardsJacobianMFDLP,realization, &
+                                 ierr);CHKERRQ(ierr)
           case default !sp 
             call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
-                             RichardsJacobian,realization,ierr)
+                             RichardsJacobian,realization,ierr);CHKERRQ(ierr)
         end select
 
       case(MPH_MODE)
         call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
-                             MPHASEJacobian,realization,ierr)
+                             MPHASEJacobian,realization,ierr);CHKERRQ(ierr)
       case(IMS_MODE)
         call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
-                             ImmisJacobian,realization,ierr)
+                             ImmisJacobian,realization,ierr);CHKERRQ(ierr)
       case(MIS_MODE)
         call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
-                             MiscibleJacobian,realization,ierr)
+                             MiscibleJacobian,realization,ierr);CHKERRQ(ierr)
       case(FLASH2_MODE)
         call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
-                             FLASH2Jacobian,realization,ierr)
+                             FLASH2Jacobian,realization,ierr);CHKERRQ(ierr)
       case(G_MODE)
         call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
-                             GeneralJacobian,realization,ierr)
+                             GeneralJacobian,realization,ierr);CHKERRQ(ierr)
     end select
     
     ! by default turn off line search
-    call SNESGetLineSearch(flow_solver%snes, linesearch, ierr)
-    call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
+    call SNESGetLineSearch(flow_solver%snes, linesearch, ierr);CHKERRQ(ierr)
+    call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC,  &
+                               ierr);CHKERRQ(ierr)
     ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
     if (option%verbosity >= 2) then
       string = '-flow_snes_view'
-      call PetscOptionsInsertString(string, ierr)
+      call PetscOptionsInsertString(string, ierr);CHKERRQ(ierr)
     endif
 
     call SolverSetSNESOptions(flow_solver)
@@ -501,7 +504,7 @@ subroutine Init(simulation)
     if ((realization%discretization%itype == STRUCTURED_GRID_MIMETIC).or.&
                 (realization%discretization%itype == STRUCTURED_GRID)) then
       call PCSetDM(flow_solver%pc, &
-                   realization%discretization%dm_nflowdof,ierr);
+                   realization%discretization%dm_nflowdof,ierr);CHKERRQ(ierr)
     endif
 
     option%io_buffer = 'Solver: ' // trim(flow_solver%ksp_type)
@@ -515,76 +518,80 @@ subroutine Init(simulation)
       ConvergenceContextCreate(flow_solver,option,grid)
     call SNESSetConvergenceTest(flow_solver%snes,ConvergenceTest, &
                                 flow_stepper%convergence_context, &
-                                PETSC_NULL_FUNCTION,ierr) 
+                                PETSC_NULL_FUNCTION,ierr);CHKERRQ(ierr)
 
     
  
-    call SNESGetLineSearch(flow_solver%snes, linesearch, ierr)
+    call SNESGetLineSearch(flow_solver%snes, linesearch, ierr);CHKERRQ(ierr)
     select case(option%iflowmode)
       case(RICHARDS_MODE)
         if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
             dabs(option%saturation_change_limit) > 0.d0) then
           call SNESLineSearchSetPreCheck(linesearch, &
                                          RichardsCheckUpdatePre, &
-                                         realization,ierr)
+                                         realization,ierr);CHKERRQ(ierr)
         endif
       case(G_MODE)
         call SNESLineSearchSetPreCheck(linesearch, &
                                        GeneralCheckUpdatePre, &
-                                       realization,ierr)
+                                       realization,ierr);CHKERRQ(ierr)
       case(TH_MODE)
         if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
             dabs(option%pressure_change_limit) > 0.d0 .or. &
             dabs(option%temperature_change_limit) > 0.d0) then
           call SNESLineSearchSetPreCheck(linesearch, &
                                          THCheckUpdatePre, &
-                                         realization,ierr)
+                                         realization,ierr);CHKERRQ(ierr)
         endif
     end select
     
     
     if (flow_solver%check_post_convergence) then
-      call SNESGetLineSearch(flow_solver%snes, linesearch, ierr)
+      call SNESGetLineSearch(flow_solver%snes, linesearch, ierr);CHKERRQ(ierr)
       select case(option%iflowmode)
         case(RICHARDS_MODE)
           call SNESLineSearchSetPostCheck(linesearch, &
                                           RichardsCheckUpdatePost, &
-                                          realization,ierr)
+                                          realization,ierr);CHKERRQ(ierr)
         case(G_MODE)
           call SNESLineSearchSetPostCheck(linesearch, &
                                           GeneralCheckUpdatePost, &
-                                          realization,ierr)
+                                          realization,ierr);CHKERRQ(ierr)
         case(TH_MODE)
           call SNESLineSearchSetPostCheck(linesearch, &
                                           THCheckUpdatePost, &
-                                          realization,ierr)
+                                          realization,ierr);CHKERRQ(ierr)
       end select
     endif
         
     
     call printMsg(option,"  Finished setting up FLOW SNES ")
 
-    if(option%nsurfflowdof>0) then
+    if (option%surf_flow_on) then
 
       ! Setup PETSc TS for explicit surface flow solution
       call printMsg(option,"  Beginning setup of SURF FLOW TS ")
 
       call SolverCreateTS(surf_flow_solver,option%mycomm)
-      call TSSetProblemType(surf_flow_solver%ts,TS_NONLINEAR,ierr)
+      call TSSetProblemType(surf_flow_solver%ts,TS_NONLINEAR, &
+                            ierr);CHKERRQ(ierr)
       select case(option%iflowmode)
         case (RICHARDS_MODE)
           call TSSetRHSFunction(surf_flow_solver%ts,PETSC_NULL_OBJECT, &
                                 SurfaceFlowRHSFunction, &
-                                simulation%surf_realization,ierr)
+                                simulation%surf_realization, &
+                                ierr);CHKERRQ(ierr)
         case (TH_MODE)
           call TSSetRHSFunction(surf_flow_solver%ts,PETSC_NULL_OBJECT, &
                                 SurfaceTHRHSFunction, &
-                                simulation%surf_realization,ierr)
+                                simulation%surf_realization, &
+                                ierr);CHKERRQ(ierr)
       end select
       call TSSetDuration(surf_flow_solver%ts,ONE_INTEGER, &
-                         simulation%surf_realization%waypoints%last%time,ierr)
+                         simulation%surf_realization%waypoints%last%time, &
+                         ierr);CHKERRQ(ierr)
 
-    endif ! if(option%nsurfflowdof>0)
+    endif ! if (option%surf_flow_on)
 
   endif
 
@@ -600,7 +607,8 @@ subroutine Init(simulation)
     call printMsg(option,"  Beginning setup of GEOMECH SNES ")
     
     call SolverCreateSNES(geomech_solver,option%mycomm)  
-    call SNESSetOptionsPrefix(geomech_solver%snes, "geomech_",ierr)
+    call SNESSetOptionsPrefix(geomech_solver%snes, "geomech_", &
+                              ierr);CHKERRQ(ierr)
     call SolverCheckCommandLine(geomech_solver)
         
     if (geomech_solver%Jpre_mat_type == '') then
@@ -612,24 +620,26 @@ subroutine Init(simulation)
                                              geomech_solver%Jpre,option)
 
     geomech_solver%J = geomech_solver%Jpre
-    call MatSetOptionsPrefix(geomech_solver%Jpre,"geomech_",ierr)
+    call MatSetOptionsPrefix(geomech_solver%Jpre,"geomech_", &
+                             ierr);CHKERRQ(ierr)
     
 
     call SNESSetFunction(geomech_solver%snes,geomech_field%disp_r, &
                          GeomechForceResidual, &
-                         simulation%geomech_realization,ierr)
+                         simulation%geomech_realization,ierr);CHKERRQ(ierr)
 
     call SNESSetJacobian(geomech_solver%snes,geomech_solver%J, &
                          geomech_solver%Jpre,GeomechForceJacobian, &
-                         simulation%geomech_realization,ierr)
+                         simulation%geomech_realization,ierr);CHKERRQ(ierr)
     ! by default turn off line search
-    call SNESGetLineSearch(geomech_solver%snes,linesearch, ierr)
-    call SNESLineSearchSetType(linesearch,SNESLINESEARCHBASIC,ierr)
+    call SNESGetLineSearch(geomech_solver%snes,linesearch, ierr);CHKERRQ(ierr)
+    call SNESLineSearchSetType(linesearch,SNESLINESEARCHBASIC, &
+                               ierr);CHKERRQ(ierr)
 
     ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
     if (option%verbosity >= 1) then
       string = '-geomech_snes_view'
-      call PetscOptionsInsertString(string, ierr)
+      call PetscOptionsInsertString(string, ierr);CHKERRQ(ierr)
     endif
 
     call SolverSetSNESOptions(geomech_solver)
@@ -645,7 +655,7 @@ subroutine Init(simulation)
     ConvergenceContextCreate(geomech_solver,option,grid) ! Need to change this for geomech
     call SNESSetConvergenceTest(geomech_solver%snes,ConvergenceTest, &
                                 geomech_stepper%convergence_context, &
-                                PETSC_NULL_FUNCTION,ierr)
+                                PETSC_NULL_FUNCTION,ierr);CHKERRQ(ierr)
 
     call printMsg(option,"  Finished setting up GEOMECH SNES ")
   
@@ -659,7 +669,7 @@ subroutine Init(simulation)
     call printMsg(option,"  Beginning setup of TRAN SNES ")
     
     call SolverCreateSNES(tran_solver,option%mycomm)  
-    call SNESSetOptionsPrefix(tran_solver%snes, "tran_",ierr)
+    call SNESSetOptionsPrefix(tran_solver%snes, "tran_",ierr);CHKERRQ(ierr)
     call SolverCheckCommandLine(tran_solver)
     
     if (option%transport%reactive_transport_coupling == GLOBAL_IMPLICIT) then
@@ -686,7 +696,7 @@ subroutine Init(simulation)
       tran_solver%J = tran_solver%Jpre
     endif
     
-    call MatSetOptionsPrefix(tran_solver%Jpre,"tran_",ierr)
+    call MatSetOptionsPrefix(tran_solver%Jpre,"tran_",ierr);CHKERRQ(ierr)
     
     if (tran_solver%use_galerkin_mg) then
       call DiscretizationCreateInterpolation(discretization,NTRANDOF, &
@@ -700,30 +710,32 @@ subroutine Init(simulation)
     if (option%transport%reactive_transport_coupling == GLOBAL_IMPLICIT) then
 
       call SNESSetFunction(tran_solver%snes,field%tran_r,RTResidual,&
-                           realization,ierr)
+                           realization,ierr);CHKERRQ(ierr)
 
       if (tran_solver%J_mat_type == MATMFFD) then
-        call MatCreateSNESMF(tran_solver%snes,tran_solver%J,ierr)
+        call MatCreateSNESMF(tran_solver%snes,tran_solver%J, &
+                             ierr);CHKERRQ(ierr)
       endif
       
       call SNESSetJacobian(tran_solver%snes,tran_solver%J,tran_solver%Jpre, &
-                           RTJacobian,realization,ierr)
+                           RTJacobian,realization,ierr);CHKERRQ(ierr)
 
       ! this could be changed in the future if there is a way to ensure that the linesearch
       ! update does not perturb concentrations negative.
-      call SNESGetLineSearch(tran_solver%snes, linesearch, ierr)
-      call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
+      call SNESGetLineSearch(tran_solver%snes, linesearch, ierr);CHKERRQ(ierr)
+      call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC,  &
+                                 ierr);CHKERRQ(ierr)
       
       if (option%use_mc) then
         call SNESLineSearchSetPostCheck(linesearch, &
                                         SecondaryRTUpdateIterate, &
-                                        realization,ierr)      
+                                        realization,ierr);CHKERRQ(ierr)
       endif
       
       ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
       if (option%verbosity >= 2) then
         string = '-tran_snes_view'
-        call PetscOptionsInsertString(string, ierr)
+        call PetscOptionsInsertString(string, ierr);CHKERRQ(ierr)
       endif
 
     endif
@@ -744,19 +756,20 @@ subroutine Init(simulation)
         ConvergenceContextCreate(tran_solver,option,grid)
       call SNESSetConvergenceTest(tran_solver%snes,ConvergenceTest, &
                                   tran_stepper%convergence_context, &
-                                  PETSC_NULL_FUNCTION,ierr) 
+                                  PETSC_NULL_FUNCTION,ierr);CHKERRQ(ierr)
 
       ! this update check must be in place, otherwise reactive transport is likely
       ! to fail
       if (associated(realization%reaction)) then
-        call SNESGetLineSearch(tran_solver%snes, linesearch, ierr)
+        call SNESGetLineSearch(tran_solver%snes, linesearch,  &
+                               ierr);CHKERRQ(ierr)
         if (realization%reaction%check_update) then
           call SNESLineSearchSetPreCheck(linesearch,RTCheckUpdatePre, &
-                                         realization,ierr)
+                                         realization,ierr);CHKERRQ(ierr)
         endif
         if (tran_solver%check_post_convergence) then
           call SNESLineSearchSetPostCheck(linesearch,RTCheckUpdatePost, &
-                                          realization,ierr)
+                                          realization,ierr);CHKERRQ(ierr)
         endif
       endif
     endif
@@ -768,7 +781,7 @@ subroutine Init(simulation)
   if (OptionPrintToScreen(option)) write(*,'("++++++++++++++++++++++++++++++++&
                      &++++++++++++++++++++++++++++",/)')
 
-  call PetscLogEventBegin(logging%event_setup,ierr)
+  call PetscLogEventBegin(logging%event_setup,ierr);CHKERRQ(ierr)
   ! read any regions provided in external files
   call readRegionFiles(realization)
   ! clip regions and set up boundary connectivity, distance  
@@ -796,7 +809,7 @@ subroutine Init(simulation)
     call printMsg(option,"  Finished setting up TRAN Realization ")  
   endif
   call RealizationPrintCouplers(realization)
-  call PetscLogEventEnd(logging%event_setup,ierr)
+  call PetscLogEventEnd(logging%event_setup,ierr);CHKERRQ(ierr)
   if (.not.option%steady_state) then
     ! add waypoints associated with boundary conditions, source/sinks etc. to list
     call RealizationAddWaypointsToList(realization)
@@ -1002,7 +1015,7 @@ subroutine Init(simulation)
     string = 'Transport Stepper:'
     call TimestepperPrintInfo(tran_stepper,option%fid_out,string,option)
   endif    
-   if (option%nsurfflowdof>0) then
+   if (option%surf_flow_on) then
     string = 'Surface Flow Stepper:'
     call TimestepperPrintInfo(surf_flow_stepper,option%fid_out,string,option)
   endif
@@ -1052,7 +1065,8 @@ subroutine Init(simulation)
       write(*,*) ' '
       write(*,*) string
     endif
-    call TSView(surf_flow_solver%ts,PETSC_VIEWER_STDOUT_WORLD,ierr)
+    call TSView(surf_flow_solver%ts,PETSC_VIEWER_STDOUT_WORLD, &
+                ierr);CHKERRQ(ierr)
   endif
 
   if (debug%print_couplers) then
@@ -1078,7 +1092,7 @@ subroutine Init(simulation)
 #endif
 !PETSC_HAVE_HDF5
 
-  if(option%nsurfflowdof > 0) then
+  if (option%surf_flow_on) then
     ! Check if surface-flow is compatible with the given flowmode
     select case(option%iflowmode)
       case(RICHARDS_MODE,TH_MODE)
@@ -1137,7 +1151,7 @@ subroutine Init(simulation)
         option%io_buffer = 'For surface-flow only RICHARDS and TH mode implemented'
         call printErrMsgByRank(option)
     end select
-  endif ! option%nsurfflowdof > 0
+  endif ! option%surf_flow_on
 
   if (simulation%surf_realization%output_option%print_iproc) then
     output_variable => OutputVariableCreate('Processor ID',OUTPUT_DISCRETE,'', &
@@ -1185,7 +1199,7 @@ subroutine Init(simulation)
 
   call printMsg(option," ")
   call printMsg(option,"  Finished Initialization")
-  call PetscLogEventEnd(logging%event_init,ierr)
+  call PetscLogEventEnd(logging%event_init,ierr);CHKERRQ(ierr)
 
 end subroutine Init
 
@@ -2875,6 +2889,36 @@ end subroutine setFlowMode
 
 ! ************************************************************************** !
 
+subroutine setSurfaceFlowMode(option)
+  ! 
+  ! Sets the flow mode for surface (richards, th, etc.)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 07/30/14
+  ! 
+
+  use Option_module
+  use String_module
+
+  implicit none 
+
+  type(option_type) :: option
+  
+  call StringToUpper(option%flowmode)
+  select case(option%flowmode)
+    case('RICHARDS')
+      option%nsurfflowdof = ONE_INTEGER
+    case('TH')
+      option%nsurfflowdof = TWO_INTEGER
+    case default
+      option%io_buffer = 'Mode: '//trim(option%flowmode)//' not recognized.'
+      call printErrMsg(option)
+  end select
+  
+end subroutine setSurfaceFlowMode
+
+! ************************************************************************** !
+
 subroutine assignMaterialPropToRegions(realization)
   ! 
   ! Assigns material properties to
@@ -3031,19 +3075,19 @@ subroutine assignMaterialPropToRegions(realization)
     if (.not.associated(cur_patch)) exit
     grid => cur_patch%grid
     if (option%nflowdof > 0) then
-      call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
-      call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
-      call VecGetArrayF90(field%perm0_xx,perm_xx_p,ierr)
-      call VecGetArrayF90(field%perm0_yy,perm_yy_p,ierr)
-      call VecGetArrayF90(field%perm0_zz,perm_zz_p,ierr)
+      call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr);CHKERRQ(ierr)
+      call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr);CHKERRQ(ierr)
+      call VecGetArrayF90(field%perm0_xx,perm_xx_p,ierr);CHKERRQ(ierr)
+      call VecGetArrayF90(field%perm0_yy,perm_yy_p,ierr);CHKERRQ(ierr)
+      call VecGetArrayF90(field%perm0_zz,perm_zz_p,ierr);CHKERRQ(ierr)
       if (option%mimetic) then
-        call VecGetArrayF90(field%perm0_xz,perm_xz_p,ierr)
-        call VecGetArrayF90(field%perm0_xy,perm_xy_p,ierr)
-        call VecGetArrayF90(field%perm0_yz,perm_yz_p,ierr)
+        call VecGetArrayF90(field%perm0_xz,perm_xz_p,ierr);CHKERRQ(ierr)
+        call VecGetArrayF90(field%perm0_xy,perm_xy_p,ierr);CHKERRQ(ierr)
+        call VecGetArrayF90(field%perm0_yz,perm_yz_p,ierr);CHKERRQ(ierr)
       endif
     endif
-    call VecGetArrayF90(field%porosity0,por0_p,ierr)
-    call VecGetArrayF90(field%tortuosity0,tor0_p,ierr)
+    call VecGetArrayF90(field%porosity0,por0_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayF90(field%tortuosity0,tor0_p,ierr);CHKERRQ(ierr)
         
     material_auxvars => cur_patch%aux%Material%auxvars
 
@@ -3102,19 +3146,19 @@ subroutine assignMaterialPropToRegions(realization)
     enddo
 
     if (option%nflowdof > 0) then
-      call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
-      call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
-      call VecRestoreArrayF90(field%perm0_xx,perm_xx_p,ierr)
-      call VecRestoreArrayF90(field%perm0_yy,perm_yy_p,ierr)
-      call VecRestoreArrayF90(field%perm0_zz,perm_zz_p,ierr)
+      call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr);CHKERRQ(ierr)
+      call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr);CHKERRQ(ierr)
+      call VecRestoreArrayF90(field%perm0_xx,perm_xx_p,ierr);CHKERRQ(ierr)
+      call VecRestoreArrayF90(field%perm0_yy,perm_yy_p,ierr);CHKERRQ(ierr)
+      call VecRestoreArrayF90(field%perm0_zz,perm_zz_p,ierr);CHKERRQ(ierr)
       if (option%mimetic) then
-        call VecRestoreArrayF90(field%perm0_xz,perm_xz_p,ierr)
-        call VecRestoreArrayF90(field%perm0_xy,perm_xy_p,ierr)
-        call VecRestoreArrayF90(field%perm0_yz,perm_yz_p,ierr)
+        call VecRestoreArrayF90(field%perm0_xz,perm_xz_p,ierr);CHKERRQ(ierr)
+        call VecRestoreArrayF90(field%perm0_xy,perm_xy_p,ierr);CHKERRQ(ierr)
+        call VecRestoreArrayF90(field%perm0_yz,perm_yz_p,ierr);CHKERRQ(ierr)
       endif
     endif
-    call VecRestoreArrayF90(field%porosity0,por0_p,ierr)
-    call VecRestoreArrayF90(field%tortuosity0,tor0_p,ierr)
+    call VecRestoreArrayF90(field%porosity0,por0_p,ierr);CHKERRQ(ierr)
+    call VecRestoreArrayF90(field%tortuosity0,tor0_p,ierr);CHKERRQ(ierr)
         
     ! read in any user-defined property fields
     do material_id = 1, size(realization%material_property_array)
@@ -3132,16 +3176,16 @@ subroutine assignMaterialPropToRegions(realization)
                       group_name, &
                       dataset_name, &
                       material_property%porosity_dataset%realization_dependent)
-          call VecGetArrayF90(field%work,vec_p,ierr)
-          call VecGetArrayF90(field%porosity0,por0_p,ierr)
+          call VecGetArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
+          call VecGetArrayF90(field%porosity0,por0_p,ierr);CHKERRQ(ierr)
           do local_id = 1, grid%nlmax
             if (cur_patch%imat(grid%nL2G(local_id)) == &
                 material_property%id) then
               por0_p(local_id) = vec_p(local_id)
             endif
           enddo
-          call VecRestoreArrayF90(field%work,vec_p,ierr)
-          call VecRestoreArrayF90(field%porosity0,por0_p,ierr)
+          call VecRestoreArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
+          call VecRestoreArrayF90(field%porosity0,por0_p,ierr);CHKERRQ(ierr)
         endif
       endif
     enddo
@@ -3196,22 +3240,22 @@ subroutine assignMaterialPropToRegions(realization)
                                TORTUOSITY,0)
   ! rock properties
   do i = 1, max_material_index
-    call VecGetArrayF90(field%work,vec_p,ierr)
+    call VecGetArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
     do local_id = 1, patch%grid%nlmax
       ghosted_id = patch%grid%nL2G(local_id)
       vec_p(local_id) = &
         patch%aux%Material%auxvars(patch%grid%nL2G(local_id))% &
         soil_properties(i)
     enddo
-    call VecRestoreArrayF90(field%work,vec_p,ierr)
+    call VecRestoreArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
     call DiscretizationGlobalToLocal(discretization,field%work, &
                                      field%work_loc,ONEDOF)
-    call VecGetArrayF90(field%work_loc,vec_p,ierr)
+    call VecGetArrayF90(field%work_loc,vec_p,ierr);CHKERRQ(ierr)
     do ghosted_id = 1, patch%grid%ngmax
       patch%aux%Material%auxvars(ghosted_id)%soil_properties(i) = &
          vec_p(ghosted_id)
     enddo
-    call VecRestoreArrayF90(field%work_loc,vec_p,ierr)
+    call VecRestoreArrayF90(field%work_loc,vec_p,ierr);CHKERRQ(ierr)
   enddo
   
 end subroutine assignMaterialPropToRegions
@@ -3335,8 +3379,8 @@ subroutine verifyCoupler(realization,patch,coupler_list)
   do
     if (.not.associated(coupler)) exit
 
-    call VecZeroEntries(global_vec,ierr)
-    call VecGetArrayF90(global_vec,vec_ptr,ierr) 
+    call VecZeroEntries(global_vec,ierr);CHKERRQ(ierr)
+    call VecGetArrayF90(global_vec,vec_ptr,ierr);CHKERRQ(ierr)
     if (associated(coupler%connection_set)) then
       do iconn = 1, coupler%connection_set%num_connections
         local_id = coupler%connection_set%id_dn(iconn)
@@ -3353,7 +3397,7 @@ subroutine verifyCoupler(realization,patch,coupler_list)
         enddo
       endif
     endif
-    call VecRestoreArrayF90(global_vec,vec_ptr,ierr) 
+    call VecRestoreArrayF90(global_vec,vec_ptr,ierr);CHKERRQ(ierr)
     if (len_trim(coupler%flow_condition_name) > 0) then
       dataset_name = coupler%flow_condition_name
     else if (len_trim(coupler%tran_condition_name) > 0) then
@@ -3370,7 +3414,7 @@ subroutine verifyCoupler(realization,patch,coupler_list)
     coupler => coupler%next
   enddo
 
-  call VecDestroy(global_vec,ierr)
+  call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
 
 end subroutine verifyCoupler
 
@@ -3494,10 +3538,10 @@ subroutine readMaterialsFromFile(realization,realization_dependent,filename)
 
     call GridCopyVecToIntegerArray(grid,patch%imat,local_vec,grid%ngmax)
 
-    call VecDestroy(global_vec,ierr)
-    call VecDestroy(local_vec,ierr)
+    call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
+    call VecDestroy(local_vec,ierr);CHKERRQ(ierr)
   else
-    call PetscLogEventBegin(logging%event_hash_map,ierr)
+    call PetscLogEventBegin(logging%event_hash_map,ierr);CHKERRQ(ierr)
     call GridCreateNaturalToGhostedHash(grid,option)
     input => InputCreate(IUNIT_TEMP,filename,option)
     do
@@ -3515,7 +3559,7 @@ subroutine readMaterialsFromFile(realization,realization_dependent,filename)
     enddo
     call InputDestroy(input)
     call GridDestroyHashTable(grid)
-    call PetscLogEventEnd(logging%event_hash_map,ierr)
+    call PetscLogEventEnd(logging%event_hash_map,ierr);CHKERRQ(ierr)
   endif
   
 end subroutine readMaterialsFromFile
@@ -3577,9 +3621,9 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
   option => realization%option
   discretization => realization%discretization
 
-  call VecGetArrayF90(field%perm0_xx,perm_xx_p,ierr)
-  call VecGetArrayF90(field%perm0_yy,perm_yy_p,ierr)
-  call VecGetArrayF90(field%perm0_zz,perm_zz_p,ierr)
+  call VecGetArrayF90(field%perm0_xx,perm_xx_p,ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(field%perm0_yy,perm_yy_p,ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(field%perm0_zz,perm_zz_p,ierr);CHKERRQ(ierr)
   
   if (index(material_property%permeability_dataset%filename,'.h5') > 0) then
     group_name = ''
@@ -3598,7 +3642,7 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
       call HDF5ReadCellIndexedRealArray(realization,global_vec, &
                           material_property%permeability_dataset%filename, &
                           group_name,dataset_name,append_realization_id)
-      call VecGetArrayF90(global_vec,vec_p,ierr)
+      call VecGetArrayF90(global_vec,vec_p,ierr);CHKERRQ(ierr)
       ratio = 1.d0
       scale = 1.d0
       !TODO(geh): fix so that ratio and scale work for perms outside
@@ -3616,7 +3660,7 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
           perm_zz_p(local_id) = vec_p(local_id)*ratio*scale
         endif
       enddo
-      call VecRestoreArrayF90(global_vec,vec_p,ierr)
+      call VecRestoreArrayF90(global_vec,vec_p,ierr);CHKERRQ(ierr)
     else
       temp_int = Z_DIRECTION
       if (grid%itype == STRUCTURED_GRID_MIMETIC) temp_int = YZ_DIRECTION
@@ -3630,19 +3674,19 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
             dataset_name = 'PermeabilityZ'
           case(XY_DIRECTION)
             dataset_name = 'PermeabilityXY'
-            call VecGetArrayF90(field%perm0_xy,perm_xyz_p,ierr)
+            call VecGetArrayF90(field%perm0_xy,perm_xyz_p,ierr);CHKERRQ(ierr)
           case(XZ_DIRECTION)
             dataset_name = 'PermeabilityXZ'
-            call VecGetArrayF90(field%perm0_xz,perm_xyz_p,ierr)
+            call VecGetArrayF90(field%perm0_xz,perm_xyz_p,ierr);CHKERRQ(ierr)
           case(YZ_DIRECTION)
             dataset_name = 'PermeabilityYZ'
-            call VecGetArrayF90(field%perm0_yz,perm_xyz_p,ierr)
+            call VecGetArrayF90(field%perm0_yz,perm_xyz_p,ierr);CHKERRQ(ierr)
         end select          
         call HDF5ReadCellIndexedRealArray(realization,global_vec, &
                                           material_property%permeability_dataset%filename, &
                                           group_name, &
                                           dataset_name,append_realization_id)
-        call VecGetArrayF90(global_vec,vec_p,ierr)
+        call VecGetArrayF90(global_vec,vec_p,ierr);CHKERRQ(ierr)
         select case(idirection)
           case(X_DIRECTION)
             do local_id = 1, grid%nlmax
@@ -3671,22 +3715,22 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
             select case(idirection)
               case(XY_DIRECTION)
                 call VecRestoreArrayF90(field%perm0_xy,perm_xyz_p, &
-                                            ierr)
+                                            ierr);CHKERRQ(ierr)
               case(XZ_DIRECTION)
                 call VecRestoreArrayF90(field%perm0_xz,perm_xyz_p, &
-                                            ierr)
+                                            ierr);CHKERRQ(ierr)
               case(YZ_DIRECTION)
                 call VecRestoreArrayF90(field%perm0_yz,perm_xyz_p, &
-                                            ierr)
+                                            ierr);CHKERRQ(ierr)
             end select
         end select
-        call VecRestoreArrayF90(global_vec,vec_p,ierr)
+        call VecRestoreArrayF90(global_vec,vec_p,ierr);CHKERRQ(ierr)
       enddo
     endif
-    call VecDestroy(global_vec,ierr)
+    call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
   else
 
-    call PetscLogEventBegin(logging%event_hash_map,ierr)
+    call PetscLogEventBegin(logging%event_hash_map,ierr);CHKERRQ(ierr)
     call GridCreateNaturalToGhostedHash(grid,option)
     input => InputCreate(IUNIT_TEMP, &
                 material_property%permeability_dataset%filename,option)
@@ -3711,12 +3755,12 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
 
     call InputDestroy(input)
     call GridDestroyHashTable(grid)
-    call PetscLogEventEnd(logging%event_hash_map,ierr)
+    call PetscLogEventEnd(logging%event_hash_map,ierr);CHKERRQ(ierr)
   endif
   
-  call VecRestoreArrayF90(field%perm0_xx,perm_xx_p,ierr)
-  call VecRestoreArrayF90(field%perm0_yy,perm_yy_p,ierr)
-  call VecRestoreArrayF90(field%perm0_zz,perm_zz_p,ierr)
+  call VecRestoreArrayF90(field%perm0_xx,perm_xx_p,ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%perm0_yy,perm_yy_p,ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%perm0_zz,perm_zz_p,ierr);CHKERRQ(ierr)
   
 end subroutine readPermeabilitiesFromFile
 
@@ -3800,7 +3844,7 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
       endif
       if (option%myrank == option%io_rank) then
         call VecSetValues(natural_vec,read_count,indices,values,INSERT_VALUES, &
-                          ierr)
+                          ierr);CHKERRQ(ierr)
       endif
       count = count + read_count
     enddo
@@ -3816,8 +3860,8 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
     nullify(values)
     deallocate(indices)
     nullify(indices)
-    call VecAssemblyBegin(natural_vec,ierr)
-    call VecAssemblyEnd(natural_vec,ierr)
+    call VecAssemblyBegin(natural_vec,ierr);CHKERRQ(ierr)
+    call VecAssemblyEnd(natural_vec,ierr);CHKERRQ(ierr)
     select case(vector_type)
       case(LOCAL)
         call DiscretizationCreateVector(discretization,ONEDOF,global_vec, &
@@ -3826,12 +3870,12 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
                                            global_vec,ONEDOF)  
         call DiscretizationGlobalToLocal(discretization,global_vec, &
                                          vector,ONEDOF)
-        call VecDestroy(global_vec,ierr)  
+        call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
       case(GLOBAL)
         call DiscretizationNaturalToGlobal(discretization,natural_vec, &
                                            vector,ONEDOF) 
     end select 
-    call VecDestroy(natural_vec,ierr)
+    call VecDestroy(natural_vec,ierr);CHKERRQ(ierr)
   endif
   
 end subroutine readVectorFromFile
@@ -3896,7 +3940,7 @@ subroutine readFlowInitialCondition(realization,filename)
     grid => cur_patch%grid
 
       ! assign initial conditions values to domain
-    call VecGetArrayF90(field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(field%flow_xx, xx_p, ierr);CHKERRQ(ierr)
 
     ! Pressure for all modes 
     offset = 1
@@ -3905,7 +3949,7 @@ subroutine readFlowInitialCondition(realization,filename)
     call HDF5ReadCellIndexedRealArray(realization,field%work, &
                                       filename,group_name, &
                                       dataset_name,option%id>0)
-    call VecGetArrayF90(field%work,vec_p,ierr)
+    call VecGetArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
     do local_id=1, grid%nlmax
       if (cur_patch%imat(grid%nL2G(local_id)) <= 0) cycle
       if (dabs(vec_p(local_id)) < 1.d-40) then
@@ -3915,9 +3959,9 @@ subroutine readFlowInitialCondition(realization,filename)
       idx = (local_id-1)*option%nflowdof + offset
       xx_p(idx) = vec_p(local_id)
     enddo
-    call VecRestoreArrayF90(field%work,vec_p,ierr)
+    call VecRestoreArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
 
-    call VecRestoreArrayF90(field%flow_xx,xx_p, ierr)
+    call VecRestoreArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
         
     cur_patch => cur_patch%next
   enddo
@@ -3925,7 +3969,7 @@ subroutine readFlowInitialCondition(realization,filename)
   ! update dependent vectors
   call DiscretizationGlobalToLocal(discretization,field%flow_xx, &
                                    field%flow_xx_loc,NFLOWDOF)  
-  call VecCopy(field%flow_xx, field%flow_yy, ierr)
+  call VecCopy(field%flow_xx, field%flow_yy, ierr);CHKERRQ(ierr)
 
 end subroutine readFlowInitialCondition
 
@@ -3986,7 +4030,7 @@ subroutine readTransportInitialCondition(realization,filename)
     grid => cur_patch%grid
 
       ! assign initial conditions values to domain
-    call VecGetArrayF90(field%tran_xx,xx_p, ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(field%tran_xx,xx_p, ierr);CHKERRQ(ierr)
 
     ! Primary species concentrations for all modes 
     do idof = 1, option%ntrandof ! primary aqueous concentrations
@@ -3996,7 +4040,7 @@ subroutine readTransportInitialCondition(realization,filename)
       call HDF5ReadCellIndexedRealArray(realization,field%work, &
                                         filename,group_name, &
                                         dataset_name,option%id>0)
-      call VecGetArrayF90(field%work,vec_p,ierr)
+      call VecGetArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
       do local_id=1, grid%nlmax
         if (cur_patch%imat(grid%nL2G(local_id)) <= 0) cycle
         if (vec_p(local_id) < 1.d-40) then
@@ -4006,11 +4050,11 @@ subroutine readTransportInitialCondition(realization,filename)
         idx = (local_id-1)*option%ntrandof + offset
         xx_p(idx) = vec_p(local_id)
       enddo
-      call VecRestoreArrayF90(field%work,vec_p,ierr)
+      call VecRestoreArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
      
     enddo     
 
-    call VecRestoreArrayF90(field%tran_xx,xx_p, ierr)
+    call VecRestoreArrayF90(field%tran_xx,xx_p, ierr);CHKERRQ(ierr)
         
     cur_patch => cur_patch%next
   enddo
@@ -4018,7 +4062,7 @@ subroutine readTransportInitialCondition(realization,filename)
   ! update dependent vectors
   call DiscretizationGlobalToLocal(discretization,field%tran_xx, &
                                    field%tran_xx_loc,NTRANDOF)  
-  call VecCopy(field%tran_xx, field%tran_yy, ierr)
+  call VecCopy(field%tran_xx, field%tran_yy, ierr);CHKERRQ(ierr)
   
 end subroutine readTransportInitialCondition
 
@@ -4049,7 +4093,7 @@ subroutine Create_IOGroups(option)
 
   PetscMPIInt :: numiogroups
 
-  call PetscLogEventBegin(logging%event_create_iogroups,ierr)
+  call PetscLogEventBegin(logging%event_create_iogroups,ierr);CHKERRQ(ierr)
 
   ! Initialize HDF interface to define global constants  
   call h5open_f(ierr)
@@ -4097,7 +4141,7 @@ subroutine Create_IOGroups(option)
     call printMsg(option)      
     write(option%io_buffer, '(" Write group id :  ", i6)') option%iowrite_group_id
     call printMsg(option)      
-  call PetscLogEventEnd(logging%event_create_iogroups,ierr)
+  call PetscLogEventEnd(logging%event_create_iogroups,ierr);CHKERRQ(ierr)
 #endif
 ! SCORPIO
  
@@ -4189,7 +4233,7 @@ subroutine InitReadVelocityField(realization)
                                       group_name,dataset_name,PETSC_FALSE)
     call DiscretizationGlobalToLocal(discretization,field%work,field%work_loc, &
                                      ONEDOF)
-    call VecGetArrayF90(field%work_loc,vec_loc_p,ierr)
+    call VecGetArrayF90(field%work_loc,vec_loc_p,ierr);CHKERRQ(ierr)
     connection_set_list => grid%internal_connection_set_list
     cur_connection_set => connection_set_list%first
     sum_connection = 0  
@@ -4204,7 +4248,7 @@ subroutine InitReadVelocityField(realization)
       enddo
       cur_connection_set => cur_connection_set%next
     enddo
-    call VecRestoreArrayF90(field%work_loc,vec_loc_p,ierr)
+    call VecRestoreArrayF90(field%work_loc,vec_loc_p,ierr);CHKERRQ(ierr)
   enddo
   
   boundary_condition => patch%boundary_conditions%first
@@ -4214,14 +4258,14 @@ subroutine InitReadVelocityField(realization)
     dataset_name = boundary_condition%name
     call HDF5ReadCellIndexedRealArray(realization,field%work,filename, &
                                       group_name,dataset_name,PETSC_FALSE)
-    call VecGetArrayF90(field%work,vec_p,ierr)
+    call VecGetArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
     cur_connection_set => boundary_condition%connection_set
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
       local_id = cur_connection_set%id_dn(iconn)
       patch%boundary_velocities(1,sum_connection) = vec_p(local_id)
     enddo
-    call VecRestoreArrayF90(field%work,vec_p,ierr)
+    call VecRestoreArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
     boundary_condition => boundary_condition%next
   enddo
   

@@ -269,9 +269,10 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   ! override flags since they will soon be out of date  
   patch%surf_aux%SurfaceTH%auxvars_up_to_date = PETSC_FALSE
 
-  call VecGetArrayF90(ff,ff_p, ierr)
-  call VecGetArrayF90(surf_field%mannings_loc,mannings_loc_p, ierr)
-  call VecGetArrayF90(surf_field%area,area_p,ierr)
+  call VecGetArrayF90(ff,ff_p, ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(surf_field%mannings_loc,mannings_loc_p,  &
+                      ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(surf_field%area,area_p,ierr);CHKERRQ(ierr)
 
   ff_p = 0.d0
   Res  = 0.d0
@@ -433,22 +434,23 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
     source_sink => source_sink%next
   enddo
 
-  call VecRestoreArrayF90(ff,ff_p, ierr)
-  call VecRestoreArrayF90(surf_field%mannings_loc,mannings_loc_p,ierr)
-  call VecRestoreArrayF90(surf_field%area,area_p,ierr)
+  call VecRestoreArrayF90(ff,ff_p, ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(surf_field%mannings_loc,mannings_loc_p, &
+                          ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(surf_field%area,area_p,ierr);CHKERRQ(ierr)
 
   if (surf_realization%debug%vecview_solution) then
     string = 'Surf_xx_' // trim(adjustl(string2)) // '.bin'
     call PetscViewerBinaryOpen(surf_realization%option%mycomm,string, &
-                              FILE_MODE_WRITE,viewer,ierr)
-    call VecView(xx,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+                              FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
+    call VecView(xx,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 
     string = 'Surf_ff_' // trim(adjustl(string2)) // '.bin'
     call PetscViewerBinaryOpen(surf_realization%option%mycomm,string, &
-                              FILE_MODE_WRITE,viewer,ierr)
-    call VecView(ff,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+                              FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
+    call VecView(ff,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
 
 end subroutine SurfaceTHRHSFunction
@@ -518,8 +520,9 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
   surf_global_auxvars => patch%surf_aux%SurfaceGlobal%auxvars
   surf_global_auxvars_bc => patch%surf_aux%SurfaceGlobal%auxvars_bc
 
-  call VecGetArrayF90(surf_field%mannings_loc,mannings_loc_p, ierr)
-  call VecGetArrayF90(surf_field%area,area_p,ierr)
+  call VecGetArrayF90(surf_field%mannings_loc,mannings_loc_p,  &
+                      ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(surf_field%area,area_p,ierr);CHKERRQ(ierr)
 
   Res  = 0.d0
   max_allowable_dt = 1.d10
@@ -610,9 +613,17 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
     boundary_condition => boundary_condition%next
   enddo
   
-  call VecRestoreArrayF90(surf_field%mannings_loc,mannings_loc_p,ierr)
-  call VecRestoreArrayF90(surf_field%area,area_p,ierr)
+  call VecRestoreArrayF90(surf_field%mannings_loc,mannings_loc_p, &
+                          ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(surf_field%area,area_p,ierr);CHKERRQ(ierr)
   
+  if (max_allowable_dt < 0.d0) then
+    write(option%io_buffer, &
+          '("surface_th.F90: SurfaceTHComputeMaxDt --> negative max_allowable_dt!",es15.7)') &
+          max_allowable_dt
+    call printErrMsg(option)     
+  endif
+
 end subroutine SurfaceTHComputeMaxDt
 
 ! ************************************************************************** !
@@ -642,6 +653,7 @@ subroutine SurfaceTHFlux(surf_auxvar_up, &
   use Surface_TH_Aux_module
   use Surface_Global_Aux_module
   use Option_module
+  use PFLOTRAN_Constants_module, only : MIN_SURFACE_WATER_HEIGHT
 
   implicit none
 
@@ -684,7 +696,7 @@ subroutine SurfaceTHFlux(surf_auxvar_up, &
     mannings_half = mannings_up
     temp_half = surf_global_auxvar_up%temp + 273.15d0
     unfrozen_fraction_half = surf_auxvar_up%unfrozen_fraction
-    if (surf_global_auxvar_up%head(1)>eps) then
+    if (surf_global_auxvar_up%head(1)>MIN_SURFACE_WATER_HEIGHT) then
       hw_half = surf_global_auxvar_up%head(1)
     else
       hw_half = 0.d0
@@ -693,7 +705,7 @@ subroutine SurfaceTHFlux(surf_auxvar_up, &
     mannings_half = mannings_dn
     temp_half = surf_global_auxvar_dn%temp + 273.15d0
     unfrozen_fraction_half = surf_auxvar_dn%unfrozen_fraction
-    if (surf_global_auxvar_dn%head(1)>eps) then
+    if (surf_global_auxvar_dn%head(1)>MIN_SURFACE_WATER_HEIGHT) then
       hw_half = surf_global_auxvar_dn%head(1)
     else
       hw_half = 0.d0
@@ -741,8 +753,6 @@ subroutine SurfaceTHFlux(surf_auxvar_up, &
 
   ! Average density
   ! Here we only consider the LIQUID fraction.
-  den_aveg = (surf_auxvar_up%den_water_kg + &
-              surf_auxvar_dn%den_water_kg)/2.d0
   den_aveg = (surf_global_auxvar_up%den_kg(1) + &
               surf_global_auxvar_dn%den_kg(1))/2.d0
   ! Temperature difference
@@ -793,7 +803,8 @@ subroutine SurfaceTHBCFlux(ibndtype, &
   !
 
   use Option_module
-  
+  use PFLOTRAN_Constants_module, only : MIN_SURFACE_WATER_HEIGHT
+
   implicit none
 
   type(option_type) :: option
@@ -890,7 +901,7 @@ subroutine SurfaceTHBCFlux(ibndtype, &
     dt_max = min(dt_max, dt)
   endif
 
-  if (head_liq > eps) then
+  if (head_liq > MIN_SURFACE_WATER_HEIGHT) then
     ! Restriction due to energy equation
     dt_max = min(dt_max,(dist**2.d0)*Cw*den/(2.d0*k_therm))
   endif
@@ -956,7 +967,7 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
   surf_global_auxvars_bc => patch%surf_aux%SurfaceGlobal%auxvars_bc
   surf_global_auxvars_ss => patch%surf_aux%SurfaceGlobal%auxvars_ss
   
-  call VecGetArrayF90(surf_field%flow_xx_loc,xx_loc_p, ierr)
+  call VecGetArrayF90(surf_field%flow_xx_loc,xx_loc_p, ierr);CHKERRQ(ierr)
 
   ! Internal aux vars
   do ghosted_id = 1, grid%ngmax
@@ -1058,7 +1069,7 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
 
   patch%surf_aux%SurfaceTH%auxvars_up_to_date = PETSC_TRUE
 
-  call VecRestoreArrayF90(surf_field%flow_xx_loc,xx_loc_p, ierr)
+  call VecRestoreArrayF90(surf_field%flow_xx_loc,xx_loc_p, ierr);CHKERRQ(ierr)
 
 end subroutine SurfaceTHUpdateAuxVars
 
@@ -1081,7 +1092,7 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
   use Connection_module
   use Surface_Material_module
   use EOS_Water_module
-  use PFLOTRAN_Constants_module, only : DUMMY_VALUE
+  use PFLOTRAN_Constants_module, only : DUMMY_VALUE,MIN_SURFACE_WATER_HEIGHT
 
   implicit none
 
@@ -1129,7 +1140,7 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
   ! niter = max(m)
   niter = 20
 
-  call VecGetArrayF90(surf_field%flow_xx_loc,xx_loc_p,ierr)
+  call VecGetArrayF90(surf_field%flow_xx_loc,xx_loc_p,ierr);CHKERRQ(ierr)
 
   ! Update internal aux vars
   do ghosted_id = 1,grid%ngmax
@@ -1137,12 +1148,13 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
     if(local_id>0) then
       iend = local_id*option%nflowdof
       istart = iend-option%nflowdof+1
-      if (xx_loc_p(istart) < 1.d-15) then
+      if (xx_loc_p(istart) < MIN_SURFACE_WATER_HEIGHT) then
+        surf_global_auxvars(ghosted_id)%is_dry = PETSC_TRUE
         !temp = option%reference_temperature
         temp = DUMMY_VALUE
         xx_loc_p(iend) = 0.d0
       else
-
+        surf_global_auxvars(ghosted_id)%is_dry = PETSC_FALSE
         if (surf_global_auxvars(ghosted_id)%temp == DUMMY_VALUE) then
           call EOSWaterdensity(0.d0,option%reference_pressure,den,dum1,ierr)
           surf_global_auxvars(ghosted_id)%den_kg(1) = den
@@ -1197,7 +1209,7 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
     source_sink => source_sink%next
   enddo
 
-  call VecRestoreArrayF90(surf_field%flow_xx_loc,xx_loc_p,ierr)
+  call VecRestoreArrayF90(surf_field%flow_xx_loc,xx_loc_p,ierr);CHKERRQ(ierr)
 
 end subroutine SurfaceTHUpdateTemperature
 
@@ -1271,9 +1283,10 @@ subroutine SurfaceTHUpdateSurfState(surf_realization)
   surf_grid  => surf_realization%discretization%grid
   surf_auxvars => patch%surf_aux%SurfaceTH%auxvars
 
-  call VecGetArrayF90(surf_field%flow_xx, xx_p, ierr)
-  call VecGetArrayF90(surf_field%press_subsurf, surfpress_p, ierr)
-  call VecGetArrayF90(surf_field%temp_subsurf, surftemp_p, ierr)
+  call VecGetArrayF90(surf_field%flow_xx, xx_p, ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(surf_field%press_subsurf, surfpress_p,  &
+                      ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(surf_field%temp_subsurf, surftemp_p, ierr);CHKERRQ(ierr)
 
   count = 0
   do ghosted_id = 1,surf_grid%ngmax
@@ -1299,9 +1312,11 @@ subroutine SurfaceTHUpdateSurfState(surf_realization)
     endif
 
   enddo
-  call VecRestoreArrayF90(surf_field%flow_xx, xx_p, ierr)
-  call VecRestoreArrayF90(surf_field%press_subsurf, surfpress_p, ierr)
-  call VecRestoreArrayF90(surf_field%temp_subsurf, surftemp_p, ierr)
+  call VecRestoreArrayF90(surf_field%flow_xx, xx_p, ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(surf_field%press_subsurf, surfpress_p,  &
+                          ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(surf_field%temp_subsurf, surftemp_p,  &
+                          ierr);CHKERRQ(ierr)
 
   call DiscretizationGlobalToLocal(surf_realization%discretization, &
                                    surf_field%flow_xx, &
@@ -1331,7 +1346,7 @@ subroutine SurfaceTHImplicitAtmForcing(surf_realization)
   use Surface_Material_module
   use EOS_Water_module
   use String_module
-
+  use PFLOTRAN_Constants_module, only : MIN_SURFACE_WATER_HEIGHT
   implicit none
 
   type(surface_realization_type) :: surf_realization
@@ -1382,7 +1397,7 @@ subroutine SurfaceTHImplicitAtmForcing(surf_realization)
   ! niter = max(m)
   niter = 20
 
-  call VecGetArrayF90(surf_field%flow_xx,xx_p,ierr)
+  call VecGetArrayF90(surf_field%flow_xx,xx_p,ierr);CHKERRQ(ierr)
 
   ! Update source/sink aux vars
   source_sink => patch%source_sinks%first
@@ -1408,7 +1423,7 @@ subroutine SurfaceTHImplicitAtmForcing(surf_realization)
           k_therm  = surf_auxvars(ghosted_id)%k_therm
           Cw       = surf_auxvars(ghosted_id)%Cw
 
-          if (head > eps) then
+          if (head > MIN_SURFACE_WATER_HEIGHT) then
 
             call EOSWaterdensity(temp_old,option%reference_pressure,den_old,dum1,ierr)
             call EOSWaterdensity(temp_old,option%reference_pressure,den_iter,dum1,ierr)
@@ -1440,7 +1455,7 @@ subroutine SurfaceTHImplicitAtmForcing(surf_realization)
     source_sink => source_sink%next
   enddo
 
-  call VecRestoreArrayF90(surf_field%flow_xx,xx_p,ierr)
+  call VecRestoreArrayF90(surf_field%flow_xx,xx_p,ierr);CHKERRQ(ierr)
 
 end subroutine SurfaceTHImplicitAtmForcing
 
@@ -1465,7 +1480,7 @@ subroutine SurfaceTHUpdateSolution(surf_realization)
   PetscErrorCode                   :: ierr
 
   surf_field => surf_realization%surf_field
-  call VecCopy(surf_field%flow_xx,surf_field%flow_yy,ierr)
+  call VecCopy(surf_field%flow_xx,surf_field%flow_yy,ierr);CHKERRQ(ierr)
 
 end subroutine SurfaceTHUpdateSolution
 

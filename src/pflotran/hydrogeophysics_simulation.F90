@@ -234,8 +234,9 @@ subroutine HydrogeophysicsStrip(this)
     call HydrogeophysicsWrapperDestroy(this%option)
   endif
   ! created in HydrogeophysicsInitialize()
-  if (this%solution_mpi /= 0) &
-    call VecDestroy(this%solution_mpi ,ierr)
+  if (this%solution_mpi /= 0) then
+    call VecDestroy(this%solution_mpi ,ierr);CHKERRQ(ierr)
+  endif
   this%solution_mpi = 0
 
   if (this%pf_e4d_scatter_comm /= MPI_COMM_NULL)  then

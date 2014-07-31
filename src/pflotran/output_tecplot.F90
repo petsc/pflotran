@@ -315,8 +315,8 @@ subroutine OutputTecplotBlock(realization_base)
     cur_variable => cur_variable%next
   enddo
 
-  call VecDestroy(natural_vec,ierr)
-  call VecDestroy(global_vec,ierr)
+  call VecDestroy(natural_vec,ierr);CHKERRQ(ierr)
+  call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
 
   if (realization_base%discretization%itype == UNSTRUCTURED_GRID .and. &
       realization_base%discretization%grid%itype == &
@@ -543,11 +543,11 @@ subroutine OutputVelocitiesTecplotBlock(realization_base)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization_base,natural_vec,TECPLOT_INTEGER)
   
-  call VecDestroy(natural_vec,ierr)
-  call VecDestroy(global_vec,ierr)
-  call VecDestroy(global_vec_vx,ierr)
-  call VecDestroy(global_vec_vy,ierr)
-  call VecDestroy(global_vec_vz,ierr)
+  call VecDestroy(natural_vec,ierr);CHKERRQ(ierr)
+  call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
+  call VecDestroy(global_vec_vx,ierr);CHKERRQ(ierr)
+  call VecDestroy(global_vec_vy,ierr);CHKERRQ(ierr)
+  call VecDestroy(global_vec_vz,ierr);CHKERRQ(ierr)
 
   if (realization_base%discretization%itype == UNSTRUCTURED_GRID .and. &
       realization_base%discretization%grid%itype == &
@@ -617,7 +617,8 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization_base,iphase, &
     
   nullify(array)
 
-  call PetscLogEventBegin(logging%event_output_write_flux_tecplot,ierr) 
+  call PetscLogEventBegin(logging%event_output_write_flux_tecplot, &
+                          ierr);CHKERRQ(ierr)
                           
   discretization => realization_base%discretization
   patch => realization_base%patch
@@ -854,8 +855,8 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization_base,iphase, &
 
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
                                   option) 
-  call VecZeroEntries(global_vec,ierr)
-  call VecGetArrayF90(global_vec,vec_ptr,ierr)
+  call VecZeroEntries(global_vec,ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(global_vec,vec_ptr,ierr);CHKERRQ(ierr)
   
   ! place interior velocities in a vector
   connection_set_list => grid%internal_connection_set_list
@@ -892,9 +893,9 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization_base,iphase, &
       enddo 
     enddo 
   enddo 
-  call VecRestoreArrayF90(global_vec,vec_ptr,ierr) 
+  call VecRestoreArrayF90(global_vec,vec_ptr,ierr);CHKERRQ(ierr)
    
-  call VecDestroy(global_vec,ierr) 
+  call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
 
 !GEH - Structured Grid Dependence - End
   
@@ -910,7 +911,8 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization_base,iphase, &
 
   if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
 
-  call PetscLogEventEnd(logging%event_output_write_flux_tecplot,ierr) 
+  call PetscLogEventEnd(logging%event_output_write_flux_tecplot, &
+                        ierr);CHKERRQ(ierr)
   
 end subroutine OutputFluxVelocitiesTecplotBlk
 
@@ -1118,9 +1120,9 @@ subroutine OutputVelocitiesTecplotPoint(realization_base)
   call OutputGetCellCenteredVelocities(realization_base,global_vec_vx, &
                                        global_vec_vy,global_vec_vz,LIQUID_PHASE)
 
-  call VecGetArrayF90(global_vec_vx,vec_ptr_vx,ierr)
-  call VecGetArrayF90(global_vec_vy,vec_ptr_vy,ierr)
-  call VecGetArrayF90(global_vec_vz,vec_ptr_vz,ierr)
+  call VecGetArrayF90(global_vec_vx,vec_ptr_vx,ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(global_vec_vy,vec_ptr_vy,ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(global_vec_vz,vec_ptr_vz,ierr);CHKERRQ(ierr)
 
   ! write points
 1000 format(es13.6,1x)
@@ -1139,9 +1141,9 @@ subroutine OutputVelocitiesTecplotPoint(realization_base)
     call OutputGetCellCenteredVelocities(realization_base,global_vec_vx, &
                                          global_vec_vy,global_vec_vz,GAS_PHASE)
 
-    call VecGetArrayF90(global_vec_vgx,vec_ptr_vgx,ierr)
-    call VecGetArrayF90(global_vec_vgy,vec_ptr_vgy,ierr)
-    call VecGetArrayF90(global_vec_vgz,vec_ptr_vgz,ierr)
+    call VecGetArrayF90(global_vec_vgx,vec_ptr_vgx,ierr);CHKERRQ(ierr)
+    call VecGetArrayF90(global_vec_vgy,vec_ptr_vgy,ierr);CHKERRQ(ierr)
+    call VecGetArrayF90(global_vec_vgz,vec_ptr_vgz,ierr);CHKERRQ(ierr)
   endif
 
   do local_id = 1, grid%nlmax
@@ -1168,22 +1170,22 @@ subroutine OutputVelocitiesTecplotPoint(realization_base)
     write(OUTPUT_UNIT,1009)
   enddo
   
-  call VecRestoreArrayF90(global_vec_vx,vec_ptr_vx,ierr)
-  call VecRestoreArrayF90(global_vec_vy,vec_ptr_vy,ierr)
-  call VecRestoreArrayF90(global_vec_vz,vec_ptr_vz,ierr)
+  call VecRestoreArrayF90(global_vec_vx,vec_ptr_vx,ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(global_vec_vy,vec_ptr_vy,ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(global_vec_vz,vec_ptr_vz,ierr);CHKERRQ(ierr)
   
-  call VecDestroy(global_vec_vx,ierr)
-  call VecDestroy(global_vec_vy,ierr)
-  call VecDestroy(global_vec_vz,ierr)
+  call VecDestroy(global_vec_vx,ierr);CHKERRQ(ierr)
+  call VecDestroy(global_vec_vy,ierr);CHKERRQ(ierr)
+  call VecDestroy(global_vec_vz,ierr);CHKERRQ(ierr)
 
   if (option%nphase > 1) then
-    call VecRestoreArrayF90(global_vec_vgx,vec_ptr_vgx,ierr)
-    call VecRestoreArrayF90(global_vec_vgy,vec_ptr_vgy,ierr)
-    call VecRestoreArrayF90(global_vec_vgz,vec_ptr_vgz,ierr)
+    call VecRestoreArrayF90(global_vec_vgx,vec_ptr_vgx,ierr);CHKERRQ(ierr)
+    call VecRestoreArrayF90(global_vec_vgy,vec_ptr_vgy,ierr);CHKERRQ(ierr)
+    call VecRestoreArrayF90(global_vec_vgz,vec_ptr_vgz,ierr);CHKERRQ(ierr)
   
-    call VecDestroy(global_vec_vgx,ierr)
-    call VecDestroy(global_vec_vgy,ierr)
-    call VecDestroy(global_vec_vgz,ierr)
+    call VecDestroy(global_vec_vgx,ierr);CHKERRQ(ierr)
+    call VecDestroy(global_vec_vgy,ierr);CHKERRQ(ierr)
+    call VecDestroy(global_vec_vgz,ierr);CHKERRQ(ierr)
   endif
 
   if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
@@ -1226,7 +1228,7 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization_base,vector)
   Vec :: global_vec
   PetscErrorCode :: ierr
 
-  call PetscLogEventBegin(logging%event_output_vec_tecplot,ierr) 
+  call PetscLogEventBegin(logging%event_output_vec_tecplot,ierr);CHKERRQ(ierr)
 
   option => realization_base%option
   patch => realization_base%patch
@@ -1282,8 +1284,8 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization_base,vector)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization_base,natural_vec,TECPLOT_INTEGER)
   
-  call VecDestroy(natural_vec,ierr)
-  call VecDestroy(global_vec,ierr)
+  call VecDestroy(natural_vec,ierr);CHKERRQ(ierr)
+  call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
 
   if (realization_base%discretization%itype == UNSTRUCTURED_GRID .and. &
       realization_base%discretization%grid%itype == &
@@ -1293,7 +1295,7 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization_base,vector)
 
   close(OUTPUT_UNIT)
 
-  call PetscLogEventEnd(logging%event_output_vec_tecplot,ierr) 
+  call PetscLogEventEnd(logging%event_output_vec_tecplot,ierr);CHKERRQ(ierr)
                             
 end subroutine OutputVectorTecplot
 
@@ -1327,7 +1329,8 @@ subroutine WriteTecplotStructuredGrid(fid,realization_base)
 1000 format(es13.6,1x)
 1001 format(10(es13.6,1x))
   
-  call PetscLogEventBegin(logging%event_output_str_grid_tecplot,ierr) 
+  call PetscLogEventBegin(logging%event_output_str_grid_tecplot, &
+                          ierr);CHKERRQ(ierr)
                               
   patch => realization_base%patch
   grid => patch%grid
@@ -1414,7 +1417,8 @@ subroutine WriteTecplotStructuredGrid(fid,realization_base)
 
   endif
 
-  call PetscLogEventEnd(logging%event_output_str_grid_tecplot,ierr) 
+  call PetscLogEventEnd(logging%event_output_str_grid_tecplot, &
+                        ierr);CHKERRQ(ierr)
                             
 end subroutine WriteTecplotStructuredGrid
 
@@ -1460,33 +1464,33 @@ subroutine WriteTecplotUGridVertices(fid,realization_base)
     case (IMPLICIT_UNSTRUCTURED_GRID, POLYHEDRA_UNSTRUCTURED_GRID)
       call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
       grid%unstructured_grid%num_vertices_global, &
-      global_vertex_vec,ierr)
-      call VecGetLocalSize(global_vertex_vec,local_size,ierr)
+      global_vertex_vec,ierr);CHKERRQ(ierr)
+      call VecGetLocalSize(global_vertex_vec,local_size,ierr);CHKERRQ(ierr)
       call GetVertexCoordinates(grid, global_vertex_vec,X_COORDINATE,option)
-      call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
+      call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr);CHKERRQ(ierr)
       if (option%myrank == option%io_rank) &
         write(fid,'(a)') '# vertex x-coordinate'
       call WriteTecplotDataSet(fid,realization_base,vec_ptr,TECPLOT_REAL, &
       local_size)
-      call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
+      call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr);CHKERRQ(ierr)
 
       call GetVertexCoordinates(grid,global_vertex_vec,Y_COORDINATE,option)
-      call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
+      call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr);CHKERRQ(ierr)
       if (option%myrank == option%io_rank) &
         write(fid,'(a)') '# vertex y-coordinate'
       call WriteTecplotDataSet(fid,realization_base,vec_ptr,TECPLOT_REAL, &
       local_size)
-      call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
+      call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr);CHKERRQ(ierr)
 
       call GetVertexCoordinates(grid,global_vertex_vec, Z_COORDINATE,option)
-      call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
+      call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr);CHKERRQ(ierr)
       if (option%myrank == option%io_rank) &
         write(fid,'(a)') '# vertex z-coordinate'
       call WriteTecplotDataSet(fid,realization_base,vec_ptr,TECPLOT_REAL, &
       local_size)
-      call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
+      call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr);CHKERRQ(ierr)
 
-      call VecDestroy(global_vertex_vec, ierr)
+      call VecDestroy(global_vertex_vec, ierr);CHKERRQ(ierr)
     case (EXPLICIT_UNSTRUCTURED_GRID)
       if (option%myrank == option%io_rank) then
         if (option%print_explicit_primal_grid) then
@@ -1687,17 +1691,17 @@ subroutine WriteTecplotUGridElements(fid,realization_base)
                            NATURAL,option) 
   call GetCellConnectionsTecplot(grid,global_vec)
   call VecScatterBegin(ugdm_element%scatter_gton,global_vec,natural_vec, &
-                        INSERT_VALUES,SCATTER_FORWARD,ierr)
+                        INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   call VecScatterEnd(ugdm_element%scatter_gton,global_vec,natural_vec, &
-                      INSERT_VALUES,SCATTER_FORWARD,ierr) 
-  call VecGetArrayF90(natural_vec,vec_ptr,ierr)
+                      INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(natural_vec,vec_ptr,ierr);CHKERRQ(ierr)
   call WriteTecplotDataSetNumPerLine(fid,realization_base,vec_ptr, &
                                      TECPLOT_INTEGER, &
                                      grid%unstructured_grid%nlmax*8, &
                                      EIGHT_INTEGER)
-  call VecRestoreArrayF90(natural_vec,vec_ptr,ierr)
-  call VecDestroy(global_vec,ierr)
-  call VecDestroy(natural_vec,ierr)
+  call VecRestoreArrayF90(natural_vec,vec_ptr,ierr);CHKERRQ(ierr)
+  call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
+  call VecDestroy(natural_vec,ierr);CHKERRQ(ierr)
   call UGridDMDestroy(ugdm_element)
 
 end subroutine WriteTecplotUGridElements
@@ -1731,7 +1735,7 @@ subroutine GetCellConnectionsTecplot(grid, vec)
   
   ugrid => grid%unstructured_grid
   
-  call VecGetArrayF90( vec, vec_ptr, ierr)
+  call VecGetArrayF90( vec, vec_ptr, ierr);CHKERRQ(ierr)
 
   ! initialize
   vec_ptr = -999.d0
@@ -1808,7 +1812,7 @@ subroutine GetCellConnectionsTecplot(grid, vec)
     end select
   enddo
 
-  call VecRestoreArrayF90( vec, vec_ptr, ierr)
+  call VecRestoreArrayF90( vec, vec_ptr, ierr);CHKERRQ(ierr)
 
 end subroutine GetCellConnectionsTecplot
 
@@ -1835,9 +1839,9 @@ subroutine WriteTecplotDataSetFromVec(fid,realization_base,vec,datatype)
   
   PetscReal, pointer :: vec_ptr(:)
   
-  call VecGetArrayF90(vec,vec_ptr,ierr)                ! 0 implies grid%nlmax
+  call VecGetArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
   call WriteTecplotDataSet(fid,realization_base,vec_ptr,datatype,ZERO_INTEGER) 
-  call VecRestoreArrayF90(vec,vec_ptr,ierr)
+  call VecRestoreArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
   
 end subroutine WriteTecplotDataSetFromVec
 
@@ -1924,7 +1928,8 @@ subroutine WriteTecplotDataSetNumPerLine(fid,realization_base,array,datatype, &
   grid => patch%grid
   option => realization_base%option
 
-  call PetscLogEventBegin(logging%event_output_write_tecplot,ierr)    
+  call PetscLogEventBegin(logging%event_output_write_tecplot, &
+                          ierr);CHKERRQ(ierr)
 
   ! if num_per_line exceeds 100, need to change the format statement below
   if (num_per_line > 100) then
@@ -2136,7 +2141,7 @@ subroutine WriteTecplotDataSetNumPerLine(fid,realization_base,array,datatype, &
     deallocate(real_data)
   endif
 
-  call PetscLogEventEnd(logging%event_output_write_tecplot,ierr)    
+  call PetscLogEventEnd(logging%event_output_write_tecplot,ierr);CHKERRQ(ierr)
 
 end subroutine WriteTecplotDataSetNumPerLine
 

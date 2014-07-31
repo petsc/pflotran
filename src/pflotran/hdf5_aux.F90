@@ -84,7 +84,8 @@ subroutine HDF5ReadNDimRealArray(option,file_id,dataset_name,ndims,dims, &
   PetscInt :: temp_int, i, index
   PetscMPIInt :: int_mpi
   
-  call PetscLogEventBegin(logging%event_read_ndim_real_array_hdf5,ierr)
+  call PetscLogEventBegin(logging%event_read_ndim_real_array_hdf5, &
+                          ierr);CHKERRQ(ierr)
                           
   call h5dopen_f(file_id,dataset_name,data_set_id,hdf5_err)
   call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
@@ -119,10 +120,10 @@ subroutine HDF5ReadNDimRealArray(option,file_id,dataset_name,ndims,dims, &
 #ifdef HDF5_BROADCAST
   if (option%myrank == option%io_rank) then                           
 #endif
-    call PetscLogEventBegin(logging%event_h5dread_f,ierr)
+    call PetscLogEventBegin(logging%event_h5dread_f,ierr);CHKERRQ(ierr)
     call h5dread_f(data_set_id,H5T_NATIVE_DOUBLE,real_array,length, &
                    hdf5_err,memory_space_id,file_space_id,prop_id)
-    call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
+    call PetscLogEventEnd(logging%event_h5dread_f,ierr);CHKERRQ(ierr)
 #ifdef HDF5_BROADCAST
   endif
   if (option%mycommsize > 1) then
@@ -140,7 +141,8 @@ subroutine HDF5ReadNDimRealArray(option,file_id,dataset_name,ndims,dims, &
   deallocate(dims_h5)
   deallocate(max_dims_h5) 
 
-  call PetscLogEventEnd(logging%event_read_ndim_real_array_hdf5,ierr)
+  call PetscLogEventEnd(logging%event_read_ndim_real_array_hdf5, &
+                        ierr);CHKERRQ(ierr)
                           
 end subroutine HDF5ReadNDimRealArray
 

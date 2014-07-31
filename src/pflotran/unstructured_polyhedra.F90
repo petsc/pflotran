@@ -619,7 +619,7 @@ subroutine UGridPolyhedraDecompose(ugrid, option)
       int_array2(ivertex) = ivertex - 1
     enddo
     call PetscSortIntWithPermutation(pgrid%cell_nverts(icell), &
-            int_array1,int_array2,ierr)
+            int_array1,int_array2,ierr);CHKERRQ(ierr)
     int_array2 = int_array2 + 1
     do ivertex = 1, pgrid%cell_nverts(icell)
       pgrid%cell_vertids(ivertex,icell) = &
@@ -708,19 +708,22 @@ subroutine UGridPolyhedraDecompose(ugrid, option)
   call MatCreateMPIAdj(option%mycomm,num_cells_local_old, &
                        pgrid%num_vertices_global, &
                        local_vertex_offset, &
-                       local_vertices,PETSC_NULL_INTEGER,Adj_mat,ierr)
+                       local_vertices,PETSC_NULL_INTEGER,Adj_mat, &
+                       ierr);CHKERRQ(ierr)
 
   ! do not free local_vertices; MatAdjDestroy will do it
   ! do not free local_vertex_offset; MatAdjDestroy will do it
 
 #if UGRID_DEBUG
   if (ugrid%grid_type == THREE_DIM_GRID) then
-    call PetscViewerASCIIOpen(option%mycomm,'Adj_subsurf.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'Adj_subsurf.out',viewer, &
+                              ierr);CHKERRQ(ierr)
   else
-    call PetscViewerASCIIOpen(option%mycomm,'Adj_surf.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'Adj_surf.out',viewer, &
+                              ierr);CHKERRQ(ierr)
   endif
-  call MatView(Adj_mat,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+  call MatView(Adj_mat,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif
 
 #if UGRID_DEBUG
@@ -728,18 +731,21 @@ subroutine UGridPolyhedraDecompose(ugrid, option)
 #endif
 
 #if defined(PETSC_HAVE_PARMETIS)
-  call MatMeshToCellGraph(Adj_mat,num_common_vertices,Dual_mat,ierr)
+  call MatMeshToCellGraph(Adj_mat,num_common_vertices,Dual_mat, &
+                          ierr);CHKERRQ(ierr)
 #endif
-  call MatDestroy(Adj_mat,ierr)
+  call MatDestroy(Adj_mat,ierr);CHKERRQ(ierr)
   
 #if UGRID_DEBUG
   if (ugrid%grid_type == THREE_DIM_GRID) then
-    call PetscViewerASCIIOpen(option%mycomm,'Dual_subsurf.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'Dual_subsurf.out',viewer, &
+                              ierr);CHKERRQ(ierr)
   else
-    call PetscViewerASCIIOpen(option%mycomm,'Dual_surf.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'Dual_surf.out',viewer, &
+                              ierr);CHKERRQ(ierr)
   endif
-  call MatView(Dual_mat,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+  call MatView(Dual_mat,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif
 
   call UGridPartition(ugrid,option,Dual_mat,is_new, &
@@ -751,7 +757,7 @@ subroutine UGridPolyhedraDecompose(ugrid, option)
   ! second argument of ZERO_INTEGER means to use 0-based indexing
   ! MagGetRowIJF90 returns row and column pointers for compressed matrix data
   call MatGetRowIJF90(Dual_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE,num_rows, &
-                      ia_ptr,ja_ptr,success,ierr)
+                      ia_ptr,ja_ptr,success,ierr);CHKERRQ(ierr)
 
   if (.not.success .or. num_rows /= num_cells_local_old) then
     print *, option%myrank, num_rows, success, num_cells_local_old
@@ -787,7 +793,7 @@ subroutine UGridPolyhedraDecompose(ugrid, option)
 #endif
   
   call MatRestoreRowIJF90(Dual_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE, &
-                          num_rows,ia_ptr,ja_ptr,success,ierr)
+                          num_rows,ia_ptr,ja_ptr,success,ierr);CHKERRQ(ierr)
   
   ! in order to redistributed vertex/cell data among ranks, I package it
   ! in a crude way within a strided petsc vec and pass it.  The stride 
@@ -860,9 +866,9 @@ subroutine UGridPolyhedraDecompose(ugrid, option)
   ! 0 = 0-based indexing
   ! MagGetRowIJF90 returns row and column pointers for compressed matrix data
   call MatGetRowIJF90(Dual_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE,num_rows, &
-                      ia_ptr,ja_ptr,success,ierr)
+                      ia_ptr,ja_ptr,success,ierr);CHKERRQ(ierr)
 
-  call VecGetArrayF90(elements_old,vec_ptr,ierr)
+  call VecGetArrayF90(elements_old,vec_ptr,ierr);CHKERRQ(ierr)
   count =  0
   face_count = 0
   do local_id = 1, num_cells_local_old
@@ -978,11 +984,12 @@ subroutine UGridPolyhedraDecompose(ugrid, option)
     vec_ptr(count) = -999999  ! help differentiate
 
   enddo
-  call VecRestoreArrayF90(elements_old,vec_ptr,ierr)
+  call VecRestoreArrayF90(elements_old,vec_ptr,ierr);CHKERRQ(ierr)
 
   call MatRestoreRowIJF90(Dual_mat, ZERO_INTEGER, PETSC_FALSE, PETSC_FALSE, &
-                          num_rows, ia_ptr, ja_ptr, success, ierr)
-  call MatDestroy(Dual_mat,ierr)
+                          num_rows, ia_ptr, ja_ptr, success,  &
+                          ierr);CHKERRQ(ierr)
+  call MatDestroy(Dual_mat,ierr);CHKERRQ(ierr)
 
   call UGridNaturalToPetsc(ugrid, option, &
                            elements_old, elements_local, &
@@ -996,7 +1003,7 @@ subroutine UGridPolyhedraDecompose(ugrid, option)
   vertex_count = 0
   ! yep - load them all into a petsc vector
   ! note that the vertices are still in natural numbering
-  call VecGetArrayF90(elements_local,vec_ptr,ierr)
+  call VecGetArrayF90(elements_local,vec_ptr,ierr);CHKERRQ(ierr)
   do ghosted_id=1, ugrid%ngmax
     do ivertex = 1, ugrid%max_nvert_per_cell
       vertex_id = int(vec_ptr(ivertex + vertex_ids_offset + (ghosted_id-1)*cell_stride))
@@ -1009,7 +1016,7 @@ subroutine UGridPolyhedraDecompose(ugrid, option)
       int_array_pointer(vertex_count) = vertex_id
     enddo
   enddo
-  call VecRestoreArrayF90(elements_local,vec_ptr,ierr)
+  call VecRestoreArrayF90(elements_local,vec_ptr,ierr);CHKERRQ(ierr)
 
   ! sort the vertex ids
   allocate(int_array(vertex_count))
@@ -1021,7 +1028,8 @@ subroutine UGridPolyhedraDecompose(ugrid, option)
   deallocate(int_array_pointer)
   nullify(int_array_pointer)
   int_array2 = int_array2-1
-  call PetscSortIntWithPermutation(vertex_count,int_array,int_array2,ierr)
+  call PetscSortIntWithPermutation(vertex_count,int_array,int_array2, &
+                                   ierr);CHKERRQ(ierr)
   int_array2 = int_array2+1
 
   ! remove duplicates
@@ -1061,7 +1069,7 @@ subroutine UGridPolyhedraDecompose(ugrid, option)
   ! permute the local ids calculated earlier in the int_array4
   allocate(vert_n2g(ugrid%max_nvert_per_cell,2))
 
-  call VecGetArrayF90(elements_local,vec_ptr,ierr)
+  call VecGetArrayF90(elements_local,vec_ptr,ierr);CHKERRQ(ierr)
   do ghosted_id = 1, ugrid%ngmax
      vert_n2g = 0
     do ivertex = 1, ugrid%max_nvert_per_cell
@@ -1098,7 +1106,7 @@ subroutine UGridPolyhedraDecompose(ugrid, option)
     enddo
 
   enddo
-  call VecRestoreArrayF90(elements_local,vec_ptr,ierr)
+  call VecRestoreArrayF90(elements_local,vec_ptr,ierr);CHKERRQ(ierr)
   deallocate(int_array)
   deallocate(int_array2)
   deallocate(int_array3)
@@ -1111,9 +1119,10 @@ subroutine UGridPolyhedraDecompose(ugrid, option)
   else
     string = 'elements_vert_local' // trim(adjustl(string)) // '_surf.out'
   endif
-  call PetscViewerASCIIOpen(PETSC_COMM_SELF,trim(string),viewer,ierr)
-  call VecView(elements_local,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+  call PetscViewerASCIIOpen(PETSC_COMM_SELF,trim(string),viewer, &
+                            ierr);CHKERRQ(ierr)
+  call VecView(elements_local,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif
 
   deallocate(pgrid%cell_ids)
@@ -1141,7 +1150,7 @@ subroutine UGridPolyhedraDecompose(ugrid, option)
   pgrid%cell_faceids = 0
   pgrid%cell_vertids = 0
 
-  call VecGetArrayF90(elements_local,vec_ptr,ierr)
+  call VecGetArrayF90(elements_local,vec_ptr,ierr);CHKERRQ(ierr)
 
   num_faces_local = 0
   do ghosted_id = 1, ugrid%ngmax
@@ -1197,9 +1206,9 @@ subroutine UGridPolyhedraDecompose(ugrid, option)
     enddo
   enddo
 
-  call VecRestoreArrayF90(elements_local,vec_ptr,ierr)
+  call VecRestoreArrayF90(elements_local,vec_ptr,ierr);CHKERRQ(ierr)
 
-  call VecDestroy(elements_local,ierr)
+  call VecDestroy(elements_local,ierr);CHKERRQ(ierr)
 
   ! now we need to work on aligning the original vertex coordinates with 
   ! the current ordering or permuted/rearranged ordering.
@@ -1215,42 +1224,44 @@ subroutine UGridPolyhedraDecompose(ugrid, option)
 
   ! include cell ids (use block ids, not indices)
   call ISCreateBlock(option%mycomm,3,vertex_count, &
-                     int_array,PETSC_COPY_VALUES,is_gather,ierr)
+                     int_array,PETSC_COPY_VALUES,is_gather,ierr);CHKERRQ(ierr)
   deallocate(int_array)
 
   ! create a parallel petsc vector with a stride of 3.
-  call VecCreate(option%mycomm,vertices_old,ierr)
+  call VecCreate(option%mycomm,vertices_old,ierr);CHKERRQ(ierr)
   call VecSetSizes(vertices_old,ugrid%num_vertices_local*3, &
-                  PETSC_DECIDE,ierr)  
-  call VecSetBlockSize(vertices_old,3,ierr)
-  call VecSetFromOptions(vertices_old,ierr)
+                  PETSC_DECIDE,ierr);CHKERRQ(ierr)
+  call VecSetBlockSize(vertices_old,3,ierr);CHKERRQ(ierr)
+  call VecSetFromOptions(vertices_old,ierr);CHKERRQ(ierr)
 
   ! create serial petsc vector with a stride of 3
-  call VecCreate(PETSC_COMM_SELF,vertices_new,ierr)
-  call VecSetSizes(vertices_new,vertex_count*3,PETSC_DECIDE,ierr)
-  call VecSetBlockSize(vertices_new,3,ierr)
-  call VecSetFromOptions(vertices_new,ierr)
+  call VecCreate(PETSC_COMM_SELF,vertices_new,ierr);CHKERRQ(ierr)
+  call VecSetSizes(vertices_new,vertex_count*3,PETSC_DECIDE, &
+                   ierr);CHKERRQ(ierr)
+  call VecSetBlockSize(vertices_new,3,ierr);CHKERRQ(ierr)
+  call VecSetFromOptions(vertices_new,ierr);CHKERRQ(ierr)
 
-  call VecCreate(option%mycomm,vertices_old,ierr)
+  call VecCreate(option%mycomm,vertices_old,ierr);CHKERRQ(ierr)
   call VecSetSizes(vertices_old,ugrid%num_vertices_local*3, &
-                  PETSC_DECIDE,ierr)  
-  call VecSetBlockSize(vertices_old,3,ierr)
-  call VecSetFromOptions(vertices_old,ierr)
+                  PETSC_DECIDE,ierr);CHKERRQ(ierr)
+  call VecSetBlockSize(vertices_old,3,ierr);CHKERRQ(ierr)
+  call VecSetFromOptions(vertices_old,ierr);CHKERRQ(ierr)
 
   ! create serial petsc vector with a stride of 3
-  call VecCreate(PETSC_COMM_SELF,vertices_new,ierr)
-  call VecSetSizes(vertices_new,vertex_count*3,PETSC_DECIDE,ierr)
-  call VecSetBlockSize(vertices_new,3,ierr)
-  call VecSetFromOptions(vertices_new,ierr)
+  call VecCreate(PETSC_COMM_SELF,vertices_new,ierr);CHKERRQ(ierr)
+  call VecSetSizes(vertices_new,vertex_count*3,PETSC_DECIDE, &
+                   ierr);CHKERRQ(ierr)
+  call VecSetBlockSize(vertices_new,3,ierr);CHKERRQ(ierr)
+  call VecSetFromOptions(vertices_new,ierr);CHKERRQ(ierr)
 
   ! load up the coordinates
-  call VecGetArrayF90(vertices_old,vec_ptr,ierr)
+  call VecGetArrayF90(vertices_old,vec_ptr,ierr);CHKERRQ(ierr)
   do ivertex = 1, pgrid%num_vertices_local
     vec_ptr((ivertex-1)*3+1) = pgrid%vertex_coordinates(ivertex)%x
     vec_ptr((ivertex-1)*3+2) = pgrid%vertex_coordinates(ivertex)%y
     vec_ptr((ivertex-1)*3+3) = pgrid%vertex_coordinates(ivertex)%z
   enddo
-  call VecRestoreArrayF90(vertices_old,vec_ptr,ierr)
+  call VecRestoreArrayF90(vertices_old,vec_ptr,ierr);CHKERRQ(ierr)
   deallocate(pgrid%vertex_coordinates)
   nullify(pgrid%vertex_coordinates)
 
@@ -1261,7 +1272,8 @@ subroutine UGridPolyhedraDecompose(ugrid, option)
   enddo
   ! include cell ids
   call ISCreateBlock(option%mycomm,3,vertex_count, &
-                     int_array,PETSC_COPY_VALUES,is_scatter,ierr)
+                     int_array,PETSC_COPY_VALUES,is_scatter, &
+                     ierr);CHKERRQ(ierr)
   deallocate(int_array)
 
   ! resize vertex array to new size
@@ -1283,43 +1295,49 @@ subroutine UGridPolyhedraDecompose(ugrid, option)
 
 #if UGRID_DEBUG
   if (ugrid%grid_type == THREE_DIM_GRID) then
-    call PetscViewerASCIIOpen(option%mycomm,'is_scatter_vert_old_to_new_subsurf.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'is_scatter_vert_old_to_new_subsurf.out',viewer, &
+                              ierr);CHKERRQ(ierr)
   else
-    call PetscViewerASCIIOpen(option%mycomm,'is_scatter_vert_old_to_new_surf.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'is_scatter_vert_old_to_new_surf.out',viewer, &
+                              ierr);CHKERRQ(ierr)
   endif
-  call ISView(is_scatter,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+  call ISView(is_scatter,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   if (ugrid%grid_type == THREE_DIM_GRID) then
-    call PetscViewerASCIIOpen(option%mycomm,'is_gather_vert_old_to_new_subsurf.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'is_gather_vert_old_to_new_subsurf.out',viewer, &
+                              ierr);CHKERRQ(ierr)
   else
-    call PetscViewerASCIIOpen(option%mycomm,'is_gather_vert_old_to_new_surf.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'is_gather_vert_old_to_new_surf.out',viewer, &
+                              ierr);CHKERRQ(ierr)
   endif
-  call ISView(is_gather,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+  call ISView(is_gather,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif
 
   call VecScatterCreate(vertices_old,is_scatter,vertices_new,is_gather, &
-                        vec_scatter,ierr)
-  call ISDestroy(is_scatter,ierr)
-  call ISDestroy(is_gather,ierr)
+                        vec_scatter,ierr);CHKERRQ(ierr)
+  call ISDestroy(is_scatter,ierr);CHKERRQ(ierr)
+  call ISDestroy(is_gather,ierr);CHKERRQ(ierr)
   call VecScatterBegin(vec_scatter,vertices_old,vertices_new, &
-                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+                       INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   call VecScatterEnd(vec_scatter,vertices_old,vertices_new, &
-                     INSERT_VALUES,SCATTER_FORWARD,ierr)
-  call VecScatterDestroy(vec_scatter,ierr)
+                     INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+  call VecScatterDestroy(vec_scatter,ierr);CHKERRQ(ierr)
 
 #if UGRID_DEBUG
   if (ugrid%grid_type == THREE_DIM_GRID) then
-    call PetscViewerASCIIOpen(option%mycomm,'vertex_coord_old_subsurf.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'vertex_coord_old_subsurf.out',viewer, &
+                              ierr);CHKERRQ(ierr)
   else
-    call PetscViewerASCIIOpen(option%mycomm,'vertex_coord_old_surf.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'vertex_coord_old_surf.out',viewer, &
+                              ierr);CHKERRQ(ierr)
   endif
-  call VecView(vertices_old,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+  call VecView(vertices_old,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif
-  call VecDestroy(vertices_old,ierr)
+  call VecDestroy(vertices_old,ierr);CHKERRQ(ierr)
 
-  call VecGetArrayF90(vertices_new,vec_ptr,ierr)
+  call VecGetArrayF90(vertices_new,vec_ptr,ierr);CHKERRQ(ierr)
   do ivertex = 1, ugrid%num_vertices_local
     ugrid%vertices(ivertex)%id = needed_vertices_petsc(ivertex)
     ugrid%vertices(ivertex)%x = vec_ptr((ivertex-1)*3+1)
@@ -1329,7 +1347,7 @@ subroutine UGridPolyhedraDecompose(ugrid, option)
     pgrid%vertex_coordinates(ivertex)%y = vec_ptr((ivertex-1)*3+2)
     pgrid%vertex_coordinates(ivertex)%z = vec_ptr((ivertex-1)*3+3)
   enddo
-  call VecRestoreArrayF90(vertices_new,vec_ptr,ierr)
+  call VecRestoreArrayF90(vertices_new,vec_ptr,ierr);CHKERRQ(ierr)
   
 #if UGRID_DEBUG
   write(string,*) option%myrank
@@ -1338,12 +1356,13 @@ subroutine UGridPolyhedraDecompose(ugrid, option)
   else
     string = 'vertex_coord_new' // trim(adjustl(string)) // '_surf.out'
   endif
-  call PetscViewerASCIIOpen(PETSC_COMM_SELF,trim(string),viewer,ierr)
-  call VecView(vertices_new,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+  call PetscViewerASCIIOpen(PETSC_COMM_SELF,trim(string),viewer, &
+                            ierr);CHKERRQ(ierr)
+  call VecView(vertices_new,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif
 
-  call VecDestroy(vertices_new,ierr)
+  call VecDestroy(vertices_new,ierr);CHKERRQ(ierr)
 
 #if UGRID_DEBUG
   call printMsg(option,'Setting cell types')
@@ -2032,11 +2051,11 @@ subroutine UGridPolyhedraComputeVolumes(ugrid, option, volume)
 
   pgrid => ugrid%polyhedra_grid
 
-  call VecGetArrayF90(volume,vec_ptr,ierr)
+  call VecGetArrayF90(volume,vec_ptr,ierr);CHKERRQ(ierr)
   do icell = 1, ugrid%nlmax
     vec_ptr(icell) = pgrid%cell_volumes(icell)
   enddo
-  call VecRestoreArrayF90(volume,vec_ptr,ierr)
+  call VecRestoreArrayF90(volume,vec_ptr,ierr);CHKERRQ(ierr)
 
 end subroutine UGridPolyhedraComputeVolumes
 
@@ -2318,8 +2337,10 @@ subroutine UGridPolyhedraComputeOutputInfo(ugrid, nL2G, nG2L, nG2A, option)
   enddo
 
   ! Find number of global unique faces. This is required for output
-  call VecCreateMPI(option%mycomm, ugrid%nlmax, PETSC_DETERMINE, nat_cv_proc_rank, ierr)
-  call VecCreateMPI(option%mycomm, ugrid%ngmax, PETSC_DETERMINE, ghosted_cv_proc_rank, ierr)
+  call VecCreateMPI(option%mycomm, ugrid%nlmax, PETSC_DETERMINE, nat_cv_proc_rank,  &
+                    ierr);CHKERRQ(ierr)
+  call VecCreateMPI(option%mycomm, ugrid%ngmax, PETSC_DETERMINE, ghosted_cv_proc_rank,  &
+                    ierr);CHKERRQ(ierr)
 
   ! Populate a vector that contains rank of procoessor on which a given
   ! control volume is active.
@@ -2332,9 +2353,9 @@ subroutine UGridPolyhedraComputeOutputInfo(ugrid, nL2G, nG2L, nG2A, option)
   int_array = int_array - 1
 
   call VecSetValues(nat_cv_proc_rank, ugrid%nlmax, int_array, real_array, INSERT_VALUES, &
-                    ierr)
-  call VecAssemblyBegin(nat_cv_proc_rank, ierr)
-  call VecAssemblyEnd(nat_cv_proc_rank, ierr)
+                    ierr);CHKERRQ(ierr)
+  call VecAssemblyBegin(nat_cv_proc_rank, ierr);CHKERRQ(ierr)
+  call VecAssemblyEnd(nat_cv_proc_rank, ierr);CHKERRQ(ierr)
   deallocate(int_array)
   deallocate(real_array)
 
@@ -2347,27 +2368,28 @@ subroutine UGridPolyhedraComputeOutputInfo(ugrid, nL2G, nG2L, nG2A, option)
   enddo
   int_array = int_array - 1
   call ISCreateBlock(option%mycomm, 1, ugrid%ngmax, int_array, PETSC_COPY_VALUES, &
-                      is_scatter, ierr)
+                      is_scatter, ierr);CHKERRQ(ierr)
 
-  call VecGetOwnershipRange(ghosted_cv_proc_rank, istart, iend, ierr)
+  call VecGetOwnershipRange(ghosted_cv_proc_rank, istart, iend,  &
+                            ierr);CHKERRQ(ierr)
   do ghosted_id = 1, ugrid%ngmax
     int_array(ghosted_id) = ghosted_id + istart
   enddo
   int_array = int_array - 1
   call ISCreateBlock(option%mycomm, 1, ugrid%ngmax, int_array, PETSC_COPY_VALUES, &
-                      is_gather, ierr)
+                      is_gather, ierr);CHKERRQ(ierr)
 
   call VecScatterCreate(nat_cv_proc_rank, is_scatter, ghosted_cv_proc_rank, is_gather, &
-                        vec_scat, ierr)
-  call ISDestroy(is_scatter, ierr)
-  call ISDestroy(is_gather, ierr)
+                        vec_scat, ierr);CHKERRQ(ierr)
+  call ISDestroy(is_scatter, ierr);CHKERRQ(ierr)
+  call ISDestroy(is_gather, ierr);CHKERRQ(ierr)
   deallocate(int_array)
 
   call VecScatterBegin(vec_scat, nat_cv_proc_rank, ghosted_cv_proc_rank, &
-                        INSERT_VALUES, SCATTER_FORWARD, ierr)
+                        INSERT_VALUES, SCATTER_FORWARD, ierr);CHKERRQ(ierr)
   call VecScatterEnd(vec_scat, nat_cv_proc_rank, ghosted_cv_proc_rank, &
-                      INSERT_VALUES, SCATTER_FORWARD, ierr)
-  call VecScatterDestroy(vec_scat, ierr)
+                      INSERT_VALUES, SCATTER_FORWARD, ierr);CHKERRQ(ierr)
+  call VecScatterDestroy(vec_scat, ierr);CHKERRQ(ierr)
 
   ! Find the number of unique faces
   allocate(pgrid%uface_localids(pgrid%ugrid_num_faces_local))
@@ -2380,7 +2402,7 @@ subroutine UGridPolyhedraComputeOutputInfo(ugrid, nL2G, nG2L, nG2A, option)
   pgrid%uface_left_natcellids = -1
   pgrid%uface_right_natcellids = -1
 
-  call VecGetArrayF90(ghosted_cv_proc_rank, v_loc_p, ierr)
+  call VecGetArrayF90(ghosted_cv_proc_rank, v_loc_p, ierr);CHKERRQ(ierr)
   pgrid%num_ufaces_local = 0
   pgrid%uface_nverts = 0
   do iface = 1, pgrid%ugrid_num_faces_local
@@ -2420,9 +2442,9 @@ subroutine UGridPolyhedraComputeOutputInfo(ugrid, nL2G, nG2L, nG2A, option)
       endif
     endif
   enddo
-  call VecRestoreArrayF90(ghosted_cv_proc_rank, v_loc_p, ierr)
+  call VecRestoreArrayF90(ghosted_cv_proc_rank, v_loc_p, ierr);CHKERRQ(ierr)
 
-  call VecDestroy(ghosted_cv_proc_rank, ierr)
+  call VecDestroy(ghosted_cv_proc_rank, ierr);CHKERRQ(ierr)
 
 
   call MPI_Allreduce(pgrid%num_ufaces_local, pgrid%num_ufaces_global, &

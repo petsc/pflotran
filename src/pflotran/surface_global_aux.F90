@@ -13,6 +13,7 @@ module Surface_Global_Aux_module
     PetscReal, pointer :: head(:)   ! [m]
     PetscReal :: temp   ! [C]
     PetscReal, pointer :: den_kg(:) ! [kg/m^3]
+    PetscBool :: is_dry
   end type surface_global_auxvar_type
   
   type, public :: surface_global_type
@@ -85,7 +86,7 @@ subroutine SurfaceGlobalAuxVarInit(auxvar,option)
   type(option_type) :: option
   
   auxvar%istate = 0
-
+  auxvar%is_dry = PETSC_FALSE
   allocate(auxvar%head(option%nphase))
   auxvar%head = 0.d0
   auxvar%temp = option%reference_temperature
@@ -112,6 +113,7 @@ subroutine SurfaceGlobalAuxVarCopy(auxvar,auxvar2,option)
   type(option_type) :: option
 
   auxvar2%istate = auxvar%istate
+  auxvar2%is_dry = auxvar%is_dry
   auxvar2%head = auxvar%head
   auxvar2%temp = auxvar%temp
   auxvar2%den_kg = auxvar%den_kg

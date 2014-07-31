@@ -101,8 +101,10 @@ subroutine StructuredGlobalToLocal(this,source,destination)
 
   PetscErrorCode :: ierr
   
-  call DMGlobalToLocalBegin(this%dm,source,INSERT_VALUES,destination,ierr)
-  call DMGlobalToLocalEnd(this%dm,source,INSERT_VALUES,destination,ierr)
+  call DMGlobalToLocalBegin(this%dm,source,INSERT_VALUES,destination, &
+                            ierr);CHKERRQ(ierr)
+  call DMGlobalToLocalEnd(this%dm,source,INSERT_VALUES,destination, &
+                          ierr);CHKERRQ(ierr)
   
 end subroutine StructuredGlobalToLocal
 
@@ -124,8 +126,10 @@ subroutine StructuredLocalToGlobal(this,source,destination)
 
   PetscErrorCode :: ierr
   
-  call DMLocalToGlobalBegin(this%dm,source,INSERT_VALUES,destination,ierr)
-  call DMLocalToGlobalEnd(this%dm,source,INSERT_VALUES,destination,ierr)
+  call DMLocalToGlobalBegin(this%dm,source,INSERT_VALUES,destination, &
+                            ierr);CHKERRQ(ierr)
+  call DMLocalToGlobalEnd(this%dm,source,INSERT_VALUES,destination, &
+                          ierr);CHKERRQ(ierr)
   
 end subroutine StructuredLocalToGlobal
 
@@ -147,8 +151,10 @@ subroutine StructuredLocalToLocal(this,source,destination)
 
   PetscErrorCode :: ierr
   
-  call DMLocalToLocalBegin(this%dm,source,INSERT_VALUES,destination,ierr)
-  call DMLocalToLocalEnd(this%dm,source,INSERT_VALUES,destination,ierr)
+  call DMLocalToLocalBegin(this%dm,source,INSERT_VALUES,destination, &
+                           ierr);CHKERRQ(ierr)
+  call DMLocalToLocalEnd(this%dm,source,INSERT_VALUES,destination, &
+                         ierr);CHKERRQ(ierr)
   
 end subroutine StructuredLocalToLocal
 
@@ -170,8 +176,10 @@ subroutine StructuredGlobalToNatural(this,source,destination)
 
   PetscErrorCode :: ierr
   
-  call DMDAGlobalToNaturalBegin(this%dm,source,INSERT_VALUES,destination,ierr)
-  call DMDAGlobalToNaturalEnd(this%dm,source,INSERT_VALUES,destination,ierr)
+  call DMDAGlobalToNaturalBegin(this%dm,source,INSERT_VALUES,destination, &
+                                ierr);CHKERRQ(ierr)
+  call DMDAGlobalToNaturalEnd(this%dm,source,INSERT_VALUES,destination, &
+                              ierr);CHKERRQ(ierr)
   
 end subroutine StructuredGlobalToNatural
 
@@ -193,8 +201,10 @@ subroutine StructuredNaturalToGlobal(this,source,destination)
 
   PetscErrorCode :: ierr
   
-  call DMDANaturalToGlobalBegin(this%dm,source,INSERT_VALUES,destination,ierr)
-  call DMDANaturalToGlobalEnd(this%dm,source,INSERT_VALUES,destination,ierr)
+  call DMDANaturalToGlobalBegin(this%dm,source,INSERT_VALUES,destination, &
+                                ierr);CHKERRQ(ierr)
+  call DMDANaturalToGlobalEnd(this%dm,source,INSERT_VALUES,destination, &
+                              ierr);CHKERRQ(ierr)
   
 end subroutine StructuredNaturalToGlobal
 

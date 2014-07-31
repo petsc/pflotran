@@ -241,7 +241,7 @@ subroutine GeomechRealizCreateDiscretization(geomech_realization)
   ! n degree of freedom, global
   call GeomechDiscretizationCreateVector(geomech_discretization,NGEODOF,geomech_field%disp_xx, &
                                          GLOBAL,option)
-  call VecSet(geomech_field%disp_xx,0.d0,ierr)
+  call VecSet(geomech_field%disp_xx,0.d0,ierr);CHKERRQ(ierr)
 
   call GeomechDiscretizationDuplicateVector(geomech_discretization,geomech_field%disp_xx, &
                                             geomech_field%disp_r)
@@ -251,7 +251,7 @@ subroutine GeomechRealizCreateDiscretization(geomech_realization)
   ! 1 degree of freedom, global                                                                                    
   call GeomechDiscretizationCreateVector(geomech_discretization,ONEDOF,geomech_field%press, &
                                          GLOBAL,option)
-  call VecSet(geomech_field%press,0.d0,ierr)
+  call VecSet(geomech_field%press,0.d0,ierr);CHKERRQ(ierr)
   
   call GeomechDiscretizationDuplicateVector(geomech_discretization,geomech_field%press, &
                                             geomech_field%temp)
@@ -259,7 +259,7 @@ subroutine GeomechRealizCreateDiscretization(geomech_realization)
   ! n degrees of freedom, local
   call GeomechDiscretizationCreateVector(geomech_discretization,NGEODOF,geomech_field%disp_xx_loc, &
                                          LOCAL,option)
-  call VecSet(geomech_field%disp_xx_loc,0.d0,ierr)
+  call VecSet(geomech_field%disp_xx_loc,0.d0,ierr);CHKERRQ(ierr)
  
   call GeomechDiscretizationDuplicateVector(geomech_discretization,geomech_field%disp_xx_loc, &
                                             geomech_field%work_loc)
@@ -271,7 +271,7 @@ subroutine GeomechRealizCreateDiscretization(geomech_realization)
   call GeomechDiscretizationCreateVector(geomech_discretization,ONEDOF,geomech_field%press_loc, &
                                          LOCAL,option)
 
-  call VecSet(geomech_field%press_loc,0.d0,ierr)
+  call VecSet(geomech_field%press_loc,0.d0,ierr);CHKERRQ(ierr)
   
   call GeomechDiscretizationDuplicateVector(geomech_discretization,geomech_field%press_loc, &
                                             geomech_field%temp_loc)
@@ -289,7 +289,7 @@ subroutine GeomechRealizCreateDiscretization(geomech_realization)
   call GeomechDiscretizationCreateVector(geomech_discretization,SIX_INTEGER,geomech_field%strain_loc, &
                                          LOCAL,option)
 
-  call VecSet(geomech_field%strain_loc,0.d0,ierr)
+  call VecSet(geomech_field%strain_loc,0.d0,ierr);CHKERRQ(ierr)
  
   call GeomechDiscretizationDuplicateVector(geomech_discretization,geomech_field%strain_loc, &
                                             geomech_field%stress_loc)
@@ -297,7 +297,7 @@ subroutine GeomechRealizCreateDiscretization(geomech_realization)
   call GeomechDiscretizationCreateVector(geomech_discretization,SIX_INTEGER,geomech_field%strain, &
                                          GLOBAL,option)
 
-  call VecSet(geomech_field%strain,0.d0,ierr)
+  call VecSet(geomech_field%strain,0.d0,ierr);CHKERRQ(ierr)
  
   call GeomechDiscretizationDuplicateVector(geomech_discretization,geomech_field%strain, &
                                             geomech_field%stress) 
@@ -367,38 +367,39 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization,geomech_realization, &
   ! Convert from 1-based to 0-based  
   call ISCreateGeneral(option%mycomm,geomech_grid%mapping_num_cells, &
                        geomech_grid%mapping_cell_ids_flow-1, &
-                       PETSC_COPY_VALUES,is_subsurf,ierr)
+                       PETSC_COPY_VALUES,is_subsurf,ierr);CHKERRQ(ierr)
                        
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm, &
                             'geomech_is_mapping_cell_ids_flow.out', &
-                            viewer,ierr)
-  call ISView(is_subsurf,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+                            viewer,ierr);CHKERRQ(ierr)
+  call ISView(is_subsurf,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif   
  
   call ISCreateGeneral(option%mycomm,geomech_grid%mapping_num_cells, &
                        geomech_grid%mapping_vertex_ids_geomech-1, &
-                       PETSC_COPY_VALUES,is_geomech,ierr)   
+                       PETSC_COPY_VALUES,is_geomech,ierr);CHKERRQ(ierr)
 
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm, &
                             'geomech_is_mapping_vertex_ids_geomech.out', &
-                            viewer,ierr)
-  call ISView(is_geomech,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+                            viewer,ierr);CHKERRQ(ierr)
+  call ISView(is_geomech,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif   
 
-  call AOCreateMappingIS(is_geomech,is_subsurf,ao_geomech_to_subsurf_natural,ierr)
-  call ISDestroy(is_geomech,ierr)
-  call ISDestroy(is_subsurf,ierr)
+  call AOCreateMappingIS(is_geomech,is_subsurf,ao_geomech_to_subsurf_natural, &
+                         ierr);CHKERRQ(ierr)
+  call ISDestroy(is_geomech,ierr);CHKERRQ(ierr)
+  call ISDestroy(is_subsurf,ierr);CHKERRQ(ierr)
 
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm, &
                             'geomech_ao_geomech_to_subsurf_natural.out', &
-                            viewer,ierr)
-  call AOView(ao_geomech_to_subsurf_natural,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+                            viewer,ierr);CHKERRQ(ierr)
+  call AOView(ao_geomech_to_subsurf_natural,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif  
   
   allocate(int_array(grid%nlmax))
@@ -407,14 +408,15 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization,geomech_realization, &
   enddo
 
   call ISCreateGeneral(option%mycomm,grid%nlmax, &
-                       int_array,PETSC_COPY_VALUES,is_subsurf_natural,ierr)
+                       int_array,PETSC_COPY_VALUES,is_subsurf_natural, &
+                       ierr);CHKERRQ(ierr)
   deallocate(int_array)
 
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'geomech_is_subsurf_natural.out', &
-                            viewer,ierr)
-  call ISView(is_subsurf_natural,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+                            viewer,ierr);CHKERRQ(ierr)
+  call ISView(is_subsurf_natural,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif  
 
   allocate(int_array(grid%nlmax))
@@ -423,43 +425,45 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization,geomech_realization, &
   enddo
 
   call ISCreateGeneral(option%mycomm,grid%nlmax, &
-                       int_array,PETSC_COPY_VALUES,is_subsurf_petsc,ierr)
+                       int_array,PETSC_COPY_VALUES,is_subsurf_petsc, &
+                       ierr);CHKERRQ(ierr)
   deallocate(int_array)
   
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'geomech_is_subsurf_petsc.out', &
-                            viewer,ierr)
-  call ISView(is_subsurf_natural,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+                            viewer,ierr);CHKERRQ(ierr)
+  call ISView(is_subsurf_natural,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif  
   
-  call ISDuplicate(is_subsurf_natural,is_geomech_petsc,ierr)
-  call ISCopy(is_subsurf_natural,is_geomech_petsc,ierr)
+  call ISDuplicate(is_subsurf_natural,is_geomech_petsc,ierr);CHKERRQ(ierr)
+  call ISCopy(is_subsurf_natural,is_geomech_petsc,ierr);CHKERRQ(ierr)
   
-  call AOPetscToApplicationIS(ao_geomech_to_subsurf_natural,is_geomech_petsc,ierr)
+  call AOPetscToApplicationIS(ao_geomech_to_subsurf_natural,is_geomech_petsc, &
+                              ierr);CHKERRQ(ierr)
  
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm, &
                             'geomech_is_subsurf_petsc_geomech_natural.out', &
-                            viewer,ierr)
-  call ISView(is_geomech_petsc,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+                            viewer,ierr);CHKERRQ(ierr)
+  call ISView(is_geomech_petsc,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif   
 
   call AOApplicationToPetscIS(geomech_grid%ao_natural_to_petsc_nodes, &
-                              is_geomech_petsc,ierr)
+                              is_geomech_petsc,ierr);CHKERRQ(ierr)
                               
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm, &
                             'geomech_is_subsurf_petsc_geomech_petsc.out', &
-                            viewer,ierr)
-  call ISView(is_geomech_petsc,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+                            viewer,ierr);CHKERRQ(ierr)
+  call ISView(is_geomech_petsc,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif                              
 
   call VecScatterCreate(realization%field%porosity0,is_subsurf_petsc, &
                         geomech_realization%geomech_field%press, &
-                        is_geomech_petsc,scatter,ierr)
+                        is_geomech_petsc,scatter,ierr);CHKERRQ(ierr)
                         
   if (ierr /= 0) then
     option%io_buffer = 'The number of cells specified in ' // &
@@ -471,59 +475,62 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization,geomech_realization, &
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm, &
                             'geomech_scatter_subsurf_to_geomech.out', &
-                            viewer,ierr)
-  call VecScatterView(scatter,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+                            viewer,ierr);CHKERRQ(ierr)
+  call VecScatterView(scatter,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif
 
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_realization% &
                                                    geomech_discretization,ONEDOF)
 
-  call VecScatterCopy(scatter,dm_ptr%gmdm%scatter_subsurf_to_geomech_ndof,ierr)
+  call VecScatterCopy(scatter,dm_ptr%gmdm%scatter_subsurf_to_geomech_ndof, &
+                      ierr);CHKERRQ(ierr)
   
-  call VecScatterDestroy(scatter,ierr)
+  call VecScatterDestroy(scatter,ierr);CHKERRQ(ierr)
   
   ! Geomech to subsurf scatter
   
   allocate(int_array(grid%nlmax))
-  call ISGetIndicesF90(is_geomech_petsc,int_ptr,ierr)
+  call ISGetIndicesF90(is_geomech_petsc,int_ptr,ierr);CHKERRQ(ierr)
   do local_id = 1, grid%nlmax
     int_array(local_id) = int_ptr(local_id)
   enddo  
-  call ISRestoreIndicesF90(is_geomech_petsc,int_ptr,ierr)
+  call ISRestoreIndicesF90(is_geomech_petsc,int_ptr,ierr);CHKERRQ(ierr)
   call ISCreateBlock(option%mycomm,SIX_INTEGER,grid%nlmax, &
-                     int_array,PETSC_COPY_VALUES,is_geomech_petsc_block,ierr)
+                     int_array,PETSC_COPY_VALUES,is_geomech_petsc_block, &
+                     ierr);CHKERRQ(ierr)
   deallocate(int_array)
 
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm, &
                             'geomech_is_geomech_petsc_block.out', &
-                            viewer,ierr)
-  call ISView(is_geomech_petsc_block,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+                            viewer,ierr);CHKERRQ(ierr)
+  call ISView(is_geomech_petsc_block,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif 
 
   allocate(int_array(grid%nlmax))
-  call ISGetIndicesF90(is_subsurf_petsc,int_ptr,ierr)
+  call ISGetIndicesF90(is_subsurf_petsc,int_ptr,ierr);CHKERRQ(ierr)
   do local_id = 1, grid%nlmax
     int_array(local_id) = int_ptr(local_id)
   enddo  
-  call ISRestoreIndicesF90(is_subsurf_petsc,int_ptr,ierr)
+  call ISRestoreIndicesF90(is_subsurf_petsc,int_ptr,ierr);CHKERRQ(ierr)
   call ISCreateBlock(option%mycomm,SIX_INTEGER,grid%nlmax, &
-                     int_array,PETSC_COPY_VALUES,is_subsurf_petsc_block,ierr)
+                     int_array,PETSC_COPY_VALUES,is_subsurf_petsc_block, &
+                     ierr);CHKERRQ(ierr)
   deallocate(int_array)
 
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm, &
                             'geomech_is_subsurf_petsc_block.out', &
-                            viewer,ierr)
-  call ISView(is_subsurf_petsc_block,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+                            viewer,ierr);CHKERRQ(ierr)
+  call ISView(is_subsurf_petsc_block,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif  
   
   call VecScatterCreate(geomech_realization%geomech_field%strain,is_geomech_petsc_block, &
                         geomech_realization%geomech_field%strain_subsurf, &
-                        is_subsurf_petsc_block,scatter,ierr)
+                        is_subsurf_petsc_block,scatter,ierr);CHKERRQ(ierr)
                         
   if (ierr /= 0) then
     option%io_buffer = 'The number of cells specified in ' // &
@@ -535,24 +542,25 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization,geomech_realization, &
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm, &
                             'geomech_scatter_geomech_to_subsurf_block.out', &
-                            viewer,ierr)
-  call VecScatterView(scatter,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+                            viewer,ierr);CHKERRQ(ierr)
+  call VecScatterView(scatter,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif
 
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_realization% &
                                                    geomech_discretization,ONEDOF)
 
-  call VecScatterCopy(scatter,dm_ptr%gmdm%scatter_geomech_to_subsurf_ndof,ierr)
+  call VecScatterCopy(scatter,dm_ptr%gmdm%scatter_geomech_to_subsurf_ndof, &
+                      ierr);CHKERRQ(ierr)
   
-  call ISDestroy(is_geomech,ierr)
-  call ISDestroy(is_subsurf,ierr)
-  call ISDestroy(is_subsurf_natural,ierr)
-  call ISDestroy(is_geomech_petsc,ierr)
-  call ISDestroy(is_subsurf_petsc,ierr)
-  call AODestroy(ao_geomech_to_subsurf_natural,ierr) 
-  call ISDestroy(is_subsurf_petsc_block,ierr)
-  call ISDestroy(is_geomech_petsc_block,ierr)
+  call ISDestroy(is_geomech,ierr);CHKERRQ(ierr)
+  call ISDestroy(is_subsurf,ierr);CHKERRQ(ierr)
+  call ISDestroy(is_subsurf_natural,ierr);CHKERRQ(ierr)
+  call ISDestroy(is_geomech_petsc,ierr);CHKERRQ(ierr)
+  call ISDestroy(is_subsurf_petsc,ierr);CHKERRQ(ierr)
+  call AODestroy(ao_geomech_to_subsurf_natural,ierr);CHKERRQ(ierr)
+  call ISDestroy(is_subsurf_petsc_block,ierr);CHKERRQ(ierr)
+  call ISDestroy(is_geomech_petsc_block,ierr);CHKERRQ(ierr)
 
 end subroutine GeomechRealizMapSubsurfGeomechGrid
 
@@ -586,7 +594,7 @@ subroutine GeomechGridElemSharedByNodes(geomech_realization)
   grid => geomech_realization%geomech_discretization%grid
   
   call VecGetArrayF90(grid%no_elems_sharing_node_loc,elem_sharing_node_loc_p, &
-                      ierr)
+                      ierr);CHKERRQ(ierr)
   
   do ielem = 1, grid%nlmax_elem
     elenodes = grid%elem_nodes(1:grid%elem_nodes(0,ielem),ielem)
@@ -598,7 +606,7 @@ subroutine GeomechGridElemSharedByNodes(geomech_realization)
   enddo
   
   call VecRestoreArrayF90(grid%no_elems_sharing_node_loc, &
-                         elem_sharing_node_loc_p,ierr)
+                         elem_sharing_node_loc_p,ierr);CHKERRQ(ierr)
 
   
   ! Local to global scatter
@@ -1336,7 +1344,7 @@ subroutine GeomechRealizCreateDiscretization(geomech_realization)
   ! n degree of freedom, global
   call GeomechDiscretizationCreateVector(geomech_discretization,NGEODOF,geomech_field%disp_xx, &
                                          GLOBAL,option)
-  call VecSet(geomech_field%disp_xx,0.d0,ierr)
+  call VecSet(geomech_field%disp_xx,0.d0,ierr);CHKERRQ(ierr)
 
   call GeomechDiscretizationDuplicateVector(geomech_discretization,geomech_field%disp_xx, &
                                             geomech_field%disp_r)
@@ -1346,7 +1354,7 @@ subroutine GeomechRealizCreateDiscretization(geomech_realization)
   ! 1 degree of freedom, global                                                                                    
   call GeomechDiscretizationCreateVector(geomech_discretization,ONEDOF,geomech_field%press, &
                                          GLOBAL,option)
-  call VecSet(geomech_field%press,0.d0,ierr)
+  call VecSet(geomech_field%press,0.d0,ierr);CHKERRQ(ierr)
   
   call GeomechDiscretizationDuplicateVector(geomech_discretization,geomech_field%press, &
                                             geomech_field%temp)
@@ -1354,7 +1362,7 @@ subroutine GeomechRealizCreateDiscretization(geomech_realization)
   ! n degrees of freedom, local
   call GeomechDiscretizationCreateVector(geomech_discretization,NGEODOF,geomech_field%disp_xx_loc, &
                                          LOCAL,option)
-  call VecSet(geomech_field%disp_xx_loc,0.d0,ierr)
+  call VecSet(geomech_field%disp_xx_loc,0.d0,ierr);CHKERRQ(ierr)
  
   call GeomechDiscretizationDuplicateVector(geomech_discretization,geomech_field%disp_xx_loc, &
                                             geomech_field%work_loc)
@@ -1366,7 +1374,7 @@ subroutine GeomechRealizCreateDiscretization(geomech_realization)
   call GeomechDiscretizationCreateVector(geomech_discretization,ONEDOF,geomech_field%press_loc, &
                                          LOCAL,option)
 
-  call VecSet(geomech_field%press_loc,0.d0,ierr)
+  call VecSet(geomech_field%press_loc,0.d0,ierr);CHKERRQ(ierr)
   
   call GeomechDiscretizationDuplicateVector(geomech_discretization,geomech_field%press_loc, &
                                             geomech_field%temp_loc)
@@ -1384,7 +1392,7 @@ subroutine GeomechRealizCreateDiscretization(geomech_realization)
   call GeomechDiscretizationCreateVector(geomech_discretization,SIX_INTEGER,geomech_field%strain_loc, &
                                          LOCAL,option)
 
-  call VecSet(geomech_field%strain_loc,0.d0,ierr)
+  call VecSet(geomech_field%strain_loc,0.d0,ierr);CHKERRQ(ierr)
  
   call GeomechDiscretizationDuplicateVector(geomech_discretization,geomech_field%strain_loc, &
                                             geomech_field%stress_loc)
@@ -1392,7 +1400,7 @@ subroutine GeomechRealizCreateDiscretization(geomech_realization)
   call GeomechDiscretizationCreateVector(geomech_discretization,SIX_INTEGER,geomech_field%strain, &
                                          GLOBAL,option)
 
-  call VecSet(geomech_field%strain,0.d0,ierr)
+  call VecSet(geomech_field%strain,0.d0,ierr);CHKERRQ(ierr)
  
   call GeomechDiscretizationDuplicateVector(geomech_discretization,geomech_field%strain, &
                                             geomech_field%stress) 
@@ -1463,38 +1471,39 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization,geomech_realization, &
   ! Convert from 1-based to 0-based  
   call ISCreateGeneral(option%mycomm,geomech_grid%mapping_num_cells, &
                        geomech_grid%mapping_cell_ids_flow-1, &
-                       PETSC_COPY_VALUES,is_subsurf,ierr)
+                       PETSC_COPY_VALUES,is_subsurf,ierr);CHKERRQ(ierr)
                        
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm, &
                             'geomech_is_mapping_cell_ids_flow.out', &
-                            viewer,ierr)
-  call ISView(is_subsurf,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+                            viewer,ierr);CHKERRQ(ierr)
+  call ISView(is_subsurf,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif   
  
   call ISCreateGeneral(option%mycomm,geomech_grid%mapping_num_cells, &
                        geomech_grid%mapping_vertex_ids_geomech-1, &
-                       PETSC_COPY_VALUES,is_geomech,ierr)   
+                       PETSC_COPY_VALUES,is_geomech,ierr);CHKERRQ(ierr)
 
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm, &
                             'geomech_is_mapping_vertex_ids_geomech.out', &
-                            viewer,ierr)
-  call ISView(is_geomech,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+                            viewer,ierr);CHKERRQ(ierr)
+  call ISView(is_geomech,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif   
 
-  call AOCreateMappingIS(is_geomech,is_subsurf,ao_geomech_to_subsurf_natural,ierr)
-  call ISDestroy(is_geomech,ierr)
-  call ISDestroy(is_subsurf,ierr)
+  call AOCreateMappingIS(is_geomech,is_subsurf,ao_geomech_to_subsurf_natural, &
+                         ierr);CHKERRQ(ierr)
+  call ISDestroy(is_geomech,ierr);CHKERRQ(ierr)
+  call ISDestroy(is_subsurf,ierr);CHKERRQ(ierr)
 
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm, &
                             'geomech_ao_geomech_to_subsurf_natural.out', &
-                            viewer,ierr)
-  call AOView(ao_geomech_to_subsurf_natural,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+                            viewer,ierr);CHKERRQ(ierr)
+  call AOView(ao_geomech_to_subsurf_natural,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif  
   
   allocate(int_array(grid%nlmax))
@@ -1503,14 +1512,15 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization,geomech_realization, &
   enddo
 
   call ISCreateGeneral(option%mycomm,grid%nlmax, &
-                       int_array,PETSC_COPY_VALUES,is_subsurf_natural,ierr)
+                       int_array,PETSC_COPY_VALUES,is_subsurf_natural, &
+                       ierr);CHKERRQ(ierr)
   deallocate(int_array)
 
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'geomech_is_subsurf_natural.out', &
-                            viewer,ierr)
-  call ISView(is_subsurf_natural,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+                            viewer,ierr);CHKERRQ(ierr)
+  call ISView(is_subsurf_natural,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif  
 
   allocate(int_array(grid%nlmax))
@@ -1519,43 +1529,45 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization,geomech_realization, &
   enddo
 
   call ISCreateGeneral(option%mycomm,grid%nlmax, &
-                       int_array,PETSC_COPY_VALUES,is_subsurf_petsc,ierr)
+                       int_array,PETSC_COPY_VALUES,is_subsurf_petsc, &
+                       ierr);CHKERRQ(ierr)
   deallocate(int_array)
   
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'geomech_is_subsurf_petsc.out', &
-                            viewer,ierr)
-  call ISView(is_subsurf_natural,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+                            viewer,ierr);CHKERRQ(ierr)
+  call ISView(is_subsurf_natural,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif  
   
-  call ISDuplicate(is_subsurf_natural,is_geomech_petsc,ierr)
-  call ISCopy(is_subsurf_natural,is_geomech_petsc,ierr)
+  call ISDuplicate(is_subsurf_natural,is_geomech_petsc,ierr);CHKERRQ(ierr)
+  call ISCopy(is_subsurf_natural,is_geomech_petsc,ierr);CHKERRQ(ierr)
   
-  call AOPetscToApplicationIS(ao_geomech_to_subsurf_natural,is_geomech_petsc,ierr)
+  call AOPetscToApplicationIS(ao_geomech_to_subsurf_natural,is_geomech_petsc, &
+                              ierr);CHKERRQ(ierr)
  
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm, &
                             'geomech_is_subsurf_petsc_geomech_natural.out', &
-                            viewer,ierr)
-  call ISView(is_geomech_petsc,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+                            viewer,ierr);CHKERRQ(ierr)
+  call ISView(is_geomech_petsc,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif   
 
   call AOApplicationToPetscIS(geomech_grid%ao_natural_to_petsc_nodes, &
-                              is_geomech_petsc,ierr)
+                              is_geomech_petsc,ierr);CHKERRQ(ierr)
                               
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm, &
                             'geomech_is_subsurf_petsc_geomech_petsc.out', &
-                            viewer,ierr)
-  call ISView(is_geomech_petsc,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+                            viewer,ierr);CHKERRQ(ierr)
+  call ISView(is_geomech_petsc,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif                              
 
   call VecScatterCreate(realization%field%porosity0,is_subsurf_petsc, &
                         geomech_realization%geomech_field%press, &
-                        is_geomech_petsc,scatter,ierr)
+                        is_geomech_petsc,scatter,ierr);CHKERRQ(ierr)
                         
   if (ierr /= 0) then
     option%io_buffer = 'The number of cells specified in ' // &
@@ -1567,59 +1579,62 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization,geomech_realization, &
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm, &
                             'geomech_scatter_subsurf_to_geomech.out', &
-                            viewer,ierr)
-  call VecScatterView(scatter,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+                            viewer,ierr);CHKERRQ(ierr)
+  call VecScatterView(scatter,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif
 
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_realization% &
                                                    geomech_discretization,ONEDOF)
 
-  call VecScatterCopy(scatter,dm_ptr%gmdm%scatter_subsurf_to_geomech_ndof,ierr)
+  call VecScatterCopy(scatter,dm_ptr%gmdm%scatter_subsurf_to_geomech_ndof, &
+                      ierr);CHKERRQ(ierr)
   
-  call VecScatterDestroy(scatter,ierr)
+  call VecScatterDestroy(scatter,ierr);CHKERRQ(ierr)
   
   ! Geomech to subsurf scatter
   
   allocate(int_array(grid%nlmax))
-  call ISGetIndicesF90(is_geomech_petsc,int_ptr,ierr)
+  call ISGetIndicesF90(is_geomech_petsc,int_ptr,ierr);CHKERRQ(ierr)
   do local_id = 1, grid%nlmax
     int_array(local_id) = int_ptr(local_id)
   enddo  
-  call ISRestoreIndicesF90(is_geomech_petsc,int_ptr,ierr)
+  call ISRestoreIndicesF90(is_geomech_petsc,int_ptr,ierr);CHKERRQ(ierr)
   call ISCreateBlock(option%mycomm,SIX_INTEGER,grid%nlmax, &
-                     int_array,PETSC_COPY_VALUES,is_geomech_petsc_block,ierr)
+                     int_array,PETSC_COPY_VALUES,is_geomech_petsc_block, &
+                     ierr);CHKERRQ(ierr)
   deallocate(int_array)
 
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm, &
                             'geomech_is_geomech_petsc_block.out', &
-                            viewer,ierr)
-  call ISView(is_geomech_petsc_block,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+                            viewer,ierr);CHKERRQ(ierr)
+  call ISView(is_geomech_petsc_block,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif 
 
   allocate(int_array(grid%nlmax))
-  call ISGetIndicesF90(is_subsurf_petsc,int_ptr,ierr)
+  call ISGetIndicesF90(is_subsurf_petsc,int_ptr,ierr);CHKERRQ(ierr)
   do local_id = 1, grid%nlmax
     int_array(local_id) = int_ptr(local_id)
   enddo  
-  call ISRestoreIndicesF90(is_subsurf_petsc,int_ptr,ierr)
+  call ISRestoreIndicesF90(is_subsurf_petsc,int_ptr,ierr);CHKERRQ(ierr)
   call ISCreateBlock(option%mycomm,SIX_INTEGER,grid%nlmax, &
-                     int_array,PETSC_COPY_VALUES,is_subsurf_petsc_block,ierr)
+                     int_array,PETSC_COPY_VALUES,is_subsurf_petsc_block, &
+                     ierr);CHKERRQ(ierr)
   deallocate(int_array)
 
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm, &
                             'geomech_is_subsurf_petsc_block.out', &
-                            viewer,ierr)
-  call ISView(is_subsurf_petsc_block,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+                            viewer,ierr);CHKERRQ(ierr)
+  call ISView(is_subsurf_petsc_block,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif  
   
   call VecScatterCreate(geomech_realization%geomech_field%strain,is_geomech_petsc_block, &
                         geomech_realization%geomech_field%strain_subsurf, &
-                        is_subsurf_petsc_block,scatter,ierr)
+                        is_subsurf_petsc_block,scatter,ierr);CHKERRQ(ierr)
                         
   if (ierr /= 0) then
     option%io_buffer = 'The number of cells specified in ' // &
@@ -1631,24 +1646,25 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization,geomech_realization, &
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm, &
                             'geomech_scatter_geomech_to_subsurf_block.out', &
-                            viewer,ierr)
-  call VecScatterView(scatter,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+                            viewer,ierr);CHKERRQ(ierr)
+  call VecScatterView(scatter,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif
 
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_realization% &
                                                    geomech_discretization,ONEDOF)
 
-  call VecScatterCopy(scatter,dm_ptr%gmdm%scatter_geomech_to_subsurf_ndof,ierr)
+  call VecScatterCopy(scatter,dm_ptr%gmdm%scatter_geomech_to_subsurf_ndof, &
+                      ierr);CHKERRQ(ierr)
   
-  call ISDestroy(is_geomech,ierr)
-  call ISDestroy(is_subsurf,ierr)
-  call ISDestroy(is_subsurf_natural,ierr)
-  call ISDestroy(is_geomech_petsc,ierr)
-  call ISDestroy(is_subsurf_petsc,ierr)
-  call AODestroy(ao_geomech_to_subsurf_natural,ierr) 
-  call ISDestroy(is_subsurf_petsc_block,ierr)
-  call ISDestroy(is_geomech_petsc_block,ierr)
+  call ISDestroy(is_geomech,ierr);CHKERRQ(ierr)
+  call ISDestroy(is_subsurf,ierr);CHKERRQ(ierr)
+  call ISDestroy(is_subsurf_natural,ierr);CHKERRQ(ierr)
+  call ISDestroy(is_geomech_petsc,ierr);CHKERRQ(ierr)
+  call ISDestroy(is_subsurf_petsc,ierr);CHKERRQ(ierr)
+  call AODestroy(ao_geomech_to_subsurf_natural,ierr);CHKERRQ(ierr)
+  call ISDestroy(is_subsurf_petsc_block,ierr);CHKERRQ(ierr)
+  call ISDestroy(is_geomech_petsc_block,ierr);CHKERRQ(ierr)
 
 end subroutine GeomechRealizMapSubsurfGeomechGrid
 
@@ -1683,7 +1699,7 @@ subroutine GeomechGridElemSharedByNodes(geomech_realization)
   grid => geomech_realization%geomech_discretization%grid
   
   call VecGetArrayF90(grid%no_elems_sharing_node_loc,elem_sharing_node_loc_p, &
-                      ierr)
+                      ierr);CHKERRQ(ierr)
   
   do ielem = 1, grid%nlmax_elem
     elenodes = grid%elem_nodes(1:grid%elem_nodes(0,ielem),ielem)
@@ -1695,7 +1711,7 @@ subroutine GeomechGridElemSharedByNodes(geomech_realization)
   enddo
   
   call VecRestoreArrayF90(grid%no_elems_sharing_node_loc, &
-                         elem_sharing_node_loc_p,ierr)
+                         elem_sharing_node_loc_p,ierr);CHKERRQ(ierr)
 
   
   ! Local to global scatter

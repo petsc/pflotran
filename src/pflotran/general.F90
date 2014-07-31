@@ -374,21 +374,21 @@ subroutine GeneralUpdateSolution(realization)
   gen_auxvars => patch%aux%General%auxvars  
   global_auxvars => patch%aux%Global%auxvars
   
-  call VecCopy(field%flow_xx,field%flow_yy,ierr)   
+  call VecCopy(field%flow_xx,field%flow_yy,ierr);CHKERRQ(ierr)
 
   if (realization%option%compute_mass_balance_new) then
     call GeneralUpdateMassBalance(realization)
   endif
   
   ! update stored state
-  call VecGetArrayF90(field%iphas_loc,iphas_loc_p,ierr)
+  call VecGetArrayF90(field%iphas_loc,iphas_loc_p,ierr);CHKERRQ(ierr)
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     iphas_loc_p(ghosted_id) = global_auxvars(ghosted_id)%istate
     gen_auxvars(ZERO_INTEGER,ghosted_id)%istate_store(PREV_TS) = &
       global_auxvars(ghosted_id)%istate
   enddo
-  call VecRestoreArrayF90(field%iphas_loc,iphas_loc_p,ierr)
+  call VecRestoreArrayF90(field%iphas_loc,iphas_loc_p,ierr);CHKERRQ(ierr)
   
   ! update ghosted iphas_loc values (must come after 
   ! GeneralUpdateSolutionPatch)
@@ -397,12 +397,12 @@ subroutine GeneralUpdateSolution(realization)
                                   field%iphas_loc,ONEDOF)
   
   ! Set states of ghosted cells
-  call VecGetArrayF90(field%iphas_loc,iphas_loc_p,ierr)
+  call VecGetArrayF90(field%iphas_loc,iphas_loc_p,ierr);CHKERRQ(ierr)
   do ghosted_id = 1, realization%patch%grid%ngmax
     realization%patch%aux%Global%auxvars(ghosted_id)%istate = &
       int(iphas_loc_p(ghosted_id))
   enddo
-  call VecRestoreArrayF90(field%iphas_loc,iphas_loc_p,ierr)
+  call VecRestoreArrayF90(field%iphas_loc,iphas_loc_p,ierr);CHKERRQ(ierr)
 
 #ifdef DEBUG_GENERAL_FILEOUTPUT
   debug_iteration_count = 0
@@ -447,16 +447,16 @@ subroutine GeneralTimeCut(realization)
   grid => patch%grid
   global_auxvars => patch%aux%Global%auxvars
 
-  call VecCopy(field%flow_yy,field%flow_xx,ierr)
+  call VecCopy(field%flow_yy,field%flow_xx,ierr);CHKERRQ(ierr)
   call DiscretizationGlobalToLocal(realization%discretization,field%flow_xx, &
                                    field%flow_xx_loc,NFLOWDOF)
   
   ! restore stored state
-  call VecGetArrayReadF90(field%iphas_loc,iphas_loc_p, ierr)
+  call VecGetArrayReadF90(field%iphas_loc,iphas_loc_p, ierr);CHKERRQ(ierr)
   do ghosted_id = 1, grid%ngmax
     global_auxvars(ghosted_id)%istate = int(iphas_loc_p(ghosted_id))
   enddo
-  call VecRestoreArrayReadF90(field%iphas_loc,iphas_loc_p, ierr)  
+  call VecRestoreArrayReadF90(field%iphas_loc,iphas_loc_p, ierr);CHKERRQ(ierr)
 
 #ifdef DEBUG_GENERAL_FILEOUTPUT
   debug_timestep_cut_count = debug_timestep_cut_count + 1
@@ -687,7 +687,7 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
   global_auxvars_bc => patch%aux%Global%auxvars_bc
   material_auxvars => patch%aux%Material%auxvars
     
-  call VecGetArrayReadF90(field%flow_xx_loc,xx_loc_p, ierr)
+  call VecGetArrayReadF90(field%flow_xx_loc,xx_loc_p, ierr);CHKERRQ(ierr)
 
   do ghosted_id = 1, grid%ngmax
      if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
@@ -814,6 +814,16 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
 !                          '" needs saturation defined.'
 !                        call printErrMsg(option)
                       endif
+                    case(GENERAL_TEMPERATURE_INDEX)
+                      real_index = boundary_condition%flow_aux_mapping(variable)
+                      if (real_index /= 0) then
+                        xxbc(idof) = boundary_condition%flow_aux_real_var(real_index,iconn)
+                      else
+                        option%io_buffer = 'Mixed FLOW_CONDITION "' // &
+                          trim(boundary_condition%flow_condition%name) // &
+                          '" needs temperature defined.'
+                        call printErrMsg(option)
+                      endif
                   end select
                 case(NEUMANN_BC)
                 case default
@@ -865,7 +875,7 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
     boundary_condition => boundary_condition%next
   enddo
 
-  call VecRestoreArrayReadF90(field%flow_xx_loc,xx_loc_p, ierr)
+  call VecRestoreArrayReadF90(field%flow_xx_loc,xx_loc_p, ierr);CHKERRQ(ierr)
 
   patch%aux%General%auxvars_up_to_date = PETSC_TRUE
 
@@ -919,9 +929,9 @@ subroutine GeneralUpdateFixedAccum(realization)
   material_auxvars => patch%aux%Material%auxvars
   material_parameter => patch%aux%Material%material_parameter
     
-  call VecGetArrayReadF90(field%flow_xx,xx_p, ierr)
+  call VecGetArrayReadF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
 
-  call VecGetArrayF90(field%flow_accum, accum_p, ierr)
+  call VecGetArrayF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
@@ -946,9 +956,9 @@ subroutine GeneralUpdateFixedAccum(realization)
                              option,accum_p(local_start:local_end)) 
   enddo
 
-  call VecRestoreArrayReadF90(field%flow_xx,xx_p, ierr)
+  call VecRestoreArrayReadF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
 
-  call VecRestoreArrayF90(field%flow_accum, accum_p, ierr)
+  call VecRestoreArrayF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
 
 end subroutine GeneralUpdateFixedAccum
 
@@ -1661,7 +1671,8 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
       delta_temp = gen_auxvar_up%temp - gen_auxvar_dn%temp
       heat_flux = k_eff_ave * delta_temp * area
     case(NEUMANN_BC)
-      heat_flux = auxvars(auxvar_mapping(GENERAL_LIQUID_FLUX_INDEX))
+                  ! flux prescribed as MW/m^2
+      heat_flux = auxvars(auxvar_mapping(GENERAL_ENERGY_FLUX_INDEX)) * area
 
     case default
       option%io_buffer = 'Boundary condition type not recognized in ' // &
@@ -2211,13 +2222,13 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
 
   option%iflag = 1
   ! now assign access pointer to local variables
-  call VecGetArrayF90(r, r_p, ierr)
+  call VecGetArrayF90(r, r_p, ierr);CHKERRQ(ierr)
 
   ! Accumulation terms ------------------------------------
   ! accumulation at t(k) (doesn't change during Newton iteration)
-  call VecGetArrayReadF90(field%flow_accum, accum_p, ierr)
+  call VecGetArrayReadF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
   r_p = -accum_p
-  call VecRestoreArrayReadF90(field%flow_accum, accum_p, ierr)
+  call VecRestoreArrayReadF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
   
   ! accumulation at t(k+1)
   do local_id = 1, grid%nlmax  ! For each local node do...
@@ -2394,35 +2405,35 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
     enddo
   endif
   
-  call VecRestoreArrayF90(r, r_p, ierr)
+  call VecRestoreArrayF90(r, r_p, ierr);CHKERRQ(ierr)
   
   call GeneralSSSandbox(r,null_mat,PETSC_FALSE,grid,material_auxvars, &
                         gen_auxvars,option)
   
   if (general_isothermal) then
-    call VecGetArrayF90(r, r_p, ierr)
+    call VecGetArrayF90(r, r_p, ierr);CHKERRQ(ierr)
     ! zero energy residual
     do local_id = 1, grid%nlmax
       r_p((local_id-1)*option%nflowdof+GENERAL_ENERGY_EQUATION_INDEX) =  0.d0
     enddo
-    call VecRestoreArrayF90(r, r_p, ierr)
+    call VecRestoreArrayF90(r, r_p, ierr);CHKERRQ(ierr)
   endif
   if (general_no_air) then
-    call VecGetArrayF90(r, r_p, ierr)
+    call VecGetArrayF90(r, r_p, ierr);CHKERRQ(ierr)
     ! zero energy residual
     do local_id = 1, grid%nlmax
       r_p((local_id-1)*option%nflowdof+GENERAL_GAS_EQUATION_INDEX) =  0.d0
     enddo
-    call VecRestoreArrayF90(r, r_p, ierr)
+    call VecRestoreArrayF90(r, r_p, ierr);CHKERRQ(ierr)
   endif  
 
 #ifdef DEBUG_GENERAL_FILEOUTPUT
-  call VecGetArrayReadF90(field%flow_accum, accum_p, ierr)
+  call VecGetArrayReadF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
   do local_id = 1, grid%nlmax
     write(debug_unit,'(a,i5,7es24.15)') 'fixed residual:', local_id, &
       accum_p((local_id-1)*option%nflowdof+1:local_id*option%nflowdof)
   enddo
-  call VecRestoreArrayReadF90(field%flow_accum, accum_p, ierr)
+  call VecRestoreArrayReadF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
   do local_id = 1, grid%nlmax
     write(debug_unit,'(a,i5,7es24.15)') 'residual:', local_id, &
       r_p((local_id-1)*option%nflowdof+1:local_id*option%nflowdof)
@@ -2432,15 +2443,15 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   
   if (realization%debug%vecview_residual) then
     call PetscViewerASCIIOpen(realization%option%mycomm,'Gresidual.out', &
-                              viewer,ierr)
-    call VecView(r,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+                              viewer,ierr);CHKERRQ(ierr)
+    call VecView(r,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
   if (realization%debug%vecview_solution) then
     call PetscViewerASCIIOpen(realization%option%mycomm,'Gxx.out', &
-                              viewer,ierr)
-    call VecView(xx,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+                              viewer,ierr);CHKERRQ(ierr)
+    call VecView(xx,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
 
 #ifdef DEBUG_GENERAL_FILEOUTPUT
@@ -2530,16 +2541,16 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
   global_auxvars_bc => patch%aux%Global%auxvars_bc
   material_auxvars => patch%aux%Material%auxvars
 
-  call MatGetType(A,mat_type,ierr)
+  call MatGetType(A,mat_type,ierr);CHKERRQ(ierr)
   if (mat_type == MATMFFD) then
     J = B
-    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
   else
     J = A
   endif
 
-  call MatZeroEntries(J,ierr)
+  call MatZeroEntries(J,ierr);CHKERRQ(ierr)
 
 #ifdef DEBUG_GENERAL_FILEOUTPUT
   if (debug_flag > 0) then
@@ -2585,7 +2596,7 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
                               option, &
                               Jup) 
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
-                                  ADD_VALUES,ierr)
+                                  ADD_VALUES,ierr);CHKERRQ(ierr)
   enddo
 
   ! Interior Flux Terms -----------------------------------  
@@ -2626,28 +2637,29 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
                      Jup,Jdn)
       if (local_id_up > 0) then
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
-                                      Jup,ADD_VALUES,ierr)
+                                      Jup,ADD_VALUES,ierr);CHKERRQ(ierr)
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
-                                      Jdn,ADD_VALUES,ierr)
+                                      Jdn,ADD_VALUES,ierr);CHKERRQ(ierr)
       endif
       if (local_id_dn > 0) then
         Jup = -Jup
         Jdn = -Jdn
         call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
-                                      Jdn,ADD_VALUES,ierr)
+                                      Jdn,ADD_VALUES,ierr);CHKERRQ(ierr)
         call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
-                                      Jup,ADD_VALUES,ierr)
+                                      Jup,ADD_VALUES,ierr);CHKERRQ(ierr)
       endif
     enddo
     cur_connection_set => cur_connection_set%next
   enddo
 
   if (realization%debug%matview_Jacobian_detailed) then
-    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-    call PetscViewerASCIIOpen(option%mycomm,'jacobian_flux.out',viewer,ierr)
-    call MatView(A,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'jacobian_flux.out',viewer, &
+                              ierr);CHKERRQ(ierr)
+    call MatView(A,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
 
   ! Boundary Flux Terms -----------------------------------
@@ -2691,25 +2703,27 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
 
       Jdn = -Jdn
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jdn, &
-                                    ADD_VALUES,ierr) 
+                                    ADD_VALUES,ierr);CHKERRQ(ierr)
     enddo
     boundary_condition => boundary_condition%next
   enddo
 
   if (realization%debug%matview_Jacobian_detailed) then
-    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-    call PetscViewerASCIIOpen(option%mycomm,'jacobian_bcflux.out',viewer,ierr)
-    call MatView(A,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'jacobian_bcflux.out',viewer, &
+                              ierr);CHKERRQ(ierr)
+    call MatView(A,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
 
   if (realization%debug%matview_Jacobian_detailed) then
-    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-    call PetscViewerASCIIOpen(option%mycomm,'jacobian_accum.out',viewer,ierr)
-    call MatView(A,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'jacobian_accum.out',viewer, &
+                              ierr);CHKERRQ(ierr)
+    call MatView(A,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
 
   ! Source/sinks
@@ -2740,7 +2754,7 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
                         scale,Jup)
 
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
-                                    ADD_VALUES,ierr)  
+                                    ADD_VALUES,ierr);CHKERRQ(ierr)
 
     enddo
     source_sink => source_sink%next
@@ -2750,22 +2764,24 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
                         gen_auxvars,option)
 
   if (realization%debug%matview_Jacobian_detailed) then
-    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-    call PetscViewerASCIIOpen(option%mycomm,'jacobian_srcsink.out',viewer,ierr)
-    call MatView(A,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'jacobian_srcsink.out',viewer, &
+                              ierr);CHKERRQ(ierr)
+    call MatView(A,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
   
-  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
 
   ! zero out isothermal and inactive cells
   if (patch%aux%General%inactive_cells_exist) then
     qsrc = 1.d0 ! solely a temporary variable in this conditional
     call MatZeroRowsLocal(A,patch%aux%General%n_zero_rows, &
                           patch%aux%General%zero_rows_local_ghosted, &
-                          qsrc,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+                          qsrc,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          ierr);CHKERRQ(ierr)
   endif
 
   if (general_isothermal) then
@@ -2776,7 +2792,8 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
       irow = irow-1 ! zero-based indexing
       qsrc = 1.d0 ! solely a temporary variable in this conditional
       call MatZeroRowsLocal(A,ONE_INTEGER,irow, &
-                            qsrc,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+                            qsrc,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                            ierr);CHKERRQ(ierr)
     enddo
   endif
 
@@ -2788,30 +2805,31 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
       irow = irow-1 ! zero-based indexing
       qsrc = 1.d0 ! solely a temporary variable in this conditional
       call MatZeroRowsLocal(A,ONE_INTEGER,irow, &
-                            qsrc,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+                            qsrc,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                            ierr);CHKERRQ(ierr)
     enddo
   endif
   
   if (realization%debug%matview_Jacobian) then
 #if 1  
     call PetscViewerASCIIOpen(realization%option%mycomm,'Gjacobian.out', &
-                              viewer,ierr)
+                              viewer,ierr);CHKERRQ(ierr)
 #else
     call PetscViewerBinaryOpen(realization%option%mycomm,'Gjacobian.bin', &
-                               FILE_MODE_WRITE,viewer,ierr)
+                               FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
 #endif    
-    call MatView(J,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+    call MatView(J,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
   if (realization%debug%norm_Jacobian) then
     option => realization%option
-    call MatNorm(J,NORM_1,norm,ierr)
+    call MatNorm(J,NORM_1,norm,ierr);CHKERRQ(ierr)
     write(option%io_buffer,'("1 norm: ",es11.4)') norm
     call printMsg(option) 
-    call MatNorm(J,NORM_FROBENIUS,norm,ierr)
+    call MatNorm(J,NORM_FROBENIUS,norm,ierr);CHKERRQ(ierr)
     write(option%io_buffer,'("2 norm: ",es11.4)') norm
     call printMsg(option) 
-    call MatNorm(J,NORM_INFINITY,norm,ierr)
+    call MatNorm(J,NORM_INFINITY,norm,ierr);CHKERRQ(ierr)
     write(option%io_buffer,'("inf norm: ",es11.4)') norm
     call printMsg(option) 
   endif
@@ -2834,9 +2852,9 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
     write(word,*) debug_iteration_count
     string = trim(string) // '_' // trim(adjustl(word)) // '.out'
     call PetscViewerASCIIOpen(realization%option%mycomm,trim(string), &
-                              viewer,ierr)
-    call MatView(J,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+                              viewer,ierr);CHKERRQ(ierr)
+    call MatView(J,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
     close(debug_unit)
   endif
 #endif
@@ -2991,8 +3009,8 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   spid = option%saturation_pressure_id
   apid = option%air_pressure_id
 
-  call VecGetArrayF90(dX,dX_p,ierr)
-  call VecGetArrayReadF90(X,X_p,ierr)
+  call VecGetArrayF90(dX,dX_p,ierr);CHKERRQ(ierr)
+  call VecGetArrayReadF90(X,X_p,ierr);CHKERRQ(ierr)
 
   scale = initial_scale
 
@@ -3366,8 +3384,8 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
     dX_p = scale*dX_p
   endif
 
-  call VecRestoreArrayF90(dX,dX_p,ierr)
-  call VecRestoreArrayReadF90(X,X_p,ierr)
+  call VecRestoreArrayF90(dX,dX_p,ierr);CHKERRQ(ierr)
+  call VecRestoreArrayReadF90(X,X_p,ierr);CHKERRQ(ierr)
 
 end subroutine GeneralCheckUpdatePre
 
@@ -3456,10 +3474,10 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   
   option%converged = PETSC_FALSE
   if (option%flow%check_post_convergence) then
-    call VecGetArrayReadF90(dX,dX_p,ierr)
-    call VecGetArrayReadF90(X0,X0_p,ierr)
-    call VecGetArrayReadF90(field%flow_r,r_p,ierr)
-    call VecGetArrayReadF90(field%flow_accum,accum_p,ierr)
+    call VecGetArrayReadF90(dX,dX_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayReadF90(X0,X0_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayReadF90(field%flow_r,r_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayReadF90(field%flow_accum,accum_p,ierr);CHKERRQ(ierr)
 #ifdef DEBUG_GENERAL_INFO
     R_A_max = 0.d0
     A_max = 0.d0
@@ -3541,10 +3559,10 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
     if (converged_rel_update .or. converged_abs_update) then
       option%converged = PETSC_TRUE
     endif
-    call VecRestoreArrayReadF90(dX,dX_p,ierr)
-    call VecRestoreArrayReadF90(X0,X0_p,ierr)
-    call VecRestoreArrayReadF90(field%flow_r,r_p,ierr)
-    call VecRestoreArrayReadF90(field%flow_accum,accum_p,ierr)
+    call VecRestoreArrayReadF90(dX,dX_p,ierr);CHKERRQ(ierr)
+    call VecRestoreArrayReadF90(X0,X0_p,ierr);CHKERRQ(ierr)
+    call VecRestoreArrayReadF90(field%flow_r,r_p,ierr);CHKERRQ(ierr)
+    call VecRestoreArrayReadF90(field%flow_accum,accum_p,ierr);CHKERRQ(ierr)
   endif
   
 end subroutine GeneralCheckUpdatePost
@@ -3865,7 +3883,7 @@ subroutine GeneralSSSandbox(residual,Jacobian,compute_derivative, &
   PetscErrorCode :: ierr
   
   if (.not.compute_derivative) then
-    call VecGetArrayF90(residual,r_p,ierr) 
+    call VecGetArrayF90(residual,r_p,ierr);CHKERRQ(ierr)
   endif
   
   cur_srcsink => sandbox_list
@@ -3905,7 +3923,8 @@ subroutine GeneralSSSandbox(residual,Jacobian,compute_derivative, &
             Jac(:,GENERAL_GAS_EQUATION_INDEX) = 0.d0
           endif          
           call MatSetValuesBlockedLocal(Jacobian,1,ghosted_id-1,1, &
-                                        ghosted_id-1,Jac,ADD_VALUES,ierr)
+                                        ghosted_id-1,Jac,ADD_VALUES, &
+                                        ierr);CHKERRQ(ierr)
         else
           iend = local_id*option%nflowdof
           istart = iend - option%nflowdof + 1
@@ -3916,7 +3935,7 @@ subroutine GeneralSSSandbox(residual,Jacobian,compute_derivative, &
   enddo
   
   if (.not.compute_derivative) then
-    call VecRestoreArrayF90(residual,r_p,ierr)
+    call VecRestoreArrayF90(residual,r_p,ierr);CHKERRQ(ierr)
   endif
 
 end subroutine GeneralSSSandbox

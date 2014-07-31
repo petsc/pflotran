@@ -115,8 +115,8 @@ subroutine OutputVTK(realization_base)
     cur_variable => cur_variable%next
   enddo
 
-  call VecDestroy(natural_vec,ierr)
-  call VecDestroy(global_vec,ierr)
+  call VecDestroy(natural_vec,ierr);CHKERRQ(ierr)
+  call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
   
   if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
 
@@ -275,11 +275,11 @@ subroutine OutputVelocitiesVTK(realization_base)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
   call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_INTEGER)
   
-  call VecDestroy(natural_vec,ierr)
-  call VecDestroy(global_vec,ierr)
-  call VecDestroy(global_vec_vx,ierr)
-  call VecDestroy(global_vec_vy,ierr)
-  call VecDestroy(global_vec_vz,ierr)
+  call VecDestroy(natural_vec,ierr);CHKERRQ(ierr)
+  call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
+  call VecDestroy(global_vec_vx,ierr);CHKERRQ(ierr)
+  call VecDestroy(global_vec_vy,ierr);CHKERRQ(ierr)
+  call VecDestroy(global_vec_vz,ierr);CHKERRQ(ierr)
 
   if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
   
@@ -318,7 +318,7 @@ subroutine WriteVTKGrid(fid,realization_base)
 1000 format(es13.6,1x,es13.6,1x,es13.6)
 1001 format(i1,8(1x,i8))
   
-  call PetscLogEventBegin(logging%event_output_grid_vtk,ierr) 
+  call PetscLogEventBegin(logging%event_output_grid_vtk,ierr);CHKERRQ(ierr)
                               
   patch => realization_base%patch
   grid => patch%grid
@@ -389,7 +389,7 @@ subroutine WriteVTKGrid(fid,realization_base)
     endif
   endif
 
-  call PetscLogEventEnd(logging%event_output_grid_vtk,ierr) 
+  call PetscLogEventEnd(logging%event_output_grid_vtk,ierr);CHKERRQ(ierr)
                             
 end subroutine WriteVTKGrid
 
@@ -416,10 +416,10 @@ subroutine WriteVTKDataSetFromVec(fid,realization_base,dataset_name,vec,datatype
   
   PetscReal, pointer :: vec_ptr(:)
 
-  call VecGetArrayF90(vec,vec_ptr,ierr)
+  call VecGetArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
   call WriteVTKDataSet(fid,realization_base,dataset_name,vec_ptr,datatype, &
                        ZERO_INTEGER) ! 0 implies grid%nlmax
-  call VecRestoreArrayF90(vec,vec_ptr,ierr)
+  call VecRestoreArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
   
 end subroutine WriteVTKDataSetFromVec
 
@@ -467,7 +467,7 @@ subroutine WriteVTKDataSet(fid,realization_base,dataset_name,array,datatype, &
   grid => patch%grid
   option => realization_base%option
 
-  call PetscLogEventBegin(logging%event_output_write_vtk,ierr)    
+  call PetscLogEventBegin(logging%event_output_write_vtk,ierr);CHKERRQ(ierr)
 
   ! maximum number of initial messages  
 #define HANDSHAKE  
@@ -647,7 +647,7 @@ subroutine WriteVTKDataSet(fid,realization_base,dataset_name,array,datatype, &
     deallocate(real_data)
   endif
 
-  call PetscLogEventEnd(logging%event_output_write_vtk,ierr)    
+  call PetscLogEventEnd(logging%event_output_write_vtk,ierr);CHKERRQ(ierr)
 
 end subroutine WriteVTKDataSet
 

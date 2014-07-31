@@ -187,95 +187,182 @@ subroutine FieldDestroy(field)
   PetscInt :: ivar
 
   ! Destroy PetscVecs
-  if (field%porosity0 /= 0) call VecDestroy(field%porosity0,ierr)
-  if (field%porosity_mnrl_loc /= 0) call VecDestroy(field%porosity_mnrl_loc,ierr)
-  if (field%tortuosity0 /= 0) call VecDestroy(field%tortuosity0,ierr)
-  if (field%ithrm_loc /= 0) call VecDestroy(field%ithrm_loc,ierr)
-  if (field%icap_loc /= 0) call VecDestroy(field%icap_loc,ierr)
-  if (field%iphas_loc /= 0) call VecDestroy(field%iphas_loc,ierr)
-  if (field%iphas_old_loc /= 0) call VecDestroy(field%iphas_old_loc,ierr)
+  if (field%porosity0 /= 0) then
+    call VecDestroy(field%porosity0,ierr);CHKERRQ(ierr)
+  endif
+  if (field%porosity_mnrl_loc /= 0) then
+    call VecDestroy(field%porosity_mnrl_loc,ierr);CHKERRQ(ierr)
+  endif
+  if (field%tortuosity0 /= 0) then
+    call VecDestroy(field%tortuosity0,ierr);CHKERRQ(ierr)
+  endif
+  if (field%ithrm_loc /= 0) then
+    call VecDestroy(field%ithrm_loc,ierr);CHKERRQ(ierr)
+  endif
+  if (field%icap_loc /= 0) then
+    call VecDestroy(field%icap_loc,ierr);CHKERRQ(ierr)
+  endif
+  if (field%iphas_loc /= 0) then
+    call VecDestroy(field%iphas_loc,ierr);CHKERRQ(ierr)
+  endif
+  if (field%iphas_old_loc /= 0) then
+    call VecDestroy(field%iphas_old_loc,ierr);CHKERRQ(ierr)
+  endif
 
-  if (field%perm0_xx /= 0) call VecDestroy(field%perm0_xx,ierr)
-  if (field%perm0_yy /= 0) call VecDestroy(field%perm0_yy,ierr)
-  if (field%perm0_zz /= 0) call VecDestroy(field%perm0_zz,ierr)
-  if (field%perm0_xz /= 0) call VecDestroy(field%perm0_xz,ierr)
-  if (field%perm0_xy /= 0) call VecDestroy(field%perm0_xy,ierr)
-  if (field%perm0_yz /= 0) call VecDestroy(field%perm0_yz,ierr)
+  if (field%perm0_xx /= 0) then
+    call VecDestroy(field%perm0_xx,ierr);CHKERRQ(ierr)
+  endif
+  if (field%perm0_yy /= 0) then
+    call VecDestroy(field%perm0_yy,ierr);CHKERRQ(ierr)
+  endif
+  if (field%perm0_zz /= 0) then
+    call VecDestroy(field%perm0_zz,ierr);CHKERRQ(ierr)
+  endif
+  if (field%perm0_xz /= 0) then
+    call VecDestroy(field%perm0_xz,ierr);CHKERRQ(ierr)
+  endif
+  if (field%perm0_xy /= 0) then
+    call VecDestroy(field%perm0_xy,ierr);CHKERRQ(ierr)
+  endif
+  if (field%perm0_yz /= 0) then
+    call VecDestroy(field%perm0_yz,ierr);CHKERRQ(ierr)
+  endif
   
-  if (field%work /= 0) call VecDestroy(field%work,ierr)
-  if (field%work_loc /= 0) call VecDestroy(field%work_loc,ierr)
+  if (field%work /= 0) then
+    call VecDestroy(field%work,ierr);CHKERRQ(ierr)
+  endif
+  if (field%work_loc /= 0) then
+    call VecDestroy(field%work_loc,ierr);CHKERRQ(ierr)
+  endif
 
-  if (field%volume0 /= 0) call VecDestroy(field%volume0,ierr)
+  if (field%volume0 /= 0) then
+    call VecDestroy(field%volume0,ierr);CHKERRQ(ierr)
+  endif
   
-  if (field%flow_r /= 0) call VecDestroy(field%flow_r,ierr)
-  if (field%flow_xx /= 0) call VecDestroy(field%flow_xx,ierr)
-  if (field%flow_xx_loc /= 0) call VecDestroy(field%flow_xx_loc,ierr)
-  if (field%flow_dxx /= 0) call VecDestroy(field%flow_dxx,ierr)
-  if (field%flow_yy /= 0) call VecDestroy(field%flow_yy,ierr)
-  if (field%flow_accum /= 0) call VecDestroy(field%flow_accum,ierr)
+  if (field%flow_r /= 0) then
+    call VecDestroy(field%flow_r,ierr);CHKERRQ(ierr)
+  endif
+  if (field%flow_xx /= 0) then
+    call VecDestroy(field%flow_xx,ierr);CHKERRQ(ierr)
+  endif
+  if (field%flow_xx_loc /= 0) then
+    call VecDestroy(field%flow_xx_loc,ierr);CHKERRQ(ierr)
+  endif
+  if (field%flow_dxx /= 0) then
+    call VecDestroy(field%flow_dxx,ierr);CHKERRQ(ierr)
+  endif
+  if (field%flow_yy /= 0) then
+    call VecDestroy(field%flow_yy,ierr);CHKERRQ(ierr)
+  endif
+  if (field%flow_accum /= 0) then
+    call VecDestroy(field%flow_accum,ierr);CHKERRQ(ierr)
+  endif
   
-  if (field%tran_r /= 0) call VecDestroy(field%tran_r,ierr)
-  if (field%tran_log_xx /= 0) call VecDestroy(field%tran_log_xx,ierr)
-  if (field%tran_xx /= 0) call VecDestroy(field%tran_xx,ierr)
-  if (field%tran_xx_loc /= 0) call VecDestroy(field%tran_xx_loc,ierr)
-  if (field%tran_dxx /= 0) call VecDestroy(field%tran_dxx,ierr)
-  if (field%tran_yy /= 0) call VecDestroy(field%tran_yy,ierr)
-  if (field%tran_accum /= 0) call VecDestroy(field%tran_accum,ierr)
-  if (field%tran_work_loc /= 0) call VecDestroy(field%tran_work_loc,ierr)
+  if (field%tran_r /= 0) then
+    call VecDestroy(field%tran_r,ierr);CHKERRQ(ierr)
+  endif
+  if (field%tran_log_xx /= 0) then
+    call VecDestroy(field%tran_log_xx,ierr);CHKERRQ(ierr)
+  endif
+  if (field%tran_xx /= 0) then
+    call VecDestroy(field%tran_xx,ierr);CHKERRQ(ierr)
+  endif
+  if (field%tran_xx_loc /= 0) then
+    call VecDestroy(field%tran_xx_loc,ierr);CHKERRQ(ierr)
+  endif
+  if (field%tran_dxx /= 0) then
+    call VecDestroy(field%tran_dxx,ierr);CHKERRQ(ierr)
+  endif
+  if (field%tran_yy /= 0) then
+    call VecDestroy(field%tran_yy,ierr);CHKERRQ(ierr)
+  endif
+  if (field%tran_accum /= 0) then
+    call VecDestroy(field%tran_accum,ierr);CHKERRQ(ierr)
+  endif
+  if (field%tran_work_loc /= 0) then
+    call VecDestroy(field%tran_work_loc,ierr);CHKERRQ(ierr)
+  endif
   
-  if (field%tran_rhs /= 0) call VecDestroy(field%tran_rhs,ierr)
-  if (field%tran_rhs_coef /= 0) call VecDestroy(field%tran_rhs_coef,ierr)
+  if (field%tran_rhs /= 0) then
+    call VecDestroy(field%tran_rhs,ierr);CHKERRQ(ierr)
+  endif
+  if (field%tran_rhs_coef /= 0) then
+    call VecDestroy(field%tran_rhs_coef,ierr);CHKERRQ(ierr)
+  endif
 
-  if (field%flow_ts_mass_balance /= 0) &
-    call VecDestroy(field%flow_ts_mass_balance,ierr)
-  if (field%flow_total_mass_balance /= 0) &
-    call VecDestroy(field%flow_total_mass_balance,ierr)
-  if (field%tran_ts_mass_balance /= 0) &
-    call VecDestroy(field%tran_ts_mass_balance,ierr)
-  if (field%tran_total_mass_balance /= 0) &
-    call VecDestroy(field%tran_total_mass_balance,ierr)
+  if (field%flow_ts_mass_balance /= 0) then
+    call VecDestroy(field%flow_ts_mass_balance,ierr);CHKERRQ(ierr)
+  endif
+  if (field%flow_total_mass_balance /= 0) then
+    call VecDestroy(field%flow_total_mass_balance,ierr);CHKERRQ(ierr)
+  endif
+  if (field%tran_ts_mass_balance /= 0) then
+    call VecDestroy(field%tran_ts_mass_balance,ierr);CHKERRQ(ierr)
+  endif
+  if (field%tran_total_mass_balance /= 0) then
+    call VecDestroy(field%tran_total_mass_balance,ierr);CHKERRQ(ierr)
+  endif
     
-  if (field%tvd_ghosts /= 0) &
-    call VecDestroy(field%tvd_ghosts,ierr)
+  if (field%tvd_ghosts /= 0) then
+    call VecDestroy(field%tvd_ghosts,ierr);CHKERRQ(ierr)
+  endif
 
-  if (field%flow_r_faces/= 0) &
-    call VecDestroy(field%flow_r_faces,ierr)
+  if (field%flow_r_faces/= 0) then
+    call VecDestroy(field%flow_r_faces,ierr);CHKERRQ(ierr)
+  endif
 
-  if (field%flow_r_loc_faces /= 0) &
-    call VecDestroy(field%flow_r_loc_faces ,ierr)
+  if (field%flow_r_loc_faces /= 0) then
+    call VecDestroy(field%flow_r_loc_faces ,ierr);CHKERRQ(ierr)
+  endif
 
-  if (field%flow_xx_faces /= 0) &
-    call VecDestroy(field%flow_xx_faces ,ierr)
+  if (field%flow_xx_faces /= 0) then
+    call VecDestroy(field%flow_xx_faces ,ierr);CHKERRQ(ierr)
+  endif
 
-  if (field%flow_xx_loc_faces /= 0) &
-    call VecDestroy(field%flow_xx_loc_faces ,ierr)
+  if (field%flow_xx_loc_faces /= 0) then
+    call VecDestroy(field%flow_xx_loc_faces ,ierr);CHKERRQ(ierr)
+  endif
 
-  if (field%flow_dxx_faces /= 0) &
-    call VecDestroy(field%flow_dxx_faces ,ierr)
+  if (field%flow_dxx_faces /= 0) then
+    call VecDestroy(field%flow_dxx_faces ,ierr);CHKERRQ(ierr)
+  endif
 
-  if (field%flow_yy_faces /= 0) &
-    call VecDestroy(field%flow_yy_faces ,ierr)
+  if (field%flow_yy_faces /= 0) then
+    call VecDestroy(field%flow_yy_faces ,ierr);CHKERRQ(ierr)
+  endif
 
-  if (field%flow_bc_loc_faces /= 0) &
-    call VecDestroy(field%flow_bc_loc_faces ,ierr)
+  if (field%flow_bc_loc_faces /= 0) then
+    call VecDestroy(field%flow_bc_loc_faces ,ierr);CHKERRQ(ierr)
+  endif
 
-  if (field%work_loc_faces /= 0) &
-    call VecDestroy(field%work_loc_faces ,ierr)
+  if (field%work_loc_faces /= 0) then
+    call VecDestroy(field%work_loc_faces ,ierr);CHKERRQ(ierr)
+  endif
 
   do ivar = 1,field%nvars
-    call VecDestroy(field%avg_vars_vec(ivar),ierr)
+    call VecDestroy(field%avg_vars_vec(ivar),ierr);CHKERRQ(ierr)
   enddo
 
-  if (field%flowrate_inst/=0) call VecDestroy(field%flowrate_inst,ierr)
-  if (field%flowrate_aveg/=0) call VecDestroy(field%flowrate_aveg,ierr)
+  if (field%flowrate_inst/=0) then
+    call VecDestroy(field%flowrate_inst,ierr);CHKERRQ(ierr)
+  endif
+  if (field%flowrate_aveg/=0) then
+    call VecDestroy(field%flowrate_aveg,ierr);CHKERRQ(ierr)
+  endif
 
-  if (field%vx_face_inst/=0) call VecDestroy(field%vx_face_inst,ierr)
-  if (field%vy_face_inst/=0) call VecDestroy(field%vy_face_inst,ierr)
-  if (field%vz_face_inst/=0) call VecDestroy(field%vz_face_inst,ierr)
+  if (field%vx_face_inst/=0) then
+    call VecDestroy(field%vx_face_inst,ierr);CHKERRQ(ierr)
+  endif
+  if (field%vy_face_inst/=0) then
+    call VecDestroy(field%vy_face_inst,ierr);CHKERRQ(ierr)
+  endif
+  if (field%vz_face_inst/=0) then
+    call VecDestroy(field%vz_face_inst,ierr);CHKERRQ(ierr)
+  endif
 
   if (associated(field%max_change_vecs)) then
     call VecDestroyVecsF90(size(field%max_change_vecs), &
-                           field%max_change_vecs,ierr)
+                           field%max_change_vecs,ierr);CHKERRQ(ierr)
   endif
 
   deallocate(field)

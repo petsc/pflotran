@@ -155,8 +155,9 @@ subroutine SurfaceTHAuxVarCompute(xx,auxvar,global_auxvar, &
   use Option_module
   use Surface_Global_Aux_module
   
-  use EOS_Water_module
-  
+  use EOS_Water_module  
+  use PFLOTRAN_Constants_module, only : DUMMY_VALUE,MIN_SURFACE_WATER_HEIGHT
+
   implicit none
 
   type(option_type) :: option
@@ -195,7 +196,15 @@ subroutine SurfaceTHAuxVarCompute(xx,auxvar,global_auxvar, &
   ds_dp = 0.d0
   dkr_dp = 0.d0
 
-  call EOSWaterDensityEnthalpy(global_auxvar%temp,pw,dw_kg,dw_mol,hw,ierr)
+  if (global_auxvar%head(1) < MIN_SURFACE_WATER_HEIGHT) then
+    global_auxvar%is_dry = PETSC_TRUE
+    call EOSWaterDensityEnthalpy(0.0d0,pw,dw_kg,dw_mol,hw,ierr)
+    global_auxvar%temp = DUMMY_VALUE
+  else
+    global_auxvar%is_dry = PETSC_FALSE
+    call EOSWaterDensityEnthalpy(global_auxvar%temp,pw,dw_kg,dw_mol,hw,ierr)
+  endif
+
   ! J/kmol -> whatever units
   hw = hw * option%scale
   

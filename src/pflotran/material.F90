@@ -297,12 +297,12 @@ subroutine MaterialPropertyRead(material_property,input,option)
                              material_property%alpha_fr)
         call InputErrorMsg(input,option,'thermal conductivity frozen exponent', &
                            'MATERIAL_PROPERTY')
-      case('PORE_COMPRESSIBILITY') 
-        call InputReadDouble(input,option, &
-                             material_property%pore_compressibility)
-        call InputErrorMsg(input,option,'pore compressibility', &
-                           'MATERIAL_PROPERTY')
-      case('SOIL_COMPRESSIBILITY_FUNCTION') 
+      !case('PORE_COMPRESSIBILITY')
+      !  call InputReadDouble(input,option, &
+      !                       material_property%pore_compressibility)
+      !  call InputErrorMsg(input,option,'pore compressibility', &
+      !                     'MATERIAL_PROPERTY')
+      case('SOIL_COMPRESSIBILITY_FUNCTION')
         call InputReadWord(input,option, &
                            material_property%soil_compressibility_function, &
                            PETSC_TRUE)
@@ -1195,7 +1195,7 @@ subroutine MaterialSetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
 !  material_auxvars => Material%auxvars
 !geh: can't use this pointer as gfortran does not like it.  Must use
 !     Material%auxvars%....
-  call VecGetArrayReadF90(vec_loc,vec_loc_p,ierr)
+  call VecGetArrayReadF90(vec_loc,vec_loc_p,ierr);CHKERRQ(ierr)
   
   select case(ivar)
     case(VOLUME)
@@ -1258,7 +1258,7 @@ subroutine MaterialSetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
       enddo
   end select
 
-  call VecRestoreArrayReadF90(vec_loc,vec_loc_p,ierr)
+  call VecRestoreArrayReadF90(vec_loc,vec_loc_p,ierr);CHKERRQ(ierr)
 
 end subroutine MaterialSetAuxVarVecLoc
 
@@ -1292,7 +1292,7 @@ subroutine MaterialGetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
 !  material_auxvars => Material%auxvars
 !geh: can't use this pointer as gfortran does not like it.  Must use
 !     Material%auxvars%....
-  call VecGetArrayReadF90(vec_loc,vec_loc_p,ierr)
+  call VecGetArrayReadF90(vec_loc,vec_loc_p,ierr);CHKERRQ(ierr)
   
   select case(ivar)
     case(VOLUME)
@@ -1339,7 +1339,7 @@ subroutine MaterialGetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
       enddo
   end select
 
-  call VecRestoreArrayReadF90(vec_loc,vec_loc_p,ierr)
+  call VecRestoreArrayReadF90(vec_loc,vec_loc_p,ierr);CHKERRQ(ierr)
 
 end subroutine MaterialGetAuxVarVecLoc
 
@@ -1478,7 +1478,7 @@ subroutine MaterialUpdatePorosity(Material,global_auxvars,porosity_loc)
   
   if (soil_compressibility_index > 0) then
     material_auxvars => Material%auxvars
-    call VecGetArrayReadF90(porosity_loc,porosity_loc_p,ierr)
+    call VecGetArrayReadF90(porosity_loc,porosity_loc_p,ierr);CHKERRQ(ierr)
     do ghosted_id = 1, Material%num_aux
       material_auxvars(ghosted_id)%porosity = porosity_loc_p(ghosted_id)
       call MaterialCompressSoil(material_auxvars(ghosted_id), &
@@ -1487,7 +1487,8 @@ subroutine MaterialUpdatePorosity(Material,global_auxvars,porosity_loc)
       material_auxvars(ghosted_id)%porosity = compressed_porosity
       material_auxvars(ghosted_id)%dporosity_dp = dcompressed_porosity_dp
     enddo
-    call VecRestoreArrayReadF90(porosity_loc,porosity_loc_p,ierr)
+    call VecRestoreArrayReadF90(porosity_loc,porosity_loc_p, &
+                                ierr);CHKERRQ(ierr)
   endif
   
 end subroutine MaterialUpdatePorosity
