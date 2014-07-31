@@ -675,17 +675,17 @@ subroutine EOSGasFugacity(T,P,Rho_gas,fugacity,ierr)
   PetscReal :: T_kelvin, Z, V, Tr, LHS
   PetscReal :: A, B, alpha
 
-  V = 1 / Rho_gas * 1d-3
+  V = 1.d0 / Rho_gas * 1.d-3
   T_kelvin = T + 273.15d0
   Tr = T_kelvin/Tc
-  alpha = EXP(0.340d0*(1-Tr))
+  alpha = EXP(0.340d0*(1.d0-Tr))
 
   A = 0.42747 * alpha * (P/Pc) / (T/Tc)**2
   B = 0.08664 * (P/Pc) / (T/Tc)
   Z = P*V / (Rg*T)
   
   ! Fugacity Coefficient
-  LHS = Z - 1 - LOG(Z-B) - A/B * LOG((Z+B)/Z)
+  LHS = Z - 1.d0 - LOG(Z-B) - A/B * LOG((Z+B)/Z)
   fugacity = EXP(LHS)  ! dimensionless (Pa/Pa)
   
 end subroutine EOSGasFugacity
