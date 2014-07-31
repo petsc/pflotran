@@ -3035,6 +3035,7 @@ subroutine RichardsSSSandboxLoadAuxReal(srcsink,aux_real,global_auxvar,option)
   select type(srcsink)
     class is(srcsink_sandbox_downreg_type)
       aux_real(1) = global_auxvar%pres(1)
+      aux_real(2) = global_auxvar%den(1)
   end select
   
 end subroutine RichardsSSSandboxLoadAuxReal
