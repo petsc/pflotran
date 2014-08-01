@@ -21,6 +21,7 @@ module SrcSink_Sandbox_Downreg_class
   
   use PFLOTRAN_Constants_module
   use SrcSink_Sandbox_Base_class
+  use Dataset_Base_class
   
   implicit none
   
@@ -30,10 +31,10 @@ module SrcSink_Sandbox_Downreg_class
 
   type, public, &
     extends(srcsink_sandbox_base_type) :: srcsink_sandbox_downreg_type
-    PetscReal, pointer :: rate(:)
     PetscReal :: pressure_min       ! Pa
     PetscReal :: pressure_max       ! Pa
     PetscReal :: pressure_delta     ! Pa
+    class(dataset_base_type), pointer :: dataset
   contains
     procedure, public :: ReadInput => DownregRead
     procedure, public :: Setup => DownregSetup
@@ -60,10 +61,10 @@ function DownregCreate()
 
   allocate(DownregCreate)
   call SSSandboxBaseInit(DownregCreate)
-  nullify(DownregCreate%rate)
   DownregCreate%pressure_min = -1.0d9
   DownregCreate%pressure_max = 1.0d9
   DownregCreate%pressure_delta = 1.0d4
+  nullify(DownregCreate%dataset)
   
 end function DownregCreate
 
@@ -80,17 +81,29 @@ subroutine DownregRead(this,input,option)
   use String_module
   use Input_Aux_module
   use Units_module, only : UnitsConvertToInternal
+  use Condition_module 
+  use Dataset_Ascii_class
   
   implicit none
   
   class(srcsink_sandbox_downreg_type) :: this
   type(input_type) :: input
   type(option_type) :: option
+  class(dataset_ascii_type), pointer :: dataset_ascii
 
   PetscInt :: i
   character(len=MAXWORDLENGTH) :: word
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: units
   PetscBool :: found
   
+  dataset_ascii => DatasetAsciiCreate()
+  call DatasetAsciiInit(dataset_ascii)
+  dataset_ascii%array_rank = option%nflowdof
+  dataset_ascii%data_type = DATASET_REAL
+  this%dataset => dataset_ascii
+  nullify(dataset_ascii)
+
   do 
     call InputReadPflotranString(input,option)
     if (InputError(input)) exit
@@ -108,25 +121,7 @@ subroutine DownregRead(this,input,option)
     select case(trim(word))
 
       case('RATE')
-        allocate(this%rate(option%nflowdof))
-        do i = 1, option%nflowdof
-          word = ''
-          select case(i)
-            case(ONE_INTEGER)
-              word = 'Liquid Component Rate'
-            case(TWO_INTEGER)
-              word = 'Gas Component Rate'
-            case(THREE_INTEGER)
-              word = 'Energy Rate'
-            case default
-              write(word,*) i
-              option%io_buffer = 'Unknown dof #' // trim(adjustl(word)) // &
-                                 ' in DownregRead.'
-              call printErrMsg(option)
-          end select
-          call InputReadDouble(input,option,this%rate(i))
-          call InputErrorMsg(input,option,word,'SOURCE_SINK_SANDBOX,DOWNREG')
-        enddo
+        call ConditionReadValues(input,option,word,string,this%dataset,units)
       case('POSITIVE_REG_PRESSURE')
         call InputReadDouble(input,option,this%pressure_max)
         call InputErrorMsg(input,option,'maximum pressure (Pa)', &
@@ -175,18 +170,6 @@ subroutine DownregSetup(this,region_list,option)
   PetscInt :: i
   
   call SSSandboxBaseSetup(this,region_list,option)
-  ! convert rate from kg/s to mol/s
-  select case(option%iflowmode)
-    case(RICHARDS_MODE)
-      this%rate(1) = this%rate(1) / FMWH2O
-    case(G_MODE)
-      this%rate(1) = this%rate(1) / general_fmw_com(1)
-      this%rate(2) = this%rate(2) / general_fmw_com(2)
-    case default
-      option%io_buffer = 'Rate conversion not set up for flow mode in ' // &
-                         'DownregSetup'
-      call printErrMsg(option)
-  end select
 
 end subroutine DownregSetup 
 
@@ -220,6 +203,7 @@ subroutine DownregSrcSink(this,Residual,Jacobian,compute_derivative, &
   PetscReal :: rate_regulator  
   PetscReal :: drate_regulator  
   PetscReal :: temp_real
+  PetscReal :: rate
 
   PetscInt :: idof
   
@@ -227,7 +211,10 @@ subroutine DownregSrcSink(this,Residual,Jacobian,compute_derivative, &
     if (option%iflowmode == RICHARDS_MODE .and. idof == ONE_INTEGER) then
       ! regulate liquid pressure in Richards mode
       pressure = aux_real(1)
-      if (this%rate(idof) > 0.0d0) then
+      rate = this%dataset%rarray(1)
+      rate = rate / FMWH2O        ! from kg/s to kmol/s (for regression tests) 
+      ! rate = rate / aux_real(2) ! from m^3/s to kmol/s (later on, we wll assume m^3/s) 
+      if (rate > 0.0d0) then
         ! source
         pressure_lower = this%pressure_max - this%pressure_delta/2.0d0 &
                                            - option%reference_pressure
@@ -244,7 +231,7 @@ subroutine DownregSrcSink(this,Residual,Jacobian,compute_derivative, &
           drate_regulator = 2.0d0 * (1.0d0 - x * x) * (-2.0d0) * x / &
             this%pressure_delta
         endif
-        Residual(idof) = this%rate(idof) * rate_regulator
+        Residual(idof) = rate * rate_regulator
       else
         ! sink
         pressure_lower = this%pressure_min - this%pressure_delta/2.0d0 &
@@ -262,10 +249,12 @@ subroutine DownregSrcSink(this,Residual,Jacobian,compute_derivative, &
           drate_regulator = (-2.0d0) * (1.0d0 - x * x) * (-2.0d0) * x / &
             this%pressure_delta
         endif
-        Residual(idof) = this%rate(idof) * rate_regulator
+        Residual(idof) = rate * rate_regulator
       endif
     else
-        Residual(idof) = this%rate(idof)
+      option%io_buffer = 'srcsink_sandbox_downreg is implemented ' // &
+                         'only for RICHARDS mode.'
+      call printErrMsg(option)
     endif
   enddo
   
@@ -274,9 +263,11 @@ subroutine DownregSrcSink(this,Residual,Jacobian,compute_derivative, &
     do idof = 1, option%nflowdof
       if (option%iflowmode == RICHARDS_MODE .and. idof == ONE_INTEGER) then
         ! regulate liquid pressure in Richards mode
-        Jacobian(idof,idof) = -1.0d0 * this%rate(idof) * drate_regulator
+        Jacobian(idof,idof) = -1.0d0 * rate * drate_regulator
       else
-        ! since the rates are constant, there is no derivative
+        option%io_buffer = 'srcsink_sandbox_downreg is implemented ' // &
+                           'only for RICHARDS mode.'
+        call printErrMsg(option)
       endif
     enddo
   endif
@@ -292,13 +283,18 @@ subroutine DownregDestroy(this)
   ! Author: Guoping Tang
   ! Date: 06/04/14
 
+  use Dataset_module
+  use Dataset_Ascii_class
+
   implicit none
   
   class(srcsink_sandbox_downreg_type) :: this
+  class(dataset_ascii_type), pointer :: dataset_ascii
   
+  dataset_ascii => DatasetAsciiCast(this%dataset)
+  call DatasetAsciiDestroy(dataset_ascii)
+
   call SSSandboxBaseDestroy(this)  
-  deallocate(this%rate)
-  nullify(this%rate)
 
 end subroutine DownregDestroy
 
