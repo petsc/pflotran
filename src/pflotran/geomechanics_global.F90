@@ -26,11 +26,7 @@ subroutine GeomechGlobalSetup(geomech_realization)
   ! Date: 06/17/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Patch_module
   
   implicit none
@@ -52,11 +48,7 @@ subroutine GeomechGlobalSetupPatch(geomech_realization)
   ! Date: 06/17/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Patch_module
   use Option_module
   use Geomechanics_Coupler_module
@@ -102,11 +94,7 @@ subroutine GeomechGlobalSetAuxVarScalar(geomech_realization,value,ivar)
   ! Date: 06/17/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Patch_module
 
   implicit none
@@ -132,11 +120,7 @@ subroutine GeomechGlobalSetAuxVarScalarPatch(geomech_realization,value,ivar)
   ! Date: 06/17/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Option_module
   use Geomechanics_Patch_module
   use Variables_module, only : GEOMECH_DISP_X, &
@@ -184,11 +168,7 @@ subroutine GeomechGlobalSetAuxVarVecLoc(geomech_realization,vec_loc,ivar,isubvar
   ! Date: 06/17/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Patch_module
 
   implicit none
@@ -218,11 +198,7 @@ subroutine GeomechGlobalSetAuxVarVecLocPatch(geomech_realization,vec_loc,ivar,is
   ! Date: 06/17/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Patch_module
   use Geomechanics_Grid_Aux_module
   use Geomechanics_Grid_module
@@ -296,11 +272,7 @@ subroutine GeomechGlobalUpdateAuxVars(geomech_realization,time_level)
   ! Date: 06/17/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Field_module
   use Option_module
   use Geomechanics_Discretization_module

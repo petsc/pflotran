@@ -2,11 +2,7 @@ module PMC_Geomechanics_class
 
   use PMC_Base_class
   use Realization_class
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use PFLOTRAN_Constants_module
 
   implicit none

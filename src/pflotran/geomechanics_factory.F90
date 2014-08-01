@@ -60,11 +60,7 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
   use PFLOTRAN_Constants_module
   use Geomechanics_Discretization_module
   use Geomechanics_Force_module
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Simulation_class
   use Simulation_module
   use Simulation_Aux_module
@@ -202,11 +198,7 @@ subroutine HijackGeomechanicsSimulation(simulation_old,simulation)
   ! 
 
   use Simulation_module
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Option_module
   
   use PMC_Base_class
@@ -329,11 +321,7 @@ subroutine GeomechanicsJumpStart(simulation)
   ! Date: 01/01/14
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Option_module
   use Timestepper_Geomechanics_class
   use Output_Aux_module
