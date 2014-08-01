@@ -118,6 +118,13 @@ subroutine GeneralRead(input,option)
         call InputReadDouble(input,option,general_max_pressure_change)
         call InputErrorMsg(input,option,'maximum pressure change', &
                            'GENERAL_MODE')
+      case('MAX_ITERATION_BEFORE_DAMPING')
+        call InputReadInt(input,option,general_max_it_before_damping)
+        call InputErrorMsg(input,option,'maximum iteration before damping', &
+                           'GENERAL_MODE')
+      case('DAMPING_FACTOR')
+        call InputReadDouble(input,option,general_damping_factor)
+        call InputErrorMsg(input,option,'damping factor','GENERAL_MODE')
       case default
         option%io_buffer = 'Keyword: ' // trim(keyword) // &
                            ' not recognized in General Mode'    
@@ -2207,6 +2214,12 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   option%variables_swapped = PETSC_FALSE
                                              ! do update state
   call GeneralUpdateAuxVars(realization,PETSC_TRUE)
+
+! for debugging a single grid cell
+!  i = 20
+!  call GeneralOutputAuxVars(gen_auxvars(0,i),global_auxvars(i),i,'genaux', &
+!                            PETSC_TRUE,option)
+
   ! override flags since they will soon be out of date
   patch%aux%General%auxvars_up_to_date = PETSC_FALSE 
   if (option%variables_swapped) then
@@ -2996,6 +3009,8 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   PetscReal :: scale, temp_scale, temp_real
   PetscReal, parameter :: tolerance = 0.99d0
   PetscReal, parameter :: initial_scale = 1.d0
+  SNES :: snes
+  PetscInt :: newton_iteration
   PetscErrorCode :: ierr
   
   grid => realization%patch%grid
@@ -3009,10 +3024,17 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   spid = option%saturation_pressure_id
   apid = option%air_pressure_id
 
+  call SNESLineSearchGetSNES(line_search,snes,ierr)
+  call SNESGetIterationNumber(snes,newton_iteration,ierr)
+
   call VecGetArrayF90(dX,dX_p,ierr);CHKERRQ(ierr)
   call VecGetArrayReadF90(X,X_p,ierr);CHKERRQ(ierr)
 
   scale = initial_scale
+  if (general_max_it_before_damping > 0 .and. &
+      newton_iteration > general_max_it_before_damping) then
+    scale = general_damping_factor
+  endif
 
   changed = PETSC_TRUE
   

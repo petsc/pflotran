@@ -11,6 +11,8 @@ module General_Aux_module
   PetscReal, public :: window_epsilon = 1.d-4
   PetscReal, public :: fmw_comp(2) = [FMWH2O,FMWAIR]
   PetscReal, public :: general_max_pressure_change = 5.d4
+  PetscInt, public :: general_max_it_before_damping = -999
+  PetscReal, public :: general_damping_factor = 0.6d0
 
   ! thermodynamic state of fluid ids
   PetscInt, parameter, public :: NULL_STATE = 0
@@ -1115,7 +1117,7 @@ end subroutine GeneralPrintAuxVars
 ! ************************************************************************** !
 
 subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,ghosted_id, &
-                                string,option)
+                                string,append,option)
   ! 
   ! Prints out the contents of an auxvar to a file
   ! 
@@ -1132,10 +1134,11 @@ subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,ghosted_id, &
   type(global_auxvar_type) :: global_auxvar
   PetscInt :: ghosted_id
   character(len=*) :: string
+  PetscBool :: append
   type(option_type) :: option
 
   character(len=MAXSTRINGLENGTH) :: string2
-  PetscInt :: apid, cpid, vpid
+  PetscInt :: apid, cpid, vpid, spid
   PetscInt :: gid, lid, acid, wid, eid
 
   lid = option%liquid_phase
@@ -1143,6 +1146,7 @@ subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,ghosted_id, &
   apid = option%air_pressure_id
   cpid = option%capillary_pressure_id
   vpid = option%vapor_pressure_id
+  spid = option%saturation_pressure_id
 
   acid = option%air_id ! air component id
   wid = option%water_id
@@ -1150,7 +1154,11 @@ subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,ghosted_id, &
   
   write(string2,*) ghosted_id
   string2 = trim(adjustl(string)) // '_' // trim(adjustl(string2)) // '.txt'
-  open(unit=86,file=string2)
+  if (append) then
+    open(unit=86,file=string2,position='append')
+  else
+    open(unit=86,file=string2)
+  endif
 
   write(86,*) '--------------------------------------------------------'
   write(86,*) trim(string)
@@ -1168,6 +1176,7 @@ subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,ghosted_id, &
   write(86,*) '        air pressure: ', general_auxvar%pres(apid)
   write(86,*) '  capillary pressure: ', general_auxvar%pres(cpid)
   write(86,*) '      vapor pressure: ', general_auxvar%pres(vpid)
+  write(86,*) ' saturation pressure: ', general_auxvar%pres(spid)
   write(86,*) '     temperature [C]: ', general_auxvar%temp
   write(86,*) '   liquid saturation: ', general_auxvar%sat(lid)
   write(86,*) '      gas saturation: ', general_auxvar%sat(gid)
@@ -1191,6 +1200,7 @@ subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,ghosted_id, &
   write(86,*) general_auxvar%pres(apid)
   write(86,*) general_auxvar%pres(cpid)
   write(86,*) general_auxvar%pres(vpid)
+  write(86,*) general_auxvar%pres(spid)
   write(86,*) general_auxvar%temp
   write(86,*) general_auxvar%sat(lid)
   write(86,*) general_auxvar%sat(gid)
