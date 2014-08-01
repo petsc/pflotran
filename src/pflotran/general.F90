@@ -2207,6 +2207,12 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   option%variables_swapped = PETSC_FALSE
                                              ! do update state
   call GeneralUpdateAuxVars(realization,PETSC_TRUE)
+
+! for debugging a single grid cell
+!  i = 20
+!  call GeneralOutputAuxVars(gen_auxvars(0,i),global_auxvars(i),i,'genaux', &
+!                            PETSC_TRUE,option)
+
   ! override flags since they will soon be out of date
   patch%aux%General%auxvars_up_to_date = PETSC_FALSE 
   if (option%variables_swapped) then
@@ -2996,6 +3002,9 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   PetscReal :: scale, temp_scale, temp_real
   PetscReal, parameter :: tolerance = 0.99d0
   PetscReal, parameter :: initial_scale = 1.d0
+  SNES :: snes
+  PetscInt, parameter :: max_newton_it_for_full_update = 10
+  PetscInt :: newton_iteration
   PetscErrorCode :: ierr
   
   grid => realization%patch%grid
@@ -3009,10 +3018,14 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   spid = option%saturation_pressure_id
   apid = option%air_pressure_id
 
+  call SNESLineSearchGetSNES(line_search,snes,ierr)
+  call SNESGetIterationNumber(snes,newton_iteration,ierr)
+
   call VecGetArrayF90(dX,dX_p,ierr);CHKERRQ(ierr)
   call VecGetArrayReadF90(X,X_p,ierr);CHKERRQ(ierr)
 
   scale = initial_scale
+  if (newton_iteration > max_newton_it_for_full_update) scale = 0.6d0
 
   changed = PETSC_TRUE
   
