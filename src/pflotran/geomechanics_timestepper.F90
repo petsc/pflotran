@@ -1,5 +1,3 @@
-#ifdef GEOMECH
-
 #ifndef PROCESS_MODEL
 
 module Geomechanics_Timestepper_module
@@ -42,7 +40,6 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
   use Output_Aux_module
   use Output_module, only : Output, OutputInit, OutputPrintCouplers
   use Condition_Control_module
-#ifdef GEOMECH  
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
 #else
@@ -51,7 +48,6 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
   use Geomechanics_Logging_module
   use Output_Geomechanics_module
   use Geomechanics_Force_module
-#endif
 
   implicit none
 
@@ -73,9 +69,7 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
   PetscBool :: transport_read
   PetscBool :: failure
   PetscErrorCode :: ierr
-#ifdef GEOMECH  
   PetscBool :: geomech_plot_flag, geomech_transient_plot_flag
-#endif
 
   option => realization%option
   output_option => realization%output_option
@@ -194,7 +188,6 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
     return
   endif
   
-#ifdef GEOMECH       
     if (option%ngeomechdof > 0) then
       call GeomechUpdateFromSubsurf(realization,geomech_realization)
       call GeomechStoreInitialPressTemp(geomech_realization)
@@ -209,15 +202,12 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
         call GeomechUpdateSubsurfPorosity(realization,geomech_realization)
       endif
     endif
-#endif  
 
   ! print initial condition output if not a restarted sim
   call OutputInit(master_stepper%steps)
-#ifdef GEOMECH
   if (option%ngeomechdof > 0) then
     call OutputGeomechInit(geomech_realization,master_stepper%steps)
   endif
-#endif
 
   if (output_option%plot_number == 0 .and. &
       master_stepper%max_time_step >= 0 .and. &
@@ -225,14 +215,12 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
     plot_flag = PETSC_TRUE
     transient_plot_flag = PETSC_TRUE
     call Output(realization,plot_flag,transient_plot_flag)
-#ifdef GEOMECH
     if (option%ngeomechdof > 0) then
       geomech_plot_flag = PETSC_TRUE
       geomech_transient_plot_flag = PETSC_TRUE
       call OutputGeomechanics(geomech_realization,geomech_plot_flag, &
                               geomech_transient_plot_flag)
     endif
-#endif    
   endif
   
   !if TIMESTEPPER->MAX_STEPS < 1, print out initial condition only
@@ -307,7 +295,6 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
   use Logging_module  
   use Discretization_module
   use Condition_Control_module
-#ifdef GEOMECH
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
 #else
@@ -315,7 +302,6 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
 #endif
   use Output_Geomechanics_module, only : OutputGeomechanics
   use Geomechanics_Force_module
-#endif  
 
   implicit none
   
@@ -519,16 +505,13 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
 !      call MassBalanceUpdate(realization,flow_stepper%solver, &
 !                             tran_stepper%solver)
 !    endif
-#ifdef GEOMECH       
     if (option%ngeomechdof > 0) &
       geomech_plot_flag = plot_flag
-#endif 
     call Output(realization,plot_flag,transient_plot_flag)
     
     call StepperUpdateDTMax(flow_stepper,tran_stepper,option)
     call StepperUpdateDT(flow_stepper,tran_stepper,option)
   
-#ifdef GEOMECH       
     if (option%ngeomechdof > 0) then
       select case (option%geomech_subsurf_coupling)
         case (GEOMECH_ONE_WAY_COUPLED) ! call geomech only at plot times
@@ -553,7 +536,6 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
       call OutputGeomechanics(geomech_realization,geomech_plot_flag, &
                               transient_plot_flag)
     endif
-#endif    
 
     ! if a simulation wallclock duration time is set, check to see that the
     ! next time step will not exceed that value.  If it does, print the
@@ -812,6 +794,4 @@ subroutine StepperSolveGeomechSteadyState(geomech_realization,stepper,failure)
 end subroutine StepperSolveGeomechSteadyState
 
 end module Geomechanics_Timestepper_module
-#endif
-
 #endif

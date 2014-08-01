@@ -1,5 +1,3 @@
-#ifdef GEOMECH
-
 module PMC_Geomechanics_class
 
   use PMC_Base_class
@@ -299,5 +297,3 @@ subroutine PMCGeomechanicsGetAuxData(this)
 end subroutine PMCGeomechanicsGetAuxData
 
 end module PMC_Geomechanics_class
-
-#endif

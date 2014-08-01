@@ -1,4 +1,3 @@
-#ifdef GEOMECH
 module Output_Geomechanics_module
 
   use Geomechanics_Logging_module
@@ -1906,5 +1905,3 @@ end subroutine WriteHDF5CoordinatesXDMFGeomech
 ! defined(PETSC_HAVE_HDF5)
 
 end module Output_Geomechanics_module
-
-#endif

@@ -1,5 +1,3 @@
-#ifdef GEOMECH
-
 module Geomechanics_Global_module
 
   use Geomechanics_Global_Aux_module
@@ -347,5 +345,3 @@ subroutine GeomechGlobalUpdateAuxVars(geomech_realization,time_level)
 end subroutine GeomechGlobalUpdateAuxVars
 
 end module Geomechanics_Global_module
-
-#endif

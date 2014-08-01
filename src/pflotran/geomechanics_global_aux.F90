@@ -1,5 +1,3 @@
-#ifdef GEOMECH
-
 module Geomechanics_Global_Aux_module
   
   use PFLOTRAN_Constants_module
@@ -211,4 +209,3 @@ subroutine GeomechGlobalAuxDestroy(aux)
 end subroutine GeomechGlobalAuxDestroy
 
 end module Geomechanics_Global_Aux_module
-#endif

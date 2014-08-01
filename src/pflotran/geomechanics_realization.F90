@@ -1,5 +1,3 @@
-#ifdef GEOMECH
-
 #ifndef PROCESS_MODEL
 
 module Geomechanics_Realization_module
@@ -2209,6 +2207,3 @@ end module Geomechanics_Realization_class
 
 #endif
 
-
-#endif
-! GEOMECH

@@ -1,5 +1,3 @@
-#ifdef GEOMECH
-
 module Geomechanics_Init_module
 
   use PFLOTRAN_Constants_module
@@ -768,5 +766,3 @@ subroutine GeomechInitMatPropToGeomechRegions(geomech_realization)
 end subroutine GeomechInitMatPropToGeomechRegions
  
 end module Geomechanics_Init_module
-#endif
-! GEOMECH

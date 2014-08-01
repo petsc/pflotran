@@ -1,5 +1,3 @@
-#ifdef GEOMECH
-
 module Geomechanics_Condition_module
  
 !  use Global_Aux_module
@@ -922,4 +920,3 @@ subroutine GeomechSubConditionDestroy(sub_condition)
 end subroutine GeomechSubConditionDestroy
 
 end module Geomechanics_Condition_module
-#endif

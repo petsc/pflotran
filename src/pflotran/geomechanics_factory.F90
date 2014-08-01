@@ -1,4 +1,3 @@
-#ifdef GEOMECH
 module Geomechanics_Factory_module
 
   use Geomechanics_Simulation_class
@@ -474,5 +473,3 @@ end subroutine HijackTimestepper
 ! ************************************************************************** !
 
 end module Geomechanics_Factory_module
-
-#endif

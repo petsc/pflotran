@@ -1,5 +1,3 @@
-#ifdef GEOMECH
-
 module Geomechanics_Discretization_module
 
   use Geomechanics_Grid_module
@@ -759,4 +757,3 @@ subroutine GeomechDiscretizationDestroy(geomech_discretization)
 end subroutine GeomechDiscretizationDestroy
 
 end module Geomechanics_Discretization_module
-#endif

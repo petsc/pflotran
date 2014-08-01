@@ -1,5 +1,3 @@
-#ifdef GEOMECH 
-
 module Geomechanics_Force_module
 
   use Geomechanics_Global_Aux_module
@@ -2375,5 +2373,3 @@ subroutine GeomechUpdateSubsurfPorosity(realization,geomech_realization)
 end subroutine GeomechUpdateSubsurfPorosity
 
 end module Geomechanics_Force_module
-
-#endif

@@ -1,5 +1,3 @@
-#ifdef GEOMECH
-
 module Timestepper_Geomechanics_class
 
   use Timestepper_Base_class
@@ -207,6 +205,3 @@ subroutine TimestepperGeomechanicsStepDT(this, process_model, stop_flag)
 end subroutine TimestepperGeomechanicsStepDT
 
 end module Timestepper_Geomechanics_class
-
-
-#endif

@@ -1,5 +1,3 @@
-#if GEOMECH
-
 module Geomechanics_Simulation_class
 
   use Option_module
@@ -212,5 +210,3 @@ subroutine GeomechanicsSimulationDestroy(simulation)
 end subroutine GeomechanicsSimulationDestroy
 
 end module Geomechanics_Simulation_class
-
-#endif
