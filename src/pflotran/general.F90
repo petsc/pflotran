@@ -118,6 +118,13 @@ subroutine GeneralRead(input,option)
         call InputReadDouble(input,option,general_max_pressure_change)
         call InputErrorMsg(input,option,'maximum pressure change', &
                            'GENERAL_MODE')
+      case('MAX_ITERATION_BEFORE_DAMPING')
+        call InputReadInt(input,option,general_max_it_before_damping)
+        call InputErrorMsg(input,option,'maximum iteration before damping', &
+                           'GENERAL_MODE')
+      case('DAMPING_FACTOR')
+        call InputReadDouble(input,option,general_damping_factor)
+        call InputErrorMsg(input,option,'damping factor','GENERAL_MODE')
       case default
         option%io_buffer = 'Keyword: ' // trim(keyword) // &
                            ' not recognized in General Mode'    
@@ -3003,7 +3010,6 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   PetscReal, parameter :: tolerance = 0.99d0
   PetscReal, parameter :: initial_scale = 1.d0
   SNES :: snes
-  PetscInt, parameter :: max_newton_it_for_full_update = 10
   PetscInt :: newton_iteration
   PetscErrorCode :: ierr
   
@@ -3025,7 +3031,10 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   call VecGetArrayReadF90(X,X_p,ierr);CHKERRQ(ierr)
 
   scale = initial_scale
-  if (newton_iteration > max_newton_it_for_full_update) scale = 0.6d0
+  if (general_max_it_before_damping > 0 .and. &
+      newton_iteration > general_max_it_before_damping) then
+    scale = general_damping_factor
+  endif
 
   changed = PETSC_TRUE
   
