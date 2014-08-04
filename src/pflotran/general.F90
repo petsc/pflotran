@@ -118,6 +118,13 @@ subroutine GeneralRead(input,option)
         call InputReadDouble(input,option,general_max_pressure_change)
         call InputErrorMsg(input,option,'maximum pressure change', &
                            'GENERAL_MODE')
+      case('MAX_ITERATION_BEFORE_DAMPING')
+        call InputReadInt(input,option,general_max_it_before_damping)
+        call InputErrorMsg(input,option,'maximum iteration before damping', &
+                           'GENERAL_MODE')
+      case('DAMPING_FACTOR')
+        call InputReadDouble(input,option,general_damping_factor)
+        call InputErrorMsg(input,option,'damping factor','GENERAL_MODE')
       case default
         option%io_buffer = 'Keyword: ' // trim(keyword) // &
                            ' not recognized in General Mode'    
@@ -1322,10 +1329,10 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
     k_eff_ave = 0.d0
   endif
   ! units:
-  ! k_eff = W/K/m/m = J/s/K/m/m
+  ! k_eff = W/K-m = J/s/K-m
   ! delta_temp = K
   ! area = m^2
-  ! heat_flux = J/s
+  ! heat_flux = k_eff * delta_temp * area = J/s
   delta_temp = gen_auxvar_up%temp - gen_auxvar_dn%temp
   heat_flux = k_eff_ave * delta_temp * area
   ! MJ/s
@@ -1663,15 +1670,15 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
                  sqrt(gen_auxvar_dn%sat(option%liquid_phase)) * &
                  (thermal_conductivity_dn(2) - thermal_conductivity_dn(1))
       ! units:
-      ! k_eff = W/K/m/m = J/s/m/m
+      ! k_eff = W/K/m/m = J/s/K/m/m
       ! delta_temp = K
       ! area = m^2
-      ! heat_flux = MJ/s
+      ! heat_flux = J/s
       k_eff_ave = k_eff_dn / dist(0)
       delta_temp = gen_auxvar_up%temp - gen_auxvar_dn%temp
       heat_flux = k_eff_ave * delta_temp * area
     case(NEUMANN_BC)
-                  ! flux prescribed as MW/m^2
+                  ! flux prescribed as W/m^2
       heat_flux = auxvars(auxvar_mapping(GENERAL_ENERGY_FLUX_INDEX)) * area
 
     case default
@@ -2207,6 +2214,12 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   option%variables_swapped = PETSC_FALSE
                                              ! do update state
   call GeneralUpdateAuxVars(realization,PETSC_TRUE)
+
+! for debugging a single grid cell
+!  i = 20
+!  call GeneralOutputAuxVars(gen_auxvars(0,i),global_auxvars(i),i,'genaux', &
+!                            PETSC_TRUE,option)
+
   ! override flags since they will soon be out of date
   patch%aux%General%auxvars_up_to_date = PETSC_FALSE 
   if (option%variables_swapped) then
@@ -2996,6 +3009,8 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   PetscReal :: scale, temp_scale, temp_real
   PetscReal, parameter :: tolerance = 0.99d0
   PetscReal, parameter :: initial_scale = 1.d0
+  SNES :: snes
+  PetscInt :: newton_iteration
   PetscErrorCode :: ierr
   
   grid => realization%patch%grid
@@ -3009,10 +3024,17 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   spid = option%saturation_pressure_id
   apid = option%air_pressure_id
 
+  call SNESLineSearchGetSNES(line_search,snes,ierr)
+  call SNESGetIterationNumber(snes,newton_iteration,ierr)
+
   call VecGetArrayF90(dX,dX_p,ierr);CHKERRQ(ierr)
   call VecGetArrayReadF90(X,X_p,ierr);CHKERRQ(ierr)
 
   scale = initial_scale
+  if (general_max_it_before_damping > 0 .and. &
+      newton_iteration > general_max_it_before_damping) then
+    scale = general_damping_factor
+  endif
 
   changed = PETSC_TRUE
   

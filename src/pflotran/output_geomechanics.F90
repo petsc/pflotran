@@ -1,4 +1,3 @@
-#ifdef GEOMECH
 module Output_Geomechanics_module
 
   use Geomechanics_Logging_module
@@ -37,11 +36,7 @@ subroutine OutputGeomechInit(geomech_realization,num_steps)
   ! Date: 07/2/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Option_module
 
   implicit none
@@ -68,11 +63,7 @@ subroutine OutputGeomechanics(geomech_realization,plot_flag, &
   ! Date: 07/2/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Option_module, only : OptionCheckTouch, option_type, &
                             printMsg, printErrMsg
 
@@ -143,11 +134,7 @@ subroutine OutputTecplotGeomechanics(geomech_realization)
   ! Date: 07/2/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Discretization_module
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
@@ -159,10 +146,8 @@ subroutine OutputTecplotGeomechanics(geomech_realization)
 
   type(geomech_realization_type) :: geomech_realization
   
-  PetscInt :: i, comma_count, quote_count
   PetscInt, parameter :: icolumn = -1
   character(len=MAXSTRINGLENGTH) :: filename, string, string2
-  character(len=MAXHEADERLENGTH) :: header, header2
   character(len=MAXSTRINGLENGTH) :: tmp_global_prefix
   character(len=MAXWORDLENGTH) :: word
   type(geomech_grid_type), pointer :: grid
@@ -253,11 +238,7 @@ subroutine WriteTecplotGeomechGridElements(fid,geomech_realization)
   ! Date: 07/03/2013
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
   use Option_module
@@ -420,11 +401,7 @@ subroutine OutputTecplotHeader(fid,geomech_realization,icolumn)
   ! Date: 07/2/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
   use Option_module
@@ -436,15 +413,13 @@ subroutine OutputTecplotHeader(fid,geomech_realization,icolumn)
   type(geomech_realization_type) :: geomech_realization
   PetscInt :: icolumn
   
-  character(len=MAXHEADERLENGTH) :: header, header2
   character(len=MAXSTRINGLENGTH) :: string, string2
   character(len=MAXWORDLENGTH) :: word
   type(geomech_grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(geomech_patch_type), pointer :: patch
   type(output_option_type), pointer :: output_option
-  PetscInt :: comma_count, quote_count, variable_count
-  PetscInt :: i
+  PetscInt :: variable_count
   
   patch => geomech_realization%geomech_patch
   grid => patch%geomech_grid
@@ -457,44 +432,30 @@ subroutine OutputTecplotHeader(fid,geomech_realization,icolumn)
                 option%geomech_time/output_option%tconv,output_option%tunit
 
   ! initial portion of header
-  header = 'VARIABLES=' // &
-            '"X [m]",' // &
-            '"Y [m]",' // &
-            '"Z [m]"'
-  header2=''
-  header2 = OutputVariableListToHeader(output_option%output_variable_list,'', &
-                                      icolumn,PETSC_TRUE)
+  string = 'VARIABLES=' // &
+           '"X [m]",' // &
+           '"Y [m]",' // &
+           '"Z [m]"'
+  write(fid,'(a)',advance="no") trim(string)
 
-  header = trim(header) // trim(header2)
-  write(fid,'(a)') trim(header)
-
-  ! count vars in header
-  quote_count = 0
-  comma_count = 0
-  do i=1,len_trim(header)
-    ! 34 = '"'
-    if (iachar(header(i:i)) == 34) then
-      quote_count = quote_count + 1
-    ! 44 = ','
-    else if (iachar(header(i:i)) == 44 .and. mod(quote_count,2) == 0) then
-      comma_count = comma_count + 1
-    endif
-  enddo
-  
-  variable_count = comma_count + 1
+  call OutputWriteVariableListToHeader(fid,output_option%output_variable_list, &
+                                       '',icolumn,PETSC_TRUE,variable_count)
+ ! need to terminate line
+  write(fid,'(a)') ''
+  ! add x, y, z variables to count
+  variable_count = variable_count + 3
 
   !geh: due to pgi bug, cannot embed functions with calls to write() within
   !     write statement
-  string = OutputTecplotZoneHeader(geomech_realization,variable_count, &
-                                   output_option%tecplot_format)
-  write(fid,'(a)') trim(string)
+  call OutputWriteTecplotZoneHeader(fid,geomech_realization,variable_count, &
+                                    output_option%tecplot_format)
 
 end subroutine OutputTecplotHeader
 
 ! ************************************************************************** !
 
-function OutputTecplotZoneHeader(geomech_realization,variable_count, &
-                                 tecplot_format)
+subroutine OutputWriteTecplotZoneHeader(fid,geomech_realization, &
+                                        variable_count,tecplot_format)
   ! 
   ! Prints zone header to a tecplot file
   ! 
@@ -502,11 +463,7 @@ function OutputTecplotZoneHeader(geomech_realization,variable_count, &
   ! Date: 07/2/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
   use Option_module
@@ -514,12 +471,11 @@ function OutputTecplotZoneHeader(geomech_realization,variable_count, &
   
   implicit none
 
+  PetscInt :: fid
   type(geomech_realization_type) :: geomech_realization
   PetscInt :: variable_count
   PetscInt :: tecplot_format
   
-  character(len=MAXSTRINGLENGTH) :: OutputTecplotZoneHeader
-
   character(len=MAXSTRINGLENGTH) :: string, string2, string3
   type(geomech_grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -552,9 +508,9 @@ function OutputTecplotZoneHeader(geomech_realization,variable_count, &
       string2 = trim(string2) // trim(string3) // ', DATAPACKING=BLOCK'
   end select
   
-  OutputTecplotZoneHeader = trim(string) // string2
+  write(fid,'(a)') trim(string) // trim(string2)
 
-end function OutputTecplotZoneHeader
+end subroutine OutputWriteTecplotZoneHeader
 
 ! ************************************************************************** !
 
@@ -566,11 +522,7 @@ subroutine WriteTecplotGeomechGridVertices(fid,geomech_realization)
   ! Date: 07/2/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Grid_Aux_module
   use Geomechanics_Grid_module
   use Option_module
@@ -710,11 +662,7 @@ subroutine OutputGeomechGetVarFromArray(geomech_realization,vec,ivar,isubvar, &
   ! Date: 07/3/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Grid_Aux_module
   use Option_module
   use Geomechanics_Field_module
@@ -754,11 +702,7 @@ subroutine WriteTecplotDataSetGeomechFromVec(fid,geomech_realization,vec,datatyp
   ! Date: 07/03//13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
 
   implicit none
 
@@ -789,11 +733,7 @@ subroutine WriteTecplotDataSetGeomech(fid,geomech_realization,array,datatype, &
   ! Date: 07/02//13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Grid_Aux_module
   use Option_module
   use Geomechanics_Patch_module
@@ -827,11 +767,7 @@ subroutine WriteTecplotDataSetNumPerLineGeomech(fid,geomech_realization, &
   ! Date: 10/25/07, 12/02/11, Satish Karra 07/02/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
   use Option_module
@@ -1106,11 +1042,8 @@ subroutine OutputXMFHeaderGeomech(fid,time,nmax,xmf_vert_len,ngvert,filename)
   PetscInt :: nmax,xmf_vert_len,ngvert
   character(len=MAXSTRINGLENGTH) :: filename
 
-  character(len=MAXHEADERLENGTH) :: header, header2
   character(len=MAXSTRINGLENGTH) :: string, string2
   character(len=MAXWORDLENGTH) :: word
-  PetscInt :: comma_count, quote_count, variable_count
-  PetscInt :: i
   
   string="<?xml version=""1.0"" ?>"
   write(fid,'(a)') trim(string)
@@ -1259,11 +1192,7 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
   ! Date: 07/3/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Discretization_module
   use Option_module
   use Geomechanics_Grid_module
@@ -1582,11 +1511,7 @@ subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
 
   use hdf5
   use HDF5_module, only : HDF5WriteUnstructuredDataSetFromVec
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
   use Option_module
@@ -1906,5 +1831,3 @@ end subroutine WriteHDF5CoordinatesXDMFGeomech
 ! defined(PETSC_HAVE_HDF5)
 
 end module Output_Geomechanics_module
-
-#endif

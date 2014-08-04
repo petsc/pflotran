@@ -45,9 +45,7 @@ program pflotran
   use Hydrogeophysics_Factory_module
   use Surface_Factory_module
   use Surf_Subsurf_Factory_module
-#ifdef GEOMECH
   use Geomechanics_Factory_module
-#endif
   use PFLOTRAN_Constants_module
   use Output_Aux_module, only : INSTANTANEOUS_VARS
   use PFLOTRAN_Provenance_module, only : PrintProvenanceToScreen
@@ -84,10 +82,8 @@ program pflotran
         call SurfaceInitialize(simulation,option)
       case('SURFACE_SUBSURFACE')
         call SurfSubsurfaceInitialize(simulation,option)
-#ifdef GEOMECH
       case ('GEOMECHANICS')
         call GeomechanicsInitialize(simulation,option)
-#endif
       case default
         option%io_buffer = 'Simulation Mode not recognized.'
         call printErrMsg(option)

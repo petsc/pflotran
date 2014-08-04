@@ -1,5 +1,3 @@
-#ifdef GEOMECH
-
 module Geomechanics_Material_module
   
   use PFLOTRAN_Constants_module
@@ -341,5 +339,3 @@ recursive subroutine GeomechanicsMaterialPropertyDestroy(geomech_material_proper
 end subroutine GeomechanicsMaterialPropertyDestroy
 
 end module Geomechanics_Material_module
-#endif 
-!GEOMECH

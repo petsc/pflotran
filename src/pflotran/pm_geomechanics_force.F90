@@ -1,13 +1,7 @@
-#ifdef GEOMECH
-
 module PM_Geomechanics_Force_class
 
   use PM_Base_class
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Communicator_Base_module
   use Option_module
   use PFLOTRAN_Constants_module
@@ -404,5 +398,3 @@ subroutine PMGeomechForceDestroy(this)
 end subroutine PMGeomechForceDestroy
 
 end module PM_Geomechanics_Force_class
-
-#endif

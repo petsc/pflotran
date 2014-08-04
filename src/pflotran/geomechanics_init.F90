@@ -1,5 +1,3 @@
-#ifdef GEOMECH
-
 module Geomechanics_Init_module
 
   use PFLOTRAN_Constants_module
@@ -34,11 +32,7 @@ subroutine GeomechicsInitReadRequiredCards(geomech_realization)
   ! 
 
   use Geomechanics_Discretization_module
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Patch_module
   use Geomechanics_Grid_module
   use Input_Aux_module
@@ -92,11 +86,7 @@ subroutine GeomechanicsInit(geomech_realization,input,option)
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
   use Geomechanics_Discretization_module
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Patch_module
   use Unstructured_Grid_Aux_module
   use Unstructured_Grid_module
@@ -189,11 +179,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
   use Input_Aux_module
   use String_module
   use Geomechanics_Discretization_module
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Patch_module
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
@@ -621,11 +607,7 @@ subroutine GeomechInitMatPropToGeomechRegions(geomech_realization)
   ! Date: 06/17/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Discretization_module
   use Geomechanics_Strata_module
   use Geomechanics_Region_module
@@ -768,5 +750,3 @@ subroutine GeomechInitMatPropToGeomechRegions(geomech_realization)
 end subroutine GeomechInitMatPropToGeomechRegions
  
 end module Geomechanics_Init_module
-#endif
-! GEOMECH

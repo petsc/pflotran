@@ -1,5 +1,3 @@
-#ifdef GEOMECH
-
 module Geomechanics_Auxiliary_module
 
   use Geomechanics_Global_Aux_module
@@ -92,5 +90,3 @@ subroutine GeomechAuxDestroy(geomech_aux)
 end subroutine GeomechAuxDestroy
 
 end module Geomechanics_Auxiliary_module
-
-#endif

@@ -1,4 +1,3 @@
-#ifdef GEOMECH
 module Geomechanics_Grid_module
 
   use Geomechanics_Grid_Aux_module
@@ -1210,5 +1209,3 @@ subroutine GeomechSubsurfMapFromFileId(grid,input,option)
 end subroutine GeomechSubsurfMapFromFileId
 
 end module Geomechanics_Grid_module
-#endif 
-! GEOMECH
