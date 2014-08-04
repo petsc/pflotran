@@ -1,4 +1,5 @@
 ADD_TEST_SUITE(Test_EOS_Water_module_suite)
+ADD_TEST_SUITE(Test_EOS_Gas_module_suite)
 ADD_TEST_SUITE(Test_String_module_suite)
 ADD_TEST_SUITE(Test_Utility_module_suite)
 ADD_TEST_SUITE(Test_Saturation_function_module_suite)
