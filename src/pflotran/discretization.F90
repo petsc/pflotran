@@ -628,7 +628,9 @@ end subroutine DiscretizationRead
 
 ! ************************************************************************** !
 
-subroutine DiscretizationCreateDMs(discretization,option)
+subroutine DiscretizationCreateDMs(discretization, o_nflowdof, o_ntrandof, &
+                                    o_nphase, o_ngeomechdof, o_n_stress_strain_dof, option)
+
   ! 
   ! creates distributed, parallel meshes/grids
   ! If there are multiple degrees of freedom per grid cell, this will call
@@ -645,6 +647,11 @@ subroutine DiscretizationCreateDMs(discretization,option)
   implicit none
   
   type(discretization_type) :: discretization
+  PetscInt, intent(in) :: o_nflowdof
+  PetscInt, intent(in) :: o_ntrandof
+  PetscInt, intent(in) :: o_nphase
+  PetscInt, intent(in) :: o_ngeomechdof
+  PetscInt, intent(in) :: o_n_stress_strain_dof
   type(option_type) :: option
       
   PetscInt :: ndof
@@ -656,9 +663,9 @@ subroutine DiscretizationCreateDMs(discretization,option)
   select case(discretization%itype)
     case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
       discretization%dm_index_to_ndof(ONEDOF) = 1
-      discretization%dm_index_to_ndof(NPHASEDOF) = option%nphase
-      discretization%dm_index_to_ndof(NFLOWDOF) = option%nflowdof
-      discretization%dm_index_to_ndof(NTRANDOF) = option%ntrandof
+      discretization%dm_index_to_ndof(NPHASEDOF) = o_nphase
+      discretization%dm_index_to_ndof(NFLOWDOF) = o_nflowdof
+      discretization%dm_index_to_ndof(NTRANDOF) = o_ntrandof
     case(UNSTRUCTURED_GRID,UNSTRUCTURED_GRID_MIMETIC)
 
     
@@ -706,28 +713,26 @@ subroutine DiscretizationCreateDMs(discretization,option)
                               ndof,discretization%stencil_width, &
                               discretization%stencil_type,option)
   
-  if (option%nflowdof > 0) then
-    ndof = option%nflowdof
+  if (o_nflowdof > 0) then
+    ndof = o_nflowdof
     call DiscretizationCreateDM(discretization,discretization%dm_nflowdof, &
                                 ndof,discretization%stencil_width, &
                                 discretization%stencil_type,option)
   endif
   
-  if (option%ntrandof > 0) then
-    ndof = option%ntrandof
+  if (o_ntrandof > 0) then
+    ndof = o_ntrandof
     call DiscretizationCreateDM(discretization,discretization%dm_ntrandof, &
                                 ndof,discretization%stencil_width, &
                                 discretization%stencil_type,option)
   endif
 
-#ifdef GEOMECH
-  if (option%ngeomechdof > 0) then
-    ndof = option%n_stress_strain_dof
+  if (o_ngeomechdof > 0) then
+    ndof = o_n_stress_strain_dof
     call DiscretizationCreateDM(discretization,discretization%dm_n_stress_strain_dof, &
                                 ndof,discretization%stencil_width, &
                                 discretization%stencil_type,option)
   endif
-#endif
 
   select case(discretization%itype)
     case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)

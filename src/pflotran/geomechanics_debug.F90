@@ -1,5 +1,3 @@
-#ifdef GEOMECH
-
 module Geomechanics_Debug_module
 
   use PFLOTRAN_Constants_module
@@ -119,4 +117,3 @@ subroutine GeomechDebugRead(debug,input,option)
 end subroutine GeomechDebugRead
 
 end module Geomechanics_Debug_module
-#endif

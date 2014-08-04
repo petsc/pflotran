@@ -103,7 +103,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
         subsurf_simulation%rt_process_model_coupler
    simulation%regression => simulation_old%regression
 
-  if (option%nsurfflowdof>0) then
+  if (option%surf_flow_on) then
     ! Both, Surface-Subsurface flow active
     call HijackSurfaceSimulation(simulation_old,surf_simulation)
     call SurfaceJumpStart(surf_simulation)
@@ -139,7 +139,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
    nullify(subsurf_simulation%process_model_coupler_list)
 
   ! sim_aux: Create PETSc Vectors and VectorScatters
-  if (option%nsurfflowdof>0 .and. option%subsurf_surf_coupling /= DECOUPLED) then
+  if (option%surf_flow_on .and. option%subsurf_surf_coupling /= DECOUPLED) then
 
     call SurfSubsurfCreateSubsurfVecs(simulation_old%realization, option, &
                                       vec_subsurf_pres, vec_subsurf_pres_top_bc)
@@ -163,9 +163,9 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
 
   ! sim_aux: Set pointer
   simulation%flow_process_model_coupler%sim_aux => simulation%sim_aux
-  if(associated(simulation%rt_process_model_coupler)) &
+  if (associated(simulation%rt_process_model_coupler)) &
     simulation%rt_process_model_coupler%sim_aux => simulation%sim_aux
-  if(option%nsurfflowdof>0 .and. &
+  if (option%surf_flow_on .and. &
      associated(surf_simulation%surf_flow_process_model_coupler)) &
     surf_simulation%surf_flow_process_model_coupler%sim_aux => simulation%sim_aux
 

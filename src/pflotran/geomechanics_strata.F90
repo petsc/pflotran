@@ -1,5 +1,3 @@
-#ifdef GEOMECH
-
 module Geomechanics_Strata_module
 
   use Geomechanics_Region_module
@@ -291,5 +289,3 @@ subroutine GeomechStrataDestroy(strata)
 end subroutine GeomechStrataDestroy
 
 end module Geomechanics_Strata_module
-
-#endif

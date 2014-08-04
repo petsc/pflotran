@@ -88,10 +88,8 @@ subroutine PMCSubsurfaceGetAuxData(this)
 
   class(pmc_subsurface_type) :: this
 
-  if (this%option%nsurfflowdof > 0) call PMCSubsurfaceGetAuxDataFromSurf(this)
-#ifdef GEOMECH
+  if (this%option%surf_flow_on) call PMCSubsurfaceGetAuxDataFromSurf(this)
   if (this%option%ngeomechdof > 0) call PMCSubsurfaceGetAuxDataFromGeomech(this)
-#endif
 
 end subroutine PMCSubsurfaceGetAuxData
 
@@ -107,10 +105,8 @@ subroutine PMCSubsurfaceSetAuxData(this)
 
   class(pmc_subsurface_type) :: this
 
-  if (this%option%nsurfflowdof > 0) call PMCSubsurfaceSetAuxDataForSurf(this)
-#ifdef GEOMECH
+  if (this%option%surf_flow_on) call PMCSubsurfaceSetAuxDataForSurf(this)
   if (this%option%ngeomechdof > 0) call PMCSubsurfaceSetAuxDataForGeomech(this)
-#endif
 
 end subroutine PMCSubsurfaceSetAuxData
 
@@ -567,7 +563,6 @@ end subroutine PMCSubsurfaceSetAuxDataForSurf
 !!
 !! date: 01/04/14
 ! ************************************************************************** !
-#ifdef GEOMECH
 subroutine PMCSubsurfaceGetAuxDataFromGeomech(this)
 
   use Discretization_module, only : DiscretizationLocalToLocal
@@ -653,7 +648,7 @@ subroutine PMCSubsurfaceGetAuxDataFromGeomech(this)
   endif
 
 end subroutine PMCSubsurfaceGetAuxDataFromGeomech
-#endif
+
 ! ************************************************************************** !
 !> This routine sets auxiliary needed by geomechanics process model.
 !!
@@ -662,7 +657,6 @@ end subroutine PMCSubsurfaceGetAuxDataFromGeomech
 !!
 !! date: 01/03/14
 ! ************************************************************************** !
-#ifdef GEOMECH
 subroutine PMCSubsurfaceSetAuxDataForGeomech(this)
 
   use Option_module
@@ -758,7 +752,6 @@ subroutine PMCSubsurfaceSetAuxDataForGeomech(this)
   endif
 
 end subroutine PMCSubsurfaceSetAuxDataForGeomech
-#endif
 
 ! ************************************************************************** !
 !

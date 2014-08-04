@@ -513,7 +513,7 @@ subroutine OutputVelocitiesTecplotBlock(realization_base)
   endif
   
   call OutputGetCellCenteredVelocities(realization_base,global_vec_vx, &
-                                       global_vec_vx,global_vec_vz,LIQUID_PHASE)
+                                       global_vec_vy,global_vec_vz,LIQUID_PHASE)
 
   call DiscretizationGlobalToNatural(discretization,global_vec_vx,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization_base,natural_vec,TECPLOT_REAL)
@@ -526,7 +526,7 @@ subroutine OutputVelocitiesTecplotBlock(realization_base)
 
   if (option%nphase > 1) then
     call OutputGetCellCenteredVelocities(realization_base,global_vec_vx, &
-                                         global_vec_vx,global_vec_vz,GAS_PHASE)
+                                         global_vec_vy,global_vec_vz,GAS_PHASE)
 
     call DiscretizationGlobalToNatural(discretization,global_vec_vx,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization_base,natural_vec,TECPLOT_REAL)
@@ -1055,11 +1055,11 @@ subroutine OutputVelocitiesTecplotPoint(realization_base)
   PetscInt :: local_id
   PetscInt :: ghosted_id
   PetscReal :: value  
-  Vec :: global_vec_vx, global_vec_vy, global_vec_vz
+  Vec :: global_vec_vlx, global_vec_vly, global_vec_vlz
   Vec :: global_vec_vgx, global_vec_vgy, global_vec_vgz
   PetscErrorCode :: ierr
 
-  PetscReal, pointer :: vec_ptr_vx(:), vec_ptr_vy(:), vec_ptr_vz(:)
+  PetscReal, pointer :: vec_ptr_vlx(:), vec_ptr_vly(:), vec_ptr_vlz(:)
   PetscReal, pointer :: vec_ptr_vgx(:), vec_ptr_vgy(:), vec_ptr_vgz(:)
 
   patch => realization_base%patch
@@ -1110,19 +1110,19 @@ subroutine OutputVelocitiesTecplotPoint(realization_base)
   endif
   
   ! currently supported for only liquid phase'
-  call DiscretizationCreateVector(discretization,ONEDOF,global_vec_vx,GLOBAL, &
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec_vlx,GLOBAL, &
                                   option)  
-  call DiscretizationCreateVector(discretization,ONEDOF,global_vec_vy,GLOBAL, &
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec_vly,GLOBAL, &
                                   option)  
-  call DiscretizationCreateVector(discretization,ONEDOF,global_vec_vz,GLOBAL, &
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec_vlz,GLOBAL, &
                                   option)  
   
-  call OutputGetCellCenteredVelocities(realization_base,global_vec_vx, &
-                                       global_vec_vy,global_vec_vz,LIQUID_PHASE)
+  call OutputGetCellCenteredVelocities(realization_base,global_vec_vlx, &
+                                       global_vec_vly,global_vec_vlz,LIQUID_PHASE)
 
-  call VecGetArrayF90(global_vec_vx,vec_ptr_vx,ierr);CHKERRQ(ierr)
-  call VecGetArrayF90(global_vec_vy,vec_ptr_vy,ierr);CHKERRQ(ierr)
-  call VecGetArrayF90(global_vec_vz,vec_ptr_vz,ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(global_vec_vlx,vec_ptr_vlx,ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(global_vec_vly,vec_ptr_vly,ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(global_vec_vlz,vec_ptr_vlz,ierr);CHKERRQ(ierr)
 
   ! write points
 1000 format(es13.6,1x)
@@ -1138,8 +1138,8 @@ subroutine OutputVelocitiesTecplotPoint(realization_base)
     call DiscretizationCreateVector(discretization,ONEDOF,global_vec_vgz,GLOBAL, &
                                   option)  
   
-    call OutputGetCellCenteredVelocities(realization_base,global_vec_vx, &
-                                         global_vec_vy,global_vec_vz,GAS_PHASE)
+    call OutputGetCellCenteredVelocities(realization_base,global_vec_vgx, &
+                                         global_vec_vgy,global_vec_vgz,GAS_PHASE)
 
     call VecGetArrayF90(global_vec_vgx,vec_ptr_vgx,ierr);CHKERRQ(ierr)
     call VecGetArrayF90(global_vec_vgy,vec_ptr_vgy,ierr);CHKERRQ(ierr)
@@ -1152,9 +1152,9 @@ subroutine OutputVelocitiesTecplotPoint(realization_base)
     write(OUTPUT_UNIT,1000,advance='no') grid%y(ghosted_id)
     write(OUTPUT_UNIT,1000,advance='no') grid%z(ghosted_id)
     
-    write(OUTPUT_UNIT,1000,advance='no') vec_ptr_vx(ghosted_id)
-    write(OUTPUT_UNIT,1000,advance='no') vec_ptr_vy(ghosted_id)
-    write(OUTPUT_UNIT,1000,advance='no') vec_ptr_vz(ghosted_id)
+    write(OUTPUT_UNIT,1000,advance='no') vec_ptr_vlx(ghosted_id)
+    write(OUTPUT_UNIT,1000,advance='no') vec_ptr_vly(ghosted_id)
+    write(OUTPUT_UNIT,1000,advance='no') vec_ptr_vlz(ghosted_id)
 
     if (option%nphase > 1) then
       write(OUTPUT_UNIT,1000,advance='no') vec_ptr_vgx(ghosted_id)
@@ -1170,13 +1170,13 @@ subroutine OutputVelocitiesTecplotPoint(realization_base)
     write(OUTPUT_UNIT,1009)
   enddo
   
-  call VecRestoreArrayF90(global_vec_vx,vec_ptr_vx,ierr);CHKERRQ(ierr)
-  call VecRestoreArrayF90(global_vec_vy,vec_ptr_vy,ierr);CHKERRQ(ierr)
-  call VecRestoreArrayF90(global_vec_vz,vec_ptr_vz,ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(global_vec_vlx,vec_ptr_vlx,ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(global_vec_vly,vec_ptr_vly,ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(global_vec_vlz,vec_ptr_vlz,ierr);CHKERRQ(ierr)
   
-  call VecDestroy(global_vec_vx,ierr);CHKERRQ(ierr)
-  call VecDestroy(global_vec_vy,ierr);CHKERRQ(ierr)
-  call VecDestroy(global_vec_vz,ierr);CHKERRQ(ierr)
+  call VecDestroy(global_vec_vlx,ierr);CHKERRQ(ierr)
+  call VecDestroy(global_vec_vly,ierr);CHKERRQ(ierr)
+  call VecDestroy(global_vec_vlz,ierr);CHKERRQ(ierr)
 
   if (option%nphase > 1) then
     call VecRestoreArrayF90(global_vec_vgx,vec_ptr_vgx,ierr);CHKERRQ(ierr)

@@ -1,4 +1,3 @@
-#ifdef GEOMECH
 module Output_Geomechanics_module
 
   use Geomechanics_Logging_module
@@ -37,11 +36,7 @@ subroutine OutputGeomechInit(geomech_realization,num_steps)
   ! Date: 07/2/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Option_module
 
   implicit none
@@ -68,11 +63,7 @@ subroutine OutputGeomechanics(geomech_realization,plot_flag, &
   ! Date: 07/2/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Option_module, only : OptionCheckTouch, option_type, &
                             printMsg, printErrMsg
 
@@ -143,11 +134,7 @@ subroutine OutputTecplotGeomechanics(geomech_realization)
   ! Date: 07/2/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Discretization_module
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
@@ -253,11 +240,7 @@ subroutine WriteTecplotGeomechGridElements(fid,geomech_realization)
   ! Date: 07/03/2013
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
   use Option_module
@@ -420,11 +403,7 @@ subroutine OutputTecplotHeader(fid,geomech_realization,icolumn)
   ! Date: 07/2/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
   use Option_module
@@ -502,11 +481,7 @@ function OutputTecplotZoneHeader(geomech_realization,variable_count, &
   ! Date: 07/2/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
   use Option_module
@@ -566,11 +541,7 @@ subroutine WriteTecplotGeomechGridVertices(fid,geomech_realization)
   ! Date: 07/2/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Grid_Aux_module
   use Geomechanics_Grid_module
   use Option_module
@@ -710,11 +681,7 @@ subroutine OutputGeomechGetVarFromArray(geomech_realization,vec,ivar,isubvar, &
   ! Date: 07/3/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Grid_Aux_module
   use Option_module
   use Geomechanics_Field_module
@@ -754,11 +721,7 @@ subroutine WriteTecplotDataSetGeomechFromVec(fid,geomech_realization,vec,datatyp
   ! Date: 07/03//13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
 
   implicit none
 
@@ -789,11 +752,7 @@ subroutine WriteTecplotDataSetGeomech(fid,geomech_realization,array,datatype, &
   ! Date: 07/02//13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Grid_Aux_module
   use Option_module
   use Geomechanics_Patch_module
@@ -827,11 +786,7 @@ subroutine WriteTecplotDataSetNumPerLineGeomech(fid,geomech_realization, &
   ! Date: 10/25/07, 12/02/11, Satish Karra 07/02/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
   use Option_module
@@ -1259,11 +1214,7 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
   ! Date: 07/3/13
   ! 
 
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Discretization_module
   use Option_module
   use Geomechanics_Grid_module
@@ -1582,11 +1533,7 @@ subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
 
   use hdf5
   use HDF5_module, only : HDF5WriteUnstructuredDataSetFromVec
-#ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
-#else
-  use Geomechanics_Realization_module
-#endif
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
   use Option_module
@@ -1906,5 +1853,3 @@ end subroutine WriteHDF5CoordinatesXDMFGeomech
 ! defined(PETSC_HAVE_HDF5)
 
 end module Output_Geomechanics_module
-
-#endif

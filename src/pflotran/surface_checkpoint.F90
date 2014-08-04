@@ -301,7 +301,7 @@ subroutine SurfaceRestart(surf_realization, surf_flow_prev_dt, surf_flow_read)
   endif
 
   ! Save values from header
-  if (option%nsurfflowdof > 0 .and. &
+  if (option%surf_flow_on .and. &
       option%nsurfflowdof == surf_header%nsurfflowdof) then
 
     option%surf_flow_time = surf_header%surf_flow_time
@@ -514,7 +514,7 @@ subroutine SurfaceRestartProcessModel(viewer,surf_realization)
 
   global_vec = 0
 
-  if (option%nsurfflowdof > 0) then
+  if (option%surf_flow_on) then
     call DiscretizationCreateVector(discretization,ONEDOF, &
                                     global_vec,GLOBAL,option)
     ! Load the PETSc vectors.

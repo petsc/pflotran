@@ -11,7 +11,6 @@ include ${PETSC_DIR}/conf/rules
 
 MYFLAGS = -I.
 MYFLAGS += ${FC_DEFINE_FLAG}PROCESS_MODEL
-MYFLAGS += ${FC_DEFINE_FLAG}GEOMECH
 
 # if compiling pflotran_rxn or libpflotranchem.a, need to toggle 
 # PFLOTRAN_RXN_FLAG 
@@ -403,7 +402,6 @@ geomech_obj = \
 	${common_src}geomechanics_logging.o \
 	${common_src}geomechanics_global.o \
 	${common_src}geomechanics_force.o \
-	${common_src}geomechanics_timestepper.o \
 	${common_src}gauss.o \
 	${common_src}shape_function.o \
 	${common_src}geomechanics_global_aux.o\
@@ -636,13 +634,6 @@ geomechanics_simulation.o : geomechanics_realization.o option.o output.o \
                             timestepper_base.o
 geomechanics_strata.o : geomechanics_material.o geomechanics_region.o \
                         input_aux.o option.o pflotran_constants.o string.o
-geomechanics_timestepper.o : condition_control.o convergence.o \
-                             discretization.o geomechanics_discretization.o \
-                             geomechanics_field.o geomechanics_force.o \
-                             geomechanics_logging.o geomechanics_realization.o \
-                             logging.o option.o output.o output_aux.o \
-                             output_geomechanics.o pflotran_constants.o \
-                             realization.o solver.o timestepper.o waypoint.o
 geometry.o : input_aux.o option.o pflotran_constants.o
 global.o : communicator_base.o connection.o coupler.o field.o global_aux.o \
            grid.o material.o option.o patch.o pflotran_constants.o \
@@ -1012,9 +1003,10 @@ srcsink_sandbox_base.o : input_aux.o material_aux.o option.o \
 srcsink_sandbox_mass_rate.o : general_aux.o input_aux.o material_aux.o \
                               option.o pflotran_constants.o reaction_aux.o \
                               region.o srcsink_sandbox_base.o string.o units.o
-srcsink_sandbox_downreg.o : general_aux.o input_aux.o material_aux.o \
-                              option.o pflotran_constants.o reaction_aux.o \
-                              region.o srcsink_sandbox_base.o string.o units.o
+srcsink_sandbox_downreg.o : condition.o dataset_base.o dataset_ascii.o \
+                            general_aux.o input_aux.o material_aux.o \
+                            option.o pflotran_constants.o reaction_aux.o \
+                            region.o srcsink_sandbox_base.o string.o units.o
 srcsink_sandbox_wipp_gas.o : input_aux.o material_aux.o option.o \
                              pflotran_constants.o reaction_aux.o region.o \
                              srcsink_sandbox_base.o string.o units.o

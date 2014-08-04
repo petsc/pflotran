@@ -133,7 +133,7 @@ subroutine HijackSurfaceSimulation(simulation_old,simulation)
   nullify(surf_flow_process_model_coupler)
 
   ! Create Surface-flow ProcessModel & ProcessModelCoupler
-  if (option%nsurfflowdof > 0) then
+  if (option%surf_flow_on) then
     select case(option%iflowmode)
       case(RICHARDS_MODE)
         cur_process_model => PMSurfaceFlowCreate()

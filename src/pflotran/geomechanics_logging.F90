@@ -1,5 +1,3 @@
-#ifdef GEOMECH
-
 module Geomechanics_Logging_module
   
   use PFLOTRAN_Constants_module
@@ -136,5 +134,3 @@ subroutine GeomechLoggingDestroy()
 end subroutine GeomechLoggingDestroy
 
 end module Geomechanics_Logging_module
-
-#endif

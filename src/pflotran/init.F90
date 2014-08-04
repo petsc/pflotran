@@ -86,7 +86,6 @@ subroutine Init(simulation)
   use Surface_TH_module
   use Unstructured_Grid_module
 
-#ifdef GEOMECH
   use Geomechanics_Realization_class
   use Geomechanics_Init_module, only : GeomechicsInitReadRequiredCards, &
                                        GeomechInitMatPropToGeomechRegions
@@ -95,7 +94,6 @@ subroutine Init(simulation)
   use Geomechanics_Field_module
   use Geomechanics_Global_module
   use Geomechanics_Force_module
-#endif
 
   implicit none
   
@@ -129,12 +127,10 @@ subroutine Init(simulation)
   type(solver_type), pointer                :: surf_flow_solver
   type(surface_field_type), pointer         :: surf_field
   type(surface_realization_type), pointer   :: surf_realization
-#ifdef GEOMECH
   type(solver_type), pointer                :: geomech_solver
   type(stepper_type), pointer               :: geomech_stepper
   type(geomech_field_type), pointer         :: geomech_field
   type(geomech_realization_type), pointer   :: geomech_realization
-#endif
 
   ! popped in TimestepperInitializeRun()
   call PetscLogStagePush(logging%stage(INIT_STAGE),ierr);CHKERRQ(ierr)
@@ -152,11 +148,9 @@ subroutine Init(simulation)
   surf_realization  => simulation%surf_realization
   surf_flow_stepper => simulation%surf_flow_stepper
   surf_field        => surf_realization%surf_field  
-#ifdef GEOMECH
   geomech_realization => simulation%geomech_realization
   geomech_stepper => simulation%geomech_stepper
   geomech_field => geomech_realization%geomech_field
-#endif
   
   nullify(flow_solver)
   nullify(tran_solver)
@@ -189,10 +183,8 @@ subroutine Init(simulation)
   surf_realization%subsurf_filename = realization%discretization%filename
   call SurfaceInitReadRequiredCards(simulation%surf_realization)
 
-#ifdef GEOMECH
   geomech_realization%input => InputCreate(IN_UNIT,option%input_filename,option)
   call GeomechicsInitReadRequiredCards(simulation%geomech_realization)
-#endif
 
   patch => realization%patch
 
@@ -230,7 +222,8 @@ subroutine Init(simulation)
   endif
 
   ! initialize surface-flow mode
-  if (option%nsurfflowdof > 0) then
+  if (option%surf_flow_on) then
+    call setSurfaceFlowMode(option)
     surf_flow_solver => surf_flow_stepper%solver
     waypoint_list => WaypointListCreate()
     surf_realization%waypoints => waypoint_list
@@ -239,7 +232,6 @@ subroutine Init(simulation)
     nullify(surf_flow_solver)
   endif
 
-#ifdef GEOMECH
   ! initialize surface-flow mode
   if (option%ngeomechdof > 0) then
     geomech_solver => geomech_stepper%solver
@@ -249,7 +241,6 @@ subroutine Init(simulation)
     call TimestepperDestroy(simulation%geomech_stepper)
     nullify(geomech_solver)
   endif
-#endif
 
   ! initialize plot variables
   realization%output_option%output_variable_list => OutputVariableListCreate()
@@ -259,10 +250,8 @@ subroutine Init(simulation)
     OutputVariableListCreate()
   simulation%surf_realization%output_option%aveg_output_variable_list => &
     OutputVariableListCreate()
-#ifdef GEOMECH
   geomech_realization%output_option%output_variable_list => &
     OutputVariableListCreate()
-#endif
 
   ! read in the remainder of the input file
   call InitReadInput(simulation)
@@ -313,15 +302,13 @@ subroutine Init(simulation)
   ! create grid and allocate vectors
   call RealizationCreateDiscretization(realization)
   
-  if (option%nsurfflowdof>0) then
+  if (option%surf_flow_on) then
     call SurfRealizCreateDiscretization(simulation%surf_realization)
   endif
 
-#ifdef GEOMECH
   if (option%ngeomechdof > 0) then
     call GeomechRealizCreateDiscretization(geomech_realization)
   endif
-#endif
 
   call RegressionCreateMapping(simulation%regression,realization)
 
@@ -566,7 +553,7 @@ subroutine Init(simulation)
     
     call printMsg(option,"  Finished setting up FLOW SNES ")
 
-    if(option%nsurfflowdof>0) then
+    if (option%surf_flow_on) then
 
       ! Setup PETSc TS for explicit surface flow solution
       call printMsg(option,"  Beginning setup of SURF FLOW TS ")
@@ -590,11 +577,10 @@ subroutine Init(simulation)
                          simulation%surf_realization%waypoints%last%time, &
                          ierr);CHKERRQ(ierr)
 
-    endif ! if(option%nsurfflowdof>0)
+    endif ! if (option%surf_flow_on)
 
   endif
 
-#ifdef GEOMECH
   ! update geomechanics mode based on optional input
   if (option%ngeomechdof > 0) then
 
@@ -659,8 +645,6 @@ subroutine Init(simulation)
     call printMsg(option,"  Finished setting up GEOMECH SNES ")
   
   endif
-
-#endif
 
   ! update transport mode based on optional input
   if (option%ntrandof > 0) then
@@ -1014,7 +998,7 @@ subroutine Init(simulation)
     string = 'Transport Stepper:'
     call TimestepperPrintInfo(tran_stepper,option%fid_out,string,option)
   endif    
-   if (option%nsurfflowdof>0) then
+   if (option%surf_flow_on) then
     string = 'Surface Flow Stepper:'
     call TimestepperPrintInfo(surf_flow_stepper,option%fid_out,string,option)
   endif
@@ -1031,7 +1015,6 @@ subroutine Init(simulation)
                                OptionPrintToFile(option),option%fid_out, &
                                string)
   endif    
-#ifdef GEOMECH
   if (option%ngeomechdof > 0) then
     if (associated(geomech_solver)) then
       string = 'Geomechanics Newton Solver:'
@@ -1040,7 +1023,6 @@ subroutine Init(simulation)
                                  string)
     endif
   endif
-#endif
 
   if (associated(flow_solver)) then
     string = 'Flow Linear Solver:'
@@ -1050,14 +1032,12 @@ subroutine Init(simulation)
     string = 'Transport Linear Solver'
     call SolverPrintLinearInfo(tran_solver,string,option)
   endif    
-#ifdef GEOMECH
   if (option%ngeomechdof > 0) then
     if (associated(geomech_solver)) then
       string = 'Geomechanics Linear Solver:'
       call SolverPrintLinearInfo(geomech_solver,string,option)
     endif
   endif
-#endif
   if (associated(surf_flow_solver)) then
     string = 'Surface Flow TS Solver:'
     if (OptionPrintToScreen(option)) then
@@ -1091,7 +1071,7 @@ subroutine Init(simulation)
 #endif
 !PETSC_HAVE_HDF5
 
-  if(option%nsurfflowdof > 0) then
+  if (option%surf_flow_on) then
     ! Check if surface-flow is compatible with the given flowmode
     select case(option%iflowmode)
       case(RICHARDS_MODE,TH_MODE)
@@ -1150,7 +1130,7 @@ subroutine Init(simulation)
         option%io_buffer = 'For surface-flow only RICHARDS and TH mode implemented'
         call printErrMsgByRank(option)
     end select
-  endif ! option%nsurfflowdof > 0
+  endif ! option%surf_flow_on
 
   if (simulation%surf_realization%output_option%print_iproc) then
     output_variable => OutputVariableCreate('Processor ID',OUTPUT_DISCRETE,'', &
@@ -1161,7 +1141,6 @@ subroutine Init(simulation)
            simulation%surf_realization%output_option%output_variable_list,output_variable)
   endif
 
-#ifdef GEOMECH
   if (option%ngeomechdof > 0) then
     if (option%geomech_subsurf_coupling /= 0) then
       call GeomechCreateGeomechSubsurfVec(simulation%realization, &
@@ -1194,7 +1173,6 @@ subroutine Init(simulation)
     ! is not needed, at this point.
     call GeomechForceUpdateAuxVars(simulation%geomech_realization)
   endif
-#endif
 
   call printMsg(option," ")
   call printMsg(option,"  Finished Initialization")
@@ -1480,10 +1458,8 @@ subroutine InitReadInput(simulation)
   
   use Surface_Flow_module
   use Surface_Init_module, only : SurfaceInitReadInput
-#ifdef GEOMECH
   use Geomechanics_Init_module, only : GeomechanicsInitReadInput
   use Geomechanics_Realization_class
-#endif
 #ifdef SOLID_SOLUTION
   use Solid_Solution_module, only : SolidSolutionReadFromInputFile
 #endif
@@ -1546,10 +1522,7 @@ subroutine InitReadInput(simulation)
   type(mass_transfer_type), pointer :: flow_mass_transfer
   type(mass_transfer_type), pointer :: rt_mass_transfer
   type(input_type), pointer :: input
-  
-#ifdef GEOMECH
   type(geomech_realization_type), pointer :: geomech_realization
-#endif
 
   nullify(flow_stepper)
   nullify(tran_stepper)
@@ -1559,9 +1532,7 @@ subroutine InitReadInput(simulation)
   realization => simulation%realization
   patch => realization%patch
   
-#ifdef GEOMECH
   geomech_realization => simulation%geomech_realization
-#endif
 
   if (associated(patch)) grid => patch%grid
 
@@ -2748,7 +2719,6 @@ subroutine InitReadInput(simulation)
         call WaypointInsertInList(waypoint,simulation%surf_realization%waypoints)
 
 !......................
-#ifdef GEOMECH
       case ('GEOMECHANICS')
         call GeomechanicsInitReadInput(geomech_realization, &
                          simulation%geomech_stepper%solver,input,option)
@@ -2763,7 +2733,6 @@ subroutine InitReadInput(simulation)
         waypoint%time = realization%waypoints%last%time
         waypoint%print_output = PETSC_TRUE
         call WaypointInsertInList(waypoint,simulation%geomech_realization%waypoints)
-#endif
 
 !......................
       case ('HDF5_READ_GROUP_SIZE')
@@ -2885,6 +2854,36 @@ subroutine setFlowMode(option)
   end select
   
 end subroutine setFlowMode
+
+! ************************************************************************** !
+
+subroutine setSurfaceFlowMode(option)
+  ! 
+  ! Sets the flow mode for surface (richards, th, etc.)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 07/30/14
+  ! 
+
+  use Option_module
+  use String_module
+
+  implicit none 
+
+  type(option_type) :: option
+  
+  call StringToUpper(option%flowmode)
+  select case(option%flowmode)
+    case('RICHARDS')
+      option%nsurfflowdof = ONE_INTEGER
+    case('TH')
+      option%nsurfflowdof = TWO_INTEGER
+    case default
+      option%io_buffer = 'Mode: '//trim(option%flowmode)//' not recognized.'
+      call printErrMsg(option)
+  end select
+  
+end subroutine setSurfaceFlowMode
 
 ! ************************************************************************** !
 
