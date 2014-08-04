@@ -12,7 +12,6 @@ module PFLOTRAN_Constants_module
   ! COMPATIBILITY ISSUES - geh.
   PetscInt, parameter, public :: CHECKPOINT_REVISION_NUMBER = 5
   
-  PetscInt, parameter, public :: MAXHEADERLENGTH = 4096
   PetscInt, parameter, public :: MAXSTRINGLENGTH = 512
   PetscInt, parameter, public :: MAXWORDLENGTH = 32
   PetscInt, parameter, public :: OUT_UNIT = 15

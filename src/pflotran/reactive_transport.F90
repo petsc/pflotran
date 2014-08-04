@@ -4095,7 +4095,6 @@ subroutine RTSetPlotVariables(realization)
   character(len=MAXWORDLENGTH) :: name,  units
   type(output_variable_list_type), pointer :: list
   
-  character(len=MAXHEADERLENGTH) :: header
   character(len=MAXSTRINGLENGTH) string
   character(len=2) :: free_mol_char, tot_mol_char, sec_mol_char
   type(option_type), pointer :: option
@@ -4883,7 +4882,7 @@ end subroutine RTExplicitAdvection
 
 ! ************************************************************************** !
 
-subroutine RTAppendToHeader(header,variable_string,cell_string,icolumn)
+subroutine RTWriteToHeader(fid,variable_string,cell_string,icolumn)
   ! 
   ! Appends formatted strings to header string
   ! 
@@ -4891,7 +4890,7 @@ subroutine RTAppendToHeader(header,variable_string,cell_string,icolumn)
   ! Date: 10/27/11
   ! 
 
-  character(len=MAXHEADERLENGTH) :: header
+  PetscInt :: fid
   character(len=*) :: variable_string
   character(len=MAXSTRINGLENGTH) :: cell_string
   character(len=MAXSTRINGLENGTH) :: variable_string_adj
@@ -4923,9 +4922,9 @@ subroutine RTAppendToHeader(header,variable_string,cell_string,icolumn)
     write(string,'('',"'',a,a,''"'')') trim(column_string), &
           trim(variable_string_adj)
   endif
-  header = trim(header) // trim(string)
+  write(fid,'(a)',advance="no") trim(string)
 
-end subroutine RTAppendToHeader
+end subroutine RTWriteToHeader
 
 ! ************************************************************************** !
 
