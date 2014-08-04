@@ -71,7 +71,6 @@ module Timestepper_module
             TimestepperInitializeRun, &
             TimestepperFinalizeRun, &
 #endif            
-#ifdef GEOMECH
 #ifndef PROCESS_MODEL
             FlowStepperStepToSteadyState, &
             StepperCheckpoint, &
@@ -88,7 +87,6 @@ module Timestepper_module
             TimestepperCheckCFLLimit, &
             TimestepperEnforceCFLLimit, &
             TimestepperRestart, &
-#endif
 #endif
             TimestepperRead, TimestepperPrintInfo, TimestepperReset
         

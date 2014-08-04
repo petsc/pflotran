@@ -727,14 +727,12 @@ subroutine DiscretizationCreateDMs(discretization, o_nflowdof, o_ntrandof, &
                                 discretization%stencil_type,option)
   endif
 
-#ifdef GEOMECH
   if (o_ngeomechdof > 0) then
     ndof = o_n_stress_strain_dof
     call DiscretizationCreateDM(discretization,discretization%dm_n_stress_strain_dof, &
                                 ndof,discretization%stencil_width, &
                                 discretization%stencil_type,option)
   endif
-#endif
 
   select case(discretization%itype)
     case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)

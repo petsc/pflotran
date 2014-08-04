@@ -1,5 +1,3 @@
-#ifdef GEOMECH
-
 module Geomechanics_Field_module
 
   use PFLOTRAN_Constants_module
@@ -194,5 +192,3 @@ subroutine GeomechFieldDestroy(geomech_field)
 end subroutine GeomechFieldDestroy
 
 end module Geomechanics_Field_module
-
-#endif

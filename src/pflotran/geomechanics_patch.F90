@@ -1,4 +1,3 @@
-#ifdef GEOMECH
 module Geomechanics_Patch_module
 
   use Option_module
@@ -711,4 +710,3 @@ subroutine GeomechanicsPatchDestroy(geomech_patch)
 end subroutine GeomechanicsPatchDestroy
 
 end module Geomechanics_Patch_module
-#endif

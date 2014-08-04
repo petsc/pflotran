@@ -58,14 +58,13 @@ subroutine OutputTecplotHeader(fid,realization_base,icolumn)
   class(realization_base_type) :: realization_base
   PetscInt :: icolumn
   
-  character(len=MAXHEADERLENGTH) :: header, header2
   character(len=MAXSTRINGLENGTH) :: string, string2
   character(len=MAXWORDLENGTH) :: word
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch 
   type(output_option_type), pointer :: output_option
-  PetscInt :: comma_count, quote_count, variable_count
+  PetscInt :: variable_count
   PetscInt :: i
   
   patch => realization_base%patch
@@ -79,43 +78,30 @@ subroutine OutputTecplotHeader(fid,realization_base,icolumn)
                 option%time/output_option%tconv,output_option%tunit
 
   ! initial portion of header
-  header = 'VARIABLES=' // &
-            '"X [m]",' // &
-            '"Y [m]",' // &
-            '"Z [m]"'
+  string = 'VARIABLES=' // &
+           '"X [m]",' // &
+           '"Y [m]",' // &
+           '"Z [m]"'
+  write(fid,'(a)',advance="no") trim(string)
 
-  header2 = OutputVariableListToHeader(output_option%output_variable_list,'', &
-                                      icolumn,PETSC_TRUE)
-
-  header = trim(header) // trim(header2)
-  write(fid,'(a)') trim(header)
-
-  ! count vars in header
-  quote_count = 0
-  comma_count = 0
-  do i=1,len_trim(header)
-    ! 34 = '"'
-    if (iachar(header(i:i)) == 34) then
-      quote_count = quote_count + 1
-    ! 44 = ','
-    else if (iachar(header(i:i)) == 44 .and. mod(quote_count,2) == 0) then
-      comma_count = comma_count + 1
-    endif
-  enddo
-  
-  variable_count = comma_count + 1
+  call OutputWriteVariableListToHeader(fid,output_option%output_variable_list, &
+                                       '',icolumn,PETSC_TRUE,variable_count)
+  ! need to terminate line
+  write(fid,'(a)') ''
+  ! add x, y, z variables to count
+  variable_count = variable_count + 3
 
   !geh: due to pgi bug, cannot embed functions with calls to write() within
   !     write statement
-  string = OutputTecplotZoneHeader(realization_base,variable_count, &
-                                   output_option%tecplot_format)
-  write(fid,'(a)') trim(string)
+  call OutputWriteTecplotZoneHeader(fid,realization_base,variable_count, &
+                                    output_option%tecplot_format)
 
 end subroutine OutputTecplotHeader
 
 ! ************************************************************************** !
 
-function OutputTecplotZoneHeader(realization_base,variable_count,tecplot_format)
+subroutine OutputWriteTecplotZoneHeader(fid,realization_base,variable_count, &
+                                        tecplot_format)
   ! 
   ! Print zone header to Tecplot file
   ! 
@@ -131,12 +117,11 @@ function OutputTecplotZoneHeader(realization_base,variable_count,tecplot_format)
   
   implicit none
 
+  PetscInt :: fid
   class(realization_base_type) :: realization_base
   PetscInt :: variable_count
   PetscInt :: tecplot_format
   
-  character(len=MAXSTRINGLENGTH) :: OutputTecplotZoneHeader
-
   character(len=MAXSTRINGLENGTH) :: string, string2, string3
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -153,7 +138,8 @@ function OutputTecplotZoneHeader(realization_base,variable_count,tecplot_format)
   select case(tecplot_format)
     case (TECPLOT_POINT_FORMAT)
       if ((realization_base%discretization%itype == STRUCTURED_GRID).or. &
-          (realization_base%discretization%itype == STRUCTURED_GRID_MIMETIC)) then
+          (realization_base%discretization%itype == &
+           STRUCTURED_GRID_MIMETIC)) then
         string2 = ', I=' // &
                   trim(StringFormatInt(grid%structured_grid%nx)) // &
                   ', J=' // &
@@ -176,7 +162,8 @@ function OutputTecplotZoneHeader(realization_base,variable_count,tecplot_format)
                     trim(StringFormatInt(grid%structured_grid%nz+1))
         case (IMPLICIT_UNSTRUCTURED_GRID)
           string2 = ', N=' // &
-                    trim(StringFormatInt(grid%unstructured_grid%num_vertices_global)) // &
+                    trim(StringFormatInt(grid%unstructured_grid% &
+                                           num_vertices_global)) // &
                     ', E=' // &
                     trim(StringFormatInt(grid%unstructured_grid%nmax))
           string2 = trim(string2) // ', ZONETYPE=FEBRICK'
@@ -184,23 +171,27 @@ function OutputTecplotZoneHeader(realization_base,variable_count,tecplot_format)
           string2 = ', N=' // &
                     trim(StringFormatInt(grid%unstructured_grid%nmax)) // &
                     ', E=' // &
-                    trim(StringFormatInt(grid%unstructured_grid%explicit_grid%num_elems))
+                    trim(StringFormatInt(grid%unstructured_grid% &
+                                           explicit_grid%num_elems))
           string2 = trim(string2) // ', ZONETYPE=FEBRICK'
         case (POLYHEDRA_UNSTRUCTURED_GRID)
           string2 = ', NODES=' // &
-                    trim(StringFormatInt(grid%unstructured_grid%num_vertices_global)) // &
+                    trim(StringFormatInt(grid%unstructured_grid% &
+                                           num_vertices_global)) // &
                     ', FACES=' // &
-                    trim(StringFormatInt(grid%unstructured_grid%polyhedra_grid%num_ufaces_global)) // &
+                    trim(StringFormatInt(grid%unstructured_grid% &
+                                         polyhedra_grid%num_ufaces_global)) // &
                     ', E=' // &
                     trim(StringFormatInt(grid%unstructured_grid%nmax)) // &
                     ', TotalNumFaceNodes=' // &
-                    trim(StringFormatInt(grid%unstructured_grid%polyhedra_grid%num_verts_of_ufaces_global)) // &
+                    trim(StringFormatInt(grid%unstructured_grid% &
+                                polyhedra_grid%num_verts_of_ufaces_global)) // &
                     ', NumConnectedBoundaryFaces=0' // &
                     ', TotalNumBoundaryConnections=0'
           string2 = trim(string2) // ', ZONETYPE=FEPOLYHEDRON'
         case default
-          option%io_buffer = 'Extend OutputTecplotZoneHeader() for grid%ctype ' // &
-            trim(grid%ctype)
+          option%io_buffer = 'Extend OutputTecplotZoneHeader() for ' // &
+            'grid%ctype ' // trim(grid%ctype)
           call printErrMsg(option)
       end select
       
@@ -219,9 +210,9 @@ function OutputTecplotZoneHeader(realization_base,variable_count,tecplot_format)
     
     end select
   
-  OutputTecplotZoneHeader = trim(string) // string2  
+  write(fid,'(a)') trim(string) // trim(string2)
 
-end function OutputTecplotZoneHeader
+end subroutine OutputWriteTecplotZoneHeader
 
 ! ************************************************************************** !
 
@@ -251,7 +242,6 @@ subroutine OutputTecplotBlock(realization_base)
   PetscInt :: i, comma_count, quote_count
   PetscInt, parameter :: icolumn = -1
   character(len=MAXSTRINGLENGTH) :: filename, string, string2
-  character(len=MAXHEADERLENGTH) :: header, header2
   character(len=MAXWORDLENGTH) :: word
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -442,6 +432,7 @@ subroutine OutputVelocitiesTecplotBlock(realization_base)
   Vec :: global_vec
   Vec :: global_vec_vx, global_vec_vy, global_vec_vz
   Vec :: natural_vec
+  PetscInt :: variable_count
   PetscErrorCode :: ierr
 
   PetscReal, pointer :: vec_ptr(:)
@@ -483,15 +474,10 @@ subroutine OutputVelocitiesTecplotBlock(realization_base)
     string = trim(string) // ',"Material_ID"'
     write(OUTPUT_UNIT,'(a)') trim(string)
   
-    if (option%nphase > 1) then
-      string = OutputTecplotZoneHeader(realization_base,TEN_INTEGER, &
-                                       TECPLOT_BLOCK_FORMAT)
-    else
-      string = OutputTecplotZoneHeader(realization_base,SEVEN_INTEGER, &
-                                       TECPLOT_BLOCK_FORMAT)
-    endif
-    write(OUTPUT_UNIT,'(a)') trim(string)
-
+    variable_count = SEVEN_INTEGER
+    if (option%nphase > 1) variable_count = TEN_INTEGER
+    call OutputWriteTecplotZoneHeader(OUTPUT_UNIT,realization_base, &
+                                      variable_count,TECPLOT_BLOCK_FORMAT)
   endif
   
   ! write blocks
@@ -513,7 +499,7 @@ subroutine OutputVelocitiesTecplotBlock(realization_base)
   endif
   
   call OutputGetCellCenteredVelocities(realization_base,global_vec_vx, &
-                                       global_vec_vx,global_vec_vz,LIQUID_PHASE)
+                                       global_vec_vy,global_vec_vz,LIQUID_PHASE)
 
   call DiscretizationGlobalToNatural(discretization,global_vec_vx,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization_base,natural_vec,TECPLOT_REAL)
@@ -526,7 +512,7 @@ subroutine OutputVelocitiesTecplotBlock(realization_base)
 
   if (option%nphase > 1) then
     call OutputGetCellCenteredVelocities(realization_base,global_vec_vx, &
-                                         global_vec_vx,global_vec_vz,GAS_PHASE)
+                                         global_vec_vy,global_vec_vz,GAS_PHASE)
 
     call DiscretizationGlobalToNatural(discretization,global_vec_vx,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization_base,natural_vec,TECPLOT_REAL)
@@ -781,7 +767,8 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization_base,iphase, &
     do j=1,ny_local
       do i=1,nx_local
         count = count + 1
-        indices(count) = i+grid%structured_grid%lxs+(j-1+grid%structured_grid%lys)*nx_global+ &
+        indices(count) = i+grid%structured_grid%lxs+ &
+                         (j-1+grid%structured_grid%lys)*nx_global+ &
                          (k-1+grid%structured_grid%lzs)*nx_global*ny_global
       enddo
     enddo
@@ -794,11 +781,13 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization_base,iphase, &
     do j=1,ny_local
       do i=1,nx_local
         count = count + 1
-        local_id = i+(j-1)*grid%structured_grid%nlx+(k-1)*grid%structured_grid%nlxy
+        local_id = i+(j-1)*grid%structured_grid%nlx+ &
+                   (k-1)*grid%structured_grid%nlxy
         ghosted_id = grid%nL2G(local_id)
         array(count) = grid%x(ghosted_id)
         if (direction == X_DIRECTION) &
-          array(count) = array(count) + 0.5d0*grid%structured_grid%dx(ghosted_id)
+          array(count) = array(count) + &
+                         0.5d0*grid%structured_grid%dx(ghosted_id)
       enddo
     enddo
   enddo
@@ -806,7 +795,8 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization_base,iphase, &
   ! thus, you cannot pass in local_size, since it is needed later
   adjusted_size = local_size
   call ConvertArrayToNatural(indices,array,adjusted_size,global_size,option)
-  call WriteTecplotDataSet(OUTPUT_UNIT,realization_base,array,TECPLOT_REAL,adjusted_size)
+  call WriteTecplotDataSet(OUTPUT_UNIT,realization_base,array,TECPLOT_REAL, &
+                           adjusted_size)
   ! since the array has potentially been resized, must reallocate
   deallocate(array)
   nullify(array)
@@ -818,17 +808,20 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization_base,iphase, &
     do j=1,ny_local
       do i=1,nx_local
         count = count + 1
-        local_id = i+(j-1)*grid%structured_grid%nlx+(k-1)*grid%structured_grid%nlxy
+        local_id = i+(j-1)*grid%structured_grid%nlx+ &
+                   (k-1)*grid%structured_grid%nlxy
         ghosted_id = grid%nL2G(local_id)        
         array(count) = grid%y(ghosted_id)
         if (direction == Y_DIRECTION) &
-          array(count) = array(count) + 0.5d0*grid%structured_grid%dy(ghosted_id)
+          array(count) = array(count) + &
+                         0.5d0*grid%structured_grid%dy(ghosted_id)
       enddo
     enddo
   enddo
   adjusted_size = local_size
   call ConvertArrayToNatural(indices,array,adjusted_size,global_size,option)
-  call WriteTecplotDataSet(OUTPUT_UNIT,realization_base,array,TECPLOT_REAL,adjusted_size)
+  call WriteTecplotDataSet(OUTPUT_UNIT,realization_base,array,TECPLOT_REAL, &
+                           adjusted_size)
   deallocate(array)
   nullify(array)
 
@@ -839,17 +832,20 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization_base,iphase, &
     do j=1,ny_local
       do i=1,nx_local
         count = count + 1
-        local_id = i+(j-1)*grid%structured_grid%nlx+(k-1)*grid%structured_grid%nlxy
+        local_id = i+(j-1)*grid%structured_grid%nlx+ &
+                   (k-1)*grid%structured_grid%nlxy
         ghosted_id = grid%nL2G(local_id)        
         array(count) = grid%z(ghosted_id)
         if (direction == Z_DIRECTION) &
-          array(count) = array(count) + 0.5d0*grid%structured_grid%dz(ghosted_id)
+          array(count) = array(count) + &
+                         0.5d0*grid%structured_grid%dz(ghosted_id)
       enddo
     enddo
   enddo
   adjusted_size = local_size
   call ConvertArrayToNatural(indices,array,adjusted_size,global_size,option)
-  call WriteTecplotDataSet(OUTPUT_UNIT,realization_base,array,TECPLOT_REAL,adjusted_size)
+  call WriteTecplotDataSet(OUTPUT_UNIT,realization_base,array,TECPLOT_REAL, &
+                           adjusted_size)
   deallocate(array)
   nullify(array)
 
@@ -888,7 +884,8 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization_base,iphase, &
     do j=1,ny_local 
       do i=1,nx_local 
         count = count + 1 
-        local_id = i+(j-1)*grid%structured_grid%nlx+(k-1)*grid%structured_grid%nlxy 
+        local_id = i+(j-1)*grid%structured_grid%nlx+ &
+                   (k-1)*grid%structured_grid%nlxy 
         array(count) = vec_ptr(local_id) 
       enddo 
     enddo 
@@ -899,11 +896,13 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization_base,iphase, &
 
 !GEH - Structured Grid Dependence - End
   
-  array(1:local_size) = array(1:local_size)*output_option%tconv ! convert time units
+  ! convert time units
+  array(1:local_size) = array(1:local_size)*output_option%tconv 
   
   adjusted_size = local_size
   call ConvertArrayToNatural(indices,array,adjusted_size,global_size,option)
-  call WriteTecplotDataSet(OUTPUT_UNIT,realization_base,array,TECPLOT_REAL,adjusted_size)
+  call WriteTecplotDataSet(OUTPUT_UNIT,realization_base,array,TECPLOT_REAL, &
+                           adjusted_size)
   deallocate(array)
   nullify(array)
   
@@ -944,7 +943,6 @@ subroutine OutputTecplotPoint(realization_base)
   PetscInt :: i, comma_count, quote_count
   PetscInt :: icolumn
   character(len=MAXSTRINGLENGTH) :: filename, string
-  character(len=MAXHEADERLENGTH) :: header, header2
   character(len=MAXWORDLENGTH) :: word
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -1055,11 +1053,11 @@ subroutine OutputVelocitiesTecplotPoint(realization_base)
   PetscInt :: local_id
   PetscInt :: ghosted_id
   PetscReal :: value  
-  Vec :: global_vec_vx, global_vec_vy, global_vec_vz
+  Vec :: global_vec_vlx, global_vec_vly, global_vec_vlz
   Vec :: global_vec_vgx, global_vec_vgy, global_vec_vgz
   PetscErrorCode :: ierr
 
-  PetscReal, pointer :: vec_ptr_vx(:), vec_ptr_vy(:), vec_ptr_vz(:)
+  PetscReal, pointer :: vec_ptr_vlx(:), vec_ptr_vly(:), vec_ptr_vlz(:)
   PetscReal, pointer :: vec_ptr_vgx(:), vec_ptr_vgy(:), vec_ptr_vgz(:)
 
   patch => realization_base%patch
@@ -1110,19 +1108,19 @@ subroutine OutputVelocitiesTecplotPoint(realization_base)
   endif
   
   ! currently supported for only liquid phase'
-  call DiscretizationCreateVector(discretization,ONEDOF,global_vec_vx,GLOBAL, &
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec_vlx,GLOBAL, &
                                   option)  
-  call DiscretizationCreateVector(discretization,ONEDOF,global_vec_vy,GLOBAL, &
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec_vly,GLOBAL, &
                                   option)  
-  call DiscretizationCreateVector(discretization,ONEDOF,global_vec_vz,GLOBAL, &
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec_vlz,GLOBAL, &
                                   option)  
   
-  call OutputGetCellCenteredVelocities(realization_base,global_vec_vx, &
-                                       global_vec_vy,global_vec_vz,LIQUID_PHASE)
+  call OutputGetCellCenteredVelocities(realization_base,global_vec_vlx, &
+                                       global_vec_vly,global_vec_vlz,LIQUID_PHASE)
 
-  call VecGetArrayF90(global_vec_vx,vec_ptr_vx,ierr);CHKERRQ(ierr)
-  call VecGetArrayF90(global_vec_vy,vec_ptr_vy,ierr);CHKERRQ(ierr)
-  call VecGetArrayF90(global_vec_vz,vec_ptr_vz,ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(global_vec_vlx,vec_ptr_vlx,ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(global_vec_vly,vec_ptr_vly,ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(global_vec_vlz,vec_ptr_vlz,ierr);CHKERRQ(ierr)
 
   ! write points
 1000 format(es13.6,1x)
@@ -1138,8 +1136,8 @@ subroutine OutputVelocitiesTecplotPoint(realization_base)
     call DiscretizationCreateVector(discretization,ONEDOF,global_vec_vgz,GLOBAL, &
                                   option)  
   
-    call OutputGetCellCenteredVelocities(realization_base,global_vec_vx, &
-                                         global_vec_vy,global_vec_vz,GAS_PHASE)
+    call OutputGetCellCenteredVelocities(realization_base,global_vec_vgx, &
+                                         global_vec_vgy,global_vec_vgz,GAS_PHASE)
 
     call VecGetArrayF90(global_vec_vgx,vec_ptr_vgx,ierr);CHKERRQ(ierr)
     call VecGetArrayF90(global_vec_vgy,vec_ptr_vgy,ierr);CHKERRQ(ierr)
@@ -1152,9 +1150,9 @@ subroutine OutputVelocitiesTecplotPoint(realization_base)
     write(OUTPUT_UNIT,1000,advance='no') grid%y(ghosted_id)
     write(OUTPUT_UNIT,1000,advance='no') grid%z(ghosted_id)
     
-    write(OUTPUT_UNIT,1000,advance='no') vec_ptr_vx(ghosted_id)
-    write(OUTPUT_UNIT,1000,advance='no') vec_ptr_vy(ghosted_id)
-    write(OUTPUT_UNIT,1000,advance='no') vec_ptr_vz(ghosted_id)
+    write(OUTPUT_UNIT,1000,advance='no') vec_ptr_vlx(ghosted_id)
+    write(OUTPUT_UNIT,1000,advance='no') vec_ptr_vly(ghosted_id)
+    write(OUTPUT_UNIT,1000,advance='no') vec_ptr_vlz(ghosted_id)
 
     if (option%nphase > 1) then
       write(OUTPUT_UNIT,1000,advance='no') vec_ptr_vgx(ghosted_id)
@@ -1170,13 +1168,13 @@ subroutine OutputVelocitiesTecplotPoint(realization_base)
     write(OUTPUT_UNIT,1009)
   enddo
   
-  call VecRestoreArrayF90(global_vec_vx,vec_ptr_vx,ierr);CHKERRQ(ierr)
-  call VecRestoreArrayF90(global_vec_vy,vec_ptr_vy,ierr);CHKERRQ(ierr)
-  call VecRestoreArrayF90(global_vec_vz,vec_ptr_vz,ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(global_vec_vlx,vec_ptr_vlx,ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(global_vec_vly,vec_ptr_vly,ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(global_vec_vlz,vec_ptr_vlz,ierr);CHKERRQ(ierr)
   
-  call VecDestroy(global_vec_vx,ierr);CHKERRQ(ierr)
-  call VecDestroy(global_vec_vy,ierr);CHKERRQ(ierr)
-  call VecDestroy(global_vec_vz,ierr);CHKERRQ(ierr)
+  call VecDestroy(global_vec_vlx,ierr);CHKERRQ(ierr)
+  call VecDestroy(global_vec_vly,ierr);CHKERRQ(ierr)
+  call VecDestroy(global_vec_vlz,ierr);CHKERRQ(ierr)
 
   if (option%nphase > 1) then
     call VecRestoreArrayF90(global_vec_vgx,vec_ptr_vgx,ierr);CHKERRQ(ierr)
@@ -1256,9 +1254,8 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization_base,vector)
   
     !geh: due to pgi bug, cannot embed functions with calls to write() within
     !     write statement
-    string = OutputTecplotZoneHeader(realization_base,FIVE_INTEGER, &
-                                     TECPLOT_BLOCK_FORMAT)
-    write(OUTPUT_UNIT,'(a)') trim(string)
+    call OutputWriteTecplotZoneHeader(OUTPUT_UNIT,realization_base, &
+                                      FIVE_INTEGER,TECPLOT_BLOCK_FORMAT)
   endif
   
   ! write blocks
@@ -2305,7 +2302,6 @@ subroutine OutputSecondaryContinuumTecplot(realization_base)
   PetscInt :: icolumn
   character(len=MAXSTRINGLENGTH) :: filename, string, string2
   character(len=MAXSTRINGLENGTH) :: string3
-  character(len=MAXHEADERLENGTH) :: header
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch 
@@ -2387,10 +2383,10 @@ subroutine OutputSecondaryContinuumTecplot(realization_base)
               option%time/output_option%tconv,output_option%tunit
 
     ! initial portion of header
-    header = 'VARIABLES=' // &
-              '"dist [m]"'
+    string = 'VARIABLES=' // &
+             '"dist [m]"'
                
-    write(OUTPUT_UNIT,'(a)',advance='no') trim(header)
+    write(OUTPUT_UNIT,'(a)',advance='no') trim(string)
                       
     if (associated(observation%region%coordinates) .and. &
             .not.observation%at_cell_center) then
@@ -2525,7 +2521,6 @@ subroutine WriteTecplotHeaderForCellSec(fid,realization_base,region,icell, &
   PetscInt :: icolumn
   
   PetscInt :: local_id
-  character(len=MAXHEADERLENGTH) :: header
   character(len=MAXSTRINGLENGTH) :: cell_string
   character(len=MAXWORDLENGTH) :: x_string, y_string, z_string
   type(grid_type), pointer :: grid
@@ -2576,7 +2571,6 @@ subroutine WriteTecplotHeaderForCoordSec(fid,realization_base,region, &
   PetscBool :: print_secondary_data(5)
   PetscInt :: icolumn
   
-  character(len=MAXHEADERLENGTH) :: header
   character(len=MAXSTRINGLENGTH) :: cell_string
   character(len=MAXWORDLENGTH) :: x_string, y_string, z_string
   
@@ -2619,7 +2613,6 @@ subroutine WriteTecplotHeaderSec(fid,realization_base,cell_string, &
   PetscInt :: icolumn
   
   PetscInt :: i,j
-  character(len=MAXHEADERLENGTH) :: header
   character(len=MAXSTRINGLENGTH) :: string
   type(option_type), pointer :: option
   type(output_option_type), pointer :: output_option  
@@ -2631,65 +2624,50 @@ subroutine WriteTecplotHeaderSec(fid,realization_base,cell_string, &
   if (print_secondary_data(1)) then
     select case (option%iflowmode) 
       case (TH_MODE, MPH_MODE)
-        header = ''
         string = 'T'
-        call OutputAppendToHeader(header,string,'C',cell_string,icolumn)
+        call OutputWriteToHeader(fid,string,'C',cell_string,icolumn)
       case default
-        header = ''
     end select
-    write(fid,'(a)',advance="no") trim(header)
   endif
   
   ! add secondary concentrations to header
   if (option%ntrandof > 0) then 
     reaction => realization_base%reaction
     if (print_secondary_data(2)) then
-      header = ''
       do j = 1, reaction%naqcomp
         string = 'Free ion ' // trim(reaction%primary_species_names(j))
-        call OutputAppendToHeader(header,string,'molal',cell_string, &
-                                  icolumn)
+        call OutputWriteToHeader(fid,string,'molal',cell_string,icolumn)
       enddo
-      write(fid,'(a)',advance="no") trim(header)
     endif
   
   
     ! add secondary mineral volume fractions to header
     if (print_secondary_data(3)) then
       if (reaction%mineral%nkinmnrl > 0) then
-        header = ''
         do j = 1, reaction%mineral%nkinmnrl
           string = trim(reaction%mineral%mineral_names(j)) // ' VF'
-          call OutputAppendToHeader(header,string,'',cell_string, &
-                                    icolumn)
+          call OutputWriteToHeader(fid,string,'',cell_string,icolumn)
         enddo
-        write(fid,'(a)',advance="no") trim(header)
       endif
     endif
     
      ! add secondary mineral rates to header
     if (print_secondary_data(4)) then
       if (reaction%mineral%nkinmnrl > 0) then
-        header = ''
         do j = 1, reaction%mineral%nkinmnrl
           string = trim(reaction%mineral%mineral_names(j)) // ' Rate'
-          call OutputAppendToHeader(header,string,'',cell_string, &
-                                    icolumn)
+          call OutputWriteToHeader(fid,string,'',cell_string,icolumn)
         enddo
-        write(fid,'(a)',advance="no") trim(header)
       endif
     endif
 
     ! add secondary mineral SI to header
     if (print_secondary_data(5)) then
       if (reaction%mineral%nkinmnrl > 0) then
-        header = ''
         do j = 1, reaction%mineral%nkinmnrl
           string = trim(reaction%mineral%mineral_names(j)) // ' SI'
-          call OutputAppendToHeader(header,string,'',cell_string, &
-                                    icolumn)
+          call OutputWriteToHeader(fid,string,'',cell_string,icolumn)
         enddo
-        write(fid,'(a)',advance="no") trim(header)
       endif
     endif
    

@@ -178,10 +178,9 @@ subroutine OutputTecplotFEQUAD(surf_realization,realization)
   type(surface_realization_type) :: surf_realization
   class(realization_type) :: realization
   
-  PetscInt :: i, comma_count, quote_count
+  PetscInt :: i
   PetscInt, parameter :: icolumn = -1
   character(len=MAXSTRINGLENGTH) :: filename, string, string2
-  character(len=MAXHEADERLENGTH) :: header, header2
   character(len=MAXSTRINGLENGTH) :: tmp_global_prefix
   character(len=MAXWORDLENGTH) :: word
   type(grid_type), pointer :: grid
@@ -281,15 +280,13 @@ subroutine OutputTecplotHeader(fid,surf_realization,icolumn)
   type(surface_realization_type) :: surf_realization
   PetscInt :: icolumn
   
-  character(len=MAXHEADERLENGTH) :: header, header2
   character(len=MAXSTRINGLENGTH) :: string, string2
   character(len=MAXWORDLENGTH) :: word
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(output_option_type), pointer :: output_option
-  PetscInt :: comma_count, quote_count, variable_count
-  PetscInt :: i
+  PetscInt :: variable_count
   
   patch => surf_realization%patch
   grid => patch%grid
@@ -302,43 +299,30 @@ subroutine OutputTecplotHeader(fid,surf_realization,icolumn)
                 option%surf_flow_time/output_option%tconv,output_option%tunit
 
   ! initial portion of header
-  header = 'VARIABLES=' // &
-            '"X [m]",' // &
-            '"Y [m]",' // &
-            '"Z [m]"'
-  header2=''
-  header2 = OutputVariableListToHeader(output_option%output_variable_list,'', &
-                                      icolumn,PETSC_TRUE)
+  string = 'VARIABLES=' // &
+           '"X [m]",' // &
+           '"Y [m]",' // &
+           '"Z [m]"'
+  write(fid,'(a)',advance='no') trim(string)
 
-  header = trim(header) // trim(header2)
-  write(fid,'(a)') trim(header)
-
-  ! count vars in header
-  quote_count = 0
-  comma_count = 0
-  do i=1,len_trim(header)
-    ! 34 = '"'
-    if (iachar(header(i:i)) == 34) then
-      quote_count = quote_count + 1
-    ! 44 = ','
-    else if (iachar(header(i:i)) == 44 .and. mod(quote_count,2) == 0) then
-      comma_count = comma_count + 1
-    endif
-  enddo
-  
-  variable_count = comma_count + 1
+  call OutputWriteVariableListToHeader(fid,output_option%output_variable_list, &
+                                       '',icolumn,PETSC_TRUE,variable_count)
+  ! need to terminate line
+  write(fid,'(a)') ''
+  ! add x, y, z variables to count
+  variable_count = variable_count + 3
 
   !geh: due to pgi bug, cannot embed functions with calls to write() within
   !     write statement
-  string = OutputTecplotZoneHeader(surf_realization,variable_count, &
-                                   output_option%tecplot_format)
-  write(fid,'(a)') trim(string)
+  call OutputWriteTecplotZoneHeader(fid,surf_realization,variable_count, &
+                                    output_option%tecplot_format)
 
 end subroutine OutputTecplotHeader
 
 ! ************************************************************************** !
 
-function OutputTecplotZoneHeader(surf_realization,variable_count,tecplot_format)
+subroutine OutputWriteTecplotZoneHeader(fid,surf_realization,variable_count, &
+                                        tecplot_format)
   ! 
   ! This subroutine prints zone header to Tecplot file.
   ! 
@@ -353,12 +337,11 @@ function OutputTecplotZoneHeader(surf_realization,variable_count,tecplot_format)
   
   implicit none
 
+  PetscInt :: fid
   type(surface_realization_type) :: surf_realization
   PetscInt :: variable_count
   PetscInt :: tecplot_format
   
-  character(len=MAXSTRINGLENGTH) :: OutputTecplotZoneHeader
-
   character(len=MAXSTRINGLENGTH) :: string, string2, string3
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -415,9 +398,9 @@ function OutputTecplotZoneHeader(surf_realization,variable_count,tecplot_format)
       string2 = trim(string2) // trim(string3) // ', DATAPACKING=BLOCK'
   end select
   
-  OutputTecplotZoneHeader = trim(string) // string2
+  write(fid,'(a)') trim(string) // trim(string2)
 
-end function OutputTecplotZoneHeader
+end subroutine OutputWriteTecplotZoneHeader
 
 ! ************************************************************************** !
 
@@ -591,7 +574,6 @@ subroutine OutputHydrograph(surf_realization)
   PetscInt :: icol
   PetscReal :: sum_flux, sum_flux_global
 
-  character(len=MAXHEADERLENGTH) :: header
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXWORDLENGTH) :: word, units
   character(len=MAXSTRINGLENGTH) :: string
@@ -624,25 +606,21 @@ subroutine OutputHydrograph(surf_realization)
         open(unit=fid,file=filename,action="write",status="replace")
 
         ! write header
-        write(fid,'(a)',advance="no") ' "Time [' // trim(output_option%tunit) // ']"'
+        write(fid,'(a)',advance="no") ' "Time [' // &
+                                      trim(output_option%tunit) // ']"'
       
-        header = ''
         if (option%iflowmode > 0) then
-          call OutputAppendToHeader(header,'dt_flow',output_option%tunit,'',icol)
+          call OutputWriteToHeader(fid,'dt_flow',output_option%tunit,'',icol)
         endif
         
-        write(fid,'(a)',advance="no") trim(header)
-
-        header = ''
         !string = 'Outflow '
         !call OutputAppendToHeader(header,string,'[m^2/s]','',icol)
         string = 'Outflow'
-        call OutputAppendToHeader(header,string,'[m^3/s]','',icol)
-        write(fid,'(a)',advance="no") trim(header)
-
+        call OutputWriteToHeader(fid,string,'[m^3/s]','',icol)
         write(fid,'(a)') '' 
       else
-        open(unit=fid,file=filename,action="write",status="old",position="append")
+        open(unit=fid,file=filename,action="write",status="old", &
+             position="append")
       endif
     endif
 
