@@ -3361,7 +3361,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
                       log(patch%aux%RT%auxvars(ghosted_id)%pri_molal(comp_id)* &
                         patch%aux%RT%auxvars(ghosted_id)%pri_act_coef(comp_id))
               enddo
-              tk = patch%aux%Global%auxvars(grid%nL2G(local_id))%temp + &
+              tk = patch%aux%Global%auxvars(ghosted_id)%temp + &
                    273.15d0
               ehfac = IDEAL_GAS_CONST*tk*LOG_TO_LN/faraday
               eh0 = ehfac*(-4.d0*ph0+lnQKgas*LN_TO_LOG+logKeh(tk))/4.d0
@@ -4148,7 +4148,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
                         patch%aux%RT%auxvars(ghosted_id)%pri_act_coef(comp_id))
           enddo
 
-          tk = patch%aux%Global%auxvars(grid%nL2G(ghosted_id))%temp+273.15d0
+          tk = patch%aux%Global%auxvars(ghosted_id)%temp+273.15d0
           ehfac = IDEAL_GAS_CONST*tk*LOG_TO_LN/faraday
           eh0 = ehfac*(-4.d0*ph0+lnQKgas*LN_TO_LOG+logKeh(tk))/4.d0
 
@@ -4176,7 +4176,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
                         patch%aux%RT%auxvars(ghosted_id)%pri_act_coef(comp_id))
           enddo
 
-          tk = patch%aux%Global%auxvars(grid%nL2G(ghosted_id))%temp+273.15d0
+          tk = patch%aux%Global%auxvars(ghosted_id)%temp+273.15d0
           ehfac = IDEAL_GAS_CONST*tk*LOG_TO_LN/faraday
           eh0 = ehfac*(-4.d0*ph0+lnQKgas*LN_TO_LOG+logKeh(tk))/4.d0
           pe0 = eh0/ehfac
@@ -4786,7 +4786,7 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
               enddo
             else if (vec_format == LOCAL) then
               do ghosted_id=1,grid%ngmax
-                patch%aux%Global%auxvars(grid%nL2G(ghosted_id))%pres(1) = vec_ptr(ghosted_id)
+                patch%aux%Global%auxvars(ghosted_id)%pres(1) = vec_ptr(ghosted_id)
               enddo
             endif
           case(GAS_PRESSURE)
@@ -4796,7 +4796,7 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
               enddo
             else if (vec_format == LOCAL) then
               do ghosted_id=1,grid%ngmax
-                patch%aux%Global%auxvars(grid%nL2G(ghosted_id))%pres(2) = vec_ptr(ghosted_id)
+                patch%aux%Global%auxvars(ghosted_id)%pres(2) = vec_ptr(ghosted_id)
               enddo
             endif
           case(LIQUID_SATURATION)
