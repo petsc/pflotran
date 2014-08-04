@@ -2184,8 +2184,10 @@ subroutine InitReadInput(simulation)
         if (associated(solver_pointer,flow_solver) .and. &
             solver_pointer%check_post_convergence) then
           option%flow%check_post_convergence = PETSC_TRUE
-          option%flow%post_convergence_tol = &
-          solver_pointer%newton_inf_scaled_res_tol
+          option%flow%inf_scaled_res_tol = &
+            solver_pointer%newton_inf_scaled_res_tol
+          option%flow%inf_rel_update_tol = &
+            solver_pointer%newton_inf_rel_update_tol
         endif
         if (associated(solver_pointer,tran_solver) .and. &
             solver_pointer%check_post_convergence) then
