@@ -85,7 +85,7 @@ subroutine OutputTecplotHeader(fid,realization_base,icolumn)
             '"Z [m]"'
 
   header2 = OutputVariableListToHeader(output_option%output_variable_list,'', &
-                                      icolumn,PETSC_TRUE)
+                                      icolumn,PETSC_TRUE,option)
 
   header = trim(header) // trim(header2)
   write(fid,'(a)') trim(header)

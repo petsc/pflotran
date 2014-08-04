@@ -380,7 +380,7 @@ subroutine WriteObservationHeader(fid,realization_base,cell_string, &
   output_option => realization_base%output_option
   
   header = OutputVariableListToHeader(output_option%output_variable_list, &
-                                      cell_string,icolumn,PETSC_FALSE)
+                                      cell_string,icolumn,PETSC_FALSE,option)
   write(fid,'(a)',advance="no") trim(header)
 
   if (print_velocities) then

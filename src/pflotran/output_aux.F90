@@ -433,13 +433,15 @@ end subroutine OutputVariableAddToList2
 ! ************************************************************************** !
 
 function OutputVariableListToHeader(variable_list,cell_string,icolumn, &
-                                    plot_file)
+                                    plot_file,option)
   ! 
   ! Converts a variable list to a header string
   ! 
   ! Author: Glenn Hammond
   ! Date: 10/15/12
   ! 
+
+  use Option_module
   
   implicit none
   
@@ -447,6 +449,7 @@ function OutputVariableListToHeader(variable_list,cell_string,icolumn, &
   character(len=*) :: cell_string
   PetscInt :: icolumn
   PetscBool :: plot_file
+  type(option_type) :: option
   
   character(len=MAXHEADERLENGTH) :: OutputVariableListToHeader
 
@@ -468,6 +471,15 @@ function OutputVariableListToHeader(variable_list,cell_string,icolumn, &
     call OutputAppendToHeader(header,variable_name,units,cell_string,icolumn)
     cur_variable => cur_variable%next
   enddo
+
+  if (len_trim(header) >= MAXHEADERLENGTH-1) then
+    !geh: just reusing the work units to write the header length.
+    write(units,*) MAXHEADERLENGTH
+    option%io_buffer = 'Observation header is longer than MAXHEADERLENGTH ' // &
+      '(' // trim(adjustl(units)) // ').  Please increase MAXHEADERLENGTH ' // &
+      'in pflotran_constants.F90.  Try doubling it.'
+    call printErrMsg(option)
+  endif
   
   OutputVariableListToHeader = header
   

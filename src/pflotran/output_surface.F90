@@ -308,7 +308,7 @@ subroutine OutputTecplotHeader(fid,surf_realization,icolumn)
             '"Z [m]"'
   header2=''
   header2 = OutputVariableListToHeader(output_option%output_variable_list,'', &
-                                      icolumn,PETSC_TRUE)
+                                      icolumn,PETSC_TRUE,option)
 
   header = trim(header) // trim(header2)
   write(fid,'(a)') trim(header)
