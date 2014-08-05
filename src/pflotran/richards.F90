@@ -639,7 +639,7 @@ subroutine RichardsUpdatePermPatch(realization)
   patch => realization%patch
   field => realization%field
   grid => patch%grid
-  material_property_array => realization%material_property_array
+  material_property_array => patch%material_property_array
   material_auxvars => patch%aux%Material%auxvars
 
   if (.not.associated(patch%imat)) then

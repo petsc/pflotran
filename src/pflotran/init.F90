@@ -831,8 +831,8 @@ subroutine Init(simulation)
         call Flash2Setup(realization)
       case(G_MODE)
         call MaterialSetup(realization%patch%aux%Material%material_parameter, &
-                           realization%material_property_array, &
-                           realization%saturation_function_array, &
+                           patch%material_property_array, &
+                           patch%saturation_function_array, &
                            realization%option)
         call GeneralSetup(realization)
     end select
@@ -2958,7 +2958,7 @@ subroutine assignMaterialPropToRegions(realization)
   field => realization%field
 
   ! initialize material auxiliary indices
-  call MaterialInitAuxIndices(realization%material_property_array,option)
+  call MaterialInitAuxIndices(patch%material_property_array,option)
   ! create mappinging
   
   ! loop over all patches and allocation material id arrays
@@ -3069,9 +3069,9 @@ subroutine assignMaterialPropToRegions(realization)
         material_property => null_material_property
       else if (material_id > 0 .and. &
                 material_id <= &
-                size(realization%material_property_array)) then
+                size(patch%material_property_array)) then
         material_property => &
-          realization%material_property_array(material_id)%ptr
+          patch%material_property_array(material_id)%ptr
         if (.not.associated(material_property)) then
           write(dataset_name,*) material_id
           option%io_buffer = 'No material property for material id ' // &
@@ -3084,7 +3084,7 @@ subroutine assignMaterialPropToRegions(realization)
         option%io_buffer = 'Uninitialized material id in patch at cell ' // &
                             trim(adjustl(dataset_name))
         call printErrMsgByRank(option)
-      else if (material_id > size(realization%material_property_array)) then
+      else if (material_id > size(patch%material_property_array)) then
         write(option%io_buffer,*) material_id
         option%io_buffer = 'Unmatched material id in patch:' // &
           adjustl(trim(option%io_buffer))
@@ -3132,9 +3132,9 @@ subroutine assignMaterialPropToRegions(realization)
     call VecRestoreArrayF90(field%tortuosity0,tor0_p,ierr);CHKERRQ(ierr)
         
     ! read in any user-defined property fields
-    do material_id = 1, size(realization%material_property_array)
+    do material_id = 1, size(patch%material_property_array)
       material_property => &
-              realization%material_property_array(material_id)%ptr
+              patch%material_property_array(material_id)%ptr
       if (associated(material_property)) then
         if (associated(material_property%permeability_dataset)) then
           call readPermeabilitiesFromFile(realization,material_property)

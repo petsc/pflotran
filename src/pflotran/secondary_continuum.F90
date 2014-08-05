@@ -1434,10 +1434,10 @@ subroutine SecondaryRTUpdateIterate(line_search,P0,dP,P1,dP_changed, &
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       if (realization%patch%imat(ghosted_id) <= 0) cycle
-      sec_diffusion_coefficient = realization% &
+      sec_diffusion_coefficient = realization%patch% &
                                   material_property_array(1)%ptr% &
                                   secondary_continuum_diff_coeff
-      sec_porosity = realization%material_property_array(1)%ptr% &
+      sec_porosity = realization%patch%material_property_array(1)%ptr% &
                     secondary_continuum_porosity
 
       call SecondaryRTAuxVarComputeMulti(&

@@ -207,27 +207,27 @@ subroutine MphaseSetupPatch(realization)
 ! mphase_parameters create *********************************************
 ! Sir
   allocate(mphase%Mphase_parameter%sir(option%nphase, &
-                                  size(realization%saturation_function_array)))
-  do ipara = 1, size(realization%saturation_function_array)
-    mphase%mphase_parameter%sir(:,realization% &
+                                  size(patch%saturation_function_array)))
+  do ipara = 1, size(patch%saturation_function_array)
+    mphase%mphase_parameter%sir(:,patch% &
                                    saturation_function_array(ipara)%ptr%id) = &
-      realization%saturation_function_array(ipara)%ptr%Sr(:)
+      patch%saturation_function_array(ipara)%ptr%Sr(:)
   enddo
 
 ! dencpr  
-  allocate(mphase%Mphase_parameter%dencpr(size(realization%material_property_array)))
-  do ipara = 1, size(realization%material_property_array)
-    mphase%mphase_parameter%dencpr(realization%material_property_array(ipara)% &
+  allocate(mphase%Mphase_parameter%dencpr(size(patch%material_property_array)))
+  do ipara = 1, size(patch%material_property_array)
+    mphase%mphase_parameter%dencpr(patch%material_property_array(ipara)% &
                                      ptr%internal_id) = &
-      realization%material_property_array(ipara)%ptr%rock_density*option%scale*&
-      realization%material_property_array(ipara)%ptr%specific_heat
+      patch%material_property_array(ipara)%ptr%rock_density*option%scale*&
+      patch%material_property_array(ipara)%ptr%specific_heat
   enddo
 ! ckwet
-  allocate(mphase%Mphase_parameter%ckwet(size(realization%material_property_array)))
-  do ipara = 1, size(realization%material_property_array)
-    mphase%mphase_parameter%ckwet(realization%material_property_array(ipara)% &
+  allocate(mphase%Mphase_parameter%ckwet(size(patch%material_property_array)))
+  do ipara = 1, size(patch%material_property_array)
+    mphase%mphase_parameter%ckwet(patch%material_property_array(ipara)% &
                                     ptr%internal_id) = &
-      realization%material_property_array(ipara)%ptr%thermal_conductivity_wet*option%scale
+      patch%material_property_array(ipara)%ptr%thermal_conductivity_wet*option%scale
   enddo
   
 
@@ -246,24 +246,24 @@ subroutine MphaseSetupPatch(realization)
     ! S. Karra 07/18/12
       call SecondaryContinuumSetProperties( &
         mphase_sec_heat_vars(local_id)%sec_continuum, &
-        realization%material_property_array(1)%ptr%secondary_continuum_name, &
-        realization%material_property_array(1)%ptr%secondary_continuum_length, &
-        realization%material_property_array(1)%ptr%secondary_continuum_matrix_block_size, &
-        realization%material_property_array(1)%ptr%secondary_continuum_fracture_spacing, &
-        realization%material_property_array(1)%ptr%secondary_continuum_radius, &
-        realization%material_property_array(1)%ptr%secondary_continuum_area, &
+        patch%material_property_array(1)%ptr%secondary_continuum_name, &
+        patch%material_property_array(1)%ptr%secondary_continuum_length, &
+        patch%material_property_array(1)%ptr%secondary_continuum_matrix_block_size, &
+        patch%material_property_array(1)%ptr%secondary_continuum_fracture_spacing, &
+        patch%material_property_array(1)%ptr%secondary_continuum_radius, &
+        patch%material_property_array(1)%ptr%secondary_continuum_area, &
         option)
         
       mphase_sec_heat_vars(local_id)%ncells = &
-        realization%material_property_array(1)%ptr%secondary_continuum_ncells
+        patch%material_property_array(1)%ptr%secondary_continuum_ncells
       mphase_sec_heat_vars(local_id)%aperture = &
-        realization%material_property_array(1)%ptr%secondary_continuum_aperture
+        patch%material_property_array(1)%ptr%secondary_continuum_aperture
       mphase_sec_heat_vars(local_id)%epsilon = &
-        realization%material_property_array(1)%ptr%secondary_continuum_epsilon
+        patch%material_property_array(1)%ptr%secondary_continuum_epsilon
       mphase_sec_heat_vars(local_id)%log_spacing = &
-        realization%material_property_array(1)%ptr%secondary_continuum_log_spacing
+        patch%material_property_array(1)%ptr%secondary_continuum_log_spacing
       mphase_sec_heat_vars(local_id)%outer_spacing = &
-        realization%material_property_array(1)%ptr%secondary_continuum_outer_spacing
+        patch%material_property_array(1)%ptr%secondary_continuum_outer_spacing
         
 
       allocate(mphase_sec_heat_vars(local_id)%area(mphase_sec_heat_vars(local_id)%ncells))
@@ -288,7 +288,7 @@ subroutine MphaseSetupPatch(realization)
                                 
       mphase_sec_heat_vars(local_id)%interfacial_area = area_per_vol* &
           (1.d0 - mphase_sec_heat_vars(local_id)%epsilon)* &
-          realization%material_property_array(1)%ptr% &
+          patch%material_property_array(1)%ptr% &
           secondary_continuum_area_scaling
 
 
@@ -298,7 +298,7 @@ subroutine MphaseSetupPatch(realization)
       
       if (option%set_secondary_init_temp) then
         mphase_sec_heat_vars(local_id)%sec_temp = &
-          realization%material_property_array(1)%ptr%secondary_continuum_init_temp
+          patch%material_property_array(1)%ptr%secondary_continuum_init_temp
       else
         mphase_sec_heat_vars(local_id)%sec_temp = &
         initial_condition%flow_condition%temperature%dataset%rarray(1)
@@ -477,7 +477,7 @@ subroutine MphaseComputeMassBalancePatch(realization,mass_balance,mass_trapped)
       enddo
 
       pckr_sir(iphase) = &
-        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr%sr(iphase)
+        patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr%sr(iphase)
 
       if (iphase == 1 .and. &
         mphase_auxvars(ghosted_id)%auxvar_elem(0)%sat(iphase) <= pckr_sir(iphase)) then
@@ -980,7 +980,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
     iend = ghosted_id*option%nflowdof
     istart = iend-option%nflowdof+1
     iphase = int(iphase_loc_p(ghosted_id))
-    if(.not. associated(realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr))then
+    if(.not. associated(patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr))then
        print*, 'error!!! saturation function not allocated', ghosted_id,icap_loc_p(ghosted_id)
     endif
    
@@ -988,7 +988,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
         auxvars(ghosted_id)%auxvar_elem(0),&
         global_auxvars(ghosted_id), &
         iphase, &
-        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+        patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
         realization%fluid_properties,option,xphi)
 ! update global variables
     if (associated(global_auxvars)) then
@@ -1069,7 +1069,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
 	  
       call MphaseAuxVarCompute_NINC(xxbc,auxvars_bc(sum_connection)%auxvar_elem(0), &
           global_auxvars_bc(sum_connection),iphase, &
-          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+          patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
           realization%fluid_properties, option, xphi)
     
       if (associated(global_auxvars_bc)) then
@@ -1397,7 +1397,7 @@ subroutine MphaseUpdateFixedAccumPatch(realization)
 !    call MphaseAuxVarCompute_Ninc(xx_p(istart:iend), &
 !                       auxvars(ghosted_id)%auxvar_elem(0), &
 !                       iphase, &
-!                       realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+!                       patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
 !                       realization%fluid_properties,option)
 !    iphase_loc_p(ghosted_id) = iphase
    ! print *, 'MphaseUpdateFixedAccumPatch1'
@@ -2671,7 +2671,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
     ghosted_id = ng
     call MphaseAuxVarCompute_Ninc(xx_loc_p(istart:iend),auxvars(ng)%auxvar_elem(0), &
       global_auxvars(ng), iphase, &
-      realization%saturation_function_array(int(icap_loc_p(ng)))%ptr, &
+      patch%saturation_function_array(int(icap_loc_p(ng)))%ptr, &
       realization%fluid_properties,option,xphi)
 
 #if 1
@@ -2737,7 +2737,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       end select
       call MphaseAuxVarCompute_Winc(xx_loc_p(istart:iend),mphase%delx(:,ng),&
             auxvars(ng)%auxvar_elem(1:option%nflowdof),global_auxvars(ng),iphase,&
-            realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
+            patch%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
             realization%fluid_properties,option)
     endif
   enddo
@@ -2964,7 +2964,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
  
       call MphaseAuxVarCompute_Ninc(xxbc,auxvars_bc(sum_connection)%auxvar_elem(0),&
             global_auxvars_bc(sum_connection), iphase,&
-            realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
+            patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
             realization%fluid_properties, option, xphi)
 
 #if 1
@@ -3556,12 +3556,12 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,realization,ierr)
       if (boundary_condition%flow_condition%itype(MPH_PRESSURE_DOF) /= NEUMANN_BC) then
         call MphaseAuxVarCompute_Ninc(xxbc,auxvars_bc(sum_connection)%auxvar_elem(0), &
            global_auxvars_bc(sum_connection),iphasebc,&
-           realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+           patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
            realization%fluid_properties,option)
         call MphaseAuxVarCompute_Winc(xxbc,delxbc,&
            auxvars_bc(sum_connection)%auxvar_elem(1:option%nflowdof),&
            global_auxvars_bc(sum_connection),iphasebc, &
-           realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+           patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
            realization%fluid_properties,option)
     
         do nvar=1,option%nflowdof
