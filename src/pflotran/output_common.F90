@@ -761,11 +761,8 @@ subroutine OutputXMFHeader(fid,time,nmax,xmf_vert_len,ngvert,filename)
   PetscInt :: nmax,xmf_vert_len,ngvert
   character(len=MAXSTRINGLENGTH) :: filename
 
-  character(len=MAXHEADERLENGTH) :: header, header2
   character(len=MAXSTRINGLENGTH) :: string, string2
   character(len=MAXWORDLENGTH) :: word
-  PetscInt :: comma_count, quote_count, variable_count
-  PetscInt :: i
   
   string="<?xml version=""1.0"" ?>"
   write(fid,'(a)') trim(string)
@@ -888,11 +885,8 @@ subroutine OutputXMFHeaderExplicit(fid,time,nmax,xmf_vert_len,ngvert,filename)
   PetscInt :: nmax,xmf_vert_len,ngvert
   character(len=MAXSTRINGLENGTH) :: filename
 
-  character(len=MAXHEADERLENGTH) :: header, header2
   character(len=MAXSTRINGLENGTH) :: string, string2
   character(len=MAXWORDLENGTH) :: word
-  PetscInt :: comma_count, quote_count, variable_count
-  PetscInt :: i
   
   string="<?xml version=""1.0"" ?>"
   write(fid,'(a)') trim(string)

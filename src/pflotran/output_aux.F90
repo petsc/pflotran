@@ -123,8 +123,8 @@ module Output_Aux_module
             OutputVariableListCreate, &
             OutputVariableListDuplicate, &
             OutputVariableAddToList, &
-            OutputAppendToHeader, &
-            OutputVariableListToHeader, &
+            OutputWriteToHeader, &
+            OutputWriteVariableListToHeader, &
             OutputVariableToCategoryString, &
             OutputVariableRead, &
             OutputOptionDestroy, &
@@ -432,8 +432,8 @@ end subroutine OutputVariableAddToList2
 
 ! ************************************************************************** !
 
-function OutputVariableListToHeader(variable_list,cell_string,icolumn, &
-                                    plot_file,option)
+subroutine OutputWriteVariableListToHeader(fid,variable_list,cell_string, &
+                                           icolumn,plot_file,variable_count)
   ! 
   ! Converts a variable list to a header string
   ! 
@@ -445,20 +445,17 @@ function OutputVariableListToHeader(variable_list,cell_string,icolumn, &
   
   implicit none
   
+  PetscInt :: fid
   type(output_variable_list_type) :: variable_list
   character(len=*) :: cell_string
   PetscInt :: icolumn
   PetscBool :: plot_file
-  type(option_type) :: option
+  PetscInt :: variable_count
   
-  character(len=MAXHEADERLENGTH) :: OutputVariableListToHeader
-
-  character(len=MAXHEADERLENGTH) :: header
   type(output_variable_type), pointer :: cur_variable
   character(len=MAXWORDLENGTH) :: variable_name, units
   
-  header = ''
-  
+  variable_count = 0
   cur_variable => variable_list%first
   do
     if (.not.associated(cur_variable)) exit
@@ -468,27 +465,17 @@ function OutputVariableListToHeader(variable_list,cell_string,icolumn, &
     endif
     variable_name = cur_variable%name
     units = cur_variable%units
-    call OutputAppendToHeader(header,variable_name,units,cell_string,icolumn)
+    call OutputWriteToHeader(fid,variable_name,units,cell_string,icolumn)
+    variable_count = variable_count + 1
     cur_variable => cur_variable%next
   enddo
 
-  if (len_trim(header) >= MAXHEADERLENGTH-1) then
-    !geh: just reusing the work units to write the header length.
-    write(units,*) MAXHEADERLENGTH
-    option%io_buffer = 'Observation header is longer than MAXHEADERLENGTH ' // &
-      '(' // trim(adjustl(units)) // ').  Please increase MAXHEADERLENGTH ' // &
-      'in pflotran_constants.F90.  Try doubling it.'
-    call printErrMsg(option)
-  endif
-  
-  OutputVariableListToHeader = header
-  
-end function OutputVariableListToHeader
+end subroutine OutputWriteVariableListToHeader
 
 ! ************************************************************************** !
 
-subroutine OutputAppendToHeader(header,variable_string,units_string, &
-                                cell_string, icolumn)
+subroutine OutputWriteToHeader(fid,variable_string,units_string, &
+                               cell_string, icolumn)
   ! 
   ! Appends formatted strings to header string
   ! 
@@ -498,7 +485,7 @@ subroutine OutputAppendToHeader(header,variable_string,units_string, &
 
   implicit none
 
-  character(len=MAXHEADERLENGTH) :: header
+  PetscInt :: fid
   character(len=*) :: variable_string, units_string, cell_string
   character(len=MAXWORDLENGTH) :: column_string
   character(len=MAXWORDLENGTH) :: variable_string_adj, units_string_adj
@@ -543,9 +530,9 @@ subroutine OutputAppendToHeader(header,variable_string,units_string, &
     write(string,'('',"'',a,a,''"'')') trim(column_string), &
           trim(variable_string_adj)
   endif
-  header = trim(header) // trim(string)
+  write(fid,'(a)',advance="no") trim(string)
 
-end subroutine OutputAppendToHeader
+end subroutine OutputWriteToHeader
 
 ! ************************************************************************** !
 

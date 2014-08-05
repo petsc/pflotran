@@ -1,0 +1,159 @@
+module Test_EOS_Gas_module
+
+  use pFUnit_mod
+  use EOS_Gas_module
+
+  implicit none
+
+#include "finclude/petscsys.h"
+
+  public :: Test_EOS_Gas
+
+  interface Test_EOS_Gas
+     module procedure newTest_EOS_Gas
+  end interface Test_EOS_Gas
+
+  @TestCase
+  type, extends(TestCase) :: Test_EOS_Gas
+     procedure(runMethod), pointer :: userMethod => null()
+   contains
+     procedure :: setUp
+     procedure :: tearDown
+     procedure :: runMethod
+  end type Test_EOS_Gas
+
+contains
+
+! ************************************************************************** !
+
+  function newTest_EOS_Gas(name, userMethod) result(test)
+
+    implicit none
+
+    character(len=*), intent(in) :: name
+    procedure(runMethod) :: userMethod
+
+    type(Test_EOS_Gas) :: test
+
+    call test%setName(name)
+    test%userMethod => userMethod
+
+  end function newTest_EOS_Gas
+
+! ************************************************************************** !
+
+  subroutine setUp(this)
+    implicit none
+    class (Test_EOS_Gas), intent(inout) :: this
+
+    call EOSGasInit()
+
+  end subroutine setUp
+
+! ************************************************************************** !
+
+  subroutine tearDown(this)
+    implicit none
+    class (Test_EOS_Gas), intent(inout) :: this
+    ! Destroy calls would go here
+  end subroutine tearDown
+
+! ************************************************************************** !
+
+  subroutine runMethod(this)
+    implicit none
+    class (Test_EOS_Gas), intent(inout) :: this
+    call this%userMethod()
+  end subroutine runMethod
+
+! ************************************************************************** !
+
+  @Test
+  subroutine testEOSGas_VerifyDefault(this)
+    !
+    ! verify that the default from EOSGasInit passes the verify
+    ! test.
+    !
+    use PFLOTRAN_Constants_module, only : MAXSTRINGLENGTH
+
+    implicit none
+
+    class (Test_EOS_Gas), intent(inout) :: this
+
+    PetscErrorCode :: ierr
+    character(len=MAXSTRINGLENGTH) :: error_string
+
+    call EOSGasVerify(ierr, error_string)
+    @assertEqual(0, ierr)
+
+  end subroutine testEOSGas_VerifyDefault
+
+! ************************************************************************** !
+
+  @Test
+  subroutine testEOSGas_IdealDensity(this)
+    !
+    ! verify that the EOSGasSetDensityConstant() followed by
+    ! EOSGasDensityIdeal() correctly returns the correct density
+    !
+    use PFLOTRAN_Constants_module, only : MAXSTRINGLENGTH
+
+    implicit none
+
+    class (Test_EOS_Gas), intent(inout) :: this
+
+    PetscErrorCode :: ierr
+    character(len=MAXSTRINGLENGTH) :: error_string
+
+    PetscReal, parameter :: correct_density = 7.7058223852792929d-2
+    PetscReal, parameter :: correct_dden_dp = -2.5984900978854474d-4
+    PetscReal, parameter :: correct_dden_dt = 4.0556959922522593d-7
+    PetscReal, parameter :: temperature = 23.4d0
+    PetscReal, parameter :: pressure = 1.9d5
+    PetscReal :: density
+    PetscReal :: dden_dp ! derivative with respect to pressure
+    PetscReal :: dden_dt ! derivative with respect to temperature
+
+    call EOSGasSetDensityIdeal()
+
+    call EOSGasVerify(ierr, error_string)
+    @assertEqual(0, ierr)
+
+    call EOSGasDensity(temperature, pressure, density, dden_dp, dden_dt, ierr)
+    @assertEqual(correct_density, density, 1.0d-16)
+    @assertEqual(correct_dden_dp, dden_dp, 1.0d-16)
+    @assertEqual(correct_dden_dt, dden_dt, 1.0d-16)
+
+  end subroutine testEOSGas_IdealDensity
+
+! ************************************************************************** !
+
+  @Test
+  subroutine testEOSGas_DensityRKS(this)
+    ! 
+    ! Add brief description here.
+    !
+    use PFLOTRAN_Constants_module, only : MAXSTRINGLENGTH
+
+    implicit none
+
+    class (Test_EOS_Gas), intent(inout) :: this
+
+    PetscReal :: dum1
+    PetscErrorCode :: ierr
+    character(len=MAXSTRINGLENGTH) :: error_string
+
+    PetscReal, parameter :: stp_density = 998.32328795198055d0
+    PetscReal, parameter :: temperature = 20.0d0
+    PetscReal, parameter :: pressure = 101325.0d0
+    PetscReal :: density
+
+    ! add setup here.
+
+!    call EOSGasDensity(temperature, pressure, density, dum1, ierr)
+!    @assertEqual(density, stp_density, 1.0d-16)
+
+  end subroutine testEOSGas_DensityRKS
+
+end module Test_EOS_Gas_module
+

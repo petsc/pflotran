@@ -13,8 +13,9 @@ module Option_Flow_module
 
   type, public :: flow_option_type 
   
+    PetscReal :: inf_rel_update_tol
+    PetscReal :: inf_scaled_res_tol   
     PetscBool :: check_post_convergence
-    PetscReal :: post_convergence_tol
   
   end type flow_option_type
   
@@ -93,7 +94,8 @@ subroutine OptionFlowInitRealization(option)
   ! PFLOTRAN realization or simulation of a single realization
     
   option%check_post_convergence = PETSC_FALSE
-  option%post_convergence_tol = 1.d-50
+  option%inf_rel_update_tol = -999.d0
+  option%inf_scaled_res_tol = -999.d0 
   
 end subroutine OptionFlowInitRealization
 
