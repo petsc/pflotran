@@ -1,0 +1,44 @@
+-- PRESSURE: Liquid Pressure --
+      Max:   3.7027596238602E+05
+      Min:  -1.3921071924487E+04
+     Mean:   2.0776388497018E+05
+       29:   1.9946026401118E+05
+        1:   3.7026251575420E+05
+       31:   1.9911803205012E+05
+-- SATURATION: Liquid Saturation --
+      Max:   1.0000000000000E+00
+      Min:   1.9785369345350E-01
+     Mean:   7.9321379434676E-01
+       29:   1.0000000000000E+00
+        1:   1.0000000000000E+00
+       31:   1.0000000000000E+00
+-- CONCENTRATION: Total Tracer --
+      Max:   9.8371463621412E-01
+      Min:   1.6160443960901E-08
+     Mean:   1.8405827779184E-01
+       29:   3.6785253710145E-01
+        1:   3.1788359463775E-08
+       31:   8.1351388334104E-04
+-- DISCRETE: Material ID --
+      Max:        10
+      Min:         1
+     Mean:   3.0666666666667E+00
+       29:        10
+        1:         3
+       31:         3
+-- SOLUTION: Flow --
+   Time (seconds):   1.0569763183594E-01
+   Time Steps:           33
+   Newton Iterations:          105
+   Solver Iterations:          105
+   Time Step Cuts:            0
+   Solution 2-Norm:   1.8994073742907E+06
+   Residual 2-Norm:   3.2366773711144E-14
+-- SOLUTION: Transport --
+   Time (seconds):   3.3960580825806E-02
+   Time Steps:           33
+   Newton Iterations:           33
+   Solver Iterations:           33
+   Time Step Cuts:            0
+   Solution 2-Norm:   2.7509331691451E+00
+   Residual 2-Norm:   3.4463238697908E-16
