@@ -3073,7 +3073,7 @@ subroutine assignMaterialPropToRegions(realization)
         material_property => &
           patch%material_property_array(material_id)%ptr
         if (.not.associated(material_property)) then
-          write(dataset_name,*) material_id
+          write(dataset_name,*) patch%imat_internal_to_external(material_id)
           option%io_buffer = 'No material property for material id ' // &
                               trim(adjustl(dataset_name)) &
                               //  ' defined in input file.'
@@ -3085,7 +3085,7 @@ subroutine assignMaterialPropToRegions(realization)
                             trim(adjustl(dataset_name))
         call printErrMsgByRank(option)
       else if (material_id > size(patch%material_property_array)) then
-        write(option%io_buffer,*) material_id
+        write(option%io_buffer,*) patch%imat_internal_to_external(material_id)
         option%io_buffer = 'Unmatched material id in patch:' // &
           adjustl(trim(option%io_buffer))
         call printErrMsgByRank(option)
@@ -3096,7 +3096,8 @@ subroutine assignMaterialPropToRegions(realization)
         call printErrMsgByRank(option)
       endif
       if (option%nflowdof > 0) then
-        cur_patch%sat_func_id(ghosted_id) = material_property%saturation_function_id
+        cur_patch%sat_func_id(ghosted_id) = &
+          material_property%saturation_function_id
         icap_loc_p(ghosted_id) = material_property%saturation_function_id
         ithrm_loc_p(ghosted_id) = material_property%internal_id
         perm_xx_p(local_id) = material_property%permeability(1,1)
