@@ -916,9 +916,20 @@ subroutine MaterialApplyMapping(mapping,array)
   PetscInt :: array(:)
 
   PetscInt :: i
+  PetscInt :: mapping_size
+  PetscInt :: mapped_id
 
+  mapping_size = size(mapping)
   do i = 1, size(array)
-    array(i) = mapping(array(i))
+    if (array(i) <= mapping_size) then
+      mapped_id = mapping(array(i))
+    else
+      mapped_id = -888 ! indicates corresponding mapped value does not exist.
+    endif
+    if (mapped_id == -888) then ! negate material id to indicate not found
+      mapped_id = -1*array(i)
+    endif
+    array(i) = mapped_id
   enddo
 
 end subroutine MaterialApplyMapping

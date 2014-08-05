@@ -3079,19 +3079,23 @@ subroutine assignMaterialPropToRegions(realization)
                               //  ' defined in input file.'
           call printErrMsgByRank(option)
         endif
-      else if (material_id < -887) then 
+      else if (material_id < 0 .and. material_id > -999) then 
+        ! highjacking dataset_name and group_name for error processing
         write(dataset_name,*) grid%nG2A(ghosted_id)
-        option%io_buffer = 'Mis-mapped material id in patch at cell ' // &
-                            trim(adjustl(dataset_name))
+        write(group_name,*) -1*material_id
+        option%io_buffer = 'Undefined material id ' // &
+                           trim(adjustl(group_name)) // &
+                           ' at cell ' // &
+                           trim(adjustl(dataset_name)) // '.'
         call printErrMsgByRank(option)
-      else if (material_id < -998) then 
+      else if (material_id == -999) then 
         write(dataset_name,*) grid%nG2A(ghosted_id)
         option%io_buffer = 'Uninitialized material id in patch at cell ' // &
                             trim(adjustl(dataset_name))
         call printErrMsgByRank(option)
       else if (material_id > size(patch%material_property_array)) then
         write(option%io_buffer,*) patch%imat_internal_to_external(material_id)
-        option%io_buffer = 'Unmatched material id in patch:' // &
+        option%io_buffer = 'Unmatched material id in patch: ' // &
           adjustl(trim(option%io_buffer))
         call printErrMsgByRank(option)
       else
