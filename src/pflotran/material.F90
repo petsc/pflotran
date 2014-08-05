@@ -892,7 +892,7 @@ subroutine MaterialCreateExtToIntMapping(material_property_array,mapping)
   PetscInt :: i
   
   allocate(mapping(MaterialGetMaxExternalID(material_property_array)))
-  mapping = -999
+  mapping = -888
   
   do i = 1, size(material_property_array)
     mapping(material_property_array(i)%ptr%external_id) = &

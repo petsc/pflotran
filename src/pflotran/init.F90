@@ -3079,6 +3079,11 @@ subroutine assignMaterialPropToRegions(realization)
                               //  ' defined in input file.'
           call printErrMsgByRank(option)
         endif
+      else if (material_id < -887) then 
+        write(dataset_name,*) grid%nG2A(ghosted_id)
+        option%io_buffer = 'Mis-mapped material id in patch at cell ' // &
+                            trim(adjustl(dataset_name))
+        call printErrMsgByRank(option)
       else if (material_id < -998) then 
         write(dataset_name,*) grid%nG2A(ghosted_id)
         option%io_buffer = 'Uninitialized material id in patch at cell ' // &
