@@ -133,7 +133,7 @@ subroutine THSetupPatch(realization)
   PetscReal :: area_per_vol
 
   PetscInt :: ghosted_id, iconn, sum_connection
-  PetscInt :: i, iphase, local_id
+  PetscInt :: i, iphase, local_id, material_id
   
   
   option => realization%option
@@ -162,20 +162,21 @@ subroutine THSetupPatch(realization)
 
   !Copy the values in the TH_parameter from the global realization 
   do i = 1, size(realization%material_property_array)
-    patch%aux%TH%TH_parameter%dencpr(realization%material_property_array(i)%ptr%id) = &
+    material_id = realization%material_property_array(i)%ptr%internal_id
+    patch%aux%TH%TH_parameter%dencpr(material_id) = &
       realization%material_property_array(i)%ptr%rock_density*option%scale* &
         realization%material_property_array(i)%ptr%specific_heat
  
-    patch%aux%TH%TH_parameter%ckwet(realization%material_property_array(i)%ptr%id) = &
+    patch%aux%TH%TH_parameter%ckwet(material_id) = &
       realization%material_property_array(i)%ptr%thermal_conductivity_wet*option%scale  
-    patch%aux%TH%TH_parameter%ckdry(realization%material_property_array(i)%ptr%id) = &
+    patch%aux%TH%TH_parameter%ckdry(material_id) = &
       realization%material_property_array(i)%ptr%thermal_conductivity_dry*option%scale
-    patch%aux%TH%TH_parameter%alpha(realization%material_property_array(i)%ptr%id) = &
+    patch%aux%TH%TH_parameter%alpha(material_id) = &
       realization%material_property_array(i)%ptr%alpha
     if (option%use_th_freezing) then
-       patch%aux%TH%TH_parameter%ckfrozen(realization%material_property_array(i)%ptr%id) = &
+       patch%aux%TH%TH_parameter%ckfrozen(material_id) = &
             realization%material_property_array(i)%ptr%thermal_conductivity_frozen*option%scale
-       patch%aux%TH%TH_parameter%alpha_fr(realization%material_property_array(i)%ptr%id) = &
+       patch%aux%TH%TH_parameter%alpha_fr(material_id) = &
             realization%material_property_array(i)%ptr%alpha_fr
     endif
 

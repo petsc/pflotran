@@ -885,7 +885,7 @@ subroutine RealProcessMatPropAndSatFunc(realization)
   option => realization%option
   patch => realization%patch
   
-  ! organize lists
+!  ! organize lists
   call MaterialPropConvertListToArray(realization%material_properties, &
                                       realization%material_property_array, &
                                       option)
@@ -903,6 +903,10 @@ subroutine RealProcessMatPropAndSatFunc(realization)
   call SaturatFuncConvertListToArray(patch%saturation_functions, &
                                       patch%saturation_function_array, &
                                       option)
+                                      
+  ! create mapping of internal to external material id
+  call MaterialCreateIntToExtMapping(patch%material_property_array, &
+                                     patch%imat_internal_to_external)
     
   cur_material_property => realization%material_properties                            
   do                                      

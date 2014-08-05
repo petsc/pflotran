@@ -147,7 +147,8 @@ subroutine RichardsSetupPatch(realization)
   allocate(patch%aux%Richards%richards_parameter%sir(option%nphase, &
                                   size(patch%saturation_function_array)))
   do i = 1, size(patch%saturation_function_array)
-    patch%aux%Richards%richards_parameter%sir(:,patch%saturation_function_array(i)%ptr%id) = &
+    patch%aux%Richards%richards_parameter%sir(:,patch% &
+        saturation_function_array(i)%ptr%id) = &
       patch%saturation_function_array(i)%ptr%Sr(:)
   enddo
   
