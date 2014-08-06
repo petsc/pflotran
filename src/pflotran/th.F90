@@ -133,7 +133,7 @@ subroutine THSetupPatch(realization)
   PetscReal :: area_per_vol
 
   PetscInt :: ghosted_id, iconn, sum_connection
-  PetscInt :: i, iphase, local_id
+  PetscInt :: i, iphase, local_id, material_id
   
   
   option => realization%option
@@ -148,42 +148,43 @@ subroutine THSetupPatch(realization)
 !                    'THAuxCreate() is called anywhere.'
 ! call printErrMsg(option)
   allocate(patch%aux%TH%TH_parameter%sir(option%nphase, &
-                                  size(realization%saturation_function_array)))
+                                  size(patch%saturation_function_array)))
   
   !Jitu, 08/04/2010: Check these allocations. Currently assumes only single value in the array	<modified pcl 1-13-11>
-  allocate(patch%aux%TH%TH_parameter%dencpr(size(realization%material_property_array)))
-  allocate(patch%aux%TH%TH_parameter%ckwet(size(realization%material_property_array)))
-  allocate(patch%aux%TH%TH_parameter%ckdry(size(realization%material_property_array)))
-  allocate(patch%aux%TH%TH_parameter%alpha(size(realization%material_property_array)))
+  allocate(patch%aux%TH%TH_parameter%dencpr(size(patch%material_property_array)))
+  allocate(patch%aux%TH%TH_parameter%ckwet(size(patch%material_property_array)))
+  allocate(patch%aux%TH%TH_parameter%ckdry(size(patch%material_property_array)))
+  allocate(patch%aux%TH%TH_parameter%alpha(size(patch%material_property_array)))
   if (option%use_th_freezing) then
-     allocate(patch%aux%TH%TH_parameter%ckfrozen(size(realization%material_property_array)))
-     allocate(patch%aux%TH%TH_parameter%alpha_fr(size(realization%material_property_array)))
+     allocate(patch%aux%TH%TH_parameter%ckfrozen(size(patch%material_property_array)))
+     allocate(patch%aux%TH%TH_parameter%alpha_fr(size(patch%material_property_array)))
   endif
 
   !Copy the values in the TH_parameter from the global realization 
-  do i = 1, size(realization%material_property_array)
-    patch%aux%TH%TH_parameter%dencpr(realization%material_property_array(i)%ptr%id) = &
-      realization%material_property_array(i)%ptr%rock_density*option%scale* &
-        realization%material_property_array(i)%ptr%specific_heat
+  do i = 1, size(patch%material_property_array)
+    material_id = patch%material_property_array(i)%ptr%internal_id
+    patch%aux%TH%TH_parameter%dencpr(material_id) = &
+      patch%material_property_array(i)%ptr%rock_density*option%scale* &
+        patch%material_property_array(i)%ptr%specific_heat
  
-    patch%aux%TH%TH_parameter%ckwet(realization%material_property_array(i)%ptr%id) = &
-      realization%material_property_array(i)%ptr%thermal_conductivity_wet*option%scale  
-    patch%aux%TH%TH_parameter%ckdry(realization%material_property_array(i)%ptr%id) = &
-      realization%material_property_array(i)%ptr%thermal_conductivity_dry*option%scale
-    patch%aux%TH%TH_parameter%alpha(realization%material_property_array(i)%ptr%id) = &
-      realization%material_property_array(i)%ptr%alpha
+    patch%aux%TH%TH_parameter%ckwet(material_id) = &
+      patch%material_property_array(i)%ptr%thermal_conductivity_wet*option%scale  
+    patch%aux%TH%TH_parameter%ckdry(material_id) = &
+      patch%material_property_array(i)%ptr%thermal_conductivity_dry*option%scale
+    patch%aux%TH%TH_parameter%alpha(material_id) = &
+      patch%material_property_array(i)%ptr%alpha
     if (option%use_th_freezing) then
-       patch%aux%TH%TH_parameter%ckfrozen(realization%material_property_array(i)%ptr%id) = &
-            realization%material_property_array(i)%ptr%thermal_conductivity_frozen*option%scale
-       patch%aux%TH%TH_parameter%alpha_fr(realization%material_property_array(i)%ptr%id) = &
-            realization%material_property_array(i)%ptr%alpha_fr
+       patch%aux%TH%TH_parameter%ckfrozen(material_id) = &
+            patch%material_property_array(i)%ptr%thermal_conductivity_frozen*option%scale
+       patch%aux%TH%TH_parameter%alpha_fr(material_id) = &
+            patch%material_property_array(i)%ptr%alpha_fr
     endif
 
   enddo 
 
-  do i = 1, size(realization%saturation_function_array)
-    patch%aux%TH%TH_parameter%sir(:,realization%saturation_function_array(i)%ptr%id) = &
-      realization%saturation_function_array(i)%ptr%Sr(:)
+  do i = 1, size(patch%saturation_function_array)
+    patch%aux%TH%TH_parameter%sir(:,patch%saturation_function_array(i)%ptr%id) = &
+      patch%saturation_function_array(i)%ptr%Sr(:)
   enddo
 
   ! allocate auxvar data structures for all grid cells
@@ -206,24 +207,24 @@ subroutine THSetupPatch(realization)
     ! S. Karra 07/18/12
       call SecondaryContinuumSetProperties( &
         TH_sec_heat_vars(local_id)%sec_continuum, &
-        realization%material_property_array(1)%ptr%secondary_continuum_name, &
-        realization%material_property_array(1)%ptr%secondary_continuum_length, &
-        realization%material_property_array(1)%ptr%secondary_continuum_matrix_block_size, &
-        realization%material_property_array(1)%ptr%secondary_continuum_fracture_spacing, &
-        realization%material_property_array(1)%ptr%secondary_continuum_radius, &
-        realization%material_property_array(1)%ptr%secondary_continuum_area, &
+        patch%material_property_array(1)%ptr%secondary_continuum_name, &
+        patch%material_property_array(1)%ptr%secondary_continuum_length, &
+        patch%material_property_array(1)%ptr%secondary_continuum_matrix_block_size, &
+        patch%material_property_array(1)%ptr%secondary_continuum_fracture_spacing, &
+        patch%material_property_array(1)%ptr%secondary_continuum_radius, &
+        patch%material_property_array(1)%ptr%secondary_continuum_area, &
         option)
         
       TH_sec_heat_vars(local_id)%ncells = &
-        realization%material_property_array(1)%ptr%secondary_continuum_ncells
+        patch%material_property_array(1)%ptr%secondary_continuum_ncells
       TH_sec_heat_vars(local_id)%aperture = &
-        realization%material_property_array(1)%ptr%secondary_continuum_aperture
+        patch%material_property_array(1)%ptr%secondary_continuum_aperture
       TH_sec_heat_vars(local_id)%epsilon = &
-        realization%material_property_array(1)%ptr%secondary_continuum_epsilon
+        patch%material_property_array(1)%ptr%secondary_continuum_epsilon
       TH_sec_heat_vars(local_id)%log_spacing = &
-        realization%material_property_array(1)%ptr%secondary_continuum_log_spacing
+        patch%material_property_array(1)%ptr%secondary_continuum_log_spacing
       TH_sec_heat_vars(local_id)%outer_spacing = &
-        realization%material_property_array(1)%ptr%secondary_continuum_outer_spacing
+        patch%material_property_array(1)%ptr%secondary_continuum_outer_spacing
                 
       allocate(TH_sec_heat_vars(local_id)%area(TH_sec_heat_vars(local_id)%ncells))
       allocate(TH_sec_heat_vars(local_id)%vol(TH_sec_heat_vars(local_id)%ncells))
@@ -246,7 +247,7 @@ subroutine THSetupPatch(realization)
                                 
       TH_sec_heat_vars(local_id)%interfacial_area = area_per_vol* &
         (1.d0 - TH_sec_heat_vars(local_id)%epsilon)* &
-        realization%material_property_array(1)%ptr% &
+        patch%material_property_array(1)%ptr% &
         secondary_continuum_area_scaling
 
     ! Setting the initial values of all secondary node temperatures same as primary node 
@@ -255,7 +256,7 @@ subroutine THSetupPatch(realization)
       
       if (option%set_secondary_init_temp) then
         TH_sec_heat_vars(local_id)%sec_temp = &
-          realization%material_property_array(1)%ptr%secondary_continuum_init_temp
+          patch%material_property_array(1)%ptr%secondary_continuum_init_temp
       else
         TH_sec_heat_vars(local_id)%sec_temp = &
         initial_condition%flow_condition%temperature%dataset%rarray(1)
@@ -577,7 +578,7 @@ subroutine THCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
                        MPI_DOUBLE_PRECISION, &
                        MPI_MAX,option%mycomm,ierr)
     option%converged = PETSC_TRUE
-    if (global_inf_norm > option%flow%post_convergence_tol) &
+    if (global_inf_norm > option%flow%inf_scaled_res_tol) &
       option%converged = PETSC_FALSE
     call VecRestoreArrayF90(dP,dP_p,ierr);CHKERRQ(ierr)
     call VecRestoreArrayF90(P1,P1_p,ierr);CHKERRQ(ierr)
@@ -917,14 +918,14 @@ subroutine THUpdateAuxVarsPatch(realization)
             TH_auxvars(ghosted_id),global_auxvars(ghosted_id), &
             material_auxvars(ghosted_id), &
             iphase, &
-            realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+            patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
             option)
     else
        call THAuxVarComputeNoFreezing(xx_loc_p(istart:iend), &
             TH_auxvars(ghosted_id),global_auxvars(ghosted_id), &
             material_auxvars(ghosted_id), &
             iphase, &
-            realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+            patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
             option)
     endif
 
@@ -965,14 +966,14 @@ subroutine THUpdateAuxVarsPatch(realization)
               global_auxvars_bc(sum_connection), &
               material_auxvars(sum_connection), &
               iphasebc, &
-              realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+              patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
               option)
       else
          call THAuxVarComputeNoFreezing(xxbc,TH_auxvars_bc(sum_connection), &
               global_auxvars_bc(sum_connection), &
               material_auxvars(sum_connection), &
               iphasebc, &
-              realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+              patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
               option)
       endif
 
@@ -1026,14 +1027,14 @@ subroutine THUpdateAuxVarsPatch(realization)
               TH_auxvars_ss(sum_connection),global_auxvars_ss(sum_connection), &
               material_auxvars(sum_connection), &
               iphase, &
-              realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+              patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
               option)
       else
          call THAuxVarComputeNoFreezing(xx, &
               TH_auxvars_ss(sum_connection),global_auxvars_ss(sum_connection), &
               material_auxvars(sum_connection), &
               iphase, &
-              realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+              patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
               option)
       endif
     enddo
@@ -1295,14 +1296,14 @@ subroutine THUpdateFixedAccumPatch(realization)
             TH_auxvars(ghosted_id),global_auxvars(ghosted_id), &
             material_auxvars(ghosted_id), &
             iphase, &
-            realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+            patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
             option)
     else
        call THAuxVarComputeNoFreezing(xx_p(istart:iend), &
             TH_auxvars(ghosted_id),global_auxvars(ghosted_id), &
             material_auxvars(ghosted_id), &
             iphase, &
-            realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+            patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
             option)
     endif
 
@@ -4244,7 +4245,7 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
                             material_auxvars(ghosted_id), &
                             TH_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
                             option, &
-                            realization%saturation_function_array(icap)%ptr, &
+                            patch%saturation_function_array(icap)%ptr, &
                             vol_frac_prim,Jup) 
 
     if (option%use_mc) then
@@ -4416,8 +4417,8 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
                              cur_connection_set%area(iconn), &
                              cur_connection_set%dist(-1:3,iconn), &
                              upweight,option, &
-                             realization%saturation_function_array(icap_up)%ptr, &
-                             realization%saturation_function_array(icap_dn)%ptr, &
+                             patch%saturation_function_array(icap_up)%ptr, &
+                             patch%saturation_function_array(icap_dn)%ptr, &
                              Diff_up,Diff_dn,Dk_dry_up,Dk_dry_dn, &
                              Dk_ice_up,Dk_ice_dn, &
                              alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
@@ -4497,7 +4498,7 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
                               cur_connection_set%area(iconn), &
                               cur_connection_set%dist(-1:3,iconn), &
                               option, &
-                              realization%saturation_function_array(icap_dn)%ptr,&
+                              patch%saturation_function_array(icap_dn)%ptr,&
                               Jdn)
     Jdn = -Jdn
   

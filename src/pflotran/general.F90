@@ -3455,13 +3455,14 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   PetscInt :: local_id, ghosted_id
   PetscInt :: offset , ival, idof
 #ifdef DEBUG_GENERAL_INFO
-  PetscInt :: icell_max(3), istate_max(3)
+  PetscInt :: icell_max_rel_update, icell_max_scaled_residual
+  PetscInt :: istate_max_rel_update, istate_max_scaled_residual
+  PetscInt :: idof_max_rel_update, idof_max_scaled_residual
   character(len=2) :: state_char
-  PetscReal :: R_A_max(3), A_max(3), R_max(3) 
-  PetscReal :: dX_X0_max(3), dX_max(3), X0_max(3)
 #endif
   PetscReal :: dX_X0, R_A
-  PetscReal :: inf_norm(3), global_inf_norm(3)
+  PetscReal :: inf_norm_rel_update(3,3), global_inf_norm_rel_update(3,3)
+  PetscReal :: inf_norm_scaled_residual(3,3), global_inf_norm_scaled_residual(3,3)
   PetscReal :: inf_norm_update(3,3), global_inf_norm_update(3,3)
   PetscReal, parameter :: inf_pres_tol = 1.d-1
   PetscReal, parameter :: inf_temp_tol = 1.d-5
@@ -3473,10 +3474,11 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
              inf_pres_tol,inf_pres_tol,inf_sat_tol], &
             shape(inf_norm_update_tol)) * &
             0.d0
-  PetscReal :: temp(3,4), global_temp(3,4)
+  PetscReal :: temp(3,9), global_temp(3,9)
   PetscMPIInt :: mpi_int
   PetscBool :: converged_abs_update
   PetscBool :: converged_rel_update
+  PetscBool :: converged_scaled_residual
   PetscInt :: istate
   PetscErrorCode :: ierr
   
@@ -3492,8 +3494,6 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   dX_changed = PETSC_FALSE
   X1_changed = PETSC_FALSE
   
-  inf_norm_update = 0.d0
-  
   option%converged = PETSC_FALSE
   if (option%flow%check_post_convergence) then
     call VecGetArrayReadF90(dX,dX_p,ierr);CHKERRQ(ierr)
@@ -3501,16 +3501,16 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
     call VecGetArrayReadF90(field%flow_r,r_p,ierr);CHKERRQ(ierr)
     call VecGetArrayReadF90(field%flow_accum,accum_p,ierr);CHKERRQ(ierr)
 #ifdef DEBUG_GENERAL_INFO
-    R_A_max = 0.d0
-    A_max = 0.d0
-    R_max = 0.d0
-    dX_X0_max = 0.d0
-    dX_max = 0.d0
-    X0_max = 0.d0
-    istate_max = 0
-    icell_max = 0
+    icell_max_rel_update = 0
+    istate_max_rel_update = 0
+    idof_max_rel_update = 0
+    icell_max_scaled_residual = 0
+    istate_max_scaled_residual = 0
+    idof_max_scaled_residual = 0
 #endif
-    inf_norm(:) = 0.d0
+    inf_norm_update(:,:) = 0.d0
+    inf_norm_rel_update(:,:) = 0.d0
+    inf_norm_scaled_residual(:,:) = 0.d0
     do local_id = 1, grid%nlmax
       offset = (local_id-1)*option%nflowdof
       ghosted_id = grid%nL2G(local_id)
@@ -3522,28 +3522,37 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
         dX_X0 = dabs(dX_p(ival)/X0_p(ival))
         inf_norm_update(idof,istate) = max(inf_norm_update(idof,istate), &
                                            dabs(dX_p(ival)))
-        if (inf_norm(idof) < min(dX_X0,R_A)) then
-          inf_norm(idof) = min(dX_X0,R_A)
+        if (inf_norm_rel_update(idof,istate) < dX_X0) then
 #ifdef DEBUG_GENERAL_INFO
-          icell_max(idof) = grid%nG2A(ghosted_id)
-          istate_max(idof) = global_auxvars(ghosted_id)%istate
-          A_max(idof) = accum_p(idof)
-          R_max(idof) = r_p(ival)
-          R_A_max(idof) = R_A
-          dX_max(idof) = dX_p(ival)
-          X0_max(idof) = X0_p(ival)
-          dX_X0_max(idof) = dX_X0 
+          if (maxval(inf_norm_rel_update(:,:)) < dX_X0) then
+            icell_max_rel_update = grid%nG2A(ghosted_id)
+            istate_max_rel_update = global_auxvars(ghosted_id)%istate
+            idof_max_rel_update = idof
+          endif
 #endif
+          inf_norm_rel_update(idof,istate) = dX_X0
+        endif
+        if (inf_norm_scaled_residual(idof,istate) < R_A) then
+#ifdef DEBUG_GENERAL_INFO
+          if (maxval(inf_norm_scaled_residual(:,:)) < R_A) then
+            icell_max_scaled_residual = grid%nG2A(ghosted_id)
+            istate_max_scaled_residual = global_auxvars(ghosted_id)%istate
+            idof_max_scaled_residual = idof
+          endif
+#endif
+          inf_norm_scaled_residual(idof,istate) = R_A
         endif
       enddo
     enddo
     temp(1:3,1:3) = inf_norm_update(:,:)
-    temp(1:3,4) = inf_norm(:)
-    mpi_int = 12
+    temp(1:3,4:6) = inf_norm_rel_update(:,:)
+    temp(1:3,7:9) = inf_norm_scaled_residual(:,:)
+    mpi_int = 27
     call MPI_Allreduce(temp,global_temp,mpi_int, &
                        MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
     global_inf_norm_update(:,:) = global_temp(1:3,1:3)
-    global_inf_norm(:) = global_temp(1:3,4)
+    global_inf_norm_rel_update(:,:) = global_temp(1:3,4:6)
+    global_inf_norm_scaled_residual(:,:) = global_temp(1:3,7:9)
     converged_abs_update = PETSC_TRUE
     do istate = 1, 3
       do idof = 1, option%nflowdof
@@ -3553,11 +3562,14 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
         endif
       enddo  
     enddo  
-    converged_rel_update = PETSC_TRUE
+    converged_rel_update = maxval(global_inf_norm_rel_update) < &
+                           option%flow%inf_rel_update_tol
+    converged_scaled_residual = maxval(global_inf_norm_scaled_residual) < &
+                                option%flow%inf_scaled_res_tol
+#if 0
     do idof = 1, option%nflowdof
       if (global_inf_norm(idof) > option%flow%post_convergence_tol) then
         converged_rel_update = PETSC_FALSE
-#if 0
 #ifdef DEBUG_GENERAL_INFO
         select case(istate_max(idof))
           case(1)
@@ -3574,11 +3586,41 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
            dX_X1_max(idof), dX_max(idof),  X1_max(idof), &
            R_A_max(idof), R_max(idof), A_max(idof)
 #endif
-#endif
       endif
     enddo
+#endif
+#ifdef DEBUG_GENERAL_INFO
+    write(*,'(4x,''-+  dpl:'',es12.4,''  dxa:'',es12.4,''  dt:'',es12.4)') &
+      (global_inf_norm_update(idof,1),idof=1,3)
+    write(*,'(4x,''-+  dpg:'',es12.4,''  dpa:'',es12.4,''  dt:'',es12.4)') &
+      (global_inf_norm_update(idof,2),idof=1,3)
+    if (general_2ph_energy_dof == GENERAL_TEMPERATURE_INDEX) then
+      write(*,'(4x,''-+  dpg:'',es12.4,''  dsg:'',es12.4,''  dt:'',es12.4)') &
+        (global_inf_norm_update(idof,3),idof=1,3)
+    else
+      write(*,'(4x,''-+  dpg:'',es12.4,''  dsg:'',es12.4,'' dpa:'',es12.4)') &
+        (global_inf_norm_update(idof,3),idof=1,3)
+    endif
+    write(*,'(4x,''-+ rupl:'',es12.4,'' ruxa:'',es12.4,'' rut:'',es12.4)') &
+      (global_inf_norm_rel_update(idof,1),idof=1,3)
+    write(*,'(4x,''-+ rupg:'',es12.4,'' rupa:'',es12.4,'' rut:'',es12.4)') &
+      (global_inf_norm_rel_update(idof,2),idof=1,3)
+    write(*,'(4x,''-+ rupg:'',es12.4,'' rusg:'',es12.4,'' rut:'',es12.4)') &
+      (global_inf_norm_rel_update(idof,3),idof=1,3)
+    write(*,'(4x,''-+  srl:'',es12.4,''  srg:'',es12.4,'' sre:'',es12.4)') &
+      (global_inf_norm_scaled_residual(idof,1),idof=1,3)
+    write(*,'(4x,''-+  srl:'',es12.4,''  srg:'',es12.4,'' sre:'',es12.4)') &
+      (global_inf_norm_scaled_residual(idof,2),idof=1,3)
+    write(*,'(4x,''-+  srl:'',es12.4,''  srg:'',es12.4,'' sre:'',es12.4)') &
+      (global_inf_norm_scaled_residual(idof,3),idof=1,3)
+    write(*,'(4x,''-+ rel_update icell:'',i7,''  istate:'',i7,'' idof:'',i7)') &
+      icell_max_rel_update, istate_max_rel_update, idof_max_rel_update
+    write(*,'(4x,''-+ scaled_res icell:'',i7,''  istate:'',i7,'' idof:'',i7)') &
+      icell_max_scaled_residual, istate_max_scaled_residual, idof_max_scaled_residual
+#endif
     option%converged = PETSC_FALSE
-    if (converged_rel_update .or. converged_abs_update) then
+    if (converged_abs_update .or. converged_rel_update .or. &
+        converged_scaled_residual) then
       option%converged = PETSC_TRUE
     endif
     call VecRestoreArrayReadF90(dX,dX_p,ierr);CHKERRQ(ierr)

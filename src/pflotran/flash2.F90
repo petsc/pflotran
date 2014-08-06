@@ -154,29 +154,32 @@ subroutine Flash2SetupPatch(realization)
 !                     'must be initialized with the proper variables ' // &
 !                     'Flash2AuxCreate() is called anyhwere.'
 !  call printErrMsg(option)
-  !print *,' Flash2 setup get Aux', option%nphase, size(realization%saturation_function_array)
+  !print *,' Flash2 setup get Aux', option%nphase, size(patch%saturation_function_array)
 ! Flash2_parameters create *********************************************
 ! Sir
   allocate(patch%aux%Flash2%Flash2_parameter%sir(option%nphase, &
-                                  size(realization%saturation_function_array)))
+                                  size(patch%saturation_function_array)))
    !print *,' Flash2 setup get patch: sir, allocated'
-  do ipara = 1, size(realization%saturation_function_array)
-    patch%aux%Flash2%Flash2_parameter%sir(:,realization%saturation_function_array(ipara)%ptr%id) = &
-      realization%saturation_function_array(ipara)%ptr%Sr(:)
+  do ipara = 1, size(patch%saturation_function_array)
+    patch%aux%Flash2%Flash2_parameter%sir(:,patch% &
+        saturation_function_array(ipara)%ptr%id) = &
+      patch%saturation_function_array(ipara)%ptr%Sr(:)
   enddo
   !print *,' Flash2 setup get patch: sir'
 ! dencpr  
-  allocate(patch%aux%Flash2%Flash2_parameter%dencpr(size(realization%material_property_array)))
-  do ipara = 1, size(realization%material_property_array)
-    patch%aux%Flash2%Flash2_parameter%dencpr(realization%material_property_array(ipara)%ptr%id) = &
-      realization%material_property_array(ipara)%ptr%rock_density*option%scale*&
-      realization%material_property_array(ipara)%ptr%specific_heat
+  allocate(patch%aux%Flash2%Flash2_parameter%dencpr(size(patch%material_property_array)))
+  do ipara = 1, size(patch%material_property_array)
+    patch%aux%Flash2%Flash2_parameter%dencpr(patch% &
+        material_property_array(ipara)%ptr%internal_id) = &
+      patch%material_property_array(ipara)%ptr%rock_density*option%scale*&
+      patch%material_property_array(ipara)%ptr%specific_heat
   enddo
 ! ckwet
-  allocate(patch%aux%Flash2%Flash2_parameter%ckwet(size(realization%material_property_array)))
-  do ipara = 1, size(realization%material_property_array)
-    patch%aux%Flash2%Flash2_parameter%ckwet(realization%material_property_array(ipara)%ptr%id) = &
-      realization%material_property_array(ipara)%ptr%thermal_conductivity_wet*option%scale
+  allocate(patch%aux%Flash2%Flash2_parameter%ckwet(size(patch%material_property_array)))
+  do ipara = 1, size(patch%material_property_array)
+    patch%aux%Flash2%Flash2_parameter%ckwet(patch% &
+        material_property_array(ipara)%ptr%internal_id) = &
+      patch%material_property_array(ipara)%ptr%thermal_conductivity_wet*option%scale
   enddo
 ! Flash2_parameters create_end *****************************************
 
@@ -336,7 +339,7 @@ subroutine Flash2ComputeMassBalancePatch(realization,mass_balance,mass_trapped)
       enddo
 
       pckr_sir(iphase) = &
-      realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr%sr(iphase)
+      patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr%sr(iphase)
 
       if (iphase == 1 .and. &
         Flash2_auxvars(ghosted_id)%auxvar_elem(0)%sat(iphase) <= pckr_sir(iphase)) then
@@ -803,14 +806,14 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
     endif
     iend = ghosted_id*option%nflowdof
     istart = iend-option%nflowdof+1
-    if(.not. associated(realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr))then
+    if(.not. associated(patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr))then
        print*, 'error!!! saturation function not allocated', ghosted_id,icap_loc_p(ghosted_id)
     endif
     
     call Flash2AuxVarCompute_NINC(xx_loc_p(istart:iend), &
                        auxvars(ghosted_id)%auxvar_elem(0), &
                        global_auxvars(ghosted_id), &
-                       realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+                       patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                        realization%fluid_properties,option)
                       
  ! update global variables
@@ -871,7 +874,7 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
  
       call Flash2AuxVarCompute_NINC(xxbc,auxvars_bc(sum_connection)%auxvar_elem(0), &
                          global_auxvars_bc(sum_connection), &
-                         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+                         patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                          realization%fluid_properties, option, xphi)
 
       if (associated(global_auxvars_bc)) then
@@ -2204,7 +2207,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
      ! iphase =int(iphase_loc_p(ng))
     call Flash2AuxVarCompute_Ninc(xx_loc_p(istart:iend),auxvars(ng)%auxvar_elem(0),&
           global_auxvars(ng),&
-          realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
+          patch%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
           realization%fluid_properties,option, xphi)
 !   print *,'flash ', xx_loc_p(istart:iend),auxvars(ng)%auxvar_elem(0)%den
 #if 1
@@ -2248,7 +2251,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
       patch%aux%Flash2%delx(:,ng)=delx(:)
       call Flash2AuxVarCompute_Winc(xx_loc_p(istart:iend),delx(:),&
             auxvars(ng)%auxvar_elem(1:option%nflowdof),global_auxvars(ng),&
-            realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
+            patch%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
             realization%fluid_properties,option)
 !         if(auxvars(ng)%auxvar_elem(option%nflowdof)%sat(2)>1D-8 .and. &
 !            auxvars(ng)%auxvar_elem(0)%sat(2)<1D-12)then
@@ -2410,7 +2413,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
  
       call Flash2AuxVarCompute_Ninc(xxbc,auxvars_bc(sum_connection)%auxvar_elem(0),&
            global_auxvars_bc(sum_connection),&
-           realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
+           patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
            realization%fluid_properties, option)
 #if 1
       if (associated(global_auxvars_bc)) then
@@ -2759,7 +2762,7 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
  
       call Flash2AuxVarCompute_Ninc(xxbc,auxvars_bc(sum_connection)%auxvar_elem(0),&
            global_auxvars_bc(sum_connection),&
-           realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
+           patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
            realization%fluid_properties, option,xphi)
 
       if (associated(global_auxvars_bc)) then
@@ -2984,7 +2987,7 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
      ! iphase =int(iphase_loc_p(ng))
     call Flash2AuxVarCompute_Ninc(xx_loc_p(istart:iend),auxvars(ng)%auxvar_elem(0),&
           global_auxvars(ng),&
-          realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
+          patch%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
           realization%fluid_properties,option, xphi)
 !    print *,'flash ', xx_loc_p(istart:iend),auxvars(ng)%auxvar_elem(0)%den
 #if 1
@@ -3028,7 +3031,7 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
       patch%aux%Flash2%delx(:,ng)=delx(:)
       call Flash2AuxVarCompute_Winc(xx_loc_p(istart:iend),delx(:),&
             auxvars(ng)%auxvar_elem(1:option%nflowdof),global_auxvars(ng),&
-            realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
+            patch%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
             realization%fluid_properties,option)
 !         if(auxvars(ng)%auxvar_elem(option%nflowdof)%sat(2)>1D-8 .and. &
 !            auxvars(ng)%auxvar_elem(0)%sat(2)<1D-12)then
@@ -3649,12 +3652,12 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,realization,ierr)
  
       call Flash2AuxVarCompute_Ninc(xxbc,auxvars_bc(sum_connection)%auxvar_elem(0),&
          global_auxvars_bc(sum_connection),&
-         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
+         patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
          realization%fluid_properties, option)
       call Flash2AuxVarCompute_Winc(xxbc,delxbc,&
          auxvars_bc(sum_connection)%auxvar_elem(1:option%nflowdof),&
          global_auxvars_bc(sum_connection),&
-         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
+         patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
          realization%fluid_properties,option)
     
       do nvar=1,option%nflowdof
@@ -4114,12 +4117,12 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,realization,ierr)
  
       call Flash2AuxVarCompute_Ninc(xxbc,auxvars_bc(sum_connection)%auxvar_elem(0),&
          global_auxvars_bc(sum_connection),&
-         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
+         patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
          realization%fluid_properties, option)
       call Flash2AuxVarCompute_Winc(xxbc,delxbc,&
          auxvars_bc(sum_connection)%auxvar_elem(1:option%nflowdof),&
          global_auxvars_bc(sum_connection),&
-         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
+         patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
          realization%fluid_properties,option)
     
       do nvar=1,option%nflowdof

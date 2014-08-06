@@ -831,8 +831,8 @@ subroutine Init(simulation)
         call Flash2Setup(realization)
       case(G_MODE)
         call MaterialSetup(realization%patch%aux%Material%material_parameter, &
-                           realization%material_property_array, &
-                           realization%saturation_function_array, &
+                           patch%material_property_array, &
+                           patch%saturation_function_array, &
                            realization%option)
         call GeneralSetup(realization)
     end select
@@ -2154,8 +2154,10 @@ subroutine InitReadInput(simulation)
         if (associated(solver_pointer,flow_solver) .and. &
             solver_pointer%check_post_convergence) then
           option%flow%check_post_convergence = PETSC_TRUE
-          option%flow%post_convergence_tol = &
-          solver_pointer%newton_inf_scaled_res_tol
+          option%flow%inf_scaled_res_tol = &
+            solver_pointer%newton_inf_scaled_res_tol
+          option%flow%inf_rel_update_tol = &
+            solver_pointer%newton_inf_rel_update_tol
         endif
         if (associated(solver_pointer,tran_solver) .and. &
             solver_pointer%check_post_convergence) then
@@ -2956,7 +2958,8 @@ subroutine assignMaterialPropToRegions(realization)
   field => realization%field
 
   ! initialize material auxiliary indices
-  call MaterialInitAuxIndices(realization%material_property_array,option)
+  call MaterialInitAuxIndices(patch%material_property_array,option)
+  ! create mappinging
   
   ! loop over all patches and allocation material id arrays
   cur_patch => realization%patch_list%first
@@ -3018,7 +3021,7 @@ subroutine assignMaterialPropToRegions(realization)
           endif
           ghosted_id = grid%nL2G(local_id)
           if (strata%active) then
-            cur_patch%imat(ghosted_id) = material_property%id
+            cur_patch%imat(ghosted_id) = material_property%internal_id
           else
             ! if not active, set material id to zero
             cur_patch%imat(ghosted_id) = 0
@@ -3066,24 +3069,33 @@ subroutine assignMaterialPropToRegions(realization)
         material_property => null_material_property
       else if (material_id > 0 .and. &
                 material_id <= &
-                size(realization%material_property_array)) then
+                size(patch%material_property_array)) then
         material_property => &
-          realization%material_property_array(material_id)%ptr
+          patch%material_property_array(material_id)%ptr
         if (.not.associated(material_property)) then
-          write(dataset_name,*) material_id
+          write(dataset_name,*) patch%imat_internal_to_external(material_id)
           option%io_buffer = 'No material property for material id ' // &
                               trim(adjustl(dataset_name)) &
                               //  ' defined in input file.'
           call printErrMsgByRank(option)
         endif
-      else if (material_id < -998) then 
+      else if (material_id < 0 .and. material_id > -999) then 
+        ! highjacking dataset_name and group_name for error processing
+        write(dataset_name,*) grid%nG2A(ghosted_id)
+        write(group_name,*) -1*material_id
+        option%io_buffer = 'Undefined material id ' // &
+                           trim(adjustl(group_name)) // &
+                           ' at cell ' // &
+                           trim(adjustl(dataset_name)) // '.'
+        call printErrMsgByRank(option)
+      else if (material_id == -999) then 
         write(dataset_name,*) grid%nG2A(ghosted_id)
         option%io_buffer = 'Uninitialized material id in patch at cell ' // &
                             trim(adjustl(dataset_name))
         call printErrMsgByRank(option)
-      else if (material_id > size(realization%material_property_array)) then
-        write(option%io_buffer,*) material_id
-        option%io_buffer = 'Unmatched material id in patch:' // &
+      else if (material_id > size(patch%material_property_array)) then
+        write(option%io_buffer,*) patch%imat_internal_to_external(material_id)
+        option%io_buffer = 'Unmatched material id in patch: ' // &
           adjustl(trim(option%io_buffer))
         call printErrMsgByRank(option)
       else
@@ -3093,9 +3105,10 @@ subroutine assignMaterialPropToRegions(realization)
         call printErrMsgByRank(option)
       endif
       if (option%nflowdof > 0) then
-        cur_patch%sat_func_id(ghosted_id) = material_property%saturation_function_id
+        cur_patch%sat_func_id(ghosted_id) = &
+          material_property%saturation_function_id
         icap_loc_p(ghosted_id) = material_property%saturation_function_id
-        ithrm_loc_p(ghosted_id) = material_property%id
+        ithrm_loc_p(ghosted_id) = material_property%internal_id
         perm_xx_p(local_id) = material_property%permeability(1,1)
         perm_yy_p(local_id) = material_property%permeability(2,2)
         perm_zz_p(local_id) = material_property%permeability(3,3)
@@ -3129,9 +3142,9 @@ subroutine assignMaterialPropToRegions(realization)
     call VecRestoreArrayF90(field%tortuosity0,tor0_p,ierr);CHKERRQ(ierr)
         
     ! read in any user-defined property fields
-    do material_id = 1, size(realization%material_property_array)
+    do material_id = 1, size(patch%material_property_array)
       material_property => &
-              realization%material_property_array(material_id)%ptr
+              patch%material_property_array(material_id)%ptr
       if (associated(material_property)) then
         if (associated(material_property%permeability_dataset)) then
           call readPermeabilitiesFromFile(realization,material_property)
@@ -3148,7 +3161,7 @@ subroutine assignMaterialPropToRegions(realization)
           call VecGetArrayF90(field%porosity0,por0_p,ierr);CHKERRQ(ierr)
           do local_id = 1, grid%nlmax
             if (cur_patch%imat(grid%nL2G(local_id)) == &
-                material_property%id) then
+                material_property%internal_id) then
               por0_p(local_id) = vec_p(local_id)
             endif
           enddo
@@ -3461,6 +3474,7 @@ subroutine readMaterialsFromFile(realization,realization_dependent,filename)
   use Discretization_module
   use Logging_module
   use Input_Aux_module
+  use Material_module
 
   use HDF5_module
   
@@ -3482,6 +3496,7 @@ subroutine readMaterialsFromFile(realization,realization_dependent,filename)
   PetscInt :: ghosted_id, natural_id, material_id
   PetscInt :: fid = 86
   PetscInt :: status
+  PetscInt, pointer :: external_to_internal_mapping(:)
   Vec :: global_vec
   Vec :: local_vec
   PetscErrorCode :: ierr
@@ -3491,7 +3506,7 @@ subroutine readMaterialsFromFile(realization,realization_dependent,filename)
   grid => patch%grid
   option => realization%option
   discretization => realization%discretization
-
+  
   if (index(filename,'.h5') > 0) then
     group_name = 'Materials'
     dataset_name = 'Material Ids'
@@ -3503,9 +3518,7 @@ subroutine readMaterialsFromFile(realization,realization_dependent,filename)
                                          filename,group_name, &
                                          dataset_name,realization_dependent)
     call DiscretizationGlobalToLocal(discretization,global_vec,local_vec,ONEDOF)
-
     call GridCopyVecToIntegerArray(grid,patch%imat,local_vec,grid%ngmax)
-
     call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
     call VecDestroy(local_vec,ierr);CHKERRQ(ierr)
   else
@@ -3529,6 +3542,12 @@ subroutine readMaterialsFromFile(realization,realization_dependent,filename)
     call GridDestroyHashTable(grid)
     call PetscLogEventEnd(logging%event_hash_map,ierr);CHKERRQ(ierr)
   endif
+  
+  call MaterialCreateExtToIntMapping(patch%material_property_array, &
+                                     external_to_internal_mapping)
+  call MaterialApplyMapping(external_to_internal_mapping,patch%imat)
+  deallocate(external_to_internal_mapping)
+  nullify(external_to_internal_mapping)
   
 end subroutine readMaterialsFromFile
 
@@ -3622,7 +3641,8 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
         scale = material_property%permeability_scaling_factor
       endif
       do local_id = 1, grid%nlmax
-        if (patch%imat(grid%nL2G(local_id)) == material_property%id) then
+        if (patch%imat(grid%nL2G(local_id)) == &
+            material_property%internal_id) then
           perm_xx_p(local_id) = vec_p(local_id)*scale
           perm_yy_p(local_id) = vec_p(local_id)*scale
           perm_zz_p(local_id) = vec_p(local_id)*ratio*scale
@@ -3658,25 +3678,29 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
         select case(idirection)
           case(X_DIRECTION)
             do local_id = 1, grid%nlmax
-              if (patch%imat(grid%nL2G(local_id)) == material_property%id) then
+              if (patch%imat(grid%nL2G(local_id)) == &
+                  material_property%internal_id) then
                 perm_xx_p(local_id) = vec_p(local_id)
               endif
             enddo
           case(Y_DIRECTION)
             do local_id = 1, grid%nlmax
-              if (patch%imat(grid%nL2G(local_id)) == material_property%id) then
+              if (patch%imat(grid%nL2G(local_id)) == &
+                  material_property%internal_id) then
                 perm_yy_p(local_id) = vec_p(local_id)
               endif
             enddo
           case(Z_DIRECTION)
             do local_id = 1, grid%nlmax
-              if (patch%imat(grid%nL2G(local_id)) == material_property%id) then
+              if (patch%imat(grid%nL2G(local_id)) == &
+                  material_property%internal_id) then
                 perm_zz_p(local_id) = vec_p(local_id)
               endif
             enddo
           case(XY_DIRECTION,XZ_DIRECTION,YZ_DIRECTION)
             do local_id = 1, grid%nlmax
-              if (patch%imat(grid%nL2G(local_id)) == material_property%id) then
+              if (patch%imat(grid%nL2G(local_id)) == &
+                  material_property%internal_id) then
                 perm_xyz_p(local_id) = vec_p(local_id)
               endif
             enddo
@@ -3709,7 +3733,8 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
       call InputErrorMsg(input,option,'natural id','STRATA')
       ghosted_id = GridGetLocalGhostedIdFromHash(grid,natural_id)
       if (ghosted_id > 0) then
-        if (patch%imat(ghosted_id) /= material_property%id) cycle
+        if (patch%imat(ghosted_id) /= &
+            material_property%internal_id) cycle
         local_id = grid%nG2L(ghosted_id)
         if (local_id > 0) then
           call InputReadDouble(input,option,permeability)

@@ -18,6 +18,7 @@ TEST_OBJS = $(TEST_SRCS:.pf=$(OBJ_EXT))
 # their dependancies)! Probably need a more complex .o dependancy
 # setup like the main makefile...
 PFLOTRAN_OBJS = \
+	$(SRC_DIR)/eos_gas.o \
 	$(SRC_DIR)/eos_water.o \
 	$(SRC_DIR)/input_aux.o \
 	$(SRC_DIR)/logging.o \

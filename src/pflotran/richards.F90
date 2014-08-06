@@ -147,7 +147,8 @@ subroutine RichardsSetupPatch(realization)
   allocate(patch%aux%Richards%richards_parameter%sir(option%nphase, &
                                   size(patch%saturation_function_array)))
   do i = 1, size(patch%saturation_function_array)
-    patch%aux%Richards%richards_parameter%sir(:,patch%saturation_function_array(i)%ptr%id) = &
+    patch%aux%Richards%richards_parameter%sir(:,patch% &
+        saturation_function_array(i)%ptr%id) = &
       patch%saturation_function_array(i)%ptr%Sr(:)
   enddo
   
@@ -397,7 +398,7 @@ subroutine RichardsCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
                        MPI_DOUBLE_PRECISION, &
                        MPI_MAX,option%mycomm,ierr)
     option%converged = PETSC_TRUE
-    if (global_inf_norm > option%flow%post_convergence_tol) &
+    if (global_inf_norm > option%flow%inf_scaled_res_tol) &
       option%converged = PETSC_FALSE
     call VecRestoreArrayF90(dP,dP_p,ierr);CHKERRQ(ierr)
     call VecRestoreArrayF90(P1,P1_p,ierr);CHKERRQ(ierr)
@@ -638,7 +639,7 @@ subroutine RichardsUpdatePermPatch(realization)
   patch => realization%patch
   field => realization%field
   grid => patch%grid
-  material_property_array => realization%material_property_array
+  material_property_array => patch%material_property_array
   material_auxvars => patch%aux%Material%auxvars
 
   if (.not.associated(patch%imat)) then

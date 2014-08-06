@@ -32,6 +32,7 @@ module Patch_module
     ! These arrays will be used by all modes, mode-specific arrays should
     ! go in the auxiliary data stucture for that mode
     PetscInt, pointer :: imat(:)
+    PetscInt, pointer :: imat_internal_to_external(:)
     PetscInt, pointer :: sat_func_id(:)
 
     PetscReal, pointer :: internal_velocities(:,:)
@@ -134,6 +135,7 @@ function PatchCreate()
   patch%id = 0
   patch%surf_or_subsurf_flag = SUBSURFACE
   nullify(patch%imat)
+  nullify(patch%imat_internal_to_external)
   nullify(patch%sat_func_id)
   nullify(patch%internal_velocities)
   nullify(patch%boundary_velocities)
@@ -2741,7 +2743,7 @@ end function PatchAuxVarsUpToDate
 ! ************************************************************************** !
 
 subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar, &
-                           isubvar,isubvar1)
+                             isubvar,isubvar1)
   ! 
   ! PatchGetVariable: Extracts variables indexed by ivar and isubvar from a patch
   ! 
@@ -3719,7 +3721,8 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
       call VecRestoreArrayF90(field%iphas_loc,vec_ptr2,ierr);CHKERRQ(ierr)
     case(MATERIAL_ID)
       do local_id=1,grid%nlmax
-        vec_ptr(local_id) = patch%imat(grid%nL2G(local_id))
+        vec_ptr(local_id) = &
+          patch%imat_internal_to_external(patch%imat(grid%nL2G(local_id)))
       enddo
     case(PROCESSOR_ID)
       do local_id=1,grid%nlmax
@@ -4360,7 +4363,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
       value = vec_ptr2(ghosted_id)
       call VecRestoreArrayF90(field%iphas_loc,vec_ptr2,ierr);CHKERRQ(ierr)
     case(MATERIAL_ID)
-      value = patch%imat(ghosted_id)
+      value = patch%imat_internal_to_external(patch%imat(ghosted_id))
     case(PROCESSOR_ID)
       value = option%myrank
     ! Need to fix the below two cases (they assume only one component) -- SK 02/06/13  
@@ -5156,6 +5159,10 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
         call VecRestoreArrayF90(field%iphas_loc,vec_ptr2,ierr);CHKERRQ(ierr)
       endif
     case(MATERIAL_ID)
+      !geh: this would require the creation of a permanent mapping between
+      !     external and internal material ids, which we want to avoid.
+      call printErrMsg(option, &
+                       'Cannot set MATERIAL_ID through PatchSetVariable()')
       if (vec_format == GLOBAL) then
         do local_id=1,grid%nlmax
           patch%imat(grid%nL2G(local_id)) = int(vec_ptr(local_id))
@@ -5446,6 +5453,7 @@ subroutine PatchDestroy(patch)
   type(patch_type), pointer :: patch
   
   call DeallocateArray(patch%imat)
+  call DeallocateArray(patch%imat_internal_to_external)
   call DeallocateArray(patch%sat_func_id)
   call DeallocateArray(patch%internal_velocities)
   call DeallocateArray(patch%boundary_velocities)
@@ -5560,7 +5568,8 @@ subroutine PatchGetVariable2(patch,surf_field,option,output_option,vec,ivar, &
       enddo
     case(MATERIAL_ID)
       do local_id=1,grid%nlmax
-        vec_ptr(local_id) = patch%imat(grid%nL2G(local_id))
+        vec_ptr(local_id) = &
+          patch%imat_internal_to_external(patch%imat(grid%nL2G(local_id)))
       enddo
     case(PROCESSOR_ID)
       do local_id=1,grid%nlmax
