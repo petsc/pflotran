@@ -157,29 +157,32 @@ subroutine ImmisSetupPatch(realization)
 !                     'must be initialized with the proper variables ' // &
 !                     'ImmisAuxCreate() is called anyhwere.'
 !  call printErrMsg(option)
-! print *,' ims setup get Aux', option%nphase, size(realization%saturation_function_array)     
+! print *,' ims setup get Aux', option%nphase, size(patch%saturation_function_array)     
 ! immis_parameters create *********************************************
 ! Sir
   allocate(patch%aux%Immis%Immis_parameter%sir(option%nphase, &
-                                  size(realization%saturation_function_array)))
+                                  size(patch%saturation_function_array)))
                                 
-  do ipara = 1, size(realization%saturation_function_array)
-    patch%aux%Immis%immis_parameter%sir(:,realization%saturation_function_array(ipara)%ptr%id) = &
-      realization%saturation_function_array(ipara)%ptr%Sr(:)
+  do ipara = 1, size(patch%saturation_function_array)
+    patch%aux%Immis%immis_parameter%sir(:,patch% &
+        saturation_function_array(ipara)%ptr%id) = &
+      patch%saturation_function_array(ipara)%ptr%Sr(:)
   enddo
 
 ! dencpr  
-  allocate(patch%aux%Immis%Immis_parameter%dencpr(size(realization%material_property_array)))
-  do ipara = 1, size(realization%material_property_array)
-    patch%aux%Immis%Immis_parameter%dencpr(realization%material_property_array(ipara)%ptr%id) = &
-      realization%material_property_array(ipara)%ptr%rock_density*option%scale*&
-      realization%material_property_array(ipara)%ptr%specific_heat
+  allocate(patch%aux%Immis%Immis_parameter%dencpr(size(patch%material_property_array)))
+  do ipara = 1, size(patch%material_property_array)
+    patch%aux%Immis%Immis_parameter%dencpr(patch% &
+        material_property_array(ipara)%ptr%internal_id) = &
+      patch%material_property_array(ipara)%ptr%rock_density*option%scale*&
+      patch%material_property_array(ipara)%ptr%specific_heat
   enddo
 ! ckwet
-  allocate(patch%aux%Immis%Immis_parameter%ckwet(size(realization%material_property_array)))
-  do ipara = 1, size(realization%material_property_array)
-    patch%aux%Immis%Immis_parameter%ckwet(realization%material_property_array(ipara)%ptr%id) = &
-      realization%material_property_array(ipara)%ptr%thermal_conductivity_wet*option%scale
+  allocate(patch%aux%Immis%Immis_parameter%ckwet(size(patch%material_property_array)))
+  do ipara = 1, size(patch%material_property_array)
+    patch%aux%Immis%Immis_parameter%ckwet(patch% &
+        material_property_array(ipara)%ptr%internal_id) = &
+      patch%material_property_array(ipara)%ptr%thermal_conductivity_wet*option%scale
   enddo
 ! immis_parameters create_end *****************************************
 
@@ -712,13 +715,13 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
     endif
     iend = ghosted_id*option%nflowdof
     istart = iend-option%nflowdof+1
-    if(.not. associated(realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr))then
+    if(.not. associated(patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr))then
        print*, 'error!!! saturation function not allocated', ghosted_id,icap_loc_p(ghosted_id)
     endif
    
     call ImmisAuxVarCompute_NINC(xx_loc_p(istart:iend), &
                        auxvars(ghosted_id)%auxvar_elem(0), &
-                       realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+                       patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                        realization%fluid_properties,option)
 
  ! update global variables
@@ -770,7 +773,7 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
       enddo
  
       call ImmisAuxVarCompute_NINC(xxbc,auxvars_bc(sum_connection)%auxvar_elem(0), &
-              realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+              patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                          realization%fluid_properties, option)
 
       if (associated(global_auxvars_bc)) then
@@ -1822,7 +1825,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
         
     istart = (ng-1)*option%nflowdof + 1; iend = istart - 1 + option%nflowdof
     call ImmisAuxVarCompute_Ninc(xx_loc_p(istart:iend),auxvars(ng)%auxvar_elem(0), &
-      realization%saturation_function_array(int(icap_loc_p(ng)))%ptr, &
+      patch%saturation_function_array(int(icap_loc_p(ng)))%ptr, &
       realization%fluid_properties,option)
 
     if (option%numerical_derivatives_flow) then
@@ -1848,7 +1851,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
       endif
       call ImmisAuxVarCompute_Winc(xx_loc_p(istart:iend),patch%aux%Immis%delx(:,ng), &
           auxvars(ng)%auxvar_elem(1:option%nflowdof), &
-          realization%saturation_function_array(int(icap_loc_p(ng)))%ptr, &
+          patch%saturation_function_array(int(icap_loc_p(ng)))%ptr, &
           realization%fluid_properties,option)
     endif
   enddo
@@ -2020,7 +2023,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
 
  
       call ImmisAuxVarCompute_Ninc(xxbc,auxvars_bc(sum_connection)%auxvar_elem(0),&
-         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
+         patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
          realization%fluid_properties, option)
 
       call ImmisBCFlux(boundary_condition%flow_condition%itype, &
@@ -2520,11 +2523,11 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,realization,ierr)
 
  
       call ImmisAuxVarCompute_Ninc(xxbc,auxvars_bc(sum_connection)%auxvar_elem(0),&
-         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
+         patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
          realization%fluid_properties, option)
       call ImmisAuxVarCompute_Winc(xxbc,delxbc,&
          auxvars_bc(sum_connection)%auxvar_elem(1:option%nflowdof),&
-         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
+         patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
          realization%fluid_properties,option)
     
       do nvar=1,option%nflowdof

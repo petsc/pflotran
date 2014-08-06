@@ -42,12 +42,10 @@ private
     
     type(tran_constraint_type), pointer :: sec_transport_constraint
     type(material_property_type), pointer :: material_properties
-    type(material_property_ptr_type), pointer :: material_property_array(:)
     type(fluid_property_type), pointer :: fluid_properties
     type(fluid_property_type), pointer :: fluid_property_array(:)
     type(saturation_function_type), pointer :: saturation_functions
     class(dataset_base_type), pointer :: datasets
-    type(saturation_function_ptr_type), pointer :: saturation_function_array(:)
     
     type(uniform_velocity_dataset_type), pointer :: uniform_velocity_dataset
     character(len=MAXSTRINGLENGTH) :: nonuniform_velocity_filename
@@ -154,11 +152,9 @@ function RealizationCreate2(option)
   call TranConstraintInitList(realization%transport_constraints)
 
   nullify(realization%material_properties)
-  nullify(realization%material_property_array)
   nullify(realization%fluid_properties)
   nullify(realization%fluid_property_array)
   nullify(realization%saturation_functions)
-  nullify(realization%saturation_function_array)
   nullify(realization%datasets)
   nullify(realization%uniform_velocity_dataset)
   nullify(realization%sec_transport_constraint)
@@ -885,12 +881,12 @@ subroutine RealProcessMatPropAndSatFunc(realization)
   option => realization%option
   patch => realization%patch
   
-  ! organize lists
+!  ! organize lists
   call MaterialPropConvertListToArray(realization%material_properties, &
-                                      realization%material_property_array, &
+                                      patch%material_property_array, &
                                       option)
   call SaturatFuncConvertListToArray(realization%saturation_functions, &
-                                      realization%saturation_function_array, &
+                                      patch%saturation_function_array, &
                                       option)
 
   ! set up mirrored pointer arrays within patches to saturation functions
@@ -903,6 +899,10 @@ subroutine RealProcessMatPropAndSatFunc(realization)
   call SaturatFuncConvertListToArray(patch%saturation_functions, &
                                       patch%saturation_function_array, &
                                       option)
+                                      
+  ! create mapping of internal to external material id
+  call MaterialCreateIntToExtMapping(patch%material_property_array, &
+                                     patch%imat_internal_to_external)
     
   cur_material_property => realization%material_properties                            
   do                                      
@@ -1765,7 +1765,7 @@ subroutine RealizationUpdatePropertiesTS(realization)
   field => realization%field
   reaction => realization%reaction
   grid => patch%grid
-  material_property_array => realization%material_property_array
+  material_property_array => patch%material_property_array
   rt_auxvars => patch%aux%RT%auxvars
   material_auxvars => patch%aux%Material%auxvars
 
@@ -2076,7 +2076,7 @@ subroutine RealizationUpdatePropertiesNI(realization)
   field => realization%field
   reaction => realization%reaction
   grid => patch%grid
-  material_property_array => realization%material_property_array
+  material_property_array => patch%material_property_array
   rt_auxvars => patch%aux%RT%auxvars
   material_auxvars => patch%aux%Material%auxvars
 #endif
@@ -2610,14 +2610,8 @@ subroutine RealizationDestroyLegacy(realization)
   nullify(realization%fluid_property_array)
   call FluidPropertyDestroy(realization%fluid_properties)
   
-  if (associated(realization%material_property_array)) &
-    deallocate(realization%material_property_array)
-  nullify(realization%material_property_array)
   call MaterialPropertyDestroy(realization%material_properties)
 
-  if (associated(realization%saturation_function_array)) &
-    deallocate(realization%saturation_function_array)
-  nullify(realization%saturation_function_array)
   call SaturationFunctionDestroy(realization%saturation_functions)
 
   call DatasetDestroy(realization%datasets)
@@ -2667,14 +2661,8 @@ subroutine RealizationStrip(this)
   nullify(this%fluid_property_array)
   call FluidPropertyDestroy(this%fluid_properties)
   
-  if (associated(this%material_property_array)) &
-    deallocate(this%material_property_array)
-  nullify(this%material_property_array)
   call MaterialPropertyDestroy(this%material_properties)
 
-  if (associated(this%saturation_function_array)) &
-    deallocate(this%saturation_function_array)
-  nullify(this%saturation_function_array)
   call SaturationFunctionDestroy(this%saturation_functions)
 
   call DatasetDestroy(this%datasets)

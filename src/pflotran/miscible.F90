@@ -150,25 +150,28 @@ subroutine MiscibleSetupPatch(realization)
      
 ! Miscible_parameters create *********************************************
   allocate(patch%aux%Miscible%Miscible_parameter%sir(option%nphase, &
-                                  size(realization%saturation_function_array)))
-  do ipara = 1, size(realization%saturation_function_array)
-    patch%aux%Miscible%Miscible_parameter%sir(:,realization%saturation_function_array(ipara)%ptr%id) = &
-      realization%saturation_function_array(ipara)%ptr%Sr(:)
+                                  size(patch%saturation_function_array)))
+  do ipara = 1, size(patch%saturation_function_array)
+    patch%aux%Miscible%Miscible_parameter%sir(:,patch% &
+                       saturation_function_array(ipara)%ptr%id) = &
+      patch%saturation_function_array(ipara)%ptr%Sr(:)
   enddo
   
 ! dencpr  
-  allocate(patch%aux%Miscible%Miscible_parameter%dencpr(size(realization%material_property_array)))
-  do ipara = 1, size(realization%material_property_array)
-    patch%aux%Miscible%Miscible_parameter%dencpr(realization%material_property_array(ipara)%ptr%id) = &
-      realization%material_property_array(ipara)%ptr%rock_density*option%scale*&
-      realization%material_property_array(ipara)%ptr%specific_heat
+  allocate(patch%aux%Miscible%Miscible_parameter%dencpr(size(patch%material_property_array)))
+  do ipara = 1, size(patch%material_property_array)
+    patch%aux%Miscible%Miscible_parameter%dencpr(patch% &
+        material_property_array(ipara)%ptr%internal_id) = &
+      patch%material_property_array(ipara)%ptr%rock_density*option%scale*&
+      patch%material_property_array(ipara)%ptr%specific_heat
   enddo
   
 ! ckwet
-  allocate(patch%aux%Miscible%Miscible_parameter%ckwet(size(realization%material_property_array)))
-  do ipara = 1, size(realization%material_property_array)
-    patch%aux%Miscible%Miscible_parameter%ckwet(realization%material_property_array(ipara)%ptr%id) = &
-      realization%material_property_array(ipara)%ptr%thermal_conductivity_wet*option%scale
+  allocate(patch%aux%Miscible%Miscible_parameter%ckwet(size(patch%material_property_array)))
+  do ipara = 1, size(patch%material_property_array)
+    patch%aux%Miscible%Miscible_parameter%ckwet(patch% &
+        material_property_array(ipara)%ptr%internal_id) = &
+      patch%material_property_array(ipara)%ptr%thermal_conductivity_wet*option%scale
   enddo
 ! Miscible_parameters create_end *****************************************
 
@@ -595,7 +598,7 @@ subroutine MiscibleUpdateAuxVarsPatch(realization)
     endif
     iend = ghosted_id*option%nflowdof
     istart = iend-option%nflowdof+1
-    if(.not. associated(realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr))then
+    if(.not. associated(patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr))then
        print*, 'error!!! saturation function not allocated', ghosted_id,icap_loc_p(ghosted_id)
     endif
     
