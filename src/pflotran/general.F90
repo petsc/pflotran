@@ -3601,11 +3601,11 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
       (global_inf_norm_rel_update(idof,2),idof=1,3)
     write(*,'(4x,''-+ rupg:'',es12.4,'' rusg:'',es12.4,'' rut:'',es12.4)') &
       (global_inf_norm_rel_update(idof,3),idof=1,3)
-    write(*,'(4x,''-+ srpl:'',es12.4,'' srxa:'',es12.4,'' srt:'',es12.4)') &
+    write(*,'(4x,''-+  srl:'',es12.4,''  srg:'',es12.4,'' sre:'',es12.4)') &
       (global_inf_norm_scaled_residual(idof,1),idof=1,3)
-    write(*,'(4x,''-+ srpg:'',es12.4,'' srpa:'',es12.4,'' srt:'',es12.4)') &
+    write(*,'(4x,''-+  srl:'',es12.4,''  srg:'',es12.4,'' sre:'',es12.4)') &
       (global_inf_norm_scaled_residual(idof,2),idof=1,3)
-    write(*,'(4x,''-+ srpg:'',es12.4,'' srsg:'',es12.4,'' srt:'',es12.4)') &
+    write(*,'(4x,''-+  srl:'',es12.4,''  srg:'',es12.4,'' sre:'',es12.4)') &
       (global_inf_norm_scaled_residual(idof,3),idof=1,3)
 #endif
     option%converged = PETSC_FALSE
