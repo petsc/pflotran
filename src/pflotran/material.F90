@@ -1121,6 +1121,10 @@ subroutine MaterialInitAuxIndices(material_property_ptrs,option)
 
   PetscInt :: i
   PetscInt :: icount = 0
+  PetscInt :: num_soil_compress_func = 0
+  PetscInt :: num_soil_compress = 0
+  PetscInt :: num_soil_ref_press = 0
+  PetscInt :: num_material_properties
   
   procedure(MaterialCompressSoilDummy), pointer :: &
     MaterialCompressSoilPtrTmp 
@@ -1131,10 +1135,12 @@ subroutine MaterialInitAuxIndices(material_property_ptrs,option)
   soil_reference_pressure_index = 0
   max_material_index = 0
   
-  do i = 1, size(material_property_ptrs)
-    ! if gaps exist between material ids in the input file, those gaps will
-    ! be null and need to be skipped
-    if (.not.associated(material_property_ptrs(i)%ptr)) cycle
+  num_material_properties = size(material_property_ptrs)
+  ! must be nullified here to avoid an error message on subsequent calls
+  ! on stochastic simulations
+  MaterialCompressSoilPtr => null()
+  
+  do i = 1, num_material_properties
     MaterialCompressSoilPtrTmp => null()
     if (len_trim(material_property_ptrs(i)%ptr% &
                    soil_compressibility_function) > 1) then
@@ -1152,24 +1158,29 @@ subroutine MaterialInitAuxIndices(material_property_ptrs,option)
             '" not recognized.'
           call printErrMsg(option)
       end select
-      if (.not.associated(MaterialCompressSoilPtr)) then
-        MaterialCompressSoilPtr => MaterialCompressSoilPtrTmp
-      else if (.not.associated(MaterialCompressSoilPtr, &
-                               MaterialCompressSoilPtrTmp)) then
-        option%io_buffer = 'All MATERIAL_PROPERTIES must specify the ' // &
-          'same soil compressibility function.'
-        call printErrMsg(option)
-      endif
+      num_soil_compress_func = num_soil_compress_func + 1
     endif  
-    if (material_property_ptrs(i)%ptr%soil_compressibility > -998.d0 .and. &
-        soil_compressibility_index == 0) then
-      icount = icount + 1
-      soil_compressibility_index = icount
+    if (.not.associated(MaterialCompressSoilPtr)) then
+      MaterialCompressSoilPtr => MaterialCompressSoilPtrTmp
+    else if (.not.associated(MaterialCompressSoilPtr, &
+                             MaterialCompressSoilPtrTmp)) then
+      option%io_buffer = 'All MATERIAL_PROPERTIES must specify the ' // &
+        'same soil compressibility function.'
+      call printErrMsg(option)
     endif
-    if (material_property_ptrs(i)%ptr%soil_reference_pressure > -998.d0 .and. &
-        soil_reference_pressure_index == 0) then
-      icount = icount + 1
-      soil_reference_pressure_index = icount
+    if (material_property_ptrs(i)%ptr%soil_compressibility > -998.d0) then
+      if (soil_compressibility_index == 0) then
+        icount = icount + 1
+        soil_compressibility_index = icount
+      endif
+      num_soil_compress = num_soil_compress + 1
+    endif
+    if (material_property_ptrs(i)%ptr%soil_reference_pressure > -998.d0) then
+      if (soil_reference_pressure_index == 0) then
+        icount = icount + 1
+        soil_reference_pressure_index = icount
+      endif
+      num_soil_ref_press = num_soil_ref_press + 1
     endif
 !    if (material_property_ptrs(i)%ptr%specific_heat > 0.d0 .and. &
 !        soil_heat_capacity_index == 0) then
@@ -1186,6 +1197,26 @@ subroutine MaterialInitAuxIndices(material_property_ptrs,option)
   
   if (.not.associated(MaterialCompressSoilPtr)) then
     MaterialCompressSoilPtr => MaterialCompressSoilLeijnse
+  endif
+
+  ! check of uninitialized values
+  if (num_soil_compress_func > 0 .and. &
+      num_soil_compress_func /= num_material_properties) then
+    option%io_buffer = 'SOIL_COMPRESSIBILITY_FUNCTION must be defined for all ' // &
+      'materials.'
+    call printErrMsg(option)
+  endif
+  if (soil_compressibility_index > 0 .and. &
+      num_soil_compress /= num_material_properties) then
+    option%io_buffer = 'SOIL_COMPRESSIBILITY must be defined for all ' // &
+      'materials.'
+    call printErrMsg(option)
+  endif
+  if (soil_reference_pressure_index > 0 .and. &
+      num_soil_ref_press /= num_material_properties) then
+    option%io_buffer = 'SOIL_REFERENCE_PRESSURE must be defined for all ' // &
+      'materials.'
+    call printErrMsg(option)
   endif
   
 end subroutine MaterialInitAuxIndices
