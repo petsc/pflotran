@@ -228,6 +228,12 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
   call printMsg(option)  
   call h5gopen_f(file_id,this%hdf5_dataset_name,grp_id,hdf5_err)
 
+  if (hdf5_err < 0) then
+    option%io_buffer = 'A group named "' // trim(this%hdf5_dataset_name) // &
+      '" not found in HDF5 file "' // trim(this%filename) // '".'
+    call printErrMsg(option)  
+  endif
+
   ! only want to read on first time through
   if (this%data_dim == DIM_NULL) then
     ! read in attributes if they exist
@@ -261,6 +267,7 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
       option%io_buffer = &
         '"Discretization" attribute must be included in GRIDDED hdf5 ' // &
         'dataset file.'
+      call printErrMsg(option)
     endif
     attribute_name = "Origin"
     call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)
@@ -316,6 +323,11 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
     dataset_name = trim(dataset_name) // trim(adjustl(word))
   endif
   call h5dopen_f(grp_id,dataset_name,dataset_id,hdf5_err)
+  if (hdf5_err < 0) then
+    option%io_buffer = 'A dataset named "Data" not found in HDF5 file "' // &
+      trim(this%filename) // '".'
+    call printErrMsg(option)  
+  endif
   call h5dget_space_f(dataset_id,file_space_id,hdf5_err)
 
   ! get dataset dimensions

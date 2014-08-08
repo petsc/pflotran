@@ -1963,6 +1963,7 @@ subroutine ConditionReadValues(input,option,keyword,string,dataset_base,units)
       endif
       input2 => InputCreate(IUNIT_TEMP,filename,option)
       call DatasetAsciiRead(dataset_ascii,input2,option)
+      dataset_ascii%filename = filename
       call InputDestroy(input2)
     endif
   else if (StringCompare(word,'dataset')) then

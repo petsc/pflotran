@@ -1479,7 +1479,6 @@ subroutine GridLocalizeRegions(grid,region_list,option)
       nullify(region%cell_ids)
     endif
 
-    call MPI_Barrier(MPI_COMM_WORLD,ierr)
     if (region%num_cells == 0 .and. associated(region%faces)) then
       deallocate(region%faces)
       nullify(region%faces)
