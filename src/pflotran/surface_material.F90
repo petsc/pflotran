@@ -11,7 +11,8 @@ module Surface_Material_module
   type, public :: surface_material_property_type
     
     character(len=MAXWORDLENGTH) :: name
-    PetscInt                     :: id
+    PetscInt                     :: external_id
+    PetscInt                     :: internal_id
     PetscReal                    :: mannings
     
     type(surface_material_property_type), pointer :: next
@@ -26,7 +27,11 @@ module Surface_Material_module
             SurfaceMaterialPropertyAddToList, &
             SurfaceMaterialPropertyRead, &
             SurfaceMaterialPropConvertListToArray, &
-            SurfaceMaterialPropGetPtrFromArray
+            SurfaceMaterialPropGetPtrFromArray, &
+            SurfaceMaterialGetMaxExternalID, &
+            SurfaceMaterialCreateIntToExtMapping, &
+            SurfaceMaterialCreateExtToIntMapping, &
+            SurfaceMaterialApplyMapping
 
   contains
 
@@ -47,9 +52,10 @@ function SurfaceMaterialPropertyCreate()
   
   allocate(surf_material_property)
 
-  surf_material_property%name      = ''
-  surf_material_property%id        = 0
-  surf_material_property%mannings  = 0.d0
+  surf_material_property%name        = ''
+  surf_material_property%internal_id = 0
+  surf_material_property%external_id = 0
+  surf_material_property%mannings    = 0.d0
   
   nullify(surf_material_property%next)
   
@@ -91,7 +97,7 @@ subroutine SurfaceMaterialPropertyRead(surf_material_property,input,option)
     
     select case(trim(keyword))
       case('ID')
-        call InputReadInt(input,option,surf_material_property%id)
+        call InputReadInt(input,option,surf_material_property%external_id)
         call InputErrorMsg(input,option,'id','SURFACE_MATERIAL_PROPERTY')
       case('MANNINGS')
         call InputReadDouble(input,option,surf_material_property%mannings)
@@ -129,8 +135,10 @@ subroutine SurfaceMaterialPropertyAddToList(surf_material_property,list)
       cur_surf_material_property => cur_surf_material_property%next
     enddo
     cur_surf_material_property%next => surf_material_property
+    surf_material_property%internal_id = cur_surf_material_property%internal_id + 1
   else
     list => surf_material_property
+    surf_material_property%internal_id = 1
   endif
   
 end subroutine SurfaceMaterialPropertyAddToList
@@ -181,40 +189,54 @@ subroutine SurfaceMaterialPropConvertListToArray(list,array,option)
   type(surface_material_property_type), pointer :: cur_material_property
   type(surface_material_property_type), pointer :: prev_material_property
   type(surface_material_property_type), pointer :: next_material_property
-  PetscInt :: i, j, length1,length2, max_id
+  PetscInt :: i, j, length1,length2, max_internal_id, max_external_id
   PetscInt, allocatable :: id_count(:)
   PetscBool :: error_flag
   character(len=MAXSTRINGLENGTH) :: string
 
-  max_id = 0
+  ! check to ensure that max internal id is equal to the number of
+  ! material properties and that internal ids are contiguous
+  max_internal_id = 0
+  max_external_id = 0
   cur_material_property => list
   do
     if (.not.associated(cur_material_property)) exit
-    max_id = max(max_id,cur_material_property%id)
+    max_internal_id = max_internal_id + 1
+    max_external_id = max(max_external_id,cur_material_property%external_id)
+    if (max_internal_id /= cur_material_property%internal_id) then
+      write(string,*) cur_material_property%external_id
+      option%io_buffer = 'Non-contiguous internal material id for ' // &
+        'material named "' // trim(cur_material_property%name) // &
+        '" with external id "' // trim(adjustl(string)) // '" '
+      write(string,*) cur_material_property%internal_id
+      option%io_buffer = trim(option%io_buffer) // &
+        'and internal id "' // trim(adjustl(string)) // '".'
+      call printErrMsg(option)
+    endif
     cur_material_property => cur_material_property%next
   enddo
 
-  allocate(array(max_id))
-  do i = 1, max_id
+  allocate(array(max_internal_id))
+  do i = 1, max_internal_id
     nullify(array(i)%ptr)
   enddo
 
   ! use id_count to ensure that an id is not duplicated
-  allocate(id_count(max_id))
+  allocate(id_count(max_external_id))
   id_count = 0
 
   cur_material_property => list
   do
     if (.not.associated(cur_material_property)) exit
-    id_count(cur_material_property%id) = &
-      id_count(cur_material_property%id) + 1
-    array(cur_material_property%id)%ptr => cur_material_property
+    id_count(cur_material_property%external_id) = &
+      id_count(cur_material_property%external_id) + 1
+    array(cur_material_property%internal_id)%ptr => cur_material_property
     cur_material_property => cur_material_property%next
   enddo
 
   ! check to ensure that an id is not duplicated
   error_flag = PETSC_FALSE
-  do i = 1, max_id
+  do i = 1, max_external_id
     if (id_count(i) > 1) then
       write(string,*) i
       option%io_buffer = 'Material ID ' // trim(adjustl(string)) // &
@@ -233,7 +255,7 @@ subroutine SurfaceMaterialPropConvertListToArray(list,array,option)
 
   ! ensure unique material names
   error_flag = PETSC_FALSE
-  do i = 1, max_id
+  do i = 1, size(array)
     if (associated(array(i)%ptr)) then
       length1 = len_trim(array(i)%ptr%name)
       do j = 1, i-1
@@ -298,5 +320,120 @@ function SurfaceMaterialPropGetPtrFromArray(surf_material_property_name, &
   enddo
 
 end function SurfaceMaterialPropGetPtrFromArray
+
+! ************************************************************************** !
+
+function SurfaceMaterialGetMaxExternalID(surf_material_property_array)
+  !
+  ! Maps internal material ids to external for I/O, etc. [copy of
+  ! MaterialGetMaxExternalID()]
+  !
+  ! Author: Gautam Bisht
+  ! Date: 08/05/14
+  !
+  implicit none
+
+  type(surface_material_property_ptr_type) :: surf_material_property_array(:)
+
+  PetscInt :: SurfaceMaterialGetMaxExternalID
+
+  PetscInt :: i
+
+  SurfaceMaterialGetMaxExternalID = -999
+  do i = 1, size(surf_material_property_array)
+    SurfaceMaterialGetMaxExternalID = max(SurfaceMaterialGetMaxExternalID, &
+                                         (surf_material_property_array(i)%ptr%external_id))
+  enddo
+
+end function SurfaceMaterialGetMaxExternalID
+
+! ************************************************************************** !
+
+subroutine SurfaceMaterialCreateIntToExtMapping(surf_material_property_array,mapping)
+  !
+  ! Maps internal material ids to external for I/O, etc. [copy of
+  ! MaterialCreateIntToExtMapping()]
+  !
+  ! Author: Gautam Bisht.
+  ! Date: 08/08/14
+  !
+  implicit none
+
+  type(surface_material_property_ptr_type) :: surf_material_property_array(:)
+  PetscInt, pointer :: mapping(:)
+
+  PetscInt :: i
+
+  allocate(mapping(size(surf_material_property_array)))
+  mapping = -999
+
+  do i = 1, size(surf_material_property_array)
+    mapping(surf_material_property_array(i)%ptr%internal_id) = &
+      surf_material_property_array(i)%ptr%external_id
+  enddo
+
+end subroutine SurfaceMaterialCreateIntToExtMapping
+
+! ************************************************************************** !
+
+subroutine SurfaceMaterialCreateExtToIntMapping(surf_material_property_array,mapping)
+  !
+  ! Maps external material ids to internal for setup. This array should be
+  ! temporary and never stored for the duration of the simulation.
+  ! [copy of MaterialCreateExtToIntMapping()]
+  !
+  ! Author: Gautam Bisht
+  ! Date: 08/08/14
+  !
+  implicit none
+
+  type(surface_material_property_ptr_type) :: surf_material_property_array(:)
+  PetscInt, pointer :: mapping(:)
+
+  PetscInt :: i
+
+  allocate(mapping(SurfaceMaterialGetMaxExternalID(surf_material_property_array)))
+  mapping = -888
+
+  do i = 1, size(surf_material_property_array)
+    mapping(surf_material_property_array(i)%ptr%external_id) = &
+      surf_material_property_array(i)%ptr%internal_id
+  enddo
+
+end subroutine SurfaceMaterialCreateExtToIntMapping
+
+! ************************************************************************** !
+
+subroutine SurfaceMaterialApplyMapping(mapping,array)
+  !
+  ! Maps internal material ids to external for I/O, etc. [copy of
+  ! MaterialApplyMapping()]
+  !
+  ! Author: Gautam Bisht
+  ! Date: 08/08/14
+  !
+  implicit none
+
+  PetscInt :: mapping(:)
+  PetscInt :: array(:)
+
+  PetscInt :: i
+  PetscInt :: mapping_size
+  PetscInt :: mapped_id
+
+  mapping_size = size(mapping)
+  do i = 1, size(array)
+    if (array(i) <= mapping_size) then
+      mapped_id = mapping(array(i))
+    else
+      mapped_id = -888 ! indicates corresponding mapped value does not exist.
+    endif
+    if (mapped_id == -888) then ! negate material id to indicate not found
+      mapped_id = -1*array(i)
+    endif
+    array(i) = mapped_id
+  enddo
+
+end subroutine SurfaceMaterialApplyMapping
 
 end module Surface_Material_module

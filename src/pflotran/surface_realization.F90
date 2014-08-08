@@ -237,6 +237,7 @@ subroutine SurfRealizProcessMatProp(surf_realization)
                                 surf_realization%surf_material_properties, &
                                 surf_realization%surf_material_property_array, &
                                 option)
+
   ! set up mirrored pointer arrays within patches to saturation functions
   ! and material properties
   cur_patch => surf_realization%patch_list%first
@@ -247,6 +248,10 @@ subroutine SurfRealizProcessMatProp(surf_realization)
                                     cur_patch%surf_material_properties, &
                                     cur_patch%surf_material_property_array, &
                                     option)
+    ! create mapping of internal to external material id
+    call SurfaceMaterialCreateIntToExtMapping(cur_patch%surf_material_property_array, &
+                                              cur_patch%imat_internal_to_external)
+
     cur_patch => cur_patch%next
   enddo
   
