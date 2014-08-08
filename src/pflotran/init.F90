@@ -2935,6 +2935,8 @@ subroutine assignMaterialPropToRegions(realization)
   PetscInt :: icell, local_id, ghosted_id, natural_id, material_id
   PetscInt :: istart, iend
   PetscInt :: i
+  PetscInt :: tempint
+  PetscReal :: tempreal
   character(len=MAXSTRINGLENGTH) :: group_name
   character(len=MAXSTRINGLENGTH) :: dataset_name
   PetscErrorCode :: ierr
@@ -3229,6 +3231,13 @@ subroutine assignMaterialPropToRegions(realization)
         soil_properties(i)
     enddo
     call VecRestoreArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
+    call VecMin(field%work,tempint,tempreal,ierr)
+    if (dabs(tempreal + 999.d0) < 1.d-10) then
+      option%io_buffer = 'Incorrect assignment of soil properties. ' // &
+        'Please send this error message and your input file to ' // &
+        'pflotran-dev@googlegroups.com.'
+        call printErrMsg(option)
+    endif
     call DiscretizationGlobalToLocal(discretization,field%work, &
                                      field%work_loc,ONEDOF)
     call VecGetArrayF90(field%work_loc,vec_p,ierr);CHKERRQ(ierr)
