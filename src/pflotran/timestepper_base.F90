@@ -761,7 +761,7 @@ function TimestepperBaseWallClockStop(this,option)
   TimestepperBaseWallclockStop = PETSC_FALSE
   if (option%wallclock_stop_flag) then
     call PetscTime(current_time, ierr)
-    average_step_time = (current_time-this%start_time)/ &
+    average_step_time = (current_time-option%start_time)/ &
                         dble(this%steps-this%start_time_step+1) &
                         *2.d0  ! just to be safe, double it
     if (average_step_time + current_time > option%wallclock_stop_time) then
