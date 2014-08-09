@@ -346,6 +346,12 @@ class(pmc_base_type), target :: this
       call this%Checkpoint(viewer,this%timestepper%steps)
     endif
     
+    if (this%is_master) then
+      if (this%timestepper%WallClockStop(this%option)) then
+         local_stop_flag = TS_STOP_WALLCLOCK_EXCEEDED
+      endif
+    endif
+
   enddo
   
   ! Set data needed by process-model
@@ -355,7 +361,7 @@ class(pmc_base_type), target :: this
   if (associated(this%next)) then
     call this%next%RunToTime(sync_time,local_stop_flag)
   endif
-
+  
   stop_flag = max(stop_flag,local_stop_flag)
   
   if (this%stage /= 0) then

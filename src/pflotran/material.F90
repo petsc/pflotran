@@ -1136,6 +1136,9 @@ subroutine MaterialInitAuxIndices(material_property_ptrs,option)
   max_material_index = 0
   
   num_material_properties = size(material_property_ptrs)
+  ! must be nullified here to avoid an error message on subsequent calls
+  ! on stochastic simulations
+  MaterialCompressSoilPtr => null()
   
   do i = 1, num_material_properties
     MaterialCompressSoilPtrTmp => null()

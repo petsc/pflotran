@@ -13,7 +13,8 @@ module Timestepper_Base_class
   PetscInt, parameter, public :: TS_CONTINUE = 0
   PetscInt, parameter, public :: TS_STOP_END_SIMULATION = 1
   PetscInt, parameter, public :: TS_STOP_MAX_TIME_STEP = 2
-  PetscInt, parameter, public :: TS_STOP_FAILURE = 3
+  PetscInt, parameter, public :: TS_STOP_WALLCLOCK_EXCEEDED = 3
+  PetscInt, parameter, public :: TS_STOP_FAILURE = 4
 
   type, public :: stepper_base_type
   
@@ -60,6 +61,7 @@ module Timestepper_Base_class
     procedure, public :: Checkpoint => TimestepperBaseCheckpoint
     procedure, public :: Restart => TimestepperBaseRestart
     procedure, public :: Reset => TimestepperBaseReset
+    procedure, public :: WallClockStop => TimestepperBaseWallClockStop
     procedure, public :: FinalizeRun => TimestepperBaseFinalizeRun
     procedure, public :: Strip => TimestepperBaseStrip
     procedure, public :: Destroy => TimestepperBaseDestroy
@@ -732,6 +734,42 @@ subroutine TimestepperBaseReset(this)
   this%revert_dt = PETSC_FALSE
     
 end subroutine TimestepperBaseReset
+
+! ************************************************************************** !
+
+function TimestepperBaseWallClockStop(this,option)
+  ! 
+  ! Stops time stepping when a prescribed wall clock time has been exceeded.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/08/14
+  ! 
+  use Option_module
+
+  implicit none
+
+  class(stepper_base_type) :: this
+  type(option_type) :: option
+  
+  PetscBool :: TimestepperBaseWallclockStop
+  PetscLogDouble :: current_time, average_step_time
+  PetscErrorCode :: ierr
+  
+  ! if a simulation wallclock duration time is set, check to see that the
+  ! next time step will not exceed that value.  If it does, print the
+  ! checkpoint and exit
+  TimestepperBaseWallclockStop = PETSC_FALSE
+  if (option%wallclock_stop_flag) then
+    call PetscTime(current_time, ierr)
+    average_step_time = (current_time-this%start_time)/ &
+                        dble(this%steps-this%start_time_step+1) &
+                        *2.d0  ! just to be safe, double it
+    if (average_step_time + current_time > option%wallclock_stop_time) then
+      TimestepperBaseWallclockStop = PETSC_TRUE
+    endif
+  endif
+  
+end function TimestepperBaseWallClockStop
 
 ! ************************************************************************** !
 

@@ -247,6 +247,15 @@ subroutine SurfRealizProcessMatProp(surf_realization)
                                     cur_patch%surf_material_properties, &
                                     cur_patch%surf_material_property_array, &
                                     option)
+                                    
+    ! create mapping of internal to external ids                                  
+    allocate(cur_patch%imat_internal_to_external(size( &
+             cur_patch%surf_material_property_array)))
+    do i = 1, size(cur_patch%surf_material_property_array)
+      cur_patch%imat_internal_to_external( &
+        cur_patch%surf_material_property_array(i)%ptr%id) = &
+          cur_patch%surf_material_property_array(i)%ptr%id
+    enddo
     cur_patch => cur_patch%next
   enddo
   
