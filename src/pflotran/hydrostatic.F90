@@ -172,7 +172,9 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
             datum(3) = int(datum(3))
           class default
             option%io_buffer = &
-              'Incorrect dataset type in HydrostaticUpdateCoupler'
+              'Incorrect dataset type in HydrostaticUpdateCoupler. ' // &
+              'Dataset "' // trim(condition%datum%name) // '" in file "' // &
+              trim(condition%datum%filename) // '".'
             call printErrMsg(option)
         end select
       endif
