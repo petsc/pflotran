@@ -592,8 +592,6 @@ subroutine UGridExplicitDecompose(ugrid,option)
   local_connection_offsets(1:num_rows+1) = ia_ptr(1:num_rows+1)
   local_connections(1:count)             = ja_ptr(1:count)
 
-  call MPI_Barrier(MPI_COMM_WORLD,ierr)
-
   call MatCreateMPIAdj(option%mycomm,num_cells_local_old, &
                        num_connections_global, &
                        local_connection_offsets, &
@@ -659,8 +657,6 @@ subroutine UGridExplicitDecompose(ugrid,option)
   allocate(local_connection_offsets2(num_rows+1))
   local_connection_offsets2(1:num_rows+1) = ia_ptr(1:num_rows+1)
   local_connections2(1:count)             = ja_ptr(1:count)
-
-  call MPI_Barrier(MPI_COMM_WORLD,ierr)
 
   call MatCreateMPIAdj(option%mycomm,num_cells_local_old, &
                        ugrid%nmax, &
