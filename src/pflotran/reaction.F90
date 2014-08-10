@@ -587,10 +587,11 @@ subroutine ReactionReadPass1(reaction,input,option)
                           kd_rxn%itype = SORPTION_LANGMUIR
                         case('FREUNDLICH')
                           kd_rxn%itype = SORPTION_FREUNDLICH
-                        option%io_buffer = &
-                          'CHEMISTRY,SORPTION,ISOTHERM_REACTIONS,TYPE keyword: ' // &
-                          trim(word)//' not recognized'
-                        call printErrMsg(option)
+                        case default
+                          option%io_buffer = &
+                            'CHEMISTRY,SORPTION,ISOTHERM_REACTIONS,TYPE keyword: ' // &
+                            trim(word)//' not recognized'
+                          call printErrMsg(option)
                       end select
                       if (option%use_mc) then
                         sec_cont_kd_rxn%itype = kd_rxn%itype

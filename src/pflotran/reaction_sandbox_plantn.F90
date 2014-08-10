@@ -321,14 +321,16 @@ subroutine PlantNReact(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
       if (c_nh3 <= this%downreg_nh3_0) then
         regulator = 0.0d0
         dregulator = 0.0d0
-      elseif (c_nh3 >= this%downreg_nh3_1) then
+      elseif (c_nh3 >= this%downreg_nh3_1 .or. &
+              this%downreg_nh3_1 - this%downreg_nh3_0 <= 1.0d-20) then
         regulator = 1.0d0
         dregulator = 0.0d0
       else
         xxx = c_nh3 - this%downreg_nh3_0
         delta = this%downreg_nh3_1 - this%downreg_nh3_0
         regulator = 1.0d0 - (1.0d0 - xxx * xxx / delta / delta) ** 2
-        dregulator = 4.0d0 * (1.0d0 - xxx * xxx / delta / delta) * xxx / delta
+        dregulator = 4.0d0 * (1.0d0 - xxx * xxx / delta / delta) * xxx &
+                   / delta / delta
       endif
     
       ! rate = rate_orginal * regulator
@@ -354,14 +356,16 @@ subroutine PlantNReact(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
       if (c_no3 <= this%downreg_no3_0) then
         regulator = 0.0d0
         dregulator = 0.0d0
-      elseif (c_no3 >= this%downreg_no3_1) then
+      elseif (c_no3 >= this%downreg_no3_1 .or. &
+              this%downreg_no3_1 - this%downreg_no3_0 <= 1.0d-20) then
         regulator = 1.0d0
         dregulator = 0.0d0
       else
         xxx = c_no3 - this%downreg_no3_0
         delta = this%downreg_no3_1 - this%downreg_no3_0
         regulator = 1.0d0 - (1.0d0 - xxx * xxx / delta / delta) ** 2
-        dregulator = 4.0d0 * (1.0d0 - xxx * xxx / delta / delta) * xxx / delta
+        dregulator = 4.0d0 * (1.0d0 - xxx * xxx / delta / delta) * xxx &
+                   / delta / delta
       endif
 
       ! rate = rate_orginal * regulator
@@ -376,7 +380,8 @@ subroutine PlantNReact(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
     if (this%ispec_nh3 > 0) then
       temp_real = this%inhibition_nh3_no3 + c_nh3 * ac_nh3
       f_nh3_inhibit = this%inhibition_nh3_no3/temp_real
-      d_nh3_inhibit = this%inhibition_nh3_no3 * ac_nh3 / temp_real / temp_real
+      d_nh3_inhibit = -1.0d0 * this%inhibition_nh3_no3 * ac_nh3 &
+                    / temp_real / temp_real
     else
       f_nh3_inhibit = 1.0d0
       d_nh3_inhibit = 0.0d0
