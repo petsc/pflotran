@@ -205,6 +205,7 @@ subroutine SimulationBaseFinalizeRun(this)
   ! 
 
   use Logging_module
+  use Timestepper_Base_class, only : TS_STOP_WALLCLOCK_EXCEEDED
   
   implicit none
   
@@ -217,6 +218,11 @@ subroutine SimulationBaseFinalizeRun(this)
 #ifdef DEBUG
   call printMsg(this%option,'SimulationBaseFinalizeRun()')
 #endif
+  
+  if (this%stop_flag == TS_STOP_WALLCLOCK_EXCEEDED) then
+    call printMsg(this%option,"Wallclock stop time exceeded.  Exiting!!!")
+    call printMsg(this%option,"")
+  endif
   
   call this%process_model_coupler_list%FinalizeRun()
   
