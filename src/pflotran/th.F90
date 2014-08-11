@@ -964,14 +964,14 @@ subroutine THUpdateAuxVarsPatch(realization)
       if (option%use_th_freezing) then
          call THAuxVarComputeFreezing(xxbc,TH_auxvars_bc(sum_connection), &
               global_auxvars_bc(sum_connection), &
-              material_auxvars(sum_connection), &
+              material_auxvars(ghosted_id), &
               iphasebc, &
               patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
               option)
       else
          call THAuxVarComputeNoFreezing(xxbc,TH_auxvars_bc(sum_connection), &
               global_auxvars_bc(sum_connection), &
-              material_auxvars(sum_connection), &
+              material_auxvars(ghosted_id), &
               iphasebc, &
               patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
               option)
@@ -1025,14 +1025,14 @@ subroutine THUpdateAuxVarsPatch(realization)
       if (option%use_th_freezing) then
          call THAuxVarComputeFreezing(xx, &
               TH_auxvars_ss(sum_connection),global_auxvars_ss(sum_connection), &
-              material_auxvars(sum_connection), &
+              material_auxvars(ghosted_id), &
               iphase, &
               patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
               option)
       else
          call THAuxVarComputeNoFreezing(xx, &
               TH_auxvars_ss(sum_connection),global_auxvars_ss(sum_connection), &
-              material_auxvars(sum_connection), &
+              material_auxvars(ghosted_id), &
               iphase, &
               patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
               option)
@@ -3764,7 +3764,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
                           sec_dencpr, &
                           option,res_sec_heat)
 
-      r_p(iend) = r_p(iend) - res_sec_heat*material_auxvars(local_id)%volume
+      r_p(iend) = r_p(iend) - res_sec_heat*material_auxvars(ghosted_id)%volume
     enddo   
   endif
   ! ============== end secondary continuum heat source ===========================
@@ -3993,12 +3993,11 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   enddo
 
   do local_id = 1, grid%nlmax
-    if (associated(patch%imat)) then
-      if (patch%imat(grid%nL2G(local_id)) <= 0) cycle
-    endif
+    ghosted_id = grid%nL2G(local_id)
+    if (patch%imat(ghosted_id) <= 0) cycle
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
-    r_p (istart:iend)= r_p(istart:iend)/material_auxvars(local_id)%volume
+    r_p (istart:iend)= r_p(istart:iend)/material_auxvars(ghosted_id)%volume
   enddo
 
   if (option%use_isothermal) then
@@ -4255,11 +4254,11 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
                         option,jac_sec_heat)
                         
       Jup(option%nflowdof,2) = Jup(option%nflowdof,2) - &
-                               jac_sec_heat*material_auxvars(local_id)%volume
+                               jac_sec_heat*material_auxvars(ghosted_id)%volume
     endif
                             
     ! scale by the volume of the cell
-    Jup = Jup/material_auxvars(local_id)%volume
+    Jup = Jup/material_auxvars(ghosted_id)%volume
 
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
                                   ADD_VALUES,ierr);CHKERRQ(ierr)
@@ -4428,10 +4427,10 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
       
       if (local_id_up > 0) then
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
-                                      Jup/material_auxvars(local_id_up)%volume,ADD_VALUES, &
+                                      Jup/material_auxvars(ghosted_id_up)%volume,ADD_VALUES, &
                                       ierr);CHKERRQ(ierr)
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
-                                      Jdn/material_auxvars(local_id_up)%volume,ADD_VALUES, &
+                                      Jdn/material_auxvars(ghosted_id_up)%volume,ADD_VALUES, &
                                       ierr);CHKERRQ(ierr)
       endif
       if (local_id_dn > 0) then
@@ -4439,10 +4438,10 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
         Jdn = -Jdn
         
         call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
-                                      Jdn/material_auxvars(local_id_dn)%volume,ADD_VALUES, &
+                                      Jdn/material_auxvars(ghosted_id_dn)%volume,ADD_VALUES, &
                                       ierr);CHKERRQ(ierr)
         call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
-                                      Jup/material_auxvars(local_id_dn)%volume,ADD_VALUES, &
+                                      Jup/material_auxvars(ghosted_id_dn)%volume,ADD_VALUES, &
                                       ierr);CHKERRQ(ierr)
       endif
     enddo
@@ -4503,7 +4502,7 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
     Jdn = -Jdn
   
       !  scale by the volume of the cell
-      Jdn = Jdn/material_auxvars(local_id)%volume
+      Jdn = Jdn/material_auxvars(ghosted_id)%volume
       
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jdn,ADD_VALUES, &
                                     ierr);CHKERRQ(ierr)
