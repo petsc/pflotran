@@ -23,6 +23,7 @@ module Simulation_Base_class
   contains
     procedure, public :: Init => SimulationBaseInit
     procedure, public :: InitializeRun => SimulationBaseInitializeRun
+    procedure, public :: JumpStart => SimulationBaseJumpStart
     procedure, public :: ExecuteRun
     procedure, public :: RunToTime
     procedure, public :: FinalizeRun => SimulationBaseFinalizeRun
@@ -118,7 +119,8 @@ subroutine SimulationBaseInitializeRun(this)
   
   ! initialize performs overwrite of restart, if applicable
   call this%process_model_coupler_list%InitializeRun()  
-
+  call this%JumpStart()
+  
   ! pushed in Init()
   call PetscLogStagePop(ierr);CHKERRQ(ierr)
 
@@ -126,6 +128,31 @@ subroutine SimulationBaseInitializeRun(this)
   call PetscLogStagePush(logging%stage(TS_STAGE),ierr);CHKERRQ(ierr)
   
 end subroutine SimulationBaseInitializeRun
+
+! ************************************************************************** !
+
+subroutine SimulationBaseJumpStart(this)
+  ! 
+  ! Gets the time stepping, etc. up and running
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/11/14
+  ! 
+  use Option_module
+  
+  implicit none
+  
+  class(simulation_base_type) :: this
+  
+#ifdef DEBUG
+  call printMsg(this%option,'SimulationBaseJumpStart()')
+#endif
+
+  this%option%io_buffer = 'SimulationBaseJumpStart must be extended for ' // &
+    'each simulation mode.'
+  call printErrMsg(this%option)
+  
+end subroutine SimulationBaseJumpStart
 
 ! ************************************************************************** !
 

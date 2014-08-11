@@ -26,7 +26,7 @@ module Subsurface_Simulation_class
     type(regression_type), pointer :: regression
   contains
     procedure, public :: Init => SubsurfaceSimulationInit
-    procedure, public :: InitializeRun => SubsurfaceInitializeRun
+    procedure, public :: JumpStart => SubsurfaceSimulationJumpStart
 !    procedure, public :: ExecuteRun
 !    procedure, public :: RunToTime
     procedure, public :: FinalizeRun => SubsurfaceFinalizeRun
@@ -92,12 +92,12 @@ end subroutine SubsurfaceSimulationInit
 
 ! ************************************************************************** !
 
-subroutine SubsurfaceInitializeRun(this)
+subroutine SubsurfaceSimulationJumpStart(this)
   ! 
   ! Initializes simulation
   ! 
   ! Author: Glenn Hammond
-  ! Date: 03/18/13
+  ! Date: 08/11/14
   ! 
   use Logging_module
   use Output_module
@@ -114,9 +114,10 @@ subroutine SubsurfaceInitializeRun(this)
   class(stepper_base_type), pointer :: tran_stepper
   type(option_type), pointer :: option
   type(output_option_type), pointer :: output_option
+  PetscBool :: plot_flag, transient_plot_flag
   
 #ifdef DEBUG
-  call printMsg(this%option,'Simulation%InitializeRun()')
+  call printMsg(this%option,'SubsurfaceSimulationJumpStart()')
 #endif
 
   nullify(master_stepper)
@@ -126,14 +127,12 @@ subroutine SubsurfaceInitializeRun(this)
   option => this%option
   output_option => this%output_option
 
-  call SimulationBaseInitializeRun(this)
-  
   ! first time stepper is master
   master_stepper => this%process_model_coupler_list%timestepper
-  if (associated(this%flow_process_model_coupler%timestepper)) then
+  if (associated(this%flow_process_model_coupler)) then
     flow_stepper => this%flow_process_model_coupler%timestepper
   endif
-  if (associated(this%rt_process_model_coupler%timestepper)) then
+  if (associated(this%rt_process_model_coupler)) then
     tran_stepper => this%rt_process_model_coupler%timestepper
   endif
   
@@ -156,7 +155,9 @@ subroutine SubsurfaceInitializeRun(this)
   if (output_option%plot_number == 0 .and. &
       master_stepper%max_time_step >= 0 .and. &
       output_option%print_initial) then
-    call Output(this%realization,PETSC_TRUE,PETSC_TRUE)
+    plot_flag = PETSC_TRUE
+    transient_plot_flag = PETSC_TRUE
+    call Output(this%realization,plot_flag,transient_plot_flag)
   endif
   
   !if TIMESTEPPER->MAX_STEPS < 1, print out initial condition only
@@ -209,7 +210,7 @@ subroutine SubsurfaceInitializeRun(this)
     call OutputPrintCouplers(this%realization,ZERO_INTEGER)
   endif  
 
-end subroutine SubsurfaceInitializeRun
+end subroutine SubsurfaceSimulationJumpStart
 
 ! ************************************************************************** !
 
