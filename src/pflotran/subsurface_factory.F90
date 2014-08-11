@@ -405,9 +405,12 @@ subroutine SubsurfaceJumpStart(simulation)
   flow_read = PETSC_FALSE
   transport_read = PETSC_FALSE
   failure = PETSC_FALSE
-  
+
+#if 0
+!geh: moved to within PMInitialize routines
   if (flow_read .and. option%overwrite_restart_flow) then
     call RealizationRevertFlowParameters(realization)
+    call CondControlAssignFlowInitCond(realization)
   endif
 
   if (transport_read .and. option%overwrite_restart_transport) then
@@ -418,6 +421,7 @@ subroutine SubsurfaceJumpStart(simulation)
   if (associated(simulation%flow_process_model_coupler)) then
     call simulation%flow_process_model_coupler%UpdateSolution()
   endif
+#endif
  
 !geh: now performed in PMRTInitializeRun()
 !  if (associated(simulation%rt_process_model_coupler)) then

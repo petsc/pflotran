@@ -412,6 +412,7 @@ recursive subroutine PMRTInitializeRun(this)
 
   use Reactive_Transport_module, only : RTUpdateEquilibriumState, &
                                         RTJumpStartKineticSorption
+  use Condition_Control_module
 
   implicit none
   
@@ -422,11 +423,10 @@ recursive subroutine PMRTInitializeRun(this)
 #endif
   
   ! restart
-#if 0  
-  if (transport_read .and. option%overwrite_restart_transport) then
-    call CondControlAssignTranInitCond(realization)  
+  if (this%option%restart_flag .and. &
+      this%option%overwrite_restart_transport) then
+    call CondControlAssignTranInitCond(this%realization)  
   endif
-#endif  
   
   ! pass PETSC_FALSE to turn off update of kinetic state variables
   call PMRTUpdateSolution2(this,PETSC_FALSE)

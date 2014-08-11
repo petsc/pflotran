@@ -206,6 +206,7 @@ recursive subroutine InitializeRun(this)
   call printMsg(this%option,'PMCBase%InitializeRun()')
 #endif
   
+  this%option%time = this%timestepper%target_time
   cur_pm => this%pm_list
   do
     if (.not.associated(cur_pm)) exit
