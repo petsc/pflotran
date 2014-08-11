@@ -26,7 +26,7 @@ module Subsurface_Simulation_class
     type(regression_type), pointer :: regression
   contains
     procedure, public :: Init => SubsurfaceSimulationInit
-!    procedure, public :: InitializeRun => SubsurfaceInitializeRun
+    procedure, public :: InitializeRun => SubsurfaceInitializeRun
 !    procedure, public :: ExecuteRun
 !    procedure, public :: RunToTime
     procedure, public :: FinalizeRun => SubsurfaceFinalizeRun
@@ -99,25 +99,115 @@ subroutine SubsurfaceInitializeRun(this)
   ! Author: Glenn Hammond
   ! Date: 03/18/13
   ! 
-
   use Logging_module
   use Output_module
+  use Option_module
+  use Output_Aux_module
+  use Timestepper_Base_class
 
   implicit none
   
   class(subsurface_simulation_type) :: this
 
-  class(pmc_base_type), pointer :: cur_process_model_coupler
-  class(pmc_base_type), pointer :: cur_process_model_coupler_top
-  class(pmc_base_type), pointer :: cur_process_model_coupler_below
-  PetscInt :: depth
-  PetscErrorCode :: ierr
+  class(stepper_base_type), pointer :: master_stepper
+  class(stepper_base_type), pointer :: flow_stepper
+  class(stepper_base_type), pointer :: tran_stepper
+  type(option_type), pointer :: option
+  type(output_option_type), pointer :: output_option
   
 #ifdef DEBUG
   call printMsg(this%option,'Simulation%InitializeRun()')
 #endif
 
-  call this%process_model_coupler_list%InitializeRun()
+  nullify(master_stepper)
+  nullify(flow_stepper)
+  nullify(tran_stepper)
+
+  option => this%option
+  output_option => this%output_option
+
+  call SimulationBaseInitializeRun(this)
+  
+  ! first time stepper is master
+  master_stepper => this%process_model_coupler_list%timestepper
+  if (associated(this%flow_process_model_coupler%timestepper)) then
+    flow_stepper => this%flow_process_model_coupler%timestepper
+  endif
+  if (associated(this%rt_process_model_coupler%timestepper)) then
+    tran_stepper => this%rt_process_model_coupler%timestepper
+  endif
+  
+  !if TIMESTEPPER->MAX_STEPS < 0, print out solution composition only
+  if (master_stepper%max_time_step < 0) then
+    call printMsg(option,'')
+    write(option%io_buffer,*) master_stepper%max_time_step
+    option%io_buffer = 'The maximum # of time steps (' // &
+                       trim(adjustl(option%io_buffer)) // &
+                       '), specified by TIMESTEPPER->MAX_STEPS, ' // &
+                       'has been met.  Stopping....'  
+    call printMsg(option)
+    call printMsg(option,'')
+    option%status = DONE
+    return
+  endif
+
+  ! print initial condition output if not a restarted sim
+  call OutputInit(master_stepper%steps)
+  if (output_option%plot_number == 0 .and. &
+      master_stepper%max_time_step >= 0 .and. &
+      output_option%print_initial) then
+    call Output(this%realization,PETSC_TRUE,PETSC_TRUE)
+  endif
+  
+  !if TIMESTEPPER->MAX_STEPS < 1, print out initial condition only
+  if (master_stepper%max_time_step < 1) then
+    call printMsg(option,'')
+    write(option%io_buffer,*) master_stepper%max_time_step
+    option%io_buffer = 'The maximum # of time steps (' // &
+                       trim(adjustl(option%io_buffer)) // &
+                       '), specified by TIMESTEPPER->MAX_STEPS, ' // &
+                       'has been met.  Stopping....'  
+    call printMsg(option)
+    call printMsg(option,'') 
+    option%status = DONE
+    return
+  endif
+
+  ! increment plot number so that 000 is always the initial condition, and nothing else
+  if (output_option%plot_number == 0) output_option%plot_number = 1
+
+  if (associated(flow_stepper)) then
+    if (.not.associated(flow_stepper%cur_waypoint)) then
+      option%io_buffer = &
+        'Null flow waypoint list; final time likely equal to start time.'
+      call printMsg(option)
+      option%status = FAIL
+      return
+    else
+      flow_stepper%dt_max = flow_stepper%cur_waypoint%dt_max
+    endif
+  endif  
+  if (associated(tran_stepper)) then
+    if (.not.associated(tran_stepper%cur_waypoint)) then
+      option%io_buffer = &
+        'Null transport waypoint list; final time likely equal to start ' // &
+        'time or simulation time needs to be extended on a restart.'
+      call printMsg(option)
+      option%status = FAIL
+      return
+    else
+      tran_stepper%dt_max = tran_stepper%cur_waypoint%dt_max
+    endif
+  endif
+           
+  if (associated(flow_stepper)) &
+    flow_stepper%start_time_step = flow_stepper%steps + 1
+  if (associated(tran_stepper)) &
+    tran_stepper%start_time_step = tran_stepper%steps + 1
+  
+  if (this%realization%debug%print_couplers) then
+    call OutputPrintCouplers(this%realization,ZERO_INTEGER)
+  endif  
 
 end subroutine SubsurfaceInitializeRun
 

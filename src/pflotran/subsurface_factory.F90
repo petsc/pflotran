@@ -408,6 +408,7 @@ subroutine SubsurfaceJumpStart(simulation)
 
 #if 0
 !geh: moved to within PMInitialize routines
+!geh: removed 8/11
   if (flow_read .and. option%overwrite_restart_flow) then
     call RealizationRevertFlowParameters(realization)
     call CondControlAssignFlowInitCond(realization)
@@ -440,7 +441,8 @@ subroutine SubsurfaceJumpStart(simulation)
     endif
     call RTJumpStartKineticSorption(realization)
   endif
-  
+#if 0  
+!geh: removed 8/11
   !if TIMESTEPPER->MAX_STEPS < 0, print out solution composition only
   if (master_stepper%max_time_step < 0) then
     call printMsg(option,'')
@@ -514,7 +516,7 @@ subroutine SubsurfaceJumpStart(simulation)
   if (realization%debug%print_couplers) then
     call OutputPrintCouplers(realization,ZERO_INTEGER)
   endif
-
+#endif
 end subroutine SubsurfaceJumpStart
 
 ! ************************************************************************** !

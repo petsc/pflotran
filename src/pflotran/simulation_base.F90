@@ -22,7 +22,7 @@ module Simulation_Base_class
     type(simulation_aux_type), pointer :: sim_aux
   contains
     procedure, public :: Init => SimulationBaseInit
-    procedure, public :: InitializeRun
+    procedure, public :: InitializeRun => SimulationBaseInitializeRun
     procedure, public :: ExecuteRun
     procedure, public :: RunToTime
     procedure, public :: FinalizeRun => SimulationBaseFinalizeRun
@@ -31,6 +31,7 @@ module Simulation_Base_class
   
   public :: SimulationBaseCreate, &
             SimulationBaseInit, &
+            SimulationBaseInitializeRun, &
             SimulationGetFinalWaypointTime, &
             SimulationBaseFinalizeRun, &
             SimulationBaseStrip, &
@@ -88,7 +89,7 @@ end subroutine SimulationBaseInit
 
 ! ************************************************************************** !
 
-subroutine InitializeRun(this)
+subroutine SimulationBaseInitializeRun(this)
   ! 
   ! Initializes simulation
   ! 
@@ -104,7 +105,6 @@ subroutine InitializeRun(this)
 
   class(simulation_base_type) :: this
 
-  class(pmc_base_type), pointer :: cur_process_model_coupler
   PetscViewer :: viewer
   PetscErrorCode :: ierr
   
@@ -112,28 +112,20 @@ subroutine InitializeRun(this)
   call printMsg(this%option,'SimulationBaseInitializeRun()')
 #endif
   
-  call this%process_model_coupler_list%InitializeRun()  
-
-  !TODO(geh): place logic here to stop if only initial state desired (e.g.
-  !           solution composition, etc.).
-  
-  ! update solutions?
-  
-  !TODO(geh): Place I/O reoutines here
-  
-  !TODO(geh): place logic here to stop if only initial condition desired
-  
   if (this%option%restart_flag) then
     call this%process_model_coupler_list%Restart(viewer)
   endif
   
+  ! initialize performs overwrite of restart, if applicable
+  call this%process_model_coupler_list%InitializeRun()  
+
   ! pushed in Init()
   call PetscLogStagePop(ierr);CHKERRQ(ierr)
 
   ! popped in FinalizeRun()
   call PetscLogStagePush(logging%stage(TS_STAGE),ierr);CHKERRQ(ierr)
   
-end subroutine InitializeRun
+end subroutine SimulationBaseInitializeRun
 
 ! ************************************************************************** !
 
