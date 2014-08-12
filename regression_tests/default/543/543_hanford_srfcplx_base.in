@@ -209,8 +209,6 @@ noskip
   OUTPUT
     All
     pH
-    FREE_ION
-    ACTIVITY_COEFFICIENTS
     TOTAL
     TOTAL_SORBED
     KD

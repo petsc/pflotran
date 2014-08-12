@@ -209,8 +209,6 @@ noskip
   OUTPUT
     All
     pH
-    ACTIVITY_COEFFICIENTS
-    FREE_ION
     TOTAL
     TOTAL_SORBED
     KD
@@ -644,6 +642,5 @@ END
 #=========================== checkpoint / restart =============================
 #CHECKPOINT 10
 RESTART 543_hanford_srfcplx_base-restart.chk 0.d0
-OVERWRITE_RESTART_FLOW_PARAMS
 OVERWRITE_RESTART_TRANSPORT
 

@@ -430,13 +430,6 @@ recursive subroutine PMRTInitializeRun(this)
       this%option%overwrite_restart_transport) then
     call RTClearActivityCoefficients(this%realization)
     call CondControlAssignTranInitCond(this%realization)  
-    ! the following is the same sequence as in init.F90
-    call RTUpdateAuxVars(this%realization,PETSC_TRUE,PETSC_FALSE,PETSC_FALSE)
-    if (this%realization%reaction%act_coef_update_frequency /= &
-        ACT_COEF_FREQUENCY_OFF) then
-      call RTUpdateAuxVars(this%realization,PETSC_TRUE,PETSC_FALSE,PETSC_TRUE)
-      call RTUpdateAuxVars(this%realization,PETSC_TRUE,PETSC_FALSE,PETSC_TRUE)
-    endif
   endif
   
   ! pass PETSC_FALSE to turn off update of kinetic state variables
