@@ -523,7 +523,7 @@ subroutine FlowConditionRead(condition,input,option)
   rate => FlowSubConditionCreate(option%nflowspec)
   rate%name = 'rate'
   energy_rate => FlowSubConditionCreate(option%nflowspec)
-  rate%name = 'energy_rate'
+  energy_rate%name = 'energy_rate'
   well => FlowSubConditionCreate(7 + option%nflowspec)
   well%name = 'well'
   saturation => FlowSubConditionCreate(option%nphase)
