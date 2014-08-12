@@ -151,8 +151,9 @@ recursive subroutine PMSubsurfaceInitializeRun(this)
 !geh: for testing only.  In general, we only revert parameter, not flow.
 !    call CondControlAssignFlowInitCond(this%realization)
 !    call this%UpdateAuxVars()
-!    call this%UpdateSolution()  
   endif
+
+  call this%UpdateSolution()  
   
     
 end subroutine PMSubsurfaceInitializeRun
