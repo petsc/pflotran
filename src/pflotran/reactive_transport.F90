@@ -48,7 +48,8 @@ module Reactive_Transport_module
             RTCheckUpdatePost, &
             RTJumpStartKineticSorption, &
             RTCheckpointKineticSorption, &
-            RTExplicitAdvection
+            RTExplicitAdvection, &
+            RTClearActivityCoefficients
   
 contains
 
@@ -4925,6 +4926,41 @@ subroutine RTWriteToHeader(fid,variable_string,cell_string,icolumn)
   write(fid,'(a)',advance="no") trim(string)
 
 end subroutine RTWriteToHeader
+
+! ************************************************************************** !
+
+subroutine RTClearActivityCoefficients(realization)
+  ! 
+  ! Sets activity coefficients back to 1.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/11/14
+  ! 
+
+  use Realization_class
+  use Reactive_Transport_Aux_module
+  use Option_module
+  use Field_module  
+  use Grid_module
+  use Secondary_Continuum_Aux_module  
+
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
+  PetscInt :: ghosted_id
+  
+  rt_auxvars => realization%patch%aux%RT%auxvars
+  
+  do ghosted_id = 1, realization%patch%grid%ngmax
+    rt_auxvars(ghosted_id)%pri_act_coef = 1.d0
+    if (associated(rt_auxvars(ghosted_id)%sec_act_coef)) then
+      rt_auxvars(ghosted_id)%sec_act_coef = 1.d0
+    endif
+  enddo
+
+end subroutine RTClearActivityCoefficients
 
 ! ************************************************************************** !
 

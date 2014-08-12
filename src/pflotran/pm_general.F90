@@ -127,6 +127,9 @@ recursive subroutine PMGeneralInitializeRun(this)
                                 this%max_change_ivar(i), &
                                 this%max_change_isubvar(i))
   enddo
+  
+  ! call parent implementation
+  call PMSubsurfaceInitializeRun(this)
 
 end subroutine PMGeneralInitializeRun
 

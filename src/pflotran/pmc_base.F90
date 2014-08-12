@@ -206,6 +206,7 @@ recursive subroutine InitializeRun(this)
   call printMsg(this%option,'PMCBase%InitializeRun()')
 #endif
   
+  this%option%time = this%timestepper%target_time
   cur_pm => this%pm_list
   do
     if (.not.associated(cur_pm)) exit
@@ -346,6 +347,12 @@ class(pmc_base_type), target :: this
       call this%Checkpoint(viewer,this%timestepper%steps)
     endif
     
+    if (this%is_master) then
+      if (this%timestepper%WallClockStop(this%option)) then
+         local_stop_flag = TS_STOP_WALLCLOCK_EXCEEDED
+      endif
+    endif
+
   enddo
   
   ! Set data needed by process-model
@@ -355,7 +362,7 @@ class(pmc_base_type), target :: this
   if (associated(this%next)) then
     call this%next%RunToTime(sync_time,local_stop_flag)
   endif
-
+  
   stop_flag = max(stop_flag,local_stop_flag)
   
   if (this%stage /= 0) then
@@ -674,6 +681,9 @@ recursive subroutine PMCBaseRestart(this,viewer)
     call PMCBaseRegisterHeader(this,bag,header)
     call PetscBagLoad(viewer,bag,ierr);CHKERRQ(ierr)
     call PMCBaseGetHeader(this,header)
+    if (this%option%restart_time > -999.d0) then
+      this%pm_list%realization_base%output_option%plot_number = 0
+    endif
     call PetscBagDestroy(bag,ierr);CHKERRQ(ierr)
   endif
   

@@ -668,9 +668,7 @@ subroutine THComputeMassBalancePatch(realization,mass_balance)
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
-    if (associated(patch%imat)) then
-      if (patch%imat(ghosted_id) <= 0) cycle
-    endif
+    if (patch%imat(ghosted_id) <= 0) cycle
     ! mass = volume*saturation*density
 
     if (soil_compressibility_index > 0) then
@@ -906,9 +904,7 @@ subroutine THUpdateAuxVarsPatch(realization)
     if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
 
     !geh - Ignore inactive cells with inactive materials
-    if (associated(patch%imat)) then
-      if (patch%imat(ghosted_id) <= 0) cycle
-    endif
+    if (patch%imat(ghosted_id) <= 0) cycle
     iend = ghosted_id*option%nflowdof
     istart = iend-option%nflowdof+1
     iphase = int(iphase_loc_p(ghosted_id))
@@ -941,9 +937,7 @@ subroutine THUpdateAuxVarsPatch(realization)
       sum_connection = sum_connection + 1
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
+      if (patch%imat(ghosted_id) <= 0) cycle
 
       do idof=1,option%nflowdof
         select case(boundary_condition%flow_condition%itype(idof))
@@ -964,14 +958,14 @@ subroutine THUpdateAuxVarsPatch(realization)
       if (option%use_th_freezing) then
          call THAuxVarComputeFreezing(xxbc,TH_auxvars_bc(sum_connection), &
               global_auxvars_bc(sum_connection), &
-              material_auxvars(sum_connection), &
+              material_auxvars(ghosted_id), &
               iphasebc, &
               patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
               option)
       else
          call THAuxVarComputeNoFreezing(xxbc,TH_auxvars_bc(sum_connection), &
               global_auxvars_bc(sum_connection), &
-              material_auxvars(sum_connection), &
+              material_auxvars(ghosted_id), &
               iphasebc, &
               patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
               option)
@@ -1025,14 +1019,14 @@ subroutine THUpdateAuxVarsPatch(realization)
       if (option%use_th_freezing) then
          call THAuxVarComputeFreezing(xx, &
               TH_auxvars_ss(sum_connection),global_auxvars_ss(sum_connection), &
-              material_auxvars(sum_connection), &
+              material_auxvars(ghosted_id), &
               iphase, &
               patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
               option)
       else
          call THAuxVarComputeNoFreezing(xx, &
               TH_auxvars_ss(sum_connection),global_auxvars_ss(sum_connection), &
-              material_auxvars(sum_connection), &
+              material_auxvars(ghosted_id), &
               iphase, &
               patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
               option)
@@ -1170,9 +1164,7 @@ subroutine THUpdateSolutionPatch(realization)
     call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr);CHKERRQ(ierr)
     do local_id = 1, grid%nlmax  ! For each local node do...
       ghosted_id = grid%nL2G(local_id)
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
+      if (patch%imat(ghosted_id) <= 0) cycle
       iend = local_id*option%nflowdof
       istart = iend-option%nflowdof+1
     
@@ -1283,9 +1275,7 @@ subroutine THUpdateFixedAccumPatch(realization)
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
-    if (associated(patch%imat)) then
-      if (patch%imat(ghosted_id) <= 0) cycle
-    endif
+    if (patch%imat(ghosted_id) <= 0) cycle
 
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
@@ -1389,9 +1379,7 @@ subroutine THNumericalJacobianTest(xx,realization)
   call THResidual(PETSC_NULL_OBJECT,xx,res,realization,ierr)
   call VecGetArrayF90(res,vec2_p,ierr);CHKERRQ(ierr)
   do icell = 1,grid%nlmax
-    if (associated(patch%imat)) then
-      if (patch%imat(grid%nL2G(icell)) <= 0) cycle
-    endif
+    if (patch%imat(icell) <= 0) cycle
     do idof = (icell-1)*option%nflowdof+1,icell*option%nflowdof 
       call VecCopy(xx,xx_pert,ierr);CHKERRQ(ierr)
       call VecGetArrayF90(xx_pert,vec_p,ierr);CHKERRQ(ierr)
@@ -3724,9 +3712,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   do local_id = 1, grid%nlmax  ! For each local node do...
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
-    if (associated(patch%imat)) then
-      if (patch%imat(ghosted_id) <= 0) cycle
-    endif
+    if (patch%imat(ghosted_id) <= 0) cycle
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
 
@@ -3749,9 +3735,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   ! only one secondary continuum for now for each primary continuum node
     do local_id = 1, grid%nlmax  ! For each local node do...
       ghosted_id = grid%nL2G(local_id)
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
+      if (patch%imat(ghosted_id) <= 0) cycle
       iend = local_id*option%nflowdof
       istart = iend-option%nflowdof+1
     
@@ -3764,7 +3748,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
                           sec_dencpr, &
                           option,res_sec_heat)
 
-      r_p(iend) = r_p(iend) - res_sec_heat*material_auxvars(local_id)%volume
+      r_p(iend) = r_p(iend) - res_sec_heat*material_auxvars(ghosted_id)%volume
     enddo   
   endif
   ! ============== end secondary continuum heat source ===========================
@@ -3786,9 +3770,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
       sum_connection = sum_connection + 1
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
+      if (patch%imat(ghosted_id) <= 0) cycle
       
       select case (source_sink%flow_condition%rate%itype)
         case(MASS_RATE_SS)
@@ -3845,10 +3827,8 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
       local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
 
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id_up) <= 0 .or.  &
-            patch%imat(ghosted_id_dn) <= 0) cycle
-      endif
+      if (patch%imat(ghosted_id_up) <= 0 .or.  &
+          patch%imat(ghosted_id_dn) <= 0) cycle
 
       fraction_upwind = cur_connection_set%dist(-1,iconn)
       distance = cur_connection_set%dist(0,iconn)
@@ -3947,9 +3927,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
+      if (patch%imat(ghosted_id) <= 0) cycle
 
       if (ghosted_id<=0) then
         print *, "Wrong boundary node index... STOP!!!"
@@ -3993,21 +3971,18 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   enddo
 
   do local_id = 1, grid%nlmax
-    if (associated(patch%imat)) then
-      if (patch%imat(grid%nL2G(local_id)) <= 0) cycle
-    endif
+    ghosted_id = grid%nL2G(local_id)
+    if (patch%imat(ghosted_id) <= 0) cycle
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
-    r_p (istart:iend)= r_p(istart:iend)/material_auxvars(local_id)%volume
+    r_p (istart:iend)= r_p(istart:iend)/material_auxvars(ghosted_id)%volume
   enddo
 
   if (option%use_isothermal) then
     do local_id = 1, grid%nlmax  ! For each local node do...
       ghosted_id = grid%nL2G(local_id)
       !geh - Ignore inactive cells with inactive materials
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
+      if (patch%imat(ghosted_id) <= 0) cycle
       istart = TWO_INTEGER + (local_id-1)*option%nflowdof
       r_p(istart)=xx_loc_p(2 + (ghosted_id-1)*option%nflowdof)-yy_p(istart-1)
     enddo
@@ -4230,9 +4205,7 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
   do local_id = 1, grid%nlmax  ! For each local node do...
     ghosted_id = grid%nL2G(local_id)
     ! Ignore inactive cells with inactive materials
-    if (associated(patch%imat)) then
-      if (patch%imat(ghosted_id) <= 0) cycle
-    endif
+    if (patch%imat(ghosted_id) <= 0) cycle
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
     icap = int(icap_loc_p(ghosted_id))
@@ -4255,11 +4228,11 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
                         option,jac_sec_heat)
                         
       Jup(option%nflowdof,2) = Jup(option%nflowdof,2) - &
-                               jac_sec_heat*material_auxvars(local_id)%volume
+                               jac_sec_heat*material_auxvars(ghosted_id)%volume
     endif
                             
     ! scale by the volume of the cell
-    Jup = Jup/material_auxvars(local_id)%volume
+    Jup = Jup/material_auxvars(ghosted_id)%volume
 
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
                                   ADD_VALUES,ierr);CHKERRQ(ierr)
@@ -4294,9 +4267,7 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
+      if (patch%imat(ghosted_id) <= 0) cycle
       
       select case (source_sink%flow_condition%rate%itype)
         case(MASS_RATE_SS)
@@ -4351,10 +4322,8 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
       ghosted_id_up = cur_connection_set%id_up(iconn)
       ghosted_id_dn = cur_connection_set%id_dn(iconn)
 
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id_up) <= 0 .or. &
-            patch%imat(ghosted_id_dn) <= 0) cycle
-      endif
+      if (patch%imat(ghosted_id_up) <= 0 .or. &
+          patch%imat(ghosted_id_dn) <= 0) cycle
 
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
       local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
@@ -4428,10 +4397,10 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
       
       if (local_id_up > 0) then
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
-                                      Jup/material_auxvars(local_id_up)%volume,ADD_VALUES, &
+                                      Jup/material_auxvars(ghosted_id_up)%volume,ADD_VALUES, &
                                       ierr);CHKERRQ(ierr)
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
-                                      Jdn/material_auxvars(local_id_up)%volume,ADD_VALUES, &
+                                      Jdn/material_auxvars(ghosted_id_up)%volume,ADD_VALUES, &
                                       ierr);CHKERRQ(ierr)
       endif
       if (local_id_dn > 0) then
@@ -4439,10 +4408,10 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
         Jdn = -Jdn
         
         call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
-                                      Jdn/material_auxvars(local_id_dn)%volume,ADD_VALUES, &
+                                      Jdn/material_auxvars(ghosted_id_dn)%volume,ADD_VALUES, &
                                       ierr);CHKERRQ(ierr)
         call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
-                                      Jup/material_auxvars(local_id_dn)%volume,ADD_VALUES, &
+                                      Jup/material_auxvars(ghosted_id_dn)%volume,ADD_VALUES, &
                                       ierr);CHKERRQ(ierr)
       endif
     enddo
@@ -4472,9 +4441,7 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
+      if (patch%imat(ghosted_id) <= 0) cycle
 
       if (ghosted_id<=0) then
         print *, "Wrong boundary node index... STOP!!!"
@@ -4503,7 +4470,7 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
     Jdn = -Jdn
   
       !  scale by the volume of the cell
-      Jdn = Jdn/material_auxvars(local_id)%volume
+      Jdn = Jdn/material_auxvars(ghosted_id)%volume
       
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jdn,ADD_VALUES, &
                                     ierr);CHKERRQ(ierr)
@@ -5478,9 +5445,7 @@ subroutine THUpdateSurfaceWaterFlag(realization)
       do iconn = 1, cur_connection_set%num_connections
         local_id = cur_connection_set%id_dn(iconn)
         ghosted_id = grid%nL2G(local_id)
-        if (associated(patch%imat)) then
-          if (patch%imat(ghosted_id) <= 0) cycle
-        endif
+        if (patch%imat(ghosted_id) <= 0) cycle
 
         if (global_auxvars_bc(sum_connection)%pres(1) - option%reference_pressure < eps) then
           TH_auxvars_bc(sum_connection)%surf_wat = PETSC_FALSE
