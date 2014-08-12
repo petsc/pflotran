@@ -350,7 +350,10 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
   enddo 
   
   if (saturation_function%m < 1.d-40 .and. &
-      .not.StringCompare(saturation_function%name,'default',SEVEN_INTEGER)) then
+      .not. &
+      (StringCompare(saturation_function%name,'default',SEVEN_INTEGER) .or. &
+       StringCompareIgnoreCase(saturation_function%name,'leverett', &
+                               EIGHT_INTEGER))) then
     option%io_buffer = 'Saturation function parameter "m" not set ' // &
                        'properly in saturation function "' // &
                        trim(saturation_function%name) // '".'
