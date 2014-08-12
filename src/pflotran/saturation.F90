@@ -58,6 +58,7 @@ subroutine SaturationUpdateCoupler(coupler,option,grid,saturation_functions, &
     local_id = coupler%connection_set%id_dn(iconn)
     ghosted_id = grid%nL2G(local_id)
     call SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
+                     option%reference_temperature, &
                      saturation_functions(sat_func_id(ghosted_id))%ptr,option)
     liquid_pressure = option%reference_pressure - capillary_pressure
     coupler%flow_aux_real_var(1,iconn) = liquid_pressure
