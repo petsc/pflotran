@@ -247,10 +247,12 @@ contains
     PetscReal :: value
     PetscReal, parameter :: tolerance = 1.d-8
     character(len=128) :: string
+    PetscReal, parameter :: temperature = 25.d0
 
     ! capillary pressure = f(saturation) well within polynomial fit
     saturation = 1.00001d0**(-this%sf_Brooks_Corey_Burdine%lambda)
     call SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
+                                     temperature, &
                                      this%sf_Brooks_Corey_Burdine,this%option)
     string = 'Brooks-Corey-Burdine capillary pressure as a function of ' // &
              'saturation well within polynomial fit'
@@ -260,6 +262,7 @@ contains
     ! capillary pressure = f(saturation) slightly within polynomial fit
     saturation = 1.04d0**(-this%sf_Brooks_Corey_Burdine%lambda)
     call SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
+                                     temperature, &
                                      this%sf_Brooks_Corey_Burdine,this%option)
     string = 'Brooks-Corey-Burdine capillary pressure as a function of ' // &
              'saturation slightly within polynomial fit'
@@ -269,6 +272,7 @@ contains
     ! capillary pressure = f(saturation) above polynomial fit
     saturation = 1.06d0**(-this%sf_Brooks_Corey_Burdine%lambda)
     call SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
+                                     temperature, &
                                      this%sf_Brooks_Corey_Burdine,this%option)
     string = 'Brooks-Corey-Burdine capillary pressure as a function of ' // &
              'saturation above polynomial fit'
@@ -401,10 +405,12 @@ contains
     PetscReal :: value
     PetscReal, parameter :: tolerance = 1.d-8
     character(len=128) :: string
+    PetscReal, parameter :: temperature = 25.d0
 
     ! capillary pressure = f(saturation)
     saturation = 0.5d0
     call SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
+                                     temperature, &
                                      this%sf_Brooks_Corey_Burdine,this%option)
     string = 'van Genuchten-Mualem capillary pressure as a function of ' // &
              'saturation'
