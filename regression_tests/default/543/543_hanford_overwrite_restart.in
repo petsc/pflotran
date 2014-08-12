@@ -209,6 +209,8 @@ noskip
   OUTPUT
     All
     pH
+    ACTIVITY_COEFFICIENTS
+    FREE_ION
     TOTAL
     TOTAL_SORBED
     KD
@@ -349,6 +351,7 @@ OUTPUT
 #  TIMES d 0.001 0.01 0.1 1. 10. 
 #  PERIODIC TIME 1 d
   FORMAT TECPLOT BLOCK
+  FORMAT HDF5
   VELOCITY_AT_CENTER
 END
 
@@ -641,5 +644,6 @@ END
 #=========================== checkpoint / restart =============================
 #CHECKPOINT 10
 RESTART 543_hanford_srfcplx_base-restart.chk 0.d0
+OVERWRITE_RESTART_FLOW_PARAMS
 OVERWRITE_RESTART_TRANSPORT
 

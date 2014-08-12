@@ -413,6 +413,9 @@ recursive subroutine PMRTInitializeRun(this)
   use Reactive_Transport_module, only : RTUpdateEquilibriumState, &
                                         RTJumpStartKineticSorption
   use Condition_Control_module
+  use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
+  use Reactive_Transport_module, only : RTUpdateAuxVars, &
+                                        RTClearActivityCoefficients
 
   implicit none
   
@@ -425,7 +428,15 @@ recursive subroutine PMRTInitializeRun(this)
   ! restart
   if (this%option%restart_flag .and. &
       this%option%overwrite_restart_transport) then
+    call RTClearActivityCoefficients(this%realization)
     call CondControlAssignTranInitCond(this%realization)  
+    ! the following is the same sequence as in init.F90
+    call RTUpdateAuxVars(this%realization,PETSC_TRUE,PETSC_FALSE,PETSC_FALSE)
+    if (this%realization%reaction%act_coef_update_frequency /= &
+        ACT_COEF_FREQUENCY_OFF) then
+      call RTUpdateAuxVars(this%realization,PETSC_TRUE,PETSC_FALSE,PETSC_TRUE)
+      call RTUpdateAuxVars(this%realization,PETSC_TRUE,PETSC_FALSE,PETSC_TRUE)
+    endif
   endif
   
   ! pass PETSC_FALSE to turn off update of kinetic state variables

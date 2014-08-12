@@ -148,10 +148,12 @@ recursive subroutine PMSubsurfaceInitializeRun(this)
   ! restart
   if (this%option%restart_flag .and. this%option%overwrite_restart_flow) then
     call RealizationRevertFlowParameters(this%realization)
-    call CondControlAssignFlowInitCond(this%realization)
+!geh: for testing only.  In general, we only revert parameter, not flow.
+!    call CondControlAssignFlowInitCond(this%realization)
+!    call this%UpdateAuxVars()
+!    call this%UpdateSolution()  
   endif
   
-  call this%UpdateSolution()  
     
 end subroutine PMSubsurfaceInitializeRun
 

@@ -681,6 +681,9 @@ recursive subroutine PMCBaseRestart(this,viewer)
     call PMCBaseRegisterHeader(this,bag,header)
     call PetscBagLoad(viewer,bag,ierr);CHKERRQ(ierr)
     call PMCBaseGetHeader(this,header)
+    if (this%option%restart_time > -999.d0) then
+      this%pm_list%realization_base%output_option%plot_number = 0
+    endif
     call PetscBagDestroy(bag,ierr);CHKERRQ(ierr)
   endif
   
