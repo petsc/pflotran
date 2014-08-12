@@ -405,9 +405,13 @@ subroutine SubsurfaceJumpStart(simulation)
   flow_read = PETSC_FALSE
   transport_read = PETSC_FALSE
   failure = PETSC_FALSE
-  
+
+#if 0
+!geh: moved to within PMInitialize routines
+!geh: removed 8/11
   if (flow_read .and. option%overwrite_restart_flow) then
     call RealizationRevertFlowParameters(realization)
+    call CondControlAssignFlowInitCond(realization)
   endif
 
   if (transport_read .and. option%overwrite_restart_transport) then
@@ -418,6 +422,7 @@ subroutine SubsurfaceJumpStart(simulation)
   if (associated(simulation%flow_process_model_coupler)) then
     call simulation%flow_process_model_coupler%UpdateSolution()
   endif
+#endif
  
 !geh: now performed in PMRTInitializeRun()
 !  if (associated(simulation%rt_process_model_coupler)) then
@@ -436,7 +441,8 @@ subroutine SubsurfaceJumpStart(simulation)
     endif
     call RTJumpStartKineticSorption(realization)
   endif
-  
+#if 0  
+!geh: removed 8/11
   !if TIMESTEPPER->MAX_STEPS < 0, print out solution composition only
   if (master_stepper%max_time_step < 0) then
     call printMsg(option,'')
@@ -510,7 +516,7 @@ subroutine SubsurfaceJumpStart(simulation)
   if (realization%debug%print_couplers) then
     call OutputPrintCouplers(realization,ZERO_INTEGER)
   endif
-
+#endif
 end subroutine SubsurfaceJumpStart
 
 ! ************************************************************************** !
