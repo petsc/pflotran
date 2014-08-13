@@ -465,6 +465,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
 
       call SatFuncGetCapillaryPressure(gen_auxvar%pres(cpid), &
                                        gen_auxvar%sat(lid), &
+                                       gen_auxvar%temp, &
                                        saturation_function,option) 
       gen_auxvar%pres(lid) = gen_auxvar%pres(gid) - &
                              gen_auxvar%pres(cpid)
@@ -494,7 +495,8 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       
       call SatFuncGetCapillaryPressure(gen_auxvar%pres(cpid), &
                                        gen_auxvar%sat(lid), &
-                                       saturation_function,option)      
+                                       gen_auxvar%temp, &
+                                       saturation_function,option)
 !      gen_auxvar%pres(cpid) = 0.d0
  
       gen_auxvar%pres(lid) = gen_auxvar%pres(gid) - &

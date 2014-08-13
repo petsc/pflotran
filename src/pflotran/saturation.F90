@@ -51,6 +51,11 @@ subroutine SaturationUpdateCoupler(coupler,option,grid,saturation_functions, &
   
   condition => coupler%flow_condition
 
+  if (option%iflowmode /= RICHARDS_MODE) then
+    option%io_buffer = 'SaturationUpdateCoupler is not set up for this flow mode.'
+    call printErrMsg(option)
+  endif
+  
   ! in this case, the saturation is stored within concentration dataset
   saturation = condition%saturation%dataset%rarray(1)
 
@@ -58,6 +63,7 @@ subroutine SaturationUpdateCoupler(coupler,option,grid,saturation_functions, &
     local_id = coupler%connection_set%id_dn(iconn)
     ghosted_id = grid%nL2G(local_id)
     call SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
+                     option%reference_temperature, &
                      saturation_functions(sat_func_id(ghosted_id))%ptr,option)
     liquid_pressure = option%reference_pressure - capillary_pressure
     coupler%flow_aux_real_var(1,iconn) = liquid_pressure
