@@ -2203,7 +2203,7 @@ subroutine SatFuncGetLiqRelPermFromSat(saturation,relative_perm,dkr_Se, &
         case(FATT_KLIKOFF)
           relative_perm = Se**3
           if (derivative) then
-            dkr_Se = 2.d0 * Se**2
+            dkr_Se = 3.d0 * Se**2
           endif
         case default
           option%io_buffer = 'Unknown relative permeabilty function'
@@ -2433,7 +2433,7 @@ subroutine SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
   PetscReal :: Se, derivative
   PetscReal :: pc_alpha, pc_alpha_n, one_plus_pc_alpha_n
   PetscReal :: pc_alpha_neg_lambda, pcmax
-  PetscReal :: f, sigma, tk
+  PetscReal :: f, sigma, tk, os
 
   iphase = 1
 
@@ -2472,7 +2472,8 @@ subroutine SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
     case(LEVERETT)
       tk = 273.15d0 + temp
       Se = (saturation-Sr)/(1.d0-Sr)
-      f = (1.d0-Se)*(1.417d0 + (1.d0-Se)*(-2.120d0 + 1.263d0*(1.d0-Se)))
+      os = 1.d0-Se
+      f = os*(1.417d0 + os*(-2.120d0 + 1.263d0*os))
       sigma = 1.d0 - 0.625d0 * (374.15d0 - tk)/647.3d0
       sigma = sigma * 0.2358d0 * ((374.15d0 - tk)/647.3d0)**1.256d0
       capillary_pressure = 632455.53d0 * sigma * f
