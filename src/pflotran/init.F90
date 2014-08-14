@@ -896,25 +896,6 @@ subroutine Init(simulation)
 
     ! initial concentrations must be assigned after densities are set !!!
     call CondControlAssignTranInitCond(realization)
-    ! override initial conditions if they are to be read from a file
-    if (len_trim(option%initialize_transport_filename) > 1) then
-      call readTransportInitialCondition(realization, &
-                                         option%initialize_transport_filename)
-    endif
-    ! PETSC_FALSE = no activity coefficients
-    call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE,PETSC_FALSE)
-    ! at this point the auxvars have been computed with activity coef = 1.d0
-    ! to use intitial condition with activity coefs /= 1.d0, must update
-    ! activity coefs and recompute auxvars
-    if (realization%reaction%act_coef_update_frequency /= &
-        ACT_COEF_FREQUENCY_OFF) then
-      call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE,PETSC_TRUE)
-      !geh: you may ask, why call this twice....  We need to iterate at least
-      !     once to ensure that the activity coefficients are more accurate.
-      !     Otherwise, the total component concentrations can be quite
-      !     different from what is defined in the input file.
-      call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE,PETSC_TRUE)
-    endif
   endif
   
   ! Add plot variables that are not mode specific
@@ -3974,99 +3955,6 @@ subroutine readFlowInitialCondition(realization,filename)
   call VecCopy(field%flow_xx, field%flow_yy, ierr);CHKERRQ(ierr)
 
 end subroutine readFlowInitialCondition
-
-! ************************************************************************** !
-
-subroutine readTransportInitialCondition(realization,filename)
-  ! 
-  ! Assigns transport initial condition from
-  ! HDF5 file
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/05/10
-  ! 
-
-  use Realization_class
-  use Option_module
-  use Field_module
-  use Grid_module
-  use Patch_module
-  use Reactive_Transport_module
-  use Reaction_Aux_module
-  use Discretization_module
-  use HDF5_module
-  
-  implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-  
-  type(realization_type) :: realization
-  character(len=MAXSTRINGLENGTH) :: filename
-  
-  PetscInt :: local_id, idx, offset, idof
-  PetscReal, pointer :: xx_p(:)
-  character(len=MAXSTRINGLENGTH) :: group_name
-  character(len=MAXSTRINGLENGTH) :: dataset_name
-  PetscReal, pointer :: vec_p(:)  
-  PetscErrorCode :: ierr
-  
-  type(option_type), pointer :: option
-  type(field_type), pointer :: field  
-  type(patch_type), pointer :: patch
-  type(grid_type), pointer :: grid
-  type(discretization_type), pointer :: discretization
-  type(patch_type), pointer :: cur_patch
-  type(reaction_type), pointer :: reaction
-
-  option => realization%option
-  discretization => realization%discretization
-  field => realization%field
-  patch => realization%patch
-  reaction => realization%reaction
-
-  cur_patch => realization%patch_list%first
-  do
-    if (.not.associated(cur_patch)) exit
-
-    grid => cur_patch%grid
-
-      ! assign initial conditions values to domain
-    call VecGetArrayF90(field%tran_xx,xx_p, ierr);CHKERRQ(ierr)
-
-    ! Primary species concentrations for all modes 
-    do idof = 1, option%ntrandof ! primary aqueous concentrations
-      offset = idof
-      group_name = ''
-      dataset_name = reaction%primary_species_names(idof)
-      call HDF5ReadCellIndexedRealArray(realization,field%work, &
-                                        filename,group_name, &
-                                        dataset_name,option%id>0)
-      call VecGetArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
-      do local_id=1, grid%nlmax
-        if (cur_patch%imat(grid%nL2G(local_id)) <= 0) cycle
-        if (vec_p(local_id) < 1.d-40) then
-          print *,  option%myrank, grid%nG2A(grid%nL2G(local_id)), &
-            ': Zero free-ion concentration in Initial Condition read from file.'
-        endif
-        idx = (local_id-1)*option%ntrandof + offset
-        xx_p(idx) = vec_p(local_id)
-      enddo
-      call VecRestoreArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
-     
-    enddo     
-
-    call VecRestoreArrayF90(field%tran_xx,xx_p, ierr);CHKERRQ(ierr)
-        
-    cur_patch => cur_patch%next
-  enddo
-   
-  ! update dependent vectors
-  call DiscretizationGlobalToLocal(discretization,field%tran_xx, &
-                                   field%tran_xx_loc,NTRANDOF)  
-  call VecCopy(field%tran_xx, field%tran_yy, ierr);CHKERRQ(ierr)
-  
-end subroutine readTransportInitialCondition
 
 ! ************************************************************************** !
 

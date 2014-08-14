@@ -206,6 +206,7 @@ recursive subroutine InitializeRun(this)
   call printMsg(this%option,'PMCBase%InitializeRun()')
 #endif
   
+  this%option%time = this%timestepper%target_time
   cur_pm => this%pm_list
   do
     if (.not.associated(cur_pm)) exit
@@ -680,6 +681,9 @@ recursive subroutine PMCBaseRestart(this,viewer)
     call PMCBaseRegisterHeader(this,bag,header)
     call PetscBagLoad(viewer,bag,ierr);CHKERRQ(ierr)
     call PMCBaseGetHeader(this,header)
+    if (this%option%restart_time > -999.d0) then
+      this%pm_list%realization_base%output_option%plot_number = 0
+    endif
     call PetscBagDestroy(bag,ierr);CHKERRQ(ierr)
   endif
   

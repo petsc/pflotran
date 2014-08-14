@@ -39,7 +39,6 @@ module Hydrogeophysics_Simulation_class
     PetscMPIInt :: mygroup_id_save
   contains
     procedure, public :: Init => HydrogeophysicsInit
-    procedure, public :: InitializeRun => HydrogeophysicsInitializeRun
     procedure, public :: ExecuteRun => HydrogeophysicsExecuteRun
 !    procedure, public :: RunToTime
     procedure, public :: FinalizeRun => HydrogeophysicsFinalizeRun
@@ -113,37 +112,6 @@ subroutine HydrogeophysicsInit(this,option)
   this%mygroup_id_save = 0
    
 end subroutine HydrogeophysicsInit
-
-! ************************************************************************** !
-
-subroutine HydrogeophysicsInitializeRun(this)
-  ! 
-  ! Initializes simulation
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 06/17/13
-  ! 
-
-  use Output_module
-  use PMC_Base_class
-
-  implicit none
-  
-  class(hydrogeophysics_simulation_type) :: this
-
-  class(pmc_base_type), pointer :: cur_process_model_coupler
-  class(pmc_base_type), pointer :: cur_process_model_coupler_top
-  class(pmc_base_type), pointer :: cur_process_model_coupler_below
-  PetscInt :: depth
-  PetscErrorCode :: ierr
-  
-  call printMsg(this%option,'Hydrogeophysics%InitializeRun()')
-
-  if (this%pflotran_process) then
-    call this%process_model_coupler_list%InitializeRun()
-  endif
-
-end subroutine HydrogeophysicsInitializeRun
 
 ! ************************************************************************** !
 

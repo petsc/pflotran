@@ -47,6 +47,7 @@ module PM_Subsurface_class
   public :: PMSubsurfaceCreate, &
             PMSubsurfaceInit, &
             PMSubsurfaceInitializeTimestep, &
+            PMSubsurfaceInitializeRun, &
             PMSubsurfaceUpdateSolution, &
             PMSubsurfaceUpdatePropertiesNI, &
             PMSubsurfaceTimeCut, &
@@ -136,12 +137,24 @@ recursive subroutine PMSubsurfaceInitializeRun(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/21/14 
+  use Condition_Control_module
 
   implicit none
   
   class(pm_subsurface_type) :: this
 
   ! overridden in pm_general only
+  
+  ! restart
+  if (this%option%restart_flag .and. this%option%overwrite_restart_flow) then
+    call RealizationRevertFlowParameters(this%realization)
+!geh: for testing only.  In general, we only revert parameter, not flow.
+!    call CondControlAssignFlowInitCond(this%realization)
+!    call this%UpdateAuxVars()
+  endif
+
+  call this%UpdateSolution()  
+  
     
 end subroutine PMSubsurfaceInitializeRun
 
