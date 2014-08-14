@@ -78,12 +78,14 @@ module Saturation_Function_module
   PetscInt, parameter, public :: LINEAR_MODEL = 6
   PetscInt, parameter, public :: VAN_GENUCHTEN_PARKER = 7
   PetscInt, parameter, public :: VAN_GENUCHTEN_DOUGHTY = 8
+  PetscInt, parameter, public :: LEVERETT = 9
 
   ! Permeability function
   PetscInt, parameter :: DEFAULT = 0
   PetscInt, parameter, public :: BURDINE = 1
   PetscInt, parameter, public :: MUALEM = 2
-  
+  PetscInt, parameter, public :: FATT_KLIKOFF = 3
+
 contains
 
 ! ************************************************************************** !
@@ -348,7 +350,10 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
   enddo 
   
   if (saturation_function%m < 1.d-40 .and. &
-      .not.StringCompare(saturation_function%name,'default',SEVEN_INTEGER)) then
+      .not. &
+      (StringCompare(saturation_function%name,'default',SEVEN_INTEGER) .or. &
+       StringCompareIgnoreCase(saturation_function%saturation_function_ctype, &
+                               'leverett',EIGHT_INTEGER))) then
     option%io_buffer = 'Saturation function parameter "m" not set ' // &
                        'properly in saturation function "' // &
                        trim(saturation_function%name) // '".'
@@ -392,6 +397,8 @@ subroutine SaturationFunctionSetTypes(saturation_function,option)
       saturation_function%permeability_function_itype = PRUESS_1
     case('VAN_GENUCHTEN_PARKER')
       saturation_function%permeability_function_itype = VAN_GENUCHTEN_PARKER
+    case('FATT_KLIKOFF')
+      saturation_function%permeability_function_itype = FATT_KLIKOFF
     case default
       option%io_buffer = 'Permeability function type "' // &
                           trim(saturation_function%permeability_function_ctype) // &
@@ -420,6 +427,8 @@ subroutine SaturationFunctionSetTypes(saturation_function,option)
       saturation_function%saturation_function_itype = VAN_GENUCHTEN_PARKER
     case('VAN_GENUCHTEN_DOUGHTY')
       saturation_function%saturation_function_itype = VAN_GENUCHTEN_DOUGHTY
+    case('LEVERETT')
+      saturation_function%saturation_function_itype = LEVERETT
     case default
       option%io_buffer = 'Saturation function type "' // &
                           trim(saturation_function%saturation_function_ctype) // &
@@ -2189,6 +2198,17 @@ subroutine SatFuncGetLiqRelPermFromSat(saturation,relative_perm,dkr_Se, &
           option%io_buffer = 'Unknown relative permeabilty function'
           call printErrMsg(option)
       end select
+    case(LEVERETT)
+      select case(saturation_function%permeability_function_itype)
+        case(FATT_KLIKOFF)
+          relative_perm = Se**3
+          if (derivative) then
+            dkr_Se = 3.d0 * Se**2
+          endif
+        case default
+          option%io_buffer = 'Unknown relative permeabilty function'
+          call printErrMsg(option)
+      end select
   end select
   
 end subroutine SatFuncGetLiqRelPermFromSat
@@ -2279,6 +2299,14 @@ subroutine SatFuncGetGasRelPermFromSat(liquid_saturation, &
       select case(saturation_function%permeability_function_itype)
         case(BURDINE)
         case(MUALEM)
+        case default
+          option%io_buffer = 'Unknown relative permeabilty function'
+          call printErrMsg(option)
+      end select
+    case(LEVERETT)
+      select case(saturation_function%permeability_function_itype)
+        case(FATT_KLIKOFF)
+          gas_relative_perm = Sg**3
         case default
           option%io_buffer = 'Unknown relative permeabilty function'
           call printErrMsg(option)
@@ -2382,7 +2410,7 @@ end subroutine JacobianCapPressThre
 ! ************************************************************************** !
 
 subroutine SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
-                                       saturation_function,option)
+                                       temp,saturation_function,option)
   ! 
   ! Computes the capillary pressure as a function of
   ! pressure
@@ -2396,7 +2424,7 @@ subroutine SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
   
   implicit none
 
-  PetscReal :: capillary_pressure, saturation
+  PetscReal :: capillary_pressure, saturation, temp
   type(saturation_function_type) :: saturation_function
   type(option_type) :: option
 
@@ -2405,7 +2433,8 @@ subroutine SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
   PetscReal :: Se, derivative
   PetscReal :: pc_alpha, pc_alpha_n, one_plus_pc_alpha_n
   PetscReal :: pc_alpha_neg_lambda, pcmax
-  
+  PetscReal :: f, sigma, tk, os
+
   iphase = 1
 
   Sr = saturation_function%Sr(iphase)
@@ -2440,6 +2469,14 @@ subroutine SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
         pc_alpha_neg_lambda = Se
         capillary_pressure = (pc_alpha_neg_lambda**(-1.d0/lambda))/alpha
       endif
+    case(LEVERETT)
+      tk = 273.15d0 + temp
+      Se = (saturation-Sr)/(1.d0-Sr)
+      os = 1.d0-Se
+      f = os*(1.417d0 + os*(-2.120d0 + 1.263d0*os))
+      sigma = 1.d0 - 0.625d0 * (374.15d0 - tk)/647.3d0
+      sigma = sigma * 0.2358d0 * ((374.15d0 - tk)/647.3d0)**1.256d0
+      capillary_pressure = 632455.53d0 * sigma * f
     case(LINEAR_MODEL)
       alpha = saturation_function%alpha
       one_over_alpha = 1.d0/alpha
@@ -2587,7 +2624,8 @@ subroutine SaturationFunctionVerify(saturation_function,option)
   ! calculate capillary pressure as a function of saturation
   do i = 1, 101
     sat = dble(i-1)*0.01d0
-    call SatFuncGetCapillaryPressure(pc,sat,saturation_function,option)
+    call SatFuncGetCapillaryPressure(pc,sat,option%reference_temperature, &
+         saturation_function,option)
     x(i) = sat
     y(i) = pc
   enddo  

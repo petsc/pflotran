@@ -257,8 +257,10 @@ subroutine RichardsCheckUpdatePre(line_search,P,dP,changed,realization,ierr)
       sat = global_auxvars(ghosted_id)%sat(1)
       sat_pert = sat - sign(1.d0,sat-0.5d0)*pert
       call SatFuncGetCapillaryPressure(pc_pert,sat_pert, &
+             option%reference_temperature, &
              patch%saturation_function_array( &
-               patch%sat_func_id(ghosted_id))%ptr,option)
+               patch%sat_func_id(ghosted_id))%ptr, &
+            option)
       press_pert = option%reference_pressure - pc_pert
       P0 = P_p(local_id)
       delP = dP_p(local_id)
