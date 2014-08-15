@@ -497,6 +497,9 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
   PetscInt :: ghosted_id_up, ghosted_id_dn
   PetscInt :: iconn
   PetscInt :: sum_connection
+#ifdef SURFACE_TH_DEBUG
+  PetscInt :: max_connection,max_iconn
+#endif
 
   PetscReal :: dx, dy, dz
   PetscReal :: dist
@@ -536,6 +539,10 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
   sum_connection = 0  
+#ifdef SURFACE_TH_DEBUG
+  max_connection = -1
+  max_iconn      = -1
+#endif
   do 
     if (.not.associated(cur_connection_set)) exit
     do iconn = 1, cur_connection_set%num_connections
@@ -567,11 +574,51 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
       patch%internal_velocities(1,sum_connection) = vel
       patch%surf_internal_fluxes(:,sum_connection) = Res(:)
 
+#ifdef SURFACE_TH_DEBUG
+      if (dt < max_allowable_dt) then
+        max_connection = sum_connection
+        max_iconn      = iconn
+      endif
+#endif
       max_allowable_dt = min(max_allowable_dt, dt)
 
     enddo
     cur_connection_set => cur_connection_set%next
   enddo
+
+#ifdef SURFACE_TH_DEBUG
+  if (max_allowable_dt < 1.d-1) then
+    cur_connection_set => connection_set_list%first
+    ghosted_id_up = cur_connection_set%id_up(max_iconn)
+    ghosted_id_dn = cur_connection_set%id_dn(max_iconn)
+    local_id_up = grid%nG2L(ghosted_id_up)
+    local_id_dn = grid%nG2L(ghosted_id_dn)
+    dx = xc(ghosted_id_dn) - xc(ghosted_id_up)
+    dy = yc(ghosted_id_dn) - yc(ghosted_id_up)
+    dz = zc(ghosted_id_dn) - zc(ghosted_id_up)
+    dist = sqrt(dx*dx + dy*dy + dz*dz)
+    slope = dz/dist
+    print *,"--------------------------"
+    print *,"connection:",max_iconn
+    print *,"(dx,dy,dz):",dx,dy,dz
+    print *,"dist:      ",dist
+    print *,"slope:     ",slope
+    print *,"flux:      ",patch%internal_velocities(1,max_connection)
+    print *,"dt:        ",dist/abs(patch%internal_velocities(1,max_connection))/3.0d0
+    print *,"up info:",ghosted_id_up
+    print *,"  istate:",surf_global_auxvars(ghosted_id_up)%istate
+    print *,"  head:  ",surf_global_auxvars(ghosted_id_up)%head(1)
+    print *,"  zc:    ",zc(ghosted_id_up)
+    print *,"  temp:  ",surf_global_auxvars(ghosted_id_up)%temp
+    print *,"  is_dry:",surf_global_auxvars(ghosted_id_up)%is_dry
+    print *,"dn info:",ghosted_id_dn
+    print *,"  istate:",surf_global_auxvars(ghosted_id_dn)%istate
+    print *,"  head:  ",surf_global_auxvars(ghosted_id_dn)%head(1)
+    print *,"  zc:    ",zc(ghosted_id_dn)
+    print *,"  temp:  ",surf_global_auxvars(ghosted_id_dn)%temp
+    print *,"  is_dry:",surf_global_auxvars(ghosted_id_dn)%is_dry
+  endif  
+#endif
 
   ! Boundary Flux Terms -----------------------------------
   boundary_condition => patch%boundary_conditions%first
@@ -744,7 +791,7 @@ subroutine SurfaceTHFlux(surf_auxvar_up, &
   ! height, reduce this value to keep dt from shrinking too much. Add
   ! to options if we decide to keep it.
   MAX_MANNING_VELOCITY = 1e20 ! [m/s]
-  vel = sign(min(MAX_MANNINGS_VELOCITY,abs(vel)),vel)
+  vel = sign(min(MAX_MANNING_VELOCITY,abs(vel)),vel)
 
   flux = hw_liq_half*vel
   Res(TH_PRESSURE_DOF) = flux*length
