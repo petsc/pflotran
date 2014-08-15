@@ -57,7 +57,7 @@ STANDARD_CFG = \
 	shortcourse/regional_doublet/regional_doublet.cfg \
 	shortcourse/copper_leaching/cu_leaching.cfg \
 	wipp/nuts/nuts.cfg \
-  wipp/bragflo/bragflo.cfg
+	wipp/bragflo/bragflo.cfg
 
 ifneq ($(strip $(PARMETIS_LIB)),)
 	STANDARD_CFG += \
@@ -91,7 +91,7 @@ FLOW_CFG = \
 	general/general.cfg \
 	shortcourse/1D_variably_saturated_flow/vsat_flow.cfg \
 	shortcourse/copper_leaching/cu_leaching.cfg \
-  wipp/bragflo/bragflo.cfg
+	wipp/bragflo/bragflo.cfg
 
 TRANSPORT_CFG = \
 	default/543/543.cfg \
