@@ -683,6 +683,7 @@ subroutine SurfaceTHFlux(surf_auxvar_up, &
   PetscReal :: Cw
   PetscReal :: k_therm
   PetscReal :: dt
+  PetscReal :: MAX_MANNING_VELOCITY ! move to constants if we decide to keep
 
   ! initialize
   flux = 0.d0
@@ -738,6 +739,12 @@ subroutine SurfaceTHFlux(surf_auxvar_up, &
 !          dhead/(abs(dhead)**(1.d0/2.d0))* &
 !          1.d0/(dist**0.5d0)
   endif
+
+  ! KLUDGE: To address high velocity oscillations of the surface water
+  ! height, reduce this value to keep dt from shrinking too much. Add
+  ! to options if we decide to keep it.
+  MAX_MANNING_VELOCITY = 1e20 ! [m/s]
+  vel = sign(min(MAX_MANNINGS_VELOCITY,abs(vel)),vel)
 
   flux = hw_liq_half*vel
   Res(TH_PRESSURE_DOF) = flux*length
