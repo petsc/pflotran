@@ -921,14 +921,16 @@ subroutine CLMDec_React(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
     if (c_nh3 <= this%downreg_nh3_0) then
       regulator = 0.0d0
       dregulator = 0.0d0
-    elseif (c_nh3 >= this%downreg_nh3_1) then
+    elseif (c_nh3 >= this%downreg_nh3_1 .or. &
+            this%downreg_nh3_1 - this%downreg_nh3_0 <= 1.0d-20) then
       regulator = 1.0d0
       dregulator = 0.0d0
     else
       xxx = c_nh3 - this%downreg_nh3_0
       delta = this%downreg_nh3_1 - this%downreg_nh3_0
       regulator = 1.0d0 - (1.0d0 - xxx * xxx / delta / delta) ** 2
-      dregulator = 4.0d0 * (1.0d0 - xxx * xxx / delta / delta) * xxx / delta
+      dregulator = 4.0d0 * (1.0d0 - xxx * xxx / delta / delta) * xxx &
+                 / delta / delta
     endif
     
     ! rate = rate_orginal * regulator
@@ -957,14 +959,16 @@ subroutine CLMDec_React(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
       if (c_no3 <= this%downreg_no3_0) then
         regulator = 0.0d0
         dregulator = 0.0d0
-      elseif (c_no3 >= this%downreg_no3_1) then
+      elseif (c_no3 >= this%downreg_no3_1 .or. &
+              this%downreg_no3_1 - this%downreg_no3_0 <= 1.0d-20) then
         regulator = 1.0d0
         dregulator = 0.0d0
       else
         xxx = c_no3 - this%downreg_no3_0
         delta = this%downreg_no3_1 - this%downreg_no3_0
         regulator = 1.0d0 - (1.0d0 - xxx * xxx / delta / delta) ** 2
-        dregulator = 4.0d0 * (1.0d0 - xxx * xxx / delta / delta) * xxx / delta
+        dregulator = 4.0d0 * (1.0d0 - xxx * xxx / delta / delta) * xxx &
+                   / delta / delta
       endif
 
       ! rate = rate_orginal * regulator
