@@ -199,7 +199,6 @@ subroutine SurfaceTHAuxVarCompute(xx,auxvar,global_auxvar, &
   if (global_auxvar%head(1) < MIN_SURFACE_WATER_HEIGHT) then
     global_auxvar%is_dry = PETSC_TRUE
     call EOSWaterDensityEnthalpy(0.0d0,pw,dw_kg,dw_mol,hw,ierr)
-    global_auxvar%temp = DUMMY_VALUE
   else
     global_auxvar%is_dry = PETSC_FALSE
     call EOSWaterDensityEnthalpy(global_auxvar%temp,pw,dw_kg,dw_mol,hw,ierr)
