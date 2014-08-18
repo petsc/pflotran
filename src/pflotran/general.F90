@@ -2223,9 +2223,9 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   call GeneralUpdateAuxVars(realization,PETSC_TRUE)
 
 ! for debugging a single grid cell
-  i = 90
-  call GeneralOutputAuxVars(gen_auxvars(0,i),global_auxvars(i),i,'genaux', &
-                            PETSC_TRUE,option)
+!  i = 90
+!  call GeneralOutputAuxVars(gen_auxvars(0,i),global_auxvars(i),i,'genaux', &
+!                            PETSC_TRUE,option)
 
   ! override flags since they will soon be out of date
   patch%aux%General%auxvars_up_to_date = PETSC_FALSE 
