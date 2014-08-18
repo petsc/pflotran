@@ -130,6 +130,10 @@ ifdef store_flowrates
   MYFLAGS += ${FC_DEFINE_FLAG}STORE_FLOWRATES
 endif
 
+ifdef surface_th_debug
+  MYFLAGS += ${FC_DEFINE_FLAG}SURFACE_TH_DEBUG
+endif
+
 ifdef mfd_ugrid
   MYFLAGS += ${FC_DEFINE_FLAG}MFD_UGRID
 endif
