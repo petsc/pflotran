@@ -722,6 +722,10 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         endif
         if (general_2ph_energy_dof == GENERAL_TEMPERATURE_INDEX) then
           ! do nothing as the energy dof has not changed
+          if (.not.general_isothermal) then
+            X(GENERAL_ENERGY_DOF) = X(GENERAL_ENERGY_DOF) * &
+                                   (1.d0 + liquid_epsilon)
+          endif
         else
           ! pa = pg - ps
           x(GENERAL_2PH_STATE_AIR_PRESSURE_DOF) = &
@@ -764,7 +768,10 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         global_auxvar%istate = TWO_PHASE_STATE
         ! first two primary dependent variables do not change
         if (general_2ph_energy_dof == GENERAL_TEMPERATURE_INDEX) then
-          ! do nothing as energy dof has not changed
+          if (.not.general_isothermal) then
+            X(GENERAL_ENERGY_DOF) = X(GENERAL_ENERGY_DOF) * &
+                                    (1.d0 - epsilon)
+          endif
         else
           X(GENERAL_ENERGY_DOF) = gen_auxvar%pres(apid)*(1.d0-epsilon)
         endif
@@ -807,7 +814,10 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
           x(GENERAL_LIQUID_STATE_X_MOLE_DOF) = two_phase_epsilon
         endif
         if (general_2ph_energy_dof == GENERAL_TEMPERATURE_INDEX) then
-          ! do nothing as energy dof has not changed
+          if (.not.general_isothermal) then
+            X(GENERAL_ENERGY_DOF) = X(GENERAL_ENERGY_DOF) * &
+                                    (1.d0-two_phase_epsilon)
+          endif
         else
           X(GENERAL_ENERGY_DOF) = gen_auxvar%temp*(1.d0-two_phase_epsilon)
         endif
@@ -837,7 +847,13 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
           ! first two primary dependent variables do not change
           x(GENERAL_GAS_STATE_AIR_PRESSURE_DOF) = &
             gen_auxvar%pres(apid) * (1.d0 + two_phase_epsilon)
+          if (.not.general_isothermal) then
+            X(GENERAL_ENERGY_DOF) = X(GENERAL_ENERGY_DOF) * &
+                                    (1.d0+two_phase_epsilon)
+          endif
         else
+          X(GENERAL_GAS_STATE_AIR_PRESSURE_DOF) = gen_auxvar%pres(apid)* &
+                                                  (1.d0+two_phase_epsilon)
           X(GENERAL_ENERGY_DOF) = gen_auxvar%temp*(1.d0+two_phase_epsilon)
         endif
         flag = PETSC_TRUE

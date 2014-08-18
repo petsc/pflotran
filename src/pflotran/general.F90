@@ -132,6 +132,13 @@ subroutine GeneralRead(input,option)
     end select
     
   enddo  
+  
+  if (general_isothermal .and. &
+      general_2ph_energy_dof == GENERAL_AIR_PRESSURE_INDEX) then
+    option%io_buffer = 'Isothermal GENERAL mode may only be run with ' // &
+                       'temperature as the two phase energy dof.'
+    call printErrMsg(option)
+  endif
 
 end subroutine GeneralRead
 
@@ -2216,9 +2223,9 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   call GeneralUpdateAuxVars(realization,PETSC_TRUE)
 
 ! for debugging a single grid cell
-!  i = 20
-!  call GeneralOutputAuxVars(gen_auxvars(0,i),global_auxvars(i),i,'genaux', &
-!                            PETSC_TRUE,option)
+  i = 90
+  call GeneralOutputAuxVars(gen_auxvars(0,i),global_auxvars(i),i,'genaux', &
+                            PETSC_TRUE,option)
 
   ! override flags since they will soon be out of date
   patch%aux%General%auxvars_up_to_date = PETSC_FALSE 
@@ -3455,9 +3462,8 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   PetscInt :: local_id, ghosted_id
   PetscInt :: offset , ival, idof
 #ifdef DEBUG_GENERAL_INFO
-  PetscInt :: icell_max_rel_update, icell_max_scaled_residual
-  PetscInt :: istate_max_rel_update, istate_max_scaled_residual
-  PetscInt :: idof_max_rel_update, idof_max_scaled_residual
+  PetscInt :: icell_max_rel_update(3), icell_max_scaled_residual(3)
+  PetscInt :: istate_max_rel_update(3), istate_max_scaled_residual(3)
   character(len=2) :: state_char
 #endif
   PetscReal :: dX_X0, R_A
@@ -3503,10 +3509,8 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
 #ifdef DEBUG_GENERAL_INFO
     icell_max_rel_update = 0
     istate_max_rel_update = 0
-    idof_max_rel_update = 0
     icell_max_scaled_residual = 0
     istate_max_scaled_residual = 0
-    idof_max_scaled_residual = 0
 #endif
     inf_norm_update(:,:) = 0.d0
     inf_norm_rel_update(:,:) = 0.d0
@@ -3524,20 +3528,18 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
                                            dabs(dX_p(ival)))
         if (inf_norm_rel_update(idof,istate) < dX_X0) then
 #ifdef DEBUG_GENERAL_INFO
-          if (maxval(inf_norm_rel_update(:,:)) < dX_X0) then
-            icell_max_rel_update = grid%nG2A(ghosted_id)
-            istate_max_rel_update = global_auxvars(ghosted_id)%istate
-            idof_max_rel_update = idof
+          if (maxval(inf_norm_rel_update(idof,:)) < dX_X0) then
+            icell_max_rel_update(idof) = grid%nG2A(ghosted_id)
+            istate_max_rel_update(idof) = global_auxvars(ghosted_id)%istate
           endif
 #endif
           inf_norm_rel_update(idof,istate) = dX_X0
         endif
         if (inf_norm_scaled_residual(idof,istate) < R_A) then
 #ifdef DEBUG_GENERAL_INFO
-          if (maxval(inf_norm_scaled_residual(:,:)) < R_A) then
-            icell_max_scaled_residual = grid%nG2A(ghosted_id)
-            istate_max_scaled_residual = global_auxvars(ghosted_id)%istate
-            idof_max_scaled_residual = idof
+          if (maxval(inf_norm_scaled_residual(idof,:)) < R_A) then
+            icell_max_scaled_residual(idof) = grid%nG2A(ghosted_id)
+            istate_max_scaled_residual(idof) = global_auxvars(ghosted_id)%istate
           endif
 #endif
           inf_norm_scaled_residual(idof,istate) = R_A
@@ -3613,10 +3615,42 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
       (global_inf_norm_scaled_residual(idof,2),idof=1,3)
     write(*,'(4x,''-+  srl:'',es12.4,''  srg:'',es12.4,'' sre:'',es12.4)') &
       (global_inf_norm_scaled_residual(idof,3),idof=1,3)
-    write(*,'(4x,''-+ rel_update icell:'',i7,''  istate:'',i7,'' idof:'',i7)') &
-      icell_max_rel_update, istate_max_rel_update, idof_max_rel_update
-    write(*,'(4x,''-+ scaled_res icell:'',i7,''  istate:'',i7,'' idof:'',i7)') &
-      icell_max_scaled_residual, istate_max_scaled_residual, idof_max_scaled_residual
+    write(*,'(4x,''-+ rul icell:'',i7,''  st:'',i3,''  X:'',es11.3, &
+              &''  dX:'',es11.3,''  R:'',es11.3)') &
+      icell_max_rel_update(1), istate_max_rel_update(1), &
+      X0_p((icell_max_rel_update(1)-1)*3+1), &
+      -1.d0*dX_p((icell_max_rel_update(1)-1)*3+1), &
+      r_p((icell_max_rel_update(1)-1)*3+1)
+    write(*,'(4x,''-+ rug icell:'',i7,''  st:'',i3,''  X:'',es11.3, &
+              &''  dX:'',es11.3,''  R:'',es11.3)') &
+      icell_max_rel_update(2), istate_max_rel_update(2), &
+      X0_p((icell_max_rel_update(2)-1)*3+2), &
+      -1.d0*dX_p((icell_max_rel_update(2)-1)*3+2), &
+      r_p((icell_max_rel_update(2)-1)*3+2)
+    write(*,'(4x,''-+ rut icell:'',i7,''  st:'',i3,''  X:'',es11.3, &
+              &''  dX:'',es11.3,''  R:'',es11.3)') &
+      icell_max_rel_update(3), istate_max_rel_update(3), &
+      X0_p((icell_max_rel_update(3)-1)*3+3), &
+      -1.d0*dX_p((icell_max_rel_update(3)-1)*3+3), &
+      r_p((icell_max_rel_update(3)-1)*3+3)
+    write(*,'(4x,''-+ srl icell:'',i7,''  st:'',i3,''  X:'',es11.3, &
+              &''  dX:'',es11.3,''  R:'',es11.3)') &
+      icell_max_scaled_residual(1), istate_max_scaled_residual(1), &
+      X0_p((icell_max_scaled_residual(1)-1)*3+1), &
+      -1.d0*dX_p((icell_max_scaled_residual(1)-1)*3+1), &
+      r_p((icell_max_scaled_residual(1)-1)*3+1)
+    write(*,'(4x,''-+ srg icell:'',i7,''  st:'',i3,''  X:'',es11.3, &
+              &''  dX:'',es11.3,''  R:'',es11.3)') &
+      icell_max_scaled_residual(2), istate_max_scaled_residual(2), &
+      X0_p((icell_max_scaled_residual(2)-1)*3+2), &
+      -1.d0*dX_p((icell_max_scaled_residual(2)-1)*3+2), &
+      r_p((icell_max_scaled_residual(2)-1)*3+2)
+    write(*,'(4x,''-+ sre icell:'',i7,''  st:'',i3,''  X:'',es11.3, &
+              &''  dX:'',es11.3,''  R:'',es11.3)') &
+      icell_max_scaled_residual(3), istate_max_scaled_residual(3), &
+      X0_p((icell_max_scaled_residual(3)-1)*3+3), &
+      -1.d0*dX_p((icell_max_scaled_residual(3)-1)*3+3), &
+      r_p((icell_max_scaled_residual(3)-1)*3+3)
 #endif
     option%converged = PETSC_FALSE
     if (converged_abs_update .or. converged_rel_update .or. &
