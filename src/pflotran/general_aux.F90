@@ -85,8 +85,9 @@ module General_Aux_module
   end type general_parameter_type
   
   type, public :: general_type
-    PetscInt :: n_zero_rows
-    PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
+    PetscInt :: n_inactive_rows
+    PetscInt, pointer :: inactive_rows_local(:), inactive_rows_local_ghosted(:)
+    PetscInt, pointer :: row_zeroing_array(:)
 
     PetscBool :: auxvars_up_to_date
     PetscBool :: inactive_cells_exist
@@ -160,9 +161,10 @@ function GeneralAuxCreate(option)
   nullify(aux%auxvars)
   nullify(aux%auxvars_bc)
   nullify(aux%auxvars_ss)
-  aux%n_zero_rows = 0
-  nullify(aux%zero_rows_local)
-  nullify(aux%zero_rows_local_ghosted)
+  aux%n_inactive_rows = 0
+  nullify(aux%inactive_rows_local)
+  nullify(aux%inactive_rows_local_ghosted)
+  nullify(aux%row_zeroing_array)
 
   allocate(aux%general_parameter)
   allocate(aux%general_parameter%diffusion_coefficient(option%nphase))
@@ -1464,8 +1466,9 @@ subroutine GeneralAuxDestroy(aux)
   call GeneralAuxVarDestroy(aux%auxvars_bc)
   call GeneralAuxVarDestroy(aux%auxvars_ss)
 
-  call DeallocateArray(aux%zero_rows_local)
-  call DeallocateArray(aux%zero_rows_local_ghosted)
+  call DeallocateArray(aux%inactive_rows_local)
+  call DeallocateArray(aux%inactive_rows_local_ghosted)
+  call DeallocateArray(aux%row_zeroing_array)
 
   if (associated(aux%general_parameter)) then
     call DeallocateArray(aux%general_parameter%diffusion_coefficient)

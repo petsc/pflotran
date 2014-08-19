@@ -285,6 +285,10 @@ subroutine GeneralSetup(realization)
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)
   call GeneralCreateZeroArray(patch,option)
+
+  ! create array for zeroing Jacobian entries if isothermal and/or no air
+  allocate(patch%aux%General%row_zeroing_array(grid%nlmax))
+  patch%aux%General%row_zeroing_array = 0
   
   ! initialize parameters
   cur_fluid_property => realization%fluid_properties
@@ -2420,8 +2424,8 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   enddo
 
   if (patch%aux%General%inactive_cells_exist) then
-    do i=1,patch%aux%General%n_zero_rows
-      r_p(patch%aux%General%zero_rows_local(i)) = 0.d0
+    do i=1,patch%aux%General%n_inactive_rows
+      r_p(patch%aux%General%inactive_rows_local(i)) = 0.d0
     enddo
   endif
   
@@ -2536,6 +2540,7 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
   PetscInt :: sum_connection  
   PetscReal :: distance, fraction_upwind
   PetscReal :: distance_gravity 
+  PetscInt, pointer :: zeros(:)
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option 
@@ -2798,36 +2803,36 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
   ! zero out isothermal and inactive cells
   if (patch%aux%General%inactive_cells_exist) then
     qsrc = 1.d0 ! solely a temporary variable in this conditional
-    call MatZeroRowsLocal(A,patch%aux%General%n_zero_rows, &
-                          patch%aux%General%zero_rows_local_ghosted, &
+    call MatZeroRowsLocal(A,patch%aux%General%n_inactive_rows, &
+                          patch%aux%General%inactive_rows_local_ghosted, &
                           qsrc,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           ierr);CHKERRQ(ierr)
   endif
 
   if (general_isothermal) then
+    qsrc = 1.d0 ! solely a temporary variable in this conditional
+    zeros => patch%aux%General%row_zeroing_array
     ! zero energy residual
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
-      irow = (ghosted_id-1)*option%nflowdof+GENERAL_ENERGY_EQUATION_INDEX 
-      irow = irow-1 ! zero-based indexing
-      qsrc = 1.d0 ! solely a temporary variable in this conditional
-      call MatZeroRowsLocal(A,ONE_INTEGER,irow, &
-                            qsrc,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            ierr);CHKERRQ(ierr)
+      zeros(local_id) = (ghosted_id-1)*option%nflowdof+ &
+                        GENERAL_ENERGY_EQUATION_INDEX - 1 ! zero-based
     enddo
+    call MatZeroRowsLocal(A,grid%nlmax,zeros,qsrc,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr);CHKERRQ(ierr)
   endif
 
   if (general_no_air) then
-    ! zero energy residual
+    qsrc = 1.d0 ! solely a temporary variable in this conditional
+    zeros => patch%aux%General%row_zeroing_array
+    ! zero gas component mass balance residual
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
-      irow = (ghosted_id-1)*option%nflowdof+GENERAL_GAS_EQUATION_INDEX 
-      irow = irow-1 ! zero-based indexing
-      qsrc = 1.d0 ! solely a temporary variable in this conditional
-      call MatZeroRowsLocal(A,ONE_INTEGER,irow, &
-                            qsrc,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            ierr);CHKERRQ(ierr)
+      zeros(local_id) = (ghosted_id-1)*option%nflowdof+ &
+                        GENERAL_GAS_EQUATION_INDEX - 1 ! zero-based
     enddo
+    call MatZeroRowsLocal(A,grid%nlmax,zeros,qsrc,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr);CHKERRQ(ierr)
   endif
   
   if (realization%debug%matview_Jacobian) then
@@ -2907,28 +2912,28 @@ subroutine GeneralCreateZeroArray(patch,option)
 
   type(grid_type), pointer :: grid
   PetscInt :: flag
-  PetscInt :: n_zero_rows
-  PetscInt, pointer :: zero_rows_local(:)
-  PetscInt, pointer :: zero_rows_local_ghosted(:)
+  PetscInt :: n_inactive_rows
+  PetscInt, pointer :: inactive_rows_local(:)
+  PetscInt, pointer :: inactive_rows_local_ghosted(:)
   PetscErrorCode :: ierr
     
   flag = 0
   grid => patch%grid
   
-  n_zero_rows = 0
+  n_inactive_rows = 0
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     if (patch%imat(ghosted_id) <= 0) then
-      n_zero_rows = n_zero_rows + option%nflowdof
+      n_inactive_rows = n_inactive_rows + option%nflowdof
     endif
   enddo
 
-  allocate(zero_rows_local(n_zero_rows))
-  allocate(zero_rows_local_ghosted(n_zero_rows))
+  allocate(inactive_rows_local(n_inactive_rows))
+  allocate(inactive_rows_local_ghosted(n_inactive_rows))
 
-  zero_rows_local = 0
-  zero_rows_local_ghosted = 0
+  inactive_rows_local = 0
+  inactive_rows_local_ghosted = 0
   ncount = 0
 
   do local_id = 1, grid%nlmax
@@ -2936,22 +2941,24 @@ subroutine GeneralCreateZeroArray(patch,option)
     if (patch%imat(ghosted_id) <= 0) then
       do idof = 1, option%nflowdof
         ncount = ncount + 1
-        zero_rows_local(ncount) = (local_id-1)*option%nflowdof+idof
-        zero_rows_local_ghosted(ncount) = (ghosted_id-1)*option%nflowdof+idof-1
+        inactive_rows_local(ncount) = (local_id-1)*option%nflowdof+idof
+        inactive_rows_local_ghosted(ncount) = (ghosted_id-1)*option%nflowdof + &
+                                              idof-1
       enddo
     endif
   enddo
 
-  patch%aux%General%zero_rows_local => zero_rows_local
-  patch%aux%General%zero_rows_local_ghosted => zero_rows_local_ghosted
-  patch%aux%General%n_zero_rows = n_zero_rows
+  patch%aux%General%inactive_rows_local => inactive_rows_local
+  patch%aux%General%inactive_rows_local_ghosted => inactive_rows_local_ghosted
+  patch%aux%General%n_inactive_rows = n_inactive_rows
   
-  call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MAX, &
-                     option%mycomm,ierr)
+  call MPI_Allreduce(n_inactive_rows,flag,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                     MPI_MAX,option%mycomm,ierr)
   if (flag > 0) patch%aux%General%inactive_cells_exist = PETSC_TRUE
-  if (ncount /= n_zero_rows) then
+  if (ncount /= n_inactive_rows) then
     if (option%myrank == option%io_rank) then
-      print *, 'Error:  Mismatch in non-zero row count!', ncount, n_zero_rows
+      print *, 'Error:  Mismatch in non-zero row count!', ncount, &
+        n_inactive_rows
     endif
     stop
   endif
