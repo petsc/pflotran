@@ -4100,6 +4100,9 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           case(LIQUID_MOLE_FRACTION)
             value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                       xmol(isubvar,option%liquid_phase)
+          case(LIQUID_MOBILITY)
+            value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+                      mobility(option%liquid_phase)
           case(GAS_SATURATION)
             value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                       sat(option%gas_phase)
@@ -4122,6 +4125,9 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           case(GAS_MOLE_FRACTION)
             value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                       xmol(isubvar,option%gas_phase)
+          case(GAS_MOBILITY)
+            value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+                      mobility(option%gas_phase)
         end select        
       endif
       
