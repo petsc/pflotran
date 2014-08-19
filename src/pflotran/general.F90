@@ -132,6 +132,13 @@ subroutine GeneralRead(input,option)
     end select
     
   enddo  
+  
+  if (general_isothermal .and. &
+      general_2ph_energy_dof == GENERAL_AIR_PRESSURE_INDEX) then
+    option%io_buffer = 'Isothermal GENERAL mode may only be run with ' // &
+                       'temperature as the two phase energy dof.'
+    call printErrMsg(option)
+  endif
 
 end subroutine GeneralRead
 
@@ -278,6 +285,10 @@ subroutine GeneralSetup(realization)
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)
   call GeneralCreateZeroArray(patch,option)
+
+  ! create array for zeroing Jacobian entries if isothermal and/or no air
+  allocate(patch%aux%General%row_zeroing_array(grid%nlmax))
+  patch%aux%General%row_zeroing_array = 0
   
   ! initialize parameters
   cur_fluid_property => realization%fluid_properties
@@ -2216,7 +2227,7 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   call GeneralUpdateAuxVars(realization,PETSC_TRUE)
 
 ! for debugging a single grid cell
-!  i = 20
+!  i = 90
 !  call GeneralOutputAuxVars(gen_auxvars(0,i),global_auxvars(i),i,'genaux', &
 !                            PETSC_TRUE,option)
 
@@ -2413,8 +2424,8 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   enddo
 
   if (patch%aux%General%inactive_cells_exist) then
-    do i=1,patch%aux%General%n_zero_rows
-      r_p(patch%aux%General%zero_rows_local(i)) = 0.d0
+    do i=1,patch%aux%General%n_inactive_rows
+      r_p(patch%aux%General%inactive_rows_local(i)) = 0.d0
     enddo
   endif
   
@@ -2529,6 +2540,7 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
   PetscInt :: sum_connection  
   PetscReal :: distance, fraction_upwind
   PetscReal :: distance_gravity 
+  PetscInt, pointer :: zeros(:)
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option 
@@ -2791,36 +2803,36 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
   ! zero out isothermal and inactive cells
   if (patch%aux%General%inactive_cells_exist) then
     qsrc = 1.d0 ! solely a temporary variable in this conditional
-    call MatZeroRowsLocal(A,patch%aux%General%n_zero_rows, &
-                          patch%aux%General%zero_rows_local_ghosted, &
+    call MatZeroRowsLocal(A,patch%aux%General%n_inactive_rows, &
+                          patch%aux%General%inactive_rows_local_ghosted, &
                           qsrc,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           ierr);CHKERRQ(ierr)
   endif
 
   if (general_isothermal) then
+    qsrc = 1.d0 ! solely a temporary variable in this conditional
+    zeros => patch%aux%General%row_zeroing_array
     ! zero energy residual
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
-      irow = (ghosted_id-1)*option%nflowdof+GENERAL_ENERGY_EQUATION_INDEX 
-      irow = irow-1 ! zero-based indexing
-      qsrc = 1.d0 ! solely a temporary variable in this conditional
-      call MatZeroRowsLocal(A,ONE_INTEGER,irow, &
-                            qsrc,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            ierr);CHKERRQ(ierr)
+      zeros(local_id) = (ghosted_id-1)*option%nflowdof+ &
+                        GENERAL_ENERGY_EQUATION_INDEX - 1 ! zero-based
     enddo
+    call MatZeroRowsLocal(A,grid%nlmax,zeros,qsrc,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr);CHKERRQ(ierr)
   endif
 
   if (general_no_air) then
-    ! zero energy residual
+    qsrc = 1.d0 ! solely a temporary variable in this conditional
+    zeros => patch%aux%General%row_zeroing_array
+    ! zero gas component mass balance residual
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
-      irow = (ghosted_id-1)*option%nflowdof+GENERAL_GAS_EQUATION_INDEX 
-      irow = irow-1 ! zero-based indexing
-      qsrc = 1.d0 ! solely a temporary variable in this conditional
-      call MatZeroRowsLocal(A,ONE_INTEGER,irow, &
-                            qsrc,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            ierr);CHKERRQ(ierr)
+      zeros(local_id) = (ghosted_id-1)*option%nflowdof+ &
+                        GENERAL_GAS_EQUATION_INDEX - 1 ! zero-based
     enddo
+    call MatZeroRowsLocal(A,grid%nlmax,zeros,qsrc,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr);CHKERRQ(ierr)
   endif
   
   if (realization%debug%matview_Jacobian) then
@@ -2900,28 +2912,28 @@ subroutine GeneralCreateZeroArray(patch,option)
 
   type(grid_type), pointer :: grid
   PetscInt :: flag
-  PetscInt :: n_zero_rows
-  PetscInt, pointer :: zero_rows_local(:)
-  PetscInt, pointer :: zero_rows_local_ghosted(:)
+  PetscInt :: n_inactive_rows
+  PetscInt, pointer :: inactive_rows_local(:)
+  PetscInt, pointer :: inactive_rows_local_ghosted(:)
   PetscErrorCode :: ierr
     
   flag = 0
   grid => patch%grid
   
-  n_zero_rows = 0
+  n_inactive_rows = 0
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     if (patch%imat(ghosted_id) <= 0) then
-      n_zero_rows = n_zero_rows + option%nflowdof
+      n_inactive_rows = n_inactive_rows + option%nflowdof
     endif
   enddo
 
-  allocate(zero_rows_local(n_zero_rows))
-  allocate(zero_rows_local_ghosted(n_zero_rows))
+  allocate(inactive_rows_local(n_inactive_rows))
+  allocate(inactive_rows_local_ghosted(n_inactive_rows))
 
-  zero_rows_local = 0
-  zero_rows_local_ghosted = 0
+  inactive_rows_local = 0
+  inactive_rows_local_ghosted = 0
   ncount = 0
 
   do local_id = 1, grid%nlmax
@@ -2929,22 +2941,24 @@ subroutine GeneralCreateZeroArray(patch,option)
     if (patch%imat(ghosted_id) <= 0) then
       do idof = 1, option%nflowdof
         ncount = ncount + 1
-        zero_rows_local(ncount) = (local_id-1)*option%nflowdof+idof
-        zero_rows_local_ghosted(ncount) = (ghosted_id-1)*option%nflowdof+idof-1
+        inactive_rows_local(ncount) = (local_id-1)*option%nflowdof+idof
+        inactive_rows_local_ghosted(ncount) = (ghosted_id-1)*option%nflowdof + &
+                                              idof-1
       enddo
     endif
   enddo
 
-  patch%aux%General%zero_rows_local => zero_rows_local
-  patch%aux%General%zero_rows_local_ghosted => zero_rows_local_ghosted
-  patch%aux%General%n_zero_rows = n_zero_rows
+  patch%aux%General%inactive_rows_local => inactive_rows_local
+  patch%aux%General%inactive_rows_local_ghosted => inactive_rows_local_ghosted
+  patch%aux%General%n_inactive_rows = n_inactive_rows
   
-  call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MAX, &
-                     option%mycomm,ierr)
+  call MPI_Allreduce(n_inactive_rows,flag,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                     MPI_MAX,option%mycomm,ierr)
   if (flag > 0) patch%aux%General%inactive_cells_exist = PETSC_TRUE
-  if (ncount /= n_zero_rows) then
+  if (ncount /= n_inactive_rows) then
     if (option%myrank == option%io_rank) then
-      print *, 'Error:  Mismatch in non-zero row count!', ncount, n_zero_rows
+      print *, 'Error:  Mismatch in non-zero row count!', ncount, &
+        n_inactive_rows
     endif
     stop
   endif
@@ -3455,9 +3469,8 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   PetscInt :: local_id, ghosted_id
   PetscInt :: offset , ival, idof
 #ifdef DEBUG_GENERAL_INFO
-  PetscInt :: icell_max_rel_update, icell_max_scaled_residual
-  PetscInt :: istate_max_rel_update, istate_max_scaled_residual
-  PetscInt :: idof_max_rel_update, idof_max_scaled_residual
+  PetscInt :: icell_max_rel_update(3), icell_max_scaled_residual(3)
+  PetscInt :: istate_max_rel_update(3), istate_max_scaled_residual(3)
   character(len=2) :: state_char
 #endif
   PetscReal :: dX_X0, R_A
@@ -3503,10 +3516,8 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
 #ifdef DEBUG_GENERAL_INFO
     icell_max_rel_update = 0
     istate_max_rel_update = 0
-    idof_max_rel_update = 0
     icell_max_scaled_residual = 0
     istate_max_scaled_residual = 0
-    idof_max_scaled_residual = 0
 #endif
     inf_norm_update(:,:) = 0.d0
     inf_norm_rel_update(:,:) = 0.d0
@@ -3524,20 +3535,18 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
                                            dabs(dX_p(ival)))
         if (inf_norm_rel_update(idof,istate) < dX_X0) then
 #ifdef DEBUG_GENERAL_INFO
-          if (maxval(inf_norm_rel_update(:,:)) < dX_X0) then
-            icell_max_rel_update = grid%nG2A(ghosted_id)
-            istate_max_rel_update = global_auxvars(ghosted_id)%istate
-            idof_max_rel_update = idof
+          if (maxval(inf_norm_rel_update(idof,:)) < dX_X0) then
+            icell_max_rel_update(idof) = grid%nG2A(ghosted_id)
+            istate_max_rel_update(idof) = global_auxvars(ghosted_id)%istate
           endif
 #endif
           inf_norm_rel_update(idof,istate) = dX_X0
         endif
         if (inf_norm_scaled_residual(idof,istate) < R_A) then
 #ifdef DEBUG_GENERAL_INFO
-          if (maxval(inf_norm_scaled_residual(:,:)) < R_A) then
-            icell_max_scaled_residual = grid%nG2A(ghosted_id)
-            istate_max_scaled_residual = global_auxvars(ghosted_id)%istate
-            idof_max_scaled_residual = idof
+          if (maxval(inf_norm_scaled_residual(idof,:)) < R_A) then
+            icell_max_scaled_residual(idof) = grid%nG2A(ghosted_id)
+            istate_max_scaled_residual(idof) = global_auxvars(ghosted_id)%istate
           endif
 #endif
           inf_norm_scaled_residual(idof,istate) = R_A
@@ -3613,10 +3622,42 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
       (global_inf_norm_scaled_residual(idof,2),idof=1,3)
     write(*,'(4x,''-+  srl:'',es12.4,''  srg:'',es12.4,'' sre:'',es12.4)') &
       (global_inf_norm_scaled_residual(idof,3),idof=1,3)
-    write(*,'(4x,''-+ rel_update icell:'',i7,''  istate:'',i7,'' idof:'',i7)') &
-      icell_max_rel_update, istate_max_rel_update, idof_max_rel_update
-    write(*,'(4x,''-+ scaled_res icell:'',i7,''  istate:'',i7,'' idof:'',i7)') &
-      icell_max_scaled_residual, istate_max_scaled_residual, idof_max_scaled_residual
+    write(*,'(4x,''-+ rul icell:'',i7,''  st:'',i3,''  X:'',es11.3, &
+              &''  dX:'',es11.3,''  R:'',es11.3)') &
+      icell_max_rel_update(1), istate_max_rel_update(1), &
+      X0_p((icell_max_rel_update(1)-1)*3+1), &
+      -1.d0*dX_p((icell_max_rel_update(1)-1)*3+1), &
+      r_p((icell_max_rel_update(1)-1)*3+1)
+    write(*,'(4x,''-+ rug icell:'',i7,''  st:'',i3,''  X:'',es11.3, &
+              &''  dX:'',es11.3,''  R:'',es11.3)') &
+      icell_max_rel_update(2), istate_max_rel_update(2), &
+      X0_p((icell_max_rel_update(2)-1)*3+2), &
+      -1.d0*dX_p((icell_max_rel_update(2)-1)*3+2), &
+      r_p((icell_max_rel_update(2)-1)*3+2)
+    write(*,'(4x,''-+ rut icell:'',i7,''  st:'',i3,''  X:'',es11.3, &
+              &''  dX:'',es11.3,''  R:'',es11.3)') &
+      icell_max_rel_update(3), istate_max_rel_update(3), &
+      X0_p((icell_max_rel_update(3)-1)*3+3), &
+      -1.d0*dX_p((icell_max_rel_update(3)-1)*3+3), &
+      r_p((icell_max_rel_update(3)-1)*3+3)
+    write(*,'(4x,''-+ srl icell:'',i7,''  st:'',i3,''  X:'',es11.3, &
+              &''  dX:'',es11.3,''  R:'',es11.3)') &
+      icell_max_scaled_residual(1), istate_max_scaled_residual(1), &
+      X0_p((icell_max_scaled_residual(1)-1)*3+1), &
+      -1.d0*dX_p((icell_max_scaled_residual(1)-1)*3+1), &
+      r_p((icell_max_scaled_residual(1)-1)*3+1)
+    write(*,'(4x,''-+ srg icell:'',i7,''  st:'',i3,''  X:'',es11.3, &
+              &''  dX:'',es11.3,''  R:'',es11.3)') &
+      icell_max_scaled_residual(2), istate_max_scaled_residual(2), &
+      X0_p((icell_max_scaled_residual(2)-1)*3+2), &
+      -1.d0*dX_p((icell_max_scaled_residual(2)-1)*3+2), &
+      r_p((icell_max_scaled_residual(2)-1)*3+2)
+    write(*,'(4x,''-+ sre icell:'',i7,''  st:'',i3,''  X:'',es11.3, &
+              &''  dX:'',es11.3,''  R:'',es11.3)') &
+      icell_max_scaled_residual(3), istate_max_scaled_residual(3), &
+      X0_p((icell_max_scaled_residual(3)-1)*3+3), &
+      -1.d0*dX_p((icell_max_scaled_residual(3)-1)*3+3), &
+      r_p((icell_max_scaled_residual(3)-1)*3+3)
 #endif
     option%converged = PETSC_FALSE
     if (converged_abs_update .or. converged_rel_update .or. &

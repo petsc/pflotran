@@ -354,7 +354,7 @@ subroutine RichardsCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
   PetscBool :: dP_changed
   PetscBool :: P1_changed
   
-  PetscReal, pointer :: P1_p(:)
+  PetscReal, pointer :: P0_p(:)
   PetscReal, pointer :: dP_p(:)
   PetscReal, pointer :: r_p(:)
   type(grid_type), pointer :: grid
@@ -381,7 +381,7 @@ subroutine RichardsCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
   option%converged = PETSC_FALSE
   if (option%flow%check_post_convergence) then
     call VecGetArrayF90(dP,dP_p,ierr);CHKERRQ(ierr)
-    call VecGetArrayF90(P1,P1_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayF90(P0,P0_p,ierr);CHKERRQ(ierr)
     call VecGetArrayF90(field%flow_r,r_p,ierr);CHKERRQ(ierr)
     
     inf_norm = 0.d0
@@ -393,7 +393,7 @@ subroutine RichardsCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
                                 global_auxvars(ghosted_id), &
                                 material_auxvars(ghosted_id), &
                                 option,Res)
-      inf_norm = max(inf_norm,min(dabs(dP_p(local_id)/P1_p(local_id)), &
+      inf_norm = max(inf_norm,min(dabs(dP_p(local_id)/P0_p(local_id)), &
                                   dabs(r_p(local_id)/Res(1))))
     enddo
     call MPI_Allreduce(inf_norm,global_inf_norm,ONE_INTEGER_MPI, &
@@ -403,7 +403,7 @@ subroutine RichardsCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
     if (global_inf_norm > option%flow%inf_scaled_res_tol) &
       option%converged = PETSC_FALSE
     call VecRestoreArrayF90(dP,dP_p,ierr);CHKERRQ(ierr)
-    call VecRestoreArrayF90(P1,P1_p,ierr);CHKERRQ(ierr)
+    call VecRestoreArrayF90(P0,P0_p,ierr);CHKERRQ(ierr)
     call VecGetArrayF90(field%flow_r,r_p,ierr);CHKERRQ(ierr)
   endif
   

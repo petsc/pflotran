@@ -85,8 +85,9 @@ module General_Aux_module
   end type general_parameter_type
   
   type, public :: general_type
-    PetscInt :: n_zero_rows
-    PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
+    PetscInt :: n_inactive_rows
+    PetscInt, pointer :: inactive_rows_local(:), inactive_rows_local_ghosted(:)
+    PetscInt, pointer :: row_zeroing_array(:)
 
     PetscBool :: auxvars_up_to_date
     PetscBool :: inactive_cells_exist
@@ -160,9 +161,10 @@ function GeneralAuxCreate(option)
   nullify(aux%auxvars)
   nullify(aux%auxvars_bc)
   nullify(aux%auxvars_ss)
-  aux%n_zero_rows = 0
-  nullify(aux%zero_rows_local)
-  nullify(aux%zero_rows_local_ghosted)
+  aux%n_inactive_rows = 0
+  nullify(aux%inactive_rows_local)
+  nullify(aux%inactive_rows_local_ghosted)
+  nullify(aux%row_zeroing_array)
 
   allocate(aux%general_parameter)
   allocate(aux%general_parameter%diffusion_coefficient(option%nphase))
@@ -722,6 +724,10 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         endif
         if (general_2ph_energy_dof == GENERAL_TEMPERATURE_INDEX) then
           ! do nothing as the energy dof has not changed
+          if (.not.general_isothermal) then
+            X(GENERAL_ENERGY_DOF) = X(GENERAL_ENERGY_DOF) * &
+                                   (1.d0 + liquid_epsilon)
+          endif
         else
           ! pa = pg - ps
           x(GENERAL_2PH_STATE_AIR_PRESSURE_DOF) = &
@@ -764,7 +770,10 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         global_auxvar%istate = TWO_PHASE_STATE
         ! first two primary dependent variables do not change
         if (general_2ph_energy_dof == GENERAL_TEMPERATURE_INDEX) then
-          ! do nothing as energy dof has not changed
+          if (.not.general_isothermal) then
+            X(GENERAL_ENERGY_DOF) = X(GENERAL_ENERGY_DOF) * &
+                                    (1.d0 - epsilon)
+          endif
         else
           X(GENERAL_ENERGY_DOF) = gen_auxvar%pres(apid)*(1.d0-epsilon)
         endif
@@ -807,7 +816,10 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
           x(GENERAL_LIQUID_STATE_X_MOLE_DOF) = two_phase_epsilon
         endif
         if (general_2ph_energy_dof == GENERAL_TEMPERATURE_INDEX) then
-          ! do nothing as energy dof has not changed
+          if (.not.general_isothermal) then
+            X(GENERAL_ENERGY_DOF) = X(GENERAL_ENERGY_DOF) * &
+                                    (1.d0-two_phase_epsilon)
+          endif
         else
           X(GENERAL_ENERGY_DOF) = gen_auxvar%temp*(1.d0-two_phase_epsilon)
         endif
@@ -837,7 +849,13 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
           ! first two primary dependent variables do not change
           x(GENERAL_GAS_STATE_AIR_PRESSURE_DOF) = &
             gen_auxvar%pres(apid) * (1.d0 + two_phase_epsilon)
+          if (.not.general_isothermal) then
+            X(GENERAL_ENERGY_DOF) = X(GENERAL_ENERGY_DOF) * &
+                                    (1.d0+two_phase_epsilon)
+          endif
         else
+          X(GENERAL_GAS_STATE_AIR_PRESSURE_DOF) = gen_auxvar%pres(apid)* &
+                                                  (1.d0+two_phase_epsilon)
           X(GENERAL_ENERGY_DOF) = gen_auxvar%temp*(1.d0+two_phase_epsilon)
         endif
         flag = PETSC_TRUE
@@ -1448,8 +1466,9 @@ subroutine GeneralAuxDestroy(aux)
   call GeneralAuxVarDestroy(aux%auxvars_bc)
   call GeneralAuxVarDestroy(aux%auxvars_ss)
 
-  call DeallocateArray(aux%zero_rows_local)
-  call DeallocateArray(aux%zero_rows_local_ghosted)
+  call DeallocateArray(aux%inactive_rows_local)
+  call DeallocateArray(aux%inactive_rows_local_ghosted)
+  call DeallocateArray(aux%row_zeroing_array)
 
   if (associated(aux%general_parameter)) then
     call DeallocateArray(aux%general_parameter%diffusion_coefficient)
