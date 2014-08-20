@@ -1285,6 +1285,15 @@ subroutine InitReadRequiredCardsFromInput(realization)
         call GeneralRead(input,option)
     end select
   endif
+  
+!.........................................................................
+ 
+  ! DBASE information
+  string = "DBASE"
+  call InputFindStringInFile(input,option,string)
+  if (.not.InputError(input)) then  
+    call InputSetDbase()
+  endif
 
 !.........................................................................
 #if defined(SCORPIO)
@@ -2726,6 +2735,9 @@ subroutine InitReadInput(simulation)
       case ('HDF5_WRITE_GROUP_SIZE')
         call InputReadInt(input,option,option%hdf5_write_group_size)
         call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE','Group size')
+
+!....................
+      case ('DBASE')
 
 !....................
       case default
