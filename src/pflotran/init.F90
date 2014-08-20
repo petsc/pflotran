@@ -1256,7 +1256,8 @@ subroutine InitReadRequiredCardsFromInput(realization)
   type(realization_type) :: realization
 
   character(len=MAXSTRINGLENGTH) :: string
-  
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: card
   type(patch_type), pointer :: patch, patch2 
   type(grid_type), pointer :: grid
   type(discretization_type), pointer :: discretization
@@ -1271,55 +1272,8 @@ subroutine InitReadRequiredCardsFromInput(realization)
   
 ! Read in select required cards
 !.........................................................................
- 
-  ! MODE information
-  string = "MODE"
-  call InputFindStringInFile(input,option,string)
-
-  if (.not.InputError(input)) then  
-    ! read in keyword 
-    call InputReadWord(input,option,option%flowmode,PETSC_TRUE)
-    call InputErrorMsg(input,option,'flowmode','mode')
-    select case(trim(option%flowmode))
-      case('GENERAL')
-        call GeneralRead(input,option)
-    end select
-  endif
   
-!.........................................................................
- 
-  ! DBASE information
-  string = "DBASE"
-  call InputFindStringInFile(input,option,string)
-  if (.not.InputError(input)) then  
-    call InputSetDbase()
-  endif
-
-!.........................................................................
-#if defined(SCORPIO)
-  string = "HDF5_WRITE_GROUP_SIZE"
-  call InputFindStringInFile(input,option,string)
-  if (.not.InputError(input)) then  
-    call InputReadInt(input,option,option%hdf5_write_group_size)
-    call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE','Group size')
-    call InputSkipToEnd(input,option,'HDF5_WRITE_GROUP_SIZE')
-  endif
-
-  string = "HDF5_READ_GROUP_SIZE"
-  call InputFindStringInFile(input,option,string)
-  if (.not.InputError(input)) then  
-    call InputReadInt(input,option,option%hdf5_read_group_size)
-    call InputErrorMsg(input,option,'HDF5_READ_GROUP_SIZE','Group size')
-  endif
- rewind(input%fid)
-
-  call Create_IOGroups(option)
-
-#endif
-
-!.........................................................................
-
-  ! GRID information
+  ! GRID information - GRID is a required card for every simulation
   string = "GRID"
   call InputFindStringInFile(input,option,string)
   call InputFindStringErrorMsg(input,option,string)
@@ -1327,7 +1281,8 @@ subroutine InitReadRequiredCardsFromInput(realization)
   call DiscretizationReadRequiredCards(discretization,input,option)
   
   select case(discretization%itype)
-    case(STRUCTURED_GRID,UNSTRUCTURED_GRID,STRUCTURED_GRID_MIMETIC,UNSTRUCTURED_GRID_MIMETIC)
+    case(STRUCTURED_GRID,UNSTRUCTURED_GRID,STRUCTURED_GRID_MIMETIC, &
+         UNSTRUCTURED_GRID_MIMETIC)
       patch => PatchCreate()
       patch%grid => discretization%grid
       if (.not.associated(realization%patch_list)) then
@@ -1336,63 +1291,99 @@ subroutine InitReadRequiredCardsFromInput(realization)
       call PatchAddToList(patch,realization%patch_list)
       realization%patch => patch
   end select
-!.........................................................................
 
-  if ((realization%discretization%itype == STRUCTURED_GRID).or. &
-        (realization%discretization%itype == STRUCTURED_GRID_MIMETIC)) then  ! look for processor decomposition
-    
-    ! PROC information
-    string = "PROC"
-    call InputFindStringInFile(input,option,string)
+  ! optional required cards - yes, an oxymoron, but we need to know if
+  ! these exist before we can go any further.
+  rewind(input%fid)  
+  do
+    call InputReadPflotranString(input,option)
+    if (InputError(input)) exit
 
-    if (.not.InputError(input)) then
+    call InputReadWord(input,option,word,PETSC_FALSE)
+    call StringToUpper(word)
+    card = trim(word)
 
-      grid => realization%patch%grid
-      ! strip card from front of string
-      call InputReadInt(input,option,grid%structured_grid%npx)
-      call InputDefaultMsg(input,option,'npx')
-      call InputReadInt(input,option,grid%structured_grid%npy)
-      call InputDefaultMsg(input,option,'npy')
-      call InputReadInt(input,option,grid%structured_grid%npz)
-      call InputDefaultMsg(input,option,'npz')
+    option%io_buffer = 'pflotran card:: ' // trim(card)
+    call printMsg(option)
+
+    select case(trim(card))
+
+!....................
+      case ('MODE')
+        call InputReadWord(input,option,option%flowmode,PETSC_TRUE)
+        call InputErrorMsg(input,option,'flowmode','mode')
+        select case(trim(option%flowmode))
+          case('GENERAL')
+            call GeneralRead(input,option)
+        end select
+  
+!....................
+      case('DBASE')
+        call InputSetDbase()
+
+!....................
+#if defined(SCORPIO)
+      case('HDF5_WRITE_GROUP_SIZE')
+        call InputReadInt(input,option,option%hdf5_write_group_size)
+        call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE','Group size')
+        call InputSkipToEnd(input,option,'HDF5_WRITE_GROUP_SIZE')
+
+      case('HDF5_READ_GROUP_SIZE')
+        call InputReadInt(input,option,option%hdf5_read_group_size)
+        call InputErrorMsg(input,option,'HDF5_READ_GROUP_SIZE','Group size')
+#endif
+
+!....................
+      case('PROC')
+        ! processor decomposition
+        if (realization%discretization%itype == STRUCTURED_GRID .or. &
+            realization%discretization%itype == STRUCTURED_GRID_MIMETIC) then
+          grid => realization%patch%grid
+          ! strip card from front of string
+          call InputReadInt(input,option,grid%structured_grid%npx)
+          call InputDefaultMsg(input,option,'npx')
+          call InputReadInt(input,option,grid%structured_grid%npy)
+          call InputDefaultMsg(input,option,'npy')
+          call InputReadInt(input,option,grid%structured_grid%npz)
+          call InputDefaultMsg(input,option,'npz')
  
-      if (option%myrank == option%io_rank .and. option%print_to_screen) then
-        option%io_buffer = ' Processor Decomposition:'
-        call printMsg(option)
-        write(option%io_buffer,'("  npx   = ",3x,i4)') grid%structured_grid%npx
-        call printMsg(option)
-        write(option%io_buffer,'("  npy   = ",3x,i4)') grid%structured_grid%npy
-        call printMsg(option)
-        write(option%io_buffer,'("  npz   = ",3x,i4)') grid%structured_grid%npz
-        call printMsg(option)
-      endif
+          if (option%myrank == option%io_rank .and. &
+              option%print_to_screen) then
+            option%io_buffer = ' Processor Decomposition:'
+            call printMsg(option)
+            write(option%io_buffer,'("  npx   = ",3x,i4)') &
+              grid%structured_grid%npx
+            call printMsg(option)
+            write(option%io_buffer,'("  npy   = ",3x,i4)') &
+              grid%structured_grid%npy
+            call printMsg(option)
+            write(option%io_buffer,'("  npz   = ",3x,i4)') &
+              grid%structured_grid%npz
+            call printMsg(option)
+          endif
   
-      if (option%mycommsize /= grid%structured_grid%npx * &
-                             grid%structured_grid%npy * &
-                             grid%structured_grid%npz) then
-        write(option%io_buffer,*) 'Incorrect number of processors specified: ', &
-                       grid%structured_grid%npx*grid%structured_grid%npy* &
-                       grid%structured_grid%npz,' commsize = ',option%mycommsize
-        call printErrMsg(option)
-      endif
-    endif
-  endif
+          if (option%mycommsize /= grid%structured_grid%npx * &
+                                 grid%structured_grid%npy * &
+                                 grid%structured_grid%npz) then
+            write(option%io_buffer,*) 'Incorrect number of processors specified: ', &
+                           grid%structured_grid%npx*grid%structured_grid%npy* &
+                           grid%structured_grid%npz,' commsize = ',option%mycommsize
+            call printErrMsg(option)
+          endif
+        endif
   
-!.........................................................................
-
-  ! Need this with CHEMISTRY read
-  string = "MULTIPLE_CONTINUUM"
-  option%use_mc = PETSC_TRUE
-
-!.........................................................................
-
-  ! CHEMISTRY information
-  string = "CHEMISTRY"
-  call InputFindStringInFile(input,option,string)
-
-  if (.not.InputError(input)) then
-    call ReactionInit(realization%reaction,input,option)
-  endif
+!....................
+      case('CHEMISTRY')
+        !geh: for some reason, we need this with CHEMISTRY read for 
+        !     multicontinuum
+        option%use_mc = PETSC_TRUE
+        call ReactionInit(realization%reaction,input,option)
+    end select
+  enddo
+  
+#if defined(SCORPIO)
+  call Create_IOGroups(option)
+#endif  
 
 end subroutine InitReadRequiredCardsFromInput
 
