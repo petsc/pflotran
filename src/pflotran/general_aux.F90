@@ -413,8 +413,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
                                       gen_auxvar%pres(spid),ierr)
       !geh: Henry_air_xxx returns K_H in units of Pa, but I am not confident
       !     that K_H is truly K_H_tilde (i.e. p_g * K_H).
-      call EOSGasHenry_air_noderiv(dummy,gen_auxvar%temp, &
-                                   gen_auxvar%pres(spid),K_H_tilde)
+      call EOSGasHenry(gen_auxvar%temp,gen_auxvar%pres(spid),K_H_tilde)
       gen_auxvar%pres(gid) = gen_auxvar%pres(lid)
       gen_auxvar%pres(apid) = K_H_tilde*gen_auxvar%xmol(acid,lid)
       ! need vpres for liq -> 2ph check
@@ -451,8 +450,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       ! diffuse through the liquid phase.
       call EOSWaterSaturationPressure(gen_auxvar%temp, &
                                       gen_auxvar%pres(spid),ierr)
-      call EOSGasHenry_air_noderiv(dummy,gen_auxvar%temp, &
-                                   gen_auxvar%pres(spid),K_H_tilde)
+      call EOSGasHenry(gen_auxvar%temp,gen_auxvar%pres(spid),K_H_tilde)
       gen_auxvar%xmol(acid,lid) = gen_auxvar%pres(apid) / K_H_tilde
       ! set water mole fraction to zero as there is no water in liquid phase
       gen_auxvar%xmol(wid,lid) = 0.d0
@@ -504,8 +502,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       gen_auxvar%pres(lid) = gen_auxvar%pres(gid) - &
                               gen_auxvar%pres(cpid)
 
-      call EOSGasHenry_air_noderiv(dummy,gen_auxvar%temp, &
-                                   gen_auxvar%pres(spid),K_H_tilde)
+      call EOSGasHenry(gen_auxvar%temp,gen_auxvar%pres(spid),K_H_tilde)
       gen_auxvar%xmol(acid,lid) = gen_auxvar%pres(apid) / K_H_tilde
       gen_auxvar%xmol(wid,lid) = 1.d0 - gen_auxvar%xmol(acid,lid)
       gen_auxvar%xmol(acid,gid) = gen_auxvar%pres(apid) / &

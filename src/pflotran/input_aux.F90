@@ -20,6 +20,12 @@ module Input_Aux_module
     PetscBool :: broadcast_read
   end type input_type
 
+  type :: dbase_type
+    PetscInt :: dummy_int
+  end type dbase_type
+
+  type(dbase_type), pointer :: dbase => null()
+
   interface InputReadWord
     module procedure InputReadWord1
     module procedure InputReadWord2
@@ -98,7 +104,8 @@ module Input_Aux_module
             InputGetCommandLineString, &
             InputReadFilenames, &
             InputGetLineCount, &
-            InputReadToBuffer
+            InputReadToBuffer, &
+            InputSetDbase
 
 contains
 
@@ -429,13 +436,13 @@ subroutine InputReadInt4(string, option, int, ierr)
 end subroutine InputReadInt4
 
 #endif
+! End of defined(PETSC_USE_64BIT_INDICES) &&
+! (PETSC_SIZEOF_MPI_FINT * PETSC_BITS_PER_BYTE != 64) conditional
 
 ! ************************************************************************** !
 
 subroutine InputReadDouble1(input, option, double)
   ! 
-  ! End of defined(PETSC_USE_64BIT_INDICES) &&
-  ! (PETSC_SIZEOF_MPI_FINT * PETSC_BITS_PER_BYTE != 64) conditional
   ! reads and removes a real value from a string
   ! 
   ! Author: Glenn Hammond
@@ -449,11 +456,19 @@ subroutine InputReadDouble1(input, option, double)
   PetscReal :: double
 
   character(len=MAXWORDLENGTH) :: word
+  PetscBool :: found
 
-  call InputReadWord(input%buf,word,PETSC_TRUE,input%ierr)
+  found = PETSC_FALSE
+  if (associated(dbase)) then
+    call InputParseDbaseForDouble(input%buf,double,found,input%ierr)
+  endif
   
-  if (.not.InputError(input)) then
-    read(word,*,iostat=input%ierr) double
+  if (.not.found) then
+    call InputReadWord(input%buf,word,PETSC_TRUE,input%ierr)
+  
+    if (.not.InputError(input)) then
+      read(word,*,iostat=input%ierr) double
+    endif
   endif
 
 end subroutine InputReadDouble1
@@ -476,12 +491,21 @@ subroutine InputReadDouble2(string, option, double, ierr)
   PetscErrorCode :: ierr
 
   character(len=MAXWORDLENGTH) :: word
+  PetscBool :: found
 
   ierr = 0
-  call InputReadWord(string,word,PETSC_TRUE,ierr)
   
-  if (.not.InputError(ierr)) then
-    read(word,*,iostat=ierr) double
+  found = PETSC_FALSE
+  if (associated(dbase)) then
+    call InputParseDbaseForDouble(string,double,found,ierr)
+  endif
+  
+  if (.not.found) then
+    call InputReadWord(string,word,PETSC_TRUE,ierr)
+  
+    if (.not.InputError(ierr)) then
+      read(word,*,iostat=ierr) double
+    endif
   endif
 
 end subroutine InputReadDouble2
@@ -1609,6 +1633,152 @@ subroutine InputReadToBuffer(input, buffer)
   end do
   
 end subroutine InputReadToBuffer
+
+! ************************************************************************** !
+
+subroutine InputSetDbase()
+  ! 
+  ! Sets pointer to database
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/19/14
+  ! 
+  implicit none
+
+  allocate(dbase)
+  dbase%dummy_int = 0
+
+end subroutine InputSetDbase
+
+! ************************************************************************** !
+subroutine InputParseDbaseForInt(buffer,value,found,ierr)
+  ! 
+  ! Parses database for an integer value
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/19/14
+  ! 
+  use String_module
+  
+  implicit none
+  
+  character(len=MAXSTRINGLENGTH) :: buffer
+  PetscInt :: value
+  PetscBool :: found
+  PetscInt :: ierr
+
+  character(len=MAXSTRINGLENGTH) :: buffer_save
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: dbase_keyword = 'DBASE'
+  
+  buffer_save = buffer
+  found = PETSC_FALSE
+  call InputReadWord(buffer,word,PETSC_TRUE,ierr)
+  if (StringCompareIgnoreCase(word,dbase_keyword)) then
+    call InputReadWord(buffer,word,PETSC_TRUE,ierr)
+    call DbaseLookupInt(word,value,ierr)
+    if (ierr == 0) then
+      found = PETSC_TRUE
+    endif
+  else
+    buffer = buffer_save
+  endif
+  
+end subroutine InputParseDbaseForInt
+
+! ************************************************************************** !
+subroutine InputParseDbaseForDouble(buffer,value,found,ierr)
+  ! 
+  ! Parses database for an double precision value
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/19/14
+  ! 
+  use String_module
+  
+  implicit none
+  
+  character(len=MAXSTRINGLENGTH) :: buffer
+  PetscReal :: value
+  PetscBool :: found
+  PetscInt :: ierr
+
+  character(len=MAXSTRINGLENGTH) :: buffer_save
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: dbase_keyword = 'DBASE'
+  
+  buffer_save = buffer
+  found = PETSC_FALSE
+  call InputReadWord(buffer,word,PETSC_TRUE,ierr)
+  if (StringCompareIgnoreCase(word,dbase_keyword)) then
+    call InputReadWord(buffer,word,PETSC_TRUE,ierr)
+    call DbaseLookupDouble(word,value,ierr)
+    if (ierr == 0) then
+      found = PETSC_TRUE
+    endif
+  else
+    buffer = buffer_save
+  endif
+  
+end subroutine InputParseDbaseForDouble
+
+! ************************************************************************** !
+subroutine DbaseLookupInt(keyword,value,ierr)
+  ! 
+  ! Looks up integer value in database
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/19/14
+  ! 
+  use String_module
+  
+  implicit none
+  
+  character(len=MAXWORDLENGTH) :: keyword
+  PetscInt :: value
+  PetscInt :: ierr
+
+  ierr = 0
+  
+  call StringToUpper(keyword)
+  select case(keyword)
+    case('MATERIAL_ID')
+      value = 5
+    case default 
+      ierr = 1
+  end select
+  
+end subroutine DbaseLookupInt
+
+! ************************************************************************** !
+subroutine DbaseLookupDouble(keyword,value,ierr)
+  ! 
+  ! Looks up double precision value in database
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/19/14
+  ! 
+  use String_module
+  
+  implicit none
+  
+  character(len=MAXWORDLENGTH) :: keyword
+  PetscReal :: value
+  PetscInt :: ierr
+
+  ierr = 0
+  
+  call StringToUpper(keyword)
+  select case(keyword)
+    case('POROSITY')
+      value = 0.25d0
+    case('PERMEABILITY')
+      value = 1.d-12
+    case default 
+      ierr = 1
+  end select
+  
+end subroutine DbaseLookupDouble
 
 ! ************************************************************************** !
 

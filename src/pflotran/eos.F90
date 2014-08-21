@@ -226,6 +226,23 @@ subroutine EOSRead(input,option)
                                    ' not recognized in EOS,GAS,VISCOSITY'    
                 call printErrMsg(option)
             end select
+          case('HENRYS_CONSTANT') 
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputErrorMsg(input,option,'HENRYS_CONSTANT','EOS,GAS')
+            call StringToUpper(word)   
+            select case(trim(word))
+              case('CONSTANT')
+                call InputReadDouble(input,option,tempreal)
+                call InputErrorMsg(input,option,'VALUE', &
+                                   'EOS,GAS,HENRYS_CONSTANT,CONSTANT')
+                call EOSGasSetHenryConstant(tempreal)
+              case('DEFAULT')
+                call EOSGasSetHenry()
+              case default
+                option%io_buffer = 'Keyword: ' // trim(word) // &
+                                   ' not recognized in EOS,GAS,HENRYS_CONSTANT'
+                call printErrMsg(option)
+            end select
           case default
             option%io_buffer = 'Keyword: ' // trim(keyword) // &
                                ' not recognized in EOS,GAS'    

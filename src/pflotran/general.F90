@@ -3519,9 +3519,9 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
     icell_max_scaled_residual = 0
     istate_max_scaled_residual = 0
 #endif
-    inf_norm_update(:,:) = 0.d0
-    inf_norm_rel_update(:,:) = 0.d0
-    inf_norm_scaled_residual(:,:) = 0.d0
+    inf_norm_update(:,:) = -1.d20
+    inf_norm_rel_update(:,:) = -1.d20
+    inf_norm_scaled_residual(:,:) = -1.d20
     do local_id = 1, grid%nlmax
       offset = (local_id-1)*option%nflowdof
       ghosted_id = grid%nL2G(local_id)
@@ -3600,28 +3600,28 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
 #endif
 #ifdef DEBUG_GENERAL_INFO
     write(*,'(4x,''-+  dpl:'',es12.4,''  dxa:'',es12.4,''  dt:'',es12.4)') &
-      (global_inf_norm_update(idof,1),idof=1,3)
+      (max(global_inf_norm_update(idof,1),0.d0),idof=1,3)
     write(*,'(4x,''-+  dpg:'',es12.4,''  dpa:'',es12.4,''  dt:'',es12.4)') &
-      (global_inf_norm_update(idof,2),idof=1,3)
+      (max(global_inf_norm_update(idof,2),0.d0),idof=1,3)
     if (general_2ph_energy_dof == GENERAL_TEMPERATURE_INDEX) then
       write(*,'(4x,''-+  dpg:'',es12.4,''  dsg:'',es12.4,''  dt:'',es12.4)') &
-        (global_inf_norm_update(idof,3),idof=1,3)
+        (max(global_inf_norm_update(idof,3),0.d0),idof=1,3)
     else
       write(*,'(4x,''-+  dpg:'',es12.4,''  dsg:'',es12.4,'' dpa:'',es12.4)') &
-        (global_inf_norm_update(idof,3),idof=1,3)
+        (max(global_inf_norm_update(idof,3),0.d0),idof=1,3)
     endif
     write(*,'(4x,''-+ rupl:'',es12.4,'' ruxa:'',es12.4,'' rut:'',es12.4)') &
-      (global_inf_norm_rel_update(idof,1),idof=1,3)
+      (max(global_inf_norm_rel_update(idof,1),0.d0),idof=1,3)
     write(*,'(4x,''-+ rupg:'',es12.4,'' rupa:'',es12.4,'' rut:'',es12.4)') &
-      (global_inf_norm_rel_update(idof,2),idof=1,3)
+      (max(global_inf_norm_rel_update(idof,2),0.d0),idof=1,3)
     write(*,'(4x,''-+ rupg:'',es12.4,'' rusg:'',es12.4,'' rut:'',es12.4)') &
-      (global_inf_norm_rel_update(idof,3),idof=1,3)
+      (max(global_inf_norm_rel_update(idof,3),0.d0),idof=1,3)
     write(*,'(4x,''-+  srl:'',es12.4,''  srg:'',es12.4,'' sre:'',es12.4)') &
-      (global_inf_norm_scaled_residual(idof,1),idof=1,3)
+      (max(global_inf_norm_scaled_residual(idof,1),0.d0),idof=1,3)
     write(*,'(4x,''-+  srl:'',es12.4,''  srg:'',es12.4,'' sre:'',es12.4)') &
-      (global_inf_norm_scaled_residual(idof,2),idof=1,3)
+      (max(global_inf_norm_scaled_residual(idof,2),0.d0),idof=1,3)
     write(*,'(4x,''-+  srl:'',es12.4,''  srg:'',es12.4,'' sre:'',es12.4)') &
-      (global_inf_norm_scaled_residual(idof,3),idof=1,3)
+      (max(global_inf_norm_scaled_residual(idof,3),0.d0),idof=1,3)
     write(*,'(4x,''-+ rul icell:'',i7,''  st:'',i3,''  X:'',es11.3, &
               &''  dX:'',es11.3,''  R:'',es11.3)') &
       icell_max_rel_update(1), istate_max_rel_update(1), &
