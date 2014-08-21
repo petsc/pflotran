@@ -20,11 +20,12 @@ module Input_Aux_module
     PetscBool :: broadcast_read
   end type input_type
 
-  type :: dbase_type
-    PetscInt :: dummy_int
-  end type dbase_type
+  type :: input_dbase_type
+    character(len=MAXWORDLENGTH), pointer :: card(:)
+    PetscReal, pointer :: value(:)
+  end type input_dbase_type
 
-  type(dbase_type), pointer :: dbase => null()
+  type(input_dbase_type), pointer, public :: dbase => null()
 
   interface InputReadWord
     module procedure InputReadWord1
@@ -105,7 +106,8 @@ module Input_Aux_module
             InputReadFilenames, &
             InputGetLineCount, &
             InputReadToBuffer, &
-            InputSetDbase
+            InputReadASCIIDbase, &
+            InputDbaseDestroy
 
 contains
 
@@ -142,7 +144,7 @@ function InputCreate(fid,filename,option)
   input%broadcast_read = PETSC_FALSE
   
   if (fid == MAX_IN_UNIT) then
-    option%io_buffer = 'MAX_IN_UNIT in definitions.h must be increased to' // &
+    option%io_buffer = 'MAX_IN_UNIT in pflotran_constants.h must be increased to' // &
       ' accommodate a larger number of embedded files.'
     call printErrMsg(option)
   endif
@@ -1635,20 +1637,58 @@ subroutine InputReadToBuffer(input, buffer)
 end subroutine InputReadToBuffer
 
 ! ************************************************************************** !
-
-subroutine InputSetDbase()
+subroutine InputReadASCIIDbase(filename,option)
   ! 
-  ! Sets pointer to database
+  ! Read in an ASCII database
   ! 
   ! Author: Glenn Hammond
   ! Date: 08/19/14
   ! 
+  use Option_module
+  use String_module
+  
   implicit none
+  
+  character(len=MAXWORDLENGTH) :: filename
+  type(option_type) :: option
 
+  character(len=MAXWORDLENGTH) :: word
+  type(input_type), pointer :: input
+  PetscInt :: icount
+  
+  input => InputCreate(86,filename,option)
+  
+  icount = 0
+  do
+    call InputReadPflotranString(input,option)
+    if (InputError(input)) exit
+    call InputReadWord(input,option,word,PETSC_FALSE)
+    if (StringStartsWithAlpha(word)) icount = icount + 1
+  enddo
+  rewind(input%fid)
   allocate(dbase)
-  dbase%dummy_int = 0
-
-end subroutine InputSetDbase
+  allocate(dbase%card(icount))
+  dbase%card = ''
+  allocate(dbase%value(icount))
+  dbase%value = -999.d0
+  icount = 0
+  do
+    call InputReadPflotranString(input,option)
+    if (InputError(input)) exit
+    call InputReadWord(input,option,word,PETSC_FALSE)
+    if (StringStartsWithAlpha(word)) then
+      icount = icount + 1
+      call StringToUpper(word)
+      dbase%card(icount) = adjustl(word)
+      word = trim(word) // ' value'
+      call InputReadDouble(input,option,dbase%value(icount))
+      call InputErrorMsg(input,option,word,'DBASE')
+    endif
+  enddo
+  
+  call InputDestroy(input)
+  
+end subroutine InputReadASCIIDbase
 
 ! ************************************************************************** !
 subroutine InputParseDbaseForInt(buffer,value,found,ierr)
@@ -1779,6 +1819,27 @@ subroutine DbaseLookupDouble(keyword,value,ierr)
   end select
   
 end subroutine DbaseLookupDouble
+
+! ************************************************************************** !
+
+subroutine InputDbaseDestroy()
+  ! 
+  ! Destroys the input dbase and members
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/20/14
+  ! 
+
+  implicit none
+  
+  if (associated(dbase%card)) deallocate(dbase%card)
+  nullify(dbase%card)
+  if (associated(dbase%value)) deallocate(dbase%value)
+  nullify(dbase%value)
+  if (associated(dbase)) deallocate(dbase)
+  nullify(dbase)
+  
+end subroutine InputDbaseDestroy
 
 ! ************************************************************************** !
 

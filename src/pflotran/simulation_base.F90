@@ -299,7 +299,8 @@ subroutine SimulationBaseStrip(this)
   ! Author: Glenn Hammond
   ! Date: 06/11/13
   ! 
-
+  use Input_Aux_module
+  
   implicit none
   
   class(simulation_base_type) :: this
@@ -314,6 +315,7 @@ subroutine SimulationBaseStrip(this)
     deallocate(this%process_model_coupler_list)
     nullify(this%process_model_coupler_list)
   endif
+  call InputDbaseDestroy()
   
 end subroutine SimulationBaseStrip
 
