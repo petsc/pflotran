@@ -702,52 +702,32 @@ subroutine SurfaceFlowFlux(surf_global_auxvar_up, &
   type(surface_global_auxvar_type) :: surf_global_auxvar_dn
   PetscReal :: zc_up, zc_dn
   PetscReal :: mannings_up, mannings_dn
-
-
   PetscReal :: head_up, head_dn
   PetscReal :: dist, length
   PetscReal :: vel                      ! units: m/s
   PetscReal :: Res(1:option%nflowdof)   ! units: m^3/s
 
-  PetscReal :: flux       ! units: m^2/s
   PetscReal :: hw_half
   PetscReal :: mannings_half
   PetscReal :: dhead
 
-  ! initialize
-  flux = 0.d0
-
+  ! upwind the total head and Manning's coefficient
   head_up = surf_global_auxvar_up%head(1) + zc_up
   head_dn = surf_global_auxvar_dn%head(1) + zc_dn
-
-  if (head_up>head_dn) then
+  if (head_up > head_dn) then
+    hw_half       = surf_global_auxvar_up%head(1)
     mannings_half = mannings_up
-    if (surf_global_auxvar_up%head(1)>eps) then
-      hw_half = surf_global_auxvar_up%head(1)
-    else
-      hw_half = 0.d0
-    endif
   else
+    hw_half       = surf_global_auxvar_dn%head(1)
     mannings_half = mannings_dn
-    if (surf_global_auxvar_dn%head(1)>eps) then
-      hw_half = surf_global_auxvar_dn%head(1)
-    else
-      hw_half = 0.d0
-    endif
   endif
   
-  dhead=head_up-head_dn
-  if(abs(dhead)<eps) then
-    dhead=0.d0
-    vel = 0.d0
-  else
-    vel = (hw_half**(2.d0/3.d0))/mannings_half* &
-          dhead/(abs(dhead)**(1.d0/2.d0))* &
-          1.d0/(dist**0.5d0)
-  endif
+  ! compute Manning's velocity
+  dhead = head_up - head_dn
+  vel   = sign(hw_half**(2.d0/3.d0)/mannings_half*abs(dhead/dist)**0.5d0,dhead) ! [m/s]
 
-  flux = hw_half*vel
-  Res(TH_PRESSURE_DOF) = flux*length
+  ! compute the volumetric flow rate
+  Res(TH_PRESSURE_DOF) = vel*hw_half*length ! [m^3/s]
 
 end subroutine SurfaceFlowFlux
 
