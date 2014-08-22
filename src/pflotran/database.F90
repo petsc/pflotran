@@ -3338,6 +3338,8 @@ subroutine BasisInit(reaction,option)
                                       reaction,option)
         microbial%inhibition_C(inhibition_count) = &
           cur_inhibition%inhibition_constant
+        microbial%inhibition_C2(inhibition_count) = &
+          cur_inhibition%inhibition_constant2
         cur_inhibition => cur_inhibition%next
       enddo
       
