@@ -38,6 +38,7 @@ module Timestepper_BE_class
     procedure, public :: Restart => TimestepperBERestart
     procedure, public :: Reset => TimestepperBEReset
     procedure, public :: FinalizeRun => TimestepperBEFinalizeRun
+    procedure, public :: Strip => TimestepperBEStrip
     procedure, public :: Destroy => TimestepperBEDestroy
     
   end type stepper_BE_type
