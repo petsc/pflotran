@@ -1236,7 +1236,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
   ! Reads pflow input file
   ! 
   ! Author: Glenn Hammond
-  ! Date: 10/23/07
+  ! Date: 10/23/07, refactored 08/20/14
   ! 
 
   use Option_module
@@ -1246,6 +1246,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
   use String_module
   use Patch_module
   use Realization_class
+  use HDF5_Aux_module
 
   use General_module
   use Reaction_module  
@@ -1319,7 +1320,15 @@ subroutine InitReadRequiredCardsFromInput(realization)
   
 !....................
       case('DBASE')
-        call InputSetDbase()
+        call InputReadWord(input,option,word,PETSC_FALSE)
+        call InputErrorMsg(input,option,'filename','DBASE')
+        if (index(word,'.h5') > 0) then
+#if defined(PETSC_HAVE_HDF5)
+          call HDF5ReadDbase(word,option)
+#endif
+        else
+          call InputReadASCIIDbase(word,option)
+        endif
 
 !....................
 #if defined(SCORPIO)
