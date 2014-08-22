@@ -1832,12 +1832,14 @@ subroutine InputDbaseDestroy()
 
   implicit none
   
-  if (associated(dbase%card)) deallocate(dbase%card)
-  nullify(dbase%card)
-  if (associated(dbase%value)) deallocate(dbase%value)
-  nullify(dbase%value)
-  if (associated(dbase)) deallocate(dbase)
-  nullify(dbase)
+  if (associated(dbase)) then
+    if (associated(dbase%card)) deallocate(dbase%card)
+    nullify(dbase%card)
+    if (associated(dbase%value)) deallocate(dbase%value)
+    nullify(dbase%value)
+    deallocate(dbase)
+    nullify(dbase)
+  endif
   
 end subroutine InputDbaseDestroy
 
