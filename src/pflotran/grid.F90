@@ -2385,6 +2385,9 @@ subroutine GridDestroy(grid)
                                            
   call ConnectionDestroyList(grid%internal_connection_set_list)
 
+  if(associated(grid)) deallocate(grid)
+  nullify(grid)
+
 end subroutine GridDestroy
 
 ! ************************************************************************** !
