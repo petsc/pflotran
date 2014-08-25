@@ -137,6 +137,14 @@ subroutine MicrobialRead(microbial,input,option)
               call printErrMsg(option)
           end select        
         enddo
+        if (len_trim(inhibition%species_name) < 2 .or. &
+            inhibition%itype == 0 .or. &
+            inhibition%inhibition_constant < -998.d0) then
+          option%io_buffer = 'A SPECIES_NAME, TYPE, and INHIBITION_CON' // &
+            'STANT must be defined for INHIBITION in MICROBIAL_REACTION ' // &
+            'with REACTION "' // trim(microbial_rxn%reaction) // '".'
+          call printErrMsg(option)
+        endif
         ! append to list
         if (.not.associated(microbial_rxn%inhibition)) then
           microbial_rxn%inhibition => inhibition

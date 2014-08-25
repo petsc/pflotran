@@ -940,7 +940,7 @@ subroutine ReactionReadPass2(reaction,input,option)
     select case(trim(word))
       case('PRIMARY_SPECIES','SECONDARY_SPECIES','GAS_SPECIES', &
             'MINERALS','COLLOIDS','GENERAL_REACTION', &
-            'MICROBIAL_REACTION','IMMOBILE_SPECIES', &
+            'IMMOBILE_SPECIES', &
             'RADIOACTIVE_DECAY_REACTION')
         call InputSkipToEND(input,option,card)
       case('REDOX_SPECIES')
@@ -992,7 +992,7 @@ subroutine ReactionReadPass2(reaction,input,option)
                       if (InputCheckExit(input,option)) exit
                       call InputReadWord(input,option,word,PETSC_TRUE)
                       call InputErrorMsg(input,option,word, &
-                              'CHEMISTRY,SURFACE_COMPLEXATION_RXN,KINETIC_RATES')
+                             'CHEMISTRY,SURFACE_COMPLEXATION_RXN,KINETIC_RATES')
                       ! skip over remaining cards to end of each mineral entry
                       call InputSkipToEnd(input,option,word)
                     enddo
@@ -1004,6 +1004,18 @@ subroutine ReactionReadPass2(reaction,input,option)
             case('NO_RESTART_KINETIC_SORPTION')
               ! dummy placeholder
           end select
+        enddo
+      case('MICROBIAL_REACTION')
+        do
+          call InputReadPflotranString(input,option)
+          call InputReadStringErrorMsg(input,option,card)
+          if (InputCheckExit(input,option)) exit
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'MICROBIAL_REACTION','CHEMISTRY')
+          select case(trim(word))
+            case('INHIBITION')
+              call InputSkipToEND(input,option,word)
+          end select 
         enddo
       case('MOLAL','MOLALITY', &
             'UPDATE_POROSITY','UPDATE_TORTUOSITY', &

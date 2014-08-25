@@ -40,7 +40,11 @@ CHEMISTRY
     RATE_CONSTANT 1.d-12
     MONOD A(aq) 1.d-5        ! A is the donor
     MONOD B(aq) 1.d-4        ! B is the acceptor
-    INHIBITION C(aq) 6.d-4   ! C is the product and inhibits when too high
+    INHIBITION 
+      SPECIES_NAME C(aq) 
+      TYPE MONOD
+      INHIBITION_CONSTANT 6.d-4   ! C is the product and inhibits when too high
+    /
   /
   DATABASE ../../../database/hanford.dat
 #  LOG_FORMULATION
