@@ -783,6 +783,15 @@ subroutine OutputVariableRead(input,option,output_variable_list)
         call OutputVariableAddToList(output_variable_list,name, &
                                      OUTPUT_GENERIC,units, &
                                      TEMPERATURE)
+      case ('RESIDUAL')
+        units = ''
+        do temp_int = 1, option%nflowdof
+          write(word,*) temp_int
+          name = 'Residual_' // trim(adjustl(word))
+          call OutputVariableAddToList(output_variable_list,name, &
+                                       OUTPUT_GENERIC,units, &
+                                       RESIDUAL,temp_int)
+        enddo
       case default
         option%io_buffer = 'Keyword: ' // trim(word) // &
                                  ' not recognized in VARIABLES.'

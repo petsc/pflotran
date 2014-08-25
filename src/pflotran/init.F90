@@ -1304,9 +1304,6 @@ subroutine InitReadRequiredCardsFromInput(realization)
     call StringToUpper(word)
     card = trim(word)
 
-    option%io_buffer = 'pflotran card:: ' // trim(card)
-    call printMsg(option)
-
     select case(trim(card))
 
 !....................

@@ -64,6 +64,9 @@ module Reaction_Sandbox_CLMDec_class
     PetscReal :: downreg_nh3_0               ! shut off
     PetscReal :: downreg_nh3_1               ! start to decrease from 1
 
+    PetscReal :: net_n_min_rate_smooth_0     ! start from 0
+    PetscReal :: net_n_min_rate_smooth_1     ! rise to 1
+
     PetscReal :: nc_bacteria
     PetscReal :: nc_fungi
     PetscReal :: fraction_bacteria
@@ -155,6 +158,9 @@ function CLMDec_Create()
   CLMDec_Create%downreg_no3_1 = 1.0d-7
   CLMDec_Create%downreg_nh3_0 = -1.0d-9 
   CLMDec_Create%downreg_nh3_1 = 1.0d-7
+
+  CLMDec_Create%net_n_min_rate_smooth_0 = 0.0d0 
+  CLMDec_Create%net_n_min_rate_smooth_1 = 1.0d-20
 
   CLMDec_Create%nc_bacteria = 0.17150d0
 
@@ -301,6 +307,19 @@ subroutine CLMDec_Read(this,input,option)
           option%io_buffer = 'CHEMISTRY,REACTION_SANDBOX,CLMDec,' // &
             'NO3- down regulation cut off concentration > concentration ' // &
             'where down regulation function = 1.'
+          call printErrMsg(option)
+        endif
+
+      case('SMOOTH_NET_N_MINERALIZATION')
+        call InputReadDouble(input,option,this%net_n_min_rate_smooth_0)
+        call InputErrorMsg(input,option,'net_n_min_rate_smooth_0', &
+          'CHEMISTRY,REACTION_SANDBOX,CLMDec,REACTION')
+        call InputReadDouble(input,option,this%net_n_min_rate_smooth_1)
+        call InputErrorMsg(input,option,'net_n_min_rate_smooth_1', &
+          'CHEMISTRY,REACTION_SANDBOX,CLMDec,REACTION')
+        if (this%net_n_min_rate_smooth_0 > this%net_n_min_rate_smooth_1) then
+          option%io_buffer = 'CHEMISTRY,REACTION_SANDBOX,CLMDec,' // &
+            'Net N mineralization smooth 0 concentration > 1 concentration.'
           call printErrMsg(option)
         endif
 
@@ -897,9 +916,11 @@ subroutine CLMDec_React(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
   ! save mineral N fraction and decomposition rate for net N mineralization and N2O calculation 
   PetscReal :: net_n_mineralization_rate
   PetscReal :: dnet_n_mineralization_rate_dnh3
+  PetscReal :: dnet_n_mineralization_rate_dno3
+  PetscReal :: dnet_n_mineralization_rate_duc(this%nrxn)
   PetscReal :: ph, f_ph
-  PetscReal :: rate_n2o, drate_n2o
-
+  PetscReal :: rate_n2o, drate_n2o_dnh3, drate_n2o_dno3, drate_n2o_duc
+  PetscReal :: f_rate_n2o, df_rate_n2o
 
   PetscInt :: ires_b, ires_f
   PetscReal :: xxx, delta, regulator, dregulator
@@ -1029,6 +1050,10 @@ subroutine CLMDec_React(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
   if (this%species_id_n2o > 0) then
     net_n_mineralization_rate = 0.0d0
     dnet_n_mineralization_rate_dnh3 = 0.0d0
+    dnet_n_mineralization_rate_dno3 = 0.0d0
+    do irxn = 1, this%nrxn
+      dnet_n_mineralization_rate_duc(irxn) = 0.0d0
+    enddo
   endif
 
   do irxn = 1, this%nrxn
@@ -1212,6 +1237,9 @@ subroutine CLMDec_React(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
       if (compute_derivative) then
         dnet_n_mineralization_rate_dnh3 = dnet_n_mineralization_rate_dnh3 + &
           this%mineral_n_stoich(irxn) * drate_nh3_dnh3
+        dnet_n_mineralization_rate_duc(irxn) = &
+          dnet_n_mineralization_rate_duc(irxn) + &
+          this%mineral_n_stoich(irxn) * drate_nh3_duc
       endif
     endif
 
@@ -1276,6 +1304,11 @@ subroutine CLMDec_React(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
         if (compute_derivative) then
           dnet_n_mineralization_rate_dnh3 = dnet_n_mineralization_rate_dnh3 + &
             this%mineral_n_stoich(irxn) * drate_no3_dnh3
+          dnet_n_mineralization_rate_dno3 = dnet_n_mineralization_rate_dno3 + &
+            this%mineral_n_stoich(irxn) * drate_no3_dno3
+          dnet_n_mineralization_rate_duc(irxn) = &
+            dnet_n_mineralization_rate_duc(irxn) + &
+            this%mineral_n_stoich(irxn) * drate_no3_duc
         endif
       endif 
     endif
@@ -1821,7 +1854,7 @@ subroutine CLMDec_React(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
  
   enddo
 
-  if (this%species_id_n2o > 0 .and. net_n_mineralization_rate > 0.0d0) then
+  if (this%species_id_n2o > 0) then
 
     f_t = 1.0d0
     f_w = 1.0d0
@@ -1835,9 +1868,24 @@ subroutine CLMDec_React(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
       endif
 
       temp_real = temp_real * this%n2o_frac_mineralization 
-    
+      
+      if (net_n_mineralization_rate <= this%net_n_min_rate_smooth_0) then
+        f_rate_n2o = 0.0d0
+        df_rate_n2o = 0.0d0
+      elseif (net_n_mineralization_rate >= this%net_n_min_rate_smooth_1 .or. &
+        this%net_n_min_rate_smooth_1-this%net_n_min_rate_smooth_1 > 1.d-20) then
+        f_rate_n2o = 1.0d0
+        df_rate_n2o = 0.0d0
+      else
+        xxx = net_n_mineralization_rate - this%net_n_min_rate_smooth_0
+        delta = this%net_n_min_rate_smooth_1 - this%net_n_min_rate_smooth_0
+        f_rate_n2o  = 1.0d0 - (1.0d0 - xxx * xxx / delta / delta) ** 2
+        df_rate_n2o = 4.0d0 * (1.0d0 - xxx * xxx / delta / delta) * xxx &
+                   / delta / delta
+      endif
+
       ! residuals 
-      rate_n2o = temp_real * net_n_mineralization_rate * f_nh3
+      rate_n2o = temp_real * net_n_mineralization_rate * f_nh3 * f_rate_n2o
  
       Residual(ires_nh3) = Residual(ires_nh3) + rate_n2o 
 
@@ -1848,16 +1896,59 @@ subroutine CLMDec_React(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
       endif
 
       if (compute_derivative) then
-        drate_n2o = temp_real * dnet_n_mineralization_rate_dnh3 * f_nh3 &
-                  + temp_real * net_n_mineralization_rate * d_nh3
+        drate_n2o_dnh3 = temp_real * dnet_n_mineralization_rate_dnh3 * f_nh3 &
+                       + temp_real * net_n_mineralization_rate * d_nh3
+   
+        drate_n2o_dnh3 = drate_n2o_dnh3 * f_rate_n2o + rate_n2o * df_rate_n2o &
+                  * dnet_n_mineralization_rate_dnh3
 
-        Jacobian(ires_nh3,ires_nh3) = Jacobian(ires_nh3,ires_nh3) + drate_n2o
+        Jacobian(ires_nh3,ires_nh3) = Jacobian(ires_nh3,ires_nh3) + drate_n2o_dnh3
         Jacobian(ires_n2o,ires_nh3) = Jacobian(ires_n2o,ires_nh3) &
-                                    - 0.5d0 * drate_n2o
-        if(this%species_id_ngasmin > 0) then
+                                    - 0.5d0 * drate_n2o_dnh3
+        if (this%species_id_ngasmin > 0) then
            Jacobian(ires_ngasmin,ires_nh3) = Jacobian(ires_ngasmin,ires_nh3) &
-                                           - 0.5d0 * drate_n2o
+                                           - 0.5d0 * drate_n2o_dnh3
         endif
+
+        if (this%species_id_no3 > 0) then
+          drate_n2o_dno3 = temp_real * dnet_n_mineralization_rate_dno3
+   
+          drate_n2o_dno3 = drate_n2o_dno3 * f_rate_n2o + rate_n2o * df_rate_n2o &
+                  * dnet_n_mineralization_rate_dno3
+
+          Jacobian(ires_n2o,ires_no3) = Jacobian(ires_n2o,ires_no3) &
+                                    - 0.5d0 * drate_n2o_dno3
+
+          if (this%species_id_ngasmin > 0) then
+             Jacobian(ires_ngasmin,ires_no3) = Jacobian(ires_ngasmin,ires_no3) &
+                                           - 0.5d0 * drate_n2o_dno3
+          endif
+        endif       
+
+        do irxn = 1, this%nrxn
+          ispec_uc = this%upstream_c_id(irxn)
+
+          if (this%upstream_is_aqueous(irxn)) then
+            ires_uc = ispec_uc
+          else
+            ires_uc = reaction%offset_immobile + ispec_uc
+          endif
+      
+          drate_n2o_duc = temp_real * dnet_n_mineralization_rate_duc(irxn)
+   
+          drate_n2o_duc = drate_n2o_duc * f_rate_n2o + rate_n2o * df_rate_n2o &
+                  * dnet_n_mineralization_rate_duc(irxn)
+
+          Jacobian(ires_n2o,ires_uc) = Jacobian(ires_n2o,ires_uc) &
+                                    - 0.5d0 * drate_n2o_duc
+
+          if (this%species_id_ngasmin > 0) then
+            Jacobian(ires_ngasmin,ires_uc) = Jacobian(ires_ngasmin,ires_uc) &
+                                           - 0.5d0 * drate_n2o_duc
+          endif
+       
+        enddo
+
       endif
 
     endif
