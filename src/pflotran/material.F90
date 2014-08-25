@@ -228,6 +228,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
   
   character(len=MAXWORDLENGTH) :: keyword, word
   character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXSTRINGLENGTH) :: buffer_save
 
   PetscInt :: length
   PetscBool :: therm_k_frz
@@ -330,6 +331,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
         call InputErrorMsg(input,option,'thermal expansitivity', &
                            'MATERIAL_PROPERTY')
       case('POROSITY')
+        buffer_save = input%buf
         call InputReadNChars(input,option,string,MAXSTRINGLENGTH,PETSC_TRUE)
         call InputErrorMsg(input,option,'porosity','MATERIAL_PROPERTY')
         call StringToUpper(string)
@@ -340,8 +342,8 @@ subroutine MaterialPropertyRead(material_property,input,option)
           call InputErrorMsg(input,option,'DATASET,NAME', &
                              'MATERIAL_PROPERTY,POROSITY')   
         else
-          call InputReadDouble(string,option,material_property%porosity, &
-                               input%ierr)
+          input%buf = buffer_save
+          call InputReadDouble(input,option,material_property%porosity)
           call InputErrorMsg(input,option,'porosity','MATERIAL_PROPERTY')
         endif
       case('TORTUOSITY')

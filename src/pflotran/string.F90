@@ -15,7 +15,7 @@ module String_module
             StringToUpper, &
             StringToLower, &
             StringReadQuotedWord, &
-            StringStartswithAlpha, &
+            StringStartsWithAlpha, &
             StringStartsWith, &
             StringAdjustl, &
             StringNull, &

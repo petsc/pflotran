@@ -20,6 +20,13 @@ module Input_Aux_module
     PetscBool :: broadcast_read
   end type input_type
 
+  type :: input_dbase_type
+    character(len=MAXWORDLENGTH), pointer :: card(:)
+    PetscReal, pointer :: value(:)
+  end type input_dbase_type
+
+  type(input_dbase_type), pointer, public :: dbase => null()
+
   interface InputReadWord
     module procedure InputReadWord1
     module procedure InputReadWord2
@@ -98,7 +105,9 @@ module Input_Aux_module
             InputGetCommandLineString, &
             InputReadFilenames, &
             InputGetLineCount, &
-            InputReadToBuffer
+            InputReadToBuffer, &
+            InputReadASCIIDbase, &
+            InputDbaseDestroy
 
 contains
 
@@ -135,7 +144,7 @@ function InputCreate(fid,filename,option)
   input%broadcast_read = PETSC_FALSE
   
   if (fid == MAX_IN_UNIT) then
-    option%io_buffer = 'MAX_IN_UNIT in definitions.h must be increased to' // &
+    option%io_buffer = 'MAX_IN_UNIT in pflotran_constants.h must be increased to' // &
       ' accommodate a larger number of embedded files.'
     call printErrMsg(option)
   endif
@@ -429,13 +438,13 @@ subroutine InputReadInt4(string, option, int, ierr)
 end subroutine InputReadInt4
 
 #endif
+! End of defined(PETSC_USE_64BIT_INDICES) &&
+! (PETSC_SIZEOF_MPI_FINT * PETSC_BITS_PER_BYTE != 64) conditional
 
 ! ************************************************************************** !
 
 subroutine InputReadDouble1(input, option, double)
   ! 
-  ! End of defined(PETSC_USE_64BIT_INDICES) &&
-  ! (PETSC_SIZEOF_MPI_FINT * PETSC_BITS_PER_BYTE != 64) conditional
   ! reads and removes a real value from a string
   ! 
   ! Author: Glenn Hammond
@@ -449,11 +458,19 @@ subroutine InputReadDouble1(input, option, double)
   PetscReal :: double
 
   character(len=MAXWORDLENGTH) :: word
+  PetscBool :: found
 
-  call InputReadWord(input%buf,word,PETSC_TRUE,input%ierr)
+  found = PETSC_FALSE
+  if (associated(dbase)) then
+    call InputParseDbaseForDouble(input%buf,double,found,input%ierr)
+  endif
   
-  if (.not.InputError(input)) then
-    read(word,*,iostat=input%ierr) double
+  if (.not.found) then
+    call InputReadWord(input%buf,word,PETSC_TRUE,input%ierr)
+  
+    if (.not.InputError(input)) then
+      read(word,*,iostat=input%ierr) double
+    endif
   endif
 
 end subroutine InputReadDouble1
@@ -476,12 +493,21 @@ subroutine InputReadDouble2(string, option, double, ierr)
   PetscErrorCode :: ierr
 
   character(len=MAXWORDLENGTH) :: word
+  PetscBool :: found
 
   ierr = 0
-  call InputReadWord(string,word,PETSC_TRUE,ierr)
   
-  if (.not.InputError(ierr)) then
-    read(word,*,iostat=ierr) double
+  found = PETSC_FALSE
+  if (associated(dbase)) then
+    call InputParseDbaseForDouble(string,double,found,ierr)
+  endif
+  
+  if (.not.found) then
+    call InputReadWord(string,word,PETSC_TRUE,ierr)
+  
+    if (.not.InputError(ierr)) then
+      read(word,*,iostat=ierr) double
+    endif
   endif
 
 end subroutine InputReadDouble2
@@ -1609,6 +1635,213 @@ subroutine InputReadToBuffer(input, buffer)
   end do
   
 end subroutine InputReadToBuffer
+
+! ************************************************************************** !
+subroutine InputReadASCIIDbase(filename,option)
+  ! 
+  ! Read in an ASCII database
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/19/14
+  ! 
+  use Option_module
+  use String_module
+  
+  implicit none
+  
+  character(len=MAXWORDLENGTH) :: filename
+  type(option_type) :: option
+
+  character(len=MAXWORDLENGTH) :: word
+  type(input_type), pointer :: input
+  PetscInt :: icount
+  
+  input => InputCreate(86,filename,option)
+  
+  icount = 0
+  do
+    call InputReadPflotranString(input,option)
+    if (InputError(input)) exit
+    call InputReadWord(input,option,word,PETSC_FALSE)
+    if (StringStartsWithAlpha(word)) icount = icount + 1
+  enddo
+  rewind(input%fid)
+  allocate(dbase)
+  allocate(dbase%card(icount))
+  dbase%card = ''
+  allocate(dbase%value(icount))
+  dbase%value = -999.d0
+  icount = 0
+  do
+    call InputReadPflotranString(input,option)
+    if (InputError(input)) exit
+    call InputReadWord(input,option,word,PETSC_FALSE)
+    if (StringStartsWithAlpha(word)) then
+      icount = icount + 1
+      call StringToUpper(word)
+      dbase%card(icount) = adjustl(word)
+      word = trim(word) // ' value'
+      call InputReadDouble(input,option,dbase%value(icount))
+      call InputErrorMsg(input,option,word,'DBASE')
+    endif
+  enddo
+  
+  call InputDestroy(input)
+  
+end subroutine InputReadASCIIDbase
+
+! ************************************************************************** !
+subroutine InputParseDbaseForInt(buffer,value,found,ierr)
+  ! 
+  ! Parses database for an integer value
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/19/14
+  ! 
+  use String_module
+  
+  implicit none
+  
+  character(len=MAXSTRINGLENGTH) :: buffer
+  PetscInt :: value
+  PetscBool :: found
+  PetscInt :: ierr
+
+  character(len=MAXSTRINGLENGTH) :: buffer_save
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: dbase_keyword = 'DBASE'
+  
+  buffer_save = buffer
+  found = PETSC_FALSE
+  call InputReadWord(buffer,word,PETSC_TRUE,ierr)
+  if (StringCompareIgnoreCase(word,dbase_keyword)) then
+    call InputReadWord(buffer,word,PETSC_TRUE,ierr)
+    call DbaseLookupInt(word,value,ierr)
+    if (ierr == 0) then
+      found = PETSC_TRUE
+    endif
+  else
+    buffer = buffer_save
+  endif
+  
+end subroutine InputParseDbaseForInt
+
+! ************************************************************************** !
+subroutine InputParseDbaseForDouble(buffer,value,found,ierr)
+  ! 
+  ! Parses database for an double precision value
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/19/14
+  ! 
+  use String_module
+  
+  implicit none
+  
+  character(len=MAXSTRINGLENGTH) :: buffer
+  PetscReal :: value
+  PetscBool :: found
+  PetscInt :: ierr
+
+  character(len=MAXSTRINGLENGTH) :: buffer_save
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: dbase_keyword = 'DBASE'
+  
+  buffer_save = buffer
+  found = PETSC_FALSE
+  call InputReadWord(buffer,word,PETSC_TRUE,ierr)
+  if (StringCompareIgnoreCase(word,dbase_keyword)) then
+    call InputReadWord(buffer,word,PETSC_TRUE,ierr)
+    call DbaseLookupDouble(word,value,ierr)
+    if (ierr == 0) then
+      found = PETSC_TRUE
+    endif
+  else
+    buffer = buffer_save
+  endif
+  
+end subroutine InputParseDbaseForDouble
+
+! ************************************************************************** !
+subroutine DbaseLookupInt(keyword,value,ierr)
+  ! 
+  ! Looks up integer value in database
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/19/14
+  ! 
+  use String_module
+  
+  implicit none
+  
+  character(len=MAXWORDLENGTH) :: keyword
+  PetscInt :: value
+  PetscInt :: ierr
+
+  ierr = 0
+  
+  call StringToUpper(keyword)
+  select case(keyword)
+    case('MATERIAL_ID')
+      value = 5
+    case default 
+      ierr = 1
+  end select
+  
+end subroutine DbaseLookupInt
+
+! ************************************************************************** !
+subroutine DbaseLookupDouble(keyword,value,ierr)
+  ! 
+  ! Looks up double precision value in database
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/19/14
+  ! 
+  use String_module
+  
+  implicit none
+  
+  character(len=MAXWORDLENGTH) :: keyword
+  PetscReal :: value
+  PetscInt :: ierr
+
+  ierr = 0
+  
+  call StringToUpper(keyword)
+  select case(keyword)
+    case('POROSITY')
+      value = 0.25d0
+    case('PERMEABILITY')
+      value = 1.d-12
+    case default 
+      ierr = 1
+  end select
+  
+end subroutine DbaseLookupDouble
+
+! ************************************************************************** !
+
+subroutine InputDbaseDestroy()
+  ! 
+  ! Destroys the input dbase and members
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/20/14
+  ! 
+
+  implicit none
+  
+  if (associated(dbase)) then
+    if (associated(dbase%card)) deallocate(dbase%card)
+    nullify(dbase%card)
+    if (associated(dbase%value)) deallocate(dbase%value)
+    nullify(dbase%value)
+    deallocate(dbase)
+    nullify(dbase)
+  endif
+  
+end subroutine InputDbaseDestroy
 
 ! ************************************************************************** !
 

@@ -38,6 +38,7 @@ module Timestepper_BE_class
     procedure, public :: Restart => TimestepperBERestart
     procedure, public :: Reset => TimestepperBEReset
     procedure, public :: FinalizeRun => TimestepperBEFinalizeRun
+    procedure, public :: Strip => TimestepperBEStrip
     procedure, public :: Destroy => TimestepperBEDestroy
     
   end type stepper_BE_type
@@ -277,6 +278,7 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
   PetscReal :: tconv
   PetscReal :: fnorm, inorm, scaled_fnorm
   PetscBool :: plot_flag, transient_plot_flag
+  Vec :: residual_vec
   PetscErrorCode :: ierr
   
   solver => this%solver
@@ -383,10 +385,11 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
   this%num_newton_iterations = num_newton_iterations
   this%num_linear_iterations = num_linear_iterations  
   
-! print screen output
-  call SNESGetFunctionNorm(solver%snes,fnorm,ierr);CHKERRQ(ierr)
-  call VecNorm(process_model%residual_vec,NORM_INFINITY,inorm, &
-               ierr);CHKERRQ(ierr)
+  ! print screen output
+  call SNESGetFunction(solver%snes,residual_vec,PETSC_NULL_OBJECT, &
+                       PETSC_NULL_INTEGER,ierr);CHKERRQ(ierr)
+  call VecNorm(residual_vec,NORM_2,fnorm,ierr);CHKERRQ(ierr)
+  call VecNorm(residual_vec,NORM_INFINITY,inorm,ierr);CHKERRQ(ierr)
   if (option%print_screen_flag) then
     write(*, '(/," Step ",i6," Time= ",1pe12.5," Dt= ",1pe12.5," [",a1,"]", &
       & " snes_conv_reason: ",i4,/,"  newton = ",i3," [",i8,"]", &

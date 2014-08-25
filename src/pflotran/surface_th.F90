@@ -714,11 +714,10 @@ subroutine SurfaceTHFlux(surf_auxvar_up, &
 
   PetscReal :: head_up, head_dn
   PetscReal :: dist, length
-  PetscReal :: vel                      ! units: m/s
+  PetscReal :: vel                      ! [m/s]
   PetscReal :: dt_max
-  PetscReal :: Res(1:option%nflowdof)   ! units: m^3/s
+  PetscReal :: Res(1:option%nflowdof)   ! [m^3/s]
   
-  PetscReal :: flux       ! units: m^2/s
   PetscReal :: hw_half
   PetscReal :: hw_liq_half
   PetscReal :: mannings_half
@@ -732,60 +731,33 @@ subroutine SurfaceTHFlux(surf_auxvar_up, &
   PetscReal :: dt
   PetscReal :: MAX_MANNING_VELOCITY ! move to constants if we decide to keep
 
-  ! initialize
-  flux = 0.d0
-  dt_max = 1.d10
+  ! Initialize
+  dt_max  = 1.d10
 
-  ! Flow equation
+  ! We upwind Manning's coefficient, temperature, and the unfrozen head
   head_up = surf_global_auxvar_up%head(1) + zc_up
   head_dn = surf_global_auxvar_dn%head(1) + zc_dn
-
-  if (head_up>head_dn) then
-    mannings_half = mannings_up
-    temp_half = surf_global_auxvar_up%temp + 273.15d0
+  if (head_up > head_dn) then
+    mannings_half          = mannings_up
+    temp_half              = surf_global_auxvar_up%temp + 273.15d0 ! [K]
     unfrozen_fraction_half = surf_auxvar_up%unfrozen_fraction
-    if (surf_global_auxvar_up%head(1)>MIN_SURFACE_WATER_HEIGHT) then
-      hw_half = surf_global_auxvar_up%head(1)
-    else
-      hw_half = 0.d0
-    endif
+    hw_half                = surf_global_auxvar_up%head(1)
   else
-    mannings_half = mannings_dn
-    temp_half = surf_global_auxvar_dn%temp + 273.15d0
+    mannings_half          = mannings_dn
+    temp_half              = surf_global_auxvar_dn%temp + 273.15d0 ! [K]
     unfrozen_fraction_half = surf_auxvar_dn%unfrozen_fraction
-    if (surf_global_auxvar_dn%head(1)>MIN_SURFACE_WATER_HEIGHT) then
-      hw_half = surf_global_auxvar_dn%head(1)
-    else
-      hw_half = 0.d0
-    endif
+    hw_half                = surf_global_auxvar_dn%head(1)
   endif
 
-  ! Find pressure head at interface for LIQUID fraction
+  ! We clip to avoid problems later evaluating at negative water height
+  hw_half     = max(hw_half,MIN_SURFACE_WATER_HEIGHT)
+
+  ! Frozen water doesn't contribute to the velocity
   hw_liq_half = unfrozen_fraction_half*hw_half
 
-  ! Compute pressure difference
+  ! Compute Manning's velocity
   dhead = head_up - head_dn
-
-  if (abs(dhead) < eps) then
-    dhead = 0.d0
-    vel = 0.d0
-  else
-    ! RTM: We modify the term raised to the power 2/3 (the "hydraulic radius") 
-    ! by the (upwinded) unfrozen fraction.  For a wide rectangular channel, 
-    ! hydraulic radius (which is a measure of the "efficiency" of the channel) 
-    ! is often taken to be the flow depth, so I believe this makes sense. (?)
-    ! The actual total head term ('hw_half' here) is NOT modified by the 
-    ! unfrozen fraction: though the ice is immobile, its weight does 
-    ! contribute to the pressure head.
-    vel = (hw_liq_half**(2.d0/3.d0))/mannings_half* &
-          dhead/(abs(dhead)**(1.d0/2.d0))* &
-          1.d0/(dist**0.5d0)
-
-     !RTM: Original code for when freezing is not considered is
-!    vel = (hw_half**(2.d0/3.d0))/mannings_half* &
-!          dhead/(abs(dhead)**(1.d0/2.d0))* &
-!          1.d0/(dist**0.5d0)
-  endif
+  vel   = sign(hw_liq_half**(2.d0/3.d0)/mannings_half*abs(dhead/dist)**0.5d0,dhead) ! [m/s]
 
   ! KLUDGE: To address high velocity oscillations of the surface water
   ! height, reduce this value to keep dt from shrinking too much. Add
@@ -793,8 +765,8 @@ subroutine SurfaceTHFlux(surf_auxvar_up, &
   MAX_MANNING_VELOCITY = 1e20 ! [m/s]
   vel = sign(min(MAX_MANNING_VELOCITY,abs(vel)),vel)
 
-  flux = hw_liq_half*vel
-  Res(TH_PRESSURE_DOF) = flux*length
+  ! Load into residual
+  Res(TH_PRESSURE_DOF) = vel*hw_liq_half*length ! [m^3/s]
   
   ! Temperature equation
   ! RTM: k_therm is the weighted average of the liquid and ice thermal 

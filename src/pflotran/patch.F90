@@ -3750,6 +3750,10 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
           MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
                                  TORTUOSITY)
       enddo      
+    case(RESIDUAL)
+      call VecRestoreArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
+      call VecStrideGather(field%flow_r,isubvar-1,vec,INSERT_VALUES,ierr)
+      call VecGetArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
     case default
       write(option%io_buffer, &
             '(''IVAR ('',i3,'') not found in PatchGetVariable'')') ivar
@@ -4100,6 +4104,9 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           case(LIQUID_MOLE_FRACTION)
             value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                       xmol(isubvar,option%liquid_phase)
+          case(LIQUID_MOBILITY)
+            value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+                      mobility(option%liquid_phase)
           case(GAS_SATURATION)
             value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                       sat(option%gas_phase)
@@ -4122,6 +4129,9 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           case(GAS_MOLE_FRACTION)
             value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                       xmol(isubvar,option%gas_phase)
+          case(GAS_MOBILITY)
+            value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+                      mobility(option%gas_phase)
         end select        
       endif
       
@@ -4404,8 +4414,11 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
     case(VOLUME)
       value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
                                      VOLUME)
-      value = material_auxvars(ghosted_id)%volume
-     case default
+    case(RESIDUAL)
+      call VecGetArrayF90(field%flow_r,vec_ptr2,ierr);CHKERRQ(ierr)
+      value = vec_ptr2((local_id-1)*option%nflowdof+isubvar)
+      call VecRestoreArrayF90(field%flow_r,vec_ptr2,ierr);CHKERRQ(ierr)
+    case default
       write(option%io_buffer, &
             '(''IVAR ('',i3,'') not found in PatchGetVariableValueAtCell'')') &
             ivar
