@@ -252,6 +252,8 @@ subroutine Init(simulation)
     OutputVariableListCreate()
   geomech_realization%output_option%output_variable_list => &
     OutputVariableListCreate()
+  geomech_realization%output_option%aveg_output_variable_list => &
+    OutputVariableListCreate()
 
   ! read in the remainder of the input file
   call InitReadInput(simulation)
