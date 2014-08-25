@@ -257,6 +257,11 @@ subroutine Init(simulation)
   call InitReadInput(simulation)
   call InputDestroy(realization%input)
 
+  ! destroy other 'input' used above
+  ! (TODO: fmy- need to check if this is the right place to do so)
+  call InputDestroy(surf_realization%input)    !allocated in Line 182)
+  call InputDestroy(geomech_realization%input) ! allocated in Line 186)
+
   ! initialize reference density
   if (option%reference_water_density < 1.d-40) then
 #ifndef DONT_USE_WATEOS
