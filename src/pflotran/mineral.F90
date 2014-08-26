@@ -195,9 +195,11 @@ subroutine MineralReadKinetics(mineral,input,option)
               call InputErrorMsg(input,option,'rate_limiter',error_string)
             case('IRREVERSIBLE')
 !             read flag for irreversible reaction
+              option%io_buffer = 'IRREVERSIBLE mineral precipitation/' // &
+                'dissolution no longer supported.  The code is commented out.'
+              call printErrMsg(option)
               tstrxn%irreversible = 1
               call InputErrorMsg(input,option,'irreversible',error_string)
-
             case('ARMOR_MINERAL')
                     ! read mineral name
               call InputReadWord(input,option,tstrxn%armor_min_name,PETSC_TRUE)
