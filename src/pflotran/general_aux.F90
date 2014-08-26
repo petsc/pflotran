@@ -422,7 +422,8 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       ! two phase or everything blows up:
       if (gen_auxvar%pres(gid) <= 0.d0) then
         write(option%io_buffer,'(''Negative gas pressure at cell '', &
-          & i5,''in GeneralAuxVarCompute().  Attempting bailout.'')') ghosted_id
+          & i5,'' in GeneralAuxVarCompute().  Attempting bailout.'')') &
+          ghosted_id
         call printErrMsg(option)
         ! set vapor pressure to just under saturation pressure
         gen_auxvar%pres(vpid) = 0.5d0*gen_auxvar%pres(spid)
