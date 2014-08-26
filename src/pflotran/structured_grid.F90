@@ -1607,12 +1607,14 @@ subroutine StructGridPopulateConnection(radius,structured_grid,connection,iface,
               connection%dist(0,iconn) = 0.5d0*structured_grid%dx(ghosted_id)
               if (iface ==  WEST_FACE) then
                 connection%dist(1,iconn) = 1.d0
-                connection%area(iconn) = 2.d0 * pi * (radius(ghosted_id)-0.5d0*structured_grid%dx(ghosted_id)) * &
-                                        structured_grid%dz(ghosted_id)
+                connection%area(iconn) = 2.d0 * pi * (radius(ghosted_id)- &
+                                      0.5d0*structured_grid%dx(ghosted_id)) * &
+                                      structured_grid%dz(ghosted_id)
               else
                 connection%dist(1,iconn) = -1.d0
-                connection%area(iconn) = 2.d0 * pi * (radius(ghosted_id)+0.5d0*structured_grid%dx(ghosted_id)) * &
-                                        structured_grid%dz(ghosted_id)
+                connection%area(iconn) = 2.d0 * pi * (radius(ghosted_id)+ &
+                                      0.5d0*structured_grid%dx(ghosted_id)) * &
+                                      structured_grid%dz(ghosted_id)
               endif
             case(SPHERICAL_GRID)
               connection%dist(:,iconn) = 0.d0
@@ -1622,7 +1624,8 @@ subroutine StructGridPopulateConnection(radius,structured_grid,connection,iface,
                 connection%area(iconn) = 0.d0
               else
                 connection%dist(1,iconn) = -1.d0
-                connection%area(iconn) = 4.d0 * pi * (radius(ghosted_id)+0.5d0*structured_grid%dx(ghosted_id))
+                connection%area(iconn) = 4.d0 * pi * (radius(ghosted_id)+ &
+                                         0.5d0*structured_grid%dx(ghosted_id))
               endif
           end select
 
@@ -1702,10 +1705,18 @@ subroutine StructGridPopulateConnection(radius,structured_grid,connection,iface,
                 endif
               endif
             case(SPHERICAL_GRID)
-              print *, 'Areas for spherical coordinates for z-axis not applicable.'
-              stop
+              option%io_buffer = &
+                'Areas for spherical coordinates for z-axis not applicable.'
+              call printErrMsg(option)
           end select
       end select
+      if (connection%area(iconn) < 1.d-20) then
+        write(option%io_buffer,*) connection%id_dn(iconn)
+        option%io_buffer = &
+          'Zero area in boundary connection at grid cell ' // &
+          trim(adjustl(option%io_buffer)) // '.'
+        call printErrMsg(option)
+      endif
     case(INITIAL_CONNECTION_TYPE)
     case(SRC_SINK_CONNECTION_TYPE)
   end select
