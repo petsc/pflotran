@@ -10,10 +10,10 @@ module Microbial_Aux_module
 
 #include "finclude/petscsys.h"
 
-  PetscInt, parameter :: INHIBITION_THRESHOLD = 1
-  PetscInt, parameter :: INHIBITION_THERMODYNAMIC = 2
-  PetscInt, parameter :: INHIBITION_MONOD = 3
-  PetscInt, parameter :: INHIBITION_INVERSE_MONOD = 4
+  PetscInt, parameter, public :: INHIBITION_THRESHOLD = 1
+  PetscInt, parameter, public :: INHIBITION_THERMODYNAMIC = 2
+  PetscInt, parameter, public :: INHIBITION_MONOD = 3
+  PetscInt, parameter, public :: INHIBITION_INVERSE_MONOD = 4
   
   type, public :: microbial_rxn_type
     PetscInt :: id
@@ -40,7 +40,7 @@ module Microbial_Aux_module
     PetscInt :: itype
     character(len=MAXWORDLENGTH) :: species_name
     PetscReal :: inhibition_constant
-    PetscReal :: concentration_threshold
+    PetscReal :: inhibition_constant2
     type(inhibition_type), pointer :: next
   end type inhibition_type
 
@@ -66,8 +66,10 @@ module Microbial_Aux_module
     PetscInt, pointer :: inhibitionid(:,:)
     PetscInt, pointer :: monod_specid(:)
     PetscReal, pointer :: monod_K(:)
+    PetscInt, pointer :: inhibition_type(:)
     PetscInt, pointer :: inhibition_specid(:)
     PetscReal, pointer :: inhibition_C(:)
+    PetscReal, pointer :: inhibition_C2(:)
     
   end type microbial_type
 
@@ -116,8 +118,10 @@ function MicrobialCreate()
   nullify(microbial%inhibitionid)
   nullify(microbial%monod_specid)
   nullify(microbial%monod_K)
+  nullify(microbial%inhibition_type)
   nullify(microbial%inhibition_specid)
   nullify(microbial%inhibition_C)
+  nullify(microbial%inhibition_C2)
   
   MicrobialCreate => microbial
   
@@ -202,8 +206,8 @@ function MicrobialInhibitionCreate()
   inhibition%id = 0
   inhibition%itype = 0
   inhibition%species_name = ''
-  inhibition%inhibition_constant = 0.d0
-  inhibition%concentration_threshold = 0.d0
+  inhibition%inhibition_constant = -999.d0
+  inhibition%inhibition_constant2 = 0.d0
   nullify(inhibition%next)
   
   MicrobialInhibitionCreate => inhibition
@@ -456,8 +460,10 @@ subroutine MicrobialDestroy(microbial)
   call DeallocateArray(microbial%inhibitionid)
   call DeallocateArray(microbial%monod_specid)
   call DeallocateArray(microbial%monod_K)
+  call DeallocateArray(microbial%inhibition_type)
   call DeallocateArray(microbial%inhibition_specid)
   call DeallocateArray(microbial%inhibition_C)
+  call DeallocateArray(microbial%inhibition_C2)
   
   deallocate(microbial)
   nullify(microbial)
