@@ -265,6 +265,7 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
 
   ! Then, update the aux vars
   ! RTM: This includes calculation of the accumulation terms, correct?
+  call SurfaceTHUpdateTemperature(surf_realization)
   call SurfaceTHUpdateAuxVars(surf_realization)
   ! override flags since they will soon be out of date  
   patch%surf_aux%SurfaceTH%auxvars_up_to_date = PETSC_FALSE
