@@ -1911,7 +1911,7 @@ subroutine CLMDec_React(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
         endif
 
         if (this%species_id_no3 > 0) then
-          drate_n2o_dno3 = temp_real * dnet_n_mineralization_rate_dno3
+          drate_n2o_dno3 = temp_real * dnet_n_mineralization_rate_dno3 * f_nh3
    
           drate_n2o_dno3 = drate_n2o_dno3 * f_rate_n2o + rate_n2o * df_rate_n2o &
                   * dnet_n_mineralization_rate_dno3
@@ -1934,7 +1934,7 @@ subroutine CLMDec_React(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
             ires_uc = reaction%offset_immobile + ispec_uc
           endif
       
-          drate_n2o_duc = temp_real * dnet_n_mineralization_rate_duc(irxn)
+          drate_n2o_duc = temp_real * dnet_n_mineralization_rate_duc(irxn) * f_nh3
    
           drate_n2o_duc = drate_n2o_duc * f_rate_n2o + rate_n2o * df_rate_n2o &
                   * dnet_n_mineralization_rate_duc(irxn)
