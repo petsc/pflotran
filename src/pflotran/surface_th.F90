@@ -782,7 +782,11 @@ subroutine SurfaceTHFlux(surf_auxvar_up, &
   den_aveg = (surf_global_auxvar_up%den_kg(1) + &
               surf_global_auxvar_dn%den_kg(1))/2.d0
   ! Temperature difference
-  dtemp = surf_global_auxvar_up%temp - surf_global_auxvar_dn%temp
+  if (surf_global_auxvar_up%is_dry .or. surf_global_auxvar_dn%is_dry) then
+    dtemp = 0.d0
+  else
+    dtemp = surf_global_auxvar_up%temp - surf_global_auxvar_dn%temp
+  endif
 
   ! Note, Cw and k_therm are same for up and downwind
   Cw = surf_auxvar_up%Cw
@@ -952,6 +956,7 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
   use Coupler_module
   use Connection_module
   use Surface_Material_module
+  use PFLOTRAN_Constants_module, only : MIN_SURFACE_WATER_HEIGHT
 
   implicit none
 
@@ -1011,7 +1016,7 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
                                 surf_global_auxvars(ghosted_id), &
                                 option)
     ! [rho*h*T*Cwi]
-    if (xx_loc_p(istart) < 1.d-15) then
+    if (xx_loc_p(istart) >= MIN_SURFACE_WATER_HEIGHT) then
       xx_loc_p(istart+1) = surf_global_auxvars(ghosted_id)%den_kg(1)* &
                            xx_loc_p(istart)* &
                            (surf_global_auxvars(ghosted_id)%temp + 273.15d0)* &
@@ -1179,6 +1184,8 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
         !temp = option%reference_temperature
         temp = DUMMY_VALUE
         xx_loc_p(iend) = 0.d0
+        xx_loc_p(istart) = 0.d0
+
       else
         surf_global_auxvars(ghosted_id)%is_dry = PETSC_FALSE
         if (surf_global_auxvars(ghosted_id)%temp == DUMMY_VALUE) then
