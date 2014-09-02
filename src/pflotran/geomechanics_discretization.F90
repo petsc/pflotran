@@ -751,8 +751,16 @@ subroutine GeomechDiscretizationDestroy(geomech_discretization)
   if (associated(geomech_discretization%dm_ngeodof)) &
     deallocate(geomech_discretization%dm_ngeodof)
   nullify(geomech_discretization%dm_ngeodof)
+  if (associated(geomech_discretization%dm_n_stress_strain_dof)) &
+    deallocate(geomech_discretization%dm_n_stress_strain_dof)
+  nullify(geomech_discretization%dm_n_stress_strain_dof)
   
   call GMGridDestroy(geomech_discretization%grid)
+
+  if(associated(geomech_discretization)) &
+    deallocate(geomech_discretization)
+  nullify(geomech_discretization)
+
 
 end subroutine GeomechDiscretizationDestroy
 

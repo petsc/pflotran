@@ -51,9 +51,11 @@ module MFD_Aux_module
     VecScatter :: scatter_ltog_LP ! scatter context for global to local updates
     VecScatter :: scatter_ltol_LP ! scatter context for local to local updates
     ISLocalToGlobalMapping :: mapping_ltog_faces  ! petsc vec local to global mapping
-    ISLocalToGlobalMapping :: mapping_ltogb_faces ! block form of mapping_ltog
+!geh: deprecated in PETSc in spring 2014
+!    ISLocalToGlobalMapping :: mapping_ltogb_faces ! block form of mapping_ltog
     ISLocalToGlobalMapping :: mapping_ltog_LP  ! petsc vec local to global mapping
-    ISLocalToGlobalMapping :: mapping_ltogb_LP ! block form of mapping_ltog
+!geh: deprecated in PETSc in spring 2014
+!    ISLocalToGlobalMapping :: mapping_ltogb_LP ! block form of mapping_ltog
   end type mfd_type
 
   public :: MFDAuxCreate, MFDAuxDestroy, &
@@ -97,7 +99,6 @@ function MFDAuxCreate()
   aux%scatter_ltol_faces = 0
   aux%scatter_gtogh_faces = 0
   aux%mapping_ltog_faces = 0
-  aux%mapping_ltogb_faces = 0
 
   aux%is_ghosted_local_LP  = 0
   aux%is_local_local_LP  = 0
@@ -111,7 +112,6 @@ function MFDAuxCreate()
   aux%scatter_ltol_LP = 0
 
   aux%mapping_ltog_LP  = 0  
-  aux%mapping_ltogb_LP = 0 
 
   MFDAuxCreate => aux
   
@@ -350,21 +350,10 @@ subroutine MFDAuxDestroy(aux)
                                                     ierr);CHKERRQ(ierr)
                endif
   
-  if (aux%mapping_ltogb_faces /= 0) then
-                 call ISLocalToGlobalMappingDestroy(aux%mapping_ltogb_faces ,  &
-                                                    ierr);CHKERRQ(ierr)
-               endif
-  
   if (aux%mapping_ltog_LP /= 0) then
                  call ISLocalToGlobalMappingDestroy(aux%mapping_ltog_LP,  &
                                                     ierr);CHKERRQ(ierr)
                endif
-  
-  if (aux%mapping_ltogb_LP /= 0) then
-                 call ISLocalToGlobalMappingDestroy(aux%mapping_ltogb_LP ,  &
-                                                    ierr);CHKERRQ(ierr)
-               endif
-  
     
 end subroutine MFDAuxDestroy
 
