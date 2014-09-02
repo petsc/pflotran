@@ -88,13 +88,63 @@ subroutine MicrobialRead(microbial,input,option)
         nullify(monod)
       case('INHIBITION')
         inhibition => MicrobialInhibitionCreate()
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        call InputErrorMsg(input,option,'species name', &
-                           'CHEMISTRY,MICROBIAL_REACTION,INHIBITION')
-        inhibition%species_name = word
-        call InputReadDouble(input,option,inhibition%inhibition_constant)  
-        call InputErrorMsg(input,option,'inhibition constant', &
-                           'CHEMISTRY,MICROBIAL_REACTION,INHIBITION')
+        do 
+          call InputReadPflotranString(input,option)
+          if (InputError(input)) exit
+          if (InputCheckExit(input,option)) exit
+
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword', &
+                             'CHEMISTRY,MICROBIAL_REACTION')
+          call StringToUpper(word)   
+
+          select case(trim(word))
+            case('SPECIES_NAME')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'species name', &
+                                 'CHEMISTRY,MICROBIAL_REACTION,INHIBITION')
+              inhibition%species_name = word
+            case('TYPE')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'inhibition type', &
+                                 'CHEMISTRY,MICROBIAL_REACTION,INHIBITION')
+              call StringToUpper(word)   
+              select case(word)
+                case('MONOD')
+                  inhibition%itype = INHIBITION_MONOD
+                case('INVERSE_MONOD')
+                  inhibition%itype = INHIBITION_INVERSE_MONOD
+                case('THRESHOLD')
+                  inhibition%itype = INHIBITION_THRESHOLD
+                  call InputReadDouble(input,option, &
+                                       inhibition%inhibition_constant2)  
+                  call InputErrorMsg(input,option,'scaling factor', &
+                                     'CHEMISTRY,MICROBIAL_REACTION,&
+                                     &INHIBITION,THRESHOLD_INHIBITION')
+                case default
+                  option%io_buffer = &
+                    'CHEMISTRY,MICROBIAL_REACTION,INHIBITION ' // &
+                    'TYPE keyword: ' // trim(word) // ' not recognized.'
+                  call printErrMsg(option)
+              end select
+            case('INHIBITION_CONSTANT')
+              call InputReadDouble(input,option,inhibition%inhibition_constant)  
+              call InputErrorMsg(input,option,'inhibition constant', &
+                                 'CHEMISTRY,MICROBIAL_REACTION,INHIBITION')
+            case default
+              option%io_buffer = 'CHEMISTRY,MICROBIAL_REACTION,' // &
+                'INHIBITION keyword: ' // trim(word) // ' not recognized.'
+              call printErrMsg(option)
+          end select        
+        enddo
+        if (len_trim(inhibition%species_name) < 2 .or. &
+            inhibition%itype == 0 .or. &
+            inhibition%inhibition_constant < -998.d0) then
+          option%io_buffer = 'A SPECIES_NAME, TYPE, and INHIBITION_CON' // &
+            'STANT must be defined for INHIBITION in MICROBIAL_REACTION ' // &
+            'with REACTION "' // trim(microbial_rxn%reaction) // '".'
+          call printErrMsg(option)
+        endif
         ! append to list
         if (.not.associated(microbial_rxn%inhibition)) then
           microbial_rxn%inhibition => inhibition
@@ -186,6 +236,7 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
   PetscReal :: biomass_conc
   PetscInt :: immobile_id
   PetscReal :: denominator, dR_dX, dX_dc, dR_dc, dR_dbiomass
+  PetscReal :: tempreal
   type(microbial_type), pointer :: microbial
   type(immobile_type), pointer :: immobile
   
@@ -218,8 +269,21 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
       iinhibition = microbial%inhibitionid(ii,irxn)
       icomp = microbial%inhibition_specid(iinhibition)
       activity = rt_auxvar%pri_molal(icomp)*rt_auxvar%pri_act_coef(icomp)
-      inhibition(ii) = microbial%inhibition_C(iinhibition) / &
-                      (microbial%inhibition_C(iinhibition) + activity)
+      select case(microbial%inhibition_type(iinhibition))
+        case(INHIBITION_MONOD)
+          inhibition(ii) = microbial%inhibition_C(iinhibition) / &
+                          (microbial%inhibition_C(iinhibition) + activity)
+        case(INHIBITION_INVERSE_MONOD)
+          inhibition(ii) = activity / &
+                          (microbial%inhibition_C(iinhibition) + activity)
+        case(INHIBITION_THRESHOLD)
+          ! if microbial%inhibition_C2 is negative, inhibition kicks in 
+          ! above the concentration
+          inhibition(ii) = 0.5d0 + &
+                           atan((activity - &
+                                 microbial%inhibition_C(iinhibition)) * &
+                                microbial%inhibition_C2(iinhibition)) / PI
+      end select        
       Im = Im*inhibition(ii)
     enddo
     
@@ -287,11 +351,24 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
 
       dR_dX = Im / inhibition(ii)
         
-      denominator = microbial%inhibition_C(iinhibition) + activity
-        
-      dX_dc = -1.d0 * act_coef *microbial%inhibition_C(iinhibition) / &
-              (denominator*denominator)
-        
+      select case(microbial%inhibition_type(iinhibition))
+        case(INHIBITION_MONOD)
+          denominator = microbial%inhibition_C(iinhibition) + activity
+          dX_dc = -1.d0 * act_coef *microbial%inhibition_C(iinhibition) / &
+                  (denominator*denominator)
+        case(INHIBITION_INVERSE_MONOD)
+          denominator = microbial%inhibition_C(iinhibition) + activity
+          dX_dc = act_coef / denominator - &
+                  act_coef * activity / &
+                  (denominator*denominator)
+        case(INHIBITION_THRESHOLD)
+          ! derivative of atan(X) = 1 / (1 + X^2) dX
+          tempreal = (activity - microbial%inhibition_C(iinhibition)) * &
+                     microbial%inhibition_C2(iinhibition)
+          inhibition(ii) = (microbial%inhibition_C2(iinhibition) * act_coef / &
+                            (1.d0 + tempreal*tempreal)) / PI
+      end select        
+      
       dR_dc = -1.d0*dR_dX*dX_dc
       do i = 1, ncomp
         icomp = microbial%specid(i,irxn)
