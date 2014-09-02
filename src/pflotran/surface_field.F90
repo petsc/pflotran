@@ -180,9 +180,6 @@ subroutine SurfaceFieldDestroy(surface_field)
     call VecDestroy(surface_field%temp_subsurf,ierr);CHKERRQ(ierr)
   endif
 
-  if(associated(surface_field)) deallocate(surface_field)
-  nullify(surface_field)
-
 end subroutine SurfaceFieldDestroy
 
 end module Surface_Field_module

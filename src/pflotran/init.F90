@@ -252,17 +252,10 @@ subroutine Init(simulation)
     OutputVariableListCreate()
   geomech_realization%output_option%output_variable_list => &
     OutputVariableListCreate()
-  geomech_realization%output_option%aveg_output_variable_list => &
-    OutputVariableListCreate()
 
   ! read in the remainder of the input file
   call InitReadInput(simulation)
   call InputDestroy(realization%input)
-
-  ! destroy other 'input' used above
-  ! (TODO: fmy- need to check if this is the right place to do so)
-  call InputDestroy(surf_realization%input)    !allocated in Line 182)
-  call InputDestroy(geomech_realization%input) ! allocated in Line 186)
 
   ! initialize reference density
   if (option%reference_water_density < 1.d-40) then

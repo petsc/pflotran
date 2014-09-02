@@ -653,8 +653,7 @@ grid.o : connection.o dm_kludge.o logging.o mfd_aux.o option.o \
 hdf5.o : discretization.o field.o grid.o hdf5_aux.o logging.o option.o patch.o \
          pflotran_constants.o realization.o realization_base.o region.o \
          unstructured_cell.o utility.o
-hdf5_aux.o : input_aux.o logging.o option.o pflotran_constants.o region.o \
-             string.o
+hdf5_aux.o : logging.o option.o pflotran_constants.o
 hydrogeophysics_factory.o : discretization.o hydrogeophysics_simulation.o \
                             hydrogeophysics_wrapper.o input_aux.o logging.o \
                             option.o pflotran_constants.o \
@@ -686,10 +685,10 @@ init.o : condition.o condition_control.o connection.o constraint.o \
          eos_water.o field.o flash2.o fluid.o general.o general_aux.o \
          geomech_grid.o geomechanics_discretization.o geomechanics_field.o \
          geomechanics_force.o geomechanics_global.o geomechanics_init.o \
-         geomechanics_realization.o global.o grid.o hdf5.o hdf5_aux.o immis.o \
-         input_aux.o logging.o mass_transfer.o material.o material_aux.o \
-         mineral.o miscible.o mphase.o observation.o option.o output.o \
-         output_aux.o output_tecplot.o patch.o pflotran_constants.o reaction.o \
+         geomechanics_realization.o global.o grid.o hdf5.o immis.o input_aux.o \
+         logging.o mass_transfer.o material.o material_aux.o mineral.o \
+         miscible.o mphase.o observation.o option.o output.o output_aux.o \
+         output_tecplot.o patch.o pflotran_constants.o reaction.o \
          reaction_aux.o reactive_transport.o realization.o region.o \
          regression.o richards.o richards_mfd.o saturation_function.o \
          secondary_continuum.o simulation.o solid_solution.o solver.o \
@@ -990,7 +989,7 @@ simulation.o : general.o geomechanics_realization.o option.o \
                regression.o richards.o solver.o surface_realization.o \
                timestepper.o
 simulation_aux.o : option.o pflotran_constants.o
-simulation_base.o : input_aux.o logging.o option.o output.o output_aux.o \
+simulation_base.o : logging.o option.o output.o output_aux.o \
                     pflotran_constants.o pmc_base.o simulation_aux.o \
                     timestepper_base.o waypoint.o
 solid_solution.o : input_aux.o mineral.o mineral_aux.o option.o \

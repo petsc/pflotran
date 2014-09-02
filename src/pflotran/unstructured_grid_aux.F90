@@ -136,8 +136,7 @@ module Unstructured_Grid_Aux_module
     VecScatter :: scatter_gton ! scatter context for global to natural updates
     VecScatter :: scatter_ntog ! scatter context for natural to global updates
     ISLocalToGlobalMapping :: mapping_ltog  ! petsc vec local to global mapping
-!geh: deprecated in PETSc in spring 2014
-!    ISLocalToGlobalMapping :: mapping_ltogb ! block form of mapping_ltog
+    ISLocalToGlobalMapping :: mapping_ltogb ! block form of mapping_ltog
     Vec :: global_vec ! global vec (no ghost cells), petsc-ordering
     Vec :: local_vec ! local vec (includes local and ghosted cells), local ordering
     VecScatter :: scatter_bet_grids ! scatter context between surface and subsurface
@@ -202,6 +201,7 @@ function UGDMCreate()
   ugdm%scatter_gton = 0
   ugdm%scatter_ntog = 0
   ugdm%mapping_ltog = 0
+  ugdm%mapping_ltogb = 0
   ugdm%global_vec = 0
   ugdm%local_vec = 0
   ugdm%scatter_bet_grids = 0
@@ -587,6 +587,24 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif
                
+  ! create a block local to global mapping 
+#if UGRID_DEBUG
+  string = 'ISLocalToGlobalMappingBlock' // ndof_word
+  call printMsg(option,string)
+#endif
+
+  call ISLocalToGlobalMappingBlock(ugdm%mapping_ltog,ndof, &
+                                   ugdm%mapping_ltogb,ierr);CHKERRQ(ierr)
+                                      
+#if UGRID_DEBUG
+  string = 'mapping_ltogb' // trim(ndof_word) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer, &
+                            ierr);CHKERRQ(ierr)
+  call ISLocalToGlobalMappingView(ugdm%mapping_ltogb,viewer, &
+                                  ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+#endif
+
 #if UGRID_DEBUG
   string = 'local to global' // ndof_word
   call printMsg(option,string)
@@ -790,6 +808,9 @@ subroutine UGridDMCreateJacobian(unstructured_grid,ugdm,mat_type,J,option)
                           PETSC_NULL_INTEGER,o_nnz,J,ierr);CHKERRQ(ierr)
         call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltog, &
                                         ugdm%mapping_ltog,ierr);CHKERRQ(ierr)
+        call MatSetLocalToGlobalMappingBlock(J,ugdm%mapping_ltogb, &
+                                             ugdm%mapping_ltogb, &
+                                             ierr);CHKERRQ(ierr)
       case(MATBAIJ)
         call MatCreateBAIJ(option%mycomm,ugdm%ndof,ndof_local,ndof_local, &
                            PETSC_DETERMINE,PETSC_DETERMINE, &
@@ -797,6 +818,9 @@ subroutine UGridDMCreateJacobian(unstructured_grid,ugdm,mat_type,J,option)
                            PETSC_NULL_INTEGER,o_nnz,J,ierr);CHKERRQ(ierr)
         call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltog, &
                                         ugdm%mapping_ltog,ierr);CHKERRQ(ierr)
+        call MatSetLocalToGlobalMappingBlock(J,ugdm%mapping_ltogb, &
+                                             ugdm%mapping_ltogb, &
+                                             ierr);CHKERRQ(ierr)
       case default
         option%io_buffer = 'MatType not recognized in UGridDMCreateJacobian'
         call printErrMsg(option)
@@ -853,6 +877,8 @@ subroutine UGridDMCreateVector(unstructured_grid,ugdm,vec,vec_type,option)
                        PETSC_DECIDE,ierr);CHKERRQ(ierr)
       call VecSetLocalToGlobalMapping(vec,ugdm%mapping_ltog, &
                                       ierr);CHKERRQ(ierr)
+      call VecSetLocalToGlobalMappingBlock(vec,ugdm%mapping_ltogb, &
+                                           ierr);CHKERRQ(ierr)
       call VecSetBlockSize(vec,ugdm%ndof,ierr);CHKERRQ(ierr)
       call VecSetFromOptions(vec,ierr);CHKERRQ(ierr)
     case(LOCAL)
@@ -1736,6 +1762,9 @@ subroutine UGridDMDestroy(ugdm)
   call VecScatterDestroy(ugdm%scatter_gton,ierr);CHKERRQ(ierr)
   call VecScatterDestroy(ugdm%scatter_ntog,ierr);CHKERRQ(ierr)
   call ISLocalToGlobalMappingDestroy(ugdm%mapping_ltog,ierr);CHKERRQ(ierr)
+  if (ugdm%mapping_ltogb /= 0) then
+    call ISLocalToGlobalMappingDestroy(ugdm%mapping_ltogb,ierr);CHKERRQ(ierr)
+  endif
   call VecDestroy(ugdm%global_vec,ierr);CHKERRQ(ierr)
   call VecDestroy(ugdm%local_vec,ierr);CHKERRQ(ierr)
   call VecScatterDestroy(ugdm%scatter_bet_grids,ierr);CHKERRQ(ierr)

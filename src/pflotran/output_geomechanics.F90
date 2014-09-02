@@ -1603,7 +1603,7 @@ subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
   call VecGetArrayF90(global_z_vertex_vec,vec_z_ptr,ierr);CHKERRQ(ierr)
 
 #if defined(SCORPIO_WRITE)
-  write(*,*) 'SCORPIO_WRITE'
+  write(*,*),'SCORPIO_WRITE'
   option%io_buffer = 'WriteHDF5CoordinatesUGrid not supported for SCORPIO_WRITE'
   call printErrMsg(option)
 #else

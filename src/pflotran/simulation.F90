@@ -132,8 +132,6 @@ subroutine SimulationDestroy(simulation)
       call RTDestroy(simulation%realization)
     endif
 
-    ! fmy: the following appears NOT deallocating 'timestepper' allocated in
-    ! 'subsurface_factory.F90' Line 233. (TODO - but don't know why)
     call RealizationDestroyLegacy(simulation%realization)
   endif
   call TimestepperDestroy(simulation%flow_stepper)

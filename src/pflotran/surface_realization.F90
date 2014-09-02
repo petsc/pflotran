@@ -1236,14 +1236,10 @@ subroutine SurfRealizDestroy(surf_realization)
   call RealizationBaseStrip(surf_realization)
   
   call SurfaceFieldDestroy(surf_realization%surf_field)
-
-  call OutputOptionDestroy(surf_realization%output_option)
   
   call RegionDestroyList(surf_realization%surf_regions)
   
   call FlowConditionDestroyList(surf_realization%surf_flow_conditions)
-
-  call TranConditionDestroyList(surf_realization%surf_transport_conditions)
   
   call PatchDestroyList(surf_realization%patch_list)
   
@@ -1256,9 +1252,6 @@ subroutine SurfRealizDestroy(surf_realization)
   call SurfaceMaterialPropertyDestroy(surf_realization%surf_material_properties)
   
   call DiscretizationDestroy(surf_realization%discretization)
-
-  if(associated(surf_realization)) deallocate(surf_realization)
-  nullify(surf_realization)
 
 end subroutine SurfRealizDestroy
 

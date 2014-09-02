@@ -109,6 +109,9 @@ subroutine MFDCreateJacobian(grid, mfd_aux, mat_type, J, option)
                              PETSC_NULL_INTEGER,o_nnz,J,ierr);CHKERRQ(ierr)
         call MatSetLocalToGlobalMapping(J,mfd_aux%mapping_ltog_faces, mfd_aux%mapping_ltog_faces,  &
                                         ierr);CHKERRQ(ierr)
+        call MatSetLocalToGlobalMappingBlock(J,mfd_aux%mapping_ltogb_faces, mfd_aux%mapping_ltogb_faces,  &
+                                             ierr);CHKERRQ(ierr)
+
 
       case(MATBAIJ)
         call MatCreateBAIJ(option%mycomm,mfd_aux%ndof,ndof_local,ndof_local, &
@@ -117,6 +120,8 @@ subroutine MFDCreateJacobian(grid, mfd_aux, mat_type, J, option)
                              PETSC_NULL_INTEGER,o_nnz,J,ierr);CHKERRQ(ierr)
         call MatSetLocalToGlobalMapping(J,mfd_aux%mapping_ltog_faces,mfd_aux%mapping_ltog_faces, &
                                         ierr);CHKERRQ(ierr)
+        call MatSetLocalToGlobalMappingBlock(J,mfd_aux%mapping_ltogb_faces, mfd_aux%mapping_ltogb_faces,  &
+                                             ierr);CHKERRQ(ierr)
         
       case default
         option%io_buffer = 'MatType not recognized in MFDCreateJacobian'
@@ -130,11 +135,15 @@ subroutine MFDCreateJacobian(grid, mfd_aux, mat_type, J, option)
                              PETSC_NULL_INTEGER,d_nnz,J,ierr);CHKERRQ(ierr)
         call MatSetLocalToGlobalMapping(J,mfd_aux%mapping_ltog_faces, mfd_aux%mapping_ltog_faces,  &
                                         ierr);CHKERRQ(ierr)
+        call MatSetLocalToGlobalMappingBlock(J,mfd_aux%mapping_ltogb_faces, mfd_aux%mapping_ltogb_faces,  &
+                                             ierr);CHKERRQ(ierr)
       case(MATBAIJ)
         call MatCreateSeqBAIJ(option%mycomm,mfd_aux%ndof,ndof_local,ndof_local, &
                              PETSC_NULL_INTEGER,d_nnz,J,ierr);CHKERRQ(ierr)
         call MatSetLocalToGlobalMapping(J,mfd_aux%mapping_ltog_faces,mfd_aux%mapping_ltog_faces, &
                                         ierr);CHKERRQ(ierr)
+        call MatSetLocalToGlobalMappingBlock(J,mfd_aux%mapping_ltogb_faces,mfd_aux%mapping_ltogb_faces,  &
+                                             ierr);CHKERRQ(ierr)
       case default
         option%io_buffer = 'MatType not recognized in MFDCreateJacobian'
         call printErrMsg(option)
@@ -346,6 +355,9 @@ subroutine MFDCreateJacobianLP(grid, mfd_aux, mat_type, J, option)
                              PETSC_NULL_INTEGER,o_nnz,J,ierr);CHKERRQ(ierr)
         call MatSetLocalToGlobalMapping(J,mfd_aux%mapping_ltog_LP, mfd_aux%mapping_ltog_LP,  &
                                         ierr);CHKERRQ(ierr)
+        call MatSetLocalToGlobalMappingBlock(J,mfd_aux%mapping_ltogb_LP, mfd_aux%mapping_ltogb_LP,  &
+                                             ierr);CHKERRQ(ierr)
+
 
       case(MATBAIJ)
         call MatCreateBAIJ(option%mycomm,mfd_aux%ndof,ndof_local,ndof_local, &
@@ -354,6 +366,8 @@ subroutine MFDCreateJacobianLP(grid, mfd_aux, mat_type, J, option)
                              PETSC_NULL_INTEGER,o_nnz,J,ierr);CHKERRQ(ierr)
         call MatSetLocalToGlobalMapping(J,mfd_aux%mapping_ltog_LP,mfd_aux%mapping_ltog_LP, &
                                         ierr);CHKERRQ(ierr)
+        call MatSetLocalToGlobalMappingBlock(J,mfd_aux%mapping_ltogb_LP, mfd_aux%mapping_ltogb_LP,  &
+                                             ierr);CHKERRQ(ierr)
         
       case default
         option%io_buffer = 'MatType not recognized in MFDCreateJacobianLP'
@@ -367,11 +381,15 @@ subroutine MFDCreateJacobianLP(grid, mfd_aux, mat_type, J, option)
                              PETSC_NULL_INTEGER,d_nnz,J,ierr);CHKERRQ(ierr)
         call MatSetLocalToGlobalMapping(J,mfd_aux%mapping_ltog_LP, mfd_aux%mapping_ltog_LP,  &
                                         ierr);CHKERRQ(ierr)
+        call MatSetLocalToGlobalMappingBlock(J,mfd_aux%mapping_ltogb_LP, mfd_aux%mapping_ltogb_LP,  &
+                                             ierr);CHKERRQ(ierr)
       case(MATBAIJ)
         call MatCreateSeqBAIJ(option%mycomm,mfd_aux%ndof,ndof_local,ndof_local, &
                              PETSC_NULL_INTEGER,d_nnz,J,ierr);CHKERRQ(ierr)
         call MatSetLocalToGlobalMapping(J,mfd_aux%mapping_ltog_LP, mfd_aux%mapping_ltog_LP, &
                                         ierr);CHKERRQ(ierr)
+        call MatSetLocalToGlobalMappingBlock(J,mfd_aux%mapping_ltogb_LP, mfd_aux%mapping_ltogb_LP,  &
+                                             ierr);CHKERRQ(ierr)
       case default
         option%io_buffer = 'MatType not recognized in MFDCreateJacobianLP'
         call printErrMsg(option)

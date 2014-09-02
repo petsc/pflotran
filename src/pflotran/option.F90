@@ -1114,7 +1114,7 @@ subroutine OptionInitPetsc(option)
   PetscErrorCode :: ierr
   
   PETSC_COMM_WORLD = option%mycomm
-  call PetscInitialize(PETSC_NULL_CHARACTER, ierr);CHKERRQ(ierr)    !fmy: tiny memory leak here (don't know why)
+  call PetscInitialize(PETSC_NULL_CHARACTER, ierr);CHKERRQ(ierr)
   
   if (option%verbosity > 0) then 
     call PetscLogBegin(ierr);CHKERRQ(ierr)

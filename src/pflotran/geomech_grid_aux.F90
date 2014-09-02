@@ -76,11 +76,9 @@ module Geomechanics_Grid_Aux_module
     VecScatter :: scatter_gton_elem          ! scatter context for global to natural updates for elements(cells)
     VecScatter :: scatter_ntog               ! scatter context for natural to global updates
     ISLocalToGlobalMapping :: mapping_ltog   ! petsc vec local to global mapping
-!geh: deprecated in PETSc in spring 2014 
-!    ISLocalToGlobalMapping :: mapping_ltogb  ! block form of mapping_ltog
+    ISLocalToGlobalMapping :: mapping_ltogb  ! block form of mapping_ltog
     ISLocalToGlobalMapping :: mapping_ltog_elem   ! For elements
-!geh: deprecated in PETSc in spring 2014    
-!    ISLocalToGlobalMapping :: mapping_ltogb_elem  ! For elements
+    ISLocalToGlobalMapping :: mapping_ltogb_elem  ! For elements
     Vec :: global_vec                        ! global vec (no ghost nodes), petsc-ordering
     Vec :: local_vec                         ! local vec (includes local and ghosted nodes), local ordering
     Vec :: global_vec_elem
@@ -141,7 +139,9 @@ function GMDMCreate()
   gmdm%scatter_gton_elem = 0
   gmdm%scatter_ntog = 0
   gmdm%mapping_ltog = 0
+  gmdm%mapping_ltogb = 0
   gmdm%mapping_ltog_elem = 0
+  gmdm%mapping_ltogb_elem = 0
   gmdm%global_vec = 0
   gmdm%local_vec = 0
   gmdm%global_vec_elem = 0
@@ -425,6 +425,24 @@ subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option)
   call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif
                
+  ! create a block local to global mapping 
+#if GEOMECH_DEBUG
+  string = 'geomech_ISLocalToGlobalMappingBlock' // ndof_word
+  call printMsg(option,string)
+#endif
+
+  call ISLocalToGlobalMappingBlock(gmdm%mapping_ltog,ndof, &
+                                   gmdm%mapping_ltogb,ierr);CHKERRQ(ierr)
+                                      
+#if GEOMECH_DEBUG
+  string = 'geomech_mapping_ltogb' // trim(ndof_word) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer, &
+                            ierr);CHKERRQ(ierr)
+  call ISLocalToGlobalMappingView(gmdm%mapping_ltogb,viewer, &
+                                  ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+#endif
+
 #if GEOMECH_DEBUG
   string = 'geomech_local to global' // ndof_word
   call printMsg(option,string)
@@ -598,6 +616,11 @@ subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option)
                                       gmdm%mapping_ltog_elem, &
                                       ierr);CHKERRQ(ierr)
               
+  ! create a block local to global mapping 
+  call ISLocalToGlobalMappingBlock(gmdm%mapping_ltog_elem,ndof, &
+                                   gmdm%mapping_ltogb_elem,ierr);CHKERRQ(ierr)
+                   
+  
 end subroutine GMCreateGMDM
 
 ! ************************************************************************** !
@@ -666,6 +689,9 @@ subroutine GMGridDMCreateJacobian(geomech_grid,gmdm,mat_type,J,option)
                         PETSC_NULL_INTEGER,o_nnz,J,ierr);CHKERRQ(ierr)
       call MatSetLocalToGlobalMapping(J,gmdm%mapping_ltog, &
                                       gmdm%mapping_ltog,ierr);CHKERRQ(ierr)
+      call MatSetLocalToGlobalMappingBlock(J,gmdm%mapping_ltogb, &
+                                           gmdm%mapping_ltogb, &
+                                           ierr);CHKERRQ(ierr)
     case(MATBAIJ)
       call MatCreateBAIJ(option%mycomm,gmdm%ndof,ndof_local,ndof_local, &
                          PETSC_DETERMINE,PETSC_DETERMINE, &
@@ -673,6 +699,9 @@ subroutine GMGridDMCreateJacobian(geomech_grid,gmdm,mat_type,J,option)
                          PETSC_NULL_INTEGER,o_nnz,J,ierr);CHKERRQ(ierr)
       call MatSetLocalToGlobalMapping(J,gmdm%mapping_ltog, &
                                       gmdm%mapping_ltog,ierr);CHKERRQ(ierr)
+      call MatSetLocalToGlobalMappingBlock(J,gmdm%mapping_ltogb, &
+                                           gmdm%mapping_ltogb, &
+                                           ierr);CHKERRQ(ierr)
     case default
       option%io_buffer = 'MatType not recognized in GMGridDMCreateJacobian'
       call printErrMsg(option)
@@ -711,6 +740,8 @@ subroutine GMGridDMCreateVector(geomech_grid,gmdm,vec,vec_type,option)
                        PETSC_DECIDE,ierr);CHKERRQ(ierr)
       call VecSetLocalToGlobalMapping(vec,gmdm%mapping_ltog, &
                                       ierr);CHKERRQ(ierr)
+      call VecSetLocalToGlobalMappingBlock(vec,gmdm%mapping_ltogb, &
+                                           ierr);CHKERRQ(ierr)
       call VecSetBlockSize(vec,gmdm%ndof,ierr);CHKERRQ(ierr)
       call VecSetFromOptions(vec,ierr);CHKERRQ(ierr)
     case(LOCAL)
@@ -757,6 +788,8 @@ subroutine GMGridDMCreateVectorElem(geomech_grid,gmdm,vec,vec_type,option)
                        PETSC_DECIDE,ierr);CHKERRQ(ierr)
       call VecSetLocalToGlobalMapping(vec,gmdm%mapping_ltog_elem, &
                                       ierr);CHKERRQ(ierr)
+      call VecSetLocalToGlobalMappingBlock(vec,gmdm%mapping_ltogb_elem, &
+                                           ierr);CHKERRQ(ierr)
       call VecSetBlockSize(vec,gmdm%ndof,ierr);CHKERRQ(ierr)
       call VecSetFromOptions(vec,ierr);CHKERRQ(ierr)
     case(LOCAL)
@@ -919,8 +952,15 @@ subroutine GMDMDestroy(gmdm)
   call VecScatterDestroy(gmdm%scatter_ntog,ierr);CHKERRQ(ierr)
   call VecScatterDestroy(gmdm%scatter_gton_elem,ierr);CHKERRQ(ierr)
   call ISLocalToGlobalMappingDestroy(gmdm%mapping_ltog,ierr);CHKERRQ(ierr)
+  if (gmdm%mapping_ltogb /= 0) then
+    call ISLocalToGlobalMappingDestroy(gmdm%mapping_ltogb,ierr);CHKERRQ(ierr)
+  endif
   call ISLocalToGlobalMappingDestroy(gmdm%mapping_ltog_elem, &
                                      ierr);CHKERRQ(ierr)
+  if (gmdm%mapping_ltogb_elem /= 0) then
+    call ISLocalToGlobalMappingDestroy(gmdm%mapping_ltogb_elem, &
+                                       ierr);CHKERRQ(ierr)
+  endif
   call VecDestroy(gmdm%global_vec,ierr);CHKERRQ(ierr)
   call VecDestroy(gmdm%local_vec,ierr);CHKERRQ(ierr)
   call VecDestroy(gmdm%global_vec_elem,ierr);CHKERRQ(ierr)

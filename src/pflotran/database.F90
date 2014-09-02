@@ -3228,12 +3228,8 @@ subroutine BasisInit(reaction,option)
     ! inhibition 
     allocate(microbial%inhibition_specid(inhibition_count))
     microbial%inhibition_specid = 0
-    allocate(microbial%inhibition_type(inhibition_count))
-    microbial%inhibition_type = 0
     allocate(microbial%inhibition_C(inhibition_count))
     microbial%inhibition_C = 0
-    allocate(microbial%inhibition_C2(inhibition_count))
-    microbial%inhibition_C2 = 0
 
     ! load the data into the compressed arrays
     irxn = 0
@@ -3340,12 +3336,8 @@ subroutine BasisInit(reaction,option)
         microbial%inhibition_specid(inhibition_count) = &
           GetPrimarySpeciesIDFromName(cur_inhibition%species_name, &
                                       reaction,option)
-        microbial%inhibition_type(inhibition_count) = &
-          cur_inhibition%itype
         microbial%inhibition_C(inhibition_count) = &
           cur_inhibition%inhibition_constant
-        microbial%inhibition_C2(inhibition_count) = &
-          cur_inhibition%inhibition_constant2
         cur_inhibition => cur_inhibition%next
       enddo
       

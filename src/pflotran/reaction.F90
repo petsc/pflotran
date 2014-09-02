@@ -940,7 +940,7 @@ subroutine ReactionReadPass2(reaction,input,option)
     select case(trim(word))
       case('PRIMARY_SPECIES','SECONDARY_SPECIES','GAS_SPECIES', &
             'MINERALS','COLLOIDS','GENERAL_REACTION', &
-            'IMMOBILE_SPECIES', &
+            'MICROBIAL_REACTION','IMMOBILE_SPECIES', &
             'RADIOACTIVE_DECAY_REACTION')
         call InputSkipToEND(input,option,card)
       case('REDOX_SPECIES')
@@ -992,7 +992,7 @@ subroutine ReactionReadPass2(reaction,input,option)
                       if (InputCheckExit(input,option)) exit
                       call InputReadWord(input,option,word,PETSC_TRUE)
                       call InputErrorMsg(input,option,word, &
-                             'CHEMISTRY,SURFACE_COMPLEXATION_RXN,KINETIC_RATES')
+                              'CHEMISTRY,SURFACE_COMPLEXATION_RXN,KINETIC_RATES')
                       ! skip over remaining cards to end of each mineral entry
                       call InputSkipToEnd(input,option,word)
                     enddo
@@ -1004,18 +1004,6 @@ subroutine ReactionReadPass2(reaction,input,option)
             case('NO_RESTART_KINETIC_SORPTION')
               ! dummy placeholder
           end select
-        enddo
-      case('MICROBIAL_REACTION')
-        do
-          call InputReadPflotranString(input,option)
-          call InputReadStringErrorMsg(input,option,card)
-          if (InputCheckExit(input,option)) exit
-          call InputReadWord(input,option,word,PETSC_TRUE)
-          call InputErrorMsg(input,option,'MICROBIAL_REACTION','CHEMISTRY')
-          select case(trim(word))
-            case('INHIBITION')
-              call InputSkipToEND(input,option,word)
-          end select 
         enddo
       case('MOLAL','MOLALITY', &
             'UPDATE_POROSITY','UPDATE_TORTUOSITY', &
@@ -3132,28 +3120,6 @@ subroutine ReactionReadOutput(reaction,input,option)
     end select
 
   enddo
-
-  ! check to ensure that the user has listed FREE_ION or TOTAL is a primary
-  ! species is listed for output
-  found = PETSC_FALSE
-  cur_aq_spec => reaction%primary_species_list
-  do
-    if (.not.associated(cur_aq_spec)) exit
-    if (cur_aq_spec%print_me) then
-      found = PETSC_TRUE
-      exit
-    endif
-    cur_aq_spec => cur_aq_spec%next
-  enddo
-
-  if ((found .or. reaction%print_all_primary_species .or. &
-       reaction%print_all_species) .and. &
-      .not.(reaction%print_total_component .or. &
-            reaction%print_free_ion)) then
-    option%io_buffer = 'FREE_ION or TOTAL must be specified to print a ' // &
-      'primary species.'
-    call printErrMsg(option)
-  endif
 
 end subroutine ReactionReadOutput
 
