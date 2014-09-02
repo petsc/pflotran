@@ -2236,6 +2236,8 @@ subroutine SatFuncGetGasRelPermFromSat(liquid_saturation, &
 
   PetscReal :: liquid_saturation
   PetscReal :: gas_relative_perm
+  PetscReal :: power, pct_over_pcmax, pc_over_pcmax, pc_log_ratio
+  PetscReal :: pcmax, one_over_alpha, alpha, liq_relative_perm
   type(saturation_function_type) :: saturation_function
   PetscBool :: derivative
   type(option_type) :: option
@@ -2298,7 +2300,19 @@ subroutine SatFuncGetGasRelPermFromSat(liquid_saturation, &
       call printErrMsg(option)
       select case(saturation_function%permeability_function_itype)
         case(BURDINE)
+          gas_relative_perm = Sg  
         case(MUALEM)
+          power = 5.d-1
+          alpha = saturation_function%alpha
+          one_over_alpha = 1.d0/alpha
+          pcmax = saturation_function%pcwmax
+          
+          pct_over_pcmax = one_over_alpha/pcmax
+          pc_over_pcmax = 1.d0-(1.d0-pct_over_pcmax)*S_star
+          pc_log_ratio = log(pc_over_pcmax)/log(pct_over_pcmax)
+          liq_relative_perm = (S_star**power)*(pc_log_ratio**2.d0)
+          
+          gas_relative_perm = Sg**power * liq_relative_perm * S_hat**(-power)
         case default
           option%io_buffer = 'Unknown relative permeabilty function'
           call printErrMsg(option)
