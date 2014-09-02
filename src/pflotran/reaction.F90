@@ -3133,6 +3133,28 @@ subroutine ReactionReadOutput(reaction,input,option)
 
   enddo
 
+  ! check to ensure that the user has listed FREE_ION or TOTAL is a primary
+  ! species is listed for output
+  found = PETSC_FALSE
+  cur_aq_spec => reaction%primary_species_list
+  do
+    if (.not.associated(cur_aq_spec)) exit
+    if (cur_aq_spec%print_me) then
+      found = PETSC_TRUE
+      exit
+    endif
+    cur_aq_spec => cur_aq_spec%next
+  enddo
+
+  if ((found .or. reaction%print_all_primary_species .or. &
+       reaction%print_all_species) .and. &
+      .not.(reaction%print_total_component .or. &
+            reaction%print_free_ion)) then
+    option%io_buffer = 'FREE_ION or TOTAL must be specified to print a ' // &
+      'primary species.'
+    call printErrMsg(option)
+  endif
+
 end subroutine ReactionReadOutput
 
 ! ************************************************************************** !
