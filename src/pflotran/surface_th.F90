@@ -1208,41 +1208,6 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
     endif
   enddo
 
-  ! Update boundary aux vars
-  boundary_condition => patch%boundary_conditions%first
-  sum_connection = 0    
-  do 
-    if (.not.associated(boundary_condition)) exit
-    cur_connection_set => boundary_condition%connection_set
-    do iconn = 1, cur_connection_set%num_connections
-      sum_connection = sum_connection + 1
-      local_id = cur_connection_set%id_dn(iconn)
-      ghosted_id = grid%nL2G(local_id)
-      
-      surf_global_auxvars_bc(sum_connection)%temp = &
-        surf_global_auxvars(ghosted_id)%temp
-    enddo
-    boundary_condition => boundary_condition%next
-  enddo
-
-  ! Update source/sink aux vars
-  source_sink => patch%source_sinks%first
-  sum_connection = 0
-  do
-    if (.not.associated(source_sink)) exit
-    cur_connection_set => source_sink%connection_set
-    do iconn = 1, cur_connection_set%num_connections
-      sum_connection = sum_connection + 1
-      local_id = cur_connection_set%id_dn(iconn)
-      ghosted_id = grid%nL2G(local_id)
-
-      surf_global_auxvars_ss(sum_connection)%temp = &
-        surf_global_auxvars(ghosted_id)%temp
-
-    enddo
-    source_sink => source_sink%next
-  enddo
-
   call VecRestoreArrayF90(surf_field%flow_xx_loc,xx_loc_p,ierr);CHKERRQ(ierr)
 
 end subroutine SurfaceTHUpdateTemperature
