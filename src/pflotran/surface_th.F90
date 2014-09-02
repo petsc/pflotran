@@ -752,6 +752,10 @@ subroutine SurfaceTHFlux(surf_auxvar_up, &
 
   ! We clip to avoid problems later evaluating at negative water height
   hw_half     = max(hw_half,MIN_SURFACE_WATER_HEIGHT)
+  if (hw_half == MIN_SURFACE_WATER_HEIGHT) then
+    temp_half = 0.d0
+    hw_half   = 0.d0
+  endif
 
   ! Frozen water doesn't contribute to the velocity
   hw_liq_half = unfrozen_fraction_half*hw_half
