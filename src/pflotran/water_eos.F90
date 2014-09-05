@@ -567,7 +567,8 @@ subroutine wateos (t,p,dw,dwmol,dwp,dwt,hw,hwp,hwt,scale,ierr)
     if (xx.gt.zero) then
       xx = sqrt(xx)
     else
-      write(*,*) 'Warning: negative term in density (wateos): ','t= ',t,' p= ',p,' xx= ',xx
+      write(*,*) 'Warning: negative term in density (water_eos.F90:wateos):'
+      write(*,*) 't= ',t,' p= ',p,' xx= ',xx
 #ifdef DASVYAT
       stop
 #endif
@@ -778,7 +779,8 @@ subroutine wateos_flag (t,p,dw,dwmol,dwp,dwt,hw,hwp,hwt,scale,flag,ierr)
     if (xx.gt.zero) then
       xx = sqrt(xx)
     else
-      write(*,*) 'Warning: negative term in density (wateos): ','t= ',t,' p= ',p,' xx= ',xx
+      write(*,*) 'Warning: negative term in density (water_eos.F90:wateos_flag):'
+      write(*,*) 't= ',t,' p= ',p,' xx= ',xx
       flag = PETSC_TRUE
 #ifdef DASVYAT
       stop
@@ -988,7 +990,8 @@ subroutine wateos_noderiv (t,p,dw,dwmol,hw,scale,ierr)
     if (xx.gt.zero) then
       xx = sqrt(xx)
     else
-      write(*,*) 'Warning: negative term in density (no deriv): ','t= ',t,' p= ',p,' xx= ',xx
+      write(*,*) 'Warning: negative term in density (water_wos.F90:wateos_noderiv):'
+      write(*,*) 't= ',t,' p= ',p,' xx= ',xx
       xx = 1.e-6               !set arbitrarily
     end if
     zz = yy + xx                                     
