@@ -579,6 +579,10 @@ subroutine Init(simulation)
                                 SurfaceTHRHSFunction, &
                                 simulation%surf_realization, &
                                 ierr);CHKERRQ(ierr)
+          call TSSetIFunction(surf_flow_solver%ts,PETSC_NULL_OBJECT, &
+                              SurfaceTHIFunction, &
+                              simulation%surf_realization, &
+                              ierr);CHKERRQ(ierr)
       end select
       call TSSetDuration(surf_flow_solver%ts,ONE_INTEGER, &
                          simulation%surf_realization%waypoints%last%time, &
