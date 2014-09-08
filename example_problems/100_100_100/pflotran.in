@@ -59,9 +59,8 @@ GRID
   ORIGIN 0.d0 0.d0 0.d0
   NXYZ 32 32 32
   BOUNDS
-    0.d0 100.d0
-    0.d0 100.d0
-    0.d0 100.d0
+    0.d0 0.d0 0.d0
+    100.d0 100.d0 100.d0
   /
 END
 
