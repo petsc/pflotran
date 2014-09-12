@@ -26,6 +26,7 @@ module Surface_TH_module
 
   public SurfaceTHSetup, &
          SurfaceTHRHSFunction, &
+         SurfaceTHIFunction, &
          SurfaceTHComputeMaxDt, &
          SurfaceTHUpdateAuxVars, &
          SurfaceTHUpdateSolution, &
@@ -455,6 +456,50 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   endif
 
 end subroutine SurfaceTHRHSFunction
+
+! ************************************************************************** !
+
+subroutine SurfaceTHIFunction(ts,t,xx,xxdot,ff,surf_realization,ierr)
+  ! 
+  ! This routine provides the implicit function evaluation for PETSc TSSolve()
+  ! Author: Nathan Collier, ORNL
+  ! 
+
+  use EOS_Water_module
+  use Connection_module
+  use Surface_Realization_class
+  use Discretization_module
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Coupler_module  
+  use Surface_Field_module
+  use Debug_module
+  use Surface_TH_Aux_module
+  use Surface_Global_Aux_module
+
+  implicit none
+  
+  TS                             :: ts
+  PetscReal                      :: t
+  Vec                            :: xx,xxdot
+  Vec                            :: ff
+  type(surface_realization_type) :: surf_realization
+  PetscErrorCode                 :: ierr
+
+  ! Our equations are in the form: 
+  !    xxdot = RHS(xx)
+  ! or in residual form:
+  !    ff = xxdot - RHS(xx)
+
+  ! First we call RHS function: ff = RHS(xx)
+  call SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr);CHKERRQ(ierr)
+  ! negate: RHS(xx) = -RHS(xx)
+  call VecScale(ff,-1.d0,ierr);CHKERRQ(ierr)
+  ! and finally: ff += xxdot
+  call VecAYPX(ff,1.d0,xxdot,ierr);CHKERRQ(ierr)
+  
+end subroutine SurfaceTHIFunction
 
 ! ************************************************************************** !
 
