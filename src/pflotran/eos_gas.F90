@@ -802,15 +802,23 @@ subroutine EOSGasEnergyConstant(T,P,H,dH_dT,dH_dP,U,dU_dT,dU_dP,ierr)
   PetscReal, intent(out) :: dU_dT   ! deriv. internal energy wrt temperature
   PetscReal, intent(out) :: dU_dP   ! deriv. internal energy wrt pressure
   PetscErrorCode, intent(out) :: ierr
+  
+  PetscReal :: T_kelvin
+  PetscReal, parameter:: Rg = 8.31415 
 
   H = constant_enthalpy ! J/kmol
+  T_kelvin = T + 273.15d0
+!  U = (H/(T_kelvin*1.d3) - Rg) * T_kelvin * 1.d3 ! J/mol -> J/kmol
+  U = H - Rg * T_kelvin * 1.d3 ! J/mol -> J/kmol
   
   dH_dP = 0.d0
   dH_dT = 0.d0
+  dU_dP = 0.d0
+  dU_dT = -Rg * 1.d3
   
-  print *, 'Calcuation of internal gas energy not set up in ' // &
+  print *, 'Calculation of internal gas energy not set up properly in ' // &
     'EOSGasEnergyConstant.'
-  stop
+  stop  
   
 end subroutine EOSGasEnergyConstant
 
