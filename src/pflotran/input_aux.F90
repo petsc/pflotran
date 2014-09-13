@@ -1805,18 +1805,26 @@ subroutine DbaseLookupDouble(keyword,value,ierr)
   character(len=MAXWORDLENGTH) :: keyword
   PetscReal :: value
   PetscInt :: ierr
+  
+  PetscInt :: i
+  PetscBool :: found
 
   ierr = 0
   
   call StringToUpper(keyword)
-  select case(keyword)
-    case('POROSITY')
-      value = 0.25d0
-    case('PERMEABILITY')
-      value = 1.d-12
-    case default 
-      ierr = 1
-  end select
+  
+  found = PETSC_FALSE
+  do i = 1, size(dbase%card)
+    if (StringCompare(keyword,dbase%card(i))) then
+      found = PETSC_TRUE
+      value = dbase%value(i)
+      exit
+    endif
+  enddo
+  
+  if (.not.found) then
+    ierr = 1
+  endif
   
 end subroutine DbaseLookupDouble
 

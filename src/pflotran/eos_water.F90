@@ -831,7 +831,8 @@ subroutine EOSWaterDensityEnthalpyIFC67(t,p,dw,dwmol,hw, &
   if (xx.gt.zero) then
     xx = sqrt(xx)
   else
-    write(*,*) 'Warning: negative term in density (wateos): ','t= ',t,' p= ',p,' xx= ',xx
+    write(*,*) 'Warning: negative term in density (eos_water.F90:EOSWaterDensityEnthalpyIFC67):'
+    write(*,*) 't= ',t,' p= ',p,' xx= ',xx
     ierr = 1
     xx = 1.e-6               !set arbitrarily
   end if
@@ -1087,7 +1088,8 @@ subroutine EOSWaterDensityIFC67(t,p,dw,dwmol, &
   if (xx.gt.zero) then
     xx = sqrt(xx)
   else
-    write(*,*) 'Warning: negative term in density (wateos): ','t= ',t,' p= ',p,' xx= ',xx
+    write(*,*) 'Warning: negative term in density (eos_water.F90:EOSWaterDensityIFC67):'
+    write(*,*) 't= ',t,' p= ',p,' xx= ',xx
     ierr = 1
     xx = 1.e-6               !set arbitrarily
   end if
@@ -1245,7 +1247,8 @@ subroutine EOSWaterEnthalpyIFC67(t,p,hw, &
   if (xx.gt.zero) then
     xx = sqrt(xx)
   else
-    write(*,*) 'Warning: negative term in density (wateos): ','t= ',t,' p= ',p,' xx= ',xx
+    write(*,*) 'Warning: negative term in density (eos_water.F90:EOSWaterEnthalpyIFC67):'
+    write(*,*) 't= ',t,' p= ',p,' xx= ',xx
     ierr = 1
     xx = 1.e-6               !set arbitrarily
   end if
