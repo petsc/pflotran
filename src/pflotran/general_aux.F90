@@ -422,7 +422,8 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       ! two phase or everything blows up:
       if (gen_auxvar%pres(gid) <= 0.d0) then
         write(option%io_buffer,'(''Negative gas pressure at cell '', &
-          & i5,''in GeneralAuxVarCompute().  Attempting bailout.'')') ghosted_id
+          & i5,'' in GeneralAuxVarCompute().  Attempting bailout.'')') &
+          ghosted_id
         call printErrMsg(option)
         ! set vapor pressure to just under saturation pressure
         gen_auxvar%pres(vpid) = 0.5d0*gen_auxvar%pres(spid)
@@ -1104,29 +1105,29 @@ subroutine GeneralPrintAuxVars(general_auxvar,global_auxvar,ghosted_id, &
     case(TWO_PHASE_STATE)
       print *, ' Thermodynamic state: Two phase'
   end select
-  print *, '     liquid pressure: ', general_auxvar%pres(lid)
-  print *, '        gas pressure: ', general_auxvar%pres(gid)
-  print *, '        air pressure: ', general_auxvar%pres(apid)
-  print *, '  capillary pressure: ', general_auxvar%pres(cpid)
-  print *, '      vapor pressure: ', general_auxvar%pres(vpid)
-  print *, ' saturation pressure: ', general_auxvar%pres(spid)
-  print *, '   liquid saturation: ', general_auxvar%sat(lid)
-  print *, '      gas saturation: ', general_auxvar%sat(gid)
-  print *, 'liquid density [mol]: ', general_auxvar%den(lid)
-  print *, '   gas density [mol]: ', general_auxvar%den(gid)
-  print *, ' liquid density [kg]: ', general_auxvar%den_kg(lid)
-  print *, '    gas density [kg]: ', general_auxvar%den_kg(gid)
-  print *, '     temperature [C]: ', general_auxvar%temp
-  print *, '  liquid H [MJ/kmol]: ', general_auxvar%H(lid)
-  print *, '     gas H [MJ/kmol]: ', general_auxvar%H(gid)
-  print *, '  liquid U [MJ/kmol]: ', general_auxvar%U(lid)
-  print *, '     gas U [MJ/kmol]: ', general_auxvar%U(gid)
-  print *, ' X (water in liquid): ', general_auxvar%xmol(lid,lid)
-  print *, '   X (air in liquid): ', general_auxvar%xmol(gid,lid)
-  print *, '    X (water in gas): ', general_auxvar%xmol(lid,gid)
-  print *, '      X (air in gas): ', general_auxvar%xmol(gid,gid)
-  print *, '     liquid mobility: ', general_auxvar%mobility(lid)
-  print *, '        gas mobility: ', general_auxvar%mobility(gid)
+  print *, '      liquid pressure: ', general_auxvar%pres(lid)
+  print *, '         gas pressure: ', general_auxvar%pres(gid)
+  print *, '         air pressure: ', general_auxvar%pres(apid)
+  print *, '   capillary pressure: ', general_auxvar%pres(cpid)
+  print *, '       vapor pressure: ', general_auxvar%pres(vpid)
+  print *, '  saturation pressure: ', general_auxvar%pres(spid)
+  print *, '    liquid saturation: ', general_auxvar%sat(lid)
+  print *, '       gas saturation: ', general_auxvar%sat(gid)
+  print *, 'liquid density [kmol]: ', general_auxvar%den(lid)
+  print *, '   gas density [kmol]: ', general_auxvar%den(gid)
+  print *, '  liquid density [kg]: ', general_auxvar%den_kg(lid)
+  print *, '     gas density [kg]: ', general_auxvar%den_kg(gid)
+  print *, '      temperature [C]: ', general_auxvar%temp
+  print *, '   liquid H [MJ/kmol]: ', general_auxvar%H(lid)
+  print *, '      gas H [MJ/kmol]: ', general_auxvar%H(gid)
+  print *, '   liquid U [MJ/kmol]: ', general_auxvar%U(lid)
+  print *, '      gas U [MJ/kmol]: ', general_auxvar%U(gid)
+  print *, '  X (water in liquid): ', general_auxvar%xmol(lid,lid)
+  print *, '    X (air in liquid): ', general_auxvar%xmol(gid,lid)
+  print *, '     X (water in gas): ', general_auxvar%xmol(lid,gid)
+  print *, '       X (air in gas): ', general_auxvar%xmol(gid,gid)
+  print *, '      liquid mobility: ', general_auxvar%mobility(lid)
+  print *, '         gas mobility: ', general_auxvar%mobility(gid)
   print *, '--------------------------------------------------------'
 
 end subroutine GeneralPrintAuxVars
@@ -1188,29 +1189,29 @@ subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,ghosted_id, &
     case(TWO_PHASE_STATE)
       write(86,*) ' Thermodynamic state: Two phase'
   end select
-  write(86,*) '     liquid pressure: ', general_auxvar%pres(lid)
-  write(86,*) '        gas pressure: ', general_auxvar%pres(gid)
-  write(86,*) '        air pressure: ', general_auxvar%pres(apid)
-  write(86,*) '  capillary pressure: ', general_auxvar%pres(cpid)
-  write(86,*) '      vapor pressure: ', general_auxvar%pres(vpid)
-  write(86,*) ' saturation pressure: ', general_auxvar%pres(spid)
-  write(86,*) '     temperature [C]: ', general_auxvar%temp
-  write(86,*) '   liquid saturation: ', general_auxvar%sat(lid)
-  write(86,*) '      gas saturation: ', general_auxvar%sat(gid)
-  write(86,*) 'liquid density [mol]: ', general_auxvar%den(lid)
-  write(86,*) ' liquid density [kg]: ', general_auxvar%den_kg(lid)
-  write(86,*) '   gas density [mol]: ', general_auxvar%den(gid)
-  write(86,*) '    gas density [kg]: ', general_auxvar%den_kg(gid)
-  write(86,*) ' X (water in liquid): ', general_auxvar%xmol(lid,lid)
-  write(86,*) '   X (air in liquid): ', general_auxvar%xmol(gid,lid)
-  write(86,*) '    X (water in gas): ', general_auxvar%xmol(lid,gid)
-  write(86,*) '      X (air in gas): ', general_auxvar%xmol(gid,gid)
-  write(86,*) '  liquid H [MJ/kmol]: ', general_auxvar%H(lid)
-  write(86,*) '     gas H [MJ/kmol]: ', general_auxvar%H(gid)
-  write(86,*) '  liquid U [MJ/kmol]: ', general_auxvar%U(lid)
-  write(86,*) '     gas U [MJ/kmol]: ', general_auxvar%U(gid)
-  write(86,*) '     liquid mobility: ', general_auxvar%mobility(lid)
-  write(86,*) '        gas mobility: ', general_auxvar%mobility(gid)
+  write(86,*) '      liquid pressure: ', general_auxvar%pres(lid)
+  write(86,*) '         gas pressure: ', general_auxvar%pres(gid)
+  write(86,*) '         air pressure: ', general_auxvar%pres(apid)
+  write(86,*) '   capillary pressure: ', general_auxvar%pres(cpid)
+  write(86,*) '       vapor pressure: ', general_auxvar%pres(vpid)
+  write(86,*) '  saturation pressure: ', general_auxvar%pres(spid)
+  write(86,*) '      temperature [C]: ', general_auxvar%temp
+  write(86,*) '    liquid saturation: ', general_auxvar%sat(lid)
+  write(86,*) '       gas saturation: ', general_auxvar%sat(gid)
+  write(86,*) 'liquid density [kmol]: ', general_auxvar%den(lid)
+  write(86,*) '  liquid density [kg]: ', general_auxvar%den_kg(lid)
+  write(86,*) '   gas density [kmol]: ', general_auxvar%den(gid)
+  write(86,*) '     gas density [kg]: ', general_auxvar%den_kg(gid)
+  write(86,*) '  X (water in liquid): ', general_auxvar%xmol(lid,lid)
+  write(86,*) '    X (air in liquid): ', general_auxvar%xmol(gid,lid)
+  write(86,*) '     X (water in gas): ', general_auxvar%xmol(lid,gid)
+  write(86,*) '       X (air in gas): ', general_auxvar%xmol(gid,gid)
+  write(86,*) '   liquid H [MJ/kmol]: ', general_auxvar%H(lid)
+  write(86,*) '      gas H [MJ/kmol]: ', general_auxvar%H(gid)
+  write(86,*) '   liquid U [MJ/kmol]: ', general_auxvar%U(lid)
+  write(86,*) '      gas U [MJ/kmol]: ', general_auxvar%U(gid)
+  write(86,*) '      liquid mobility: ', general_auxvar%mobility(lid)
+  write(86,*) '         gas mobility: ', general_auxvar%mobility(gid)
   write(86,*) '...'
   write(86,*) general_auxvar%pres(lid)
   write(86,*) general_auxvar%pres(gid)
@@ -1289,50 +1290,50 @@ subroutine GeneralOutputAuxVars2(general_auxvars,global_auxvars,option)
     ((idof,i=1,n),idof=0,3)
   write(86,'(a,100('','',i2))') '               state: ', &
     (global_auxvars(i)%istate,i=1,n)
-  write(86,100) '     liquid pressure: ', &
+  write(86,100) '      liquid pressure: ', &
     ((general_auxvars(idof,i)%pres(lid),i=1,n),idof=0,3)
-  write(86,100) '        gas pressure: ', &
+  write(86,100) '         gas pressure: ', &
     ((general_auxvars(idof,i)%pres(gid),i=1,n),idof=0,3)
-  write(86,100) '        air pressure: ', &
+  write(86,100) '         air pressure: ', &
     ((general_auxvars(idof,i)%pres(apid),i=1,n),idof=0,3)
-  write(86,100) '  capillary pressure: ', &
+  write(86,100) '   capillary pressure: ', &
     ((general_auxvars(idof,i)%pres(cpid),i=1,n),idof=0,3)
-  write(86,100) '      vapor pressure: ', &
+  write(86,100) '       vapor pressure: ', &
     ((general_auxvars(idof,i)%pres(vpid),i=1,n),idof=0,3)
-  write(86,100) '     temperature [C]: ', &
+  write(86,100) '      temperature [C]: ', &
     ((general_auxvars(idof,i)%temp,i=1,n),idof=0,3)
-  write(86,100) '   liquid saturation: ', &
+  write(86,100) '    liquid saturation: ', &
     ((general_auxvars(idof,i)%sat(lid),i=1,n),idof=0,3)
-  write(86,100) '      gas saturation: ', &
+  write(86,100) '       gas saturation: ', &
     ((general_auxvars(idof,i)%sat(gid),i=1,n),idof=0,3)
-  write(86,100) 'liquid density [mol]: ', &
+  write(86,100) 'liquid density [kmol]: ', &
     ((general_auxvars(idof,i)%den(lid),i=1,n),idof=0,3)
-  write(86,100) ' liquid density [kg]: ', &
+  write(86,100) '  liquid density [kg]: ', &
     ((general_auxvars(idof,i)%den_kg(lid),i=1,n),idof=0,3)
-  write(86,100) '   gas density [mol]: ', &
+  write(86,100) '   gas density [kmol]: ', &
     ((general_auxvars(idof,i)%den(gid),i=1,n),idof=0,3)
-  write(86,100) '    gas density [kg]: ', &
+  write(86,100) '     gas density [kg]: ', &
     ((general_auxvars(idof,i)%den_kg(gid),i=1,n),idof=0,3)
-  write(86,100) ' X (water in liquid): ', &
+  write(86,100) '  X (water in liquid): ', &
     ((general_auxvars(idof,i)%xmol(lid,lid),i=1,n),idof=0,3)
-  write(86,100) '   X (air in liquid): ', &
+  write(86,100) '    X (air in liquid): ', &
     ((general_auxvars(idof,i)%xmol(gid,lid),i=1,n),idof=0,3)
-  write(86,100) '    X (water in gas): ', &
+  write(86,100) '     X (water in gas): ', &
     ((general_auxvars(idof,i)%xmol(lid,gid),i=1,n),idof=0,3)
-  write(86,100) '      X (air in gas): ', &
+  write(86,100) '       X (air in gas): ', &
     ((general_auxvars(idof,i)%xmol(gid,gid),i=1,n),idof=0,3)
-  write(86,100) '  liquid H [MJ/kmol]: ', &
+  write(86,100) '   liquid H [MJ/kmol]: ', &
     ((general_auxvars(idof,i)%H(lid),i=1,n),idof=0,3)
-  write(86,100) '     gas H [MJ/kmol]: ', &
+  write(86,100) '      gas H [MJ/kmol]: ', &
     ((general_auxvars(idof,i)%H(gid),i=1,n),idof=0,3)
-  write(86,100) '  liquid U [MJ/kmol]: ', &
+  write(86,100) '   liquid U [MJ/kmol]: ', &
     ((general_auxvars(idof,i)%U(lid),i=1,n),idof=0,3)
-  write(86,100) '     gas U [MJ/kmol]: ', &
+  write(86,100) '      gas U [MJ/kmol]: ', &
     ((general_auxvars(idof,i)%U(gid),i=1,n),idof=0,3)
   write(86,*)
-  write(86,100) '     liquid mobility: ', &
+  write(86,100) '      liquid mobility: ', &
     ((general_auxvars(idof,i)%mobility(lid),i=1,n),idof=0,3)
-  write(86,100) '        gas mobility: ', &
+  write(86,100) '         gas mobility: ', &
     ((general_auxvars(idof,i)%mobility(gid),i=1,n),idof=0,3)
   
   close(86)
