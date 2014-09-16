@@ -3622,37 +3622,37 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
       (max(global_inf_norm_scaled_residual(idof,2),0.d0),idof=1,3)
     write(*,'(4x,''-+  srl:'',es12.4,''  srg:'',es12.4,'' sre:'',es12.4)') &
       (max(global_inf_norm_scaled_residual(idof,3),0.d0),idof=1,3)
-    write(*,'(4x,''-+ rul icell:'',i7,''  st:'',i3,''  X:'',es11.3, &
+    write(*,'(4x,''-+ ru1 icell:'',i7,''  st:'',i3,''  X:'',es11.3, &
               &''  dX:'',es11.3,''  R:'',es11.3)') &
       icell_max_rel_update(1), istate_max_rel_update(1), &
       X0_p((icell_max_rel_update(1)-1)*3+1), &
       -1.d0*dX_p((icell_max_rel_update(1)-1)*3+1), &
       r_p((icell_max_rel_update(1)-1)*3+1)
-    write(*,'(4x,''-+ rug icell:'',i7,''  st:'',i3,''  X:'',es11.3, &
+    write(*,'(4x,''-+ ru2 icell:'',i7,''  st:'',i3,''  X:'',es11.3, &
               &''  dX:'',es11.3,''  R:'',es11.3)') &
       icell_max_rel_update(2), istate_max_rel_update(2), &
       X0_p((icell_max_rel_update(2)-1)*3+2), &
       -1.d0*dX_p((icell_max_rel_update(2)-1)*3+2), &
       r_p((icell_max_rel_update(2)-1)*3+2)
-    write(*,'(4x,''-+ rut icell:'',i7,''  st:'',i3,''  X:'',es11.3, &
+    write(*,'(4x,''-+ ru3 icell:'',i7,''  st:'',i3,''  X:'',es11.3, &
               &''  dX:'',es11.3,''  R:'',es11.3)') &
       icell_max_rel_update(3), istate_max_rel_update(3), &
       X0_p((icell_max_rel_update(3)-1)*3+3), &
       -1.d0*dX_p((icell_max_rel_update(3)-1)*3+3), &
       r_p((icell_max_rel_update(3)-1)*3+3)
-    write(*,'(4x,''-+ srl icell:'',i7,''  st:'',i3,''  X:'',es11.3, &
+    write(*,'(4x,''-+ sr1 icell:'',i7,''  st:'',i3,''  X:'',es11.3, &
               &''  dX:'',es11.3,''  R:'',es11.3)') &
       icell_max_scaled_residual(1), istate_max_scaled_residual(1), &
       X0_p((icell_max_scaled_residual(1)-1)*3+1), &
       -1.d0*dX_p((icell_max_scaled_residual(1)-1)*3+1), &
       r_p((icell_max_scaled_residual(1)-1)*3+1)
-    write(*,'(4x,''-+ srg icell:'',i7,''  st:'',i3,''  X:'',es11.3, &
+    write(*,'(4x,''-+ sr2 icell:'',i7,''  st:'',i3,''  X:'',es11.3, &
               &''  dX:'',es11.3,''  R:'',es11.3)') &
       icell_max_scaled_residual(2), istate_max_scaled_residual(2), &
       X0_p((icell_max_scaled_residual(2)-1)*3+2), &
       -1.d0*dX_p((icell_max_scaled_residual(2)-1)*3+2), &
       r_p((icell_max_scaled_residual(2)-1)*3+2)
-    write(*,'(4x,''-+ sre icell:'',i7,''  st:'',i3,''  X:'',es11.3, &
+    write(*,'(4x,''-+ sr3 icell:'',i7,''  st:'',i3,''  X:'',es11.3, &
               &''  dX:'',es11.3,''  R:'',es11.3)') &
       icell_max_scaled_residual(3), istate_max_scaled_residual(3), &
       X0_p((icell_max_scaled_residual(3)-1)*3+3), &
