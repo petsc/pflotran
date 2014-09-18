@@ -91,7 +91,7 @@ for root in source_file_roots:
         key = module_dictionary[module]
       except KeyError:
         # need to skip hdf5
-        if not module.startswith('hdf5'):
+        if not module.startswith('hdf5') and not module.startswith('h5lt'):
           print('Module "%s" not found in dictionary.\n' % module)
           print(root, module)
           sys.exit()

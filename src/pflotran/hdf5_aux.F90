@@ -552,6 +552,7 @@ subroutine HDF5ReadDbase(filename,option)
       if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
       call h5sclose_f(file_space_id,hdf5_err)
       call h5dclose_f(dataset_id,hdf5_err)
+      call StringToUpper(object_name)
       dbase%card(icount) = trim(object_name)
       if (option%id > 0) then
         if (option%id > num_reals_in_dataset) then

@@ -760,6 +760,7 @@ subroutine MaterialPropConvertListToArray(list,array,option)
     cur_material_property => cur_material_property%next
   enddo
   
+  if(associated(array)) deallocate(array)
   allocate(array(max_internal_id))
   do i = 1, max_internal_id
     nullify(array(i)%ptr)

@@ -30,6 +30,13 @@ module TH_Aux_module
     PetscReal, pointer :: xmol(:)
     PetscReal, pointer :: diff(:)
     PetscReal :: transient_por
+    PetscReal :: Dk_eff
+    PetscReal :: Ke
+    PetscReal :: Ke_fr
+    PetscReal :: dKe_dp
+    PetscReal :: dKe_dt
+    PetscReal :: dKe_fr_dp
+    PetscReal :: dKe_fr_dt
     ! ice
     PetscReal :: sat_ice
     PetscReal :: sat_gas
@@ -89,6 +96,7 @@ module TH_Aux_module
     type(TH_auxvar_type), pointer :: auxvars_ss(:)
   end type TH_type
 
+  PetscReal, parameter :: epsilon = 1.d-6
 
   public :: THAuxCreate, THAuxDestroy, &
             THAuxVarComputeNoFreezing, THAuxVarInit, &
@@ -188,6 +196,13 @@ subroutine THAuxVarInit(auxvar,option)
   auxvar%du_dp = 0.d0
   auxvar%du_dt = 0.d0    
   auxvar%transient_por = 0.d0
+  auxvar%Dk_eff = 0.d0
+  auxvar%Ke = 0.d0
+  auxvar%Ke_fr = 0.d0
+  auxvar%dKe_dp = 0.d0
+  auxvar%dKe_dt = 0.d0
+  auxvar%dKe_fr_dp = 0.d0
+  auxvar%dKe_fr_dt = 0.d0
   allocate(auxvar%xmol(option%nflowspec))
   auxvar%xmol = 0.d0
   allocate(auxvar%diff(option%nflowspec))
@@ -266,6 +281,13 @@ subroutine THAuxVarCopy(auxvar,auxvar2,option)
   auxvar2%du_dp = auxvar%du_dp
   auxvar2%du_dt = auxvar%du_dt  
   auxvar2%transient_por = auxvar%transient_por
+  auxvar2%Dk_eff = auxvar%Dk_eff
+  auxvar2%Ke = auxvar%Ke
+  auxvar2%Ke_fr = auxvar%Ke_fr
+  auxvar2%dKe_dp = auxvar%dKe_dp
+  auxvar2%dKe_fr_dp = auxvar%dKe_fr_dp
+  auxvar2%dKe_dt = auxvar%dKe_dt
+  auxvar2%dKe_fr_dt = auxvar%dKe_fr_dt
   auxvar2%xmol = auxvar%xmol
   auxvar2%diff = auxvar%diff
   if (option%use_th_freezing) then
@@ -307,6 +329,7 @@ end subroutine THAuxVarCopy
 subroutine THAuxVarComputeNoFreezing(x,auxvar,global_auxvar, &
                                      material_auxvar, &
                                      iphase,saturation_function, &
+                                     th_parameter, ithrm, &
                                      option)
   ! 
   ! Computes auxiliary variables for each grid cell
@@ -330,6 +353,8 @@ subroutine THAuxVarComputeNoFreezing(x,auxvar,global_auxvar, &
   type(TH_auxvar_type) :: auxvar
   type(global_auxvar_type) :: global_auxvar
   PetscInt :: iphase
+  type(TH_parameter_type) :: th_parameter
+  PetscInt :: ithrm
   class(material_auxvar_type) :: material_auxvar
 
   PetscErrorCode :: ierr
@@ -339,7 +364,11 @@ subroutine THAuxVarComputeNoFreezing(x,auxvar,global_auxvar, &
   PetscReal :: dw_dp, dw_dt, hw_dp, hw_dt
   PetscReal :: dpw_dp
   PetscReal :: dpsat_dt
-  
+  PetscReal :: Ke
+  PetscReal :: alpha
+  PetscReal :: Dk
+  PetscReal :: Dk_dry
+
 ! auxvar%den = 0.d0
 ! auxvar%den_kg = 0.d0
   global_auxvar%sat = 0.d0
@@ -443,6 +472,22 @@ subroutine THAuxVarComputeNoFreezing(x,auxvar,global_auxvar, &
   auxvar%dh_dt = hw_dt
   auxvar%du_dt = hw_dt + pw/(dw_mol*dw_mol)*option%scale*dw_dt
   
+  ! Parameters for computation of effective thermal conductivity
+  alpha = th_parameter%alpha(ithrm)
+  Dk = th_parameter%ckwet(ithrm)
+  Dk_dry = th_parameter%ckdry(ithrm)
+
+  !unfrozen soil Kersten number
+  Ke = (global_auxvar%sat(1) + epsilon)**(alpha)
+  auxvar%Ke = Ke
+
+  ! Effective thermal conductivity
+  auxvar%Dk_eff = Dk_dry + (Dk - Dk_dry)*Ke
+
+  ! Derivative of soil Kersten number
+  auxvar%dKe_dp = alpha*(global_auxvar%sat(1) + epsilon)**(alpha - 1.d0)*auxvar%dsat_dp
+  auxvar%dKe_dt = 0.d0
+
 end subroutine THAuxVarComputeNoFreezing
 
 ! ************************************************************************** !
@@ -451,6 +496,7 @@ subroutine THAuxVarComputeFreezing(x, auxvar, global_auxvar, &
                                    material_auxvar, &
                                    iphase, &
                                    saturation_function, &
+                                   th_parameter, ithrm, &
                                    option)
   ! 
   ! Computes auxillary variables for each grid cell when
@@ -477,6 +523,8 @@ subroutine THAuxVarComputeFreezing(x, auxvar, global_auxvar, &
   type(TH_auxvar_type) :: auxvar
   type(global_auxvar_type) :: global_auxvar
   class(material_auxvar_type) :: material_auxvar
+  type(TH_parameter_type) :: th_parameter
+  PetscInt :: ithrm
   PetscInt :: iphase
 
   PetscErrorCode :: ierr
@@ -502,6 +550,14 @@ subroutine THAuxVarComputeFreezing(x, auxvar, global_auxvar, &
   PetscReal :: dmolg_dt
   PetscReal, parameter :: C_a = 1.86d-3 ! in MJ/kg/K at 300K
   PetscReal, parameter :: C_wv = 1.005d-3 ! in MJ/kg/K
+
+  PetscReal :: Ke
+  PetscReal :: Ke_fr
+  PetscReal :: alpha
+  PetscReal :: alpha_fr
+  PetscReal :: Dk
+  PetscReal :: Dk_dry
+  PetscReal :: Dk_ice
 
   out_of_table_flag = PETSC_FALSE
  
@@ -680,6 +736,28 @@ subroutine THAuxVarComputeFreezing(x, auxvar, global_auxvar, &
 !    internal energy of ice and water might not be correct.
 !    auxvar%du_ice_dt = auxvar%du_dt
   endif
+
+  ! Parameters for computation of effective thermal conductivity
+  alpha = th_parameter%alpha(ithrm)
+  alpha_fr = th_parameter%alpha_fr(ithrm)
+  Dk = th_parameter%ckwet(ithrm)
+  Dk_dry = th_parameter%ckdry(ithrm)
+  Dk_ice = th_parameter%ckfrozen(ithrm)
+
+  !Soil Kersten number
+  Ke = (global_auxvar%sat(1) + epsilon)**(alpha)
+  Ke_fr = (auxvar%sat_ice + epsilon)**(alpha_fr)
+  auxvar%Ke = Ke
+  auxvar%Ke_fr = Ke_fr
+
+  ! Effective thermal conductivity
+  auxvar%Dk_eff = Dk*Ke + Dk_ice*Ke_fr + (1.d0 - Ke - Ke_fr)*Dk_dry
+
+  ! Derivative of Kersten number
+  auxvar%dKe_dp = alpha*(global_auxvar%sat(1) + epsilon)**(alpha - 1.d0)*auxvar%dsat_dp
+  auxvar%dKe_dt = alpha*(global_auxvar%sat(1) + epsilon)**(alpha - 1.d0)*auxvar%dsat_dt
+  auxvar%dKe_fr_dt = alpha_fr*(global_auxvar%sat(1) + epsilon)**(alpha_fr - 1.d0)*auxvar%dsat_dt
+  auxvar%dKe_fr_dp = alpha_fr*(global_auxvar%sat(1) + epsilon)**(alpha_fr - 1.d0)*auxvar%dsat_dp
 
 end subroutine THAuxVarComputeFreezing
 
