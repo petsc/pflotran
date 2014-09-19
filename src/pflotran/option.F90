@@ -212,6 +212,9 @@ module Option_module
     PetscInt :: rel_perm_aveg
     PetscBool :: first_step_after_restart
 
+    ! value of a cutoff for Manning's velocity
+    PetscReal :: max_manning_velocity
+
   end type option_type
   
   PetscInt, parameter, public :: SUBSURFACE_SIM_TYPE = 1
@@ -371,7 +374,7 @@ subroutine OptionInitAll(option)
  
   option%rel_perm_aveg = UPWIND
   option%first_step_after_restart = PETSC_FALSE
-
+  
   call OptionInitRealization(option)
 
 end subroutine OptionInitAll
@@ -566,6 +569,9 @@ subroutine OptionInitRealization(option)
   option%print_explicit_primal_grid = PETSC_FALSE
   option%print_explicit_dual_grid = PETSC_FALSE  
   option%secondary_continuum_solver = 1
+
+  ! initially set to a large value to effectively disable
+  option%max_manning_velocity = 1.d20
   
 end subroutine OptionInitRealization
 
@@ -603,6 +609,9 @@ subroutine OptionCheckCommandLine(option)
   call PetscOptionsGetInt(PETSC_NULL_CHARACTER, '-chkptfreq', &
                           option%checkpoint_frequency, &
                           option%checkpoint_flag, ierr);CHKERRQ(ierr)
+  call PetscOptionsGetReal(PETSC_NULL_CHARACTER, '-max_manning_velocity', &
+                           option%max_manning_velocity, &
+                           option_found, ierr);CHKERRQ(ierr)
   ! check on possible modes                                                     
   option_found = PETSC_FALSE
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_richards", &
