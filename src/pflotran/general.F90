@@ -3455,6 +3455,7 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   PetscBool :: X1_changed
   
   PetscReal, pointer :: X0_p(:)
+  PetscReal, pointer :: X1_p(:)
   PetscReal, pointer :: dX_p(:)
   PetscReal, pointer :: r_p(:)
   PetscReal, pointer :: accum_p(:)
@@ -3669,6 +3670,19 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
     call VecRestoreArrayReadF90(field%flow_r,r_p,ierr);CHKERRQ(ierr)
     call VecRestoreArrayReadF90(field%flow_accum,accum_p,ierr);CHKERRQ(ierr)
   endif
+
+  call VecGetArrayF90(X1,X1_p,ierr);CHKERRQ(ierr)
+  do local_id = 1, grid%nlmax
+    offset = (local_id-1)*option%nflowdof
+    ghosted_id = grid%nL2G(local_id)
+    if (realization%patch%imat(ghosted_id) <= 0) cycle
+    istate = global_auxvars(ghosted_id)%istate
+    if (istate == LIQUID_STATE .and. X1_p(offset+2) < 0.d0) then
+        X1_p(offset+2) = 0.d0
+        X1_changed = PETSC_TRUE
+    endif
+  enddo
+  call VecRestoreArrayF90(X1,X1_p,ierr);CHKERRQ(ierr)
   
 end subroutine GeneralCheckUpdatePost
 
