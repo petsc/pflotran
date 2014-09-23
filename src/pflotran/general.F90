@@ -2465,14 +2465,14 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   
   
   if (realization%debug%vecview_residual) then
-    call PetscViewerASCIIOpen(realization%option%mycomm,'Gresidual.out', &
-                              viewer,ierr);CHKERRQ(ierr)
+    string = 'Gresidual'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
     call VecView(r,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
   if (realization%debug%vecview_solution) then
-    call PetscViewerASCIIOpen(realization%option%mycomm,'Gxx.out', &
-                              viewer,ierr);CHKERRQ(ierr)
+    string = 'Gxx'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
     call VecView(xx,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
@@ -2680,8 +2680,8 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
-    call PetscViewerASCIIOpen(option%mycomm,'jacobian_flux.out',viewer, &
-                              ierr);CHKERRQ(ierr)
+    string = 'jacobian_flux'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
     call MatView(A,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
@@ -2735,8 +2735,8 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
-    call PetscViewerASCIIOpen(option%mycomm,'jacobian_bcflux.out',viewer, &
-                              ierr);CHKERRQ(ierr)
+    string = 'jacobian_bcflux'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
     call MatView(A,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
@@ -2744,8 +2744,8 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
-    call PetscViewerASCIIOpen(option%mycomm,'jacobian_accum.out',viewer, &
-                              ierr);CHKERRQ(ierr)
+    string = 'jacobian_accum'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
     call MatView(A,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
@@ -2790,8 +2790,8 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
-    call PetscViewerASCIIOpen(option%mycomm,'jacobian_srcsink.out',viewer, &
-                              ierr);CHKERRQ(ierr)
+    string = 'jacobian_srcsink'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
     call MatView(A,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
@@ -2835,13 +2835,8 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
   endif
   
   if (realization%debug%matview_Jacobian) then
-#if 1  
-    call PetscViewerASCIIOpen(realization%option%mycomm,'Gjacobian.out', &
-                              viewer,ierr);CHKERRQ(ierr)
-#else
-    call PetscViewerBinaryOpen(realization%option%mycomm,'Gjacobian.bin', &
-                               FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-#endif    
+    string = 'Gjacobian'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
     call MatView(J,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif

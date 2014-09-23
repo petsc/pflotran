@@ -1322,6 +1322,7 @@ subroutine MiscibleResidual(snes,xx,r,realization,ierr)
   use Option_module
   use Grid_module 
   use Logging_module
+  use Debug_module
 
   implicit none
 
@@ -1338,6 +1339,7 @@ subroutine MiscibleResidual(snes,xx,r,realization,ierr)
   type(field_type), pointer :: field
   type(patch_type), pointer :: cur_patch
   PetscInt :: ichange  
+  character(len=MAXSTRINGLENGTH) :: string
 
   field => realization%field
   grid => realization%patch%grid
@@ -1399,14 +1401,14 @@ subroutine MiscibleResidual(snes,xx,r,realization,ierr)
   enddo
 
   if (realization%debug%vecview_residual) then
-    call PetscViewerASCIIOpen(realization%option%mycomm,'Rresidual.out', &
-                              viewer,ierr);CHKERRQ(ierr)
+    string = 'Rresidual'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
     call VecView(r,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
   if (realization%debug%vecview_solution) then
-    call PetscViewerASCIIOpen(realization%option%mycomm,'Rxx.out', &
-                              viewer,ierr);CHKERRQ(ierr)
+    string = 'Rxx'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
     call VecView(xx,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
@@ -2143,6 +2145,7 @@ subroutine MiscibleJacobian(snes,xx,A,B,realization,ierr)
   use Grid_module
   use Option_module
   use Logging_module
+  use Debug_module
   
   implicit none
 
@@ -2155,6 +2158,7 @@ subroutine MiscibleJacobian(snes,xx,A,B,realization,ierr)
   PetscViewer :: viewer
   type(patch_type), pointer :: cur_patch
   type(grid_type),  pointer :: grid
+  character(len=MAXSTRINGLENGTH) :: string
 
   call PetscLogEventBegin(logging%event_r_jacobian,ierr);CHKERRQ(ierr)
 
@@ -2190,13 +2194,8 @@ subroutine MiscibleJacobian(snes,xx,A,B,realization,ierr)
 
 
   if (realization%debug%matview_Jacobian) then
-#if 1  
-    call PetscViewerASCIIOpen(realization%option%mycomm,'Rjacobian.out', &
-                              viewer,ierr);CHKERRQ(ierr)
-#else
-    call PetscViewerBinaryOpen(realization%option%mycomm,'Rjacobian.bin', &
-                               FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-#endif    
+    string = 'Rjacobian'
+    call DebugCreateViewer(realization%debug,string,realization%option,viewer)
     call MatView(J,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
@@ -2306,6 +2305,8 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,realization,ierr)
   
   PetscViewer :: viewer
   Vec :: debug_vec
+  character(len=MAXSTRINGLENGTH) :: string
+
 !-----------------------------------------------------------------------
 ! R stand for residual
 !  ra       1              2              3              4          5              6            7      8
@@ -2475,8 +2476,8 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,realization,ierr)
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
-    call PetscViewerASCIIOpen(option%mycomm,'jacobian_bcflux.out',viewer, &
-                              ierr);CHKERRQ(ierr)
+    string = 'jacobian_bcflux'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
     call MatView(A,PETSC_VIEWER_STDOUT_WORLD,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
@@ -2593,8 +2594,8 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,realization,ierr)
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
-    call PetscViewerASCIIOpen(option%mycomm,'jacobian_flux.out',viewer, &
-                              ierr);CHKERRQ(ierr)
+    string = 'jacobian_flux'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
     call MatView(A,PETSC_VIEWER_STDOUT_WORLD,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
@@ -2699,6 +2700,8 @@ subroutine MiscibleJacobianPatch2(snes,xx,A,B,realization,ierr)
   
   PetscViewer :: viewer
   Vec :: debug_vec
+  character(len=MAXSTRINGLENGTH) :: string
+
 !-----------------------------------------------------------------------
 ! R stand for residual
 !  ra       1              2              3              4          5              6            7      8
@@ -2861,8 +2864,8 @@ subroutine MiscibleJacobianPatch2(snes,xx,A,B,realization,ierr)
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
-    call PetscViewerASCIIOpen(option%mycomm,'jacobian_srcsink.out',viewer, &
-                              ierr);CHKERRQ(ierr)
+    string = 'jacobian_srcsink'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
     call MatView(A,PETSC_VIEWER_STDOUT_WORLD,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
@@ -2912,8 +2915,8 @@ subroutine MiscibleJacobianPatch2(snes,xx,A,B,realization,ierr)
   endif
 
   if (realization%debug%matview_Jacobian) then
-    call PetscViewerASCIIOpen(option%mycomm,'Rjacobian.out',viewer, &
-                              ierr);CHKERRQ(ierr)
+    string = 'Rjacobian'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
     call MatView(A,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
