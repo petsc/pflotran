@@ -1273,8 +1273,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
       ! for now, if liquid state neighboring gas, we allow for minute
       ! diffusion in liquid phase.
       if (iphase == option%liquid_phase) then
-        if ((sat_up > eps .and. sat_dn > eps) .or. &
-            (sat_up < eps .and. sat_dn < eps)) then
+        if ((sat_up > eps .or. sat_dn > eps)) then
           sat_up = max(sat_up,eps)
           sat_dn = max(sat_dn,eps)
         endif
