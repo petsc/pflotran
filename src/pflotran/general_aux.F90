@@ -711,10 +711,10 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         liquid_epsilon = epsilon
         ! gas pressure can never be less than zero.
         x(GENERAL_GAS_PRESSURE_DOF) = &
-          gen_auxvar%pres(lid) * (1.d0 + liquid_epsilon)
-!geh: gas pressure cannot drop below saturation pressure
-!geh        if (x(GENERAL_GAS_PRESSURE_DOF) <= 0.d0) then
-        if (x(GENERAL_GAS_PRESSURE_DOF) <= gen_auxvar%pres(spid)) then
+!geh          gen_auxvar%pres(lid) * (1.d0 + liquid_epsilon)
+          max(gen_auxvar%pres(lid) * (1.d0 + liquid_epsilon), &
+              gen_auxvar%pres(apid) + gen_auxvar%pres(spid))
+        if (x(GENERAL_GAS_PRESSURE_DOF) <= 0.d0) then
           write(string,*) ghosted_id
           option%io_buffer = 'Negative gas pressure during state change ' // &
             'at ' // trim(adjustl(string))
