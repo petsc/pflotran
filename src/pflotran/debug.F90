@@ -15,6 +15,8 @@ module Debug_module
     PetscBool :: matview_Jacobian_detailed
     PetscBool :: norm_Jacobian
 
+    PetscBool :: binary_format
+
     PetscBool :: print_numerical_derivatives
 
     PetscBool :: print_couplers
@@ -22,7 +24,7 @@ module Debug_module
     PetscBool :: print_waypoints
   end type debug_type
 
-  public :: DebugCreate, DebugRead, DebugDestroy
+  public :: DebugCreate, DebugRead, DebugCreateViewer, DebugDestroy
   
 contains
 
@@ -49,6 +51,8 @@ function DebugCreate()
   debug%matview_Jacobian = PETSC_FALSE
   debug%matview_Jacobian_detailed = PETSC_FALSE
   debug%norm_Jacobian = PETSC_FALSE
+
+  debug%binary_format = PETSC_FALSE
   
   debug%print_numerical_derivatives = PETSC_FALSE
   
@@ -110,6 +114,8 @@ subroutine DebugRead(debug,input,option)
         debug%print_numerical_derivatives = PETSC_TRUE
       case('WAYPOINTS')
         debug%print_waypoints = PETSC_TRUE
+      case('BINARY_FORMAT')
+        debug%binary_format = PETSC_TRUE
       case default
         option%io_buffer = 'Option "' // trim(keyword) // &
           '" not recognized under DEBUG.'
@@ -119,6 +125,44 @@ subroutine DebugRead(debug,input,option)
   enddo  
 
 end subroutine DebugRead
+
+! ************************************************************************** !
+
+subroutine DebugCreateViewer(debug,viewer_name_prefix,option,viewer)
+  !
+  ! Creates a PETSc viewer for saving PETSc vector or matrix in ASCII or
+  ! binary format
+  !
+  ! Author: Gautam Bisht
+  ! Date: 09/23/14
+  !
+
+  use Option_module
+  implicit none
+
+#include "finclude/petscsys.h"
+#include "finclude/petscviewer.h"
+
+  type(debug_type), pointer :: debug
+  character(len=MAXSTRINGLENGTH), intent(in) :: viewer_name_prefix
+  type(option_type) :: option
+  PetscViewer, intent (inout) :: viewer
+
+  character(len=MAXWORDLENGTH) :: viewer_name
+  PetscErrorCode :: ierr
+
+  if (debug%binary_format) then
+    viewer_name = trim(adjustl(viewer_name_prefix)) // '.bin'
+    call PetscViewerBinaryOpen(option%mycomm,viewer_name, &
+                               FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
+  else
+    viewer_name = trim(viewer_name_prefix) // '.out'
+    call PetscViewerASCIIOpen(option%mycomm,viewer_name,viewer, &
+                              ierr);CHKERRQ(ierr)
+  endif
+
+
+end subroutine DebugCreateViewer
 
 ! ************************************************************************** !
 
