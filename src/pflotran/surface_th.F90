@@ -1214,34 +1214,44 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
   surf_auxvars => patch%surf_aux%SurfaceTH%auxvars
   surf_auxvars_bc => patch%surf_aux%SurfaceTH%auxvars_bc
 
-  ! Number of iterations to solve for T^{t+1}
-  ! T^{t+1,m} = (rho Cwi hw T)^{t+1} / rho^{t+1,m-1} Cw)^{t} (hw)^{t+1}
-  ! niter = max(m)
+  !
+  ! The unknown for the energy balance in the surface domain is
+  ! energy. Thus we need to compute a temperature, which results in
+  ! finding the root of the following nonlinear equation,
+  !
+  ! Residual(T) = rho(T) Cwi hw T - energy = 0
+  !
+  ! This we do by fixed point iteration for a fixed number of iterations.
+  !
   niter = 20
 
   call VecGetArrayF90(surf_field%flow_xx_loc,xx_loc_p,ierr);CHKERRQ(ierr)
 
-  ! Update internal aux vars
   do ghosted_id = 1,grid%ngmax
     local_id = grid%nG2L(ghosted_id)
     if(local_id>0) then
-      iend = local_id*option%nflowdof
-      istart = iend-option%nflowdof+1
+      istart = (local_id-1)*option%nflowdof+1 ! surface water height dof
+      iend   = istart+1                       ! surface energy dof
       if (xx_loc_p(istart) < MIN_SURFACE_WATER_HEIGHT) then
+        ! If the cell is dry then we set temperature to a dummy value
+        ! and then zero out the water height and energy.
         surf_global_auxvars(ghosted_id)%is_dry = PETSC_TRUE
-        !temp = option%reference_temperature
         temp = DUMMY_VALUE
-        xx_loc_p(iend) = 0.d0
-        xx_loc_p(istart) = 0.d0
-
+        xx_loc_p(istart) = 0.d0 ! no water 
+        xx_loc_p(iend)   = 0.d0 ! no energy
       else
+        ! If they cell is not dry, then we must solve for the
+        ! temperature. But if the cell was previously dry, then its
+        ! current guess of temperature is DUMMY_VALUE which makes
+        ! EOSWaterDensity return nonsensical values. So here we
+        ! initialize density assuming reference pressure and
+        ! temperature at freezing.
         surf_global_auxvars(ghosted_id)%is_dry = PETSC_FALSE
         if (surf_global_auxvars(ghosted_id)%temp == DUMMY_VALUE) then
           call EOSWaterdensity(0.d0,option%reference_pressure,den,dum1,ierr)
           surf_global_auxvars(ghosted_id)%den_kg(1) = den
         endif
-
-        ! T^{t+1,m} = (rho Cwi hw T)^{t+1} / rho^{t+1,m-1} Cw)^{t} (hw)^{t+1}
+        ! Fixed point iteration loop
         do iter = 1,niter
           temp = xx_loc_p(iend)/xx_loc_p(istart)/ &
                   surf_global_auxvars(ghosted_id)%den_kg(1)/ &
@@ -1249,7 +1259,6 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
           call EOSWaterdensity(temp,option%reference_pressure,den,dum1,ierr)
           surf_global_auxvars(ghosted_id)%den_kg(1) = den
         enddo
-
       endif
       surf_global_auxvars(ghosted_id)%temp = temp
     endif
