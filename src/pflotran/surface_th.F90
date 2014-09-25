@@ -1196,12 +1196,13 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
   PetscReal, pointer :: perm_xx_loc_p(:), porosity_loc_p(:)
   PetscReal :: xxbc(surf_realization%option%nflowdof)
   PetscReal :: xxss(surf_realization%option%nflowdof)
-  PetscReal :: temp
+  PetscReal :: temp,ptemp,rtol
   PetscInt :: iter
   PetscInt :: niter
   PetscReal :: den
   PetscReal :: dum1
   PetscErrorCode :: ierr
+  PetscBool :: found
 
   option => surf_realization%option
   patch => surf_realization%patch
@@ -1221,9 +1222,12 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
   !
   ! Residual(T) = rho(T) Cwi hw T - energy = 0
   !
-  ! This we do by fixed point iteration for a fixed number of iterations.
+  ! This we do by fixed point iteration until the relative difference
+  ! between iterations falls below a tolerance. 
   !
   niter = 20
+  rtol  = 1.0d-12
+  found = PETSC_FALSE
 
   call VecGetArrayF90(surf_field%flow_xx_loc,xx_loc_p,ierr);CHKERRQ(ierr)
 
@@ -1252,13 +1256,24 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
           surf_global_auxvars(ghosted_id)%den_kg(1) = den
         endif
         ! Fixed point iteration loop
+        temp = 0.d0
         do iter = 1,niter
-          temp = xx_loc_p(iend)/xx_loc_p(istart)/ &
+          ptemp = temp
+          temp  = xx_loc_p(iend)/xx_loc_p(istart)/ &
                   surf_global_auxvars(ghosted_id)%den_kg(1)/ &
                   surf_auxvars(ghosted_id)%Cwi - 273.15d0
           call EOSWaterdensity(temp,option%reference_pressure,den,dum1,ierr)
           surf_global_auxvars(ghosted_id)%den_kg(1) = den
+          if (abs((temp-ptemp)/(temp+273.15d0))<rtol) then
+            found = PETSC_TRUE
+            exit
+          endif
         enddo
+        if (found .eqv. PETSC_FALSE) then
+          write(option%io_buffer, &
+                '("surface_th.F90: SurfaceTHUpdateTemperature --> fixed point not found!")')
+          call printErrMsg(option)
+        endif
       endif
       surf_global_auxvars(ghosted_id)%temp = temp
     endif
