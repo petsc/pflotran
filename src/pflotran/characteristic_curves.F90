@@ -8,14 +8,23 @@ module Characteristic_Curves_module
 
 #include "finclude/petscsys.h"
 
+  type :: polynomial_type
+    PetscReal :: low
+    PetscReal :: high
+    PetscReal :: coefficients(4)
+  end type polynomial_type
+
   ! Saturation Function
   type :: sat_func_base_type
+    type(polynomial_type), pointer :: sat_poly
+    type(polynomial_type), pointer :: pres_poly
     PetscReal :: Sr
     PetscReal :: pcmax
   contains
     procedure, public :: Init => SFBaseInit
-    procedure, public :: CapillaryPressure => SF_Base_CapillaryPressure
-    procedure, public :: Saturation => SF_Base_Saturation
+    procedure, public :: SetupPolynomials => SFBaseSetupPolynomials
+    procedure, public :: CapillaryPressure => SFBaseCapillaryPressure
+    procedure, public :: Saturation => SFBaseSaturation
   end type sat_func_base_type
   type, public, extends(sat_func_base_type) :: sat_func_VG_type
     PetscReal :: alpha
@@ -25,26 +34,50 @@ module Characteristic_Curves_module
     procedure, public :: CapillaryPressure => SF_VG_CapillaryPressure
     procedure, public :: Saturation => SF_VG_Saturation
   end type sat_func_VG_type  
+  type, public, extends(sat_func_base_type) :: sat_func_BC_type
+    PetscReal :: alpha
+    PetscReal :: lambda
+  contains
+    procedure, public :: Init => SF_BC_Init
+    procedure, public :: SetupPolynomials => SF_BC_SetupPolynomials
+    procedure, public :: CapillaryPressure => SF_BC_CapillaryPressure
+    procedure, public :: Saturation => SF_BC_Saturation
+  end type sat_func_BC_type  
   
   ! Relative Permeability Function
   type :: rel_perm_func_base_type
+    type(polynomial_type), pointer :: poly
     PetscReal :: Sr
   contains
     procedure, public :: Init => RPFBaseInit
+    procedure, public :: SetupPolynomials => RPFBaseSetupPolynomials
     procedure, public :: RelativePermeability => RPF_Base_RelPerm
   end type rel_perm_func_base_type
-  type, public, extends(rel_perm_func_base_type) :: rel_perm_func_Mualem_type
+  type, public, extends(rel_perm_func_base_type) :: rpf_Mualem_type
     PetscReal :: m
   contains
     procedure, public :: Init => RPF_Mualem_Init
+    procedure, public :: SetupPolynomials => RPF_Mualem_SetupPolynomials
     procedure, public :: RelativePermeability => RPF_Mualem_RelPerm
-  end type rel_perm_func_Mualem_type
-  type, public, extends(rel_perm_func_Mualem_type) :: rpf_Mualem_VG_gas_type
+  end type rpf_Mualem_type
+  type, public, extends(rpf_Mualem_type) :: rpf_Mualem_VG_gas_type
     PetscReal :: Srg
   contains
     procedure, public :: Init => RPF_Mualem_VG_Gas_Init
     procedure, public :: RelativePermeability => RPF_Mualem_VG_Gas_RelPerm
   end type rpf_Mualem_VG_gas_type
+  type, public, extends(rel_perm_func_base_type) :: rpf_Burdine_type
+    PetscReal :: lambda
+  contains
+    procedure, public :: Init => RPF_Burdine_Init
+    procedure, public :: RelativePermeability => RPF_Burdine_RelPerm
+  end type rpf_Burdine_type
+  type, public, extends(rpf_Burdine_type) :: rpf_Burdine_BC_gas_type
+    PetscReal :: Srg
+  contains
+    procedure, public :: Init => RPF_Burdine_BC_Gas_Init
+    procedure, public :: RelativePermeability => RPF_Burdine_BC_Gas_RelPerm
+  end type rpf_Burdine_BC_gas_type
 
   type, public :: characteristic_curves_type
     character(len=MAXWORDLENGTH) :: name
@@ -220,9 +253,17 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
   character(len=MAXWORDLENGTH) :: keyword
   character(len=MAXSTRINGLENGTH) :: error_string
   PetscBool :: found
+  PetscBool :: smooth
 
   input%ierr = 0
-  error_string = 'CHARACTERISTIC_CURVES,SATURATION_FUNCTION'
+  smooth = PETSC_FALSE
+  error_string = 'CHARACTERISTIC_CURVES,SATURATION_FUNCTION,'
+  select type(sf => saturation_function)
+    class is(sat_func_VG_type)
+      error_string = trim(error_string) // 'VAN_GENUCHTEN'
+    class is(sat_func_BC_type)
+      error_string = trim(error_string) // 'BROOKS_COREY'
+  end select
   do
     call InputReadPflotranString(input,option)
     if (InputCheckExit(input,option)) exit  
@@ -241,6 +282,8 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
         call InputReadDouble(input,option,saturation_function%pcmax)
         call InputErrorMsg(input,option,'maximum capillary pressure', &
                             error_string)
+      case('SMOOTH')
+        smooth = PETSC_TRUE
       case default
         found = PETSC_FALSE
     end select
@@ -261,12 +304,29 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
               ' not recognized in van Genuchten saturation function.'
             call printErrMsg(option)
         end select
+      class is(sat_func_BC_type)
+        select case(keyword)
+          case('LAMBDA') 
+            call InputReadDouble(input,option,sf%lambda)
+            call InputErrorMsg(input,option,'m',error_string)
+          case('ALPHA') 
+            call InputReadDouble(input,option,sf%alpha)
+            call InputErrorMsg(input,option,'alpha',error_string)
+          case default
+            option%io_buffer = 'Keyword: ' // trim(keyword) // &
+              ' not recognized in Brooks-Corey saturation function.'
+            call printErrMsg(option)
+        end select
       class default
         option%io_buffer = 'Read routine not implemented for saturation ' // &
                            'function class.'
         call printErrMsg(option)
     end select
-  enddo 
+  enddo
+  
+  if (smooth) then
+    call saturation_function%SetupPolynomials(option,error_string)
+  endif
 
 end subroutine SaturationFunctionRead
 
@@ -291,10 +351,22 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
   character(len=MAXWORDLENGTH) :: keyword, new_phase_keyword
   character(len=MAXSTRINGLENGTH) :: error_string
   PetscBool :: found
+  PetscBool :: smooth
 
   input%ierr = 0
+  smooth = PETSC_FALSE
   new_phase_keyword = 'NONE'
-  error_string = 'CHARACTERISTIC_CURVES,PERMEABILITY_FUNCTION'
+  error_string = 'CHARACTERISTIC_CURVES,PERMEABILITY_FUNCTION,'
+  select type(rpf => permeability_function)
+    class is(rpf_Mualem_type)
+      error_string = trim(error_string) // 'MUALEM'
+    class is(rpf_Mualem_VG_gas_type)
+      error_string = trim(error_string) // 'MUALEM_VG_GAS'
+    class is(rpf_Burdine_type)
+      error_string = trim(error_string) // 'BURDINE'
+    class is(rpf_Burdine_BC_gas_type)
+      error_string = trim(error_string) // 'BURDINE_BC_GAS'
+  end select
   do
     call InputReadPflotranString(input,option)
     if (InputCheckExit(input,option)) exit  
@@ -309,6 +381,12 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
       case('RESIDUAL_SATURATION','LIQUID_RESIDUAL_SATURATION') 
         call InputReadDouble(input,option,permeability_function%Sr)
         call InputErrorMsg(input,option,'residual_saturation',error_string)
+      case('PHASE')
+        call InputReadWord(input,option,new_phase_keyword,PETSC_TRUE)
+        call InputErrorMsg(input,option,'phase',error_string)
+        call StringToUpper(phase_keyword) 
+      case('SMOOTH')
+        smooth = PETSC_TRUE
       case default
         found = PETSC_FALSE
     end select
@@ -317,26 +395,19 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
     
     ! we assume liquid phase if PHASE keyword is not present.
     select type(rpf => permeability_function)
-      class is(rel_perm_func_Mualem_type)
+      class is(rpf_Mualem_type)
         select case(keyword)
-          case('PHASE')
-            call InputReadWord(input,option,new_phase_keyword,PETSC_TRUE)
-            call InputErrorMsg(input,option,'phase',error_string)
-            call StringToUpper(phase_keyword) 
           case('M') 
             call InputReadDouble(input,option,rpf%m)
             call InputErrorMsg(input,option,'m',error_string)
           case default
             option%io_buffer = 'Keyword: ' // trim(keyword) // &
-              ' not recognized in Mualem relative permeability function.'
+              ' not recognized in Mualem van Genuchten relative ' // &
+              'permeability function.'
             call printErrMsg(option)
         end select
       class is(rpf_Mualem_VG_gas_type)
         select case(keyword)
-          case('PHASE')
-            call InputReadWord(input,option,new_phase_keyword,PETSC_TRUE)
-            call InputErrorMsg(input,option,'phase',error_string)
-            call StringToUpper(phase_keyword) 
           case('M') 
             call InputReadDouble(input,option,rpf%m)
             call InputErrorMsg(input,option,'m',error_string)
@@ -346,6 +417,31 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
           case default
             option%io_buffer = 'Keyword: ' // trim(keyword) // &
               ' not recognized in Mualem van Genuchten gas relative ' // &
+              'permeability function.'
+            call printErrMsg(option)
+        end select
+      class is(rpf_Burdine_type)
+        select case(keyword)
+          case('LAMBDA') 
+            call InputReadDouble(input,option,rpf%lambda)
+            call InputErrorMsg(input,option,'lambda',error_string)
+          case default
+            option%io_buffer = 'Keyword: ' // trim(keyword) // &
+              ' not recognized in Burdine Brooks-Corey relative ' // &
+              'permeability function.'
+            call printErrMsg(option)
+        end select
+      class is(rpf_Burdine_BC_gas_type)
+        select case(keyword)
+          case('LAMBDA') 
+            call InputReadDouble(input,option,rpf%lambda)
+            call InputErrorMsg(input,option,'lambda',error_string)
+          case('GAS_RESIDUAL_SATURATION') 
+            call InputReadDouble(input,option,rpf%Srg)
+            call InputErrorMsg(input,option,'Srg',error_string)
+          case default
+            option%io_buffer = 'Keyword: ' // trim(keyword) // &
+              ' not recognized in Burdine Brooks-Corey gas relative ' // &
               'permeability function.'
             call printErrMsg(option)
         end select
@@ -369,6 +465,10 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
     endif
   endif
 
+  if (smooth) then
+    call permeability_function%SetupPolynomials(option,error_string)
+  endif
+  
 end subroutine PermeabilityFunctionRead
 
 ! ************************************************************************** !
@@ -496,6 +596,20 @@ function CharacteristicCurvesGetID(characteristic_curves_array, &
 end function CharacteristicCurvesGetID
 
 !!!BASE ROUTINES
+! ************************************************************************** !
+
+function PolynomialCreate()
+
+  implicit none
+  
+  class(polynomial_type), pointer :: PolynomialCreate  
+
+  allocate(PolynomialCreate)
+  PolynomialCreate%low = 0.d0
+  PolynomialCreate%high = 0.d0
+  PolynomialCreate%coefficients(:) = 0.d0
+  
+end function PolynomialCreate
 
 ! ************************************************************************** !
 
@@ -506,6 +620,8 @@ subroutine SFBaseInit(this)
   class(sat_func_base_type) :: this  
 
   ! Cannot allocate here.  Allocation takes place in daughter class
+  nullify(this%sat_poly)
+  nullify(this%pres_poly)
   this%Sr = 0.d0
   this%pcmax = 1.d9
   
@@ -520,16 +636,55 @@ subroutine RPFBaseInit(this)
   class(rel_perm_func_base_type) :: this  
 
   ! Cannot allocate here.  Allocation takes place in daughter class
+  nullify(this%poly)
   this%Sr = 0.d0
   
 end subroutine RPFBaseInit
 
 ! ************************************************************************** !
 
-subroutine SF_Base_CapillaryPressure(this,liquid_saturation, &
-                                     capillary_pressure,option)
-  
+subroutine SFBaseSetupPolynomials(this,option,error_string)
+
+  ! Sets up polynomials for smoothing saturation functions
+
   use Option_module
+  
+  implicit none
+  
+  class(sat_func_base_type) :: this
+  type(option_type) :: option
+  character(len=MAXSTRINGLENGTH) :: error_string
+  
+  option%io_buffer = 'Smoothing not supported for ' // trim(error_string)
+  call printErrMsg(option)
+  
+end subroutine SFBaseSetupPolynomials
+
+! ************************************************************************** !
+
+subroutine RPFBaseSetupPolynomials(this,option,error_string)
+
+  ! Sets up polynomials for smoothing relative permeability functions
+
+  use Option_module
+  
+  implicit none
+  
+  class(rel_perm_func_base_type) :: this
+  type(option_type) :: option
+  character(len=MAXSTRINGLENGTH) :: error_string
+  
+  option%io_buffer = 'Smoothing not supported for ' // trim(error_string)
+  call printErrMsg(option)
+  
+end subroutine RPFBaseSetupPolynomials
+
+! ************************************************************************** !
+
+subroutine SFBaseCapillaryPressure(this,liquid_saturation, &
+                                     capillary_pressure,option)
+  use Option_module
+  
   implicit none
   
   class(sat_func_base_type) :: this
@@ -537,17 +692,17 @@ subroutine SF_Base_CapillaryPressure(this,liquid_saturation, &
   PetscReal, intent(out) :: capillary_pressure
   type(option_type), intent(inout) :: option
   
-  option%io_buffer = 'SF_Base_CapillaryPressure must be extended.'
+  option%io_buffer = 'SFBaseCapillaryPressure must be extended.'
   call printErrMsg(option)
   
-end subroutine SF_Base_CapillaryPressure
+end subroutine SFBaseCapillaryPressure
 
 ! ************************************************************************** !
 
-subroutine SF_Base_Saturation(this,capillary_pressure,liquid_saturation, &
+subroutine SFBaseSaturation(this,capillary_pressure,liquid_saturation, &
                               dsat_pres,option)
-
   use Option_module
+
   implicit none
   
   class(sat_func_base_type) :: this
@@ -556,10 +711,10 @@ subroutine SF_Base_Saturation(this,capillary_pressure,liquid_saturation, &
   PetscReal, intent(out) :: dsat_pres
   type(option_type), intent(inout) :: option
   
-  option%io_buffer = 'SF_Base_Saturation must be extended.'
+  option%io_buffer = 'SFBaseSaturation must be extended.'
   call printErrMsg(option)
   
-end subroutine SF_Base_Saturation
+end subroutine SFBaseSaturation
 
 ! ************************************************************************** !
 
@@ -655,6 +810,8 @@ subroutine SF_VG_CapillaryPressure(this,liquid_saturation, &
   pc_alpha_n = one_plus_pc_alpha_n - 1.d0
   pc_alpha = pc_alpha_n**(1.d0/n)
   capillary_pressure = pc_alpha/this%alpha
+
+  capillary_pressure = min(capillary_pressure,this%pcmax)
   
 end subroutine SF_VG_CapillaryPressure
 
@@ -675,6 +832,7 @@ subroutine SF_VG_Saturation(this,capillary_pressure,liquid_saturation, &
   ! Date: 12/11/07, 09/23/14
   !
   use Option_module
+  use Utility_module
   
   implicit none
 
@@ -695,23 +853,21 @@ subroutine SF_VG_Saturation(this,capillary_pressure,liquid_saturation, &
   
   dsat_pres = 0.d0
   
-#if 0
-  if (capillary_pressure < this%spline%low) then
-    liquid_saturation = 1.d0
-    relative_perm = 1.d0
-    switch_to_saturated = PETSC_TRUE
-    return
-  else if (capillary_pressure < this%spline%high) then
-    call CubicPolynomialEvaluate(this%spline%coefficients, &
-                                 capillary_pressure,Se,dSe_pc)
-    liquid_saturation = this%Sr + (1.d0-this%Sr)*Se
-    dsat_pc = (1.d0-this%Sr)*dSe_pc
-#else
+  if (associated(this%sat_poly)) then
+    if (capillary_pressure < this%sat_poly%low) then
+      liquid_saturation = 1.d0
+      return
+    else if (capillary_pressure < this%sat_poly%high) then
+      call CubicPolynomialEvaluate(this%sat_poly%coefficients, &
+                                   capillary_pressure,Se,dSe_pc)
+      liquid_saturation = this%Sr + (1.d0-this%Sr)*Se
+      dsat_pc = (1.d0-this%Sr)*dSe_pc
+    endif
+  endif
+
   if (capillary_pressure <= 0.d0) then
     liquid_saturation = 1.d0
-!    switch_to_saturated = PETSC_TRUE
     return
-#endif        
   else
     n = 1.d0/(1.d0-this%m)
     pc_alpha = capillary_pressure*this%alpha
@@ -743,7 +899,7 @@ function RPF_Mualem_Create()
 
   implicit none
   
-  class(rel_perm_func_Mualem_type), pointer :: RPF_Mualem_Create
+  class(rpf_Mualem_type), pointer :: RPF_Mualem_Create
   
   allocate(RPF_Mualem_Create)
   call RPF_Mualem_Create%Init()
@@ -758,12 +914,53 @@ subroutine RPF_Mualem_Init(this)
 
   implicit none
   
-  class(rel_perm_func_Mualem_type) :: this
+  class(rpf_Mualem_type) :: this
 
   call RPFBaseInit(this)
   this%m = 0.d0
   
 end subroutine RPF_Mualem_Init
+
+! ************************************************************************** !
+
+subroutine RPF_Mualem_SetupPolynomials(this,option,error_string)
+
+  ! Sets up polynomials for smoothing Mualem permeability function
+
+  use Option_module
+  use Utility_module
+  
+  implicit none
+  
+  class(rpf_Mualem_type) :: this
+  type(option_type) :: option
+  character(len=MAXSTRINGLENGTH) :: error_string
+  
+  PetscReal :: b(4)
+  PetscReal :: one_over_m, Se_one_over_m, m
+
+  this%poly => PolynomialCreate()
+  ! fill matix with values
+  this%poly%low = 0.99d0  ! saturated
+  this%poly%high = 1.d0  ! just below saturated
+  
+  m = this%m
+  one_over_m = 1.d0/m
+  Se_one_over_m = this%poly%low**one_over_m
+  b(1) = 1.d0
+  b(2) = sqrt(this%poly%low)*(1.d0-(1.d0-Se_one_over_m)**m)**2.d0
+  b(3) = 0.d0
+  b(4) = 0.5d0*b(2)/this%poly%low+ &
+          2.d0*this%poly%low**(one_over_m-0.5d0)* &
+          (1.d0-Se_one_over_m)**(m-1.d0)* &
+          (1.d0-(1.d0-Se_one_over_m)**m)
+  
+  call CubicPolynomialSetup(this%poly%high,this%poly%low,b)
+  
+  this%poly%coefficients(1:4) = b(1:4)
+  
+  
+end subroutine RPF_Mualem_SetupPolynomials
 
 ! ************************************************************************** !
 
@@ -782,10 +979,11 @@ subroutine RPF_Mualem_RelPerm(this,liquid_saturation,relative_permeability, &
   ! Date: 12/11/07, 09/23/14
   ! 
   use Option_module
+  use Utility_module
   
   implicit none
 
-  class(rel_perm_func_Mualem_type) :: this
+  class(rpf_Mualem_type) :: this
   PetscReal, intent(in) :: liquid_saturation
   PetscReal, intent(out) :: relative_permeability
   PetscReal, intent(out) :: dkr_Se
@@ -807,12 +1005,14 @@ subroutine RPF_Mualem_RelPerm(this,liquid_saturation,relative_permeability, &
     return
   endif
   
-#ifdef MUALEM_SPLINE
-  if (Se > this%spline%low) then
-    call CubicPolynomialEvaluate(this%spline%coefficients, &
-                                 Se,relative_permeability,dkr_Se)
-  else
-#endif          
+  if (associated(this%poly)) then
+    if (Se > this%poly%low) then
+      call CubicPolynomialEvaluate(this%poly%coefficients, &
+                                   Se,relative_permeability,dkr_Se)
+      return
+    endif
+  endif
+  
   one_over_m = 1.d0/this%m
   Se_one_over_m = Se**one_over_m
   relative_permeability = sqrt(Se)*(1.d0-(1.d0-Se_one_over_m)**this%m)**2.d0
@@ -820,9 +1020,6 @@ subroutine RPF_Mualem_RelPerm(this,liquid_saturation,relative_permeability, &
             2.d0*Se**(one_over_m-0.5d0)* &
                 (1.d0-Se_one_over_m)**(this%m-1.d0)* &
                 (1.d0-(1.d0-Se_one_over_m)**this%m)
-#ifdef MUALEM_SPLINE
-  endif
-#endif          
   
 end subroutine RPF_Mualem_RelPerm
 
@@ -903,7 +1100,432 @@ end subroutine RPF_Mualem_VG_Gas_RelPerm
 
 ! ************************************************************************** !
 
-recursive subroutine CharacteristicCurvesDestroy(characteristic_curves)
+function SF_BC_Create()
+
+  ! Creates the van Genutchten capillary pressure function object
+
+  implicit none
+  
+  class(sat_func_BC_type), pointer :: SF_BC_Create
+  
+  allocate(SF_BC_Create)
+  call SF_BC_Create%Init()
+  
+end function SF_BC_Create
+
+! ************************************************************************** !
+
+subroutine SF_BC_Init(this)
+
+  ! Creates the Burdine capillary pressure function object
+
+  implicit none
+  
+  class(sat_func_BC_type) :: this
+
+  call SFBaseInit(this)
+  this%alpha = 0.d0
+  this%lambda = 0.d0
+  
+  
+end subroutine SF_BC_Init
+
+! ************************************************************************** !
+
+subroutine SF_BC_SetupPolynomials(this,option,error_string)
+
+  ! Sets up polynomials for smoothing Brooks-Corey saturation function
+
+  use Option_module
+  use Utility_module
+  
+  implicit none
+  
+  class(sat_func_BC_type) :: this
+  type(option_type) :: option
+  character(len=MAXSTRINGLENGTH) :: error_string
+  
+  PetscReal :: b(4)
+
+  ! polynomial fitting pc as a function of saturation
+  ! 1.05 is essentially pc*alpha (i.e. pc = 1.05/alpha)
+  this%sat_poly => PolynomialCreate()
+  this%sat_poly%low = 1.05d0**(-this%lambda)
+  this%sat_poly%high = 1.d0
+  
+  b = 0.d0
+  ! fill right hand side
+  ! capillary pressure at 1
+  b(1) = 1.05d0/this%alpha 
+  ! capillary pressure at 2
+  b(2) = 0.d0
+  ! derivative of pressure at saturation_1
+  ! pc = Se**(-1/lambda)/alpha
+  ! dpc_dSe = -1/lambda*Se**(-1/lambda-1)/alpha
+  b(3) = -1.d0/this%lambda* &
+          this%sat_poly%low**(-1.d0/this%lambda-1.d0)/ &
+          this%alpha
+
+  call QuadraticPolynomialSetup(this%sat_poly%low,this%sat_poly%high,b(1:3), &
+                                ! indicates derivative given at 1
+                                PETSC_TRUE) 
+      
+  this%sat_poly%coefficients(1:3) = b(1:3)
+
+  ! polynomial fitting saturation as a function of pc
+  !geh: cannot invert the pressure/saturation relationship above
+  !     since it can result in saturations > 1 with both
+  !     quadratic and cubic polynomials
+  ! fill matix with values
+  this%pres_poly => PolynomialCreate()
+  this%pres_poly%low = 0.95/this%alpha
+  this%pres_poly%high = 1.05/this%alpha
+  
+  b = 0.d0
+  ! Se at 1
+  b(1) = 1.d0
+  ! Se at 2
+  b(2) = (this%pres_poly%high*this%alpha)** &
+          (-this%lambda)
+  ! derivative of Se at 1
+  b(3) = 0.d0 
+  ! derivative of Se at 2
+  b(4) = -this%lambda/this%pres_poly%high* &
+            (this%pres_poly%high*this%alpha)** &
+              (-this%lambda)
+
+  call CubicPolynomialSetup(this%pres_poly%low,this%pres_poly%high,b)
+
+  this%pres_poly%coefficients(1:4) = b(1:4)
+  
+  
+end subroutine SF_BC_SetupPolynomials
+
+! ************************************************************************** !
+
+subroutine SF_BC_CapillaryPressure(this,liquid_saturation, &
+                                   capillary_pressure,option)
+  ! 
+  ! Computes the capillary_pressure as a function of saturation using the
+  ! Brooks-Corey formulation
+  ! 
+  ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
+  !     of two-fluid capillary pressure-saturation and permeability functions",
+  !     Advances in Water Resources, Vol. 22, No. 5, pp 479-493,
+  !     http://dx.doi.org/10.1016/S0309-1708(98)00025-6.
+  !   
+  ! Author: Glenn Hammond
+  ! Date: 12/11/07, 09/23/14
+  !
+  use Option_module
+  use Utility_module
+  
+  implicit none
+  
+  class(sat_func_BC_type) :: this
+  PetscReal, intent(in) :: liquid_saturation
+  PetscReal, intent(out) :: capillary_pressure
+  type(option_type), intent(inout) :: option
+  
+  PetscReal :: Se
+  PetscReal :: dummy_real
+  
+  if (liquid_saturation <= this%Sr) then
+    capillary_pressure = this%pcmax
+    return
+  else if (liquid_saturation >= 1.d0) then
+    capillary_pressure = 0.d0
+    return
+  endif
+  
+  Se = (liquid_saturation-this%Sr)/(1.d0-this%Sr)
+  if (associated(this%pres_poly)) then
+    if (Se > this%pres_poly%low) then
+      call QuadraticPolynomialEvaluate(this%pres_poly%coefficients(1:3), &
+                                       Se,capillary_pressure,dummy_real)
+      return
+    endif
+  endif
+  capillary_pressure = (Se**(-1.d0/this%lambda))/this%alpha
+
+  capillary_pressure = min(capillary_pressure,this%pcmax)
+  
+end subroutine SF_BC_CapillaryPressure
+
+! ************************************************************************** !
+
+subroutine SF_BC_Saturation(this,capillary_pressure,liquid_saturation, &
+                            dsat_pres,option)
+  ! 
+  ! Computes the saturation (and associated derivatives) as a function of 
+  ! capillary pressure
+  ! 
+  ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
+  !     of two-fluid capillary pressure-saturation and permeability functions",
+  !     Advances in Water Resources, Vol. 22, No. 5, pp 479-493,
+  !     http://dx.doi.org/10.1016/S0309-1708(98)00025-6.
+  !   
+  ! Author: Glenn Hammond
+  ! Date: 12/11/07, 09/23/14
+  !
+  use Option_module
+  use Utility_module
+  
+  implicit none
+
+  class(sat_func_BC_type) :: this
+  PetscReal, intent(in) :: capillary_pressure
+  PetscReal, intent(out) :: liquid_saturation
+  PetscReal, intent(out) :: dsat_pres
+  type(option_type), intent(inout) :: option
+  
+  PetscReal :: pc_alpha_neg_lambda
+  PetscReal :: Se
+  PetscReal :: dSe_pc
+  PetscReal :: dsat_pc
+  
+  dsat_pres = 0.d0
+  
+  ! reference #1
+  if (capillary_pressure < this%sat_poly%low) then
+    liquid_saturation = 1.d0
+    return
+  else if (capillary_pressure < this%sat_poly%high) then
+    call CubicPolynomialEvaluate(this%sat_poly%coefficients, &
+                                 capillary_pressure,Se,dSe_pc)
+  else
+    pc_alpha_neg_lambda = (capillary_pressure*this%alpha)**(-this%lambda)
+    Se = pc_alpha_neg_lambda
+    dSe_pc = -this%lambda/capillary_pressure*pc_alpha_neg_lambda
+  endif
+  liquid_saturation = this%Sr + (1.d0-this%Sr)*Se
+  dsat_pc = (1.d0-this%Sr)*dSe_pc
+  
+end subroutine SF_BC_Saturation
+
+! ************************************************************************** !
+
+function RPF_Burdine_Create()
+
+  ! Creates the Brooks-Corey Burdine relative permeability function object
+
+  implicit none
+  
+  class(rpf_Burdine_type), pointer :: RPF_Burdine_Create
+  
+  allocate(RPF_Burdine_Create)
+  call RPF_Burdine_Create%Init()
+  
+end function RPF_Burdine_Create
+
+! ************************************************************************** !
+
+subroutine RPF_Burdine_Init(this)
+
+  ! Initializes the Brooks-Corey Burdine relative permeability function object
+
+  implicit none
+  
+  class(rpf_Burdine_type) :: this
+
+  call RPFBaseInit(this)
+  this%lambda = 0.d0
+  
+end subroutine RPF_Burdine_Init
+
+! ************************************************************************** !
+
+subroutine RPF_Burdine_RelPerm(this,liquid_saturation,relative_permeability, &
+                              dkr_Se,option)
+  ! 
+  ! Computes the relative permeability (and associated derivatives) as a 
+  ! function of saturation
+  ! 
+  ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
+  !     of two-fluid capillary pressure-saturation and permeability functions",
+  !     Advances in Water Resources, Vol. 22, No. 5, pp 479-493,
+  !     http://dx.doi.org/10.1016/S0309-1708(98)00025-6.
+  !   
+  ! Author: Glenn Hammond
+  ! Date: 12/11/07, 09/23/14
+  ! 
+  use Option_module
+  
+  implicit none
+
+  class(rpf_Burdine_type) :: this
+  PetscReal, intent(in) :: liquid_saturation
+  PetscReal, intent(out) :: relative_permeability
+  PetscReal, intent(out) :: dkr_Se
+  type(option_type), intent(inout) :: option
+  
+  PetscReal :: Se
+  PetscReal :: power
+
+  relative_permeability = 0.d0
+  dkr_Se = 0.d0
+  
+  Se = (liquid_saturation - this%Sr) / (1.d0 - this%Sr)
+  if (Se >= 1.d0) then
+    relative_permeability = 1.d0
+    return
+  else if (Se <= 0.d0) then
+    relative_permeability = 0.d0
+    return
+  endif
+  
+  ! reference #1
+  power = 3.d0+2.d0/this%lambda
+  relative_permeability = Se**power
+  dkr_Se = power*relative_permeability/Se          
+  
+end subroutine RPF_Burdine_RelPerm
+
+! ************************************************************************** !
+
+function RPF_Burdine_BC_Gas_Create()
+
+  ! Creates the Brooks-Corey Burdine gas relative permeability function object
+
+  implicit none
+  
+  class(rpf_Burdine_BC_gas_type), pointer :: RPF_Burdine_BC_Gas_Create
+  
+  allocate(RPF_Burdine_BC_Gas_Create)
+  call RPF_Burdine_BC_Gas_Create%Init()
+  
+end function RPF_Burdine_BC_Gas_Create
+
+! ************************************************************************** !
+
+subroutine RPF_Burdine_BC_Gas_Init(this)
+
+  ! Initializes the Brooks-Corey Burdine gas relative permeability function 
+  ! object
+
+  implicit none
+  
+  class(rpf_Burdine_BC_gas_type) :: this
+
+  call RPF_Burdine_Init(this)
+  this%Srg = 0.d0
+  
+end subroutine RPF_Burdine_BC_Gas_Init
+
+! ************************************************************************** !
+
+subroutine RPF_Burdine_BC_Gas_RelPerm(this,liquid_saturation, &
+                                     relative_permeability,dkr_Se,option)
+  ! 
+  ! Computes the relative permeability (and associated derivatives) as a 
+  ! function of saturation
+  ! 
+  ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
+  !     of two-fluid capillary pressure-saturation and permeability functions",
+  !     Advances in Water Resources, Vol. 22, No. 5, pp 479-493,
+  !     http://dx.doi.org/10.1016/S0309-1708(98)00025-6.
+  !   
+  ! Author: Glenn Hammond
+  ! Date: 12/11/07, 09/23/14
+  ! 
+  use Option_module
+  
+  implicit none
+
+  class(rpf_Burdine_BC_gas_type) :: this
+  PetscReal, intent(in) :: liquid_saturation
+  PetscReal, intent(out) :: relative_permeability
+  PetscReal, intent(out) :: dkr_Se
+  type(option_type), intent(inout) :: option
+  
+  PetscReal :: Se
+  PetscReal :: Seg
+  
+  Se = (liquid_saturation - this%Sr) / (1.d0 - this%Sr - this%Srg)
+  
+  relative_permeability = 0.d0
+  dkr_Se = -999.d0
+  if (Se >= 1.d0) then
+    relative_permeability = 1.d0
+  else if (Se <=  0.d0) then
+    relative_permeability = 1.d0
+  endif
+  
+  Seg = 1.d0 - Se
+          ! reference #1
+  relative_permeability = Seg*Seg*(1.d0-Se**(1.d0+2.d0/this%lambda))
+  
+end subroutine RPF_Burdine_BC_Gas_RelPerm
+
+! ************************************************************************** !
+
+subroutine PolynomialDestroy(poly)
+  ! 
+  ! Destroys a polynomial smoother
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/24/14
+  ! 
+
+  implicit none
+  
+  type(polynomial_type), pointer :: poly
+  
+  if (.not.associated(poly)) return
+  
+  deallocate(poly)
+  nullify(poly)
+
+end subroutine PolynomialDestroy
+
+! ************************************************************************** !
+
+subroutine SaturationFunctionDestroy(sf)
+  ! 
+  ! Destroys a saturuation function
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/24/14
+  ! 
+
+  implicit none
+  
+  class(sat_func_base_type), pointer :: sf
+  
+  if (.not.associated(sf)) return
+  
+  call PolynomialDestroy(sf%sat_poly)
+  call PolynomialDestroy(sf%sat_poly)
+  deallocate(sf)
+  nullify(sf)
+
+end subroutine SaturationFunctionDestroy
+
+! ************************************************************************** !
+
+subroutine PermeabilityFunctionDestroy(rpf)
+  ! 
+  ! Destroys a saturuation function
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/24/14
+  ! 
+
+  implicit none
+  
+  class(rel_perm_func_base_type), pointer :: rpf
+  
+  if (.not.associated(rpf)) return
+  
+  call PolynomialDestroy(rpf%poly)
+  deallocate(rpf)
+  nullify(rpf)
+
+end subroutine PermeabilityFunctionDestroy
+
+! ************************************************************************** !
+
+recursive subroutine CharacteristicCurvesDestroy(cc)
   ! 
   ! Destroys a characteristic curve
   ! 
@@ -913,14 +1535,18 @@ recursive subroutine CharacteristicCurvesDestroy(characteristic_curves)
 
   implicit none
   
-  class(characteristic_curves_type), pointer :: characteristic_curves
+  class(characteristic_curves_type), pointer :: cc
   
-  if (.not.associated(characteristic_curves)) return
+  if (.not.associated(cc)) return
   
-  call CharacteristicCurvesDestroy(characteristic_curves%next)
-    
-  deallocate(characteristic_curves)
-  nullify(characteristic_curves)
+  call CharacteristicCurvesDestroy(cc%next)
+  
+  call SaturationFunctionDestroy(cc%saturation_function)
+  call PermeabilityFunctionDestroy(cc%liq_rel_perm_function)
+  call PermeabilityFunctionDestroy(cc%gas_rel_perm_function)
+  
+  deallocate(cc)
+  nullify(cc)
   
 end subroutine CharacteristicCurvesDestroy
 
