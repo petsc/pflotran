@@ -284,7 +284,7 @@ end subroutine GeneralAuxSetEnergyDOF
 ! ************************************************************************** !
 
 subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
-                                saturation_function,ghosted_id,option)
+                                characteristic_curves,ghosted_id,option)
   ! 
   ! Computes auxiliary variables for each grid cell
   ! 
@@ -296,13 +296,13 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   use Global_Aux_module
   use EOS_Water_module
   use EOS_Gas_module
-  use Saturation_Function_module
+  use Characteristic_Curves_module
   use Material_Aux_class
   
   implicit none
 
   type(option_type) :: option
-  type(saturation_function_type) :: saturation_function
+  class(characteristic_curves_type) :: characteristic_curves
   PetscReal :: x(option%nflowdof)
   type(general_auxvar_type) :: gen_auxvar
   type(global_auxvar_type) :: global_auxvar
@@ -464,10 +464,9 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
 !      gen_auxvar%pres(lid) = gen_auxvar%pres(gid)
 !      gen_auxvar%pres(cpid) = 0.d0
 
-      call SatFuncGetCapillaryPressure(gen_auxvar%pres(cpid), &
-                                       gen_auxvar%sat(lid), &
-                                       gen_auxvar%temp, &
-                                       saturation_function,option) 
+      call characteristic_curves%saturation_function% &
+             CapillaryPressure(gen_auxvar%sat(lid),gen_auxvar%pres(cpid), &
+                               option)                             
       gen_auxvar%pres(lid) = gen_auxvar%pres(gid) - &
                              gen_auxvar%pres(cpid)
       
@@ -494,10 +493,9 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
 
       gen_auxvar%sat(lid) = 1.d0 - gen_auxvar%sat(gid)
       
-      call SatFuncGetCapillaryPressure(gen_auxvar%pres(cpid), &
-                                       gen_auxvar%sat(lid), &
-                                       gen_auxvar%temp, &
-                                       saturation_function,option)
+      call characteristic_curves%saturation_function% &
+             CapillaryPressure(gen_auxvar%sat(lid),gen_auxvar%pres(cpid), &
+                               option)                             
 !      gen_auxvar%pres(cpid) = 0.d0
  
       gen_auxvar%pres(lid) = gen_auxvar%pres(gid) - &
@@ -570,8 +568,11 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   if (global_auxvar%istate == LIQUID_STATE .or. &
       global_auxvar%istate == TWO_PHASE_STATE) then
     ! this does not need to be calculated for LIQUID_STATE (=1)
-    call SatFuncGetLiqRelPermFromSat(gen_auxvar%sat(lid),krl,dkrl_Se, &
-                                     saturation_function,lid,PETSC_FALSE,option)
+!    call SatFuncGetLiqRelPermFromSat(gen_auxvar%sat(lid),krl,dkrl_Se, &
+!                                     saturation_function,lid,PETSC_FALSE,option)
+    call characteristic_curves%liq_rel_perm_function% &
+           RelativePermeability(gen_auxvar%sat(lid),krl,dkrl_Se,option)                            
+                               
     ! use cell_pressure; cell_pressure - psat calculated internally
     call EOSWaterViscosity(gen_auxvar%temp,cell_pressure, &
                            gen_auxvar%pres(spid),visl,ierr)
@@ -581,8 +582,10 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   if (global_auxvar%istate == GAS_STATE .or. &
       global_auxvar%istate == TWO_PHASE_STATE) then
     ! this does not need to be calculated for GAS_STATE (=1)
-    call SatFuncGetGasRelPermFromSat(gen_auxvar%sat(lid),krg, &
-                                     saturation_function,option)
+!    call SatFuncGetGasRelPermFromSat(gen_auxvar%sat(lid),krg, &
+!                                     saturation_function,option)
+    call characteristic_curves%gas_rel_perm_function% &
+           RelativePermeability(gen_auxvar%sat(lid),krg,dkrg_Se,option)                            
     ! STOMP uses separate functions for calculating viscosity of vapor and
     ! and air (WATGSV,AIRGSV) and then uses GASVIS to calculate mixture 
     ! viscosity.
@@ -632,7 +635,7 @@ end subroutine GeneralAuxVarCompute
 
 subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
                                     material_auxvar, &
-                                    saturation_function,ghosted_id, &
+                                    characteristic_curves,ghosted_id, &
                                     option)
   ! 
   ! GeneralUpdateState: Updates the state and swaps primary variables
@@ -645,14 +648,14 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
   use Global_Aux_module
   use EOS_Water_module
 !  use Gas_EOS_module
-  use Saturation_Function_module
+  use Characteristic_Curves_module
   use Material_Aux_class
   
   implicit none
 
   type(option_type) :: option
   PetscInt :: ghosted_id
-  type(saturation_function_type) :: saturation_function
+  class(characteristic_curves_type) :: characteristic_curves
   type(general_auxvar_type) :: gen_auxvar
   type(global_auxvar_type) :: global_auxvar
   class(material_auxvar_type) :: material_auxvar
@@ -865,7 +868,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
   
   if (flag) then
     call GeneralAuxVarCompute(x,gen_auxvar, global_auxvar,material_auxvar, &
-                              saturation_function,ghosted_id,option)
+                              characteristic_curves,ghosted_id,option)
 !#ifdef DEBUG_GENERAL
     state_change_string = 'State Transition: ' // trim(state_change_string)
     call printMsg(option,state_change_string)
@@ -883,7 +886,7 @@ end subroutine GeneralAuxVarUpdateState
 
 subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
                                 material_auxvar, &
-                                saturation_function,ghosted_id, &
+                                characteristic_curves,ghosted_id, &
                                 option)
   ! 
   ! Calculates auxiliary variables for perturbed system
@@ -893,7 +896,7 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
   ! 
 
   use Option_module
-  use Saturation_Function_module
+  use Characteristic_Curves_module
   use Global_Aux_module
   use Material_Aux_class
 
@@ -904,7 +907,7 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
   type(general_auxvar_type) :: gen_auxvar(0:)
   type(global_auxvar_type) :: global_auxvar
   class(material_auxvar_type) :: material_auxvar
-  type(saturation_function_type) :: saturation_function
+  class(characteristic_curves_type) :: characteristic_curves
      
   PetscReal :: x(option%nflowdof), x_pert(option%nflowdof), &
                pert(option%nflowdof), x_pert_save(option%nflowdof)
@@ -1011,14 +1014,14 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
     x_pert_save = x_pert
     call GeneralAuxVarCompute(x_pert,gen_auxvar(idof),global_auxvar, &
                               material_auxvar, &
-                              saturation_function,ghosted_id,option)
+                              characteristic_curves,ghosted_id,option)
 #ifdef DEBUG_GENERAL
     call GlobalAuxVarCopy(global_auxvar,global_auxvar_debug,option)
     call GeneralAuxVarCopy(gen_auxvar(idof),general_auxvar_debug,option)
     call GeneralAuxVarUpdateState(x_pert,general_auxvar_debug, &
                                   global_auxvar_debug, &
                                   material_auxvar, &
-                                  saturation_function, &
+                                  characteristic_curves, &
                                   ghosted_id,option)
     if (global_auxvar%istate /= global_auxvar_debug%istate) then
       write(option%io_buffer, &

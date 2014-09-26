@@ -1423,6 +1423,7 @@ subroutine InitReadInput(simulation)
   use Solver_module
   use Material_module
   use Saturation_Function_module  
+  use Characteristic_Curves_module
   use Dataset_Base_class
   use Dataset_module
   use Dataset_Common_HDF5_class
@@ -1500,6 +1501,7 @@ subroutine InitReadInput(simulation)
   type(material_property_type), pointer :: material_property
   type(fluid_property_type), pointer :: fluid_property
   type(saturation_function_type), pointer :: saturation_function
+  class(characteristic_curves_type), pointer :: characteristic_curves
 
   type(realization_type), pointer :: realization
   type(grid_type), pointer :: grid
@@ -2179,6 +2181,7 @@ subroutine InitReadInput(simulation)
 
       case ('EOS')
         call EOSRead(input,option)
+
 !....................
 
       case ('SATURATION_FUNCTION')
@@ -2192,6 +2195,20 @@ subroutine InitReadInput(simulation)
         call SaturationFunctionAddToList(saturation_function, &
                                          realization%saturation_functions)
         nullify(saturation_function)   
+
+!....................
+
+      case ('CHARACTERISTIC_CURVES')
+      
+        characteristic_curves => CharacteristicCurvesCreate()
+        call InputReadWord(input,option,characteristic_curves%name,PETSC_TRUE)
+        call InputErrorMsg(input,option,'name','CHARACTERISTIC_CURVES')
+        call CharacteristicCurvesRead(characteristic_curves,input,option)
+!        call SatFunctionComputePolynomial(option,saturation_function)
+!        call PermFunctionComputePolynomial(option,saturation_function)
+        call CharacteristicCurvesAddToList(characteristic_curves, &
+                                          realization%characteristic_curves)
+        nullify(characteristic_curves)   
 
 !....................
       

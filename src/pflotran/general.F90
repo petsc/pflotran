@@ -720,7 +720,7 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
                        gen_auxvars(ZERO_INTEGER,ghosted_id), &
                        global_auxvars(ghosted_id), &
                        material_auxvars(ghosted_id), &
-                       patch%saturation_function_array( &
+                       patch%characteristic_curves_array( &
                          patch%sat_func_id(ghosted_id))%ptr, &
                        ghosted_id, &
                        option)
@@ -729,7 +729,7 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
                                     gen_auxvars(ZERO_INTEGER,ghosted_id), &
                                     global_auxvars(ghosted_id), &
                                     material_auxvars(ghosted_id), &
-                                    patch%saturation_function_array( &
+                                    patch%characteristic_curves_array( &
                                       patch%sat_func_id(ghosted_id))%ptr, &
                                     ghosted_id, &  ! for debugging
                                     option)
@@ -870,7 +870,7 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
       call GeneralAuxVarCompute(xxbc,gen_auxvars_bc(sum_connection), &
                                 global_auxvars_bc(sum_connection), &
                                 material_auxvars(ghosted_id), &
-                                patch%saturation_function_array( &
+                                patch%characteristic_curves_array( &
                                   patch%sat_func_id(ghosted_id))%ptr, &
                                 ghosted_id, &
                                 option)
@@ -879,7 +879,7 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
       call GeneralAuxVarUpdateState(xxbc,gen_auxvars_bc(sum_connection), &
                                     global_auxvars_bc(sum_connection), &
                                     material_auxvars(ghosted_id), &
-                                    patch%saturation_function_array( &
+                                    patch%characteristic_curves_array( &
                                       patch%sat_func_id(ghosted_id))%ptr, &
                                     ghosted_id,option)
 #ifdef DEBUG_GENERAL_FILEOUTPUT
@@ -964,7 +964,7 @@ subroutine GeneralUpdateFixedAccum(realization)
                               gen_auxvars(ZERO_INTEGER,ghosted_id), &
                               global_auxvars(ghosted_id), &
                               material_auxvars(ghosted_id), &
-                              patch%saturation_function_array( &
+                              patch%characteristic_curves_array( &
                                 patch%sat_func_id(ghosted_id))%ptr, &
                               ghosted_id, &
                               option)
@@ -2176,7 +2176,7 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   PetscReal, pointer :: r_p(:)
   PetscReal, pointer :: accum_p(:)
   
-  character(len=MAXWORDLENGTH) :: string
+  character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
 
   PetscInt :: icap_up, icap_dn
@@ -2599,7 +2599,7 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
     call GeneralAuxVarPerturb(gen_auxvars(:,ghosted_id), &
                               global_auxvars(ghosted_id), &
                               material_auxvars(ghosted_id), &
-                              patch%saturation_function_array( &
+                              patch%characteristic_curves_array( &
                                 patch%sat_func_id(ghosted_id))%ptr, &
                               ghosted_id,option)
   enddo
