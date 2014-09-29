@@ -178,8 +178,7 @@ subroutine CharacteristicCurvesRead(this,input,option)
           case('VAN_GENUCHTEN')
             this%saturation_function => SF_VG_Create()
           case('BROOKS_COREY')
-            print *, 'Brooks-Corey not implemented'
-            stop
+            this%saturation_function => SF_BC_Create()
           case default
             option%io_buffer = 'Keyword: ' // trim(word) // &
               ' not a recognized in saturation function type.'    
@@ -200,8 +199,10 @@ subroutine CharacteristicCurvesRead(this,input,option)
             rel_perm_function_ptr => RPF_Mualem_VG_Gas_Create()
             phase_keyword = 'GAS'
           case('BURDINE')
-            print *, 'Burdine not implemented'
-            stop
+            rel_perm_function_ptr => RPF_Burdine_Create()
+          case('BURDINE_BC_GAS')
+            rel_perm_function_ptr => RPF_Burdine_BC_Gas_Create()
+            phase_keyword = 'GAS'
           case default
             option%io_buffer = 'Keyword: ' // trim(word) // &
               ' not a recognized in relative permeability function type.'
@@ -853,12 +854,12 @@ subroutine SF_VG_Saturation(this,capillary_pressure,liquid_saturation, &
   
   dsat_pres = 0.d0
   
-  if (associated(this%sat_poly)) then
-    if (capillary_pressure < this%sat_poly%low) then
+  if (associated(this%pres_poly)) then
+    if (capillary_pressure < this%pres_poly%low) then
       liquid_saturation = 1.d0
       return
-    else if (capillary_pressure < this%sat_poly%high) then
-      call CubicPolynomialEvaluate(this%sat_poly%coefficients, &
+    else if (capillary_pressure < this%pres_poly%high) then
+      call CubicPolynomialEvaluate(this%pres_poly%coefficients, &
                                    capillary_pressure,Se,dSe_pc)
       liquid_saturation = this%Sr + (1.d0-this%Sr)*Se
       dsat_pc = (1.d0-this%Sr)*dSe_pc
@@ -941,8 +942,8 @@ subroutine RPF_Mualem_SetupPolynomials(this,option,error_string)
 
   this%poly => PolynomialCreate()
   ! fill matix with values
-  this%poly%low = 0.99d0  ! saturated
-  this%poly%high = 1.d0  ! just below saturated
+  this%poly%low = 0.99d0  ! just below saturated
+  this%poly%high = 1.d0   ! saturated
   
   m = this%m
   one_over_m = 1.d0/m
@@ -1088,9 +1089,10 @@ subroutine RPF_Mualem_VG_Gas_RelPerm(this,liquid_saturation, &
   relative_permeability = 0.d0
   dkr_Se = -999.d0
   if (Se >= 1.d0) then
-    relative_permeability = 1.d0
+    return
   else if (Se <=  0.d0) then
     relative_permeability = 1.d0
+    return
   endif
   
   Seg = 1.d0 - Se
@@ -1239,9 +1241,9 @@ subroutine SF_BC_CapillaryPressure(this,liquid_saturation, &
   endif
   
   Se = (liquid_saturation-this%Sr)/(1.d0-this%Sr)
-  if (associated(this%pres_poly)) then
-    if (Se > this%pres_poly%low) then
-      call QuadraticPolynomialEvaluate(this%pres_poly%coefficients(1:3), &
+  if (associated(this%sat_poly)) then
+    if (Se > this%sat_poly%low) then
+      call QuadraticPolynomialEvaluate(this%sat_poly%coefficients(1:3), &
                                        Se,capillary_pressure,dummy_real)
       return
     endif
@@ -1287,11 +1289,11 @@ subroutine SF_BC_Saturation(this,capillary_pressure,liquid_saturation, &
   dsat_pres = 0.d0
   
   ! reference #1
-  if (capillary_pressure < this%sat_poly%low) then
+  if (capillary_pressure < this%pres_poly%low) then
     liquid_saturation = 1.d0
     return
-  else if (capillary_pressure < this%sat_poly%high) then
-    call CubicPolynomialEvaluate(this%sat_poly%coefficients, &
+  else if (capillary_pressure < this%pres_poly%high) then
+    call CubicPolynomialEvaluate(this%pres_poly%coefficients, &
                                  capillary_pressure,Se,dSe_pc)
   else
     pc_alpha_neg_lambda = (capillary_pressure*this%alpha)**(-this%lambda)
@@ -1370,7 +1372,6 @@ subroutine RPF_Burdine_RelPerm(this,liquid_saturation,relative_permeability, &
     relative_permeability = 1.d0
     return
   else if (Se <= 0.d0) then
-    relative_permeability = 0.d0
     return
   endif
   
@@ -1446,9 +1447,10 @@ subroutine RPF_Burdine_BC_Gas_RelPerm(this,liquid_saturation, &
   relative_permeability = 0.d0
   dkr_Se = -999.d0
   if (Se >= 1.d0) then
-    relative_permeability = 1.d0
+    return
   else if (Se <=  0.d0) then
     relative_permeability = 1.d0
+    return
   endif
   
   Seg = 1.d0 - Se
