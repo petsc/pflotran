@@ -2588,9 +2588,9 @@ subroutine SaturationFunctionVerify(saturation_function,option)
   
   character(len=MAXSTRINGLENGTH) :: string
   PetscReal :: pc, pc_increment, pc_max
-  PetscReal :: sat
+  PetscReal :: sat, dummy_real
   PetscInt :: count, i
-  PetscReal :: x(101), y(101)
+  PetscReal :: x(101), y(101), krl(101), krg(101)
 
   if (.not.(saturation_function%saturation_function_itype == VAN_GENUCHTEN .or.&
             saturation_function%saturation_function_itype == BROOKS_COREY)) then
@@ -2626,9 +2626,13 @@ subroutine SaturationFunctionVerify(saturation_function,option)
   do i = 1, 101
     sat = dble(i-1)*0.01d0
     call SatFuncGetCapillaryPressure(pc,sat,option%reference_temperature, &
-         saturation_function,option)
+                                     saturation_function,option)
     x(i) = sat
     y(i) = pc
+    call SatFuncGetLiqRelPermFromSat(sat,krl(i),dummy_real, &
+                                     saturation_function,1, &
+                                     PETSC_FALSE,option)
+    call SatFuncGetGasRelPermFromSat(sat,krg(i),saturation_function,option)
   enddo  
   count = 101
   
@@ -2638,6 +2642,24 @@ subroutine SaturationFunctionVerify(saturation_function,option)
   write(86,*) '"saturation", "capillary pressure"' 
   do i = 1, count
     write(86,'(2es14.6)') x(i), y(i)
+  enddo
+  close(86)
+  
+  write(string,*) saturation_function%name
+  string = trim(saturation_function%name) // '_krl.dat'
+  open(unit=86,file=string)
+  write(86,*) '"saturation", "liquid relative permeability"' 
+  do i = 1, count
+    write(86,'(2es14.6)') x(i), krl(i)
+  enddo
+  close(86)
+  
+  write(string,*) saturation_function%name
+  string = trim(saturation_function%name) // '_krg.dat'
+  open(unit=86,file=string)
+  write(86,*) '"saturation", "gas relative permeability"' 
+  do i = 1, count
+    write(86,'(2es14.6)') x(i), krg(i)
   enddo
   close(86)
   
