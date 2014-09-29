@@ -717,8 +717,8 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
           gen_auxvar%pres(lid) * (1.d0 + liquid_epsilon)
 !geh          max(gen_auxvar%pres(lid) * (1.d0 + liquid_epsilon), &
 !geh              gen_auxvar%pres(apid) + gen_auxvar%pres(spid))
-!geh        if (x(GENERAL_GAS_PRESSURE_DOF) <= 0.d0) then
-        if (x(GENERAL_GAS_PRESSURE_DOF) <= gen_auxvar%pres(spid)) then
+        if (x(GENERAL_GAS_PRESSURE_DOF) <= 0.d0) then
+!geh        if (x(GENERAL_GAS_PRESSURE_DOF) <= gen_auxvar%pres(spid)) then
           write(string,*) ghosted_id
           option%io_buffer = 'Negative gas pressure during state change ' // &
             'at ' // trim(adjustl(string))
