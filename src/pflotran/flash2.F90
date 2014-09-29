@@ -2076,13 +2076,13 @@ subroutine Flash2Residual(snes,xx,r,realization,ierr)
   call Flash2ResidualPatch2(snes,xx,r,realization,ierr)
 
   if (realization%debug%vecview_residual) then
-    string = 'Rresidual'
+    string = 'Fresidual'
     call DebugCreateViewer(realization%debug,string,option,viewer)
     call VecView(r,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
   if (realization%debug%vecview_solution) then
-    string = 'Rxx'
+    string = 'Fxx'
     call DebugCreateViewer(realization%debug,string,option,viewer)
     call VecView(xx,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
@@ -2593,13 +2593,13 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
   deallocate(Resold_AR, Resold_FL, delx)
   
   if (realization%debug%vecview_residual) then
-    string = 'Rresidual'
+    string = 'Fresidual'
     call DebugCreateViewer(realization%debug,string,option,viewer)
     call VecView(r,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
   if (realization%debug%vecview_solution) then
-    string = 'Rxx'
+    string = 'Fxx'
     call DebugCreateViewer(realization%debug,string,option,viewer)
     call VecView(xx,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
@@ -3349,7 +3349,7 @@ subroutine Flash2Jacobian(snes,xx,A,B,realization,ierr)
   enddo
 
   if (realization%debug%matview_Jacobian) then
-    string = 'Rjacobian'
+    string = 'Fjacobian'
     call DebugCreateViewer(realization%debug,string,realization%option,viewer)
     call MatView(J,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
@@ -3908,7 +3908,7 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,realization,ierr)
   endif
 
   if (realization%debug%matview_Jacobian) then
-    string = 'Rjacobian'
+    string = 'Fjacobian'
     call DebugCreateViewer(realization%debug,string,option,viewer)
     call MatView(A,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
@@ -4630,7 +4630,7 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,realization,ierr)
   endif
 
   if (realization%debug%matview_Jacobian) then
-    string = 'Rjacobian'
+    string = 'Fjacobian'
     call DebugCreateViewer(realization%debug,string,option,viewer)
     call MatView(A,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
