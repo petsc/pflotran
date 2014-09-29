@@ -24,6 +24,7 @@ module Characteristic_Curves_module
     procedure, public :: Init => SFBaseInit
     procedure, public :: SetupPolynomials => SFBaseSetupPolynomials
     procedure, public :: CapillaryPressure => SFBaseCapillaryPressure
+    procedure, public :: Verify => SFBAseVerify
     procedure, public :: Saturation => SFBaseSaturation
   end type sat_func_base_type
   type, public, extends(sat_func_base_type) :: sat_func_VG_type
@@ -51,6 +52,7 @@ module Characteristic_Curves_module
   contains
     procedure, public :: Init => RPFBaseInit
     procedure, public :: SetupPolynomials => RPFBaseSetupPolynomials
+    procedure, public :: Verify => RPF_BAse_Verify
     procedure, public :: RelativePermeability => RPF_Base_RelPerm
   end type rel_perm_func_base_type
   type, public, extends(rel_perm_func_base_type) :: rpf_Mualem_type
@@ -82,6 +84,7 @@ module Characteristic_Curves_module
   type, public :: characteristic_curves_type
     character(len=MAXWORDLENGTH) :: name
     PetscBool :: print_me
+    PetscBool :: verify
     class(sat_func_base_type), pointer :: saturation_function
     class(rel_perm_func_base_type), pointer :: liq_rel_perm_function
     class(rel_perm_func_base_type), pointer :: gas_rel_perm_function
@@ -97,6 +100,7 @@ module Characteristic_Curves_module
             CharacteristicCurvesAddToList, &
             CharCurvesConvertListToArray, &
             CharacteristicCurvesGetID, &
+            CharCurvesGetGetResidualSats, &
             CharacteristicCurvesDestroy
   
 contains
@@ -122,6 +126,7 @@ function CharacteristicCurvesCreate()
   allocate(characteristic_curves)
   characteristic_curves%name = ''
   characteristic_curves%print_me = PETSC_FALSE
+  characteristic_curves%verify = PETSC_FALSE
   nullify(characteristic_curves%saturation_function)
   nullify(characteristic_curves%liq_rel_perm_function)
   nullify(characteristic_curves%gas_rel_perm_function)
@@ -225,7 +230,7 @@ subroutine CharacteristicCurvesRead(this,input,option)
             call printErrMsg(option)            
         end select
       case('VERIFY') 
-        this%print_me = PETSC_TRUE
+        this%verify = PETSC_TRUE
       case default
         option%io_buffer = 'Keyword: ' // trim(keyword) // &
                            ' not recognized in charateristic_curves.'    
@@ -543,17 +548,53 @@ subroutine CharCurvesConvertListToArray(list,array,option)
     if (.not.associated(cur_characteristic_curves)) exit
     count = count + 1
     array(count)%ptr => cur_characteristic_curves
-    if (cur_characteristic_curves%print_me .and. &
+    if (cur_characteristic_curves%verify .and. &
         option%myrank == option%io_rank) then
-      print *, 'CharacteristicCurvesVerify not implemented'
-      stop
-!      call SaturationFunctionVerify(cur_saturation_function,option)
+      call CharacteristicCurvesVerify(cur_characteristic_curves,option)
     endif
     cur_characteristic_curves => cur_characteristic_curves%next
   enddo
 
 end subroutine CharCurvesConvertListToArray
 
+! ************************************************************************** !
+
+function CharCurvesGetGetResidualSats(characteristic_curves,option)
+  ! 
+  ! Returns the residual saturations associated with a characteristic curves
+  ! object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/29/14
+  ! 
+
+  use Option_module
+  
+  class(characteristic_curves_type) :: characteristic_curves
+  type(option_type) :: option
+
+  PetscReal :: CharCurvesGetGetResidualSats(option%nphase)
+
+  CharCurvesGetGetResidualSats(1) = &
+    characteristic_curves%liq_rel_perm_function%Sr
+  if (option%nphase > 1) then
+    select type(rpf=>characteristic_curves%gas_rel_perm_function)
+      class is(rpf_Mualem_type)
+        CharCurvesGetGetResidualSats(2) = rpf%Sr
+      class is(rpf_Burdine_type)
+        CharCurvesGetGetResidualSats(2) = rpf%Sr
+      class is(rpf_Mualem_VG_gas_type)
+        CharCurvesGetGetResidualSats(2) = rpf%Srg
+      class is(rpf_Burdine_BC_gas_type)
+        CharCurvesGetGetResidualSats(2) = rpf%Srg
+      class default
+        option%io_buffer = 'Relative permeability class not supported in ' // &
+          'CharCurvesGetGetResidualSats.'
+        call printErrMsg(option)
+    end select
+  endif
+
+end function CharCurvesGetGetResidualSats
 
 ! ************************************************************************** !
 
@@ -596,6 +637,38 @@ function CharacteristicCurvesGetID(characteristic_curves_array, &
 
 end function CharacteristicCurvesGetID
 
+! ************************************************************************** !
+
+subroutine CharacteristicCurvesVerify(characteristic_curves,option)
+  ! 
+  ! Outputs values of characteristic curves over a range of values
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/29/14
+  !
+  use Option_module
+
+  implicit none
+  
+  class(characteristic_curves_type) :: characteristic_curves
+  type(option_type) :: option
+
+  character(len=MAXWORDLENGTH) :: phase
+
+  call characteristic_curves%saturation_function%Verify( &
+                                                   characteristic_curves%name, &
+                                                        option)
+  phase = 'liquid'
+  call characteristic_curves%liq_rel_perm_function%Verify( &
+                                                   characteristic_curves%name, &
+                                                   phase,option)
+  phase = 'gas'
+  call characteristic_curves%gas_rel_perm_function%Verify( &
+                                                   characteristic_curves%name, &
+                                                   phase,option)
+  
+end subroutine CharacteristicCurvesVerify
+
 !!!BASE ROUTINES
 ! ************************************************************************** !
 
@@ -603,7 +676,7 @@ function PolynomialCreate()
 
   implicit none
   
-  class(polynomial_type), pointer :: PolynomialCreate  
+  type(polynomial_type), pointer :: PolynomialCreate  
 
   allocate(PolynomialCreate)
   PolynomialCreate%low = 0.d0
@@ -719,6 +792,67 @@ end subroutine SFBaseSaturation
 
 ! ************************************************************************** !
 
+subroutine SFBaseVerify(this,cc_name,option)
+
+  use Option_module
+
+  implicit none
+  
+  class(sat_func_base_type) :: this
+  character(len=MAXWORDLENGTH) :: cc_name
+  type(option_type), intent(inout) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscReal :: pc, pc_increment
+  PetscReal :: capillary_pressure(101)
+  PetscReal :: liquid_saturation(101)
+  PetscReal :: dummy_real
+  PetscInt :: count, i
+
+  ! calculate saturation as a function of capillary pressure
+  ! start at 1 Pa up to maximum capillary pressure
+  pc = 1.d0
+  pc_increment = 1.d0
+  count = 0
+  do
+    if (pc > this%pcmax) exit
+    count = count + 1
+    call this%Saturation(pc,liquid_saturation(count),dummy_real,option)
+    capillary_pressure(count) = pc
+    if (pc > 0.99*pc_increment*10.d0) pc_increment = pc_increment*10.d0
+    pc = pc + pc_increment
+  enddo
+
+  write(string,*) cc_name
+  string = trim(cc_name) // '_pc_sat.dat'
+  open(unit=86,file=string)
+  write(86,*) '"capillary pressure", "saturation"'
+  do i = 1, count
+    write(86,'(2es14.6)') capillary_pressure(i), liquid_saturation(i)
+  enddo
+  close(86)
+
+ ! calculate capillary pressure as a function of saturation
+  do i = 1, 101
+    liquid_saturation(i) = dble(i-1)*0.01d0
+    call this%CapillaryPressure(liquid_saturation(i),capillary_pressure(i), &
+                                option)
+  enddo
+  count = 101
+
+  write(string,*) cc_name
+  string = trim(cc_name) // '_sat_pc.dat'
+  open(unit=86,file=string)
+  write(86,*) '"saturation", "capillary pressure"'
+  do i = 1, count
+    write(86,'(2es14.6)') liquid_saturation(i), capillary_pressure(i)
+  enddo
+  close(86)
+
+end subroutine SFBaseVerify
+
+! ************************************************************************** !
+
 subroutine RPF_Base_RelPerm(this,liquid_saturation,relative_permeability, &
                             dkr_Se,option)
   use Option_module
@@ -735,6 +869,41 @@ subroutine RPF_Base_RelPerm(this,liquid_saturation,relative_permeability, &
   call printErrMsg(option)
   
 end subroutine RPF_Base_RelPerm
+
+! ************************************************************************** !
+
+subroutine RPF_Base_Verify(this,cc_name,phase,option)
+
+  use Option_module
+
+  implicit none
+  
+  class(rel_perm_func_base_type) :: this
+  character(len=MAXWORDLENGTH) :: cc_name
+  character(len=MAXWORDLENGTH) :: phase
+  type(option_type), intent(inout) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscReal :: dummy_real
+  PetscInt :: i
+  PetscReal :: liquid_saturation(101), kr(101)
+
+  do i = 1, 101
+    liquid_saturation(i) = dble(i-1)*0.01d0
+    call this%RelativePermeability(liquid_saturation(i),kr(i),dummy_real, &
+                                   option)
+  enddo
+
+  write(string,*) cc_name
+  string = trim(cc_name) // '_' // trim(phase) // '_rel_perm.dat'
+  open(unit=86,file=string)
+  write(86,*) '"saturation", "' // trim(phase) // ' relative permeability"'
+  do i = 1, size(liquid_saturation)
+    write(86,'(2es14.6)') liquid_saturation(i), kr(i)
+  enddo
+  close(86)
+
+end subroutine RPF_Base_Verify
 
 ! ************************************************************************** !
 

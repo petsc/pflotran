@@ -843,7 +843,7 @@ subroutine Init(simulation)
       case(G_MODE)
         call MaterialSetup(realization%patch%aux%Material%material_parameter, &
                            patch%material_property_array, &
-                           patch%saturation_function_array, &
+                           patch%characteristic_curves_array, &
                            realization%option)
         call GeneralSetup(realization)
     end select

@@ -890,14 +890,18 @@ subroutine RealProcessMatPropAndSatFunc(realization)
   call MaterialPropConvertListToArray(patch%material_properties, &
                                       patch%material_property_array, &
                                       option)
-  patch%saturation_functions => realization%saturation_functions
-  call SaturatFuncConvertListToArray(patch%saturation_functions, &
-                                     patch%saturation_function_array, &
-                                     option)
-  patch%characteristic_curves => realization%characteristic_curves
-  call CharCurvesConvertListToArray(patch%characteristic_curves, &
-                                    patch%characteristic_curves_array, &
-                                    option)                                     
+  if (associated(realization%saturation_functions)) then
+    patch%saturation_functions => realization%saturation_functions
+    call SaturatFuncConvertListToArray(patch%saturation_functions, &
+                                       patch%saturation_function_array, &
+                                       option)
+  endif
+  if (associated(realization%characteristic_curves)) then
+    patch%characteristic_curves => realization%characteristic_curves
+    call CharCurvesConvertListToArray(patch%characteristic_curves, &
+                                      patch%characteristic_curves_array, &
+                                      option)
+  endif
                                       
   ! create mapping of internal to external material id
   call MaterialCreateIntToExtMapping(patch%material_property_array, &
@@ -909,10 +913,18 @@ subroutine RealProcessMatPropAndSatFunc(realization)
 
     ! obtain saturation function id
     if (option%iflowmode /= NULL_MODE) then
-      cur_material_property%saturation_function_id = &
-        CharacteristicCurvesGetID(patch%characteristic_curves_array, &
-                                cur_material_property%saturation_function_name, &
-                                cur_material_property%name,option)
+      if (associated(patch%saturation_function_array)) then
+        cur_material_property%saturation_function_id = &
+          SaturationFunctionGetID(patch%saturation_functions, &
+                             cur_material_property%saturation_function_name, &
+                             cur_material_property%name,option)
+      endif
+      if (associated(patch%characteristic_curves_array)) then
+        cur_material_property%saturation_function_id = &
+          CharacteristicCurvesGetID(patch%characteristic_curves_array, &
+                             cur_material_property%saturation_function_name, &
+                             cur_material_property%name,option)
+      endif
     endif
     
     ! if named, link dataset to property
