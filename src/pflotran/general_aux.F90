@@ -724,8 +724,8 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
             'at ' // trim(adjustl(string))
 !          call printErrMsg(option)
           call printMsg(option)
-!geh          x(GENERAL_GAS_PRESSURE_DOF) = gen_auxvar%pres(spid)
-          x(GENERAL_GAS_PRESSURE_DOF) = 2.d0*gen_auxvar%pres(spid)
+          x(GENERAL_GAS_PRESSURE_DOF) = gen_auxvar%pres(spid)
+!geh          x(GENERAL_GAS_PRESSURE_DOF) = 2.d0*gen_auxvar%pres(spid)
         endif
         if (general_2ph_energy_dof == GENERAL_TEMPERATURE_INDEX) then
           ! do nothing as the energy dof has not changed
