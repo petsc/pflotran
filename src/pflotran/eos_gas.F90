@@ -752,18 +752,18 @@ subroutine EOSGasEnergyIdeal(T,P,H,dH_dT,dH_dP,U,dU_dT,dU_dP,ierr)
   PetscErrorCode, intent(out) :: ierr
 
   PetscReal, parameter:: Rg = 8.31415 
-  ! Cpg units: J/mol-K
+  ! Cv_air units: J/mol-K
   PetscReal, parameter:: Cv_air = 20.85 ! head capacity wiki
   PetscReal  T_kelvin
 
   T_kelvin = T + 273.15d0
-  H = Cv_air * T_kelvin * 1.d3  ! J/mol -> J/kmol
-  U = (Cv_air - Rg) * T_kelvin * 1.d3 ! J/mol -> J/kmol
+  U = Cv_air * T_kelvin * 1.d3  ! J/mol -> J/kmol
+  H = (Cv_air + Rg) * T_kelvin * 1.d3 ! J/mol -> J/kmol
 
-  dH_dP = 0.d0
-  dH_dT = Cv_air * 1.d3
   dU_dP = 0.d0
-  dU_dT = (Cv_air - Rg) * 1.d3
+  dU_dT = Cv_air * 1.d3
+  dH_dP = 0.d0
+  dH_dT = (Cv_air + Rg) * 1.d3
     
 end subroutine EOSGasEnergyIdeal
 
