@@ -268,8 +268,8 @@ module PFLOTRAN_Constants_module
   PetscReal, parameter, public :: UNINITIALIZED_DOUBLE = -999.d0
   
   interface Uninitialized
-    procedure :: UninitializedInteger
-    procedure :: UninitializedDouble
+    module procedure UninitializedInteger
+    module procedure UninitializedDouble
   end interface
   
   public :: Uninitialized, &
