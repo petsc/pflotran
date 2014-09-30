@@ -87,9 +87,9 @@ MATERIAL_PROPERTY soil
 
 !=========================== saturation functions =============================
 CHARACTERISTIC_CURVES cc1
-!  VERIFY
+!  TEST
   SATURATION_FUNCTION BROOKS_COREY
-    RESIDUAL_SATURATION 0.2d0
+    LIQUID_RESIDUAL_SATURATION 0.2d0
     LAMBDA 0.7d0
     ALPHA 9.869d-6
     MAX_CAPILLARY_PRESSURE 1.0E-12

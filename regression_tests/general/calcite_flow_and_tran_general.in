@@ -89,7 +89,7 @@ END
 #=========================== saturation functions =============================
 CHARACTERISTIC_CURVES cc1
   SATURATION_FUNCTION VAN_GENUCHTEN
-    RESIDUAL_SATURATION 0.1d0
+    LIQUID_RESIDUAL_SATURATION 0.1d0
     ALPHA 1.d-4
     M 0.5d0
   /

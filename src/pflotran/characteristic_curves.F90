@@ -293,9 +293,10 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
     ! base 
     found = PETSC_TRUE
     select case(keyword)
-      case('RESIDUAL_SATURATION') 
+      case('LIQUID_RESIDUAL_SATURATION') 
         call InputReadDouble(input,option,saturation_function%Sr)
-        call InputErrorMsg(input,option,'residual_saturation',error_string)
+        call InputErrorMsg(input,option,'liquid residual saturation', &
+                           error_string)
       case('MAX_CAPILLARY_PRESSURE') 
         call InputReadDouble(input,option,saturation_function%pcmax)
         call InputErrorMsg(input,option,'maximum capillary pressure', &
@@ -396,7 +397,7 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
     ! base 
     found = PETSC_TRUE
     select case(keyword)
-      case('RESIDUAL_SATURATION','LIQUID_RESIDUAL_SATURATION') 
+      case('LIQUID_RESIDUAL_SATURATION') 
         call InputReadDouble(input,option,permeability_function%Sr)
         call InputErrorMsg(input,option,'residual_saturation',error_string)
       case('PHASE')
