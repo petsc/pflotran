@@ -827,6 +827,21 @@ end subroutine SetAuxData
 
 ! ************************************************************************** !
 
+subroutine PMCBaseUpdateMaterialProperties(this)
+  !
+  ! At a prescribed time, updates material properties based on instructions
+  ! provided by a material update waypoint.
+  !
+  ! Author: Glenn Hammond
+  ! Date: 09/18/14
+  
+  implicit none
+  
+  class(pmc_base_type) :: this
+
+end subroutine PMCBaseUpdateMaterialProperties
+! ************************************************************************** !
+
 subroutine PMCBaseStrip(this)
   !
   ! Deallocates members of PMC Base.

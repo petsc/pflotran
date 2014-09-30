@@ -2621,6 +2621,8 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   PetscReal :: area_prim_sec
   PetscReal :: res_sec_heat
   
+  character(len=MAXSTRINGLENGTH) :: string
+
   patch => realization%patch
   grid => patch%grid
   option => realization%option
@@ -3162,14 +3164,14 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr);CHKERRQ(ierr)
 
   if (realization%debug%vecview_residual) then
-    call PetscViewerASCIIOpen(option%mycomm,'Rresidual.out',viewer, &
-                              ierr);CHKERRQ(ierr)
+    string = 'MPHresidual'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
     call VecView(r,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
   if (realization%debug%vecview_solution) then
-    call PetscViewerASCIIOpen(option%mycomm,'MPHxx.out',viewer, &
-                              ierr);CHKERRQ(ierr)
+    string = 'MPHxx'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
     call VecView(xx,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
@@ -3189,6 +3191,7 @@ subroutine MphaseJacobian(snes,xx,A,B,realization,ierr)
   use Patch_module
   use Grid_module
   use Option_module
+  use Debug_module
 
   implicit none
 
@@ -3205,7 +3208,8 @@ subroutine MphaseJacobian(snes,xx,A,B,realization,ierr)
   type(grid_type),  pointer :: grid
   type(option_type), pointer :: option
   PetscReal :: norm
-  
+  character(len=MAXSTRINGLENGTH) :: string
+
   call MatGetType(A,mat_type,ierr);CHKERRQ(ierr)
   if (mat_type == MATMFFD) then
     J = B
@@ -3226,8 +3230,8 @@ subroutine MphaseJacobian(snes,xx,A,B,realization,ierr)
   enddo
 
   if (realization%debug%matview_Jacobian) then
-    call PetscViewerASCIIOpen(realization%option%mycomm,'MPHjacobian.out', &
-                              viewer,ierr);CHKERRQ(ierr)
+    string = 'MPHjacobian'
+    call DebugCreateViewer(realization%debug,string,realization%option,viewer)
     call MatView(J,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
@@ -3344,6 +3348,8 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,realization,ierr)
   PetscReal :: area_prim_sec
   PetscReal :: jac_sec_heat
   
+  character(len=MAXSTRINGLENGTH) :: string
+
 !-----------------------------------------------------------------------
 ! R stand for residual
 !  ra       1              2              3              4          5              6            7      8
@@ -3639,8 +3645,8 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,realization,ierr)
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
-    call PetscViewerASCIIOpen(option%mycomm,'jacobian_srcsink.out',viewer, &
-                              ierr);CHKERRQ(ierr)
+    string = 'jacobian_srcsink'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
     call MatView(A,PETSC_VIEWER_STDOUT_WORLD,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
@@ -3778,8 +3784,8 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,realization,ierr)
  ! print *,'end inter flux'
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
-    call PetscViewerASCIIOpen(option%mycomm,'jacobian_flux.out',viewer, &
-                              ierr);CHKERRQ(ierr)
+    string = 'jacobian_flux'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
     call MatView(A,PETSC_VIEWER_STDOUT_WORLD,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif

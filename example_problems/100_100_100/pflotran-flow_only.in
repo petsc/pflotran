@@ -34,9 +34,8 @@ GRID
   ORIGIN 0.d0 0.d0 0.d0
   NXYZ 32 32 32
   BOUNDS
-    0.d0 100.d0
-    0.d0 100.d0
-    0.d0 100.d0
+    0.d0 0.d0 0.d0
+    100.d0 100.d0 100.d0
   /
 END
 
@@ -79,7 +78,7 @@ OUTPUT
   #MASS_BALANCE
   TIMES y 0.25d0 0.5d0 0.75d0
   FORMAT TECPLOT BLOCK
-  VELOCITIES
+  VELOCITY_AT_CENTER
 /
 
 #=========================== times ============================================

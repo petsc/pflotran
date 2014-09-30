@@ -435,69 +435,6 @@ subroutine PMCSubsurfaceSetAuxDataForSurf(this)
           field      => pmc%realization%field
           option     => pmc%realization%option
 
-#if 0
-          coupler_list => pmc%realization%patch%source_sinks
-          coupler => coupler_list%first
-          do
-            if (.not.associated(coupler)) exit
-
-            ! FLOW
-            if (associated(coupler%flow_aux_real_var)) then
-              cur_connection_set => coupler%connection_set
-
-              ! Find the BC from the list of BCs
-              if (StringCompare(coupler%name,'from_surface_ss')) then
-
-                select case(this%option%iflowmode)
-                  case (RICHARDS_MODE)
-                    call VecGetArrayF90(field%flow_xx_loc,xx_loc_p,  &
-                                        ierr);CHKERRQ(ierr)
-                    call VecGetArrayF90(this%sim_aux%subsurf_pres_top_bc,pres_top_bc_p, &
-                                        ierr);CHKERRQ(ierr)
-                    do iconn = 1,cur_connection_set%num_connections
-                      local_id = cur_connection_set%id_dn(iconn)
-                      ghosted_id = grid%nL2G(local_id)
-                      pres_top_bc_p(iconn) = xx_loc_p(ghosted_id)
-                    enddo
-                    call VecRestoreArrayF90(field%flow_xx_loc,xx_loc_p,  &
-                                            ierr);CHKERRQ(ierr)
-                    call VecRestoreArrayF90(this%sim_aux%subsurf_pres_top_bc,pres_top_bc_p, &
-                                            ierr);CHKERRQ(ierr)
-
-                  case (TH_MODE)
-                    call VecGetArrayF90(field%flow_xx_loc,xx_loc_p,  &
-                                        ierr);CHKERRQ(ierr)
-                    call VecGetArrayF90(this%sim_aux%subsurf_pres_top_bc,pres_top_bc_p, &
-                                        ierr);CHKERRQ(ierr)
-                    call VecGetArrayF90(this%sim_aux%subsurf_pres_top_bc,temp_top_bc_p, &
-                                        ierr);CHKERRQ(ierr)
-                    do iconn = 1,cur_connection_set%num_connections
-                      local_id = cur_connection_set%id_dn(iconn)
-                      ghosted_id = grid%nL2G(local_id)
-                      iend = ghosted_id*option%nflowdof
-                      istart = iend-option%nflowdof+1
-
-                      pres_top_bc_p(iconn) = xx_loc_p(istart)
-                      temp_top_bc_p(iconn) = xx_loc_p(iend)
-                    enddo
-                    call VecRestoreArrayF90(field%flow_xx_loc,xx_loc_p,  &
-                                            ierr);CHKERRQ(ierr)
-                    call VecRestoreArrayF90(this%sim_aux%subsurf_pres_top_bc,pres_top_bc_p, &
-                                            ierr);CHKERRQ(ierr)
-                    call VecRestoreArrayF90(this%sim_aux%subsurf_pres_top_bc,temp_top_bc_p, &
-                                            ierr);CHKERRQ(ierr)
-                  case default
-                    call printErrMsg(this%option, &
-                      'PMCSubsurfaceSetAuxData not supported for this MODE')
-                end select
-              endif
-
-            endif
-
-            coupler => coupler%next
-          enddo
-#endif
-
           call EOSWaterdensity(option%reference_temperature, option%reference_pressure, &
                                den,dum1,ierr)
           coupler_list => patch%boundary_conditions

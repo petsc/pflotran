@@ -1775,6 +1775,8 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
   PetscReal :: distance, fraction_upwind
   PetscReal :: distance_gravity
   
+  character(len=MAXSTRINGLENGTH) :: string
+
   patch => realization%patch
   grid => patch%grid
   option => realization%option
@@ -2194,14 +2196,14 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
   call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr);CHKERRQ(ierr)
 
   if (realization%debug%vecview_residual) then
-    call PetscViewerASCIIOpen(option%mycomm,'Rresidual.out',viewer, &
-                              ierr);CHKERRQ(ierr)
+    string = 'Iresidual'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
     call VecView(r,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
   if (realization%debug%vecview_solution) then
-    call PetscViewerASCIIOpen(option%mycomm,'Rxx.out',viewer, &
-                              ierr);CHKERRQ(ierr)
+    string = 'Ixx'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
     call VecView(xx,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
@@ -2329,6 +2331,8 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,realization,ierr)
   
   PetscViewer :: viewer
   Vec :: debug_vec
+  character(len=MAXSTRINGLENGTH) :: string
+
 !-----------------------------------------------------------------------
 ! R stand for residual
 !  ra       1              2              3              4          5              6            7      8
@@ -2583,8 +2587,8 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,realization,ierr)
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
-    call PetscViewerASCIIOpen(option%mycomm,'jacobian_srcsink.out',viewer, &
-                              ierr);CHKERRQ(ierr)
+    string = 'jacobian_srcsink'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
     call MatView(A,PETSC_VIEWER_STDOUT_WORLD,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
@@ -2708,8 +2712,8 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,realization,ierr)
  ! print *,'end inter flux'
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
-    call PetscViewerASCIIOpen(option%mycomm,'jacobian_flux.out',viewer, &
-                              ierr);CHKERRQ(ierr)
+    string = 'jacobian_flux'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
     call MatView(A,PETSC_VIEWER_STDOUT_WORLD,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
@@ -2775,8 +2779,8 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,realization,ierr)
   endif
 
   if (realization%debug%matview_Jacobian) then
-    call PetscViewerASCIIOpen(option%mycomm,'Rjacobian.out',viewer, &
-                              ierr);CHKERRQ(ierr)
+    string = 'Ijacobian'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
     call MatView(A,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif

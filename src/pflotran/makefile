@@ -283,6 +283,7 @@ grid_obj = \
 relations_obj = \
 	${common_src}saturation.o \
 	${common_src}saturation_function.o \
+	${common_src}characteristic_curves.o \
 	${common_src}mphase_pckr_mod.o
 
 properties_obj = \
@@ -460,6 +461,8 @@ auxiliary.o : flash2_aux.o general_aux.o global_aux.o immis_aux.o \
               secondary_continuum_aux.o th_aux.o
 block_solve.o :
 block_tridiag.o : pflotran_constants.o
+characteristic_curves.o : input_aux.o option.o pflotran_constants.o string.o \
+                          utility.o
 checkpoint.o : discretization.o field.o global.o grid.o material.o option.o \
                pflotran_constants.o realization.o string.o variables.o
 co2_span_wagner.o : co2_sw_rtsafe.o option.o pflotran_constants.o
@@ -560,8 +563,9 @@ general.o : connection.o coupler.o debug.o discretization.o eos_gas.o \
             srcsink_sandbox.o srcsink_sandbox_base.o \
             srcsink_sandbox_wipp_gas.o srcsink_sandbox_wipp_well.o string.o \
             variables.o
-general_aux.o : eos_gas.o eos_water.o global_aux.o material_aux.o option.o \
-                pflotran_constants.o saturation_function.o string.o utility.o
+general_aux.o : characteristic_curves.o eos_gas.o eos_water.o global_aux.o \
+                material_aux.o option.o pflotran_constants.o string.o \
+                utility.o
 geomech_grid.o : gauss.o geomech_grid_aux.o geomechanics_region.o input_aux.o \
                  logging.o option.o pflotran_constants.o unstructured_cell.o \
                  unstructured_grid_aux.o utility.o
@@ -680,17 +684,17 @@ immobile.o : immobile_aux.o input_aux.o option.o pflotran_constants.o string.o \
              utility.o
 immobile_aux.o : database_aux.o option.o pflotran_constants.o string.o \
                  utility.o
-init.o : condition.o condition_control.o connection.o constraint.o \
-         convergence.o coupler.o database.o database_hpt.o dataset.o \
-         dataset_base.o dataset_common_hdf5.o debug.o discretization.o eos.o \
-         eos_water.o field.o flash2.o fluid.o general.o general_aux.o \
-         geomech_grid.o geomechanics_discretization.o geomechanics_field.o \
-         geomechanics_force.o geomechanics_global.o geomechanics_init.o \
-         geomechanics_realization.o global.o grid.o hdf5.o hdf5_aux.o immis.o \
-         input_aux.o logging.o mass_transfer.o material.o material_aux.o \
-         mineral.o miscible.o mphase.o observation.o option.o output.o \
-         output_aux.o output_tecplot.o patch.o pflotran_constants.o reaction.o \
-         reaction_aux.o reactive_transport.o realization.o region.o \
+init.o : characteristic_curves.o condition.o condition_control.o connection.o \
+         constraint.o convergence.o coupler.o database.o database_hpt.o \
+         dataset.o dataset_base.o dataset_common_hdf5.o debug.o \
+         discretization.o eos.o eos_water.o field.o flash2.o fluid.o general.o \
+         general_aux.o geomech_grid.o geomechanics_discretization.o \
+         geomechanics_field.o geomechanics_force.o geomechanics_global.o \
+         geomechanics_init.o geomechanics_realization.o global.o grid.o hdf5.o \
+         hdf5_aux.o immis.o input_aux.o logging.o mass_transfer.o material.o \
+         material_aux.o mineral.o miscible.o mphase.o observation.o option.o \
+         output.o output_aux.o output_tecplot.o patch.o pflotran_constants.o \
+         reaction.o reaction_aux.o reactive_transport.o realization.o region.o \
          regression.o richards.o richards_mfd.o saturation_function.o \
          secondary_continuum.o simulation.o solid_solution.o solver.o \
          srcsink_sandbox.o strata.o string.o structured_grid.o surface_field.o \
@@ -702,9 +706,9 @@ logging.o : pflotran_constants.o
 mass_transfer.o : dataset_base.o dataset_common_hdf5.o dataset_global_hdf5.o \
                   discretization.o grid.o input_aux.o option.o \
                   pflotran_constants.o string.o
-material.o : communicator_base.o dataset_common_hdf5.o global_aux.o \
-             input_aux.o material_aux.o option.o pflotran_constants.o \
-             saturation_function.o string.o variables.o
+material.o : characteristic_curves.o communicator_base.o dataset_common_hdf5.o \
+             global_aux.o input_aux.o material_aux.o option.o \
+             pflotran_constants.o string.o variables.o
 material_aux.o : option.o pflotran_constants.o utility.o variables.o
 matrix_block_aux.o : option.o pflotran_constants.o utility.o
 matrix_buffer.o : grid.o pflotran_constants.o structured_grid.o
@@ -793,12 +797,12 @@ output_tecplot.o : connection.o discretization.o field.o grid.o logging.o \
 output_vtk.o : discretization.o field.o grid.o logging.o option.o output_aux.o \
                output_common.o patch.o pflotran_constants.o reaction_aux.o \
                realization_base.o string.o structured_grid.o variables.o
-patch.o : auxiliary.o condition.o connection.o constraint.o coupler.o \
-          dataset.o dataset_ascii.o dataset_base.o dataset_common_hdf5.o \
-          dataset_gridded_hdf5.o dataset_map_hdf5.o eos_water.o field.o \
-          general_aux.o global_aux.o grid.o hydrostatic.o immis_aux.o \
-          material.o material_aux.o mineral.o mineral_aux.o miscible_aux.o \
-          mphase_aux.o observation.o option.o output_aux.o \
+patch.o : auxiliary.o characteristic_curves.o condition.o connection.o \
+          constraint.o coupler.o dataset.o dataset_ascii.o dataset_base.o \
+          dataset_common_hdf5.o dataset_gridded_hdf5.o dataset_map_hdf5.o \
+          eos_water.o field.o general_aux.o global_aux.o grid.o hydrostatic.o \
+          immis_aux.o material.o material_aux.o mineral.o mineral_aux.o \
+          miscible_aux.o mphase_aux.o observation.o option.o output_aux.o \
           pflotran_constants.o reaction.o reaction_aux.o \
           reactive_transport_aux.o region.o richards_aux.o saturation.o \
           saturation_function.o strata.o surface_auxiliary.o \
@@ -932,13 +936,14 @@ reactive_transport.o : condition.o connection.o constraint.o coupler.o debug.o \
                        surface_complexation_aux.o transport.o variables.o
 reactive_transport_aux.o : matrix_block_aux.o option.o pflotran_constants.o \
                            reaction_aux.o surface_complexation_aux.o utility.o
-realization.o : condition.o connection.o constraint.o coupler.o dataset.o \
-                dataset_base.o dataset_common_hdf5.o debug.o discretization.o \
-                dm_kludge.o field.o fluid.o grid.o input_aux.o mass_transfer.o \
-                material.o material_aux.o mfd.o mfd_aux.o observation.o \
-                option.o output_aux.o patch.o pflotran_constants.o reaction.o \
-                reaction_aux.o reactive_transport_aux.o realization_base.o \
-                region.o saturation_function.o strata.o string.o \
+realization.o : characteristic_curves.o condition.o connection.o constraint.o \
+                coupler.o dataset.o dataset_base.o dataset_common_hdf5.o \
+                debug.o discretization.o dm_kludge.o field.o fluid.o grid.o \
+                input_aux.o mass_transfer.o material.o material_aux.o mfd.o \
+                mfd_aux.o observation.o option.o output_aux.o patch.o \
+                pflotran_constants.o reaction.o reaction_aux.o \
+                reactive_transport_aux.o realization_base.o region.o \
+                saturation_function.o strata.o string.o \
                 structured_communicator.o structured_grid.o time_storage.o \
                 uniform_velocity.o unstructured_cell.o \
                 unstructured_communicator.o unstructured_grid.o \

@@ -1540,6 +1540,7 @@ subroutine RTCalculateTransportMatrix(realization,T)
   use Field_module
   use Coupler_module
   use Connection_module
+  use Debug_module
 
   implicit none
       
@@ -1570,7 +1571,9 @@ subroutine RTCalculateTransportMatrix(realization,T)
   PetscReal :: coef_in, coef_out
   PetscViewer :: viewer
   PetscErrorCode :: ierr
-  
+
+  character(len=MAXSTRINGLENGTH) :: string
+
   option => realization%option
   field => realization%field
   patch => realization%patch
@@ -1735,13 +1738,8 @@ subroutine RTCalculateTransportMatrix(realization,T)
   endif
 
   if (realization%debug%matview_Jacobian) then
-#if 1
-    call PetscViewerASCIIOpen(realization%option%mycomm,'Tmatrix.out', &
-                              viewer,ierr);CHKERRQ(ierr)
-#else
-    call PetscViewerBinaryOpen(realization%option%mycomm,'Tmatrix.bin', &
-                               FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-#endif
+    string = 'Tmatrix'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
     call MatView(T,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif  
@@ -2216,6 +2214,7 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   use Option_module
   use Grid_module
   use Logging_module
+  use Debug_module
 
   implicit none
 
@@ -2232,6 +2231,8 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   type(option_type), pointer :: option
   PetscViewer :: viewer  
   
+  character(len=MAXSTRINGLENGTH) :: string
+
   call PetscLogEventBegin(logging%event_rt_residual,ierr);CHKERRQ(ierr)
 
   patch => realization%patch
@@ -2261,14 +2262,14 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   call RTResidualNonFlux(snes,xx,r,realization,ierr)
   
   if (realization%debug%vecview_residual) then
-    call PetscViewerASCIIOpen(realization%option%mycomm,'RTresidual.out', &
-                              viewer,ierr);CHKERRQ(ierr)
+    string = 'RTresidual'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
     call VecView(r,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
   if (realization%debug%vecview_solution) then
-    call PetscViewerASCIIOpen(realization%option%mycomm,'RTxx.out', &
-                              viewer,ierr);CHKERRQ(ierr)
+    string = 'RTxx'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
     call VecView(field%tran_xx,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
@@ -2935,6 +2936,7 @@ subroutine RTJacobian(snes,xx,A,B,realization,ierr)
   use Option_module
   use Field_module
   use Logging_module
+  use Debug_module
 
   implicit none
 
@@ -2948,6 +2950,7 @@ subroutine RTJacobian(snes,xx,A,B,realization,ierr)
   MatType :: mat_type
   PetscViewer :: viewer  
   type(grid_type),  pointer :: grid
+  character(len=MAXSTRINGLENGTH) :: string
 
   call PetscLogEventBegin(logging%event_rt_jacobian,ierr);CHKERRQ(ierr)
 
@@ -2982,13 +2985,8 @@ subroutine RTJacobian(snes,xx,A,B,realization,ierr)
   call PetscLogEventEnd(logging%event_rt_jacobian2,ierr);CHKERRQ(ierr)
     
   if (realization%debug%matview_Jacobian) then
-#if 1
-    call PetscViewerASCIIOpen(realization%option%mycomm,'RTjacobian.out', &
-                              viewer,ierr);CHKERRQ(ierr)
-#else
-    call PetscViewerBinaryOpen(realization%option%mycomm,'RTjacobian.bin', &
-                               FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-#endif
+    string = 'RTjacobian'
+    call DebugCreateViewer(realization%debug,string,realization%option,viewer)
     call MatView(J,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
@@ -2998,13 +2996,8 @@ subroutine RTJacobian(snes,xx,A,B,realization,ierr)
                                ierr);CHKERRQ(ierr)
 
     if (realization%debug%matview_Jacobian) then
-#if 1
-      call PetscViewerASCIIOpen(realization%option%mycomm,'RTjacobianLog.out', &
-                                viewer,ierr);CHKERRQ(ierr)
-#else
-    call PetscViewerBinaryOpen(realization%option%mycomm,'RTjacobianLog.bin', &
-                               FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-#endif
+      string = 'RTjacobianLog'
+      call DebugCreateViewer(realization%debug,string,realization%option,viewer)
       call MatView(J,viewer,ierr);CHKERRQ(ierr)
       call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
     endif
