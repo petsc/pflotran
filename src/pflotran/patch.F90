@@ -11,6 +11,7 @@ module Patch_module
   use Material_module
   use Field_module
   use Saturation_Function_module
+  use Characteristic_Curves_module
   use Surface_Field_module
   use Surface_Material_module
   use Surface_Auxiliary_module
@@ -55,6 +56,8 @@ module Patch_module
     type(material_property_ptr_type), pointer :: material_property_array(:)
     type(saturation_function_type), pointer :: saturation_functions
     type(saturation_function_ptr_type), pointer :: saturation_function_array(:)
+    class(characteristic_curves_type), pointer :: characteristic_curves
+    type(characteristic_curves_ptr_type), pointer :: characteristic_curves_array(:)
 
     type(strata_list_type), pointer :: strata
     type(observation_list_type), pointer :: observation
@@ -161,6 +164,8 @@ function PatchCreate()
   nullify(patch%material_property_array)
   nullify(patch%saturation_functions)
   nullify(patch%saturation_function_array)
+  nullify(patch%characteristic_curves)
+  nullify(patch%characteristic_curves_array)
 
   allocate(patch%observation)
   call ObservationInitList(patch%observation)
@@ -1034,6 +1039,7 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
   PetscBool :: update
   PetscBool :: dof1, dof2, dof3
   PetscReal :: temperature, p_sat, p_air, p_gas, p_cap, s_liq
+  PetscReal :: dummy_real
   PetscReal :: x(option%nflowdof)
   character(len=MAXSTRINGLENGTH) :: string, string2
   PetscErrorCode :: ierr
@@ -1169,10 +1175,8 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
                   GENERAL_AIR_PRESSURE_INDEX),iconn) = &
                     p_gas - p_sat ! air pressure
             endif
-            call SaturationFunctionCompute(p_cap,s_liq, &
-                                            patch%saturation_function_array( &
-                                              patch%sat_func_id(ghosted_id))%ptr, &
-                                            option)
+            call patch%characteristic_curves_array(patch%sat_func_id(ghosted_id))% &
+                   ptr%saturation_function%Saturation(p_cap,s_liq,dummy_real,option)
             ! %flow_aux_mapping(GENERAL_GAS_SATURATION_INDEX) set to 3 in hydrostatic
             coupler%flow_aux_real_var( &
               coupler%flow_aux_mapping( &
@@ -5496,6 +5500,11 @@ subroutine PatchDestroy(patch)
   nullify(patch%saturation_function_array)
   ! Since this linked list will be destroyed by realization, just nullify here
   nullify(patch%saturation_functions)
+  if (associated(patch%characteristic_curves_array)) &
+    deallocate(patch%characteristic_curves_array)
+  nullify(patch%characteristic_curves_array)
+  ! Since this linked list will be destroyed by realization, just nullify here
+  nullify(patch%characteristic_curves)
 
   nullify(patch%surf_field)
   if (associated(patch%surf_material_property_array)) &

@@ -1401,13 +1401,13 @@ subroutine MiscibleResidual(snes,xx,r,realization,ierr)
   enddo
 
   if (realization%debug%vecview_residual) then
-    string = 'Rresidual'
+    string = 'MISresidual'
     call DebugCreateViewer(realization%debug,string,option,viewer)
     call VecView(r,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
   if (realization%debug%vecview_solution) then
-    string = 'Rxx'
+    string = 'MISxx'
     call DebugCreateViewer(realization%debug,string,option,viewer)
     call VecView(xx,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
@@ -2194,7 +2194,7 @@ subroutine MiscibleJacobian(snes,xx,A,B,realization,ierr)
 
 
   if (realization%debug%matview_Jacobian) then
-    string = 'Rjacobian'
+    string = 'MISjacobian'
     call DebugCreateViewer(realization%debug,string,realization%option,viewer)
     call MatView(J,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
@@ -2915,7 +2915,7 @@ subroutine MiscibleJacobianPatch2(snes,xx,A,B,realization,ierr)
   endif
 
   if (realization%debug%matview_Jacobian) then
-    string = 'Rjacobian'
+    string = 'MISjacobian'
     call DebugCreateViewer(realization%debug,string,option,viewer)
     call MatView(A,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)

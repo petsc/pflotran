@@ -2196,13 +2196,13 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
   call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr);CHKERRQ(ierr)
 
   if (realization%debug%vecview_residual) then
-    string = 'Rresidual'
+    string = 'Iresidual'
     call DebugCreateViewer(realization%debug,string,option,viewer)
     call VecView(r,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
   if (realization%debug%vecview_solution) then
-    string = 'Rxx'
+    string = 'Ixx'
     call DebugCreateViewer(realization%debug,string,option,viewer)
     call VecView(xx,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
@@ -2779,7 +2779,7 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,realization,ierr)
   endif
 
   if (realization%debug%matview_Jacobian) then
-    string = 'Rjacobian'
+    string = 'Ijacobian'
     call DebugCreateViewer(realization%debug,string,option,viewer)
     call MatView(A,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)

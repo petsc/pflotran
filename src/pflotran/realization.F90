@@ -10,6 +10,7 @@ module Realization_class
   use Constraint_module
   use Material_module
   use Saturation_Function_module
+  use Characteristic_Curves_module
   use Dataset_Base_class
   use Fluid_module
   use Discretization_module
@@ -45,6 +46,7 @@ private
     type(fluid_property_type), pointer :: fluid_properties
     type(fluid_property_type), pointer :: fluid_property_array(:)
     type(saturation_function_type), pointer :: saturation_functions
+    class(characteristic_curves_type), pointer :: characteristic_curves
     class(dataset_base_type), pointer :: datasets
     
     type(uniform_velocity_dataset_type), pointer :: uniform_velocity_dataset
@@ -155,6 +157,7 @@ function RealizationCreate2(option)
   nullify(realization%fluid_properties)
   nullify(realization%fluid_property_array)
   nullify(realization%saturation_functions)
+  nullify(realization%characteristic_curves)
   nullify(realization%datasets)
   nullify(realization%uniform_velocity_dataset)
   nullify(realization%sec_transport_constraint)
@@ -881,24 +884,24 @@ subroutine RealProcessMatPropAndSatFunc(realization)
   option => realization%option
   patch => realization%patch
   
-!  ! organize lists
-  call MaterialPropConvertListToArray(realization%material_properties, &
-                                      patch%material_property_array, &
-                                      option)
-  call SaturatFuncConvertListToArray(realization%saturation_functions, &
-                                      patch%saturation_function_array, &
-                                      option)
-
   ! set up mirrored pointer arrays within patches to saturation functions
   ! and material properties
   patch%material_properties => realization%material_properties
   call MaterialPropConvertListToArray(patch%material_properties, &
                                       patch%material_property_array, &
                                       option)
-  patch%saturation_functions => realization%saturation_functions
-  call SaturatFuncConvertListToArray(patch%saturation_functions, &
-                                      patch%saturation_function_array, &
+  if (associated(realization%saturation_functions)) then
+    patch%saturation_functions => realization%saturation_functions
+    call SaturatFuncConvertListToArray(patch%saturation_functions, &
+                                       patch%saturation_function_array, &
+                                       option)
+  endif
+  if (associated(realization%characteristic_curves)) then
+    patch%characteristic_curves => realization%characteristic_curves
+    call CharCurvesConvertListToArray(patch%characteristic_curves, &
+                                      patch%characteristic_curves_array, &
                                       option)
+  endif
                                       
   ! create mapping of internal to external material id
   call MaterialCreateIntToExtMapping(patch%material_property_array, &
@@ -910,10 +913,18 @@ subroutine RealProcessMatPropAndSatFunc(realization)
 
     ! obtain saturation function id
     if (option%iflowmode /= NULL_MODE) then
-      cur_material_property%saturation_function_id = &
-        SaturationFunctionGetID(realization%saturation_functions, &
-                                cur_material_property%saturation_function_name, &
-                                cur_material_property%name,option)
+      if (associated(patch%saturation_function_array)) then
+        cur_material_property%saturation_function_id = &
+          SaturationFunctionGetID(patch%saturation_functions, &
+                             cur_material_property%saturation_function_name, &
+                             cur_material_property%name,option)
+      endif
+      if (associated(patch%characteristic_curves_array)) then
+        cur_material_property%saturation_function_id = &
+          CharacteristicCurvesGetID(patch%characteristic_curves_array, &
+                             cur_material_property%saturation_function_name, &
+                             cur_material_property%name,option)
+      endif
     endif
     
     ! if named, link dataset to property
@@ -2613,6 +2624,9 @@ subroutine RealizationDestroyLegacy(realization)
   call MaterialPropertyDestroy(realization%material_properties)
 
   call SaturationFunctionDestroy(realization%saturation_functions)
+  print *, 'RealizationDestroyLegacy cannot be removed.'
+  stop
+  call CharacteristicCurvesDestroy(realization%characteristic_curves)
 
   call DatasetDestroy(realization%datasets)
   
@@ -2664,6 +2678,7 @@ subroutine RealizationStrip(this)
   call MaterialPropertyDestroy(this%material_properties)
 
   call SaturationFunctionDestroy(this%saturation_functions)
+  call CharacteristicCurvesDestroy(this%characteristic_curves)  
 
   call DatasetDestroy(this%datasets)
   
