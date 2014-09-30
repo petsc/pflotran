@@ -262,5 +262,80 @@ module PFLOTRAN_Constants_module
 
   ! Dummy value
   PetscReal, parameter, public :: DUMMY_VALUE = -999.d0
+  
+  ! uninitialized values
+  PetscInt, parameter, public :: UNINITIALIZED_INTEGER = -999
+  PetscReal, parameter, public :: UNINITIALIZED_DOUBLE = -999.d0
+  
+  interface Uninitialized
+    procedure :: UninitializedInteger
+    procedure :: UninitializedDouble
+  end interface
+  
+  public :: Uninitialized, &
+            UninitializedMessage
+  
+contains
+
+! ************************************************************************** !
+
+function UninitializedInteger(value)
+  ! 
+  ! Tests whether a variable is uninitialized based orginally being set to
+  ! the value UNINITIALIZED_INTEGER
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/29/14
+  !
+  implicit none
+  
+  PetscInt :: value
+  PetscBool :: UninitializedInteger
+  
+  UninitializedInteger = (value == UNINITIALIZED_INTEGER)
+  
+end function UninitializedInteger
+
+! ************************************************************************** !
+
+function UninitializedDouble(value)
+  ! 
+  ! Tests whether a variable is uninitialized based orginally being set to
+  ! the value UNINITIALIZED_INTEGER
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/29/14
+  !
+  implicit none
+  
+  PetscReal :: value
+  PetscBool :: UninitializedDouble
+
+  UninitializedDouble = (dabs(value-UNINITIALIZED_DOUBLE) < 1.d-20)
+  
+end function UninitializedDouble
+
+! ************************************************************************** !
+
+function UninitializedMessage(variable_name,routine_name)
+  ! 
+  ! Tests whether a variable is uninitialized based orginally being set to
+  ! the value UNINITIALIZED_INTEGER
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/29/14
+  !
+  implicit none
+  
+  character(len=*) :: variable_name
+  character(len=*) :: routine_name
+  
+  character(len=MAXSTRINGLENGTH) :: UninitializedMessage
+  
+  UninitializedMessage = trim(variable_name) // &
+                         ' uninitialized in ' // &
+                         trim(routine_name) // '.'
+  
+end function UninitializedMessage
 
 end module PFLOTRAN_Constants_module

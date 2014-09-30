@@ -22,9 +22,10 @@ module Characteristic_Curves_module
     PetscReal :: pcmax
   contains
     procedure, public :: Init => SFBaseInit
+    procedure, public :: Verify => SFBaseVerify
+    procedure, public :: Test => SFBaseTest
     procedure, public :: SetupPolynomials => SFBaseSetupPolynomials
     procedure, public :: CapillaryPressure => SFBaseCapillaryPressure
-    procedure, public :: Verify => SFBAseVerify
     procedure, public :: Saturation => SFBaseSaturation
   end type sat_func_base_type
   type, public, extends(sat_func_base_type) :: sat_func_VG_type
@@ -32,6 +33,7 @@ module Characteristic_Curves_module
     PetscReal :: m
   contains
     procedure, public :: Init => SF_VG_Init
+    procedure, public :: Verify => SF_VG_Verify
     procedure, public :: CapillaryPressure => SF_VG_CapillaryPressure
     procedure, public :: Saturation => SF_VG_Saturation
   end type sat_func_VG_type  
@@ -40,6 +42,7 @@ module Characteristic_Curves_module
     PetscReal :: lambda
   contains
     procedure, public :: Init => SF_BC_Init
+    procedure, public :: Verify => SF_BC_Verify
     procedure, public :: SetupPolynomials => SF_BC_SetupPolynomials
     procedure, public :: CapillaryPressure => SF_BC_CapillaryPressure
     procedure, public :: Saturation => SF_BC_Saturation
@@ -51,14 +54,16 @@ module Characteristic_Curves_module
     PetscReal :: Sr
   contains
     procedure, public :: Init => RPFBaseInit
+    procedure, public :: Verify => RPFBaseVerify
+    procedure, public :: Test => RPF_BAse_Test
     procedure, public :: SetupPolynomials => RPFBaseSetupPolynomials
-    procedure, public :: Verify => RPF_BAse_Verify
     procedure, public :: RelativePermeability => RPF_Base_RelPerm
   end type rel_perm_func_base_type
   type, public, extends(rel_perm_func_base_type) :: rpf_Mualem_type
     PetscReal :: m
   contains
     procedure, public :: Init => RPF_Mualem_Init
+    procedure, public :: Verify => RPF_Mualem_Verify
     procedure, public :: SetupPolynomials => RPF_Mualem_SetupPolynomials
     procedure, public :: RelativePermeability => RPF_Mualem_RelPerm
   end type rpf_Mualem_type
@@ -66,25 +71,28 @@ module Characteristic_Curves_module
     PetscReal :: Srg
   contains
     procedure, public :: Init => RPF_Mualem_VG_Gas_Init
+    procedure, public :: Verify => RPF_Mualem_VG_Gas_Verify
     procedure, public :: RelativePermeability => RPF_Mualem_VG_Gas_RelPerm
   end type rpf_Mualem_VG_gas_type
   type, public, extends(rel_perm_func_base_type) :: rpf_Burdine_type
     PetscReal :: lambda
   contains
     procedure, public :: Init => RPF_Burdine_Init
+    procedure, public :: Verify => RPF_Burdine_Verify
     procedure, public :: RelativePermeability => RPF_Burdine_RelPerm
   end type rpf_Burdine_type
   type, public, extends(rpf_Burdine_type) :: rpf_Burdine_BC_gas_type
     PetscReal :: Srg
   contains
     procedure, public :: Init => RPF_Burdine_BC_Gas_Init
+    procedure, public :: Verify => RPF_Burdine_BC_Gas_Verify
     procedure, public :: RelativePermeability => RPF_Burdine_BC_Gas_RelPerm
   end type rpf_Burdine_BC_gas_type
 
   type, public :: characteristic_curves_type
     character(len=MAXWORDLENGTH) :: name
     PetscBool :: print_me
-    PetscBool :: verify
+    PetscBool :: test
     class(sat_func_base_type), pointer :: saturation_function
     class(rel_perm_func_base_type), pointer :: liq_rel_perm_function
     class(rel_perm_func_base_type), pointer :: gas_rel_perm_function
@@ -126,7 +134,7 @@ function CharacteristicCurvesCreate()
   allocate(characteristic_curves)
   characteristic_curves%name = ''
   characteristic_curves%print_me = PETSC_FALSE
-  characteristic_curves%verify = PETSC_FALSE
+  characteristic_curves%test = PETSC_FALSE
   nullify(characteristic_curves%saturation_function)
   nullify(characteristic_curves%liq_rel_perm_function)
   nullify(characteristic_curves%gas_rel_perm_function)
@@ -229,14 +237,16 @@ subroutine CharacteristicCurvesRead(this,input,option)
               ' not a recognized in relative permeability function type.'
             call printErrMsg(option)            
         end select
-      case('VERIFY') 
-        this%verify = PETSC_TRUE
+      case('TEST') 
+        this%test = PETSC_TRUE
       case default
         option%io_buffer = 'Keyword: ' // trim(keyword) // &
                            ' not recognized in charateristic_curves.'    
         call printErrMsg(option)
     end select 
-  enddo 
+  enddo
+  
+  call CharacteristicCurvesVerify(this,option)
 
 end subroutine CharacteristicCurvesRead
 
@@ -548,9 +558,9 @@ subroutine CharCurvesConvertListToArray(list,array,option)
     if (.not.associated(cur_characteristic_curves)) exit
     count = count + 1
     array(count)%ptr => cur_characteristic_curves
-    if (cur_characteristic_curves%verify .and. &
+    if (cur_characteristic_curves%test .and. &
         option%myrank == option%io_rank) then
-      call CharacteristicCurvesVerify(cur_characteristic_curves,option)
+      call CharacteristicCurvesTest(cur_characteristic_curves,option)
     endif
     cur_characteristic_curves => cur_characteristic_curves%next
   enddo
@@ -639,7 +649,7 @@ end function CharacteristicCurvesGetID
 
 ! ************************************************************************** !
 
-subroutine CharacteristicCurvesVerify(characteristic_curves,option)
+subroutine CharacteristicCurvesTest(characteristic_curves,option)
   ! 
   ! Outputs values of characteristic curves over a range of values
   ! 
@@ -655,17 +665,44 @@ subroutine CharacteristicCurvesVerify(characteristic_curves,option)
 
   character(len=MAXWORDLENGTH) :: phase
 
-  call characteristic_curves%saturation_function%Verify( &
-                                                   characteristic_curves%name, &
-                                                        option)
+  call characteristic_curves%saturation_function%Test( &
+                                                 characteristic_curves%name, &
+                                                 option)
   phase = 'liquid'
-  call characteristic_curves%liq_rel_perm_function%Verify( &
-                                                   characteristic_curves%name, &
-                                                   phase,option)
+  call characteristic_curves%liq_rel_perm_function%Test( &
+                                                 characteristic_curves%name, &
+                                                 phase,option)
   phase = 'gas'
-  call characteristic_curves%gas_rel_perm_function%Verify( &
-                                                   characteristic_curves%name, &
-                                                   phase,option)
+  call characteristic_curves%gas_rel_perm_function%Test( &
+                                                 characteristic_curves%name, &
+                                                 phase,option)
+  
+end subroutine CharacteristicCurvesTest
+
+! ************************************************************************** !
+
+subroutine CharacteristicCurvesVerify(characteristic_curves,option)
+  ! 
+  ! Outputs values of characteristic curves over a range of values
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/29/14
+  !
+  use Option_module
+
+  implicit none
+  
+  class(characteristic_curves_type) :: characteristic_curves
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  
+  string = 'CHARACTERISTIC_CURVES(' // trim(characteristic_curves%name) // &
+           '),'
+
+  call characteristic_curves%saturation_function%Verify(string,option)
+  call characteristic_curves%liq_rel_perm_function%Verify(string,option)
+  call characteristic_curves%gas_rel_perm_function%Verify(string,option)
   
 end subroutine CharacteristicCurvesVerify
 
@@ -696,10 +733,30 @@ subroutine SFBaseInit(this)
   ! Cannot allocate here.  Allocation takes place in daughter class
   nullify(this%sat_poly)
   nullify(this%pres_poly)
-  this%Sr = 0.d0
+  this%Sr = UNINITIALIZED_DOUBLE
   this%pcmax = 1.d9
   
 end subroutine SFBaseInit
+
+! ************************************************************************** !
+
+subroutine SFBaseVerify(this,name,option)
+
+  use Option_module
+  
+  implicit none
+  
+  class(sat_func_base_type) :: this  
+  character(len=MAXSTRINGLENGTH) :: name
+  type(option_type) :: option  
+  
+  if (Uninitialized(this%Sr)) then
+    option%io_buffer = UninitializedMessage('LIQUID_RESIDUAL_SATURATION', &
+                                            name)
+    call printErrMsg(option)
+  endif
+  
+end subroutine SFBaseVerify
 
 ! ************************************************************************** !
 
@@ -711,10 +768,30 @@ subroutine RPFBaseInit(this)
 
   ! Cannot allocate here.  Allocation takes place in daughter class
   nullify(this%poly)
-  this%Sr = 0.d0
+  this%Sr = UNINITIALIZED_DOUBLE
   
 end subroutine RPFBaseInit
 
+! ************************************************************************** !
+
+subroutine RPFBaseVerify(this,name,option)
+
+  use Option_module
+  
+  implicit none
+  
+  class(rel_perm_func_base_type) :: this  
+  character(len=MAXSTRINGLENGTH) :: name
+  type(option_type) :: option  
+
+  if (Uninitialized(this%Sr)) then
+    option%io_buffer = UninitializedMessage('LIQUID_RESIDUAL_SATURATION', &
+                                            name)
+    call printErrMsg(option)
+  endif
+  
+end subroutine RPFBaseVerify
+  
 ! ************************************************************************** !
 
 subroutine SFBaseSetupPolynomials(this,option,error_string)
@@ -792,7 +869,7 @@ end subroutine SFBaseSaturation
 
 ! ************************************************************************** !
 
-subroutine SFBaseVerify(this,cc_name,option)
+subroutine SFBaseTest(this,cc_name,option)
 
   use Option_module
 
@@ -849,7 +926,7 @@ subroutine SFBaseVerify(this,cc_name,option)
   enddo
   close(86)
 
-end subroutine SFBaseVerify
+end subroutine SFBaseTest
 
 ! ************************************************************************** !
 
@@ -872,7 +949,7 @@ end subroutine RPF_Base_RelPerm
 
 ! ************************************************************************** !
 
-subroutine RPF_Base_Verify(this,cc_name,phase,option)
+subroutine RPF_Base_Test(this,cc_name,phase,option)
 
   use Option_module
 
@@ -903,7 +980,7 @@ subroutine RPF_Base_Verify(this,cc_name,phase,option)
   enddo
   close(86)
 
-end subroutine RPF_Base_Verify
+end subroutine RPF_Base_Test
 
 ! ************************************************************************** !
 
@@ -931,10 +1008,41 @@ subroutine SF_VG_Init(this)
   class(sat_func_VG_type) :: this
 
   call SFBaseInit(this)
-  this%alpha = 0.d0
-  this%m = 0.d0
+  this%alpha = UNINITIALIZED_DOUBLE
+  this%m = UNINITIALIZED_DOUBLE
   
 end subroutine SF_VG_Init
+
+! ************************************************************************** !
+
+subroutine SF_VG_Verify(this,name,option)
+
+  use Option_module
+  
+  implicit none
+  
+  class(sat_func_VG_type) :: this
+  character(len=MAXSTRINGLENGTH) :: name
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  
+  if (index(name,'SATURATION_FUNCTION') > 0) then
+    string = name
+  else
+    string = trim(name) // 'SATURATION_FUNCTION,VAN_GENUCHTEN'
+  endif
+  call SFBaseVerify(this,string,option)
+  if (Uninitialized(this%alpha)) then
+    option%io_buffer = UninitializedMessage('ALPHA',string)
+    call printErrMsg(option)
+  endif   
+  if (Uninitialized(this%m)) then
+    option%io_buffer = UninitializedMessage('M',string)
+    call printErrMsg(option)
+  endif   
+
+end subroutine SF_VG_Verify
 
 ! ************************************************************************** !
 
@@ -1087,9 +1195,36 @@ subroutine RPF_Mualem_Init(this)
   class(rpf_Mualem_type) :: this
 
   call RPFBaseInit(this)
-  this%m = 0.d0
+  this%m = UNINITIALIZED_DOUBLE
   
 end subroutine RPF_Mualem_Init
+
+! ************************************************************************** !
+
+subroutine RPF_Mualem_Verify(this,name,option)
+
+  use Option_module
+
+  implicit none
+  
+  class(rpf_Mualem_type) :: this
+  character(len=MAXSTRINGLENGTH) :: name
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  
+  if (index(name,'PERMEABILITY_FUNCTION') > 0) then
+    string = name
+  else
+    string = trim(name) // 'PERMEABILITY_FUNCTION,MUALEM'
+  endif  
+  call RPFBaseVerify(this,string,option)
+  if (Uninitialized(this%m)) then
+    option%io_buffer = UninitializedMessage('M',string)
+    call printErrMsg(option)
+  endif   
+  
+end subroutine RPF_Mualem_Verify
 
 ! ************************************************************************** !
 
@@ -1220,9 +1355,36 @@ subroutine RPF_Mualem_VG_Gas_Init(this)
   class(rpf_Mualem_VG_gas_type) :: this
 
   call RPF_Mualem_Init(this)
-  this%Srg = 0.d0
+  this%Srg = UNINITIALIZED_DOUBLE
   
 end subroutine RPF_Mualem_VG_Gas_Init
+
+! ************************************************************************** !
+
+subroutine RPF_Mualem_VG_Gas_Verify(this,name,option)
+
+  use Option_module
+  
+  implicit none
+  
+  class(rpf_Mualem_VG_gas_type) :: this
+  character(len=MAXSTRINGLENGTH) :: name
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  
+  if (index(name,'PERMEABILITY_FUNCTION') > 0) then
+    string = name
+  else
+    string = trim(name) // 'PERMEABILITY_FUNCTION,MUALEM_VG_GAS'
+  endif  
+  call RPF_Mualem_Verify(this,string,option)
+  if (Uninitialized(this%Srg)) then
+    option%io_buffer = UninitializedMessage('GAS_RESIDUAL_SATURATION',string)
+    call printErrMsg(option)
+  endif 
+  
+end subroutine RPF_Mualem_VG_Gas_Verify
 
 ! ************************************************************************** !
 
@@ -1256,7 +1418,7 @@ subroutine RPF_Mualem_VG_Gas_RelPerm(this,liquid_saturation, &
   Se = (liquid_saturation - this%Sr) / (1.d0 - this%Sr - this%Srg)
   
   relative_permeability = 0.d0
-  dkr_Se = -999.d0
+  dkr_Se = UNINITIALIZED_DOUBLE
   if (Se >= 1.d0) then
     return
   else if (Se <=  0.d0) then
@@ -1288,18 +1450,50 @@ end function SF_BC_Create
 
 subroutine SF_BC_Init(this)
 
-  ! Creates the Burdine capillary pressure function object
+  use Option_module
 
   implicit none
   
   class(sat_func_BC_type) :: this
+  character(len=MAXWORDLENGTH) :: name
+  type(option_type) :: option
 
   call SFBaseInit(this)
-  this%alpha = 0.d0
-  this%lambda = 0.d0
-  
+  this%alpha = UNINITIALIZED_DOUBLE
+  this%lambda = UNINITIALIZED_DOUBLE
   
 end subroutine SF_BC_Init
+
+! ************************************************************************** !
+
+subroutine SF_BC_Verify(this,name,option)
+
+  use Option_module
+
+  implicit none
+  
+  class(sat_func_BC_type) :: this
+  character(len=MAXSTRINGLENGTH) :: name
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string 
+  
+  if (index(name,'SATURATION_FUNCTION') > 0) then
+    string = name
+  else
+    string = trim(name) // 'SATURATION_FUNCTION,BROOKS_COREY'
+  endif  
+  call SFBaseVerify(this,string,option)
+  if (Uninitialized(this%alpha)) then
+    option%io_buffer = UninitializedMessage('ALPHA',string)
+    call printErrMsg(option)
+  endif 
+  if (Uninitialized(this%lambda)) then
+    option%io_buffer = UninitializedMessage('LAMBDA',string)
+    call printErrMsg(option)
+  endif 
+  
+end subroutine SF_BC_Verify
 
 ! ************************************************************************** !
 
@@ -1500,9 +1694,38 @@ subroutine RPF_Burdine_Init(this)
   class(rpf_Burdine_type) :: this
 
   call RPFBaseInit(this)
-  this%lambda = 0.d0
+  this%lambda = UNINITIALIZED_DOUBLE
   
 end subroutine RPF_Burdine_Init
+
+! ************************************************************************** !
+
+subroutine RPF_Burdine_Verify(this,name,option)
+
+  ! Initializes the Brooks-Corey Burdine relative permeability function object
+
+  use Option_module
+  
+  implicit none
+  
+  class(rpf_Burdine_type) :: this
+  character(len=MAXSTRINGLENGTH) :: name
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string 
+
+  if (index(name,'PERMEABILITY_FUNCTION') > 0) then
+    string = name
+  else
+    string = trim(name) // 'PERMEABILITY_FUNCTION,BURDINE'
+  endif    
+  call RPFBaseVerify(this,name,option)
+  if (Uninitialized(this%lambda)) then
+    option%io_buffer = UninitializedMessage('LAMBDA',string)
+    call printErrMsg(option)
+  endif
+  
+end subroutine RPF_Burdine_Verify
 
 ! ************************************************************************** !
 
@@ -1578,9 +1801,36 @@ subroutine RPF_Burdine_BC_Gas_Init(this)
   class(rpf_Burdine_BC_gas_type) :: this
 
   call RPF_Burdine_Init(this)
-  this%Srg = 0.d0
+  this%Srg = UNINITIALIZED_DOUBLE
   
 end subroutine RPF_Burdine_BC_Gas_Init
+
+! ************************************************************************** !
+
+subroutine RPF_Burdine_BC_Gas_Verify(this,name,option)
+
+  use Option_module
+
+  implicit none
+  
+  class(rpf_Burdine_BC_gas_type) :: this
+  character(len=MAXSTRINGLENGTH) :: name
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string 
+
+  if (index(name,'PERMEABILITY_FUNCTION') > 0) then
+    string = name
+  else
+    string = trim(name) // 'PERMEABILITY_FUNCTION,BURDINE_BC_GAS'
+  endif    
+  call RPF_Burdine_Verify(this,string,option)
+  if (Uninitialized(this%Srg)) then
+    option%io_buffer = UninitializedMessage('GAS_RESIDUAL_SATURATION',string)
+    call printErrMsg(option)
+  endif  
+  
+end subroutine RPF_Burdine_BC_Gas_Verify
 
 ! ************************************************************************** !
 
@@ -1614,7 +1864,7 @@ subroutine RPF_Burdine_BC_Gas_RelPerm(this,liquid_saturation, &
   Se = (liquid_saturation - this%Sr) / (1.d0 - this%Sr - this%Srg)
   
   relative_permeability = 0.d0
-  dkr_Se = -999.d0
+  dkr_Se = UNINITIALIZED_DOUBLE
   if (Se >= 1.d0) then
     return
   else if (Se <=  0.d0) then
