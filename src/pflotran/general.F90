@@ -1273,9 +1273,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
       ! for now, if liquid state neighboring gas, we allow for minute
       ! diffusion in liquid phase.
       if (iphase == option%liquid_phase) then
-!        if ((sat_up > eps .or. sat_dn > eps)) then
-      if ((sat_up > eps .and. sat_dn > eps) .or. &
-          (sat_up < eps .and. sat_dn < eps)) then
+        if ((sat_up > eps .or. sat_dn > eps)) then
           sat_up = max(sat_up,eps)
           sat_dn = max(sat_dn,eps)
         endif
@@ -3667,7 +3665,6 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
     call VecRestoreArrayReadF90(field%flow_accum,accum_p,ierr);CHKERRQ(ierr)
   endif
 
-#if 0
   call VecGetArrayF90(X1,X1_p,ierr);CHKERRQ(ierr)
   do local_id = 1, grid%nlmax
     offset = (local_id-1)*option%nflowdof
@@ -3680,7 +3677,6 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
     endif
   enddo
   call VecRestoreArrayF90(X1,X1_p,ierr);CHKERRQ(ierr)
-#endif
   
 end subroutine GeneralCheckUpdatePost
 
