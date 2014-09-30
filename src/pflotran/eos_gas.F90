@@ -125,6 +125,8 @@ module EOS_Gas_module
   public :: EOSGasSetDensityIdeal, &
             EOSGasSetEnergyIdeal, &
             EOSGasSetDensityRKS, &
+            EOSGasSetDensityPRMethane, &
+            EOSGasSetEnergyIdealMethane, &
             EOSGasSetDensityConstant, &
             EOSGasSetEnergyConstant, &
             EOSGasSetViscosityConstant, &
@@ -230,6 +232,17 @@ end subroutine EOSGasSetDensityRKS
 
 ! ************************************************************************** !
 
+subroutine EOSGasSetDensityPRMethane()
+
+  implicit none
+  
+  EOSGasDensityEnergyPtr => EOSGasDensityEnergyGeneral
+  EOSGasDensityPtr => EOSGasDensityPRMethane
+  
+end subroutine EOSGasSetDensityPRMethane
+
+! ************************************************************************** !
+
 subroutine EOSGasSetEnergyIdeal()
 
   implicit none
@@ -238,6 +251,17 @@ subroutine EOSGasSetEnergyIdeal()
   EOSGasEnergyPtr => EOSGasEnergyIdeal
   
 end subroutine EOSGasSetEnergyIdeal
+
+! ************************************************************************** !
+
+subroutine EOSGasSetEnergyIdealMethane()
+
+  implicit none
+  
+  EOSGasDensityEnergyPtr => EOSGasDensityEnergyGeneral
+  EOSGasEnergyPtr => EOSGasEnergyIdealMethane
+  
+end subroutine EOSGasSetEnergyIdealMethane
 
 ! ************************************************************************** !
 
@@ -699,6 +723,85 @@ end subroutine EOSGasDensityRKS
 
 ! ************************************************************************** !
 
+subroutine EOSGasDensityPRMethane(T,P,Rho_gas,dRho_dT,dRho_dP,ierr)
+! Peng-Robinson (PR) equation of state. This is the uncorrected version 
+! sufficient for methane. For other higher hydrocarbons one might need
+! the corrected version published in 1978.
+! Reference: Peng, D. Y., and Robinson, D. B. (1976).
+! A New Two-Constant Equation of State Industrial and Engineering Chemistry: 
+! Fundamentals 15: 59–64 DOI:10.1021/i160057a011
+! current version is for methane only.
+! if omega is greater than 0.49 then alpha needs to be modified below
+! Satish Karra, LANL
+! 09/30/2014
+
+  implicit none
+
+  PetscReal, intent(in) :: T        ! temperature [C]
+  PetscReal, intent(in) :: P        ! pressure [Pa]
+  PetscReal, intent(out) :: Rho_gas ! gas density [kmol/m^3]
+  PetscReal, intent(out) :: dRho_dT ! derivative gas density wrt temperature
+  PetscReal, intent(out) :: dRho_dP ! derivative gas density wrt pressure
+  PetscErrorCode, intent(out) :: ierr
+  
+  PetscReal, parameter :: Rg = 8.31451 ! in J/mol/K 
+  PetscReal :: T_kelvin, RT, alpha,  T_r, Z
+  PetscReal :: f, dfdZ, dZd
+  PetscReal :: a, b
+  PetscInt :: i
+  PetscReal, parameter :: coeff_a = 0.45724
+  PetscReal, parameter :: coeff_b = 0.0778
+  
+  ! for methane critical temp, pressure 
+  PetscReal, parameter :: Tc = 191.15    ! in K
+  PetscReal, parameter :: Pc = 4.641e6   ! in Pa
+  PetscReal, parameter :: omega = 0.0115 ! acentric factor 
+  
+  !solver
+  PetscReal :: coef(4)
+  PetscInt, parameter :: maxit = 50
+  
+  T_kelvin = T + 273.15d0
+  RT = Rg*T_kelvin
+  T_r = T_kelvin/Tc
+  alpha = (1 + (0.3744 + 1.5422*omega - 0.26992*omega**2)*(1-T_r**(0.5)))**2
+  
+  a = coeff_a * alpha * (Rg * Tc)**2 / Pc
+  b = coeff_b * Rg * Tc / Pc
+
+  A = alpha * a / (RT)**2
+  B = b * P / RT 
+
+  coef(1) = 1.0d0
+  coef(2) = B - 1.0d0
+  coef(3) = A - 2 * B - 3 * B**2
+  coef(4) = B**3 +  B**2 - A * B 
+  Z = 1.0d0  ! initial guess for compressibility
+  
+  !Newton iteration to find a Volume of gas
+  do i = 1, maxit
+    f = coef(1) * Z**3 + coef(2) * Z**2 + coef(3) * Z + coef(4)
+    dfdZ = coef(1) * 3 * Z**2  + coef(2) * 2 * Z + coef(3)
+    if (dfdZ .ne. 0.d0) then
+      dZd = f/dfdZ
+      Z = Z - dZd
+      if (Z .ne. 0.d0) then
+        if (abs(dZd/Z) .lt. 1.d-10) then
+          Rho_gas = 1.d0/Z * P/RT * 1d-3 ! mol/m^3 -> kmol/m^3
+          exit
+        end if
+      else
+        print *, 'Error: PR76 gas density cannot be solved'
+      end if 
+    else
+      print *, 'Error: Zero Slope in PR76 Equation of State'
+    end if
+  end do
+  
+end subroutine EOSGasDensityPRMethane
+
+! ************************************************************************** !
+
 subroutine EOSGasFugacity(T,P,Rho_gas,phi,ierr)
 ! current version is for hydrogen only. See
 ! Soave, Giorgio, 1972, "Equilibrium constants from a modified Redlich-Kwong
@@ -734,6 +837,42 @@ subroutine EOSGasFugacity(T,P,Rho_gas,phi,ierr)
   phi = EXP(LHS)  ! dimensionless (Pa/Pa)
   
 end subroutine EOSGasFugacity
+
+! ************************************************************************** !
+
+subroutine EOSGasEnergyIdealMethane(T,P,H,dH_dT,dH_dP,U,dU_dT,dU_dP,ierr)
+  
+! Based on EOSGasEnergyIdeal. Modified for Methane
+! Satish Karra, LANL
+! 09/30/2014
+  
+  implicit none
+
+  PetscReal, intent(in) :: T        ! temperature [C]
+  PetscReal, intent(in) :: P        ! pressure [Pa]
+  PetscReal, intent(out) :: H       ! enthalpy [J/kmol]
+  PetscReal, intent(out) :: dH_dT   ! derivative enthalpy wrt temperature
+  PetscReal, intent(out) :: dH_dP   ! derivative enthalpy wrt pressure
+  PetscReal, intent(out) :: U       ! internal energy [J/kmol]
+  PetscReal, intent(out) :: dU_dT   ! deriv. internal energy wrt temperature
+  PetscReal, intent(out) :: dU_dP   ! deriv. internal energy wrt pressure
+  PetscErrorCode, intent(out) :: ierr
+
+  PetscReal, parameter:: Rg = 8.31415 
+  ! Cpg units: J/mol-K
+  PetscReal, parameter:: Cp_methane = 35.69 ! at 298.15 K and 1 bar http://webbook.nist.gov/cgi/cbook.cgi?ID=C74828&Units=SI&Mask=1
+  PetscReal  T_kelvin
+
+  T_kelvin = T + 273.15d0
+  H = Cp_methane * T_kelvin * 1.d3  ! J/mol -> J/kmol
+  U = (Cp_methane - Rg) * T_kelvin * 1.d3 ! J/mol -> J/kmol
+
+  dH_dP = 0.d0
+  dH_dT = Cp_methane * 1.d3
+  dU_dP = 0.d0
+  dU_dT = (Cp_methane - Rg) * 1.d3
+    
+end subroutine EOSGasEnergyIdealMethane
 
 ! ************************************************************************** !
 
