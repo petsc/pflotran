@@ -8,6 +8,8 @@ module Characteristic_Curves_module
 
 #include "finclude/petscsys.h"
 
+  PetscReal, parameter :: DEFAULT_PCMAX = 1.d9
+
   type :: polynomial_type
     PetscReal :: low
     PetscReal :: high
@@ -734,7 +736,7 @@ subroutine SFBaseInit(this)
   nullify(this%sat_poly)
   nullify(this%pres_poly)
   this%Sr = UNINITIALIZED_DOUBLE
-  this%pcmax = 1.d9
+  this%pcmax = DEFAULT_PCMAX
   
 end subroutine SFBaseInit
 
