@@ -186,6 +186,8 @@ subroutine EOSRead(input,option)
                 call EOSGasSetDensityConstant(tempreal)
               case('RKS')
                 call EOSGasSetDensityRKS()
+              case('PR_METHANE')
+                call EOSGasSetDensityPRMethane()
               case('IDEAL','DEFAULT')
                 call EOSGasSetDensityIdeal()
               case default
@@ -203,6 +205,8 @@ subroutine EOSRead(input,option)
                 call InputErrorMsg(input,option,'VALUE', &
                                    'EOS,GAS,ENTHALPY,CONSTANT')
                 call EOSGasSetEnergyConstant(tempreal)
+              case('IDEAL_METHANE')
+                call EOSGasSetEnergyIdealMethane()
               case('IDEAL','DEFAULT')
                 call EOSGasSetEnergyIdeal()
               case default
