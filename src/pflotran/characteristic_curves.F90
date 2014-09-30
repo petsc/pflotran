@@ -90,6 +90,17 @@ module Characteristic_Curves_module
     procedure, public :: Verify => RPF_Burdine_BC_Gas_Verify
     procedure, public :: RelativePermeability => RPF_Burdine_BC_Gas_RelPerm
   end type rpf_Burdine_BC_gas_type
+  ! since the TOUGH2_Corey relative permeability function (IRP=7 in TOUGH2
+  ! manual) calculates relative perm as a function of the Mualem-based liquid
+  ! relative permeability when Srg = 0., we extend the rpf_Mualem_type to
+  ! save code
+  type, public, extends(rpf_Mualem_type) :: rpf_TOUGH2_IRP7_gas_type
+    PetscReal :: Srg
+  contains
+    procedure, public :: Init => RPF_TOUGH2_IRP7_Gas_Init
+    procedure, public :: Verify => RPF_TOUGH2_IRP7_Gas_Verify
+    procedure, public :: RelativePermeability => RPF_TOUGH2_IRP7_Gas_RelPerm
+  end type rpf_TOUGH2_IRP7_gas_type
 
   type, public :: characteristic_curves_type
     character(len=MAXWORDLENGTH) :: name
@@ -217,6 +228,9 @@ subroutine CharacteristicCurvesRead(this,input,option)
             rel_perm_function_ptr => RPF_Burdine_Create()
           case('BURDINE_BC_GAS')
             rel_perm_function_ptr => RPF_Burdine_BC_Gas_Create()
+            phase_keyword = 'GAS'
+          case('TOUGH2_IRP7_GAS')
+            rel_perm_function_ptr => RPF_TOUGH2_IRP7_Gas_Create()
             phase_keyword = 'GAS'
           case default
             option%io_buffer = 'Keyword: ' // trim(word) // &
@@ -464,6 +478,20 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
               'permeability function.'
             call printErrMsg(option)
         end select
+      class is(rpf_TOUGH2_IRP7_gas_type)
+        select case(keyword)
+          case('M') 
+            call InputReadDouble(input,option,rpf%m)
+            call InputErrorMsg(input,option,'m',error_string)
+          case('GAS_RESIDUAL_SATURATION') 
+            call InputReadDouble(input,option,rpf%Srg)
+            call InputErrorMsg(input,option,'Srg',error_string)
+          case default
+            option%io_buffer = 'Keyword: ' // trim(keyword) // &
+              ' not recognized in TOUGH2 IRP7 gas relative ' // &
+              'permeability function.'
+            call printErrMsg(option)
+        end select
       class default
         option%io_buffer = 'Read routine not implemented for relative ' // &
                            'permeability function class.'
@@ -599,6 +627,8 @@ function CharCurvesGetGetResidualSats(characteristic_curves,option)
       class is(rpf_Mualem_VG_gas_type)
         CharCurvesGetGetResidualSats(2) = rpf%Srg
       class is(rpf_Burdine_BC_gas_type)
+        CharCurvesGetGetResidualSats(2) = rpf%Srg
+      class is(rpf_TOUGH2_IRP7_gas_type)
         CharCurvesGetGetResidualSats(2) = rpf%Srg
       class default
         option%io_buffer = 'Relative permeability class not supported in ' // &
@@ -1880,6 +1910,112 @@ subroutine RPF_Burdine_BC_Gas_RelPerm(this,liquid_saturation, &
   relative_permeability = Seg*Seg*(1.d0-Se**(1.d0+2.d0/this%lambda))
   
 end subroutine RPF_Burdine_BC_Gas_RelPerm
+
+! ************************************************************************** !
+
+function RPF_TOUGH2_IRP7_Gas_Create()
+
+  ! Creates the Brooks-Corey Burdine gas relative permeability function object
+
+  implicit none
+  
+  class(rpf_TOUGH2_IRP7_gas_type), pointer :: RPF_TOUGH2_IRP7_Gas_Create
+  
+  allocate(RPF_TOUGH2_IRP7_Gas_Create)
+  call RPF_TOUGH2_IRP7_Gas_Create%Init()
+  
+end function RPF_TOUGH2_IRP7_Gas_Create
+
+! ************************************************************************** !
+
+subroutine RPF_TOUGH2_IRP7_Gas_Init(this)
+
+  ! Initializes the Brooks-Corey Burdine gas relative permeability function 
+  ! object
+
+  implicit none
+  
+  class(rpf_TOUGH2_IRP7_gas_type) :: this
+
+  call RPF_Mualem_Init(this)
+  this%Srg = UNINITIALIZED_DOUBLE
+  
+end subroutine RPF_TOUGH2_IRP7_Gas_Init
+
+! ************************************************************************** !
+
+subroutine RPF_TOUGH2_IRP7_Gas_Verify(this,name,option)
+
+  use Option_module
+
+  implicit none
+  
+  class(rpf_TOUGH2_IRP7_gas_type) :: this
+  character(len=MAXSTRINGLENGTH) :: name
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string 
+
+  if (index(name,'PERMEABILITY_FUNCTION') > 0) then
+    string = name
+  else
+    string = trim(name) // 'PERMEABILITY_FUNCTION,TOUGH2_IRP7_GAS'
+  endif    
+  call RPF_Mualem_Verify(this,string,option)
+  if (Uninitialized(this%Srg)) then
+    option%io_buffer = UninitializedMessage('GAS_RESIDUAL_SATURATION',string)
+    call printErrMsg(option)
+  endif  
+  
+end subroutine RPF_TOUGH2_IRP7_Gas_Verify
+
+! ************************************************************************** !
+
+subroutine RPF_TOUGH2_IRP7_Gas_RelPerm(this,liquid_saturation, &
+                                       relative_permeability,dkr_Se,option)
+  ! 
+  ! TOUGH2 IRP(7) equations from Appendix G of TOUGH2 user manual
+  !
+  use Option_module
+  
+  implicit none
+
+  class(rpf_TOUGH2_IRP7_gas_type) :: this
+  PetscReal, intent(in) :: liquid_saturation
+  PetscReal, intent(out) :: relative_permeability
+  PetscReal, intent(out) :: dkr_Se
+  type(option_type), intent(inout) :: option
+  
+  PetscReal :: liquid_relative_permeability
+  PetscReal :: liquid_dkr_Se
+  PetscReal :: Se
+  PetscReal :: Seg
+
+  relative_permeability = 0.d0
+  dkr_Se = UNINITIALIZED_DOUBLE
+  
+                 ! essentially zero
+  if (this%Srg < 1.d-40) then
+    call RPF_Mualem_RelPerm(this,liquid_saturation, &
+                            liquid_relative_permeability, &
+                            liquid_dkr_Se,option)
+    relative_permeability = 1.d0 - liquid_relative_permeability
+    return
+  endif  
+  
+  Se = (liquid_saturation - this%Sr) / (1.d0 - this%Sr - this%Srg)
+  
+  if (Se >= 1.d0) then
+    return
+  else if (Se <=  0.d0) then
+    relative_permeability = 1.d0
+    return
+  endif
+  
+  Seg = 1.d0 - Se
+  relative_permeability = Seg*Seg*(1.d0-Se*Se)
+  
+end subroutine RPF_TOUGH2_IRP7_Gas_RelPerm
 
 ! ************************************************************************** !
 
