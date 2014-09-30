@@ -81,7 +81,7 @@ CHARACTERISTIC_CURVES cc1
     ALPHA 1.d-4
     M 0.5d0
     MAX_CAPILLARY_PRESSURE 1.d6
-    
+
   /
   PERMEABILITY_FUNCTION MUALEM
     PHASE LIQUID
@@ -102,7 +102,7 @@ CHARACTERISTIC_CURVES cc2
     ALPHA 2.d-4
     M 0.55d0
     MAX_CAPILLARY_PRESSURE 1.d6
-    
+
   /
   PERMEABILITY_FUNCTION MUALEM
     PHASE LIQUID
@@ -119,7 +119,7 @@ CHARACTERISTIC_CURVES cc2
 
 #=========================== output options ===================================
 OUTPUT
-#skip
+skip
   PERIODIC TIME 20 h
   TIMES y 1.d-6 1.d-5 1.d-4 1.d-3 1.d-2
   PERIODIC TIME 0.05 y
@@ -132,7 +132,7 @@ OUTPUT
     GAS_PRESSURE
     GAS_SATURATION
   /
-#noskip
+noskip
 /
 
 #=========================== times ============================================
