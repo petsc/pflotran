@@ -720,7 +720,7 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
                        gen_auxvars(ZERO_INTEGER,ghosted_id), &
                        global_auxvars(ghosted_id), &
                        material_auxvars(ghosted_id), &
-                       patch%saturation_function_array( &
+                       patch%characteristic_curves_array( &
                          patch%sat_func_id(ghosted_id))%ptr, &
                        ghosted_id, &
                        option)
@@ -729,7 +729,7 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
                                     gen_auxvars(ZERO_INTEGER,ghosted_id), &
                                     global_auxvars(ghosted_id), &
                                     material_auxvars(ghosted_id), &
-                                    patch%saturation_function_array( &
+                                    patch%characteristic_curves_array( &
                                       patch%sat_func_id(ghosted_id))%ptr, &
                                     ghosted_id, &  ! for debugging
                                     option)
@@ -870,7 +870,7 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
       call GeneralAuxVarCompute(xxbc,gen_auxvars_bc(sum_connection), &
                                 global_auxvars_bc(sum_connection), &
                                 material_auxvars(ghosted_id), &
-                                patch%saturation_function_array( &
+                                patch%characteristic_curves_array( &
                                   patch%sat_func_id(ghosted_id))%ptr, &
                                 ghosted_id, &
                                 option)
@@ -879,7 +879,7 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
       call GeneralAuxVarUpdateState(xxbc,gen_auxvars_bc(sum_connection), &
                                     global_auxvars_bc(sum_connection), &
                                     material_auxvars(ghosted_id), &
-                                    patch%saturation_function_array( &
+                                    patch%characteristic_curves_array( &
                                       patch%sat_func_id(ghosted_id))%ptr, &
                                     ghosted_id,option)
 #ifdef DEBUG_GENERAL_FILEOUTPUT
@@ -964,7 +964,7 @@ subroutine GeneralUpdateFixedAccum(realization)
                               gen_auxvars(ZERO_INTEGER,ghosted_id), &
                               global_auxvars(ghosted_id), &
                               material_auxvars(ghosted_id), &
-                              patch%saturation_function_array( &
+                              patch%characteristic_curves_array( &
                                 patch%sat_func_id(ghosted_id))%ptr, &
                               ghosted_id, &
                               option)
@@ -2176,7 +2176,7 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   PetscReal, pointer :: r_p(:)
   PetscReal, pointer :: accum_p(:)
   
-  character(len=MAXWORDLENGTH) :: string
+  character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
 
   PetscInt :: icap_up, icap_dn
@@ -2599,7 +2599,7 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
     call GeneralAuxVarPerturb(gen_auxvars(:,ghosted_id), &
                               global_auxvars(ghosted_id), &
                               material_auxvars(ghosted_id), &
-                              patch%saturation_function_array( &
+                              patch%characteristic_curves_array( &
                                 patch%sat_func_id(ghosted_id))%ptr, &
                               ghosted_id,option)
   enddo
@@ -2622,6 +2622,16 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
                                   ADD_VALUES,ierr);CHKERRQ(ierr)
   enddo
+
+  if (realization%debug%matview_Jacobian_detailed) then
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    string = 'jacobian_accum'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
+    call MatView(A,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+  endif
+
 
   ! Interior Flux Terms -----------------------------------  
   connection_set_list => grid%internal_connection_set_list
@@ -2736,15 +2746,6 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
     string = 'jacobian_bcflux'
-    call DebugCreateViewer(realization%debug,string,option,viewer)
-    call MatView(A,viewer,ierr);CHKERRQ(ierr)
-    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
-  endif
-
-  if (realization%debug%matview_Jacobian_detailed) then
-    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
-    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
-    string = 'jacobian_accum'
     call DebugCreateViewer(realization%debug,string,option,viewer)
     call MatView(A,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
@@ -3449,6 +3450,7 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   PetscBool :: X1_changed
   
   PetscReal, pointer :: X0_p(:)
+  PetscReal, pointer :: X1_p(:)
   PetscReal, pointer :: dX_p(:)
   PetscReal, pointer :: r_p(:)
   PetscReal, pointer :: accum_p(:)
@@ -3663,6 +3665,19 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
     call VecRestoreArrayReadF90(field%flow_r,r_p,ierr);CHKERRQ(ierr)
     call VecRestoreArrayReadF90(field%flow_accum,accum_p,ierr);CHKERRQ(ierr)
   endif
+
+  call VecGetArrayF90(X1,X1_p,ierr);CHKERRQ(ierr)
+  do local_id = 1, grid%nlmax
+    offset = (local_id-1)*option%nflowdof
+    ghosted_id = grid%nL2G(local_id)
+    if (realization%patch%imat(ghosted_id) <= 0) cycle
+    istate = global_auxvars(ghosted_id)%istate
+    if (istate == LIQUID_STATE .and. X1_p(offset+2) < 0.d0) then
+        X1_p(offset+2) = 1.d-40
+        X1_changed = PETSC_TRUE
+    endif
+  enddo
+  call VecRestoreArrayF90(X1,X1_p,ierr);CHKERRQ(ierr)
   
 end subroutine GeneralCheckUpdatePost
 

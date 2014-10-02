@@ -316,7 +316,7 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
         end select
       case('LAMBDA') 
         call InputReadDouble(input,option,saturation_function%lambda)
-        call InputErrorMsg(input,option,'residual saturation','SATURATION_FUNCTION')
+        call InputErrorMsg(input,option,'lambda','SATURATION_FUNCTION')
         saturation_function%m = saturation_function%lambda
       case('ALPHA') 
         call InputReadDouble(input,option,saturation_function%alpha)

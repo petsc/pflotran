@@ -256,7 +256,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
       case('ID') 
         call InputReadInt(input,option,material_property%external_id)
         call InputErrorMsg(input,option,'id','MATERIAL_PROPERTY')
-      case('SATURATION_FUNCTION') 
+      case('SATURATION_FUNCTION','CHARACTERISTIC_CURVES') 
         call InputReadWord(input,option, &
                            material_property%saturation_function_name, &
                            PETSC_TRUE)
@@ -940,7 +940,7 @@ end subroutine MaterialApplyMapping
 ! ************************************************************************** !
 
 subroutine MaterialSetup(material_parameter, material_property_array, &
-                         saturation_function_array, option)
+                         characteristic_curves_array, option)
   ! 
   ! Creates arrays for material parameter object
   ! 
@@ -948,30 +948,29 @@ subroutine MaterialSetup(material_parameter, material_property_array, &
   ! Date: 02/05/14
   !
   use Option_module
-  use Saturation_Function_module
+  use Characteristic_Curves_module
   
   implicit none
   
   type(material_parameter_type) :: material_parameter
   type(material_property_ptr_type) :: material_property_array(:)
-  type(saturation_function_ptr_type) :: saturation_function_array(:)
+  type(characteristic_curves_ptr_type) :: characteristic_curves_array(:)
   type(option_type), pointer :: option
   
-  PetscInt :: num_sat_func
+  PetscInt :: num_characteristic_curves
   PetscInt :: num_mat_prop
   PetscInt :: i
   
   num_mat_prop = size(material_property_array)
-  num_sat_func = size(saturation_function_array)
+  num_characteristic_curves = size(characteristic_curves_array)
   
   allocate(material_parameter%soil_residual_saturation(option%nphase, &
-                                                       num_sat_func))
+                                                   num_characteristic_curves))
   material_parameter%soil_residual_saturation = -999.d0
-  do i = 1, num_sat_func
-    if (associated(saturation_function_array(i)%ptr)) then
-      material_parameter%soil_residual_saturation(:, &
-                         saturation_function_array(i)%ptr%id) = &
-        saturation_function_array(i)%ptr%Sr(:)
+  do i = 1, num_characteristic_curves
+    if (associated(characteristic_curves_array(i)%ptr)) then
+      material_parameter%soil_residual_saturation(:,i) = &
+        CharCurvesGetGetResidualSats(characteristic_curves_array(i)%ptr,option)
     endif
   enddo
 
