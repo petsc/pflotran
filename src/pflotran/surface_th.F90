@@ -1440,7 +1440,7 @@ subroutine SurfaceTHImplicitAtmForcing(surf_realization)
   PetscReal, pointer :: perm_xx_loc_p(:), porosity_loc_p(:)
   PetscReal :: xxbc(surf_realization%option%nflowdof)
   PetscReal :: xxss(surf_realization%option%nflowdof)
-  PetscReal :: temp
+  PetscReal :: temp,ptemp,rtol
   PetscInt :: iter
   PetscInt :: niter
   PetscReal :: den
@@ -1452,6 +1452,7 @@ subroutine SurfaceTHImplicitAtmForcing(surf_realization)
   PetscReal :: temp_old
   PetscReal :: head
   PetscReal :: beta
+  PetscBool :: found
   PetscErrorCode :: ierr
 
   option => surf_realization%option
@@ -1466,7 +1467,7 @@ subroutine SurfaceTHImplicitAtmForcing(surf_realization)
 
   ! niter = max(m)
   niter = 20
-
+  rtol  = 1.d-12
   call VecGetArrayF90(surf_field%flow_xx,xx_p,ierr);CHKERRQ(ierr)
 
   ! Update source/sink aux vars
@@ -1498,13 +1499,25 @@ subroutine SurfaceTHImplicitAtmForcing(surf_realization)
             call EOSWaterdensity(temp_old,option%reference_pressure,den_old,dum1,ierr)
             call EOSWaterdensity(temp_old,option%reference_pressure,den_iter,dum1,ierr)
 
+            temp  = temp_old
+            found = PETSC_FALSE
             do iter = 1,niter
-              beta = (2.d0*k_therm*option%surf_flow_dt)/(Cw*head**2.d0)
-              temp = (den_old*(temp_old + 273.15d0) + &
-                      beta*(surf_global_auxvars_ss(sum_connection)%temp + 273.15d0))/&
-                      (den_iter + beta) - 273.15d0
+              ptemp = temp
+              beta  = (2.d0*k_therm*option%surf_flow_dt)/(Cw*head**2.d0)
+              temp  = (den_old*(temp_old + 273.15d0) + &
+                       beta*(surf_global_auxvars_ss(sum_connection)%temp + 273.15d0))/&
+                       (den_iter + beta) - 273.15d0
               call EOSWaterdensity(temp,option%reference_pressure,den_iter,dum1,ierr)
+              if(abs((temp-ptemp)/(temp+273.15d0))<rtol) then
+                found = PETSC_TRUE
+                exit
+              endif
             enddo
+            if (found .eqv. PETSC_FALSE) then
+              write(option%io_buffer, &
+                   '("surface_th.F90: SurfaceTHImplicitAtmForcing --> fixed point not found!")')
+              call printErrMsg(option)
+            endif
             surf_global_auxvars(ghosted_id)%temp = temp
 
             iend = local_id*option%nflowdof
