@@ -1126,7 +1126,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   PetscReal :: Res(option%nflowdof)
 
   PetscReal :: dist_gravity  ! distance along gravity vector
-  PetscReal :: dd_up, dd_dn
+  PetscReal :: dist_up, dist_dn
   PetscReal :: upweight
   PetscInt :: wat_comp_id, air_comp_id, energy_id
   PetscInt :: icomp, iphase
@@ -1143,7 +1143,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   PetscReal :: mobility, mole_flux, q
   PetscReal :: stp_up, stp_dn
   PetscReal :: sat_up, sat_dn
-  PetscReal :: temp_ave, stp_ave, v_air
+  PetscReal :: temp_ave, stp_ave_over_dist, v_air
   PetscReal :: k_eff_up, k_eff_dn, k_eff_ave, heat_flux
   PetscReal :: adv_flux(3), diff_flux(3)
   PetscReal :: debug_flux(3,3), debug_dphi(2)
@@ -1152,12 +1152,12 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   air_comp_id = option%air_id
   energy_id = option%energy_id
 
-  call ConnectionCalculateDistances(dist,option%gravity,dd_up,dd_dn, &
+  call ConnectionCalculateDistances(dist,option%gravity,dist_up,dist_dn, &
                                     dist_gravity,upweight)
   call material_auxvar_up%PermeabilityTensorToScalar(dist,perm_up)
   call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
   
-  perm_ave_over_dist = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
+  perm_ave_over_dist = (perm_up * perm_dn)/(dist_up*perm_dn + dist_dn*perm_up)
 
   Res = 0.d0
   v_darcy = 0.d0
@@ -1283,25 +1283,32 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
                                           global_auxvar_dn%istate, &
                                           gen_auxvar_up%den, &
                                           gen_auxvar_dn%den)
-      stp_ave = sqrt(sat_up*sat_dn)* &
+!geh: bogus formulation
+#if 1 
+      stp_ave_over_dist = sqrt(sat_up*sat_dn)* &
                 sqrt(material_auxvar_up%tortuosity* &
                      material_auxvar_dn%tortuosity)* &
                 !TODO(geh): update that diffusion uses compressed porosity
                 sqrt(material_auxvar_up%porosity* &
-                     material_auxvar_dn%porosity)
+                     material_auxvar_dn%porosity)/(dist_dn+dist_up)
+#else
+      stp_up = sat_up*material_auxvar_up%tortuosity*material_auxvar_up%porosity
+      stp_dn = sat_dn*material_auxvar_dn%tortuosity*material_auxvar_dn%porosity
+      stp_ave_over_dist = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
+#endif
       delta_xmol = gen_auxvar_up%xmol(air_comp_id,iphase) - &
                    gen_auxvar_dn%xmol(air_comp_id,iphase)
       ! need to account for multiple phases
       ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
       if (iphase == option%liquid_phase) then
         ! Eq. 1.9a.  The water density is added below
-        v_air = stp_ave * &
+        v_air = stp_ave_over_dist * &
                 general_parameter%diffusion_coefficient(iphase) * delta_xmol
       else
         temp_ave = 0.5d0*(gen_auxvar_up%temp+gen_auxvar_dn%temp)
         pressure_ave = 0.5d0*(gen_auxvar_up%pres(iphase)+gen_auxvar_dn%pres(iphase))
         ! Eq. 1.9b.  The gas density is added below
-        v_air = stp_ave * &
+        v_air = stp_ave_over_dist * &
                 ((temp_ave+273.15)/273.15d0)**1.8d0 * &
                 101325.d0 / pressure_ave * &
                 general_parameter%diffusion_coefficient(iphase) * delta_xmol      
@@ -1334,7 +1341,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
              sqrt(gen_auxvar_dn%sat(option%liquid_phase)) * &
              (thermal_conductivity_dn(2) - thermal_conductivity_dn(1))
   if (k_eff_up > 0.d0 .or. k_eff_up > 0.d0) then
-    k_eff_ave = (k_eff_up*k_eff_dn)/(k_eff_up*dd_dn+k_eff_dn*dd_up)
+    k_eff_ave = (k_eff_up*k_eff_dn)/(k_eff_up*dist_dn+k_eff_dn*dist_up)
   else
     k_eff_ave = 0.d0
   endif
@@ -1413,7 +1420,7 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
   PetscReal :: gravity_term
   PetscReal :: mobility, mole_flux, q
   PetscReal :: sat_dn, perm_dn
-  PetscReal :: temp_ave, stp_ave, v_air, pres_ave
+  PetscReal :: temp_ave, stp_ave_over_dist, v_air, pres_ave
   PetscReal :: k_eff_up, k_eff_dn, k_eff_ave, heat_flux
   PetscReal :: adv_flux(3), diff_flux(3)
   PetscReal :: debug_flux(3,3), debug_dphi(2)
@@ -1629,24 +1636,24 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
       ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) 
       !       = m^3 water/m^4 bulk 
       !    stp_ave = tor_dn*por_dn*(sat_up*sat_dn)/ &
-      !              ((sat_up+sat_dn)*dd_dn)
+      !              ((sat_up+sat_dn)*dist_dn)
       ! should saturation be distance weighted?
-      stp_ave = material_auxvar_dn%tortuosity * &
-                material_auxvar_dn%porosity * &
-                sat_dn / dist(0)
+      stp_ave_over_dist = material_auxvar_dn%tortuosity * &
+                          material_auxvar_dn%porosity * &
+                          sat_dn / dist(0)
       delta_xmol = gen_auxvar_up%xmol(air_comp_id,iphase) - &
                    gen_auxvar_dn%xmol(air_comp_id,iphase)
       ! need to account for multiple phases
       ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
       if (iphase == option%liquid_phase) then
         ! Eq. 1.9a.  The water density is added below
-        v_air = stp_ave * &
+        v_air = stp_ave_over_dist * &
                 general_parameter%diffusion_coefficient(iphase) * delta_xmol
       else
         temp_ave = 0.5d0*(gen_auxvar_up%temp + gen_auxvar_dn%temp)
         pres_ave = 0.5d0*(gen_auxvar_up%pres(iphase)+gen_auxvar_dn%pres(iphase))
         ! Eq. 1.9b.  The gas density is added below
-        v_air = stp_ave * &
+        v_air = stp_ave_over_dist * &
                 ((temp_ave+273.15)/273.15d0)**1.8d0 * &
                 101325.d0 / &
                 pres_ave * &
@@ -2521,8 +2528,6 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
   PetscInt :: icap_up,icap_dn
   PetscReal :: qsrc, scale
   PetscInt :: imat, imat_up, imat_dn
-  PetscReal :: dd_up, dd_dn
-  PetscReal :: perm_up, perm_dn
   PetscInt :: local_id, ghosted_id
   PetscInt :: irow
   PetscInt :: local_id_up, local_id_dn
