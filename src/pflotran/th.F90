@@ -3469,7 +3469,6 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
           cond = 0.d0
         endif
       endif
-      print *,"COND:",cond,global_auxvar_up%temp,global_auxvar_dn%temp
       fluxe = fluxe + cond
 
       if (option%use_th_freezing) then
@@ -5400,9 +5399,6 @@ subroutine THUpdateSurfaceBC(realization)
             psurftemp_new = surftemp_new
             surftemp_new  = energy_new/(den*Cwi*head_new) - 273.15d0
             call EOSWaterdensity(surftemp_new,option%reference_pressure,den,dum1,ierr)
-
-            print *,iter,energy_new,den*Cwi*(surftemp_new + 273.15d0)*head_new
-
             if (abs((surftemp_new-psurftemp_new)/(surftemp_new+273.15d0))<rtol) then
               found = PETSC_TRUE
               exit
@@ -5413,10 +5409,6 @@ subroutine THUpdateSurfaceBC(realization)
                  '("th.F90: THUpdateSurfaceBC --> fixed point not found!")')
             call printErrMsg(option)
           endif
-
-          print *,"Energy:",energy_old,energy_new,eflux
-          print *,"Temp  :",surftemp_old,surftemp_new
-          print *,"Head  :",head_old,head_new
 
           surfpress_new = head_new*(abs(option%gravity(3)))*den + &
             option%reference_pressure
