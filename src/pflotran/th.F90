@@ -3469,7 +3469,7 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
           cond = 0.d0
         endif
       endif
-
+      print *,"COND:",cond,global_auxvar_up%temp,global_auxvar_dn%temp
       fluxe = fluxe + cond
 
       if (option%use_th_freezing) then
@@ -5320,8 +5320,9 @@ subroutine THUpdateSurfaceBC(realization)
   PetscReal :: surfpress_old
   PetscReal :: surfpress_new
   PetscReal :: surftemp_old
-  PetscReal :: surftemp_new
+  PetscReal :: surftemp_new,psurftemp_new,rtol
   PetscReal :: Cwi
+  PetscBool :: found
   PetscErrorCode :: ierr
 
   type(grid_type), pointer :: grid
@@ -5341,7 +5342,8 @@ subroutine THUpdateSurfaceBC(realization)
 
   ! Maximum no. of iterations to compute updated temperature of surface-flow
   niter = 20
-
+  rtol  = 1.d-12
+  
   ! boundary conditions
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0
@@ -5362,7 +5364,7 @@ subroutine THUpdateSurfaceBC(realization)
         ghosted_id = grid%nL2G(local_id)
 
 #ifdef STORE_FLOWRATES
-      eflux = patch%boundary_fluxes(TH_TEMPERATURE_DOF,1,sum_connection) ! [MJ/s]
+        eflux = patch%boundary_fluxes(TH_TEMPERATURE_DOF,1,sum_connection) ! [MJ/s]
         eflux = eflux/option%scale ! [MJ/s] to [J/s]
 #else
         option%io_buffer = 'Recompile code with store_flowrates=1 for ' // &
@@ -5385,21 +5387,37 @@ subroutine THUpdateSurfaceBC(realization)
           surfpress_new = option%reference_pressure
           surftemp_new = DUMMY_VALUE
         else
-          ! GB: Do not update temperature of BC because eflux needs to be split
-          !     into heat flux associated with:
-          !     - bulk movement of water, and
-          !     - conduction term.
-          !     To update temperature, heat loss associated with conduction
-          !     is required.
-          !
-          !call density(surftemp_old,option%reference_pressure,den)
-          !energy_old = den*Cwi*(surftemp_old + 273.15d0)*head_old
-          !energy_new = energy_old - eflux*option%flow_dt/area
-          !! Perform iteration to get updated temperature for surface-water
-          !do iter = 1,niter
-          !  surftemp_new = energy_new/(den*Cwi*head_new) - 273.15d0
-          !  call density(surftemp_new,option%reference_pressure,den)
-          !enddo
+          
+          ! Compute the new and old energy states based on the energy flux
+          call EOSWaterdensity(surftemp_old,option%reference_pressure,den,dum1,ierr)
+          energy_old = den*Cwi*(surftemp_old + 273.15d0)*head_old
+          energy_new = energy_old - eflux*option%flow_dt/area
+
+          ! Solve for the new temperature by fixed point iteration
+          surftemp_new = surftemp_old
+          found = PETSC_FALSE
+          do iter = 1,niter
+            psurftemp_new = surftemp_new
+            surftemp_new  = energy_new/(den*Cwi*head_new) - 273.15d0
+            call EOSWaterdensity(surftemp_new,option%reference_pressure,den,dum1,ierr)
+
+            print *,iter,energy_new,den*Cwi*(surftemp_new + 273.15d0)*head_new
+
+            if (abs((surftemp_new-psurftemp_new)/(surftemp_new+273.15d0))<rtol) then
+              found = PETSC_TRUE
+              exit
+            endif
+          enddo
+          if (found .eqv. PETSC_FALSE) then
+            write(option%io_buffer, &
+                 '("th.F90: THUpdateSurfaceBC --> fixed point not found!")')
+            call printErrMsg(option)
+          endif
+
+          print *,"Energy:",energy_old,energy_new,eflux
+          print *,"Temp  :",surftemp_old,surftemp_new
+          print *,"Head  :",head_old,head_new
+
           surfpress_new = head_new*(abs(option%gravity(3)))*den + &
             option%reference_pressure
         endif
