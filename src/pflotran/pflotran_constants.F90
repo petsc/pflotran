@@ -377,9 +377,14 @@ function UninitializedMessage(variable_name,routine_name)
   
   character(len=MAXSTRINGLENGTH) :: UninitializedMessage
   
-  UninitializedMessage = trim(variable_name) // &
-                         ' uninitialized in ' // &
-                         trim(routine_name) // '.'
+  if (len_trim(routine_name) > 1) then
+    UninitializedMessage = trim(variable_name) // &
+                           ' uninitialized in ' // &
+                           trim(routine_name) // '.'
+  else
+    UninitializedMessage = trim(variable_name) // &
+                           ' uninitialized.'
+  endif
   
 end function UninitializedMessage
 
