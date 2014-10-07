@@ -29,12 +29,12 @@
 ! or
 
 ! Glenn E. Hammond
-! Pacific Northwest National Laboratory
-! Energy and Environment Directorate
-! MSIN K9-36
-! (509) 375-3875
-! glenn.hammond@pnnl.gov
-! Richland, WA
+! Sandia National Laboratories
+! Applied Systems Analysis & Research
+! 413 Cherry Blossom Lp
+! Richland, WA 99352
+! (505) 235-0665
+! gehammo@sandia.gov
 
 !=======================================================================
 
