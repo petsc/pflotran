@@ -52,7 +52,7 @@ function FluidPropertyCreate()
   fluid_property%enh_binary_diff_coef = 0.d0
   fluid_property%diff_base = 0.d0
   fluid_property%diff_exp = 0.d0
-  fluid_property%phase_name = ''
+  fluid_property%phase_name = 'LIQUID'
   fluid_property%phase_id = 0
   fluid_property%diffusion_coefficient = 1.d-9
   fluid_property%gas_diffusion_coefficient = 2.13D-5
@@ -103,13 +103,18 @@ subroutine FluidPropertyRead(fluid_property,input,option)
         call InputErrorMsg(input,option,'phase','FLUID_PROPERTY')
       case('DIFFUSION_COEFFICIENT','LIQUID_DIFFUSION_COEFFICIENT') 
         call InputReadDouble(input,option,fluid_property%diffusion_coefficient)
-        call InputErrorMsg(input,option,'diffusion coefficient','FLUID_PROPERTY')
+        call InputErrorMsg(input,option,'diffusion coefficient', &
+                           'FLUID_PROPERTY')
       case('DIFFUSION_ACTIVATION_ENERGY') 
-        call InputReadDouble(input,option,fluid_property%diffusion_activation_energy)
-        call InputErrorMsg(input,option,'diffusion activation energy','FLUID_PROPERTY')
+        call InputReadDouble(input,option, &
+                             fluid_property%diffusion_activation_energy)
+        call InputErrorMsg(input,option,'diffusion activation energy', &
+                           'FLUID_PROPERTY')
       case('GAS_DIFFUSION_COEFFICIENT') 
-        call InputReadDouble(input,option,fluid_property%gas_diffusion_coefficient)
-        call InputErrorMsg(input,option,'gas diffusion coefficient','FLUID_PROPERTY')
+        call InputReadDouble(input,option, &
+                             fluid_property%gas_diffusion_coefficient)
+        call InputErrorMsg(input,option,'gas diffusion coefficient', &
+                           'FLUID_PROPERTY')
       case default
         option%io_buffer = 'Keyword: ' // trim(keyword) // &
                            ' not recognized in fluid property'    
@@ -117,6 +122,13 @@ subroutine FluidPropertyRead(fluid_property,input,option)
     end select
     
   enddo  
+
+  if (.not.(StringCompareIgnoreCase(fluid_property%phase_name,'LIQUID') .or. &
+            StringCompareIgnoreCase(fluid_property%phase_name,'GAS'))) then
+    option%io_buffer = 'PHASE in FLUID_PROPERTY should be LIQUID or GAS.'
+    call printErrMsg(option)
+  endif
+
 
 end subroutine FluidPropertyRead
 
