@@ -133,7 +133,7 @@ function TimestepperCreate()
   stepper%dt_min = 1.d0
   stepper%dt_max = 3.1536d6 ! One-tenth of a year.  
   stepper%prev_dt = 0.d0
-  stepper%cfl_limiter = -999.d0
+  stepper%cfl_limiter = UNINITIALIZED_DOUBLE
   stepper%cfl_limiter_ts = 1.d20
   
   stepper%time_step_cut_flag = PETSC_FALSE
@@ -192,7 +192,7 @@ subroutine TimestepperReset(stepper,dt_min)
 
   stepper%dt_min = dt_min
   stepper%prev_dt = 0.d0
-  stepper%cfl_limiter = -999.d0
+  stepper%cfl_limiter = UNINITIALIZED_DOUBLE
   stepper%cfl_limiter_ts = 1.d20
 
   stepper%time_step_cut_flag = PETSC_FALSE
@@ -3198,7 +3198,7 @@ subroutine TimestepperRestart(realization,flow_stepper,tran_stepper, &
                tran_num_constant_time_steps,tran_num_newton_iterations, &
                tran_cum_solver_time,tran_prev_dt, &
                flow_read,transport_read,activity_coefs_read)
-  if (option%restart_time < -998.d0) then
+  if (Uninitialized(option%restart_time)) then
     option%time = max(option%flow_time,option%tran_time)
     if (associated(flow_stepper) .and. flow_read) then
       flow_stepper%steps = flow_steps

@@ -106,7 +106,7 @@ subroutine OptionTransportInitRealization(option)
   ! PFLOTRAN realization or simulation of a single realization
     
   option%tvd_flux_limiter = 1
-  option%rt_idof = -999
+  option%rt_idof = UNINITIALIZED_INTEGER
   
   option%reactive_transport_coupling = GLOBAL_IMPLICIT
   option%store_solute_fluxes = PETSC_FALSE
@@ -120,8 +120,8 @@ subroutine OptionTransportInitRealization(option)
   option%tran_weight_t1 = 0.d0
 
   option%check_post_convergence = PETSC_FALSE
-  option%inf_rel_update_tol = -999.d0
-  option%inf_scaled_res_tol = -999.d0 
+  option%inf_rel_update_tol = UNINITIALIZED_DOUBLE
+  option%inf_scaled_res_tol = UNINITIALIZED_DOUBLE 
   
 end subroutine OptionTransportInitRealization
 

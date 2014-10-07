@@ -292,7 +292,7 @@ subroutine WaypointListFillIn(option,waypoint_list)
   type(waypoint_list_type) :: waypoint_list
   
   type(waypoint_type), pointer :: waypoint, prev_waypoint
-  PetscReal :: dt_max = -999.d0
+  PetscReal :: dt_max = UNINITIALIZED_DOUBLE
   
   ! find first value of dt_max > 0.d0 in list
   waypoint => waypoint_list%first

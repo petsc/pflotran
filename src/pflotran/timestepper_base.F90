@@ -146,7 +146,7 @@ subroutine TimestepperBaseInit(this)
   this%dt = 1.d0
   this%dt_min = 1.d0
   this%dt_max = 3.1536d6 ! One-tenth of a year.  
-  this%cfl_limiter = -999.d0
+  this%cfl_limiter = UNINITIALIZED_DOUBLE
   this%cfl_limiter_ts = 1.d20
   
   this%time_step_cut_flag = PETSC_FALSE

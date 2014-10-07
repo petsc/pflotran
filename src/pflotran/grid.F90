@@ -1773,11 +1773,11 @@ subroutine GridLocalizeExplicitFaceset(ugrid,region,option)
 
   allocate(int_array(size(region%cell_ids)))
   ! negate off processor ids
-  int_array = -999
+  int_array = UNINITIALIZED_INTEGER
   ! only if faceset exists
   if (associated(faceset)) then
     allocate(real_array_2d(4,size(region%cell_ids)))
-    real_array_2d = -999.d0
+    real_array_2d = UNINITIALIZED_DOUBLE
   endif
   count = 0
   do icell = 1, size(region%cell_ids)

@@ -109,15 +109,15 @@ subroutine MaterialAuxVarInit(auxvar,option)
   class(material_auxvar_type) :: auxvar
   type(option_type) :: option
   
-  auxvar%volume = -999.d0
-  auxvar%porosity = -999.d0
+  auxvar%volume = UNINITIALIZED_DOUBLE
+  auxvar%porosity = UNINITIALIZED_DOUBLE
   auxvar%dporosity_dp = 0.d0
   auxvar%porosity_store = 0.d0
-  auxvar%tortuosity = -999.d0
-  auxvar%soil_particle_density = -999.d0
+  auxvar%tortuosity = UNINITIALIZED_DOUBLE
+  auxvar%soil_particle_density = UNINITIALIZED_DOUBLE
   if (option%iflowmode /= NULL_MODE) then
     allocate(auxvar%permeability(3))
-    auxvar%permeability = -999.d0
+    auxvar%permeability = UNINITIALIZED_DOUBLE
   else
     nullify(auxvar%permeability)
   endif
@@ -215,7 +215,7 @@ function MaterialAuxVarGetValue(material_auxvar,ivar)
 
   PetscReal :: MaterialAuxVarGetValue
 
-  MaterialAuxVarGetValue = -999.d0
+  MaterialAuxVarGetValue = UNINITIALIZED_DOUBLE
   select case(ivar)
     case(VOLUME)
       MaterialAuxVarGetValue = material_auxvar%volume

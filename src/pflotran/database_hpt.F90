@@ -2246,7 +2246,7 @@ subroutine BasisInit_hpt(reaction,option)
           isrfcplx = isrfcplx + 1
 
           reaction%kinsrfcplx_forward_rate(isrfcplx) = cur_srfcplx%forward_rate
-          if (cur_srfcplx%backward_rate < -998.d0) then
+          if (Uninitialized(cur_srfcplx%backward_rate)) then
             ! backward rate will be calculated based on Kb = Kf * Keq
             call Interpolate(temp_high,temp_low,option%reference_temperature, &
                              cur_srfcplx%dbaserxn%logK(itemp_high), &
@@ -2336,8 +2336,8 @@ subroutine BasisInit_hpt(reaction,option)
     allocate(reaction%pri_spec_to_coll_spec(reaction%naqcomp))
     allocate(reaction%colloid_species_names(icount))
     allocate(reaction%coll_spec_to_pri_spec(icount))
-    reaction%pri_spec_to_coll_spec = -999
-    reaction%coll_spec_to_pri_spec = -999
+    reaction%pri_spec_to_coll_spec = UNINITIALIZED_INTEGER
+    reaction%coll_spec_to_pri_spec = UNINITIALIZED_INTEGER
     reaction%colloid_species_names = ''
     reaction%ncollcomp = icount
     icount = 0
@@ -2495,7 +2495,7 @@ subroutine BasisInit_hpt(reaction,option)
       allocate(dbaserxn%spec_name(icount))
       dbaserxn%spec_name = ''
       allocate(dbaserxn%stoich(icount))
-      dbaserxn%stoich = -999.
+      dbaserxn%stoich = UNINITIALIZED_DOUBLE
       allocate(dbaserxn%spec_ids(icount))
       dbaserxn%spec_ids = 0
 

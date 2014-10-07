@@ -918,10 +918,10 @@ subroutine SurfaceInitMatPropToRegions(surf_realization)
     if (.not.associated(cur_patch%imat)) then
       allocate(cur_patch%imat(cur_patch%grid%ngmax))
       ! initialize to "unset"
-      cur_patch%imat = -999
+      cur_patch%imat = UNINITIALIZED_INTEGER
       ! also allocate saturation function id
       allocate(cur_patch%sat_func_id(cur_patch%grid%ngmax))
-      cur_patch%sat_func_id = -999
+      cur_patch%sat_func_id = UNINITIALIZED_INTEGER
     endif
     cur_patch => cur_patch%next
   enddo
@@ -1001,7 +1001,7 @@ subroutine SurfaceInitMatPropToRegions(surf_realization)
                               //  ' defined in input file.'
           call printErrMsgByRank(option)
         endif
-      else if (surf_material_id < -998) then 
+      else if (Uninitialized(surf_material_id)) then 
         write(dataset_name,*) grid%nG2A(ghosted_id)
         option%io_buffer = 'Uninitialized surface material id in patch at cell ' // &
                             trim(adjustl(dataset_name))

@@ -67,7 +67,7 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
   pflotran_solution_vec_seq = 0
 
   string = '-num_slaves'
-  num_slaves = -999
+  num_slaves = UNINITIALIZED_INTEGER
   call InputGetCommandLineInt(string,i,option_found,option)
   if (option_found) num_slaves = i
 
@@ -87,7 +87,7 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
   simulation%mygroup_save = option%mygroup
   simulation%mygroup_id_save = option%mygroup_id
   
-  if (num_slaves < -998) then
+  if (Uninitialized(num_slaves)) then
     num_pflotran_processes = simulation%mycommsize_save / 2
     num_slaves = simulation%mycommsize_save - num_pflotran_processes - 1
   else if (num_slaves <= 0) then

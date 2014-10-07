@@ -432,7 +432,7 @@ subroutine OptionInitRealization(option)
   option%surf_initialize_flow_filename = ""
   option%surf_restart_filename = ""
   option%surf_restart_flag = PETSC_FALSE
-  option%surf_restart_time = -999.0
+  option%surf_restart_time = UNINITIALIZED_DOUBLE
 
   option%ngeomechdof = 0
   option%n_stress_strain_dof = 0
@@ -513,7 +513,7 @@ subroutine OptionInitRealization(option)
   
   option%restart_flag = PETSC_FALSE
   option%restart_filename = ""
-  option%restart_time = -999.d0
+  option%restart_time = UNINITIALIZED_DOUBLE
   option%checkpoint_flag = PETSC_FALSE
   option%checkpoint_frequency = huge(option%checkpoint_frequency)
   

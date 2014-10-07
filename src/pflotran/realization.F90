@@ -433,9 +433,9 @@ subroutine RealizationCreateDiscretization(realization)
    endif
 #endif
  
-  ! initialize to -999.d0 for check later that verifies all values 
+  ! initialize to UNINITIALIZED_DOUBLE for check later that verifies all values 
   ! have been set
-  call VecSet(field%porosity0,-999.d0,ierr);CHKERRQ(ierr)
+  call VecSet(field%porosity0,UNINITIALIZED_DOUBLE,ierr);CHKERRQ(ierr)
 
   ! Allocate vectors to hold temporally average output quantites
   if (realization%output_option%aveg_output_variable_list%nvars>0) then
@@ -2357,9 +2357,9 @@ subroutine RealizationPrintGridStatistics(realization)
     r1 = r1 + inactive_percentages(i1)
   enddo
                                 
-  i1 = -999
-  i2 = -999
-  i3 = -999
+  i1 = UNINITIALIZED_INTEGER
+  i2 = UNINITIALIZED_INTEGER
+  i3 = UNINITIALIZED_INTEGER
   if (associated(grid%structured_grid)) then
     i1 = grid%structured_grid%npx_final
     i2 = grid%structured_grid%npy_final
@@ -2552,7 +2552,7 @@ subroutine RealizationNonInitializedData(realization)
   call MPI_Allreduce(min_value,global_value,ONE_INTEGER_MPI, &
                      MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
   
-  if (global_value < -998.d0) then
+  if (Uninitialized(global_value)) then
     option%io_buffer = 'Porosity not initialized at all cells.  ' // &
                        'Ensure that REGIONS cover entire domain!!!'
     call printErrMsg(option)

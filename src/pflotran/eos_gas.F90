@@ -141,10 +141,10 @@ subroutine EOSGasInit()
 
   implicit none
   
-  constant_density = -999.d0
-  constant_viscosity = -999.d0
-  constant_enthalpy = -999.d0
-  constant_henry = -999.d0
+  constant_density = UNINITIALIZED_DOUBLE
+  constant_viscosity = UNINITIALIZED_DOUBLE
+  constant_enthalpy = UNINITIALIZED_DOUBLE
+  constant_henry = UNINITIALIZED_DOUBLE
 
   EOSGasDensityEnergyPtr => EOSGasDensityEnergyGeneral
   EOSGasDensityPtr => EOSGasDensityIdeal
@@ -167,24 +167,24 @@ subroutine EOSGasVerify(ierr,error_string)
   
   error_string = ''
   if ((associated(EOSGasDensityPtr,EOSGasDensityIdeal) .and. &
-        constant_density > -998.d0) .or. &
+        Initialized(constant_density)) .or. &
       (associated(EOSGasDensityPtr,EOSGasDensityRKS) .and. &
-        constant_density > -998.d0) .or. &
+        Initialized(constant_density)) .or. &
       (associated(EOSGasEnergyPtr,EOSGasEnergyIdeal) .and. &
-        constant_enthalpy > -998.d0) &
+        Initialized(constant_enthalpy)) &
      ) then
     ierr = 1
   endif
 
   if (associated(EOSGasDensityPtr,EOSGasDensityConstant) .and. &
-      constant_density < -998.d0) then
+      Uninitialized(constant_density)) then
     error_string = trim(error_string) // &
       ' CONSTANT density not set.'
     ierr = 1
   endif
   
   if (associated(EOSGasEnergyPtr,EOSGasEnergyConstant) .and. &
-      constant_enthalpy < -998.d0) then
+      Uninitialized(constant_enthalpy)) then
     error_string = trim(error_string) // &
       ' CONSTANT enthalpy not set.'
     ierr = 1
@@ -192,16 +192,16 @@ subroutine EOSGasVerify(ierr,error_string)
   
   if ((associated(EOSGasViscosityPtr, &
                   EOSGasViscosityConstant) .and. &
-       constant_viscosity < -998.d0) .or. &
+       Uninitialized(constant_viscosity)) .or. &
       (associated(EOSGasViscosityPtr, &
                   EOSGasViscosity1) .and. &
-       constant_viscosity > -998.d0)) then
+       Initialized(constant_viscosity))) then
     ierr = 1
   endif
   
   if (associated(EOSGasHenryPtr, &
                  EOSGasHenryConstant) .and. &
-      constant_henry < -998.d0) then
+      Uninitialized(constant_henry)) then
     error_string = trim(error_string) // " Henry's constant not set"
     ierr = 1
   endif

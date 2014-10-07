@@ -787,7 +787,7 @@ subroutine RegionReadFromFileId(region,input,option)
       count = count + 1
       vert_id_0_p(count) = temp_int
 
-      vert_id_4_p(count) = -999
+      vert_id_4_p(count) = UNINITIALIZED_INTEGER
       do ii = 1, vert_id_0_p(count)
         call InputReadInt(input,option,temp_int)
         if (InputError(input)) then
@@ -947,7 +947,7 @@ subroutine RegionReadSideSet(sideset,filename,option)
   ! allocate array to store vertices for each faces
   allocate(sideset%face_vertices(max_nvert_per_face, &
                                  num_faces_local))
-  sideset%face_vertices = -999
+  sideset%face_vertices = UNINITIALIZED_INTEGER
 
   ! for now, read all faces from ASCII file through io_rank and communicate
   ! to other ranks
@@ -956,7 +956,7 @@ subroutine RegionReadSideSet(sideset,filename,option)
                             num_faces_local_save+1))
     ! read for other processors
     do irank = 0, option%mycommsize-1
-      temp_int_array = -999
+      temp_int_array = UNINITIALIZED_INTEGER
       num_to_read = num_faces_local_save
       if (irank < remainder) num_to_read = num_to_read + 1
 

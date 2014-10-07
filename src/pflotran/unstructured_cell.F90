@@ -943,7 +943,7 @@ subroutine UCellGetEdgeVertices(cell_type,iedge,vertex_ids)
   PetscInt :: iedge
   PetscInt :: vertex_ids(2)
   
-  vertex_ids = -999
+  vertex_ids = UNINITIALIZED_INTEGER
   
   select case(cell_type)
     case(HEX_TYPE)

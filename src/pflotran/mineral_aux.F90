@@ -263,8 +263,8 @@ function TransitionStateTheoryRxnCreate()
   type(transition_state_rxn_type), pointer :: tstrxn
 
   allocate(tstrxn)
-  tstrxn%affinity_factor_sigma = -999.d0
-  tstrxn%affinity_factor_beta = -999.d0
+  tstrxn%affinity_factor_sigma = UNINITIALIZED_DOUBLE
+  tstrxn%affinity_factor_beta = UNINITIALIZED_DOUBLE
   tstrxn%affinity_threshold = 0.d0
   tstrxn%surf_area_vol_frac_pwr = 0.d0
   tstrxn%surf_area_porosity_pwr = 0.d0

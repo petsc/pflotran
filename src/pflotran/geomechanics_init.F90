@@ -652,7 +652,7 @@ subroutine GeomechInitMatPropToGeomechRegions(geomech_realization)
   if (.not.associated(patch%imat)) then
     allocate(patch%imat(patch%geomech_grid%ngmax_node))
     ! initialize to "unset"
-    patch%imat = -999
+    patch%imat = UNINITIALIZED_INTEGER
   endif
 
   ! if material ids are set based on region, as opposed to being read in
@@ -720,7 +720,7 @@ subroutine GeomechInitMatPropToGeomechRegions(geomech_realization)
                             //  ' defined in input file.'
         call printErrMsgByRank(option)
       endif
-    else if (geomech_material_id < -998) then 
+    else if (Uninitialized(geomech_material_id)) then 
       write(dataset_name,*) grid%nG2A(ghosted_id)
       option%io_buffer = 'Uninitialized geomech material id in patch at cell ' // &
                          trim(adjustl(dataset_name))

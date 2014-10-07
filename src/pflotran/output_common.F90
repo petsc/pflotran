@@ -447,8 +447,8 @@ subroutine GetVertexCoordinates(grid,vec,direction,option)
     end select
     call VecRestoreArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
   else
-    ! initialize to -999 to catch bugs
-    call VecSet(vec,-999.d0,ierr);CHKERRQ(ierr)
+    ! initialize to UNINITIALIZED_INTEGER to catch bugs
+    call VecSet(vec,UNINITIALIZED_DOUBLE,ierr);CHKERRQ(ierr)
     allocate(values(grid%unstructured_grid%num_vertices_local))
     allocate(indices(grid%unstructured_grid%num_vertices_local))
     select case(direction)
@@ -525,8 +525,8 @@ subroutine ExplicitGetCellCoordinates(grid,vec,direction,option)
     end select
     call VecRestoreArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
   else
-    ! initialize to -999 to catch bugs
-    call VecSet(vec,-999.d0,ierr);CHKERRQ(ierr)
+    ! initialize to UNINITIALIZED_INTEGER to catch bugs
+    call VecSet(vec,UNINITIALIZED_DOUBLE,ierr);CHKERRQ(ierr)
     allocate(values(grid%nlmax))
     allocate(indices(grid%nlmax))
     select case(direction)
@@ -590,7 +590,7 @@ subroutine GetCellConnections(grid, vec)
   call VecGetArrayF90( vec, vec_ptr, ierr);CHKERRQ(ierr)
 
   ! initialize
-  vec_ptr = -999.d0
+  vec_ptr = UNINITIALIZED_DOUBLE
   do local_id=1, ugrid%nlmax
     ghosted_id = local_id
     select case(ugrid%cell_type(ghosted_id))
@@ -682,7 +682,7 @@ subroutine GetCellConnectionsExplicit(grid, vec)
   call VecGetArrayF90( vec, vec_ptr, ierr);CHKERRQ(ierr)
 
   ! initialize
-  vec_ptr = -999.d0
+  vec_ptr = UNINITIALIZED_DOUBLE
   do iconn = 1, explicit_grid%num_elems
     select case(explicit_grid%cell_connectivity(0,iconn))
       case(8)

@@ -487,7 +487,7 @@ subroutine HDF5ReadDbase(filename,option)
   allocate(dbase%card(icount))
   dbase%card = ''
   allocate(dbase%value(icount))
-  dbase%value = -999.d0
+  dbase%value = UNINITIALIZED_DOUBLE
   icount = 0
   do i_object = 0, num_objects-1
     call h5gget_obj_info_idx_f(file_id,'.',i_object,object_name, &

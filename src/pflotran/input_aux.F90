@@ -1670,7 +1670,7 @@ subroutine InputReadASCIIDbase(filename,option)
   allocate(dbase%card(icount))
   dbase%card = ''
   allocate(dbase%value(icount))
-  dbase%value = -999.d0
+  dbase%value = UNINITIALIZED_DOUBLE
   icount = 0
   do
     call InputReadPflotranString(input,option)

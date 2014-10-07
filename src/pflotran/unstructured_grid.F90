@@ -142,7 +142,7 @@ subroutine UGridRead(unstructured_grid,filename,option)
   ! allocate array to store vertices for each cell
   allocate(unstructured_grid%cell_vertices(unstructured_grid%max_nvert_per_cell, &
                                              num_cells_local))
-  unstructured_grid%cell_vertices = -999
+  unstructured_grid%cell_vertices = UNINITIALIZED_INTEGER
 
   ! for now, read all cells from ASCII file through io_rank and communicate
   ! to other ranks
@@ -151,7 +151,7 @@ subroutine UGridRead(unstructured_grid,filename,option)
                             num_cells_local_save+1))
     ! read for other processors
     do irank = 0, option%mycommsize-1
-      temp_int_array = -999
+      temp_int_array = UNINITIALIZED_INTEGER
       num_to_read = num_cells_local_save
       if (irank < remainder) num_to_read = num_to_read + 1
       do icell = 1, num_to_read
@@ -371,7 +371,7 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
   ! allocate array to store vertices for each cell
   !allocate(unstructured_grid%cell_vertices(unstructured_grid%max_nvert_per_cell, &
   !                                           num_cells_local))
-  !unstructured_grid%cell_vertices = -999
+  !unstructured_grid%cell_vertices = UNINITIALIZED_INTEGER
 
   ! for now, read all cells from ASCII file through io_rank and communicate
   ! to other ranks
@@ -379,7 +379,7 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
     allocate(temp_int_array(unstructured_grid%max_nvert_per_cell, &
                             unstructured_grid%nmax))
     ! read for other processors
-    temp_int_array = -999
+    temp_int_array = UNINITIALIZED_INTEGER
     num_to_read = unstructured_grid%nmax
     do icell = 1, num_to_read
       ! read in the vertices defining the grid cell
@@ -491,7 +491,7 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
   ! allocate array to store vertices for each faces
   allocate(unstructured_grid%cell_vertices(unstructured_grid%max_nvert_per_cell, &
                                  num_cells_local))
-  unstructured_grid%cell_vertices = -999
+  unstructured_grid%cell_vertices = UNINITIALIZED_INTEGER
 
   ! for now, read all faces from ASCII file through io_rank and communicate
   ! to other ranks
@@ -500,7 +500,7 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
                             num_cells_local_save+1))
     ! read for other processors
     do irank = 0, option%mycommsize-1
-      temp_int_array = -999
+      temp_int_array = UNINITIALIZED_INTEGER
       num_to_read = num_cells_local_save
       if (irank < remainder) num_to_read = num_to_read + 1
 
@@ -1344,7 +1344,7 @@ subroutine UGridDecompose(unstructured_grid,option)
     do ivertex = 1, unstructured_grid%max_nvert_per_cell
       ! at this point we may be zero-based
       if (unstructured_grid%cell_vertices(ivertex,local_id) < 0) then
-        ! change no_value (-999) to '0'
+        ! change no_value (UNINITIALIZED_INTEGER) to '0'
         unstructured_grid%cell_vertices(ivertex,local_id) = 0
       else
         if (index_format_flag == 0) then

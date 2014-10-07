@@ -368,7 +368,7 @@ function FlowSubConditionCreate(ndof)
   sub_condition%isubtype = 0
   sub_condition%ctype = ''
   sub_condition%name = ''
-  sub_condition%aux_real = -999.d0
+  sub_condition%aux_real = UNINITIALIZED_DOUBLE
   nullify(sub_condition%gradient)
   nullify(sub_condition%dataset)
 
@@ -1931,9 +1931,9 @@ subroutine ConditionReadValues(input,option,keyword,string,dataset_base,units)
         ! alright, the 2d data is layed out in C-style.  now place it in
         ! the appropriate arrays
         allocate(flow_dataset%time_series%times(dims(2)))
-        flow_dataset%time_series%times = -999.d0
+        flow_dataset%time_series%times = UNINITIALIZED_DOUBLE
         allocate(flow_dataset%time_series%values(flow_dataset%time_series%rank,dims(2))) 
-        flow_dataset%time_series%values = -999.d0
+        flow_dataset%time_series%values = UNINITIALIZED_DOUBLE
         icount = 1
         do i = 1, dims(2)
           flow_dataset%time_series%times(i) = real_buffer(icount)

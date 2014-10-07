@@ -558,11 +558,11 @@ recursive subroutine PMCBaseCheckpoint(this,viewer,id,id_stamp)
   enddo
   
   if (associated(this%below)) then
-    call this%below%Checkpoint(viewer,-999)
+    call this%below%Checkpoint(viewer,UNINITIALIZED_INTEGER)
   endif
   
   if (associated(this%next)) then
-    call this%next%Checkpoint(viewer,-999)
+    call this%next%Checkpoint(viewer,UNINITIALIZED_INTEGER)
   endif
   
   if (this%is_master) then
@@ -683,14 +683,14 @@ recursive subroutine PMCBaseRestart(this,viewer)
     call PMCBaseRegisterHeader(this,bag,header)
     call PetscBagLoad(viewer,bag,ierr);CHKERRQ(ierr)
     call PMCBaseGetHeader(this,header)
-    if (this%option%restart_time > -999.d0) then
+    if (Initialized(this%option%restart_time)) then
       this%pm_list%realization_base%output_option%plot_number = 0
     endif
     call PetscBagDestroy(bag,ierr);CHKERRQ(ierr)
   endif
   
   call this%timestepper%Restart(viewer,this%option)
-  if (this%option%restart_time > -999.d0) then
+  if (Initialized(this%option%restart_time)) then
     ! simply a flag to set time back to zero, no matter what the restart
     ! time is set to.
     call this%timestepper%Reset()

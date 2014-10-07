@@ -95,15 +95,15 @@ subroutine HydrogeophysicsInit(this,option)
   call SubsurfaceSimulationInit(this,option)
   nullify(this%hydrogeophysics_coupler)
   this%solution_mpi = 0
-  ! -999 denotes uninitialized
+  ! UNINITIALIZED_INTEGER denotes uninitialized
   this%pf_e4d_scatter_comm = MPI_COMM_NULL
-  this%pf_e4d_scatter_grp = -999
-  this%pf_e4d_scatter_size = -999
-  this%pf_e4d_scatter_rank = -999
+  this%pf_e4d_scatter_grp = UNINITIALIZED_INTEGER
+  this%pf_e4d_scatter_size = UNINITIALIZED_INTEGER
+  this%pf_e4d_scatter_rank = UNINITIALIZED_INTEGER
   this%pf_e4d_master_comm = MPI_COMM_NULL
-  this%pf_e4d_master_grp = -999
-  this%pf_e4d_master_size = -999
-  this%pf_e4d_master_rank = -999
+  this%pf_e4d_master_grp = UNINITIALIZED_INTEGER
+  this%pf_e4d_master_size = UNINITIALIZED_INTEGER
+  this%pf_e4d_master_rank = UNINITIALIZED_INTEGER
   this%pflotran_process = PETSC_FALSE
   this%mycomm_save = 0
   this%myrank_save = 0

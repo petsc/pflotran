@@ -11,7 +11,7 @@ module General_Aux_module
   PetscReal, public :: window_epsilon = 1.d-4
   PetscReal, public :: fmw_comp(2) = [FMWH2O,FMWAIR]
   PetscReal, public :: general_max_pressure_change = 5.d4
-  PetscInt, public :: general_max_it_before_damping = -999
+  PetscInt, public :: general_max_it_before_damping = UNINITIALIZED_INTEGER
   PetscReal, public :: general_damping_factor = 0.6d0
 
   ! thermodynamic state of fluid ids

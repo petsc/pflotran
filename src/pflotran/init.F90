@@ -2989,10 +2989,10 @@ subroutine assignMaterialPropToRegions(realization)
     if (.not.associated(cur_patch%imat)) then
       allocate(cur_patch%imat(grid%ngmax))
       ! initialize to "unset"
-      cur_patch%imat = -999
+      cur_patch%imat = UNINITIALIZED_INTEGER
       ! also allocate saturation function id
       allocate(cur_patch%sat_func_id(grid%ngmax))
-      cur_patch%sat_func_id = -999
+      cur_patch%sat_func_id = UNINITIALIZED_INTEGER
     endif
     
     cur_patch%aux%Material => MaterialAuxCreate()
@@ -3099,7 +3099,7 @@ subroutine assignMaterialPropToRegions(realization)
                               //  ' defined in input file.'
           call printErrMsgByRank(option)
         endif
-      else if (material_id < 0 .and. material_id > -999) then 
+      else if (material_id < 0 .and. Initialized(material_id)) then 
         ! highjacking dataset_name and group_name for error processing
         write(dataset_name,*) grid%nG2A(ghosted_id)
         write(group_name,*) -1*material_id
@@ -3108,7 +3108,7 @@ subroutine assignMaterialPropToRegions(realization)
                            ' at cell ' // &
                            trim(adjustl(dataset_name)) // '.'
         call printErrMsgByRank(option)
-      else if (material_id == -999) then 
+      else if (Uninitialized(material_id)) then 
         write(dataset_name,*) grid%nG2A(ghosted_id)
         option%io_buffer = 'Uninitialized material id in patch at cell ' // &
                             trim(adjustl(dataset_name))

@@ -95,7 +95,7 @@ subroutine CondControlAssignFlowInitCond(realization)
 
   ! to catch uninitialized grid cells.  see VecMin check at bottom.
   call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr);CHKERRQ(ierr)
-  iphase_loc_p = -999.d0
+  iphase_loc_p = UNINITIALIZED_DOUBLE
   call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr);CHKERRQ(ierr)
 
   if (option%iflowmode == G_MODE) then
@@ -116,7 +116,7 @@ subroutine CondControlAssignFlowInitCond(realization)
         call VecGetArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
         call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr);CHKERRQ(ierr)
       
-        xx_p = -999.d0
+        xx_p = UNINITIALIZED_DOUBLE
       
         initial_condition => cur_patch%initial_conditions%first
         do
@@ -276,7 +276,7 @@ subroutine CondControlAssignFlowInitCond(realization)
         end if
         call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr);CHKERRQ(ierr)
       
-        xx_p = -999.d0
+        xx_p = UNINITIALIZED_DOUBLE
       
         initial_condition => cur_patch%initial_conditions%first
         do
@@ -582,7 +582,7 @@ subroutine CondControlAssignTranInitCond(realization)
     ! assign initial conditions values to domain
     call VecGetArrayF90(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
       
-    xx_p = -999.d0
+    xx_p = UNINITIALIZED_DOUBLE
       
     initial_condition => cur_patch%initial_conditions%first
     do
@@ -1278,7 +1278,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
         ! assign initial conditions values to domain
         call VecGetArrayF90(surf_field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
     
-        xx_p = -999.d0
+        xx_p = UNINITIALIZED_DOUBLE
       
         initial_condition => cur_patch%initial_conditions%first
         do
