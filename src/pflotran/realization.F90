@@ -991,9 +991,9 @@ subroutine RealProcessFluidProperties(realization)
     if (.not.associated(cur_fluid_property)) exit
     found = PETSC_TRUE
     select case(trim(cur_fluid_property%phase_name))
-      case('LIQUID_PHASE')
+      case('LIQUID')
         cur_fluid_property%phase_id = LIQUID_PHASE
-      case('GAS_PHASE')
+      case('GAS')
         cur_fluid_property%phase_id = GAS_PHASE
       case default
         cur_fluid_property%phase_id = LIQUID_PHASE
