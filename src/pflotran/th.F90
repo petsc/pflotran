@@ -3129,6 +3129,7 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
                   sir_dn, &
                   Dk_dn, &
                   area,dist_gravity,option,v_darcy,Diff_dn, &
+                  fluxe_bulk, fluxe_cond, &
                   res)
     if (ibndtype(TH_PRESSURE_DOF) == ZERO_GRADIENT_BC .or. &
         ibndtype(TH_TEMPERATURE_DOF) == ZERO_GRADIENT_BC ) then
@@ -3196,6 +3197,7 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
                     sir_dn, &
                     Dk_dn, &
                     area,dist_gravity,option,v_darcy,Diff_dn, &
+                    fluxe_bulk, fluxe_cond, &
                     res_pert_dn)
       J_pert_dn(:,ideriv) = (res_pert_dn(:)-res(:))/pert_dn
     enddo
@@ -3218,6 +3220,7 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
                     area, &
                     dist, &
                     option,v_darcy,Diff_dn, &
+                    fluxe_bulk, fluxe_cond, &
                     Res)
   !
   ! Computes the  boundary flux terms for the residual
@@ -3244,6 +3247,7 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
   PetscReal :: v_darcy, area
   PetscReal :: Res(1:option%nflowdof) 
   PetscReal :: dist(-1:3)
+  PetscReal, intent(out) :: fluxe_bulk, fluxe_cond
   
   PetscReal :: dist_gravity  ! distance along gravity vector
   PetscReal :: dd_up, dd_dn
@@ -3280,6 +3284,8 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
   density_ave = 0.d0
   q = 0.d0
   fctT = 0.d0
+  fluxe_bulk = 0.d0
+  fluxe_cond = 0.d0
 
   hw_present = auxvar_dn%surf_wat
 
@@ -3444,6 +3450,7 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
     fluxm(ispec) = fluxm(ispec) + q*density_ave*uxmol(ispec)
   enddo
   fluxe = fluxe + q*density_ave*uh
+  fluxe_bulk = q*density_ave*uh
 
   ! Conduction term
   select case(ibndtype(TH_TEMPERATURE_DOF))
@@ -3470,6 +3477,7 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
         endif
       endif
       fluxe = fluxe + cond
+      fluxe_cond = cond
 
       if (option%use_th_freezing) then
          ! Added by Satish Karra,
@@ -3516,6 +3524,7 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
 
     case(NEUMANN_BC)
       fluxe = fluxe + auxvars(TH_TEMPERATURE_DOF)*area*option%scale ! added by SK 10/18/11
+      fluxe_cond = auxvars(TH_TEMPERATURE_DOF)*area*option%scale
     case(ZERO_GRADIENT_BC)
       ! No change in fluxe
     case default
@@ -3661,7 +3670,6 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   PetscReal :: Res(realization%option%nflowdof), v_darcy
   PetscViewer :: viewer
 
-
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
@@ -3682,6 +3690,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   PetscReal :: distance, fraction_upwind
   PetscReal :: distance_gravity
   PetscReal :: vol_frac_prim
+  PetscReal :: fluxe_bulk, fluxe_cond
 
   ! secondary continuum variables
   PetscReal :: sec_density
@@ -3978,12 +3987,16 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
                                 cur_connection_set%area(iconn), &
                                 cur_connection_set%dist(-1:3,iconn), &
                                 option, &
-                                v_darcy,Diff_dn,Res)
+                                v_darcy,Diff_dn, &
+                                fluxe_bulk, fluxe_cond, &
+                                Res)
 
       patch%boundary_velocities(1,sum_connection) = v_darcy
 #ifdef STORE_FLOWRATES
       patch%boundary_fluxes(TH_PRESSURE_DOF,1,sum_connection) = Res(TH_PRESSURE_DOF)*FMWH2O
       patch%boundary_fluxes(TH_TEMPERATURE_DOF,1,sum_connection) = Res(TH_TEMPERATURE_DOF)
+      patch%boundary_flux_energy(1,sum_connection) = fluxe_bulk
+      patch%boundary_flux_energy(2,sum_connection) = fluxe_cond
 #endif
 
       iend = local_id*option%nflowdof
