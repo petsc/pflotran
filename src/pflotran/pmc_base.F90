@@ -147,7 +147,9 @@ end subroutine PMCBaseInit
 
 function PMCCastToBase(this)
   ! 
-  ! PMCBaseCastToBase: Initializes a new process model coupler object.
+  ! PMCBaseCastToBase: Casts an extended PMC to a pointer to the base class
+  !                    in order to avoid a 'select type' statement when
+  !                    pointing a pmc_base_type pointer to an extended class.
   ! 
   ! Author: Glenn Hammond
   ! Date: 06/10/13
