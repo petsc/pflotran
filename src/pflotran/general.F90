@@ -1283,19 +1283,9 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
                                           global_auxvar_dn%istate, &
                                           gen_auxvar_up%den, &
                                           gen_auxvar_dn%den)
-!geh: bogus formulation
-#if 1 
-      stp_ave_over_dist = sqrt(sat_up*sat_dn)* &
-                sqrt(material_auxvar_up%tortuosity* &
-                     material_auxvar_dn%tortuosity)* &
-                !TODO(geh): update that diffusion uses compressed porosity
-                sqrt(material_auxvar_up%porosity* &
-                     material_auxvar_dn%porosity)/(dist_dn+dist_up)
-#else
       stp_up = sat_up*material_auxvar_up%tortuosity*material_auxvar_up%porosity
       stp_dn = sat_dn*material_auxvar_dn%tortuosity*material_auxvar_dn%porosity
       stp_ave_over_dist = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
-#endif
       delta_xmol = gen_auxvar_up%xmol(air_comp_id,iphase) - &
                    gen_auxvar_dn%xmol(air_comp_id,iphase)
       ! need to account for multiple phases
