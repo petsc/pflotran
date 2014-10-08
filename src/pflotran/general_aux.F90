@@ -168,7 +168,10 @@ function GeneralAuxCreate(option)
 
   allocate(aux%general_parameter)
   allocate(aux%general_parameter%diffusion_coefficient(option%nphase))
-  aux%general_parameter%diffusion_coefficient(LIQUID_PHASE) = 1.d-9
+  !geh: there is no point in setting default lquid diffusion coeffcient values 
+  !     here as they will be overwritten by the fluid property defaults.
+  aux%general_parameter%diffusion_coefficient(LIQUID_PHASE) = &
+                                                           UNINITIALIZED_DOUBLE
   aux%general_parameter%diffusion_coefficient(GAS_PHASE) = 2.13d-5
   aux%general_parameter%newton_inf_scaled_res_tol = 1.d-50
   aux%general_parameter%check_post_converged = PETSC_FALSE

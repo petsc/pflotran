@@ -43,6 +43,7 @@ module Patch_module
     PetscReal, pointer :: internal_tran_coefs(:,:)
     PetscReal, pointer :: boundary_tran_coefs(:,:)
     PetscReal, pointer :: ss_fluid_fluxes(:,:)
+    PetscReal, pointer :: boundary_flux_energy(:,:)
 
     type(grid_type), pointer :: grid
 
@@ -147,6 +148,7 @@ function PatchCreate()
   nullify(patch%internal_tran_coefs)
   nullify(patch%boundary_tran_coefs)
   nullify(patch%ss_fluid_fluxes)
+  nullify(patch%boundary_flux_energy)
 
   nullify(patch%grid)
 
@@ -657,6 +659,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     allocate(patch%boundary_fluxes(option%nflowdof,1,temp_int))
     patch%internal_fluxes = 0.d0
     patch%boundary_fluxes = 0.d0
+    if (option%iflowmode == TH_MODE) then
+      allocate(patch%boundary_flux_energy(2,temp_int))
+    endif
   endif
 
   if (patch%surf_or_subsurf_flag == SURFACE) then
@@ -5489,6 +5494,7 @@ subroutine PatchDestroy(patch)
   call DeallocateArray(patch%internal_tran_coefs)
   call DeallocateArray(patch%boundary_tran_coefs)
   call DeallocateArray(patch%ss_fluid_fluxes)
+  call DeallocateArray(patch%boundary_flux_energy)
 
   if (associated(patch%material_property_array)) &
     deallocate(patch%material_property_array)
