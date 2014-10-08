@@ -3443,27 +3443,7 @@ subroutine RealizAssignMatIDsToRegions(realization)
   
   ! ensure that ghosted values for material ids are up to date
   call RealLocalToLocalWithArray(realization,MATERIAL_ID_ARRAY)
-  
-  ! ensure that material ids have been set for all cells
-  ! we are hijacking local_id and ghosted_id here.
-  local_min = 1
-  cur_patch => realization%patch_list%first
-  do
-    if (.not.associated(cur_patch)) exit
-    ! set material ids to uninitialized
-    local_min = min(minval(cur_patch%imat),local_min)
-    cur_patch => cur_patch%next
-  enddo
-  call MPI_Allreduce(local_min,global_min,ONE_INTEGER_MPI, &
-                     MPIU_INTEGER, &
-                     MPI_MIN,option%mycomm,ierr)
-  if (Uninitialized(local_min)) then
-    option%io_buffer = 'Uninitialized material id after assignment of ' // &
-      'material ids.  Check to ensure that a MATERIAL_PROPERTY is ' // &
-      'assigned to all REGIONS for all times in STRATA'
-    call printErrMsg(option)
-  endif
-                     
+
 end subroutine RealizAssignMatIDsToRegions
 
  ! ************************************************************************** !
