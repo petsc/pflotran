@@ -92,7 +92,8 @@ private
             RealLocalToLocalWithArray, &
             RealizationCalculateCFL1Timestep, &
             RealizationNonInitializedData, &
-            RealizUpdateAllCouplerAuxVars
+            RealizUpdateAllCouplerAuxVars, &
+            RealizCreateSyncWaypointList
 
   !TODO(intel)
   ! public from Realization_Base_class
@@ -1537,6 +1538,7 @@ subroutine RealizationAddWaypointsToList(realization)
   use Option_module
   use Waypoint_module
   use Time_Storage_module
+  use Strata_module
 
   implicit none
   
@@ -1550,6 +1552,7 @@ subroutine RealizationAddWaypointsToList(realization)
   type(mass_transfer_type), pointer :: cur_mass_transfer
   type(waypoint_type), pointer :: waypoint, cur_waypoint
   type(option_type), pointer :: option
+  type(strata_type), pointer :: cur_strata
   PetscInt :: itime, isub_condition
   PetscReal :: temp_real, final_time
   PetscReal, pointer :: times(:)
@@ -1724,7 +1727,67 @@ subroutine RealizationAddWaypointsToList(realization)
     enddo
   endif
 
+  ! add in strata that change over time
+  cur_strata => realization%patch%strata%first
+  do
+    if (.not.associated(cur_strata)) exit
+    if (Initialized(cur_strata%start_time)) then
+      waypoint => WaypointCreate()
+      waypoint%time = cur_strata%start_time
+      waypoint%sync = PETSC_TRUE
+      call WaypointInsertInList(waypoint,realization%waypoints)
+    endif
+    if (Initialized(cur_strata%end_time)) then
+      waypoint => WaypointCreate()
+      waypoint%time = cur_strata%end_time
+      waypoint%sync = PETSC_TRUE
+      call WaypointInsertInList(waypoint,realization%waypoints)
+    endif
+    cur_strata => cur_strata%next
+  enddo
+
 end subroutine RealizationAddWaypointsToList
+
+! ************************************************************************** !
+
+function RealizCreateSyncWaypointList(realization)
+  ! 
+  ! Creates a list of waypoints for outer synchronization of simulation process
+  ! model couplers
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/08/14
+  ! 
+
+  use Option_module
+  use Waypoint_module
+  use Time_Storage_module
+
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  type(waypoint_list_type), pointer :: RealizCreateSyncWaypointList
+
+  type(waypoint_list_type), pointer :: new_waypoint_list
+  type(waypoint_type), pointer :: cur_waypoint
+  type(waypoint_type), pointer :: new_waypoint
+
+  new_waypoint_list => WaypointListCreate()
+  
+  cur_waypoint => realization%waypoints%first
+  do
+    if (.not.associated(cur_waypoint)) exit
+    if (cur_waypoint%sync .or. cur_waypoint%final) then
+      new_waypoint => WaypointCreate(cur_waypoint)
+      call WaypointInsertInList(new_waypoint,new_waypoint_list)
+      if (cur_waypoint%final) exit
+    endif
+    cur_waypoint => cur_waypoint%next
+  enddo
+  RealizCreateSyncWaypointList => new_waypoint_list
+
+end function RealizCreateSyncWaypointList
 
 ! ************************************************************************** !
 

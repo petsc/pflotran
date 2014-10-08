@@ -714,7 +714,8 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper, &
 ! to match waypoint.
   do ! we cycle just in case the next waypoint is beyond the target_time
     if (target_time + tolerance*dt >= cur_waypoint%time .and. &
-        (cur_waypoint%update_conditions .or. &
+        (cur_waypoint%sync .or. &
+         cur_waypoint%update_conditions .or. &
          cur_waypoint%print_output .or. &
          cur_waypoint%print_checkpoint .or. &
          cur_waypoint%print_tr_output .or. &

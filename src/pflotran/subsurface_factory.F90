@@ -357,6 +357,7 @@ subroutine SubsurfaceJumpStart(simulation)
   PetscErrorCode :: ierr
 
   realization => simulation%realization
+  simulation%waypoints => RealizCreateSyncWaypointList(realization)
   
   if (associated(simulation%flow_process_model_coupler)) then
     select type(ts => simulation%flow_process_model_coupler%timestepper)

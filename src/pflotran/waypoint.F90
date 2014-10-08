@@ -14,6 +14,7 @@ module Waypoint_module
   ! linked-list for waypoints in the simulation
   type, public :: waypoint_type
     PetscReal :: time
+    PetscBool :: sync
     PetscBool :: print_output
     PetscBool :: print_tr_output
     PetscBool :: print_checkpoint
@@ -72,6 +73,7 @@ function WaypointCreate1()
   
   allocate(waypoint)
   waypoint%time = 0.d0
+  waypoint%sync = PETSC_FALSE
   waypoint%print_output = PETSC_FALSE
   waypoint%print_tr_output = PETSC_FALSE
   waypoint%print_checkpoint = PETSC_FALSE
@@ -103,8 +105,9 @@ function WaypointCreate2(original_waypoint)
   
   type(waypoint_type), pointer :: waypoint
   
-  allocate(waypoint)
+  waypoint => WaypointCreate()
   waypoint%time = original_waypoint%time
+  waypoint%sync = original_waypoint%sync
   waypoint%print_output = original_waypoint%print_output
   waypoint%print_tr_output = original_waypoint%print_tr_output
   waypoint%print_checkpoint = original_waypoint%print_checkpoint
@@ -435,6 +438,12 @@ subroutine WaypointMerge(old_waypoint,new_waypoint)
 !    PetscReal :: dt_max
 !    PetscBool :: final  ! any waypoint after this will be deleted
     
+  if (old_waypoint%sync .or. new_waypoint%sync) then
+    old_waypoint%sync = PETSC_TRUE
+  else
+    old_waypoint%sync = PETSC_FALSE
+  endif
+
   if (old_waypoint%print_output .or. new_waypoint%print_output) then
     old_waypoint%print_output = PETSC_TRUE
   else
@@ -657,8 +666,8 @@ function WaypointForceMatchToTime(waypoint)
   
   WaypointForceMatchToTime = PETSC_FALSE
 
-  if (waypoint%update_conditions &
-      .or. &
+  if (waypoint%sync .or. &
+      waypoint%update_conditions .or. &
       waypoint%print_output .or. &
       waypoint%print_tr_output .or. &
       waypoint%print_checkpoint .or. &
@@ -700,6 +709,7 @@ subroutine WaypointPrint(waypoint,option,output_option)
     write(*,110) 'Waypoint:'
     write(string,*) 'Time [' // trim(adjustl(output_option%tunit)) // ']'
     write(*,10) trim(string), waypoint%time/output_option%tconv
+    write(*,30) 'Sync', waypoint%sync
     write(*,30) 'Print Output', waypoint%print_output
     write(*,30) 'Print Tr. Output', waypoint%print_tr_output
     write(*,30) 'Print Checkpoint', waypoint%print_checkpoint
@@ -715,6 +725,7 @@ subroutine WaypointPrint(waypoint,option,output_option)
     write(option%fid_out,110) 'Waypoint:'
     write(string,*) 'Time [' // trim(adjustl(output_option%tunit)) // ']'
     write(option%fid_out,10) trim(string), waypoint%time/output_option%tconv
+    write(option%fid_out,30) 'Sync', waypoint%sync
     write(option%fid_out,30) 'Print Output', waypoint%print_output
     write(option%fid_out,30) 'Print Tr. Output', waypoint%print_tr_output
     write(option%fid_out,30) 'Print Checkpoint', waypoint%print_checkpoint
