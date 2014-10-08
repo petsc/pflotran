@@ -5394,14 +5394,17 @@ subroutine THUpdateSurfaceBC(realization)
   PetscReal :: den_subsurf
   PetscReal :: den_aveg
   PetscReal :: dum1
-  PetscReal :: energy_old
-  PetscReal :: energy_new
-  PetscReal :: denergy
   PetscReal :: head_old
   PetscReal :: head_new
   PetscReal :: dhead
   PetscReal :: surfpress_old
   PetscReal :: surfpress_new
+  PetscReal :: eng_per_unitvol_old
+  PetscReal :: eng_per_unitvol_new
+  PetscReal :: eng_times_ht_per_unitvol_old
+  PetscReal :: eng_times_ht_per_unitvol_new
+  PetscReal :: deng_times_ht_per_unitvol
+  PetscReal :: enthalpy
   PetscReal :: surftemp_old
   PetscReal :: Temp_upwind
   PetscReal :: surftemp_new,psurftemp_new,rtol
@@ -5415,11 +5418,14 @@ subroutine THUpdateSurfaceBC(realization)
   type(coupler_type), pointer :: boundary_condition
   type(connection_set_type), pointer :: cur_connection_set
   type(global_auxvar_type), pointer :: global_auxvars(:)  
+  type(TH_auxvar_type), pointer :: auxvars(:), auxvars_bc(:)
 
   option => realization%option
   patch => realization%patch
   grid => patch%grid
   global_auxvars => realization%patch%aux%Global%auxvars
+  auxvars => patch%aux%TH%auxvars
+  auxvars_bc => patch%aux%TH%auxvars_bc
 
   ! GB: Should probably add this as a member of option
   Cwi = 4.188d3 ! [J/kg/K]
@@ -5457,8 +5463,6 @@ subroutine THUpdateSurfaceBC(realization)
 
         ! [MJ/s] to [J/s]
         eflux      = eflux/option%scale
-        eflux_bulk = eflux_bulk/option%scale
-        eflux_cond = eflux_cond/option%scale
 #else
         option%io_buffer = 'Recompile code with store_flowrates=1 for ' // &
           'surface TH mode.'
@@ -5499,17 +5503,17 @@ subroutine THUpdateSurfaceBC(realization)
             call EOSWaterdensity(surftemp_new,option%reference_pressure,den_subsurf     ,dum1,ierr)
             den_aveg = 0.5d0*(den_surf_at_Told + den_subsurf)
 
-            ! 1) Find new surface-temperature due to heat transfer via conduction
+            ! 1) Find new surface-temperature due to heat transfer via conduction.
             den = den_surf_at_Told
-            energy_old = den*Cwi*(surftemp_old + 273.15d0)*head_old
-            energy_new = energy_old - eflux_cond*option%flow_dt/area
+            eng_per_unitvol_old = den*Cwi*(surftemp_old + 273.15d0)
+            eng_per_unitvol_new = eng_per_unitvol_old - eflux_cond/option%scale*option%flow_dt/area
 
             ! Solve for the new temperature by fixed point iteration
             surftemp_new = surftemp_old
             found = PETSC_FALSE
             do iter = 1,niter
               psurftemp_new = surftemp_new
-              surftemp_new  = energy_new/(den*Cwi*head_old) - 273.15d0
+              surftemp_new  = eng_per_unitvol_new/(den*Cwi) - 273.15d0
               call EOSWaterdensity(surftemp_new,option%reference_pressure,den,dum1,ierr)
               if (abs((surftemp_new-psurftemp_new)/(surftemp_new+273.15d0))<rtol) then
                 found = PETSC_TRUE
@@ -5530,18 +5534,25 @@ subroutine THUpdateSurfaceBC(realization)
                Temp_upwind = surftemp_old
             endif
 
+            ! In THBCFlux():
+            ! fluxe_bulk = (rho*q*H)               [kmol/m^3 * m^3/s * MJ/kmol]     = [MJ/s]
+            !            = (rho*v_darcy*area*H)    [kmol/m^3 * m/s * m^2 * MJ/kmol]
+
+            ! Retrieve H in units of [J/kg] from fluxe_bulk
+            !        = [MJ/s     * J/MJ       * m^3/kg * m^{-2} * s/m]
+            enthalpy = eflux_bulk/option%scale/den_aveg/area/patch%boundary_velocities(1,sum_connection)
+
             surftemp_old = surftemp_new
-            energy_old   = den     *Cwi*(surftemp_old + 273.15d0)*head_old
-            denergy      = den_aveg*Cwi*(Temp_upwind  + 273.15d0)*dhead
-            ! GB: Need to check why denergy /= eflux_bulk*option%flow_dt/area
-            energy_new   = energy_old - denergy
+            eng_times_ht_per_unitvol_old = den     *(Cwi*surftemp_old + Cwi*273.15d0)*head_old
+            deng_times_ht_per_unitvol    = den_aveg*(enthalpy         + Cwi*273.15d0)*dhead
+            eng_times_ht_per_unitvol_new = eng_times_ht_per_unitvol_old - deng_times_ht_per_unitvol
 
             ! Solve for the new temperature by fixed point iteration
             surftemp_new = surftemp_old
             found = PETSC_FALSE
             do iter = 1,niter
               psurftemp_new = surftemp_new
-              surftemp_new  = energy_new/(den*Cwi*head_new) - 273.15d0
+              surftemp_new  = eng_times_ht_per_unitvol_new/(den*Cwi*head_new) - 273.15d0
               call EOSWaterdensity(surftemp_new,option%reference_pressure,den,dum1,ierr)
               if (abs((surftemp_new-psurftemp_new)/(surftemp_new+273.15d0))<rtol) then
                 found = PETSC_TRUE
