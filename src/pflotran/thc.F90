@@ -3102,6 +3102,8 @@ subroutine THCBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
   ! Conduction term
   select case(ibndtype(THC_TEMPERATURE_DOF))
     case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
+      write(*,*) 'Dk value in incorrect in THCBCFlux. Look at THBCFlux.'
+      stop
       Dk = Dk_dn / dd_up
       cond = Dk*area*(global_auxvar_up%temp-global_auxvar_dn%temp)
       fluxe = fluxe + cond
