@@ -53,8 +53,9 @@ module Strata_module
             StrataInitList, &
             StrataAddToList, &
             StrataRead, &
-            StrataDestroyList, &
-            StrataWithinTimePeriod
+            StrataWithinTimePeriod, &
+            StrataEvolves, &
+            StrataDestroyList
   
 contains
 
@@ -124,6 +125,8 @@ function StrataCreateFromStrata(strata)
   new_strata%realization_dependent = strata%realization_dependent
   new_strata%region_name = strata%region_name
   new_strata%iregion = strata%iregion
+  new_strata%start_time = strata%start_time
+  new_strata%end_time = strata%end_time
   ! keep these null
   nullify(new_strata%region)
   nullify(new_strata%material_property)
@@ -272,6 +275,60 @@ end subroutine StrataAddToList
 
 ! ************************************************************************** !
 
+function StrataWithinTimePeriod(strata,time)
+  ! 
+  ! Determines whether the strata is defined for the time specified.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/07/14
+  ! 
+  implicit none
+
+  type(strata_type) :: strata
+  PetscReal :: time
+  
+  PetscBool :: StrataWithinTimePeriod
+  
+  StrataWithinTimePeriod = PETSC_FALSE
+  if (Initialized(strata%start_time)) then
+    StrataWithinTimePeriod = (time >= strata%start_time - 1.d0 .and. &
+                              time < strata%end_time - 1.d0)
+  endif
+  
+end function StrataWithinTimePeriod
+
+! ************************************************************************** !
+
+function StrataEvolves(strata_list)
+  ! 
+  ! Determines whether the strata is defined for the time specified.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/07/14
+  ! 
+  implicit none
+
+  type(strata_list_type) :: strata_list
+  
+  type(strata_type), pointer :: strata
+
+  PetscBool :: StrataEvolves
+  
+  StrataEvolves = PETSC_FALSE
+  strata => strata_list%first
+  do 
+    if (.not.associated(strata)) exit
+    if (Initialized(strata%start_time) .or. Initialized(strata%end_time)) then
+      StrataEvolves = PETSC_TRUE
+      exit
+    endif
+    strata => strata%next
+  enddo
+  
+end function StrataEvolves
+
+! ************************************************************************** !
+
 subroutine StrataDestroyList(strata_list)
   ! 
   ! Deallocates a list of stratas
@@ -305,30 +362,6 @@ subroutine StrataDestroyList(strata_list)
   nullify(strata_list)
 
 end subroutine StrataDestroyList
-
-! ************************************************************************** !
-
-function StrataWithinTimePeriod(strata,time)
-  ! 
-  ! Determines whether the strata is defined for the time specified.
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 10/07/14
-  ! 
-  implicit none
-
-  type(strata_type) :: strata
-  PetscReal :: time
-  
-  PetscBool :: StrataWithinTimePeriod
-  
-  StrataWithinTimePeriod = PETSC_FALSE
-  if (Initialized(strata%start_time)) then
-    StrataWithinTimePeriod = (time >= strata%start_time - 1.d0 .and. &
-                              time < strata%end_time - 1.d0)
-  endif
-  
-end function StrataWithinTimePeriod
 
 ! ************************************************************************** !
 

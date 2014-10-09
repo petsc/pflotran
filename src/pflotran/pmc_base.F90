@@ -208,7 +208,9 @@ recursive subroutine InitializeRun(this)
   call printMsg(this%option,'PMCBase%InitializeRun()')
 #endif
   
-  this%option%time = this%timestepper%target_time
+  if (associated(this%timestepper)) then
+    this%option%time = this%timestepper%target_time
+  endif
   cur_pm => this%pm_list
   do
     if (.not.associated(cur_pm)) exit
@@ -242,10 +244,9 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
   
 #include "finclude/petscviewer.h"  
 
-class(pmc_base_type), target :: this
+  class(pmc_base_type), target :: this
   PetscReal :: sync_time
   PetscInt :: stop_flag
-  type(simulation_aux_type) :: sim_aux
   
   PetscInt :: local_stop_flag
   PetscBool :: failure
@@ -422,7 +423,9 @@ recursive subroutine FinalizeRun(this)
   call printMsg(this%option,'PMCBase%FinalizeRun()')
 #endif
   
-  call this%timestepper%FinalizeRun(this%option)
+  if (associated(this%timestepper)) then
+    call this%timestepper%FinalizeRun(this%option)
+  endif
 
   if (associated(this%below)) then
     call this%below%FinalizeRun()

@@ -1190,7 +1190,9 @@ function InputCheckExit(input,option)
   enddo
 
   if (input%buf(i:i) == '/' .or. &
-      StringCompare(input%buf(i:),'END',THREE_INTEGER)) then
+!geh: this fails when the keyword starts with END
+!geh      StringCompare(input%buf(i:),'END',THREE_INTEGER)) then
+      StringCompare(input%buf(i:),'END')) then
     InputCheckExit = PETSC_TRUE
   else
     InputCheckExit = PETSC_FALSE
