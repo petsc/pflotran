@@ -2616,7 +2616,11 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
                               area, &
                               dist, &
                               option, &
-                              sat_func_dn,Jdn)
+                              sat_func_dn,&
+                              Diff_dn, &
+                              Dk_dry_dn, &
+                              Dk_ice_dn, &
+                              Jdn)
   ! 
   ! Computes the derivatives of the boundary flux
   ! terms for the Jacobian
@@ -2642,12 +2646,16 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
   PetscReal :: por_dn,perm_dn,Dk_dn,tor_dn,Diff_dn
   PetscReal :: area
   type(saturation_function_type) :: sat_func_dn  
+  PetscReal :: Dk_dry_dn
+  PetscReal :: Dk_ice_dn
+  PetscReal :: alpha_dn
+  PetscReal :: alpha_fr_dn
   PetscReal :: Jdn(option%nflowdof,option%nflowdof)
   PetscReal :: dist(-1:3)
   
   PetscReal :: dist_gravity  ! distance along gravity vector
           
-  PetscReal :: dd_up, dd_dn
+  PetscReal :: dd_dn
   PetscInt :: ispec
   PetscReal :: v_darcy
   PetscReal :: fluxm(option%nflowspec),fluxe,q,density_ave
@@ -2662,6 +2670,10 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
   PetscReal :: duh_dp_dn, duh_dt_dn
   PetscReal :: dq_dp_dn, dq_dt_dn
   PetscReal :: duxmol_dxmol_dn
+  PetscReal :: Dk_eff_dn
+  PetscReal :: dDk_dt_dn, dDk_dp_dn
+  PetscReal :: dKe_dt_dn, dKe_dp_dn
+  PetscReal :: dKe_fr_dt_dn, dKe_fr_dp_dn
 
   PetscInt :: iphase, ideriv
   type(TH_auxvar_type) :: auxvar_pert_dn, auxvar_pert_up
@@ -2731,18 +2743,18 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
   hw_present = auxvar_dn%surf_wat
         
   dist_gravity = dist(0) * dot_product(option%gravity,dist(1:3))
-  dd_up = dist(0)
+  dd_dn = dist(0)
 
   call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
   por_dn = material_auxvar_dn%porosity
   tor_dn = material_auxvar_dn%tortuosity
 
   ! Flow
-  diffdp = por_dn*tor_dn/dd_up*area
+  diffdp = por_dn*tor_dn/dd_dn*area
   select case(ibndtype(TH_PRESSURE_DOF))
     ! figure out the direction of flow
     case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,HET_SURF_SEEPAGE_BC)
-      Dq = perm_dn / dd_up
+      Dq = perm_dn / dd_dn
       ! Flow term
       if (global_auxvar_up%sat(1) > sir_dn .or. global_auxvar_dn%sat(1) > sir_dn) then
         upweight=1.D0
@@ -2988,21 +3000,56 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
   ! Conduction term
   select case(ibndtype(TH_TEMPERATURE_DOF))
     case(DIRICHLET_BC,HET_DIRICHLET)
-      Dk =  Dk_dn / dd_up
+      Dk =  auxvar_dn%Dk_eff / dd_dn
       !cond = Dk*area*(global_auxvar_up%temp-global_auxvar_dn%temp)
+
+      if (option%use_th_freezing) then
+        Dk_eff_dn    = auxvar_dn%Dk_eff
+        dKe_dp_dn    = auxvar_dn%dKe_dp
+        dKe_dt_dn    = auxvar_dn%dKe_dt
+        dKe_fr_dt_dn = auxvar_dn%dKe_fr_dt
+        dKe_fr_dp_dn = auxvar_dn%dKe_fr_dp
+        Dk           = Dk_eff_dn/dd_dn
+
+        dDk_dt_dn = Dk**2/Dk_eff_dn**2*dd_dn*(Dk_dn*dKe_dt_dn + &
+            Dk_ice_dn*dKe_fr_dt_dn + (- dKe_dt_dn - dKe_fr_dt_dn)* &
+            Dk_dry_dn)
+        dDk_dp_dn = Dk**2/Dk_eff_dn**2*dd_dn*(Dk_dn*dKe_dp_dn + &
+            Dk_ice_dn*dKe_fr_dp_dn + (- dKe_dp_dn - dKe_fr_dp_dn)* &
+            Dk_dry_dn)
+
+      else
+
+        Dk_eff_dn = auxvar_dn%Dk_eff
+        dKe_dp_dn = auxvar_dn%dKe_dp
+        dKe_dt_dn = auxvar_dn%dKe_dt
+        Dk        = Dk_eff_dn/dd_dn
+
+        dDk_dt_dn = Dk**2/Dk_eff_dn**2*dd_dn*(Dk_dn - Dk_dry_dn)*dKe_dt_dn
+        dDk_dp_dn = Dk**2/Dk_eff_dn**2*dd_dn*(Dk_dn - Dk_dry_dn)*dKe_dp_dn
+
+      endif
 
       if (.not. option%surf_flow_on) then
         ! ---------------------------
         ! Subsurface only simulation
         ! ---------------------------
-        Jdn(option%nflowdof,2) = Jdn(option%nflowdof,2)+Dk*area*(-1.d0)
+        Jdn(option%nflowdof,1) = Jdn(option%nflowdof,1) + &
+                area*(global_auxvar_up%temp - global_auxvar_dn%temp)*dDk_dp_dn
+
+        Jdn(option%nflowdof,2) = Jdn(option%nflowdof,2) + Dk*area*(-1.d0) + &
+                area*(global_auxvar_up%temp - global_auxvar_dn%temp)*dDk_dt_dn
       else
         ! ---------------------------
         ! Surface-subsurface simulation
         ! ---------------------------
         if (ibndtype(TH_PRESSURE_DOF) /= HET_SURF_SEEPAGE_BC) then
           if (.not.(hw_present)) then
-            Jdn(option%nflowdof,2) = Jdn(option%nflowdof,2)+Dk*area*(-1.d0)
+            Jdn(option%nflowdof,1) = Jdn(option%nflowdof,1) + &
+                area*(global_auxvar_up%temp - global_auxvar_dn%temp)*dDk_dp_dn
+
+            Jdn(option%nflowdof,2) = Jdn(option%nflowdof,2) + Dk*area*(-1.d0) + &
+                area*(global_auxvar_up%temp - global_auxvar_dn%temp)*dDk_dt_dn
           else
             Jdn = 0.d0
           endif
@@ -3010,7 +3057,11 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
           ! Only add contribution to Jacboian term for heat equation if
           ! standing water is present
           if (hw_present) then
-            Jdn(option%nflowdof,2) = Jdn(option%nflowdof,2) + Dk*area*(-1.d0)
+            Jdn(option%nflowdof,1) = Jdn(option%nflowdof,1) + &
+                area*(global_auxvar_up%temp - global_auxvar_dn%temp)*dDk_dp_dn
+
+            Jdn(option%nflowdof,2) = Jdn(option%nflowdof,2) + Dk*area*(-1.d0) + &
+                area*(global_auxvar_up%temp - global_auxvar_dn%temp)*dDk_dt_dn
           endif
         endif
       endif
@@ -3055,12 +3106,12 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
             Ddiffgas_avg = upweight*Ddiffgas_up+(1.D0 - upweight)*Ddiffgas_dn 
     
             Jdn(1,1) = Jdn(1,1) + por_dn*tor_dn*(1.D0 - upweight)* &
-                 Ddiffgas_dn/satg_dn*dsatg_dp_dn*(molg_up - molg_dn)/dd_up* &
+                 Ddiffgas_dn/satg_dn*dsatg_dp_dn*(molg_up - molg_dn)/dd_dn* &
                  area
             Jdn(1,2) = Jdn(1,2) + por_dn*tor_dn*(1.D0 - upweight)* &
                  (Ddiffgas_avg/deng_dn*ddeng_dt_dn + Ddiffgas_avg/Diffg_dn* &
-                 dDiffg_dt_dn)*(molg_up - molg_dn)/dd_up*area + por_dn* &
-                 tor_dn*Ddiffgas_avg*(-dmolg_dt_dn)/dd_up*area
+                 dDiffg_dt_dn)*(molg_up - molg_dn)/dd_dn*area + por_dn* &
+                 tor_dn*Ddiffgas_avg*(-dmolg_dt_dn)/dd_dn*area
          endif
       endif ! if (use_th_freezing)
 
@@ -3250,7 +3301,7 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
   PetscReal, intent(out) :: fluxe_bulk, fluxe_cond
   
   PetscReal :: dist_gravity  ! distance along gravity vector
-  PetscReal :: dd_up, dd_dn
+  PetscReal :: dd_dn
           
   PetscReal :: por_dn,perm_dn,tor_dn
   PetscInt :: ispec
@@ -3290,18 +3341,18 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
   hw_present = auxvar_dn%surf_wat
 
   dist_gravity = dist(0) * dot_product(option%gravity,dist(1:3))
-  dd_up = dist(0)
+  dd_dn = dist(0)
 
   call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
   por_dn = material_auxvar_dn%porosity
   tor_dn = material_auxvar_dn%tortuosity
 
   ! Flow
-  diffdp = por_dn*tor_dn/dd_up*area
+  diffdp = por_dn*tor_dn/dd_dn*area
   select case(ibndtype(TH_PRESSURE_DOF))
     ! figure out the direction of flow
     case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,HET_SURF_SEEPAGE_BC)
-      Dq = perm_dn / dd_up
+      Dq = perm_dn / dd_dn
       ! Flow term
       if (global_auxvar_up%sat(1) > sir_dn .or. global_auxvar_dn%sat(1) > sir_dn) then
         upweight=1.D0
@@ -3455,7 +3506,7 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
   ! Conduction term
   select case(ibndtype(TH_TEMPERATURE_DOF))
     case(DIRICHLET_BC,HET_DIRICHLET)
-      Dk = Dk_dn / dd_up
+      Dk =  auxvar_dn%Dk_eff / dd_dn
       cond = Dk*area*(global_auxvar_up%temp-global_auxvar_dn%temp)
 
       if (option%surf_flow_on) then
@@ -3518,7 +3569,7 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
 
             Ddiffgas_avg = upweight*Ddiffgas_up + (1.D0 - upweight)*Ddiffgas_dn 
             fluxm(1) = fluxm(1) + por_dn*tor_dn*Ddiffgas_avg*(molg_up - molg_dn)/ &
-                 dd_up*area
+                 dd_dn*area
          endif
       endif ! if (use_th_freezing)
 
@@ -3535,7 +3586,7 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
 
   Res(1:option%nflowspec) = fluxm(:)
   Res(option%nflowdof) = fluxe
-  
+
 end subroutine THBCFlux
 
 ! ************************************************************************** !
@@ -4491,11 +4542,23 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
         stop
       endif
 
-      ithrm_dn = int(ithrm_loc_p(ghosted_id))
-      D_dn = TH_parameter%ckwet(ithrm_dn)
+      ithrm_dn  = int(ithrm_loc_p(ghosted_id))
+      D_dn      = TH_parameter%ckwet(ithrm_dn)
+      Dk_dry_dn = TH_parameter%ckdry(ithrm_dn)
+      alpha_dn  = TH_parameter%alpha(ithrm_dn)
 
       icap_dn = int(icap_loc_p(ghosted_id))
-	  
+
+      if (option%use_th_freezing) then
+         DK_ice_dn = TH_parameter%ckfrozen(ithrm_dn)
+         alpha_fr_dn = TH_parameter%alpha_fr(ithrm_dn)
+      else
+         Dk_ice_dn = Dk_dry_dn
+         alpha_fr_dn = alpha_dn
+      endif
+
+      Diff_dn = TH_parameter%diffusion_coefficient(1)
+
       call THBCFluxDerivative(boundary_condition%flow_condition%itype, &
                               boundary_condition%flow_aux_real_var(:,iconn), &
                               auxvars_bc(sum_connection), &
@@ -4509,6 +4572,7 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
                               cur_connection_set%dist(-1:3,iconn), &
                               option, &
                               patch%saturation_function_array(icap_dn)%ptr,&
+                              Diff_dn,Dk_dry_dn,Dk_ice_dn, &
                               Jdn)
     Jdn = -Jdn
   
@@ -5322,16 +5386,27 @@ subroutine THUpdateSurfaceBC(realization)
   PetscInt :: iter
   PetscInt :: niter
   PetscReal :: eflux
+  PetscReal :: eflux_bulk
+  PetscReal :: eflux_cond
   PetscReal :: area
   PetscReal :: den
+  PetscReal :: den_surf_at_Told
+  PetscReal :: den_subsurf
+  PetscReal :: den_aveg
   PetscReal :: dum1
-  PetscReal :: energy_old
-  PetscReal :: energy_new
   PetscReal :: head_old
   PetscReal :: head_new
+  PetscReal :: dhead
   PetscReal :: surfpress_old
   PetscReal :: surfpress_new
+  PetscReal :: eng_per_unitvol_old
+  PetscReal :: eng_per_unitvol_new
+  PetscReal :: eng_times_ht_per_unitvol_old
+  PetscReal :: eng_times_ht_per_unitvol_new
+  PetscReal :: deng_times_ht_per_unitvol
+  PetscReal :: enthalpy
   PetscReal :: surftemp_old
+  PetscReal :: Temp_upwind
   PetscReal :: surftemp_new,psurftemp_new,rtol
   PetscReal :: Cwi
   PetscBool :: found
@@ -5343,11 +5418,14 @@ subroutine THUpdateSurfaceBC(realization)
   type(coupler_type), pointer :: boundary_condition
   type(connection_set_type), pointer :: cur_connection_set
   type(global_auxvar_type), pointer :: global_auxvars(:)  
+  type(TH_auxvar_type), pointer :: auxvars(:), auxvars_bc(:)
 
   option => realization%option
   patch => realization%patch
   grid => patch%grid
   global_auxvars => realization%patch%aux%Global%auxvars
+  auxvars => patch%aux%TH%auxvars
+  auxvars_bc => patch%aux%TH%auxvars_bc
 
   ! GB: Should probably add this as a member of option
   Cwi = 4.188d3 ! [J/kg/K]
@@ -5356,6 +5434,9 @@ subroutine THUpdateSurfaceBC(realization)
   niter = 20
   rtol  = 1.d-12
   
+  eflux_bulk = 0.d0
+  eflux_cond = 0.d0
+
   ! boundary conditions
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0
@@ -5376,8 +5457,12 @@ subroutine THUpdateSurfaceBC(realization)
         ghosted_id = grid%nL2G(local_id)
 
 #ifdef STORE_FLOWRATES
-        eflux = patch%boundary_fluxes(TH_TEMPERATURE_DOF,1,sum_connection) ! [MJ/s]
-        eflux = eflux/option%scale ! [MJ/s] to [J/s]
+        eflux      = patch%boundary_fluxes(TH_TEMPERATURE_DOF,1,sum_connection) ! [MJ/s]
+        eflux_bulk = patch%boundary_flux_energy(1,sum_connection) ! [MJ/s]
+        eflux_cond = patch%boundary_flux_energy(2,sum_connection) ! [MJ/s]
+
+        ! [MJ/s] to [J/s]
+        eflux      = eflux/option%scale
 #else
         option%io_buffer = 'Recompile code with store_flowrates=1 for ' // &
           'surface TH mode.'
@@ -5392,45 +5477,103 @@ subroutine THUpdateSurfaceBC(realization)
         call EOSWaterdensity(surftemp_old,option%reference_pressure,den,dum1,ierr)
 
         head_old = (surfpress_old - option%reference_pressure)/den/abs(option%gravity(3)) ! [m]
-        head_new = head_old - &
-          patch%boundary_velocities(1,sum_connection)*option%flow_dt ! [m]
+        dhead    = patch%boundary_velocities(1,sum_connection)*option%flow_dt ! [m]
+        head_new = head_old - dhead ! [m]
 
-        if (head_new <= 0.d0) then
+        if (head_new <= MIN_SURFACE_WATER_HEIGHT) then
           surfpress_new = option%reference_pressure
           surftemp_new = DUMMY_VALUE
         else
           
-          ! Compute the new and old energy states based on the energy flux
-          call EOSWaterdensity(surftemp_old,option%reference_pressure,den,dum1,ierr)
-          energy_old = den*Cwi*(surftemp_old + 273.15d0)*head_old
-          energy_new = energy_old - eflux*option%flow_dt/area
+          if (head_old <= MIN_SURFACE_WATER_HEIGHT) then
 
-          ! Solve for the new temperature by fixed point iteration
-          surftemp_new = surftemp_old
-          found = PETSC_FALSE
-          do iter = 1,niter
-            psurftemp_new = surftemp_new
-            surftemp_new  = energy_new/(den*Cwi*head_new) - 273.15d0
+            ! Surface water was absent prior to subsurface step and exfiltration
+            ! occured during the subsurface step.
+
+            surftemp_new = global_auxvars(ghosted_id)%temp
             call EOSWaterdensity(surftemp_new,option%reference_pressure,den,dum1,ierr)
-            if (abs((surftemp_new-psurftemp_new)/(surftemp_new+273.15d0))<rtol) then
-              found = PETSC_TRUE
-              exit
-            endif
-          enddo
-          if (found .eqv. PETSC_FALSE) then
-            write(option%io_buffer, &
-                 '("th.F90: THUpdateSurfaceBC --> fixed point not found!")')
-            call printErrMsg(option)
-          endif
+            surfpress_new = head_new*(abs(option%gravity(3)))*den + &
+              option%reference_pressure
+          else
 
-          surfpress_new = head_new*(abs(option%gravity(3)))*den + &
-            option%reference_pressure
+            ! Surface water was present prior to subsurface step
+
+            ! Compute the new and old energy states based on the energy flux
+            call EOSWaterdensity(surftemp_old,option%reference_pressure,den_surf_at_Told,dum1,ierr)
+            call EOSWaterdensity(surftemp_new,option%reference_pressure,den_subsurf     ,dum1,ierr)
+            den_aveg = 0.5d0*(den_surf_at_Told + den_subsurf)
+
+            ! 1) Find new surface-temperature due to heat transfer via conduction.
+            den = den_surf_at_Told
+            eng_per_unitvol_old = den*Cwi*(surftemp_old + 273.15d0)
+            eng_per_unitvol_new = eng_per_unitvol_old - eflux_cond/option%scale*option%flow_dt/area
+
+            ! Solve for the new temperature by fixed point iteration
+            surftemp_new = surftemp_old
+            found = PETSC_FALSE
+            do iter = 1,niter
+              psurftemp_new = surftemp_new
+              surftemp_new  = eng_per_unitvol_new/(den*Cwi) - 273.15d0
+              call EOSWaterdensity(surftemp_new,option%reference_pressure,den,dum1,ierr)
+              if (abs((surftemp_new-psurftemp_new)/(surftemp_new+273.15d0))<rtol) then
+                found = PETSC_TRUE
+                exit
+              endif
+            enddo
+            if (found .eqv. PETSC_FALSE) then
+              write(option%io_buffer, &
+                   '("th.F90: THUpdateSurfaceBC --> fixed point not found!")')
+              call printErrMsg(option)
+            endif
+
+            ! 2) Find new surface-temperature due to heat transfer via bulk-movement
+            !    water transport
+            if (patch%boundary_velocities(1,sum_connection) < 0) then
+               Temp_upwind = global_auxvars(ghosted_id)%temp
+            else
+               Temp_upwind = surftemp_old
+            endif
+
+            ! In THBCFlux():
+            ! fluxe_bulk = (rho*q*H)               [kmol/m^3 * m^3/s * MJ/kmol]     = [MJ/s]
+            !            = (rho*v_darcy*area*H)    [kmol/m^3 * m/s * m^2 * MJ/kmol]
+
+            ! Retrieve H in units of [J/kg] from fluxe_bulk
+            !        = [MJ/s     * J/MJ       * m^3/kg * m^{-2} * s/m]
+            enthalpy = eflux_bulk/option%scale/den_aveg/area/patch%boundary_velocities(1,sum_connection)
+
+            surftemp_old = surftemp_new
+            eng_times_ht_per_unitvol_old = den     *(Cwi*surftemp_old + Cwi*273.15d0)*head_old
+            deng_times_ht_per_unitvol    = den_aveg*(enthalpy         + Cwi*273.15d0)*dhead
+            eng_times_ht_per_unitvol_new = eng_times_ht_per_unitvol_old - deng_times_ht_per_unitvol
+
+            ! Solve for the new temperature by fixed point iteration
+            surftemp_new = surftemp_old
+            found = PETSC_FALSE
+            do iter = 1,niter
+              psurftemp_new = surftemp_new
+              surftemp_new  = eng_times_ht_per_unitvol_new/(den*Cwi*head_new) - 273.15d0
+              call EOSWaterdensity(surftemp_new,option%reference_pressure,den,dum1,ierr)
+              if (abs((surftemp_new-psurftemp_new)/(surftemp_new+273.15d0))<rtol) then
+                found = PETSC_TRUE
+                exit
+              endif
+            enddo
+            if (found .eqv. PETSC_FALSE) then
+              write(option%io_buffer, &
+                   '("th.F90: THUpdateSurfaceBC --> fixed point not found!")')
+              call printErrMsg(option)
+            endif
+
+            surfpress_new = head_new*(abs(option%gravity(3)))*den + &
+              option%reference_pressure
+          endif
         endif
 
         boundary_condition%flow_aux_real_var(TH_PRESSURE_DOF,iconn) = &
           surfpress_new
-        !boundary_condition%flow_aux_real_var(TH_TEMPERATURE_DOF,iconn) = &
-        !  surftemp_new
+        boundary_condition%flow_aux_real_var(TH_TEMPERATURE_DOF,iconn) = &
+          surftemp_new
       enddo
 
     else
