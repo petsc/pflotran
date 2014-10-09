@@ -1653,18 +1653,46 @@ subroutine InputReadASCIIDbase(filename,option)
   type(option_type) :: option
 
   character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: object_name
   type(input_type), pointer :: input
   PetscInt :: icount
+  PetscInt :: value_count
+  PetscInt :: value_index
+  PetscInt :: num_reals_in_dataset
+  PetscReal :: tempreal
+  PetscReal, allocatable :: values(:)
   
   input => InputCreate(86,filename,option)
   
   icount = 0
+  num_reals_in_dataset = 0
   do
     call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     call InputReadWord(input,option,word,PETSC_FALSE)
     if (StringStartsWithAlpha(word)) icount = icount + 1
+    if (icount == 1) then
+      do
+        call InputReadDouble(input,option,tempreal)
+        if (input%ierr /= 0) exit
+        num_reals_in_dataset = num_reals_in_dataset + 1
+      enddo
+    endif
   enddo
+
+  value_index = 1
+  if (option%id > 0) then
+    if (option%id > num_reals_in_dataset) then
+      write(word,*) num_reals_in_dataset
+        option%io_buffer = 'DBASE "' // trim(filename) // &
+        '" is too small (' // trim(adjustl(word)) // &
+        ') for number of realizations.'
+      call printErrMsg(option)
+    endif
+    value_index = option%id
+  endif
+  allocate(values(num_reals_in_dataset))
+  
   rewind(input%fid)
   allocate(dbase)
   allocate(dbase%card(icount))
@@ -1677,14 +1705,30 @@ subroutine InputReadASCIIDbase(filename,option)
     if (InputError(input)) exit
     call InputReadWord(input,option,word,PETSC_FALSE)
     if (StringStartsWithAlpha(word)) then
+      object_name = word
       icount = icount + 1
       call StringToUpper(word)
       dbase%card(icount) = adjustl(word)
-      word = trim(word) // ' value'
-      call InputReadDouble(input,option,dbase%value(icount))
-      call InputErrorMsg(input,option,word,'DBASE')
+      word = trim(word) // ' value(s)'
+      value_count = 0
+      values = UNINITALIZED_DOUBLE
+      do
+        call InputReadDouble(input,option,values(value_count+1))
+        call InputErrorMsg(input,option,word,'DBASE')
+        if (input_ierr /= 0) exit
+        value_count = value_count + 1
+      enddo
+      if (value_count < num_reals_in_dataset) then
+        write(word,*) num_reals_in_dataset
+          option%io_buffer = 'DBASE dataset "' // trim(object_name) // &
+          '" is too small (' // trim(adjustl(word)) // &
+          ') for number of realizations.'
+        call printErrMsg(option)
+      endif
+      dbase%value(value_index) = values(option%id)
     endif
   enddo
+  deallocate(values)
   
   call InputDestroy(input)
   
