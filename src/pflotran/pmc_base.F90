@@ -23,7 +23,7 @@ module PMC_Base_class
     PetscInt :: stage
     PetscBool :: is_master
     type(option_type), pointer :: option
-    class(stepper_base_type), pointer :: timestepper
+    class(timestepper_base_type), pointer :: timestepper
     class(pm_base_type), pointer :: pms
     type(waypoint_list_type), pointer :: waypoints
     class(pmc_base_type), pointer :: below
@@ -178,7 +178,7 @@ subroutine PMCBaseSetTimestepper(this,timestepper)
   implicit none
   
   class(pmc_base_type) :: this
-  class(stepper_base_type), pointer :: timestepper
+  class(timestepper_base_type), pointer :: timestepper
 
 #ifdef DEBUG
   call printMsg(this%option,'PMCBase%SetTimestepper()')

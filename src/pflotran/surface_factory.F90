@@ -147,7 +147,7 @@ subroutine HijackSurfaceSimulation(simulation_old,simulation)
     surf_flow_process_model_coupler%option => option
     surf_flow_process_model_coupler%pms => cur_process_model
     surf_flow_process_model_coupler%pm_ptr%ptr => cur_process_model
-    call HijackTimestepper(simulation_old%surf_flow_stepper, &
+    call HijackTimestepper(simulation_old%surf_flow_timestepper, &
                            surf_flow_process_model_coupler%timestepper)
     ! set up logging stage
     string = 'Surface'
@@ -237,8 +237,8 @@ subroutine SurfaceJumpStart(simulation)
   type(surface_simulation_type) :: simulation
   
   class(surface_realization_type), pointer :: surf_realization
-  class(timestepper_surface_type), pointer :: master_stepper
-  class(timestepper_surface_type), pointer :: surf_flow_stepper
+  class(timestepper_surface_type), pointer :: master_timestepper
+  class(timestepper_surface_type), pointer :: surf_flow_timestepper
   type(option_type), pointer :: option
   type(output_option_type), pointer :: output_option
 
@@ -253,9 +253,9 @@ subroutine SurfaceJumpStart(simulation)
   
   select type(ts => simulation%surf_flow_process_model_coupler%timestepper)
     class is(timestepper_surface_type)
-      surf_flow_stepper => ts
+      surf_flow_timestepper => ts
   end select
-  nullify(master_stepper)
+  nullify(master_timestepper)
   
   option => surf_realization%option
   output_option => surf_realization%output_option
@@ -269,7 +269,7 @@ subroutine SurfaceJumpStart(simulation)
     return
   endif
   
-  master_stepper => surf_flow_stepper
+  master_timestepper => surf_flow_timestepper
 
   plot_flag = PETSC_FALSE
   transient_plot_flag = PETSC_FALSE
@@ -287,9 +287,9 @@ subroutine SurfaceJumpStart(simulation)
     endif
 
     if (surf_flow_read) then
-      surf_flow_stepper%prev_dt = surf_flow_prev_dt
-      surf_flow_stepper%target_time = option%surf_flow_time
-      call TSSetTime(surf_flow_stepper%solver%ts,option%surf_flow_time, &
+      surf_flow_timestepper%prev_dt = surf_flow_prev_dt
+      surf_flow_timestepper%target_time = option%surf_flow_time
+      call TSSetTime(surf_flow_timestepper%solver%ts,option%surf_flow_time, &
                      ierr);CHKERRQ(ierr)
     endif
 
@@ -303,9 +303,9 @@ subroutine SurfaceJumpStart(simulation)
   call PetscLogStagePush(logging%stage(TS_STAGE),ierr);CHKERRQ(ierr)
 
   !if TIMESTEPPER->MAX_STEPS < 0, print out solution composition only
-  if (master_stepper%max_time_step < 0) then
+  if (master_timestepper%max_time_step < 0) then
     call printMsg(option,'')
-    write(option%io_buffer,*) master_stepper%max_time_step
+    write(option%io_buffer,*) master_timestepper%max_time_step
     option%io_buffer = 'The maximum # of time steps (' // &
                        trim(adjustl(option%io_buffer)) // &
                        '), specified by TIMESTEPPER->MAX_STEPS, ' // &
@@ -316,9 +316,9 @@ subroutine SurfaceJumpStart(simulation)
   endif
 
   ! print initial condition output if not a restarted sim
-  call OutputSurfaceInit(master_stepper%steps)
+  call OutputSurfaceInit(master_timestepper%steps)
   if (output_option%plot_number == 0 .and. &
-      master_stepper%max_time_step >= 0 .and. &
+      master_timestepper%max_time_step >= 0 .and. &
       output_option%print_initial) then
     plot_flag = PETSC_TRUE
     transient_plot_flag = PETSC_TRUE
@@ -326,9 +326,9 @@ subroutine SurfaceJumpStart(simulation)
   endif
   
   !if TIMESTEPPER->MAX_STEPS < 1, print out initial condition only
-  if (master_stepper%max_time_step < 1) then
+  if (master_timestepper%max_time_step < 1) then
     call printMsg(option,'')
-    write(option%io_buffer,*) master_stepper%max_time_step
+    write(option%io_buffer,*) master_timestepper%max_time_step
     option%io_buffer = 'The maximum # of time steps (' // &
                        trim(adjustl(option%io_buffer)) // &
                        '), specified by TIMESTEPPER->MAX_STEPS, ' // &
@@ -341,16 +341,16 @@ subroutine SurfaceJumpStart(simulation)
   ! increment plot number so that 000 is always the initial condition, and nothing else
   if (output_option%plot_number == 0) output_option%plot_number = 1
 
-  if (.not.associated(surf_flow_stepper%cur_waypoint)) then
+  if (.not.associated(surf_flow_timestepper%cur_waypoint)) then
     option%io_buffer = &
       'Null flow waypoint list; final time likely equal to start time.'
     call printMsg(option)
     return
   else
-    surf_flow_stepper%dt_max = surf_flow_stepper%cur_waypoint%dt_max
+    surf_flow_timestepper%dt_max = surf_flow_timestepper%cur_waypoint%dt_max
   endif
           
-  surf_flow_stepper%start_time_step = surf_flow_stepper%steps + 1
+  surf_flow_timestepper%start_time_step = surf_flow_timestepper%steps + 1
   
   if (surf_realization%debug%print_couplers) then
   !  call OutputPrintSurfaceCouplers(surf_realization,ZERO_INTEGER)
@@ -360,7 +360,7 @@ end subroutine SurfaceJumpStart
 
 ! ************************************************************************** !
 
-subroutine HijackTimestepper(stepper_old,stepper_base)
+subroutine HijackTimestepper(timestepper_old,stepper_base)
   ! 
   ! This routine
   ! 
@@ -374,52 +374,52 @@ subroutine HijackTimestepper(stepper_old,stepper_base)
 
   implicit none
   
-  type(stepper_type), pointer :: stepper_old
-  class(stepper_base_type), pointer :: stepper_base
+  type(timestepper_type), pointer :: timestepper_old
+  class(timestepper_base_type), pointer :: stepper_base
   
   class(timestepper_surface_type), pointer :: stepper
   
   stepper => TimestepperSurfaceCreate()
   
-  stepper%steps = stepper_old%steps
-  stepper%num_constant_time_steps = stepper_old%num_constant_time_steps
+  stepper%steps = timestepper_old%steps
+  stepper%num_constant_time_steps = timestepper_old%num_constant_time_steps
 
-  stepper%max_time_step = stepper_old%max_time_step
-  stepper%max_time_step_cuts = stepper_old%max_time_step_cuts
-  stepper%constant_time_step_threshold = stepper_old%constant_time_step_threshold
-  stepper%cumulative_time_step_cuts = stepper_old%cumulative_time_step_cuts 
-  stepper%cumulative_solver_time = stepper_old%cumulative_solver_time
+  stepper%max_time_step = timestepper_old%max_time_step
+  stepper%max_time_step_cuts = timestepper_old%max_time_step_cuts
+  stepper%constant_time_step_threshold = timestepper_old%constant_time_step_threshold
+  stepper%cumulative_time_step_cuts = timestepper_old%cumulative_time_step_cuts 
+  stepper%cumulative_solver_time = timestepper_old%cumulative_solver_time
 
-  stepper%start_time = stepper_old%start_time
-  stepper%start_time_step = stepper_old%start_time_step
-  stepper%time_step_tolerance = stepper_old%time_step_tolerance
-  stepper%target_time = stepper_old%target_time
+  stepper%start_time = timestepper_old%start_time
+  stepper%start_time_step = timestepper_old%start_time_step
+  stepper%time_step_tolerance = timestepper_old%time_step_tolerance
+  stepper%target_time = timestepper_old%target_time
   
-  stepper%prev_dt = stepper_old%prev_dt
-!  stepper%dt = stepper_old%dt
-  stepper%dt_min = stepper_old%dt_min
-  stepper%dt_max = stepper_old%dt_max
-  stepper%cfl_limiter = stepper_old%cfl_limiter
-  stepper%cfl_limiter_ts = stepper_old%cfl_limiter_ts
+  stepper%prev_dt = timestepper_old%prev_dt
+!  stepper%dt = timestepper_old%dt
+  stepper%dt_min = timestepper_old%dt_min
+  stepper%dt_max = timestepper_old%dt_max
+  stepper%cfl_limiter = timestepper_old%cfl_limiter
+  stepper%cfl_limiter_ts = timestepper_old%cfl_limiter_ts
   
-  stepper%time_step_cut_flag = stepper_old%time_step_cut_flag
+  stepper%time_step_cut_flag = timestepper_old%time_step_cut_flag
 
-  stepper%init_to_steady_state = stepper_old%init_to_steady_state
-  stepper%steady_state_rel_tol = stepper_old%steady_state_rel_tol
-  stepper%run_as_steady_state = stepper_old%run_as_steady_state
+  stepper%init_to_steady_state = timestepper_old%init_to_steady_state
+  stepper%steady_state_rel_tol = timestepper_old%steady_state_rel_tol
+  stepper%run_as_steady_state = timestepper_old%run_as_steady_state
 
-  stepper%solver => stepper_old%solver
-  nullify(stepper_old%solver)
-  stepper%cur_waypoint => stepper_old%cur_waypoint
-  nullify(stepper_old%cur_waypoint)
+  stepper%solver => timestepper_old%solver
+  nullify(timestepper_old%solver)
+  stepper%cur_waypoint => timestepper_old%cur_waypoint
+  nullify(timestepper_old%cur_waypoint)
   
   
-!  stepper%prev_waypoint => stepper_old%prev_waypoint
-!  nullify(stepper_old%prev_waypoint)
+!  stepper%prev_waypoint => timestepper_old%prev_waypoint
+!  nullify(timestepper_old%prev_waypoint)
   
-!  stepper%revert_dt = stepper_old%revert_dt
+!  stepper%revert_dt = timestepper_old%revert_dt
 !  stepper%num_contig_revert_due_to_sync = &
-!  stepper_old%num_contig_revert_due_to_sync
+!  timestepper_old%num_contig_revert_due_to_sync
 
   stepper_base => stepper
   

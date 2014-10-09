@@ -58,7 +58,7 @@ program pflotran
   PetscErrorCode :: ierr
   character(len=MAXSTRINGLENGTH), pointer :: filenames(:)
   type(simulation_type), pointer :: simulation
-  type(stepper_type), pointer :: master_stepper
+  type(timestepper_type), pointer :: master_timestepper
   type(stochastic_type), pointer :: stochastic
   type(option_type), pointer :: option
   character(len=MAXSTRINGLENGTH) :: string
@@ -100,9 +100,9 @@ program pflotran
       call OptionInitPetsc(option)
       call LoggingCreate()
       call GeomechLoggingCreate()
-      call PFLOTRANInitializePostPETSc(simulation,master_stepper,option, &
+      call PFLOTRANInitializePostPETSc(simulation,master_timestepper,option, &
                                        init_status)
-      call PFLOTRANRun(simulation,master_stepper,init_status)
+      call PFLOTRANRun(simulation,master_timestepper,init_status)
       call PFLOTRANFinalize(simulation,option)
       call LoggingDestroy()
       call GeomechLoggingDestroy()

@@ -245,7 +245,7 @@ subroutine HijackGeomechanicsSimulation(simulation_old,simulation)
     geomech_process_model_coupler%option => option
     geomech_process_model_coupler%pms => cur_process_model
     geomech_process_model_coupler%pm_ptr%ptr => cur_process_model
-    call HijackTimestepper(simulation_old%geomech_stepper, &
+    call HijackTimestepper(simulation_old%geomech_timestepper, &
                            geomech_process_model_coupler%timestepper)
     nullify(cur_process_model)
   endif
@@ -334,8 +334,8 @@ subroutine GeomechanicsJumpStart(simulation)
   type(geomechanics_simulation_type) :: simulation
 
   class(geomech_realization_type), pointer :: geomch_realization
-  class(timestepper_geomechanics_type), pointer :: master_stepper
-  class(timestepper_geomechanics_type), pointer :: geomech_stepper
+  class(timestepper_geomechanics_type), pointer :: master_timestepper
+  class(timestepper_geomechanics_type), pointer :: geomech_timestepper
   type(option_type), pointer :: option
   type(output_option_type), pointer :: output_option
 
@@ -349,9 +349,9 @@ subroutine GeomechanicsJumpStart(simulation)
 
   select type(ts => simulation%geomech_process_model_coupler%timestepper)
     class is(timestepper_geomechanics_type)
-      geomech_stepper => ts
+      geomech_timestepper => ts
   end select
-  nullify(master_stepper)
+  nullify(master_timestepper)
 
   option => geomch_realization%option
   output_option => geomch_realization%output_option
@@ -365,7 +365,7 @@ subroutine GeomechanicsJumpStart(simulation)
     return
   endif
   
-  master_stepper => geomech_stepper
+  master_timestepper => geomech_timestepper
 
   plot_flag = PETSC_FALSE
   transient_plot_flag = PETSC_FALSE
@@ -377,7 +377,7 @@ end subroutine GeomechanicsJumpStart
 
 ! ************************************************************************** !
 
-subroutine HijackTimestepper(stepper_old,stepper_base)
+subroutine HijackTimestepper(timestepper_old,timestepper_base)
   ! 
   ! This routine
   ! 
@@ -391,54 +391,54 @@ subroutine HijackTimestepper(stepper_old,stepper_base)
 
   implicit none
   
-  type(stepper_type), pointer :: stepper_old
-  class(stepper_base_type), pointer :: stepper_base
+  type(timestepper_type), pointer :: timestepper_old
+  class(timestepper_base_type), pointer :: timestepper_base
   
-  class(timestepper_geomechanics_type), pointer :: stepper
+  class(timestepper_geomechanics_type), pointer :: timestepper
   
-  stepper => TimestepperGeomechanicsCreate()
+  timestepper => TimestepperGeomechanicsCreate()
   
-  stepper%steps = stepper_old%steps
-  stepper%num_constant_time_steps = stepper_old%num_constant_time_steps
+  timestepper%steps = timestepper_old%steps
+  timestepper%num_constant_time_steps = timestepper_old%num_constant_time_steps
 
-  stepper%max_time_step = stepper_old%max_time_step
-  stepper%max_time_step_cuts = stepper_old%max_time_step_cuts
-  stepper%constant_time_step_threshold = stepper_old%constant_time_step_threshold
-  stepper%cumulative_time_step_cuts = stepper_old%cumulative_time_step_cuts 
-  stepper%cumulative_solver_time = stepper_old%cumulative_solver_time
+  timestepper%max_time_step = timestepper_old%max_time_step
+  timestepper%max_time_step_cuts = timestepper_old%max_time_step_cuts
+  timestepper%constant_time_step_threshold = timestepper_old%constant_time_step_threshold
+  timestepper%cumulative_time_step_cuts = timestepper_old%cumulative_time_step_cuts
+  timestepper%cumulative_solver_time = timestepper_old%cumulative_solver_time
 
-  stepper%start_time = stepper_old%start_time
-  stepper%start_time_step = stepper_old%start_time_step
-  stepper%time_step_tolerance = stepper_old%time_step_tolerance
-  stepper%target_time = stepper_old%target_time
+  timestepper%start_time = timestepper_old%start_time
+  timestepper%start_time_step = timestepper_old%start_time_step
+  timestepper%time_step_tolerance = timestepper_old%time_step_tolerance
+  timestepper%target_time = timestepper_old%target_time
   
-  stepper%prev_dt = stepper_old%prev_dt
-!  stepper%dt = stepper_old%dt
-  stepper%dt_min = stepper_old%dt_min
-  stepper%dt_max = stepper_old%dt_max
-  stepper%cfl_limiter = stepper_old%cfl_limiter
-  stepper%cfl_limiter_ts = stepper_old%cfl_limiter_ts
+  timestepper%prev_dt = timestepper_old%prev_dt
+!  timestepper%dt = timestepper_old%dt
+  timestepper%dt_min = timestepper_old%dt_min
+  timestepper%dt_max = timestepper_old%dt_max
+  timestepper%cfl_limiter = timestepper_old%cfl_limiter
+  timestepper%cfl_limiter_ts = timestepper_old%cfl_limiter_ts
   
-  stepper%time_step_cut_flag = stepper_old%time_step_cut_flag
+  timestepper%time_step_cut_flag = timestepper_old%time_step_cut_flag
 
-  stepper%init_to_steady_state = stepper_old%init_to_steady_state
-  stepper%steady_state_rel_tol = stepper_old%steady_state_rel_tol
-  stepper%run_as_steady_state = stepper_old%run_as_steady_state
+  timestepper%init_to_steady_state = timestepper_old%init_to_steady_state
+  timestepper%steady_state_rel_tol = timestepper_old%steady_state_rel_tol
+  timestepper%run_as_steady_state = timestepper_old%run_as_steady_state
 
-  stepper%solver => stepper_old%solver
-  nullify(stepper_old%solver)
-  stepper%cur_waypoint => stepper_old%cur_waypoint
-  nullify(stepper_old%cur_waypoint)
+  timestepper%solver => timestepper_old%solver
+  nullify(timestepper_old%solver)
+  timestepper%cur_waypoint => timestepper_old%cur_waypoint
+  nullify(timestepper_old%cur_waypoint)
   
   
-!  stepper%prev_waypoint => stepper_old%prev_waypoint
-!  nullify(stepper_old%prev_waypoint)
+!  stepper%prev_waypoint => timestepper_old%prev_waypoint
+!  nullify(timestepper_old%prev_waypoint)
   
-!  stepper%revert_dt = stepper_old%revert_dt
+!  stepper%revert_dt = timestepper_old%revert_dt
 !  stepper%num_contig_revert_due_to_sync = &
-!  stepper_old%num_contig_revert_due_to_sync
+!  timestepper_old%num_contig_revert_due_to_sync
 
-  stepper_base => stepper
+  timestepper_base => timestepper
 
 end subroutine HijackTimestepper
 
