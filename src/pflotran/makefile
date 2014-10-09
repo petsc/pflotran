@@ -348,6 +348,7 @@ misc_obj = \
 	${common_src}pflotran_factory.o \
 	${common_src}pmc_base.o \
 	${common_src}pmc_hydrogeophysics.o \
+	${common_src}pmc_material.o \
 	${common_src}pmc_subsurface.o \
 	${common_src}realization.o \
 	${common_src}realization_base.o \
@@ -358,6 +359,7 @@ misc_obj = \
 	${common_src}simulation.o \
 	${common_src}simulation_aux.o \
 	${common_src}simulation_base.o \
+	${common_src}subsurface.o \
 	${common_src}subsurface_factory.o \
 	${common_src}subsurface_simulation.o \
 	${common_src}solver.o \
