@@ -206,7 +206,7 @@ subroutine HijackGeomechanicsSimulation(simulation_old,simulation)
   use Simulation_Base_class
   use PM_Geomechanics_Force_class
   use PM_Base_class
-  use PM_module
+  use PM_Base_Pointer_module
   use Timestepper_Geomechanics_class
 
   implicit none

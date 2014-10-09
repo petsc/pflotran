@@ -150,7 +150,7 @@ subroutine HijackSimulation(simulation_old,simulation)
   use PM_RT_class
   use PM_Subsurface_class
   use PM_TH_class
-  use PM_module
+  use PM_Base_Pointer_module
   use Timestepper_BE_class
   use Logging_module
   use Strata_module

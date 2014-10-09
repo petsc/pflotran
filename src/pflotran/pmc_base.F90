@@ -5,7 +5,7 @@ module PMC_Base_class
   use Timestepper_Base_class
   use Option_module
   use Waypoint_module
-  use PM_module
+  use PM_Base_Pointer_module
   use Output_module, only : Output
   use Simulation_Aux_module
   
@@ -28,7 +28,7 @@ module PMC_Base_class
     type(waypoint_list_type), pointer :: waypoint_list
     class(pmc_base_type), pointer :: below
     class(pmc_base_type), pointer :: next
-    type(pm_pointer_type), pointer :: pm_ptr
+    type(pm_base_pointer_type), pointer :: pm_ptr
     type(simulation_aux_type),pointer :: sim_aux
     procedure(Output), nopass, pointer :: Output
   contains

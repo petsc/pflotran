@@ -101,7 +101,7 @@ subroutine HijackSurfaceSimulation(simulation_old,simulation)
   use PM_Surface_TH_class
   use PM_Surface_class
   use PM_Base_class
-  use PM_module
+  use PM_Base_Pointer_module
   use Timestepper_Surface_class
   use Logging_module
 

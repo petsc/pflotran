@@ -1,4 +1,4 @@
-module PM_module
+module PM_Base_Pointer_module
 
   use PM_Base_class
   
@@ -13,17 +13,17 @@ module PM_module
   ! Since the context (ctx) for procedures passed to PETSc must be declared 
   ! as a "type" instead of a "class", object is a workaround for passing the 
   ! process model as context of a procedure where one can pass the
-  ! pm_pointer_type to a procedure, declaring it as e.g.
+  ! pm_base_pointer_type to a procedure, declaring it as e.g.
   !
-  ! type(pm_pointer_type) :: pm_ptr
+  ! type(pm_base_pointer_type) :: pm_ptr
   !
   ! and use the ptr:
   !
   ! pm_ptr%this%Residual
   !  
-  type, public :: pm_pointer_type
+  type, public :: pm_base_pointer_type
     class(pm_base_type), pointer :: ptr
-  end type pm_pointer_type
+  end type pm_base_pointer_type
 
   public :: PMResidual, &
             PMJacobian, &
@@ -51,7 +51,7 @@ subroutine PMResidual(snes,xx,r,this,ierr)
   SNES :: snes
   Vec :: xx
   Vec :: r
-  type(pm_pointer_type) :: this
+  type(pm_base_pointer_type) :: this
   PetscErrorCode :: ierr
   
 #ifdef PM_TOP_DEBUG    
@@ -82,7 +82,7 @@ subroutine PMJacobian(snes,xx,A,B,this,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  type(pm_pointer_type) :: this
+  type(pm_base_pointer_type) :: this
   PetscErrorCode :: ierr
   
 #ifdef PM_TOP_DEBUG    
@@ -111,7 +111,7 @@ subroutine PMRHSFunction(ts,time,xx,ff,this,ierr)
   PetscReal :: time
   Vec :: xx
   Vec :: ff
-  type(pm_pointer_type) :: this
+  type(pm_base_pointer_type) :: this
   PetscErrorCode :: ierr
   
 #ifdef PM_TOP_DEBUG
@@ -122,4 +122,4 @@ subroutine PMRHSFunction(ts,time,xx,ff,this,ierr)
 
 end subroutine PMRHSFunction
 
-end module PM_module
+end module PM_Base_Pointer_module
