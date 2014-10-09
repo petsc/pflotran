@@ -3254,9 +3254,9 @@ subroutine TimestepperRestart(realization,flow_timestepper,tran_timestepper, &
   endif
   
   if (associated(flow_timestepper)) flow_timestepper%cur_waypoint => &
-    WaypointReturnAtTime(realization%waypoints,option%time)
+    WaypointReturnAtTime(realization%waypoint_list,option%time)
   if (associated(tran_timestepper)) tran_timestepper%cur_waypoint => &
-    WaypointReturnAtTime(realization%waypoints,option%time)
+    WaypointReturnAtTime(realization%waypoint_list,option%time)
 
   if (flow_read) then
     flow_timestepper%target_time = option%flow_time

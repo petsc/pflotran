@@ -25,7 +25,7 @@ module PMC_Base_class
     type(option_type), pointer :: option
     class(timestepper_base_type), pointer :: timestepper
     class(pm_base_type), pointer :: pms
-    type(waypoint_list_type), pointer :: waypoints
+    type(waypoint_list_type), pointer :: waypoint_list
     class(pmc_base_type), pointer :: below
     class(pmc_base_type), pointer :: next
     type(pm_pointer_type), pointer :: pm_ptr
@@ -132,7 +132,7 @@ subroutine PMCBaseInit(this)
   nullify(this%option)
   nullify(this%timestepper)
   nullify(this%pms)
-  nullify(this%waypoints)
+  nullify(this%waypoint_list)
   nullify(this%below)
   nullify(this%next)
   nullify(this%sim_aux)
@@ -872,8 +872,8 @@ subroutine PMCBaseStrip(this)
     deallocate(this%pms)
     nullify(this%pms)
   endif
-  nullify(this%waypoints) ! deleted in realization
-!  call WaypointListDestroy(this%waypoints)
+  nullify(this%waypoint_list) ! deleted in realization
+!  call WaypointListDestroy(this%waypoint_list)
   if (associated(this%pm_ptr)) then
     nullify(this%pm_ptr%ptr) ! solely a pointer
     deallocate(this%pm_ptr)

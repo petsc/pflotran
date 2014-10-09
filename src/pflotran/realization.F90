@@ -52,7 +52,7 @@ private
     type(uniform_velocity_dataset_type), pointer :: uniform_velocity_dataset
     character(len=MAXSTRINGLENGTH) :: nonuniform_velocity_filename
     
-    type(waypoint_list_type), pointer :: waypoints
+    type(waypoint_list_type), pointer :: waypoint_list
     
   end type realization_type
 
@@ -164,7 +164,7 @@ function RealizationCreate2(option)
   nullify(realization%sec_transport_constraint)
   realization%nonuniform_velocity_filename = ''
 
-  nullify(realization%waypoints)
+  nullify(realization%waypoint_list)
 
   RealizationCreate2 => realization
   
@@ -1558,7 +1558,7 @@ subroutine RealizationAddWaypointsToList(realization)
   PetscReal, pointer :: times(:)
 
   option => realization%option
-  waypoint_list => realization%waypoints
+  waypoint_list => realization%waypoint_list
   nullify(times)
   
   ! set flag for final output
@@ -1656,7 +1656,7 @@ subroutine RealizationAddWaypointsToList(realization)
           waypoint => WaypointCreate()
           waypoint%time = cur_mass_transfer%dataset%time_storage%times(itime)
           waypoint%update_conditions = PETSC_TRUE
-          call WaypointInsertInList(waypoint,realization%waypoints)
+          call WaypointInsertInList(waypoint,realization%waypoint_list)
         enddo
       endif
       cur_mass_transfer => cur_mass_transfer%next
@@ -1673,7 +1673,7 @@ subroutine RealizationAddWaypointsToList(realization)
           waypoint => WaypointCreate()
           waypoint%time = cur_mass_transfer%dataset%time_storage%times(itime)
           waypoint%update_conditions = PETSC_TRUE
-          call WaypointInsertInList(waypoint,realization%waypoints)
+          call WaypointInsertInList(waypoint,realization%waypoint_list)
         enddo
       endif
       cur_mass_transfer => cur_mass_transfer%next
@@ -1693,7 +1693,7 @@ subroutine RealizationAddWaypointsToList(realization)
         waypoint => WaypointCreate()
         waypoint%time = temp_real
         waypoint%print_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,realization%waypoints)
+        call WaypointInsertInList(waypoint,realization%waypoint_list)
       enddo
     endif
     
@@ -1706,7 +1706,7 @@ subroutine RealizationAddWaypointsToList(realization)
         waypoint => WaypointCreate()
         waypoint%time = temp_real
         waypoint%print_tr_output = PETSC_TRUE 
-        call WaypointInsertInList(waypoint,realization%waypoints)
+        call WaypointInsertInList(waypoint,realization%waypoint_list)
       enddo
     endif
 
@@ -1723,7 +1723,7 @@ subroutine RealizationAddWaypointsToList(realization)
       waypoint => WaypointCreate()
       waypoint%time = temp_real
       waypoint%print_checkpoint = PETSC_TRUE
-      call WaypointInsertInList(waypoint,realization%waypoints)
+      call WaypointInsertInList(waypoint,realization%waypoint_list)
     enddo
   endif
 
@@ -1735,13 +1735,13 @@ subroutine RealizationAddWaypointsToList(realization)
       waypoint => WaypointCreate()
       waypoint%time = cur_strata%start_time
       waypoint%sync = PETSC_TRUE
-      call WaypointInsertInList(waypoint,realization%waypoints)
+      call WaypointInsertInList(waypoint,realization%waypoint_list)
     endif
     if (Initialized(cur_strata%end_time)) then
       waypoint => WaypointCreate()
       waypoint%time = cur_strata%end_time
       waypoint%sync = PETSC_TRUE
-      call WaypointInsertInList(waypoint,realization%waypoints)
+      call WaypointInsertInList(waypoint,realization%waypoint_list)
     endif
     cur_strata => cur_strata%next
   enddo
@@ -1775,7 +1775,7 @@ function RealizCreateSyncWaypointList(realization)
 
   new_waypoint_list => WaypointListCreate()
   
-  cur_waypoint => realization%waypoints%first
+  cur_waypoint => realization%waypoint_list%first
   do
     if (.not.associated(cur_waypoint)) exit
     if (cur_waypoint%sync .or. cur_waypoint%final) then
@@ -2703,7 +2703,7 @@ subroutine RealizationDestroyLegacy(realization)
   call MassTransferDestroy(realization%flow_mass_transfer_list)
   call MassTransferDestroy(realization%rt_mass_transfer_list)
   
-  call WaypointListDestroy(realization%waypoints)
+  call WaypointListDestroy(realization%waypoint_list)
   
   deallocate(realization)
   nullify(realization)
@@ -2751,7 +2751,7 @@ subroutine RealizationStrip(this)
   
   call TranConstraintDestroy(this%sec_transport_constraint)
   
-  call WaypointListDestroy(this%waypoints)
+  call WaypointListDestroy(this%waypoint_list)
   
 end subroutine RealizationStrip
 

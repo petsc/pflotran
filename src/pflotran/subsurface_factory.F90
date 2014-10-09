@@ -175,7 +175,7 @@ subroutine HijackSimulation(simulation_old,simulation)
   realization => simulation_old%realization
   option => realization%option
 
-  simulation%waypoints => RealizCreateSyncWaypointList(realization)
+  simulation%waypoint_list => RealizCreateSyncWaypointList(realization)
 
   !----------------------------------------------------------------------------!
   ! This section for setting up new process model approach
@@ -271,7 +271,7 @@ subroutine HijackSimulation(simulation_old,simulation)
   cur_process_model_coupler_top => simulation%process_model_coupler_list
   do
     if (.not.associated(cur_process_model_coupler_top)) exit
-    cur_process_model_coupler_top%waypoints => realization%waypoints
+    cur_process_model_coupler_top%waypoint_list => realization%waypoint_list
     cur_process_model_coupler => cur_process_model_coupler_top
     do
       if (.not.associated(cur_process_model_coupler)) exit

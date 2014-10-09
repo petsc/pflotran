@@ -199,7 +199,7 @@ subroutine Init(simulation)
   call OptionCheckCommandLine(option)
 
   waypoint_list => WaypointListCreate()
-  realization%waypoints => waypoint_list
+  realization%waypoint_list => waypoint_list
   
   ! initialize flow mode
   if (len_trim(option%flowmode) > 0) then
@@ -227,7 +227,7 @@ subroutine Init(simulation)
     call setSurfaceFlowMode(option)
     surf_flow_solver => surf_flow_timestepper%solver
     waypoint_list => WaypointListCreate()
-    surf_realization%waypoints => waypoint_list
+    surf_realization%waypoint_list => waypoint_list
   else
     call TimestepperDestroy(simulation%surf_flow_timestepper)
     nullify(surf_flow_solver)
@@ -237,7 +237,7 @@ subroutine Init(simulation)
   if (option%ngeomechdof > 0) then
     geomech_solver => geomech_timestepper%solver
     waypoint_list => WaypointListCreate()
-    geomech_realization%waypoints => waypoint_list
+    geomech_realization%waypoint_list => waypoint_list
   else
     call TimestepperDestroy(simulation%geomech_timestepper)
     nullify(geomech_solver)
@@ -586,7 +586,7 @@ subroutine Init(simulation)
                               ierr);CHKERRQ(ierr)
       end select
       call TSSetDuration(surf_flow_solver%ts,ONE_INTEGER, &
-                         simulation%surf_realization%waypoints%last%time, &
+                         simulation%surf_realization%waypoint_list%last%time, &
                          ierr);CHKERRQ(ierr)
 
     endif ! if (option%surf_flow_on)
@@ -809,18 +809,18 @@ subroutine Init(simulation)
     ! add waypoints associated with boundary conditions, source/sinks etc. to list
     call RealizationAddWaypointsToList(realization)
     ! fill in holes in waypoint data
-    call WaypointListFillIn(option,realization%waypoints)
-    call WaypointListRemoveExtraWaypnts(option,realization%waypoints)
+    call WaypointListFillIn(option,realization%waypoint_list)
+    call WaypointListRemoveExtraWaypnts(option,realization%waypoint_list)
   ! geh- no longer needed
   !  ! convert times from input time to seconds
-  !  call WaypointConvertTimes(realization%waypoints,realization%output_option%tconv)
+  !  call WaypointConvertTimes(realization%waypoint_list,realization%output_option%tconv)
   endif
   
   if (associated(flow_timestepper)) then
-    flow_timestepper%cur_waypoint => realization%waypoints%first
+    flow_timestepper%cur_waypoint => realization%waypoint_list%first
   endif
   if (associated(tran_timestepper)) then
-    tran_timestepper%cur_waypoint => realization%waypoints%first
+    tran_timestepper%cur_waypoint => realization%waypoint_list%first
   endif
   
   ! initialize global auxiliary variable object
@@ -1045,7 +1045,7 @@ subroutine Init(simulation)
     call verifyAllCouplers(realization)
   endif
   if (debug%print_waypoints) then
-    call WaypointListPrint(realization%waypoints,option,realization%output_option)
+    call WaypointListPrint(realization%waypoint_list,option,realization%output_option)
   endif
 
 #ifdef OS_STATISTICS
@@ -1087,10 +1087,10 @@ subroutine Init(simulation)
 
     ! add waypoints associated with boundary conditions, source/sinks etc. to list
     call SurfRealizAddWaypointsToList(simulation%surf_realization)
-    call WaypointListFillIn(option,simulation%surf_realization%waypoints)
-    call WaypointListRemoveExtraWaypnts(option,simulation%surf_realization%waypoints)
+    call WaypointListFillIn(option,simulation%surf_realization%waypoint_list)
+    call WaypointListRemoveExtraWaypnts(option,simulation%surf_realization%waypoint_list)
     if (associated(flow_timestepper)) then
-      simulation%surf_flow_timestepper%cur_waypoint => simulation%surf_realization%waypoints%first
+      simulation%surf_flow_timestepper%cur_waypoint => simulation%surf_realization%waypoint_list%first
     endif
 
     select case(option%iflowmode)
@@ -1155,9 +1155,9 @@ subroutine Init(simulation)
     call GeomechRealizPrintCouplers(simulation%geomech_realization)  
     call GeomechRealizAddWaypointsToList(simulation%geomech_realization)
     call GeomechGridElemSharedByNodes(geomech_realization)
-    call WaypointListFillIn(option,simulation%geomech_realization%waypoints)
+    call WaypointListFillIn(option,simulation%geomech_realization%waypoint_list)
     call WaypointListRemoveExtraWaypnts(option, &
-                                    simulation%geomech_realization%waypoints)
+                                    simulation%geomech_realization%waypoint_list)
     call GeomechForceSetup(simulation%geomech_realization)
     call GeomechGlobalSetup(simulation%geomech_realization)
     
@@ -2338,7 +2338,7 @@ subroutine InitReadInput(simulation)
                     waypoint => WaypointCreate()
                     waypoint%time = temp_real*units_conversion
                     waypoint%print_output = PETSC_TRUE    
-                    call WaypointInsertInList(waypoint,realization%waypoints)
+                    call WaypointInsertInList(waypoint,realization%waypoint_list)
                   endif
                 enddo
                 if (.not.continuation_flag) exit
@@ -2423,7 +2423,7 @@ subroutine InitReadInput(simulation)
                         waypoint => WaypointCreate()
                         waypoint%time = temp_real
                         waypoint%print_output = PETSC_TRUE    
-                        call WaypointInsertInList(waypoint,realization%waypoints)
+                        call WaypointInsertInList(waypoint,realization%waypoint_list)
                         temp_real = temp_real + output_option%periodic_output_time_incr
                         if (temp_real > temp_real2) exit
                       enddo
@@ -2667,7 +2667,7 @@ subroutine InitReadInput(simulation)
               waypoint%final = PETSC_TRUE
               waypoint%time = temp_real*realization%output_option%tconv
               waypoint%print_output = PETSC_TRUE              
-              call WaypointInsertInList(waypoint,realization%waypoints)
+              call WaypointInsertInList(waypoint,realization%waypoint_list)
             case('INITIAL_TIMESTEP_SIZE')
               call InputReadDouble(input,option,temp_real)
               call InputErrorMsg(input,option,'Initial Timestep Size','TIME') 
@@ -2698,7 +2698,7 @@ subroutine InitReadInput(simulation)
               else
                 waypoint%time = 0.d0
               endif     
-              call WaypointInsertInList(waypoint,realization%waypoints)
+              call WaypointInsertInList(waypoint,realization%waypoint_list)
             case default
               option%io_buffer = 'Keyword: ' // trim(word) // &
                                  ' not recognized in TIME.'
@@ -2727,14 +2727,14 @@ subroutine InitReadInput(simulation)
         ! Add first waypoint
         waypoint => WaypointCreate()
         waypoint%time = 0.d0
-        call WaypointInsertInList(waypoint,simulation%surf_realization%waypoints)
+        call WaypointInsertInList(waypoint,simulation%surf_realization%waypoint_list)
 
         ! Add final_time waypoint to surface_realization
         waypoint => WaypointCreate()
         waypoint%final = PETSC_TRUE
-        waypoint%time = realization%waypoints%last%time
+        waypoint%time = realization%waypoint_list%last%time
         waypoint%print_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,simulation%surf_realization%waypoints)
+        call WaypointInsertInList(waypoint,simulation%surf_realization%waypoint_list)
 
 !......................
       case ('GEOMECHANICS')
@@ -2743,14 +2743,14 @@ subroutine InitReadInput(simulation)
         ! Add first waypoint
         waypoint => WaypointCreate()
         waypoint%time = 0.d0
-        call WaypointInsertInList(waypoint,simulation%geomech_realization%waypoints)
+        call WaypointInsertInList(waypoint,simulation%geomech_realization%waypoint_list)
 
         ! Add final_time waypoint to geomech_realization
         waypoint => WaypointCreate()
         waypoint%final = PETSC_TRUE
-        waypoint%time = realization%waypoints%last%time
+        waypoint%time = realization%waypoint_list%last%time
         waypoint%print_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,simulation%geomech_realization%waypoints)
+        call WaypointInsertInList(waypoint,simulation%geomech_realization%waypoint_list)
 
 !......................
       case ('HDF5_READ_GROUP_SIZE')

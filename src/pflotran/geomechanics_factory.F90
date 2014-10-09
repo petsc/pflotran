@@ -262,7 +262,7 @@ subroutine HijackGeomechanicsSimulation(simulation_old,simulation)
   cur_process_model_coupler_top => simulation%process_model_coupler_list
   do
     if (.not.associated(cur_process_model_coupler_top)) exit
-    cur_process_model_coupler_top%waypoints => geomech_realization%waypoints
+    cur_process_model_coupler_top%waypoint_list => geomech_realization%waypoint_list
     cur_process_model_coupler => cur_process_model_coupler_top
     do
       if (.not.associated(cur_process_model_coupler)) exit

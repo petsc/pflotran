@@ -438,7 +438,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
                     waypoint => WaypointCreate()
                     waypoint%time = temp_real*units_conversion
                     waypoint%print_output = PETSC_TRUE
-                    call WaypointInsertInList(waypoint,surf_realization%waypoints)
+                    call WaypointInsertInList(waypoint,surf_realization%waypoint_list)
                   endif
                 enddo
                 if (.not.continuation_flag) exit
@@ -523,7 +523,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
                         waypoint => WaypointCreate()
                         waypoint%time = temp_real
                         waypoint%print_output = PETSC_TRUE
-                        call WaypointInsertInList(waypoint,surf_realization%waypoints)
+                        call WaypointInsertInList(waypoint,surf_realization%waypoint_list)
                         temp_real = temp_real + output_option%periodic_output_time_incr
                         if (temp_real > temp_real2) exit
                       enddo
