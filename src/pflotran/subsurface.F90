@@ -438,7 +438,7 @@ subroutine SubsurfAssignMaterialProperties(realization)
     enddo
     call VecRestoreArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
     call VecMin(field%work,tempint,tempreal,ierr)
-    if (dabs(tempreal + 999.d0) < 1.d-10) then
+    if (Uninitialized(tempreal)) then
       option%io_buffer = 'Incorrect assignment of soil properties. ' // &
         'Please send this error message and your input file to ' // &
         'pflotran-dev@googlegroups.com.'

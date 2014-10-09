@@ -315,7 +315,7 @@ subroutine GetCellConnectionsGeomech(grid,vec)
   call GeomechGridVecGetArrayF90(grid,vec,vec_ptr,ierr)
 
   ! initialize
-  vec_ptr = -999.d0
+  vec_ptr = UNINITIALIZED_DOUBLE
   do local_id = 1, grid%nlmax_elem
     ghosted_id = local_id
     select case(grid%elem_type(ghosted_id))
@@ -622,8 +622,8 @@ subroutine GetVertexCoordinatesGeomech(grid,vec,direction,option)
     end select
     call VecRestoreArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
   else
-    ! initialize to -999 to catch bugs
-    call VecSet(vec,-999.d0,ierr);CHKERRQ(ierr)
+    ! initialize to UNINITIALIZED_DOUBLE to catch bugs
+    call VecSet(vec,UNINITIALIZED_DOUBLE,ierr);CHKERRQ(ierr)
     allocate(values(grid%nlmax_node))
     allocate(indices(grid%nlmax_node))
     select case(direction)
