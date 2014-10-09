@@ -985,18 +985,18 @@ subroutine EOSGasHenry_air_noderiv(tc,ps,Henry)
 ! devide it with p
 
     implicit none
-    PetscReal,intent(in) ::  tc,ps
-    PetscReal,intent(out)::  Henry
+    PetscReal,intent(in) :: tc,ps
+    PetscReal,intent(out):: Henry
 
     PetscReal  Tr,tao,tmp,t
-    PetscReal, parameter :: a=-9.67578, b=4.72162, c=11.70585
-    PetscReal, parameter :: Tcl=647.096 ! H2O critical temp(K) from IAPWS(1995b)
+    PetscReal, parameter :: a=-9.67578d0, b=4.72162d0, c=11.70585d0
+    PetscReal, parameter :: Tcl=647.096d0 ! H2O critical temp(K) from IAPWS(1995b)
 
-    t=tc+273.15D0
-    Tr=t/Tcl
-    tao=1.D0-Tr
-    tmp= a/Tr + B * tao**0.355/Tr + c * (Tr**(-0.41)) * exp(tao)
-    Henry=exp(tmp)*ps
+    t = tc+273.15D0
+    Tr = t/Tcl
+    tao = 1.D0-Tr
+    tmp = a/Tr + b * tao**0.355d0/Tr + c * (Tr**(-0.41d0)) * exp(tao)
+    Henry = exp(tmp)*ps
 
 end subroutine EOSGasHenry_air_noderiv
 
@@ -1004,24 +1004,24 @@ end subroutine EOSGasHenry_air_noderiv
 
 subroutine EOSGasHenry_air(tc,ps,ps_p,ps_t,Henry,Henry_p,Henry_t)
    implicit none
-    PetscReal,intent(in) ::  tc,ps,ps_p,ps_t
-    PetscReal,intent(out)::  Henry,Henry_p,Henry_t
+    PetscReal,intent(in) :: tc,ps,ps_p,ps_t
+    PetscReal,intent(out):: Henry,Henry_p,Henry_t
 ! note t/K, p/Pa, Henry/Pa 
 
     PetscReal  Tr,tao,tmp,t
-    PetscReal, parameter :: a=-9.67578, b=4.72162, c=11.70585
-    PetscReal, parameter :: Tcl=647.096 ! H2O critical temp from IAPWS(1995b)
+    PetscReal, parameter :: a=-9.67578d0, b=4.72162d0, c=11.70585d0
+    PetscReal, parameter :: Tcl=647.096d0 ! H2O critical temp from IAPWS(1995b)
 
-    t=tc+273.15D0
-    Tr=t/Tcl
-    tao=1.D0-Tr
-    tmp= a/Tr + b * tao**0.355/Tr + c * (Tr**(-0.41)) * exp(tao)
-    Henry=exp(tmp)*ps
+    t = tc+273.15D0
+    Tr = t/Tcl
+    tao = 1.D0-Tr
+    tmp = a/Tr + b * tao**0.355d0/Tr + c * (Tr**(-0.41d0)) * exp(tao)
+    Henry = exp(tmp)*ps
 
-    tmp =((-a/Tr+b*(-0.355*tao**(-0.645)-tao**0.355/Tr))/Tr - &
-         c*exp(tao)*(tao**(-.41))*(0.41/Tr-1.))/Tcl
-    Henry_t=Henry*(tmp +ps_t/ps)
-    Henry_p=ps_p*Henry/ps
+    tmp = ((-a/Tr+b*(-0.355d0*tao**(-0.645d0)-tao**0.355d0/Tr))/Tr - &
+         c*exp(tao)*(tao**(-0.41d0))*(0.41d0/Tr-1.d0))/Tcl
+    Henry_t = Henry*(tmp+ps_t/ps)
+    Henry_p = ps_p*Henry/ps
 
 end subroutine EOSGasHenry_air
 
