@@ -44,7 +44,7 @@ subroutine SubsurfAllocMatPropDataStructs(realization)
   ! Author: Glenn Hammond
   ! Date: 10/07/14
   ! 
-  use Subsurfation_class
+  use Realization_class
   use Material_module
   use Option_module
   use Grid_module
@@ -216,6 +216,9 @@ subroutine SubsurfAssignMaterialProperties(realization)
   
   implicit none
   
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
   type(realization_type) :: realization
   
   PetscReal, pointer :: icap_loc_p(:)
@@ -455,8 +458,8 @@ end subroutine SubsurfAssignMaterialProperties
 
 ! ************************************************************************** !
 
-subroutine SubSurfaceReadMaterialsFromFile(realization,realization_dependent, &
-                                           filename)
+subroutine SubsurfReadMaterialIDsFromFile(realization,realization_dependent, &
+                                          filename)
   ! 
   ! Reads in grid cell materials
   ! 
@@ -477,6 +480,9 @@ subroutine SubSurfaceReadMaterialsFromFile(realization,realization_dependent, &
   use HDF5_module
   
   implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
   
   type(realization_type) :: realization
   PetscBool :: realization_dependent
@@ -547,7 +553,7 @@ subroutine SubSurfaceReadMaterialsFromFile(realization,realization_dependent, &
   deallocate(external_to_internal_mapping)
   nullify(external_to_internal_mapping)
   
-end subroutine SubsurfaceReadMaterialsFromFile
+end subroutine SubsurfReadMaterialIDsFromFile
 
 ! ************************************************************************** !
 
@@ -572,6 +578,9 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
   
   implicit none
   
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
   type(realization_type) :: realization
   type(material_property_type) :: material_property
 

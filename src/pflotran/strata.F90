@@ -289,7 +289,7 @@ function StrataWithinTimePeriod(strata,time)
   
   PetscBool :: StrataWithinTimePeriod
   
-  StrataWithinTimePeriod = PETSC_FALSE
+  StrataWithinTimePeriod = PETSC_TRUE
   if (Initialized(strata%start_time)) then
     StrataWithinTimePeriod = (time >= strata%start_time - 1.d0 .and. &
                               time < strata%end_time - 1.d0)
