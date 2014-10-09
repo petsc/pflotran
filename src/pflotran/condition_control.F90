@@ -613,11 +613,12 @@ subroutine CondControlAssignTranInitCond(realization)
       ! read in heterogeneous mineral volume fractions
       if (associated(constraint_coupler%minerals)) then
         do imnrl = 1, reaction%mineral%nkinmnrl
-          if (constraint_coupler%minerals%external_dataset(imnrl)) then
+          if (constraint_coupler%minerals%external_vol_frac_dataset(imnrl)) then
             re_equilibrate_at_each_cell = PETSC_TRUE
             string = 'constraint ' // trim(constraint_coupler%constraint_name)
             dataset => DatasetBaseGetPointer(realization%datasets, &
-                          constraint_coupler%minerals%constraint_aux_string(imnrl), &
+                          constraint_coupler%minerals% &
+                            constraint_vol_frac_string(imnrl), &
                           string,option)
             idof = ONE_INTEGER
             call ConditionControlMapDatasetToVec(realization,dataset,idof, &
@@ -628,6 +629,31 @@ subroutine CondControlAssignTranInitCond(realization)
               ghosted_id = grid%nL2G(local_id)
               rt_auxvars(ghosted_id)%mnrl_volfrac0(imnrl) = vec_p(ghosted_id)
               rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl) = vec_p(ghosted_id)
+            enddo
+            call VecRestoreArrayF90(field%work_loc,vec_p,ierr);CHKERRQ(ierr)
+          endif
+        enddo
+      endif
+          
+      ! read in heterogeneous mineral surface area
+      if (associated(constraint_coupler%minerals)) then
+        do imnrl = 1, reaction%mineral%nkinmnrl
+          if (constraint_coupler%minerals%external_area_dataset(imnrl)) then
+            re_equilibrate_at_each_cell = PETSC_TRUE
+            string = 'constraint ' // trim(constraint_coupler%constraint_name)
+            dataset => DatasetBaseGetPointer(realization%datasets, &
+                          constraint_coupler%minerals% &
+                          constraint_area_string(imnrl), &
+                          string,option)
+            idof = ONE_INTEGER
+            call ConditionControlMapDatasetToVec(realization,dataset,idof, &
+                                                  field%work_loc,LOCAL)
+            call VecGetArrayF90(field%work_loc,vec_p,ierr);CHKERRQ(ierr)
+            do icell=1,initial_condition%region%num_cells
+              local_id = initial_condition%region%cell_ids(icell)
+              ghosted_id = grid%nL2G(local_id)
+              rt_auxvars(ghosted_id)%mnrl_area0(imnrl) = vec_p(ghosted_id)
+              rt_auxvars(ghosted_id)%mnrl_area(imnrl) = vec_p(ghosted_id)
             enddo
             call VecRestoreArrayF90(field%work_loc,vec_p,ierr);CHKERRQ(ierr)
           endif
@@ -734,16 +760,20 @@ subroutine CondControlAssignTranInitCond(realization)
           do imnrl = 1, reaction%mineral%nkinmnrl
             ! if read from a dataset, the vol frac was set above.  Don't want to
             ! overwrite
-            if (.not.constraint_coupler%minerals%external_dataset(imnrl)) then
+            if (.not.constraint_coupler%minerals% &
+                  external_vol_frac_dataset(imnrl)) then
               rt_auxvars(ghosted_id)%mnrl_volfrac0(imnrl) = &
                 constraint_coupler%minerals%constraint_vol_frac(imnrl)
               rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl) = &
                 constraint_coupler%minerals%constraint_vol_frac(imnrl)
             endif
-            rt_auxvars(ghosted_id)%mnrl_area0(imnrl) = &
-              constraint_coupler%minerals%constraint_area(imnrl)
-            rt_auxvars(ghosted_id)%mnrl_area(imnrl) = &
-              constraint_coupler%minerals%constraint_area(imnrl)
+            if (.not.constraint_coupler%minerals% &
+                  external_area_dataset(imnrl)) then
+              rt_auxvars(ghosted_id)%mnrl_area0(imnrl) = &
+                constraint_coupler%minerals%constraint_area(imnrl)
+              rt_auxvars(ghosted_id)%mnrl_area(imnrl) = &
+                constraint_coupler%minerals%constraint_area(imnrl)
+            endif
           enddo
         endif
         ! kinetic surface complexes

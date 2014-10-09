@@ -486,16 +486,20 @@ subroutine MineralProcessConstraint(mineral,constraint_name,constraint,option)
   PetscInt :: imnrl, jmnrl
   
   character(len=MAXWORDLENGTH) :: mineral_name(mineral%nkinmnrl)
-  character(len=MAXWORDLENGTH) :: constraint_aux_string(mineral%nkinmnrl)
+  character(len=MAXWORDLENGTH) :: constraint_vol_frac_string(mineral%nkinmnrl)
+  character(len=MAXWORDLENGTH) :: constraint_area_string(mineral%nkinmnrl)
   PetscReal :: constraint_vol_frac(mineral%nkinmnrl)
   PetscReal :: constraint_area(mineral%nkinmnrl)
-  PetscBool :: external_dataset(mineral%nkinmnrl)
+  PetscBool :: external_vol_frac_dataset(mineral%nkinmnrl)
+  PetscBool :: external_area_dataset(mineral%nkinmnrl)
   
   if (.not.associated(constraint)) return
 
   mineral_name = ''
-  constraint_aux_string = ''
-  external_dataset = PETSC_FALSE
+  constraint_vol_frac_string = ''
+  constraint_area_string = ''
+  external_vol_frac_dataset = PETSC_FALSE
+  external_area_dataset = PETSC_FALSE
   do imnrl = 1, mineral%nkinmnrl
     found = PETSC_FALSE
     do jmnrl = 1, mineral%nkinmnrl
@@ -518,15 +522,23 @@ subroutine MineralProcessConstraint(mineral,constraint_name,constraint,option)
       constraint_area(jmnrl) = &
         constraint%constraint_area(imnrl)
       mineral_name(jmnrl) = constraint%names(imnrl)
-      constraint_aux_string(jmnrl) = constraint%constraint_aux_string(imnrl)
-      external_dataset(jmnrl) = constraint%external_dataset(imnrl)
+      constraint_vol_frac_string(jmnrl) = &
+        constraint%constraint_vol_frac_string(imnrl)
+      constraint_area_string(jmnrl) = &
+        constraint%constraint_area_string(imnrl)
+      external_vol_frac_dataset(jmnrl) = &
+        constraint%external_vol_frac_dataset(imnrl)
+      external_area_dataset(jmnrl) = &
+        constraint%external_area_dataset(imnrl)
     endif  
   enddo
   constraint%names = mineral_name
   constraint%constraint_vol_frac = constraint_vol_frac
   constraint%constraint_area = constraint_area
-  constraint%constraint_aux_string = constraint_aux_string
-  constraint%external_dataset = external_dataset
+  constraint%constraint_vol_frac_string = constraint_vol_frac_string
+  constraint%constraint_area_string = constraint_area_string
+  constraint%external_vol_frac_dataset = external_vol_frac_dataset
+  constraint%external_area_dataset = external_area_dataset
   
 end subroutine MineralProcessConstraint
 
