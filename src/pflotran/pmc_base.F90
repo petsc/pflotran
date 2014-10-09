@@ -208,7 +208,9 @@ recursive subroutine InitializeRun(this)
   call printMsg(this%option,'PMCBase%InitializeRun()')
 #endif
   
-  this%option%time = this%timestepper%target_time
+  if (associated(this%timestepper)) then
+    this%option%time = this%timestepper%target_time
+  endif
   cur_pm => this%pm_list
   do
     if (.not.associated(cur_pm)) exit
@@ -242,10 +244,9 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
   
 #include "finclude/petscviewer.h"  
 
-class(pmc_base_type), target :: this
+  class(pmc_base_type), target :: this
   PetscReal :: sync_time
   PetscInt :: stop_flag
-  type(simulation_aux_type) :: sim_aux
   
   PetscInt :: local_stop_flag
   PetscBool :: failure
@@ -422,7 +423,9 @@ recursive subroutine FinalizeRun(this)
   call printMsg(this%option,'PMCBase%FinalizeRun()')
 #endif
   
-  call this%timestepper%FinalizeRun(this%option)
+  if (associated(this%timestepper)) then
+    call this%timestepper%FinalizeRun(this%option)
+  endif
 
   if (associated(this%below)) then
     call this%below%FinalizeRun()
@@ -558,11 +561,11 @@ recursive subroutine PMCBaseCheckpoint(this,viewer,id,id_stamp)
   enddo
   
   if (associated(this%below)) then
-    call this%below%Checkpoint(viewer,-999)
+    call this%below%Checkpoint(viewer,UNINITIALIZED_INTEGER)
   endif
   
   if (associated(this%next)) then
-    call this%next%Checkpoint(viewer,-999)
+    call this%next%Checkpoint(viewer,UNINITIALIZED_INTEGER)
   endif
   
   if (this%is_master) then
@@ -683,14 +686,14 @@ recursive subroutine PMCBaseRestart(this,viewer)
     call PMCBaseRegisterHeader(this,bag,header)
     call PetscBagLoad(viewer,bag,ierr);CHKERRQ(ierr)
     call PMCBaseGetHeader(this,header)
-    if (this%option%restart_time > -999.d0) then
+    if (Initialized(this%option%restart_time)) then
       this%pm_list%realization_base%output_option%plot_number = 0
     endif
     call PetscBagDestroy(bag,ierr);CHKERRQ(ierr)
   endif
   
   call this%timestepper%Restart(viewer,this%option)
-  if (this%option%restart_time > -999.d0) then
+  if (Initialized(this%option%restart_time)) then
     ! simply a flag to set time back to zero, no matter what the restart
     ! time is set to.
     call this%timestepper%Reset()

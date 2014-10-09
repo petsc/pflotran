@@ -284,7 +284,7 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
     if (attribute_exists) then
       this%is_cell_centered = PETSC_TRUE
     endif
-    ! this%max_buffer_size is initially set to -999 to force initializaion
+    ! this%max_buffer_size is initially set to UNINITIALIZED_INTEGER to force initializaion
     ! either here, or in the reading of the dataset block.
     attribute_name = "Max Buffer Size"
     call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)

@@ -289,7 +289,7 @@ subroutine ReactionReadPass1(reaction,input,option)
       case('RADIOACTIVE_DECAY_REACTION')
         reaction%nradiodecay_rxn = reaction%nradiodecay_rxn + 1
         radioactive_decay_rxn => RadioactiveDecayRxnCreate()
-        radioactive_decay_rxn%rate_constant = -999.d0
+        radioactive_decay_rxn%rate_constant = UNINITIALIZED_DOUBLE
         do 
           call InputReadPflotranString(input,option)
           if (InputError(input)) exit
@@ -341,7 +341,7 @@ subroutine ReactionReadPass1(reaction,input,option)
                 -1.d0*log(0.5d0)/radioactive_decay_rxn%rate_constant
           end select
         enddo   
-        if (dabs(radioactive_decay_rxn%rate_constant + 999.d0) < 1.d-10) then
+        if (Uninitialized(radioactive_decay_rxn%rate_constant)) then
           option%io_buffer = 'RATE_CONSTANT or HALF_LIFE must be set in ' // &
             'RADIOACTIVE_DECAY_REACTION.'
           call printErrMsg(option)

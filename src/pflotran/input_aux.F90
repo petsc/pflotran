@@ -1190,7 +1190,9 @@ function InputCheckExit(input,option)
   enddo
 
   if (input%buf(i:i) == '/' .or. &
-      StringCompare(input%buf(i:),'END',THREE_INTEGER)) then
+!geh: this fails when the keyword starts with END
+!geh      StringCompare(input%buf(i:),'END',THREE_INTEGER)) then
+      StringCompare(input%buf(i:),'END')) then
     InputCheckExit = PETSC_TRUE
   else
     InputCheckExit = PETSC_FALSE
@@ -1684,7 +1686,8 @@ subroutine InputReadASCIIDbase(filename,option)
   if (option%id > 0) then
     if (option%id > num_reals_in_dataset) then
       write(word,*) num_reals_in_dataset
-        option%io_buffer = 'DBASE "' // trim(filename) // &
+        option%io_buffer = 'Data in DBASE_FILENAME "' // &
+        trim(filename) // &
         '" is too small (' // trim(adjustl(word)) // &
         ') for number of realizations.'
       call printErrMsg(option)
@@ -1698,7 +1701,7 @@ subroutine InputReadASCIIDbase(filename,option)
   allocate(dbase%card(icount))
   dbase%card = ''
   allocate(dbase%value(icount))
-  dbase%value = -999.d0
+  dbase%value = UNINITIALIZED_DOUBLE
   icount = 0
   do
     call InputReadPflotranString(input,option)
@@ -1709,23 +1712,28 @@ subroutine InputReadASCIIDbase(filename,option)
       icount = icount + 1
       call StringToUpper(word)
       dbase%card(icount) = adjustl(word)
-      word = trim(word) // ' value(s)'
+      values = UNINITIALIZED_DOUBLE
       value_count = 0
-      values = UNINITALIZED_DOUBLE
       do
-        call InputReadDouble(input,option,values(value_count+1))
-        call InputErrorMsg(input,option,word,'DBASE')
-        if (input_ierr /= 0) exit
+        call InputReadDouble(input,option,tempreal)
+        if (input%ierr /= 0) exit
         value_count = value_count + 1
+        if (value_count <= num_reals_in_dataset) &
+          values(value_count) = tempreal
       enddo
-      if (value_count < num_reals_in_dataset) then
-        write(word,*) num_reals_in_dataset
-          option%io_buffer = 'DBASE dataset "' // trim(object_name) // &
-          '" is too small (' // trim(adjustl(word)) // &
-          ') for number of realizations.'
+      if (value_count /= num_reals_in_dataset) then
+        write(word,*) value_count
+        option%io_buffer = 'Data in DBASE_FILENAME "' // &
+          trim(object_name) // &
+          '" has an inconsistent number of values (' // &
+          trim(adjustl(word)) // &
+          ') for number of realizations ('
+        write(word,*), num_reals_in_dataset
+        option%io_buffer = trim(option%io_buffer) // &
+          trim(adjustl(word)) // ').'
         call printErrMsg(option)
       endif
-      dbase%value(value_index) = values(option%id)
+      dbase%value(icount) = values(value_index)
     endif
   enddo
   deallocate(values)
@@ -1753,7 +1761,7 @@ subroutine InputParseDbaseForInt(buffer,value,found,ierr)
 
   character(len=MAXSTRINGLENGTH) :: buffer_save
   character(len=MAXWORDLENGTH) :: word
-  character(len=MAXWORDLENGTH) :: dbase_keyword = 'DBASE'
+  character(len=MAXWORDLENGTH) :: dbase_keyword = 'DBASE_VALUE'
   
   buffer_save = buffer
   found = PETSC_FALSE
@@ -1789,7 +1797,7 @@ subroutine InputParseDbaseForDouble(buffer,value,found,ierr)
 
   character(len=MAXSTRINGLENGTH) :: buffer_save
   character(len=MAXWORDLENGTH) :: word
-  character(len=MAXWORDLENGTH) :: dbase_keyword = 'DBASE'
+  character(len=MAXWORDLENGTH) :: dbase_keyword = 'DBASE_VALUE'
   
   buffer_save = buffer
   found = PETSC_FALSE

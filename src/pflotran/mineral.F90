@@ -136,8 +136,8 @@ subroutine MineralReadKinetics(mineral,input,option)
         found = PETSC_TRUE
         cur_mineral%itype = MINERAL_KINETIC
         tstrxn => TransitionStateTheoryRxnCreate()
-        ! initialize to -999 to ensure that it is set
-        tstrxn%rate = -999.d0
+        ! initialize to UNINITIALIZED_INTEGER to ensure that it is set
+        tstrxn%rate = UNINITIALIZED_DOUBLE
         do
           call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,card)
@@ -216,9 +216,9 @@ subroutine MineralReadKinetics(mineral,input,option)
             case('PREFACTOR')
               error_string = 'CHEMISTRY,MINERAL_KINETICS,PREFACTOR'
               prefactor => TransitionStatePrefactorCreate()
-              ! Initialize to -999.d0 to check later whether they were set
-              prefactor%rate = -999.d0
-              prefactor%activation_energy = -999.d0
+              ! Initialize to UNINITIALIZED_DOUBLE to check later whether they were set
+              prefactor%rate = UNINITIALIZED_DOUBLE
+              prefactor%activation_energy = UNINITIALIZED_DOUBLE
               do
                 call InputReadPflotranString(input,option)
                 call InputReadStringErrorMsg(input,option,card)
@@ -328,16 +328,16 @@ subroutine MineralReadKinetics(mineral,input,option)
         do
           if (.not.associated(cur_prefactor)) exit
           ! if not initialized
-          if (dabs(cur_prefactor%rate - (-999.d0)) < 1.d-40) then
+          if (Uninitialized(cur_prefactor%rate)) then
             cur_prefactor%rate = tstrxn%rate
-            if (dabs(cur_prefactor%rate - (-999.d0)) < 1.d-40) then
+            if (Uninitialized(cur_prefactor%rate)) then
               option%io_buffer = 'Both outer and inner prefactor rate ' // &
                 'constants uninitialized for kinetic mineral ' // &
                 cur_mineral%name // '.'
               call printErrMsg(option)
             endif
           endif
-          if (dabs(cur_prefactor%activation_energy - (-999.d0)) < 1.d-40) then
+          if (Uninitialized(cur_prefactor%activation_energy)) then
             cur_prefactor%activation_energy = tstrxn%activation_energy
           endif
           cur_prefactor => cur_prefactor%next

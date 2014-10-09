@@ -138,6 +138,7 @@ subroutine HijackSimulation(simulation_old,simulation)
   
   use PMC_Base_class
   use PMC_Subsurface_class  
+  use PMC_Material_class
   use Simulation_Base_class
   use PM_Base_class
   use PM_General_class
@@ -152,6 +153,7 @@ subroutine HijackSimulation(simulation_old,simulation)
   use PM_module
   use Timestepper_BE_class
   use Logging_module
+  use Strata_module
   
   implicit none
   
@@ -160,6 +162,7 @@ subroutine HijackSimulation(simulation_old,simulation)
   
   class(pmc_subsurface_type), pointer :: flow_process_model_coupler
   class(pmc_subsurface_type), pointer :: tran_process_model_coupler
+  class(pmc_material_type), pointer :: material_process_model_coupler
   class(pmc_base_type), pointer :: cur_process_model_coupler
   class(pmc_base_type), pointer :: cur_process_model_coupler_top
   class(pm_base_type), pointer :: cur_process_model
@@ -171,6 +174,8 @@ subroutine HijackSimulation(simulation_old,simulation)
   
   realization => simulation_old%realization
   option => realization%option
+
+  simulation%waypoints => RealizCreateSyncWaypointList(realization)
 
   !----------------------------------------------------------------------------!
   ! This section for setting up new process model approach
@@ -248,6 +253,15 @@ subroutine HijackSimulation(simulation_old,simulation)
   else
     simulation%process_model_coupler_list => &
       tran_process_model_coupler%CastToBase()
+  endif
+  
+  if (StrataEvolves(realization%patch%strata)) then
+    material_process_model_coupler => PMCMaterialCreate()
+    material_process_model_coupler%option => option
+    material_process_model_coupler%realization => realization
+    ! place the material process model as %next for the top pmc
+    simulation%process_model_coupler_list%next => &
+      material_process_model_coupler
   endif
 
   ! For each ProcessModel, set:

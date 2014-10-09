@@ -457,7 +457,7 @@ subroutine WriteTecplotUGridElements(fid, &
   call VecGetLocalSize(natural_vec,natural_vec_local_size,ierr);CHKERRQ(ierr)
   call VecGetArrayF90(natural_vec,vec_ptr,ierr);CHKERRQ(ierr)
   do ii = 1,natural_vec_local_size
-    if(vec_ptr(ii) /= -999) & 
+    if(Initialized(vec_ptr(ii))) & 
       surface_natural_vec_local_size = surface_natural_vec_local_size + 1
   enddo
   call VecRestoreArrayF90(natural_vec,vec_ptr,ierr);CHKERRQ(ierr)

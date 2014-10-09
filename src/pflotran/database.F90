@@ -2029,8 +2029,7 @@ subroutine BasisInit(reaction,option)
     do
       if (.not.associated(cur_mineral)) exit
       if (associated(cur_mineral%tstrxn)) then 
-        if (.not.Equal(cur_mineral%tstrxn%affinity_factor_sigma, &
-                       -999.d0)) then
+        if (Initialized(cur_mineral%tstrxn%affinity_factor_sigma)) then
           found = PETSC_TRUE
           exit
         endif
@@ -2048,8 +2047,7 @@ subroutine BasisInit(reaction,option)
     do
       if (.not.associated(cur_mineral)) exit
       if (associated(cur_mineral%tstrxn)) then 
-        if (.not.Equal(cur_mineral%tstrxn%affinity_factor_beta, &
-                       -999.d0)) then
+        if (Initialized(cur_mineral%tstrxn%affinity_factor_beta)) then
           found = PETSC_TRUE
           exit
         endif
@@ -2311,13 +2309,11 @@ subroutine BasisInit(reaction,option)
             mineral%kinmnrl_activation_energy(ikinmnrl) = &
               tstrxn%activation_energy
           endif
-          if (.not.Equal(tstrxn%affinity_factor_sigma, &
-                         -999.d0)) then
+          if (Initialized(tstrxn%affinity_factor_sigma)) then
             mineral%kinmnrl_Tempkin_const(ikinmnrl) = &
               tstrxn%affinity_factor_sigma
           endif
-          if (.not.Equal(tstrxn%affinity_factor_beta, &
-                         -999.d0)) then
+          if (Initialized(tstrxn%affinity_factor_beta)) then
             mineral%kinmnrl_affinity_power(ikinmnrl) = &
               tstrxn%affinity_factor_beta
           endif
@@ -2668,10 +2664,10 @@ subroutine BasisInit(reaction,option)
             surface_complexation%kinsrfcplx_forward_rate(isrfcplx, &
               surface_complexation%nkinsrfcplxrxn) = &
               cur_srfcplx%forward_rate
-            ! if backward rate = -999, the backward rate is calculated
+            ! if backward rate = UNINITIALIZED_INTEGER, the backward rate is calculated
             ! as a function of the forward and and equilibrium coefficient
-            if (surface_complexation%kinsrfcplx_backward_rate(isrfcplx, &
-                  surface_complexation%nkinsrfcplxrxn) < -998.d0) then
+            if (Uninitialized(surface_complexation%kinsrfcplx_backward_rate(isrfcplx, &
+                  surface_complexation%nkinsrfcplxrxn))) then
               ! backward rate will be calculated based on Kb = Kf * Keq
               if (.not.reaction%use_geothermal_hpt) then
               call Interpolate(temp_high,temp_low, &
@@ -2825,8 +2821,8 @@ subroutine BasisInit(reaction,option)
     allocate(reaction%pri_spec_to_coll_spec(reaction%naqcomp))
     allocate(reaction%colloid_species_names(icount))
     allocate(reaction%coll_spec_to_pri_spec(icount))
-    reaction%pri_spec_to_coll_spec = -999
-    reaction%coll_spec_to_pri_spec = -999
+    reaction%pri_spec_to_coll_spec = UNINITIALIZED_INTEGER
+    reaction%coll_spec_to_pri_spec = UNINITIALIZED_INTEGER
     reaction%colloid_species_names = ''
     reaction%ncollcomp = icount
     icount = 0

@@ -2,7 +2,7 @@
 #             based on chemistry from Hammond and Lichtner, WRR, 2010
 
 #=========================== dbase ============================================
-DBASE 543_dbase.h5
+DBASE_FILENAME 543_dbase.h5
 
 #=========================== regression =======================================
 REGRESSION
@@ -82,7 +82,7 @@ noskip
 MATERIAL_PROPERTY soil1
   ID 1
 #  POROSITY 0.25d0
-  POROSITY DBASE POROSITY::SOIL1
+  POROSITY DBASE_VALUE POROSITY::SOIL1
   TORTUOSITY 1.d0
   SATURATION_FUNCTION sf1
   PERMEABILITY
@@ -123,7 +123,7 @@ MATERIAL_PROPERTY soil4
   SATURATION_FUNCTION sf4
   PERMEABILITY
 #    PERM_X 1.d-9
-    PERM_X DBASE PERMEABILITY_X::SOIL4
+    PERM_X DBASE_VALUE PERMEABILITY_X::SOIL4
     PERM_Y 1.d-9
     PERM_Z 1.d-10
   /
@@ -149,7 +149,7 @@ SATURATION_FUNCTION sf3
   RESIDUAL_SATURATION 0.118
   LAMBDA 0.541
 #  ALPHA 1.0211d-4
-  ALPHA DBASE ALPHA-sf3
+  ALPHA DBASE_VALUE ALPHA-sf3
 END
 
 SATURATION_FUNCTION sf4
@@ -220,7 +220,7 @@ REGION north
   COORDINATES
     0.d0 46.d0 0.d0
 #    60.d0 46.d0 60.d0
-    60.d0 46.d0 DBASE NORTH_MAX_Z
+    60.d0 46.d0 DBASE_VALUE NORTH_MAX_Z
   /
 END
 
@@ -338,7 +338,7 @@ CONSTRAINT river_water
   CONCENTRATIONS
     Tracer   1.e-3            F
 #    Tracer2  1.d-7            F
-    Tracer2  DBASE RIVER_TRACER2            F
+    Tracer2  DBASE_VALUE RIVER_TRACER2            F
   /
 END
 

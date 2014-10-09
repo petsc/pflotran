@@ -94,8 +94,8 @@ subroutine OptionFlowInitRealization(option)
   ! PFLOTRAN realization or simulation of a single realization
     
   option%check_post_convergence = PETSC_FALSE
-  option%inf_rel_update_tol = -999.d0
-  option%inf_scaled_res_tol = -999.d0 
+  option%inf_rel_update_tol = UNINITIALIZED_DOUBLE
+  option%inf_scaled_res_tol = UNINITIALIZED_DOUBLE 
   
 end subroutine OptionFlowInitRealization
 

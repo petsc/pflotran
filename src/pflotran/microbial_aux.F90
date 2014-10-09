@@ -206,7 +206,7 @@ function MicrobialInhibitionCreate()
   inhibition%id = 0
   inhibition%itype = 0
   inhibition%species_name = ''
-  inhibition%inhibition_constant = -999.d0
+  inhibition%inhibition_constant = UNINITIALIZED_DOUBLE
   inhibition%inhibition_constant2 = 0.d0
   nullify(inhibition%next)
   

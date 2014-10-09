@@ -2158,7 +2158,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
        ! allocate array to store vertices for each cell
        region%def_type = DEFINED_BY_SIDESET_UGRID
        allocate(sideset%face_vertices(MAX_VERT_PER_FACE,sideset%nfaces))
-       sideset%face_vertices = -999
+       sideset%face_vertices = UNINITIALIZED_INTEGER
   
        do ii = 1,sideset%nfaces
         do jj = 2,int_buffer_2d(1,ii)+1

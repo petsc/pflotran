@@ -136,7 +136,7 @@ function DatabaseRxnCreateFromRxnString(reaction_string, &
   allocate(dbaserxn%spec_name(icount))
   dbaserxn%spec_name = ''
   allocate(dbaserxn%stoich(icount))
-  dbaserxn%stoich = -999.
+  dbaserxn%stoich = UNINITIALIZED_DOUBLE
   allocate(dbaserxn%spec_ids(icount))
   dbaserxn%spec_ids = 0
 
@@ -208,7 +208,7 @@ function DatabaseRxnCreateFromRxnString(reaction_string, &
           word2 = 'H2O'
           if (StringCompareIgnoreCase(word,word2)) then
             ! set stoichiometry back to uninitialized
-            dbaserxn%stoich(icount) = -999.d0
+            dbaserxn%stoich(icount) = UNINITIALIZED_DOUBLE
             ! don't increment icount
           else if (.not.found) then
             option%io_buffer = 'Species ' // trim(word) // &

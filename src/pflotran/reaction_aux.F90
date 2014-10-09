@@ -1070,7 +1070,7 @@ function GetPrimarySpeciesIDFromName2(name,reaction,return_error,option)
   PetscInt :: i
   PetscBool :: return_error
 
-  GetPrimarySpeciesIDFromName2 = -999
+  GetPrimarySpeciesIDFromName2 = UNINITIALIZED_INTEGER
   
   ! if the primary species name list exists
   if (associated(reaction%primary_species_names)) then

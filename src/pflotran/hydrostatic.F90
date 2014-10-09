@@ -149,7 +149,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
                 condition%concentration%gradient%rarray(1:3)
             endif
         else
-          concentration_at_datum = -999.d0
+          concentration_at_datum = UNINITIALIZED_DOUBLE
           concentration_gradient = 0.d0
         endif
       endif
@@ -164,7 +164,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
             !TODO(geh): move this to FlowSubConditionUpdateDataset()
             !call DatasetLoad(datum_dataset,option)
             ! set datum here equal to estimated mid value of dataset
-            datum(1:3) = -999.d0
+            datum(1:3) = UNINITIALIZED_DOUBLE
             datum_dataset_rmax = maxval(datum_dataset%rarray)
             datum_dataset_rmin = minval(datum_dataset%rarray)
             datum(3) = 0.5d0*(datum_dataset_rmax+datum_dataset_rmin)

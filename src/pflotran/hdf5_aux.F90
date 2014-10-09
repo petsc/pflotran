@@ -488,7 +488,7 @@ subroutine HDF5ReadDbase(filename,option)
   allocate(dbase%card(icount))
   dbase%card = ''
   allocate(dbase%value(icount))
-  dbase%value = -999.d0
+  dbase%value = UNINITIALIZED_DOUBLE
   value_index = 1
   if (option%id > 0) then
     value_index = option%id
@@ -562,7 +562,8 @@ subroutine HDF5ReadDbase(filename,option)
       if (option%id > 0) then
         if (option%id > num_reals_in_dataset) then
           write(word,*) num_reals_in_dataset
-          option%io_buffer = 'DBASE dataset "' // trim(object_name) // &
+          option%io_buffer = 'Data in DBASE_FILENAME "' // &
+            trim(object_name) // &
             '" is too small (' // trim(adjustl(word)) // &
             ') for number of realizations.'
           call printErrMsg(option)

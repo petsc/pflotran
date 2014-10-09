@@ -5,6 +5,7 @@ module Simulation_Base_class
   use Output_Aux_module
   use Output_module
   use Simulation_Aux_module
+  use Waypoint_module
   
   use PFLOTRAN_Constants_module
 
@@ -16,6 +17,7 @@ module Simulation_Base_class
 
   type, public :: simulation_base_type
     type(option_type), pointer :: option
+    type(waypoint_list_type), pointer :: waypoints ! for outer sync loop
     type(output_option_type), pointer :: output_option
     PetscInt :: stop_flag
     class(pmc_base_type), pointer :: process_model_coupler_list
@@ -81,6 +83,7 @@ subroutine SimulationBaseInit(this,option)
   type(option_type), pointer :: option
 
   this%option => option
+  nullify(this%waypoints)
   nullify(this%output_option)
   nullify(this%process_model_coupler_list)
   this%sim_aux => SimAuxCreate()
@@ -163,19 +166,32 @@ subroutine ExecuteRun(this)
   ! Author: Glenn Hammond
   ! Date: 06/11/13
   ! 
+  use Waypoint_module
 
   implicit none
   
   class(simulation_base_type) :: this
   
   PetscReal :: final_time
+  PetscReal :: sync_time
+  type(waypoint_type), pointer :: cur_waypoint
+  PetscViewer :: viewer
   
 #ifdef DEBUG
   call printMsg(this%option,'SimulationBaseExecuteRun()')
 #endif
 
   final_time = SimulationGetFinalWaypointTime(this)
-  call this%RunToTime(final_time)
+  cur_waypoint => this%waypoints%first
+  call WaypointSkipToTime(cur_waypoint,this%option%time)
+  do
+    if (.not.associated(cur_waypoint)) exit
+    call this%RunToTime(min(final_time,cur_waypoint%time))
+    cur_waypoint => cur_waypoint%next
+  enddo
+  if (this%option%checkpoint_flag) then
+    call this%process_model_coupler_list%Checkpoint(viewer,-1)
+  endif
   
 end subroutine ExecuteRun
 
@@ -200,16 +216,12 @@ subroutine RunToTime(this,target_time)
   PetscReal :: target_time
   
   class(pmc_base_type), pointer :: cur_process_model_coupler
-  PetscViewer :: viewer
   
 #ifdef DEBUG
   call printMsg(this%option,'SimulationBaseRunToTime()')
 #endif
   
   call this%process_model_coupler_list%RunToTime(target_time,this%stop_flag)
-  if (this%option%checkpoint_flag) then
-    call this%process_model_coupler_list%Checkpoint(viewer,-1)
-  endif
 
 end subroutine RunToTime
 
@@ -300,6 +312,7 @@ subroutine SimulationBaseStrip(this)
   ! Date: 06/11/13
   ! 
   use Input_Aux_module
+  use Waypoint_module
   
   implicit none
   
@@ -308,6 +321,7 @@ subroutine SimulationBaseStrip(this)
 #ifdef DEBUG
   call printMsg(this%option,'SimulationBaseStrip()')
 #endif
+  call WaypointListDestroy(this%waypoints)
   call SimAuxDestroy(this%sim_aux)
   if (associated(this%process_model_coupler_list)) then
     call this%process_model_coupler_list%Destroy()
