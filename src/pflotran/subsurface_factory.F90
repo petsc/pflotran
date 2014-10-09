@@ -150,7 +150,7 @@ subroutine HijackSimulation(simulation_old,simulation)
   use PM_RT_class
   use PM_Subsurface_class
   use PM_TH_class
-  use PM_module
+  use PM_Base_Pointer_module
   use Timestepper_BE_class
   use Logging_module
   use Strata_module
@@ -175,7 +175,7 @@ subroutine HijackSimulation(simulation_old,simulation)
   realization => simulation_old%realization
   option => realization%option
 
-  simulation%waypoints => RealizCreateSyncWaypointList(realization)
+  simulation%waypoint_list => RealizCreateSyncWaypointList(realization)
 
   !----------------------------------------------------------------------------!
   ! This section for setting up new process model approach
@@ -210,11 +210,11 @@ subroutine HijackSimulation(simulation_old,simulation)
 
     flow_process_model_coupler => PMCSubsurfaceCreate()
     flow_process_model_coupler%option => option
-    flow_process_model_coupler%pm_list => cur_process_model
+    flow_process_model_coupler%pms => cur_process_model
     flow_process_model_coupler%pm_ptr%ptr => cur_process_model
-!    flow_process_model_coupler%timestepper => simulation_old%flow_stepper
+!    flow_process_model_coupler%timestepper => simulation_old%flow_timestepper
     flow_process_model_coupler%realization => realization
-    call HijackTimestepper(simulation_old%flow_stepper, &
+    call HijackTimestepper(simulation_old%flow_timestepper, &
                            flow_process_model_coupler%timestepper)
     ! set up logging stage
     string = trim(cur_process_model%name) // 'Flow'
@@ -230,11 +230,11 @@ subroutine HijackSimulation(simulation_old,simulation)
    
     tran_process_model_coupler => PMCSubsurfaceCreate()
     tran_process_model_coupler%option => option
-    tran_process_model_coupler%pm_list => cur_process_model
+    tran_process_model_coupler%pms => cur_process_model
     tran_process_model_coupler%pm_ptr%ptr => cur_process_model
-!    tran_process_model_coupler%timestepper => simulation_old%tran_stepper
+!    tran_process_model_coupler%timestepper => simulation_old%tran_timestepper
     tran_process_model_coupler%realization => realization
-    call HijackTimestepper(simulation_old%tran_stepper, &
+    call HijackTimestepper(simulation_old%tran_timestepper, &
                            tran_process_model_coupler%timestepper)
     ! set up logging stage
     string = 'Reactive Transport'
@@ -271,11 +271,11 @@ subroutine HijackSimulation(simulation_old,simulation)
   cur_process_model_coupler_top => simulation%process_model_coupler_list
   do
     if (.not.associated(cur_process_model_coupler_top)) exit
-    cur_process_model_coupler_top%waypoints => realization%waypoints
+    cur_process_model_coupler_top%waypoint_list => realization%waypoint_list
     cur_process_model_coupler => cur_process_model_coupler_top
     do
       if (.not.associated(cur_process_model_coupler)) exit
-      cur_process_model => cur_process_model_coupler%pm_list
+      cur_process_model => cur_process_model_coupler%pms
       do
         if (.not.associated(cur_process_model)) exit
         ! set realization
@@ -301,7 +301,7 @@ subroutine HijackSimulation(simulation_old,simulation)
         select type(cur_process_model)
           class default
             select type(ts => cur_process_model_coupler%timestepper)
-              class is(stepper_BE_type)
+              class is(timestepper_BE_type)
               call SNESSetFunction( &
                              ts%solver%snes, &
                              cur_process_model%residual_vec, &
@@ -356,9 +356,9 @@ subroutine SubsurfaceJumpStart(simulation)
   type(subsurface_simulation_type) :: simulation
   
   class(realization_type), pointer :: realization
-  class(stepper_base_type), pointer :: master_stepper
-  class(stepper_BE_type), pointer :: flow_stepper
-  class(stepper_BE_type), pointer :: tran_stepper
+  class(timestepper_base_type), pointer :: master_timestepper
+  class(timestepper_BE_type), pointer :: flow_timestepper
+  class(timestepper_BE_type), pointer :: tran_timestepper
   type(option_type), pointer :: option
   type(output_option_type), pointer :: output_option
 
@@ -374,21 +374,21 @@ subroutine SubsurfaceJumpStart(simulation)
   
   if (associated(simulation%flow_process_model_coupler)) then
     select type(ts => simulation%flow_process_model_coupler%timestepper)
-      class is(stepper_BE_type)
-        flow_stepper => ts
+      class is(timestepper_BE_type)
+        flow_timestepper => ts
     end select
   else
-    nullify(flow_stepper)
+    nullify(flow_timestepper)
   endif
   if (associated(simulation%rt_process_model_coupler)) then
     select type(ts => simulation%rt_process_model_coupler%timestepper)
-      class is(stepper_BE_type)
-        tran_stepper => ts
+      class is(timestepper_BE_type)
+        tran_timestepper => ts
     end select
   else
-    nullify(tran_stepper)
+    nullify(tran_timestepper)
   endif
-  nullify(master_stepper)
+  nullify(master_timestepper)
   
   option => realization%option
   output_option => realization%output_option
@@ -400,17 +400,17 @@ subroutine SubsurfaceJumpStart(simulation)
     option%io_buffer = 'Running in steady-state not yet supported in refactored code.'
     call printErrMsg(option)
 #if 0    
-    call StepperRunSteadyState(realization,flow_stepper,tran_stepper)
+    call StepperRunSteadyState(realization,flow_timestepper,tran_timestepper)
 #endif    
     ! do not want to run through time stepper
     option%status = DONE
     return 
   endif
   
-  if (associated(flow_stepper)) then
-    master_stepper => flow_stepper
+  if (associated(flow_timestepper)) then
+    master_timestepper => flow_timestepper
   else
-    master_stepper => tran_stepper
+    master_timestepper => tran_timestepper
   endif
 
   plot_flag = PETSC_FALSE
@@ -458,9 +458,9 @@ subroutine SubsurfaceJumpStart(simulation)
 #if 0  
 !geh: removed 8/11
   !if TIMESTEPPER->MAX_STEPS < 0, print out solution composition only
-  if (master_stepper%max_time_step < 0) then
+  if (master_timestepper%max_time_step < 0) then
     call printMsg(option,'')
-    write(option%io_buffer,*) master_stepper%max_time_step
+    write(option%io_buffer,*) master_timestepper%max_time_step
     option%io_buffer = 'The maximum # of time steps (' // &
                        trim(adjustl(option%io_buffer)) // &
                        '), specified by TIMESTEPPER->MAX_STEPS, ' // &
@@ -472,9 +472,9 @@ subroutine SubsurfaceJumpStart(simulation)
   endif
 
   ! print initial condition output if not a restarted sim
-  call OutputInit(master_stepper%steps)
+  call OutputInit(master_timestepper%steps)
   if (output_option%plot_number == 0 .and. &
-      master_stepper%max_time_step >= 0 .and. &
+      master_timestepper%max_time_step >= 0 .and. &
       output_option%print_initial) then
     plot_flag = PETSC_TRUE
     transient_plot_flag = PETSC_TRUE
@@ -482,9 +482,9 @@ subroutine SubsurfaceJumpStart(simulation)
   endif
   
   !if TIMESTEPPER->MAX_STEPS < 1, print out initial condition only
-  if (master_stepper%max_time_step < 1) then
+  if (master_timestepper%max_time_step < 1) then
     call printMsg(option,'')
-    write(option%io_buffer,*) master_stepper%max_time_step
+    write(option%io_buffer,*) master_timestepper%max_time_step
     option%io_buffer = 'The maximum # of time steps (' // &
                        trim(adjustl(option%io_buffer)) // &
                        '), specified by TIMESTEPPER->MAX_STEPS, ' // &
@@ -498,19 +498,19 @@ subroutine SubsurfaceJumpStart(simulation)
   ! increment plot number so that 000 is always the initial condition, and nothing else
   if (output_option%plot_number == 0) output_option%plot_number = 1
 
-  if (associated(flow_stepper)) then
-    if (.not.associated(flow_stepper%cur_waypoint)) then
+  if (associated(flow_timestepper)) then
+    if (.not.associated(flow_timestepper%cur_waypoint)) then
       option%io_buffer = &
         'Null flow waypoint list; final time likely equal to start time.'
       call printMsg(option)
       option%status = FAIL
       return
     else
-      flow_stepper%dt_max = flow_stepper%cur_waypoint%dt_max
+      flow_timestepper%dt_max = flow_timestepper%cur_waypoint%dt_max
     endif
   endif
-  if (associated(tran_stepper)) then
-    if (.not.associated(tran_stepper%cur_waypoint)) then
+  if (associated(tran_timestepper)) then
+    if (.not.associated(tran_timestepper%cur_waypoint)) then
       option%io_buffer = &
         'Null transport waypoint list; final time likely equal to start ' // &
         'time or simulation time needs to be extended on a restart.'
@@ -518,14 +518,14 @@ subroutine SubsurfaceJumpStart(simulation)
       option%status = FAIL
       return
     else
-      tran_stepper%dt_max = tran_stepper%cur_waypoint%dt_max
+      tran_timestepper%dt_max = tran_timestepper%cur_waypoint%dt_max
     endif
   endif
            
-  if (associated(flow_stepper)) &
-    flow_stepper%start_time_step = flow_stepper%steps + 1
-  if (associated(tran_stepper)) &
-    tran_stepper%start_time_step = tran_stepper%steps + 1
+  if (associated(flow_timestepper)) &
+    flow_timestepper%start_time_step = flow_timestepper%steps + 1
+  if (associated(tran_timestepper)) &
+    tran_timestepper%start_time_step = tran_timestepper%steps + 1
   
   if (realization%debug%print_couplers) then
     call OutputPrintCouplers(realization,ZERO_INTEGER)
@@ -535,7 +535,7 @@ end subroutine SubsurfaceJumpStart
 
 ! ************************************************************************** !
 
-subroutine HijackTimestepper(stepper_old,stepper_base)
+subroutine HijackTimestepper(timestepper_old,timestepper_base)
   ! 
   ! Author: Glenn Hammond
   ! Date: 06/11/13
@@ -547,64 +547,64 @@ subroutine HijackTimestepper(stepper_old,stepper_base)
 
   implicit none
   
-  type(stepper_type), pointer :: stepper_old
-  class(stepper_base_type), pointer :: stepper_base
+  type(timestepper_type), pointer :: timestepper_old
+  class(timestepper_base_type), pointer :: timestepper_base
   
-  class(stepper_BE_type), pointer :: stepper
+  class(timestepper_BE_type), pointer :: timestepper
 
-  stepper => TimestepperBECreate()
+  timestepper => TimestepperBECreate()
   
-  stepper%steps = stepper_old%steps
-  stepper%num_newton_iterations = stepper_old%num_newton_iterations
-  stepper%num_linear_iterations = stepper_old%num_linear_iterations
-  stepper%num_constant_time_steps = stepper_old%num_constant_time_steps
+  timestepper%steps = timestepper_old%steps
+  timestepper%num_newton_iterations = timestepper_old%num_newton_iterations
+  timestepper%num_linear_iterations = timestepper_old%num_linear_iterations
+  timestepper%num_constant_time_steps = timestepper_old%num_constant_time_steps
 
-  stepper%max_time_step = stepper_old%max_time_step
-  stepper%max_time_step_cuts = stepper_old%max_time_step_cuts
-  stepper%constant_time_step_threshold = stepper_old%constant_time_step_threshold
-  stepper%iaccel = stepper_old%iaccel
+  timestepper%max_time_step = timestepper_old%max_time_step
+  timestepper%max_time_step_cuts = timestepper_old%max_time_step_cuts
+  timestepper%constant_time_step_threshold = timestepper_old%constant_time_step_threshold
+  timestepper%iaccel = timestepper_old%iaccel
 
-  stepper%cumulative_newton_iterations = stepper_old%cumulative_newton_iterations
-  stepper%cumulative_linear_iterations = stepper_old%cumulative_linear_iterations
-  stepper%cumulative_time_step_cuts = stepper_old%cumulative_time_step_cuts 
-  stepper%cumulative_solver_time = stepper_old%cumulative_solver_time
+  timestepper%cumulative_newton_iterations = timestepper_old%cumulative_newton_iterations
+  timestepper%cumulative_linear_iterations = timestepper_old%cumulative_linear_iterations
+  timestepper%cumulative_time_step_cuts = timestepper_old%cumulative_time_step_cuts
+  timestepper%cumulative_solver_time = timestepper_old%cumulative_solver_time
 
-  stepper%start_time = stepper_old%start_time
-  stepper%start_time_step = stepper_old%start_time_step
-  stepper%time_step_tolerance = stepper_old%time_step_tolerance
-  stepper%target_time = stepper_old%target_time
+  timestepper%start_time = timestepper_old%start_time
+  timestepper%start_time_step = timestepper_old%start_time_step
+  timestepper%time_step_tolerance = timestepper_old%time_step_tolerance
+  timestepper%target_time = timestepper_old%target_time
   
-  stepper%prev_dt = stepper_old%prev_dt
-!  stepper%dt = stepper_old%dt
-  stepper%dt_min = stepper_old%dt_min
-  stepper%dt_max = stepper_old%dt_max
-  stepper%cfl_limiter = stepper_old%cfl_limiter
-  stepper%cfl_limiter_ts = stepper_old%cfl_limiter_ts
+  timestepper%prev_dt = timestepper_old%prev_dt
+!  stepper%dt = timestepper_old%dt
+  timestepper%dt_min = timestepper_old%dt_min
+  timestepper%dt_max = timestepper_old%dt_max
+  timestepper%cfl_limiter = timestepper_old%cfl_limiter
+  timestepper%cfl_limiter_ts = timestepper_old%cfl_limiter_ts
   
-  stepper%time_step_cut_flag = stepper_old%time_step_cut_flag
+  timestepper%time_step_cut_flag = timestepper_old%time_step_cut_flag
 
-  stepper%ntfac = stepper_old%ntfac
-  stepper%tfac => stepper_old%tfac
-  nullify(stepper_old%tfac)
+  timestepper%ntfac = timestepper_old%ntfac
+  timestepper%tfac => timestepper_old%tfac
+  nullify(timestepper_old%tfac)
   
-  stepper%init_to_steady_state = stepper_old%init_to_steady_state
-  stepper%steady_state_rel_tol = stepper_old%steady_state_rel_tol
-  stepper%run_as_steady_state = stepper_old%run_as_steady_state
+  timestepper%init_to_steady_state = timestepper_old%init_to_steady_state
+  timestepper%steady_state_rel_tol = timestepper_old%steady_state_rel_tol
+  timestepper%run_as_steady_state = timestepper_old%run_as_steady_state
 
-  stepper%solver => stepper_old%solver
-  nullify(stepper_old%solver)
-  stepper%convergence_context => stepper_old%convergence_context
-  nullify(stepper_old%convergence_context)
-  stepper%cur_waypoint => stepper_old%cur_waypoint
-  nullify(stepper_old%cur_waypoint)
-!  stepper%prev_waypoint => stepper_old%prev_waypoint
-!  nullify(stepper_old%prev_waypoint)
+  timestepper%solver => timestepper_old%solver
+  nullify(timestepper_old%solver)
+  timestepper%convergence_context => timestepper_old%convergence_context
+  nullify(timestepper_old%convergence_context)
+  timestepper%cur_waypoint => timestepper_old%cur_waypoint
+  nullify(timestepper_old%cur_waypoint)
+!  stepper%prev_waypoint => timestepper_old%prev_waypoint
+!  nullify(timestepper_old%prev_waypoint)
   
-!  stepper%revert_dt = stepper_old%revert_dt
+!  stepper%revert_dt = timestepper_old%revert_dt
 !  stepper%num_contig_revert_due_to_sync = &
-!  stepper_old%num_contig_revert_due_to_sync
+!  timestepper_old%num_contig_revert_due_to_sync
 
-  stepper_base => stepper
+  timestepper_base => timestepper
   
 end subroutine HijackTimestepper
 

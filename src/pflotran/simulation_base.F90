@@ -17,7 +17,7 @@ module Simulation_Base_class
 
   type, public :: simulation_base_type
     type(option_type), pointer :: option
-    type(waypoint_list_type), pointer :: waypoints ! for outer sync loop
+    type(waypoint_list_type), pointer :: waypoint_list ! for outer sync loop
     type(output_option_type), pointer :: output_option
     PetscInt :: stop_flag
     class(pmc_base_type), pointer :: process_model_coupler_list
@@ -83,7 +83,7 @@ subroutine SimulationBaseInit(this,option)
   type(option_type), pointer :: option
 
   this%option => option
-  nullify(this%waypoints)
+  nullify(this%waypoint_list)
   nullify(this%output_option)
   nullify(this%process_model_coupler_list)
   this%sim_aux => SimAuxCreate()
@@ -182,7 +182,7 @@ subroutine ExecuteRun(this)
 #endif
 
   final_time = SimulationGetFinalWaypointTime(this)
-  cur_waypoint => this%waypoints%first
+  cur_waypoint => this%waypoint_list%first
   call WaypointSkipToTime(cur_waypoint,this%option%time)
   do
     if (.not.associated(cur_waypoint)) exit
@@ -292,7 +292,7 @@ function SimulationGetFinalWaypointTime(this)
   cur_process_model_coupler => this%process_model_coupler_list
   do
     if (.not.associated(cur_process_model_coupler)) exit
-    final_time = WaypointListGetFinalTime(cur_process_model_coupler%waypoints)
+    final_time = WaypointListGetFinalTime(cur_process_model_coupler%waypoint_list)
     if (SimulationGetFinalWaypointTime < 1.d-40 .or. &
         final_time < SimulationGetFinalWaypointTime) then
       SimulationGetFinalWaypointTime = final_time
@@ -321,7 +321,7 @@ subroutine SimulationBaseStrip(this)
 #ifdef DEBUG
   call printMsg(this%option,'SimulationBaseStrip()')
 #endif
-  call WaypointListDestroy(this%waypoints)
+  call WaypointListDestroy(this%waypoint_list)
   call SimAuxDestroy(this%sim_aux)
   if (associated(this%process_model_coupler_list)) then
     call this%process_model_coupler_list%Destroy()

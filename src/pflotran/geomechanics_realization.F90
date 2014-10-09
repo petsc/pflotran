@@ -31,7 +31,7 @@ private
     type(geomech_material_property_ptr_type), &
                            pointer       :: geomech_material_property_array(:)
 
-    type(waypoint_list_type), pointer :: waypoints
+    type(waypoint_list_type), pointer :: waypoint_list
     type(geomech_field_type), pointer :: geomech_field
     type(geomech_debug_type), pointer :: geomech_debug
     type(gm_region_list_type), pointer :: geomech_regions
@@ -975,7 +975,7 @@ subroutine GeomechRealizAddWaypointsToList(geomech_realization)
   PetscReal, pointer :: times(:)
 
   option => geomech_realization%option
-  waypoint_list => geomech_realization%waypoints
+  waypoint_list => geomech_realization%waypoint_list
   nullify(times)
   
   ! set flag for final output
@@ -1043,7 +1043,7 @@ subroutine GeomechRealizAddWaypointsToList(geomech_realization)
         waypoint => WaypointCreate()
         waypoint%time = temp_real
         waypoint%print_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,geomech_realization%waypoints)
+        call WaypointInsertInList(waypoint,geomech_realization%waypoint_list)
       enddo
     endif
     
@@ -1056,7 +1056,7 @@ subroutine GeomechRealizAddWaypointsToList(geomech_realization)
         waypoint => WaypointCreate()
         waypoint%time = temp_real
         waypoint%print_tr_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,geomech_realization%waypoints)
+        call WaypointInsertInList(waypoint,geomech_realization%waypoint_list)
       enddo
     endif
 

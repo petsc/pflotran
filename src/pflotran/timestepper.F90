@@ -19,7 +19,7 @@ module Timestepper_module
   PetscInt, parameter, public :: TIMESTEPPER_INIT_DONE = 1
   PetscInt, parameter, public :: TIMESTEPPER_INIT_FAIL = 2
  
-  type, public :: stepper_type
+  type, public :: timestepper_type
   
     PetscInt :: steps         ! The number of time steps taken by the code.
     PetscInt :: num_constant_time_steps   ! number of contiguous time_steps of constant size
@@ -63,7 +63,7 @@ module Timestepper_module
 
     type(convergence_context_type), pointer :: convergence_context
 
-  end type stepper_type
+  end type timestepper_type
   
   public :: TimestepperCreate, TimestepperDestroy, &
 #ifndef PROCESS_MODEL
@@ -105,9 +105,9 @@ function TimestepperCreate()
 
   implicit none
   
-  type(stepper_type), pointer :: TimestepperCreate
+  type(timestepper_type), pointer :: TimestepperCreate
   
-  type(stepper_type), pointer :: stepper
+  type(timestepper_type), pointer :: stepper
   
   allocate(stepper)
   stepper%steps = 0
@@ -174,7 +174,7 @@ subroutine TimestepperReset(stepper,dt_min)
 
   implicit none
 
-  type(stepper_type) :: stepper
+  type(timestepper_type) :: stepper
   PetscReal :: dt_min
 
   stepper%steps = 0
@@ -216,7 +216,7 @@ subroutine TimestepperRead(stepper,input,option)
   
   implicit none
 
-  type(stepper_type) :: stepper
+  type(timestepper_type) :: stepper
   type(input_type) :: input
   type(option_type) :: option
   
@@ -318,7 +318,7 @@ end subroutine TimestepperRead
 
 #ifndef PROCESS_MODEL
 
-subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
+subroutine StepperUpdateDT(flow_timestepper,tran_timestepper,option)
   ! 
   ! Updates time step
   ! 
@@ -330,8 +330,8 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
   
   implicit none
 
-  type(stepper_type), pointer :: flow_stepper
-  type(stepper_type), pointer :: tran_stepper
+  type(timestepper_type), pointer :: flow_timestepper
+  type(timestepper_type), pointer :: tran_timestepper
   type(option_type) :: option
   
   PetscReal :: time, dt
@@ -341,28 +341,28 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
 
   ! FLOW
   update_time_step = PETSC_TRUE
-  if (associated(flow_stepper)) then
-    if (flow_stepper%run_as_steady_state) then
+  if (associated(flow_timestepper)) then
+    if (flow_timestepper%run_as_steady_state) then
       update_time_step = PETSC_FALSE
     else
       ! if the time step was cut, set number of constant time steps to 1
-      if (flow_stepper%time_step_cut_flag) then
-        flow_stepper%time_step_cut_flag = PETSC_FALSE
-        flow_stepper%num_constant_time_steps = 1
+      if (flow_timestepper%time_step_cut_flag) then
+        flow_timestepper%time_step_cut_flag = PETSC_FALSE
+        flow_timestepper%num_constant_time_steps = 1
       ! otherwise, only increment if teh constant time step counter was
       ! initialized to 1
-      else if (flow_stepper%num_constant_time_steps > 0) then
-        flow_stepper%num_constant_time_steps = &
-          flow_stepper%num_constant_time_steps + 1
+      else if (flow_timestepper%num_constant_time_steps > 0) then
+        flow_timestepper%num_constant_time_steps = &
+          flow_timestepper%num_constant_time_steps + 1
       endif
     
       ! num_constant_time_steps = 0: normal time stepping with growing steps
       ! num_constant_time_steps > 0: restriction of constant time steps until
       !                              constant_time_step_threshold is met
-      if (flow_stepper%num_constant_time_steps > &
-          flow_stepper%constant_time_step_threshold) then
-        flow_stepper%num_constant_time_steps = 0
-      else if (flow_stepper%num_constant_time_steps > 0) then
+      if (flow_timestepper%num_constant_time_steps > &
+          flow_timestepper%constant_time_step_threshold) then
+        flow_timestepper%num_constant_time_steps = 0
+      else if (flow_timestepper%num_constant_time_steps > 0) then
         ! do not increase time step size
         update_time_step = PETSC_FALSE
       endif
@@ -373,12 +373,12 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
       time = option%flow_time
       dt = option%flow_dt
 
-      if (flow_stepper%iaccel == 0) return
+      if (flow_timestepper%iaccel == 0) return
 
       select case(option%iflowmode)
         case(FLASH2_MODE)   
           fac = 0.5d0
-          if (flow_stepper%num_newton_iterations >= flow_stepper%iaccel) then
+          if (flow_timestepper%num_newton_iterations >= flow_timestepper%iaccel) then
             fac = 0.33d0
             ut = 0.d0
           else
@@ -390,7 +390,7 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
           dtt = fac * dt * (1.d0 + ut)
         case(IMS_MODE)   
           fac = 0.5d0
-          if (flow_stepper%num_newton_iterations >= flow_stepper%iaccel) then
+          if (flow_timestepper%num_newton_iterations >= flow_timestepper%iaccel) then
             fac = 0.33d0
             ut = 0.d0
           else
@@ -402,7 +402,7 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
           dtt = fac * dt * (1.d0 + ut)
         case(MIS_MODE)   
           fac = 0.5d0
-          if (flow_stepper%num_newton_iterations >= flow_stepper%iaccel) then
+          if (flow_timestepper%num_newton_iterations >= flow_timestepper%iaccel) then
             fac = 0.33d0
             ut = 0.d0
           else
@@ -413,7 +413,7 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
           dtt = fac * dt * (1.d0 + ut)
         case(MPH_MODE)   
           fac = 0.5d0
-          if (flow_stepper%num_newton_iterations >= flow_stepper%iaccel) then
+          if (flow_timestepper%num_newton_iterations >= flow_timestepper%iaccel) then
             fac = 0.33d0
             ut = 0.d0
           else
@@ -426,7 +426,7 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
           dtt = fac * dt * (1.d0 + ut)
         case(TH_MODE)
           fac = 0.5d0
-          if (flow_stepper%num_newton_iterations >= flow_stepper%iaccel) then
+          if (flow_timestepper%num_newton_iterations >= flow_timestepper%iaccel) then
             fac = 0.33d0
             ut = 0.d0
           else
@@ -437,9 +437,9 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
           endif
           dtt = fac * dt * (1.d0 + ut)
         case(RICHARDS_MODE)
-          if (flow_stepper%iaccel > 0) then
+          if (flow_timestepper%iaccel > 0) then
             fac = 0.5d0
-            if (flow_stepper%num_newton_iterations >= flow_stepper%iaccel) then
+            if (flow_timestepper%num_newton_iterations >= flow_timestepper%iaccel) then
               fac = 0.33d0
               ut = 0.d0
             else
@@ -448,9 +448,9 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
             endif
             dtt = fac * dt * (1.d0 + ut)
           else
-            ifac = max(min(flow_stepper%num_newton_iterations, &
-                           flow_stepper%ntfac),1)
-            dt_tfac = flow_stepper%tfac(ifac) * dt
+            ifac = max(min(flow_timestepper%num_newton_iterations, &
+                           flow_timestepper%ntfac),1)
+            dt_tfac = flow_timestepper%tfac(ifac) * dt
 
             fac = 0.5d0
             up = option%dpmxe/(option%dpmax+0.1)
@@ -460,7 +460,7 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
           endif
         case(G_MODE)   
           fac = 0.5d0
-          if (flow_stepper%num_newton_iterations >= flow_stepper%iaccel) then
+          if (flow_timestepper%num_newton_iterations >= flow_timestepper%iaccel) then
             fac = 0.33d0
             ut = 0.d0
           else
@@ -473,19 +473,19 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
           dtt = fac * dt * (1.d0 + ut)
         case default
           dtt = dt
-          if (flow_stepper%num_newton_iterations <= flow_stepper%iaccel .and. &
-              flow_stepper%num_newton_iterations <= size(flow_stepper%tfac)) then
-            if (flow_stepper%num_newton_iterations == 0) then
-              dtt = flow_stepper%tfac(1) * dt
+          if (flow_timestepper%num_newton_iterations <= flow_timestepper%iaccel .and. &
+              flow_timestepper%num_newton_iterations <= size(flow_timestepper%tfac)) then
+            if (flow_timestepper%num_newton_iterations == 0) then
+              dtt = flow_timestepper%tfac(1) * dt
             else
-              dtt = flow_stepper%tfac(flow_stepper%num_newton_iterations) * dt
+              dtt = flow_timestepper%tfac(flow_timestepper%num_newton_iterations) * dt
             endif
           endif
           
       end select
 
       if (dtt > 2.d0 * dt) dtt = 2.d0 * dt
-      if (dtt > flow_stepper%dt_max) dtt = flow_stepper%dt_max
+      if (dtt > flow_timestepper%dt_max) dtt = flow_timestepper%dt_max
       ! geh: There used to be code here that cut the time step if it is too
       !      large relative to the simulation time.  This has been removed.
       dt = dtt
@@ -498,25 +498,25 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
   
   ! TRANSPORT
   update_time_step = PETSC_TRUE
-  if (associated(tran_stepper)) then
+  if (associated(tran_timestepper)) then
     ! if the time step was cut, set number of constant time steps to 1
-    if (tran_stepper%time_step_cut_flag) then
-      tran_stepper%time_step_cut_flag = PETSC_FALSE
-      tran_stepper%num_constant_time_steps = 1
+    if (tran_timestepper%time_step_cut_flag) then
+      tran_timestepper%time_step_cut_flag = PETSC_FALSE
+      tran_timestepper%num_constant_time_steps = 1
     ! otherwise, only increment if teh constant time step counter was
     ! initialized to 1
-    else if (tran_stepper%num_constant_time_steps > 0) then
-      tran_stepper%num_constant_time_steps = &
-        tran_stepper%num_constant_time_steps + 1
+    else if (tran_timestepper%num_constant_time_steps > 0) then
+      tran_timestepper%num_constant_time_steps = &
+        tran_timestepper%num_constant_time_steps + 1
     endif
     
     ! num_constant_time_steps = 0: normal time stepping with growing steps
     ! num_constant_time_steps > 0: restriction of constant time steps until
     !                              constant_time_step_threshold is met
-    if (tran_stepper%num_constant_time_steps > &
-        tran_stepper%constant_time_step_threshold) then
-      tran_stepper%num_constant_time_steps = 0
-    else if (tran_stepper%num_constant_time_steps > 0) then
+    if (tran_timestepper%num_constant_time_steps > &
+        tran_timestepper%constant_time_step_threshold) then
+      tran_timestepper%num_constant_time_steps = 0
+    else if (tran_timestepper%num_constant_time_steps > 0) then
       ! do not increase time step size
       update_time_step = PETSC_FALSE
     endif
@@ -526,12 +526,12 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
       time = option%tran_time
       dt = option%tran_dt
 
-      if (tran_stepper%iaccel == 0) return
+      if (tran_timestepper%iaccel == 0) return
 
       dtt = dt
-      if (tran_stepper%num_newton_iterations <= tran_stepper%iaccel) then
-        if (tran_stepper%num_newton_iterations <= size(tran_stepper%tfac)) then
-          dtt = tran_stepper%tfac(tran_stepper%num_newton_iterations) * dt
+      if (tran_timestepper%num_newton_iterations <= tran_timestepper%iaccel) then
+        if (tran_timestepper%num_newton_iterations <= size(tran_timestepper%tfac)) then
+          dtt = tran_timestepper%tfac(tran_timestepper%num_newton_iterations) * dt
         else
           dtt = 0.5d0 * dt
         endif
@@ -541,7 +541,7 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
       endif
 
       if (dtt > 2.d0 * dt) dtt = 2.d0 * dt
-      if (dtt > tran_stepper%dt_max) dtt = tran_stepper%dt_max
+      if (dtt > tran_timestepper%dt_max) dtt = tran_timestepper%dt_max
       ! geh: see comment above under flow stepper
       dt = dtt
 
@@ -552,8 +552,8 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
   endif
 
   ! ensure that transport time step is not larger than flow time step
-  if (associated(flow_stepper) .and. associated(tran_stepper)) then
-    if (.not.flow_stepper%run_as_steady_state) then
+  if (associated(flow_timestepper) .and. associated(tran_timestepper)) then
+    if (.not.flow_timestepper%run_as_steady_state) then
       option%tran_dt = min(option%tran_dt,option%flow_dt)
     endif
   endif
@@ -562,7 +562,7 @@ end subroutine StepperUpdateDT
 
 ! ************************************************************************** !
 
-subroutine StepperUpdateDTMax(flow_stepper,tran_stepper,option)
+subroutine StepperUpdateDTMax(flow_timestepper,tran_timestepper,option)
   ! 
   ! Updates maximum time step specified by the current
   ! waypoint after the completion of a time step
@@ -575,8 +575,8 @@ subroutine StepperUpdateDTMax(flow_stepper,tran_stepper,option)
   
   implicit none
 
-  type(stepper_type), pointer :: flow_stepper
-  type(stepper_type), pointer :: tran_stepper
+  type(timestepper_type), pointer :: flow_timestepper
+  type(timestepper_type), pointer :: tran_timestepper
   type(option_type) :: option
   
   PetscReal :: dt_max
@@ -587,8 +587,8 @@ subroutine StepperUpdateDTMax(flow_stepper,tran_stepper,option)
   ! be used to set dt_max.  If flow is not present, or is to
   ! be run as steady state, use the transport parameters
   flag = PETSC_TRUE
-  if (associated(flow_stepper)) then
-    if (flow_stepper%run_as_steady_state) then
+  if (associated(flow_timestepper)) then
+    if (flow_timestepper%run_as_steady_state) then
       flag = PETSC_FALSE
     endif
   else
@@ -596,9 +596,9 @@ subroutine StepperUpdateDTMax(flow_stepper,tran_stepper,option)
   endif
 
   if (flag) then ! flow stepper will govern the target time
-    cur_waypoint => flow_stepper%cur_waypoint
+    cur_waypoint => flow_timestepper%cur_waypoint
   else
-    cur_waypoint => tran_stepper%cur_waypoint
+    cur_waypoint => tran_timestepper%cur_waypoint
   endif
   
   ! update maximum time step size to current waypoint value
@@ -606,11 +606,11 @@ subroutine StepperUpdateDTMax(flow_stepper,tran_stepper,option)
     dt_max = cur_waypoint%dt_max
     
     ! target time will always be dictated by the flow solver, if present
-    if (associated(flow_stepper)) then
-      flow_stepper%dt_max = dt_max
+    if (associated(flow_timestepper)) then
+      flow_timestepper%dt_max = dt_max
     endif
-    if (associated(tran_stepper)) then
-      tran_stepper%dt_max = dt_max
+    if (associated(tran_timestepper)) then
+      tran_timestepper%dt_max = dt_max
     endif
 
   endif
@@ -619,7 +619,7 @@ end subroutine StepperUpdateDTMax
 
 ! ************************************************************************** !
 
-subroutine StepperSetTargetTimes(flow_stepper,tran_stepper, &
+subroutine StepperSetTargetTimes(flow_timestepper,tran_timestepper, &
 
   !
   ! Sets target time for flow and transport solvers
@@ -635,7 +635,7 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper, &
   
   implicit none
 
-  type(stepper_type), pointer :: flow_stepper, tran_stepper
+  type(timestepper_type), pointer :: flow_timestepper, tran_timestepper
   type(option_type) :: option
   PetscBool :: plot_flag
   PetscBool :: transient_plot_flag
@@ -658,8 +658,8 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper, &
   ! be used to set the target time.  If flow is not present, or is to
   ! be run as steady state, use the transport parameters
   flag = PETSC_TRUE
-  if (associated(flow_stepper)) then
-    if (flow_stepper%run_as_steady_state) then
+  if (associated(flow_timestepper)) then
+    if (flow_timestepper%run_as_steady_state) then
       flag = PETSC_FALSE
     endif
   else
@@ -671,10 +671,10 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper, &
   if (option%match_waypoint) then
     ! if the maximum time step size decreased in the past step, need to set
     ! the time step size to the minimum of the stepper%prev_dt and stepper%dt_max
-    if (associated(flow_stepper)) option%flow_dt = min(flow_stepper%prev_dt, &
-                                                       flow_stepper%dt_max)
-    if (associated(tran_stepper)) option%tran_dt = min(tran_stepper%prev_dt, &
-                                                       tran_stepper%dt_max)
+    if (associated(flow_timestepper)) option%flow_dt = min(flow_timestepper%prev_dt, &
+                                                       flow_timestepper%dt_max)
+    if (associated(tran_timestepper)) option%tran_dt = min(tran_timestepper%prev_dt, &
+                                                       tran_timestepper%dt_max)
     option%match_waypoint = PETSC_FALSE
   endif
 
@@ -682,22 +682,22 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper, &
 !    time = option%flow_time + option%flow_dt
     dt = option%flow_dt
     ! dt_max must be set from current waypoint and not updated below
-    cur_waypoint => flow_stepper%cur_waypoint
+    cur_waypoint => flow_timestepper%cur_waypoint
     dt_max = cur_waypoint%dt_max
-    cumulative_time_steps = flow_stepper%steps
-    max_time_step = flow_stepper%max_time_step
-    tolerance = flow_stepper%time_step_tolerance
-    target_time = flow_stepper%target_time + option%flow_dt
+    cumulative_time_steps = flow_timestepper%steps
+    max_time_step = flow_timestepper%max_time_step
+    tolerance = flow_timestepper%time_step_tolerance
+    target_time = flow_timestepper%target_time + option%flow_dt
   else
 !    time = option%tran_time + option%tran_dt
     dt = option%tran_dt
-    cur_waypoint => tran_stepper%cur_waypoint
+    cur_waypoint => tran_timestepper%cur_waypoint
     ! dt_max must be set from current waypoint and not updated below
     dt_max = cur_waypoint%dt_max
-    cumulative_time_steps = tran_stepper%steps
-    max_time_step = tran_stepper%max_time_step
-    tolerance = tran_stepper%time_step_tolerance
-    target_time = tran_stepper%target_time + option%tran_dt
+    cumulative_time_steps = tran_timestepper%steps
+    max_time_step = tran_timestepper%max_time_step
+    tolerance = tran_timestepper%time_step_tolerance
+    target_time = tran_timestepper%target_time + option%tran_dt
   endif
   
   ! For the case where the second waypoint is a printout after the first time step
@@ -707,8 +707,8 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper, &
     cur_waypoint => cur_waypoint%next
   endif
   
-  if (associated(flow_stepper)) flow_stepper%prev_dt = option%flow_dt
-  if (associated(tran_stepper)) tran_stepper%prev_dt = option%tran_dt
+  if (associated(flow_timestepper)) flow_timestepper%prev_dt = option%flow_dt
+  if (associated(tran_timestepper)) tran_timestepper%prev_dt = option%tran_dt
 
 ! If a waypoint calls for a plot or change in src/sinks, adjust time step
 ! to match waypoint.
@@ -756,16 +756,16 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper, &
   endif
   
   ! target time will always be dictated by the flow solver, if present
-  if (associated(flow_stepper)) then
+  if (associated(flow_timestepper)) then
     option%flow_dt = dt
-    flow_stepper%target_time = target_time
+    flow_timestepper%target_time = target_time
     !geh: dt_max now updated in StepperUpdateDTMax() at the end of 
     !     a time step to avoid premature update if cuts or sub-stepping
     !     for transport occur during the time step.
-    !flow_stepper%dt_max = dt_max
-    flow_stepper%cur_waypoint => cur_waypoint
+    !flow_timestepper%dt_max = dt_max
+    flow_timestepper%cur_waypoint => cur_waypoint
   endif
-  if (associated(tran_stepper)) then
+  if (associated(tran_timestepper)) then
     if (flag) then ! flow stepper governs the target time
       ! if transport step is within the tolerance of the flow step, let it 
       ! try to reach the target time with a slightly larger step
@@ -778,10 +778,10 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper, &
     else ! transport only
       option%tran_dt = dt
     endif
-    tran_stepper%target_time = target_time
-    !geh: see note on flow_stepper%dt_max above.
-    !tran_stepper%dt_max = dt_max
-    tran_stepper%cur_waypoint => cur_waypoint
+    tran_timestepper%target_time = target_time
+    !geh: see note on flow_timestepper%dt_max above.
+    !tran_timestepper%dt_max = dt_max
+    tran_timestepper%cur_waypoint => cur_waypoint
   endif
   
 end subroutine StepperSetTargetTimes
@@ -828,7 +828,7 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
 #include "finclude/petscsnes.h"
 
   type(realization_type) :: realization
-  type(stepper_type) :: stepper
+  type(timestepper_type) :: stepper
   PetscBool :: failure
   
   PetscErrorCode :: ierr
@@ -1156,7 +1156,7 @@ subroutine FlowStepperStepToSteadyState(realization,stepper,failure)
 #include "finclude/petscsnes.h"
 
   type(realization_type) :: realization
-  type(stepper_type) :: stepper
+  type(timestepper_type) :: stepper
   PetscBool :: failure
   
   PetscErrorCode :: ierr
@@ -1325,7 +1325,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
 #include "finclude/petscsnes.h"
 
   type(realization_type) :: realization
-  type(stepper_type) :: stepper
+  type(timestepper_type) :: stepper
   PetscBool :: step_to_steady_state
   PetscBool :: failure
   
@@ -1796,7 +1796,7 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
 #include "finclude/petscsnes.h"
 
   type(realization_type) :: realization
-  type(stepper_type) :: stepper
+  type(timestepper_type) :: stepper
   PetscReal :: flow_t0, flow_t1
   PetscBool :: steady_flow
   PetscBool :: failure
@@ -2091,7 +2091,7 @@ subroutine StepperStepTransportDT_OS(realization,stepper, &
 #include "finclude/petscsnes.h"
 
   type(realization_type) :: realization
-  type(stepper_type) :: stepper
+  type(timestepper_type) :: stepper
   PetscReal :: flow_t0, flow_t1
   PetscBool :: steady_flow
   PetscBool :: failure
@@ -2327,7 +2327,7 @@ end subroutine StepperStepTransportDT_OS
 
 ! ************************************************************************** !
 
-subroutine StepperRunSteadyState(realization,flow_stepper,tran_stepper)
+subroutine StepperRunSteadyState(realization,flow_timestepper,tran_timestepper)
   ! 
   ! Solves steady state solution for flow and transport
   ! 
@@ -2344,8 +2344,8 @@ subroutine StepperRunSteadyState(realization,flow_stepper,tran_stepper)
   use Discretization_module
 
   type(realization_type) :: realization
-  type(stepper_type), pointer :: flow_stepper
-  type(stepper_type), pointer :: tran_stepper
+  type(timestepper_type), pointer :: flow_timestepper
+  type(timestepper_type), pointer :: tran_timestepper
 
   PetscBool :: transient_plot_flag
   PetscBool :: plot_flag
@@ -2367,10 +2367,10 @@ subroutine StepperRunSteadyState(realization,flow_stepper,tran_stepper)
   call PetscLogStagePush(logging%stage(TS_STAGE),ierr);CHKERRQ(ierr)
 
   ! print initial condition output if not a restarted sim
-  if (associated(flow_stepper)) then
-    call OutputInit(flow_stepper%steps)
+  if (associated(flow_timestepper)) then
+    call OutputInit(flow_timestepper%steps)
   else
-    call OutputInit(tran_stepper%steps)
+    call OutputInit(tran_timestepper%steps)
   endif
   transient_plot_flag = PETSC_FALSE
   plot_flag = PETSC_TRUE
@@ -2393,10 +2393,10 @@ subroutine StepperRunSteadyState(realization,flow_stepper,tran_stepper)
 
   plot_flag = PETSC_TRUE
     
-  if (associated(flow_stepper)) then
+  if (associated(flow_timestepper)) then
     call PetscTime(start_time, ierr);CHKERRQ(ierr)
     call PetscLogStagePush(logging%stage(FLOW_STAGE),ierr);CHKERRQ(ierr)
-    call StepperSolveFlowSteadyState(realization,flow_stepper,failure)
+    call StepperSolveFlowSteadyState(realization,flow_timestepper,failure)
     call PetscLogStagePop(ierr);CHKERRQ(ierr)
     call PetscTime(end_time, ierr);CHKERRQ(ierr)
     if (OptionPrintToScreen(option)) then
@@ -2412,10 +2412,10 @@ subroutine StepperRunSteadyState(realization,flow_stepper,tran_stepper)
     if (failure) return ! if flow solve fails, exit
   endif
 
-  if (associated(tran_stepper)) then
+  if (associated(tran_timestepper)) then
     call PetscTime(start_time, ierr);CHKERRQ(ierr)
     call PetscLogStagePush(logging%stage(TRAN_STAGE),ierr);CHKERRQ(ierr)
-    call StepperSolveTranSteadyState(realization,tran_stepper,failure)
+    call StepperSolveTranSteadyState(realization,tran_timestepper,failure)
     call PetscLogStagePop(ierr);CHKERRQ(ierr)
     call PetscTime(end_time, ierr);CHKERRQ(ierr)
     if (OptionPrintToScreen(option)) then
@@ -2437,31 +2437,31 @@ subroutine StepperRunSteadyState(realization,flow_stepper,tran_stepper)
   endif
    
   if (option%checkpoint_flag) then
-    call StepperCheckpoint(realization,flow_stepper,tran_stepper, &
+    call StepperCheckpoint(realization,flow_timestepper,tran_timestepper, &
                            NEG_ONE_INTEGER)  
   endif
 
   if (OptionPrintToScreen(option)) then
     if (option%nflowdof > 0) then
       write(*,'(/," FLOW newton = ",i8," linear = ",i10)') &
-            flow_stepper%cumulative_newton_iterations,flow_stepper%cumulative_linear_iterations
+            flow_timestepper%cumulative_newton_iterations,flow_timestepper%cumulative_linear_iterations
     endif
     if (option%ntrandof > 0) then
       write(*,'(/," TRAN newton = ",i8," linear = ",i10)') &
-            tran_stepper%cumulative_newton_iterations,tran_stepper%cumulative_linear_iterations
+            tran_timestepper%cumulative_newton_iterations,tran_timestepper%cumulative_linear_iterations
     endif            
   endif
 
   if (OptionPrintToFile(option)) then
     if (option%nflowdof > 0) then
       write(option%fid_out,'(/," FLOW newton = ",i8," linear = ",i10)') &
-            flow_stepper%cumulative_newton_iterations, &
-            flow_stepper%cumulative_linear_iterations
+            flow_timestepper%cumulative_newton_iterations, &
+            flow_timestepper%cumulative_linear_iterations
     endif
     if (option%ntrandof > 0) then
       write(option%fid_out,'(/," TRAN newton = ",i8," linear = ",i10)') &
-            tran_stepper%cumulative_newton_iterations, &
-            tran_stepper%cumulative_linear_iterations
+            tran_timestepper%cumulative_newton_iterations, &
+            tran_timestepper%cumulative_linear_iterations
     endif            
   endif
 
@@ -2498,7 +2498,7 @@ subroutine StepperSolveFlowSteadyState(realization,stepper,failure)
 #include "finclude/petscsnes.h"
 
   type(realization_type) :: realization
-  type(stepper_type) :: stepper
+  type(timestepper_type) :: stepper
   PetscBool :: failure
 
   PetscErrorCode :: ierr
@@ -2652,7 +2652,7 @@ subroutine StepperSolveTranSteadyState(realization,stepper,failure)
 #include "finclude/petscsnes.h"
 
   type(realization_type) :: realization
-  type(stepper_type) :: stepper
+  type(timestepper_type) :: stepper
   PetscBool :: failure
   
   PetscErrorCode :: ierr
@@ -3075,7 +3075,7 @@ end subroutine StepperSandbox
 
 ! ************************************************************************** !
 
-subroutine StepperCheckpoint(realization,flow_stepper,tran_stepper,id, id_stamp)
+subroutine StepperCheckpoint(realization,flow_timestepper,tran_timestepper,id, id_stamp)
   ! 
   ! Calls appropriate routines to write a checkpoint file
   ! 
@@ -3091,8 +3091,8 @@ subroutine StepperCheckpoint(realization,flow_stepper,tran_stepper,id, id_stamp)
   implicit none
 
   type(realization_type) :: realization
-  type(stepper_type), pointer :: flow_stepper
-  type(stepper_type), pointer :: tran_stepper
+  type(timestepper_type), pointer :: flow_timestepper
+  type(timestepper_type), pointer :: tran_timestepper
   PetscInt :: num_const_timesteps, num_newton_iterations  
   PetscInt :: id
   character(len=MAXWORDLENGTH), optional, intent(in) :: id_stamp
@@ -3110,25 +3110,25 @@ subroutine StepperCheckpoint(realization,flow_stepper,tran_stepper,id, id_stamp)
   
   option => realization%option
 
-  if (associated(flow_stepper)) then
-    flow_steps = flow_stepper%steps
-    flow_cumulative_newton_iterations = flow_stepper%cumulative_newton_iterations
-    flow_cumulative_time_step_cuts = flow_stepper%cumulative_time_step_cuts
-    flow_cumulative_linear_iterations = flow_stepper%cumulative_linear_iterations
-    flow_num_const_time_steps = flow_stepper%num_constant_time_steps
-    flow_num_newton_iterations = flow_stepper%num_newton_iterations
-    flow_cumulative_solver_time = flow_stepper%cumulative_solver_time
-    flow_prev_dt = flow_stepper%prev_dt
+  if (associated(flow_timestepper)) then
+    flow_steps = flow_timestepper%steps
+    flow_cumulative_newton_iterations = flow_timestepper%cumulative_newton_iterations
+    flow_cumulative_time_step_cuts = flow_timestepper%cumulative_time_step_cuts
+    flow_cumulative_linear_iterations = flow_timestepper%cumulative_linear_iterations
+    flow_num_const_time_steps = flow_timestepper%num_constant_time_steps
+    flow_num_newton_iterations = flow_timestepper%num_newton_iterations
+    flow_cumulative_solver_time = flow_timestepper%cumulative_solver_time
+    flow_prev_dt = flow_timestepper%prev_dt
   endif
-  if (associated(tran_stepper)) then
-    tran_steps = tran_stepper%steps
-    tran_cumulative_newton_iterations = tran_stepper%cumulative_newton_iterations
-    tran_cumulative_time_step_cuts = tran_stepper%cumulative_time_step_cuts
-    tran_cumulative_linear_iterations = tran_stepper%cumulative_linear_iterations
-    tran_num_const_time_steps = tran_stepper%num_constant_time_steps
-    tran_num_newton_iterations = tran_stepper%num_newton_iterations
-    tran_cumulative_solver_time = tran_stepper%cumulative_solver_time
-    tran_prev_dt = tran_stepper%prev_dt
+  if (associated(tran_timestepper)) then
+    tran_steps = tran_timestepper%steps
+    tran_cumulative_newton_iterations = tran_timestepper%cumulative_newton_iterations
+    tran_cumulative_time_step_cuts = tran_timestepper%cumulative_time_step_cuts
+    tran_cumulative_linear_iterations = tran_timestepper%cumulative_linear_iterations
+    tran_num_const_time_steps = tran_timestepper%num_constant_time_steps
+    tran_num_newton_iterations = tran_timestepper%num_newton_iterations
+    tran_cumulative_solver_time = tran_timestepper%cumulative_solver_time
+    tran_prev_dt = tran_timestepper%prev_dt
   endif
   
   ! default null id_string --> global_prefix-restart.chk
@@ -3154,7 +3154,7 @@ end subroutine StepperCheckpoint
 
 ! ************************************************************************** !
 
-subroutine TimestepperRestart(realization,flow_stepper,tran_stepper, &
+subroutine TimestepperRestart(realization,flow_timestepper,tran_timestepper, &
                               flow_read,transport_read,activity_coefs_read)
   ! 
   ! Calls appropriate routines to read checkpoint file and
@@ -3171,8 +3171,8 @@ subroutine TimestepperRestart(realization,flow_stepper,tran_stepper, &
   implicit none
 
   type(realization_type) :: realization
-  type(stepper_type), pointer :: flow_stepper
-  type(stepper_type), pointer :: tran_stepper
+  type(timestepper_type), pointer :: flow_timestepper
+  type(timestepper_type), pointer :: tran_timestepper
   PetscBool :: activity_coefs_read
   PetscBool :: flow_read
   PetscBool :: transport_read
@@ -3201,70 +3201,70 @@ subroutine TimestepperRestart(realization,flow_stepper,tran_stepper, &
                flow_read,transport_read,activity_coefs_read)
   if (Uninitialized(option%restart_time)) then
     option%time = max(option%flow_time,option%tran_time)
-    if (associated(flow_stepper) .and. flow_read) then
-      flow_stepper%steps = flow_steps
-      flow_stepper%cumulative_newton_iterations = flow_cumulative_newton_iterations
-      flow_stepper%cumulative_time_step_cuts = flow_cumulative_time_step_cuts
-      flow_stepper%cumulative_linear_iterations = flow_cumulative_linear_iterations
-      flow_stepper%cumulative_solver_time = flow_cum_solver_time
-      flow_stepper%prev_dt = flow_prev_dt
-      if (.not.flow_stepper%run_as_steady_state) then
-        flow_stepper%num_constant_time_steps = flow_num_constant_time_steps
-        flow_stepper%num_newton_iterations = flow_num_newton_iterations
+    if (associated(flow_timestepper) .and. flow_read) then
+      flow_timestepper%steps = flow_steps
+      flow_timestepper%cumulative_newton_iterations = flow_cumulative_newton_iterations
+      flow_timestepper%cumulative_time_step_cuts = flow_cumulative_time_step_cuts
+      flow_timestepper%cumulative_linear_iterations = flow_cumulative_linear_iterations
+      flow_timestepper%cumulative_solver_time = flow_cum_solver_time
+      flow_timestepper%prev_dt = flow_prev_dt
+      if (.not.flow_timestepper%run_as_steady_state) then
+        flow_timestepper%num_constant_time_steps = flow_num_constant_time_steps
+        flow_timestepper%num_newton_iterations = flow_num_newton_iterations
       endif
     endif
-    if (associated(tran_stepper) .and. transport_read) then
-      tran_stepper%steps = tran_steps
-      tran_stepper%cumulative_newton_iterations = tran_cumulative_newton_iterations
-      tran_stepper%cumulative_time_step_cuts = tran_cumulative_time_step_cuts
-      tran_stepper%cumulative_linear_iterations = tran_cumulative_linear_iterations
-      tran_stepper%cumulative_solver_time = tran_cum_solver_time
-      tran_stepper%num_constant_time_steps = tran_num_constant_time_steps
-      tran_stepper%num_newton_iterations = tran_num_newton_iterations
-      tran_stepper%prev_dt = tran_prev_dt
+    if (associated(tran_timestepper) .and. transport_read) then
+      tran_timestepper%steps = tran_steps
+      tran_timestepper%cumulative_newton_iterations = tran_cumulative_newton_iterations
+      tran_timestepper%cumulative_time_step_cuts = tran_cumulative_time_step_cuts
+      tran_timestepper%cumulative_linear_iterations = tran_cumulative_linear_iterations
+      tran_timestepper%cumulative_solver_time = tran_cum_solver_time
+      tran_timestepper%num_constant_time_steps = tran_num_constant_time_steps
+      tran_timestepper%num_newton_iterations = tran_num_newton_iterations
+      tran_timestepper%prev_dt = tran_prev_dt
     endif
   else
     option%time = option%restart_time
     option%flow_time = option%restart_time
     option%tran_time = option%restart_time
-    if (associated(flow_stepper)) then
-      option%flow_dt = flow_stepper%dt_min
-      flow_stepper%steps = 0
-      flow_stepper%cumulative_newton_iterations = 0
-      flow_stepper%cumulative_time_step_cuts = 0
-      flow_stepper%cumulative_linear_iterations = 0
-      flow_stepper%cumulative_solver_time = 0.d0
-      flow_stepper%num_constant_time_steps = 0
-      flow_stepper%num_newton_iterations = 0
-      flow_stepper%prev_dt = 0.d0
+    if (associated(flow_timestepper)) then
+      option%flow_dt = flow_timestepper%dt_min
+      flow_timestepper%steps = 0
+      flow_timestepper%cumulative_newton_iterations = 0
+      flow_timestepper%cumulative_time_step_cuts = 0
+      flow_timestepper%cumulative_linear_iterations = 0
+      flow_timestepper%cumulative_solver_time = 0.d0
+      flow_timestepper%num_constant_time_steps = 0
+      flow_timestepper%num_newton_iterations = 0
+      flow_timestepper%prev_dt = 0.d0
     endif
-    if (associated(tran_stepper)) then
-      option%tran_dt = tran_stepper%dt_min
-      tran_stepper%steps = 0
-      tran_stepper%cumulative_newton_iterations = 0
-      tran_stepper%cumulative_time_step_cuts = 0
-      tran_stepper%cumulative_linear_iterations = 0
-      tran_stepper%cumulative_solver_time = 0.d0
-      tran_stepper%num_constant_time_steps = 0
-      tran_stepper%num_newton_iterations = 0
-      tran_stepper%prev_dt = 0.d0
+    if (associated(tran_timestepper)) then
+      option%tran_dt = tran_timestepper%dt_min
+      tran_timestepper%steps = 0
+      tran_timestepper%cumulative_newton_iterations = 0
+      tran_timestepper%cumulative_time_step_cuts = 0
+      tran_timestepper%cumulative_linear_iterations = 0
+      tran_timestepper%cumulative_solver_time = 0.d0
+      tran_timestepper%num_constant_time_steps = 0
+      tran_timestepper%num_newton_iterations = 0
+      tran_timestepper%prev_dt = 0.d0
     endif
     option%match_waypoint = PETSC_FALSE
     realization%output_option%plot_number = 0
   endif
   
-  if (associated(flow_stepper)) flow_stepper%cur_waypoint => &
-    WaypointReturnAtTime(realization%waypoints,option%time)
-  if (associated(tran_stepper)) tran_stepper%cur_waypoint => &
-    WaypointReturnAtTime(realization%waypoints,option%time)
+  if (associated(flow_timestepper)) flow_timestepper%cur_waypoint => &
+    WaypointReturnAtTime(realization%waypoint_list,option%time)
+  if (associated(tran_timestepper)) tran_timestepper%cur_waypoint => &
+    WaypointReturnAtTime(realization%waypoint_list,option%time)
 
   if (flow_read) then
-    flow_stepper%target_time = option%flow_time
+    flow_timestepper%target_time = option%flow_time
     call StepperUpdateFlowAuxVars(realization)
   endif
 
   if (transport_read) then
-    tran_stepper%target_time = option%tran_time
+    tran_timestepper%target_time = option%tran_time
     ! This is here since we need to recalculate the secondary complexes
     ! if they exist.  DO NOT update activity coefficients!!! - geh
     if (realization%reaction%use_full_geochemistry) then
@@ -3315,7 +3315,7 @@ subroutine TimestepperCheckCFLLimit(stepper,realization)
   
   implicit none
 
-  type(stepper_type) :: stepper
+  type(timestepper_type) :: stepper
   type(realization_type) :: realization
   
   PetscReal :: dt_cfl_1
@@ -3340,7 +3340,7 @@ subroutine TimestepperEnforceCFLLimit(stepper,option,output_option)
 
   implicit none
 
-  type(stepper_type) :: stepper
+  type(timestepper_type) :: stepper
   type(option_type) :: option
   type(output_option_type) :: output_option
   
@@ -3373,7 +3373,7 @@ subroutine TimestepperPrintInfo(stepper,fid,header,option)
   
   implicit none
   
-  type(stepper_type) :: stepper
+  type(timestepper_type) :: stepper
   PetscInt :: fid
   character(len=MAXSTRINGLENGTH) :: header
   character(len=MAXSTRINGLENGTH) :: string
@@ -3416,7 +3416,7 @@ subroutine TimestepperDestroy(stepper)
 
   implicit none
   
-  type(stepper_type), pointer :: stepper
+  type(timestepper_type), pointer :: stepper
   
   if (.not.associated(stepper)) return
     

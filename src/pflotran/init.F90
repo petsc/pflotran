@@ -101,8 +101,8 @@ subroutine Init(simulation)
   type(simulation_type) :: simulation
   character(len=MAXSTRINGLENGTH) :: filename, filename_out
 
-  type(stepper_type), pointer :: flow_stepper
-  type(stepper_type), pointer :: tran_stepper
+  type(timestepper_type), pointer :: flow_timestepper
+  type(timestepper_type), pointer :: tran_timestepper
   type(solver_type), pointer :: flow_solver
   type(solver_type), pointer :: tran_solver
   type(realization_type), pointer :: realization
@@ -124,12 +124,12 @@ subroutine Init(simulation)
   PetscReal :: dum1
   PetscReal :: min_value
   SNESLineSearch :: linesearch
-  type(stepper_type), pointer               :: surf_flow_stepper
+  type(timestepper_type), pointer               :: surf_flow_timestepper
   type(solver_type), pointer                :: surf_flow_solver
   type(surface_field_type), pointer         :: surf_field
   type(surface_realization_type), pointer   :: surf_realization
   type(solver_type), pointer                :: geomech_solver
-  type(stepper_type), pointer               :: geomech_stepper
+  type(timestepper_type), pointer               :: geomech_timestepper
   type(geomech_field_type), pointer         :: geomech_field
   type(geomech_realization_type), pointer   :: geomech_realization
 
@@ -138,8 +138,8 @@ subroutine Init(simulation)
   call PetscLogEventBegin(logging%event_init,ierr);CHKERRQ(ierr)
   
   ! set pointers to objects
-  flow_stepper => simulation%flow_stepper
-  tran_stepper => simulation%tran_stepper
+  flow_timestepper => simulation%flow_timestepper
+  tran_timestepper => simulation%tran_timestepper
   realization => simulation%realization
   discretization => realization%discretization
   option => realization%option
@@ -147,10 +147,10 @@ subroutine Init(simulation)
   debug => realization%debug
   input => realization%input
   surf_realization  => simulation%surf_realization
-  surf_flow_stepper => simulation%surf_flow_stepper
+  surf_flow_timestepper => simulation%surf_flow_timestepper
   surf_field        => surf_realization%surf_field  
   geomech_realization => simulation%geomech_realization
-  geomech_stepper => simulation%geomech_stepper
+  geomech_timestepper => simulation%geomech_timestepper
   geomech_field => geomech_realization%geomech_field
   
   nullify(flow_solver)
@@ -199,47 +199,47 @@ subroutine Init(simulation)
   call OptionCheckCommandLine(option)
 
   waypoint_list => WaypointListCreate()
-  realization%waypoints => waypoint_list
+  realization%waypoint_list => waypoint_list
   
   ! initialize flow mode
   if (len_trim(option%flowmode) > 0) then
     ! set the operational mode (e.g.  MPH_MODE, etc)
     call setFlowMode(option)
-    flow_solver => flow_stepper%solver
+    flow_solver => flow_timestepper%solver
   else
     option%nphase = 1
     option%liquid_phase = 1
     option%use_isothermal = PETSC_TRUE  ! assume default isothermal when only transport
-    call TimestepperDestroy(simulation%flow_stepper)
-    nullify(flow_stepper)
+    call TimestepperDestroy(simulation%flow_timestepper)
+    nullify(flow_timestepper)
   endif
     
   ! initialize transport mode
   if (option%ntrandof > 0) then
-    tran_solver => tran_stepper%solver
+    tran_solver => tran_timestepper%solver
   else
-    call TimestepperDestroy(simulation%tran_stepper)
-    nullify(tran_stepper)
+    call TimestepperDestroy(simulation%tran_timestepper)
+    nullify(tran_timestepper)
   endif
 
   ! initialize surface-flow mode
   if (option%surf_flow_on) then
     call setSurfaceFlowMode(option)
-    surf_flow_solver => surf_flow_stepper%solver
+    surf_flow_solver => surf_flow_timestepper%solver
     waypoint_list => WaypointListCreate()
-    surf_realization%waypoints => waypoint_list
+    surf_realization%waypoint_list => waypoint_list
   else
-    call TimestepperDestroy(simulation%surf_flow_stepper)
+    call TimestepperDestroy(simulation%surf_flow_timestepper)
     nullify(surf_flow_solver)
   endif
 
   ! initialize surface-flow mode
   if (option%ngeomechdof > 0) then
-    geomech_solver => geomech_stepper%solver
+    geomech_solver => geomech_timestepper%solver
     waypoint_list => WaypointListCreate()
-    geomech_realization%waypoints => waypoint_list
+    geomech_realization%waypoint_list => waypoint_list
   else
-    call TimestepperDestroy(simulation%geomech_stepper)
+    call TimestepperDestroy(simulation%geomech_timestepper)
     nullify(geomech_solver)
   endif
 
@@ -508,10 +508,10 @@ subroutine Init(simulation)
 
     ! shell for custom convergence test.  The default SNES convergence test  
     ! is call within this function. 
-    flow_stepper%convergence_context => &
+    flow_timestepper%convergence_context => &
       ConvergenceContextCreate(flow_solver,option,grid)
     call SNESSetConvergenceTest(flow_solver%snes,ConvergenceTest, &
-                                flow_stepper%convergence_context, &
+                                flow_timestepper%convergence_context, &
                                 PETSC_NULL_FUNCTION,ierr);CHKERRQ(ierr)
 
     
@@ -586,7 +586,7 @@ subroutine Init(simulation)
                               ierr);CHKERRQ(ierr)
       end select
       call TSSetDuration(surf_flow_solver%ts,ONE_INTEGER, &
-                         simulation%surf_realization%waypoints%last%time, &
+                         simulation%surf_realization%waypoint_list%last%time, &
                          ierr);CHKERRQ(ierr)
 
     endif ! if (option%surf_flow_on)
@@ -648,10 +648,10 @@ subroutine Init(simulation)
 
     ! shell for custom convergence test.  The default SNES convergence test
     ! is call within this function.
-    geomech_stepper%convergence_context => &
+    geomech_timestepper%convergence_context => &
     ConvergenceContextCreate(geomech_solver,option,grid) ! Need to change this for geomech
     call SNESSetConvergenceTest(geomech_solver%snes,ConvergenceTest, &
-                                geomech_stepper%convergence_context, &
+                                geomech_timestepper%convergence_context, &
                                 PETSC_NULL_FUNCTION,ierr);CHKERRQ(ierr)
 
     call printMsg(option,"  Finished setting up GEOMECH SNES ")
@@ -747,10 +747,10 @@ subroutine Init(simulation)
 
       ! shell for custom convergence test.  The default SNES convergence test  
       ! is call within this function. 
-      tran_stepper%convergence_context => &
+      tran_timestepper%convergence_context => &
         ConvergenceContextCreate(tran_solver,option,grid)
       call SNESSetConvergenceTest(tran_solver%snes,ConvergenceTest, &
-                                  tran_stepper%convergence_context, &
+                                  tran_timestepper%convergence_context, &
                                   PETSC_NULL_FUNCTION,ierr);CHKERRQ(ierr)
 
       ! this update check must be in place, otherwise reactive transport is likely
@@ -809,18 +809,18 @@ subroutine Init(simulation)
     ! add waypoints associated with boundary conditions, source/sinks etc. to list
     call RealizationAddWaypointsToList(realization)
     ! fill in holes in waypoint data
-    call WaypointListFillIn(option,realization%waypoints)
-    call WaypointListRemoveExtraWaypnts(option,realization%waypoints)
+    call WaypointListFillIn(option,realization%waypoint_list)
+    call WaypointListRemoveExtraWaypnts(option,realization%waypoint_list)
   ! geh- no longer needed
   !  ! convert times from input time to seconds
-  !  call WaypointConvertTimes(realization%waypoints,realization%output_option%tconv)
+  !  call WaypointConvertTimes(realization%waypoint_list,realization%output_option%tconv)
   endif
   
-  if (associated(flow_stepper)) then
-    flow_stepper%cur_waypoint => realization%waypoints%first
+  if (associated(flow_timestepper)) then
+    flow_timestepper%cur_waypoint => realization%waypoint_list%first
   endif
-  if (associated(tran_stepper)) then
-    tran_stepper%cur_waypoint => realization%waypoints%first
+  if (associated(tran_timestepper)) then
+    tran_timestepper%cur_waypoint => realization%waypoint_list%first
   endif
   
   ! initialize global auxiliary variable object
@@ -983,17 +983,17 @@ subroutine Init(simulation)
 
   
   ! print info
-  if (associated(flow_stepper)) then
+  if (associated(flow_timestepper)) then
     string = 'Flow Stepper:'
-    call TimestepperPrintInfo(flow_stepper,option%fid_out,string,option)
+    call TimestepperPrintInfo(flow_timestepper,option%fid_out,string,option)
   endif    
-  if (associated(tran_stepper)) then
+  if (associated(tran_timestepper)) then
     string = 'Transport Stepper:'
-    call TimestepperPrintInfo(tran_stepper,option%fid_out,string,option)
+    call TimestepperPrintInfo(tran_timestepper,option%fid_out,string,option)
   endif    
    if (option%surf_flow_on) then
     string = 'Surface Flow Stepper:'
-    call TimestepperPrintInfo(surf_flow_stepper,option%fid_out,string,option)
+    call TimestepperPrintInfo(surf_flow_timestepper,option%fid_out,string,option)
   endif
 
   if (associated(flow_solver)) then
@@ -1045,7 +1045,7 @@ subroutine Init(simulation)
     call verifyAllCouplers(realization)
   endif
   if (debug%print_waypoints) then
-    call WaypointListPrint(realization%waypoints,option,realization%output_option)
+    call WaypointListPrint(realization%waypoint_list,option,realization%output_option)
   endif
 
 #ifdef OS_STATISTICS
@@ -1087,10 +1087,10 @@ subroutine Init(simulation)
 
     ! add waypoints associated with boundary conditions, source/sinks etc. to list
     call SurfRealizAddWaypointsToList(simulation%surf_realization)
-    call WaypointListFillIn(option,simulation%surf_realization%waypoints)
-    call WaypointListRemoveExtraWaypnts(option,simulation%surf_realization%waypoints)
-    if (associated(flow_stepper)) then
-      simulation%surf_flow_stepper%cur_waypoint => simulation%surf_realization%waypoints%first
+    call WaypointListFillIn(option,simulation%surf_realization%waypoint_list)
+    call WaypointListRemoveExtraWaypnts(option,simulation%surf_realization%waypoint_list)
+    if (associated(flow_timestepper)) then
+      simulation%surf_flow_timestepper%cur_waypoint => simulation%surf_realization%waypoint_list%first
     endif
 
     select case(option%iflowmode)
@@ -1155,9 +1155,9 @@ subroutine Init(simulation)
     call GeomechRealizPrintCouplers(simulation%geomech_realization)  
     call GeomechRealizAddWaypointsToList(simulation%geomech_realization)
     call GeomechGridElemSharedByNodes(geomech_realization)
-    call WaypointListFillIn(option,simulation%geomech_realization%waypoints)
+    call WaypointListFillIn(option,simulation%geomech_realization%waypoint_list)
     call WaypointListRemoveExtraWaypnts(option, &
-                                    simulation%geomech_realization%waypoints)
+                                    simulation%geomech_realization%waypoint_list)
     call GeomechForceSetup(simulation%geomech_realization)
     call GeomechGlobalSetup(simulation%geomech_realization)
     
@@ -1513,9 +1513,9 @@ subroutine InitReadInput(simulation)
   type(solver_type), pointer :: tran_solver
   type(solver_type), pointer :: default_solver
   type(solver_type), pointer :: solver_pointer
-  type(stepper_type), pointer :: flow_stepper
-  type(stepper_type), pointer :: tran_stepper
-  type(stepper_type), pointer :: default_stepper
+  type(timestepper_type), pointer :: flow_timestepper
+  type(timestepper_type), pointer :: tran_timestepper
+  type(timestepper_type), pointer :: default_timestepper
   type(reaction_type), pointer :: reaction
   type(output_option_type), pointer :: output_option
   type(uniform_velocity_dataset_type), pointer :: uniform_velocity_dataset
@@ -1525,8 +1525,8 @@ subroutine InitReadInput(simulation)
   type(input_type), pointer :: input
   type(geomech_realization_type), pointer :: geomech_realization
 
-  nullify(flow_stepper)
-  nullify(tran_stepper)
+  nullify(flow_timestepper)
+  nullify(tran_timestepper)
   nullify(flow_solver)
   nullify(tran_solver)
   
@@ -1543,22 +1543,22 @@ subroutine InitReadInput(simulation)
   reaction => realization%reaction
   input => realization%input
 
-  tran_stepper => simulation%tran_stepper
-  if (associated(tran_stepper)) then
-    tran_solver => tran_stepper%solver
+  tran_timestepper => simulation%tran_timestepper
+  if (associated(tran_timestepper)) then
+    tran_solver => tran_timestepper%solver
     tran_solver%itype = TRANSPORT_CLASS
   endif
-  flow_stepper => simulation%flow_stepper
-  if (associated(flow_stepper)) then
-    flow_solver => flow_stepper%solver
+  flow_timestepper => simulation%flow_timestepper
+  if (associated(flow_timestepper)) then
+    flow_solver => flow_timestepper%solver
     flow_solver%itype = FLOW_CLASS
   endif
 
-  if (associated(flow_stepper)) then
-    default_stepper => flow_stepper
+  if (associated(flow_timestepper)) then
+    default_timestepper => flow_timestepper
     default_solver => flow_solver
   else
-    default_stepper => tran_stepper
+    default_timestepper => tran_timestepper
     default_solver => tran_solver
   endif
 
@@ -2094,19 +2094,19 @@ subroutine InitReadInput(simulation)
         select case(word)
           case('FLOW')
             if (associated(flow_solver)) then
-              call TimestepperRead(flow_stepper,input,option)
+              call TimestepperRead(flow_timestepper,input,option)
             else
               call InputSkipToEnd(input,option,card)
             endif
           case('TRAN','TRANSPORT')
             if (associated(tran_solver)) then
-              call TimestepperRead(tran_stepper,input,option)
+              call TimestepperRead(tran_timestepper,input,option)
             else
               call InputSkipToEnd(input,option,card)
             endif
           case default
-            if (associated(default_stepper)) then
-              call TimestepperRead(default_stepper,input,option)
+            if (associated(default_timestepper)) then
+              call TimestepperRead(default_timestepper,input,option)
             else
               call InputSkipToEnd(input,option,card)
             endif
@@ -2338,7 +2338,7 @@ subroutine InitReadInput(simulation)
                     waypoint => WaypointCreate()
                     waypoint%time = temp_real*units_conversion
                     waypoint%print_output = PETSC_TRUE    
-                    call WaypointInsertInList(waypoint,realization%waypoints)
+                    call WaypointInsertInList(waypoint,realization%waypoint_list)
                   endif
                 enddo
                 if (.not.continuation_flag) exit
@@ -2423,7 +2423,7 @@ subroutine InitReadInput(simulation)
                         waypoint => WaypointCreate()
                         waypoint%time = temp_real
                         waypoint%print_output = PETSC_TRUE    
-                        call WaypointInsertInList(waypoint,realization%waypoints)
+                        call WaypointInsertInList(waypoint,realization%waypoint_list)
                         temp_real = temp_real + output_option%periodic_output_time_incr
                         if (temp_real > temp_real2) exit
                       enddo
@@ -2667,13 +2667,13 @@ subroutine InitReadInput(simulation)
               waypoint%final = PETSC_TRUE
               waypoint%time = temp_real*realization%output_option%tconv
               waypoint%print_output = PETSC_TRUE              
-              call WaypointInsertInList(waypoint,realization%waypoints)
+              call WaypointInsertInList(waypoint,realization%waypoint_list)
             case('INITIAL_TIMESTEP_SIZE')
               call InputReadDouble(input,option,temp_real)
               call InputErrorMsg(input,option,'Initial Timestep Size','TIME') 
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'Initial Timestep Size Time Units','TIME')
-              default_stepper%dt_min = temp_real*UnitsConvertToInternal(word,option)
+              default_timestepper%dt_min = temp_real*UnitsConvertToInternal(word,option)
             case('MAXIMUM_TIMESTEP_SIZE')
               call InputReadDouble(input,option,temp_real)
               call InputErrorMsg(input,option,'Maximum Timestep Size','TIME') 
@@ -2698,7 +2698,7 @@ subroutine InitReadInput(simulation)
               else
                 waypoint%time = 0.d0
               endif     
-              call WaypointInsertInList(waypoint,realization%waypoints)
+              call WaypointInsertInList(waypoint,realization%waypoint_list)
             case default
               option%io_buffer = 'Keyword: ' // trim(word) // &
                                  ' not recognized in TIME.'
@@ -2706,51 +2706,51 @@ subroutine InitReadInput(simulation)
           end select
         enddo
 
-        if (associated(flow_stepper)) then
-          flow_stepper%dt_min = default_stepper%dt_min
+        if (associated(flow_timestepper)) then
+          flow_timestepper%dt_min = default_timestepper%dt_min
         endif
-        if (associated(tran_stepper)) then
-          tran_stepper%dt_min = default_stepper%dt_min
+        if (associated(tran_timestepper)) then
+          tran_timestepper%dt_min = default_timestepper%dt_min
         endif
-        option%flow_dt = default_stepper%dt_min
-        option%tran_dt = default_stepper%dt_min
+        option%flow_dt = default_timestepper%dt_min
+        option%tran_dt = default_timestepper%dt_min
       
 !.....................
       case ('SURFACE_FLOW')
         call SurfaceInitReadInput(simulation%surf_realization, &
-                              simulation%surf_flow_stepper%solver,input,option)
-        simulation%surf_flow_stepper%dt_min = simulation%surf_realization%dt_min
-        simulation%surf_flow_stepper%dt_max = simulation%surf_realization%dt_max
+                              simulation%surf_flow_timestepper%solver,input,option)
+        simulation%surf_flow_timestepper%dt_min = simulation%surf_realization%dt_min
+        simulation%surf_flow_timestepper%dt_max = simulation%surf_realization%dt_max
         option%surf_subsurf_coupling_flow_dt = simulation%surf_realization%dt_coupling
-        option%surf_flow_dt=simulation%surf_flow_stepper%dt_min
+        option%surf_flow_dt=simulation%surf_flow_timestepper%dt_min
 
         ! Add first waypoint
         waypoint => WaypointCreate()
         waypoint%time = 0.d0
-        call WaypointInsertInList(waypoint,simulation%surf_realization%waypoints)
+        call WaypointInsertInList(waypoint,simulation%surf_realization%waypoint_list)
 
         ! Add final_time waypoint to surface_realization
         waypoint => WaypointCreate()
         waypoint%final = PETSC_TRUE
-        waypoint%time = realization%waypoints%last%time
+        waypoint%time = realization%waypoint_list%last%time
         waypoint%print_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,simulation%surf_realization%waypoints)
+        call WaypointInsertInList(waypoint,simulation%surf_realization%waypoint_list)
 
 !......................
       case ('GEOMECHANICS')
         call GeomechanicsInitReadInput(geomech_realization, &
-                         simulation%geomech_stepper%solver,input,option)
+                         simulation%geomech_timestepper%solver,input,option)
         ! Add first waypoint
         waypoint => WaypointCreate()
         waypoint%time = 0.d0
-        call WaypointInsertInList(waypoint,simulation%geomech_realization%waypoints)
+        call WaypointInsertInList(waypoint,simulation%geomech_realization%waypoint_list)
 
         ! Add final_time waypoint to geomech_realization
         waypoint => WaypointCreate()
         waypoint%final = PETSC_TRUE
-        waypoint%time = realization%waypoints%last%time
+        waypoint%time = realization%waypoint_list%last%time
         waypoint%print_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,simulation%geomech_realization%waypoints)
+        call WaypointInsertInList(waypoint,simulation%geomech_realization%waypoint_list)
 
 !......................
       case ('HDF5_READ_GROUP_SIZE')
