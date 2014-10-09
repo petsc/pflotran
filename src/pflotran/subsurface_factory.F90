@@ -210,7 +210,7 @@ subroutine HijackSimulation(simulation_old,simulation)
 
     flow_process_model_coupler => PMCSubsurfaceCreate()
     flow_process_model_coupler%option => option
-    flow_process_model_coupler%pm_list => cur_process_model
+    flow_process_model_coupler%pms => cur_process_model
     flow_process_model_coupler%pm_ptr%ptr => cur_process_model
 !    flow_process_model_coupler%timestepper => simulation_old%flow_stepper
     flow_process_model_coupler%realization => realization
@@ -230,7 +230,7 @@ subroutine HijackSimulation(simulation_old,simulation)
    
     tran_process_model_coupler => PMCSubsurfaceCreate()
     tran_process_model_coupler%option => option
-    tran_process_model_coupler%pm_list => cur_process_model
+    tran_process_model_coupler%pms => cur_process_model
     tran_process_model_coupler%pm_ptr%ptr => cur_process_model
 !    tran_process_model_coupler%timestepper => simulation_old%tran_stepper
     tran_process_model_coupler%realization => realization
@@ -275,7 +275,7 @@ subroutine HijackSimulation(simulation_old,simulation)
     cur_process_model_coupler => cur_process_model_coupler_top
     do
       if (.not.associated(cur_process_model_coupler)) exit
-      cur_process_model => cur_process_model_coupler%pm_list
+      cur_process_model => cur_process_model_coupler%pms
       do
         if (.not.associated(cur_process_model)) exit
         ! set realization

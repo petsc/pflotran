@@ -99,7 +99,7 @@ subroutine PMCGeomechanicsRunToTime(this,sync_time,stop_flag)
   PetscInt :: local_stop_flag
   class(pm_base_type), pointer :: cur_pm
 
-  this%option%io_buffer = trim(this%name) // ':' // trim(this%pm_list%name)
+  this%option%io_buffer = trim(this%name) // ':' // trim(this%pms%name)
   call printVerboseMsg(this%option)
   
   ! Get data of other process-model
@@ -107,12 +107,12 @@ subroutine PMCGeomechanicsRunToTime(this,sync_time,stop_flag)
 
   local_stop_flag = 0
 
-  call this%timestepper%StepDT(this%pm_list,local_stop_flag)
+  call this%timestepper%StepDT(this%pms,local_stop_flag)
 
   ! Have to loop over all process models coupled in this object and update
   ! the time step size.  Still need code to force all process models to
   ! use the same time step size if tightly or iteratively coupled.
-  cur_pm => this%pm_list
+  cur_pm => this%pms
   do
     if (.not.associated(cur_pm)) exit
     ! have to update option%time for conditions

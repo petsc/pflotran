@@ -243,7 +243,7 @@ subroutine HijackGeomechanicsSimulation(simulation_old,simulation)
 
     geomech_process_model_coupler => PMCGeomechanicsCreate()
     geomech_process_model_coupler%option => option
-    geomech_process_model_coupler%pm_list => cur_process_model
+    geomech_process_model_coupler%pms => cur_process_model
     geomech_process_model_coupler%pm_ptr%ptr => cur_process_model
     call HijackTimestepper(simulation_old%geomech_stepper, &
                            geomech_process_model_coupler%timestepper)
@@ -266,7 +266,7 @@ subroutine HijackGeomechanicsSimulation(simulation_old,simulation)
     cur_process_model_coupler => cur_process_model_coupler_top
     do
       if (.not.associated(cur_process_model_coupler)) exit
-      cur_process_model => cur_process_model_coupler%pm_list
+      cur_process_model => cur_process_model_coupler%pms
       do
         if (.not.associated(cur_process_model)) exit
         select type(cur_process_model)

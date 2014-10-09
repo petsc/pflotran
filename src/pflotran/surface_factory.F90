@@ -145,7 +145,7 @@ subroutine HijackSurfaceSimulation(simulation_old,simulation)
 
     surf_flow_process_model_coupler => PMCSurfaceCreate()
     surf_flow_process_model_coupler%option => option
-    surf_flow_process_model_coupler%pm_list => cur_process_model
+    surf_flow_process_model_coupler%pms => cur_process_model
     surf_flow_process_model_coupler%pm_ptr%ptr => cur_process_model
     call HijackTimestepper(simulation_old%surf_flow_stepper, &
                            surf_flow_process_model_coupler%timestepper)
@@ -171,7 +171,7 @@ subroutine HijackSurfaceSimulation(simulation_old,simulation)
     cur_process_model_coupler => cur_process_model_coupler_top
     do
       if (.not.associated(cur_process_model_coupler)) exit
-      cur_process_model => cur_process_model_coupler%pm_list
+      cur_process_model => cur_process_model_coupler%pms
       do
         if (.not.associated(cur_process_model)) exit
         select type(cur_process_model)
