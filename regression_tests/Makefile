@@ -196,3 +196,7 @@ clean-tests :
 	-rm -f ngee/sink.h5 
 	-rm -f ngee/source-mas.dat
 	-rm -f ngee/source.h5
+	-rm -f default/543/543_flow_and_tracer_dbase.h5
+	-rm -f wipp/bragflo/gas_generation_2d.h5
+	-rm -f wipp/bragflo/gas_generation_one_cell.h5
+
