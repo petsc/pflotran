@@ -1808,10 +1808,9 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
   PetscReal :: dist_gravity  ! distance along gravity vector
   PetscInt :: ispec
   PetscReal :: fluxm(option%nflowspec),fluxe,q
-  PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,difff,diffdp, DK,Dq
+  PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,DK,Dq
   PetscReal :: upweight,density_ave,cond,gravity,dphi
   
-  PetscReal :: ddifff_dp_up, ddifff_dp_dn, ddifff_dt_up, ddifff_dt_dn
   PetscReal :: dden_ave_dp_up, dden_ave_dp_dn, dden_ave_dt_up, dden_ave_dt_dn
   PetscReal :: dgravity_dden_up, dgravity_dden_dn
   PetscReal :: dphi_dp_up, dphi_dp_dn, dphi_dt_up, dphi_dt_dn
@@ -1880,8 +1879,7 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
   tor_dn = material_auxvar_dn%tortuosity
 
   Dq = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
-  diffdp = (por_up*tor_up*por_dn*tor_dn) / (dd_dn*por_up*tor_up + dd_up*por_dn*tor_dn)*area
-  
+
   fluxm = 0.D0
   fluxe = 0.D0
   v_darcy = 0.D0 
@@ -1893,10 +1891,6 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
   dden_ave_dt_up = 0.d0
   dden_ave_dp_dn = 0.d0
   dden_ave_dt_dn = 0.d0
-  ddifff_dp_up = 0.d0
-  ddifff_dp_dn = 0.d0
-  ddifff_dt_up = 0.d0
-  ddifff_dt_dn = 0.d0
   dgravity_dden_up = 0.d0
   dgravity_dden_dn = 0.d0
   dphi_dp_up = 0.d0
@@ -2039,16 +2033,6 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
     endif
   endif 
 
-  difff = diffdp*0.25D0*(global_auxvar_up%sat(1) + global_auxvar_dn%sat(1))* &
-                          (global_auxvar_up%den(1) + global_auxvar_dn%den(1))
-  ddifff_dp_up = diffdp*0.25D0*(auxvar_up%dsat_dp*(global_auxvar_up%den(1) + global_auxvar_dn%den(1))+ &
-                (global_auxvar_up%sat(1) + global_auxvar_dn%sat(1))*auxvar_up%dden_dp)
-  ddifff_dt_up = diffdp*0.25D0*(global_auxvar_up%sat(1) + global_auxvar_dn%sat(1))*auxvar_up%dden_dt
-
-  ddifff_dp_dn = diffdp*0.25D0*(auxvar_dn%dsat_dp*(global_auxvar_up%den(1) + global_auxvar_dn%den(1))+ &
-                (global_auxvar_up%sat(1) + global_auxvar_dn%sat(1))*auxvar_dn%dden_dp)
-  ddifff_dt_dn = diffdp*0.25D0*(global_auxvar_up%sat(1) + global_auxvar_dn%sat(1))*auxvar_dn%dden_dt
-
   if (option%use_th_freezing) then
     ! Added by Satish Karra, updated 11/11/11
     satg_up = auxvar_up%sat_gas
@@ -2148,15 +2132,6 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
 #endif
    endif
 
-   ddifff_dt_up = diffdp*0.25d0*(auxvar_up%dsat_dt)*&
-        (global_auxvar_up%den(1) + global_auxvar_dn%den(1))
-   ddifff_dt_dn = diffdp*0.25d0*(auxvar_dn%dsat_dt)*&
-        (global_auxvar_up%den(1) + global_auxvar_dn%den(1))
-
-  !  Jup(2,2) = Jup(2,2) + ddifff_dt_up*0.5d0*(Diff_up + Diff_dn)* &
-  !                         (auxvar_up%xmol(2) - auxvar_dn%xmol(2))
-  !  Jdn(2,2) = Jdn(2,2) + ddifff_dt_dn*0.5d0*(Diff_up + Diff_dn)* &
-  !                         (auxvar_up%xmol(2) - auxvar_dn%xmol(2))
   endif ! if(use_th_freezing)
 
         
@@ -2435,7 +2410,7 @@ subroutine THFlux(auxvar_up,global_auxvar_up, &
   PetscReal :: Ke_up,Ke_dn   ! unfrozen soil Kersten numbers
   PetscInt :: ispec
   PetscReal :: fluxm(option%nflowspec),fluxe,q
-  PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,difff,diffdp, DK,Dq
+  PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,DK,Dq
   PetscReal :: upweight,density_ave,cond,gravity,dphi
   PetscReal, parameter :: epsilon = 1.d-6
 
@@ -2470,8 +2445,7 @@ subroutine THFlux(auxvar_up,global_auxvar_up, &
   tor_dn = material_auxvar_dn%tortuosity
 
   Dq = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
-  diffdp = (por_up*tor_up*por_dn*tor_dn) / (dd_dn*por_up*tor_up + dd_up*por_dn*tor_dn)*area
-  
+
   fluxm = 0.D0
   fluxe = 0.D0
   v_darcy = 0.D0  
@@ -2523,12 +2497,6 @@ subroutine THFlux(auxvar_up,global_auxvar_up, &
   endif 
 
   
-  difff = diffdp * 0.25D0*(global_auxvar_up%sat(1)+global_auxvar_dn%sat(1))* &
-                            (global_auxvar_up%den(1)+global_auxvar_dn%den(1))
-  !fluxm(2) = fluxm(2) + difff * .5D0 * (Diff_up + Diff_dn)* &
-  !               (auxvar_up%xmol(2) - auxvar_dn%xmol(2))
-
-
   if (option%use_th_freezing) then
     ! Added by Satish Karra, 10/24/11
     satg_up = auxvar_up%sat_gas
