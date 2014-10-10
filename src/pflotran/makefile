@@ -587,12 +587,12 @@ geomechanics_factory.o : condition_control.o geomechanics_discretization.o \
                          geomechanics_force.o geomechanics_realization.o \
                          geomechanics_simulation.o init.o input_aux.o \
                          logging.o option.o output.o output_aux.o \
-                         pflotran_constants.o pm_base.o \
-                         pm_geomechanics_force.o pm_base_pointer.o pmc_base.o \
-                         pmc_geomechanics.o simulation.o simulation_aux.o \
-                         simulation_base.o subsurface_factory.o \
-                         subsurface_simulation.o timestepper.o \
-                         timestepper_base.o timestepper_geomechanics.o
+                         pflotran_constants.o pm_base.o pm_base_pointer.o \
+                         pm_geomechanics_force.o pmc_base.o pmc_geomechanics.o \
+                         simulation.o simulation_aux.o simulation_base.o \
+                         subsurface_factory.o subsurface_simulation.o \
+                         timestepper.o timestepper_base.o \
+                         timestepper_geomechanics.o
 geomechanics_field.o : pflotran_constants.o
 geomechanics_force.o : discretization.o field.o geomech_grid.o \
                        geomech_grid_aux.o geomechanics_auxiliary.o \
@@ -820,6 +820,7 @@ pflotran_factory.o : input_aux.o logging.o multisimulation.o option.o \
                      pflotran_constants.o string.o
 pflotran_provenance.o :
 pm_base.o : option.o output_aux.o pflotran_constants.o realization_base.o
+pm_base_pointer.o : option.o pflotran_constants.o pm_base.o realization.o
 pm_flash2.o : flash2.o pflotran_constants.o pm_base.o pm_subsurface.o
 pm_general.o : field.o general.o general_aux.o global.o global_aux.o grid.o \
                material.o option.o pflotran_constants.o pm_base.o \
@@ -857,7 +858,6 @@ pm_surface_th.o : communicator_base.o condition.o discretization.o grid.o \
 pm_th.o : communicator_base.o discretization.o global.o grid.o option.o \
           pflotran_constants.o pm_base.o pm_subsurface.o realization.o \
           structured_communicator.o th.o unstructured_communicator.o
-pm_base_pointer.o : option.o pflotran_constants.o pm_base.o realization.o
 pmc_base.o : checkpoint.o logging.o option.o output.o output_aux.o \
              pflotran_constants.o pm_base.o pm_base_pointer.o simulation_aux.o \
              timestepper_base.o utility.o waypoint.o
@@ -970,9 +970,9 @@ richards.o : connection.o coupler.o debug.o discretization.o eos_water.o \
              srcsink_sandbox_downreg.o string.o utility.o variables.o
 richards_aux.o : eos_water.o global_aux.o material_aux.o matrix_buffer.o \
                  option.o pflotran_constants.o saturation_function.o utility.o
-richards_common.o : connection.o eos_water.o global_aux.o material.o \
-                    material_aux.o option.o pflotran_constants.o \
-                    richards_aux.o saturation_function.o utility.o
+richards_common.o : connection.o eos_water.o global_aux.o material_aux.o \
+                    option.o pflotran_constants.o richards_aux.o \
+                    saturation_function.o utility.o
 richards_lsm.o : connection.o coupler.o field.o global_aux.o grid.o logging.o \
                  material.o option.o patch.o pflotran_constants.o \
                  realization.o richards_aux.o richards_common.o \
@@ -1042,9 +1042,9 @@ subsurface.o : discretization.o field.o grid.o hdf5.o input_aux.o logging.o \
                realization.o region.o strata.o variables.o
 subsurface_factory.o : condition_control.o init.o input_aux.o logging.o \
                        option.o output.o output_aux.o pflotran_constants.o \
-                       pm_base.o pm_flash2.o pm_general.o pm_immis.o \
-                       pm_miscible.o pm_mphase.o pm_richards.o pm_rt.o \
-                       pm_subsurface.o pm_th.o pm_base_pointer.o pmc_base.o \
+                       pm_base.o pm_base_pointer.o pm_flash2.o pm_general.o \
+                       pm_immis.o pm_miscible.o pm_mphase.o pm_richards.o \
+                       pm_rt.o pm_subsurface.o pm_th.o pmc_base.o \
                        pmc_material.o pmc_subsurface.o reactive_transport.o \
                        realization.o simulation.o simulation_base.o strata.o \
                        subsurface_simulation.o timestepper.o timestepper_BE.o \
@@ -1066,8 +1066,8 @@ surface_complexation_aux.o : database_aux.o option.o pflotran_constants.o \
                              utility.o
 surface_factory.o : condition_control.o init.o input_aux.o logging.o option.o \
                     output.o output_aux.o output_surface.o \
-                    pflotran_constants.o pm_base.o pm_surface.o \
-                    pm_surface_flow.o pm_surface_th.o pm_base_pointer.o pmc_base.o \
+                    pflotran_constants.o pm_base.o pm_base_pointer.o \
+                    pm_surface.o pm_surface_flow.o pm_surface_th.o pmc_base.o \
                     pmc_surface.o simulation.o simulation_base.o \
                     surface_checkpoint.o surface_realization.o \
                     surface_simulation.o timestepper.o timestepper_base.o \
