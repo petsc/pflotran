@@ -80,27 +80,6 @@ module Material_module
     type(material_property_type), pointer :: ptr
   end type material_property_ptr_type
   
-  ! procedure pointer declarations
-  procedure(MaterialCompressSoilDummy), pointer :: &
-    MaterialCompressSoilPtr => null()
- 
-  ! interface blocks
-  interface
-    subroutine MaterialCompressSoilDummy(auxvar,pressure,compressed_porosity, &
-                                         dcompressed_porosity_dp)
-    use Material_Aux_class
-    implicit none
-    class(material_auxvar_type), intent(in) :: auxvar
-    PetscReal, intent(in) :: pressure
-    PetscReal, intent(out) :: compressed_porosity
-    PetscReal, intent(out) :: dcompressed_porosity_dp
-    end subroutine MaterialCompressSoilDummy
-  end interface 
-  
-  interface MaterialCompressSoil
-    procedure MaterialCompressSoilPtr
-  end interface
-  
   public :: MaterialPropertyCreate, &
             MaterialPropertyDestroy, &
             MaterialPropertyAddToList, &
@@ -112,7 +91,6 @@ module Material_module
             MaterialSetAuxVarVecLoc, &
             MaterialGetAuxVarVecLoc, &
             MaterialAuxVarCommunicate, &
-            MaterialCompressSoil, &
             MaterialPropertyRead, &
             MaterialInitAuxIndices, &
             MaterialAssignPropertyToAux, &
@@ -1659,68 +1637,6 @@ subroutine MaterialUpdatePorosity(Material,global_auxvars,porosity_loc)
   
 end subroutine MaterialUpdatePorosity
   
-! ************************************************************************** !
-
-subroutine MaterialCompressSoilLeijnse(auxvar,pressure, &
-                                       compressed_porosity, &
-                                       dcompressed_porosity_dp)
-  ! 
-  ! Calculates soil matrix compression based on Leijnse, 1992.
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 01/14/14
-  ! 
-
-  implicit none
-
-  class(material_auxvar_type), intent(in) :: auxvar
-  PetscReal, intent(in) :: pressure
-  PetscReal, intent(out) :: compressed_porosity
-  PetscReal, intent(out) :: dcompressed_porosity_dp
-  
-  PetscReal :: compressibility
-  PetscReal :: compression
-  PetscReal :: tempreal
-  
-  compressibility = auxvar%soil_properties(soil_compressibility_index)
-  compression = &
-    exp(-1.d0 * compressibility * &
-        (pressure - auxvar%soil_properties(soil_reference_pressure_index)))
-  tempreal = (1.d0 - auxvar%porosity) * compression
-  compressed_porosity = 1.d0 - tempreal
-  dcompressed_porosity_dp = tempreal * compressibility
-  
-end subroutine MaterialCompressSoilLeijnse
-
-! ************************************************************************** !
-
-subroutine MaterialCompressSoilBRAGFLO(auxvar,pressure, &
-                                       compressed_porosity, &
-                                       dcompressed_porosity_dp)
-  ! 
-  ! Calculates soil matrix compression based on Eq. 9.6.9 of BRAGFLO
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 01/14/14
-  ! 
-
-  implicit none
-
-  class(material_auxvar_type), intent(in) :: auxvar
-  PetscReal, intent(in) :: pressure
-  PetscReal, intent(out) :: compressed_porosity
-  PetscReal, intent(out) :: dcompressed_porosity_dp
-  
-  PetscReal :: compressibility
-  
-  compressibility = auxvar%soil_properties(soil_compressibility_index)
-  compressed_porosity = auxvar%porosity * &
-    exp(compressibility * &
-        (pressure - auxvar%soil_properties(soil_reference_pressure_index)))
-  dcompressed_porosity_dp = compressibility * compressed_porosity
-  
-end subroutine MaterialCompressSoilBRAGFLO
-
 ! ************************************************************************** !
 
 recursive subroutine MaterialPropertyDestroy(material_property)

@@ -49,8 +49,12 @@ subroutine RichardsAccumDerivative(rich_auxvar,global_auxvar, &
 
   use Option_module
   use Saturation_Function_module
-  use Material_module, only : MaterialCompressSoil
-  use Material_Aux_class
+  use Material_Aux_class, only : material_auxvar_type, &
+                                 soil_compressibility_index, &
+                                 MaterialAuxVarInit, &
+                                 MaterialAuxVarCopy, &
+                                 MaterialAuxVarStrip, &
+                                 MaterialCompressSoil
   
   implicit none
 
@@ -148,8 +152,9 @@ subroutine RichardsAccumulation(rich_auxvar,global_auxvar, &
   ! 
 
   use Option_module
-  use Material_module
-  use Material_Aux_class
+  use Material_Aux_class, only : material_auxvar_type, &
+                                 soil_compressibility_index, &
+                                 MaterialCompressSoil
   
   implicit none
 

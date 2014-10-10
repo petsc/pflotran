@@ -634,7 +634,9 @@ subroutine THComputeMassBalancePatch(realization,mass_balance)
   use Patch_module
   use Field_module
   use Grid_module
-  use Material_module, only : MaterialCompressSoil
+  use Material_Aux_class, only : material_auxvar_type, &
+                                 soil_compressibility_index, &
+                                 MaterialCompressSoil
  
   implicit none
   
@@ -1453,8 +1455,9 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar, &
 
   use Option_module
   use Saturation_Function_module
-  use Material_module, only : MaterialCompressSoil
-  use Material_Aux_class
+  use Material_Aux_class, only : material_auxvar_type, &
+                                 soil_compressibility_index, &
+                                 MaterialCompressSoil
   use EOS_Water_module
   
   implicit none
@@ -1675,8 +1678,9 @@ subroutine THAccumulation(auxvar,global_auxvar, &
   ! 
 
   use Option_module
-  use Material_module, only : MaterialCompressSoil
-  use Material_Aux_class
+  use Material_Aux_class, only : material_auxvar_type, &
+                                 soil_compressibility_index, &
+                                 MaterialCompressSoil
   use EOS_Water_module
   
   implicit none
