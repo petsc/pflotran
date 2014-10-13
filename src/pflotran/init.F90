@@ -2186,7 +2186,6 @@ subroutine InitReadInput(simulation)
 !....................
 
       case ('SATURATION_FUNCTION')
-      
         saturation_function => SaturationFunctionCreate(option)
         call InputReadWord(input,option,saturation_function%name,PETSC_TRUE)
         call InputErrorMsg(input,option,'name','SATURATION_FUNCTION')
