@@ -67,8 +67,10 @@ module Mineral_Aux_module
     character(len=MAXWORDLENGTH), pointer :: names(:)
     PetscReal, pointer :: constraint_vol_frac(:)
     PetscReal, pointer :: constraint_area(:)
-    character(len=MAXWORDLENGTH), pointer :: constraint_aux_string(:)
-    PetscBool, pointer :: external_dataset(:)
+    character(len=MAXWORDLENGTH), pointer :: constraint_vol_frac_string(:)
+    character(len=MAXWORDLENGTH), pointer :: constraint_area_string(:)
+    PetscBool, pointer :: external_vol_frac_dataset(:)
+    PetscBool, pointer :: external_area_dataset(:)
   end type mineral_constraint_type
   
   type, public :: mineral_type
@@ -263,8 +265,8 @@ function TransitionStateTheoryRxnCreate()
   type(transition_state_rxn_type), pointer :: tstrxn
 
   allocate(tstrxn)
-  tstrxn%affinity_factor_sigma = -999.d0
-  tstrxn%affinity_factor_beta = -999.d0
+  tstrxn%affinity_factor_sigma = UNINITIALIZED_DOUBLE
+  tstrxn%affinity_factor_beta = UNINITIALIZED_DOUBLE
   tstrxn%affinity_threshold = 0.d0
   tstrxn%surf_area_vol_frac_pwr = 0.d0
   tstrxn%surf_area_porosity_pwr = 0.d0
@@ -365,10 +367,14 @@ function MineralConstraintCreate(mineral,option)
   constraint%constraint_vol_frac = 0.d0
   allocate(constraint%constraint_area(mineral%nkinmnrl))
   constraint%constraint_area = 0.d0
-  allocate(constraint%constraint_aux_string(mineral%nkinmnrl))
-  constraint%constraint_aux_string = ''
-  allocate(constraint%external_dataset(mineral%nkinmnrl))
-  constraint%external_dataset = PETSC_FALSE
+  allocate(constraint%constraint_vol_frac_string(mineral%nkinmnrl))
+  constraint%constraint_vol_frac_string = ''
+  allocate(constraint%constraint_area_string(mineral%nkinmnrl))
+  constraint%constraint_area_string = ''
+  allocate(constraint%external_vol_frac_dataset(mineral%nkinmnrl))
+  constraint%external_vol_frac_dataset = PETSC_FALSE
+  allocate(constraint%external_area_dataset(mineral%nkinmnrl))
+  constraint%external_area_dataset = PETSC_FALSE
 
   MineralConstraintCreate => constraint
 
@@ -637,8 +643,9 @@ subroutine MineralConstraintDestroy(constraint)
   call DeallocateArray(constraint%names)
   call DeallocateArray(constraint%constraint_vol_frac)
   call DeallocateArray(constraint%constraint_area)
-  call DeallocateArray(constraint%constraint_aux_string)
-  call DeallocateArray(constraint%external_dataset)
+  call DeallocateArray(constraint%constraint_vol_frac_string)
+  call DeallocateArray(constraint%constraint_area_string)
+  call DeallocateArray(constraint%external_area_dataset)
 
   deallocate(constraint)
   nullify(constraint)

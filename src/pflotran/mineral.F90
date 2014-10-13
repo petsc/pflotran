@@ -136,8 +136,8 @@ subroutine MineralReadKinetics(mineral,input,option)
         found = PETSC_TRUE
         cur_mineral%itype = MINERAL_KINETIC
         tstrxn => TransitionStateTheoryRxnCreate()
-        ! initialize to -999 to ensure that it is set
-        tstrxn%rate = -999.d0
+        ! initialize to UNINITIALIZED_INTEGER to ensure that it is set
+        tstrxn%rate = UNINITIALIZED_DOUBLE
         do
           call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,card)
@@ -216,9 +216,9 @@ subroutine MineralReadKinetics(mineral,input,option)
             case('PREFACTOR')
               error_string = 'CHEMISTRY,MINERAL_KINETICS,PREFACTOR'
               prefactor => TransitionStatePrefactorCreate()
-              ! Initialize to -999.d0 to check later whether they were set
-              prefactor%rate = -999.d0
-              prefactor%activation_energy = -999.d0
+              ! Initialize to UNINITIALIZED_DOUBLE to check later whether they were set
+              prefactor%rate = UNINITIALIZED_DOUBLE
+              prefactor%activation_energy = UNINITIALIZED_DOUBLE
               do
                 call InputReadPflotranString(input,option)
                 call InputReadStringErrorMsg(input,option,card)
@@ -328,16 +328,16 @@ subroutine MineralReadKinetics(mineral,input,option)
         do
           if (.not.associated(cur_prefactor)) exit
           ! if not initialized
-          if (dabs(cur_prefactor%rate - (-999.d0)) < 1.d-40) then
+          if (Uninitialized(cur_prefactor%rate)) then
             cur_prefactor%rate = tstrxn%rate
-            if (dabs(cur_prefactor%rate - (-999.d0)) < 1.d-40) then
+            if (Uninitialized(cur_prefactor%rate)) then
               option%io_buffer = 'Both outer and inner prefactor rate ' // &
                 'constants uninitialized for kinetic mineral ' // &
                 cur_mineral%name // '.'
               call printErrMsg(option)
             endif
           endif
-          if (dabs(cur_prefactor%activation_energy - (-999.d0)) < 1.d-40) then
+          if (Uninitialized(cur_prefactor%activation_energy)) then
             cur_prefactor%activation_energy = tstrxn%activation_energy
           endif
           cur_prefactor => cur_prefactor%next
@@ -486,16 +486,20 @@ subroutine MineralProcessConstraint(mineral,constraint_name,constraint,option)
   PetscInt :: imnrl, jmnrl
   
   character(len=MAXWORDLENGTH) :: mineral_name(mineral%nkinmnrl)
-  character(len=MAXWORDLENGTH) :: constraint_aux_string(mineral%nkinmnrl)
+  character(len=MAXWORDLENGTH) :: constraint_vol_frac_string(mineral%nkinmnrl)
+  character(len=MAXWORDLENGTH) :: constraint_area_string(mineral%nkinmnrl)
   PetscReal :: constraint_vol_frac(mineral%nkinmnrl)
   PetscReal :: constraint_area(mineral%nkinmnrl)
-  PetscBool :: external_dataset(mineral%nkinmnrl)
+  PetscBool :: external_vol_frac_dataset(mineral%nkinmnrl)
+  PetscBool :: external_area_dataset(mineral%nkinmnrl)
   
   if (.not.associated(constraint)) return
 
   mineral_name = ''
-  constraint_aux_string = ''
-  external_dataset = PETSC_FALSE
+  constraint_vol_frac_string = ''
+  constraint_area_string = ''
+  external_vol_frac_dataset = PETSC_FALSE
+  external_area_dataset = PETSC_FALSE
   do imnrl = 1, mineral%nkinmnrl
     found = PETSC_FALSE
     do jmnrl = 1, mineral%nkinmnrl
@@ -518,15 +522,23 @@ subroutine MineralProcessConstraint(mineral,constraint_name,constraint,option)
       constraint_area(jmnrl) = &
         constraint%constraint_area(imnrl)
       mineral_name(jmnrl) = constraint%names(imnrl)
-      constraint_aux_string(jmnrl) = constraint%constraint_aux_string(imnrl)
-      external_dataset(jmnrl) = constraint%external_dataset(imnrl)
+      constraint_vol_frac_string(jmnrl) = &
+        constraint%constraint_vol_frac_string(imnrl)
+      constraint_area_string(jmnrl) = &
+        constraint%constraint_area_string(imnrl)
+      external_vol_frac_dataset(jmnrl) = &
+        constraint%external_vol_frac_dataset(imnrl)
+      external_area_dataset(jmnrl) = &
+        constraint%external_area_dataset(imnrl)
     endif  
   enddo
   constraint%names = mineral_name
   constraint%constraint_vol_frac = constraint_vol_frac
   constraint%constraint_area = constraint_area
-  constraint%constraint_aux_string = constraint_aux_string
-  constraint%external_dataset = external_dataset
+  constraint%constraint_vol_frac_string = constraint_vol_frac_string
+  constraint%constraint_area_string = constraint_area_string
+  constraint%external_vol_frac_dataset = external_vol_frac_dataset
+  constraint%external_area_dataset = external_area_dataset
   
 end subroutine MineralProcessConstraint
 

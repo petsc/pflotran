@@ -139,7 +139,7 @@ subroutine MicrobialRead(microbial,input,option)
         enddo
         if (len_trim(inhibition%species_name) < 2 .or. &
             inhibition%itype == 0 .or. &
-            inhibition%inhibition_constant < -998.d0) then
+            Uninitialized(inhibition%inhibition_constant)) then
           option%io_buffer = 'A SPECIES_NAME, TYPE, and INHIBITION_CON' // &
             'STANT must be defined for INHIBITION in MICROBIAL_REACTION ' // &
             'with REACTION "' // trim(microbial_rxn%reaction) // '".'

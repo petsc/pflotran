@@ -450,6 +450,7 @@ subroutine HDF5ReadDbase(filename,option)
   PetscInt :: icount
   PetscReal, allocatable :: buffer(:)
   PetscInt :: num_objects, i_object, object_type, dummy_int
+  PetscInt :: value_index
   character(len=MAXWORDLENGTH) :: object_name, word
 #if defined(PETSC_HAVE_HDF5)  
   integer(HID_T) :: file_id
@@ -487,7 +488,11 @@ subroutine HDF5ReadDbase(filename,option)
   allocate(dbase%card(icount))
   dbase%card = ''
   allocate(dbase%value(icount))
-  dbase%value = -999.d0
+  dbase%value = UNINITIALIZED_DOUBLE
+  value_index = 1
+  if (option%id > 0) then
+    value_index = option%id
+  endif
   icount = 0
   do i_object = 0, num_objects-1
     call h5gget_obj_info_idx_f(file_id,'.',i_object,object_name, &
@@ -557,15 +562,14 @@ subroutine HDF5ReadDbase(filename,option)
       if (option%id > 0) then
         if (option%id > num_reals_in_dataset) then
           write(word,*) num_reals_in_dataset
-          option%io_buffer = 'DBASE dataset "' // trim(object_name) // &
+          option%io_buffer = 'Data in DBASE_FILENAME "' // &
+            trim(object_name) // &
             '" is too small (' // trim(adjustl(word)) // &
             ') for number of realizations.'
           call printErrMsg(option)
         endif
-        dbase%value(icount) = buffer(option%id)
-      else
-        dbase%value(icount) = buffer(1)
       endif
+      dbase%value(icount) = buffer(value_index)
       deallocate(buffer)
     endif
   enddo

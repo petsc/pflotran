@@ -21,12 +21,12 @@ module Simulation_module
   type, public :: simulation_type
 
     type(realization_type), pointer :: realization
-    type(stepper_type), pointer :: flow_stepper
-    type(stepper_type), pointer :: tran_stepper
-    type(stepper_type), pointer :: surf_flow_stepper
+    type(timestepper_type), pointer :: flow_timestepper
+    type(timestepper_type), pointer :: tran_timestepper
+    type(timestepper_type), pointer :: surf_flow_timestepper
     type(surface_realization_type), pointer :: surf_realization
     type(geomech_realization_type), pointer :: geomech_realization
-    type(stepper_type), pointer :: geomech_stepper
+    type(timestepper_type), pointer :: geomech_timestepper
     type(regression_type), pointer :: regression
   end type simulation_type
   
@@ -86,12 +86,12 @@ function SimulationCreate2(option)
   
   allocate(simulation)
   simulation%realization => RealizationCreate(option)
-  simulation%flow_stepper => TimestepperCreate()
-  simulation%tran_stepper => TimestepperCreate()
-  simulation%surf_flow_stepper => TimestepperCreate()
+  simulation%flow_timestepper => TimestepperCreate()
+  simulation%tran_timestepper => TimestepperCreate()
+  simulation%surf_flow_timestepper => TimestepperCreate()
   simulation%surf_realization => SurfRealizCreate(option)
   simulation%geomech_realization => GeomechRealizCreate(option)
-  simulation%geomech_stepper => TimestepperCreate()
+  simulation%geomech_timestepper => TimestepperCreate()
   nullify(simulation%regression)
   
   SimulationCreate2 => simulation
@@ -136,12 +136,12 @@ subroutine SimulationDestroy(simulation)
     ! 'subsurface_factory.F90' Line 233. (TODO - but don't know why)
     call RealizationDestroyLegacy(simulation%realization)
   endif
-  call TimestepperDestroy(simulation%flow_stepper)
-  call TimestepperDestroy(simulation%tran_stepper)
-  call TimestepperDestroy(simulation%surf_flow_stepper)
+  call TimestepperDestroy(simulation%flow_timestepper)
+  call TimestepperDestroy(simulation%tran_timestepper)
+  call TimestepperDestroy(simulation%surf_flow_timestepper)
   call SurfRealizDestroy(simulation%surf_realization)
 
-  call TimestepperDestroy(simulation%geomech_stepper)
+  call TimestepperDestroy(simulation%geomech_timestepper)
   call GeomechRealizDestroy(simulation%geomech_realization)
 
   call RegressionDestroy(simulation%regression)

@@ -12,7 +12,7 @@ module Timestepper_BE_class
   
 #include "finclude/petscsys.h"
  
-  type, public, extends(stepper_base_type) :: stepper_BE_type
+  type, public, extends(timestepper_base_type) :: timestepper_BE_type
   
     PetscInt :: num_newton_iterations ! number of Newton iterations in a time step
     PetscInt :: num_linear_iterations ! number of linear solver iterations in a time step
@@ -41,7 +41,7 @@ module Timestepper_BE_class
     procedure, public :: Strip => TimestepperBEStrip
     procedure, public :: Destroy => TimestepperBEDestroy
     
-  end type stepper_BE_type
+  end type timestepper_BE_type
   
   ! For checkpointing
   type, public, extends(stepper_base_header_type) :: stepper_BE_header_type
@@ -79,9 +79,9 @@ function TimestepperBECreate()
 
   implicit none
   
-  class(stepper_BE_type), pointer :: TimestepperBECreate
+  class(timestepper_BE_type), pointer :: TimestepperBECreate
   
-  class(stepper_BE_type), pointer :: stepper
+  class(timestepper_BE_type), pointer :: stepper
   
   allocate(stepper)
   call stepper%Init()
@@ -104,7 +104,7 @@ subroutine TimestepperBEInit(this)
 
   implicit none
   
-  class(stepper_BE_type) :: this
+  class(timestepper_BE_type) :: this
   
   call TimestepperBaseInit(this)
   
@@ -147,7 +147,7 @@ subroutine TimestepperBERead(this,input,option)
   
   implicit none
 
-  class(stepper_BE_type) :: this
+  class(timestepper_BE_type) :: this
   type(input_type) :: input
   type(option_type) :: option
   
@@ -199,7 +199,7 @@ subroutine TimestepperBEUpdateDT(this,process_model)
   
   implicit none
 
-  class(stepper_BE_type) :: this
+  class(timestepper_BE_type) :: this
   class(pm_base_type) :: process_model
   
   PetscBool :: update_time_step
@@ -258,7 +258,7 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
 #include "finclude/petscvec.h90"
 #include "finclude/petscsnes.h"
 
-  class(stepper_BE_type) :: this
+  class(timestepper_BE_type) :: this
   class(pm_base_type) :: process_model
   PetscInt :: stop_flag
   
@@ -448,7 +448,7 @@ subroutine TimestepperBEPrintInfo(this,fid,header,option)
   
   implicit none
   
-  class(stepper_BE_type) :: this
+  class(timestepper_BE_type) :: this
   PetscInt :: fid
   character(len=MAXSTRINGLENGTH) :: header
   character(len=MAXSTRINGLENGTH) :: string
@@ -497,7 +497,7 @@ subroutine TimestepperBECheckpoint(this,viewer,option)
 #include "finclude/petscviewer.h"
 #include "finclude/petscbag.h"
   
-  class(stepper_BE_type) :: this
+  class(timestepper_BE_type) :: this
   PetscViewer :: viewer
   type(option_type) :: option
   
@@ -531,7 +531,7 @@ subroutine TimestepperBERegisterHeader(this,bag,header)
 #include "finclude/petscviewer.h"
 #include "finclude/petscbag.h"
 
-  class(stepper_BE_type) :: this
+  class(timestepper_BE_type) :: this
   class(stepper_BE_header_type) :: header
   PetscBag :: bag
   
@@ -568,7 +568,7 @@ subroutine TimestepperBESetHeader(this,bag,header)
 #include "finclude/petscviewer.h"
 #include "finclude/petscbag.h"
 
-  class(stepper_BE_type) :: this
+  class(timestepper_BE_type) :: this
   class(stepper_BE_header_type) :: header
   PetscBag :: bag
   
@@ -600,7 +600,7 @@ subroutine TimestepperBERestart(this,viewer,option)
 #include "finclude/petscviewer.h"
 #include "finclude/petscbag.h"
 
-  class(stepper_BE_type) :: this
+  class(timestepper_BE_type) :: this
   PetscViewer :: viewer
   type(option_type) :: option
   
@@ -634,7 +634,7 @@ subroutine TimestepperBEGetHeader(this,header)
 #include "finclude/petscviewer.h"
 #include "finclude/petscbag.h"
 
-  class(stepper_BE_type) :: this
+  class(timestepper_BE_type) :: this
   class(stepper_BE_header_type) :: header
   
   this%cumulative_newton_iterations = header%cumulative_newton_iterations
@@ -657,7 +657,7 @@ subroutine TimestepperBEReset(this)
 
   implicit none
 
-  class(stepper_BE_type) :: this
+  class(timestepper_BE_type) :: this
   
   this%cumulative_newton_iterations = 0
   this%cumulative_linear_iterations = 0
@@ -681,7 +681,7 @@ recursive subroutine TimestepperBEFinalizeRun(this,option)
   
   implicit none
   
-  class(stepper_BE_type) :: this
+  class(timestepper_BE_type) :: this
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
@@ -715,7 +715,7 @@ subroutine TimestepperBEStrip(this)
 
   implicit none
   
-  class(stepper_BE_type) :: this
+  class(timestepper_BE_type) :: this
   
   call TimestepperBaseStrip(this)
   call SolverDestroy(this%solver)
@@ -738,7 +738,7 @@ subroutine TimestepperBEDestroy(this)
 
   implicit none
   
-  class(stepper_BE_type) :: this
+  class(timestepper_BE_type) :: this
   
   call TimestepperBEStrip(this)
   

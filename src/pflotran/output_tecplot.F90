@@ -1735,7 +1735,7 @@ subroutine GetCellConnectionsTecplot(grid, vec)
   call VecGetArrayF90( vec, vec_ptr, ierr);CHKERRQ(ierr)
 
   ! initialize
-  vec_ptr = -999.d0
+  vec_ptr = UNINITIALIZED_DOUBLE
   do local_id=1, ugrid%nlmax
     ghosted_id = local_id
     select case(ugrid%cell_type(ghosted_id))

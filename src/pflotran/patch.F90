@@ -1257,8 +1257,8 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
         end select
       endif
     case(GAS_STATE)
-      p_gas = -999.d0 ! set to uninitialized
-      temperature = -999.d0
+      p_gas = UNINITIALIZED_DOUBLE ! set to uninitialized
+      temperature = UNINITIALIZED_DOUBLE
       real_count = real_count + 1
       coupler%flow_aux_int_var(GENERAL_STATE_INDEX,1:num_connections) = GAS_STATE
       select case(general%gas_pressure%itype)
@@ -1290,7 +1290,7 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
       real_count = real_count + 1
       select case(general%mole_fraction%itype)
         case(DIRICHLET_BC)
-          if (p_gas < -998.d0 .or. temperature < -998.d0) then
+          if (Uninitialized(p_gas) .or. Uninitialized(temperature)) then
             option%io_buffer = 'Gas pressure or temperature not set ' // &
               'correctly in flow condition "' // &
               trim(flow_condition%name) // '".'
@@ -3538,7 +3538,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
                                     eqsrfcplx_conc(isubvar)
             enddo
           else
-            vec_ptr = -999.d0
+            vec_ptr = UNINITIALIZED_DOUBLE
           endif
         case(SURFACE_SITE_DENSITY)
           tempreal = &
@@ -3831,7 +3831,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
   grid => patch%grid
   material_auxvars => patch%aux%Material%auxvars
   
-  value = -999.99d0
+  value = UNINITIALIZED_DOUBLE
 
   ! inactive grid cell
   if (patch%imat(ghosted_id) <= 0) then
@@ -4287,7 +4287,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           if (associated(patch%aux%RT%auxvars(ghosted_id)%eqsrfcplx_conc)) then
             value = patch%aux%RT%auxvars(ghosted_id)%eqsrfcplx_conc(isubvar)
           else
-            value = -999.d0
+            value = UNINITIALIZED_DOUBLE
           endif
         case(SURFACE_CMPLX_FREE)
           value = &

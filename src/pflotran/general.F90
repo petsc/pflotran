@@ -538,7 +538,7 @@ subroutine GeneralComputeMassBalance(realization,mass_balance)
       ! volume_phase = saturation*porosity*volume
       vol_phase = &
         general_auxvars(ZERO_INTEGER,ghosted_id)%sat(iphase)* &
-        material_auxvars(ghosted_id)%porosity* &
+        general_auxvars(ZERO_INTEGER,ghosted_id)%effective_porosity* &
         material_auxvars(ghosted_id)%volume
       ! mass = volume_phase*density
       do icomp = 1, option%nflowspec
@@ -1007,7 +1007,7 @@ subroutine GeneralAccumulation(gen_auxvar,material_auxvar, &
   PetscInt :: wat_comp_id, air_comp_id, energy_id
   PetscInt :: icomp, iphase
   
-  PetscReal :: porosity, compressed_porosity, dcompressed_porosity_dp
+  PetscReal :: porosity
   PetscReal :: v_over_t
   
   wat_comp_id = option%water_id
@@ -1016,14 +1016,9 @@ subroutine GeneralAccumulation(gen_auxvar,material_auxvar, &
   
   ! v_over_t[m^3 bulk/sec] = vol[m^3 bulk] / dt[sec]
   v_over_t = material_auxvar%volume / option%flow_dt
-
-  porosity = material_auxvar%porosity
-  if (soil_compressibility_index > 0) then
-    call MaterialCompressSoil(material_auxvar, &
-                              maxval(gen_auxvar%pres(1:2)), &
-                              compressed_porosity,dcompressed_porosity_dp)
-    porosity = compressed_porosity
-  endif
+  ! must use gen_auxvar%effective porosity here as it enables numerical 
+  ! derivatives to be employed 
+  porosity = gen_auxvar%effective_porosity
   
   ! accumulation term units = kmol/s
   Res = 0.d0
@@ -1283,8 +1278,10 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
                                           global_auxvar_dn%istate, &
                                           gen_auxvar_up%den, &
                                           gen_auxvar_dn%den)
-      stp_up = sat_up*material_auxvar_up%tortuosity*material_auxvar_up%porosity
-      stp_dn = sat_dn*material_auxvar_dn%tortuosity*material_auxvar_dn%porosity
+      stp_up = sat_up*material_auxvar_up%tortuosity* &
+               gen_auxvar_up%effective_porosity
+      stp_dn = sat_dn*material_auxvar_dn%tortuosity* &
+               gen_auxvar_dn%effective_porosity
       stp_ave_over_dist = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
       delta_xmol = gen_auxvar_up%xmol(air_comp_id,iphase) - &
                    gen_auxvar_dn%xmol(air_comp_id,iphase)
@@ -1629,7 +1626,7 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
       !              ((sat_up+sat_dn)*dist_dn)
       ! should saturation be distance weighted?
       stp_ave_over_dist = material_auxvar_dn%tortuosity * &
-                          material_auxvar_dn%porosity * &
+                          gen_auxvar_dn%effective_porosity * &
                           sat_dn / dist(0)
       delta_xmol = gen_auxvar_up%xmol(air_comp_id,iphase) - &
                    gen_auxvar_dn%xmol(air_comp_id,iphase)

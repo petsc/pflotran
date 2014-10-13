@@ -52,7 +52,7 @@ private
     type(uniform_velocity_dataset_type), pointer :: uniform_velocity_dataset
     character(len=MAXSTRINGLENGTH) :: nonuniform_velocity_filename
     
-    type(waypoint_list_type), pointer :: waypoints
+    type(waypoint_list_type), pointer :: waypoint_list
     
   end type realization_type
 
@@ -92,7 +92,8 @@ private
             RealLocalToLocalWithArray, &
             RealizationCalculateCFL1Timestep, &
             RealizationNonInitializedData, &
-            RealizUpdateAllCouplerAuxVars
+            RealizUpdateAllCouplerAuxVars, &
+            RealizCreateSyncWaypointList
 
   !TODO(intel)
   ! public from Realization_Base_class
@@ -163,7 +164,7 @@ function RealizationCreate2(option)
   nullify(realization%sec_transport_constraint)
   realization%nonuniform_velocity_filename = ''
 
-  nullify(realization%waypoints)
+  nullify(realization%waypoint_list)
 
   RealizationCreate2 => realization
   
@@ -433,9 +434,9 @@ subroutine RealizationCreateDiscretization(realization)
    endif
 #endif
  
-  ! initialize to -999.d0 for check later that verifies all values 
+  ! initialize to UNINITIALIZED_DOUBLE for check later that verifies all values 
   ! have been set
-  call VecSet(field%porosity0,-999.d0,ierr);CHKERRQ(ierr)
+  call VecSet(field%porosity0,UNINITIALIZED_DOUBLE,ierr);CHKERRQ(ierr)
 
   ! Allocate vectors to hold temporally average output quantites
   if (realization%output_option%aveg_output_variable_list%nvars>0) then
@@ -1537,6 +1538,7 @@ subroutine RealizationAddWaypointsToList(realization)
   use Option_module
   use Waypoint_module
   use Time_Storage_module
+  use Strata_module
 
   implicit none
   
@@ -1550,12 +1552,13 @@ subroutine RealizationAddWaypointsToList(realization)
   type(mass_transfer_type), pointer :: cur_mass_transfer
   type(waypoint_type), pointer :: waypoint, cur_waypoint
   type(option_type), pointer :: option
+  type(strata_type), pointer :: cur_strata
   PetscInt :: itime, isub_condition
   PetscReal :: temp_real, final_time
   PetscReal, pointer :: times(:)
 
   option => realization%option
-  waypoint_list => realization%waypoints
+  waypoint_list => realization%waypoint_list
   nullify(times)
   
   ! set flag for final output
@@ -1653,7 +1656,7 @@ subroutine RealizationAddWaypointsToList(realization)
           waypoint => WaypointCreate()
           waypoint%time = cur_mass_transfer%dataset%time_storage%times(itime)
           waypoint%update_conditions = PETSC_TRUE
-          call WaypointInsertInList(waypoint,realization%waypoints)
+          call WaypointInsertInList(waypoint,realization%waypoint_list)
         enddo
       endif
       cur_mass_transfer => cur_mass_transfer%next
@@ -1670,7 +1673,7 @@ subroutine RealizationAddWaypointsToList(realization)
           waypoint => WaypointCreate()
           waypoint%time = cur_mass_transfer%dataset%time_storage%times(itime)
           waypoint%update_conditions = PETSC_TRUE
-          call WaypointInsertInList(waypoint,realization%waypoints)
+          call WaypointInsertInList(waypoint,realization%waypoint_list)
         enddo
       endif
       cur_mass_transfer => cur_mass_transfer%next
@@ -1690,7 +1693,7 @@ subroutine RealizationAddWaypointsToList(realization)
         waypoint => WaypointCreate()
         waypoint%time = temp_real
         waypoint%print_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,realization%waypoints)
+        call WaypointInsertInList(waypoint,realization%waypoint_list)
       enddo
     endif
     
@@ -1703,7 +1706,7 @@ subroutine RealizationAddWaypointsToList(realization)
         waypoint => WaypointCreate()
         waypoint%time = temp_real
         waypoint%print_tr_output = PETSC_TRUE 
-        call WaypointInsertInList(waypoint,realization%waypoints)
+        call WaypointInsertInList(waypoint,realization%waypoint_list)
       enddo
     endif
 
@@ -1720,11 +1723,71 @@ subroutine RealizationAddWaypointsToList(realization)
       waypoint => WaypointCreate()
       waypoint%time = temp_real
       waypoint%print_checkpoint = PETSC_TRUE
-      call WaypointInsertInList(waypoint,realization%waypoints)
+      call WaypointInsertInList(waypoint,realization%waypoint_list)
     enddo
   endif
 
+  ! add in strata that change over time
+  cur_strata => realization%patch%strata%first
+  do
+    if (.not.associated(cur_strata)) exit
+    if (Initialized(cur_strata%start_time)) then
+      waypoint => WaypointCreate()
+      waypoint%time = cur_strata%start_time
+      waypoint%sync = PETSC_TRUE
+      call WaypointInsertInList(waypoint,realization%waypoint_list)
+    endif
+    if (Initialized(cur_strata%end_time)) then
+      waypoint => WaypointCreate()
+      waypoint%time = cur_strata%end_time
+      waypoint%sync = PETSC_TRUE
+      call WaypointInsertInList(waypoint,realization%waypoint_list)
+    endif
+    cur_strata => cur_strata%next
+  enddo
+
 end subroutine RealizationAddWaypointsToList
+
+! ************************************************************************** !
+
+function RealizCreateSyncWaypointList(realization)
+  ! 
+  ! Creates a list of waypoints for outer synchronization of simulation process
+  ! model couplers
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/08/14
+  ! 
+
+  use Option_module
+  use Waypoint_module
+  use Time_Storage_module
+
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  type(waypoint_list_type), pointer :: RealizCreateSyncWaypointList
+
+  type(waypoint_list_type), pointer :: new_waypoint_list
+  type(waypoint_type), pointer :: cur_waypoint
+  type(waypoint_type), pointer :: new_waypoint
+
+  new_waypoint_list => WaypointListCreate()
+  
+  cur_waypoint => realization%waypoint_list%first
+  do
+    if (.not.associated(cur_waypoint)) exit
+    if (cur_waypoint%sync .or. cur_waypoint%final) then
+      new_waypoint => WaypointCreate(cur_waypoint)
+      call WaypointInsertInList(new_waypoint,new_waypoint_list)
+      if (cur_waypoint%final) exit
+    endif
+    cur_waypoint => cur_waypoint%next
+  enddo
+  RealizCreateSyncWaypointList => new_waypoint_list
+
+end function RealizCreateSyncWaypointList
 
 ! ************************************************************************** !
 
@@ -2357,9 +2420,9 @@ subroutine RealizationPrintGridStatistics(realization)
     r1 = r1 + inactive_percentages(i1)
   enddo
                                 
-  i1 = -999
-  i2 = -999
-  i3 = -999
+  i1 = UNINITIALIZED_INTEGER
+  i2 = UNINITIALIZED_INTEGER
+  i3 = UNINITIALIZED_INTEGER
   if (associated(grid%structured_grid)) then
     i1 = grid%structured_grid%npx_final
     i2 = grid%structured_grid%npy_final
@@ -2552,7 +2615,7 @@ subroutine RealizationNonInitializedData(realization)
   call MPI_Allreduce(min_value,global_value,ONE_INTEGER_MPI, &
                      MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
   
-  if (global_value < -998.d0) then
+  if (Uninitialized(global_value)) then
     option%io_buffer = 'Porosity not initialized at all cells.  ' // &
                        'Ensure that REGIONS cover entire domain!!!'
     call printErrMsg(option)
@@ -2640,7 +2703,7 @@ subroutine RealizationDestroyLegacy(realization)
   call MassTransferDestroy(realization%flow_mass_transfer_list)
   call MassTransferDestroy(realization%rt_mass_transfer_list)
   
-  call WaypointListDestroy(realization%waypoints)
+  call WaypointListDestroy(realization%waypoint_list)
   
   deallocate(realization)
   nullify(realization)
@@ -2688,7 +2751,7 @@ subroutine RealizationStrip(this)
   
   call TranConstraintDestroy(this%sec_transport_constraint)
   
-  call WaypointListDestroy(this%waypoints)
+  call WaypointListDestroy(this%waypoint_list)
   
 end subroutine RealizationStrip
 

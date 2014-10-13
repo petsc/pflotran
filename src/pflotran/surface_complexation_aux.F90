@@ -278,10 +278,10 @@ function SurfaceComplexCreate()
   srfcplx%Z = 0.d0
   srfcplx%free_site_stoich = 0.d0
   srfcplx%forward_rate = 0.d0
-  ! default is -999 in case the only the forward rate is defined.  In that case
+  ! default is UNINITIALIZED_INTEGER in case the only the forward rate is defined.  In that case
   ! the backward rate will be calculated as a function of the forward rate and
   ! the equilibrium coefficient (logK).
-  srfcplx%backward_rate = -999.d0
+  srfcplx%backward_rate = UNINITIALIZED_DOUBLE
   srfcplx%print_me = PETSC_FALSE
   nullify(srfcplx%ptr)
   nullify(srfcplx%dbaserxn)

@@ -251,8 +251,8 @@ subroutine DatasetBaseInterpolateTime(this)
     case(INTERPOLATION_NULL)
       ! it possible that the time_interpolation_method is null during
       ! the load process.  in that case, we need to set the array to an
-      ! uninitialized value (-999.).
-      this%rarray = -999.d0
+      ! uninitialized value (UNINITIALIZED_DOUBLE).
+      this%rarray = UNINITIALIZED_DOUBLE
     case(INTERPOLATION_STEP)
       ! if time index has not changed skip
       if (.not.this%time_storage%cur_time_index_changed) return

@@ -11,7 +11,7 @@ module General_Aux_module
   PetscReal, public :: window_epsilon = 1.d-4
   PetscReal, public :: fmw_comp(2) = [FMWH2O,FMWAIR]
   PetscReal, public :: general_max_pressure_change = 5.d4
-  PetscInt, public :: general_max_it_before_damping = -999
+  PetscInt, public :: general_max_it_before_damping = UNINITIALIZED_INTEGER
   PetscReal, public :: general_damping_factor = 0.6d0
 
   ! thermodynamic state of fluid ids
@@ -74,6 +74,7 @@ module General_Aux_module
 !    PetscReal, pointer :: dsat_dt(:)
 !    PetscReal, pointer :: dden_dt(:)
     PetscReal, pointer :: mobility(:) ! relative perm / kinematic viscosity
+    PetscReal :: effective_porosity ! factors in compressibility
     PetscReal :: pert
 !    PetscReal, pointer :: dmobility_dp(:)
   end type general_auxvar_type
@@ -198,6 +199,10 @@ subroutine GeneralAuxVarInit(auxvar,option)
   type(option_type) :: option
 
   auxvar%istate_store = NULL_STATE
+  auxvar%temp = 0.d0
+  auxvar%effective_porosity = 0.d0
+  auxvar%pert = 0.d0
+  
   allocate(auxvar%pres(option%nphase+FOUR_INTEGER))
   auxvar%pres = 0.d0
   allocate(auxvar%sat(option%nphase))
@@ -206,8 +211,6 @@ subroutine GeneralAuxVarInit(auxvar,option)
   auxvar%den = 0.d0
   allocate(auxvar%den_kg(option%nphase))
   auxvar%den_kg = 0.d0
-  ! keep at 25 C.
-  auxvar%temp = 25.d0
   allocate(auxvar%xmol(option%nflowspec,option%nphase))
   auxvar%xmol = 0.d0
   allocate(auxvar%H(option%nphase))
@@ -216,8 +219,6 @@ subroutine GeneralAuxVarInit(auxvar,option)
   auxvar%U = 0.d0
   allocate(auxvar%mobility(option%nphase))
   auxvar%mobility = 0.d0
-  
-  auxvar%pert = 0.d0
   
 end subroutine GeneralAuxVarInit
 
@@ -248,6 +249,7 @@ subroutine GeneralAuxVarCopy(auxvar,auxvar2,option)
   auxvar2%H = auxvar%H
   auxvar2%U = auxvar%U
   auxvar2%mobility = auxvar%mobility
+  auxvar2%effective_porosity = auxvar%effective_porosity
   auxvar2%pert = auxvar%pert
 
 end subroutine GeneralAuxVarCopy
@@ -362,6 +364,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   gen_auxvar%den = NaN
   gen_auxvar%den_kg = NaN
   gen_auxvar%xmol = NaN
+  gen_auxvar%effective_porosity = NaN
   select case(global_auxvar%istate)
     case(1)
       state_char = 'L'
@@ -380,6 +383,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   gen_auxvar%den = 0.d0
   gen_auxvar%den_kg = 0.d0
   gen_auxvar%xmol = 0.d0
+  gen_auxvar%effective_porosity = 0.d0
 #endif  
   gen_auxvar%mobility = 0.d0
 
@@ -515,6 +519,13 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
 
   cell_pressure = max(gen_auxvar%pres(lid),gen_auxvar%pres(gid), &
                       gen_auxvar%pres(spid))
+        
+  ! calculate effective porosity as a function of pressure
+  gen_auxvar%effective_porosity = material_auxvar%porosity
+  if (soil_compressibility_index > 0) then
+    call MaterialCompressSoil(material_auxvar,cell_pressure, &
+                              gen_auxvar%effective_porosity,dummy)
+  endif                   
 
   ! ALWAYS UPDATE THERMODYNAMIC PROPERTIES FOR BOTH PHASES!!!
 
@@ -1138,6 +1149,7 @@ subroutine GeneralPrintAuxVars(general_auxvar,global_auxvar,ghosted_id, &
   print *, '       X (air in gas): ', general_auxvar%xmol(gid,gid)
   print *, '      liquid mobility: ', general_auxvar%mobility(lid)
   print *, '         gas mobility: ', general_auxvar%mobility(gid)
+  print *, '   effective porosity: ', general_auxvar%effective_porosity
   print *, '--------------------------------------------------------'
 
 end subroutine GeneralPrintAuxVars
@@ -1222,6 +1234,7 @@ subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,ghosted_id, &
   write(86,*) '      gas U [MJ/kmol]: ', general_auxvar%U(gid)
   write(86,*) '      liquid mobility: ', general_auxvar%mobility(lid)
   write(86,*) '         gas mobility: ', general_auxvar%mobility(gid)
+  write(86,*) '   effective porosity: ', general_auxvar%effective_porosity
   write(86,*) '...'
   write(86,*) general_auxvar%pres(lid)
   write(86,*) general_auxvar%pres(gid)
@@ -1247,6 +1260,7 @@ subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,ghosted_id, &
   write(86,*) ''
   write(86,*) general_auxvar%mobility(lid)
   write(86,*) general_auxvar%mobility(gid)
+  write(86,*) general_auxvar%effective_porosity
   write(86,*) '--------------------------------------------------------'
   
   close(86)
@@ -1345,6 +1359,8 @@ subroutine GeneralOutputAuxVars2(general_auxvars,global_auxvars,option)
     ((general_auxvars(idof,i)%mobility(lid),i=1,n),idof=0,3)
   write(86,100) '         gas mobility: ', &
     ((general_auxvars(idof,i)%mobility(gid),i=1,n),idof=0,3)
+  write(86,100) '   effective porosity: ', &
+    ((general_auxvars(idof,i)%effective_porosity,i=1,n),idof=0,3)
   
   close(86)
 

@@ -339,7 +339,7 @@ function SurfaceMaterialGetMaxExternalID(surf_material_property_array)
 
   PetscInt :: i
 
-  SurfaceMaterialGetMaxExternalID = -999
+  SurfaceMaterialGetMaxExternalID = UNINITIALIZED_INTEGER
   do i = 1, size(surf_material_property_array)
     SurfaceMaterialGetMaxExternalID = max(SurfaceMaterialGetMaxExternalID, &
                                          (surf_material_property_array(i)%ptr%external_id))
@@ -365,7 +365,7 @@ subroutine SurfaceMaterialCreateIntToExtMapping(surf_material_property_array,map
   PetscInt :: i
 
   allocate(mapping(size(surf_material_property_array)))
-  mapping = -999
+  mapping = UNINITIALIZED_INTEGER
 
   do i = 1, size(surf_material_property_array)
     mapping(surf_material_property_array(i)%ptr%internal_id) = &

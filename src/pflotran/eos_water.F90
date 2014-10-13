@@ -194,14 +194,14 @@ subroutine EOSWaterInit()
 
   implicit none
   
-  constant_density = -999.d0
-  constant_viscosity = -999.d0
-  constant_enthalpy = -999.d0
-  constant_steam_density = -999.d0
-  constant_steam_enthalpy = -999.d0
-  exponent_reference_density = -999.d0
-  exponent_reference_pressure = -999.d0
-  exponent_water_compressibility = -999.d0
+  constant_density = UNINITIALIZED_DOUBLE
+  constant_viscosity = UNINITIALIZED_DOUBLE
+  constant_enthalpy = UNINITIALIZED_DOUBLE
+  constant_steam_density = UNINITIALIZED_DOUBLE
+  constant_steam_enthalpy = UNINITIALIZED_DOUBLE
+  exponent_reference_density = UNINITIALIZED_DOUBLE
+  exponent_reference_pressure = UNINITIALIZED_DOUBLE
+  exponent_water_compressibility = UNINITIALIZED_DOUBLE
   
   EOSWaterDensityEnthalpyPtr => EOSWaterDensityEnthalpyIFC67
   EOSWaterDensityPtr => EOSWaterDensityIFC67
@@ -227,33 +227,33 @@ subroutine EOSWaterVerify(ierr,error_string)
   error_string = ''
   if ((associated(EOSWaterDensityEnthalpyPtr, &
                   EOSWaterDensityEnthalpyIFC67) .and. &
-        (constant_density > -998.d0 .or. constant_enthalpy > -998.d0)) .or. &
+        (Initialized(constant_density) .or. Initialized(constant_enthalpy))) .or. &
       (associated(EOSWaterDensityPtr,EOSWaterDensityIFC67) .and. &
-        constant_density > -998.d0) .or. &
+        Initialized(constant_density)) .or. &
       (associated(EOSWaterEnthalpyPtr,EOSWaterEnthalpyIFC67) .and. &
-        constant_enthalpy > -998.d0) &
+        Initialized(constant_enthalpy)) &
      ) then
     ierr = 1
   endif
 
   if (associated(EOSWaterDensityPtr,EOSWaterDensityConstant) .and. &
-      constant_density < -998.d0) then
+      Uninitialized(constant_density)) then
     error_string = trim(error_string) // &
       ' CONSTANT density not set.'
     ierr = 1
   endif
   
   if (associated(EOSWaterEnthalpyPtr,EOSWaterEnthalpyConstant) .and. &
-      constant_enthalpy < -998.d0) then
+      Uninitialized(constant_enthalpy)) then
     error_string = trim(error_string) // &
       ' CONSTANT enthalpy not set.'
     ierr = 1
   endif
   
   if (associated(EOSWaterDensityPtr,EOSWaterDensityExponential) .and. &
-      (exponent_reference_density < -998.d0 .or. & 
-       exponent_reference_pressure < -998.d0 .or. &
-       exponent_water_compressibility < -998.d0)) then
+      (Uninitialized(exponent_reference_density) .or. & 
+       Uninitialized(exponent_reference_pressure) .or. &
+       Uninitialized(exponent_water_compressibility))) then
     error_string = trim(error_string) // &
       ' Exponential parameters incorrect.'
     ierr = 1
@@ -261,22 +261,22 @@ subroutine EOSWaterVerify(ierr,error_string)
 
   if ((associated(EOSWaterViscosityPtr, &
                   EOSWaterViscosityConstant) .and. &
-       constant_viscosity < -998.d0) .or. &
+       Uninitialized(constant_viscosity)) .or. &
       (associated(EOSWaterViscosityPtr, &
                   EOSWaterViscosity1) .and. &
-       constant_viscosity > -998.d0)) then
+       Initialized(constant_viscosity))) then
     ierr = 1
   endif
   
   if (associated(EOSWaterSteamDensityEnthalpyPtr, &
                  EOSWaterSteamDenEnthConstant) .and. &
-      (constant_steam_density < -998.d0 .or. &
-       constant_steam_enthalpy < -998.d0)) then
-    if (constant_steam_density < -998.d0) then
+      (Uninitialized(constant_steam_density) .or. &
+       Uninitialized(constant_steam_enthalpy))) then
+    if (Uninitialized(constant_steam_density)) then
       error_string = trim(error_string) // &
         ' CONSTANT steam density not set.'
     endif
-    if (constant_steam_enthalpy < -998.d0) then
+    if (Uninitialized(constant_steam_enthalpy)) then
       error_string = trim(error_string) // &
         ' CONSTANT steam enthalpy not set.'
     endif
@@ -467,9 +467,9 @@ subroutine EOSWaterViscosity1(T, P, PS, dPS_dT, VW, calculate_derivatives, &
     dWV_dP = VW/AM*PHI*1.d-11
     dWV_dPS = -1.d0 * dWV_dP
   else
-    dWV_dT = -999.d0
-    dWV_dP = -999.d0
-    dWV_dPS = -999.d0
+    dWV_dT = UNINITIALIZED_DOUBLE
+    dWV_dP = UNINITIALIZED_DOUBLE
+    dWV_dPS = UNINITIALIZED_DOUBLE
   endif
   ierr = 0
  
@@ -579,7 +579,7 @@ subroutine EOSWaterSaturationPressureIFC67(T, PS, calculate_derivatives, dPS_dT,
       dPC_dSC = 1.d0/E1*PCAP
       dPS_dT = (dPC_dSC*dSC_dTC+dPC_dTC)*dTC_dT*2.212d7
     else
-      dPS_dT = -999.d0
+      dPS_dT = UNINITIALIZED_DOUBLE
     endif
     ierr = 0
 
@@ -875,8 +875,8 @@ subroutine EOSWaterDensityEnthalpyIFC67(t,p,dw,dwmol,hw, &
     dwt = cnv*vrpt*utc1 ! kmol/m^3/C
     dwp = cnv*vrpp*upc1 ! kmol/m^3/Pa
   else
-    dwt = -999.d0
-    dwp = -999.d0
+    dwt = UNINITIALIZED_DOUBLE
+    dwp = UNINITIALIZED_DOUBLE
   endif
 
 !   print *,'water_eos: ',p,t,dwp,cnv,vrpp,upc1
@@ -972,8 +972,8 @@ subroutine EOSWaterDensityEnthalpyIFC67(t,p,dw,dwmol,hw, &
     hwp = (term3p+term4p-term5p+term6p+term7p)*vc1mol
     hwt = (aa(0)-term2t+term3t+term4t-term5t+term6t+term7t)*v1_6*utc1
   else
-    hwp = -999.d0
-    hwt = -999.d0
+    hwp = UNINITIALIZED_DOUBLE
+    hwt = UNINITIALIZED_DOUBLE
   endif
 #endif
   
@@ -1132,8 +1132,8 @@ subroutine EOSWaterDensityIFC67(t,p,dw,dwmol, &
     dwt = cnv*vrpt*utc1 ! kmol/m^3/C
     dwp = cnv*vrpp*upc1 ! kmol/m^3/Pa
   else
-    dwt = -999.d0
-    dwp = -999.d0
+    dwt = UNINITIALIZED_DOUBLE
+    dwp = UNINITIALIZED_DOUBLE
   endif
 
 end subroutine EOSWaterDensityIFC67
@@ -1287,8 +1287,8 @@ subroutine EOSWaterEnthalpyIFC67(t,p,hw, &
     dwt = cnv*vrpt*utc1 ! kmol/m^3/C
     dwp = cnv*vrpp*upc1 ! kmol/m^3/Pa
   else
-    dwt = -999.d0
-    dwp = -999.d0
+    dwt = UNINITIALIZED_DOUBLE
+    dwp = UNINITIALIZED_DOUBLE
   endif
 #endif  
 
@@ -1390,8 +1390,8 @@ subroutine EOSWaterEnthalpyIFC67(t,p,hw, &
     hwp = (term3p+term4p-term5p+term6p+term7p)*vc1mol
     hwt = (aa(0)-term2t+term3t+term4t-term5t+term6t+term7t)*v1_6*utc1
   else
-    hwp = -999.d0
-    hwt = -999.d0
+    hwp = UNINITIALIZED_DOUBLE
+    hwt = UNINITIALIZED_DOUBLE
   endif
     
 end subroutine EOSWaterEnthalpyIFC67
@@ -1682,8 +1682,8 @@ subroutine EOSWaterSteamDensityEnthalpyIFC67(t,pv,dg,dgmol,hg, &
     dgt = u1*vrpt*utc1
     dgp = u1*vrpp*upc1
   else
-    dgt = -999.d0
-    dgp = -999.d0
+    dgt = UNINITIALIZED_DOUBLE
+    dgp = UNINITIALIZED_DOUBLE
   endif
     
 !---compute steam enthalpy, internal energy, and derivatives
@@ -1800,8 +1800,8 @@ subroutine EOSWaterSteamDensityEnthalpyIFC67(t,pv,dg,dgmol,hg, &
     hgt = hrpt*v1*utc1
     hgp = hrpp*vc1mol
   else
-    hgt = -999.d0
-    hgp = -999.d0
+    hgt = UNINITIALIZED_DOUBLE
+    hgp = UNINITIALIZED_DOUBLE
   endif
 
 end subroutine EOSWaterSteamDensityEnthalpyIFC67
@@ -1833,10 +1833,10 @@ subroutine EOSWaterSteamDenEnthConstant(t,pv,dg,dgmol,hg, &
     hgt = 0.d0
     hgp = 0.d0
   else
-    dgt = -999.d0
-    dgp = -999.d0
-    hgt = -999.d0
-    hgp = -999.d0
+    dgt = UNINITIALIZED_DOUBLE
+    dgp = UNINITIALIZED_DOUBLE
+    hgt = UNINITIALIZED_DOUBLE
+    hgp = UNINITIALIZED_DOUBLE
   endif
   
 end subroutine EOSWaterSteamDenEnthConstant
@@ -2062,8 +2062,8 @@ subroutine EOSWaterDensityIcePainter(T, P, den_ice, calculate_derivatives, &
     dden_ice_dT = 5.09424d1*(-beta)
     dden_ice_dP = 5.09424d1*alpha
   else
-    dden_ice_dT = -999.d0
-    dden_ice_dP = -999.d0
+    dden_ice_dT = UNINITIALIZED_DOUBLE
+    dden_ice_dP = UNINITIALIZED_DOUBLE
   endif
   
 end subroutine EOSWaterDensityIcePainter
@@ -2190,8 +2190,8 @@ subroutine EOSWaterDensityPainter(t,p,dw,dwmol, &
     dwt = 1/FMWH2O*(1 + alpha*(P - P_ref))*(b + 2.d0*c*(T_K - T_ref) + &
                               3.d0*d*(T_K - T_ref)**(2.d0))      ! in Kmol/K
   else
-    dwp = -999.d0
-    dwt = -999.d0
+    dwp = UNINITIALIZED_DOUBLE
+    dwt = UNINITIALIZED_DOUBLE
   endif
 
 end subroutine EOSWaterDensityPainter
@@ -2257,11 +2257,11 @@ subroutine EOSWaterEnthalpyPainter(T, P, &
     dh_dt = FMWH2O*(du_dt + P*(-1.d0/den_water_kg**(2.d0))* &
                     dden_water_dt*FMWH2O)    ! in MJ/kmol/K
   else
-    dden_water_dp = -999.d0
-    dden_water_dp = -999.d0
-    dh_dp = -999.d0
-    du_dt = -999.d0
-    dh_dt = -999.d0
+    dden_water_dp = UNINITIALIZED_DOUBLE
+    dden_water_dp = UNINITIALIZED_DOUBLE
+    dh_dp = UNINITIALIZED_DOUBLE
+    du_dt = UNINITIALIZED_DOUBLE
+    dh_dt = UNINITIALIZED_DOUBLE
   endif
 
 end subroutine EOSWaterEnthalpyPainter

@@ -109,9 +109,9 @@ subroutine SubsurfaceSimulationJumpStart(this)
   
   class(subsurface_simulation_type) :: this
 
-  class(stepper_base_type), pointer :: master_stepper
-  class(stepper_base_type), pointer :: flow_stepper
-  class(stepper_base_type), pointer :: tran_stepper
+  class(timestepper_base_type), pointer :: master_timestepper
+  class(timestepper_base_type), pointer :: flow_timestepper
+  class(timestepper_base_type), pointer :: tran_timestepper
   type(option_type), pointer :: option
   type(output_option_type), pointer :: output_option
   PetscBool :: plot_flag, transient_plot_flag
@@ -120,26 +120,26 @@ subroutine SubsurfaceSimulationJumpStart(this)
   call printMsg(this%option,'SubsurfaceSimulationJumpStart()')
 #endif
 
-  nullify(master_stepper)
-  nullify(flow_stepper)
-  nullify(tran_stepper)
+  nullify(master_timestepper)
+  nullify(flow_timestepper)
+  nullify(tran_timestepper)
 
   option => this%option
   output_option => this%output_option
 
   ! first time stepper is master
-  master_stepper => this%process_model_coupler_list%timestepper
+  master_timestepper => this%process_model_coupler_list%timestepper
   if (associated(this%flow_process_model_coupler)) then
-    flow_stepper => this%flow_process_model_coupler%timestepper
+    flow_timestepper => this%flow_process_model_coupler%timestepper
   endif
   if (associated(this%rt_process_model_coupler)) then
-    tran_stepper => this%rt_process_model_coupler%timestepper
+    tran_timestepper => this%rt_process_model_coupler%timestepper
   endif
   
   !if TIMESTEPPER->MAX_STEPS < 0, print out solution composition only
-  if (master_stepper%max_time_step < 0) then
+  if (master_timestepper%max_time_step < 0) then
     call printMsg(option,'')
-    write(option%io_buffer,*) master_stepper%max_time_step
+    write(option%io_buffer,*) master_timestepper%max_time_step
     option%io_buffer = 'The maximum # of time steps (' // &
                        trim(adjustl(option%io_buffer)) // &
                        '), specified by TIMESTEPPER->MAX_STEPS, ' // &
@@ -151,9 +151,9 @@ subroutine SubsurfaceSimulationJumpStart(this)
   endif
 
   ! print initial condition output if not a restarted sim
-  call OutputInit(master_stepper%steps)
+  call OutputInit(master_timestepper%steps)
   if (output_option%plot_number == 0 .and. &
-      master_stepper%max_time_step >= 0 .and. &
+      master_timestepper%max_time_step >= 0 .and. &
       output_option%print_initial) then
     plot_flag = PETSC_TRUE
     transient_plot_flag = PETSC_TRUE
@@ -161,9 +161,9 @@ subroutine SubsurfaceSimulationJumpStart(this)
   endif
   
   !if TIMESTEPPER->MAX_STEPS < 1, print out initial condition only
-  if (master_stepper%max_time_step < 1) then
+  if (master_timestepper%max_time_step < 1) then
     call printMsg(option,'')
-    write(option%io_buffer,*) master_stepper%max_time_step
+    write(option%io_buffer,*) master_timestepper%max_time_step
     option%io_buffer = 'The maximum # of time steps (' // &
                        trim(adjustl(option%io_buffer)) // &
                        '), specified by TIMESTEPPER->MAX_STEPS, ' // &
@@ -177,19 +177,19 @@ subroutine SubsurfaceSimulationJumpStart(this)
   ! increment plot number so that 000 is always the initial condition, and nothing else
   if (output_option%plot_number == 0) output_option%plot_number = 1
 
-  if (associated(flow_stepper)) then
-    if (.not.associated(flow_stepper%cur_waypoint)) then
+  if (associated(flow_timestepper)) then
+    if (.not.associated(flow_timestepper%cur_waypoint)) then
       option%io_buffer = &
         'Null flow waypoint list; final time likely equal to start time.'
       call printMsg(option)
       option%status = FAIL
       return
     else
-      flow_stepper%dt_max = flow_stepper%cur_waypoint%dt_max
+      flow_timestepper%dt_max = flow_timestepper%cur_waypoint%dt_max
     endif
   endif  
-  if (associated(tran_stepper)) then
-    if (.not.associated(tran_stepper%cur_waypoint)) then
+  if (associated(tran_timestepper)) then
+    if (.not.associated(tran_timestepper%cur_waypoint)) then
       option%io_buffer = &
         'Null transport waypoint list; final time likely equal to start ' // &
         'time or simulation time needs to be extended on a restart.'
@@ -197,14 +197,14 @@ subroutine SubsurfaceSimulationJumpStart(this)
       option%status = FAIL
       return
     else
-      tran_stepper%dt_max = tran_stepper%cur_waypoint%dt_max
+      tran_timestepper%dt_max = tran_timestepper%cur_waypoint%dt_max
     endif
   endif
            
-  if (associated(flow_stepper)) &
-    flow_stepper%start_time_step = flow_stepper%steps + 1
-  if (associated(tran_stepper)) &
-    tran_stepper%start_time_step = tran_stepper%steps + 1
+  if (associated(flow_timestepper)) &
+    flow_timestepper%start_time_step = flow_timestepper%steps + 1
+  if (associated(tran_timestepper)) &
+    tran_timestepper%start_time_step = tran_timestepper%steps + 1
   
   if (this%realization%debug%print_couplers) then
     call OutputPrintCouplers(this%realization,ZERO_INTEGER)
@@ -230,8 +230,8 @@ subroutine SubsurfaceFinalizeRun(this)
   
   PetscErrorCode :: ierr
   
-  class(stepper_BE_type), pointer :: flow_stepper
-  class(stepper_BE_type), pointer :: tran_stepper
+  class(timestepper_BE_type), pointer :: flow_timestepper
+  class(timestepper_BE_type), pointer :: tran_timestepper
 
 #ifdef DEBUG
   call printMsg(this%option,'SubsurfaceFinalizeRun()')
@@ -239,23 +239,23 @@ subroutine SubsurfaceFinalizeRun(this)
   
   call SimulationBaseFinalizeRun(this)
   
-  nullify(flow_stepper)
-  nullify(tran_stepper)
+  nullify(flow_timestepper)
+  nullify(tran_timestepper)
   if (associated(this%flow_process_model_coupler)) then
     select type(ts => this%flow_process_model_coupler%timestepper)
-      class is(stepper_BE_type)
-        flow_stepper => ts
+      class is(timestepper_BE_type)
+        flow_timestepper => ts
     end select
   endif
   if (associated(this%rt_process_model_coupler)) then
     select type(ts => this%rt_process_model_coupler%timestepper)
-      class is(stepper_BE_type)
-        tran_stepper => ts
+      class is(timestepper_BE_type)
+        tran_timestepper => ts
     end select
   endif
   
   call RegressionOutput(this%regression,this%realization, &
-                        flow_stepper,tran_stepper)  
+                        flow_timestepper,tran_timestepper)  
   
 end subroutine SubsurfaceFinalizeRun
 

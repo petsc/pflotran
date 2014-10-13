@@ -12,7 +12,7 @@ module Timestepper_Surface_class
 
   private
 
-  type, public, extends(stepper_base_type) :: timestepper_surface_type
+  type, public, extends(timestepper_base_type) :: timestepper_surface_type
     PetscReal :: dt_max_allowable
     PetscReal :: surf_subsurf_coupling_flow_dt
     type(solver_type), pointer :: solver
@@ -62,14 +62,14 @@ function TimestepperSurfaceCreate()
   
   class(timestepper_surface_type), pointer :: TimestepperSurfaceCreate
   
-  class(timestepper_surface_type), pointer :: surf_stepper
+  class(timestepper_surface_type), pointer :: surf_timestepper
   
-  allocate(surf_stepper)
-  call surf_stepper%Init()
+  allocate(surf_timestepper)
+  call surf_timestepper%Init()
   
-  surf_stepper%solver => SolverCreate()
+  surf_timestepper%solver => SolverCreate()
   
-  TimestepperSurfaceCreate => surf_stepper
+  TimestepperSurfaceCreate => surf_timestepper
   
 end function TimestepperSurfaceCreate
 

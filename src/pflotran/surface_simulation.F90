@@ -148,14 +148,14 @@ subroutine SurfaceFinalizeRun(this)
   
   PetscErrorCode :: ierr
 
-  class(stepper_base_type), pointer :: surf_flow_stepper
+  class(timestepper_base_type), pointer :: surf_flow_timestepper
 
   call printMsg(this%option,'SurfaceFinalizeRun()')
   
   call SimulationBaseFinalizeRun(this)
   
-  nullify(surf_flow_stepper)
-  surf_flow_stepper => this%surf_flow_process_model_coupler%timestepper
+  nullify(surf_flow_timestepper)
+  surf_flow_timestepper => this%surf_flow_process_model_coupler%timestepper
 
 end subroutine SurfaceFinalizeRun
 

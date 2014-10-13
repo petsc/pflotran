@@ -221,7 +221,7 @@ function GetImmobileSpeciesIDFromName2(name,immobile,return_error,option)
   type(immobile_species_type), pointer :: species
   PetscInt :: i
 
-  GetImmobileSpeciesIDFromName2 = -999
+  GetImmobileSpeciesIDFromName2 = UNINITIALIZED_INTEGER
   
   ! if the primary species name list exists
   if (associated(immobile%names)) then

@@ -143,7 +143,7 @@ subroutine UGridExplicitRead(unstructured_grid,filename,option)
     allocate(temp_real_array(5,num_cells_local_save+1))
     ! read for other processors
     do irank = 0, option%mycommsize-1
-      temp_real_array = -999.d0
+      temp_real_array = UNINITIALIZED_DOUBLE
       num_to_read = num_cells_local_save
       if (irank < remainder) num_to_read = num_to_read + 1
       do icell = 1, num_to_read
@@ -264,7 +264,7 @@ subroutine UGridExplicitRead(unstructured_grid,filename,option)
     allocate(temp_real_array(6,num_connections_local_save+1))
     ! read for other processors
     do irank = 0, option%mycommsize-1
-      temp_real_array = -999.d0
+      temp_real_array = UNINITIALIZED_DOUBLE
       num_to_read = num_connections_local_save
       if (irank < remainder) num_to_read = num_to_read + 1
       do iconn = 1, num_to_read
@@ -910,8 +910,8 @@ subroutine UGridExplicitDecompose(ugrid,option)
   ! permute, remove duplicate connections, and renumber to local ordering
   allocate(int_array3(num_connections_total))
   allocate(int_array4(num_connections_total))
-  int_array3 = -999
-  int_array4 = -999
+  int_array3 = UNINITIALIZED_INTEGER
+  int_array4 = UNINITIALIZED_INTEGER
   int_array3(1) = int_array(int_array2(1))
   count = 1
   do iconn = 1, num_connections_total
@@ -952,7 +952,7 @@ subroutine UGridExplicitDecompose(ugrid,option)
       trim(adjustl(string))
     call printErrMsgByRank(option)
   endif
-  num_connections_total = -999 ! set to uninitialized value to catch bugs
+  num_connections_total = UNINITIALIZED_INTEGER ! set to uninitialized value to catch bugs
   
   call VecCreate(PETSC_COMM_SELF,connections_local,ierr);CHKERRQ(ierr)
   call VecSetSizes(connections_local,num_connections_local*connection_stride, &
@@ -1006,7 +1006,7 @@ subroutine UGridExplicitDecompose(ugrid,option)
   
   ! loop over cells and change the natural ids in the duals to local ids
   allocate(int_array2d(2,num_connections_local))
-  int_array2d = -999
+  int_array2d = UNINITIALIZED_INTEGER
   call VecGetArrayF90(cells_local,vec_ptr,ierr);CHKERRQ(ierr)
   do ghosted_id=1, ugrid%ngmax
     do iconn = 1, ugrid%max_ndual_per_cell
@@ -1014,7 +1014,7 @@ subroutine UGridExplicitDecompose(ugrid,option)
       conn_id = int(vec_ptr(iconn + connection_offset + (ghosted_id-1)*cell_stride))
       if (conn_id < 1) exit ! again we hit the 0
       do i = 1, 2
-        if (int_array2d(i,conn_id) <= -999) then
+        if (int_array2d(i,conn_id) <= UNINITIALIZED_INTEGER) then
           int_array2d(i,conn_id) = ghosted_id
           exit
         endif
@@ -1103,14 +1103,14 @@ subroutine UGridExplicitDecompose(ugrid,option)
   deallocate(explicit_grid%cell_centroids)
 
   allocate(explicit_grid%cell_ids(ugrid%ngmax))
-  explicit_grid%cell_ids = -999
+  explicit_grid%cell_ids = UNINITIALIZED_INTEGER
   allocate(explicit_grid%cell_volumes(ugrid%ngmax))
-  explicit_grid%cell_volumes = -999.d0
+  explicit_grid%cell_volumes = UNINITIALIZED_DOUBLE
   allocate(explicit_grid%cell_centroids(ugrid%ngmax))
   do icell = 1, ugrid%ngmax
-    explicit_grid%cell_centroids(icell)%x = -999.d0
-    explicit_grid%cell_centroids(icell)%y = -999.d0
-    explicit_grid%cell_centroids(icell)%z = -999.d0
+    explicit_grid%cell_centroids(icell)%x = UNINITIALIZED_DOUBLE
+    explicit_grid%cell_centroids(icell)%y = UNINITIALIZED_DOUBLE
+    explicit_grid%cell_centroids(icell)%z = UNINITIALIZED_DOUBLE
   enddo
 
   call VecGetArrayF90(cells_local,vec_ptr,ierr);CHKERRQ(ierr)

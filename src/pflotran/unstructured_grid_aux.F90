@@ -1522,7 +1522,7 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
   int_array(:) = ugrid%cell_ids_natural(:)
   deallocate(ugrid%cell_ids_natural)
   allocate(ugrid%cell_ids_natural(ugrid%ngmax))
-  ugrid%cell_ids_natural(:) = -999
+  ugrid%cell_ids_natural(:) = UNINITIALIZED_INTEGER
   ugrid%cell_ids_natural(1:ugrid%nlmax) = int_array(:)
   deallocate(int_array)
   call VecGetArrayF90(elements_petsc,vec_ptr,ierr);CHKERRQ(ierr)

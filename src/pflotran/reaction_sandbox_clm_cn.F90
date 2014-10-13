@@ -154,7 +154,7 @@ subroutine CLM_CN_Read(this,input,option)
             'CHEMISTRY,REACTION_SANDBOX,CLM-CN,POOLS')
           call InputReadDouble(input,option,new_pool%CN_ratio)
           if (InputError(input)) then
-            new_pool%CN_ratio = -999.d0
+            new_pool%CN_ratio = UNINITIALIZED_DOUBLE
           else
             ! convert CN ratio from mass C/mass N to mol C/mol N
             new_pool%CN_ratio = new_pool%CN_ratio * CN_ratio_mass_to_mol
@@ -172,8 +172,8 @@ subroutine CLM_CN_Read(this,input,option)
         allocate(new_reaction)
         new_reaction%upstream_pool_name = ''
         new_reaction%downstream_pool_name = ''
-        new_reaction%rate_constant = -999.d0
-        new_reaction%respiration_fraction = -999.d0
+        new_reaction%rate_constant = UNINITIALIZED_DOUBLE
+        new_reaction%respiration_fraction = UNINITIALIZED_DOUBLE
         new_reaction%inhibition_constant = 0.d0
         nullify(new_reaction%next)
         

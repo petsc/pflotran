@@ -364,10 +364,10 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
           if (StringCompareIgnoreCase(word,'DATASET')) then
             input%buf = trim(string)
             call InputReadWord(input,option,mineral_constraint% &
-                                constraint_aux_string(imnrl),PETSC_TRUE)
+                                constraint_vol_frac_string(imnrl),PETSC_TRUE)
             call InputErrorMsg(input,option,'dataset name', &
                                trim(block_string) // ' VOL FRAC')
-            mineral_constraint%external_dataset(imnrl) = PETSC_TRUE
+            mineral_constraint%external_voL_frac_dataset(imnrl) = PETSC_TRUE
             ! set vol frac to NaN to catch bugs
             tempreal = -1.d0
             mineral_constraint%constraint_vol_frac(imnrl) = sqrt(tempreal)
@@ -381,14 +381,31 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
           call InputReadWord(string,word,PETSC_TRUE,ierr)
           ! if a dataset
           if (StringCompareIgnoreCase(word,'DATASET')) then
-            option%io_buffer = 'DATASETs not yet supported for specific ' // &
-                               'mineral surface area.'
-            call printErrMsg(option)
+            input%buf = trim(string)
+            call InputReadWord(input,option,mineral_constraint% &
+                                constraint_area_string(imnrl),PETSC_TRUE)
+            call InputErrorMsg(input,option,'dataset name', &
+                               trim(block_string) // ' SURF AREA')
+            mineral_constraint%external_area_dataset(imnrl) = PETSC_TRUE
+            ! set surface area to NaN to catch bugs
+            tempreal = -1.d0
+            mineral_constraint%constraint_area(imnrl) = sqrt(tempreal)
+            ! read units if they exist
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            if (.not.InputError(input)) then
+              ! convert just to ensure that the units were properly set
+              tempreal = UnitsConvertToInternal(word,option)
+              option%io_buffer = 'If mineral specific surface areas are ' // &
+                'defined through a DATASET, their units must be SI ' // &
+                '[m^2/m^3].  Unit conversion cannot be performed as ' // &
+                'currently implemented.'
+              call printErrMsg(option)        
+            endif
           else
             ! specific surface area
             call InputReadDouble(input,option, &
                                  mineral_constraint%constraint_area(imnrl))
-            call InputErrorMsg(input,option,'area',block_string)
+            call InputErrorMsg(input,option,'surface area',block_string)
             ! read units if they exist
             call InputReadWord(input,option,word,PETSC_TRUE)
             if (InputError(input)) then

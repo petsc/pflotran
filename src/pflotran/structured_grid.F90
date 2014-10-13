@@ -2238,7 +2238,7 @@ subroutine StructGridCreateTVDGhosts(structured_grid,ndof,global_vec, &
   
   ! Create an IS composed of the petsc indexing of the ghost cells
   allocate(global_indices_from(vector_size))
-  global_indices_from = -999 ! to catch bugs
+  global_indices_from = UNINITIALIZED_INTEGER ! to catch bugs
   allocate(tvd_ghost_indices_to(vector_size))
   do i = 1, vector_size
     tvd_ghost_indices_to(i) = i-1

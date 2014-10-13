@@ -289,7 +289,7 @@ subroutine ReactionReadPass1(reaction,input,option)
       case('RADIOACTIVE_DECAY_REACTION')
         reaction%nradiodecay_rxn = reaction%nradiodecay_rxn + 1
         radioactive_decay_rxn => RadioactiveDecayRxnCreate()
-        radioactive_decay_rxn%rate_constant = -999.d0
+        radioactive_decay_rxn%rate_constant = UNINITIALIZED_DOUBLE
         do 
           call InputReadPflotranString(input,option)
           if (InputError(input)) exit
@@ -341,7 +341,7 @@ subroutine ReactionReadPass1(reaction,input,option)
                 -1.d0*log(0.5d0)/radioactive_decay_rxn%rate_constant
           end select
         enddo   
-        if (dabs(radioactive_decay_rxn%rate_constant + 999.d0) < 1.d-10) then
+        if (Uninitialized(radioactive_decay_rxn%rate_constant)) then
           option%io_buffer = 'RATE_CONSTANT or HALF_LIFE must be set in ' // &
             'RADIOACTIVE_DECAY_REACTION.'
           call printErrMsg(option)
@@ -1355,12 +1355,18 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   if (associated(mineral_constraint)) then
     do imnrl = 1, mineral_reaction%nkinmnrl
       ! if read from a dataset, the mineral volume frac has already been set.
-      if (.not.mineral_constraint%external_dataset(imnrl)) then
-        rt_auxvar%mnrl_volfrac0(imnrl) = mineral_constraint%constraint_vol_frac(imnrl)
-        rt_auxvar%mnrl_volfrac(imnrl) = mineral_constraint%constraint_vol_frac(imnrl)
+      if (.not.mineral_constraint%external_vol_frac_dataset(imnrl)) then
+        rt_auxvar%mnrl_volfrac0(imnrl) = &
+          mineral_constraint%constraint_vol_frac(imnrl)
+        rt_auxvar%mnrl_volfrac(imnrl) = &
+          mineral_constraint%constraint_vol_frac(imnrl)
       endif
-      rt_auxvar%mnrl_area0(imnrl) = mineral_constraint%constraint_area(imnrl)
-      rt_auxvar%mnrl_area(imnrl) = mineral_constraint%constraint_area(imnrl)
+      if (.not.mineral_constraint%external_area_dataset(imnrl)) then
+        rt_auxvar%mnrl_area0(imnrl) = &
+          mineral_constraint%constraint_area(imnrl)
+        rt_auxvar%mnrl_area(imnrl) = &
+          mineral_constraint%constraint_area(imnrl)
+      endif
     enddo
   endif
 

@@ -196,7 +196,7 @@ subroutine StochasticRun(stochastic,option)
   type(stochastic_type), pointer :: stochastic
   type(option_type), pointer :: option
 
-  type(stepper_type), pointer :: master_stepper
+  type(timestepper_type), pointer :: master_timestepper
   PetscInt :: irealization
   type(simulation_type), pointer :: simulation
   character(len=MAXSTRINGLENGTH) :: string
@@ -231,9 +231,9 @@ subroutine StochasticRun(stochastic,option)
     option%io_buffer = 'Stochastic mode not tested for surface-flow'
     call printErrMsgByRank(option)
 
-    call PFLOTRANInitializePostPETSc(simulation,master_stepper,option, &
+    call PFLOTRANInitializePostPETSc(simulation,master_timestepper,option, &
                                      init_status)
-    call PFLOTRANRun(simulation,master_stepper,init_status)
+    call PFLOTRANRun(simulation,master_timestepper,init_status)
     call PFLOTRANFinalize(simulation,option)
 
     call SimulationDestroy(simulation)

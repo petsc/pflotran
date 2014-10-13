@@ -95,7 +95,7 @@ subroutine CondControlAssignFlowInitCond(realization)
 
   ! to catch uninitialized grid cells.  see VecMin check at bottom.
   call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr);CHKERRQ(ierr)
-  iphase_loc_p = -999.d0
+  iphase_loc_p = UNINITIALIZED_DOUBLE
   call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr);CHKERRQ(ierr)
 
   if (option%iflowmode == G_MODE) then
@@ -116,7 +116,7 @@ subroutine CondControlAssignFlowInitCond(realization)
         call VecGetArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
         call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr);CHKERRQ(ierr)
       
-        xx_p = -999.d0
+        xx_p = UNINITIALIZED_DOUBLE
       
         initial_condition => cur_patch%initial_conditions%first
         do
@@ -276,7 +276,7 @@ subroutine CondControlAssignFlowInitCond(realization)
         end if
         call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr);CHKERRQ(ierr)
       
-        xx_p = -999.d0
+        xx_p = UNINITIALIZED_DOUBLE
       
         initial_condition => cur_patch%initial_conditions%first
         do
@@ -582,7 +582,7 @@ subroutine CondControlAssignTranInitCond(realization)
     ! assign initial conditions values to domain
     call VecGetArrayF90(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
       
-    xx_p = -999.d0
+    xx_p = UNINITIALIZED_DOUBLE
       
     initial_condition => cur_patch%initial_conditions%first
     do
@@ -613,11 +613,12 @@ subroutine CondControlAssignTranInitCond(realization)
       ! read in heterogeneous mineral volume fractions
       if (associated(constraint_coupler%minerals)) then
         do imnrl = 1, reaction%mineral%nkinmnrl
-          if (constraint_coupler%minerals%external_dataset(imnrl)) then
+          if (constraint_coupler%minerals%external_vol_frac_dataset(imnrl)) then
             re_equilibrate_at_each_cell = PETSC_TRUE
             string = 'constraint ' // trim(constraint_coupler%constraint_name)
             dataset => DatasetBaseGetPointer(realization%datasets, &
-                          constraint_coupler%minerals%constraint_aux_string(imnrl), &
+                          constraint_coupler%minerals% &
+                            constraint_vol_frac_string(imnrl), &
                           string,option)
             idof = ONE_INTEGER
             call ConditionControlMapDatasetToVec(realization,dataset,idof, &
@@ -628,6 +629,31 @@ subroutine CondControlAssignTranInitCond(realization)
               ghosted_id = grid%nL2G(local_id)
               rt_auxvars(ghosted_id)%mnrl_volfrac0(imnrl) = vec_p(ghosted_id)
               rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl) = vec_p(ghosted_id)
+            enddo
+            call VecRestoreArrayF90(field%work_loc,vec_p,ierr);CHKERRQ(ierr)
+          endif
+        enddo
+      endif
+          
+      ! read in heterogeneous mineral surface area
+      if (associated(constraint_coupler%minerals)) then
+        do imnrl = 1, reaction%mineral%nkinmnrl
+          if (constraint_coupler%minerals%external_area_dataset(imnrl)) then
+            re_equilibrate_at_each_cell = PETSC_TRUE
+            string = 'constraint ' // trim(constraint_coupler%constraint_name)
+            dataset => DatasetBaseGetPointer(realization%datasets, &
+                          constraint_coupler%minerals% &
+                          constraint_area_string(imnrl), &
+                          string,option)
+            idof = ONE_INTEGER
+            call ConditionControlMapDatasetToVec(realization,dataset,idof, &
+                                                  field%work_loc,LOCAL)
+            call VecGetArrayF90(field%work_loc,vec_p,ierr);CHKERRQ(ierr)
+            do icell=1,initial_condition%region%num_cells
+              local_id = initial_condition%region%cell_ids(icell)
+              ghosted_id = grid%nL2G(local_id)
+              rt_auxvars(ghosted_id)%mnrl_area0(imnrl) = vec_p(ghosted_id)
+              rt_auxvars(ghosted_id)%mnrl_area(imnrl) = vec_p(ghosted_id)
             enddo
             call VecRestoreArrayF90(field%work_loc,vec_p,ierr);CHKERRQ(ierr)
           endif
@@ -734,16 +760,20 @@ subroutine CondControlAssignTranInitCond(realization)
           do imnrl = 1, reaction%mineral%nkinmnrl
             ! if read from a dataset, the vol frac was set above.  Don't want to
             ! overwrite
-            if (.not.constraint_coupler%minerals%external_dataset(imnrl)) then
+            if (.not.constraint_coupler%minerals% &
+                  external_vol_frac_dataset(imnrl)) then
               rt_auxvars(ghosted_id)%mnrl_volfrac0(imnrl) = &
                 constraint_coupler%minerals%constraint_vol_frac(imnrl)
               rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl) = &
                 constraint_coupler%minerals%constraint_vol_frac(imnrl)
             endif
-            rt_auxvars(ghosted_id)%mnrl_area0(imnrl) = &
-              constraint_coupler%minerals%constraint_area(imnrl)
-            rt_auxvars(ghosted_id)%mnrl_area(imnrl) = &
-              constraint_coupler%minerals%constraint_area(imnrl)
+            if (.not.constraint_coupler%minerals% &
+                  external_area_dataset(imnrl)) then
+              rt_auxvars(ghosted_id)%mnrl_area0(imnrl) = &
+                constraint_coupler%minerals%constraint_area(imnrl)
+              rt_auxvars(ghosted_id)%mnrl_area(imnrl) = &
+                constraint_coupler%minerals%constraint_area(imnrl)
+            endif
           enddo
         endif
         ! kinetic surface complexes
@@ -1278,7 +1308,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
         ! assign initial conditions values to domain
         call VecGetArrayF90(surf_field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
     
-        xx_p = -999.d0
+        xx_p = UNINITIALIZED_DOUBLE
       
         initial_condition => cur_patch%initial_conditions%first
         do

@@ -51,6 +51,7 @@ subroutine Init(simulation)
   use Database_hpt_module
   use Input_Aux_module
   use Condition_Control_module
+  use Subsurface_module
   
   use Flash2_module
   use Mphase_module
@@ -100,8 +101,8 @@ subroutine Init(simulation)
   type(simulation_type) :: simulation
   character(len=MAXSTRINGLENGTH) :: filename, filename_out
 
-  type(stepper_type), pointer :: flow_stepper
-  type(stepper_type), pointer :: tran_stepper
+  type(timestepper_type), pointer :: flow_timestepper
+  type(timestepper_type), pointer :: tran_timestepper
   type(solver_type), pointer :: flow_solver
   type(solver_type), pointer :: tran_solver
   type(realization_type), pointer :: realization
@@ -123,12 +124,12 @@ subroutine Init(simulation)
   PetscReal :: dum1
   PetscReal :: min_value
   SNESLineSearch :: linesearch
-  type(stepper_type), pointer               :: surf_flow_stepper
+  type(timestepper_type), pointer               :: surf_flow_timestepper
   type(solver_type), pointer                :: surf_flow_solver
   type(surface_field_type), pointer         :: surf_field
   type(surface_realization_type), pointer   :: surf_realization
   type(solver_type), pointer                :: geomech_solver
-  type(stepper_type), pointer               :: geomech_stepper
+  type(timestepper_type), pointer               :: geomech_timestepper
   type(geomech_field_type), pointer         :: geomech_field
   type(geomech_realization_type), pointer   :: geomech_realization
 
@@ -137,8 +138,8 @@ subroutine Init(simulation)
   call PetscLogEventBegin(logging%event_init,ierr);CHKERRQ(ierr)
   
   ! set pointers to objects
-  flow_stepper => simulation%flow_stepper
-  tran_stepper => simulation%tran_stepper
+  flow_timestepper => simulation%flow_timestepper
+  tran_timestepper => simulation%tran_timestepper
   realization => simulation%realization
   discretization => realization%discretization
   option => realization%option
@@ -146,10 +147,10 @@ subroutine Init(simulation)
   debug => realization%debug
   input => realization%input
   surf_realization  => simulation%surf_realization
-  surf_flow_stepper => simulation%surf_flow_stepper
+  surf_flow_timestepper => simulation%surf_flow_timestepper
   surf_field        => surf_realization%surf_field  
   geomech_realization => simulation%geomech_realization
-  geomech_stepper => simulation%geomech_stepper
+  geomech_timestepper => simulation%geomech_timestepper
   geomech_field => geomech_realization%geomech_field
   
   nullify(flow_solver)
@@ -198,47 +199,47 @@ subroutine Init(simulation)
   call OptionCheckCommandLine(option)
 
   waypoint_list => WaypointListCreate()
-  realization%waypoints => waypoint_list
+  realization%waypoint_list => waypoint_list
   
   ! initialize flow mode
   if (len_trim(option%flowmode) > 0) then
     ! set the operational mode (e.g.  MPH_MODE, etc)
     call setFlowMode(option)
-    flow_solver => flow_stepper%solver
+    flow_solver => flow_timestepper%solver
   else
     option%nphase = 1
     option%liquid_phase = 1
     option%use_isothermal = PETSC_TRUE  ! assume default isothermal when only transport
-    call TimestepperDestroy(simulation%flow_stepper)
-    nullify(flow_stepper)
+    call TimestepperDestroy(simulation%flow_timestepper)
+    nullify(flow_timestepper)
   endif
     
   ! initialize transport mode
   if (option%ntrandof > 0) then
-    tran_solver => tran_stepper%solver
+    tran_solver => tran_timestepper%solver
   else
-    call TimestepperDestroy(simulation%tran_stepper)
-    nullify(tran_stepper)
+    call TimestepperDestroy(simulation%tran_timestepper)
+    nullify(tran_timestepper)
   endif
 
   ! initialize surface-flow mode
   if (option%surf_flow_on) then
     call setSurfaceFlowMode(option)
-    surf_flow_solver => surf_flow_stepper%solver
+    surf_flow_solver => surf_flow_timestepper%solver
     waypoint_list => WaypointListCreate()
-    surf_realization%waypoints => waypoint_list
+    surf_realization%waypoint_list => waypoint_list
   else
-    call TimestepperDestroy(simulation%surf_flow_stepper)
+    call TimestepperDestroy(simulation%surf_flow_timestepper)
     nullify(surf_flow_solver)
   endif
 
   ! initialize surface-flow mode
   if (option%ngeomechdof > 0) then
-    geomech_solver => geomech_stepper%solver
+    geomech_solver => geomech_timestepper%solver
     waypoint_list => WaypointListCreate()
-    geomech_realization%waypoints => waypoint_list
+    geomech_realization%waypoint_list => waypoint_list
   else
-    call TimestepperDestroy(simulation%geomech_stepper)
+    call TimestepperDestroy(simulation%geomech_timestepper)
     nullify(geomech_solver)
   endif
 
@@ -507,10 +508,10 @@ subroutine Init(simulation)
 
     ! shell for custom convergence test.  The default SNES convergence test  
     ! is call within this function. 
-    flow_stepper%convergence_context => &
+    flow_timestepper%convergence_context => &
       ConvergenceContextCreate(flow_solver,option,grid)
     call SNESSetConvergenceTest(flow_solver%snes,ConvergenceTest, &
-                                flow_stepper%convergence_context, &
+                                flow_timestepper%convergence_context, &
                                 PETSC_NULL_FUNCTION,ierr);CHKERRQ(ierr)
 
     
@@ -585,7 +586,7 @@ subroutine Init(simulation)
                               ierr);CHKERRQ(ierr)
       end select
       call TSSetDuration(surf_flow_solver%ts,ONE_INTEGER, &
-                         simulation%surf_realization%waypoints%last%time, &
+                         simulation%surf_realization%waypoint_list%last%time, &
                          ierr);CHKERRQ(ierr)
 
     endif ! if (option%surf_flow_on)
@@ -647,10 +648,10 @@ subroutine Init(simulation)
 
     ! shell for custom convergence test.  The default SNES convergence test
     ! is call within this function.
-    geomech_stepper%convergence_context => &
+    geomech_timestepper%convergence_context => &
     ConvergenceContextCreate(geomech_solver,option,grid) ! Need to change this for geomech
     call SNESSetConvergenceTest(geomech_solver%snes,ConvergenceTest, &
-                                geomech_stepper%convergence_context, &
+                                geomech_timestepper%convergence_context, &
                                 PETSC_NULL_FUNCTION,ierr);CHKERRQ(ierr)
 
     call printMsg(option,"  Finished setting up GEOMECH SNES ")
@@ -746,10 +747,10 @@ subroutine Init(simulation)
 
       ! shell for custom convergence test.  The default SNES convergence test  
       ! is call within this function. 
-      tran_stepper%convergence_context => &
+      tran_timestepper%convergence_context => &
         ConvergenceContextCreate(tran_solver,option,grid)
       call SNESSetConvergenceTest(tran_solver%snes,ConvergenceTest, &
-                                  tran_stepper%convergence_context, &
+                                  tran_timestepper%convergence_context, &
                                   PETSC_NULL_FUNCTION,ierr);CHKERRQ(ierr)
 
       ! this update check must be in place, otherwise reactive transport is likely
@@ -788,9 +789,9 @@ subroutine Init(simulation)
   call RealizationProcessCouplers(realization)
   call SandboxesSetup(realization)
   call RealProcessFluidProperties(realization)
-  call assignMaterialPropToRegions(realization)
+  call SubsurfInitMaterialProperties(realization)
   ! assignVolumesToMaterialAuxVars() must be called after 
-  ! assignMaterialPropToRegions() where the Material object is created 
+  ! RealizInitMaterialProperties() where the Material object is created 
   call assignVolumesToMaterialAuxVars(realization)
   if(realization%discretization%lsm_flux_method) &
     call GridComputeMinv(realization%discretization%grid, &
@@ -808,18 +809,18 @@ subroutine Init(simulation)
     ! add waypoints associated with boundary conditions, source/sinks etc. to list
     call RealizationAddWaypointsToList(realization)
     ! fill in holes in waypoint data
-    call WaypointListFillIn(option,realization%waypoints)
-    call WaypointListRemoveExtraWaypnts(option,realization%waypoints)
+    call WaypointListFillIn(option,realization%waypoint_list)
+    call WaypointListRemoveExtraWaypnts(option,realization%waypoint_list)
   ! geh- no longer needed
   !  ! convert times from input time to seconds
-  !  call WaypointConvertTimes(realization%waypoints,realization%output_option%tconv)
+  !  call WaypointConvertTimes(realization%waypoint_list,realization%output_option%tconv)
   endif
   
-  if (associated(flow_stepper)) then
-    flow_stepper%cur_waypoint => realization%waypoints%first
+  if (associated(flow_timestepper)) then
+    flow_timestepper%cur_waypoint => realization%waypoint_list%first
   endif
-  if (associated(tran_stepper)) then
-    tran_stepper%cur_waypoint => realization%waypoints%first
+  if (associated(tran_timestepper)) then
+    tran_timestepper%cur_waypoint => realization%waypoint_list%first
   endif
   
   ! initialize global auxiliary variable object
@@ -982,17 +983,17 @@ subroutine Init(simulation)
 
   
   ! print info
-  if (associated(flow_stepper)) then
+  if (associated(flow_timestepper)) then
     string = 'Flow Stepper:'
-    call TimestepperPrintInfo(flow_stepper,option%fid_out,string,option)
+    call TimestepperPrintInfo(flow_timestepper,option%fid_out,string,option)
   endif    
-  if (associated(tran_stepper)) then
+  if (associated(tran_timestepper)) then
     string = 'Transport Stepper:'
-    call TimestepperPrintInfo(tran_stepper,option%fid_out,string,option)
+    call TimestepperPrintInfo(tran_timestepper,option%fid_out,string,option)
   endif    
    if (option%surf_flow_on) then
     string = 'Surface Flow Stepper:'
-    call TimestepperPrintInfo(surf_flow_stepper,option%fid_out,string,option)
+    call TimestepperPrintInfo(surf_flow_timestepper,option%fid_out,string,option)
   endif
 
   if (associated(flow_solver)) then
@@ -1044,7 +1045,7 @@ subroutine Init(simulation)
     call verifyAllCouplers(realization)
   endif
   if (debug%print_waypoints) then
-    call WaypointListPrint(realization%waypoints,option,realization%output_option)
+    call WaypointListPrint(realization%waypoint_list,option,realization%output_option)
   endif
 
 #ifdef OS_STATISTICS
@@ -1086,10 +1087,10 @@ subroutine Init(simulation)
 
     ! add waypoints associated with boundary conditions, source/sinks etc. to list
     call SurfRealizAddWaypointsToList(simulation%surf_realization)
-    call WaypointListFillIn(option,simulation%surf_realization%waypoints)
-    call WaypointListRemoveExtraWaypnts(option,simulation%surf_realization%waypoints)
-    if (associated(flow_stepper)) then
-      simulation%surf_flow_stepper%cur_waypoint => simulation%surf_realization%waypoints%first
+    call WaypointListFillIn(option,simulation%surf_realization%waypoint_list)
+    call WaypointListRemoveExtraWaypnts(option,simulation%surf_realization%waypoint_list)
+    if (associated(flow_timestepper)) then
+      simulation%surf_flow_timestepper%cur_waypoint => simulation%surf_realization%waypoint_list%first
     endif
 
     select case(option%iflowmode)
@@ -1154,9 +1155,9 @@ subroutine Init(simulation)
     call GeomechRealizPrintCouplers(simulation%geomech_realization)  
     call GeomechRealizAddWaypointsToList(simulation%geomech_realization)
     call GeomechGridElemSharedByNodes(geomech_realization)
-    call WaypointListFillIn(option,simulation%geomech_realization%waypoints)
+    call WaypointListFillIn(option,simulation%geomech_realization%waypoint_list)
     call WaypointListRemoveExtraWaypnts(option, &
-                                    simulation%geomech_realization%waypoints)
+                                    simulation%geomech_realization%waypoint_list)
     call GeomechForceSetup(simulation%geomech_realization)
     call GeomechGlobalSetup(simulation%geomech_realization)
     
@@ -1327,9 +1328,9 @@ subroutine InitReadRequiredCardsFromInput(realization)
         end select
   
 !....................
-      case('DBASE')
+      case('DBASE_FILENAME')
         call InputReadWord(input,option,word,PETSC_FALSE)
-        call InputErrorMsg(input,option,'filename','DBASE')
+        call InputErrorMsg(input,option,'filename','DBASE_FILENAME')
         if (index(word,'.h5') > 0) then
 #if defined(PETSC_HAVE_HDF5)
           call HDF5ReadDbase(word,option)
@@ -1512,9 +1513,9 @@ subroutine InitReadInput(simulation)
   type(solver_type), pointer :: tran_solver
   type(solver_type), pointer :: default_solver
   type(solver_type), pointer :: solver_pointer
-  type(stepper_type), pointer :: flow_stepper
-  type(stepper_type), pointer :: tran_stepper
-  type(stepper_type), pointer :: default_stepper
+  type(timestepper_type), pointer :: flow_timestepper
+  type(timestepper_type), pointer :: tran_timestepper
+  type(timestepper_type), pointer :: default_timestepper
   type(reaction_type), pointer :: reaction
   type(output_option_type), pointer :: output_option
   type(uniform_velocity_dataset_type), pointer :: uniform_velocity_dataset
@@ -1524,8 +1525,8 @@ subroutine InitReadInput(simulation)
   type(input_type), pointer :: input
   type(geomech_realization_type), pointer :: geomech_realization
 
-  nullify(flow_stepper)
-  nullify(tran_stepper)
+  nullify(flow_timestepper)
+  nullify(tran_timestepper)
   nullify(flow_solver)
   nullify(tran_solver)
   
@@ -1542,22 +1543,22 @@ subroutine InitReadInput(simulation)
   reaction => realization%reaction
   input => realization%input
 
-  tran_stepper => simulation%tran_stepper
-  if (associated(tran_stepper)) then
-    tran_solver => tran_stepper%solver
+  tran_timestepper => simulation%tran_timestepper
+  if (associated(tran_timestepper)) then
+    tran_solver => tran_timestepper%solver
     tran_solver%itype = TRANSPORT_CLASS
   endif
-  flow_stepper => simulation%flow_stepper
-  if (associated(flow_stepper)) then
-    flow_solver => flow_stepper%solver
+  flow_timestepper => simulation%flow_timestepper
+  if (associated(flow_timestepper)) then
+    flow_solver => flow_timestepper%solver
     flow_solver%itype = FLOW_CLASS
   endif
 
-  if (associated(flow_stepper)) then
-    default_stepper => flow_stepper
+  if (associated(flow_timestepper)) then
+    default_timestepper => flow_timestepper
     default_solver => flow_solver
   else
-    default_stepper => tran_stepper
+    default_timestepper => tran_timestepper
     default_solver => tran_solver
   endif
 
@@ -2093,19 +2094,19 @@ subroutine InitReadInput(simulation)
         select case(word)
           case('FLOW')
             if (associated(flow_solver)) then
-              call TimestepperRead(flow_stepper,input,option)
+              call TimestepperRead(flow_timestepper,input,option)
             else
               call InputSkipToEnd(input,option,card)
             endif
           case('TRAN','TRANSPORT')
             if (associated(tran_solver)) then
-              call TimestepperRead(tran_stepper,input,option)
+              call TimestepperRead(tran_timestepper,input,option)
             else
               call InputSkipToEnd(input,option,card)
             endif
           case default
-            if (associated(default_stepper)) then
-              call TimestepperRead(default_stepper,input,option)
+            if (associated(default_timestepper)) then
+              call TimestepperRead(default_timestepper,input,option)
             else
               call InputSkipToEnd(input,option,card)
             endif
@@ -2185,7 +2186,6 @@ subroutine InitReadInput(simulation)
 !....................
 
       case ('SATURATION_FUNCTION')
-      
         saturation_function => SaturationFunctionCreate(option)
         call InputReadWord(input,option,saturation_function%name,PETSC_TRUE)
         call InputErrorMsg(input,option,'name','SATURATION_FUNCTION')
@@ -2337,7 +2337,7 @@ subroutine InitReadInput(simulation)
                     waypoint => WaypointCreate()
                     waypoint%time = temp_real*units_conversion
                     waypoint%print_output = PETSC_TRUE    
-                    call WaypointInsertInList(waypoint,realization%waypoints)
+                    call WaypointInsertInList(waypoint,realization%waypoint_list)
                   endif
                 enddo
                 if (.not.continuation_flag) exit
@@ -2422,7 +2422,7 @@ subroutine InitReadInput(simulation)
                         waypoint => WaypointCreate()
                         waypoint%time = temp_real
                         waypoint%print_output = PETSC_TRUE    
-                        call WaypointInsertInList(waypoint,realization%waypoints)
+                        call WaypointInsertInList(waypoint,realization%waypoint_list)
                         temp_real = temp_real + output_option%periodic_output_time_incr
                         if (temp_real > temp_real2) exit
                       enddo
@@ -2666,13 +2666,13 @@ subroutine InitReadInput(simulation)
               waypoint%final = PETSC_TRUE
               waypoint%time = temp_real*realization%output_option%tconv
               waypoint%print_output = PETSC_TRUE              
-              call WaypointInsertInList(waypoint,realization%waypoints)
+              call WaypointInsertInList(waypoint,realization%waypoint_list)
             case('INITIAL_TIMESTEP_SIZE')
               call InputReadDouble(input,option,temp_real)
               call InputErrorMsg(input,option,'Initial Timestep Size','TIME') 
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'Initial Timestep Size Time Units','TIME')
-              default_stepper%dt_min = temp_real*UnitsConvertToInternal(word,option)
+              default_timestepper%dt_min = temp_real*UnitsConvertToInternal(word,option)
             case('MAXIMUM_TIMESTEP_SIZE')
               call InputReadDouble(input,option,temp_real)
               call InputErrorMsg(input,option,'Maximum Timestep Size','TIME') 
@@ -2697,7 +2697,7 @@ subroutine InitReadInput(simulation)
               else
                 waypoint%time = 0.d0
               endif     
-              call WaypointInsertInList(waypoint,realization%waypoints)
+              call WaypointInsertInList(waypoint,realization%waypoint_list)
             case default
               option%io_buffer = 'Keyword: ' // trim(word) // &
                                  ' not recognized in TIME.'
@@ -2705,51 +2705,51 @@ subroutine InitReadInput(simulation)
           end select
         enddo
 
-        if (associated(flow_stepper)) then
-          flow_stepper%dt_min = default_stepper%dt_min
+        if (associated(flow_timestepper)) then
+          flow_timestepper%dt_min = default_timestepper%dt_min
         endif
-        if (associated(tran_stepper)) then
-          tran_stepper%dt_min = default_stepper%dt_min
+        if (associated(tran_timestepper)) then
+          tran_timestepper%dt_min = default_timestepper%dt_min
         endif
-        option%flow_dt = default_stepper%dt_min
-        option%tran_dt = default_stepper%dt_min
+        option%flow_dt = default_timestepper%dt_min
+        option%tran_dt = default_timestepper%dt_min
       
 !.....................
       case ('SURFACE_FLOW')
         call SurfaceInitReadInput(simulation%surf_realization, &
-                              simulation%surf_flow_stepper%solver,input,option)
-        simulation%surf_flow_stepper%dt_min = simulation%surf_realization%dt_min
-        simulation%surf_flow_stepper%dt_max = simulation%surf_realization%dt_max
+                              simulation%surf_flow_timestepper%solver,input,option)
+        simulation%surf_flow_timestepper%dt_min = simulation%surf_realization%dt_min
+        simulation%surf_flow_timestepper%dt_max = simulation%surf_realization%dt_max
         option%surf_subsurf_coupling_flow_dt = simulation%surf_realization%dt_coupling
-        option%surf_flow_dt=simulation%surf_flow_stepper%dt_min
+        option%surf_flow_dt=simulation%surf_flow_timestepper%dt_min
 
         ! Add first waypoint
         waypoint => WaypointCreate()
         waypoint%time = 0.d0
-        call WaypointInsertInList(waypoint,simulation%surf_realization%waypoints)
+        call WaypointInsertInList(waypoint,simulation%surf_realization%waypoint_list)
 
         ! Add final_time waypoint to surface_realization
         waypoint => WaypointCreate()
         waypoint%final = PETSC_TRUE
-        waypoint%time = realization%waypoints%last%time
+        waypoint%time = realization%waypoint_list%last%time
         waypoint%print_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,simulation%surf_realization%waypoints)
+        call WaypointInsertInList(waypoint,simulation%surf_realization%waypoint_list)
 
 !......................
       case ('GEOMECHANICS')
         call GeomechanicsInitReadInput(geomech_realization, &
-                         simulation%geomech_stepper%solver,input,option)
+                         simulation%geomech_timestepper%solver,input,option)
         ! Add first waypoint
         waypoint => WaypointCreate()
         waypoint%time = 0.d0
-        call WaypointInsertInList(waypoint,simulation%geomech_realization%waypoints)
+        call WaypointInsertInList(waypoint,simulation%geomech_realization%waypoint_list)
 
         ! Add final_time waypoint to geomech_realization
         waypoint => WaypointCreate()
         waypoint%final = PETSC_TRUE
-        waypoint%time = realization%waypoints%last%time
+        waypoint%time = realization%waypoint_list%last%time
         waypoint%print_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,simulation%geomech_realization%waypoints)
+        call WaypointInsertInList(waypoint,simulation%geomech_realization%waypoint_list)
 
 !......................
       case ('HDF5_READ_GROUP_SIZE')
@@ -2762,7 +2762,7 @@ subroutine InitReadInput(simulation)
         call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE','Group size')
 
 !....................
-      case ('DBASE')
+      case ('DBASE_FILENAME')
 
 !....................
       case default
@@ -2904,369 +2904,6 @@ subroutine setSurfaceFlowMode(option)
   end select
   
 end subroutine setSurfaceFlowMode
-
-! ************************************************************************** !
-
-subroutine assignMaterialPropToRegions(realization)
-  ! 
-  ! Assigns material properties to
-  ! associated regions in the model
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 11/02/07
-  ! 
-
-  use Realization_class
-  use Discretization_module
-  use Strata_module
-  use Region_module
-  use Material_module
-  use Option_module
-  use Grid_module
-  use Field_module
-  use Patch_module
-  use Material_Aux_class
-  use Variables_module, only : PERMEABILITY_X, PERMEABILITY_Y, &
-                               PERMEABILITY_Z, PERMEABILITY_XY, &
-                               PERMEABILITY_YZ, PERMEABILITY_XZ, &
-                               TORTUOSITY, POROSITY
-  
-  use HDF5_module
-
-  implicit none
-  
-  type(realization_type) :: realization
-  
-  PetscReal, pointer :: icap_loc_p(:)
-  PetscReal, pointer :: ithrm_loc_p(:)
-  PetscReal, pointer :: por0_p(:)
-  PetscReal, pointer :: tor0_p(:)
-  PetscReal, pointer :: perm_xx_p(:)
-  PetscReal, pointer :: perm_yy_p(:)
-  PetscReal, pointer :: perm_zz_p(:)
-  PetscReal, pointer :: perm_xz_p(:)
-  PetscReal, pointer :: perm_xy_p(:)
-  PetscReal, pointer :: perm_yz_p(:)
-  PetscReal, pointer :: perm_pow_p(:)
-  PetscReal, pointer :: vec_p(:)
-  
-  PetscInt :: icell, local_id, ghosted_id, natural_id, material_id
-  PetscInt :: istart, iend
-  PetscInt :: i
-  PetscInt :: tempint
-  PetscReal :: tempreal
-  character(len=MAXSTRINGLENGTH) :: group_name
-  character(len=MAXSTRINGLENGTH) :: dataset_name
-  PetscErrorCode :: ierr
-  
-  type(option_type), pointer :: option
-  type(discretization_type), pointer :: discretization
-  type(grid_type), pointer :: grid
-  type(field_type), pointer :: field
-  type(strata_type), pointer :: strata
-  type(patch_type), pointer :: patch  
-  type(patch_type), pointer :: cur_patch
-  class(material_auxvar_type), pointer :: material_auxvars(:)
-
-  type(material_property_type), pointer :: material_property, null_material_property
-  type(region_type), pointer :: region
-  PetscBool :: update_ghosted_material_ids
-  
-  option => realization%option
-  discretization => realization%discretization
-  patch => realization%patch
-  field => realization%field
-
-  ! initialize material auxiliary indices
-  call MaterialInitAuxIndices(patch%material_property_array,option)
-  ! create mappinging
-  
-  ! loop over all patches and allocation material id arrays
-  cur_patch => realization%patch_list%first
-  do
-    if (.not.associated(cur_patch)) exit
-    grid => cur_patch%grid
-    if (.not.associated(cur_patch%imat)) then
-      allocate(cur_patch%imat(grid%ngmax))
-      ! initialize to "unset"
-      cur_patch%imat = -999
-      ! also allocate saturation function id
-      allocate(cur_patch%sat_func_id(grid%ngmax))
-      cur_patch%sat_func_id = -999
-    endif
-    
-    cur_patch%aux%Material => MaterialAuxCreate()
-    allocate(material_auxvars(grid%ngmax))
-    do ghosted_id = 1, grid%ngmax
-      call MaterialAuxVarInit(material_auxvars(ghosted_id),option)
-    enddo
-    cur_patch%aux%Material%num_aux = grid%ngmax
-    cur_patch%aux%Material%auxvars => material_auxvars
-    nullify(material_auxvars)
-    
-    cur_patch => cur_patch%next
-  enddo
-
-  ! if material ids are set based on region, as opposed to being read in
-  ! we must communicate the ghosted ids.  This flag toggles this operation.
-  update_ghosted_material_ids = PETSC_FALSE
-  cur_patch => realization%patch_list%first
-  do
-    if (.not.associated(cur_patch)) exit
-    grid => cur_patch%grid
-    strata => cur_patch%strata%first
-    do
-      if (.not.associated(strata)) exit
-      ! Read in cell by cell material ids if they exist
-      if (.not.associated(strata%region) .and. strata%active) then
-        call readMaterialsFromFile(realization,strata%realization_dependent, &
-                                    strata%material_property_filename)
-      ! Otherwise, set based on region
-      else
-        update_ghosted_material_ids = PETSC_TRUE
-        region => strata%region
-        material_property => strata%material_property
-        if (associated(region)) then
-          istart = 1
-          iend = region%num_cells
-        else
-          istart = 1
-          iend = grid%nlmax
-        endif
-        do icell=istart, iend
-          if (associated(region)) then
-            local_id = region%cell_ids(icell)
-          else
-            local_id = icell
-          endif
-          ghosted_id = grid%nL2G(local_id)
-          if (strata%active) then
-            cur_patch%imat(ghosted_id) = material_property%internal_id
-          else
-            ! if not active, set material id to zero
-            cur_patch%imat(ghosted_id) = 0
-          endif
-        enddo
-      endif
-      strata => strata%next
-    enddo
-    cur_patch => cur_patch%next
-  enddo
-    
-  if (update_ghosted_material_ids) then
-    ! update ghosted material ids
-    call RealLocalToLocalWithArray(realization,MATERIAL_ID_ARRAY)
-  endif
-
-  ! set cell by cell material properties
-  ! create null material property for inactive cells
-  null_material_property => MaterialPropertyCreate()
-  cur_patch => realization%patch_list%first
-  do
-    if (.not.associated(cur_patch)) exit
-    grid => cur_patch%grid
-    if (option%nflowdof > 0) then
-      call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr);CHKERRQ(ierr)
-      call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr);CHKERRQ(ierr)
-      call VecGetArrayF90(field%perm0_xx,perm_xx_p,ierr);CHKERRQ(ierr)
-      call VecGetArrayF90(field%perm0_yy,perm_yy_p,ierr);CHKERRQ(ierr)
-      call VecGetArrayF90(field%perm0_zz,perm_zz_p,ierr);CHKERRQ(ierr)
-      if (option%mimetic) then
-        call VecGetArrayF90(field%perm0_xz,perm_xz_p,ierr);CHKERRQ(ierr)
-        call VecGetArrayF90(field%perm0_xy,perm_xy_p,ierr);CHKERRQ(ierr)
-        call VecGetArrayF90(field%perm0_yz,perm_yz_p,ierr);CHKERRQ(ierr)
-      endif
-    endif
-    call VecGetArrayF90(field%porosity0,por0_p,ierr);CHKERRQ(ierr)
-    call VecGetArrayF90(field%tortuosity0,tor0_p,ierr);CHKERRQ(ierr)
-        
-    material_auxvars => cur_patch%aux%Material%auxvars
-
-    do local_id = 1, grid%nlmax
-      ghosted_id = grid%nL2G(local_id)
-      material_id = cur_patch%imat(ghosted_id)
-      if (material_id == 0) then ! accommodate inactive cells
-        material_property => null_material_property
-      else if (material_id > 0 .and. &
-                material_id <= &
-                size(patch%material_property_array)) then
-        material_property => &
-          patch%material_property_array(material_id)%ptr
-        if (.not.associated(material_property)) then
-          write(dataset_name,*) patch%imat_internal_to_external(material_id)
-          option%io_buffer = 'No material property for material id ' // &
-                              trim(adjustl(dataset_name)) &
-                              //  ' defined in input file.'
-          call printErrMsgByRank(option)
-        endif
-      else if (material_id < 0 .and. material_id > -999) then 
-        ! highjacking dataset_name and group_name for error processing
-        write(dataset_name,*) grid%nG2A(ghosted_id)
-        write(group_name,*) -1*material_id
-        option%io_buffer = 'Undefined material id ' // &
-                           trim(adjustl(group_name)) // &
-                           ' at cell ' // &
-                           trim(adjustl(dataset_name)) // '.'
-        call printErrMsgByRank(option)
-      else if (material_id == -999) then 
-        write(dataset_name,*) grid%nG2A(ghosted_id)
-        option%io_buffer = 'Uninitialized material id in patch at cell ' // &
-                            trim(adjustl(dataset_name))
-        call printErrMsgByRank(option)
-      else if (material_id > size(patch%material_property_array)) then
-        write(option%io_buffer,*) patch%imat_internal_to_external(material_id)
-        option%io_buffer = 'Unmatched material id in patch: ' // &
-          adjustl(trim(option%io_buffer))
-        call printErrMsgByRank(option)
-      else
-        option%io_buffer = 'Something messed up with material ids. ' // &
-          ' Possibly material ids not assigned to all grid cells. ' // &
-          ' Contact Glenn!'
-        call printErrMsgByRank(option)
-      endif
-      if (option%nflowdof > 0) then
-        cur_patch%sat_func_id(ghosted_id) = &
-          material_property%saturation_function_id
-        icap_loc_p(ghosted_id) = material_property%saturation_function_id
-        ithrm_loc_p(ghosted_id) = material_property%internal_id
-        perm_xx_p(local_id) = material_property%permeability(1,1)
-        perm_yy_p(local_id) = material_property%permeability(2,2)
-        perm_zz_p(local_id) = material_property%permeability(3,3)
-        if (option%mimetic) then
-          perm_xz_p(local_id) = material_property%permeability(1,3)
-          perm_xy_p(local_id) = material_property%permeability(1,2)
-          perm_yz_p(local_id) = material_property%permeability(2,3)
-        endif
-      endif
-      if (associated(material_auxvars)) then
-        call MaterialAssignPropertyToAux(material_auxvars(ghosted_id), &
-                                         material_property,option)
-      endif
-      por0_p(local_id) = material_property%porosity
-      tor0_p(local_id) = material_property%tortuosity
-    enddo
-
-    if (option%nflowdof > 0) then
-      call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr);CHKERRQ(ierr)
-      call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr);CHKERRQ(ierr)
-      call VecRestoreArrayF90(field%perm0_xx,perm_xx_p,ierr);CHKERRQ(ierr)
-      call VecRestoreArrayF90(field%perm0_yy,perm_yy_p,ierr);CHKERRQ(ierr)
-      call VecRestoreArrayF90(field%perm0_zz,perm_zz_p,ierr);CHKERRQ(ierr)
-      if (option%mimetic) then
-        call VecRestoreArrayF90(field%perm0_xz,perm_xz_p,ierr);CHKERRQ(ierr)
-        call VecRestoreArrayF90(field%perm0_xy,perm_xy_p,ierr);CHKERRQ(ierr)
-        call VecRestoreArrayF90(field%perm0_yz,perm_yz_p,ierr);CHKERRQ(ierr)
-      endif
-    endif
-    call VecRestoreArrayF90(field%porosity0,por0_p,ierr);CHKERRQ(ierr)
-    call VecRestoreArrayF90(field%tortuosity0,tor0_p,ierr);CHKERRQ(ierr)
-        
-    ! read in any user-defined property fields
-    do material_id = 1, size(patch%material_property_array)
-      material_property => &
-              patch%material_property_array(material_id)%ptr
-      if (associated(material_property)) then
-        if (associated(material_property%permeability_dataset)) then
-          call readPermeabilitiesFromFile(realization,material_property)
-        endif
-        if (associated(material_property%porosity_dataset)) then
-          group_name = ''
-          dataset_name = 'Porosity'
-          call HDF5ReadCellIndexedRealArray(realization,field%work, &
-                      material_property%porosity_dataset%filename, &
-                      group_name, &
-                      dataset_name, &
-                      material_property%porosity_dataset%realization_dependent)
-          call VecGetArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
-          call VecGetArrayF90(field%porosity0,por0_p,ierr);CHKERRQ(ierr)
-          do local_id = 1, grid%nlmax
-            if (cur_patch%imat(grid%nL2G(local_id)) == &
-                material_property%internal_id) then
-              por0_p(local_id) = vec_p(local_id)
-            endif
-          enddo
-          call VecRestoreArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
-          call VecRestoreArrayF90(field%porosity0,por0_p,ierr);CHKERRQ(ierr)
-        endif
-      endif
-    enddo
-      
-    cur_patch => cur_patch%next
-  enddo
-  call MaterialPropertyDestroy(null_material_property)
-  nullify(null_material_property)
-
-  ! update ghosted values
-  if (option%nflowdof > 0) then
-    call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
-                                     field%work_loc,ONEDOF)
-    call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
-                                 PERMEABILITY_X,0)
-    call DiscretizationGlobalToLocal(discretization,field%perm0_yy, &
-                                     field%work_loc,ONEDOF)  
-    call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
-                                 PERMEABILITY_Y,0)
-    call DiscretizationGlobalToLocal(discretization,field%perm0_zz, &
-                                     field%work_loc,ONEDOF)   
-    call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
-                                 PERMEABILITY_Z,0)
-    if (option%mimetic) then
-      call DiscretizationGlobalToLocal(discretization,field%perm0_xz, &
-                                       field%work_loc,ONEDOF)  
-      call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
-                                   PERMEABILITY_XZ,0)
-      call DiscretizationGlobalToLocal(discretization,field%perm0_xy, &
-                                       field%work_loc,ONEDOF)  
-      call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
-                                   PERMEABILITY_YZ,0)
-      call DiscretizationGlobalToLocal(discretization,field%perm0_yz, &
-                                       field%work_loc,ONEDOF)   
-      call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
-                                   PERMEABILITY_YZ,0)
-    endif
-    call DiscretizationLocalToLocal(discretization,field%icap_loc, &
-                                    field%icap_loc,ONEDOF)   
-    call DiscretizationLocalToLocal(discretization,field%ithrm_loc, &
-                                    field%ithrm_loc,ONEDOF)
-    call RealLocalToLocalWithArray(realization,SATURATION_FUNCTION_ID_ARRAY)
-  endif
-  
-  call DiscretizationGlobalToLocal(discretization,field%porosity0, &
-                                   field%porosity_mnrl_loc,ONEDOF)
-  call MaterialSetAuxVarVecLoc(patch%aux%Material,field%porosity_mnrl_loc, &
-                               POROSITY,0)
-  call DiscretizationGlobalToLocal(discretization,field%tortuosity0, &
-                                    field%work_loc,ONEDOF)
-  call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
-                               TORTUOSITY,0)
-  ! rock properties
-  do i = 1, max_material_index
-    call VecGetArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
-    do local_id = 1, patch%grid%nlmax
-      ghosted_id = patch%grid%nL2G(local_id)
-      vec_p(local_id) = &
-        patch%aux%Material%auxvars(patch%grid%nL2G(local_id))% &
-        soil_properties(i)
-    enddo
-    call VecRestoreArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
-    call VecMin(field%work,tempint,tempreal,ierr)
-    if (dabs(tempreal + 999.d0) < 1.d-10) then
-      option%io_buffer = 'Incorrect assignment of soil properties. ' // &
-        'Please send this error message and your input file to ' // &
-        'pflotran-dev@googlegroups.com.'
-        call printErrMsg(option)
-    endif
-    call DiscretizationGlobalToLocal(discretization,field%work, &
-                                     field%work_loc,ONEDOF)
-    call VecGetArrayF90(field%work_loc,vec_p,ierr);CHKERRQ(ierr)
-    do ghosted_id = 1, patch%grid%ngmax
-      patch%aux%Material%auxvars(ghosted_id)%soil_properties(i) = &
-         vec_p(ghosted_id)
-    enddo
-    call VecRestoreArrayF90(field%work_loc,vec_p,ierr);CHKERRQ(ierr)
-  enddo
-  
-end subroutine assignMaterialPropToRegions
 
 ! ************************************************************************** !
 
@@ -3482,307 +3119,6 @@ subroutine readRegionFiles(realization)
   enddo
 
 end subroutine readRegionFiles
-
-! ************************************************************************** !
-
-subroutine readMaterialsFromFile(realization,realization_dependent,filename)
-  ! 
-  ! Reads in grid cell materials
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 1/03/08
-  ! 
-
-  use Realization_class
-  use Field_module
-  use Grid_module
-  use Option_module
-  use Patch_module
-  use Discretization_module
-  use Logging_module
-  use Input_Aux_module
-  use Material_module
-
-  use HDF5_module
-  
-  implicit none
-  
-  type(realization_type) :: realization
-  PetscBool :: realization_dependent
-  character(len=MAXSTRINGLENGTH) :: filename
-  
-  type(field_type), pointer :: field
-  type(grid_type), pointer :: grid
-  type(option_type), pointer :: option
-  type(patch_type), pointer :: patch   
-  type(input_type), pointer :: input
-  type(discretization_type), pointer :: discretization
-  character(len=MAXSTRINGLENGTH) :: group_name
-  character(len=MAXSTRINGLENGTH) :: dataset_name
-  PetscBool :: append_realization_id
-  PetscInt :: ghosted_id, natural_id, material_id
-  PetscInt :: fid = 86
-  PetscInt :: status
-  PetscInt, pointer :: external_to_internal_mapping(:)
-  Vec :: global_vec
-  Vec :: local_vec
-  PetscErrorCode :: ierr
-
-  field => realization%field
-  patch => realization%patch
-  grid => patch%grid
-  option => realization%option
-  discretization => realization%discretization
-  
-  if (index(filename,'.h5') > 0) then
-    group_name = 'Materials'
-    dataset_name = 'Material Ids'
-    call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
-                                    option)
-    call DiscretizationCreateVector(discretization,ONEDOF,local_vec,LOCAL, &
-                                    option)
-    call HDF5ReadCellIndexedIntegerArray(realization,global_vec, &
-                                         filename,group_name, &
-                                         dataset_name,realization_dependent)
-    call DiscretizationGlobalToLocal(discretization,global_vec,local_vec,ONEDOF)
-    call GridCopyVecToIntegerArray(grid,patch%imat,local_vec,grid%ngmax)
-    call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
-    call VecDestroy(local_vec,ierr);CHKERRQ(ierr)
-  else
-    call PetscLogEventBegin(logging%event_hash_map,ierr);CHKERRQ(ierr)
-    call GridCreateNaturalToGhostedHash(grid,option)
-    input => InputCreate(IUNIT_TEMP,filename,option)
-    do
-      call InputReadPflotranString(input,option)
-      if (InputError(input)) exit
-      call InputReadInt(input,option,natural_id)
-      call InputErrorMsg(input,option,'natural id','STRATA')
-      ! natural ids in hash are zero-based
-      ghosted_id = GridGetLocalGhostedIdFromHash(grid,natural_id)
-      if (ghosted_id > 0) then
-        call InputReadInt(input,option,material_id)
-        call InputErrorMsg(input,option,'material id','STRATA')
-        patch%imat(ghosted_id) = material_id
-      endif
-    enddo
-    call InputDestroy(input)
-    call GridDestroyHashTable(grid)
-    call PetscLogEventEnd(logging%event_hash_map,ierr);CHKERRQ(ierr)
-  endif
-  
-  call MaterialCreateExtToIntMapping(patch%material_property_array, &
-                                     external_to_internal_mapping)
-  call MaterialApplyMapping(external_to_internal_mapping,patch%imat)
-  deallocate(external_to_internal_mapping)
-  nullify(external_to_internal_mapping)
-  
-end subroutine readMaterialsFromFile
-
-! ************************************************************************** !
-
-subroutine readPermeabilitiesFromFile(realization,material_property)
-  ! 
-  ! Reads in grid cell permeabilities
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 01/19/09
-  ! 
-
-  use Realization_class
-  use Field_module
-  use Grid_module
-  use Option_module
-  use Patch_module
-  use Discretization_module
-  use Logging_module
-  use Input_Aux_module
-  use Material_module
-  use HDF5_module
-  
-  implicit none
-  
-  type(realization_type) :: realization
-  type(material_property_type) :: material_property
-
-  type(field_type), pointer :: field
-  type(patch_type), pointer :: patch
-  type(grid_type), pointer :: grid
-  type(option_type), pointer :: option
-  type(input_type), pointer :: input
-  type(discretization_type), pointer :: discretization
-  character(len=MAXSTRINGLENGTH) :: group_name
-  character(len=MAXSTRINGLENGTH) :: dataset_name
-  PetscInt :: local_id, ghosted_id, natural_id
-  PetscReal :: permeability
-  PetscBool :: append_realization_id
-  PetscInt :: fid = 86
-  PetscInt :: status
-  PetscInt :: idirection
-  PetscInt :: temp_int
-  PetscReal :: ratio, scale
-  Vec :: global_vec
-  PetscErrorCode :: ierr
-  
-  PetscReal, pointer :: vec_p(:)
-  PetscReal, pointer :: perm_xx_p(:)
-  PetscReal, pointer :: perm_yy_p(:)
-  PetscReal, pointer :: perm_zz_p(:)
-  PetscReal, pointer :: perm_xyz_p(:)
-
-  field => realization%field
-  patch => realization%patch
-  grid => patch%grid
-  option => realization%option
-  discretization => realization%discretization
-
-  call VecGetArrayF90(field%perm0_xx,perm_xx_p,ierr);CHKERRQ(ierr)
-  call VecGetArrayF90(field%perm0_yy,perm_yy_p,ierr);CHKERRQ(ierr)
-  call VecGetArrayF90(field%perm0_zz,perm_zz_p,ierr);CHKERRQ(ierr)
-  
-  if (index(material_property%permeability_dataset%filename,'.h5') > 0) then
-    group_name = ''
-    if (material_property%permeability_dataset%realization_dependent) then
-      append_realization_id = PETSC_TRUE
-    else
-      append_realization_id = PETSC_FALSE
-    endif
-
-    call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
-                                    option)
-    if (material_property%isotropic_permeability .or. &
-        (.not.material_property%isotropic_permeability .and. &
-         material_property%vertical_anisotropy_ratio > 0.d0)) then
-      dataset_name = 'Permeability'
-      call HDF5ReadCellIndexedRealArray(realization,global_vec, &
-                          material_property%permeability_dataset%filename, &
-                          group_name,dataset_name,append_realization_id)
-      call VecGetArrayF90(global_vec,vec_p,ierr);CHKERRQ(ierr)
-      ratio = 1.d0
-      scale = 1.d0
-      !TODO(geh): fix so that ratio and scale work for perms outside
-      ! of dataset
-      if (material_property%vertical_anisotropy_ratio > 0.d0) then
-        ratio = material_property%vertical_anisotropy_ratio
-      endif
-      if (material_property%permeability_scaling_factor > 0.d0) then
-        scale = material_property%permeability_scaling_factor
-      endif
-      do local_id = 1, grid%nlmax
-        if (patch%imat(grid%nL2G(local_id)) == &
-            material_property%internal_id) then
-          perm_xx_p(local_id) = vec_p(local_id)*scale
-          perm_yy_p(local_id) = vec_p(local_id)*scale
-          perm_zz_p(local_id) = vec_p(local_id)*ratio*scale
-        endif
-      enddo
-      call VecRestoreArrayF90(global_vec,vec_p,ierr);CHKERRQ(ierr)
-    else
-      temp_int = Z_DIRECTION
-      if (grid%itype == STRUCTURED_GRID_MIMETIC) temp_int = YZ_DIRECTION
-      do idirection = X_DIRECTION,temp_int
-        select case(idirection)
-          case(X_DIRECTION)
-            dataset_name = 'PermeabilityX'
-          case(Y_DIRECTION)
-            dataset_name = 'PermeabilityY'
-          case(Z_DIRECTION)
-            dataset_name = 'PermeabilityZ'
-          case(XY_DIRECTION)
-            dataset_name = 'PermeabilityXY'
-            call VecGetArrayF90(field%perm0_xy,perm_xyz_p,ierr);CHKERRQ(ierr)
-          case(XZ_DIRECTION)
-            dataset_name = 'PermeabilityXZ'
-            call VecGetArrayF90(field%perm0_xz,perm_xyz_p,ierr);CHKERRQ(ierr)
-          case(YZ_DIRECTION)
-            dataset_name = 'PermeabilityYZ'
-            call VecGetArrayF90(field%perm0_yz,perm_xyz_p,ierr);CHKERRQ(ierr)
-        end select          
-        call HDF5ReadCellIndexedRealArray(realization,global_vec, &
-                                          material_property%permeability_dataset%filename, &
-                                          group_name, &
-                                          dataset_name,append_realization_id)
-        call VecGetArrayF90(global_vec,vec_p,ierr);CHKERRQ(ierr)
-        select case(idirection)
-          case(X_DIRECTION)
-            do local_id = 1, grid%nlmax
-              if (patch%imat(grid%nL2G(local_id)) == &
-                  material_property%internal_id) then
-                perm_xx_p(local_id) = vec_p(local_id)
-              endif
-            enddo
-          case(Y_DIRECTION)
-            do local_id = 1, grid%nlmax
-              if (patch%imat(grid%nL2G(local_id)) == &
-                  material_property%internal_id) then
-                perm_yy_p(local_id) = vec_p(local_id)
-              endif
-            enddo
-          case(Z_DIRECTION)
-            do local_id = 1, grid%nlmax
-              if (patch%imat(grid%nL2G(local_id)) == &
-                  material_property%internal_id) then
-                perm_zz_p(local_id) = vec_p(local_id)
-              endif
-            enddo
-          case(XY_DIRECTION,XZ_DIRECTION,YZ_DIRECTION)
-            do local_id = 1, grid%nlmax
-              if (patch%imat(grid%nL2G(local_id)) == &
-                  material_property%internal_id) then
-                perm_xyz_p(local_id) = vec_p(local_id)
-              endif
-            enddo
-            select case(idirection)
-              case(XY_DIRECTION)
-                call VecRestoreArrayF90(field%perm0_xy,perm_xyz_p, &
-                                            ierr);CHKERRQ(ierr)
-              case(XZ_DIRECTION)
-                call VecRestoreArrayF90(field%perm0_xz,perm_xyz_p, &
-                                            ierr);CHKERRQ(ierr)
-              case(YZ_DIRECTION)
-                call VecRestoreArrayF90(field%perm0_yz,perm_xyz_p, &
-                                            ierr);CHKERRQ(ierr)
-            end select
-        end select
-        call VecRestoreArrayF90(global_vec,vec_p,ierr);CHKERRQ(ierr)
-      enddo
-    endif
-    call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
-  else
-
-    call PetscLogEventBegin(logging%event_hash_map,ierr);CHKERRQ(ierr)
-    call GridCreateNaturalToGhostedHash(grid,option)
-    input => InputCreate(IUNIT_TEMP, &
-                material_property%permeability_dataset%filename,option)
-    do
-      call InputReadPflotranString(input,option)
-      if (InputError(input)) exit
-      call InputReadInt(input,option,natural_id)
-      call InputErrorMsg(input,option,'natural id','STRATA')
-      ghosted_id = GridGetLocalGhostedIdFromHash(grid,natural_id)
-      if (ghosted_id > 0) then
-        if (patch%imat(ghosted_id) /= &
-            material_property%internal_id) cycle
-        local_id = grid%nG2L(ghosted_id)
-        if (local_id > 0) then
-          call InputReadDouble(input,option,permeability)
-          call InputErrorMsg(input,option,'permeability','STRATA')
-          perm_xx_p(local_id) = permeability
-          perm_yy_p(local_id) = permeability
-          perm_zz_p(local_id) = permeability
-        endif
-      endif
-    enddo
-
-    call InputDestroy(input)
-    call GridDestroyHashTable(grid)
-    call PetscLogEventEnd(logging%event_hash_map,ierr);CHKERRQ(ierr)
-  endif
-  
-  call VecRestoreArrayF90(field%perm0_xx,perm_xx_p,ierr);CHKERRQ(ierr)
-  call VecRestoreArrayF90(field%perm0_yy,perm_yy_p,ierr);CHKERRQ(ierr)
-  call VecRestoreArrayF90(field%perm0_zz,perm_zz_p,ierr);CHKERRQ(ierr)
-  
-end subroutine readPermeabilitiesFromFile
 
 ! ************************************************************************** !
 

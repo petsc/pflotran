@@ -138,7 +138,7 @@ subroutine UGridPolyhedraRead(ugrid, filename, option)
     allocate(temp_real_array(7,num_cells_local_save+1))
     ! read for other processors
     do irank = 0, option%mycommsize-1
-      temp_real_array = -999.d0
+      temp_real_array = UNINITIALIZED_DOUBLE
       num_to_read = num_cells_local_save
       if (irank < remainder) num_to_read = num_to_read + 1
       do icell = 1, num_to_read
@@ -277,7 +277,7 @@ subroutine UGridPolyhedraRead(ugrid, filename, option)
   if (option%myrank == option%io_rank) then
     allocate(temp_real_array(7+max_nvert_per_cell,num_faces_local_save))
     do irank = 0, option%mycommsize-1
-      temp_real_array = -999.d0
+      temp_real_array = UNINITIALIZED_DOUBLE
       num_to_read = nfaces_per_proc(irank+1)
       do iface = 1, num_to_read
         call InputReadPflotranString(input,option)
@@ -319,7 +319,7 @@ subroutine UGridPolyhedraRead(ugrid, filename, option)
           pgrid%face_ids(iface) = int(temp_real_array(1,iface))
           pgrid%face_cellids(iface) = int(temp_real_array(2,iface))
           pgrid%face_nverts(iface) = int(temp_real_array(3,iface))
-          pgrid%face_vertids(:,iface) = -999
+          pgrid%face_vertids(:,iface) = UNINITIALIZED_INTEGER
           do ivert = 1, pgrid%face_nverts(iface)
             pgrid%face_vertids(ivert,iface) = &
               int(temp_real_array(3+ivert,iface))
@@ -352,7 +352,7 @@ subroutine UGridPolyhedraRead(ugrid, filename, option)
       pgrid%face_ids(iface) = int(temp_real_array(1,iface))
       pgrid%face_cellids(iface) = int(temp_real_array(2,iface))
       pgrid%face_nverts(iface) = int(temp_real_array(3,iface))
-      pgrid%face_vertids(:,iface) = -999
+      pgrid%face_vertids(:,iface) = UNINITIALIZED_INTEGER
       do ivert = 1, pgrid%face_nverts(iface)
         pgrid%face_vertids(ivert,iface) = &
           int(temp_real_array(3+ivert,iface))
@@ -412,7 +412,7 @@ subroutine UGridPolyhedraRead(ugrid, filename, option)
     allocate(temp_real_array(3,num_vertices_local_save+1))
     ! read for all processors
     do irank = 0, option%mycommsize-1
-      temp_real_array = -999.d0
+      temp_real_array = UNINITIALIZED_DOUBLE
       num_to_read = num_vertices_local_save
       if (irank < remainder) num_to_read = num_to_read + 1
       do ivert = 1, num_to_read
@@ -574,7 +574,7 @@ subroutine UGridPolyhedraDecompose(ugrid, option)
   pgrid => ugrid%polyhedra_grid
   max_nvert_per_cell = ugrid%max_nvert_per_cell
 
-  pgrid%cell_vertids = -999
+  pgrid%cell_vertids = UNINITIALIZED_INTEGER
 
   min_vertex_id = 2 ! min value should be either 0 or 1 after global
                     ! reduction to idenitfy if vertex ids is 0-based
@@ -592,7 +592,7 @@ subroutine UGridPolyhedraDecompose(ugrid, option)
       endif
       do ivertex = 1, pgrid%face_nverts(iface)
         do ivertex2 = 1, max_nvert_per_cell
-          if (pgrid%cell_vertids(ivertex2,icell) == -999) then
+          if (pgrid%cell_vertids(ivertex2,icell) == UNINITIALIZED_INTEGER) then
               pgrid%cell_vertids(ivertex2,icell) = &
               pgrid%face_vertids(ivertex,iface)
 
@@ -642,7 +642,7 @@ subroutine UGridPolyhedraDecompose(ugrid, option)
     do ivertex = 1, max_nvert_per_cell
       ! at this point we may be zero-based
       if (pgrid%cell_vertids(ivertex,local_id) < 0) then
-        ! change no_value (-999) to '0'
+        ! change no_value (UNINITIALIZED_INTEGER) to '0'
         pgrid%cell_vertids(ivertex,local_id) = 0
       else
         if (index_format_flag == 0) then
