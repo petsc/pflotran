@@ -188,7 +188,7 @@ def convert_sf2cc(filename,delete_files,old_extension):
 # This code will change parent directory files and all subdirectory files.
 # set one_file to '' if you want to have all files under a directory 
 # to be converted
-one_file = ''
+one_file = 'C:/Sandia/98806/PFloTran/Amy_Gilkey/one_panel_3d_general_orig'
 parent_dir = 'C:/Sandia'
 extension = '.in'
 # False if you want to keep old files which will have old_file_extension 
