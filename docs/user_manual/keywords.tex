@@ -18,6 +18,7 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \hyperlink{target_bcon}{\bf BOUNDARY\_CONDITION} & \\
 \hyperlink{target_brk}{\bf BREAKTHROUGH} & \\
 \hyperlink{target_brine}{\bf BRINE (BRIN)} & \\
+\hyperlink{target_charcrv}{\bf CHARCTERISTIC\_CURVES} & \\
 \hyperlink{target_ckpt}{\bf CHECKPOINT} & \\
 \hyperlink{target_chem}{\bf CHEMISTRY} & \\
 \hyperlink{target_stat}{\bf COMPUTE\_STATISTICS} & \\
@@ -102,7 +103,7 @@ Concentration: & molarity [M] or molality [m] (see MOLAL keyword)\\
 Enthalpy: & kiloJoule/mole [kJ/mol]\\
 Mass: & kilogram [kg]\\
 Rate: & kilogram/second [kg/s] or cubic meter/second [m$^3$/s]\\
-Surface Site Density: & mole/Meter$^{3}$ [mol/m$^{3}$]\\
+Surface Site Density: & mole/meter$^{3}$ [mol/m$^{3}$]\\
 \bottomrule[1.5pt]
 %\hline
 \end{tabular}
@@ -529,6 +530,165 @@ BRINE 4.d0 MOLAL
 %========================================================================
 
 \newpage
+\protect\hypertarget{target_charcrv}{}
+
+\subsection{Keyword: CHARACTERISTIC\_CURVES}
+
+{\noindent\bf Description:} Specifies relative permeability and saturation functions and parameters to be associated with a material property.
+
+%{\noindent\bf Required Cards:}
+
+
+\noindent {\bf Input:}
+
+\begin{deflist}{000}
+\item [CHARACTERISTIC\_CURVES] <string>
+
+\begin{deflist}{000}
+
+\item [SATURATION\_FUNCTION] [VAN\_GENUCHTEN, BROOKS\_COREY]
+\begin{deflist}{000}
+\item ALPHA \ <float> \ [Pa$^{-1}$]
+\item M \ <float> \ [---]
+\item LIQUID\_RESIDUAL\_SATURATION \ <float> \ [---]
+\item MAX\_CAPILLARY\_PRESSURE \ <float> \ [Pa] \ [Default $10^{9}$ Pa]
+\end{deflist}
+\item [\keyend] ~
+%\item [SATURATION\_FUNCTION] BROOKS\_COREY
+%\begin{deflist}{000}
+%\item ALPHA \ <float> \ [Pa$^{-1}$]
+%\item M \ <float> \ [---]
+%\item LIQUID\_RESIDUAL\_SATURATION \ <float> \ [---]
+%\item MAX\_CAPILLARY\_PRESSURE \ <float> \ [Pa] \ [Default $10^{9}$ Pa]
+%\end{deflist}
+%\item [\keyend] ~
+
+\item [PERMEABILITY\_FUNCTION] MUALEM
+\begin{deflist}{000}
+\item M
+\item LIQUID\_RESIDUAL\_SATURATION
+\end{deflist}
+\item [\keyend] ~
+
+\item [PERMEABILITY\_FUNCTION] BURDINE
+
+\begin{deflist}{000}
+\item LAMBDA
+\item LIQUID\_RESIDUAL\_SATURATION
+\end{deflist}
+\item [\keyend] ~
+
+\item [PERMEABILITY\_FUNCTION] MUALEM\_VG\_GAS
+\begin{deflist}{000}
+\item M
+\item LIQUID\_RESIDUAL\_SATURATION
+\item GAS\_RESIDUAL\_SATURATION
+\end{deflist}
+\item [\keyend] ~
+
+\item [PERMEABILITY\_FUNCTION] BURDINE\_BC\_GAS
+\begin{deflist}{000}
+\item LAMBDA
+\item LIQUID\_RESIDUAL\_SATURATION
+\item GAS\_RESIDUAL\_SATURATION
+\end{deflist}
+\item [\keyend]
+\end{deflist}
+\item [\keyend]
+\end{deflist}
+
+{\noindent\bf Parameter Description:}
+
+{\noindent\bf Required cards within block:}
+
+\begin{itemize}
+
+\item SATURATION\_FUNCTION:
+Opens a saturation function block with the string indicating the type of function (options include VAN\_GENUCHTEN, BROOKS\_COREY).
+
+\item PERMEABILITY\_FUNCTION:
+Opens a relative permeability function block with the string indicating the type of function (options include MUALEM, BURDINE, MUALEM\_VG\_GAS, BURDINE\_BC\_GAS).
+
+\item ALPHA \ <float>
+Inverse of the air entry pressure for the saturation function [Pa$^{-1}$].
+
+\item GAS\_RESIDUAL\_SATURATION \ <float>
+Residual saturation for gas phase [---].
+
+\item LAMBDA <float>
+Brooks-Corey lambda [---].
+
+\item LIQUID\_RESIDUAL\_SATURATION \ <float>
+Residual saturation for liquid phase [---].
+
+\item M \ <float>
+van Genuchten $m$ as in ($m = 1-1/n$) [---].
+
+\item SMOOTH
+Applies polynomial smoothing to relative permeability or saturation function. Strongly recommended for the Brooks-Corey saturation function if cells in the domain transition from saturated to variably-saturated conditions.
+\end{itemize}
+
+{\noindent\bf Optional Cards:}
+
+\begin{itemize}
+\item PHASE \ <string> \ Phase to which the permeability function applies [LIQUID, GAS]
+\item MAX\_CAPILLARY\_PRESSURE \ <float> \ Cut off for maximum capillary pressure (default = $10^9$ [Pa]).
+\item POWER \ <float> \ Placeholder. Currently not used.
+\end{itemize}
+
+\begin{mdframed}
+
+{\bf Examples:}
+
+\begin{verbatim}
+CHARACTERISTIC_CURVES cc1
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    LIQUID_RESIDUAL_SATURATION 0.d0
+    M 0.5d0
+    ALPHA 1.d-4
+    MAX_CAPILLARY_PRESSURE 1.d6
+  /
+  PERMEABILITY_FUNCTION MUALEM
+    PHASE LIQUID
+    LIQUID_RESIDUAL_SATURATION 0.d0
+    M 0.5d0
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_GAS
+    PHASE GAS
+    LIQUID_RESIDUAL_SATURATION 0.d0
+    GAS_RESIDUAL_SATURATION 1.d-40
+    M 0.5d0
+  /
+/
+
+CHARACTERISTIC_CURVES cc2
+  SATURATION_FUNCTION BROOKS_COREY
+    LIQUID_RESIDUAL_SATURATION 0.2d0
+    LAMBDA 0.7d0
+    ALPHA 9.869d-6
+    MAX_CAPILLARY_PRESSURE 1.d8
+    SMOOTH
+  /
+  PERMEABILITY_FUNCTION BURDINE
+    PHASE LIQUID
+    LIQUID_RESIDUAL_SATURATION 0.2d0
+    LAMBDA 0.7d0
+  /
+  PERMEABILITY_FUNCTION BURDINE_BC_GAS
+    PHASE GAS
+    LIQUID_RESIDUAL_SATURATION 0.2d0
+    GAS_RESIDUAL_SATURATION 1.d-5
+    LAMBDA 0.7d0
+  /
+/
+\end{verbatim}
+\end{mdframed}
+
+\hyperlink{target_key}{\return}
+
+%========================================================================
+
+\newpage
 \protect\hypertarget{target_ckpt}{}
 
 \subsection{Keyword: CHECKPOINT}
@@ -593,37 +753,37 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \begin{deflist}{000}
 
 \item [PRIMARY\_SPECIES] ~
-\item {\tt Name}
+\item {\tt Species Name}
 \item [\keyend]
 
 ~\\
 
 \item [SECONDARY\_SPECIES] ~
-\item {\tt Name}
+\item {\tt Species Name}
 \item [\keyend]
 
 ~\\
 
 \item [REDOX\_SPECIES] ~
-\item {\tt Name}
+\item {\tt Species Name}
 \item [\keyend]
 
 ~\\
 
 \item[GAS\_SPECIES] ~
-\item {\tt Name}
+\item {\tt Species Name}
 \item [\keyend]
 
 ~\\
 
 \item[MINERALS]
-\item {\tt Name}
+\item {\tt Mineral Name}
 \item [\keyend]
 
 ~\\
 
 \item[COLLOIDS]
-\item {\tt Name} \ \ \ \ {\tt Mobile\_Fraction} [---]
+\item {\tt Colloid Name} \ \ \ \ {\tt Mobile\_Fraction} [---]
 \item [\keyend]
 
 ~\\
