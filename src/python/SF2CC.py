@@ -91,10 +91,12 @@ def convert_sf2cc(filename,delete_files,old_extension):
 				new.write('  CHARACTERISTIC_CURVES '+words[1]+'\n')
 				ccname = words[1]
 				flag = ''
+			elif words[0] == 'END':
+				new.write(line)
+				flag = ''
 			else:
 				new.write(line)
 		elif flag == 'sf':
-
 			if words[0] == 'SATURATION_FUNCTION_TYPE':
 				new.write('  SATURATION_FUNCTION '+words[1]+'\n')
 				satf = words[1]
@@ -158,13 +160,17 @@ def convert_sf2cc(filename,delete_files,old_extension):
 		elif flag == 'cf':
 			if words[0] == 'END':
 				flag = ''
+				new.write(line)
+			elif words[0] == 'CHARACTERISTIC_CURVES':
+				new.write('SATURATION_FUNCTION '+words[1])
 			else:
-				continue
+				new.write(line)
 		elif words[0] == 'MATERIAL_PROPERTY':
 			flag = 'mp'
 			new.write(line)
 		elif words[0] == 'CHARACTERISTIC_CURVES':
 			flag = 'cf'
+			new.write(line)
 		elif words[0] == 'SATURATION_FUNCTION':
 			flag = 'sf'
 			new.write('CHARACTERISTIC_CURVES '+words[1]+'\n')
