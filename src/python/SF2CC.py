@@ -163,11 +163,11 @@ def convert_sf2cc(filename,delete_files,old_extension):
 		elif words[0] == 'MATERIAL_PROPERTY':
 			flag = 'mp'
 			new.write(line)
+		elif words[0] == 'CHARACTERISTIC_CURVES':
+			flag = 'cf'
 		elif words[0] == 'SATURATION_FUNCTION':
 			flag = 'sf'
 			new.write('CHARACTERISTIC_CURVES '+words[1]+'\n')
-		elif words[0] == 'CHARACTERISTIC_CURVES':
-			flag = 'cf'
 		else:
 			new.write(line)
 	old.close()
@@ -183,7 +183,7 @@ def convert_sf2cc(filename,delete_files,old_extension):
 # set one_file to '' if you want to have all files under a directory 
 # to be converted
 one_file = ''
-parent_dir = 'C:/Sandia/180682/Kris_Kuhlman/DRZ_ic1D_in_out/bc_99'
+parent_dir = 'C:/software/pflotran-tough2-wipp'
 extension = '.in'
 # False if you want to keep old files which will have old_file_extension 
 delete_old_files = False
