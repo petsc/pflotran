@@ -170,7 +170,13 @@ subroutine PFLOTRANInitCommandLineSettings(option)
   ! this will get overwritten later if stochastic
   string = '-realization_id'
   call InputGetCommandLineInt(string,i,option_found,option)
-  if (option_found) option%id = i
+  if (option_found) then
+    if (i < 1) then
+      option%io_buffer = 'realization_id must be greater than zero.'
+      call printErrMsg(option)
+    endif
+    option%id = i
+  endif
   
   ! this will get overwritten later if stochastic
   string = '-simulation_mode'
