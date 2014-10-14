@@ -382,7 +382,6 @@ subroutine GeneralUpdateSolution(realization)
   type(general_auxvar_type), pointer :: gen_auxvars(:,:)
   type(global_auxvar_type), pointer :: global_auxvars(:)  
   PetscInt :: local_id, ghosted_id
-  PetscReal, pointer :: iphas_loc_p(:)
   PetscErrorCode :: ierr
   
   option => realization%option
@@ -399,29 +398,11 @@ subroutine GeneralUpdateSolution(realization)
   endif
   
   ! update stored state
-  call VecGetArrayF90(field%iphas_loc,iphas_loc_p,ierr);CHKERRQ(ierr)
-  do local_id = 1, grid%nlmax
-    ghosted_id = grid%nL2G(local_id)
-    iphas_loc_p(ghosted_id) = global_auxvars(ghosted_id)%istate
+  do ghosted_id = 1, grid%ngmax
     gen_auxvars(ZERO_INTEGER,ghosted_id)%istate_store(PREV_TS) = &
       global_auxvars(ghosted_id)%istate
   enddo
-  call VecRestoreArrayF90(field%iphas_loc,iphas_loc_p,ierr);CHKERRQ(ierr)
   
-  ! update ghosted iphas_loc values (must come after 
-  ! GeneralUpdateSolutionPatch)
-  call DiscretizationLocalToLocal(realization%discretization, &
-                                  field%iphas_loc, &
-                                  field%iphas_loc,ONEDOF)
-  
-  ! Set states of ghosted cells
-  call VecGetArrayF90(field%iphas_loc,iphas_loc_p,ierr);CHKERRQ(ierr)
-  do ghosted_id = 1, realization%patch%grid%ngmax
-    realization%patch%aux%Global%auxvars(ghosted_id)%istate = &
-      int(iphas_loc_p(ghosted_id))
-  enddo
-  call VecRestoreArrayF90(field%iphas_loc,iphas_loc_p,ierr);CHKERRQ(ierr)
-
 #ifdef DEBUG_GENERAL_FILEOUTPUT
   debug_iteration_count = 0
   debug_timestep_cut_count = 0
@@ -454,9 +435,9 @@ subroutine GeneralTimeCut(realization)
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(global_auxvar_type), pointer :: global_auxvars(:)  
+  type(general_auxvar_type), pointer :: gen_auxvars(:,:)
   
   PetscInt :: local_id, ghosted_id
-  PetscReal, pointer :: iphas_loc_p(:)
   PetscErrorCode :: ierr
 
   option => realization%option
@@ -464,17 +445,17 @@ subroutine GeneralTimeCut(realization)
   patch => realization%patch
   grid => patch%grid
   global_auxvars => patch%aux%Global%auxvars
+  gen_auxvars => patch%aux%General%auxvars
 
   call VecCopy(field%flow_yy,field%flow_xx,ierr);CHKERRQ(ierr)
   call DiscretizationGlobalToLocal(realization%discretization,field%flow_xx, &
                                    field%flow_xx_loc,NFLOWDOF)
   
   ! restore stored state
-  call VecGetArrayReadF90(field%iphas_loc,iphas_loc_p, ierr);CHKERRQ(ierr)
   do ghosted_id = 1, grid%ngmax
-    global_auxvars(ghosted_id)%istate = int(iphas_loc_p(ghosted_id))
+    global_auxvars(ghosted_id)%istate = &
+      gen_auxvars(ZERO_INTEGER,ghosted_id)%istate_store(PREV_TS)
   enddo
-  call VecRestoreArrayReadF90(field%iphas_loc,iphas_loc_p, ierr);CHKERRQ(ierr)
 
 #ifdef DEBUG_GENERAL_FILEOUTPUT
   debug_timestep_cut_count = debug_timestep_cut_count + 1
@@ -2212,8 +2193,6 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   ! Communication -----------------------------------------
   ! These 3 must be called before GeneralUpdateAuxVars()
   call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
-  call DiscretizationLocalToLocal(discretization,field%iphas_loc, &
-                                  field%iphas_loc,ONEDOF)
   
   option%variables_swapped = PETSC_FALSE
                                              ! do update state

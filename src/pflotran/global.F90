@@ -14,6 +14,7 @@ module Global_module
          GlobalSetAuxVarScalar, &
          GlobalSetAuxVarVecLoc, &
          GlobalWeightAuxVars, &
+         GlobalUpdateState, &
          GlobalUpdateAuxVars
 
 contains
@@ -468,6 +469,33 @@ subroutine GlobalWeightAuxVars(realization,weight)
   end select
   
 end subroutine GlobalWeightAuxVars
+
+! ************************************************************************** !
+
+subroutine GlobalUpdateState(realization)
+  ! 
+  ! Updates global aux var variables for use in
+  ! reactive transport
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/14/09
+  ! 
+
+  use Realization_class
+  use Realization_Base_class, only : RealizationGetVariable
+  use Communicator_Base_module
+  use Variables_module, only : STATE
+  
+  type(realization_type) :: realization
+  
+  call RealizationGetVariable(realization,realization%field%work,STATE, &
+                              ZERO_INTEGER)
+  call realization%comm1%GlobalToLocal(realization%field%work, &
+                                       realization%field%work_loc)
+  call GlobalSetAuxVarVecLoc(realization,realization%field%work_loc,STATE, &
+                             ZERO_INTEGER)
+  
+end subroutine GlobalUpdateState
 
 ! ************************************************************************** !
 

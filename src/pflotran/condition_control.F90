@@ -51,6 +51,7 @@ subroutine CondControlAssignFlowInitCond(realization)
   use MFD_module, only : MFDInitializeMassMatrices
 #endif
 
+  use Global_module
   use Global_Aux_module
   use General_Aux_module
   
@@ -446,6 +447,7 @@ subroutine CondControlAssignFlowInitCond(realization)
   enddo
   
   if (option%iflowmode == G_MODE) then
+    call GlobalUpdateState(realization)
     call GlobalAuxVarStrip(global_aux)
     call GeneralAuxVarStrip(general_aux)
   endif  
