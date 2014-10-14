@@ -431,7 +431,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
         write(option%io_buffer,'(''Negative gas pressure at cell '', &
           & i5,'' in GeneralAuxVarCompute().  Attempting bailout.'')') &
           ghosted_id
-        call printErrMsg(option)
+        call printErrMsgByRank(option)
         ! set vapor pressure to just under saturation pressure
         gen_auxvar%pres(vpid) = 0.5d0*gen_auxvar%pres(spid)
         ! set gas pressure to vapor pressure + air pressure
@@ -756,7 +756,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
             option%io_buffer = 'Negative air pressure during state change ' // &
               'at ' // trim(adjustl(string))
   !          call printErrMsg(option)
-            call printMsg(option)
+            call printMsgByRank(option)
             x(GENERAL_2PH_STATE_AIR_PRESSURE_DOF) = &
               0.01d0*x(GENERAL_GAS_PRESSURE_DOF)
           endif
