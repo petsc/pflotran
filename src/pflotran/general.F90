@@ -2996,14 +2996,14 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   PetscInt :: local_id, ghosted_id
   PetscInt :: offset
   PetscInt :: liquid_pressure_index, gas_pressure_index, air_pressure_index
-  PetscInt :: saturation_index, temperature_index
+  PetscInt :: saturation_index, temperature_index, xmol_index
   PetscInt :: lid, gid, apid, cpid, vpid, spid
   PetscReal :: liquid_pressure0, liquid_pressure1, del_liquid_pressure
   PetscReal :: gas_pressure0, gas_pressure1, del_gas_pressure
   PetscReal :: air_pressure0, air_pressure1, del_air_pressure
   PetscReal :: temperature0, temperature1, del_temperature
   PetscReal :: saturation0, saturation1, del_saturation
-  PetscReal :: xmol_air_in_water0, xmol_air_in_water1, del_xmol_air_in_water
+  PetscReal :: xmol0, xmol1, del_xmol
   PetscReal :: max_saturation_change = 0.125d0
   PetscReal :: max_temperature_change = 10.d0
   PetscReal :: min_pressure
@@ -3031,14 +3031,32 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   call VecGetArrayF90(dX,dX_p,ierr);CHKERRQ(ierr)
   call VecGetArrayReadF90(X,X_p,ierr);CHKERRQ(ierr)
 
+  changed = PETSC_TRUE
+
+  ! truncation
+  ! air mole fraction in liquid phase must be truncated.  we do not use scaling
+  ! here because of the very small values.  just truncation.
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    if (realization%patch%imat(ghosted_id) <= 0) cycle
+    offset = (local_id-1)*option%nflowdof
+    select case(global_auxvars(ghosted_id)%istate)
+      case(LIQUID_STATE)
+        xmol_index = offset + GENERAL_LIQUID_STATE_X_MOLE_DOF
+        if (X_p(xmol_index) - dX_p(xmol_index) < 0.d0) then
+          ! we use 1.d-10 since cancelation can occur with smaller values
+          dX_p(xmol_index) = X_p(xmol_index) - 1.d-10
+        endif
+    end select
+  enddo
+
+
   scale = initial_scale
   if (general_max_it_before_damping > 0 .and. &
       newton_iteration > general_max_it_before_damping) then
     scale = general_damping_factor
   endif
 
-  changed = PETSC_TRUE
-  
 #define LIMIT_MAX_PRESSURE_CHANGE
 #define LIMIT_MAX_SATURATION_CHANGE
 !!#define LIMIT_MAX_TEMPERATURE_CHANGE
@@ -3052,6 +3070,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   cell_locator = 0
 #endif
 
+  ! scaling
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     offset = (local_id-1)*option%nflowdof
@@ -3658,19 +3677,6 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
     call VecRestoreArrayReadF90(field%flow_accum,accum_p,ierr);CHKERRQ(ierr)
   endif
 
-  call VecGetArrayF90(X1,X1_p,ierr);CHKERRQ(ierr)
-  do local_id = 1, grid%nlmax
-    offset = (local_id-1)*option%nflowdof
-    ghosted_id = grid%nL2G(local_id)
-    if (realization%patch%imat(ghosted_id) <= 0) cycle
-    istate = global_auxvars(ghosted_id)%istate
-    if (istate == LIQUID_STATE .and. X1_p(offset+2) < 0.d0) then
-        X1_p(offset+2) = 1.d-40
-        X1_changed = PETSC_TRUE
-    endif
-  enddo
-  call VecRestoreArrayF90(X1,X1_p,ierr);CHKERRQ(ierr)
-  
 end subroutine GeneralCheckUpdatePost
 
 ! ************************************************************************** !
