@@ -370,6 +370,27 @@ subroutine MaterialPropertyRead(material_property,input,option)
                                    material_property%permeability(3,3))
               call InputErrorMsg(input,option,'z permeability', &
                                  'MATERIAL_PROPERTY,PERMEABILITY')
+            case('PERM_X_LOG10')
+              call InputReadDouble(input,option, &
+                                   material_property%permeability(1,1))
+              call InputErrorMsg(input,option,'x permeability', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
+              material_property%permeability(1,1) = & 
+                10**material_property%permeability(1,1)
+            case('PERM_Y_LOG10')
+              call InputReadDouble(input,option, &
+                                   material_property%permeability(2,2))
+              call InputErrorMsg(input,option,'y permeability', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
+              material_property%permeability(2,2) = & 
+                10**material_property%permeability(2,2)
+            case('PERM_Z_LOG10')
+              call InputReadDouble(input,option, &
+                                   material_property%permeability(3,3))
+              call InputErrorMsg(input,option,'z permeability', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
+              material_property%permeability(3,3) = & 
+                10**material_property%permeability(3,3)
             case('PERM_XZ')
               call InputReadDouble(input,option, &
                                    material_property%permeability(1,3))
@@ -385,6 +406,38 @@ subroutine MaterialPropertyRead(material_property,input,option)
                                    material_property%permeability(2,3))
               call InputErrorMsg(input,option,'yz permeability', &
                                  'MATERIAL_PROPERTY,PERMEABILITY')
+            case('PERM_XZ_LOG10')
+              call InputReadDouble(input,option, &
+                                   material_property%permeability(1,3))
+              call InputErrorMsg(input,option,'xz permeability', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
+              material_property%permeability(1,3) = &
+                10**material_property%permeability(1,3)
+            case('PERM_XY_LOG10')
+              call InputReadDouble(input,option, &
+                                   material_property%permeability(1,2))
+              call InputErrorMsg(input,option,'xy permeability', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
+              material_property%permeability(1,2) = &
+                10**material_property%permeability(1,2)
+            case('PERM_YZ_LOG10')
+              call InputReadDouble(input,option, &
+                                   material_property%permeability(2,3))
+              call InputErrorMsg(input,option,'yz permeability', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
+              material_property%permeability(2,3) = &
+                10**material_property%permeability(2,3)
+            case('PERM_ISO_LOG10')
+              call InputReadDouble(input,option, &
+                                   material_property%permeability(1,1))
+              call InputErrorMsg(input,option,'isotropic permeability', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
+              material_property%permeability(1,1) = &
+                10**material_property%permeability(1,1)
+              material_property%permeability(2,2) = &
+                10**material_property%permeability(1,1)
+              material_property%permeability(3,3) = &
+                10**material_property%permeability(1,1)
             case('PERM_ISO')
               call InputReadDouble(input,option, &
                                    material_property%permeability(1,1))
