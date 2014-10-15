@@ -366,11 +366,11 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   gen_auxvar%xmol = NaN
   gen_auxvar%effective_porosity = NaN
   select case(global_auxvar%istate)
-    case(1)
+    case(LIQUID_STATE)
       state_char = 'L'
-    case(2)
+    case(GAS_STATE)
       state_char = 'G'
-    case(3)
+    case(TWO_PHASE_STATE)
       state_char = '2P'
   end select
 #else
@@ -514,6 +514,12 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       gen_auxvar%xmol(acid,gid) = gen_auxvar%pres(apid) / &
                                    gen_auxvar%pres(gid)
       gen_auxvar%xmol(wid,gid) = 1.d0 - gen_auxvar%xmol(acid,gid)
+
+    case default
+      write(option%io_buffer,*) global_auxvar%istate
+      option%io_buffer = 'State (' // trim(adjustl(option%io_buffer)) // &
+        ') not recognized in GeneralAuxVarCompute.'
+      call printErrMsgByRank(option)
 
   end select
 
