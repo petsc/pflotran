@@ -211,6 +211,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
   PetscInt :: length
   PetscBool :: therm_k_frz
   PetscBool :: therm_k_exp_frz
+  PetscReal :: tempreal
 
   therm_k_frz = PETSC_FALSE
   therm_k_exp_frz = PETSC_FALSE
@@ -370,6 +371,21 @@ subroutine MaterialPropertyRead(material_property,input,option)
                                    material_property%permeability(3,3))
               call InputErrorMsg(input,option,'z permeability', &
                                  'MATERIAL_PROPERTY,PERMEABILITY')
+            case('PERM_X_LOG10')
+              call InputReadDouble(input,option, tempreal)
+              call InputErrorMsg(input,option,'log10 x permeability', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
+              material_property%permeability(1,1) = 10.d0**tempreal
+            case('PERM_Y_LOG10')
+              call InputReadDouble(input,option, tempreal)
+              call InputErrorMsg(input,option,'log10 y permeability', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
+              material_property%permeability(2,2) = 10.d0**tempreal
+            case('PERM_Z_LOG10')
+              call InputReadDouble(input,option, tempreal)
+              call InputErrorMsg(input,option,'log10 z permeability', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
+              material_property%permeability(3,3) = 10.d0**tempreal
             case('PERM_XZ')
               call InputReadDouble(input,option, &
                                    material_property%permeability(1,3))
@@ -385,6 +401,28 @@ subroutine MaterialPropertyRead(material_property,input,option)
                                    material_property%permeability(2,3))
               call InputErrorMsg(input,option,'yz permeability', &
                                  'MATERIAL_PROPERTY,PERMEABILITY')
+            case('PERM_XZ_LOG10')
+              call InputReadDouble(input,option, tempreal)
+              call InputErrorMsg(input,option,'log10 xz permeability', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
+              material_property%permeability(1,3) = 10.d0**tempreal
+            case('PERM_XY_LOG10')
+              call InputReadDouble(input,option, tempreal)
+              call InputErrorMsg(input,option,'log10 xy permeability', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
+              material_property%permeability(1,2) = 10.d0**tempreal
+            case('PERM_YZ_LOG10')
+              call InputReadDouble(input,option, tempreal)
+              call InputErrorMsg(input,option,'log10 yz permeability', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
+              material_property%permeability(2,3) = 10.d0**tempreal
+            case('PERM_ISO_LOG10')
+              call InputReadDouble(input,option, tempreal)
+              call InputErrorMsg(input,option,'log10 isotropic permeability', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
+              material_property%permeability(1,1) = 10.d0**tempreal
+              material_property%permeability(2,2) = 10.d0**tempreal
+              material_property%permeability(3,3) = 10.d0**tempreal
             case('PERM_ISO')
               call InputReadDouble(input,option, &
                                    material_property%permeability(1,1))
