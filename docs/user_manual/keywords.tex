@@ -25,7 +25,9 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \hyperlink{target_co2dat}{\bf CO2\_DATABASE} & \\
 \hyperlink{target_constraint}{\bf CONSTRAINT} & transport (optional)\\
 \hyperlink{target_datset}{\bf DATASET} & \\
+\hyperlink{target_dbase}{\bf DBASE\_DATASET} & \\
 \hyperlink{target_dbg}{\bf DEBUG} & \\
+\hyperlink{target_eos}{\bf EOS} & \\
 \hyperlink{target_flow_cond}{\bf FLOW\_CONDITION} & \\
 \hyperlink{target_fluid_property}{\bf FLUID\_PROPERTY} & \\
 \hyperlink{target_geomech}{\bf GEOMECHANICS} & \\
@@ -1414,14 +1416,73 @@ END
 
 \hyperlink{target_key}{\return}
 
+%================================================================
+
+\newpage
+\protect\hypertarget{target_dbase}{}
+
+\subsection{Keyword: DBASE\_FILENAME}
+
+Keyword {\bf DBASE\_FILENAME} allows the user to define input parameters through an external database stored in an ASCII text or HDF5 file. These parameters can be realization dependent where an array of values is provided and indexed by the realization id.
+
+{\bf DBASE\_FILENAME} \ <string> \ 
+The path/filename of the external database to be employed.
+
+{\bf DBASE\_VALUE} \ <string1> [:: <string2>] \ 
+The names of the parameters to be read from the database file. This card combination may be entered anywhere a double precision value is read from the input file. The second string <string2> must be preceded by a double colon without spaces and is optional. See example below.
+
+\begin{mdframed}
+
+{\noindent\bf Examples:}
+\begin{verbatim}
+DBASE_FILENAME 543_dbase.h5
+...
+MATERIAL_PROPERTY soil1
+  ...
+  POROSITY DBASE_VALUE POROSITY::SOIL1
+END
+MATERIAL_PROPERTY soil4
+  ...
+    PERM_X DBASE_VALUE PERMEABILITY_X::SOIL4
+END
+...
+CHARACTERISTIC_CURVES sf3
+  ...
+  ALPHA DBASE_VALUE ALPHA-sf3
+END
+...
+REGION north
+  FACE NORTH
+  COORDINATES
+    0.d0 46.d0 0.d0
+    60.d0 46.d0 DBASE_VALUE NORTH_MAX_Z
+  /
+END
+...
+CONSTRAINT river_water
+  CONCENTRATIONS
+    Tracer   1.e-3                       F
+    Tracer2  DBASE_VALUE RIVER_TRACER2   F
+  /
+END
+\end{verbatim}
+Values are assigned based on the database stored in {\tt 543\_dbase.h5} and the command line argument {\tt -realization\_id 5} (note the zero-based index of 4 in the HDF5 file is actually the 5th realization). An example script for creating the database file may be found in {\tt PFLOTRAN\_DIR/src/python/dbase\_creator.py}.
+\end{mdframed}
+
+\begin{center}
+\includegraphics[scale=0.65]{./figs/h5_dbase.png}
+\end{center}
+
+\hyperlink{target_key}{\return}
+
 %========================================================================
 
 \newpage
 \protect\hypertarget{target_dbg}{}
 
-{\noindent\bf Input:}
-
 \subsection{Keyword: DEBUG}
+
+{\noindent\bf Input:}
 \begin{deflist}{00}
 \item[DEBUG]~
 \begin{deflist}{00}
@@ -1451,6 +1512,57 @@ VIEW\_JACOBIAN\_DETAILED]
 DEBUG
   PRINT_RESIDUAL
   PRINT_JACOBIAN
+END
+\end{verbatim}
+\end{mdframed}
+
+\hyperlink{target_key}{\return}
+
+%================================================================
+
+\newpage
+\protect\hypertarget{target_eos}{}
+
+\subsection{Keyword: EOS}
+
+The {\bf EOS} keyword defines an equation of state for a simulated fluid.
+
+%Required Cards:
+\begin{deflist}{000}
+%\item EOS <string>
+\item[EOS] \ <string> \ [WATER, GAS] \ Specifies the fluid for which EOS applies.
+
+{\bf Optional Input:}
+
+\begin{deflist}{000}
+\item[DENSITY] \ <string> \ <optional parameters>
+\begin{deflist}{000}
+\item[DENSITY CONSTANT] \ <float>
+\item[DENSITY EXPONENTIAL] \ <float> <float> <float> \ (ref. density [rho0], ref. pressure [p0], compressibility) 
+$\rho = \rho_0 \e^{\kappa (p-p_0)}$.
+
+%Exponential function: rho0 * exp(compressibility*(pressure - p0))
+\item[DENSITY DEFAULT] \ 
+Default water EOS based on International Formulation Committee of the Sixth International Conference on Properties of Steam (1967)
+\item[ENTHALPY] \ <string> \ <optional parameters>
+\item[ENTHALPY CONSTANT] \ <float>
+\item[VISCOSITY] \ <string> \ <optional parameters>
+\end{deflist}
+\end{deflist}
+\item[\keyend] ~
+\end{deflist}
+
+\begin{mdframed}
+
+{\noindent\bf Examples:}
+\begin{verbatim}
+EOS WATER
+  DENSITY EXPONENTIAL 997.16d0 101325.d0 1.d-8
+END
+EOS WATER
+  DENSITY CONSTANT 997.16d0
+  ENTHALPY CONSTANT 1.8890d0
+  VISCOSITY CONSTANT 8.904156d-4
 END
 \end{verbatim}
 \end{mdframed}
