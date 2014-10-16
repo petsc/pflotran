@@ -2102,8 +2102,15 @@ recursive subroutine CharacteristicCurvesDestroy(cc)
   call CharacteristicCurvesDestroy(cc%next)
   
   call SaturationFunctionDestroy(cc%saturation_function)
-  call PermeabilityFunctionDestroy(cc%liq_rel_perm_function)
-  call PermeabilityFunctionDestroy(cc%gas_rel_perm_function)
+  ! the liquid and gas relative permeability pointers may pointer to the
+  ! same address. if so, destroy one and nullify the other.
+  if (associated(cc%liq_rel_perm_function,cc%gas_rel_perm_function)) then
+    call PermeabilityFunctionDestroy(cc%liq_rel_perm_function)
+    nullify(cc%gas_rel_perm_function)
+  else
+    call PermeabilityFunctionDestroy(cc%liq_rel_perm_function)
+    call PermeabilityFunctionDestroy(cc%gas_rel_perm_function)
+  endif
   
   deallocate(cc)
   nullify(cc)
