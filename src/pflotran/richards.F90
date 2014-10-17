@@ -184,12 +184,6 @@ subroutine RichardsSetupPatch(realization)
   endif
   patch%aux%Richards%num_aux_ss = sum_connection
 
-#ifdef YE_FLUX
-  allocate(patch%internal_fluxes(1,1,ConnectionGetNumberInList(patch%grid%&
-           internal_connection_set_list)))
-  patch%internal_fluxes = 0.d0
-#endif
-
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)
   call RichardsCreateZeroArray(patch,option)
@@ -1440,31 +1434,14 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       end select
 
       patch%internal_velocities(1,sum_connection) = v_darcy
-
-#ifdef COMPUTE_INTERNAL_MASS_FLUX
-      global_auxvars(local_id_up)%mass_balance_delta(1,1) = &
-        global_auxvars(local_id_up)%mass_balance_delta(1,1) - Res(1)
-#endif
-
-#ifdef YE_FLUX
-      patch%internal_fluxes(RICHARDS_PRESSURE_DOF,1,sum_connection) = Res(1)
-#endif
-#ifdef STORE_FLOWRATES
-      patch%internal_fluxes(RICHARDS_PRESSURE_DOF,1,sum_connection) = Res(1)*FMWH2O
-#endif
+      if (associated(patch%internal_flow_fluxes)) then
+        patch%internal_flow_fluxes(1,sum_connection) = Res(1)
+      endif
       if (local_id_up>0) then
-#ifdef PM_RICHARDS_DEBUG
-  print *, 'Res interior up', local_id_up
-  print *, Res(1)
-#endif  
         r_p(local_id_up) = r_p(local_id_up) + Res(1)
       endif
          
       if (local_id_dn>0) then
-#ifdef PM_RICHARDS_DEBUG
-  print *, 'Res interior dn', local_id_dn
-  print *, Res(1)
-#endif  
         r_p(local_id_dn) = r_p(local_id_dn) - Res(1)
       endif
 
@@ -1509,9 +1486,9 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
                                 option, &
                                 v_darcy,Res)
       patch%boundary_velocities(1,sum_connection) = v_darcy
-#ifdef STORE_FLOWRATES
-      patch%boundary_fluxes(1,1,sum_connection) = Res(1)*FMWH2O
-#endif
+      if (associated(patch%boundary_flow_fluxes)) then
+        patch%boundary_flow_fluxes(1,sum_connection) = Res(1)
+      endif
 
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
@@ -1719,9 +1696,15 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
           qsrc_mol
       endif
       r_p(local_id) = r_p(local_id) - qsrc_mol
-      ! fluid flux [m^3/sec] = qsrc_mol [kmol/sec] / den [kmol/m^3]
-      patch%ss_fluid_fluxes(1,sum_connection) = qsrc_mol / &
-                                             global_auxvars(ghosted_id)%den(1)
+      if (associated(patch%ss_flow_vol_fluxes)) then
+        ! fluid flux [m^3/sec] = qsrc_mol [kmol/sec] / den [kmol/m^3]
+        patch%ss_flow_vol_fluxes(1,sum_connection) = qsrc_mol / &
+                                           global_auxvars(ghosted_id)%den(1)
+      endif
+      if (associated(patch%ss_flow_fluxes)) then
+        ! fluid flux [m^3/sec] = qsrc_mol [kmol/sec] / den [kmol/m^3]
+        patch%ss_flow_fluxes(1,sum_connection) = qsrc_mol
+      endif
     enddo
     source_sink => source_sink%next
   enddo

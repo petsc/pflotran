@@ -1774,6 +1774,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
   PetscInt :: sum_connection
   PetscReal :: distance, fraction_upwind
   PetscReal :: distance_gravity
+  PetscReal :: ss_flow_vol_flux(realization%option%nphase)
   
   character(len=MAXSTRINGLENGTH) :: string
 
@@ -1939,9 +1940,14 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
       sum_connection = sum_connection + 1
       call ImmisSourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,auxvars(ghosted_id)%auxvar_elem(0),&
             source_sink%flow_condition%itype(1),Res, &
-            patch%ss_fluid_fluxes(:,sum_connection), &
+            ss_flow_vol_flux, &
             enthalpy_flag, option)
-
+      if (associated(patch%ss_flow_fluxes)) then
+        patch%ss_flow_fluxes(:,sum_connection) = Res(:)/option%flow_dt
+      endif
+      if (associated(patch%ss_flow_vol_fluxes)) then
+        patch%ss_flow_vol_fluxes(:,sum_connection) = ss_flow_vol_flux/option%flow_dt
+      endif
       if (option%compute_mass_balance_new) then
         global_auxvars_ss(sum_connection)%mass_balance_delta(:,1) = &
           global_auxvars_ss(sum_connection)%mass_balance_delta(:,1) - &
@@ -2050,6 +2056,9 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
       endif
 
       patch%boundary_velocities(:,sum_connection) = v_darcy(:)
+      if (associated(patch%boundary_flow_fluxes)) then
+        patch%boundary_flow_fluxes(:,sum_connection) = Res(:)
+      endif        
       iend = local_id*option%nflowdof
       istart = iend-option%nflowdof+1
       r_p(istart:iend) = r_p(istart:iend) - Res(1:option%nflowdof)
@@ -2123,6 +2132,9 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
                 upweight,option,v_darcy,Res)
 
       patch%internal_velocities(:,sum_connection) = v_darcy(:)
+      if (associated(patch%internal_flow_fluxes)) then
+        patch%internal_flow_fluxes(:,sum_connection) = Res(:)
+      endif      
       patch%aux%Immis%res_old_FL(sum_connection,1:option%nflowdof)= Res(1:option%nflowdof)
  
       if (local_id_up>0) then

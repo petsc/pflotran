@@ -1447,7 +1447,7 @@ subroutine RTCalculateRHS_t1(realization)
         iendcoll = reaction%offset_colloid + reaction%ncoll
       endif
 
-      qsrc = patch%ss_fluid_fluxes(1,sum_connection)
+      qsrc = patch%ss_flow_vol_fluxes(1,sum_connection)
       call TSrcSinkCoef(option,qsrc,source_sink%tran_condition%itype, &
                         coef_in,coef_out)      
 
@@ -1708,7 +1708,7 @@ subroutine RTCalculateTransportMatrix(realization,T)
 
       if (patch%imat(ghosted_id) <= 0) cycle
 
-      qsrc = patch%ss_fluid_fluxes(1,sum_connection)
+      qsrc = patch%ss_flow_vol_fluxes(1,sum_connection)
       call TSrcSinkCoef(option,qsrc,source_sink%tran_condition%itype, &
                         coef_in,coef_out)
 
@@ -2083,7 +2083,7 @@ subroutine RTComputeBCMassBalanceOS(realization)
 
       if (patch%imat(ghosted_id) <= 0) cycle
 
-      qsrc = patch%ss_fluid_fluxes(1,sum_connection)
+      qsrc = patch%ss_flow_vol_fluxes(1,sum_connection)
       call TSrcSinkCoef(option,qsrc,source_sink%tran_condition%itype, &
                         coef_in,coef_out)
       
@@ -2452,11 +2452,6 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
         istart = iend-reaction%ncomp+1
         r_p(istart:iend) = r_p(istart:iend) - Res(1:reaction%ncomp)
       endif
-
-      if (option%transport%store_solute_fluxes) then
-        patch%internal_fluxes(iphase,1:reaction%ncomp,iconn) = &
-            Res(1:reaction%ncomp)
-      endif
 #else
       call TFluxCoef_CD(option,cur_connection_set%area(iconn), &
                  patch%internal_velocities(:,sum_connection), &
@@ -2482,7 +2477,10 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
         r_p(istart:iend) = r_p(istart:iend) + Res_2(1:reaction%ncomp)
       endif
 #endif
-
+      if (associated(patch%internal_tran_fluxes)) then
+        patch%internal_tran_fluxes(1:reaction%ncomp,iconn) = &
+            Res(1:reaction%ncomp)
+      endif
     enddo
     cur_connection_set => cur_connection_set%next
   enddo
@@ -2526,11 +2524,6 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
       istart = iend-reaction%ncomp+1
       r_p(istart:iend)= r_p(istart:iend) - Res(1:reaction%ncomp)
 
-      if (option%transport%store_solute_fluxes) then
-        patch%boundary_fluxes(iphase,1:reaction%ncomp,sum_connection) = &
-            -Res(1:reaction%ncomp)
-      endif
-
       if (option%compute_mass_balance_new) then
       ! contribution to boundary 
         rt_auxvars_bc(sum_connection)%mass_balance_delta(:,iphase) = &
@@ -2571,7 +2564,10 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
         endif  
       
 #endif                   
-     
+      if (associated(patch%boundary_tran_fluxes)) then
+        patch%boundary_tran_fluxes(1:reaction%ncomp,sum_connection) = &
+            -Res(1:reaction%ncomp)
+      endif
     enddo
     boundary_condition => boundary_condition%next
   enddo
@@ -2788,7 +2784,7 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
         iendcoll = reaction%offset_colloid + reaction%ncoll
       endif
 
-      qsrc = patch%ss_fluid_fluxes(1,sum_connection)
+      qsrc = patch%ss_flow_vol_fluxes(1,sum_connection)
       call TSrcSinkCoef(option,qsrc,source_sink%tran_condition%itype, &
                         coef_in,coef_out)
 
@@ -2804,7 +2800,10 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
       endif
       istartall = offset + 1
       iendall = offset + reaction%ncomp
-      r_p(istartall:iendall) = r_p(istartall:iendall) + Res(1:reaction%ncomp)                                  
+      r_p(istartall:iendall) = r_p(istartall:iendall) + Res(1:reaction%ncomp)
+      if (associated(patch%ss_tran_fluxes)) then
+        patch%ss_tran_fluxes(:,sum_connection) = Res(:)
+      endif
       if (option%compute_mass_balance_new) then
         ! contribution to boundary 
         rt_auxvars_ss(sum_connection)%mass_balance_delta(:,iphase) = &
@@ -3421,7 +3420,7 @@ subroutine RTJacobianNonFlux(snes,xx,A,B,realization,ierr)
         iendcoll = reaction%offset_colloid + reaction%ncoll
       endif
 
-      qsrc = patch%ss_fluid_fluxes(1,sum_connection)
+      qsrc = patch%ss_flow_vol_fluxes(1,sum_connection)
       call TSrcSinkCoef(option,qsrc,source_sink%tran_condition%itype,coef_in,coef_out)
 
       Jup = 0.d0
@@ -4822,7 +4821,7 @@ subroutine RTExplicitAdvection(realization)
       if (patch%imat(ghosted_id) <= 0) cycle
 
       do iphase = 1, option%nphase
-        qsrc = patch%ss_fluid_fluxes(iphase,sum_connection)
+        qsrc = patch%ss_flow_vol_fluxes(iphase,sum_connection)
         call TSrcSinkCoef(option,qsrc,source_sink%tran_condition%itype, &
                           coef_in,coef_out)
         flux = coef_in*rt_auxvars(ghosted_id)%total(:,iphase) + &

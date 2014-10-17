@@ -38,12 +38,20 @@ module Patch_module
 
     PetscReal, pointer :: internal_velocities(:,:)
     PetscReal, pointer :: boundary_velocities(:,:)
-    PetscReal, pointer :: internal_fluxes(:,:,:)    
-    PetscReal, pointer :: boundary_fluxes(:,:,:)  
     PetscReal, pointer :: internal_tran_coefs(:,:)
     PetscReal, pointer :: boundary_tran_coefs(:,:)
-    PetscReal, pointer :: ss_fluid_fluxes(:,:)
-    PetscReal, pointer :: boundary_flux_energy(:,:)
+    PetscReal, pointer :: internal_flow_fluxes(:,:)    
+    PetscReal, pointer :: boundary_flow_fluxes(:,:)  
+    ! fluid fluxes in moles/sec
+    PetscReal, pointer :: ss_flow_fluxes(:,:)        
+    ! volumetric flux (m^3/sec) for liquid phase needed for transport
+    PetscReal, pointer :: ss_flow_vol_fluxes(:,:)  
+    PetscReal, pointer :: internal_tran_fluxes(:,:)    
+    PetscReal, pointer :: boundary_tran_fluxes(:,:)  
+    PetscReal, pointer :: ss_tran_fluxes(:,:)
+    
+    ! for TH surface/subsurface
+    PetscReal, pointer :: boundary_energy_flux(:,:)
 
     type(grid_type), pointer :: grid
 
@@ -143,12 +151,16 @@ function PatchCreate()
   nullify(patch%sat_func_id)
   nullify(patch%internal_velocities)
   nullify(patch%boundary_velocities)
-  nullify(patch%internal_fluxes)
-  nullify(patch%boundary_fluxes)
   nullify(patch%internal_tran_coefs)
   nullify(patch%boundary_tran_coefs)
-  nullify(patch%ss_fluid_fluxes)
-  nullify(patch%boundary_flux_energy)
+  nullify(patch%internal_flow_fluxes)
+  nullify(patch%boundary_flow_fluxes)
+  nullify(patch%internal_tran_fluxes)
+  nullify(patch%boundary_tran_fluxes)
+  nullify(patch%ss_flow_fluxes)
+  nullify(patch%ss_tran_fluxes)
+  nullify(patch%ss_flow_vol_fluxes)
+  nullify(patch%boundary_energy_flux)
 
   nullify(patch%grid)
 
@@ -641,36 +653,36 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
  
   temp_int = ConnectionGetNumberInList(patch%grid%internal_connection_set_list)
   temp_int = max(temp_int,1)
+  
+  ! all simulations
   allocate(patch%internal_velocities(option%nphase,temp_int))
   patch%internal_velocities = 0.d0
-  allocate(patch%internal_tran_coefs(option%nphase,temp_int))
-  patch%internal_tran_coefs = 0.d0
-  if (option%transport%store_solute_fluxes) then
-    allocate(patch%internal_fluxes(option%nphase,option%ntrandof,temp_int))
-    patch%internal_fluxes = 0.d0
-  endif
-  if (option%store_flowrate) then
-    if(option%transport%store_solute_fluxes) then
-      option%io_buffer='Model does not support store_solute_fluxes and flowrate ' // &
-      ' options together. If you run into this message, complain on pflotran-dev@googlegroups.com'
-      call printErrMsg(option)
+  
+  ! flow
+  if (option%nflowdof > 0) then
+    if (option%flow%store_fluxes) then
+      allocate(patch%internal_flow_fluxes(option%nflowdof,temp_int))
+      patch%internal_flow_fluxes = 0.d0
     endif
-    allocate(patch%internal_fluxes(option%nflowdof,1,temp_int))
-    allocate(patch%boundary_fluxes(option%nflowdof,1,temp_int))
-    patch%internal_fluxes = 0.d0
-    patch%boundary_fluxes = 0.d0
-    if (option%iflowmode == TH_MODE) then
-      allocate(patch%boundary_flux_energy(2,temp_int))
+  endif
+  
+  ! transport
+  if (option%ntrandof > 0) then
+    allocate(patch%internal_tran_coefs(option%nphase,temp_int))
+    patch%internal_tran_coefs = 0.d0
+    if (option%transport%store_fluxes) then
+      allocate(patch%internal_tran_fluxes(option%ntrandof,temp_int))
+      patch%internal_tran_fluxes = 0.d0
     endif
   endif
 
   if (patch%surf_or_subsurf_flag == SURFACE) then
     allocate(patch%surf_internal_fluxes(option%nflowdof,temp_int))
     patch%surf_internal_fluxes = 0.d0
-
     allocate(patch%surf_boundary_fluxes(option%nflowdof,temp_int))
     patch%surf_boundary_fluxes = 0.d0
-
+    allocate(patch%boundary_energy_flux(2,temp_int))
+    patch%boundary_energy_flux = 0.d0
   endif
 
   if (patch%grid%itype == STRUCTURED_GRID_MIMETIC.or. &
@@ -683,20 +695,42 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   end if
 
   if (temp_int > 0) then
+    ! all simulations
     allocate(patch%boundary_velocities(option%nphase,temp_int)) 
     patch%boundary_velocities = 0.d0
-    allocate(patch%boundary_tran_coefs(option%nphase,temp_int))
-    patch%boundary_tran_coefs = 0.d0
-    if (option%transport%store_solute_fluxes) then
-      allocate(patch%boundary_fluxes(option%nphase,option%ntrandof,temp_int))
-      patch%boundary_fluxes = 0.d0
+    ! flow
+    if (option%nflowdof > 0) then
+      if (option%flow%store_fluxes) then  
+        allocate(patch%boundary_flow_fluxes(option%nflowdof,temp_int))
+        patch%boundary_flow_fluxes = 0.d0
+      endif
+    endif
+    ! transport
+    if (option%ntrandof > 0) then
+      allocate(patch%boundary_tran_coefs(option%ntrandof,temp_int))
+      patch%boundary_tran_coefs = 0.d0
+      if (option%transport%store_fluxes) then
+        allocate(patch%boundary_tran_fluxes(option%ntrandof,temp_int))
+        patch%boundary_tran_fluxes = 0.d0
+      endif
     endif
   endif
 
   temp_int = CouplerGetNumConnectionsInList(patch%source_sinks)
   if (temp_int > 0) then
-    allocate(patch%ss_fluid_fluxes(option%nphase,temp_int))
-    patch%ss_fluid_fluxes = 0.d0
+    ! flow
+    if (option%nflowdof > 0) then
+      allocate(patch%ss_flow_fluxes(option%nflowdof,temp_int))
+      patch%ss_flow_fluxes = 0.d0
+    endif
+    ! transport
+    if (option%ntrandof > 0) then
+      allocate(patch%ss_tran_fluxes(option%ntrandof,temp_int))
+      patch%ss_tran_fluxes = 0.d0
+      ! only needed by transport
+      allocate(patch%ss_flow_vol_fluxes(option%nphase,temp_int))
+      patch%ss_flow_vol_fluxes = 0.d0
+    endif
   endif
 
 end subroutine PatchProcessCouplers
@@ -5431,123 +5465,6 @@ end subroutine
 
 ! ************************************************************************** !
 
-subroutine PatchDestroyList(patch_list)
-  ! 
-  ! Deallocates a patch list and array of patches
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 10/15/07
-  ! 
-
-  implicit none
-  
-  type(patch_list_type), pointer :: patch_list
-    
-  type(patch_type), pointer :: cur_patch, prev_patch
-  
-  if (.not.associated(patch_list)) return
-  
-  if (associated(patch_list%array)) deallocate(patch_list%array)
-  nullify(patch_list%array)
-  
-  cur_patch => patch_list%first
-  do 
-    if (.not.associated(cur_patch)) exit
-    prev_patch => cur_patch
-    cur_patch => cur_patch%next
-    call PatchDestroy(prev_patch)
-  enddo
-  
-  nullify(patch_list%first)
-  nullify(patch_list%last)
-  patch_list%num_patch_objects = 0
-  
-  deallocate(patch_list)
-  nullify(patch_list)
-
-end subroutine PatchDestroyList
-
-! ************************************************************************** !
-
-subroutine PatchDestroy(patch)
-  ! 
-  ! Deallocates a patch object
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 02/22/08
-  ! 
-
-  use Utility_module, only : DeallocateArray
-
-  implicit none
-  
-  type(patch_type), pointer :: patch
-  
-  call DeallocateArray(patch%imat)
-  call DeallocateArray(patch%imat_internal_to_external)
-  call DeallocateArray(patch%sat_func_id)
-  call DeallocateArray(patch%internal_velocities)
-  call DeallocateArray(patch%boundary_velocities)
-  call DeallocateArray(patch%internal_fluxes)
-  call DeallocateArray(patch%boundary_fluxes)
-  call DeallocateArray(patch%internal_tran_coefs)
-  call DeallocateArray(patch%boundary_tran_coefs)
-  call DeallocateArray(patch%ss_fluid_fluxes)
-  call DeallocateArray(patch%boundary_flux_energy)
-
-  if (associated(patch%material_property_array)) &
-    deallocate(patch%material_property_array)
-  nullify(patch%material_property_array)
-  ! Since this linked list will be destroyed by realization, just nullify here
-  nullify(patch%material_properties)
-  if (associated(patch%saturation_function_array)) &
-    deallocate(patch%saturation_function_array)
-  nullify(patch%saturation_function_array)
-  ! Since this linked list will be destroyed by realization, just nullify here
-  nullify(patch%saturation_functions)
-  if (associated(patch%characteristic_curves_array)) &
-    deallocate(patch%characteristic_curves_array)
-  nullify(patch%characteristic_curves_array)
-  ! Since this linked list will be destroyed by realization, just nullify here
-  nullify(patch%characteristic_curves)
-
-  nullify(patch%surf_field)
-  if (associated(patch%surf_material_property_array)) &
-    deallocate(patch%surf_material_property_array)
-  nullify(patch%surf_material_property_array)
-  nullify(patch%surf_material_properties)
-  if (associated(patch%surf_internal_fluxes)) deallocate(patch%surf_internal_fluxes)
-  if (associated(patch%surf_boundary_fluxes)) deallocate(patch%surf_boundary_fluxes)
-  nullify(patch%surf_internal_fluxes)
-  nullify(patch%surf_boundary_fluxes)
-
-  ! solely nullify grid since destroyed in discretization
-  nullify(patch%grid)
-  call RegionDestroyList(patch%regions)
-  call CouplerDestroyList(patch%boundary_conditions)
-  call CouplerDestroyList(patch%initial_conditions)
-  call CouplerDestroyList(patch%source_sinks)
-  
-  
-  call ObservationDestroyList(patch%observation)
-  call StrataDestroyList(patch%strata)
-  
-  call AuxDestroy(patch%aux)
-  
-  call ObservationDestroyList(patch%observation)
-  
-  ! these are solely pointers, must not destroy.
-  nullify(patch%reaction)
-  nullify(patch%datasets)
-  nullify(patch%field)
-  
-  deallocate(patch)
-  nullify(patch)
-  
-end subroutine PatchDestroy
-
-! ************************************************************************** !
-
 subroutine PatchGetVariable2(patch,surf_field,option,output_option,vec,ivar, &
                            isubvar,isubvar1)
   ! 
@@ -5720,5 +5637,128 @@ subroutine PatchGetCellCenteredVelocities(patch,iphase,velocities)
   deallocate(sum_area)
 
 end subroutine PatchGetCellCenteredVelocities
+
+! ************************************************************************** !
+
+subroutine PatchDestroyList(patch_list)
+  ! 
+  ! Deallocates a patch list and array of patches
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/07
+  ! 
+
+  implicit none
+  
+  type(patch_list_type), pointer :: patch_list
+    
+  type(patch_type), pointer :: cur_patch, prev_patch
+  
+  if (.not.associated(patch_list)) return
+  
+  if (associated(patch_list%array)) deallocate(patch_list%array)
+  nullify(patch_list%array)
+  
+  cur_patch => patch_list%first
+  do 
+    if (.not.associated(cur_patch)) exit
+    prev_patch => cur_patch
+    cur_patch => cur_patch%next
+    call PatchDestroy(prev_patch)
+  enddo
+  
+  nullify(patch_list%first)
+  nullify(patch_list%last)
+  patch_list%num_patch_objects = 0
+  
+  deallocate(patch_list)
+  nullify(patch_list)
+
+end subroutine PatchDestroyList
+
+! ************************************************************************** !
+
+subroutine PatchDestroy(patch)
+  ! 
+  ! Deallocates a patch object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
+
+  use Utility_module, only : DeallocateArray
+
+  implicit none
+  
+  type(patch_type), pointer :: patch
+  
+  call DeallocateArray(patch%imat)
+  call DeallocateArray(patch%imat_internal_to_external)
+  call DeallocateArray(patch%sat_func_id)
+  call DeallocateArray(patch%internal_velocities)
+  call DeallocateArray(patch%boundary_velocities)
+  call DeallocateArray(patch%internal_tran_coefs)
+  call DeallocateArray(patch%boundary_tran_coefs)
+  call DeallocateArray(patch%internal_flow_fluxes)
+  call DeallocateArray(patch%boundary_flow_fluxes)
+  call DeallocateArray(patch%ss_flow_fluxes)
+  call DeallocateArray(patch%internal_tran_fluxes)
+  call DeallocateArray(patch%boundary_tran_fluxes)
+  call DeallocateArray(patch%ss_tran_fluxes)
+  call DeallocateArray(patch%ss_flow_vol_fluxes)
+  
+  call DeallocateArray(patch%boundary_energy_flux)
+
+
+  if (associated(patch%material_property_array)) &
+    deallocate(patch%material_property_array)
+  nullify(patch%material_property_array)
+  ! Since this linked list will be destroyed by realization, just nullify here
+  nullify(patch%material_properties)
+  if (associated(patch%saturation_function_array)) &
+    deallocate(patch%saturation_function_array)
+  nullify(patch%saturation_function_array)
+  ! Since this linked list will be destroyed by realization, just nullify here
+  nullify(patch%saturation_functions)
+  if (associated(patch%characteristic_curves_array)) &
+    deallocate(patch%characteristic_curves_array)
+  nullify(patch%characteristic_curves_array)
+  ! Since this linked list will be destroyed by realization, just nullify here
+  nullify(patch%characteristic_curves)
+
+  nullify(patch%surf_field)
+  if (associated(patch%surf_material_property_array)) &
+    deallocate(patch%surf_material_property_array)
+  nullify(patch%surf_material_property_array)
+  nullify(patch%surf_material_properties)
+  if (associated(patch%surf_internal_fluxes)) deallocate(patch%surf_internal_fluxes)
+  if (associated(patch%surf_boundary_fluxes)) deallocate(patch%surf_boundary_fluxes)
+  nullify(patch%surf_internal_fluxes)
+  nullify(patch%surf_boundary_fluxes)
+
+  ! solely nullify grid since destroyed in discretization
+  nullify(patch%grid)
+  call RegionDestroyList(patch%regions)
+  call CouplerDestroyList(patch%boundary_conditions)
+  call CouplerDestroyList(patch%initial_conditions)
+  call CouplerDestroyList(patch%source_sinks)
+  
+  
+  call ObservationDestroyList(patch%observation)
+  call StrataDestroyList(patch%strata)
+  
+  call AuxDestroy(patch%aux)
+  
+  call ObservationDestroyList(patch%observation)
+  
+  ! these are solely pointers, must not destroy.
+  nullify(patch%reaction)
+  nullify(patch%datasets)
+  nullify(patch%field)
+  
+  deallocate(patch)
+  nullify(patch)
+  
+end subroutine PatchDestroy
 
 end module Patch_module

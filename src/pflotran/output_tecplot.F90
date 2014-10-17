@@ -869,7 +869,7 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization_base,iphase, &
           dabs(cur_connection_set%dist(direction,iconn)) < 0.99d0) cycle
       if (output_flux) then
         ! iphase here is really teh dof
-        vec_ptr(local_id) = patch%internal_fluxes(iphase,1,sum_connection)
+        vec_ptr(local_id) = patch%internal_flow_fluxes(iphase,sum_connection)
       else
         vec_ptr(local_id) = patch%internal_velocities(iphase,sum_connection)
       endif

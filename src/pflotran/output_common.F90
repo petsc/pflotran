@@ -1263,17 +1263,18 @@ subroutine OutputGetFaceVelOrFlowrateUGrid(realization_base, save_velocity)
         else
 
           ! Save flowrate for iface_up of local_id_up cell using flowrate up-->dn
-          flowrates(dof,iface_up,local_id_up) = patch%internal_fluxes(dof,1,sum_connection)
+          flowrates(dof,iface_up,local_id_up) = &
+            patch%internal_flow_fluxes(dof,sum_connection)
 
           idx = (local_id_up-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface_up + 1
-          vec_ptr(idx) = patch%internal_fluxes(dof,1,sum_connection)
+          vec_ptr(idx) = patch%internal_flow_fluxes(dof,sum_connection)
 
           if(iface_dn>0) then
             ! Save flowrate for iface_dn of local_id_dn cell using -ve flowrate up-->dn
-            flowrates(dof,iface_dn,local_id_dn) = -patch%internal_fluxes(dof,1,sum_connection)
+            flowrates(dof,iface_dn,local_id_dn) = -patch%internal_flow_fluxes(dof,sum_connection)
 
             idx = (local_id_dn-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface_dn + 1
-            vec_ptr(idx) = -patch%internal_fluxes(dof,1,sum_connection)
+            vec_ptr(idx) = -patch%internal_flow_fluxes(dof,sum_connection)
           endif
 
         endif
@@ -1320,8 +1321,10 @@ subroutine OutputGetFaceVelOrFlowrateUGrid(realization_base, save_velocity)
 
           ! Save flowrate for iface_dn of local_id_dn cell using -ve flowrate up-->dn
           idx = (local_id_dn-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface_dn + 1
-          flowrates(dof,iface_dn,local_id_dn) = -patch%boundary_fluxes(dof,1,sum_connection)
-          vec_ptr(idx) = -patch%boundary_fluxes(dof,1,sum_connection)
+          flowrates(dof,iface_dn,local_id_dn) = &
+            -patch%boundary_flow_fluxes(dof,sum_connection)
+          vec_ptr(idx) = &
+            -patch%boundary_flow_fluxes(dof,sum_connection)
         endif
       enddo
     enddo
@@ -1652,7 +1655,7 @@ subroutine OutputGetExplicitFlowrates(realization_base,count,vec_proc, &
         count = count + 1
         do idof = 1,option%nflowdof
           flowrates(count,option%nflowdof) = &
-            patch%internal_fluxes(idof,1,sum_connection)
+            patch%internal_flow_fluxes(idof,sum_connection)
         enddo
         darcy(count) = patch%internal_velocities(1,sum_connection)
       endif

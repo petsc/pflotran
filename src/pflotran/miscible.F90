@@ -938,7 +938,7 @@ end subroutine MiscibleAccumulation_Xp
 ! ************************************************************************** !
 
 subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype,Res,&
-                            qsrc_phase,energy_flag, option)
+                              qsrc_vol,energy_flag, option)
   ! 
   ! Computes the non-fixed portion of the accumulation
   ! term for the residual
@@ -965,7 +965,7 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype
   PetscReal psrc(option%nphase),tsrc,hsrc, csrc 
   PetscInt isrctype, nsrcpara
   PetscBool :: energy_flag
-  PetscReal :: qsrc_phase(:) 
+  PetscReal :: qsrc_vol(option%nphase)
      
   PetscReal, pointer :: msrc(:)
   PetscReal dw_kg, dw_mol,dddt,dddp
@@ -982,7 +982,7 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype
   Res=0D0
   allocate(msrc(nsrcpara))
   msrc = mmsrc(1:nsrcpara)
-  qsrc_phase = 0.d0
+  qsrc_vol(:) = 0.d0
  ! if (present(ireac)) iireac=ireac
 !  if (energy_flag) then
 !    Res(option%nflowdof) = Res(option%nflowdof) + hsrc * option%flow_dt   
@@ -1043,7 +1043,7 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype
               if (ukvr*Dq>floweps) then
                 v_darcy = Dq * ukvr * dphi
                 ! store volumetric rate for ss_fluid_fluxes()
-                qsrc_phase(1) = -1.d0*v_darcy
+                qsrc_liq(1) = -1.d0*v_darcy
                 Res(1) = Res(1) - v_darcy* auxvar%den(np)* &
                   auxvar%xmol((np-1)*option%nflowspec+1)*option%flow_dt
                 Res(2) = Res(2) - v_darcy* auxvar%den(np)* &
@@ -1077,7 +1077,7 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype
               if (ukvr*Dq>floweps) then
                 v_darcy = Dq * ukvr * dphi
                 ! store volumetric rate for ss_fluid_fluxes()
-                qsrc_phase(1) = v_darcy
+                qsrc_liq(1) = v_darcy
                 Res(1) = Res(1) + v_darcy* auxvar%den(np)* &
 !                 auxvar%xmol((np-1)*option%nflowspec+1) * option%flow_dt
                   (1.d0-csrc) * option%flow_dt
@@ -1940,6 +1940,7 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
   type(global_auxvar_type), pointer :: global_auxvars_ss(:)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
+  PetscReal :: ss_flow_vol_flux(realization%option%nphase)
   PetscBool :: enthalpy_flag
   PetscInt :: ng
   PetscInt :: iconn, idof, istart, iend
@@ -2053,8 +2054,15 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
       call MiscibleSourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1, &
                             auxvars(ghosted_id)%auxvar_elem(0), &
                             source_sink%flow_condition%itype(1),Res, &
-                            patch%ss_fluid_fluxes(:,sum_connection), &
+                            ss_flow_vol_flux, &
                             enthalpy_flag,option)
+      if (associated(patch%ss_flow_vol_fluxes)) then
+        patch%ss_flow_vol_fluxes(:,sum_connection) = ss_flow_vol_flux/ &
+                                                     option%flow_dt
+      endif
+      if (associated(patch%ss_flow_fluxes)) then
+        patch%ss_flow_fluxes(:,sum_connection) = Res(:)/option%flow_dt
+      endif
       if (option%compute_mass_balance_new) then
         global_auxvars_ss(sum_connection)%mass_balance_delta(:,1) = &
           global_auxvars_ss(sum_connection)%mass_balance_delta(:,1) - &
@@ -2693,9 +2701,10 @@ subroutine MiscibleJacobianPatch2(snes,xx,A,B,realization,ierr)
   PetscReal :: vv_darcy(realization%option%nphase), voltemp
   PetscReal :: ra(1:realization%option%nflowdof,1:realization%option%nflowdof*2) 
   PetscReal, pointer :: msrc(:)
-  PetscReal :: psrc(1:realization%option%nphase), ss_flow(1:realization%option%nphase)
+  PetscReal :: psrc(1:realization%option%nphase)
   PetscReal :: dddt, dddp, fg, dfgdp, dfgdt, eng, dhdt, dhdp, visc, dvdt,&
                dvdp, xphi
+  PetscReal :: dummy_real(realization%option%nphase)
   PetscInt :: nsrcpara, flow_pc                
   
   PetscViewer :: viewer
@@ -2812,10 +2821,11 @@ subroutine MiscibleJacobianPatch2(snes,xx,A,B,realization,ierr)
 !       r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt   
 !     endif         
       do nvar =1, option%nflowdof
-        call MiscibleSourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1, auxvars(ghosted_id)%auxvar_elem(nvar),&
-                            source_sink%flow_condition%itype(1), Res,&
-                            ss_flow, &
-                            enthalpy_flag, option)
+        call MiscibleSourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1, &
+                                auxvars(ghosted_id)%auxvar_elem(nvar),&
+                                source_sink%flow_condition%itype(1), Res,&
+                                dummy_real, &
+                                enthalpy_flag, option)
 
         ResInc(local_id,jh2o,nvar)=  ResInc(local_id,jh2o,nvar) - Res(jh2o)
         ResInc(local_id,jglyc,nvar)=  ResInc(local_id,jglyc,nvar) - Res(jglyc)
