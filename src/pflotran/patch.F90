@@ -1300,9 +1300,10 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
           if (p_gas - p_air >= p_sat) then
             option%io_buffer = 'MOLE_FRACTION set in flow condition "' // &
               trim(flow_condition%name) // &
-              ' results in a vapor pressure exceeding the water ' // &
+              '" results in a vapor pressure exceeding the water ' // &
               'saturation pressure, which indicates that a two-phase ' // &
               'state with GAS_PRESSURE and GAS_SATURATION should be used.'
+            call printErrMsg(option)
           endif
           coupler%flow_aux_real_var(real_count,1:num_connections) = p_air
           dof2 = PETSC_TRUE
