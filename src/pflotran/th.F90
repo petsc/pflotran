@@ -1006,15 +1006,6 @@ subroutine THUpdateAuxVarsPatch(realization)
       istart = iend-option%nflowdof+1
       iphase = int(iphase_loc_p(ghosted_id))
 
-      if (associated(source_sink%flow_condition%temperature)) then
-        if(source_sink%flow_condition%temperature%itype/=HET_DIRICHLET) then
-          tsrc1 = source_sink%flow_condition%temperature%dataset%rarray(1)
-        else
-          tsrc1 = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
-        endif
-      else
-          tsrc1 = xx_loc_p((ghosted_id-1)*option%nflowdof+1)
-      endif
       select case(source_sink%flow_condition%itype(TH_TEMPERATURE_DOF))
         case (HET_DIRICHLET)
           tsrc1 = source_sink%flow_condition%temperature%dataset%rarray(1)
@@ -1027,7 +1018,8 @@ subroutine THUpdateAuxVarsPatch(realization)
             'a source-sink in TH mode: ' // trim(source_sink%name)
           call printErrMsg(option)
       end select
-      xx = xx_loc_p(istart:iend)
+
+      xx(1) = xx_loc_p(istart)
       xx(2) = tsrc1
 
       if (option%use_th_freezing) then
