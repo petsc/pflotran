@@ -299,6 +299,19 @@ subroutine GeneralSetup(realization)
         cur_fluid_property%diffusion_coefficient
     cur_fluid_property => cur_fluid_property%next
   enddo  
+  ! check whether diffusion coefficients are initialized.
+  if (Uninitialized(patch%aux%General%general_parameter% &
+      diffusion_coefficient(LIQUID_PHASE))) then
+    option%io_buffer = &
+      UninitializedMessage('Liquid phase diffusion coefficient','')
+    call printErrMsg(option)
+  endif
+  if (Uninitialized(patch%aux%General%general_parameter% &
+      diffusion_coefficient(GAS_PHASE))) then
+    option%io_buffer = &
+      UninitializedMessage('Gas phase diffusion coefficient','')
+    call printErrMsg(option)
+  endif
 
   if (realization%output_option%print_fluxes) then
     allocate(patch%internal_fluxes(option%nflowdof,1, &
