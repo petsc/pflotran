@@ -665,16 +665,14 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   endif
 
   if (patch%surf_or_subsurf_flag == SURFACE) then
-    !if (option%store_flowrate) then
-      allocate(patch%surf_internal_fluxes(option%nflowdof,temp_int))
-      patch%surf_internal_fluxes = 0.d0
-    !endif
+    allocate(patch%surf_internal_fluxes(option%nflowdof,temp_int))
+    patch%surf_internal_fluxes = 0.d0
+
+    allocate(patch%surf_boundary_fluxes(option%nflowdof,temp_int))
+    patch%surf_boundary_fluxes = 0.d0
+
   endif
-  ! Always allocate the array to store boundary fluxes as they are needed
-  ! to store data for hydrograph output
-  allocate(patch%surf_boundary_fluxes(option%nflowdof,temp_int))
-  patch%surf_boundary_fluxes = 0.d0
- 
+
   if (patch%grid%itype == STRUCTURED_GRID_MIMETIC.or. &
       patch%grid%discretization_itype == UNSTRUCTURED_GRID_MIMETIC ) then
     temp_int = CouplerGetNumBoundConnectionsInListMFD(patch%grid, &
