@@ -3947,10 +3947,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
                   Res)
 
       patch%internal_velocities(1,sum_connection) = v_darcy
-#ifdef STORE_FLOWRATES
-      patch%internal_fluxes(TH_PRESSURE_DOF,1,sum_connection) = Res(TH_PRESSURE_DOF)*FMWH2O
-      patch%internal_fluxes(TH_TEMPERATURE_DOF,1,sum_connection) = Res(TH_TEMPERATURE_DOF)
-#endif
+      patch%internal_flow_fluxes(:,sum_connection) = Res(:)
 
       if (local_id_up>0) then
         iend = local_id_up*option%nflowdof
@@ -4015,12 +4012,9 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
                                 Res)
 
       patch%boundary_velocities(1,sum_connection) = v_darcy
-#ifdef STORE_FLOWRATES
-      patch%boundary_fluxes(TH_PRESSURE_DOF,1,sum_connection) = Res(TH_PRESSURE_DOF)*FMWH2O
-      patch%boundary_fluxes(TH_TEMPERATURE_DOF,1,sum_connection) = Res(TH_TEMPERATURE_DOF)
-      patch%boundary_flux_energy(1,sum_connection) = fluxe_bulk
-      patch%boundary_flux_energy(2,sum_connection) = fluxe_cond
-#endif
+      patch%boundary_flow_fluxes(:,sum_connection) = Res(:)
+      patch%boundary_energy_flux(1,sum_connection) = fluxe_bulk
+      patch%boundary_energy_flux(2,sum_connection) = fluxe_cond
 
       iend = local_id*option%nflowdof
       istart = iend-option%nflowdof+1
@@ -5428,18 +5422,12 @@ subroutine THUpdateSurfaceBC(realization)
         local_id = cur_connection_set%id_dn(iconn)
         ghosted_id = grid%nL2G(local_id)
 
-#ifdef STORE_FLOWRATES
-        eflux      = patch%boundary_fluxes(TH_TEMPERATURE_DOF,1,sum_connection) ! [MJ/s]
-        eflux_bulk = patch%boundary_flux_energy(1,sum_connection) ! [MJ/s]
-        eflux_cond = patch%boundary_flux_energy(2,sum_connection) ! [MJ/s]
+        eflux      = patch%boundary_flow_fluxes(TH_TEMPERATURE_DOF,sum_connection) ! [MJ/s]
+        eflux_bulk = patch%boundary_energy_flux(1,sum_connection) ! [MJ/s]
+        eflux_cond = patch%boundary_energy_flux(2,sum_connection) ! [MJ/s]
 
         ! [MJ/s] to [J/s]
         eflux      = eflux/option%scale
-#else
-        option%io_buffer = 'Recompile code with store_flowrates=1 for ' // &
-          'surface TH mode.'
-        call printErrMsg(option)
-#endif
         area = cur_connection_set%area(iconn) ! [m^2]
 
         surfpress_old = &

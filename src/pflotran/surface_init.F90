@@ -691,11 +691,6 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
         endif
         if (mass_flowrate.or.energy_flowrate.or.aveg_mass_flowrate.or.aveg_energy_flowrate) then
           if (output_option%print_hdf5) then
-#ifndef STORE_FLOWRATES
-            option%io_buffer='To output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE, '// &
-              'compile with -DSTORE_FLOWRATES'
-            call printErrMsg(option)
-#endif
             output_option%print_hdf5_mass_flowrate = mass_flowrate
             output_option%print_hdf5_energy_flowrate = energy_flowrate
             output_option%print_hdf5_aveg_mass_flowrate = aveg_mass_flowrate
@@ -708,7 +703,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
                 call printErrMsg(option)
               endif
             endif
-           option%store_flowrate = PETSC_TRUE
+            option%flow%store_fluxes = PETSC_TRUE
           else
             option%io_buffer='Output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE ' // &
               'only available in HDF5 format'

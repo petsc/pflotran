@@ -2610,11 +2610,6 @@ subroutine InitReadInput(simulation)
         endif
         if (mass_flowrate.or.energy_flowrate.or.aveg_mass_flowrate.or.aveg_energy_flowrate) then
           if (output_option%print_hdf5) then
-#ifndef STORE_FLOWRATES
-            option%io_buffer='To output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE, '// &
-              'compile with -DSTORE_FLOWRATES'
-            call printErrMsg(option)
-#endif
             output_option%print_hdf5_mass_flowrate = mass_flowrate
             output_option%print_hdf5_energy_flowrate = energy_flowrate
             output_option%print_hdf5_aveg_mass_flowrate = aveg_mass_flowrate
@@ -2627,14 +2622,10 @@ subroutine InitReadInput(simulation)
                 call printErrMsg(option)
               endif
             endif
-           option%store_flowrate = PETSC_TRUE
+           option%flow%store_fluxes = PETSC_TRUE
           endif
           if (associated(grid%unstructured_grid%explicit_grid)) then
-#ifndef STORE_FLOWRATES          
-            option%io_buffer='To output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE ' // &
-              'compile with -DSTORE_FLOWRATES.'
-            call printErrMsg(option)
-#endif
+           option%flow%store_fluxes = PETSC_TRUE
             output_option%print_explicit_flowrate = mass_flowrate
           endif
         

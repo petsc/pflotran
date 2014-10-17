@@ -1096,7 +1096,7 @@ subroutine WriteObservationDataForBC(fid,realization_base,patch,connection_set)
       if (associated(connection_set)) then
         do iconn = 1, connection_set%num_connections
           sum_solute_flux(:) = sum_solute_flux(:) + &
-                               patch%boundary_fluxes(iphase,:,offset+iconn)* &
+                               patch%boundary_tran_fluxes(:,offset+iconn)* &
                                connection_set%area(iconn)
         enddo
       endif
@@ -2393,7 +2393,7 @@ subroutine OutputMassBalance(realization_base)
 !gehprint *, option%myrank, grid%nG2A(grid%internal_connection_set_list%first%id_up(iconn)), &
 !gehpatch%internal_fluxes(1:option%nflowdof,1,iconn), 'sum_mol_by_conn'
             sum_mol_ye(1:option%nflowdof) = sum_mol_ye(1:option%nflowdof) + &
-                             patch%internal_fluxes(1:option%nflowdof,1,iconn)
+                             patch%internal_flow_fluxes(1:option%nflowdof,iconn)
           enddo
         enddo
       endif

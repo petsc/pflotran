@@ -16,7 +16,7 @@ module Option_Transport_module
     PetscInt :: rt_idof
     PetscInt :: reactive_transport_coupling
     PetscInt :: tvd_flux_limiter
-    PetscBool :: store_solute_fluxes
+    PetscBool :: store_fluxes
     PetscReal :: tran_weight_t0, tran_weight_t1
     
     PetscReal :: inf_rel_update_tol
@@ -109,7 +109,6 @@ subroutine OptionTransportInitRealization(option)
   option%rt_idof = UNINITIALIZED_INTEGER
   
   option%reactive_transport_coupling = GLOBAL_IMPLICIT
-  option%store_solute_fluxes = PETSC_FALSE
   
   option%jumpstart_kinetic_sorption = PETSC_FALSE
   option%no_checkpoint_kinetic_sorption = PETSC_FALSE
