@@ -3229,7 +3229,7 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
       if (associated(patch%ss_flow_fluxes)) then
         patch%ss_flow_fluxes(:,sum_connection) = Res/option%flow_dt
       endif
-      if (associated(patch%ss_flow_fluxes)) then
+      if (associated(patch%ss_flow_vol_fluxes)) then
         patch%ss_flow_vol_fluxes(:,sum_connection) = ss_flow_vol_flux/option%flow_dt
       endif
       r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o)-Res(jh2o)

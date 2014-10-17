@@ -677,12 +677,13 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   endif
 
   if (patch%surf_or_subsurf_flag == SURFACE) then
+    option%io_buffer = 'Allocation of patch%surf_internal_fluxes in ' // &
+      'PatchProcessCouplers() cannot possibly be correct.  temp_int ' // &
+      'should be sized based on surface grid, not the subsurface. ' // &
+      'This existed prior to the refactor by Glenn.'
+    call printErrMsg(option)
     allocate(patch%surf_internal_fluxes(option%nflowdof,temp_int))
     patch%surf_internal_fluxes = 0.d0
-    allocate(patch%surf_boundary_fluxes(option%nflowdof,temp_int))
-    patch%surf_boundary_fluxes = 0.d0
-    allocate(patch%boundary_energy_flux(2,temp_int))
-    patch%boundary_energy_flux = 0.d0
   endif
 
   if (patch%grid%itype == STRUCTURED_GRID_MIMETIC.or. &
@@ -703,6 +704,13 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
       if (option%flow%store_fluxes) then  
         allocate(patch%boundary_flow_fluxes(option%nflowdof,temp_int))
         patch%boundary_flow_fluxes = 0.d0
+      endif
+      ! surface/subsurface storage
+      if (option%iflowmode == TH_MODE) then
+        allocate(patch%surf_boundary_fluxes(option%nflowdof,temp_int))
+        patch%surf_boundary_fluxes = 0.d0
+        allocate(patch%boundary_energy_flux(2,temp_int))
+        patch%boundary_energy_flux = 0.d0
       endif
     endif
     ! transport
