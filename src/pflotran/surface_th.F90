@@ -1032,7 +1032,7 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
   PetscReal :: xxss(surf_realization%option%nflowdof)
   PetscReal :: tsrc1
   PetscErrorCode :: ierr
-  PetscReal :: den
+  PetscReal :: den,head
 
   option => surf_realization%option
   patch => surf_realization%patch
@@ -1135,6 +1135,8 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
       endif
 
       xxss = xx_loc_p(istart:iend)
+      head    = xxss(1)
+      xxss(1) = 1.d0 ! set arbitrary amount of surface water so auxvar will evaluate
       xxss(2) = tsrc1
 
       surf_global_auxvars_ss(sum_connection)%temp = tsrc1
@@ -1142,6 +1144,8 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
                                   surf_th_auxvars_ss(sum_connection), &
                                   surf_global_auxvars_ss(sum_connection), &
                                   option)
+      surf_global_auxvars_ss(sum_connection)%head = head ! set head back just in case
+
     enddo
     source_sink => source_sink%next
   enddo
