@@ -170,73 +170,76 @@ subroutine THAuxVarInit(auxvar,option)
   ! 
 
   use Option_module
+  use PFLOTRAN_Constants_module, only : UNINITIALIZED_DOUBLE
 
   implicit none
   
   type(TH_auxvar_type) :: auxvar
   type(option_type) :: option
   
+  PetscReal :: uninit_value
+  uninit_value     = UNINITIALIZED_DOUBLE
 
-  auxvar%avgmw = 0.d0
-  auxvar%h = 0.d0
-  auxvar%u = 0.d0
-  auxvar%pc = 0.d0
-!  auxvar%kr = 0.d0
-!  auxvar%dkr_dp = 0.d0
-  auxvar%vis = 0.d0
-!  auxvar%dvis_dp = 0.d0
-  auxvar%kvr = 0.d0
-  auxvar%dsat_dp = 0.d0
-  auxvar%dden_dp = 0.d0
-  auxvar%dden_dt = 0.d0
-  auxvar%dkvr_dp = 0.d0
-  auxvar%dkvr_dt = 0.d0
-  auxvar%dh_dp = 0.d0
-  auxvar%dh_dt = 0.d0
-  auxvar%du_dp = 0.d0
-  auxvar%du_dt = 0.d0    
-  auxvar%transient_por = 0.d0
-  auxvar%Dk_eff = 0.d0
-  auxvar%Ke = 0.d0
-  auxvar%Ke_fr = 0.d0
-  auxvar%dKe_dp = 0.d0
-  auxvar%dKe_dt = 0.d0
-  auxvar%dKe_fr_dp = 0.d0
-  auxvar%dKe_fr_dt = 0.d0
+  auxvar%avgmw     = uninit_value
+  auxvar%h         = uninit_value
+  auxvar%u         = uninit_value
+  auxvar%pc        = uninit_value
+  !auxvar%kr       = uninit_value
+  !auxvar%dkr_dp   = uninit_value
+  auxvar%vis       = uninit_value
+  !auxvar%dvis_dp  = uninit_value
+  auxvar%kvr       = uninit_value
+  auxvar%dsat_dp   = uninit_value
+  auxvar%dden_dp   = uninit_value
+  auxvar%dden_dt   = uninit_value
+  auxvar%dkvr_dp   = uninit_value
+  auxvar%dkvr_dt   = uninit_value
+  auxvar%dh_dp     = uninit_value
+  auxvar%dh_dt     = uninit_value
+  auxvar%du_dp     = uninit_value
+  auxvar%du_dt     = uninit_value    
+  auxvar%transient_por = uninit_value
+  auxvar%Dk_eff    = uninit_value
+  auxvar%Ke        = uninit_value
+  auxvar%Ke_fr     = uninit_value
+  auxvar%dKe_dp    = uninit_value
+  auxvar%dKe_dt    = uninit_value
+  auxvar%dKe_fr_dp = uninit_value
+  auxvar%dKe_fr_dt = uninit_value
   allocate(auxvar%xmol(option%nflowspec))
-  auxvar%xmol = 0.d0
+  auxvar%xmol      = uninit_value
   allocate(auxvar%diff(option%nflowspec))
-  auxvar%diff = 1.d-9
+  auxvar%diff      = 1.d-9
   ! NOTE(bja, 2013-12) always initialize ice variables to zero, even if not used!
-  auxvar%sat_ice = 0.d0
-  auxvar%sat_gas = 0.d0
-  auxvar%dsat_dt = 0.d0
-  auxvar%dsat_ice_dp = 0.d0
-  auxvar%dsat_gas_dp = 0.d0
-  auxvar%dsat_ice_dt = 0.d0
-  auxvar%dsat_gas_dt = 0.d0
-  auxvar%den_ice = 0.d0
-  auxvar%dden_ice_dp = 0.d0
-  auxvar%dden_ice_dt = 0.d0
-  auxvar%u_ice = 0.d0
-  auxvar%du_ice_dt = 0.d0
-  auxvar%den_gas = 0.d0
-  auxvar%dden_gas_dt = 0.d0
-  auxvar%u_gas = 0.d0
-  auxvar%du_gas_dt = 0.d0
-  auxvar%mol_gas = 0.d0
-  auxvar%dmol_gas_dt = 0.d0
-  auxvar%pres_fh2o = 0.d0
-  auxvar%dpres_fh2o_dp = 0.d0
-  auxvar%dpres_fh2o_dt = 0.d0
-  auxvar%surf_wat = PETSC_FALSE
-  auxvar%P_min = 0.d0
-  auxvar%P_max = 0.d0
-  auxvar%coeff_for_cubic_approx(:) = 0.d0
-  auxvar%coeff_for_deriv_cubic_approx(:) = 0.d0
-  auxvar%range_for_linear_approx(:) = 0.d0
-  auxvar%dlinear_slope_dT = 0.d0
-  auxvar%bcflux_default_scheme = PETSC_FALSE
+  auxvar%sat_ice       = uninit_value
+  auxvar%sat_gas       = uninit_value
+  auxvar%dsat_dt       = uninit_value
+  auxvar%dsat_ice_dp   = uninit_value
+  auxvar%dsat_gas_dp   = uninit_value
+  auxvar%dsat_ice_dt   = uninit_value
+  auxvar%dsat_gas_dt   = uninit_value
+  auxvar%den_ice       = uninit_value
+  auxvar%dden_ice_dp   = uninit_value
+  auxvar%dden_ice_dt   = uninit_value
+  auxvar%u_ice         = uninit_value
+  auxvar%du_ice_dt     = uninit_value
+  auxvar%den_gas       = uninit_value
+  auxvar%dden_gas_dt   = uninit_value
+  auxvar%u_gas         = uninit_value
+  auxvar%du_gas_dt     = uninit_value
+  auxvar%mol_gas       = uninit_value
+  auxvar%dmol_gas_dt   = uninit_value
+  auxvar%pres_fh2o     = uninit_value
+  auxvar%dpres_fh2o_dp = uninit_value
+  auxvar%dpres_fh2o_dt = uninit_value
+  auxvar%surf_wat      = PETSC_FALSE
+  auxvar%P_min         = uninit_value
+  auxvar%P_max         = uninit_value
+  auxvar%coeff_for_cubic_approx(:)       = uninit_value
+  auxvar%coeff_for_deriv_cubic_approx(:) = uninit_value
+  auxvar%range_for_linear_approx(:)      = uninit_value
+  auxvar%dlinear_slope_dT                = uninit_value
+  auxvar%bcflux_default_scheme           = PETSC_FALSE
 
 end subroutine THAuxVarInit
 

@@ -93,18 +93,22 @@ subroutine SurfaceTHAuxVarInit(auxvar,option)
   ! 
 
   use Option_module
+  use PFLOTRAN_Constants_module, only : UNINITIALIZED_DOUBLE
 
   implicit none
   
   type(Surface_TH_auxvar_type) :: auxvar
   type(option_type) :: option
 
-  auxvar%h = 0.d0
-  auxvar%u = 0.d0
-  auxvar%pc = 0.d0
-  auxvar%Cw = 4.188d3     ! [J/kg/K]
+  PetscReal :: uninit_value
+  uninit_value = UNINITIALIZED_DOUBLE
+  
+  auxvar%h   = uninit_value
+  auxvar%u   = uninit_value
+  auxvar%pc  = uninit_value
+  auxvar%Cw  = 4.188d3     ! [J/kg/K]
   !auxvar%Ci = 2.050d3     ! [J/kg/K]
-  auxvar%Ci = 4.188d3     ! [J/kg/K]
+  auxvar%Ci  = 4.188d3     ! [J/kg/K]
   auxvar%Cwi = 4.188d3     ! [J/kg/K]
   auxvar%k_therm = 0.57d0 ! [J/s/m/K]
   auxvar%unfrozen_fraction = 1.d0
