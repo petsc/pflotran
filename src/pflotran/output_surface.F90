@@ -641,7 +641,7 @@ subroutine OutputHydrograph(surf_realization)
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
       !patch%boundary_velocities(1,sum_connection)
-      sum_flux = sum_flux + patch%surf_boundary_fluxes(RICHARDS_PRESSURE_DOF,sum_connection)
+      sum_flux = sum_flux + patch%boundary_flow_fluxes(RICHARDS_PRESSURE_DOF,sum_connection)
     enddo
     
     call MPI_Reduce(sum_flux,sum_flux_global, &
@@ -1922,15 +1922,15 @@ subroutine OutputSurfaceGetFlowrates(surf_realization)
       
       do dof=1,option%nflowdof
         ! Save flowrate for iface_up of local_id_up cell using flowrate up-->dn
-        flowrates(dof,iface_up,local_id_up) = patch%surf_internal_fluxes(dof,sum_connection)
+        flowrates(dof,iface_up,local_id_up) = patch%internal_flow_fluxes(dof,sum_connection)
         vec_ptr((local_id_up-1)*offset + (dof-1)*MAX_FACE_PER_CELL_SURF + iface_up + 1) = &
-          patch%surf_internal_fluxes(dof,sum_connection)
+          patch%internal_flow_fluxes(dof,sum_connection)
 
         if(iface_dn>0) then
           ! Save flowrate for iface_dn of local_id_dn cell using -ve flowrate up-->dn
-          flowrates(dof,iface_dn,local_id_dn) = -patch%surf_internal_fluxes(dof,sum_connection)
+          flowrates(dof,iface_dn,local_id_dn) = -patch%internal_flow_fluxes(dof,sum_connection)
           vec_ptr((local_id_dn-1)*offset + (dof-1)*MAX_FACE_PER_CELL_SURF + iface_dn + 1) = &
-            -patch%surf_internal_fluxes(dof,sum_connection)
+            -patch%internal_flow_fluxes(dof,sum_connection)
         endif
       enddo
       
@@ -1958,9 +1958,9 @@ subroutine OutputSurfaceGetFlowrates(surf_realization)
 
       do dof=1,option%nflowdof
         ! Save flowrate for iface_dn of local_id_dn cell using -ve flowrate up-->dn
-        flowrates(dof,iface_dn,local_id_dn) = -patch%surf_boundary_fluxes(dof,sum_connection)
+        flowrates(dof,iface_dn,local_id_dn) = -patch%boundary_flow_fluxes(dof,sum_connection)
         vec_ptr((local_id_dn-1)*offset + (dof-1)*MAX_FACE_PER_CELL_SURF + iface_dn + 1) = &
-          -patch%surf_boundary_fluxes(dof,sum_connection)
+          -patch%boundary_flow_fluxes(dof,sum_connection)
       enddo
     enddo
     boundary_condition => boundary_condition%next

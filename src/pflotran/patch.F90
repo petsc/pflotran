@@ -87,9 +87,6 @@ module Patch_module
     type(surface_field_type),pointer                  :: surf_field
     type(surface_auxiliary_type) :: surf_aux
     
-    PetscReal,pointer :: surf_internal_fluxes(:,:)
-    PetscReal,pointer :: surf_boundary_fluxes(:,:)
-
   end type patch_type
 
   ! pointer data structure required for making an array of patch pointers in F90
@@ -198,8 +195,6 @@ function PatchCreate()
   nullify(patch%surf_material_properties)
   nullify(patch%surf_material_property_array)
   nullify(patch%surf_field)
-  nullify(patch%surf_internal_fluxes)
-  nullify(patch%surf_boundary_fluxes)
   call SurfaceAuxInit(patch%surf_aux)
 
   PatchCreate => patch
@@ -676,16 +671,6 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     endif
   endif
 
-  if (patch%surf_or_subsurf_flag == SURFACE) then
-    option%io_buffer = 'Allocation of patch%surf_internal_fluxes in ' // &
-      'PatchProcessCouplers() cannot possibly be correct.  temp_int ' // &
-      'should be sized based on surface grid, not the subsurface. ' // &
-      'This existed prior to the refactor by Glenn.'
-    call printErrMsg(option)
-    allocate(patch%surf_internal_fluxes(option%nflowdof,temp_int))
-    patch%surf_internal_fluxes = 0.d0
-  endif
-
   if (patch%grid%itype == STRUCTURED_GRID_MIMETIC.or. &
       patch%grid%discretization_itype == UNSTRUCTURED_GRID_MIMETIC ) then
     temp_int = CouplerGetNumBoundConnectionsInListMFD(patch%grid, &
@@ -706,13 +691,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
         patch%boundary_flow_fluxes = 0.d0
       endif
       ! surface/subsurface storage
-      if (patch%surf_or_subsurf_flag == SURFACE) then
-        allocate(patch%surf_boundary_fluxes(option%nflowdof,temp_int))
-        patch%surf_boundary_fluxes = 0.d0
-        if (option%iflowmode == TH_MODE) then
-          allocate(patch%boundary_energy_flux(2,temp_int))
-          patch%boundary_energy_flux = 0.d0
-        endif
+      if (option%iflowmode == TH_MODE) then
+        allocate(patch%boundary_energy_flux(2,temp_int))
+        patch%boundary_energy_flux = 0.d0
       endif
     endif
     ! transport
@@ -5741,10 +5722,6 @@ subroutine PatchDestroy(patch)
     deallocate(patch%surf_material_property_array)
   nullify(patch%surf_material_property_array)
   nullify(patch%surf_material_properties)
-  if (associated(patch%surf_internal_fluxes)) deallocate(patch%surf_internal_fluxes)
-  if (associated(patch%surf_boundary_fluxes)) deallocate(patch%surf_boundary_fluxes)
-  nullify(patch%surf_internal_fluxes)
-  nullify(patch%surf_boundary_fluxes)
 
   ! solely nullify grid since destroyed in discretization
   nullify(patch%grid)

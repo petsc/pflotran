@@ -316,8 +316,7 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
                          option,vel,dum1,Res)
 
       patch%internal_velocities(1,sum_connection) = vel
-      patch%surf_internal_fluxes(TH_PRESSURE_DOF,sum_connection) = Res(TH_PRESSURE_DOF)
-      patch%surf_internal_fluxes(TH_TEMPERATURE_DOF,sum_connection) = Res(TH_TEMPERATURE_DOF)
+      patch%internal_flow_fluxes(:,sum_connection) = Res(:)
 
       if (local_id_up>0) then
         iend = local_id_up*option%nflowdof
@@ -368,8 +367,7 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
                          option,vel,dum1,Res)
 
       patch%boundary_velocities(1,sum_connection) = vel
-      patch%surf_boundary_fluxes(TH_PRESSURE_DOF,sum_connection) = Res(TH_PRESSURE_DOF)
-      patch%surf_boundary_fluxes(TH_TEMPERATURE_DOF,sum_connection) = Res(TH_TEMPERATURE_DOF)
+      patch%boundary_flow_fluxes(:,sum_connection) = Res(:)
       
       iend = local_id_dn*option%nflowdof
       istart = iend-option%nflowdof+1
@@ -618,7 +616,7 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
                          option,vel,dt,Res)
 
       patch%internal_velocities(1,sum_connection) = vel
-      patch%surf_internal_fluxes(:,sum_connection) = Res(:)
+      patch%internal_flow_fluxes(:,sum_connection) = Res(:)
 
 #ifdef SURFACE_TH_DEBUG
       if (dt < max_allowable_dt) then
@@ -699,7 +697,7 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
                          option,vel,dt,Res)
 
       patch%boundary_velocities(1,sum_connection) = vel
-      patch%surf_boundary_fluxes(:,sum_connection) = Res(:)
+      patch%boundary_flow_fluxes(:,sum_connection) = Res(:)
 
       max_allowable_dt = min(max_allowable_dt, dt)
     enddo

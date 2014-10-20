@@ -696,7 +696,7 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization_base,iphase, &
     
     ! mass units
     if (output_flux) then
-      string = trim(string) // 'mol/'
+      string = trim(string) // 'kmol/'
     else
       string = trim(string) // 'm/'
     endif

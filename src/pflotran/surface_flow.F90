@@ -396,10 +396,10 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
       end select
 
       patch%internal_velocities(1,sum_connection) = vel
-      patch%surf_internal_fluxes(RICHARDS_PRESSURE_DOF,sum_connection) = Res(1)
+      patch%internal_flow_fluxes(1,sum_connection) = Res(1)
 
       vel = patch%internal_velocities(1,sum_connection)
-      Res(1) = patch%surf_internal_fluxes(RICHARDS_PRESSURE_DOF,sum_connection)
+      Res(1) = patch%internal_flow_fluxes(1,sum_connection)
 
       if (local_id_up>0) then
         ff_p(local_id_up) = ff_p(local_id_up) - Res(1)/area_p(local_id_up)
@@ -443,9 +443,9 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
 #endif
 
       patch%boundary_velocities(1,sum_connection) = vel
-      patch%surf_boundary_fluxes(RICHARDS_PRESSURE_DOF,sum_connection) = Res(1)
+      patch%boundary_flow_fluxes(1,sum_connection) = Res(1)
       vel = patch%boundary_velocities(1,sum_connection)
-      Res(1) = patch%surf_boundary_fluxes(RICHARDS_PRESSURE_DOF,sum_connection)
+      Res(1) = patch%boundary_flow_fluxes(1,sum_connection)
       
       ff_p(local_id) = ff_p(local_id) + Res(1)/area_p(local_id)
     enddo
@@ -618,7 +618,7 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
       end select
 
       patch%internal_velocities(1,sum_connection) = vel
-      patch%surf_internal_fluxes(RICHARDS_PRESSURE_DOF,sum_connection) = Res(1)
+      patch%internal_flow_fluxes(1,sum_connection) = Res(1)
       if(abs(vel)>eps) then
         dt = dist/abs(vel)/4.d0
         max_allowable_dt = min(max_allowable_dt,dt)
@@ -655,7 +655,7 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
                          cur_connection_set%area(iconn), &
                          option,vel,Res)
       patch%boundary_velocities(1,sum_connection) = vel
-      patch%surf_boundary_fluxes(RICHARDS_PRESSURE_DOF,sum_connection) = Res(1)
+      patch%boundary_flow_fluxes(1,sum_connection) = Res(1)
 
       if(abs(vel)>eps) then
         dt = dist/abs(vel)/4.d0
