@@ -2550,10 +2550,6 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
       istart = iend-reaction%ncomp+1
       r_p(istart:iend)= r_p(istart:iend) + Res_2(1:reaction%ncomp)
 
-      if (option%store_solute_fluxes) then
-        patch%boundary_fluxes(iphase,1:reaction%ncomp,sum_connection) = &
-            Res_2(1:reaction%ncomp)
-      endif
       if (option%compute_mass_balance_new) then
       ! contribution to boundary 
         rt_auxvars_bc(sum_connection)%mass_balance_delta(:,iphase) = &

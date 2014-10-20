@@ -706,11 +706,13 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
         patch%boundary_flow_fluxes = 0.d0
       endif
       ! surface/subsurface storage
-      if (option%iflowmode == TH_MODE) then
+      if (patch%surf_or_subsurf_flag == SURFACE) then
         allocate(patch%surf_boundary_fluxes(option%nflowdof,temp_int))
         patch%surf_boundary_fluxes = 0.d0
-        allocate(patch%boundary_energy_flux(2,temp_int))
-        patch%boundary_energy_flux = 0.d0
+        if (option%iflowmode == TH_MODE) then
+          allocate(patch%boundary_energy_flux(2,temp_int))
+          patch%boundary_energy_flux = 0.d0
+        endif
       endif
     endif
     ! transport
