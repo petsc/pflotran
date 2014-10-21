@@ -323,6 +323,7 @@ subroutine PMSubsurfaceUpdateSolution(this)
   ! Date: 04/21/14
 
   use Condition_module
+  use Integral_Flux_module
 
   implicit none
   
@@ -338,7 +339,11 @@ subroutine PMSubsurfaceUpdateSolution(this)
   call RealizUpdateAllCouplerAuxVars(this%realization,force_update_flag)
   if (associated(this%realization%uniform_velocity_dataset)) then
     call RealizUpdateUniformVelocity(this%realization)
-  endif  
+  endif
+  call IntegralFluxUpdate(this%realization%patch%integral_flux_list, &
+                          this%realization%patch%internal_flow_fluxes, &
+                          this%realization%patch%boundary_flow_fluxes, &
+                          INTEGRATE_FLOW,this%option)
   ! end from RealizationUpdate()
 
 end subroutine PMSubsurfaceUpdateSolution  

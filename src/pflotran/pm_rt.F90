@@ -648,6 +648,7 @@ subroutine PMRTUpdateSolution2(this, update_kinetics)
   use Reactive_Transport_module
   use Condition_module
   use Mass_Transfer_module
+  use Integral_Flux_module
 
   implicit none
   
@@ -683,7 +684,11 @@ subroutine PMRTUpdateSolution2(this, update_kinetics)
   
   if (this%realization%option%compute_mass_balance_new) then
     call RTUpdateMassBalance(this%realization)
-  endif  
+  endif
+  call IntegralFluxUpdate(this%realization%patch%integral_flux_list, &
+                          this%realization%patch%internal_flow_fluxes, &
+                          this%realization%patch%boundary_flow_fluxes, &
+                          INTEGRATE_TRANSPORT,this%option)
 
 end subroutine PMRTUpdateSolution2     
 

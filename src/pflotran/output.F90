@@ -221,6 +221,7 @@ subroutine Output(realization_base,plot_flag,transient_plot_flag)
       call OutputMassBalance(realization_base)
     endif
     call OutputObservation(realization_base)
+    call OutputIntegralFlux(realization_base)
   endif
 
   ! Output temporally average variables 

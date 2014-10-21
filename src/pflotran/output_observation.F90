@@ -17,10 +17,12 @@ module Output_Observation_module
   PetscBool :: observation_first
   PetscBool :: secondary_observation_first
   PetscBool :: mass_balance_first
+  PetscBool :: integral_flux_first
 
   public :: OutputObservation, &
             OutputObservationInit, &
-            OutputMassBalance
+            OutputMassBalance, &
+            OutputIntegralFlux
             
 contains
 
@@ -44,10 +46,12 @@ subroutine OutputObservationInit(num_steps)
     observation_first = PETSC_TRUE
     secondary_observation_first = PETSC_TRUE
     mass_balance_first = PETSC_TRUE
+    integral_flux_first = PETSC_TRUE
   else
     observation_first = PETSC_FALSE
     secondary_observation_first = PETSC_TRUE
     mass_balance_first = PETSC_FALSE
+    integral_flux_first = PETSC_FALSE
   endif
 
 end subroutine OutputObservationInit
@@ -1555,6 +1559,266 @@ end subroutine WriteObservationSecondaryDataAtCell
 
 ! ************************************************************************** !
 
+subroutine OutputIntegralFlux(realization_base)
+  ! 
+  ! Print integral fluxes to Tecplot POINT format
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/21/14
+  ! 
+
+  use Realization_class, only : realization_type
+  use Realization_Base_class, only : realization_base_type
+  use Option_module
+  use Grid_module
+  use Patch_module
+  use Output_Aux_module
+  use Reaction_Aux_module
+  use Integral_Flux_module
+  use Utility_module
+
+  implicit none
+
+  class(realization_base_type), target :: realization_base
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(output_option_type), pointer :: output_option
+  type(reaction_type), pointer :: reaction
+
+  character(len=MAXSTRINGLENGTH) :: filename
+  character(len=MAXWORDLENGTH) :: word, units
+  character(len=MAXSTRINGLENGTH) :: string
+  type(integral_flux_type), pointer :: integral_flux
+  PetscReal, allocatable :: sum_array(:,:)
+  PetscReal, allocatable :: sum_array_global(:,:)
+  PetscReal, allocatable :: instantaneous_array(:)
+  PetscInt, parameter :: fid = 86
+  PetscInt :: i, j
+  PetscInt :: istart, iend
+  PetscInt :: icol
+  PetscMPIInt :: int_mpi
+  PetscErrorCode :: ierr
+
+  patch => realization_base%patch
+  grid => patch%grid
+  option => realization_base%option
+  output_option => realization_base%output_option
+  reaction => realization_base%reaction
+
+  if (len_trim(output_option%plot_name) > 2) then
+    filename = trim(output_option%plot_name) // '-int.dat'
+  else
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
+               '-int.dat'
+  endif
+  
+  ! open file
+  if (option%myrank == option%io_rank) then
+
+!geh    option%io_buffer = '--> write tecplot mass balance file: ' // trim(filename)
+!geh    call printMsg(option)    
+
+    if (output_option%print_column_ids) then
+      icol = 1
+    else
+      icol = -1
+    endif
+  
+    if (integral_flux_first .or. .not.FileExists(filename)) then
+      open(unit=fid,file=filename,action="write",status="replace")
+
+      ! write header
+      write(fid,'(a)',advance="no") ' "Time [' // trim(output_option%tunit) // &
+        ']"'  
+      
+      if (option%iflowmode > 0) then
+        call OutputWriteToHeader(fid,'dt_flow',output_option%tunit,'',icol)
+      endif
+      
+      if (option%ntrandof > 0) then
+        call OutputWriteToHeader(fid,'dt_tran',output_option%tunit,'',icol)
+      endif
+      
+      integral_flux => patch%integral_flux_list%first
+      do
+        if (.not.associated(integral_flux)) exit
+        select case(option%iflowmode)
+          case(RICHARDS_MODE)
+            string = trim(integral_flux%name) // ' Water'
+            call OutputWriteToHeader(fid,string,'kg','',icol)
+            
+            units = 'kg/' // trim(output_option%tunit) // ''
+            string = trim(integral_flux%name) // ' Water'
+            call OutputWriteToHeader(fid,string,units,'',icol)
+          case(TH_MODE)
+            string = trim(integral_flux%name) // ' Water'
+            call OutputWriteToHeader(fid,string,'kg','',icol)
+            
+            units = 'kg/' // trim(output_option%tunit) // ''
+            string = trim(integral_flux%name) // ' Water'
+            call OutputWriteToHeader(fid,string,units,'',icol)
+          case(MIS_MODE)
+            string = trim(integral_flux%name) // ' Water'
+            call OutputWriteToHeader(fid,string,'kg','',icol)
+            string = trim(integral_flux%name) // ' Glycol'
+            call OutputWriteToHeader(fid,string,'kg','',icol)
+            
+            units = 'kg/' // trim(output_option%tunit) // ''
+            string = trim(integral_flux%name) // ' Water'
+            call OutputWriteToHeader(fid,string,units,'',icol)
+            string = trim(integral_flux%name) // ' Glycol'
+            call OutputWriteToHeader(fid,string,units,'',icol)
+          case(G_MODE)
+            string = trim(integral_flux%name) // ' Water'
+            call OutputWriteToHeader(fid,string,'kg','',icol)
+            string = trim(integral_flux%name) // ' Air'
+            call OutputWriteToHeader(fid,string,'kg','',icol)
+
+            units = 'kg/' // trim(output_option%tunit) // ''
+            string = trim(integral_flux%name) // ' Water'
+            call OutputWriteToHeader(fid,string,units,'',icol)
+            string = trim(integral_flux%name) // ' Air'
+            call OutputWriteToHeader(fid,string,units,'',icol)
+          case(MPH_MODE,FLASH2_MODE,IMS_MODE)
+            string = trim(integral_flux%name) // ' Water'
+            call OutputWriteToHeader(fid,string,'kmol','',icol)
+            string = trim(integral_flux%name) // ' CO2'
+            call OutputWriteToHeader(fid,string,'kmol','',icol)
+            
+            units = 'kmol/' // trim(output_option%tunit) // ''
+            string = trim(integral_flux%name) // ' Water'
+            call OutputWriteToHeader(fid,string,units,'',icol)
+            string = trim(integral_flux%name) // ' CO2'
+            call OutputWriteToHeader(fid,string,units,'',icol)
+        end select
+        
+        if (option%ntrandof > 0) then
+          do i=1,reaction%naqcomp
+            if (reaction%primary_species_print(i)) then
+              string = trim(integral_flux%name) // ' ' // &
+                       trim(reaction%primary_species_names(i))
+              call OutputWriteToHeader(fid,string,'kmol','',icol)
+            endif
+          enddo
+          
+          units = 'kmol/' // trim(output_option%tunit) // ''
+          do i=1,reaction%naqcomp
+            if (reaction%primary_species_print(i)) then
+              string = trim(integral_flux%name) // ' ' // &
+                       trim(reaction%primary_species_names(i))
+              call OutputWriteToHeader(fid,string,units,'',icol)
+            endif
+          enddo
+        endif
+        integral_flux => integral_flux%next
+      enddo
+      write(fid,'(a)') '' 
+    else
+      open(unit=fid,file=filename,action="write",status="old",position="append")
+    endif 
+  endif     
+
+100 format(100es16.8)
+110 format(100es16.8)
+
+  ! write time
+  if (option%myrank == option%io_rank) then
+    write(fid,100,advance="no") option%time/output_option%tconv
+  endif
+  
+  if (option%nflowdof > 0) then
+    if (option%myrank == option%io_rank) &
+      write(fid,100,advance="no") option%flow_dt/output_option%tconv
+  endif
+  if (option%ntrandof > 0) then
+    if (option%myrank == option%io_rank) &
+      write(fid,100,advance="no") option%tran_dt/output_option%tconv
+  endif
+  
+  allocate(sum_array(option%nflowdof + option%ntrandof,2))
+  allocate(sum_array_global(option%nflowdof + option%ntrandof,2))
+  allocate(instantaneous_array(max(option%nflowdof,option%ntrandof)))
+  integral_flux => patch%integral_flux_list%first
+  do
+    if (.not.associated(integral_flux)) exit
+    sum_array = 0.d0
+    sum_array_global = 0.d0
+    select case(option%iflowmode)
+      case(RICHARDS_MODE)
+      case(TH_MODE)
+      case(MIS_MODE)
+      case(G_MODE)
+      case(MPH_MODE,FLASH2_MODE,IMS_MODE)
+    end select
+    if (option%nflowdof > 0) then
+      istart = 1
+      iend = option%nflowdof
+      instantaneous_array = 0.d0
+      call IntegralFluxGetInstantaneous(integral_flux, &
+                                        patch%internal_flow_fluxes, &
+                                        patch%boundary_flow_fluxes, &
+                                        option%nflowdof, &
+                                        instantaneous_array,option)
+      sum_array(istart:iend,1) = &
+        integral_flux%integral_value(istart:iend)
+      sum_array(istart:iend,2) = &
+        instantaneous_array(1:option%nflowdof)
+    endif
+    if (option%ntrandof > 0) then
+      istart = option%nflowdof+1
+      iend = option%nflowdof+option%ntrandof
+      instantaneous_array = 0.d0
+      call IntegralFluxGetInstantaneous(integral_flux, &
+                                        patch%internal_tran_fluxes, &
+                                        patch%boundary_tran_fluxes, &
+                                        option%ntrandof, &
+                                        instantaneous_array,option)
+      sum_array(istart:iend,1) = &
+        integral_flux%integral_value(istart:iend)
+      sum_array(istart:iend,2) = &
+        instantaneous_array(1:option%ntrandof)
+    endif
+    int_mpi = size(sum_array)
+    call MPI_Reduce(sum_array,sum_array_global, &
+                    int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                    option%io_rank,option%mycomm,ierr)
+    if (option%myrank == option%io_rank) then
+      if (option%nflowdof > 0) then
+        do j = 1, 2  ! 1 = integral, 2 = instantaneous
+          do i = 1, option%nflowdof
+            write(fid,110,advance="no") sum_array_global(i,j)
+          enddo
+        enddo
+      endif
+      if (option%ntrandof > 0) then
+        istart = option%nflowdof
+        do j = 1, 2  ! 1 = integral, 2 = instantaneous
+          do i=1,reaction%naqcomp
+            if (reaction%primary_species_print(i)) then
+              write(fid,110,advance="no") sum_array_global(istart+i,j)
+            endif
+          enddo
+        enddo
+      endif
+    endif
+    integral_flux => integral_flux%next
+  enddo
+  deallocate(sum_array)
+  deallocate(instantaneous_array)
+  
+  if (option%myrank == option%io_rank) then
+    write(fid,'(a)') ''
+    close(fid)
+  endif
+  
+  integral_flux_first = PETSC_FALSE
+
+end subroutine OutputIntegralFlux
+
+! ************************************************************************** !
+
 subroutine OutputMassBalance(realization_base)
   ! 
   ! Print to Tecplot POINT format
@@ -1604,7 +1868,6 @@ subroutine OutputMassBalance(realization_base)
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXWORDLENGTH) :: word, units
   character(len=MAXSTRINGLENGTH) :: string
-  character(len=4) :: strcol
   PetscInt :: fid = 86
   PetscInt :: ios
   PetscInt :: i,icol
@@ -1811,6 +2074,9 @@ subroutine OutputMassBalance(realization_base)
         if (option%ntrandof > 0) then
           do i=1,reaction%naqcomp
             if (reaction%primary_species_print(i)) then
+              option%io_buffer = 'Check OutputObservation to ensure that ' // &
+                'reactive transport species units are really kmol.'
+              call printErrMsg(option)
               string = trim(coupler%name) // ' ' // &
                        trim(reaction%primary_species_names(i))
               call OutputWriteToHeader(fid,string,'kmol','',icol)

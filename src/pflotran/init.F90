@@ -2265,6 +2265,8 @@ subroutine InitReadInput(simulation)
 !....................
       case ('INTEGRAL_FLUX')
         integral_flux => IntegralFluxCreate()
+        call InputReadWord(input,option,integral_flux%name,PETSC_TRUE)
+        call InputDefaultMsg(input,option,'Integral Flux name') 
         call IntegralFluxRead(integral_flux,input,option)
         call IntegralFluxAddToList(integral_flux, &
                                    realization%patch%integral_flux_list)

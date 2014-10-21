@@ -348,7 +348,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   type(coupler_list_type), pointer :: coupler_list 
   type(strata_type), pointer :: strata
   type(observation_type), pointer :: observation, next_observation
-  type(integral_flux_type), pointer :: integral_flux, next_integral_flux
+  type(integral_flux_type), pointer :: integral_flux
   
   PetscInt :: temp_int, isub
   
@@ -653,23 +653,18 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   ! linkage of observation to regions and couplers must take place after
   ! connection list have been created.
   ! observation
-#if 0  
-  integral_flux => patch%integral_flux%first
+  integral_flux => patch%integral_flux_list%first
   do
     if (.not.associated(integral_flux)) exit
-    next_integral_flux => integral_flux%next
-    integral_flux%connections = &
-      GridGetConnectionsFromCoords(patch%grid,patch%boundary_condition_list, &
-                                   patch%imat,integral_flux%coordinates,option)  
+    integral_flux%connections => &
+      PatchGetConnectionsFromCoords(patch,integral_flux%coordinates,option)
     if (.not.associated(integral_flux%connections)) then
-      ! remove the observation object
-      call IntegralFluxRemoveFromList(integral_flux,patch%integral_flux_list)
+      call IntegralFluxSizeStorage(integral_flux,option)
     endif
-    integral_flux => next_integral_flux
+    integral_flux => integral_flux%next
     option%flow%store_fluxes = PETSC_TRUE
     option%transport%store_fluxes = PETSC_TRUE
   enddo 
-#endif  
   
   temp_int = ConnectionGetNumberInList(patch%grid%internal_connection_set_list)
   temp_int = max(temp_int,1)
@@ -5705,22 +5700,38 @@ function PatchGetConnectionsFromCoords(patch,coordinates,option)
   grid => patch%grid
   
   ! determine orientation of polygon
-  v1(1) = coordinates(2)%x - coordinates(1)%x
-  v1(2) = coordinates(2)%y - coordinates(1)%y
-  v1(3) = coordinates(2)%z - coordinates(1)%z
-  v2(1) = coordinates(2)%x - coordinates(3)%x
-  v2(2) = coordinates(2)%y - coordinates(3)%y
-  v2(3) = coordinates(2)%z - coordinates(3)%z
-  v1 = CrossProduct(v1,v2)
-  
-  icount = 0
-  idir = 0
-  do i = X_DIRECTION, Z_DIRECTION
-    if (v1(i) > 1.d-10) then
-      icount = icount + 1
-      idir = i
-    endif
-  enddo
+  if (size(coordinates) > 2) then
+    v1(1) = coordinates(2)%x - coordinates(1)%x
+    v1(2) = coordinates(2)%y - coordinates(1)%y
+    v1(3) = coordinates(2)%z - coordinates(1)%z
+    v2(1) = coordinates(2)%x - coordinates(3)%x
+    v2(2) = coordinates(2)%y - coordinates(3)%y
+    v2(3) = coordinates(2)%z - coordinates(3)%z
+    v1 = CrossProduct(v1,v2)
+    icount = 0
+    idir = 0
+    do i = X_DIRECTION, Z_DIRECTION
+      if (v1(i) > 1.d-10) then
+        icount = icount + 1
+        idir = i
+      endif
+    enddo
+  else
+    v1(1) = coordinates(1)%x
+    v1(2) = coordinates(1)%y
+    v1(3) = coordinates(1)%z
+    v2(1) = coordinates(2)%x
+    v2(2) = coordinates(2)%y
+    v2(3) = coordinates(2)%z
+    icount = 0
+    do i = 1, X_DIRECTION, Z_DIRECTION
+      if (Equal(v2(i),v1(i))) then
+        idir = i
+        icount = icount + 1
+      endif
+    enddo
+    if (icount == 0) icount = 3
+  endif
 
   if (icount > 1) then
     option%io_buffer = 'Rectangle defined in integral flux "" must be ' // &
