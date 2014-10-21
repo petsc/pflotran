@@ -198,7 +198,7 @@ subroutine THSetupPatch(realization)
 
  
   if (option%use_mc) then
-    initial_condition => patch%initial_conditions%first
+    initial_condition => patch%initial_condition_list%first
     allocate(TH_sec_heat_vars(grid%nlmax))
   
     do local_id = 1, grid%nlmax
@@ -274,7 +274,7 @@ subroutine THSetupPatch(realization)
   
   ! count the number of boundary connections and allocate
   ! auxvar data structures for them
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
 
   sum_connection = 0    
   do 
@@ -297,7 +297,7 @@ subroutine THSetupPatch(realization)
   patch%aux%TH%num_aux_bc = sum_connection
 
   ! Create aux vars for source/sink
-  sum_connection = CouplerGetNumConnectionsInList(patch%source_sinks)
+  sum_connection = CouplerGetNumConnectionsInList(patch%source_sink_list)
   if (sum_connection > 0) then
     allocate(TH_auxvars_ss(sum_connection))
     do iconn = 1, sum_connection
@@ -938,7 +938,7 @@ subroutine THUpdateAuxVarsPatch(realization)
     iphase_loc_p(ghosted_id) = iphase
   enddo
 
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -989,7 +989,7 @@ subroutine THUpdateAuxVarsPatch(realization)
   enddo
 
   ! source/sinks
-  source_sink => patch%source_sinks%first
+  source_sink => patch%source_sink_list%first
   sum_connection = 0
   allocate(xx(option%nflowdof))
   do
@@ -3801,7 +3801,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   ! ============== end secondary continuum heat source ===========================
 
   ! Source/sink terms -------------------------------------
-  source_sink => patch%source_sinks%first 
+  source_sink => patch%source_sink_list%first 
   sum_connection = 0
   do 
     if (.not.associated(source_sink)) exit
@@ -3958,7 +3958,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   enddo    
 
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -4298,7 +4298,7 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
   endif
 
   ! Source/sink terms -------------------------------------
-  source_sink => patch%source_sinks%first 
+  source_sink => patch%source_sink_list%first 
   sum_connection = 0
   do
     if (.not.associated(source_sink)) exit
@@ -4480,7 +4480,7 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
   endif
 
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -5396,7 +5396,7 @@ subroutine THUpdateSurfaceBC(realization)
   eflux_cond = 0.d0
 
   ! boundary conditions
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0
   do
     if (.not.associated(boundary_condition)) exit
@@ -5581,7 +5581,7 @@ subroutine THUpdateSurfaceWaterFlag(realization)
   TH_auxvars_bc => patch%aux%TH%auxvars_bc
   TH_auxvars => patch%aux%TH%auxvars
 
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0
   do
     if (.not.associated(boundary_condition)) exit
@@ -5708,7 +5708,7 @@ subroutine THComputeCoeffsForSurfFlux(realization)
   call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr);CHKERRQ(ierr)
 
   ! boundary conditions
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0
   do
     if (.not.associated(boundary_condition)) exit

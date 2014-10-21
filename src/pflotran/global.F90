@@ -70,7 +70,7 @@ subroutine GlobalSetup(realization)
   
   ! count the number of boundary connections and allocate
   ! auxvar data structures for them  
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -91,7 +91,7 @@ subroutine GlobalSetup(realization)
 
   ! count the number of source/sink connections and allocate
   ! auxvar data structures for them  
-  source_sink => patch%source_sinks%first
+  source_sink => patch%source_sink_list%first
   sum_connection = 0    
   do 
     if (.not.associated(source_sink)) exit

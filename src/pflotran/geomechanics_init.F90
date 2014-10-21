@@ -275,7 +275,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
         call GeomechRegionRead(region,input,option)
         ! we don't copy regions down to patches quite yet, since we
         ! don't want to duplicate IO in reading the regions
-        call GeomechRegionAddToList(region,geomech_realization%geomech_regions)
+        call GeomechRegionAddToList(region,geomech_realization%geomech_region_list)
         nullify(region)
  
       !.........................................................................
@@ -659,7 +659,7 @@ subroutine GeomechInitMatPropToGeomechRegions(geomech_realization)
   ! we must communicate the ghosted ids.  This flag toggles this operation.
   update_ghosted_material_ids = PETSC_FALSE
   grid => patch%geomech_grid
-  strata => patch%geomech_strata%first
+  strata => patch%geomech_strata_list%first
   do
     if (.not.associated(strata)) exit
     ! Read in cell by cell material ids if they exist

@@ -255,7 +255,7 @@ subroutine HijackSimulation(simulation_old,simulation)
       tran_process_model_coupler%CastToBase()
   endif
   
-  if (StrataEvolves(realization%patch%strata)) then
+  if (StrataEvolves(realization%patch%strata_list)) then
     material_process_model_coupler => PMCMaterialCreate()
     material_process_model_coupler%option => option
     material_process_model_coupler%realization => realization

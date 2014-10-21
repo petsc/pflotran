@@ -237,7 +237,7 @@ subroutine MphaseSetupPatch(realization)
 
   if (option%use_mc) then
  
-    initial_condition => patch%initial_conditions%first
+    initial_condition => patch%initial_condition_list%first
     allocate(mphase_sec_heat_vars(grid%nlmax))
   
     do local_id = 1, grid%nlmax
@@ -327,7 +327,7 @@ subroutine MphaseSetupPatch(realization)
            
   ! count the number of boundary connections and allocate
   ! auxvar data structures for them  
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -346,7 +346,7 @@ subroutine MphaseSetupPatch(realization)
   mphase%num_aux_bc = sum_connection
   
  ! Allocate source /sink  
-  source_sink => patch%source_sinks%first
+  source_sink => patch%source_sink_list%first
   sum_connection = 0    
   do 
     if (.not.associated(source_sink)) exit
@@ -1024,7 +1024,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
     iphase_loc_p(ghosted_id) = iphase
   enddo
   
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -1102,7 +1102,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
 
 
 ! source/sinks
-  source_sink => patch%source_sinks%first
+  source_sink => patch%source_sink_list%first
   sum_connection = 0    
   do 
     if (.not.associated(source_sink)) exit
@@ -2808,7 +2808,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 #if 1
   ! Source/sink terms -------------------------------------
 ! print *, 'Mphase residual patch 2' 
-  source_sink => patch%source_sinks%first 
+  source_sink => patch%source_sink_list%first 
   sum_connection = 0
   do 
     if (.not.associated(source_sink)) exit
@@ -2903,7 +2903,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 #if 1
  ! print *, 'Mphase residual patch 3' 
    ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -3425,7 +3425,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,realization,ierr)
 
 #if 1
   ! Source/sink terms -------------------------------------
-  source_sink => patch%source_sinks%first 
+  source_sink => patch%source_sink_list%first 
   do 
     if (.not.associated(source_sink)) exit
     
@@ -3496,7 +3496,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,realization,ierr)
 ! Boundary conditions
 #if 1
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit

@@ -34,7 +34,7 @@ private
     type(waypoint_list_type), pointer :: waypoint_list
     type(geomech_field_type), pointer :: geomech_field
     type(geomech_debug_type), pointer :: geomech_debug
-    type(gm_region_list_type), pointer :: geomech_regions
+    type(gm_region_list_type), pointer :: geomech_region_list
     type(geomech_condition_list_type),pointer :: geomech_conditions
     class(dataset_base_type), pointer :: geomech_datasets
 
@@ -90,8 +90,8 @@ function GeomechRealizCreate(option)
   geomech_realization%output_option => OutputOptionCreate()
   geomech_realization%geomech_debug => GeomechDebugCreate()
   
-  allocate(geomech_realization%geomech_regions)
-  call GeomechRegionInitList(geomech_realization%geomech_regions)
+  allocate(geomech_realization%geomech_region_list)
+  call GeomechRegionInitList(geomech_realization%geomech_region_list)
   
   allocate(geomech_realization%geomech_conditions)
   call GeomechConditionInitList(geomech_realization%geomech_conditions)
@@ -130,7 +130,7 @@ subroutine GeomechRealizAddStrata(geomech_realization,strata)
   if (.not.associated(geomech_patch)) return
  
   new_strata => GeomechStrataCreate(strata)
-  call GeomechStrataAddToList(new_strata,geomech_patch%geomech_strata)
+  call GeomechStrataAddToList(new_strata,geomech_patch%geomech_strata_list)
   nullify(new_strata)
   
   call GeomechStrataDestroy(strata)
@@ -162,7 +162,7 @@ subroutine GeomechRealizLocalizeRegions(geomech_realization)
   ! localize the regions on each patch
   patch => geomech_realization%geomech_patch
   call GeomechPatchLocalizeRegions(patch, &
-                                   geomech_realization%geomech_regions, &
+                                   geomech_realization%geomech_region_list, &
                                    option)
                                    
 end subroutine GeomechRealizLocalizeRegions
@@ -717,14 +717,14 @@ subroutine GeomechRealizPrintCouplers(geomech_realization)
   
   patch => geomech_realization%geomech_patch
    
-  cur_coupler => patch%geomech_boundary_conditions%first
+  cur_coupler => patch%geomech_boundary_condition_list%first
   do
     if (.not.associated(cur_coupler)) exit
     call GeomechRealizPrintCoupler(cur_coupler,option)    
     cur_coupler => cur_coupler%next
   enddo
      
-  cur_coupler => patch%geomech_source_sinks%first
+  cur_coupler => patch%geomech_source_sink_list%first
   do
     if (.not.associated(cur_coupler)) exit
     call GeomechRealizPrintCoupler(cur_coupler,option)    
@@ -936,9 +936,9 @@ subroutine GeomechRealizAddGeomechCoupler(geomech_realization,coupler)
   select case(coupler%itype)
     case(GM_BOUNDARY_COUPLER_TYPE)
       call GeomechCouplerAddToList(new_coupler, &
-                                   patch%geomech_boundary_conditions)
+                                   patch%geomech_boundary_condition_list)
     case(GM_SRC_SINK_COUPLER_TYPE)
-      call GeomechCouplerAddToList(new_coupler,patch%geomech_source_sinks)
+      call GeomechCouplerAddToList(new_coupler,patch%geomech_source_sink_list)
   end select
   nullify(new_coupler)
   
@@ -1084,7 +1084,7 @@ subroutine GeomechRealizDestroy(geomech_realization)
 
   call OutputOptionDestroy(geomech_realization%output_option)
 
-  call GeomechRegionDestroyList(geomech_realization%geomech_regions)
+  call GeomechRegionDestroyList(geomech_realization%geomech_region_list)
 
   call GeomechConditionDestroyList(geomech_realization%geomech_conditions)
   

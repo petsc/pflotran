@@ -928,7 +928,7 @@ subroutine SurfaceInitMatPropToRegions(surf_realization)
   do
     if (.not.associated(cur_patch)) exit
     grid => cur_patch%grid
-    strata => cur_patch%strata%first
+    strata => cur_patch%strata_list%first
     do
       if (.not.associated(strata)) exit
       ! Read in cell by cell material ids if they exist

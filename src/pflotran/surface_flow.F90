@@ -415,7 +415,7 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   enddo
 
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -453,7 +453,7 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   enddo
 
   ! Source/sink terms -------------------------------------
-  source_sink => patch%source_sinks%first
+  source_sink => patch%source_sink_list%first
   sum_connection = 0
   do
     if (.not.associated(source_sink)) exit
@@ -629,7 +629,7 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
   enddo
 
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -856,7 +856,7 @@ subroutine SurfaceFlowUpdateAuxVars(surf_realization)
    
   call VecGetArrayF90(surf_field%flow_xx_loc,xx_loc_p, ierr);CHKERRQ(ierr)
   ! Boundary aux vars
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -883,7 +883,7 @@ subroutine SurfaceFlowUpdateAuxVars(surf_realization)
 
   ! Source/Sink aux vars
   ! source/sinks
-  source_sink => patch%source_sinks%first
+  source_sink => patch%source_sink_list%first
   sum_connection = 0
   do
     if (.not.associated(source_sink)) exit

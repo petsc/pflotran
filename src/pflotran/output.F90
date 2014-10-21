@@ -475,7 +475,7 @@ subroutine ComputeFlowCellVelocityStats(realization_base)
       enddo
 
       ! boundary velocities
-      boundary_condition => patch%boundary_conditions%first
+      boundary_condition => patch%boundary_condition_list%first
       sum_connection = 0
       do
         if (.not.associated(boundary_condition)) exit
@@ -755,7 +755,7 @@ subroutine OutputPrintCouplers(realization_base,istep)
       do
         if (.not.associated(cur_patch)) exit
         grid => cur_patch%grid
-        coupler => CouplerGetPtrFromList(word,cur_patch%boundary_conditions)
+        coupler => CouplerGetPtrFromList(word,cur_patch%boundary_condition_list)
         call VecZeroEntries(field%work,ierr);CHKERRQ(ierr)
         call VecGetArrayF90(field%work,vec_ptr,ierr);CHKERRQ(ierr)
         if (associated(coupler)) then

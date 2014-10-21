@@ -205,7 +205,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
                                  option%reference_pressure,den,dum1,ierr)
 
 #if 0
-            coupler_list => patch%source_sinks
+            coupler_list => patch%source_sink_list
             coupler => coupler_list%first
             do
               if (.not.associated(coupler)) exit
@@ -234,7 +234,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
             enddo
 #endif
 
-            coupler_list => patch%boundary_conditions
+            coupler_list => patch%boundary_condition_list
             coupler => coupler_list%first
             do
               if (.not.associated(coupler)) exit
@@ -293,7 +293,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
                                INSERT_VALUES,SCATTER_FORWARD, &
                                ierr);CHKERRQ(ierr)
 
-            coupler_list => patch%boundary_conditions
+            coupler_list => patch%boundary_condition_list
             coupler => coupler_list%first
             do
               if (.not.associated(coupler)) exit
@@ -437,7 +437,7 @@ subroutine PMCSubsurfaceSetAuxDataForSurf(this)
 
           call EOSWaterdensity(option%reference_temperature, option%reference_pressure, &
                                den,dum1,ierr)
-          coupler_list => patch%boundary_conditions
+          coupler_list => patch%boundary_condition_list
           coupler => coupler_list%first
           do
             if (.not.associated(coupler)) exit

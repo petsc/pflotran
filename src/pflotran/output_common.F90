@@ -1284,7 +1284,7 @@ subroutine OutputGetFaceVelOrFlowrateUGrid(realization_base, save_velocity)
   enddo
 
   ! Boundary Flowrates Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0
   do 
     if (.not.associated(boundary_condition)) exit

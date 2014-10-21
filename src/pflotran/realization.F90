@@ -36,7 +36,7 @@ private
 #include "finclude/petscvec.h90"
   type, public, extends(realization_base_type) :: realization_type
 
-    type(region_list_type), pointer :: regions
+    type(region_list_type), pointer :: region_list
     type(condition_list_type), pointer :: flow_conditions
     type(tran_condition_list_type), pointer :: transport_conditions
     type(tran_constraint_list_type), pointer :: transport_constraints
@@ -73,7 +73,6 @@ private
             RealizationLocalizeRegions, &
             RealizationAddCoupler, &
             RealizationAddStrata, &
-            RealizationAddObservation, &
             RealizUpdateUniformVelocity, &
             RealizationRevertFlowParameters, &
 !            RealizationGetVariable, &
@@ -144,8 +143,8 @@ function RealizationCreate2(option)
   allocate(realization)
   call RealizationBaseInit(realization,option)
 
-  allocate(realization%regions)
-  call RegionInitList(realization%regions)
+  allocate(realization%region_list)
+  call RegionInitList(realization%region_list)
 
   allocate(realization%flow_conditions)
   call FlowConditionInitList(realization%flow_conditions)
@@ -528,7 +527,7 @@ subroutine RealizationLocalizeRegions(realization)
   option => realization%option
 
   ! check to ensure that region names are not duplicated
-  cur_region => realization%regions%first
+  cur_region => realization%region_list%first
   do
     if (.not.associated(cur_region)) exit
     cur_region2 => cur_region%next
@@ -543,7 +542,7 @@ subroutine RealizationLocalizeRegions(realization)
     cur_region => cur_region%next
   enddo
 
-  call PatchLocalizeRegions(realization%patch,realization%regions, &
+  call PatchLocalizeRegions(realization%patch,realization%region_list, &
                             realization%option)
 
 end subroutine RealizationLocalizeRegions
@@ -597,11 +596,11 @@ subroutine RealizationAddCoupler(realization,coupler)
   new_coupler => CouplerCreate(coupler)
   select case(coupler%itype)
     case(BOUNDARY_COUPLER_TYPE)
-      call CouplerAddToList(new_coupler,patch%boundary_conditions)
+      call CouplerAddToList(new_coupler,patch%boundary_condition_list)
     case(INITIAL_COUPLER_TYPE)
-      call CouplerAddToList(new_coupler,patch%initial_conditions)
+      call CouplerAddToList(new_coupler,patch%initial_condition_list)
     case(SRC_SINK_COUPLER_TYPE)
-      call CouplerAddToList(new_coupler,patch%source_sinks)
+      call CouplerAddToList(new_coupler,patch%source_sink_list)
   end select
   nullify(new_coupler)
 
@@ -751,40 +750,13 @@ subroutine RealizationAddStrata(realization,strata)
   type(strata_type), pointer :: new_strata
   
   new_strata => StrataCreate(strata)
-  call StrataAddToList(new_strata,realization%patch%strata)
+  call StrataAddToList(new_strata,realization%patch%strata_list)
   nullify(new_strata)
   
   call StrataDestroy(strata)
  
 end subroutine RealizationAddStrata
 
-! ************************************************************************** !
-
-subroutine RealizationAddObservation(realization,observation)
-  ! 
-  ! Adds a copy of a observation object to a list
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 02/22/08
-  ! 
-
-  use Observation_module
-
-  implicit none
-  
-  type(realization_type) :: realization
-  type(observation_type), pointer :: observation
-  
-  type(observation_type), pointer :: new_observation
-  
-  new_observation => ObservationCreate(observation)
-  call ObservationAddToList(new_observation, &
-                            realization%patch%observation)
-  nullify(new_observation)
-
-  call ObservationDestroy(observation)
- 
-end subroutine RealizationAddObservation
 
 ! ************************************************************************** !
 
@@ -1255,21 +1227,21 @@ subroutine RealizationPrintCouplers(realization)
   do
     if (.not.associated(cur_patch)) exit
 
-    cur_coupler => cur_patch%initial_conditions%first
+    cur_coupler => cur_patch%initial_condition_list%first
     do
       if (.not.associated(cur_coupler)) exit
       call RealizationPrintCoupler(cur_coupler,reaction,option)    
       cur_coupler => cur_coupler%next
     enddo
      
-    cur_coupler => cur_patch%boundary_conditions%first
+    cur_coupler => cur_patch%boundary_condition_list%first
     do
       if (.not.associated(cur_coupler)) exit
       call RealizationPrintCoupler(cur_coupler,reaction,option)    
       cur_coupler => cur_coupler%next
     enddo
      
-    cur_coupler => cur_patch%source_sinks%first
+    cur_coupler => cur_patch%source_sink_list%first
     do
       if (.not.associated(cur_coupler)) exit
       call RealizationPrintCoupler(cur_coupler,reaction,option)    
@@ -1728,7 +1700,7 @@ subroutine RealizationAddWaypointsToList(realization)
   endif
 
   ! add in strata that change over time
-  cur_strata => realization%patch%strata%first
+  cur_strata => realization%patch%strata_list%first
   do
     if (.not.associated(cur_strata)) exit
     if (Initialized(cur_strata%start_time)) then
@@ -2290,7 +2262,7 @@ subroutine RealizationSetUpBC4Faces(realization)
   call VecGetArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr);CHKERRQ(ierr)
   call VecGetArrayF90(field%flow_xx_faces, xx_faces_p, ierr);CHKERRQ(ierr)
 
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0
   do
     if (.not.associated(boundary_condition)) exit
@@ -2668,7 +2640,7 @@ subroutine RealizationDestroyLegacy(realization)
 
 !  call OptionDestroy(realization%option) !geh it will be destroy externally
   call OutputOptionDestroy(realization%output_option)
-  call RegionDestroyList(realization%regions)
+  call RegionDestroyList(realization%region_list)
   
   call FlowConditionDestroyList(realization%flow_conditions)
   call TranConditionDestroyList(realization%transport_conditions)
@@ -2727,7 +2699,7 @@ subroutine RealizationStrip(this)
   class(realization_type) :: this
   
   call RealizationBaseStrip(this)
-  call RegionDestroyList(this%regions)
+  call RegionDestroyList(this%region_list)
   
   call FlowConditionDestroyList(this%flow_conditions)
   call TranConditionDestroyList(this%transport_conditions)

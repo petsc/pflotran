@@ -1437,6 +1437,7 @@ subroutine InitReadInput(simulation)
   use Coupler_module
   use Strata_module
   use Observation_module
+  use Integral_Flux_module
   use Waypoint_module
   use Debug_module
   use Patch_module
@@ -1496,6 +1497,7 @@ subroutine InitReadInput(simulation)
   type(coupler_type), pointer :: coupler
   type(strata_type), pointer :: strata
   type(observation_type), pointer :: observation
+  type(integral_flux_type), pointer :: integral_flux
   
   type(waypoint_type), pointer :: waypoint
   
@@ -1729,7 +1731,7 @@ subroutine InitReadInput(simulation)
         call RegionRead(region,input,option)
         ! we don't copy regions down to patches quite yet, since we
         ! don't want to duplicate IO in reading the regions
-        call RegionAddToList(region,realization%regions)   
+        call RegionAddToList(region,realization%region_list)   
         nullify(region)   
 
 !....................
@@ -2256,7 +2258,17 @@ subroutine InitReadInput(simulation)
       case ('OBSERVATION')
         observation => ObservationCreate()
         call ObservationRead(observation,input,option)
-        call RealizationAddObservation(realization,observation)        
+        call ObservationAddToList(observation, &
+                                  realization%patch%observation_list)
+        nullify(observation)
+      
+!....................
+      case ('INTEGRAL_FLUX')
+        integral_flux => IntegralFluxCreate()
+        call IntegralFluxRead(integral_flux,input,option)
+        call IntegralFluxAddToList(integral_flux, &
+                                   realization%patch%integral_flux_list)
+        nullify(integral_flux)
       
 !.....................
       case ('WALLCLOCK_STOP')
@@ -2956,9 +2968,9 @@ subroutine verifyAllCouplers(realization)
   do
     if (.not.associated(cur_patch)) exit
 
-      call verifyCoupler(realization,cur_patch,cur_patch%initial_conditions)
-      call verifyCoupler(realization,cur_patch,cur_patch%boundary_conditions)
-      call verifyCoupler(realization,cur_patch,cur_patch%source_sinks)
+      call verifyCoupler(realization,cur_patch,cur_patch%initial_condition_list)
+      call verifyCoupler(realization,cur_patch,cur_patch%boundary_condition_list)
+      call verifyCoupler(realization,cur_patch,cur_patch%source_sink_list)
 
     cur_patch => cur_patch%next
   enddo
@@ -3076,7 +3088,7 @@ subroutine readRegionFiles(realization)
   type(region_type), pointer :: region
  
   
-  region => realization%regions%first
+  region => realization%region_list%first
   do 
     if (.not.associated(region)) exit
     if (len_trim(region%filename) > 1) then
@@ -3506,7 +3518,7 @@ subroutine InitReadVelocityField(realization)
     call VecRestoreArrayF90(field%work_loc,vec_loc_p,ierr);CHKERRQ(ierr)
   enddo
   
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -3540,7 +3552,7 @@ subroutine SandboxesSetup(realization)
   
   type(realization_type) :: realization
   
-   call SSSandboxSetup(realization%patch%regions,realization%option)
+   call SSSandboxSetup(realization%patch%region_list,realization%option)
   
 end subroutine SandboxesSetup
 

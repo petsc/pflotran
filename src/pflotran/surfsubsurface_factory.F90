@@ -263,7 +263,7 @@ subroutine SurfSubsurfCreateSurfSubSurfVScats(realization, surf_realization, &
   cur_patch => realization%patch_list%first
   do
     if (.not.associated(cur_patch)) exit
-    cur_region => cur_patch%regions%first
+    cur_region => cur_patch%region_list%first
       do
         if (.not.associated(cur_region)) exit
         if (StringCompare(cur_region%name,'top')) then
@@ -696,7 +696,7 @@ subroutine SurfSubsurfCreateSubsurfVecs(subsurf_realization, option, &
 #if 1
   found = 0
   num_conn = 0
-  coupler_list => subsurf_realization%patch%source_sinks
+  coupler_list => subsurf_realization%patch%source_sink_list
   coupler => coupler_list%first
   do
     if (.not.associated(coupler)) exit
@@ -713,7 +713,7 @@ subroutine SurfSubsurfCreateSubsurfVecs(subsurf_realization, option, &
 
   !found_global = 0
   if (found_global == 0) then
-    coupler_list => subsurf_realization%patch%boundary_conditions
+    coupler_list => subsurf_realization%patch%boundary_condition_list
     coupler => coupler_list%first
     do
       if (.not.associated(coupler)) exit

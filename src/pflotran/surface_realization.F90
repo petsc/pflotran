@@ -164,11 +164,11 @@ subroutine SurfRealizAddCoupler(surf_realization,coupler)
     new_coupler => CouplerCreate(coupler)
     select case(coupler%itype)
       case(BOUNDARY_COUPLER_TYPE)
-        call CouplerAddToList(new_coupler,cur_patch%boundary_conditions)
+        call CouplerAddToList(new_coupler,cur_patch%boundary_condition_list)
       case(INITIAL_COUPLER_TYPE)
-        call CouplerAddToList(new_coupler,cur_patch%initial_conditions)
+        call CouplerAddToList(new_coupler,cur_patch%initial_condition_list)
       case(SRC_SINK_COUPLER_TYPE)
-        call CouplerAddToList(new_coupler,cur_patch%source_sinks)
+        call CouplerAddToList(new_coupler,cur_patch%source_sink_list)
     end select
     nullify(new_coupler)
     cur_patch => cur_patch%next
@@ -318,7 +318,7 @@ subroutine SurfRealizAddStrata(surf_realization,strata)
   do
     if (.not.associated(cur_patch)) exit
     new_strata => StrataCreate(strata)
-    call StrataAddToList(new_strata,cur_patch%strata)
+    call StrataAddToList(new_strata,cur_patch%strata_list)
     nullify(new_strata)
     cur_patch => cur_patch%next
   enddo
@@ -740,7 +740,7 @@ subroutine SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
   cur_patch => realization%patch_list%first
   do
     if (.not.associated(cur_patch)) exit
-    cur_region => cur_patch%regions%first
+    cur_region => cur_patch%region_list%first
       do
         if (.not.associated(cur_region)) exit
         if (StringCompare(cur_region%name,'top')) then

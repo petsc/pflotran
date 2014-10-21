@@ -2351,7 +2351,7 @@ subroutine OutputSecondaryContinuumTecplot(realization_base)
 1009 format('')
 
   count = 0
-  observation => patch%observation%first
+  observation => patch%observation_list%first
   do 
     if (.not.associated(observation)) exit
     write(string,'(i6)') option%myrank

@@ -260,7 +260,7 @@ subroutine GeneralSetup(realization)
 
   ! count the number of boundary connections and allocate
   ! auxvar data structures for them 
-  sum_connection = CouplerGetNumConnectionsInList(patch%boundary_conditions)
+  sum_connection = CouplerGetNumConnectionsInList(patch%boundary_condition_list)
   if (sum_connection > 0) then
     allocate(gen_auxvars_bc(sum_connection))
     do iconn = 1, sum_connection
@@ -272,7 +272,7 @@ subroutine GeneralSetup(realization)
 
   ! count the number of source/sink connections and allocate
   ! auxvar data structures for them  
-  sum_connection = CouplerGetNumConnectionsInList(patch%source_sinks)
+  sum_connection = CouplerGetNumConnectionsInList(patch%source_sink_list)
   if (sum_connection > 0) then
     allocate(gen_auxvars_ss(sum_connection))
     do iconn = 1, sum_connection
@@ -731,7 +731,7 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
 #endif
   enddo
 
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -2315,7 +2315,7 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   enddo    
 
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -2372,7 +2372,7 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   enddo
 
   ! Source/sink terms -------------------------------------
-  source_sink => patch%source_sinks%first 
+  source_sink => patch%source_sink_list%first 
   sum_connection = 0
   do 
     if (.not.associated(source_sink)) exit
@@ -2694,7 +2694,7 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
   endif
 
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -2749,7 +2749,7 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
   endif
 
   ! Source/sinks
-  source_sink => patch%source_sinks%first 
+  source_sink => patch%source_sink_list%first 
   do 
     if (.not.associated(source_sink)) exit
     
@@ -4142,7 +4142,7 @@ subroutine GeneralMapBCAuxvarsToGlobal(realization)
   gen_auxvars_bc => patch%aux%General%auxvars_bc
   global_auxvars_bc => patch%aux%Global%auxvars_bc
   
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit

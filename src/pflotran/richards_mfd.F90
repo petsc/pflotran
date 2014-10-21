@@ -508,7 +508,7 @@ subroutine RichardsUpdateAuxVarsPatchMFDLP(realization)
     if (local_id > 0) xx_p(local_id) = xx_LP_loc_p(LP_cell_id)
   enddo
 
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -1691,7 +1691,7 @@ subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
   enddo
 
   ! Source-sink term
-  source_sink => patch%source_sinks%first
+  source_sink => patch%source_sink_list%first
   sum_connection = 0
   do
     if (.not.associated(source_sink)) exit

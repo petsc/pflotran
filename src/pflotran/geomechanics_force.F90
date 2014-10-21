@@ -280,7 +280,7 @@ subroutine GeomechanicsForceInitialGuess(geomech_realization)
   
   call GeomechGridVecGetArrayF90(grid,field%disp_xx,xx_p,ierr)
   
-  boundary_condition => patch%geomech_boundary_conditions%first
+  boundary_condition => patch%geomech_boundary_condition_list%first
   total_verts = 0
   do 
     if (.not.associated(boundary_condition)) exit
@@ -665,7 +665,7 @@ subroutine GeomechForceResidualPatch(snes,xx,r,geomech_realization,ierr)
   ! Find the boundary nodes with dirichlet and set the residual at those nodes
   ! to zero, later set the Jacobian to 1
 
-  boundary_condition => patch%geomech_boundary_conditions%first
+  boundary_condition => patch%geomech_boundary_condition_list%first
   do 
     if (.not.associated(boundary_condition)) exit
     region => boundary_condition%region
@@ -1473,7 +1473,7 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,geomech_realization,ierr)
   
   ! Find the number of boundary vertices
   vertex_count = 0
-  boundary_condition => patch%geomech_boundary_conditions%first
+  boundary_condition => patch%geomech_boundary_condition_list%first
   do 
     if (.not.associated(boundary_condition)) exit
     region => boundary_condition%region
@@ -1484,7 +1484,7 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,geomech_realization,ierr)
   allocate(rows(vertex_count*option%ngeomechdof))
   count = 0
  
-  boundary_condition => patch%geomech_boundary_conditions%first
+  boundary_condition => patch%geomech_boundary_condition_list%first
   do 
     if (.not.associated(boundary_condition)) exit
     region => boundary_condition%region

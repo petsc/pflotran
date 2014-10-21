@@ -143,7 +143,7 @@ subroutine SubsurfAssignMatIDsToRegions(realization)
     ! set material ids to uninitialized
     cur_patch%imat = UNINITIALIZED_INTEGER
     grid => cur_patch%grid
-    strata => cur_patch%strata%first
+    strata => cur_patch%strata_list%first
     do
       if (.not.associated(strata)) exit
       ! if not within time period specified, skip the strata.

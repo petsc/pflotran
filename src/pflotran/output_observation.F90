@@ -133,7 +133,7 @@ subroutine OutputObservationTecplotColumnTXT(realization_base)
   
   if (check_for_observation_points) then
     open_file = PETSC_FALSE
-    observation => patch%observation%first
+    observation => patch%observation_list%first
     do
       if (.not.associated(observation)) exit
       if (observation%itype == OBSERVATION_SCALAR .or. &
@@ -161,7 +161,7 @@ subroutine OutputObservationTecplotColumnTXT(realization_base)
       ! write title
       write(fid,'(a)',advance="no") ' "Time [' // trim(output_option%tunit) // &
         ']"'
-      observation => patch%observation%first
+      observation => patch%observation_list%first
 
       ! must initialize icolumn here so that icolumn does not restart with
       ! each observation point
@@ -208,7 +208,7 @@ subroutine OutputObservationTecplotColumnTXT(realization_base)
            position="append")
     endif
   
-    observation => patch%observation%first
+    observation => patch%observation_list%first
     write(fid,'(1es14.6)',advance="no") option%time/output_option%tconv
     do 
       if (.not.associated(observation)) exit
@@ -445,7 +445,7 @@ subroutine OutputObservationTecplotSecTXT(realization_base)
   
   if (check_for_observation_points) then
     open_file = PETSC_FALSE
-    observation => patch%observation%first
+    observation => patch%observation_list%first
     do
       if (.not.associated(observation)) exit
       if (observation%itype == OBSERVATION_SCALAR .or. &
@@ -473,7 +473,7 @@ subroutine OutputObservationTecplotSecTXT(realization_base)
       ! write title
       write(fid,'(a)',advance="no") ' "Time [' // trim(output_option%tunit) // &
         ']"'
-      observation => patch%observation%first
+      observation => patch%observation_list%first
 
       ! must initialize icolumn here so that icolumn does not restart with
       ! each observation point
@@ -517,7 +517,7 @@ subroutine OutputObservationTecplotSecTXT(realization_base)
            position="append")
     endif
   
-    observation => patch%observation%first
+    observation => patch%observation_list%first
     write(fid,'(1es14.6)',advance="no") option%time/output_option%tconv
     do 
       if (.not.associated(observation)) exit
@@ -1230,7 +1230,7 @@ function GetVelocityAtCell(fid,realization_base,local_id,iphase)
   enddo
 
   ! boundary velocities
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0
   do
     if (.not.associated(boundary_condition)) exit
@@ -1414,7 +1414,7 @@ function GetVelocityAtCoord(fid,realization_base,local_id,x,y,z,iphase)
   enddo
 
   ! boundary velocities
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0
   do
     if (.not.associated(boundary_condition)) exit
@@ -1741,7 +1741,7 @@ subroutine OutputMassBalance(realization_base)
         endif
       endif
       
-      coupler => patch%boundary_conditions%first
+      coupler => patch%boundary_condition_list%first
       bcs_done = PETSC_FALSE
       do
         if (.not.associated(coupler)) then
@@ -1749,8 +1749,8 @@ subroutine OutputMassBalance(realization_base)
             exit
           else
             bcs_done = PETSC_TRUE
-            if (associated(patch%source_sinks)) then
-              coupler => patch%source_sinks%first
+            if (associated(patch%source_sink_list)) then
+              coupler => patch%source_sink_list%first
               if (.not.associated(coupler)) exit
             else
               exit
@@ -2001,7 +2001,7 @@ subroutine OutputMassBalance(realization_base)
     endif
   endif
 
-  coupler => patch%boundary_conditions%first
+  coupler => patch%boundary_condition_list%first
   global_auxvars_bc_or_ss => patch%aux%Global%auxvars_bc
   if (option%ntrandof > 0) then
     rt_auxvars_bc_or_ss => patch%aux%RT%auxvars_bc
@@ -2013,8 +2013,8 @@ subroutine OutputMassBalance(realization_base)
         exit
       else
         bcs_done = PETSC_TRUE
-        if (associated(patch%source_sinks)) then
-          coupler => patch%source_sinks%first
+        if (associated(patch%source_sink_list)) then
+          coupler => patch%source_sink_list%first
           if (.not.associated(coupler)) exit
           global_auxvars_bc_or_ss => patch%aux%Global%auxvars_ss
           if (option%ntrandof > 0) then

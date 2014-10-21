@@ -185,7 +185,7 @@ subroutine MiscibleSetupPatch(realization)
   
   ! count the number of boundary connections and allocate
   ! auxvar data structures for them  
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -620,7 +620,7 @@ subroutine MiscibleUpdateAuxVarsPatch(realization)
 
   enddo
 
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -1531,7 +1531,7 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
   r_p = 0.d0
  
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -2006,7 +2006,7 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
 ! call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr); 
 
   ! Source/sink terms -------------------------------------
-  source_sink => patch%source_sinks%first
+  source_sink => patch%source_sink_list%first
   sum_connection = 0 
   do 
     if (.not.associated(source_sink)) exit
@@ -2365,7 +2365,7 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,realization,ierr)
 ! Boundary conditions
 
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -2775,7 +2775,7 @@ subroutine MiscibleJacobianPatch2(snes,xx,A,B,realization,ierr)
 #endif
 #if 1
   ! Source/sink terms -------------------------------------
-  source_sink => patch%source_sinks%first
+  source_sink => patch%source_sink_list%first
   sum_connection = 0 
   do 
     if (.not.associated(source_sink)) exit

@@ -203,7 +203,7 @@ subroutine ImmisSetupPatch(realization)
   ! print *,' ims setup allocate app array'
    ! count the number of boundary connections and allocate
   ! auxvar data structures for them  
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -220,7 +220,7 @@ subroutine ImmisSetupPatch(realization)
   patch%aux%Immis%num_aux_bc = sum_connection
   
  ! Allocate source /sink  
-  source_sink => patch%source_sinks%first
+  source_sink => patch%source_sink_list%first
   sum_connection = 0    
   do 
     if (.not.associated(source_sink)) exit
@@ -741,7 +741,7 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
     endif
   enddo
 
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -796,7 +796,7 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
 
 
 ! source/sinks
-  source_sink => patch%source_sinks%first
+  source_sink => patch%source_sink_list%first
   sum_connection = 0    
   do 
     if (.not.associated(source_sink)) exit
@@ -1888,7 +1888,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
 
 #if 1
   ! Source/sink terms -------------------------------------
-  source_sink => patch%source_sinks%first 
+  source_sink => patch%source_sink_list%first 
   sum_connection = 0
   do 
     if (.not.associated(source_sink)) exit
@@ -1976,7 +1976,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
 
 #if 1
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -2411,7 +2411,7 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,realization,ierr)
 #endif
 #if 1
   ! Source/sink terms -------------------------------------
-  source_sink => patch%source_sinks%first 
+  source_sink => patch%source_sink_list%first 
   do 
     if (.not.associated(source_sink)) exit
     
@@ -2479,7 +2479,7 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,realization,ierr)
 ! Boundary conditions
 #if 1
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit

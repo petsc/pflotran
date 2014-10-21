@@ -162,7 +162,7 @@ subroutine RichardsSetupPatch(realization)
 
   ! count the number of boundary connections and allocate
   ! auxvar data structures for them  
-  sum_connection = CouplerGetNumConnectionsInList(patch%boundary_conditions)
+  sum_connection = CouplerGetNumConnectionsInList(patch%boundary_condition_list)
   if (sum_connection > 0) then
     allocate(rich_auxvars_bc(sum_connection))
     do iconn = 1, sum_connection
@@ -174,7 +174,7 @@ subroutine RichardsSetupPatch(realization)
   
   ! count the number of source/sink connections and allocate
   ! auxvar data structures for them  
-  sum_connection = CouplerGetNumConnectionsInList(patch%source_sinks)
+  sum_connection = CouplerGetNumConnectionsInList(patch%source_sink_list)
   if (sum_connection > 0) then
     allocate(rich_auxvars_ss(sum_connection))
     do iconn = 1, sum_connection
@@ -814,7 +814,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   call PetscLogEventBegin(logging%event_r_auxvars_bc,ierr);CHKERRQ(ierr)
 
   ! boundary conditions
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -843,7 +843,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   enddo
 
   ! source/sinks
-  source_sink => patch%source_sinks%first
+  source_sink => patch%source_sink_list%first
   sum_connection = 0    
   do 
     if (.not.associated(source_sink)) exit
@@ -1451,7 +1451,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
   enddo
 
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -1613,7 +1613,7 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
   endif
 
   ! Source/sink terms -------------------------------------
-  source_sink => patch%source_sinks%first
+  source_sink => patch%source_sink_list%first
   sum_connection = 0
   do 
     if (.not.associated(source_sink)) exit
@@ -2041,7 +2041,7 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
   endif
 #if 1
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -2219,7 +2219,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,realization,ierr)
   endif
 #if 1
   ! Source/sink terms -------------------------------------
-  source_sink => patch%source_sinks%first 
+  source_sink => patch%source_sink_list%first 
   do 
     if (.not.associated(source_sink)) exit
     
@@ -2594,7 +2594,7 @@ subroutine RichardsUpdateSurfacePress(realization)
                        option%reference_pressure,den,dum1,ierr)
 
   ! boundary conditions
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -2734,7 +2734,7 @@ subroutine RichardsComputeCoeffsForSurfFlux(realization)
   call VecGetArrayF90(realization%field%flow_xx, xx_p, ierr);CHKERRQ(ierr)
 
   ! boundary conditions
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0
   do
     if (.not.associated(boundary_condition)) exit

@@ -201,7 +201,7 @@ subroutine Flash2SetupPatch(realization)
   !print *,' Flash2 setup allocate app array'
    ! count the number of boundary connections and allocate
   ! auxvar data structures for them  
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -841,7 +841,7 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
 
   enddo
 ! print *,'Flash2UpdateAuxVarsPatch: end internal'
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -2289,7 +2289,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
 #endif
 #if 1
   ! Source/sink terms -------------------------------------
-  source_sink => patch%source_sinks%first 
+  source_sink => patch%source_sink_list%first 
   sum_connection = 0 
   do 
     if (.not.associated(source_sink)) exit
@@ -2360,7 +2360,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
 #endif
 #if 1
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -2711,7 +2711,7 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
   r_p = 0.d0
  
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -3172,7 +3172,7 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
 
 #if 1
   ! Source/sink terms -------------------------------------
-  source_sink => patch%source_sinks%first
+  source_sink => patch%source_sink_list%first
   sum_connection = 0 
   do 
     if (.not.associated(source_sink)) exit
@@ -3536,7 +3536,7 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,realization,ierr)
 #endif
 #if 1
   ! Source/sink terms -------------------------------------
-  source_sink => patch%source_sinks%first
+  source_sink => patch%source_sink_list%first
   sum_connection = 0 
   do 
     if (.not.associated(source_sink)) exit
@@ -3602,7 +3602,7 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,realization,ierr)
 ! Boundary conditions
 #if 1
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -4069,7 +4069,7 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,realization,ierr)
 ! Boundary conditions
 #if 1
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -4490,7 +4490,7 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,realization,ierr)
 #endif
 #if 1
   ! Source/sink terms -------------------------------------
-  source_sink => patch%source_sinks%first
+  source_sink => patch%source_sink_list%first
   sum_connection = 0 
   do 
     if (.not.associated(source_sink)) exit

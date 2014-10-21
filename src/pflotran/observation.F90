@@ -84,7 +84,7 @@ end function ObservationCreate1
 
 function ObservationCreateFromObservation(observation)
   ! 
-  ! ObservationCreate: Create object that stores observation regions
+  ! Create object that stores observation regions
   ! 
   ! Author: Glenn Hammond
   ! Date: 02/11/08

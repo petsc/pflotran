@@ -4,6 +4,7 @@ module Patch_module
   use Grid_module
   use Coupler_module
   use Observation_module
+  use Integral_Flux_module
   use Strata_module
   use Region_module
   use Reaction_Aux_module
@@ -55,11 +56,11 @@ module Patch_module
 
     type(grid_type), pointer :: grid
 
-    type(region_list_type), pointer :: regions
+    type(region_list_type), pointer :: region_list
 
-    type(coupler_list_type), pointer :: boundary_conditions
-    type(coupler_list_type), pointer :: initial_conditions
-    type(coupler_list_type), pointer :: source_sinks
+    type(coupler_list_type), pointer :: boundary_condition_list
+    type(coupler_list_type), pointer :: initial_condition_list
+    type(coupler_list_type), pointer :: source_sink_list
 
     type(material_property_type), pointer :: material_properties
     type(material_property_ptr_type), pointer :: material_property_array(:)
@@ -68,8 +69,9 @@ module Patch_module
     class(characteristic_curves_type), pointer :: characteristic_curves
     type(characteristic_curves_ptr_type), pointer :: characteristic_curves_array(:)
 
-    type(strata_list_type), pointer :: strata
-    type(observation_list_type), pointer :: observation
+    type(strata_list_type), pointer :: strata_list
+    type(observation_list_type), pointer :: observation_list
+    type(integral_flux_list_type), pointer :: integral_flux_list
 
     ! Pointers to objects in mother realization object
     type(field_type), pointer :: field 
@@ -161,15 +163,15 @@ function PatchCreate()
 
   nullify(patch%grid)
 
-  allocate(patch%regions)
-  call RegionInitList(patch%regions)
+  allocate(patch%region_list)
+  call RegionInitList(patch%region_list)
   
-  allocate(patch%boundary_conditions)
-  call CouplerInitList(patch%boundary_conditions)
-  allocate(patch%initial_conditions)
-  call CouplerInitList(patch%initial_conditions)
-  allocate(patch%source_sinks)
-  call CouplerInitList(patch%source_sinks)
+  allocate(patch%boundary_condition_list)
+  call CouplerInitList(patch%boundary_condition_list)
+  allocate(patch%initial_condition_list)
+  call CouplerInitList(patch%initial_condition_list)
+  allocate(patch%source_sink_list)
+  call CouplerInitList(patch%source_sink_list)
 
   nullify(patch%material_properties)
   nullify(patch%material_property_array)
@@ -178,11 +180,12 @@ function PatchCreate()
   nullify(patch%characteristic_curves)
   nullify(patch%characteristic_curves_array)
 
-  allocate(patch%observation)
-  call ObservationInitList(patch%observation)
-
-  allocate(patch%strata)
-  call StrataInitList(patch%strata)
+  allocate(patch%observation_list)
+  call ObservationInitList(patch%observation_list)
+  allocate(patch%integral_flux_list)
+  call IntegralFluxInitList(patch%integral_flux_list)
+  allocate(patch%strata_list)
+  call StrataInitList(patch%strata_list)
   
   call AuxInit(patch%aux)
   
@@ -307,13 +310,13 @@ subroutine PatchLocalizeRegions(patch,regions,option)
   do
     if (.not.associated(cur_region)) exit
     patch_region => RegionCreate(cur_region)
-    call RegionAddToList(patch_region,patch%regions)
+    call RegionAddToList(patch_region,patch%region_list)
     cur_region => cur_region%next
   enddo
   
   !geh: All grids must be localized through GridLocalizeRegions.  Patch
   !     should not differentiate between structured/unstructured, etc.
-  call GridLocalizeRegions(patch%grid,patch%regions,option)
+  call GridLocalizeRegions(patch%grid,patch%region_list,option)
  
 end subroutine PatchLocalizeRegions
 
@@ -345,16 +348,17 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   type(coupler_list_type), pointer :: coupler_list 
   type(strata_type), pointer :: strata
   type(observation_type), pointer :: observation, next_observation
+  type(integral_flux_type), pointer :: integral_flux, next_integral_flux
   
   PetscInt :: temp_int, isub
   
   ! boundary conditions
-  coupler => patch%boundary_conditions%first
+  coupler => patch%boundary_condition_list%first
   do
     if (.not.associated(coupler)) exit
     ! pointer to region
     coupler%region => RegionGetPtrFromList(coupler%region_name, &
-                                           patch%regions)
+                                           patch%region_list)
     if (.not.associated(coupler%region)) then
       option%io_buffer = 'Region "' // trim(coupler%region_name) // &
                  '" in boundary condition "' // &
@@ -415,12 +419,12 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
 
 
   ! initial conditions
-  coupler => patch%initial_conditions%first
+  coupler => patch%initial_condition_list%first
   do
     if (.not.associated(coupler)) exit
     ! pointer to region
     coupler%region => RegionGetPtrFromList(coupler%region_name, &
-                                           patch%regions)
+                                           patch%region_list)
     if (.not.associated(coupler%region)) then
       option%io_buffer = 'Region "' // trim(coupler%region_name) // &
                  '" in initial condition "' // &
@@ -470,12 +474,12 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   enddo
 
   ! source/sinks
-  coupler => patch%source_sinks%first
+  coupler => patch%source_sink_list%first
   do
     if (.not.associated(coupler)) exit
     ! pointer to region
     coupler%region => RegionGetPtrFromList(coupler%region_name, &
-                                           patch%regions)
+                                           patch%region_list)
     if (.not.associated(coupler%region)) then
       option%io_buffer = 'Region "' // trim(coupler%region_name) // &
                  '" in source/sink "' // &
@@ -545,13 +549,13 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     
   ! strata
   ! connect pointers from strata to regions
-  strata => patch%strata%first
+  strata => patch%strata_list%first
   do
     if (.not.associated(strata)) exit
     ! pointer to region
     if (len_trim(strata%region_name) > 1) then
       strata%region => RegionGetPtrFromList(strata%region_name, &
-                                                  patch%regions)
+                                                  patch%region_list)
       if (.not.associated(strata%region)) then
         option%io_buffer = 'Region "' // trim(strata%region_name) // &
                  '" in strata not found in region list'
@@ -595,16 +599,16 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
 
   ! connectivity between initial conditions, boundary conditions, srcs/sinks, etc and grid
   call CouplerListComputeConnections(patch%grid,option, &
-                                     patch%initial_conditions)
+                                     patch%initial_condition_list)
   call CouplerListComputeConnections(patch%grid,option, &
-                                     patch%boundary_conditions)
+                                     patch%boundary_condition_list)
   call CouplerListComputeConnections(patch%grid,option, &
-                                     patch%source_sinks)
+                                     patch%source_sink_list)
 
   ! linkage of observation to regions and couplers must take place after
   ! connection list have been created.
   ! observation
-  observation => patch%observation%first
+  observation => patch%observation_list%first
   do
     if (.not.associated(observation)) exit
     next_observation => observation%next
@@ -612,7 +616,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
       case(OBSERVATION_SCALAR)
         ! pointer to region
         observation%region => RegionGetPtrFromList(observation%linkage_name, &
-                                                    patch%regions)
+                                                    patch%region_list)
         if (.not.associated(observation%region)) then
           option%io_buffer = 'Region "' // &
                    trim(observation%linkage_name) // &
@@ -623,11 +627,11 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
         endif
         if (observation%region%num_cells == 0) then
           ! remove the observation object
-          call ObservationRemoveFromList(observation,patch%observation)
+          call ObservationRemoveFromList(observation,patch%observation_list)
         endif
       case(OBSERVATION_FLUX)
         coupler => CouplerGetPtrFromList(observation%linkage_name, &
-                                         patch%boundary_conditions)
+                                         patch%boundary_condition_list)
         if (associated(coupler)) then
           observation%connection_set => coupler%connection_set
         else
@@ -646,6 +650,27 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     observation => next_observation
   enddo
  
+  ! linkage of observation to regions and couplers must take place after
+  ! connection list have been created.
+  ! observation
+#if 0  
+  integral_flux => patch%integral_flux%first
+  do
+    if (.not.associated(integral_flux)) exit
+    next_integral_flux => integral_flux%next
+    integral_flux%connections = &
+      GridGetConnectionsFromCoords(patch%grid,patch%boundary_condition_list, &
+                                   patch%imat,integral_flux%coordinates,option)  
+    if (.not.associated(integral_flux%connections)) then
+      ! remove the observation object
+      call IntegralFluxRemoveFromList(integral_flux,patch%integral_flux_list)
+    endif
+    integral_flux => next_integral_flux
+    option%flow%store_fluxes = PETSC_TRUE
+    option%transport%store_fluxes = PETSC_TRUE
+  enddo 
+#endif  
+  
   temp_int = ConnectionGetNumberInList(patch%grid%internal_connection_set_list)
   temp_int = max(temp_int,1)
   
@@ -674,10 +699,10 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   if (patch%grid%itype == STRUCTURED_GRID_MIMETIC.or. &
       patch%grid%discretization_itype == UNSTRUCTURED_GRID_MIMETIC ) then
     temp_int = CouplerGetNumBoundConnectionsInListMFD(patch%grid, &
-                                                 patch%boundary_conditions, &
+                                                 patch%boundary_condition_list, &
                                                  option)
   else  
-    temp_int = CouplerGetNumConnectionsInList(patch%boundary_conditions)
+    temp_int = CouplerGetNumConnectionsInList(patch%boundary_condition_list)
   end if
 
   if (temp_int > 0) then
@@ -707,7 +732,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     endif
   endif
 
-  temp_int = CouplerGetNumConnectionsInList(patch%source_sinks)
+  temp_int = CouplerGetNumConnectionsInList(patch%source_sink_list)
   if (temp_int > 0) then
     ! flow
     if (option%nflowdof > 0) then
@@ -747,17 +772,17 @@ subroutine PatchInitAllCouplerAuxVars(patch,option)
   
   PetscBool :: force_update_flag = PETSC_TRUE
   
-  call PatchInitCouplerAuxVars(patch%initial_conditions,patch, &
+  call PatchInitCouplerAuxVars(patch%initial_condition_list,patch, &
                                option)
-  call PatchInitCouplerAuxVars(patch%boundary_conditions,patch, &
+  call PatchInitCouplerAuxVars(patch%boundary_condition_list,patch, &
                                option)
-  call PatchInitCouplerAuxVars(patch%source_sinks,patch, &
+  call PatchInitCouplerAuxVars(patch%source_sink_list,patch, &
                                option)
 
   !geh: This should not be included in PatchUpdateAllCouplerAuxVars
   ! as it will result in excessive updates to initial conditions
   ! that are not necessary after the simulation has started time stepping.
-  call PatchUpdateCouplerAuxVars(patch,patch%initial_conditions, &
+  call PatchUpdateCouplerAuxVars(patch,patch%initial_condition_list, &
                                  force_update_flag,option)
   call PatchUpdateAllCouplerAuxVars(patch,force_update_flag,option)
 
@@ -953,9 +978,9 @@ subroutine PatchUpdateAllCouplerAuxVars(patch,force_update_flag,option)
   
   !geh: no need to update initial conditions as they only need updating
   !     once as performed in PatchInitCouplerAuxVars()
-  call PatchUpdateCouplerAuxVars(patch,patch%boundary_conditions, &
+  call PatchUpdateCouplerAuxVars(patch,patch%boundary_condition_list, &
                                  force_update_flag,option)
-  call PatchUpdateCouplerAuxVars(patch,patch%source_sinks, &
+  call PatchUpdateCouplerAuxVars(patch,patch%source_sink_list, &
                                  force_update_flag,option)
 
 !  stop
@@ -2540,13 +2565,13 @@ subroutine PatchInitConstraints(patch,reaction,option)
   type(option_type) :: option
   type(reaction_type), pointer :: reaction
   
-  call PatchInitCouplerConstraints(patch%initial_conditions, &
+  call PatchInitCouplerConstraints(patch%initial_condition_list, &
                                    reaction,option)
   
-  call PatchInitCouplerConstraints(patch%boundary_conditions, &
+  call PatchInitCouplerConstraints(patch%boundary_condition_list, &
                                    reaction,option)
   
-  call PatchInitCouplerConstraints(patch%source_sinks, &
+  call PatchInitCouplerConstraints(patch%source_sink_list, &
                                    reaction,option)
 
 end subroutine PatchInitConstraints
@@ -2710,7 +2735,7 @@ subroutine PatchUpdateUniformVelocity(patch,velocity,option)
   enddo    
 
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0
   do 
     if (.not.associated(boundary_condition)) exit
@@ -5360,7 +5385,7 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
     cur_connection_set => cur_connection_set%next
   enddo
 
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -5595,7 +5620,7 @@ subroutine PatchGetCellCenteredVelocities(patch,iphase,velocities)
   enddo
 
   ! boundary velocities
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0
   do
     if (.not.associated(boundary_condition)) exit
@@ -5628,6 +5653,165 @@ subroutine PatchGetCellCenteredVelocities(patch,iphase,velocities)
   deallocate(sum_area)
 
 end subroutine PatchGetCellCenteredVelocities
+
+! ************************************************************************** !
+
+function PatchGetConnectionsFromCoords(patch,coordinates,option)
+  ! 
+  ! 
+  ! Returns a list of internal and boundary connection ids for cell
+  ! interfaces within a polygon.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/20/14
+  ! 
+  use Option_module
+  use Geometry_module
+  use Utility_module
+  use Connection_module
+  use Coupler_module
+  
+  implicit none
+
+  type(patch_type) :: patch
+  type(point3d_type) :: coordinates(:)
+  type(option_type) :: option
+  
+  PetscInt, pointer :: PatchGetConnectionsFromCoords(:)
+  
+  PetscInt, pointer :: connections(:)
+  type(grid_type), pointer :: grid
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
+  type(coupler_type), pointer :: boundary_condition
+  
+  PetscInt :: idir
+  PetscInt :: icount
+  PetscInt :: array_size
+  PetscInt :: sum_connection
+  PetscInt :: iconn
+  PetscInt :: i
+  PetscInt :: local_id
+  PetscInt :: local_id_up
+  PetscInt :: local_id_dn
+  PetscInt :: ghosted_id
+  PetscInt :: ghosted_id_up
+  PetscInt :: ghosted_id_dn
+  PetscReal :: fraction_upwind
+  PetscReal :: magnitude
+  PetscReal :: v1(3), v2(3)
+  PetscReal :: x, y, z
+  
+  grid => patch%grid
+  
+  ! determine orientation of polygon
+  v1(1) = coordinates(2)%x - coordinates(1)%x
+  v1(2) = coordinates(2)%y - coordinates(1)%y
+  v1(3) = coordinates(2)%z - coordinates(1)%z
+  v2(1) = coordinates(2)%x - coordinates(3)%x
+  v2(2) = coordinates(2)%y - coordinates(3)%y
+  v2(3) = coordinates(2)%z - coordinates(3)%z
+  v1 = CrossProduct(v1,v2)
+  
+  icount = 0
+  idir = 0
+  do i = X_DIRECTION, Z_DIRECTION
+    if (v1(i) > 1.d-10) then
+      icount = icount + 1
+      idir = i
+    endif
+  enddo
+
+  if (icount > 1) then
+    option%io_buffer = 'Rectangle defined in integral flux "" must be ' // &
+      'aligned with structured grid coordinates axes.'
+    call printErrMsg(option)
+  endif
+    
+  array_size = 100
+  allocate(connections(array_size))
+  icount = 0
+  ! Interior Flux Terms -----------------------------------
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
+  sum_connection = 0  
+  do 
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+
+      ghosted_id_up = cur_connection_set%id_up(iconn)
+      ghosted_id_dn = cur_connection_set%id_dn(iconn)
+
+      local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
+      local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
+
+      if (patch%imat(ghosted_id_up) <= 0 .or.  &
+          patch%imat(ghosted_id_dn) <= 0) cycle
+
+      fraction_upwind = cur_connection_set%dist(-1,iconn)
+      magnitude = cur_connection_set%dist(0,iconn)
+      x = fraction_upwind * magnitude * &
+          cur_connection_set%dist(X_DIRECTION,iconn) + grid%x(ghosted_id_up)
+      y = fraction_upwind * magnitude * &
+          cur_connection_set%dist(Y_DIRECTION,iconn) + grid%y(ghosted_id_up)
+      z = fraction_upwind * magnitude * &
+          cur_connection_set%dist(Z_DIRECTION,iconn) + grid%z(ghosted_id_up)
+      if (GeometryPointInPolygon(x,y,z,idir,coordinates)) then
+        select case(idir)
+          case(X_DIRECTION)
+          case(Y_DIRECTION)
+          case(Z_DIRECTION)
+        end select
+        icount = icount + 1
+        if (icount > size(connections)) then
+          call reallocateIntArray(connections,array_size)
+        endif
+        connections(icount) = sum_connection
+      endif
+    enddo
+    cur_connection_set => cur_connection_set%next
+  enddo
+
+  ! Boundary Flux Terms -----------------------------------
+  boundary_condition => patch%boundary_condition_list%first
+  sum_connection = 0    
+  do 
+    if (.not.associated(boundary_condition)) exit
+    cur_connection_set => boundary_condition%connection_set
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+      if (patch%imat(ghosted_id) <= 0) cycle
+      fraction_upwind = 1.d0
+      magnitude = cur_connection_set%dist(0,iconn)
+      x = fraction_upwind * magnitude * &
+          cur_connection_set%dist(X_DIRECTION,iconn) + grid%x(ghosted_id)
+      y = fraction_upwind * magnitude * &
+          cur_connection_set%dist(Y_DIRECTION,iconn) + grid%y(ghosted_id)
+      z = fraction_upwind * magnitude * &
+          cur_connection_set%dist(Z_DIRECTION,iconn) + grid%z(ghosted_id)
+      if (GeometryPointInPolygon(x,y,z,idir,coordinates)) then
+        icount = icount + 1
+        if (icount > size(connections)) then
+          call reallocateIntArray(connections,array_size)
+        endif
+        connections(icount) = -1 * sum_connection
+      endif
+    enddo
+    boundary_condition => boundary_condition%next
+  enddo
+  
+  nullify(PatchGetConnectionsFromCoords)
+  if (icount > 0) then
+    allocate(PatchGetConnectionsFromCoords(icount))
+    PatchGetConnectionsFromCoords = connections(1:icount)
+  endif
+  deallocate(connections)
+  nullify(connections)
+  
+end function PatchGetConnectionsFromCoords
 
 ! ************************************************************************** !
 
@@ -5725,18 +5909,16 @@ subroutine PatchDestroy(patch)
 
   ! solely nullify grid since destroyed in discretization
   nullify(patch%grid)
-  call RegionDestroyList(patch%regions)
-  call CouplerDestroyList(patch%boundary_conditions)
-  call CouplerDestroyList(patch%initial_conditions)
-  call CouplerDestroyList(patch%source_sinks)
+  call RegionDestroyList(patch%region_list)
+  call CouplerDestroyList(patch%boundary_condition_list)
+  call CouplerDestroyList(patch%initial_condition_list)
+  call CouplerDestroyList(patch%source_sink_list)
   
-  
-  call ObservationDestroyList(patch%observation)
-  call StrataDestroyList(patch%strata)
+  call ObservationDestroyList(patch%observation_list)
+  call IntegralFluxDestroyList(patch%integral_flux_list)
+  call StrataDestroyList(patch%strata_list)
   
   call AuxDestroy(patch%aux)
-  
-  call ObservationDestroyList(patch%observation)
   
   ! these are solely pointers, must not destroy.
   nullify(patch%reaction)

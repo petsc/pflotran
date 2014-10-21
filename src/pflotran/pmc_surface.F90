@@ -421,7 +421,7 @@ subroutine PMCSurfaceSetAuxData(this)
             enddo
 
             found = PETSC_FALSE
-            source_sink => surf_patch%source_sinks%first
+            source_sink => surf_patch%source_sink_list%first
             do
               if (.not.associated(source_sink)) exit
 
