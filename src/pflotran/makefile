@@ -251,6 +251,7 @@ chem_obj = \
 	${common_src}mineral_aux.o \
 	${common_src}reaction.o \
 	${common_src}reaction_aux.o \
+	${common_src}reaction_clm.o \
 	${common_src}reaction_sandbox.o \
 	${common_src}reaction_sandbox_base.o \
 	${common_src}reaction_sandbox_clm_cn.o \
@@ -505,7 +506,7 @@ coupler.o : condition.o connection.o dataset_base.o dataset_gridded_hdf5.o \
             unstructured_grid_aux.o utility.o
 database.o : database_aux.o immobile.o immobile_aux.o input_aux.o microbial.o \
              microbial_aux.o mineral.o mineral_aux.o option.o \
-             pflotran_constants.o reaction.o reaction_aux.o reaction_sandbox.o \
+             pflotran_constants.o reaction.o reaction_aux.o reaction_clm.o reaction_sandbox.o \
              solid_solution.o string.o surface_complexation_aux.o utility.o
 database_aux.o : input_aux.o option.o pflotran_constants.o string.o utility.o
 database_hpt.o : database.o database_aux.o input_aux.o mineral_aux.o option.o \
@@ -892,7 +893,7 @@ else
 reaction.o : co2_span_wagner.o co2eos.o constraint.o eos_water.o global_aux.o \
              immobile.o immobile_aux.o input_aux.o material_aux.o microbial.o \
              microbial_aux.o mineral.o mineral_aux.o option.o \
-             pflotran_constants.o reaction_aux.o reaction_sandbox.o \
+             pflotran_constants.o reaction_aux.o reaction_clm.o reaction_sandbox.o \
              reactive_transport_aux.o solid_solution.o solid_solution_aux.o \
              string.o surface_complexation.o surface_complexation_aux.o \
              units.o utility.o variables.o
@@ -900,6 +901,9 @@ endif
 reaction_aux.o : database_aux.o immobile_aux.o microbial_aux.o mineral_aux.o \
                  option.o pflotran_constants.o solid_solution_aux.o string.o \
                  surface_complexation_aux.o utility.o
+reaction_clm.o : global_aux.o input_aux.o material_aux.o option.o \
+                 pflotran_constants.o reaction_aux.o \
+                 reactive_transport_aux.o string.o utility.o
 reaction_sandbox.o : global_aux.o input_aux.o material_aux.o option.o \
                      pflotran_constants.o reaction_aux.o \
                      reaction_sandbox_base.o reaction_sandbox_clm_cn.o \
