@@ -790,6 +790,7 @@ subroutine BasisInit(reaction,option)
   use Solid_Solution_module
 #endif
   use Reaction_Sandbox_module
+  use CLM_Rxn_module
 
   implicit none
   
@@ -3564,7 +3565,7 @@ subroutine BasisInit(reaction,option)
   
   ! sandbox reactions
   call RSandboxSetup(reaction,option)
-
+  call RCLMRxnSetup(reaction,option)
   
 90 format(80('-'))
 100 format(/,2x,i4,2x,a)

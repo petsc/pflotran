@@ -432,9 +432,13 @@ subroutine SubsurfAssignMaterialProperties(realization)
     call VecGetArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
     do local_id = 1, patch%grid%nlmax
       ghosted_id = patch%grid%nL2G(local_id)
-      vec_p(local_id) = &
-        patch%aux%Material%auxvars(patch%grid%nL2G(local_id))% &
-        soil_properties(i)
+      if (patch%imat(ghosted_id) > 0) then
+        vec_p(local_id) = &
+          patch%aux%Material%auxvars(patch%grid%nL2G(local_id))% &
+          soil_properties(i)
+      else
+        vec_p(local_id) = 1.d-40 ! some initialized value for inactive cells.
+      endif
     enddo
     call VecRestoreArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
     call VecMin(field%work,tempint,tempreal,ierr)

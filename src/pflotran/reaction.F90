@@ -24,6 +24,7 @@ module Reaction_module
   !           need to be included here given since the subroutines below 
   !           include the module.  Remove once Intel fixes its bug.
   use Reaction_Sandbox_module
+  use CLM_Rxn_module
 
   use PFLOTRAN_Constants_module
 
@@ -83,6 +84,7 @@ subroutine ReactionInit(reaction,input,option)
   use Option_module
   use Input_Aux_module
   use Reaction_Sandbox_module, only : RSandboxInit
+  use CLM_Rxn_module, only : RCLMRxnInit
   
   implicit none
   
@@ -94,7 +96,8 @@ subroutine ReactionInit(reaction,input,option)
   
   ! must be called prior to the first pass
   call RSandboxInit(option)
-  
+  call RCLMRxnInit(option) 
+ 
   call ReactionReadPass1(reaction,input,option)
   reaction%primary_species_names => GetPrimarySpeciesNames(reaction)
   ! PCL add in colloid dofs
@@ -124,6 +127,7 @@ subroutine ReactionReadPass1(reaction,input,option)
                                TOTAL_MOLALITY, TOTAL_MOLARITY, &
                                SECONDARY_MOLALITY, SECONDARY_MOLARITY
   use Reaction_Sandbox_module, only : RSandboxRead 
+  use CLM_Rxn_module, only : RCLMRxnRead
   
   implicit none
   
@@ -152,6 +156,7 @@ subroutine ReactionReadPass1(reaction,input,option)
   PetscInt :: temp_srfcplx_count
   PetscBool :: found
   PetscBool :: reaction_sandbox_read
+  PetscBool :: reaction_clm_read
 
   nullify(prev_species)
   nullify(prev_gas)
@@ -168,6 +173,7 @@ subroutine ReactionReadPass1(reaction,input,option)
   endif
   
   reaction_sandbox_read = PETSC_FALSE
+  reaction_clm_read = PETSC_FALSE
   
   srfcplx_count = 0
   input%ierr = 0
@@ -449,6 +455,9 @@ subroutine ReactionReadPass1(reaction,input,option)
       case('REACTION_SANDBOX')
         call RSandboxRead(input,option)
         reaction_sandbox_read = PETSC_TRUE
+      case('CLM_REACTION')
+        call RCLMRxnRead(input,option)
+        reaction_clm_read = PETSC_TRUE
       case('MICROBIAL_REACTION')
         call MicrobialRead(reaction%microbial,input,option)
       case('MINERALS')
@@ -884,6 +893,7 @@ subroutine ReactionReadPass1(reaction,input,option)
   if (reaction%neqcplx + reaction%nsorb + reaction%mineral%nmnrl + &
       reaction%ngeneral_rxn + reaction%microbial%nrxn + &
       reaction%nradiodecay_rxn + reaction%immobile%nimmobile > 0 .or. &
+      reaction_clm_read .or. &
       reaction_sandbox_read) then
     reaction%use_full_geochemistry = PETSC_TRUE
   endif
@@ -951,6 +961,8 @@ subroutine ReactionReadPass2(reaction,input,option)
         call MineralReadKinetics(reaction%mineral,input,option)
       case('REACTION_SANDBOX')
         call RSandboxSkipInput(input,option)
+      case('CLM_REACTION')
+        call RCLMRxnSkipInput(input,option)
       case('SOLID_SOLUTIONS')
 #ifdef SOLID_SOLUTION                
         call SolidSolutionReadFromInputFile(reaction%solid_solution_list, &
@@ -3415,7 +3427,8 @@ subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar, &
 
   use Option_module
   use Reaction_Sandbox_module, only : RSandbox, sandbox_list
-  
+  use CLM_Rxn_module, only : RCLMRxn, clmrxn_list 
+ 
   implicit none
   
   type(reaction_type), pointer :: reaction
@@ -3463,6 +3476,10 @@ subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar, &
   endif
   
   ! add new reactions here and in RReactionDerivative
+  if (associated(clmrxn_list)) then
+    call RCLMRxn(Res,Jac,derivative,rt_auxvar,global_auxvar, &
+                  material_auxvar,reaction,option)
+  endif
 
 end subroutine RReaction
 
