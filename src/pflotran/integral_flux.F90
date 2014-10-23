@@ -61,7 +61,7 @@ function IntegralFluxCreate()
   
   allocate(integral_flux)
   
-  integral_flux%name = ""
+  integral_flux%name = ''
   integral_flux%id = 0
   integral_flux%invert_direction = PETSC_FALSE
   nullify(integral_flux%connections)
@@ -121,6 +121,11 @@ subroutine IntegralFluxRead(integral_flux,input,option)
     end select 
   
   enddo  
+
+  if (len_trim(integral_flux%name) < 1) then
+    option%io_buffer = 'All INTEGRAL_FLUXes must have a name.'
+    call printErrMsg(option)
+  endif
 
 end subroutine IntegralFluxRead
 

@@ -82,6 +82,7 @@ subroutine OutputObservation(realization_base)
 !      realization_base%output_option%print_hdf5) then
   if (realization_base%output_option%print_observation) then
     call OutputObservationTecplotColumnTXT(realization_base)
+    call OutputIntegralFlux(realization_base)
     if (realization_base%option%use_mc) then
       call OutputObservationTecplotSecTXT(realization_base)
     endif
