@@ -1591,8 +1591,9 @@ subroutine OutputIntegralFlux(realization_base)
   character(len=MAXWORDLENGTH) :: word, units
   character(len=MAXSTRINGLENGTH) :: string
   type(integral_flux_type), pointer :: integral_flux
-  PetscReal, allocatable :: sum_array(:,:)
-  PetscReal, allocatable :: sum_array_global(:,:)
+  PetscReal :: flow_dof_scale(10)
+  PetscReal, allocatable :: array(:,:)
+  PetscReal, allocatable :: array_global(:,:)
   PetscReal, allocatable :: instantaneous_array(:)
   PetscInt, parameter :: fid = 86
   PetscInt :: i, j
@@ -1606,6 +1607,23 @@ subroutine OutputIntegralFlux(realization_base)
   option => realization_base%option
   output_option => realization_base%output_option
   reaction => realization_base%reaction
+
+  flow_dof_scale = 1.d0
+  select case(option%iflowmode)
+    case(RICHARDS_MODE)
+      flow_dof_scale(1) = FMWH2O
+    case(TH_MODE)
+      flow_dof_scale(1) = FMWH2O
+    case(MIS_MODE)
+      flow_dof_scale(1) = FMWH2O
+      flow_dof_scale(2) = FMWGLYC
+    case(G_MODE)
+      flow_dof_scale(1) = FMWH2O
+      flow_dof_scale(2) = FMWAIR
+    case(MPH_MODE,FLASH2_MODE,IMS_MODE)
+      flow_dof_scale(1) = FMWH2O
+      flow_dof_scale(2) = FMWCO2
+  end select
 
   if (len_trim(output_option%plot_name) > 2) then
     filename = trim(output_option%plot_name) // '-int.dat'
@@ -1645,67 +1663,50 @@ subroutine OutputIntegralFlux(realization_base)
       do
         if (.not.associated(integral_flux)) exit
         select case(option%iflowmode)
-          case(RICHARDS_MODE)
+          case(RICHARDS_MODE,TH_MODE,MIS_MODE,G_MODE,MPH_MODE,FLASH2_MODE, &
+               IMS_MODE)
             string = trim(integral_flux%name) // ' Water'
             call OutputWriteToHeader(fid,string,'kg','',icol)
-            
             units = 'kg/' // trim(output_option%tunit) // ''
             string = trim(integral_flux%name) // ' Water'
             call OutputWriteToHeader(fid,string,units,'',icol)
-          case(TH_MODE)
-            string = trim(integral_flux%name) // ' Water'
-            call OutputWriteToHeader(fid,string,'kg','',icol)
-            
-            units = 'kg/' // trim(output_option%tunit) // ''
-            string = trim(integral_flux%name) // ' Water'
-            call OutputWriteToHeader(fid,string,units,'',icol)
+        end select
+        select case(option%iflowmode)
           case(MIS_MODE)
-            string = trim(integral_flux%name) // ' Water'
-            call OutputWriteToHeader(fid,string,'kg','',icol)
             string = trim(integral_flux%name) // ' Glycol'
             call OutputWriteToHeader(fid,string,'kg','',icol)
-            
             units = 'kg/' // trim(output_option%tunit) // ''
-            string = trim(integral_flux%name) // ' Water'
-            call OutputWriteToHeader(fid,string,units,'',icol)
             string = trim(integral_flux%name) // ' Glycol'
             call OutputWriteToHeader(fid,string,units,'',icol)
           case(G_MODE)
-            string = trim(integral_flux%name) // ' Water'
-            call OutputWriteToHeader(fid,string,'kg','',icol)
             string = trim(integral_flux%name) // ' Air'
             call OutputWriteToHeader(fid,string,'kg','',icol)
-
             units = 'kg/' // trim(output_option%tunit) // ''
-            string = trim(integral_flux%name) // ' Water'
-            call OutputWriteToHeader(fid,string,units,'',icol)
             string = trim(integral_flux%name) // ' Air'
             call OutputWriteToHeader(fid,string,units,'',icol)
           case(MPH_MODE,FLASH2_MODE,IMS_MODE)
-            string = trim(integral_flux%name) // ' Water'
-            call OutputWriteToHeader(fid,string,'kmol','',icol)
             string = trim(integral_flux%name) // ' CO2'
             call OutputWriteToHeader(fid,string,'kmol','',icol)
-            
             units = 'kmol/' // trim(output_option%tunit) // ''
-            string = trim(integral_flux%name) // ' Water'
-            call OutputWriteToHeader(fid,string,units,'',icol)
             string = trim(integral_flux%name) // ' CO2'
+            call OutputWriteToHeader(fid,string,units,'',icol)
+        end select
+        select case(option%iflowmode)
+          case(TH_MODE,MIS_MODE,G_MODE,MPH_MODE,FLASH2_MODE,IMS_MODE)
+            string = trim(integral_flux%name) // ' Energy'
+            call OutputWriteToHeader(fid,string,'MJ','',icol)
+            units = 'MJ/' // trim(output_option%tunit) // ''
+            string = trim(integral_flux%name) // ' Air'
             call OutputWriteToHeader(fid,string,units,'',icol)
         end select
         
         if (option%ntrandof > 0) then
+          units = 'mol/' // trim(output_option%tunit) // ''
           do i=1,reaction%naqcomp
             if (reaction%primary_species_print(i)) then
               string = trim(integral_flux%name) // ' ' // &
                        trim(reaction%primary_species_names(i))
-              call OutputWriteToHeader(fid,string,'kmol','',icol)
-            endif
-          enddo
-          
-          units = 'kmol/' // trim(output_option%tunit) // ''
-          do i=1,reaction%naqcomp
-            if (reaction%primary_species_print(i)) then
+              call OutputWriteToHeader(fid,string,'mol','',icol)
               string = trim(integral_flux%name) // ' ' // &
                        trim(reaction%primary_species_names(i))
               call OutputWriteToHeader(fid,string,units,'',icol)
@@ -1737,21 +1738,14 @@ subroutine OutputIntegralFlux(realization_base)
       write(fid,100,advance="no") option%tran_dt/output_option%tconv
   endif
   
-  allocate(sum_array(option%nflowdof + option%ntrandof,2))
-  allocate(sum_array_global(option%nflowdof + option%ntrandof,2))
+  allocate(array(option%nflowdof + option%ntrandof,2))
+  allocate(array_global(option%nflowdof + option%ntrandof,2))
   allocate(instantaneous_array(max(option%nflowdof,option%ntrandof)))
   integral_flux => patch%integral_flux_list%first
   do
     if (.not.associated(integral_flux)) exit
-    sum_array = 0.d0
-    sum_array_global = 0.d0
-    select case(option%iflowmode)
-      case(RICHARDS_MODE)
-      case(TH_MODE)
-      case(MIS_MODE)
-      case(G_MODE)
-      case(MPH_MODE,FLASH2_MODE,IMS_MODE)
-    end select
+    array = 0.d0
+    array_global = 0.d0
     if (option%nflowdof > 0) then
       istart = 1
       iend = option%nflowdof
@@ -1761,9 +1755,9 @@ subroutine OutputIntegralFlux(realization_base)
                                         patch%boundary_flow_fluxes, &
                                         option%nflowdof, &
                                         instantaneous_array,option)
-      sum_array(istart:iend,1) = &
+      array(istart:iend,1) = &
         integral_flux%integral_value(istart:iend)
-      sum_array(istart:iend,2) = &
+      array(istart:iend,2) = &
         instantaneous_array(1:option%nflowdof)
     endif
     if (option%ntrandof > 0) then
@@ -1775,29 +1769,31 @@ subroutine OutputIntegralFlux(realization_base)
                                         patch%boundary_tran_fluxes, &
                                         option%ntrandof, &
                                         instantaneous_array,option)
-      sum_array(istart:iend,1) = &
+      array(istart:iend,1) = &
         integral_flux%integral_value(istart:iend)
-      sum_array(istart:iend,2) = &
+      array(istart:iend,2) = &
         instantaneous_array(1:option%ntrandof)
     endif
-    int_mpi = size(sum_array)
-    call MPI_Reduce(sum_array,sum_array_global, &
+    int_mpi = size(array)
+    call MPI_Reduce(array,array_global, &
                     int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
                     option%io_rank,option%mycomm,ierr)
+    ! time units conversion
+    array_global(:,2) = array_global(:,2) * output_option%tconv
     if (option%myrank == option%io_rank) then
       if (option%nflowdof > 0) then
-        do j = 1, 2  ! 1 = integral, 2 = instantaneous
-          do i = 1, option%nflowdof
-            write(fid,110,advance="no") sum_array_global(i,j)
+        do i = 1, option%nflowdof
+          do j = 1, 2  ! 1 = integral, 2 = instantaneous
+            write(fid,110,advance="no") array_global(i,j)*flow_dof_scale(i)
           enddo
         enddo
       endif
       if (option%ntrandof > 0) then
         istart = option%nflowdof
-        do j = 1, 2  ! 1 = integral, 2 = instantaneous
-          do i=1,reaction%naqcomp
+        do i=1,reaction%naqcomp
+          do j = 1, 2  ! 1 = integral, 2 = instantaneous
             if (reaction%primary_species_print(i)) then
-              write(fid,110,advance="no") sum_array_global(istart+i,j)
+              write(fid,110,advance="no") array_global(istart+i,j)
             endif
           enddo
         enddo
@@ -1805,7 +1801,8 @@ subroutine OutputIntegralFlux(realization_base)
     endif
     integral_flux => integral_flux%next
   enddo
-  deallocate(sum_array)
+  deallocate(array)
+  deallocate(array_global)
   deallocate(instantaneous_array)
   
   if (option%myrank == option%io_rank) then
@@ -2074,16 +2071,16 @@ subroutine OutputMassBalance(realization_base)
         if (option%ntrandof > 0) then
           do i=1,reaction%naqcomp
             if (reaction%primary_species_print(i)) then
-              option%io_buffer = 'Check OutputObservation to ensure that ' // &
-                'reactive transport species units are really kmol.'
-              call printErrMsg(option)
+!              option%io_buffer = 'Check OutputObservation to ensure that ' // &
+!                'reactive transport species units are really kmol.'
+!              call printErrMsg(option)
               string = trim(coupler%name) // ' ' // &
                        trim(reaction%primary_species_names(i))
-              call OutputWriteToHeader(fid,string,'kmol','',icol)
+              call OutputWriteToHeader(fid,string,'mol','',icol)
             endif
           enddo
           
-          units = 'kmol/' // trim(output_option%tunit) // ''
+          units = 'mol/' // trim(output_option%tunit) // ''
           do i=1,reaction%naqcomp
             if (reaction%primary_species_print(i)) then
               string = trim(coupler%name) // ' ' // &

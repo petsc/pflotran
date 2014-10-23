@@ -17,6 +17,7 @@ module Integral_Flux_module
     PetscInt :: id
     character(len=MAXWORDLENGTH) :: name
     type(point3d_type), pointer :: coordinates(:)
+    PetscBool :: invert_direction
     PetscInt, pointer :: connections(:)
     PetscReal, pointer :: integral_value(:)
     type(integral_flux_type), pointer :: next
@@ -40,16 +41,11 @@ module Integral_Flux_module
             IntegralFluxUpdate, &
             IntegralFluxGetInstantaneous
 
-  interface IntegralFluxCreate
-    module procedure IntegralFluxCreate1
-    module procedure IntegralFluxCreateFromIntegralFlux
-  end interface
-    
 contains
 
 ! ************************************************************************** !
 
-function IntegralFluxCreate1()
+function IntegralFluxCreate()
   ! 
   ! Create object that stores integral flux information
   ! 
@@ -59,7 +55,7 @@ function IntegralFluxCreate1()
 
   implicit none
   
-  type(integral_flux_type), pointer :: IntegralFluxCreate1
+  type(integral_flux_type), pointer :: IntegralFluxCreate
   
   type(integral_flux_type), pointer :: integral_flux
   
@@ -67,42 +63,15 @@ function IntegralFluxCreate1()
   
   integral_flux%name = ""
   integral_flux%id = 0
+  integral_flux%invert_direction = PETSC_FALSE
   nullify(integral_flux%connections)
   nullify(integral_flux%coordinates)
   nullify(integral_flux%integral_value)
   nullify(integral_flux%next)
   
-  IntegralFluxCreate1 => integral_flux
+  IntegralFluxCreate => integral_flux
 
-end function IntegralFluxCreate1
-
-! ************************************************************************** !
-
-function IntegralFluxCreateFromIntegralFlux(integral_flux)
-  ! 
-  ! Create object that stores integral flux information
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 10/20/14
-  ! 
-
-  implicit none
-  
-  type(integral_flux_type), pointer :: IntegralFluxCreateFromIntegralFlux
-  type(integral_flux_type), pointer :: integral_flux
-
-  type(integral_flux_type), pointer :: new_integral_flux
-  
-  new_integral_flux => IntegralFluxCreate1()
-  
-  new_integral_flux%name = integral_flux%name
-  new_integral_flux%id = integral_flux%id
-  
-  nullify(new_integral_flux%next)
-  
-  IntegralFluxCreateFromIntegralFlux => new_integral_flux
-
-end function IntegralFluxCreateFromIntegralFlux
+end function IntegralFluxCreate
 
 ! ************************************************************************** !
 
@@ -140,6 +109,8 @@ subroutine IntegralFluxRead(integral_flux,input,option)
       case('NAME')
         call InputReadWord(input,option,integral_flux%name,PETSC_TRUE)
         call InputErrorMsg(input,option,'name','INTEGRAL_FLUX')    
+      case('INVERT_DIRECTION')
+        integral_flux%invert_direction = PETSC_TRUE
       case('COORDINATES')
         call GeometryReadCoordinates(input,option,integral_flux%name, &
                                      integral_flux%coordinates)
@@ -202,7 +173,7 @@ subroutine IntegralFluxUpdate(integral_flux_list,internal_fluxes, &
   PetscInt :: num_values
   PetscReal :: dt
  
-  if (.not.associated(integral_flux%connections)) return
+  if (.not.associated(integral_flux_list%first)) return
 
   select case(iflag)
     case(INTEGRATE_FLOW)
@@ -274,6 +245,9 @@ subroutine IntegralFluxGetInstantaneous(integral_flux, internal_fluxes, &
                                 boundary_fluxes(1:num_values,-iconn)
     endif
   enddo
+  if (integral_flux%invert_direction) then
+    sum_array = -1.d0 * sum_array
+  endif
 
 end subroutine IntegralFluxGetInstantaneous
 

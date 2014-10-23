@@ -686,8 +686,8 @@ subroutine PMRTUpdateSolution2(this, update_kinetics)
     call RTUpdateMassBalance(this%realization)
   endif
   call IntegralFluxUpdate(this%realization%patch%integral_flux_list, &
-                          this%realization%patch%internal_flow_fluxes, &
-                          this%realization%patch%boundary_flow_fluxes, &
+                          this%realization%patch%internal_tran_fluxes, &
+                          this%realization%patch%boundary_tran_fluxes, &
                           INTEGRATE_TRANSPORT,this%option)
 
 end subroutine PMRTUpdateSolution2     

@@ -657,10 +657,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   do
     if (.not.associated(integral_flux)) exit
     integral_flux%connections => &
-      PatchGetConnectionsFromCoords(patch,integral_flux%coordinates,option)
-    if (.not.associated(integral_flux%connections)) then
-      call IntegralFluxSizeStorage(integral_flux,option)
-    endif
+      PatchGetConnectionsFromCoords(patch,integral_flux%coordinates, &
+                                    integral_flux%name,option)
+    call IntegralFluxSizeStorage(integral_flux,option)
     integral_flux => integral_flux%next
     option%flow%store_fluxes = PETSC_TRUE
     option%transport%store_fluxes = PETSC_TRUE
@@ -5651,7 +5650,8 @@ end subroutine PatchGetCellCenteredVelocities
 
 ! ************************************************************************** !
 
-function PatchGetConnectionsFromCoords(patch,coordinates,option)
+function PatchGetConnectionsFromCoords(patch,coordinates,integral_flux_name, &
+                                       option)
   ! 
   ! 
   ! Returns a list of internal and boundary connection ids for cell
@@ -5670,6 +5670,7 @@ function PatchGetConnectionsFromCoords(patch,coordinates,option)
 
   type(patch_type) :: patch
   type(point3d_type) :: coordinates(:)
+  character(len=MAXWORDLENGTH) :: integral_flux_name
   type(option_type) :: option
   
   PetscInt, pointer :: PatchGetConnectionsFromCoords(:)
@@ -5688,7 +5689,6 @@ function PatchGetConnectionsFromCoords(patch,coordinates,option)
   PetscInt :: i
   PetscInt :: local_id
   PetscInt :: local_id_up
-  PetscInt :: local_id_dn
   PetscInt :: ghosted_id
   PetscInt :: ghosted_id_up
   PetscInt :: ghosted_id_dn
@@ -5696,6 +5696,8 @@ function PatchGetConnectionsFromCoords(patch,coordinates,option)
   PetscReal :: magnitude
   PetscReal :: v1(3), v2(3)
   PetscReal :: x, y, z
+  PetscBool :: within_tolerance
+  PetscErrorCode :: ierr
   
   grid => patch%grid
   
@@ -5724,7 +5726,7 @@ function PatchGetConnectionsFromCoords(patch,coordinates,option)
     v2(2) = coordinates(2)%y
     v2(3) = coordinates(2)%z
     icount = 0
-    do i = 1, X_DIRECTION, Z_DIRECTION
+    do i = X_DIRECTION, Z_DIRECTION
       if (Equal(v2(i),v1(i))) then
         idir = i
         icount = icount + 1
@@ -5734,8 +5736,9 @@ function PatchGetConnectionsFromCoords(patch,coordinates,option)
   endif
 
   if (icount > 1) then
-    option%io_buffer = 'Rectangle defined in integral flux "" must be ' // &
-      'aligned with structured grid coordinates axes.'
+    option%io_buffer = 'Rectangle defined in integral flux "' // &
+      trim(adjustl(integral_flux_name)) // &
+      '" must be aligned with structured grid coordinates axes.'
     call printErrMsg(option)
   endif
     
@@ -5755,25 +5758,29 @@ function PatchGetConnectionsFromCoords(patch,coordinates,option)
       ghosted_id_dn = cur_connection_set%id_dn(iconn)
 
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
-      local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
-
-      if (patch%imat(ghosted_id_up) <= 0 .or.  &
-          patch%imat(ghosted_id_dn) <= 0) cycle
+      ! if one of the cells is ghosted, the process stores the flux only
+      ! when the upwind cell is non-ghosted.
+      if (local_id_up <= 0) cycle 
 
       fraction_upwind = cur_connection_set%dist(-1,iconn)
       magnitude = cur_connection_set%dist(0,iconn)
-      x = fraction_upwind * magnitude * &
-          cur_connection_set%dist(X_DIRECTION,iconn) + grid%x(ghosted_id_up)
-      y = fraction_upwind * magnitude * &
-          cur_connection_set%dist(Y_DIRECTION,iconn) + grid%y(ghosted_id_up)
-      z = fraction_upwind * magnitude * &
-          cur_connection_set%dist(Z_DIRECTION,iconn) + grid%z(ghosted_id_up)
-      if (GeometryPointInPolygon(x,y,z,idir,coordinates)) then
-        select case(idir)
-          case(X_DIRECTION)
-          case(Y_DIRECTION)
-          case(Z_DIRECTION)
-        end select
+      x = grid%x(ghosted_id_up) + fraction_upwind * magnitude * &
+          cur_connection_set%dist(X_DIRECTION,iconn)
+      y = grid%y(ghosted_id_up) + fraction_upwind * magnitude * &
+          cur_connection_set%dist(Y_DIRECTION,iconn)
+      z = grid%z(ghosted_id_up) + fraction_upwind * magnitude * &
+          cur_connection_set%dist(Z_DIRECTION,iconn)
+      within_tolerance = PETSC_FALSE
+      select case(idir)
+        case(X_DIRECTION)
+          within_tolerance = Equal(x,coordinates(1)%x)
+        case(Y_DIRECTION)
+          within_tolerance = Equal(y,coordinates(1)%y)
+        case(Z_DIRECTION)
+          within_tolerance = Equal(z,coordinates(1)%z)
+      end select
+      if (within_tolerance .and. &
+          GeometryPointInPolygon(x,y,z,idir,coordinates)) then
         icount = icount + 1
         if (icount > size(connections)) then
           call reallocateIntArray(connections,array_size)
@@ -5794,16 +5801,25 @@ function PatchGetConnectionsFromCoords(patch,coordinates,option)
       sum_connection = sum_connection + 1
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
-      if (patch%imat(ghosted_id) <= 0) cycle
       fraction_upwind = 1.d0
       magnitude = cur_connection_set%dist(0,iconn)
-      x = fraction_upwind * magnitude * &
-          cur_connection_set%dist(X_DIRECTION,iconn) + grid%x(ghosted_id)
-      y = fraction_upwind * magnitude * &
-          cur_connection_set%dist(Y_DIRECTION,iconn) + grid%y(ghosted_id)
-      z = fraction_upwind * magnitude * &
-          cur_connection_set%dist(Z_DIRECTION,iconn) + grid%z(ghosted_id)
-      if (GeometryPointInPolygon(x,y,z,idir,coordinates)) then
+      x = grid%x(ghosted_id) - fraction_upwind * magnitude * &
+                               cur_connection_set%dist(X_DIRECTION,iconn)
+      y = grid%y(ghosted_id) - fraction_upwind * magnitude * &
+                               cur_connection_set%dist(Y_DIRECTION,iconn)
+      z = grid%z(ghosted_id) - fraction_upwind * magnitude * &
+                               cur_connection_set%dist(Z_DIRECTION,iconn)
+      within_tolerance = PETSC_FALSE
+      select case(idir)
+        case(X_DIRECTION)
+          within_tolerance = Equal(x,coordinates(1)%x)
+        case(Y_DIRECTION)
+          within_tolerance = Equal(y,coordinates(1)%y)
+        case(Z_DIRECTION)
+          within_tolerance = Equal(z,coordinates(1)%z)
+      end select
+      if (within_tolerance .and. &
+          GeometryPointInPolygon(x,y,z,idir,coordinates)) then
         icount = icount + 1
         if (icount > size(connections)) then
           call reallocateIntArray(connections,array_size)
@@ -5821,6 +5837,15 @@ function PatchGetConnectionsFromCoords(patch,coordinates,option)
   endif
   deallocate(connections)
   nullify(connections)
+
+  call MPI_Allreduce(icount,i,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
+                     option%mycomm,ierr)
+  if (i == 0) then
+    option%io_buffer = 'Zero connections found for INTEGRAL_FLUX "' // &
+      trim(adjustl(integral_flux_name)) // &
+      '".  Please ensure that the coordinates coincide with a cell boundary.'
+    call printErrMsg(option)
+  endif
   
 end function PatchGetConnectionsFromCoords
 
