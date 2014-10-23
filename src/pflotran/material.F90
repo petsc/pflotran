@@ -666,7 +666,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
   if (material_property%external_id <= 0) then
     write(word,*) material_property%external_id
     option%io_buffer = 'Material ID in MATERIAL_PROPERTY "' // &
-      trim(material_property%name) // '" must be >= 0 (' // &
+      trim(material_property%name) // '" must be > 0 (' // &
       trim(adjustl(word)) // '). If you would like to inactivate a ' // &
       'material, please do so by adding INACTIVE to the STRATA to which ' // &
       'the MATERIAL_PROPERTY is coupled.'
