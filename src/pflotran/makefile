@@ -707,7 +707,7 @@ init.o : characteristic_curves.o condition.o condition_control.o connection.o \
          unstructured_grid_aux.o variables.o waypoint.o
 input_aux.o : option.o pflotran_constants.o string.o
 integral_flux.o : geometry.o input_aux.o option.o pflotran_constants.o \
-                  string.o
+                  string.o utility.o
 logging.o : pflotran_constants.o
 mass_transfer.o : dataset_base.o dataset_common_hdf5.o dataset_global_hdf5.o \
                   discretization.o grid.o input_aux.o option.o \
@@ -781,11 +781,12 @@ output_hdf5.o : connection.o coupler.o discretization.o field.o grid.o hdf5.o \
                 variables.o
 output_observation.o : connection.o coupler.o discretization.o field.o \
                        flash2.o general.o global_aux.o grid.o immis.o \
-                       logging.o material_aux.o miscible.o mphase.o \
-                       observation.o option.o output_aux.o output_common.o \
-                       patch.o pflotran_constants.o reaction_aux.o \
-                       reactive_transport.o reactive_transport_aux.o \
-                       realization.o realization_base.o region.o richards.o \
+                       integral_flux.o logging.o material_aux.o miscible.o \
+                       mphase.o observation.o option.o output_aux.o \
+                       output_common.o patch.o pflotran_constants.o \
+                       reaction_aux.o reactive_transport.o \
+                       reactive_transport_aux.o realization.o \
+                       realization_base.o region.o richards.o \
                        structured_grid.o th.o utility.o variables.o
 output_surface.o : connection.o coupler.o discretization.o field.o grid.o \
                    hdf5.o hdf5_aux.o input_aux.o logging.o option.o \
@@ -839,14 +840,14 @@ pm_miscible.o : miscible.o pflotran_constants.o pm_base.o pm_subsurface.o
 pm_mphase.o : mphase.o pflotran_constants.o pm_base.o pm_subsurface.o
 pm_richards.o : pflotran_constants.o pm_base.o pm_subsurface.o richards.o
 pm_rt.o : communicator_base.o condition.o condition_control.o discretization.o \
-          field.o global.o grid.o mass_transfer.o option.o \
+          field.o global.o grid.o integral_flux.o mass_transfer.o option.o \
           pflotran_constants.o pm_base.o reaction_aux.o reactive_transport.o \
           realization.o realization_base.o structured_communicator.o \
           unstructured_communicator.o variables.o
 pm_subsurface.o : checkpoint.o communicator_base.o condition.o \
                   condition_control.o discretization.o global.o grid.o \
-                  material.o option.o pflotran_constants.o pm_base.o \
-                  realization.o structured_communicator.o \
+                  integral_flux.o material.o option.o pflotran_constants.o \
+                  pm_base.o realization.o structured_communicator.o \
                   unstructured_communicator.o variables.o
 pm_surface.o : communicator_base.o condition.o discretization.o global.o \
                grid.o option.o pflotran_constants.o pm_base.o \
