@@ -5331,7 +5331,7 @@ subroutine THUpdateSurfaceBC(realization)
   use Secondary_Continuum_module
   use String_module
   use EOS_Water_module
-  use PFLOTRAN_Constants_module, only : DUMMY_VALUE
+  use PFLOTRAN_Constants_module, only : DUMMY_VALUE,UNINITIALIZED_DOUBLE
 
   implicit none
 
@@ -5431,6 +5431,7 @@ subroutine THUpdateSurfaceBC(realization)
         head_old = (surfpress_old - option%reference_pressure)/den/abs(option%gravity(3)) ! [m]
         dhead    = patch%boundary_velocities(1,sum_connection)*option%flow_dt ! [m]
         head_new = head_old - dhead ! [m]
+        surftemp_new = UNINITIALIZED_DOUBLE ! to ensure we end up setting this
 
         if (head_new <= MIN_SURFACE_WATER_HEIGHT) then
           surfpress_new = option%reference_pressure
@@ -5452,8 +5453,13 @@ subroutine THUpdateSurfaceBC(realization)
 
             ! Compute the new and old energy states based on the energy flux
             call EOSWaterdensity(surftemp_old,option%reference_pressure,den_surf_at_Told,dum1,ierr)
-            call EOSWaterdensity(surftemp_new,option%reference_pressure,den_subsurf     ,dum1,ierr)
-            den_aveg = 0.5d0*(den_surf_at_Told + den_subsurf)
+
+            !noc: surftemp_new is uninitialized at this point, so moving
+            !these two lines below (1). Alternatively we could
+            !evaluate this density at global_auxvars(ghosted_id)%temp.
+            !
+            !call EOSWaterdensity(surftemp_new,option%reference_pressure,den_subsurf     ,dum1,ierr)
+            !den_aveg = 0.5d0*(den_surf_at_Told + den_subsurf)
 
             ! 1) Find new surface-temperature due to heat transfer via conduction.
             den = den_surf_at_Told
@@ -5474,7 +5480,7 @@ subroutine THUpdateSurfaceBC(realization)
             enddo
             if (found .eqv. PETSC_FALSE) then
               write(option%io_buffer, &
-                   '("th.F90: THUpdateSurfaceBC --> fixed point not found!")')
+                   '("th.F90: THUpdateSurfaceBC --> fixed point (eflux_cond) not found!")')
               call printErrMsg(option)
             endif
 
@@ -5485,6 +5491,9 @@ subroutine THUpdateSurfaceBC(realization)
             else
                Temp_upwind = surftemp_old
             endif
+
+            call EOSWaterdensity(surftemp_new,option%reference_pressure,den_subsurf,dum1,ierr)
+            den_aveg = 0.5d0*(den_surf_at_Told + den_subsurf)
 
             ! In THBCFlux():
             ! fluxe_bulk = (rho*q*H)               [kmol/m^3 * m^3/s * MJ/kmol]     = [MJ/s]
@@ -5513,7 +5522,7 @@ subroutine THUpdateSurfaceBC(realization)
             enddo
             if (found .eqv. PETSC_FALSE) then
               write(option%io_buffer, &
-                   '("th.F90: THUpdateSurfaceBC --> fixed point not found!")')
+                   '("th.F90: THUpdateSurfaceBC --> fixed point (eflux_bulk) not found!")')
               call printErrMsg(option)
             endif
 
