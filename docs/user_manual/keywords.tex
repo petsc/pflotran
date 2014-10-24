@@ -40,6 +40,7 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \hyperlink{target_geomech_strata}{\bf GEOMECHANICS\_STRATA} & \\
 \hyperlink{target_grid}{\bf GRID} & (required)\\
 \hyperlink{target_init}{\bf INITIAL\_CONDITION} & \\
+\hyperlink{target_int_flux}{\bf INTEGRAL\_FLUX} & \\
 \hyperlink{target_linsolv}{\bf LINEAR\_SOLVER} & \\
 \hyperlink{target_mat}{\bf MATERIAL\_PROPERTY} & \\
 \hyperlink{target_mode}{\bf MODE} & \\
@@ -1770,7 +1771,7 @@ END
 
 \subsection{Keyword: FLUID\_PROPERTY}
 
-\noindent{\bf Description:}
+\noindent{\bf Description:} Assign diffusion coefficients and temperature dependence.
 
 \noindent{\bf Input:}
 \begin{deflist}{000}
@@ -1802,6 +1803,7 @@ FLUID_PROPERTY
 
 \hyperlink{target_key}{\return}
 
+%========================================================================
 %========================================================================
 
 \newpage
@@ -2299,6 +2301,65 @@ END
 \hyperlink{target_key}{\return}
 
 %========================================================================
+\newpage
+
+\protect\hypertarget{Keyword: INTEGRAL\_FLUX}{}
+
+\subsection{Keyword: INTEGRAL\_FLUX}
+
+\noindent{\bf Description:} Sets up a surface through which fluxes of all primary dependent variables can be calculated.
+
+Note: be sure to add the keyword {\tt PERIODIC\_OBSERVATION} to the {\tt OUTPUT} section as this toggles on the printing of integral fluxes to a file with the suffix {\tt '*-int.dat'}.
+
+\noindent{\bf Input:}
+\begin{deflist}{000}
+
+\item[INTEGRAL\_FLUX] \ <string> \ 
+Opens the block and provides the name.
+
+\begin{deflist}{000}
+
+\item[NAME] \  <string> \
+Specifies the name of the integral flux.
+
+\item[COORDINATES] \ 
+Opens a block listing coordinates in $x$, $y$, $z$ defining the rectangle over which the flux will be calculated. The coordinates must form a rectangular plane that is aligned with the coordinate axes.
+
+\item[INVERT\_DIRECTION] \ 
+Inverts the sign of the flux. For fluxes at upwind boundaries, influx will be negative. This has no impact on the actual flux values other than to flip the sign.
+\end{deflist}
+
+\item[\keyend] ~
+\end{deflist}
+
+
+\begin{mdframed}
+
+\noindent{\bf Examples:}
+
+\begin{verbatim}
+INTEGRAL\_FLUX flux\_up\_shaft
+  COORDINATES
+    25.d0 15.d0 300.d0
+    35.d0 20.d0 300.d0
+  /
+/
+
+INTEGRAL\_FLUX
+  NAME inflow
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 10.d0 5.d0
+  /
+  INVERT\_DIRECTION
+/
+\end{verbatim}
+\end{mdframed}
+
+\hyperlink{target_key}{\return}
+
+%========================================================================
+
 
 \newpage
 \protect\hypertarget{target_linsolv}{}

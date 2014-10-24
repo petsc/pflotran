@@ -123,7 +123,7 @@ Define environment variables $\verb|PETSC_DIR|$ and $\verb|PETSC_ARCH|$ giving t
 
 \subsubsection{MacOSX}
 
-To install ParMETIS/METIS on MacOSX it is necessary to first install CMAKE from e.g. MacPorts or Fink.
+To install ParMETIS/METIS on MacOSX it is necessary to first install CMAKE from e.g. Homebrew, MacPorts or Fink.
 
 To install PETSc, MPI using openmpi, HDF5, and ParMETIS/METIS with debugging turned off configure PETSc using:
 
@@ -144,6 +144,24 @@ and
 $\verb|make test|$
 
 Note that ParMETIS/METIS is only needed for using the unstructured grid capability in PFLOTRAN. HDF5 is recommended for large problems for use with Visit for (parallel) visualization.
+
+\paragraph{Yosemite} Special considerations are required to install PETSc and PFLOTRAN on Yosemite (MacOSX 10.10). It is necessary to install gcc-4.9 from Homebrew [other installations such as HPC MacOS X are not bug free at the time of this writing (10.23.14)]. The following steps are required:
+\begin{enumerate}
+\item install Homebrew (standard location /usr/local must be clean to avoid collisions)
+\item install gcc (need version 4.9.x): {\tt brew install gcc}
+\item install cmake (need version 3.0.x): {\tt brew install cmake}
+\item configure PETSc using the Mac c and c++ compilers clang, clang++ and gfortran installed from Homebrew: 
+\begin{verbatim}
+./configure --with-cc=clang --with-cxx=clang++ 
+            --with-fc=gfortran --download-mpich=1 
+            --download-hdf5=1 --download-metis=1 
+            --download-parmetis=1 --with-debugging=0
+\end{verbatim} 
+At the time of this writing openmpi did not compile. HDF5 does not compile using gcc.
+
+\item make all
+\item make pflotran
+\end{enumerate}
 
 \subsubsection{Windows}
 
