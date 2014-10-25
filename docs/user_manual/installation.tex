@@ -44,7 +44,7 @@ The installation of PFLOTRAN on MacOSX requires compiler versions 4.7 or later f
 For MacOSX compilers can be obtained from several sources including \href{http://www.macports.org/}{MacPorts} and the web site \href{http://hpc.sourceforge.net/}{High Performance Computing for MacOSX}.
 
 \begin{comment}
-\subsection{MacOSX}
+\subsection{Mac OS X}
 
 The installation of PFLOTRAN on MacOSX requires compiler versions 4.7.2 or later for gfortran and gcc and must be compatible with object oriented features in Fortran 2003. 
 %The compiler g++ is needed for installing SAMRAI.
@@ -121,9 +121,9 @@ We recommend that PETSc be obtained using the version control system
 
 Define environment variables $\verb|PETSC_DIR|$ and $\verb|PETSC_ARCH|$ giving the location of the petsc-dev source and the directory where the libraries for the particular architecture are stored after compiling and installing PETSc.
 
-\subsubsection{MacOSX}
+\subsubsection{Mac OS X}
 
-To install ParMETIS/METIS on MacOSX it is necessary to first install CMAKE from e.g. Homebrew, MacPorts or Fink.
+\paragraph{Lion, Mavericks ($\leq$ Mac OS X 10.9.x)} To install ParMETIS/METIS on MacOSX it is necessary to first install the latest version (3.0.x) of CMAKE from e.g. Homebrew, MacPorts or Fink.
 
 To install PETSc, MPI using openmpi, HDF5, and ParMETIS/METIS with debugging turned off configure PETSc using:
 
@@ -151,17 +151,19 @@ Note that ParMETIS/METIS is only needed for using the unstructured grid capabili
 \item install gcc (need version 4.9.x): {\tt brew install gcc}
 \item install cmake (need version 3.0.x): {\tt brew install cmake}
 \item configure PETSc using the Mac c and c++ compilers clang, clang++ and gfortran installed from Homebrew: 
+
+$\verb|cd petsc-dev|$\\
 \begin{verbatim}
 ./configure --with-cc=clang --with-cxx=clang++ 
             --with-fc=gfortran --download-mpich=1 
             --download-hdf5=1 --download-metis=1 
             --download-parmetis=1 --with-debugging=0
 \end{verbatim} 
-At the time of this writing openmpi did not compile. HDF5 does not compile using gcc.
 
-\item make all
-\item make pflotran
+\item $\verb|make all|$\\ $\verb|make test|$
+%\item $\verb|cd ./pflotran-dev/src/pflotran|$\\ $\verb|make pflotran|$
 \end{enumerate}
+Notes: At the time of this writing (10.23.14) openmpi did not compile. HDF5 did not compile using gcc-4.9 installed from Homebrew.
 
 \subsubsection{Windows}
 
