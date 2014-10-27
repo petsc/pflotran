@@ -5311,6 +5311,74 @@ end subroutine THSecondaryHeatJacobian
 
 ! ************************************************************************** !
 
+subroutine EnergyToTemperatureBisection(T,TL,TR,h,energy,Cwi,Pr,option)
+  ! 
+  ! Solves the following nonlinear equation using the bisection method
+  !
+  ! R(T) = rho(T) Cwi hw T - energy = 0
+  !
+  ! Author: Nathan Collier, ORNL
+  ! Date: 11/2014
+  ! 
+  use EOS_Water_module
+  use Option_module
+
+  implicit none
+
+  PetscReal      :: T,TL,TR,h,energy,Cwi,Pr
+  type(option_type), pointer :: option
+
+  PetscReal      :: Tp,rho,rho_t,f,fR,fL,rtol
+  PetscInt       :: iter,niter
+  PetscBool      :: found
+  PetscErrorCode :: ierr
+
+  call EOSWaterdensity(TR,Pr,rho,rho_T,ierr)
+  fR = rho*Cwi*h*(TR+273.15d0) - energy
+  call EOSWaterdensity(TL,Pr,rho,rho_T,ierr)
+  fL = rho*Cwi*h*(TL+273.15d0) - energy
+
+  if (fL*fR > 0.d0) then
+     print *,"[TL,TR] = ",TL,TR
+     print *,"[fL,fR] = ",fL,fR
+     write(option%io_buffer,'("th.F90: EnergyToTemperatureBisection --> root is not bracketed")')
+     call printErrMsg(option)
+  endif
+
+  T = 0.5d0*(TL+TR)
+  call EOSWaterdensity(T,Pr,rho,rho_T,ierr)
+  f = rho*Cwi*h*(T+273.15d0) - energy
+
+  found = PETSC_FALSE
+  niter = 200
+  rtol  = 1.d-6
+  do iter = 1,niter
+     Tp = T
+     if (fL*f < 0.d0) then
+        TR = T
+     else 
+        TL = T
+     endif
+
+     T = 0.5d0*(TL+TR)
+
+     call EOSWaterdensity(T,Pr,rho,rho_T,ierr)
+     f = rho*Cwi*h*(T+273.15d0) - energy
+
+     if (abs((T-Tp)/(T+273.15d0)) < rtol) then
+        found = PETSC_TRUE
+        exit
+     endif
+  enddo
+
+  if (found .eqv. PETSC_FALSE) then
+     print *,"[TL,T,TR] = ",TL,T,TR
+     write(option%io_buffer,'("th.F90: EnergyToTemperatureBisection --> root not found!")')
+     call printErrMsg(option)
+  endif
+
+end subroutine EnergyToTemperatureBisection
+
 subroutine THUpdateSurfaceBC(realization)
   ! 
   ! Deallocates variables associated with Richard
@@ -5366,7 +5434,7 @@ subroutine THUpdateSurfaceBC(realization)
   PetscReal :: surftemp_old
   PetscReal :: Temp_upwind
   PetscReal :: surftemp_new,psurftemp_new,rtol
-  PetscReal :: Cwi
+  PetscReal :: Cwi,TL,TR
   PetscBool :: found
   PetscErrorCode :: ierr
 
@@ -5508,24 +5576,16 @@ subroutine THUpdateSurfaceBC(realization)
             deng_times_ht_per_unitvol    = den_aveg*(enthalpy         + Cwi*273.15d0)*dhead
             eng_times_ht_per_unitvol_new = eng_times_ht_per_unitvol_old - deng_times_ht_per_unitvol
 
-            ! Solve for the new temperature by fixed point iteration
-            surftemp_new = surftemp_old
-            found = PETSC_FALSE
-            do iter = 1,niter
-              psurftemp_new = surftemp_new
-              surftemp_new  = eng_times_ht_per_unitvol_new/(den*Cwi*head_new) - 273.15d0
-              call EOSWaterdensity(surftemp_new,option%reference_pressure,den,dum1,ierr)
-              if (abs((surftemp_new-psurftemp_new)/(surftemp_new+273.15d0))<rtol) then
-                found = PETSC_TRUE
-                exit
-              endif
-            enddo
-            if (found .eqv. PETSC_FALSE) then
-              write(option%io_buffer, &
-                   '("th.F90: THUpdateSurfaceBC --> fixed point (eflux_bulk) not found!")')
-              call printErrMsg(option)
-            endif
+            TL = -100.d0
+            TR =  100.d0
+            call EnergyToTemperatureBisection(surftemp_new,TL,TR, &
+                                              head_new, &
+                                              eng_times_ht_per_unitvol_new, &
+                                              Cwi, &
+                                              option%reference_pressure, &
+                                              option)
 
+            call EOSWaterdensity(surftemp_new,option%reference_pressure,den,dum1,ierr)
             surfpress_new = head_new*(abs(option%gravity(3)))*den + &
               option%reference_pressure
           endif
