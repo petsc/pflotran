@@ -5434,7 +5434,7 @@ subroutine THUpdateSurfaceBC(realization)
   PetscReal :: surftemp_old
   PetscReal :: Temp_upwind
   PetscReal :: surftemp_new,psurftemp_new,rtol
-  PetscReal :: Cwi,TL,TR
+  PetscReal :: Cwi,TL,TR,one
   PetscBool :: found
   PetscErrorCode :: ierr
 
@@ -5455,6 +5455,7 @@ subroutine THUpdateSurfaceBC(realization)
 
   ! GB: Should probably add this as a member of option
   Cwi = 4.188d3 ! [J/kg/K]
+  one = 1.d0
 
   ! Maximum no. of iterations to compute updated temperature of surface-flow
   niter = 20
@@ -5534,23 +5535,14 @@ subroutine THUpdateSurfaceBC(realization)
             eng_per_unitvol_old = den*Cwi*(surftemp_old + 273.15d0)
             eng_per_unitvol_new = eng_per_unitvol_old - eflux_cond/option%scale*option%flow_dt/area
 
-            ! Solve for the new temperature by fixed point iteration
-            surftemp_new = surftemp_old
-            found = PETSC_FALSE
-            do iter = 1,niter
-              psurftemp_new = surftemp_new
-              surftemp_new  = eng_per_unitvol_new/(den*Cwi) - 273.15d0
-              call EOSWaterdensity(surftemp_new,option%reference_pressure,den,dum1,ierr)
-              if (abs((surftemp_new-psurftemp_new)/(surftemp_new+273.15d0))<rtol) then
-                found = PETSC_TRUE
-                exit
-              endif
-            enddo
-            if (found .eqv. PETSC_FALSE) then
-              write(option%io_buffer, &
-                   '("th.F90: THUpdateSurfaceBC --> fixed point (eflux_cond) not found!")')
-              call printErrMsg(option)
-            endif
+            TL = -100.d0
+            TR =  100.d0
+            call EnergyToTemperatureBisection(surftemp_new,TL,TR, &
+                                              one, &
+                                              eng_per_unitvol_new, &
+                                              Cwi, &
+                                              option%reference_pressure, &
+                                              option)
 
             ! 2) Find new surface-temperature due to heat transfer via bulk-movement
             !    water transport
