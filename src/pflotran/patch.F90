@@ -5696,6 +5696,8 @@ function PatchGetConnectionsFromCoords(patch,coordinates,integral_flux_name, &
   PetscReal :: magnitude
   PetscReal :: v1(3), v2(3)
   PetscReal :: x, y, z
+  PetscReal :: value1, value2
+  PetscReal, parameter :: relative_tolerance = 1.d-6
   PetscBool :: within_tolerance
   PetscErrorCode :: ierr
   
@@ -5770,15 +5772,23 @@ function PatchGetConnectionsFromCoords(patch,coordinates,integral_flux_name, &
           cur_connection_set%dist(Y_DIRECTION,iconn)
       z = grid%z(ghosted_id_up) + fraction_upwind * magnitude * &
           cur_connection_set%dist(Z_DIRECTION,iconn)
-      within_tolerance = PETSC_FALSE
       select case(idir)
         case(X_DIRECTION)
-          within_tolerance = Equal(x,coordinates(1)%x)
+          value1 = x
+          value2 = coordinates(1)%x
         case(Y_DIRECTION)
-          within_tolerance = Equal(y,coordinates(1)%y)
+          value1 = y
+          value2 = coordinates(1)%y
         case(Z_DIRECTION)
-          within_tolerance = Equal(z,coordinates(1)%z)
+          value1 = z
+          value2 = coordinates(1)%z
       end select
+      within_tolerance = PETSC_FALSE
+      if (Equal(value1,0.d0)) then
+        within_tolerance = Equal(value1,value2)
+      else
+        within_tolerance = dabs((value1-value2)/value1) < relative_tolerance
+      endif
       if (within_tolerance .and. &
           GeometryPointInPolygon(x,y,z,idir,coordinates)) then
         icount = icount + 1
@@ -5809,15 +5819,23 @@ function PatchGetConnectionsFromCoords(patch,coordinates,integral_flux_name, &
                                cur_connection_set%dist(Y_DIRECTION,iconn)
       z = grid%z(ghosted_id) - fraction_upwind * magnitude * &
                                cur_connection_set%dist(Z_DIRECTION,iconn)
-      within_tolerance = PETSC_FALSE
       select case(idir)
         case(X_DIRECTION)
-          within_tolerance = Equal(x,coordinates(1)%x)
+          value1 = x
+          value2 = coordinates(1)%x
         case(Y_DIRECTION)
-          within_tolerance = Equal(y,coordinates(1)%y)
+          value1 = y
+          value2 = coordinates(1)%y
         case(Z_DIRECTION)
-          within_tolerance = Equal(z,coordinates(1)%z)
+          value1 = z
+          value2 = coordinates(1)%z
       end select
+      within_tolerance = PETSC_FALSE
+      if (Equal(value1,0.d0)) then
+        within_tolerance = Equal(value1,value2)
+      else
+        within_tolerance = dabs((value1-value2)/value1) < relative_tolerance
+      endif
       if (within_tolerance .and. &
           GeometryPointInPolygon(x,y,z,idir,coordinates)) then
         icount = icount + 1
