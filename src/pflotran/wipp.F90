@@ -18,6 +18,7 @@ module Creep_Closure_module
   contains
     procedure, public :: Read => CreepClosureRead
     procedure, public :: Evaluate => CreepClosureEvaluate
+    procedure, public :: Test => CreepClosureTest
   end type creep_closure_type
   
   public :: CreepClosureCreate, &
@@ -196,6 +197,26 @@ function CreepClosureEvaluate(this,time,pressure)
   CreepClosureEvaluate = this%lookup_table%sample(time,pressure)
   
 end function CreepClosureEvaluate
+
+
+! ************************************************************************** !
+
+subroutine CreepClosureTest(this,time,pressure)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/13/14
+  ! 
+  implicit none
+  
+  class(creep_closure_type) :: this
+  PetscReal :: time
+  PetscReal :: pressure
+  
+  PetscReal :: CreepClosureEvaluate
+  
+  print *, time, pressure, this%Evaluate(time,pressure)
+  
+end subroutine CreepClosuretest
 
 ! ************************************************************************** !
 
