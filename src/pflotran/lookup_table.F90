@@ -57,11 +57,15 @@ module Lookup_Table_module
     module procedure LookupTableTest2D
   end interface
 
+  interface LookupTableDestroy
+    module procedure LookupTableUniformDestroy
+    module procedure LookupTableGeneralDestroy
+  end interface
+
   public :: LookupTableCreateUniform, &
             LookupTableCreateGeneral, &
-            LookupTableUniformDestroy, &
-            LookupTableTest, &
-            LookupTableGeneralDestroy
+            LookupTableDestroy, &
+            LookupTableTest
   
 contains
 
