@@ -23,6 +23,11 @@ module Creep_Closure_module
   
   class(creep_closure_type), pointer, public :: creep_closure
   
+  interface CreepClosureDestroy
+    module procedure CreepClosureDestroy1
+    module procedure CreepClosureDestroy2
+  end interface
+  
   public :: CreepClosureInit, &
             CreepClosureCreate, &
             CreepClosureDestroy
@@ -252,7 +257,23 @@ end subroutine CreepClosuretest
 
 ! ************************************************************************** !
 
-subroutine CreepClosureDestroy(creep_closure)
+subroutine CreepClosureDestroy1()
+  ! 
+  ! Deallocates any allocated pointers in auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 04/09/08
+  ! 
+
+  implicit none
+  
+  call CreepClosureDestroy(creep_closure)
+
+end subroutine CreepClosureDestroy1
+
+! ************************************************************************** !
+
+subroutine CreepClosureDestroy2(creep_closure)
   ! 
   ! Deallocates any allocated pointers in auxiliary object
   ! 
@@ -268,6 +289,6 @@ subroutine CreepClosureDestroy(creep_closure)
   deallocate(creep_closure)
   nullify(creep_closure)
 
-end subroutine CreepClosureDestroy
+end subroutine CreepClosureDestroy2
 
 end module Creep_Closure_module

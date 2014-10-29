@@ -15,7 +15,7 @@ module Reaction_Sandbox_module
   
 #include "finclude/petscsys.h"
 
-  class(reaction_sandbox_base_type), pointer, public :: sandbox_list
+  class(reaction_sandbox_base_type), pointer, public :: rxn_sandbox_list
 
   interface RSandboxRead
     module procedure RSandboxRead1
@@ -49,10 +49,10 @@ subroutine RSandboxInit(option)
   implicit none
   type(option_type) :: option
 
-  if (associated(sandbox_list)) then
+  if (associated(rxn_sandbox_list)) then
     call RSandboxDestroy()
   endif
-  nullify(sandbox_list)
+  nullify(rxn_sandbox_list)
 
 end subroutine RSandboxInit
 
@@ -78,7 +78,7 @@ subroutine RSandboxSetup(reaction,option)
   class(reaction_sandbox_base_type), pointer :: cur_sandbox  
 
   ! sandbox reactions
-  cur_sandbox => sandbox_list
+  cur_sandbox => rxn_sandbox_list
   do
     if (.not.associated(cur_sandbox)) exit
     call cur_sandbox%Setup(reaction,option)
@@ -107,7 +107,7 @@ subroutine RSandboxRead1(input,option)
   type(input_type) :: input
   type(option_type) :: option
 
-  call RSandboxRead(sandbox_list,input,option)
+  call RSandboxRead(rxn_sandbox_list,input,option)
 
 end subroutine RSandboxRead1
 
@@ -234,7 +234,7 @@ subroutine RSandbox(Residual,Jacobian,compute_derivative,rt_auxvar, &
   
   class(reaction_sandbox_base_type), pointer :: cur_reaction
   
-  cur_reaction => sandbox_list
+  cur_reaction => rxn_sandbox_list
   do
     if (.not.associated(cur_reaction)) exit
 !    select type(cur_reaction)
@@ -260,7 +260,7 @@ subroutine RSandboxDestroy1()
 
   implicit none
 
-  call RSandboxDestroy(sandbox_list)
+  call RSandboxDestroy(rxn_sandbox_list)
   
 end subroutine RSandboxDestroy1
 

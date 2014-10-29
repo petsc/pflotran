@@ -2948,7 +2948,7 @@ subroutine RichardsSSSandbox(residual,Jacobian,compute_derivative, &
     call VecGetArrayF90(residual,r_p,ierr);CHKERRQ(ierr)
   endif
   
-  cur_srcsink => sandbox_list
+  cur_srcsink => ss_sandbox_list
   do
     if (.not.associated(cur_srcsink)) exit
       aux_real = 0.d0

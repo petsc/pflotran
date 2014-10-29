@@ -13,7 +13,7 @@ module SrcSink_Sandbox_module
   
 #include "finclude/petscsys.h"
 
-  class(srcsink_sandbox_base_type), pointer, public :: sandbox_list
+  class(srcsink_sandbox_base_type), pointer, public :: ss_sandbox_list
 
   interface SSSandboxRead
     module procedure SSSandboxRead1
@@ -46,10 +46,10 @@ subroutine SSSandboxInit(option)
   implicit none
   type(option_type) :: option
 
-  if (associated(sandbox_list)) then
+  if (associated(ss_sandbox_list)) then
     call SSSandboxDestroy()
   endif
-  nullify(sandbox_list)
+  nullify(ss_sandbox_list)
 
 end subroutine SSSandboxInit
 
@@ -75,7 +75,7 @@ subroutine SSSandboxSetup(region_list,option)
   class(srcsink_sandbox_base_type), pointer :: cur_sandbox  
 
   ! sandbox source/sinks
-  cur_sandbox => sandbox_list
+  cur_sandbox => ss_sandbox_list
   do
     if (.not.associated(cur_sandbox)) exit
     call cur_sandbox%Setup(region_list,option)
@@ -104,7 +104,7 @@ subroutine SSSandboxRead1(input,option)
   type(input_type) :: input
   type(option_type) :: option
 
-  call SSSandboxRead(sandbox_list,input,option)
+  call SSSandboxRead(ss_sandbox_list,input,option)
 
 end subroutine SSSandboxRead1
 
@@ -215,7 +215,7 @@ subroutine SSSandbox(residual,Jacobian,compute_derivative, &
     call VecGetArrayF90(residual,r_p,ierr);CHKERRQ(ierr)
   endif
   
-  cur_srcsink => sandbox_list
+  cur_srcsink => ss_sandbox_list
   do
     if (.not.associated(cur_srcsink)) exit
       do i = 1, size(cur_srcsink%region%cell_ids)
@@ -257,7 +257,7 @@ subroutine SSSandboxDestroy1()
 
   implicit none
 
-  call SSSandboxDestroy(sandbox_list)
+  call SSSandboxDestroy(ss_sandbox_list)
   
 end subroutine SSSandboxDestroy1
 
