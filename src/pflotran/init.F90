@@ -1456,6 +1456,7 @@ subroutine InitReadInput(simulation)
   use EOS_module
   use EOS_Water_module
   use SrcSink_Sandbox_module
+  use Creep_Closure_module
   
   use Surface_Flow_module
   use Surface_Init_module, only : SurfaceInitReadInput
@@ -1612,6 +1613,12 @@ subroutine InitReadInput(simulation)
              call InputSkipToEnd(input,option,card)
            endif
          endif  
+         
+!....................
+      case('CREEP_CLOSURE')
+        call CreepClosureInit()
+        creep_closure => CreepClosureCreate()
+        call creep_closure%Read(input,option)
         
 !....................
       case ('ICE_MODEL')

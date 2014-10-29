@@ -41,6 +41,9 @@ subroutine CreepClosureInit()
   
   class(creep_closure_type), pointer :: CreepClosureCreate
   
+  if (associated(creep_closure)) then
+    call CreepClosureDestroy(creep_closure)
+  endif
   nullify(creep_closure)
   
 end subroutine CreepClosureInit
@@ -77,6 +80,7 @@ subroutine CreepClosureRead(this,input,option)
   use Input_Aux_module
   use String_module
   use Utility_module
+  use Units_module
   
   implicit none
   
@@ -86,11 +90,13 @@ subroutine CreepClosureRead(this,input,option)
   
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXWORDLENGTH) :: keyword
+  character(len=MAXWORDLENGTH) :: keyword, word
   character(len=MAXSTRINGLENGTH) :: error_string = 'CREEP_CLOSURE'
   type(input_type), pointer :: input2
   PetscInt :: temp_int
+  PetscReal :: time_units_conversion
 
+  time_units_conversion = 1.d0
   filename = ''
   input%ierr = 0
   do
@@ -144,6 +150,11 @@ subroutine CreepClosureRead(this,input,option)
       case('NUM_VALUES_PER_TIME') 
         call InputReadInt(input2,option,this%num_values_per_time)
         call InputErrorMsg(input2,option,'number of pressure',error_string)
+      case('TIME_UNITS') 
+        call InputReadWord(input2,option,word,PETSC_TRUE) 
+        call InputErrorMsg(input2,option,'UNITS','CONDITION')   
+        call StringToLower(word)
+        time_units_conversion = UnitsConvertToInternal(word,option)
       case('TIME')
         if (Uninitialized(this%num_times) .or. &
             Uninitialized(this%num_values_per_time)) then
@@ -161,6 +172,8 @@ subroutine CreepClosureRead(this,input,option)
         call UtilityReadRealArray(this%lookup_table%axis1%values, &
                                   -1,string, &
                                   input2,option)
+        this%lookup_table%axis1%values = this%lookup_table%axis1%values * &
+          time_units_conversion
       case('PRESSURE') 
         string = 'PRESSURE in CREEP_CLOSURE'
         call UtilityReadRealArray(this%lookup_table%axis2%values, &
@@ -213,7 +226,7 @@ function CreepClosureEvaluate(this,time,pressure)
   
   PetscReal :: CreepClosureEvaluate
   
-  CreepClosureEvaluate = this%lookup_table%sample(time,pressure)
+  CreepClosureEvaluate = this%lookup_table%Sample(time,pressure)
   
 end function CreepClosureEvaluate
 

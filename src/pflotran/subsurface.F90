@@ -24,13 +24,11 @@ subroutine SubsurfInitMaterialProperties(realization)
   ! Date: 10/07/14
   ! 
   use Realization_class
-  use Creep_Closure_module
   
   implicit none
   
   type(realization_type) :: realization
   
-  call CreepClosureInit()
   call SubsurfAllocMatPropDataStructs(realization)
   call SubsurfAssignMatIDsToRegions(realization)
   call SubsurfAssignMaterialProperties(realization)
@@ -214,6 +212,7 @@ subroutine SubsurfAssignMaterialProperties(realization)
   use Material_Aux_class
   use Material_module
   use Option_module
+  use Creep_Closure_module
   use Variables_module, only : PERMEABILITY_X, PERMEABILITY_Y, &
                                PERMEABILITY_Z, PERMEABILITY_XY, &
                                PERMEABILITY_YZ, PERMEABILITY_XZ, &
@@ -463,6 +462,13 @@ subroutine SubsurfAssignMaterialProperties(realization)
     enddo
     call VecRestoreArrayF90(field%work_loc,vec_p,ierr);CHKERRQ(ierr)
   enddo
+  
+  if (associated(creep_closure)) then
+    material_property => &
+      MaterialPropGetPtrFromArray(creep_closure%material_name, &
+                                  patch%material_property_array)
+    creep_closure%imat = material_property%internal_id
+  endif
   
 end subroutine SubsurfAssignMaterialProperties
 

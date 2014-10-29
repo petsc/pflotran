@@ -1164,9 +1164,9 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
     case(LIQUID_STATE)
       coupler%flow_aux_int_var(GENERAL_STATE_INDEX,1:num_connections) = LIQUID_STATE
       if (general%liquid_pressure%itype == HYDROSTATIC_BC) then
-        option%io_buffer = 'Hydrostatic BC for general phase cannot possibly ' // &
-          'be set up correctly. - GEH'
-        call printErrMsg(option)
+!        option%io_buffer = 'Hydrostatic BC for general phase cannot possibly ' // &
+!          'be set up correctly. - GEH'
+!        call printErrMsg(option)
         if (general%mole_fraction%itype /= DIRICHLET_BC) then
           option%io_buffer = &
             'Hydrostatic liquid state pressure bc for flow condition "' // &
@@ -3342,6 +3342,11 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
               vec_ptr(local_id) = patch%aux%General%auxvars(ZERO_INTEGER, &
                   grid%nL2G(local_id))%mobility(option%gas_phase)
             enddo
+          case(TRANSIENT_POROSITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%General%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%effective_porosity
+            enddo
         end select         
       endif
       
@@ -4184,6 +4189,9 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           case(GAS_MOBILITY)
             value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                       mobility(option%gas_phase)
+          case(TRANSIENT_POROSITY)
+            value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+                      effective_porosity
         end select        
       endif
       

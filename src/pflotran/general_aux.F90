@@ -535,8 +535,9 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   endif                   
   if (associated(creep_closure)) then
     if (creep_closure%imat == material_auxvar%id) then
+      ! option%time here is the t time, not t + dt time.
       gen_auxvar%effective_porosity = &
-        creep_closure%Evaluate(option%flow_time,cell_pressure)
+        creep_closure%Evaluate(option%time,cell_pressure)
     endif
   endif
 
