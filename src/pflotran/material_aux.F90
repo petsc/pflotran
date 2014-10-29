@@ -22,6 +22,7 @@ module Material_Aux_class
   PetscInt, public :: max_material_index
  
   type, public :: material_auxvar_type
+    PetscInt :: id
     PetscReal :: volume
     PetscReal :: porosity
     PetscReal :: porosity_store(2)
@@ -136,6 +137,7 @@ subroutine MaterialAuxVarInit(auxvar,option)
   class(material_auxvar_type) :: auxvar
   type(option_type) :: option
   
+  auxvar%id = UNINITIALIZED_INTEGER
   auxvar%volume = UNINITIALIZED_DOUBLE
   auxvar%porosity = UNINITIALIZED_DOUBLE
   auxvar%dporosity_dp = 0.d0

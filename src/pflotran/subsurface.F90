@@ -24,11 +24,13 @@ subroutine SubsurfInitMaterialProperties(realization)
   ! Date: 10/07/14
   ! 
   use Realization_class
+  use Creep_Closure_module
   
   implicit none
   
   type(realization_type) :: realization
   
+  call CreepClosureInit()
   call SubsurfAllocMatPropDataStructs(realization)
   call SubsurfAssignMatIDsToRegions(realization)
   call SubsurfAssignMaterialProperties(realization)
@@ -116,7 +118,8 @@ subroutine SubsurfAssignMatIDsToRegions(realization)
   use Patch_module
   use Field_module
   use Material_module
-
+  use Material_Aux_class
+  
   implicit none
   
   type(realization_type) :: realization
@@ -134,6 +137,7 @@ subroutine SubsurfAssignMatIDsToRegions(realization)
 
   type(material_property_type), pointer :: material_property
   type(region_type), pointer :: region
+  class(material_auxvar_type), pointer :: material_auxvars(:)
   
   option => realization%option
 
@@ -141,6 +145,7 @@ subroutine SubsurfAssignMatIDsToRegions(realization)
   do
     if (.not.associated(cur_patch)) exit
     ! set material ids to uninitialized
+    material_auxvars => cur_patch%aux%Material%auxvars
     cur_patch%imat = UNINITIALIZED_INTEGER
     grid => cur_patch%grid
     strata => cur_patch%strata_list%first
@@ -178,6 +183,7 @@ subroutine SubsurfAssignMatIDsToRegions(realization)
               ! if not active, set material id to zero
               cur_patch%imat(ghosted_id) = 0
             endif
+            material_auxvars(ghosted_id)%id = cur_patch%imat(ghosted_id)
           enddo
         endif
       endif

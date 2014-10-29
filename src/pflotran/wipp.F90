@@ -21,10 +21,29 @@ module Creep_Closure_module
     procedure, public :: Test => CreepClosureTest
   end type creep_closure_type
   
-  public :: CreepClosureCreate, &
+  class(creep_closure_type), pointer, public :: creep_closure
+  
+  public :: CreepClosureInit, &
+            CreepClosureCreate, &
             CreepClosureDestroy
   
 contains
+
+! ************************************************************************** !
+
+subroutine CreepClosureInit()
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/13/14
+  ! 
+
+  implicit none
+  
+  class(creep_closure_type), pointer :: CreepClosureCreate
+  
+  nullify(creep_closure)
+  
+end subroutine CreepClosureInit
 
 ! ************************************************************************** !
 

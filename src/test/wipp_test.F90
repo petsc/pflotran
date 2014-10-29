@@ -11,7 +11,7 @@ program wipp_test
 
 #include "finclude/petscsys.h"
 
-  class(creep_closure_type), pointer :: creep_closure
+  class(creep_closure_type), pointer :: cc
   type(option_type), pointer :: option
   type(input_type), pointer :: input
   
@@ -21,6 +21,7 @@ program wipp_test
   
   option => OptionCreate()
   call OptionInitMPI(option)
+  call CreepClosureInit()
   creep_closure => CreepClosureCreate()
   string = 'input_block.txt'
   input => InputCreate(IUNIT_TEMP,string,option)

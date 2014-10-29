@@ -303,6 +303,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   use EOS_Gas_module
   use Characteristic_Curves_module
   use Material_Aux_class
+  use Creep_Closure_module
   
   implicit none
 
@@ -532,6 +533,12 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
     call MaterialCompressSoil(material_auxvar,cell_pressure, &
                               gen_auxvar%effective_porosity,dummy)
   endif                   
+  if (associated(creep_closure)) then
+    if (creep_closure%imat == material_auxvar%id) then
+      gen_auxvar%effective_porosity = &
+        creep_closure%Evaluate(option%flow_time,cell_pressure)
+    endif
+  endif
 
   ! ALWAYS UPDATE THERMODYNAMIC PROPERTIES FOR BOTH PHASES!!!
 
