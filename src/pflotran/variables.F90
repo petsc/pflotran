@@ -107,7 +107,7 @@ module Variables_module
   PetscInt, parameter, public :: AIR_PRESSURE            = 92
   PetscInt, parameter, public :: CAPILLARY_PRESSURE      = 93
 
-  PetscInt, parameter, public :: TRANSIENT_POROSITY      = 94
+  PetscInt, parameter, public :: EFFECTIVE_POROSITY      = 94
   PetscInt, parameter, public :: LIQUID_HEAD             = 95
 
   PetscInt, parameter, public :: GAS_CONCENTRATION       = 96

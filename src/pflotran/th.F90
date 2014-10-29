@@ -5052,7 +5052,7 @@ subroutine THSetPlotVariables(realization)
     name = 'Transient Porosity'
     units = ''
     call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
-                                 TRANSIENT_POROSITY)
+                                 EFFECTIVE_POROSITY)
   endif
 ! name = 'Phase'
 ! units = ''
