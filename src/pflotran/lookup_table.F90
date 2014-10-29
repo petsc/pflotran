@@ -8,13 +8,13 @@ module Lookup_Table_module
   
 #include "finclude/petscsys.h"
 
-  type, public :: lookup_table_base_type
+  type, abstract, public :: lookup_table_base_type
     PetscInt :: dim
     PetscInt :: dims(3)
     PetscReal, pointer :: data(:)    
     class(lookup_table_axis_type), pointer :: axis1
   contains
-    procedure, public :: Sample => LookupTableEvaluateDummy
+    procedure(LookupTableEvaluateDummy), deferred, public :: Sample 
   end type lookup_table_base_type
   
   type, public, extends(lookup_table_base_type) :: lookup_table_uniform_type
@@ -321,7 +321,7 @@ subroutine LookupTableAxisIndexUniform(this,lookup1)
   
   size1 = size(this%values)
   begin1 = this%values(1)
-  i1 = (lookup1 - begin1) / (this%values(size1) - begin1) * (size1-1) + 1
+  i1 = int((lookup1 - begin1) / (this%values(size1) - begin1) * (size1-1) + 1)
   ! truncate i1 to zero indicating the value is below the range specified
   i1 = max(min(i1,size1),0)
   this%saved_index = i1
@@ -710,6 +710,8 @@ subroutine LookupTableGeneralDestroy(lookup_table)
   
   class(lookup_table_general_type), pointer :: lookup_table
   
+  if (.not.associated(lookup_table)) return
+
   call LookupTableAxisDestroy(lookup_table%axis1)
   ! axis2 is different type
   if (associated(lookup_table%axis2)) then

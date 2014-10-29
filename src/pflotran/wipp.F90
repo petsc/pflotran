@@ -285,6 +285,8 @@ subroutine CreepClosureDestroy2(creep_closure)
   
   class(creep_closure_type), pointer :: creep_closure
   
+  if (.not.associated(creep_closure)) return
+
   call LookupTableDestroy(creep_closure%lookup_table)
   deallocate(creep_closure)
   nullify(creep_closure)
