@@ -383,23 +383,18 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
             'Kinematic wave'
           call printErrMsg(option)
         case (DIFFUSION_WAVE)
-#if 1
-        call SurfaceFlowFlux(surf_global_auxvars(ghosted_id_up), &
-                             zc(ghosted_id_up), &
-                             mannings_loc_p(ghosted_id_up), &
-                             surf_global_auxvars(ghosted_id_dn), &
-                             zc(ghosted_id_dn), &
-                             mannings_loc_p(ghosted_id_dn), &
-                             dist, cur_connection_set%area(iconn), &
-                             option,vel,Res)
-#endif
+          call SurfaceFlowFlux(surf_global_auxvars(ghosted_id_up), &
+                               zc(ghosted_id_up), &
+                               mannings_loc_p(ghosted_id_up), &
+                               surf_global_auxvars(ghosted_id_dn), &
+                               zc(ghosted_id_dn), &
+                               mannings_loc_p(ghosted_id_dn), &
+                               dist, cur_connection_set%area(iconn), &
+                               option,vel,Res)
       end select
 
       patch%internal_velocities(1,sum_connection) = vel
       patch%internal_flow_fluxes(1,sum_connection) = Res(1)
-
-      vel = patch%internal_velocities(1,sum_connection)
-      Res(1) = patch%internal_flow_fluxes(1,sum_connection)
 
       if (local_id_up>0) then
         ff_p(local_id_up) = ff_p(local_id_up) - Res(1)/area_p(local_id_up)
@@ -433,20 +428,16 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
       dz = zc(ghosted_id_dn) - cur_connection_set%intercp(3,iconn)
       slope_dn = dz/sqrt(dx*dx + dy*dy + dz*dz)
 
-#if 1
       call SurfaceFlowBCFlux(boundary_condition%flow_condition%itype, &
                          surf_global_auxvars_bc(sum_connection), &
                          slope_dn, &
                          mannings_loc_p(ghosted_id_dn), &
                          cur_connection_set%area(iconn), &
                          option,vel,Res)
-#endif
 
       patch%boundary_velocities(1,sum_connection) = vel
       patch%boundary_flow_fluxes(1,sum_connection) = Res(1)
-      vel = patch%boundary_velocities(1,sum_connection)
-      Res(1) = patch%boundary_flow_fluxes(1,sum_connection)
-      
+
       ff_p(local_id) = ff_p(local_id) + Res(1)/area_p(local_id)
     enddo
     boundary_condition => boundary_condition%next
