@@ -674,7 +674,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   
   ! flow
   if (option%nflowdof > 0) then
-    if (option%flow%store_fluxes) then
+    if (option%flow%store_fluxes .or. (patch%surf_or_subsurf_flag == SURFACE) ) then
       allocate(patch%internal_flow_fluxes(option%nflowdof,temp_int))
       patch%internal_flow_fluxes = 0.d0
     endif
@@ -705,7 +705,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     patch%boundary_velocities = 0.d0
     ! flow
     if (option%nflowdof > 0) then
-      if (option%flow%store_fluxes) then  
+      if (option%flow%store_fluxes .or. (patch%surf_or_subsurf_flag == SURFACE)) then
         allocate(patch%boundary_flow_fluxes(option%nflowdof,temp_int))
         patch%boundary_flow_fluxes = 0.d0
       endif
