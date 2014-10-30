@@ -50,6 +50,11 @@ module General_Aux_module
   PetscInt, parameter, public :: GENERAL_LIQUID_CONDUCTANCE_INDEX = 11
   PetscInt, parameter, public :: GENERAL_GAS_CONDUCTANCE_INDEX = 12
   PetscInt, parameter, public :: GENERAL_MAX_INDEX = 13
+  
+  PetscInt, parameter, public :: GENERAL_UPDATE_FOR_DERIVATIVE = -1
+  PetscInt, parameter, public :: GENERAL_UPDATE_FOR_FIXED_ACCUM = 0
+  PetscInt, parameter, public :: GENERAL_UPDATE_FOR_ACCUM = 1
+  PetscInt, parameter, public :: GENERAL_UPDATE_FOR_BOUNDARY = 2
 
   PetscReal, parameter, public :: general_pressure_scale = 1.d0
   
@@ -389,8 +394,8 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   gen_auxvar%mobility = 0.d0
 
 #if 0
-  if (option%iflag >= 1) then
-    if (option%iflag == 1) then
+  if (option%iflag >= GENERAL_UPDATE_FOR_ACCUM) then
+    if (option%iflag == GENERAL_UPDATE_FOR_ACCUM) then
       write(*,'(a,i3,3es17.8,a3)') 'before: ', &
         ghosted_id, x(1:3), trim(state_char)
     else
@@ -528,17 +533,25 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
                       gen_auxvar%pres(spid))
         
   ! calculate effective porosity as a function of pressure
-  gen_auxvar%effective_porosity = material_auxvar%porosity
-  if (soil_compressibility_index > 0) then
-    call MaterialCompressSoil(material_auxvar,cell_pressure, &
-                              gen_auxvar%effective_porosity,dummy)
-  endif                   
-  if (associated(creep_closure)) then
-    if (creep_closure%imat == material_auxvar%id) then
-      ! option%time here is the t time, not t + dt time.
-      gen_auxvar%effective_porosity = &
-        creep_closure%Evaluate(option%time,cell_pressure)
+  if (option%iflag == GENERAL_UPDATE_FOR_ACCUM .or. &
+      option%iflag == GENERAL_UPDATE_FOR_DERIVATIVE) then
+    gen_auxvar%effective_porosity = material_auxvar%porosity_store(TIME_TpDT)
+    if (soil_compressibility_index > 0) then
+      call MaterialCompressSoil(material_auxvar,cell_pressure, &
+                                gen_auxvar%effective_porosity,dummy)
+    endif                   
+    if (associated(creep_closure)) then
+      if (creep_closure%imat == material_auxvar%id) then
+        ! option%time here is the t time, not t + dt time.
+        gen_auxvar%effective_porosity = &
+          creep_closure%Evaluate(option%time,cell_pressure)
+      endif
     endif
+    if (option%iflag == GENERAL_UPDATE_FOR_ACCUM) then
+      material_auxvar%porosity = gen_auxvar%effective_porosity
+    endif
+  else if (option%iflag == GENERAL_UPDATE_FOR_FIXED_ACCUM) then
+    gen_auxvar%effective_porosity = material_auxvar%porosity_store(TIME_T)
   endif
 
   ! ALWAYS UPDATE THERMODYNAMIC PROPERTIES FOR BOTH PHASES!!!
@@ -623,7 +636,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   endif
 
 #if 0
-  if (option%iflag == 1) then
+  if (option%iflag == GENERAL_UPDATE_FOR_ACCUM) then
     if (ghosted_id == 1) then
     write(*,'(a,i3,7f13.4,a3)') 'i/l/g/a/c/v/s/t: ', &
       ghosted_id, gen_auxvar%pres(1:5), gen_auxvar%sat(1), gen_auxvar%temp, &
@@ -726,10 +739,10 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &
                                  'Before Update',option)
 #endif
-        if (option%iflag == 1) then
+        if (option%iflag == GENERAL_UPDATE_FOR_ACCUM) then
           write(state_change_string,'(''Liquid -> 2 Phase at Cell '',i5)') &
             ghosted_id
-        else if (option%iflag == -1) then
+        else if (option%iflag == GENERAL_UPDATE_FOR_DERIVATIVE) then
           write(state_change_string, &
             '(''Liquid -> 2 Phase at Cell (due to perturbation) '',i5)') &
             ghosted_id
@@ -788,10 +801,10 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &
                                  'Before Update',option)
 #endif
-        if (option%iflag == 1) then
+        if (option%iflag == GENERAL_UPDATE_FOR_ACCUM) then
           write(state_change_string,'(''Gas -> 2 Phase at Cell '',i5)') &
             ghosted_id
-        else if (option%iflag == -1) then
+        else if (option%iflag == GENERAL_UPDATE_FOR_DERIVATIVE) then
           write(state_change_string, &
             '(''Gas -> 2 Phase at Cell (due to perturbation) '',i5)') &
             ghosted_id
@@ -820,10 +833,10 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &
                                  'Before Update',option)
 #endif
-        if (option%iflag == 1) then
+        if (option%iflag == GENERAL_UPDATE_FOR_ACCUM) then
           write(state_change_string,'(''2 Phase -> Liquid at Cell '',i5)') &
             ghosted_id
-        else if (option%iflag == -1) then
+        else if (option%iflag == GENERAL_UPDATE_FOR_DERIVATIVE) then
           write(state_change_string, &
             '(''2 Phase -> Liquid at Cell (due to perturbation) '',i5)') &
             ghosted_id        
@@ -863,10 +876,10 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &
                                  'Before Update',option)
 #endif
-        if (option%iflag == 1) then
+        if (option%iflag == GENERAL_UPDATE_FOR_ACCUM) then
           write(state_change_string,'(''2 Phase -> Gas at Cell '',i5)') &
             ghosted_id
-        else if (option%iflag == -1) then
+        else if (option%iflag == GENERAL_UPDATE_FOR_DERIVATIVE) then
           write(state_change_string, &
             '(''2 Phase -> Gas at Cell (due to perturbation) '',i5)') &
             ghosted_id       
@@ -1034,8 +1047,8 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
        endif
   end select
   
-  ! flag(-1) indicates call from perturbation routine - for debugging
-  option%iflag = -1
+  ! GENERAL_UPDATE_FOR_DERIVATIVE indicates call from perturbation
+  option%iflag = GENERAL_UPDATE_FOR_DERIVATIVE
   do idof = 1, option%nflowdof
     gen_auxvar(idof)%pert = pert(idof)
     x_pert = x

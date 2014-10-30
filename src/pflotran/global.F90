@@ -536,11 +536,6 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
       realization%patch%aux%Global%time_tpdt = time
   end select  
   
-  ! update material properties (e.g. porosity)
-  call MaterialUpdateAuxVars(realization%patch%aux%Material, &
-                             realization%comm1,field%work_loc, &
-                             time_level,option%time)
-  
   ! liquid density
   call RealizationGetVariable(realization,field%work,LIQUID_DENSITY, &
                              ZERO_INTEGER)

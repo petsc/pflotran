@@ -96,6 +96,7 @@ module Material_module
             MaterialAssignPropertyToAux, &
             MaterialSetup, &
             MaterialUpdateAuxVars, &
+            MaterialStoreAuxVars, &
             MaterialWeightAuxVars, &
             MaterialGetMaxExternalID, &
             MaterialCreateIntToExtMapping, &
@@ -1493,9 +1494,22 @@ subroutine MaterialGetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
         vec_loc_p(ghosted_id) = Material%auxvars(ghosted_id)%volume
       enddo
     case(POROSITY)
-      do ghosted_id=1, Material%num_aux
-        vec_loc_p(ghosted_id) = Material%auxvars(ghosted_id)%porosity
-      enddo
+      select case(isubvar)
+        case(TIME_T)
+          do ghosted_id=1, Material%num_aux
+            vec_loc_p(ghosted_id) = &
+              Material%auxvars(ghosted_id)%porosity_store(TIME_T)
+          enddo
+        case(TIME_TpDT)
+          do ghosted_id=1, Material%num_aux
+            vec_loc_p(ghosted_id) = &
+              Material%auxvars(ghosted_id)%porosity_store(TIME_TpDT)
+          enddo
+        case default
+          do ghosted_id=1, Material%num_aux
+            vec_loc_p(ghosted_id) = Material%auxvars(ghosted_id)%porosity
+          enddo
+      end select
     case(TORTUOSITY)
       do ghosted_id=1, Material%num_aux
         vec_loc_p(ghosted_id) = Material%auxvars(ghosted_id)%tortuosity
@@ -1570,6 +1584,35 @@ subroutine MaterialWeightAuxVars(Material,weight)
   
  end subroutine MaterialWeightAuxVars
  
+ 
+! ************************************************************************** !
+
+subroutine MaterialStoreAuxVars(Material,time)
+  ! 
+  ! Moves material properties from TIME_TpDT -> TIME_T in storage arrays
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/30/14
+  ! 
+
+  use Option_module
+
+  implicit none
+
+  type(material_type) :: Material
+  PetscReal :: time
+  
+  PetscInt :: ghosted_id
+  
+  Material%time_t = time
+  
+  do ghosted_id=1, Material%num_aux
+    Material%auxvars(ghosted_id)%porosity_store(TIME_T) = &
+      Material%auxvars(ghosted_id)%porosity_store(TIME_TpDT)
+  enddo
+
+end subroutine MaterialStoreAuxVars
+
 ! ************************************************************************** !
 
 subroutine MaterialUpdateAuxVars(Material,comm1,vec_loc,time_level,time)

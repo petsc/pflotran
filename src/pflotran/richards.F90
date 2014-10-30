@@ -73,15 +73,9 @@ subroutine RichardsTimeCut(realization)
   option => realization%option
   field => realization%field
 
-  
-  call VecCopy(field%flow_yy,field%flow_xx,ierr);CHKERRQ(ierr)
-
   if (option%mimetic) then
     call VecCopy(field%flow_yy_faces, field%flow_xx_faces, ierr);CHKERRQ(ierr)
     call RichardsUpdateAuxVars(realization)
-    call VecCopy(field%flow_yy,field%flow_xx,ierr);CHKERRQ(ierr)
-!    read(*,*)    
-
   endif
 
   call RichardsInitializeTimestep(realization)  
@@ -946,8 +940,6 @@ subroutine RichardsUpdateSolution(realization)
                   ierr);CHKERRQ(ierr)
   end if
 
-  call VecCopy(field%flow_xx,field%flow_yy,ierr);CHKERRQ(ierr)
-
   call RichardsUpdateSolutionPatch(realization)
 
 end subroutine RichardsUpdateSolution
@@ -974,6 +966,7 @@ subroutine RichardsUpdateSolutionPatch(realization)
   endif
   
   if (realization%option%update_flow_perm) then
+!TODO(geh): this is in the wrong place  
     call RichardsUpdatePermPatch(realization)
   endif
 

@@ -81,8 +81,6 @@ subroutine Flash2TimeCut(realization)
   option => realization%option
   field => realization%field
 
-  call VecCopy(field%flow_yy,field%flow_xx,ierr);CHKERRQ(ierr)
-
 end subroutine Flash2TimeCut
 
 ! ************************************************************************** !
@@ -945,9 +943,6 @@ subroutine Flash2UpdateSolution(realization)
 
   PetscErrorCode :: ierr
   
-  call VecCopy(realization%field%flow_xx,realization%field%flow_yy, &
-               ierr);CHKERRQ(ierr)
-
 ! make room for hysteric s-Pc-kr
 
   if (realization%option%compute_mass_balance_new) then

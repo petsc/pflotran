@@ -1847,13 +1847,14 @@ subroutine RealizationUpdatePropertiesTS(realization)
       call VecRestoreArrayF90(field%porosity_mnrl_loc,porosity_mnrl_loc_p, &
                               ierr);CHKERRQ(ierr)
     endif
-    
-    call MaterialGetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
-                                 POROSITY,ZERO_INTEGER)
-    call DiscretizationLocalToLocal(discretization,field%work_loc, &
-                                    field%work_loc,ONEDOF)
-    call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
-                                 POROSITY,ZERO_INTEGER)
+
+    ! do not update the material auxvar porosity here.
+
+!    ! store the calculated porosity in the TIME_TpDT slot in %porosity_store
+!    call DiscretizationLocalToLocal(discretization,field%porosity_mnrl_loc, &
+!                                    field%work_loc,ONEDOF)
+!    call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+!                                 POROSITY,TIME_TpDT)
   endif
   
   if ((porosity_updated .and. &

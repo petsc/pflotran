@@ -81,8 +81,6 @@ subroutine ImmisTimeCut(realization)
   option => realization%option
   field => realization%field
 
-  call VecCopy(field%flow_yy,field%flow_xx,ierr);CHKERRQ(ierr)
-
 end subroutine ImmisTimeCut
 
 ! ************************************************************************** !
@@ -869,9 +867,6 @@ subroutine ImmisUpdateSolution(realization)
   
   field => realization%field
   
-  call VecCopy(realization%field%flow_xx,realization%field%flow_yy, &
-               ierr);CHKERRQ(ierr)
-
   cur_patch => realization%patch_list%first
   do
     if (.not.associated(cur_patch)) exit

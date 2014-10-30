@@ -186,6 +186,7 @@ subroutine PMRTInitializeTimestep(this)
   use Reactive_Transport_module, only : RTInitializeTimestep, &
                                         RTUpdateTransportCoefs
   use Global_module
+  use Material_module
 
   implicit none
   
@@ -217,6 +218,8 @@ subroutine PMRTInitializeTimestep(this)
   if (this%option%nflowdof > 0 .and. .not. this%steady_flow) then
     call this%SetTranWeights()
     ! set densities and saturations to t
+    call MaterialWeightAuxVars(this%realization%patch%aux%Material, &
+                               this%tran_weight_t0)
     call GlobalWeightAuxvars(this%realization,this%tran_weight_t0)
   endif
 
@@ -671,12 +674,6 @@ subroutine PMRTUpdateSolution2(this, update_kinetics)
   call RTUpdateEquilibriumState(this%realization)
   if (update_kinetics) &
     call RTUpdateKineticState(this%realization)
-  if (this%realization%reaction%update_porosity .or. &
-      this%realization%reaction%update_tortuosity .or. &
-      this%realization%reaction%update_permeability .or. &
-      this%realization%reaction%update_mineral_surface_area) then
-    call RealizationUpdatePropertiesTS(this%realization)
-  endif
   
   call MassTransferUpdate(this%realization%rt_mass_transfer_list, &
                           this%realization%patch%grid, &

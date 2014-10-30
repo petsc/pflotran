@@ -64,7 +64,6 @@ subroutine THTimeCut(realization)
   option => realization%option
   field => realization%field
  
-  call VecCopy(field%flow_yy,field%flow_xx,ierr);CHKERRQ(ierr)
   call THInitializeTimestep(realization)
  
 end subroutine THTimeCut
@@ -1101,8 +1100,6 @@ subroutine THUpdateSolution(realization)
   
   field => realization%field
     
-  call VecCopy(field%flow_xx,field%flow_yy,ierr);CHKERRQ(ierr)
-
   cur_patch => realization%patch_list%first
   do
     if (.not.associated(cur_patch)) exit
