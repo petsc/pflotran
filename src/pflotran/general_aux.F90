@@ -533,9 +533,8 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
                       gen_auxvar%pres(spid))
         
   ! calculate effective porosity as a function of pressure
-  if (option%iflag == GENERAL_UPDATE_FOR_ACCUM .or. &
-      option%iflag == GENERAL_UPDATE_FOR_DERIVATIVE) then
-    gen_auxvar%effective_porosity = material_auxvar%porosity_store(TIME_TpDT)
+  if (option%iflag /= GENERAL_UPDATE_FOR_BOUNDARY) then
+    gen_auxvar%effective_porosity = material_auxvar%porosity_base
     if (soil_compressibility_index > 0) then
       call MaterialCompressSoil(material_auxvar,cell_pressure, &
                                 gen_auxvar%effective_porosity,dummy)
@@ -547,11 +546,9 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
           creep_closure%Evaluate(option%time,cell_pressure)
       endif
     endif
-    if (option%iflag == GENERAL_UPDATE_FOR_ACCUM) then
+    if (option%iflag == GENERAL_UPDATE_FOR_DERIVATIVE) then
       material_auxvar%porosity = gen_auxvar%effective_porosity
     endif
-  else if (option%iflag == GENERAL_UPDATE_FOR_FIXED_ACCUM) then
-    gen_auxvar%effective_porosity = material_auxvar%porosity_store(TIME_T)
   endif
 
   ! ALWAYS UPDATE THERMODYNAMIC PROPERTIES FOR BOTH PHASES!!!

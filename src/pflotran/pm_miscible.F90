@@ -86,13 +86,14 @@ subroutine PMMiscibleInitializeTimestep(this)
   
   class(pm_miscible_type) :: this
 
-  call PMSubsurfaceInitializeTimestep(this)         
+  call PMSubsurfaceInitializeTimestepA(this)         
 
   if (this%option%print_screen_flag) then
     write(*,'(/,2("=")," MISCIBLE FLOW ",62("="))')
   endif
   
   call MiscibleInitializeTimestep(this%realization)
+  call PMSubsurfaceInitializeTimestepB(this)         
   
 end subroutine PMMiscibleInitializeTimestep
 

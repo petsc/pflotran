@@ -203,23 +203,16 @@ subroutine PMRTInitializeTimestep(this)
     write(*,'(/,2("=")," REACTIVE TRANSPORT ",57("="))')
   endif
   
-#if 0  
-  call DiscretizationLocalToLocal(discretization, &
-                                  this%realization%field%porosity_loc, &
-                                  this%realization%field%porosity_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization, &
-                                  this%realization%field%tortuosity_loc, &
-                                  this%realization%field%tortuosity_loc,ONEDOF)
-#endif  
-  
   ! interpolate flow parameters/data
   ! this must remain here as these weighted values are used by both
   ! RTInitializeTimestep and RTTimeCut (which calls RTInitializeTimestep)
   if (this%option%nflowdof > 0 .and. .not. this%steady_flow) then
     call this%SetTranWeights()
-    ! set densities and saturations to t
+    ! weight material properties (e.g. porosity)
     call MaterialWeightAuxVars(this%realization%patch%aux%Material, &
-                               this%tran_weight_t0)
+                               this%tran_weight_t0, &
+                               this%realization%field,this%comm1)
+    ! set densities and saturations to t
     call GlobalWeightAuxvars(this%realization,this%tran_weight_t0)
   endif
 
@@ -229,6 +222,10 @@ subroutine PMRTInitializeTimestep(this)
 #if 1
   ! set densities and saturations to t+dt
   if (this%option%nflowdof > 0 .and. .not. this%steady_flow) then
+    ! weight material properties (e.g. porosity)
+    call MaterialWeightAuxVars(this%realization%patch%aux%Material, &
+                               this%tran_weight_t1, &
+                               this%realization%field,this%comm1)
     call GlobalWeightAuxVars(this%realization,this%tran_weight_t1)
   endif
 

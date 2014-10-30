@@ -14,7 +14,10 @@ module Material_Aux_class
   PetscInt, parameter, public :: perm_xy_index = 4
   PetscInt, parameter, public :: perm_yz_index = 5
   PetscInt, parameter, public :: perm_xz_index = 6
-
+  
+  PetscInt, parameter, public :: POROSITY_NULL = 0
+  PetscInt, parameter, public :: POROSITY_BASE = 1
+  
 !  PetscInt, public :: soil_thermal_conductivity_index
 !  PetscInt, public :: soil_heat_capacity_index
   PetscInt, public :: soil_compressibility_index
@@ -24,10 +27,8 @@ module Material_Aux_class
   type, public :: material_auxvar_type
     PetscInt :: id
     PetscReal :: volume
-    PetscReal :: porosity
     PetscReal :: porosity_base
-    PetscReal :: porosity_t
-    PetscReal :: porosity_tpdt
+    PetscReal :: porosity
     PetscReal :: dporosity_dp
     PetscReal :: tortuosity
     PetscReal :: soil_particle_density
@@ -143,9 +144,7 @@ subroutine MaterialAuxVarInit(auxvar,option)
   auxvar%volume = UNINITIALIZED_DOUBLE
   auxvar%porosity = UNINITIALIZED_DOUBLE
   auxvar%dporosity_dp = 0.d0
-  auxvar%porosity_base = 0.d0
-  auxvar%porosity_t = 0.d0
-  auxvar%porosity_tpdt = 0.d0
+  auxvar%porosity_base = UNINITIALIZED_DOUBLE
   auxvar%tortuosity = UNINITIALIZED_DOUBLE
   auxvar%soil_particle_density = UNINITIALIZED_DOUBLE
   if (option%iflowmode /= NULL_MODE) then
@@ -340,7 +339,7 @@ subroutine MaterialCompressSoilLeijnse(auxvar,pressure, &
   compression = &
     exp(-1.d0 * compressibility * &
         (pressure - auxvar%soil_properties(soil_reference_pressure_index)))
-  tempreal = (1.d0 - auxvar%porosity) * compression
+  tempreal = (1.d0 - auxvar%porosity_base) * compression
   compressed_porosity = 1.d0 - tempreal
   dcompressed_porosity_dp = tempreal * compressibility
   
@@ -368,7 +367,7 @@ subroutine MaterialCompressSoilBRAGFLO(auxvar,pressure, &
   PetscReal :: compressibility
   
   compressibility = auxvar%soil_properties(soil_compressibility_index)
-  compressed_porosity = auxvar%porosity * &
+  compressed_porosity = auxvar%porosity_base * &
     exp(compressibility * &
         (pressure - auxvar%soil_properties(soil_reference_pressure_index)))
   dcompressed_porosity_dp = compressibility * compressed_porosity

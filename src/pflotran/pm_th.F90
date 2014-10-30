@@ -125,7 +125,7 @@ subroutine PMTHInitializeTimestep(this)
   
   class(pm_th_type) :: this
 
-  call PMSubsurfaceInitializeTimestep(this)
+  call PMSubsurfaceInitializeTimestepA(this)
 
   ! update porosity
   call this%comm1%LocalToLocal(this%realization%field%icap_loc, &
@@ -140,6 +140,7 @@ subroutine PMTHInitializeTimestep(this)
   endif
   
   call THInitializeTimestep(this%realization)
+  call PMSubsurfaceInitializeTimestepB(this)
   
 end subroutine PMTHInitializeTimestep
 

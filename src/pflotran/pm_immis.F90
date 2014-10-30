@@ -82,13 +82,14 @@ subroutine PMImmisInitializeTimestep(this)
   
   class(pm_immis_type) :: this
 
-  call PMSubsurfaceInitializeTimestep(this)         
+  call PMSubsurfaceInitializeTimestepA(this)         
 
   if (this%option%print_screen_flag) then
     write(*,'(/,2("=")," IMMISCIBLE FLOW ",62("="))')
   endif
   
   call ImmisInitializeTimestep(this%realization)
+  call PMSubsurfaceInitializeTimestepB(this)         
   
 end subroutine PMImmisInitializeTimestep
 

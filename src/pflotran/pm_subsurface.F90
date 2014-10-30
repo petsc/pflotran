@@ -47,7 +47,8 @@ module PM_Subsurface_class
   
   public :: PMSubsurfaceCreate, &
             PMSubsurfaceInit, &
-            PMSubsurfaceInitializeTimestep, &
+            PMSubsurfaceInitializeTimestepA, &
+            PMSubsurfaceInitializeTimestepB, &
             PMSubsurfaceInitializeRun, &
             PMSubsurfaceUpdateSolution, &
             PMSubsurfaceUpdatePropertiesNI, &
@@ -141,6 +142,8 @@ recursive subroutine PMSubsurfaceInitializeRun(this)
   ! Date: 04/21/14 
   use Condition_Control_module
   use Material_module
+  use Variables_module, only : POROSITY
+  use Material_Aux_class, only : POROSITY_BASE, POROSITY_NULL
 
   implicit none
   
@@ -168,15 +171,13 @@ recursive subroutine PMSubsurfaceInitializeRun(this)
   else
     call this%comm1%GlobalToLocal(this%realization%field%porosity0, &
                                   this%realization%field%work_loc)
-    call MaterialSetAuxVarVecLoc(patch%aux%Material, &
+    ! push values to porosity_base
+    call MaterialSetAuxVarVecLoc(this%realization%patch%aux%Material, &
                                  this%realization%field%work_loc, &
-                                 POROSITY,TIME_NULL)
-    call MaterialSetAuxVarVecLoc(patch%aux%Material, &
+                                 POROSITY,POROSITY_BASE)
+    call MaterialSetAuxVarVecLoc(this%realization%patch%aux%Material, &
                                  this%realization%field%work_loc, &
-                                 POROSITY,TIME_TpDT)
-    ! copies from TIME_TpDT to TIME_T
-    call MaterialStoreAuxVars(this%realization%patch%aux%Material, &
-                              this%option%time)
+                                 POROSITY,POROSITY_NULL)
   endif  
 
   call this%UpdateSolution()  
@@ -185,7 +186,7 @@ end subroutine PMSubsurfaceInitializeRun
 
 ! ************************************************************************** !
 
-subroutine PMSubsurfaceInitializeTimestep(this)
+subroutine PMSubsurfaceInitializeTimestepA(this)
   ! 
   ! Should not need this as it is called in PreSolve.
   ! 
@@ -196,6 +197,7 @@ subroutine PMSubsurfaceInitializeTimestep(this)
   use Variables_module, only : POROSITY, PERMEABILITY_X, &
                                PERMEABILITY_Y, PERMEABILITY_Z
   use Material_module
+  use Material_Aux_class, only : POROSITY_BASE
   
   implicit none
   
@@ -220,24 +222,58 @@ subroutine PMSubsurfaceInitializeTimestep(this)
   endif
 
   if (this%transient_porosity) then
-    ! store time t properties for transport
-    call MaterialStoreAuxVars(this%realization%patch%aux%Material, &
-                              this%option%time)
-    ! update porosity for time t+dt
-    if (associated(this%realization%reaction)) then
-      if (this%realization%reaction%update_porosity .or. &
-          this%realization%reaction%update_tortuosity .or. &
-          this%realization%reaction%update_permeability .or. &
-          this%realization%reaction%update_mineral_surface_area) then
-        call RealizationUpdatePropertiesTS(this%realization)
-      endif
-    endif
+    ! store base properties for reverting at time step cut
+    call MaterialGetAuxVarVecLoc(this%realization%patch%aux%Material, &
+                                 this%realization%field%work_loc,POROSITY, &
+                                 POROSITY_BASE)
+    call this%comm1%LocalToGlobal(this%realization%field%work_loc, &
+                                  this%realization%field%porosity_base_store)
   endif
+
+end subroutine PMSubsurfaceInitializeTimestepA
+
+! ************************************************************************** !
+
+subroutine PMSubsurfaceInitializeTimestepB(this)
+  ! 
+  ! Should not need this as it is called in PreSolve.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 04/21/14
+
+  use Global_module
+  use Variables_module, only : POROSITY, PERMEABILITY_X, &
+                               PERMEABILITY_Y, PERMEABILITY_Z
+  use Material_module
+  use Material_Aux_class, only : POROSITY_NULL
+  
+  implicit none
+  
+  class(pm_subsurface_type) :: this
+
   if (this%option%ntrandof > 0) then ! store initial saturations for transport
     call GlobalUpdateAuxVars(this%realization,TIME_T,this%option%time)
+    if (this%transient_porosity) then
+      ! store time t properties for transport
+      call MaterialGetAuxVarVecLoc(this%realization%patch%aux%Material, &
+                                   this%realization%field%work_loc,POROSITY, &
+                                   POROSITY_NULL)
+      call this%comm1%LocalToGlobal(this%realization%field%work_loc, &
+                                    this%realization%field%porosity_t)
+    endif
   endif 
   
-end subroutine PMSubsurfaceInitializeTimestep
+  ! update porosity for time t+dt
+  if (associated(this%realization%reaction)) then
+    if (this%realization%reaction%update_porosity .or. &
+        this%realization%reaction%update_tortuosity .or. &
+        this%realization%reaction%update_permeability .or. &
+        this%realization%reaction%update_mineral_surface_area) then
+      call RealizationUpdatePropertiesTS(this%realization)
+    endif
+  endif
+  
+end subroutine PMSubsurfaceInitializeTimestepB
 
 ! ************************************************************************** !
 
@@ -321,6 +357,7 @@ subroutine PMSubsurfaceTimeCut(this)
   ! Date: 04/21/14 
   use Material_module
   use Variables_module, only : POROSITY
+  use Material_Aux_class, only : POROSITY_BASE
   
   implicit none
   
@@ -332,13 +369,13 @@ subroutine PMSubsurfaceTimeCut(this)
   call VecCopy(this%realization%field%flow_yy, &
                this%realization%field%flow_xx,ierr);CHKERRQ(ierr)
   if (this%transient_porosity) then
-    call MaterialGetAuxVarVecLoc(this%realization%patch%aux%Material, &
-                                 this%realization%field%work_loc, &
-                                 POROSITY,TIME_T)
+    ! store base properties for reverting at time step cut
+    call this%comm1%GlobalToLocal(this%realization%field%porosity_base_store, &
+                                  this%realization%field%work_loc)
     call MaterialSetAuxVarVecLoc(this%realization%patch%aux%Material, &
-                                 this%realization%field%work_loc, &
-                                 POROSITY,TIME_NULL)
-  endif               
+                                 this%realization%field%work_loc,POROSITY, &
+                                 POROSITY_BASE)
+  endif             
 
 end subroutine PMSubsurfaceTimeCut
 
@@ -350,20 +387,24 @@ subroutine PMSubsurfaceFinalizeTimestep(this)
   ! Date: 04/21/14
   use Material_module
   use Global_module
+  use Variables_module, only : POROSITY
+  use Material_Aux_class, only : POROSITY_NULL
 
   implicit none
   
   class(pm_subsurface_type) :: this
 
-  if (this%transient_porosity) then
-    call MaterialUpdateAuxVars(this%realization%patch%aux%Material, &
-                               this%realization%comm1, &
-                               this%realization%field%work_loc,TIME_TpDT, &
-                               this%option%time)
-  endif  
   if (this%option%ntrandof > 0) then 
     ! store final saturations, etc. for transport
     call GlobalUpdateAuxVars(this%realization,TIME_TpDT,this%option%time)
+    if (this%transient_porosity) then
+      ! store time t properties for transport
+      call MaterialGetAuxVarVecLoc(this%realization%patch%aux%Material, &
+                                   this%realization%field%work_loc,POROSITY, &
+                                   POROSITY_NULL)
+      call this%comm1%LocalToGlobal(this%realization%field%work_loc, &
+                                    this%realization%field%porosity_tpdt)
+    endif    
   endif
   
   call this%MaxChange()

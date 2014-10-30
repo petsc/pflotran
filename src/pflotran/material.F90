@@ -1325,7 +1325,7 @@ subroutine MaterialSetAuxVarScalar(Material,value,ivar)
       enddo
     case(POROSITY)
       do i=1, Material%num_aux
-        Material%auxvars(i)%porosity_base = value
+        Material%auxvars(i)%porosity = value
       enddo
     case(TORTUOSITY)
       do i=1, Material%num_aux
@@ -1398,17 +1398,11 @@ subroutine MaterialSetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
       enddo
     case(POROSITY)
       select case(isubvar)
-        case(TIME_T)
+        case(POROSITY_NULL)
           do ghosted_id=1, Material%num_aux
-            Material%auxvars(ghosted_id)%porosity_t = &
-              vec_loc_p(ghosted_id)
+            Material%auxvars(ghosted_id)%porosity = vec_loc_p(ghosted_id)
           enddo
-        case(TIME_TpDT)
-          do ghosted_id=1, Material%num_aux
-            Material%auxvars(ghosted_id)%porosity_tpdt = &
-              vec_loc_p(ghosted_id)
-          enddo
-        case default
+        case(POROSITY_BASE)
           do ghosted_id=1, Material%num_aux
             Material%auxvars(ghosted_id)%porosity_base = vec_loc_p(ghosted_id)
           enddo
@@ -1492,17 +1486,12 @@ subroutine MaterialGetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
       enddo
     case(POROSITY)
       select case(isubvar)
-        case(TIME_T)
+        case(POROSITY_NULL)
           do ghosted_id=1, Material%num_aux
             vec_loc_p(ghosted_id) = &
-              Material%auxvars(ghosted_id)%porosity_t
+              Material%auxvars(ghosted_id)%porosity
           enddo
-        case(TIME_TpDT)
-          do ghosted_id=1, Material%num_aux
-            vec_loc_p(ghosted_id) = &
-              Material%auxvars(ghosted_id)%porosity_tpdt
-          enddo
-        case default
+        case(POROSITY_BASE)
           do ghosted_id=1, Material%num_aux
             vec_loc_p(ghosted_id) = Material%auxvars(ghosted_id)%porosity_base
           enddo
@@ -1549,7 +1538,7 @@ end subroutine MaterialGetAuxVarVecLoc
 
 ! ************************************************************************** !
 
-subroutine MaterialWeightAuxVars(Material,weight)
+subroutine MaterialWeightAuxVars(Material,weight,field,comm1)
   ! 
   ! Updates the porosities in auxiliary variables associated with 
   ! reactive transport
@@ -1559,28 +1548,31 @@ subroutine MaterialWeightAuxVars(Material,weight)
   ! 
 
   use Option_module
+  use Field_module
+  use Communicator_Base_module
+  use Variables_module, only : POROSITY
   
   implicit none
 
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
   type(material_type) :: Material
+  type(field_type) :: field
   PetscReal :: weight
+  class(communicator_type) :: comm1
   
-  class(material_auxvar_type), pointer :: material_auxvars(:)
-  PetscInt :: ghosted_id
+  PetscErrorCode :: ierr
   
 !  material_auxvars => Material%auxvars
 !geh: can't use this pointer as gfortran does not like it.  Must use
 !     Material%auxvars%....
-
-  do ghosted_id = 1, Material%num_aux
-    ! interpolate porosity based on weight
-    Material%auxvars(ghosted_id)%porosity = &
-      (weight*Material%auxvars(ghosted_id)%porosity_tpdt+ &
-       (1.d0-weight)*Material%auxvars(ghosted_id)%porosity_t)
-  enddo
+  call VecAXPBYPCZ(field%work,1.d0-weight,weight,1.d0, &
+                   field%porosity_t,field%porosity_tpdt);CHKERRQ(ierr)
+  call comm1%GlobalToLocal(field%work,field%work_loc)
+  call MaterialSetAuxVarVecLoc(Material,field%work_loc,POROSITY,ONE_INTEGER)
   
- end subroutine MaterialWeightAuxVars
- 
+end subroutine MaterialWeightAuxVars
  
 ! ************************************************************************** !
 
@@ -1604,8 +1596,8 @@ subroutine MaterialStoreAuxVars(Material,time)
   Material%time_t = time
   
   do ghosted_id=1, Material%num_aux
-    Material%auxvars(ghosted_id)%porosity_t = &
-      Material%auxvars(ghosted_id)%porosity_tpdt
+!    Material%auxvars(ghosted_id)%porosity_store(TIME_T) = &
+!      Material%auxvars(ghosted_id)%porosity_store(TIME_TpDT)
   enddo
 
 end subroutine MaterialStoreAuxVars
@@ -1643,11 +1635,11 @@ subroutine MaterialUpdateAuxVars(Material,comm1,vec_loc,time_level,time)
   end select  
   
   ! porosity
-  call MaterialGetAuxVarVecLoc(Material,vec_loc,POROSITY,ZERO_INTEGER)
-  call comm1%LocalToLocal(vec_loc,vec_loc)
+!  call MaterialGetAuxVarVecLoc(Material,vec_loc,POROSITY,ZERO_INTEGER)
+!  call comm1%LocalToLocal(vec_loc,vec_loc)
   ! note that 'time_level' is not ZERO_INTEGER.  thus, this differs
   ! from MaterialAuxVarCommunicate.
-  call MaterialSetAuxVarVecLoc(Material,vec_loc,POROSITY,time_level)
+!  call MaterialSetAuxVarVecLoc(Material,vec_loc,POROSITY,time_level)
 
 end subroutine MaterialUpdateAuxVars
 
@@ -1680,6 +1672,52 @@ subroutine MaterialAuxVarCommunicate(comm,Material,vec_loc,ivar,isubvar)
 
 end subroutine MaterialAuxVarCommunicate
 
+! ************************************************************************** !
+
+subroutine MaterialUpdatePorosity(Material,global_auxvars,porosity_loc)
+  ! 
+  ! Gets values of material auxvar data using a vector.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/09/14
+  ! 
+
+  use Variables_module
+  use Global_Aux_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  type(material_type) :: Material ! from realization%patch%aux%Material
+  type(global_auxvar_type) :: global_auxvars(:)
+  Vec :: porosity_loc
+  
+  PetscReal, pointer :: porosity_loc_p(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+  PetscInt :: ghosted_id
+  PetscReal :: compressed_porosity
+  PetscReal :: dcompressed_porosity_dp
+  PetscErrorCode :: ierr
+  
+  if (soil_compressibility_index > 0) then
+    material_auxvars => Material%auxvars
+    call VecGetArrayReadF90(porosity_loc,porosity_loc_p,ierr);CHKERRQ(ierr)
+    do ghosted_id = 1, Material%num_aux
+      material_auxvars(ghosted_id)%porosity = porosity_loc_p(ghosted_id)
+      call MaterialCompressSoil(material_auxvars(ghosted_id), &
+                                maxval(global_auxvars(ghosted_id)%pres), &
+                                compressed_porosity,dcompressed_porosity_dp)
+      material_auxvars(ghosted_id)%porosity = compressed_porosity
+      material_auxvars(ghosted_id)%dporosity_dp = dcompressed_porosity_dp
+    enddo
+    call VecRestoreArrayReadF90(porosity_loc,porosity_loc_p, &
+                                ierr);CHKERRQ(ierr)
+  endif
+  
+end subroutine MaterialUpdatePorosity
+  
 ! ************************************************************************** !
 
 recursive subroutine MaterialPropertyDestroy(material_property)

@@ -426,9 +426,6 @@ subroutine GlobalWeightAuxVars(realization,weight)
   option => realization%option
   auxvars => realization%patch%aux%Global%auxvars
   
-  ! weight material properties (e.g. porosity)
-  call MaterialWeightAuxVars(realization%patch%aux%Material,weight)
-  
   do ghosted_id = 1, realization%patch%aux%Global%num_aux
     ! interpolate density and saturation based on weight
     auxvars(ghosted_id)%den_kg(:) = &
