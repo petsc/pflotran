@@ -1840,21 +1840,20 @@ subroutine RealizationUpdatePropertiesTS(realization)
         enddo 
         ! the adjusted porosity becomes:
         ! 1 - sum(porosity0 + mineral volume fractions), but is truncated.
-        porosity_mnrl_loc_p(ghosted_id) = &
+        material_auxvars(ghosted_id)%porosity_base = &
           max(porosity0_p(local_id)-sum_volfrac,reaction%minimum_porosity)
       enddo
       call VecRestoreArrayF90(field%porosity0,porosity0_p,ierr);CHKERRQ(ierr)
       call VecRestoreArrayF90(field%porosity_mnrl_loc,porosity_mnrl_loc_p, &
                               ierr);CHKERRQ(ierr)
     endif
-
-    ! do not update the material auxvar porosity here.
-
-!    ! store the calculated porosity in the TIME_TpDT slot in %porosity_store
-!    call DiscretizationLocalToLocal(discretization,field%porosity_mnrl_loc, &
-!                                    field%work_loc,ONEDOF)
-!    call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
-!                                 POROSITY,TIME_TpDT)
+    ! update ghosted porosities
+    call MaterialGetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                 POROSITY,TIME_NULL)
+    call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                    field%work_loc,ONEDOF)
+    call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                 POROSITY,TIME_NULL)
   endif
   
   if ((porosity_updated .and. &

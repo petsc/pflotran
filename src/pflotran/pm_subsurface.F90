@@ -156,20 +156,30 @@ recursive subroutine PMSubsurfaceInitializeRun(this)
 !    call this%UpdateAuxVars()
   endif
   ! update material properties that are a function of mineral vol fracs
-  if (this%realization%reaction%update_porosity .or. &
-      this%realization%reaction%update_tortuosity .or. &
-      this%realization%reaction%update_permeability .or. &
-      this%realization%reaction%update_mineral_surface_area) then
-    call RealizationUpdatePropertiesTS(this%realization)
-    ! TIME_TpDT will be stored in TIME_T on first time step
-    call MaterialUpdateAuxVars(this%realization%patch%aux%Material, &
-                               this%realization%comm1, &
-                               this%realization%field%porosity_mnrl_loc, &
-                               TIME_TpDT,this%option%time)
+  if (this%transient_porosity) then
+    if (associated(this%realization%reaction)) then
+      if (this%realization%reaction%update_porosity .or. &
+          this%realization%reaction%update_tortuosity .or. &
+          this%realization%reaction%update_permeability .or. &
+          this%realization%reaction%update_mineral_surface_area) then
+        call RealizationUpdatePropertiesTS(this%realization)
+      endif
+    endif
+  else
+    call this%comm1%GlobalToLocal(this%realization%field%porosity0, &
+                                  this%realization%field%work_loc)
+    call MaterialSetAuxVarVecLoc(patch%aux%Material, &
+                                 this%realization%field%work_loc, &
+                                 POROSITY,TIME_NULL)
+    call MaterialSetAuxVarVecLoc(patch%aux%Material, &
+                                 this%realization%field%work_loc, &
+                                 POROSITY,TIME_TpDT)
+    ! copies from TIME_TpDT to TIME_T
+    call MaterialStoreAuxVars(this%realization%patch%aux%Material, &
+                              this%option%time)
   endif  
 
   call this%UpdateSolution()  
-  
     
 end subroutine PMSubsurfaceInitializeRun
 
@@ -214,15 +224,13 @@ subroutine PMSubsurfaceInitializeTimestep(this)
     call MaterialStoreAuxVars(this%realization%patch%aux%Material, &
                               this%option%time)
     ! update porosity for time t+dt
-    if (this%realization%reaction%update_porosity .or. &
-        this%realization%reaction%update_tortuosity .or. &
-        this%realization%reaction%update_permeability .or. &
-        this%realization%reaction%update_mineral_surface_area) then
-      call RealizationUpdatePropertiesTS(this%realization)
-      call MaterialUpdateAuxVars(this%realization%patch%aux%Material, &
-                                 this%realization%comm1, &
-                                 this%realization%field%porosity_mnrl_loc, &
-                                 TIME_TpDT,this%option%time)
+    if (associated(this%realization%reaction)) then
+      if (this%realization%reaction%update_porosity .or. &
+          this%realization%reaction%update_tortuosity .or. &
+          this%realization%reaction%update_permeability .or. &
+          this%realization%reaction%update_mineral_surface_area) then
+        call RealizationUpdatePropertiesTS(this%realization)
+      endif
     endif
   endif
   if (this%option%ntrandof > 0) then ! store initial saturations for transport

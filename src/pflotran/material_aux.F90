@@ -25,7 +25,9 @@ module Material_Aux_class
     PetscInt :: id
     PetscReal :: volume
     PetscReal :: porosity
-    PetscReal :: porosity_store(2)
+    PetscReal :: porosity_base
+    PetscReal :: porosity_t
+    PetscReal :: porosity_tpdt
     PetscReal :: dporosity_dp
     PetscReal :: tortuosity
     PetscReal :: soil_particle_density
@@ -141,7 +143,9 @@ subroutine MaterialAuxVarInit(auxvar,option)
   auxvar%volume = UNINITIALIZED_DOUBLE
   auxvar%porosity = UNINITIALIZED_DOUBLE
   auxvar%dporosity_dp = 0.d0
-  auxvar%porosity_store = 0.d0
+  auxvar%porosity_base = 0.d0
+  auxvar%porosity_t = 0.d0
+  auxvar%porosity_tpdt = 0.d0
   auxvar%tortuosity = UNINITIALIZED_DOUBLE
   auxvar%soil_particle_density = UNINITIALIZED_DOUBLE
   if (option%iflowmode /= NULL_MODE) then
