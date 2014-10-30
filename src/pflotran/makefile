@@ -716,7 +716,7 @@ mass_transfer.o : dataset_base.o dataset_common_hdf5.o dataset_global_hdf5.o \
                   discretization.o grid.o input_aux.o option.o \
                   pflotran_constants.o string.o
 material.o : characteristic_curves.o communicator_base.o dataset_common_hdf5.o \
-             global_aux.o input_aux.o material_aux.o option.o \
+             field.o global_aux.o input_aux.o material_aux.o option.o \
              pflotran_constants.o string.o variables.o
 material_aux.o : option.o pflotran_constants.o utility.o variables.o
 matrix_block_aux.o : option.o pflotran_constants.o utility.o
@@ -843,15 +843,16 @@ pm_miscible.o : miscible.o pflotran_constants.o pm_base.o pm_subsurface.o
 pm_mphase.o : mphase.o pflotran_constants.o pm_base.o pm_subsurface.o
 pm_richards.o : pflotran_constants.o pm_base.o pm_subsurface.o richards.o
 pm_rt.o : communicator_base.o condition.o condition_control.o discretization.o \
-          field.o global.o grid.o integral_flux.o mass_transfer.o option.o \
-          pflotran_constants.o pm_base.o reaction_aux.o reactive_transport.o \
-          realization.o realization_base.o structured_communicator.o \
-          unstructured_communicator.o variables.o
+          field.o global.o grid.o integral_flux.o mass_transfer.o material.o \
+          option.o pflotran_constants.o pm_base.o reaction_aux.o \
+          reactive_transport.o realization.o realization_base.o \
+          structured_communicator.o unstructured_communicator.o variables.o
 pm_subsurface.o : checkpoint.o communicator_base.o condition.o \
                   condition_control.o discretization.o global.o grid.o \
-                  integral_flux.o material.o option.o pflotran_constants.o \
-                  pm_base.o realization.o structured_communicator.o \
-                  unstructured_communicator.o variables.o
+                  integral_flux.o material.o material_aux.o option.o \
+                  pflotran_constants.o pm_base.o realization.o \
+                  structured_communicator.o unstructured_communicator.o \
+                  variables.o
 pm_surface.o : communicator_base.o condition.o discretization.o global.o \
                grid.o option.o pflotran_constants.o pm_base.o \
                surface_checkpoint.o surface_realization.o \

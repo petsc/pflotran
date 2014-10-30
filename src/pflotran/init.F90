@@ -1619,6 +1619,7 @@ subroutine InitReadInput(simulation)
         call CreepClosureInit()
         creep_closure => CreepClosureCreate()
         call creep_closure%Read(input,option)
+        option%flow%transient_porosity = PETSC_TRUE
         
 !....................
       case ('ICE_MODEL')

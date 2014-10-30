@@ -788,6 +788,7 @@ subroutine ReactionReadPass1(reaction,input,option)
         reaction%act_coef_use_bdot = PETSC_FALSE
       case('UPDATE_POROSITY')
         reaction%update_porosity = PETSC_TRUE
+        option%flow%transient_porosity = PETSC_TRUE
       case('UPDATE_TORTUOSITY')
         reaction%update_tortuosity = PETSC_TRUE
       case('UPDATE_PERMEABILITY')

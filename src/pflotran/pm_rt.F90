@@ -221,7 +221,7 @@ subroutine PMRTInitializeTimestep(this)
   call RTInitializeTimestep(this%realization)
 
   !geh: this is a bug and should be moved to PreSolve()
-#if 1
+#if 0
   ! set densities and saturations to t+dt
   if (this%option%nflowdof > 0 .and. .not. this%steady_flow) then
     if (this%option%flow%transient_porosity) then
@@ -250,6 +250,7 @@ subroutine PMRTPreSolve(this)
                                         RTUpdateAuxVars
   use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
   use Global_module  
+  use Material_module
 
   implicit none
   
@@ -261,9 +262,16 @@ subroutine PMRTPreSolve(this)
   call printMsg(this%option,'PMRT%UpdatePreSolve()')
 #endif
   
-#if 0
+#if 1
+  call RTUpdateTransportCoefs(this%realization)
   ! set densities and saturations to t+dt
   if (this%option%nflowdof > 0 .and. .not. this%steady_flow) then
+    if (this%option%flow%transient_porosity) then
+      ! weight material properties (e.g. porosity)
+      call MaterialWeightAuxVars(this%realization%patch%aux%Material, &
+                                 this%tran_weight_t1, &
+                                 this%realization%field,this%comm1)
+    endif
     call GlobalWeightAuxVars(this%realization,this%tran_weight_t1)
   endif
 

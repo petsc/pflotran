@@ -331,6 +331,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   PetscReal :: guess, dummy
   PetscInt :: apid, cpid, vpid, spid
   PetscReal :: NaN
+  PetscReal :: creep_closure_time
   character(len=8) :: state_char
   PetscErrorCode :: ierr
 
@@ -542,8 +543,12 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
     if (associated(creep_closure)) then
       if (creep_closure%imat == material_auxvar%id) then
         ! option%time here is the t time, not t + dt time.
+        creep_closure_time = option%time
+        if (option%iflag /= GENERAL_UPDATE_FOR_FIXED_ACCUM) then
+          creep_closure_time = creep_closure_time + option%flow_dt
+        endif
         gen_auxvar%effective_porosity = &
-          creep_closure%Evaluate(option%time,cell_pressure)
+          creep_closure%Evaluate(creep_closure_time,cell_pressure)
       endif
     endif
     if (option%iflag == GENERAL_UPDATE_FOR_DERIVATIVE) then

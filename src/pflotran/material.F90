@@ -649,6 +649,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
   endif
 
   if (len(trim(material_property%soil_compressibility_function)) > 0) then
+    option%flow%transient_porosity = PETSC_TRUE
     if (Uninitialized(material_property%soil_compressibility)) then
       option%io_buffer = 'SOIL_COMPRESSIBILITY_FUNCTION is specified in ' // &
         'inputdeck for MATERIAL_PROPERTY card, but SOIL_COMPRESSIBILITY ' // &
