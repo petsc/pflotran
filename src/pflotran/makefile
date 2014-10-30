@@ -126,10 +126,6 @@ ifdef amanzi_bgd
   MYFLAGS += ${FC_DEFINE_FLAG}AMANZI_BGD
 endif
 
-ifdef store_flowrates
-  MYFLAGS += ${FC_DEFINE_FLAG}STORE_FLOWRATES
-endif
-
 ifdef surface_th_debug
   MYFLAGS += ${FC_DEFINE_FLAG}SURFACE_TH_DEBUG
 endif
