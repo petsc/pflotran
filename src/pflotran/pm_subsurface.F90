@@ -112,7 +112,7 @@ subroutine PMSubsurfaceInit(this)
       this%store_transient_material_props = PETSC_TRUE
     endif
   endif
-  if (option%ntrandof > 0 .and. option%flow%transient_porosity) then
+  if (this%option%ntrandof > 0 .and. this%option%flow%transient_porosity) then
     this%store_transient_material_props = PETSC_TRUE
   endif
   
@@ -162,7 +162,7 @@ recursive subroutine PMSubsurfaceInitializeRun(this)
   implicit none
   
   class(pm_subsurface_type) :: this
-  PetscBool :: 
+  PetscBool :: update_initial_porosity
 
   ! overridden in pm_general only
   
@@ -174,14 +174,17 @@ recursive subroutine PMSubsurfaceInitializeRun(this)
 !    call this%UpdateAuxVars()
   endif
   ! update material properties that are a function of mineral vol fracs
+  update_initial_porosity = PETSC_TRUE
   if (associated(this%realization%reaction)) then
     if (this%realization%reaction%update_porosity .or. &
         this%realization%reaction%update_tortuosity .or. &
         this%realization%reaction%update_permeability .or. &
         this%realization%reaction%update_mineral_surface_area) then
       call RealizationUpdatePropertiesTS(this%realization)
+      update_initial_porosity = PETSC_FALSE
     endif
-  else
+  endif
+  if (update_initial_porosity) then
     call this%comm1%GlobalToLocal(this%realization%field%porosity0, &
                                   this%realization%field%work_loc)
     ! push values to porosity_base
