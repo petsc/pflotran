@@ -40,6 +40,7 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \hyperlink{target_geomech_strata}{\bf GEOMECHANICS\_STRATA} & \\
 \hyperlink{target_grid}{\bf GRID} & (required)\\
 \hyperlink{target_init}{\bf INITIAL\_CONDITION} & \\
+\hyperlink{target_int_flux}{\bf INTEGRAL\_FLUX} & \\
 \hyperlink{target_linsolv}{\bf LINEAR\_SOLVER} & \\
 \hyperlink{target_mat}{\bf MATERIAL\_PROPERTY} & \\
 \hyperlink{target_mode}{\bf MODE} & \\
@@ -135,24 +136,24 @@ Surface Site Density: & mole/meter$^{3}$ [mol/m$^{3}$]\\
 \hypertarget{target_input_file}{}
 
 \footnotesize
-:Description: 3D infiltration problem with calcite dissolution
-:colon denotes a comment line\\
+\#Description: 3D infiltration problem with calcite dissolution
+(\# denotes a comment line)\\
 
 \noindent
-: == debugging ================================================================\\
-:\hyperlink{target_dbg}{\bf DEBUG}\\
+\# == debugging ================================================================\\
+\#\hyperlink{target_dbg}{\bf DEBUG}\\
 %\hypertarget{target_key}{\bf DEBUG}\\
-:  MATVIEW\_JACOBIAN\\
-:  VECVIEW\_RESIDUAL\\
-:  VECVIEW\_SOLUTION\\
-:/
+\#  MATVIEW\_JACOBIAN\\
+\#  VECVIEW\_RESIDUAL\\
+\#  VECVIEW\_SOLUTION\\
+\#/
 
 \noindent
-: == mode =====================================================================\\
+\# == mode =====================================================================\\
 \hyperlink{target_mode}{\bf MODE} RICHARDS
 
 \noindent
-: == chemistry ================================================================\\
+\# == chemistry ================================================================\\
 \hyperlink{target_chem}{\bf CHEMISTRY}\\
 OPERATOR\_SPLIT\\
 PRIMARY\_SPECIES\\
@@ -174,13 +175,13 @@ GAS\_SPECIES\\
 MINERALS\\
   Calcite\\
 /\\
-:\\
+\#\\
 MINERAL\_KINETICS\\
 Calcite\\
 RATE\_CONSTANT 1.e-8 ! [mol/m$^2$/s]\\
 /\\
 /\\
-:\\
+\#\\
 DATABASE /Users/lichtner/flotran/database/hanford.dat\\
 LOG\_FORMULATION\\
 ACTIVITY\_COEFFICIENTS !NEWTON\_ITERATION\\
@@ -191,85 +192,85 @@ All\\
 /
 
 \noindent
-: == reference variables ======================================================\\
+\# == reference variables ======================================================\\
 REFERENCE\_POROSITY 0.25d0\\
 
 \noindent
-: == time stepping ============================================================\\
+\# == time stepping ============================================================\\
 \hyperlink{target_timestep}{\bf TIMESTEPPER}\\
 TS\_ACCELERATION 8\\
 MAX\_STEPS 100000\\
 /
 
 \noindent
-: == discretization ===========================================================\\
+\# == discretization ===========================================================\\
 \hyperlink{target_grid}{\bf GRID}\\
-%:TYPE amr ! amr grid\\
+%\#TYPE amr ! amr grid\\
 TYPE structured\\
 NXYZ 6 6 6\\
 BOUNDS\\
 0.d0 0.d0 0.d0\\
 1.d0 1.d0 1.d0\\
 /\\
-:DXYZ\\
-:1.\\
-:1.\\
-:1.\\
-:/\\
+\#DXYZ\\
+\#1.\\
+\#1.\\
+\#1.\\
+\#/\\
 /
 
 \noindent
-: == flow solvers =============================================================\\
+\# == flow solvers =============================================================\\
 \hyperlink{target_newt}{\bf NEWTON\_SOLVER} FLOW\\
 PRECONDITIONER\_MATRIX\_TYPE AIJ\\
 RTOL 1.d-8\\
 ATOL 1.d-8\\
 STOL 1.d-30\\
 ITOL\_UPDATE 1.d0\\
-:NO\_INFINITY\_NORM\\
-:NO\_PRINT\_CONVERGENCE\\
-:PRINT\_DETAILED\_CONVERGENCE\\
+\#NO\_INFINITY\_NORM\\
+\#NO\_PRINT\_CONVERGENCE\\
+\#PRINT\_DETAILED\_CONVERGENCE\\
 /
 
 \noindent
 \hyperlink{target_linsolv}{\bf LINEAR\_SOLVER} FLOW\\
-:KSP\_TYPE PREONLY\\
-:PC\_TYPE LU\\
-:KSP\_TYPE FGMRES !samrai\\
-:PC\_TYPE SHELL !samrai\\
+\#KSP\_TYPE PREONLY\\
+\#PC\_TYPE LU\\
+\#KSP\_TYPE FGMRES !samrai\\
+\#PC\_TYPE SHELL !samrai\\
 /
 
 \noindent
-: == transport solvers ========================================================\\
+\# == transport solvers ========================================================\\
 \hyperlink{target_newt}{\bf NEWTON\_SOLVER} TRANSPORT\\
 PRECONDITIONER\_MATRIX\_TYPE AIJ\\
 RTOL 1.d-12\\
 ATOL 1.d-12\\
 STOL 1.d-30\\
-:NO\_INFINITY\_NORM\\
-:NO\_PRINT\_CONVERGENCE\\
-:PRINT\_DETAILED\_CONVERGENCE\\
+\#NO\_INFINITY\_NORM\\
+\#NO\_PRINT\_CONVERGENCE\\
+\#PRINT\_DETAILED\_CONVERGENCE\\
 /
 
 \noindent
 \hyperlink{target_linsolv}{\bf LINEAR\_SOLVER} TRANSPORT\\
-:PC\_TYPE LU\\
-:KSP\_TYPE PREONLY\\
-:KSP\_TYPE FGMRES ! samrai\\
-:PC\_TYPE SHELL !samrai\\
+\#PC\_TYPE LU\\
+\#KSP\_TYPE PREONLY\\
+\#KSP\_TYPE FGMRES ! samrai\\
+\#PC\_TYPE SHELL !samrai\\
 /
 
 \noindent
-: == fluid properties =========================================================\\
+\# == fluid properties =========================================================\\
 \hyperlink{target_fluid_property}{\bf FLUID\_PROPERTY}\\
 DIFFUSION\_COEFFICIENT 1.d-9\\
 /
 
 \noindent
-:\hyperlink{target_unifvel}{\bf UNIFORM\_VELOCITY} 3.84259d-6 0.d0 0.d0  ! 1.38333 cm/h
+\#\hyperlink{target_unifvel}{\bf UNIFORM\_VELOCITY} 3.84259d-6 0.d0 0.d0  ! 1.38333 cm/h
 
 \noindent
-: == material properties ======================================================\\
+\# == material properties ======================================================\\
 \hyperlink{target_mat}{\bf MATERIAL\_PROPERTY} HD\\
 ID 1\\
 SATURATION\_FUNCTION HD\\
@@ -281,7 +282,7 @@ PERM\_ISO 5.43d-13\\
 /
 
 \noindent
-: == saturation / permeability functions ======================================\\
+\# == saturation / permeability functions ======================================\\
 \hyperlink{target_sat}{\bf SATURATION\_FUNCTION} HD\\
 SATURATION\_FUNCTION\_TYPE VAN\_GENUCHTEN\\
 RESIDUAL\_SATURATION 0.115\\
@@ -290,9 +291,9 @@ ALPHA 1.9401d-4\\
 /
 
 \noindent
-: == output ===================================================================\\
+\# == output ===================================================================\\
 \hyperlink{target_output}{\bf OUTPUT}\\
-:PERIODIC TIMESTEP 1\\
+\#PERIODIC TIMESTEP 1\\
 PERIODIC TIME 0.1 y\\
 FORMAT HDF5\\
 FORMAT TECPLOT BLOCK\\
@@ -300,7 +301,7 @@ VELOCITIES\\
 /
 
 \noindent
-: == times ====================================================================\\
+\# == times ====================================================================\\
 \hyperlink{target_time}{\bf TIME}\\
 FINAL\_TIME 1.d0 y\\
 INITIAL\ 1.e-6 y\\
@@ -308,7 +309,7 @@ MAXIMUM\_TIMESTEP\_SIZE 1.e-2 y\\
 /
 
 \noindent
-: == regions ==================================================================\\
+\# == regions ==================================================================\\
 \hyperlink{target_region}{\bf REGION} all\\
 COORDINATES\\
 0.d0 0.d0 0.d0\\
@@ -332,7 +333,7 @@ COORDINATES\\
 2.d0 2.d0 6.d0\\
 4.d0 4.d0 6.d0\\
 /\\
-:BLOCK 3 4 3 4 6 6\\
+\#BLOCK 3 4 3 4 6 6\\
 /
 
 \noindent
@@ -345,7 +346,7 @@ COORDINATES\\
 /
 
 \noindent
-: == flow conditions ==========================================================\\
+\# == flow conditions ==========================================================\\
 \hyperlink{target_flow_cond}{\bf FLOW\_CONDITION} Inlet\\
 TYPE\\
 FLUX neumann\\
@@ -363,7 +364,7 @@ PRESSURE 101325.d0\\
 /
 
 \noindent
-: == transport conditions =====================================================\\
+\# == transport conditions =====================================================\\
 \hyperlink{target_trans_cond}{\bf TRANSPORT\_CONDITION} Inlet\\
 TYPE dirichlet\\
 CONSTRAINT\_LIST\\
@@ -388,7 +389,7 @@ CONSTRAINT\_LIST\\
 /
 
 \noindent
-: == couplers =================================================================\\
+\# == couplers =================================================================\\
 \hyperlink{target_bcon}{\bf BOUNDARY\_CONDITION} Inlet\\
 \hyperlink{target_flow_cond}{\bf FLOW\_CONDITION} Inlet\\
 \hyperlink{target_trans_cond}{\bf TRANSPORT\_CONDITION} Inlet\\
@@ -410,14 +411,14 @@ CONSTRAINT\_LIST\\
 /
 
 \noindent
-: == stratigraphy =============================================================\\
+\# == stratigraphy =============================================================\\
 \hyperlink{target_strata}{\bf STRATA}\\
 MATERIAL HD\\
 REGION all\\
 /
 
 \noindent
-: == transport constraints ======================================================\\
+\# == transport constraints ======================================================\\
 \hyperlink{target_constraint}{\bf CONSTRAINT} Initial\\
 CONCENTRATIONS\\
 Ca++    1.d-4   M  Calcite\\
@@ -1166,8 +1167,8 @@ MINERAL_KINETICS
       ACTIVATION_ENERGY 65.0d0
       PREFACTOR_SPECIES H+
         ALPHA           0.457d0
-      : BETA
-      : ATTENUATION_COEF
+      ! BETA
+      ! ATTENUATION_COEF
       /
     /
     PREFACTOR
@@ -1175,8 +1176,8 @@ MINERAL_KINETICS
       ACTIVATION_ENERGY 71.0d0
       PREFACTOR_SPECIES H+
         ALPHA           -0.572d0
-      : BETA
-      : ATTENUATION_COEF
+      ! BETA
+      ! ATTENUATION_COEF
       /
     /
   /
@@ -1770,7 +1771,7 @@ END
 
 \subsection{Keyword: FLUID\_PROPERTY}
 
-\noindent{\bf Description:}
+\noindent{\bf Description:} Assign diffusion coefficients and temperature dependence.
 
 \noindent{\bf Input:}
 \begin{deflist}{000}
@@ -2285,7 +2286,6 @@ By using the {\tt BOUNDS} keyword, the model domain is specified in a grid-indep
 \noindent{\bf Example:}
 
 \begin{verbatim}
-
 :=========== condition couplers ==============
 : initial condition
 INITIAL_CONDITION
@@ -2299,6 +2299,65 @@ END
 \hyperlink{target_key}{\return}
 
 %========================================================================
+\newpage
+
+\protect\hypertarget{Keyword: INTEGRAL\_FLUX}{}
+
+\subsection{Keyword: INTEGRAL\_FLUX}
+
+\noindent{\bf Description:} Sets up a surface through which fluxes of all primary dependent variables can be calculated.
+
+Note: add keyword {\tt PERIODIC\_OBSERVATION} to {\tt OUTPUT} keyword to toggle printing of integral fluxes to a file with the suffix {\tt '*-int.dat'}.
+
+\noindent{\bf Input:}
+\begin{deflist}{000}
+
+\item[INTEGRAL\_FLUX] \ <string [Optional]> \ 
+Opens input block and associates a name with INTEGRAL\_FLUX. [Required]
+
+\begin{deflist}{000}
+
+\item[NAME] \  <string> \
+Specifies a name that is associated with the integral fluxes in the \break {\tt '*-int.dat'} file. This name will overwrite any name specified with the INTEGRAL\_FLUX keyword. [Optional]
+
+\item[COORDINATES] \ 
+Opens a block listing coordinates $(x_1,\, y_1,\, z_1)$, $(x_2,\, y_2,\, z_2)$, defining the rectangle over which the flux is to be calculated. The coordinates must form a rectangular plane that is aligned with the coordinate axes. [Required]
+
+\item[INVERT\_DIRECTION] \ 
+Inverts the sign of the flux. For fluxes at upwind boundaries, influx will be negative. This has no impact on the actual flux values other than to change the sign of the flux. [Optional]
+\end{deflist}
+
+\item[\keyend] ~
+\end{deflist}
+
+
+\begin{mdframed}
+
+\noindent{\bf Examples:}
+
+\begin{verbatim}
+INTEGRAL_FLUX flux_up_shaft
+  COORDINATES
+    25.d0 15.d0 300.d0
+    35.d0 20.d0 300.d0
+  /
+/
+
+INTEGRAL_FLUX
+  NAME inflow
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 10.d0 5.d0
+  /
+  INVERT_DIRECTION
+/
+\end{verbatim}
+\end{mdframed}
+
+\hyperlink{target_key}{\return}
+
+%========================================================================
+
 
 \newpage
 \protect\hypertarget{target_linsolv}{}
@@ -2647,19 +2706,21 @@ MAX_CHANGE 5.d4    5.  0.02   0.05
 %\begin{center}
 \begin{tabularx}{\linewidth}{lX}
 %\toprule[1.5pt]
-\multicolumn{2}{c}{\bf MODE <option>}\\
+\multicolumn{2}{c}{\bf MODE \ <option>}\\
 %\midrule
 \multicolumn{1}{c}{\bf Option} & \multicolumn{1}{c}{\bf Description}\\
 %\midrule
-\bf RICHARDS &Single-phase, isothermal, variable saturated groundwater flow using Richards equation\\
+\bf GENERAL & Two-phase air-water, nonisothermal, variably saturated groundwater flow\\
+\bf RICHARDS & Single-phase, isothermal, variably saturated groundwater flow using Richards equation\\
 %\midrule
-\bf MPHASE (MPH) &Multiphase supercritical CO$_2$-brine-energy based on variable switching for phase changes\\
+\bf MPHASE (MPH) & Two-phase supercritical CO$_2$-brine-energy based on variable switching for phase changes\\
 %\midrule
-\bf FLASH2 &Multiphase supercritical CO$_2$-brine-energy based on the flash method for phase changes with a persistent set of unknowns\\
+\bf FLASH2 & Two-phase supercritical CO$_2$-brine-energy based on the flash method for phase changes with a persistent set of unknowns\\
 %\midrule
-\bf THC &Thermo-Hydro-Chemical coupled groundwater flow, thermal and solute transport\\
+\bf TH & Thermal-Hydrologic coupled groundwater flow\\
 %\midrule
-\bf IMMIS (IMS, THS) &Immissible CO$_2$-water-energy\\
+\bf IMMIS (IMS, THS) & Immissible CO$_2$-water-energy\\
+\bf MIS & Missible H$_2$O-glycol fluid\\
 %\bottomrule[1.5pt]
 \end{tabularx}
 %\end{center}
@@ -2668,7 +2729,7 @@ MAX_CHANGE 5.d4    5.  0.02   0.05
 
 \noindent{\bf Example:}
 \begin{verbatim}
-MODE THC
+MODE TH
 \end{verbatim}
 \end{mdframed}
 
@@ -3110,11 +3171,11 @@ where $s_\a^0$ denotes the residual saturation. There are as many rows of cumula
 
 \begin{verbatim}
 OUTPUT
-  :SCREEN PERIODIC 10
-  :PERIODIC TIME 10 h
+  !SCREEN PERIODIC 10
+  !PERIODIC TIME 10 h
   PERIODIC_OBSERVATION TIMESTEP 1
-  :times h 1.
-  :PERIODIC_OBSERVATION TIME 50 h
+  !times h 1.
+  !PERIODIC_OBSERVATION TIME 50 h
   FORMAT TECPLOT POINT ! or BLOCK
   FORMAT HDF5
   VELOCITIES
@@ -3783,8 +3844,8 @@ VELOCITY_DATASET
   CYCLIC ! cycles the data set using last time as offset
   :INTERPOLATION STEP ! interpolation method (step [default] or linear)
   VELOCITY
-    :time velx vely velz
-    :time units = time unit in velocity units
+    !time velx vely velz
+    !time units = time unit in velocity units
     0.d0       1.38333d0 0.d0 0.d0 
     12.d0     -1.38333d0 0.d0 0.d0 
     24.d0      1.38333d0 0.d0 0.d0 
