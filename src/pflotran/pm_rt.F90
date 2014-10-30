@@ -208,10 +208,12 @@ subroutine PMRTInitializeTimestep(this)
   ! RTInitializeTimestep and RTTimeCut (which calls RTInitializeTimestep)
   if (this%option%nflowdof > 0 .and. .not. this%steady_flow) then
     call this%SetTranWeights()
-    ! weight material properties (e.g. porosity)
-    call MaterialWeightAuxVars(this%realization%patch%aux%Material, &
-                               this%tran_weight_t0, &
-                               this%realization%field,this%comm1)
+    if (this%option%flow%transient_porosity) then
+      ! weight material properties (e.g. porosity)
+      call MaterialWeightAuxVars(this%realization%patch%aux%Material, &
+                                 this%tran_weight_t0, &
+                                 this%realization%field,this%comm1)
+    endif
     ! set densities and saturations to t
     call GlobalWeightAuxvars(this%realization,this%tran_weight_t0)
   endif
@@ -222,10 +224,12 @@ subroutine PMRTInitializeTimestep(this)
 #if 1
   ! set densities and saturations to t+dt
   if (this%option%nflowdof > 0 .and. .not. this%steady_flow) then
-    ! weight material properties (e.g. porosity)
-    call MaterialWeightAuxVars(this%realization%patch%aux%Material, &
-                               this%tran_weight_t1, &
-                               this%realization%field,this%comm1)
+    if (this%option%flow%transient_porosity) then
+      ! weight material properties (e.g. porosity)
+      call MaterialWeightAuxVars(this%realization%patch%aux%Material, &
+                                 this%tran_weight_t1, &
+                                 this%realization%field,this%comm1)
+    endif
     call GlobalWeightAuxVars(this%realization,this%tran_weight_t1)
   endif
 
