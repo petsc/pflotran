@@ -1399,7 +1399,7 @@ subroutine MaterialSetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
       enddo
     case(POROSITY)
       select case(isubvar)
-        case(POROSITY_NULL)
+        case(POROSITY_CURRENT)
           do ghosted_id=1, Material%num_aux
             Material%auxvars(ghosted_id)%porosity = vec_loc_p(ghosted_id)
           enddo
@@ -1487,7 +1487,7 @@ subroutine MaterialGetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
       enddo
     case(POROSITY)
       select case(isubvar)
-        case(POROSITY_NULL)
+        case(POROSITY_CURRENT)
           do ghosted_id=1, Material%num_aux
             vec_loc_p(ghosted_id) = &
               Material%auxvars(ghosted_id)%porosity
@@ -1572,7 +1572,8 @@ subroutine MaterialWeightAuxVars(Material,weight,field,comm1)
   call VecAXPBY(field%work,weight,1.d0-weight, &
                 field%porosity_tpdt,ierr);CHKERRQ(ierr)
   call comm1%GlobalToLocal(field%work,field%work_loc)
-  call MaterialSetAuxVarVecLoc(Material,field%work_loc,POROSITY,ONE_INTEGER)
+  call MaterialSetAuxVarVecLoc(Material,field%work_loc,POROSITY, &
+                               POROSITY_CURRENT)
   
 end subroutine MaterialWeightAuxVars
  
@@ -1636,6 +1637,8 @@ subroutine MaterialUpdateAuxVars(Material,comm1,vec_loc,time_level,time)
       Material%time_tpdt = time
   end select  
   
+  print *, 'MaterialUpdateAuxVars not implemented.'
+  stop
   ! porosity
 !  call MaterialGetAuxVarVecLoc(Material,vec_loc,POROSITY,ZERO_INTEGER)
 !  call comm1%LocalToLocal(vec_loc,vec_loc)

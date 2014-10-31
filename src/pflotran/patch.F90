@@ -3744,6 +3744,12 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
           MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
                                  POROSITY)
       enddo
+    case(BASE_POROSITY)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = &
+          MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
+                                 BASE_POROSITY)
+      enddo
     case(PERMEABILITY,PERMEABILITY_X)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = &
@@ -4429,6 +4435,9 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
     case(POROSITY)
       value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
                                      POROSITY)
+    case(BASE_POROSITY)
+      value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
+                                     BASE_POROSITY)
     case(PERMEABILITY,PERMEABILITY_X)
       value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
                                      PERMEABILITY_X)
@@ -5223,6 +5232,18 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
         do ghosted_id=1,grid%ngmax
           call MaterialAuxVarSetValue(material_auxvars(ghosted_id), &
                                       POROSITY,vec_ptr(ghosted_id))
+        enddo
+      endif
+    case(BASE_POROSITY)
+      if (vec_format == GLOBAL) then
+        do local_id=1,grid%nlmax
+          call MaterialAuxVarSetValue(material_auxvars(grid%nL2G(local_id)), &
+                                      BASE_POROSITY,vec_ptr(local_id))
+        enddo
+      else if (vec_format == LOCAL) then
+        do ghosted_id=1,grid%ngmax
+          call MaterialAuxVarSetValue(material_auxvars(ghosted_id), &
+                                      BASE_POROSITY,vec_ptr(ghosted_id))
         enddo
       endif
     case(PERMEABILITY,PERMEABILITY_X,PERMEABILITY_Y,PERMEABILITY_Z)

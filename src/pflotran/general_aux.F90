@@ -551,7 +551,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
           creep_closure%Evaluate(creep_closure_time,cell_pressure)
       endif
     endif
-    if (option%iflag == GENERAL_UPDATE_FOR_DERIVATIVE) then
+    if (option%iflag /= GENERAL_UPDATE_FOR_DERIVATIVE) then
       material_auxvar%porosity = gen_auxvar%effective_porosity
     endif
   endif

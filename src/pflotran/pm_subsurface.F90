@@ -157,7 +157,7 @@ recursive subroutine PMSubsurfaceInitializeRun(this)
   use Condition_Control_module
   use Material_module
   use Variables_module, only : POROSITY
-  use Material_Aux_class, only : POROSITY_BASE, POROSITY_NULL
+  use Material_Aux_class, only : POROSITY_BASE, POROSITY_CURRENT
 
   implicit none
   
@@ -193,7 +193,7 @@ recursive subroutine PMSubsurfaceInitializeRun(this)
                                  POROSITY,POROSITY_BASE)
     call MaterialSetAuxVarVecLoc(this%realization%patch%aux%Material, &
                                  this%realization%field%work_loc, &
-                                 POROSITY,POROSITY_NULL)
+                                 POROSITY,POROSITY_CURRENT)
   endif  
 
   call this%UpdateSolution()  
@@ -257,7 +257,7 @@ subroutine PMSubsurfaceInitializeTimestepB(this)
   use Variables_module, only : POROSITY, PERMEABILITY_X, &
                                PERMEABILITY_Y, PERMEABILITY_Z
   use Material_module
-  use Material_Aux_class, only : POROSITY_NULL
+  use Material_Aux_class, only : POROSITY_CURRENT
   
   implicit none
   
@@ -269,7 +269,7 @@ subroutine PMSubsurfaceInitializeTimestepB(this)
       ! store time t properties for transport
       call MaterialGetAuxVarVecLoc(this%realization%patch%aux%Material, &
                                    this%realization%field%work_loc,POROSITY, &
-                                   POROSITY_NULL)
+                                   POROSITY_CURRENT)
       call this%comm1%LocalToGlobal(this%realization%field%work_loc, &
                                     this%realization%field%porosity_t)
     endif
@@ -400,7 +400,7 @@ subroutine PMSubsurfaceFinalizeTimestep(this)
   use Material_module
   use Global_module
   use Variables_module, only : POROSITY
-  use Material_Aux_class, only : POROSITY_NULL
+  use Material_Aux_class, only : POROSITY_CURRENT
 
   implicit none
   
@@ -413,7 +413,7 @@ subroutine PMSubsurfaceFinalizeTimestep(this)
       ! store time t properties for transport
       call MaterialGetAuxVarVecLoc(this%realization%patch%aux%Material, &
                                    this%realization%field%work_loc,POROSITY, &
-                                   POROSITY_NULL)
+                                   POROSITY_CURRENT)
       call this%comm1%LocalToGlobal(this%realization%field%work_loc, &
                                     this%realization%field%porosity_tpdt)
     endif    

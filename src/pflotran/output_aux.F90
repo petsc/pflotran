@@ -792,12 +792,24 @@ subroutine OutputVariableRead(input,option,output_variable_list)
                                        OUTPUT_GENERIC,units, &
                                        RESIDUAL,temp_int)
         enddo
+      case ('POROSITY')
+        units = ''
+        name = 'Porosity'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     POROSITY)
+      case ('BASE_POROSITY')
+        units = ''
+        name = 'Base Porosity'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     BASE_POROSITY)
       case ('EFFECTIVE_POROSITY')
         units = ''
         name = 'Effective Porosity'
         call OutputVariableAddToList(output_variable_list,name, &
                                      OUTPUT_GENERIC,units, &
-                                     EFFECTIVE_POROSITY,temp_int)
+                                     EFFECTIVE_POROSITY)
       case default
         option%io_buffer = 'Keyword: ' // trim(word) // &
                                  ' not recognized in VARIABLES.'
