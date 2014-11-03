@@ -5558,7 +5558,11 @@ subroutine THUpdateSurfaceBC(realization)
 
             ! Retrieve H in units of [J/kg] from fluxe_bulk
             !        = [MJ/s     * J/MJ       * m^3/kg * m^{-2} * s/m]
-            enthalpy = eflux_bulk/option%scale/den_aveg/area/patch%boundary_velocities(1,sum_connection)
+            if (abs(patch%boundary_velocities(1,sum_connection))<1.d-14) then ! avoid division by zero
+              enthalpy = 0.d0 
+            else
+              enthalpy = eflux_bulk/option%scale/den_aveg/area/patch%boundary_velocities(1,sum_connection)
+            endif
 
             surftemp_old = surftemp_new
             eng_times_ht_per_unitvol_old = den     *(Cwi*surftemp_old + Cwi*273.15d0)*head_old
