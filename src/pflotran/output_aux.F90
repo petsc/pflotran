@@ -798,12 +798,12 @@ subroutine OutputVariableRead(input,option,output_variable_list)
         call OutputVariableAddToList(output_variable_list,name, &
                                      OUTPUT_GENERIC,units, &
                                      POROSITY)
-      case ('BASE_POROSITY')
+      case ('MINERAL_POROSITY')
         units = ''
-        name = 'Base Porosity'
+        name = 'Mineral Porosity'
         call OutputVariableAddToList(output_variable_list,name, &
                                      OUTPUT_GENERIC,units, &
-                                     BASE_POROSITY)
+                                     MINERAL_POROSITY)
       case ('EFFECTIVE_POROSITY')
         units = ''
         name = 'Effective Porosity'

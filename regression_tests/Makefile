@@ -44,6 +44,7 @@ STANDARD_CFG = \
 	default/eos/eos.cfg \
 	default/materials/materials.cfg \
 	default/materials/soil_compressibility/soil_compressibility.cfg \
+	default/materials/mineral_volume/mineral_volume.cfg \
 	default/infiltrometer/infiltrometer.cfg \
 	default/condition/condition.cfg \
 	default/multicontinuum/multicontinuum.cfg \

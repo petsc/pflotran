@@ -112,10 +112,10 @@ module Variables_module
 
   PetscInt, parameter, public :: GAS_CONCENTRATION       = 96
   
-  PetscInt, parameter, public :: SEC_MIN_RATE =            97
-  PetscInt, parameter, public :: SEC_MIN_SI =              98
+  PetscInt, parameter, public :: SEC_MIN_RATE            = 97
+  PetscInt, parameter, public :: SEC_MIN_SI              = 98
   PetscInt, parameter, public :: RESIDUAL                = 99
-  PetscInt, parameter, public :: BASE_POROSITY           = 100
+  PetscInt, parameter, public :: MINERAL_POROSITY        = 100
   
 
 !  PetscInt, parameter, public :: LIQUID_VELOCITY_CELL_CENT = 58

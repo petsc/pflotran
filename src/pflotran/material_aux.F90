@@ -16,7 +16,7 @@ module Material_Aux_class
   PetscInt, parameter, public :: perm_xz_index = 6
   
   PetscInt, parameter, public :: POROSITY_CURRENT = 0
-  PetscInt, parameter, public :: POROSITY_BASE = 1
+  PetscInt, parameter, public :: POROSITY_MINERAL = 1
   
 !  PetscInt, public :: soil_thermal_conductivity_index
 !  PetscInt, public :: soil_heat_capacity_index
@@ -253,7 +253,7 @@ function MaterialAuxVarGetValue(material_auxvar,ivar)
       MaterialAuxVarGetValue = material_auxvar%volume
     case(POROSITY)
       MaterialAuxVarGetValue = material_auxvar%porosity
-    case(BASE_POROSITY)
+    case(MINERAL_POROSITY)
       MaterialAuxVarGetValue = material_auxvar%porosity_base
     case(TORTUOSITY)
       MaterialAuxVarGetValue = material_auxvar%tortuosity
@@ -296,7 +296,7 @@ subroutine MaterialAuxVarSetValue(material_auxvar,ivar,value)
       material_auxvar%volume = value
     case(POROSITY)
       material_auxvar%porosity = value
-    case(BASE_POROSITY)
+    case(MINERAL_POROSITY)
       material_auxvar%porosity = value
     case(TORTUOSITY)
       material_auxvar%tortuosity = value

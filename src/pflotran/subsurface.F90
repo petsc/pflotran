@@ -427,7 +427,7 @@ subroutine SubsurfAssignMaterialProperties(realization)
   call DiscretizationGlobalToLocal(discretization,field%porosity0, &
                                    field%work_loc,ONEDOF)
   call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
-                               POROSITY,POROSITY_BASE)
+                               POROSITY,POROSITY_MINERAL)
   call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
                                POROSITY,POROSITY_CURRENT)
   call DiscretizationGlobalToLocal(discretization,field%tortuosity0, &

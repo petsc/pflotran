@@ -14,6 +14,7 @@ CHEMISTRY
     H+
     HCO3-
     Ca++
+    SiO2(aq)
   /
   SECONDARY_SPECIES
     OH-
@@ -27,21 +28,27 @@ CHEMISTRY
     CO2(g)
   /
   MINERALS
+    Quartz
     Calcite
   /
   MINERAL_KINETICS
+    Quartz
+      RATE_CONSTANT 0.d0
+    /
     Calcite
       RATE_CONSTANT 1.d-6
     /
   /
+  UPDATE_POROSITY
   DATABASE ../../../../database/hanford.dat
   LOG_FORMULATION
 #  OPERATOR_SPLITTING
   ACTIVITY_COEFFICIENTS TIMESTEP
   OUTPUT
     PH
-    all
     TOTAL
+    FREE_ION
+    all
   /
 END
 
@@ -57,10 +64,10 @@ END
 #=========================== discretization ===================================
 GRID
   TYPE structured
-  NXYZ 1 1 100
+  NXYZ 100 1 1
   BOUNDS
     0.d0 0.d0 0.d0
-    1.d0 1.d0 10.d0
+    100.d0 1.d0 1.d0
   /
 END
 
@@ -74,23 +81,15 @@ MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.25d0
   TORTUOSITY 1.d0
-  SOIL_COMPRESSIBILITY_FUNCTION BRAGFLO
-  SOIL_COMPRESSIBILITY 1.d-7
-  SOIL_REFERENCE_PRESSURE 1.d5
   PERMEABILITY
     PERM_ISO 1.d-12
   /
-  SATURATION_FUNCTION sf1
+  SATURATION_FUNCTION default
 END
 
-#=========================== saturation function ==============================
-SATURATION_FUNCTION sf1
-  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-  RESIDUAL_SATURATION 0.1d0
-  LAMBDA 0.5d0
-  ALPHA 1.d-4
-  MAX_CAPILLARY_PRESSURE 1.d8
-/
+#=========================== saturation functions =============================
+SATURATION_FUNCTION default
+END
 
 #=========================== output options ===================================
 OUTPUT
@@ -99,7 +98,6 @@ OUTPUT
 #  VELOCITY_AT_CENTER
   VARIABLES
     LIQUID_PRESSURE
-    LIQUID_SATURATION
     POROSITY
     MINERAL_POROSITY
   /
@@ -116,40 +114,39 @@ END
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
-    1.d0 1.d0 10.d0
+    100.d0 1.d0 1.d0
   /
 END
 
-REGION top
-  FACE top
-  COORDINATES
-    0.d0 0.d0 10.d0
-    1.d0 1.d0 10.d0
-  /
-END
-
-REGION bottom
-  FACE bottom
+REGION west
+  FACE west
   COORDINATES
     0.d0 0.d0 0.d0
-    1.d0 1.d0 0.d0
+    0.d0 1.d0 1.d0
+  /
+END
+
+REGION east
+  FACE east
+  COORDINATES
+    100.d0 0.d0 0.d0
+    100.d0 1.d0 1.d0
   /
 END
 
 #=========================== flow conditions ==================================
 FLOW_CONDITION initial
   TYPE
-    PRESSURE hydrostatic
+    PRESSURE dirichlet
   /
-  DATUM 0.d0 0.d0 1.d0
-  PRESSURE 101325.d0
+  PRESSURE 201325.d0
 END
 
-FLOW_CONDITION recharge
+FLOW_CONDITION inlet
   TYPE
     FLUX neumann
   /
-  FLUX 10 cm/y
+  FLUX 1.d0 m/y
 END
 
 #=========================== transport conditions =============================
@@ -170,12 +167,14 @@ END
 #=========================== constraints ======================================
 CONSTRAINT initial
   CONCENTRATIONS
-    H+     1.d-8      F
-    HCO3-  1.d-3      G  CO2(g)
-    Ca++   5.d-4      M  Calcite
+    H+       1.d-8    F
+    HCO3-    1.d-3    G  CO2(g)
+    Ca++     5.d-4    M  Calcite
+    SiO2(aq) 1.d-5    M  Quartz
   /
   MINERALS
     Calcite 1.d-5 1.d0
+    Quartz 0.74999d0 1.d0
   /
 END
 
@@ -184,6 +183,7 @@ CONSTRAINT inlet
     H+     5.         P
     HCO3-  1.d-3      T 
     Ca++   1.d-6      Z 
+    SiO2(aq) 1.d-5    M  Quartz
   /
 END
 
@@ -198,13 +198,13 @@ END
 BOUNDARY_CONDITION outlet
   FLOW_CONDITION initial
   TRANSPORT_CONDITION initial
-  REGION bottom
+  REGION east
 END
 
 BOUNDARY_CONDITION inlet
-  FLOW_CONDITION recharge
+  FLOW_CONDITION inlet
   TRANSPORT_CONDITION inlet
-  REGION top
+  REGION west
 END
 
 #=========================== stratigraphy couplers ============================
