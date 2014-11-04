@@ -216,6 +216,7 @@ subroutine HijackSimulation(simulation_old,simulation)
     flow_process_model_coupler%realization => realization
     call HijackTimestepper(simulation_old%flow_timestepper, &
                            flow_process_model_coupler%timestepper)
+    flow_process_model_coupler%timestepper%name = 'FLOW'
     ! set up logging stage
     string = trim(cur_process_model%name) // 'Flow'
     call LoggingCreateStage(string,flow_process_model_coupler%stage)
@@ -236,6 +237,7 @@ subroutine HijackSimulation(simulation_old,simulation)
     tran_process_model_coupler%realization => realization
     call HijackTimestepper(simulation_old%tran_timestepper, &
                            tran_process_model_coupler%timestepper)
+    tran_process_model_coupler%timestepper%name = 'TRAN'
     ! set up logging stage
     string = 'Reactive Transport'
     call LoggingCreateStage(string,tran_process_model_coupler%stage)
