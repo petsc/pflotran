@@ -137,10 +137,14 @@ def convert_sf2cc(filename,delete_files,old_extension):
 					new.write('    M '+lamb+'\n')
 				new.write('    LIQUID_RESIDUAL_SATURATION '+rliq+'\n')
 				new.write('  /\n')
-				if perf == 'MUALEM':
-					new.write('  PERMEABILITY_FUNCTION BURDINE\n')
-				elif perf == 'BURDINE':
+				if perf == 'MUALEM' or satf == 'BROOKS_COREY':
+					new.write('  PERMEABILITY_FUNCTION MUALEM_BC_GAS\n')
+				elif perf == 'BURDINE' or satf == 'BROOKS_COREY':
 					new.write('  PERMEABILITY_FUNCTION BURDINE_BC_GAS\n')
+				elif perf == 'MUALEM' or satf == 'VAN_GENUCHTEN':
+					new.write('  PERMEABILITY_FUNCTION MUALEM_VG_GAS\n')
+				elif perf == 'BURDINE' or satf == 'VAN_GENUCHTEN':
+					new.write('  PERMEABILITY_FUNCTION BURDINE_VG_GAS\n')
 				if satf == 'BROOKS_COREY':
 					new.write('    LAMBDA '+lamb+'\n')
 				elif satf == 'VAN_GENUCHTEN':
