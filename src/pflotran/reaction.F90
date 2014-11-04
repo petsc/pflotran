@@ -4945,6 +4945,13 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,material_auxvar, &
   iend = reaction%naqcomp
   Res(istart:iend) = psv_t*rt_auxvar%total(:,iphase) 
 
+  if (reaction%nimcomp > 0) then
+    do iimob = 1, reaction%nimcomp
+      idof = reaction%offset_immobile + iimob
+      Res(idof) = Res(idof) + rt_auxvar%immobile(iimob)* &
+                              material_auxvar%volume/option%tran_dt 
+    enddo
+  endif
   if (reaction%ncoll > 0) then
     do icoll = 1, reaction%ncoll
       idof = reaction%offset_colloid + icoll
@@ -4956,13 +4963,6 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,material_auxvar, &
       iaqcomp = reaction%coll_spec_to_pri_spec(icollcomp)
       Res(iaqcomp) = Res(iaqcomp) + &
         psv_t*rt_auxvar%colloid%total_eq_mob(icollcomp)
-    enddo
-  endif
-  if (reaction%nimcomp > 0) then
-    do iimob = 1, reaction%nimcomp
-      idof = reaction%offset_immobile + iimob
-      Res(idof) = Res(idof) + rt_auxvar%immobile(iimob)* &
-                              material_auxvar%volume/option%tran_dt 
     enddo
   endif
 
@@ -5036,6 +5036,12 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
     enddo
   endif
 
+  if (reaction%nimcomp > 0) then
+    do iimob = 1, reaction%nimcomp
+      idof = reaction%offset_immobile + iimob
+      J(idof,idof) = material_auxvar%volume/option%tran_dt
+    enddo
+  endif
   if (reaction%ncoll > 0) then
     do icoll = 1, reaction%ncoll
       idof = reaction%offset_colloid + icoll
@@ -5050,12 +5056,6 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
     ! need the below
     ! dRj_dSic
     ! dRic_dCj                                 
-  endif
-  if (reaction%nimcomp > 0) then
-    do iimob = 1, reaction%nimcomp
-      idof = reaction%offset_immobile + iimob
-      J(idof,idof) = material_auxvar%volume/option%tran_dt
-    enddo
   endif
 
   ! CO2-specific
