@@ -186,6 +186,7 @@ subroutine PMRTInitializeTimestep(this)
   use Reactive_Transport_module, only : RTInitializeTimestep, &
                                         RTUpdateTransportCoefs
   use Global_module
+  use Material_module
 
   implicit none
   
@@ -202,20 +203,17 @@ subroutine PMRTInitializeTimestep(this)
     write(*,'(/,2("=")," REACTIVE TRANSPORT ",57("="))')
   endif
   
-#if 0  
-  call DiscretizationLocalToLocal(discretization, &
-                                  this%realization%field%porosity_loc, &
-                                  this%realization%field%porosity_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization, &
-                                  this%realization%field%tortuosity_loc, &
-                                  this%realization%field%tortuosity_loc,ONEDOF)
-#endif  
-  
   ! interpolate flow parameters/data
   ! this must remain here as these weighted values are used by both
   ! RTInitializeTimestep and RTTimeCut (which calls RTInitializeTimestep)
   if (this%option%nflowdof > 0 .and. .not. this%steady_flow) then
     call this%SetTranWeights()
+    if (this%option%flow%transient_porosity) then
+      ! weight material properties (e.g. porosity)
+      call MaterialWeightAuxVars(this%realization%patch%aux%Material, &
+                                 this%tran_weight_t0, &
+                                 this%realization%field,this%comm1)
+    endif
     ! set densities and saturations to t
     call GlobalWeightAuxvars(this%realization,this%tran_weight_t0)
   endif
@@ -223,9 +221,15 @@ subroutine PMRTInitializeTimestep(this)
   call RTInitializeTimestep(this%realization)
 
   !geh: this is a bug and should be moved to PreSolve()
-#if 1
+#if 0
   ! set densities and saturations to t+dt
   if (this%option%nflowdof > 0 .and. .not. this%steady_flow) then
+    if (this%option%flow%transient_porosity) then
+      ! weight material properties (e.g. porosity)
+      call MaterialWeightAuxVars(this%realization%patch%aux%Material, &
+                                 this%tran_weight_t1, &
+                                 this%realization%field,this%comm1)
+    endif
     call GlobalWeightAuxVars(this%realization,this%tran_weight_t1)
   endif
 
@@ -246,6 +250,7 @@ subroutine PMRTPreSolve(this)
                                         RTUpdateAuxVars
   use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
   use Global_module  
+  use Material_module
 
   implicit none
   
@@ -257,9 +262,16 @@ subroutine PMRTPreSolve(this)
   call printMsg(this%option,'PMRT%UpdatePreSolve()')
 #endif
   
-#if 0
+#if 1
+  call RTUpdateTransportCoefs(this%realization)
   ! set densities and saturations to t+dt
   if (this%option%nflowdof > 0 .and. .not. this%steady_flow) then
+    if (this%option%flow%transient_porosity) then
+      ! weight material properties (e.g. porosity)
+      call MaterialWeightAuxVars(this%realization%patch%aux%Material, &
+                                 this%tran_weight_t1, &
+                                 this%realization%field,this%comm1)
+    endif
     call GlobalWeightAuxVars(this%realization,this%tran_weight_t1)
   endif
 
@@ -671,12 +683,6 @@ subroutine PMRTUpdateSolution2(this, update_kinetics)
   call RTUpdateEquilibriumState(this%realization)
   if (update_kinetics) &
     call RTUpdateKineticState(this%realization)
-  if (this%realization%reaction%update_porosity .or. &
-      this%realization%reaction%update_tortuosity .or. &
-      this%realization%reaction%update_permeability .or. &
-      this%realization%reaction%update_mineral_surface_area) then
-    call RealizationUpdatePropertiesTS(this%realization)
-  endif
   
   call MassTransferUpdate(this%realization%rt_mass_transfer_list, &
                           this%realization%patch%grid, &

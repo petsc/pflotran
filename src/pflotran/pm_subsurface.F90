@@ -25,6 +25,8 @@ module PM_Subsurface_class
     class(realization_type), pointer :: realization
     class(communicator_type), pointer :: comm1
     PetscBool :: transient_permeability
+    PetscBool :: calc_transient_material_props
+    PetscBool :: store_transient_material_props
   contains
 !geh: commented out subroutines can only be called externally
     procedure, public :: Init => PMSubsurfaceInit
@@ -46,7 +48,8 @@ module PM_Subsurface_class
   
   public :: PMSubsurfaceCreate, &
             PMSubsurfaceInit, &
-            PMSubsurfaceInitializeTimestep, &
+            PMSubsurfaceInitializeTimestepA, &
+            PMSubsurfaceInitializeTimestepB, &
             PMSubsurfaceInitializeRun, &
             PMSubsurfaceUpdateSolution, &
             PMSubsurfaceUpdatePropertiesNI, &
@@ -71,6 +74,8 @@ subroutine PMSubsurfaceCreate(this)
   nullify(this%realization)
   nullify(this%comm1)
   this%transient_permeability = PETSC_FALSE
+  this%calc_transient_material_props = PETSC_FALSE
+  this%store_transient_material_props = PETSC_FALSE
   
   call PMBaseCreate(this)
 
@@ -98,6 +103,18 @@ subroutine PMSubsurfaceInit(this)
 
   ! set the communicator
   this%comm1 => this%realization%comm1
+  if (associated(this%realization%reaction)) then
+    if (this%realization%reaction%update_porosity .or. &
+        this%realization%reaction%update_tortuosity .or. &
+        this%realization%reaction%update_permeability .or. &
+        this%realization%reaction%update_mineral_surface_area) then
+      this%calc_transient_material_props = PETSC_TRUE
+      this%store_transient_material_props = PETSC_TRUE
+    endif
+  endif
+  if (this%option%ntrandof > 0 .and. this%option%flow%transient_porosity) then
+    this%store_transient_material_props = PETSC_TRUE
+  endif
   
 end subroutine PMSubsurfaceInit
 
@@ -138,12 +155,26 @@ recursive subroutine PMSubsurfaceInitializeRun(this)
   ! Author: Glenn Hammond
   ! Date: 04/21/14 
   use Condition_Control_module
+  use Material_module
+  use Variables_module, only : POROSITY
+  use Material_Aux_class, only : POROSITY_MINERAL, POROSITY_CURRENT
 
   implicit none
   
   class(pm_subsurface_type) :: this
+  PetscBool :: update_initial_porosity
 
   ! overridden in pm_general only
+  if (associated(this%realization%reaction)) then
+    if (this%realization%reaction%update_porosity) then
+      call RealizationCalcMineralPorosity(this%realization)
+      call MaterialGetAuxVarVecLoc(this%realization%patch%aux%Material, &
+                                   this%realization%field%work_loc, &
+                                   POROSITY,POROSITY_MINERAL)
+      call this%comm1%LocalToGlobal(this%realization%field%work_loc, &
+                                    this%realization%field%porosity0)
+    endif
+  endif
   
   ! restart
   if (this%option%restart_flag .and. this%option%overwrite_restart_flow) then
@@ -152,17 +183,36 @@ recursive subroutine PMSubsurfaceInitializeRun(this)
 !    call CondControlAssignFlowInitCond(this%realization)
 !    call this%UpdateAuxVars()
   endif
+  ! update material properties that are a function of mineral vol fracs
+  update_initial_porosity = PETSC_TRUE
+  if (associated(this%realization%reaction)) then
+    if (this%realization%reaction%update_porosity .or. &
+        this%realization%reaction%update_tortuosity .or. &
+        this%realization%reaction%update_permeability .or. &
+        this%realization%reaction%update_mineral_surface_area) then
+      call RealizationUpdatePropertiesTS(this%realization)
+      update_initial_porosity = PETSC_FALSE
+    endif
+  endif
+  if (update_initial_porosity) then
+    call this%comm1%GlobalToLocal(this%realization%field%porosity0, &
+                                  this%realization%field%work_loc)
+    ! push values to porosity_base
+    call MaterialSetAuxVarVecLoc(this%realization%patch%aux%Material, &
+                                 this%realization%field%work_loc, &
+                                 POROSITY,POROSITY_MINERAL)
+    call MaterialSetAuxVarVecLoc(this%realization%patch%aux%Material, &
+                                 this%realization%field%work_loc, &
+                                 POROSITY,POROSITY_CURRENT)
+  endif  
 
   call this%UpdateSolution()  
-  
     
 end subroutine PMSubsurfaceInitializeRun
 
 ! ************************************************************************** !
 
-subroutine PMSubsurfaceInitializeTimestep(this)
-  ! 
-  ! Should not need this as it is called in PreSolve.
+subroutine PMSubsurfaceInitializeTimestepA(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/21/14
@@ -170,18 +220,15 @@ subroutine PMSubsurfaceInitializeTimestep(this)
   use Global_module
   use Variables_module, only : POROSITY, PERMEABILITY_X, &
                                PERMEABILITY_Y, PERMEABILITY_Z
-  use Material_module, only : MaterialAuxVarCommunicate
+  use Material_module
+  use Material_Aux_class, only : POROSITY_MINERAL
   
   implicit none
   
   class(pm_subsurface_type) :: this
 
   this%option%flow_dt = this%option%dt
-!geh:remove
-  call MaterialAuxVarCommunicate(this%comm1, &
-                                 this%realization%patch%aux%Material, &
-                                 this%realization%field%work_loc,POROSITY,0)
-                                 
+
   if (this%transient_permeability) then
   !geh:remove
     call MaterialAuxVarCommunicate(this%comm1, &
@@ -198,11 +245,57 @@ subroutine PMSubsurfaceInitializeTimestep(this)
                                    PERMEABILITY_Z,0)
   endif
 
+  if (this%calc_transient_material_props) then
+    ! store base properties for reverting at time step cut
+    call MaterialGetAuxVarVecLoc(this%realization%patch%aux%Material, &
+                                 this%realization%field%work_loc,POROSITY, &
+                                 POROSITY_MINERAL)
+    call this%comm1%LocalToGlobal(this%realization%field%work_loc, &
+                                  this%realization%field%porosity_base_store)
+  endif
+
+end subroutine PMSubsurfaceInitializeTimestepA
+
+! ************************************************************************** !
+
+subroutine PMSubsurfaceInitializeTimestepB(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 04/21/14
+
+  use Global_module
+  use Variables_module, only : POROSITY, PERMEABILITY_X, &
+                               PERMEABILITY_Y, PERMEABILITY_Z
+  use Material_module
+  use Material_Aux_class, only : POROSITY_CURRENT
+  
+  implicit none
+  
+  class(pm_subsurface_type) :: this
+
   if (this%option%ntrandof > 0) then ! store initial saturations for transport
     call GlobalUpdateAuxVars(this%realization,TIME_T,this%option%time)
-  endif  
+    if (this%store_transient_material_props) then
+      ! store time t properties for transport
+      call MaterialGetAuxVarVecLoc(this%realization%patch%aux%Material, &
+                                   this%realization%field%work_loc,POROSITY, &
+                                   POROSITY_CURRENT)
+      call this%comm1%LocalToGlobal(this%realization%field%work_loc, &
+                                    this%realization%field%porosity_t)
+    endif
+  endif 
   
-end subroutine PMSubsurfaceInitializeTimestep
+  ! update porosity for time t+dt
+  if (associated(this%realization%reaction)) then
+    if (this%realization%reaction%update_porosity .or. &
+        this%realization%reaction%update_tortuosity .or. &
+        this%realization%reaction%update_permeability .or. &
+        this%realization%reaction%update_mineral_surface_area) then
+      call RealizationUpdatePropertiesTS(this%realization)
+    endif
+  endif
+  
+end subroutine PMSubsurfaceInitializeTimestepB
 
 ! ************************************************************************** !
 
@@ -284,12 +377,27 @@ subroutine PMSubsurfaceTimeCut(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/21/14 
-
+  use Material_module
+  use Variables_module, only : POROSITY
+  use Material_Aux_class, only : POROSITY_MINERAL
+  
   implicit none
   
   class(pm_subsurface_type) :: this
   
+  PetscErrorCode :: ierr
+  
   this%option%flow_dt = this%option%dt
+  call VecCopy(this%realization%field%flow_yy, &
+               this%realization%field%flow_xx,ierr);CHKERRQ(ierr)
+  if (this%calc_transient_material_props) then
+    ! store base properties for reverting at time step cut
+    call this%comm1%GlobalToLocal(this%realization%field%porosity_base_store, &
+                                  this%realization%field%work_loc)
+    call MaterialSetAuxVarVecLoc(this%realization%patch%aux%Material, &
+                                 this%realization%field%work_loc,POROSITY, &
+                                 POROSITY_MINERAL)
+  endif             
 
 end subroutine PMSubsurfaceTimeCut
 
@@ -299,8 +407,10 @@ subroutine PMSubsurfaceFinalizeTimestep(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/21/14
-
+  use Material_module
   use Global_module
+  use Variables_module, only : POROSITY
+  use Material_Aux_class, only : POROSITY_CURRENT
 
   implicit none
   
@@ -309,6 +419,14 @@ subroutine PMSubsurfaceFinalizeTimestep(this)
   if (this%option%ntrandof > 0) then 
     ! store final saturations, etc. for transport
     call GlobalUpdateAuxVars(this%realization,TIME_TpDT,this%option%time)
+    if (this%store_transient_material_props) then
+      ! store time t properties for transport
+      call MaterialGetAuxVarVecLoc(this%realization%patch%aux%Material, &
+                                   this%realization%field%work_loc,POROSITY, &
+                                   POROSITY_CURRENT)
+      call this%comm1%LocalToGlobal(this%realization%field%work_loc, &
+                                    this%realization%field%porosity_tpdt)
+    endif    
   endif
   
   call this%MaxChange()
@@ -330,7 +448,11 @@ subroutine PMSubsurfaceUpdateSolution(this)
   class(pm_subsurface_type) :: this
   
   PetscBool :: force_update_flag = PETSC_FALSE
+  PetscErrorCode :: ierr
 
+  call VecCopy(this%realization%field%flow_xx, &
+               this%realization%field%flow_yy,ierr);CHKERRQ(ierr)
+  
   ! begin from RealizationUpdate()
   call FlowConditionUpdate(this%realization%flow_conditions, &
                            this%realization%option, &

@@ -14,7 +14,10 @@ module Material_Aux_class
   PetscInt, parameter, public :: perm_xy_index = 4
   PetscInt, parameter, public :: perm_yz_index = 5
   PetscInt, parameter, public :: perm_xz_index = 6
-
+  
+  PetscInt, parameter, public :: POROSITY_CURRENT = 0
+  PetscInt, parameter, public :: POROSITY_MINERAL = 1
+  
 !  PetscInt, public :: soil_thermal_conductivity_index
 !  PetscInt, public :: soil_heat_capacity_index
   PetscInt, public :: soil_compressibility_index
@@ -22,9 +25,10 @@ module Material_Aux_class
   PetscInt, public :: max_material_index
  
   type, public :: material_auxvar_type
+    PetscInt :: id
     PetscReal :: volume
+    PetscReal :: porosity_base
     PetscReal :: porosity
-    PetscReal :: porosity_store(2)
     PetscReal :: dporosity_dp
     PetscReal :: tortuosity
     PetscReal :: soil_particle_density
@@ -136,10 +140,11 @@ subroutine MaterialAuxVarInit(auxvar,option)
   class(material_auxvar_type) :: auxvar
   type(option_type) :: option
   
+  auxvar%id = UNINITIALIZED_INTEGER
   auxvar%volume = UNINITIALIZED_DOUBLE
   auxvar%porosity = UNINITIALIZED_DOUBLE
   auxvar%dporosity_dp = 0.d0
-  auxvar%porosity_store = 0.d0
+  auxvar%porosity_base = UNINITIALIZED_DOUBLE
   auxvar%tortuosity = UNINITIALIZED_DOUBLE
   auxvar%soil_particle_density = UNINITIALIZED_DOUBLE
   if (option%iflowmode /= NULL_MODE) then
@@ -248,6 +253,8 @@ function MaterialAuxVarGetValue(material_auxvar,ivar)
       MaterialAuxVarGetValue = material_auxvar%volume
     case(POROSITY)
       MaterialAuxVarGetValue = material_auxvar%porosity
+    case(MINERAL_POROSITY)
+      MaterialAuxVarGetValue = material_auxvar%porosity_base
     case(TORTUOSITY)
       MaterialAuxVarGetValue = material_auxvar%tortuosity
     case(PERMEABILITY_X)
@@ -288,6 +295,8 @@ subroutine MaterialAuxVarSetValue(material_auxvar,ivar,value)
     case(VOLUME)
       material_auxvar%volume = value
     case(POROSITY)
+      material_auxvar%porosity = value
+    case(MINERAL_POROSITY)
       material_auxvar%porosity = value
     case(TORTUOSITY)
       material_auxvar%tortuosity = value
@@ -334,7 +343,7 @@ subroutine MaterialCompressSoilLeijnse(auxvar,pressure, &
   compression = &
     exp(-1.d0 * compressibility * &
         (pressure - auxvar%soil_properties(soil_reference_pressure_index)))
-  tempreal = (1.d0 - auxvar%porosity) * compression
+  tempreal = (1.d0 - auxvar%porosity_base) * compression
   compressed_porosity = 1.d0 - tempreal
   dcompressed_porosity_dp = tempreal * compressibility
   
@@ -362,7 +371,7 @@ subroutine MaterialCompressSoilBRAGFLO(auxvar,pressure, &
   PetscReal :: compressibility
   
   compressibility = auxvar%soil_properties(soil_compressibility_index)
-  compressed_porosity = auxvar%porosity * &
+  compressed_porosity = auxvar%porosity_base * &
     exp(compressibility * &
         (pressure - auxvar%soil_properties(soil_reference_pressure_index)))
   dcompressed_porosity_dp = compressibility * compressed_porosity

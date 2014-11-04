@@ -329,8 +329,10 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
     endif
     
     if (this%is_master) then
-      if (this%option%checkpoint_flag .and. this%option%checkpoint_frequency > 0) then
-        if (mod(this%timestepper%steps,this%option%checkpoint_frequency) == 0) then
+      if (this%option%checkpoint_flag .and. &
+          this%option%checkpoint_frequency > 0) then
+        if (mod(this%timestepper%steps, &
+                this%option%checkpoint_frequency) == 0) then
            checkpoint_flag = PETSC_TRUE
         endif
       endif

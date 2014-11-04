@@ -64,7 +64,6 @@ subroutine THTimeCut(realization)
   option => realization%option
   field => realization%field
  
-  call VecCopy(field%flow_yy,field%flow_xx,ierr);CHKERRQ(ierr)
   call THInitializeTimestep(realization)
  
 end subroutine THTimeCut
@@ -1101,8 +1100,6 @@ subroutine THUpdateSolution(realization)
   
   field => realization%field
     
-  call VecCopy(field%flow_xx,field%flow_yy,ierr);CHKERRQ(ierr)
-
   cur_patch => realization%patch_list%first
   do
     if (.not.associated(cur_patch)) exit
@@ -5052,7 +5049,7 @@ subroutine THSetPlotVariables(realization)
     name = 'Transient Porosity'
     units = ''
     call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
-                                 TRANSIENT_POROSITY)
+                                 EFFECTIVE_POROSITY)
   endif
 ! name = 'Phase'
 ! units = ''
@@ -5434,7 +5431,7 @@ subroutine THUpdateSurfaceBC(realization)
   PetscReal :: surftemp_old
   PetscReal :: Temp_upwind
   PetscReal :: surftemp_new,psurftemp_new,rtol
-  PetscReal :: Cwi,TL,TR
+  PetscReal :: Cwi,TL,TR,one
   PetscBool :: found
   PetscErrorCode :: ierr
 
@@ -5455,6 +5452,7 @@ subroutine THUpdateSurfaceBC(realization)
 
   ! GB: Should probably add this as a member of option
   Cwi = 4.188d3 ! [J/kg/K]
+  one = 1.d0
 
   ! Maximum no. of iterations to compute updated temperature of surface-flow
   niter = 20
@@ -5534,23 +5532,14 @@ subroutine THUpdateSurfaceBC(realization)
             eng_per_unitvol_old = den*Cwi*(surftemp_old + 273.15d0)
             eng_per_unitvol_new = eng_per_unitvol_old - eflux_cond/option%scale*option%flow_dt/area
 
-            ! Solve for the new temperature by fixed point iteration
-            surftemp_new = surftemp_old
-            found = PETSC_FALSE
-            do iter = 1,niter
-              psurftemp_new = surftemp_new
-              surftemp_new  = eng_per_unitvol_new/(den*Cwi) - 273.15d0
-              call EOSWaterdensity(surftemp_new,option%reference_pressure,den,dum1,ierr)
-              if (abs((surftemp_new-psurftemp_new)/(surftemp_new+273.15d0))<rtol) then
-                found = PETSC_TRUE
-                exit
-              endif
-            enddo
-            if (found .eqv. PETSC_FALSE) then
-              write(option%io_buffer, &
-                   '("th.F90: THUpdateSurfaceBC --> fixed point (eflux_cond) not found!")')
-              call printErrMsg(option)
-            endif
+            TL = -100.d0
+            TR =  100.d0
+            call EnergyToTemperatureBisection(surftemp_new,TL,TR, &
+                                              one, &
+                                              eng_per_unitvol_new, &
+                                              Cwi, &
+                                              option%reference_pressure, &
+                                              option)
 
             ! 2) Find new surface-temperature due to heat transfer via bulk-movement
             !    water transport
@@ -5569,7 +5558,11 @@ subroutine THUpdateSurfaceBC(realization)
 
             ! Retrieve H in units of [J/kg] from fluxe_bulk
             !        = [MJ/s     * J/MJ       * m^3/kg * m^{-2} * s/m]
-            enthalpy = eflux_bulk/option%scale/den_aveg/area/patch%boundary_velocities(1,sum_connection)
+            if (abs(patch%boundary_velocities(1,sum_connection))<1.d-14) then ! avoid division by zero
+              enthalpy = 0.d0 
+            else
+              enthalpy = eflux_bulk/option%scale/den_aveg/area/patch%boundary_velocities(1,sum_connection)
+            endif
 
             surftemp_old = surftemp_new
             eng_times_ht_per_unitvol_old = den     *(Cwi*surftemp_old + Cwi*273.15d0)*head_old

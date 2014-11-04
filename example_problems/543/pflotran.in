@@ -138,7 +138,7 @@ OUTPUT
 !  FORMAT TECPLOT BLOCK
   FORMAT TECPLOT POINT
   FORMAT HDF5
-  VELOCITIES
+  VELOCITY_AT_CENTER
 /
 
 #=========================== times ============================================

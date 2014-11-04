@@ -44,6 +44,7 @@ STANDARD_CFG = \
 	default/eos/eos.cfg \
 	default/materials/materials.cfg \
 	default/materials/soil_compressibility/soil_compressibility.cfg \
+	default/materials/mineral_volume/mineral_volume.cfg \
 	default/infiltrometer/infiltrometer.cfg \
 	default/condition/condition.cfg \
 	default/multicontinuum/multicontinuum.cfg \
@@ -62,7 +63,8 @@ STANDARD_CFG = \
 ifneq ($(strip $(PARMETIS_LIB)),)
 	STANDARD_CFG += \
 		default/discretization/discretization.cfg \
-		surfaceflow/surface_flow_only/surface_only.cfg
+		surfaceflow/surface_flow_only/surface_only.cfg \
+		surfaceflow/surface_th/surface_th.cfg
 endif
 
 #

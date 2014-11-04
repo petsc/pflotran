@@ -398,8 +398,6 @@ subroutine GeneralUpdateSolution(realization)
   gen_auxvars => patch%aux%General%auxvars  
   global_auxvars => patch%aux%Global%auxvars
   
-  call VecCopy(field%flow_xx,field%flow_yy,ierr);CHKERRQ(ierr)
-
   if (realization%option%compute_mass_balance_new) then
     call GeneralUpdateMassBalance(realization)
   endif
@@ -438,7 +436,6 @@ subroutine GeneralTimeCut(realization)
   
   type(realization_type) :: realization
   type(option_type), pointer :: option
-  type(field_type), pointer :: field
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(global_auxvar_type), pointer :: global_auxvars(:)  
@@ -448,16 +445,11 @@ subroutine GeneralTimeCut(realization)
   PetscErrorCode :: ierr
 
   option => realization%option
-  field => realization%field
   patch => realization%patch
   grid => patch%grid
   global_auxvars => patch%aux%Global%auxvars
   gen_auxvars => patch%aux%General%auxvars
 
-  call VecCopy(field%flow_yy,field%flow_xx,ierr);CHKERRQ(ierr)
-  call DiscretizationGlobalToLocal(realization%discretization,field%flow_xx, &
-                                   field%flow_xx_loc,NFLOWDOF)
-  
   ! restore stored state
   do ghosted_id = 1, grid%ngmax
     global_auxvars(ghosted_id)%istate = &
@@ -702,8 +694,8 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
     if (patch%imat(ghosted_id) <= 0) cycle
     ghosted_end = ghosted_id*option%nflowdof
     ghosted_start = ghosted_end - option%nflowdof + 1
-    ! flag(1) indicates call from non-perturbation
-    option%iflag = 1
+    ! GENERAL_UPDATE_FOR_ACCUM indicates call from non-perturbation
+    option%iflag = GENERAL_UPDATE_FOR_ACCUM
     call GeneralAuxVarCompute(xx_loc_p(ghosted_start:ghosted_end), &
                        gen_auxvars(ZERO_INTEGER,ghosted_id), &
                        global_auxvars(ghosted_id), &
@@ -853,8 +845,8 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
           
       ! set this based on data given 
       global_auxvars_bc(sum_connection)%istate = istate
-      ! flag(2) indicates call from non-perturbation
-      option%iflag = 2
+      ! GENERAL_UPDATE_FOR_BOUNDARY indicates call from non-perturbation
+      option%iflag = GENERAL_UPDATE_FOR_BOUNDARY
       call GeneralAuxVarCompute(xxbc,gen_auxvars_bc(sum_connection), &
                                 global_auxvars_bc(sum_connection), &
                                 material_auxvars(ghosted_id), &
@@ -946,8 +938,8 @@ subroutine GeneralUpdateFixedAccum(realization)
     if (imat <= 0) cycle
     local_end = local_id*option%nflowdof
     local_start = local_end - option%nflowdof + 1
-    ! flag(0) indicates call from non-perturbation
-    option%iflag = 0
+    ! GENERAL_UPDATE_FOR_FIXED_ACCUM indicates call from non-perturbation
+    option%iflag = GENERAL_UPDATE_FOR_FIXED_ACCUM
     call GeneralAuxVarCompute(xx_p(local_start:local_end), &
                               gen_auxvars(ZERO_INTEGER,ghosted_id), &
                               global_auxvars(ghosted_id), &
@@ -4003,7 +3995,7 @@ subroutine GeneralSSSandbox(residual,Jacobian,compute_derivative, &
     call VecGetArrayF90(residual,r_p,ierr);CHKERRQ(ierr)
   endif
   
-  cur_srcsink => sandbox_list
+  cur_srcsink => ss_sandbox_list
   do
     if (.not.associated(cur_srcsink)) exit
       aux_real = 0.d0

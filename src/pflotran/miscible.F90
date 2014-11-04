@@ -78,8 +78,6 @@ subroutine MiscibleTimeCut(realization)
   option => realization%option
   field => realization%field
 
-  call VecCopy(field%flow_yy,field%flow_xx,ierr);CHKERRQ(ierr)
-
 end subroutine MiscibleTimeCut
 
 ! ************************************************************************** !
@@ -708,9 +706,6 @@ subroutine MiscibleUpdateSolution(realization)
   PetscErrorCode :: ierr
   
   field => realization%field
-  
-  call VecCopy(realization%field%flow_xx,realization%field%flow_yy, &
-               ierr);CHKERRQ(ierr)
   
   cur_patch => realization%patch_list%first
   do 

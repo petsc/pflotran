@@ -1440,6 +1440,76 @@ end subroutine SurfaceTHUpdateSurfState
 
 ! ************************************************************************** !
 
+subroutine AtmEnergyToTemperatureBisection(T,TL,TR,shift,RHS,Pr,option)
+  ! 
+  ! Solves the following nonlinear equation using the bisection method
+  !
+  ! R(T) = (rho(T)+shift)*T - RHS = 0
+  !
+  ! Author: Nathan Collier, ORNL
+  ! Date: 11/2014
+  ! 
+  use EOS_Water_module
+  use Option_module
+
+  implicit none
+
+  PetscReal      :: T,TL,TR,shift,RHS,Pr
+  type(option_type), pointer :: option
+
+  PetscReal      :: Tp,rho,rho_t,f,fR,fL,rtol
+  PetscInt       :: iter,niter
+  PetscBool      :: found
+  PetscErrorCode :: ierr
+
+  call EOSWaterdensity(TR,Pr,rho,rho_T,ierr)
+  fR = (rho+shift)*(TR+273.15d0) - RHS
+  call EOSWaterdensity(TL,Pr,rho,rho_T,ierr)
+  fL = (rho+shift)*(TL+273.15d0) - RHS
+
+  if (fL*fR > 0.d0) then
+     print *,"[TL,TR] = ",TL,TR
+     print *,"[fL,fR] = ",fL,fR
+     write(option%io_buffer,'("surface_th.F90: AtmEnergyToTemperatureBisection --> root is not bracketed")')
+     call printErrMsg(option)
+  endif
+
+  T = 0.5d0*(TL+TR)
+  call EOSWaterdensity(T,Pr,rho,rho_T,ierr)
+  f = (rho+shift)*(T+273.15d0) - RHS
+
+  found = PETSC_FALSE
+  niter = 200
+  rtol  = 1.d-6
+  do iter = 1,niter
+     Tp = T
+     if (fL*f < 0.d0) then
+        TR = T
+     else 
+        TL = T
+     endif
+
+     T = 0.5d0*(TL+TR)
+
+     call EOSWaterdensity(T,Pr,rho,rho_T,ierr)
+     f = (rho+shift)*(T+273.15d0) - RHS
+
+     if (abs((T-Tp)/(T+273.15d0)) < rtol) then
+        found = PETSC_TRUE
+        exit
+     endif
+  enddo
+
+  if (found .eqv. PETSC_FALSE) then
+     print *,"[TL,T,TR] = ",TL,T,TR
+     write(option%io_buffer,'("surface_th.F90: AtmEnergyToTemperatureBisection --> root not found!")')
+     call printErrMsg(option)
+  endif
+
+end subroutine AtmEnergyToTemperatureBisection
+
+! ************************************************************************** !
+
 subroutine SurfaceTHImplicitAtmForcing(surf_realization)
   !
   ! Updates the temperature of surface-water implicitly due to conduction.
@@ -1493,7 +1563,7 @@ subroutine SurfaceTHImplicitAtmForcing(surf_realization)
   PetscReal :: Cw
   PetscReal :: temp_old
   PetscReal :: head
-  PetscReal :: beta
+  PetscReal :: beta,RHS,TL,TR
   PetscBool :: found
   PetscErrorCode :: ierr
 
@@ -1541,25 +1611,13 @@ subroutine SurfaceTHImplicitAtmForcing(surf_realization)
             call EOSWaterdensity(temp_old,option%reference_pressure,den_old,dum1,ierr)
             call EOSWaterdensity(temp_old,option%reference_pressure,den_iter,dum1,ierr)
 
-            temp  = temp_old
-            found = PETSC_FALSE
-            do iter = 1,niter
-              ptemp = temp
-              beta  = (2.d0*k_therm*option%surf_flow_dt)/(Cw*head**2.d0)
-              temp  = (den_old*(temp_old + 273.15d0) + &
-                       beta*(surf_global_auxvars_ss(sum_connection)%temp + 273.15d0))/&
-                       (den_iter + beta) - 273.15d0
-              call EOSWaterdensity(temp,option%reference_pressure,den_iter,dum1,ierr)
-              if(abs((temp-ptemp)/(temp+273.15d0))<rtol) then
-                found = PETSC_TRUE
-                exit
-              endif
-            enddo
-            if (found .eqv. PETSC_FALSE) then
-              write(option%io_buffer, &
-                   '("surface_th.F90: SurfaceTHImplicitAtmForcing --> fixed point not found!")')
-              call printErrMsg(option)
-            endif
+            TL    = -100.d0
+            TR    =  100.d0
+            beta  = (2.d0*k_therm*option%surf_flow_dt)/(Cw*head**2.d0)
+            RHS   =  den_old*(temp_old+273.15d0)+beta*(surf_global_auxvars_ss(sum_connection)%temp+273.15d0)
+            call AtmEnergyToTemperatureBisection(temp,TL,TR,beta,RHS,option%reference_pressure,option)
+
+            call EOSWaterdensity(temp,option%reference_pressure,den_iter,dum1,ierr)
             surf_global_auxvars(ghosted_id)%temp = temp
 
             iend = local_id*option%nflowdof

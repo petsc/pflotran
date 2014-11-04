@@ -116,7 +116,8 @@ subroutine SubsurfAssignMatIDsToRegions(realization)
   use Patch_module
   use Field_module
   use Material_module
-
+  use Material_Aux_class
+  
   implicit none
   
   type(realization_type) :: realization
@@ -134,6 +135,7 @@ subroutine SubsurfAssignMatIDsToRegions(realization)
 
   type(material_property_type), pointer :: material_property
   type(region_type), pointer :: region
+  class(material_auxvar_type), pointer :: material_auxvars(:)
   
   option => realization%option
 
@@ -141,6 +143,7 @@ subroutine SubsurfAssignMatIDsToRegions(realization)
   do
     if (.not.associated(cur_patch)) exit
     ! set material ids to uninitialized
+    material_auxvars => cur_patch%aux%Material%auxvars
     cur_patch%imat = UNINITIALIZED_INTEGER
     grid => cur_patch%grid
     strata => cur_patch%strata_list%first
@@ -178,6 +181,7 @@ subroutine SubsurfAssignMatIDsToRegions(realization)
               ! if not active, set material id to zero
               cur_patch%imat(ghosted_id) = 0
             endif
+            material_auxvars(ghosted_id)%id = cur_patch%imat(ghosted_id)
           enddo
         endif
       endif
@@ -208,6 +212,7 @@ subroutine SubsurfAssignMaterialProperties(realization)
   use Material_Aux_class
   use Material_module
   use Option_module
+  use Creep_Closure_module
   use Variables_module, only : PERMEABILITY_X, PERMEABILITY_Y, &
                                PERMEABILITY_Z, PERMEABILITY_XY, &
                                PERMEABILITY_YZ, PERMEABILITY_XZ, &
@@ -420,9 +425,11 @@ subroutine SubsurfAssignMaterialProperties(realization)
   endif
   
   call DiscretizationGlobalToLocal(discretization,field%porosity0, &
-                                   field%porosity_mnrl_loc,ONEDOF)
-  call MaterialSetAuxVarVecLoc(patch%aux%Material,field%porosity_mnrl_loc, &
-                               POROSITY,0)
+                                   field%work_loc,ONEDOF)
+  call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                               POROSITY,POROSITY_MINERAL)
+  call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                               POROSITY,POROSITY_CURRENT)
   call DiscretizationGlobalToLocal(discretization,field%tortuosity0, &
                                     field%work_loc,ONEDOF)
   call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
@@ -457,6 +464,13 @@ subroutine SubsurfAssignMaterialProperties(realization)
     enddo
     call VecRestoreArrayF90(field%work_loc,vec_p,ierr);CHKERRQ(ierr)
   enddo
+  
+  if (associated(creep_closure)) then
+    material_property => &
+      MaterialPropGetPtrFromArray(creep_closure%material_name, &
+                                  patch%material_property_array)
+    creep_closure%imat = material_property%internal_id
+  endif
   
 end subroutine SubsurfAssignMaterialProperties
 

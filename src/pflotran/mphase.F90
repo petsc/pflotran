@@ -81,7 +81,6 @@ subroutine MphaseTimeCut(realization)
   option => realization%option
   field => realization%field
 
-  call VecCopy(field%flow_yy,field%flow_xx,ierr);CHKERRQ(ierr)
   call VecCopy(field%iphas_old_loc,field%iphas_loc,ierr);CHKERRQ(ierr)
 
 end subroutine MphaseTimeCut
@@ -1177,7 +1176,6 @@ subroutine MphaseUpdateSolution(realization)
   
   field => realization%field
   
-  call VecCopy(field%flow_xx,field%flow_yy,ierr);CHKERRQ(ierr)
   call VecCopy(field%iphas_loc,field%iphas_old_loc,ierr);CHKERRQ(ierr)
   
 ! call VecCopy(realization%field%flow_xx,realization%field%flow_yy,ierr)

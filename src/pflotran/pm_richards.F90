@@ -79,13 +79,14 @@ subroutine PMRichardsInitializeTimestep(this)
   
   class(pm_richards_type) :: this
 
-  call PMSubsurfaceInitializeTimestep(this)
+  call PMSubsurfaceInitializeTimestepA(this)
 
   if (this%option%print_screen_flag) then
     write(*,'(/,2("=")," RICHARDS FLOW ",62("="))')
   endif
   
   call RichardsInitializeTimestep(this%realization)
+  call PMSubsurfaceInitializeTimestepB(this)
   
 end subroutine PMRichardsInitializeTimestep
 

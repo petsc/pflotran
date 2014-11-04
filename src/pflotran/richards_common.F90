@@ -173,6 +173,7 @@ subroutine RichardsAccumulation(rich_auxvar,global_auxvar, &
   if (soil_compressibility_index > 0) then
     call MaterialCompressSoil(material_auxvar,global_auxvar%pres(1), &
                               compressed_porosity,dcompressed_porosity_dp)
+    material_auxvar%porosity = compressed_porosity
     por = compressed_porosity
   endif
     

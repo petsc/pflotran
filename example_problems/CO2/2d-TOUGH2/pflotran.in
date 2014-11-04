@@ -6,9 +6,8 @@ TYPE structured
 ORIGIN 0.d0 0.d0 0.d0
 NXYZ 107  1  51
 BOUNDS
-0.d0 321.d0
-0.d0 1.d0
-0.d0 51.d0
+0.d0 0.d0 0.d0 
+321.d0 1.d0 51.d0
 /
 END
 #

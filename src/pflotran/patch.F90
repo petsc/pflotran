@@ -674,7 +674,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   
   ! flow
   if (option%nflowdof > 0) then
-    if (option%flow%store_fluxes) then
+    if (option%flow%store_fluxes .or. (patch%surf_or_subsurf_flag == SURFACE) ) then
       allocate(patch%internal_flow_fluxes(option%nflowdof,temp_int))
       patch%internal_flow_fluxes = 0.d0
     endif
@@ -705,7 +705,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     patch%boundary_velocities = 0.d0
     ! flow
     if (option%nflowdof > 0) then
-      if (option%flow%store_fluxes) then  
+      if (option%flow%store_fluxes .or. (patch%surf_or_subsurf_flag == SURFACE)) then
         allocate(patch%boundary_flow_fluxes(option%nflowdof,temp_int))
         patch%boundary_flow_fluxes = 0.d0
       endif
@@ -1164,9 +1164,9 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
     case(LIQUID_STATE)
       coupler%flow_aux_int_var(GENERAL_STATE_INDEX,1:num_connections) = LIQUID_STATE
       if (general%liquid_pressure%itype == HYDROSTATIC_BC) then
-        option%io_buffer = 'Hydrostatic BC for general phase cannot possibly ' // &
-          'be set up correctly. - GEH'
-        call printErrMsg(option)
+!        option%io_buffer = 'Hydrostatic BC for general phase cannot possibly ' // &
+!          'be set up correctly. - GEH'
+!        call printErrMsg(option)
         if (general%mole_fraction%itype /= DIRICHLET_BC) then
           option%io_buffer = &
             'Hydrostatic liquid state pressure bc for flow condition "' // &
@@ -2860,7 +2860,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
          LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,LIQUID_VISCOSITY, &
          GAS_VISCOSITY,CAPILLARY_PRESSURE,LIQUID_DENSITY_MOL, &
          LIQUID_MOBILITY,GAS_MOBILITY,SC_FUGA_COEFF,STATE,ICE_DENSITY, &
-         TRANSIENT_POROSITY,LIQUID_HEAD)
+         EFFECTIVE_POROSITY,LIQUID_HEAD)
 
       if (associated(patch%aux%TH)) then
         select case(ivar)
@@ -2920,7 +2920,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%TH%auxvars(grid%nL2G(local_id))%u
             enddo
-          case(TRANSIENT_POROSITY)
+          case(EFFECTIVE_POROSITY)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%TH%auxvars(grid%nL2G(local_id))%transient_por
             enddo
@@ -2953,8 +2953,8 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
             call printErrMsg(option,'GAS_VISCOSITY not supported by Richards')
           case(GAS_MOBILITY)
             call printErrMsg(option,'GAS_MOBILITY not supported by Richards')
-          case(TRANSIENT_POROSITY)
-            call printErrMsg(option,'TRANSIENT_POROSITY not supported by Richards')
+          case(EFFECTIVE_POROSITY)
+            call printErrMsg(option,'EFFECTIVE_POROSITY not supported by Richards')
           case(LIQUID_PRESSURE)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = &
@@ -3341,6 +3341,11 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%General%auxvars(ZERO_INTEGER, &
                   grid%nL2G(local_id))%mobility(option%gas_phase)
+            enddo
+          case(EFFECTIVE_POROSITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%General%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%effective_porosity
             enddo
         end select         
       endif
@@ -3739,6 +3744,12 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
           MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
                                  POROSITY)
       enddo
+    case(MINERAL_POROSITY)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = &
+          MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
+                                 MINERAL_POROSITY)
+      enddo
     case(PERMEABILITY,PERMEABILITY_X)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = &
@@ -3894,7 +3905,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
          LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,LIQUID_VISCOSITY, &
          GAS_VISCOSITY,AIR_PRESSURE,CAPILLARY_PRESSURE, &
          LIQUID_MOBILITY,GAS_MOBILITY,SC_FUGA_COEFF,STATE,ICE_DENSITY, &
-         SECONDARY_TEMPERATURE,LIQUID_DENSITY_MOL,TRANSIENT_POROSITY, &
+         SECONDARY_TEMPERATURE,LIQUID_DENSITY_MOL,EFFECTIVE_POROSITY, &
          LIQUID_HEAD)
          
      if (associated(patch%aux%TH)) then
@@ -3934,7 +3945,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           case(SECONDARY_TEMPERATURE)
             local_id = grid%nG2L(ghosted_id)
             value = patch%aux%SC_heat%sec_heat_vars(local_id)%sec_temp(isubvar)
-          case(TRANSIENT_POROSITY)
+          case(EFFECTIVE_POROSITY)
             value = patch%aux%TH%auxvars(ghosted_id)%transient_por
         end select
       else if (associated(patch%aux%Richards)) then
@@ -3953,8 +3964,8 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
             call printErrMsg(option,'LIQUID_ENERGY not supported by Richards')
           case(GAS_ENERGY)
             call printErrMsg(option,'GAS_ENERGY not supported by Richards')
-          case(TRANSIENT_POROSITY)
-            call printErrMsg(option,'TRANSIENT_POROSITY not supported by Richards')
+          case(EFFECTIVE_POROSITY)
+            call printErrMsg(option,'EFFECTIVE_POROSITY not supported by Richards')
           case(LIQUID_PRESSURE)
             value = patch%aux%Global%auxvars(ghosted_id)%pres(1)
           case(LIQUID_HEAD)
@@ -4184,6 +4195,9 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           case(GAS_MOBILITY)
             value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                       mobility(option%gas_phase)
+          case(EFFECTIVE_POROSITY)
+            value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+                      effective_porosity
         end select        
       endif
       
@@ -4421,6 +4435,9 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
     case(POROSITY)
       value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
                                      POROSITY)
+    case(MINERAL_POROSITY)
+      value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
+                                     MINERAL_POROSITY)
     case(PERMEABILITY,PERMEABILITY_X)
       value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
                                      PERMEABILITY_X)
@@ -5217,6 +5234,18 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
                                       POROSITY,vec_ptr(ghosted_id))
         enddo
       endif
+    case(MINERAL_POROSITY)
+      if (vec_format == GLOBAL) then
+        do local_id=1,grid%nlmax
+          call MaterialAuxVarSetValue(material_auxvars(grid%nL2G(local_id)), &
+                                      MINERAL_POROSITY,vec_ptr(local_id))
+        enddo
+      else if (vec_format == LOCAL) then
+        do ghosted_id=1,grid%ngmax
+          call MaterialAuxVarSetValue(material_auxvars(ghosted_id), &
+                                      MINERAL_POROSITY,vec_ptr(ghosted_id))
+        enddo
+      endif
     case(PERMEABILITY,PERMEABILITY_X,PERMEABILITY_Y,PERMEABILITY_Z)
       option%io_buffer = 'Setting of permeability in "PatchSetVariable"' // &
         ' not supported.'
@@ -5696,6 +5725,8 @@ function PatchGetConnectionsFromCoords(patch,coordinates,integral_flux_name, &
   PetscReal :: magnitude
   PetscReal :: v1(3), v2(3)
   PetscReal :: x, y, z
+  PetscReal :: value1, value2
+  PetscReal, parameter :: relative_tolerance = 1.d-6
   PetscBool :: within_tolerance
   PetscErrorCode :: ierr
   
@@ -5770,15 +5801,23 @@ function PatchGetConnectionsFromCoords(patch,coordinates,integral_flux_name, &
           cur_connection_set%dist(Y_DIRECTION,iconn)
       z = grid%z(ghosted_id_up) + fraction_upwind * magnitude * &
           cur_connection_set%dist(Z_DIRECTION,iconn)
-      within_tolerance = PETSC_FALSE
       select case(idir)
         case(X_DIRECTION)
-          within_tolerance = Equal(x,coordinates(1)%x)
+          value1 = x
+          value2 = coordinates(1)%x
         case(Y_DIRECTION)
-          within_tolerance = Equal(y,coordinates(1)%y)
+          value1 = y
+          value2 = coordinates(1)%y
         case(Z_DIRECTION)
-          within_tolerance = Equal(z,coordinates(1)%z)
+          value1 = z
+          value2 = coordinates(1)%z
       end select
+      within_tolerance = PETSC_FALSE
+      if (Equal(value1,0.d0)) then
+        within_tolerance = Equal(value1,value2)
+      else
+        within_tolerance = dabs((value1-value2)/value1) < relative_tolerance
+      endif
       if (within_tolerance .and. &
           GeometryPointInPolygon(x,y,z,idir,coordinates)) then
         icount = icount + 1
@@ -5809,15 +5848,23 @@ function PatchGetConnectionsFromCoords(patch,coordinates,integral_flux_name, &
                                cur_connection_set%dist(Y_DIRECTION,iconn)
       z = grid%z(ghosted_id) - fraction_upwind * magnitude * &
                                cur_connection_set%dist(Z_DIRECTION,iconn)
-      within_tolerance = PETSC_FALSE
       select case(idir)
         case(X_DIRECTION)
-          within_tolerance = Equal(x,coordinates(1)%x)
+          value1 = x
+          value2 = coordinates(1)%x
         case(Y_DIRECTION)
-          within_tolerance = Equal(y,coordinates(1)%y)
+          value1 = y
+          value2 = coordinates(1)%y
         case(Z_DIRECTION)
-          within_tolerance = Equal(z,coordinates(1)%z)
+          value1 = z
+          value2 = coordinates(1)%z
       end select
+      within_tolerance = PETSC_FALSE
+      if (Equal(value1,0.d0)) then
+        within_tolerance = Equal(value1,value2)
+      else
+        within_tolerance = dabs((value1-value2)/value1) < relative_tolerance
+      endif
       if (within_tolerance .and. &
           GeometryPointInPolygon(x,y,z,idir,coordinates)) then
         icount = icount + 1

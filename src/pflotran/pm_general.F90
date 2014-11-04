@@ -152,7 +152,7 @@ subroutine PMGeneralInitializeTimestep(this)
   
   class(pm_general_type) :: this
 
-  call PMSubsurfaceInitializeTimestep(this)                                 
+  call PMSubsurfaceInitializeTimestepA(this)                                 
 !geh:remove   everywhere                                
   call MaterialAuxVarCommunicate(this%comm1, &
                                  this%realization%patch%aux%Material, &
@@ -163,6 +163,7 @@ subroutine PMGeneralInitializeTimestep(this)
   endif
   
   call GeneralInitializeTimestep(this%realization)
+  call PMSubsurfaceInitializeTimestepB(this)                                 
   
 end subroutine PMGeneralInitializeTimestep
 

@@ -82,13 +82,14 @@ subroutine PMMphaseInitializeTimestep(this)
   
   class(pm_mphase_type) :: this
 
-  call PMSubsurfaceInitializeTimestep(this)         
+  call PMSubsurfaceInitializeTimestepA(this)         
 
   if (this%option%print_screen_flag) then
     write(*,'(/,2("=")," MPHASE FLOW ",62("="))')
   endif
   
   call MphaseInitializeTimestep(this%realization)
+  call PMSubsurfaceInitializeTimestepB(this)         
   
 end subroutine PMMphaseInitializeTimestep
 

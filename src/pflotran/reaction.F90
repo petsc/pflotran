@@ -788,6 +788,7 @@ subroutine ReactionReadPass1(reaction,input,option)
         reaction%act_coef_use_bdot = PETSC_FALSE
       case('UPDATE_POROSITY')
         reaction%update_porosity = PETSC_TRUE
+        option%flow%transient_porosity = PETSC_TRUE
       case('UPDATE_TORTUOSITY')
         reaction%update_tortuosity = PETSC_TRUE
       case('UPDATE_PERMEABILITY')
@@ -3426,7 +3427,7 @@ subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar, &
   ! 
 
   use Option_module
-  use Reaction_Sandbox_module, only : RSandbox, sandbox_list
+  use Reaction_Sandbox_module, only : RSandbox, rxn_sandbox_list
   use CLM_Rxn_module, only : RCLMRxn, clmrxn_list 
  
   implicit none
@@ -3470,7 +3471,7 @@ subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar, &
                     material_auxvar,reaction,option)
   endif
   
-  if (associated(sandbox_list)) then
+  if (associated(rxn_sandbox_list)) then
     call RSandbox(Res,Jac,derivative,rt_auxvar,global_auxvar, &
                   material_auxvar,reaction,option)
   endif

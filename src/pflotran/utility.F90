@@ -614,11 +614,13 @@ subroutine Interpolate(x_high,x_low,x,y_high,y_low,y)
   PetscReal :: y_high, y_low, y
   
   PetscReal :: weight
+  PetscReal :: x_diff
   
-  if (dabs(x_high-x_low) < 1.d-10) then
+  x_diff = x_high-x_low
+  if (dabs(x_diff) < 1.d-10) then
     y = y_low
   else
-    weight = (x-x_low)/(x_high-x_low)
+    weight = (x-x_low)/x_diff
     y = y_low + weight*(y_high-y_low)
   endif
 

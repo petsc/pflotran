@@ -17,6 +17,7 @@ module Option_Flow_module
     PetscReal :: inf_scaled_res_tol   
     PetscBool :: check_post_convergence
     PetscBool :: store_fluxes
+    PetscBool :: transient_porosity
   
   end type flow_option_type
   
@@ -98,6 +99,7 @@ subroutine OptionFlowInitRealization(option)
   option%inf_rel_update_tol = UNINITIALIZED_DOUBLE
   option%inf_scaled_res_tol = UNINITIALIZED_DOUBLE
   option%store_fluxes = PETSC_FALSE
+  option%transient_porosity = PETSC_FALSE
   
 end subroutine OptionFlowInitRealization
 

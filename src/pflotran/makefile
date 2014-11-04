@@ -126,10 +126,6 @@ ifdef amanzi_bgd
   MYFLAGS += ${FC_DEFINE_FLAG}AMANZI_BGD
 endif
 
-ifdef store_flowrates
-  MYFLAGS += ${FC_DEFINE_FLAG}STORE_FLOWRATES
-endif
-
 ifdef surface_th_debug
   MYFLAGS += ${FC_DEFINE_FLAG}SURFACE_TH_DEBUG
 endif
@@ -340,6 +336,7 @@ misc_obj = \
 	${common_src}hydrostatic.o \
 	${common_src}init.o \
 	${common_src}integral_flux.o \
+	${common_src}lookup_table.o \
 	${common_src}mass_transfer.o \
 	${common_src}matrix_buffer.o \
 	${common_src}multisimulation.o \
@@ -370,7 +367,8 @@ misc_obj = \
 	${common_src}timestepper_BE.o \
 	${common_src}transport.o \
 	${common_src}uniform_velocity.o \
-	${common_src}waypoint.o 
+	${common_src}waypoint.o \
+	${common_src}wipp.o 
 
 surface_obj = \
 	${common_src}pmc_surface.o \
@@ -568,7 +566,7 @@ general.o : connection.o coupler.o debug.o discretization.o eos_gas.o \
             variables.o
 general_aux.o : characteristic_curves.o eos_gas.o eos_water.o global_aux.o \
                 material_aux.o option.o pflotran_constants.o string.o \
-                utility.o
+                utility.o wipp.o
 geomech_grid.o : gauss.o geomech_grid_aux.o geomechanics_region.o input_aux.o \
                  logging.o option.o pflotran_constants.o unstructured_cell.o \
                  unstructured_grid_aux.o utility.o
@@ -704,16 +702,17 @@ init.o : characteristic_curves.o condition.o condition_control.o connection.o \
          structured_grid.o subsurface.o surface_field.o surface_flow.o \
          surface_global.o surface_init.o surface_realization.o surface_th.o \
          th.o timestepper.o uniform_velocity.o units.o unstructured_grid.o \
-         unstructured_grid_aux.o variables.o waypoint.o
+         unstructured_grid_aux.o variables.o waypoint.o wipp.o
 input_aux.o : option.o pflotran_constants.o string.o
 integral_flux.o : geometry.o input_aux.o option.o pflotran_constants.o \
                   string.o utility.o
 logging.o : pflotran_constants.o
+lookup_table.o : pflotran_constants.o utility.o
 mass_transfer.o : dataset_base.o dataset_common_hdf5.o dataset_global_hdf5.o \
                   discretization.o grid.o input_aux.o option.o \
                   pflotran_constants.o string.o
 material.o : characteristic_curves.o communicator_base.o dataset_common_hdf5.o \
-             global_aux.o input_aux.o material_aux.o option.o \
+             field.o global_aux.o input_aux.o material_aux.o option.o \
              pflotran_constants.o string.o variables.o
 material_aux.o : option.o pflotran_constants.o utility.o variables.o
 matrix_block_aux.o : option.o pflotran_constants.o utility.o
@@ -840,15 +839,16 @@ pm_miscible.o : miscible.o pflotran_constants.o pm_base.o pm_subsurface.o
 pm_mphase.o : mphase.o pflotran_constants.o pm_base.o pm_subsurface.o
 pm_richards.o : pflotran_constants.o pm_base.o pm_subsurface.o richards.o
 pm_rt.o : communicator_base.o condition.o condition_control.o discretization.o \
-          field.o global.o grid.o integral_flux.o mass_transfer.o option.o \
-          pflotran_constants.o pm_base.o reaction_aux.o reactive_transport.o \
-          realization.o realization_base.o structured_communicator.o \
-          unstructured_communicator.o variables.o
+          field.o global.o grid.o integral_flux.o mass_transfer.o material.o \
+          option.o pflotran_constants.o pm_base.o reaction_aux.o \
+          reactive_transport.o realization.o realization_base.o \
+          structured_communicator.o unstructured_communicator.o variables.o
 pm_subsurface.o : checkpoint.o communicator_base.o condition.o \
                   condition_control.o discretization.o global.o grid.o \
-                  integral_flux.o material.o option.o pflotran_constants.o \
-                  pm_base.o realization.o structured_communicator.o \
-                  unstructured_communicator.o variables.o
+                  integral_flux.o material.o material_aux.o option.o \
+                  pflotran_constants.o pm_base.o realization.o \
+                  structured_communicator.o unstructured_communicator.o \
+                  variables.o
 pm_surface.o : communicator_base.o condition.o discretization.o global.o \
                grid.o option.o pflotran_constants.o pm_base.o \
                surface_checkpoint.o surface_realization.o \
@@ -1036,7 +1036,7 @@ structured_grid.o : connection.o input_aux.o option.o pflotran_constants.o \
                     string.o utility.o
 subsurface.o : discretization.o field.o grid.o hdf5.o input_aux.o logging.o \
                material.o material_aux.o option.o patch.o pflotran_constants.o \
-               realization.o region.o strata.o variables.o
+               realization.o region.o strata.o variables.o wipp.o
 subsurface_factory.o : condition_control.o init.o input_aux.o logging.o \
                        option.o output.o output_aux.o pflotran_constants.o \
                        pm_base.o pm_base_pointer.o pm_flash2.o pm_general.o \
@@ -1048,8 +1048,9 @@ subsurface_factory.o : condition_control.o init.o input_aux.o logging.o \
                        timestepper_base.o
 subsurface_simulation.o : logging.o option.o output.o output_aux.o \
                           pflotran_constants.o pmc_base.o pmc_subsurface.o \
-                          realization.o regression.o simulation_base.o \
-                          timestepper_BE.o timestepper_base.o
+                          reaction_clm.o reaction_sandbox.o realization.o \
+                          regression.o simulation_base.o srcsink_sandbox.o \
+                          timestepper_BE.o timestepper_base.o wipp.o
 surface_auxiliary.o : pflotran_constants.o surface_global_aux.o \
                       surface_th_aux.o
 surface_checkpoint.o : discretization.o grid.o option.o output_aux.o \
@@ -1177,6 +1178,8 @@ unstructured_polyhedra.o : connection.o geometry.o input_aux.o option.o \
 utility.o : input_aux.o option.o pflotran_constants.o string.o
 variables.o :
 waypoint.o : option.o output_aux.o pflotran_constants.o utility.o
+wipp.o : input_aux.o lookup_table.o option.o pflotran_constants.o string.o \
+         units.o utility.o
 
 # developer level regression testing
 test : utest rtest
