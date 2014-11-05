@@ -721,6 +721,7 @@ subroutine CondControlAssignTranInitCond(realization)
               reaction, &
               constraint_coupler%constraint_name, &
               constraint_coupler%aqueous_species, &
+              constraint_coupler%free_ion_guess, &
               constraint_coupler%minerals, &
               constraint_coupler%surface_complexes, &
               constraint_coupler%colloids, &
@@ -738,6 +739,7 @@ subroutine CondControlAssignTranInitCond(realization)
               reaction, &
               constraint_coupler%constraint_name, &
               constraint_coupler%aqueous_species, &
+              constraint_coupler%free_ion_guess, &
               constraint_coupler%minerals, &
               constraint_coupler%surface_complexes, &
               constraint_coupler%colloids, &

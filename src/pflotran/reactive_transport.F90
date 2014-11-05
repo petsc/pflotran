@@ -3745,6 +3745,7 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
         patch%aux%Global%auxvars_bc(sum_connection),reaction, &
         boundary_condition%tran_condition%cur_constraint_coupler%constraint_name, &
         boundary_condition%tran_condition%cur_constraint_coupler%aqueous_species, &
+        boundary_condition%tran_condition%cur_constraint_coupler%free_ion_guess, &
         boundary_condition%tran_condition%cur_constraint_coupler%minerals, &
         boundary_condition%tran_condition%cur_constraint_coupler%surface_complexes, &
         boundary_condition%tran_condition%cur_constraint_coupler%colloids, &
@@ -3893,6 +3894,7 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
               patch%aux%Material%auxvars(ghosted_id),reaction, &
               boundary_condition%tran_condition%cur_constraint_coupler%constraint_name, &
               boundary_condition%tran_condition%cur_constraint_coupler%aqueous_species, &
+              boundary_condition%tran_condition%cur_constraint_coupler%free_ion_guess, &
               boundary_condition%tran_condition%cur_constraint_coupler%minerals, &
               boundary_condition%tran_condition%cur_constraint_coupler%surface_complexes, &
               boundary_condition%tran_condition%cur_constraint_coupler%colloids, &

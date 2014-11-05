@@ -32,6 +32,7 @@ module Constraint_module
     PetscInt :: id
     character(len=MAXWORDLENGTH) :: name         
     type(aq_species_constraint_type), pointer :: aqueous_species
+    type(guess_constraint_type), pointer :: free_ion_guess
     type(mineral_constraint_type), pointer :: minerals
     type(srfcplx_constraint_type), pointer :: surface_complexes
     type(colloid_constraint_type), pointer :: colloids
@@ -57,6 +58,7 @@ module Constraint_module
     PetscInt :: num_iterations
     character(len=MAXWORDLENGTH) :: time_units
     type(aq_species_constraint_type), pointer :: aqueous_species
+    type(guess_constraint_type), pointer :: free_ion_guess
     type(mineral_constraint_type), pointer :: minerals
     type(srfcplx_constraint_type), pointer :: surface_complexes
     type(colloid_constraint_type), pointer :: colloids
@@ -101,6 +103,7 @@ function TranConstraintCreate(option)
   
   allocate(constraint)
   nullify(constraint%aqueous_species)
+  nullify(constraint%free_ion_guess)
   nullify(constraint%minerals)
   nullify(constraint%surface_complexes)
   nullify(constraint%colloids)
@@ -136,6 +139,7 @@ function TranConstraintCouplerCreate(option)
   
   allocate(coupler)
   nullify(coupler%aqueous_species)
+  nullify(coupler%free_ion_guess)
   nullify(coupler%minerals)
   nullify(coupler%surface_complexes)
   nullify(coupler%colloids)
@@ -184,6 +188,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
   PetscInt :: isrfcplx
   PetscInt :: length
   type(aq_species_constraint_type), pointer :: aq_species_constraint
+  type(guess_constraint_type), pointer :: free_ion_guess_constraint
   type(mineral_constraint_type), pointer :: mineral_constraint
   type(srfcplx_constraint_type), pointer :: srfcplx_constraint
   type(colloid_constraint_type), pointer :: colloid_constraint
@@ -328,6 +333,58 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
           call AqueousSpeciesConstraintDestroy(constraint%aqueous_species)
         constraint%aqueous_species => aq_species_constraint 
         
+      case('FREE_ION_GUESS')
+
+        free_ion_guess_constraint => GuessConstraintCreate(reaction,option)
+
+        block_string = 'CONSTRAINT, FREE_ION_GUESS'
+        icomp = 0
+        do
+          call InputReadPflotranString(input,option)
+          call InputReadStringErrorMsg(input,option,block_string)
+          
+          if (InputCheckExit(input,option)) exit  
+          
+          icomp = icomp + 1        
+          
+          if (icomp > reaction%naqcomp) then
+            option%io_buffer = 'Number of free ion guess constraints ' // &
+                               'exceeds number of primary chemical ' // &
+                               'components in constraint: ' // &
+                                trim(constraint%name)
+            call printErrMsg(option)
+          endif
+          
+          call InputReadWord(input,option, &
+                             free_ion_guess_constraint%names(icomp), &
+                             PETSC_TRUE)
+          call InputErrorMsg(input,option,'free ion guess name',block_string)
+          option%io_buffer = 'Constraint Species: ' // &
+                             trim(free_ion_guess_constraint%names(icomp))
+          call printMsg(option)
+          
+          call InputReadDouble(input,option,free_ion_guess_constraint%conc(icomp))
+          call InputErrorMsg(input,option,'free ion guess',block_string)
+        enddo
+
+        if (icomp < reaction%naqcomp) then
+          option%io_buffer = &
+                   'Number of free ion guess constraints is less than ' // &
+                   'number of primary species in aqueous constraint.'
+          call printErrMsg(option)        
+        endif
+        if (icomp > reaction%naqcomp) then
+          option%io_buffer = &
+                   'Number of free ion guess constraints is greater than ' // &
+                   'number of primary species in aqueous constraint.'
+          call printWrnMsg(option)        
+        endif
+        
+        if (associated(constraint%free_ion_guess)) &
+          call GuessConstraintDestroy(constraint%free_ion_guess)
+        constraint%free_ion_guess => free_ion_guess_constraint
+        nullify(free_ion_guess_constraint)
+
       case('MNRL','MINERALS')
 
         mineral_constraint => MineralConstraintCreate(reaction%mineral,option)
@@ -729,6 +786,9 @@ subroutine TranConstraintDestroy(constraint)
   if (associated(constraint%aqueous_species)) &
     call AqueousSpeciesConstraintDestroy(constraint%aqueous_species)
   nullify(constraint%aqueous_species)
+  if (associated(constraint%free_ion_guess)) &
+    call GuessConstraintDestroy(constraint%free_ion_guess)
+  nullify(constraint%free_ion_guess)
   if (associated(constraint%minerals)) &
     call MineralConstraintDestroy(constraint%minerals)
   nullify(constraint%minerals)

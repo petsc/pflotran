@@ -1100,6 +1100,7 @@ subroutine RealProcessTranConditions(realization)
     call ReactionProcessConstraint(realization%reaction, &
                                    cur_constraint%name, &
                                    cur_constraint%aqueous_species, &
+                                   cur_constraint%free_ion_guess, &
                                    cur_constraint%minerals, &
                                    cur_constraint%surface_complexes, &
                                    cur_constraint%colloids, &
@@ -1112,6 +1113,7 @@ subroutine RealProcessTranConditions(realization)
     call ReactionProcessConstraint(realization%reaction, &
                                    realization%sec_transport_constraint%name, &
                                    realization%sec_transport_constraint%aqueous_species, &
+                                   realization%sec_transport_constraint%free_ion_guess, &
                                    realization%sec_transport_constraint%minerals, &
                                    realization%sec_transport_constraint%surface_complexes, &
                                    realization%sec_transport_constraint%colloids, &
@@ -1135,6 +1137,7 @@ subroutine RealProcessTranConditions(realization)
                              cur_constraint_coupler%constraint_name, &
                              MAXWORDLENGTH)) then
             cur_constraint_coupler%aqueous_species => cur_constraint%aqueous_species
+            cur_constraint_coupler%free_ion_guess => cur_constraint%free_ion_guess
             cur_constraint_coupler%minerals => cur_constraint%minerals
             cur_constraint_coupler%surface_complexes => cur_constraint%surface_complexes
             cur_constraint_coupler%colloids => cur_constraint%colloids
