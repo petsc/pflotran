@@ -130,6 +130,13 @@ module Reaction_Aux_module
     PetscBool, pointer :: external_dataset(:)
   end type aq_species_constraint_type
 
+  type, public :: guess_constraint_type
+    ! Any changes here must be incorporated within ReactionProcessConstraint()
+    ! where constraints are reordered
+    character(len=MAXWORDLENGTH), pointer :: names(:)
+    PetscReal, pointer :: conc(:)
+  end type guess_constraint_type
+
   type, public :: colloid_constraint_type
     ! Any changes here must be incorporated within ReactionProcessConstraint()
     ! where constraints are reordered
@@ -381,6 +388,8 @@ module Reaction_Aux_module
             AqueousSpeciesDestroy, &
             AqueousSpeciesConstraintCreate, &
             AqueousSpeciesConstraintDestroy, &
+            GuessConstraintCreate, &
+            GuessConstraintDestroy, &
             MineralConstraintCreate, &
             MineralConstraintDestroy, &
             RadioactiveDecayRxnCreate, &
@@ -920,6 +929,37 @@ function AqueousSpeciesConstraintCreate(reaction,option)
   AqueousSpeciesConstraintCreate => constraint
 
 end function AqueousSpeciesConstraintCreate
+
+! ************************************************************************** !
+
+function GuessConstraintCreate(reaction,option)
+  ! 
+  ! Creates an aqueous species constraint
+  ! object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/14/08
+  ! 
+
+  use Option_module
+  
+  implicit none
+  
+  type(reaction_type) :: reaction
+  type(option_type) :: option
+  type(guess_constraint_type), pointer :: GuessConstraintCreate
+
+  type(guess_constraint_type), pointer :: constraint
+  
+  allocate(constraint)
+  allocate(constraint%names(reaction%naqcomp))
+  constraint%names = ''
+  allocate(constraint%conc(reaction%naqcomp))
+  constraint%conc = 0.d0
+
+  GuessConstraintCreate => constraint
+
+end function GuessConstraintCreate
 
 ! ************************************************************************** !
 
@@ -1883,6 +1923,33 @@ subroutine AqueousSpeciesConstraintDestroy(constraint)
   nullify(constraint)
 
 end subroutine AqueousSpeciesConstraintDestroy
+
+! ************************************************************************** !
+
+subroutine GuessConstraintDestroy(constraint)
+  ! 
+  ! Destroys an aqueous species constraint
+  ! object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/14/08
+  ! 
+
+  use Utility_module, only: DeallocateArray
+  
+  implicit none
+  
+  type(guess_constraint_type), pointer :: constraint
+  
+  if (.not.associated(constraint)) return
+  
+  call DeallocateArray(constraint%names)
+  call DeallocateArray(constraint%conc)
+
+  deallocate(constraint)
+  nullify(constraint)
+
+end subroutine GuessConstraintDestroy
 
 ! ************************************************************************** !
 

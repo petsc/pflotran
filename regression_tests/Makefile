@@ -201,4 +201,14 @@ clean-tests :
 	-rm -f default/543/543_flow_and_tracer_dbase.h5
 	-rm -f wipp/bragflo/gas_generation_2d.h5
 	-rm -f wipp/bragflo/gas_generation_one_cell.h5
+	-rm -f ascem/batch/calcite-kinetics-int.dat
+	-rm -f ascem/batch/calcite-kinetics-volume-fractions-int.dat
+	-rm -f ascem/batch/general-reaction-int.dat
+	-rm -f default/multicontinuum/0D_heat_MPH-int.dat
+	-rm -f default/multicontinuum/0D_heat_TH-int.dat
+	-rm -f ngee/CLM-CN-int.dat
+	-rm -f shortcourse/1D_variably_saturated_flow/vsat_flow_pulse_2layer-int.dat
+	-rm -f shortcourse/copper_leaching/cu_leaching-int.dat
+	-rm -f wipp/nuts/case3-int.dat
+	-rm -f wipp/nuts/case4r1_modified-int.dat
 

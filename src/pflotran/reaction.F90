@@ -1096,6 +1096,7 @@ end subroutine ReactionReadRedoxSpecies
 
 subroutine ReactionProcessConstraint(reaction,constraint_name, &
                                      aq_species_constraint, &
+                                     free_ion_guess, &
                                      mineral_constraint, &
                                      srfcplx_constraint, &
                                      colloid_constraint, &
@@ -1119,6 +1120,7 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
   type(reaction_type), pointer :: reaction
   character(len=MAXWORDLENGTH) :: constraint_name
   type(aq_species_constraint_type), pointer :: aq_species_constraint
+  type(guess_constraint_type), pointer :: free_ion_guess
   type(mineral_constraint_type), pointer :: mineral_constraint
   type(srfcplx_constraint_type), pointer :: srfcplx_constraint
   type(colloid_constraint_type), pointer :: colloid_constraint
@@ -1222,6 +1224,33 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
   
   if (.not.reaction%use_full_geochemistry) return
   
+  ! free ion guess
+  if (associated(free_ion_guess)) then
+    constraint_conc = 0.d0
+    do icomp = 1, reaction%naqcomp
+      found = PETSC_FALSE
+      do jcomp = 1, reaction%naqcomp
+        if (StringCompare(free_ion_guess%names(icomp), &
+                          reaction%primary_species_names(jcomp), &
+                          MAXWORDLENGTH)) then
+          found = PETSC_TRUE
+          exit
+        endif
+      enddo
+      if (.not.found) then
+        option%io_buffer = &
+                 'Guess species ' // trim(free_ion_guess%names(icomp)) // &
+                 ' from CONSTRAINT ' // trim(constraint_name) // &
+                 ' not found among primary species.'
+        call printErrMsg(option)
+      else
+        constraint_conc(jcomp) = free_ion_guess%conc(icomp)
+      endif
+    enddo
+    ! place ordered concentrations back in original array
+    free_ion_guess%conc = constraint_conc
+  endif
+  
   ! minerals
   call MineralProcessConstraint(reaction%mineral,constraint_name, &
                                 mineral_constraint,option)
@@ -1243,6 +1272,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                                          material_auxvar, &
                                          reaction,constraint_name, &
                                          aq_species_constraint, &
+                                         free_ion_guess_constraint, &
                                          mineral_constraint, &
                                          srfcplx_constraint, &
                                          colloid_constraint, &
@@ -1276,6 +1306,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   type(reaction_type), pointer :: reaction
   character(len=MAXWORDLENGTH) :: constraint_name
   type(aq_species_constraint_type), pointer :: aq_species_constraint
+  type(guess_constraint_type), pointer :: free_ion_guess_constraint
   type(mineral_constraint_type), pointer :: mineral_constraint
   type(srfcplx_constraint_type), pointer :: srfcplx_constraint
   type(colloid_constraint_type), pointer :: colloid_constraint
@@ -1407,6 +1438,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   
   if (use_prev_soln_as_guess) then
     free_conc = rt_auxvar%pri_molal
+  else if (associated(free_ion_guess_constraint)) then
+    free_conc = free_ion_guess_constraint%conc
   else
     free_conc = 1.d-9
   endif
@@ -4945,6 +4978,13 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,material_auxvar, &
   iend = reaction%naqcomp
   Res(istart:iend) = psv_t*rt_auxvar%total(:,iphase) 
 
+  if (reaction%nimcomp > 0) then
+    do iimob = 1, reaction%nimcomp
+      idof = reaction%offset_immobile + iimob
+      Res(idof) = Res(idof) + rt_auxvar%immobile(iimob)* &
+                              material_auxvar%volume/option%tran_dt 
+    enddo
+  endif
   if (reaction%ncoll > 0) then
     do icoll = 1, reaction%ncoll
       idof = reaction%offset_colloid + icoll
@@ -4956,13 +4996,6 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,material_auxvar, &
       iaqcomp = reaction%coll_spec_to_pri_spec(icollcomp)
       Res(iaqcomp) = Res(iaqcomp) + &
         psv_t*rt_auxvar%colloid%total_eq_mob(icollcomp)
-    enddo
-  endif
-  if (reaction%nimcomp > 0) then
-    do iimob = 1, reaction%nimcomp
-      idof = reaction%offset_immobile + iimob
-      Res(idof) = Res(idof) + rt_auxvar%immobile(iimob)* &
-                              material_auxvar%volume/option%tran_dt 
     enddo
   endif
 
@@ -5036,6 +5069,12 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
     enddo
   endif
 
+  if (reaction%nimcomp > 0) then
+    do iimob = 1, reaction%nimcomp
+      idof = reaction%offset_immobile + iimob
+      J(idof,idof) = material_auxvar%volume/option%tran_dt
+    enddo
+  endif
   if (reaction%ncoll > 0) then
     do icoll = 1, reaction%ncoll
       idof = reaction%offset_colloid + icoll
@@ -5050,12 +5089,6 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
     ! need the below
     ! dRj_dSic
     ! dRic_dCj                                 
-  endif
-  if (reaction%nimcomp > 0) then
-    do iimob = 1, reaction%nimcomp
-      idof = reaction%offset_immobile + iimob
-      J(idof,idof) = material_auxvar%volume/option%tran_dt
-    enddo
   endif
 
   ! CO2-specific

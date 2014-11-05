@@ -691,14 +691,16 @@ recursive subroutine TimestepperBEFinalizeRun(this,option)
 #endif
   
   if (OptionPrintToScreen(option)) then
-    write(*,'(/," TS BE steps = ",i6," newton = ",i8," linear = ",i10, &
+    write(*,'(/,a," TS BE steps = ",i6," newton = ",i8," linear = ",i10, &
             & " cuts = ",i6)') &
+            trim(this%name), &
             this%steps, &
             this%cumulative_newton_iterations, &
             this%cumulative_linear_iterations, &
             this%cumulative_time_step_cuts
     write(string,'(f12.1)') this%cumulative_solver_time
-    write(*,*) 'TS BE SNES time = ' // trim(adjustl(string)) // ' seconds'
+    write(*,'(a)') trim(this%name) // ' TS BE SNES time = ' // &
+      trim(adjustl(string)) // ' seconds'
   endif
   
 end subroutine TimestepperBEFinalizeRun

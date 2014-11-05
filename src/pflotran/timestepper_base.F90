@@ -18,6 +18,7 @@ module Timestepper_Base_class
 
   type, public :: timestepper_base_type
   
+    character(len=MAXWORDLENGTH) :: name
     PetscInt :: steps         ! The number of time steps taken by the code.
     PetscInt :: num_constant_time_steps   ! number of contiguous time_steps of constant size
 
@@ -127,6 +128,7 @@ subroutine TimestepperBaseInit(this)
   
   class(timestepper_base_type) :: this
   
+  this%name = ''
   this%steps = 0
   this%num_constant_time_steps = 0
 
@@ -795,11 +797,13 @@ recursive subroutine TimestepperBaseFinalizeRun(this,option)
 #endif
   
   if (OptionPrintToScreen(option)) then
-    write(*,'(/," TS Base steps = ",i6," cuts = ",i6)') &
+    write(*,'(/,a," TS Base"," steps = ",i6," cuts = ",i6)') &
+            trim(this%name), &
             this%steps, &
             this%cumulative_time_step_cuts
     write(string,'(f12.1)') this%cumulative_solver_time
-    write(*,*) 'TS Base solver time = ' // trim(adjustl(string)) // ' seconds'
+    write(*,'(a)') trim(this%name) // ' TS Base solver time = ' // &
+      trim(adjustl(string)) // ' seconds'
   endif
   
 end subroutine TimestepperBaseFinalizeRun
