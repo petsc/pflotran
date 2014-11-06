@@ -486,14 +486,23 @@ function GetMineralIDFromName2(mineral,name,must_be_kinetic)
 
   PetscInt :: GetMineralIDFromName2
   type(mineral_rxn_type), pointer :: cur_mineral
+  PetscInt :: ikinmnrl
 
   GetMineralIDFromName2 = -1
  
   cur_mineral => mineral%mineral_list
+  ikinmnrl = 0
   do
     if (.not.associated(cur_mineral)) exit
+    if (cur_mineral%itype == MINERAL_KINETIC) then
+      ikinmnrl = ikinmnrl + 1
+    endif
     if (StringCompare(name,cur_mineral%name,MAXWORDLENGTH)) then
       if (must_be_kinetic .and. cur_mineral%itype /= MINERAL_KINETIC) exit
+      if (must_be_kinetic) then
+        GetMineralIDFromName2 = ikinmnrl
+        exit
+      endif
       GetMineralIDFromName2 = cur_mineral%id
       exit
     endif
