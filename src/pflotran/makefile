@@ -106,18 +106,6 @@ ifdef gpu
   MYFLAGS += ${FC_DEFINE_FLAG}CHUNK
 endif
 
-ifdef mfd
-  MYFLAGS += ${FC_DEFINE_FLAG}DASVYAT
-endif
-
-ifdef dasvyat_debug
-  MYFLAGS += ${FC_DEFINE_FLAG}DASVYAT_DEBUG
-endif
-
-ifdef dasvyat_test_cut
-  MYFLAGS += ${FC_DEFINE_FLAG}DASVYAT_TEST_CUT
-endif
-
 ifdef ugrid_debug
   MYFLAGS += ${FC_DEFINE_FLAG}UGRID_DEBUG
 endif
@@ -128,10 +116,6 @@ endif
 
 ifdef surface_th_debug
   MYFLAGS += ${FC_DEFINE_FLAG}SURFACE_TH_DEBUG
-endif
-
-ifdef mfd_ugrid
-  MYFLAGS += ${FC_DEFINE_FLAG}MFD_UGRID
 endif
 
 UPDATE_PROVENANCE=0
@@ -226,8 +210,6 @@ mode_obj = \
 	${common_src}reactive_transport.o \
 	${common_src}richards.o \
 	${common_src}richards_common.o \
-	${common_src}richards_lsm.o \
-	${common_src}richards_mfd.o \
 	${common_src}th.o
 
 shared_mode_aux_obj = \
@@ -264,8 +246,6 @@ grid_obj = \
 	${common_src}discretization.o \
 	${common_src}dm_kludge.o \
 	${common_src}grid.o \
-	${common_src}mfd.o \
-	${common_src}mfd_aux.o \
 	${common_src}unstructured_cell.o \
 	${common_src}unstructured_communicator.o \
 	${common_src}unstructured_explicit.o \
@@ -479,7 +459,7 @@ condition_control.o : condition.o connection.o constraint.o coupler.o \
                       dataset_base.o dataset_common_hdf5.o \
                       dataset_gridded_hdf5.o discretization.o eos_water.o \
                       field.o general_aux.o global.o global_aux.o grid.o \
-                      hdf5.o material_aux.o mfd.o option.o patch.o \
+                      hdf5.o material_aux.o option.o patch.o \
                       pflotran_constants.o reaction.o reaction_aux.o \
                       reactive_transport.o reactive_transport_aux.o \
                       realization.o region.o surface_field.o \
@@ -498,9 +478,8 @@ constraint.o : global_aux.o immobile_aux.o input_aux.o logging.o mineral_aux.o \
 endif
 convergence.o : grid.o option.o pflotran_constants.o solver.o
 coupler.o : condition.o connection.o dataset_base.o dataset_gridded_hdf5.o \
-            grid.o input_aux.o mfd_aux.o option.o pflotran_constants.o \
-            region.o string.o structured_grid.o unstructured_explicit.o \
-            unstructured_grid_aux.o utility.o
+            grid.o input_aux.o option.o pflotran_constants.o region.o string.o \
+            unstructured_explicit.o unstructured_grid_aux.o utility.o
 database.o : database_aux.o immobile.o immobile_aux.o input_aux.o microbial.o \
              microbial_aux.o mineral.o mineral_aux.o option.o \
              pflotran_constants.o reaction.o reaction_aux.o reaction_clm.o \
@@ -531,7 +510,7 @@ dataset_map_hdf5.o : dataset_base.o dataset_common_hdf5.o input_aux.o \
                      logging.o option.o pflotran_constants.o string.o \
                      time_storage.o units.o utility.o
 debug.o : input_aux.o option.o pflotran_constants.o
-discretization.o : dm_kludge.o grid.o input_aux.o mfd.o mfd_aux.o option.o \
+discretization.o : dm_kludge.o grid.o input_aux.o option.o \
                    pflotran_constants.o string.o structured_grid.o \
                    unstructured_explicit.o unstructured_grid.o \
                    unstructured_grid_aux.o unstructured_polyhedra.o
@@ -651,10 +630,10 @@ global.o : communicator_base.o connection.o coupler.o field.o global_aux.o \
            grid.o material.o option.o patch.o pflotran_constants.o \
            realization.o realization_base.o variables.o
 global_aux.o : option.o pflotran_constants.o utility.o
-grid.o : connection.o dm_kludge.o logging.o mfd_aux.o option.o \
-         pflotran_constants.o region.o structured_grid.o unstructured_cell.o \
-         unstructured_explicit.o unstructured_grid.o unstructured_grid_aux.o \
-         unstructured_polyhedra.o utility.o
+grid.o : connection.o dm_kludge.o logging.o option.o pflotran_constants.o \
+         region.o structured_grid.o unstructured_explicit.o \
+         unstructured_grid.o unstructured_grid_aux.o unstructured_polyhedra.o \
+         utility.o
 hdf5.o : discretization.o field.o grid.o hdf5_aux.o logging.o option.o patch.o \
          pflotran_constants.o realization.o realization_base.o region.o \
          unstructured_cell.o utility.o
@@ -696,12 +675,12 @@ init.o : characteristic_curves.o condition.o condition_control.o connection.o \
          mass_transfer.o material.o mineral.o miscible.o mphase.o \
          observation.o option.o output.o output_aux.o output_tecplot.o patch.o \
          pflotran_constants.o reaction.o reaction_aux.o reactive_transport.o \
-         realization.o region.o regression.o richards.o richards_mfd.o \
-         saturation_function.o secondary_continuum.o simulation.o \
-         solid_solution.o solver.o srcsink_sandbox.o strata.o string.o \
-         structured_grid.o subsurface.o surface_field.o surface_flow.o \
-         surface_global.o surface_init.o surface_realization.o surface_th.o \
-         th.o timestepper.o uniform_velocity.o units.o unstructured_grid.o \
+         realization.o region.o regression.o richards.o saturation_function.o \
+         secondary_continuum.o simulation.o solid_solution.o solver.o \
+         srcsink_sandbox.o strata.o string.o structured_grid.o subsurface.o \
+         surface_field.o surface_flow.o surface_global.o surface_init.o \
+         surface_realization.o surface_th.o th.o timestepper.o \
+         uniform_velocity.o units.o unstructured_grid.o \
          unstructured_grid_aux.o variables.o waypoint.o wipp.o
 input_aux.o : option.o pflotran_constants.o string.o
 integral_flux.o : geometry.o input_aux.o option.o pflotran_constants.o \
@@ -717,10 +696,6 @@ material.o : characteristic_curves.o communicator_base.o dataset_common_hdf5.o \
 material_aux.o : option.o pflotran_constants.o utility.o variables.o
 matrix_block_aux.o : option.o pflotran_constants.o utility.o
 matrix_buffer.o : grid.o pflotran_constants.o structured_grid.o
-mfd.o : connection.o eos_water.o field.o global_aux.o grid.o material_aux.o \
-        mfd_aux.o option.o patch.o pflotran_constants.o richards_aux.o \
-        unstructured_cell.o unstructured_grid_aux.o
-mfd_aux.o : connection.o option.o pflotran_constants.o
 microbial.o : global_aux.o immobile_aux.o input_aux.o material_aux.o \
               microbial_aux.o option.o pflotran_constants.o reaction_aux.o \
               reactive_transport_aux.o string.o utility.o
@@ -939,15 +914,15 @@ reactive_transport.o : condition.o connection.o constraint.o coupler.o debug.o \
                        surface_complexation_aux.o transport.o variables.o
 reactive_transport_aux.o : matrix_block_aux.o option.o pflotran_constants.o \
                            reaction_aux.o surface_complexation_aux.o utility.o
-realization.o : characteristic_curves.o condition.o connection.o constraint.o \
-                coupler.o dataset.o dataset_base.o dataset_common_hdf5.o \
-                debug.o discretization.o dm_kludge.o field.o fluid.o grid.o \
-                input_aux.o mass_transfer.o material.o material_aux.o mfd.o \
-                mfd_aux.o option.o output_aux.o patch.o pflotran_constants.o \
-                reaction.o reaction_aux.o reactive_transport_aux.o \
-                realization_base.o region.o saturation_function.o strata.o \
-                string.o structured_communicator.o structured_grid.o \
-                time_storage.o uniform_velocity.o unstructured_cell.o \
+realization.o : characteristic_curves.o condition.o constraint.o coupler.o \
+                dataset.o dataset_base.o dataset_common_hdf5.o debug.o \
+                discretization.o dm_kludge.o field.o fluid.o grid.o \
+                input_aux.o mass_transfer.o material.o material_aux.o option.o \
+                output_aux.o patch.o pflotran_constants.o reaction.o \
+                reaction_aux.o reactive_transport_aux.o realization_base.o \
+                region.o saturation_function.o strata.o string.o \
+                structured_communicator.o structured_grid.o time_storage.o \
+                uniform_velocity.o unstructured_cell.o \
                 unstructured_communicator.o unstructured_grid.o \
                 unstructured_grid_aux.o variables.o waypoint.o
 realization_base.o : communicator_base.o debug.o discretization.o field.o \
@@ -962,23 +937,14 @@ richards.o : connection.o coupler.o debug.o discretization.o eos_water.o \
              field.o global_aux.o grid.o logging.o mass_transfer.o material.o \
              material_aux.o matrix_buffer.o option.o output_aux.o patch.o \
              pflotran_constants.o realization.o realization_base.o \
-             richards_aux.o richards_common.o richards_lsm.o richards_mfd.o \
-             saturation_function.o srcsink_sandbox.o srcsink_sandbox_base.o \
+             richards_aux.o richards_common.o saturation_function.o \
+             srcsink_sandbox.o srcsink_sandbox_base.o \
              srcsink_sandbox_downreg.o string.o utility.o variables.o
 richards_aux.o : eos_water.o global_aux.o material_aux.o matrix_buffer.o \
                  option.o pflotran_constants.o saturation_function.o utility.o
 richards_common.o : connection.o eos_water.o global_aux.o material_aux.o \
                     option.o pflotran_constants.o richards_aux.o \
                     saturation_function.o utility.o
-richards_lsm.o : connection.o coupler.o field.o global_aux.o grid.o logging.o \
-                 material.o option.o patch.o pflotran_constants.o \
-                 realization.o richards_aux.o richards_common.o \
-                 saturation_function.o
-richards_mfd.o : auxiliary.o connection.o coupler.o debug.o discretization.o \
-                 field.o global_aux.o grid.o logging.o mass_transfer.o \
-                 material.o material_aux.o matrix_buffer.o mfd.o mfd_aux.o \
-                 option.o patch.o pflotran_constants.o realization.o \
-                 richards_aux.o richards_common.o variables.o
 saturation.o : condition.o connection.o coupler.o grid.o option.o \
                pflotran_constants.o region.o saturation_function.o
 saturation_function.o : input_aux.o option.o pflotran_constants.o string.o \
