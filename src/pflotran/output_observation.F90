@@ -49,7 +49,7 @@ subroutine OutputObservationInit(num_steps)
     integral_flux_first = PETSC_TRUE
   else
     observation_first = PETSC_FALSE
-    secondary_observation_first = PETSC_TRUE
+    secondary_observation_first = PETSC_FALSE
     mass_balance_first = PETSC_FALSE
     integral_flux_first = PETSC_FALSE
   endif
@@ -122,7 +122,6 @@ subroutine OutputObservationTecplotColumnTXT(realization_base)
   type(patch_type), pointer :: patch  
   type(output_option_type), pointer :: output_option
   type(observation_type), pointer :: observation
-  PetscBool, save :: check_for_observation_points = PETSC_TRUE
   PetscBool, save :: open_file = PETSC_FALSE
   PetscInt :: local_id
   PetscInt :: icolumn
@@ -136,7 +135,7 @@ subroutine OutputObservationTecplotColumnTXT(realization_base)
   field => realization_base%field
   output_option => realization_base%output_option
   
-  if (check_for_observation_points) then
+  if (observation_first) then
     open_file = PETSC_FALSE
     observation => patch%observation_list%first
     do
@@ -149,7 +148,6 @@ subroutine OutputObservationTecplotColumnTXT(realization_base)
       endif
       observation => observation%next
     enddo
-    check_for_observation_points = PETSC_FALSE
   endif
   
   
@@ -434,7 +432,6 @@ subroutine OutputObservationTecplotSecTXT(realization_base)
   type(patch_type), pointer :: patch  
   type(output_option_type), pointer :: output_option
   type(observation_type), pointer :: observation
-  PetscBool, save :: check_for_observation_points = PETSC_TRUE
   PetscBool, save :: open_file = PETSC_FALSE
   PetscInt :: local_id
   PetscInt :: icolumn
@@ -448,7 +445,7 @@ subroutine OutputObservationTecplotSecTXT(realization_base)
   field => realization_base%field
   output_option => realization_base%output_option
   
-  if (check_for_observation_points) then
+  if (secondary_observation_first) then
     open_file = PETSC_FALSE
     observation => patch%observation_list%first
     do
@@ -461,7 +458,6 @@ subroutine OutputObservationTecplotSecTXT(realization_base)
       endif
       observation => observation%next
     enddo
-    check_for_observation_points = PETSC_FALSE
   endif
   
   
@@ -1608,6 +1604,8 @@ subroutine OutputIntegralFlux(realization_base)
   option => realization_base%option
   output_option => realization_base%output_option
   reaction => realization_base%reaction
+
+  if (.not.associated(patch%integral_flux_list%first)) return
 
   flow_dof_scale = 1.d0
   select case(option%iflowmode)
