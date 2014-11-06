@@ -58,7 +58,6 @@ subroutine Init(simulation)
   use Immis_module
   use Miscible_module
   use Richards_module
-  use Richards_MFD_module
   use TH_module
   use General_module
   
@@ -320,8 +319,7 @@ subroutine Init(simulation)
 
   call RegressionCreateMapping(simulation%regression,realization)
 
-  if (realization%discretization%itype == STRUCTURED_GRID .or. &
-      realization%discretization%itype == STRUCTURED_GRID_MIMETIC) then
+  if (realization%discretization%itype == STRUCTURED_GRID) then
     if (OptionPrintToScreen(option)) then
       write(*,'(/," Requested processors and decomposition = ", &
                & i5,", npx,y,z= ",3i4)') &
@@ -413,16 +411,9 @@ subroutine Init(simulation)
         call SNESSetFunction(flow_solver%snes,field%flow_r,THResidual, &
                              realization,ierr);CHKERRQ(ierr)
       case(RICHARDS_MODE)
-        select case(realization%discretization%itype)
-          case(STRUCTURED_GRID_MIMETIC,UNSTRUCTURED_GRID_MIMETIC)
-            call SNESSetFunction(flow_solver%snes,field%flow_r_faces, &
-                                 RichardsResidualMFDLP, &
-                                 realization,ierr);CHKERRQ(ierr)
-          case default
-            call SNESSetFunction(flow_solver%snes,field%flow_r, &
-                                 RichardsResidual, &
-                                 realization,ierr);CHKERRQ(ierr)
-        end select
+        call SNESSetFunction(flow_solver%snes,field%flow_r, &
+                             RichardsResidual, &
+                             realization,ierr);CHKERRQ(ierr)
       case(MPH_MODE)
         call SNESSetFunction(flow_solver%snes,field%flow_r,MphaseResidual, &
                              realization,ierr);CHKERRQ(ierr)
@@ -449,16 +440,8 @@ subroutine Init(simulation)
         call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
                              THJacobian,realization,ierr);CHKERRQ(ierr)
       case(RICHARDS_MODE)
-        select case(realization%discretization%itype)
-          case(STRUCTURED_GRID_MIMETIC,UNSTRUCTURED_GRID_MIMETIC)
-            call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
-                             RichardsJacobianMFDLP,realization, &
-                                 ierr);CHKERRQ(ierr)
-          case default !sp 
-            call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
+        call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
                              RichardsJacobian,realization,ierr);CHKERRQ(ierr)
-        end select
-
       case(MPH_MODE)
         call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
                              MPHASEJacobian,realization,ierr);CHKERRQ(ierr)
@@ -495,8 +478,7 @@ subroutine Init(simulation)
     ! KSPSetFromOptions() will already have been called.
     ! I also note that this preconditioner is intended only for the flow 
     ! solver.  --RTM
-    if ((realization%discretization%itype == STRUCTURED_GRID_MIMETIC).or.&
-                (realization%discretization%itype == STRUCTURED_GRID)) then
+    if (realization%discretization%itype == STRUCTURED_GRID) then
       call PCSetDM(flow_solver%pc, &
                    realization%discretization%dm_nflowdof,ierr);CHKERRQ(ierr)
     endif
@@ -793,10 +775,6 @@ subroutine Init(simulation)
   ! assignVolumesToMaterialAuxVars() must be called after 
   ! RealizInitMaterialProperties() where the Material object is created 
   call assignVolumesToMaterialAuxVars(realization)
-  if(realization%discretization%lsm_flux_method) &
-    call GridComputeMinv(realization%discretization%grid, &
-                         realization%discretization%stencil_width,option)
-
   call RealizationInitAllCouplerAuxVars(realization)
   if (option%ntrandof > 0) then
     call printMsg(option,"  Setting up TRAN Realization ")
@@ -862,13 +840,6 @@ subroutine Init(simulation)
       case(TH_MODE)
         call THUpdateAuxVars(realization)
       case(RICHARDS_MODE)
-#ifdef DASVYAT
-       if (option%mimetic) then
-!        call RichardsInitialPressureReconstruction(realization)
-!        write(*,*) "RichardsInitialPressureReconstruction"
-!        read(*,*)
-       end if
-#endif 
         call RichardsUpdateAuxVars(realization)
       case(MPH_MODE)
         call MphaseUpdateAuxVars(realization)
@@ -929,20 +900,6 @@ subroutine Init(simulation)
       call OutputVariableAddToList( &
              realization%output_option%output_variable_list, &
              'Permeability Z',OUTPUT_GENERIC,'m^2',PERMEABILITY_Z)
-#ifdef DASVYAT
-      if(realization%discretization%itype == STRUCTURED_GRID_MIMETIC .or. &
-         realization%discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
-        call OutputVariableAddToList( &
-               realization%output_option%output_variable_list, &
-               'Permeability XY',OUTPUT_GENERIC,'m^2',PERMEABILITY_XY)
-        call OutputVariableAddToList( &
-               realization%output_option%output_variable_list, &
-               'Permeability XZ',OUTPUT_GENERIC,'m^2',PERMEABILITY_XZ)
-        call OutputVariableAddToList( &
-               realization%output_option%output_variable_list, &
-               'Permeability YZ',OUTPUT_GENERIC,'m^2',PERMEABILITY_YZ)
-      endif
-#endif
     else
       call OutputVariableAddToList( &
              realization%output_option%output_variable_list, &
@@ -1294,8 +1251,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
   call DiscretizationReadRequiredCards(discretization,input,option)
   
   select case(discretization%itype)
-    case(STRUCTURED_GRID,UNSTRUCTURED_GRID,STRUCTURED_GRID_MIMETIC, &
-         UNSTRUCTURED_GRID_MIMETIC)
+    case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
       patch => PatchCreate()
       patch%grid => discretization%grid
       if (.not.associated(realization%patch_list)) then
@@ -1354,8 +1310,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
 !....................
       case('PROC')
         ! processor decomposition
-        if (realization%discretization%itype == STRUCTURED_GRID .or. &
-            realization%discretization%itype == STRUCTURED_GRID_MIMETIC) then
+        if (realization%discretization%itype == STRUCTURED_GRID) then
           grid => realization%patch%grid
           ! strip card from front of string
           call InputReadInt(input,option,grid%structured_grid%npx)
@@ -1882,9 +1837,6 @@ subroutine InitReadInput(simulation)
         call InputDefaultMsg(input,option,'Reference Temperature') 
 
 !......................
-
-      case('ANI_RELATIVE_PERMEABILTY')
-        option%ani_relative_permeability = PETSC_TRUE
 
       case('REFERENCE_POROSITY')
         call InputReadStringErrorMsg(input,option,card)

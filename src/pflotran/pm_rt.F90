@@ -131,7 +131,7 @@ subroutine PMRTInit(this)
 #ifndef SIMPLIFY  
   ! set up communicator
   select case(this%realization%discretization%itype)
-    case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
+    case(STRUCTURED_GRID)
       this%commN => StructuredCommunicatorCreate()
     case(UNSTRUCTURED_GRID)
       this%commN => UnstructuredCommunicatorCreate()

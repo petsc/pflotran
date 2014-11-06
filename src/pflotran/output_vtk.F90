@@ -324,8 +324,7 @@ subroutine WriteVTKGrid(fid,realization_base)
   grid => patch%grid
   option => realization_base%option
   
-  if ((realization_base%discretization%itype == STRUCTURED_GRID).or. &
-        (realization_base%discretization%itype == STRUCTURED_GRID_MIMETIC))  then
+  if (realization_base%discretization%itype == STRUCTURED_GRID)  then
 
     nx = grid%structured_grid%nx
     ny = grid%structured_grid%ny

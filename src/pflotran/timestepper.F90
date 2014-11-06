@@ -931,15 +931,8 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
         call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx,  &
                        ierr);CHKERRQ(ierr)
       case(RICHARDS_MODE)
-        if (discretization%itype == STRUCTURED_GRID_MIMETIC.or. &
-            discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
-          call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx_faces,  &
-                         ierr);CHKERRQ(ierr)
-        else 
-          call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx,  &
-                         ierr);CHKERRQ(ierr)
-        end if
-
+        call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx,  &
+                       ierr);CHKERRQ(ierr)
     end select
     call PetscTime(log_end_time, ierr);CHKERRQ(ierr)
     stepper%cumulative_solver_time = stepper%cumulative_solver_time + &
@@ -1445,40 +1438,8 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
           call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx,  &
                          ierr);CHKERRQ(ierr)
         case(RICHARDS_MODE)
-          if (discretization%itype == STRUCTURED_GRID_MIMETIC) then 
-            call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx_faces,  &
-                           ierr);CHKERRQ(ierr)
-          else 
-            call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx,  &
-                           ierr);CHKERRQ(ierr)
-          end if
-
-#if DASVYAT_DEBUG
-          call PetscViewerASCIIOpen(realization%option%mycomm,'timestepp_flow_xx_after.out', &
-                                viewer,ierr);CHKERRQ(ierr)
-          if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
-            !call VecView(field%flow_xx_faces, viewer, ierr)
-            !call VecView(field%flow_xx, viewer, ierr)
-            !call VecView(field%flow_r_faces, viewer, ierr)
-            call VecNorm(field%flow_r_faces, NORM_2, tempreal,  &
+          call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx,  &
                          ierr);CHKERRQ(ierr)
-            write(*,*) "MFD residual", tempreal
-          else
-            call VecView(field%flow_xx, viewer, ierr);CHKERRQ(ierr)
-        endif
-
-        call RichardsResidual(solver%snes,field%flow_xx, field%flow_r,realization,ierr)
-        call VecView(field%flow_r, viewer, ierr);CHKERRQ(ierr)
-        call VecNorm(field%flow_r, NORM_2, tempreal2, ierr);CHKERRQ(ierr)
-
-        write(*,*) "FV residual", tempreal2
-        call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
-        write(*,*) "After SNESSolve"
-        read(*,*)     
-#endif
-
-
-
       end select
       call PetscTime(log_end_time, ierr);CHKERRQ(ierr)
       stepper%cumulative_solver_time = stepper%cumulative_solver_time + &
@@ -1540,11 +1501,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
  
        stepper%target_time = stepper%target_time - option%flow_dt
 
-#ifdef DASVYAT_TEST_CUT
-        option%flow_dt = 1d0*option%flow_dt
-#else
         option%flow_dt = 0.5d0 * option%flow_dt  
-#endif
       
         if (option%print_screen_flag) write(*,'('' -> Cut time step: snes='',i3, &
           &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.5, '' dt= '', &
@@ -2568,15 +2525,8 @@ subroutine StepperSolveFlowSteadyState(realization,stepper,failure)
       call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx,  &
                      ierr);CHKERRQ(ierr)
     case(RICHARDS_MODE)
-      if (discretization%itype == STRUCTURED_GRID_MIMETIC.or. &
-          discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
-        call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx_faces,  &
-                       ierr);CHKERRQ(ierr)
-      else
-        call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx,  &
-                       ierr);CHKERRQ(ierr)
-      end if
-
+      call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx,  &
+                     ierr);CHKERRQ(ierr)
   end select
 
   call SNESGetIterationNumber(solver%snes,num_newton_iterations,  &

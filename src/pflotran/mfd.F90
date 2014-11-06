@@ -567,18 +567,6 @@ subroutine MFDAuxGenerateRhs(patch, grid, ghosted_cell_id, PermTensor, bc_g, sou
      BdARdp(i) = sq_faces(i)*dbeta_dp(i)
   enddo
 
-#ifdef DASVYAT_DEBUG
-   if (ghosted_cell_id==1) then
-     write(*,*) "cntr pressure", pres(1)
-     write(*,*) "sq ", (sq_faces(iface),iface=1,6)
-     write(*,*) "p ", (face_pres(iface) + bc_g(iface)/sq_faces(iface),iface=1,6)
-     write(*,*) "den ", (den(iface),iface=1,6)
-     write(*,*) "den_dp ", (dden_dp(iface),iface=1,6)
-     write(*,*) "dbeta_dp ", ( dbeta_dp(i),i=1,6)
-     write(*,*) "Accum ", Accum(1)
-  endif
-#endif
-
   sat = global_auxvar%sat(1)
   ds_dp = rich_auxvar%dsat_dp
   PorVol_dt = porosity*volume/option%flow_dt

@@ -358,8 +358,7 @@ subroutine OutputWriteTecplotZoneHeader(fid,surf_realization,variable_count, &
   string2 = ''
   select case(tecplot_format)
     case (TECPLOT_POINT_FORMAT)
-      if ((surf_realization%discretization%itype == STRUCTURED_GRID).or. &
-          (surf_realization%discretization%itype == STRUCTURED_GRID_MIMETIC)) then
+      if (surf_realization%discretization%itype == STRUCTURED_GRID) then
         string2 = ', I=' // &
                   trim(StringFormatInt(grid%structured_grid%nx)) // &
                   ', J=' // &
@@ -372,8 +371,7 @@ subroutine OutputWriteTecplotZoneHeader(fid,surf_realization,variable_count, &
       string2 = trim(string2) // &
               ', DATAPACKING=POINT'
     case default !(TECPLOT_BLOCK_FORMAT,TECPLOT_FEBRICK_FORMAT)
-      if ((surf_realization%discretization%itype == STRUCTURED_GRID).or. &
-          (surf_realization%discretization%itype == STRUCTURED_GRID_MIMETIC)) then
+      if (surf_realization%discretization%itype == STRUCTURED_GRID) then
         string2 = ', I=' // &
                   trim(StringFormatInt(grid%structured_grid%nx+1)) // &
                   ', J=' // &

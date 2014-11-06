@@ -63,21 +63,7 @@ subroutine RichardsTimeCut(realization)
   implicit none
   
   type(realization_type) :: realization
-  type(option_type), pointer :: option
-  type(field_type), pointer :: field
   
-  PetscErrorCode :: ierr
-  PetscInt :: local_id
-  PetscViewer :: viewer
-
-  option => realization%option
-  field => realization%field
-
-  if (option%mimetic) then
-    call VecCopy(field%flow_yy_faces, field%flow_xx_faces, ierr);CHKERRQ(ierr)
-    call RichardsUpdateAuxVars(realization)
-  endif
-
   call RichardsInitializeTimestep(realization)  
  
 end subroutine RichardsTimeCut
@@ -713,15 +699,9 @@ subroutine RichardsUpdateAuxVars(realization)
   ! 
 
   use Realization_class
-  use Richards_MFD_module
-
   type(realization_type) :: realization
   
-  if (realization%discretization%itype == STRUCTURED_GRID_MIMETIC) then
-    call RichardsUpdateAuxVarsPatchMFDLP(realization)
-  else
-    call RichardsUpdateAuxVarsPatch(realization)
-  end if  
+  call RichardsUpdateAuxVarsPatch(realization)
 
 end subroutine RichardsUpdateAuxVars
 
@@ -745,8 +725,6 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   use Connection_module
   use Material_module
   use Logging_module
-  
-  use Richards_LSM_module
   
   implicit none
 
@@ -859,11 +837,6 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
 
   call VecRestoreArrayF90(field%flow_xx_loc,xx_loc_p, ierr);CHKERRQ(ierr)
 
-  ! Compute gradient using a least squares approach at each control volume
-  if(realization%discretization%lsm_flux_method) then
-    call RichardsUpdateLSMAuxVarsPatch(realization)
-  endif
-
   patch%aux%Richards%auxvars_up_to_date = PETSC_TRUE
 
   call PetscLogEventEnd(logging%event_r_auxvars_bc,ierr);CHKERRQ(ierr)
@@ -928,17 +901,6 @@ subroutine RichardsUpdateSolution(realization)
   implicit none
   
   type(realization_type) :: realization
-
-  type(field_type), pointer :: field
-  PetscErrorCode :: ierr
-  PetscViewer :: viewer
-  
-  field => realization%field
- 
-  if (realization%option%mimetic) then 
-     call VecCopy(field%flow_xx_faces, field%flow_yy_faces,  &
-                  ierr);CHKERRQ(ierr)
-  end if
 
   call RichardsUpdateSolutionPatch(realization)
 
@@ -1283,8 +1245,6 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
   use Field_module
   use Debug_module
   
-  use Richards_LSM_module
-  
   implicit none
 
   type :: flux_ptrs
@@ -1326,7 +1286,6 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
   PetscInt :: axis, side, nlx, nly, nlz, ngx, ngxy, pstart, pend, flux_id
   PetscInt :: direction, max_x_conn, max_y_conn
   PetscViewer :: viewer
-  PetscInt, pointer :: cell_neighbors(:,:)
   
   patch => realization%patch
   grid => patch%grid
@@ -1345,14 +1304,6 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
   if (option%compute_mass_balance_new) then
     call RichardsZeroMassBalDeltaPatch(realization)
   endif
-
-  select case(grid%itype)
-    case(STRUCTURED_GRID)
-      cell_neighbors => grid%structured_grid%cell_neighbors
-    case(UNSTRUCTURED_GRID)
-      option%io_buffer='GridComputeMinv() not implemented for unstructured grid.'
-      call printErrMsg(option)
-  end select
 
   if (option%surf_flow_on) call RichardsComputeCoeffsForSurfFlux(realization)
 
@@ -1384,48 +1335,18 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       icap_up = patch%sat_func_id(ghosted_id_up)
       icap_dn = patch%sat_func_id(ghosted_id_dn)
 
-      select case (realization%discretization%hydr_flux_method)
-        case (TWO_POINT_FLUX)
-          call RichardsFlux(rich_auxvars(ghosted_id_up), &
-                            global_auxvars(ghosted_id_up), &
-                            material_auxvars(ghosted_id_up), &
-                            richards_parameter%sir(1,icap_up), &
-                            rich_auxvars(ghosted_id_dn), &
-                            global_auxvars(ghosted_id_dn), &
-                            material_auxvars(ghosted_id_dn), &
-                            richards_parameter%sir(1,icap_dn), &
-                            cur_connection_set%area(iconn), &
-                            cur_connection_set%dist(:,iconn), &
-                            option,v_darcy,Res)
-        case (LSM_FLUX)
-          option%io_buffer = 'RicardsLSM needs to be implemented with ' // &
-                             'new material_aux_type.'
-          call printErrMsg(option)
-#if 0
-          call RichardsLSMFlux(rich_auxvars(ghosted_id_up), &
-                               global_auxvars(ghosted_id_up), &
-                               porosity_loc_p(ghosted_id_up), &
-                               richards_parameter%sir(1,icap_up), &
-                               dd_up,perm_up, &
-                               rich_auxvars(ghosted_id_dn), &
-                               global_auxvars(ghosted_id_dn), &
-                               porosity_loc_p(ghosted_id_dn), &
-                               richards_parameter%sir(1,icap_dn), &
-                               dd_dn,perm_dn, &
-                               cur_connection_set%area(iconn), &
-                               cur_connection_set%dist(1:3,iconn), &
-                               distance_gravity, &
-                               upweight,distance,option,&
-                               ghosted_id_up, ghosted_id_dn, &
-                               cell_neighbors, &
-                               grid%bnd_cell, &
-                               v_darcy,Res)
-#endif          
-        case default
-          option%io_buffer = 'Unknown hydr_flux_method '
-          call printErrMsg(option)
-      end select
-
+      call RichardsFlux(rich_auxvars(ghosted_id_up), &
+                        global_auxvars(ghosted_id_up), &
+                        material_auxvars(ghosted_id_up), &
+                        richards_parameter%sir(1,icap_up), &
+                        rich_auxvars(ghosted_id_dn), &
+                        global_auxvars(ghosted_id_dn), &
+                        material_auxvars(ghosted_id_dn), &
+                        richards_parameter%sir(1,icap_dn), &
+                        cur_connection_set%area(iconn), &
+                        cur_connection_set%dist(:,iconn), &
+                        option,v_darcy,Res)
+                        
       patch%internal_velocities(1,sum_connection) = v_darcy
       if (associated(patch%internal_flow_fluxes)) then
         patch%internal_flow_fluxes(1,sum_connection) = Res(1)
@@ -1836,8 +1757,6 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
   use Field_module
   use Debug_module
   
-  use Richards_LSM_module  
-    
   implicit none
 
   SNES, intent(in) :: snes
@@ -1870,7 +1789,6 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
   type(richards_auxvar_type), pointer :: rich_auxvars(:), rich_auxvars_bc(:) 
   type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)
   class(material_auxvar_type), pointer :: material_auxvars(:)
-  PetscInt, pointer :: cell_neighbors(:,:)
   
   character(len=MAXSTRINGLENGTH) :: string
 
@@ -1898,14 +1816,6 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
   endif
 #endif
 
-  select case(grid%itype)
-    case(STRUCTURED_GRID)
-      cell_neighbors => grid%structured_grid%cell_neighbors
-    case(UNSTRUCTURED_GRID)
-      option%io_buffer='GridComputeMinv() not implemented for unstructured grid.'
-      call printErrMsg(option)
-  end select
-
 #if 1
   ! Interior Flux Terms -----------------------------------  
   connection_set_list => grid%internal_connection_set_list
@@ -1929,52 +1839,20 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
       icap_up = patch%sat_func_id(ghosted_id_up)
       icap_dn = patch%sat_func_id(ghosted_id_dn)
                               
-      select case (realization%discretization%hydr_flux_method)
-        case (TWO_POINT_FLUX)
-          call RichardsFluxDerivative(rich_auxvars(ghosted_id_up), &
-                                      global_auxvars(ghosted_id_up), &
-                                      material_auxvars(ghosted_id_up), &
-                                      richards_parameter%sir(1,icap_up), &
-                                      rich_auxvars(ghosted_id_dn), &
-                                      global_auxvars(ghosted_id_dn), &
-                                      material_auxvars(ghosted_id_dn), &
-                                      richards_parameter%sir(1,icap_dn), &
-                                      cur_connection_set%area(iconn), &
-                                      cur_connection_set%dist(-1:3,iconn),&
-                                      option,&
-                                      patch%saturation_function_array(icap_up)%ptr,&
-                                      patch%saturation_function_array(icap_dn)%ptr,&
-                                      Jup,Jdn)
-        case (LSM_FLUX)
-#if 0        
-          call RichardsLSMFluxDerivative(rich_auxvars(ghosted_id_up), &
-                                         global_auxvars(ghosted_id_up), &
-                                         porosity_loc_p(ghosted_id_up), &
-                                         richards_parameter%sir(1,icap_up), &
-                                         dd_up,perm_up, &
-                                         rich_auxvars(ghosted_id_dn), &
-                                         global_auxvars(ghosted_id_dn), &
-                                         porosity_loc_p(ghosted_id_dn), &
-                                         richards_parameter%sir(1,icap_dn), &
-                                         dd_dn,perm_dn, &
-                                         cur_connection_set%area(iconn), &
-                                         cur_connection_set%dist(1:3,iconn), &
-                                         distance_gravity, &
-                                         upweight, &
-                                         distance, &
-                                         option,&
-                                         patch%saturation_function_array(icap_up)%ptr,&
-                                         patch%saturation_function_array(icap_dn)%ptr,&
-                                         grid%jacfac, ghosted_id_up, ghosted_id_dn, &
-                                         cell_neighbors, &
-                                         grid%x,grid%y,grid%z, &
-                                         grid%bnd_cell, &
-                                         Jup,Jdn)
-#endif          
-        case default
-          option%io_buffer = 'Unknown hydr_flux_method '
-          call printErrMsg(option)
-      end select
+      call RichardsFluxDerivative(rich_auxvars(ghosted_id_up), &
+                                  global_auxvars(ghosted_id_up), &
+                                  material_auxvars(ghosted_id_up), &
+                                  richards_parameter%sir(1,icap_up), &
+                                  rich_auxvars(ghosted_id_dn), &
+                                  global_auxvars(ghosted_id_dn), &
+                                  material_auxvars(ghosted_id_dn), &
+                                  richards_parameter%sir(1,icap_dn), &
+                                  cur_connection_set%area(iconn), &
+                                  cur_connection_set%dist(-1:3,iconn),&
+                                  option,&
+                                  patch%saturation_function_array(icap_up)%ptr,&
+                                  patch%saturation_function_array(icap_dn)%ptr,&
+                                  Jup,Jdn)
 
       if (local_id_up > 0) then
 #ifdef PM_RICHARDS_DEBUG
@@ -2439,26 +2317,10 @@ subroutine RichardsMaxChange(realization)
   option => realization%option
   field => realization%field
 
-  if (option%mimetic) then
-
-    call VecWAXPY(field%flow_dxx_faces,-1.d0,field%flow_xx_faces,field%flow_yy_faces, &
-                  ierr);CHKERRQ(ierr)
-    call VecStrideNorm(field%flow_dxx_faces,ZERO_INTEGER,NORM_INFINITY,option%dpmax, &
-                       ierr);CHKERRQ(ierr)
-
-    call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy, &
-                  ierr);CHKERRQ(ierr)
-    call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax, &
-                       ierr);CHKERRQ(ierr)
-
-  else
-
-     call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy, &
-                   ierr);CHKERRQ(ierr)
-     call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax, &
-                        ierr);CHKERRQ(ierr)
-
-  end if
+  call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy, &
+                ierr);CHKERRQ(ierr)
+  call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY, &
+                     option%dpmax,ierr);CHKERRQ(ierr)
 
 end subroutine RichardsMaxChange
 

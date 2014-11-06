@@ -879,7 +879,7 @@ end subroutine UGridDMCreateVector
 
 ! ************************************************************************** !
 
-subroutine UGridMapIndices(unstructured_grid,ugdm,nG2L,nL2G,nG2A,nG2P,option)
+subroutine UGridMapIndices(unstructured_grid,ugdm,nG2L,nL2G,nG2A,option)
   ! 
   ! maps global, local and natural indices of cells to each other
   ! 
@@ -896,7 +896,6 @@ subroutine UGridMapIndices(unstructured_grid,ugdm,nG2L,nL2G,nG2A,nG2P,option)
   PetscInt, pointer :: nG2L(:)
   PetscInt, pointer :: nL2G(:)
   PetscInt, pointer :: nG2A(:)
-  PetscInt, pointer :: nG2P(:)
   type(option_type) :: option
 
   PetscErrorCode :: ierr
@@ -933,18 +932,6 @@ subroutine UGridMapIndices(unstructured_grid,ugdm,nG2L,nL2G,nG2A,nG2P,option)
                             nG2A,ierr);CHKERRQ(ierr)
   nG2A = nG2A + 1 ! 1-based
 
-
-#if MFD_UGRID
-  allocate(nG2P(unstructured_grid%ngmax))
-  do local_id = 1,unstructured_grid%nlmax
-    nG2P(local_id) = local_id-1+unstructured_grid%global_offset
-  enddo
-
-  do ghosted_id = unstructured_grid%nlmax+1,unstructured_grid%ngmax
-    nG2P(ghosted_id) = &
-      unstructured_grid%ghost_cell_ids_petsc(ghosted_id-unstructured_grid%nlmax)-1
-  enddo
-#endif
 
 end subroutine UGridMapIndices
 

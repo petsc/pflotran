@@ -71,9 +71,6 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: X_DIRECTION = 1
   PetscInt, parameter, public :: Y_DIRECTION = 2
   PetscInt, parameter, public :: Z_DIRECTION = 3
-  PetscInt, parameter, public :: XY_DIRECTION = 4
-  PetscInt, parameter, public :: XZ_DIRECTION = 5
-  PetscInt, parameter, public :: YZ_DIRECTION = 6
   PetscInt, parameter, public :: LOWER = 1
   PetscInt, parameter, public :: UPPER = 2
   
@@ -205,9 +202,6 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: KINEMATIC_WAVE = 1
   PetscInt, parameter, public :: DIFFUSION_WAVE = 2
   
-  PetscInt, parameter, public :: TWO_POINT_FLUX = 0
-  PetscInt, parameter, public :: LSM_FLUX       = 1
-
   PetscReal, parameter, public :: MIN_SURFACE_WATER_HEIGHT = 1.0d-14
 
   ! print secondary continuum variable ids
@@ -225,11 +219,9 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: NULL_GRID = 0
   PetscInt, parameter, public :: STRUCTURED_GRID = 1
   PetscInt, parameter, public :: UNSTRUCTURED_GRID = 2
-  PetscInt, parameter, public :: STRUCTURED_GRID_MIMETIC = 3
-  PetscInt, parameter, public :: IMPLICIT_UNSTRUCTURED_GRID = 4
-  PetscInt, parameter, public :: EXPLICIT_UNSTRUCTURED_GRID = 5
-  PetscInt, parameter, public :: UNSTRUCTURED_GRID_MIMETIC = 6
-  PetscInt, parameter, public :: POLYHEDRA_UNSTRUCTURED_GRID = 7
+  PetscInt, parameter, public :: IMPLICIT_UNSTRUCTURED_GRID = 3
+  PetscInt, parameter, public :: EXPLICIT_UNSTRUCTURED_GRID = 4
+  PetscInt, parameter, public :: POLYHEDRA_UNSTRUCTURED_GRID = 5
   PetscInt, parameter, public :: ONE_DIM_GRID = 1
   PetscInt, parameter, public :: TWO_DIM_GRID = 2
   PetscInt, parameter, public :: THREE_DIM_GRID = 3

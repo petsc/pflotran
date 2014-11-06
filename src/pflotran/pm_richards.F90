@@ -191,12 +191,7 @@ subroutine PMRichardsResidual(this,snes,xx,r,ierr)
   PetscErrorCode :: ierr
   
   call PMSubsurfaceUpdatePropertiesNI(this)
-  select case(this%realization%discretization%itype)
-    case(STRUCTURED_GRID_MIMETIC)
-!      call RichardsResidualMFDLP(snes,xx,r,this%realization,ierr)
-    case default
-      call RichardsResidual(snes,xx,r,this%realization,ierr)
-  end select
+  call RichardsResidual(snes,xx,r,this%realization,ierr)
 
 end subroutine PMRichardsResidual
 
@@ -218,12 +213,7 @@ subroutine PMRichardsJacobian(this,snes,xx,A,B,ierr)
   Mat :: A, B
   PetscErrorCode :: ierr
   
-  select case(this%realization%discretization%itype)
-    case(STRUCTURED_GRID_MIMETIC)
-!      call RichardsJacobianMFDLP(snes,xx,A,B,this%realization,ierr)
-    case default
-      call RichardsJacobian(snes,xx,A,B,this%realization,ierr)
-  end select
+  call RichardsJacobian(snes,xx,A,B,this%realization,ierr)
 
 end subroutine PMRichardsJacobian
 

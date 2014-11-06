@@ -73,7 +73,6 @@ module Structured_Grid_module
             StructGridCreateDM, &
             StructGridComputeLocalBounds, &
             StructGridComputeInternConnect, &
-            StructGridComputeBoundConnect, &
             StructGridCreateVecFromDM, &
             StructGridMapIndices, &
             StructGridComputeSpacing, &
@@ -86,9 +85,8 @@ module Structured_Grid_module
             StructGridGetIJKFromGhostedID, &
             StructGridGetGhostedNeighbors, &
             StructGridCreateTVDGhosts, &
-            StructGridGetGhostedNeighborsCorners, &
-            StructGridComputeNeighbors
-  
+            StructGridGetGhostedNeighborsCorners
+            
 contains
 
 ! ************************************************************************** !
@@ -996,18 +994,6 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
               iconn = iconn+1
               id_up = i + j * structured_grid%ngx + k * structured_grid%ngxy
               id_dn = id_up + 1
-#ifdef DASVYAT
-              structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
-              if (i == 1) then
-                if (structured_grid%lxs==structured_grid%gxs) then
-                   structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
-                   connections%local(iconn) = 1
-                end if
-              else 
-                structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
-                connections%local(iconn) = 1
-              end if
-#endif
               connections%id_up(iconn) = id_up
               connections%id_dn(iconn) = id_dn
               
@@ -1039,12 +1025,6 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
               connections%dist(1,iconn) = 1.d0  ! x component of unit vector
               connections%area(iconn) = structured_grid%dy(id_up)* &
                                         structured_grid%dz(id_up)
-#ifdef DASVYAT
-              connections%cntr(1,iconn) = xc(id_up) + &
-                  connections%dist(-1,iconn)*(xc(id_dn) - xc(id_up))
-              connections%cntr(2,iconn) = yc(id_up)
-              connections%cntr(3,iconn) = zc(id_up)
-#endif              
             enddo
           enddo
         enddo
@@ -1067,11 +1047,6 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
               connections%dist(1,iconn) = 1.d0  ! x component of unit vector
               connections%area(iconn) = 2.d0 * pi * (radius(id_up)+0.5d0*structured_grid%dx(id_up))* &
                                         structured_grid%dz(id_up)
-#ifdef DASVYAT
-              connections%cntr(1,iconn) = xc(id_up) + connections%dist(-1,iconn)*(xc(id_dn) - xc(id_up))
-              connections%cntr(2,iconn) = yc(id_up)
-              connections%cntr(3,iconn) = zc(id_up)
-#endif
             enddo
           enddo
         enddo
@@ -1091,11 +1066,6 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
               connections%dist(0,iconn) = dist_up+dist_dn
               connections%dist(1,iconn) = 1.d0  ! x component of unit vector
               connections%area(iconn) = 4.d0 * pi * (radius(id_up)+0.5d0*structured_grid%dx(id_up))
-#ifdef DASVYAT
-              connections%cntr(1,iconn) = xc(id_up) + connections%dist(-1,iconn)*(xc(id_dn) - xc(id_up))
-              connections%cntr(2,iconn) = yc(id_up)
-              connections%cntr(3,iconn) = zc(id_up)
-#endif
             enddo
           enddo
         enddo
@@ -1111,18 +1081,6 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
             do j = 1, leny
               iconn = iconn+1
 
-#ifdef DASVYAT
-              structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
-              if (j == 1) then
-                if (structured_grid%lys==structured_grid%gys) then
-                   structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
-                   connections%local(iconn) = 1
-                end if
-              else 
-                   structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
-                   connections%local(iconn) = 1
-              end if
-#endif
               id_up = i + 1 + (j-1) * structured_grid%ngx + k * structured_grid%ngxy
               id_dn = id_up + structured_grid%ngx
               connections%id_up(iconn) = id_up
@@ -1157,11 +1115,6 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
               connections%dist(2,iconn) = 1.d0  ! y component of unit vector
               connections%area(iconn) = structured_grid%dx(id_up)* &
                                     structured_grid%dz(id_up)
-#ifdef DASVYAT
-              connections%cntr(1,iconn) = xc(id_up) 
-              connections%cntr(2,iconn) = yc(id_up) + connections%dist(-1,iconn)*(yc(id_dn) - yc(id_up)) 
-              connections%cntr(3,iconn) = zc(id_up)
-#endif
             enddo
           enddo
         enddo
@@ -1186,18 +1139,6 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
             do k = 1, lenz
               iconn = iconn+1
 
-#ifdef DASVYAT
-              structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
-              if (k == 1) then
-                if (structured_grid%lzs==structured_grid%gzs) then
-                   structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
-                   connections%local(iconn) = 1
-                end if
-              else 
-                   structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
-                   connections%local(iconn) = 1
-              end if
-#endif
               id_up = i + 1 + j * structured_grid%ngx + (k-1) * &
                   structured_grid%ngxy 
               id_dn = id_up + structured_grid%ngxy
@@ -1232,11 +1173,6 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
               connections%dist(3,iconn) = 1.d0  ! z component of unit vector
               connections%area(iconn) = structured_grid%dx(id_up) * &
                                         structured_grid%dy(id_up)
-#ifdef DASVYAT
-              connections%cntr(1,iconn) = xc(id_up) 
-              connections%cntr(2,iconn) = yc(id_up) 
-              connections%cntr(3,iconn) = zc(id_up) + connections%dist(-1,iconn)*(zc(id_dn) - zc(id_up)) 
-#endif
             enddo
           enddo
         enddo
@@ -1260,13 +1196,6 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
               r2 = xc(id_up) + 0.5d0*structured_grid%dx(id_up)
               r1 = xc(id_up) - 0.5d0*structured_grid%dx(id_up)
               connections%area(iconn) = pi * dabs(r2*r2 - r1*r1)
-#ifdef DASVYAT
-              connections%cntr(1,iconn) = xc(id_up) 
-              connections%cntr(2,iconn) = yc(id_up) 
-              connections%cntr(3,iconn) = zc(id_up) + &
-                                          connections%dist(-1,iconn)* &
-                                          (zc(id_dn) - zc(id_up)) 
-#endif
             enddo
           enddo
         enddo
@@ -1279,274 +1208,6 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
   StructGridComputeInternConnect => connections
 
 end function StructGridComputeInternConnect
-
-! ************************************************************************** !
-
-function StructGridComputeBoundConnect(structured_grid, xc, yc, zc, option)
-  ! 
-  ! computes boundary connectivity of a
-  ! structured grid
-  ! 
-  ! Author: Daniil Svyatskiy
-  ! Date: 02/04/10
-  ! 
-
-  use Connection_module
-  use Option_module
-  
-  implicit none
-
-  PetscReal, pointer :: xc(:), yc(:), zc(:)
-  type(connection_set_type), pointer :: StructGridComputeBoundConnect
-  type(option_type) :: option
-  type(structured_grid_type) :: structured_grid
-  
-  PetscReal, parameter :: Pi=3.141592653590d0
-  
-  PetscInt :: i, j, k, iconn, id_up, id_dn, id_dn2
-  PetscInt :: nconn
-  PetscInt :: lenx, leny, lenz
-  PetscReal :: dist_up, dist_dn
-  type(connection_set_type), pointer :: connections
-  PetscErrorCode :: ierr
-  PetscReal, pointer :: radius(:)
-
-  radius => xc
-  
-  ! the adjustments in the case of AMR are based on the PIMS code adjustments by LC
-
-  nconn = structured_grid%nly*structured_grid%nlz*(structured_grid%nlx + 2 - structured_grid%ngx)&
-         +structured_grid%nlx*structured_grid%nlz*(structured_grid%nly + 2 - structured_grid%ngy)&  
-         +structured_grid%nlx*structured_grid%nly*(structured_grid%nlz + 2 - structured_grid%ngz)
-
-  lenx = structured_grid%nlx 
-  leny = structured_grid%nly 
-  lenz = structured_grid%nlz 
-
-
-!  write(*,*) option%myrank, 'lxs=',structured_grid%lxs,' lys=',structured_grid%lys, ' lzs=',structured_grid%lzs 
-!  write(*,*) option%myrank, 'lxe=',structured_grid%lxe,' lye=',structured_grid%lye, ' lze=',structured_grid%lze
-!  write(*,*) option%myrank, 'nx=',structured_grid%nlx,' ny=',structured_grid%ny, ' nz=',structured_grid%nz  
-!  write(*,*) option%myrank, 'istart=',structured_grid%istart,' iend=',structured_grid%iend
-!  write(*,*) option%myrank, 'jstart=',structured_grid%jstart,' jend=',structured_grid%jend
-!  write(*,*) option%myrank, 'kstart=',structured_grid%kstart,' kend=',structured_grid%kend
-!  write(*,*) option%myrank, 'boundary nconn=',nconn
-
-!  stop
-
-
-  connections => ConnectionCreate(nconn,BOUNDARY_CONNECTION_TYPE)
-
-!  StructGridComputeBoundConnect => connections
-
-  iconn = 0
-  ! x-connections
-  if (structured_grid%nlx + 2 - structured_grid%ngx > 0) then
-    select case(structured_grid%itype)
-      case(CARTESIAN_GRID)
-        if (structured_grid%lxs == structured_grid%gxs) then
-          i = structured_grid%istart 
-          do k = structured_grid%kstart, structured_grid%kend
-            do j = structured_grid%jstart, structured_grid%jend
-              iconn = iconn+1
-
-              structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
-              structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
-
-              id_dn = i + 1 + j * structured_grid%ngx + k * structured_grid%ngxy
-              
-              connections%id_dn(iconn) = id_dn
-
-              connections%dist(-1:3,iconn) = 0.d0
-              dist_dn = 0.5d0*structured_grid%dx(id_dn)
-              connections%dist(-1,iconn) = 0.
-              connections%dist(0,iconn) = dist_dn
-              connections%dist(1,iconn) = 1.d0  ! x component of unit vector
-              connections%area(iconn) = structured_grid%dy(id_dn)* &
-                                        structured_grid%dz(id_dn)
-#ifdef DASVYAT
-              connections%cntr(1,iconn) = xc(id_dn) - dist_dn
-              connections%cntr(2,iconn) = yc(id_dn) 
-              connections%cntr(3,iconn) = zc(id_dn) 
-#endif
-            enddo
-          enddo
-        endif
-        if (structured_grid%lxe == structured_grid%gxe) then
-          i = structured_grid%iend 
-          do k = structured_grid%kstart, structured_grid%kend
-            do j = structured_grid%jstart, structured_grid%jend
-              iconn = iconn+1
-
-              structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
-              structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
-
-              id_dn = i + 1 + j * structured_grid%ngx + k * structured_grid%ngxy
-              
-              connections%id_dn(iconn) = id_dn
-              connections%dist(-1:3,iconn) = 0.d0
-              dist_dn = 0.5d0*structured_grid%dx(id_dn)
-              connections%dist(0,iconn) = dist_dn
-              connections%dist(1,iconn) = -1.d0  ! x component of unit vector
-              connections%area(iconn) = structured_grid%dy(id_dn)* &
-                                        structured_grid%dz(id_dn)
-#ifdef DASVYAT
-              connections%cntr(1,iconn) = xc(id_dn) + dist_dn
-              connections%cntr(2,iconn) = yc(id_dn) 
-              connections%cntr(3,iconn) = zc(id_dn) 
-#endif
-            enddo
-          enddo
-        endif
-      case(CYLINDRICAL_GRID)
-        print *, 'Boundary connection - Cylindrical coordinates are not implemented.'
-        stop
-      case(SPHERICAL_GRID)
-        print *, 'Boundary connection -  Spherical coordinates are not implemented.'
-        stop
-  end select
-    
-  endif
-
-
-  ! y-connections
-  if (structured_grid%nly + 2  -  structured_grid%ngy > 0) then
-    select case(structured_grid%itype)
-      case(CARTESIAN_GRID)
-        if (structured_grid%lys == structured_grid%gys) then 
-          j = structured_grid%jstart
-          do k = structured_grid%kstart, structured_grid%kend
-            do i = structured_grid%istart, structured_grid%iend
-              iconn = iconn+1
-
-              structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
-              structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
-
-              id_dn = i + 1 + j * structured_grid%ngx + k * structured_grid%ngxy
-              
-              connections%id_dn(iconn) = id_dn
-              connections%dist(-1:3,iconn) = 0.d0
-              dist_dn = 0.5d0*structured_grid%dy(id_dn)
-              connections%dist(0,iconn) = dist_dn
-              connections%dist(2,iconn) = 1.d0  ! y component of unit vector
-              connections%area(iconn) = structured_grid%dx(id_dn)* &
-                                    structured_grid%dz(id_dn)
-#ifdef DASVYAT
-              connections%cntr(1,iconn) = xc(id_dn) 
-              connections%cntr(2,iconn) = yc(id_dn) - dist_dn
-              connections%cntr(3,iconn) = zc(id_dn) 
-#endif
-            enddo
-          enddo
-        endif
-        if (structured_grid%lye == structured_grid%gye) then 
-          j = structured_grid%jend
-          do k = structured_grid%kstart, structured_grid%kend
-            do i = structured_grid%istart, structured_grid%iend
-              iconn = iconn+1
-
-              structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
-              structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
-
-              id_dn = i + 1 + j * structured_grid%ngx + k * structured_grid%ngxy
-              
-              connections%id_dn(iconn) = id_dn
-              connections%dist(-1:3,iconn) = 0.d0
-              dist_dn = 0.5d0*structured_grid%dy(id_dn)
-              connections%dist(0,iconn) = dist_dn
-              connections%dist(2,iconn) = -1.d0  ! y component of unit vector
-              connections%area(iconn) = structured_grid%dx(id_dn)* &
-                                    structured_grid%dz(id_dn)
-#ifdef DASVYAT
-              connections%cntr(1,iconn) = xc(id_dn) 
-              connections%cntr(2,iconn) = yc(id_dn) + dist_dn
-              connections%cntr(3,iconn) = zc(id_dn) 
-#endif
-            enddo
-          enddo
-        endif
-      case(CYLINDRICAL_GRID)
-        print *, 'Boundary connection - Cylindrical coordinates are not implemented.'
-        stop
-      case(SPHERICAL_GRID)
-        print *, 'Boundary connection -  Spherical coordinates are not implemented.'
-        stop
-    end select
-  endif
-
-      
-  ! z-connections
-  if (structured_grid%nlz + 2 - structured_grid%ngz > 0) then
-    select case(structured_grid%itype)
-      case(CARTESIAN_GRID)
-        if (structured_grid%lzs == structured_grid%gzs) then
-          k = structured_grid%kstart
-          do j = structured_grid%jstart, structured_grid%jend
-            do i = structured_grid%istart, structured_grid%iend
-              iconn = iconn+1
-
-              structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
-              structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
-
-              id_dn = i + 1 + j * structured_grid%ngx + k * &
-                  structured_grid%ngxy
-              
-              connections%id_dn(iconn) = id_dn
-              connections%dist(-1:3,iconn) = 0.d0
-              dist_dn = 0.5d0*structured_grid%dz(id_dn)
-              connections%dist(0,iconn) = dist_dn
-              connections%dist(3,iconn) = 1.d0  ! z component of unit vector
-              connections%area(iconn) = structured_grid%dx(id_dn) * &
-                                        structured_grid%dy(id_dn)
-#ifdef DASVYAT
-              connections%cntr(1,iconn) = xc(id_dn) 
-              connections%cntr(2,iconn) = yc(id_dn) 
-              connections%cntr(3,iconn) = zc(id_dn) - dist_dn 
-#endif
-            enddo
-          enddo
-        endif    
-        if (structured_grid%lze == structured_grid%gze ) then
-          k = structured_grid%kend
-          do j = structured_grid%jstart, structured_grid%jend
-            do i = structured_grid%istart, structured_grid%iend
-              iconn = iconn+1
-
-              structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
-              structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
-
-              id_dn = i + 1 + j * structured_grid%ngx + k * &
-                  structured_grid%ngxy
-              
-              connections%id_dn(iconn) = id_dn
-              connections%dist(-1:3,iconn) = 0.d0
-              dist_dn = 0.5d0*structured_grid%dz(id_dn)
-              connections%dist(0,iconn) = dist_dn
-              connections%dist(3,iconn) = -1.d0  ! z component of unit vector
-              connections%area(iconn) = structured_grid%dx(id_dn) * &
-                                        structured_grid%dy(id_dn)
-#ifdef DASVYAT
-              connections%cntr(1,iconn) = xc(id_dn) 
-              connections%cntr(2,iconn) = yc(id_dn) 
-              connections%cntr(3,iconn) = zc(id_dn) + dist_dn 
-#endif
-            enddo
-          enddo
-        endif    
-      case(CYLINDRICAL_GRID)
-        print *, 'Boundary connection - Cylindrical coordinates are not implemented.'
-        stop
-      case(SPHERICAL_GRID)
-        print *, 'Boundary connection -  Spherical coordinates are not implemented.'
-        stop
-  end select
-  endif
- 
- 
-  StructGridComputeBoundConnect => connections
-!    stop
-
-end function StructGridComputeBoundConnect
 
 ! ************************************************************************** !
 
@@ -1805,9 +1466,8 @@ end subroutine StructGridComputeVolumes
 
 ! ************************************************************************** !
 
-subroutine StructGridMapIndices(structured_grid,stencil_type,lsm_flux_method, &
-                                    nG2L,nL2G, &
-                                    nG2A,ghosted_level,option)
+subroutine StructGridMapIndices(structured_grid,stencil_type, &
+                                nG2L,nL2G,nG2A,option)
   ! 
   ! maps global, local and natural indices of cells
   ! to each other
@@ -1826,8 +1486,7 @@ subroutine StructGridMapIndices(structured_grid,stencil_type,lsm_flux_method, &
 
   type(structured_grid_type) :: structured_grid
   PetscInt :: stencil_type
-  PetscBool :: lsm_flux_method
-  PetscInt, pointer :: nG2L(:), nL2G(:), nG2A(:), ghosted_level(:)
+  PetscInt, pointer :: nG2L(:), nL2G(:), nG2A(:)
   type(option_type) :: option
 
   PetscInt :: i, j, k, local_id, ghosted_id, natural_id, count1
@@ -1923,67 +1582,6 @@ subroutine StructGridMapIndices(structured_grid,stencil_type,lsm_flux_method, &
       enddo
     enddo
   enddo
-
-  if (lsm_flux_method) then
-  
-    allocate(ghosted_level(structured_grid%ngmax))
-    
-    ! Save information about ghost cell belong in which level of SNES stencil
-    ghosted_level = 0
-    do k=structured_grid%gzs,structured_grid%gze-1
-      do j=structured_grid%gys,structured_grid%gye-1
-        do i=structured_grid%gxs,structured_grid%gxe-1
-          if(i<structured_grid%lxs) then
-            ghosted_id = StructGridGetGhostedIDFromIJK( structured_grid, &
-                                                        i-structured_grid%gxs+1, &
-                                                        j-structured_grid%gys+1, &
-                                                        k-structured_grid%gzs+1)
-            ghosted_level(ghosted_id) = structured_grid%lxs-i
-          endif
-          if(i>structured_grid%lxe-1) then
-            ghosted_id = StructGridGetGhostedIDFromIJK( structured_grid, &
-                                                        i-structured_grid%gxs+1, &
-                                                        j-structured_grid%gys+1, &
-                                                        k-structured_grid%gzs+1)
-            ghosted_level(ghosted_id) = -(structured_grid%lxe-1-i)
-          endif
-
-          if(j<structured_grid%lys) then
-            ghosted_id = StructGridGetGhostedIDFromIJK( structured_grid, &
-                                                        i-structured_grid%gxs+1, &
-                                                        j-structured_grid%gys+1, &
-                                                        k-structured_grid%gzs+1)
-            ghosted_level(ghosted_id) = structured_grid%lys-j
-          endif
-
-          if(j>structured_grid%lye-1) then
-            ghosted_id = StructGridGetGhostedIDFromIJK( structured_grid, &
-                                                        i-structured_grid%gxs+1, &
-                                                        j-structured_grid%gys+1, &
-                                                        k-structured_grid%gzs+1)
-            ghosted_level(ghosted_id) = -(structured_grid%lye-1-j)
-          endif
-
-          if(k<structured_grid%lzs) then
-            ghosted_id = StructGridGetGhostedIDFromIJK( structured_grid, &
-                                                        i-structured_grid%gxs+1, &
-                                                        j-structured_grid%gys+1, &
-                                                        k-structured_grid%gzs+1)
-            ghosted_level(ghosted_id) = structured_grid%lzs-k
-          endif
-
-          if(k>structured_grid%lze-1) then
-            ghosted_id = StructGridGetGhostedIDFromIJK( structured_grid, &
-                                                        i-structured_grid%gxs+1, &
-                                                        j-structured_grid%gys+1, &
-                                                        k-structured_grid%gzs+1)
-            ghosted_level(ghosted_id) = -(structured_grid%lze-1-k)
-          endif
-          
-        enddo ! i-loop
-      enddo ! j-loop
-    enddo ! k-loop
-  endif ! if LSM_FLUX
 
 end subroutine StructGridMapIndices
 
@@ -2536,62 +2134,5 @@ function StructGetTVDGhostConnection(ghosted_id,structured_grid,iface,option)
   StructGetTVDGhostConnection = -index
 
 end function StructGetTVDGhostConnection
-
-! ************************************************************************** !
-
-subroutine StructGridComputeNeighbors(structured_grid,nG2L,is_bnd_vec,option)
-  ! 
-  ! This routine saves indices (in ghosted order) of neighbors for all ghosted
-  ! cells.
-  ! 
-  ! Author: Gautam Bisht, LBNL
-  ! Date: 08/24/12
-  ! 
-
-  use Option_module
-
-  implicit none
-  
-#include "finclude/petscdmda.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-
-  type(structured_grid_type) :: structured_grid
-  type(option_type) :: option
-  PetscInt, pointer :: nG2L(:)
-  Vec :: is_bnd_vec
-  
-  PetscInt :: ghosted_id, ncount, ghosted_neighbors(26)
-  PetscInt :: local_id
-  PetscScalar, pointer :: vec_ptr(:)
-  PetscErrorCode :: ierr
-  
-  allocate(structured_grid%cell_neighbors(0:26,structured_grid%ngmax))
-  structured_grid%cell_neighbors = 0
-
-  call VecGetArrayF90(is_bnd_vec,vec_ptr,ierr);CHKERRQ(ierr)
-  do ghosted_id = 1,structured_grid%ngmax
-    local_id=nG2L(ghosted_id)
-    call StructGridGetGhostedNeighborsCorners(structured_grid,ghosted_id, &
-                                         DMDA_STENCIL_BOX, &
-                                         ONE_INTEGER_MPI, &
-                                         ONE_INTEGER_MPI, &
-                                         ONE_INTEGER_MPI, &
-                                         ncount, &
-                                         ghosted_neighbors, &
-                                         option)
-    structured_grid%cell_neighbors(0,ghosted_id) = ncount
-    structured_grid%cell_neighbors(1:ncount,ghosted_id) = ghosted_neighbors(1:ncount)
-    if(local_id>0) then
-      if(ncount == 26) then
-        vec_ptr(ghosted_id) = 0.d0
-      else
-        vec_ptr(ghosted_id) = 1.d0
-      endif
-    endif
-  enddo
-  call VecRestoreArrayF90(is_bnd_vec,vec_ptr,ierr);CHKERRQ(ierr)
-  
-end subroutine StructGridComputeNeighbors
 
 end module Structured_Grid_module

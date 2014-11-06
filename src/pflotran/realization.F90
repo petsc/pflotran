@@ -87,7 +87,6 @@ private
             RealizationCalcMineralPorosity, &
             RealizationCountCells, &
             RealizationPrintGridStatistics, &
-            RealizationSetUpBC4Faces, &
             RealizationPassPtrsToPatches, &
             RealLocalToLocalWithArray, &
             RealizationCalculateCFL1Timestep, &
@@ -184,7 +183,6 @@ subroutine RealizationCreateDiscretization(realization)
   use Unstructured_Grid_Aux_module
   use Unstructured_Grid_module, only : UGridEnsureRightHandRule
   use Structured_Grid_module, only : StructGridCreateTVDGhosts
-  use MFD_module
   use Coupler_module
   use Discretization_module
   use Unstructured_Cell_module
@@ -206,12 +204,6 @@ subroutine RealizationCreateDiscretization(realization)
   type(option_type), pointer :: option
   type(coupler_type), pointer :: boundary_condition
   PetscErrorCode :: ierr
-  PetscInt, allocatable :: int_tmp(:)
-  PetscInt :: test,j, num_LP_dof
-  PetscOffset :: i_da
-  PetscReal, pointer :: real_tmp(:)
-  type(dm_ptr_type), pointer :: dm_ptr
-  Vec :: is_bnd_vec
   PetscInt :: ivar
 
   option => realization%option
@@ -255,15 +247,6 @@ subroutine RealizationCreateDiscretization(realization)
                                        field%perm0_yy)
     call DiscretizationDuplicateVector(discretization,field%work, &
                                        field%perm0_zz)
-    if (discretization%itype == STRUCTURED_GRID_MIMETIC.or. &
-        discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
-      call DiscretizationDuplicateVector(discretization,field%work, &
-                                         field%perm0_xz)
-      call DiscretizationDuplicateVector(discretization,field%work, &
-                                         field%perm0_xy)
-      call DiscretizationDuplicateVector(discretization,field%work, &
-                                         field%perm0_yz)
-    endif
 
     ! 1-dof local
     call DiscretizationDuplicateVector(discretization,field%work_loc, &
@@ -342,13 +325,12 @@ subroutine RealizationCreateDiscretization(realization)
   endif
 
   select case(discretization%itype)
-    case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
+    case(STRUCTURED_GRID)
       grid => discretization%grid
       ! set up nG2L, nL2G, etc.
       call GridMapIndices(grid, &
                           discretization%dm_1dof, &
                           discretization%stencil_type,&
-                          discretization%lsm_flux_method, &
                           option)
       if (option%itranmode == EXPLICIT_ADVECTION) then
         call StructGridCreateTVDGhosts(grid%structured_grid, &
@@ -364,24 +346,12 @@ subroutine RealizationCreateDiscretization(realization)
       call GridComputeVolumes(grid,field%volume0,option)
       ! set up internal connectivity, distance, etc.
       call GridComputeInternalConnect(grid,option)
-      if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
-          call GridComputeCell2FaceConnectivity(grid, discretization%MFD, option)
-      end if
-      if (discretization%lsm_flux_method) then
-        call DiscretizationDuplicateVector(discretization,field%work_loc, &
-                                          is_bnd_vec)
-        call GridComputeNeighbors(grid,field%work_loc,option)
-        call DiscretizationLocalToLocal(discretization,field%work_loc,is_bnd_vec,ONEDOF)
-        call GridSaveBoundaryCellInfo(discretization%grid,is_bnd_vec,option)
-        call VecDestroy(is_bnd_vec,ierr);CHKERRQ(ierr)
-      endif
-    case(UNSTRUCTURED_GRID,UNSTRUCTURED_GRID_MIMETIC)
+    case(UNSTRUCTURED_GRID)
       grid => discretization%grid
       ! set up nG2L, NL2G, etc.
       call GridMapIndices(grid, &
                           discretization%dm_1dof, &
                           discretization%stencil_type,&
-                          discretization%lsm_flux_method, &
                           option)
       call GridComputeCoordinates(grid,discretization%origin,option, & 
                                     discretization%dm_1dof%ugdm) 
@@ -394,51 +364,7 @@ subroutine RealizationCreateDiscretization(realization)
       call GridComputeInternalConnect(grid,option, &
                                       discretization%dm_1dof%ugdm) 
       call GridComputeVolumes(grid,field%volume0,option)
-#ifdef MFD_UGRID
-      call GridComputeCell2FaceConnectivity(discretization%grid,discretization%MFD,option)
-#endif
   end select
- 
-  ! Vectors with face degrees of freedom
-#ifdef DASVYAT
-  if (discretization%itype == STRUCTURED_GRID_MIMETIC .or. &
-        discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
-
-    if (option%nflowdof > 0) then
-      num_LP_dof = (grid%nlmax_faces + grid%nlmax)*option%nflowdof
-      call VecCreateMPI(option%mycomm, num_LP_dof, &
-                  PETSC_DETERMINE,field%flow_xx_faces,ierr);CHKERRQ(ierr)
-      call VecSetBlockSize(field%flow_xx_faces,option%nflowdof, &
-                           ierr);CHKERRQ(ierr)
-
-      call DiscretizationDuplicateVector(discretization, field%flow_xx_faces, &
-                                        field%flow_r_faces)
-      call DiscretizationDuplicateVector(discretization, field%flow_xx_faces, &
-                                        field%flow_dxx_faces)
-      call DiscretizationDuplicateVector(discretization, field%flow_xx_faces, &
-                                        field%flow_yy_faces)
-
-      call VecCreateSeq(PETSC_COMM_SELF, (grid%ngmax_faces + grid%ngmax)*option%nflowdof, &
-                                              field%flow_xx_loc_faces,  &
-                        ierr);CHKERRQ(ierr)
-      call VecSetBlockSize(field%flow_xx_loc_faces,option%nflowdof, &
-                           ierr);CHKERRQ(ierr)
-
-      call DiscretizationDuplicateVector(discretization, field%flow_xx_loc_faces, &
-                                          field%flow_r_loc_faces)
-      call DiscretizationDuplicateVector(discretization, field%flow_xx_loc_faces, &
-                                          field%flow_bc_loc_faces)
-      call DiscretizationDuplicateVector(discretization, field%flow_xx_loc_faces, &
-                                          field%work_loc_faces)
-     endif
-
-    call RealizationCreatenG2LP(realization)
-
-    dm_ptr => DiscretizationGetDMPtrFromIndex(discretization, NFLOWDOF)
-    call GridComputeGlobalCell2FaceConnectivity(grid, discretization%MFD, &
-                                                  dm_ptr%dm, NFLOWDOF, option)
-   endif
-#endif
  
   ! initialize to UNINITIALIZED_DOUBLE for check later that verifies all values 
   ! have been set
@@ -501,7 +427,7 @@ subroutine RealizationCreateDiscretization(realization)
   endif
 
   select case(realization%discretization%itype)
-    case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
+    case(STRUCTURED_GRID)
       realization%comm1 => StructuredCommunicatorCreate()
     case(UNSTRUCTURED_GRID)
       realization%comm1 => UnstructuredCommunicatorCreate()
@@ -614,128 +540,6 @@ subroutine RealizationAddCoupler(realization,coupler)
   call CouplerDestroy(coupler)
  
 end subroutine RealizationAddCoupler
-
-! ************************************************************************** !
-
-subroutine RealizationCreatenG2LP(realization)
-  ! 
-  ! This routine sets up nG2LP() mapping for MIMETIC discretization.
-  ! nG2LP: For a given ghosted cell ID, return the index within the PETSc
-  ! solution vector that contains solution at cell centers + cell faces.
-  ! The index returned is in PETSc order (0-based).
-  ! 
-  ! Author: ???
-  ! Date: ???
-  ! 
-
-  use Grid_module
-
-  implicit none
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petscviewer.h"
-#include "finclude/petscsnes.h"
-#include "finclude/petscpc.h"
-#include "finclude/petscsys.h"
-
-  type(realization_type) :: realization
-
-  type(option_type), pointer :: option
-  type(discretization_type), pointer :: discretization
-  type(grid_type), pointer :: grid
-  PetscInt :: global_offset
-  PetscInt :: ghosted_id
-  PetscInt :: local_id
-  PetscInt :: num_ghosted
-  PetscErrorCode :: ierr
-
-  Vec :: vec_LP_cell_id
-  Vec :: vec_LP_cell_id_loc
-
-  IS :: is_ghosted, is_global
-  VecScatter :: VC_global2ghosted
-
-  PetscScalar, pointer :: lp_cell_ids(:), lp_cell_ids_loc(:)
-  PetscInt, pointer :: int_tmp_gh(:), int_tmp_gl(:)
-
-  option => realization%option
-  discretization => realization%discretization
-  grid => discretization%grid
-  
-  global_offset = 0
-  grid%global_faces_offset = 0
-  grid%global_cell_offset = 0
-
-  allocate(grid%nG2LP(grid%ngmax))
-
-  call MPI_Exscan(grid%nlmax_faces, grid%global_faces_offset, &
-                  ONE_INTEGER,MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
-  call MPI_Exscan(grid%nlmax, grid%global_cell_offset, &
-                  ONE_INTEGER,MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
-
-  global_offset = grid%global_faces_offset + grid%global_cell_offset
-
-  call DiscretizationCreateVector(discretization,ONEDOF,vec_LP_cell_id, &
-                                  GLOBAL,option)
-  call DiscretizationCreateVector(discretization,ONEDOF,vec_LP_cell_id_loc, &
-                                  LOCAL,option)
-  call VecGetArrayF90(vec_LP_cell_id,lp_cell_ids,ierr);CHKERRQ(ierr)
-  do local_id=1,grid%nlmax
-    grid%nG2LP(grid%nL2G(local_id))=global_offset+grid%nlmax_faces+local_id-1
-    lp_cell_ids(local_id)=global_offset+grid%nlmax_faces+local_id
-  enddo
-  call VecRestoreArrayF90(vec_LP_cell_id,lp_cell_ids,ierr);CHKERRQ(ierr)
-
-  allocate(int_tmp_gh(grid%ngmax-grid%nlmax))
-  allocate(int_tmp_gl(grid%ngmax-grid%nlmax))
-
-  num_ghosted = 1
-  do ghosted_id = 1,grid%ngmax
-    if (grid%nG2L(ghosted_id) < 1) then
-      int_tmp_gh(num_ghosted) = ghosted_id - 1
-      int_tmp_gl(num_ghosted) = grid%nG2P(ghosted_id)
-      num_ghosted=num_ghosted+1
-    endif
-  enddo
-
-  call ISCreateBlock(option%mycomm, ONEDOF, grid%ngmax - grid%nlmax, &
-                     int_tmp_gh, PETSC_COPY_VALUES, is_ghosted,  &
-                     ierr);CHKERRQ(ierr)
-  call ISCreateBlock(option%mycomm, ONEDOF, grid%ngmax - grid%nlmax, &
-                     int_tmp_gl, PETSC_COPY_VALUES, is_global,  &
-                     ierr);CHKERRQ(ierr)
-  call VecScatterCreate(vec_LP_cell_id, is_global, vec_LP_cell_id_loc, &
-                        is_ghosted, VC_global2ghosted, ierr);CHKERRQ(ierr)
-  deallocate(int_tmp_gh)
-  deallocate(int_tmp_gl)
-
-  call VecScatterBegin(VC_global2ghosted, vec_LP_cell_id, vec_LP_cell_id_loc, &
-                      INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
-  call VecScatterEnd(VC_global2ghosted, vec_LP_cell_id, vec_LP_cell_id_loc, &
-                      INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
-
-  call VecGetArrayF90(vec_LP_cell_id_loc,lp_cell_ids_loc,ierr);CHKERRQ(ierr)
-  do ghosted_id=1,grid%ngmax
-    if (grid%nG2L(ghosted_id)<1) then
-      grid%nG2LP(ghosted_id)=int(lp_cell_ids_loc(ghosted_id))-1
-    endif
-  end do
-  call VecRestoreArrayF90(vec_LP_cell_id_loc,lp_cell_ids_loc, &
-                          ierr);CHKERRQ(ierr)
-
-  call VecDestroy(vec_LP_cell_id, ierr);CHKERRQ(ierr)
-  call VecDestroy(vec_LP_cell_id_loc, ierr);CHKERRQ(ierr)
-  call VecScatterDestroy(VC_global2ghosted , ierr);CHKERRQ(ierr)
-  call ISDestroy(is_ghosted, ierr);CHKERRQ(ierr)
-  call ISDestroy(is_global, ierr);CHKERRQ(ierr)
-
-end subroutine RealizationCreatenG2LP
 
 ! ************************************************************************** !
 
@@ -2261,90 +2065,6 @@ subroutine RealizationCountCells(realization,global_total_count, &
   global_active_count = temp_int_out(2)
 
 end subroutine RealizationCountCells
-
-! ************************************************************************** !
-
-subroutine RealizationSetUpBC4Faces(realization)
-
-  use Connection_module
-  use Coupler_module
-  use Patch_module
-  use Grid_module
-  use Field_module
-  use MFD_Aux_module
-  
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-
-  type(realization_type) :: realization
-
-#ifdef DASVYAT
-  type(grid_type), pointer :: grid
-  type(patch_type), pointer :: patch
-  type(field_type), pointer :: field
-  
-
-  type(mfd_auxvar_type), pointer :: auxvar
-  type(connection_set_type), pointer :: conn
-  type(coupler_type), pointer ::  boundary_condition
-
-  PetscReal, pointer :: bc_faces_p(:), xx_faces_p(:)
-  PetscInt :: iconn, sum_connection, bc_type, bound_id
-  PetscInt :: local_id, ghosted_id, ghost_face_id, j, jface, local_face_id
-  PetscErrorCode :: ierr
-
-  patch => realization%patch
-  grid => patch%grid
-  field => realization%field
-
-  call VecGetArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr);CHKERRQ(ierr)
-  call VecGetArrayF90(field%flow_xx_faces, xx_faces_p, ierr);CHKERRQ(ierr)
-
-  boundary_condition => patch%boundary_condition_list%first
-  sum_connection = 0
-  do
-    if (.not.associated(boundary_condition)) exit
-    bc_type = boundary_condition%flow_condition%itype(RICHARDS_PRESSURE_DOF)
-
-    do iconn = 1, boundary_condition%numfaces_set
-      sum_connection = sum_connection + 1
-
-      local_id = boundary_condition%region%cell_ids(iconn)
-      ghosted_id = grid%nL2G(local_id)
-
-      auxvar => grid%MFD%auxvars(local_id)
-      do j = 1, auxvar%numfaces
-        ghost_face_id = auxvar%face_id_gh(j)
-        local_face_id = grid%fG2L(ghost_face_id)
-        conn => grid%faces(ghost_face_id)%conn_set_ptr
-        jface = grid%faces(ghost_face_id)%id
-        if (boundary_condition%faces_set(iconn) == ghost_face_id) then
-          if ((bc_type == DIRICHLET_BC).or.(bc_type == HYDROSTATIC_BC)  &
-              .or.(bc_type == SEEPAGE_BC).or.(bc_type == CONDUCTANCE_BC) ) then
-            bc_faces_p(ghost_face_id) = boundary_condition%flow_aux_real_var(1,iconn)*conn%area(jface)
-            xx_faces_p(local_face_id) = boundary_condition%flow_aux_real_var(1,iconn)
-          else if ((bc_type == NEUMANN_BC)) then
-            bc_faces_p(ghost_face_id) = boundary_condition%flow_aux_real_var(1,iconn)*conn%area(jface)
-            bound_id = grid%fL2B(local_face_id)
-            if (bound_id>0) then
-              patch%boundary_velocities(realization%option%nphase, bound_id) = &
-                boundary_condition%flow_aux_real_var(1,iconn)
-            endif
-          endif
-        endif
-      enddo
-    enddo
-    boundary_condition => boundary_condition%next
-  enddo
-
-  call VecRestoreArrayF90(field%flow_xx_faces, xx_faces_p, ierr);CHKERRQ(ierr)
-  call VecRestoreArrayF90(field%flow_bc_loc_faces, bc_faces_p,  &
-                          ierr);CHKERRQ(ierr)
-
-#endif
-
-end subroutine RealizationSetUpBC4Faces
 
 ! ************************************************************************** !
 

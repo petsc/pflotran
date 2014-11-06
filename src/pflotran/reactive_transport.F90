@@ -1128,25 +1128,12 @@ subroutine RTUpdateTransportCoefs(realization)
   do 
     if (.not.associated(boundary_condition)) exit
  
-    if (option%mimetic) then 
-      num_connections = boundary_condition%numfaces_set
-    else
-      cur_connection_set => boundary_condition%connection_set
-      num_connections = cur_connection_set%num_connections
-    end if
+    cur_connection_set => boundary_condition%connection_set
+    num_connections = cur_connection_set%num_connections
     do iconn = 1, num_connections
       sum_connection = sum_connection + 1
   
-      if (option%mimetic) then
-#ifdef DASVYAT
-        ghosted_face_id = boundary_condition%faces_set(iconn)
-        cur_connection_set => grid%faces(ghosted_face_id)%conn_set_ptr
-        id = grid%faces(ghosted_face_id)%id
-        local_id = grid%nG2L(cur_connection_set%id_dn(id))
-#endif
-      else
-        local_id = cur_connection_set%id_dn(iconn)
-      end if
+      local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
       if (patch%imat(ghosted_id) <= 0) cycle
 

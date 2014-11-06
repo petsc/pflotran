@@ -136,13 +136,8 @@ subroutine PMSubsurfaceSetRealization(this,realization)
   this%realization => realization
   this%realization_base => realization
 
-  if (realization%discretization%itype == STRUCTURED_GRID_MIMETIC) then 
-    this%solution_vec = realization%field%flow_xx_faces
-    this%residual_vec = realization%field%flow_r_faces
-  else
-    this%solution_vec = realization%field%flow_xx
-    this%residual_vec = realization%field%flow_r
-  endif
+  this%solution_vec = realization%field%flow_xx
+  this%residual_vec = realization%field%flow_r
   
 end subroutine PMSubsurfaceSetRealization
 

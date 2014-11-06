@@ -690,14 +690,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     endif
   endif
 
-  if (patch%grid%itype == STRUCTURED_GRID_MIMETIC.or. &
-      patch%grid%discretization_itype == UNSTRUCTURED_GRID_MIMETIC ) then
-    temp_int = CouplerGetNumBoundConnectionsInListMFD(patch%grid, &
-                                                 patch%boundary_condition_list, &
-                                                 option)
-  else  
-    temp_int = CouplerGetNumConnectionsInList(patch%boundary_condition_list)
-  end if
+  temp_int = CouplerGetNumConnectionsInList(patch%boundary_condition_list)
 
   if (temp_int > 0) then
     ! all simulations
@@ -844,14 +837,6 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
             select case(option%iflowmode)
 
               case(RICHARDS_MODE)
-  !geh              allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
-                if (option%mimetic) then
-                   if (coupler%itype == INITIAL_COUPLER_TYPE) then 
-                       num_connections = coupler%numfaces_set + coupler%region%num_cells
-                   else 
-                       num_connections = coupler%numfaces_set
-                   end if
-                end if
                 allocate(coupler%flow_aux_real_var(2,num_connections))
                 allocate(coupler%flow_aux_int_var(1,num_connections))
                 coupler%flow_aux_real_var = 0.d0
@@ -864,7 +849,6 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
                 coupler%flow_aux_int_var = 0
 
               case(MPH_MODE, IMS_MODE, FLASH2_MODE, MIS_MODE)
-  !geh              allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
                 allocate(coupler%flow_aux_real_var(option%nflowdof,num_connections))
                 allocate(coupler%flow_aux_int_var(1,num_connections))
                 coupler%flow_aux_real_var = 0.d0
@@ -1097,11 +1081,6 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
   PetscInt :: real_count 
   
   num_connections = coupler%connection_set%num_connections
-#ifdef DASVYAT      
-  if (option%mimetic) then
-    num_connections = coupler%numfaces_set
-  end if
-#endif
 
   flow_condition => coupler%flow_condition
 
@@ -1463,11 +1442,6 @@ subroutine PatchUpdateCouplerAuxVarsMPH(patch,coupler,option)
   PetscInt :: iconn, local_id, ghosted_id
 
   num_connections = coupler%connection_set%num_connections
-#ifdef DASVYAT      
-  if (option%mimetic) then
-    num_connections = coupler%numfaces_set
-  end if
-#endif
 
   flow_condition => coupler%flow_condition
 
@@ -1569,11 +1543,6 @@ subroutine PatchUpdateCouplerAuxVarsIMS(patch,coupler,option)
   PetscInt :: iconn, local_id, ghosted_id
   
   num_connections = coupler%connection_set%num_connections
-#ifdef DASVYAT      
-  if (option%mimetic) then
-    num_connections = coupler%numfaces_set
-  end if
-#endif
 
   flow_condition => coupler%flow_condition
 
@@ -1675,11 +1644,6 @@ subroutine PatchUpdateCouplerAuxVarsFLASH2(patch,coupler,option)
   PetscInt :: iconn, local_id, ghosted_id
 
   num_connections = coupler%connection_set%num_connections
-#ifdef DASVYAT      
-  if (option%mimetic) then
-    num_connections = coupler%numfaces_set
-  end if
-#endif
 
   flow_condition => coupler%flow_condition
 
@@ -1783,11 +1747,6 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
   PetscInt :: iconn, local_id, ghosted_id
   
   num_connections = coupler%connection_set%num_connections
-#ifdef DASVYAT      
-  if (option%mimetic) then
-    num_connections = coupler%numfaces_set
-  end if
-#endif
 
   flow_condition => coupler%flow_condition
 
@@ -1974,11 +1933,7 @@ subroutine PatchUpdateCouplerAuxVarsMIS(patch,coupler,option)
   PetscInt :: iconn, local_id, ghosted_id
   
   num_connections = coupler%connection_set%num_connections
-#ifdef DASVYAT      
-  if (option%mimetic) then
-    num_connections = coupler%numfaces_set
-  end if
-#endif
+
   flow_condition => coupler%flow_condition
   if (associated(flow_condition%pressure)) then
     select case(flow_condition%pressure%itype)
@@ -2056,11 +2011,7 @@ subroutine PatchUpdateCouplerAuxVarsRich(patch,coupler,option)
   PetscInt :: iconn, local_id, ghosted_id
 
   num_connections = coupler%connection_set%num_connections
-#ifdef DASVYAT      
-  if (option%mimetic) then
-    num_connections = coupler%numfaces_set
-  end if
-#endif
+
   flow_condition => coupler%flow_condition
   if (associated(flow_condition%pressure)) then
     select case(flow_condition%pressure%itype)

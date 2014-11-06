@@ -97,15 +97,6 @@ module Logging_module
     
     PetscLogEvent :: event_mass_balance
 
-#ifdef DASVYAT
-
-    PetscLogEvent :: event_flow_residual_mfd1
-    PetscLogEvent :: event_flow_residual_mfd2
-    PetscLogEvent :: event_flow_flux_mfd
-    PetscLogEvent :: event_flow_rhs_mfd
-
-#endif
-
     PetscBool :: setup_complete
 
   end type logging_type
@@ -381,27 +372,6 @@ subroutine LoggingCreate()
                              logging%class_pflotran, &
                              logging%event_mass_balance,ierr);CHKERRQ(ierr)
 
-#ifdef DASVYAT
-  
-  call PetscLogEventRegister('MFD_Residual1', &
-                             logging%class_pflotran, &
-                             logging%event_flow_residual_mfd1,  &
-                             ierr);CHKERRQ(ierr)
-  
-  
-  call PetscLogEventRegister('MFD_Residual2', &
-                             logging%class_pflotran, &
-                             logging%event_flow_residual_mfd2,  &
-                             ierr);CHKERRQ(ierr)
-
-  call PetscLogEventRegister('MFD_Flux', &
-                             logging%class_pflotran, &
-                             logging%event_flow_flux_mfd, ierr);CHKERRQ(ierr)
-  call PetscLogEventRegister('MFD_Rhs', &
-                             logging%class_pflotran, &
-                             logging%event_flow_rhs_mfd, ierr);CHKERRQ(ierr)
-#endif
-  
 end subroutine LoggingCreate
 
 ! ************************************************************************** !
