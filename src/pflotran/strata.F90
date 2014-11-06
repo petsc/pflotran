@@ -247,6 +247,9 @@ subroutine StrataRead(strata,input,option)
       trim(strata%region_name) // '".'
     call printErrMsg(option)
   endif
+  if (Initialized(strata%start_time)) then
+    option%flow%transient_porosity = PETSC_TRUE
+  endif
   
 end subroutine StrataRead
 
