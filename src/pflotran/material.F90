@@ -130,7 +130,7 @@ function MaterialPropertyCreate()
   material_property%isotropic_permeability = PETSC_TRUE
   material_property%vertical_anisotropy_ratio = 0.d0
   material_property%permeability_scaling_factor = 0.d0
-  material_property%permeability_pwr = 0.d0
+  material_property%permeability_pwr = 1.d0
   material_property%permeability_crit_por = 0.d0
   material_property%permeability_min_scale_fac = 1.d0
   material_property%permeability_dataset_name = ''

@@ -1780,16 +1780,18 @@ subroutine RealizationUpdatePropertiesTS(realization)
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       imat = patch%imat(ghosted_id)
-      critical_porosity = material_property_array(imat)%ptr%permeability_crit_por
+      critical_porosity = material_property_array(imat)%ptr% &
+                            permeability_crit_por
       porosity_base = material_auxvars(ghosted_id)%porosity_base
+      scale = 0.d0
       if (porosity_base > critical_porosity .and. &
           porosity0_p(local_id) > critical_porosity) then
         scale = ((porosity_base - critical_porosity) / &
                  (porosity0_p(local_id) - critical_porosity)) ** &
                 material_property_array(imat)%ptr%permeability_pwr
-      else
-        scale = material_property_array(imat)%ptr%permeability_min_scale_fac
       endif
+      scale = max(material_property_array(imat)%ptr% &
+                    permeability_min_scale_fac,scale)
       material_auxvars(ghosted_id)%permeability(perm_xx_index) = &
         perm0_xx_p(local_id)*scale
       material_auxvars(ghosted_id)%permeability(perm_yy_index) = &
