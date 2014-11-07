@@ -35,22 +35,6 @@ ifdef solid_solution
   MYFLAGS += ${FC_DEFINE_FLAG}SOLID_SOLUTION
 endif
 
-ifdef radioactive_decay
-  MYFLAGS += ${FC_DEFINE_FLAG}RADIOACTIVE_DECAY
-endif
-
-ifdef mualem_spline
-  MYFLAGS += ${FC_DEFINE_FLAG}MUALEM_SPLINE
-endif
-
-ifdef petsc_api_3_3
-  MYFLAGS += ${FC_DEFINE_FLAG}HAVE_PETSC_API_3_3
-endif
-
-ifdef have_petscpcmg_h
-	MYFLAGS += ${FC_DEFINE_FLAG}HAVE_PETSCPCMG_H
-endif
-
 ifdef dbl
   MYFLAGS += ${FC_DEFINE_FLAG}DOUBLE_LAYER
 endif
@@ -61,14 +45,6 @@ endif
 
 ifdef condnr
   MYFLAGS += ${FC_DEFINE_FLAG}CONDNR
-endif
-
-ifdef perm
-  MYFLAGS += ${FC_DEFINE_FLAG}PERM
-endif
-
-ifdef tab
-  MYFLAGS += ${FC_DEFINE_FLAG}TABLE
 endif
 
 ifdef temp
@@ -94,16 +70,8 @@ ifdef coll
   MYFLAGS += ${FC_DEFINE_FLAG}COLL
 endif
 
-ifdef dont_use_wateos
-  MYFLAGS += ${FC_DEFINE_FLAG}DONT_USE_WATEOS
-endif
-
 ifdef have_hdf5
   MYFLAGS += -I$(HDF5_INCLUDE) -I$(HDF5_LIB) ${FC_DEFINE_FLAG}PETSC_HAVE_HDF5
-endif
-
-ifdef gpu
-  MYFLAGS += ${FC_DEFINE_FLAG}CHUNK
 endif
 
 ifdef ugrid_debug
