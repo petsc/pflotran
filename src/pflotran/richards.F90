@@ -647,7 +647,7 @@ subroutine RichardsUpdatePermPatch(realization)
     endif
     !geh: this is a kludge for gfortran.  the code reports errors when 
     !     material_auxvars(ghosted_id)%permeability is used.
-    !TODO(geh): test with Intel!
+    ! Not an issue with Intel
     perm_ptr => material_auxvars(ghosted_id)%permeability
     perm_ptr(perm_xx_index) = perm0_xx_p(local_id)*scale
     perm_ptr(perm_yy_index) = perm0_yy_p(local_id)*scale

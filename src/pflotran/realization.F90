@@ -1614,6 +1614,7 @@ subroutine RealizationUpdatePropertiesTS(realization)
   PetscReal, pointer :: porosity0_p(:)
   PetscReal, pointer :: tortuosity0_p(:)
   PetscReal, pointer :: perm0_xx_p(:), perm0_yy_p(:), perm0_zz_p(:)
+  PetscReal, pointer :: perm_ptr(:)
   PetscReal :: min_value
   PetscReal :: critical_porosity
   PetscReal :: porosity_base
@@ -1792,12 +1793,22 @@ subroutine RealizationUpdatePropertiesTS(realization)
       endif
       scale = max(material_property_array(imat)%ptr% &
                     permeability_min_scale_fac,scale)
+      !geh: this is a kludge for gfortran.  the code reports errors when 
+      !     material_auxvars(ghosted_id)%permeability is used.
+      ! This is not an issue with Intel
+#if 1
+      perm_ptr => material_auxvars(ghosted_id)%permeability
+      perm_ptr(perm_xx_index) = perm0_xx_p(local_id)*scale
+      perm_ptr(perm_yy_index) = perm0_yy_p(local_id)*scale
+      perm_ptr(perm_zz_index) = perm0_zz_p(local_id)*scale
+#else
       material_auxvars(ghosted_id)%permeability(perm_xx_index) = &
         perm0_xx_p(local_id)*scale
       material_auxvars(ghosted_id)%permeability(perm_yy_index) = &
         perm0_yy_p(local_id)*scale
       material_auxvars(ghosted_id)%permeability(perm_zz_index) = &
         perm0_zz_p(local_id)*scale
+#endif
     enddo
     call VecRestoreArrayF90(field%perm0_xx,perm0_xx_p,ierr);CHKERRQ(ierr)
     call VecRestoreArrayF90(field%perm0_zz,perm0_zz_p,ierr);CHKERRQ(ierr)
