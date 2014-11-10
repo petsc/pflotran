@@ -2808,7 +2808,7 @@ subroutine RichardsSSSandbox(residual,Jacobian,compute_derivative, &
     if (.not.associated(cur_srcsink)) exit
       aux_real = 0.d0
 
-      do i = 1, size(cur_srcsink%region%cell_ids)
+      do i = 1, cur_srcsink%region%num_cells
         local_id = cur_srcsink%region%cell_ids(i)
         ghosted_id = grid%nL2G(local_id)
         res = 0.d0
