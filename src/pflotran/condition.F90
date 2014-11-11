@@ -743,6 +743,8 @@ subroutine FlowConditionRead(condition,input,option)
               sub_condition_ptr%itype = HET_DIRICHLET
             case('heterogeneous_surface_seepage')
               sub_condition_ptr%itype = HET_SURF_SEEPAGE_BC
+            case('spillover')
+              sub_condition_ptr%itype = SPILLOVER_BC
             case default
               option%io_buffer = 'bc type "' // trim(word) // &
                                  '" not recognized in condition,type'
@@ -2146,6 +2148,8 @@ function GetSubConditionName(subcon_itype)
       string = 'heterogeneous energy rate'
     case(HET_SURF_SEEPAGE_BC)
       string = 'heterogeneous surface seepage'
+    case(SPILLOVER_BC)
+      string = 'spillover'
   end select
 
   GetSubConditionName = trim(string)

@@ -1,0 +1,221 @@
+! Single 1D column which exfiltrates by setting a large pressure on the bottom
+! boundary. Spillover condition keeps the water level at 10cm.
+!=========================== flow mode ========================================
+MODE TH FREEZING
+ICE_MODEL PAINTER_KARRA_EXPLICIT
+!=========================== regression ===================================
+REGRESSION
+  CELLS
+    1
+    2
+    3
+    4
+    5
+  /
+END
+!=========================== discretization ===================================
+GRID
+  TYPE unstructured ./mesh_simple1D.h5
+END
+REGION all
+  COORDINATES
+    -1.d20 -1.d20 -1.d20
+     1.d20  1.d20  1.d20
+  /
+END 
+REGION top 
+  FILE ./mesh_simple1D.h5
+  GRID unstructured
+END
+REGION bottom
+  FILE ./mesh_simple1D.h5
+  GRID unstructured
+END
+!=========================== solver ===================================
+TIME
+  FINAL_TIME 30.d0 s 
+  INITIAL_TIMESTEP_SIZE 1.0d0 s
+  MAXIMUM_TIMESTEP_SIZE 1.0d0 s
+END
+!=========================== flow conditions ==================================
+FLOW_CONDITION initial
+  TYPE
+    PRESSURE dirichlet
+    TEMPERATURE dirichlet
+  /
+  PRESSURE 101325.d0
+  TEMPERATURE 10.d0
+END
+FLOW_CONDITION from_surface
+  TYPE
+    PRESSURE heterogeneous_surface_seepage
+    TEMPERATURE heterogeneous_dirichlet
+  /
+  PRESSURE 101325.d0
+  TEMPERATURE 10.d0 
+END
+FLOW_CONDITION from_atm_subsurface
+  TYPE
+    PRESSURE neumann
+    TEMPERATURE heterogeneous_dirichlet
+  /
+  FLUX 0.d0
+  TEMPERATURE 10.d0 
+END
+FLOW_CONDITION leaky
+  TYPE
+    PRESSURE dirichlet
+    TEMPERATURE dirichlet
+  /
+  PRESSURE 160074.d0
+  TEMPERATURE 10.d0 
+END
+!=========================== condition couplers ===============================
+INITIAL_CONDITION initial_coupler
+  FLOW_CONDITION initial
+  REGION all
+END
+BOUNDARY_CONDITION from_atm_subsurface_bc
+  FLOW_CONDITION from_atm_subsurface
+  REGION top
+END
+BOUNDARY_CONDITION leaky_bottom
+  FLOW_CONDITION leaky
+  REGION bottom
+END
+BOUNDARY_CONDITION from_surface_bc
+  FLOW_CONDITION from_surface
+  REGION top
+END
+!=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+REFERENCE_PRESSURE 101325.d0
+REFERENCE_TEMPERATURE 50.d0
+!=========================== stratigraphy couplers ============================
+STRATA
+  MATERIAL soil423
+  REGION all
+END
+!========================== saturation  functions =============================
+SATURATION_FUNCTION sf4
+  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+  RESIDUAL_SATURATION 0.1000000000000000d+00
+  LAMBDA 2.8333333333333333d-01
+  ALPHA 1.3591573224600747d-04
+END
+!=========================== material properties ==============================
+MATERIAL_PROPERTY soil423
+  ID 1
+  POROSITY 0.250000000000000d0
+  SOIL_COMPRESSIBILITY_FUNCTION BRAGFLO
+  SOIL_COMPRESSIBILITY 1.d-7
+  SOIL_REFERENCE_PRESSURE 101325.d0
+  ROCK_DENSITY 1.5300000000000000d+03
+  SPECIFIC_HEAT 4.1138888888888891d+04
+  THERMAL_CONDUCTIVITY_DRY 1.5000000000000000d+00
+  THERMAL_CONDUCTIVITY_WET 1.5000000000000000d+00
+  THERMAL_COND_EXPONENT 4.5000000000000001d-01
+  THERMAL_CONDUCTIVITY_FROZEN 2.0499999999999998d+00
+  THERMAL_COND_EXPONENT_FROZEN 9.7238599999999994d-02
+  SATURATION_FUNCTION sf4
+  PERMEABILITY
+    ISOTROPIC
+    PERM_ISO 8.8862385321100935d-09
+  /
+END
+!===============================================================================
+!=========================== surface flow ======================================
+!===============================================================================
+SURFACE_FLOW
+SURF_GRID
+  TYPE unstructured ./mesh_simple1D.h5
+END
+SURF_FLOW_FORMULATION diffusive
+SURF_SUBSURFACE_COUPLING
+  seq_coupled
+END
+SURF_MATERIAL_PROPERTY surf1
+  ID 1
+  MANNINGS 0.02
+END
+SURF_TIME
+  INITIAL_TIMESTEP_SIZE  1.d0 s
+  MAXIMUM_TIMESTEP_SIZE  1.d0 s
+  COUPLING_TIMESTEP_SIZE 1.d0 s
+END
+!=========================== regions ==========================================
+SURF_REGION surf_all
+  COORDINATES
+    -1.d20 -1.d20 -1.d20
+     1.d20  1.d20  1.d20
+  /
+END 
+SURF_REGION top
+  FILE ./mesh_simple1D.h5
+  GRID unstructured
+END
+SURF_REGION outlet
+  FILE ./mesh_simple1D.h5
+  GRID unstructured
+END
+!=========================== flow conditions ==========================================
+SURF_FLOW_CONDITION atm_rain_forcing
+  TYPE
+    RATE volumetric_rate
+    TEMPERATURE dirichlet
+  /
+  RATE 0.d0
+  TEMPERATURE 10.d0 
+END
+SURF_FLOW_CONDITION atm_energy_forcing
+  TYPE
+    RATE volumetric_rate
+    TEMPERATURE heterogeneous_dirichlet
+  /
+  RATE 0.d0
+  TEMPERATURE 10.d0
+END
+SURF_FLOW_CONDITION surf_initial
+  TYPE
+    PRESSURE dirichlet
+    TEMPERATURE dirichlet
+  /
+  PRESSURE 101325.d0
+  TEMPERATURE 10.d0
+END
+SURF_FLOW_CONDITION surf_outlet
+  TYPE
+    PRESSURE spillover
+    TEMPERATURE dirichlet
+  /
+  ! when the surface water depth is above this number [m], outflow will occur
+  PRESSURE 0.1d0
+  TEMPERATURE 10.d0
+END
+!=========================== condition couplers ===============================
+! source condition
+SURF_SOURCE_SINK atm_rain_ss
+  SURF_FLOW_CONDITION atm_rain_forcing
+  SURF_REGION surf_all
+END
+SURF_SOURCE_SINK atm_energy_ss
+  SURF_FLOW_CONDITION atm_energy_forcing
+  SURF_REGION surf_all
+END
+SURF_INITIAL_CONDITION surf_initial_coupler
+  FLOW_CONDITION surf_initial
+  REGION surf_all
+END
+SURF_BOUNDARY_CONDITION outlet_coupler
+  FLOW_CONDITION surf_outlet
+  REGION outlet
+END
+!=========================== stratigraphy couplers ============================
+STRATA
+  SURF_REGION surf_all
+  MATERIAL surf1
+END
+
+END
