@@ -1685,8 +1685,8 @@ subroutine OutputIntegralFlux(realization_base)
             call OutputWriteToHeader(fid,string,units,'',icol)
           case(MPH_MODE,FLASH2_MODE,IMS_MODE)
             string = trim(integral_flux%name) // ' CO2'
-            call OutputWriteToHeader(fid,string,'kmol','',icol)
-            units = 'kmol/' // trim(output_option%tunit) // ''
+            call OutputWriteToHeader(fid,string,'kg','',icol)
+            units = 'kg/' // trim(output_option%tunit) // ''
             string = trim(integral_flux%name) // ' CO2'
             call OutputWriteToHeader(fid,string,units,'',icol)
         end select
@@ -1695,7 +1695,7 @@ subroutine OutputIntegralFlux(realization_base)
             string = trim(integral_flux%name) // ' Energy'
             call OutputWriteToHeader(fid,string,'MJ','',icol)
             units = 'MJ/' // trim(output_option%tunit) // ''
-            string = trim(integral_flux%name) // ' Air'
+            string = trim(integral_flux%name) // ' Energy'
             call OutputWriteToHeader(fid,string,units,'',icol)
         end select
         
