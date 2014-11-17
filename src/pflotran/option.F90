@@ -105,8 +105,6 @@ module Option_module
     PetscBool :: print_file_flag
     PetscInt :: verbosity  ! Values >0 indicate additional console output.
     
-    PetscInt, pointer :: garbage ! for some reason, Intel will not compile without this
-
     PetscReal :: uniform_velocity(3)
 
     ! Program options
