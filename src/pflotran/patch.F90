@@ -1754,7 +1754,7 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
     coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
                 flow_condition%iphase
     select case(flow_condition%pressure%itype)
-      case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+      case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC,SPILLOVER_BC)
         select type(selector =>flow_condition%pressure%dataset)
           class is(dataset_ascii_type)
             coupler%flow_aux_real_var(TH_PRESSURE_DOF,1:num_connections) = &
