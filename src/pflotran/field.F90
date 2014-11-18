@@ -32,6 +32,7 @@ module Field_module
     Vec :: work, work_loc
 
     Vec :: volume0
+    Vec :: compressibility0
     
     ! residual vectors
     Vec :: flow_r          
@@ -112,6 +113,7 @@ function FieldCreate()
   field%work_loc = 0
 
   field%volume0 = 0
+  field%compressibility0 = 0
   
   field%flow_r = 0
   field%flow_xx = 0
@@ -221,7 +223,11 @@ subroutine FieldDestroy(field)
   if (field%volume0 /= 0) then
     call VecDestroy(field%volume0,ierr);CHKERRQ(ierr)
   endif
-  
+
+  if (field%compressibility0 /= 0) then
+    call VecDestroy(field%compressibility0,ierr);CHKERRQ(ierr)
+  endif
+ 
   if (field%flow_r /= 0) then
     call VecDestroy(field%flow_r,ierr);CHKERRQ(ierr)
   endif

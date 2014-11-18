@@ -225,6 +225,8 @@ subroutine RealizationCreateDiscretization(realization)
                                      field%tortuosity0)
   call DiscretizationDuplicateVector(discretization,field%work, &
                                      field%volume0)
+  call DiscretizationDuplicateVector(discretization,field%work, &
+                                     field%compressibility0)
   if (option%flow%transient_porosity) then
     call DiscretizationDuplicateVector(discretization,field%work, &
                                        field%porosity_base_store)
@@ -738,7 +740,22 @@ subroutine RealProcessMatPropAndSatFunc(realization)
         class is (dataset_common_hdf5_type)
           cur_material_property%permeability_dataset => dataset
         class default
-          option%io_buffer = 'Incorrect dataset type for porosity.'
+          option%io_buffer = 'Incorrect dataset type for permeability.'
+          call printErrMsg(option)
+      end select      
+    endif
+    if (.not.StringNull(cur_material_property%compressibility_dataset_name)) then
+      string = 'MATERIAL_PROPERTY(' // trim(cur_material_property%name) // &
+               '),COMPRESSIBILITY'
+      dataset => &
+        DatasetBaseGetPointer(realization%datasets, &
+                              cur_material_property%compressibility_dataset_name, &
+                              string,option)
+      select type(dataset)
+        class is (dataset_common_hdf5_type)
+          cur_material_property%compressibility_dataset => dataset
+        class default
+          option%io_buffer = 'Incorrect dataset type for compressibility.'
           call printErrMsg(option)
       end select      
     endif
