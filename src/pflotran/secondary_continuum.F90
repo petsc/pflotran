@@ -618,15 +618,10 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
         global_auxvar%temp = option%reference_temperature
       endif
         
-#ifndef DONT_USE_WATEOS
       call EOSWaterDensity(global_auxvar%temp, &
                            global_auxvar%pres(1), &
                            global_auxvar%den_kg(1), &
                            dum1,ierr)
-#else
-      call EOSWaterDensity(global_auxvar%temp,global_auxvar%pres(1), &
-                           global_auxvar%den_kg(1),dum1,ierr)
-#endif             
     else
       global_auxvar%pres = option%reference_pressure
       global_auxvar%temp = option%reference_temperature

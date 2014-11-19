@@ -775,7 +775,7 @@ subroutine SurfaceTHFlux(surf_auxvar_up, &
   PetscReal :: dt
 
   ! Initialize
-  dt_max  = 1.d10
+  dt_max  = PETSC_MAX_REAL
 
   ! We upwind Manning's coefficient, temperature, and the unfrozen head
   head_up = surf_global_auxvar_up%head(1) + zc_up
@@ -900,7 +900,7 @@ subroutine SurfaceTHBCFlux(ibndtype, &
   PetscReal :: dist
 
   PetscInt :: pressure_bc_type
-  PetscReal :: head
+  PetscReal :: head,dhead
   PetscReal :: head_liq
   PetscReal :: den
   PetscReal :: temp_half
@@ -915,11 +915,7 @@ subroutine SurfaceTHBCFlux(ibndtype, &
   hw_half = 0.d0
   dtemp = 0.d0
   Cw = 0.d0
-  
-  ! RTM: I've multiplied the head (ponded water depth, actually) by the 
-  ! unfrozen fraction.  I believe this makes sense, but I should think a bit 
-  ! more about what a "zero gradient" condition means in the case of freezing
-  ! surface water.
+  dt_max = PETSC_MAX_REAL
 
   ! Flow  
   pressure_bc_type = ibndtype(TH_PRESSURE_DOF)
@@ -942,6 +938,14 @@ subroutine SurfaceTHBCFlux(ibndtype, &
       vel = auxvars(TH_PRESSURE_DOF)
       den = (surf_global_auxvar_up%den_kg(1) + &
              surf_global_auxvar_dn%den_kg(1))/2.d0
+    case (SPILLOVER_BC)
+      ! if liquid water height is above a user-defined value, then outflow can occur
+      head_liq =  surf_auxvar_dn%unfrozen_fraction * head
+      dhead    =  max(head_liq-auxvars(1),0.0d0)
+      vel      = -dhead**(2.d0/3.d0)/mannings*abs(dhead/dist)**0.5d0
+      hw_half  =  head
+      Cw       =  surf_auxvar_dn%Cw 
+      den      =  surf_global_auxvar_dn%den_kg(1)
     case default
       option%io_buffer = 'Unknown pressure_bc_type for surface flow '
       call printErrMsg(option)
@@ -964,21 +968,17 @@ subroutine SurfaceTHBCFlux(ibndtype, &
   endif
 
   flux = head_liq*vel
-  Res(TH_PRESSURE_DOF) = flux*length
-
-  ! Temperature
-  ! RTM: See note about in SufaceTHFlux() about how frozen/unfrozen are handled here.
+  Res(TH_PRESSURE_DOF)    = flux*length
   Res(TH_TEMPERATURE_DOF) = den*temp_half*Cw*vel*head_liq*length + &
                             k_therm*dtemp/dist*hw_half*length
 
-  ! Find maximum allowable timestep
+  ! Timestep restriction due to mass equation
   if (abs(vel)>eps) then
     dt     = dist/abs(vel)/3.d0
     dt_max = min(dt_max, dt)
   endif
-
+  ! Timestep restriction due to energy equation
   if (head_liq > MIN_SURFACE_WATER_HEIGHT) then
-    ! Restriction due to energy equation
     dt_max = min(dt_max,(dist**2.d0)*Cw*den/(2.d0*k_therm))
   endif
 

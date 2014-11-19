@@ -365,8 +365,8 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
           ! derivative of atan(X) = 1 / (1 + X^2) dX
           tempreal = (activity - microbial%inhibition_C(iinhibition)) * &
                      microbial%inhibition_C2(iinhibition)
-          inhibition(ii) = (microbial%inhibition_C2(iinhibition) * act_coef / &
-                            (1.d0 + tempreal*tempreal)) / PI
+          dX_dc = (microbial%inhibition_C2(iinhibition) * act_coef / &
+                   (1.d0 + tempreal*tempreal)) / PI
       end select        
       
       dR_dc = -1.d0*dR_dX*dX_dc

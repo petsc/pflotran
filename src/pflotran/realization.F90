@@ -1631,7 +1631,10 @@ subroutine RealizationUpdatePropertiesTS(realization)
   PetscReal, pointer :: porosity0_p(:)
   PetscReal, pointer :: tortuosity0_p(:)
   PetscReal, pointer :: perm0_xx_p(:), perm0_yy_p(:), perm0_zz_p(:)
-  PetscReal :: min_value  
+  PetscReal, pointer :: perm_ptr(:)
+  PetscReal :: min_value
+  PetscReal :: critical_porosity
+  PetscReal :: porosity_base
   PetscInt :: ivalue
   PetscErrorCode :: ierr
 
@@ -1791,38 +1794,38 @@ subroutine RealizationUpdatePropertiesTS(realization)
     call VecGetArrayF90(field%perm0_xx,perm0_xx_p,ierr);CHKERRQ(ierr)
     call VecGetArrayF90(field%perm0_zz,perm0_zz_p,ierr);CHKERRQ(ierr)
     call VecGetArrayF90(field%perm0_yy,perm0_yy_p,ierr);CHKERRQ(ierr)
-!   call VecGetArrayF90(field%work,vec_p,ierr)
+    call VecGetArrayF90(field%porosity0,porosity0_p,ierr);CHKERRQ(ierr)
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       imat = patch%imat(ghosted_id)
-      if (material_auxvars(ghosted_id)%porosity_base >= &
-          material_property_array(imat)%ptr%permeability_crit_por) then
-        scale = ((material_auxvars(ghosted_id)%porosity_base - &
-                  material_property_array(imat)%ptr%permeability_crit_por) &
-                /(porosity0_p(local_id) - &
-                  material_property_array(imat)%ptr%permeability_crit_por))** &
+      critical_porosity = material_property_array(imat)%ptr% &
+                            permeability_crit_por
+      porosity_base = material_auxvars(ghosted_id)%porosity_base
+      scale = 0.d0
+      if (porosity_base > critical_porosity .and. &
+          porosity0_p(local_id) > critical_porosity) then
+        scale = ((porosity_base - critical_porosity) / &
+                 (porosity0_p(local_id) - critical_porosity)) ** &
                 material_property_array(imat)%ptr%permeability_pwr
-
-#ifdef PERM
-        scale = scale*((1.001-porosity0_p(local_id)**2.d0) / &
-                (1.001-porosity_mnrl_loc_p(ghosted_id)**2.d0))
-#endif
-      option%io_buffer = 'Incorrect scaling in RealizationUpdatePropertiesPatch()'
-      call printErrMsg(option)
-      !geh: I am not sure who wrote this but it cannot possibly be correct!!!
-        if (scale < material_property_array(patch%imat(ghosted_id))%ptr%permeability_min_scale_fac) &
-          scale = material_property_array(patch%imat(ghosted_id))%ptr%permeability_min_scale_fac
-      else
-        scale = material_property_array(patch%imat(ghosted_id))%ptr%permeability_min_scale_fac
       endif
-!     scale = vec_p(local_id)** &
-!             material_property_array(patch%imat(ghosted_id))%ptr%permeability_pwr
+      scale = max(material_property_array(imat)%ptr% &
+                    permeability_min_scale_fac,scale)
+      !geh: this is a kludge for gfortran.  the code reports errors when 
+      !     material_auxvars(ghosted_id)%permeability is used.
+      ! This is not an issue with Intel
+#if 1
+      perm_ptr => material_auxvars(ghosted_id)%permeability
+      perm_ptr(perm_xx_index) = perm0_xx_p(local_id)*scale
+      perm_ptr(perm_yy_index) = perm0_yy_p(local_id)*scale
+      perm_ptr(perm_zz_index) = perm0_zz_p(local_id)*scale
+#else
       material_auxvars(ghosted_id)%permeability(perm_xx_index) = &
         perm0_xx_p(local_id)*scale
       material_auxvars(ghosted_id)%permeability(perm_yy_index) = &
         perm0_yy_p(local_id)*scale
       material_auxvars(ghosted_id)%permeability(perm_zz_index) = &
         perm0_zz_p(local_id)*scale
+#endif
     enddo
     call VecRestoreArrayF90(field%perm0_xx,perm0_xx_p,ierr);CHKERRQ(ierr)
     call VecRestoreArrayF90(field%perm0_zz,perm0_zz_p,ierr);CHKERRQ(ierr)

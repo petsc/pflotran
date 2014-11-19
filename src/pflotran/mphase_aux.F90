@@ -292,11 +292,11 @@ subroutine MphaseAuxVarCompute_NINC(x,auxvar,global_auxvar,iphase,saturation_fun
       auxvar%xmol(2) = x(3)
 !      if(auxvar%xmol(2) < 0.D0) print *,'tran:',iphase, x(1:3)
 !      if(auxvar%xmol(2) > 1.D0) print *,'tran:',iphase, x(1:3)
-      if (x(3) < 0.d0) then
-        option%io_buffer = 'CO2 mole fraction below zero.  It is likely ' // &
-          'that CO2 aqueous concentrations in transport are inconsistent with flow.'
-        call printErrMsgByRank(option)
-      endif
+!pcl  if (x(3) < 0.d0) then
+!pcl    option%io_buffer = 'CO2 mole fraction below zero.  It is likely ' // &
+!pcl      'that CO2 aqueous concentrations in transport are inconsistent with flow.'
+!pcl    call printErrMsgByRank(option)
+!pcl  endif
       auxvar%xmol(1) = 1.D0 - auxvar%xmol(2)
       auxvar%pc(:) = 0.D0
       auxvar%sat(1) = 1.D0

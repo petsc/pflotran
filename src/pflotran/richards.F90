@@ -647,7 +647,7 @@ subroutine RichardsUpdatePermPatch(realization)
     endif
     !geh: this is a kludge for gfortran.  the code reports errors when 
     !     material_auxvars(ghosted_id)%permeability is used.
-    !TODO(geh): test with Intel!
+    ! Not an issue with Intel
     perm_ptr => material_auxvars(ghosted_id)%permeability
     perm_ptr(perm_xx_index) = perm0_xx_p(local_id)*scale
     perm_ptr(perm_yy_index) = perm0_yy_p(local_id)*scale
@@ -2808,7 +2808,7 @@ subroutine RichardsSSSandbox(residual,Jacobian,compute_derivative, &
     if (.not.associated(cur_srcsink)) exit
       aux_real = 0.d0
 
-      do i = 1, size(cur_srcsink%region%cell_ids)
+      do i = 1, cur_srcsink%region%num_cells
         local_id = cur_srcsink%region%cell_ids(i)
         ghosted_id = grid%nL2G(local_id)
         res = 0.d0

@@ -266,15 +266,10 @@ subroutine Init(simulation)
 
   ! initialize reference density
   if (option%reference_water_density < 1.d-40) then
-#ifndef DONT_USE_WATEOS
     call EOSWaterDensity(option%reference_temperature, &
                          option%reference_pressure, &
                          option%reference_water_density, &
                          dum1,ierr)    
-#else
-    call EOSWaterdensity(option%reference_temperature,option%reference_pressure, &
-                 option%reference_water_density,dum1,ierr)
-#endif                 
   endif
   
   ! read reaction database

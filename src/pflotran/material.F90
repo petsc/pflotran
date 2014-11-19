@@ -132,7 +132,7 @@ function MaterialPropertyCreate()
   material_property%isotropic_permeability = PETSC_TRUE
   material_property%vertical_anisotropy_ratio = 0.d0
   material_property%permeability_scaling_factor = 0.d0
-  material_property%permeability_pwr = 0.d0
+  material_property%permeability_pwr = 1.d0
   material_property%permeability_crit_por = 0.d0
   material_property%permeability_min_scale_fac = 1.d0
   material_property%permeability_dataset_name = ''
@@ -518,11 +518,11 @@ subroutine MaterialPropertyRead(material_property,input,option)
         call InputReadDouble(input,option, &
                              material_property%permeability_pwr)
         call InputErrorMsg(input,option,'permeability power','MATERIAL_PROPERTY')
-      case('PERMEABILITY_CRIT_POROSITY')
+      case('PERMEABILITY_CRITICAL_POROSITY')
         call InputReadDouble(input,option, &
                              material_property%permeability_crit_por)
         call InputErrorMsg(input,option,'permeability critical porosity','MATERIAL_PROPERTY')
-      case('PERMEABILITY_MIN_SCALE_FAC')
+      case('PERMEABILITY_MIN_SCALE_FACTOR')
         call InputReadDouble(input,option, &
                              material_property%permeability_min_scale_fac)
         call InputErrorMsg(input,option,'permeability min scale factor','MATERIAL_PROPERTY')
