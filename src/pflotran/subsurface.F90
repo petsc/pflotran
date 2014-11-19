@@ -396,10 +396,13 @@ subroutine SubsurfAssignMaterialProperties(realization)
     call DiscretizationLocalToLocal(discretization,field%ithrm_loc, &
                                     field%ithrm_loc,ONEDOF)
     call RealLocalToLocalWithArray(realization,SATURATION_FUNCTION_ID_ARRAY)
-    call DiscretizationGlobalToLocal(discretization,field%compressibility0, &
-                                     field%work_loc,ONEDOF)
-    call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
-                                 COMPRESSIBILITY,0)
+    
+    if (associated(material_property%compressibility_dataset)) then
+      call DiscretizationGlobalToLocal(discretization,field%compressibility0, &
+                                       field%work_loc,ONEDOF)
+      call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                   COMPRESSIBILITY,0)
+    endif
   endif
   
   call DiscretizationGlobalToLocal(discretization,field%porosity0, &
@@ -825,7 +828,7 @@ subroutine SubsurfReadCompressFromFile(realization,material_property)
         if (local_id > 0) then
           call InputReadDouble(input,option,compressibility)
           call InputErrorMsg(input,option,'compressibility','STRATA')
-          comp_p(local_id) = Compressibility
+          comp_p(local_id) = compressibility
         endif
       endif
     enddo
