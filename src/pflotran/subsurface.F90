@@ -216,7 +216,7 @@ subroutine SubsurfAssignMaterialProperties(realization)
   use Variables_module, only : PERMEABILITY_X, PERMEABILITY_Y, &
                                PERMEABILITY_Z, PERMEABILITY_XY, &
                                PERMEABILITY_YZ, PERMEABILITY_XZ, &
-                               TORTUOSITY, POROSITY
+                               TORTUOSITY, POROSITY, COMPRESSIBILITY
   use HDF5_module
   
   implicit none
@@ -352,6 +352,9 @@ subroutine SubsurfAssignMaterialProperties(realization)
       if (associated(material_property%permeability_dataset)) then
         call SubsurfReadPermsFromFile(realization,material_property)
       endif
+      if (associated(material_property%compressibility_dataset)) then
+        call SubsurfReadCompressFromFile(realization,material_property)
+      endif
       if (associated(material_property%porosity_dataset)) then
         string = ''
         string2 = 'Porosity'
@@ -393,6 +396,10 @@ subroutine SubsurfAssignMaterialProperties(realization)
     call DiscretizationLocalToLocal(discretization,field%ithrm_loc, &
                                     field%ithrm_loc,ONEDOF)
     call RealLocalToLocalWithArray(realization,SATURATION_FUNCTION_ID_ARRAY)
+    call DiscretizationGlobalToLocal(discretization,field%compressibility0, &
+                                     field%work_loc,ONEDOF)
+    call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                 COMPRESSIBILITY,0)
   endif
   
   call DiscretizationGlobalToLocal(discretization,field%porosity0, &
@@ -723,5 +730,114 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
   call VecRestoreArrayF90(field%perm0_zz,perm_zz_p,ierr);CHKERRQ(ierr)
   
 end subroutine SubsurfReadPermsFromFile
+
+! ************************************************************************** !
+
+subroutine SubsurfReadCompressFromFile(realization,material_property)
+  ! 
+  ! Reads in grid cell compressibilities
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 11/19/2014
+  ! 
+
+  use Realization_class
+  use Field_module
+  use Grid_module
+  use Option_module
+  use Patch_module
+  use Discretization_module
+  use Logging_module
+  use Input_Aux_module
+  use Material_module
+  use HDF5_module
+  
+  implicit none
+  
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  type(realization_type) :: realization
+  type(material_property_type) :: material_property
+
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(input_type), pointer :: input
+  type(discretization_type), pointer :: discretization
+  character(len=MAXSTRINGLENGTH) :: group_name
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+  PetscInt :: local_id, ghosted_id, natural_id
+  PetscReal :: compressibility
+  PetscBool :: append_realization_id
+  PetscInt :: fid = 86
+  PetscInt :: status
+  PetscInt :: idirection
+  PetscInt :: temp_int
+  Vec :: global_vec
+  PetscErrorCode :: ierr
+  
+  PetscReal, pointer :: vec_p(:)
+  PetscReal, pointer :: comp_p(:)
+  
+  field => realization%field
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  discretization => realization%discretization
+
+  call VecGetArrayF90(field%compressibility0,comp_p,ierr);CHKERRQ(ierr)
+  
+  if (index(material_property%compressibility_dataset%filename,'.h5') > 0) then
+    group_name = ''
+    dataset_name = 'Compressibility'
+    call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
+                                    option)
+    call HDF5ReadCellIndexedRealArray(realization,global_vec, &
+                          material_property%compressibility_dataset%filename, &
+                          group_name,dataset_name,append_realization_id)
+    call VecGetArrayF90(global_vec,vec_p,ierr);CHKERRQ(ierr)
+    do local_id = 1, grid%nlmax
+      if (patch%imat(grid%nL2G(local_id)) == &
+          material_property%internal_id) then
+        comp_p(local_id) = vec_p(local_id)
+      endif
+    enddo
+    call VecRestoreArrayF90(global_vec,vec_p,ierr);CHKERRQ(ierr)
+    call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
+  else
+
+    call PetscLogEventBegin(logging%event_hash_map,ierr);CHKERRQ(ierr)
+    call GridCreateNaturalToGhostedHash(grid,option)
+    input => InputCreate(IUNIT_TEMP, &
+                material_property%compressibility_dataset%filename,option)
+    do
+      call InputReadPflotranString(input,option)
+      if (InputError(input)) exit
+      call InputReadInt(input,option,natural_id)
+      call InputErrorMsg(input,option,'natural id','STRATA')
+      ghosted_id = GridGetLocalGhostedIdFromHash(grid,natural_id)
+      if (ghosted_id > 0) then
+        if (patch%imat(ghosted_id) /= &
+            material_property%internal_id) cycle
+        local_id = grid%nG2L(ghosted_id)
+        if (local_id > 0) then
+          call InputReadDouble(input,option,compressibility)
+          call InputErrorMsg(input,option,'compressibility','STRATA')
+          comp_p(local_id) = Compressibility
+        endif
+      endif
+    enddo
+
+    call InputDestroy(input)
+    call GridDestroyHashTable(grid)
+    call PetscLogEventEnd(logging%event_hash_map,ierr);CHKERRQ(ierr)
+  endif
+  
+  call VecRestoreArrayF90(field%compressibility0,comp_p,ierr);CHKERRQ(ierr)
+  
+end subroutine SubsurfReadCompressFromFile
+
 
 end module Subsurface_module

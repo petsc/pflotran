@@ -313,7 +313,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
                                material_property%compressibility_dataset_name,&
                                MAXWORDLENGTH,PETSC_TRUE)
           call InputErrorMsg(input,option,'DATASET,NAME', &
-                             'MATERIAL_PROPERTY,POROSITY')   
+                             'MATERIAL_PROPERTY,SOIL_COMPRESSIBILITY')   
         else
           input%buf = buffer_save
           call InputReadDouble(input,option, &
@@ -671,7 +671,8 @@ subroutine MaterialPropertyRead(material_property,input,option)
 
   if (len(trim(material_property%soil_compressibility_function)) > 0) then
     option%flow%transient_porosity = PETSC_TRUE
-    if (Uninitialized(material_property%soil_compressibility)) then
+    if (Uninitialized(material_property%soil_compressibility) .and. &
+         (material_property%compressibility_dataset_name == '')) then
       option%io_buffer = 'SOIL_COMPRESSIBILITY_FUNCTION is specified in ' // &
         'inputdeck for MATERIAL_PROPERTY card, but SOIL_COMPRESSIBILITY ' // &
         'is not defined.'
@@ -1414,6 +1415,11 @@ subroutine MaterialSetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
   call VecGetArrayReadF90(vec_loc,vec_loc_p,ierr);CHKERRQ(ierr)
   
   select case(ivar)
+    case(COMPRESSIBILITY)
+      do ghosted_id=1, Material%num_aux
+        Material%auxvars(ghosted_id)% &
+          soil_properties(soil_compressibility_index) = vec_loc_p(ghosted_id)
+      enddo      
     case(VOLUME)
       do ghosted_id=1, Material%num_aux
         Material%auxvars(ghosted_id)%volume = vec_loc_p(ghosted_id)
@@ -1502,6 +1508,11 @@ subroutine MaterialGetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
   call VecGetArrayReadF90(vec_loc,vec_loc_p,ierr);CHKERRQ(ierr)
   
   select case(ivar)
+    case(COMPRESSIBILITY)
+      do ghosted_id=1, Material%num_aux
+        vec_loc_p(ghosted_id) = Material%auxvars(ghosted_id)% &
+                                   soil_properties(soil_compressibility_index)
+      enddo
     case(VOLUME)
       do ghosted_id=1, Material%num_aux
         vec_loc_p(ghosted_id) = Material%auxvars(ghosted_id)%volume
