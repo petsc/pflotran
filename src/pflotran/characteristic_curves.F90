@@ -19,8 +19,8 @@ module Characteristic_Curves_module
     PetscReal :: high
     PetscReal :: coefficients(4)
   end type polynomial_type
-!*****************************************************************************!
-!*** Saturation Function *****************************************************!
+ 
+  ! Begin Saturation Functions
   type :: sat_func_base_type
     type(polynomial_type), pointer :: sat_poly
     type(polynomial_type), pointer :: pres_poly
@@ -61,9 +61,9 @@ module Characteristic_Curves_module
     procedure, public :: CapillaryPressure => SF_Linear_CapillaryPressure
     procedure, public :: Saturation => SF_Linear_Saturation
   end type sat_func_Linear_type 
-!*** End Saturation Function *************************************************!
-!*****************************************************************************!
-!*** Relative Permeability Function ******************************************!
+  ! End Saturation Functions
+
+  ! Begin Relative Permeability Functions
   type :: rel_perm_func_base_type
     type(polynomial_type), pointer :: poly
     PetscReal :: Sr
@@ -74,7 +74,7 @@ module Characteristic_Curves_module
     procedure, public :: SetupPolynomials => RPFBaseSetupPolynomials
     procedure, public :: RelativePermeability => RPF_Base_RelPerm
   end type rel_perm_func_base_type
-   !--- Mualem-VG ------------------------------------------------------------!
+  ! Mualem-VG
   type, public, extends(rel_perm_func_base_type) :: rpf_Mualem_VG_liq_type
     PetscReal :: m
   contains
@@ -91,10 +91,10 @@ module Characteristic_Curves_module
     procedure, public :: Verify => RPF_Mualem_VG_Gas_Verify
     procedure, public :: RelativePermeability => RPF_Mualem_VG_Gas_RelPerm
   end type rpf_Mualem_VG_gas_type
-     ! since the TOUGH2_Corey relative permeability function (IRP=7 in 
-     ! TOUGH2 manual) calculates relative perm as a function of the 
-     ! Mualem-based  liquid relative permeability when Srg = 0., we extend 
-     ! the rpf_Mualem_type to save code
+  ! since the TOUGH2_Corey relative permeability function (IRP=7 in 
+  ! TOUGH2 manual) calculates relative perm as a function of the 
+  ! Mualem-based  liquid relative permeability when Srg = 0., we extend 
+  ! the rpf_Mualem_type to save code
   type, public, extends(rpf_Mualem_VG_liq_type) :: rpf_TOUGH2_IRP7_gas_type
     PetscReal :: Srg
   contains
@@ -102,7 +102,7 @@ module Characteristic_Curves_module
     procedure, public :: Verify => RPF_TOUGH2_IRP7_Gas_Verify
     procedure, public :: RelativePermeability => RPF_TOUGH2_IRP7_Gas_RelPerm
   end type rpf_TOUGH2_IRP7_gas_type
-   !--- Burdine-BC -----------------------------------------------------------!
+  ! Burdine-BC
   type, public, extends(rel_perm_func_base_type) :: rpf_Burdine_BC_liq_type
     PetscReal :: lambda
   contains
@@ -118,7 +118,7 @@ module Characteristic_Curves_module
     procedure, public :: Verify => RPF_Burdine_BC_Gas_Verify
     procedure, public :: RelativePermeability => RPF_Burdine_BC_Gas_RelPerm
   end type rpf_Burdine_BC_gas_type
-   !--- Mualem-BC ------------------------------------------------------------!
+  ! Mualem-BC
   type, public, extends(rel_perm_func_base_type) :: rpf_Mualem_BC_liq_type
     PetscReal :: lambda
   contains
@@ -134,7 +134,7 @@ module Characteristic_Curves_module
     procedure, public :: Verify => RPF_Mualem_BC_Gas_Verify
     procedure, public :: RelativePermeability => RPF_Mualem_BC_Gas_RelPerm
   end type rpf_Mualem_BC_gas_type
-   !--- Burdine-VG -----------------------------------------------------------!
+  ! Burdine-VG
   type, public, extends(rel_perm_func_base_type) :: rpf_Burdine_VG_liq_type
     PetscReal :: m
   contains
@@ -150,7 +150,7 @@ module Characteristic_Curves_module
     procedure, public :: Verify => RPF_Burdine_VG_Gas_Verify
     procedure, public :: RelativePermeability => RPF_Burdine_VG_Gas_RelPerm
   end type rpf_Burdine_VG_gas_type
-   !--- Mualem-Linear --------------------------------------------------------!
+  ! Mualem-Linear
   type, public, extends(rel_perm_func_base_type) :: rpf_Mualem_Linear_liq_type
     PetscReal :: pcmax
     PetscReal :: alpha
@@ -167,7 +167,7 @@ module Characteristic_Curves_module
     procedure, public :: Verify => RPF_Mualem_Linear_Gas_Verify
     procedure, public :: RelativePermeability => RPF_Mualem_Linear_Gas_RelPerm
   end type rpf_Mualem_Linear_gas_type
-   !--- Burdine-Linear -------------------------------------------------------!
+  ! Burdine-Linear
   type, public, extends(rel_perm_func_base_type) :: rpf_Burdine_Linear_liq_type
   contains
     procedure, public :: Init => RPF_Burdine_Linear_liq_Init
@@ -182,9 +182,8 @@ module Characteristic_Curves_module
     procedure, public :: Verify => RPF_Burdine_Linear_Gas_Verify
     procedure, public :: RelativePermeability => RPF_Burdine_Linear_Gas_RelPerm
   end type rpf_Burdine_Linear_gas_type
-!*** End Relative Permeability Function **************************************!
-!*****************************************************************************!
-!*** Define Characteristic Curves ********************************************!
+  ! End Relative Permeability Functions
+  
   type, public :: characteristic_curves_type
     character(len=MAXWORDLENGTH) :: name
     PetscBool :: print_me
@@ -206,20 +205,20 @@ module Characteristic_Curves_module
             CharacteristicCurvesGetID, &
             CharCurvesGetGetResidualSats, &
             CharacteristicCurvesDestroy
-!*** End Define Characteristic Curves ****************************************!
-!*****************************************************************************!
 contains
-!*****************************************************************************!
-!*** Characteristic Curves ***************************************************!
+
+! ************************************************************************** !
+
+! Begin Characteristic Curves
 function CharacteristicCurvesCreate()
-    ! 
-    ! Creates a characteristic curve object that holds parameters and pointers
-    ! to functions for calculating saturation, capillary pressure, relative
-    ! permeability, etc.
-    ! 
-    ! Author: Glenn Hammond
-    ! Date: 09/23/14
-    ! 
+  ! 
+  ! Creates a characteristic curve object that holds parameters and pointers
+  ! to functions for calculating saturation, capillary pressure, relative
+  ! permeability, etc.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/23/14
+  ! 
 
   implicit none
 
@@ -239,14 +238,16 @@ function CharacteristicCurvesCreate()
   CharacteristicCurvesCreate => characteristic_curves
 
 end function CharacteristicCurvesCreate
-   !////////////characteristic curves//////////////!
+
+! ************************************************************************** !
+
 subroutine CharacteristicCurvesRead(this,input,option)
-    ! 
-    ! Reads in contents of a saturation_function card
-    ! 
-    ! Author: Glenn Hammond
-    ! Date: 01/21/09
-    ! 
+  ! 
+  ! Reads in contents of a saturation_function card
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/21/09
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -302,17 +303,13 @@ subroutine CharacteristicCurvesRead(this,input,option)
                            error_string)
         call StringToUpper(word)
         select case(word)
-          case('MUALEM')
+          case('MUALEM','MUALEM_VG_LIQ')
             rel_perm_function_ptr => RPF_Mualem_VG_Liq_Create()
-	        case('MUALEM_VG_LIQ')
-	          rel_perm_function_ptr => RPF_Mualem_VG_Liq_Create()
           case('MUALEM_VG_GAS')
             rel_perm_function_ptr => RPF_Mualem_VG_Gas_Create()
             phase_keyword = 'GAS'
-          case('BURDINE')
+          case('BURDINE','BURDINE_BC_LIQ')
             rel_perm_function_ptr => RPF_Burdine_BC_Liq_Create()
-	        case('BURDINE_BC_LIQ')
-	          rel_perm_function_ptr => RPF_Burdine_BC_Liq_Create()
           case('BURDINE_BC_GAS')
             rel_perm_function_ptr => RPF_Burdine_BC_Gas_Create()
             phase_keyword = 'GAS'
@@ -374,11 +371,13 @@ subroutine CharacteristicCurvesRead(this,input,option)
   call CharacteristicCurvesVerify(this,option)
 
 end subroutine CharacteristicCurvesRead
-   !////////////characteristic curves//////////////!
+
+! ************************************************************************** !
+
 subroutine SaturationFunctionRead(saturation_function,input,option)
-    !
-    ! Reads in contents of a SATURATION_FUNCTION block
-    !
+  !
+  ! Reads in contents of a SATURATION_FUNCTION block
+  !
   use Option_module
   use Input_Aux_module
   use String_module
@@ -481,12 +480,14 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
   endif
 
 end subroutine SaturationFunctionRead
-   !////////////characteristic curves//////////////!
+
+! ************************************************************************** !
+
 subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
                                     input,option)
-    !
-    ! Reads in contents of a PERMEABILITY_FUNCTION block
-    !
+  !
+  ! Reads in contents of a PERMEABILITY_FUNCTION block
+  !
   use Option_module
   use Input_Aux_module
   use String_module
@@ -752,7 +753,9 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
   endif
   
 end subroutine PermeabilityFunctionRead
-   !////////////characteristic curves//////////////!
+
+! ************************************************************************** !
+
 subroutine CharacteristicCurvesAddToList(new_characteristic_curves,list)
   ! 
   ! Adds a characteristic curves object to linked list
@@ -781,15 +784,17 @@ subroutine CharacteristicCurvesAddToList(new_characteristic_curves,list)
   endif
   
 end subroutine CharacteristicCurvesAddToList
-   !////////////characteristic curves//////////////!
+
+! ************************************************************************** !
+
 subroutine CharCurvesConvertListToArray(list,array,option)
-    ! 
-    ! Creates an array of pointers to the characteristic curves objects in the 
-    ! list
-    ! 
-    ! Author: Glenn Hammond
-    ! Date: 12/11/07
-    ! 
+  ! 
+  ! Creates an array of pointers to the characteristic curves objects in the 
+  ! list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/11/07
+  ! 
 
   use String_module
   use Option_module
@@ -828,15 +833,17 @@ subroutine CharCurvesConvertListToArray(list,array,option)
   enddo
 
 end subroutine CharCurvesConvertListToArray
-   !////////////characteristic curves//////////////!
+
+! ************************************************************************** !
+
 function CharCurvesGetGetResidualSats(characteristic_curves,option)
-    ! 
-    ! Returns the residual saturations associated with a characteristic curves
-    ! object
-    ! 
-    ! Author: Glenn Hammond
-    ! Date: 09/29/14
-    ! 
+  ! 
+  ! Returns the residual saturations associated with a characteristic curves
+  ! object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/29/14
+  ! 
 
   use Option_module
   
@@ -883,17 +890,19 @@ function CharCurvesGetGetResidualSats(characteristic_curves,option)
   endif
 
 end function CharCurvesGetGetResidualSats
-   !////////////characteristic curves//////////////!
+
+! ************************************************************************** !
+
 function CharacteristicCurvesGetID(characteristic_curves_array, &
                                    characteristic_curves_name, &
                                    material_property_name, option)
-    ! 
-    ! Returns the ID of the characteristic curves object named
-    ! "characteristic_curves_name"
-    ! 
-    ! Author: Glenn Hammond
-    ! Date: 01/12/11
-    ! 
+  ! 
+  ! Returns the ID of the characteristic curves object named
+  ! "characteristic_curves_name"
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/11
+  ! 
 
   use Option_module
   use String_module
@@ -922,14 +931,16 @@ function CharacteristicCurvesGetID(characteristic_curves_array, &
   call printErrMsg(option)    
 
 end function CharacteristicCurvesGetID
-   !////////////characteristic curves//////////////!
+
+! ************************************************************************** !
+
 subroutine CharacteristicCurvesTest(characteristic_curves,option)
-    ! 
-    ! Outputs values of characteristic curves over a range of values
-    ! 
-    ! Author: Glenn Hammond
-    ! Date: 09/29/14
-    !
+  ! 
+  ! Outputs values of characteristic curves over a range of values
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/29/14
+  !
   use Option_module
 
   implicit none
@@ -952,14 +963,16 @@ subroutine CharacteristicCurvesTest(characteristic_curves,option)
                                                  phase,option)
   
 end subroutine CharacteristicCurvesTest
-   !////////////characteristic curves//////////////!
+
+! ************************************************************************** !
+
 subroutine CharacteristicCurvesVerify(characteristic_curves,option)
-    ! 
-    ! Outputs values of characteristic curves over a range of values
-    ! 
-    ! Author: Glenn Hammond
-    ! Date: 09/29/14
-    !
+  ! 
+  ! Outputs values of characteristic curves over a range of values
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/29/14
+  !
   use Option_module
 
   implicit none
@@ -977,9 +990,11 @@ subroutine CharacteristicCurvesVerify(characteristic_curves,option)
   call characteristic_curves%gas_rel_perm_function%Verify(string,option)
   
 end subroutine CharacteristicCurvesVerify
-!*** End Characteristic Curves ***********************************************!
-!*****************************************************************************!
-! *** BASE ROUTINES ********************************************************* !
+! End Characteristic Curves
+
+! ************************************************************************** !
+
+! Begin Base Routines
 function PolynomialCreate()
 
   implicit none
@@ -992,21 +1007,25 @@ function PolynomialCreate()
   PolynomialCreate%coefficients(:) = zero
   
 end function PolynomialCreate
-   !//////////// base routines //////////////!
+
+! ************************************************************************** !
+
 subroutine SFBaseInit(this)
 
   implicit none
   
   class(sat_func_base_type) :: this  
 
-    ! Cannot allocate here.  Allocation takes place in daughter class
+  ! Cannot allocate here.  Allocation takes place in daughter class
   nullify(this%sat_poly)
   nullify(this%pres_poly)
   this%Sr = UNINITIALIZED_DOUBLE
   this%pcmax = DEFAULT_PCMAX
   
 end subroutine SFBaseInit
-   !//////////// base routines //////////////!
+
+! ************************************************************************** !
+
 subroutine SFBaseVerify(this,name,option)
 
   use Option_module
@@ -1024,19 +1043,23 @@ subroutine SFBaseVerify(this,name,option)
   endif
   
 end subroutine SFBaseVerify
-   !//////////// base routines //////////////!
+
+! ************************************************************************** !
+
 subroutine RPFBaseInit(this)
 
   implicit none
   
   class(rel_perm_func_base_type) :: this  
 
-    ! Cannot allocate here.  Allocation takes place in daughter class
+  ! Cannot allocate here.  Allocation takes place in daughter class
   nullify(this%poly)
   this%Sr = UNINITIALIZED_DOUBLE
   
 end subroutine RPFBaseInit
-   !//////////// base routines //////////////!
+
+! ************************************************************************** !
+
 subroutine RPFBaseVerify(this,name,option)
 
   use Option_module
@@ -1054,7 +1077,9 @@ subroutine RPFBaseVerify(this,name,option)
   endif
   
 end subroutine RPFBaseVerify
-   !//////////// base routines //////////////!
+
+! ************************************************************************** !
+
 subroutine SFBaseSetupPolynomials(this,option,error_string)
 
   ! Sets up polynomials for smoothing saturation functions
@@ -1071,10 +1096,12 @@ subroutine SFBaseSetupPolynomials(this,option,error_string)
   call printErrMsg(option)
   
 end subroutine SFBaseSetupPolynomials
-   !//////////// base routines //////////////!
+
+! ************************************************************************** !
+
 subroutine RPFBaseSetupPolynomials(this,option,error_string)
 
-    ! Sets up polynomials for smoothing relative permeability functions
+  ! Sets up polynomials for smoothing relative permeability functions
 
   use Option_module
   
@@ -1088,7 +1115,9 @@ subroutine RPFBaseSetupPolynomials(this,option,error_string)
   call printErrMsg(option)
   
 end subroutine RPFBaseSetupPolynomials
-   !//////////// base routines //////////////!
+
+! ************************************************************************** !
+
 subroutine SFBaseCapillaryPressure(this,liquid_saturation, &
                                      capillary_pressure,option)
   use Option_module
@@ -1104,7 +1133,9 @@ subroutine SFBaseCapillaryPressure(this,liquid_saturation, &
   call printErrMsg(option)
   
 end subroutine SFBaseCapillaryPressure
-   !//////////// base routines //////////////!
+
+! ************************************************************************** !
+
 subroutine SFBaseSaturation(this,capillary_pressure,liquid_saturation, &
                               dsat_pres,option)
   use Option_module
@@ -1121,7 +1152,9 @@ subroutine SFBaseSaturation(this,capillary_pressure,liquid_saturation, &
   call printErrMsg(option)
   
 end subroutine SFBaseSaturation
-   !//////////// base routines //////////////!
+
+! ************************************************************************** !
+
 subroutine SFBaseTest(this,cc_name,option)
 
   use Option_module
@@ -1139,8 +1172,8 @@ subroutine SFBaseTest(this,cc_name,option)
   PetscReal :: dummy_real
   PetscInt :: count, i
 
-    ! calculate saturation as a function of capillary pressure
-    ! start at 1 Pa up to maximum capillary pressure
+  ! calculate saturation as a function of capillary pressure
+  ! start at 1 Pa up to maximum capillary pressure
   pc = one
   pc_increment = one
   count = 0
@@ -1180,7 +1213,9 @@ subroutine SFBaseTest(this,cc_name,option)
   close(86)
 
 end subroutine SFBaseTest
-   !//////////// base routines //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Base_RelPerm(this,liquid_saturation,relative_permeability, &
                             dkr_Se,option)
   use Option_module
@@ -1197,7 +1232,9 @@ subroutine RPF_Base_RelPerm(this,liquid_saturation,relative_permeability, &
   call printErrMsg(option)
   
 end subroutine RPF_Base_RelPerm
-   !//////////// base routines //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Base_Test(this,cc_name,phase,option)
 
   use Option_module
@@ -1230,9 +1267,11 @@ subroutine RPF_Base_Test(this,cc_name,phase,option)
   close(86)
 
 end subroutine RPF_Base_Test
-!*** End BASE ROUTINES *******************************************************!
-!*****************************************************************************!
-!*** SF: Van Genuchten *******************************************************!
+! End Base Routines
+
+! ************************************************************************** !
+
+! Begin SF: van Genuchten
 function SF_VG_Create()
 
   ! Creates the van Genutchten capillary pressure function object
@@ -1245,7 +1284,9 @@ function SF_VG_Create()
   call SF_VG_Create%Init()
   
 end function SF_VG_Create
-   !//////////// SF: Van Genuchten //////////////!
+
+! ************************************************************************** !
+
 subroutine SF_VG_Init(this)
 
   ! Creates the van Genutchten capillary pressure function object
@@ -1259,7 +1300,9 @@ subroutine SF_VG_Init(this)
   this%m = UNINITIALIZED_DOUBLE
   
 end subroutine SF_VG_Init
-   !//////////// SF: Van Genuchten //////////////!
+
+! ************************************************************************** !
+
 subroutine SF_VG_Verify(this,name,option)
 
   use Option_module
@@ -1288,20 +1331,22 @@ subroutine SF_VG_Verify(this,name,option)
   endif   
 
 end subroutine SF_VG_Verify
-   !//////////// SF: Van Genuchten //////////////!
+
+! ************************************************************************** !
+
 subroutine SF_VG_CapillaryPressure(this,liquid_saturation, &
                                    capillary_pressure,option)
-    ! 
-    ! Computes the capillary_pressure as a function of saturation
-    ! 
-    ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
-    !     of two-fluid capillary pressure-saturation and permeability functions",
-    !     Advances in Water Resources, Vol. 22, No. 5, pp 479-493,
-    !     http://dx.doi.org/10.1016/S0309-1708(98)00025-6.
-    !   
-    ! Author: Glenn Hammond
-    ! Date: 12/11/07, 09/23/14
-    !
+  ! 
+  ! Computes the capillary_pressure as a function of saturation
+  ! 
+  ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
+  !     of two-fluid capillary pressure-saturation and permeability functions",
+  !     Advances in Water Resources, Vol. 22, No. 5, pp 479-493,
+  !     http://dx.doi.org/10.1016/S0309-1708(98)00025-6.
+  !   
+  ! Author: Glenn Hammond
+  ! Date: 12/11/07, 09/23/14
+  !
   use Option_module
   
   implicit none
@@ -1335,21 +1380,23 @@ subroutine SF_VG_CapillaryPressure(this,liquid_saturation, &
   capillary_pressure = min(capillary_pressure,this%pcmax)
   
 end subroutine SF_VG_CapillaryPressure
-   !//////////// SF: Van Genuchten //////////////!
+
+! ************************************************************************** !
+
 subroutine SF_VG_Saturation(this,capillary_pressure,liquid_saturation, &
                             dsat_pres,option)
-    ! 
-    ! Computes the saturation (and associated derivatives) as a function of 
-    ! capillary pressure
-    ! 
-    ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
-    !     of two-fluid capillary pressure-saturation and permeability functions",
-    !     Advances in Water Resources, Vol. 22, No. 5, pp 479-493,
-    !     http://dx.doi.org/10.1016/S0309-1708(98)00025-6.
-    !   
-    ! Author: Glenn Hammond
-    ! Date: 12/11/07, 09/23/14
-    !
+  ! 
+  ! Computes the saturation (and associated derivatives) as a function of 
+  ! capillary pressure
+  ! 
+  ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
+  !     of two-fluid capillary pressure-saturation and permeability functions",
+  !     Advances in Water Resources, Vol. 22, No. 5, pp 479-493,
+  !     http://dx.doi.org/10.1016/S0309-1708(98)00025-6.
+  !   
+  ! Author: Glenn Hammond
+  ! Date: 12/11/07, 09/23/14
+  !
   use Option_module
   use Utility_module
   
@@ -1391,10 +1438,10 @@ subroutine SF_VG_Saturation(this,capillary_pressure,liquid_saturation, &
     n = one/(one-this%m)
     pc_alpha = capillary_pressure*this%alpha
     pc_alpha_n = pc_alpha**n
-      !geh:  This conditional does not catch potential cancelation in 
-      !      the dkr_Se deriviative calculation.  Therefore, I am setting
-      !      an epsilon here
-      !   if (1.d0 + pc_alpha_n == 1.d0) then ! check for zero perturbation
+    !geh:  This conditional does not catch potential cancelation in 
+    !      the dkr_Se deriviative calculation.  Therefore, I am setting
+    !      an epsilon here
+    !   if (1.d0 + pc_alpha_n == 1.d0) then ! check for zero perturbation
     if (pc_alpha_n < pc_alpha_n_epsilon) then 
       liquid_saturation = one
       !switch_to_saturated = PETSC_TRUE
@@ -1409,12 +1456,14 @@ subroutine SF_VG_Saturation(this,capillary_pressure,liquid_saturation, &
   endif
   
 end subroutine SF_VG_Saturation
-!*** End SF: Van Genuchten****************************************************!
-!*****************************************************************************!
-!*** SF: Brooks-Corey ********************************************************!
+! End SF: van Genuchten
+
+! ************************************************************************** !
+
+! Begin SF: Brooks-Corey
 function SF_BC_Create()
 
-    ! Creates the Brooks Corey capillary pressure function object
+  ! Creates the Brooks Corey capillary pressure function object
 
   implicit none
   
@@ -1424,7 +1473,9 @@ function SF_BC_Create()
   call SF_BC_Create%Init()
   
 end function SF_BC_Create
-   !//////////// SF: Brooks-Corey //////////////!
+
+! ************************************************************************** !
+
 subroutine SF_BC_Init(this)
 
   use Option_module
@@ -1440,7 +1491,9 @@ subroutine SF_BC_Init(this)
   this%lambda = UNINITIALIZED_DOUBLE
   
 end subroutine SF_BC_Init
-   !//////////// SF: Brooks-Corey //////////////!
+
+! ************************************************************************** !
+
 subroutine SF_BC_Verify(this,name,option)
 
   use Option_module
@@ -1469,10 +1522,12 @@ subroutine SF_BC_Verify(this,name,option)
   endif 
   
 end subroutine SF_BC_Verify
-   !//////////// SF: Brooks-Corey //////////////!
+
+! ************************************************************************** !
+
 subroutine SF_BC_SetupPolynomials(this,option,error_string)
 
-    ! Sets up polynomials for smoothing Brooks-Corey saturation function
+  ! Sets up polynomials for smoothing Brooks-Corey saturation function
 
   use Option_module
   use Utility_module
@@ -1485,21 +1540,21 @@ subroutine SF_BC_SetupPolynomials(this,option,error_string)
   
   PetscReal :: b(4)
 
-    ! polynomial fitting pc as a function of saturation
-    ! 1.05 is essentially pc*alpha (i.e. pc = 1.05/alpha)
+  ! polynomial fitting pc as a function of saturation
+  ! 1.05 is essentially pc*alpha (i.e. pc = 1.05/alpha)
   this%sat_poly => PolynomialCreate()
   this%sat_poly%low = 1.05d0**(-this%lambda)
   this%sat_poly%high = one
   
   b = zero
-    ! fill right hand side
-    ! capillary pressure at 1
+  ! fill right hand side
+  ! capillary pressure at 1
   b(1) = 1.05d0/this%alpha 
-    ! capillary pressure at 2
+  ! capillary pressure at 2
   b(2) = zero
-    ! derivative of pressure at saturation_1
-    ! pc = Se**(-1/lambda)/alpha
-    ! dpc_dSe = -1/lambda*Se**(-1/lambda-1)/alpha
+  ! derivative of pressure at saturation_1
+  ! pc = Se**(-1/lambda)/alpha
+  ! dpc_dSe = -1/lambda*Se**(-1/lambda-1)/alpha
   b(3) = -one/this%lambda* &
           this%sat_poly%low**(-one/this%lambda-one)/ &
           this%alpha
@@ -1510,24 +1565,24 @@ subroutine SF_BC_SetupPolynomials(this,option,error_string)
       
   this%sat_poly%coefficients(1:3) = b(1:3)
 
-    ! polynomial fitting saturation as a function of pc
-    !geh: cannot invert the pressure/saturation relationship above
-    !     since it can result in saturations > 1 with both
-    !     quadratic and cubic polynomials
-    ! fill matix with values
+  ! polynomial fitting saturation as a function of pc
+  !geh: cannot invert the pressure/saturation relationship above
+  !     since it can result in saturations > 1 with both
+  !     quadratic and cubic polynomials
+  ! fill matix with values
   this%pres_poly => PolynomialCreate()
   this%pres_poly%low = 0.95/this%alpha
   this%pres_poly%high = 1.05/this%alpha
   
   b = zero
-    ! Se at 1
+  ! Se at 1
   b(1) = one
-    ! Se at 2
+  ! Se at 2
   b(2) = (this%pres_poly%high*this%alpha)** &
           (-this%lambda)
-    ! derivative of Se at 1
+  ! derivative of Se at 1
   b(3) = zero 
-    ! derivative of Se at 2
+  ! derivative of Se at 2
   b(4) = -this%lambda/this%pres_poly%high* &
             (this%pres_poly%high*this%alpha)** &
               (-this%lambda)
@@ -1538,21 +1593,23 @@ subroutine SF_BC_SetupPolynomials(this,option,error_string)
   
   
 end subroutine SF_BC_SetupPolynomials
-   !//////////// SF: Brooks-Corey //////////////!
+
+! ************************************************************************** !
+
 subroutine SF_BC_CapillaryPressure(this,liquid_saturation, &
                                    capillary_pressure,option)
-    ! 
-    ! Computes the capillary_pressure as a function of saturation using the
-    ! Brooks-Corey formulation
-    ! 
-    ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
-    !     of two-fluid capillary pressure-saturation and permeability functions",
-    !     Advances in Water Resources, Vol. 22, No. 5, pp 479-493,
-    !     http://dx.doi.org/10.1016/S0309-1708(98)00025-6.
-    !   
-    ! Author: Glenn Hammond
-    ! Date: 12/11/07, 09/23/14
-    !
+  ! 
+  ! Computes the capillary_pressure as a function of saturation using the
+  ! Brooks-Corey formulation
+  ! 
+  ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
+  !     of two-fluid capillary pressure-saturation and permeability functions",
+  !     Advances in Water Resources, Vol. 22, No. 5, pp 479-493,
+  !     http://dx.doi.org/10.1016/S0309-1708(98)00025-6.
+  !   
+  ! Author: Glenn Hammond
+  ! Date: 12/11/07, 09/23/14
+  !
   use Option_module
   use Utility_module
   
@@ -1587,20 +1644,22 @@ subroutine SF_BC_CapillaryPressure(this,liquid_saturation, &
   capillary_pressure = min(capillary_pressure,this%pcmax)
   
 end subroutine SF_BC_CapillaryPressure
-   !//////////// SF: Brooks-Corey //////////////!
+
+! ************************************************************************** !
+
 subroutine SF_BC_Saturation(this,capillary_pressure,liquid_saturation, &
                             dsat_pres,option)
-    ! 
-    ! Computes the saturation (and associated derivatives) as a function of 
-    ! capillary pressure
-    ! 
-    ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
-    !     of two-fluid capillary pressure-saturation and permeability functions",
-    !     Advances in Water Resources, Vol. 22, No. 5, pp 479-493,
-    !     http://dx.doi.org/10.1016/S0309-1708(98)00025-6.
-    !   
-    ! Author: Glenn Hammond
-    ! Date: 12/11/07, 09/23/14
+  ! 
+  ! Computes the saturation (and associated derivatives) as a function of 
+  ! capillary pressure
+  ! 
+  ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
+  !     of two-fluid capillary pressure-saturation and permeability functions",
+  !     Advances in Water Resources, Vol. 22, No. 5, pp 479-493,
+  !     http://dx.doi.org/10.1016/S0309-1708(98)00025-6.
+  !   
+  ! Author: Glenn Hammond
+  ! Date: 12/11/07, 09/23/14
     
   use Option_module
   use Utility_module
@@ -1636,9 +1695,11 @@ subroutine SF_BC_Saturation(this,capillary_pressure,liquid_saturation, &
   dsat_pc = (one-this%Sr)*dSe_pc
   
 end subroutine SF_BC_Saturation
-!*** End SF: Brooks-Corey ****************************************************!
-!*****************************************************************************!
-!*** SF: Linear Model ********************************************************!
+! End SF: Brooks-Corey
+
+! ************************************************************************** !
+
+! Begin SF: Linear Model
 function SF_Linear_Create()
 
   ! Creates the van Genutchten capillary pressure function object
@@ -1651,7 +1712,9 @@ function SF_Linear_Create()
   call SF_Linear_Create%Init()
   
 end function SF_Linear_Create
-   !//////////// SF: Linear Model //////////////!
+
+! ************************************************************************** !
+
 subroutine SF_Linear_Init(this)
 
   ! Creates the van Genutchten capillary pressure function object
@@ -1664,7 +1727,9 @@ subroutine SF_Linear_Init(this)
   this%alpha = UNINITIALIZED_DOUBLE
   
 end subroutine SF_Linear_Init
-   !//////////// SF: Linear Model //////////////!
+
+! ************************************************************************** !
+
 subroutine SF_Linear_Verify(this,name,option)
 
   use Option_module
@@ -1689,16 +1754,18 @@ subroutine SF_Linear_Verify(this,name,option)
   endif   
 
 end subroutine SF_Linear_Verify
-   !//////////// SF: Linear Model //////////////!
+
+! ************************************************************************** !
+
 subroutine SF_Linear_CapillaryPressure(this,liquid_saturation, &
                                    capillary_pressure,option)
-    ! 
-    ! Computes the capillary_pressure as a function of saturation
-    ! 
-    !   
-    ! Author: Bwalya Malama, Heeho Park
-    ! Date: 11/14/14
-    !
+  ! 
+  ! Computes the capillary_pressure as a function of saturation
+  ! 
+  !   
+  ! Author: Bwalya Malama, Heeho Park
+  ! Date: 11/14/14
+  !
   use Option_module
   
   implicit none
@@ -1724,17 +1791,19 @@ subroutine SF_Linear_CapillaryPressure(this,liquid_saturation, &
   capillary_pressure = min(capillary_pressure,this%pcmax)
   
 end subroutine SF_Linear_CapillaryPressure
-   !//////////// SF: Linear Model //////////////!
+
+! ************************************************************************** !
+
 subroutine SF_Linear_Saturation(this,capillary_pressure,liquid_saturation, &
                             dsat_pres,option)
-    ! 
-    ! Computes the saturation (and associated derivatives) as a function of 
-    ! capillary pressure
-    ! 
-    !   
-    ! Author: Bwalya Malama, Heeho Park
-    ! Date: 11/14/14
-    !
+  ! 
+  ! Computes the saturation (and associated derivatives) as a function of 
+  ! capillary pressure
+  ! 
+  !   
+  ! Author: Bwalya Malama, Heeho Park
+  ! Date: 11/14/14
+  !
   use Option_module
   use Utility_module
   
@@ -1763,9 +1832,11 @@ subroutine SF_Linear_Saturation(this,capillary_pressure,liquid_saturation, &
   endif 
 
 end subroutine SF_Linear_Saturation
-!*** End SF: Linear Model ****************************************************!
-!*****************************************************************************!
-!*** RPF: Mualem, Van Genuchten (Liquid) *************************************!
+! End SF: Linear Model
+
+! ************************************************************************** !
+
+! Begin RPF: Mualem, Van Genuchten (Liquid)
 function RPF_Mualem_VG_Liq_Create()
 
   ! Creates the van Genutchten Mualem relative permeability function object
@@ -1778,11 +1849,13 @@ function RPF_Mualem_VG_Liq_Create()
   call RPF_Mualem_VG_Liq_Create%Init()
   
 end function RPF_Mualem_VG_Liq_Create
-   !//////////// RPF: Mualem, Van Genuchten liquid //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Mualem_VG_Liq_Init(this)
 
-    ! Initializes the van Genutchten Mualem relative permeability function 
-    ! object
+  ! Initializes the van Genutchten Mualem relative permeability function 
+  ! object
 
   implicit none
   
@@ -1792,7 +1865,9 @@ subroutine RPF_Mualem_VG_Liq_Init(this)
   this%m = UNINITIALIZED_DOUBLE
   
 end subroutine RPF_Mualem_VG_Liq_Init
-   !//////////// RPF: Mualem, Van Genuchten liquid //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Mualem_VG_Liq_Verify(this,name,option)
 
   use Option_module
@@ -1817,10 +1892,12 @@ subroutine RPF_Mualem_VG_Liq_Verify(this,name,option)
   endif   
   
 end subroutine RPF_Mualem_VG_Liq_Verify
-   !//////////// RPF: Mualem, Van Genuchten liquid //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Mualem_SetupPolynomials(this,option,error_string)
 
-    ! Sets up polynomials for smoothing Mualem permeability function
+  ! Sets up polynomials for smoothing Mualem permeability function
 
   use Option_module
   use Utility_module
@@ -1854,23 +1931,24 @@ subroutine RPF_Mualem_SetupPolynomials(this,option,error_string)
   
   this%poly%coefficients(1:4) = b(1:4)
   
-  
 end subroutine RPF_Mualem_SetupPolynomials
-   !//////////// RPF: Mualem, Van Genuchten liquid //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Mualem_VG_Liq_RelPerm(this,liquid_saturation, &
                               relative_permeability,dkr_Se,option)
-    ! 
-    ! Computes the relative permeability (and associated derivatives) as a 
-    ! function of saturation
-    ! 
-    ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
-    !     of two-fluid capillary pressure-saturation and permeability functions",
-    !     Advances in Water Resources, Vol. 22, No. 5, pp 479-493,
-    !     http://dx.doi.org/10.1016/S0309-1708(98)00025-6.
-    !   
-    ! Author: Glenn Hammond
-    ! Date: 12/11/07, 09/23/14
-    ! 
+  ! 
+  ! Computes the relative permeability (and associated derivatives) as a 
+  ! function of saturation
+  ! 
+  ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
+  !     of two-fluid capillary pressure-saturation and permeability functions",
+  !     Advances in Water Resources, Vol. 22, No. 5, pp 479-493,
+  !     http://dx.doi.org/10.1016/S0309-1708(98)00025-6.
+  !   
+  ! Author: Glenn Hammond
+  ! Date: 12/11/07, 09/23/14
+  ! 
   use Option_module
   use Utility_module
   
@@ -1915,12 +1993,14 @@ subroutine RPF_Mualem_VG_Liq_RelPerm(this,liquid_saturation, &
                 (one-(one-Se_one_over_m)**this%m)
   
 end subroutine RPF_Mualem_VG_Liq_RelPerm
-!*** End RPF: Mualem, Van Genuchten (Liquid) *********************************!
-!*****************************************************************************!
-!*** RPF: Mualem, Van Genuchten (Gas) ****************************************!
+! End RPF: Mualem, Van Genuchten (Liquid)
+
+! ************************************************************************** !
+
+! Begin RPF: Mualem, Van Genuchten (Gas)
 function RPF_Mualem_VG_Gas_Create()
 
-    ! Creates the van Genutchten Mualem gas relative permeability function object
+  ! Creates the van Genutchten Mualem gas relative permeability function object
 
   implicit none
   
@@ -1930,11 +2010,13 @@ function RPF_Mualem_VG_Gas_Create()
   call RPF_Mualem_VG_Gas_Create%Init()
   
 end function RPF_Mualem_VG_Gas_Create
-   !//////////// RPF: Mualem, Van Genuchten gas //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Mualem_VG_Gas_Init(this)
 
-    ! Initializes the van Genutchten Mualem gas relative permeability function 
-    ! object
+  ! Initializes the van Genutchten Mualem gas relative permeability function 
+  ! object
 
   implicit none
   
@@ -1944,7 +2026,9 @@ subroutine RPF_Mualem_VG_Gas_Init(this)
   this%Srg = UNINITIALIZED_DOUBLE
   
 end subroutine RPF_Mualem_VG_Gas_Init
-   !//////////// RPF: Mualem, Van Genuchten gas //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Mualem_VG_Gas_Verify(this,name,option)
 
   use Option_module
@@ -1969,21 +2053,23 @@ subroutine RPF_Mualem_VG_Gas_Verify(this,name,option)
   endif 
   
 end subroutine RPF_Mualem_VG_Gas_Verify
-   !//////////// RPF: Mualem, Van Genuchten gas //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Mualem_VG_Gas_RelPerm(this,liquid_saturation, &
                                      relative_permeability,dkr_Se,option)
-    ! 
-    ! Computes the relative permeability (and associated derivatives) as a 
-    ! function of saturation
-    ! 
-    ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
-    !     of two-fluid capillary pressure-saturation and permeability functions",
-    !     Advances in Water Resources, Vol. 22, No. 5, pp 479-493,
-    !     http://dx.doi.org/10.1016/S0309-1708(98)00025-6.
-    !   
-    ! Author: Glenn Hammond
-    ! Date: 12/11/07, 09/23/14
-    ! 
+  ! 
+  ! Computes the relative permeability (and associated derivatives) as a 
+  ! function of saturation
+  ! 
+  ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
+  !     of two-fluid capillary pressure-saturation and permeability functions",
+  !     Advances in Water Resources, Vol. 22, No. 5, pp 479-493,
+  !     http://dx.doi.org/10.1016/S0309-1708(98)00025-6.
+  !   
+  ! Author: Glenn Hammond
+  ! Date: 12/11/07, 09/23/14
+  ! 
   use Option_module
   
   implicit none
@@ -2013,12 +2099,14 @@ subroutine RPF_Mualem_VG_Gas_RelPerm(this,liquid_saturation, &
   relative_permeability = sqrt(Seg)*(one-Se**(one/this%m))**(two*this%m)
   
 end subroutine RPF_Mualem_VG_Gas_RelPerm
-!*** End RPF: Mualem, Van Genuchten (Gas) ************************************!
-!*****************************************************************************!
-!*** RPF: Tough2 IRP7 w/ VG-Mualem (Gas) *************************************!
+! End RPF: Mualem, Van Genuchten (Gas)
+
+! ************************************************************************** !
+
+! RPF: Tough2 IRP7 w/ VG-Mualem (Gas)
 function RPF_TOUGH2_IRP7_Gas_Create()
 
-    ! Creates the Brooks-Corey Burdine gas relative permeability function object
+  ! Creates the Brooks-Corey Burdine gas relative permeability function object
 
   implicit none
   
@@ -2028,11 +2116,13 @@ function RPF_TOUGH2_IRP7_Gas_Create()
   call RPF_TOUGH2_IRP7_Gas_Create%Init()
   
 end function RPF_TOUGH2_IRP7_Gas_Create
-   !//////////// Tough2 IRP7 w/ VG-Mualem gas //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_TOUGH2_IRP7_Gas_Init(this)
 
-    ! Initializes the Brooks-Corey Burdine gas relative permeability function 
-    ! object
+  ! Initializes the Brooks-Corey Burdine gas relative permeability function 
+  ! object
 
   implicit none
   
@@ -2042,7 +2132,9 @@ subroutine RPF_TOUGH2_IRP7_Gas_Init(this)
   this%Srg = UNINITIALIZED_DOUBLE
   
 end subroutine RPF_TOUGH2_IRP7_Gas_Init
-   !//////////// Tough2 IRP7 w/ VG-Mualem gas //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_TOUGH2_IRP7_Gas_Verify(this,name,option)
 
   use Option_module
@@ -2067,12 +2159,14 @@ subroutine RPF_TOUGH2_IRP7_Gas_Verify(this,name,option)
   endif  
   
 end subroutine RPF_TOUGH2_IRP7_Gas_Verify
-   !//////////// Tough2 IRP7 w/ VG-Mualem gas //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_TOUGH2_IRP7_Gas_RelPerm(this,liquid_saturation, &
                                        relative_permeability,dkr_Se,option)
-    ! 
-    ! TOUGH2 IRP(7) equations from Appendix G of TOUGH2 user manual
-    !
+  ! 
+  ! TOUGH2 IRP(7) equations from Appendix G of TOUGH2 user manual
+  !
   use Option_module
   
   implicit none
@@ -2114,12 +2208,14 @@ subroutine RPF_TOUGH2_IRP7_Gas_RelPerm(this,liquid_saturation, &
   relative_permeability = Seg*Seg*(one-Se*Se)
   
 end subroutine RPF_TOUGH2_IRP7_Gas_RelPerm
-!*** End RPF: Tough2 IRP7 w/ VG-Mualem (Gas) *********************************!
-!*****************************************************************************!
-!*** RPF: Burdine, Brooks-Corey (Liquid) *************************************!
+! End RPF: Tough2 IRP7 w/ VG-Mualem (Gas)
+
+! ************************************************************************** !
+
+! Begin RPF: Burdine, Brooks-Corey (Liquid)
 function RPF_Burdine_BC_Liq_Create()
 
-    ! Creates the Brooks-Corey Burdine relative permeability function object
+  ! Creates the Brooks-Corey Burdine relative permeability function object
 
   implicit none
   
@@ -2129,10 +2225,12 @@ function RPF_Burdine_BC_Liq_Create()
   call RPF_Burdine_BC_Liq_Create%Init()
   
 end function RPF_Burdine_BC_Liq_Create
-   !//////////// RPF: Burdine, Brooks-Corey liquid //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Burdine_BC_Liq_Init(this)
 
-    ! Initializes the Brooks-Corey Burdine relative permeability function object
+  ! Initializes the Brooks-Corey Burdine relative permeability function object
 
   implicit none
   
@@ -2142,10 +2240,12 @@ subroutine RPF_Burdine_BC_Liq_Init(this)
   this%lambda = UNINITIALIZED_DOUBLE
   
 end subroutine RPF_Burdine_BC_Liq_Init
-   !//////////// RPF: Burdine, Brooks-Corey liquid //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Burdine_BC_Liq_Verify(this,name,option)
 
-    ! Initializes the Brooks-Corey Burdine relative permeability function object
+  ! Initializes the Brooks-Corey Burdine relative permeability function object
 
   use Option_module
   
@@ -2169,21 +2269,23 @@ subroutine RPF_Burdine_BC_Liq_Verify(this,name,option)
   endif
   
 end subroutine RPF_Burdine_BC_Liq_Verify
-   !//////////// RPF: Burdine, Brooks-Corey liquid //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Burdine_BC_Liq_RelPerm(this,liquid_saturation, &
                               relative_permeability,dkr_Se,option)
-    ! 
-    ! Computes the relative permeability (and associated derivatives) as a 
-    ! function of saturation
-    ! 
-    ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
-    !     of two-fluid capillary pressure-saturation and permeability functions",
-    !     Advances in Water Resources, Vol. 22, No. 5, pp 479-493,
-    !     http://dx.doi.org/10.1016/S0309-1708(98)00025-6.
-    !   
-    ! Author: Glenn Hammond
-    ! Date: 12/11/07, 09/23/14
-    ! 
+  ! 
+  ! Computes the relative permeability (and associated derivatives) as a 
+  ! function of saturation
+  ! 
+  ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
+  !     of two-fluid capillary pressure-saturation and permeability functions",
+  !     Advances in Water Resources, Vol. 22, No. 5, pp 479-493,
+  !     http://dx.doi.org/10.1016/S0309-1708(98)00025-6.
+  !   
+  ! Author: Glenn Hammond
+  ! Date: 12/11/07, 09/23/14
+  ! 
   use Option_module
   
   implicit none
@@ -2215,13 +2317,15 @@ subroutine RPF_Burdine_BC_Liq_RelPerm(this,liquid_saturation, &
   dkr_Se = power*relative_permeability/Se          
   
 end subroutine RPF_Burdine_BC_Liq_RelPerm
-!*** End RPF: Burdine, Brooks-Corey (Liquid) *********************************!
-!*****************************************************************************!
-!*** RPF: Burdine, Brooks-Corey (Gas) ****************************************!
+! End RPF: Burdine, Brooks-Corey (Liquid)
+
+! ************************************************************************** !
+
+! Begin RPF: Burdine, Brooks-Corey (Gas)
 function RPF_Burdine_BC_Gas_Create()
 
-    ! Creates the Brooks-Corey Burdine gas relative permeability function
-    ! object
+  ! Creates the Brooks-Corey Burdine gas relative permeability function
+  ! object
 
   implicit none
   
@@ -2231,11 +2335,13 @@ function RPF_Burdine_BC_Gas_Create()
   call RPF_Burdine_BC_Gas_Create%Init()
   
 end function RPF_Burdine_BC_Gas_Create
-   !//////////// RPF: Burdine, Brooks-Corey gas //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Burdine_BC_Gas_Init(this)
 
-    ! Initializes the Brooks-Corey Burdine gas relative permeability function 
-    ! object
+  ! Initializes the Brooks-Corey Burdine gas relative permeability function 
+  ! object
 
   implicit none
   
@@ -2245,7 +2351,9 @@ subroutine RPF_Burdine_BC_Gas_Init(this)
   this%Srg = UNINITIALIZED_DOUBLE
   
 end subroutine RPF_Burdine_BC_Gas_Init
-   !//////////// RPF: Burdine, Brooks-Corey gas //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Burdine_BC_Gas_Verify(this,name,option)
 
   use Option_module
@@ -2270,21 +2378,23 @@ subroutine RPF_Burdine_BC_Gas_Verify(this,name,option)
   endif  
   
 end subroutine RPF_Burdine_BC_Gas_Verify
-   !//////////// RPF: Burdine, Brooks-Corey gas //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Burdine_BC_Gas_RelPerm(this,liquid_saturation, &
                                      relative_permeability,dkr_Se,option)
-    ! 
-    ! Computes the relative permeability (and associated derivatives) as a 
-    ! function of saturation
-    ! 
-    ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
-    !     of two-fluid capillary pressure-saturation and permeability functions",
-    !     Advances in Water Resources, Vol. 22, No. 5, pp 479-493,
-    !     http://dx.doi.org/10.1016/S0309-1708(98)00025-6.
-    !   
-    ! Author: Glenn Hammond
-    ! Date: 12/11/07, 09/23/14
-    ! 
+  ! 
+  ! Computes the relative permeability (and associated derivatives) as a 
+  ! function of saturation
+  ! 
+  ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
+  !     of two-fluid capillary pressure-saturation and permeability functions",
+  !     Advances in Water Resources, Vol. 22, No. 5, pp 479-493,
+  !     http://dx.doi.org/10.1016/S0309-1708(98)00025-6.
+  !   
+  ! Author: Glenn Hammond
+  ! Date: 12/11/07, 09/23/14
+  ! 
   use Option_module
   
   implicit none
@@ -2311,16 +2421,18 @@ subroutine RPF_Burdine_BC_Gas_RelPerm(this,liquid_saturation, &
   endif
   
   Seg = one - Se
-          ! reference #1
+        ! reference #1
   relative_permeability = Seg*Seg*(one-Se**(one+two/this%lambda))
   
 end subroutine RPF_Burdine_BC_Gas_RelPerm
-!*** End RPF: Burdine, Brooks-Corey (Gas) ************************************!
-!*****************************************************************************!
-!*** RPF: Mualem, Brooks-Corey (Liq) *****************************************!
+! End RPF: Burdine, Brooks-Corey (Gas)
+
+! ************************************************************************** !
+
+! Begin RPF: Mualem, Brooks-Corey (Liq)
 function RPF_Mualem_BC_Liq_Create()
 
-    ! Creates the Brooks-Corey Mualem liquid relative permeability function object
+  ! Creates the Brooks-Corey Mualem liquid relative permeability function object
 
   implicit none
   
@@ -2330,11 +2442,13 @@ function RPF_Mualem_BC_Liq_Create()
   call RPF_Mualem_BC_Liq_Create%Init()
   
 end function RPF_Mualem_BC_Liq_Create
-   !//////////// RPF: Mualem, Brooks-Corey liquid //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Mualem_BC_Liq_Init(this)
 
-    ! Initializes the Brooks-Corey Mualem liquid relative permeability function 
-    ! object
+  ! Initializes the Brooks-Corey Mualem liquid relative permeability function 
+  ! object
 
   implicit none
   
@@ -2344,10 +2458,12 @@ subroutine RPF_Mualem_BC_Liq_Init(this)
   this%lambda = UNINITIALIZED_DOUBLE
 
 end subroutine RPF_Mualem_BC_Liq_Init
-   !//////////// RPF: Mualem, Brooks-Corey liquid //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Mualem_BC_Liq_Verify(this,name,option)
 
-    ! Initializes the Brooks-Corey Mualem liquid relative permeability function object
+  ! Initializes the Brooks-Corey Mualem liquid relative permeability function object
 
   use Option_module
   
@@ -2371,21 +2487,23 @@ subroutine RPF_Mualem_BC_Liq_Verify(this,name,option)
   endif
   
 end subroutine RPF_Mualem_BC_Liq_Verify
-   !//////////// RPF: Mualem, Brooks-Corey liquid //////////////!                                    
+
+! ************************************************************************** !
+
 subroutine RPF_Mualem_BC_Liq_RelPerm(this,liquid_saturation, &
                               relative_permeability,dkr_Se,option)
-    ! 
-    ! Computes the relative permeability (and associated derivatives) as a 
-    ! function of saturation
-    ! 
-    ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
-    !     of two-fluid capillary pressure-saturation and permeability functions",
-    !     Advances in Water Resources, Vol. 22, No. 5, pp 479-493,
-    !     http://dx.doi.org/10.1016/S0309-1708(98)00025-6.
-    !   
-    ! Author: Glenn Hammond
-    ! Date: 12/11/07, 09/23/14
-    ! 
+  ! 
+  ! Computes the relative permeability (and associated derivatives) as a 
+  ! function of saturation
+  ! 
+  ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
+  !     of two-fluid capillary pressure-saturation and permeability functions",
+  !     Advances in Water Resources, Vol. 22, No. 5, pp 479-493,
+  !     http://dx.doi.org/10.1016/S0309-1708(98)00025-6.
+  !   
+  ! Author: Glenn Hammond
+  ! Date: 12/11/07, 09/23/14
+  ! 
   use Option_module
   
   implicit none
@@ -2417,9 +2535,11 @@ subroutine RPF_Mualem_BC_Liq_RelPerm(this,liquid_saturation, &
   dkr_Se = power*relative_permeability/Se          
   
 end subroutine RPF_Mualem_BC_Liq_RelPerm
-!*** End RPF: Mualem, Brooks-Corey (Liq) *************************************!
-!*****************************************************************************!
-!*** RPF: Mualem, Brooks-Corey (Gas) *****************************************!
+! End RPF: Mualem, Brooks-Corey (Liq)
+
+! ************************************************************************** !
+
+! Begin RPF: Mualem, Brooks-Corey (Gas)
 function RPF_Mualem_BC_Gas_Create()
 
   ! Creates the Brooks-Corey Mualem gas relative permeability function object
@@ -2432,11 +2552,13 @@ function RPF_Mualem_BC_Gas_Create()
   call RPF_Mualem_BC_Gas_Create%Init()
   
 end function RPF_Mualem_BC_Gas_Create
-   !//////////// RPF: Mualem, Brooks-Corey gas //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Mualem_BC_Gas_Init(this)
 
-    ! Initializes the Brooks-Corey Mualem gas relative permeability function 
-    ! object
+  ! Initializes the Brooks-Corey Mualem gas relative permeability function 
+  ! object
 
   implicit none
   
@@ -2446,7 +2568,9 @@ subroutine RPF_Mualem_BC_Gas_Init(this)
   this%Srg = UNINITIALIZED_DOUBLE
   
 end subroutine RPF_Mualem_BC_Gas_Init
-   !//////////// RPF: Mualem, Brooks-Corey gas //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Mualem_BC_Gas_Verify(this,name,option)
 
   use Option_module
@@ -2471,21 +2595,23 @@ subroutine RPF_Mualem_BC_Gas_Verify(this,name,option)
   endif  
   
 end subroutine RPF_Mualem_BC_Gas_Verify
-   !//////////// RPF: Mualem, Brooks-Corey gas //////////////!                          
+
+! ************************************************************************** !
+
 subroutine RPF_Mualem_BC_Gas_RelPerm(this,liquid_saturation, &
                                        relative_permeability,dkr_Se,option)
-    ! 
-    ! Computes the relative permeability (and associated derivatives) as a 
-    ! function of saturation
-    ! 
-    ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
-    !     of two-fluid capillary pressure-saturation and permeability functions",
-    !     Advances in Water Resources, Vol. 22, No. 5, pp 479-493,
-    !     http://dx.doi.org/10.1016/S0309-1708(98)00025-6.
-    !   
-    ! Author: Glenn Hammond
-    ! Date: 12/11/07, 09/23/14
-    ! 
+  ! 
+  ! Computes the relative permeability (and associated derivatives) as a 
+  ! function of saturation
+  ! 
+  ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
+  !     of two-fluid capillary pressure-saturation and permeability functions",
+  !     Advances in Water Resources, Vol. 22, No. 5, pp 479-493,
+  !     http://dx.doi.org/10.1016/S0309-1708(98)00025-6.
+  !   
+  ! Author: Glenn Hammond
+  ! Date: 12/11/07, 09/23/14
+  ! 
   use Option_module
   
   implicit none
@@ -2517,12 +2643,14 @@ subroutine RPF_Mualem_BC_Gas_RelPerm(this,liquid_saturation, &
                               (one-Se**(one+one/this%lambda))**two
   
 end subroutine RPF_Mualem_BC_Gas_RelPerm
-!*** End RPF: Mualem, Brooks-Corey (Gas) *************************************!
-!*****************************************************************************!
-!*** RPF: Burdine, Van Genuchten (Liq) ***************************************!
+! End RPF: Mualem, Brooks-Corey (Gas)
+
+! ************************************************************************** !
+
+! Begin RPF: Burdine, Van Genuchten (Liq)
 function RPF_Burdine_VG_Liq_Create()
 
-    ! Creates the van Genutchten Mualem relative permeability function object
+  ! Creates the van Genutchten Mualem relative permeability function object
 
   implicit none
   
@@ -2532,10 +2660,12 @@ function RPF_Burdine_VG_Liq_Create()
   call RPF_Burdine_VG_Liq_Create%Init()
   
 end function RPF_Burdine_VG_Liq_Create
-   !//////////// RPF: Burdine, Van Genuchten liq //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Burdine_VG_Liq_Init(this)
 
-    ! Initializes the van Genutchten Mualem relative permeability function object
+  ! Initializes the van Genutchten Mualem relative permeability function object
 
   implicit none
   
@@ -2545,7 +2675,9 @@ subroutine RPF_Burdine_VG_Liq_Init(this)
   this%m = UNINITIALIZED_DOUBLE
   
 end subroutine RPF_Burdine_VG_Liq_Init
-   !//////////// RPF: Burdine, Van Genuchten liq //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Burdine_VG_Liq_Verify(this,name,option)
 
   use Option_module
@@ -2570,21 +2702,23 @@ subroutine RPF_Burdine_VG_Liq_Verify(this,name,option)
   endif   
   
 end subroutine RPF_Burdine_VG_Liq_Verify
-   !//////////// RPF: Burdine, Van Genuchten liq //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Burdine_VG_Liq_RelPerm(this,liquid_saturation, &
                               relative_permeability,dkr_Se,option)
-    ! 
-    ! Computes the relative permeability (and associated derivatives) as a 
-    ! function of saturation
-    ! 
-    ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
-    !     of two-fluid capillary pressure-saturation and permeability functions",
-    !     Advances in Water Resources, Vol. 22, No. 5, pp 479-493,
-    !     http://dx.doi.org/10.1016/S0309-1708(98)00025-6.
-    !   
-    ! Author: Glenn Hammond
-    ! Date: 12/11/07, 09/23/14
-    ! 
+  ! 
+  ! Computes the relative permeability (and associated derivatives) as a 
+  ! function of saturation
+  ! 
+  ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
+  !     of two-fluid capillary pressure-saturation and permeability functions",
+  !     Advances in Water Resources, Vol. 22, No. 5, pp 479-493,
+  !     http://dx.doi.org/10.1016/S0309-1708(98)00025-6.
+  !   
+  ! Author: Glenn Hammond
+  ! Date: 12/11/07, 09/23/14
+  ! 
   use Option_module
   use Utility_module
   
@@ -2619,12 +2753,14 @@ subroutine RPF_Burdine_VG_Liq_RelPerm(this,liquid_saturation, &
                  Se*Se_one_over_m*(one-Se_one_over_m)**(this%m-one)
   
 end subroutine RPF_Burdine_VG_Liq_RelPerm
-!*** End RPF: Burdine, Van Genuchten (Liq) ***********************************!
-!*****************************************************************************!
-!*** RPF: Burdine, Van Genuchten (Gas) ***************************************!                 
+! End RPF: Burdine, Van Genuchten (Liq)
+
+! ************************************************************************** !
+
+! Begin RPF: Burdine, Van Genuchten (Gas)
 function RPF_Burdine_VG_Gas_Create()
 
-    ! Creates the Brooks-Corey Burdine gas relative permeability function object
+  ! Creates the Brooks-Corey Burdine gas relative permeability function object
 
   implicit none
   
@@ -2634,11 +2770,13 @@ function RPF_Burdine_VG_Gas_Create()
   call RPF_Burdine_VG_Gas_Create%Init()
   
 end function RPF_Burdine_VG_Gas_Create
-   !//////////// RPF: Burdine, Van Genuchten gas //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Burdine_VG_Gas_Init(this)
 
-    ! Initializes the Brooks-Corey Burdine gas relative permeability function 
-    ! object
+  ! Initializes the Brooks-Corey Burdine gas relative permeability function 
+  ! object
 
   implicit none
   
@@ -2648,7 +2786,9 @@ subroutine RPF_Burdine_VG_Gas_Init(this)
   this%Srg = UNINITIALIZED_DOUBLE
   
 end subroutine RPF_Burdine_VG_Gas_Init
-   !//////////// RPF: Burdine, Van Genuchten gas //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Burdine_VG_Gas_Verify(this,name,option)
 
   use Option_module
@@ -2673,20 +2813,22 @@ subroutine RPF_Burdine_VG_Gas_Verify(this,name,option)
   endif  
   
 end subroutine RPF_Burdine_VG_Gas_Verify
-   !//////////// RPF: Burdine, Van Genuchten gas //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Burdine_VG_Gas_RelPerm(this,liquid_saturation, &
                                      relative_permeability,dkr_Se,option)
-    ! 
-    ! Computes the relative permeability (and associated derivatives) as a 
-    ! function of saturation
-    ! 
-    ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
-    !     of two-fluid capillary pressure-saturation and permeability functions",
-    !     Advances in Water Resources, Vol. 22, No. 5, pp 479-493,
-    !     http://dx.doi.org/10.1016/S0309-1708(98)00025-6.
-    !   
-    ! Author: Glenn Hammond
-    ! Date: 12/11/07, 09/23/14
+  ! 
+  ! Computes the relative permeability (and associated derivatives) as a 
+  ! function of saturation
+  ! 
+  ! (1) Chen, J., J.W. Hopmans, M.E. Grismer (1999) "Parameter estimation of
+  !     of two-fluid capillary pressure-saturation and permeability functions",
+  !     Advances in Water Resources, Vol. 22, No. 5, pp 479-493,
+  !     http://dx.doi.org/10.1016/S0309-1708(98)00025-6.
+  !   
+  ! Author: Glenn Hammond
+  ! Date: 12/11/07, 09/23/14
 
   use Option_module
   
@@ -2714,13 +2856,15 @@ subroutine RPF_Burdine_VG_Gas_RelPerm(this,liquid_saturation, &
   endif
   
   Seg = one - Se
-    ! reference Table 2
+  ! reference Table 2
   relative_permeability = Seg*Seg*(one-Se**(one/this%m))**this%m
   
 end subroutine RPF_Burdine_VG_Gas_RelPerm
-!*** End RPF: Burdine, Van Genuchten (Gas) ***********************************! 
-!*****************************************************************************!
-!*** RPF: Mualem, Linear (Liquid) ********************************************!
+! End RPF: Burdine, Van Genuchten (Gas)
+
+! ************************************************************************** !
+
+! Begin RPF: Mualem, Linear (Liquid)
 function RPF_Mualem_Linear_Liq_Create()
 
   ! Creates the Linear Mualem relative permeability function object
@@ -2733,11 +2877,13 @@ function RPF_Mualem_Linear_Liq_Create()
   call RPF_Mualem_Linear_Liq_Create%Init()
   
 end function RPF_Mualem_Linear_Liq_Create
-   !//////////// RPF: Mualem, Linear liquid //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Mualem_Linear_Liq_Init(this)
 
-    ! Initializes the Linear Mualem relative permeability function 
-    ! object
+  ! Initializes the Linear Mualem relative permeability function 
+  ! object
 
   implicit none
   
@@ -2748,7 +2894,9 @@ subroutine RPF_Mualem_Linear_Liq_Init(this)
   this%pcmax = UNINITIALIZED_DOUBLE
   
 end subroutine RPF_Mualem_Linear_Liq_Init
-   !//////////// RPF: Mualem, Linear liquid //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Mualem_Linear_Liq_Verify(this,name,option)
 
   use Option_module
@@ -2777,18 +2925,20 @@ subroutine RPF_Mualem_Linear_Liq_Verify(this,name,option)
   endif
   
 end subroutine RPF_Mualem_Linear_Liq_Verify
-   !//////////// RPF: Mualem, Linear liquid //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Mualem_Linear_Liq_RelPerm(this,liquid_saturation, &
                               relative_permeability,dkr_Se,option)
-    ! 
-    ! Computes the relative permeability (and associated derivatives) as a 
-    ! function of saturation
-    ! 
-    !
-    !   
-    ! Author: Glenn Hammond
-    ! Date: 12/11/07, 09/23/14
-    ! 
+  ! 
+  ! Computes the relative permeability (and associated derivatives) as a 
+  ! function of saturation
+  ! 
+  !
+  !   
+  ! Author: Glenn Hammond
+  ! Date: 12/11/07, 09/23/14
+  ! 
   use Option_module
   use Utility_module
   
@@ -2837,12 +2987,14 @@ subroutine RPF_Mualem_Linear_Liq_RelPerm(this,liquid_saturation, &
     log(pc_over_pcmax)**two / two*sqrt(Se)*log(pct_over_pcmax)**two
          
 end subroutine RPF_Mualem_Linear_Liq_RelPerm
-!*** End RPF: Mualem, Linear (Liquid) ****************************************!
-!*****************************************************************************!
-!*** RPF: Mualem, Linear (Gas) ***********************************************!
+! End RPF: Mualem, Linear (Liquid)
+
+! ************************************************************************** !
+
+! Begin RPF: Mualem, Linear (Gas)
 function RPF_Mualem_Linear_Gas_Create()
 
-    ! Creates the Linear Mualem gas relative permeability function object
+  ! Creates the Linear Mualem gas relative permeability function object
 
   implicit none
   
@@ -2852,11 +3004,13 @@ function RPF_Mualem_Linear_Gas_Create()
   call RPF_Mualem_Linear_Gas_Create%Init()
   
 end function RPF_Mualem_Linear_Gas_Create
-   !//////////// RPF: Mualem, Linear gas //////////////!
+ 
+! ************************************************************************** !
+
 subroutine RPF_Mualem_Linear_Gas_Init(this)
 
-    ! Initializes the Linear Mualem gas relative permeability function 
-    ! object
+  ! Initializes the Linear Mualem gas relative permeability function 
+  ! object
 
   implicit none
   
@@ -2868,7 +3022,9 @@ subroutine RPF_Mualem_Linear_Gas_Init(this)
   this%pcmax = UNINITIALIZED_DOUBLE
   
 end subroutine RPF_Mualem_Linear_Gas_Init
-   !//////////// RPF: Mualem, Linear gas //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Mualem_Linear_Gas_Verify(this,name,option)
 
   use Option_module
@@ -2901,17 +3057,19 @@ subroutine RPF_Mualem_Linear_Gas_Verify(this,name,option)
   endif
   
 end subroutine RPF_Mualem_Linear_Gas_Verify
-   !//////////// RPF: Mualem, Linear gas //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Mualem_Linear_Gas_RelPerm(this,liquid_saturation, &
                                      relative_permeability,dkr_Se,option)
-    ! 
-    ! Computes the relative permeability (and associated derivatives) as a 
-    ! function of saturation
-    !
-    !
-    !
-    ! Author: Bwalya Malama, Heeho Park
-    ! Date: 11/14/14
+  ! 
+  ! Computes the relative permeability (and associated derivatives) as a 
+  ! function of saturation
+  !
+  !
+  !
+  ! Author: Bwalya Malama, Heeho Park
+  ! Date: 11/14/14
 
   use Option_module
   
@@ -2945,14 +3103,16 @@ subroutine RPF_Mualem_Linear_Gas_RelPerm(this,liquid_saturation, &
   endif
   
   Seg = one - Se
-    ! reference Table 2
+  ! reference Table 2
   relative_permeability = Seg**half * liquid_relative_permeability & 
                           * Se**(-half)
   
 end subroutine RPF_Mualem_Linear_Gas_RelPerm
-!*** End RPF: Mualem, Linear (Gas) *******************************************!
-!*****************************************************************************!
-!*** RPF: Burdine, Linear (Liquid) ********************************************!
+! End RPF: Mualem, Linear (Gas)
+
+! ************************************************************************** !
+
+! Begin RPF: Burdine, Linear (Liquid)
 function RPF_Burdine_Linear_Liq_Create()
 
   ! Creates the Linear Burdine relative permeability function object
@@ -2965,11 +3125,13 @@ function RPF_Burdine_Linear_Liq_Create()
   call RPF_Burdine_Linear_Liq_Create%Init()
   
 end function RPF_Burdine_Linear_Liq_Create
-   !//////////// RPF: Burdine, Linear liquid //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Burdine_Linear_Liq_Init(this)
 
-    ! Initializes the Linear Burdine relative permeability function 
-    ! object
+  ! Initializes the Linear Burdine relative permeability function 
+  ! object
 
   implicit none
   
@@ -2978,7 +3140,9 @@ subroutine RPF_Burdine_Linear_Liq_Init(this)
   call RPFBaseInit(this)
   
 end subroutine RPF_Burdine_Linear_Liq_Init
-   !//////////// RPF: Burdine, Linear liquid //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Burdine_Linear_Liq_Verify(this,name,option)
 
   use Option_module
@@ -2999,18 +3163,20 @@ subroutine RPF_Burdine_Linear_Liq_Verify(this,name,option)
   call RPFBaseVerify(this,string,option)
   
 end subroutine RPF_Burdine_Linear_Liq_Verify
-   !//////////// RPF: Burdine, Linear liquid //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Burdine_Linear_Liq_RelPerm(this,liquid_saturation, &
                               relative_permeability,dkr_Se,option)
-    ! 
-    ! Computes the relative permeability (and associated derivatives) as a 
-    ! function of saturation
-    ! 
-    !
-    !   
-    ! Author: Glenn Hammond
-    ! Date: 12/11/07, 09/23/14
-    ! 
+  ! 
+  ! Computes the relative permeability (and associated derivatives) as a 
+  ! function of saturation
+  ! 
+  !
+  !   
+  ! Author: Glenn Hammond
+  ! Date: 12/11/07, 09/23/14
+  ! 
   use Option_module
   use Utility_module
   
@@ -3042,12 +3208,14 @@ subroutine RPF_Burdine_Linear_Liq_RelPerm(this,liquid_saturation, &
   dkr_Se = 1.d0
   
 end subroutine RPF_Burdine_Linear_Liq_RelPerm
-!*** End RPF: Burdine, Linear (Liquid) ****************************************!
-!*****************************************************************************!
-!*** RPF: Burdine, Linear (Gas) ***********************************************!
+! End RPF: Burdine, Linear (Liquid)
+
+! ************************************************************************** !
+
+! Begin RPF: Burdine, Linear (Gas)
 function RPF_Burdine_Linear_Gas_Create()
 
-    ! Creates the Linear Burdine gas relative permeability function object
+  ! Creates the Linear Burdine gas relative permeability function object
 
   implicit none
   
@@ -3060,8 +3228,8 @@ end function RPF_Burdine_Linear_Gas_Create
    !//////////// RPF: Burdine, Linear gas //////////////!
 subroutine RPF_Burdine_Linear_Gas_Init(this)
 
-    ! Initializes the Linear Burdine gas relative permeability function 
-    ! object
+  ! Initializes the Linear Burdine gas relative permeability function 
+  ! object
 
   implicit none
   
@@ -3071,7 +3239,9 @@ subroutine RPF_Burdine_Linear_Gas_Init(this)
   this%Srg = UNINITIALIZED_DOUBLE
   
 end subroutine RPF_Burdine_Linear_Gas_Init
-   !//////////// RPF: Burdine, Linear gas //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Burdine_Linear_Gas_Verify(this,name,option)
 
   use Option_module
@@ -3096,17 +3266,19 @@ subroutine RPF_Burdine_Linear_Gas_Verify(this,name,option)
   endif  
   
 end subroutine RPF_Burdine_Linear_Gas_Verify
-   !//////////// RPF: Burdine, Linear gas //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Burdine_Linear_Gas_RelPerm(this,liquid_saturation, &
                                      relative_permeability,dkr_Se,option)
-    ! 
-    ! Computes the relative permeability (and associated derivatives) as a 
-    ! function of saturation
-    !
-    !
-    !
-    ! Author: Bwalya Malama, Heeho Park
-    ! Date: 11/14/14
+  ! 
+  ! Computes the relative permeability (and associated derivatives) as a 
+  ! function of saturation
+  !
+  !
+  !
+  ! Author: Bwalya Malama, Heeho Park
+  ! Date: 11/14/14
 
   use Option_module
   
@@ -3139,16 +3311,17 @@ subroutine RPF_Burdine_Linear_Gas_RelPerm(this,liquid_saturation, &
   relative_permeability = Seg
   
 end subroutine RPF_Burdine_Linear_Gas_RelPerm
-!*** End RPF: Burdine, Linear (Gas) *******************************************!
-!*****************************************************************************!
-!*** Destroy Classes *********************************************************! 
+! End RPF: Burdine, Linear (Gas)
+
+! ************************************************************************** !
+
 subroutine PolynomialDestroy(poly)
-    ! 
-    ! Destroys a polynomial smoother
-    ! 
-    ! Author: Glenn Hammond
-    ! Date: 09/24/14
-    ! 
+  ! 
+  ! Destroys a polynomial smoother
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/24/14
+  ! 
 
   implicit none
   
@@ -3160,14 +3333,16 @@ subroutine PolynomialDestroy(poly)
   nullify(poly)
 
 end subroutine PolynomialDestroy
-   !//////////// Destroy Classes //////////////!
+
+! ************************************************************************** !
+
 subroutine SaturationFunctionDestroy(sf)
-    ! 
-    ! Destroys a saturuation function
-    ! 
-    ! Author: Glenn Hammond
-    ! Date: 09/24/14
-    ! 
+  ! 
+  ! Destroys a saturuation function
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/24/14
+  ! 
 
   implicit none
   
@@ -3181,14 +3356,16 @@ subroutine SaturationFunctionDestroy(sf)
   nullify(sf)
 
 end subroutine SaturationFunctionDestroy
-   !//////////// Destroy Classes //////////////!
+
+! ************************************************************************** !
+
 subroutine PermeabilityFunctionDestroy(rpf)
-    ! 
-    ! Destroys a saturuation function
-    ! 
-    ! Author: Glenn Hammond
-    ! Date: 09/24/14
-    ! 
+  ! 
+  ! Destroys a saturuation function
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/24/14
+  ! 
 
   implicit none
   
@@ -3201,14 +3378,16 @@ subroutine PermeabilityFunctionDestroy(rpf)
   nullify(rpf)
 
 end subroutine PermeabilityFunctionDestroy
-   !//////////// Destroy Classes //////////////!
+
+! ************************************************************************** !
+
 recursive subroutine CharacteristicCurvesDestroy(cc)
-    ! 
-    ! Destroys a characteristic curve
-    ! 
-    ! Author: Glenn Hammond
-    ! Date: 09/24/14
-    ! 
+  ! 
+  ! Destroys a characteristic curve
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/24/14
+  ! 
 
   implicit none
   
@@ -3233,6 +3412,7 @@ recursive subroutine CharacteristicCurvesDestroy(cc)
   nullify(cc)
   
 end subroutine CharacteristicCurvesDestroy
-!*** End Destroy Classes *****************************************************! 
-!*****************************************************************************!
+
+! ************************************************************************** !
+
 end module Characteristic_Curves_module
