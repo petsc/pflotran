@@ -23,7 +23,7 @@ module Reaction_module
   !TODO(geh): Intel 2013.1.119 crashes if this module is included.  It does not
   !           need to be included here given since the subroutines below 
   !           include the module.  Remove once Intel fixes its bug.
-  use Reaction_Sandbox_module
+ ! use Reaction_Sandbox_module
   use CLM_Rxn_module
 
   use PFLOTRAN_Constants_module
@@ -930,6 +930,7 @@ subroutine ReactionReadPass2(reaction,input,option)
   use String_module
   use Input_Aux_module
   use Utility_module
+  use Reaction_Sandbox_module
   
   implicit none
 

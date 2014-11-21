@@ -385,7 +385,6 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
                              indices,num_indices,real_array)
   ! 
   ! Read in local real values from hdf5 global file
-  ! TODO(geh): this is only used by general_grid, which should be deprecated.
   ! 
   ! Author: Glenn Hammond
   ! Date: 09/21/07

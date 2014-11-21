@@ -161,8 +161,6 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
             datum = dataset%rarray(1:3)
           class is (dataset_gridded_hdf5_type)
             datum_dataset => dataset
-            !TODO(geh): move this to FlowSubConditionUpdateDataset()
-            !call DatasetLoad(datum_dataset,option)
             ! set datum here equal to estimated mid value of dataset
             datum(1:3) = UNINITIALIZED_DOUBLE
             datum_dataset_rmax = maxval(datum_dataset%rarray)
@@ -331,7 +329,6 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       ! then we set dist_x and dist_y = 0.
       dist_x = 0.d0
       dist_y = 0.d0
-      !TODO(geh): check that sign is correct for dx/y_conn
       call DatasetGriddedHDF5InterpolateReal(datum_dataset, &
                                           grid%x(ghosted_id)-dx_conn, &
                                           grid%y(ghosted_id)-dy_conn, &

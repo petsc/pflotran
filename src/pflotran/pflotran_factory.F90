@@ -140,8 +140,7 @@ subroutine PFLOTRANInitCommandLineSettings(option)
       '"-input_prefix" on the command lines.'
     call printErrMsg(option)
   else if (pflotranin_option_found) then
-    !TODO(geh): replace this with StringSplit()
-    strings = StringSplit(option%input_filename,'.')
+    strings => StringSplit(option%input_filename,'.')
     option%input_prefix = strings(1)
     deallocate(strings)
     nullify(strings)

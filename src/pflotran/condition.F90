@@ -49,8 +49,6 @@ module Condition_module
 
   ! data structure for general phase
   type, public :: flow_general_condition_type
-    !TODO(geh): check to ensure that general condition is considerered 
-    !           wherever sub_condition_ptr is used.
     type(flow_sub_condition_type), pointer :: liquid_pressure
     type(flow_sub_condition_type), pointer :: gas_pressure
     type(flow_sub_condition_type), pointer :: gas_saturation
