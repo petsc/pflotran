@@ -54,6 +54,8 @@ module Logging_module
     PetscLogEvent :: event_region_read_ascii
     PetscLogEvent :: event_cell_indx_int_read_hdf5
     PetscLogEvent :: event_cell_indx_real_read_hdf5
+    PetscLogEvent :: event_dataset_gridded_hdf5_read
+    PetscLogEvent :: event_dataset_map_hdf5_read
 
     PetscLogEvent :: event_output_tecplot
     PetscLogEvent :: event_output_hdf5
@@ -239,6 +241,14 @@ subroutine LoggingCreate()
   call PetscLogEventRegister('H5RdCellIndxReal', &
                              logging%class_pflotran, &
                              logging%event_cell_indx_real_read_hdf5, &
+                             ierr);CHKERRQ(ierr)
+  call PetscLogEventRegister('DatasetGriddedHDF5Read', &
+                             logging%class_pflotran, &
+                             logging%event_dataset_gridded_hdf5_read, &
+                             ierr);CHKERRQ(ierr)
+  call PetscLogEventRegister('DatasetMapHDF5Read', &
+                             logging%class_pflotran, &
+                             logging%event_dataset_map_hdf5_read, &
                              ierr);CHKERRQ(ierr)
 
   call PetscLogEventRegister('OutputTecplot', &

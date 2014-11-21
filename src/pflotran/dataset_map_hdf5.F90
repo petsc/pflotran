@@ -245,8 +245,8 @@ subroutine DatasetMapHDF5ReadData(this,option)
   PetscErrorCode :: ierr
   character(len=MAXWORDLENGTH) :: dataset_name, word
 
-  !TODO(geh): add to event log
-  !call PetscLogEventBegin(logging%event_read_datset_hdf5,ierr)
+  call PetscLogEventBegin(logging%event_dataset_map_hdf5_read, &
+                          ierr);CHKERRQ(ierr)
 
   ! open the file
   call h5open_f(hdf5_err)
@@ -404,8 +404,8 @@ subroutine DatasetMapHDF5ReadData(this,option)
   call h5fclose_f(file_id,hdf5_err)
   call h5close_f(hdf5_err)
   
-  !TODO(geh): add to event log
-  !call PetscLogEventEnd(logging%event_read_ndim_real_array_hdf5,ierr)
+  call PetscLogEventEnd(logging%event_dataset_map_hdf5_read, &
+                        ierr);CHKERRQ(ierr)
                           
 end subroutine DatasetMapHDF5ReadData
 
@@ -445,8 +445,8 @@ subroutine DatasetMapHDF5ReadMap(this,option)
   PetscErrorCode :: ierr
   character(len=MAXWORDLENGTH) :: dataset_name
 
-  !TODO(geh): add to event log
-  !call PetscLogEventBegin(logging%event_read_datset_hdf5,ierr)
+  call PetscLogEventBegin(logging%event_dataset_map_hdf5_read, &
+                          ierr);CHKERRQ(ierr)
 
   ! open the file
   call h5open_f(hdf5_err)
@@ -549,6 +549,9 @@ subroutine DatasetMapHDF5ReadMap(this,option)
   call printMsg(option)  
   call h5fclose_f(file_id,hdf5_err)
   call h5close_f(hdf5_err)  
+  
+  call PetscLogEventEnd(logging%event_dataset_map_hdf5_read, &
+                        ierr);CHKERRQ(ierr)
   
 end subroutine DatasetMapHDF5ReadMap
 #endif
