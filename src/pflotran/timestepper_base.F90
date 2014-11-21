@@ -386,6 +386,9 @@ subroutine TimestepperBaseSetTargetTime(this,sync_time,option, &
   ! For the case where the second waypoint is a printout after the first time 
   ! step, we must increment the waypoint beyond the first (time=0.) waypoint.  
   ! Otherwise the second time step will be zero. - geh
+  ! geh - test this by commenting it out.  If regression tests fail (hopefully),
+  !       place this conditional within pmc_base.F90:InitializeRun within the
+  !       conditional for the time stepper and see if they still fail.
   if (cur_waypoint%time < 1.d-40) then
     cur_waypoint => cur_waypoint%next
   endif

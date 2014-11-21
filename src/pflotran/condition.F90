@@ -2556,6 +2556,7 @@ subroutine FlowConditionDestroy(condition)
 
   use Dataset_module
   use Dataset_Ascii_class
+  use Utility_module
   
   implicit none
   
@@ -2580,8 +2581,7 @@ subroutine FlowConditionDestroy(condition)
     nullify(condition%sub_condition_ptr)
   endif
 
-  if (associated(condition%itype)) deallocate(condition%itype)
-  nullify(condition%itype)
+  call DeallocateArray(condition%itype)
   
   call FlowSubConditionDestroy(condition%pressure)
   call FlowSubConditionDestroy(condition%saturation)
