@@ -278,24 +278,8 @@ subroutine RichardsAuxVarCompute(x,auxvar,global_auxvar,material_auxvar, &
     pw = global_auxvar%pres(1)
   endif
 
-!  call wateos_noderiv(option%temp,pw,dw_kg,dw_mol,hw,option%scale,ierr)
-#ifndef DONT_USE_WATEOS
-!geh  call EOSWaterDensityEnthalpy(global_auxvar%temp,pw,dw_kg,dw_mol,hw, &
-!                               dw_dp,dw_dt,hw_dp,hw_dt,option%scale,ierr)
   call EOSWaterDensity(global_auxvar%temp,pw,dw_kg,dw_mol, &
                        dw_dp,dw_dt,ierr)
-#else
-  call EOSWaterDensity(global_auxvar%temp,pw,dw_kg,dw_mol,ierr)
-  pert = tol*pw
-  pw_pert = pw+pert
-  call EOSWaterdensity(global_auxvar%temp,pw_pert,dw_kg_pert,dw_mol,ierr)
-  dw_dp = (dw_kg_pert-dw_kg)/pert
-  ! dw_kg = kg/m^3
-  ! dw_mol = kmol/m^3
-  ! FMWH2O = kg/kmol h2o
-  dw_mol = dw_kg/FMWH2O
-  dw_dp = dw_dp/FMWH2O
-#endif
 ! may need to compute dpsat_dt to pass to VISW
   call EOSWaterSaturationPressure(global_auxvar%temp,sat_pressure,ierr)
   !geh: 0.d0 passed in for derivative of pressure w/respect to temp

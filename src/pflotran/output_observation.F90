@@ -1685,8 +1685,8 @@ subroutine OutputIntegralFlux(realization_base)
             call OutputWriteToHeader(fid,string,units,'',icol)
           case(MPH_MODE,FLASH2_MODE,IMS_MODE)
             string = trim(integral_flux%name) // ' CO2'
-            call OutputWriteToHeader(fid,string,'kmol','',icol)
-            units = 'kmol/' // trim(output_option%tunit) // ''
+            call OutputWriteToHeader(fid,string,'kg','',icol)
+            units = 'kg/' // trim(output_option%tunit) // ''
             string = trim(integral_flux%name) // ' CO2'
             call OutputWriteToHeader(fid,string,units,'',icol)
         end select
@@ -1695,7 +1695,7 @@ subroutine OutputIntegralFlux(realization_base)
             string = trim(integral_flux%name) // ' Energy'
             call OutputWriteToHeader(fid,string,'MJ','',icol)
             units = 'MJ/' // trim(output_option%tunit) // ''
-            string = trim(integral_flux%name) // ' Air'
+            string = trim(integral_flux%name) // ' Energy'
             call OutputWriteToHeader(fid,string,units,'',icol)
         end select
         
@@ -2635,7 +2635,7 @@ subroutine OutputMassBalance(realization_base)
 
     !TODO(ye): The flux will be calculated at the plane intersecting the top
     !          of the kth cell in the z-direction.  You need to update this.
-    k = 50
+    k = 30
 
     if (option%nflowdof > 0) then
       ! really summation of moles, but we are hijacking the variable

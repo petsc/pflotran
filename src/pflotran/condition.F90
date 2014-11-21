@@ -49,8 +49,6 @@ module Condition_module
 
   ! data structure for general phase
   type, public :: flow_general_condition_type
-    !TODO(geh): check to ensure that general condition is considerered 
-    !           wherever sub_condition_ptr is used.
     type(flow_sub_condition_type), pointer :: liquid_pressure
     type(flow_sub_condition_type), pointer :: gas_pressure
     type(flow_sub_condition_type), pointer :: gas_saturation
@@ -743,6 +741,8 @@ subroutine FlowConditionRead(condition,input,option)
               sub_condition_ptr%itype = HET_DIRICHLET
             case('heterogeneous_surface_seepage')
               sub_condition_ptr%itype = HET_SURF_SEEPAGE_BC
+            case('spillover')
+              sub_condition_ptr%itype = SPILLOVER_BC
             case default
               option%io_buffer = 'bc type "' // trim(word) // &
                                  '" not recognized in condition,type'
@@ -2146,6 +2146,8 @@ function GetSubConditionName(subcon_itype)
       string = 'heterogeneous energy rate'
     case(HET_SURF_SEEPAGE_BC)
       string = 'heterogeneous surface seepage'
+    case(SPILLOVER_BC)
+      string = 'spillover'
   end select
 
   GetSubConditionName = trim(string)
@@ -2554,6 +2556,7 @@ subroutine FlowConditionDestroy(condition)
 
   use Dataset_module
   use Dataset_Ascii_class
+  use Utility_module
   
   implicit none
   
@@ -2578,8 +2581,7 @@ subroutine FlowConditionDestroy(condition)
     nullify(condition%sub_condition_ptr)
   endif
 
-  if (associated(condition%itype)) deallocate(condition%itype)
-  nullify(condition%itype)
+  call DeallocateArray(condition%itype)
   
   call FlowSubConditionDestroy(condition%pressure)
   call FlowSubConditionDestroy(condition%saturation)

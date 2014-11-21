@@ -647,6 +647,10 @@ subroutine EOSGasDensityRKS(T,P,Rho_gas,dRho_dT,dRho_dP,ierr)
 ! Soave, Giorgio, 1972, "Equilibrium constants from a modified Redlich-Kwong
 ! equation of state", Chem. Eng. Sci., V27, pp 1197-1203.
 ! current version is for hydrogen only.
+!
+! Author: Heeho Park
+! Date: 05/08/14
+!
   implicit none
 
   PetscReal, intent(in) :: T        ! temperature [C]

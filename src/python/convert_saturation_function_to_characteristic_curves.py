@@ -1,6 +1,8 @@
 # Saturation function to Characteristic Curve Converter for PLOTRAN ----------!
 # This short script converts an old saturation function input files to
-# the new characteristic curve file.
+# the new characteristic curves file (ONLY in GENERAL MODE).
+# Go to the bottom of this file for main script input.
+#
 # - Heeho Park 10/14/2014
 
 import os
@@ -130,17 +132,28 @@ def convert_sf2cc(filename,delete_files,old_extension):
 				new.write('    LIQUID_RESIDUAL_SATURATION '+rliq+'\n')
 				new.write('    MAX_CAPILLARY_PRESSURE '+mcap+'\n')
 				new.write('  /\n')
-				new.write('  PERMEABILITY_FUNCTION '+perf+'\n')
+				if perf == 'MUALEM' and satf == 'BROOKS_COREY':
+					new.write('  PERMEABILITY_FUNCTION MUALEM_BC_LIQ\n')
+				elif perf == 'BURDINE' and satf == 'BROOKS_COREY':
+					new.write('  PERMEABILITY_FUNCTION BURDINE_BC_LIQ\n')
+				elif perf == 'MUALEM' and satf == 'VAN_GENUCHTEN':
+					new.write('  PERMEABILITY_FUNCTION MUALEM_VG_LIQ\n')
+				elif perf == 'BURDINE' and satf == 'VAN_GENUCHTEN':
+					new.write('  PERMEABILITY_FUNCTION BURDINE_VG_LIQ\n')
 				if satf == 'BROOKS_COREY':
 					new.write('    LAMBDA '+lamb+'\n')
 				elif satf == 'VAN_GENUCHTEN':
 					new.write('    M '+lamb+'\n')
 				new.write('    LIQUID_RESIDUAL_SATURATION '+rliq+'\n')
 				new.write('  /\n')
-				if perf == 'MUALEM':
-					new.write('  PERMEABILITY_FUNCTION BURDINE\n')
-				elif perf == 'BURDINE':
+				if perf == 'MUALEM' and satf == 'BROOKS_COREY':
+					new.write('  PERMEABILITY_FUNCTION MUALEM_BC_GAS\n')
+				elif perf == 'BURDINE' and satf == 'BROOKS_COREY':
 					new.write('  PERMEABILITY_FUNCTION BURDINE_BC_GAS\n')
+				elif perf == 'MUALEM' and satf == 'VAN_GENUCHTEN':
+					new.write('  PERMEABILITY_FUNCTION MUALEM_VG_GAS\n')
+				elif perf == 'BURDINE' and satf == 'VAN_GENUCHTEN':
+					new.write('  PERMEABILITY_FUNCTION BURDINE_VG_GAS\n')
 				if satf == 'BROOKS_COREY':
 					new.write('    LAMBDA '+lamb+'\n')
 				elif satf == 'VAN_GENUCHTEN':
@@ -188,7 +201,7 @@ def convert_sf2cc(filename,delete_files,old_extension):
 # This code will change parent directory files and all subdirectory files.
 # set one_file to '' if you want to have all files under a directory 
 # to be converted
-one_file = 'C:/Sandia/98806/PFloTran/Amy_Gilkey/one_panel_3d_general_orig'
+one_file = 'C:/Sandia/98806/PFloTran/'
 parent_dir = 'C:/Sandia'
 extension = '.in'
 # False if you want to keep old files which will have old_file_extension 

@@ -1754,7 +1754,7 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
     coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
                 flow_condition%iphase
     select case(flow_condition%pressure%itype)
-      case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+      case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC,SPILLOVER_BC)
         select type(selector =>flow_condition%pressure%dataset)
           class is(dataset_ascii_type)
             coupler%flow_aux_real_var(TH_PRESSURE_DOF,1:num_connections) = &
@@ -2600,15 +2600,10 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
           global_auxvar%temp = option%reference_temperature
         endif
 
-#ifndef DONT_USE_WATEOS
         call EOSWaterDensity(global_auxvar%temp, &
                              global_auxvar%pres(1), &
                              global_auxvar%den_kg(1), &
                              dum1,ierr)
-#else
-        call EOSWaterdensity(global_auxvar%temp,global_auxvar%pres(1), &
-                             global_auxvar%den_kg(1),dum1,ierr)
-#endif                     
       else
         global_auxvar%pres = option%reference_pressure
         global_auxvar%temp = option%reference_temperature
@@ -3769,6 +3764,12 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
       call VecRestoreArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
       call VecStrideGather(field%flow_r,isubvar-1,vec,INSERT_VALUES,ierr)
       call VecGetArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
+    case(SOIL_COMPRESSIBILITY)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = &
+          MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
+                                 SOIL_COMPRESSIBILITY)
+      enddo
     case default
       write(option%io_buffer, &
             '(''IVAR ('',i3,'') not found in PatchGetVariable'')') ivar
@@ -4399,6 +4400,10 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
     case(PERMEABILITY_Z)
       value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
                                      PERMEABILITY_Z)
+    case(SOIL_COMPRESSIBILITY)
+      value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
+                                     SOIL_COMPRESSIBILITY)
+
     case(PHASE)
       call VecGetArrayF90(field%iphas_loc,vec_ptr2,ierr);CHKERRQ(ierr)
       value = vec_ptr2(ghosted_id)

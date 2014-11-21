@@ -138,6 +138,7 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: HET_ENERGY_RATE_SS = 20
   PetscInt, parameter, public :: HET_SURF_SEEPAGE_BC = 21
   PetscInt, parameter, public :: WELL_SS = 100
+  PetscInt, parameter, public :: SPILLOVER_BC = 22
   
   ! source/sink scaling options
   PetscInt, parameter, public :: SCALE_BY_PERM = 1
