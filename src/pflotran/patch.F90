@@ -3764,11 +3764,11 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
       call VecRestoreArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
       call VecStrideGather(field%flow_r,isubvar-1,vec,INSERT_VALUES,ierr)
       call VecGetArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
-    case(COMPRESSIBILITY)
+    case(SOIL_COMPRESSIBILITY)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = &
           MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
-                                 COMPRESSIBILITY)
+                                 SOIL_COMPRESSIBILITY)
       enddo
     case default
       write(option%io_buffer, &
@@ -4400,9 +4400,9 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
     case(PERMEABILITY_Z)
       value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
                                      PERMEABILITY_Z)
-    case(COMPRESSIBILITY)
+    case(SOIL_COMPRESSIBILITY)
       value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
-                                     COMPRESSIBILITY)
+                                     SOIL_COMPRESSIBILITY)
 
     case(PHASE)
       call VecGetArrayF90(field%iphas_loc,vec_ptr2,ierr);CHKERRQ(ierr)

@@ -269,7 +269,7 @@ function MaterialAuxVarGetValue(material_auxvar,ivar)
       MaterialAuxVarGetValue = material_auxvar%permeability(perm_yz_index)
     case(PERMEABILITY_XZ)
       MaterialAuxVarGetValue = material_auxvar%permeability(perm_xz_index)
-    case(COMPRESSIBILITY)
+    case(SOIL_COMPRESSIBILITY)
       MaterialAuxVarGetValue = material_auxvar% &
                                  soil_properties(soil_compressibility_index)
   end select

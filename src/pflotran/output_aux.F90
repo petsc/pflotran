@@ -59,7 +59,6 @@ module Output_Aux_module
     PetscBool :: print_iproc
     PetscBool :: print_volume
     PetscBool :: print_tortuosity
-    PetscBool :: print_compressibility
 
     PetscInt :: xmf_vert_len
     
@@ -182,7 +181,6 @@ function OutputOptionCreate()
   output_option%plot_name = ""
   output_option%print_permeability = PETSC_FALSE
   output_option%print_porosity = PETSC_FALSE
-  output_option%print_compressibility = PETSC_FALSE
   output_option%print_iproc = PETSC_FALSE
   output_option%print_volume = PETSC_FALSE
   output_option%print_tortuosity = PETSC_FALSE
@@ -820,12 +818,12 @@ subroutine OutputVariableRead(input,option,output_variable_list)
         call OutputVariableAddToList(output_variable_list,name, &
                                      OUTPUT_GENERIC,units, &
                                      PERMEABILITY)
-      case ('COMPRESSIBILITY')
+      case ('SOIL_COMPRESSIBILITY')
         units = ''
         name = 'Compressibility'
         call OutputVariableAddToList(output_variable_list,name, &
                                      OUTPUT_GENERIC,units, &
-                                     COMPRESSIBILITY)
+                                     SOIL_COMPRESSIBILITY)
       case default
         option%io_buffer = 'Keyword: ' // trim(word) // &
                                  ' not recognized in VARIABLES.'
