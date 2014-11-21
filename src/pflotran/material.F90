@@ -1221,7 +1221,8 @@ subroutine MaterialInitAuxIndices(material_property_ptrs,option)
         'same soil compressibility function.'
       call printErrMsg(option)
     endif
-    if (Initialized(material_property_ptrs(i)%ptr%soil_compressibility)) then
+    if (Initialized(material_property_ptrs(i)%ptr%soil_compressibility) .or. &
+        associated(material_property_ptrs(i)%ptr%compressibility_dataset)) then
       if (soil_compressibility_index == 0) then
         icount = icount + 1
         soil_compressibility_index = icount

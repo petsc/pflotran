@@ -832,7 +832,6 @@ subroutine SubsurfReadCompressFromFile(realization,material_property)
         endif
       endif
     enddo
-
     call InputDestroy(input)
     call GridDestroyHashTable(grid)
     call PetscLogEventEnd(logging%event_hash_map,ierr);CHKERRQ(ierr)
