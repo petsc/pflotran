@@ -122,6 +122,7 @@ subroutine PFLOTRANInitCommandLineSettings(option)
   PetscBool :: bool_flag
   PetscBool :: pflotranin_option_found
   PetscBool :: input_prefix_option_found
+  character(len=MAXSTRINGLENGTH), pointer :: strings(:)
   PetscInt :: i
   PetscErrorCode :: ierr
   
@@ -140,15 +141,10 @@ subroutine PFLOTRANInitCommandLineSettings(option)
     call printErrMsg(option)
   else if (pflotranin_option_found) then
     !TODO(geh): replace this with StringSplit()
-    i = index(option%input_filename,'.',PETSC_TRUE)
-    if (i > 1) then
-      i = i-1
-    else
-      ! for some reason len_trim doesn't work on MS Visual Studio in 
-      ! this location
-      i = len(trim(option%input_filename)) 
-    endif
-    option%input_prefix = option%input_filename(1:i)
+    strings = StringSplit(option%input_filename,'.')
+    option%input_prefix = strings(1)
+    deallocate(strings)
+    nullify(strings)
   else if (input_prefix_option_found) then
     option%input_filename = trim(option%input_prefix) // '.in'
   endif
