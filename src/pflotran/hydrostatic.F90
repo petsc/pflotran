@@ -131,8 +131,17 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       ! for now, just set it; in future need to account for a different temperature datum
       if (associated(condition%temperature)) then
         if (condition%temperature%itype == DIRICHLET_BC) then
+#ifndef THDIRICHLET_TEMP_BC_HACK
           temperature_at_datum = &
             condition%temperature%dataset%rarray(1)
+#else
+          if (associated(condition%temperature%dataset%rarray)) then
+            temperature_at_datum = &
+              condition%temperature%dataset%rarray(1)
+          else
+            temperature_at_datum = option%reference_temperature
+          endif
+#endif
           if (associated(condition%temperature%gradient)) then
             temperature_gradient(1:3) = &
               condition%temperature%gradient%rarray(1:3)
