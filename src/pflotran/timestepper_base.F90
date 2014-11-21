@@ -55,6 +55,7 @@ module Timestepper_Base_class
   contains
     
     procedure, public :: ReadInput => TimestepperBaseRead
+    procedure, public :: InitializeRun => TimestepperBaseInitializeRun
     procedure, public :: Init => TimestepperBaseInit
     procedure, public :: SetTargetTime => TimestepperBaseSetTargetTime
     procedure, public :: StepDT => TimestepperBaseStepDT
@@ -163,6 +164,34 @@ subroutine TimestepperBaseInit(this)
   this%num_contig_revert_due_to_sync = 0
   
 end subroutine TimestepperBaseInit
+
+! ************************************************************************** !
+
+subroutine TimestepperBaseInitializeRun(this,option)
+  ! 
+  ! Initializes the timestepper for the simulation.  This is more than just
+  ! initializing parameters.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/21/14
+  ! 
+
+  use Option_module
+  
+  implicit none
+
+  class(timestepper_base_type) :: this
+  type(option_type) :: option
+  
+  option%time = this%target_time
+  ! For the case where the second waypoint is a printout after the first time 
+  ! step, we must increment the waypoint beyond the first (time=0.) waypoint.  
+  ! Otherwise the second time step will be zero. - geh
+  if (this%cur_waypoint%time < 1.d-40) then
+    this%cur_waypoint => this%cur_waypoint%next
+  endif
+
+end subroutine TimestepperBaseInitializeRun
 
 ! ************************************************************************** !
 
@@ -382,17 +411,6 @@ subroutine TimestepperBaseSetTargetTime(this,sync_time,option, &
   tolerance = this%time_step_tolerance
   target_time = this%target_time + dt
 
-  !TODO(geh): move to process model initialization stage
-  ! For the case where the second waypoint is a printout after the first time 
-  ! step, we must increment the waypoint beyond the first (time=0.) waypoint.  
-  ! Otherwise the second time step will be zero. - geh
-  ! geh - test this by commenting it out.  If regression tests fail (hopefully),
-  !       place this conditional within pmc_base.F90:InitializeRun within the
-  !       conditional for the time stepper and see if they still fail.
-  if (cur_waypoint%time < 1.d-40) then
-    cur_waypoint => cur_waypoint%next
-  endif
-  
   ! If a waypoint calls for a plot or change in src/sinks, adjust time step
   ! to match waypoint.
   force_to_match_waypoint = WaypointForceMatchToTime(cur_waypoint)
