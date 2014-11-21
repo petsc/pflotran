@@ -1,0 +1,191 @@
+module Test_Characteristic_Curves_module
+
+  use pFUnit_mod
+  use Characteristic_Curves_module
+  use Option_module
+
+  implicit none
+
+#include "finclude/petscsys.h"
+
+  public :: Test_Characteristic_Curves
+
+  interface Test_Characteristic_Curves
+     module procedure newTest_Characteristic_Curves
+  end interface Test_Characteristic_Curves
+
+! **************************************************************************** !
+  @TestCase
+  type, extends(TestCase) :: Test_Characteristic_Curves
+      type(option_type), pointer :: option
+      class(characteristic_curves_type), pointer :: cc
+      procedure(runMethod), pointer :: userMethod => null()
+    contains
+      procedure :: setUp     
+      procedure :: tearDown
+      procedure :: runMethod
+  end type Test_Characteristic_Curves
+
+contains
+
+! ************************************************************************** !
+
+  function newTest_Characteristic_Curves(name, userMethod) result(test)
+
+    implicit none
+
+    character(len=*), intent(in) :: name
+    procedure(runMethod) :: userMethod
+
+    type(Test_Characteristic_Curves) :: test
+
+    call test%setName(name)
+    test%userMethod => userMethod
+
+  end function newTest_Characteristic_Curves
+
+! ************************************************************************** !
+
+  subroutine setUp(this)
+
+    implicit none
+
+    class(Test_Characteristic_Curves), intent(inout) :: this
+    class(sat_func_BC_type), pointer :: sf
+
+    this%option => OptionCreate()
+
+    this%cc => CharacteristicCurvesCreate()
+    this%cc%saturation_function => SF_BC_Create()
+!    this%cc%liq_rel_perm_function => RPF_Burdine_BC_Liq_Create()
+     sf => this%cc%saturation_function
+     sf%lambda = 0.7d0
+     sf%alpha = 0.2d0
+!    select type(sf=>this%cc%saturation_function)
+!      class is(sat_func_BC_type)
+!        sf%lambda = 0.7d0
+!        sf%alpha = 0.2d0
+!        print *, 'worked'
+!      class default
+!        print *, 'not bc type'
+!    end select
+!    this%cc%liq_rel_perm_function%Sr = 0.2d0
+!    this%cc%liq_rel_perm_function%lambda = 0.7d0
+!    this%cc%saturation_function%alpha = 9.869d-6
+!    this%cc%saturation_function%Sr = 0.2d0
+!    this%cc%saturation_function%pcmax = 0.999d8
+!    this%cc%saturation_function%init%alpha = 9.869d-6
+!    this%cc%saturation_function%init%%lambda = 0.7d0
+
+  end subroutine setUp
+
+! ************************************************************************** !
+
+  subroutine tearDown(this)
+
+    implicit none
+    class (Test_Characteristic_Curves), intent(inout) :: this
+
+    call OptionDestroy(this%option)
+    call CharacteristicCurvesDestroy(this%cc)
+
+  end subroutine tearDown
+
+! ************************************************************************** !
+
+  subroutine runMethod(this)
+    implicit none
+    class (Test_Characteristic_Curves), intent(inout) :: this
+    call this%userMethod()
+  end subroutine runMethod
+
+! ************************************************************************** !
+
+  @Test
+  subroutine testsf_Brooks_Corey(this)
+    
+    implicit none
+
+    class(Test_Characteristic_Curves), intent(inout) :: this
+    class(sat_func_BC_type), pointer :: sat_func_BC_ptr
+
+    PetscReal :: capillary_pressure
+    PetscReal :: liquid_saturation
+    PetscReal :: dsat_pres
+    PetscReal :: value
+    PetscReal :: dkr_Se
+    PetscReal :: rel_perm
+    PetscReal, parameter :: tolerance = 1.d-8
+    character(len=128) :: string
+
+    ! saturation = f(capillary_pressure) below the polynomial fit
+    capillary_pressure = 0.94d0/9.869d-6 !this%cc%saturation_function%alpha
+    call this%cc%saturation_function%Saturation(capillary_pressure, &
+                                         liquid_saturation, &
+                                         dsat_pres,this%option)
+    string = 'Brooks-Corey-Burdine saturation as a function of capillary ' // &
+             'pressure below polynomial fit'
+    value = 1.d0
+    @assertEqual(value, liquid_saturation, dabs(value)*tolerance, string)
+    string = 'Brooks-Corey-Burdine derivative of saturation as a function ' // &
+             'of capillary pressure below polynomial fit'
+    value = 0.d0
+    @assertEqual(value, dsat_pres, dabs(value)*tolerance, string)
+!    call this%rpf_Burdine_BC_liq%RelativePermeability(liquid_saturation, &
+!                                                      rel_perm,dkr_Se, &
+!                                                      this%option)
+!    string = 'Brooks-Corey-Burdine relative permeability as a function of ' // &
+!             'capillary pressure below polynomial fit'
+!    value = 1.d0
+!    @assertEqual(value, rel_perm, dabs(value)*tolerance, string)
+!
+!   ! saturation = f(capillary_pressure) within the polynomial fit
+!   capillary_pressure = 0.96d0/9.869d-6 !this%cc%saturation_function%alpha
+!   call this%cc%saturation_function%Saturation(capillary_pressure, &
+!                                        liquid_saturation, &
+!                                        dsat_pres,this%option)
+!   string = 'Brooks-Corey-Burdine saturation as a function of capillary ' // &
+!            'pressure within polynomial fit'
+!   value = 0.99971176979312304d0
+!   @assertEqual(value, liquid_saturation, dabs(value)*tolerance, string)
+!   string = 'Brooks-Corey-Burdine derivative of saturation as a function ' // &
+!            'of capillary pressure within polynomial fit'
+!   value = 5.6675690490728353d-7
+!   @assertEqual(value, dsat_pres, dabs(value)*tolerance, string)
+!    call this%rpf_Burdine_BC_liq%RelativePermeability(liquid_saturation, &
+!                                                      rel_perm,dkr_Se, &
+!                                                      this%option)
+!    string = 'Brooks-Corey-Burdine relative permeability as a function of ' // &
+!             'capillary pressure within polynomial fit'
+!    value = 0.99789158871529349d0
+!    @assertEqual(value, rel_perm, dabs(value)*tolerance, string)
+!
+!   ! saturation = f(capillary_pressure) above the polynomial fit
+!   capillary_pressure = 1.06d0/9.869d-6 !this%cc%saturation_function%alpha
+!   call this%cc%saturation_function%Saturation(capillary_pressure, &
+!                                        liquid_saturation, &
+!                                        dsat_pres,this%option)
+!   string = 'Brooks-Corey-Burdine saturation as a function of capillary ' // &
+!            'pressure above polynomial fit'
+!   value = 0.96802592722174041d0
+!   @assertEqual(value, liquid_saturation, dabs(value)*tolerance, string)
+!   string = 'Brooks-Corey-Burdine derivative of saturation as a function ' // &
+!            'of capillary pressure above polynomial fit'
+!   value = 5.0054278424773111d-6
+!   @assertEqual(value, dsat_pres, dabs(value)*tolerance, string)
+!    call this%rpf_Burdine_BC_liq%RelativePermeability(liquid_saturation, &
+!                                                      rel_perm,dkr_Se, &
+!                                                      this%option)
+!    string = 'Brooks-Corey-Burdine relative permeability as a function of ' // &
+!             'capillary pressure above polynomial fit'
+!    value = 0.78749164071142996d0
+!    @assertEqual(value, rel_perm, dabs(value)*tolerance, string)
+
+  end subroutine testsf_Brooks_Corey
+
+! ************************************************************************** !
+
+
+! ************************************************************************** !
+end module Test_Characteristic_Curves_module
+

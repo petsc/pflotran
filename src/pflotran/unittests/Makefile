@@ -27,6 +27,7 @@ PFLOTRAN_OBJS = \
 	$(SRC_DIR)/option_transport.o \
 	$(SRC_DIR)/pflotran_constants.o \
 	$(SRC_DIR)/saturation_function.o \
+        $(SRC_DIR)/characteristic_curves.o \
 	$(SRC_DIR)/string.o \
 	$(SRC_DIR)/utility.o
 
