@@ -200,7 +200,25 @@ module Characteristic_Curves_module
             CharCurvesConvertListToArray, &
             CharacteristicCurvesGetID, &
             CharCurvesGetGetResidualSats, &
-            CharacteristicCurvesDestroy
+            CharacteristicCurvesDestroy, &
+  ! required to be public for unit tests - Heeho Park
+            SF_VG_Create, &
+            SF_BC_Create, &
+            SF_Linear_Create, &
+            RPF_Mualem_VG_Liq_Create, &
+            RPF_Mualem_VG_Gas_Create, &
+            RPF_Burdine_BC_Liq_Create, &
+            RPF_Burdine_BC_Gas_Create, &
+            RPF_Mualem_VG_Liq_Create, &
+            RPF_TOUGH2_IRP7_Gas_Create, &
+            RPF_Mualem_BC_Liq_Create, &
+            RPF_Mualem_BC_Gas_Create, &
+            RPF_Burdine_VG_Liq_Create, &
+            RPF_Burdine_VG_Gas_Create, &
+            RPF_Mualem_Linear_Liq_Create, &
+            RPF_Mualem_Linear_Gas_Create, &
+            RPF_Burdine_Linear_Liq_Create, &
+            RPF_Burdine_Linear_Gas_Create
 contains
 
 ! ************************************************************************** !
