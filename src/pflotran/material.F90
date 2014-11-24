@@ -1221,7 +1221,8 @@ subroutine MaterialInitAuxIndices(material_property_ptrs,option)
         'same soil compressibility function.'
       call printErrMsg(option)
     endif
-    if (Initialized(material_property_ptrs(i)%ptr%soil_compressibility)) then
+    if (Initialized(material_property_ptrs(i)%ptr%soil_compressibility) .or. &
+        associated(material_property_ptrs(i)%ptr%compressibility_dataset)) then
       if (soil_compressibility_index == 0) then
         icount = icount + 1
         soil_compressibility_index = icount
@@ -1415,7 +1416,7 @@ subroutine MaterialSetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
   call VecGetArrayReadF90(vec_loc,vec_loc_p,ierr);CHKERRQ(ierr)
   
   select case(ivar)
-    case(COMPRESSIBILITY)
+    case(SOIL_COMPRESSIBILITY)
       do ghosted_id=1, Material%num_aux
         Material%auxvars(ghosted_id)% &
           soil_properties(soil_compressibility_index) = vec_loc_p(ghosted_id)
@@ -1508,7 +1509,7 @@ subroutine MaterialGetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
   call VecGetArrayReadF90(vec_loc,vec_loc_p,ierr);CHKERRQ(ierr)
   
   select case(ivar)
-    case(COMPRESSIBILITY)
+    case(SOIL_COMPRESSIBILITY)
       do ghosted_id=1, Material%num_aux
         vec_loc_p(ghosted_id) = Material%auxvars(ghosted_id)% &
                                    soil_properties(soil_compressibility_index)

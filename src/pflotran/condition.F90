@@ -49,8 +49,6 @@ module Condition_module
 
   ! data structure for general phase
   type, public :: flow_general_condition_type
-    !TODO(geh): check to ensure that general condition is considerered 
-    !           wherever sub_condition_ptr is used.
     type(flow_sub_condition_type), pointer :: liquid_pressure
     type(flow_sub_condition_type), pointer :: gas_pressure
     type(flow_sub_condition_type), pointer :: gas_saturation
@@ -2558,6 +2556,7 @@ subroutine FlowConditionDestroy(condition)
 
   use Dataset_module
   use Dataset_Ascii_class
+  use Utility_module
   
   implicit none
   
@@ -2582,8 +2581,7 @@ subroutine FlowConditionDestroy(condition)
     nullify(condition%sub_condition_ptr)
   endif
 
-  if (associated(condition%itype)) deallocate(condition%itype)
-  nullify(condition%itype)
+  call DeallocateArray(condition%itype)
   
   call FlowSubConditionDestroy(condition%pressure)
   call FlowSubConditionDestroy(condition%saturation)

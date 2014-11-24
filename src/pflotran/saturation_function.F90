@@ -1983,7 +1983,7 @@ subroutine SatFuncComputeIceDallAmico(pl, T, &
   PetscReal, parameter :: L_f = 3.34d5         ! in J/kg
   PetscReal, parameter :: k = 1.d6
 
-  T_star_th = 5.d0 ! [K]
+  T_star_th = 5.d-1 ! [K]
 
   s_g = 0.d0
   dsg_dpl = 0.d0

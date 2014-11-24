@@ -216,7 +216,7 @@ subroutine SubsurfAssignMaterialProperties(realization)
   use Variables_module, only : PERMEABILITY_X, PERMEABILITY_Y, &
                                PERMEABILITY_Z, PERMEABILITY_XY, &
                                PERMEABILITY_YZ, PERMEABILITY_XZ, &
-                               TORTUOSITY, POROSITY, COMPRESSIBILITY
+                               TORTUOSITY, POROSITY, SOIL_COMPRESSIBILITY
   use HDF5_module
   
   implicit none
@@ -401,7 +401,7 @@ subroutine SubsurfAssignMaterialProperties(realization)
       call DiscretizationGlobalToLocal(discretization,field%compressibility0, &
                                        field%work_loc,ONEDOF)
       call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
-                                   COMPRESSIBILITY,0)
+                                   SOIL_COMPRESSIBILITY,0)
     endif
   endif
   
@@ -832,7 +832,6 @@ subroutine SubsurfReadCompressFromFile(realization,material_property)
         endif
       endif
     enddo
-
     call InputDestroy(input)
     call GridDestroyHashTable(grid)
     call PetscLogEventEnd(logging%event_hash_map,ierr);CHKERRQ(ierr)

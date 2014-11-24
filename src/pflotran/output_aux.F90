@@ -818,6 +818,12 @@ subroutine OutputVariableRead(input,option,output_variable_list)
         call OutputVariableAddToList(output_variable_list,name, &
                                      OUTPUT_GENERIC,units, &
                                      PERMEABILITY)
+      case ('SOIL_COMPRESSIBILITY')
+        units = ''
+        name = 'Compressibility'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     SOIL_COMPRESSIBILITY)
       case default
         option%io_buffer = 'Keyword: ' // trim(word) // &
                                  ' not recognized in VARIABLES.'

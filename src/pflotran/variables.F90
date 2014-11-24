@@ -117,7 +117,7 @@ module Variables_module
   PetscInt, parameter, public :: RESIDUAL                = 99
   PetscInt, parameter, public :: MINERAL_POROSITY        = 100
   
-  PetscInt, parameter, public :: COMPRESSIBILITY         = 101
+  PetscInt, parameter, public :: SOIL_COMPRESSIBILITY         = 101
   
 
 !  PetscInt, parameter, public :: LIQUID_VELOCITY_CELL_CENT = 58

@@ -746,7 +746,7 @@ subroutine RealProcessMatPropAndSatFunc(realization)
     endif
     if (.not.StringNull(cur_material_property%compressibility_dataset_name)) then
       string = 'MATERIAL_PROPERTY(' // trim(cur_material_property%name) // &
-               '),COMPRESSIBILITY'
+               '),SOIL_COMPRESSIBILITY'
       dataset => &
         DatasetBaseGetPointer(realization%datasets, &
                               cur_material_property%compressibility_dataset_name, &
@@ -755,7 +755,7 @@ subroutine RealProcessMatPropAndSatFunc(realization)
         class is (dataset_common_hdf5_type)
           cur_material_property%compressibility_dataset => dataset
         class default
-          option%io_buffer = 'Incorrect dataset type for compressibility.'
+          option%io_buffer = 'Incorrect dataset type for soil_compressibility.'
           call printErrMsg(option)
       end select      
     endif

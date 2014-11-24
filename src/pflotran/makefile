@@ -86,6 +86,10 @@ ifdef surface_th_debug
   MYFLAGS += ${FC_DEFINE_FLAG}SURFACE_TH_DEBUG
 endif
 
+ifdef th_bc_hack
+  MYFLAGS += ${FC_DEFINE_FLAG}THDIRICHLET_TEMP_BC_HACK
+endif
+
 UPDATE_PROVENANCE=0
 ifdef provenance
   UPDATE_PROVENANCE=1
@@ -134,14 +138,10 @@ util_obj  = \
 	${common_src}variables.o
 
 eos_obj = \
-	${common_src}co2eos.o \
 	${common_src}co2_sw.o \
-	${common_src}co2_sw_rtsafe.o \
-	${common_src}co2_span_wagner.o \
 	${common_src}co2_span_wagner_spline.o \
 	${common_src}eos.o \
 	${common_src}eos_gas.o \
-	${common_src}eos_water.o \
 	${common_src}gas_eos_mod.o 
 
 mode_aux_obj = \
@@ -181,7 +181,12 @@ mode_obj = \
 	${common_src}th.o
 
 shared_mode_aux_obj = \
+	${common_src}co2eos.o \
+	${common_src}co2_span_wagner.o \
+	${common_src}co2_sw_rtsafe.o \
+	${common_src}eos_water.o \
 	${common_src}global_aux.o \
+	${common_src}material_aux.o \
 	${common_src}reactive_transport_aux.o 
 
 chem_obj = \
@@ -231,7 +236,6 @@ relations_obj = \
 
 properties_obj = \
 	${common_src}fluid.o \
-	${common_src}material_aux.o \
 	${common_src}material.o 
 
 dataset_obj = \
@@ -422,7 +426,7 @@ communicator_base.o : dm_kludge.o option.o pflotran_constants.o
 condition.o : constraint.o dataset.o dataset_ascii.o dataset_base.o \
               general_aux.o global_aux.o hdf5_aux.o input_aux.o logging.o \
               option.o pflotran_constants.o reaction_aux.o string.o \
-              time_storage.o units.o
+              time_storage.o units.o utility.o
 condition_control.o : condition.o connection.o constraint.o coupler.o \
                       dataset_base.o dataset_common_hdf5.o \
                       dataset_gridded_hdf5.o discretization.o eos_water.o \

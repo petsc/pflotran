@@ -209,7 +209,7 @@ recursive subroutine InitializeRun(this)
 #endif
   
   if (associated(this%timestepper)) then
-    this%option%time = this%timestepper%target_time
+    call this%timestepper%InitializeRun(this%option)
   endif
   cur_pm => this%pms
   do
