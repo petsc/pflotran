@@ -209,7 +209,6 @@ module Characteristic_Curves_module
             RPF_Mualem_VG_Gas_Create, &
             RPF_Burdine_BC_Liq_Create, &
             RPF_Burdine_BC_Gas_Create, &
-            RPF_Mualem_VG_Liq_Create, &
             RPF_TOUGH2_IRP7_Gas_Create, &
             RPF_Mualem_BC_Liq_Create, &
             RPF_Mualem_BC_Gas_Create, &
@@ -218,7 +217,9 @@ module Characteristic_Curves_module
             RPF_Mualem_Linear_Liq_Create, &
             RPF_Mualem_Linear_Gas_Create, &
             RPF_Burdine_Linear_Liq_Create, &
-            RPF_Burdine_Linear_Gas_Create
+            RPF_Burdine_Linear_Gas_Create, &
+            PolynomialCreate
+
 contains
 
 ! ************************************************************************** !
@@ -1440,7 +1441,7 @@ subroutine SF_VG_Saturation(this,capillary_pressure,liquid_saturation, &
       call CubicPolynomialEvaluate(this%pres_poly%coefficients, &
                                    capillary_pressure,Se,dSe_pc)
       liquid_saturation = this%Sr + (1.d0-this%Sr)*Se
-      dsat_pres = (1.d0-this%Sr)*dSe_pc
+      dsat_pres = -(1.d0-this%Sr)*dSe_pc
       return
     endif
   endif
@@ -1466,7 +1467,7 @@ subroutine SF_VG_Saturation(this,capillary_pressure,liquid_saturation, &
     dSe_pc = -this%m*n*this%alpha*pc_alpha_n/ &
             (pc_alpha*one_plus_pc_alpha_n**(this%m+1.d0))
     liquid_saturation = this%Sr + (1.d0-this%Sr)*Se
-    dsat_pres = (1.d0-this%Sr)*dSe_pc
+    dsat_pres = -(1.d0-this%Sr)*dSe_pc
   endif
   
 end subroutine SF_VG_Saturation
@@ -1700,14 +1701,17 @@ subroutine SF_BC_Saturation(this,capillary_pressure,liquid_saturation, &
     else if (capillary_pressure < this%pres_poly%high) then
       call CubicPolynomialEvaluate(this%pres_poly%coefficients, &
                                    capillary_pressure,Se,dSe_pc)
+      liquid_saturation = this%Sr + (1.d0-this%Sr)*Se
+      dsat_pres = -(1.d0-this%Sr)*dSe_pc
+      return
     endif
-  else
-    pc_alpha_neg_lambda = (capillary_pressure*this%alpha)**(-this%lambda)
-    Se = pc_alpha_neg_lambda
-    dSe_pc = -this%lambda/capillary_pressure*pc_alpha_neg_lambda
   endif
+
+  pc_alpha_neg_lambda = (capillary_pressure*this%alpha)**(-this%lambda)
+  Se = pc_alpha_neg_lambda
+  dSe_pc = -this%lambda/capillary_pressure*pc_alpha_neg_lambda
   liquid_saturation = this%Sr + (1.d0-this%Sr)*Se
-  dsat_pres = (1.d0-this%Sr)*dSe_pc
+  dsat_pres = -(1.d0-this%Sr)*dSe_pc
   
 end subroutine SF_BC_Saturation
 ! End SF: Brooks-Corey
@@ -1842,7 +1846,7 @@ subroutine SF_Linear_Saturation(this,capillary_pressure,liquid_saturation, &
     Se = (this%pcmax-capillary_pressure) / (this%pcmax-1.d0/this%alpha)
     dSe_pc = -1.d0/(this%pcmax-1.d0/this%alpha)
     liquid_saturation = this%Sr + (1.d0-this%Sr)*Se
-    dsat_pres = (1.d0-this%Sr)*dSe_pc
+    dsat_pres = -(1.d0-this%Sr)*dSe_pc
   endif 
 
 end subroutine SF_Linear_Saturation

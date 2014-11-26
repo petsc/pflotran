@@ -87,7 +87,7 @@ contains
 
     call Interpolate(x_high, x_low, x, y_high, y_low, y)
 
-    @assertEqual(y, 105.0d0, 1.0d-16)
+    @assertEqual(105.0d0, y, 1.0d-16)
 
   end subroutine testUtility_InterpolateMiddle
 
@@ -114,7 +114,7 @@ contains
 
     call Interpolate(x_high, x_low, x, y_high, y_low, y)
 
-    @assertEqual(y, y_low, 1.0d-16)
+    @assertEqual(y_low, y, 1.0d-16)
 
   end subroutine testUtility_InterpolateXSame
 
@@ -141,7 +141,7 @@ contains
 
     call Interpolate(x_high, x_low, x, y_high, y_low, y)
 
-    @assertEqual(y, 80.0d0, 1.0d-16)
+    @assertEqual(80.0d0, y, 1.0d-16)
 
   end subroutine testUtility_InterpolateExtrapolateLow
 
@@ -168,7 +168,7 @@ contains
 
     call Interpolate(x_high, x_low, x, y_high, y_low, y)
 
-    @assertEqual(y, 120.0d0, 1.0d-16)
+    @assertEqual(120.0d0, y, 1.0d-16)
 
   end subroutine testUtility_InterpolateExtrapolateHigh
 
