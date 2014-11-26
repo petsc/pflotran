@@ -299,7 +299,7 @@ subroutine GetCellConnectionsGeomech(grid,vec)
 
   use Geomechanics_Grid_Aux_module
   use Geomechanics_Grid_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Cell_module
   
   implicit none
   

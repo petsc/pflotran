@@ -76,7 +76,7 @@ subroutine MatrixBufferInit(A,matrix_buffer,grid)
   ! Date: 05/13/09
   ! 
 
-  use Structured_Grid_module
+  use Grid_Structured_module
 
   implicit none
 
