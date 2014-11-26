@@ -2952,11 +2952,10 @@ subroutine RPF_Mualem_Linear_Liq_RelPerm(this,liquid_saturation, &
   ! Computes the relative permeability (and associated derivatives) as a 
   ! function of saturation
   ! 
-  !
   !   
-  ! Author: Glenn Hammond
-  ! Date: 12/11/07, 09/23/14
-  ! 
+  ! Author: Bwalya Malama, Heeho Park
+  ! Date: 11/14/14
+  !
   use Option_module
   use Utility_module
   
@@ -3192,8 +3191,8 @@ subroutine RPF_Burdine_Linear_Liq_RelPerm(this,liquid_saturation, &
   ! 
   !
   !   
-  ! Author: Glenn Hammond
-  ! Date: 12/11/07, 09/23/14
+  ! Author: Bwalya Malama, Heeho Park
+  ! Date: 11/14/14
   ! 
   use Option_module
   use Utility_module
@@ -3297,6 +3296,7 @@ subroutine RPF_Burdine_Linear_Gas_RelPerm(this,liquid_saturation, &
   !
   ! Author: Bwalya Malama, Heeho Park
   ! Date: 11/14/14
+  !
 
   use Option_module
   
