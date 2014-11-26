@@ -1593,6 +1593,14 @@ subroutine InitReadInput(simulation)
           end select
 
 !....................
+      case ('ONLY_VERTICAL_FLOW')
+        option%flow%only_vertical_flow = PETSC_TRUE
+        if (option%iflowmode /= TH_MODE) then
+          option%io_buffer = 'ONLY_VERTICAL_FLOW implemented in TH_MODE'
+          call printErrMsg(option)
+        endif
+
+!....................
       case ('RELATIVE_PERMEABILITY_AVERAGE')
         call InputReadWord(input,option,word,PETSC_FALSE)
         call StringToUpper(word)
