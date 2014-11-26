@@ -1589,7 +1589,9 @@ subroutine InitReadInput(simulation)
           case default
             option%io_buffer = 'Cannot identify the specificed ice model.' // &
              'Specify PAINTER_EXPLICIT or PAINTER_KARRA_IMPLICIT' // &
-             ' or PAINTER_KARRA_EXPLICIT.'
+             ' or PAINTER_KARRA_EXPLICIT or PAINTER_KARRA_EXPLICIT_NOCRYO ' //
+             ' or DALL_AMICO.'
+            call printErrMsg(option)
           end select
 
 !....................
