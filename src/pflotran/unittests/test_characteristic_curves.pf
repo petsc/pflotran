@@ -89,7 +89,7 @@ contains
     end select
     call this%cc_bcb%saturation_function%SetupPolynomials(this%option,err)
 
-  ! Setting up the characteristic curve for Brooks Corey Burdine
+  ! Setting up the characteristic curve for Brooks Corey Mualem
     this%cc_bcm => CharacteristicCurvesCreate()
     ! do not set up saturation function as it is tested with cc_bcb
     this%cc_bcm%liq_rel_perm_function => RPF_Mualem_BC_Liq_Create()
@@ -103,11 +103,11 @@ contains
     this%cc_bcm%gas_rel_perm_function => RPF_Mualem_BC_Gas_Create()
     this%cc_bcm%gas_rel_perm_function%Sr = 0.2d0
     select type(sf=>this%cc_bcm%gas_rel_perm_function)
-      class is(rpf_Burdine_BC_gas_type)
+      class is(rpf_Mualem_BC_gas_type)
         sf%lambda = 0.7d0
         sf%Srg = 1.d-5
       class default
-        print *, 'not Burdine BC Gas type'
+        print *, 'not Mualem BC Gas type'
     end select
 
   ! Setting up the characteristic curve for van Genuchten Mualem
@@ -146,19 +146,19 @@ contains
     this%cc_vgb%liq_rel_perm_function => RPF_Burdine_VG_Liq_Create()
     this%cc_vgb%liq_rel_perm_function%Sr = 0.143d0
     select type(sf=>this%cc_vgb%liq_rel_perm_function)
-      class is(rpf_Mualem_VG_liq_type)
+      class is(rpf_Burdine_VG_liq_type)
         sf%m = 0.527d0
       class default
-        print *, 'not Mualem VG Liq type'
+        print *, 'not Burdine VG Liq type'
     end select
-    this%cc_vgb%gas_rel_perm_function => RPF_BurdineMualem_VG_Gas_Create()
+    this%cc_vgb%gas_rel_perm_function => RPF_Burdine_VG_Gas_Create()
     this%cc_vgb%gas_rel_perm_function%Sr = 0.143d0
     select type(sf=>this%cc_vgb%gas_rel_perm_function)
-      class is(rpf_Mualem_VG_gas_type)
+      class is(rpf_Burdine_VG_gas_type)
         sf%m = 0.527d0
         sf%Srg = 0.01d0
       class default
-        print *, 'not Mualem VG Gas type'
+        print *, 'not Burdine VG Gas type'
     end select
 
   end subroutine setUp
@@ -448,12 +448,11 @@ contains
                               dkr_Se, this%option)
     string = 'Brooks-Corey-Mualem liquid relative permeability as a ' // &
              'function of liquid saturation'
-    ! 0.005224
-    value = 3.1991918327000197d-3
+    value = 5.2242583862629442d-3
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
     string = 'Brooks-Corey-Mualem derivative of liquid relative ' // &
              'permeability as a function of liquid saturation'
-    value = 4.9968329577409848d-2
+    value = 7.4632262660899215d-2 
     @assertEqual(value, dkr_Se, 1.d-8, string)
 
     ! gas relative permeability = f(saturation)
@@ -462,8 +461,7 @@ contains
                               dkr_Se, this%option)
     string = 'Brooks-Corey-Mualem gas relative permeability as a ' // &
              'function of liquid saturation'
-    ! 0.651267
-    value = 0.38173220142506209d0
+    value = 0.65126653365343257d0
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
 
   end subroutine testrpf_BC_Mualem
@@ -627,11 +625,11 @@ contains
                               dkr_Se, this%option)
     string = 'van Genuchten-Burdine liquid relative permeability as a ' // &
              'function of liquid saturation'
-    value = 7.1160141309814171d-3
+    value = 1.8220963608953099d-2
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
     string = 'van Genuchten-Burdine derivative of liquid relative ' // &
              'permeability as a function of liquid saturation'
-    value = 7.6770090168664040d-2
+    value = 0.174833027305569380d0
     @assertEqual(value, dkr_Se, dabs(value)*tolerance, string)
 
     ! gas relative permeability = f(saturation)
@@ -640,11 +638,12 @@ contains
                               dkr_Se, this%option)
     string = 'van Genuchten-Burdine gas relative permeability as a ' // &
              'function of liquid saturation'
-    value = 0.61184154078016839d0
+    value = 0.29870096712333277d0
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
 
   end subroutine testrpf_van_Genuchten_Burdine
 
 ! ************************************************************************** !
+
 end module Test_Characteristic_Curves_module
 
