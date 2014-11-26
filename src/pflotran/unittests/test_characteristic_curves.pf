@@ -19,7 +19,9 @@ module Test_Characteristic_Curves_module
   type, extends(TestCase) :: Test_Characteristic_Curves
       type(option_type), pointer :: option
       class(characteristic_curves_type), pointer :: cc_bcb
+      class(characteristic_curves_type), pointer :: cc_bcm
       class(characteristic_curves_type), pointer :: cc_vgm
+      class(characteristic_curves_type), pointer :: cc_vgb
       procedure(runMethod), pointer :: userMethod => null()
     contains
       procedure :: setUp     
@@ -87,6 +89,27 @@ contains
     end select
     call this%cc_bcb%saturation_function%SetupPolynomials(this%option,err)
 
+  ! Setting up the characteristic curve for Brooks Corey Burdine
+    this%cc_bcm => CharacteristicCurvesCreate()
+    ! do not set up saturation function as it is tested with cc_bcb
+    this%cc_bcm%liq_rel_perm_function => RPF_Mualem_BC_Liq_Create()
+    this%cc_bcm%liq_rel_perm_function%Sr = 0.2d0
+    select type(sf=>this%cc_bcm%liq_rel_perm_function)
+      class is(rpf_Mualem_BC_liq_type)
+        sf%lambda = 0.7d0
+      class default
+        print *, 'not Mualem BC Liq type'
+    end select
+    this%cc_bcm%gas_rel_perm_function => RPF_Mualem_BC_Gas_Create()
+    this%cc_bcm%gas_rel_perm_function%Sr = 0.2d0
+    select type(sf=>this%cc_bcm%gas_rel_perm_function)
+      class is(rpf_Burdine_BC_gas_type)
+        sf%lambda = 0.7d0
+        sf%Srg = 1.d-5
+      class default
+        print *, 'not Burdine BC Gas type'
+    end select
+
   ! Setting up the characteristic curve for van Genuchten Mualem
     this%cc_vgm => CharacteristicCurvesCreate()
     this%cc_vgm%saturation_function => SF_VG_Create()
@@ -113,6 +136,27 @@ contains
       class is(rpf_Mualem_VG_gas_type)
         sf%m = 0.527d0
         sf%Srg = 0.d0
+      class default
+        print *, 'not Mualem VG Gas type'
+    end select
+
+  ! Setting up the characteristic curve for van Genuchten Burdine
+    this%cc_vgb => CharacteristicCurvesCreate()
+    ! do not set up saturation function as it is tested with cc_vgm
+    this%cc_vgb%liq_rel_perm_function => RPF_Burdine_VG_Liq_Create()
+    this%cc_vgb%liq_rel_perm_function%Sr = 0.143d0
+    select type(sf=>this%cc_vgb%liq_rel_perm_function)
+      class is(rpf_Mualem_VG_liq_type)
+        sf%m = 0.527d0
+      class default
+        print *, 'not Mualem VG Liq type'
+    end select
+    this%cc_vgb%gas_rel_perm_function => RPF_BurdineMualem_VG_Gas_Create()
+    this%cc_vgb%gas_rel_perm_function%Sr = 0.143d0
+    select type(sf=>this%cc_vgb%gas_rel_perm_function)
+      class is(rpf_Mualem_VG_gas_type)
+        sf%m = 0.527d0
+        sf%Srg = 0.01d0
       class default
         print *, 'not Mualem VG Gas type'
     end select
@@ -382,6 +426,51 @@ contains
 ! ************************************************************************** !
 
   @Test
+  subroutine testrpf_BC_Mualem(this)
+    
+    implicit none
+
+    class(Test_Characteristic_Curves), intent(inout) :: this
+
+    PetscReal :: capillary_pressure
+    PetscReal :: liquid_saturation
+    PetscReal :: dsat_pres
+    PetscReal :: value
+    PetscReal :: dkr_Se
+    PetscReal :: relative_permeability
+    PetscReal, parameter :: tolerance = 1.d-8
+    character(len=128) :: string
+
+    ! liquid relative permeability = f(saturation)
+    liquid_saturation = 0.5d0
+    call this%cc_bcm%liq_rel_perm_function% &
+         RelativePermeability(liquid_saturation, relative_permeability, & 
+                              dkr_Se, this%option)
+    string = 'Brooks-Corey-Mualem liquid relative permeability as a ' // &
+             'function of liquid saturation'
+    ! 0.005224
+    value = 3.1991918327000197d-3
+    @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
+    string = 'Brooks-Corey-Mualem derivative of liquid relative ' // &
+             'permeability as a function of liquid saturation'
+    value = 4.9968329577409848d-2
+    @assertEqual(value, dkr_Se, 1.d-8, string)
+
+    ! gas relative permeability = f(saturation)
+    call this%cc_bcm%gas_rel_perm_function% &
+         RelativePermeability(liquid_saturation, relative_permeability, &
+                              dkr_Se, this%option)
+    string = 'Brooks-Corey-Mualem gas relative permeability as a ' // &
+             'function of liquid saturation'
+    ! 0.651267
+    value = 0.38173220142506209d0
+    @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
+
+  end subroutine testrpf_BC_Mualem
+
+! ************************************************************************** !
+
+  @Test
   subroutine testsf_van_Genuchten(this)
     
     implicit none
@@ -514,6 +603,47 @@ contains
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
 
   end subroutine testrpf_van_Genuchten_Mualem
+
+! ************************************************************************** !
+
+  @Test
+  subroutine testrpf_van_Genuchten_Burdine(this)
+
+    implicit none
+
+    class(Test_Characteristic_Curves), intent(inout) :: this
+
+    PetscReal :: liquid_saturation
+    PetscReal :: relative_permeability
+    PetscReal :: dkr_Se
+    PetscReal :: value
+    PetscReal, parameter :: tolerance = 1.d-8
+    character(len=128) :: string
+
+    ! liquid relative permeability = f(saturation)
+    liquid_saturation = 0.5d0
+    call this%cc_vgb%liq_rel_perm_function% &
+         RelativePermeability(liquid_saturation, relative_permeability, & 
+                              dkr_Se, this%option)
+    string = 'van Genuchten-Burdine liquid relative permeability as a ' // &
+             'function of liquid saturation'
+    value = 7.1160141309814171d-3
+    @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
+    string = 'van Genuchten-Burdine derivative of liquid relative ' // &
+             'permeability as a function of liquid saturation'
+    value = 7.6770090168664040d-2
+    @assertEqual(value, dkr_Se, dabs(value)*tolerance, string)
+
+    ! gas relative permeability = f(saturation)
+    call this%cc_vgb%gas_rel_perm_function% &
+         RelativePermeability(liquid_saturation, relative_permeability, & 
+                              dkr_Se, this%option)
+    string = 'van Genuchten-Burdine gas relative permeability as a ' // &
+             'function of liquid saturation'
+    value = 0.61184154078016839d0
+    @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
+
+  end subroutine testrpf_van_Genuchten_Burdine
 
 ! ************************************************************************** !
 end module Test_Characteristic_Curves_module
