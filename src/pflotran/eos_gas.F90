@@ -651,6 +651,8 @@ subroutine EOSGasDensityRKS(T,P,Rho_gas,dRho_dT,dRho_dP,ierr)
 ! Author: Heeho Park
 ! Date: 05/08/14
 !
+  use PFLOTRAN_Constants_module, only : UNINITIALIZED_DOUBLE
+
   implicit none
 
   PetscReal, intent(in) :: T        ! temperature [C]
@@ -676,7 +678,8 @@ subroutine EOSGasDensityRKS(T,P,Rho_gas,dRho_dT,dRho_dP,ierr)
   !solver
   PetscReal :: coef(4)
   PetscInt, parameter :: maxit = 50
-  
+  dRho_dT = UNINITIALIZED_DOUBLE
+  dRho_dP = UNINITIALIZED_DOUBLE
   
   T_kelvin = T + 273.15d0
   RT = Rg * T_kelvin
