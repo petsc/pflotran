@@ -1,11 +1,11 @@
-module Database_hpt_module
+module Reaction_Database_hpt_module
 
   use Reaction_module
   use Reaction_Aux_module
-  use Database_module
-  use Database_Aux_module
-  use Surface_Complexation_Aux_module
-  use Mineral_Aux_module
+  use Reaction_Database_module
+  use Reaction_Database_Aux_module
+  use Reaction_Surface_Complexation_Aux_module
+  use Reaction_Mineral_Aux_module
 
   use PFLOTRAN_Constants_module
 
@@ -3037,4 +3037,4 @@ subroutine BasisSubSpeciesInMineralRxn_hpt(name,sec_dbaserxn,mnrl_dbaserxn)
 
 end subroutine BasisSubSpeciesInMineralRxn_hpt
 
-end module Database_hpt_module
+end module Reaction_Database_hpt_module

@@ -1,6 +1,6 @@
-module Solid_Solution_Aux_module
+module Reaction_Reaction_Solid_Solution_Aux_module
   
-  use Mineral_Aux_module
+  use Reaction_Mineral_Aux_module
 
   use PFLOTRAN_Constants_module
 
@@ -242,4 +242,4 @@ subroutine SolidSolutionReactionDestroy(solid_solution)
 end subroutine SolidSolutionReactionDestroy
 #endif
 
-end module Solid_Solution_Aux_module
+end module Reaction_Reaction_Solid_Solution_Aux_module

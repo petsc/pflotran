@@ -1657,7 +1657,7 @@ subroutine WriteHDF5CoordinatesUGrid(grid,option,file_id)
   use hdf5
   use Grid_module
   use Option_module
-  use Unstructured_Grid_Aux_module
+  use Grid_Unstructured_Aux_module
   use HDF5_module, only : trick_hdf5
   use Variables_module
   
@@ -1968,7 +1968,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
   use Realization_Base_class, only : realization_base_type
   use Grid_module
   use Option_module
-  use Unstructured_Grid_Aux_module
+  use Grid_Unstructured_Aux_module
   use Variables_module
   
   implicit none
@@ -2499,7 +2499,7 @@ subroutine WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option,file_id
   use Realization_Base_class, only : realization_base_type
   use Grid_module
   use Option_module
-  use Unstructured_Grid_Aux_module
+  use Grid_Unstructured_Aux_module
   use Variables_module
   
   implicit none
@@ -2778,8 +2778,8 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id,var_list_type
   use Patch_module
   use Grid_module
   use Option_module
-  use Unstructured_Grid_Aux_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Aux_module
+  use Grid_Unstructured_Cell_module
   use Variables_module
   use Connection_module
   use Coupler_module
@@ -3047,8 +3047,8 @@ subroutine WriteHDF5FaceVelUGrid(realization_base,option,file_id,var_list_type)
   use Patch_module
   use Grid_module
   use Option_module
-  use Unstructured_Grid_Aux_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Aux_module
+  use Grid_Unstructured_Cell_module
   use Variables_module
   use Connection_module
   use Coupler_module

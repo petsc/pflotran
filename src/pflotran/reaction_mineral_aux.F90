@@ -1,6 +1,6 @@
-module Mineral_Aux_module
+module Reaction_Mineral_Aux_module
   
-  use Database_Aux_module
+  use Reaction_Database_Aux_module
 
   use PFLOTRAN_Constants_module
 
@@ -736,4 +736,4 @@ subroutine MineralDestroy(mineral)
 
 end subroutine MineralDestroy
 
-end module Mineral_Aux_module
+end module Reaction_Mineral_Aux_module

@@ -1,12 +1,12 @@
-module Constraint_module
+module Transport_Constraint_module
  
   use Reaction_Aux_module
   use Reactive_Transport_Aux_module
   use Global_Aux_module
   
-  use Surface_Complexation_Aux_module  
-  use Mineral_Aux_module
-  use Immobile_Aux_module
+  use Reaction_Surface_Complexation_Aux_module  
+  use Reaction_Mineral_Aux_module
+  use Reaction_Immobile_Aux_module
   
   use PFLOTRAN_Constants_module
 
@@ -890,4 +890,4 @@ subroutine TranConstraintCouplerDestroy(coupler_list)
   
 end subroutine TranConstraintCouplerDestroy
 
-end module Constraint_module
+end module Transport_Constraint_module

@@ -111,7 +111,7 @@ subroutine OutputWriteTecplotZoneHeader(fid,realization_base,variable_count, &
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
-  use Unstructured_Grid_Aux_module
+  use Grid_Unstructured_Aux_module
   use Option_module
   use String_module
   
@@ -225,8 +225,8 @@ subroutine OutputTecplotBlock(realization_base)
   use Realization_Base_class, only : realization_base_type
   use Discretization_module
   use Grid_module
-  use Structured_Grid_module
-  use Unstructured_Grid_Aux_module
+  use Grid_Structured_module
+  use Grid_Unstructured_Aux_module
   use Option_module
   use Field_module
   use Patch_module
@@ -408,7 +408,7 @@ subroutine OutputVelocitiesTecplotBlock(realization_base)
   use Realization_Base_class, only : realization_base_type
   use Discretization_module
   use Grid_module
-  use Unstructured_Grid_Aux_module
+  use Grid_Unstructured_Aux_module
   use Option_module
   use Field_module
   use Patch_module
@@ -925,7 +925,7 @@ subroutine OutputTecplotPoint(realization_base)
                                      RealizGetVariableValueAtCell
   use Discretization_module
   use Grid_module
-  use Structured_Grid_module
+  use Grid_Structured_module
   use Option_module
   use Field_module
   use Patch_module
@@ -1201,7 +1201,7 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization_base,vector)
   use Option_module
   use Field_module
   use Grid_module
-  use Unstructured_Grid_Aux_module
+  use Grid_Unstructured_Aux_module
   use Patch_module
   use Variables_module
   
@@ -1426,7 +1426,7 @@ subroutine WriteTecplotUGridVertices(fid,realization_base)
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
-  use Unstructured_Grid_Aux_module
+  use Grid_Unstructured_Aux_module
   use Option_module
   use Patch_module
   use Variables_module
@@ -1542,7 +1542,7 @@ subroutine WriteTecplotExpGridElements(fid,realization_base)
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
-  use Unstructured_Grid_Aux_module
+  use Grid_Unstructured_Aux_module
   use Option_module
   use Patch_module
   
@@ -1652,7 +1652,7 @@ subroutine WriteTecplotUGridElements(fid,realization_base)
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
-  use Unstructured_Grid_Aux_module
+  use Grid_Unstructured_Aux_module
   use Option_module
   use Patch_module
   
@@ -1710,8 +1710,8 @@ subroutine GetCellConnectionsTecplot(grid, vec)
   ! 
 
   use Grid_module
-  use Unstructured_Grid_Aux_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Aux_module
+  use Grid_Unstructured_Cell_module
   
   implicit none
   
@@ -2151,7 +2151,7 @@ subroutine OutputPrintExplicitFlowrates(realization_base)
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
-  use Unstructured_Grid_Aux_module
+  use Grid_Unstructured_Aux_module
   use Option_module
   use Field_module
   use Patch_module
@@ -2683,7 +2683,7 @@ subroutine WriteTecplotPolyUGridElements(fid,realization_base)
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
-  use Unstructured_Grid_Aux_module
+  use Grid_Unstructured_Aux_module
   use Option_module
   use Patch_module
 

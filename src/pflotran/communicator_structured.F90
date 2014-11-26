@@ -1,7 +1,7 @@
 module Communicator_Structured_class
 
   use Communicator_Base_module
-  use Structured_Grid_module  
+  use Grid_Structured_module  
   
   use PFLOTRAN_Constants_module
 

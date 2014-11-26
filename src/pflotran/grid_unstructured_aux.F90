@@ -1,7 +1,7 @@
-module Unstructured_Grid_Aux_module
+module Grid_Unstructured_Aux_module
 
 !  use Connection_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Cell_module
   use Geometry_module
   
   use PFLOTRAN_Constants_module
@@ -1829,4 +1829,4 @@ subroutine UGridPolyhedraDestroy(polyhedra_grid)
 
 end subroutine UGridPolyhedraDestroy
 
-end module Unstructured_Grid_Aux_module
+end module Grid_Unstructured_Aux_module

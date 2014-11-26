@@ -1,8 +1,8 @@
-module Unstructured_Grid_module
+module Grid_Unstructured_module
 
   use Connection_module
-  use Unstructured_Grid_Aux_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Aux_module
+  use Grid_Unstructured_Cell_module
   
   use PFLOTRAN_Constants_module
 
@@ -2535,7 +2535,7 @@ subroutine UGridPopulateConnection(unstructured_grid, connection, iface_cell, &
   use Connection_module
   use Utility_module, only : DotProduct
   use Option_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Cell_module
   
   implicit none
   
@@ -4772,4 +4772,4 @@ subroutine UGridUpdateMeshAfterGrowingStencilWidth(unstructured_grid, &
 end subroutine UGridUpdateMeshAfterGrowingStencilWidth
 
 
-end module Unstructured_Grid_module
+end module Grid_Unstructured_module

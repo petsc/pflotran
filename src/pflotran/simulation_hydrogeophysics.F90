@@ -1,7 +1,7 @@
-module Hydrogeophysics_Simulation_class
+module Simulation_Hydrogeophysics_class
   
   use Option_module
-  use Subsurface_Simulation_class
+  use Simulation_Subsurface_class
   use PMC_Hydrogeophysics_class
 
   use PFLOTRAN_Constants_module
@@ -183,7 +183,7 @@ subroutine HydrogeophysicsStrip(this)
   ! Date: 06/11/13
   ! 
 
-  use Hydrogeophysics_Wrapper_module, only : HydrogeophysicsWrapperDestroy
+  use Wrapper_Hydrogeophysics_module, only : HydrogeophysicsWrapperDestroy
 
   implicit none
   
@@ -249,4 +249,4 @@ subroutine HydrogeophysicsDestroy(simulation)
   
 end subroutine HydrogeophysicsDestroy
   
-end module Hydrogeophysics_Simulation_class
+end module Simulation_Hydrogeophysics_class

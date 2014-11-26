@@ -205,7 +205,7 @@ subroutine RTAuxVarInit(auxvar,reaction,option)
 
   use Option_module
   use Reaction_Aux_module
-  use Surface_Complexation_Aux_module
+  use Reaction_Surface_Complexation_Aux_module
 
   implicit none
   

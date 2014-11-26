@@ -26,7 +26,7 @@ subroutine OutputVTK(realization_base)
   use Realization_Base_class, only : realization_base_type
   use Discretization_module
   use Grid_module
-  use Structured_Grid_module
+  use Grid_Structured_module
   use Option_module
   use Field_module
   use Patch_module

@@ -225,7 +225,7 @@ subroutine PMSurfaceCheckpoint(this,viewer)
   ! Date: 04/22/14
   ! 
 
-  use Surface_Checkpoint_module
+  use Checkpoint_Surface_module
 
   implicit none
 #include "finclude/petscviewer.h"
@@ -247,7 +247,7 @@ subroutine PMSurfaceRestart(this,viewer)
   ! Date: 04/22/14
   ! 
 
-  use Surface_Checkpoint_module
+  use Checkpoint_Surface_module
 
   implicit none
 #include "finclude/petscviewer.h"

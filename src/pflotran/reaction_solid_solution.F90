@@ -1,8 +1,8 @@
-module Solid_Solution_module
+module Reaction_Solid_Solution_module
 
-  use Mineral_Aux_module
+  use Reaction_Mineral_Aux_module
   use Reaction_Aux_module
-  use Solid_Solution_Aux_module
+  use Reaction_Reaction_Solid_Solution_Aux_module
   
   use PFLOTRAN_Constants_module
 
@@ -141,7 +141,7 @@ subroutine SolidSolutionLinkNamesToIDs(solid_solution_list, &
   ! 
   use Option_module
   use String_module
-  use Mineral_Aux_module
+  use Reaction_Mineral_Aux_module
   
   implicit none
   
@@ -187,7 +187,7 @@ subroutine SolidSolutionReadFromDatabase(solid_solution_rxn,option)
   use String_module
   use Input_Aux_module
   use Utility_module
-  use Mineral_module
+  use Reaction_Mineral_module
   
   implicit none
   
@@ -295,4 +295,4 @@ subroutine SolidSolutionReadFromDatabase(solid_solution_rxn,option)
 end subroutine SolidSolutionReadFromDatabase
 #endif
 
-end module Solid_Solution_module
+end module Reaction_Solid_Solution_module

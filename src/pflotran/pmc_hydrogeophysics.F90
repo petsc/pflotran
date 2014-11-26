@@ -118,7 +118,7 @@ recursive subroutine PMCHydrogeophysicsRunToTime(this,sync_time,stop_flag)
   ! Date: 07/02/13
   ! 
 
-  use Hydrogeophysics_Wrapper_module, only : HydrogeophysicsWrapperStep
+  use Wrapper_Hydrogeophysics_module, only : HydrogeophysicsWrapperStep
   use Timestepper_Base_class, only : TS_CONTINUE
 
   implicit none
@@ -237,7 +237,7 @@ recursive subroutine PMCHydrogeophysicsFinalizeRun(this)
   ! Date: 07/02/13
   ! 
 
-  use Hydrogeophysics_Wrapper_module, only : HydrogeophysicsWrapperStop
+  use Wrapper_Hydrogeophysics_module, only : HydrogeophysicsWrapperStop
   
   implicit none
   

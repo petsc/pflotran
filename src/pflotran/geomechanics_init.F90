@@ -88,8 +88,8 @@ subroutine GeomechanicsInit(geomech_realization,input,option)
   use Geomechanics_Discretization_module
   use Geomechanics_Realization_class
   use Geomechanics_Patch_module
-  use Unstructured_Grid_Aux_module
-  use Unstructured_Grid_module
+  use Grid_Unstructured_Aux_module
+  use Grid_Unstructured_module
   
   implicit none
   

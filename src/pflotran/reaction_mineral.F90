@@ -1,6 +1,6 @@
-module Mineral_module
+module Reaction_Mineral_module
 
-  use Mineral_Aux_module
+  use Reaction_Mineral_Aux_module
   use Reaction_Aux_module
   use Reactive_Transport_Aux_module
   use Global_Aux_module
@@ -408,7 +408,7 @@ subroutine MineralReadFromDatabase(mineral,num_dbase_temperatures,input, &
   use Input_Aux_module
   use String_module  
   use Option_module
-  use Database_Aux_module
+  use Reaction_Database_Aux_module
   
   implicit none
   
@@ -557,7 +557,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
   use Option_module
   use Material_Aux_class
 #ifdef SOLID_SOLUTION
-  use Solid_Solution_Aux_module
+  use Reaction_Reaction_Solid_Solution_Aux_module
 #endif
   
   implicit none
@@ -1227,4 +1227,4 @@ subroutine MineralUpdateTempDepCoefs(temp,pres,mineral,use_geothermal_hpt, &
   
 end subroutine MineralUpdateTempDepCoefs
 
-end module Mineral_module
+end module Reaction_Mineral_module

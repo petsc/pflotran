@@ -123,11 +123,11 @@ subroutine RTSetup(realization)
   use Coupler_module
   use Condition_module
   use Connection_module
-  use Constraint_module
+  use Transport_Constraint_module
   use Fluid_module
   use Material_module
   use Material_Aux_class
-  use Surface_Complexation_Aux_module
+  use Reaction_Surface_Complexation_Aux_module
   !geh: please leave the "only" clauses for Secondary_Continuum_XXX as this
   !      resolves a bug in the Intel Visual Fortran compiler.
   use Secondary_Continuum_Aux_module, only : sec_transport_type, &

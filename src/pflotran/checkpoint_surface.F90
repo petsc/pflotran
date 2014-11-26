@@ -1,4 +1,4 @@
-module Surface_Checkpoint_Header_module
+module Checkpoint_Surface_Header_module
 
   implicit none
 
@@ -38,11 +38,11 @@ module Surface_Checkpoint_Header_module
     real*8 :: surf_subsurf_coupling_flow_dt
 
   end type surface_checkpoint_header_type
-end module Surface_Checkpoint_Header_module
+end module Checkpoint_Surface_Header_module
 
-module Surface_Checkpoint_module
+module Checkpoint_Surface_module
 
-  use Surface_Checkpoint_Header_module
+  use Checkpoint_Surface_Header_module
 
   use PFLOTRAN_Constants_module
 
@@ -68,7 +68,7 @@ module Surface_Checkpoint_module
 
 Interface PetscBagGetData
 Subroutine PetscBagGetData(bag,ctx,ierr)
-      use Surface_Checkpoint_Header_module
+      use Checkpoint_Surface_Header_module
       PetscBag bag
       type(surface_checkpoint_header_type), pointer :: ctx
       PetscErrorCode ierr
@@ -535,4 +535,4 @@ subroutine SurfaceRestartProcessModel(viewer,surf_realization)
 
 end subroutine SurfaceRestartProcessModel
 
-end module Surface_Checkpoint_module
+end module Checkpoint_Surface_module

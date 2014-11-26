@@ -1,6 +1,6 @@
-module Surface_Complexation_Aux_module
+module Reaction_Surface_Complexation_Aux_module
   
-  use Database_Aux_module
+  use Reaction_Database_Aux_module
 
   use PFLOTRAN_Constants_module
 
@@ -644,4 +644,4 @@ subroutine SurfaceComplexationDestroy(surface_complexation)
 
 end subroutine SurfaceComplexationDestroy
 
-end module Surface_Complexation_Aux_module
+end module Reaction_Surface_Complexation_Aux_module

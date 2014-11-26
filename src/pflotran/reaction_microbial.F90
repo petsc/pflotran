@@ -1,6 +1,6 @@
-module Microbial_module
+module Reaction_Microbial_module
 
-  use Microbial_Aux_module
+  use Reaction_Microbial_Aux_module
   
   use PFLOTRAN_Constants_module
 
@@ -210,7 +210,7 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
   use Global_Aux_module, only : global_auxvar_type
   use Material_Aux_class, only : material_auxvar_type
   use Reaction_Aux_module, only : reaction_type
-  use Immobile_Aux_module, only : immobile_type
+  use Reaction_Immobile_Aux_module, only : immobile_type
   
   implicit none
   
@@ -400,4 +400,4 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
     
 end subroutine RMicrobial
 
-end module Microbial_module
+end module Reaction_Microbial_module

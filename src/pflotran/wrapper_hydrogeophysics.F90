@@ -1,4 +1,4 @@
-module Hydrogeophysics_Wrapper_module
+module Wrapper_Hydrogeophysics_module
  
   use PFLOTRAN_Constants_module
 
@@ -187,4 +187,4 @@ recursive subroutine HydrogeophysicsWrapperDestroy(option)
 
 end subroutine HydrogeophysicsWrapperDestroy
 
-end module Hydrogeophysics_Wrapper_module
+end module Wrapper_Hydrogeophysics_module

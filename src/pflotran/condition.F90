@@ -7,9 +7,9 @@ module Condition_module
   use Dataset_Ascii_class
   use Time_Storage_module
   
-  use Constraint_module
-!  use Surface_Complexation_Aux_module  
-!  use Mineral_Aux_module
+  use Transport_Constraint_module
+!  use Reaction_Surface_Complexation_Aux_module  
+!  use Reaction_Mineral_Aux_module
   
   use PFLOTRAN_Constants_module
 

@@ -1,6 +1,6 @@
 module Factory_Subsurface_module
 
-  use Subsurface_Simulation_class
+  use Simulation_Subsurface_class
   
   use PFLOTRAN_Constants_module
 

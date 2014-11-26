@@ -1,6 +1,6 @@
-module Immobile_Aux_module
+module Reaction_Immobile_Aux_module
   
-  use Database_Aux_module
+  use Reaction_Database_Aux_module
 
   use PFLOTRAN_Constants_module
 
@@ -342,4 +342,4 @@ subroutine ImmobileDestroy(immobile)
 
 end subroutine ImmobileDestroy
 
-end module Immobile_Aux_module
+end module Reaction_Immobile_Aux_module

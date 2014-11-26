@@ -110,13 +110,13 @@ subroutine SurfaceInit(surf_realization,input,option)
   use Surface_Material_module
   use Surface_Realization_class
   use Grid_module
-  use Structured_Grid_module
-  use Unstructured_Grid_module
-  use Unstructured_Grid_Aux_module
+  use Grid_Structured_module
+  use Grid_Unstructured_module
+  use Grid_Unstructured_Aux_module
   use Discretization_module
   use Region_module
   use Condition_module
-  use Unstructured_Grid_Aux_module
+  use Grid_Unstructured_Aux_module
 
   implicit none
 
@@ -203,12 +203,12 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
   use Surface_Material_module
   use Surface_Realization_class
   use Grid_module
-  use Structured_Grid_module
-  use Unstructured_Grid_module
+  use Grid_Structured_module
+  use Grid_Unstructured_module
   use Dataset_Base_class
   use Dataset_module
   use Dataset_Common_HDF5_class
-  use Unstructured_Grid_Aux_module
+  use Grid_Unstructured_Aux_module
   use Discretization_module
   use Region_module
   use Condition_module

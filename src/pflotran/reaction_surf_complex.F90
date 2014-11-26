@@ -1,6 +1,6 @@
-module Surface_Complexation_module
+module Reaction_Surface_Complexation_module
 
-  use Surface_Complexation_Aux_module
+  use Reaction_Surface_Complexation_Aux_module
   use Reaction_Aux_module
   use Reactive_Transport_Aux_module
   use Global_Aux_module
@@ -1139,4 +1139,4 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
   
 end subroutine RKineticSurfCplx
 
-end module Surface_Complexation_module
+end module Reaction_Surface_Complexation_module

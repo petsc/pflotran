@@ -1,4 +1,4 @@
-module Database_Aux_module
+module Reaction_Database_Aux_module
 
   use PFLOTRAN_Constants_module
 
@@ -610,4 +610,4 @@ subroutine DatabaseRxnDestroy(dbaserxn)
 
 end subroutine DatabaseRxnDestroy
 
-end module Database_Aux_module
+end module Reaction_Database_Aux_module

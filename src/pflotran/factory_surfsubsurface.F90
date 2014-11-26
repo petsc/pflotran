@@ -1,6 +1,6 @@
 module Factory_Surf_Subsurf_module
 
-  use Surf_Subsurf_Simulation_class
+  use Simulation_Surf_Subsurf_class
 
   use PFLOTRAN_Constants_module
 
@@ -55,8 +55,8 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
   ! 
 
   use Simulation_module
-  use Surface_Simulation_class
-  use Subsurface_Simulation_class
+  use Simulation_Surface_class
+  use Simulation_Subsurface_class
   use Factory_Surface_module
   use Factory_Subsurface_module
   use Option_module
@@ -198,9 +198,9 @@ subroutine SurfSubsurfCreateSurfSubSurfVScats(realization, surf_realization, &
 
   use Grid_module
   use String_module
-  use Unstructured_Grid_module
-  use Unstructured_Grid_Aux_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_module
+  use Grid_Unstructured_Aux_module
+  use Grid_Unstructured_Cell_module
   use Realization_class
   use Option_module
   use Patch_module
@@ -513,15 +513,15 @@ subroutine SurfSubsurfCreateSurfSubSurfVScat( &
 
   use Grid_module
   use String_module
-  use Unstructured_Grid_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_module
+  use Grid_Unstructured_Cell_module
   use Realization_class
   use Option_module
   use Field_module
   use Surface_Field_module
-  use Unstructured_Grid_module
+  use Grid_Unstructured_module
   use Discretization_module
-  use Unstructured_Grid_Aux_module
+  use Grid_Unstructured_Aux_module
   use DM_Kludge_module
   use Surface_Realization_class
 

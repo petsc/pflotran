@@ -1,4 +1,4 @@
-module Structured_Grid_module
+module Grid_Structured_module
 
   use PFLOTRAN_Constants_module
 
@@ -2135,4 +2135,4 @@ function StructGetTVDGhostConnection(ghosted_id,structured_grid,iface,option)
 
 end function StructGetTVDGhostConnection
 
-end module Structured_Grid_module
+end module Grid_Structured_module

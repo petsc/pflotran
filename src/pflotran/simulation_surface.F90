@@ -1,4 +1,4 @@
-module Surface_Simulation_class
+module Simulation_Surface_class
 
   use Simulation_Base_class
   use Regression_module
@@ -204,4 +204,4 @@ subroutine SurfaceSimulationDestroy(simulation)
   
 end subroutine SurfaceSimulationDestroy
 
-end module Surface_Simulation_class
+end module Simulation_Surface_class

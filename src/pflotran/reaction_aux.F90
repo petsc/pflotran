@@ -1,13 +1,13 @@
 module Reaction_Aux_module
   
-  use Database_Aux_module
-  use Mineral_Aux_module
-  use Microbial_Aux_module
-  use Immobile_Aux_module
-  use Surface_Complexation_Aux_module
+  use Reaction_Database_Aux_module
+  use Reaction_Mineral_Aux_module
+  use Reaction_Microbial_Aux_module
+  use Reaction_Immobile_Aux_module
+  use Reaction_Surface_Complexation_Aux_module
   
 #ifdef SOLID_SOLUTION  
-  use Solid_Solution_Aux_module
+  use Reaction_Reaction_Solid_Solution_Aux_module
 #endif
 
   use PFLOTRAN_Constants_module

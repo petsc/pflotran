@@ -1,6 +1,6 @@
 module Factory_Geomechanics_module
 
-  use Geomechanics_Simulation_class
+  use Simulation_Geomechanics_class
   use PFLOTRAN_Constants_module
 
   implicit none
@@ -61,10 +61,10 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
   use Geomechanics_Discretization_module
   use Geomechanics_Force_module
   use Geomechanics_Realization_class
-  use Geomechanics_Simulation_class
+  use Simulation_Geomechanics_class
   use Simulation_module
   use Simulation_Aux_module
-  use Subsurface_Simulation_class
+  use Simulation_Subsurface_class
   use Factory_Subsurface_module
 
   implicit none

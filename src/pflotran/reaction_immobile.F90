@@ -1,6 +1,6 @@
-module Immobile_module
+module Reaction_Immobile_module
 
-  use Immobile_Aux_module
+  use Reaction_Immobile_Aux_module
   
   use PFLOTRAN_Constants_module
 
@@ -133,4 +133,4 @@ subroutine ImmobileProcessConstraint(immobile,constraint_name, &
 end subroutine ImmobileProcessConstraint
 
 
-end module Immobile_module
+end module Reaction_Immobile_module

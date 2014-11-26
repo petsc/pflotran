@@ -334,7 +334,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   use Option_module
   use Material_module
   use Condition_module
-  use Constraint_module
+  use Transport_Constraint_module
   use Connection_module
 
   implicit none
@@ -792,7 +792,7 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
   use Reactive_Transport_Aux_module
   use Global_Aux_module
   use Condition_module
-  use Constraint_module
+  use Transport_Constraint_module
   use General_Aux_module
   
   implicit none
@@ -2537,7 +2537,7 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
   use Reaction_Aux_module
   use Global_Aux_module
   use Material_Aux_class
-  use Constraint_module
+  use Transport_Constraint_module
   
   use EOS_Water_module
     
@@ -2759,10 +2759,10 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
   use Mphase_Aux_module
   use TH_Aux_module
   use Richards_Aux_module
-  use Mineral_module
+  use Reaction_Mineral_module
   use Reaction_module
   use Reactive_Transport_Aux_module  
-  use Surface_Complexation_Aux_module
+  use Reaction_Surface_Complexation_Aux_module
   use General_Aux_module
   use Output_Aux_module
   use Variables_module
@@ -3802,10 +3802,10 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
   use Richards_Aux_module
   use Miscible_Aux_module
   use Reactive_Transport_Aux_module  
-  use Mineral_module
+  use Reaction_Mineral_module
   use Reaction_module
-  use Mineral_Aux_module
-  use Surface_Complexation_Aux_module
+  use Reaction_Mineral_Aux_module
+  use Reaction_Surface_Complexation_Aux_module
   use Output_Aux_module
   use Variables_module
   use General_Aux_module  

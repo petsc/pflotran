@@ -1,6 +1,6 @@
 module Factory_Surface_module
 
-  use Surface_Simulation_class
+  use Simulation_Surface_class
 
   use PFLOTRAN_Constants_module
 
@@ -229,7 +229,7 @@ subroutine SurfaceJumpStart(simulation)
   use Output_module, only : Output, OutputInit, OutputPrintCouplers
   use Logging_module  
   use Condition_Control_module
-  use Surface_Checkpoint_module
+  use Checkpoint_Surface_module
   use Output_Surface_module, only : OutputSurface, OutputSurfaceInit
 
   implicit none

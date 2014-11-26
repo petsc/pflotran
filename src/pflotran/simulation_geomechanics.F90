@@ -1,7 +1,7 @@
-module Geomechanics_Simulation_class
+module Simulation_Geomechanics_class
 
   use Option_module
-  use Subsurface_Simulation_class
+  use Simulation_Subsurface_class
   use Regression_module
   use PMC_Base_class
   use PMC_Subsurface_class
@@ -205,4 +205,4 @@ subroutine GeomechanicsSimulationDestroy(simulation)
   
 end subroutine GeomechanicsSimulationDestroy
 
-end module Geomechanics_Simulation_class
+end module Simulation_Geomechanics_class

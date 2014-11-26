@@ -5,19 +5,19 @@ module Reaction_module
   use Global_Aux_module
   use Material_Aux_class
   
-  use Surface_Complexation_module
-  use Mineral_module
-  use Microbial_module
-  use Immobile_module
+  use Reaction_Surface_Complexation_module
+  use Reaction_Mineral_module
+  use Reaction_Microbial_module
+  use Reaction_Immobile_module
 
-  use Surface_Complexation_Aux_module
-  use Mineral_Aux_module
-  use Microbial_Aux_module
-  use Immobile_Aux_module
+  use Reaction_Surface_Complexation_Aux_module
+  use Reaction_Mineral_Aux_module
+  use Reaction_Microbial_Aux_module
+  use Reaction_Immobile_Aux_module
 
 #ifdef SOLID_SOLUTION  
-  use Solid_Solution_module
-  use Solid_Solution_Aux_module
+  use Reaction_Solid_Solution_module
+  use Reaction_Reaction_Solid_Solution_Aux_module
 #endif  
 
   !TODO(geh): Intel 2013.1.119 crashes if this module is included.  It does not
@@ -1114,7 +1114,7 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
   use Input_Aux_module
   use String_module
   use Utility_module
-  use Constraint_module
+  use Transport_Constraint_module
   
   implicit none
   
@@ -1291,7 +1291,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   use Input_Aux_module
   use String_module  
   use Utility_module
-  use Constraint_module
+  use Transport_Constraint_module
   use EOS_Water_module
   use Material_Aux_class
 
@@ -2008,7 +2008,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   use Option_module
   use Input_Aux_module
   use String_module
-  use Constraint_module
+  use Transport_Constraint_module
 
   implicit none
   
@@ -2714,7 +2714,7 @@ subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
   use Option_module
   use Input_Aux_module
   use String_module
-  use Constraint_module
+  use Transport_Constraint_module
 
   implicit none
   

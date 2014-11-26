@@ -1,8 +1,8 @@
-module Unstructured_Polyhedra_module
+module Grid_Unstructured_Polyhedra_module
 
   use Geometry_module
-  use Unstructured_Grid_Aux_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Aux_module
+  use Grid_Unstructured_Cell_module
   use PFLOTRAN_Constants_module
 
   implicit none
@@ -487,7 +487,7 @@ subroutine UGridPolyhedraDecompose(ugrid, option)
   use Input_Aux_module
   use Option_module
   use String_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Cell_module
   use Utility_module, only: reallocateIntArray, SearchOrderedArray
 
   implicit none
@@ -1439,7 +1439,7 @@ function UGridPolyhedraComputeInternConnect(ugrid, grid_x, &
 
   use Connection_module
   use Option_module
-  use Unstructured_Grid_module
+  use Grid_Unstructured_module
   use Utility_module, only : DotProduct, CrossProduct
 
   implicit none
@@ -2073,7 +2073,7 @@ subroutine UGridPolyhedraPopulateConnection(ugrid, connection, iface_cell, &
   use Connection_module
   use Utility_module, only : DotProduct
   use Option_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Cell_module
   
   implicit none
   
@@ -2467,4 +2467,4 @@ subroutine UGridPolyhedraComputeOutputInfo(ugrid, nL2G, nG2L, nG2A, option)
 
 end subroutine UGridPolyhedraComputeOutputInfo
 
-end module Unstructured_Polyhedra_module
+end module Grid_Unstructured_Polyhedra_module

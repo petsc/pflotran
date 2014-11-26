@@ -1,8 +1,8 @@
-module Database_module
+module Reaction_Database_module
 
   use Reaction_module
   use Reaction_Aux_module
-  use Database_Aux_module
+  use Reaction_Database_Aux_module
 
   use PFLOTRAN_Constants_module
 
@@ -34,13 +34,13 @@ subroutine DatabaseRead(reaction,option)
   use Input_Aux_module
   use String_module
   
-  use Surface_Complexation_Aux_module
-  use Mineral_Aux_module
-  use Mineral_module
-  use Microbial_Aux_module
-  use Microbial_module
-  use Immobile_Aux_module
-  use Immobile_module
+  use Reaction_Surface_Complexation_Aux_module
+  use Reaction_Mineral_Aux_module
+  use Reaction_Mineral_module
+  use Reaction_Microbial_Aux_module
+  use Reaction_Microbial_module
+  use Reaction_Immobile_Aux_module
+  use Reaction_Immobile_module
   
   implicit none
   
@@ -781,13 +781,13 @@ subroutine BasisInit(reaction,option)
   use Utility_module
   use Input_Aux_module
   
-  use Surface_Complexation_Aux_module
-  use Mineral_Aux_module
-  use Microbial_Aux_module
-  use Immobile_Aux_module
+  use Reaction_Surface_Complexation_Aux_module
+  use Reaction_Mineral_Aux_module
+  use Reaction_Microbial_Aux_module
+  use Reaction_Immobile_Aux_module
   
 #ifdef SOLID_SOLUTION  
-  use Solid_Solution_module
+  use Reaction_Solid_Solution_module
 #endif
   use Reaction_Sandbox_module
   use CLM_Rxn_module
@@ -3954,8 +3954,8 @@ subroutine BasisPrint(reaction,title,option)
 
   use Option_module
   use Reaction_module
-  use Surface_Complexation_Aux_module
-  use Mineral_Aux_module
+  use Reaction_Surface_Complexation_Aux_module
+  use Reaction_Mineral_Aux_module
 
   implicit none
   
@@ -4239,4 +4239,4 @@ subroutine BasisPrint(reaction,title,option)
 
 end subroutine BasisPrint
 
-end module Database_module
+end module Reaction_Database_module

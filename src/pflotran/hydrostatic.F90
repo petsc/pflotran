@@ -32,7 +32,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   use Condition_module
   use Connection_module
   use Region_module
-  use Structured_Grid_module
+  use Grid_Structured_module
   use Utility_module, only : DotProduct
   use Dataset_Gridded_HDF5_class
   use Dataset_Ascii_class

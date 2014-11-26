@@ -1,6 +1,6 @@
-module Microbial_Aux_module
+module Reaction_Microbial_Aux_module
   
-  use Database_Aux_module
+  use Reaction_Database_Aux_module
 
   use PFLOTRAN_Constants_module
 
@@ -470,4 +470,4 @@ subroutine MicrobialDestroy(microbial)
 
 end subroutine MicrobialDestroy
 
-end module Microbial_Aux_module
+end module Reaction_Microbial_Aux_module

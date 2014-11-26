@@ -1,7 +1,7 @@
-module Surf_Subsurf_Simulation_class
+module Simulation_Surf_Subsurf_class
 
-  use Surface_Simulation_class
-  use Subsurface_Simulation_class
+  use Simulation_Surface_class
+  use Simulation_Subsurface_class
   use Regression_module
   use Option_module
   use PMC_Base_class
@@ -300,4 +300,4 @@ subroutine SurfSubsurfaceSimulationDestroy(simulation)
   
 end subroutine SurfSubsurfaceSimulationDestroy
 
-end module Surf_Subsurf_Simulation_class
+end module Simulation_Surf_Subsurf_class

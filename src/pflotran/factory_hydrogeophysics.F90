@@ -1,6 +1,6 @@
 module Factory_Hydrogeophysics_module
 
-  use Hydrogeophysics_Simulation_class
+  use Simulation_Hydrogeophysics_class
   
   use PFLOTRAN_Constants_module
 
@@ -25,7 +25,7 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
   ! 
 
   use Option_module
-  use Hydrogeophysics_Wrapper_module
+  use Wrapper_Hydrogeophysics_module
   use Input_Aux_module
   use Simulation_Base_class 
   use Discretization_module

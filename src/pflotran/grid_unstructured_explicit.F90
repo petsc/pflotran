@@ -1,7 +1,7 @@
-module Unstructured_Explicit_module
+module Grid_Unstructured_Explicit_module
   
   use Geometry_module
-  use Unstructured_Grid_Aux_module
+  use Grid_Unstructured_Aux_module
   
   use PFLOTRAN_Constants_module
 
@@ -1434,4 +1434,4 @@ function UGridExplicitSetConnections(explicit_grid,cell_ids,connection_type, &
 
 end function UGridExplicitSetConnections
 
-end module Unstructured_Explicit_module
+end module Grid_Unstructured_Explicit_module
