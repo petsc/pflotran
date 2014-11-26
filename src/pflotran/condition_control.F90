@@ -393,7 +393,7 @@ subroutine CondControlAssignTranInitCond(realization)
   use Field_module
   use Coupler_module
   use Condition_module
-  use Constraint_module
+  use Transport_Constraint_module
   use Grid_module
   use Dataset_Base_class
   use Patch_module

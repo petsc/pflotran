@@ -1,7 +1,7 @@
 module Geomechanics_Grid_module
 
   use Geomechanics_Grid_Aux_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Cell_module
   use PFLOTRAN_Constants_module
 
   implicit none
@@ -45,7 +45,7 @@ contains
 ! ************************************************************************** !
 subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
                                         
-  use Unstructured_Grid_Aux_module
+  use Grid_Unstructured_Aux_module
   use Geomechanics_Grid_Aux_module
   use Option_module
   use Gauss_module
@@ -1078,7 +1078,7 @@ subroutine GeomechSubsurfMapFromFileId(grid,input,option)
   use Option_module
   use Utility_module
   use Logging_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Cell_module
   
   implicit none
   

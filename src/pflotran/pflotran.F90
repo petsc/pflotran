@@ -40,12 +40,12 @@ program pflotran
   use Option_module
   use Simulation_Base_class
   use Multi_Simulation_module
-  use PFLOTRAN_Factory_module
-  use Subsurface_Factory_module
-  use Hydrogeophysics_Factory_module
-  use Surface_Factory_module
-  use Surf_Subsurf_Factory_module
-  use Geomechanics_Factory_module
+  use Factory_PFLOTRAN_module
+  use Factory_Subsurface_module
+  use Factory_Hydrogeophysics_module
+  use Factory_Surface_module
+  use Factory_Surf_Subsurf_module
+  use Factory_Geomechanics_module
   use PFLOTRAN_Constants_module
   use Output_Aux_module, only : INSTANTANEOUS_VARS
   use PFLOTRAN_Provenance_module, only : PrintProvenanceToScreen

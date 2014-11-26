@@ -324,7 +324,7 @@ subroutine CLM_CN_Map(this,reaction,option)
   use Reaction_Aux_module, only : reaction_type
   use Option_module
   use String_module
-  use Immobile_Aux_module
+  use Reaction_Immobile_Aux_module
   
   implicit none
 

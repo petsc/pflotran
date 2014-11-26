@@ -145,7 +145,7 @@ contains
     PetscReal :: density
 
     call EOSWaterDensity(temperature, pressure, density, dum1, ierr)
-    @assertEqual(density, stp_density, 1.0d-16)
+    @assertEqual(stp_density, density,  1.0d-16)
 
   end subroutine testEOSWater_DensitySTP
 

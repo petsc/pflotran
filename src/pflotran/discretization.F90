@@ -1,11 +1,11 @@
 module Discretization_module
 
   use Grid_module
-  use Structured_Grid_module
-  use Unstructured_Grid_module
-  use Unstructured_Grid_Aux_module
-  use Unstructured_Explicit_module
-  use Unstructured_Polyhedra_module
+  use Grid_Structured_module
+  use Grid_Unstructured_module
+  use Grid_Unstructured_Aux_module
+  use Grid_Unstructured_Explicit_module
+  use Grid_Unstructured_Polyhedra_module
   use DM_Kludge_module
 
   use PFLOTRAN_Constants_module

@@ -91,8 +91,8 @@ subroutine PMSubsurfaceInit(this)
   ! Date: 04/21/14
 
   use Discretization_module
-  use Structured_Communicator_class
-  use Unstructured_Communicator_class
+  use Communicator_Structured_class
+  use Communicator_Unstructured_class
   use Grid_module 
 
   implicit none

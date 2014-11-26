@@ -909,7 +909,7 @@ subroutine WriteObservationDataForCoord(fid,realization_base,region)
   use Reaction_Aux_module
   use Variables_module
   
-  use Structured_Grid_module
+  use Grid_Structured_module
 
   implicit none
   

@@ -7,7 +7,7 @@ module Realization_class
   use Input_Aux_module
   use Region_module
   use Condition_module
-  use Constraint_module
+  use Transport_Constraint_module
   use Material_module
   use Saturation_Function_module
   use Characteristic_Curves_module
@@ -180,16 +180,16 @@ subroutine RealizationCreateDiscretization(realization)
   ! 
 
   use Grid_module
-  use Unstructured_Grid_Aux_module
-  use Unstructured_Grid_module, only : UGridEnsureRightHandRule
-  use Structured_Grid_module, only : StructGridCreateTVDGhosts
+  use Grid_Unstructured_Aux_module
+  use Grid_Unstructured_module, only : UGridEnsureRightHandRule
+  use Grid_Structured_module, only : StructGridCreateTVDGhosts
   use Coupler_module
   use Discretization_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Cell_module
   use DM_Kludge_module
   use Variables_module, only : VOLUME
-  use Structured_Communicator_class, only : StructuredCommunicatorCreate
-  use Unstructured_Communicator_class, only : UnstructuredCommunicatorCreate
+  use Communicator_Structured_class, only : StructuredCommunicatorCreate
+  use Communicator_Unstructured_class, only : UnstructuredCommunicatorCreate
   
   implicit none
   
@@ -876,7 +876,7 @@ subroutine RealProcessTranConditions(realization)
 
   use String_module
   use Reaction_module
-  use Constraint_module
+  use Transport_Constraint_module
   
   implicit none
   

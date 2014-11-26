@@ -253,7 +253,7 @@ function RegionCreateWithRegion(region)
   ! Date: 02/22/08
   ! 
 
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Cell_module
 
   implicit none
   
@@ -402,7 +402,7 @@ subroutine RegionRead(region,input,option)
   use Input_Aux_module
   use String_module
   use Option_module
-  use Structured_Grid_module
+  use Grid_Structured_module
   
   implicit none
   
@@ -573,7 +573,7 @@ subroutine RegionReadFromFileId(region,input,option)
   use Option_module
   use Utility_module
   use Logging_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Cell_module
   
   implicit none
   

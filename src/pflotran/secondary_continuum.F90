@@ -494,7 +494,7 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
   ! 
   
   use Coupler_module
-  use Constraint_module
+  use Transport_Constraint_module
   use Condition_module
   use Global_Aux_module
   use Material_module

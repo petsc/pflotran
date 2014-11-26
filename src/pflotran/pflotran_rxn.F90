@@ -60,7 +60,7 @@ subroutine BatchChemInitializeReactions(option, input, reaction)
 
   use Reaction_module
   use Reaction_Aux_module
-  use Database_module
+  use Reaction_Database_module
   use Option_module
   use Input_Aux_module
   use String_module
@@ -116,11 +116,11 @@ subroutine BatchChemProcessConstraints(option, input, reaction, &
 
   use Reaction_module
   use Reaction_Aux_module
-  use Database_module
+  use Reaction_Database_module
   use Reactive_Transport_Aux_module
   use Global_Aux_module
   use Material_Aux_class
-  use Constraint_module
+  use Transport_Constraint_module
   use Option_module
   use Input_Aux_module
   use String_module
@@ -250,12 +250,12 @@ program pflotran_rxn
   use Reactive_Transport_Aux_module
   use Global_Aux_module
   use Material_Aux_class
-  use Database_module
+  use Reaction_Database_module
   use Option_module
   use Input_Aux_module
   use String_module
   
-  use Constraint_module
+  use Transport_Constraint_module
   use PFLOTRAN_Constants_module
 
   use BatchChem

@@ -493,7 +493,7 @@ subroutine GeomechForceResidualPatch(snes,xx,r,geomech_realization,ierr)
   use Geomechanics_Patch_module
   use Geomechanics_Grid_Aux_module
   use Geomechanics_Grid_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Cell_module
   use Geomechanics_Region_module
   use Geomechanics_Coupler_module
   use Option_module
@@ -791,7 +791,7 @@ subroutine GeomechForceLocalElemResidual(size_elenodes,local_coordinates,local_d
   ! Date: 06/24/13
   ! 
                                          
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Cell_module
   use Shape_Function_module
   use Option_module
   use Utility_module
@@ -940,7 +940,7 @@ end subroutine GeomechForceLocalElemResidual
 subroutine GeomechForceLocalElemError(size_elenodes,local_coordinates,local_disp, &
                                       eletype,dim,r,w,error_L2,error_H1,option)
                                          
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Cell_module
   use Shape_Function_module
   use Option_module
   use Utility_module
@@ -1092,7 +1092,7 @@ subroutine GeomechForceLocalElemJacobian(size_elenodes,local_coordinates,local_d
   ! Date: 06/24/13
   ! 
                                          
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Cell_module
   use Shape_Function_module
   use Option_module
   use Utility_module
@@ -1349,7 +1349,7 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,geomech_realization,ierr)
   use Geomechanics_Debug_module
   use Geomechanics_Discretization_module
   use Option_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Cell_module
   use Geomechanics_Region_module
   use Geomechanics_Auxiliary_module
       
@@ -1869,7 +1869,7 @@ subroutine GeomechForceStressStrain(geomech_realization)
   use Geomechanics_Patch_module
   use Geomechanics_Grid_Aux_module
   use Geomechanics_Grid_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Cell_module
   use Geomechanics_Region_module
   use Geomechanics_Coupler_module
   use Option_module
@@ -2052,7 +2052,7 @@ subroutine GeomechForceLocalElemStressStrain(size_elenodes,local_coordinates, &
   ! Date: 09/17/13
   ! 
                                          
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Cell_module
   use Shape_Function_module
   use Option_module
   use Utility_module

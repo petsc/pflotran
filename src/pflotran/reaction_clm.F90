@@ -724,7 +724,7 @@ subroutine CLMDec_Setup(this,reaction,option)
   use Reaction_Aux_module
   use Option_module
   use String_module
-  use Immobile_Aux_module
+  use Reaction_Immobile_Aux_module
   use Utility_module, only : DeallocateArray
   
   implicit none
@@ -3270,7 +3270,7 @@ subroutine PlantNSetup(this,reaction,option)
 
   use Reaction_Aux_module
   use Option_module
-  use Immobile_Aux_module
+  use Reaction_Immobile_Aux_module
 
   implicit none
   
@@ -3336,7 +3336,7 @@ subroutine PlantNReact(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
 
   use Option_module
   use Reaction_Aux_module
-  use Immobile_Aux_module
+  use Reaction_Immobile_Aux_module
   use Material_Aux_class, only : material_auxvar_type
 
   implicit none
@@ -3855,7 +3855,7 @@ subroutine NitrSetup(this,reaction,option)
 
   use Reaction_Aux_module, only : reaction_type, GetPrimarySpeciesIDFromName
   use Option_module
-  use Immobile_Aux_module, only : GetImmobileSpeciesIDFromName 
+  use Reaction_Immobile_Aux_module, only : GetImmobileSpeciesIDFromName 
 
   implicit none
   
@@ -4391,7 +4391,7 @@ subroutine DeniSetup(this,reaction,option)
 
   use Reaction_Aux_module, only : reaction_type, GetPrimarySpeciesIDFromName
   use Option_module
-  use Immobile_Aux_module, only : GetImmobileSpeciesIDFromName 
+  use Reaction_Immobile_Aux_module, only : GetImmobileSpeciesIDFromName 
 
   implicit none
   

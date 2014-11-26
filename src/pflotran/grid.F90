@@ -1,9 +1,9 @@
 module Grid_module
 
-  use Structured_Grid_module
-  use Unstructured_Grid_module
-  use Unstructured_Grid_Aux_module
-  use Unstructured_Polyhedra_module
+  use Grid_Structured_module
+  use Grid_Unstructured_module
+  use Grid_Unstructured_Aux_module
+  use Grid_Unstructured_Polyhedra_module
   use Connection_module
  
   use PFLOTRAN_Constants_module
@@ -184,8 +184,8 @@ subroutine GridComputeInternalConnect(grid,option,ugdm)
 
   use Connection_module
   use Option_module
-  use Unstructured_Explicit_module
-  use Unstructured_Polyhedra_module
+  use Grid_Unstructured_Explicit_module
+  use Grid_Unstructured_Polyhedra_module
     
   implicit none
   
@@ -246,7 +246,7 @@ subroutine GridPopulateConnection(grid,connection,iface,iconn,cell_id_local, &
   ! 
 
   use Connection_module
-  use Structured_Grid_module
+  use Grid_Structured_module
   use Option_module
   
   implicit none
@@ -357,8 +357,8 @@ subroutine GridComputeCoordinates(grid,origin_global,option,ugdm)
   ! 
 
   use Option_module
-  use Unstructured_Explicit_module
-  use Unstructured_Polyhedra_module
+  use Grid_Unstructured_Explicit_module
+  use Grid_Unstructured_Polyhedra_module
   
   implicit none
 
@@ -453,8 +453,8 @@ subroutine GridComputeVolumes(grid,volume,option)
   ! 
 
   use Option_module
-  use Unstructured_Explicit_module
-  use Unstructured_Polyhedra_module
+  use Grid_Unstructured_Explicit_module
+  use Grid_Unstructured_Polyhedra_module
   
   implicit none
 

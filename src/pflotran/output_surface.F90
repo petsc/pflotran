@@ -168,7 +168,7 @@ subroutine OutputTecplotFEQUAD(surf_realization,realization)
   use Realization_class, only : realization_type
   use Discretization_module
   use Grid_module
-  use Unstructured_Grid_Aux_module
+  use Grid_Unstructured_Aux_module
   use Option_module
   use Surface_Field_module
   use Patch_module
@@ -413,7 +413,7 @@ subroutine WriteTecplotUGridElements(fid, &
 
   use Surface_Realization_class
   use Grid_module
-  use Unstructured_Grid_Aux_module
+  use Grid_Unstructured_Aux_module
   use Option_module
   use Patch_module
   
@@ -495,7 +495,7 @@ subroutine WriteTecplotUGridVertices(fid,surf_realization)
 
   use Surface_Realization_class
   use Grid_module
-  use Unstructured_Grid_Aux_module
+  use Grid_Unstructured_Aux_module
   use Option_module
   use Patch_module
   use Variables_module
@@ -1012,7 +1012,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF(surf_realization,realization, &
   use Realization_class
   use Grid_module
   use Option_module
-  use Unstructured_Grid_Aux_module
+  use Grid_Unstructured_Aux_module
   use Variables_module
   
   implicit none
@@ -1805,8 +1805,8 @@ subroutine OutputSurfaceGetFlowrates(surf_realization)
   use Patch_module
   use Grid_module
   use Option_module
-  use Unstructured_Grid_Aux_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Aux_module
+  use Grid_Unstructured_Cell_module
   use Variables_module
   use Connection_module
   use Coupler_module
@@ -2017,8 +2017,8 @@ subroutine WriteHDF5SurfaceFlowratesUGrid(surf_realization,file_id,var_list_type
   use Patch_module
   use Grid_module
   use Option_module
-  use Unstructured_Grid_Aux_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Aux_module
+  use Grid_Unstructured_Cell_module
   use Variables_module
   use Connection_module
   use Coupler_module

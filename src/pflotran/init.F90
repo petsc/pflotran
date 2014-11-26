@@ -47,8 +47,8 @@ subroutine Init(simulation)
   use Patch_module
 ! use Mass_Balance_module
   use Logging_module  
-  use Database_module
-  use Database_hpt_module
+  use Reaction_Database_module
+  use Reaction_Database_hpt_module
   use Input_Aux_module
   use Condition_Control_module
   use Subsurface_module
@@ -84,7 +84,7 @@ subroutine Init(simulation)
                                   SurfaceInitReadRegionFiles
   use Surface_Realization_class
   use Surface_TH_module
-  use Unstructured_Grid_module
+  use Grid_Unstructured_module
 
   use Geomechanics_Realization_class
   use Geomechanics_Init_module, only : GeomechicsInitReadRequiredCards, &
@@ -1369,8 +1369,8 @@ subroutine InitReadInput(simulation)
   use Option_module
   use Field_module
   use Grid_module
-  use Unstructured_Grid_Aux_module
-  use Structured_Grid_module
+  use Grid_Unstructured_Aux_module
+  use Grid_Structured_module
   use Solver_module
   use Material_module
   use Saturation_Function_module  
@@ -1383,7 +1383,7 @@ subroutine InitReadInput(simulation)
   use Timestepper_module
   use Region_module
   use Condition_module
-  use Constraint_module
+  use Transport_Constraint_module
   use Coupler_module
   use Strata_module
   use Observation_module
@@ -1398,7 +1398,7 @@ subroutine InitReadInput(simulation)
   use String_module
   use Units_module
   use Uniform_Velocity_module
-  use Mineral_module
+  use Reaction_Mineral_module
   use Regression_module
   use Output_Aux_module
   use Output_Tecplot_module
@@ -1413,7 +1413,7 @@ subroutine InitReadInput(simulation)
   use Geomechanics_Init_module, only : GeomechanicsInitReadInput
   use Geomechanics_Realization_class
 #ifdef SOLID_SOLUTION
-  use Solid_Solution_module, only : SolidSolutionReadFromInputFile
+  use Reaction_Solid_Solution_module, only : SolidSolutionReadFromInputFile
 #endif
  
   implicit none

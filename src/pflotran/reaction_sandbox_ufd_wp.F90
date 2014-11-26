@@ -156,7 +156,7 @@ subroutine WastePackageSetup(this,reaction,option)
   ! 
 
   use Reaction_Aux_module, only : reaction_type, GetPrimarySpeciesIDFromName
-  use Immobile_Aux_module, only : GetImmobileSpeciesIDFromName
+  use Reaction_Immobile_Aux_module, only : GetImmobileSpeciesIDFromName
   use Option_module
 
   implicit none
