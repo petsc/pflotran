@@ -1589,8 +1589,18 @@ subroutine InitReadInput(simulation)
           case default
             option%io_buffer = 'Cannot identify the specificed ice model.' // &
              'Specify PAINTER_EXPLICIT or PAINTER_KARRA_IMPLICIT' // &
-             ' or PAINTER_KARRA_EXPLICIT.'
+             ' or PAINTER_KARRA_EXPLICIT or PAINTER_KARRA_EXPLICIT_NOCRYO ' //
+             ' or DALL_AMICO.'
+            call printErrMsg(option)
           end select
+
+!....................
+      case ('ONLY_VERTICAL_FLOW')
+        option%flow%only_vertical_flow = PETSC_TRUE
+        if (option%iflowmode /= TH_MODE) then
+          option%io_buffer = 'ONLY_VERTICAL_FLOW implemented in TH_MODE'
+          call printErrMsg(option)
+        endif
 
 !....................
       case ('RELATIVE_PERMEABILITY_AVERAGE')

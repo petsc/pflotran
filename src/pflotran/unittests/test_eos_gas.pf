@@ -106,8 +106,8 @@ contains
     character(len=MAXSTRINGLENGTH) :: error_string
 
     PetscReal, parameter :: correct_density = 7.7058223852792929d-2
-    PetscReal, parameter :: correct_dden_dp = -2.5984900978854474d-4
-    PetscReal, parameter :: correct_dden_dt = 4.0556959922522593d-7
+    PetscReal, parameter :: correct_dden_dt = -2.5984900978854474d-4
+    PetscReal, parameter :: correct_dden_dp = 4.0556959922522593d-7
     PetscReal, parameter :: temperature = 23.4d0
     PetscReal, parameter :: pressure = 1.9d5
     PetscReal :: density
@@ -119,7 +119,7 @@ contains
     call EOSGasVerify(ierr, error_string)
     @assertEqual(0, ierr)
 
-    call EOSGasDensity(temperature, pressure, density, dden_dp, dden_dt, ierr)
+    call EOSGasDensity(temperature, pressure, density, dden_dt, dden_dp, ierr)
     @assertEqual(correct_density, density, 1.0d-16)
     @assertEqual(correct_dden_dp, dden_dp, 1.0d-16)
     @assertEqual(correct_dden_dt, dden_dt, 1.0d-16)
@@ -131,27 +131,59 @@ contains
   @Test
   subroutine testEOSGas_DensityRKS(this)
     ! 
-    ! Add brief description here.
+    ! verify that the EOSGasSetDensity() followed by
+    ! EOSGasDensityRKS() correctly returns the correct_density
+    ! the derivatives are calculated in the Jacobian step.
     !
-    use PFLOTRAN_Constants_module, only : MAXSTRINGLENGTH
+    use PFLOTRAN_Constants_module, only : MAXSTRINGLENGTH, UNINITIALIZED_DOUBLE
 
     implicit none
 
     class (Test_EOS_Gas), intent(inout) :: this
 
-    PetscReal :: dum1
     PetscErrorCode :: ierr
     character(len=MAXSTRINGLENGTH) :: error_string
 
-    PetscReal, parameter :: stp_density = 998.32328795198055d0
-    PetscReal, parameter :: temperature = 20.0d0
-    PetscReal, parameter :: pressure = 101325.0d0
-    PetscReal :: density
+    PetscReal, parameter :: not_calculated_dden_dt = UNINITIALIZED_DOUBLE
+    PetscReal, parameter :: not_calculated_dden_dp = UNINITIALIZED_DOUBLE
+    PetscReal, parameter :: correct_density1 = 7.6980860672855644d-2
+    PetscReal, parameter :: correct_density2 = 0.22973287314555987d0
+    PetscReal, parameter :: correct_density3 = 0.85505760925812935d0
+    PetscReal, parameter :: temperature1 = 23.4d0
+    PetscReal, parameter :: pressure1 = 1.9d5
+    PetscReal, parameter :: temperature2 = 40.01d0
+    PetscReal, parameter :: pressure2 = 6.0d5
+    PetscReal, parameter :: temperature3 = 5.09d0
+    PetscReal, parameter :: pressure3 = 2.0d6
+    PetscReal :: density1
+    PetscReal :: density2
+    PetscReal :: density3
+    PetscReal :: dden_dt
+    PetscReal :: dden_dp
 
-    ! add setup here.
+    call EOSGasSetDensityRKS()
 
-!    call EOSGasDensity(temperature, pressure, density, dum1, ierr)
-!    @assertEqual(stp_density, density, 1.0d-16)
+    call EOSGasVerify(ierr, error_string)
+    @assertEqual(0, ierr)
+
+    call EOSGasDensity(temperature1, pressure1, density1, &
+                       dden_dt, dden_dp, ierr)
+
+    ! The newton iteration within EOSGasDensityRKS tolerance is 1d-10 to
+    ! find the correct volume solution; thus, setting the tolerance to 1d-9.
+    @assertEqual(correct_density1, density1, 1.0d-9)
+
+    ! the derivatives are calculated in the Jacobian step.
+    @assertEqual(not_calculated_dden_dt, dden_dt, 1.0d-16)
+    @assertEqual(not_calculated_dden_dp, dden_dp, 1.0d-16)
+
+    call EOSGasDensity(temperature2, pressure2, density2, &
+                       dden_dt, dden_dp, ierr)
+    @assertEqual(correct_density2, density2, 1.0d-9)
+
+    call EOSGasDensity(temperature3, pressure3, density3, &
+                       dden_dt, dden_dp, ierr)
+    @assertEqual(correct_density3, density3, 1.0d-9)
 
   end subroutine testEOSGas_DensityRKS
 

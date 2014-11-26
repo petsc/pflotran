@@ -344,7 +344,7 @@ contains
          CapillaryPressure(liquid_saturation, &
                            capillary_pressure, this%option)
     string = 'Brooks-Corey capillary pressure as a function of ' // &
-             'saturation well within polynomial fit'
+             'liquid saturation barely within polynomial fit'
     value = 54.068777590990067d0
     @assertEqual(value, capillary_pressure, dabs(value)*tolerance, string)
 
@@ -359,7 +359,7 @@ contains
          CapillaryPressure(liquid_saturation, &
                            capillary_pressure, this%option)
     string = 'Brooks-Corey capillary pressure as a function of ' // &
-             'saturation well within polynomial fit'
+             'liquid saturation well within polynomial fit'
     value = 106436.99642977261d0
     @assertEqual(value, capillary_pressure, dabs(value)*tolerance, string)
 
@@ -373,8 +373,8 @@ contains
     call this%cc_bcb%saturation_function% &
          CapillaryPressure(liquid_saturation, &
                            capillary_pressure, this%option)
-    string = 'Brooks-Corey  capillary pressure as a function of ' // &
-             'saturation well within polynomial fit'
+    string = 'Brooks-Corey capillary pressure as a function of ' // &
+             'liquid saturation above within polynomial fit'
     value = 109024.42772683989d0
     @assertEqual(value, capillary_pressure, dabs(value)*tolerance, string)
 
