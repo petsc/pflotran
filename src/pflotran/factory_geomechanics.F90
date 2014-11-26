@@ -1,4 +1,4 @@
-module Geomechanics_Factory_module
+module Factory_Geomechanics_module
 
   use Geomechanics_Simulation_class
   use PFLOTRAN_Constants_module
@@ -65,7 +65,7 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
   use Simulation_module
   use Simulation_Aux_module
   use Subsurface_Simulation_class
-  use Subsurface_Factory_module
+  use Factory_Subsurface_module
 
   implicit none
 #include "finclude/petscvec.h"
@@ -460,4 +460,4 @@ end subroutine HijackTimestepper
 !! date: 01/01/14
 ! ************************************************************************** !
 
-end module Geomechanics_Factory_module
+end module Factory_Geomechanics_module

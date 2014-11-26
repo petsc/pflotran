@@ -1,4 +1,4 @@
-module Surface_Factory_module
+module Factory_Surface_module
 
   use Surface_Simulation_class
 
@@ -425,4 +425,4 @@ subroutine HijackTimestepper(timestepper_old,stepper_base)
   
 end subroutine HijackTimestepper
 
-end module Surface_Factory_module
+end module Factory_Surface_module

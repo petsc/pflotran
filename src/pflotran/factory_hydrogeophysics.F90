@@ -1,4 +1,4 @@
-module Hydrogeophysics_Factory_module
+module Factory_Hydrogeophysics_module
 
   use Hydrogeophysics_Simulation_class
   
@@ -318,7 +318,7 @@ subroutine HydrogeophysicsInitPostPetsc(simulation, option)
   ! 
 
   use Simulation_module
-  use Subsurface_Factory_module
+  use Factory_Subsurface_module
   use PMC_Hydrogeophysics_class
   use Option_module
   use Logging_module
@@ -383,4 +383,4 @@ subroutine HydrogeoInitCommandLineSettings(option)
   
 end subroutine HydrogeoInitCommandLineSettings
 
-end module Hydrogeophysics_Factory_module
+end module Factory_Hydrogeophysics_module

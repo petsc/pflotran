@@ -1,4 +1,4 @@
-module Surf_Subsurf_Factory_module
+module Factory_Surf_Subsurf_module
 
   use Surf_Subsurf_Simulation_class
 
@@ -57,8 +57,8 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
   use Simulation_module
   use Surface_Simulation_class
   use Subsurface_Simulation_class
-  use Surface_Factory_module
-  use Subsurface_Factory_module
+  use Factory_Surface_module
+  use Factory_Subsurface_module
   use Option_module
   use Init_module
   use Surface_Flow_module
@@ -801,4 +801,4 @@ subroutine SurfSubsurfInitCommandLineSettings(option)
   
 end subroutine SurfSubsurfInitCommandLineSettings
 
-end module Surf_Subsurf_Factory_module
+end module Factory_Surf_Subsurf_module

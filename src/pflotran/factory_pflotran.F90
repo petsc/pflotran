@@ -1,4 +1,4 @@
-module PFLOTRAN_Factory_module
+module Factory_PFLOTRAN_module
 
   use PFLOTRAN_Constants_module
 
@@ -184,4 +184,4 @@ subroutine PFLOTRANInitCommandLineSettings(option)
 
 end subroutine PFLOTRANInitCommandLineSettings
 
-end module PFLOTRAN_Factory_module
+end module Factory_PFLOTRAN_module

@@ -1,4 +1,4 @@
-module Structured_Communicator_class
+module Communicator_Structured_class
 
   use Communicator_Base_module
   use Structured_Grid_module  
@@ -234,4 +234,4 @@ subroutine StructuredCommunicatorDestroy(this)
   
 end subroutine StructuredCommunicatorDestroy
 
-end module Structured_Communicator_class
+end module Communicator_Structured_class

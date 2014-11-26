@@ -1,4 +1,4 @@
-module Unstructured_Communicator_class
+module Communicator_Unstructured_class
 
   use Communicator_Base_module
   use Unstructured_Grid_module
@@ -258,4 +258,4 @@ subroutine UnstructuredCommunicatorDestroy(this)
   
 end subroutine UnstructuredCommunicatorDestroy
 
-end module Unstructured_Communicator_class
+end module Communicator_Unstructured_class

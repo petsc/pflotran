@@ -188,8 +188,8 @@ subroutine RealizationCreateDiscretization(realization)
   use Unstructured_Cell_module
   use DM_Kludge_module
   use Variables_module, only : VOLUME
-  use Structured_Communicator_class, only : StructuredCommunicatorCreate
-  use Unstructured_Communicator_class, only : UnstructuredCommunicatorCreate
+  use Communicator_Structured_class, only : StructuredCommunicatorCreate
+  use Communicator_Unstructured_class, only : UnstructuredCommunicatorCreate
   
   implicit none
   

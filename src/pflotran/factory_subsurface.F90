@@ -1,4 +1,4 @@
-module Subsurface_Factory_module
+module Factory_Subsurface_module
 
   use Subsurface_Simulation_class
   
@@ -610,4 +610,4 @@ subroutine HijackTimestepper(timestepper_old,timestepper_base)
   
 end subroutine HijackTimestepper
 
-end module Subsurface_Factory_module
+end module Factory_Subsurface_module
