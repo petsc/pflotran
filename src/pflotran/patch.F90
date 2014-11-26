@@ -4441,6 +4441,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
       value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
                                      VOLUME)
     case(RESIDUAL)
+      local_id = grid%nG2L(ghosted_id)
       call VecGetArrayF90(field%flow_r,vec_ptr2,ierr);CHKERRQ(ierr)
       value = vec_ptr2((local_id-1)*option%nflowdof+isubvar)
       call VecRestoreArrayF90(field%flow_r,vec_ptr2,ierr);CHKERRQ(ierr)
