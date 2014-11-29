@@ -463,12 +463,12 @@ al., 1974)
 where $\kappa_{\rm dry}$ and $\kappa_{\rm sat}$ are dry and fully saturated rock thermal conductivities. 
 
 
-\subsection{Mode: {\tt THC} (Thermal-Hydrologic-Chemical)}
+\subsection{Mode: {\tt TH} (Thermal-Hydrologic)}
 
-The current implementation of the {\tt THC} mode applies only to mass and energy conservation equations and a single tracer ($i=1$ in Eqn.\eqref{thc} below) which are solved fully coupled. The conservation equation for the tracer is coupled to the mass and energy equations through the Darcy velocity $\bq$, saturation $s$, temperature $T$ and pressure $P$. However, for fluid density only a function of $T$ and $P$, the mass and energy conservation equations are not coupled to the tracer equation and, therefore, they could be solved independently from the tracer equation although this is not done in the {\tt THC} mode. Future generalizations of the {\tt THC} mode will include multicomponent variable density fluids.
-In the current implementation the THC equations may be coupled to the reactive transport mode (see Section \ref{sec:chem}).
+The current implementation of the {\tt TH} mode applies to mass and energy conservation equations which are solved fully coupled. The fluid density only a function of $T$ and $P$. Future generalizations of the {\tt TH} mode will include multicomponent variable density fluids.
+The TH equations may be coupled to the reactive transport mode (see Section \ref{sec:chem}).
 
-{\tt THC} mode applies to single phase, variably saturated, nonisothermal systems
+{\tt TH} mode applies to single phase, variably saturated, nonisothermal systems
 with incorporation of density variations coupled to fluid flow. 
 The governing equations for mass and energy are given by
 \EQ\label{masseqn}
@@ -478,12 +478,7 @@ and
 \EQ
 \frac{\p}{\p t}\big(\varphi s\rho U + (1-\varphi) \rho_p c_p T\big) + \bnabla\cdot\big(\rho\bq H -\kappa \bnabla T\big) = Q_e,
 \EN
-coupled to nonreactive solute transport equations representing e.g. NaCl with the form
-\EQ\label{thc}
-\frac{\p}{\p t} \varphi s \rho x_i + \bnabla\cdot\big(\bq \rho x_i -\varphi D \rho\bnabla x_i\big) \eq Q_i,
-\EN
-with mole fraction $x_i$, source term $Q_i$, and diffusion/dispersion coefficient $D$. 
-In these equations the Darcy flow velocity $\bq$ is given by
+The Darcy flow velocity $\bq$ is given by
 \EQ
 \bq = -\frac{kk_r}{\mu}\bnabla\left(P-W\rho g z\right).
 \EN
@@ -491,6 +486,7 @@ Here, $\varphi$ denotes porosity, $s$ saturation, $\rho$ mixture density of the 
 \EQ
 U \eq H -\frac{P}{\rho}.
 \EN
+\begin{comment}
 The mean formula weight $W$ is related to the fluid composition by
 \EQ
 W \eq \sum_i W_i x_i.
@@ -500,23 +496,24 @@ Summing this equation over all components $i$ using $\sum_ix_i=1$, leads to Eqn.
 Q_w \eq \sum_i Q_i.
 \EN
 Additional constitutive relations are needed to close the set of governing equations.
- 
-%\subsubsection{Thermal Conductivity} 
- 
+\end{comment}
 Thermal conductivity is determined from the equation (Somerton et al., 1974)  
 \EQ\label{cond1} 
 \kappa \eq \kappa_{\rm dry} + \sqrt{s_l^{}} (\kappa_{\rm sat} - \kappa_{\rm dry}), 
 \EN 
 where $\kappa_{\rm dry}$ and $\kappa_{\rm sat}$ are dry and fully saturated rock thermal conductivities. 
 
-\subsubsection{Modeling with ice}
-In PFLOTRAN, to model with ice and water vapor, one must compile with the option \texttt{ice=1}. The formulation used involves solving a modified Richard's equation coupled with energy balance equation (in \texttt{THC} mode, the tracer transport equation is also solved). This formulation is different from Painter 2011, where a multiphase approach was used and mass balance for air was also solved for. In this formulation, we do not track the movement of air, and hence we do not consider the mass balance for air. The balance of mass and energy for the water component that can be in three phases (liquid, gas, ice) are given by
+\subsubsection{Modeling with Ice}
+In PFLOTRAN, to model with ice and water vapor, one must compile with the option \texttt{ice=1}. The formulation used involves solving a modified Richard's equation coupled with energy balance equation. This formulation is different from Painter 2011, where a multiphase approach was used and mass balance for air was also solved for. In this formulation, we do not track the movement of air, and hence we do not consider the mass balance for air. The balance of mass and energy for the water component that can be in three phases (liquid, gas, ice) are given by
 \SEQ
 \BA
-& \pfx{}{t}\left[ \phi \left( s_l \eta_l X_w^l + s_g \eta_g X_w^g + s_i \eta_i X_w^i \right) \right] + \boldsymbol{\nabla} \cdot \left[X_w^l \boldsymbol{v}_l \eta_l + X_w^g \eta_g \boldsymbol{v}_g \right] - \boldsymbol{\nabla} \cdot \left[\phi s_g \tau_g  \eta_g D_g \boldsymbol{\nabla} X^g_w \right] = Q_w, \\
-& \pfx{}{t}\left[ \phi \left( s_l \eta_l U_l + s_g \eta_g U_g + s_i \eta_i U_i \right) + (1- \phi) \rho_r c_r T \right] + \boldsymbol{\nabla} \cdot \left[ \boldsymbol{v}_l \eta_l  H_l+   \boldsymbol{v}_g \eta_gH_g \right] - \boldsymbol{\nabla} \cdot \left[ \kappa \boldsymbol{\nabla} T\right] = Q_e,
+\pfx{}{t} \left[ \phi \left( s_l \eta_l X_w^l + s_g \eta_g X_w^g + s_i \eta_i X_w^i \right) \right] & + \boldsymbol{\nabla} \cdot \left[X_w^l \boldsymbol{v}_l \eta_l + X_w^g \eta_g \boldsymbol{v}_g \right] \nonumber\\
+&- \boldsymbol{\nabla} \cdot \left[\phi s_g \tau_g  \eta_g D_g \boldsymbol{\nabla} X^g_w \right] = Q_w, \\
+\pfx{}{t} \left[ \phi \left( s_l \eta_l U_l + s_g \eta_g U_g + s_i \eta_i U_i \right) + (1- \phi) \rho_r c_r T \right] & + \boldsymbol{\nabla} \cdot \left[ \boldsymbol{v}_l \eta_l  H_l + \boldsymbol{v}_g \eta_gH_g \right] \nonumber\\
+&- \boldsymbol{\nabla} \cdot \left[ \kappa \boldsymbol{\nabla} T\right] = Q_e,
 \EA \label{eq:balance_eqns}
-\SEN where the subscripts $l$, $i$, $g$ denote the liquid, ice and gas phases respectivley; $\phi$ is the porosity; $s_{\alpha}  (\alpha = i, l, g)$, is the saturation of the $\alpha$-th phase; $\eta_{\alpha} (\alpha = i, l, g)$ is the molar density of the $\alpha$-th phase; $\rho_g$, $\rho_l$ are the mass densities of the gas and liquid phases; $Q_w$ is the mass source of H$_2$O;  $X_w^{\alpha} (\alpha = i, l, g)$ is the mole fraction of H$_2$O in the $\alpha$-th phase;   $\tau_g$ is the tortuosity of the gas phase; $D_g$ is the diffusion coefficity in the gas phase;  $T$ is the temperature (assuming all the phases and the rock are in thermal equilibrium); $c_r$ is the specific heat of the rock; $\rho_r$ is the density of the rock; $U_{\alpha} (\alpha = i, l, g)$ is the molar internal energy of the $\alpha$-th phase; $H_{\alpha} (\alpha = l, g)$ is the molar enthalpy of the $\alpha$-the phase; $Q_e$ is the heat source; $\boldsymbol{\nabla}\, (\, )$ is the gradient operator; $\boldsymbol{\nabla}\cdot (\,)$ is the divergence operator. 
+\SEN 
+where the subscripts $l$, $i$, $g$ denote the liquid, ice and gas phases respectivley; $\phi$ is the porosity; $s_{\alpha}  (\alpha = i, l, g)$, is the saturation of the $\alpha$-th phase; $\eta_{\alpha} (\alpha = i, l, g)$ is the molar density of the $\alpha$-th phase; $\rho_g$, $\rho_l$ are the mass densities of the gas and liquid phases; $Q_w$ is the mass source of H$_2$O;  $X_w^{\alpha} (\alpha = i, l, g)$ is the mole fraction of H$_2$O in the $\alpha$-th phase;   $\tau_g$ is the tortuosity of the gas phase; $D_g$ is the diffusion coefficity in the gas phase;  $T$ is the temperature (assuming all the phases and the rock are in thermal equilibrium); $c_r$ is the specific heat of the rock; $\rho_r$ is the density of the rock; $U_{\alpha} (\alpha = i, l, g)$ is the molar internal energy of the $\alpha$-th phase; $H_{\alpha} (\alpha = l, g)$ is the molar enthalpy of the $\alpha$-the phase; $Q_e$ is the heat source; $\boldsymbol{\nabla}\, (\, )$ is the gradient operator; $\boldsymbol{\nabla}\cdot (\,)$ is the divergence operator. 
 
 The Darcy velocity for the gas and liquid phases given as follows:
 \SEQ
@@ -610,7 +607,7 @@ where $D_g^0$ is the reference diffusion coefficient at some reference temperatu
 
 \subsection{Thermal Conduction Multiple Continuum Model}
 
-A thermal conduction model employing a multiple continuum model has been added to MPHASE and THC. The formulation is based on Pruess and Narasimhan (1985) using a integrated finite volume approach to develop equations for fracture and matrix temperatures $T_\a$ and $T_\b$, respectively. The DCDM (dual continuum discrete matrix) model following the classification given in Lichtner (2000) is implemented. In what follows the matrix porosity is assumed to be zero. Using the control volume configuration shown in Figure~\ref{fminc}, with fracture nodes designated by the subscript $n$ and matrix nodes by $m$, the integrated finite volume form of the heat transport equation for the $n$th fracture control volume is given by
+A thermal conduction model employing a multiple continuum model has been added to modes {\bf MPHASE} and {\bf TH}. The formulation is based on Pruess and Narasimhan (1985) using a integrated finite volume approach to develop equations for fracture and matrix temperatures $T_\a$ and $T_\b$, respectively. The DCDM (dual continuum discrete matrix) model following the classification given in Lichtner (2000) is implemented. In what follows the matrix porosity is assumed to be zero. Using the control volume configuration shown in Figure~\ref{fminc}, with fracture nodes designated by the subscript $n$ and matrix nodes by $m$, the integrated finite volume form of the heat transport equation for the $n$th fracture control volume is given by
 \begin{subequations}
 \BA\label{pricont}
 &\Big[\varphi \Big(\sum_\a \big(s_\a\rho_\a U_\a\big)_n^{k+1} - \sum_\a \big(s_\a\rho_\a U_\a\big)_n^{k}\Big) + (1-\varphi)\Big(\big(\rho_r C_r T_\a\big)_n^{k+1} - \big(\rho_r C_r T_\a\big)_n^{k}\Big)\Big] \frac{v_n}{\Delta t} \nonumber\\
@@ -729,11 +726,12 @@ $2\delta$ & $\epsilon$ & $l_m = 2\delta \Big(\dfrac{1}{(1-\epsilon)^{1/3}}-1\Big
 
 In terms of partial differential equations the heat conservation equations may be written as
 \begin{subequations}
-\EQ
-\frac{\p}{\p t} \epsilon \Big[\varphi \sum_\a s_\a \rho_\a U_\a + (1-\varphi) \rho_r C_r T_f\Big] + \bnabla\cdot \Big(\sum_\a \bq_\a \rho_\a H_\a -
+\BA
+\frac{\p}{\p t} \epsilon \Big[\varphi \sum_\a s_\a \rho_\a U_\a + (1-\varphi) \rho_r C_r T_f\Big] &+ \bnabla\cdot \Big(\sum_\a \bq_\a \rho_\a H_\a -
 %\epsilon
-\kappa_f\bnabla T_f\Big) \eq -A_{fm} \kappa_{fm}\frac{\p T_m}{\p n},
-\EN
+\kappa_f\bnabla T_f\Big) \nonumber\\
+&\eq -A_{fm} \kappa_{fm}\frac{\p T_m}{\p n},
+\EA
 and
 \EQ
 \frac{\p}{\p t} \rho_r C_r T_m + \frac{\p}{\p\xi} \Big(-\kappa_m\frac{\p T_m}{\p\xi}\Big) \eq 0,
@@ -1386,8 +1384,53 @@ Also, geomechanics grid is read as an unstructured grid. Even if one needs to wo
 
 \setcounter{equation}{0}
 
-The flow and heat equations (Modes: RICHARDS, MPHASE, FLASH2, THC, \ldots) are solved using a fully implicit backward Euler approach based on Newton-Krylov iteration.
+The flow and heat equations (Modes: RICHARDS, MPHASE, FLASH2, TH, \ldots) are solved using a fully implicit backward Euler approach based on Newton-Krylov iteration.
 Both fully implicit backward Euler and operator splitting solution methods are supported for reactive transport.
+
+\subsection{Finite Volume Discretization}
+
+The governing partial differential equations for mass conservation can be written in the general form
+\EQ
+\frac{\p}{\p t} A_j + \bnabla\cdot\bF_j \eq Q_j,
+\EN
+with accumulation $A_j$, flux $\bF_j$ and source/sink $Q_j$. Integrating over a REV corresponding to the $n$th grid cell with volume $V_n$ yields
+\EQ
+\frac{d}{dt}\int_{V_n} A_j \, dV + \int_{V_n} \bnabla\cdot\bF_j \eq \int_{V_n}Q_j\, dV.
+\EN
+The accumulation term has the finite volume form
+\EQ
+\frac{d}{dt}\int_{V_n} A_j \, dV \eq \frac{A_{jn}^{t+\Delta t} - A_{jn}^t}{\Delta t} \, V_n,
+\EN
+with time step $\Delta t$.
+The flux term can be expanded as a surface integral using Gauss' theorem
+\BA
+\int_{V_n} \bnabla\cdot\bF_j &\eq \int_{\p V_n} \bF_j \cdot d\bS,\\
+&\eq \sum_{n'} F_{j,nn'} A_{nn'},
+\EA
+where the latter finite volume form is based on the two-point flux approximation, where the sum over $n'$ involves nearest neighbor grid cells connected to the $n$th node with interfacial area $A_{nn'}$. The discretized flux has the form for fluid phase $\a$
+\EQ
+F_{j,nn'}^\a \eq \big(q_\a X_\a\big)_{nn'} - \big(\varphi s_\a \tau_\a D_\a\big)_{nn'}
+\frac{X_{n'}^\a - X_n^\a}{d_{n'}+d_n},
+\EN
+with perpendicular distances to interface $nn'$ from nodes $n$ and $n'$ denoted by $d_{n'}$ and $d_n$, respectively.
+Upstream weighting is used for the advective term
+\EQ
+\big(q_\a X_\a)_{nn'} \eq
+\left\{
+\begin{array}{ll}
+q_{nn'}^\a X_{n'}, & q_{nn'} > 0\\
+q_{nn'}^\a X_{n}, &  q_{nn'} < 0
+\end{array}
+\right..
+\EN
+Depending on the type of source/sink term, the finite volume discretization has the form
+\EQ
+\int_{V_n}Q_j\, dV \eq Q_{jn} V_n,
+\EN
+for reaction rates that are distributed continuously over a control volume, or for a well with point source $Q_j \eq \widehat Q_j \delta(\br-\br_0)$:
+\EQ
+\int_{V_n}Q_j\, dV \eq \widehat Q_{jn}.
+\EN
 
 \subsection{Fully Implicit}
 
