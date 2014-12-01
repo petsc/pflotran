@@ -3121,8 +3121,8 @@ subroutine RPF_Mualem_Linear_Gas_RelPerm(this,liquid_saturation, &
   
   Seg = 1.d0 - Se
   ! reference Table 2
-  relative_permeability = Seg**0.5d0 * liquid_relative_permeability & 
-                          * Se**(-0.5d0)
+  relative_permeability = Seg**0.5d0 * &
+                 (1.d0-sqrt(liquid_relative_permeability*Se**(-0.5d0)))**2.d0
   
 end subroutine RPF_Mualem_Linear_Gas_RelPerm
 ! End RPF: Mualem, Linear (Gas)
