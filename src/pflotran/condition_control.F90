@@ -61,7 +61,7 @@ subroutine CondControlAssignFlowInitCond(realization)
   
   PetscInt :: icell, iconn, idof, iface
   PetscInt :: local_id, ghosted_id, iend, ibegin
-  PetscReal, pointer :: xx_p(:), iphase_loc_p(:), xx_faces_p(:)
+  PetscReal, pointer :: xx_p(:), iphase_loc_p(:)
   PetscErrorCode :: ierr
   
   character(len=MAXSTRINGLENGTH) :: string
@@ -331,6 +331,7 @@ subroutine CondControlAssignFlowInitCond(realization)
                 endif
               enddo
             endif
+            ! TODO(geh): phase out field%iphas_loc
             iphase_loc_p(ghosted_id) = &
               initial_condition%flow_condition%iphase
             if (option%iflowmode == G_MODE) then
@@ -441,6 +442,7 @@ subroutine CondControlAssignTranInitCond(realization)
   PetscBool :: use_aq_dataset
   PetscReal :: ave_num_iterations
   PetscReal :: tempreal
+  PetscReal, pointer :: iphase_loc_p(:)
   PetscLogDouble :: tstart, tend
   
   option => realization%option
@@ -462,6 +464,7 @@ subroutine CondControlAssignTranInitCond(realization)
 
     ! assign initial conditions values to domain
     call VecGetArrayF90(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayReadF90(field%iphas_loc,iphase_loc_p,ierr);CHKERRQ(ierr)
       
     xx_p = UNINITIALIZED_DOUBLE
       
@@ -629,6 +632,19 @@ subroutine CondControlAssignTranInitCond(realization)
           option%iflag = 0
           ave_num_iterations = ave_num_iterations + &
             constraint_coupler%num_iterations
+          ! update CO2 mole fraction for CO2 modes
+          select case(option%iflowmode)
+            case(MPH_MODE,FLASH2_MODE)
+              if (iphase_loc_p(ghosted_id) == 1) then
+                tempreal = &
+                  RCO2MoleFraction(rt_auxvars(ghosted_id), &
+                                   global_auxvars(ghosted_id),reaction,option)
+                initial_condition%flow_condition% &
+                  concentration%dataset%rarray(1) = tempreal
+                initial_condition% &
+                  flow_aux_real_var(MPH_CONCENTRATION_DOF,:) = tempreal
+              endif
+          end select            
         endif
         ! ibegin is the local non-ghosted offset: (local_id-1)*option%ntrandof+1
         offset = ibegin + reaction%offset_aqueous - 1
@@ -729,6 +745,7 @@ subroutine CondControlAssignTranInitCond(realization)
     enddo
       
     call VecRestoreArrayF90(field%tran_xx,xx_p, ierr);CHKERRQ(ierr)
+    call VecRestoreArrayReadF90(field%iphas_loc,iphase_loc_p,ierr);CHKERRQ(ierr)
 
     cur_patch => cur_patch%next
   enddo
@@ -1147,7 +1164,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
   
   PetscInt :: icell, iconn, idof, iface
   PetscInt :: local_id, ghosted_id, iend, ibegin
-  PetscReal, pointer :: xx_p(:)!, iphase_loc_p(:), xx_faces_p(:)
+  PetscReal, pointer :: xx_p(:)!, iphase_loc_p(:)
   PetscErrorCode :: ierr
   
   PetscReal :: temperature, p_sat

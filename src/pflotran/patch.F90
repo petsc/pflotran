@@ -2622,6 +2622,15 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
                             cur_constraint_coupler%immobile_species, &
                             cur_constraint_coupler%num_iterations, &
                             PETSC_FALSE,option)
+      ! update CO2 mole fraction for CO2 modes
+      select case(option%iflowmode)
+        case(MPH_MODE,FLASH2_MODE)
+          if (cur_coupler%flow_condition%iphase == 1) then
+            dum1 = RCO2MoleFraction(rt_auxvar,global_auxvar,reaction,option)
+            cur_coupler%flow_condition%concentration%dataset%rarray(1) = dum1
+            cur_coupler%flow_aux_real_var(MPH_CONCENTRATION_DOF,:) = dum1
+          endif
+      end select
       cur_constraint_coupler => cur_constraint_coupler%next
     enddo
     cur_coupler => cur_coupler%next
