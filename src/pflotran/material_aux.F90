@@ -37,7 +37,7 @@ module Material_Aux_class
     PetscReal, pointer :: soil_properties(:) ! den, therm. cond., heat cap.
 !    procedure(SaturationFunction), nopass, pointer :: SaturationFunction
   contains
-    procedure, public :: DiagPermeabilityTensorToScalar => &
+    procedure, public :: PermeabilityTensorToScalar => &
                            MaterialDiagPermTensorToScalar
   end type material_auxvar_type
   

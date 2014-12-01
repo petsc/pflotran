@@ -1129,8 +1129,8 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
 
   call ConnectionCalculateDistances(dist,option%gravity,dist_up,dist_dn, &
                                     dist_gravity,upweight)
-  call material_auxvar_up%DiagPermeabilityTensorToScalar(dist,perm_up)
-  call material_auxvar_dn%DiagPermeabilityTensorToScalar(dist,perm_dn)
+  call material_auxvar_up%PermeabilityTensorToScalar(dist,perm_up)
+  call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
   
   perm_ave_over_dist = (perm_up * perm_dn)/(dist_up*perm_dn + dist_dn*perm_up)
 
@@ -1413,7 +1413,7 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
 
   neumann_bc_present = PETSC_FALSE
   
-  call material_auxvar_dn%DiagPermeabilityTensorToScalar(dist,perm_dn)
+  call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
   
 #ifdef CONVECTION  
   do iphase = 1, option%nphase
