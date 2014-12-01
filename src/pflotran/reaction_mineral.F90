@@ -557,7 +557,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
   use Option_module
   use Material_Aux_class
 #ifdef SOLID_SOLUTION
-  use Reaction_Solid_Soltn_Aux_module
+  use Reaction_Solid_Soln_Aux_module
 #endif
   
   implicit none

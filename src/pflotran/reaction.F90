@@ -17,7 +17,7 @@ module Reaction_module
 
 #ifdef SOLID_SOLUTION  
   use Reaction_Solid_Solution_module
-  use Reaction_Solid_Soltn_Aux_module
+  use Reaction_Solid_Soln_Aux_module
 #endif  
 
   !TODO(geh): Intel 2013.1.119 crashes if this module is included.  It does not
