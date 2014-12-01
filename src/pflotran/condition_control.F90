@@ -443,6 +443,7 @@ subroutine CondControlAssignTranInitCond(realization)
   PetscReal :: ave_num_iterations
   PetscReal :: tempreal
   PetscReal, pointer :: iphase_loc_p(:)
+  PetscReal, pointer :: flow_xx_p(:)
   PetscLogDouble :: tstart, tend
   
   option => realization%option
@@ -464,7 +465,11 @@ subroutine CondControlAssignTranInitCond(realization)
 
     ! assign initial conditions values to domain
     call VecGetArrayF90(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
-    call VecGetArrayReadF90(field%iphas_loc,iphase_loc_p,ierr);CHKERRQ(ierr)
+    select case(option%iflowmode)
+      case(MPH_MODE,FLASH2_MODE)
+        call VecGetArrayReadF90(field%iphas_loc,iphase_loc_p,ierr);CHKERRQ(ierr)
+        call VecGetArrayF90(field%flow_xx,flow_xx_p, ierr);CHKERRQ(ierr)
+    end select
       
     xx_p = UNINITIALIZED_DOUBLE
       
@@ -635,14 +640,12 @@ subroutine CondControlAssignTranInitCond(realization)
           ! update CO2 mole fraction for CO2 modes
           select case(option%iflowmode)
             case(MPH_MODE,FLASH2_MODE)
-              if (iphase_loc_p(ghosted_id) == 1) then
+              if (int(iphase_loc_p(ghosted_id)) == 1) then
                 tempreal = &
                   RCO2MoleFraction(rt_auxvars(ghosted_id), &
                                    global_auxvars(ghosted_id),reaction,option)
-                initial_condition%flow_condition% &
-                  concentration%dataset%rarray(1) = tempreal
-                initial_condition% &
-                  flow_aux_real_var(MPH_CONCENTRATION_DOF,:) = tempreal
+                ! concentration dof in flow solution vector
+                flow_xx_p(local_id*option%nflowdof) = tempreal
               endif
           end select            
         endif
@@ -745,7 +748,11 @@ subroutine CondControlAssignTranInitCond(realization)
     enddo
       
     call VecRestoreArrayF90(field%tran_xx,xx_p, ierr);CHKERRQ(ierr)
-    call VecRestoreArrayReadF90(field%iphas_loc,iphase_loc_p,ierr);CHKERRQ(ierr)
+    select case(option%iflowmode)
+      case(MPH_MODE,FLASH2_MODE)
+        call VecRestoreArrayReadF90(field%iphas_loc,iphase_loc_p,ierr);CHKERRQ(ierr)
+        call VecRestoreArrayF90(field%flow_xx,flow_xx_p, ierr);CHKERRQ(ierr)
+    end select
 
     cur_patch => cur_patch%next
   enddo
