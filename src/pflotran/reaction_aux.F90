@@ -7,7 +7,7 @@ module Reaction_Aux_module
   use Reaction_Surface_Complexation_Aux_module
   
 #ifdef SOLID_SOLUTION  
-  use Reaction_Reaction_Solid_Solution_Aux_module
+  use Reaction_Solid_Soltn_Aux_module
 #endif
 
   use PFLOTRAN_Constants_module

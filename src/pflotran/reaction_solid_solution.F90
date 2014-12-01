@@ -2,7 +2,7 @@ module Reaction_Solid_Solution_module
 
   use Reaction_Mineral_Aux_module
   use Reaction_Aux_module
-  use Reaction_Reaction_Solid_Solution_Aux_module
+  use Reaction_Solid_Soltn_Aux_module
   
   use PFLOTRAN_Constants_module
 

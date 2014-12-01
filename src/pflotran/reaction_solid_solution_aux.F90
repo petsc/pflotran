@@ -1,4 +1,4 @@
-module Reaction_Reaction_Solid_Solution_Aux_module
+module Reaction_Solid_Soltn_Aux_module
   
   use Reaction_Mineral_Aux_module
 
@@ -242,4 +242,4 @@ subroutine SolidSolutionReactionDestroy(solid_solution)
 end subroutine SolidSolutionReactionDestroy
 #endif
 
-end module Reaction_Reaction_Solid_Solution_Aux_module
+end module Reaction_Solid_Soltn_Aux_module
