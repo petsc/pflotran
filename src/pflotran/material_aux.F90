@@ -37,8 +37,8 @@ module Material_Aux_class
     PetscReal, pointer :: soil_properties(:) ! den, therm. cond., heat cap.
 !    procedure(SaturationFunction), nopass, pointer :: SaturationFunction
   contains
-    procedure, public :: PermeabilityTensorToScalar => &
-                           MaterialPermTensorToScalar
+    procedure, public :: DiagPermeabilityTensorToScalar => &
+                           MaterialDiagPermTensorToScalar
   end type material_auxvar_type
   
   type, public :: material_parameter_type
@@ -198,7 +198,7 @@ end subroutine MaterialAuxVarCopy
 
 ! ************************************************************************** !
 
-subroutine MaterialPermTensorToScalar(material_auxvar,dist, &
+subroutine MaterialDiagPermTensorToScalar(material_auxvar,dist, &
                                       scalar_permeability)
   ! 
   ! Transforms a diagonal permeability tensor to a scalar through a dot 
@@ -226,7 +226,7 @@ subroutine MaterialPermTensorToScalar(material_auxvar,dist, &
             material_auxvar%permeability(perm_yy_index)*dabs(dist(2))+ &
             material_auxvar%permeability(perm_zz_index)*dabs(dist(3))
 
-end subroutine MaterialPermTensorToScalar
+end subroutine MaterialDiagPermTensorToScalar
 
 ! ************************************************************************** !
 

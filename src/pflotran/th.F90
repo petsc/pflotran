@@ -1858,8 +1858,8 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
   
   call ConnectionCalculateDistances(dist,option%gravity,dd_up,dd_dn, &
                                     dist_gravity,upweight)
-  call material_auxvar_up%PermeabilityTensorToScalar(dist,perm_up)
-  call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
+  call material_auxvar_up%DiagPermeabilityTensorToScalar(dist,perm_up)
+  call material_auxvar_dn%DiagPermeabilityTensorToScalar(dist,perm_dn)
 
   por_up = material_auxvar_up%porosity
   por_dn = material_auxvar_dn%porosity
@@ -2424,8 +2424,8 @@ subroutine THFlux(auxvar_up,global_auxvar_up, &
      
   call ConnectionCalculateDistances(dist,option%gravity,dd_up,dd_dn, &
                                     dist_gravity,upweight)
-  call material_auxvar_up%PermeabilityTensorToScalar(dist,perm_up)
-  call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
+  call material_auxvar_up%DiagPermeabilityTensorToScalar(dist,perm_up)
+  call material_auxvar_dn%DiagPermeabilityTensorToScalar(dist,perm_dn)
 
   por_up = material_auxvar_up%porosity
   por_dn = material_auxvar_dn%porosity
@@ -2706,7 +2706,7 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
   dist_gravity = dist(0) * dot_product(option%gravity,dist(1:3))
   dd_dn = dist(0)
 
-  call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
+  call material_auxvar_dn%DiagPermeabilityTensorToScalar(dist,perm_dn)
   por_dn = material_auxvar_dn%porosity
   tor_dn = material_auxvar_dn%tortuosity
 
@@ -3304,7 +3304,7 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
   dist_gravity = dist(0) * dot_product(option%gravity,dist(1:3))
   dd_dn = dist(0)
 
-  call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
+  call material_auxvar_dn%DiagPermeabilityTensorToScalar(dist,perm_dn)
   por_dn = material_auxvar_dn%porosity
   tor_dn = material_auxvar_dn%tortuosity
 
@@ -5826,7 +5826,7 @@ subroutine THComputeCoeffsForSurfFlux(realization)
 
         dist = cur_connection_set%dist(:,iconn)
 
-        call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
+        call material_auxvar_dn%DiagPermeabilityTensorToScalar(dist,perm_dn)
 
         dist_gravity = dist(0) * dot_product(option%gravity,dist(1:3))
         Dq = perm_dn / dist(0)

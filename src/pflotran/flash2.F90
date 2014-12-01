@@ -2381,7 +2381,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
       D_dn = Flash2_parameter%ckwet(ithrm_dn)
 
       ! for now, just assume diagonal tensor
-      call material_auxvars(ghosted_id)%PermeabilityTensorToScalar( &
+      call material_auxvars(ghosted_id)%DiagPermeabilityTensorToScalar( &
                             cur_connection_set%dist(:,iconn),perm_dn)
       ! dist(0,iconn) = scalar - magnitude of distance
       ! gravity = vector(3)
@@ -2489,9 +2489,9 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
       upweight = dd_dn/(dd_up+dd_dn)
         
       ! for now, just assume diagonal tensor
-      call material_auxvars(ghosted_id_up)%PermeabilityTensorToScalar( &
+      call material_auxvars(ghosted_id_up)%DiagPermeabilityTensorToScalar( &
                             cur_connection_set%dist(:,iconn),perm_up)
-      call material_auxvars(ghosted_id_dn)%PermeabilityTensorToScalar( &
+      call material_auxvars(ghosted_id_dn)%DiagPermeabilityTensorToScalar( &
                             cur_connection_set%dist(:,iconn),perm_dn)
 
       ithrm_up = int(ithrm_loc_p(ghosted_id_up))
@@ -2732,7 +2732,7 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
       D_dn = Flash2_parameter%ckwet(ithrm_dn)
 
       ! for now, just assume diagonal tensor
-      call material_auxvars(ghosted_id)%PermeabilityTensorToScalar( &
+      call material_auxvars(ghosted_id)%DiagPermeabilityTensorToScalar( &
                             cur_connection_set%dist(:,iconn),perm_dn)
       ! dist(0,iconn) = scalar - magnitude of distance
       ! gravity = vector(3)
@@ -2838,9 +2838,9 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
       upweight = dd_dn/(dd_up+dd_dn)
         
       ! for now, just assume diagonal tensor
-      call material_auxvars(ghosted_id_up)%PermeabilityTensorToScalar( &
+      call material_auxvars(ghosted_id_up)%DiagPermeabilityTensorToScalar( &
                             cur_connection_set%dist(:,iconn),perm_up)
-      call material_auxvars(ghosted_id_dn)%PermeabilityTensorToScalar( &
+      call material_auxvars(ghosted_id_dn)%DiagPermeabilityTensorToScalar( &
                             cur_connection_set%dist(:,iconn),perm_dn)
 
       ithrm_up = int(ithrm_loc_p(ghosted_id_up))
@@ -3623,7 +3623,7 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,realization,ierr)
       D_dn = Flash2_parameter%ckwet(ithrm_dn)
 
       ! for now, just assume diagonal tensor
-      call material_auxvars(ghosted_id)%PermeabilityTensorToScalar( &
+      call material_auxvars(ghosted_id)%DiagPermeabilityTensorToScalar( &
                             cur_connection_set%dist(:,iconn),perm_dn)
       ! dist(0,iconn) = scalar - magnitude of distance
       ! gravity = vector(3)
@@ -3766,9 +3766,9 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,realization,ierr)
       upweight = dd_dn/(dd_up+dd_dn)
     
       ! for now, just assume diagonal tensor
-      call material_auxvars(ghosted_id_up)%PermeabilityTensorToScalar( &
+      call material_auxvars(ghosted_id_up)%DiagPermeabilityTensorToScalar( &
                             cur_connection_set%dist(:,iconn),perm_up)
-      call material_auxvars(ghosted_id_dn)%PermeabilityTensorToScalar( &
+      call material_auxvars(ghosted_id_dn)%DiagPermeabilityTensorToScalar( &
                             cur_connection_set%dist(:,iconn),perm_dn)
     
       ithrm_up = int(ithrm_loc_p(ghosted_id_up))
@@ -4090,7 +4090,7 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,realization,ierr)
       D_dn = Flash2_parameter%ckwet(ithrm_dn)
 
       ! for now, just assume diagonal tensor
-      call material_auxvars(ghosted_id)%PermeabilityTensorToScalar( &
+      call material_auxvars(ghosted_id)%DiagPermeabilityTensorToScalar( &
                             cur_connection_set%dist(:,iconn),perm_dn)
       ! dist(0,iconn) = scalar - magnitude of distance
       ! gravity = vector(3)
@@ -4233,9 +4233,9 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,realization,ierr)
       upweight = dd_dn/(dd_up+dd_dn)
     
       ! for now, just assume diagonal tensor
-      call material_auxvars(ghosted_id_up)%PermeabilityTensorToScalar( &
+      call material_auxvars(ghosted_id_up)%DiagPermeabilityTensorToScalar( &
                             cur_connection_set%dist(:,iconn),perm_up)
-      call material_auxvars(ghosted_id_dn)%PermeabilityTensorToScalar( &
+      call material_auxvars(ghosted_id_dn)%DiagPermeabilityTensorToScalar( &
                             cur_connection_set%dist(:,iconn),perm_dn)
     
 !     iphas_up = iphase_loc_p(ghosted_id_up)
