@@ -2628,7 +2628,9 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
           if (cur_coupler%flow_condition%iphase == 1) then
             dum1 = RCO2MoleFraction(rt_auxvar,global_auxvar,reaction,option)
             cur_coupler%flow_condition%concentration%dataset%rarray(1) = dum1
-            cur_coupler%flow_aux_real_var(MPH_CONCENTRATION_DOF,:) = dum1
+            if (associated(cur_coupler%flow_aux_real_var)) then
+              cur_coupler%flow_aux_real_var(MPH_CONCENTRATION_DOF,:) = dum1
+            endif
           endif
       end select
       cur_constraint_coupler => cur_constraint_coupler%next
