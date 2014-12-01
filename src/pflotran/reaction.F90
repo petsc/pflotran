@@ -63,7 +63,8 @@ module Reaction_module
             ReactionInitializeLogK_hpt, &
             RUpdateKineticState, &
             RUpdateTempDependentCoefs, &
-            RZeroSorb
+            RZeroSorb, &
+            RCO2MoleFraction
 
 contains
 
@@ -3659,7 +3660,38 @@ end subroutine CO2AqActCoeff
 
 ! ************************************************************************** !
 
-PetscReal function RSumMoles(rt_auxvar,global_auxvar,reaction,option)
+PetscReal function RSumMoles(rt_auxvar,reaction,option)
+  ! 
+  ! Sums the total moles of primary and secondary aqueous species
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/01/14
+  ! 
+
+  use Option_module
+  
+  implicit none
+
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(reaction_type) :: reaction
+  type(option_type) :: option
+
+  PetscInt :: i
+  
+  RSumMoles = 0.d0
+  do i = 1, reaction%naqcomp
+    RSumMoles = RSumMoles + rt_auxvar%pri_molal(i)
+  enddo
+  
+  do i = 1, reaction%neqcplx
+    RSumMoles = RSumMoles + rt_auxvar%sec_molal(i)
+  enddo
+  
+end function RSumMoles
+
+! ************************************************************************** !
+
+PetscReal function RCO2MoleFraction(rt_auxvar,global_auxvar,reaction,option)
   ! 
   ! Sums the total moles of primary and secondary aqueous species
   ! 
@@ -3677,17 +3709,32 @@ PetscReal function RSumMoles(rt_auxvar,global_auxvar,reaction,option)
   type(option_type) :: option
 
   PetscInt :: i
+  PetscInt :: icplx
+  PetscInt :: ico2
+  PetscReal :: sum_co2
   
-  RSumMoles = 0.d0
-  do i = 1, reaction%naqcomp
-    RSumMoles = RSumMoles + rt_auxvar%pri_molal(i)
+  ico2 = reaction%species_idx%co2_aq_id
+
+  if (ico2 == 0) then
+    option%io_buffer = 'CO2 is not set in RCO2MoleFraction().'
+    call printErrMsg(option)
+  endif
+  
+  sum_co2 = rt_auxvar%pri_molal(ico2)
+  do icplx = 1, reaction%neqcplx
+    do i = 1, reaction%eqcplxspecid(0,icplx)
+      if (reaction%eqcplxspecid(i,icplx) == ico2) then
+        sum_co2 = sum_co2 + reaction%eqcplxstoich(i,icplx)* &
+                            rt_auxvar%sec_molal(icplx)
+        exit
+      endif
+    enddo
   enddo
   
-  do i = 1, reaction%neqcplx
-    RSumMoles = RSumMoles + rt_auxvar%sec_molal(i)
-  enddo
+  RCO2MoleFraction = sum_co2 * FMWH2O / &
+                     (1.d0 + FMWH2O * RSumMoles(rt_auxvar,reaction,option))
   
-end function RSumMoles
+end function RCO2MoleFraction
 
 ! ************************************************************************** !
 
