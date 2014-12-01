@@ -16,8 +16,8 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \multicolumn{1}{c}{\hypertarget{target_key}{\bf Keyword}} & \multicolumn{1}{c}{\bf Description}\\
 \midrule[1pt]
 \hyperlink{target_bcon}{\bf BOUNDARY\_CONDITION} & \\
-\hyperlink{target_brk}{\bf BREAKTHROUGH} & \\
-\hyperlink{target_brine}{\bf BRINE (BRIN)} & \\
+%\hyperlink{target_brk}{\bf BREAKTHROUGH} & \\
+\hyperlink{target_brine}{\bf BRINE} & \\
 \hyperlink{target_charcrv}{\bf CHARCTERISTIC\_CURVES} & \\
 \hyperlink{target_ckpt}{\bf CHECKPOINT} & \\
 \hyperlink{target_chem}{\bf CHEMISTRY} & \\
@@ -2684,7 +2684,7 @@ MAX_CHANGE 5.d4    5.  0.02   0.05
 
 \subsection{Keyword: MODE}
 
-\noindent{\bf Description:} determines the flow mode: Richards (variably saturated porous media); MPH, \linebreak MPHASE, FLASH2 (CO$_2$ + H$_2$O); THC (Thermal-Hydrologic-Chemical, in pro\-gress); IMMIS, THS (Immisible).
+\noindent{\bf Description:} determines the flow mode: Richards (variably saturated porous media); MPH, \linebreak MPHASE, FLASH2 (CO$_2$ + H$_2$O); TH (Thermal-Hydrologic); IMMIS, THS (Immisible).
 
 \begin{comment}
 \noindent{\bf Input:}
@@ -2695,7 +2695,7 @@ MAX_CHANGE 5.d4    5.  0.02   0.05
 \item[RICHARDS]
 \item[MPHASE (MPH)]
 \item[FLASH2]
-\item[THC (\rm in progress)]
+\item[TH]
 \item[IMMIS (IMS, THS)]
 \end{deflist}
 \end{deflist}
@@ -3393,7 +3393,7 @@ RESTART pflotran.chk3000
 {\bf THOMEER\_COREY}, \ {\bf NMT\_EXP}, \ {\bf PRUESS\_1}, \ {\bf VAN\_GENUCHTEN\_PARKER}]
 
 \item[PERMEABILITY\_FUNCTION\_TYPE] \ [{\bf MUALEM}, \ {\bf BURDINE}]
-\item[RESIDUAL\_SATURATION] \ {\tt <Value>} \ \ MODES: RICHARDS, TH, THC
+\item[RESIDUAL\_SATURATION] \ {\tt <Value>} \ \ MODES: RICHARDS, TH
 \item[RESIDUAL\_SATURATION\_LIQUID] \ {\tt <Value>} \ \ MODES: MPHASE
 \item[RESIDUAL\_SATURATION\_GAS] \ {\tt <Value>} 
 

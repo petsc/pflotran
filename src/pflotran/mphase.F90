@@ -33,7 +33,7 @@ module Mphase_module
 #include "finclude/petscerror.h"
 
 ! Cutoff parameters
-  PetscReal, parameter :: formeps   = 1.D-4
+  PetscReal, parameter :: formeps = 1.D-4
   PetscReal, parameter :: eps = 1.D-8 
   PetscReal, parameter :: dfac = 1D-8
   PetscReal, parameter :: floweps = 1.D-24
@@ -974,7 +974,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
     istart = iend-option%nflowdof+1
     iphase = int(iphase_loc_p(ghosted_id))
     if(.not. associated(patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr))then
-       print*, 'error!!! saturation function not allocated', ghosted_id,icap_loc_p(ghosted_id)
+      print *, 'error!!! saturation function not allocated', ghosted_id,icap_loc_p(ghosted_id)
     endif
    
     call MphaseAuxVarCompute_NINC(xx_loc_p(istart:iend), &
@@ -983,7 +983,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
         iphase, &
         patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
         realization%fluid_properties,option,xphi)
-! update global variables
+!   update global variables
     if (associated(global_auxvars)) then
       global_auxvars(ghosted_id)%pres(:) = auxvars(ghosted_id)%auxvar_elem(0)%pres
       if (iphase == 3) then ! 2-phase
@@ -1015,8 +1015,6 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
         +auxvars(ghosted_id)%auxvar_elem(0)%xmol(4) * FMWCO2) 
       global_auxvars(ghosted_id)%reaction_rate_store(:) = global_auxvars(ghosted_id)%reaction_rate(:)
       global_auxvars(ghosted_id)%reaction_rate(:) = 0.D0
-     !     global_auxvars(ghosted_id)%mass_balance 
-!     global_auxvars(ghosted_id)%mass_balance_delta                   
     else
       print *,'Not associated global for mph'
     endif
@@ -1088,11 +1086,6 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
                               /(auxvars_bc(sum_connection)%auxvar_elem(0)%xmol(3) * FMWH2O&
                               +auxvars_bc(sum_connection)%auxvar_elem(0)%xmol(4) * FMWCO2) 
  
-   
-     
-  !    global_auxvars(ghosted_id)%den_kg_store
-  !    global_auxvars(ghosted_id)%mass_balance 
-  !    global_auxvars(ghosted_id)%mass_balance_delta                   
       endif
 
     enddo
@@ -2053,9 +2046,7 @@ subroutine MphaseBCFlux(ibndtype,auxvars,auxvar_up,auxvar_dn, &
       case(ZERO_GRADIENT_BC)
 
     end select
-     
-     
-    
+
     do ispec=1, option%nflowspec 
       fluxm(ispec) = fluxm(ispec) + mol_total_flux(np)*uxmol(ispec)
     enddo
@@ -2258,6 +2249,11 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch
   type(global_auxvar_type), pointer :: global_auxvars(:)
+
+! xmol(1) = X_H2O^l
+! xmol(2) = X_CO2^l
+! xmol(3) = X_H2O^g = Psat(T)/P_g
+! xmol(4) = X_CO2^g = (1-Psat(T))/P_g
 
   patch => realization%patch  
   grid => patch%grid
