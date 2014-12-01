@@ -1728,7 +1728,7 @@ subroutine InputReadASCIIDbase(filename,option)
           '" has an inconsistent number of values (' // &
           trim(adjustl(word)) // &
           ') for number of realizations ('
-        write(word,*), num_reals_in_dataset
+        write(word,*) num_reals_in_dataset
         option%io_buffer = trim(option%io_buffer) // &
           trim(adjustl(word)) // ').'
         call printErrMsg(option)
