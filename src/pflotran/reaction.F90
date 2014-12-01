@@ -20,10 +20,7 @@ module Reaction_module
   use Reaction_Solid_Soln_Aux_module
 #endif  
 
-  !TODO(geh): Intel 2013.1.119 crashes if this module is included.  It does not
-  !           need to be included here given since the subroutines below 
-  !           include the module.  Remove once Intel fixes its bug.
- ! use Reaction_Sandbox_module
+  use Reaction_Sandbox_module
   use CLM_Rxn_module
 
   use PFLOTRAN_Constants_module
@@ -83,7 +80,6 @@ subroutine ReactionInit(reaction,input,option)
 
   use Option_module
   use Input_Aux_module
-  use Reaction_Sandbox_module, only : RSandboxInit
   use CLM_Rxn_module, only : RCLMRxnInit
   
   implicit none
@@ -126,7 +122,6 @@ subroutine ReactionReadPass1(reaction,input,option)
   use Variables_module, only : PRIMARY_MOLALITY, PRIMARY_MOLARITY, &
                                TOTAL_MOLALITY, TOTAL_MOLARITY, &
                                SECONDARY_MOLALITY, SECONDARY_MOLARITY
-  use Reaction_Sandbox_module, only : RSandboxRead 
   use CLM_Rxn_module, only : RCLMRxnRead
   
   implicit none
@@ -930,7 +925,6 @@ subroutine ReactionReadPass2(reaction,input,option)
   use String_module
   use Input_Aux_module
   use Utility_module
-  use Reaction_Sandbox_module
   
   implicit none
 
@@ -3461,7 +3455,6 @@ subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar, &
   ! 
 
   use Option_module
-  use Reaction_Sandbox_module, only : RSandbox, rxn_sandbox_list
   use CLM_Rxn_module, only : RCLMRxn, clmrxn_list 
  
   implicit none
@@ -3663,6 +3656,38 @@ subroutine CO2AqActCoeff(rt_auxvar,global_auxvar,reaction,option)
   endif
  ! print *, 'CO2AqActCoeff', tc, pco2, m_na,m_cl, sat_pressure,co2aqact
 end subroutine CO2AqActCoeff
+
+! ************************************************************************** !
+
+PetscReal function RSumMoles(rt_auxvar,global_auxvar,reaction,option)
+  ! 
+  ! Sums the total moles of primary and secondary aqueous species
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/01/14
+  ! 
+
+  use Option_module
+  
+  implicit none
+
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar
+  type(reaction_type) :: reaction
+  type(option_type) :: option
+
+  PetscInt :: i
+  
+  RSumMoles = 0.d0
+  do i = 1, reaction%naqcomp
+    RSumMoles = RSumMoles + rt_auxvar%pri_molal(i)
+  enddo
+  
+  do i = 1, reaction%neqcplx
+    RSumMoles = RSumMoles + rt_auxvar%sec_molal(i)
+  enddo
+  
+end function RSumMoles
 
 ! ************************************************************************** !
 
