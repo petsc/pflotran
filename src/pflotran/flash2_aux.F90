@@ -401,10 +401,11 @@ subroutine Flash2AuxVarCompute_NINC(x,auxvar,global_auxvar, &
     
 !   auxvar%diff(option%nflowspec+1:option%nflowspec*2) = 2.13D-5
     auxvar%diff(option%nflowspec+1:option%nflowspec*2) = &
-      fluid_properties%gas_diffusion_coefficient
-      
+      fluid_properties%gas_diffusion_coefficient &
+      * 101325.d0 / p * ((t+273.15)/273.15d0)**1.8d0
+
 !       fluid_properties%diff_base(2)
-! Note: not temperature dependent yet.       
+
 !  z factor    
     auxvar%zco2=auxvar%den(2)/(p/IDEAL_GAS_CONST/(t+273.15D0)*1D-3)
 

@@ -638,6 +638,7 @@ subroutine CondControlAssignTranInitCond(realization)
           ave_num_iterations = ave_num_iterations + &
             constraint_coupler%num_iterations
           ! update CO2 mole fraction for CO2 modes
+#if 0
           select case(option%iflowmode)
             case(MPH_MODE,FLASH2_MODE)
               if (int(iphase_loc_p(ghosted_id)) == 1) then
@@ -647,7 +648,8 @@ subroutine CondControlAssignTranInitCond(realization)
                 ! concentration dof in flow solution vector
                 flow_xx_p(local_id*option%nflowdof) = tempreal
               endif
-          end select            
+          end select
+#endif
         endif
         ! ibegin is the local non-ghosted offset: (local_id-1)*option%ntrandof+1
         offset = ibegin + reaction%offset_aqueous - 1

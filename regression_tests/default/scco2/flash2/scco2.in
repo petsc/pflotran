@@ -70,7 +70,8 @@ noskip
 
 #=========================== fluid properties =================================
 FLUID_PROPERTY 
-DIFFUSION_COEFFICIENT 1.d-9
+LIQUID_DIFFUSION_COEFFICIENT 1.d-9
+GAS_DIFFUSION_COEFFICIENT 2.13d-5
 /
 
 #=========================== material properties ==============================

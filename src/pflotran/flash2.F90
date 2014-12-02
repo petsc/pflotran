@@ -1248,7 +1248,7 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype,R
 !   4. max pressure: [Pa]
 !   5. min pressure: [Pa]   
 !   6. preferred mass flux of water [kg/s]
-!   7. preferred mass flux of Co2 [kg/s]
+!   7. preferred mass flux of CO2 [kg/s]
 !   8. well diameter, not used now
 !   9. skin factor, not used now
 
