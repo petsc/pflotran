@@ -442,22 +442,4 @@ subroutine HijackTimestepper(timestepper_old,timestepper_base)
 
 end subroutine HijackTimestepper
 
-! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 01/01/14
-! ************************************************************************** !
-
-! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 01/01/14
-! ************************************************************************** !
-
 end module Factory_Geomechanics_module
