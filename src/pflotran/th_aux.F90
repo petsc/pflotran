@@ -100,7 +100,7 @@ module TH_Aux_module
 
   public :: THAuxCreate, THAuxDestroy, &
             THAuxVarComputeNoFreezing, THAuxVarInit, &
-            THAuxVarCopy
+            THAuxVarCopy, THAuxVarDestroy
 
   public :: THAuxVarComputeFreezing
 
@@ -766,7 +766,7 @@ end subroutine THAuxVarComputeFreezing
 
 ! ************************************************************************** !
 
-subroutine AuxVarDestroy(auxvar)
+subroutine THAuxVarDestroy(auxvar)
   ! 
   ! Deallocates a TH auxiliary object
   ! 
@@ -783,7 +783,7 @@ subroutine AuxVarDestroy(auxvar)
   if (associated(auxvar%diff))deallocate(auxvar%diff)
   nullify(auxvar%diff)
 
-end subroutine AuxVarDestroy
+end subroutine THAuxVarDestroy
 
 ! ************************************************************************** !
 
@@ -803,13 +803,13 @@ subroutine THAuxDestroy(aux)
   if (.not.associated(aux)) return
   
   do iaux = 1, aux%num_aux
-    call AuxVarDestroy(aux%auxvars(iaux))
+    call THAuxVarDestroy(aux%auxvars(iaux))
   enddo  
   do iaux = 1, aux%num_aux_bc
-    call AuxVarDestroy(aux%auxvars_bc(iaux))
+    call THAuxVarDestroy(aux%auxvars_bc(iaux))
   enddo  
   do iaux = 1, aux%num_aux_ss
-    call AuxVarDestroy(aux%auxvars_ss(iaux))
+    call THAuxVarDestroy(aux%auxvars_ss(iaux))
   enddo  
   
   if (associated(aux%auxvars)) deallocate(aux%auxvars)

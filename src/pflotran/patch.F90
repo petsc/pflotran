@@ -86,7 +86,7 @@ module Patch_module
                                       ! is a surface or subsurface (default)
     type(surface_material_property_type), pointer     :: surf_material_properties
     type(surface_material_property_ptr_type), pointer :: surf_material_property_array(:)
-    type(surface_field_type),pointer                  :: surf_field
+    type(surface_field_type), pointer                 :: surf_field
     type(surface_auxiliary_type) :: surf_aux
     
   end type patch_type
@@ -5972,6 +5972,7 @@ subroutine PatchDestroy(patch)
   call StrataDestroyList(patch%strata_list)
   
   call AuxDestroy(patch%aux)
+  call SurfaceAuxDestroy(patch%surf_aux)
   
   ! these are solely pointers, must not destroy.
   nullify(patch%reaction)

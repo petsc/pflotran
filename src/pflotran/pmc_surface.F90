@@ -22,6 +22,7 @@ module PMC_Surface_class
     procedure, public :: GetAuxData => PMCSurfaceGetAuxData
     procedure, public :: SetAuxData => PMCSurfaceSetAuxData
     procedure, public :: PMCSurfaceGetAuxDataAfterRestart
+    procedure, public :: Destroy => PMCSurfaceDestroy
   end type pmc_surface_type
 
   public :: PMCSurfaceCreate
@@ -654,27 +655,56 @@ end subroutine PMCSurfaceFinalizeRun
 
 ! ************************************************************************** !
 
-recursive subroutine Destroy(this)
-  ! 
-  ! This routine
-  ! 
-  ! Author: Gautam Bisht, LBNL
-  ! Date: 06/27/13
-  ! 
+subroutine PMCSurfaceStrip(this)
+  !
+  ! Deallocates members of PMC Surface.
+  !
+  ! Author: Glenn Hammond
+  ! Date: 12/02/14
+  
+  implicit none
+  
+  class(pmc_surface_type) :: this
 
-  use Utility_module, only: DeallocateArray
-  use Option_module
+  call PMCBaseStrip(this)
+  ! realizations destroyed elsewhere
+  nullify(this%subsurf_realization)
+  nullify(this%surf_realization)
+
+end subroutine PMCSurfaceStrip
+
+! ************************************************************************** !
+
+recursive subroutine PMCSurfaceDestroy(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/02/14
+  ! 
 
   implicit none
   
   class(pmc_surface_type) :: this
   
+#ifdef DEBUG
   call printMsg(this%option,'PMCSurface%Destroy()')
+#endif
+
+  if (associated(this%below)) then
+    call this%below%Destroy()
+    ! destroy does not currently destroy; it strips
+    deallocate(this%below)
+    nullify(this%below)
+  endif 
   
   if (associated(this%next)) then
     call this%next%Destroy()
-  endif 
+    ! destroy does not currently destroy; it strips
+    deallocate(this%next)
+    nullify(this%next)
+  endif
   
-end subroutine Destroy
+  call PMCSurfaceStrip(this)
+  
+end subroutine PMCSurfaceDestroy
 
 end module PMC_Surface_class

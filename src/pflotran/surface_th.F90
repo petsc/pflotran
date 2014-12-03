@@ -32,7 +32,8 @@ module Surface_TH_module
          SurfaceTHUpdateSolution, &
          SurfaceTHUpdateTemperature, &
          SurfaceTHUpdateSurfState, &
-         SurfaceTHImplicitAtmForcing
+         SurfaceTHImplicitAtmForcing, &
+         SurfaceTHDestroy
 
 contains
 
@@ -1667,5 +1668,25 @@ subroutine SurfaceTHUpdateSolution(surf_realization)
 
 end subroutine SurfaceTHUpdateSolution
 
+
+! ************************************************************************** !
+
+subroutine SurfaceTHDestroy(surf_realization)
+  ! 
+  ! Deallocates variables associated with Richard
+  ! 
+  ! Author: ???
+  ! Date: 02/14/08
+  ! 
+
+  use Surface_Realization_class
+
+  implicit none
+  
+  type(surface_realization_type) :: surf_realization
+  
+  ! aux vars should be destroyed when surf_realization is destroyed.
+  
+end subroutine SurfaceTHDestroy
 
 end module Surface_TH_module
