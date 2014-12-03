@@ -544,6 +544,7 @@ subroutine HijackTimestepper(timestepper_old,timestepper_base)
   use Timestepper_BE_class
   use Timestepper_Base_class
   use Timestepper_module
+  use Solver_module
 
   implicit none
   
@@ -584,6 +585,10 @@ subroutine HijackTimestepper(timestepper_old,timestepper_base)
   timestepper%time_step_cut_flag = timestepper_old%time_step_cut_flag
 
   timestepper%ntfac = timestepper_old%ntfac
+  
+  ! we destroy the new tfac here as the timestepper is pointed to the legacy
+  ! one below.
+  deallocate(timestepper%tfac)
   timestepper%tfac => timestepper_old%tfac
   nullify(timestepper_old%tfac)
   
@@ -591,8 +596,12 @@ subroutine HijackTimestepper(timestepper_old,timestepper_base)
   timestepper%steady_state_rel_tol = timestepper_old%steady_state_rel_tol
   timestepper%run_as_steady_state = timestepper_old%run_as_steady_state
 
+  ! we destroy the new solver here as the timestepper is pointed to the legacy
+  ! one below.  Remove use Solver_module statement above when removed.
+  call SolverDestroy(timestepper%solver)
   timestepper%solver => timestepper_old%solver
   nullify(timestepper_old%solver)
+
   timestepper%convergence_context => timestepper_old%convergence_context
   nullify(timestepper_old%convergence_context)
   timestepper%cur_waypoint => timestepper_old%cur_waypoint

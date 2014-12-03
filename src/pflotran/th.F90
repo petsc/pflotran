@@ -6206,6 +6206,14 @@ subroutine ComputeCoeffsForApprox(P_up, T_up, ithrm_up, &
     endif
 
   endif
+  
+  call GlobalAuxVarStrip(global_auxvar_up)
+  call GlobalAuxVarStrip(global_auxvar_dn)
+  call GlobalAuxVarStrip(global_auxvar_max)
+
+  call THAuxVarDestroy(th_auxvar_up)
+  call THAuxVarDestroy(th_auxvar_dn)
+  call THAuxVarDestroy(th_auxvar_max)
 
 end subroutine ComputeCoeffsForApprox
 

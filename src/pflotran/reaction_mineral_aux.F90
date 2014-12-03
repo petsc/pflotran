@@ -655,7 +655,8 @@ subroutine MineralConstraintDestroy(constraint)
   call DeallocateArray(constraint%constraint_vol_frac_string)
   call DeallocateArray(constraint%constraint_area_string)
   call DeallocateArray(constraint%external_area_dataset)
-
+  call DeallocateArray(constraint%external_vol_frac_dataset)
+  
   deallocate(constraint)
   nullify(constraint)
 
@@ -694,6 +695,7 @@ subroutine MineralDestroy(mineral)
   call DeallocateArray(mineral%mineral_names)
   call DeallocateArray(mineral%kinmnrl_names)
   call DeallocateArray(mineral%mnrl_print)
+  call DeallocateArray(mineral%kinmnrl_print)
   call DeallocateArray(mineral%mnrlspecid)
   call DeallocateArray(mineral%mnrlstoich)
   call DeallocateArray(mineral%mnrlh2oid)

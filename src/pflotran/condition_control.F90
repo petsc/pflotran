@@ -638,6 +638,7 @@ subroutine CondControlAssignTranInitCond(realization)
           ave_num_iterations = ave_num_iterations + &
             constraint_coupler%num_iterations
           ! update CO2 mole fraction for CO2 modes
+#if 0
           ! TODO(geh): ideally, the intermingling of the flow process model
           ! with transport is not ideal.  Peter should be looking into whether
           ! we can remove this code in favor of a slighly less accurate
@@ -651,7 +652,8 @@ subroutine CondControlAssignTranInitCond(realization)
                 ! concentration dof in flow solution vector
                 flow_xx_p(local_id*option%nflowdof) = tempreal
               endif
-          end select            
+          end select
+#endif
         endif
         ! ibegin is the local non-ghosted offset: (local_id-1)*option%ntrandof+1
         offset = ibegin + reaction%offset_aqueous - 1

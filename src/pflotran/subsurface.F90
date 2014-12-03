@@ -333,6 +333,7 @@ subroutine SubsurfAssignMaterialProperties(realization)
     por0_p(local_id) = material_property%porosity
     tor0_p(local_id) = material_property%tortuosity
   enddo
+  call MaterialPropertyDestroy(null_material_property)
 
   if (option%nflowdof > 0) then
     call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr);CHKERRQ(ierr)

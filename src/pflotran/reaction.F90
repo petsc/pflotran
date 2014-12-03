@@ -3721,20 +3721,11 @@ PetscReal function RCO2MoleFraction(rt_auxvar,global_auxvar,reaction,option)
   endif
   
   sum_co2 = rt_auxvar%pri_molal(ico2)
-  do icplx = 1, reaction%neqcplx
-    do i = 1, reaction%eqcplxspecid(0,icplx)
-      if (reaction%eqcplxspecid(i,icplx) == ico2) then
-        sum_co2 = sum_co2 + reaction%eqcplxstoich(i,icplx)* &
-                            rt_auxvar%sec_molal(icplx)
-        exit
-      endif
-    enddo
-  enddo
   sum_mol = RSumMoles(rt_auxvar,reaction,option)
   ! sum_co2 and sum_mol are both in units mol/kg water
   ! FMWH2O is in units g/mol
   ! therefore, scale by 1.d-3 to convert from mol/kg water - g water/mol water
-  !   to mol/mol water -- kg water / 1000g water
+  ! to mol/mol water -- kg water / 1000g water
   RCO2MoleFraction = sum_co2 * FMWH2O * 1.d-3 / &
                      (1.d0 + FMWH2O * sum_mol * 1.d-3)
   
