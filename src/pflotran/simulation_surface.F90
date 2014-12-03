@@ -176,6 +176,9 @@ subroutine SurfaceSimulationStrip(this)
   call printMsg(this%option,'SurfaceSimulationStrip()')
   
   call SimulationBaseStrip(this)
+  call SurfRealizStrip(this%surf_realization)
+  deallocate(this%surf_realization)
+  nullify(this%surf_realization)
   call RegressionDestroy(this%regression)
   
 end subroutine SurfaceSimulationStrip

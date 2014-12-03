@@ -280,7 +280,7 @@ subroutine PMSurfaceTHDestroy(this)
   ! Date: 07/23/13
   ! 
 
-!  use Surface_TH_module, only : SurfaceTHDestroy
+  use Surface_TH_module, only : SurfaceTHDestroy
 
   implicit none
 
@@ -294,9 +294,7 @@ subroutine PMSurfaceTHDestroy(this)
   call printMsg(this%option,'PMSurfaceTHDestroy()')
 #endif
 
-#ifndef SIMPLIFY
-!  call SurfaceTHDestroy(this%surf_realization)
-#endif
+  call SurfaceTHDestroy(this%surf_realization)
   call this%comm1%Destroy()
 
 end subroutine PMSurfaceTHDestroy

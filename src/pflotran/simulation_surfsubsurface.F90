@@ -241,9 +241,10 @@ subroutine SurfSubsurfaceSimulationStrip(this)
   call printMsg(this%option,'SurfSubsurfaceSimulationStrip()')
   
   call SubsurfaceSimulationStrip(this)
-  !call SubsurfaceSimulationStrip(this)
-  call RegressionDestroy(this%regression)
-  
+  call SurfRealizStrip(this%surf_realization)
+  deallocate(this%surf_realization)
+  nullify(this%surf_realization)
+ 
 end subroutine SurfSubsurfaceSimulationStrip
 
 ! ************************************************************************** !

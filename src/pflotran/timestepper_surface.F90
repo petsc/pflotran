@@ -22,6 +22,7 @@ module Timestepper_Surface_class
     procedure, public :: Restart => TimestepperSurfaceRestart
     procedure, public :: Reset => TimestepperSurfaceReset
     procedure, public :: SetTargetTime => TimestepperSurfaceSetTargetTime
+    procedure, public :: Strip => TimestepperSurfaceStrip
     procedure, public :: StepDT => TimestepperSurfaceStepDT
   end type timestepper_surface_type
 
@@ -439,5 +440,42 @@ subroutine TimestepperSurfaceReset(this)
 #endif
 
 end subroutine TimestepperSurfaceReset
+
+! ************************************************************************** !
+
+subroutine TimestepperSurfaceStrip(this)
+  ! 
+  ! Deallocates members of a surface time stepper
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/02/14
+  ! 
+
+  implicit none
+  
+  class(timestepper_surface_type) :: this
+  
+  call TimestepperBaseStrip(this)
+  call SolverDestroy(this%solver)
+
+end subroutine TimestepperSurfaceStrip
+
+! ************************************************************************** !
+
+subroutine TimestepperSurfaceDestroy(this)
+  ! 
+  ! Deallocates a surface time stepper
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/02/14
+  ! 
+
+  implicit none
+  
+  class(timestepper_surface_type) :: this
+  
+  call TimestepperSurfaceStrip(this)
+  
+end subroutine TimestepperSurfaceDestroy
 
 end module Timestepper_Surface_class
