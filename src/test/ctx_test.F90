@@ -55,8 +55,7 @@ subroutine ExtendedFunction(snes,xx,r,ctx,ierr)
   SNES :: snes
   Vec :: xx
   Vec :: r
-!  class(extended_type) :: ctx
-  class(base_type) :: ctx
+  class(base_type) :: ctx  ! yes, this should be base_type
   PetscErrorCode :: ierr
   call ctx%Print()
 end subroutine ExtendedFunction
@@ -95,7 +94,7 @@ program test
 
   nullify(base)
   nullify(extended)
-!  allocate(base)
+  allocate(base)
   allocate(extended)
   call PetscInitialize(PETSC_NULL_CHARACTER, ierr);CHKERRQ(ierr)
   call MPI_Comm_size(PETSC_COMM_WORLD,size,ierr);CHKERRQ(ierr)
