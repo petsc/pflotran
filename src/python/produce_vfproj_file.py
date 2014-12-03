@@ -42,6 +42,10 @@ for line in mf:
 				po.write(filename)
 				po.write('"/>\n')
 			elif line.strip().startswith('# End Source Block'):
+				po.write('    <File RelativePath="')
+				po.write(source_path)
+				po.write('\pflotran.F90')
+				po.write('"/>\n')
 				break
 
 po.write('  </Filter></Files> ')
