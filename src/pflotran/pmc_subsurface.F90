@@ -15,6 +15,7 @@ module PMC_Subsurface_class
     class(realization_type), pointer :: realization
   contains
     procedure, public :: Init => PMCSubsurfaceInit
+    procedure, public :: SetupSolvers => PMCSubsurfaceSetupSolvers
     procedure, public :: GetAuxData => PMCSubsurfaceGetAuxData
     procedure, public :: SetAuxData => PMCSubsurfaceSetAuxData
     procedure, public :: Destroy => PMCSubsurfaceDestroy
@@ -75,6 +76,46 @@ subroutine PMCSubsurfaceInit(this)
   nullify(this%realization)
 
 end subroutine PMCSubsurfaceInit
+
+! ************************************************************************** !
+
+subroutine PMCSubsurfaceSetupSolvers(this,pm)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/18/13
+  ! 
+  use PM_Base_class
+  use Timestepper_Base_class
+  use Timestepper_BE_class
+  use PM_Base_Pointer_module
+
+  implicit none
+
+  class(pmc_subsurface_type) :: this
+  class(pm_base_type) :: pm
+
+  PetscErrorCode :: ierr
+
+#ifdef DEBUG
+  call printMsg(this%option,'PMCSubsurface%SetupSolvers()')
+#endif
+
+  select type(ts => this%timestepper)
+    class is(timestepper_BE_type)
+      call SNESSetFunction(ts%solver%snes, &
+                           pm%residual_vec, &
+                           PMResidual, &
+                           this%pm_ptr, &
+                           ierr);CHKERRQ(ierr)
+      call SNESSetJacobian(ts%solver%snes, &
+                           ts%solver%J, &
+                           ts%solver%Jpre, &
+                           PMJacobian, &
+                           this%pm_ptr, &
+                           ierr);CHKERRQ(ierr)
+  end select
+
+end subroutine PMCSubsurfaceSetupSolvers
 
 ! ************************************************************************** !
 

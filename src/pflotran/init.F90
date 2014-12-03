@@ -401,6 +401,7 @@ subroutine Init(simulation)
                                              option)
     endif
     
+#if 0
     select case(option%iflowmode)
       case(TH_MODE)
         call SNESSetFunction(flow_solver%snes,field%flow_r,THResidual, &
@@ -425,11 +426,13 @@ subroutine Init(simulation)
         call SNESSetFunction(flow_solver%snes,field%flow_r,GeneralResidual, &
                              realization,ierr);CHKERRQ(ierr)
     end select
+#endif
     
     if (flow_solver%J_mat_type == MATMFFD) then
       call MatCreateSNESMF(flow_solver%snes,flow_solver%J,ierr);CHKERRQ(ierr)
     endif
 
+#if 0
     select case(option%iflowmode)
       case(TH_MODE)
         call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
@@ -453,6 +456,7 @@ subroutine Init(simulation)
         call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
                              GeneralJacobian,realization,ierr);CHKERRQ(ierr)
     end select
+#endif
     
     ! by default turn off line search
     call SNESGetLineSearch(flow_solver%snes, linesearch, ierr);CHKERRQ(ierr)
@@ -681,16 +685,20 @@ subroutine Init(simulation)
 
     if (option%transport%reactive_transport_coupling == GLOBAL_IMPLICIT) then
 
+#if 0
       call SNESSetFunction(tran_solver%snes,field%tran_r,RTResidual,&
                            realization,ierr);CHKERRQ(ierr)
+#endif
 
       if (tran_solver%J_mat_type == MATMFFD) then
         call MatCreateSNESMF(tran_solver%snes,tran_solver%J, &
                              ierr);CHKERRQ(ierr)
       endif
       
+#if 0
       call SNESSetJacobian(tran_solver%snes,tran_solver%J,tran_solver%Jpre, &
                            RTJacobian,realization,ierr);CHKERRQ(ierr)
+#endif
 
       ! this could be changed in the future if there is a way to ensure that the linesearch
       ! update does not perturb concentrations negative.

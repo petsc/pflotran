@@ -36,6 +36,7 @@ module PMC_Base_class
     procedure, public :: InitializeRun
     procedure, public :: CastToBase => PMCCastToBase
     procedure, public :: SetTimestepper => PMCBaseSetTimestepper
+    procedure, public :: SetupSolvers => PMCBaseSetupSolvers
     procedure, public :: RunToTime => PMCBaseRunToTime
     procedure, public :: Checkpoint => PMCBaseCheckpoint
     procedure, public :: Restart => PMCBaseRestart
@@ -164,6 +165,28 @@ function PMCCastToBase(this)
   PMCCastToBase => this
   
 end function PMCCastToBase
+
+! ************************************************************************** !
+
+subroutine PMCBaseSetupSolvers(this,pm)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/18/13
+  ! 
+
+  implicit none
+  
+  class(pmc_base_type) :: this
+  class(pm_base_type) :: pm
+
+#ifdef DEBUG
+  call printMsg(this%option,'PMCBase%SetupSolvers()')
+#endif
+
+  ! For now there is nothing to be done here.  Most everything is done in
+  ! PMCSubsurface
+  
+end subroutine PMCBaseSetupSolvers
 
 ! ************************************************************************** !
 

@@ -304,19 +304,17 @@ subroutine HijackSimulation(simulation_old,simulation)
           class default
             select type(ts => cur_process_model_coupler%timestepper)
               class is(timestepper_BE_type)
-              call SNESSetFunction( &
-                             ts%solver%snes, &
-                             cur_process_model%residual_vec, &
-                             PMResidual, &
-                             cur_process_model_coupler%pm_ptr, &
-                                   ierr);CHKERRQ(ierr)
-              call SNESSetJacobian( &
-                             ts%solver%snes, &
-                             ts%solver%J, &
-                             ts%solver%Jpre, &
-                             PMJacobian, &
-                             cur_process_model_coupler%pm_ptr, &
-                                   ierr);CHKERRQ(ierr)
+                call SNESSetFunction(ts%solver%snes, &
+                                     cur_process_model%residual_vec, &
+                                     PMResidual, &
+                                     cur_process_model_coupler%pm_ptr, &
+                                     ierr);CHKERRQ(ierr)
+                call SNESSetJacobian(ts%solver%snes, &
+                                     ts%solver%J, &
+                                     ts%solver%Jpre, &
+                                     PMJacobian, &
+                                     cur_process_model_coupler%pm_ptr, &
+                                     ierr);CHKERRQ(ierr)
             end select
         end select
         cur_process_model => cur_process_model%next

@@ -27,6 +27,8 @@ module PM_Base_Pointer_module
 
   public :: PMResidual, &
             PMJacobian, &
+            PMCheckUpdatePre, &
+            PMCheckUpdatePost, &
             PMRHSFunction
 
 contains
@@ -121,5 +123,70 @@ subroutine PMRHSFunction(ts,time,xx,ff,this,ierr)
   call this%ptr%RHSFunction(ts,time,xx,ff,ierr)
 
 end subroutine PMRHSFunction
+
+! ************************************************************************** !
+
+subroutine PMCheckUpdatePre(line_search,X,dX,changed,this,ierr)
+  ! 
+  ! Wrapper for native call to XXXCheckUpdatePre
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/02/14
+  ! 
+  
+  implicit none
+  
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscsnes.h"
+
+  SNESLineSearch :: line_search
+  Vec :: X
+  Vec :: dX
+  PetscBool :: changed
+  type(pm_base_pointer_type) :: this
+  PetscErrorCode :: ierr
+  
+#ifdef PM_TOP_DEBUG    
+  print *, 'PMCheckUpdatePre()'
+#endif
+
+  call this%ptr%CheckUpdatePre(line_search,X,dX,changed,ierr)
+    
+end subroutine PMCheckUpdatePre
+
+! ************************************************************************** !
+
+subroutine PMCheckUpdatePost(line_search,X0,dX,X1,dX_changed,X1_changed,this, &
+                             ierr)
+  ! 
+  ! Wrapper for native call to XXXCheckUpdatePost
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/02/14
+  ! 
+  
+  implicit none
+  
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscsnes.h"
+
+  SNESLineSearch :: line_search
+  Vec :: X0
+  Vec :: dX
+  Vec :: X1
+  PetscBool :: dX_changed
+  PetscBool :: X1_changed
+  type(pm_base_pointer_type) :: this
+  PetscErrorCode :: ierr
+  
+#ifdef PM_TOP_DEBUG    
+  print *, 'PMCheckUpdatePost()'
+#endif
+
+  call this%ptr%CheckUpdatePost(line_search,X0,dX,X1,dX_changed,X1_changed,ierr)
+    
+end subroutine PMCheckUpdatePost
 
 end module PM_Base_Pointer_module
