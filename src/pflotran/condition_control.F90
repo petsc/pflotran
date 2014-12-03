@@ -639,6 +639,10 @@ subroutine CondControlAssignTranInitCond(realization)
             constraint_coupler%num_iterations
           ! update CO2 mole fraction for CO2 modes
 #if 0
+          ! TODO(geh): ideally, the intermingling of the flow process model
+          ! with transport is not ideal.  Peter should be looking into whether
+          ! we can remove this code in favor of a slighly less accurate
+          ! solution.
           select case(option%iflowmode)
             case(MPH_MODE,FLASH2_MODE)
               if (int(iphase_loc_p(ghosted_id)) == 1) then
