@@ -22,6 +22,9 @@ vecgetarray_test : vecgetarrayf90_test.o
 petsc_test_f : petsc_test_f.o
 	${FLINKER}   -o petsc_test_f petsc_test_f.o ${PETSC_LIB} ${LIBS} 
 
+ctx_test : ctx_test.o
+	${FLINKER}   -o ctx_test ctx_test.o ${PETSC_LIB} ${LIBS} 
+
 petsc_test_c: petsc_test_c.o
 	${CLINKER}   -o petsc_test_c petsc_test_c.o ${PETSC_LIB} ${LIBS} 
 

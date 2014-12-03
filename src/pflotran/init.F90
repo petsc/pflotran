@@ -497,7 +497,7 @@ subroutine Init(simulation)
 
     
  
-#if 0    
+#if 1
     call SNESGetLineSearch(flow_solver%snes, linesearch, ierr);CHKERRQ(ierr)
     select case(option%iflowmode)
       case(RICHARDS_MODE)
@@ -741,6 +741,7 @@ subroutine Init(simulation)
       ! this update check must be in place, otherwise reactive transport is likely
       ! to fail
       if (associated(realization%reaction)) then
+#if 1
         call SNESGetLineSearch(tran_solver%snes, linesearch,  &
                                ierr);CHKERRQ(ierr)
         if (realization%reaction%check_update) then
@@ -752,6 +753,7 @@ subroutine Init(simulation)
                                           realization,ierr);CHKERRQ(ierr)
         endif
       endif
+#endif
     endif
     
     call printMsg(option,"  Finished setting up TRAN SNES ")

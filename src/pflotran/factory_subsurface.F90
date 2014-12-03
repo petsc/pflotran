@@ -319,6 +319,7 @@ subroutine HijackSimulation(simulation_old,simulation)
             call cur_process_model%SetupSolvers(ts%solver)
         end select
 #endif
+#if 0
         select type(ts => cur_process_model_coupler%timestepper)
           class is(timestepper_BE_type)
             call SNESGetLineSearch(ts%solver%snes, linesearch, ierr);CHKERRQ(ierr)
@@ -369,6 +370,7 @@ subroutine HijackSimulation(simulation_old,simulation)
               class default
             end select
         end select
+#endif
 #if 0        
         select type(cur_process_model)
           class default
