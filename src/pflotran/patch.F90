@@ -2638,6 +2638,7 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
     cur_coupler => cur_coupler%next
   enddo
 
+  call MaterialAuxVarStrip(material_auxvar)
   deallocate(material_auxvar)
 
 end subroutine PatchInitCouplerConstraints
