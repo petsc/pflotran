@@ -155,7 +155,14 @@ subroutine HijackSimulation(simulation_old,simulation)
   use Logging_module
   use Strata_module
   
+  use General_module
+  use TH_module
+  use Richards_module
+  use Reactive_Transport_module
+  
   implicit none
+  
+#include "finclude/petscsnes.h"  
   
   type(simulation_type) :: simulation_old
   class(subsurface_simulation_type) :: simulation
@@ -170,6 +177,7 @@ subroutine HijackSimulation(simulation_old,simulation)
   class(realization_type), pointer :: realization
   type(option_type), pointer :: option
   character(len=MAXSTRINGLENGTH) :: string
+  SNESLineSearch :: linesearch
   PetscErrorCode :: ierr
   
   realization => simulation_old%realization
@@ -300,9 +308,66 @@ subroutine HijackSimulation(simulation_old,simulation)
         end select
 
         call cur_process_model%Init()
+        ! Until classes are resolved as user-defined contexts in PETSc, 
+        ! we cannot use SetupSolvers.  Therefore, everything has to be
+        ! explicitly defined here.  This may be easier in the long
+        ! run as it creates an intermediate refactor in pulling 
+        ! functionality in Init() into the factories - geh
+#if 0        
         select type(ts => cur_process_model_coupler%timestepper)
           class is(timestepper_BE_type)
             call cur_process_model%SetupSolvers(ts%solver)
+        end select
+#endif
+        select type(ts => cur_process_model_coupler%timestepper)
+          class is(timestepper_BE_type)
+            call SNESGetLineSearch(ts%solver%snes, linesearch, ierr);CHKERRQ(ierr)
+            select type(cur_process_model)
+              class is(pm_richards_type)
+                if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
+                    dabs(option%saturation_change_limit) > 0.d0) then
+                  call SNESLineSearchSetPreCheck(linesearch, &
+                                                 RichardsCheckUpdatePre, &
+                                                 realization,ierr);CHKERRQ(ierr)
+                endif              
+                if (ts%solver%check_post_convergence) then
+                  call SNESLineSearchSetPostCheck(linesearch, &
+                                                  RichardsCheckUpdatePost, &
+                                                  realization,ierr);CHKERRQ(ierr)        
+                endif
+              class is(pm_general_type)
+                call SNESLineSearchSetPreCheck(linesearch, &
+                                               GeneralCheckUpdatePre, &
+                                               realization,ierr);CHKERRQ(ierr)              
+                if (ts%solver%check_post_convergence) then
+                  call SNESLineSearchSetPostCheck(linesearch, &
+                                                  GeneralCheckUpdatePost, &
+                                                  realization,ierr);CHKERRQ(ierr)        
+                endif
+              class is(pm_th_type)
+                if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
+                    dabs(option%pressure_change_limit) > 0.d0 .or. &
+                    dabs(option%temperature_change_limit) > 0.d0) then
+                  call SNESLineSearchSetPreCheck(linesearch, &
+                                                 THCheckUpdatePre, &
+                                                 realization,ierr);CHKERRQ(ierr)
+                endif 
+                if (ts%solver%check_post_convergence) then
+                  call SNESLineSearchSetPostCheck(linesearch, &
+                                                  THCheckUpdatePost, &
+                                                  realization,ierr);CHKERRQ(ierr)        
+                endif
+              class is(pm_rt_type)
+                if (realization%reaction%check_update) then
+                  call SNESLineSearchSetPreCheck(linesearch,RTCheckUpdatePre, &
+                                                 realization,ierr);CHKERRQ(ierr)
+                endif
+                if (ts%solver%check_post_convergence) then
+                  call SNESLineSearchSetPostCheck(linesearch,RTCheckUpdatePost, &
+                                                  realization,ierr);CHKERRQ(ierr)
+                endif        
+              class default
+            end select
         end select
 #if 0        
         select type(cur_process_model)
