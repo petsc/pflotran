@@ -29,6 +29,7 @@ module PM_Base_class
     class(pm_base_type), pointer :: next
   contains
     procedure, public :: Init => PMBaseInit
+    procedure, public :: SetupSolvers => PMBaseSetupSolvers
     procedure, public :: InitializeRun => PMBaseThisOnly
     procedure, public :: FinalizeRun => PMBaseThisOnly
     procedure, public :: Residual => PMBaseResidual
@@ -90,6 +91,17 @@ subroutine PMBaseInit(this)
   print *, 'Must extend PMBaseInit.'
   stop
 end subroutine PMBaseInit
+
+! ************************************************************************** !
+
+subroutine PMBaseSetupSolvers(this,solver)
+  use Solver_module
+  implicit none
+  class(pm_base_type) :: this
+  type(solver_type) :: solver
+  print *, 'Must extend PMBaseInit.'
+  stop
+end subroutine PMBaseSetupSolvers
 
 ! ************************************************************************** !
 

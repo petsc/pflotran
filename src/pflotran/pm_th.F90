@@ -111,6 +111,44 @@ end subroutine PMTHInit
 
 ! ************************************************************************** !
 
+subroutine PMTHSetupSolvers(this,solver)
+  ! 
+  ! Sets up SNES solvers.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/03/14
+
+  use TH_module, only : THCheckUpdatePre, THCheckUpdatePost
+  use Solver_module
+  
+  implicit none
+  
+  class(pm_subsurface_type) :: this
+  type(solver_type) :: solver
+  
+  SNESLineSearch :: linesearch
+  PetscErrorCode :: ierr
+  
+  call PMSubsurfaceSetupSolvers(this,solver)
+
+  call SNESGetLineSearch(solver%snes, linesearch, ierr);CHKERRQ(ierr)
+  if (dabs(this%option%pressure_dampening_factor) > 0.d0 .or. &
+      dabs(this%option%pressure_change_limit) > 0.d0 .or. &
+      dabs(this%option%temperature_change_limit) > 0.d0) then
+    call SNESLineSearchSetPreCheck(linesearch, &
+                                   THCheckUpdatePre, &
+                                   this%realization,ierr);CHKERRQ(ierr)
+  endif
+  if (solver%check_post_convergence) then
+    call SNESLineSearchSetPostCheck(linesearch, &
+                                    THCheckUpdatePost, &
+                                    this%realization,ierr);CHKERRQ(ierr)
+  endif
+  
+end subroutine PMTHSetupSolvers
+
+! ************************************************************************** !
+
 subroutine PMTHInitializeTimestep(this)
   ! 
   ! This routine

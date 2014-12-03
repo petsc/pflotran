@@ -79,7 +79,7 @@ end subroutine PMCSubsurfaceInit
 
 ! ************************************************************************** !
 
-subroutine PMCSubsurfaceSetupSolvers(this,pm)
+subroutine PMCSubsurfaceSetupSolvers(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 03/18/13
@@ -92,7 +92,6 @@ subroutine PMCSubsurfaceSetupSolvers(this,pm)
   implicit none
 
   class(pmc_subsurface_type) :: this
-  class(pm_base_type) :: pm
 
   PetscErrorCode :: ierr
 
@@ -103,7 +102,7 @@ subroutine PMCSubsurfaceSetupSolvers(this,pm)
   select type(ts => this%timestepper)
     class is(timestepper_BE_type)
       call SNESSetFunction(ts%solver%snes, &
-                           pm%residual_vec, &
+                           this%pm_ptr%ptr%residual_vec, &
                            PMResidual, &
                            this%pm_ptr, &
                            ierr);CHKERRQ(ierr)

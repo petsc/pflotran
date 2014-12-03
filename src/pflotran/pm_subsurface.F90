@@ -30,6 +30,7 @@ module PM_Subsurface_class
   contains
 !geh: commented out subroutines can only be called externally
     procedure, public :: Init => PMSubsurfaceInit
+    procedure, public :: SetupSolvers => PMSubsurfaceSetupSolvers
     procedure, public :: PMSubsurfaceSetRealization
     procedure, public :: InitializeRun => PMSubsurfaceInitializeRun
 !    procedure, public :: FinalizeRun => PMSubsurfaceFinalizeRun
@@ -48,6 +49,7 @@ module PM_Subsurface_class
   
   public :: PMSubsurfaceCreate, &
             PMSubsurfaceInit, &
+            PMSubsurfaceSetupSolvers, &
             PMSubsurfaceInitializeTimestepA, &
             PMSubsurfaceInitializeTimestepB, &
             PMSubsurfaceInitializeRun, &
@@ -120,6 +122,26 @@ subroutine PMSubsurfaceInit(this)
   endif
   
 end subroutine PMSubsurfaceInit
+
+! ************************************************************************** !
+
+subroutine PMSubsurfaceSetupSolvers(this,solver)
+  ! 
+  ! Sets up SNES solvers.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/03/14
+
+  use Solver_module
+  
+  implicit none
+  
+  class(pm_subsurface_type) :: this
+  type(solver_type) :: solver
+  
+  PetscErrorCode :: ierr
+  
+end subroutine PMSubsurfaceSetupSolvers
 
 ! ************************************************************************** !
 

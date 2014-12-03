@@ -497,6 +497,7 @@ subroutine Init(simulation)
 
     
  
+#if 0    
     call SNESGetLineSearch(flow_solver%snes, linesearch, ierr);CHKERRQ(ierr)
     select case(option%iflowmode)
       case(RICHARDS_MODE)
@@ -520,7 +521,6 @@ subroutine Init(simulation)
         endif
     end select
     
-    
     if (flow_solver%check_post_convergence) then
       call SNESGetLineSearch(flow_solver%snes, linesearch, ierr);CHKERRQ(ierr)
       select case(option%iflowmode)
@@ -538,7 +538,7 @@ subroutine Init(simulation)
                                           realization,ierr);CHKERRQ(ierr)
       end select
     endif
-        
+#endif        
     
     call printMsg(option,"  Finished setting up FLOW SNES ")
 

@@ -168,7 +168,7 @@ end function PMCCastToBase
 
 ! ************************************************************************** !
 
-subroutine PMCBaseSetupSolvers(this,pm)
+subroutine PMCBaseSetupSolvers(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 03/18/13
@@ -177,7 +177,6 @@ subroutine PMCBaseSetupSolvers(this,pm)
   implicit none
   
   class(pmc_base_type) :: this
-  class(pm_base_type) :: pm
 
 #ifdef DEBUG
   call printMsg(this%option,'PMCBase%SetupSolvers()')

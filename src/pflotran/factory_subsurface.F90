@@ -300,6 +300,11 @@ subroutine HijackSimulation(simulation_old,simulation)
         end select
 
         call cur_process_model%Init()
+        select type(ts => cur_process_model_coupler%timestepper)
+          class is(timestepper_BE_type)
+            call cur_process_model%SetupSolvers(ts%solver)
+        end select
+#if 0        
         select type(cur_process_model)
           class default
             select type(ts => cur_process_model_coupler%timestepper)
@@ -317,8 +322,11 @@ subroutine HijackSimulation(simulation_old,simulation)
                                      ierr);CHKERRQ(ierr)
             end select
         end select
+#endif            
         cur_process_model => cur_process_model%next
       enddo
+      ! has to be called after realizations are set above
+      call cur_process_model_coupler%SetupSolvers()
       cur_process_model_coupler => cur_process_model_coupler%below
     enddo
     cur_process_model_coupler_top => cur_process_model_coupler_top%next
