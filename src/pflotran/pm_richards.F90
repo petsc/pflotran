@@ -82,7 +82,7 @@ subroutine PMRichardsInitializeTimestep(this)
   call PMSubsurfaceInitializeTimestepA(this)
 
   if (this%option%print_screen_flag) then
-    write(*,'(/,2("=")," RICHARDS FLOW ",62("="))')
+    write(*,'(/,2("=")," RICHARDS FLOW ",63("="))')
   endif
   
   call RichardsInitializeTimestep(this%realization)
