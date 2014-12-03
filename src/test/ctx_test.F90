@@ -87,7 +87,7 @@ program test
   class(extended_type), pointer :: extended
   PetscErrorCode :: ierr
 
-  print *, 'Start of Fortran90 test program'
+  print *, 'Start of Fortran2003 test program'
 
   nullify(base)
   nullify(extended)
@@ -118,7 +118,7 @@ program test
   if (associated(extended)) deallocate(extended)
   call PetscFinalize(ierr)
 
-  print *, 'End of Fortran90 test program'
+  print *, 'End of Fortran2003 test program'
  
 end program test
 
