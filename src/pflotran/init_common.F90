@@ -80,7 +80,7 @@ subroutine Init(simulation)
   use Surface_Field_module
   use Surface_Flow_module
   use Surface_Global_module
-  use Surface_Init_Common_module, only : SurfaceInitReadRequiredCards, &
+  use Surface_Init_module, only : SurfaceInitReadRequiredCards, &
                                   SurfaceInitMatPropToRegions, &
                                   SurfaceInitReadRegionFiles
   use Surface_Realization_class
@@ -88,7 +88,7 @@ subroutine Init(simulation)
   use Grid_Unstructured_module
 
   use Geomechanics_Realization_class
-  use Geomechanics_Init_Common_module, only : GeomechicsInitReadRequiredCards, &
+  use Geomechanics_Init_module, only : GeomechicsInitReadRequiredCards, &
                                        GeomechInitMatPropToGeomechRegions
   use Geomechanics_Grid_module
   use Geomechanics_Discretization_module
@@ -133,10 +133,12 @@ subroutine Init(simulation)
   type(geomech_field_type), pointer         :: geomech_field
   type(geomech_realization_type), pointer   :: geomech_realization
 
+#if 0  
   ! popped in TimestepperInitializeRun()
   call PetscLogStagePush(logging%stage(INIT_STAGE),ierr);CHKERRQ(ierr)
   call PetscLogEventBegin(logging%event_init,ierr);CHKERRQ(ierr)
-  
+#endif
+
   ! set pointers to objects
   flow_timestepper => simulation%flow_timestepper
   tran_timestepper => simulation%tran_timestepper
@@ -1034,6 +1036,7 @@ subroutine Init(simulation)
 #endif
 !PETSC_HAVE_HDF5
 
+#if 0
   if (option%surf_flow_on) then
     ! Check if surface-flow is compatible with the given flowmode
     select case(option%iflowmode)
@@ -1094,6 +1097,7 @@ subroutine Init(simulation)
         call printErrMsgByRank(option)
     end select
   endif ! option%surf_flow_on
+#endif
 
 #if 0
   !geh: moved to output_surface.F90
@@ -1107,6 +1111,7 @@ subroutine Init(simulation)
   endif
 #endif
 
+#if 0
   if (option%ngeomechdof > 0) then
     if (option%geomech_subsurf_coupling /= 0) then
       call GeomechCreateGeomechSubsurfVec(simulation%realization, &
@@ -1139,10 +1144,14 @@ subroutine Init(simulation)
     ! is not needed, at this point.
     call GeomechForceUpdateAuxVars(simulation%geomech_realization)
   endif
+#endif  
 
+#if 0
+! moved to
   call printMsg(option," ")
   call printMsg(option,"  Finished Initialization")
   call PetscLogEventEnd(logging%event_init,ierr);CHKERRQ(ierr)
+#endif
 
 end subroutine Init
 
@@ -1430,8 +1439,8 @@ subroutine InitReadInput(simulation)
   use Creep_Closure_module
   
   use Surface_Flow_module
-  use Surface_Init_Common_module, only : SurfaceInitReadInput
-  use Geomechanics_Init_Common_module, only : GeomechanicsInitReadInput
+  use Surface_Init_module, only : SurfaceInitReadInput
+  use Geomechanics_Init_module, only : GeomechanicsInitReadInput
   use Geomechanics_Realization_class
 #ifdef SOLID_SOLUTION
   use Reaction_Solid_Solution_module, only : SolidSolutionReadFromInputFile

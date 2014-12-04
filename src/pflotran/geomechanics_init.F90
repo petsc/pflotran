@@ -1,4 +1,4 @@
-module Geomechanics_Init_Common_module
+module Geomechanics_Init_module
 
   use PFLOTRAN_Constants_module
 
@@ -16,7 +16,8 @@ module Geomechanics_Init_Common_module
 
 
   public :: GeomechicsInitReadRequiredCards, &
-            GeomechanicsInitReadInput
+            GeomechanicsInitReadInput, &
+            InitGeomechSetupRealization
 
 contains
 
@@ -752,5 +753,66 @@ subroutine GeomechInitMatPropToGeomechRegions(geomech_realization)
                                          field%imech_loc,ONEDOF)
   
 end subroutine GeomechInitMatPropToGeomechRegions
- 
-end module Geomechanics_Init_Common_module
+
+! ************************************************************************** !
+
+subroutine InitGeomechSetupRealization(simulation)
+  ! 
+  ! Initializes material property data structres and assign them to the domain.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/04/14
+  ! 
+  use Simulation_module
+  
+  use Geomechanics_Realization_class
+  use Geomechanics_Global_module
+  use Geomechanics_Force_module
+  
+  use Option_module
+  use Waypoint_module
+  
+  implicit none
+  
+  type(simulation_type) :: simulation
+  
+  type(option_type), pointer :: option
+  
+  option => simulation%realization%option
+  
+  if (option%ngeomechdof > 0) then
+    if (option%geomech_subsurf_coupling /= 0) then
+      call GeomechCreateGeomechSubsurfVec(simulation%realization, &
+                                          simulation%geomech_realization)
+      call GeomechCreateSubsurfStressStrainVec(simulation%realization, &
+                                               simulation%geomech_realization)
+
+      call GeomechRealizMapSubsurfGeomechGrid(simulation%realization, &
+                                              simulation%geomech_realization, &
+                                              option)
+    endif
+    call GeomechRealizLocalizeRegions(simulation%geomech_realization)
+    call GeomechRealizPassFieldPtrToPatch(simulation%geomech_realization)
+    call GeomechRealizProcessMatProp(simulation%geomech_realization)
+    call GeomechRealizProcessGeomechCouplers(simulation%geomech_realization)
+    call GeomechRealizProcessGeomechConditions(simulation%geomech_realization)
+    call GeomechInitMatPropToGeomechRegions(simulation%geomech_realization)
+    call GeomechRealizInitAllCouplerAuxVars(simulation%geomech_realization)  
+    call GeomechRealizPrintCouplers(simulation%geomech_realization)  
+    call GeomechRealizAddWaypointsToList(simulation%geomech_realization)
+    call GeomechGridElemSharedByNodes(simulation%geomech_realization)
+    call WaypointListFillIn(option,simulation%geomech_realization%waypoint_list)
+    call WaypointListRemoveExtraWaypnts(option, &
+                                    simulation%geomech_realization%waypoint_list)
+    call GeomechForceSetup(simulation%geomech_realization)
+    call GeomechGlobalSetup(simulation%geomech_realization)
+    
+    ! SK: We are solving quasi-steady state solution for geomechanics.
+    ! Initial condition is not needed, hence CondControlAssignFlowInitCondGeomech
+    ! is not needed, at this point.
+    call GeomechForceUpdateAuxVars(simulation%geomech_realization)
+  endif
+  
+end subroutine InitGeomechSetupRealization
+
+end module Geomechanics_Init_module

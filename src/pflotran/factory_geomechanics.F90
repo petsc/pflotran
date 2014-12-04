@@ -205,6 +205,7 @@ subroutine HijackGeomechanicsSimulation(simulation_old,simulation)
   use PMC_Geomechanics_class
   use Simulation_Base_class
   use PM_Geomechanics_Force_class
+  use Geomechanics_Init_module, only : InitGeomechSetupRealization
   use PM_Base_class
   use PM_Base_Pointer_module
   use Timestepper_Geomechanics_class
@@ -231,6 +232,9 @@ subroutine HijackGeomechanicsSimulation(simulation_old,simulation)
   !----------------------------------------------------------------------------!
   simulation%output_option => geomech_realization%output_option
   simulation%option => geomech_realization%option
+  
+  call InitGeomechSetupRealization(simulation_old)  
+
   nullify(cur_process_model)
 
   nullify(geomech_process_model_coupler)

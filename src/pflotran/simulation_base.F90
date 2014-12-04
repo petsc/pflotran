@@ -102,6 +102,7 @@ subroutine SimulationBaseInitializeRun(this)
   ! 
 
   use Logging_module
+  use Option_module
 
   implicit none
   
@@ -124,7 +125,10 @@ subroutine SimulationBaseInitializeRun(this)
   call this%process_model_coupler_list%InitializeRun()  
   call this%JumpStart()
   
-  ! pushed in Init()
+  call printMsg(this%option," ")
+  call printMsg(this%option,"  Finished Initialization")
+  call PetscLogEventEnd(logging%event_init,ierr);CHKERRQ(ierr)
+  ! pushed in PFLOTRANInitializePostPetsc()
   call PetscLogStagePop(ierr);CHKERRQ(ierr)
 
   ! popped in FinalizeRun()

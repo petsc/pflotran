@@ -66,11 +66,16 @@ subroutine PFLOTRANInitializePostPetsc(multisimulation,option)
   
   type(multi_simulation_type), pointer :: multisimulation
   type(option_type) :: option
+  PetscErrorCode :: ierr
 
   ! must come after logging is created
   call LoggingSetupComplete()
   call MultiSimulationIncrement(multisimulation,option)
   call OptionBeginTiming(option)
+
+  ! popped in SimulationBaseInitializeRun()
+  call PetscLogStagePush(logging%stage(INIT_STAGE),ierr);CHKERRQ(ierr)
+  call PetscLogEventBegin(logging%event_init,ierr);CHKERRQ(ierr)
   
 end subroutine PFLOTRANInitializePostPetsc
 
