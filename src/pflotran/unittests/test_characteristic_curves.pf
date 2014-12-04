@@ -471,6 +471,10 @@ contains
              'function of liquid saturation'
     value = 0.38173220142506209d0
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
+    string = 'Brooks-Corey-Burdine derivative of gas relative ' // &
+             'permeability as a function of liquid saturation'
+    value = -1.3129595806675352d0
+    @assertEqual(value, dkr_Se, 1.d-8, string)
 
   end subroutine testrpf_BC_Burdine
 
@@ -514,6 +518,10 @@ contains
              'function of liquid saturation'
     value = 0.65126653365343257d0
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
+    string = 'Brooks-Corey-Mualem derivative of gas relative ' // &
+             'permeability as a function of liquid saturation'
+    value = -1.3794581170063300d0 
+    @assertEqual(value, dkr_Se, 1.d-8, string)
 
   end subroutine testrpf_BC_Mualem
 
@@ -651,6 +659,10 @@ contains
              'function of liquid saturation'
     value = 0.61184154078016839d0
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
+    string = 'van Genuchten-Mualem derivative of gas relative ' // &
+             'permeability as a function of liquid saturation'
+    value = -1.2125958991403705d0
+    @assertEqual(value, dkr_Se, dabs(value)*tolerance, string)
 
   end subroutine testrpf_van_Genuchten_Mualem
 
@@ -692,6 +704,10 @@ contains
              'function of liquid saturation'
     value = 0.29870096712333277d0
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
+    string = 'van Genuchten-Burdine derivative of gas relative ' // &
+             'permeability as a function of liquid saturation'
+    value = -1.2033329432279087d0
+    @assertEqual(value, dkr_Se, dabs(value)*tolerance, string)
 
   end subroutine testrpf_van_Genuchten_Burdine
 
@@ -722,7 +738,10 @@ contains
              'function of liquid saturation'
     value = 0.27522069402853439d0
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
-
+    string = 'TOUGH2 IRP7 derivative of gas relative permeability as a ' // &
+             'function of liquid saturation'
+    value = -1.2336013267395254d0
+    @assertEqual(value, dkr_Se, dabs(value)*tolerance, string)
   end subroutine testrpf_TOUGH2_IRP7_gas
 
 ! ************************************************************************** !
@@ -859,16 +878,55 @@ contains
              'function of liquid saturation'
     value = 0.70258636467899827d0
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
-!    string = 'Linear-Mualem derivative of gas relative as a ' // &
-!             'permeability as a function of liquid saturation'
-!    value = 0.29870096712333277d0
-!    print *, dkr_Se
-!    @assertEqual(value, dkr_Se, dabs(value)*tolerance, string)
 
   end subroutine testrpf_Linear_Mualem
 
 ! ************************************************************************** !
 
+  @Test
+  subroutine testrpf_Linear_Burdine(this)
+
+    implicit none
+
+    class(Test_Characteristic_Curves), intent(inout) :: this
+
+    PetscReal :: liquid_saturation
+    PetscReal :: relative_permeability
+    PetscReal :: dkr_Se
+    PetscReal :: value
+    PetscReal, parameter :: tolerance = 1.d-8
+    character(len=128) :: string
+
+    ! liquid relative permeability = f(saturation)
+    liquid_saturation = 0.5d0
+    call this%cc_lb%liq_rel_perm_function% &
+         RelativePermeability(liquid_saturation, relative_permeability, & 
+                              dkr_Se, this%option)
+    string = 'Linear-Mualem liquid relative permeability as a ' // &
+             'function of liquid saturation'
+    value = 0.41656942823803966d0
+    @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
+    string = 'Linear-Mualem derivative of liquid relative ' // &
+             'permeability as a function of liquid saturation'
+    value = 1.0000000000000000d0
+    @assertEqual(value, dkr_Se, dabs(value)*tolerance, string)
+
+    ! gas relative permeability = f(saturation)
+    call this%cc_lb%gas_rel_perm_function% &
+         RelativePermeability(liquid_saturation, relative_permeability, & 
+                              dkr_Se, this%option)
+    string = 'Linear-Mualem gas relative permeability as a ' // &
+             'function of liquid saturation'
+    value = 0.57851239669421495d0
+    @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
+    string = 'Linear-Mualem derivative of liquid relative ' // &
+             'permeability as a function of liquid saturation'
+    value = -1.0000000000000000d0
+    @assertEqual(value, dkr_Se, dabs(value)*tolerance, string)
+
+  end subroutine testrpf_Linear_Burdine
+
+! ************************************************************************** !
 
 end module Test_Characteristic_Curves_module
 

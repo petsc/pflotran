@@ -2118,7 +2118,7 @@ subroutine RPF_Mualem_VG_Gas_RelPerm(this,liquid_saturation, &
   ! Mathematica Analytical solution (Heeho Park)
   dkr_Se = -(1.d0-Se**(1.d0/this%m))**(2.d0*this%m)/(2.d0*sqrt(Seg)) &
           - 2.d0*sqrt(Seg)*Se**(1.d0/this%m-1.d0) &
-          * (1.d0-Se**(1.d0/this%m))**(2.d0*m-1.d0)
+          * (1.d0-Se**(1.d0/this%m))**(2.d0*this%m-1.d0)
   
 end subroutine RPF_Mualem_VG_Gas_RelPerm
 ! End RPF: Mualem, Van Genuchten (Gas)
@@ -2449,7 +2449,7 @@ subroutine RPF_Burdine_BC_Gas_RelPerm(this,liquid_saturation, &
   relative_permeability = Seg*Seg*(1.d0-Se**(1.d0+2.d0/this%lambda))
   ! Mathematica Analytical solution (Heeho Park)
   dkr_Se = -(1.d0+2.d0/this%lambda)*Seg**2.d0*Se**(2.d0/this%lambda) &
-           - 2.d0*Seg*(1.d0-Se**(1.d0-Se**(1.d0+2.d0/this%lambda)))
+           - 2.d0*Seg*(1.d0-Se**(1.d0+2.d0/this%lambda))
   
 end subroutine RPF_Burdine_BC_Gas_RelPerm
 ! End RPF: Burdine, Brooks-Corey (Gas)
