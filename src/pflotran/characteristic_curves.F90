@@ -2115,6 +2115,10 @@ subroutine RPF_Mualem_VG_Gas_RelPerm(this,liquid_saturation, &
   
   Seg = 1.d0 - Se
   relative_permeability = sqrt(Seg)*(1.d0-Se**(1.d0/this%m))**(2.d0*this%m)
+  ! Mathematica Analytical solution (Heeho Park)
+  dkr_Se = -(1.d0-Se**(1.d0/this%m))**(2.d0*this%m)/(2.d0*sqrt(Seg)) &
+          - 2.d0*sqrt(Seg)*Se**(1.d0/this%m-1.d0) &
+          * (1.d0-Se**(1.d0/this%m))**(2.d0*this%m-1.d0)
   
 end subroutine RPF_Mualem_VG_Gas_RelPerm
 ! End RPF: Mualem, Van Genuchten (Gas)
@@ -2224,6 +2228,8 @@ subroutine RPF_TOUGH2_IRP7_Gas_RelPerm(this,liquid_saturation, &
   
   Seg = 1.d0 - Se
   relative_permeability = Seg*Seg*(1.d0-Se*Se)
+  ! Mathematica Analytical solution (Heeho Park)
+  dkr_Se = -2.d0*Seg**2.d0*Se - 2.d0*Seg*(1.d0-Se**2.d0)
   
 end subroutine RPF_TOUGH2_IRP7_Gas_RelPerm
 ! End RPF: Tough2 IRP7 w/ VG-Mualem (Gas)
@@ -2441,6 +2447,9 @@ subroutine RPF_Burdine_BC_Gas_RelPerm(this,liquid_saturation, &
   Seg = 1.d0 - Se
         ! reference #1
   relative_permeability = Seg*Seg*(1.d0-Se**(1.d0+2.d0/this%lambda))
+  ! Mathematica Analytical solution (Heeho Park)
+  dkr_Se = -(1.d0+2.d0/this%lambda)*Seg**2.d0*Se**(2.d0/this%lambda) &
+           - 2.d0*Seg*(1.d0-Se**(1.d0+2.d0/this%lambda))
   
 end subroutine RPF_Burdine_BC_Gas_RelPerm
 ! End RPF: Burdine, Brooks-Corey (Gas)
@@ -2659,6 +2668,10 @@ subroutine RPF_Mualem_BC_Gas_RelPerm(this,liquid_saturation, &
   ! reference Table 2
   relative_permeability = sqrt(Seg)* &
                               (1.d0-Se**(1.d0+1.d0/this%lambda))**2.d0
+  ! Mathematica Analytical solution (Heeho Park)
+  dkr_Se = -2.d0*(1.d0+1.d0/this%lambda)*sqrt(Seg)*Se**(1.d0/this%lambda) &
+          * (1.d0-Se**(1.d0+1.d0/this%lambda)) &
+          - (1.d0-Se**(1.d0+1.d0/this%lambda))**2.d0/(2.d0*sqrt(Seg))
   
 end subroutine RPF_Mualem_BC_Gas_RelPerm
 ! End RPF: Mualem, Brooks-Corey (Gas)
@@ -2876,6 +2889,9 @@ subroutine RPF_Burdine_VG_Gas_RelPerm(this,liquid_saturation, &
   Seg = 1.d0 - Se
   ! reference Table 2
   relative_permeability = Seg*Seg*(1.d0-Se**(1.d0/this%m))**this%m
+  dkr_Se = -Seg**2.d0*Se**(1.d0/this%m-1.d0) &
+          *(1.d0-Se**(1.d0/this%m))**(this%m-1.d0) &
+          - 2.d0*Seg*(1.d0-Se**(1.d0/this%m))**this%m
   
 end subroutine RPF_Burdine_VG_Gas_RelPerm
 ! End RPF: Burdine, Van Genuchten (Gas)
@@ -3001,7 +3017,7 @@ subroutine RPF_Mualem_Linear_Liq_RelPerm(this,liquid_saturation, &
   ! 2 Sqrt[Se] Log[pctoverpcmax]^2)
   dkr_Se = 2.d0*(-1.d0+pct_over_pcmax)*sqrt(Se)* log(pc_over_pcmax) / &
     (pc_over_pcmax*log(pct_over_pcmax)**2.d0) + &
-    log(pc_over_pcmax)**2.d0 / 2.d0*sqrt(Se)*log(pct_over_pcmax)**2.d0
+    log(pc_over_pcmax)**2.d0 / (2.d0*sqrt(Se)*log(pct_over_pcmax)**2.d0)
          
 end subroutine RPF_Mualem_Linear_Liq_RelPerm
 ! End RPF: Mualem, Linear (Liquid)
@@ -3123,7 +3139,7 @@ subroutine RPF_Mualem_Linear_Gas_RelPerm(this,liquid_saturation, &
   ! reference Table 2
   relative_permeability = Seg**0.5d0 * &
                  (1.d0-sqrt(liquid_relative_permeability*Se**(-0.5d0)))**2.d0
-  
+
 end subroutine RPF_Mualem_Linear_Gas_RelPerm
 ! End RPF: Mualem, Linear (Gas)
 
@@ -3327,6 +3343,7 @@ subroutine RPF_Burdine_Linear_Gas_RelPerm(this,liquid_saturation, &
   
   Seg = 1.d0 - Se
   relative_permeability = Seg
+  dkr_Se = -1.d0
   
 end subroutine RPF_Burdine_Linear_Gas_RelPerm
 ! End RPF: Burdine, Linear (Gas)
