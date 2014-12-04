@@ -3001,7 +3001,7 @@ subroutine RPF_Mualem_Linear_Liq_RelPerm(this,liquid_saturation, &
   ! 2 Sqrt[Se] Log[pctoverpcmax]^2)
   dkr_Se = 2.d0*(-1.d0+pct_over_pcmax)*sqrt(Se)* log(pc_over_pcmax) / &
     (pc_over_pcmax*log(pct_over_pcmax)**2.d0) + &
-    log(pc_over_pcmax)**2.d0 / 2.d0*sqrt(Se)*log(pct_over_pcmax)**2.d0
+    log(pc_over_pcmax)**2.d0 / (2.d0*sqrt(Se)*log(pct_over_pcmax)**2.d0)
          
 end subroutine RPF_Mualem_Linear_Liq_RelPerm
 ! End RPF: Mualem, Linear (Liquid)
