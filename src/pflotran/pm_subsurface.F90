@@ -1,8 +1,8 @@
 module PM_Subsurface_class
 
   use PM_Base_class
-!geh: using Subsurface_module here fails with gfortran (internal compiler error)
-!  use Subsurface_module
+!geh: using Init_Subsurface_module here fails with gfortran (internal compiler error)
+!  use Init_Subsurface_module
   use Realization_class
   use Communicator_Base_module
   use Option_module

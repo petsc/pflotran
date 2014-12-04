@@ -61,7 +61,7 @@ module Variables_module
   PetscInt, parameter, public :: COLLOID_IMMOBILE =        51
   PetscInt, parameter, public :: AGE =                     52
   PetscInt, parameter, public :: STATE =                   53
-  PetscInt, parameter, public :: PROCESSOR_ID =            54
+  PetscInt, parameter, public :: PROCESS_ID =              54
   PetscInt, parameter, public :: ICE_SATURATION =          55
   PetscInt, parameter, public :: TOTAL_BULK =              56
   PetscInt, parameter, public :: ICE_DENSITY =             57

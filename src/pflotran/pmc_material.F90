@@ -86,7 +86,7 @@ recursive subroutine PMCMaterialRunToTime(this,sync_time,stop_flag)
   ! 
 
   use Timestepper_Base_class
-  use Subsurface_module
+  use Init_Subsurface_module
   use Option_module
   
   implicit none
@@ -112,8 +112,8 @@ recursive subroutine PMCMaterialRunToTime(this,sync_time,stop_flag)
   local_stop_flag = TS_CONTINUE
   ! if at end of simulation, skip update of material properties
   if (stop_flag /= TS_STOP_END_SIMULATION) then
-    call SubsurfAssignMatIDsToRegions(this%realization)
-    call SubsurfAssignMaterialProperties(this%realization)
+    call InitSubsurfAssignMatIDsToRegns(this%realization)
+    call InitSubsurfAssignMatProperties(this%realization)
   endif
   
   ! Run underlying process model couplers

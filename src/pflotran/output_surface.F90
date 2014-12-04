@@ -1708,6 +1708,7 @@ subroutine OutputSurfaceVariableRead(input,option,output_variable_list)
   
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: name, units
+  type(output_variable_type), pointer :: output_variable  
 
   do
     call InputReadPflotranString(input,option)
@@ -1730,6 +1731,14 @@ subroutine OutputSurfaceVariableRead(input,option,output_variable_list)
         units = 'C'
         call OutputVariableAddToList(output_variable_list,name,OUTPUT_GENERIC,units, &
                                   TEMPERATURE)
+      case ('PROCESS_ID')
+        units = ''
+        name = 'Process ID'
+        output_variable => OutputVariableCreate(name,OUTPUT_DISCRETE, &
+                                                units,PROCESS_ID)
+        output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
+        output_variable%iformat = 1 ! integer
+        call OutputVariableAddToList(output_variable_list,output_variable)
       case default
         option%io_buffer = 'Keyword: ' // trim(word) // &
                                  ' not recognized in VARIABLES.'

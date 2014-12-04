@@ -41,7 +41,7 @@ program pflotran
   use Simulation_Base_class
   use Multi_Simulation_module
   use Factory_PFLOTRAN_module
-  use Factory_Subsurface_module
+  use Factory_Init_Subsurface_module
   use Factory_Hydrogeophysics_module
   use Factory_Surface_module
   use Factory_Surf_Subsurf_module

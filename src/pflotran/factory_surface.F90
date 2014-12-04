@@ -59,7 +59,7 @@ subroutine SurfaceInitializePostPETSc(simulation, option)
 
   use Simulation_module
   use Option_module
-  use Init_module
+  use Init_Common_module
   
   implicit none
   

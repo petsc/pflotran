@@ -1,4 +1,4 @@
-module Init_module
+module Init_Common_module
 
   use PFLOTRAN_Constants_module
 
@@ -16,7 +16,9 @@ module Init_module
 #include "finclude/petscpc.h"
 #include "finclude/petscts.h"
 
-  public :: Init
+  public :: Init, &
+            InitBaseReadRegionFiles, &
+            InitBaseReadVelocityField
   
 contains
 
@@ -51,7 +53,6 @@ subroutine Init(simulation)
   use Reaction_Database_hpt_module
   use Input_Aux_module
   use Condition_Control_module
-  use Subsurface_module
   
   use Flash2_module
   use Mphase_module
@@ -79,7 +80,7 @@ subroutine Init(simulation)
   use Surface_Field_module
   use Surface_Flow_module
   use Surface_Global_module
-  use Surface_Init_module, only : SurfaceInitReadRequiredCards, &
+  use Surface_Init_Common_module, only : SurfaceInitReadRequiredCards, &
                                   SurfaceInitMatPropToRegions, &
                                   SurfaceInitReadRegionFiles
   use Surface_Realization_class
@@ -87,7 +88,7 @@ subroutine Init(simulation)
   use Grid_Unstructured_module
 
   use Geomechanics_Realization_class
-  use Geomechanics_Init_module, only : GeomechicsInitReadRequiredCards, &
+  use Geomechanics_Init_Common_module, only : GeomechicsInitReadRequiredCards, &
                                        GeomechInitMatPropToGeomechRegions
   use Geomechanics_Grid_module
   use Geomechanics_Discretization_module
@@ -763,6 +764,7 @@ subroutine Init(simulation)
   if (OptionPrintToScreen(option)) write(*,'("++++++++++++++++++++++++++++++++&
                      &++++++++++++++++++++++++++++",/)')
 
+#if 0  
   call PetscLogEventBegin(logging%event_setup,ierr);CHKERRQ(ierr)
   ! read any regions provided in external files
   call readRegionFiles(realization)
@@ -787,7 +789,6 @@ subroutine Init(simulation)
     call printMsg(option,"  Finished setting up TRAN Realization ")  
   endif
   call RealizationPrintCouplers(realization)
-  call PetscLogEventEnd(logging%event_setup,ierr);CHKERRQ(ierr)
   if (.not.option%steady_state) then
     ! add waypoints associated with boundary conditions, source/sinks etc. to list
     call RealizationAddWaypointsToList(realization)
@@ -798,7 +799,8 @@ subroutine Init(simulation)
   !  ! convert times from input time to seconds
   !  call WaypointConvertTimes(realization%waypoint_list,realization%output_option%tconv)
   endif
-  
+  call PetscLogEventEnd(logging%event_setup,ierr);CHKERRQ(ierr)
+
   if (associated(flow_timestepper)) then
     flow_timestepper%cur_waypoint => realization%waypoint_list%first
   endif
@@ -885,7 +887,10 @@ subroutine Init(simulation)
     ! initial concentrations must be assigned after densities are set !!!
     call CondControlAssignTranInitCond(realization)
   endif
+#endif
   
+#if 0
+!geh: deprecated
   ! Add plot variables that are not mode specific
   if (realization%output_option%print_porosity) then
     ! add porosity to header
@@ -913,7 +918,7 @@ subroutine Init(simulation)
   endif
   if (realization%output_option%print_iproc) then
     output_variable => OutputVariableCreate('Processor ID',OUTPUT_DISCRETE,'', &
-                                            PROCESSOR_ID)
+                                            PROCESS_ID)
     output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
     output_variable%iformat = 1 ! integer
     call OutputVariableAddToList( &
@@ -942,7 +947,7 @@ subroutine Init(simulation)
   output_variable%iformat = 1 ! integer
   call OutputVariableAddToList( &
          realization%output_option%output_variable_list,output_variable)  
-
+#endif
   
   ! print info
   if (associated(flow_timestepper)) then
@@ -1014,8 +1019,11 @@ subroutine Init(simulation)
   call RealizationPrintGridStatistics(realization)
 #endif
   
+#if 0
+!geh: moved to HijackSimulation
   ! check for non-initialized data sets, e.g. porosity, permeability
   call RealizationNonInitializedData(realization)
+#endif
 
 #if defined(PETSC_HAVE_HDF5)
 #if !defined(HDF5_BROADCAST)
@@ -1087,14 +1095,17 @@ subroutine Init(simulation)
     end select
   endif ! option%surf_flow_on
 
+#if 0
+  !geh: moved to output_surface.F90
   if (simulation%surf_realization%output_option%print_iproc) then
     output_variable => OutputVariableCreate('Processor ID',OUTPUT_DISCRETE,'', &
-                                            PROCESSOR_ID)
+                                            PROCESS_ID)
     output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
     output_variable%iformat = 1 ! integer
     call OutputVariableAddToList( &
            simulation%surf_realization%output_option%output_variable_list,output_variable)
   endif
+#endif
 
   if (option%ngeomechdof > 0) then
     if (option%geomech_subsurf_coupling /= 0) then
@@ -1419,8 +1430,8 @@ subroutine InitReadInput(simulation)
   use Creep_Closure_module
   
   use Surface_Flow_module
-  use Surface_Init_module, only : SurfaceInitReadInput
-  use Geomechanics_Init_module, only : GeomechanicsInitReadInput
+  use Surface_Init_Common_module, only : SurfaceInitReadInput
+  use Geomechanics_Init_Common_module, only : GeomechanicsInitReadInput
   use Geomechanics_Realization_class
 #ifdef SOLID_SOLUTION
   use Reaction_Solid_Solution_module, only : SolidSolutionReadFromInputFile
@@ -2283,13 +2294,25 @@ subroutine InitReadInput(simulation)
             case('NO_INITIAL','NO_PRINT_INITIAL')
               output_option%print_initial = PETSC_FALSE
             case('PROCESSOR_ID')
-              output_option%print_iproc = PETSC_TRUE
+              option%io_buffer = 'PROCESSOR_ID output must now be entered under OUTPUT/VARIABLES card as PROCESS_ID.'
+              call printErrMsg(option)
+!              output_option%print_iproc = PETSC_TRUE
             case('PERMEABILITY')
-              output_option%print_permeability = PETSC_TRUE
+              option%io_buffer = 'PERMEABILITY output must now be entered under OUTPUT/VARIABLES card.'
+              call printErrMsg(option)
+!              output_option%print_permeability = PETSC_TRUE
             case('POROSITY')
-              output_option%print_porosity = PETSC_TRUE
+              option%io_buffer = 'POROSITY output must now be entered under OUTPUT/VARIABLES card.'
+              call printErrMsg(option)
+!              output_option%print_porosity = PETSC_TRUE
             case('TORTUOSITY')
-              output_option%print_tortuosity = PETSC_TRUE
+              option%io_buffer = 'TORTUOSITY output must now be entered under OUTPUT/VARIABLES card.'
+              call printErrMsg(option)
+!              output_option%print_tortuosity = PETSC_TRUE
+            case('VOLUME')
+              option%io_buffer = 'VOLUME output must now be entered under OUTPUT/VARIABLES card.'
+              call printErrMsg(option)
+!              output_option%print_volume = PETSC_TRUE
             case('MASS_BALANCE')
               option%compute_mass_balance_new = PETSC_TRUE
               call InputReadWord(input,option,word,PETSC_TRUE)
@@ -2561,8 +2584,6 @@ subroutine InitReadInput(simulation)
               call OutputVariableRead(input,option,output_option%output_variable_list)
             case('AVERAGE_VARIABLES')
               call OutputVariableRead(input,option,output_option%aveg_output_variable_list)
-            case('VOLUME')
-              output_option%print_volume = PETSC_TRUE
             case default
               option%io_buffer = 'Keyword: ' // trim(word) // &
                                  ' not recognized in OUTPUT.'
@@ -3046,7 +3067,7 @@ end subroutine verifyCoupler
 
 ! ************************************************************************** !
 
-subroutine readRegionFiles(realization)
+subroutine InitBaseReadRegionFiles(realization)
   ! 
   ! Reads in grid cell ids stored in files
   ! 
@@ -3099,7 +3120,7 @@ subroutine readRegionFiles(realization)
     region => region%next
   enddo
 
-end subroutine readRegionFiles
+end subroutine InitBaseReadRegionFiles
 
 ! ************************************************************************** !
 
@@ -3218,7 +3239,7 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
 end subroutine readVectorFromFile
 
 ! ************************************************************************** !
-
+#if 0
 subroutine readFlowInitialCondition(realization,filename)
   ! 
   ! Assigns flow initial condition from HDF5 file
@@ -3309,7 +3330,7 @@ subroutine readFlowInitialCondition(realization,filename)
   call VecCopy(field%flow_xx, field%flow_yy, ierr);CHKERRQ(ierr)
 
 end subroutine readFlowInitialCondition
-
+#endif
 ! ************************************************************************** !
 
 subroutine Create_IOGroups(option)
@@ -3415,7 +3436,7 @@ end subroutine InitPrintPFLOTRANHeader
 
 ! ************************************************************************** !
 
-subroutine InitReadVelocityField(realization)
+subroutine InitBaseReadVelocityField(realization)
   ! 
   ! Reads fluxes in for transport with no flow.
   ! 
@@ -3513,8 +3534,9 @@ subroutine InitReadVelocityField(realization)
     boundary_condition => boundary_condition%next
   enddo
   
-end subroutine InitReadVelocityField
+end subroutine InitBaseReadVelocityField
 
+#if 0
 ! ************************************************************************** !
 
 subroutine SandboxesSetup(realization)
@@ -3532,5 +3554,6 @@ subroutine SandboxesSetup(realization)
    call SSSandboxSetup(realization%patch%region_list,realization%option)
   
 end subroutine SandboxesSetup
+#endif
 
-end module Init_module
+end module Init_Common_module

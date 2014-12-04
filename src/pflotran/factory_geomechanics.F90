@@ -53,7 +53,7 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
   ! Date: 01/01/14
   ! 
 
-  use Init_module
+  use Init_Common_module
   use Option_module
   use PMC_Base_class
   use PMC_Geomechanics_class
@@ -65,7 +65,7 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
   use Simulation_module
   use Simulation_Aux_module
   use Simulation_Subsurface_class
-  use Factory_Subsurface_module
+  use Factory_Init_Subsurface_module
 
   implicit none
 #include "finclude/petscvec.h"

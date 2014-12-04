@@ -1,4 +1,4 @@
-module Subsurface_module
+module Init_Subsurface_module
 
   use PFLOTRAN_Constants_module
 
@@ -8,11 +8,73 @@ module Subsurface_module
 
 #include "finclude/petscsys.h"
 
-  public :: SubsurfInitMaterialProperties, &
-            SubsurfAssignMatIDsToRegions, &
-            SubsurfAssignMaterialProperties
+  public :: InitSubsurfAssignMatIDsToRegns, &
+            InitSubsurfAssignMatProperties, &
+            InitSubsurfSetupRealization
   
 contains
+
+! ************************************************************************** !
+
+subroutine InitSubsurfSetupRealization(realization)
+  ! 
+  ! Initializes material property data structres and assign them to the domain.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/04/14
+  ! 
+  use Realization_class
+  use Option_module
+  use Logging_module
+  use Waypoint_module
+  use Init_Common_module
+  
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  type(option_type), pointer :: option
+  PetscErrorCode :: ierr
+  
+  option => realization%option
+  
+  call PetscLogEventBegin(logging%event_setup,ierr);CHKERRQ(ierr)
+  ! read any regions provided in external files
+  call InitBaseReadRegionFiles(realization)
+  ! clip regions and set up boundary connectivity, distance  
+  call RealizationLocalizeRegions(realization)
+  call RealizationPassPtrsToPatches(realization)
+  ! link conditions with regions through couplers and generate connectivity
+  call RealProcessMatPropAndSatFunc(realization)
+  ! must process conditions before couplers in order to determine dataset types
+  call RealizationProcessConditions(realization)
+  call RealizationProcessCouplers(realization)
+  call SubsurfSandboxesSetup(realization)
+  call RealProcessFluidProperties(realization)
+  call SubsurfInitMaterialProperties(realization)
+  ! assignVolumesToMaterialAuxVars() must be called after 
+  ! RealizInitMaterialProperties() where the Material object is created 
+  call SubsurfAssignVolsToMatAuxVars(realization)
+  call RealizationInitAllCouplerAuxVars(realization)
+  if (option%ntrandof > 0) then
+    call printMsg(option,"  Setting up TRAN Realization ")
+    call RealizationInitConstraints(realization)
+    call printMsg(option,"  Finished setting up TRAN Realization ")  
+  endif
+  call RealizationPrintCouplers(realization)
+  if (.not.option%steady_state) then
+    ! add waypoints associated with boundary conditions, source/sinks etc. to list
+    call RealizationAddWaypointsToList(realization)
+    ! fill in holes in waypoint data
+    call WaypointListFillIn(option,realization%waypoint_list)
+    call WaypointListRemoveExtraWaypnts(option,realization%waypoint_list)
+  ! geh- no longer needed
+  !  ! convert times from input time to seconds
+  !  call WaypointConvertTimes(realization%waypoint_list,realization%output_option%tconv)
+  endif
+  call PetscLogEventEnd(logging%event_setup,ierr);CHKERRQ(ierr)
+  
+end subroutine InitSubsurfSetupRealization
 
 ! ************************************************************************** !
 
@@ -30,8 +92,8 @@ subroutine SubsurfInitMaterialProperties(realization)
   type(realization_type) :: realization
   
   call SubsurfAllocMatPropDataStructs(realization)
-  call SubsurfAssignMatIDsToRegions(realization)
-  call SubsurfAssignMaterialProperties(realization)
+  call InitSubsurfAssignMatIDsToRegns(realization)
+  call InitSubsurfAssignMatProperties(realization)
   
 end subroutine SubsurfInitMaterialProperties
 
@@ -101,7 +163,7 @@ end subroutine SubsurfAllocMatPropDataStructs
 
 ! ************************************************************************** !
 
-subroutine SubsurfAssignMatIDsToRegions(realization)
+subroutine InitSubsurfAssignMatIDsToRegns(realization)
   ! 
   ! Assigns material properties to associated regions in the model
   ! 
@@ -193,11 +255,11 @@ subroutine SubsurfAssignMatIDsToRegions(realization)
   ! ensure that ghosted values for material ids are up to date
   call RealLocalToLocalWithArray(realization,MATERIAL_ID_ARRAY)
 
-end subroutine SubsurfAssignMatIDsToRegions
+end subroutine InitSubsurfAssignMatIDsToRegns
 
  ! ************************************************************************** !
 
-subroutine SubsurfAssignMaterialProperties(realization)
+subroutine InitSubsurfAssignMatProperties(realization)
   ! 
   ! Assigns material properties based on material ids
   ! 
@@ -454,7 +516,7 @@ subroutine SubsurfAssignMaterialProperties(realization)
     creep_closure%imat = material_property%internal_id
   endif
   
-end subroutine SubsurfAssignMaterialProperties
+end subroutine InitSubsurfAssignMatProperties
 
 ! ************************************************************************** !
 
@@ -842,5 +904,57 @@ subroutine SubsurfReadCompressFromFile(realization,material_property)
   
 end subroutine SubsurfReadCompressFromFile
 
+! ************************************************************************** !
 
-end module Subsurface_module
+subroutine SubsurfAssignVolsToMatAuxVars(realization)
+  ! 
+  ! Assigns the cell volumes currently stored in field%volume0 to the 
+  ! material auxiliary variable object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/13/14, 12/04/14
+  ! 
+
+  use Realization_class
+  use Option_module
+  use Material_module
+  use Discretization_module
+  use Field_module
+  use Variables_module, only : VOLUME
+  
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+
+  option => realization%option
+  field => realization%field
+
+  call DiscretizationGlobalToLocal(realization%discretization,field%volume0, &
+                                   field%work_loc,ONEDOF)
+  call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                               field%work_loc,VOLUME,ZERO_INTEGER)
+
+end subroutine SubsurfAssignVolsToMatAuxVars
+
+! ************************************************************************** !
+
+subroutine SubsurfSandboxesSetup(realization)
+  ! 
+  ! Initializes sandbox objects.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/06/14, 12/04/14
+
+  use Realization_class
+  use SrcSink_Sandbox_module
+  
+  type(realization_type) :: realization
+  
+   call SSSandboxSetup(realization%patch%region_list,realization%option)
+  
+end subroutine SubsurfSandboxesSetup
+
+end module Init_Subsurface_module

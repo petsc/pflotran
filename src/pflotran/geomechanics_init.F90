@@ -1,4 +1,4 @@
-module Geomechanics_Init_module
+module Geomechanics_Init_Common_module
 
   use PFLOTRAN_Constants_module
 
@@ -373,9 +373,13 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
             case('NO_INITIAL','NO_PRINT_INITIAL')
               output_option%print_initial = PETSC_FALSE
             case('PERMEABILITY')
-              output_option%print_permeability = PETSC_TRUE
+              option%io_buffer = 'PERMEABILITY output must now be entered under OUTPUT/VARIABLES card.'
+              call printErrMsg(option)
+!              output_option%print_permeability = PETSC_TRUE
             case('POROSITY')
-              output_option%print_porosity = PETSC_TRUE
+              option%io_buffer = 'POROSITY output must now be entered under OUTPUT/VARIABLES card.'
+              call printErrMsg(option)            
+!              output_option%print_porosity = PETSC_TRUE
             case('PRINT_COLUMN_IDS')
               output_option%print_column_ids = PETSC_TRUE
             case('TIMES')
@@ -749,4 +753,4 @@ subroutine GeomechInitMatPropToGeomechRegions(geomech_realization)
   
 end subroutine GeomechInitMatPropToGeomechRegions
  
-end module Geomechanics_Init_module
+end module Geomechanics_Init_Common_module

@@ -1,4 +1,4 @@
-module Factory_Subsurface_module
+module Factory_Init_Subsurface_module
 
   use Simulation_Subsurface_class
   
@@ -62,7 +62,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
 
   use Simulation_module
   use Option_module
-  use Init_module
+  use Init_Common_module
   
   implicit none
   
@@ -135,6 +135,7 @@ subroutine HijackSimulation(simulation_old,simulation)
   use Realization_class
   use Option_module
   use Output_module, only : Output
+  use Output_Aux_module
   
   use PMC_Base_class
   use PMC_Subsurface_class  
@@ -160,6 +161,12 @@ subroutine HijackSimulation(simulation_old,simulation)
   use Richards_module
   use Reactive_Transport_module
   
+  use Global_module
+  use Init_Common_module
+  use Init_Subsurface_module
+  use Init_Subsurface_Flow_module
+  use Init_Subsurface_Tran_module
+  
   implicit none
   
 #include "finclude/petscsnes.h"  
@@ -182,6 +189,27 @@ subroutine HijackSimulation(simulation_old,simulation)
   
   realization => simulation_old%realization
   option => realization%option
+
+  call InitSubsurfSetupRealization(realization)
+  
+  !TODO(geh): refactor
+  if (associated(simulation_old%flow_timestepper)) then
+    simulation_old%flow_timestepper%cur_waypoint => realization%waypoint_list%first
+  endif
+  if (associated(simulation_old%tran_timestepper)) then
+    simulation_old%tran_timestepper%cur_waypoint => realization%waypoint_list%first
+  endif
+  
+  !TODO(geh): refactor
+  ! initialize global auxiliary variable object
+  call GlobalSetup(realization)
+  
+  call InitSubsurfFlowSetupRealization(realization)
+  call InitSubsurfTranSetupRealization(realization)
+  call OutputVariableAppendDefaults(realization%output_option% &
+                                      output_variable_list,option)
+    ! check for non-initialized data sets, e.g. porosity, permeability
+  call RealizationNonInitializedData(realization)
 
   simulation%waypoint_list => RealizCreateSyncWaypointList(realization)
 
@@ -692,4 +720,4 @@ subroutine HijackTimestepper(timestepper_old,timestepper_base)
   
 end subroutine HijackTimestepper
 
-end module Factory_Subsurface_module
+end module Factory_Init_Subsurface_module

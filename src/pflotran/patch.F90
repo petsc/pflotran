@@ -3756,7 +3756,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
         vec_ptr(local_id) = &
           patch%imat_internal_to_external(patch%imat(grid%nL2G(local_id)))
       enddo
-    case(PROCESSOR_ID)
+    case(PROCESS_ID)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = option%myrank
       enddo
@@ -4422,7 +4422,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
       call VecRestoreArrayF90(field%iphas_loc,vec_ptr2,ierr);CHKERRQ(ierr)
     case(MATERIAL_ID)
       value = patch%imat_internal_to_external(patch%imat(ghosted_id))
-    case(PROCESSOR_ID)
+    case(PROCESS_ID)
       value = option%myrank
     ! Need to fix the below two cases (they assume only one component) -- SK 02/06/13  
     case(SECONDARY_CONCENTRATION)
@@ -5244,9 +5244,9 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
       else if (vec_format == LOCAL) then
         patch%imat(1:grid%ngmax) = int(vec_ptr(1:grid%ngmax))
       endif
-    case(PROCESSOR_ID)
+    case(PROCESS_ID)
       call printErrMsg(option, &
-                       'Cannot set PROCESSOR_ID through PatchSetVariable()')
+                       'Cannot set PROCESS_ID through PatchSetVariable()')
   end select
 
   call VecRestoreArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
@@ -5425,7 +5425,7 @@ function PatchGetVarNameFromKeyword(keyword,option)
   character(len=MAXSTRINGLENGTH) :: var_name
 
   select case(keyword)
-    case('PROCESSOR_ID')
+    case('PROCESS_ID')
       var_name = 'Processor ID'
     case default
       option%io_buffer = 'Keyword "' // trim(keyword) // '" not ' // &
@@ -5460,8 +5460,8 @@ subroutine PatchGetIvarsFromKeyword(keyword,ivar,isubvar,var_type,option)
   type(option_type) :: option
 
   select case(keyword)
-    case('PROCESSOR_ID')
-      ivar = PROCESSOR_ID
+    case('PROCESS_ID')
+      ivar = PROCESS_ID
       isubvar = ZERO_INTEGER
       var_type = INT_VAR
     case default
@@ -5534,7 +5534,7 @@ subroutine PatchGetVariable2(patch,surf_field,option,output_option,vec,ivar, &
         vec_ptr(local_id) = &
           patch%imat_internal_to_external(patch%imat(grid%nL2G(local_id)))
       enddo
-    case(PROCESSOR_ID)
+    case(PROCESS_ID)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = option%myrank
       enddo

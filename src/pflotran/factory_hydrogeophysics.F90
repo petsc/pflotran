@@ -318,7 +318,7 @@ subroutine HydrogeophysicsInitPostPetsc(simulation, option)
   ! 
 
   use Simulation_module
-  use Factory_Subsurface_module
+  use Factory_Init_Subsurface_module
   use PMC_Hydrogeophysics_class
   use Option_module
   use Logging_module

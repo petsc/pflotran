@@ -1,4 +1,4 @@
-module Surface_Init_module
+module Surface_Init_Common_module
 
   use PFLOTRAN_Constants_module
 
@@ -416,9 +416,13 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
             case('NO_INITIAL','NO_PRINT_INITIAL')
               output_option%print_initial = PETSC_FALSE
             case('PERMEABILITY')
-              output_option%print_permeability = PETSC_TRUE
+              option%io_buffer = 'PERMEABILITY output must now be entered under OUTPUT/VARIABLES card.'
+              call printErrMsg(option)
+!              output_option%print_permeability = PETSC_TRUE
             case('POROSITY')
-              output_option%print_porosity = PETSC_TRUE
+              option%io_buffer = 'POROSITY output must now be entered under OUTPUT/VARIABLES card.'
+              call printErrMsg(option)
+!              output_option%print_porosity = PETSC_TRUE
             case('PRINT_COLUMN_IDS')
               output_option%print_column_ids = PETSC_TRUE
             case('TIMES')
@@ -655,7 +659,9 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
             case('HYDROGRAPH')
               output_option%print_hydrograph = PETSC_TRUE
             case('PROCESSOR_ID')
-              output_option%print_iproc = PETSC_TRUE
+              option%io_buffer = 'PROCESSOR_ID output must now be entered under OUTPUT/VARIABLES card as PROCESS_ID.'
+              call printErrMsg(option)
+!              output_option%print_iproc = PETSC_TRUE
             case('FLOWRATES','FLOWRATE')
               mass_flowrate = PETSC_TRUE
               energy_flowrate = PETSC_TRUE
@@ -1077,4 +1083,4 @@ subroutine SurfaceInitReadRegionFiles(surf_realization)
 
 end subroutine SurfaceInitReadRegionFiles
 
-end module Surface_Init_module
+end module Surface_Init_Common_module

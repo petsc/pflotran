@@ -54,12 +54,6 @@ module Output_Aux_module
     PetscReal :: periodic_tr_output_time_incr
     PetscReal :: periodic_checkpoint_time_incr
 
-    PetscBool :: print_permeability
-    PetscBool :: print_porosity
-    PetscBool :: print_iproc
-    PetscBool :: print_volume
-    PetscBool :: print_tortuosity
-
     PetscInt :: xmf_vert_len
     
     type(output_variable_list_type), pointer :: output_variable_list
@@ -127,6 +121,7 @@ module Output_Aux_module
             OutputWriteVariableListToHeader, &
             OutputVariableToCategoryString, &
             OutputVariableRead, &
+            OutputVariableAppendDefaults, &
             OutputOptionDestroy, &
             OutputVariableListDestroy
 
@@ -179,11 +174,6 @@ function OutputOptionCreate()
   output_option%periodic_tr_output_ts_imod = 100000000
   output_option%periodic_tr_output_time_incr = 0.d0
   output_option%plot_name = ""
-  output_option%print_permeability = PETSC_FALSE
-  output_option%print_porosity = PETSC_FALSE
-  output_option%print_iproc = PETSC_FALSE
-  output_option%print_volume = PETSC_FALSE
-  output_option%print_tortuosity = PETSC_FALSE
   output_option%aveg_var_time = 0.d0
   output_option%aveg_var_dtime = 0.d0
   output_option%periodic_checkpoint_time_incr = 0.d0
@@ -583,7 +573,7 @@ subroutine OutputVariableRead(input,option,output_variable_list)
   ! 
   ! This routine reads variable from input file.
   ! 
-  ! Author: Gautam Bisht, LBNL
+  ! Author: Gautam Bisht, LBNL; Glenn Hammond PNNL/SNL
   ! Date: 12/21/12
   ! 
 
@@ -813,18 +803,60 @@ subroutine OutputVariableRead(input,option,output_variable_list)
         call OutputVariableAddToList(output_variable_list,name, &
                                      OUTPUT_GENERIC,units, &
                                      EFFECTIVE_POROSITY)
+      case ('TORTUOSITY')
+        units = ''
+        name = 'Tortuosity'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     TORTUOSITY)
       case ('PERMEABILITY')
         units = 'm^2'
         name = 'Permeability (X)'
         call OutputVariableAddToList(output_variable_list,name, &
                                      OUTPUT_GENERIC,units, &
                                      PERMEABILITY)
+      case ('PERMEABILITY_Y')
+        units = 'm^2'
+        name = 'Permeability (Y)'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     PERMEABILITY_Y)
+      case ('PERMEABILITY_Z')
+        units = 'm^2'
+        name = 'Permeability (Z)'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     PERMEABILITY_Z)
       case ('SOIL_COMPRESSIBILITY')
         units = ''
         name = 'Compressibility'
         call OutputVariableAddToList(output_variable_list,name, &
                                      OUTPUT_GENERIC,units, &
                                      SOIL_COMPRESSIBILITY)
+      case ('PROCESS_ID')
+        units = ''
+        name = 'Process ID'
+        output_variable => OutputVariableCreate(name,OUTPUT_DISCRETE, &
+                                                units,PROCESS_ID)
+        output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
+        output_variable%iformat = 1 ! integer
+        call OutputVariableAddToList(output_variable_list,output_variable)
+      case ('VOLUME')
+        units = ''
+        name = 'Volume'
+        output_variable => OutputVariableCreate(name,OUTPUT_GENERIC, &
+                                                units,VOLUME)
+        output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
+        output_variable%iformat = 0 ! double
+        call OutputVariableAddToList(output_variable_list,output_variable)
+      case ('MATERIAL_ID')
+        units = ''
+        name = 'Material ID'
+        output_variable => OutputVariableCreate(name,OUTPUT_DISCRETE, &
+                                                units,MATERIAL_ID)
+        output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
+        output_variable%iformat = 1 ! integer
+        call OutputVariableAddToList(output_variable_list,output_variable)
       case default
         option%io_buffer = 'Keyword: ' // trim(word) // &
                                  ' not recognized in VARIABLES.'
@@ -834,6 +866,39 @@ subroutine OutputVariableRead(input,option,output_variable_list)
   enddo
 
 end subroutine OutputVariableRead
+
+! ************************************************************************** !
+
+subroutine OutputVariableAppendDefaults(output_variable_list,option)
+  ! 
+  ! Adds default output variables to list
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 12/21/12
+  ! 
+
+  use Option_module
+  use Variables_module
+
+  implicit none
+
+  type(output_variable_list_type), pointer :: output_variable_list
+  type(option_type), pointer :: option
+  
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: name, units
+  type(output_variable_type), pointer :: output_variable
+
+  ! Material IDs
+  units = ''
+  name = 'Material ID'
+  output_variable => OutputVariableCreate(name,OUTPUT_DISCRETE, &
+                                          units,MATERIAL_ID)
+  output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
+  output_variable%iformat = 1 ! integer
+  call OutputVariableAddToList(output_variable_list,output_variable)
+  
+end subroutine OutputVariableAppendDefaults
 
 ! ************************************************************************** !
 
