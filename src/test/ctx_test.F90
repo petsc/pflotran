@@ -15,7 +15,9 @@ contains
 subroutine BasePrint(this)
   implicit none
   class(base_type) :: this
+  print *
   print *, 'Base printout'
+  print *
 end subroutine BasePrint
 end module Base_module
 
@@ -37,7 +39,9 @@ contains
 subroutine ExtendedPrint(this)
   implicit none
   class(extended_type) :: this
+  print *
   print *, 'Extended printout'
+  print *
 end subroutine ExtendedPrint
 end module Extended_module
 
@@ -51,8 +55,8 @@ subroutine TestFunction(snes,xx,r,ctx,ierr)
   SNES :: snes
   Vec :: xx
   Vec :: r
-  type(base_type) :: ctx  ! yes, this should be base_type
-  PetscErrorCode :: ierr
+  class(base_type) :: ctx ! yes, this should be base_type in order to handle all
+  PetscErrorCode :: ierr  ! polymorphic extensions
   call ctx%Print()
 end subroutine TestFunction
 end module Function_module
@@ -101,14 +105,16 @@ program test
   call SNESCreate(PETSC_COMM_WORLD,snes_base,ierr);CHKERRQ(ierr)
  
   ! when I use the base class as the context
-  print *, 'the base class will succeed by printing out "Base printout"'
+  print *
+  print *, 'the base class will succeed by printing out "Base printout" below'
   call SNESCreate(PETSC_COMM_WORLD,snes_base,ierr);CHKERRQ(ierr)
   call SNESSetFunction(snes_base,x,TestFunction,base);CHKERRQ(ierr)
   call SNESComputeFunction(snes_base,x,x,ierr);CHKERRQ(ierr)
   call SNESDestroy(snes_base,ierr);CHKERRQ(ierr)
 
   ! when I use the extended class as the context
-  print *, 'the extended class will succeed by printing out "Extended printout"'
+  print *, 'the extended class will succeed by printing out "Extended ' // &
+           'printout" below'
   call SNESCreate(PETSC_COMM_WORLD,snes_extended,ierr);CHKERRQ(ierr)
   call SNESSetFunction(snes_extended,x,TestFunction,extended);CHKERRQ(ierr)
   call SNESComputeFunction(snes_extended,x,x,ierr);CHKERRQ(ierr)
