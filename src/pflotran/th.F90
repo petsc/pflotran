@@ -5363,7 +5363,7 @@ function THInitGuessCheck(xx, option)
   call VecStrideMax(xx,ZERO_INTEGER,idx,pres_max,ierr)
   call VecStrideMax(xx,ONE_INTEGER ,idx,temp_max,ierr)
 
-  if (pres_min < 0.d0 .or. pres_min > 1.d10 .or. &
+  if (pres_min < -1.d10 .or. pres_min > 1.d10 .or. &
       temp_min < -100.d0 .or. temp_max > 100.d0) then
       ipass = -1
   endif
