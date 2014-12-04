@@ -809,21 +809,21 @@ subroutine OutputVariableRead(input,option,output_variable_list)
         call OutputVariableAddToList(output_variable_list,name, &
                                      OUTPUT_GENERIC,units, &
                                      TORTUOSITY)
-      case ('PERMEABILITY')
+      case ('PERMEABILITY','PERMEABILITY_X')
         units = 'm^2'
-        name = 'Permeability (X)'
+        name = 'Permeability X'
         call OutputVariableAddToList(output_variable_list,name, &
                                      OUTPUT_GENERIC,units, &
                                      PERMEABILITY)
       case ('PERMEABILITY_Y')
         units = 'm^2'
-        name = 'Permeability (Y)'
+        name = 'Permeability Y'
         call OutputVariableAddToList(output_variable_list,name, &
                                      OUTPUT_GENERIC,units, &
                                      PERMEABILITY_Y)
       case ('PERMEABILITY_Z')
         units = 'm^2'
-        name = 'Permeability (Z)'
+        name = 'Permeability Z'
         call OutputVariableAddToList(output_variable_list,name, &
                                      OUTPUT_GENERIC,units, &
                                      PERMEABILITY_Z)
