@@ -3580,11 +3580,18 @@ subroutine THResidual(snes,xx,r,realization,ierr)
   type(field_type), pointer :: field
   type(patch_type), pointer :: cur_patch
   type(option_type), pointer :: option
-  
+
   field => realization%field
   discretization => realization%discretization
   option => realization%option
   
+ ! check initial guess -----------------------------------------------
+  ierr = THInitGuessCheck(xx,option)
+  if (ierr<0) then
+    call SNESSetFunctionDomainError(snes,ierr);CHKERRQ(ierr)
+    return
+  endif
+
   ! Communication -----------------------------------------
   ! These 3 must be called before THUpdateAuxVars()
   call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
@@ -5321,6 +5328,55 @@ subroutine THSecondaryHeatJacobian(sec_heat_vars, &
                             
               
 end subroutine THSecondaryHeatJacobian                                  
+
+
+! ************************************************************************** !
+function THInitGuessCheck(xx, option)
+  !
+  ! Checks if the initial guess is valid.
+  ! Note: Only implemented for DALL_AMICO formulation.
+  !
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 12/04/2014
+  !
+  use Option_module
+
+  Vec :: xx
+  type(option_type), pointer :: option
+
+  PetscInt :: THInitGuessCheck
+  PetscInt :: idx
+  PetscReal :: pres_min, pres_max
+  PetscReal :: temp_min, temp_max
+  PetscInt :: ipass, ipass0
+  PetscErrorCode :: ierr
+
+  ipass = 1
+
+  if (option%ice_model /= DALL_AMICO) then
+    THInitGuessCheck = ipass
+    return
+  endif
+
+  call VecStrideMin(xx,ZERO_INTEGER,idx,pres_min,ierr)
+  call VecStrideMin(xx,ONE_INTEGER ,idx,temp_min,ierr)
+  call VecStrideMax(xx,ZERO_INTEGER,idx,pres_max,ierr)
+  call VecStrideMax(xx,ONE_INTEGER ,idx,temp_max,ierr)
+
+  if (pres_min < 0.d0 .or. pres_min > 1.d10 .or. &
+      temp_min < -100.d0 .or. temp_max > 100.d0) then
+      ipass = -1
+  endif
+
+   call MPI_Barrier(option%mycomm,ierr)
+   if (option%mycommsize>1)then
+      call MPI_Allreduce(ipass,ipass0,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
+                         option%mycomm,ierr)
+      if (ipass0 < option%mycommsize) ipass=-1
+   endif
+   THInitGuessCheck = ipass
+
+end function THInitGuessCheck
 
 ! ************************************************************************** !
 
