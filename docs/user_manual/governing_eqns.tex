@@ -163,6 +163,8 @@ of the liquid phase, $n_l$, is represented on a molar basis.
 
 \subsection{Mode: {\tt MPHASE}}
 
+The mode {\tt MPHASE} solves the two-phase system of water and supercritical CO$_2$. It may also be coupled to chemistry using the {\tt CHEMISTRY} keyword and its various associated optional and required keywords for selecting the primary and secondary aqueous species and setting up initial and boundary conditions and source/sinks. {\tt MPHASE} requires that the species CO2(aq) be used as primary species. In addition, for pure aqueous and supercritical CO$_2$ phases, the input to {\tt MPHASE} requires specifying the mole fraction of CO$_2$. When coupled to chemistry, the CO$_2$ mole fraction is calculated internally directly from the aqueous concentrations specified in the {\tt CONSTRAINT} keyword.
+
 Local equilibrium is assumed between phases for modeling multiphase systems with PFLOTRAN. The multiphase partial differential equations for mass and energy conservation solved by PFLOTRAN have the general form:
 \begin{subequations}
 \BA\label{mass_conservation_equation}
