@@ -192,18 +192,16 @@ subroutine HijackSimulation(simulation_old,simulation)
   option => realization%option
 
 ! begin from old Init()  
-  if (option%nflowdof > 0) call InitSubsurfFlowSetupSolvers(realization, &
-                                          simulation_old%flow_timestepper%solver)
-  if (option%ntrandof > 0) call InitSubsurfTranSetupSolvers(realization, &
-                                          simulation_old%tran_timestepper%solver)
   call InitSubsurfSetupRealization(realization)
   
   !TODO(geh): refactor
   if (associated(simulation_old%flow_timestepper)) then
-    simulation_old%flow_timestepper%cur_waypoint => realization%waypoint_list%first
+    simulation_old%flow_timestepper%cur_waypoint => &
+      realization%waypoint_list%first
   endif
   if (associated(simulation_old%tran_timestepper)) then
-    simulation_old%tran_timestepper%cur_waypoint => realization%waypoint_list%first
+    simulation_old%tran_timestepper%cur_waypoint => &
+      realization%waypoint_list%first
   endif
   
   !TODO(geh): refactor
@@ -221,8 +219,14 @@ subroutine HijackSimulation(simulation_old,simulation)
     call InitCommonVerifyAllCouplers(realization)
   endif
   if (realization%debug%print_waypoints) then
-    call WaypointListPrint(realization%waypoint_list,option,realization%output_option)
+    call WaypointListPrint(realization%waypoint_list,option, &
+                           realization%output_option)
   endif  
+
+  if (option%nflowdof > 0) call InitSubsurfFlowSetupSolvers(realization, &
+                                         simulation_old%flow_timestepper%solver)
+  if (option%ntrandof > 0) call InitSubsurfTranSetupSolvers(realization, &
+                                         simulation_old%tran_timestepper%solver)
 ! end from old Init()
   
   simulation%waypoint_list => RealizCreateSyncWaypointList(realization)

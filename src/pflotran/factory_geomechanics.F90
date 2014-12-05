@@ -234,9 +234,9 @@ subroutine HijackGeomechanicsSimulation(simulation_old,simulation)
   simulation%option => geomech_realization%option
   
 ! begin from old Init()   
+  call InitGeomechSetupRealization(simulation_old)  
   call InitGeomechSetupSolvers(geomech_realization,simulation_old%realization, &
                               simulation_old%geomech_timestepper%solver)  
-  call InitGeomechSetupRealization(simulation_old)  
 ! end from old Init()   
 
   nullify(cur_process_model)
