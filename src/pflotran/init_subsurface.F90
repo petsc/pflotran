@@ -39,6 +39,11 @@ subroutine InitSubsurfSetupRealization(realization)
   option => realization%option
   
   call PetscLogEventBegin(logging%event_setup,ierr);CHKERRQ(ierr)
+  
+  ! create grid and allocate vectors
+  call RealizationCreateDiscretization(realization)
+  call RegressionCreateMapping(simulation%regression,realization)
+  
   ! read any regions provided in external files
   call InitCommonReadRegionFiles(realization)
   ! clip regions and set up boundary connectivity, distance  

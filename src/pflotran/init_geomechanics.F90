@@ -48,38 +48,38 @@ subroutine InitGeomechSetupRealization(simulation)
   
   option => simulation%realization%option
   
-  if (option%ngeomechdof > 0) then
-    if (option%geomech_subsurf_coupling /= 0) then
-      call GeomechCreateGeomechSubsurfVec(simulation%realization, &
-                                          simulation%geomech_realization)
-      call GeomechCreateSubsurfStressStrainVec(simulation%realization, &
-                                               simulation%geomech_realization)
+  call GeomechRealizCreateDiscretization(geomech_realization)
 
-      call GeomechRealizMapSubsurfGeomechGrid(simulation%realization, &
-                                              simulation%geomech_realization, &
-                                              option)
-    endif
-    call GeomechRealizLocalizeRegions(simulation%geomech_realization)
-    call GeomechRealizPassFieldPtrToPatch(simulation%geomech_realization)
-    call GeomechRealizProcessMatProp(simulation%geomech_realization)
-    call GeomechRealizProcessGeomechCouplers(simulation%geomech_realization)
-    call GeomechRealizProcessGeomechConditions(simulation%geomech_realization)
-    call InitGeomechMatPropToGeomechRegions(simulation%geomech_realization)
-    call GeomechRealizInitAllCouplerAuxVars(simulation%geomech_realization)  
-    call GeomechRealizPrintCouplers(simulation%geomech_realization)  
-    call GeomechRealizAddWaypointsToList(simulation%geomech_realization)
-    call GeomechGridElemSharedByNodes(simulation%geomech_realization)
-    call WaypointListFillIn(option,simulation%geomech_realization%waypoint_list)
-    call WaypointListRemoveExtraWaypnts(option, &
-                                    simulation%geomech_realization%waypoint_list)
-    call GeomechForceSetup(simulation%geomech_realization)
-    call GeomechGlobalSetup(simulation%geomech_realization)
-    
-    ! SK: We are solving quasi-steady state solution for geomechanics.
-    ! Initial condition is not needed, hence CondControlAssignFlowInitCondGeomech
-    ! is not needed, at this point.
-    call GeomechForceUpdateAuxVars(simulation%geomech_realization)
+  if (option%geomech_subsurf_coupling /= 0) then
+    call GeomechCreateGeomechSubsurfVec(simulation%realization, &
+                                        simulation%geomech_realization)
+    call GeomechCreateSubsurfStressStrainVec(simulation%realization, &
+                                              simulation%geomech_realization)
+
+    call GeomechRealizMapSubsurfGeomechGrid(simulation%realization, &
+                                            simulation%geomech_realization, &
+                                            option)
   endif
+  call GeomechRealizLocalizeRegions(simulation%geomech_realization)
+  call GeomechRealizPassFieldPtrToPatch(simulation%geomech_realization)
+  call GeomechRealizProcessMatProp(simulation%geomech_realization)
+  call GeomechRealizProcessGeomechCouplers(simulation%geomech_realization)
+  call GeomechRealizProcessGeomechConditions(simulation%geomech_realization)
+  call InitGeomechMatPropToGeomechRegions(simulation%geomech_realization)
+  call GeomechRealizInitAllCouplerAuxVars(simulation%geomech_realization)  
+  call GeomechRealizPrintCouplers(simulation%geomech_realization)  
+  call GeomechRealizAddWaypointsToList(simulation%geomech_realization)
+  call GeomechGridElemSharedByNodes(simulation%geomech_realization)
+  call WaypointListFillIn(option,simulation%geomech_realization%waypoint_list)
+  call WaypointListRemoveExtraWaypnts(option, &
+                                  simulation%geomech_realization%waypoint_list)
+  call GeomechForceSetup(simulation%geomech_realization)
+  call GeomechGlobalSetup(simulation%geomech_realization)
+    
+  ! SK: We are solving quasi-steady state solution for geomechanics.
+  ! Initial condition is not needed, hence CondControlAssignFlowInitCondGeomech
+  ! is not needed, at this point.
+  call GeomechForceUpdateAuxVars(simulation%geomech_realization)
   
 end subroutine InitGeomechSetupRealization
 

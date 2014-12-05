@@ -1474,7 +1474,7 @@ subroutine DiscretizationPrintInfo(discretization,grid,option)
   
   grid => discretization%grid
   
-  select case(discetization%itype)
+  select case(discretization%itype)
     case(STRUCTURED_GRID)
       if (OptionPrintToScreen(option)) then
         write(*,'(/," Requested processors and decomposition = ", &
@@ -1496,7 +1496,7 @@ subroutine DiscretizationPrintInfo(discretization,grid,option)
       endif
   end select
   
-end subroutine
+end subroutine DiscretizationPrintInfo
 
 ! ************************************************************************** !
 

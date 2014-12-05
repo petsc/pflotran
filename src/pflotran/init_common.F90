@@ -302,6 +302,8 @@ subroutine Init(simulation)
     option%transport%reactive_transport_coupling = GLOBAL_IMPLICIT
   endif
   
+#if 0  
+  ! these moved to respective init_xxx files.
   ! create grid and allocate vectors
   call RealizationCreateDiscretization(realization)
   
@@ -315,7 +317,6 @@ subroutine Init(simulation)
 
   call RegressionCreateMapping(simulation%regression,realization)
 
-#if 0  
   ! moved to DiscretizationPrintInfo
   if (realization%discretization%itype == STRUCTURED_GRID) then
     if (OptionPrintToScreen(option)) then

@@ -38,67 +38,67 @@ subroutine InitSurfaceSetupRealization(simulation)
   
   option => simulation%realization%option
   
-  if (option%surf_flow_on) then
-    ! Check if surface-flow is compatible with the given flowmode
-    select case(option%iflowmode)
-      case(RICHARDS_MODE,TH_MODE)
-      case default
-        option%io_buffer = 'For surface-flow only RICHARDS and TH mode implemented'
-        call printErrMsgByRank(option)
-    end select
+  call SurfRealizCreateDiscretization(simulation%surf_realization)
 
-    call SurfaceInitReadRegionFiles(simulation%surf_realization)
-    call SurfRealizMapSurfSubsurfGrids(simulation%realization, &
-                                       simulation%surf_realization)
-    call SurfRealizLocalizeRegions(simulation%surf_realization)
-    call SurfRealizPassFieldPtrToPatches(simulation%surf_realization)
-    call SurfRealizProcessMatProp(simulation%surf_realization)
-    call SurfRealizProcessCouplers(simulation%surf_realization)
-    call SurfRealizProcessConditions(simulation%surf_realization)
-    !call RealProcessFluidProperties(simulation%surf_realization)
-    call SurfaceInitMatPropToRegions(simulation%surf_realization)
-    call SurfRealizInitAllCouplerAuxVars(simulation%surf_realization)
-    !call SurfaceRealizationPrintCouplers(simulation%surf_realization)
-
-    ! add waypoints associated with boundary conditions, source/sinks etc. to list
-    call SurfRealizAddWaypointsToList(simulation%surf_realization)
-    call WaypointListFillIn(option,simulation%surf_realization%waypoint_list)
-    call WaypointListRemoveExtraWaypnts(option,simulation%surf_realization%waypoint_list)
-    if (associated(simulation%flow_timestepper)) then
-      simulation%surf_flow_timestepper%cur_waypoint => simulation%surf_realization%waypoint_list%first
-    endif
-
-    select case(option%iflowmode)
-      case(RICHARDS_MODE)
-        call SurfaceFlowSetup(simulation%surf_realization)
-      case default
-      case(TH_MODE)
-        call SurfaceTHSetup(simulation%surf_realization)
-    end select
-
-    call SurfaceGlobalSetup(simulation%surf_realization)
-    ! initialize FLOW
-    ! set up auxillary variable arrays
-
-    ! assign initial conditionsRealizAssignFlowInitCond
-    call CondControlAssignFlowInitCondSurface(simulation%surf_realization)
-
-    ! override initial conditions if they are to be read from a file
-    if (len_trim(option%surf_initialize_flow_filename) > 1) then
-      option%io_buffer = 'For surface-flow initial conditions cannot be read from file'
+  ! Check if surface-flow is compatible with the given flowmode
+  select case(option%iflowmode)
+    case(RICHARDS_MODE,TH_MODE)
+    case default
+      option%io_buffer = 'For surface-flow only RICHARDS and TH mode implemented'
       call printErrMsgByRank(option)
-    endif
+  end select
+
+  call SurfaceInitReadRegionFiles(simulation%surf_realization)
+  call SurfRealizMapSurfSubsurfGrids(simulation%realization, &
+                                      simulation%surf_realization)
+  call SurfRealizLocalizeRegions(simulation%surf_realization)
+  call SurfRealizPassFieldPtrToPatches(simulation%surf_realization)
+  call SurfRealizProcessMatProp(simulation%surf_realization)
+  call SurfRealizProcessCouplers(simulation%surf_realization)
+  call SurfRealizProcessConditions(simulation%surf_realization)
+  !call RealProcessFluidProperties(simulation%surf_realization)
+  call SurfaceInitMatPropToRegions(simulation%surf_realization)
+  call SurfRealizInitAllCouplerAuxVars(simulation%surf_realization)
+  !call SurfaceRealizationPrintCouplers(simulation%surf_realization)
+
+  ! add waypoints associated with boundary conditions, source/sinks etc. to list
+  call SurfRealizAddWaypointsToList(simulation%surf_realization)
+  call WaypointListFillIn(option,simulation%surf_realization%waypoint_list)
+  call WaypointListRemoveExtraWaypnts(option,simulation%surf_realization%waypoint_list)
+  if (associated(simulation%flow_timestepper)) then
+    simulation%surf_flow_timestepper%cur_waypoint => simulation%surf_realization%waypoint_list%first
+  endif
+
+  select case(option%iflowmode)
+    case(RICHARDS_MODE)
+      call SurfaceFlowSetup(simulation%surf_realization)
+    case default
+    case(TH_MODE)
+      call SurfaceTHSetup(simulation%surf_realization)
+  end select
+
+  call SurfaceGlobalSetup(simulation%surf_realization)
+  ! initialize FLOW
+  ! set up auxillary variable arrays
+
+  ! assign initial conditionsRealizAssignFlowInitCond
+  call CondControlAssignFlowInitCondSurface(simulation%surf_realization)
+
+  ! override initial conditions if they are to be read from a file
+  if (len_trim(option%surf_initialize_flow_filename) > 1) then
+    option%io_buffer = 'For surface-flow initial conditions cannot be read from file'
+    call printErrMsgByRank(option)
+  endif
   
-    select case(option%iflowmode)
-      case(RICHARDS_MODE)
-        call SurfaceFlowUpdateAuxVars(simulation%surf_realization)
-      case(TH_MODE)
-        call SurfaceTHUpdateAuxVars(simulation%surf_realization)
-      case default
-        option%io_buffer = 'For surface-flow only RICHARDS and TH mode implemented'
-        call printErrMsgByRank(option)
-    end select
-  endif ! option%surf_flow_on
+  select case(option%iflowmode)
+    case(RICHARDS_MODE)
+      call SurfaceFlowUpdateAuxVars(simulation%surf_realization)
+    case(TH_MODE)
+      call SurfaceTHUpdateAuxVars(simulation%surf_realization)
+    case default
+      option%io_buffer = 'For surface-flow only RICHARDS and TH mode implemented'
+      call printErrMsgByRank(option)
+  end select
   
 end subroutine InitSurfaceSetupRealization
 
