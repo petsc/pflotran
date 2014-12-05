@@ -37,6 +37,14 @@ subroutine InitSurfaceSetupRealization(simulation)
   type(option_type), pointer :: option
   
   option => simulation%realization%option
+
+  ! initialize reference density
+  if (option%reference_water_density < 1.d-40) then
+    call EOSWaterDensity(option%reference_temperature, &
+                         option%reference_pressure, &
+                         option%reference_water_density, &
+                         dum1,ierr)    
+  endif  
   
   call SurfRealizCreateDiscretization(simulation%surf_realization)
 

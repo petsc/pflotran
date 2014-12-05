@@ -40,6 +40,14 @@ subroutine InitSubsurfSetupRealization(realization)
   
   call PetscLogEventBegin(logging%event_setup,ierr);CHKERRQ(ierr)
   
+  ! initialize reference density
+  if (option%reference_water_density < 1.d-40) then
+    call EOSWaterDensity(option%reference_temperature, &
+                         option%reference_pressure, &
+                         option%reference_water_density, &
+                         dum1,ierr)    
+  endif
+  
   ! SK 09/30/13, Added to check if Mphase is called with OS
   if (option%transport%reactive_transport_coupling == OPERATOR_SPLIT .and. &
       option%iflowmode == MPH_MODE) then

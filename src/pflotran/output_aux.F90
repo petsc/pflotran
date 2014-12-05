@@ -180,7 +180,9 @@ function OutputOptionCreate()
   output_option%xmf_vert_len = 0
 
   nullify(output_option%output_variable_list)
+  output_option%output_variable_list => OutputVariableListCreate()
   nullify(output_option%aveg_output_variable_list)
+  output_option%aveg_output_variable_list => OutputVariableListCreate()
   
   output_option%tconv = 1.d0
   output_option%tunit = 's'

@@ -243,6 +243,7 @@ subroutine Init(simulation)
     nullify(geomech_solver)
   endif
 
+#if 0  
   ! initialize plot variables
   realization%output_option%output_variable_list => OutputVariableListCreate()
   realization%output_option%aveg_output_variable_list => OutputVariableListCreate()
@@ -255,7 +256,7 @@ subroutine Init(simulation)
     OutputVariableListCreate()
   geomech_realization%output_option%aveg_output_variable_list => &
     OutputVariableListCreate()
-
+#endif
   ! read in the remainder of the input file
   call InitReadInput(simulation)
   call InputDestroy(realization%input)
@@ -265,6 +266,7 @@ subroutine Init(simulation)
   call InputDestroy(surf_realization%input)    !allocated in Line 182)
   call InputDestroy(geomech_realization%input) ! allocated in Line 186)
 
+#if 0  
   ! initialize reference density
   if (option%reference_water_density < 1.d-40) then
     call EOSWaterDensity(option%reference_temperature, &
@@ -273,7 +275,6 @@ subroutine Init(simulation)
                          dum1,ierr)    
   endif
   
-#if 0  
   ! read reaction database
   
   if (associated(realization%reaction)) then
