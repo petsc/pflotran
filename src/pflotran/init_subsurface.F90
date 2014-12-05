@@ -42,7 +42,6 @@ subroutine InitSubsurfSetupRealization(realization)
   
   ! create grid and allocate vectors
   call RealizationCreateDiscretization(realization)
-  call RegressionCreateMapping(simulation%regression,realization)
   
   ! read any regions provided in external files
   call InitCommonReadRegionFiles(realization)

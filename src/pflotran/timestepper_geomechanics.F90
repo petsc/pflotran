@@ -93,7 +93,6 @@ subroutine TimestepperGeomechanicsStepDT(this, process_model, stop_flag)
   use Option_module
   use Output_module, only : Output
 
-  use Option_module
   use Solver_module
 
   implicit none

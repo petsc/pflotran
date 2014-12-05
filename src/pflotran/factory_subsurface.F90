@@ -167,6 +167,7 @@ subroutine HijackSimulation(simulation_old,simulation)
   use Init_Subsurface_Flow_module
   use Init_Subsurface_Tran_module
   use Waypoint_module
+  use Regression_module
   
   implicit none
   
@@ -227,6 +228,7 @@ subroutine HijackSimulation(simulation_old,simulation)
                                          simulation_old%flow_timestepper%solver)
   if (option%ntrandof > 0) call InitSubsurfTranSetupSolvers(realization, &
                                          simulation_old%tran_timestepper%solver)
+  call RegressionCreateMapping(simulation_old%regression,realization)
 ! end from old Init()
   
   simulation%waypoint_list => RealizCreateSyncWaypointList(realization)

@@ -48,7 +48,7 @@ subroutine InitGeomechSetupRealization(simulation)
   
   option => simulation%realization%option
   
-  call GeomechRealizCreateDiscretization(geomech_realization)
+  call GeomechRealizCreateDiscretization(simulation%geomech_realization)
 
   if (option%geomech_subsurf_coupling /= 0) then
     call GeomechCreateGeomechSubsurfVec(simulation%realization, &

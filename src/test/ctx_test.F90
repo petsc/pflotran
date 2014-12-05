@@ -57,9 +57,7 @@ subroutine TestFunction(snes,xx,r,ctx,ierr)
   Vec :: r
   class(base_type) :: ctx ! yes, this should be base_type in order to handle all
   PetscErrorCode :: ierr  ! polymorphic extensions
-  print *, 'Before TestFunction print statement'
   call ctx%Print()
-  print *, 'After TestFunction print statement'
 end subroutine TestFunction
 end module Function_module
 
@@ -81,6 +79,18 @@ program test
 #include "finclude/petscviewer.h"
 #include "finclude/petscsnes.h"
 
+#if 1
+interface
+  subroutine SNESSetFunction(snes_base,x,TestFunction,base,ierr)
+    use Base_module
+    SNES snes_base
+    Vec x
+    external TestFunction
+    class(base_type) :: base
+    PetscErrorCode ierr
+  end subroutine
+end interface
+#endif
   PetscMPIInt :: size
   PetscMPIInt :: rank
   
@@ -104,7 +114,6 @@ program test
   call MPI_Comm_rank(PETSC_COMM_WORLD,rank,ierr);CHKERRQ(ierr)
 
   call VecCreate(PETSC_COMM_WORLD,x,ierr);CHKERRQ(ierr)
-  call SNESCreate(PETSC_COMM_WORLD,snes_base,ierr);CHKERRQ(ierr)
  
   ! when I use the base class as the context
   print *
