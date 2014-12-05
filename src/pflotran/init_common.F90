@@ -315,6 +315,8 @@ subroutine Init(simulation)
 
   call RegressionCreateMapping(simulation%regression,realization)
 
+#if 0  
+  ! moved to DiscretizationPrintInfo
   if (realization%discretization%itype == STRUCTURED_GRID) then
     if (OptionPrintToScreen(option)) then
       write(*,'(/," Requested processors and decomposition = ", &
@@ -335,6 +337,7 @@ subroutine Init(simulation)
           grid%structured_grid%npz_final
     endif
   endif
+#endif  
 
   ! update flow mode based on optional input
   if (option%nflowdof > 0) then
