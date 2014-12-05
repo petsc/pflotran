@@ -194,7 +194,7 @@ subroutine PMGeneralInitializeTimestep(this)
                                  this%realization%field%work_loc,TORTUOSITY,0)
                                  
   if (this%option%print_screen_flag) then
-    write(*,'(/,2("=")," GENERAL FLOW ",62("="))')
+    write(*,'(/,2("=")," GENERAL FLOW ",64("="))')
   endif
   
   call GeneralInitializeTimestep(this%realization)

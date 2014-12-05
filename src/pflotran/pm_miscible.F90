@@ -89,7 +89,7 @@ subroutine PMMiscibleInitializeTimestep(this)
   call PMSubsurfaceInitializeTimestepA(this)         
 
   if (this%option%print_screen_flag) then
-    write(*,'(/,2("=")," MISCIBLE FLOW ",62("="))')
+    write(*,'(/,2("=")," MISCIBLE FLOW ",63("="))')
   endif
   
   call MiscibleInitializeTimestep(this%realization)

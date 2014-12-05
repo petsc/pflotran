@@ -174,7 +174,7 @@ subroutine PMTHInitializeTimestep(this)
                                this%realization%field%iphas_loc)
 
   if (this%option%print_screen_flag) then
-    write(*,'(/,2("=")," TH FLOW ",62("="))')
+    write(*,'(/,2("=")," TH FLOW ",69("="))')
   endif
   
   call THInitializeTimestep(this%realization)

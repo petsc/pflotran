@@ -72,7 +72,7 @@ subroutine PMSurfaceFlowPreSolve(this)
   class(pm_surface_flow_type) :: this
 
   if (this%option%print_screen_flag) then
-    write(*,'(/,2("=")," SURFACE FLOW ",62("="))')
+    write(*,'(/,2("=")," SURFACE FLOW ",64("="))')
   endif
 
 end subroutine PMSurfaceFlowPreSolve

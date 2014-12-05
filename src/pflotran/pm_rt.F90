@@ -200,7 +200,7 @@ subroutine PMRTInitializeTimestep(this)
   this%option%tran_dt = this%option%dt
 
   if (this%option%print_screen_flag) then
-    write(*,'(/,2("=")," REACTIVE TRANSPORT ",57("="))')
+    write(*,'(/,2("=")," REACTIVE TRANSPORT ",58("="))')
   endif
   
   ! interpolate flow parameters/data

@@ -85,7 +85,7 @@ subroutine PMImmisInitializeTimestep(this)
   call PMSubsurfaceInitializeTimestepA(this)         
 
   if (this%option%print_screen_flag) then
-    write(*,'(/,2("=")," IMMISCIBLE FLOW ",62("="))')
+    write(*,'(/,2("=")," IMMISCIBLE FLOW ",61("="))')
   endif
   
   call ImmisInitializeTimestep(this%realization)

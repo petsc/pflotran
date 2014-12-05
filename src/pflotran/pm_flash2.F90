@@ -82,7 +82,7 @@ subroutine PMFlash2InitializeTimestep(this)
   class(pm_flash2_type) :: this
 
   if (this%option%print_screen_flag) then
-    write(*,'(/,2("=")," FLASH2 FLOW ",62("="))')
+    write(*,'(/,2("=")," FLASH2 FLOW ",65("="))')
   endif
   
   call PMSubsurfaceInitializeTimestepA(this)

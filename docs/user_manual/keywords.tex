@@ -72,7 +72,7 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \end{longtable}
 
 
-\subsection{\bf Conventions and Notation} 
+\subsection{Conventions and Notation} 
 
 Keywords are in boldface with optional modifying keywords in square brackets [\ldots], and user entries in typewriter font.
 Unless otherwise specified, units in the input file are assumed to be as listed in Table~\ref{tunits}.
@@ -906,9 +906,9 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \begin{deflist}{000}
 \item [CEC] {\tt <float>} \ [mol/m$^3$]
 %\item[SITE/CATION] {\tt Name} \ \ \ {\tt Site Density} [mol/m$^3$]
-\item[CATIONS] ~
+\item[CATIONS] Exchange reactions must be written in terms of a single reference cation which must appear first in the list of cations [see \eqref{ex1}].
 \begin{deflist}{000}
-\item[\tt Name]  \ \ \ {\tt Selectivity\_Coefficient}
+\item[\tt Cation Name]  \ \ \ {\tt Selectivity\_Coefficient}
 \end{deflist}
 \item [\keyend] ~
 \end{deflist}
@@ -945,7 +945,7 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 
 \item [\keyend]
 ~\\
-\item [OPERATOR\_SPLITTING] \ Toggles operator-splitting mode (Default implicit)
+\item [OPERATOR\_SPLITTING] \ Toggles operator-splitting mode (Default implicit, not currently implemented)
 ~\\
 \item[GEOTHERMAL\_HPT] Use high pressure and temperature thermodynamic database
 \item[DATABASE] {\tt Path/Database\_Name}
@@ -1015,11 +1015,10 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 %\end{minipage}
 %}
 
-\noindent
-{\bf Example:} Output total and free-ion primary species concentrations.
-
 \begin{mdframed}
-
+\noindent
+{\bf Example:} 
+Output total and free-ion primary species concentrations.
 \begin{verbatim}
  OUTPUT
    ...
@@ -1046,7 +1045,7 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \end{tabularx}
 
 \begin{mdframed}
-
+{\bf Example:} Linear sorption distribution coefficient and mean age of a tracer.
 \begin{verbatim}
   SORPTION
     ISOTHERM_REACTIONS
@@ -1057,6 +1056,22 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
       Tracer_Age
         TYPE LINEAR 
         DISTRIBUTION_COEFFICIENT 500. ! kg water/m^3 bulk
+      /
+    /
+  /
+\end{verbatim}
+\end{mdframed}
+
+\begin{mdframed}
+{\bf Example:} Ion exchange.
+\begin{verbatim}
+  SORPTION
+    ION_EXCHANGE_RXN
+      CEC 0.11 ! eq/m3bulk
+      CATIONS
+        Na+   1.
+        Ca++  0.158489
+        K+    0.199526
       /
     /
   /
@@ -1074,7 +1089,7 @@ To print secondary aqueous complex concentrations, either add the names of the s
 \end{center}
 
 \begin{mdframed}
-
+{\bf Example:} Output and redox chemistry.
 \begin{verbatim}
 CHEMISTRY
   ...
@@ -1108,7 +1123,7 @@ REDOX_SPECIES
 \end{center}
 
 \begin{mdframed}
-
+{\bf Example:} Mineral kinetics.
 \begin{verbatim}
 CHEMISTRY
   ...
@@ -1131,10 +1146,9 @@ END
 \end{verbatim}
 \end{mdframed}
 
-
 \begin{center}
 \begin{tabularx}{\linewidth}{lX}
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ & volume fraction and reaction rate are printed for both calcite and gibbsite and saturation indices are printed for gibbsite.  Saturation indices are not printed when only ALL or MINERALS are specified since an input deck. Outputting tens to hundreds of minerals, most of which are simply considered, but not modeled through a kinetic precipitation-dissolution reaction, would overwhelm the output. \\
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ & volume fraction and reaction rate are printed for both calcite and gibbsite and saturation indices are printed for gibbsite. Saturation indices are not printed when only ALL or MINERALS are specified since an input deck. Outputting tens to hundreds of minerals, most of which are simply considered, but not modeled through a kinetic precipitation-dissolution reaction, would overwhelm the output. \\
 
 \midrule
 \ldots & \\
@@ -1148,9 +1162,7 @@ END
 
 \noindent
 {\bf Examples:}
-
-\noindent
-{\bf PREFACTOR (see Eqn.\eqref{prefactor}):}
+Using PREFACTOR for mineral TST kinetics [see Eqn.\eqref{prefactor}].
 \begin{verbatim}
 MINERAL_KINETICS
   Quartz 
@@ -1717,6 +1729,7 @@ IPHASE & Phases present & CO$_2$ concentration\\
 \begin{mdframed}
 
 {\noindent\bf Examples:}
+\footnotesize
 \begin{verbatim}
 FLOW_CONDITION initial
   TYPE
@@ -1761,6 +1774,8 @@ FLOW_CONDITION East
 END
 \end{verbatim}
 \end{mdframed}
+
+\normalsize
 
 \hyperlink{target_key}{\return}
 
@@ -2167,6 +2182,7 @@ END
 {\bf Format of unstructured grid file:}
 
 Implicitly defined grid:
+\footnotesize
 \begin{verbatim}
 ! 
 ! type: H=hexahedron, T=tetrahedron, W=wedge, P=pyramid
@@ -2189,10 +2205,13 @@ Implicitly defined grid:
 \end{verbatim}
 \end{mdframed}
 
+\normalsize
+
 \begin{mdframed}
 
 Explicitly defined grid:
-  
+
+\footnotesize
 \begin{verbatim}
 ! Format of explicit unstructured grid file
 ! id_, id_up_, id_dn_ = integer
@@ -2221,6 +2240,8 @@ Explicitly defined grid:
 ! -----------------------------------------------------------------
 \end{verbatim}
 \end{mdframed}
+
+\normalsize
 
 \begin{mdframed}
 
@@ -3838,6 +3859,7 @@ UNIFORM_VELOCITY 3.84259d-6 0.d0 0.d0  ! 1.38333 cm/h
 \begin{mdframed}
 
 \noindent{\bf Example:}
+\footnotesize
 \begin{verbatim}
 VELOCITY_DATASET
   UNITS cm/h
@@ -3854,6 +3876,7 @@ END
 \end{verbatim}
 
 \end{mdframed}
+\normalsize
 
 \hyperlink{target_key}{\return}
 

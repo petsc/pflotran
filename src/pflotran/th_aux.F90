@@ -731,15 +731,6 @@ subroutine THAuxVarComputeFreezing(x, auxvar, global_auxvar, &
                        (global_auxvar%temp + 273.15d0)
   auxvar%dmol_gas_dt = dmolg_dt
 
-  if (option%ice_model == DALL_AMICO) then
-    auxvar%den_ice = dw_mol
-    auxvar%dden_ice_dt = auxvar%dden_dt
-    auxvar%dden_ice_dp = auxvar%dden_dp
-!    auxvar%u_ice = auxvar%u  ! commented out by S.Karra 06/02/14. setting
-!    internal energy of ice and water might not be correct.
-!    auxvar%du_ice_dt = auxvar%du_dt
-  endif
-
   ! Parameters for computation of effective thermal conductivity
   alpha = th_parameter%alpha(ithrm)
   alpha_fr = th_parameter%alpha_fr(ithrm)
@@ -761,6 +752,25 @@ subroutine THAuxVarComputeFreezing(x, auxvar, global_auxvar, &
   auxvar%dKe_dt = alpha*(global_auxvar%sat(1) + epsilon)**(alpha - 1.d0)*auxvar%dsat_dt
   auxvar%dKe_fr_dt = alpha_fr*(global_auxvar%sat(1) + epsilon)**(alpha_fr - 1.d0)*auxvar%dsat_dt
   auxvar%dKe_fr_dp = alpha_fr*(global_auxvar%sat(1) + epsilon)**(alpha_fr - 1.d0)*auxvar%dsat_dp
+
+  if (option%ice_model == DALL_AMICO) then
+    auxvar%den_ice = dw_mol
+    auxvar%dden_ice_dt = auxvar%dden_dt
+    auxvar%dden_ice_dp = auxvar%dden_dp
+!    auxvar%u_ice = auxvar%u  ! commented out by S.Karra 06/02/14. setting
+!    internal energy of ice and water might not be correct.
+!    auxvar%du_ice_dt = auxvar%du_dt
+
+    auxvar%sat_gas       = 0.d0
+    auxvar%dsat_gas_dp   = 0.d0
+    auxvar%dsat_gas_dt   = 0.d0
+    auxvar%den_gas       = 0.d0
+    auxvar%dden_gas_dt   = 0.d0
+    auxvar%u_gas         = 0.d0
+    auxvar%du_gas_dt     = 0.d0
+    auxvar%mol_gas       = 0.d0
+    auxvar%dmol_gas_dt   = 0.d0
+  endif
 
 end subroutine THAuxVarComputeFreezing
 

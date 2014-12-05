@@ -85,7 +85,7 @@ subroutine PMMphaseInitializeTimestep(this)
   call PMSubsurfaceInitializeTimestepA(this)         
 
   if (this%option%print_screen_flag) then
-    write(*,'(/,2("=")," MPHASE FLOW ",62("="))')
+    write(*,'(/,2("=")," MPHASE FLOW ",65("="))')
   endif
   
   call MphaseInitializeTimestep(this%realization)

@@ -8,17 +8,17 @@
 \begin{verbatim}
 :Description: 1D test problem for tracer transport
 
-:=========================== flow mode ========================================
+:=========================== flow mode ===================================
 MODE RICHARDS
 
-:=========================== chemistry ========================================
+:=========================== chemistry ===================================
 CHEMISTRY
   PRIMARY_SPECIES
     Tracer
   /
 END
 
-:=========================== solver options ===================================
+:=========================== solver options ==============================
 TIMESTEPPER
   MAX_STEPS 10
   TS_ACCELERATION 8
@@ -62,7 +62,7 @@ LINEAR_SOLVER TRANSPORT
   :SOLVER GMRES
 END
 
-:=========================== discretization ===================================
+:=========================== discretization ==============================
 GRID
   TYPE structured
   ORIGIN 0.d0 0.d0 0.d0
@@ -74,12 +74,12 @@ GRID
   /
 END
 
-:=========================== fluid properties =================================
+:=========================== fluid properties ============================
 FLUID_PROPERTY 
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
-:=========================== material properties ==============================
+:=========================== material properties =========================
 MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.25d0
@@ -104,11 +104,11 @@ MATERIAL_PROPERTY soil2
   /
 END
 
-:=========================== saturation functions =============================
+:=========================== saturation functions ========================
 SATURATION_FUNCTION default
 END
 
-:=========================== output options ===================================
+:=========================== output options ==============================
 OUTPUT
   :MASS_BALANCE
   TIMES y 0.25d0 0.5d0 0.75d0
@@ -116,14 +116,14 @@ OUTPUT
   VELOCITIES
 END
 
-:=========================== times ============================================
+:=========================== times =======================================
 TIME
   FINAL_TIME 1.d0 y
   INITIAL_TIMESTEP_SIZE 1.d-3 y
   MAXIMUM_TIMESTEP_SIZE 1.d-1 y
 END
 
-:=========================== regions ==========================================
+:=========================== regions =====================================
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
@@ -200,7 +200,7 @@ REGION well
   /
 END
 
-:=========================== flow conditions ==================================
+:=========================== flow conditions =============================
 FLOW_CONDITION initial
   TYPE
     PRESSURE hydrostatic
@@ -215,7 +215,7 @@ FLOW_CONDITION source
   RATE 10 m^3/hr
 END
 
-:=========================== transport conditions =============================
+:=========================== transport conditions ========================
 TRANSPORT_CONDITION initial
   TYPE zero_gradient
   CONSTRAINT_LIST
@@ -230,7 +230,7 @@ TRANSPORT_CONDITION source
   /
 END
 
-:=========================== constraints ======================================
+:=========================== constraints =================================
 CONSTRAINT well
   CONCENTRATIONS
     Tracer 1.d0 T
@@ -243,7 +243,7 @@ CONSTRAINT initial
   /
 END
 
-:=========================== condition couplers ===============================
+:=========================== condition couplers ==========================
 : initial condition
 INITIAL_CONDITION
   FLOW_CONDITION initial
@@ -300,7 +300,7 @@ SOURCE_SINK well
   REGION well
 END
 
-:=========================== stratigraphy couplers ============================
+:=========================== stratigraphy couplers =======================
 STRATA
   REGION top_layer
   MATERIAL soil1
@@ -329,7 +329,7 @@ MODE FLASH2
 :CHECKPOINT 100
 :RESTART pflotran.chk800
 
-:=========================== discretization ===================================
+:=========================== discretization ==============================
 GRID
   TYPE structured
   ORIGIN 0.d0 0.d0 0.d0
@@ -343,7 +343,7 @@ END
 
 :PROC 2 1 1
 
-:=========================== solver options ===================================
+:=========================== solver options ==============================
 TIMESTEPPER
   :MAX_STEPS 50
   TS_ACCELERATION 8
@@ -364,7 +364,7 @@ NEWTON_SOLVER FLOW
 END
 :
 
-:=========================== times ============================================
+:=========================== times =======================================
 TIME
   FINAL_TIME 300.d0 y
   INITIAL_TIMESTEP_SIZE 1.d-3 y
@@ -376,7 +376,7 @@ TIME
   MAXIMUM_TIMESTEP_SIZE 2.5 y at 1000 y
 END
 
-:=========================== output options ===================================
+:=========================== output options ==============================
 OUTPUT
   MASS_BALANCE
   TIMES y 10. 50. 100. 200. 300.
@@ -385,12 +385,12 @@ OUTPUT
   VELOCITIES
 END
 
-:=========================== fluid properties =================================
+:=========================== fluid properties ============================
 FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
-:=========================== material properties ==============================
+:=========================== material properties =========================
 MATERIAL_PROPERTY rock2
   ID 1
   POROSITY 0.38d0
@@ -407,7 +407,7 @@ MATERIAL_PROPERTY rock2
   /
 END
 
-:=========================== saturation functions =============================
+:=========================== saturation functions ========================
 SATURATION_FUNCTION sf2
   PERMEABILITY_FUNCTION_TYPE PRUESS_1
   SATURATION_FUNCTION_TYPE PRUESS_1
@@ -420,7 +420,7 @@ SATURATION_FUNCTION sf2
   POWER 1.d0
 END
 
-:=========================== regions ==========================================
+:=========================== regions =====================================
 REGION all
   COORDINATES
     0.d0   0.d0 0.d0
@@ -452,7 +452,7 @@ REGION well
   /
 END
 
-:=========================== flow conditions ==================================
+:=========================== flow conditions =============================
 FLOW_CONDITION initial
   UNITS Pa,C,M,yr
   TYPE
@@ -511,7 +511,7 @@ FLOW_CONDITION source
   ENTHALPY 0.d0 0.d0
 END
 
-:=========================== condition couplers ===============================
+:=========================== condition couplers ==========================
 : initial condition
 INITIAL_CONDITION
   FLOW_CONDITION initial
@@ -540,7 +540,7 @@ SOURCE_SINK
   REGION well
 END
 
-:=========================== stratigraphy couplers ============================
+:=========================== stratigraphy couplers =======================
 STRATA
   REGION all
   MATERIAL rock2

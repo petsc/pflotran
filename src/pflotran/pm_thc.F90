@@ -194,7 +194,7 @@ subroutine PMTHCInitializeTimestep(this)
 #endif
 
   if (this%option%print_screen_flag) then
-    write(*,'(/,2("=")," THC FLOW ",62("="))')
+    write(*,'(/,2("=")," THC FLOW ",68("="))')
   endif
   
   if (this%option%ntrandof > 0) then ! store initial saturations for transport
