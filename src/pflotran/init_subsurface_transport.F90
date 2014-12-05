@@ -29,8 +29,6 @@ subroutine InitSubsurfTranSetupRealization(realization)
   use Global_module
   use Condition_Control_module
   use Variables_module
-  use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
-  use Reaction_Database_module
   
   implicit none
   
@@ -40,19 +38,6 @@ subroutine InitSubsurfTranSetupRealization(realization)
   
   option => realization%option
   
-  ! read reaction database
-  if (associated(realization%reaction)) then
-    if (realization%reaction%use_full_geochemistry) then
-        call DatabaseRead(realization%reaction,option)
-        call BasisInit(realization%reaction,option)    
-    else
-      ! turn off activity coefficients since the database has not been read
-      realization%reaction%act_coef_update_frequency = ACT_COEF_FREQUENCY_OFF
-      allocate(realization%reaction%primary_species_print(option%ntrandof))
-      realization%reaction%primary_species_print = PETSC_TRUE
-    endif
-  endif
-
   call RTSetup(realization)
 
   ! initialize densities and saturations

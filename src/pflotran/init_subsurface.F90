@@ -28,12 +28,16 @@ subroutine InitSubsurfSetupRealization(realization)
   use Logging_module
   use Waypoint_module
   use Init_Common_module
+  use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
+  use Reaction_Database_module
+  use EOS_Water_module
   
   implicit none
   
   type(realization_type) :: realization
   
   type(option_type), pointer :: option
+  PetscReal :: dum1
   PetscErrorCode :: ierr
   
   option => realization%option
@@ -47,7 +51,20 @@ subroutine InitSubsurfSetupRealization(realization)
                          option%reference_water_density, &
                          dum1,ierr)    
   endif
-  
+
+  ! read reaction database
+  if (associated(realization%reaction)) then
+    if (realization%reaction%use_full_geochemistry) then
+        call DatabaseRead(realization%reaction,option)
+        call BasisInit(realization%reaction,option)
+    else
+      ! turn off activity coefficients since the database has not been read
+      realization%reaction%act_coef_update_frequency = ACT_COEF_FREQUENCY_OFF
+      allocate(realization%reaction%primary_species_print(option%ntrandof))
+      realization%reaction%primary_species_print = PETSC_TRUE
+    endif
+  endif
+
   ! SK 09/30/13, Added to check if Mphase is called with OS
   if (option%transport%reactive_transport_coupling == OPERATOR_SPLIT .and. &
       option%iflowmode == MPH_MODE) then

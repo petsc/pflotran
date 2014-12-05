@@ -29,12 +29,15 @@ subroutine InitSurfaceSetupRealization(simulation)
   use Option_module
   use Waypoint_module
   use Condition_Control_module
+  use EOS_Water_module
   
   implicit none
   
   type(simulation_type) :: simulation
   
   type(option_type), pointer :: option
+  PetscReal :: dum1
+  PetscErrorCode :: ierr
   
   option => simulation%realization%option
 
