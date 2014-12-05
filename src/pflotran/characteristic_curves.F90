@@ -3242,7 +3242,9 @@ function RPF_Burdine_Linear_Gas_Create()
   call RPF_Burdine_Linear_Gas_Create%Init()
   
 end function RPF_Burdine_Linear_Gas_Create
-   !//////////// RPF: Burdine, Linear gas //////////////!
+
+! ************************************************************************** !
+
 subroutine RPF_Burdine_Linear_Gas_Init(this)
 
   ! Initializes the Linear Burdine gas relative permeability function 

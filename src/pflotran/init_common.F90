@@ -81,7 +81,7 @@ subroutine Init(simulation)
   use Surface_Field_module
   use Surface_Flow_module
   use Surface_Global_module
-  use Surface_Init_module, only : SurfaceInitReadRequiredCards
+  use Surface_Init_module !, only : SurfaceInitReadRequiredCards
   use Surface_Realization_class
   use Surface_TH_module
   use Grid_Unstructured_module
@@ -336,10 +336,10 @@ subroutine Init(simulation)
     endif
   endif
 
-#if 0  
   ! update flow mode based on optional input
   if (option%nflowdof > 0) then
   
+#if 0  
     if (flow_solver%J_mat_type == MATAIJ) then
       select case(option%iflowmode)
         case(MPH_MODE,TH_MODE,IMS_MODE, FLASH2_MODE, G_MODE, MIS_MODE)
@@ -544,8 +544,8 @@ subroutine Init(simulation)
     
     call printMsg(option,"  Finished setting up FLOW SNES ")
 #endif
-#if 0
     if (option%surf_flow_on) then
+#if 0
 
       ! Setup PETSc TS for explicit surface flow solution
       call printMsg(option,"  Beginning setup of SURF FLOW TS ")
@@ -573,10 +573,10 @@ subroutine Init(simulation)
                          simulation%surf_realization%waypoint_list%last%time, &
                          ierr);CHKERRQ(ierr)
 
+#endif
     endif ! if (option%surf_flow_on)
 
   endif
-#endif
 
 #if 0  
   ! update geomechanics mode based on optional input
@@ -2964,9 +2964,10 @@ subroutine assignVolumesToMaterialAuxVars(realization)
                                field%work_loc,VOLUME,ZERO_INTEGER)
 
 end subroutine assignVolumesToMaterialAuxVars
+#endif
 
 ! ************************************************************************** !
-#endif
+
 subroutine InitCommonVerifyAllCouplers(realization)
   ! 
   ! Verifies the connectivity of a coupler

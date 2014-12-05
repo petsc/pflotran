@@ -124,7 +124,9 @@ subroutine HijackSurfaceSimulation(simulation_old,simulation)
   surf_realization => simulation_old%surf_realization
   option => surf_realization%option
 
+
 ! begin from old Init()   
+  call InitSurfaceSetupSolvers(surf_realization,simulation_old%surf_flow_timestepper%solver)
   call InitSurfaceSetupRealization(simulation_old)
 ! end from old Init()   
   

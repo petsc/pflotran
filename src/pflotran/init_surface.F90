@@ -197,7 +197,10 @@ subroutine SurfaceInitMatPropToRegions(surf_realization)
   use HDF5_module
 
   implicit none
-  
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
   type(surface_realization_type) :: surf_realization
   
   PetscReal, pointer :: man0_p(:)
