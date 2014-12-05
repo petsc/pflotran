@@ -40,6 +40,17 @@ subroutine InitSubsurfSetupRealization(realization)
   
   call PetscLogEventBegin(logging%event_setup,ierr);CHKERRQ(ierr)
   
+  ! SK 09/30/13, Added to check if Mphase is called with OS
+  if (option%transport%reactive_transport_coupling == OPERATOR_SPLIT .and. &
+      option%iflowmode == MPH_MODE) then
+    option%io_buffer = 'Operator split not implemented with MPHASE. ' // &
+                       'Switching to Global Implicit.'
+    !geh: We should force the user to switch without automatically switching
+!    call printWrnMsg(option)
+    call printErrMsg(option)
+    option%transport%reactive_transport_coupling = GLOBAL_IMPLICIT
+  endif
+  
   ! create grid and allocate vectors
   call RealizationCreateDiscretization(realization)
   

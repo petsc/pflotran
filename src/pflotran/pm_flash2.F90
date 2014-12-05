@@ -19,6 +19,7 @@ module PM_Flash2_class
 
   type, public, extends(pm_subsurface_type) :: pm_flash2_type
   contains
+    procedure, public :: Init => PMFlash2Init
     procedure, public :: InitializeTimestep => PMFlash2InitializeTimestep
     procedure, public :: Residual => PMFlash2Residual
     procedure, public :: Jacobian => PMFlash2Jacobian
@@ -64,6 +65,25 @@ function PMFlash2Create()
   PMFlash2Create => flash2_pm
   
 end function PMFlash2Create
+
+! ************************************************************************** !
+
+subroutine PMFlash2Init(this)
+  ! 
+  ! Initializes variables associated with Flash2 process model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/05/14
+  use co2_sw_module
+
+  implicit none
+  
+  class(pm_flash2_type) :: this
+
+  call PMSubsurfaceInit(this)
+  call init_span_wanger(this%option)
+  
+end subroutine PMFlash2Init
 
 ! ************************************************************************** !
 

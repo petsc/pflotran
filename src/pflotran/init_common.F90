@@ -287,6 +287,7 @@ subroutine Init(simulation)
     endif
   endif
 
+#if 0  
   ! Initialize flow databases (e.g. span wagner, etc.)
   select case(option%iflowmode)
     case(MPH_MODE, FLASH2_MODE, IMS_MODE)
@@ -302,7 +303,6 @@ subroutine Init(simulation)
     option%transport%reactive_transport_coupling = GLOBAL_IMPLICIT
   endif
   
-#if 0  
   ! these moved to respective init_xxx files.
   ! create grid and allocate vectors
   call RealizationCreateDiscretization(realization)

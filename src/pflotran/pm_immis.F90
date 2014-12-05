@@ -19,6 +19,7 @@ module PM_Immis_class
 
   type, public, extends(pm_subsurface_type) :: pm_immis_type
   contains
+    procedure, public :: Init => PMImmisInit
     procedure, public :: InitializeTimestep => PMImmisInitializeTimestep
     procedure, public :: Residual => PMImmisResidual
     procedure, public :: Jacobian => PMImmisJacobian
@@ -65,6 +66,25 @@ function PMImmisCreate()
   PMImmisCreate => immis_pm
   
 end function PMImmisCreate
+
+! ************************************************************************** !
+
+subroutine PMImmisInit(this)
+  ! 
+  ! Initializes variables associated with Immis process model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/05/14
+  use co2_sw_module
+
+  implicit none
+  
+  class(pm_immis_type) :: this
+  
+  call PMSubsurfaceInit(this)
+  call init_span_wanger(this%option)
+  
+end subroutine PMImmisInit
 
 ! ************************************************************************** !
 

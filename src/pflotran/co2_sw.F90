@@ -34,8 +34,46 @@ module co2_sw_module
       PetscReal, parameter, private ::  denc = 467.6d0, tc = 304.1282d0,&
                                      rg = 0.1889241d0, pc = 7.3773d0
 
-      public initialize_sw_interp, co2_sw_interp      
+      public initialize_sw_interp, co2_sw_interp, init_span_wanger  
  contains
+
+     
+! ************************************************************************** !
+
+subroutine init_span_wanger(option)
+  ! 
+  ! init_span_wanger
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 5/13/08
+  ! 
+  use Option_module
+  use co2_span_wagner_module
+  use co2_span_wagner_spline_module
+
+  implicit none
+  type(option_type) :: option
+  PetscMPIInt :: myrank
+
+  if (option%co2eos == EOS_SPAN_WAGNER) then
+    select case(option%itable)
+       case(0,1,2)
+         call initialize_span_wagner(option%itable, &
+                                     option%myrank, &
+                                     option)
+       case(4,5)
+         myrank = option%myrank
+         call initialize_span_wagner(ZERO_INTEGER,myrank, &
+                                     option)
+         call initialize_sw_interp(option%itable,myrank)
+       case(3)
+         call sw_spline_read
+       case default
+         print *, 'Wrong table option : STOP'
+         stop
+    end select
+  endif
+end subroutine init_span_wanger
 
 ! ************************************************************************** !
 

@@ -19,6 +19,7 @@ module PM_Mphase_class
 
   type, public, extends(pm_subsurface_type) :: pm_mphase_type
   contains
+    procedure, public :: Init => PMMphaseInit
     procedure, public :: InitializeTimestep => PMMphaseInitializeTimestep
     procedure, public :: Residual => PMMphaseResidual
     procedure, public :: Jacobian => PMMphaseJacobian
@@ -65,6 +66,25 @@ function PMMphaseCreate()
   PMMphaseCreate => mphase_pm
   
 end function PMMphaseCreate
+
+! ************************************************************************** !
+
+subroutine PMMphaseInit(this)
+  ! 
+  ! Initializes variables associated with Mphase process model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/05/14
+  use co2_sw_module
+
+  implicit none
+  
+  class(pm_mphase_type) :: this
+
+  call PMSubsurfaceInit(this)
+  call init_span_wanger(this%option)
+  
+end subroutine PMMphaseInit
 
 ! ************************************************************************** !
 

@@ -48,7 +48,7 @@ module Mphase_module
          MphaseSetup,MphaseUpdateReason, &
          MphaseMaxChange,MphaseUpdateSolution, &
          MphaseGetTecplotHeader,MphaseInitializeTimestep, &
-         MphaseUpdateAuxVars,init_span_wanger, &
+         MphaseUpdateAuxVars, &
          MphaseSecondaryHeat,MphaseSecondaryHeatJacobian, &
          MphaseComputeMassBalance,MphaseDestroy
 
@@ -84,44 +84,6 @@ subroutine MphaseTimeCut(realization)
   call VecCopy(field%iphas_old_loc,field%iphas_loc,ierr);CHKERRQ(ierr)
 
 end subroutine MphaseTimeCut
-
-! ************************************************************************** !
-
-subroutine init_span_wanger(realization)
-  ! 
-  ! init_span_wanger
-  ! 
-  ! Author: Chuan Lu
-  ! Date: 5/13/08
-  ! 
-  use Realization_class
-  use co2_span_wagner_module
-  use co2_sw_module
-  use co2_span_wagner_spline_module
-
-  implicit none
-  type(realization_type) :: realization
-  PetscMPIInt :: myrank
-
-  if (realization%option%co2eos == EOS_SPAN_WAGNER) then
-    select case(realization%option%itable)
-       case(0,1,2)
-         call initialize_span_wagner(realization%option%itable, &
-                                     realization%option%myrank, &
-                                     realization%option)
-       case(4,5)
-         myrank = realization%option%myrank
-         call initialize_span_wagner(ZERO_INTEGER,myrank, &
-                                     realization%option)
-         call initialize_sw_interp(realization%option%itable,myrank)
-       case(3)
-         call sw_spline_read
-       case default
-         print *, 'Wrong table option : STOP'
-         stop
-    end select
-  endif
-end subroutine init_span_wanger
 
 ! ************************************************************************** !
 
