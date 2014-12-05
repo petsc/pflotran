@@ -36,6 +36,7 @@ subroutine InitSubsurfFlowSetupRealization(realization)
   use TH_module
   use General_module
   use Condition_Control_module
+  use co2_sw_module, only : init_span_wagner
   
   implicit none
   
@@ -57,12 +58,15 @@ subroutine InitSubsurfFlowSetupRealization(realization)
       case(RICHARDS_MODE)
         call RichardsSetup(realization)
       case(MPH_MODE)
+        call init_span_wagner(option)      
         call MphaseSetup(realization)
       case(IMS_MODE)
+        call init_span_wagner(option)      
         call ImmisSetup(realization)
       case(MIS_MODE)
         call MiscibleSetup(realization)
       case(FLASH2_MODE)
+        call init_span_wagner(option)      
         call Flash2Setup(realization)
       case(G_MODE)
         call MaterialSetup(realization%patch%aux%Material%material_parameter, &

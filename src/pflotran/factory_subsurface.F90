@@ -209,7 +209,9 @@ subroutine HijackSimulation(simulation_old,simulation)
   ! initialize global auxiliary variable object
   call GlobalSetup(realization)
   
-  if (option%nflowdof > 0) call InitSubsurfFlowSetupRealization(realization)
+  ! always call the flow side since a velocity field still has to be
+  ! set if no flow exists
+  call InitSubsurfFlowSetupRealization(realization)
   if (option%ntrandof > 0) call InitSubsurfTranSetupRealization(realization)
   call OutputVariableAppendDefaults(realization%output_option% &
                                       output_variable_list,option)

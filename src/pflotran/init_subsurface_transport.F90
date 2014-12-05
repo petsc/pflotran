@@ -29,6 +29,8 @@ subroutine InitSubsurfTranSetupRealization(realization)
   use Global_module
   use Condition_Control_module
   use Variables_module
+  use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
+  use Reaction_Database_module
   
   implicit none
   
@@ -38,28 +40,38 @@ subroutine InitSubsurfTranSetupRealization(realization)
   
   option => realization%option
   
-  if (option%ntrandof > 0) then
-
-    call RTSetup(realization)
-
-    ! initialize densities and saturations
-    if (option%nflowdof == 0) then
-      call GlobalSetAuxVarScalar(realization,option%reference_pressure, &
-                                 LIQUID_PRESSURE)
-      call GlobalSetAuxVarScalar(realization,option%reference_temperature, &
-                                 TEMPERATURE)
-      call GlobalSetAuxVarScalar(realization,option%reference_saturation, &
-                                 LIQUID_SATURATION)
-      call GlobalSetAuxVarScalar(realization,option%reference_water_density, &
-                                 LIQUID_DENSITY)
+  ! read reaction database
+  if (associated(realization%reaction)) then
+    if (realization%reaction%use_full_geochemistry) then
+        call DatabaseRead(realization%reaction,option)
+        call BasisInit(realization%reaction,option)    
     else
-      call GlobalUpdateAuxVars(realization,TIME_T,0.d0)
-      call GlobalWeightAuxVars(realization,0.d0)
+      ! turn off activity coefficients since the database has not been read
+      realization%reaction%act_coef_update_frequency = ACT_COEF_FREQUENCY_OFF
+      allocate(realization%reaction%primary_species_print(option%ntrandof))
+      realization%reaction%primary_species_print = PETSC_TRUE
     endif
-
-    ! initial concentrations must be assigned after densities are set !!!
-    call CondControlAssignTranInitCond(realization)
   endif
+
+  call RTSetup(realization)
+
+  ! initialize densities and saturations
+  if (option%nflowdof == 0) then
+    call GlobalSetAuxVarScalar(realization,option%reference_pressure, &
+                                LIQUID_PRESSURE)
+    call GlobalSetAuxVarScalar(realization,option%reference_temperature, &
+                                TEMPERATURE)
+    call GlobalSetAuxVarScalar(realization,option%reference_saturation, &
+                                LIQUID_SATURATION)
+    call GlobalSetAuxVarScalar(realization,option%reference_water_density, &
+                                LIQUID_DENSITY)
+  else
+    call GlobalUpdateAuxVars(realization,TIME_T,0.d0)
+    call GlobalWeightAuxVars(realization,0.d0)
+  endif
+
+  ! initial concentrations must be assigned after densities are set !!!
+  call CondControlAssignTranInitCond(realization)
   
 end subroutine InitSubsurfTranSetupRealization
 

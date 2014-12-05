@@ -34,15 +34,15 @@ module co2_sw_module
       PetscReal, parameter, private ::  denc = 467.6d0, tc = 304.1282d0,&
                                      rg = 0.1889241d0, pc = 7.3773d0
 
-      public initialize_sw_interp, co2_sw_interp, init_span_wanger  
+      public initialize_sw_interp, co2_sw_interp, init_span_wagner  
  contains
 
      
 ! ************************************************************************** !
 
-subroutine init_span_wanger(option)
+subroutine init_span_wagner(option)
   ! 
-  ! init_span_wanger
+  ! init_span_wagner
   ! 
   ! Author: Chuan Lu
   ! Date: 5/13/08
@@ -73,7 +73,7 @@ subroutine init_span_wanger(option)
          stop
     end select
   endif
-end subroutine init_span_wanger
+end subroutine init_span_wagner
 
 ! ************************************************************************** !
 

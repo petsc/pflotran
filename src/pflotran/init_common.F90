@@ -273,6 +273,7 @@ subroutine Init(simulation)
                          dum1,ierr)    
   endif
   
+#if 0  
   ! read reaction database
   
   if (associated(realization%reaction)) then
@@ -287,13 +288,6 @@ subroutine Init(simulation)
     endif
   endif
 
-#if 0  
-  ! Initialize flow databases (e.g. span wagner, etc.)
-  select case(option%iflowmode)
-    case(MPH_MODE, FLASH2_MODE, IMS_MODE)
-      call init_span_wanger(realization)
-  end select
-  
   ! SK 09/30/13, Added to check if Mphase is called with OS
   if (option%transport%reactive_transport_coupling == OPERATOR_SPLIT .and. &
       option%iflowmode == MPH_MODE) then
