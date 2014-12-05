@@ -171,6 +171,7 @@ subroutine ExecuteRun(this)
   ! Date: 06/11/13
   ! 
   use Waypoint_module
+  use Timestepper_Base_class, only : TS_CONTINUE
 
   implicit none
   
@@ -189,6 +190,7 @@ subroutine ExecuteRun(this)
   cur_waypoint => this%waypoint_list%first
   call WaypointSkipToTime(cur_waypoint,this%option%time)
   do
+    if (this%stop_flag /= TS_CONTINUE) exit ! end simulation
     if (.not.associated(cur_waypoint)) exit
     call this%RunToTime(min(final_time,cur_waypoint%time))
     cur_waypoint => cur_waypoint%next
