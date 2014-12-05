@@ -126,8 +126,8 @@ subroutine HijackSurfaceSimulation(simulation_old,simulation)
 
 
 ! begin from old Init()   
-  call InitSurfaceSetupSolvers(surf_realization,simulation_old%surf_flow_timestepper%solver)
   call InitSurfaceSetupRealization(simulation_old)
+  call InitSurfaceSetupSolvers(surf_realization,simulation_old%surf_flow_timestepper%solver)
 ! end from old Init()   
   
   !----------------------------------------------------------------------------!
