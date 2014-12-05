@@ -55,8 +55,8 @@ module Timestepper_Base_class
   contains
     
     procedure, public :: ReadInput => TimestepperBaseRead
-    procedure, public :: InitializeRun => TimestepperBaseInitializeRun
     procedure, public :: Init => TimestepperBaseInit
+    procedure, public :: InitializeRun => TimestepperBaseInitializeRun
     procedure, public :: SetTargetTime => TimestepperBaseSetTargetTime
     procedure, public :: StepDT => TimestepperBaseStepDT
     procedure, public :: UpdateDT => TimestepperBaseUpdateDT
@@ -64,6 +64,7 @@ module Timestepper_Base_class
     procedure, public :: Restart => TimestepperBaseRestart
     procedure, public :: Reset => TimestepperBaseReset
     procedure, public :: WallClockStop => TimestepperBaseWallClockStop
+    procedure, public :: PrintInfo => TimestepperBasePrintInfo
     procedure, public :: FinalizeRun => TimestepperBaseFinalizeRun
     procedure, public :: Strip => TimestepperBaseStrip
     procedure, public :: Destroy => TimestepperBaseDestroy
@@ -81,14 +82,15 @@ module Timestepper_Base_class
     integer*8 :: revert_dt
   end type stepper_base_header_type
   
-  public :: TimestepperBaseCreate, TimestepperBasePrintInfo, &
+  public :: TimestepperBaseCreate, &
             TimestepperBaseProcessKeyword, &
             TimestepperBaseStrip, &
             TimestepperBaseInit, &
             TimestepperBaseSetHeader, &
             TimestepperBaseGetHeader, &
             TimestepperBaseReset, &
-            TimestepperBaseRegisterHeader
+            TimestepperBaseRegisterHeader, &
+            TimestepperBasePrintInfo
 
 contains
 
@@ -183,6 +185,7 @@ subroutine TimestepperBaseInitializeRun(this,option)
   class(timestepper_base_type) :: this
   type(option_type) :: option
   
+  call this%PrintInfo(option)
   option%time = this%target_time
   ! For the case where the second waypoint is a printout after the first time 
   ! step, we must increment the waypoint beyond the first (time=0.) waypoint.  
@@ -530,7 +533,7 @@ end subroutine TimestepperBaseStepDT
 
 ! ************************************************************************** !
 
-subroutine TimestepperBasePrintInfo(this,fid,header,option)
+subroutine TimestepperBasePrintInfo(this,option)
   ! 
   ! Prints information about time stepper
   ! 
@@ -543,14 +546,13 @@ subroutine TimestepperBasePrintInfo(this,fid,header,option)
   implicit none
   
   class(timestepper_base_type) :: this
-  PetscInt :: fid
-  character(len=MAXSTRINGLENGTH) :: header
-  character(len=MAXSTRINGLENGTH) :: string
   type(option_type) :: option
+
+  character(len=MAXSTRINGLENGTH) :: string
   
   if (OptionPrintToScreen(option)) then
     write(*,*) 
-    write(*,'(a)') trim(header)
+    write(*,'(a)') trim(this%name) // ' Time Stepper'
     write(string,*) this%max_time_step
     write(*,'("max steps:",x,a)') trim(adjustl(string))
     write(string,*) this%constant_time_step_threshold
@@ -560,15 +562,15 @@ subroutine TimestepperBasePrintInfo(this,fid,header,option)
     write(*,'("max cuts:",x,a)') trim(adjustl(string))
   endif
   if (OptionPrintToFile(option)) then
-    write(fid,*) 
-    write(fid,'(a)') trim(header)
+    write(option%fid_out,*) 
+    write(option%fid_out,'(a)') trim(this%name) // ' Time Stepper'
     write(string,*) this%max_time_step
-    write(fid,'("max steps:",x,a)') trim(adjustl(string))
+    write(option%fid_out,'("max steps:",x,a)') trim(adjustl(string))
     write(string,*) this%constant_time_step_threshold
-    write(fid,'("max constant cumulative time steps:",x,a)') &
+    write(option%fid_out,'("max constant cumulative time steps:",x,a)') &
       trim(adjustl(string))
     write(string,*) this%max_time_step_cuts
-    write(fid,'("max cuts:",x,a)') trim(adjustl(string))
+    write(option%fid_out,'("max cuts:",x,a)') trim(adjustl(string))
   endif    
 
 end subroutine TimestepperBasePrintInfo

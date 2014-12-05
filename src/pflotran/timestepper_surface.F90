@@ -443,6 +443,37 @@ end subroutine TimestepperSurfaceReset
 
 ! ************************************************************************** !
 
+subroutine TimestepperSurfacePrintInfo(this,option)
+  ! 
+  ! Prints settings for base timestepper.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/04/14
+  ! 
+  use Option_module
+
+  implicit none
+  
+#include "finclude/petscts.h"  
+
+  class(timestepper_surface_type) :: this
+  type(option_type) :: option
+  
+  PetscErrorCode :: ierr
+  
+  if (OptionPrintToScreen(option)) then
+    write(*,*) ' '
+    write(*,*) 'Surface Flow TS Solver:'
+    call TSView(this%solver%ts,PETSC_VIEWER_STDOUT_WORLD,ierr);CHKERRQ(ierr)
+  endif
+  call TimestepperBasePrintInfo(this,option)
+  call SolverPrintNewtonInfo(this%solver,this%name,option)
+  call SolverPrintLinearInfo(this%solver,this%name,option)
+  
+end subroutine TimestepperSurfacePrintInfo
+
+! ************************************************************************** !
+
 subroutine TimestepperSurfaceStrip(this)
   ! 
   ! Deallocates members of a surface time stepper

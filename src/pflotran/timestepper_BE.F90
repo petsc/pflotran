@@ -37,6 +37,7 @@ module Timestepper_BE_class
     procedure, public :: Checkpoint => TimestepperBECheckpoint
     procedure, public :: Restart => TimestepperBERestart
     procedure, public :: Reset => TimestepperBEReset
+    procedure, public :: PrintInfo => TimestepperBEPrintInfo
     procedure, public :: FinalizeRun => TimestepperBEFinalizeRun
     procedure, public :: Strip => TimestepperBEStrip
     procedure, public :: Destroy => TimestepperBEDestroy
@@ -436,51 +437,6 @@ end subroutine TimestepperBEStepDT
 
 ! ************************************************************************** !
 
-subroutine TimestepperBEPrintInfo(this,fid,header,option)
-  ! 
-  ! Prints information about time stepper
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 07/22/13
-  ! 
-
-  use Option_module
-  
-  implicit none
-  
-  class(timestepper_BE_type) :: this
-  PetscInt :: fid
-  character(len=MAXSTRINGLENGTH) :: header
-  character(len=MAXSTRINGLENGTH) :: string
-  type(option_type) :: option
-  
-  if (OptionPrintToScreen(option)) then
-    write(*,*) 
-    write(*,'(a)') trim(header)
-    write(string,*) this%max_time_step
-    write(*,'("max steps:",x,a)') trim(adjustl(string))
-    write(string,*) this%constant_time_step_threshold
-    write(*,'("max constant cumulative time steps:",x,a)') &
-      trim(adjustl(string))
-    write(string,*) this%max_time_step_cuts
-    write(*,'("max cuts:",x,a)') trim(adjustl(string))
-  endif
-  if (OptionPrintToFile(option)) then
-    write(fid,*) 
-    write(fid,'(a)') trim(header)
-    write(string,*) this%max_time_step
-    write(fid,'("max steps:",x,a)') trim(adjustl(string))
-    write(string,*) this%constant_time_step_threshold
-    write(fid,'("max constant cumulative time steps:",x,a)') &
-      trim(adjustl(string))
-    write(string,*) this%max_time_step_cuts
-    write(fid,'("max cuts:",x,a)') trim(adjustl(string))
-  endif    
-
-end subroutine TimestepperBEPrintInfo
-
-! ************************************************************************** !
-
 subroutine TimestepperBECheckpoint(this,viewer,option)
   ! 
   ! Checkpoints parameters/variables associated with
@@ -666,6 +622,28 @@ subroutine TimestepperBEReset(this)
   call TimestepperBaseReset(this)
   
 end subroutine TimestepperBEReset
+
+! ************************************************************************** !
+
+subroutine TimestepperBEPrintInfo(this,option)
+  ! 
+  ! Prints settings for base timestepper.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/04/14
+  ! 
+  use Option_module
+
+  implicit none
+
+  class(timestepper_BE_type) :: this
+  type(option_type) :: option
+  
+  call TimestepperBasePrintInfo(this,option)
+  call SolverPrintNewtonInfo(this%solver,this%name,option)
+  call SolverPrintLinearInfo(this%solver,this%name,option)
+  
+end subroutine TimestepperBEPrintInfo
 
 ! ************************************************************************** !
 

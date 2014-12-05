@@ -57,7 +57,9 @@ subroutine TestFunction(snes,xx,r,ctx,ierr)
   Vec :: r
   class(base_type) :: ctx ! yes, this should be base_type in order to handle all
   PetscErrorCode :: ierr  ! polymorphic extensions
+  print *, 'Before TestFunction print statement'
   call ctx%Print()
+  print *, 'After TestFunction print statement'
 end subroutine TestFunction
 end module Function_module
 
@@ -108,7 +110,7 @@ program test
   print *
   print *, 'the base class will succeed by printing out "Base printout" below'
   call SNESCreate(PETSC_COMM_WORLD,snes_base,ierr);CHKERRQ(ierr)
-  call SNESSetFunction(snes_base,x,TestFunction,base);CHKERRQ(ierr)
+  call SNESSetFunction(snes_base,x,TestFunction,base,ierr);CHKERRQ(ierr)
   call SNESComputeFunction(snes_base,x,x,ierr);CHKERRQ(ierr)
   call SNESDestroy(snes_base,ierr);CHKERRQ(ierr)
 
@@ -116,7 +118,7 @@ program test
   print *, 'the extended class will succeed by printing out "Extended ' // &
            'printout" below'
   call SNESCreate(PETSC_COMM_WORLD,snes_extended,ierr);CHKERRQ(ierr)
-  call SNESSetFunction(snes_extended,x,TestFunction,extended);CHKERRQ(ierr)
+  call SNESSetFunction(snes_extended,x,TestFunction,extended,ierr);CHKERRQ(ierr)
   call SNESComputeFunction(snes_extended,x,x,ierr);CHKERRQ(ierr)
   call VecDestroy(x,ierr);CHKERRQ(ierr)
   call SNESDestroy(snes_extended,ierr);CHKERRQ(ierr)

@@ -836,7 +836,7 @@ subroutine SolverPrintLinearInfo(solver,header,option)
   implicit none
   
   type(solver_type) :: solver
-  character(len=MAXSTRINGLENGTH) :: header  
+  character(len=*) :: header  
   type(option_type) :: option
 
   PetscInt :: fid
@@ -851,7 +851,7 @@ subroutine SolverPrintLinearInfo(solver,header,option)
   
   if (OptionPrintToScreen(option)) then
     write(*,*) 
-    write(*,'(a)') trim(header)
+    write(*,'(a)') trim(header) // ' Linear Solver'
     write(*,'("   solver:  ",a)') trim(solver%ksp_type)
     write(*,'("  precond:  ",a)') trim(solver%pc_type)
     write(*,'("     atol:",1pe12.4)') solver%linear_atol
@@ -867,7 +867,7 @@ subroutine SolverPrintLinearInfo(solver,header,option)
   if (OptionPrintToFile(option)) then
     fid = option%fid_out
     write(fid,*) 
-    write(fid,'(a)') trim(header)
+    write(fid,'(a)') trim(header) // ' Linear Solver'
     write(fid,'("   solver:  ",a)') trim(solver%ksp_type)
     write(fid,'("  precond:  ",a)') trim(solver%pc_type)
     write(fid,'("     atol:",1pe12.4)') solver%linear_atol
@@ -884,26 +884,25 @@ end subroutine SolverPrintLinearInfo
 
 ! ************************************************************************** !
 
-subroutine SolverPrintNewtonInfo(solver,print_to_screen,print_to_file,fid, &
-                                 header)    
+subroutine SolverPrintNewtonInfo(solver,header,option)    
   ! 
   ! Prints information about Newton solver
   ! 
   ! Author: Glenn Hammond
   ! Date: 02/23/08
   ! 
+  use Option_module
 
   implicit none
   
   type(solver_type) :: solver
-  PetscBool :: print_to_screen
-  PetscBool :: print_to_file  
+  character(len=*) :: header  
+  type(option_type) :: option
   PetscInt :: fid
-  character(len=MAXSTRINGLENGTH) :: header  
 
-  if (print_to_screen) then
+  if (OptionPrintToScreen(option)) then
     write(*,*) 
-    write(*,'(a)') trim(header)
+    write(*,'(a)') trim(header) // ' Newton Solver'
     write(*,'("     atol:",1pe12.4)') solver%newton_atol
     write(*,'("     rtol:",1pe12.4)') solver%newton_rtol
     write(*,'("     stol:",1pe12.4)') solver%newton_stol
@@ -951,9 +950,10 @@ subroutine SolverPrintNewtonInfo(solver,print_to_screen,print_to_file,fid, &
     endif
   endif
 
-  if (print_to_file) then
+  if (OptionPrintToFile(option)) then
+    fid = option%fid_out
     write(fid,*) 
-    write(fid,'(a)') trim(header)
+    write(fid,'(a)') trim(header) // ' Newton Solver'
     write(fid,'("     atol:",1pe12.4)') solver%newton_atol
     write(fid,'("     rtol:",1pe12.4)') solver%newton_rtol
     write(fid,'("     stol:",1pe12.4)') solver%newton_stol

@@ -65,7 +65,7 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
   use Simulation_module
   use Simulation_Aux_module
   use Simulation_Subsurface_class
-  use Factory_Init_Subsurface_module
+  use Factory_Subsurface_module
 
   implicit none
 #include "finclude/petscvec.h"
@@ -205,8 +205,7 @@ subroutine HijackGeomechanicsSimulation(simulation_old,simulation)
   use PMC_Geomechanics_class
   use Simulation_Base_class
   use PM_Geomechanics_Force_class
-  use Geomechanics_Init_module, only : InitGeomechSetupRealization
-  use PM_Base_class
+  use Init_Geomechanics_module
   use PM_Base_Pointer_module
   use Timestepper_Geomechanics_class
 
@@ -233,7 +232,11 @@ subroutine HijackGeomechanicsSimulation(simulation_old,simulation)
   simulation%output_option => geomech_realization%output_option
   simulation%option => geomech_realization%option
   
+! begin from old Init()   
+  call InitGeomechSetupSolvers(geomech_realization,simulation_old%realization, &
+                              simulation_old%geomech_timestepper%solver)  
   call InitGeomechSetupRealization(simulation_old)  
+! end from old Init()   
 
   nullify(cur_process_model)
 

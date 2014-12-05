@@ -40,7 +40,7 @@ subroutine InitSubsurfSetupRealization(realization)
   
   call PetscLogEventBegin(logging%event_setup,ierr);CHKERRQ(ierr)
   ! read any regions provided in external files
-  call InitBaseReadRegionFiles(realization)
+  call InitCommonReadRegionFiles(realization)
   ! clip regions and set up boundary connectivity, distance  
   call RealizationLocalizeRegions(realization)
   call RealizationPassPtrsToPatches(realization)
@@ -74,6 +74,18 @@ subroutine InitSubsurfSetupRealization(realization)
   endif
   call PetscLogEventEnd(logging%event_setup,ierr);CHKERRQ(ierr)
   
+#ifdef OS_STATISTICS
+  call RealizationPrintGridStatistics(realization)
+#endif
+
+#if defined(PETSC_HAVE_HDF5)
+#if !defined(HDF5_BROADCAST)
+  call printMsg(option,"Default HDF5 method is used in Initialization")
+#else
+  call printMsg(option,"Glenn's HDF5 broadcast method is used in Initialization")
+#endif
+#endif
+
 end subroutine InitSubsurfSetupRealization
 
 ! ************************************************************************** !

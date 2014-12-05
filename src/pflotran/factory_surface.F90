@@ -100,7 +100,7 @@ subroutine HijackSurfaceSimulation(simulation_old,simulation)
   use PM_Surface_Flow_class
   use PM_Surface_TH_class
   use PM_Surface_class
-  use Surface_Init_module
+  use Init_Surface_module
   use PM_Base_class
   use PM_Base_Pointer_module
   use Timestepper_Surface_class
@@ -124,7 +124,9 @@ subroutine HijackSurfaceSimulation(simulation_old,simulation)
   surf_realization => simulation_old%surf_realization
   option => surf_realization%option
 
+! begin from old Init()   
   call InitSurfaceSetupRealization(simulation_old)
+! end from old Init()   
   
   !----------------------------------------------------------------------------!
   ! This section for setting up new process model approach

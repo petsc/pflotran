@@ -1,4 +1,4 @@
-module Factory_Init_Subsurface_module
+module Factory_Subsurface_module
 
   use Simulation_Subsurface_class
   
@@ -166,6 +166,7 @@ subroutine HijackSimulation(simulation_old,simulation)
   use Init_Subsurface_module
   use Init_Subsurface_Flow_module
   use Init_Subsurface_Tran_module
+  use Waypoint_module
   
   implicit none
   
@@ -190,6 +191,11 @@ subroutine HijackSimulation(simulation_old,simulation)
   realization => simulation_old%realization
   option => realization%option
 
+! begin from old Init()  
+  if (option%nflowdof > 0) call InitSubsurfFlowSetupSolvers(realization, &
+                                          simulation_old%flow_timestepper%solver)
+  if (option%ntrandof > 0) call InitSubsurfTranSetupSolvers(realization, &
+                                          simulation_old%tran_timestepper%solver)
   call InitSubsurfSetupRealization(realization)
   
   !TODO(geh): refactor
@@ -204,13 +210,21 @@ subroutine HijackSimulation(simulation_old,simulation)
   ! initialize global auxiliary variable object
   call GlobalSetup(realization)
   
-  call InitSubsurfFlowSetupRealization(realization)
-  call InitSubsurfTranSetupRealization(realization)
+  if (option%nflowdof > 0) call InitSubsurfFlowSetupRealization(realization)
+  if (option%ntrandof > 0) call InitSubsurfTranSetupRealization(realization)
   call OutputVariableAppendDefaults(realization%output_option% &
                                       output_variable_list,option)
     ! check for non-initialized data sets, e.g. porosity, permeability
   call RealizationNonInitializedData(realization)
 
+  if (realization%debug%print_couplers) then
+    call InitCommonVerifyAllCouplers(realization)
+  endif
+  if (realization%debug%print_waypoints) then
+    call WaypointListPrint(realization%waypoint_list,option,realization%output_option)
+  endif  
+! end from old Init()
+  
   simulation%waypoint_list => RealizCreateSyncWaypointList(realization)
 
   !----------------------------------------------------------------------------!
@@ -720,4 +734,4 @@ subroutine HijackTimestepper(timestepper_old,timestepper_base)
   
 end subroutine HijackTimestepper
 
-end module Factory_Init_Subsurface_module
+end module Factory_Subsurface_module

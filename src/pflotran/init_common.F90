@@ -17,8 +17,9 @@ module Init_Common_module
 #include "finclude/petscts.h"
 
   public :: Init, &
-            InitBaseReadRegionFiles, &
-            InitBaseReadVelocityField
+            InitCommonReadRegionFiles, &
+            InitCommonReadVelocityField, &
+            InitCommonVerifyAllCouplers
   
 contains
 
@@ -80,16 +81,13 @@ subroutine Init(simulation)
   use Surface_Field_module
   use Surface_Flow_module
   use Surface_Global_module
-  use Surface_Init_module, only : SurfaceInitReadRequiredCards, &
-                                  SurfaceInitMatPropToRegions, &
-                                  SurfaceInitReadRegionFiles
+  use Surface_Init_module, only : SurfaceInitReadRequiredCards
   use Surface_Realization_class
   use Surface_TH_module
   use Grid_Unstructured_module
 
   use Geomechanics_Realization_class
-  use Geomechanics_Init_module, only : GeomechicsInitReadRequiredCards, &
-                                       GeomechInitMatPropToGeomechRegions
+  use Geomechanics_Init_module, only : GeomechicsInitReadRequiredCards
   use Geomechanics_Grid_module
   use Geomechanics_Discretization_module
   use Geomechanics_Field_module
@@ -163,7 +161,7 @@ subroutine Init(simulation)
   
   if (OptionPrintToScreen(option)) then
     temp_int = 6
-    call InitPrintPFLOTRANHeader(option,temp_int)
+    call InitCommonPrintPFLOTRANHeader(option,temp_int)
   endif
   
   realization%input => InputCreate(IN_UNIT,option%input_filename,option)
@@ -176,7 +174,7 @@ subroutine Init(simulation)
   endif
 
   if (OptionPrintToFile(option)) then
-    call InitPrintPFLOTRANHeader(option,option%fid_out)
+    call InitCommonPrintPFLOTRANHeader(option,option%fid_out)
   endif
   
   ! read required cards
@@ -338,6 +336,7 @@ subroutine Init(simulation)
     endif
   endif
 
+#if 0  
   ! update flow mode based on optional input
   if (option%nflowdof > 0) then
   
@@ -544,7 +543,8 @@ subroutine Init(simulation)
 #endif        
     
     call printMsg(option,"  Finished setting up FLOW SNES ")
-
+#endif
+#if 0
     if (option%surf_flow_on) then
 
       ! Setup PETSc TS for explicit surface flow solution
@@ -576,7 +576,9 @@ subroutine Init(simulation)
     endif ! if (option%surf_flow_on)
 
   endif
+#endif
 
+#if 0  
   ! update geomechanics mode based on optional input
   if (option%ngeomechdof > 0) then
 
@@ -641,7 +643,9 @@ subroutine Init(simulation)
     call printMsg(option,"  Finished setting up GEOMECH SNES ")
   
   endif
+#endif  
 
+#if 0
   ! update transport mode based on optional input
   if (option%ntrandof > 0) then
 
@@ -762,6 +766,7 @@ subroutine Init(simulation)
     call printMsg(option,"  Finished setting up TRAN SNES ")
   
   endif
+#endif  
 
   if (OptionPrintToScreen(option)) write(*,'("++++++++++++++++++++++++++++++++&
                      &++++++++++++++++++++++++++++",/)')
@@ -951,6 +956,8 @@ subroutine Init(simulation)
          realization%output_option%output_variable_list,output_variable)  
 #endif
   
+#if 0
+!geh: moved to timestepper%PrintInfo()
   ! print info
   if (associated(flow_timestepper)) then
     string = 'Flow Stepper:'
@@ -1009,24 +1016,30 @@ subroutine Init(simulation)
     call TSView(surf_flow_solver%ts,PETSC_VIEWER_STDOUT_WORLD, &
                 ierr);CHKERRQ(ierr)
   endif
+#endif
 
+#if 0
   if (debug%print_couplers) then
     call verifyAllCouplers(realization)
   endif
   if (debug%print_waypoints) then
     call WaypointListPrint(realization%waypoint_list,option,realization%output_option)
   endif
+#endif
 
+#if 0
 #ifdef OS_STATISTICS
   call RealizationPrintGridStatistics(realization)
 #endif
-  
+#endif
+
 #if 0
 !geh: moved to HijackSimulation
   ! check for non-initialized data sets, e.g. porosity, permeability
   call RealizationNonInitializedData(realization)
 #endif
 
+#if 0
 #if defined(PETSC_HAVE_HDF5)
 #if !defined(HDF5_BROADCAST)
   call printMsg(option,"Default HDF5 method is used in Initialization")
@@ -1035,6 +1048,7 @@ subroutine Init(simulation)
 #endif
 #endif
 !PETSC_HAVE_HDF5
+#endif
 
 #if 0
   if (option%surf_flow_on) then
@@ -1380,7 +1394,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
   enddo
   
 #if defined(SCORPIO)
-  call Create_IOGroups(option)
+  call InitCommonCreateIOGroups(option)
 #endif  
 
 end subroutine InitReadRequiredCardsFromInput
@@ -2917,7 +2931,7 @@ subroutine setSurfaceFlowMode(option)
 end subroutine setSurfaceFlowMode
 
 ! ************************************************************************** !
-
+#if 0
 subroutine assignVolumesToMaterialAuxVars(realization)
   ! 
   ! Assigns the cell volumes currently stored in field%volume0 to the 
@@ -2952,8 +2966,8 @@ subroutine assignVolumesToMaterialAuxVars(realization)
 end subroutine assignVolumesToMaterialAuxVars
 
 ! ************************************************************************** !
-
-subroutine verifyAllCouplers(realization)
+#endif
+subroutine InitCommonVerifyAllCouplers(realization)
   ! 
   ! Verifies the connectivity of a coupler
   ! 
@@ -2975,18 +2989,21 @@ subroutine verifyAllCouplers(realization)
   do
     if (.not.associated(cur_patch)) exit
 
-      call verifyCoupler(realization,cur_patch,cur_patch%initial_condition_list)
-      call verifyCoupler(realization,cur_patch,cur_patch%boundary_condition_list)
-      call verifyCoupler(realization,cur_patch,cur_patch%source_sink_list)
+      call InitCommonVerifyCoupler(realization,cur_patch, &
+                                   cur_patch%initial_condition_list)
+      call InitCommonVerifyCoupler(realization,cur_patch, &
+                                   cur_patch%boundary_condition_list)
+      call InitCommonVerifyCoupler(realization,cur_patch, &
+                                   cur_patch%source_sink_list)
 
     cur_patch => cur_patch%next
   enddo
   
-end subroutine verifyAllCouplers
+end subroutine InitCommonVerifyAllCouplers
 
 ! ************************************************************************** !
 
-subroutine verifyCoupler(realization,patch,coupler_list)
+subroutine InitCommonVerifyCoupler(realization,patch,coupler_list)
   ! 
   ! Verifies the connectivity of a coupler
   ! 
@@ -3072,11 +3089,11 @@ subroutine verifyCoupler(realization,patch,coupler_list)
 
   call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
 
-end subroutine verifyCoupler
+end subroutine InitCommonVerifyCoupler
 
 ! ************************************************************************** !
 
-subroutine InitBaseReadRegionFiles(realization)
+subroutine InitCommonReadRegionFiles(realization)
   ! 
   ! Reads in grid cell ids stored in files
   ! 
@@ -3129,7 +3146,7 @@ subroutine InitBaseReadRegionFiles(realization)
     region => region%next
   enddo
 
-end subroutine InitBaseReadRegionFiles
+end subroutine InitCommonReadRegionFiles
 
 ! ************************************************************************** !
 
@@ -3342,7 +3359,7 @@ end subroutine readFlowInitialCondition
 #endif
 ! ************************************************************************** !
 
-subroutine Create_IOGroups(option)
+subroutine InitCommonCreateIOGroups(option)
   ! 
   ! Create sub-communicators that are used in initialization
   ! and output HDF5 routines.
@@ -3419,11 +3436,11 @@ subroutine Create_IOGroups(option)
 #endif
 ! SCORPIO
  
-end subroutine Create_IOGroups
+end subroutine InitCommonCreateIOGroups
 
 ! ************************************************************************** !
 
-subroutine InitPrintPFLOTRANHeader(option,fid)
+subroutine InitCommonPrintPFLOTRANHeader(option,fid)
   ! 
   ! Initializes pflotran
   ! 
@@ -3441,11 +3458,11 @@ subroutine InitPrintPFLOTRANHeader(option,fid)
   
   write(fid,'(" PFLOTRAN Header")') 
   
-end subroutine InitPrintPFLOTRANHeader
+end subroutine InitCommonPrintPFLOTRANHeader
 
 ! ************************************************************************** !
 
-subroutine InitBaseReadVelocityField(realization)
+subroutine InitCommonReadVelocityField(realization)
   ! 
   ! Reads fluxes in for transport with no flow.
   ! 
@@ -3543,7 +3560,7 @@ subroutine InitBaseReadVelocityField(realization)
     boundary_condition => boundary_condition%next
   enddo
   
-end subroutine InitBaseReadVelocityField
+end subroutine InitCommonReadVelocityField
 
 #if 0
 ! ************************************************************************** !
