@@ -44,7 +44,7 @@ private
     class(dataset_base_type), pointer :: datasets
     
     PetscReal :: dt_max
-    PetscReal :: dt_min
+    PetscReal :: dt_init
     PetscReal :: dt_coupling
     
     PetscInt :: iter_count
@@ -129,7 +129,7 @@ function SurfRealizCreate(option)
   nullify(surf_realization%datasets)
 
   surf_realization%iter_count = 0
-  surf_realization%dt_min = 1.d0
+  surf_realization%dt_init = 1.d0
   surf_realization%dt_max = 1.d0
   surf_realization%dt_coupling = 0.d0
   

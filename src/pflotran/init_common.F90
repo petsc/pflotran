@@ -1775,7 +1775,7 @@ subroutine InitReadInput(simulation)
               call InputErrorMsg(input,option,'Initial Timestep Size','TIME') 
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'Initial Timestep Size Time Units','TIME')
-              default_timestepper%dt_min = temp_real*UnitsConvertToInternal(word,option)
+              default_timestepper%dt_init = temp_real*UnitsConvertToInternal(word,option)
             case('MAXIMUM_TIMESTEP_SIZE')
               call InputReadDouble(input,option,temp_real)
               call InputErrorMsg(input,option,'Maximum Timestep Size','TIME') 
@@ -1809,22 +1809,22 @@ subroutine InitReadInput(simulation)
         enddo
 
         if (associated(flow_timestepper)) then
-          flow_timestepper%dt_min = default_timestepper%dt_min
+          flow_timestepper%dt_init = default_timestepper%dt_init
         endif
         if (associated(tran_timestepper)) then
-          tran_timestepper%dt_min = default_timestepper%dt_min
+          tran_timestepper%dt_init = default_timestepper%dt_init
         endif
-        option%flow_dt = default_timestepper%dt_min
-        option%tran_dt = default_timestepper%dt_min
+        option%flow_dt = default_timestepper%dt_init
+        option%tran_dt = default_timestepper%dt_init
       
 !.....................
       case ('SURFACE_FLOW')
         call SurfaceInitReadInput(simulation%surf_realization, &
                               simulation%surf_flow_timestepper%solver,input,option)
-        simulation%surf_flow_timestepper%dt_min = simulation%surf_realization%dt_min
+        simulation%surf_flow_timestepper%dt_init = simulation%surf_realization%dt_init
         simulation%surf_flow_timestepper%dt_max = simulation%surf_realization%dt_max
         option%surf_subsurf_coupling_flow_dt = simulation%surf_realization%dt_coupling
-        option%surf_flow_dt=simulation%surf_flow_timestepper%dt_min
+        option%surf_flow_dt=simulation%surf_flow_timestepper%dt_init
 
         ! Add first waypoint
         waypoint => WaypointCreate()
