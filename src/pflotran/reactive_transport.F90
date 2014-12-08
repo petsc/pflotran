@@ -2248,7 +2248,10 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   ! pass #2 for everything else
   call RTResidualNonFlux(snes,xx,r,realization,ierr)
   
-  call RTResidualEquilibrateCO2(r,realization)
+  select case(realization%option%iflowmode)
+    case(MPH_MODE,FLASH2_MODE,IMS_MODE)
+      call RTResidualEquilibrateCO2(r,realization)
+  end select
 
   if (realization%debug%vecview_residual) then
     string = 'RTresidual'
@@ -3025,7 +3028,10 @@ subroutine RTJacobian(snes,xx,A,B,realization,ierr)
   ! pass #2 for everything else
   call RTJacobianNonFlux(snes,xx,J,J,realization,ierr)
 
-  call RTJacobianEquilibrateCO2(J,realization)
+  select case(realization%option%iflowmode)
+    case(MPH_MODE,FLASH2_MODE,IMS_MODE)
+    call RTJacobianEquilibrateCO2(J,realization)
+  end select
 
   call PetscLogEventEnd(logging%event_rt_jacobian2,ierr);CHKERRQ(ierr)
     
