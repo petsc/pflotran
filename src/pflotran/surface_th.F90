@@ -644,6 +644,7 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
     dist = sqrt(dx*dx + dy*dy + dz*dz)
     slope = dz/dist
     print *,"--------------------------"
+    print *,"max_allowable_dt:",max_allowable_dt
     print *,"connection:",max_iconn
     print *,"(dx,dy,dz):",dx,dy,dz
     print *,"dist:      ",dist
@@ -835,6 +836,14 @@ subroutine SurfaceTHFlux(surf_auxvar_up, &
     dtemp = surf_global_auxvar_up%temp - surf_global_auxvar_dn%temp
   endif
 
+  ! We are not being careful with dry/wet conditions, so if the
+  ! temperature change is greater than 100 [C] we will assuming that
+  ! it was a wet/dry interface change that was missed.
+  if (abs(dtemp) > 100.d0) then
+    den_aveg = 0.d0
+    dtemp    = 0.d0
+  endif
+
   ! Note, Cw and k_therm are same for up and downwind
   Cw = surf_auxvar_up%Cw
   k_therm = surf_auxvar_up%k_therm
@@ -849,7 +858,9 @@ subroutine SurfaceTHFlux(surf_auxvar_up, &
     ! 1) Restriction due to flow equation
     dt     = dist/abs(vel)/3.d0
     dt_max = min(dt_max, dt)
+  endif
 
+  if(abs(dtemp) > 1.0d-12) then
     ! 2) Restriction due to energy equation
     dt_max = min(dt_max,(dist**2.d0)*Cw*den_aveg/(2.d0*k_therm))
   endif
