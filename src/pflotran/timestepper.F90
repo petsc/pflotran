@@ -37,6 +37,7 @@ module Timestepper_module
     PetscReal :: cumulative_solver_time
     
     PetscReal :: dt_init
+    PetscReal :: dt_min
     PetscReal :: dt_max
     PetscReal :: prev_dt
     PetscReal :: cfl_limiter
@@ -131,6 +132,7 @@ function TimestepperCreate()
   stepper%target_time = 0.d0
   
   stepper%dt_init = 1.d0
+  stepper%dt_min = 1.d-6    ! One microsecond.
   stepper%dt_max = 3.1536d6 ! One-tenth of a year.  
   stepper%prev_dt = 0.d0
   stepper%cfl_limiter = UNINITIALIZED_DOUBLE
