@@ -2248,6 +2248,8 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   ! pass #2 for everything else
   call RTResidualNonFlux(snes,xx,r,realization,ierr)
   
+  call RTResidualEquilibrateCO2(r,realization)
+
   if (realization%debug%vecview_residual) then
     string = 'RTresidual'
     call DebugCreateViewer(realization%debug,string,option,viewer)
@@ -2904,6 +2906,65 @@ end subroutine RTResidualNonFlux
 
 ! ************************************************************************** !
 
+subroutine RTResidualEquilibrateCO2(r,realization)
+  ! 
+  ! Computes non-flux term entries in the Jacobian for
+  ! reactive transport
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
+
+  use Realization_class
+  use Patch_module
+  use Option_module
+  use Field_module
+  use Grid_module
+
+  
+  implicit none
+
+  Vec :: r
+  type(realization_type) :: realization  
+  
+  PetscInt :: local_id, ghosted_id
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch
+  type(reaction_type), pointer :: reaction
+  PetscErrorCode :: ierr
+    
+  type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+  PetscReal, pointer :: r_p(:)
+  
+  option => realization%option
+  field => realization%field
+  patch => realization%patch  
+  reaction => realization%reaction
+  grid => patch%grid
+  rt_auxvars => patch%aux%RT%auxvars
+  global_auxvars => patch%aux%Global%auxvars
+
+  ! Get pointer to Vector data
+  call VecGetArrayF90(r, r_p, ierr);CHKERRQ(ierr)
+
+  do local_id = 1, grid%nlmax  ! For each local node do...
+    ghosted_id = grid%nL2G(local_id)
+    if (patch%imat(ghosted_id) <= 0) cycle
+    if (global_auxvars(ghosted_id)%sat(GAS_PHASE) > 0.d0) then
+      ! do something
+    endif
+  enddo
+  
+  ! Get pointer to Vector data
+  call VecRestoreArrayF90(r, r_p, ierr);CHKERRQ(ierr)
+  
+end subroutine RTResidualEquilibrateCO2
+
+! ************************************************************************** !
+
 subroutine RTJacobian(snes,xx,A,B,realization,ierr)
   ! 
   ! Computes the Jacobian
@@ -2963,6 +3024,8 @@ subroutine RTJacobian(snes,xx,A,B,realization,ierr)
   
   ! pass #2 for everything else
   call RTJacobianNonFlux(snes,xx,J,J,realization,ierr)
+
+  call RTJacobianEquilibrateCO2(J,realization)
 
   call PetscLogEventEnd(logging%event_rt_jacobian2,ierr);CHKERRQ(ierr)
     
@@ -3508,6 +3571,86 @@ subroutine RTJacobianNonFlux(snes,xx,A,B,realization,ierr)
   endif
 
 end subroutine RTJacobianNonFlux
+
+! ************************************************************************** !
+
+subroutine RTJacobianEquilibrateCO2(J,realization)
+  ! 
+  ! Computes non-flux term entries in the Jacobian for
+  ! reactive transport
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
+
+  use Realization_class
+  use Patch_module
+  use Option_module
+  use Field_module
+  use Grid_module
+
+  
+  implicit none
+
+  Mat :: J
+  type(realization_type) :: realization  
+  
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: idof                  
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch
+  type(reaction_type), pointer :: reaction
+  PetscErrorCode :: ierr
+    
+  type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+  PetscInt :: zero_rows(realization%patch%grid%nlmax)
+  PetscInt :: zero_count
+  PetscInt :: i, ico2_dof
+  PetscReal :: jacobian_entry
+  
+  option => realization%option
+  field => realization%field
+  patch => realization%patch  
+  reaction => realization%reaction
+  grid => patch%grid
+  rt_auxvars => patch%aux%RT%auxvars
+  global_auxvars => patch%aux%Global%auxvars
+
+  ! loop over cells twice.  the first time to zero (all rows to be zeroed have
+  ! to be zeroed in a single call by passing in a list).  the second to 
+  ! add the equilibration
+  zero_count = 0
+  zero_rows = 0
+  do local_id = 1, grid%nlmax  ! For each local node do...
+    ghosted_id = grid%nL2G(local_id)
+    if (patch%imat(ghosted_id) <= 0) cycle
+    if (global_auxvars(ghosted_id)%sat(GAS_PHASE) > 0.d0) then
+      zero_count = zero_count + 1
+      zero_rows(zero_count) = ghosted_id-1 ! zero indexing
+    endif
+  enddo
+  jacobian_entry = 1.d0
+  call MatZeroRowsLocal(J,zero_count,zero_rows(1:zero_count),jacobian_entry, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        ierr);CHKERRQ(ierr)
+  do i = 1, zero_count
+    ghosted_id = zero_rows(i)+1 ! zero indexing back to 1-based
+    ghosted_id = grid%nL2G(local_id)
+    local_id = grid%nG2L(ghosted_id)
+    if (patch%imat(ghosted_id) <= 0) cycle
+    ! do your magic setting values using MatSetValuesBlockLocal to set values
+    ! on diagonal
+    idof = (ghosted_id-1)*option%ntrandof + ico2_dof - 1
+    call MatSetValuesLocal(J,1,idof-1,1,idof-1,jacobian_entry,ADD_VALUES, &
+                           ierr);CHKERRQ(ierr)
+  enddo
+  call MatAssemblyBegin(J,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+  call MatAssemblyEnd(J,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+  
+end subroutine RTJacobianEquilibrateCO2
 
 ! ************************************************************************** !
 
