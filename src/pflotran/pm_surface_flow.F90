@@ -128,7 +128,7 @@ end subroutine PMSurfaceFlowRHSFunction
 
 ! ************************************************************************** !
 
-subroutine PMSurfaceFlowUpdateTimestep(this,dt,dt_max,iacceleration, &
+subroutine PMSurfaceFlowUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
                                     num_newton_iterations,tfac)
   ! 
   ! This routine
@@ -143,7 +143,7 @@ subroutine PMSurfaceFlowUpdateTimestep(this,dt,dt_max,iacceleration, &
 
   class(pm_surface_flow_type) :: this
   PetscReal :: dt
-  PetscReal :: dt_max
+  PetscReal :: dt_min,dt_max
   PetscInt :: iacceleration
   PetscInt :: num_newton_iterations
   PetscReal :: tfac(:)

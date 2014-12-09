@@ -230,7 +230,7 @@ end subroutine PMGeneralPostSolve
 
 ! ************************************************************************** !
 
-subroutine PMGeneralUpdateTimestep(this,dt,dt_max,iacceleration, &
+subroutine PMGeneralUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
                                     num_newton_iterations,tfac)
   ! 
   ! Author: Glenn Hammond
@@ -241,7 +241,7 @@ subroutine PMGeneralUpdateTimestep(this,dt,dt_max,iacceleration, &
   
   class(pm_general_type) :: this
   PetscReal :: dt
-  PetscReal :: dt_max
+  PetscReal :: dt_min,dt_max
   PetscInt :: iacceleration
   PetscInt :: num_newton_iterations
   PetscReal :: tfac(:)
@@ -269,7 +269,8 @@ subroutine PMGeneralUpdateTimestep(this,dt,dt_max,iacceleration, &
   ifac = max(min(num_newton_iterations,size(tfac)),1)
   dtt = fac * dt * (1.d0 + umin)
   dt = min(dtt,tfac(ifac)*dt,dt_max)
-  
+  dt = max(dt,dt_min)
+
 end subroutine PMGeneralUpdateTimestep
 
 ! ************************************************************************** !

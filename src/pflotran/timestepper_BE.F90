@@ -230,6 +230,7 @@ subroutine TimestepperBEUpdateDT(this,process_model)
   if (update_time_step .and. this%iaccel /= 0) then
       
     call process_model%UpdateTimestep(this%dt, &
+                                      this%dt_min, &
                                       this%dt_max, &
                                       this%iaccel, &
                                       this%num_newton_iterations, &
@@ -337,16 +338,17 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
       ! premature ending of simulation.
       if (stop_flag /= TS_STOP_MAX_TIME_STEP) stop_flag = TS_CONTINUE
 
-      if (icut > this%max_time_step_cuts .or. &
-          this%dt < 1.d-20) then
-        if (option%print_screen_flag) then
-          print *,"--> max_time_step_cuts exceeded: icut/icutmax= ",icut, &
-                  this%max_time_step_cuts, "t= ", &
-                  this%target_time/tconv, &
-                  " dt= ", &
-                  this%dt/tconv
-          print *,"Stopping execution!"
-        endif
+      if (icut > this%max_time_step_cuts .or. this%dt < this%dt_min) then
+
+        write(option%io_buffer,'(" Stopping: Time step cut criteria exceeded!")')
+        call printMsg(option)
+        write(option%io_buffer,'("    icut =",i3,", max_time_step_cuts=",i3)') &
+             icut,this%max_time_step_cuts
+        call printMsg(option)
+        write(option%io_buffer,'("    dt   =",es15.7,", dt_min=",es15.7)') &
+             this%dt/tconv,this%dt_min/tconv
+        call printMsg(option)
+        
         process_model%output_option%plot_name = 'flow_cut_to_failure'
         plot_flag = PETSC_TRUE
         transient_plot_flag = PETSC_FALSE
@@ -359,11 +361,12 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
 
       this%dt = 0.5d0 * this%dt  
       
-      if (option%print_screen_flag) write(*,'('' -> Cut time step: snes='',i3, &
-        &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.5, '' dt= '', &
-        &   1pe12.5)')  snes_reason,icut,this%cumulative_time_step_cuts, &
-            option%time/tconv, &
-            this%dt/tconv
+      write(option%io_buffer,'('' -> Cut time step: snes='',i3, &
+           &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.5, '' dt= '', &
+           &   1pe12.5)')  snes_reason,icut,this%cumulative_time_step_cuts, &
+           option%time/tconv, &
+           this%dt/tconv
+      call printMsg(option)
 
       this%target_time = this%target_time + this%dt
       option%dt = this%dt

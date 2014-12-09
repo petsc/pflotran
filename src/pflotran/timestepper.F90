@@ -36,6 +36,7 @@ module Timestepper_module
     PetscInt :: cumulative_time_step_cuts       ! Total number of cuts in the timestep taken.    
     PetscReal :: cumulative_solver_time
     
+    PetscReal :: dt_init
     PetscReal :: dt_min
     PetscReal :: dt_max
     PetscReal :: prev_dt
@@ -130,7 +131,8 @@ function TimestepperCreate()
   stepper%time_step_tolerance = 0.1d0
   stepper%target_time = 0.d0
   
-  stepper%dt_min = 1.d0
+  stepper%dt_init = 1.d0
+  stepper%dt_min = 1.d-20   ! Ten zeptoseconds.
   stepper%dt_max = 3.1536d6 ! One-tenth of a year.  
   stepper%prev_dt = 0.d0
   stepper%cfl_limiter = UNINITIALIZED_DOUBLE
@@ -164,7 +166,7 @@ end function TimestepperCreate
 
 ! ************************************************************************** !
 
-subroutine TimestepperReset(stepper,dt_min)
+subroutine TimestepperReset(stepper,dt_init)
   ! 
   ! Resets time stepper back to initial settings
   ! 
@@ -175,7 +177,7 @@ subroutine TimestepperReset(stepper,dt_min)
   implicit none
 
   type(timestepper_type) :: stepper
-  PetscReal :: dt_min
+  PetscReal :: dt_init
 
   stepper%steps = 0
   stepper%num_newton_iterations = 0
@@ -190,7 +192,7 @@ subroutine TimestepperReset(stepper,dt_min)
   stepper%start_time_step = 0
   stepper%target_time = 0.d0
 
-  stepper%dt_min = dt_min
+  stepper%dt_init = dt_init
   stepper%prev_dt = 0.d0
   stepper%cfl_limiter = UNINITIALIZED_DOUBLE
   stepper%cfl_limiter_ts = 1.d20
@@ -3178,7 +3180,7 @@ subroutine TimestepperRestart(realization,flow_timestepper,tran_timestepper, &
     option%flow_time = option%restart_time
     option%tran_time = option%restart_time
     if (associated(flow_timestepper)) then
-      option%flow_dt = flow_timestepper%dt_min
+      option%flow_dt = flow_timestepper%dt_init
       flow_timestepper%steps = 0
       flow_timestepper%cumulative_newton_iterations = 0
       flow_timestepper%cumulative_time_step_cuts = 0
@@ -3189,7 +3191,7 @@ subroutine TimestepperRestart(realization,flow_timestepper,tran_timestepper, &
       flow_timestepper%prev_dt = 0.d0
     endif
     if (associated(tran_timestepper)) then
-      option%tran_dt = tran_timestepper%dt_min
+      option%tran_dt = tran_timestepper%dt_init
       tran_timestepper%steps = 0
       tran_timestepper%cumulative_newton_iterations = 0
       tran_timestepper%cumulative_time_step_cuts = 0

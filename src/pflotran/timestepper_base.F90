@@ -31,6 +31,7 @@ module Timestepper_Base_class
     
     PetscReal :: dt
     PetscReal :: prev_dt
+    PetscReal :: dt_init
     PetscReal :: dt_min
     PetscReal :: dt_max
     PetscReal :: cfl_limiter
@@ -149,7 +150,8 @@ subroutine TimestepperBaseInit(this)
   
   this%prev_dt = 0.d0
   this%dt = 1.d0
-  this%dt_min = 1.d0
+  this%dt_init = 1.d0
+  this%dt_max = 1.d-20   ! Ten zeptoseconds.
   this%dt_max = 3.1536d6 ! One-tenth of a year.  
   this%cfl_limiter = UNINITIALIZED_DOUBLE
   this%cfl_limiter_ts = 1.d20
@@ -750,7 +752,7 @@ subroutine TimestepperBaseReset(this)
   class(timestepper_base_type) :: this
   
   this%target_time = 0.d0
-  this%dt = this%dt_min
+  this%dt = this%dt_init
   this%prev_dt = 0.d0
   this%steps = 0
   this%cumulative_time_step_cuts = 0

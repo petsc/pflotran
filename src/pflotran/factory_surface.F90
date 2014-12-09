@@ -404,7 +404,7 @@ subroutine HijackTimestepper(timestepper_old,stepper_base)
   
   stepper%prev_dt = timestepper_old%prev_dt
 !  stepper%dt = timestepper_old%dt
-  stepper%dt_min = timestepper_old%dt_min
+  stepper%dt_init = timestepper_old%dt_init
   stepper%dt_max = timestepper_old%dt_max
   stepper%cfl_limiter = timestepper_old%cfl_limiter
   stepper%cfl_limiter_ts = timestepper_old%cfl_limiter_ts
