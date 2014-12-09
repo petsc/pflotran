@@ -46,8 +46,39 @@ source_file_roots.append('pflotran')
 source_file_roots.sort()
 #print(source_file_roots)
 f = open('pflotran_source_files.txt','w')
+file_count = 0 
+line_count = 0
+blank_line_count = 0
+comment_line_count = 0
 for root in source_file_roots:
-  f.write(get_filename(root,'F90')+'\n')
+  file_count += 1
+  f.write(get_filename(root,'F90'))
+  line_count_in_file = 0
+  blank_line_count_in_file = 0
+  comment_line_count_in_file = 0
+  filename = get_filename(root,'F90')
+  for line in open(filename):
+    stripped = line.lstrip()
+    if stripped.startswith('!'):
+      comment_line_count += 1
+      comment_line_count_in_file += 1
+    elif len(stripped) < 1:
+      blank_line_count += 1
+      blank_line_count_in_file += 1
+    else:
+      line_count += 1
+      line_count_in_file += 1
+  for i in range(40-len(filename)):
+    f.write(' ')
+  f.write('%d\t%d\t%d\n' % (line_count_in_file,blank_line_count_in_file,
+                            comment_line_count_in_file))
+f.write('\nTotal Line count: %d\n' % 
+        (line_count+comment_line_count+blank_line_count))
+f.write('Fortran source line count: %d\n' % line_count)
+f.write('Fortran comment line count: %d\n' % comment_line_count)
+f.write('Blank line count: %d\n' % blank_line_count)
+f.write('Average source lines per file: %.1f\n' % 
+        (float(line_count) / file_count))
 f.close()
 
 # Obtain a list of modules
