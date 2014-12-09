@@ -3,6 +3,7 @@ module e4d_run
   use vars
   integer :: pf_com
   logical :: first_sol = .true.
+  logical :: sim_e4d = .false.
   integer :: mcomm
   real*8 :: pf_time
 contains
@@ -19,32 +20,90 @@ contains
 
     if(.not. allocated(pf_sol)) allocate(pf_sol(pflotran_solution_vec_size))
     if(.not. allocated(sigma)) allocate(sigma(nelem))
-    
-100 continue
 
     call get_mcomm
-    if(mcomm==1) then
+    call cpu_time(Cbeg)
+    do while (mcomm==1)
 
        call get_pf_time      !!get the pflotran solution time
        call get_pf_sol       !!get the pflotran solution
-       call map_pf_e4d       !!map/transform the solution to the E4D mesh
-       call send_sigma       !!send the transformed solution to the slaves 
-!geh
-!#if 0
-       call send_command(3)  !!instruct slaves to build A matrix
-       call send_command(5)  !!instruct slaves to build KSP solver
-       call send_command(6)  !!instruct slaves to solve  
-       call get_dpred        !!assemble the simulated data
-!#endif
-       goto 100
+       call cpu_time(Cend)
+       etm=Cend-Cbeg
+       call elog(36,mcomm,mcomm)
 
-    else
-       call send_command(0)  !!instruct slaves to exit
-       return
+       call check_e4d_sim    !!see if we should do an e4d sim for this time
+       
+       if(sim_e4d) then
+          call map_pf_e4d       !!map/transform the solution to the E4D mesh
+          call send_sigma       !!send the transformed solution to the slaves 
+                   
+          call send_command(3)  !!instruct slaves to build A matrix
+          call send_command(5)  !!instruct slaves to build KSP solver
+          call send_command(6)  !!instruct slaves to solve  
+          call get_dpred        !!assemble the simulated data
+          call cpu_time(Cbeg)
+       end if
+     
+       call get_mcomm
+      
+    end do
 
-    end if
-    
+    call send_command(0)  !!instruct slaves to exit
+    return
+
+     
   end subroutine run_e4d
+  !____________________________________________________________________
+
+  !____________________________________________________________________
+  subroutine check_e4d_sim
+    implicit none
+    integer :: tmp,i,ios,j,junk,a,b,m,n
+   
+
+    sim_e4d = .false.
+    open(10,file=trim(list_file),status='old',action='read')
+    read(10,*) tmp
+    do i=1,ntime
+       read(10,*) e4d_time,csrv_file,ccond_file
+       if(e4d_time .eq. pf_time) then
+          call elog(35,i,tmp)
+          close(10)
+          
+          open(10,file=trim(ccond_file),status='old',action='read')
+          read(10,*,IOSTAT=ios) nsig
+          if(ios .ne. 0)       call elog(31,ios,tmp)
+          if(nsig .ne. nelem)  call elog(32,nsig,nelem)
+          if(.not.allocated(sigma)) allocate(sigma(nelem))
+          do j=1,nelem
+             read(10,*) sigma(j)
+          end do
+          close(10)
+
+          open(10,file=trim(csrv_file),status='old',action='read')
+          read(10,*,IOSTAT=ios) tmp
+          call elog(27,ios,tmp)
+          do j=1,tmp
+             read(10,*) junk
+          end do
+          read(10,*,IOSTAT=ios) tmp
+          call elog(29,ios,tmp)
+          if(.not. allocated(dobs)) allocate(dobs(nm))
+          if(.not. allocated(sd)) allocate(sd(nm))
+          do j=1,nm
+             read(10,*,IOSTAT=ios) tmp,a,b,m,n,dobs(j),sd(j)
+          end do 
+          close(10)
+          sim_e4d = .true.
+          return
+       end if
+    end do
+
+    close(10)
+    open(13,file='e4d.log',status='old',action='write',position='append')
+    write(13,*) "No E4D survey found for pflotran time: ",pf_time
+    close(13)
+  end subroutine check_e4d_sim
   !____________________________________________________________________
 
   !____________________________________________________________________
@@ -91,15 +150,26 @@ contains
   subroutine map_pf_e4d
     implicit none
     integer :: i 
-    character*40 :: filename, word 
-    !this routine will eventually do the mapping. 
-    !sigma = pf_sol
-    !sigma=pf_time/1e6
-    sigma=0.1
-    do i=1,nmap
-       sigma(map_inds(i,1))=sigma(map_inds(i,1))+pf_sol(map_inds(i,2))*map(i)
-    end do
+    character*40 :: filename, word
+    real :: K
    
+  
+    do i=1,nmap
+       if(zones(map_inds(i,1))==2) then
+          sigma(map_inds(i,1))=base_sigma(map_inds(i,1))
+       end if
+    end do
+  
+    K=(sw_sig-gw_sig)/FF
+   
+    do i=1,nmap
+       if(zones(map_inds(i,1))==2) then
+          sigma(map_inds(i,1))=sigma(map_inds(i,1))+pf_sol(map_inds(i,2))*map(i)*K
+       end if
+    end do
+    do i=1,nelem
+       if(sigma(i)<1e-5) sigma(i)=1e-5
+    end do
     write(*,*) pf_time
     write(word,'(i15.15)') int(pf_time)
     filename = 'sigma_' // &
@@ -107,11 +177,11 @@ contains
                '_' // &
                trim(adjustl(word)) // &
                '.txt' 
-    write(*,*) filename
+    !write(*,*) filename
     open(unit=86,file=trim(filename),status='replace',action='write')
-    write(86,*) nelem
+    write(86,*) nelem, "1"
     do i = 1, nelem
-       write(86,*) sigma(i)
+       write(86,*) sigma(i) 
     enddo
     close(86)
 
@@ -174,7 +244,7 @@ contains
     open(unit=86,file=trim(filename),status='replace',action='write')
     write(86,*) nm
     do i = 1, nm
-       write(86,'(I6,4I6,F15.8)') i,s_conf(i,1:4),dpred(i)
+       write(86,'(I6,4I6,4F15.8)') i,s_conf(i,1:4),dpred(i),dobs(i),dpred(i)/sd(i),dobs(i)/sd(i)
     enddo
     close(86)
     

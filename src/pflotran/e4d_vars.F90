@@ -20,6 +20,10 @@ module vars
   character*40 :: mshfile                                  !!file containing the mesh options
   character*40 :: efile                                    !!survey configuration file
   character*40 :: mapfile
+  character*40 :: sigfile                                  !!baseline conductivity file
+  character*40 :: list_file                                !!conductivity list file
+  character*40 :: csrv_file                                !!survey file
+  character*40 :: ccond_file                               !!conductivity file
 
   integer :: my_rank                                       !!my mpi rank
   integer :: ierr                                          !!generall error
@@ -36,7 +40,14 @@ module vars
   integer :: my_ne                                         !!number of electrodes I'm assigned
   integer :: nmy_drows                                     !!number of data in my assembly vector
   integer :: nmap
+  integer :: ntime                                         !!number of e4d simulation times
 
+  real :: gw_sig                                           !!groundwater electrical conductivity
+  real :: sw_sig                                           !!surface water electrical condctivity
+  real :: FF                                               !!formation factor
+  real :: Cbeg,Cend,etm                                    !!timing variables
+  real*8 :: e4d_time
+  
   integer, dimension(:,:), allocatable :: map_inds
   integer, dimension(:,:), allocatable :: s_conf           !!abmn survey configuration
   integer, dimension(:,:), allocatable :: eind             !!electrode assignments
@@ -56,8 +67,12 @@ module vars
   real, dimension(:), allocatable :: pf_sol                !!pflotran solution
   real, dimension(:), allocatable :: sigma                 !!element conductivities
   real, dimension(:), allocatable :: dpred                 !!simulated data vector
+  real, dimension(:), allocatable :: dobs                  !!observed data
+  real, dimension(:), allocatable :: sd                    !!observed data standard deviations
   real, dimension(:), allocatable :: my_dvals              !!values in my data assembly vector
   real, dimension(:), allocatable :: map
+  real, dimension(:), allocatable :: base_sigma            !!baseline element conductivity
+  
 
   PetscInt, dimension(:), allocatable :: d_nnz             !!petsc prealloc vec (diag blocks)
   PetscReal, dimension(:), allocatable :: delA
@@ -79,5 +94,462 @@ module vars
   VecScatter :: pflotran_scatter
   PetscInt :: pflotran_solution_vec_size
   character(len=32) :: pflotran_group_prefix
+
+contains
+!_________________________________________________________________
+subroutine elog(com,i1,i2)
+  implicit none
+  integer :: com,i1,i2
+  logical :: exst
+
+  select case (com)
+     
+  case(0)
+     inquire(file='e4d.inp',exist=exst)
+     if(.not. exst) then
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        write(13,*) 'Cannot find the input file e4d.inp'
+        write(*,*) 'Aborting E4D'
+        i2=-1
+        close(13)
+        return
+     else
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        write(13,*) 'INITIALIZING E4D: FOUND e4d.inp'
+        close(13)
+        i2=0
+     end if
+
+     case(1)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        if(i1 .ne. 0) then
+           write(13,*) "There was a problem reading the mesh file name in e4d.inp"
+           write(13,*) "Aborting E4D"
+           i2=-1
+        else
+           i2=0
+           write(13,*) "The specified mesh file is: ",trim(mshfile)
+           inquire(file=trim(mshfile),exist=exst)
+           if(.not. exst) then
+              write(13,*) "Cannot find the mesh file: ",trim(mshfile)
+              write(*,*) "Aborting E4D"
+              i2=-1
+           end if
+        end if
+        close(13)
+        return
+
+     case(2)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        if(i1 .ne. 0) then
+           write(13,*) "There was a problem reading the survey file name in e4d.inp"
+           write(13,*) "Aborting E4D"
+           i2=-1
+        else
+           i2=0
+           write(13,*) "The specified survey file is: ",trim(efile)
+           inquire(file=trim(efile),exist=exst)
+           if(.not. exst) then
+              write(13,*) "Cannot find the survey file: ",trim(efile)
+              write(*,*) "Aborting E4D"
+              i2=-1
+           end if
+        end if
+        close(13)
+        return
+
+     case(3)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        if(i1 .ne. 0) then
+           write(13,*) "There was a problem reading the conductivity list file name in e4d.inp"
+           write(13,*) "Aborting E4D"
+           i2=-1
+        else
+           i2=0
+           write(13,*) "The specified conductivity list file is: ",trim(sigfile)
+           inquire(file=trim(sigfile),exist=exst)
+           if(.not. exst) then
+              write(13,*) "Cannot find the survey file: ",trim(sigfile)
+              write(*,*) "Aborting E4D"
+              i2=-1
+           end if
+        end if
+        close(13)
+        return
+
+     case(4)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        if(i1 .ne. 0) then
+           write(13,*) "There was a problem reading the map file name in e4d.inp"
+           write(13,*) "Aborting E4D"
+           i2=-1
+        else
+           i2=0
+           write(13,*) "The specified conductivity list file is: ",trim(mapfile)
+           inquire(file=trim(mapfile),exist=exst)
+           if(.not. exst) then
+              write(13,*) "Cannot find the survey file: ",trim(mapfile)
+              write(*,*) "Aborting E4D"
+              i2=-1
+           end if
+        end if
+        close(13)
+        return
+
+     case(5)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        if(i1 .ne. 0) then
+           write(13,*) "There was a problem reading the number of electrodes in: ",trim(efile)
+           write(*,*) "Aborting E4D"
+        else
+           write(13,*) "Number of electrodes: ",ne
+        end if
+        close(13)
+        return
+
+     case(6)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        write(13,*) "There was a problem reading the parameters for electrode: ",i1
+        write(*,*) "Aborting E4D"
+        close(13)
+        return
+        
+     case(7)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        write(13,*) "E4D internal mesh translation file: ",mshfile(1:i1)//".trn"
+        inquire(file=mshfile(1:i1)//".trn",exist=exst)
+        if(.not. exst) then
+           write(13,*) "Cannot find the mesh translation file: ",mshfile(1:i1)//".trn"
+           write(*,*) "Aborting E4D"
+           i2=-1
+        else
+           i2=0
+        end if
+        close(13)
+        return
+
+     case(8)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        write(13,*) "There was a problem reading the internal mesh translation values"
+        write(13,*) "Aborting E4D"
+        close(13)
+        return
+
+     case(9)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        if(i1 .ne. 0) then
+           write(13,*) "There was a problem reading the number of measurements"
+           write(13,*) "in the survey file: ",trim(efile)
+           write(13,*) "Aborting E4D"
+           i2=-1
+        else
+           i2=0
+           write(13,*) "The number of measurements per survey is: ",nm
+        end if
+        close(13)
+        return
+ 
+     case(10)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        write(13,*) 'There wase a problem reading measurement number :',i1
+        write(13,*) 'Aborting E4D'
+        close(13)
+        return
+
+     case(11)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        if(i1 .ne. 0) then
+           write(13,*) 'There was a problem reading the first line of the '
+           write(13,*) 'conductivity file :',trim(sigfile)
+           write(13,*) 'The first line of the conductivity file must contain the '
+           write(13,*) 'following parameters: '
+           write(13,*) 'Number_of_values Formation_Factor Cond_surface_water Cond_groundwater'
+           write(13,*) 'Aborting E4D'
+ 
+        else
+           write(13,*) 'Number of conductivity values: ',i2
+           write(13,*) 'Formation Factor: ',FF
+           write(13,*) 'Surface water conductivity: ',sw_sig
+           write(13,*) 'Groundwater conductivity: ',gw_sig
+         
+        end if
+        close(13)
+        return
+
+     case(12)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        write(13,*) 'There was a problem reading the conductivity for element: ',i1
+        write(13,*) 'Aborting E4D'
+        close(13)
+        return
+
+     case(13)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        if(i1 .ne. 0) then
+           write(13,*) 'There was a problem reading the number of mapping values'
+           write(13,*) 'in the mapping file: ',trim(mapfile)
+           write(13,*) 'Aborting E4D'
+           i2=-1
+        else
+           write(13,*) "Number of mapping values: ",nmap
+           i2=0
+        end if
+        close(13)
+        return
+
+     case(14)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        write(13,*) "There was a problem reading mapping value: ",i1
+        write(13,*) "Aborting E4D"
+        close(13)
+        return
+
+     case(15)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        inquire(file=mshfile(1:i1)//'.node',exist=exst)
+        if(.not. exst) then
+           write(13,*) 'Could not find the mesh node file: ',mshfile(1:i1)//'.node'
+           write(13,*) 'Aborting E4D'
+           i2=-1
+        else
+           write(13,*) "E4D mesh node file: ",mshfile(1:i1)//'.node'
+           i2=0
+        end if
+        close(13)
+        return
+
+     case(16)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        write(13,*) 'There was a problem reading the first line of the node file.'
+        write(13,*) 'Aborting E4D'
+        close(13)
+        return
+
+     case(17)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        write(13,*) 'There was a problem reading node number: ',i1
+        write(13,*) 'Aborting E4D'
+        close(13)
+        return
+        
+    case(18)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        inquire(file=mshfile(1:i1)//'.ele',exist=exst)
+        if(.not. exst) then
+           write(13,*) 'Could not find the mesh node file: ',mshfile(1:i1)//'.ele'
+           write(13,*) 'Aborting E4D'
+           i2=-1
+        else
+           write(13,*) "E4D mesh node file: ",mshfile(1:i1)//'.ele'
+           i2=0
+        end if
+        close(13)
+        return
+        
+     case(19)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        write(13,*) 'There was a problem reading the first line of the element file.'
+        write(13,*) 'Aborting E4D'
+        close(13)
+        return
+
+     case(20)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        write(13,*) 'There was a problem reading element number: ',i1
+        write(13,*) 'Aborting E4D'
+        close(13)
+        return
+
+     case(21)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        write(13,*) 
+        write(13,*) 'Done setting up forward run ......'
+        write(13,*) '    Number of nodes: ',nnodes
+        write(13,*) '    Number of elements: ',nelem
+        !write(13,*) '    Minimum initial conductivity: ',minval(base_sigma)
+        !write(13,*)  '    Maximum intitial conductivity ',maxval(base_sigma)
+        close(13)
+
+     case(22)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        write(13,*)
+        write(13,*) 'mcomm = ',i1
+        write(13,*) 'waiting for pflotran solution'
+        close(13)
+
+     case(23)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        if(i1 .ne. 0) then
+           write(13,*) "There was a problem reading the list file name in e4d.inp"
+           write(13,*) "Aborting E4D"
+           i2=-1
+        else
+           i2=0
+           write(13,*) "The specified conductivity list file is: ",trim(list_file)
+           inquire(file=trim(list_file),exist=exst)
+           if(.not. exst) then
+              write(13,*) "Cannot find the list file: ",trim(list_file)
+              write(*,*) "Aborting E4D"
+              i2=-1
+           end if
+        end if
+        close(13)
+        return
+
+     case(24)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        if(i1 .ne. 0) then
+           write(13,*) 'There was a problem reading the first line of the list file.'
+           write(13,*) 'The first line of the list file must contain the following: '
+           write(13,*) 'Number_of_E4D_times FF sw_conductivity gw_conductivity'
+           write(13,*) 'Aborting E4D'
+           i2=-1
+        else
+           write(13,*) "Number of E4D Times: ",ntime
+           write(13,*) "Formation Factor: ",FF
+           write(13,*) "Surface Water Conductivity ", sw_sig
+           write(13,*) "Groundwater Conductivty ",gw_sig
+           i2=0
+        end if
+        close(13)
+        return
+        
+     case(25)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        if(i1 .ne. 0) then
+           write(13,*) "There was a problem reading list file line: ",i2
+           write(13,*) "Each list file line must contain the following: "
+           write(13,*) "E4D_time Survey_file_name Conductivity_file_name"
+           write(13,*) "Aborting E4D"
+        else
+           write(13,"(I5,F12.0,A42,A42)") i2,e4d_time,csrv_file,ccond_file  
+        end if
+        close(13)
+        return
+        
+     case(26)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        inquire(file=trim(csrv_file),exist=exst)
+        if(.not. exst) then
+           write(13,*) 'Cannot open the file: ',csrv_file
+           write(13,*) 'which is listed on line: ',i2
+           write(13,*) 'of the list file: ',list_file
+           write(13,*) 'Aborting E4D'
+           i2=-1
+           close(13)
+           return
+        end if
+        inquire(file=trim(ccond_file),exist=exst)
+        if(.not. exst) then
+           write(13,*) 'Cannot open the file: ',ccond_file
+           write(13,*) 'which is listed on line: ',i2
+           write(13,*) 'of the list file: ',list_file
+           write(13,*) 'Aborting E4D'
+           i2=-1
+           close(13)
+           return
+        end if
+        i2=0
+        close(13)
+        return
+        
+     case(27)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        if(i1 .ne. 0) then
+           write(13,*) 'There was a problem reading the number of electrodes in: ',trim(csrv_file)
+           write(13,*) 'Aborting E4D'
+           i1=-1
+        elseif(i2 .ne. ne) then
+           write(13,*) 'The number of electrodes in file: ',trim(csrv_file)
+           write(13,*) 'is: ',i2
+           write(13,*) 'The number of electrodes in the baseline survey file is: ',ne
+           write(13,*) 'Each survey geometry must be equivalent.'
+           write(13,*) 'Aborting E4D'
+           i1=-1
+        end if
+        close(13)
+        return
+
+     case(28)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        write(13,*) 'There was a problem reading electrode number: ',i1
+        write(13,*) 'in file: ',trim(csrv_file)
+        write(13,*) 'Make sure the electrodes are specified exactly as in the baseline survey file.'
+        write(13,*) 'Aborting E4D'
+        close(13)
+        return
+
+     case(29)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        if(i1 .ne. 0) then
+           write(13,*) 'There was a problem reading the number of electrodes in: ',trim(csrv_file)
+           write(13,*) 'Aborting E4D'
+           i1=-1
+        elseif(i2 .ne. nm) then
+           write(13,*) 'The number of measurements in file: ',trim(csrv_file)
+           write(13,*) 'is: ',i2
+           write(13,*) 'The number of measurements in the baseline survey file is: ',nm
+           write(13,*) 'Each survey geometry must be equivalent.'
+           write(13,*) 'Aborting E4D'
+           i1=-1
+        end if
+        close(13)
+        return
+
+     case(30)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        write(13,*) 'There was a problem reading measurement number: ',i1
+        write(13,*) 'in file: ',trim(csrv_file)
+        write(13,*) 'Make sure the a,b,m,n is specified exactly as in the baseline survey file.'
+        write(13,*) 'Aborting E4D'
+        close(13)
+        return
+
+     case(31)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        write(13,*) 'There was a problem reading the number of conductivity values in: ',trim(ccond_file)
+        write(13,*) 'Aborting E4D'
+        close(13)
+        return
+
+        
+     case(32)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        write(13,*) 'The number of conductivity values specified in: ',trim(ccond_file)
+        write(13,*) 'is: ',i1
+        write(13,*) 'The number of conductivity values specifed in the elment file is'
+        write(13,*) 'is: ',i2
+        write(13,*) 'Aborting E4D'
+        close(13)
+        return
+
+     case(33)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        write(13,*) 'There was a problem reading conductivity value: ',i1
+        write(13,*) 'in file: ',trim(ccond_file)
+        write(13,*) 'Aborting E4D'
+        close(13)
+        return
+
+     case(34)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        write(13,*) 'The number of elements in the element file is: ',i2
+        write(13,*) 'The number of values in the conductivity files is: ',i1
+        write(13,*) 'Aborting E4D'
+        close(13)
+        return
+
+     case(35)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        write(13,*) "Executing E4D Simulation for Time: ",e4d_time
+        close(13)
+        
+     case(36)
+        open(13,file='e4d.log',status='old',action='write',position='append')
+        write(13,*) "Waited ",etm," for pflotran command"
+        close(13)
+     end select
+end subroutine elog
+!_________________________________________________________________	
  
 end module vars
