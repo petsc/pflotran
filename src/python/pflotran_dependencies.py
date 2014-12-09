@@ -46,6 +46,8 @@ source_file_roots.append('pflotran')
 source_file_roots.sort()
 #print(source_file_roots)
 f = open('pflotran_source_files.txt','w')
+f.write('Filename                                source  blank   comment\n')
+f.write('-------------------------------------------------------------------\n')
 file_count = 0 
 line_count = 0
 blank_line_count = 0
@@ -72,7 +74,8 @@ for root in source_file_roots:
     f.write(' ')
   f.write('%d\t%d\t%d\n' % (line_count_in_file,blank_line_count_in_file,
                             comment_line_count_in_file))
-f.write('\nTotal Line count: %d\n' % 
+f.write('-------------------------------------------------------------------\n')
+f.write('Total Line count: %d\n' % 
         (line_count+comment_line_count+blank_line_count))
 f.write('Fortran source line count: %d\n' % line_count)
 f.write('Fortran comment line count: %d\n' % comment_line_count)
