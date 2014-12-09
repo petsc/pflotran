@@ -132,7 +132,7 @@ function TimestepperCreate()
   stepper%target_time = 0.d0
   
   stepper%dt_init = 1.d0
-  stepper%dt_min = 1.d-6    ! One microsecond.
+  stepper%dt_min = 1.d-20   ! Ten zeptoseconds.
   stepper%dt_max = 3.1536d6 ! One-tenth of a year.  
   stepper%prev_dt = 0.d0
   stepper%cfl_limiter = UNINITIALIZED_DOUBLE
