@@ -134,7 +134,7 @@ end subroutine PMSurfaceTHRHSFunction
 
 ! ************************************************************************** !
 
-subroutine PMSurfaceTHUpdateTimestep(this,dt,dt_max,iacceleration, &
+subroutine PMSurfaceTHUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
                                     num_newton_iterations,tfac)
   ! 
   ! This routine
@@ -149,7 +149,7 @@ subroutine PMSurfaceTHUpdateTimestep(this,dt,dt_max,iacceleration, &
 
   class(pm_surface_th_type) :: this
   PetscReal :: dt
-  PetscReal :: dt_max
+  PetscReal :: dt_min,dt_max
   PetscInt :: iacceleration
   PetscInt :: num_newton_iterations
   PetscReal :: tfac(:)

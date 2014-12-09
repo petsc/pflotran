@@ -230,6 +230,7 @@ subroutine TimestepperBEUpdateDT(this,process_model)
   if (update_time_step .and. this%iaccel /= 0) then
       
     call process_model%UpdateTimestep(this%dt, &
+                                      this%dt_min, &
                                       this%dt_max, &
                                       this%iaccel, &
                                       this%num_newton_iterations, &
