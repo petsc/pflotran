@@ -793,18 +793,18 @@ recursive subroutine PMCSubsurfaceDestroy(this)
   call printMsg(this%option,'PMCSubsurface%Destroy()')
 #endif
 
-  if (associated(this%below)) then
-    call this%below%Destroy()
+  if (associated(this%child)) then
+    call this%child%Destroy()
     ! destroy does not currently destroy; it strips
-    deallocate(this%below)
-    nullify(this%below)
+    deallocate(this%child)
+    nullify(this%child)
   endif 
   
-  if (associated(this%next)) then
-    call this%next%Destroy()
+  if (associated(this%peer)) then
+    call this%peer%Destroy()
     ! destroy does not currently destroy; it strips
-    deallocate(this%next)
-    nullify(this%next)
+    deallocate(this%peer)
+    nullify(this%peer)
   endif
   
   call PMCSubsurfaceStrip(this)

@@ -303,7 +303,7 @@ function SimulationGetFinalWaypointTime(this)
         final_time < SimulationGetFinalWaypointTime) then
       SimulationGetFinalWaypointTime = final_time
     endif
-    cur_process_model_coupler => cur_process_model_coupler%next
+    cur_process_model_coupler => cur_process_model_coupler%peer
   enddo
 
 end function SimulationGetFinalWaypointTime

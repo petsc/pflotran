@@ -110,7 +110,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
 
     simulation%process_model_coupler_list => &
       surf_simulation%process_model_coupler_list
-    surf_simulation%process_model_coupler_list%next => &
+    surf_simulation%process_model_coupler_list%peer => &
       subsurf_simulation%process_model_coupler_list
     surf_simulation%surf_flow_process_model_coupler%subsurf_realization => &
       simulation_old%realization
@@ -172,8 +172,8 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
   ! Set data in sim_aux
   cur_process_model_coupler => simulation%process_model_coupler_list
   call cur_process_model_coupler%SetAuxData()
-  if (associated(cur_process_model_coupler%next)) then
-    cur_process_model_coupler => cur_process_model_coupler%next
+  if (associated(cur_process_model_coupler%peer)) then
+    cur_process_model_coupler => cur_process_model_coupler%peer
     call cur_process_model_coupler%SetAuxData()
   endif
 

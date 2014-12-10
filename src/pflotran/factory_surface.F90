@@ -204,9 +204,9 @@ subroutine HijackSurfaceSimulation(simulation_old,simulation)
         end select
         cur_process_model => cur_process_model%next
       enddo
-      cur_process_model_coupler => cur_process_model_coupler%below
+      cur_process_model_coupler => cur_process_model_coupler%child
     enddo
-    cur_process_model_coupler_top => cur_process_model_coupler_top%next
+    cur_process_model_coupler_top => cur_process_model_coupler_top%peer
   enddo
 
   simulation%surf_realization => surf_realization

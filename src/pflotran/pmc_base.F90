@@ -26,8 +26,8 @@ module PMC_Base_class
     class(timestepper_base_type), pointer :: timestepper
     class(pm_base_type), pointer :: pms
     type(waypoint_list_type), pointer :: waypoint_list
-    class(pmc_base_type), pointer :: below
-    class(pmc_base_type), pointer :: next
+    class(pmc_base_type), pointer :: child
+    class(pmc_base_type), pointer :: peer
     type(pm_base_pointer_type), pointer :: pm_ptr
     type(simulation_aux_type),pointer :: sim_aux
     procedure(Output), nopass, pointer :: Output
@@ -134,8 +134,8 @@ subroutine PMCBaseInit(this)
   nullify(this%timestepper)
   nullify(this%pms)
   nullify(this%waypoint_list)
-  nullify(this%below)
-  nullify(this%next)
+  nullify(this%child)
+  nullify(this%peer)
   nullify(this%sim_aux)
   this%Output => Null()
   
@@ -240,12 +240,12 @@ recursive subroutine InitializeRun(this)
     cur_pm => cur_pm%next
   enddo
   
-  if (associated(this%below)) then
-    call this%below%InitializeRun()
+  if (associated(this%child)) then
+    call this%child%InitializeRun()
   endif
   
-  if (associated(this%next)) then
-    call this%next%InitializeRun()
+  if (associated(this%peer)) then
+    call this%peer%InitializeRun()
   endif
 
 end subroutine InitializeRun
@@ -321,10 +321,10 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
     call this%AccumulateAuxData()
 
     ! Run underlying process model couplers
-    if (associated(this%below)) then
+    if (associated(this%child)) then
       ! Set data needed by process-models
       call this%SetAuxData()
-      call this%below%RunToTime(this%timestepper%target_time,local_stop_flag)
+      call this%child%RunToTime(this%timestepper%target_time,local_stop_flag)
       ! Get data from other process-models
       call this%GetAuxData()
     endif
@@ -368,8 +368,8 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
       ! Set data needed by process-model
       call this%SetAuxData()
       ! Run neighboring process model couplers
-      if (associated(this%next)) then
-        call this%next%RunToTime(this%timestepper%target_time,local_stop_flag)
+      if (associated(this%peer)) then
+        call this%peer%RunToTime(this%timestepper%target_time,local_stop_flag)
       endif
       call this%Checkpoint(viewer,this%timestepper%steps)
     endif
@@ -386,8 +386,8 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
   call this%SetAuxData()
 
   ! Run neighboring process model couplers
-  if (associated(this%next)) then
-    call this%next%RunToTime(sync_time,local_stop_flag)
+  if (associated(this%peer)) then
+    call this%peer%RunToTime(sync_time,local_stop_flag)
   endif
   
   stop_flag = max(stop_flag,local_stop_flag)
@@ -451,12 +451,12 @@ recursive subroutine FinalizeRun(this)
     call this%timestepper%FinalizeRun(this%option)
   endif
 
-  if (associated(this%below)) then
-    call this%below%FinalizeRun()
+  if (associated(this%child)) then
+    call this%child%FinalizeRun()
   endif
   
-  if (associated(this%next)) then
-    call this%next%FinalizeRun()
+  if (associated(this%peer)) then
+    call this%peer%FinalizeRun()
   endif
   
 end subroutine FinalizeRun
@@ -584,12 +584,12 @@ recursive subroutine PMCBaseCheckpoint(this,viewer,id,id_stamp)
     cur_pm => cur_pm%next
   enddo
   
-  if (associated(this%below)) then
-    call this%below%Checkpoint(viewer,UNINITIALIZED_INTEGER)
+  if (associated(this%child)) then
+    call this%child%Checkpoint(viewer,UNINITIALIZED_INTEGER)
   endif
   
-  if (associated(this%next)) then
-    call this%next%Checkpoint(viewer,UNINITIALIZED_INTEGER)
+  if (associated(this%peer)) then
+    call this%peer%Checkpoint(viewer,UNINITIALIZED_INTEGER)
   endif
   
   if (this%is_master) then
@@ -742,12 +742,12 @@ recursive subroutine PMCBaseRestart(this,viewer)
     cur_pm => cur_pm%next
   enddo
   
-  if (associated(this%below)) then
-    call this%below%Restart(viewer)
+  if (associated(this%child)) then
+    call this%child%Restart(viewer)
   endif
   
-  if (associated(this%next)) then
-    call this%next%Restart(viewer)
+  if (associated(this%peer)) then
+    call this%peer%Restart(viewer)
   endif
   
   if (this%is_master) then
@@ -927,18 +927,18 @@ recursive subroutine PMCBaseDestroy(this)
   call printMsg(this%option,'PMC%Destroy()')
 #endif
   
-  if (associated(this%below)) then
-    call this%below%Destroy()
+  if (associated(this%child)) then
+    call this%child%Destroy()
     ! destroy does not currently destroy; it strips
-    deallocate(this%below)
-    nullify(this%below)
+    deallocate(this%child)
+    nullify(this%child)
   endif 
   
-  if (associated(this%next)) then
-    call this%next%Destroy()
+  if (associated(this%peer)) then
+    call this%peer%Destroy()
     ! destroy does not currently destroy; it strips
-    deallocate(this%next)
-    nullify(this%next)
+    deallocate(this%peer)
+    nullify(this%peer)
   endif 
   
 !  deallocate(pmc)

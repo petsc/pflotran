@@ -98,12 +98,12 @@ recursive subroutine PMCHydrogeophysicsInitializeRun(this)
   
   call printMsg(this%option,'PMCHydrogeophysics%InitializeRun()')
   
-  if (associated(this%below)) then
-    call this%below%InitializeRun()
+  if (associated(this%child)) then
+    call this%child%InitializeRun()
   endif
   
-  if (associated(this%next)) then
-    call this%next%InitializeRun()
+  if (associated(this%peer)) then
+    call this%peer%InitializeRun()
   endif
 
 end subroutine PMCHydrogeophysicsInitializeRun
@@ -143,13 +143,13 @@ recursive subroutine PMCHydrogeophysicsRunToTime(this,sync_time,stop_flag)
                                   this%pf_to_e4d_master_comm,this%option)
 
   ! Run neighboring process model couplers
-!  if (associated(this%below)) then
-!    call this%below%RunToTime(sync_time,local_stop_flag)
+!  if (associated(this%child)) then
+!    call this%child%RunToTime(sync_time,local_stop_flag)
 !  endif
 
   ! Run neighboring process model couplers
-!  if (associated(this%next)) then
-!    call this%next%RunToTime(sync_time,local_stop_flag)
+!  if (associated(this%peer)) then
+!    call this%peer%RunToTime(sync_time,local_stop_flag)
 !  endif
 
   stop_flag = max(stop_flag,local_stop_flag)  
@@ -306,12 +306,12 @@ recursive subroutine PMCHydrogeophysicsDestroy(this)
   
   call PMCHydrogeophysicsStrip(this)
   
-  if (associated(this%below)) then
-    call this%below%Destroy()
+  if (associated(this%child)) then
+    call this%child%Destroy()
   endif 
   
-  if (associated(this%next)) then
-    call this%next%Destroy()
+  if (associated(this%peer)) then
+    call this%peer%Destroy()
   endif  
 
 end subroutine PMCHydrogeophysicsDestroy

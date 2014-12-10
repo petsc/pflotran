@@ -104,7 +104,7 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
       subsurf_simulation%process_model_coupler_list
 
     ! 2st PMC is geomechanics
-    subsurf_simulation%process_model_coupler_list%below => &
+    subsurf_simulation%process_model_coupler_list%child => &
       geomech_simulation%process_model_coupler_list
 
     geomech_simulation%geomech_process_model_coupler%subsurf_realization => &
@@ -173,8 +173,8 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
   ! Set data in sim_aux
   cur_process_model_coupler => simulation%process_model_coupler_list
   call cur_process_model_coupler%SetAuxData()
-  if (associated(cur_process_model_coupler%below)) then
-    cur_process_model_coupler => cur_process_model_coupler%below
+  if (associated(cur_process_model_coupler%child)) then
+    cur_process_model_coupler => cur_process_model_coupler%child
     call cur_process_model_coupler%GetAuxData()
     call cur_process_model_coupler%SetAuxData()
     select type(pmc => cur_process_model_coupler)
@@ -307,9 +307,9 @@ subroutine HijackGeomechanicsSimulation(simulation_old,simulation)
         end select
         cur_process_model => cur_process_model%next
       enddo
-      cur_process_model_coupler => cur_process_model_coupler%below
+      cur_process_model_coupler => cur_process_model_coupler%child
     enddo
-    cur_process_model_coupler_top => cur_process_model_coupler_top%next
+    cur_process_model_coupler_top => cur_process_model_coupler_top%peer
   enddo
 
   simulation%geomech_realization => geomech_realization

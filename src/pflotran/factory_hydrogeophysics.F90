@@ -346,10 +346,10 @@ subroutine HydrogeophysicsInitPostPetsc(simulation, option)
   ! set up logging stage
   string = 'Hydrogeophysics'
   call LoggingCreateStage(string,hydrogeophysics_coupler%stage)
-  if (associated(simulation%process_model_coupler_list%below)) then
-    simulation%process_model_coupler_list%below%below => hydrogeophysics_coupler
+  if (associated(simulation%process_model_coupler_list%child)) then
+    simulation%process_model_coupler_list%child%child => hydrogeophysics_coupler
   else
-    simulation%process_model_coupler_list%below => hydrogeophysics_coupler
+    simulation%process_model_coupler_list%child => hydrogeophysics_coupler
   endif
 
 end subroutine HydrogeophysicsInitPostPetsc

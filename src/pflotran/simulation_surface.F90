@@ -111,7 +111,7 @@ subroutine SurfaceInitializeRun(this)
     if (.not.associated(cur_process_model_coupler)) exit
     depth = 0
     call cur_process_model_coupler%InitializeRun()
-    cur_process_model_coupler => cur_process_model_coupler%next
+    cur_process_model_coupler => cur_process_model_coupler%peer
   enddo
 
   ! set depth in tree
@@ -119,13 +119,13 @@ subroutine SurfaceInitializeRun(this)
   do
     if (.not.associated(cur_process_model_coupler_top)) exit
     depth = 0
-    cur_process_model_coupler_below => cur_process_model_coupler_top%below
+    cur_process_model_coupler_below => cur_process_model_coupler_top%child
     do
       if (.not.associated(cur_process_model_coupler_below)) exit
       depth = depth + 1
-      cur_process_model_coupler_below => cur_process_model_coupler_below%below
+      cur_process_model_coupler_below => cur_process_model_coupler_below%child
     enddo
-    cur_process_model_coupler_top => cur_process_model_coupler_top%next
+    cur_process_model_coupler_top => cur_process_model_coupler_top%peer
   enddo
 
 end subroutine SurfaceInitializeRun

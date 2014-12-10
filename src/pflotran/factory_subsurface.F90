@@ -307,7 +307,7 @@ subroutine HijackSimulation(simulation_old,simulation)
     simulation%process_model_coupler_list => &
       flow_process_model_coupler%CastToBase()
     if (associated(tran_process_model_coupler)) then
-      flow_process_model_coupler%below => &
+      flow_process_model_coupler%child => &
         tran_process_model_coupler%CastToBase()
     endif
   else
@@ -319,8 +319,8 @@ subroutine HijackSimulation(simulation_old,simulation)
     material_process_model_coupler => PMCMaterialCreate()
     material_process_model_coupler%option => option
     material_process_model_coupler%realization => realization
-    ! place the material process model as %next for the top pmc
-    simulation%process_model_coupler_list%next => &
+    ! place the material process model as %peer for the top pmc
+    simulation%process_model_coupler_list%peer => &
       material_process_model_coupler
   endif
 
@@ -444,9 +444,9 @@ subroutine HijackSimulation(simulation_old,simulation)
       enddo
       ! has to be called after realizations are set above
       call cur_process_model_coupler%SetupSolvers()
-      cur_process_model_coupler => cur_process_model_coupler%below
+      cur_process_model_coupler => cur_process_model_coupler%child
     enddo
-    cur_process_model_coupler_top => cur_process_model_coupler_top%next
+    cur_process_model_coupler_top => cur_process_model_coupler_top%peer
   enddo
   
   simulation%realization => realization

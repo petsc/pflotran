@@ -183,8 +183,8 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
 
 #if 0
     ! Run underlying process model couplers
-    if (associated(this%below)) then
-      call this%below%RunToTime(this%timestepper%target_time,local_stop_flag)
+    if (associated(this%child)) then
+      call this%child%RunToTime(this%timestepper%target_time,local_stop_flag)
     endif
 #endif
     
@@ -230,8 +230,8 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
       ! Set data needed by process-model
       call this%SetAuxData()
       ! Run neighboring process model couplers
-      if (associated(this%next)) then
-        call this%next%RunToTime(this%timestepper%target_time,local_stop_flag)
+      if (associated(this%peer)) then
+        call this%peer%RunToTime(this%timestepper%target_time,local_stop_flag)
       endif
       call this%GetAuxData()
       call this%Checkpoint(viewer,this%timestepper%steps)
@@ -245,8 +245,8 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   call this%SetAuxData()
 
   ! Run neighboring process model couplers
-  if (associated(this%next)) then
-    call this%next%RunToTime(sync_time,local_stop_flag)
+  if (associated(this%peer)) then
+    call this%peer%RunToTime(sync_time,local_stop_flag)
   endif
 
   stop_flag = max(stop_flag,local_stop_flag)
@@ -689,18 +689,18 @@ recursive subroutine PMCSurfaceDestroy(this)
   call printMsg(this%option,'PMCSurface%Destroy()')
 #endif
 
-  if (associated(this%below)) then
-    call this%below%Destroy()
+  if (associated(this%child)) then
+    call this%child%Destroy()
     ! destroy does not currently destroy; it strips
-    deallocate(this%below)
-    nullify(this%below)
+    deallocate(this%child)
+    nullify(this%child)
   endif 
   
-  if (associated(this%next)) then
-    call this%next%Destroy()
+  if (associated(this%peer)) then
+    call this%peer%Destroy()
     ! destroy does not currently destroy; it strips
-    deallocate(this%next)
-    nullify(this%next)
+    deallocate(this%peer)
+    nullify(this%peer)
   endif
   
   call PMCSurfaceStrip(this)
