@@ -1055,7 +1055,7 @@ subroutine InitSubsurfaceReadRequiredCards(realization)
 
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
@@ -1294,7 +1294,7 @@ subroutine InitSubsurfaceReadInput(simulation)
   type(saturation_function_type), pointer :: saturation_function
   class(characteristic_curves_type), pointer :: characteristic_curves
 
-  type(realization_type), pointer :: realization
+  class(realization_type), pointer :: realization
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field

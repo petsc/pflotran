@@ -67,18 +67,18 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   ! 
 
   use Option_module
+  use PM_Subsurface_class
+  use PM_Base_class
+  use PM_RT_class
+  use Timestepper_BE_class
+  use Realization_class
 #ifndef INIT_REFACTOR
   use Simulation_module
   use Init_Common_module
 #else  
   use Simulation_Subsurface_class
   use PMC_Subsurface_class
-  use PM_Base_class
-  use PM_Subsurface_class
-  use PM_RT_class
-  use Realization_class
   use Solver_module
-  use Timestepper_BE_class
   use Waypoint_module
   use Init_Subsurface_module
   use Input_Aux_module
@@ -459,11 +459,15 @@ subroutine InitSubsurfaceSimulation(simulation)
   use Init_Subsurface_Tran_module
   use Waypoint_module
   use Strata_module
+  use Regression_module
   
   use PMC_Subsurface_class
   use PMC_Material_class
   use PMC_Base_class
   use PM_Base_class
+  use PM_Subsurface_class
+  use PM_RT_class
+  use Timestepper_BE_class
   
   implicit none
   
@@ -492,11 +496,11 @@ subroutine InitSubsurfaceSimulation(simulation)
   
   !TODO(geh): refactor
   if (associated(simulation%flow_process_model_coupler%timestepper)) then
-    simulation%tran_process_model_coupler%timestepper%cur_waypoint => &
+    simulation%flow_process_model_coupler%timestepper%cur_waypoint => &
       realization%waypoint_list%first
   endif
-  if (associated(simulation%tran_process_model_coupler%timestepper)) then
-    simulation%tran_process_model_coupler%timestepper%cur_waypoint => &
+  if (associated(simulation%rt_process_model_coupler%timestepper)) then
+    simulation%rt_process_model_coupler%timestepper%cur_waypoint => &
       realization%waypoint_list%first
   endif
   
@@ -521,11 +525,19 @@ subroutine InitSubsurfaceSimulation(simulation)
                            realization%output_option)
   endif  
 
-  if (option%nflowdof > 0) call InitSubsurfFlowSetupSolvers(realization, &
-                                         simulation_old%flow_timestepper%solver)
-  if (option%ntrandof > 0) call InitSubsurfTranSetupSolvers(realization, &
-                                         simulation_old%tran_timestepper%solver)
-  call RegressionCreateMapping(simulation_old%regression,realization)
+  if (option%nflowdof > 0) then
+    select type(ts => simulation%flow_process_model_coupler%timestepper)
+      class is (timestepper_BE_type)
+        call InitSubsurfFlowSetupSolvers(realization,ts%solver)
+    end select
+  endif
+  if (option%ntrandof > 0) then
+    select type(ts => simulation%rt_process_model_coupler%timestepper)
+      class is (timestepper_BE_type)
+        call InitSubsurfFlowSetupSolvers(realization,ts%solver)
+    end select
+  endif
+  call RegressionCreateMapping(simulation%regression,realization)
 ! end from old Init()
   
   simulation%waypoint_list => RealizCreateSyncWaypointList(realization)
