@@ -75,7 +75,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   ! process command line arguments specific to subsurface
   call SubsurfInitCommandLineSettings(option)
 
-#ifdef INIT_REFACTOR
+#ifndef INIT_REFACTOR
   simulation_old => SimulationCreate(option)
   call Init(simulation_old)
   call HijackSimulation(simulation_old,simulation)

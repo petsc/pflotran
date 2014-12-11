@@ -111,9 +111,6 @@ subroutine Init(simulation)
   type(discretization_type), pointer :: discretization
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
-  type(field_type), pointer :: field
-  type(patch_type), pointer :: patch  
-  type(debug_type), pointer :: debug
   type(waypoint_list_type), pointer :: waypoint_list
   type(input_type), pointer :: input
   type(output_variable_type), pointer :: output_variable
@@ -128,28 +125,20 @@ subroutine Init(simulation)
   SNESLineSearch :: linesearch
   type(timestepper_type), pointer               :: surf_flow_timestepper
   type(solver_type), pointer                :: surf_flow_solver
-  type(surface_field_type), pointer         :: surf_field
   type(surface_realization_type), pointer   :: surf_realization
   type(solver_type), pointer                :: geomech_solver
   type(timestepper_type), pointer               :: geomech_timestepper
-  type(geomech_field_type), pointer         :: geomech_field
   type(geomech_realization_type), pointer   :: geomech_realization
 
   ! set pointers to objects
-  flow_timestepper => simulation%flow_timestepper
-  tran_timestepper => simulation%tran_timestepper
   realization => simulation%realization
   discretization => realization%discretization
   option => realization%option
-  field => realization%field
-  debug => realization%debug
   input => realization%input
   surf_realization  => simulation%surf_realization
   surf_flow_timestepper => simulation%surf_flow_timestepper
-  surf_field        => surf_realization%surf_field  
   geomech_realization => simulation%geomech_realization
   geomech_timestepper => simulation%geomech_timestepper
-  geomech_field => geomech_realization%geomech_field
   
   nullify(flow_solver)
   nullify(tran_solver)
@@ -198,8 +187,7 @@ subroutine Init(simulation)
   ! process command line options
   call OptionCheckCommandLine(option)
 
-  waypoint_list => WaypointListCreate()
-  realization%waypoint_list => waypoint_list
+  realization%waypoint_list => WaypointListCreate()
   
   ! initialize flow mode
   if (len_trim(option%flowmode) > 0) then
@@ -210,36 +198,27 @@ subroutine Init(simulation)
     option%liquid_phase = 1
     option%use_isothermal = PETSC_TRUE  ! assume default isothermal when only transport
     call TimestepperDestroy(simulation%flow_timestepper)
-    nullify(flow_timestepper)
   endif
     
   ! initialize transport mode
   if (option%ntrandof > 0) then
-    tran_solver => tran_timestepper%solver
   else
     call TimestepperDestroy(simulation%tran_timestepper)
-    nullify(tran_timestepper)
   endif
 
   ! initialize surface-flow mode
   if (option%surf_flow_on) then
     call setSurfaceFlowMode(option)
-    surf_flow_solver => surf_flow_timestepper%solver
-    waypoint_list => WaypointListCreate()
-    surf_realization%waypoint_list => waypoint_list
+    surf_realization%waypoint_list => WaypointListCreate()
   else
     call TimestepperDestroy(simulation%surf_flow_timestepper)
-    nullify(surf_flow_solver)
   endif
 
   ! initialize surface-flow mode
   if (option%ngeomechdof > 0) then
-    geomech_solver => geomech_timestepper%solver
-    waypoint_list => WaypointListCreate()
-    geomech_realization%waypoint_list => waypoint_list
+    geomech_realization%waypoint_list => WaypointListCreate()
   else
     call TimestepperDestroy(simulation%geomech_timestepper)
-    nullify(geomech_solver)
   endif
 
   ! read in the remainder of the input file
