@@ -52,7 +52,7 @@ end subroutine PFLOTRANInitializePrePetsc
 
 ! ************************************************************************** !
 
-subroutine PFLOTRANInitializePostPetsc(multisimulation,option)
+subroutine PFLOTRANInitializePostPetsc(simulation,multisimulation,option)
 !
 ! Sets up PFLOTRAN subsurface simulation framework after PETSc initialization
 ! Author: Glenn Hammond
@@ -60,10 +60,12 @@ subroutine PFLOTRANInitializePostPetsc(multisimulation,option)
 !
   use Option_module
   use Multi_Simulation_module
+  use Simulation_Base_class
   use Logging_module
   
   implicit none
   
+  class(simulation_base_type), pointer :: simulation
   type(multi_simulation_type), pointer :: multisimulation
   type(option_type) :: option
   PetscErrorCode :: ierr
@@ -77,7 +79,192 @@ subroutine PFLOTRANInitializePostPetsc(multisimulation,option)
   call PetscLogStagePush(logging%stage(INIT_STAGE),ierr);CHKERRQ(ierr)
   call PetscLogEventBegin(logging%event_init,ierr);CHKERRQ(ierr)
   
+#ifdef INIT_REFACTOR  
+  call PFLOTRANReadSimulation(simulation,option)
+#endif
+  
 end subroutine PFLOTRANInitializePostPetsc
+
+! ************************************************************************** !
+
+subroutine PFLOTRANReadSimulation(simulation,option)
+!
+! Sets up PFLOTRAN subsurface simulation framework after PETSc initialization
+! Author: Glenn Hammond
+! Date: 06/17/13
+!
+  use Option_module
+  use Input_Aux_module
+  use String_module
+  
+  use Simulation_Base_class
+  use PM_Base_class
+  use PMC_Base_class
+  
+  use Factory_Subsurface_module
+  
+  implicit none
+  
+  class(simulation_base_type), pointer :: simulation
+  type(option_type) :: option
+  
+  type(input_type), pointer :: input
+  character(len=MAXSTRINGLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: name
+  
+  class(pm_base_type), pointer :: pm_master
+  class(pm_base_type), pointer :: cur_pm
+  class(pm_base_type), pointer :: new_pm
+
+  class(pmc_base_type), pointer :: pmc_master
+  
+  nullify(pm_master)
+  nullify(cur_pm)
+  nullify(new_pm)
+  
+  nullify(pmc_master)
+  
+  input => InputCreate(IN_UNIT,option%input_filename,option)
+
+  filename = trim(option%global_prefix) // trim(option%group_prefix) // &
+             '.out'
+
+  if (option%myrank == option%io_rank .and. option%print_to_file) then
+    open(option%fid_out, file=filename, action="write", status="unknown")
+  endif
+
+  string = 'SIMULATION'
+  call InputFindStringInFile(input,option,string)
+  call InputFindStringErrorMsg(input,option,string)
+  word = ''
+  do
+    call InputReadPflotranString(input,option)
+    if (InputCheckExit(input,option)) exit
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'PROCESS_MODEL','SIMULATION')
+    
+    call StringToUpper(word)
+    if (.not.StringCompare(word,'MASTER')) then
+      call InputReadWord(input,option,name,PETSC_TRUE)
+      call InputErrorMsg(input,option,'name','SIMULATION,PROCESS_MODEL')
+    endif
+    select case(trim(word))
+      case('SUBSURFACE_FLOW')
+        call SubsurfaceReadPM(input, option, new_pm, PETSC_TRUE)
+      case('SUBSURFACE_TRANSPORT')
+        call SubsurfaceReadPM(input, option, new_pm, PETSC_FALSE)
+      case('HYDROGEOPHYSICS')
+      case('SURFACE_SUBSURFACE')
+      case('GEOMECHANICS')
+      case('MASTER')
+        call PFLOTRANSetupPMCHierarchy(input,option,pmc_master)
+    end select
+    if (associated(new_pm)) then
+      new_pm%name = name
+      if (associated(cur_pm)) then
+        cur_pm%next => new_pm
+      else
+        cur_pm => new_pm
+      endif
+      if (.not.associated(pm_master)) then
+        pm_master => new_pm
+      endif
+    endif
+    nullify(new_pm)
+  enddo
+
+  ! link process models with their respective couplers
+  cur_pm => pm_master
+  do
+    if (.not.associated(cur_pm)) exit
+    call PFLOTRANLinkPMToPMC(input,option,pmc_master,cur_pm)
+    cur_pm => cur_pm%next
+  enddo
+  
+  call pmc_master%CheckNullPM(option)
+  
+end subroutine PFLOTRANReadSimulation
+
+! ************************************************************************** !
+
+recursive subroutine PFLOTRANSetupPMCHierarchy(input,option,pmc)
+!
+! Forms a linked list of named dummy pmcs as placeholders
+! Author: Glenn Hammond
+! Date: 12/10/14
+!
+  use Option_module
+  use Input_Aux_module
+  use PMC_Base_class
+  use String_module
+  
+  implicit none
+  
+  type(input_type) :: input
+  type(option_type) :: option
+  class(pmc_base_type), pointer :: pmc
+  
+  character(len=MAXWORDLENGTH) :: word
+  
+  call InputReadWord(input,option,word,PETSC_TRUE)
+  call InputErrorMsg(input,option,'PMC name','SIMULATION')
+    ! at this point, we are creating a 
+  pmc => PMCBaseCreate()
+  pmc%name = word
+
+  do
+    call InputReadPflotranString(input,option)
+    if (InputCheckExit(input,option)) exit
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'CHILD or PEER','SIMULATION')
+    call StringToUpper(word)
+    select case(trim(word))
+      case('PEER')
+        call PFLOTRANSetupPMCHierarchy(input,option,pmc%peer)
+      case('CHILD')
+        call PFLOTRANSetupPMCHierarchy(input,option,pmc%child)
+      case default
+        call InputKeywordUnrecognized(word,'PFLOTRANSetupPMCHierarchy',option)
+    end select    
+  enddo
+  
+end subroutine PFLOTRANSetupPMCHierarchy
+
+! ************************************************************************** !
+
+recursive subroutine PFLOTRANLinkPMToPMC(input,option,pmc,pm)
+!
+! Forms a linked list of named dummy pmcs as placeholders
+! Author: Glenn Hammond
+! Date: 12/10/14
+!
+  use Option_module
+  use Input_Aux_module
+  use String_module
+  use PM_Base_class
+  use PMC_Base_class
+  
+  implicit none
+  
+  type(input_type) :: input
+  type(option_type) :: option
+  class(pmc_base_type), pointer :: pmc
+  class(pm_base_type), pointer :: pm
+
+  if (.not.associated(pmc)) return
+  
+  print *, pmc%name, pm%name
+  if (StringCompareIgnoreCase(pmc%name,pm%name)) then
+    pmc%pms => pm
+    return
+  endif
+  
+  call PFLOTRANLinkPMToPMC(input,option,pmc%peer,pm)
+  call PFLOTRANLinkPMToPMC(input,option,pmc%child,pm)
+  
+end subroutine PFLOTRANLinkPMToPMC
 
 ! ************************************************************************** !
 

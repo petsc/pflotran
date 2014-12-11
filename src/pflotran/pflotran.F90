@@ -72,7 +72,8 @@ program pflotran
   endif
 
   do ! multi-simulation loop
-    call PFLOTRANInitializePostPetsc(multisimulation,option)
+    call PFLOTRANInitializePostPetsc(simulation,multisimulation,option)
+#ifndef INIT_REFACTOR    
     select case(option%simulation_mode)
       case('SUBSURFACE')
         call SubsurfaceInitialize(simulation,option)
@@ -88,6 +89,7 @@ program pflotran
         option%io_buffer = 'Simulation Mode not recognized.'
         call printErrMsg(option)
     end select
+#endif    
 
     call simulation%InitializeRun()
 

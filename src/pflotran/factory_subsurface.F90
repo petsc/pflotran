@@ -13,7 +13,8 @@ module Factory_Subsurface_module
   public :: SubsurfaceInitialize, &
             SubsurfaceInitializePostPETSc, &
             HijackSimulation, &
-            SubsurfaceJumpStart
+            SubsurfaceJumpStart, &
+            SubsurfaceReadPM
 
 contains
 
@@ -73,10 +74,12 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   
   ! process command line arguments specific to subsurface
   call SubsurfInitCommandLineSettings(option)
-  
+
+#ifdef INIT_REFACTOR
   simulation_old => SimulationCreate(option)
   call Init(simulation_old)
   call HijackSimulation(simulation_old,simulation)
+#endif  
   call SubsurfaceJumpStart(simulation)
   
   ! no longer need simulation
@@ -122,6 +125,96 @@ subroutine SubsurfInitCommandLineSettings(option)
   endif
   
 end subroutine SubsurfInitCommandLineSettings
+
+! ************************************************************************** !
+
+subroutine SubsurfaceReadPM(input, option, pm, for_flow)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/11/13
+  !
+  use Input_Aux_module
+  use Option_module
+  use String_module
+  
+  use PMC_Base_class
+  
+  use PM_Base_class
+  use PM_Flash2_class
+  use PM_General_class
+  use PM_Geomechanics_Force_class
+  use PM_Immis_class
+  use PM_Miscible_class
+  use PM_Mphase_class
+  use PM_Richards_class
+  use PM_RT_class
+  use PM_Surface_class
+  use PM_TH_class
+  
+  use Init_Common_module
+
+  implicit none
+  
+  type(input_type) :: input
+  type(option_type) :: option
+  class(pm_base_type), pointer :: pm
+  PetscBool :: for_flow
+  
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXSTRINGLENGTH) :: error_string
+  
+  error_string = 'SIMULATION,PROCESS_MODEL'
+
+  if (.not.for_flow) then
+    pm => PMRTCreate()
+  endif
+  
+  word = ''
+  do   
+    call InputReadPflotranString(input,option)
+    if (InputCheckExit(input,option)) exit
+    call InputReadWord(input,option,word,PETSC_FALSE)
+    call StringToUpper(word)
+    if (for_flow) then
+      select case(word)
+        case('MODE')
+          call InputReadWord(input,option,word,PETSC_FALSE)
+          call InputErrorMsg(input,option,'flow mode',error_string)
+          call StringToUpper(word)
+          select case(word)
+            case('GENERAL')
+              pm => PMGeneralCreate()
+            case('MPHASE')
+              pm => PMMphaseCreate()
+            case('FLASH2')
+              pm => PMFlash2Create()
+            case('IMS','IMMIS','THS')
+              pm => PMImmisCreate()
+            case('MIS','MISCIBLE')
+              pm => PMMiscibleCreate()
+            case('RICHARDS')
+              pm => PMRichardsCreate()
+            case('TH')
+              pm => PMTHCreate()
+            case default
+              option%io_buffer = 'FLOW PM "' // trim(word) // '" not recognized.'
+              call printErrMsg(option)
+          end select
+          option%flowmode = word
+          call InitSubsurfaceSetFlowMode(option)
+        case default
+      end select
+    else
+      call InputReadWord(input,option,word,PETSC_FALSE)
+      call StringToUpper(word)
+      select case(word)
+        case('OPERATOR_SPLIT','OPERATOR_SPLITTING')
+        case default ! includes 'GLOBAL_IMPLICIT'
+      end select
+    endif
+  enddo
+  
+end subroutine SubsurfaceReadPM
 
 ! ************************************************************************** !
 

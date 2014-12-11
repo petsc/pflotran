@@ -20,6 +20,10 @@ module Init_Common_module
             InitCommonReadRegionFiles, &
             InitCommonReadVelocityField, &
             InitCommonVerifyAllCouplers
+            
+  ! to be moved to respective init_xxx module
+  public :: InitSubsurfaceSetFlowMode, &
+            InitSubsurfaceReadRequiredCards
   
 contains
 
@@ -172,7 +176,7 @@ subroutine Init(simulation)
   endif
   
   ! read required cards
-  call InitReadRequiredCardsFromInput(realization)
+  call InitSubsurfaceReadRequiredCards(realization)
   !geh: surf_realization%input is never freed
   surf_realization%input => InputCreate(IN_UNIT,option%input_filename,option)
   surf_realization%subsurf_filename = realization%discretization%filename
@@ -181,6 +185,7 @@ subroutine Init(simulation)
   geomech_realization%input => InputCreate(IN_UNIT,option%input_filename,option)
   call GeomechicsInitReadRequiredCards(simulation%geomech_realization)
 
+#if 0  
   patch => realization%patch
 
   if (associated(patch)) then
@@ -188,6 +193,7 @@ subroutine Init(simulation)
         grid => patch%grid
      endif
   endif
+#endif  
 
   ! process command line options
   call OptionCheckCommandLine(option)
@@ -198,8 +204,7 @@ subroutine Init(simulation)
   ! initialize flow mode
   if (len_trim(option%flowmode) > 0) then
     ! set the operational mode (e.g.  MPH_MODE, etc)
-    call setFlowMode(option)
-    flow_solver => flow_timestepper%solver
+    call InitSubsurfaceSetFlowMode(option)
   else
     option%nphase = 1
     option%liquid_phase = 1
@@ -318,7 +323,7 @@ end subroutine InitReadInputFilenames
 
 ! ************************************************************************** !
 
-subroutine InitReadRequiredCardsFromInput(realization)
+subroutine InitSubsurfaceReadRequiredCards(realization)
   ! 
   ! Reads pflow input file
   ! 
@@ -393,6 +398,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
     select case(trim(card))
 
 !....................
+#ifndef INIT_REFACTOR    
       case ('MODE')
         call InputReadWord(input,option,option%flowmode,PETSC_TRUE)
         call InputErrorMsg(input,option,'flowmode','mode')
@@ -400,7 +406,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
           case('GENERAL')
             call GeneralRead(input,option)
         end select
-  
+#endif  
 !....................
       case('DBASE_FILENAME')
         call InputReadWord(input,option,word,PETSC_FALSE)
@@ -476,7 +482,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
   call InitCommonCreateIOGroups(option)
 #endif  
 
-end subroutine InitReadRequiredCardsFromInput
+end subroutine InitSubsurfaceReadRequiredCards
 
 ! ************************************************************************** !
 
@@ -1888,7 +1894,7 @@ end subroutine InitReadInput
 
 ! ************************************************************************** !
 
-subroutine setFlowMode(option)
+subroutine InitSubsurfaceSetFlowMode(option)
   ! 
   ! Sets the flow mode (richards, vadose, mph, etc.)
   ! 
@@ -1983,7 +1989,7 @@ subroutine setFlowMode(option)
       call printErrMsg(option)
   end select
   
-end subroutine setFlowMode
+end subroutine InitSubsurfaceSetFlowMode
 
 ! ************************************************************************** !
 

@@ -107,6 +107,7 @@ module Input_Aux_module
             InputGetLineCount, &
             InputReadToBuffer, &
             InputReadASCIIDbase, &
+            InputKeywordUnrecognized, &
             InputDbaseDestroy
 
 contains
@@ -1879,6 +1880,30 @@ subroutine DbaseLookupDouble(keyword,value,ierr)
   endif
   
 end subroutine DbaseLookupDouble
+
+! ************************************************************************** !
+subroutine InputKeywordUnrecognized(keyword,string,option)
+  ! 
+  ! Looks up double precision value in database
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/19/14
+  ! 
+  use Option_module
+  
+  implicit none
+  
+  character(len=*) :: keyword
+  character(len=*) :: string
+  type(option_type) :: option
+  
+  option%io_buffer = 'Keyword "' // &
+                     trim(keyword) // &
+                     '" not recognized in ' // &
+                     trim(string) // '.'
+  call printErrMsg(option)
+  
+end subroutine InputKeywordUnrecognized
 
 ! ************************************************************************** !
 

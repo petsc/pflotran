@@ -67,12 +67,12 @@ module Timestepper_module
   end type timestepper_type
   
   public :: TimestepperCreate, TimestepperDestroy, &
-#ifndef PROCESS_MODEL
+#if 0
             TimestepperExecuteRun, &
             TimestepperInitializeRun, &
             TimestepperFinalizeRun, &
 #endif            
-#ifndef PROCESS_MODEL
+#if 0
             FlowStepperStepToSteadyState, &
             StepperCheckpoint, &
             StepperJumpStart, &
@@ -318,7 +318,7 @@ subroutine TimestepperRead(stepper,input,option)
 
 end subroutine TimestepperRead
 
-#ifndef PROCESS_MODEL
+#if 0
 
 subroutine StepperUpdateDT(flow_timestepper,tran_timestepper,option)
   ! 
