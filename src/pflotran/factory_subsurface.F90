@@ -72,6 +72,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   use PM_RT_class
   use Timestepper_BE_class
   use Realization_class
+  use Logging_module
 #ifndef INIT_REFACTOR
   use Simulation_module
   use Init_Common_module
@@ -90,10 +91,11 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   type(option_type), pointer :: option
   
   class(pm_subsurface_type), pointer :: pm_flow
-  class(pm_rt_type), pointer :: pm_transport
+  class(pm_rt_type), pointer :: pm_rt
   class(pm_base_type), pointer :: cur_pm
   class(realization_type), pointer :: realization
   class(timestepper_BE_type), pointer :: timestepper
+  character(len=MAXSTRINGLENGTH) :: string
   
 #ifndef INIT_REFACTOR
   type(simulation_type), pointer :: simulation_old
@@ -118,7 +120,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
       class is(pm_subsurface_type)
         pm_flow => cur_pm
       class is(pm_rt_type)
-        pm_transport => cur_pm
+        pm_rt => cur_pm
       class default
         option%io_buffer = &
          'PM Class unrecogmized in SubsurfaceInitializePostPetsc.'
@@ -137,27 +139,25 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
     simulation%flow_process_model_coupler%pms => pm_flow
     simulation%flow_process_model_coupler%pm_ptr%ptr => pm_flow
     simulation%flow_process_model_coupler%realization => realization
-    simulation%flow_process_model_coupler%timestepper%name = 'FLOW'
     ! set up logging stage
     string = trim(pm_flow%name) // 'Flow'
-    call LoggingCreateStage(string,pm_flow%stage)
+    call LoggingCreateStage(string,simulation%flow_process_model_coupler%stage)
 !    timestepper => TimestepperBECreate()
 !    timestepper%solver => SolverCreate()
 !    simulation%flow_process_model_coupler%timestepper => timestepper
   endif
-  if (associated(pm_transport)) then
+  if (associated(pm_rt)) then
     simulation%rt_process_model_coupler => PMCSubsurfaceCreate()
     if (.not.associated(simulation%process_model_coupler_list)) then
       simulation%process_model_coupler_list => simulation%rt_process_model_coupler
     endif
     simulation%rt_process_model_coupler%option => option
-    simulation%rt_process_model_coupler%pms => pm_transport
-    simulation%rt_process_model_coupler%pm_ptr%ptr => pm_transport
+    simulation%rt_process_model_coupler%pms => pm_rt
+    simulation%rt_process_model_coupler%pm_ptr%ptr => pm_rt
     simulation%rt_process_model_coupler%realization => realization
-    pm_transport%timestepper%name = 'TRAN'
     ! set up logging stage
     string = 'Reactive Transport'
-    call LoggingCreateStage(string,pm_transport%stage)
+    call LoggingCreateStage(string,simulation%rt_process_model_coupler%stage)
 !    timestepper => TimestepperBECreate()
 !    timestepper%solver => SolverCreate()
 !    simulation%rt_process_model_coupler%timestepper => timestepper
@@ -581,15 +581,11 @@ subroutine InitSubsurfaceSimulation(simulation)
         ! set time stepper
         select type(cur_process_model)
           class is (pm_rt_type)
-            call cur_process_model_coupler%SetTimestepper( &
-                   tran_process_model_coupler%timestepper)
-            tran_process_model_coupler%timestepper%dt = option%tran_dt
+            cur_process_model_coupler%timestepper%dt = option%tran_dt
           class default ! otherwise flow
-            call cur_process_model_coupler%SetTimestepper( &
-                   flow_process_model_coupler%timestepper)
-            flow_process_model_coupler%timestepper%dt = option%flow_dt
+            cur_process_model_coupler%timestepper%dt = option%flow_dt
         end select
-
+        cur_process_model%output_option => realization%output_option
         call cur_process_model%Init()
         ! Until classes are resolved as user-defined contexts in PETSc, 
         ! we cannot use SetupSolvers.  Therefore, everything has to be

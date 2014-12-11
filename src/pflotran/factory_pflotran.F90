@@ -62,6 +62,7 @@ subroutine PFLOTRANInitializePostPetsc(simulation,multisimulation,option)
   use Multi_Simulation_module
   use Simulation_Base_class
   use Logging_module
+  use EOS_module
   
   implicit none
   
@@ -81,7 +82,8 @@ subroutine PFLOTRANInitializePostPetsc(simulation,multisimulation,option)
   call PetscLogStagePush(logging%stage(INIT_STAGE),ierr);CHKERRQ(ierr)
   call PetscLogEventBegin(logging%event_init,ierr);CHKERRQ(ierr)
   
-#ifdef INIT_REFACTOR  
+#ifdef INIT_REFACTOR 
+  call EOSInit()
   filename = trim(option%global_prefix) // trim(option%group_prefix) // &
              '.out'
   if (option%myrank == option%io_rank .and. option%print_to_file) then
@@ -173,6 +175,7 @@ subroutine PFLOTRANReadSimulation(simulation,option)
             case('GEOMECHANICS')
           end select
           new_pm%name = name
+          new_pm%option => option
           if (associated(cur_pm)) then
             cur_pm%next => new_pm
           else

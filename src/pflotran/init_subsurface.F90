@@ -1182,7 +1182,7 @@ subroutine InitSubsurfaceReadRequiredCards(realization)
       case('CHEMISTRY')
         !geh: for some reason, we need this with CHEMISTRY read for 
         !     multicontinuum
-        option%use_mc = PETSC_TRUE
+ !       option%use_mc = PETSC_TRUE
         call ReactionInit(realization%reaction,input,option)
     end select
   enddo
@@ -2566,6 +2566,7 @@ subroutine InitSubsurfaceReadInput(simulation)
   enddo
   
   if (associated(simulation%flow_process_model_coupler)) then
+    flow_timestepper%name = 'FLOW'
     simulation%flow_process_model_coupler%timestepper => flow_timestepper
   else
     call flow_timestepper%Destroy()
@@ -2573,6 +2574,7 @@ subroutine InitSubsurfaceReadInput(simulation)
     nullify(flow_timestepper)
   endif
   if (associated(simulation%rt_process_model_coupler)) then
+    tran_timestepper%name = 'TRAN'
     simulation%rt_process_model_coupler%timestepper => tran_timestepper
   else
     call tran_timestepper%Destroy()
