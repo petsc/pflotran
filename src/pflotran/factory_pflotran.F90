@@ -67,7 +67,9 @@ subroutine PFLOTRANInitializePostPetsc(simulation,multisimulation,option)
   
   class(simulation_base_type), pointer :: simulation
   type(multi_simulation_type), pointer :: multisimulation
-  type(option_type) :: option
+  type(option_type), pointer :: option
+  
+  character(len=MAXSTRINGLENGTH) :: filename
   PetscErrorCode :: ierr
 
   ! must come after logging is created
@@ -80,6 +82,12 @@ subroutine PFLOTRANInitializePostPetsc(simulation,multisimulation,option)
   call PetscLogEventBegin(logging%event_init,ierr);CHKERRQ(ierr)
   
 #ifdef INIT_REFACTOR  
+  filename = trim(option%global_prefix) // trim(option%group_prefix) // &
+             '.out'
+  if (option%myrank == option%io_rank .and. option%print_to_file) then
+    open(option%fid_out, file=filename, action="write", status="unknown")
+  endif
+  
   call PFLOTRANReadSimulation(simulation,option)
 #endif
   
@@ -106,13 +114,14 @@ subroutine PFLOTRANReadSimulation(simulation,option)
   implicit none
   
   class(simulation_base_type), pointer :: simulation
-  type(option_type) :: option
+  type(option_type), pointer :: option
   
   type(input_type), pointer :: input
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: name
+  character(len=MAXWORDLENGTH) :: simulation_type
   
   class(pm_base_type), pointer :: pm_master
   class(pm_base_type), pointer :: cur_pm
@@ -128,13 +137,6 @@ subroutine PFLOTRANReadSimulation(simulation,option)
   
   input => InputCreate(IN_UNIT,option%input_filename,option)
 
-  filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-             '.out'
-
-  if (option%myrank == option%io_rank .and. option%print_to_file) then
-    open(option%fid_out, file=filename, action="write", status="unknown")
-  endif
-
   string = 'SIMULATION'
   call InputFindStringInFile(input,option,string)
   call InputFindStringErrorMsg(input,option,string)
@@ -146,44 +148,63 @@ subroutine PFLOTRANReadSimulation(simulation,option)
     call InputErrorMsg(input,option,'PROCESS_MODEL','SIMULATION')
     
     call StringToUpper(word)
-    if (.not.StringCompare(word,'MASTER')) then
-      call InputReadWord(input,option,name,PETSC_TRUE)
-      call InputErrorMsg(input,option,'name','SIMULATION,PROCESS_MODEL')
-    endif
     select case(trim(word))
-      case('SUBSURFACE_FLOW')
-        call SubsurfaceReadPM(input, option, new_pm, PETSC_TRUE)
-      case('SUBSURFACE_TRANSPORT')
-        call SubsurfaceReadPM(input, option, new_pm, PETSC_FALSE)
-      case('HYDROGEOPHYSICS')
-      case('SURFACE_SUBSURFACE')
-      case('GEOMECHANICS')
+      case('SIMULATION_TYPE')
+          call InputReadWord(input,option,simulation_type,PETSC_TRUE)
+          call InputErrorMsg(input,option,'simulation_type', &
+                             'SIMULATION')
+      case('PROCESS_MODELS')
+        do
+          call InputReadPflotranString(input,option)
+          if (InputCheckExit(input,option)) exit
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'process_model', &
+                             'SIMULATION,PROCESS_MODELS')
+          call InputReadWord(input,option,name,PETSC_TRUE)
+          call InputErrorMsg(input,option,'name','SIMULATION,PROCESS_MODEL')
+          call StringToUpper(word)
+          select case(trim(word))
+            case('SUBSURFACE_FLOW')
+              call SubsurfaceReadFlowPM(input, option, new_pm)
+            case('SUBSURFACE_TRANSPORT')
+              call SubsurfaceReadRTPM(input, option, new_pm)
+            case('HYDROGEOPHYSICS')
+            case('SURFACE_SUBSURFACE')
+            case('GEOMECHANICS')
+          end select
+          new_pm%name = name
+          if (associated(cur_pm)) then
+            cur_pm%next => new_pm
+          else
+            cur_pm => new_pm
+          endif
+          if (.not.associated(pm_master)) then
+            pm_master => new_pm
+          endif
+          nullify(new_pm)
+        enddo
       case('MASTER')
         call PFLOTRANSetupPMCHierarchy(input,option,pmc_master)
     end select
-    if (associated(new_pm)) then
-      new_pm%name = name
-      if (associated(cur_pm)) then
-        cur_pm%next => new_pm
-      else
-        cur_pm => new_pm
-      endif
-      if (.not.associated(pm_master)) then
-        pm_master => new_pm
-      endif
-    endif
-    nullify(new_pm)
   enddo
 
-  ! link process models with their respective couplers
-  cur_pm => pm_master
-  do
-    if (.not.associated(cur_pm)) exit
-    call PFLOTRANLinkPMToPMC(input,option,pmc_master,cur_pm)
-    cur_pm => cur_pm%next
-  enddo
+  select case(simulation_type)
+    case('CUSTOM')
+      ! link process models with their respective couplers
+      cur_pm => pm_master
+      do
+        if (.not.associated(cur_pm)) exit
+        call PFLOTRANLinkPMToPMC(input,option,pmc_master,cur_pm)
+        cur_pm => cur_pm%next
+      enddo
+      call pmc_master%CheckNullPM(option)
+    case('SUBSURFACE_FLOW','SUBSURFACE_TRANSPORT','SUBSURFACE_FLOW_AND_TRAN')
+      call SubsurfaceInitialize(simulation,pm_master,option)  
+    case('HYDROGEOPHYICS')
+    
+  end select
   
-  call pmc_master%CheckNullPM(option)
+  call InputDestroy(input)
   
 end subroutine PFLOTRANReadSimulation
 

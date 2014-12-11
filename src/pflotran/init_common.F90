@@ -21,10 +21,6 @@ module Init_Common_module
             InitCommonReadVelocityField, &
             InitCommonVerifyAllCouplers
             
-  ! to be moved to respective init_xxx module
-  public :: InitSubsurfaceSetFlowMode, &
-            InitSubsurfaceReadRequiredCards
-  
 contains
 
 ! ************************************************************************** !
@@ -192,7 +188,7 @@ subroutine Init(simulation)
   ! initialize flow mode
   if (len_trim(option%flowmode) > 0) then
     ! set the operational mode (e.g.  MPH_MODE, etc)
-    call InitSubsurfaceSetFlowMode(option)
+    call InitSetFlowMode(option)
   else
     option%nphase = 1
     option%liquid_phase = 1
@@ -1873,7 +1869,7 @@ end subroutine InitReadInput
 
 ! ************************************************************************** !
 
-subroutine InitSubsurfaceSetFlowMode(option)
+subroutine InitSetFlowMode(option)
   ! 
   ! Sets the flow mode (richards, vadose, mph, etc.)
   ! 
@@ -1968,7 +1964,7 @@ subroutine InitSubsurfaceSetFlowMode(option)
       call printErrMsg(option)
   end select
   
-end subroutine InitSubsurfaceSetFlowMode
+end subroutine InitSetFlowMode
 
 ! ************************************************************************** !
 

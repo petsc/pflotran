@@ -14,13 +14,15 @@ module Factory_Subsurface_module
             SubsurfaceInitializePostPETSc, &
             HijackSimulation, &
             SubsurfaceJumpStart, &
-            SubsurfaceReadPM
+            ! move to init_subsurface
+            SubsurfaceReadFlowPM, &
+            SubsurfaceReadRTPM
 
 contains
 
 ! ************************************************************************** !
 
-subroutine SubsurfaceInitialize(simulation_base,option)
+subroutine SubsurfaceInitialize(simulation_base,pm_list,option)
   ! 
   ! Sets up PFLOTRAN subsurface simulation
   ! 
@@ -31,16 +33,19 @@ subroutine SubsurfaceInitialize(simulation_base,option)
   use Option_module
   use Input_Aux_module
   use Simulation_Base_class
+  use PM_Base_class
   
   implicit none
   
   class(simulation_base_type), pointer :: simulation_base
+  class(pm_base_type), pointer :: pm_list
   type(option_type), pointer :: option
 
   class(subsurface_simulation_type), pointer :: simulation
 
   ! NOTE: PETSc must already have been initialized here!
   simulation => SubsurfaceSimulationCreate(option)
+  simulation%process_model_list => pm_list
   call SubsurfaceInitializePostPetsc(simulation,option)
   
   ! set first process model coupler as the master
@@ -61,34 +66,225 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   ! Date: 06/07/13
   ! 
 
-  use Simulation_module
   use Option_module
+#ifndef INIT_REFACTOR
+  use Simulation_module
   use Init_Common_module
+#else  
+  use Simulation_Subsurface_class
+  use PMC_Subsurface_class
+  use PM_Base_class
+  use PM_Subsurface_class
+  use PM_RT_class
+  use Realization_class
+  use Solver_module
+  use Timestepper_BE_class
+  use Waypoint_module
+  use Init_Subsurface_module
+  use Input_Aux_module
+#endif  
   
   implicit none
   
   class(subsurface_simulation_type) :: simulation
   type(option_type), pointer :: option
   
+  class(pm_subsurface_type), pointer :: pm_flow
+  class(pm_rt_type), pointer :: pm_transport
+  class(pm_base_type), pointer :: cur_pm
+  class(realization_type), pointer :: realization
+  class(timestepper_BE_type), pointer :: timestepper
+  
+#ifndef INIT_REFACTOR
   type(simulation_type), pointer :: simulation_old
   
   ! process command line arguments specific to subsurface
   call SubsurfInitCommandLineSettings(option)
 
-#ifndef INIT_REFACTOR
   simulation_old => SimulationCreate(option)
   call Init(simulation_old)
   call HijackSimulation(simulation_old,simulation)
-#endif  
-  call SubsurfaceJumpStart(simulation)
   
   ! no longer need simulation
   ! nullify realization and regression so that it is not destroyed
   nullify(simulation_old%realization)
   nullify(simulation_old%regression)
   call SimulationDestroy(simulation_old)
+#else
+  cur_pm => simulation%process_model_list
+  do
+    if (.not.associated(cur_pm)) exit
+    select type(cur_pm)
+      class is(pm_subsurface_type)
+        pm_flow => cur_pm
+      class is(pm_rt_type)
+        pm_transport => cur_pm
+      class default
+        option%io_buffer = &
+         'PM Class unrecogmized in SubsurfaceInitializePostPetsc.'
+        call printErrMsg(option)
+    end select
+    cur_pm => cur_pm%next
+  enddo
+  call SubsurfaceSetFlowMode(pm_flow,option)
+  realization => RealizationCreate(option)
+  simulation%realization => realization
+  realization%waypoint_list => WaypointListCreate()
+  if (associated(pm_flow)) then
+    simulation%flow_process_model_coupler => PMCSubsurfaceCreate()
+    simulation%process_model_coupler_list => simulation%flow_process_model_coupler
+    simulation%flow_process_model_coupler%option => option
+    simulation%flow_process_model_coupler%pms => pm_flow
+    simulation%flow_process_model_coupler%pm_ptr%ptr => pm_flow
+    simulation%flow_process_model_coupler%realization => realization
+    simulation%flow_process_model_coupler%timestepper%name = 'FLOW'
+    ! set up logging stage
+    string = trim(pm_flow%name) // 'Flow'
+    call LoggingCreateStage(string,pm_flow%stage)
+!    timestepper => TimestepperBECreate()
+!    timestepper%solver => SolverCreate()
+!    simulation%flow_process_model_coupler%timestepper => timestepper
+  endif
+  if (associated(pm_transport)) then
+    simulation%rt_process_model_coupler => PMCSubsurfaceCreate()
+    if (.not.associated(simulation%process_model_coupler_list)) then
+      simulation%process_model_coupler_list => simulation%rt_process_model_coupler
+    endif
+    simulation%rt_process_model_coupler%option => option
+    simulation%rt_process_model_coupler%pms => pm_transport
+    simulation%rt_process_model_coupler%pm_ptr%ptr => pm_transport
+    simulation%rt_process_model_coupler%realization => realization
+    pm_transport%timestepper%name = 'TRAN'
+    ! set up logging stage
+    string = 'Reactive Transport'
+    call LoggingCreateStage(string,pm_transport%stage)
+!    timestepper => TimestepperBECreate()
+!    timestepper%solver => SolverCreate()
+!    simulation%rt_process_model_coupler%timestepper => timestepper
+  endif
   
+  realization%input => InputCreate(IN_UNIT,option%input_filename,option)
+  call InitSubsurfaceReadRequiredCards(realization)
+  call InitSubsurfaceReadInput(simulation)
+  call InputDestroy(realization%input)
+  call InitSubsurfaceSimulation(simulation)
+  
+#endif
+  call SubsurfaceJumpStart(simulation)
+
 end subroutine SubsurfaceInitializePostPetsc
+
+! ************************************************************************** !
+
+subroutine SubsurfaceSetFlowMode(pm_flow,option)
+  ! 
+  ! Sets the flow mode (richards, vadose, mph, etc.)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/07
+  ! 
+
+  use Option_module
+  use PM_Subsurface_class
+  use PM_Base_class
+  use PM_Flash2_class
+  use PM_General_class
+  use PM_Immis_class
+  use PM_Miscible_class
+  use PM_Mphase_class
+  use PM_Richards_class
+  use PM_TH_class
+
+  implicit none 
+
+  type(option_type) :: option
+  class(pm_subsurface_type), pointer :: pm_flow
+  
+  if (.not.associated(pm_flow)) then
+    option%nphase = 1
+    option%liquid_phase = 1
+    ! assume default isothermal when only transport
+    option%use_isothermal = PETSC_TRUE  
+    return
+  endif
+  
+  select type(pm_flow)
+    class is (pm_flash2_type)
+      option%iflowmode = FLASH2_MODE
+      option%nphase = 2
+      option%liquid_phase = 1      
+      option%gas_phase = 2      
+      option%nflowdof = 3
+      option%nflowspec = 2
+      option%itable = 2
+      option%use_isothermal = PETSC_FALSE
+    class is (pm_general_type)
+      option%iflowmode = G_MODE
+      option%nphase = 2
+      option%liquid_phase = 1  ! liquid_pressure
+      option%gas_phase = 2     ! gas_pressure
+
+      option%air_pressure_id = 3
+      option%capillary_pressure_id = 4
+      option%vapor_pressure_id = 5
+      option%saturation_pressure_id = 6
+
+      option%water_id = 1
+      option%air_id = 2
+      option%energy_id = 3
+
+      option%nflowdof = 3
+      option%nflowspec = 2
+      option%use_isothermal = PETSC_FALSE
+    class is (pm_immis_type)
+      option%iflowmode = IMS_MODE
+      option%nphase = 2
+      option%liquid_phase = 1      
+      option%gas_phase = 2      
+      option%nflowdof = 3
+      option%nflowspec = 2
+      option%itable = 2
+      option%io_buffer = 'Material Auxvars must be refactored for IMMIS.'
+      call printErrMsg(option)
+    class is (pm_miscible_type)
+      option%iflowmode = MIS_MODE
+      option%nphase = 1
+      option%liquid_phase = 1      
+      option%gas_phase = 2      
+      option%nflowdof = 2
+      option%nflowspec = 2
+      option%io_buffer = 'Material Auxvars must be refactored for MISCIBLE.'
+      call printErrMsg(option)
+    class is (pm_mphase_type)
+      option%iflowmode = MPH_MODE
+      option%nphase = 2
+      option%liquid_phase = 1      
+      option%gas_phase = 2      
+      option%nflowdof = 3
+      option%nflowspec = 2
+      option%itable = 2 ! read CO2DATA0.dat
+!     option%itable = 1 ! create CO2 database: co2data.dat
+      option%use_isothermal = PETSC_FALSE
+    class is (pm_richards_type)
+      option%iflowmode = RICHARDS_MODE
+      option%nphase = 1
+      option%liquid_phase = 1      
+      option%nflowdof = 1
+      option%nflowspec = 1
+      option%use_isothermal = PETSC_TRUE
+    class is (pm_th_type)
+      option%iflowmode = TH_MODE
+      option%nphase = 1
+      option%liquid_phase = 1      
+      option%gas_phase = 2
+      option%nflowdof = 2
+      option%nflowspec = 1
+      option%use_isothermal = PETSC_FALSE
+      option%flow%store_fluxes = PETSC_TRUE
+    class default
+  end select
+  
+end subroutine SubsurfaceSetFlowMode
 
 ! ************************************************************************** !
 
@@ -128,7 +324,7 @@ end subroutine SubsurfInitCommandLineSettings
 
 ! ************************************************************************** !
 
-subroutine SubsurfaceReadPM(input, option, pm, for_flow)
+subroutine SubsurfaceReadFlowPM(input, option, pm)
   ! 
   ! Author: Glenn Hammond
   ! Date: 06/11/13
@@ -142,13 +338,10 @@ subroutine SubsurfaceReadPM(input, option, pm, for_flow)
   use PM_Base_class
   use PM_Flash2_class
   use PM_General_class
-  use PM_Geomechanics_Force_class
   use PM_Immis_class
   use PM_Miscible_class
   use PM_Mphase_class
   use PM_Richards_class
-  use PM_RT_class
-  use PM_Surface_class
   use PM_TH_class
   
   use Init_Common_module
@@ -158,16 +351,77 @@ subroutine SubsurfaceReadPM(input, option, pm, for_flow)
   type(input_type) :: input
   type(option_type) :: option
   class(pm_base_type), pointer :: pm
-  PetscBool :: for_flow
   
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXSTRINGLENGTH) :: error_string
   
   error_string = 'SIMULATION,PROCESS_MODEL'
 
-  if (.not.for_flow) then
-    pm => PMRTCreate()
-  endif
+  word = ''
+  do   
+    call InputReadPflotranString(input,option)
+    if (InputCheckExit(input,option)) exit
+    call InputReadWord(input,option,word,PETSC_FALSE)
+    call StringToUpper(word)
+    select case(word)
+      case('MODE')
+        call InputReadWord(input,option,word,PETSC_FALSE)
+        call InputErrorMsg(input,option,'flow mode',error_string)
+        call StringToUpper(word)
+        select case(word)
+          case('GENERAL')
+            pm => PMGeneralCreate()
+          case('MPHASE')
+            pm => PMMphaseCreate()
+          case('FLASH2')
+            pm => PMFlash2Create()
+          case('IMS','IMMIS','THS')
+            pm => PMImmisCreate()
+          case('MIS','MISCIBLE')
+            pm => PMMiscibleCreate()
+          case('RICHARDS')
+            pm => PMRichardsCreate()
+          case('TH')
+            pm => PMTHCreate()
+          case default
+            option%io_buffer = 'FLOW PM "' // trim(word) // '" not recognized.'
+            call printErrMsg(option)
+        end select
+      case default
+    end select
+  enddo
+  
+end subroutine SubsurfaceReadFlowPM
+
+! ************************************************************************** !
+
+subroutine SubsurfaceReadRTPM(input, option, pm)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/11/13
+  !
+  use Input_Aux_module
+  use Option_module
+  use String_module
+  
+  use PMC_Base_class
+  use PM_Base_class
+  use PM_RT_class
+  
+  use Init_Common_module
+
+  implicit none
+  
+  type(input_type) :: input
+  type(option_type) :: option
+  class(pm_base_type), pointer :: pm
+  
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXSTRINGLENGTH) :: error_string
+  
+  error_string = 'SIMULATION,PROCESS_MODEL'
+
+  pm => PMRTCreate()
   
   word = ''
   do   
@@ -175,46 +429,251 @@ subroutine SubsurfaceReadPM(input, option, pm, for_flow)
     if (InputCheckExit(input,option)) exit
     call InputReadWord(input,option,word,PETSC_FALSE)
     call StringToUpper(word)
-    if (for_flow) then
-      select case(word)
-        case('MODE')
-          call InputReadWord(input,option,word,PETSC_FALSE)
-          call InputErrorMsg(input,option,'flow mode',error_string)
-          call StringToUpper(word)
-          select case(word)
-            case('GENERAL')
-              pm => PMGeneralCreate()
-            case('MPHASE')
-              pm => PMMphaseCreate()
-            case('FLASH2')
-              pm => PMFlash2Create()
-            case('IMS','IMMIS','THS')
-              pm => PMImmisCreate()
-            case('MIS','MISCIBLE')
-              pm => PMMiscibleCreate()
-            case('RICHARDS')
-              pm => PMRichardsCreate()
-            case('TH')
-              pm => PMTHCreate()
-            case default
-              option%io_buffer = 'FLOW PM "' // trim(word) // '" not recognized.'
-              call printErrMsg(option)
-          end select
-          option%flowmode = word
-          call InitSubsurfaceSetFlowMode(option)
-        case default
-      end select
-    else
-      call InputReadWord(input,option,word,PETSC_FALSE)
-      call StringToUpper(word)
-      select case(word)
-        case('OPERATOR_SPLIT','OPERATOR_SPLITTING')
-        case default ! includes 'GLOBAL_IMPLICIT'
-      end select
-    endif
+    select case(word)
+      case('OPERATOR_SPLIT','OPERATOR_SPLITTING')
+      case default ! includes 'GLOBAL_IMPLICIT'
+    end select
   enddo
   
-end subroutine SubsurfaceReadPM
+end subroutine SubsurfaceReadRTPM
+
+
+! ************************************************************************** !
+
+subroutine InitSubsurfaceSimulation(simulation)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/11/13
+  ! 
+
+  use Realization_class
+  use Option_module
+  use Output_module, only : Output
+  use Output_Aux_module
+  
+  
+  use Global_module
+  use Init_Common_module
+  use Init_Subsurface_module
+  use Init_Subsurface_Flow_module
+  use Init_Subsurface_Tran_module
+  use Waypoint_module
+  use Strata_module
+  
+  use PMC_Subsurface_class
+  use PMC_Material_class
+  use PMC_Base_class
+  use PM_Base_class
+  
+  implicit none
+  
+#include "finclude/petscsnes.h"  
+  
+  class(subsurface_simulation_type) :: simulation
+  
+  class(pmc_subsurface_type), pointer :: flow_process_model_coupler
+  class(pmc_subsurface_type), pointer :: tran_process_model_coupler
+  class(pmc_material_type), pointer :: material_process_model_coupler
+  class(pmc_base_type), pointer :: cur_process_model_coupler
+  class(pmc_base_type), pointer :: cur_process_model_coupler_top
+  class(pm_base_type), pointer :: cur_process_model
+  
+  class(realization_type), pointer :: realization
+  type(option_type), pointer :: option
+  character(len=MAXSTRINGLENGTH) :: string
+  SNESLineSearch :: linesearch
+  PetscErrorCode :: ierr
+  
+  realization => simulation%realization
+  option => realization%option
+
+! begin from old Init()  
+  call InitSubsurfSetupRealization(realization)
+  
+  !TODO(geh): refactor
+  if (associated(simulation%flow_process_model_coupler%timestepper)) then
+    simulation%tran_process_model_coupler%timestepper%cur_waypoint => &
+      realization%waypoint_list%first
+  endif
+  if (associated(simulation%tran_process_model_coupler%timestepper)) then
+    simulation%tran_process_model_coupler%timestepper%cur_waypoint => &
+      realization%waypoint_list%first
+  endif
+  
+  !TODO(geh): refactor
+  ! initialize global auxiliary variable object
+  call GlobalSetup(realization)
+  
+  ! always call the flow side since a velocity field still has to be
+  ! set if no flow exists
+  call InitSubsurfFlowSetupRealization(realization)
+  if (option%ntrandof > 0) call InitSubsurfTranSetupRealization(realization)
+  call OutputVariableAppendDefaults(realization%output_option% &
+                                      output_variable_list,option)
+    ! check for non-initialized data sets, e.g. porosity, permeability
+  call RealizationNonInitializedData(realization)
+
+  if (realization%debug%print_couplers) then
+    call InitCommonVerifyAllCouplers(realization)
+  endif
+  if (realization%debug%print_waypoints) then
+    call WaypointListPrint(realization%waypoint_list,option, &
+                           realization%output_option)
+  endif  
+
+  if (option%nflowdof > 0) call InitSubsurfFlowSetupSolvers(realization, &
+                                         simulation_old%flow_timestepper%solver)
+  if (option%ntrandof > 0) call InitSubsurfTranSetupSolvers(realization, &
+                                         simulation_old%tran_timestepper%solver)
+  call RegressionCreateMapping(simulation_old%regression,realization)
+! end from old Init()
+  
+  simulation%waypoint_list => RealizCreateSyncWaypointList(realization)
+
+  !----------------------------------------------------------------------------!
+  ! This section for setting up new process model approach
+  !----------------------------------------------------------------------------!
+  simulation%output_option => realization%output_option
+
+  
+  if (StrataEvolves(realization%patch%strata_list)) then
+    material_process_model_coupler => PMCMaterialCreate()
+    material_process_model_coupler%option => option
+    material_process_model_coupler%realization => realization
+    ! place the material process model as %peer for the top pmc
+    simulation%process_model_coupler_list%peer => &
+      material_process_model_coupler
+  endif
+
+  ! For each ProcessModel, set:
+  ! - realization (subsurface or surface),
+  ! - stepper (flow/trans/surf_flow),
+  ! - SNES functions (Residual/Jacobain), or TS function (RHSFunction)
+  cur_process_model_coupler_top => simulation%process_model_coupler_list
+  do
+    if (.not.associated(cur_process_model_coupler_top)) exit
+    cur_process_model_coupler_top%waypoint_list => realization%waypoint_list
+    cur_process_model_coupler => cur_process_model_coupler_top
+    do
+      if (.not.associated(cur_process_model_coupler)) exit
+      cur_process_model => cur_process_model_coupler%pms
+      do
+        if (.not.associated(cur_process_model)) exit
+        ! set realization
+        select type(cur_process_model)
+          class is (pm_subsurface_type)
+            call cur_process_model%PMSubsurfaceSetRealization(realization)
+          class is (pm_rt_type)
+            call cur_process_model%PMRTSetRealization(realization)
+        end select
+        ! set time stepper
+        select type(cur_process_model)
+          class is (pm_rt_type)
+            call cur_process_model_coupler%SetTimestepper( &
+                   tran_process_model_coupler%timestepper)
+            tran_process_model_coupler%timestepper%dt = option%tran_dt
+          class default ! otherwise flow
+            call cur_process_model_coupler%SetTimestepper( &
+                   flow_process_model_coupler%timestepper)
+            flow_process_model_coupler%timestepper%dt = option%flow_dt
+        end select
+
+        call cur_process_model%Init()
+        ! Until classes are resolved as user-defined contexts in PETSc, 
+        ! we cannot use SetupSolvers.  Therefore, everything has to be
+        ! explicitly defined here.  This may be easier in the long
+        ! run as it creates an intermediate refactor in pulling 
+        ! functionality in Init() into the factories - geh
+#if 0        
+        select type(ts => cur_process_model_coupler%timestepper)
+          class is(timestepper_BE_type)
+            call cur_process_model%SetupSolvers(ts%solver)
+        end select
+#endif
+#if 0
+        select type(ts => cur_process_model_coupler%timestepper)
+          class is(timestepper_BE_type)
+            call SNESGetLineSearch(ts%solver%snes, linesearch, ierr);CHKERRQ(ierr)
+            select type(cur_process_model)
+              class is(pm_richards_type)
+                if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
+                    dabs(option%saturation_change_limit) > 0.d0) then
+                  call SNESLineSearchSetPreCheck(linesearch, &
+                                                 RichardsCheckUpdatePre, &
+                                                 realization,ierr);CHKERRQ(ierr)
+                endif              
+                if (ts%solver%check_post_convergence) then
+                  call SNESLineSearchSetPostCheck(linesearch, &
+                                                  RichardsCheckUpdatePost, &
+                                                  realization,ierr);CHKERRQ(ierr)        
+                endif
+              class is(pm_general_type)
+                call SNESLineSearchSetPreCheck(linesearch, &
+                                               GeneralCheckUpdatePre, &
+                                               realization,ierr);CHKERRQ(ierr)              
+                if (ts%solver%check_post_convergence) then
+                  call SNESLineSearchSetPostCheck(linesearch, &
+                                                  GeneralCheckUpdatePost, &
+                                                  realization,ierr);CHKERRQ(ierr)        
+                endif
+              class is(pm_th_type)
+                if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
+                    dabs(option%pressure_change_limit) > 0.d0 .or. &
+                    dabs(option%temperature_change_limit) > 0.d0) then
+                  call SNESLineSearchSetPreCheck(linesearch, &
+                                                 THCheckUpdatePre, &
+                                                 realization,ierr);CHKERRQ(ierr)
+                endif 
+                if (ts%solver%check_post_convergence) then
+                  call SNESLineSearchSetPostCheck(linesearch, &
+                                                  THCheckUpdatePost, &
+                                                  realization,ierr);CHKERRQ(ierr)        
+                endif
+              class is(pm_rt_type)
+                if (realization%reaction%check_update) then
+                  call SNESLineSearchSetPreCheck(linesearch,RTCheckUpdatePre, &
+                                                 realization,ierr);CHKERRQ(ierr)
+                endif
+                if (ts%solver%check_post_convergence) then
+                  call SNESLineSearchSetPostCheck(linesearch,RTCheckUpdatePost, &
+                                                  realization,ierr);CHKERRQ(ierr)
+                endif        
+              class default
+            end select
+        end select
+#endif
+#if 0        
+        select type(cur_process_model)
+          class default
+            select type(ts => cur_process_model_coupler%timestepper)
+              class is(timestepper_BE_type)
+                call SNESSetFunction(ts%solver%snes, &
+                                     cur_process_model%residual_vec, &
+                                     PMResidual, &
+                                     cur_process_model_coupler%pm_ptr, &
+                                     ierr);CHKERRQ(ierr)
+                call SNESSetJacobian(ts%solver%snes, &
+                                     ts%solver%J, &
+                                     ts%solver%Jpre, &
+                                     PMJacobian, &
+                                     cur_process_model_coupler%pm_ptr, &
+                                     ierr);CHKERRQ(ierr)
+            end select
+        end select
+#endif            
+        cur_process_model => cur_process_model%next
+      enddo
+      ! has to be called after realizations are set above
+      call cur_process_model_coupler%SetupSolvers()
+      cur_process_model_coupler => cur_process_model_coupler%child
+    enddo
+    cur_process_model_coupler_top => cur_process_model_coupler_top%peer
+  enddo
+  
+  ! point the top process model coupler to Output
+  simulation%process_model_coupler_list%Output => Output
+
+end subroutine InitSubsurfaceSimulation
 
 ! ************************************************************************** !
 

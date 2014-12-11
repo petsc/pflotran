@@ -1,6 +1,7 @@
 module Simulation_Base_class
 
   use PMC_Base_class
+  use PM_Base_class
   use Option_module
   use Output_Aux_module
   use Output_module
@@ -21,6 +22,7 @@ module Simulation_Base_class
     type(output_option_type), pointer :: output_option
     PetscInt :: stop_flag
     class(pmc_base_type), pointer :: process_model_coupler_list
+    class(pm_base_type), pointer :: process_model_list
     type(simulation_aux_type), pointer :: sim_aux
   contains
     procedure, public :: Init => SimulationBaseInit
@@ -86,6 +88,7 @@ subroutine SimulationBaseInit(this,option)
   nullify(this%waypoint_list)
   nullify(this%output_option)
   nullify(this%process_model_coupler_list)
+  nullify(this%process_model_list)
   this%sim_aux => SimAuxCreate()
   this%stop_flag = TS_CONTINUE
 
