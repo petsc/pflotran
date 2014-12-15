@@ -1176,6 +1176,8 @@ subroutine InitReadInput(simulation)
               call InputSkipToEnd(input,option,card)
             endif
           case default
+            option%io_buffer = 'TIMESTEPPER must specify FLOW or TRANSPORT.'
+            call printErrMsg(option)
             if (associated(default_timestepper)) then
               call TimestepperRead(default_timestepper,input,option)
             else
