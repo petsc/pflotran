@@ -176,6 +176,42 @@ end subroutine SubsurfaceInitializePostPetsc
 
 ! ************************************************************************** !
 
+subroutine SubsurfInitCommandLineSettings(option)
+  ! 
+  ! Initializes PFLTORAN subsurface output
+  ! filenames, etc.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/06/13
+  ! 
+
+  use Option_module
+  use Input_Aux_module
+  
+  implicit none
+  
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscBool :: option_found
+  PetscBool :: bool_flag
+  
+  string = '-multisimulation'
+  call InputGetCommandLineTruth(string,bool_flag,option_found,option)
+  if (option_found) then
+    option%subsurface_simulation_type = MULTISIMULATION_SIM_TYPE
+  endif
+
+  string = '-stochastic'
+  call InputGetCommandLineTruth(string,bool_flag,option_found,option)
+  if (option_found) then
+    option%subsurface_simulation_type = STOCHASTIC_SIM_TYPE
+  endif
+  
+end subroutine SubsurfInitCommandLineSettings
+
+! ************************************************************************** !
+
 subroutine SubsurfaceSetFlowMode(pm_flow,option)
   ! 
   ! Sets the flow mode (richards, vadose, mph, etc.)
@@ -285,42 +321,6 @@ subroutine SubsurfaceSetFlowMode(pm_flow,option)
   end select
   
 end subroutine SubsurfaceSetFlowMode
-
-! ************************************************************************** !
-
-subroutine SubsurfInitCommandLineSettings(option)
-  ! 
-  ! Initializes PFLTORAN subsurface output
-  ! filenames, etc.
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 06/06/13
-  ! 
-
-  use Option_module
-  use Input_Aux_module
-  
-  implicit none
-  
-  type(option_type) :: option
-  
-  character(len=MAXSTRINGLENGTH) :: string
-  PetscBool :: option_found
-  PetscBool :: bool_flag
-  
-  string = '-multisimulation'
-  call InputGetCommandLineTruth(string,bool_flag,option_found,option)
-  if (option_found) then
-    option%subsurface_simulation_type = MULTISIMULATION_SIM_TYPE
-  endif
-
-  string = '-stochastic'
-  call InputGetCommandLineTruth(string,bool_flag,option_found,option)
-  if (option_found) then
-    option%subsurface_simulation_type = STOCHASTIC_SIM_TYPE
-  endif
-  
-end subroutine SubsurfInitCommandLineSettings
 
 ! ************************************************************************** !
 
