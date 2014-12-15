@@ -2973,7 +2973,7 @@ subroutine RTResidualEquilibrateCO2(r,realization)
     if (patch%imat(ghosted_id) <= 0) cycle
     if (global_auxvars(ghosted_id)%sat(GAS_PHASE) > 0.d0 .and. &
       global_auxvars(ghosted_id)%sat(GAS_PHASE) < 1.d0) then
-      ! do something
+
       jco2 = reaction%species_idx%co2_aq_id
 
       tc = global_auxvars(ghosted_id)%temp
@@ -3005,10 +3005,10 @@ subroutine RTResidualEquilibrateCO2(r,realization)
       r_p(jco2+(local_id-1)*reaction%ncomp) = &
       rt_auxvars(ghosted_id)%pri_molal(jco2) - mco2eq
 
-      print *,'check_EOS', local_id,jco2,reaction%ncomp, mco2eq, &
-        rt_auxvars(ghosted_id)%pri_molal(jco2), &
-        sat_pressure, henry, &
-        yco2, fg, xphi,r_p(jco2+(local_id-1)*reaction%ncomp)
+!     print *,'check_EOS', local_id,jco2,reaction%ncomp, mco2eq, &
+!       rt_auxvars(ghosted_id)%pri_molal(jco2), &
+!       sat_pressure, henry, &
+!       yco2, fg, xphi,r_p(jco2+(local_id-1)*reaction%ncomp)
     endif
   enddo
   
@@ -3648,7 +3648,6 @@ subroutine RTJacobianEquilibrateCO2(J,realization)
   use Field_module
   use Grid_module
 
-  
   implicit none
 
   Mat :: J
@@ -3665,9 +3664,10 @@ subroutine RTJacobianEquilibrateCO2(J,realization)
     
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
   type(global_auxvar_type), pointer :: global_auxvars(:)
-  PetscInt :: zero_rows(realization%patch%grid%nlmax)
+  PetscInt :: zero_rows(realization%patch%grid%nlmax * realization%option%ntrandof)
+  PetscInt :: ghosted_rows(realization%patch%grid%nlmax)
   PetscInt :: zero_count
-  PetscInt :: i, ico2_dof
+  PetscInt :: i, jco2
   PetscReal :: jacobian_entry
   
   option => realization%option
@@ -3682,40 +3682,41 @@ subroutine RTJacobianEquilibrateCO2(J,realization)
   ! to be zeroed in a single call by passing in a list).  the second to 
   ! add the equilibration
 
-  jacobian_entry = 0.d0
-  ico2_dof = reaction%species_idx%co2_aq_id
+  jacobian_entry = 1.d0
+  jco2 = reaction%species_idx%co2_aq_id
   zero_count = 0
   zero_rows = 0
+  ghosted_rows = 0
   do local_id = 1, grid%nlmax  ! For each local node do...
     ghosted_id = grid%nL2G(local_id)
     if (patch%imat(ghosted_id) <= 0) cycle
     if (global_auxvars(ghosted_id)%sat(GAS_PHASE) > 0.d0 .and. &
       global_auxvars(ghosted_id)%sat(GAS_PHASE) < 1.d0) then
       zero_count = zero_count + 1
-      zero_rows(zero_count) = grid%nL2G((local_id-1)*option%ntrandof + ico2_dof)-1 ! zero indexing
-!     zero_rows(zero_count) = local_id-1 ! zero indexing
+      zero_rows(zero_count) = jco2+(local_id-1)*reaction%ncomp-1
+!     zero_rows(zero_count) = grid%nL2G(jco2+(local_id-1)*reaction%ncomp)-1
+      ghosted_rows(zero_count) = ghosted_id
     endif
   enddo
+
+! print *,'rowsco2: ',zero_count,zero_rows(1:zero_count)
   call MatZeroRowsLocal(J,zero_count,zero_rows(1:zero_count),jacobian_entry, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                         ierr);CHKERRQ(ierr)
 !#if 0
   do i = 1, zero_count
-    ghosted_id = zero_rows(i)+1 ! zero indexing back to 1-based
-!   ghosted_id = grid%nL2G(local_id)
-!   local_id = grid%nG2L(ghosted_id)
+    ghosted_id = ghosted_rows(i) ! zero indexing back to 1-based
     if (patch%imat(ghosted_id) <= 0) cycle
-    ! do your magic setting values using MatSetValuesLocal to set values
-    ! on diagonal
-    idof = (ghosted_id-1)*option%ntrandof + ico2_dof
     if (reaction%use_log_formulation) then
-      jacobian_entry = rt_auxvars(ghosted_id)%pri_molal(ico2_dof)
+      jacobian_entry = rt_auxvars(ghosted_id)%pri_molal(jco2)
     else
       jacobian_entry = 1.d0
     endif
 
-    print *,'RTjac: ',ghosted_id,idof,zero_count,reaction%use_log_formulation,jacobian_entry
+!   print *,'RTjac: ',i,jco2,ghosted_id,idof,zero_count,reaction%use_log_formulation,jacobian_entry
 
+    idof = (ghosted_id-1)*option%ntrandof + jco2
+!   print *,'jacco2: ',i,idof,ghosted_id,zero_count,jacobian_entry
     call MatSetValuesLocal(J,1,idof-1,1,idof-1,jacobian_entry,INSERT_VALUES, &
                            ierr);CHKERRQ(ierr)
   enddo
