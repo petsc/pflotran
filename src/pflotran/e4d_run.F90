@@ -18,7 +18,8 @@ contains
        return
     end if
 
-    if(.not. allocated(pf_sol)) allocate(pf_sol(pflotran_solution_vec_size))
+    if(.not. allocated(pf_tracer)) allocate(pf_tracer(pflotran_vec_size))
+    if(.not. allocated(pf_saturation)) allocate(pf_saturation(pflotran_vec_size))
     if(.not. allocated(sigma)) allocate(sigma(nelem))
 
     call get_mcomm
@@ -133,15 +134,27 @@ contains
     !!this code will change depending on how we send the PF solution
     !!to the E4D master process here
 !geh    call MPI_RECV(pf_sol,nelem,MPI_REAL,0,0,PFE4D_COMM,status,ierr)
-    call VecScatterBegin(pflotran_scatter,pflotran_solution_vec_mpi, &
-                         pflotran_solution_vec_seq, &
+    ! tracer
+    call VecScatterBegin(pflotran_scatter,pflotran_tracer_vec_mpi, &
+                         pflotran_tracer_vec_seq, &
                          INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
-    call VecScatterEnd(pflotran_scatter,pflotran_solution_vec_mpi, &
-                       pflotran_solution_vec_seq, &
+    call VecScatterEnd(pflotran_scatter,pflotran_tracer_vec_mpi, &
+                       pflotran_tracer_vec_seq, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
-    call VecGetArrayF90(pflotran_solution_vec_seq,vec_ptr,ierr);CHKERRQ(ierr)
-    pf_sol = vec_ptr
-    call VecRestoreArrayF90(pflotran_solution_vec_seq,vec_ptr, &
+    call VecGetArrayF90(pflotran_tracer_vec_seq,vec_ptr,ierr);CHKERRQ(ierr)
+    pf_tracer = vec_ptr
+    call VecRestoreArrayF90(pflotran_tracer_vec_seq,vec_ptr, &
+                            ierr);CHKERRQ(ierr)
+    ! saturation                
+    call VecScatterBegin(pflotran_scatter,pflotran_saturation_vec_mpi, &
+                         pflotran_saturation_vec_seq, &
+                         INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+    call VecScatterEnd(pflotran_scatter,pflotran_saturation_vec_mpi, &
+                       pflotran_saturation_vec_seq, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+    call VecGetArrayF90(pflotran_saturation_vec_seq,vec_ptr,ierr);CHKERRQ(ierr)
+    pf_saturation = vec_ptr
+    call VecRestoreArrayF90(pflotran_saturation_vec_seq,vec_ptr, &
                             ierr);CHKERRQ(ierr)
   end subroutine get_pf_sol
   !____________________________________________________________________
@@ -164,7 +177,7 @@ contains
    
     do i=1,nmap
        if(zones(map_inds(i,1))==2) then
-          sigma(map_inds(i,1))=sigma(map_inds(i,1))+pf_sol(map_inds(i,2))*map(i)*K
+          sigma(map_inds(i,1))=sigma(map_inds(i,1))+pf_tracer(map_inds(i,2))*map(i)*K
        end if
     end do
     do i=1,nelem

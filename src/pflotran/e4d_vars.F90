@@ -64,7 +64,8 @@ module vars
   real, dimension(:,:), allocatable :: e_pos
   real, dimension(:,:), allocatable :: nodes               !!node positions
   real, dimension(:,:), allocatable :: poles               !!pole solutions
-  real, dimension(:), allocatable :: pf_sol                !!pflotran solution
+  real, dimension(:), allocatable :: pf_tracer             !!pflotran tracer solution
+  real, dimension(:), allocatable :: pf_saturation         !!pflotran saturation solution
   real, dimension(:), allocatable :: sigma                 !!element conductivities
   real, dimension(:), allocatable :: dpred                 !!simulated data vector
   real, dimension(:), allocatable :: dobs                  !!observed data
@@ -89,10 +90,12 @@ module vars
   PC :: P
   logical :: nzero_flag=.true.
   PetscScalar, pointer :: vloc(:)
-  Vec :: pflotran_solution_vec_mpi
-  Vec :: pflotran_solution_vec_seq
+  Vec :: pflotran_tracer_vec_mpi
+  Vec :: pflotran_tracer_vec_seq
+  Vec :: pflotran_saturation_vec_mpi
+  Vec :: pflotran_saturation_vec_seq
   VecScatter :: pflotran_scatter
-  PetscInt :: pflotran_solution_vec_size
+  PetscInt :: pflotran_vec_size
   character(len=32) :: pflotran_group_prefix
 
 contains

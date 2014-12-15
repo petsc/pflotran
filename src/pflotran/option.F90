@@ -676,7 +676,7 @@ subroutine printErrMsgByRank1(option)
   ! Prints the error message from processor with error along
   ! with rank
   ! 
-  ! Author: Glenn Hammond
+  ! Author: Glenn Hammond 
   ! Date: 11/04/11
   ! 
 
