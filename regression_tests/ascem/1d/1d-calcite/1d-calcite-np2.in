@@ -41,7 +41,7 @@ CHEMISTRY
 END
 
 #=========================== solver options ===================================
-TIMESTEPPER
+TIMESTEPPER TRANSPORT
   TS_ACCELERATION 8
 /
 

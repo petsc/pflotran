@@ -48,7 +48,7 @@ GRID
 END
 
 #===================== Solver options ========================
-TIMESTEPPER
+TIMESTEPPER FLOW
   TS_ACCELERATION 25
   MAX_TS_CUTS 10
   MAX_STEPS 10000

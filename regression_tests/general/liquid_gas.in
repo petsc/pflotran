@@ -21,7 +21,7 @@ MODE GENERAL
 #/
 
 #=========================== time stepper options =============================
-TIMESTEPPER
+TIMESTEPPER FLOW
 #  MAX_STEPS -1
 /
 

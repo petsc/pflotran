@@ -39,7 +39,7 @@ CHEMISTRY
 REFERENCE_POROSITY 0.25d0
 
 # == time stepping ============================================================
-TIMESTEPPER
+TIMESTEPPER TRANSPORT
   TS_ACCELERATION 0
 /
 

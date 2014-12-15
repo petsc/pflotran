@@ -16,7 +16,7 @@ END
 MODE RICHARDS
 
 #=========================== solver options ===================================
-TIMESTEPPER
+TIMESTEPPER FLOW
   TS_ACCELERATION 8
 END
 

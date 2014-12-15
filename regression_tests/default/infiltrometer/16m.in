@@ -18,7 +18,7 @@ END
 noskip
 
 #=========================== solver options ===================================
-TIMESTEPPER
+TIMESTEPPER FLOW
   TS_ACCELERATION 8
   MAX_TS_CUTS 5
 END

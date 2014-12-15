@@ -30,7 +30,7 @@ BOUNDS
 END
 #===================== Solver options ========================
 
-TIMESTEPPER
+TIMESTEPPER FLOW
 TS_ACCELERATION 25
 MAX_PRESSURE_CHANGE 5.e4
 MAX_TEMPERATURE_CHANGE 0.1

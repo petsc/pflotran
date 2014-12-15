@@ -28,7 +28,7 @@ ACTIVITY_COEFFICIENTS TIMESTEP
 /
 
 #=========================== solver options ===================================
-TIMESTEPPER
+TIMESTEPPER TRANSPORT
 TS_ACCELERATION 8
 MAX_STEPS -1
 /

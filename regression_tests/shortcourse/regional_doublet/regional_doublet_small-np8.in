@@ -22,7 +22,7 @@ CHEMISTRY
 END
 
 #=========================== solver options ===================================
-TIMESTEPPER
+TIMESTEPPER FLOW
 END
 
 NEWTON_SOLVER FLOW

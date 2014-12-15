@@ -32,7 +32,7 @@ BOUNDS
 END
 
 #=========================== solver options ===================================
-TIMESTEPPER
+TIMESTEPPER FLOW
   TS_ACCELERATION 5
   MAX_PRESSURE_CHANGE 1.e5
   MAX_TEMPERATURE_CHANGE 5.

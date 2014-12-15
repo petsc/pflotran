@@ -31,7 +31,7 @@ GRID
 END
 
 #=========================== solver options ===================================
-TIMESTEPPER
+TIMESTEPPER FLOW
 END
 
 #=========================== fluid properties =================================

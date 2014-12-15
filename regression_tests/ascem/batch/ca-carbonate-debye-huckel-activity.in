@@ -31,7 +31,7 @@ OUTPUT
 /
 
 #=========================== solver options ===================================
-TIMESTEPPER
+TIMESTEPPER TRANSPORT
 TS_ACCELERATION 8
 MAX_STEPS -1
 /
