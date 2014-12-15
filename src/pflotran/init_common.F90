@@ -1059,8 +1059,10 @@ subroutine InitReadInput(simulation)
         select case(word(1:len_trim(word)))
           case('MOLAL')
           case('MASS')
+            !strictly correct if no CO2 present initially-pcl
             option%m_nacl = option%m_nacl /FMWNACL/(1.D0-option%m_nacl)
           case('MOLE')    
+            !strictly correct if no CO2 present initially-pcl
             option%m_nacl = option%m_nacl /FMWH2O/(1.D0-option%m_nacl)
           case default
             print *, 'Wrong unit: ', word(1:len_trim(word))
