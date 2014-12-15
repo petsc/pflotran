@@ -113,6 +113,8 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   nullify(simulation_old%regression)
   call SimulationDestroy(simulation_old)
 #else
+  nullify(pm_flow)
+  nullify(pm_rt)
   cur_pm => simulation%process_model_list
   do
     if (.not.associated(cur_pm)) exit
