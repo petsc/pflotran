@@ -5,6 +5,7 @@ import os
 import fnmatch
 
 simulation = '''\nSIMULATION
+  SIMULATION_TYPE %s
   PROCESS_MODELS\n'''
 
 flow_string = '''    SUBSURFACE_FLOW flow
@@ -45,7 +46,12 @@ def refactor_file(filename):
       break
     f2.write(line)
   # add new simulation cards
-  f2.write(simulation)
+  if flow and transport:
+    f2.write(simulation % 'SUBSURFACE_FLOW_AND_TRAN')
+  elif flow:
+    f2.write(simulation % 'SUBSURFACE_FLOW')
+  elif transport:
+    f2.write(simulation % 'SUBSURFACE_TRANSPORT')
   if flow:
     f2.write(flow_string % flow_mode)
   if transport:
@@ -68,17 +74,15 @@ def refactor_file(filename):
   f.close()
   f2.close()
   # using shutil.move adds ^M to end of lines.
-#  os.remove(filename)
-#  shutil.copy(filename+'.tmp',filename)
-#  os.remove(filename+'.tmp')
+  os.remove(filename)
+  shutil.copy(filename+'.tmp',filename)
+  os.remove(filename+'.tmp')
 
 suffix = '*.in'
-#for root, dirnames, filenames in os.walk('.'):
-#  for filename in fnmatch.filter(filenames,suffix):
-#    filename = os.path.join(root,filename)
-#    print(filename)
-#    refactor_file(filename)
-filename = 'surface_flow_sloping_plane.in'
-refactor_file(filename)
+for root, dirnames, filenames in os.walk('.'):
+  for filename in fnmatch.filter(filenames,suffix):
+    filename = os.path.join(root,filename)
+    print(filename)
+    refactor_file(filename)
 
 print('done')
