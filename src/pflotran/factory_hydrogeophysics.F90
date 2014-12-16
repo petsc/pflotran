@@ -286,17 +286,17 @@ print *, option%myrank, int_array
 #endif
     call ISDestroy(is_natural,ierr);CHKERRQ(ierr)
     call ISDestroy(is_petsc,ierr);CHKERRQ(ierr)
+
+    ! duplicate tracer vecs into saturation version
+    call VecDuplicate(pflotran_tracer_vec_mpi, &
+                      pflotran_saturation_vec_mpi,ierr);CHKERRQ(ierr)
+    call VecDuplicate(pflotran_tracer_vec_seq, &
+                      pflotran_saturation_vec_seq,ierr);CHKERRQ(ierr)
   endif
 !print *, 'End  -----------'
 
   simulation_base => simulation
 
-  ! duplicate tracer vecs into saturation version
-  call VecDuplicate(pflotran_tracer_vec_mpi, &
-                    pflotran_saturation_vec_mpi,ierr);CHKERRQ(ierr)
-  call VecDuplicate(pflotran_tracer_vec_seq, &
-                    pflotran_saturation_vec_seq,ierr);CHKERRQ(ierr)
-  
   if (simulation%pflotran_process) then
     simulation%hydrogeophysics_coupler%tracer_mpi = pflotran_tracer_vec_mpi
     simulation%hydrogeophysics_coupler%tracer_seq = pflotran_tracer_vec_seq
