@@ -12,7 +12,8 @@ contains
     implicit none
     integer :: sz
     
-    open(13,file='e4d.log',action='write',status='replace')
+    log_file = 'e4d_'//trim(adjustl(pflotran_group_prefix))//'.log'   
+    open(13,file=trim(log_file),action='write',status='replace')
     close(13)
     
     if(my_rank>0) then
@@ -963,7 +964,7 @@ contains
     allocate(sigma(nm))
     nelem = nm
     sigma = 0.d0
-    print *, 'slave:', nm
+    !print *, 'slave:', nm
     
   end subroutine receive_info_geh
   !__________________________________________________________________

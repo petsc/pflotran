@@ -218,7 +218,6 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
                           simulation%realization%patch%grid%nL2G(i))
 
       enddo
-print *, option%myrank, int_array
       int_array = int_array - 1
     endif
     call ISCreateGeneral(simulation%pf_e4d_scatter_comm,local_size,int_array, &

@@ -101,7 +101,7 @@ contains
     end do
 
     close(10)
-    open(13,file='e4d.log',status='old',action='write',position='append')
+    open(13,file=trim(log_file),status='old',action='write',position='append')
     write(13,*) "No E4D survey found for pflotran time: ",pf_time
     close(13)
   end subroutine check_e4d_sim
@@ -465,7 +465,7 @@ num_calls = num_calls + 1
        pck(1)=tend-tstart
        pck(2)=real(niter)
        !call MPI_SEND(pck,2,MPI_REAL,0,1,MPI_COMM_WORLD,ierr)
-       write(*,*) "Slave ",my_rank," solved for pole ",eind(my_rank,1)+i-1,'in ',tend-tstart,' seconds and ',niter,' iters'
+       !write(*,*) "Slave ",my_rank," solved for pole ",eind(my_rank,1)+i-1,'in ',tend-tstart,' seconds and ',niter,' iters'
        
     end do
     
