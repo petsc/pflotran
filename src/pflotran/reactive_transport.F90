@@ -3003,7 +3003,7 @@ subroutine RTResidualEquilibrateCO2(r,realization)
 
       yco2 = 1.d0-sat_pressure/pg
       xphi = fg*1.D6/pg/yco2
-      Qkco2 = henry*xphi*exp(-lngamco2) ! QkCO2 = xphi * exp(-mu0) / gamma
+      Qkco2 = henry*xphi  ! QkCO2 = xphi * exp(-mu0) / gamma
 
 !     sat_pressure = sat_pressure * 1.D5
       mco2eq = (pg - sat_pressure)*1.D-5 * Qkco2 ! molality CO2, y * P = P - Psat(T)
