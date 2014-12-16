@@ -2978,6 +2978,14 @@ subroutine RTResidualEquilibrateCO2(r,realization)
       pg = global_auxvars(ghosted_id)%pres(2)
       m_na = 0.d0
       m_cl = 0.d0
+      if (reaction%species_idx%na_ion_id /= 0 .and. &
+        reaction%species_idx%cl_ion_id /= 0) then
+        m_na = rt_auxvars(ghosted_id)%pri_molal(reaction%species_idx%na_ion_id)
+        m_cl = rt_auxvars(ghosted_id)%pri_molal(reaction%species_idx%cl_ion_id)
+        call Henry_duan_sun(tc,pg*1D-5,henry,lngamco2,m_na,m_cl)
+      else
+        call Henry_duan_sun(tc,pg*1D-5,henry,lngamco2,option%m_nacl,option%m_nacl)
+      endif
       call Henry_duan_sun(tc,pg*1.D-5,henry,lngamco2,m_na,m_cl)
 
 !     print *,'check_EOSeq: ',local_id,jco2,reaction%ncomp, &
@@ -2995,7 +3003,7 @@ subroutine RTResidualEquilibrateCO2(r,realization)
 
       yco2 = 1.d0-sat_pressure/pg
       xphi = fg*1.D6/pg/yco2
-      Qkco2 = henry*xphi ! QkCO2 = xphi * exp(-mu0) / gamma
+      Qkco2 = henry*xphi*exp(-lngamco2) ! QkCO2 = xphi * exp(-mu0) / gamma
 
 !     sat_pressure = sat_pressure * 1.D5
       mco2eq = (pg - sat_pressure)*1.D-5 * Qkco2 ! molality CO2, y * P = P - Psat(T)
