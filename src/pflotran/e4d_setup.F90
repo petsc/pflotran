@@ -1031,8 +1031,11 @@ contains
     if (allocated(poles)) then
       deallocate(poles)
     endif
-    if (allocated(pf_sol)) then
-      deallocate(pf_sol)
+    if (allocated(pf_tracer)) then
+      deallocate(pf_tracer)
+    endif
+    if (allocated(pf_saturation)) then
+      deallocate(pf_saturation)
     endif
     if (allocated(sigma)) then
       deallocate(sigma)

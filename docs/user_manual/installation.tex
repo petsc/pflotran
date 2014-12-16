@@ -495,8 +495,8 @@ A number of command line options are available:
 Option & \multicolumn{1}{c}{Description}\\
 \midrule
 {\tt -pflotranin <string>} & specify input file [Default: {\tt pflotran.in}]\\
-{\tt -input\_prefix <string>} & specify input (and output) file prefix [default: {\tt pflotran}]\\
-{\tt -output\_prefix <string>} & specify output file prefix [default: {\tt pflotran}]\\
+{\tt -input\_prefix <string>} & specify input file prefix and path [default: {\tt pflotran}]\\
+{\tt -output\_prefix <string>} & specify output file prefix and path to prefix directory which must already exist [default: {\tt pflotran}]\\
 {\tt -screen\_output off} & turn off screen output\\
 %{\tt -v} &\\
 {\tt -realization\_id <integer>} & run specified realization ID\\
@@ -522,6 +522,13 @@ Option & \multicolumn{1}{c}{Description}\\
 {\tt -ksp\_monitor\_lg\_residualnorm} & \\
 \bottomrule
 \end{tabular}
+
+\begin{mdframed}
+{\bf Examples:}
+
+\verb|mpirun -np 1 ./pflotran -output_prefix ./path_to/prefix|\\
+\end{mdframed}
+
 
 \subsection{Multiple Realization Simulation Mode}
 

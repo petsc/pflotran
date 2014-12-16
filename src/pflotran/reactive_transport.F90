@@ -2247,11 +2247,13 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
 
   ! pass #2 for everything else
   call RTResidualNonFlux(snes,xx,r,realization,ierr)
-  
+
+#if 0
   select case(realization%option%iflowmode)
     case(MPH_MODE,FLASH2_MODE,IMS_MODE)
       call RTResidualEquilibrateCO2(r,realization)
   end select
+#endif
 
   if (realization%debug%vecview_residual) then
     string = 'RTresidual'
@@ -2911,11 +2913,11 @@ end subroutine RTResidualNonFlux
 
 subroutine RTResidualEquilibrateCO2(r,realization)
   ! 
-  ! Computes non-flux term entries in the Jacobian for
+  ! Adds CO2 saturation constraint to residual for
   ! reactive transport
   ! 
-  ! Author: Glenn Hammond
-  ! Date: 02/14/08
+  ! Author: Glenn Hammond/Peter Lichtner
+  ! Date: 12/12/14
   ! 
 
   use Realization_class
@@ -2923,14 +2925,27 @@ subroutine RTResidualEquilibrateCO2(r,realization)
   use Option_module
   use Field_module
   use Grid_module
+  use EOS_Water_module
 
-  
+  ! CO2-specific
+  use co2eos_module, only: Henry_duan_sun
+  use co2_span_wagner_module, only: co2_span_wagner
+
   implicit none
 
   Vec :: r
   type(realization_type) :: realization  
   
   PetscInt :: local_id, ghosted_id
+  PetscInt :: jco2
+  PetscReal :: tc, pg, henry, m_na, m_cl
+  PetscReal :: Qkco2, mco2eq, xphi
+  
+  ! CO2-specific
+  PetscReal :: dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,&
+               yco2,sat_pressure,lngamco2
+  PetscInt :: iflag
+
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
@@ -2956,12 +2971,48 @@ subroutine RTResidualEquilibrateCO2(r,realization)
   do local_id = 1, grid%nlmax  ! For each local node do...
     ghosted_id = grid%nL2G(local_id)
     if (patch%imat(ghosted_id) <= 0) cycle
-    if (global_auxvars(ghosted_id)%sat(GAS_PHASE) > 0.d0) then
-      ! do something
+    if (global_auxvars(ghosted_id)%sat(GAS_PHASE) > 0.d0 .and. &
+      global_auxvars(ghosted_id)%sat(GAS_PHASE) < 1.d0) then
+
+      jco2 = reaction%species_idx%co2_aq_id
+
+      tc = global_auxvars(ghosted_id)%temp
+      pg = global_auxvars(ghosted_id)%pres(2)
+      m_na = 0.d0
+      m_cl = 0.d0
+      call Henry_duan_sun(tc,pg*1.D-5,henry,lngamco2,m_na,m_cl)
+
+!     print *,'check_EOSeq: ',local_id,jco2,reaction%ncomp, &
+!         global_auxvars(ghosted_id)%sat(GAS_PHASE), &
+!         rt_auxvars(ghosted_id)%pri_molal(jco2), &
+!         global_auxvars(ghosted_id)%pres, &
+!         global_auxvars(ghosted_id)%temp, &
+!         r_p(jco2+(local_id-1)*reaction%ncomp)
+
+      iflag = 1
+      call co2_span_wagner(pg*1D-6,tc+273.15D0,dg,dddt,dddp,fg, &
+              dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,iflag,option%itable)
+
+      call EOSWaterSaturationPressure(tc, sat_pressure, ierr)
+
+      yco2 = 1.d0-sat_pressure/pg
+      xphi = fg*1.D6/pg/yco2
+      Qkco2 = henry*xphi ! QkCO2 = xphi * exp(-mu0) / gamma
+
+!     sat_pressure = sat_pressure * 1.D5
+      mco2eq = (pg - sat_pressure)*1.D-5 * Qkco2 ! molality CO2, y * P = P - Psat(T)
+
+      r_p(jco2+(local_id-1)*reaction%ncomp) = &
+      rt_auxvars(ghosted_id)%pri_molal(jco2) - mco2eq
+
+!     print *,'check_EOS', local_id,jco2,reaction%ncomp, mco2eq, &
+!       rt_auxvars(ghosted_id)%pri_molal(jco2), &
+!       sat_pressure, henry, &
+!       yco2, fg, xphi,r_p(jco2+(local_id-1)*reaction%ncomp)
     endif
   enddo
   
-  ! Get pointer to Vector data
+  ! Restore pointer to Vector data
   call VecRestoreArrayF90(r, r_p, ierr);CHKERRQ(ierr)
   
 end subroutine RTResidualEquilibrateCO2
@@ -3028,10 +3079,12 @@ subroutine RTJacobian(snes,xx,A,B,realization,ierr)
   ! pass #2 for everything else
   call RTJacobianNonFlux(snes,xx,J,J,realization,ierr)
 
+#if 0
   select case(realization%option%iflowmode)
     case(MPH_MODE,FLASH2_MODE,IMS_MODE)
     call RTJacobianEquilibrateCO2(J,realization)
   end select
+#endif
 
   call PetscLogEventEnd(logging%event_rt_jacobian2,ierr);CHKERRQ(ierr)
     
@@ -3582,11 +3635,11 @@ end subroutine RTJacobianNonFlux
 
 subroutine RTJacobianEquilibrateCO2(J,realization)
   ! 
-  ! Computes non-flux term entries in the Jacobian for
+  ! Adds CO2 saturation constraint to Jacobian for
   ! reactive transport
   ! 
-  ! Author: Glenn Hammond
-  ! Date: 02/14/08
+  ! Author: Glenn Hammond/Peter Lichtner
+  ! Date: 12/12/14
   ! 
 
   use Realization_class
@@ -3595,7 +3648,6 @@ subroutine RTJacobianEquilibrateCO2(J,realization)
   use Field_module
   use Grid_module
 
-  
   implicit none
 
   Mat :: J
@@ -3612,9 +3664,10 @@ subroutine RTJacobianEquilibrateCO2(J,realization)
     
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
   type(global_auxvar_type), pointer :: global_auxvars(:)
-  PetscInt :: zero_rows(realization%patch%grid%nlmax)
+  PetscInt :: zero_rows(realization%patch%grid%nlmax * realization%option%ntrandof)
+  PetscInt :: ghosted_rows(realization%patch%grid%nlmax)
   PetscInt :: zero_count
-  PetscInt :: i, ico2_dof
+  PetscInt :: i, jco2
   PetscReal :: jacobian_entry
   
   option => realization%option
@@ -3628,34 +3681,50 @@ subroutine RTJacobianEquilibrateCO2(J,realization)
   ! loop over cells twice.  the first time to zero (all rows to be zeroed have
   ! to be zeroed in a single call by passing in a list).  the second to 
   ! add the equilibration
+
+  jacobian_entry = 1.d0
+  jco2 = reaction%species_idx%co2_aq_id
   zero_count = 0
   zero_rows = 0
+  ghosted_rows = 0
   do local_id = 1, grid%nlmax  ! For each local node do...
     ghosted_id = grid%nL2G(local_id)
     if (patch%imat(ghosted_id) <= 0) cycle
-    if (global_auxvars(ghosted_id)%sat(GAS_PHASE) > 0.d0) then
+    if (global_auxvars(ghosted_id)%sat(GAS_PHASE) > 0.d0 .and. &
+      global_auxvars(ghosted_id)%sat(GAS_PHASE) < 1.d0) then
       zero_count = zero_count + 1
-      zero_rows(zero_count) = ghosted_id-1 ! zero indexing
+      zero_rows(zero_count) = jco2+(local_id-1)*reaction%ncomp-1
+!     zero_rows(zero_count) = grid%nL2G(jco2+(local_id-1)*reaction%ncomp)-1
+      ghosted_rows(zero_count) = ghosted_id
     endif
   enddo
-  jacobian_entry = 1.d0
+
+! print *,'rowsco2: ',zero_count,zero_rows(1:zero_count)
   call MatZeroRowsLocal(J,zero_count,zero_rows(1:zero_count),jacobian_entry, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                         ierr);CHKERRQ(ierr)
+!#if 0
   do i = 1, zero_count
-    ghosted_id = zero_rows(i)+1 ! zero indexing back to 1-based
-    ghosted_id = grid%nL2G(local_id)
-    local_id = grid%nG2L(ghosted_id)
+    ghosted_id = ghosted_rows(i) ! zero indexing back to 1-based
     if (patch%imat(ghosted_id) <= 0) cycle
-    ! do your magic setting values using MatSetValuesBlockLocal to set values
-    ! on diagonal
-    idof = (ghosted_id-1)*option%ntrandof + ico2_dof - 1
-    call MatSetValuesLocal(J,1,idof-1,1,idof-1,jacobian_entry,ADD_VALUES, &
+    if (reaction%use_log_formulation) then
+      jacobian_entry = rt_auxvars(ghosted_id)%pri_molal(jco2)
+    else
+      jacobian_entry = 1.d0
+    endif
+
+!   print *,'RTjac: ',i,jco2,ghosted_id,idof,zero_count,reaction%use_log_formulation,jacobian_entry
+
+    idof = (ghosted_id-1)*option%ntrandof + jco2
+!   print *,'jacco2: ',i,idof,ghosted_id,zero_count,jacobian_entry
+    call MatSetValuesLocal(J,1,idof-1,1,idof-1,jacobian_entry,INSERT_VALUES, &
                            ierr);CHKERRQ(ierr)
   enddo
+
   call MatAssemblyBegin(J,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
   call MatAssemblyEnd(J,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
-  
+!#endif
+
 end subroutine RTJacobianEquilibrateCO2
 
 ! ************************************************************************** !
