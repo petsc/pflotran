@@ -798,7 +798,7 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item [Mineral Name]  \ {\tt <Char>}
 \begin{deflist}{0000}
 \item [RATE\_CONSTANT] \ {\tt <float>} [mol/m$^2$/s], \ \ \ \ {\em If} \ {\tt <float>} $<$ 0, {\tt <float>} = 10$^{\tt <float>}$
-\item [ACTIVATION\_ENERGY] \ {\tt <float>} [kJ/mol/K], \ \ \ Referenced to rate constant at 25\degc.
+\item [ACTIVATION\_ENERGY] \ {\tt <float>} [kJ/mol], \ \ \ Referenced to rate constant at 25\degc.
 ~\\
 \item [AFFINITY\_THRESHOLD] \ {\tt <float>} [---]
 \item [AFFINITY\_POWER] \ {\tt <float>} [---]
@@ -819,7 +819,7 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item [PREFACTOR] ~
 \begin{deflist}{0000}
 \item [RATE\_CONSTANT] \ {\tt <float>} [mol/m$^2$/s], \ \ \ \ {\em If} \ {\tt <float>} $<$ 0, {\tt <float>} = 10$^{\tt <float>}$
-\item [ACTIVATION\_ENERGY] \ {\tt <float>} [kJ/mol/K] 
+\item [ACTIVATION\_ENERGY] \ {\tt <float>} [kJ/mol] 
 \item [PREFACTOR\_SPECIES] \ {\tt <Char>}
 \begin{deflist}{0000}
 \item [ALPHA] \ {\tt <float>} [---]
@@ -1811,7 +1811,7 @@ where $D_m^\circ$ is the reference diffusion coefficient at temperature $T_0 = 2
 \begin{verbatim}
 FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9      ! m^2/s
-  DIFFUSION_ACTIVATION_ENERGY 12.6 ! kJ/K/mol
+  DIFFUSION_ACTIVATION_ENERGY 12.6 ! kJ/mol
 /
 \end{verbatim}
 \end{mdframed}
