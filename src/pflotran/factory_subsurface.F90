@@ -92,7 +92,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   
   class(pm_subsurface_type), pointer :: pm_flow
   class(pm_rt_type), pointer :: pm_rt
-  class(pm_base_type), pointer :: cur_pm
+  class(pm_base_type), pointer :: cur_pm, prev_pm
   class(realization_type), pointer :: realization
   class(timestepper_BE_type), pointer :: timestepper
   character(len=MAXSTRINGLENGTH) :: string
@@ -113,6 +113,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   nullify(simulation_old%regression)
   call SimulationDestroy(simulation_old)
 #else
+  call SubsurfInitCommandLineSettings(option)
   nullify(pm_flow)
   nullify(pm_rt)
   cur_pm => simulation%process_model_list
@@ -128,7 +129,11 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
          'PM Class unrecogmized in SubsurfaceInitializePostPetsc.'
         call printErrMsg(option)
     end select
+    prev_pm => cur_pm
     cur_pm => cur_pm%next
+    ! we must destroy the linkage between pms so that they are in independent
+    ! lists among pmcs
+    nullify(prev_pm%next)
   enddo
   call SubsurfaceSetFlowMode(pm_flow,option)
   realization => RealizationCreate(option)
@@ -151,7 +156,11 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   if (associated(pm_rt)) then
     simulation%rt_process_model_coupler => PMCSubsurfaceCreate()
     if (.not.associated(simulation%process_model_coupler_list)) then
-      simulation%process_model_coupler_list => simulation%rt_process_model_coupler
+      simulation%process_model_coupler_list => &
+        simulation%rt_process_model_coupler
+    else
+      simulation%flow_process_model_coupler%child => &
+        simulation%rt_process_model_coupler%CastToBase()
     endif
     simulation%rt_process_model_coupler%option => option
     simulation%rt_process_model_coupler%pms => pm_rt
@@ -164,7 +173,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
 !    timestepper%solver => SolverCreate()
 !    simulation%rt_process_model_coupler%timestepper => timestepper
   endif
-  
+
   realization%input => InputCreate(IN_UNIT,option%input_filename,option)
   call InitSubsurfaceReadRequiredCards(realization)
   call InitSubsurfaceReadInput(simulation)
@@ -497,13 +506,17 @@ subroutine InitSubsurfaceSimulation(simulation)
   call InitSubsurfSetupRealization(realization)
   
   !TODO(geh): refactor
-  if (associated(simulation%flow_process_model_coupler%timestepper)) then
-    simulation%flow_process_model_coupler%timestepper%cur_waypoint => &
-      realization%waypoint_list%first
+  if (associated(simulation%flow_process_model_coupler)) then
+    if (associated(simulation%flow_process_model_coupler%timestepper)) then
+      simulation%flow_process_model_coupler%timestepper%cur_waypoint => &
+        realization%waypoint_list%first
+    endif
   endif
-  if (associated(simulation%rt_process_model_coupler%timestepper)) then
-    simulation%rt_process_model_coupler%timestepper%cur_waypoint => &
-      realization%waypoint_list%first
+  if (associated(simulation%rt_process_model_coupler)) then
+    if (associated(simulation%rt_process_model_coupler%timestepper)) then
+      simulation%rt_process_model_coupler%timestepper%cur_waypoint => &
+        realization%waypoint_list%first
+    endif
   endif
   
   !TODO(geh): refactor
@@ -536,7 +549,7 @@ subroutine InitSubsurfaceSimulation(simulation)
   if (option%ntrandof > 0) then
     select type(ts => simulation%rt_process_model_coupler%timestepper)
       class is (timestepper_BE_type)
-        call InitSubsurfFlowSetupSolvers(realization,ts%solver)
+        call InitSubsurfTranSetupSolvers(realization,ts%solver)
     end select
   endif
   call RegressionCreateMapping(simulation%regression,realization)
