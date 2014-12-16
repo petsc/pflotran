@@ -712,7 +712,7 @@ subroutine Henry_duan_sun(tc,p,keqco2,lngamco2,mc,ma,co2_aq_actcoef)
   ! mco2 = phico2 * yco2 * p * exp(-mu0) / gamma
   
   keqco2 = exp(-tmp) ! = K_co2 / gamco2
-  !print *, 'keqco2: ', mu0,lngamco2,t,p
+  !print *, 'keqco2: ', mu0,lngamco2,tc,p,ma,mc
   return
 end subroutine Henry_duan_sun
 
