@@ -913,7 +913,7 @@ subroutine GeneralUpdateFixedAccum(realization)
   PetscInt :: ghosted_id, local_id, local_start, local_end
   PetscInt :: imat
   PetscReal, pointer :: xx_p(:), iphase_loc_p(:)
-  PetscReal, pointer :: accum_p(:)
+  PetscReal, pointer :: accum_p(:), accum_p2(:)
                           
   PetscErrorCode :: ierr
   
@@ -931,6 +931,9 @@ subroutine GeneralUpdateFixedAccum(realization)
 
   call VecGetArrayF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
 
+  !Heeho initialize dynamic accumulation term for every p iteration step
+  call VecGetArrayF90(field%flow_accum2, accum_p2, ierr);CHKERRQ(ierr)
+  
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
@@ -954,9 +957,13 @@ subroutine GeneralUpdateFixedAccum(realization)
                              option,accum_p(local_start:local_end)) 
   enddo
 
+  accum_p2 = accum_p
+  
   call VecRestoreArrayReadF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
 
   call VecRestoreArrayF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
+  !Heeho initialize dynamic accumulation term for every p iteration step
+  call VecRestoreArrayF90(field%flow_accum2, accum_p2, ierr);CHKERRQ(ierr)
 
 end subroutine GeneralUpdateFixedAccum
 
@@ -2157,7 +2164,7 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   PetscInt :: i, imat, imat_up, imat_dn
 
   PetscReal, pointer :: r_p(:)
-  PetscReal, pointer :: accum_p(:)
+  PetscReal, pointer :: accum_p(:), accum_p2(:)
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
@@ -2232,7 +2239,10 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   ! accumulation at t(k) (doesn't change during Newton iteration)
   call VecGetArrayReadF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
   r_p = -accum_p
-  call VecRestoreArrayReadF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
+!  call VecRestoreArrayReadF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
+  
+  !Heeho dynamically update p+1 accumulation term
+  call VecGetArrayReadF90(field%flow_accum2, accum_p2, ierr);CHKERRQ(ierr)
   
   ! accumulation at t(k+1)
   do local_id = 1, grid%nlmax  ! For each local node do...
@@ -2240,15 +2250,20 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
     !geh - Ignore inactive cells with inactive materials
     imat = patch%imat(ghosted_id)
     if (imat <= 0) cycle
-    local_end = local_id * option%nflowdof
-    local_start = local_end - option%nflowdof + 1
+      local_end = local_id * option%nflowdof
+      local_start = local_end - option%nflowdof + 1
     call GeneralAccumulation(gen_auxvars(ZERO_INTEGER,ghosted_id), &
                               material_auxvars(ghosted_id), &
                               material_parameter%soil_heat_capacity(imat), &
                               option,Res) 
     r_p(local_start:local_end) =  r_p(local_start:local_end) + Res(:)
+    !Heeho dynamically update p+1 accumulation term
+    accum_p2(local_start:local_end) = Res(:)
   enddo
-
+  call VecRestoreArrayReadF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
+  !Heeho dynamically update p+1 accumulation term
+  call VecRestoreArrayReadF90(field%flow_accum2, accum_p2, ierr);CHKERRQ(ierr)
+  
   ! Interior Flux Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
@@ -3461,7 +3476,7 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   PetscReal, pointer :: X1_p(:)
   PetscReal, pointer :: dX_p(:)
   PetscReal, pointer :: r_p(:)
-  PetscReal, pointer :: accum_p(:)
+  PetscReal, pointer :: accum_p(:), accum_p2(:)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
@@ -3517,6 +3532,7 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
     call VecGetArrayReadF90(X0,X0_p,ierr);CHKERRQ(ierr)
     call VecGetArrayReadF90(field%flow_r,r_p,ierr);CHKERRQ(ierr)
     call VecGetArrayReadF90(field%flow_accum,accum_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayReadF90(field%flow_accum2,accum_p2,ierr);CHKERRQ(ierr)
 #ifdef DEBUG_GENERAL_INFO
     icell_max_rel_update = 0
     istate_max_rel_update = 0
@@ -3533,7 +3549,11 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
       istate = global_auxvars(ghosted_id)%istate
       do idof = 1, option%nflowdof
         ival = offset+idof
-        R_A = dabs(r_p(ival)/accum_p(ival))
+        if (accum_p(ival) < option%flow%inf_scaled_res_tol) then
+          R_A = dabs(r_p(ival))
+        else
+          R_A = dabs(r_p(ival)/accum_p2(ival))
+        endif
         dX_X0 = dabs(dX_p(ival)/X0_p(ival))
         inf_norm_update(idof,istate) = max(inf_norm_update(idof,istate), &
                                            dabs(dX_p(ival)))
@@ -3672,6 +3692,7 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
     call VecRestoreArrayReadF90(X0,X0_p,ierr);CHKERRQ(ierr)
     call VecRestoreArrayReadF90(field%flow_r,r_p,ierr);CHKERRQ(ierr)
     call VecRestoreArrayReadF90(field%flow_accum,accum_p,ierr);CHKERRQ(ierr)
+    call VecRestoreArrayReadF90(field%flow_accum2,accum_p2,ierr);CHKERRQ(ierr)
   endif
 
 end subroutine GeneralCheckUpdatePost
@@ -3774,7 +3795,7 @@ subroutine GeneralCheckUpdatePost2(line_search,X0,dX,X1,dX_changed, &
         ival = offset+idof
         R_A = dabs(r_p(ival)/accum_p(ival))
         dX_X0 = dabs(dX_p(ival)/X0_p(ival))
-        R_scaled_by_vol = dabs(r_p(ival)/material_auxvars(ghosted_id)%volume)
+        R_scaled_by_vol = dabs(r_p(ival)/material_auxvars(ghosted_id)%volume)*option%flow_dt
         inf_norm_update(idof,istate) = max(inf_norm_update(idof,istate), &
                                            dabs(dX_p(ival)))
         if (inf_norm_rel_update(idof,istate) < dX_X0) then
