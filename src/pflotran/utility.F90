@@ -190,26 +190,26 @@ subroutine Natural2LocalIndex(ir, nl, llist, llength)
   itt=0
   nori0 =1
   nori1 = llength
-  if(na>=llist(1) .and. na <= llist(llength))then
+  if (na>=llist(1) .and. na <= llist(llength))then
   do while(l_search > 1 .and.itt<=50)
   
     itt=itt+1
-    if(na == llist(nori0))then
+    if (na == llist(nori0))then
       nl = nori0
       exit
-    elseif(na == llist(nori1))then
+    elseif (na == llist(nori1))then
        nl = nori1
       exit
     endif   
      
      ! nori = int((real(nori0 + nori1))/ 2.) + mod ( nori0 + nori1,2 )
     nori =  int(floor(real(nori0+nori1)/2D0 + .75D0))
-    if( na > llist(nori)) then
+    if ( na > llist(nori)) then
       nori0 = nori
-    elseif(na < llist(nori))then
+    elseif (na < llist(nori))then
       nori1 = nori
     else
-      if(na == llist(nori))then
+      if (na == llist(nori))then
         nl = nori
         exit
       else

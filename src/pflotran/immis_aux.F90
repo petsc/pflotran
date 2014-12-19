@@ -156,7 +156,7 @@ subroutine ImmisAuxVarInit(auxvar,option)
     allocate ( auxvar%auxvar_elem(nvar)%kvr(option%nphase))
 !   allocate ( auxvar%auxvar_elem(nvar)%xmol(option%nphase*option%nflowspec))
 !   allocate ( auxvar%auxvar_elem(nvar)%diff(option%nphase*option%nflowspec))
-    if(nvar>0) &
+    if (nvar>0) &
       auxvar%auxvar_elem(nvar)%hysdat => auxvar%auxvar_elem(0)%hysdat
 
     auxvar%auxvar_elem(nvar)%pres = 0.d0
@@ -290,15 +290,15 @@ subroutine ImmisAuxVarCompute_NINC(x,auxvar,saturation_function, &
   p = auxvar%pres
   t = auxvar%temp
 
-  if(x(3)<0.D0)x(3) = 0.D0
-  if(x(3)>1.D0)x(3) = 1.D0
+  if (x(3)<0.D0)x(3) = 0.D0
+  if (x(3)>1.D0)x(3) = 1.D0
   
   auxvar%sat(2) = x(3)
   if (auxvar%sat(2) < 0.D0) then
 !   print *,'tran:',iphase, x(1:3)
     auxvar%sat(2) = 0.D0
   endif
-! if(auxvar%sat(2) > 1.D0) print *,'tran:',iphase, x(1:3)
+! if (auxvar%sat(2) > 1.D0) print *,'tran:',iphase, x(1:3)
   auxvar%sat(1) = 1.D0 - auxvar%sat(2)
   auxvar%pc(:) = 0.D0
   temp = 1.D-2

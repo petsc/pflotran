@@ -699,8 +699,8 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
             output_option%print_hdf5_energy_flowrate = energy_flowrate
             output_option%print_hdf5_aveg_mass_flowrate = aveg_mass_flowrate
             output_option%print_hdf5_aveg_energy_flowrate = aveg_energy_flowrate
-            if(aveg_mass_flowrate.or.aveg_energy_flowrate) then
-              if(output_option%periodic_output_time_incr==0.d0) then
+            if (aveg_mass_flowrate.or.aveg_energy_flowrate) then
+              if (output_option%periodic_output_time_incr==0.d0) then
                 option%io_buffer = 'Keyword: AVEGRAGE_FLOWRATES/ ' // &
                   'AVEGRAGE_MASS_FLOWRATE/ENERGY_FLOWRATE defined without' // &
                   ' PERIODIC TIME being set.'
@@ -848,7 +848,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
     end select
   enddo
 
-  if(option%restart_flag .neqv. option%surf_restart_flag) then
+  if (option%restart_flag .neqv. option%surf_restart_flag) then
     option%io_buffer='option%restart_flag /= option%surf_restart_flag'
     call printErrMsg(option)
   endif

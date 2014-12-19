@@ -136,7 +136,7 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
    nullify(subsurf_simulation%process_model_coupler_list)
 
   ! sim_aux: Create PETSc Vectors and VectorScatters
-  if(option%ngeomechdof > 0) then
+  if (option%ngeomechdof > 0) then
 
     call GeomechCreateGeomechSubsurfVec(simulation_old%realization, &
                                         simulation_old%geomech_realization)
@@ -164,9 +164,9 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
 
   ! sim_aux: Set pointer
   simulation%flow_process_model_coupler%sim_aux => simulation%sim_aux
-  if(associated(simulation%rt_process_model_coupler)) &
+  if (associated(simulation%rt_process_model_coupler)) &
     simulation%rt_process_model_coupler%sim_aux => simulation%sim_aux
-  if(option%ngeomechdof>0 .and. &
+  if (option%ngeomechdof>0 .and. &
      associated(geomech_simulation%geomech_process_model_coupler)) &
     geomech_simulation%geomech_process_model_coupler%sim_aux => simulation%sim_aux
 

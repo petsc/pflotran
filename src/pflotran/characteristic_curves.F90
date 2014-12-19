@@ -831,7 +831,7 @@ subroutine CharCurvesConvertListToArray(list,array,option)
     cur_characteristic_curves => cur_characteristic_curves%next
   enddo
   
-  if(associated(array)) deallocate(array)
+  if (associated(array)) deallocate(array)
   allocate(array(count))
   
   count = 0

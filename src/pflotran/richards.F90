@@ -1582,7 +1582,7 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
           pressure_min = mmsrc(5)
     
         ! production well (well status = -1)
-          if(dabs(well_status + 1.D0) < 1.D-1) then
+          if (dabs(well_status + 1.D0) < 1.D-1) then
             if (global_auxvars(ghosted_id)%pres(1) > pressure_min) then
               Dq = well_factor 
               dphi = global_auxvars(ghosted_id)%pres(1) - pressure_bh
@@ -2094,7 +2094,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,realization,ierr)
   do 
     if (.not.associated(source_sink)) exit
     
-    if(source_sink%flow_condition%itype(1)/=HET_VOL_RATE_SS.and. &
+    if (source_sink%flow_condition%itype(1)/=HET_VOL_RATE_SS.and. &
        source_sink%flow_condition%itype(1)/=HET_MASS_RATE_SS .and. &
        source_sink%flow_condition%itype(1)/=WELL_SS) &
       qsrc = source_sink%flow_condition%rate%dataset%rarray(1)
@@ -2135,7 +2135,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,realization,ierr)
           pressure_min = mmsrc(5)
     
         ! production well (well status = -1)
-          if(dabs(well_status + 1.D0) < 1.D-1) then
+          if (dabs(well_status + 1.D0) < 1.D-1) then
             if (global_auxvars(ghosted_id)%pres(1) > pressure_min) then
               Dq = well_factor 
               dphi = global_auxvars(ghosted_id)%pres(1) - pressure_bh
@@ -2454,9 +2454,9 @@ subroutine RichardsUpdateSurfacePress(realization)
   do 
     if (.not.associated(boundary_condition)) exit
     cur_connection_set => boundary_condition%connection_set
-    if(StringCompare(boundary_condition%name,'from_surface_bc')) then
+    if (StringCompare(boundary_condition%name,'from_surface_bc')) then
 
-      if(boundary_condition%flow_condition%itype(RICHARDS_PRESSURE_DOF) /= &
+      if (boundary_condition%flow_condition%itype(RICHARDS_PRESSURE_DOF) /= &
          HET_SURF_SEEPAGE_BC) then
         call printErrMsg(option,'from_surface_bc is not of type ' // &
                         'HET_SURF_SEEPAGE_BC')

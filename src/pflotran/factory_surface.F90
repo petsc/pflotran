@@ -287,7 +287,7 @@ subroutine SurfaceJumpStart(simulation)
   if (option%restart_flag) then
     call SurfaceRestart(surf_realization,surf_flow_prev_dt,surf_flow_read)
 
-    if(option%time /= option%surf_flow_time) then
+    if (option%time /= option%surf_flow_time) then
       option%io_buffer = 'option%time does not match option%surf_flow_time' // &
         ' while restarting simulation. Check the restart files.'
       call printErrMsg(option)

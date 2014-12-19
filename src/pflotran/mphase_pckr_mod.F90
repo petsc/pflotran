@@ -30,7 +30,7 @@ subroutine pflow_pckr(ipckrtype,pckr_swir,pckr_lambda,pckr_alpha,&
       PetscReal :: temp,pcmax,ser
       PetscReal :: uum,pckr_betac,betac,st
 
-    ! if(present(pckr_beta))
+    ! if (present(pckr_beta))
       pckr_betac=pckr_beta
       sw=1.D0-sg
       swir=pckr_swir
@@ -144,7 +144,7 @@ subroutine pflow_pckr(ipckrtype,pckr_swir,pckr_lambda,pckr_alpha,&
 
       case(3) !linear interpolation, need pcmax, assign krmax=1.
          
-        if(sw>swir)then
+        if (sw>swir)then
           se=(sw-swir)/(sw0-swir)
           upc=pcmax*(1.D0-se)
           upc_s= - pcmax
@@ -174,10 +174,10 @@ subroutine pflow_pckr(ipckrtype,pckr_swir,pckr_lambda,pckr_alpha,&
        
       case(4)  ! po model with gas phase residual
         
-        if(sw>1.D0) sw=1.D0
-        if(sw<0.D-0) sw= 0.D-0
+        if (sw>1.D0) sw=1.D0
+        if (sw<0.D-0) sw= 0.D-0
       
-        if(sw> pckr_sat_water_cut)then
+        if (sw> pckr_sat_water_cut)then
           upc=0.D0;  kr(1)=1.0;  kr(2)=0.D0;
           upc_s=0.D0; kr_s(1)=0.D0; kr(2)=0.D0;
         else
@@ -195,7 +195,7 @@ subroutine pflow_pckr(ipckrtype,pckr_swir,pckr_lambda,pckr_alpha,&
           
           se=(sw-swir)/(1.D0-swir)
           st= 1.D0
-          if(sw>=swir)then
+          if (sw>=swir)then
             kr(1)= sqrt(se)*(1.D0-(1.D0-se**uum)**um)**2.D0
 !           kr(2)= sqrt(st-se)* ((1.D0-se**uum)**um )**7.D0
             kr(2)= sqrt(st-se)* ((1.D0-se**uum)**um )**pckr_pwr
@@ -224,10 +224,10 @@ subroutine pflow_pckr(ipckrtype,pckr_swir,pckr_lambda,pckr_alpha,&
           endif
         endif
      
-        if(kr(1)<0.D0) kr(1)=0.D0; kr_s(1)=0.D0!; kr(2)=1.D0; kr_s(2)=0.D0
-        if(kr(1)>1.D0) kr(1)=1.D0; kr_s(1)=0.D0!;kr(2)=0.D0; kr_s(2)=0.D0
-        if(kr(2)<0.D0) kr(2)=0.D0; kr_s(2)=0.D0!;kr(1)=1.D0; kr_s(1)=0.D0
-        if(kr(2)>1.D0) kr(2)=1.D0; kr_s(2)=0.D0!;kr(1)=0.D0; kr_s(1)=0.D0
+        if (kr(1)<0.D0) kr(1)=0.D0; kr_s(1)=0.D0!; kr(2)=1.D0; kr_s(2)=0.D0
+        if (kr(1)>1.D0) kr(1)=1.D0; kr_s(1)=0.D0!;kr(2)=0.D0; kr_s(2)=0.D0
+        if (kr(2)<0.D0) kr(2)=0.D0; kr_s(2)=0.D0!;kr(1)=1.D0; kr_s(1)=0.D0
+        if (kr(2)>1.D0) kr(2)=1.D0; kr_s(2)=0.D0!;kr(1)=0.D0; kr_s(1)=0.D0
 
      
         pc(1)=upc; pc(2)=0.d0
@@ -240,8 +240,8 @@ subroutine pflow_pckr(ipckrtype,pckr_swir,pckr_lambda,pckr_alpha,&
         kr_s(:)=-kr_s(:) / temp
         pc_s(1)=-pc_s(1) 
 
-    !   if(pc(1)>pcmax) print *, 'pckr4: ',sg,pc,kr,pc_s,kr_s
-      ! if(sw<pckr_sat_water_cut) print *, sg,pc,kr,pc_s,kr_s
+    !   if (pc(1)>pcmax) print *, 'pckr4: ',sg,pc,kr,pc_s,kr_s
+      ! if (sw<pckr_sat_water_cut) print *, sg,pc,kr,pc_s,kr_s
        
       end select
 
@@ -558,7 +558,7 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,ikrtype,pckr_sir,kr0, &
               kr(2) = (1.D0 - se)**2.0D0 * (1.D0 - se**(2.D0))  
           end select    
           !! capillary pressure 
-          if(sw <= ( 0.99*(1 - sgir) )) then   
+          if (sw <= ( 0.99*(1 - sgir) )) then   
             se = (sw - swir)/(1.D0 - sgir - swir)
             temp = se**(-1.D0/um)
             upc = (temp - 1.D0)**(1.d0/un)/ala
@@ -594,7 +594,7 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,ikrtype,pckr_sir,kr0, &
             kr(2) = 1.D0
           end if
         end if
-        !if(upc > pcmax) upc = pcmax
+        !if (upc > pcmax) upc = pcmax
     end select
 
     ! scaling kr with end points
