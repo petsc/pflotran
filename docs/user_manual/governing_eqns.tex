@@ -650,28 +650,42 @@ where $D_g^0$ is the reference diffusion coefficient at some reference temperatu
 
 \subsection{Thermal Conduction Multiple Continuum Model}
 
-A thermal conduction model employing a multiple continuum model has been added to modes {\bf MPHASE} and {\bf TH}. The formulation is based on Pruess and Narasimhan (1985) using a integrated finite volume approach to develop equations for fracture and matrix temperatures $T_\a$ and $T_\b$, respectively. The DCDM (dual continuum discrete matrix) model following the classification given in Lichtner (2000) is implemented. In what follows the matrix porosity is assumed to be zero. Using the control volume configuration shown in Figure~\ref{fminc}, with fracture nodes designated by the subscript $n$ and matrix nodes by $m$, the integrated finite volume form of the heat transport equation for the $n$th fracture control volume is given by
+A thermal conduction model employing a multiple continuum model has been added to modes {\bf MPHASE} and {\bf TH}. The formulation is based on Pruess and Narasimhan (1985) using a integrated finite volume approach to develop equations for fracture and matrix temperatures $T_\a$ and $T_\b$, respectively. The DCDM (dual continuum discrete matrix) model following the classification given in Lichtner (2000) is implemented. In what follows the matrix porosity is assumed to be zero. 
+
+
+In terms of partial differential equations the heat conservation equations may be written as
+\begin{subequations}
+\BA
+\frac{\p}{\p t} \epsilon \Big[\varphi_\a \rho_\a U_\a + (1-\varphi_\a) \rho_r C_r T_f\Big] &+ \bnabla\cdot \Big(\bq_\a \rho_\a H_\a -
+%\epsilon
+\kappa_f\bnabla T_f\Big) \nonumber\\
+&\eq -A_{fm} \kappa_{fm}\frac{\p T_m}{\p n},
+\EA
+and
+\EQ
+\frac{\p}{\p t} \rho_r C_r T_m + \frac{\p}{\p\xi} \Big(-\kappa_m\frac{\p T_m}{\p\xi}\Big) \eq 0,
+\EN
+for fracture and matrix temperatures $T_f$ and $T_m$, respectively, where $\xi$ represents the matrix coordinate assumed to be an effective 1D domain. The boundary condition 
+\EQ
+T_m(\xi_d,\,t\,|\,\br) \eq T_f(\br,\,t),
+\EN
+\end{subequations}
+between fracture and matrix continua is imposed, where $\xi_d$ denotes the outer boundary of the matrix.
+
+Using the control volume configuration shown in Figure~\ref{fminc}, with fracture nodes designated by the subscript $n$ and matrix nodes by $m$, the integrated finite volume form of the heat transport equation for the $n$th fracture control volume is given by
 \begin{subequations}
 \BA\label{pricont}
-&\Big[\varphi \Big(\big(s_\a\rho_\a U_\a\big)_n^{k+1} - \big(s_\a\rho_\a U_\a\big)_n^{k}\Big) + (1-\varphi)\Big(\big(\rho_r C_r T_\a\big)_n^{k+1} - \big(\rho_r C_r T_\a\big)_n^{k}\Big)\Big] \frac{V_n^\a}{\Delta t} \nonumber\\
+&\Big[\varphi_\a \Big(\big(\rho_\a U_\a\big)_n^{k+1} - \big(\rho_\a U_\a\big)_n^{k}\Big) + (1-\varphi_\a)\Big(\big(\rho_r C_r T_\a\big)_n^{k+1} - \big(\rho_r C_r T_\a\big)_n^{k}\Big)\Big] \frac{V_n^\a}{\Delta t} \nonumber\\
 &\qquad + \sum_{n'} \Big[\big(q_\a\rho_\a H_\a\big)_{nn'} + \frac{\kappa_{nn'}^\a}{d_n+d_{n'}}\big(T_{\a n} - T_{\a n'}\big) \Big] A_{nn'}^\a \nonumber\\
-&\qquad + \sum_\b\frac{\kappa_{nM}^{\a\b}}{d_n+d_{M}}\big(T_{\a n}-T_{\b M}\big) A_{nM}^\b \eq 0,
+&\qquad + \sum_{l = 1}^{N_\b}\frac{\kappa_{nM}^{\a\b_l}}{d_n+d_{M}}\big(T_{\a n}-T_{\b_l M}\big) A_{nM}^{\b_l} \eq 0,
 \EA
-\begin{comment}
-\begin{subequations}
-\BA\label{pricont}
-&\Big[\varphi \Big(\sum_\a \big(s_\a\rho_\a U_\a\big)_n^{k+1} - \sum_\a \big(s_\a\rho_\a U_\a\big)_n^{k}\Big) + (1-\varphi)\Big(\big(\rho_r C_r T_\a\big)_n^{k+1} - \big(\rho_r C_r T_\a\big)_n^{k}\Big)\Big] \frac{v_n}{\Delta t} \nonumber\\
-&\qquad + \sum_{n'} \Big[ \sum_\a\big(q_\a\rho_\a H_\a\big)_{nn'} + \frac{\kappa_{nn'}^\a}{d_n+d_{n'}}\big(T_{\a n} - T_{\a n'}\big) \Big] A_{nn'}^\a \nonumber\\
-&\qquad + \sum_\b\frac{\kappa_{nM}^{\a\b}}{d_n+d_{M}}\big(T_{\a n}-T_{\b M}\big) A_{nM}^\b \eq 0,
-\EA
-\end{comment}
 where $V_n^\a$ denotes the fracture volume, and
 \BA
 \Big(\big(\rho_r C_r T_\b\big)_m^{k+1} - \big(\rho_r C_r T_\b\big)_m^{k}\Big) \frac{V_m^\b}{\Delta t} &+ \sum_{m'} \frac{\kappa_{mm'}^\b}{d_m+d_{m'}}\big(T_{\b m} - T_{\b m'}\big) A_{mm'}^\b \nonumber\\
 &+ \delta_{mM}^{}\frac{\kappa_{nM}^{\a\b}}{d_n+d_{M}}\big(T_{\a n} - T_{\b M}\big) A_{nM}^\b \eq 0,
 \EA
 \end{subequations}
-for the $m$th matrix node with volume $V_m^\b$. The matrix node designated by $M$ refers to the outer most node in contact with the fracture. More than one type of matrix geometry is included in the above equations as indicated by the sum over $\b$ in Eqn.\eqref{pricont}.
+for the $m$th matrix node with volume $V_m^\b$. The matrix node designated by $M$ refers to the outer most node in contact with the fracture. More than one type of matrix geometry is included in the above equations as indicated by the sum over $l$ in Eqn.\eqref{pricont}, where $N_\b$ denotes the number of different secondary continua. However, it should be noted that the current implementation in PFLOTRAN only allows coupling to a single secondary continuum $(N_\b\!=\!1)$.
 
 For better convergence uniform logarithmic spacing is used for the matrix nodes
 \begin{subequations}\label{eqnloggrid}
@@ -702,9 +716,9 @@ Thermal conductivity at the interface between two control volumes is calculated 
 \kappa_{ll'} \eq \frac{\kappa_l \kappa_{l'}(d_l+d_{l'})}{d_l \kappa_{l'}+d_{l'}\kappa_l}.
 \EN
 
-The fracture volume $v_n$ is related to the REV volume $V_n$ by
+The fracture volume $V_n^\a$ is related to the REV volume $V_n$ by
 \EQ
-\epsilon \eq \frac{v_n}{V_n}.
+\epsilon \eq \frac{V_n^\b}{V_n}.
 \EN
 According to the geometry in Figure~\ref{fminc} assuming a 3D orthogonal set of fractures,
 \EQ
@@ -712,7 +726,7 @@ V_n \eq (d+2\delta)^3,
 \EN
 and
 \EQ
-v_n \eq (d+2\delta)^3 - d^3,
+V_n^\a \eq (d+2\delta)^3 - d^3,
 \EN
 giving
 \begin{subequations}
@@ -774,25 +788,6 @@ $2\delta$ & $\epsilon$ & $l_m = 2\delta \Big(\dfrac{1}{(1-\epsilon)^{1/3}}-1\Big
 \bottomrule
 \end{tabular}
 \end{table}
-
-In terms of partial differential equations the heat conservation equations may be written as
-\begin{subequations}
-\BA
-\frac{\p}{\p t} \epsilon \Big[\varphi \sum_\a s_\a \rho_\a U_\a + (1-\varphi) \rho_r C_r T_f\Big] &+ \bnabla\cdot \Big(\sum_\a \bq_\a \rho_\a H_\a -
-%\epsilon
-\kappa_f\bnabla T_f\Big) \nonumber\\
-&\eq -A_{fm} \kappa_{fm}\frac{\p T_m}{\p n},
-\EA
-and
-\EQ
-\frac{\p}{\p t} \rho_r C_r T_m + \frac{\p}{\p\xi} \Big(-\kappa_m\frac{\p T_m}{\p\xi}\Big) \eq 0,
-\EN
-for fracture and matrix temperatures $T_f$ and $T_m$, respectively, where $\xi$ represents the matrix coordinate assumed to be an effective 1D domain. The boundary condition 
-\EQ
-T_m(\xi_d,\,t\,|\,\br) \eq T_f(\br,\,t),
-\EN
-\end{subequations}
-between fracture and matrix continua is imposed, where $\xi_d$ denotes the outer boundary of the matrix.
 
 %The fracture thermal conductivity is defined as
 %\EQ
