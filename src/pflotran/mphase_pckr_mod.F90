@@ -549,7 +549,7 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,ikrtype,pckr_sir,kr0, &
         elseif (sw > (1.05D0*swir)) then
           select case(ikrtype)
             case(2) 
-              ! Krl Van Genutchen-Mualem
+              ! Krl Van Genuchten-Mualem
               se = (sw - swir)/(1.D0 - swir)
               temp = se**(-1.D0/um)
               kr(1) = sqrt(se)*(1.D0 - (1.D0 - 1.D0/temp)**um)**2.d0

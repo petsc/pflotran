@@ -2252,7 +2252,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
 
     write(option%fid_out,90)
 
-    102 format(/,'                        free        total')  
+    102 format(/,'  primary               free        total')  
     103 format('  species               molal       molal       act coef     constraint')  
     write(option%fid_out,102)
     write(option%fid_out,103)
