@@ -133,7 +133,7 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
 !        override epsilon if aperture defined
         if (aperture > 0.d0) then
           r0 = fracture_spacing - aperture
-          epsilon = 1.d0 - (1.d0 + aperture/r0)**(-3.0)
+          epsilon = 1.d0 - (1.d0 + aperture/r0)**(-3.d0)
         else if (epsilon > 0.d0) then
           r0 = fracture_spacing*(1.d0-epsilon)**(1.d0/3.d0)
           aperture = r0*((1.d0-epsilon)**(-1.d0/3.d0)-1.d0)
@@ -146,7 +146,7 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
 !        override epsilon if aperture defined
         if (aperture > 0.d0) then
           fracture_spacing = r0 + aperture
-          epsilon = 1.d0 - (1.d0 + aperture/r0)**(-3.0)
+          epsilon = 1.d0 - (1.d0 + aperture/r0)**(-3.d0)
         else if (epsilon > 0.d0) then
           fracture_spacing = r0*(1.d0-epsilon)**(-1.d0/3.d0)
           aperture = fracture_spacing - r0
@@ -159,48 +159,48 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
         call SecondaryContinuumCalcLogSpacing(matrix_block_size,outer_spacing, &
                                               nmat,grid_spacing,option)
         
-        r0 = 2*grid_spacing(1)
-        dm1(1) = 0.5*grid_spacing(1)
-        dm2(1) = 0.5*grid_spacing(1)
-        volm(1) = r0**3
-        aream(1) = 6.d0*r0**2         
+        r0 = 2.d0*grid_spacing(1)
+        dm1(1) = 0.5d0*grid_spacing(1)
+        dm2(1) = 0.5d0*grid_spacing(1)
+        volm(1) = r0**3.d0
+        aream(1) = 6.d0*r0**2.d0
         do m = 2, nmat
-          dm1(m) = 0.5*grid_spacing(m)
-          dm2(m) = 0.5*grid_spacing(m)
-          r1 = r0 + 2*(dm1(m) + dm2(m))
-          volm(m) = r1**3 - r0**3
-          aream(m) = 6.d0*r1**2
+          dm1(m) = 0.5d0*grid_spacing(m)
+          dm2(m) = 0.5d0*grid_spacing(m)
+          r1 = r0 + 2.d0*(dm1(m) + dm2(m))
+          volm(m) = r1**3.d0 - r0**3.d0
+          aream(m) = 6.d0*r1**2.d0
           r0 = r1
         enddo
         r0 = matrix_block_size
-        am0 = 6.d0*r0**2
-        vm0 = r0**3
+        am0 = 6.d0*r0**2.d0
+        vm0 = r0**3.d0
         interfacial_area = am0/vm0
 
       else
         dy = r0/nmat/2.d0
      
         r0 = 2.d0*dy
-        volm(1) = r0**3
+        volm(1) = r0**3.d0
         do m = 2, nmat
           r1 = r0 + 2.d0*dy
-          volm(m) = r1**3 - r0**3
+          volm(m) = r1**3.d0 - r0**3.d0
           r0 = r1
         enddo
       
         r0 = 2.d0*dy
-        aream(1) = 6.d0*r0**2
+        aream(1) = 6.d0*r0**2.d0
         dm1(1) = 0.5d0*dy
         dm2(1) = 0.5d0*dy
         do m = 2, nmat
           dm1(m) = 0.5d0*dy
           dm2(m) = 0.5d0*dy
           r0 = r0 + 2.d0*dy
-          aream(m) = 6.d0*r0**2
+          aream(m) = 6.d0*r0**2.d0
         enddo
-        r0 = real(2*nmat)*dy
-        am0 = 6.d0*r0**2
-        vm0 = r0**3
+        r0 = real(2.d0*nmat)*dy
+        am0 = 6.d0*r0**2.d0
+        vm0 = r0**3.d0
         interfacial_area = am0/vm0
       endif
 
@@ -242,25 +242,25 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
       dy = sec_continuum%nested_sphere%radius/nmat
       r0 = dy
 
-      volm(1) = 4.d0/3.d0*pi*r0**3
+      volm(1) = 4.d0/3.d0*pi*r0**3.d0
       do m = 2, nmat
         r1 = r0 + dy
-        volm(m) = 4.d0/3.d0*pi*(r1**3 - r0**3)
+        volm(m) = 4.d0/3.d0*pi*(r1**3.d0 - r0**3.d0)
         r0 = r1
       enddo
       
       r0 = dy
-      aream(1) = 4.d0*pi*r0**2
+      aream(1) = 4.d0*pi*r0**2.d0
       dm1(1) = 0.5d0*dy
       dm2(1) = 0.5d0*dy
       do m = 2, nmat
         r0 = r0 + dy
         dm1(m) = 0.5d0*dy
         dm2(m) = 0.5d0*dy
-        aream(m) = 4.d0*pi*r0**2
+        aream(m) = 4.d0*pi*r0**2.d0
       enddo
-      r0 = 0.5d0*real(2*nmat)*dy
-      am0 = 4.d0*pi*r0**2
+      r0 = 0.5d0*real(2.d0*nmat)*dy
+      am0 = 4.d0*pi*r0**2.d0
       vm0 = am0*r0/3.d0
       interfacial_area = am0/vm0
 
@@ -414,10 +414,10 @@ subroutine SecondaryContinuumCalcLogSpacing(matrix_size,outer_grid_size, &
   delta = 0.99d0
   
   do i = 1, maxit
-    F = (1.d0 - delta)/(1.d0 - delta**sec_num_cells)*delta**(sec_num_cells-1) - &
+    F = (1.d0 - delta)/(1.d0 - delta**sec_num_cells)*delta**(sec_num_cells - 1.d0) - &
         2.d0*outer_grid_size/matrix_size
     dF = (1.d0 + sec_num_cells*(delta - 1.d0) - delta**sec_num_cells)/ &
-         (delta**sec_num_cells - 1.d0)**2*delta**(sec_num_cells - 2) 
+         (delta**sec_num_cells - 1.d0)**2.d0*delta**(sec_num_cells - 2.d0)
     delta_new = delta + F/dF
     if ((abs(F) < tol)) exit
     delta = delta_new
