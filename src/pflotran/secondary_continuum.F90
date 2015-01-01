@@ -20,6 +20,11 @@ module Secondary_Continuum_module
 #include "finclude/petscviewer.h"
 #include "finclude/petsclog.h"
 
+  ! secondary continuum cell type
+  PetscInt, parameter, public :: SLAB = 0
+  PetscInt, parameter, public :: NESTED_CUBE = 1
+  PetscInt, parameter, public :: NESTED_SPHERE = 2
+
   PetscReal, parameter :: perturbation_tolerance = 1.d-5
 
   public :: SecondaryContinuumType, &
@@ -77,7 +82,7 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
   option%nsec_cells = nmat
     
   select case (igeom)      
-    case(0) ! 1D Slab
+    case(SLAB)
     
       dy = sec_continuum%slab%length/nmat
       aream0 = sec_continuum%slab%area
@@ -120,7 +125,7 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
                                       dm2(m-1) + dm1(m)
       enddo
           
-    case(1) ! nested cubes
+    case(NESTED_CUBE)
 
       if (sec_continuum%nested_cube%fracture_spacing > 0.d0) then
 
@@ -232,7 +237,7 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
                                       dm2(m-1) + dm1(m)
       enddo     
 
-    case(2) ! nested spheres
+    case(NESTED_SPHERE)
     
       dy = sec_continuum%nested_sphere%radius/nmat
       r0 = dy
@@ -348,7 +353,7 @@ subroutine SecondaryContinuumSetProperties(sec_continuum, &
   
   select case(trim(sec_continuum_name))
     case("SLAB")
-      sec_continuum%itype = 0
+      sec_continuum%itype = SLAB
       sec_continuum%slab%length = sec_continuum_length
       if (sec_continuum_area == 0.d0) then
         option%io_buffer = 'Keyword "AREA" not specified for SLAB type ' // &
@@ -357,11 +362,11 @@ subroutine SecondaryContinuumSetProperties(sec_continuum, &
       endif
       sec_continuum%slab%area = sec_continuum_area
     case("NESTED_CUBES")
-      sec_continuum%itype = 1
+      sec_continuum%itype = NESTED_CUBE
       sec_continuum%nested_cube%matrix_block_size = sec_continuum_matrix_block_size
       sec_continuum%nested_cube%fracture_spacing = sec_continuum_fracture_spacing
     case("NESTED_SPHERES")
-      sec_continuum%itype = 2
+      sec_continuum%itype = NESTED_SPHERE
       sec_continuum%nested_sphere%radius = sec_continuum_radius
     case default
       option%io_buffer = 'Keyword "' // trim(sec_continuum_name) // '" not ' // &
