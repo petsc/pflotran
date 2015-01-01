@@ -382,10 +382,19 @@ subroutine SecondaryContinuumCalcLogSpacing(matrix_size,outer_grid_size, &
                                             sec_num_cells,grid_spacing,option)
   ! 
   ! Given the matrix block size and the
-  ! grid spacing of the outer mode secondary continuum cell, a geometric
+  ! grid spacing of the outer most secondary continuum cell, a geometric
   ! series is assumed and the grid spacing of the rest of the cells is
   ! calculated
   ! 
+  ! Equation:
+  ! \frac{1 - \rho}{1 - \rho_M}*\rho*(M-1) = \frac{2\Delta\xi_m}{l_M}
+  !
+  ! where
+  !   \Delta\xi_m: Grid spacing of the outer most continuum cell (INPUT)
+  !   l_M        : Matrix block size (INPUT)
+  !   M          : Number of secondary continuum cells (INPUT)
+  !   \rho       : Logarithmic grid spacing factor (COMPUTED)
+  !
   ! Author: Satish Karra, LANL
   ! Date: 07/17/12
   ! 
