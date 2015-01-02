@@ -6,9 +6,11 @@ module Mphase_Aux_module
 
   implicit none
   
-  private 
+  private
+
 !#define GARCIA 1
 #define DUANDEN 1
+
 #include "finclude/petscsys.h"
 
   type, public :: mphase_auxvar_elem_type
@@ -482,7 +484,11 @@ subroutine MphaseAuxVarCompute_NINC(x,auxvar,global_auxvar,iphase,saturation_fun
 #ifdef DUANDEN
 !                 units: t [C], p [MPa], dw_kg [kg/m^3]
   call EOSWaterDuanMixture (t,p,auxvar%xmol(2),y_nacl,auxvar%avgmw(1),dw_kg,auxvar%den(1))
+
+#else
+  auxvar%den(1) = dw_mol
 #endif 
+!print *,'mixture den: ',t,p,auxvar%xmol(2),y_nacl,auxvar%avgmw(1),dw_kg,auxvar%den(1),dw_mol
 
 ! Garcia mixing **************************
 #ifdef GARCIA

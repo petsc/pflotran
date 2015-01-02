@@ -650,27 +650,29 @@ where $D_g^0$ is the reference diffusion coefficient at some reference temperatu
 
 \subsection{Thermal Conduction Multiple Continuum Model}
 
-A thermal conduction model employing a multiple continuum model has been added to modes {\bf MPHASE} and {\bf TH}. The formulation is based on Pruess and Narasimhan (1985) using a integrated finite volume approach to develop equations for fracture and matrix temperatures $T_\a$ and $T_\b$, respectively. The DCDM (dual continuum discrete matrix) model following the classification given in Lichtner (2000) is implemented. In what follows the matrix porosity is assumed to be zero. 
+A thermal conduction model employing a multiple continuum model has been added to modes {\bf MPHASE} and {\bf TH}. The formulation is based on Pruess and Narasimhan (1985) using a integrated finite volume approach to develop equations for fracture (primary continuum) and matrix (secondary continua) temperatures $T_\a$ and $T_\b$, respectively, with fracture volume fraction denoted by $\epsilon_\a$. The DCDM (dual continuum discrete matrix) model following the classification given in Lichtner (2000) is implemented. 
+In what follows the matrix porosity is assumed to be zero. 
 
 
 In terms of partial differential equations the heat conservation equations may be written as
 \begin{subequations}
 \BA
-\frac{\p}{\p t} \epsilon \Big[\varphi_\a \rho_\a U_\a + (1-\varphi_\a) \rho_r C_r T_f\Big] &+ \bnabla\cdot \Big(\bq_\a \rho_\a H_\a -
+\frac{\p}{\p t} \epsilon_\a \Big[\varphi_\a \rho_\a U_\a + (1-\varphi_\a) \rho_r C_r T_\a\Big] &+ \bnabla\cdot \Big(\bq_\a \rho_\a H_\a -
 %\epsilon
-\kappa_f\bnabla T_f\Big) \nonumber\\
-&\eq -A_{fm} \kappa_{fm}\frac{\p T_m}{\p n},
+\kappa_a\bnabla T_\a\Big) \nonumber\\
+&\eq -A_{\a\b} \kappa_{\a\b}\frac{\p T_\b}{\p n},
 \EA
 and
 \EQ
-\frac{\p}{\p t} \rho_r C_r T_m + \frac{\p}{\p\xi} \Big(-\kappa_m\frac{\p T_m}{\p\xi}\Big) \eq 0,
+\frac{\p}{\p t} \rho_r C_r T_\b + \frac{\p}{\p\xi} \Big(-\kappa_\b\frac{\p T_\b}{\p\xi}\Big) \eq 0,
 \EN
-for fracture and matrix temperatures $T_f$ and $T_m$, respectively, where $\xi$ represents the matrix coordinate assumed to be an effective 1D domain. The boundary condition 
+for fracture and matrix temperatures $T_\a$ and $T_\b$, respectively, where $\xi$ represents the matrix coordinate assumed to be an effective 1D domain. 
+The boundary condition 
 \EQ
-T_m(\xi_d,\,t\,|\,\br) \eq T_f(\br,\,t),
+T_\b(\xi_M,\,t\,|\,\br) \eq T_\a(\br,\,t),
 \EN
 \end{subequations}
-between fracture and matrix continua is imposed, where $\xi_d$ denotes the outer boundary of the matrix.
+is imposed at the fracture-matrix interface, where $\xi_M$ denotes the outer boundary of the matrix.
 
 Using the control volume configuration shown in Figure~\ref{fminc}, with fracture nodes designated by the subscript $n$ and matrix nodes by $m$, the integrated finite volume form of the heat transport equation for the $n$th fracture control volume is given by
 \begin{subequations}
@@ -686,6 +688,14 @@ where $V_n^\a$ denotes the fracture volume, and
 \EA
 \end{subequations}
 for the $m$th matrix node with volume $V_m^\b$. The matrix node designated by $M$ refers to the outer most node in contact with the fracture. More than one type of matrix geometry is included in the above equations as indicated by the sum over $l$ in Eqn.\eqref{pricont}, where $N_\b$ denotes the number of different secondary continua. However, it should be noted that the current implementation in PFLOTRAN only allows coupling to a single secondary continuum $(N_\b\!=\!1)$.
+The fracture volume $V_n^\a$ is related to the REV volume $V_n$ by
+\EQ
+\epsilon_\a \eq \frac{V_n^\a}{V_n}.
+\EN
+Thermal conductivity at the interface between two control volumes is calculated using the harmonic average
+\EQ
+\kappa_{ll'} \eq \frac{\kappa_l \kappa_{l'}(d_l+d_{l'})}{d_l \kappa_{l'}+d_{l'}\kappa_l}.
+\EN
 
 For better convergence uniform logarithmic spacing is used for the matrix nodes
 \begin{subequations}\label{eqnloggrid}
@@ -711,15 +721,6 @@ with the inner and outer grid spacing related by
 \parbox{4in}{\caption{Control volumes in DCDM multiple continuum model with fracture aperture $2\delta$ and matrix block size $d$.}\label{fminc}}
 \end{figure}
 
-Thermal conductivity at the interface between two control volumes is calculated using the harmonic average
-\EQ
-\kappa_{ll'} \eq \frac{\kappa_l \kappa_{l'}(d_l+d_{l'})}{d_l \kappa_{l'}+d_{l'}\kappa_l}.
-\EN
-
-The fracture volume $V_n^\a$ is related to the REV volume $V_n$ by
-\EQ
-\epsilon \eq \frac{V_n^\b}{V_n}.
-\EN
 According to the geometry in Figure~\ref{fminc} assuming a 3D orthogonal set of fractures,
 \EQ
 V_n \eq (d+2\delta)^3,
@@ -731,18 +732,18 @@ V_n^\a \eq (d+2\delta)^3 - d^3,
 giving
 \begin{subequations}
 \BA
-\epsilon &\eq 1-\frac{d^3}{(d+2\delta)^3} \eq 1-\left(\dfrac{1}{1+\dfrac{2\delta}{d}}\right)^3,\\
+\epsilon_\a &\eq 1-\frac{d^3}{(d+2\delta)^3} \eq 1-\left(\dfrac{1}{1+\dfrac{2\delta}{d}}\right)^3,\\
 & ~\simeq~ \frac{6\delta}{d}.
 \EA
 \end{subequations}
-The fracture aperture $2\delta$ is found to be in terms of $\epsilon$ and $d$
+The fracture aperture $2\delta$ is found to be in terms of $\epsilon_\a$ and $d$
 \EQ
-2\delta \eq d \left(\frac{1}{(1-\epsilon)^{1/3}} -1\right).
+2\delta \eq d \left(\frac{1}{(1-\epsilon_\a)^{1/3}} -1\right).
 \EN
 A list of different sub-continua geometries and parameters implemented in PFLOTRAN is given in Table~\ref{tdcdmgeom}. Different independent and dependent parameters for the nested cube geometry are listed in Table~\ref{tnestedcube}.
 The interfacial area $A_{nn'}^\a$ between fracture control volumes is equal to $\Delta y \Delta z$,  $\Delta z \Delta x$, $\Delta x \Delta y$ for $x$, $y$, and $z$ directions, respectively. 
 
-In the case of nested cubes there are four possible parameters $(\epsilon, \, 2\delta, \, l_m,\, l_f)$, where $l_m$ denotes the matrix block size and $l_f$ refers to the fracture spacing, two of which are independent.
+In the case of nested cubes there are four possible parameters $(\epsilon_\a, \, 2\delta, \, l_m,\, l_f)$, where $l_m$ denotes the matrix block size and $l_f$ refers to the fracture spacing, two of which are independent.
 
 The fracture-matrix interfacial area $A_{nM}$ per unit volume is equal to
 \EQ
@@ -780,11 +781,11 @@ The primary-secondary coupling term can then be written in the form
 \toprule
 \multicolumn{2}{c}{Independent} & \multicolumn{2}{c}{Dependent}\\
 \midrule
-$\epsilon$ & $l_f$ & $2\delta = l_f - l_m$ & $l_m = l_f(1-\epsilon)^{1/3}$\\
-$\epsilon$ & $l_m$ & $2\delta = l_f - l_m$ & $l_f = l_m(1-\epsilon)^{-1/3}$\\
-$2\delta$ & $l_f$ & $\epsilon = 1-(l_m/l_f)^3$ & $l_m = l_f - 2\delta$\\
-$2\delta$ & $l_m$ & $\epsilon = 1-(l_m/_f)^3$ & $l_f = l_m + 2\delta$\\
-$2\delta$ & $\epsilon$ & $l_m = 2\delta \Big(\dfrac{1}{(1-\epsilon)^{1/3}}-1\Big)^{-1}$ & $l_m = l-2\delta$\\
+$\epsilon_\a$ & $l_f$ & $2\delta = l_f - l_m$ & $l_m = l_f(1-\epsilon_\a)^{1/3}$\\
+$\epsilon_\a$ & $l_m$ & $2\delta = l_f - l_m$ & $l_f = l_m(1-\epsilon_\a)^{-1/3}$\\
+$2\delta$ & $l_f$ & $\epsilon_\a = 1-(l_m/l_f)^3$ & $l_m = l_f - 2\delta$\\
+$2\delta$ & $l_m$ & $\epsilon_\a = 1-(l_m/_f)^3$ & $l_f = l_m + 2\delta$\\
+$2\delta$ & $\epsilon_\a$ & $l_m = 2\delta \Big(\dfrac{1}{(1-\epsilon_\a)^{1/3}}-1\Big)^{-1}$ & $l_m = l-2\delta$\\
 \bottomrule
 \end{tabular}
 \end{table}
