@@ -1417,11 +1417,6 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
 !          global_auxvars(ghosted_id)%mass_balance_delta(1) + Res(1)
       endif
 
-#ifdef PM_RICHARDS_DEBUG
-  print *, 'Res bc', local_id
-  print *, Res(1)
-#endif
-
       istart = (local_id-1)*option%nflowdof + 1
       r_p(istart)= r_p(istart) - Res(1)
 
@@ -1524,11 +1519,6 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
                                 global_auxvars(ghosted_id), &
                                 material_auxvars(ghosted_id), &
                                 option,Res) 
-#ifdef PM_RICHARDS_DEBUG
-  print *, 'Res accum', local_id
-  print *, Res(1)      
-#endif
-
       istart = (local_id-1)*option%nflowdof + 1
       r_p(istart) = r_p(istart) + Res(1)
     enddo
@@ -1574,13 +1564,13 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
           qsrc_mol = source_sink%flow_aux_real_var(ONE_INTEGER,iconn)/FMWH2O ! kg/sec -> kmol/sec
       
         case(WELL_SS) ! production well, SK 12/19/13
-        ! if node pessure is lower than the given extraction pressure, shut it down
-!  well parameter explanation
-!   1. well status. 1 injection; -1 production; 0 shut in!
-!   2. well factor [m^3],  the effective permeability [m^2/s]
-!   3. bottomhole pressure:  [Pa]
-!   4. max pressure: [Pa]
-!   5. min pressure: [Pa]   
+          ! if node pessure is lower than the given extraction pressure, shut it down
+          !  well parameter explanation
+          !   1. well status. 1 injection; -1 production; 0 shut in!
+          !   2. well factor [m^3],  the effective permeability [m^2/s]
+          !   3. bottomhole pressure:  [Pa]
+          !   4. max pressure: [Pa]
+          !   5. min pressure: [Pa]   
           mmsrc => source_sink%flow_condition%well%dataset%rarray
 
           well_status = mmsrc(1)
@@ -1589,7 +1579,7 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
           pressure_max = mmsrc(4)
           pressure_min = mmsrc(5)
     
-        ! production well (well status = -1)
+          ! production well (well status = -1)
           if (dabs(well_status + 1.D0) < 1.D-1) then
             if (global_auxvars(ghosted_id)%pres(1) > pressure_min) then
               Dq = well_factor 
@@ -1642,11 +1632,6 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
       r_p(patch%aux%Richards%zero_rows_local(i)) = 0.d0
     enddo
   endif
-
-#ifdef PM_RICHARDS_DEBUG
-  print *, 'Residual'
-  print *, r_p(:)
-#endif
 
   call VecRestoreArrayF90(r, r_p, ierr);CHKERRQ(ierr)
   call VecRestoreArrayF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
@@ -1828,8 +1813,7 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
   endif
 #endif
 
-#if 1
-  ! Interior Flux Terms -----------------------------------  
+  ! Interior Flux Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
   sum_connection = 0    
@@ -1867,10 +1851,7 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
                                   Jup,Jdn)
 
       if (local_id_up > 0) then
-#ifdef PM_RICHARDS_DEBUG
-  print *, 'Jac up', local_id_up
-  print *, Jup(1,1)
-#endif      
+
 #ifdef BUFFER_MATRIX
         if (option%use_matrix_buffer) then
           call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id_up, &
@@ -1890,11 +1871,8 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
         endif
 #endif
       endif
+
       if (local_id_dn > 0) then
-#ifdef PM_RICHARDS_DEBUG
-  print *, 'Jac dn', local_id_dn
-  print *, Jdn(1,1)
-#endif        
         Jup = -Jup
         Jdn = -Jdn
 #ifdef BUFFER_MATRIX
@@ -1919,7 +1897,7 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
     enddo
     cur_connection_set => cur_connection_set%next
   enddo
-#endif
+
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
@@ -1928,7 +1906,7 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
     call MatView(A,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
-#if 1
+
   ! Boundary Flux Terms -----------------------------------
   boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
@@ -1966,10 +1944,7 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
                                 patch%saturation_function_array(icap_dn)%ptr,&
                                 Jdn)
       Jdn = -Jdn
-#ifdef PM_RICHARDS_DEBUG
-  print *, 'Jac dn bc', local_id
-  print *, Jdn(1,1)      
-#endif
+
 #ifdef BUFFER_MATRIX
       if (option%use_matrix_buffer) then
         call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id, &
@@ -1987,7 +1962,7 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
     enddo
     boundary_condition => boundary_condition%next
   enddo
-#endif
+
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
@@ -2070,7 +2045,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,realization,ierr)
   material_auxvars => patch%aux%Material%auxvars
   
   if (.not.option%steady_state) then
-#if 1
+
   ! Accumulation terms ------------------------------------
   do local_id = 1, grid%nlmax  ! For each local node do...
     ghosted_id = grid%nL2G(local_id)
@@ -2083,10 +2058,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,realization,ierr)
                               option, &
                               patch%saturation_function_array(icap)%ptr,&
                               Jup) 
-#ifdef PM_RICHARDS_DEBUG
-  print *, 'Jac accum'
-  print *, Jup(1,1)     
-#endif
+
 #ifdef BUFFER_MATRIX
     if (option%use_matrix_buffer) then
       call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id, &
@@ -2101,7 +2073,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,realization,ierr)
     endif
 #endif
   enddo
-#endif
+
   endif
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
@@ -2111,7 +2083,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,realization,ierr)
     call MatView(A,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
-#if 1
+
   ! Source/sink terms -------------------------------------
   source_sink => patch%source_sink_list%first 
   do 
@@ -2142,13 +2114,13 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,realization,ierr)
           Jup(1,1) = -source_sink%flow_aux_real_var(ONE_INTEGER,iconn)* &
                     rich_auxvars(ghosted_id)%dden_dp*FMWH2O
         case(WELL_SS) ! production well, SK 12/19/13
-        ! if node pessure is lower than the given extraction pressure, shut it down
-!  well parameter explanation
-!   1. well status. 1 injection; -1 production; 0 shut in!
-!   2. well factor [m^3],  the effective permeability [m^2/s]
-!   3. bottomhole pressure:  [Pa]
-!   4. max pressure: [Pa]
-!   5. min pressure: [Pa]   
+          ! if node pessure is lower than the given extraction pressure, shut it down
+          !  well parameter explanation
+          !   1. well status. 1 injection; -1 production; 0 shut in!
+          !   2. well factor [m^3],  the effective permeability [m^2/s]
+          !   3. bottomhole pressure:  [Pa]
+          !   4. max pressure: [Pa]
+          !   5. min pressure: [Pa]
           mmsrc => source_sink%flow_condition%well%dataset%rarray
 
           well_status = mmsrc(1)
@@ -2157,7 +2129,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,realization,ierr)
           pressure_max = mmsrc(4)
           pressure_min = mmsrc(5)
     
-        ! production well (well status = -1)
+          ! production well (well status = -1)
           if (dabs(well_status + 1.D0) < 1.D-1) then
             if (global_auxvars(ghosted_id)%pres(1) > pressure_min) then
               Dq = well_factor 
@@ -2194,7 +2166,6 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,realization,ierr)
     enddo
     source_sink => source_sink%next
   enddo
-#endif
 
   call RichardsSSSandbox(null_vec,A,PETSC_TRUE,grid,material_auxvars, &
                          global_auxvars,option)
