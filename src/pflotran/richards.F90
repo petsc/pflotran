@@ -1307,9 +1307,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
 
   if (option%surf_flow_on) call RichardsComputeCoeffsForSurfFlux(realization)
 
-!  write(*,*) "RichardsResidual"
-!  read(*,*)
-! now assign access pointer to local variables
+  ! now assign access pointer to local variables
   call VecGetArrayF90(r, r_p, ierr);CHKERRQ(ierr)
 
   r_p = 0.d0
