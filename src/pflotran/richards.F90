@@ -338,6 +338,7 @@ subroutine RichardsCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
   type(global_auxvar_type), pointer :: global_auxvars(:)  
   class(material_auxvar_type), pointer :: material_auxvars(:)  
   PetscInt :: local_id, ghosted_id
+  PetscInt :: istart
   PetscReal :: Res(1)
   PetscReal :: inf_norm, global_inf_norm
   PetscErrorCode :: ierr
@@ -361,6 +362,8 @@ subroutine RichardsCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
     inf_norm = 0.d0
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
+      istart = (local_id-1)*option%nflowdof + 1
+
       if (realization%patch%imat(ghosted_id) <= 0) cycle
     
       call RichardsAccumulation(rich_auxvars(ghosted_id), &
@@ -368,7 +371,7 @@ subroutine RichardsCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
                                 material_auxvars(ghosted_id), &
                                 option,Res)
       inf_norm = max(inf_norm,min(dabs(dP_p(local_id)/P0_p(local_id)), &
-                                  dabs(r_p(local_id)/Res(1))))
+                                  dabs(r_p(istart)/Res(1))))
     enddo
     call MPI_Allreduce(inf_norm,global_inf_norm,ONE_INTEGER_MPI, &
                        MPI_DOUBLE_PRECISION, &
@@ -1259,6 +1262,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
 
   PetscErrorCode :: ierr
   PetscInt :: local_id, ghosted_id
+  PetscInt :: istart
   PetscInt :: local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
 
   PetscReal, pointer :: r_p(:)
@@ -1350,11 +1354,13 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
         patch%internal_flow_fluxes(1,sum_connection) = Res(1)
       endif
       if (local_id_up>0) then
-        r_p(local_id_up) = r_p(local_id_up) + Res(1)
+        istart = (local_id_up-1)*option%nflowdof + 1
+        r_p(istart) = r_p(istart) + Res(1)
       endif
          
       if (local_id_dn>0) then
-        r_p(local_id_dn) = r_p(local_id_dn) - Res(1)
+        istart = (local_id_dn-1)*option%nflowdof + 1
+        r_p(istart) = r_p(istart) - Res(1)
       endif
 
     enddo
@@ -1416,7 +1422,8 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
   print *, Res(1)
 #endif
 
-      r_p(local_id)= r_p(local_id) - Res(1)
+      istart = (local_id-1)*option%nflowdof + 1
+      r_p(istart)= r_p(istart) - Res(1)
 
     enddo
     boundary_condition => boundary_condition%next
@@ -1461,6 +1468,7 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
   PetscViewer :: viewer
   PetscInt :: i
   PetscInt :: local_id, ghosted_id
+  PetscInt :: istart
 
   PetscReal, pointer :: r_p(:), accum_p(:)
   PetscReal :: qsrc, qsrc_mol
@@ -1520,7 +1528,9 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
   print *, 'Res accum', local_id
   print *, Res(1)      
 #endif
-      r_p(local_id) = r_p(local_id) + Res(1)
+
+      istart = (local_id-1)*option%nflowdof + 1
+      r_p(istart) = r_p(istart) + Res(1)
     enddo
   endif
 
@@ -1607,7 +1617,10 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
           global_auxvars_ss(sum_connection)%mass_balance_delta(1,1) - &
           qsrc_mol
       endif
-      r_p(local_id) = r_p(local_id) - qsrc_mol
+
+      istart = (local_id-1)*option%nflowdof + 1
+      r_p(istart) = r_p(istart) - qsrc_mol
+
       if (associated(patch%ss_flow_vol_fluxes)) then
         ! fluid flux [m^3/sec] = qsrc_mol [kmol/sec] / den [kmol/m^3]
         patch%ss_flow_vol_fluxes(1,sum_connection) = qsrc_mol / &
@@ -1768,6 +1781,7 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
   PetscInt :: local_id, ghosted_id
   PetscInt :: local_id_up, local_id_dn
   PetscInt :: ghosted_id_up, ghosted_id_dn
+  PetscInt :: istart_up, istart_dn, istart
   
   PetscReal :: Jup(realization%option%nflowdof,realization%option%nflowdof), &
                Jdn(realization%option%nflowdof,realization%option%nflowdof)
@@ -1865,9 +1879,12 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
                                ghosted_id_dn,Jdn(1,1))
         else
 #endif
-          call MatSetValuesLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
+          istart_up = (ghosted_id_up-1)*option%nflowdof + 1
+          istart_dn = (ghosted_id_dn-1)*option%nflowdof + 1
+
+          call MatSetValuesLocal(A,1,istart_up-1,1,istart_up-1, &
                                         Jup,ADD_VALUES,ierr);CHKERRQ(ierr)
-          call MatSetValuesLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
+          call MatSetValuesLocal(A,1,istart_up-1,1,istart_dn-1, &
                                         Jdn,ADD_VALUES,ierr);CHKERRQ(ierr)
 #ifdef BUFFER_MATRIX
         endif
@@ -1888,9 +1905,12 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
                                ghosted_id_up,Jup(1,1))
         else
 #endif
-          call MatSetValuesLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
+          istart_up = (ghosted_id_up-1)*option%nflowdof + 1
+          istart_dn = (ghosted_id_dn-1)*option%nflowdof + 1
+
+          call MatSetValuesLocal(A,1,istart_dn-1,1,istart_dn-1, &
                                         Jdn,ADD_VALUES,ierr);CHKERRQ(ierr)
-          call MatSetValuesLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
+          call MatSetValuesLocal(A,1,istart_dn-1,1,istart_up-1, &
                                         Jup,ADD_VALUES,ierr);CHKERRQ(ierr)
 #ifdef BUFFER_MATRIX
         endif
@@ -1956,7 +1976,9 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
                              ghosted_id,Jdn(1,1))
       else
 #endif
-        call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jdn, &
+        istart = (ghosted_id-1)*option%nflowdof + 1
+
+        call MatSetValuesLocal(A,1,istart-1,1,istart-1,Jdn, &
                                ADD_VALUES,ierr);CHKERRQ(ierr)
 #ifdef BUFFER_MATRIX
       endif
@@ -2011,6 +2033,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,realization,ierr)
   PetscReal :: qsrc
   PetscInt :: icap
   PetscInt :: local_id, ghosted_id
+  PetscInt :: istart
   
   PetscReal :: Jup(realization%option%nflowdof,realization%option%nflowdof)
   
@@ -2070,7 +2093,9 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,realization,ierr)
                            ghosted_id,Jup(1,1))
     else
 #endif
-      call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
+      istart = (ghosted_id-1)*option%nflowdof + 1
+
+      call MatSetValuesLocal(A,1,istart-1,1,istart-1,Jup, &
                              ADD_VALUES,ierr);CHKERRQ(ierr)
 #ifdef BUFFER_MATRIX
     endif
@@ -2159,7 +2184,9 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,realization,ierr)
                              ghosted_id,Jup(1,1))
       else
 #endif
-        call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES, &
+        istart = (ghosted_id-1)*option%nflowdof + 1
+
+        call MatSetValuesLocal(A,1,istart-1,1,istart-1,Jup,ADD_VALUES, &
                                ierr);CHKERRQ(ierr)
 #ifdef BUFFER_MATRIX
       endif
