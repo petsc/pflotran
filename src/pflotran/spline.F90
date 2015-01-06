@@ -66,9 +66,9 @@ subroutine splint(xa,ya,y2a,n,x,y)
       klo = 1
       khi = n
    10 continue
-      if(khi-klo.gt.1) then
+      if (khi-klo.gt.1) then
         k = (khi+klo)/2
-        if(xa(k).gt.x) then
+        if (xa(k).gt.x) then
           khi = k
         else
           klo = k
@@ -108,9 +108,9 @@ subroutine locate(xx,n,x,j)
       jl = 0
       ju = n+1
    10 continue
-      if(ju-jl.gt.1) then
+      if (ju-jl.gt.1) then
         jm = (ju+jl)/2
-        if((xx(n).gt.xx(1)).eqv.(x.gt.xx(jm))) then
+        if ((xx(n).gt.xx(1)).eqv.(x.gt.xx(jm))) then
           jl = jm
         else
           ju = jm

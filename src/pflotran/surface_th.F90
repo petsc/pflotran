@@ -383,7 +383,7 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   do
     if (.not.associated(source_sink)) exit
     
-    if(source_sink%flow_condition%rate%itype/=HET_VOL_RATE_SS.and. &
+    if (source_sink%flow_condition%rate%itype/=HET_VOL_RATE_SS.and. &
        source_sink%flow_condition%rate%itype/=HET_MASS_RATE_SS) &
     qsrc_flow = source_sink%flow_condition%rate%dataset%rarray(1)
       
@@ -854,13 +854,13 @@ subroutine SurfaceTHFlux(surf_auxvar_up, &
   Res(TH_TEMPERATURE_DOF) = (den_aveg*vel*temp_half*Cw*hw_liq_half + &
                              k_therm*dtemp/dist*hw_half)*length
 
-  if(abs(vel)>eps) then
+  if (abs(vel)>eps) then
     ! 1) Restriction due to flow equation
     dt     = dist/abs(vel)/3.d0
     dt_max = min(dt_max, dt)
   endif
 
-  if(abs(dtemp) > 1.0d-12) then
+  if (abs(dtemp) > 1.0d-12) then
     ! 2) Restriction due to energy equation
     dt_max = min(dt_max,(dist**2.d0)*Cw*den_aveg/(2.d0*k_therm))
   endif
@@ -1134,7 +1134,7 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
       istart = iend-option%nflowdof+1
 
       if (associated(source_sink%flow_condition%temperature)) then
-        if(source_sink%flow_condition%temperature%itype/=HET_DIRICHLET) then
+        if (source_sink%flow_condition%temperature%itype/=HET_DIRICHLET) then
           tsrc1 = source_sink%flow_condition%temperature%dataset%rarray(1)
         else
           tsrc1 = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
@@ -1308,7 +1308,7 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
 
   do ghosted_id = 1,grid%ngmax
     local_id = grid%nG2L(ghosted_id)
-    if(local_id>0) then
+    if (local_id>0) then
       istart = (local_id-1)*option%nflowdof+1 ! surface water height dof
       iend   = istart+1                       ! surface energy dof
       if (xx_loc_p(istart) < MIN_SURFACE_WATER_HEIGHT) then
@@ -1416,7 +1416,7 @@ subroutine SurfaceTHUpdateSurfState(surf_realization)
   do ghosted_id = 1,surf_grid%ngmax
 
     local_id = surf_grid%nG2L(ghosted_id)
-    if(local_id <= 0) cycle
+    if (local_id <= 0) cycle
 
     iend = ghosted_id*option%nflowdof
     ibeg = iend - 1

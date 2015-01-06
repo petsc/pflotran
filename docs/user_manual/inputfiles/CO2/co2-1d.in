@@ -1,0 +1,339 @@
+MODE MPHASE
+
+!=========================== chemistry ========================================
+CHEMISTRY
+PRIMARY_SPECIES
+Tracer
+H+
+Na+ 
+Cl- 
+CO2(aq)
+/
+SECONDARY_SPECIES
+OH-
+CO3--
+HCO3-
+NaCl(aq)
+NaOH(aq)
+/
+GAS_SPECIES
+CO2(g)
+/
+MINERALS
+/
+DATABASE ./co2.dat 
+LOG_FORMULATION
+ACTIVITY_COEFFICIENTS
+MOLAL
+OUTPUT
+TOTAL
+FREE_ION
+SECONDARY_SPECIES
+HCO3-
+CO3--
+NaCl(aq)
+NaOH(aq)
+All
+/
+/
+
+!=======================================
+CO2_DATABASE /Users/lichtner/pflotran/pflotran/database/co2data0.dat
+
+!=========================== discretization ===================================
+GRID
+TYPE structured 
+ORIGIN 0.d0 0.d0 0.d0
+NXYZ 1000  1 1
+BOUNDS
+!xmin ymin zmin
+0.0   0.0   0.0
+!xmax ymax zmax
+100.0  1.0  1.0
+/
+END
+
+!=========================== solver options ===================================
+TIMESTEPPER
+TS_ACCELERATION 8
+MAX_PRESSURE_CHANGE 5.e4
+MAX_TEMPERATURE_CHANGE 0.1
+MAX_CONCENTRATION_CHANGE 1.e-3
+MAX_SATURATION_CHANGE 0.025
+/
+
+NEWTON_SOLVER FLOW
+ATOL 1D-20
+RTOL 1D-20
+STOL 1D-30
+DTOL 1D15
+ITOL 1.D-8
+MAXIT 25
+MAXF 100
+END
+
+LINEAR_SOLVER FLOW
+  KSP_TYPE GMRES
+  !PC_TYPE NONE
+  !KSP_TYPE PREONLY
+  !PC_TYPE LU
+  SOLVER GMRES
+/
+
+NEWTON_SOLVER TRANSPORT
+ATOL 1D-20
+RTOL 1D-20
+STOL 1D-30
+DTOL 1D15
+ITOL 1.d-8
+MAXIT 15
+MAXF 100
+END
+
+LINEAR_SOLVER TRANSPORT
+  KSP_TYPE GMRES
+  !PC_TYPE NONE
+  !KSP_TYPE PREONLY
+  !PC_TYPE LU
+  SOLVER GMRES
+/
+
+!=========================== times ============================================
+TIME
+FINAL_TIME 1.d0 y
+INITIAL_TIMESTEP_SIZE 1.d-8 y
+MAXIMUM_TIMESTEP_SIZE 1.e-3 y
+/
+
+!=========================== output options ===================================
+OUTPUT
+TIMES y 0.35 0.4 1.0 
+FORMAT TECPLOT POINT
+!POROSITY
+VELOCITY_AT_FACE !qxl
+VELOCITY_AT_CENTER !vel
+FLUXES
+!FLOWRATES
+MASS_BALANCE
+SCREEN PERIODIC 1
+PERIODIC_OBSERVATION TIMESTEP 1
+PRINT_COLUMN_IDS
+/
+
+!=========================== fluid properties =================================
+FLUID_PROPERTY 
+LIQUID_DIFFUSION_COEFFICIENT 1.d-9
+GAS_DIFFUSION_COEFFICIENT    2.13d-5
+/
+
+!=========================== material properties ==============================
+MATERIAL_PROPERTY trigonodusdolomite
+ID 1
+POROSITY 0.12d0
+TORTUOSITY 1.d0
+LONGITUDINAL_DISPERSIVITY 0.0
+ROCK_DENSITY 2.65E3
+SPECIFIC_HEAT 1.E3
+THERMAL_CONDUCTIVITY_DRY 0.5
+THERMAL_CONDUCTIVITY_WET 0.5 
+SATURATION_FUNCTION sf2
+PERMEABILITY
+PERM_X 1.e-15
+PERM_Y 1.e-15
+PERM_Z 1.e-15
+/
+/
+
+!=========================== saturation functions =============================
+SATURATION_FUNCTION sf2
+SATURATION_FUNCTION_TYPE VAN_GENUCHTEN_DOUGHTY
+RESIDUAL_SATURATION LIQUID_PHASE 0.
+RESIDUAL_SATURATION GAS_PHASE 0.
+LAMBDA 0.6d0
+ALPHA 1.9d-5
+MAX_CAPILLARY_PRESSURE 1.d7
+/
+
+!=========================== regions ==========================================
+REGION all
+COORDINATES
+0.d0 0.d0 0.d0
+100.D0 1.D0 1.d0
+/
+END
+
+REGION left
+FACE WEST
+COORDINATES
+0.d0 0.0d0 0.0d0
+0.D0 1.0D0 1.0d0
+/
+END
+
+REGION right
+FACE EAST
+COORDINATES
+100.d0 0.0d0 0.0d0
+100.D0 1.0D0 1.0d0
+/
+END
+
+REGION well
+COORDINATES
+0.d0 0.5d0 0.5d0
+0.D0 0.5D0 0.5d0
+/
+END
+
+REGION tProfile_01
+  COORDINATE 0.0d0 0.5 0.5
+END
+
+OBSERVATION
+  REGION tProfile_01
+  AT_CELL_CENTER
+END
+
+REGION tProfile_02
+  COORDINATE 0.5d0 0.5  0.5
+END
+
+OBSERVATION
+  REGION tProfile_02
+  AT_CELL_CENTER
+END
+
+REGION tProfile_03
+  COORDINATE 1.d0 0.5 0.5
+END
+
+OBSERVATION
+  REGION tProfile_03
+  AT_CELL_CENTER
+END
+
+!=========================== flow conditions ==================================
+FLOW_CONDITION Initial
+UNITS Pa,C,M,yr
+TYPE
+PRESSURE dirichlet
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
+ENTHALPY dirichlet
+/
+IPHASE 1
+PRESSURE 1.645D7 1.645D7
+TEMPERATURE 54.5 C
+CONCENTRATION 2.2611e-6
+ENTHALPY 0.d0 0.d0
+/
+
+!xCO2 = WH2O mCO2/(1+WH2O mCO2)
+!0.0180153 kg/mol*1.2551e-4/(1+ 0.0180153*1.2551e-4)
+
+FLOW_CONDITION sides
+UNITS Pa,C,M,yr
+TYPE
+PRESSURE dirichlet
+TEMPERATURE dirichlet
+CONCENTRATION zero_gradient
+ENTHALPY dirichlet
+/
+IPHASE 1
+PRESSURE 1.645D7 1.645D7
+TEMPERATURE 54.5 C
+CONCENTRATION 2.2611e-6
+ENTHALPY 0.d0 0.d0
+/
+
+FLOW_CONDITION Source
+UNITS Pa,C,M,yr
+TYPE
+RATE mass_rate
+!PRESSURE dirichlet
+TEMPERATURE dirichlet
+CONCENTRATION zero_gradient
+ENTHALPY zero_gradient
+/
+RATE LIST
+  TIME_UNITS y
+  DATA_UNITS kg/s
+0.              0.0  5.e-5
+0.4             0.0  0.d0
+/
+IPHASE 1
+!PRESSURE 2.d7 2.d7
+TEMPERATURE 54.5d0
+CONCENTRATION 2.2611e-6
+ENTHALPY 0.d0 0.d0
+/
+
+!=========================== transport conditions =============================
+TRANSPORT_CONDITION Initial
+  TYPE dirichlet
+  CONSTRAINT_LIST
+    0.d0 trigonodus
+  /
+END
+
+TRANSPORT_CONDITION source
+  TYPE dirichlet
+  CONSTRAINT_LIST
+    0.d0 source
+  /
+END
+
+!=========================== constraints ======================================
+CONSTRAINT trigonodus
+CONCENTRATIONS
+Tracer   0.1      T
+H+       6.5      Z
+Na+      5.e-1    T  
+Cl-      5.e-1    T
+CO2(aq) -2.1      G CO2(g)
+!CO2(aq)  1.2551E-04 T
+/
+MINERALS
+!mineral     vol. frac. area
+/
+/
+
+CONSTRAINT source
+CONCENTRATIONS
+Tracer   0.1      T
+H+       6.5      Z
+Na+      5.e-1    T
+Cl-      5.e-1    T
+CO2(aq)  100.     G CO2(g)
+/
+MINERALS
+!mineral     vol. frac. area
+/
+/
+
+!=========================== condition couplers ===============================
+! initial condition
+INITIAL_CONDITION reservoir
+FLOW_CONDITION Initial
+TRANSPORT_CONDITION Initial
+REGION all 
+END
+
+! right boundary condition
+BOUNDARY_CONDITION right
+TRANSPORT_CONDITION Initial
+FLOW_CONDITION Initial
+REGION right
+END
+
+SOURCE_SINK src
+FLOW_CONDITION Source
+TRANSPORT_CONDITION source
+REGION well
+END
+
+!=========================== stratigraphy couplers ============================
+STRATA
+  REGION all
+  MATERIAL trigonodusdolomite
+END

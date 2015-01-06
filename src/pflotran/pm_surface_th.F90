@@ -230,7 +230,7 @@ subroutine PMSurfaceTHPostSolve(this)
   do local_id = 1,this%surf_realization%discretization%grid%nlmax
     iend = local_id*this%option%nflowdof
     istart = iend - this%option%nflowdof + 1
-    if(xx_p(istart) < 1.d-15) then
+    if (xx_p(istart) < 1.d-15) then
       xx_p(istart) = 0.d0
       xx_p(iend) = 0.d0
     endif

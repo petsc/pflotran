@@ -1456,7 +1456,7 @@ subroutine GridDestroy(grid)
                                            
   call ConnectionDestroyList(grid%internal_connection_set_list)
 
-  if(associated(grid)) deallocate(grid)
+  if (associated(grid)) deallocate(grid)
   nullify(grid)
 
 end subroutine GridDestroy
@@ -1536,7 +1536,7 @@ subroutine GridLocalizeRegionFromBlock(grid,region,option)
   PetscBool :: same_point
   PetscErrorCode :: ierr
 
-  if(grid%itype /= STRUCTURED_GRID) then
+  if (grid%itype /= STRUCTURED_GRID) then
      option%io_buffer='Region definition using BLOCK is only supported for ' //&
        ' structured grids'
      call printErrMsg(option)

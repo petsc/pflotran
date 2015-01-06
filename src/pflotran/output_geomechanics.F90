@@ -115,7 +115,7 @@ subroutine OutputGeomechanics(geomech_realization,plot_flag, &
   endif
 
   ! Increment the plot number
-  if(plot_flag) then
+  if (plot_flag) then
     geomech_realization%output_option%plot_number = &
       geomech_realization%output_option%plot_number + 1
   endif
@@ -1449,7 +1449,7 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
 
 #if 0
     case (AVERAGED_VARS)
-      if(associated(output_option%aveg_output_variable_list%first)) then
+      if (associated(output_option%aveg_output_variable_list%first)) then
         cur_variable => output_option%aveg_output_variable_list%first
         do ivar = 1,output_option%aveg_output_variable_list%nvars
           string = 'Aveg. ' // cur_variable%name
@@ -1730,7 +1730,7 @@ subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
 
   vert_count=0
   do i=1,local_size*EIGHT_INTEGER
-    if(int(vec_ptr(i)) >0 ) vert_count=vert_count+1
+    if (int(vec_ptr(i)) >0 ) vert_count=vert_count+1
   enddo
   vert_count=vert_count+grid%nlmax_elem
 
@@ -1785,7 +1785,7 @@ subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
   do i=1,local_size
     nverts=0
     do j=1,8
-      if(vec_ptr((i-1)*8+j)>0) nverts=nverts+1
+      if (vec_ptr((i-1)*8+j)>0) nverts=nverts+1
     enddo
     vert_count=vert_count+1
     select case (nverts)
@@ -1800,7 +1800,7 @@ subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
     end select
 
     do j=1,8
-      if(vec_ptr((i-1)*8+j)>0) then
+      if (vec_ptr((i-1)*8+j)>0) then
         vert_count=vert_count+1
         int_array(vert_count) = INT(vec_ptr((i-1)*8+j))-1
       endif

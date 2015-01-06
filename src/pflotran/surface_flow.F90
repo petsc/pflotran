@@ -204,7 +204,7 @@ subroutine SurfaceFlowDiffusion(hw_up, &
   endif
   
   dhead=head_up-head_dn
-  if(abs(dhead)<eps) then
+  if (abs(dhead)<eps) then
     dhead=0.d0
     vel = 0.d0
   else
@@ -369,7 +369,7 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
       dist = sqrt(dx*dx + dy*dy + dz*dz)
       slope = dz/dist
       
-      if(surf_global_auxvars(ghosted_id_up)%head(1)<0.d0 .or. &
+      if (surf_global_auxvars(ghosted_id_up)%head(1)<0.d0 .or. &
          surf_global_auxvars(ghosted_id_dn)%head(1)<0.d0) then
         write(*,*) 'In SurfaceFlowFlux: ', surf_global_auxvars(ghosted_id_up)%head(1), &
           surf_global_auxvars(ghosted_id_dn)%head(1),ghosted_id_up,ghosted_id_dn
@@ -450,7 +450,7 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
     if (.not.associated(source_sink)) exit
     
     qsrc_flow = 0.d0
-    if(source_sink%flow_condition%rate%itype/=HET_VOL_RATE_SS.and. &
+    if (source_sink%flow_condition%rate%itype/=HET_VOL_RATE_SS.and. &
        source_sink%flow_condition%rate%itype/=HET_MASS_RATE_SS) &
     qsrc_flow = source_sink%flow_condition%rate%dataset%rarray(1)
       
@@ -610,7 +610,7 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
 
       patch%internal_velocities(1,sum_connection) = vel
       patch%internal_flow_fluxes(1,sum_connection) = Res(1)
-      if(abs(vel)>eps) then
+      if (abs(vel)>eps) then
         dt = dist/abs(vel)/4.d0
         max_allowable_dt = min(max_allowable_dt,dt)
       endif
@@ -648,7 +648,7 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
       patch%boundary_velocities(1,sum_connection) = vel
       patch%boundary_flow_fluxes(1,sum_connection) = Res(1)
 
-      if(abs(vel)>eps) then
+      if (abs(vel)>eps) then
         dt = dist/abs(vel)/4.d0
         max_allowable_dt = min(max_allowable_dt,dt)
       endif
@@ -1005,7 +1005,7 @@ subroutine SurfaceFlowUpdateSurfState(surf_realization)
 
     hw_p(local_id) = (surfpress_p(local_id)-option%reference_pressure)/ &
                         (abs(option%gravity(3)))/den
-    if(hw_p(local_id)<1.d-15) hw_p(local_id) = 0.d0
+    if (hw_p(local_id)<1.d-15) hw_p(local_id) = 0.d0
 
   enddo
   call VecRestoreArrayF90(surf_field%flow_xx, hw_p, ierr);CHKERRQ(ierr)

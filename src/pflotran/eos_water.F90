@@ -1992,7 +1992,7 @@ subroutine EOSWaterSaturationTemperature(ts,ps,t_ps,ts_guess,ierr)
 
   ierr = 0
 
-!geh  if(ipvtab.eq.0 .or. tsp.gt.369.d0) then
+!geh  if (ipvtab.eq.0 .or. tsp.gt.369.d0) then
 
 !-------newton-raphson iteration for calculating ts by analytical funcs
 

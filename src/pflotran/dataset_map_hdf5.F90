@@ -487,7 +487,7 @@ subroutine DatasetMapHDF5ReadMap(this,option)
   
   nids_local=int(dims_h5(2)/option%mycommsize)
   remainder =int(dims_h5(2))-nids_local*option%mycommsize
-  if(option%myrank<remainder) nids_local=nids_local+1
+  if (option%myrank<remainder) nids_local=nids_local+1
 
   ! Find istart and iend
   istart = 0

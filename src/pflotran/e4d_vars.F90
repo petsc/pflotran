@@ -110,8 +110,9 @@ subroutine elog(com,i1,i2)
      
   case(0)
      inquire(file='e4d.inp',exist=exst)
-     if(.not. exst) then
-        open(13,file=trim(log_file),status='old',action='write',position='append')
+     if (.not. exst) then
+        open(13,file=trim(log_file),status='old',action='write', &
+             position='append')
         write(13,*) 'Cannot find the input file e4d.inp'
         write(*,*) 'Aborting E4D'
         i2=-1
@@ -125,8 +126,9 @@ subroutine elog(com,i1,i2)
      end if
 
      case(1)
-        open(13,file=trim(log_file),status='old',action='write',position='append')
-        if(i1 .ne. 0) then
+        open(13,file=trim(log_file),status='old',action='write', &
+             position='append')
+        if (i1 .ne. 0) then
            write(13,*) "There was a problem reading the mesh file name in e4d.inp"
            write(13,*) "Aborting E4D"
            i2=-1
@@ -134,7 +136,7 @@ subroutine elog(com,i1,i2)
            i2=0
            write(13,*) "The specified mesh file is: ",trim(mshfile)
            inquire(file=trim(mshfile),exist=exst)
-           if(.not. exst) then
+           if (.not. exst) then
               write(13,*) "Cannot find the mesh file: ",trim(mshfile)
               write(*,*) "Aborting E4D"
               i2=-1
@@ -144,8 +146,9 @@ subroutine elog(com,i1,i2)
         return
 
      case(2)
-        open(13,file=trim(log_file),status='old',action='write',position='append')
-        if(i1 .ne. 0) then
+        open(13,file=trim(log_file),status='old',action='write', &
+             position='append')
+        if (i1 .ne. 0) then
            write(13,*) "There was a problem reading the survey file name in e4d.inp"
            write(13,*) "Aborting E4D"
            i2=-1
@@ -153,7 +156,7 @@ subroutine elog(com,i1,i2)
            i2=0
            write(13,*) "The specified survey file is: ",trim(efile)
            inquire(file=trim(efile),exist=exst)
-           if(.not. exst) then
+           if (.not. exst) then
               write(13,*) "Cannot find the survey file: ",trim(efile)
               write(*,*) "Aborting E4D"
               i2=-1
@@ -163,8 +166,9 @@ subroutine elog(com,i1,i2)
         return
 
      case(3)
-        open(13,file=trim(log_file),status='old',action='write',position='append')
-        if(i1 .ne. 0) then
+        open(13,file=trim(log_file),status='old',action='write', &
+             position='append')
+        if (i1 .ne. 0) then
            write(13,*) "There was a problem reading the conductivity list file name in e4d.inp"
            write(13,*) "Aborting E4D"
            i2=-1
@@ -172,7 +176,7 @@ subroutine elog(com,i1,i2)
            i2=0
            write(13,*) "The specified conductivity list file is: ",trim(sigfile)
            inquire(file=trim(sigfile),exist=exst)
-           if(.not. exst) then
+           if (.not. exst) then
               write(13,*) "Cannot find the survey file: ",trim(sigfile)
               write(*,*) "Aborting E4D"
               i2=-1
@@ -182,8 +186,9 @@ subroutine elog(com,i1,i2)
         return
 
      case(4)
-        open(13,file=trim(log_file),status='old',action='write',position='append')
-        if(i1 .ne. 0) then
+        open(13,file=trim(log_file),status='old',action='write', &
+             position='append')
+        if (i1 .ne. 0) then
            write(13,*) "There was a problem reading the map file name in e4d.inp"
            write(13,*) "Aborting E4D"
            i2=-1
@@ -191,7 +196,7 @@ subroutine elog(com,i1,i2)
            i2=0
            write(13,*) "The specified conductivity list file is: ",trim(mapfile)
            inquire(file=trim(mapfile),exist=exst)
-           if(.not. exst) then
+           if (.not. exst) then
               write(13,*) "Cannot find the survey file: ",trim(mapfile)
               write(*,*) "Aborting E4D"
               i2=-1
@@ -201,8 +206,9 @@ subroutine elog(com,i1,i2)
         return
 
      case(5)
-        open(13,file=trim(log_file),status='old',action='write',position='append')
-        if(i1 .ne. 0) then
+        open(13,file=trim(log_file),status='old',action='write', &
+             position='append')
+        if (i1 .ne. 0) then
            write(13,*) "There was a problem reading the number of electrodes in: ",trim(efile)
            write(*,*) "Aborting E4D"
         else
@@ -222,7 +228,7 @@ subroutine elog(com,i1,i2)
         open(13,file=trim(log_file),status='old',action='write',position='append')
         write(13,*) "E4D internal mesh translation file: ",mshfile(1:i1)//".trn"
         inquire(file=mshfile(1:i1)//".trn",exist=exst)
-        if(.not. exst) then
+        if (.not. exst) then
            write(13,*) "Cannot find the mesh translation file: ",mshfile(1:i1)//".trn"
            write(*,*) "Aborting E4D"
            i2=-1
@@ -240,8 +246,9 @@ subroutine elog(com,i1,i2)
         return
 
      case(9)
-        open(13,file=trim(log_file),status='old',action='write',position='append')
-        if(i1 .ne. 0) then
+        open(13,file=trim(log_file),status='old',action='write', &
+             position='append')
+        if (i1 .ne. 0) then
            write(13,*) "There was a problem reading the number of measurements"
            write(13,*) "in the survey file: ",trim(efile)
            write(13,*) "Aborting E4D"
@@ -261,8 +268,9 @@ subroutine elog(com,i1,i2)
         return
 
      case(11)
-        open(13,file=trim(log_file),status='old',action='write',position='append')
-        if(i1 .ne. 0) then
+        open(13,file=trim(log_file),status='old',action='write', &
+             position='append')
+        if (i1 .ne. 0) then
            write(13,*) 'There was a problem reading the first line of the '
            write(13,*) 'conductivity file :',trim(sigfile)
            write(13,*) 'The first line of the conductivity file must contain the '
@@ -288,8 +296,9 @@ subroutine elog(com,i1,i2)
         return
 
      case(13)
-        open(13,file=trim(log_file),status='old',action='write',position='append')
-        if(i1 .ne. 0) then
+        open(13,file=trim(log_file),status='old',action='write', &
+             position='append')
+        if (i1 .ne. 0) then
            write(13,*) 'There was a problem reading the number of mapping values'
            write(13,*) 'in the mapping file: ',trim(mapfile)
            write(13,*) 'Aborting E4D'
@@ -311,7 +320,7 @@ subroutine elog(com,i1,i2)
      case(15)
         open(13,file=trim(log_file),status='old',action='write',position='append')
         inquire(file=mshfile(1:i1)//'.node',exist=exst)
-        if(.not. exst) then
+        if (.not. exst) then
            write(13,*) 'Could not find the mesh node file: ',mshfile(1:i1)//'.node'
            write(13,*) 'Aborting E4D'
            i2=-1
@@ -339,7 +348,7 @@ subroutine elog(com,i1,i2)
     case(18)
         open(13,file=trim(log_file),status='old',action='write',position='append')
         inquire(file=mshfile(1:i1)//'.ele',exist=exst)
-        if(.not. exst) then
+        if (.not. exst) then
            write(13,*) 'Could not find the mesh node file: ',mshfile(1:i1)//'.ele'
            write(13,*) 'Aborting E4D'
            i2=-1
@@ -382,8 +391,9 @@ subroutine elog(com,i1,i2)
         close(13)
 
      case(23)
-        open(13,file=trim(log_file),status='old',action='write',position='append')
-        if(i1 .ne. 0) then
+        open(13,file=trim(log_file),status='old',action='write', &
+             position='append')
+        if (i1 .ne. 0) then
            write(13,*) "There was a problem reading the list file name in e4d.inp"
            write(13,*) "Aborting E4D"
            i2=-1
@@ -391,7 +401,7 @@ subroutine elog(com,i1,i2)
            i2=0
            write(13,*) "The specified conductivity list file is: ",trim(list_file)
            inquire(file=trim(list_file),exist=exst)
-           if(.not. exst) then
+           if (.not. exst) then
               write(13,*) "Cannot find the list file: ",trim(list_file)
               write(*,*) "Aborting E4D"
               i2=-1
@@ -401,8 +411,9 @@ subroutine elog(com,i1,i2)
         return
 
      case(24)
-        open(13,file=trim(log_file),status='old',action='write',position='append')
-        if(i1 .ne. 0) then
+        open(13,file=trim(log_file),status='old',action='write', &
+             position='append')
+        if (i1 .ne. 0) then
            write(13,*) 'There was a problem reading the first line of the list file.'
            write(13,*) 'The first line of the list file must contain the following: '
            write(13,*) 'Number_of_E4D_times FF sw_conductivity gw_conductivity'
@@ -419,8 +430,9 @@ subroutine elog(com,i1,i2)
         return
         
      case(25)
-        open(13,file=trim(log_file),status='old',action='write',position='append')
-        if(i1 .ne. 0) then
+        open(13,file=trim(log_file),status='old',action='write', &
+             position='append')
+        if (i1 .ne. 0) then
            write(13,*) "There was a problem reading list file line: ",i2
            write(13,*) "Each list file line must contain the following: "
            write(13,*) "E4D_time Survey_file_name Conductivity_file_name"
@@ -434,7 +446,7 @@ subroutine elog(com,i1,i2)
      case(26)
         open(13,file=trim(log_file),status='old',action='write',position='append')
         inquire(file=trim(csrv_file),exist=exst)
-        if(.not. exst) then
+        if (.not. exst) then
            write(13,*) 'Cannot open the file: ',csrv_file
            write(13,*) 'which is listed on line: ',i2
            write(13,*) 'of the list file: ',list_file
@@ -444,7 +456,7 @@ subroutine elog(com,i1,i2)
            return
         end if
         inquire(file=trim(ccond_file),exist=exst)
-        if(.not. exst) then
+        if (.not. exst) then
            write(13,*) 'Cannot open the file: ',ccond_file
            write(13,*) 'which is listed on line: ',i2
            write(13,*) 'of the list file: ',list_file
@@ -458,12 +470,13 @@ subroutine elog(com,i1,i2)
         return
         
      case(27)
-        open(13,file=trim(log_file),status='old',action='write',position='append')
-        if(i1 .ne. 0) then
+        open(13,file=trim(log_file),status='old',action='write', &
+             position='append')
+        if (i1 .ne. 0) then
            write(13,*) 'There was a problem reading the number of electrodes in: ',trim(csrv_file)
            write(13,*) 'Aborting E4D'
            i1=-1
-        elseif(i2 .ne. ne) then
+        elseif (i2 .ne. ne) then
            write(13,*) 'The number of electrodes in file: ',trim(csrv_file)
            write(13,*) 'is: ',i2
            write(13,*) 'The number of electrodes in the baseline survey file is: ',ne
@@ -484,12 +497,13 @@ subroutine elog(com,i1,i2)
         return
 
      case(29)
-        open(13,file=trim(log_file),status='old',action='write',position='append')
-        if(i1 .ne. 0) then
+        open(13,file=trim(log_file),status='old',action='write', &
+             position='append')
+        if (i1 .ne. 0) then
            write(13,*) 'There was a problem reading the number of electrodes in: ',trim(csrv_file)
            write(13,*) 'Aborting E4D'
            i1=-1
-        elseif(i2 .ne. nm) then
+        elseif (i2 .ne. nm) then
            write(13,*) 'The number of measurements in file: ',trim(csrv_file)
            write(13,*) 'is: ',i2
            write(13,*) 'The number of measurements in the baseline survey file is: ',nm

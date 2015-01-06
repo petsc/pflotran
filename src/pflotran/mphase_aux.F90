@@ -6,9 +6,11 @@ module Mphase_Aux_module
 
   implicit none
   
-  private 
+  private
+
 !#define GARCIA 1
 #define DUANDEN 1
+
 #include "finclude/petscsys.h"
 
   type, public :: mphase_auxvar_elem_type
@@ -155,7 +157,7 @@ subroutine MphaseAuxVarInit(auxvar,option)
      allocate ( auxvar%auxvar_elem(nvar)%vis(option%nphase))
      allocate ( auxvar%auxvar_elem(nvar)%xmol(option%nphase*option%nflowspec))
      allocate ( auxvar%auxvar_elem(nvar)%diff(option%nphase*option%nflowspec))
-     if(nvar>0) &
+     if (nvar>0) &
        auxvar%auxvar_elem(nvar)%hysdat => auxvar%auxvar_elem(0)%hysdat
 
      auxvar%auxvar_elem(nvar)%pres = 0.d0
@@ -290,8 +292,8 @@ subroutine MphaseAuxVarCompute_NINC(x,auxvar,global_auxvar,iphase,saturation_fun
     case(1)
 !******* aqueous phase exists ***********
       auxvar%xmol(2) = x(3)
-!      if(auxvar%xmol(2) < 0.D0) print *,'tran:',iphase, x(1:3)
-!      if(auxvar%xmol(2) > 1.D0) print *,'tran:',iphase, x(1:3)
+!      if (auxvar%xmol(2) < 0.D0) print *,'tran:',iphase, x(1:3)
+!      if (auxvar%xmol(2) > 1.D0) print *,'tran:',iphase, x(1:3)
 !pcl  if (x(3) < 0.d0) then
 !pcl    option%io_buffer = 'CO2 mole fraction below zero.  It is likely ' // &
 !pcl      'that CO2 aqueous concentrations in transport are inconsistent with flow.'
@@ -306,8 +308,8 @@ subroutine MphaseAuxVarCompute_NINC(x,auxvar,global_auxvar,iphase,saturation_fun
     case(2)
 !******* gas phase exists ***********
       auxvar%xmol(4) = x(3)
-!      if(auxvar%xmol(4) < 0.D0) print *,'tran:',iphase, x(1:3)
-!      if(auxvar%xmol(4) > 1.D0) print *,'tran:',iphase, x(1:3)
+!      if (auxvar%xmol(4) < 0.D0) print *,'tran:',iphase, x(1:3)
+!      if (auxvar%xmol(4) > 1.D0) print *,'tran:',iphase, x(1:3)
       auxvar%xmol(3) = 1.D0 - auxvar%xmol(4)
       auxvar%pc(:) = 0.D0
       auxvar%sat(1) = 0.D0
@@ -317,11 +319,11 @@ subroutine MphaseAuxVarCompute_NINC(x,auxvar,global_auxvar,iphase,saturation_fun
     case(3)    
 !******* 2-phase phase exists ***********
       auxvar%sat(2) = x(3)
-      if(auxvar%sat(2) < 0.D0)then
+      if (auxvar%sat(2) < 0.D0)then
 !        print *,'tran:',iphase, x(1:3)
         auxvar%sat(2) = 0.D0
       endif
-!      if(auxvar%sat(2)> 1.D0) print *,'tran:',iphase, x(1:3)
+!      if (auxvar%sat(2)> 1.D0) print *,'tran:',iphase, x(1:3)
       auxvar%sat(1) = 1.D0 - auxvar%sat(2)
       auxvar%pc(:) = 0.D0
       temp = 1.D-2
@@ -398,7 +400,7 @@ subroutine MphaseAuxVarCompute_NINC(x,auxvar,global_auxvar,iphase,saturation_fun
     call Henry_duan_sun(t,p2*1.D-5,henry,lngamco2,m_na,m_cl)
     Qkco2 = henry*xphi  ! convert from bar to Pa
     henry = 1.D0/(FMWH2O*1.D-3)/(henry*1.D-5)/xphi 
-    if(present(xphico2)) xphico2 = xphi
+    if (present(xphico2)) xphico2 = xphi
    
     mco2 = (p - sat_pressure)*1.D-5*Qkco2
     xco2eq = mco2/(1.D3/fmwh2o + mco2 + m_nacl)
@@ -412,7 +414,7 @@ subroutine MphaseAuxVarCompute_NINC(x,auxvar,global_auxvar,iphase,saturation_fun
       auxvar%xmol(4) = auxvar%xmol(2)*henry/p   
       auxvar%xmol(3) = 1.D0-auxvar%xmol(4)
       if (auxvar%xmol(3) < 0.D0) auxvar%xmol(3) = 0.D0
-!     if(xmol(3) < 0.D0) xmol(3) = 0.D0
+!     if (xmol(3) < 0.D0) xmol(3) = 0.D0
     case(2)   
       auxvar%xmol(2) = p*auxvar%xmol(4)/henry
       auxvar%xmol(1) = 1.D0 - auxvar%xmol(2)
@@ -470,7 +472,7 @@ subroutine MphaseAuxVarCompute_NINC(x,auxvar,global_auxvar,iphase,saturation_fun
 !    m_na = rt_auxvar%pri_molal(reaction%species_idx%na_ion_id)
 !    m_cl = rt_auxvar%pri_molal(reaction%species_idx%cl_ion_id)
 !    m_nacl = m_na
-!    if(m_cl > m_nacl) m_nacl=m_cl
+!    if (m_cl > m_nacl) m_nacl=m_cl
 !  endif  
 
     y_nacl = m_nacl/(m_nacl + 1.D3/FMWH2O)
@@ -482,7 +484,11 @@ subroutine MphaseAuxVarCompute_NINC(x,auxvar,global_auxvar,iphase,saturation_fun
 #ifdef DUANDEN
 !                 units: t [C], p [MPa], dw_kg [kg/m^3]
   call EOSWaterDuanMixture (t,p,auxvar%xmol(2),y_nacl,auxvar%avgmw(1),dw_kg,auxvar%den(1))
+
+#else
+  auxvar%den(1) = dw_mol
 #endif 
+!print *,'mixture den: ',t,p,auxvar%xmol(2),y_nacl,auxvar%avgmw(1),dw_kg,auxvar%den(1),dw_mol
 
 ! Garcia mixing **************************
 #ifdef GARCIA

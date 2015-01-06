@@ -835,7 +835,7 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
       enddo
 
     case (AVERAGED_VARS)
-      if(associated(output_option%aveg_output_variable_list%first)) then
+      if (associated(output_option%aveg_output_variable_list%first)) then
         cur_variable => output_option%aveg_output_variable_list%first
         do ivar = 1,output_option%aveg_output_variable_list%nvars
           string = 'Aveg. ' // cur_variable%name
@@ -868,12 +868,12 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
     select case (var_list_type)
       case (INSTANTANEOUS_VARS)
         call OutputGetFaceVelOrFlowrateUGrid(realization_base,PETSC_FALSE)
-        if(output_option%print_hdf5_mass_flowrate.or.&
+        if (output_option%print_hdf5_mass_flowrate.or.&
            output_option%print_hdf5_energy_flowrate) then
           call WriteHDF5FlowratesUGrid(realization_base,option,grp_id,var_list_type)
         endif
       case (AVERAGED_VARS)
-        if(output_option%print_hdf5_aveg_mass_flowrate.or.&
+        if (output_option%print_hdf5_aveg_mass_flowrate.or.&
            output_option%print_hdf5_aveg_energy_flowrate) then
           call WriteHDF5FlowratesUGrid(realization_base,option,grp_id,var_list_type)
         endif
@@ -1265,7 +1265,7 @@ subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
       enddo
 
     case (AVERAGED_VARS)
-      if(associated(output_option%aveg_output_variable_list%first)) then
+      if (associated(output_option%aveg_output_variable_list%first)) then
         cur_variable => output_option%aveg_output_variable_list%first
         do ivar = 1,output_option%aveg_output_variable_list%nvars
           string = 'Aveg. ' // cur_variable%name
@@ -1929,7 +1929,7 @@ subroutine WriteHDF5CoordinatesUGrid(grid,option,file_id)
     int_array((i-1)*9 + 8) = INT(vec_ptr((i-1)*8+7))
     int_array((i-1)*9 + 9) = INT(vec_ptr((i-1)*8+8))
     do j=2,9
-      if(int_array((i-1)*9 + j)>0) int_array((i-1)*9 + 1)= int_array((i-1)*9 + 1) +1
+      if (int_array((i-1)*9 + j)>0) int_array((i-1)*9 + 1)= int_array((i-1)*9 + 1) +1
     enddo
   enddo
   
@@ -2162,7 +2162,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
 
   vert_count=0
   do i=1,local_size*EIGHT_INTEGER
-    if(int(vec_ptr(i)) >0 ) vert_count=vert_count+1
+    if (int(vec_ptr(i)) >0 ) vert_count=vert_count+1
   enddo
   vert_count=vert_count+grid%nlmax
 
@@ -2217,7 +2217,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
   do i=1,local_size
     nverts=0
     do j=1,8
-      if(vec_ptr((i-1)*8+j)>0) nverts=nverts+1
+      if (vec_ptr((i-1)*8+j)>0) nverts=nverts+1
     enddo
     vert_count=vert_count+1
     select case (nverts)
@@ -2232,7 +2232,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
     end select
 
     do j=1,8
-      if(vec_ptr((i-1)*8+j)>0) then
+      if (vec_ptr((i-1)*8+j)>0) then
         vert_count=vert_count+1
         int_array(vert_count) = INT(vec_ptr((i-1)*8+j))-1
       endif
@@ -2667,7 +2667,7 @@ subroutine WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option,file_id
   vert_count=0
 
   do i=1,local_size*EIGHT_INTEGER
-    if(int(vec_ptr(i)) >0 ) vert_count=vert_count+1
+    if (int(vec_ptr(i)) >0 ) vert_count=vert_count+1
   enddo
   vert_count=vert_count+grid%unstructured_grid%explicit_grid%num_elems
   
@@ -2714,7 +2714,7 @@ subroutine WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option,file_id
   do i=1,local_size
     nverts=0
     do j=1,8
-      if(vec_ptr((i-1)*8+j)>0) nverts=nverts+1
+      if (vec_ptr((i-1)*8+j)>0) nverts=nverts+1
     enddo
     vert_count=vert_count+1
     select case (nverts)
@@ -2736,7 +2736,7 @@ subroutine WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option,file_id
     end select
 
     do j=1,8
-      if(vec_ptr((i-1)*8+j)>0) then
+      if (vec_ptr((i-1)*8+j)>0) then
         vert_count=vert_count+1
         int_array(vert_count) = INT(vec_ptr((i-1)*8+j))-1
       endif
@@ -2889,7 +2889,7 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id,var_list_type
       ndof=1
     case (TH_MODE)
       ndof=1
-      if(output_option%print_hdf5_mass_flowrate.and.output_option%print_hdf5_energy_flowrate) ndof = 2
+      if (output_option%print_hdf5_mass_flowrate.and.output_option%print_hdf5_energy_flowrate) ndof = 2
     case default
       option%io_buffer='FLOWRATE output not supported in this mode'
       call printErrMsg(option)
@@ -2918,14 +2918,14 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id,var_list_type
 
   do dof = 1,option%nflowdof
 
-    if(dof==1 .and. (.not.mass_flowrate)) exit
-    if(dof==2 .and. (.not.energy_flowrate)) exit
+    if (dof==1 .and. (.not.mass_flowrate)) exit
+    if (dof==2 .and. (.not.energy_flowrate)) exit
 
     select case(option%iflowmode)
       case(RICHARDS_MODE)
         string = "Mass_Flowrate [kg_s]" // CHAR(0)
       case(TH_MODE)
-        if(dof==1) then
+        if (dof==1) then
           string = "Mass_Flowrate [kg_s]" // CHAR(0)
         else
           string = "Energy_Flowrate [J_s]" // CHAR(0)
@@ -2935,7 +2935,7 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id,var_list_type
         call printErrMsg(option)
     end select
 
-    if(var_list_type==AVERAGED_VARS) string = 'Aveg_' // trim(string) // CHAR(0)
+    if (var_list_type==AVERAGED_VARS) string = 'Aveg_' // trim(string) // CHAR(0)
 
     ! memory space which is a 1D vector
     rank_mpi = 1

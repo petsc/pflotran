@@ -1269,7 +1269,7 @@ subroutine OutputGetFaceVelOrFlowrateUGrid(realization_base, save_velocity)
           idx = (local_id_up-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface_up + 1
           vec_ptr(idx) = patch%internal_flow_fluxes(dof,sum_connection)
 
-          if(iface_dn>0) then
+          if (iface_dn>0) then
             ! Save flowrate for iface_dn of local_id_dn cell using -ve flowrate up-->dn
             flowrates(dof,iface_dn,local_id_dn) = -patch%internal_flow_fluxes(dof,sum_connection)
 
@@ -1297,7 +1297,7 @@ subroutine OutputGetFaceVelOrFlowrateUGrid(realization_base, save_velocity)
       ghosted_id_dn = cur_connection_set%id_dn(iconn)
       local_id_dn = grid%nG2L(ghosted_id_dn)
       do iface_dn = 1,MAX_FACE_PER_CELL
-        if(face_id==ugrid%cell_to_face_ghosted(iface_dn,local_id_dn)) exit
+        if (face_id==ugrid%cell_to_face_ghosted(iface_dn,local_id_dn)) exit
       enddo
 
       do dof=1,option%nflowdof

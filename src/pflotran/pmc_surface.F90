@@ -281,7 +281,7 @@ subroutine PMCSurfaceGetAuxData(this)
   print *, 'PMCSurfaceGetAuxData()'
 #endif
 
-  if(this%option%subsurf_surf_coupling == SEQ_COUPLED) then
+  if (this%option%subsurf_surf_coupling == SEQ_COUPLED) then
     select type(pmc => this)
       class is(pmc_surface_type)
         select case(this%option%iflowmode)
@@ -381,7 +381,7 @@ subroutine PMCSurfaceSetAuxData(this)
 
   dt = this%option%surf_subsurf_coupling_flow_dt
 
-  if(this%option%subsurf_surf_coupling == SEQ_COUPLED) then
+  if (this%option%subsurf_surf_coupling == SEQ_COUPLED) then
     select type(pmc => this)
       class is(pmc_surface_type)
 
@@ -542,7 +542,7 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
             do ghosted_id = 1, pmc%surf_realization%discretization%grid%ngmax
 
               local_id = pmc%surf_realization%discretization%grid%nG2L(ghosted_id)
-              if(local_id <= 0) cycle
+              if (local_id <= 0) cycle
 
               count = count + 1
               surfpress_p(count) = xx_p(ghosted_id)*den*abs(this%option%gravity(3)) + &
@@ -587,7 +587,7 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
             do ghosted_id = 1, pmc%surf_realization%discretization%grid%ngmax
 
               local_id = pmc%surf_realization%discretization%grid%nG2L(ghosted_id)
-              if(local_id <= 0) cycle
+              if (local_id <= 0) cycle
 
               count = count + 1
               iend = ghosted_id*this%option%nflowdof

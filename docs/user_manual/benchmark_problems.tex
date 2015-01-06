@@ -194,7 +194,7 @@ Shown in Figure~\ref{f2} is the saturation at different times following a two we
 
 \subsubsection{PFLOTRAN Input Files}
 
-Listing of PFLOTRAN input file including a tracer. Note that the stratigraphic zone specification in {\tt REGION} is grid independent as is the grid size specification in keyword {\tt GRID}. Therefore to change the grid spacing only the line: {\tt NXYZ 1 1 136}, needs to be changed. Also note that a line beginning with \# is read as a comment.
+Listing for a PFLOTRAN input file that couples Richards mode to a tracer is given below. Note that the stratigraphic zone specification in {\tt REGION} is grid independent as is the grid size specification in keyword {\tt GRID}. Therefore to change the grid spacing only the line: {\tt NXYZ 1 1 136}, needs to be changed. Also note that a line beginning with \# is read as a comment.
 
 \bigskip
 
@@ -212,3 +212,128 @@ Source/sink file {\tt src.dat}:
 \normalsize
 
 
+\subsection{CO$_2$ Sequestration: 1D Example Problem and Comparison with TOUGHREACT}
+
+In this example problem involves sequentially coupling of {\tt MPHASE} and {\tt CHEMISTRY}. The chemical system consists of four primary species and 5 secondary species. Supercritical CO$_2$ is injected into a well located at the west boundary. Dirichlet pressure boundary conditions are imposed at the east boundary. The problem definition with associated parameters is given in Table~\ref{tco2}.
+
+\begin{table}[h]\centering
+\caption{Problem definition and parameters used in the 1D CO$_2$ sequestration example.}
+\label{tco2}
+\vspace{3mm}
+\begin{tabular}{lcc}
+\toprule
+Description & Symbol & Value\\
+\midrule
+Domain & $l$ & 100 m\\
+Permeability & $k$ & $10^{-15}$ m$^2$\\
+Porosity & $\varphi$ & 0.12\\
+Tortuosity & $\tau$ & 1\\
+Injection Rate & $Q_\c$ & $5\times 10^{-5}$ kg/s, duration 0.4 y\\
+Characteristic Curves & modified van Genuchten & [see Eqns.\eqref{pc}-\eqref{sg}]\\
+& $\lambda$ & 0.6\\
+& $\a$ & $1.9 \times 10^{-5}$ Pa$^{-1}$\\
+& $s_{rl}$ & 0\\
+& $s_{rg}$ & 0\\
+& $P_C^{\rm max}$ & $10^7$ Pa\\
+Rock Density & $\rho_r$ & 2650 kg/m$^3$\\
+Rock Specific Heat & $c_r$ & 1000 J/kg/K\\
+Rock Thermal Conductivity & $\kappa_{\rm wet,\,dry}$ & 0.5 W/m/K\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The PFLOTRAN initial aqueous solution corresponds to a brine with NaCl concentration of 0.5 m. Mineral reactions are not considered. The initial fluid composition taken from {\tt pflotran.out} is listed in Table~\ref{tinitial_co2}.
+
+\begin{table}[h]
+\caption{Initial concentration of primary and secondary species. Mineral reactions are not considered.}
+\label{tinitial_co2}
+\footnotesize
+\begin{verbatim}
+  Transport Condition: Initial
+  ----------------------------------------------------------------------------
+        iterations:    20
+                pH:   5.0273
+    ionic strength:   4.7915E-01 [mol/L]
+    charge balance:   1.1102E-16
+          pressure:   1.6450E+07 [Pa]
+       temperature:    54.50 [C]
+       density H2O:   992.99 [kg/m^3]
+ ln / activity H2O:   0.0000E+00  1.0000E+00    [---]
+ mole fraction H2O:   9.8093E-01    [---]
+ mass fraction H2O:   9.7160E-01    [---]
+  ----------------------------------------------------------------------------
+  primary               free        total
+  species               molal       molal       act coef     constraint
+  ----------------------------------------------------------------------------
+  H+                    1.1727E-05  2.5844E-17  8.0079E-01    chrg
+  Na+                   4.7913E-01  5.0000E-01  6.8288E-01    total aq
+  Cl-                   4.7913E-01  5.0000E-01  6.4459E-01    total aq
+  CO2(aq)               1.1380E-04  1.2551E-04  1.1053E+00    CO2(g)
+
+  complex               molality    act coef  logK
+  ----------------------------------------------------------------------------
+  NaCl(aq)              2.0866E-02  1.0000E+00    6.8511E-01
+  HCO3-                 1.1713E-05  6.8288E-01    6.2239E+00
+  OH-                   1.2056E-08  6.6467E-01    1.3123E+01
+  NaOH(aq)              1.6487E-09  1.0000E+00    1.3325E+01
+  CO3--                 3.2433E-10  2.0899E-01    1.6323E+01
+\end{verbatim}
+\end{table}
+
+\normalsize
+
+The defining equations for the saturation and relative permeability functions for the aqueous solution and supercritical CO$_2$ are given by the van Genuchten -Corey relations. For the aqueous solution van Genuchten curves are used for capillary pressure $P_c$
+\EQ\label{pc}
+P_c(s_e) \eq \frac{1}{\a}\Big[\big(s_e\big)^{-1/\lambda} -1\big]^{1-\lambda},
+\EN
+and relative permeability $k_{rl}$
+\EQ
+k_{rl} \eq \sqrt{s_e}\left\{1-\left[1-\big( s_e \big)^{1/\lambda}\right]^\lambda\right\}^2,
+\EN
+with effective saturation $s_e$ defined by
+\EQ
+s_e \eq \frac{s_l - s_{lr}}{1-s_{lr}}.
+\EN
+For the supercritical CO$_2$ phase the Corey curve is used defined by
+\EQ
+k_{rg} \eq \big(1-s'\big)^2 \big[1-(s')^2\big],
+\EN
+with
+\EQ\label{sg}
+s' \eq \frac{s_l-s_{lr}}{1-s_{lr}-s_{gr}}.
+\EN
+
+Shown in Figure~\ref{fco2} is a comparison of PFLOTRAN with TOUGHREACT (TOUGHREACT results provided by Alt-Epping and Wanner, private comm.). The same thermodynamic database is used for both codes. Only slight differences can be seen. The CO$_2$ aqueous and total concentrations are essentially identical for PFLOTRAN in the low pH region where supercritical CO$_2$ is present, with slight differences for TOUGHREACT. Note that the CO$_2$ aqueous concentration (and mole fraction $X_{\rm CO_2}$ although not visible in the figure) obtained from PFLOTRAN is not exactly constant. This is caused, presumably, by a change in pressure as 
+shown in Figure~\ref{fp} for the liquid and CO$_2$ pressures in addition to the CO$_2$ saturation $s_{\rm CO_2}$.
+
+\begin{figure}[h]\centering
+\includegraphics[width=\textwidth]{./figs/tr-pflotran-brine}
+
+\vspace{-1.cm}
+
+\parbox{5in}{
+\caption{Comparison with TOUGHREACT (dashed curves) and PFLOTRAN (solid curves) after an elapsed time of 0.4 y corresponding to the end of injection. Reasonable agreement is obtained between the two codes.}
+\label{fco2}}
+\end{figure}
+
+\begin{figure}[t]\centering
+\includegraphics[width=\textwidth]{./figs/p}
+
+\vspace{-1.cm}
+
+\parbox{5in}{
+\caption{Liquid (blue curve) and supercritical CO$_2$ (red curve) pressures predicted by PFLOTRAN after an elapsed time of 0.4 y corresponding to the end of injection. Also shown is the CO$_2$ saturation (green curve).}
+\label{fp}}
+\end{figure}
+
+
+\newpage
+
+\begin{table}[h]
+\caption{Input file for 1D CO$_2$ sequestration example problem coupling {\tt MPHASE} and {\tt CHEMISTRY}.}
+\end{table}
+\footnotesize
+\VerbatimInput{./inputfiles/CO2/co2-1d.in}\label{tco2in}
+\normalsize
+
+\newpage

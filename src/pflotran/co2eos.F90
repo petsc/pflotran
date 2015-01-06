@@ -89,7 +89,7 @@ subroutine CO2(TX,PCX,DC,FC,PHI,HC)
       PARAMETER(B    = 5.8D-05)
 !      
 !
-      IF(PCX.LE..1D6)THEN
+      if (PCX.LE..1D6)THEN
         DC=0.D0
         FC=0.D0
         HC=0.D0
@@ -120,7 +120,7 @@ subroutine CO2(TX,PCX,DC,FC,PHI,HC)
         V = V - DV
         Y = B / (4.D0*V)
         KOUNT = KOUNT + 1
-        IF(KOUNT.GT.25000) GO TO 5
+        if (KOUNT.GT.25000) GO TO 5
       END DO
 
 !    Calculate density (DC) in kg/m3 from V in m3/mol:
@@ -428,7 +428,7 @@ subroutine ENTHALPY(T,V,Z,H)
 !     SAVE ICALL
 !     DATA ICALL/0/
 !     ICALL=ICALL+1
-!     IF(ICALL.EQ.1) WRITE(11,899)
+!     if (ICALL.EQ.1) WRITE(11,899)
 ! 899 FORMAT(6X,'ENTHALPY 2.0      29 JUNE      1999',6X,
 !    X'CALCULATE MOLAR ENTHALPY OF SEPARATE PHASE CO2')
 !
@@ -712,7 +712,7 @@ subroutine Henry_duan_sun(tc,p,keqco2,lngamco2,mc,ma,co2_aq_actcoef)
   ! mco2 = phico2 * yco2 * p * exp(-mu0) / gamma
   
   keqco2 = exp(-tmp) ! = K_co2 / gamco2
-  !print *, 'keqco2: ', mu0,lngamco2,t,p
+  !print *, 'keqco2: ', mu0,lngamco2,tc,p,ma,mc
   return
 end subroutine Henry_duan_sun
 
@@ -779,7 +779,7 @@ subroutine HENRY_co2_noderiv(xmole,x1m,tx,pcx,xphi,rkh,poyn)
 !     SAVE ICALL
 !     DATA ICALL/0/
 !     ICALL=ICALL+1
-!     IF(ICALL.EQ.1) WRITE(11,899)
+!     if (ICALL.EQ.1) WRITE(11,899)
 ! 899 FORMAT(6X,'HENRY    1.0      25 FEBRUARY  1993',6X,
 ! 899 FORMAT(6X,'HENRY    1.1      30 October   1997',6X,
 !    X'Henry',1H','s law for dissolved CO2 mass',
@@ -900,9 +900,9 @@ subroutine HENRY_sullivan (TX,PCX,PS,FC,X1M,XCO2,HP)
       TAU4 = TAU2 * TAU2
 
 !    Calculate Henry's Coefficient (HP) in bars:
-      IF(TAU.GE.0.D0)THEN
+      if (TAU.GE.0.D0)THEN
          HP = 6.4D+03 - (2.07778D+03*TAU2) + (3.1111D+02*TAU4)
-      ELSEIF(TAU.LT.0.D0)THEN
+      ELSEif (TAU.LT.0.D0)THEN
          HP = 6.4D+03 - (2.14914D+03*TAU2) - (1.9543D+02*TAU4)
       ENDIF
 
@@ -973,7 +973,7 @@ subroutine DENMIX(TX,DW,X1M,D1M)
 
       PARAMETER(XMWC=4.40098D-02)
 
-      IF(X1M.LE.0.D0) THEN
+      if (X1M.LE.0.D0) THEN
         D1M = DW
         RETURN
       ENDIF
@@ -1098,7 +1098,7 @@ subroutine SAT(T,P)
       -7.691234564,-2.608023696E1,-1.681706546E2,6.423285504E1, &
       -1.189646225E2,4.167117320,2.097506760E1,1.E9,6./
 
-      IF(T.LT.1..OR.T.GT.500.) GOTO 10
+      if (T.LT.1..OR.T.GT.500.) GOTO 10
       TC=(T+273.15d0)/647.3d0
       X1=1.d0-TC
       X2=X1*X1
@@ -1165,7 +1165,7 @@ subroutine COWAT0(TF,PP,D,U)
       PNMR4=PNMR*PNMR3
       Y=1.d0-SA1*TKR2-SA2/TKR6
       ZP=SA3*Y*Y-2.*SA4*TKR+2.*SA5*PNMR
-      IF(ZP.LT.0.) GOTO 1
+      if (ZP.LT.0.) GOTO 1
 !     19 September 1990.  double on VAX, single on CRAY
 !      Z=Y+ DSQRT(ZP)
       Z=Y+SQRT(ZP)
@@ -1384,7 +1384,7 @@ subroutine TSAT(PX,TX00,TS)
       PetscReal :: PX,TX00,TX0,TS,PS,DT,TSD,PSD
       
       TX0=TX00
-      IF(TX0.NE.0.) GOTO 2
+      if (TX0.NE.0.) GOTO 2
 !
 !-----COME HERE TO OBTAIN ROUGH STARTING VALUE FOR ITERATION.
       TX0=4606./(24.02-LOG(PX)) - 273.15
@@ -1399,7 +1399,7 @@ subroutine TSAT(PX,TX00,TS)
 
       CALL SAT(TS,PS)
 
-      IF(ABS((PX-PS)/PX).LE.1.E-10) RETURN
+      if (ABS((PX-PS)/PX).LE.1.E-10) RETURN
 
       TSD=TS+DT
       CALL SAT(TSD,PSD)
@@ -1420,7 +1420,7 @@ subroutine SIGMA(T,ST)
 
       PetscReal :: T,ST
       
-      IF(T.GE.374.15) GOTO 1
+      if (T.GE.374.15) GOTO 1
       ST=1.-0.625*(374.15-T)/647.3
       ST=ST*.2358*((374.15-T)/647.3)**1.256
       RETURN
@@ -1447,8 +1447,8 @@ subroutine VIS(T,P,D,VW,VS,PS)
       VW=1.E-7*AM*241.4*10.**EX
 
       V1=.407*T+80.4
-      IF(T.LE.350.) VS=1.E-7*(V1-D*(1858.-5.9*T)*1.E-3)
-      IF(T.GT.350.) VS=1.E-7*(V1+.353*D+676.5E-6*D**2+102.1E-9*D**3)
+      if (T.LE.350.) VS=1.E-7*(V1-D*(1858.-5.9*T)*1.E-3)
+      if (T.GT.350.) VS=1.E-7*(V1+.353*D+676.5E-6*D**2+102.1E-9*D**3)
       RETURN
 end subroutine VIS
 
@@ -1482,8 +1482,8 @@ subroutine VISS(T,P,D,VS)
       PetscReal :: T,P,D,VS,V1
       
       V1=.407*T+80.4
-      IF(T.LE.350.) VS=1.E-7*(V1-D*(1858.-5.9*T)*1.E-3)
-      IF(T.GT.350.) VS=1.E-7*(V1+.353*D+676.5E-6*D**2+102.1E-9*D**3)
+      if (T.LE.350.) VS=1.E-7*(V1-D*(1858.-5.9*T)*1.E-3)
+      if (T.GT.350.) VS=1.E-7*(V1+.353*D+676.5E-6*D**2+102.1E-9*D**3)
 
       RETURN
 end subroutine VISS
@@ -1510,7 +1510,7 @@ subroutine THERC(T,P,D,CONW,CONS,PS)
       T3=T2*T1
       T4=T3*T1
 
-!     IF(P-PS.LT.0.) GOTO1
+!     if (P-PS.LT.0.) GOTO1
       CON1=A0+A1*T1+A2*T2+A3*T3+A4*T4
       CON2=(P-PS)*(B0+B1*T1+B2*T2+B3*T3)*1.E-5
       CON3=(P-PS)*(P-PS)*(C0+C1*T1+C2*T2+C3*T3)*1.E-10

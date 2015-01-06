@@ -245,7 +245,7 @@ subroutine PatchAddToList(new_patch,patch_list)
   type(patch_type), pointer :: new_patch
   type(patch_list_type) :: patch_list
   
-  if(associated(new_patch)) then
+  if (associated(new_patch)) then
      patch_list%num_patch_objects = patch_list%num_patch_objects + 1
      new_patch%id = patch_list%num_patch_objects
      if (.not.associated(patch_list%first)) patch_list%first => new_patch
@@ -577,7 +577,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
           endif
         endif
 
-        if(patch%surf_or_subsurf_flag == SURFACE) then
+        if (patch%surf_or_subsurf_flag == SURFACE) then
           strata%surf_material_property => &
             SurfaceMaterialPropGetPtrFromArray(strata%material_property_name, &
                                             patch%surf_material_property_array)
@@ -1784,7 +1784,7 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
           write(*,*)  trim(string)
         call printErrMsg(option)
     end select
-    if(associated(flow_condition%temperature)) then
+    if (associated(flow_condition%temperature)) then
       select case(flow_condition%temperature%itype)
         case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
           if (flow_condition%pressure%itype /= HYDROSTATIC_BC .or. &
@@ -1865,7 +1865,7 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
         call printErrMsg(option)
     end select
   endif
-  if(associated(flow_condition%energy_rate)) then
+  if (associated(flow_condition%energy_rate)) then
     select case (flow_condition%energy_rate%itype)
       case (ENERGY_RATE_SS)
         coupler%flow_aux_real_var(TH_TEMPERATURE_DOF,1:num_connections) = &
@@ -2294,7 +2294,7 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,dataset_base, &
     call printErrMsg(option)
   endif
   
-  if(option%iflowmode/=RICHARDS_MODE.and.option%iflowmode/=TH_MODE) then
+  if (option%iflowmode/=RICHARDS_MODE.and.option%iflowmode/=TH_MODE) then
     option%io_buffer='PatchUpdateHetroCouplerAuxVars only implemented '// &
       ' for RICHARDS or TH mode.'
     call printErrMsg(option)
