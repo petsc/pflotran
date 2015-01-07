@@ -1030,6 +1030,9 @@ subroutine EOSWaterDensityIFC67(t,p,dw,dwmol, &
 !  PetscReal :: dv2t,dv2p,dv3t
   PetscReal :: vr,ypt,yptt,zpt,zpp,vrpt,vrpp,cnv
   PetscReal :: tc1,pc1,vc1,utc1,upc1,vc1mol
+  PetscReal :: d2z_dp2    ! 2nd derivative of z w.r.t. pressure
+  PetscReal :: d2vr_dp2   ! 2nd derivative of vr w.r.t. pressure
+  PetscReal :: d2wmol_dp2 ! 2nd derivative of density w.r.t. pressure
   PetscReal, parameter :: zero = 0.d0
   PetscReal, parameter :: one = 1.d0
   PetscReal, parameter :: two = 2.d0
@@ -1131,9 +1134,23 @@ subroutine EOSWaterDensityIFC67(t,p,dw,dwmol, &
     cnv = -one/(vc1mol*vr*vr)
     dwt = cnv*vrpt*utc1 ! kmol/m^3/C
     dwp = cnv*vrpp*upc1 ! kmol/m^3/Pa
+
+    ! 2nd derivative w.r.t pressure
+    d2z_dp2 = -a5*a5/xx/xx/xx
+
+    d2vr_dp2 = u9*(u0-one)/zz*zpp*zpp + &
+               u0*u1/zz*d2z_dp2 + &
+               six*u2*aa(19) + &
+               60.d0*u7*u5/(a10+beta)/(a10+beta) + &
+               six*(a12 - theta) + &
+               24.d0*aa(22)*beta/theta20
+
+    d2wmol_dp2 = -cnv*upc1*upc1*(2.d0/vr*vrpp*vrpp -  d2vr_dp2) ! kmol/m^3/Pa^2
+
   else
     dwt = UNINITIALIZED_DOUBLE
     dwp = UNINITIALIZED_DOUBLE
+    d2wmol_dp2 = UNINITIALIZED_DOUBLE
   endif
 
 end subroutine EOSWaterDensityIFC67
