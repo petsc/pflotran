@@ -687,7 +687,7 @@ where $V_n^\a$ denotes the fracture volume, and
 &+ \delta_{mM}^{}\frac{\kappa_{nM}^{\a\b}}{d_n+d_{M}}\big(T_{\a n} - T_{\b M}\big) A_{nM}^\b \eq 0,
 \EA
 \end{subequations}
-for the $m$th matrix node with volume $V_m^\b$. The matrix node designated by $M$ refers to the outer most node in contact with the fracture. More than one type of matrix geometry is included in the above equations as indicated by the sum over $l$ in Eqn.\eqref{pricont}, where $N_\b$ denotes the number of different secondary continua. However, it should be noted that the current implementation in PFLOTRAN only allows coupling to a single secondary continuum $(N_\b\!=\!1)$.
+for the $m$th matrix node with volume $V_m^\b$. The matrix node designated by $M$ refers to the outer most node in contact with the fracture (see Figure~\ref{fnodestruct}). More than one type of matrix geometry is included in the above equations as indicated by the sum over $l$ in Eqn.\eqref{pricont}, where $N_\b$ denotes the number of different secondary continua. However, it should be noted that the current implementation in PFLOTRAN only allows coupling to a single secondary continuum $(N_\b\!=\!1)$.
 The fracture volume $V_n^\a$ is related to the REV volume $V_n$ by
 \EQ
 \epsilon_\a \eq \frac{V_n^\a}{V_n}.
@@ -696,6 +696,22 @@ Thermal conductivity at the interface between two control volumes is calculated 
 \EQ
 \kappa_{ll'} \eq \frac{\kappa_l \kappa_{l'}(d_l+d_{l'})}{d_l \kappa_{l'}+d_{l'}\kappa_l}.
 \EN
+
+
+\begin{figure}[h]\centering
+%\fbox{
+%\shadowbox{
+\EQ
+%\bf 
+\qquad 
+\bigg|\quad\mathop{\bullet}_{\ \ \ \, \displaystyle 1 \ \b}\quad\bigg| \qquad \cdots \qquad 
+\bigg|\quad\mathop{\bullet}_{\ \ \ \, \displaystyle l \ \b}\quad\bigg| \qquad \cdots \qquad 
+\bigg|\quad\mathop{\bullet}_{\ \ \ \, \displaystyle M \ \b}\quad
+\bigg|\quad\mathop{\bullet}_{\ \ \ \, \displaystyle n \ \a}\quad\bigg|\nonumber
+\EN
+%}
+\caption{Node configuration for secondary ($\b$) continua (nodes $1,\, \ldots,\, l,\,\ldots,\, M$), associated with the $n$th primary ($\a$) continuum node.}\label{fnodestruct}
+\end{figure}
 
 For better convergence uniform logarithmic spacing is used for the matrix nodes
 \begin{subequations}\label{eqnloggrid}
