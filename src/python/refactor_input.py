@@ -9,8 +9,7 @@ simulation = '''\nSIMULATION
   PROCESS_MODELS\n'''
 
 flow_string = '''    SUBSURFACE_FLOW flow
-      MODE %s
-    /\n'''
+      MODE %s\n'''
 
 transport_string = '''    SUBSURFACE_TRANSPORT transport
       GLOBAL_IMPLICIT
@@ -29,13 +28,31 @@ def refactor_file(filename):
   # search through file for keywords
   flow = False
   transport = False
-  for line in open(filename):
-    if line.strip().startswith('MODE'):
-      w = line.strip().split()
-      flow_mode = w[1]
-      flow = True
-    elif line.strip().startswith('CHEMISTRY'):
-      transport = True
+  skip_count = 0
+  f = open(filename,'r')
+  while 1:
+    line = f.readline()
+    if not line:
+      break
+    string = line.strip().upper()
+    if string.startswith('SKIP'):
+      skip_count += 1
+    elif string.startswith('NOSKIP'):
+      skip_count -= 1
+    elif skip_count == 0:
+      if string.startswith('MODE'):
+        w = string.strip().split()
+        flow_mode = w[1]
+        flow = True
+        flow_option_strings = []
+        if len(w) > 2 and w[2].startswith('MORE'):
+          while 1:
+            string = f.readline()
+            if string.strip().startswith('/') or string.strip().startswith('END'):
+              break
+            flow_option_strings.append(string)
+      elif string.startswith('CHEMISTRY'):
+        transport = True
     if flow and transport:
       break
   f = open(filename,'r')
@@ -54,6 +71,12 @@ def refactor_file(filename):
     f2.write(simulation % 'SUBSURFACE_TRANSPORT')
   if flow:
     f2.write(flow_string % flow_mode)
+    if len(flow_option_strings) > 0:
+      f2.write('      OPTIONS\n')
+      for i in range(len(flow_option_strings)):
+        f2.write('       %s' % flow_option_strings[i])
+      f2.write('      /\n')
+    f2.write('    /\n')
   if transport:
     f2.write(transport_string)
   f2.write(simulation_end)
