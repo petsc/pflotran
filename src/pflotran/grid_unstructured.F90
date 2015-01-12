@@ -468,7 +468,7 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
   unstructured_grid%num_vertices_local = num_vertices_local
   
   call InputDestroy(input)
-  if(option%myrank == option%io_rank) deallocate(temp_int_array)
+  if (option%myrank == option%io_rank) deallocate(temp_int_array)
 
 
   input => InputCreate(fileid,surf_filename,option)
@@ -2293,7 +2293,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
         connections%id_up(iconn) = local_id
         connections%id_dn(iconn) = abs(dual_local_id)
         connections%face_id(iconn) = cell_to_face(iface,local_id)
-        if(face_type == LINE_FACE_TYPE) then
+        if (face_type == LINE_FACE_TYPE) then
 
           point_up%x = grid_x(local_id)
           point_up%y = grid_y(local_id)
@@ -2438,7 +2438,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
           endif
         endif
 
-        if(face_type == LINE_FACE_TYPE) then
+        if (face_type == LINE_FACE_TYPE) then
 
           point1 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(1,face_id))
           point2 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(2,face_id))
@@ -3475,7 +3475,7 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
   temp_int = 0
   
   mapped_face_count = 0
-  if( unstructured_grid%grid_type == THREE_DIM_GRID) then
+  if ( unstructured_grid%grid_type == THREE_DIM_GRID) then
     min_verts_req = 3.d0
   else
     min_verts_req = 2.d0
@@ -3777,7 +3777,7 @@ subroutine UGridGrowStencilSupport(unstructured_grid,stencil_width, &
 
   ! There are no ghost cells when running with a single processor, so get out
   ! of here
-  if(option%mycommsize==1) return
+  if (option%mycommsize==1) return
   
   allocate(real_arrayV(unstructured_grid%max_nvert_per_cell))
   allocate(int_arrayV(unstructured_grid%max_nvert_per_cell))
@@ -3851,7 +3851,7 @@ subroutine UGridGrowStencilSupport(unstructured_grid,stencil_width, &
 
     call MatZeroEntries(Mat_vert_to_proc,ierr);CHKERRQ(ierr)
 
-    if(swidth==1) then
+    if (swidth==1) then
       ! When the stencil width counter = 1, loop over only local cells present
       do local_id=1,unstructured_grid%nlmax
         cell_type = unstructured_grid%cell_type(local_id)
@@ -3912,7 +3912,7 @@ subroutine UGridGrowStencilSupport(unstructured_grid,stencil_width, &
           ghost_cids_new,ghost_cids_new_petsc,nghost_new,option)
 
     ! Update ghosted_level array
-    if(swidth==1) then
+    if (swidth==1) then
       ! In this case, ghosted_level will have only two values: 
       !   0 - local cells
       !   1 - ghost cells
@@ -4037,7 +4037,7 @@ subroutine UGridFindCellIDsAfterGrowingStencilWidthByOne(Mat_vert_to_cell, &
                     Mat_cell_to_proc,ierr);CHKERRQ(ierr)
   call MatDestroy(Mat_proc_to_cell,ierr);CHKERRQ(ierr)
 
-  if(option%mycommsize > 1) then
+  if (option%mycommsize > 1) then
     ! From the MPI-Matrix get the local-matrix
     call MatMPIAIJGetLocalMat(Mat_cell_to_proc,MAT_INITIAL_MATRIX,Mat_cell_to_proc_loc, &
                               ierr);CHKERRQ(ierr)
@@ -4252,7 +4252,7 @@ subroutine UGridFindNewGhostCellIDsAfterGrowingStencilWidth(unstructured_grid, &
   
   call VecGetArrayF90(cids_on_proc,vec_ptr,ierr);CHKERRQ(ierr)
   do ii=1,ngmax_new
-    if(vec_ptr(ii)/=option%myrank) then
+    if (vec_ptr(ii)/=option%myrank) then
       count=count+1
       int_array1(count)=cids_new(ii)
       int_array2(count)=count
@@ -4270,27 +4270,27 @@ subroutine UGridFindNewGhostCellIDsAfterGrowingStencilWidth(unstructured_grid, &
   ! 1.3) Count the entries in the sorted array which appear only once.
   nghost_new=0
   ii=1
-  if(int_array1(int_array2(ii)) /= int_array1(int_array2(ii+1))) nghost_new=nghost_new+1
+  if (int_array1(int_array2(ii)) /= int_array1(int_array2(ii+1))) nghost_new=nghost_new+1
   
   do ii=2,count-1
-    if((int_array1(int_array2(ii)) /= int_array1(int_array2(ii-1))).and. &
+    if ((int_array1(int_array2(ii)) /= int_array1(int_array2(ii-1))).and. &
        (int_array1(int_array2(ii)) /= int_array1(int_array2(ii+1))) ) nghost_new=nghost_new+1
   enddo
 
   ii=count
-  if(int_array1(int_array2(ii)) /= int_array1(int_array2(ii-1))) nghost_new=nghost_new+1
+  if (int_array1(int_array2(ii)) /= int_array1(int_array2(ii-1))) nghost_new=nghost_new+1
   
   ! 1.4) Save the entries in the sorted array which appear only once.
   allocate(ghost_cids_new(nghost_new))
   nghost_new=0
   ii=1
-  if(int_array1(int_array2(ii)) /= int_array1(int_array2(ii+1))) then
+  if (int_array1(int_array2(ii)) /= int_array1(int_array2(ii+1))) then
     nghost_new=nghost_new+1
     ghost_cids_new(nghost_new) = int_array1(int_array2(ii))
   endif
   
   do ii=2,count-1
-    if((int_array1(int_array2(ii)) /= int_array1(int_array2(ii-1))).and. &
+    if ((int_array1(int_array2(ii)) /= int_array1(int_array2(ii-1))).and. &
        (int_array1(int_array2(ii)) /= int_array1(int_array2(ii+1))) ) then
       nghost_new=nghost_new+1
       ghost_cids_new(nghost_new) = int_array1(int_array2(ii))
@@ -4298,7 +4298,7 @@ subroutine UGridFindNewGhostCellIDsAfterGrowingStencilWidth(unstructured_grid, &
   enddo
 
   ii=count
-  if(int_array1(int_array2(ii)) /= int_array1(int_array2(ii-1))) then
+  if (int_array1(int_array2(ii)) /= int_array1(int_array2(ii-1))) then
     nghost_new=nghost_new+1
     ghost_cids_new(nghost_new) = int_array1(int_array2(ii))
   endif
@@ -4539,7 +4539,7 @@ subroutine UGridUpdateMeshAfterGrowingStencilWidth(unstructured_grid, &
   call VecGetArrayF90(elements_ghost_cells,vec_ptr,ierr);CHKERRQ(ierr)
   do ii =1,nghost_new
     do jj=1,unstructured_grid%max_nvert_per_cell
-      if(vec_ptr((ii-1)*unstructured_grid%max_nvert_per_cell+jj)/=-9999) then
+      if (vec_ptr((ii-1)*unstructured_grid%max_nvert_per_cell+jj)/=-9999) then
         count=count+1
         int_array1(count)=INT(vec_ptr((ii-1)*unstructured_grid%max_nvert_per_cell+jj))
         int_array2(count)=count
@@ -4591,7 +4591,7 @@ subroutine UGridUpdateMeshAfterGrowingStencilWidth(unstructured_grid, &
   call VecGetArrayF90(elements_ghost_cells,vec_ptr,ierr);CHKERRQ(ierr)
   do ii =1,nghost_new
     do jj=1,unstructured_grid%max_nvert_per_cell
-      if(vec_ptr((ii-1)*unstructured_grid%max_nvert_per_cell+jj)/=-9999) then
+      if (vec_ptr((ii-1)*unstructured_grid%max_nvert_per_cell+jj)/=-9999) then
         count=count+1
         cell_vertices(jj,ii+unstructured_grid%ngmax)=int_array4(count)
         cell_vertices(0 ,ii+unstructured_grid%ngmax)=cell_vertices(0 ,ii+unstructured_grid%ngmax)+1

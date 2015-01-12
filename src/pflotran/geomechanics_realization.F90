@@ -1078,7 +1078,7 @@ subroutine GeomechRealizDestroy(geomech_realization)
   
   type(geomech_realization_type), pointer :: geomech_realization
   
-  if(.not.associated(geomech_realization)) return
+  if (.not.associated(geomech_realization)) return
   
   call GeomechFieldDestroy(geomech_realization%geomech_field)
 
@@ -1101,11 +1101,11 @@ subroutine GeomechRealizDestroy(geomech_realization)
                                            geomech_material_properties)
   call GeomechDiscretizationDestroy(geomech_realization%geomech_discretization)
 
-  if(associated(geomech_realization%output_option)) &
+  if (associated(geomech_realization%output_option)) &
     deallocate(geomech_realization%output_option)
   nullify(geomech_realization%output_option)
 
-  if(associated(geomech_realization)) deallocate(geomech_realization)
+  if (associated(geomech_realization)) deallocate(geomech_realization)
   nullify(geomech_realization)
   
 end subroutine GeomechRealizDestroy

@@ -61,7 +61,7 @@ subroutine GeomechicsInitReadRequiredCards(geomech_realization)
   ! GEOMECHANICS information
   string = "GEOMECHANICS"
   call InputFindStringInFile(input,option,string)
-  if(InputError(input)) return
+  if (InputError(input)) return
   option%ngeomechdof = 3  ! displacements in x, y, z directions
   option%n_stress_strain_dof = 6
   

@@ -207,6 +207,10 @@ W_\a \eq \frac{\rho_\a}{\eta_\a} \eq \sum_i W_i^{} x_i^\a.
 \EN
 The quantities $\rho_r$, $c_r$, and $\kappa$ refer to the mass density, heat capacity, and thermal conductivity of the porous rock. 
 
+%\subsubsection{Characteristic Curves}
+
+%The options for characteristic curves that can be used with {\tt MPHASE} include van Genuchten saturation function and relative permeability, Brooks-Corey
+
 \subsubsection{Source/Sink Terms}
 
 The source/sink terms, $Q_i$ and $Q_e$, describe injection and extraction of mass and heat, respectively, for various well models. Several different well models are available. The simplest is a volume or mass rate injection/production well given by
@@ -256,9 +260,10 @@ The conditions for phase changes to occur are considered in detail below.
 \toprule
 State & $X_1$ & $X_2$ & $X_3$\\
 \midrule
-liquid & $p_l$ & $T$ & $x_\c^l$\\
-gas & $p_g$ & $T$ & $x_\c^g$\\
-two-phase & $p_g$ & $T$ & $s_g$\\
+Liquid & $p_l$ & $T$ & $x_\c^l$\\
+Gas & $p_g$ & $T$ & $x_\c^g$\\
+Two-Phase & $p_g$ & $T$ & $s_g$\\
+Thermal Conductivity & $\kappa$ & 0.5 kJ/kg/K\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -279,7 +284,7 @@ x_\c^{eq} \eq \frac{m_\c}{W_\w^{-1} + m_\c +  \sum_{l\ne \w,\,\c} m_l},
 \EN
 where the molality at equilibrium is given by
 \EQ
-m_\c^{eq} \eq \left(1-\dfrac{P_{\rm sat}(T)}{p}\right)\frac{\phi_c p}{K_\c \gamma_\c},
+m_\c^{eq} \eq \left(1-\dfrac{P_{\rm sat}(T)}{p}\right)\frac{\phi_\c p}{K_\c \gamma_\c},
 \EN
 where it is assumed that 
 \EQ
@@ -294,19 +299,23 @@ f_\c^{} \eq y_\c^{}\phi_\c^{} p_g^{} \eq K_\c^{} \big(\gamma_\c^{} m_\c^{}\big),
 \EN
 where
 \EQ
-y_\c^{} \eq x_\c^g, \ \ \ \ x_\c^{} \eq x_\c^l,
+y_\c^{} \eq x_\c^g,
 \EN
 \EQ
 x_\w^g \eq \frac{P_{\rm sat}(T)}{p_g},
 \EN
+and
 \EQ
-y_\c^{} \eq 1-x_\w^g \eq 1-\frac{P_{\rm sat}(T)}{p_g},
+y_\c^{} \eq 1-x_\w^g \eq 1-\frac{P_{\rm sat}(T)}{p_g}.
 \EN
 From these equations a Henry coefficient-like relation can be written as
 \EQ
 y_\c^{} \eq \widetilde K_\c^{} x_\c^{},
 \EN
 where
+\EQ
+x_\c^{} \eq x_\c^l,
+\EN
 \EQ
 \widetilde K_\c^{} \eq\frac{\gamma_\c^{} K_\c^{}}{\phi_\c^{} p_g}\frac{m_\c}{x_\c}.
 \EN
@@ -333,6 +342,16 @@ Mass fraction--mole fraction:
 \EQ
 w_i \eq \frac{M_i}{M} \eq \frac{W_i n_i}{\sum W_l n_l} \eq \frac{W_i x_i}{\sum W_l x_l}
 \EN
+
+\subsubsection{Sequentially Coupling MPHASE and CHEMISTRY}
+
+MPHASE and CHEMISTRY may be sequentially coupled to one another by including the CHEMISTRY keyword in the MPHASE input file and adding the requisite associated keywords. At the end of an MPHASE time step the quantities $p$, $T$, $s_g$, $q_l$ and $q_g$ are passed to the reactive transport equations. These quantities are interpolated between the current time $t_{\rm MPH}$ and the new time $t_{\rm MPH}+\Delta t_{\rm MPH}$. The reactive transport equations may need to sub-step the MPHASE time step, i.e. $\Delta t_{\rm RT} \leq \Delta t_{\rm MPH}$. Coupling also occurs from the reactive transport equations back to MPHASE. This is through changes in material properties such as porosity, tortuosity and permeability caused by mineral precipitation and dissolution reactions (see \S\ref{sec_mat_prop}). In addition, coupling occurs through consumption and production of H$_2$O and CO$_2$ by mineral precipitation/dissolution reactions occurring in the reactive transport equations. This effect is accounted for by passing the reaction rates $R_{\rm H_2O}$ and $R_{\rm CO_2}$ given by
+\EQ
+R_j \eq -\sum_m\nu_{jm}I_m,
+\EN
+back to the MPHASE conservation equations. 
+
+A further constraint on the reactive transport equations for aqueous CO$_2$ is that it must be in equilibrium with supercritical CO$_2$ in regions where $0< s_g <1$. This is accomplished by replacing the CO$_2$ mass conservation equations in those regions with the constraint $m_{\rm CO_{\rm 2(aq)}} = m_{\rm CO_2}^{\rm eq}$.
 
 \subsection{Mode: {\tt IMMIS}}
 
@@ -631,20 +650,68 @@ where $D_g^0$ is the reference diffusion coefficient at some reference temperatu
 
 \subsection{Thermal Conduction Multiple Continuum Model}
 
-A thermal conduction model employing a multiple continuum model has been added to modes {\bf MPHASE} and {\bf TH}. The formulation is based on Pruess and Narasimhan (1985) using a integrated finite volume approach to develop equations for fracture and matrix temperatures $T_\a$ and $T_\b$, respectively. The DCDM (dual continuum discrete matrix) model following the classification given in Lichtner (2000) is implemented. In what follows the matrix porosity is assumed to be zero. Using the control volume configuration shown in Figure~\ref{fminc}, with fracture nodes designated by the subscript $n$ and matrix nodes by $m$, the integrated finite volume form of the heat transport equation for the $n$th fracture control volume is given by
+A thermal conduction model employing a multiple continuum model has been added to modes {\bf MPHASE} and {\bf TH}. The formulation is based on Pruess and Narasimhan (1985) using a integrated finite volume approach to develop equations for fracture (primary continuum) and matrix (secondary continua) temperatures $T_\a$ and $T_\b$, respectively, with fracture volume fraction denoted by $\epsilon_\a$. The DCDM (dual continuum discrete matrix) model following the classification given in Lichtner (2000) is implemented. 
+In what follows the matrix porosity is assumed to be zero. 
+
+
+In terms of partial differential equations the heat conservation equations may be written as
+\begin{subequations}
+\BA
+\frac{\p}{\p t} \epsilon_\a \Big[\varphi_\a \rho_\a U_\a + (1-\varphi_\a) \rho_r C_r T_\a\Big] &+ \bnabla\cdot \Big(\bq_\a \rho_\a H_\a -
+%\epsilon
+\kappa_a\bnabla T_\a\Big) \nonumber\\
+&\eq -A_{\a\b} \kappa_{\a\b}\frac{\p T_\b}{\p n},
+\EA
+and
+\EQ
+\frac{\p}{\p t} \rho_r C_r T_\b + \frac{\p}{\p\xi} \Big(-\kappa_\b\frac{\p T_\b}{\p\xi}\Big) \eq 0,
+\EN
+for fracture and matrix temperatures $T_\a$ and $T_\b$, respectively, where $\xi$ represents the matrix coordinate assumed to be an effective 1D domain. 
+The boundary condition 
+\EQ
+T_\b(\xi_M,\,t\,|\,\br) \eq T_\a(\br,\,t),
+\EN
+\end{subequations}
+is imposed at the fracture-matrix interface, where $\xi_M$ denotes the outer boundary of the matrix.
+
+Using the control volume configuration shown in Figure~\ref{fminc}, with fracture nodes designated by the subscript $n$ and matrix nodes by $m$, the integrated finite volume form of the heat transport equation for the $n$th fracture control volume is given by
 \begin{subequations}
 \BA\label{pricont}
-&\Big[\varphi \Big(\sum_\a \big(s_\a\rho_\a U_\a\big)_n^{k+1} - \sum_\a \big(s_\a\rho_\a U_\a\big)_n^{k}\Big) + (1-\varphi)\Big(\big(\rho_r C_r T_\a\big)_n^{k+1} - \big(\rho_r C_r T_\a\big)_n^{k}\Big)\Big] \frac{v_n}{\Delta t} \nonumber\\
-&\qquad + \sum_{n'} \Big[ \sum_\a\big(q_\a\rho_\a H_\a\big)_{nn'} + \frac{\kappa_{nn'}^\a}{d_n+d_{n'}}\big(T_{\a n} - T_{\a n'}\big) \Big] A_{nn'}^\a \nonumber\\
-&\qquad + \sum_\b\frac{\kappa_{nM}^{\a\b}}{d_n+d_{M}}\big(T_{\a n}-T_{\b M}\big) A_{nM}^\b \eq 0,
+&\Big[\varphi_\a \Big(\big(\rho_\a U_\a\big)_n^{k+1} - \big(\rho_\a U_\a\big)_n^{k}\Big) + (1-\varphi_\a)\Big(\big(\rho_r C_r T_\a\big)_n^{k+1} - \big(\rho_r C_r T_\a\big)_n^{k}\Big)\Big] \frac{V_n^\a}{\Delta t} \nonumber\\
+&\qquad + \sum_{n'} \Big[\big(q_\a\rho_\a H_\a\big)_{nn'} + \frac{\kappa_{nn'}^\a}{d_n+d_{n'}}\big(T_{\a n} - T_{\a n'}\big) \Big] A_{nn'}^\a \nonumber\\
+&\qquad + \sum_{l = 1}^{N_\b}\frac{\kappa_{nM}^{\a\b_l}}{d_n+d_{M}}\big(T_{\a n}-T_{\b_l M}\big) A_{nM}^{\b_l} \eq 0,
 \EA
-where $v_n$ denotes the fracture volume, and
+where $V_n^\a$ denotes the fracture volume, and
 \BA
-\Big(\big(\rho_r C_r T_\b\big)_m^{k+1} - \big(\rho_r C_r T_\b\big)_m^{k}\Big) \frac{v_m}{\Delta t} &+ \sum_{m'} \frac{\kappa_{mm'}^\b}{d_m+d_{m'}}\big(T_{\b m} - T_{\b m'}\big) A_{mm'}^\b \nonumber\\
+\Big(\big(\rho_r C_r T_\b\big)_m^{k+1} - \big(\rho_r C_r T_\b\big)_m^{k}\Big) \frac{V_m^\b}{\Delta t} &+ \sum_{m'} \frac{\kappa_{mm'}^\b}{d_m+d_{m'}}\big(T_{\b m} - T_{\b m'}\big) A_{mm'}^\b \nonumber\\
 &+ \delta_{mM}^{}\frac{\kappa_{nM}^{\a\b}}{d_n+d_{M}}\big(T_{\a n} - T_{\b M}\big) A_{nM}^\b \eq 0,
 \EA
 \end{subequations}
-for the $m$th matrix node with volume $v_m$. The matrix node designated by $M$ refers to the outer most node in contact with the fracture. More than one type of matrix geometry is included in the above equations as indicated by the sum over $\b$ in Eqn.\eqref{pricont}.
+for the $m$th matrix node with volume $V_m^\b$. The matrix node designated by $M$ refers to the outer most node in contact with the fracture (see Figure~\ref{fnodestruct}). More than one type of matrix geometry is included in the above equations as indicated by the sum over $l$ in Eqn.\eqref{pricont}, where $N_\b$ denotes the number of different secondary continua. However, it should be noted that the current implementation in PFLOTRAN only allows coupling to a single secondary continuum $(N_\b\!=\!1)$.
+The fracture volume $V_n^\a$ is related to the REV volume $V_n$ by
+\EQ
+\epsilon_\a \eq \frac{V_n^\a}{V_n}.
+\EN
+Thermal conductivity at the interface between two control volumes is calculated using the harmonic average
+\EQ
+\kappa_{ll'} \eq \frac{\kappa_l \kappa_{l'}(d_l+d_{l'})}{d_l \kappa_{l'}+d_{l'}\kappa_l}.
+\EN
+
+
+\begin{figure}[h]\centering
+%\fbox{
+%\shadowbox{
+\EQ
+%\bf 
+\qquad 
+\bigg|\quad\mathop{\bullet}_{\ \ \ \, \displaystyle 1 \ \b}\quad\bigg| \qquad \cdots \qquad 
+\bigg|\quad\mathop{\bullet}_{\ \ \ \, \displaystyle l \ \b}\quad\bigg| \qquad \cdots \qquad 
+\bigg|\quad\mathop{\bullet}_{\ \ \ \, \displaystyle M \ \b}\quad
+\bigg|\quad\mathop{\bullet}_{\ \ \ \, \displaystyle n \ \a}\quad\bigg|\nonumber
+\EN
+%}
+\caption{Node configuration for secondary ($\b$) continua (nodes $1,\, \ldots,\, l,\,\ldots,\, M$), associated with the $n$th primary ($\a$) continuum node.}\label{fnodestruct}
+\end{figure}
 
 For better convergence uniform logarithmic spacing is used for the matrix nodes
 \begin{subequations}\label{eqnloggrid}
@@ -670,38 +737,29 @@ with the inner and outer grid spacing related by
 \parbox{4in}{\caption{Control volumes in DCDM multiple continuum model with fracture aperture $2\delta$ and matrix block size $d$.}\label{fminc}}
 \end{figure}
 
-Thermal conductivity at the interface between two control volumes is calculated using the harmonic average
-\EQ
-\kappa_{ll'} \eq \frac{\kappa_l \kappa_{l'}(d_l+d_{l'})}{d_l \kappa_{l'}+d_{l'}\kappa_l}.
-\EN
-
-The fracture volume $v_n$ is related to the REV volume $V_n$ by
-\EQ
-\epsilon \eq \frac{v_n}{V_n}.
-\EN
 According to the geometry in Figure~\ref{fminc} assuming a 3D orthogonal set of fractures,
 \EQ
 V_n \eq (d+2\delta)^3,
 \EN
 and
 \EQ
-v_n \eq (d+2\delta)^3 - d^3,
+V_n^\a \eq (d+2\delta)^3 - d^3,
 \EN
 giving
 \begin{subequations}
 \BA
-\epsilon &\eq 1-\frac{d^3}{(d+2\delta)^3} \eq 1-\left(\dfrac{1}{1+\dfrac{2\delta}{d}}\right)^3,\\
+\epsilon_\a &\eq 1-\frac{d^3}{(d+2\delta)^3} \eq 1-\left(\dfrac{1}{1+\dfrac{2\delta}{d}}\right)^3,\\
 & ~\simeq~ \frac{6\delta}{d}.
 \EA
 \end{subequations}
-The fracture aperture $2\delta$ is found to be in terms of $\epsilon$ and $d$
+The fracture aperture $2\delta$ is found to be in terms of $\epsilon_\a$ and $d$
 \EQ
-2\delta \eq d \left(\frac{1}{(1-\epsilon)^{1/3}} -1\right).
+2\delta \eq d \left(\frac{1}{(1-\epsilon_\a)^{1/3}} -1\right).
 \EN
 A list of different sub-continua geometries and parameters implemented in PFLOTRAN is given in Table~\ref{tdcdmgeom}. Different independent and dependent parameters for the nested cube geometry are listed in Table~\ref{tnestedcube}.
 The interfacial area $A_{nn'}^\a$ between fracture control volumes is equal to $\Delta y \Delta z$,  $\Delta z \Delta x$, $\Delta x \Delta y$ for $x$, $y$, and $z$ directions, respectively. 
 
-In the case of nested cubes there are four possible parameters $(\epsilon, \, 2\delta, \, l_m,\, l_f)$, where $l_m$ denotes the matrix block size and $l_f$ refers to the fracture spacing, two of which are independent.
+In the case of nested cubes there are four possible parameters $(\epsilon_\a, \, 2\delta, \, l_m,\, l_f)$, where $l_m$ denotes the matrix block size and $l_f$ refers to the fracture spacing, two of which are independent.
 
 The fracture-matrix interfacial area $A_{nM}$ per unit volume is equal to
 \EQ
@@ -739,33 +797,14 @@ The primary-secondary coupling term can then be written in the form
 \toprule
 \multicolumn{2}{c}{Independent} & \multicolumn{2}{c}{Dependent}\\
 \midrule
-$\epsilon$ & $l_f$ & $2\delta = l_f - l_m$ & $l_m = l_f(1-\epsilon)^{1/3}$\\
-$\epsilon$ & $l_m$ & $2\delta = l_f - l_m$ & $l_f = l_m(1-\epsilon)^{-1/3}$\\
-$2\delta$ & $l_f$ & $\epsilon = 1-(l_m/l_f)^3$ & $l_m = l_f - 2\delta$\\
-$2\delta$ & $l_m$ & $\epsilon = 1-(l_m/_f)^3$ & $l_f = l_m + 2\delta$\\
-$2\delta$ & $\epsilon$ & $l_m = 2\delta \Big(\dfrac{1}{(1-\epsilon)^{1/3}}-1\Big)^{-1}$ & $l_m = l-2\delta$\\
+$\epsilon_\a$ & $l_f$ & $2\delta = l_f - l_m$ & $l_m = l_f(1-\epsilon_\a)^{1/3}$\\
+$\epsilon_\a$ & $l_m$ & $2\delta = l_f - l_m$ & $l_f = l_m(1-\epsilon_\a)^{-1/3}$\\
+$2\delta$ & $l_f$ & $\epsilon_\a = 1-(l_m/l_f)^3$ & $l_m = l_f - 2\delta$\\
+$2\delta$ & $l_m$ & $\epsilon_\a = 1-(l_m/_f)^3$ & $l_f = l_m + 2\delta$\\
+$2\delta$ & $\epsilon_\a$ & $l_m = 2\delta \Big(\dfrac{1}{(1-\epsilon_\a)^{1/3}}-1\Big)^{-1}$ & $l_m = l-2\delta$\\
 \bottomrule
 \end{tabular}
 \end{table}
-
-In terms of partial differential equations the heat conservation equations may be written as
-\begin{subequations}
-\BA
-\frac{\p}{\p t} \epsilon \Big[\varphi \sum_\a s_\a \rho_\a U_\a + (1-\varphi) \rho_r C_r T_f\Big] &+ \bnabla\cdot \Big(\sum_\a \bq_\a \rho_\a H_\a -
-%\epsilon
-\kappa_f\bnabla T_f\Big) \nonumber\\
-&\eq -A_{fm} \kappa_{fm}\frac{\p T_m}{\p n},
-\EA
-and
-\EQ
-\frac{\p}{\p t} \rho_r C_r T_m + \frac{\p}{\p\xi} \Big(-\kappa_m\frac{\p T_m}{\p\xi}\Big) \eq 0,
-\EN
-for fracture and matrix temperatures $T_f$ and $T_m$, respectively, where $\xi$ represents the matrix coordinate assumed to be an effective 1D domain. The boundary condition 
-\EQ
-T_m(\xi_d,\,t\,|\,\br) \eq T_f(\br,\,t),
-\EN
-\end{subequations}
-between fracture and matrix continua is imposed, where $\xi_d$ denotes the outer boundary of the matrix.
 
 %The fracture thermal conductivity is defined as
 %\EQ
@@ -888,7 +927,7 @@ the rate may be expressed alternatively as
 \dfrac{\Omega_m}{1+\dfrac{k_{ml}^{}}{k_{ml}^{\rm lim}} \big(1-\Omega_m\big)}.
 \EN
 
-\paragraph{Changes in Material Properties}
+\paragraph{Changes in Material Properties}\label{sec_mat_prop}
 
 Porosity, permeability, tortuosity and mineral surface area may be updated optionally due to mineral precipitation and dissolution reactions according to the relations
 \EQ\label{porosity}
@@ -1456,7 +1495,7 @@ for reaction rates that are distributed continuously over a control volume, or f
 \int_{V_n}Q_j\, dV \eq \widehat Q_{jn}.
 \EN
 
-\subsection{Fully Implicit}
+\subsection{Fully Implicit Newton-Raphson Iteration with Linear and Logarithm Update}
 
 In a fully implicit formulation the nonlinear equations for the residual function $\bR$ given by
 \EQ
@@ -1480,24 +1519,89 @@ The solution is updated from the relation
 \bx^{(i+1)} \eq \bx^{(i)} + \delta\bx^{(i+1)}.
 \EN
 For the logarithm of the concentration with $\bx=\ln\by$,
-the solution is updated according to the equation
+the solution is updated according to
+\begin{subequations}
+\EQ
+\ln\by^{(i+1)} \eq \ln\by^{(i)} + \delta\ln\by^{(i+1)},
+\EN
+or
 \EQ
 \by^{(i+1)} \eq \by^{(i)} {\rm e}^{\delta\ln\by^{(i+1)}}.
 \EN
+\end{subequations}
+
+\subsubsection{Example}
+
+To illustrate the logarithmic update formulation the simple linear equation
+\EQ
+x\eq x_0,
+\EN
+is considered.
+The residual function is given by
+\EQ
+R \eq x - x_0,
+\EN
+with Jacobian
+\EQ
+J \eq \frac{\p R}{\p x} \eq I.
+\EN
+In the linear formulation the Newton-Raphson equations are given by
+\BA
+J\delta x &\eq -R,\\
+\delta x &\eq -(x-x_0)\\
+x{'} &\eq x + \delta x \eq x_0.
+\EA
+In the logarithmic formulation the Jacobian is given by
+\EQ
+J\eq\frac{\p R}{\p\ln x} \eq x,
+\EN
+and the Newton-Raphson equations are now nonlinear becoming
+\EQ
+J^i\delta \ln x^{i+1} \eq -R^i,
+\EN
+with the solution update
+\EQ
+\ln x^{i+1} \eq \ln x^i + \delta \ln x^{i+1},
+\EN
+or
+\EQ
+x^{i+1} \eq x^i \e^{\delta \ln x^{i+1}}.
+\EN
+It follow that
+\EQ
+x^i \delta \ln x^{i+1} \eq -(x^i-x_0),
+\EN
+with the solution
+\EQ
+\delta \ln x^{i+1} \eq \frac{x_0-x^i}{x^i},
+\EN
+and thus
+\EQ
+x^{i+1} \eq x^i \exp \left(\frac{x_0- x^{i}}{x^i}\right).
+\EN
+Given that a solution $x$ exists it follows that
+\BA
+\lim_{i\rightarrow\infty} x^{i} &\rightarrow x,\\
+\lim_{i\rightarrow\infty} \frac{x^{i+1}}{x^{i}} &\rightarrow 1,\\
+\lim_{i\rightarrow\infty} \exp \left(\frac{x_0- x^{i}}{x^i}\right) &\rightarrow 1,\\
+%\text{and}\\
+\lim_{i\rightarrow\infty} x^{i} &\rightarrow x_0.
+\EA
+
 
 \subsubsection{Multirate Sorption}
 
 The residual function incorporating the multirate sorption model can be further simplified by solving analytically the finite difference form of kinetic sorption equations. This is possible when these equations are linear in the sorbed concentration $S_{j\a}$ and because they do not contain a flux term. Thus discretizing Eqn.\eqref{sja} in time using the fully implicit backward Euler method gives
 \EQ
-\frac{S_{j\a}^{t+\Delta t}-S_{j\a}^t}{\Delta t} \eq k_\a \big(f_\a S_{j\a}^{\rm eq} - S_{j\a}^{t+\Delta t}\big).
+\frac{S_{j\a}^{t+\Delta t}-S_{j\a}^t}{\Delta t} \eq k_\a^{} \big(f_\a^{} S_{j\a}^{\rm eq} - S_{j\a}^{t+\Delta t}\big).
 \EN
 Solving for $S_{j\a}^{t+\Delta t}$ yields
 \EQ\label{sjadt}
-S_{j\a}^{t+\Delta t} \eq \frac{S_{j\a}^t + k_\a \Delta t f_\a S_j^{\rm eq}}{1+k_\a\Delta t}.
+S_{j\a}^{t+\Delta t} \eq \frac{S_{j\a}^t + k_\a^{} \Delta t f_\a^{} S_j^{\rm eq}}{1+k_\a\Delta t}.
 \EN
 From this expression the reaction rate can be calculated as
 \EQ
-\frac{S_{j\a}^{t+\Delta t}-S_{j\a}^t}{\Delta t} \eq \frac{k_\a}{1+k_\a\Delta t} \big(f_\a S_{j\a}^{\rm eq} - S_{j\a}^t\big).
+\frac{S_{j\a}^{t+\Delta t}-S_{j\a}^t}{\Delta t} \eq \frac{k_\a}{1+k_\a\Delta t} \big(f_\a^{} S_{j\a}^{\rm eq} - S_{j\a}^t\big).
 \EN
 The right-hand side of this equation is a known function of the solute concentration and thus by substituting into Eqn.\eqref{totj} eliminates the appearance of the unknown sorbed concentration. Once the transport equations are solved over a time step, the sorbed concentrations can be computed from Eqn.\eqref{sjadt}.
 

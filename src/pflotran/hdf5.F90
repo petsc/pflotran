@@ -1805,7 +1805,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
 !     works for groups.  Therefore, we need a function scorpio_dataset_exists().!     Commenting out for now.
 !  call h5lexists_f(grp_id2,string,grp_exists,hdf5_err)
   grp_exists = PETSC_TRUE !geh: remove when h5lexists_f is resolved.
-  if(grp_exists) then
+  if (grp_exists) then
     option%io_buffer = 'Reading dataset: ' // trim(string)
     call printMsg(option)
     call HDF5ReadIntegerArray(option,file_id,string, &
@@ -1884,7 +1884,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   string = "Face Ids"
   ! Check if the region dataset has "Face Ids" group
   call h5lexists_f(grp_id2,string,grp_exists,hdf5_err)
-  if(grp_exists) then
+  if (grp_exists) then
     option%io_buffer = 'Reading dataset: ' // trim(string)
     call printMsg(option)
     call HDF5ReadIntegerArray(option,grp_id2,string, &
@@ -2075,7 +2075,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
     ! It is assumed that cell ids in the HDF5 are 1-based. Converting them to
     ! 0-based
     do ii = 1,region%num_cells
-      if(int_buffer_1d(ii) < 1 ) then
+      if (int_buffer_1d(ii) < 1 ) then
         write(option%io_buffer,'("Cell ids in the HDF5 for region less than 1")')
         call printErrMsg(option)
       endif

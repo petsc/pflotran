@@ -1,18 +1,18 @@
 \section{Quick Start}
 
-For those adverse to reading manuals the following is a quick start guide to getting up and running with PFLOTRAN in four easy steps.
+For those adverse to reading manuals the following is a quick start guide to getting up and running with PFLOTRAN in four easy steps. On the MacOSX platform Xcode must be installed with the commandline tools.
 
 \begin{description}
 \item[Required Software Packages] ~
 \begin{itemize}
-\item Compilers (compatible with Fortran 2003: gcc 4.7.x, Intel 12.1.x, PGI)
+\item Compilers (compatible with Fortran 2003: gcc 4.7.x, Intel 13.x.x)
 
-For MacOSX 10.8.2 the latest Fortran compiler binaries (gcc/gfortran 4.8 at the time of this writing) may be downloaded from the web site \href{http://hpc.sourceforge.net}{HPC for MacOSX}.
+For MacOSX 10.10.x the latest Fortran compiler binaries (gcc/gfortran 4.9 at the time of this writing) may be downloaded from the web site \href{http://hpc.sourceforge.net}{HPC for MacOSX}.
 
 %{\footnotesize\tt http://hpc.sourceforge.net}.
 
 \item Mercurial (hg) (version control system)
-\item CMAKE (version 2.8.x)
+\item CMAKE (version 3.0.x, needed for installing METIS and ParMETIS)
 \item Developer version of PETSc: \href{http://www.mcs.anl.gov/petsc/developers/index.html}{petsc-dev}
 \begin{itemize}
 \item MPI (for running in parallel)
@@ -29,13 +29,13 @@ For MacOSX 10.8.2 the latest Fortran compiler binaries (gcc/gfortran 4.8 at the 
 \begin{description}
 \item[Step 1: Installing PETSc] The first step is to download the developer version of PETSc, \href{http://www.mcs.anl.gov/petsc/developers/index.html}{petsc-dev}. To do this follow the directions at the PETSc Developer web site. The recommended approach is to use {\tt git}.
 
-To compile PETSc it is first necessary to configure the makefile. To this end define the environmental variables {\footnotesize\tt PETSC\_DIR} and {\footnotesize\tt PETSC\_ARCH} pointing to the directory where petsc-dev is installed and an identifying name for the installation, respectively. E.g. if using the t-shell on MacOSX 10.8.2 and gcc-4.8 enter into the .tcshrc file:
+To compile PETSc it is first necessary to configure the makefile. To this end define the environmental variables {\footnotesize\tt PETSC\_DIR} and {\footnotesize\tt PETSC\_ARCH} pointing to the directory where petsc-dev is installed and an identifying name for the installation, respectively. E.g. if using the t-shell on MacOSX 10.10.x and gcc-4.9 enter into the .tcshrc file:
 
 {\footnotesize\tt setenv PETSC\_DIR `path to petsc-dev`}
 
 and
 
-{\footnotesize\tt setenv PETSC\_ARCH MacOSX-10.8.2-gcc4.8}.
+{\footnotesize\tt setenv PETSC\_ARCH MacOSX-10.10.x-gcc4.9}.
 
 Finally, set the environmental variable {\footnotesize\tt MPI\_HOME} and add to the {\footnotesize\tt PATH} variable:
 \footnotesize

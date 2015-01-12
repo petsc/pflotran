@@ -2248,12 +2248,12 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   ! pass #2 for everything else
   call RTResidualNonFlux(snes,xx,r,realization,ierr)
 
-#if 0
+!#if 0
   select case(realization%option%iflowmode)
     case(MPH_MODE,FLASH2_MODE,IMS_MODE)
       call RTResidualEquilibrateCO2(r,realization)
   end select
-#endif
+!#endif
 
   if (realization%debug%vecview_residual) then
     string = 'RTresidual'
@@ -2980,6 +2980,14 @@ subroutine RTResidualEquilibrateCO2(r,realization)
       pg = global_auxvars(ghosted_id)%pres(2)
       m_na = 0.d0
       m_cl = 0.d0
+      if (reaction%species_idx%na_ion_id /= 0 .and. &
+        reaction%species_idx%cl_ion_id /= 0) then
+        m_na = rt_auxvars(ghosted_id)%pri_molal(reaction%species_idx%na_ion_id)
+        m_cl = rt_auxvars(ghosted_id)%pri_molal(reaction%species_idx%cl_ion_id)
+        call Henry_duan_sun(tc,pg*1D-5,henry,lngamco2,m_na,m_cl)
+      else
+        call Henry_duan_sun(tc,pg*1D-5,henry,lngamco2,option%m_nacl,option%m_nacl)
+      endif
       call Henry_duan_sun(tc,pg*1.D-5,henry,lngamco2,m_na,m_cl)
 
 !     print *,'check_EOSeq: ',local_id,jco2,reaction%ncomp, &
@@ -2997,7 +3005,7 @@ subroutine RTResidualEquilibrateCO2(r,realization)
 
       yco2 = 1.d0-sat_pressure/pg
       xphi = fg*1.D6/pg/yco2
-      Qkco2 = henry*xphi ! QkCO2 = xphi * exp(-mu0) / gamma
+      Qkco2 = henry*xphi  ! QkCO2 = xphi * exp(-mu0) / gamma
 
 !     sat_pressure = sat_pressure * 1.D5
       mco2eq = (pg - sat_pressure)*1.D-5 * Qkco2 ! molality CO2, y * P = P - Psat(T)
@@ -3079,12 +3087,12 @@ subroutine RTJacobian(snes,xx,A,B,realization,ierr)
   ! pass #2 for everything else
   call RTJacobianNonFlux(snes,xx,J,J,realization,ierr)
 
-#if 0
+!#if 0
   select case(realization%option%iflowmode)
     case(MPH_MODE,FLASH2_MODE,IMS_MODE)
     call RTJacobianEquilibrateCO2(J,realization)
   end select
-#endif
+!#endif
 
   call PetscLogEventEnd(logging%event_rt_jacobian2,ierr);CHKERRQ(ierr)
     
@@ -3679,7 +3687,7 @@ subroutine RTJacobianEquilibrateCO2(J,realization)
   global_auxvars => patch%aux%Global%auxvars
 
   ! loop over cells twice.  the first time to zero (all rows to be zeroed have
-  ! to be zeroed in a single call by passing in a list).  the second to 
+  ! to be zeroed in a single call by passing in a list).  the second loop to 
   ! add the equilibration
 
   jacobian_entry = 1.d0
@@ -3693,17 +3701,15 @@ subroutine RTJacobianEquilibrateCO2(J,realization)
     if (global_auxvars(ghosted_id)%sat(GAS_PHASE) > 0.d0 .and. &
       global_auxvars(ghosted_id)%sat(GAS_PHASE) < 1.d0) then
       zero_count = zero_count + 1
-      zero_rows(zero_count) = jco2+(local_id-1)*reaction%ncomp-1
-!     zero_rows(zero_count) = grid%nL2G(jco2+(local_id-1)*reaction%ncomp)-1
+      zero_rows(zero_count) = jco2+(ghosted_id-1)*reaction%ncomp-1
       ghosted_rows(zero_count) = ghosted_id
     endif
   enddo
 
-! print *,'rowsco2: ',zero_count,zero_rows(1:zero_count)
   call MatZeroRowsLocal(J,zero_count,zero_rows(1:zero_count),jacobian_entry, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                         ierr);CHKERRQ(ierr)
-!#if 0
+
   do i = 1, zero_count
     ghosted_id = ghosted_rows(i) ! zero indexing back to 1-based
     if (patch%imat(ghosted_id) <= 0) cycle
@@ -3713,17 +3719,13 @@ subroutine RTJacobianEquilibrateCO2(J,realization)
       jacobian_entry = 1.d0
     endif
 
-!   print *,'RTjac: ',i,jco2,ghosted_id,idof,zero_count,reaction%use_log_formulation,jacobian_entry
-
     idof = (ghosted_id-1)*option%ntrandof + jco2
-!   print *,'jacco2: ',i,idof,ghosted_id,zero_count,jacobian_entry
     call MatSetValuesLocal(J,1,idof-1,1,idof-1,jacobian_entry,INSERT_VALUES, &
                            ierr);CHKERRQ(ierr)
   enddo
 
   call MatAssemblyBegin(J,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
   call MatAssemblyEnd(J,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
-!#endif
 
 end subroutine RTJacobianEquilibrateCO2
 

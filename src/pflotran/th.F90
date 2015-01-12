@@ -1615,7 +1615,7 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar, &
          endif
       
          if (ideriv == 2) then
-            if(x_pert(ideriv) < 0.d0) then
+            if (x_pert(ideriv) < 0.d0) then
                pert = - 1.d-8
             else
                pert =  1.d-8
@@ -2121,7 +2121,7 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
 #endif
    endif
 
-  endif ! if(use_th_freezing)
+  endif ! if (use_th_freezing)
 
         
   ! conduction term
@@ -3812,7 +3812,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   do 
     if (.not.associated(source_sink)) exit
     
-    if(source_sink%flow_condition%rate%itype/=HET_MASS_RATE_SS) then
+    if (source_sink%flow_condition%rate%itype/=HET_MASS_RATE_SS) then
       qsrc1 = source_sink%flow_condition%rate%dataset%rarray(1)
       qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
     endif
@@ -4317,7 +4317,7 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
   do
     if (.not.associated(source_sink)) exit
     
-    if(source_sink%flow_condition%rate%itype/=HET_MASS_RATE_SS) then
+    if (source_sink%flow_condition%rate%itype/=HET_MASS_RATE_SS) then
       qsrc1 = source_sink%flow_condition%rate%dataset%rarray(1)
       qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
     endif
@@ -5539,9 +5539,9 @@ subroutine THUpdateSurfaceBC(realization)
   do
     if (.not.associated(boundary_condition)) exit
     cur_connection_set => boundary_condition%connection_set
-    if(StringCompare(boundary_condition%name,'from_surface_bc')) then
+    if (StringCompare(boundary_condition%name,'from_surface_bc')) then
 
-      if(boundary_condition%flow_condition%itype(TH_PRESSURE_DOF) /= &
+      if (boundary_condition%flow_condition%itype(TH_PRESSURE_DOF) /= &
          HET_SURF_SEEPAGE_BC) then
         call printErrMsg(option,'from_surface_bc is not of type ' // &
                         'HET_SURF_SEEPAGE_BC')

@@ -89,7 +89,7 @@ subroutine SurfaceMaterialPropertyRead(surf_material_property,input,option)
   do
     call InputReadPflotranString(input,option)
     
-    if(InputCheckExit(input,option)) exit
+    if (InputCheckExit(input,option)) exit
   
     call InputReadWord(input,option,keyword,PETSC_TRUE)
     call InputErrorMsg(input,option,'keyword','SURFACE_MATERIAL_PROPERTY')
@@ -157,7 +157,7 @@ recursive subroutine SurfaceMaterialPropertyDestroy(surf_material_property)
   
   type(surface_material_property_type), pointer :: surf_material_property
   
-  if(.not.associated(surf_material_property)) return
+  if (.not.associated(surf_material_property)) return
   
   call SurfaceMaterialPropertyDestroy(surf_material_property%next)
   

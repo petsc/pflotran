@@ -451,7 +451,7 @@ end subroutine MiscibleUpdateMassBalancePatch
     if (.not.associated(cur_patch)) exit
     realization%patch => cur_patch
     ipass= MiscibleInitGuessCheckPatch(realization)
-    if(ipass<=0)then
+    if (ipass<=0)then
       exit 
     endif
     cur_patch => cur_patch%next
@@ -461,7 +461,7 @@ end subroutine MiscibleUpdateMassBalancePatch
   if (option%mycommsize >1)then
     call MPI_Allreduce(ipass,ipass0,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
                        option%mycomm,ierr)
-    if(ipass0 < option%mycommsize) ipass=-1
+    if (ipass0 < option%mycommsize) ipass=-1
   endif
    MiscibleInitGuessCheck =ipass
 
@@ -596,7 +596,7 @@ subroutine MiscibleUpdateAuxVarsPatch(realization)
     endif
     iend = ghosted_id*option%nflowdof
     istart = iend-option%nflowdof+1
-    if(.not. associated(patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr))then
+    if (.not. associated(patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr))then
        print*, 'error!!! saturation function not allocated', ghosted_id,icap_loc_p(ghosted_id)
     endif
     
@@ -606,7 +606,7 @@ subroutine MiscibleUpdateAuxVarsPatch(realization)
                        realization%fluid_properties,option)
                       
 !   update global variables
-    if( associated(global_auxvars))then
+    if ( associated(global_auxvars))then
       global_auxvars(ghosted_id)%pres = auxvars(ghosted_id)%auxvar_elem(0)%pres
       global_auxvars(ghosted_id)%sat(:) = 1D0
       global_auxvars(ghosted_id)%den(:) = auxvars(ghosted_id)%auxvar_elem(0)%den(:)
@@ -1023,7 +1023,7 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype
       well_inj_water = msrc(6)
       well_inj_co2 = msrc(7)
     
-!     if(pressure_min < 0D0) pressure_min = 0D0 !not limited by pressure lower bound   
+!     if (pressure_min < 0D0) pressure_min = 0D0 !not limited by pressure lower bound   
 
     ! production well (well status = -1)
       if (dabs(well_status + 1D0) < 1D-1) then 
@@ -1033,7 +1033,7 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype
             dphi = auxvar%pres - auxvar%pc(np) - pressure_bh
             if (dphi>=0.D0) then ! outflow only
               ukvr = auxvar%kvr(np)
-              if(ukvr<1e-20) ukvr=0D0
+              if (ukvr<1e-20) ukvr=0D0
               v_darcy=0D0
               if (ukvr*Dq>floweps) then
                 v_darcy = Dq * ukvr * dphi
@@ -1043,7 +1043,7 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype
                   auxvar%xmol((np-1)*option%nflowspec+1)*option%flow_dt
                 Res(2) = Res(2) - v_darcy* auxvar%den(np)* &
                   auxvar%xmol((np-1)*option%nflowspec+2)*option%flow_dt
-                if(energy_flag) Res(3) = Res(3) - v_darcy * auxvar%den(np)* &
+                if (energy_flag) Res(3) = Res(3) - v_darcy * auxvar%den(np)* &
                   auxvar%h(np)*option%flow_dt
               ! print *,'produce: ',np,v_darcy
               endif
@@ -1079,8 +1079,8 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype
                 Res(2) = Res(2) + v_darcy* auxvar%den(np)* &
 !                 auxvar%xmol((np-1)*option%nflowspec+2) * option%flow_dt
                   csrc * option%flow_dt
-!               if(energy_flag) Res(3) = Res(3) + v_darcy*auxvar%den(np)*auxvar%h(np)*option%flow_dt
-                if(energy_flag) Res(3) = Res(3) + v_darcy*auxvar%den(np)* &
+!               if (energy_flag) Res(3) = Res(3) + v_darcy*auxvar%den(np)*auxvar%h(np)*option%flow_dt
+                if (energy_flag) Res(3) = Res(3) + v_darcy*auxvar%den(np)* &
                   enth_src_h2o*option%flow_dt
                 
 !               print *,'inject: ',np,v_darcy
@@ -1347,7 +1347,7 @@ subroutine MiscibleResidual(snes,xx,r,realization,ierr)
 
  ! check initial guess -----------------------------------------------
   ierr = MiscibleInitGuessCheck(realization)
-  if(ierr<0)then
+  if (ierr<0)then
     !ierr = PETSC_ERR_ARG_OUTOFRANGE
     if (option%myrank==0) print *,'table out of range: ',ierr
     call SNESSetFunctionDomainError(snes,ierr);CHKERRQ(ierr)
@@ -1584,7 +1584,7 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
            global_auxvars_bc(sum_connection),&
            realization%fluid_properties, option)
 
-    if( associated(global_auxvars_bc))then
+    if ( associated(global_auxvars_bc))then
       global_auxvars_bc(sum_connection)%pres(:) = auxvars_bc(sum_connection)%auxvar_elem(0)%pres - &
                      auxvars(ghosted_id)%auxvar_elem(0)%pc(:)
       global_auxvars_bc(sum_connection)%sat(:) = 1.D0
@@ -1807,7 +1807,7 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
           realization%fluid_properties,option)
 !    print *,'mis: Respatch0 ', xx_loc_p(istart:iend),auxvars(ng)%auxvar_elem(0)%den
 
-    if(associated(global_auxvars)) then
+    if (associated(global_auxvars)) then
       global_auxvars(ghosted_id)%pres(:) = auxvars(ghosted_id)%auxvar_elem(0)%pres
       global_auxvars(ghosted_id)%sat(:) = 1D0
       global_auxvars(ghosted_id)%den(:) = auxvars(ghosted_id)%auxvar_elem(0)%den(:)
@@ -1825,19 +1825,19 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
 !      linear formulation
 #if 0
       do idof = 2, option%nflowdof
-        if(xx_loc_p((ng-1)*option%nflowdof+idof) <= 0.9) then
+        if (xx_loc_p((ng-1)*option%nflowdof+idof) <= 0.9) then
           delx(idof) = dfac*xx_loc_p((ng-1)*option%nflowdof+idof)*1.d1 
         else
           delx(idof) = -dfac*xx_loc_p((ng-1)*option%nflowdof+idof)*1D1 
         endif
 
-        if(delx(idof) <  1D-8 .and. delx(idof) >= 0.D0) delx(idof) = 1D-8
-        if(delx(idof) > -1D-8 .and. delx(idof) <  0.D0) delx(idof) =-1D-8
+        if (delx(idof) <  1D-8 .and. delx(idof) >= 0.D0) delx(idof) = 1D-8
+        if (delx(idof) > -1D-8 .and. delx(idof) <  0.D0) delx(idof) =-1D-8
 
-        if((delx(idof)+xx_loc_p((ng-1)*option%nflowdof+idof)) > 1.D0) then
+        if ((delx(idof)+xx_loc_p((ng-1)*option%nflowdof+idof)) > 1.D0) then
           delx(idof) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+idof))*1D-4
         endif
-        if((delx(idof)+xx_loc_p((ng-1)*option%nflowdof+idof)) < 0.D0) then
+        if ((delx(idof)+xx_loc_p((ng-1)*option%nflowdof+idof)) < 0.D0) then
           delx(idof) = xx_loc_p((ng-1)*option%nflowdof+idof)*1D-4
         endif
 
@@ -2098,7 +2098,7 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
     if (volume_p(local_id) > 1.D0) r_p(istart:istart+1) = &
       r_p(istart:istart+1)/volume_p(local_id)
 !   r_p(istart:istart+1) = r_p(istart:istart+1)/volume_p(local_id)
-    if(r_p(istart) > 1.E10 .or. r_p(istart) < -1.E10) then
+    if (r_p(istart) > 1.E10 .or. r_p(istart) < -1.E10) then
       ghosted_id = grid%nL2G(local_id)
       print *, 'overflow in res: ', &
       local_id,ghosted_id,istart,r_p (istart:istart+1), &
@@ -2406,7 +2406,7 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,realization,ierr)
             delxbc(idof)=0.D0
           case(HYDROSTATIC_BC)
             xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
-            if(idof >= 2)then
+            if (idof >= 2)then
               xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
               delxbc(idof)=patch%aux%Miscible%delx(idof,ghosted_id)
             endif 
@@ -2565,7 +2565,7 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,realization,ierr)
         case(1)
           ra = ra / option%flow_dt
         case(-1)  
-          if(option%flow_dt > 1.d0) ra = ra / option%flow_dt
+          if (option%flow_dt > 1.d0) ra = ra / option%flow_dt
       end select
     
       if (local_id_up > 0) then
@@ -2855,7 +2855,7 @@ subroutine MiscibleJacobianPatch2(snes,xx,A,B,realization,ierr)
         ra(1:option%nflowdof,1:option%nflowdof) = &
           ra(1:option%nflowdof,1:option%nflowdof) / option%flow_dt
       case(-1)
-        if(option%flow_dt > 1.d0) ra(1:option%nflowdof,1:option%nflowdof) = &
+        if (option%flow_dt > 1.d0) ra(1:option%nflowdof,1:option%nflowdof) = &
           ra(1:option%nflowdof,1:) / option%flow_dt
     end select
 
