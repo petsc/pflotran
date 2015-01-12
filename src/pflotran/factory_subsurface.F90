@@ -357,6 +357,8 @@ subroutine SubsurfaceReadFlowPM(input, option, pm)
   
   use Init_Common_module
 
+  use General_module
+
   implicit none
   
   type(input_type) :: input
@@ -396,6 +398,17 @@ subroutine SubsurfaceReadFlowPM(input, option, pm)
             pm => PMTHCreate()
           case default
             option%io_buffer = 'FLOW PM "' // trim(word) // '" not recognized.'
+            call printErrMsg(option)
+        end select
+      case('OPTIONS')
+        select type(pm)
+          class is(pm_general_type)
+            ! inorder to not immediately return out of GeneralRead
+            !TODO(geh): remove dummy word
+            input%buf = 'dummy_word'
+            call GeneralRead(input,option)
+          class default
+            option%io_buffer = 'OPTIONS not set up for PM.'
             call printErrMsg(option)
         end select
       case default
