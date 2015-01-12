@@ -1326,8 +1326,10 @@ subroutine InitSubsurfaceReadInput(simulation)
   
   flow_timestepper => TimestepperBECreate()
   flow_timestepper%solver => SolverCreate()
+  flow_timestepper%solver%itype = FLOW_CLASS
   tran_timestepper => TimestepperBECreate()
   tran_timestepper%solver => SolverCreate()
+  tran_timestepper%solver%itype = TRANSPORT_CLASS
 
   backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
                           ! is a double quote as in c/c++
@@ -2414,7 +2416,8 @@ subroutine InitSubsurfaceReadInput(simulation)
 
 !.....................
       case ('TIME')
-        dt_init = UNINITIALIZED_DOUBLE
+!        dt_init = UNINITIALIZED_DOUBLE
+        dt_init = 1.d0
         dt_min = UNINITIALIZED_DOUBLE
         do
           call InputReadPflotranString(input,option)
