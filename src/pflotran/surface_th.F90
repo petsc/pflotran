@@ -1307,30 +1307,27 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
   call VecGetArrayF90(surf_field%flow_xx_loc,xx_loc_p,ierr);CHKERRQ(ierr)
 
   do ghosted_id = 1,grid%ngmax
-    local_id = grid%nG2L(ghosted_id)
-    if (local_id>0) then
-      istart = (local_id-1)*option%nflowdof+1 ! surface water height dof
-      iend   = istart+1                       ! surface energy dof
-      if (xx_loc_p(istart) < MIN_SURFACE_WATER_HEIGHT) then
-        ! If the cell is dry then we set temperature to a dummy value
-        ! and then zero out the water height and energy.
-        surf_global_auxvars(ghosted_id)%is_dry = PETSC_TRUE
-        temp = DUMMY_VALUE
-        xx_loc_p(istart) = 0.d0 ! no water 
-        xx_loc_p(iend)   = 0.d0 ! no energy
-      else
-        TL = -100.d0
-        TR =  100.d0
-        call EnergyToTemperatureBisection(temp,TL,TR, &
-                                          xx_loc_p(istart), &
-                                          xx_loc_p(iend), &
-                                          surf_auxvars(ghosted_id)%Cwi, &
-                                          option%reference_pressure,option)
-      endif
-      surf_global_auxvars(ghosted_id)%temp = temp
-      call EOSWaterdensity(temp,option%reference_pressure,den,dum1,ierr)
-      surf_global_auxvars(ghosted_id)%den_kg(1) = den
+    istart = (ghosted_id-1)*option%nflowdof+1 ! surface water height dof
+    iend   = istart+1                       ! surface energy dof
+    if (xx_loc_p(istart) < MIN_SURFACE_WATER_HEIGHT) then
+      ! If the cell is dry then we set temperature to a dummy value
+      ! and then zero out the water height and energy.
+      surf_global_auxvars(ghosted_id)%is_dry = PETSC_TRUE
+      temp = DUMMY_VALUE
+      xx_loc_p(istart) = 0.d0 ! no water 
+      xx_loc_p(iend)   = 0.d0 ! no energy
+    else
+      TL = -100.d0
+      TR =  100.d0
+      call EnergyToTemperatureBisection(temp,TL,TR, &
+                                        xx_loc_p(istart), &
+                                        xx_loc_p(iend), &
+                                        surf_auxvars(ghosted_id)%Cwi, &
+                                        option%reference_pressure,option)
     endif
+    surf_global_auxvars(ghosted_id)%temp = temp
+    call EOSWaterdensity(temp,option%reference_pressure,den,dum1,ierr)
+    surf_global_auxvars(ghosted_id)%den_kg(1) = den
   enddo
 
   call VecRestoreArrayF90(surf_field%flow_xx_loc,xx_loc_p,ierr);CHKERRQ(ierr)
