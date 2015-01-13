@@ -112,6 +112,7 @@ subroutine PFLOTRANReadSimulation(simulation,option)
   use PMC_Base_class
   
   use Factory_Subsurface_module
+  use Factory_Hydrogeophysics_module
   
   implicit none
   
@@ -204,7 +205,7 @@ subroutine PFLOTRANReadSimulation(simulation,option)
     case('SUBSURFACE_FLOW','SUBSURFACE_TRANSPORT','SUBSURFACE_FLOW_AND_TRAN')
       call SubsurfaceInitialize(simulation,pm_master,option)  
     case('HYDROGEOPHYICS')
-    
+      call HydrogeophysicsInitialize(simulation,pm_master,option)
   end select
   
   call InputDestroy(input)

@@ -48,9 +48,6 @@ subroutine SubsurfaceInitialize(simulation_base,pm_list,option)
   simulation%process_model_list => pm_list
   call SubsurfaceInitializePostPetsc(simulation,option)
   
-  ! set first process model coupler as the master
-  simulation%process_model_coupler_list%is_master = PETSC_TRUE
-  
   simulation_base => simulation
 
 end subroutine SubsurfaceInitialize
@@ -182,6 +179,8 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   
 #endif
   call SubsurfaceJumpStart(simulation)
+  ! set first process model coupler as the master
+  simulation%process_model_coupler_list%is_master = PETSC_TRUE
 
 end subroutine SubsurfaceInitializePostPetsc
 
