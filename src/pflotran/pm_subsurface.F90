@@ -109,7 +109,7 @@ subroutine PMSubsurfaceInit(this)
     if (this%realization%reaction%update_porosity .or. &
         this%realization%reaction%update_tortuosity .or. &
         this%realization%reaction%update_permeability .or. &
-        this%realization%reaction%update_mineral_surface_area) then
+        this%realization%reaction%update_mnrl_surf_with_porosity) then
       this%store_porosity_for_ts_cut = PETSC_TRUE
       this%store_porosity_for_transport = PETSC_TRUE
     endif
