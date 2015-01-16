@@ -37,6 +37,7 @@ module PM_Base_class
     procedure, public :: UpdateTimestep => PMBaseUpdateTimestep
     procedure, public :: InitializeTimestep => PMBaseThisOnly
     procedure, public :: PreSolve => PMBaseThisOnly
+    procedure, public :: Solve => PMBaseThisOnly
     procedure, public :: PostSolve => PMBaseThisOnly
     procedure, public :: FinalizeTimestep => PMBaseThisOnly
     procedure, public :: AcceptSolution => PMBaseFunctionThisOnly

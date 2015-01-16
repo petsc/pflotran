@@ -16,7 +16,8 @@ module Factory_Subsurface_module
             SubsurfaceJumpStart, &
             ! move to init_subsurface
             SubsurfaceReadFlowPM, &
-            SubsurfaceReadRTPM
+            SubsurfaceReadRTPM, &
+            SubsurfaceReadWasteFormPM
 
 contains
 
@@ -67,6 +68,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   use PM_Subsurface_class
   use PM_Base_class
   use PM_RT_class
+  use PM_Waste_Form_class
   use Timestepper_BE_class
   use Realization_class
   use Logging_module
@@ -89,6 +91,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   
   class(pm_subsurface_type), pointer :: pm_flow
   class(pm_rt_type), pointer :: pm_rt
+  class(pm_mpm_type), pointer :: pm_waste_form
   class(pm_base_type), pointer :: cur_pm, prev_pm
   class(realization_type), pointer :: realization
   class(timestepper_BE_type), pointer :: timestepper
@@ -113,6 +116,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   call SubsurfInitCommandLineSettings(option)
   nullify(pm_flow)
   nullify(pm_rt)
+  nullify(pm_waste_form)
   cur_pm => simulation%process_model_list
   do
     if (.not.associated(cur_pm)) exit
@@ -121,6 +125,8 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
         pm_flow => cur_pm
       class is(pm_rt_type)
         pm_rt => cur_pm
+      class is (pm_mpm_type)
+        pm_waste_form => cur_pm
       class default
         option%io_buffer = &
          'PM Class unrecogmized in SubsurfaceInitializePostPetsc.'
@@ -174,8 +180,17 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   realization%input => InputCreate(IN_UNIT,option%input_filename,option)
   call InitSubsurfaceReadRequiredCards(realization)
   call InitSubsurfaceReadInput(simulation)
+  if (associated(pm_waste_form)) then
+    string = 'MPM'
+    call InputFindStringInFile(realization%input,option,string)
+    call InputFindStringErrorMsg(realization%input,option,string)
+    call pm_waste_form%Read(realization%input,option)
+  endif
   call InputDestroy(realization%input)
   call InitSubsurfaceSimulation(simulation)
+  
+  if (associated(pm_waste_form)) then
+  endif
   
 #endif
   call SubsurfaceJumpStart(simulation)
@@ -460,6 +475,45 @@ subroutine SubsurfaceReadRTPM(input, option, pm)
   
 end subroutine SubsurfaceReadRTPM
 
+! ************************************************************************** !
+
+subroutine SubsurfaceReadWasteFormPM(input, option, pm)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/11/13
+  !
+  use Input_Aux_module
+  use Option_module
+  use String_module
+  
+  use PM_Base_class
+  use PM_Waste_Form_class
+
+  implicit none
+  
+  type(input_type) :: input
+  type(option_type) :: option
+  class(pm_base_type), pointer :: pm
+  
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXSTRINGLENGTH) :: error_string
+  
+  error_string = 'SIMULATION,PROCESS_MODEL'
+
+  pm => PMWasteFormCreate()
+  
+  word = ''
+  do   
+    call InputReadPflotranString(input,option)
+    if (InputCheckExit(input,option)) exit
+    call InputReadWord(input,option,word,PETSC_FALSE)
+    call StringToUpper(word)
+    select case(word)
+      case default
+    end select
+  enddo
+  
+end subroutine SubsurfaceReadWasteFormPM
 
 ! ************************************************************************** !
 
