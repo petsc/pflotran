@@ -287,6 +287,7 @@ subroutine HijackGeomechanicsSimulation(simulation_old,simulation)
         end select
 
         call cur_process_model%Init()
+#if 0        
         select type(cur_process_model)
           class is (pm_geomech_force_type)
             select type(ts => cur_process_model_coupler%timestepper)
@@ -306,6 +307,7 @@ subroutine HijackGeomechanicsSimulation(simulation_old,simulation)
                                      ierr);CHKERRQ(ierr)
             end select
         end select
+#endif
         cur_process_model => cur_process_model%next
       enddo
       cur_process_model_coupler => cur_process_model_coupler%child
