@@ -78,6 +78,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
 #else  
   use Simulation_Subsurface_class
   use PMC_Subsurface_class
+  use PMC_Third_Party_class
   use Solver_module
   use Waypoint_module
   use Init_Subsurface_module
@@ -176,6 +177,23 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
 !    timestepper%solver => SolverCreate()
 !    simulation%rt_process_model_coupler%timestepper => timestepper
   endif
+  if (associated(pm_waste_form)) then
+    if (.not.associated(simulation%rt_process_model_coupler)) then
+      option%io_buffer = 'The waste form process model requires reactive ' // &
+        'transport.'
+      call printErrMsg(option)
+    endif
+    simulation%misc_process_model_coupler => PMCThirdPartyCreate()
+    simulation%rt_process_model_coupler%child => &
+      simulation%misc_process_model_coupler%CastToBase()
+    simulation%misc_process_model_coupler%option => option
+    simulation%misc_process_model_coupler%pms => pm_waste_form
+    simulation%misc_process_model_coupler%pm_ptr%ptr => pm_waste_form
+    simulation%misc_process_model_coupler%realization => realization
+    ! set up logging stage
+    string = 'Waste Form'
+    call LoggingCreateStage(string,simulation%misc_process_model_coupler%stage)
+  endif
 
   realization%input => InputCreate(IN_UNIT,option%input_filename,option)
   call InitSubsurfaceReadRequiredCards(realization)
@@ -188,11 +206,8 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   endif
   call InputDestroy(realization%input)
   call InitSubsurfaceSimulation(simulation)
-  
-  if (associated(pm_waste_form)) then
-  endif
-  
 #endif
+
   call SubsurfaceJumpStart(simulation)
   ! set first process model coupler as the master
   simulation%process_model_coupler_list%is_master = PETSC_TRUE
@@ -544,6 +559,7 @@ subroutine InitSubsurfaceSimulation(simulation)
   use PM_Base_class
   use PM_Subsurface_class
   use PM_RT_class
+  use PM_Waste_Form_class
   use Timestepper_BE_class
   
   implicit none
@@ -658,13 +674,15 @@ subroutine InitSubsurfaceSimulation(simulation)
             call cur_process_model%PMSubsurfaceSetRealization(realization)
           class is (pm_rt_type)
             call cur_process_model%PMRTSetRealization(realization)
+          class is (pm_mpm_type)
+            call cur_process_model%PMwasteFormSetRealization(realization)
         end select
         ! set time stepper
         select type(cur_process_model)
+          class is (pm_subsurface_type)
+            cur_process_model_coupler%timestepper%dt = option%flow_dt
           class is (pm_rt_type)
             cur_process_model_coupler%timestepper%dt = option%tran_dt
-          class default ! otherwise flow
-            cur_process_model_coupler%timestepper%dt = option%flow_dt
         end select
         cur_process_model%output_option => realization%output_option
         call cur_process_model%Init()

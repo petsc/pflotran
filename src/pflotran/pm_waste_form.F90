@@ -34,10 +34,10 @@ module PM_Waste_Form_class
     PetscInt :: iiron
   contains
 !geh: commented out subroutines can only be called externally
-!    procedure, public :: Init => PMWasteFormInit
+    procedure, public :: Init => PMWasteFormInit
      procedure, public :: Read => PMWasteFormRead
 !    procedure, public :: SetupSolvers => PMWasteFormSetupSolvers
-!    procedure, public :: PMWasteFormSetRealization
+    procedure, public :: PMWasteFormSetRealization
 !    procedure, public :: InitializeRun => PMWasteFormInitializeRun
 !!    procedure, public :: FinalizeRun => PMWasteFormFinalizeRun
 !    procedure, public :: InitializeTimestep => PMWasteFormInitializeTimestep
@@ -213,18 +213,18 @@ subroutine PMWasteFormInit(this)
     select case(grid%itype)
         case(STRUCTURED_GRID)
           call StructGridGetIJKFromCoordinate(grid%structured_grid, &
-                                              this%coordinates(i)%x, &
-                                              this%coordinates(i)%y, &
-                                              this%coordinates(i)%z, &
+                                              this%coordinates(icoord)%x, &
+                                              this%coordinates(icoord)%y, &
+                                              this%coordinates(icoord)%z, &
                                               i,j,k)
           if (i > 0 .and. j > 0 .and. k > 0) then
             local_id = i + (j-1)*grid%structured_grid%nlx + &
                        (k-1)*grid%structured_grid%nlxy
           endif
         case(IMPLICIT_UNSTRUCTURED_GRID)
-          call UGridGetCellFromPoint(this%coordinates(i)%x, &
-                                     this%coordinates(i)%y, &
-                                     this%coordinates(i)%z, &
+          call UGridGetCellFromPoint(this%coordinates(icoord)%x, &
+                                     this%coordinates(icoord)%y, &
+                                     this%coordinates(icoord)%z, &
                                      grid%unstructured_grid,option,local_id)
         case default
            option%io_buffer = 'Only STRUCTURED_GRID and ' // &

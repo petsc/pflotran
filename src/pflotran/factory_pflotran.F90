@@ -187,6 +187,7 @@ subroutine PFLOTRANReadSimulation(simulation,option)
           if (.not.associated(pm_master)) then
             pm_master => new_pm
           endif
+          cur_pm => new_pm
           nullify(new_pm)
         enddo
       case('MASTER')

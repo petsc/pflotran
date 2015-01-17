@@ -166,6 +166,7 @@ mode_aux_obj = \
 	${common_src}pm_surface_th.o \
 	${common_src}pm_surface.o \
 	${common_src}pm_th.o \
+	${common_src}pm_waste_form.o \
 	${common_src}richards_aux.o \
 	${common_src}th_aux.o
 
@@ -269,6 +270,7 @@ io_obj = \
 	${common_src}output_vtk.o
 
 misc_obj = \
+	${common_src}amp_surrogate.o \
 	${common_src}block_solve.o \
 	${common_src}block_tridiag.o \
 	${common_src}checkpoint.o \
@@ -304,6 +306,7 @@ misc_obj = \
 	${common_src}pmc_hydrogeophysics.o \
 	${common_src}pmc_material.o \
 	${common_src}pmc_subsurface.o \
+	${common_src}pmc_third_party.o \
 	${common_src}realization.o \
 	${common_src}realization_base.o \
 	${common_src}region.o \
@@ -412,6 +415,7 @@ endif
 
 # Dependencies stemming from "use" statements.
 # These ensure that the module files are built in the correct order.
+amp_surrogate.o :
 auxiliary.o : flash2_aux.o general_aux.o global_aux.o immis_aux.o \
               material_aux.o miscible_aux.o mphase_aux.o pflotran_constants.o \
               reactive_transport_aux.o richards_aux.o \
@@ -503,25 +507,27 @@ factory_geomechanics.o : condition_control.o factory_subsurface.o \
                          simulation_subsurface.o timestepper.o \
                          timestepper_base.o timestepper_geomechanics.o
 factory_hydrogeophysics.o : discretization.o factory_subsurface.o input_aux.o \
-                            logging.o option.o pflotran_constants.o \
+                            logging.o option.o pflotran_constants.o pm_base.o \
                             pmc_hydrogeophysics.o simulation.o \
                             simulation_base.o simulation_hydrogeophysics.o \
                             string.o wrapper_hydrogeophysics.o
-factory_pflotran.o : eos.o factory_subsurface.o input_aux.o logging.o \
-                     multisimulation.o option.o pflotran_constants.o pm_base.o \
-                     pmc_base.o simulation_base.o string.o
+factory_pflotran.o : eos.o factory_hydrogeophysics.o factory_subsurface.o \
+                     input_aux.o logging.o multisimulation.o option.o \
+                     pflotran_constants.o pm_base.o pmc_base.o \
+                     simulation_base.o string.o
 factory_subsurface.o : condition_control.o general.o global.o init_common.o \
                        init_subsurface.o init_subsurface_flow.o \
                        init_subsurface_transport.o input_aux.o logging.o \
                        option.o output.o output_aux.o pflotran_constants.o \
                        pm_base.o pm_base_pointer.o pm_flash2.o pm_general.o \
                        pm_immis.o pm_miscible.o pm_mphase.o pm_richards.o \
-                       pm_rt.o pm_subsurface.o pm_th.o pmc_base.o \
-                       pmc_material.o pmc_subsurface.o reactive_transport.o \
-                       realization.o regression.o richards.o simulation.o \
-                       simulation_base.o simulation_subsurface.o solver.o \
-                       strata.o string.o th.o timestepper.o timestepper_BE.o \
-                       timestepper_base.o waypoint.o
+                       pm_rt.o pm_subsurface.o pm_th.o pm_waste_form.o \
+                       pmc_base.o pmc_material.o pmc_subsurface.o \
+                       reactive_transport.o realization.o regression.o \
+                       richards.o simulation.o simulation_base.o \
+                       simulation_subsurface.o solver.o strata.o string.o th.o \
+                       timestepper.o timestepper_BE.o timestepper_base.o \
+                       waypoint.o
 factory_surface.o : checkpoint_surface.o condition_control.o init_common.o \
                     init_surface.o input_aux.o logging.o option.o output.o \
                     output_aux.o output_surface.o pflotran_constants.o \
@@ -759,6 +765,12 @@ mphase.o : co2_span_wagner.o co2_span_wagner_spline.o co2_sw.o co2eos.o \
            mphase_aux.o option.o output_aux.o patch.o pflotran_constants.o \
            realization.o secondary_continuum.o secondary_continuum_aux.o \
            variables.o
+mphase.o : co2_span_wagner.o co2_span_wagner_spline.o co2_sw.o co2eos.o \
+           connection.o coupler.o debug.o discretization.o eos_water.o field.o \
+           gas_eos_mod.o global_aux.o grid.o material.o material_aux.o \
+           mphase_aux.o option.o output_aux.o patch.o pflotran_constants.o \
+           realization.o secondary_continuum.o secondary_continuum_aux.o \
+           variables.o
 mphase_aux.o : co2_span_wagner.o co2_span_wagner_spline.o co2_sw.o co2eos.o \
                eos_water.o fluid.o gas_eos_mod.o global_aux.o \
                mphase_pckr_mod.o option.o pflotran_constants.o \
@@ -883,6 +895,10 @@ pm_th.o : communicator_base.o communicator_structured.o \
           communicator_unstructured.o discretization.o global.o grid.o \
           option.o pflotran_constants.o pm_base.o pm_subsurface.o \
           realization.o solver.o th.o
+pm_waste_form.o : amp_surrogate.o geometry.o global.o global_aux.o grid.o \
+                  grid_structured.o grid_unstructured.o input_aux.o option.o \
+                  pflotran_constants.o pm_base.o reaction_aux.o \
+                  reactive_transport_aux.o realization.o string.o utility.o
 pmc_base.o : checkpoint.o logging.o option.o output.o output_aux.o \
              pflotran_constants.o pm_base.o pm_base_pointer.o simulation_aux.o \
              timestepper_base.o utility.o waypoint.o
@@ -906,6 +922,8 @@ pmc_surface.o : connection.o coupler.o eos_water.o grid.o option.o output.o \
                 surface_flow.o surface_global_aux.o surface_realization.o \
                 surface_th.o surface_th_aux.o timestepper_base.o \
                 timestepper_surface.o
+pmc_third_party.o : option.o pflotran_constants.o pmc_base.o realization.o \
+                    timestepper_base.o utility.o
 ifdef PFLOTRAN_RXN_FLAG
 reaction.o : global_aux.o input_aux.o material_aux.o option.o \
              pflotran_constants.o reaction_aux.o reaction_clm.o \
@@ -996,11 +1014,12 @@ reaction_surf_complex.o : global_aux.o input_aux.o material_aux.o \
                           reactive_transport_aux.o string.o utility.o
 reaction_surf_complex_aux.o : option.o pflotran_constants.o \
                               reaction_database_aux.o utility.o
-reactive_transport.o : condition.o connection.o coupler.o debug.o \
-                       discretization.o field.o fluid.o global.o global_aux.o \
-                       grid.o logging.o mass_transfer.o material.o \
-                       material_aux.o option.o output_aux.o output_tecplot.o \
-                       patch.o pflotran_constants.o reaction.o reaction_aux.o \
+reactive_transport.o : co2_span_wagner.o co2eos.o condition.o connection.o \
+                       coupler.o debug.o discretization.o eos_water.o field.o \
+                       fluid.o global.o global_aux.o grid.o logging.o \
+                       mass_transfer.o material.o material_aux.o option.o \
+                       output_aux.o output_tecplot.o patch.o \
+                       pflotran_constants.o reaction.o reaction_aux.o \
                        reaction_surf_complex_aux.o reactive_transport_aux.o \
                        realization.o region.o secondary_continuum.o \
                        secondary_continuum_aux.o transport.o \
