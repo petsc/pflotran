@@ -789,26 +789,9 @@ subroutine UGridDMCreateJacobian(unstructured_grid,ugdm,mat_type,J,option)
     end select
     call MatSetSizes(J,ndof_local,ndof_local,PETSC_DETERMINE,PETSC_DETERMINE, &
                     ierr) ;CHKERRQ(ierr) 
-    !if(option%nflowdof > 0 ) then
-      call MatXAIJSetPreallocation(J,ugdm%ndof,d_nnz,o_nnz, &
-                                     PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-                                     ierr); CHKERRQ(ierr)
-    !end if
-
-    !select case(option%iflowmode)
-    !  case(MPH_MODE, IMS_MODE, FLASH2_MODE, G_MODE)
-    !    call MatXAIJSetPreallocation(J,THREE_INTEGER,d_nnz,o_nnz, &
-    !                                 PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-    !                                 ierr); CHKERRQ(ierr)
-    !  case(TH_MODE,MIS_MODE)
-    !    call MatXAIJSetPreallocation(J,TWO_INTEGER,d_nnz,o_nnz, &
-    !                                 PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-    !                                 ierr); CHKERRQ(ierr)
-    !  case(RICHARDS_MODE)
-    !    call MatXAIJSetPreallocation(J,ONE_INTEGER,d_nnz,o_nnz, &
-    !                                 PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-    !                                 ierr); CHKERRQ(ierr)
-    !end select  
+    call MatXAIJSetPreallocation(J,ugdm%ndof,d_nnz,o_nnz, &
+                                 PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+                                 ierr); CHKERRQ(ierr)
 
     call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltog, &
                                     ugdm%mapping_ltog,ierr);CHKERRQ(ierr)
