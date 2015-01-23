@@ -19,11 +19,7 @@ module PM_Base_class
 #include "finclude/petscsnes.h"
 #include "finclude/petscts.h"
 
-#ifdef ABSTRACT
-  type, abstract, public :: pm_base_type
-#else
   type, public :: pm_base_type
-#endif
     character(len=MAXWORDLENGTH) :: name
     type(option_type), pointer :: option
     type(output_option_type), pointer :: output_option
@@ -32,31 +28,8 @@ module PM_Base_class
     class(realization_base_type), pointer :: realization_base
     class(pm_base_type), pointer :: next
   contains
-#ifdef ABSTRACT  
-    procedure(PMBaseInit), public, deferred :: Init
-    procedure(PMBaseThisOnly), public, deferred :: InitializeRun
-    procedure(PMBaseThisOnly), public, deferred :: FinalizeRun
-    procedure(PMBaseResidual), public, deferred :: Residual
-    procedure(PMBaseJacobian), public, deferred :: Jacobian
-    procedure(PMBaseUpdateTimestep), public, deferred :: UpdateTimestep
-    procedure(PMBaseThisOnly), public, deferred :: InitializeTimestep
-    procedure(PMBaseThisOnly), public, deferred :: PreSolve
-    procedure(PMBaseThisOnly), public, deferred :: PostSolve
-    procedure(PMBaseThisOnly), public, deferred :: FinalizeTimestep
-    procedure(PMBaseFunctionThisOnly), public, deferred :: AcceptSolution
-    procedure(PMBaseCheckUpdatePre), public, deferred :: CheckUpdatePre
-    procedure(PMBaseCheckUpdatePost), public, deferred :: CheckUpdatePost
-    procedure(PMBaseThisOnly), public, deferred :: TimeCut
-    procedure(PMBaseThisOnly), public, deferred :: UpdateSolution
-    procedure(PMBaseThisOnly), public, deferred :: UpdateAuxvars
-    procedure(PMBaseThisOnly), public, deferred :: MaxChange
-    procedure(PMBaseComputeMassBalance), public, deferred :: ComputeMassBalance
-    procedure(PMBaseThisOnly), public, deferred :: Destroy
-    procedure(PMBaseRHSFunction), public, deferred :: RHSFunction
-    procedure(PMBaseCheckpoint), public, deferred :: Checkpoint
-    procedure(PMBaseCheckpoint), public, deferred :: Restart
-#else
     procedure, public :: Init => PMBaseInit
+    procedure, public :: SetupSolvers => PMBaseSetupSolvers
     procedure, public :: InitializeRun => PMBaseThisOnly
     procedure, public :: FinalizeRun => PMBaseThisOnly
     procedure, public :: Residual => PMBaseResidual
@@ -77,123 +50,12 @@ module PM_Base_class
     procedure, public :: RHSFunction => PMBaseRHSFunction
     procedure, public :: Checkpoint => PMBaseCheckpoint
     procedure, public :: Restart => PMBaseCheckpoint
-#endif
   end type pm_base_type
   
   type, public :: pm_base_header_type
     integer*8 :: ndof
   end type pm_base_header_type
     
-#ifdef ABSTRACT  
-  abstract interface
-    subroutine PMBaseInit(this)
-      import pm_base_type
-      implicit none
-      class(pm_base_type) :: this
-    end subroutine PMBaseInit
-
-    subroutine PMBaseResidual(this,snes,xx,r,ierr)
-      import pm_base_type
-      implicit none
-      class(pm_base_type) :: this
-      SNES :: snes
-      Vec :: xx
-      Vec :: r
-      PetscErrorCode :: ierr
-    end subroutine PMBaseResidual
-
-    subroutine PMBaseJacobian(this,snes,xx,A,B,ierr)
-      import pm_base_type
-      implicit none
-      class(pm_base_type) :: this
-      SNES :: snes
-      Vec :: xx
-      Mat :: A, B
-      PetscErrorCode :: ierr
-    end subroutine PMBaseJacobian
-
-    subroutine PMBaseUpdateTimestep(this,dt,dt_max,iacceleration, &
-                                    num_newton_iterations,tfac)
-      import pm_base_type
-      implicit none
-      class(pm_base_type) :: this
-      PetscReal :: dt
-      PetscReal :: dt_max
-      PetscInt :: iacceleration
-      PetscInt :: num_newton_iterations
-      PetscReal :: tfac(:)
-    end subroutine PMBaseUpdateTimestep
-    
-    subroutine PMBaseCheckUpdatePre(this,line_search,P,dP,changed,ierr)
-      import pm_base_type
-      implicit none
-      class(pm_base_type) :: this
-      SNESLineSearch :: line_search
-      Vec :: P
-      Vec :: dP
-      PetscBool :: changed
-      PetscErrorCode :: ierr
-    end subroutine PMBaseCheckUpdatePre
-    
-    subroutine PMBaseCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
-                                      P1_changed,ierr)
-      import pm_base_type
-      implicit none
-      class(pm_base_type) :: this
-      SNESLineSearch :: line_search
-      Vec :: P0
-      Vec :: dP
-      Vec :: P1
-      PetscBool :: dP_changed
-      PetscBool :: P1_changed
-      PetscErrorCode :: ierr
-    end subroutine PMBaseCheckUpdatePost
-  
-    subroutine PMBasePostSolve(this)
-      import pm_base_type
-      implicit none
-      class(pm_base_type) :: this
-      PetscBool :: solution_accepted
-    end subroutine PMBasePostSolve
-    
-    subroutine PMBaseThisOnly(this)
-      import pm_base_type
-      implicit none
-      class(pm_base_type) :: this
-    end subroutine PMBaseThisOnly
-    
-    subroutine PMBaseThisTime(this,time)
-      import pm_base_type
-      implicit none
-      class(pm_base_type) :: this
-      PetscReal :: time
-    end subroutine PMBaseThisTime
-    
-    function PMBaseFunctionThisOnly(this)
-      import pm_base_type
-      implicit none
-      class(pm_base_type) :: this
-      PetscBool ::  PMBaseFunctionThisOnly
-    end function PMBaseFunctionThisOnly
-    
-    subroutine PMBaseComputeMassBalance(this,mass_balance_array)
-      import pm_base_type
-      implicit none
-      class(pm_base_type) :: this
-      PetscReal :: mass_balance_array(:)
-    end subroutine PMBaseComputeMassBalance
-
-    subroutine PMBaseCheckpoint(this,viewer)
-      import pm_base_type
-      implicit none
-#include "finclude/petscviewer.h"      
-      class(pm_base_type) :: this
-      PetscViewer ::  viewer
-    end subroutine PMBaseFunctionThisOnly
-    
-  end interface
-#endif  
-  
   public :: PMBaseCreate
   
   public :: PMBaseResidual
@@ -221,34 +83,6 @@ subroutine PMBaseCreate(this)
   
 end subroutine PMBaseCreate
 
-#if 0
-
-! ************************************************************************** !
-
-recursive subroutine RunToTime(this,time)
-  ! 
-  ! PMBaseRunTo: Runs the actual simulation.
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/18/13
-  ! 
-
-  implicit none
-  
-  class(pm_base_type) :: this  
-  PetscReal :: time
-  
-  ! do something here
-  
-  if (associated(this%next)) then
-    call this%next%RunToTime(time)
-  endif
-  
-end subroutine PMBaseRunTo
-#endif
-
-#ifndef ABSTRACT
-
 ! ************************************************************************** !
 
 subroutine PMBaseInit(this)
@@ -257,6 +91,17 @@ subroutine PMBaseInit(this)
   print *, 'Must extend PMBaseInit.'
   stop
 end subroutine PMBaseInit
+
+! ************************************************************************** !
+
+subroutine PMBaseSetupSolvers(this,solver)
+  use Solver_module
+  implicit none
+  class(pm_base_type) :: this
+  type(solver_type) :: solver
+  print *, 'Must extend PMBaseInit.'
+  stop
+end subroutine PMBaseSetupSolvers
 
 ! ************************************************************************** !
 
@@ -286,12 +131,12 @@ end subroutine PMBaseJacobian
 
 ! ************************************************************************** !
 
-subroutine PMBaseUpdateTimestep(this,dt,dt_max,iacceleration, &
+subroutine PMBaseUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
                                 num_newton_iterations,tfac)
   implicit none
   class(pm_base_type) :: this
   PetscReal :: dt
-  PetscReal :: dt_max
+  PetscReal :: dt_min,dt_max
   PetscInt :: iacceleration
   PetscInt :: num_newton_iterations
   PetscReal :: tfac(:)
@@ -404,7 +249,5 @@ subroutine PMBaseCheckpoint(this,viewer)
   print *, 'Must extend PMBaseCheckpoint/Restart.'
   stop
 end subroutine PMBaseCheckpoint
-
-#endif
 
 end module PM_Base_class

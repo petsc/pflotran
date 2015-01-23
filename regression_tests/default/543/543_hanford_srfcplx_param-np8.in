@@ -255,8 +255,13 @@ DATASET initial_U
   FILENAME parameters-543.h5
 END
 
-DATASET initial_Calcite
-  HDF5_DATASET_NAME Calcite 
+DATASET initial_Calcite_vol_frac
+  HDF5_DATASET_NAME Calcite_vol_frac
+  FILENAME parameters-543.h5
+END
+
+DATASET initial_Calcite_area
+  HDF5_DATASET_NAME Calcite_area
   FILENAME parameters-543.h5
 END
 
@@ -346,8 +351,14 @@ END
 OUTPUT
 #  TIMES d 0.001 0.01 0.1 1. 10. 
 #  PERIODIC TIME 1 d
-  PERMEABILITY
-  POROSITY
+  VARIABLES
+    LIQUID_PRESSURE
+    LIQUID_SATURATION
+    PERMEABILITY_X
+    PERMEABILITY_Y
+    PERMEABILITY_Z
+    POROSITY
+  /
   FORMAT TECPLOT BLOCK
   VELOCITY_AT_CENTER
 END
@@ -529,7 +540,7 @@ CONSTRAINT initial_groundwater
     Tracer2  1.e-7            F
   /
   MINERALS
-    Calcite        DATASET initial_Calcite  1. cm^2/cm^3
+    Calcite        DATASET initial_Calcite_vol_frac DATASET initial_Calcite_area
     Metatorbernite 0.    1. cm^2/cm^3
   /
 END

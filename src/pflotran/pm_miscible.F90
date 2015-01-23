@@ -86,13 +86,14 @@ subroutine PMMiscibleInitializeTimestep(this)
   
   class(pm_miscible_type) :: this
 
-  call PMSubsurfaceInitializeTimestep(this)         
+  call PMSubsurfaceInitializeTimestepA(this)         
 
   if (this%option%print_screen_flag) then
-    write(*,'(/,2("=")," MISCIBLE FLOW ",62("="))')
+    write(*,'(/,2("=")," MISCIBLE FLOW ",63("="))')
   endif
   
   call MiscibleInitializeTimestep(this%realization)
+  call PMSubsurfaceInitializeTimestepB(this)         
   
 end subroutine PMMiscibleInitializeTimestep
 
@@ -128,7 +129,7 @@ end subroutine PMMisciblePostSolve
 
 ! ************************************************************************** !
 
-subroutine PMMiscibleUpdateTimestep(this,dt,dt_max,iacceleration, &
+subroutine PMMiscibleUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
                                     num_newton_iterations,tfac)
   ! 
   ! Author: Gautam Bisht
@@ -139,7 +140,7 @@ subroutine PMMiscibleUpdateTimestep(this,dt,dt_max,iacceleration, &
   
   class(pm_miscible_type) :: this
   PetscReal :: dt
-  PetscReal :: dt_max
+  PetscReal :: dt_min,dt_max
   PetscInt :: iacceleration
   PetscInt :: num_newton_iterations
   PetscReal :: tfac(:)
@@ -187,7 +188,7 @@ subroutine PMMiscibleUpdateTimestep(this,dt,dt_max,iacceleration, &
   if (dtt > dt_max) dtt = dt_max
   ! geh: There used to be code here that cut the time step if it is too
   !      large relative to the simulation time.  This has been removed.
-      
+  dtt = max(dtt,dt_min)
   dt = dtt
   
 end subroutine PMMiscibleUpdateTimestep

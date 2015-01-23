@@ -1,11 +1,10 @@
 module Grid_module
 
-  use Structured_Grid_module
-  use Unstructured_Grid_module
-  use Unstructured_Grid_Aux_module
-  use Unstructured_Polyhedra_module
+  use Grid_Structured_module
+  use Grid_Unstructured_module
+  use Grid_Unstructured_Aux_module
+  use Grid_Unstructured_Polyhedra_module
   use Connection_module
-  use MFD_Aux_module
  
   use PFLOTRAN_Constants_module
 
@@ -64,16 +63,7 @@ module Grid_module
     ! nG2A :  not collective, ghosted local => natural
 
     PetscInt, pointer :: nL2G(:), nG2L(:)
-    PetscInt, pointer :: nG2A(:), nG2P(:), nG2LP(:)
-
-    PetscInt, pointer :: fL2G(:), fG2L(:), fG2P(:), fL2P(:)
-    PetscInt, pointer :: fL2B(:)
-    Vec :: e2f             ! global vector to establish connection between global face_id and cell_id
-    Vec :: e2n, e2n_LP     ! global cell connectivity vector
-
-    ! For mapping faces between unstrutured grid and mimetic discretization
-    PetscInt, pointer :: fU2M(:,:),fM2U(:)
-    PetscInt :: discretization_itype
+    PetscInt, pointer :: nG2A(:)
 
     PetscReal, pointer :: x(:), y(:), z(:) ! coordinates of ghosted grid cells
 
@@ -90,29 +80,6 @@ module Grid_module
     
     type(connection_set_list_type), pointer :: internal_connection_set_list
     type(connection_set_list_type), pointer :: boundary_connection_set_list
-    type(face_type), pointer :: faces(:)
-    type(mfd_type), pointer :: MFD
-
-    ! For "Least Square Method" to compute flux
-    ! This vector has information regarding how far away a ghost cell is from
-    ! a local cell.
-    ! 1) Zero-value represent a local cell.
-    ! 2) If SNES stencil_width = 2, the maximum value of this vector can be 2.
-    PetscInt,pointer :: ghosted_level(:)
-
-    ! Displacement: i-th row entry = (x_i-x_0, y_i-y_0, z_i-z_0)
-    ! Minv = inverse(disp^T * disp).
-    ! These quantities depends on grid.
-    !
-    ! TODO[GB]: Create one sparse matrix for the local part, rather than
-    !          individual matrix for each control volume.
-    Mat,pointer      :: dispT(:)
-    Mat,pointer      :: Minv(:)
-    PetscReal, pointer :: jacfac(:,:,:)
-    
-    ! PETSC_TRUE -- if a cell is boundary cell,
-    ! PETSC_FALSE -- if a cell is interior cell
-    PetscBool, pointer :: bnd_cell(:)
 
   end type grid_type
   
@@ -132,7 +99,6 @@ module Grid_module
             GridLocalizeRegions, &
             GridLocalizeRegionsFromCellIDsUGrid, &
             GridPopulateConnection, &
-            GridPopulateFaces, &
             GridCopyIntegerArrayToVec, &
             GridCopyRealArrayToVec, &
             GridCopyVecToIntegerArray, &
@@ -141,69 +107,10 @@ module Grid_module
             GridDestroyHashTable, &
             GridGetLocalGhostedIdFromHash, &
             GridIndexToCellID, &
-            GridComputeCell2FaceConnectivity, &
-            GridComputeGlobalCell2FaceConnectivity, &
             GridGetGhostedNeighbors, &
-            GridGetGhostedNeighborsWithCorners, &
-            GridComputeNeighbors, &
-            GridComputeMinv, &
-            GridSaveBoundaryCellInfo
-  
-!geh  public :: VecGetArrayReadF90, VecRestoreArrayReadF90
+            GridGetGhostedNeighborsWithCorners
   
 contains
-
-#if 0
-
-! ************************************************************************** !
-
-subroutine VecGetArrayReadF90(vec, f90ptr, ierr)
-  ! 
-  ! Redirects VecGetArrayReadF90 to VecGetArrayF90 for
-  ! older petsc-dev that lacks stubs for the read version
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/04/13
-  ! 
-
-  implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-
-  Vec:: vec
-  PetscReal, pointer :: f90ptr(:)
-  PetscErrorCode :: ierr
-
-  call VecGetArrayF90(vec, f90ptr, ierr);CHKERRQ(ierr)
-
-end subroutine VecGetArrayReadF90
-
-! ************************************************************************** !
-
-subroutine VecRestoreArrayReadF90(vec, f90ptr, ierr)
-  ! 
-  ! Redirects VecRestoreArrayReadF90 to VecGetArrayF90
-  ! older petsc-dev that lacks stubs for the read
-  ! for version
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/04/13
-  ! 
-
-  implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-
-  Vec:: vec
-  PetscReal, pointer :: f90ptr(:)
-  PetscErrorCode :: ierr
-
-  call VecRestoreArrayF90(vec, f90ptr, ierr);CHKERRQ(ierr)
-  
-end subroutine VecRestoreArrayReadF90
-#endif
 
 ! ************************************************************************** !
 
@@ -229,27 +136,10 @@ function GridCreate()
   nullify(grid%unstructured_grid)
 
   nullify(grid%internal_connection_set_list)
-#ifdef DASVYAT
-  nullify(grid%boundary_connection_set_list)
-#endif
 
   nullify(grid%nL2G)
   nullify(grid%nG2L)
   nullify(grid%nG2A)
-  nullify(grid%nG2P)
-  nullify(grid%ghosted_level)
-  nullify(grid%Minv)
-  nullify(grid%dispT)
-  nullify(grid%jacfac)
-  nullify(grid%bnd_cell)
-
-#ifdef DASVYAT
-  nullify(grid%fL2G)
-  nullify(grid%fG2L)
-  nullify(grid%fG2P)
-  nullify(grid%fL2P)
-  nullify(grid%fL2B)
-#endif
 
   nullify(grid%x)
   nullify(grid%y)
@@ -274,19 +164,8 @@ function GridCreate()
   grid%ngmax = 0
   grid%global_offset = 0
 
-#ifdef DASVYAT  
-  nullify(grid%faces)
-  nullify(grid%MFD)
-  grid%e2f = 0
-  grid%e2n = 0
-  grid%e2n_LP = 0
-#endif
-
-  nullify(grid%fU2M)
-  nullify(grid%fM2U)
   nullify(grid%hash)
   grid%num_hash_bins = 1000
-  grid%discretization_itype = 0
 
   GridCreate => grid
 
@@ -305,8 +184,8 @@ subroutine GridComputeInternalConnect(grid,option,ugdm)
 
   use Connection_module
   use Option_module
-  use Unstructured_Explicit_module
-  use Unstructured_Polyhedra_module
+  use Grid_Unstructured_Explicit_module
+  use Grid_Unstructured_Polyhedra_module
     
   implicit none
   
@@ -321,7 +200,7 @@ subroutine GridComputeInternalConnect(grid,option,ugdm)
   nullify(connection_set); nullify(connection_bound_set)
   
   select case(grid%itype)
-    case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
+    case(STRUCTURED_GRID)
       connection_set => &
         StructGridComputeInternConnect( grid%structured_grid, grid%x, grid%y, &
                                     grid%z, option)
@@ -348,46 +227,10 @@ subroutine GridComputeInternalConnect(grid,option,ugdm)
 
 
   select case(grid%itype)
-    case(STRUCTURED_GRID_MIMETIC)
-#ifdef DASVYAT
-      connection_bound_set => &
-        StructGridComputeBoundConnect(grid%structured_grid, grid%x, grid%y, grid%z, option)
-        grid%nlmax_faces = grid%structured_grid%nlmax_faces;
-        grid%ngmax_faces = grid%structured_grid%ngmax_faces;
-#endif
     case(IMPLICIT_UNSTRUCTURED_GRID) 
 !      connection_bound_set => &
 !        UGridComputeBoundConnect(grid%unstructured_grid,option)
   end select
-
-#ifdef DASVYAT  
-  if (associated(connection_bound_set)) then
-    allocate(grid%boundary_connection_set_list)
-    call ConnectionInitList(grid%boundary_connection_set_list)
-    call ConnectionAddToList(connection_bound_set,grid%boundary_connection_set_list)
-  endif
-  if ((grid%itype==STRUCTURED_GRID_MIMETIC)) then
-    allocate(grid%fL2G(grid%nlmax_faces))
-    allocate(grid%fG2L(grid%ngmax_faces))
-  
-    grid%fL2G = 0
-    grid%fG2L = 0
-    call GridPopulateFaces(grid, option)
-  endif
-#endif
-
-#ifdef MFD_UGRID
-  if(grid%itype==IMPLICIT_UNSTRUCTURED_GRID) then
-
-    call GridPopulateFaces(grid, option)
-
-    ! Note: Allocation of memory has to happen after call to GridPopulateFaces()
-    allocate(grid%fL2G(grid%nlmax_faces))
-    allocate(grid%fG2L(grid%ngmax_faces))
-    grid%fL2G = 0
-    grid%fG2L = 0
-  endif
-#endif
 
 end subroutine GridComputeInternalConnect
 
@@ -403,7 +246,7 @@ subroutine GridPopulateConnection(grid,connection,iface,iconn,cell_id_local, &
   ! 
 
   use Connection_module
-  use Structured_Grid_module
+  use Grid_Structured_module
   use Option_module
   
   implicit none
@@ -423,7 +266,7 @@ subroutine GridPopulateConnection(grid,connection,iface,iconn,cell_id_local, &
   ! interior node connections.
   
   select case(grid%itype)
-    case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
+    case(STRUCTURED_GRID)
       call StructGridPopulateConnection(grid%x,grid%structured_grid,connection, &
                                         iface,iconn,cell_id_ghosted,option)
     case(IMPLICIT_UNSTRUCTURED_GRID)
@@ -438,700 +281,7 @@ end subroutine GridPopulateConnection
 
 ! ************************************************************************** !
 
-subroutine GridPopulateFaces(grid, option)
-  ! 
-  ! allocate and populate array of faces
-  ! 
-  ! Author: Daniil Svyatskiy
-  ! Date: 02/04/10
-  ! 
-
-   use Connection_module
-   use Option_module
-    
-   type(grid_type) :: grid
-   type(option_type) :: option
-
-#ifdef DASVYAT
-   PetscInt :: total_faces, face_id, iconn
-   type(connection_set_type), pointer :: cur_connection_set
-   type(connection_set_list_type), pointer :: connection_set_list
-   type(face_type), pointer :: faces(:)
-   character(len=MAXWORDLENGTH) :: filename
-
-#ifdef MFD_UGRID
-  if (grid%itype==IMPLICIT_UNSTRUCTURED_GRID) then
-    call GridPopulateFacesForUGrid(grid,option)
-    return
-  endif
-#endif
-
-   total_faces = grid%ngmax_faces
-   allocate(faces(total_faces))
-   face_id = 0
-
-   connection_set_list => grid%internal_connection_set_list
-   cur_connection_set => connection_set_list%first
-   do 
-     if (.not.associated(cur_connection_set)) exit
-     do iconn = 1, cur_connection_set%num_connections 
-       face_id = face_id + 1
-       faces(face_id)%conn_set_ptr => cur_connection_set
-       faces(face_id)%id = iconn
-     enddo
-     cur_connection_set => cur_connection_set%next
-   enddo
-
-   connection_set_list => grid%boundary_connection_set_list
-   cur_connection_set => connection_set_list%first
-   do 
-     if (.not.associated(cur_connection_set)) exit
-     do iconn = 1, cur_connection_set%num_connections
-       face_id = face_id + 1
-       faces(face_id)%conn_set_ptr => cur_connection_set
-       faces(face_id)%id = iconn
-     enddo
-     cur_connection_set => cur_connection_set%next
-   enddo
-
-   grid%faces => faces
-
-#endif
-end subroutine GridPopulateFaces 
-
-! ************************************************************************** !
-
-subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
-
-  use MFD_Aux_module
-  use Option_module
-
-  implicit none
-
-  type(grid_type) :: grid
-  type(mfd_type), pointer :: MFD_aux
-  
-  type(option_type) :: option
-
-#ifdef DASVYAT
-  type(mfd_auxvar_type), pointer :: auxvar
-  type(connection_set_type), pointer :: conn
-  PetscInt :: icount, icell, iface, local_id
-  PetscInt :: local_id_dn, local_id_up, ghosted_id_dn, ghosted_id_up
-  character(len=MAXWORDLENGTH) :: filename
-
-  PetscInt, pointer :: numfaces(:)
-
-#ifdef MFD_UGRID
-  if (grid%itype==IMPLICIT_UNSTRUCTURED_GRID) then
-    call GridComputeCell2FaceForUGrid(grid,MFD_aux,option)
-    return
-  endif
-#endif
-
-  MFD_aux => MFDAuxCreate()
-  grid%MFD => MFD_aux
- 
-  call MFDAuxInit(MFD_aux, grid%nlmax, option)
-  allocate(numfaces(grid%nlmax))
-
-  numfaces = 6
-
-  do icell = 1, grid%nlmax
-    auxvar => MFD_aux%auxvars(icell)
-    call MFDAuxVarInit(auxvar, numfaces(icell), option)
-  enddo
-
-  local_id = 1
-  do icount = 1, grid%ngmax_faces
-    conn => grid%faces(icount)%conn_set_ptr
-    iface = grid%faces(icount)%id
-
-    if (conn%itype==BOUNDARY_CONNECTION_TYPE) then
-      ghosted_id_dn = conn%id_dn(iface)
-      local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping
-
-      if (local_id_dn>0) then
-        auxvar => MFD_aux%auxvars(local_id_dn)
-        call MFDAuxAddFace(auxvar,option, icount)
-        grid%fG2L(icount)=local_id
-        grid%fL2G(local_id) = icount
-        local_id = local_id + 1
-      endif
-        
-    else if (conn%itype==INTERNAL_CONNECTION_TYPE) then 
-      ghosted_id_up = conn%id_up(iface)
-      ghosted_id_dn = conn%id_dn(iface)
-
-      local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
-      local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping
-
-      if (conn%local(iface) == 1) then
-        grid%fG2L(icount)=local_id
-        grid%fL2G(local_id) = icount
-        local_id = local_id + 1
-      endif
-
-      if (local_id_dn>0) then
-        auxvar => MFD_aux%auxvars(local_id_dn)
-        call MFDAuxAddFace(auxvar,option, icount)
-      endif
-      if (local_id_up>0) then
-        auxvar => MFD_aux%auxvars(local_id_up)
-        call MFDAuxAddFace(auxvar,option, icount)
-      endif
-    endif
-  enddo
-
-  if (associated(numfaces)) deallocate(numfaces)
-
-#endif
-
-end subroutine GridComputeCell2FaceConnectivity
-
-! ************************************************************************** !
-
-subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, sgdm, DOF, option)
-
-  use MFD_Aux_module
-  use Option_module
- 
-  implicit none
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petscviewer.h"
-#include "finclude/petscsys.h"
-#include "finclude/petscsnes.h"
-#include "finclude/petscpc.h"
-
-  type(grid_type) :: grid
-  type(mfd_type), pointer :: MFD_aux
-  DM :: sgdm
-  PetscInt :: DOF
-  type(option_type) :: option
-
-#ifdef DASVYAT
-
-  Vec :: ghosted_e2f
-  Vec :: ghosted_e2n
-
-  PetscErrorCode :: ierr
-  PetscInt :: ndof
-  PetscInt :: global_offset, stride
-  PetscInt :: local_cell_id, ghost_cell_id, global_cell_id
-  PetscInt :: local_face_id, ghost_face_id, global_face_id
-  PetscInt :: face_id_gh, global_neigh_id
-  PetscInt :: iface, icell, icount, jcount
-  PetscInt :: ghosted_id_up, ghosted_id_dn, local_id_up, local_id_dn
-  PetscInt :: num_ghosted_upd
-  PetscInt :: istart, iend, temp_int
-  IS :: is_a2g_bl
-  IS :: is_local_bl
-  PetscViewer :: viewer
-
-  type(mfd_auxvar_type), pointer :: auxvar
-  type(connection_set_type), pointer :: conn
-
-  PetscInt, allocatable :: ghosted_ids(:)
-  PetscInt, allocatable :: strided_indices_local(:)
-  PetscInt, allocatable :: strided_indices_ghosted(:)
-  PetscInt, allocatable :: int_array(:)
-  PetscInt, pointer :: int_ptr(:)
-
-  PetscScalar, pointer :: e2f_local_values(:)
-  PetscScalar, pointer :: e2n_local_values(:)
-!  PetscScalar, pointer :: lp_cell_ids(:), lp_cell_ids_loc(:)
-
-  PetscScalar, pointer :: e2f_ghosted_values(:)
-  PetscScalar, pointer :: e2n_ghosted_values(:)
-   
-  PetscScalar, pointer :: vec_ptr_e2f(:)
-  PetscScalar, pointer :: vec_ptr_e2n(:)
-    
-  PetscScalar, pointer :: vec_ptr_e2f_gh(:)
-  PetscScalar, pointer :: vec_ptr_e2n_gh(:)
-
-  VecScatter :: VC_global2ghosted
-
-#ifdef MFD_UGRID
-  if (grid%itype==IMPLICIT_UNSTRUCTURED_GRID) then
-    call GridSetGlobalCell2FaceForUGrid(grid,MFD_aux,DOF,option)
-    return
-  endif
-#endif
-
-  select case(DOF)
-    case(ONEDOF)
-      ndof = 1
-    case(NFLOWDOF)
-      ndof = option%nflowdof
-    case(NTRANDOF)
-      ndof = option%ntrandof
-  end select
-
-  MFD_aux%ndof = ndof
-
-  allocate(grid%fL2P(grid%nlmax_faces))
-  allocate(grid%fG2P(grid%ngmax_faces))
-
-  global_offset = 0
-  do iface = 1,grid%nlmax_faces
-    grid%fL2P(iface)=grid%global_faces_offset + grid%global_cell_offset + iface - 1
-  enddo
-
-  global_offset = grid%global_faces_offset + grid%global_cell_offset
-
-  stride = 6                ! Only for hexagons
-
-  call VecCreate(option%mycomm, grid%e2f, ierr);CHKERRQ(ierr)
-  call VecSetSizes(grid%e2f, grid%nlmax*stride, PETSC_DECIDE,  &
-                   ierr);CHKERRQ(ierr)
-  call VecSetFromOptions(grid%e2f, ierr);CHKERRQ(ierr)
-
-  call VecDuplicate(grid%e2f, grid%e2n, ierr);CHKERRQ(ierr)
-
-  call VecGetArrayF90(grid%e2f, e2f_local_values, ierr);CHKERRQ(ierr)
-  call VecGetArrayF90(grid%e2n, e2n_local_values, ierr);CHKERRQ(ierr)
-
-  e2f_local_values = 0
-  e2n_local_values = 0
-
-  do icell = 1, grid%nlmax
-    auxvar => MFD_aux%auxvars(icell)
-    do icount = 1, auxvar%numfaces
-      ghost_face_id = auxvar%face_id_gh(icount)
-      local_face_id = grid%fG2L(ghost_face_id)
-      conn => grid%faces(ghost_face_id)%conn_set_ptr
-      iface = grid%faces(ghost_face_id)%id
-
-      if (conn%itype==INTERNAL_CONNECTION_TYPE) then
-
-        if (local_face_id > 0) then
-
-          e2f_local_values((icell-1)*stride + icount) = grid%fL2P(local_face_id) + 1
-          ghosted_id_up = conn%id_up(iface)
-          ghosted_id_dn = conn%id_dn(iface)
-
-          local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
-          local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping
-          if (local_id_up==icell) then
-            e2n_local_values((icell-1)*stride + icount) = grid%nG2P(ghosted_id_dn) + 1
-          else if (local_id_dn==icell) then
-            e2n_local_values((icell-1)*stride + icount) = grid%nG2P(ghosted_id_up) + 1
-          endif
-
-        else if (local_face_id == 0) then
-
-          ghosted_id_up = conn%id_up(iface)
-          ghosted_id_dn = conn%id_dn(iface)
-
-          local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
-          local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping
-          if (local_id_up==icell) then
-            e2n_local_values((icell-1)*stride + icount) = grid%nG2P(ghosted_id_dn) + 1
-          else if (local_id_dn==icell) then
-            e2n_local_values((icell-1)*stride + icount) = grid%nG2P(ghosted_id_up) + 1
-          endif
-        endif
-
-      else if (conn%itype==BOUNDARY_CONNECTION_TYPE) then
-        e2n_local_values((icell-1)*stride + icount) = 0
-        if (local_face_id > 0) e2f_local_values((icell-1)*stride + icount) = grid%fL2P(local_face_id) + 1
-      endif
-    enddo
-  enddo
-
-  call VecRestoreArrayF90(grid%e2f, e2f_local_values, ierr);CHKERRQ(ierr)
-  call VecRestoreArrayF90(grid%e2n, e2n_local_values, ierr);CHKERRQ(ierr)
-
-  allocate(ghosted_ids(grid%ngmax_faces - grid%nlmax_faces))
-  ghosted_ids = 0
-
-  num_ghosted_upd = 0
-  do icount = 1, grid%ngmax_faces
-    conn => grid%faces(icount)%conn_set_ptr
-    iface = grid%faces(icount)%id
-    if (conn%itype==INTERNAL_CONNECTION_TYPE) then
-      if (conn%local(iface) == 0) then
-        num_ghosted_upd = num_ghosted_upd + 1
-        ghosted_id_up = conn%id_up(iface)
-        ghosted_id_dn = conn%id_dn(iface)
-        if (grid%nG2L(ghosted_id_up)==0) then    ! up_cell is ghosted
-          ghosted_ids(num_ghosted_upd) = grid%nG2P(ghosted_id_up) + 1          ! +1 since global indexes strats from 0
-        else if (grid%nG2L(ghosted_id_dn)==0) then    ! down_cell is ghosted
-          ghosted_ids(num_ghosted_upd) = grid%nG2P(ghosted_id_dn) + 1
-        endif
-      endif
-    endif
-  enddo
-
-  call VecCreateSeq(PETSC_COMM_SELF, num_ghosted_upd*stride, ghosted_e2f,  &
-                    ierr);CHKERRQ(ierr)
-  call VecCreateSeq(PETSC_COMM_SELF, num_ghosted_upd*stride, ghosted_e2n,  &
-                    ierr);CHKERRQ(ierr)
-         
-  allocate(strided_indices_local(num_ghosted_upd))
-  allocate(strided_indices_ghosted(num_ghosted_upd))
-
-  do icount = 1, num_ghosted_upd
-    strided_indices_local(icount) = (icount -1)
-    strided_indices_ghosted(icount) = (ghosted_ids(icount)-1)
-  enddo
-
-  call ISCreateBlock(option%mycomm, stride, num_ghosted_upd, strided_indices_local, &
-                    PETSC_COPY_VALUES, is_local_bl, ierr);CHKERRQ(ierr)
-  call ISCreateBlock(option%mycomm, stride, num_ghosted_upd, strided_indices_ghosted,&
-                    PETSC_COPY_VALUES, is_a2g_bl, ierr);CHKERRQ(ierr)
-
-  call VecScatterCreate(grid%e2f, is_a2g_bl, ghosted_e2f, is_local_bl, VC_global2ghosted,  &
-                        ierr);CHKERRQ(ierr)
-
-  call ISDestroy(is_local_bl, ierr);CHKERRQ(ierr)
-  call ISDestroy(is_a2g_bl, ierr);CHKERRQ(ierr)
-
-  call VecScatterBegin(VC_global2ghosted, grid%e2f, ghosted_e2f, &
-                      INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
-  call VecScatterEnd(VC_global2ghosted, grid%e2f, ghosted_e2f, &
-                      INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
-
-  call VecScatterBegin(VC_global2ghosted, grid%e2n, ghosted_e2n, &
-                      INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
-  call VecScatterEnd(VC_global2ghosted, grid%e2n, ghosted_e2n, &
-                    INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
-
-  call VecGetArrayF90(ghosted_e2n, vec_ptr_e2n_gh, ierr);CHKERRQ(ierr)
-  call VecGetArrayF90(ghosted_e2f, vec_ptr_e2f_gh, ierr);CHKERRQ(ierr)
-
-  call VecGetArrayF90(grid%e2n, vec_ptr_e2n, ierr);CHKERRQ(ierr)
-  call VecGetArrayF90(grid%e2f, vec_ptr_e2f, ierr);CHKERRQ(ierr)
- 
-  do icell = 1, grid%nlmax
-    auxvar => MFD_aux%auxvars(icell)
-    do icount = 1, auxvar%numfaces
-      ghost_face_id = auxvar%face_id_gh(icount)
-      local_face_id = grid%fG2L(ghost_face_id)
-
-      if (local_face_id == 0) then
-        conn => grid%faces(ghost_face_id)%conn_set_ptr
-        iface = grid%faces(ghost_face_id)%id
-
-        ghosted_id_up = conn%id_up(iface)
-        ghosted_id_dn = conn%id_dn(iface)
-
-        local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
-        local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping
-        if (icell==local_id_up) then
-          global_neigh_id = grid%nG2P(ghosted_id_dn) + 1
-        else if (icell==local_id_dn) then
-          global_neigh_id = grid%nG2P(ghosted_id_up) + 1
-        endif
-        do jcount = 1, num_ghosted_upd
-          if (ghosted_ids(jcount)==global_neigh_id) exit
-        enddo
-        do iface=1, stride             ! assumption that cell has 6 faces
-          if (vec_ptr_e2n_gh((jcount-1)*stride + iface) == grid%nG2P(grid%nL2G(icell)) + 1) then
-            vec_ptr_e2f((icell -1)*stride +icount) = vec_ptr_e2f_gh((jcount-1)*stride + iface)
-            grid%fG2P(ghost_face_id) = int(vec_ptr_e2f_gh((jcount-1)*stride + iface)) - 1
-            exit
-          endif
-        end do
-      else
-        grid%fG2P(ghost_face_id) = grid%fL2P(local_face_id)
-      endif
-    enddo
-  enddo
-
-  call VecRestoreArrayF90(grid%e2n, vec_ptr_e2n, ierr);CHKERRQ(ierr)
-  call VecRestoreArrayF90(grid%e2f, vec_ptr_e2f, ierr);CHKERRQ(ierr)
-  call VecRestoreArrayF90(ghosted_e2n, vec_ptr_e2n_gh, ierr);CHKERRQ(ierr)
-  call VecRestoreArrayF90(ghosted_e2f, vec_ptr_e2f_gh, ierr);CHKERRQ(ierr)
-
-  call VecDestroy(ghosted_e2n, ierr);CHKERRQ(ierr)
-  call VecDestroy(ghosted_e2f, ierr);CHKERRQ(ierr)
-  call VecScatterDestroy(VC_global2ghosted, ierr);CHKERRQ(ierr)
-
-  call CreateMFDStruct4LP(grid, MFD_aux, ndof, option)
-
-  deallocate(ghosted_ids)
-  deallocate(strided_indices_local)
-  deallocate(strided_indices_ghosted)
-#endif
-
-end subroutine GridComputeGlobalCell2FaceConnectivity
-
-! ************************************************************************** !
-
-subroutine CreateMFDStruct4Faces(grid, MFD_aux, ndof, option)
-
-    
-  use MFD_Aux_module
-  use Option_module
- 
-  implicit none
-
-  type(grid_type) :: grid
-  type(mfd_type), pointer :: MFD_aux
-  PetscInt :: ndof
-  type(option_type) :: option
-
-  PetscInt, allocatable :: int_array(:)
-  PetscInt, pointer :: int_ptr(:)
-  PetscInt :: iface, icell, icount, jcount
-  PetscInt :: istart, iend, temp_int
-  PetscErrorCode :: ierr
-  PetscInt :: global_offset, stride
-
-  Vec :: global_vec
-  Vec :: local_vec
-
-  PetscViewer :: viewer
-
-  ! create global vec
-  call VecCreateMPI(option%mycomm, grid%nlmax_faces*ndof, &
-                    PETSC_DETERMINE, global_vec,ierr);CHKERRQ(ierr)
-  call VecSetBlockSize(global_vec,ndof,ierr);CHKERRQ(ierr)
-  
-  ! create local vec
-  call VecCreateSeq(PETSC_COMM_SELF, grid%ngmax_faces*ndof, &
-                    local_vec,ierr);CHKERRQ(ierr)
-  call VecSetBlockSize(local_vec,ndof,ierr);CHKERRQ(ierr)
-
-  ! IS for global numbering of local, non-ghosted cells
-  call VecGetOwnershipRange(global_vec,istart,iend,ierr);CHKERRQ(ierr)
-
-
-  allocate(int_array(grid%nlmax_faces))
-  do iface = 1, grid%nlmax_faces
-    int_array(iface) = (iface-1) + istart/ndof
-  enddo
-
-  call ISCreateBlock(option%mycomm, ndof, grid%nlmax_faces, &
-                     int_array, PETSC_COPY_VALUES, MFD_aux%is_local_petsc_faces,  &
-                     ierr);CHKERRQ(ierr)
-  deallocate(int_array)
-
-
-  allocate(int_array(grid%ngmax_faces - grid%nlmax_faces))
-  do iface =  1, grid%ngmax_faces - grid%nlmax_faces
-     int_array(iface) = (iface + grid%nlmax_faces  - 1)
-  end do
-
-  call ISCreateBlock(option%mycomm,ndof,grid%ngmax_faces - grid%nlmax_faces, &
-                     int_array, PETSC_COPY_VALUES, MFD_aux%is_ghosts_local_faces, &
-                     ierr);CHKERRQ(ierr)
-  deallocate(int_array)
-
-  allocate(int_array(grid%ngmax_faces - grid%nlmax_faces))
-  do iface =  1, grid%ngmax_faces - grid%nlmax_faces
-     int_array(iface) = (grid%fG2P(grid%nlmax_faces + iface))
-  end do
-  
-  call ISCreateBlock(option%mycomm,ndof,grid%ngmax_faces - grid%nlmax_faces, &
-                     int_array, PETSC_COPY_VALUES, MFD_aux%is_ghosts_petsc_faces, &
-                     ierr);CHKERRQ(ierr)
-
-  deallocate(int_array)
-
-  allocate(int_array(grid%nlmax_faces))
-  do iface = 1, grid%nlmax_faces
-    int_array(iface)=(iface - 1)
-  end do
-
-  call ISCreateBlock(option%mycomm,ndof,grid%nlmax_faces, &
-      int_array, PETSC_COPY_VALUES, MFD_aux%is_local_local_faces,  &
-                     ierr);CHKERRQ(ierr)
-  deallocate(int_array)
-
-  allocate(int_array(grid%ngmax_faces))
-  do iface = 1, grid%ngmax_faces
-    int_array(iface)=(iface - 1)
-  end do
-
-  call ISCreateBlock(option%mycomm,ndof,grid%ngmax_faces, &
-      int_array, PETSC_COPY_VALUES, MFD_aux%is_ghosted_local_faces,  &
-                     ierr);CHKERRQ(ierr)
-  deallocate(int_array)
-
-   allocate(int_array(grid%ngmax_faces))
-   do iface = 1, grid%ngmax_faces
-      int_array(iface) = (grid%fG2P(iface))
-   end do
-
-  call ISCreateBlock(option%mycomm,ndof,grid%ngmax_faces, &
-       int_array, PETSC_COPY_VALUES, MFD_aux%is_ghosted_petsc_faces,  &
-                     ierr);CHKERRQ(ierr)
-  deallocate(int_array)
-
-  call ISLocalToGlobalMappingCreateIS(MFD_aux%is_ghosted_petsc_faces, &
-                                    MFD_aux%mapping_ltog_faces, &
-                                      ierr);CHKERRQ(ierr)
-
-  call PetscViewerASCIIOpen(option%mycomm,'is_ghosted_petsc.out',viewer, &
-                            ierr);CHKERRQ(ierr)
-  call ISView(MFD_aux%is_ghosted_petsc_faces,viewer,ierr);CHKERRQ(ierr)
-  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
-
-  call VecScatterCreate(local_vec,MFD_aux%is_local_local_faces,global_vec, &
-                        MFD_aux%is_local_petsc_faces,MFD_aux%scatter_ltog_faces, &
-                        ierr);CHKERRQ(ierr)
-  call VecScatterCreate(global_vec,MFD_aux%is_ghosted_petsc_faces,local_vec, &
-                        MFD_aux%is_ghosted_local_faces, MFD_aux%scatter_gtol_faces,  &
-                        ierr);CHKERRQ(ierr)
-
-  ! Create local to local scatter.  Essentially remap the global to local as
-  ! PETSc does in daltol.c
-  call VecScatterCopy(MFD_aux%scatter_gtol_faces, MFD_aux%scatter_ltol_faces,  &
-                      ierr);CHKERRQ(ierr)
-  call ISGetIndicesF90(MFD_aux%is_local_local_faces,int_ptr, &
-                       ierr);CHKERRQ(ierr)
-  call VecScatterRemap(MFD_aux%scatter_ltol_faces,int_ptr,PETSC_NULL_INTEGER, &
-                       ierr);CHKERRQ(ierr)
-  call ISRestoreIndicesF90(MFD_aux%is_local_local_faces,int_ptr, &
-                           ierr);CHKERRQ(ierr)
-
-  call VecDestroy(local_vec, ierr);CHKERRQ(ierr)
-  call VecDestroy(global_vec, ierr);CHKERRQ(ierr)
-
-end subroutine CreateMFDStruct4Faces
-
-! ************************************************************************** !
-
-subroutine CreateMFDStruct4LP(grid, MFD_aux, ndof, option)
-
-  use MFD_Aux_module
-  use Option_module
- 
-  implicit none
-
-  type(grid_type) :: grid
-  type(mfd_type), pointer :: MFD_aux
-  type(option_type) :: option
-  PetscInt :: ndof
-  PetscViewer :: viewer
-
-  PetscInt, allocatable :: int_array(:)
-  PetscInt, pointer :: int_ptr(:)
-  PetscInt :: icount, jcount, id
-  PetscInt :: istart, iend, temp_int
-  PetscErrorCode :: ierr
-  PetscInt :: global_offset, stride
-  PetscInt :: NG, NL
-
-  Vec :: global_vec_LP
-  Vec :: local_vec_LP
-
-  NG = grid%ngmax_faces + grid%ngmax
-  NL = grid%nlmax_faces + grid%nlmax
-
-  ! create global vec_LP
-  call VecCreateMPI(option%mycomm, NL*ndof, &
-                    PETSC_DETERMINE, global_vec_LP,ierr);CHKERRQ(ierr)
-  call VecSetBlockSize(global_vec_LP,ndof,ierr);CHKERRQ(ierr)
-  ! create local vec
-  call VecCreateSeq(PETSC_COMM_SELF, NG*ndof, &
-                    local_vec_LP,ierr);CHKERRQ(ierr)
-  call VecSetBlockSize(local_vec_LP,ndof,ierr);CHKERRQ(ierr)
-
-  ! IS for global numbering of local, non-ghosted cells
-  call VecGetOwnershipRange(global_vec_LP,istart,iend,ierr);CHKERRQ(ierr)
-
-  allocate(int_array(NL))
-  do id = 1, NL
-    int_array(id) = (id-1) + istart/ndof
-  enddo
-
-  call ISCreateBlock(option%mycomm, ndof, NL, &
-                     int_array, PETSC_COPY_VALUES, MFD_aux%is_local_petsc_LP,  &
-                     ierr);CHKERRQ(ierr)
-  deallocate(int_array)
-
-
-  allocate(int_array(NG - NL))
-  do id =  1, grid%ngmax_faces - grid%nlmax_faces
-     int_array(id) = (id + grid%nlmax_faces  - 1)
-  end do
-
-  do id =  1, grid%ngmax - grid%nlmax
-     int_array(id + grid%ngmax_faces - grid%nlmax_faces) = (grid%ngmax_faces + grid%nlmax + id - 1)
-  end do
-
-  call ISCreateBlock(option%mycomm,ndof,NG - NL, &
-                     int_array, PETSC_COPY_VALUES, MFD_aux%is_ghosts_local_LP, &
-                     ierr);CHKERRQ(ierr)
-  deallocate(int_array)
-
-  allocate(int_array(NL))
-  do id = 1, NL
-    int_array(id)=(id - 1)
-  end do
-
-  call ISCreateBlock(option%mycomm,ndof, NL, &
-       int_array, PETSC_COPY_VALUES, MFD_aux%is_local_local_LP,  &
-                     ierr);CHKERRQ(ierr)
-  deallocate(int_array)
-
-  allocate(int_array(NG))
-  do id = 1, NG
-    int_array(id)=(id - 1)
-  end do
-
-  call ISCreateBlock(option%mycomm,ndof, NG, &
-       int_array, PETSC_COPY_VALUES, MFD_aux%is_ghosted_local_LP,  &
-                     ierr);CHKERRQ(ierr)
-  deallocate(int_array)
-
-  call VecScatterCreate(local_vec_LP,MFD_aux%is_local_local_LP,global_vec_LP, &
-                        MFD_aux%is_local_petsc_LP,MFD_aux%scatter_ltog_LP, &
-                        ierr);CHKERRQ(ierr)
-
-
-  allocate(int_array(NG))
-  do id = 1, grid%ngmax_faces
-    int_array(id) = (grid%fG2P(id))
-  end do
-
-  do id = 1, grid%ngmax
-    int_array(grid%ngmax_faces + id) =  grid%nG2LP(id)
-  end do
-
-  call ISCreateBlock(option%mycomm,ndof, NG, &
-       int_array, PETSC_COPY_VALUES, MFD_aux%is_ghosted_petsc_LP,  &
-                     ierr);CHKERRQ(ierr)
-  deallocate(int_array)
-
-  call ISLocalToGlobalMappingCreateIS(MFD_aux%is_ghosted_petsc_LP, &
-                                      MFD_aux%mapping_ltog_LP, &
-                                      ierr);CHKERRQ(ierr)
-
-  call VecScatterCreate(global_vec_LP,MFD_aux%is_ghosted_petsc_LP,local_vec_LP, &
-                        MFD_aux%is_ghosted_local_LP, MFD_aux%scatter_gtol_LP,  &
-                        ierr);CHKERRQ(ierr)
-
- ! Create local to local scatter.  Essentially remap the global to local as
- ! PETSc does in daltol.c
-  call VecScatterCopy(MFD_aux%scatter_gtol_LP, MFD_aux%scatter_ltol_LP,  &
-                      ierr);CHKERRQ(ierr)
-  call ISGetIndicesF90(MFD_aux%is_local_local_LP,int_ptr,ierr);CHKERRQ(ierr)
-  call VecScatterRemap(MFD_aux%scatter_ltol_LP,int_ptr,PETSC_NULL_INTEGER, &
-                       ierr);CHKERRQ(ierr)
-  call ISRestoreIndicesF90(MFD_aux%is_local_local_LP,int_ptr, &
-                           ierr);CHKERRQ(ierr)
-
-  call VecDestroy(local_vec_LP, ierr);CHKERRQ(ierr)
-  call VecDestroy(global_vec_LP, ierr);CHKERRQ(ierr)
-
-end subroutine CreateMFDStruct4LP
-
-! ************************************************************************** !
-
-subroutine GridMapIndices(grid, dm_ptr, sgrid_stencil_type, lsm_flux_method, &
-                          option)
+subroutine GridMapIndices(grid, dm_ptr, sgrid_stencil_type,option)
   ! 
   ! maps global, local and natural indices of cells
   ! to each other
@@ -1148,7 +298,6 @@ subroutine GridMapIndices(grid, dm_ptr, sgrid_stencil_type, lsm_flux_method, &
   type(grid_type) :: grid
   type(dm_ptr_type) :: dm_ptr
   PetscInt :: sgrid_stencil_type
-  PetscBool :: lsm_flux_method
   type(option_type) :: option
 
   PetscInt :: ierr, icount
@@ -1158,32 +307,15 @@ subroutine GridMapIndices(grid, dm_ptr, sgrid_stencil_type, lsm_flux_method, &
   PetscOffset :: i_da
   
   select case(grid%itype)
-    case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
+    case(STRUCTURED_GRID)
       call StructGridMapIndices(grid%structured_grid,sgrid_stencil_type, &
-                                lsm_flux_method, &
                                 grid%nG2L,grid%nL2G,grid%nG2A, &
-                                grid%ghosted_level,option)
-#ifdef DASVYAT
-      if ((grid%itype==STRUCTURED_GRID_MIMETIC)) then
-        allocate(grid%nG2P(grid%ngmax))
-        allocate(int_tmp(grid%ngmax))
-!geh     call DMDAGetGlobalIndicesF90(sgdm, n, int_tmp, ierr)
-        call DMDAGetGlobalIndices(dm_ptr%dm, grid%ngmax, int_tmp, i_da,  &
-                                  ierr);CHKERRQ(ierr)
-        do icount = 1, grid%ngmax
-!geh         write(*,*) icount,  int_tmp(icount + i_da)
-          grid%nG2P(icount) = int_tmp(icount + i_da)
-!             write(*,*) icount,  int_tmp(icount)
-!geh        grid%nG2P(icount) = int_tmp(icount)
-        enddo
-        deallocate(int_tmp)
-      endif
-#endif
+                                option)
     case(IMPLICIT_UNSTRUCTURED_GRID,EXPLICIT_UNSTRUCTURED_GRID, &
          POLYHEDRA_UNSTRUCTURED_GRID)
       call UGridMapIndices(grid%unstructured_grid, &
                            dm_ptr%ugdm, &
-                           grid%nG2L,grid%nL2G,grid%nG2A,grid%nG2P,option)
+                           grid%nG2L,grid%nL2G,grid%nG2A,option)
   end select
  
  
@@ -1207,7 +339,7 @@ subroutine GridComputeSpacing(grid,option)
   type(option_type) :: option
   
   select case(grid%itype)
-    case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
+    case(STRUCTURED_GRID)
       call StructGridComputeSpacing(grid%structured_grid,option)
     case(IMPLICIT_UNSTRUCTURED_GRID)
   end select
@@ -1225,8 +357,8 @@ subroutine GridComputeCoordinates(grid,origin_global,option,ugdm)
   ! 
 
   use Option_module
-  use Unstructured_Explicit_module
-  use Unstructured_Polyhedra_module
+  use Grid_Unstructured_Explicit_module
+  use Grid_Unstructured_Polyhedra_module
   
   implicit none
 
@@ -1246,7 +378,7 @@ subroutine GridComputeCoordinates(grid,origin_global,option,ugdm)
   grid%z = 0.d0
   
   select case(grid%itype)
-    case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
+    case(STRUCTURED_GRID)
       call StructGridComputeCoord(grid%structured_grid,option, &
                                       origin_global, &
                                       grid%x,grid%y,grid%z, &
@@ -1321,8 +453,8 @@ subroutine GridComputeVolumes(grid,volume,option)
   ! 
 
   use Option_module
-  use Unstructured_Explicit_module
-  use Unstructured_Polyhedra_module
+  use Grid_Unstructured_Explicit_module
+  use Grid_Unstructured_Polyhedra_module
   
   implicit none
 
@@ -1334,7 +466,7 @@ subroutine GridComputeVolumes(grid,volume,option)
   Vec :: volume
   
   select case(grid%itype)
-    case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
+    case(STRUCTURED_GRID)
       call StructGridComputeVolumes(grid%x,grid%structured_grid,option, &
                                         grid%nL2G,volume)
     case(IMPLICIT_UNSTRUCTURED_GRID)
@@ -1371,9 +503,6 @@ subroutine GridComputeAreas(grid,area,option)
   Vec :: area
   
   select case(grid%itype)
-    !case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
-      !call StructGridComputeVolumes(grid%x,grid%structured_grid,option, &
-      !                                  grid%nL2G,volume)
     case(IMPLICIT_UNSTRUCTURED_GRID)
       call UGridComputeAreas(grid%unstructured_grid,option,area)
       call UGridComputeQuality(grid%unstructured_grid,option)
@@ -1520,7 +649,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
         case(IMPLICIT_UNSTRUCTURED_GRID)
           call GridLocalizeRegionsFromCellIDsUGrid(grid,region,option)
 
-        case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
+        case(STRUCTURED_GRID)
 !sp following was commented out 
 !sp remove? 
 !geh: Not for now.  The below maps a list of natural ids to local.  This is now done
@@ -1773,11 +902,11 @@ subroutine GridLocalizeExplicitFaceset(ugrid,region,option)
 
   allocate(int_array(size(region%cell_ids)))
   ! negate off processor ids
-  int_array = -999
+  int_array = UNINITIALIZED_INTEGER
   ! only if faceset exists
   if (associated(faceset)) then
     allocate(real_array_2d(4,size(region%cell_ids)))
-    real_array_2d = -999.d0
+    real_array_2d = UNINITIALIZED_DOUBLE
   endif
   count = 0
   do icell = 1, size(region%cell_ids)
@@ -2168,10 +1297,6 @@ subroutine GridDestroyHashTable(grid)
   type(grid_type), pointer :: grid
   
   call DeallocateArray(grid%hash)
-  
-#ifdef DASVYAT
-  call DeallocateArray(grid%faces)
-#endif
 
   nullify(grid%hash)
   grid%num_hash_bins = 100
@@ -2237,7 +1362,7 @@ subroutine GridGetGhostedNeighbors(grid,ghosted_id,stencil_type, &
   PetscInt :: ghosted_neighbors(*)
   
   select case(grid%itype)
-    case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
+    case(STRUCTURED_GRID)
       call StructGridGetGhostedNeighbors(grid%structured_grid, &
                                          ghosted_id,stencil_type, &
                                          stencil_width_i, &
@@ -2281,7 +1406,7 @@ subroutine GridGetGhostedNeighborsWithCorners(grid,ghosted_id,stencil_type, &
   PetscInt :: ghosted_neighbors(*)
   
   select case(grid%itype)
-    case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
+    case(STRUCTURED_GRID)
       call StructGridGetGhostedNeighborsCorners(grid%structured_grid, &
                                          ghosted_id,stencil_type, &
                                          stencil_width_i, &
@@ -2319,52 +1444,6 @@ subroutine GridDestroy(grid)
   call DeallocateArray(grid%nL2G)
   call DeallocateArray(grid%nG2L)
   call DeallocateArray(grid%nG2A)
-  call DeallocateArray(grid%nG2P)
-
-  !Note: Destroying for ghosted_level<TWO_INTEGER assumes that max_stencil_width
-  !      was TWO_INTEGER.
-  if (associated(grid%dispT)) then
-    do ghosted_id=1,grid%ngmax
-      if(grid%ghosted_level(ghosted_id)<TWO_INTEGER) then
-        call MatDestroy(grid%dispT(ghosted_id),ierr);CHKERRQ(ierr)
-      endif
-    enddo
-  endif
-  nullify(grid%dispT)
-  if (associated(grid%Minv)) then
-    do ghosted_id=1,grid%ngmax
-      if(grid%ghosted_level(ghosted_id)<TWO_INTEGER) then
-        call MatDestroy(grid%Minv(ghosted_id),ierr);CHKERRQ(ierr)
-      endif
-    enddo
-  endif
-  nullify(grid%Minv)
-  if (associated(grid%ghosted_level)) deallocate(grid%ghosted_level)
-  nullify(grid%ghosted_level)
-  if (associated(grid%jacfac)) deallocate(grid%jacfac)
-  nullify(grid%jacfac)
-  if (associated(grid%bnd_cell)) deallocate(grid%bnd_cell)
-  nullify(grid%bnd_cell)
-
-#ifdef DASVYAT
-  call DeallocateArray(grid%fL2G)
-  call DeallocateArray(grid%fG2L)
-  call DeallocateArray(grid%fG2P)
-  call DeallocateArray(grid%fL2P)
-  call DeallocateArray(grid%fL2B)
-
-  if (grid%e2f /= 0) then
-    call VecDestroy(grid%e2f, ierr);CHKERRQ(ierr)
-  endif
-  if (grid%e2n /= 0) then
-    call VecDestroy(grid%e2n, ierr);CHKERRQ(ierr)
-  endif
-  if (grid%e2n_LP /= 0) then
-    call VecDestroy(grid%e2n_LP, ierr);CHKERRQ(ierr)
-  endif
-
-  call MFDAuxDestroy(grid%MFD)
-#endif
 
   call DeallocateArray(grid%x)
   call DeallocateArray(grid%y)
@@ -2377,7 +1456,7 @@ subroutine GridDestroy(grid)
                                            
   call ConnectionDestroyList(grid%internal_connection_set_list)
 
-  if(associated(grid)) deallocate(grid)
+  if (associated(grid)) deallocate(grid)
   nullify(grid)
 
 end subroutine GridDestroy
@@ -2427,35 +1506,6 @@ end function GridIndexToCellID
 
 ! ************************************************************************** !
 
-subroutine GridComputeNeighbors(grid,is_bnd_vec,option)
-  ! 
-  ! This routine computes the indices of neighbours for all ghosted cells
-  ! 
-  ! Author: Gautam Bisht, LBNL
-  ! Date: 08/24/12
-  ! 
-
-  use Option_module
-  
-  implicit none
-  
-  type(grid_type) :: grid
-  Vec :: is_bnd_vec
-  type(option_type) :: option
-
-  select case(grid%itype)
-    case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
-      call StructGridComputeNeighbors(grid%structured_grid,grid%nG2L,is_bnd_vec,option)
-    case(IMPLICIT_UNSTRUCTURED_GRID,EXPLICIT_UNSTRUCTURED_GRID) 
-      option%io_buffer = 'GridComputeNeighbors not currently supported for ' // &
-        'unstructured grids.'
-      call printErrMsg(option)
-  end select
-
-end subroutine GridComputeNeighbors
-
-! ************************************************************************** !
-
 subroutine GridLocalizeRegionFromBlock(grid,region,option)
   ! 
   ! This routine resticts regions to cells local to processor when the region
@@ -2486,9 +1536,7 @@ subroutine GridLocalizeRegionFromBlock(grid,region,option)
   PetscBool :: same_point
   PetscErrorCode :: ierr
 
-  if(grid%itype /= STRUCTURED_GRID .and. &
-     grid%itype /= STRUCTURED_GRID_MIMETIC) then
-     
+  if (grid%itype /= STRUCTURED_GRID) then
      option%io_buffer='Region definition using BLOCK is only supported for ' //&
        ' structured grids'
      call printErrMsg(option)
@@ -2629,7 +1677,7 @@ subroutine GridLocalizeRegionFromCoordinates(grid,region,option)
       if (z_shift - grid%z_min_global < tol) &
         z_shift = region%coordinates(ONE_INTEGER)%z
       select case(grid%itype)
-        case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
+        case(STRUCTURED_GRID)
           call StructGridGetIJKFromCoordinate(grid%structured_grid, &
                                               x_shift,y_shift,z_shift, &
                                               i,j,k)
@@ -2698,8 +1746,7 @@ subroutine GridLocalizeRegionFromCoordinates(grid,region,option)
     z_max = max(region%coordinates(ONE_INTEGER)%z, &
                 region%coordinates(TWO_INTEGER)%z)
                 
-    if (grid%itype == STRUCTURED_GRID .or. &
-        grid%itype == STRUCTURED_GRID_MIMETIC) then
+    if (grid%itype == STRUCTURED_GRID) then
       ! shift box slightly inward
       x_shift = 1.d-8*(grid%x_max_global-grid%x_min_global)
       x_min = x_min+x_shift            
@@ -2775,7 +1822,7 @@ subroutine GridLocalizeRegionFromCoordinates(grid,region,option)
         
       ! get I,J,K bounds
       select case(grid%itype)
-        case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
+        case(STRUCTURED_GRID)
           ! local, non-ghosted i,j,k's are returned
           call StructGridGetIJKFromCoordinate(grid%structured_grid, &
                                     max(x_min,grid%x_min_local+x_shift), &
@@ -2883,1007 +1930,5 @@ subroutine GridLocalizeRegionFromCoordinates(grid,region,option)
   endif
 
 end subroutine GridLocalizeRegionFromCoordinates
-
-! ************************************************************************** !
-
-subroutine GridComputeMinv(grid,max_stencil_width,option)
-  ! 
-  ! This routine computes the following:
-  ! - Displacement matrix (D), and
-  ! - Inverse of D^T*D
-  ! 
-  ! Author: Gautam Bisht, LBNL
-  ! Date: 11/20/12
-  ! 
-
-  use Option_module
-  use Utility_module
-
-  implicit none
-
-  type(grid_type) :: grid
-  type(option_type) :: option
-  PetscInt :: max_stencil_width
-
-  PetscInt, pointer :: cell_neighbors(:,:)
-  PetscInt :: ghosted_id,nid
-  PetscReal :: dx,dy,dz
-  PetscErrorCode :: ierr
-  Mat :: A,B
-  PetscScalar, pointer :: xx_v(:,:)
-  PetscScalar :: b_v(3)
-  PetscInt :: cols(3), ncol
-  PetscInt :: INDX(3)
-  PetscInt :: D,ii,jj
-  PetscReal :: disp_mat(3,3)
-  PetscReal :: identity(3)
-  PetscInt :: max_neighbors
-  Vec :: iden_vec,C
-  PetscReal, pointer :: v_p(:)
-
-  select case(grid%itype)
-    case(STRUCTURED_GRID)
-      cell_neighbors => grid%structured_grid%cell_neighbors
-    case(UNSTRUCTURED_GRID)
-      option%io_buffer='GridComputeMinv() not implemented for unstructured grid.'
-      call printErrMsg(option)
-  end select
-
-  allocate(grid%dispT(grid%ngmax))
-  allocate(grid%Minv(grid%ngmax))
-
-  max_neighbors = maxval(cell_neighbors(0,:))
-  allocate(grid%jacfac(grid%ngmax,0:max_neighbors,THREE_INTEGER))
-
-  call VecCreateSeq(PETSC_COMM_SELF,THREE_INTEGER,C,ierr);CHKERRQ(ierr)
-
-  do ghosted_id = 1,grid%ngmax
-
-    if(grid%ghosted_level(ghosted_id)<max_stencil_width) then
-
-      ! Create the disp matrix
-      call MatCreate(MPI_COMM_SELF,grid%dispT(ghosted_id),ierr);CHKERRQ(ierr)
-      call MatSetSizes(grid%dispT(ghosted_id),3,cell_neighbors(0,ghosted_id),3,cell_neighbors(0,ghosted_id), &
-                       ierr);CHKERRQ(ierr)
-      call MatSetType(grid%dispT(ghosted_id),MATSEQDENSE,ierr);CHKERRQ(ierr)
-      call MatSetUp(grid%dispT(ghosted_id),ierr);CHKERRQ(ierr)
-      do nid = 1,cell_neighbors(0,ghosted_id)
-        dx = grid%x(cell_neighbors(nid,ghosted_id)) - grid%x(ghosted_id)
-        dy = grid%y(cell_neighbors(nid,ghosted_id)) - grid%y(ghosted_id)
-        dz = grid%z(cell_neighbors(nid,ghosted_id)) - grid%z(ghosted_id)
-        call MatSetValue(grid%dispT(ghosted_id),0,nid-1,dx,INSERT_VALUES, &
-                         ierr);CHKERRQ(ierr)
-        call MatSetValue(grid%dispT(ghosted_id),1,nid-1,dy,INSERT_VALUES, &
-                         ierr);CHKERRQ(ierr)
-        call MatSetValue(grid%dispT(ghosted_id),2,nid-1,dz,INSERT_VALUES, &
-                         ierr);CHKERRQ(ierr)
-      enddo
-      call MatAssemblyBegin(grid%dispT(ghosted_id),MAT_FINAL_ASSEMBLY, &
-                            ierr);CHKERRQ(ierr)
-      call MatAssemblyEnd(  grid%dispT(ghosted_id),MAT_FINAL_ASSEMBLY, &
-                          ierr);CHKERRQ(ierr)
-
-      ! Compute transpose of disp matrix
-      call MatTranspose(grid%dispT(ghosted_id),MAT_INITIAL_MATRIX, &
-                        A,ierr);CHKERRQ(ierr)
-
-      ! B = disp_mat^T * disp_mat
-      call MatMatMult(grid%dispT(ghosted_id),A, &
-                  MAT_INITIAL_MATRIX,PETSC_DEFAULT_REAL,B,ierr);CHKERRQ(ierr)
-
-      ! Pack the values of B in disp_mat for obtaining the inverse of matrix
-      do ii=0,2
-        call MatGetRow(B,ii,ncol,cols,b_v,ierr);CHKERRQ(ierr)
-        disp_mat(ii+1,:) = b_v(:)
-        call MatRestoreRow(B,ii,ncol,cols,b_v,ierr);CHKERRQ(ierr)
-      enddo
-
-      ! LU decomposition of disp_mat
-      call ludcmp(disp_mat,THREE_INTEGER,INDX,D)
-
-      ! Save the inverse matrix
-      call MatCreate(MPI_COMM_SELF,grid%Minv(ghosted_id),ierr);CHKERRQ(ierr)
-      call MatSetSizes(grid%Minv(ghosted_id),3,3,3,3,ierr);CHKERRQ(ierr)
-      call MatSetType(grid%Minv(ghosted_id),MATSEQDENSE,ierr);CHKERRQ(ierr)
-      call MatSetUp(grid%Minv(ghosted_id),ierr);CHKERRQ(ierr)
-
-      ! Find inverse matrix column-by-column
-      do ii=1,3
-        identity = 0
-        identity(ii) = 1
-        call lubksb(disp_mat,THREE_INTEGER,INDX,identity)
-        call MatSetValue(grid%Minv(ghosted_id),0,ii-1,identity(1),INSERT_VALUES, &
-                         ierr);CHKERRQ(ierr)
-        call MatSetValue(grid%Minv(ghosted_id),1,ii-1,identity(2),INSERT_VALUES, &
-                         ierr);CHKERRQ(ierr)
-        call MatSetValue(grid%Minv(ghosted_id),2,ii-1,identity(3),INSERT_VALUES, &
-                         ierr);CHKERRQ(ierr)
-      enddo
-
-      call MatAssemblyBegin(grid%Minv(ghosted_id),MAT_FINAL_ASSEMBLY, &
-                            ierr);CHKERRQ(ierr)
-      call MatAssemblyEnd(  grid%Minv(ghosted_id),MAT_FINAL_ASSEMBLY, &
-                          ierr);CHKERRQ(ierr)
-
-      call MatDestroy(A,ierr);CHKERRQ(ierr)
-      call MatDestroy(B,ierr);CHKERRQ(ierr)
-
-      ! Save values used in Jacobian computation
-
-      ! Compute Minv * dispT
-      call MatMatMult(grid%Minv(ghosted_id),grid%dispT(ghosted_id), &
-                      MAT_INITIAL_MATRIX,PETSC_DEFAULT_REAL,A, &
-                      ierr);CHKERRQ(ierr)
-
-      call VecCreateSeq(PETSC_COMM_SELF,cell_neighbors(0,ghosted_id),iden_vec, &
-                        ierr);CHKERRQ(ierr)
-
-      ! Save for 'ghosted_id'
-      call VecGetArrayF90(iden_vec,v_p,ierr);CHKERRQ(ierr)
-      v_p = -1.d0
-      call VecRestoreArrayF90(iden_vec,v_p,ierr);CHKERRQ(ierr)
-      call MatMult(A,iden_vec,C,ierr);CHKERRQ(ierr)
-
-      call VecGetArrayF90(C,v_p,ierr);CHKERRQ(ierr)
-      grid%jacfac(ghosted_id,0,:) = v_p(:)
-      call VecGetArrayF90(C,v_p,ierr);CHKERRQ(ierr)
-
-      ! Save for neighbors of 'ghosted_id'
-      do nid = 1,cell_neighbors(0,ghosted_id)
-
-        call VecGetArrayF90(iden_vec,v_p,ierr);CHKERRQ(ierr)
-        v_p = 0.d0
-        v_p(nid) = 1.d0
-        call VecRestoreArrayF90(iden_vec,v_p,ierr);CHKERRQ(ierr)
-
-        call MatMult(A,iden_vec,C,ierr);CHKERRQ(ierr)
-
-        call VecGetArrayF90(C,v_p,ierr);CHKERRQ(ierr)
-        grid%jacfac(ghosted_id,nid,:) = v_p(:)
-        call VecGetArrayF90(C,v_p,ierr);CHKERRQ(ierr)
-
-      enddo
-
-      call VecDestroy(iden_vec,ierr);CHKERRQ(ierr)
-      call MatDestroy(A,ierr);CHKERRQ(ierr)
-
-    endif
-  enddo
-
-  call VecDestroy(C,ierr);CHKERRQ(ierr)
-
-end subroutine GridComputeMinv
-
-! ************************************************************************** !
-
-subroutine GridSaveBoundaryCellInfo(grid,is_bnd_vec,option)
-  ! 
-  ! This routine saves information regarding a cell being boundary or
-  ! interior cell.
-  ! 
-  ! Author: Gautam Bisht, LBNL
-  ! Date: 12/19/12
-  ! 
-
-  use Option_module
-
-  implicit none
-
-  type(grid_type) :: grid
-  Vec :: is_bnd_vec
-  type(option_type) :: option
-  
-  PetscInt:: ghosted_id
-  PetscScalar,pointer :: vec_ptr(:)
-  PetscErrorCode :: ierr
-
-  allocate(grid%bnd_cell(grid%ngmax))
-
-  call VecGetArrayF90(is_bnd_vec,vec_ptr,ierr);CHKERRQ(ierr)
-
-  do ghosted_id=1,grid%ngmax
-    if(vec_ptr(ghosted_id)==0.d0) then
-      grid%bnd_cell(ghosted_id) = PETSC_FALSE
-    else
-      grid%bnd_cell(ghosted_id) = PETSC_TRUE
-    endif
-  enddo
-
-  call VecRestoreArrayF90(is_bnd_vec,vec_ptr,ierr);CHKERRQ(ierr)
-
-end subroutine GridSaveBoundaryCellInfo
-
-! ************************************************************************** !
-
-subroutine GridPopulateFacesForUGrid(grid,option)
-  ! 
-  ! This routine populates faces of a unstructured grid for MIMETIC
-  ! discretization. It does the following:
-  ! 1) Calculates nlmax_faces, ngmax_faces
-  ! 2) If boundary faces are present, adds boundary connection in
-  ! grid%boundary_connection_set_list
-  ! 3) Lastly, save information about ghosted faces: faces(ngmax_faces)
-  ! Note: This subroutine performs functions of StructGridComputeInternConnect(),
-  ! StructGridComputeBoundConnect(), and GridPopulateFaces() for a
-  ! STRUCTURED_GRID_MIMETIC.
-  ! 
-  ! Author: Gautam Bisht, LBNL
-  ! Date: 03/29/13
-  ! 
-
-  use Option_module
-  use Unstructured_Cell_module
-  use Connection_module
-
-  implicit none
-
-  type(grid_type) :: grid
-  type(option_type) :: option
-
-#if defined(MFD_UGRID)
-  type(face_type), pointer :: faces(:)
-  type(unstructured_grid_type),pointer :: ugrid
-  type(connection_set_list_type), pointer :: connection_set_list
-  type(connection_set_type), pointer :: cur_connection_set
-  type(connection_set_type), pointer :: bnd_connections
-  type(connection_set_type), pointer :: conn
-
-  PetscInt :: iconn
-  PetscInt :: nconn
-  PetscInt :: icell
-  PetscInt :: iface
-  PetscInt :: local_id
-  PetscInt :: ghosted_id
-  PetscInt :: ghosted_id_up
-  PetscInt :: ghosted_id_dn
-  PetscInt :: face_id
-  PetscInt :: nfaces
-  PetscInt :: nfaces_intrn_loc
-  PetscInt :: nfaces_intrn_nonloc
-  PetscInt :: nfaces_bnd
-  PetscInt :: offset
-  PetscInt,pointer::int_array(:)
-  PetscReal, pointer :: vec_ptr(:)
-
-  Vec :: proc_id_loc
-  Vec :: proc_id_nat
-  Vec :: proc_id_ghosted
-  VecScatter :: vec_scat
-
-  IS :: is_tmp1, is_tmp2
-
-  PetscErrorCode :: ierr
-  PetscViewer :: viewer
-
-  ugrid => grid%unstructured_grid
-
-  nfaces_bnd = 0
-  nfaces_intrn_loc = 0
-  nfaces_intrn_nonloc = 0
-
-  ! Compute number of boundary faces
-  do local_id = 1, ugrid%nlmax
-    nfaces = UCellGetNFaces(ugrid%cell_type(local_id),option)
-    do iface = 1, nfaces
-      face_id = ugrid%cell_to_face_ghosted(iface,local_id)
-      if (ugrid%face_to_cell_ghosted(2,face_id) < 1) then
-        ! boundary face, since not connected to 2 cells
-        nfaces_bnd = nfaces_bnd + 1
-      endif
-    enddo
-  enddo
-
-  ! For local+ghost cells, determine processor id on which the cell resides
-  call VecCreateMPI(option%mycomm,ugrid%nlmax,PETSC_DETERMINE,proc_id_loc, &
-                    ierr);CHKERRQ(ierr)
-  call VecCreateMPI(option%mycomm,ugrid%nlmax,PETSC_DETERMINE,proc_id_nat, &
-                    ierr);CHKERRQ(ierr)
-  call VecCreateMPI(option%mycomm,ugrid%ngmax,PETSC_DETERMINE,proc_id_ghosted, &
-                    ierr);CHKERRQ(ierr)
-
-  call VecGetArrayF90(proc_id_loc,vec_ptr,ierr);CHKERRQ(ierr)
-  do local_id = 1,ugrid%nlmax
-    vec_ptr(local_id)=option%myrank
-  enddo
-  call VecRestoreArrayF90(proc_id_loc,vec_ptr,ierr);CHKERRQ(ierr)
-
-  allocate(int_array(ugrid%nlmax))
-  do local_id=1,ugrid%nlmax
-    int_array(local_id)=local_id-1+ugrid%global_offset
-  enddo
-  call ISCreateGeneral(option%mycomm,ugrid%nlmax, &
-                       int_array,PETSC_COPY_VALUES,is_tmp1,ierr);CHKERRQ(ierr)
-
-  do local_id=1,ugrid%nlmax
-    int_array(local_id)=grid%nG2A(grid%nL2G(local_id))-1
-  enddo
-  call ISCreateGeneral(option%mycomm,ugrid%nlmax, &
-                       int_array,PETSC_COPY_VALUES,is_tmp2,ierr);CHKERRQ(ierr)
-  deallocate(int_array)
-
-  call VecScatterCreate(proc_id_loc,is_tmp1,proc_id_nat,is_tmp2,vec_scat, &
-                        ierr);CHKERRQ(ierr)
-  call ISDestroy(is_tmp1,ierr);CHKERRQ(ierr)
-  call ISDestroy(is_tmp2,ierr);CHKERRQ(ierr)
-
-  call VecScatterBegin(vec_scat,proc_id_loc,proc_id_nat, &
-                       INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
-  call VecScatterEnd(vec_scat,proc_id_loc,proc_id_nat, &
-                     INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
-  call VecScatterDestroy(vec_scat,ierr);CHKERRQ(ierr)
-
-  offset=0
-  call MPI_Exscan(ugrid%ngmax,offset, &
-                  ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
-  allocate(int_array(ugrid%ngmax))
-  do ghosted_id=1,ugrid%ngmax
-    int_array(ghosted_id)=ghosted_id-1+offset
-  enddo
-  call ISCreateGeneral(option%mycomm,ugrid%ngmax, &
-                       int_array,PETSC_COPY_VALUES,is_tmp2,ierr);CHKERRQ(ierr)
-
-  do ghosted_id=1,ugrid%ngmax
-    int_array(ghosted_id)=grid%nG2A(ghosted_id)-1
-  enddo
-  call ISCreateGeneral(option%mycomm,ugrid%ngmax, &
-                       int_array,PETSC_COPY_VALUES,is_tmp1,ierr);CHKERRQ(ierr)
-  deallocate(int_array)
-
-  call VecScatterCreate(proc_id_nat,is_tmp1,proc_id_ghosted,is_tmp2,vec_scat, &
-                        ierr);CHKERRQ(ierr)
-  call ISDestroy(is_tmp1,ierr);CHKERRQ(ierr)
-  call ISDestroy(is_tmp2,ierr);CHKERRQ(ierr)
-
-  call VecScatterBegin(vec_scat,proc_id_nat,proc_id_ghosted, &
-                       INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
-  call VecScatterEnd(vec_scat,proc_id_nat,proc_id_ghosted, &
-                     INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
-  call VecScatterDestroy(vec_scat,ierr);CHKERRQ(ierr)
-
-  ! Compute number of the two types of internal faces:
-  ! - nfaces_intrn_loc: Both cells sharing the face are local cells
-  ! - nfaces_intrn_nonloc: One of the cells sharing the face is a ghost cell
-  connection_set_list => grid%internal_connection_set_list
-  cur_connection_set => connection_set_list%first
-  call VecGetArrayF90(proc_id_ghosted,vec_ptr,ierr);CHKERRQ(ierr)
-  do 
-    if (.not.associated(cur_connection_set)) exit
-    do iconn = 1, cur_connection_set%num_connections
-      ghosted_id_up = cur_connection_set%id_up(iconn)
-      ghosted_id_dn = cur_connection_set%id_dn(iconn)
-      if (ghosted_id_up<=ugrid%nlmax .and. ghosted_id_dn<=ugrid%nlmax) then
-        ! Both cells sharing the face are local cells
-        nfaces_intrn_loc = nfaces_intrn_loc + 1
-        cur_connection_set%local(iconn) = 1
-      else
-        if((ghosted_id_dn>ugrid%nlmax.and.vec_ptr(ghosted_id_dn)>option%myrank).or. &
-           (ghosted_id_up>ugrid%nlmax.and.vec_ptr(ghosted_id_up)>option%myrank)) then
-          ! If the ghost cell resides on a proc whose rank is greater than
-          ! mine, the face is local
-          nfaces_intrn_loc = nfaces_intrn_loc + 1
-          cur_connection_set%local(iconn) = 1
-        else
-          ! Otherwise, the face is non-local
-          nfaces_intrn_nonloc = nfaces_intrn_nonloc + 1
-        endif
-      endif
-    enddo
-    cur_connection_set => cur_connection_set%next
-  enddo
-  call VecRestoreArrayF90(proc_id_ghosted,vec_ptr,ierr);CHKERRQ(ierr)
-
-  ! Save information about number of faces
-  grid%nlmax_faces = nfaces_intrn_loc+nfaces_bnd
-  grid%ngmax_faces = nfaces_intrn_loc+nfaces_bnd+nfaces_intrn_nonloc
-
-  ! If there are any boundary faces, set up Boundary connections for the grid
-  ! Note: Equivalent subroutine for STRUCTURED_GRID_MIMETIC is 
-  ! StructGridComputeBoundConnect()
-  if (nfaces_bnd>0) then
-    ! allocate memory
-    nullify(bnd_connections)
-    bnd_connections => ConnectionCreate(nfaces_bnd,BOUNDARY_CONNECTION_TYPE)
-
-    ! Populate 'bnd_connections'
-    nconn = 0
-    do local_id = 1, ugrid%nlmax
-      nfaces = UCellGetNFaces(ugrid%cell_type(local_id),option)
-      do iface = 1, nfaces
-        face_id = ugrid%cell_to_face_ghosted(iface,local_id)
-        if (ugrid%face_to_cell_ghosted(2,face_id) < 1) then
-          ! boundary face, since not connected to 2 cells
-          nconn=nconn+1
-          bnd_connections%id_dn(nconn) = local_id
-          call GridPopulateConnection(grid,bnd_connections,iface,nconn, &
-                                    local_id,option)
-          bnd_connections%cntr(:,nconn)=bnd_connections%intercp(:,nconn)
-        endif
-      enddo
-    enddo
-
-    ! Add to list
-    allocate(grid%boundary_connection_set_list)
-    call ConnectionInitList(grid%boundary_connection_set_list)
-    call ConnectionAddToList(bnd_connections,grid%boundary_connection_set_list)
-  endif
-
-  ! Allocate memory to save 'faces'
-  allocate(faces(grid%ngmax_faces))
-
-  ! Add all internal-faces
-  face_id = 0
-  connection_set_list => grid%internal_connection_set_list
-  cur_connection_set => connection_set_list%first
-  do
-    if (.not.associated(cur_connection_set)) exit
-    do iconn = 1, cur_connection_set%num_connections
-      face_id = face_id + 1
-      faces(face_id)%conn_set_ptr => cur_connection_set
-      faces(face_id)%id = iconn
-    enddo
-    cur_connection_set => cur_connection_set%next
-  enddo
-
-  ! Add any boundary-faces
-  connection_set_list => grid%boundary_connection_set_list
-  cur_connection_set => connection_set_list%first
-  do
-    if (.not.associated(cur_connection_set)) exit
-    do iconn = 1, cur_connection_set%num_connections
-      face_id = face_id + 1
-      faces(face_id)%conn_set_ptr => cur_connection_set
-      faces(face_id)%id = iconn
-    enddo
-    cur_connection_set => cur_connection_set%next
-  enddo
-
-  ! Save it
-  grid%faces => faces
-
-  ! Free up memory
-  call VecDestroy(proc_id_loc,ierr);CHKERRQ(ierr)
-  call VecDestroy(proc_id_nat,ierr);CHKERRQ(ierr)
-  call VecDestroy(proc_id_ghosted,ierr);CHKERRQ(ierr)
-#endif
-
-end subroutine GridPopulateFacesForUGrid
-
-! ************************************************************************** !
-
-subroutine GridComputeCell2FaceForUGrid(grid,MFD,option)
-  ! 
-  ! This routine sets up cell to face connection for an unstructure grid for
-  ! MIMETIC discretization.
-  ! 
-  ! Author: Gautam Bisht, LBNL
-  ! Date: 03/29/13
-  ! 
-
-  use MFD_Aux_module
-  use Option_module
-  use Unstructured_Cell_module
-
-  implicit none
-
-  type(grid_type) :: grid
-  type(mfd_type), pointer :: MFD
-  type(option_type) :: option
-
-#ifdef DASVYAT
-
-  type(mfd_auxvar_type), pointer :: auxvar
-  type(connection_set_type), pointer :: conn
-  type(unstructured_grid_type),pointer :: ugrid
-  type(connection_set_list_type), pointer :: connection_set_list
-  type(connection_set_type), pointer :: cur_connection_set
-
-  PetscInt :: iconn
-  PetscInt :: icell
-  PetscInt :: iface
-  PetscInt :: local_id
-  PetscInt :: local_id_up
-  PetscInt :: local_id_dn
-  PetscInt :: ghosted_id
-  PetscInt :: ghosted_id_up
-  PetscInt :: ghosted_id_dn
-  PetscInt :: face_id
-  PetscInt :: nfaces
-  PetscInt :: nfaces_intrn_loc
-  PetscInt :: nfaces_intrn_nonloc
-  PetscInt :: nfaces_bnd
-  PetscInt :: offset
-  PetscInt :: iface2
-  PetscInt :: face_id2
-  PetscInt :: count
-
-  PetscInt,pointer :: bnd_count(:)
-  
-  PetscBool :: found
-  PetscErrorCode :: ierr
-  
-  character(len=MAXWORDLENGTH) :: filename
-
-  MFD => MFDAuxCreate()
-  grid%MFD => MFD
-  ugrid => grid%unstructured_grid
- 
-  ! Test
-  allocate(grid%fU2M(MAX_FACE_PER_CELL,grid%nlmax))
-  allocate(grid%fM2U(grid%ngmax_faces))
-  allocate(bnd_count(grid%nlmax))
-  bnd_count=0
-  grid%fM2U = -1
-  grid%fU2M = -1
-
-  ! Find offset for boundary faces
-  offset=0
-  nfaces_bnd=0
-  
-  connection_set_list => grid%internal_connection_set_list
-  cur_connection_set => connection_set_list%first
-  do
-    if (.not.associated(cur_connection_set)) exit
-    offset=offset+cur_connection_set%num_connections
-    cur_connection_set => cur_connection_set%next
-  enddo
-
-  call MFDAuxInit(MFD,grid%nlmax,option)
-
-  ! For each local cell, allocate memory for mfd_auxvar_type that depends on
-  ! on number of faces for a given cell.
-  do local_id = 1, grid%nlmax
-    auxvar => MFD%auxvars(local_id)
-    nfaces = UCellGetNFaces(ugrid%cell_type(local_id),option)
-    call MFDAuxVarInit(auxvar,nfaces,option)
-  enddo
-
-  ! Compute fG2L and fL2G mapping
-  local_id = 1
-  do iface = 1, grid%ngmax_faces
-    conn => grid%faces(iface)%conn_set_ptr
-    face_id = grid%faces(iface)%id
-
-    if (conn%itype==INTERNAL_CONNECTION_TYPE) then
-
-      ghosted_id_up = conn%id_up(face_id)
-      ghosted_id_dn = conn%id_dn(face_id)
-
-      local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
-      local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping
-
-      if (conn%local(face_id) == 1) then
-        grid%fG2L(iface)=local_id
-        grid%fL2G(local_id) = iface
-        local_id = local_id + 1
-      endif
-
-      if (local_id_dn>0) then
-        auxvar => MFD%auxvars(local_id_dn)
-        call MFDAuxAddFace(auxvar,option,iface)
-      endif
-
-      if (local_id_up>0) then
-        auxvar => MFD%auxvars(local_id_up)
-        call MFDAuxAddFace(auxvar,option,iface)
-      endif
-
-      ! For 'local_id_up', find the face-id that is shared by cells
-      ! local_id_up ----- local_id_dn
-      found=PETSC_FALSE
-      do iface2=1,MAX_FACE_PER_CELL
-        face_id2=ugrid%cell_to_face_ghosted(iface2,local_id_up)
-        if( (ugrid%face_to_cell_ghosted(1,face_id2)==ghosted_id_up.and. &
-             ugrid%face_to_cell_ghosted(2,face_id2)==ghosted_id_dn).or. &
-            (ugrid%face_to_cell_ghosted(1,face_id2)==ghosted_id_dn.and. &
-             ugrid%face_to_cell_ghosted(2,face_id2)==ghosted_id_up)) then
-          found=PETSC_TRUE
-          grid%fU2M(iface2,local_id_up)=iface
-          grid%fM2U(iface)=face_id2
-          exit
-        endif
-      enddo
-      if(.not.found) then
-        option%io_buffer='1) UGRID face not found to match face in MIMETIC discretization'
-        call printErrMsg(option)
-      endif
-      
-      ! For 'local_id_dn', find the face-id that is shared by cells
-      ! local_id_up ----- local_id_dn
-      if(ghosted_id_dn<=grid%nlmax) then
-        found=PETSC_FALSE
-        do iface2=1,MAX_FACE_PER_CELL
-          face_id2=ugrid%cell_to_face_ghosted(iface2,local_id_dn)
-          if( (ugrid%face_to_cell_ghosted(1,face_id2)==ghosted_id_up.and. &
-               ugrid%face_to_cell_ghosted(2,face_id2)==ghosted_id_dn).or. &
-              (ugrid%face_to_cell_ghosted(1,face_id2)==ghosted_id_dn.and. &
-               ugrid%face_to_cell_ghosted(2,face_id2)==ghosted_id_up)) then
-            found=PETSC_TRUE
-            grid%fU2M(iface2,local_id_dn)=iface
-            grid%fM2U(iface)=face_id2
-            exit
-          endif
-        enddo
-        if(.not.found) then
-          option%io_buffer='2) UGRID face not found to match face in MIMETIC discretization'
-          call printErrMsg(option)
-        endif
-      endif
-
-    else if (conn%itype==BOUNDARY_CONNECTION_TYPE) then
-
-      ghosted_id_dn = conn%id_dn(face_id)
-      local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping
-   
-      if (local_id_dn>0) then
-        auxvar => MFD%auxvars(local_id_dn)
-        call MFDAuxAddFace(auxvar,option,iface)
-        grid%fG2L(iface)=local_id
-        grid%fL2G(local_id) = iface
-        local_id = local_id + 1
-      endif
-
-      nfaces=UCellGetNFaces(ugrid%cell_type(local_id_dn),option)
-      count=0
-      found=PETSC_FALSE
-      do iface2=1,nfaces
-        face_id2=ugrid%cell_to_face_ghosted(iface2,local_id_dn)
-        if (ugrid%face_to_cell_ghosted(2,face_id2) < 1) then
-          ! boundary face, since not connected to 2 cells
-          count=count+1
-          if(count>bnd_count(local_id_dn)) then
-            bnd_count(local_id_dn)=bnd_count(local_id_dn)+1
-            found=PETSC_TRUE
-            grid%fM2U(iface)=face_id2
-            grid%fU2M(iface2,local_id_dn)=iface
-            exit
-          endif
-        endif
-        if(found) exit
-      enddo
-      if(.not.found) then
-        option%io_buffer='UGRID boundary face not found to match face in MIMETIC discretization'
-        call printErrMsg(option)
-      endif
-
-    endif
-
-  enddo
-
-#endif
-
-end subroutine GridComputeCell2FaceForUGrid
-
-! ************************************************************************** !
-
-subroutine GridSetGlobalCell2FaceForUGrid(grid,MFD,DOF,option)
-  ! 
-  ! This routine sets up cell to face connection for an unstructure grid for
-  ! MIMETIC discretization.
-  ! 
-  ! Author: Gautam Bisht, LBNL
-  ! Date: 03/29/13
-  ! 
-
-  use MFD_Aux_module
-  use Option_module
-  use Unstructured_Cell_module
- 
-  implicit none
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petscviewer.h"
-#include "finclude/petscsys.h"
-#include "finclude/petscsnes.h"
-#include "finclude/petscpc.h"
-
-  type(grid_type) :: grid
-  type(mfd_type), pointer :: MFD
-  PetscInt :: DOF
-  type(option_type) :: option
-
-  type(unstructured_grid_type),pointer :: ugrid
-  type(mfd_auxvar_type), pointer :: auxvar
-  type(connection_set_type), pointer :: conn
-
-  PetscInt :: local_id
-  PetscInt :: local_id_up
-  PetscInt :: local_id_dn
-  PetscInt :: ghosted_id
-  PetscInt :: ghosted_id_up
-  PetscInt :: ghosted_id_dn
-  PetscInt :: iface
-  PetscInt :: face_id
-  PetscInt :: ghost_face_id
-  PetscInt :: local_face_id
-  PetscInt :: nfaces
-  PetscInt :: ndof
-  PetscInt :: global_offset
-  PetscInt :: num_ghosted_upd
-  PetscInt :: icount,icell,stride,global_neigh_id,jcount
-  IS :: is_from
-  IS :: is_to
-  PetscViewer :: viewer
-  VecScatter :: scatter
-
-  PetscInt, pointer :: num_faces_cumm(:)
-
-  PetscInt, allocatable :: ghosted_ids(:)
-  PetscInt, allocatable :: indices_to(:)
-  PetscInt, allocatable :: indices_from(:)
-  PetscInt, allocatable :: int_array(:)
-  PetscInt, pointer :: int_ptr(:)
-
-  PetscScalar, pointer :: e2f_local_values(:)
-  PetscScalar, pointer :: e2n_local_values(:)
-  PetscScalar, pointer :: e2f_ghosted_values(:)
-  PetscScalar, pointer :: e2n_ghosted_values(:)
-  PetscScalar, pointer :: vec_ptr_e2f(:)
-  PetscScalar, pointer :: vec_ptr_e2n(:)
-  PetscScalar, pointer :: vec_ptr_e2f_gh(:)
-  PetscScalar, pointer :: vec_ptr_e2n_gh(:)
-
-  Vec :: e2f
-  Vec :: e2n
-  Vec :: e2f_ghosted
-  Vec :: e2n_ghosted
-
-  PetscErrorCode :: ierr
-
-  select case(DOF)
-    case(ONEDOF)
-      ndof = 1
-    case(NFLOWDOF)
-      ndof = option%nflowdof
-    case(NTRANDOF)
-      ndof = option%ntrandof
-  end select
-
-  MFD%ndof = ndof
-  ugrid => grid%unstructured_grid
-
-  ! Allocate memory
-  allocate(grid%fL2P(grid%nlmax_faces))
-  allocate(grid%fG2P(grid%ngmax_faces))
-
-  ! Set fL2P
-  global_offset = 0
-  do iface=1,grid%nlmax_faces
-    grid%fL2P(iface)=grid%global_faces_offset+grid%global_cell_offset+iface-1
-  enddo
-
-  global_offset = grid%global_faces_offset + grid%global_cell_offset
-
-  ! Create e2f and e2n
-  stride=MAX_FACE_PER_CELL
-  call VecCreate(option%mycomm,e2f,ierr);CHKERRQ(ierr)
-  call VecSetSizes(e2f,grid%nlmax*stride,PETSC_DECIDE,ierr);CHKERRQ(ierr)
-  call VecSetFromOptions(e2f,ierr);CHKERRQ(ierr)
-  call VecDuplicate(e2f,e2n,ierr);CHKERRQ(ierr)
-
-  call VecGetArrayF90(e2f,e2f_local_values,ierr);CHKERRQ(ierr)
-  call VecGetArrayF90(e2n,e2n_local_values,ierr);CHKERRQ(ierr)
-
-  e2f_local_values = 0
-  e2n_local_values = 0
-
-  do local_id = 1, grid%nlmax
-    auxvar => MFD%auxvars(local_id)
-    do iface = 1, auxvar%numfaces
-      ghost_face_id = auxvar%face_id_gh(iface)
-      local_face_id = grid%fG2L(ghost_face_id)
-      conn => grid%faces(ghost_face_id)%conn_set_ptr
-      face_id = grid%faces(ghost_face_id)%id
-
-      if (conn%itype==INTERNAL_CONNECTION_TYPE) then
-
-        if(local_face_id>0) then
-          ! Face is a 'local' internal connection
-          e2f_local_values((local_id-1)*stride+iface)=grid%fL2P(local_face_id)+1
-
-          ghosted_id_up=conn%id_up(face_id)
-          ghosted_id_dn=conn%id_dn(face_id)
-          local_id_up=grid%nG2L(ghosted_id_up)
-          local_id_dn=grid%nG2L(ghosted_id_dn)
-
-          if (local_id_up==local_id) then
-            e2n_local_values((local_id-1)*stride+iface)=grid%nG2P(ghosted_id_dn)+1
-          else if (local_id_dn==local_id) then
-            e2n_local_values((local_id-1)*stride+iface)=grid%nG2P(ghosted_id_up)+1
-          endif
-
-        else if(local_face_id==0) then
-          ! Face is a 'non-local' internal connection
-          ghosted_id_up=conn%id_up(face_id)
-          ghosted_id_dn=conn%id_dn(face_id)
-          local_id_up=grid%nG2L(ghosted_id_up)
-          local_id_dn=grid%nG2L(ghosted_id_dn)
-
-          if (local_id_up==local_id) then
-            e2n_local_values((local_id-1)*stride+iface)=grid%nG2P(ghosted_id_dn)+1
-          else if (local_id_dn==local_id) then
-            e2n_local_values((local_id-1)*stride+iface)=grid%nG2P(ghosted_id_up)+1
-          endif
-        endif
-
-      else if (conn%itype == BOUNDARY_CONNECTION_TYPE) then
-
-        if (local_face_id>0) then
-          e2f_local_values((local_id-1)*stride+iface)=grid%fL2P(local_face_id)+1
-        endif
-
-        e2n_local_values((local_id-1)*stride+iface)=0
-      endif
-    enddo
-  enddo
-
-  call VecRestoreArrayF90(e2f,e2f_local_values,ierr);CHKERRQ(ierr)
-  call VecRestoreArrayF90(e2n,e2n_local_values,ierr);CHKERRQ(ierr)
-
-  ! Find PETSc ID of cells with which a non-local internal connections is shared
-  allocate(ghosted_ids(grid%ngmax_faces-grid%nlmax_faces))
-  ghosted_ids = 0
-
-  num_ghosted_upd = 0
-  do iface = 1, grid%ngmax_faces
-    conn => grid%faces(iface)%conn_set_ptr
-    face_id=grid%faces(iface)%id
-
-    if (conn%itype==INTERNAL_CONNECTION_TYPE) then
-      if (conn%local(face_id) == 0) then
-        ! Non-local internal connection
-        num_ghosted_upd = num_ghosted_upd + 1
-        ghosted_id_up = conn%id_up(face_id)
-        ghosted_id_dn = conn%id_dn(face_id)
-
-        ! Check if upwind or downwind is a ghost cell
-        if (grid%nG2L(ghosted_id_up)==0) then
-          ghosted_ids(num_ghosted_upd)=grid%nG2P(ghosted_id_up)+1 ! +1 since global indexes strats from 0
-        else if (grid%nG2L(ghosted_id_dn)==0) then
-          ghosted_ids(num_ghosted_upd)=grid%nG2P(ghosted_id_dn)+1
-        endif
-      endif
-    endif
-  enddo
-
-  ! Create sequential vectors with a stride
-  call VecCreateSeq(PETSC_COMM_SELF,num_ghosted_upd*stride,e2f_ghosted, &
-                    ierr);CHKERRQ(ierr)
-  call VecCreateSeq(PETSC_COMM_SELF,num_ghosted_upd*stride,e2n_ghosted, &
-                    ierr);CHKERRQ(ierr)
-         
-  allocate(indices_to(num_ghosted_upd))
-  allocate(indices_from(num_ghosted_upd))
-
-  do icount=1,num_ghosted_upd
-    indices_to(icount)=icount-1
-    indices_from(icount)=ghosted_ids(icount)-1
-  enddo
-
-  ! Create IS with a block size of 'stride'
-  call ISCreateBlock(option%mycomm,stride,num_ghosted_upd,indices_to, &
-                    PETSC_COPY_VALUES,is_to,ierr);CHKERRQ(ierr)
-  call ISCreateBlock(option%mycomm,stride,num_ghosted_upd,indices_from,&
-                    PETSC_COPY_VALUES,is_from,ierr);CHKERRQ(ierr)
-  deallocate(indices_from)
-  deallocate(indices_to)
-
-  ! Create scatter context
-  call VecScatterCreate(e2f,is_from,e2f_ghosted,is_to,scatter, &
-                        ierr);CHKERRQ(ierr)
-  call ISDestroy(is_to,ierr);CHKERRQ(ierr)
-  call ISDestroy(is_from,ierr);CHKERRQ(ierr)
-
-  ! Scatter forward the e2f and e2n
-  call VecScatterBegin(scatter,e2f,e2f_ghosted,INSERT_VALUES,SCATTER_FORWARD, &
-                       ierr);CHKERRQ(ierr)
-  call VecScatterEnd(scatter,e2f,e2f_ghosted,INSERT_VALUES,SCATTER_FORWARD, &
-                     ierr);CHKERRQ(ierr)
-  call VecScatterBegin(scatter,e2n,e2n_ghosted,INSERT_VALUES,SCATTER_FORWARD, &
-                       ierr);CHKERRQ(ierr)
-  call VecScatterEnd(scatter,e2n,e2n_ghosted,INSERT_VALUES,SCATTER_FORWARD, &
-                     ierr);CHKERRQ(ierr)
-  call VecScatterDestroy(scatter,ierr);CHKERRQ(ierr)
-
-  call VecGetArrayF90(e2n_ghosted,vec_ptr_e2n_gh,ierr);CHKERRQ(ierr)
-  call VecGetArrayF90(e2f_ghosted,vec_ptr_e2f_gh,ierr);CHKERRQ(ierr)
-  call VecGetArrayF90(e2n,vec_ptr_e2n,ierr);CHKERRQ(ierr)
-  call VecGetArrayF90(e2f,vec_ptr_e2f,ierr);CHKERRQ(ierr)
- 
-  jcount=0
-  do local_id=1,grid%nlmax
-    auxvar => MFD%auxvars(local_id)
-    do iface=1,auxvar%numfaces
-      ghost_face_id=auxvar%face_id_gh(iface)
-      local_face_id=grid%fG2L(ghost_face_id)
-
-      if (local_face_id==0) then
-        conn => grid%faces(ghost_face_id)%conn_set_ptr
-        face_id=grid%faces(ghost_face_id)%id
-
-        ghosted_id_up=conn%id_up(face_id)
-        ghosted_id_dn=conn%id_dn(face_id)
-
-        local_id_up=grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
-        local_id_dn=grid%nG2L(ghosted_id_dn) ! Ghost to local mapping
-
-        if (local_id==local_id_up) then
-          global_neigh_id=grid%nG2P(ghosted_id_dn)+1
-        else if (local_id==local_id_dn) then
-          global_neigh_id=grid%nG2P(ghosted_id_up)+1
-        endif
-
-        ! GB: Can avoid the this loop
-        !do jcount=1,num_ghosted_upd
-        !  if (ghosted_ids(jcount)==global_neigh_id) exit
-        !enddo
-        jcount=jcount+1
-
-        do face_id=1,stride
-          if (vec_ptr_e2n_gh((jcount-1)*stride+face_id)==grid%nG2P(grid%nL2G(local_id))+1) then
-            vec_ptr_e2f((local_id-1)*stride+iface)=vec_ptr_e2f_gh((jcount-1)*stride+face_id)
-            grid%fG2P(ghost_face_id)=int(vec_ptr_e2f_gh((jcount-1)*stride+face_id))-1
-            exit
-          endif
-        end do
-      else
-        grid%fG2P(ghost_face_id)=grid%fL2P(local_face_id)
-      endif
-    enddo
-  enddo
-
-  call VecRestoreArrayF90(e2n_ghosted,vec_ptr_e2n_gh,ierr);CHKERRQ(ierr)
-  call VecRestoreArrayF90(e2f_ghosted,vec_ptr_e2f_gh,ierr);CHKERRQ(ierr)
-  call VecDestroy(e2f_ghosted,ierr);CHKERRQ(ierr)
-  call VecDestroy(e2n_ghosted,ierr);CHKERRQ(ierr)
-
-  ! Count number of faces for all local cells
-  nfaces=0
-  allocate(num_faces_cumm(ugrid%nlmax))
-  num_faces_cumm=0
-  do local_id=1,ugrid%nlmax
-    nfaces=nfaces+UCellGetNFaces(ugrid%cell_type(local_id),option)
-    if(local_id<ugrid%nlmax) then
-      num_faces_cumm(local_id+1)=num_faces_cumm(local_id)+nfaces
-    endif
-  enddo
-
-  ! Allocate memory for grid%e2f and grid%e2n
-  call VecCreate(option%mycomm,grid%e2f,ierr);CHKERRQ(ierr)
-  call VecSetSizes(grid%e2f,nfaces,PETSC_DECIDE,ierr);CHKERRQ(ierr)
-  call VecSetFromOptions(grid%e2f,ierr);CHKERRQ(ierr)
-  call VecDuplicate(grid%e2f,grid%e2n,ierr);CHKERRQ(ierr)
-
-  call VecGetArrayF90(grid%e2f,e2f_local_values,ierr);CHKERRQ(ierr)
-  call VecGetArrayF90(grid%e2n,e2n_local_values,ierr);CHKERRQ(ierr)
-
-  nfaces=0
-  do local_id=1,grid%nlmax
-    do iface=1,UCellGetNFaces(ugrid%cell_type(local_id),option)
-      e2f_local_values(nfaces+iface)=vec_ptr_e2f((local_id-1)*stride+iface)
-      e2n_local_values(nfaces+iface)=vec_ptr_e2n((local_id-1)*stride+iface)
-    enddo
-    nfaces=nfaces+UCellGetNFaces(ugrid%cell_type(local_id),option)
-  enddo
-
-  call VecRestoreArrayF90(grid%e2f,e2f_local_values,ierr);CHKERRQ(ierr)
-  call VecRestoreArrayF90(grid%e2n,e2n_local_values,ierr);CHKERRQ(ierr)
-  call VecRestoreArrayF90(e2n,vec_ptr_e2n,ierr);CHKERRQ(ierr)
-  call VecRestoreArrayF90(e2f,vec_ptr_e2f,ierr);CHKERRQ(ierr)
-
-  call VecDestroy(e2f,ierr);CHKERRQ(ierr)
-  call VecDestroy(e2n,ierr);CHKERRQ(ierr)
-
-  call CreateMFDStruct4LP(grid,MFD,ndof,option)
-
-  deallocate(num_faces_cumm)
-
-
-end subroutine GridSetGlobalCell2FaceForUGrid
 
 end module Grid_module

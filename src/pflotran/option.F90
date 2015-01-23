@@ -105,10 +105,7 @@ module Option_module
     PetscBool :: print_file_flag
     PetscInt :: verbosity  ! Values >0 indicate additional console output.
     
-    PetscInt, pointer :: garbage ! for some reason, Intel will not compile without this
-
     PetscReal :: uniform_velocity(3)
-    PetscBool :: store_flowrate
 
     ! Program options
     PetscBool :: use_matrix_free  ! If true, do not form the Jacobian.
@@ -196,8 +193,6 @@ module Option_module
     PetscBool :: steady_state
     PetscBool :: use_matrix_buffer
     PetscBool :: force_newton_iteration
-    PetscBool :: mimetic
-    PetscBool :: ani_relative_permeability
     PetscBool :: use_upwinding
     PetscBool :: out_of_table
 
@@ -362,9 +357,6 @@ subroutine OptionInitAll(option)
 
   option%input_filename = ''
 
-  option%mimetic = PETSC_FALSE
-  option%ani_relative_permeability = PETSC_FALSE
-
   option%use_upwinding = PETSC_TRUE
 
   option%out_of_table = PETSC_FALSE
@@ -432,7 +424,7 @@ subroutine OptionInitRealization(option)
   option%surf_initialize_flow_filename = ""
   option%surf_restart_filename = ""
   option%surf_restart_flag = PETSC_FALSE
-  option%surf_restart_time = -999.0
+  option%surf_restart_time = UNINITIALIZED_DOUBLE
 
   option%ngeomechdof = 0
   option%n_stress_strain_dof = 0
@@ -513,7 +505,7 @@ subroutine OptionInitRealization(option)
   
   option%restart_flag = PETSC_FALSE
   option%restart_filename = ""
-  option%restart_time = -999.d0
+  option%restart_time = UNINITIALIZED_DOUBLE
   option%checkpoint_flag = PETSC_FALSE
   option%checkpoint_frequency = huge(option%checkpoint_frequency)
   
@@ -529,10 +521,6 @@ subroutine OptionInitRealization(option)
   option%compute_statistics = PETSC_FALSE
   option%compute_mass_balance_new = PETSC_FALSE
   option%mass_bal_detailed = PETSC_FALSE
-  option%store_flowrate = PETSC_FALSE
-#ifdef STORE_FLOWRATES
-  option%store_flowrate = PETSC_TRUE
-#endif
 
   option%use_touch_options = PETSC_FALSE
   option%overwrite_restart_transport = PETSC_FALSE
@@ -564,7 +552,6 @@ subroutine OptionInitRealization(option)
   option%use_matrix_buffer = PETSC_FALSE
   option%status = PROCEED 
   option%force_newton_iteration = PETSC_FALSE
-  option%mimetic = PETSC_FALSE
   option%variables_swapped = PETSC_FALSE
   option%print_explicit_primal_grid = PETSC_FALSE
   option%print_explicit_dual_grid = PETSC_FALSE  
@@ -689,7 +676,7 @@ subroutine printErrMsgByRank1(option)
   ! Prints the error message from processor with error along
   ! with rank
   ! 
-  ! Author: Glenn Hammond
+  ! Author: Glenn Hammond 
   ! Date: 11/04/11
   ! 
 

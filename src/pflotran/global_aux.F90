@@ -194,8 +194,9 @@ subroutine GlobalAuxVarInit(auxvar,option)
         auxvar%pres_store = 0.d0
         allocate(auxvar%temp_store(TWO_INTEGER))
         auxvar%temp_store = 0.d0
-        allocate(auxvar%den_kg_store(option%nphase,TWO_INTEGER))
-        auxvar%den_kg_store = 0.d0
+!geh: these are allocated above        
+!geh        allocate(auxvar%den_kg_store(option%nphase,TWO_INTEGER))
+!geh        auxvar%den_kg_store = 0.d0
       endif
     case default
   end select

@@ -324,7 +324,7 @@ subroutine Flash2AuxVarCompute_NINC(x,auxvar,global_auxvar, &
             hg= hg * FMWCO2
             xphi = fg/p2
         end select
-      elseif(option%co2eos == EOS_MRK)then
+      elseif (option%co2eos == EOS_MRK)then
 ! MRK eos [modified version from  Kerrick and Jacobs (1981) and Weir et al. (1996).]     
         call CO2(t, p2,  dg,fg, xphi, hg)
         call visco2( t,dg,visg)
@@ -358,7 +358,7 @@ subroutine Flash2AuxVarCompute_NINC(x,auxvar,global_auxvar, &
 
     Qkco2 = henry*xphi  ! convert from bar to Pa
     henry = 1.D0 / (FMWH2O*1.D-3) / (henry*1.D-5) / xphi 
-    if(present(xphico2)) xphico2 = xphi
+    if (present(xphico2)) xphico2 = xphi
    
     mco2 = (p - sat_pressure)*1D-5 * Qkco2
     xco2eq = mco2/(1D3/fmwh2o + mco2 + m_nacl) 
@@ -401,10 +401,11 @@ subroutine Flash2AuxVarCompute_NINC(x,auxvar,global_auxvar, &
     
 !   auxvar%diff(option%nflowspec+1:option%nflowspec*2) = 2.13D-5
     auxvar%diff(option%nflowspec+1:option%nflowspec*2) = &
-      fluid_properties%gas_diffusion_coefficient
-      
+      fluid_properties%gas_diffusion_coefficient &
+      * 101325.d0 / p * ((t+273.15)/273.15d0)**1.8d0
+
 !       fluid_properties%diff_base(2)
-! Note: not temperature dependent yet.       
+
 !  z factor    
     auxvar%zco2=auxvar%den(2)/(p/IDEAL_GAS_CONST/(t+273.15D0)*1D-3)
 
@@ -462,9 +463,9 @@ subroutine Flash2AuxVarCompute_NINC(x,auxvar,global_auxvar, &
   case(3)
     auxvar%sat(2) = auxvar%den(1)* ( x(3) - auxvar%xmol(2))/&
       (auxvar%den(2) * (auxvar%xmol(4)-x(3)) - auxvar%den(1)*(auxvar%xmol(2)-x(3)))
-    if(auxvar%sat(2) >1D0 .or. auxvar%sat(2) <0D0) print *,'z->s error: ',auxvar%sat(2)
-    if(auxvar%sat(2) > 1D0) auxvar%sat(2) = 1D0
-    if(auxvar%sat(2) < 0D0) auxvar%sat(2) = 0D0  
+    if (auxvar%sat(2) >1D0 .or. auxvar%sat(2) <0D0) print *,'z->s error: ',auxvar%sat(2)
+    if (auxvar%sat(2) > 1D0) auxvar%sat(2) = 1D0
+    if (auxvar%sat(2) < 0D0) auxvar%sat(2) = 0D0  
     auxvar%sat(1) = 1D0 - auxvar%sat(2)
   end select
  

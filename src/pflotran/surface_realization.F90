@@ -29,7 +29,7 @@ private
 
   type, public, extends(realization_base_type) :: surface_realization_type
 
-    type(waypoint_list_type), pointer  :: waypoints
+    type(waypoint_list_type), pointer  :: waypoint_list
     
     type(surface_field_type), pointer                 :: surf_field
     type(region_list_type), pointer                   :: surf_regions
@@ -44,7 +44,7 @@ private
     class(dataset_base_type), pointer :: datasets
     
     PetscReal :: dt_max
-    PetscReal :: dt_min
+    PetscReal :: dt_init
     PetscReal :: dt_coupling
     
     PetscInt :: iter_count
@@ -55,6 +55,7 @@ private
   !         123456789+123456789+123456789+1
   public :: SurfRealizCreate, &
             SurfRealizDestroy, &
+            SurfRealizStrip, &
             SurfRealizAddWaypointsToList, &
             SurfRealizCreateDiscretization, &
             SurfRealizAddCoupler, &
@@ -128,7 +129,7 @@ function SurfRealizCreate(option)
   nullify(surf_realization%datasets)
 
   surf_realization%iter_count = 0
-  surf_realization%dt_min = 1.d0
+  surf_realization%dt_init = 1.d0
   surf_realization%dt_max = 1.d0
   surf_realization%dt_coupling = 0.d0
   
@@ -164,11 +165,11 @@ subroutine SurfRealizAddCoupler(surf_realization,coupler)
     new_coupler => CouplerCreate(coupler)
     select case(coupler%itype)
       case(BOUNDARY_COUPLER_TYPE)
-        call CouplerAddToList(new_coupler,cur_patch%boundary_conditions)
+        call CouplerAddToList(new_coupler,cur_patch%boundary_condition_list)
       case(INITIAL_COUPLER_TYPE)
-        call CouplerAddToList(new_coupler,cur_patch%initial_conditions)
+        call CouplerAddToList(new_coupler,cur_patch%initial_condition_list)
       case(SRC_SINK_COUPLER_TYPE)
-        call CouplerAddToList(new_coupler,cur_patch%source_sinks)
+        call CouplerAddToList(new_coupler,cur_patch%source_sink_list)
     end select
     nullify(new_coupler)
     cur_patch => cur_patch%next
@@ -318,7 +319,7 @@ subroutine SurfRealizAddStrata(surf_realization,strata)
   do
     if (.not.associated(cur_patch)) exit
     new_strata => StrataCreate(strata)
-    call StrataAddToList(new_strata,cur_patch%strata)
+    call StrataAddToList(new_strata,cur_patch%strata_list)
     nullify(new_strata)
     cur_patch => cur_patch%next
   enddo
@@ -338,11 +339,11 @@ subroutine SurfRealizCreateDiscretization(surf_realization)
   ! 
 
   use Grid_module
-  use Unstructured_Grid_Aux_module, only : UGridMapIndices
-  use Unstructured_Grid_module, only     : UGridEnsureRightHandRule
+  use Grid_Unstructured_Aux_module, only : UGridMapIndices
+  use Grid_Unstructured_module, only     : UGridEnsureRightHandRule
   use Coupler_module
   use Discretization_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Cell_module
   use DM_Kludge_module
   
   implicit none
@@ -408,7 +409,7 @@ subroutine SurfRealizCreateDiscretization(surf_realization)
 
   ! set up nG2L, NL2G, etc.
   call UGridMapIndices(grid%unstructured_grid,discretization%dm_1dof%ugdm, &
-                        grid%nG2L,grid%nL2G,grid%nG2A,grid%nG2P,option)
+                        grid%nG2L,grid%nL2G,grid%nG2A,option)
   call GridComputeCoordinates(grid,discretization%origin,option, &
                               discretization%dm_1dof%ugdm) 
   call UGridEnsureRightHandRule(grid%unstructured_grid,grid%x, &
@@ -419,7 +420,7 @@ subroutine SurfRealizCreateDiscretization(surf_realization)
   call GridComputeAreas(grid,surf_field%area,option)
 
   ! Allocate vectors to hold flowrate quantities
-  if(surf_realization%output_option%print_hdf5_mass_flowrate.or. &
+  if (surf_realization%output_option%print_hdf5_mass_flowrate.or. &
      surf_realization%output_option%print_hdf5_energy_flowrate.or. &
      surf_realization%output_option%print_hdf5_aveg_mass_flowrate.or. &
      surf_realization%output_option%print_hdf5_aveg_energy_flowrate) then
@@ -430,7 +431,7 @@ subroutine SurfRealizCreateDiscretization(surf_realization)
     call VecSet(surf_field%flowrate_inst,0.d0,ierr);CHKERRQ(ierr)
 
     ! If average flowrate has to be saved, create a vector for it
-    if(surf_realization%output_option%print_hdf5_aveg_mass_flowrate.or. &
+    if (surf_realization%output_option%print_hdf5_aveg_mass_flowrate.or. &
        surf_realization%output_option%print_hdf5_aveg_energy_flowrate) then
       call VecCreateMPI(option%mycomm, &
           (option%nflowdof*MAX_FACE_PER_CELL_SURF+1)*surf_realization%patch%grid%nlmax, &
@@ -677,9 +678,9 @@ subroutine SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
 
   use Grid_module
   use String_module
-  use Unstructured_Grid_module
-  use Unstructured_Grid_Aux_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_module
+  use Grid_Unstructured_Aux_module
+  use Grid_Unstructured_Cell_module
   use Realization_class
   use Option_module
   use Patch_module
@@ -740,7 +741,7 @@ subroutine SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
   cur_patch => realization%patch_list%first
   do
     if (.not.associated(cur_patch)) exit
-    cur_region => cur_patch%regions%first
+    cur_region => cur_patch%region_list%first
       do
         if (.not.associated(cur_region)) exit
         if (StringCompare(cur_region%name,'top')) then
@@ -753,7 +754,7 @@ subroutine SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
     cur_patch => cur_patch%next
   enddo
 
-  if(found.eqv.PETSC_FALSE) then
+  if (found.eqv.PETSC_FALSE) then
     option%io_buffer = 'When running with -DSURFACE_FLOW need to specify ' // &
       ' in the inputfile explicitly region: top '
     call printErrMsg(option)
@@ -1003,15 +1004,15 @@ subroutine SurfRealizMapSurfSubsurfGrid( &
 
   use Grid_module
   use String_module
-  use Unstructured_Grid_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_module
+  use Grid_Unstructured_Cell_module
   use Realization_class
   use Option_module
   use Field_module
   use Surface_Field_module
-  use Unstructured_Grid_module
+  use Grid_Unstructured_module
   use Discretization_module
-  use Unstructured_Grid_Aux_module
+  use Grid_Unstructured_Aux_module
   use DM_Kludge_module
 
   implicit none
@@ -1072,7 +1073,7 @@ subroutine SurfRealizMapSurfSubsurfGrid( &
   field      => realization%field
   surf_field => surf_realization%surf_field
   
-  if(option%mycommsize > 1) then
+  if (option%mycommsize > 1) then
     ! From the MPI-Matrix get the local-matrix
     call MatMPIAIJGetLocalMat(prod_mat,MAT_INITIAL_MATRIX,prod_loc_mat, &
                               ierr);CHKERRQ(ierr)
@@ -1094,12 +1095,12 @@ subroutine SurfRealizMapSurfSubsurfGrid( &
   do ii = 1, nrow
     max_value = 0.d0
     do jj = ia_p(ii), ia_p(ii + 1) - 1
-      if(aa(aaa+ jj) > max_value) then
+      if (aa(aaa+ jj) > max_value) then
         corr_v2_ids(ii) = ja_p(jj)
         max_value = aa(aaa+ jj)
       endif
     enddo
-    if(max_value<3) then
+    if (max_value<3) then
       option%io_buffer = 'Atleast three vertices need to form a face'
       call printErrMsg(option)
     endif
@@ -1154,8 +1155,8 @@ subroutine SurfRealizMapSurfSubsurfGrid( &
   call VecScatterDestroy(scatter,ierr);CHKERRQ(ierr)
 
 #if UGRID_DEBUG
-  if(source_grid_flag==TWO_DIM_GRID) write(string,*) 'surf'
-  if(source_grid_flag==THREE_DIM_GRID) write(string,*) 'subsurf'
+  if (source_grid_flag==TWO_DIM_GRID) write(string,*) 'surf'
+  if (source_grid_flag==THREE_DIM_GRID) write(string,*) 'subsurf'
   string = adjustl(string)
   string = 'corr_dest_ids_vec_' // trim(string) // '.out'
   call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr);CHKERRQ(ierr)
@@ -1164,13 +1165,13 @@ subroutine SurfRealizMapSurfSubsurfGrid( &
 #endif
 
   call VecDestroy(corr_dest_ids_vec,ierr);CHKERRQ(ierr)
-  if(option%mycommsize>1) then
+  if (option%mycommsize>1) then
     call MatDestroy(prod_loc_mat,ierr);CHKERRQ(ierr)
   endif
 
 #if UGRID_DEBUG
-  if(source_grid_flag==TWO_DIM_GRID) write(string,*) 'surf'
-  if(source_grid_flag==THREE_DIM_GRID) write(string,*) 'subsurf'
+  if (source_grid_flag==TWO_DIM_GRID) write(string,*) 'surf'
+  if (source_grid_flag==THREE_DIM_GRID) write(string,*) 'subsurf'
   string = adjustl(string)
   string = 'scatter_bet_grids_' // trim(string) // '.out'
   call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr);CHKERRQ(ierr)
@@ -1230,7 +1231,7 @@ subroutine SurfRealizDestroy(surf_realization)
   
   type(surface_realization_type), pointer :: surf_realization
   
-  if(.not.associated(surf_realization)) return
+  if (.not.associated(surf_realization)) return
   
   !geh: deallocate everything in base
   call RealizationBaseStrip(surf_realization)
@@ -1247,7 +1248,7 @@ subroutine SurfRealizDestroy(surf_realization)
   
   call PatchDestroyList(surf_realization%patch_list)
   
-  if(associated(surf_realization%debug)) deallocate(surf_realization%debug)
+  if (associated(surf_realization%debug)) deallocate(surf_realization%debug)
   nullify(surf_realization%debug)
   
   if (associated(surf_realization%surf_material_property_array)) &
@@ -1257,10 +1258,58 @@ subroutine SurfRealizDestroy(surf_realization)
   
   call DiscretizationDestroy(surf_realization%discretization)
 
-  if(associated(surf_realization)) deallocate(surf_realization)
+  if (associated(surf_realization)) deallocate(surf_realization)
   nullify(surf_realization)
 
 end subroutine SurfRealizDestroy
+
+
+! ************************************************************************** !
+
+subroutine SurfRealizStrip(surf_realization)
+  ! 
+  ! This routine destroys SurfRealiz object
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 02/16/12
+  ! 
+
+  implicit none
+  
+  class(surface_realization_type), pointer :: surf_realization
+  
+  if (.not.associated(surf_realization)) return
+  
+  !geh: deallocate everything in base
+  call RealizationBaseStrip(surf_realization)
+  
+  call WaypointListDestroy(surf_realization%waypoint_list)
+  
+  call SurfaceFieldDestroy(surf_realization%surf_field)
+
+  call OutputOptionDestroy(surf_realization%output_option)
+  
+  call RegionDestroyList(surf_realization%surf_regions)
+  
+  call FlowConditionDestroyList(surf_realization%surf_flow_conditions)
+
+  call TranConditionDestroyList(surf_realization%surf_transport_conditions)
+  
+  call PatchDestroyList(surf_realization%patch_list)
+  
+  if (associated(surf_realization%debug)) deallocate(surf_realization%debug)
+  nullify(surf_realization%debug)
+  
+  if (associated(surf_realization%surf_material_property_array)) &
+    deallocate(surf_realization%surf_material_property_array)
+  nullify(surf_realization%surf_material_property_array)
+  call SurfaceMaterialPropertyDestroy(surf_realization%surf_material_properties)
+  
+  call DiscretizationDestroy(surf_realization%discretization)
+
+  call ReactionDestroy(surf_realization%reaction,surf_realization%option)
+
+end subroutine SurfRealizStrip
 
 ! ************************************************************************** !
 
@@ -1347,7 +1396,7 @@ subroutine SurfRealizAddWaypointsToList(surf_realization)
   PetscReal, pointer :: times(:)
 
   option => surf_realization%option
-  waypoint_list => surf_realization%waypoints
+  waypoint_list => surf_realization%waypoint_list
   nullify(times)
   
   ! set flag for final output
@@ -1415,7 +1464,7 @@ subroutine SurfRealizAddWaypointsToList(surf_realization)
         waypoint => WaypointCreate()
         waypoint%time = temp_real
         waypoint%print_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,surf_realization%waypoints)
+        call WaypointInsertInList(waypoint,surf_realization%waypoint_list)
       enddo
     endif
     
@@ -1428,7 +1477,7 @@ subroutine SurfRealizAddWaypointsToList(surf_realization)
         waypoint => WaypointCreate()
         waypoint%time = temp_real
         waypoint%print_tr_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,surf_realization%waypoints)
+        call WaypointInsertInList(waypoint,surf_realization%waypoint_list)
       enddo
     endif
 
@@ -1445,7 +1494,7 @@ subroutine SurfRealizAddWaypointsToList(surf_realization)
       waypoint => WaypointCreate()
       waypoint%time = temp_real
       waypoint%print_checkpoint = PETSC_TRUE
-      call WaypointInsertInList(waypoint,surf_realization%waypoints)
+      call WaypointInsertInList(waypoint,surf_realization%waypoint_list)
     enddo
   endif
 

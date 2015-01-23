@@ -123,8 +123,7 @@ subroutine CheckpointFlowProcessModel(viewer,realization)
   use Grid_module
   use Material_module
   use Variables_module, only : POROSITY, PERMEABILITY_X, PERMEABILITY_Y, &
-                               PERMEABILITY_Z, PERMEABILITY_XY, &
-                               PERMEABILITY_YZ, PERMEABILITY_XZ
+                               PERMEABILITY_Z
   
   implicit none
 
@@ -192,34 +191,7 @@ subroutine CheckpointFlowProcessModel(viewer,realization)
     call DiscretizationLocalToGlobal(discretization,field%work_loc, &
                                       global_vec,ONEDOF)
     call VecView(global_vec,viewer,ierr);CHKERRQ(ierr)
-
-    if (grid%itype == STRUCTURED_GRID_MIMETIC) then 
-      if (option%iflowmode /= RICHARDS_MODE) then
-        option%io_buffer = 'Checkpointing of mimetic not set up for outside Richards.'
-        call printErrMsg(option)
-      endif
-
-      call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
-                                   field%work_loc,PERMEABILITY_XZ,ZERO_INTEGER)
-      call DiscretizationLocalToGlobal(discretization,field%work_loc, &
-                                       global_vec,ONEDOF)
-      call VecView(global_vec,viewer,ierr);CHKERRQ(ierr)
-
-      call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
-                                   field%work_loc,PERMEABILITY_XY,ZERO_INTEGER)
-      call DiscretizationLocalToGlobal(discretization,field%work_loc, &
-                                       global_vec,ONEDOF)
-      call VecView(global_vec,viewer,ierr);CHKERRQ(ierr)
-
-      call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
-                                   field%work_loc,PERMEABILITY_YZ,ZERO_INTEGER)
-      call DiscretizationLocalToGlobal(discretization,field%work_loc, &
-                                       global_vec,ONEDOF)
-      call VecView(global_vec,viewer,ierr);CHKERRQ(ierr)
-
-      call VecView(field%flow_xx_faces, viewer, ierr);CHKERRQ(ierr)
-    end if
-
+  
   endif
   
   if (global_vec /= 0) then
@@ -246,8 +218,7 @@ subroutine RestartFlowProcessModel(viewer,realization)
   use Global_module
   use Material_module
   use Variables_module, only : POROSITY, PERMEABILITY_X, PERMEABILITY_Y, &
-                               PERMEABILITY_Z, PERMEABILITY_XY, &
-                               PERMEABILITY_YZ, PERMEABILITY_XZ, STATE
+                               PERMEABILITY_Z, STATE
   
   implicit none
 
@@ -328,35 +299,6 @@ subroutine RestartFlowProcessModel(viewer,realization)
                                       field%work_loc,ONEDOF)
     call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
                                   field%work_loc,PERMEABILITY_Z,ZERO_INTEGER)
-    
-    if (grid%itype == STRUCTURED_GRID_MIMETIC) then
-      if (option%iflowmode /= RICHARDS_MODE) then
-        option%io_buffer = 'Restart of mimetic not set up for outside Richards.'
-        call printErrMsg(option)
-      endif
-
-      call VecLoad(global_vec,viewer,ierr);CHKERRQ(ierr)
-      call DiscretizationGlobalToLocal(discretization,global_vec, &
-                                       field%work_loc,ONEDOF)
-      call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
-                                   field%work_loc,PERMEABILITY_XZ,ZERO_INTEGER)
-      call VecLoad(global_vec,viewer,ierr);CHKERRQ(ierr)
-      call DiscretizationGlobalToLocal(discretization,global_vec, &
-                                       field%work_loc,ONEDOF)
-      call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
-                                   field%work_loc,PERMEABILITY_XY,ZERO_INTEGER)
-      call VecLoad(global_vec,viewer,ierr);CHKERRQ(ierr)
-      call DiscretizationGlobalToLocal(discretization,global_vec, &
-                                       field%work_loc,ONEDOF)
-      call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
-                                   field%work_loc,PERMEABILITY_YZ,ZERO_INTEGER)
-
-      call VecLoad(field%flow_xx_faces, viewer,ierr);CHKERRQ(ierr)
-      call DiscretizationGlobalToLocalLP(discretization, field%flow_xx_faces, &
-                                         field%flow_xx_loc_faces, NFLOWDOF)
-      call VecCopy(field%flow_xx_faces,field%flow_yy_faces,ierr);CHKERRQ(ierr)
-    end if
-    
   endif
   
   if (global_vec /= 0) then

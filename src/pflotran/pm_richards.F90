@@ -65,6 +65,43 @@ end function PMRichardsCreate
 
 ! ************************************************************************** !
 
+subroutine PMRichardsSetupSolvers(this,solver)
+  ! 
+  ! Sets up SNES solvers.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/03/14
+
+  use Richards_module, only : RichardsCheckUpdatePre, RichardsCheckUpdatePost
+  use Solver_module
+  
+  implicit none
+  
+  class(pm_subsurface_type) :: this
+  type(solver_type) :: solver
+  
+  SNESLineSearch :: linesearch
+  PetscErrorCode :: ierr
+  
+  call PMSubsurfaceSetupSolvers(this,solver)
+
+  call SNESGetLineSearch(solver%snes, linesearch, ierr);CHKERRQ(ierr)
+  if (dabs(this%option%pressure_dampening_factor) > 0.d0 .or. &
+      dabs(this%option%saturation_change_limit) > 0.d0) then
+    call SNESLineSearchSetPreCheck(linesearch, &
+                                   RichardsCheckUpdatePre, &
+                                   this%realization,ierr);CHKERRQ(ierr)
+  endif
+  if (solver%check_post_convergence) then
+    call SNESLineSearchSetPostCheck(linesearch, &
+                                    RichardsCheckUpdatePost, &
+                                    this%realization,ierr);CHKERRQ(ierr)
+  endif
+  
+end subroutine PMRichardsSetupSolvers
+
+! ************************************************************************** !
+
 subroutine PMRichardsInitializeTimestep(this)
   ! 
   ! Should not need this as it is called in PreSolve.
@@ -79,13 +116,14 @@ subroutine PMRichardsInitializeTimestep(this)
   
   class(pm_richards_type) :: this
 
-  call PMSubsurfaceInitializeTimestep(this)
+  call PMSubsurfaceInitializeTimestepA(this)
 
   if (this%option%print_screen_flag) then
-    write(*,'(/,2("=")," RICHARDS FLOW ",62("="))')
+    write(*,'(/,2("=")," RICHARDS FLOW ",63("="))')
   endif
   
   call RichardsInitializeTimestep(this%realization)
+  call PMSubsurfaceInitializeTimestepB(this)
   
 end subroutine PMRichardsInitializeTimestep
 
@@ -117,7 +155,7 @@ end subroutine PMRichardsPostSolve
 
 ! ************************************************************************** !
 
-subroutine PMRichardsUpdateTimestep(this,dt,dt_max,iacceleration, &
+subroutine PMRichardsUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
                                     num_newton_iterations,tfac)
   ! 
   ! Author: Glenn Hammond
@@ -128,7 +166,7 @@ subroutine PMRichardsUpdateTimestep(this,dt,dt_max,iacceleration, &
   
   class(pm_richards_type) :: this
   PetscReal :: dt
-  PetscReal :: dt_max
+  PetscReal :: dt_min,dt_max
   PetscInt :: iacceleration
   PetscInt :: num_newton_iterations
   PetscReal :: tfac(:)
@@ -166,7 +204,7 @@ subroutine PMRichardsUpdateTimestep(this,dt,dt_max,iacceleration, &
   if (dtt > dt_max) dtt = dt_max
   ! geh: There used to be code here that cut the time step if it is too
   !      large relative to the simulation time.  This has been removed.
-      
+  dtt = max(dtt,dt_min)
   dt = dtt
   
 end subroutine PMRichardsUpdateTimestep
@@ -190,12 +228,7 @@ subroutine PMRichardsResidual(this,snes,xx,r,ierr)
   PetscErrorCode :: ierr
   
   call PMSubsurfaceUpdatePropertiesNI(this)
-  select case(this%realization%discretization%itype)
-    case(STRUCTURED_GRID_MIMETIC)
-!      call RichardsResidualMFDLP(snes,xx,r,this%realization,ierr)
-    case default
-      call RichardsResidual(snes,xx,r,this%realization,ierr)
-  end select
+  call RichardsResidual(snes,xx,r,this%realization,ierr)
 
 end subroutine PMRichardsResidual
 
@@ -217,12 +250,7 @@ subroutine PMRichardsJacobian(this,snes,xx,A,B,ierr)
   Mat :: A, B
   PetscErrorCode :: ierr
   
-  select case(this%realization%discretization%itype)
-    case(STRUCTURED_GRID_MIMETIC)
-!      call RichardsJacobianMFDLP(snes,xx,A,B,this%realization,ierr)
-    case default
-      call RichardsJacobian(snes,xx,A,B,this%realization,ierr)
-  end select
+  call RichardsJacobian(snes,xx,A,B,this%realization,ierr)
 
 end subroutine PMRichardsJacobian
 

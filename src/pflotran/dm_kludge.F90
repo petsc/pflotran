@@ -1,6 +1,6 @@
 module DM_Kludge_module
   
-  use Unstructured_Grid_Aux_module, only : ugdm_type
+  use Grid_Unstructured_Aux_module, only : ugdm_type
   
   use PFLOTRAN_Constants_module
 

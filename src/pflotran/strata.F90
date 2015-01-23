@@ -27,6 +27,8 @@ module Strata_module
     type(surface_material_property_type),pointer :: surf_material_property
     PetscInt                                     :: isurf_material_property ! id of material in material array/list
     PetscInt :: surf_or_subsurf_flag
+    PetscReal :: start_time
+    PetscReal :: end_time
     type(strata_type), pointer :: next            ! pointer to next strata
   end type strata_type
   
@@ -46,8 +48,14 @@ module Strata_module
     module procedure StrataCreateFromStrata
   end interface
   
-  public :: StrataCreate, StrataDestroy, StrataInitList, &
-            StrataAddToList, StrataRead, StrataDestroyList
+  public :: StrataCreate, &
+            StrataDestroy, &
+            StrataInitList, &
+            StrataAddToList, &
+            StrataRead, &
+            StrataWithinTimePeriod, &
+            StrataEvolves, &
+            StrataDestroyList
   
 contains
 
@@ -77,6 +85,8 @@ function StrataCreate1()
   strata%iregion = 0
   strata%imaterial_property = 0
   strata%surf_or_subsurf_flag = SUBSURFACE
+  strata%start_time = UNINITIALIZED_DOUBLE
+  strata%end_time = UNINITIALIZED_DOUBLE
 
   nullify(strata%region)
   nullify(strata%material_property)
@@ -115,6 +125,8 @@ function StrataCreateFromStrata(strata)
   new_strata%realization_dependent = strata%realization_dependent
   new_strata%region_name = strata%region_name
   new_strata%iregion = strata%iregion
+  new_strata%start_time = strata%start_time
+  new_strata%end_time = strata%end_time
   ! keep these null
   nullify(new_strata%region)
   nullify(new_strata%material_property)
@@ -161,6 +173,7 @@ subroutine StrataRead(strata,input,option)
   use Input_Aux_module
   use Option_module
   use String_module
+  use Units_module
   
   implicit none
   
@@ -170,6 +183,7 @@ subroutine StrataRead(strata,input,option)
   
   character(len=MAXWORDLENGTH) :: keyword
   character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word
 
   input%ierr = 0
   do
@@ -196,6 +210,24 @@ subroutine StrataRead(strata,input,option)
         endif
         strata%material_property_name = trim(string)
         strata%material_property_filename = string
+      case('START_TIME')
+        call InputReadDouble(input,option,strata%start_time)
+        call InputErrorMsg(input,option,'start time','STRATA')
+        ! read units, if present
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          strata%start_time = strata%start_time * &
+                              UnitsConvertToInternal(word,option)
+        endif
+      case('END_TIME')
+        call InputReadDouble(input,option,strata%end_time)
+        call InputErrorMsg(input,option,'end time','STRATA')
+        ! read units, if present
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          strata%end_time = strata%end_time * &
+                              UnitsConvertToInternal(word,option)
+        endif
       case('INACTIVE')
         strata%active = PETSC_FALSE
       case default
@@ -204,8 +236,21 @@ subroutine StrataRead(strata,input,option)
         call printErrMsg(option)
     end select 
   
-  enddo  
-
+  enddo
+  
+  if ((Initialized(strata%start_time) .and. &
+       Uninitialized(strata%end_time)) .or. &
+      (Uninitialized(strata%start_time) .and. &
+       Initialized(strata%end_time))) then
+    option%io_buffer = &
+      'Both START_TIME and END_TIME must be set for STRATA with region "' // &
+      trim(strata%region_name) // '".'
+    call printErrMsg(option)
+  endif
+  if (Initialized(strata%start_time)) then
+    option%flow%transient_porosity = PETSC_TRUE
+  endif
+  
 end subroutine StrataRead
 
 ! ************************************************************************** !
@@ -230,6 +275,60 @@ subroutine StrataAddToList(new_strata,list)
   list%last => new_strata
   
 end subroutine StrataAddToList
+
+! ************************************************************************** !
+
+function StrataWithinTimePeriod(strata,time)
+  ! 
+  ! Determines whether the strata is defined for the time specified.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/07/14
+  ! 
+  implicit none
+
+  type(strata_type) :: strata
+  PetscReal :: time
+  
+  PetscBool :: StrataWithinTimePeriod
+  
+  StrataWithinTimePeriod = PETSC_TRUE
+  if (Initialized(strata%start_time)) then
+    StrataWithinTimePeriod = (time >= strata%start_time - 1.d0 .and. &
+                              time < strata%end_time - 1.d0)
+  endif
+  
+end function StrataWithinTimePeriod
+
+! ************************************************************************** !
+
+function StrataEvolves(strata_list)
+  ! 
+  ! Determines whether the strata is defined for the time specified.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/07/14
+  ! 
+  implicit none
+
+  type(strata_list_type) :: strata_list
+  
+  type(strata_type), pointer :: strata
+
+  PetscBool :: StrataEvolves
+  
+  StrataEvolves = PETSC_FALSE
+  strata => strata_list%first
+  do 
+    if (.not.associated(strata)) exit
+    if (Initialized(strata%start_time) .or. Initialized(strata%end_time)) then
+      StrataEvolves = PETSC_TRUE
+      exit
+    endif
+    strata => strata%next
+  enddo
+  
+end function StrataEvolves
 
 ! ************************************************************************** !
 

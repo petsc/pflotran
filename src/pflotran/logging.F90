@@ -54,6 +54,8 @@ module Logging_module
     PetscLogEvent :: event_region_read_ascii
     PetscLogEvent :: event_cell_indx_int_read_hdf5
     PetscLogEvent :: event_cell_indx_real_read_hdf5
+    PetscLogEvent :: event_dataset_gridded_hdf5_read
+    PetscLogEvent :: event_dataset_map_hdf5_read
 
     PetscLogEvent :: event_output_tecplot
     PetscLogEvent :: event_output_hdf5
@@ -96,15 +98,6 @@ module Logging_module
     PetscLogEvent :: event_rt_auxvars_bc
     
     PetscLogEvent :: event_mass_balance
-
-#ifdef DASVYAT
-
-    PetscLogEvent :: event_flow_residual_mfd1
-    PetscLogEvent :: event_flow_residual_mfd2
-    PetscLogEvent :: event_flow_flux_mfd
-    PetscLogEvent :: event_flow_rhs_mfd
-
-#endif
 
     PetscBool :: setup_complete
 
@@ -249,6 +242,14 @@ subroutine LoggingCreate()
                              logging%class_pflotran, &
                              logging%event_cell_indx_real_read_hdf5, &
                              ierr);CHKERRQ(ierr)
+  call PetscLogEventRegister('DatasetGriddedHDF5Read', &
+                             logging%class_pflotran, &
+                             logging%event_dataset_gridded_hdf5_read, &
+                             ierr);CHKERRQ(ierr)
+  call PetscLogEventRegister('DatasetMapHDF5Read', &
+                             logging%class_pflotran, &
+                             logging%event_dataset_map_hdf5_read, &
+                             ierr);CHKERRQ(ierr)
 
   call PetscLogEventRegister('OutputTecplot', &
                              logging%class_pflotran, &
@@ -381,27 +382,6 @@ subroutine LoggingCreate()
                              logging%class_pflotran, &
                              logging%event_mass_balance,ierr);CHKERRQ(ierr)
 
-#ifdef DASVYAT
-  
-  call PetscLogEventRegister('MFD_Residual1', &
-                             logging%class_pflotran, &
-                             logging%event_flow_residual_mfd1,  &
-                             ierr);CHKERRQ(ierr)
-  
-  
-  call PetscLogEventRegister('MFD_Residual2', &
-                             logging%class_pflotran, &
-                             logging%event_flow_residual_mfd2,  &
-                             ierr);CHKERRQ(ierr)
-
-  call PetscLogEventRegister('MFD_Flux', &
-                             logging%class_pflotran, &
-                             logging%event_flow_flux_mfd, ierr);CHKERRQ(ierr)
-  call PetscLogEventRegister('MFD_Rhs', &
-                             logging%class_pflotran, &
-                             logging%event_flow_rhs_mfd, ierr);CHKERRQ(ierr)
-#endif
-  
 end subroutine LoggingCreate
 
 ! ************************************************************************** !

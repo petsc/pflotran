@@ -385,7 +385,6 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
                              indices,num_indices,real_array)
   ! 
   ! Read in local real values from hdf5 global file
-  ! TODO(geh): this is only used by general_grid, which should be deprecated.
   ! 
   ! Author: Glenn Hammond
   ! Date: 09/21/07
@@ -1806,7 +1805,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
 !     works for groups.  Therefore, we need a function scorpio_dataset_exists().!     Commenting out for now.
 !  call h5lexists_f(grp_id2,string,grp_exists,hdf5_err)
   grp_exists = PETSC_TRUE !geh: remove when h5lexists_f is resolved.
-  if(grp_exists) then
+  if (grp_exists) then
     option%io_buffer = 'Reading dataset: ' // trim(string)
     call printMsg(option)
     call HDF5ReadIntegerArray(option,file_id,string, &
@@ -1885,7 +1884,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   string = "Face Ids"
   ! Check if the region dataset has "Face Ids" group
   call h5lexists_f(grp_id2,string,grp_exists,hdf5_err)
-  if(grp_exists) then
+  if (grp_exists) then
     option%io_buffer = 'Reading dataset: ' // trim(string)
     call printMsg(option)
     call HDF5ReadIntegerArray(option,grp_id2,string, &
@@ -1945,7 +1944,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
   use Region_module
   use Patch_module
   use HDF5_Aux_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Cell_module
   use Utility_module, only : DeallocateArray
   
   implicit none
@@ -2076,7 +2075,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
     ! It is assumed that cell ids in the HDF5 are 1-based. Converting them to
     ! 0-based
     do ii = 1,region%num_cells
-      if(int_buffer_1d(ii) < 1 ) then
+      if (int_buffer_1d(ii) < 1 ) then
         write(option%io_buffer,'("Cell ids in the HDF5 for region less than 1")')
         call printErrMsg(option)
       endif
@@ -2158,7 +2157,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
        ! allocate array to store vertices for each cell
        region%def_type = DEFINED_BY_SIDESET_UGRID
        allocate(sideset%face_vertices(MAX_VERT_PER_FACE,sideset%nfaces))
-       sideset%face_vertices = -999
+       sideset%face_vertices = UNINITIALIZED_INTEGER
   
        do ii = 1,sideset%nfaces
         do jj = 2,int_buffer_2d(1,ii)+1

@@ -71,9 +71,6 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: X_DIRECTION = 1
   PetscInt, parameter, public :: Y_DIRECTION = 2
   PetscInt, parameter, public :: Z_DIRECTION = 3
-  PetscInt, parameter, public :: XY_DIRECTION = 4
-  PetscInt, parameter, public :: XZ_DIRECTION = 5
-  PetscInt, parameter, public :: YZ_DIRECTION = 6
   PetscInt, parameter, public :: LOWER = 1
   PetscInt, parameter, public :: UPPER = 2
   
@@ -141,6 +138,7 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: HET_ENERGY_RATE_SS = 20
   PetscInt, parameter, public :: HET_SURF_SEEPAGE_BC = 21
   PetscInt, parameter, public :: WELL_SS = 100
+  PetscInt, parameter, public :: SPILLOVER_BC = 22
   
   ! source/sink scaling options
   PetscInt, parameter, public :: SCALE_BY_PERM = 1
@@ -205,9 +203,6 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: KINEMATIC_WAVE = 1
   PetscInt, parameter, public :: DIFFUSION_WAVE = 2
   
-  PetscInt, parameter, public :: TWO_POINT_FLUX = 0
-  PetscInt, parameter, public :: LSM_FLUX       = 1
-
   PetscReal, parameter, public :: MIN_SURFACE_WATER_HEIGHT = 1.0d-14
 
   ! print secondary continuum variable ids
@@ -225,11 +220,9 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: NULL_GRID = 0
   PetscInt, parameter, public :: STRUCTURED_GRID = 1
   PetscInt, parameter, public :: UNSTRUCTURED_GRID = 2
-  PetscInt, parameter, public :: STRUCTURED_GRID_MIMETIC = 3
-  PetscInt, parameter, public :: IMPLICIT_UNSTRUCTURED_GRID = 4
-  PetscInt, parameter, public :: EXPLICIT_UNSTRUCTURED_GRID = 5
-  PetscInt, parameter, public :: UNSTRUCTURED_GRID_MIMETIC = 6
-  PetscInt, parameter, public :: POLYHEDRA_UNSTRUCTURED_GRID = 7
+  PetscInt, parameter, public :: IMPLICIT_UNSTRUCTURED_GRID = 3
+  PetscInt, parameter, public :: EXPLICIT_UNSTRUCTURED_GRID = 4
+  PetscInt, parameter, public :: POLYHEDRA_UNSTRUCTURED_GRID = 5
   PetscInt, parameter, public :: ONE_DIM_GRID = 1
   PetscInt, parameter, public :: TWO_DIM_GRID = 2
   PetscInt, parameter, public :: THREE_DIM_GRID = 3
@@ -260,7 +253,132 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public:: HARMONIC = 2
   PetscInt, parameter, public:: DYNAMIC_HARMONIC = 3
 
+  ! uninitialized values
+  PetscInt, parameter, public :: UNINITIALIZED_INTEGER = -999
+  PetscReal, parameter, public :: UNINITIALIZED_DOUBLE = -999.d0
+  
   ! Dummy value
-  PetscReal, parameter, public :: DUMMY_VALUE = -999.d0
+  PetscReal, parameter, public :: DUMMY_VALUE = UNINITIALIZED_DOUBLE
+  
+  interface Uninitialized
+    module procedure UninitializedInteger
+    module procedure UninitializedDouble
+  end interface
+  
+  interface Initialized
+    module procedure InitializedInteger
+    module procedure InitializedDouble
+  end interface
+  
+  public :: Initialized, &
+            Uninitialized, &
+            UninitializedMessage
+  
+contains
+
+! ************************************************************************** !
+
+function InitializedInteger(value)
+  ! 
+  ! Tests whether a variable is initialized based orginally being set to
+  ! the value UNINITIALIZED_INTEGER
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/29/14
+  !
+  implicit none
+  
+  PetscInt :: value
+  PetscBool :: InitializedInteger
+  
+  InitializedInteger = .not.Uninitialized(value)
+  
+end function InitializedInteger
+
+
+! ************************************************************************** !
+
+function UninitializedInteger(value)
+  ! 
+  ! Tests whether a variable is uninitialized based orginally being set to
+  ! the value UNINITIALIZED_INTEGER
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/29/14
+  !
+  implicit none
+  
+  PetscInt :: value
+  PetscBool :: UninitializedInteger
+  
+  UninitializedInteger = (value == UNINITIALIZED_INTEGER)
+  
+end function UninitializedInteger
+
+! ************************************************************************** !
+
+function InitializedDouble(value)
+  ! 
+  ! Tests whether a variable is initialized based orginally being set to
+  ! the value UNINITIALIZED_INTEGER
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/29/14
+  !
+  implicit none
+  
+  PetscReal :: value
+  PetscBool :: InitializedDouble
+
+  InitializedDouble = .not.Uninitialized(value)
+  
+end function InitializedDouble
+
+! ************************************************************************** !
+
+function UninitializedDouble(value)
+  ! 
+  ! Tests whether a variable is uninitialized based orginally being set to
+  ! the value UNINITIALIZED_INTEGER
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/29/14
+  !
+  implicit none
+  
+  PetscReal :: value
+  PetscBool :: UninitializedDouble
+
+  UninitializedDouble = (dabs(value-UNINITIALIZED_DOUBLE) < 1.d-20)
+  
+end function UninitializedDouble
+
+! ************************************************************************** !
+
+function UninitializedMessage(variable_name,routine_name)
+  ! 
+  ! Tests whether a variable is uninitialized based orginally being set to
+  ! the value UNINITIALIZED_INTEGER
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/29/14
+  !
+  implicit none
+  
+  character(len=*) :: variable_name
+  character(len=*) :: routine_name
+  
+  character(len=MAXSTRINGLENGTH) :: UninitializedMessage
+  
+  if (len_trim(routine_name) > 1) then
+    UninitializedMessage = trim(variable_name) // &
+                           ' uninitialized in ' // &
+                           trim(routine_name) // '.'
+  else
+    UninitializedMessage = trim(variable_name) // &
+                           ' uninitialized.'
+  endif
+  
+end function UninitializedMessage
 
 end module PFLOTRAN_Constants_module

@@ -144,7 +144,7 @@ subroutine OutputSurface(surf_realization,realization,plot_flag, &
   call OutputSurfaceAvegVars(surf_realization,realization)
 
   ! Increment the plot number
-  if(plot_flag) then
+  if (plot_flag) then
     surf_realization%output_option%plot_number = &
       surf_realization%output_option%plot_number + 1
   endif
@@ -168,7 +168,7 @@ subroutine OutputTecplotFEQUAD(surf_realization,realization)
   use Realization_class, only : realization_type
   use Discretization_module
   use Grid_module
-  use Unstructured_Grid_Aux_module
+  use Grid_Unstructured_Aux_module
   use Option_module
   use Surface_Field_module
   use Patch_module
@@ -358,8 +358,7 @@ subroutine OutputWriteTecplotZoneHeader(fid,surf_realization,variable_count, &
   string2 = ''
   select case(tecplot_format)
     case (TECPLOT_POINT_FORMAT)
-      if ((surf_realization%discretization%itype == STRUCTURED_GRID).or. &
-          (surf_realization%discretization%itype == STRUCTURED_GRID_MIMETIC)) then
+      if (surf_realization%discretization%itype == STRUCTURED_GRID) then
         string2 = ', I=' // &
                   trim(StringFormatInt(grid%structured_grid%nx)) // &
                   ', J=' // &
@@ -372,8 +371,7 @@ subroutine OutputWriteTecplotZoneHeader(fid,surf_realization,variable_count, &
       string2 = trim(string2) // &
               ', DATAPACKING=POINT'
     case default !(TECPLOT_BLOCK_FORMAT,TECPLOT_FEBRICK_FORMAT)
-      if ((surf_realization%discretization%itype == STRUCTURED_GRID).or. &
-          (surf_realization%discretization%itype == STRUCTURED_GRID_MIMETIC)) then
+      if (surf_realization%discretization%itype == STRUCTURED_GRID) then
         string2 = ', I=' // &
                   trim(StringFormatInt(grid%structured_grid%nx+1)) // &
                   ', J=' // &
@@ -415,7 +413,7 @@ subroutine WriteTecplotUGridElements(fid, &
 
   use Surface_Realization_class
   use Grid_module
-  use Unstructured_Grid_Aux_module
+  use Grid_Unstructured_Aux_module
   use Option_module
   use Patch_module
   
@@ -457,7 +455,7 @@ subroutine WriteTecplotUGridElements(fid, &
   call VecGetLocalSize(natural_vec,natural_vec_local_size,ierr);CHKERRQ(ierr)
   call VecGetArrayF90(natural_vec,vec_ptr,ierr);CHKERRQ(ierr)
   do ii = 1,natural_vec_local_size
-    if(vec_ptr(ii) /= -999) & 
+    if (Initialized(vec_ptr(ii))) & 
       surface_natural_vec_local_size = surface_natural_vec_local_size + 1
   enddo
   call VecRestoreArrayF90(natural_vec,vec_ptr,ierr);CHKERRQ(ierr)
@@ -497,7 +495,7 @@ subroutine WriteTecplotUGridVertices(fid,surf_realization)
 
   use Surface_Realization_class
   use Grid_module
-  use Unstructured_Grid_Aux_module
+  use Grid_Unstructured_Aux_module
   use Option_module
   use Patch_module
   use Variables_module
@@ -592,7 +590,7 @@ subroutine OutputHydrograph(surf_realization)
   endif
 
 
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do
     if (.not.associated(boundary_condition)) exit
@@ -641,7 +639,7 @@ subroutine OutputHydrograph(surf_realization)
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
       !patch%boundary_velocities(1,sum_connection)
-      sum_flux = sum_flux + patch%surf_boundary_fluxes(RICHARDS_PRESSURE_DOF,sum_connection)
+      sum_flux = sum_flux + patch%boundary_flow_fluxes(RICHARDS_PRESSURE_DOF,sum_connection)
     enddo
     
     call MPI_Reduce(sum_flux,sum_flux_global, &
@@ -931,7 +929,7 @@ subroutine OutputSurfaceHDF5UGridXDMF(surf_realization,realization, &
         cur_variable => cur_variable%next
       enddo
     case(AVERAGED_VARS)
-      if(associated(output_option%aveg_output_variable_list%first)) then
+      if (associated(output_option%aveg_output_variable_list%first)) then
         cur_variable => output_option%aveg_output_variable_list%first
         do ivar = 1,output_option%aveg_output_variable_list%nvars
           string = 'Aveg. ' // cur_variable%name
@@ -955,19 +953,19 @@ subroutine OutputSurfaceHDF5UGridXDMF(surf_realization,realization, &
   end select
 
   !Output flowrates
-  if(output_option%print_hdf5_mass_flowrate.or. &
+  if (output_option%print_hdf5_mass_flowrate.or. &
      output_option%print_hdf5_energy_flowrate.or. &
      output_option%print_hdf5_aveg_mass_flowrate.or. &
      output_option%print_hdf5_aveg_energy_flowrate) then
     select case (var_list_type)
       case (INSTANTANEOUS_VARS)
         call OutputSurfaceGetFlowrates(surf_realization)
-        if(output_option%print_hdf5_mass_flowrate.or.&
+        if (output_option%print_hdf5_mass_flowrate.or.&
            output_option%print_hdf5_energy_flowrate) then
           call WriteHDF5SurfaceFlowratesUGrid(surf_realization,grp_id,var_list_type)
         endif
       case (AVERAGED_VARS)
-        if(output_option%print_hdf5_aveg_mass_flowrate.or.&
+        if (output_option%print_hdf5_aveg_mass_flowrate.or.&
            output_option%print_hdf5_aveg_energy_flowrate) then
           call WriteHDF5SurfaceFlowratesUGrid(surf_realization,grp_id,var_list_type)
         endif
@@ -1014,7 +1012,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF(surf_realization,realization, &
   use Realization_class
   use Grid_module
   use Option_module
-  use Unstructured_Grid_Aux_module
+  use Grid_Unstructured_Aux_module
   use Variables_module
   
   implicit none
@@ -1202,7 +1200,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF(surf_realization,realization, &
 
   vert_count=0
   do i=1,local_size*FOUR_INTEGER
-    if(int(vec_ptr(i)) >0 ) vert_count=vert_count+1
+    if (int(vec_ptr(i)) >0 ) vert_count=vert_count+1
   enddo
   vert_count=vert_count+surf_grid%nlmax
 
@@ -1257,7 +1255,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF(surf_realization,realization, &
   do i=1,local_size
     nverts=0
     do j=1,FOUR_INTEGER
-      if(vec_ptr((i-1)*FOUR_INTEGER+j)>0) nverts=nverts+1
+      if (vec_ptr((i-1)*FOUR_INTEGER+j)>0) nverts=nverts+1
     enddo
     vert_count=vert_count+1
     select case (nverts)
@@ -1268,7 +1266,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF(surf_realization,realization, &
     end select
 
     do j=1,FOUR_INTEGER
-      if(vec_ptr((i-1)*FOUR_INTEGER+j)>0) then
+      if (vec_ptr((i-1)*FOUR_INTEGER+j)>0) then
         vert_count=vert_count+1
         int_array(vert_count) = INT(vec_ptr((i-1)*FOUR_INTEGER+j))-1
       endif
@@ -1599,20 +1597,20 @@ subroutine OutputSurfaceAvegVars(surf_realization,realization)
   surf_field => surf_realization%surf_field
 
   ! Return back if called at the beginning of simulation
-  if(option%time<1.d-10) return
+  if (option%time<1.d-10) return
   
   dtime = option%time-output_option%aveg_var_time
   output_option%aveg_var_dtime = output_option%aveg_var_dtime + dtime
   output_option%aveg_var_time = output_option%aveg_var_time + dtime
   
-  if(abs(output_option%aveg_var_dtime-output_option%periodic_output_time_incr)<1.d0) then
+  if (abs(output_option%aveg_var_dtime-output_option%periodic_output_time_incr)<1.d0) then
     aveg_plot_flag=PETSC_TRUE
   else
     aveg_plot_flag=PETSC_FALSE
   endif
 
-  if(.not.associated(output_option%aveg_output_variable_list%first)) then
-    if(output_option%print_hdf5_aveg_mass_flowrate.or. &
+  if (.not.associated(output_option%aveg_output_variable_list%first)) then
+    if (output_option%print_hdf5_aveg_mass_flowrate.or. &
        output_option%print_hdf5_aveg_energy_flowrate) then
       ! There is a possibility to output average-flowrates, thus
       ! call output subroutine depending on mesh type
@@ -1646,7 +1644,7 @@ subroutine OutputSurfaceAvegVars(surf_realization,realization)
                             ierr);CHKERRQ(ierr)
 
     ! Check if it is time to output the temporally average variable
-    if(aveg_plot_flag) then
+    if (aveg_plot_flag) then
 
       ! Divide vector values by 'time'
       call VecGetArrayF90(surf_field%avg_vars_vec(ivar),aval_p, &
@@ -1660,7 +1658,7 @@ subroutine OutputSurfaceAvegVars(surf_realization,realization)
     cur_variable => cur_variable%next
   enddo
 
-  if(aveg_plot_flag) then
+  if (aveg_plot_flag) then
 
     if (surf_realization%output_option%print_hdf5) then
       call PetscTime(tstart,ierr);CHKERRQ(ierr)
@@ -1710,6 +1708,7 @@ subroutine OutputSurfaceVariableRead(input,option,output_variable_list)
   
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: name, units
+  type(output_variable_type), pointer :: output_variable  
 
   do
     call InputReadPflotranString(input,option)
@@ -1732,6 +1731,14 @@ subroutine OutputSurfaceVariableRead(input,option,output_variable_list)
         units = 'C'
         call OutputVariableAddToList(output_variable_list,name,OUTPUT_GENERIC,units, &
                                   TEMPERATURE)
+      case ('PROCESS_ID')
+        units = ''
+        name = 'Process ID'
+        output_variable => OutputVariableCreate(name,OUTPUT_DISCRETE, &
+                                                units,PROCESS_ID)
+        output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
+        output_variable%iformat = 1 ! integer
+        call OutputVariableAddToList(output_variable_list,output_variable)
       case default
         option%io_buffer = 'Keyword: ' // trim(word) // &
                                  ' not recognized in VARIABLES.'
@@ -1807,8 +1814,8 @@ subroutine OutputSurfaceGetFlowrates(surf_realization)
   use Patch_module
   use Grid_module
   use Option_module
-  use Unstructured_Grid_Aux_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Aux_module
+  use Grid_Unstructured_Cell_module
   use Variables_module
   use Connection_module
   use Coupler_module
@@ -1911,26 +1918,26 @@ subroutine OutputSurfaceGetFlowrates(surf_realization)
       local_id_up = grid%nG2L(ghosted_id_up)
       local_id_dn = grid%nG2L(ghosted_id_dn)
       do iface_up = 1,MAX_FACE_PER_CELL_SURF
-        if(face_id==ugrid%cell_to_face_ghosted(iface_up,local_id_up)) exit
+        if (face_id==ugrid%cell_to_face_ghosted(iface_up,local_id_up)) exit
       enddo
       iface_dn=-1
-      if(local_id_dn>0) then
+      if (local_id_dn>0) then
         do iface_dn = 1,MAX_FACE_PER_CELL_SURF
-          if(face_id==ugrid%cell_to_face_ghosted(iface_dn,local_id_dn)) exit
+          if (face_id==ugrid%cell_to_face_ghosted(iface_dn,local_id_dn)) exit
         enddo
       endif
       
       do dof=1,option%nflowdof
         ! Save flowrate for iface_up of local_id_up cell using flowrate up-->dn
-        flowrates(dof,iface_up,local_id_up) = patch%surf_internal_fluxes(dof,sum_connection)
+        flowrates(dof,iface_up,local_id_up) = patch%internal_flow_fluxes(dof,sum_connection)
         vec_ptr((local_id_up-1)*offset + (dof-1)*MAX_FACE_PER_CELL_SURF + iface_up + 1) = &
-          patch%surf_internal_fluxes(dof,sum_connection)
+          patch%internal_flow_fluxes(dof,sum_connection)
 
-        if(iface_dn>0) then
+        if (iface_dn>0) then
           ! Save flowrate for iface_dn of local_id_dn cell using -ve flowrate up-->dn
-          flowrates(dof,iface_dn,local_id_dn) = -patch%surf_internal_fluxes(dof,sum_connection)
+          flowrates(dof,iface_dn,local_id_dn) = -patch%internal_flow_fluxes(dof,sum_connection)
           vec_ptr((local_id_dn-1)*offset + (dof-1)*MAX_FACE_PER_CELL_SURF + iface_dn + 1) = &
-            -patch%surf_internal_fluxes(dof,sum_connection)
+            -patch%internal_flow_fluxes(dof,sum_connection)
         endif
       enddo
       
@@ -1939,7 +1946,7 @@ subroutine OutputSurfaceGetFlowrates(surf_realization)
   enddo
 
   ! Boundary Flowrates Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0
   do 
     if (.not.associated(boundary_condition)) exit
@@ -1953,14 +1960,14 @@ subroutine OutputSurfaceGetFlowrates(surf_realization)
       ghosted_id_dn = cur_connection_set%id_dn(iconn)
       local_id_dn = grid%nG2L(ghosted_id_dn)
       do iface_dn = 1,MAX_FACE_PER_CELL_SURF
-        if(face_id==ugrid%cell_to_face_ghosted(iface_dn,local_id_dn)) exit
+        if (face_id==ugrid%cell_to_face_ghosted(iface_dn,local_id_dn)) exit
       enddo
 
       do dof=1,option%nflowdof
         ! Save flowrate for iface_dn of local_id_dn cell using -ve flowrate up-->dn
-        flowrates(dof,iface_dn,local_id_dn) = -patch%surf_boundary_fluxes(dof,sum_connection)
+        flowrates(dof,iface_dn,local_id_dn) = -patch%boundary_flow_fluxes(dof,sum_connection)
         vec_ptr((local_id_dn-1)*offset + (dof-1)*MAX_FACE_PER_CELL_SURF + iface_dn + 1) = &
-          -patch%surf_boundary_fluxes(dof,sum_connection)
+          -patch%boundary_flow_fluxes(dof,sum_connection)
       enddo
     enddo
     boundary_condition => boundary_condition%next
@@ -1982,7 +1989,7 @@ subroutine OutputSurfaceGetFlowrates(surf_realization)
   ! Copy the vectors
   vec_ptr2 = vec_ptr
   
-  if(output_option%print_hdf5_aveg_mass_flowrate.or. &
+  if (output_option%print_hdf5_aveg_mass_flowrate.or. &
     output_option%print_hdf5_aveg_energy_flowrate) then
 
     dtime = option%time-output_option%aveg_var_time
@@ -2019,8 +2026,8 @@ subroutine WriteHDF5SurfaceFlowratesUGrid(surf_realization,file_id,var_list_type
   use Patch_module
   use Grid_module
   use Option_module
-  use Unstructured_Grid_Aux_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Aux_module
+  use Grid_Unstructured_Cell_module
   use Variables_module
   use Connection_module
   use Coupler_module
@@ -2131,7 +2138,7 @@ subroutine WriteHDF5SurfaceFlowratesUGrid(surf_realization,file_id,var_list_type
       ndof=1
     case (TH_MODE)
       ndof=1
-      if(output_option%print_hdf5_mass_flowrate.and.output_option%print_hdf5_energy_flowrate) ndof = 2
+      if (output_option%print_hdf5_mass_flowrate.and.output_option%print_hdf5_energy_flowrate) ndof = 2
     case default
       option%io_buffer='FLOWRATE output not supported in this mode'
       call printErrMsg(option)
@@ -2163,14 +2170,14 @@ subroutine WriteHDF5SurfaceFlowratesUGrid(surf_realization,file_id,var_list_type
 
   do dof = 1,option%nflowdof
 
-    if(dof==1 .and. (.not.mass_flowrate)) exit
-    if(dof==2 .and. (.not.energy_flowrate)) exit
+    if (dof==1 .and. (.not.mass_flowrate)) exit
+    if (dof==2 .and. (.not.energy_flowrate)) exit
 
     select case(option%iflowmode)
       case(RICHARDS_MODE)
         string = "Mass_Flowrate [kg_s]" // CHAR(0)
       case(TH_MODE)
-        if(dof==1) then
+        if (dof==1) then
           string = "Mass_Flowrate [kg_s]" // CHAR(0)
         else
           string = "Energy_Flowrate [J_s]" // CHAR(0)
@@ -2180,7 +2187,7 @@ subroutine WriteHDF5SurfaceFlowratesUGrid(surf_realization,file_id,var_list_type
         call printErrMsg(option)
     end select
 
-    if(var_list_type==AVERAGED_VARS) string = 'Aveg_' // trim(string) // CHAR(0)
+    if (var_list_type==AVERAGED_VARS) string = 'Aveg_' // trim(string) // CHAR(0)
 
     ! memory space which is a 1D vector
     rank_mpi = 1

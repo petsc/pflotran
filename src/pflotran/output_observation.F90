@@ -15,12 +15,16 @@ module Output_Observation_module
   ! flags signifying the first time a routine is called during a given
   ! simulation
   PetscBool :: observation_first
+  PetscBool :: check_for_obs_points
   PetscBool :: secondary_observation_first
+  PetscBool :: secondary_check_for_obs_points
   PetscBool :: mass_balance_first
+  PetscBool :: integral_flux_first
 
   public :: OutputObservation, &
             OutputObservationInit, &
-            OutputMassBalance
+            OutputMassBalance, &
+            OutputIntegralFlux
             
 contains
 
@@ -40,14 +44,18 @@ subroutine OutputObservationInit(num_steps)
   
   PetscInt :: num_steps
   
+  check_for_obs_points = PETSC_TRUE
+  secondary_check_for_obs_points = PETSC_TRUE
   if (num_steps == 0) then
     observation_first = PETSC_TRUE
     secondary_observation_first = PETSC_TRUE
     mass_balance_first = PETSC_TRUE
+    integral_flux_first = PETSC_TRUE
   else
     observation_first = PETSC_FALSE
-    secondary_observation_first = PETSC_TRUE
+    secondary_observation_first = PETSC_FALSE
     mass_balance_first = PETSC_FALSE
+    integral_flux_first = PETSC_FALSE
   endif
 
 end subroutine OutputObservationInit
@@ -78,6 +86,7 @@ subroutine OutputObservation(realization_base)
 !      realization_base%output_option%print_hdf5) then
   if (realization_base%output_option%print_observation) then
     call OutputObservationTecplotColumnTXT(realization_base)
+    call OutputIntegralFlux(realization_base)
     if (realization_base%option%use_mc) then
       call OutputObservationTecplotSecTXT(realization_base)
     endif
@@ -117,7 +126,6 @@ subroutine OutputObservationTecplotColumnTXT(realization_base)
   type(patch_type), pointer :: patch  
   type(output_option_type), pointer :: output_option
   type(observation_type), pointer :: observation
-  PetscBool, save :: check_for_observation_points = PETSC_TRUE
   PetscBool, save :: open_file = PETSC_FALSE
   PetscInt :: local_id
   PetscInt :: icolumn
@@ -131,9 +139,9 @@ subroutine OutputObservationTecplotColumnTXT(realization_base)
   field => realization_base%field
   output_option => realization_base%output_option
   
-  if (check_for_observation_points) then
+  if (check_for_obs_points) then
     open_file = PETSC_FALSE
-    observation => patch%observation%first
+    observation => patch%observation_list%first
     do
       if (.not.associated(observation)) exit
       if (observation%itype == OBSERVATION_SCALAR .or. &
@@ -144,7 +152,7 @@ subroutine OutputObservationTecplotColumnTXT(realization_base)
       endif
       observation => observation%next
     enddo
-    check_for_observation_points = PETSC_FALSE
+    check_for_obs_points = PETSC_FALSE
   endif
   
   
@@ -161,7 +169,7 @@ subroutine OutputObservationTecplotColumnTXT(realization_base)
       ! write title
       write(fid,'(a)',advance="no") ' "Time [' // trim(output_option%tunit) // &
         ']"'
-      observation => patch%observation%first
+      observation => patch%observation_list%first
 
       ! must initialize icolumn here so that icolumn does not restart with
       ! each observation point
@@ -208,7 +216,7 @@ subroutine OutputObservationTecplotColumnTXT(realization_base)
            position="append")
     endif
   
-    observation => patch%observation%first
+    observation => patch%observation_list%first
     write(fid,'(1es14.6)',advance="no") option%time/output_option%tconv
     do 
       if (.not.associated(observation)) exit
@@ -429,7 +437,6 @@ subroutine OutputObservationTecplotSecTXT(realization_base)
   type(patch_type), pointer :: patch  
   type(output_option_type), pointer :: output_option
   type(observation_type), pointer :: observation
-  PetscBool, save :: check_for_observation_points = PETSC_TRUE
   PetscBool, save :: open_file = PETSC_FALSE
   PetscInt :: local_id
   PetscInt :: icolumn
@@ -443,9 +450,9 @@ subroutine OutputObservationTecplotSecTXT(realization_base)
   field => realization_base%field
   output_option => realization_base%output_option
   
-  if (check_for_observation_points) then
+  if (secondary_check_for_obs_points) then
     open_file = PETSC_FALSE
-    observation => patch%observation%first
+    observation => patch%observation_list%first
     do
       if (.not.associated(observation)) exit
       if (observation%itype == OBSERVATION_SCALAR .or. &
@@ -456,7 +463,7 @@ subroutine OutputObservationTecplotSecTXT(realization_base)
       endif
       observation => observation%next
     enddo
-    check_for_observation_points = PETSC_FALSE
+    secondary_check_for_obs_points = PETSC_FALSE
   endif
   
   
@@ -473,7 +480,7 @@ subroutine OutputObservationTecplotSecTXT(realization_base)
       ! write title
       write(fid,'(a)',advance="no") ' "Time [' // trim(output_option%tunit) // &
         ']"'
-      observation => patch%observation%first
+      observation => patch%observation_list%first
 
       ! must initialize icolumn here so that icolumn does not restart with
       ! each observation point
@@ -517,7 +524,7 @@ subroutine OutputObservationTecplotSecTXT(realization_base)
            position="append")
     endif
   
-    observation => patch%observation%first
+    observation => patch%observation_list%first
     write(fid,'(1es14.6)',advance="no") option%time/output_option%tconv
     do 
       if (.not.associated(observation)) exit
@@ -908,7 +915,7 @@ subroutine WriteObservationDataForCoord(fid,realization_base,region)
   use Reaction_Aux_module
   use Variables_module
   
-  use Structured_Grid_module
+  use Grid_Structured_module
 
   implicit none
   
@@ -1096,7 +1103,7 @@ subroutine WriteObservationDataForBC(fid,realization_base,patch,connection_set)
       if (associated(connection_set)) then
         do iconn = 1, connection_set%num_connections
           sum_solute_flux(:) = sum_solute_flux(:) + &
-                               patch%boundary_fluxes(iphase,:,offset+iconn)* &
+                               patch%boundary_tran_fluxes(:,offset+iconn)* &
                                connection_set%area(iconn)
         enddo
       endif
@@ -1230,7 +1237,7 @@ function GetVelocityAtCell(fid,realization_base,local_id,iphase)
   enddo
 
   ! boundary velocities
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0
   do
     if (.not.associated(boundary_condition)) exit
@@ -1414,7 +1421,7 @@ function GetVelocityAtCoord(fid,realization_base,local_id,x,y,z,iphase)
   enddo
 
   ! boundary velocities
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0
   do
     if (.not.associated(boundary_condition)) exit
@@ -1555,6 +1562,265 @@ end subroutine WriteObservationSecondaryDataAtCell
 
 ! ************************************************************************** !
 
+subroutine OutputIntegralFlux(realization_base)
+  ! 
+  ! Print integral fluxes to Tecplot POINT format
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/21/14
+  ! 
+
+  use Realization_class, only : realization_type
+  use Realization_Base_class, only : realization_base_type
+  use Option_module
+  use Grid_module
+  use Patch_module
+  use Output_Aux_module
+  use Reaction_Aux_module
+  use Integral_Flux_module
+  use Utility_module
+
+  implicit none
+
+  class(realization_base_type), target :: realization_base
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(output_option_type), pointer :: output_option
+  type(reaction_type), pointer :: reaction
+
+  character(len=MAXSTRINGLENGTH) :: filename
+  character(len=MAXWORDLENGTH) :: word, units
+  character(len=MAXSTRINGLENGTH) :: string
+  type(integral_flux_type), pointer :: integral_flux
+  PetscReal :: flow_dof_scale(10)
+  PetscReal, allocatable :: array(:,:)
+  PetscReal, allocatable :: array_global(:,:)
+  PetscReal, allocatable :: instantaneous_array(:)
+  PetscInt, parameter :: fid = 86
+  PetscInt :: i, j
+  PetscInt :: istart, iend
+  PetscInt :: icol
+  PetscMPIInt :: int_mpi
+  PetscErrorCode :: ierr
+
+  patch => realization_base%patch
+  grid => patch%grid
+  option => realization_base%option
+  output_option => realization_base%output_option
+  reaction => realization_base%reaction
+
+  if (.not.associated(patch%integral_flux_list%first)) return
+
+  flow_dof_scale = 1.d0
+  select case(option%iflowmode)
+    case(RICHARDS_MODE)
+      flow_dof_scale(1) = FMWH2O
+    case(TH_MODE)
+      flow_dof_scale(1) = FMWH2O
+    case(MIS_MODE)
+      flow_dof_scale(1) = FMWH2O
+      flow_dof_scale(2) = FMWGLYC
+    case(G_MODE)
+      flow_dof_scale(1) = FMWH2O
+      flow_dof_scale(2) = FMWAIR
+    case(MPH_MODE,FLASH2_MODE,IMS_MODE)
+      flow_dof_scale(1) = FMWH2O
+      flow_dof_scale(2) = FMWCO2
+  end select
+
+  if (len_trim(output_option%plot_name) > 2) then
+    filename = trim(output_option%plot_name) // '-int.dat'
+  else
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
+               '-int.dat'
+  endif
+  
+  ! open file
+  if (option%myrank == option%io_rank) then
+
+!geh    option%io_buffer = '--> write tecplot mass balance file: ' // trim(filename)
+!geh    call printMsg(option)    
+
+    if (output_option%print_column_ids) then
+      icol = 1
+    else
+      icol = -1
+    endif
+  
+    if (integral_flux_first .or. .not.FileExists(filename)) then
+      open(unit=fid,file=filename,action="write",status="replace")
+
+      ! write header
+      write(fid,'(a)',advance="no") ' "Time [' // trim(output_option%tunit) // &
+        ']"'  
+      
+      if (option%iflowmode > 0) then
+        call OutputWriteToHeader(fid,'dt_flow',output_option%tunit,'',icol)
+      endif
+      
+      if (option%ntrandof > 0) then
+        call OutputWriteToHeader(fid,'dt_tran',output_option%tunit,'',icol)
+      endif
+      
+      integral_flux => patch%integral_flux_list%first
+      do
+        if (.not.associated(integral_flux)) exit
+        select case(option%iflowmode)
+          case(RICHARDS_MODE,TH_MODE,MIS_MODE,G_MODE,MPH_MODE,FLASH2_MODE, &
+               IMS_MODE)
+            string = trim(integral_flux%name) // ' Water'
+            call OutputWriteToHeader(fid,string,'kg','',icol)
+            units = 'kg/' // trim(output_option%tunit) // ''
+            string = trim(integral_flux%name) // ' Water'
+            call OutputWriteToHeader(fid,string,units,'',icol)
+        end select
+        select case(option%iflowmode)
+          case(MIS_MODE)
+            string = trim(integral_flux%name) // ' Glycol'
+            call OutputWriteToHeader(fid,string,'kg','',icol)
+            units = 'kg/' // trim(output_option%tunit) // ''
+            string = trim(integral_flux%name) // ' Glycol'
+            call OutputWriteToHeader(fid,string,units,'',icol)
+          case(G_MODE)
+            string = trim(integral_flux%name) // ' Air'
+            call OutputWriteToHeader(fid,string,'kg','',icol)
+            units = 'kg/' // trim(output_option%tunit) // ''
+            string = trim(integral_flux%name) // ' Air'
+            call OutputWriteToHeader(fid,string,units,'',icol)
+          case(MPH_MODE,FLASH2_MODE,IMS_MODE)
+            string = trim(integral_flux%name) // ' CO2'
+            call OutputWriteToHeader(fid,string,'kg','',icol)
+            units = 'kg/' // trim(output_option%tunit) // ''
+            string = trim(integral_flux%name) // ' CO2'
+            call OutputWriteToHeader(fid,string,units,'',icol)
+        end select
+        select case(option%iflowmode)
+          case(TH_MODE,MIS_MODE,G_MODE,MPH_MODE,FLASH2_MODE,IMS_MODE)
+            string = trim(integral_flux%name) // ' Energy'
+            call OutputWriteToHeader(fid,string,'MJ','',icol)
+            units = 'MJ/' // trim(output_option%tunit) // ''
+            string = trim(integral_flux%name) // ' Energy'
+            call OutputWriteToHeader(fid,string,units,'',icol)
+        end select
+        
+        if (option%ntrandof > 0) then
+          units = 'mol/' // trim(output_option%tunit) // ''
+          do i=1,reaction%naqcomp
+            if (reaction%primary_species_print(i)) then
+              string = trim(integral_flux%name) // ' ' // &
+                       trim(reaction%primary_species_names(i))
+              call OutputWriteToHeader(fid,string,'mol','',icol)
+              string = trim(integral_flux%name) // ' ' // &
+                       trim(reaction%primary_species_names(i))
+              call OutputWriteToHeader(fid,string,units,'',icol)
+            endif
+          enddo
+        endif
+        integral_flux => integral_flux%next
+      enddo
+      write(fid,'(a)') '' 
+    else
+      open(unit=fid,file=filename,action="write",status="old",position="append")
+    endif 
+  endif     
+
+100 format(100es16.8)
+110 format(100es16.8)
+
+  ! write time
+  if (option%myrank == option%io_rank) then
+    write(fid,100,advance="no") option%time/output_option%tconv
+  endif
+  
+  if (option%nflowdof > 0) then
+    if (option%myrank == option%io_rank) &
+      write(fid,100,advance="no") option%flow_dt/output_option%tconv
+  endif
+  if (option%ntrandof > 0) then
+    if (option%myrank == option%io_rank) &
+      write(fid,100,advance="no") option%tran_dt/output_option%tconv
+  endif
+  
+  allocate(array(option%nflowdof + option%ntrandof,2))
+  allocate(array_global(option%nflowdof + option%ntrandof,2))
+  allocate(instantaneous_array(max(option%nflowdof,option%ntrandof)))
+  integral_flux => patch%integral_flux_list%first
+  do
+    if (.not.associated(integral_flux)) exit
+    array = 0.d0
+    array_global = 0.d0
+    if (option%nflowdof > 0) then
+      istart = 1
+      iend = option%nflowdof
+      instantaneous_array = 0.d0
+      call IntegralFluxGetInstantaneous(integral_flux, &
+                                        patch%internal_flow_fluxes, &
+                                        patch%boundary_flow_fluxes, &
+                                        option%nflowdof, &
+                                        instantaneous_array,option)
+      array(istart:iend,1) = &
+        integral_flux%integral_value(istart:iend)
+      array(istart:iend,2) = &
+        instantaneous_array(1:option%nflowdof)
+    endif
+    if (option%ntrandof > 0) then
+      istart = option%nflowdof+1
+      iend = option%nflowdof+option%ntrandof
+      instantaneous_array = 0.d0
+      call IntegralFluxGetInstantaneous(integral_flux, &
+                                        patch%internal_tran_fluxes, &
+                                        patch%boundary_tran_fluxes, &
+                                        option%ntrandof, &
+                                        instantaneous_array,option)
+      array(istart:iend,1) = &
+        integral_flux%integral_value(istart:iend)
+      array(istart:iend,2) = &
+        instantaneous_array(1:option%ntrandof)
+    endif
+    int_mpi = size(array)
+    call MPI_Reduce(array,array_global, &
+                    int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                    option%io_rank,option%mycomm,ierr)
+    ! time units conversion
+    array_global(:,2) = array_global(:,2) * output_option%tconv
+    if (option%myrank == option%io_rank) then
+      if (option%nflowdof > 0) then
+        do i = 1, option%nflowdof
+          do j = 1, 2  ! 1 = integral, 2 = instantaneous
+            write(fid,110,advance="no") array_global(i,j)*flow_dof_scale(i)
+          enddo
+        enddo
+      endif
+      if (option%ntrandof > 0) then
+        istart = option%nflowdof
+        do i=1,reaction%naqcomp
+          do j = 1, 2  ! 1 = integral, 2 = instantaneous
+            if (reaction%primary_species_print(i)) then
+              write(fid,110,advance="no") array_global(istart+i,j)
+            endif
+          enddo
+        enddo
+      endif
+    endif
+    integral_flux => integral_flux%next
+  enddo
+  deallocate(array)
+  deallocate(array_global)
+  deallocate(instantaneous_array)
+  
+  if (option%myrank == option%io_rank) then
+    write(fid,'(a)') ''
+    close(fid)
+  endif
+  
+  integral_flux_first = PETSC_FALSE
+
+end subroutine OutputIntegralFlux
+
+! ************************************************************************** !
+
 subroutine OutputMassBalance(realization_base)
   ! 
   ! Print to Tecplot POINT format
@@ -1604,7 +1870,6 @@ subroutine OutputMassBalance(realization_base)
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXWORDLENGTH) :: word, units
   character(len=MAXSTRINGLENGTH) :: string
-  character(len=4) :: strcol
   PetscInt :: fid = 86
   PetscInt :: ios
   PetscInt :: i,icol
@@ -1741,7 +2006,7 @@ subroutine OutputMassBalance(realization_base)
         endif
       endif
       
-      coupler => patch%boundary_conditions%first
+      coupler => patch%boundary_condition_list%first
       bcs_done = PETSC_FALSE
       do
         if (.not.associated(coupler)) then
@@ -1749,8 +2014,8 @@ subroutine OutputMassBalance(realization_base)
             exit
           else
             bcs_done = PETSC_TRUE
-            if (associated(patch%source_sinks)) then
-              coupler => patch%source_sinks%first
+            if (associated(patch%source_sink_list)) then
+              coupler => patch%source_sink_list%first
               if (.not.associated(coupler)) exit
             else
               exit
@@ -1811,13 +2076,16 @@ subroutine OutputMassBalance(realization_base)
         if (option%ntrandof > 0) then
           do i=1,reaction%naqcomp
             if (reaction%primary_species_print(i)) then
+!              option%io_buffer = 'Check OutputObservation to ensure that ' // &
+!                'reactive transport species units are really kmol.'
+!              call printErrMsg(option)
               string = trim(coupler%name) // ' ' // &
                        trim(reaction%primary_species_names(i))
-              call OutputWriteToHeader(fid,string,'kmol','',icol)
+              call OutputWriteToHeader(fid,string,'mol','',icol)
             endif
           enddo
           
-          units = 'kmol/' // trim(output_option%tunit) // ''
+          units = 'mol/' // trim(output_option%tunit) // ''
           do i=1,reaction%naqcomp
             if (reaction%primary_species_print(i)) then
               string = trim(coupler%name) // ' ' // &
@@ -2001,7 +2269,7 @@ subroutine OutputMassBalance(realization_base)
     endif
   endif
 
-  coupler => patch%boundary_conditions%first
+  coupler => patch%boundary_condition_list%first
   global_auxvars_bc_or_ss => patch%aux%Global%auxvars_bc
   if (option%ntrandof > 0) then
     rt_auxvars_bc_or_ss => patch%aux%RT%auxvars_bc
@@ -2013,8 +2281,8 @@ subroutine OutputMassBalance(realization_base)
         exit
       else
         bcs_done = PETSC_TRUE
-        if (associated(patch%source_sinks)) then
-          coupler => patch%source_sinks%first
+        if (associated(patch%source_sink_list)) then
+          coupler => patch%source_sink_list%first
           if (.not.associated(coupler)) exit
           global_auxvars_bc_or_ss => patch%aux%Global%auxvars_ss
           if (option%ntrandof > 0) then
@@ -2373,7 +2641,7 @@ subroutine OutputMassBalance(realization_base)
 
     !TODO(ye): The flux will be calculated at the plane intersecting the top
     !          of the kth cell in the z-direction.  You need to update this.
-    k = 50
+    k = 30
 
     if (option%nflowdof > 0) then
       ! really summation of moles, but we are hijacking the variable
@@ -2393,7 +2661,7 @@ subroutine OutputMassBalance(realization_base)
 !gehprint *, option%myrank, grid%nG2A(grid%internal_connection_set_list%first%id_up(iconn)), &
 !gehpatch%internal_fluxes(1:option%nflowdof,1,iconn), 'sum_mol_by_conn'
             sum_mol_ye(1:option%nflowdof) = sum_mol_ye(1:option%nflowdof) + &
-                             patch%internal_fluxes(1:option%nflowdof,1,iconn)
+                             patch%internal_flow_fluxes(1:option%nflowdof,iconn)
           enddo
         enddo
       endif

@@ -1,0 +1,456 @@
+module Init_Subsurface_Flow_module
+
+  use PFLOTRAN_Constants_module
+
+  implicit none
+
+  private
+
+#include "finclude/petscsys.h"
+
+  public :: InitSubsurfFlowSetupRealization, &
+            InitSubsurfFlowSetupSolvers
+  
+contains
+
+! ************************************************************************** !
+
+subroutine InitSubsurfFlowSetupRealization(realization)
+  ! 
+  ! Initializes material property data structres and assign them to the domain.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/04/14
+  ! 
+  use Realization_class
+  use Patch_module
+  use Option_module
+  use Init_Common_module
+  use Material_module
+  
+  use Flash2_module
+  use Mphase_module
+  use Immis_module
+  use Miscible_module
+  use Richards_module
+  use TH_module
+  use General_module
+  use Condition_Control_module
+  use co2_sw_module, only : init_span_wagner
+  
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  PetscErrorCode :: ierr
+  
+  option => realization%option
+  patch => realization%patch
+  
+  ! initialize FLOW
+  ! set up auxillary variable arrays
+  if (option%nflowdof > 0) then
+    select case(option%iflowmode)
+      case(TH_MODE)
+        call THSetup(realization)
+      case(RICHARDS_MODE)
+        call RichardsSetup(realization)
+      case(MPH_MODE)
+        call init_span_wagner(option)      
+        call MphaseSetup(realization)
+      case(IMS_MODE)
+        call init_span_wagner(option)      
+        call ImmisSetup(realization)
+      case(MIS_MODE)
+        call MiscibleSetup(realization)
+      case(FLASH2_MODE)
+        call init_span_wagner(option)      
+        call Flash2Setup(realization)
+      case(G_MODE)
+        call MaterialSetup(realization%patch%aux%Material%material_parameter, &
+                           patch%material_property_array, &
+                           patch%characteristic_curves_array, &
+                           realization%option)
+        call GeneralSetup(realization)
+    end select
+  
+    ! assign initial conditionsRealizAssignFlowInitCond
+    call CondControlAssignFlowInitCond(realization)
+
+    ! override initial conditions if they are to be read from a file
+    if (len_trim(option%initialize_flow_filename) > 1) then
+      call InitSubsurfFlowReadInitCond(realization, &
+                                       option%initialize_flow_filename)
+    endif
+  
+    select case(option%iflowmode)
+      case(TH_MODE)
+        call THUpdateAuxVars(realization)
+      case(RICHARDS_MODE)
+        call RichardsUpdateAuxVars(realization)
+      case(MPH_MODE)
+        call MphaseUpdateAuxVars(realization)
+      case(IMS_MODE)
+        call ImmisUpdateAuxVars(realization)
+      case(MIS_MODE)
+        call MiscibleUpdateAuxVars(realization)
+      case(FLASH2_MODE)
+        call Flash2UpdateAuxVars(realization)
+      case(G_MODE)
+        call GeneralUpdateAuxVars(realization,PETSC_TRUE)
+    end select
+  else ! no flow mode specified
+    if (len_trim(realization%nonuniform_velocity_filename) > 0) then
+      call InitCommonReadVelocityField(realization)
+    endif
+  endif  
+  
+end subroutine InitSubsurfFlowSetupRealization
+
+! ************************************************************************** !
+
+subroutine InitSubsurfFlowSetupSolvers(realization,solver)
+  ! 
+  ! Initializes material property data structres and assign them to the domain.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/04/14
+  ! 
+  use Realization_class
+  use Option_module
+  use Init_Common_module
+  
+  use Flash2_module
+  use Mphase_module
+  use Immis_module
+  use Miscible_module
+  use Richards_module
+  use TH_module
+  use General_module
+  use Solver_module
+  use Convergence_module
+  use Discretization_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
+#include "finclude/petscsnes.h"
+#include "finclude/petscpc.h"
+  
+  type(realization_type) :: realization
+  type(solver_type), pointer :: solver
+  
+  type(option_type), pointer :: option
+  type(convergence_context_type), pointer :: convergence_context
+  SNESLineSearch :: linesearch
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscErrorCode :: ierr
+  
+  option => realization%option
+  
+  call printMsg(option,"  Beginning setup of FLOW SNES ")
+
+  if (solver%J_mat_type == MATAIJ) then
+    select case(option%iflowmode)
+      case(MPH_MODE,TH_MODE,IMS_MODE, FLASH2_MODE, G_MODE, MIS_MODE)
+        option%io_buffer = 'AIJ matrix not supported for current mode: '// &
+                            option%flowmode
+        call printErrMsg(option)
+    end select
+  endif
+
+  if (OptionPrintToScreen(option)) then
+    write(*,'(" number of dofs = ",i3,", number of phases = ",i3,i2)') &
+      option%nflowdof,option%nphase
+    select case(option%iflowmode)
+      case(FLASH2_MODE)
+        write(*,'(" mode = FLASH2: p, T, s/X")')
+      case(MPH_MODE)
+        write(*,'(" mode = MPH: p, T, s/X")')
+      case(IMS_MODE)
+        write(*,'(" mode = IMS: p, T, s")')
+      case(MIS_MODE)
+        write(*,'(" mode = MIS: p, Xs")')
+      case(TH_MODE)
+        write(*,'(" mode = TH: p, T")')
+      case(RICHARDS_MODE)
+        write(*,'(" mode = Richards: p")')  
+      case(G_MODE)    
+    end select
+  endif
+
+  call SolverCreateSNES(solver,option%mycomm)  
+  call SNESSetOptionsPrefix(solver%snes, "flow_",ierr);CHKERRQ(ierr)
+  call SolverCheckCommandLine(solver)
+
+  if (solver%Jpre_mat_type == '') then
+    if (solver%J_mat_type /= MATMFFD) then
+      solver%Jpre_mat_type = solver%J_mat_type
+    else
+      solver%Jpre_mat_type = MATBAIJ
+    endif
+  endif
+
+  call DiscretizationCreateJacobian(realization%discretization,NFLOWDOF, &
+                                    solver%Jpre_mat_type, &
+                                    solver%Jpre, &
+                                    option)
+
+  call MatSetOptionsPrefix(solver%Jpre,"flow_",ierr);CHKERRQ(ierr)
+
+  if (solver%J_mat_type /= MATMFFD) then
+    solver%J = solver%Jpre
+  endif
+
+  if (solver%use_galerkin_mg) then
+    call DiscretizationCreateInterpolation(realization%discretization,NFLOWDOF, &
+                                           solver%interpolation, &
+                                           solver%galerkin_mg_levels_x, &
+                                           solver%galerkin_mg_levels_y, &
+                                           solver%galerkin_mg_levels_z, &
+                                           option)
+  endif
+    
+#if 0
+  select case(option%iflowmode)
+    case(TH_MODE)
+      call SNESSetFunction(solver%snes,field%flow_r,THResidual, &
+                            realization,ierr);CHKERRQ(ierr)
+    case(RICHARDS_MODE)
+      call SNESSetFunction(solver%snes,field%flow_r, &
+                            RichardsResidual, &
+                            realization,ierr);CHKERRQ(ierr)
+    case(MPH_MODE)
+      call SNESSetFunction(solver%snes,field%flow_r,MphaseResidual, &
+                            realization,ierr);CHKERRQ(ierr)
+    case(IMS_MODE)
+      call SNESSetFunction(solver%snes,field%flow_r,ImmisResidual, &
+                            realization,ierr);CHKERRQ(ierr)
+    case(MIS_MODE)
+      call SNESSetFunction(solver%snes,field%flow_r,MiscibleResidual, &
+                            realization,ierr);CHKERRQ(ierr)
+    case(FLASH2_MODE)
+      call SNESSetFunction(solver%snes,field%flow_r,FLASH2Residual, &
+                            realization,ierr);CHKERRQ(ierr)
+    case(G_MODE)
+      call SNESSetFunction(solver%snes,field%flow_r,GeneralResidual, &
+                            realization,ierr);CHKERRQ(ierr)
+  end select
+#endif
+    
+  if (solver%J_mat_type == MATMFFD) then
+    call MatCreateSNESMF(solver%snes,solver%J,ierr);CHKERRQ(ierr)
+  endif
+
+#if 0
+  select case(option%iflowmode)
+    case(TH_MODE)
+      call SNESSetJacobian(solver%snes,solver%J,solver%Jpre, &
+                            THJacobian,realization,ierr);CHKERRQ(ierr)
+    case(RICHARDS_MODE)
+      call SNESSetJacobian(solver%snes,solver%J,solver%Jpre, &
+                            RichardsJacobian,realization,ierr);CHKERRQ(ierr)
+    case(MPH_MODE)
+      call SNESSetJacobian(solver%snes,solver%J,solver%Jpre, &
+                            MPHASEJacobian,realization,ierr);CHKERRQ(ierr)
+    case(IMS_MODE)
+      call SNESSetJacobian(solver%snes,solver%J,solver%Jpre, &
+                            ImmisJacobian,realization,ierr);CHKERRQ(ierr)
+    case(MIS_MODE)
+      call SNESSetJacobian(solver%snes,solver%J,solver%Jpre, &
+                            MiscibleJacobian,realization,ierr);CHKERRQ(ierr)
+    case(FLASH2_MODE)
+      call SNESSetJacobian(solver%snes,solver%J,solver%Jpre, &
+                            FLASH2Jacobian,realization,ierr);CHKERRQ(ierr)
+    case(G_MODE)
+      call SNESSetJacobian(solver%snes,solver%J,solver%Jpre, &
+                            GeneralJacobian,realization,ierr);CHKERRQ(ierr)
+  end select
+#endif
+    
+  ! by default turn off line search
+  call SNESGetLineSearch(solver%snes, linesearch, ierr);CHKERRQ(ierr)
+  call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC,  &
+                              ierr);CHKERRQ(ierr)
+  ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
+  if (option%verbosity >= 2) then
+    string = '-flow_snes_view'
+    call PetscOptionsInsertString(string, ierr);CHKERRQ(ierr)
+  endif
+
+  call SolverSetSNESOptions(solver)
+
+  ! If we are using a structured grid, set the corresponding flow DA 
+  ! as the DA for the PCEXOTIC preconditioner, in case we choose to use it.
+  ! The PCSetDA() call is ignored if the PCEXOTIC preconditioner is 
+  ! no used.  We need to put this call after SolverCreateSNES() so that 
+  ! KSPSetFromOptions() will already have been called.
+  ! I also note that this preconditioner is intended only for the flow 
+  ! solver.  --RTM
+  if (realization%discretization%itype == STRUCTURED_GRID) then
+    call PCSetDM(solver%pc, &
+                 realization%discretization%dm_nflowdof,ierr);CHKERRQ(ierr)
+  endif
+
+  option%io_buffer = 'Solver: ' // trim(solver%ksp_type)
+  call printMsg(option)
+  option%io_buffer = 'Preconditioner: ' // trim(solver%pc_type)
+  call printMsg(option)
+
+  ! shell for custom convergence test.  The default SNES convergence test  
+  ! is call within this function.
+  !TODO(geh): free this convergence context somewhere!
+  option%io_buffer = 'DEALLOCATE FLOW CONVERGENCE CONTEXT somewhere!!!'
+  convergence_context => ConvergenceContextCreate(solver,option, &
+                                                  realization%patch%grid)
+  call SNESSetConvergenceTest(solver%snes,ConvergenceTest, &
+                              convergence_context, &
+                              PETSC_NULL_FUNCTION,ierr);CHKERRQ(ierr)
+    
+ 
+#if 1
+  call SNESGetLineSearch(solver%snes, linesearch, ierr);CHKERRQ(ierr)
+  select case(option%iflowmode)
+    case(RICHARDS_MODE)
+      if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
+          dabs(option%saturation_change_limit) > 0.d0) then
+        call SNESLineSearchSetPreCheck(linesearch, &
+                                        RichardsCheckUpdatePre, &
+                                        realization,ierr);CHKERRQ(ierr)
+      endif
+    case(G_MODE)
+      call SNESLineSearchSetPreCheck(linesearch, &
+                                      GeneralCheckUpdatePre, &
+                                      realization,ierr);CHKERRQ(ierr)
+    case(TH_MODE)
+      if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
+          dabs(option%pressure_change_limit) > 0.d0 .or. &
+          dabs(option%temperature_change_limit) > 0.d0) then
+        call SNESLineSearchSetPreCheck(linesearch, &
+                                        THCheckUpdatePre, &
+                                        realization,ierr);CHKERRQ(ierr)
+      endif
+  end select
+    
+  if (solver%check_post_convergence) then
+    call SNESGetLineSearch(solver%snes, linesearch, ierr);CHKERRQ(ierr)
+    select case(option%iflowmode)
+      case(RICHARDS_MODE)
+        call SNESLineSearchSetPostCheck(linesearch, &
+                                        RichardsCheckUpdatePost, &
+                                        realization,ierr);CHKERRQ(ierr)
+      case(G_MODE)
+        call SNESLineSearchSetPostCheck(linesearch, &
+                                        GeneralCheckUpdatePost, &
+                                        realization,ierr);CHKERRQ(ierr)
+      case(TH_MODE)
+        call SNESLineSearchSetPostCheck(linesearch, &
+                                        THCheckUpdatePost, &
+                                        realization,ierr);CHKERRQ(ierr)
+    end select
+  endif
+#endif        
+    
+  call printMsg(option,"  Finished setting up FLOW SNES ")
+ 
+end subroutine InitSubsurfFlowSetupSolvers
+
+! ************************************************************************** !
+
+subroutine InitSubsurfFlowReadInitCond(realization,filename)
+  ! 
+  ! Assigns flow initial condition from HDF5 file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/05/10, 12/04/14
+  ! 
+
+  use Realization_class
+  use Option_module
+  use Field_module
+  use Grid_module
+  use Patch_module
+  use Discretization_module
+  use HDF5_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+  
+  type(realization_type) :: realization
+  character(len=MAXSTRINGLENGTH) :: filename
+  
+  PetscInt :: local_id, idx, offset
+  PetscReal, pointer :: xx_p(:)
+  character(len=MAXSTRINGLENGTH) :: group_name
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+  PetscReal, pointer :: vec_p(:)  
+  PetscErrorCode :: ierr
+  
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field  
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(discretization_type), pointer :: discretization
+  type(patch_type), pointer :: cur_patch
+
+  option => realization%option
+  discretization => realization%discretization
+  field => realization%field
+  patch => realization%patch
+
+  if (option%iflowmode /= RICHARDS_MODE) then
+    option%io_buffer = 'Reading of flow initial conditions from HDF5 ' // &
+                       'file (' // trim(filename) // &
+                       'not currently not supported for mode: ' // &
+
+                       trim(option%flowmode)
+  endif      
+
+  cur_patch => realization%patch_list%first
+  do
+    if (.not.associated(cur_patch)) exit
+
+    grid => cur_patch%grid
+
+      ! assign initial conditions values to domain
+    call VecGetArrayF90(field%flow_xx, xx_p, ierr);CHKERRQ(ierr)
+
+    ! Pressure for all modes 
+    offset = 1
+    group_name = ''
+    dataset_name = 'Pressure'
+    call HDF5ReadCellIndexedRealArray(realization,field%work, &
+                                      filename,group_name, &
+                                      dataset_name,option%id>0)
+    call VecGetArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
+    do local_id=1, grid%nlmax
+      if (cur_patch%imat(grid%nL2G(local_id)) <= 0) cycle
+      if (dabs(vec_p(local_id)) < 1.d-40) then
+        print *,  option%myrank, grid%nG2A(grid%nL2G(local_id)), &
+              ': Potential error - zero pressure in Initial Condition read from file.'
+      endif
+      idx = (local_id-1)*option%nflowdof + offset
+      xx_p(idx) = vec_p(local_id)
+    enddo
+    call VecRestoreArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
+
+    call VecRestoreArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
+        
+    cur_patch => cur_patch%next
+  enddo
+   
+  ! update dependent vectors
+  call DiscretizationGlobalToLocal(discretization,field%flow_xx, &
+                                   field%flow_xx_loc,NFLOWDOF)  
+  call VecCopy(field%flow_xx, field%flow_yy, ierr);CHKERRQ(ierr)
+
+end subroutine InitSubsurfFlowReadInitCond
+
+end module Init_Subsurface_Flow_module

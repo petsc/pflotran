@@ -14,7 +14,10 @@ module Material_Aux_class
   PetscInt, parameter, public :: perm_xy_index = 4
   PetscInt, parameter, public :: perm_yz_index = 5
   PetscInt, parameter, public :: perm_xz_index = 6
-
+  
+  PetscInt, parameter, public :: POROSITY_CURRENT = 0
+  PetscInt, parameter, public :: POROSITY_MINERAL = 1
+  
 !  PetscInt, public :: soil_thermal_conductivity_index
 !  PetscInt, public :: soil_heat_capacity_index
   PetscInt, public :: soil_compressibility_index
@@ -22,9 +25,10 @@ module Material_Aux_class
   PetscInt, public :: max_material_index
  
   type, public :: material_auxvar_type
+    PetscInt :: id
     PetscReal :: volume
+    PetscReal :: porosity_base
     PetscReal :: porosity
-    PetscReal :: porosity_store(2)
     PetscReal :: dporosity_dp
     PetscReal :: tortuosity
     PetscReal :: soil_particle_density
@@ -34,7 +38,7 @@ module Material_Aux_class
 !    procedure(SaturationFunction), nopass, pointer :: SaturationFunction
   contains
     procedure, public :: PermeabilityTensorToScalar => &
-                           MaterialPermTensorToScalar
+                           MaterialDiagPermTensorToScalar
   end type material_auxvar_type
   
   type, public :: material_parameter_type
@@ -49,6 +53,33 @@ module Material_Aux_class
     type(material_parameter_type), pointer :: material_parameter
     class(material_auxvar_type), pointer :: auxvars(:)
   end type material_type
+  
+  ! procedure pointer declarations
+  procedure(MaterialCompressSoilDummy), pointer :: &
+    MaterialCompressSoilPtr => null()
+ 
+  ! interface blocks
+  interface
+    subroutine MaterialCompressSoilDummy(auxvar,pressure,compressed_porosity, &
+                                         dcompressed_porosity_dp)
+    import material_auxvar_type
+    implicit none
+    class(material_auxvar_type), intent(in) :: auxvar
+    PetscReal, intent(in) :: pressure
+    PetscReal, intent(out) :: compressed_porosity
+    PetscReal, intent(out) :: dcompressed_porosity_dp
+    end subroutine MaterialCompressSoilDummy
+  end interface 
+  
+  interface MaterialCompressSoil
+    procedure MaterialCompressSoilPtr
+  end interface
+  
+  public :: MaterialCompressSoilDummy, &
+            MaterialCompressSoilPtr, &
+            MaterialCompressSoil, &
+            MaterialCompressSoilBragflo, &
+            MaterialCompressSoilLeijnse
   
   public :: MaterialAuxCreate, &
             MaterialAuxVarInit, &
@@ -109,15 +140,16 @@ subroutine MaterialAuxVarInit(auxvar,option)
   class(material_auxvar_type) :: auxvar
   type(option_type) :: option
   
-  auxvar%volume = -999.d0
-  auxvar%porosity = -999.d0
+  auxvar%id = UNINITIALIZED_INTEGER
+  auxvar%volume = UNINITIALIZED_DOUBLE
+  auxvar%porosity = UNINITIALIZED_DOUBLE
   auxvar%dporosity_dp = 0.d0
-  auxvar%porosity_store = 0.d0
-  auxvar%tortuosity = -999.d0
-  auxvar%soil_particle_density = -999.d0
+  auxvar%porosity_base = UNINITIALIZED_DOUBLE
+  auxvar%tortuosity = UNINITIALIZED_DOUBLE
+  auxvar%soil_particle_density = UNINITIALIZED_DOUBLE
   if (option%iflowmode /= NULL_MODE) then
     allocate(auxvar%permeability(3))
-    auxvar%permeability = -999.d0
+    auxvar%permeability = UNINITIALIZED_DOUBLE
   else
     nullify(auxvar%permeability)
   endif
@@ -166,7 +198,7 @@ end subroutine MaterialAuxVarCopy
 
 ! ************************************************************************** !
 
-subroutine MaterialPermTensorToScalar(material_auxvar,dist, &
+subroutine MaterialDiagPermTensorToScalar(material_auxvar,dist, &
                                       scalar_permeability)
   ! 
   ! Transforms a diagonal permeability tensor to a scalar through a dot 
@@ -194,7 +226,7 @@ subroutine MaterialPermTensorToScalar(material_auxvar,dist, &
             material_auxvar%permeability(perm_yy_index)*dabs(dist(2))+ &
             material_auxvar%permeability(perm_zz_index)*dabs(dist(3))
 
-end subroutine MaterialPermTensorToScalar
+end subroutine MaterialDiagPermTensorToScalar
 
 ! ************************************************************************** !
 
@@ -215,12 +247,14 @@ function MaterialAuxVarGetValue(material_auxvar,ivar)
 
   PetscReal :: MaterialAuxVarGetValue
 
-  MaterialAuxVarGetValue = -999.d0
+  MaterialAuxVarGetValue = UNINITIALIZED_DOUBLE
   select case(ivar)
     case(VOLUME)
       MaterialAuxVarGetValue = material_auxvar%volume
     case(POROSITY)
       MaterialAuxVarGetValue = material_auxvar%porosity
+    case(MINERAL_POROSITY)
+      MaterialAuxVarGetValue = material_auxvar%porosity_base
     case(TORTUOSITY)
       MaterialAuxVarGetValue = material_auxvar%tortuosity
     case(PERMEABILITY_X)
@@ -235,6 +269,9 @@ function MaterialAuxVarGetValue(material_auxvar,ivar)
       MaterialAuxVarGetValue = material_auxvar%permeability(perm_yz_index)
     case(PERMEABILITY_XZ)
       MaterialAuxVarGetValue = material_auxvar%permeability(perm_xz_index)
+    case(SOIL_COMPRESSIBILITY)
+      MaterialAuxVarGetValue = material_auxvar% &
+                                 soil_properties(soil_compressibility_index)
   end select
   
 end function MaterialAuxVarGetValue
@@ -262,6 +299,8 @@ subroutine MaterialAuxVarSetValue(material_auxvar,ivar,value)
       material_auxvar%volume = value
     case(POROSITY)
       material_auxvar%porosity = value
+    case(MINERAL_POROSITY)
+      material_auxvar%porosity = value
     case(TORTUOSITY)
       material_auxvar%tortuosity = value
     case(PERMEABILITY_X)
@@ -279,6 +318,68 @@ subroutine MaterialAuxVarSetValue(material_auxvar,ivar,value)
   end select
   
 end subroutine MaterialAuxVarSetValue
+
+! ************************************************************************** !
+
+subroutine MaterialCompressSoilLeijnse(auxvar,pressure, &
+                                       compressed_porosity, &
+                                       dcompressed_porosity_dp)
+  ! 
+  ! Calculates soil matrix compression based on Leijnse, 1992.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/14/14
+  ! 
+
+  implicit none
+
+  class(material_auxvar_type), intent(in) :: auxvar
+  PetscReal, intent(in) :: pressure
+  PetscReal, intent(out) :: compressed_porosity
+  PetscReal, intent(out) :: dcompressed_porosity_dp
+  
+  PetscReal :: compressibility
+  PetscReal :: compression
+  PetscReal :: tempreal
+  
+  compressibility = auxvar%soil_properties(soil_compressibility_index)
+  compression = &
+    exp(-1.d0 * compressibility * &
+        (pressure - auxvar%soil_properties(soil_reference_pressure_index)))
+  tempreal = (1.d0 - auxvar%porosity_base) * compression
+  compressed_porosity = 1.d0 - tempreal
+  dcompressed_porosity_dp = tempreal * compressibility
+  
+end subroutine MaterialCompressSoilLeijnse
+
+! ************************************************************************** !
+
+subroutine MaterialCompressSoilBRAGFLO(auxvar,pressure, &
+                                       compressed_porosity, &
+                                       dcompressed_porosity_dp)
+  ! 
+  ! Calculates soil matrix compression based on Eq. 9.6.9 of BRAGFLO
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/14/14
+  ! 
+
+  implicit none
+
+  class(material_auxvar_type), intent(in) :: auxvar
+  PetscReal, intent(in) :: pressure
+  PetscReal, intent(out) :: compressed_porosity
+  PetscReal, intent(out) :: dcompressed_porosity_dp
+  
+  PetscReal :: compressibility
+  
+  compressibility = auxvar%soil_properties(soil_compressibility_index)
+  compressed_porosity = auxvar%porosity_base * &
+    exp(compressibility * &
+        (pressure - auxvar%soil_properties(soil_reference_pressure_index)))
+  dcompressed_porosity_dp = compressibility * compressed_porosity
+  
+end subroutine MaterialCompressSoilBRAGFLO
 
 ! ************************************************************************** !
 

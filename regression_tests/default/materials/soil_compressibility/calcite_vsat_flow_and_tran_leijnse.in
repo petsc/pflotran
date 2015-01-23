@@ -97,6 +97,12 @@ OUTPUT
 #  TIMES y 5. 10. 15. 20.
 #  FORMAT TECPLOT POINT
 #  VELOCITY_AT_CENTER
+  VARIABLES
+    LIQUID_PRESSURE
+    LIQUID_SATURATION
+    POROSITY
+    MINERAL_POROSITY
+  /
 END
 
 #=========================== times ============================================

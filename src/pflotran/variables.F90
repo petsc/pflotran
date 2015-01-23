@@ -61,7 +61,7 @@ module Variables_module
   PetscInt, parameter, public :: COLLOID_IMMOBILE =        51
   PetscInt, parameter, public :: AGE =                     52
   PetscInt, parameter, public :: STATE =                   53
-  PetscInt, parameter, public :: PROCESSOR_ID =            54
+  PetscInt, parameter, public :: PROCESS_ID =              54
   PetscInt, parameter, public :: ICE_SATURATION =          55
   PetscInt, parameter, public :: TOTAL_BULK =              56
   PetscInt, parameter, public :: ICE_DENSITY =             57
@@ -107,14 +107,17 @@ module Variables_module
   PetscInt, parameter, public :: AIR_PRESSURE            = 92
   PetscInt, parameter, public :: CAPILLARY_PRESSURE      = 93
 
-  PetscInt, parameter, public :: TRANSIENT_POROSITY      = 94
+  PetscInt, parameter, public :: EFFECTIVE_POROSITY      = 94
   PetscInt, parameter, public :: LIQUID_HEAD             = 95
 
   PetscInt, parameter, public :: GAS_CONCENTRATION       = 96
   
-  PetscInt, parameter, public :: SEC_MIN_RATE =            97
-  PetscInt, parameter, public :: SEC_MIN_SI =              98
+  PetscInt, parameter, public :: SEC_MIN_RATE            = 97
+  PetscInt, parameter, public :: SEC_MIN_SI              = 98
   PetscInt, parameter, public :: RESIDUAL                = 99
+  PetscInt, parameter, public :: MINERAL_POROSITY        = 100
+  
+  PetscInt, parameter, public :: SOIL_COMPRESSIBILITY         = 101
   
 
 !  PetscInt, parameter, public :: LIQUID_VELOCITY_CELL_CENT = 58

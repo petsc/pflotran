@@ -26,7 +26,7 @@ subroutine OutputVTK(realization_base)
   use Realization_Base_class, only : realization_base_type
   use Discretization_module
   use Grid_module
-  use Structured_Grid_module
+  use Grid_Structured_module
   use Option_module
   use Field_module
   use Patch_module
@@ -324,8 +324,7 @@ subroutine WriteVTKGrid(fid,realization_base)
   grid => patch%grid
   option => realization_base%option
   
-  if ((realization_base%discretization%itype == STRUCTURED_GRID).or. &
-        (realization_base%discretization%itype == STRUCTURED_GRID_MIMETIC))  then
+  if (realization_base%discretization%itype == STRUCTURED_GRID)  then
 
     nx = grid%structured_grid%nx
     ny = grid%structured_grid%ny

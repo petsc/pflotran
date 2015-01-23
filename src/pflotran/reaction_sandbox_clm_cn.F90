@@ -154,7 +154,7 @@ subroutine CLM_CN_Read(this,input,option)
             'CHEMISTRY,REACTION_SANDBOX,CLM-CN,POOLS')
           call InputReadDouble(input,option,new_pool%CN_ratio)
           if (InputError(input)) then
-            new_pool%CN_ratio = -999.d0
+            new_pool%CN_ratio = UNINITIALIZED_DOUBLE
           else
             ! convert CN ratio from mass C/mass N to mol C/mol N
             new_pool%CN_ratio = new_pool%CN_ratio * CN_ratio_mass_to_mol
@@ -172,8 +172,8 @@ subroutine CLM_CN_Read(this,input,option)
         allocate(new_reaction)
         new_reaction%upstream_pool_name = ''
         new_reaction%downstream_pool_name = ''
-        new_reaction%rate_constant = -999.d0
-        new_reaction%respiration_fraction = -999.d0
+        new_reaction%rate_constant = UNINITIALIZED_DOUBLE
+        new_reaction%respiration_fraction = UNINITIALIZED_DOUBLE
         new_reaction%inhibition_constant = 0.d0
         nullify(new_reaction%next)
         
@@ -324,7 +324,7 @@ subroutine CLM_CN_Map(this,reaction,option)
   use Reaction_Aux_module, only : reaction_type
   use Option_module
   use String_module
-  use Immobile_Aux_module
+  use Reaction_Immobile_Aux_module
   
   implicit none
 
@@ -540,7 +540,7 @@ subroutine CLM_CN_React(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
   ! Equation: F_t = exp(308.56*(1/17.02 - 1/(T - 227.13)))
   temp_K = global_auxvar%temp + 273.15d0
 
-  if(temp_K > 227.15d0) then
+  if (temp_K > 227.15d0) then
     F_t = exp(308.56d0*(one_over_71_02 - 1.d0/(temp_K - 227.13d0)))
   else
     F_t = 0.0

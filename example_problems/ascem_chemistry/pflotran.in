@@ -327,7 +327,7 @@ RATE_CONSTANT 1.e-8
 /
 #DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/savannah_river.dat
 #DATABASE /Users/lichtner/flotran/database/savannah_river.dat
-DATABASE ./savannah_river.dat
+DATABASE ../../database/savannah_river.dat
 LOG_FORMULATION
 #ACTIVITY_COEFFICIENTS
 MOLAL
@@ -363,9 +363,8 @@ TYPE structured
 ORIGIN 0.d0 0.d0 0.d0
 NXYZ 32 32 32
 BOUNDS
-0.d0 1.d0
-0.d0 1.d0
-0.d0 1.d0
+0.d0 0.d0 0.d0 
+1.d0 1.d0 1.d0
 /
 END
 

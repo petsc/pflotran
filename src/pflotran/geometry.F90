@@ -29,7 +29,8 @@ module Geometry_module
             GeometryReadCoordinates, &
             GeometryPointInPolygonalVolume, &
             GeometryCopyCoordinates, &
-            GeometryDestroyPolygonalVolume
+            GeometryDestroyPolygonalVolume, &
+            GeometryPointInPolygon
 
 contains
 

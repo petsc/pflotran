@@ -1,13 +1,13 @@
 module Reaction_Aux_module
   
-  use Database_Aux_module
-  use Mineral_Aux_module
-  use Microbial_Aux_module
-  use Immobile_Aux_module
-  use Surface_Complexation_Aux_module
+  use Reaction_Database_Aux_module
+  use Reaction_Mineral_Aux_module
+  use Reaction_Microbial_Aux_module
+  use Reaction_Immobile_Aux_module
+  use Reaction_Surface_Complexation_Aux_module
   
 #ifdef SOLID_SOLUTION  
-  use Solid_Solution_Aux_module
+  use Reaction_Solid_Soln_Aux_module
 #endif
 
   use PFLOTRAN_Constants_module
@@ -129,6 +129,13 @@ module Reaction_Aux_module
     character(len=MAXWORDLENGTH), pointer :: constraint_aux_string(:)
     PetscBool, pointer :: external_dataset(:)
   end type aq_species_constraint_type
+
+  type, public :: guess_constraint_type
+    ! Any changes here must be incorporated within ReactionProcessConstraint()
+    ! where constraints are reordered
+    character(len=MAXWORDLENGTH), pointer :: names(:)
+    PetscReal, pointer :: conc(:)
+  end type guess_constraint_type
 
   type, public :: colloid_constraint_type
     ! Any changes here must be incorporated within ReactionProcessConstraint()
@@ -381,6 +388,8 @@ module Reaction_Aux_module
             AqueousSpeciesDestroy, &
             AqueousSpeciesConstraintCreate, &
             AqueousSpeciesConstraintDestroy, &
+            GuessConstraintCreate, &
+            GuessConstraintDestroy, &
             MineralConstraintCreate, &
             MineralConstraintDestroy, &
             RadioactiveDecayRxnCreate, &
@@ -923,6 +932,37 @@ end function AqueousSpeciesConstraintCreate
 
 ! ************************************************************************** !
 
+function GuessConstraintCreate(reaction,option)
+  ! 
+  ! Creates an aqueous species constraint
+  ! object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/14/08
+  ! 
+
+  use Option_module
+  
+  implicit none
+  
+  type(reaction_type) :: reaction
+  type(option_type) :: option
+  type(guess_constraint_type), pointer :: GuessConstraintCreate
+
+  type(guess_constraint_type), pointer :: constraint
+  
+  allocate(constraint)
+  allocate(constraint%names(reaction%naqcomp))
+  constraint%names = ''
+  allocate(constraint%conc(reaction%naqcomp))
+  constraint%conc = 0.d0
+
+  GuessConstraintCreate => constraint
+
+end function GuessConstraintCreate
+
+! ************************************************************************** !
+
 function ColloidConstraintCreate(reaction,option)
   ! 
   ! Creates a colloid constraint object
@@ -1070,7 +1110,7 @@ function GetPrimarySpeciesIDFromName2(name,reaction,return_error,option)
   PetscInt :: i
   PetscBool :: return_error
 
-  GetPrimarySpeciesIDFromName2 = -999
+  GetPrimarySpeciesIDFromName2 = UNINITIALIZED_INTEGER
   
   ! if the primary species name list exists
   if (associated(reaction%primary_species_names)) then
@@ -1883,6 +1923,33 @@ subroutine AqueousSpeciesConstraintDestroy(constraint)
   nullify(constraint)
 
 end subroutine AqueousSpeciesConstraintDestroy
+
+! ************************************************************************** !
+
+subroutine GuessConstraintDestroy(constraint)
+  ! 
+  ! Destroys an aqueous species constraint
+  ! object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/14/08
+  ! 
+
+  use Utility_module, only: DeallocateArray
+  
+  implicit none
+  
+  type(guess_constraint_type), pointer :: constraint
+  
+  if (.not.associated(constraint)) return
+  
+  call DeallocateArray(constraint%names)
+  call DeallocateArray(constraint%conc)
+
+  deallocate(constraint)
+  nullify(constraint)
+
+end subroutine GuessConstraintDestroy
 
 ! ************************************************************************** !
 

@@ -4,6 +4,7 @@ module Patch_module
   use Grid_module
   use Coupler_module
   use Observation_module
+  use Integral_Flux_module
   use Strata_module
   use Region_module
   use Reaction_Aux_module
@@ -11,6 +12,7 @@ module Patch_module
   use Material_module
   use Field_module
   use Saturation_Function_module
+  use Characteristic_Curves_module
   use Surface_Field_module
   use Surface_Material_module
   use Surface_Auxiliary_module
@@ -37,27 +39,39 @@ module Patch_module
 
     PetscReal, pointer :: internal_velocities(:,:)
     PetscReal, pointer :: boundary_velocities(:,:)
-    PetscReal, pointer :: internal_fluxes(:,:,:)    
-    PetscReal, pointer :: boundary_fluxes(:,:,:)  
     PetscReal, pointer :: internal_tran_coefs(:,:)
     PetscReal, pointer :: boundary_tran_coefs(:,:)
-    PetscReal, pointer :: ss_fluid_fluxes(:,:)
+    PetscReal, pointer :: internal_flow_fluxes(:,:)    
+    PetscReal, pointer :: boundary_flow_fluxes(:,:)  
+    ! fluid fluxes in moles/sec
+    PetscReal, pointer :: ss_flow_fluxes(:,:)        
+    ! volumetric flux (m^3/sec) for liquid phase needed for transport
+    PetscReal, pointer :: ss_flow_vol_fluxes(:,:)  
+    PetscReal, pointer :: internal_tran_fluxes(:,:)    
+    PetscReal, pointer :: boundary_tran_fluxes(:,:)  
+    PetscReal, pointer :: ss_tran_fluxes(:,:)
+    
+    ! for TH surface/subsurface
+    PetscReal, pointer :: boundary_energy_flux(:,:)
 
     type(grid_type), pointer :: grid
 
-    type(region_list_type), pointer :: regions
+    type(region_list_type), pointer :: region_list
 
-    type(coupler_list_type), pointer :: boundary_conditions
-    type(coupler_list_type), pointer :: initial_conditions
-    type(coupler_list_type), pointer :: source_sinks
+    type(coupler_list_type), pointer :: boundary_condition_list
+    type(coupler_list_type), pointer :: initial_condition_list
+    type(coupler_list_type), pointer :: source_sink_list
 
     type(material_property_type), pointer :: material_properties
     type(material_property_ptr_type), pointer :: material_property_array(:)
     type(saturation_function_type), pointer :: saturation_functions
     type(saturation_function_ptr_type), pointer :: saturation_function_array(:)
+    class(characteristic_curves_type), pointer :: characteristic_curves
+    type(characteristic_curves_ptr_type), pointer :: characteristic_curves_array(:)
 
-    type(strata_list_type), pointer :: strata
-    type(observation_list_type), pointer :: observation
+    type(strata_list_type), pointer :: strata_list
+    type(observation_list_type), pointer :: observation_list
+    type(integral_flux_list_type), pointer :: integral_flux_list
 
     ! Pointers to objects in mother realization object
     type(field_type), pointer :: field 
@@ -72,12 +86,9 @@ module Patch_module
                                       ! is a surface or subsurface (default)
     type(surface_material_property_type), pointer     :: surf_material_properties
     type(surface_material_property_ptr_type), pointer :: surf_material_property_array(:)
-    type(surface_field_type),pointer                  :: surf_field
+    type(surface_field_type), pointer                 :: surf_field
     type(surface_auxiliary_type) :: surf_aux
     
-    PetscReal,pointer :: surf_internal_fluxes(:,:)
-    PetscReal,pointer :: surf_boundary_fluxes(:,:)
-
   end type patch_type
 
   ! pointer data structure required for making an array of patch pointers in F90
@@ -139,34 +150,42 @@ function PatchCreate()
   nullify(patch%sat_func_id)
   nullify(patch%internal_velocities)
   nullify(patch%boundary_velocities)
-  nullify(patch%internal_fluxes)
-  nullify(patch%boundary_fluxes)
   nullify(patch%internal_tran_coefs)
   nullify(patch%boundary_tran_coefs)
-  nullify(patch%ss_fluid_fluxes)
+  nullify(patch%internal_flow_fluxes)
+  nullify(patch%boundary_flow_fluxes)
+  nullify(patch%internal_tran_fluxes)
+  nullify(patch%boundary_tran_fluxes)
+  nullify(patch%ss_flow_fluxes)
+  nullify(patch%ss_tran_fluxes)
+  nullify(patch%ss_flow_vol_fluxes)
+  nullify(patch%boundary_energy_flux)
 
   nullify(patch%grid)
 
-  allocate(patch%regions)
-  call RegionInitList(patch%regions)
+  allocate(patch%region_list)
+  call RegionInitList(patch%region_list)
   
-  allocate(patch%boundary_conditions)
-  call CouplerInitList(patch%boundary_conditions)
-  allocate(patch%initial_conditions)
-  call CouplerInitList(patch%initial_conditions)
-  allocate(patch%source_sinks)
-  call CouplerInitList(patch%source_sinks)
+  allocate(patch%boundary_condition_list)
+  call CouplerInitList(patch%boundary_condition_list)
+  allocate(patch%initial_condition_list)
+  call CouplerInitList(patch%initial_condition_list)
+  allocate(patch%source_sink_list)
+  call CouplerInitList(patch%source_sink_list)
 
   nullify(patch%material_properties)
   nullify(patch%material_property_array)
   nullify(patch%saturation_functions)
   nullify(patch%saturation_function_array)
+  nullify(patch%characteristic_curves)
+  nullify(patch%characteristic_curves_array)
 
-  allocate(patch%observation)
-  call ObservationInitList(patch%observation)
-
-  allocate(patch%strata)
-  call StrataInitList(patch%strata)
+  allocate(patch%observation_list)
+  call ObservationInitList(patch%observation_list)
+  allocate(patch%integral_flux_list)
+  call IntegralFluxInitList(patch%integral_flux_list)
+  allocate(patch%strata_list)
+  call StrataInitList(patch%strata_list)
   
   call AuxInit(patch%aux)
   
@@ -179,8 +198,6 @@ function PatchCreate()
   nullify(patch%surf_material_properties)
   nullify(patch%surf_material_property_array)
   nullify(patch%surf_field)
-  nullify(patch%surf_internal_fluxes)
-  nullify(patch%surf_boundary_fluxes)
   call SurfaceAuxInit(patch%surf_aux)
 
   PatchCreate => patch
@@ -228,7 +245,7 @@ subroutine PatchAddToList(new_patch,patch_list)
   type(patch_type), pointer :: new_patch
   type(patch_list_type) :: patch_list
   
-  if(associated(new_patch)) then
+  if (associated(new_patch)) then
      patch_list%num_patch_objects = patch_list%num_patch_objects + 1
      new_patch%id = patch_list%num_patch_objects
      if (.not.associated(patch_list%first)) patch_list%first => new_patch
@@ -293,13 +310,13 @@ subroutine PatchLocalizeRegions(patch,regions,option)
   do
     if (.not.associated(cur_region)) exit
     patch_region => RegionCreate(cur_region)
-    call RegionAddToList(patch_region,patch%regions)
+    call RegionAddToList(patch_region,patch%region_list)
     cur_region => cur_region%next
   enddo
   
   !geh: All grids must be localized through GridLocalizeRegions.  Patch
   !     should not differentiate between structured/unstructured, etc.
-  call GridLocalizeRegions(patch%grid,patch%regions,option)
+  call GridLocalizeRegions(patch%grid,patch%region_list,option)
  
 end subroutine PatchLocalizeRegions
 
@@ -317,7 +334,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   use Option_module
   use Material_module
   use Condition_module
-  use Constraint_module
+  use Transport_Constraint_module
   use Connection_module
 
   implicit none
@@ -331,16 +348,17 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   type(coupler_list_type), pointer :: coupler_list 
   type(strata_type), pointer :: strata
   type(observation_type), pointer :: observation, next_observation
+  type(integral_flux_type), pointer :: integral_flux
   
   PetscInt :: temp_int, isub
   
   ! boundary conditions
-  coupler => patch%boundary_conditions%first
+  coupler => patch%boundary_condition_list%first
   do
     if (.not.associated(coupler)) exit
     ! pointer to region
     coupler%region => RegionGetPtrFromList(coupler%region_name, &
-                                           patch%regions)
+                                           patch%region_list)
     if (.not.associated(coupler%region)) then
       option%io_buffer = 'Region "' // trim(coupler%region_name) // &
                  '" in boundary condition "' // &
@@ -401,12 +419,12 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
 
 
   ! initial conditions
-  coupler => patch%initial_conditions%first
+  coupler => patch%initial_condition_list%first
   do
     if (.not.associated(coupler)) exit
     ! pointer to region
     coupler%region => RegionGetPtrFromList(coupler%region_name, &
-                                           patch%regions)
+                                           patch%region_list)
     if (.not.associated(coupler%region)) then
       option%io_buffer = 'Region "' // trim(coupler%region_name) // &
                  '" in initial condition "' // &
@@ -456,12 +474,12 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   enddo
 
   ! source/sinks
-  coupler => patch%source_sinks%first
+  coupler => patch%source_sink_list%first
   do
     if (.not.associated(coupler)) exit
     ! pointer to region
     coupler%region => RegionGetPtrFromList(coupler%region_name, &
-                                           patch%regions)
+                                           patch%region_list)
     if (.not.associated(coupler%region)) then
       option%io_buffer = 'Region "' // trim(coupler%region_name) // &
                  '" in source/sink "' // &
@@ -531,13 +549,13 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     
   ! strata
   ! connect pointers from strata to regions
-  strata => patch%strata%first
+  strata => patch%strata_list%first
   do
     if (.not.associated(strata)) exit
     ! pointer to region
     if (len_trim(strata%region_name) > 1) then
       strata%region => RegionGetPtrFromList(strata%region_name, &
-                                                  patch%regions)
+                                                  patch%region_list)
       if (.not.associated(strata%region)) then
         option%io_buffer = 'Region "' // trim(strata%region_name) // &
                  '" in strata not found in region list'
@@ -559,7 +577,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
           endif
         endif
 
-        if(patch%surf_or_subsurf_flag == SURFACE) then
+        if (patch%surf_or_subsurf_flag == SURFACE) then
           strata%surf_material_property => &
             SurfaceMaterialPropGetPtrFromArray(strata%material_property_name, &
                                             patch%surf_material_property_array)
@@ -581,16 +599,16 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
 
   ! connectivity between initial conditions, boundary conditions, srcs/sinks, etc and grid
   call CouplerListComputeConnections(patch%grid,option, &
-                                     patch%initial_conditions)
+                                     patch%initial_condition_list)
   call CouplerListComputeConnections(patch%grid,option, &
-                                     patch%boundary_conditions)
+                                     patch%boundary_condition_list)
   call CouplerListComputeConnections(patch%grid,option, &
-                                     patch%source_sinks)
+                                     patch%source_sink_list)
 
   ! linkage of observation to regions and couplers must take place after
   ! connection list have been created.
   ! observation
-  observation => patch%observation%first
+  observation => patch%observation_list%first
   do
     if (.not.associated(observation)) exit
     next_observation => observation%next
@@ -598,7 +616,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
       case(OBSERVATION_SCALAR)
         ! pointer to region
         observation%region => RegionGetPtrFromList(observation%linkage_name, &
-                                                    patch%regions)
+                                                    patch%region_list)
         if (.not.associated(observation%region)) then
           option%io_buffer = 'Region "' // &
                    trim(observation%linkage_name) // &
@@ -609,11 +627,11 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
         endif
         if (observation%region%num_cells == 0) then
           ! remove the observation object
-          call ObservationRemoveFromList(observation,patch%observation)
+          call ObservationRemoveFromList(observation,patch%observation_list)
         endif
       case(OBSERVATION_FLUX)
         coupler => CouplerGetPtrFromList(observation%linkage_name, &
-                                         patch%boundary_conditions)
+                                         patch%boundary_condition_list)
         if (associated(coupler)) then
           observation%connection_set => coupler%connection_set
         else
@@ -632,63 +650,90 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     observation => next_observation
   enddo
  
+  ! linkage of observation to regions and couplers must take place after
+  ! connection list have been created.
+  ! observation
+  integral_flux => patch%integral_flux_list%first
+  do
+    if (.not.associated(integral_flux)) exit
+    integral_flux%connections => &
+      PatchGetConnectionsFromCoords(patch,integral_flux%coordinates, &
+                                    integral_flux%name,option)
+    call IntegralFluxSizeStorage(integral_flux,option)
+    integral_flux => integral_flux%next
+    option%flow%store_fluxes = PETSC_TRUE
+    option%transport%store_fluxes = PETSC_TRUE
+  enddo 
+  
   temp_int = ConnectionGetNumberInList(patch%grid%internal_connection_set_list)
   temp_int = max(temp_int,1)
+  
+  ! all simulations
   allocate(patch%internal_velocities(option%nphase,temp_int))
   patch%internal_velocities = 0.d0
-  allocate(patch%internal_tran_coefs(option%nphase,temp_int))
-  patch%internal_tran_coefs = 0.d0
-  if (option%transport%store_solute_fluxes) then
-    allocate(patch%internal_fluxes(option%nphase,option%ntrandof,temp_int))
-    patch%internal_fluxes = 0.d0
-  endif
-  if (option%store_flowrate) then
-    if(option%transport%store_solute_fluxes) then
-      option%io_buffer='Model does not support store_solute_fluxes and flowrate ' // &
-      ' options together. If you run into this message, complain on pflotran-dev@googlegroups.com'
-      call printErrMsg(option)
+  
+  ! flow
+  if (option%nflowdof > 0) then
+    if (option%flow%store_fluxes .or. (patch%surf_or_subsurf_flag == SURFACE) ) then
+      allocate(patch%internal_flow_fluxes(option%nflowdof,temp_int))
+      patch%internal_flow_fluxes = 0.d0
     endif
-    allocate(patch%internal_fluxes(option%nflowdof,1,temp_int))
-    allocate(patch%boundary_fluxes(option%nflowdof,1,temp_int))
-    patch%internal_fluxes = 0.d0
-    patch%boundary_fluxes = 0.d0
+  endif
+  
+  ! transport
+  if (option%ntrandof > 0) then
+    allocate(patch%internal_tran_coefs(option%nphase,temp_int))
+    patch%internal_tran_coefs = 0.d0
+    if (option%transport%store_fluxes) then
+      allocate(patch%internal_tran_fluxes(option%ntrandof,temp_int))
+      patch%internal_tran_fluxes = 0.d0
+    endif
   endif
 
-  if (patch%surf_or_subsurf_flag == SURFACE) then
-    !if (option%store_flowrate) then
-      allocate(patch%surf_internal_fluxes(option%nflowdof,temp_int))
-      patch%surf_internal_fluxes = 0.d0
-    !endif
-  endif
-  ! Always allocate the array to store boundary fluxes as they are needed
-  ! to store data for hydrograph output
-  allocate(patch%surf_boundary_fluxes(option%nflowdof,temp_int))
-  patch%surf_boundary_fluxes = 0.d0
- 
-  if (patch%grid%itype == STRUCTURED_GRID_MIMETIC.or. &
-      patch%grid%discretization_itype == UNSTRUCTURED_GRID_MIMETIC ) then
-    temp_int = CouplerGetNumBoundConnectionsInListMFD(patch%grid, &
-                                                 patch%boundary_conditions, &
-                                                 option)
-  else  
-    temp_int = CouplerGetNumConnectionsInList(patch%boundary_conditions)
-  end if
+  temp_int = CouplerGetNumConnectionsInList(patch%boundary_condition_list)
 
   if (temp_int > 0) then
+    ! all simulations
     allocate(patch%boundary_velocities(option%nphase,temp_int)) 
     patch%boundary_velocities = 0.d0
-    allocate(patch%boundary_tran_coefs(option%nphase,temp_int))
-    patch%boundary_tran_coefs = 0.d0
-    if (option%transport%store_solute_fluxes) then
-      allocate(patch%boundary_fluxes(option%nphase,option%ntrandof,temp_int))
-      patch%boundary_fluxes = 0.d0
+    ! flow
+    if (option%nflowdof > 0) then
+      if (option%flow%store_fluxes .or. (patch%surf_or_subsurf_flag == SURFACE)) then
+        allocate(patch%boundary_flow_fluxes(option%nflowdof,temp_int))
+        patch%boundary_flow_fluxes = 0.d0
+      endif
+      ! surface/subsurface storage
+      if (option%iflowmode == TH_MODE) then
+        allocate(patch%boundary_energy_flux(2,temp_int))
+        patch%boundary_energy_flux = 0.d0
+      endif
+    endif
+    ! transport
+    if (option%ntrandof > 0) then
+      allocate(patch%boundary_tran_coefs(option%ntrandof,temp_int))
+      patch%boundary_tran_coefs = 0.d0
+      if (option%transport%store_fluxes) then
+        allocate(patch%boundary_tran_fluxes(option%ntrandof,temp_int))
+        patch%boundary_tran_fluxes = 0.d0
+      endif
     endif
   endif
 
-  temp_int = CouplerGetNumConnectionsInList(patch%source_sinks)
+  temp_int = CouplerGetNumConnectionsInList(patch%source_sink_list)
   if (temp_int > 0) then
-    allocate(patch%ss_fluid_fluxes(option%nphase,temp_int))
-    patch%ss_fluid_fluxes = 0.d0
+    ! flow
+    if (option%nflowdof > 0) then
+      allocate(patch%ss_flow_fluxes(option%nflowdof,temp_int))
+      patch%ss_flow_fluxes = 0.d0
+    endif
+    ! transport
+    if (option%ntrandof > 0) then
+      allocate(patch%ss_tran_fluxes(option%ntrandof,temp_int))
+      patch%ss_tran_fluxes = 0.d0
+      ! only needed by transport
+      allocate(patch%ss_flow_vol_fluxes(option%nphase,temp_int))
+      patch%ss_flow_vol_fluxes = 0.d0
+    endif
   endif
 
 end subroutine PatchProcessCouplers
@@ -714,17 +759,17 @@ subroutine PatchInitAllCouplerAuxVars(patch,option)
   
   PetscBool :: force_update_flag = PETSC_TRUE
   
-  call PatchInitCouplerAuxVars(patch%initial_conditions,patch, &
+  call PatchInitCouplerAuxVars(patch%initial_condition_list,patch, &
                                option)
-  call PatchInitCouplerAuxVars(patch%boundary_conditions,patch, &
+  call PatchInitCouplerAuxVars(patch%boundary_condition_list,patch, &
                                option)
-  call PatchInitCouplerAuxVars(patch%source_sinks,patch, &
+  call PatchInitCouplerAuxVars(patch%source_sink_list,patch, &
                                option)
 
   !geh: This should not be included in PatchUpdateAllCouplerAuxVars
   ! as it will result in excessive updates to initial conditions
   ! that are not necessary after the simulation has started time stepping.
-  call PatchUpdateCouplerAuxVars(patch,patch%initial_conditions, &
+  call PatchUpdateCouplerAuxVars(patch,patch%initial_condition_list, &
                                  force_update_flag,option)
   call PatchUpdateAllCouplerAuxVars(patch,force_update_flag,option)
 
@@ -747,7 +792,7 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
   use Reactive_Transport_Aux_module
   use Global_Aux_module
   use Condition_module
-  use Constraint_module
+  use Transport_Constraint_module
   use General_Aux_module
   
   implicit none
@@ -792,14 +837,6 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
             select case(option%iflowmode)
 
               case(RICHARDS_MODE)
-  !geh              allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
-                if (option%mimetic) then
-                   if (coupler%itype == INITIAL_COUPLER_TYPE) then 
-                       num_connections = coupler%numfaces_set + coupler%region%num_cells
-                   else 
-                       num_connections = coupler%numfaces_set
-                   end if
-                end if
                 allocate(coupler%flow_aux_real_var(2,num_connections))
                 allocate(coupler%flow_aux_int_var(1,num_connections))
                 coupler%flow_aux_real_var = 0.d0
@@ -812,7 +849,6 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
                 coupler%flow_aux_int_var = 0
 
               case(MPH_MODE, IMS_MODE, FLASH2_MODE, MIS_MODE)
-  !geh              allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
                 allocate(coupler%flow_aux_real_var(option%nflowdof,num_connections))
                 allocate(coupler%flow_aux_int_var(1,num_connections))
                 coupler%flow_aux_real_var = 0.d0
@@ -920,9 +956,9 @@ subroutine PatchUpdateAllCouplerAuxVars(patch,force_update_flag,option)
   
   !geh: no need to update initial conditions as they only need updating
   !     once as performed in PatchInitCouplerAuxVars()
-  call PatchUpdateCouplerAuxVars(patch,patch%boundary_conditions, &
+  call PatchUpdateCouplerAuxVars(patch,patch%boundary_condition_list, &
                                  force_update_flag,option)
-  call PatchUpdateCouplerAuxVars(patch,patch%source_sinks, &
+  call PatchUpdateCouplerAuxVars(patch,patch%source_sink_list, &
                                  force_update_flag,option)
 
 !  stop
@@ -1034,6 +1070,7 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
   PetscBool :: update
   PetscBool :: dof1, dof2, dof3
   PetscReal :: temperature, p_sat, p_air, p_gas, p_cap, s_liq
+  PetscReal :: dummy_real
   PetscReal :: x(option%nflowdof)
   character(len=MAXSTRINGLENGTH) :: string, string2
   PetscErrorCode :: ierr
@@ -1044,11 +1081,6 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
   PetscInt :: real_count 
   
   num_connections = coupler%connection_set%num_connections
-#ifdef DASVYAT      
-  if (option%mimetic) then
-    num_connections = coupler%numfaces_set
-  end if
-#endif
 
   flow_condition => coupler%flow_condition
 
@@ -1111,9 +1143,9 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
     case(LIQUID_STATE)
       coupler%flow_aux_int_var(GENERAL_STATE_INDEX,1:num_connections) = LIQUID_STATE
       if (general%liquid_pressure%itype == HYDROSTATIC_BC) then
-        option%io_buffer = 'Hydrostatic BC for general phase cannot possibly ' // &
-          'be set up correctly. - GEH'
-        call printErrMsg(option)
+!        option%io_buffer = 'Hydrostatic BC for general phase cannot possibly ' // &
+!          'be set up correctly. - GEH'
+!        call printErrMsg(option)
         if (general%mole_fraction%itype /= DIRICHLET_BC) then
           option%io_buffer = &
             'Hydrostatic liquid state pressure bc for flow condition "' // &
@@ -1169,10 +1201,8 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
                   GENERAL_AIR_PRESSURE_INDEX),iconn) = &
                     p_gas - p_sat ! air pressure
             endif
-            call SaturationFunctionCompute(p_cap,s_liq, &
-                                            patch%saturation_function_array( &
-                                              patch%sat_func_id(ghosted_id))%ptr, &
-                                            option)
+            call patch%characteristic_curves_array(patch%sat_func_id(ghosted_id))% &
+                   ptr%saturation_function%Saturation(p_cap,s_liq,dummy_real,option)
             ! %flow_aux_mapping(GENERAL_GAS_SATURATION_INDEX) set to 3 in hydrostatic
             coupler%flow_aux_real_var( &
               coupler%flow_aux_mapping( &
@@ -1248,8 +1278,8 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
         end select
       endif
     case(GAS_STATE)
-      p_gas = -999.d0 ! set to uninitialized
-      temperature = -999.d0
+      p_gas = UNINITIALIZED_DOUBLE ! set to uninitialized
+      temperature = UNINITIALIZED_DOUBLE
       real_count = real_count + 1
       coupler%flow_aux_int_var(GENERAL_STATE_INDEX,1:num_connections) = GAS_STATE
       select case(general%gas_pressure%itype)
@@ -1281,7 +1311,7 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
       real_count = real_count + 1
       select case(general%mole_fraction%itype)
         case(DIRICHLET_BC)
-          if (p_gas < -998.d0 .or. temperature < -998.d0) then
+          if (Uninitialized(p_gas) .or. Uninitialized(temperature)) then
             option%io_buffer = 'Gas pressure or temperature not set ' // &
               'correctly in flow condition "' // &
               trim(flow_condition%name) // '".'
@@ -1293,9 +1323,10 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
           if (p_gas - p_air >= p_sat) then
             option%io_buffer = 'MOLE_FRACTION set in flow condition "' // &
               trim(flow_condition%name) // &
-              ' results in a vapor pressure exceeding the water ' // &
+              '" results in a vapor pressure exceeding the water ' // &
               'saturation pressure, which indicates that a two-phase ' // &
               'state with GAS_PRESSURE and GAS_SATURATION should be used.'
+            call printErrMsg(option)
           endif
           coupler%flow_aux_real_var(real_count,1:num_connections) = p_air
           dof2 = PETSC_TRUE
@@ -1411,11 +1442,6 @@ subroutine PatchUpdateCouplerAuxVarsMPH(patch,coupler,option)
   PetscInt :: iconn, local_id, ghosted_id
 
   num_connections = coupler%connection_set%num_connections
-#ifdef DASVYAT      
-  if (option%mimetic) then
-    num_connections = coupler%numfaces_set
-  end if
-#endif
 
   flow_condition => coupler%flow_condition
 
@@ -1517,11 +1543,6 @@ subroutine PatchUpdateCouplerAuxVarsIMS(patch,coupler,option)
   PetscInt :: iconn, local_id, ghosted_id
   
   num_connections = coupler%connection_set%num_connections
-#ifdef DASVYAT      
-  if (option%mimetic) then
-    num_connections = coupler%numfaces_set
-  end if
-#endif
 
   flow_condition => coupler%flow_condition
 
@@ -1623,11 +1644,6 @@ subroutine PatchUpdateCouplerAuxVarsFLASH2(patch,coupler,option)
   PetscInt :: iconn, local_id, ghosted_id
 
   num_connections = coupler%connection_set%num_connections
-#ifdef DASVYAT      
-  if (option%mimetic) then
-    num_connections = coupler%numfaces_set
-  end if
-#endif
 
   flow_condition => coupler%flow_condition
 
@@ -1731,11 +1747,6 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
   PetscInt :: iconn, local_id, ghosted_id
   
   num_connections = coupler%connection_set%num_connections
-#ifdef DASVYAT      
-  if (option%mimetic) then
-    num_connections = coupler%numfaces_set
-  end if
-#endif
 
   flow_condition => coupler%flow_condition
 
@@ -1743,7 +1754,7 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
     coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
                 flow_condition%iphase
     select case(flow_condition%pressure%itype)
-      case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+      case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC,SPILLOVER_BC)
         select type(selector =>flow_condition%pressure%dataset)
           class is(dataset_ascii_type)
             coupler%flow_aux_real_var(TH_PRESSURE_DOF,1:num_connections) = &
@@ -1773,7 +1784,7 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
           write(*,*)  trim(string)
         call printErrMsg(option)
     end select
-    if(associated(flow_condition%temperature)) then
+    if (associated(flow_condition%temperature)) then
       select case(flow_condition%temperature%itype)
         case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
           if (flow_condition%pressure%itype /= HYDROSTATIC_BC .or. &
@@ -1854,7 +1865,7 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
         call printErrMsg(option)
     end select
   endif
-  if(associated(flow_condition%energy_rate)) then
+  if (associated(flow_condition%energy_rate)) then
     select case (flow_condition%energy_rate%itype)
       case (ENERGY_RATE_SS)
         coupler%flow_aux_real_var(TH_TEMPERATURE_DOF,1:num_connections) = &
@@ -1922,11 +1933,7 @@ subroutine PatchUpdateCouplerAuxVarsMIS(patch,coupler,option)
   PetscInt :: iconn, local_id, ghosted_id
   
   num_connections = coupler%connection_set%num_connections
-#ifdef DASVYAT      
-  if (option%mimetic) then
-    num_connections = coupler%numfaces_set
-  end if
-#endif
+
   flow_condition => coupler%flow_condition
   if (associated(flow_condition%pressure)) then
     select case(flow_condition%pressure%itype)
@@ -2004,11 +2011,7 @@ subroutine PatchUpdateCouplerAuxVarsRich(patch,coupler,option)
   PetscInt :: iconn, local_id, ghosted_id
 
   num_connections = coupler%connection_set%num_connections
-#ifdef DASVYAT      
-  if (option%mimetic) then
-    num_connections = coupler%numfaces_set
-  end if
-#endif
+
   flow_condition => coupler%flow_condition
   if (associated(flow_condition%pressure)) then
     select case(flow_condition%pressure%itype)
@@ -2291,7 +2294,7 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,dataset_base, &
     call printErrMsg(option)
   endif
   
-  if(option%iflowmode/=RICHARDS_MODE.and.option%iflowmode/=TH_MODE) then
+  if (option%iflowmode/=RICHARDS_MODE.and.option%iflowmode/=TH_MODE) then
     option%io_buffer='PatchUpdateHetroCouplerAuxVars only implemented '// &
       ' for RICHARDS or TH mode.'
     call printErrMsg(option)
@@ -2507,13 +2510,13 @@ subroutine PatchInitConstraints(patch,reaction,option)
   type(option_type) :: option
   type(reaction_type), pointer :: reaction
   
-  call PatchInitCouplerConstraints(patch%initial_conditions, &
+  call PatchInitCouplerConstraints(patch%initial_condition_list, &
                                    reaction,option)
   
-  call PatchInitCouplerConstraints(patch%boundary_conditions, &
+  call PatchInitCouplerConstraints(patch%boundary_condition_list, &
                                    reaction,option)
   
-  call PatchInitCouplerConstraints(patch%source_sinks, &
+  call PatchInitCouplerConstraints(patch%source_sink_list, &
                                    reaction,option)
 
 end subroutine PatchInitConstraints
@@ -2534,7 +2537,7 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
   use Reaction_Aux_module
   use Global_Aux_module
   use Material_Aux_class
-  use Constraint_module
+  use Transport_Constraint_module
   
   use EOS_Water_module
     
@@ -2597,15 +2600,10 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
           global_auxvar%temp = option%reference_temperature
         endif
 
-#ifndef DONT_USE_WATEOS
         call EOSWaterDensity(global_auxvar%temp, &
                              global_auxvar%pres(1), &
                              global_auxvar%den_kg(1), &
                              dum1,ierr)
-#else
-        call EOSWaterdensity(global_auxvar%temp,global_auxvar%pres(1), &
-                             global_auxvar%den_kg(1),dum1,ierr)
-#endif                     
       else
         global_auxvar%pres = option%reference_pressure
         global_auxvar%temp = option%reference_temperature
@@ -2617,17 +2615,30 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
                             material_auxvar, &
                             reaction,cur_constraint_coupler%constraint_name, &
                             cur_constraint_coupler%aqueous_species, &
+                            cur_constraint_coupler%free_ion_guess, &
                             cur_constraint_coupler%minerals, &
                             cur_constraint_coupler%surface_complexes, &
                             cur_constraint_coupler%colloids, &
                             cur_constraint_coupler%immobile_species, &
                             cur_constraint_coupler%num_iterations, &
                             PETSC_FALSE,option)
+      ! update CO2 mole fraction for CO2 modes
+      select case(option%iflowmode)
+        case(MPH_MODE,FLASH2_MODE)
+          if (cur_coupler%flow_condition%iphase == 1) then
+            dum1 = RCO2MoleFraction(rt_auxvar,global_auxvar,reaction,option)
+            cur_coupler%flow_condition%concentration%dataset%rarray(1) = dum1
+            if (associated(cur_coupler%flow_aux_real_var)) then
+              cur_coupler%flow_aux_real_var(MPH_CONCENTRATION_DOF,:) = dum1
+            endif
+          endif
+      end select
       cur_constraint_coupler => cur_constraint_coupler%next
     enddo
     cur_coupler => cur_coupler%next
   enddo
 
+  call MaterialAuxVarStrip(material_auxvar)
   deallocate(material_auxvar)
 
 end subroutine PatchInitCouplerConstraints
@@ -2677,7 +2688,7 @@ subroutine PatchUpdateUniformVelocity(patch,velocity,option)
   enddo    
 
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0
   do 
     if (.not.associated(boundary_condition)) exit
@@ -2760,10 +2771,10 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
   use Mphase_Aux_module
   use TH_Aux_module
   use Richards_Aux_module
-  use Mineral_module
+  use Reaction_Mineral_module
   use Reaction_module
   use Reactive_Transport_Aux_module  
-  use Surface_Complexation_Aux_module
+  use Reaction_Surface_Complexation_Aux_module
   use General_Aux_module
   use Output_Aux_module
   use Variables_module
@@ -2808,7 +2819,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
          LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,LIQUID_VISCOSITY, &
          GAS_VISCOSITY,CAPILLARY_PRESSURE,LIQUID_DENSITY_MOL, &
          LIQUID_MOBILITY,GAS_MOBILITY,SC_FUGA_COEFF,STATE,ICE_DENSITY, &
-         TRANSIENT_POROSITY,LIQUID_HEAD)
+         EFFECTIVE_POROSITY,LIQUID_HEAD)
 
       if (associated(patch%aux%TH)) then
         select case(ivar)
@@ -2868,7 +2879,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%TH%auxvars(grid%nL2G(local_id))%u
             enddo
-          case(TRANSIENT_POROSITY)
+          case(EFFECTIVE_POROSITY)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%TH%auxvars(grid%nL2G(local_id))%transient_por
             enddo
@@ -2901,8 +2912,8 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
             call printErrMsg(option,'GAS_VISCOSITY not supported by Richards')
           case(GAS_MOBILITY)
             call printErrMsg(option,'GAS_MOBILITY not supported by Richards')
-          case(TRANSIENT_POROSITY)
-            call printErrMsg(option,'TRANSIENT_POROSITY not supported by Richards')
+          case(EFFECTIVE_POROSITY)
+            call printErrMsg(option,'EFFECTIVE_POROSITY not supported by Richards')
           case(LIQUID_PRESSURE)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = &
@@ -3290,6 +3301,11 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
               vec_ptr(local_id) = patch%aux%General%auxvars(ZERO_INTEGER, &
                   grid%nL2G(local_id))%mobility(option%gas_phase)
             enddo
+          case(EFFECTIVE_POROSITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%General%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%effective_porosity
+            enddo
         end select         
       endif
       
@@ -3529,7 +3545,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
                                     eqsrfcplx_conc(isubvar)
             enddo
           else
-            vec_ptr = -999.d0
+            vec_ptr = UNINITIALIZED_DOUBLE
           endif
         case(SURFACE_SITE_DENSITY)
           tempreal = &
@@ -3687,6 +3703,12 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
           MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
                                  POROSITY)
       enddo
+    case(MINERAL_POROSITY)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = &
+          MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
+                                 MINERAL_POROSITY)
+      enddo
     case(PERMEABILITY,PERMEABILITY_X)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = &
@@ -3734,7 +3756,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
         vec_ptr(local_id) = &
           patch%imat_internal_to_external(patch%imat(grid%nL2G(local_id)))
       enddo
-    case(PROCESSOR_ID)
+    case(PROCESS_ID)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = option%myrank
       enddo
@@ -3754,6 +3776,12 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
       call VecRestoreArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
       call VecStrideGather(field%flow_r,isubvar-1,vec,INSERT_VALUES,ierr)
       call VecGetArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
+    case(SOIL_COMPRESSIBILITY)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = &
+          MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
+                                 SOIL_COMPRESSIBILITY)
+      enddo
     case default
       write(option%io_buffer, &
             '(''IVAR ('',i3,'') not found in PatchGetVariable'')') ivar
@@ -3786,10 +3814,10 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
   use Richards_Aux_module
   use Miscible_Aux_module
   use Reactive_Transport_Aux_module  
-  use Mineral_module
+  use Reaction_Mineral_module
   use Reaction_module
-  use Mineral_Aux_module
-  use Surface_Complexation_Aux_module
+  use Reaction_Mineral_Aux_module
+  use Reaction_Surface_Complexation_Aux_module
   use Output_Aux_module
   use Variables_module
   use General_Aux_module  
@@ -3822,7 +3850,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
   grid => patch%grid
   material_auxvars => patch%aux%Material%auxvars
   
-  value = -999.99d0
+  value = UNINITIALIZED_DOUBLE
 
   ! inactive grid cell
   if (patch%imat(ghosted_id) <= 0) then
@@ -3842,7 +3870,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
          LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,LIQUID_VISCOSITY, &
          GAS_VISCOSITY,AIR_PRESSURE,CAPILLARY_PRESSURE, &
          LIQUID_MOBILITY,GAS_MOBILITY,SC_FUGA_COEFF,STATE,ICE_DENSITY, &
-         SECONDARY_TEMPERATURE,LIQUID_DENSITY_MOL,TRANSIENT_POROSITY, &
+         SECONDARY_TEMPERATURE,LIQUID_DENSITY_MOL,EFFECTIVE_POROSITY, &
          LIQUID_HEAD)
          
      if (associated(patch%aux%TH)) then
@@ -3882,7 +3910,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           case(SECONDARY_TEMPERATURE)
             local_id = grid%nG2L(ghosted_id)
             value = patch%aux%SC_heat%sec_heat_vars(local_id)%sec_temp(isubvar)
-          case(TRANSIENT_POROSITY)
+          case(EFFECTIVE_POROSITY)
             value = patch%aux%TH%auxvars(ghosted_id)%transient_por
         end select
       else if (associated(patch%aux%Richards)) then
@@ -3901,8 +3929,8 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
             call printErrMsg(option,'LIQUID_ENERGY not supported by Richards')
           case(GAS_ENERGY)
             call printErrMsg(option,'GAS_ENERGY not supported by Richards')
-          case(TRANSIENT_POROSITY)
-            call printErrMsg(option,'TRANSIENT_POROSITY not supported by Richards')
+          case(EFFECTIVE_POROSITY)
+            call printErrMsg(option,'EFFECTIVE_POROSITY not supported by Richards')
           case(LIQUID_PRESSURE)
             value = patch%aux%Global%auxvars(ghosted_id)%pres(1)
           case(LIQUID_HEAD)
@@ -4132,6 +4160,9 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           case(GAS_MOBILITY)
             value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                       mobility(option%gas_phase)
+          case(EFFECTIVE_POROSITY)
+            value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+                      effective_porosity
         end select        
       endif
       
@@ -4278,7 +4309,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           if (associated(patch%aux%RT%auxvars(ghosted_id)%eqsrfcplx_conc)) then
             value = patch%aux%RT%auxvars(ghosted_id)%eqsrfcplx_conc(isubvar)
           else
-            value = -999.d0
+            value = UNINITIALIZED_DOUBLE
           endif
         case(SURFACE_CMPLX_FREE)
           value = &
@@ -4369,6 +4400,9 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
     case(POROSITY)
       value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
                                      POROSITY)
+    case(MINERAL_POROSITY)
+      value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
+                                     MINERAL_POROSITY)
     case(PERMEABILITY,PERMEABILITY_X)
       value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
                                      PERMEABILITY_X)
@@ -4378,13 +4412,17 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
     case(PERMEABILITY_Z)
       value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
                                      PERMEABILITY_Z)
+    case(SOIL_COMPRESSIBILITY)
+      value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
+                                     SOIL_COMPRESSIBILITY)
+
     case(PHASE)
       call VecGetArrayF90(field%iphas_loc,vec_ptr2,ierr);CHKERRQ(ierr)
       value = vec_ptr2(ghosted_id)
       call VecRestoreArrayF90(field%iphas_loc,vec_ptr2,ierr);CHKERRQ(ierr)
     case(MATERIAL_ID)
       value = patch%imat_internal_to_external(patch%imat(ghosted_id))
-    case(PROCESSOR_ID)
+    case(PROCESS_ID)
       value = option%myrank
     ! Need to fix the below two cases (they assume only one component) -- SK 02/06/13  
     case(SECONDARY_CONCENTRATION)
@@ -4415,6 +4453,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
       value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
                                      VOLUME)
     case(RESIDUAL)
+      local_id = grid%nG2L(ghosted_id)
       call VecGetArrayF90(field%flow_r,vec_ptr2,ierr);CHKERRQ(ierr)
       value = vec_ptr2((local_id-1)*option%nflowdof+isubvar)
       call VecRestoreArrayF90(field%flow_r,vec_ptr2,ierr);CHKERRQ(ierr)
@@ -5165,6 +5204,18 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
                                       POROSITY,vec_ptr(ghosted_id))
         enddo
       endif
+    case(MINERAL_POROSITY)
+      if (vec_format == GLOBAL) then
+        do local_id=1,grid%nlmax
+          call MaterialAuxVarSetValue(material_auxvars(grid%nL2G(local_id)), &
+                                      MINERAL_POROSITY,vec_ptr(local_id))
+        enddo
+      else if (vec_format == LOCAL) then
+        do ghosted_id=1,grid%ngmax
+          call MaterialAuxVarSetValue(material_auxvars(ghosted_id), &
+                                      MINERAL_POROSITY,vec_ptr(ghosted_id))
+        enddo
+      endif
     case(PERMEABILITY,PERMEABILITY_X,PERMEABILITY_Y,PERMEABILITY_Z)
       option%io_buffer = 'Setting of permeability in "PatchSetVariable"' // &
         ' not supported.'
@@ -5193,9 +5244,9 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
       else if (vec_format == LOCAL) then
         patch%imat(1:grid%ngmax) = int(vec_ptr(1:grid%ngmax))
       endif
-    case(PROCESSOR_ID)
+    case(PROCESS_ID)
       call printErrMsg(option, &
-                       'Cannot set PROCESSOR_ID through PatchSetVariable()')
+                       'Cannot set PROCESS_ID through PatchSetVariable()')
   end select
 
   call VecRestoreArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
@@ -5327,7 +5378,7 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
     cur_connection_set => cur_connection_set%next
   enddo
 
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -5374,7 +5425,7 @@ function PatchGetVarNameFromKeyword(keyword,option)
   character(len=MAXSTRINGLENGTH) :: var_name
 
   select case(keyword)
-    case('PROCESSOR_ID')
+    case('PROCESS_ID')
       var_name = 'Processor ID'
     case default
       option%io_buffer = 'Keyword "' // trim(keyword) // '" not ' // &
@@ -5409,8 +5460,8 @@ subroutine PatchGetIvarsFromKeyword(keyword,ivar,isubvar,var_type,option)
   type(option_type) :: option
 
   select case(keyword)
-    case('PROCESSOR_ID')
-      ivar = PROCESSOR_ID
+    case('PROCESS_ID')
+      ivar = PROCESS_ID
       isubvar = ZERO_INTEGER
       var_type = INT_VAR
     case default
@@ -5420,117 +5471,6 @@ subroutine PatchGetIvarsFromKeyword(keyword,ivar,isubvar,var_type,option)
   end select
 
 end subroutine
-
-! ************************************************************************** !
-
-subroutine PatchDestroyList(patch_list)
-  ! 
-  ! Deallocates a patch list and array of patches
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 10/15/07
-  ! 
-
-  implicit none
-  
-  type(patch_list_type), pointer :: patch_list
-    
-  type(patch_type), pointer :: cur_patch, prev_patch
-  
-  if (.not.associated(patch_list)) return
-  
-  if (associated(patch_list%array)) deallocate(patch_list%array)
-  nullify(patch_list%array)
-  
-  cur_patch => patch_list%first
-  do 
-    if (.not.associated(cur_patch)) exit
-    prev_patch => cur_patch
-    cur_patch => cur_patch%next
-    call PatchDestroy(prev_patch)
-  enddo
-  
-  nullify(patch_list%first)
-  nullify(patch_list%last)
-  patch_list%num_patch_objects = 0
-  
-  deallocate(patch_list)
-  nullify(patch_list)
-
-end subroutine PatchDestroyList
-
-! ************************************************************************** !
-
-subroutine PatchDestroy(patch)
-  ! 
-  ! Deallocates a patch object
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 02/22/08
-  ! 
-
-  use Utility_module, only : DeallocateArray
-
-  implicit none
-  
-  type(patch_type), pointer :: patch
-  
-  call DeallocateArray(patch%imat)
-  call DeallocateArray(patch%imat_internal_to_external)
-  call DeallocateArray(patch%sat_func_id)
-  call DeallocateArray(patch%internal_velocities)
-  call DeallocateArray(patch%boundary_velocities)
-  call DeallocateArray(patch%internal_fluxes)
-  call DeallocateArray(patch%boundary_fluxes)
-  call DeallocateArray(patch%internal_tran_coefs)
-  call DeallocateArray(patch%boundary_tran_coefs)
-  call DeallocateArray(patch%ss_fluid_fluxes)
-
-  if (associated(patch%material_property_array)) &
-    deallocate(patch%material_property_array)
-  nullify(patch%material_property_array)
-  ! Since this linked list will be destroyed by realization, just nullify here
-  nullify(patch%material_properties)
-  if (associated(patch%saturation_function_array)) &
-    deallocate(patch%saturation_function_array)
-  nullify(patch%saturation_function_array)
-  ! Since this linked list will be destroyed by realization, just nullify here
-  nullify(patch%saturation_functions)
-
-  nullify(patch%surf_field)
-  if (associated(patch%surf_material_property_array)) &
-    deallocate(patch%surf_material_property_array)
-  nullify(patch%surf_material_property_array)
-  nullify(patch%surf_material_properties)
-  if (associated(patch%surf_internal_fluxes)) deallocate(patch%surf_internal_fluxes)
-  if (associated(patch%surf_boundary_fluxes)) deallocate(patch%surf_boundary_fluxes)
-  nullify(patch%surf_internal_fluxes)
-  nullify(patch%surf_boundary_fluxes)
-
-  ! solely nullify grid since destroyed in discretization
-  nullify(patch%grid)
-  call RegionDestroyList(patch%regions)
-  call CouplerDestroyList(patch%boundary_conditions)
-  call CouplerDestroyList(patch%initial_conditions)
-  call CouplerDestroyList(patch%source_sinks)
-  
-  
-  call ObservationDestroyList(patch%observation)
-  call StrataDestroyList(patch%strata)
-  
-  call AuxDestroy(patch%aux)
-  
-  call ObservationDestroyList(patch%observation)
-  
-  ! these are solely pointers, must not destroy.
-  nullify(patch%reaction)
-  nullify(patch%datasets)
-  nullify(patch%field)
-  
-  deallocate(patch)
-  nullify(patch)
-  
-end subroutine PatchDestroy
 
 ! ************************************************************************** !
 
@@ -5594,7 +5534,7 @@ subroutine PatchGetVariable2(patch,surf_field,option,output_option,vec,ivar, &
         vec_ptr(local_id) = &
           patch%imat_internal_to_external(patch%imat(grid%nL2G(local_id)))
       enddo
-    case(PROCESSOR_ID)
+    case(PROCESS_ID)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = option%myrank
       enddo
@@ -5673,7 +5613,7 @@ subroutine PatchGetCellCenteredVelocities(patch,iphase,velocities)
   enddo
 
   ! boundary velocities
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0
   do
     if (.not.associated(boundary_condition)) exit
@@ -5706,5 +5646,342 @@ subroutine PatchGetCellCenteredVelocities(patch,iphase,velocities)
   deallocate(sum_area)
 
 end subroutine PatchGetCellCenteredVelocities
+
+! ************************************************************************** !
+
+function PatchGetConnectionsFromCoords(patch,coordinates,integral_flux_name, &
+                                       option)
+  ! 
+  ! 
+  ! Returns a list of internal and boundary connection ids for cell
+  ! interfaces within a polygon.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/20/14
+  ! 
+  use Option_module
+  use Geometry_module
+  use Utility_module
+  use Connection_module
+  use Coupler_module
+  
+  implicit none
+
+  type(patch_type) :: patch
+  type(point3d_type) :: coordinates(:)
+  character(len=MAXWORDLENGTH) :: integral_flux_name
+  type(option_type) :: option
+  
+  PetscInt, pointer :: PatchGetConnectionsFromCoords(:)
+  
+  PetscInt, pointer :: connections(:)
+  type(grid_type), pointer :: grid
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
+  type(coupler_type), pointer :: boundary_condition
+  
+  PetscInt :: idir
+  PetscInt :: icount
+  PetscInt :: array_size
+  PetscInt :: sum_connection
+  PetscInt :: iconn
+  PetscInt :: i
+  PetscInt :: local_id
+  PetscInt :: local_id_up
+  PetscInt :: ghosted_id
+  PetscInt :: ghosted_id_up
+  PetscInt :: ghosted_id_dn
+  PetscReal :: fraction_upwind
+  PetscReal :: magnitude
+  PetscReal :: v1(3), v2(3)
+  PetscReal :: x, y, z
+  PetscReal :: value1, value2
+  PetscReal, parameter :: relative_tolerance = 1.d-6
+  PetscBool :: within_tolerance
+  PetscErrorCode :: ierr
+  
+  grid => patch%grid
+  
+  ! determine orientation of polygon
+  if (size(coordinates) > 2) then
+    v1(1) = coordinates(2)%x - coordinates(1)%x
+    v1(2) = coordinates(2)%y - coordinates(1)%y
+    v1(3) = coordinates(2)%z - coordinates(1)%z
+    v2(1) = coordinates(2)%x - coordinates(3)%x
+    v2(2) = coordinates(2)%y - coordinates(3)%y
+    v2(3) = coordinates(2)%z - coordinates(3)%z
+    v1 = CrossProduct(v1,v2)
+    icount = 0
+    idir = 0
+    do i = X_DIRECTION, Z_DIRECTION
+      if (v1(i) > 1.d-10) then
+        icount = icount + 1
+        idir = i
+      endif
+    enddo
+  else
+    v1(1) = coordinates(1)%x
+    v1(2) = coordinates(1)%y
+    v1(3) = coordinates(1)%z
+    v2(1) = coordinates(2)%x
+    v2(2) = coordinates(2)%y
+    v2(3) = coordinates(2)%z
+    icount = 0
+    do i = X_DIRECTION, Z_DIRECTION
+      if (Equal(v2(i),v1(i))) then
+        idir = i
+        icount = icount + 1
+      endif
+    enddo
+    if (icount == 0) icount = 3
+  endif
+
+  if (icount > 1) then
+    option%io_buffer = 'Rectangle defined in integral flux "' // &
+      trim(adjustl(integral_flux_name)) // &
+      '" must be aligned with structured grid coordinates axes.'
+    call printErrMsg(option)
+  endif
+    
+  array_size = 100
+  allocate(connections(array_size))
+  icount = 0
+  ! Interior Flux Terms -----------------------------------
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
+  sum_connection = 0  
+  do 
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+
+      ghosted_id_up = cur_connection_set%id_up(iconn)
+      ghosted_id_dn = cur_connection_set%id_dn(iconn)
+
+      local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
+      ! if one of the cells is ghosted, the process stores the flux only
+      ! when the upwind cell is non-ghosted.
+      if (local_id_up <= 0) cycle 
+
+      fraction_upwind = cur_connection_set%dist(-1,iconn)
+      magnitude = cur_connection_set%dist(0,iconn)
+      x = grid%x(ghosted_id_up) + fraction_upwind * magnitude * &
+          cur_connection_set%dist(X_DIRECTION,iconn)
+      y = grid%y(ghosted_id_up) + fraction_upwind * magnitude * &
+          cur_connection_set%dist(Y_DIRECTION,iconn)
+      z = grid%z(ghosted_id_up) + fraction_upwind * magnitude * &
+          cur_connection_set%dist(Z_DIRECTION,iconn)
+      select case(idir)
+        case(X_DIRECTION)
+          value1 = x
+          value2 = coordinates(1)%x
+        case(Y_DIRECTION)
+          value1 = y
+          value2 = coordinates(1)%y
+        case(Z_DIRECTION)
+          value1 = z
+          value2 = coordinates(1)%z
+      end select
+      within_tolerance = PETSC_FALSE
+      if (Equal(value1,0.d0)) then
+        within_tolerance = Equal(value1,value2)
+      else
+        within_tolerance = dabs((value1-value2)/value1) < relative_tolerance
+      endif
+      if (within_tolerance .and. &
+          GeometryPointInPolygon(x,y,z,idir,coordinates)) then
+        icount = icount + 1
+        if (icount > size(connections)) then
+          call reallocateIntArray(connections,array_size)
+        endif
+        connections(icount) = sum_connection
+      endif
+    enddo
+    cur_connection_set => cur_connection_set%next
+  enddo
+
+  ! Boundary Flux Terms -----------------------------------
+  boundary_condition => patch%boundary_condition_list%first
+  sum_connection = 0    
+  do 
+    if (.not.associated(boundary_condition)) exit
+    cur_connection_set => boundary_condition%connection_set
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+      fraction_upwind = 1.d0
+      magnitude = cur_connection_set%dist(0,iconn)
+      x = grid%x(ghosted_id) - fraction_upwind * magnitude * &
+                               cur_connection_set%dist(X_DIRECTION,iconn)
+      y = grid%y(ghosted_id) - fraction_upwind * magnitude * &
+                               cur_connection_set%dist(Y_DIRECTION,iconn)
+      z = grid%z(ghosted_id) - fraction_upwind * magnitude * &
+                               cur_connection_set%dist(Z_DIRECTION,iconn)
+      select case(idir)
+        case(X_DIRECTION)
+          value1 = x
+          value2 = coordinates(1)%x
+        case(Y_DIRECTION)
+          value1 = y
+          value2 = coordinates(1)%y
+        case(Z_DIRECTION)
+          value1 = z
+          value2 = coordinates(1)%z
+      end select
+      within_tolerance = PETSC_FALSE
+      if (Equal(value1,0.d0)) then
+        within_tolerance = Equal(value1,value2)
+      else
+        within_tolerance = dabs((value1-value2)/value1) < relative_tolerance
+      endif
+      if (within_tolerance .and. &
+          GeometryPointInPolygon(x,y,z,idir,coordinates)) then
+        icount = icount + 1
+        if (icount > size(connections)) then
+          call reallocateIntArray(connections,array_size)
+        endif
+        connections(icount) = -1 * sum_connection
+      endif
+    enddo
+    boundary_condition => boundary_condition%next
+  enddo
+  
+  nullify(PatchGetConnectionsFromCoords)
+  if (icount > 0) then
+    allocate(PatchGetConnectionsFromCoords(icount))
+    PatchGetConnectionsFromCoords = connections(1:icount)
+  endif
+  deallocate(connections)
+  nullify(connections)
+
+  call MPI_Allreduce(icount,i,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
+                     option%mycomm,ierr)
+  if (i == 0) then
+    option%io_buffer = 'Zero connections found for INTEGRAL_FLUX "' // &
+      trim(adjustl(integral_flux_name)) // &
+      '".  Please ensure that the coordinates coincide with a cell boundary.'
+    call printErrMsg(option)
+  endif
+  
+end function PatchGetConnectionsFromCoords
+
+! ************************************************************************** !
+
+subroutine PatchDestroyList(patch_list)
+  ! 
+  ! Deallocates a patch list and array of patches
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/07
+  ! 
+
+  implicit none
+  
+  type(patch_list_type), pointer :: patch_list
+    
+  type(patch_type), pointer :: cur_patch, prev_patch
+  
+  if (.not.associated(patch_list)) return
+  
+  if (associated(patch_list%array)) deallocate(patch_list%array)
+  nullify(patch_list%array)
+  
+  cur_patch => patch_list%first
+  do 
+    if (.not.associated(cur_patch)) exit
+    prev_patch => cur_patch
+    cur_patch => cur_patch%next
+    call PatchDestroy(prev_patch)
+  enddo
+  
+  nullify(patch_list%first)
+  nullify(patch_list%last)
+  patch_list%num_patch_objects = 0
+  
+  deallocate(patch_list)
+  nullify(patch_list)
+
+end subroutine PatchDestroyList
+
+! ************************************************************************** !
+
+subroutine PatchDestroy(patch)
+  ! 
+  ! Deallocates a patch object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
+
+  use Utility_module, only : DeallocateArray
+
+  implicit none
+  
+  type(patch_type), pointer :: patch
+  
+  call DeallocateArray(patch%imat)
+  call DeallocateArray(patch%imat_internal_to_external)
+  call DeallocateArray(patch%sat_func_id)
+  call DeallocateArray(patch%internal_velocities)
+  call DeallocateArray(patch%boundary_velocities)
+  call DeallocateArray(patch%internal_tran_coefs)
+  call DeallocateArray(patch%boundary_tran_coefs)
+  call DeallocateArray(patch%internal_flow_fluxes)
+  call DeallocateArray(patch%boundary_flow_fluxes)
+  call DeallocateArray(patch%ss_flow_fluxes)
+  call DeallocateArray(patch%internal_tran_fluxes)
+  call DeallocateArray(patch%boundary_tran_fluxes)
+  call DeallocateArray(patch%ss_tran_fluxes)
+  call DeallocateArray(patch%ss_flow_vol_fluxes)
+  
+  call DeallocateArray(patch%boundary_energy_flux)
+
+
+  if (associated(patch%material_property_array)) &
+    deallocate(patch%material_property_array)
+  nullify(patch%material_property_array)
+  ! Since this linked list will be destroyed by realization, just nullify here
+  nullify(patch%material_properties)
+  if (associated(patch%saturation_function_array)) &
+    deallocate(patch%saturation_function_array)
+  nullify(patch%saturation_function_array)
+  ! Since this linked list will be destroyed by realization, just nullify here
+  nullify(patch%saturation_functions)
+  if (associated(patch%characteristic_curves_array)) &
+    deallocate(patch%characteristic_curves_array)
+  nullify(patch%characteristic_curves_array)
+  ! Since this linked list will be destroyed by realization, just nullify here
+  nullify(patch%characteristic_curves)
+
+  nullify(patch%surf_field)
+  if (associated(patch%surf_material_property_array)) &
+    deallocate(patch%surf_material_property_array)
+  nullify(patch%surf_material_property_array)
+  nullify(patch%surf_material_properties)
+
+  ! solely nullify grid since destroyed in discretization
+  nullify(patch%grid)
+  call RegionDestroyList(patch%region_list)
+  call CouplerDestroyList(patch%boundary_condition_list)
+  call CouplerDestroyList(patch%initial_condition_list)
+  call CouplerDestroyList(patch%source_sink_list)
+  
+  call ObservationDestroyList(patch%observation_list)
+  call IntegralFluxDestroyList(patch%integral_flux_list)
+  call StrataDestroyList(patch%strata_list)
+  
+  call AuxDestroy(patch%aux)
+  call SurfaceAuxDestroy(patch%surf_aux)
+  
+  ! these are solely pointers, must not destroy.
+  nullify(patch%reaction)
+  nullify(patch%datasets)
+  nullify(patch%field)
+  
+  deallocate(patch)
+  nullify(patch)
+  
+end subroutine PatchDestroy
 
 end module Patch_module

@@ -32,7 +32,8 @@ module Surface_TH_module
          SurfaceTHUpdateSolution, &
          SurfaceTHUpdateTemperature, &
          SurfaceTHUpdateSurfState, &
-         SurfaceTHImplicitAtmForcing
+         SurfaceTHImplicitAtmForcing, &
+         SurfaceTHDestroy
 
 contains
 
@@ -91,7 +92,7 @@ subroutine SurfaceTHSetup(surf_realization)
 
   ! count the number of boundary connections and allocate
   ! auxvar data structures for them
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
 
   sum_connection = 0    
   do 
@@ -111,7 +112,7 @@ subroutine SurfaceTHSetup(surf_realization)
   patch%surf_aux%SurfaceTH%num_aux_bc = sum_connection
 
   ! Create aux vars for source/sink
-  sum_connection = CouplerGetNumConnectionsInList(patch%source_sinks)
+  sum_connection = CouplerGetNumConnectionsInList(patch%source_sink_list)
   if (sum_connection > 0) then
     allocate(Surf_TH_auxvars_ss(sum_connection))
     do iconn = 1, sum_connection
@@ -316,8 +317,7 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
                          option,vel,dum1,Res)
 
       patch%internal_velocities(1,sum_connection) = vel
-      patch%surf_internal_fluxes(TH_PRESSURE_DOF,sum_connection) = Res(TH_PRESSURE_DOF)
-      patch%surf_internal_fluxes(TH_TEMPERATURE_DOF,sum_connection) = Res(TH_TEMPERATURE_DOF)
+      patch%internal_flow_fluxes(:,sum_connection) = Res(:)
 
       if (local_id_up>0) then
         iend = local_id_up*option%nflowdof
@@ -336,7 +336,7 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   enddo
 
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -368,8 +368,7 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
                          option,vel,dum1,Res)
 
       patch%boundary_velocities(1,sum_connection) = vel
-      patch%surf_boundary_fluxes(TH_PRESSURE_DOF,sum_connection) = Res(TH_PRESSURE_DOF)
-      patch%surf_boundary_fluxes(TH_TEMPERATURE_DOF,sum_connection) = Res(TH_TEMPERATURE_DOF)
+      patch%boundary_flow_fluxes(:,sum_connection) = Res(:)
       
       iend = local_id_dn*option%nflowdof
       istart = iend-option%nflowdof+1
@@ -379,12 +378,12 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   enddo
 
   ! Source/sink terms -------------------------------------
-  source_sink => patch%source_sinks%first
+  source_sink => patch%source_sink_list%first
   sum_connection = 0
   do
     if (.not.associated(source_sink)) exit
     
-    if(source_sink%flow_condition%rate%itype/=HET_VOL_RATE_SS.and. &
+    if (source_sink%flow_condition%rate%itype/=HET_VOL_RATE_SS.and. &
        source_sink%flow_condition%rate%itype/=HET_MASS_RATE_SS) &
     qsrc_flow = source_sink%flow_condition%rate%dataset%rarray(1)
       
@@ -618,7 +617,7 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
                          option,vel,dt,Res)
 
       patch%internal_velocities(1,sum_connection) = vel
-      patch%surf_internal_fluxes(:,sum_connection) = Res(:)
+      patch%internal_flow_fluxes(:,sum_connection) = Res(:)
 
 #ifdef SURFACE_TH_DEBUG
       if (dt < max_allowable_dt) then
@@ -645,6 +644,7 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
     dist = sqrt(dx*dx + dy*dy + dz*dz)
     slope = dz/dist
     print *,"--------------------------"
+    print *,"max_allowable_dt:",max_allowable_dt
     print *,"connection:",max_iconn
     print *,"(dx,dy,dz):",dx,dy,dz
     print *,"dist:      ",dist
@@ -667,7 +667,7 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
 #endif
 
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -699,7 +699,7 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
                          option,vel,dt,Res)
 
       patch%boundary_velocities(1,sum_connection) = vel
-      patch%surf_boundary_fluxes(:,sum_connection) = Res(:)
+      patch%boundary_flow_fluxes(:,sum_connection) = Res(:)
 
       max_allowable_dt = min(max_allowable_dt, dt)
     enddo
@@ -777,7 +777,7 @@ subroutine SurfaceTHFlux(surf_auxvar_up, &
   PetscReal :: dt
 
   ! Initialize
-  dt_max  = 1.d10
+  dt_max  = PETSC_MAX_REAL
 
   ! We upwind Manning's coefficient, temperature, and the unfrozen head
   head_up = surf_global_auxvar_up%head(1) + zc_up
@@ -836,6 +836,14 @@ subroutine SurfaceTHFlux(surf_auxvar_up, &
     dtemp = surf_global_auxvar_up%temp - surf_global_auxvar_dn%temp
   endif
 
+  ! We are not being careful with dry/wet conditions, so if the
+  ! temperature change is greater than 100 [C] we will assuming that
+  ! it was a wet/dry interface change that was missed.
+  if (abs(dtemp) > 100.d0) then
+    den_aveg = 0.d0
+    dtemp    = 0.d0
+  endif
+
   ! Note, Cw and k_therm are same for up and downwind
   Cw = surf_auxvar_up%Cw
   k_therm = surf_auxvar_up%k_therm
@@ -846,11 +854,13 @@ subroutine SurfaceTHFlux(surf_auxvar_up, &
   Res(TH_TEMPERATURE_DOF) = (den_aveg*vel*temp_half*Cw*hw_liq_half + &
                              k_therm*dtemp/dist*hw_half)*length
 
-  if(abs(vel)>eps) then
+  if (abs(vel)>eps) then
     ! 1) Restriction due to flow equation
     dt     = dist/abs(vel)/3.d0
     dt_max = min(dt_max, dt)
+  endif
 
+  if (abs(dtemp) > 1.0d-12) then
     ! 2) Restriction due to energy equation
     dt_max = min(dt_max,(dist**2.d0)*Cw*den_aveg/(2.d0*k_therm))
   endif
@@ -902,7 +912,7 @@ subroutine SurfaceTHBCFlux(ibndtype, &
   PetscReal :: dist
 
   PetscInt :: pressure_bc_type
-  PetscReal :: head
+  PetscReal :: head,dhead
   PetscReal :: head_liq
   PetscReal :: den
   PetscReal :: temp_half
@@ -917,11 +927,7 @@ subroutine SurfaceTHBCFlux(ibndtype, &
   hw_half = 0.d0
   dtemp = 0.d0
   Cw = 0.d0
-  
-  ! RTM: I've multiplied the head (ponded water depth, actually) by the 
-  ! unfrozen fraction.  I believe this makes sense, but I should think a bit 
-  ! more about what a "zero gradient" condition means in the case of freezing
-  ! surface water.
+  dt_max = PETSC_MAX_REAL
 
   ! Flow  
   pressure_bc_type = ibndtype(TH_PRESSURE_DOF)
@@ -944,6 +950,14 @@ subroutine SurfaceTHBCFlux(ibndtype, &
       vel = auxvars(TH_PRESSURE_DOF)
       den = (surf_global_auxvar_up%den_kg(1) + &
              surf_global_auxvar_dn%den_kg(1))/2.d0
+    case (SPILLOVER_BC)
+      ! if liquid water height is above a user-defined value, then outflow can occur
+      head_liq =  surf_auxvar_dn%unfrozen_fraction * head
+      dhead    =  max(head_liq-auxvars(1),0.0d0)
+      vel      = -dhead**(2.d0/3.d0)/mannings*abs(dhead/dist)**0.5d0
+      hw_half  =  head
+      Cw       =  surf_auxvar_dn%Cw 
+      den      =  surf_global_auxvar_dn%den_kg(1)
     case default
       option%io_buffer = 'Unknown pressure_bc_type for surface flow '
       call printErrMsg(option)
@@ -966,21 +980,17 @@ subroutine SurfaceTHBCFlux(ibndtype, &
   endif
 
   flux = head_liq*vel
-  Res(TH_PRESSURE_DOF) = flux*length
-
-  ! Temperature
-  ! RTM: See note about in SufaceTHFlux() about how frozen/unfrozen are handled here.
+  Res(TH_PRESSURE_DOF)    = flux*length
   Res(TH_TEMPERATURE_DOF) = den*temp_half*Cw*vel*head_liq*length + &
                             k_therm*dtemp/dist*hw_half*length
 
-  ! Find maximum allowable timestep
+  ! Timestep restriction due to mass equation
   if (abs(vel)>eps) then
     dt     = dist/abs(vel)/3.d0
     dt_max = min(dt_max, dt)
   endif
-
+  ! Timestep restriction due to energy equation
   if (head_liq > MIN_SURFACE_WATER_HEIGHT) then
-    ! Restriction due to energy equation
     dt_max = min(dt_max,(dist**2.d0)*Cw*den/(2.d0*k_therm))
   endif
 
@@ -1032,7 +1042,7 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
   PetscReal :: xxss(surf_realization%option%nflowdof)
   PetscReal :: tsrc1
   PetscErrorCode :: ierr
-  PetscReal :: den
+  PetscReal :: den,head
 
   option => surf_realization%option
   patch => surf_realization%patch
@@ -1075,7 +1085,7 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
   enddo
    
   ! Boundary aux vars
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -1109,7 +1119,7 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
 
   ! Source/Sink aux vars
   ! source/sinks
-  source_sink => patch%source_sinks%first
+  source_sink => patch%source_sink_list%first
   sum_connection = 0
   do
     if (.not.associated(source_sink)) exit
@@ -1124,7 +1134,7 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
       istart = iend-option%nflowdof+1
 
       if (associated(source_sink%flow_condition%temperature)) then
-        if(source_sink%flow_condition%temperature%itype/=HET_DIRICHLET) then
+        if (source_sink%flow_condition%temperature%itype/=HET_DIRICHLET) then
           tsrc1 = source_sink%flow_condition%temperature%dataset%rarray(1)
         else
           tsrc1 = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
@@ -1135,6 +1145,8 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
       endif
 
       xxss = xx_loc_p(istart:iend)
+      head    = xxss(1)
+      xxss(1) = 1.d0 ! set arbitrary amount of surface water so auxvar will evaluate
       xxss(2) = tsrc1
 
       surf_global_auxvars_ss(sum_connection)%temp = tsrc1
@@ -1142,6 +1154,8 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
                                   surf_th_auxvars_ss(sum_connection), &
                                   surf_global_auxvars_ss(sum_connection), &
                                   option)
+      surf_global_auxvars_ss(sum_connection)%head = head ! set head back just in case
+
     enddo
     source_sink => source_sink%next
   enddo
@@ -1151,6 +1165,76 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
   call VecRestoreArrayF90(surf_field%flow_xx_loc,xx_loc_p, ierr);CHKERRQ(ierr)
 
 end subroutine SurfaceTHUpdateAuxVars
+
+! ************************************************************************** !
+
+subroutine EnergyToTemperatureBisection(T,TL,TR,h,energy,Cwi,Pr,option)
+  ! 
+  ! Solves the following nonlinear equation using the bisection method
+  !
+  ! R(T) = rho(T) Cwi hw T - energy = 0
+  !
+  ! Author: Nathan Collier, ORNL
+  ! Date: 11/2014
+  ! 
+  use EOS_Water_module
+  use Option_module
+
+  implicit none
+
+  PetscReal      :: T,TL,TR,h,energy,Cwi,Pr
+  type(option_type), pointer :: option
+
+  PetscReal      :: Tp,rho,rho_t,f,fR,fL,rtol
+  PetscInt       :: iter,niter
+  PetscBool      :: found
+  PetscErrorCode :: ierr
+
+  call EOSWaterdensity(TR,Pr,rho,rho_T,ierr)
+  fR = rho*Cwi*h*(TR+273.15d0) - energy
+  call EOSWaterdensity(TL,Pr,rho,rho_T,ierr)
+  fL = rho*Cwi*h*(TL+273.15d0) - energy
+
+  if (fL*fR > 0.d0) then
+     print *,"[TL,TR] = ",TL,TR
+     print *,"[fL,fR] = ",fL,fR
+     write(option%io_buffer,'("surface_th.F90: EnergyToTemperatureBisection --> root is not bracketed")')
+     call printErrMsg(option)
+  endif
+
+  T = 0.5d0*(TL+TR)
+  call EOSWaterdensity(T,Pr,rho,rho_T,ierr)
+  f = rho*Cwi*h*(T+273.15d0) - energy
+
+  found = PETSC_FALSE
+  niter = 200
+  rtol  = 1.d-6
+  do iter = 1,niter
+     Tp = T
+     if (fL*f < 0.d0) then
+        TR = T
+     else 
+        TL = T
+     endif
+
+     T = 0.5d0*(TL+TR)
+
+     call EOSWaterdensity(T,Pr,rho,rho_T,ierr)
+     f = rho*Cwi*h*(T+273.15d0) - energy
+
+     if (abs((T-Tp)/(T+273.15d0)) < rtol) then
+        found = PETSC_TRUE
+        exit
+     endif
+  enddo
+
+  if (found .eqv. PETSC_FALSE) then
+     print *,"[TL,T,TR] = ",TL,T,TR
+     write(option%io_buffer,'("surface_th.F90: EnergyToTemperatureBisection --> root not found!")')
+     call printErrMsg(option)
+  endif
+
+end subroutine EnergyToTemperatureBisection
 
 ! ************************************************************************** !
 
@@ -1196,13 +1280,10 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
   PetscReal, pointer :: perm_xx_loc_p(:), porosity_loc_p(:)
   PetscReal :: xxbc(surf_realization%option%nflowdof)
   PetscReal :: xxss(surf_realization%option%nflowdof)
-  PetscReal :: temp,ptemp,rtol
-  PetscInt :: iter
-  PetscInt :: niter
+  PetscReal :: temp,TL,TR
   PetscReal :: den
   PetscReal :: dum1
   PetscErrorCode :: ierr
-  PetscBool :: found
 
   option => surf_realization%option
   patch => surf_realization%patch
@@ -1222,61 +1303,31 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
   !
   ! Residual(T) = rho(T) Cwi hw T - energy = 0
   !
-  ! This we do by fixed point iteration until the relative difference
-  ! between iterations falls below a tolerance. 
-  !
-  niter = 20
-  rtol  = 1.0d-12
-  found = PETSC_FALSE
 
   call VecGetArrayF90(surf_field%flow_xx_loc,xx_loc_p,ierr);CHKERRQ(ierr)
 
   do ghosted_id = 1,grid%ngmax
-    local_id = grid%nG2L(ghosted_id)
-    if(local_id>0) then
-      istart = (local_id-1)*option%nflowdof+1 ! surface water height dof
-      iend   = istart+1                       ! surface energy dof
-      if (xx_loc_p(istart) < MIN_SURFACE_WATER_HEIGHT) then
-        ! If the cell is dry then we set temperature to a dummy value
-        ! and then zero out the water height and energy.
-        surf_global_auxvars(ghosted_id)%is_dry = PETSC_TRUE
-        temp = DUMMY_VALUE
-        xx_loc_p(istart) = 0.d0 ! no water 
-        xx_loc_p(iend)   = 0.d0 ! no energy
-      else
-        ! If they cell is not dry, then we must solve for the
-        ! temperature. But if the cell was previously dry, then its
-        ! current guess of temperature is DUMMY_VALUE which makes
-        ! EOSWaterDensity return nonsensical values. So here we
-        ! initialize density assuming reference pressure and
-        ! temperature at freezing.
-        surf_global_auxvars(ghosted_id)%is_dry = PETSC_FALSE
-        if (surf_global_auxvars(ghosted_id)%temp == DUMMY_VALUE) then
-          call EOSWaterdensity(0.d0,option%reference_pressure,den,dum1,ierr)
-          surf_global_auxvars(ghosted_id)%den_kg(1) = den
-        endif
-        ! Fixed point iteration loop
-        temp = 0.d0
-        do iter = 1,niter
-          ptemp = temp
-          temp  = xx_loc_p(iend)/xx_loc_p(istart)/ &
-                  surf_global_auxvars(ghosted_id)%den_kg(1)/ &
-                  surf_auxvars(ghosted_id)%Cwi - 273.15d0
-          call EOSWaterdensity(temp,option%reference_pressure,den,dum1,ierr)
-          surf_global_auxvars(ghosted_id)%den_kg(1) = den
-          if (abs((temp-ptemp)/(temp+273.15d0))<rtol) then
-            found = PETSC_TRUE
-            exit
-          endif
-        enddo
-        if (found .eqv. PETSC_FALSE) then
-          write(option%io_buffer, &
-                '("surface_th.F90: SurfaceTHUpdateTemperature --> fixed point not found!")')
-          call printErrMsg(option)
-        endif
-      endif
-      surf_global_auxvars(ghosted_id)%temp = temp
+    istart = (ghosted_id-1)*option%nflowdof+1 ! surface water height dof
+    iend   = istart+1                       ! surface energy dof
+    if (xx_loc_p(istart) < MIN_SURFACE_WATER_HEIGHT) then
+      ! If the cell is dry then we set temperature to a dummy value
+      ! and then zero out the water height and energy.
+      surf_global_auxvars(ghosted_id)%is_dry = PETSC_TRUE
+      temp = DUMMY_VALUE
+      xx_loc_p(istart) = 0.d0 ! no water 
+      xx_loc_p(iend)   = 0.d0 ! no energy
+    else
+      TL = -100.d0
+      TR =  100.d0
+      call EnergyToTemperatureBisection(temp,TL,TR, &
+                                        xx_loc_p(istart), &
+                                        xx_loc_p(iend), &
+                                        surf_auxvars(ghosted_id)%Cwi, &
+                                        option%reference_pressure,option)
     endif
+    surf_global_auxvars(ghosted_id)%temp = temp
+    call EOSWaterdensity(temp,option%reference_pressure,den,dum1,ierr)
+    surf_global_auxvars(ghosted_id)%den_kg(1) = den
   enddo
 
   call VecRestoreArrayF90(surf_field%flow_xx_loc,xx_loc_p,ierr);CHKERRQ(ierr)
@@ -1362,7 +1413,7 @@ subroutine SurfaceTHUpdateSurfState(surf_realization)
   do ghosted_id = 1,surf_grid%ngmax
 
     local_id = surf_grid%nG2L(ghosted_id)
-    if(local_id <= 0) cycle
+    if (local_id <= 0) cycle
 
     iend = ghosted_id*option%nflowdof
     ibeg = iend - 1
@@ -1395,6 +1446,76 @@ subroutine SurfaceTHUpdateSurfState(surf_realization)
   call SurfaceTHUpdateAuxVars(surf_realization)
 
 end subroutine SurfaceTHUpdateSurfState
+
+! ************************************************************************** !
+
+subroutine AtmEnergyToTemperatureBisection(T,TL,TR,shift,RHS,Pr,option)
+  ! 
+  ! Solves the following nonlinear equation using the bisection method
+  !
+  ! R(T) = (rho(T)+shift)*T - RHS = 0
+  !
+  ! Author: Nathan Collier, ORNL
+  ! Date: 11/2014
+  ! 
+  use EOS_Water_module
+  use Option_module
+
+  implicit none
+
+  PetscReal      :: T,TL,TR,shift,RHS,Pr
+  type(option_type), pointer :: option
+
+  PetscReal      :: Tp,rho,rho_t,f,fR,fL,rtol
+  PetscInt       :: iter,niter
+  PetscBool      :: found
+  PetscErrorCode :: ierr
+
+  call EOSWaterdensity(TR,Pr,rho,rho_T,ierr)
+  fR = (rho+shift)*(TR+273.15d0) - RHS
+  call EOSWaterdensity(TL,Pr,rho,rho_T,ierr)
+  fL = (rho+shift)*(TL+273.15d0) - RHS
+
+  if (fL*fR > 0.d0) then
+     print *,"[TL,TR] = ",TL,TR
+     print *,"[fL,fR] = ",fL,fR
+     write(option%io_buffer,'("surface_th.F90: AtmEnergyToTemperatureBisection --> root is not bracketed")')
+     call printErrMsg(option)
+  endif
+
+  T = 0.5d0*(TL+TR)
+  call EOSWaterdensity(T,Pr,rho,rho_T,ierr)
+  f = (rho+shift)*(T+273.15d0) - RHS
+
+  found = PETSC_FALSE
+  niter = 200
+  rtol  = 1.d-6
+  do iter = 1,niter
+     Tp = T
+     if (fL*f < 0.d0) then
+        TR = T
+     else 
+        TL = T
+     endif
+
+     T = 0.5d0*(TL+TR)
+
+     call EOSWaterdensity(T,Pr,rho,rho_T,ierr)
+     f = (rho+shift)*(T+273.15d0) - RHS
+
+     if (abs((T-Tp)/(T+273.15d0)) < rtol) then
+        found = PETSC_TRUE
+        exit
+     endif
+  enddo
+
+  if (found .eqv. PETSC_FALSE) then
+     print *,"[TL,T,TR] = ",TL,T,TR
+     write(option%io_buffer,'("surface_th.F90: AtmEnergyToTemperatureBisection --> root not found!")')
+     call printErrMsg(option)
+  endif
+
+end subroutine AtmEnergyToTemperatureBisection
 
 ! ************************************************************************** !
 
@@ -1440,7 +1561,7 @@ subroutine SurfaceTHImplicitAtmForcing(surf_realization)
   PetscReal, pointer :: perm_xx_loc_p(:), porosity_loc_p(:)
   PetscReal :: xxbc(surf_realization%option%nflowdof)
   PetscReal :: xxss(surf_realization%option%nflowdof)
-  PetscReal :: temp
+  PetscReal :: temp,ptemp,rtol
   PetscInt :: iter
   PetscInt :: niter
   PetscReal :: den
@@ -1451,7 +1572,8 @@ subroutine SurfaceTHImplicitAtmForcing(surf_realization)
   PetscReal :: Cw
   PetscReal :: temp_old
   PetscReal :: head
-  PetscReal :: beta
+  PetscReal :: beta,RHS,TL,TR
+  PetscBool :: found
   PetscErrorCode :: ierr
 
   option => surf_realization%option
@@ -1466,11 +1588,11 @@ subroutine SurfaceTHImplicitAtmForcing(surf_realization)
 
   ! niter = max(m)
   niter = 20
-
+  rtol  = 1.d-12
   call VecGetArrayF90(surf_field%flow_xx,xx_p,ierr);CHKERRQ(ierr)
 
   ! Update source/sink aux vars
-  source_sink => patch%source_sinks%first
+  source_sink => patch%source_sink_list%first
   sum_connection = 0
   do
     if (.not.associated(source_sink)) exit
@@ -1498,13 +1620,13 @@ subroutine SurfaceTHImplicitAtmForcing(surf_realization)
             call EOSWaterdensity(temp_old,option%reference_pressure,den_old,dum1,ierr)
             call EOSWaterdensity(temp_old,option%reference_pressure,den_iter,dum1,ierr)
 
-            do iter = 1,niter
-              beta = (2.d0*k_therm*option%surf_flow_dt)/(Cw*head**2.d0)
-              temp = (den_old*(temp_old + 273.15d0) + &
-                      beta*(surf_global_auxvars_ss(sum_connection)%temp + 273.15d0))/&
-                      (den_iter + beta) - 273.15d0
-              call EOSWaterdensity(temp,option%reference_pressure,den_iter,dum1,ierr)
-            enddo
+            TL    = -100.d0
+            TR    =  100.d0
+            beta  = (2.d0*k_therm*option%surf_flow_dt)/(Cw*head**2.d0)
+            RHS   =  den_old*(temp_old+273.15d0)+beta*(surf_global_auxvars_ss(sum_connection)%temp+273.15d0)
+            call AtmEnergyToTemperatureBisection(temp,TL,TR,beta,RHS,option%reference_pressure,option)
+
+            call EOSWaterdensity(temp,option%reference_pressure,den_iter,dum1,ierr)
             surf_global_auxvars(ghosted_id)%temp = temp
 
             iend = local_id*option%nflowdof
@@ -1554,5 +1676,25 @@ subroutine SurfaceTHUpdateSolution(surf_realization)
 
 end subroutine SurfaceTHUpdateSolution
 
+
+! ************************************************************************** !
+
+subroutine SurfaceTHDestroy(surf_realization)
+  ! 
+  ! Deallocates variables associated with Richard
+  ! 
+  ! Author: ???
+  ! Date: 02/14/08
+  ! 
+
+  use Surface_Realization_class
+
+  implicit none
+  
+  type(surface_realization_type) :: surf_realization
+  
+  ! aux vars should be destroyed when surf_realization is destroyed.
+  
+end subroutine SurfaceTHDestroy
 
 end module Surface_TH_module

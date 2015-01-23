@@ -447,8 +447,8 @@ subroutine GetVertexCoordinates(grid,vec,direction,option)
     end select
     call VecRestoreArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
   else
-    ! initialize to -999 to catch bugs
-    call VecSet(vec,-999.d0,ierr);CHKERRQ(ierr)
+    ! initialize to UNINITIALIZED_INTEGER to catch bugs
+    call VecSet(vec,UNINITIALIZED_DOUBLE,ierr);CHKERRQ(ierr)
     allocate(values(grid%unstructured_grid%num_vertices_local))
     allocate(indices(grid%unstructured_grid%num_vertices_local))
     select case(direction)
@@ -525,8 +525,8 @@ subroutine ExplicitGetCellCoordinates(grid,vec,direction,option)
     end select
     call VecRestoreArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
   else
-    ! initialize to -999 to catch bugs
-    call VecSet(vec,-999.d0,ierr);CHKERRQ(ierr)
+    ! initialize to UNINITIALIZED_INTEGER to catch bugs
+    call VecSet(vec,UNINITIALIZED_DOUBLE,ierr);CHKERRQ(ierr)
     allocate(values(grid%nlmax))
     allocate(indices(grid%nlmax))
     select case(direction)
@@ -567,8 +567,8 @@ subroutine GetCellConnections(grid, vec)
   ! 
 
   use Grid_module
-  use Unstructured_Grid_Aux_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Aux_module
+  use Grid_Unstructured_Cell_module
 
   implicit none
   
@@ -590,7 +590,7 @@ subroutine GetCellConnections(grid, vec)
   call VecGetArrayF90( vec, vec_ptr, ierr);CHKERRQ(ierr)
 
   ! initialize
-  vec_ptr = -999.d0
+  vec_ptr = UNINITIALIZED_DOUBLE
   do local_id=1, ugrid%nlmax
     ghosted_id = local_id
     select case(ugrid%cell_type(ghosted_id))
@@ -659,8 +659,8 @@ subroutine GetCellConnectionsExplicit(grid, vec)
   ! 
 
   use Grid_module
-  use Unstructured_Grid_Aux_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Aux_module
+  use Grid_Unstructured_Cell_module
 
   implicit none
   
@@ -682,7 +682,7 @@ subroutine GetCellConnectionsExplicit(grid, vec)
   call VecGetArrayF90( vec, vec_ptr, ierr);CHKERRQ(ierr)
 
   ! initialize
-  vec_ptr = -999.d0
+  vec_ptr = UNINITIALIZED_DOUBLE
   do iconn = 1, explicit_grid%num_elems
     select case(explicit_grid%cell_connectivity(0,iconn))
       case(8)
@@ -1060,8 +1060,8 @@ subroutine OutputGetFaceVelOrFlowrateUGrid(realization_base, save_velocity)
   use Patch_module
   use Grid_module
   use Option_module
-  use Unstructured_Grid_Aux_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Aux_module
+  use Grid_Unstructured_Cell_module
   use Variables_module
   use Connection_module
   use Coupler_module
@@ -1263,17 +1263,18 @@ subroutine OutputGetFaceVelOrFlowrateUGrid(realization_base, save_velocity)
         else
 
           ! Save flowrate for iface_up of local_id_up cell using flowrate up-->dn
-          flowrates(dof,iface_up,local_id_up) = patch%internal_fluxes(dof,1,sum_connection)
+          flowrates(dof,iface_up,local_id_up) = &
+            patch%internal_flow_fluxes(dof,sum_connection)
 
           idx = (local_id_up-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface_up + 1
-          vec_ptr(idx) = patch%internal_fluxes(dof,1,sum_connection)
+          vec_ptr(idx) = patch%internal_flow_fluxes(dof,sum_connection)
 
-          if(iface_dn>0) then
+          if (iface_dn>0) then
             ! Save flowrate for iface_dn of local_id_dn cell using -ve flowrate up-->dn
-            flowrates(dof,iface_dn,local_id_dn) = -patch%internal_fluxes(dof,1,sum_connection)
+            flowrates(dof,iface_dn,local_id_dn) = -patch%internal_flow_fluxes(dof,sum_connection)
 
             idx = (local_id_dn-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface_dn + 1
-            vec_ptr(idx) = -patch%internal_fluxes(dof,1,sum_connection)
+            vec_ptr(idx) = -patch%internal_flow_fluxes(dof,sum_connection)
           endif
 
         endif
@@ -1283,7 +1284,7 @@ subroutine OutputGetFaceVelOrFlowrateUGrid(realization_base, save_velocity)
   enddo
 
   ! Boundary Flowrates Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0
   do 
     if (.not.associated(boundary_condition)) exit
@@ -1296,7 +1297,7 @@ subroutine OutputGetFaceVelOrFlowrateUGrid(realization_base, save_velocity)
       ghosted_id_dn = cur_connection_set%id_dn(iconn)
       local_id_dn = grid%nG2L(ghosted_id_dn)
       do iface_dn = 1,MAX_FACE_PER_CELL
-        if(face_id==ugrid%cell_to_face_ghosted(iface_dn,local_id_dn)) exit
+        if (face_id==ugrid%cell_to_face_ghosted(iface_dn,local_id_dn)) exit
       enddo
 
       do dof=1,option%nflowdof
@@ -1320,8 +1321,10 @@ subroutine OutputGetFaceVelOrFlowrateUGrid(realization_base, save_velocity)
 
           ! Save flowrate for iface_dn of local_id_dn cell using -ve flowrate up-->dn
           idx = (local_id_dn-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface_dn + 1
-          flowrates(dof,iface_dn,local_id_dn) = -patch%boundary_fluxes(dof,1,sum_connection)
-          vec_ptr(idx) = -patch%boundary_fluxes(dof,1,sum_connection)
+          flowrates(dof,iface_dn,local_id_dn) = &
+            -patch%boundary_flow_fluxes(dof,sum_connection)
+          vec_ptr(idx) = &
+            -patch%boundary_flow_fluxes(dof,sum_connection)
         endif
       enddo
     enddo
@@ -1435,7 +1438,7 @@ subroutine OutputGetExplicitIDsFlowrates(realization_base,count,vec_proc, &
   use Patch_module
   use Grid_module
   use Option_module
-  use Unstructured_Grid_Aux_module
+  use Grid_Unstructured_Aux_module
   use Field_module
   use Connection_module
 
@@ -1592,7 +1595,7 @@ subroutine OutputGetExplicitFlowrates(realization_base,count,vec_proc, &
   use Patch_module
   use Grid_module
   use Option_module
-  use Unstructured_Grid_Aux_module
+  use Grid_Unstructured_Aux_module
   use Field_module
   use Connection_module
 
@@ -1652,7 +1655,7 @@ subroutine OutputGetExplicitFlowrates(realization_base,count,vec_proc, &
         count = count + 1
         do idof = 1,option%nflowdof
           flowrates(count,option%nflowdof) = &
-            patch%internal_fluxes(idof,1,sum_connection)
+            patch%internal_flow_fluxes(idof,sum_connection)
         enddo
         darcy(count) = patch%internal_velocities(1,sum_connection)
       endif
@@ -1678,7 +1681,7 @@ subroutine OutputGetExplicitAuxVars(realization_base,count,vec_proc,density)
   use Patch_module
   use Grid_module
   use Option_module
-  use Unstructured_Grid_Aux_module
+  use Grid_Unstructured_Aux_module
   use Field_module
   use Connection_module
   use Global_Aux_module
@@ -1790,7 +1793,7 @@ subroutine OutputGetExplicitCellInfo(realization_base,num_cells,ids,sat,por, &
   use Patch_module
   use Grid_module
   use Option_module
-  use Unstructured_Grid_Aux_module
+  use Grid_Unstructured_Aux_module
   use Field_module
   use Connection_module
   use Global_Aux_module

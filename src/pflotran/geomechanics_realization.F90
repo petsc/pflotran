@@ -31,10 +31,10 @@ private
     type(geomech_material_property_ptr_type), &
                            pointer       :: geomech_material_property_array(:)
 
-    type(waypoint_list_type), pointer :: waypoints
+    type(waypoint_list_type), pointer :: waypoint_list
     type(geomech_field_type), pointer :: geomech_field
     type(geomech_debug_type), pointer :: geomech_debug
-    type(gm_region_list_type), pointer :: geomech_regions
+    type(gm_region_list_type), pointer :: geomech_region_list
     type(geomech_condition_list_type),pointer :: geomech_conditions
     class(dataset_base_type), pointer :: geomech_datasets
 
@@ -90,8 +90,8 @@ function GeomechRealizCreate(option)
   geomech_realization%output_option => OutputOptionCreate()
   geomech_realization%geomech_debug => GeomechDebugCreate()
   
-  allocate(geomech_realization%geomech_regions)
-  call GeomechRegionInitList(geomech_realization%geomech_regions)
+  allocate(geomech_realization%geomech_region_list)
+  call GeomechRegionInitList(geomech_realization%geomech_region_list)
   
   allocate(geomech_realization%geomech_conditions)
   call GeomechConditionInitList(geomech_realization%geomech_conditions)
@@ -130,7 +130,7 @@ subroutine GeomechRealizAddStrata(geomech_realization,strata)
   if (.not.associated(geomech_patch)) return
  
   new_strata => GeomechStrataCreate(strata)
-  call GeomechStrataAddToList(new_strata,geomech_patch%geomech_strata)
+  call GeomechStrataAddToList(new_strata,geomech_patch%geomech_strata_list)
   nullify(new_strata)
   
   call GeomechStrataDestroy(strata)
@@ -162,7 +162,7 @@ subroutine GeomechRealizLocalizeRegions(geomech_realization)
   ! localize the regions on each patch
   patch => geomech_realization%geomech_patch
   call GeomechPatchLocalizeRegions(patch, &
-                                   geomech_realization%geomech_regions, &
+                                   geomech_realization%geomech_region_list, &
                                    option)
                                    
 end subroutine GeomechRealizLocalizeRegions
@@ -717,14 +717,14 @@ subroutine GeomechRealizPrintCouplers(geomech_realization)
   
   patch => geomech_realization%geomech_patch
    
-  cur_coupler => patch%geomech_boundary_conditions%first
+  cur_coupler => patch%geomech_boundary_condition_list%first
   do
     if (.not.associated(cur_coupler)) exit
     call GeomechRealizPrintCoupler(cur_coupler,option)    
     cur_coupler => cur_coupler%next
   enddo
      
-  cur_coupler => patch%geomech_source_sinks%first
+  cur_coupler => patch%geomech_source_sink_list%first
   do
     if (.not.associated(cur_coupler)) exit
     call GeomechRealizPrintCoupler(cur_coupler,option)    
@@ -936,9 +936,9 @@ subroutine GeomechRealizAddGeomechCoupler(geomech_realization,coupler)
   select case(coupler%itype)
     case(GM_BOUNDARY_COUPLER_TYPE)
       call GeomechCouplerAddToList(new_coupler, &
-                                   patch%geomech_boundary_conditions)
+                                   patch%geomech_boundary_condition_list)
     case(GM_SRC_SINK_COUPLER_TYPE)
-      call GeomechCouplerAddToList(new_coupler,patch%geomech_source_sinks)
+      call GeomechCouplerAddToList(new_coupler,patch%geomech_source_sink_list)
   end select
   nullify(new_coupler)
   
@@ -975,7 +975,7 @@ subroutine GeomechRealizAddWaypointsToList(geomech_realization)
   PetscReal, pointer :: times(:)
 
   option => geomech_realization%option
-  waypoint_list => geomech_realization%waypoints
+  waypoint_list => geomech_realization%waypoint_list
   nullify(times)
   
   ! set flag for final output
@@ -1043,7 +1043,7 @@ subroutine GeomechRealizAddWaypointsToList(geomech_realization)
         waypoint => WaypointCreate()
         waypoint%time = temp_real
         waypoint%print_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,geomech_realization%waypoints)
+        call WaypointInsertInList(waypoint,geomech_realization%waypoint_list)
       enddo
     endif
     
@@ -1056,7 +1056,7 @@ subroutine GeomechRealizAddWaypointsToList(geomech_realization)
         waypoint => WaypointCreate()
         waypoint%time = temp_real
         waypoint%print_tr_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,geomech_realization%waypoints)
+        call WaypointInsertInList(waypoint,geomech_realization%waypoint_list)
       enddo
     endif
 
@@ -1078,13 +1078,13 @@ subroutine GeomechRealizDestroy(geomech_realization)
   
   type(geomech_realization_type), pointer :: geomech_realization
   
-  if(.not.associated(geomech_realization)) return
+  if (.not.associated(geomech_realization)) return
   
   call GeomechFieldDestroy(geomech_realization%geomech_field)
 
   call OutputOptionDestroy(geomech_realization%output_option)
 
-  call GeomechRegionDestroyList(geomech_realization%geomech_regions)
+  call GeomechRegionDestroyList(geomech_realization%geomech_region_list)
 
   call GeomechConditionDestroyList(geomech_realization%geomech_conditions)
   
@@ -1101,11 +1101,11 @@ subroutine GeomechRealizDestroy(geomech_realization)
                                            geomech_material_properties)
   call GeomechDiscretizationDestroy(geomech_realization%geomech_discretization)
 
-  if(associated(geomech_realization%output_option)) &
+  if (associated(geomech_realization%output_option)) &
     deallocate(geomech_realization%output_option)
   nullify(geomech_realization%output_option)
 
-  if(associated(geomech_realization)) deallocate(geomech_realization)
+  if (associated(geomech_realization)) deallocate(geomech_realization)
   nullify(geomech_realization)
   
 end subroutine GeomechRealizDestroy

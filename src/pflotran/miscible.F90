@@ -78,8 +78,6 @@ subroutine MiscibleTimeCut(realization)
   option => realization%option
   field => realization%field
 
-  call VecCopy(field%flow_yy,field%flow_xx,ierr);CHKERRQ(ierr)
-
 end subroutine MiscibleTimeCut
 
 ! ************************************************************************** !
@@ -185,7 +183,7 @@ subroutine MiscibleSetupPatch(realization)
   
   ! count the number of boundary connections and allocate
   ! auxvar data structures for them  
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -453,7 +451,7 @@ end subroutine MiscibleUpdateMassBalancePatch
     if (.not.associated(cur_patch)) exit
     realization%patch => cur_patch
     ipass= MiscibleInitGuessCheckPatch(realization)
-    if(ipass<=0)then
+    if (ipass<=0)then
       exit 
     endif
     cur_patch => cur_patch%next
@@ -463,7 +461,7 @@ end subroutine MiscibleUpdateMassBalancePatch
   if (option%mycommsize >1)then
     call MPI_Allreduce(ipass,ipass0,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
                        option%mycomm,ierr)
-    if(ipass0 < option%mycommsize) ipass=-1
+    if (ipass0 < option%mycommsize) ipass=-1
   endif
    MiscibleInitGuessCheck =ipass
 
@@ -598,7 +596,7 @@ subroutine MiscibleUpdateAuxVarsPatch(realization)
     endif
     iend = ghosted_id*option%nflowdof
     istart = iend-option%nflowdof+1
-    if(.not. associated(patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr))then
+    if (.not. associated(patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr))then
        print*, 'error!!! saturation function not allocated', ghosted_id,icap_loc_p(ghosted_id)
     endif
     
@@ -608,7 +606,7 @@ subroutine MiscibleUpdateAuxVarsPatch(realization)
                        realization%fluid_properties,option)
                       
 !   update global variables
-    if( associated(global_auxvars))then
+    if ( associated(global_auxvars))then
       global_auxvars(ghosted_id)%pres = auxvars(ghosted_id)%auxvar_elem(0)%pres
       global_auxvars(ghosted_id)%sat(:) = 1D0
       global_auxvars(ghosted_id)%den(:) = auxvars(ghosted_id)%auxvar_elem(0)%den(:)
@@ -620,7 +618,7 @@ subroutine MiscibleUpdateAuxVarsPatch(realization)
 
   enddo
 
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -708,9 +706,6 @@ subroutine MiscibleUpdateSolution(realization)
   PetscErrorCode :: ierr
   
   field => realization%field
-  
-  call VecCopy(realization%field%flow_xx,realization%field%flow_yy, &
-               ierr);CHKERRQ(ierr)
   
   cur_patch => realization%patch_list%first
   do 
@@ -938,7 +933,7 @@ end subroutine MiscibleAccumulation_Xp
 ! ************************************************************************** !
 
 subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype,Res,&
-                            qsrc_phase,energy_flag, option)
+                              qsrc_vol,energy_flag, option)
   ! 
   ! Computes the non-fixed portion of the accumulation
   ! term for the residual
@@ -965,7 +960,7 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype
   PetscReal psrc(option%nphase),tsrc,hsrc, csrc 
   PetscInt isrctype, nsrcpara
   PetscBool :: energy_flag
-  PetscReal :: qsrc_phase(:) 
+  PetscReal :: qsrc_vol(option%nphase)
      
   PetscReal, pointer :: msrc(:)
   PetscReal dw_kg, dw_mol,dddt,dddp
@@ -982,7 +977,7 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype
   Res=0D0
   allocate(msrc(nsrcpara))
   msrc = mmsrc(1:nsrcpara)
-  qsrc_phase = 0.d0
+  qsrc_vol(:) = 0.d0
  ! if (present(ireac)) iireac=ireac
 !  if (energy_flag) then
 !    Res(option%nflowdof) = Res(option%nflowdof) + hsrc * option%flow_dt   
@@ -1016,7 +1011,7 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype
 !   4. max pressure: [Pa]
 !   5. min pressure: [Pa]   
 !   6. preferred mass flux of water [kg/s]
-!   7. preferred mass flux of Co2 [kg/s]
+!   7. preferred mass flux of CO2 [kg/s]
 !   8. well diameter, not used now
 !   9. skin factor, not used now
 
@@ -1028,7 +1023,7 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype
       well_inj_water = msrc(6)
       well_inj_co2 = msrc(7)
     
-!     if(pressure_min < 0D0) pressure_min = 0D0 !not limited by pressure lower bound   
+!     if (pressure_min < 0D0) pressure_min = 0D0 !not limited by pressure lower bound   
 
     ! production well (well status = -1)
       if (dabs(well_status + 1D0) < 1D-1) then 
@@ -1038,17 +1033,17 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype
             dphi = auxvar%pres - auxvar%pc(np) - pressure_bh
             if (dphi>=0.D0) then ! outflow only
               ukvr = auxvar%kvr(np)
-              if(ukvr<1e-20) ukvr=0D0
+              if (ukvr<1e-20) ukvr=0D0
               v_darcy=0D0
               if (ukvr*Dq>floweps) then
                 v_darcy = Dq * ukvr * dphi
                 ! store volumetric rate for ss_fluid_fluxes()
-                qsrc_phase(1) = -1.d0*v_darcy
+                qsrc_liq(1) = -1.d0*v_darcy
                 Res(1) = Res(1) - v_darcy* auxvar%den(np)* &
                   auxvar%xmol((np-1)*option%nflowspec+1)*option%flow_dt
                 Res(2) = Res(2) - v_darcy* auxvar%den(np)* &
                   auxvar%xmol((np-1)*option%nflowspec+2)*option%flow_dt
-                if(energy_flag) Res(3) = Res(3) - v_darcy * auxvar%den(np)* &
+                if (energy_flag) Res(3) = Res(3) - v_darcy * auxvar%den(np)* &
                   auxvar%h(np)*option%flow_dt
               ! print *,'produce: ',np,v_darcy
               endif
@@ -1077,15 +1072,15 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype
               if (ukvr*Dq>floweps) then
                 v_darcy = Dq * ukvr * dphi
                 ! store volumetric rate for ss_fluid_fluxes()
-                qsrc_phase(1) = v_darcy
+                qsrc_liq(1) = v_darcy
                 Res(1) = Res(1) + v_darcy* auxvar%den(np)* &
 !                 auxvar%xmol((np-1)*option%nflowspec+1) * option%flow_dt
                   (1.d0-csrc) * option%flow_dt
                 Res(2) = Res(2) + v_darcy* auxvar%den(np)* &
 !                 auxvar%xmol((np-1)*option%nflowspec+2) * option%flow_dt
                   csrc * option%flow_dt
-!               if(energy_flag) Res(3) = Res(3) + v_darcy*auxvar%den(np)*auxvar%h(np)*option%flow_dt
-                if(energy_flag) Res(3) = Res(3) + v_darcy*auxvar%den(np)* &
+!               if (energy_flag) Res(3) = Res(3) + v_darcy*auxvar%den(np)*auxvar%h(np)*option%flow_dt
+                if (energy_flag) Res(3) = Res(3) + v_darcy*auxvar%den(np)* &
                   enth_src_h2o*option%flow_dt
                 
 !               print *,'inject: ',np,v_darcy
@@ -1352,7 +1347,7 @@ subroutine MiscibleResidual(snes,xx,r,realization,ierr)
 
  ! check initial guess -----------------------------------------------
   ierr = MiscibleInitGuessCheck(realization)
-  if(ierr<0)then
+  if (ierr<0)then
     !ierr = PETSC_ERR_ARG_OUTOFRANGE
     if (option%myrank==0) print *,'table out of range: ',ierr
     call SNESSetFunctionDomainError(snes,ierr);CHKERRQ(ierr)
@@ -1531,7 +1526,7 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
   r_p = 0.d0
  
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -1589,7 +1584,7 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
            global_auxvars_bc(sum_connection),&
            realization%fluid_properties, option)
 
-    if( associated(global_auxvars_bc))then
+    if ( associated(global_auxvars_bc))then
       global_auxvars_bc(sum_connection)%pres(:) = auxvars_bc(sum_connection)%auxvar_elem(0)%pres - &
                      auxvars(ghosted_id)%auxvar_elem(0)%pc(:)
       global_auxvars_bc(sum_connection)%sat(:) = 1.D0
@@ -1812,7 +1807,7 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
           realization%fluid_properties,option)
 !    print *,'mis: Respatch0 ', xx_loc_p(istart:iend),auxvars(ng)%auxvar_elem(0)%den
 
-    if(associated(global_auxvars)) then
+    if (associated(global_auxvars)) then
       global_auxvars(ghosted_id)%pres(:) = auxvars(ghosted_id)%auxvar_elem(0)%pres
       global_auxvars(ghosted_id)%sat(:) = 1D0
       global_auxvars(ghosted_id)%den(:) = auxvars(ghosted_id)%auxvar_elem(0)%den(:)
@@ -1830,19 +1825,19 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
 !      linear formulation
 #if 0
       do idof = 2, option%nflowdof
-        if(xx_loc_p((ng-1)*option%nflowdof+idof) <= 0.9) then
+        if (xx_loc_p((ng-1)*option%nflowdof+idof) <= 0.9) then
           delx(idof) = dfac*xx_loc_p((ng-1)*option%nflowdof+idof)*1.d1 
         else
           delx(idof) = -dfac*xx_loc_p((ng-1)*option%nflowdof+idof)*1D1 
         endif
 
-        if(delx(idof) <  1D-8 .and. delx(idof) >= 0.D0) delx(idof) = 1D-8
-        if(delx(idof) > -1D-8 .and. delx(idof) <  0.D0) delx(idof) =-1D-8
+        if (delx(idof) <  1D-8 .and. delx(idof) >= 0.D0) delx(idof) = 1D-8
+        if (delx(idof) > -1D-8 .and. delx(idof) <  0.D0) delx(idof) =-1D-8
 
-        if((delx(idof)+xx_loc_p((ng-1)*option%nflowdof+idof)) > 1.D0) then
+        if ((delx(idof)+xx_loc_p((ng-1)*option%nflowdof+idof)) > 1.D0) then
           delx(idof) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+idof))*1D-4
         endif
-        if((delx(idof)+xx_loc_p((ng-1)*option%nflowdof+idof)) < 0.D0) then
+        if ((delx(idof)+xx_loc_p((ng-1)*option%nflowdof+idof)) < 0.D0) then
           delx(idof) = xx_loc_p((ng-1)*option%nflowdof+idof)*1D-4
         endif
 
@@ -1940,6 +1935,7 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
   type(global_auxvar_type), pointer :: global_auxvars_ss(:)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
+  PetscReal :: ss_flow_vol_flux(realization%option%nphase)
   PetscBool :: enthalpy_flag
   PetscInt :: ng
   PetscInt :: iconn, idof, istart, iend
@@ -2005,7 +2001,7 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
 ! call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr); 
 
   ! Source/sink terms -------------------------------------
-  source_sink => patch%source_sinks%first
+  source_sink => patch%source_sink_list%first
   sum_connection = 0 
   do 
     if (.not.associated(source_sink)) exit
@@ -2053,8 +2049,15 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
       call MiscibleSourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1, &
                             auxvars(ghosted_id)%auxvar_elem(0), &
                             source_sink%flow_condition%itype(1),Res, &
-                            patch%ss_fluid_fluxes(:,sum_connection), &
+                            ss_flow_vol_flux, &
                             enthalpy_flag,option)
+      if (associated(patch%ss_flow_vol_fluxes)) then
+        patch%ss_flow_vol_fluxes(:,sum_connection) = ss_flow_vol_flux/ &
+                                                     option%flow_dt
+      endif
+      if (associated(patch%ss_flow_fluxes)) then
+        patch%ss_flow_fluxes(:,sum_connection) = Res(:)/option%flow_dt
+      endif
       if (option%compute_mass_balance_new) then
         global_auxvars_ss(sum_connection)%mass_balance_delta(:,1) = &
           global_auxvars_ss(sum_connection)%mass_balance_delta(:,1) - &
@@ -2095,7 +2098,7 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
     if (volume_p(local_id) > 1.D0) r_p(istart:istart+1) = &
       r_p(istart:istart+1)/volume_p(local_id)
 !   r_p(istart:istart+1) = r_p(istart:istart+1)/volume_p(local_id)
-    if(r_p(istart) > 1.E10 .or. r_p(istart) < -1.E10) then
+    if (r_p(istart) > 1.E10 .or. r_p(istart) < -1.E10) then
       ghosted_id = grid%nL2G(local_id)
       print *, 'overflow in res: ', &
       local_id,ghosted_id,istart,r_p (istart:istart+1), &
@@ -2357,7 +2360,7 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,realization,ierr)
 ! Boundary conditions
 
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -2403,7 +2406,7 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,realization,ierr)
             delxbc(idof)=0.D0
           case(HYDROSTATIC_BC)
             xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
-            if(idof >= 2)then
+            if (idof >= 2)then
               xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
               delxbc(idof)=patch%aux%Miscible%delx(idof,ghosted_id)
             endif 
@@ -2562,7 +2565,7 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,realization,ierr)
         case(1)
           ra = ra / option%flow_dt
         case(-1)  
-          if(option%flow_dt > 1.d0) ra = ra / option%flow_dt
+          if (option%flow_dt > 1.d0) ra = ra / option%flow_dt
       end select
     
       if (local_id_up > 0) then
@@ -2693,9 +2696,10 @@ subroutine MiscibleJacobianPatch2(snes,xx,A,B,realization,ierr)
   PetscReal :: vv_darcy(realization%option%nphase), voltemp
   PetscReal :: ra(1:realization%option%nflowdof,1:realization%option%nflowdof*2) 
   PetscReal, pointer :: msrc(:)
-  PetscReal :: psrc(1:realization%option%nphase), ss_flow(1:realization%option%nphase)
+  PetscReal :: psrc(1:realization%option%nphase)
   PetscReal :: dddt, dddp, fg, dfgdp, dfgdt, eng, dhdt, dhdp, visc, dvdt,&
                dvdp, xphi
+  PetscReal :: dummy_real(realization%option%nphase)
   PetscInt :: nsrcpara, flow_pc                
   
   PetscViewer :: viewer
@@ -2766,7 +2770,7 @@ subroutine MiscibleJacobianPatch2(snes,xx,A,B,realization,ierr)
 #endif
 #if 1
   ! Source/sink terms -------------------------------------
-  source_sink => patch%source_sinks%first
+  source_sink => patch%source_sink_list%first
   sum_connection = 0 
   do 
     if (.not.associated(source_sink)) exit
@@ -2812,10 +2816,11 @@ subroutine MiscibleJacobianPatch2(snes,xx,A,B,realization,ierr)
 !       r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt   
 !     endif         
       do nvar =1, option%nflowdof
-        call MiscibleSourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1, auxvars(ghosted_id)%auxvar_elem(nvar),&
-                            source_sink%flow_condition%itype(1), Res,&
-                            ss_flow, &
-                            enthalpy_flag, option)
+        call MiscibleSourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1, &
+                                auxvars(ghosted_id)%auxvar_elem(nvar),&
+                                source_sink%flow_condition%itype(1), Res,&
+                                dummy_real, &
+                                enthalpy_flag, option)
 
         ResInc(local_id,jh2o,nvar)=  ResInc(local_id,jh2o,nvar) - Res(jh2o)
         ResInc(local_id,jglyc,nvar)=  ResInc(local_id,jglyc,nvar) - Res(jglyc)
@@ -2850,7 +2855,7 @@ subroutine MiscibleJacobianPatch2(snes,xx,A,B,realization,ierr)
         ra(1:option%nflowdof,1:option%nflowdof) = &
           ra(1:option%nflowdof,1:option%nflowdof) / option%flow_dt
       case(-1)
-        if(option%flow_dt > 1.d0) ra(1:option%nflowdof,1:option%nflowdof) = &
+        if (option%flow_dt > 1.d0) ra(1:option%nflowdof,1:option%nflowdof) = &
           ra(1:option%nflowdof,1:) / option%flow_dt
     end select
 

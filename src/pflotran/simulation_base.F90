@@ -5,6 +5,7 @@ module Simulation_Base_class
   use Output_Aux_module
   use Output_module
   use Simulation_Aux_module
+  use Waypoint_module
   
   use PFLOTRAN_Constants_module
 
@@ -16,6 +17,7 @@ module Simulation_Base_class
 
   type, public :: simulation_base_type
     type(option_type), pointer :: option
+    type(waypoint_list_type), pointer :: waypoint_list ! for outer sync loop
     type(output_option_type), pointer :: output_option
     PetscInt :: stop_flag
     class(pmc_base_type), pointer :: process_model_coupler_list
@@ -81,6 +83,7 @@ subroutine SimulationBaseInit(this,option)
   type(option_type), pointer :: option
 
   this%option => option
+  nullify(this%waypoint_list)
   nullify(this%output_option)
   nullify(this%process_model_coupler_list)
   this%sim_aux => SimAuxCreate()
@@ -99,6 +102,7 @@ subroutine SimulationBaseInitializeRun(this)
   ! 
 
   use Logging_module
+  use Option_module
 
   implicit none
   
@@ -121,7 +125,10 @@ subroutine SimulationBaseInitializeRun(this)
   call this%process_model_coupler_list%InitializeRun()  
   call this%JumpStart()
   
-  ! pushed in Init()
+  call printMsg(this%option," ")
+  call printMsg(this%option,"  Finished Initialization")
+  call PetscLogEventEnd(logging%event_init,ierr);CHKERRQ(ierr)
+  ! pushed in PFLOTRANInitializePostPetsc()
   call PetscLogStagePop(ierr);CHKERRQ(ierr)
 
   ! popped in FinalizeRun()
@@ -163,19 +170,34 @@ subroutine ExecuteRun(this)
   ! Author: Glenn Hammond
   ! Date: 06/11/13
   ! 
+  use Waypoint_module
+  use Timestepper_Base_class, only : TS_CONTINUE
 
   implicit none
   
   class(simulation_base_type) :: this
   
   PetscReal :: final_time
+  PetscReal :: sync_time
+  type(waypoint_type), pointer :: cur_waypoint
+  PetscViewer :: viewer
   
 #ifdef DEBUG
   call printMsg(this%option,'SimulationBaseExecuteRun()')
 #endif
 
   final_time = SimulationGetFinalWaypointTime(this)
-  call this%RunToTime(final_time)
+  cur_waypoint => this%waypoint_list%first
+  call WaypointSkipToTime(cur_waypoint,this%option%time)
+  do
+    if (this%stop_flag /= TS_CONTINUE) exit ! end simulation
+    if (.not.associated(cur_waypoint)) exit
+    call this%RunToTime(min(final_time,cur_waypoint%time))
+    cur_waypoint => cur_waypoint%next
+  enddo
+  if (this%option%checkpoint_flag) then
+    call this%process_model_coupler_list%Checkpoint(viewer,-1)
+  endif
   
 end subroutine ExecuteRun
 
@@ -200,16 +222,12 @@ subroutine RunToTime(this,target_time)
   PetscReal :: target_time
   
   class(pmc_base_type), pointer :: cur_process_model_coupler
-  PetscViewer :: viewer
   
 #ifdef DEBUG
   call printMsg(this%option,'SimulationBaseRunToTime()')
 #endif
   
   call this%process_model_coupler_list%RunToTime(target_time,this%stop_flag)
-  if (this%option%checkpoint_flag) then
-    call this%process_model_coupler_list%Checkpoint(viewer,-1)
-  endif
 
 end subroutine RunToTime
 
@@ -280,12 +298,12 @@ function SimulationGetFinalWaypointTime(this)
   cur_process_model_coupler => this%process_model_coupler_list
   do
     if (.not.associated(cur_process_model_coupler)) exit
-    final_time = WaypointListGetFinalTime(cur_process_model_coupler%waypoints)
+    final_time = WaypointListGetFinalTime(cur_process_model_coupler%waypoint_list)
     if (SimulationGetFinalWaypointTime < 1.d-40 .or. &
         final_time < SimulationGetFinalWaypointTime) then
       SimulationGetFinalWaypointTime = final_time
     endif
-    cur_process_model_coupler => cur_process_model_coupler%next
+    cur_process_model_coupler => cur_process_model_coupler%peer
   enddo
 
 end function SimulationGetFinalWaypointTime
@@ -300,6 +318,7 @@ subroutine SimulationBaseStrip(this)
   ! Date: 06/11/13
   ! 
   use Input_Aux_module
+  use Waypoint_module
   
   implicit none
   
@@ -308,6 +327,7 @@ subroutine SimulationBaseStrip(this)
 #ifdef DEBUG
   call printMsg(this%option,'SimulationBaseStrip()')
 #endif
+  call WaypointListDestroy(this%waypoint_list)
   call SimAuxDestroy(this%sim_aux)
   if (associated(this%process_model_coupler_list)) then
     call this%process_model_coupler_list%Destroy()

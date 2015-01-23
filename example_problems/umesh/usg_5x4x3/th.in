@@ -1,7 +1,7 @@
 #Description: 3D toy problem for richards equation
 
 #=========================== flow mode ========================================
-MODE TH
+MODE TH NO_FREEZING
 
 #=========================== discretization ===================================
 GRID
@@ -103,24 +103,20 @@ FLOW_CONDITION initial
   TYPE
     PRESSURE hydrostatic
     TEMPERATURE dirichlet
-    ENTHALPY dirichlet
   END
   INTERPOLATION linear
   DATUM 0.d0 0.d0 60.d0
   PRESSURE 101325.d0
   TEMPERATURE 10.D0
-  ENTHALPY 0.D0
 END
 
 FLOW_CONDITION rain_rate
   TYPE
     FLUX neumann
     TEMPERATURE dirichlet
-    ENTHALPY dirichlet
   END
   FLUX 5.5d-7
   TEMPERATURE 11.D0
-  ENTHALPY 0.D0
 END
 
 #=========================== condition couplers ===============================

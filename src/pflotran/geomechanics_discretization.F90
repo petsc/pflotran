@@ -757,7 +757,7 @@ subroutine GeomechDiscretizationDestroy(geomech_discretization)
   
   call GMGridDestroy(geomech_discretization%grid)
 
-  if(associated(geomech_discretization)) &
+  if (associated(geomech_discretization)) &
     deallocate(geomech_discretization)
   nullify(geomech_discretization)
 

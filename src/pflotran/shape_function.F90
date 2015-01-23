@@ -1,7 +1,7 @@
 module Shape_Function_module
 
   use Gauss_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Cell_module
   use PFLOTRAN_Constants_module
 
   implicit none

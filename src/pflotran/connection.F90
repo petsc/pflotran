@@ -96,11 +96,6 @@ function ConnectionCreate(num_connections,connection_itype)
       allocate(connection%intercp(1:3,num_connections))
       allocate(connection%area(num_connections))
       allocate(connection%face_id(num_connections))
-#ifdef DASVYAT
-      allocate(connection%cntr(1:3, num_connections))
-      allocate(connection%local(num_connections))
-      connection%local = 0
-#endif
       connection%id_up = 0
       connection%id_dn = 0
       connection%face_id = 0
@@ -113,19 +108,12 @@ function ConnectionCreate(num_connections,connection_itype)
       allocate(connection%intercp(1:3,num_connections))
       allocate(connection%area(num_connections))
       allocate(connection%face_id(num_connections))
-#ifdef DASVYAT
-      allocate(connection%cntr(1:3, num_connections))
-      connection%cntr = 0.d0
-#endif
       connection%id_dn = 0
       connection%dist = 0.d0
       connection%intercp = 0.d0
       connection%area = 0.d0
     case(SRC_SINK_CONNECTION_TYPE,INITIAL_CONNECTION_TYPE)
       allocate(connection%id_dn(num_connections))
-#ifdef DASVYAT
-      allocate(connection%cntr(1:3, num_connections))
-#endif
       connection%id_dn = 0
   end select
   nullify(connection%next)

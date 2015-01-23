@@ -62,9 +62,8 @@ ORIGIN 0.d0 0.d0 0.d0
 #NXYZ 8 8 8
 NXYZ 32 32 32
 BOUNDS
-0.d0 100.d0
-0.d0 100.d0
-0.d0 100.d0
+0.d0 0.d0 0.d0
+100.d0 100.d0 100.d0
 /
 END
 
@@ -127,7 +126,7 @@ OUTPUT
 #TIMES y 0.25d0 0.5d0 0.75d0
 PERIODIC TIME 0.5 y
 FORMAT TECPLOT BLOCK
-VELOCITIES
+VELOCITY_AT_CENTER
 /
 
 #=========================== times ============================================

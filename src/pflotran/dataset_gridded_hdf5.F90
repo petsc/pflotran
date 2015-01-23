@@ -191,8 +191,8 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
   PetscLogDouble :: tstart, tend
   character(len=MAXWORDLENGTH) :: attribute_name, dataset_name, word
 
-  !TODO(geh): add to event log
-  !call PetscLogEventBegin(logging%event_read_datset_hdf5,ierr)
+  call PetscLogEventBegin(logging%event_dataset_gridded_hdf5_read, &
+                          ierr);CHKERRQ(ierr)
 
   first_time = (this%data_dim == DIM_NULL)
 
@@ -284,7 +284,7 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
     if (attribute_exists) then
       this%is_cell_centered = PETSC_TRUE
     endif
-    ! this%max_buffer_size is initially set to -999 to force initializaion
+    ! this%max_buffer_size is initially set to UNINITIALIZED_INTEGER to force initializaion
     ! either here, or in the reading of the dataset block.
     attribute_name = "Max Buffer Size"
     call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)
@@ -509,9 +509,8 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
   endif
 #endif
 
-  
-  !TODO(geh): add to event log
-  !call PetscLogEventEnd(logging%event_read_ndim_real_array_hdf5,ierr)
+  call PetscLogEventEnd(logging%event_dataset_gridded_hdf5_read, &
+                        ierr);CHKERRQ(ierr)
                           
 end subroutine DatasetGriddedHDF5ReadData
 

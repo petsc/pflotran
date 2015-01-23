@@ -16,9 +16,11 @@ module PMC_Hydrogeophysics_class
   
   type, public, extends(pmc_base_type) :: pmc_hydrogeophysics_type
     class(realization_type), pointer :: realization
-    Vec :: solution_seq
-    ! a pointer to solution_mpi in hydrogeophysics_simulation_type
-    Vec :: solution_mpi 
+    Vec :: tracer_seq
+    Vec :: saturation_seq
+    ! a pointer to xxx_mpi in hydrogeophysics_simulation_type
+    Vec :: tracer_mpi 
+    Vec :: saturation_mpi 
     VecScatter :: pf_to_e4d_scatter
     PetscMPIInt :: pf_to_e4d_master_comm
   contains
@@ -75,8 +77,10 @@ subroutine PMCHydrogeophysicsInit(this)
   call PMCBaseInit(this)
   this%name = 'PMCHydrogeophysics'
   nullify(this%realization) 
-  this%solution_mpi = 0
-  this%solution_seq = 0
+  this%tracer_mpi = 0
+  this%tracer_seq = 0
+  this%saturation_mpi = 0
+  this%saturation_seq = 0
   this%pf_to_e4d_scatter = 0
   this%pf_to_e4d_master_comm = 0
   
@@ -98,12 +102,12 @@ recursive subroutine PMCHydrogeophysicsInitializeRun(this)
   
   call printMsg(this%option,'PMCHydrogeophysics%InitializeRun()')
   
-  if (associated(this%below)) then
-    call this%below%InitializeRun()
+  if (associated(this%child)) then
+    call this%child%InitializeRun()
   endif
   
-  if (associated(this%next)) then
-    call this%next%InitializeRun()
+  if (associated(this%peer)) then
+    call this%peer%InitializeRun()
   endif
 
 end subroutine PMCHydrogeophysicsInitializeRun
@@ -118,7 +122,7 @@ recursive subroutine PMCHydrogeophysicsRunToTime(this,sync_time,stop_flag)
   ! Date: 07/02/13
   ! 
 
-  use Hydrogeophysics_Wrapper_module, only : HydrogeophysicsWrapperStep
+  use Wrapper_Hydrogeophysics_module, only : HydrogeophysicsWrapperStep
   use Timestepper_Base_class, only : TS_CONTINUE
 
   implicit none
@@ -137,19 +141,22 @@ recursive subroutine PMCHydrogeophysicsRunToTime(this,sync_time,stop_flag)
   
   local_stop_flag = TS_CONTINUE
   
-  call HydrogeophysicsWrapperStep(sync_time,this%solution_mpi, &
-                                  this%solution_seq, &
+  call HydrogeophysicsWrapperStep(sync_time, &
+                                  this%tracer_mpi, &
+                                  this%tracer_seq, &
+                                  this%saturation_mpi, &
+                                  this%saturation_seq, &
                                   this%pf_to_e4d_scatter, &
                                   this%pf_to_e4d_master_comm,this%option)
 
   ! Run neighboring process model couplers
-!  if (associated(this%below)) then
-!    call this%below%RunToTime(sync_time,local_stop_flag)
+!  if (associated(this%child)) then
+!    call this%child%RunToTime(sync_time,local_stop_flag)
 !  endif
 
   ! Run neighboring process model couplers
-!  if (associated(this%next)) then
-!    call this%next%RunToTime(sync_time,local_stop_flag)
+!  if (associated(this%peer)) then
+!    call this%peer%RunToTime(sync_time,local_stop_flag)
 !  endif
 
   stop_flag = max(stop_flag,local_stop_flag)  
@@ -167,7 +174,7 @@ subroutine PMCHydrogeophysicsSynchronize(this)
   ! 
 
   use Realization_Base_class, only : RealizationGetVariable
-  use Variables_module, only : PRIMARY_MOLALITY
+  use Variables_module, only : PRIMARY_MOLALITY, LIQUID_SATURATION
   use String_module
 !  use Discretization_module
 
@@ -188,6 +195,7 @@ subroutine PMCHydrogeophysicsSynchronize(this)
   PetscInt :: i
 
 #if 1
+  ! tracer
   call RealizationGetVariable(this%realization,this%realization%field%work, &
                               PRIMARY_MOLALITY,ONE_INTEGER,0)
 #else
@@ -207,16 +215,26 @@ subroutine PMCHydrogeophysicsSynchronize(this)
   call VecDestroy(natural_vec,ierr);CHKERRQ(ierr)
 #endif
   call VecGetArrayF90(this%realization%field%work,vec1_ptr,ierr);CHKERRQ(ierr)
-  call VecGetArrayF90(this%solution_mpi,vec2_ptr,ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(this%tracer_mpi,vec2_ptr,ierr);CHKERRQ(ierr)
 !      vec1_ptr(:) = vec1_ptr(:) + num_calls
   vec2_ptr(:) = vec1_ptr(:)
-!  print *, 'PMC update to solution', vec2_ptr(16)
+!  print *, 'PMC update to tracer', vec2_ptr(16)
   call VecRestoreArrayF90(this%realization%field%work,vec1_ptr, &
                           ierr);CHKERRQ(ierr)
-  call VecRestoreArrayF90(this%solution_mpi,vec2_ptr,ierr);CHKERRQ(ierr)
-
+  call VecRestoreArrayF90(this%tracer_mpi,vec2_ptr,ierr);CHKERRQ(ierr)
+  
+  ! liquid saturation
+  call RealizationGetVariable(this%realization,this%realization%field%work, &
+                              LIQUID_SATURATION,ZERO_INTEGER)
+  call VecGetArrayF90(this%realization%field%work,vec1_ptr,ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(this%saturation_mpi,vec2_ptr,ierr);CHKERRQ(ierr)
+  vec2_ptr(:) = vec1_ptr(:)
+  call VecRestoreArrayF90(this%realization%field%work,vec1_ptr, &
+                          ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(this%saturation_mpi,vec2_ptr,ierr);CHKERRQ(ierr)
+  
 #if 0
-  filename = 'pf_solution' // trim(StringFormatInt(num_calls)) // '.txt'
+  filename = 'pf_tracer' // trim(StringFormatInt(num_calls)) // '.txt'
   call PetscViewerASCIIOpen(this%option%mycomm,filename,viewer, &
                             ierr);CHKERRQ(ierr)
   call VecView(this%realization%field%work,viewer,ierr);CHKERRQ(ierr)
@@ -237,7 +255,7 @@ recursive subroutine PMCHydrogeophysicsFinalizeRun(this)
   ! Date: 07/02/13
   ! 
 
-  use Hydrogeophysics_Wrapper_module, only : HydrogeophysicsWrapperStop
+  use Wrapper_Hydrogeophysics_module, only : HydrogeophysicsWrapperStop
   
   implicit none
   
@@ -269,10 +287,14 @@ subroutine PMCHydrogeophysicsStrip(this)
   call PMCBaseStrip(this)
   nullify(this%realization)
   ! created in HydrogeophysicsInitialize()
-  if (this%solution_seq /= 0) then
-    call VecDestroy(this%solution_seq,ierr);CHKERRQ(ierr)
+  if (this%tracer_seq /= 0) then
+    call VecDestroy(this%tracer_seq,ierr);CHKERRQ(ierr)
   endif
-  this%solution_seq = 0
+  this%tracer_seq = 0
+  if (this%saturation_seq /= 0) then
+    call VecDestroy(this%saturation_seq,ierr);CHKERRQ(ierr)
+  endif
+  this%saturation_seq = 0
   ! created in HydrogeophysicsInitialize()
   if (this%pf_to_e4d_scatter /= 0) then
     call VecScatterDestroy(this%pf_to_e4d_scatter, ierr);CHKERRQ(ierr)
@@ -280,7 +302,8 @@ subroutine PMCHydrogeophysicsStrip(this)
   this%pf_to_e4d_scatter = 0
   ! these are solely pointers set in HydrogeophysicsInitialize()
   this%pf_to_e4d_master_comm = 0
-  this%solution_mpi = 0
+  this%tracer_mpi = 0
+  this%saturation_mpi = 0
   
 end subroutine PMCHydrogeophysicsStrip
 
@@ -306,12 +329,12 @@ recursive subroutine PMCHydrogeophysicsDestroy(this)
   
   call PMCHydrogeophysicsStrip(this)
   
-  if (associated(this%below)) then
-    call this%below%Destroy()
+  if (associated(this%child)) then
+    call this%child%Destroy()
   endif 
   
-  if (associated(this%next)) then
-    call this%next%Destroy()
+  if (associated(this%peer)) then
+    call this%peer%Destroy()
   endif  
 
 end subroutine PMCHydrogeophysicsDestroy

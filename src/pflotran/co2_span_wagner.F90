@@ -44,6 +44,7 @@
       private
 
       contains
+ 
 
 ! ************************************************************************** !
 
@@ -407,7 +408,7 @@ subroutine initialize_span_wagner(itable,myrank,option)
         endif
 #endif
         tmp = co2_prop_spwag(i,j,3)
-        if(j==0) tmp2 = co2_prop_spwag(i,j,3)
+        if (j==0) tmp2 = co2_prop_spwag(i,j,3)
       ! print *, co2_prop_spwag(i,j,:)
       enddo
     enddo
@@ -530,7 +531,7 @@ subroutine co2_span_wagner(pl,tl,rho,dddt,dddp,fg,dfgdp,dfgdt, &
   tmp = (p - p0_tab) / dp_tab; i1 = floor(tmp); i2 = ceiling(tmp); iindex=tmp 
   tmp = (t - t0_tab) / dt_tab; j1 = floor(tmp); j2 = ceiling(tmp); jindex=tmp 
 
-  if(iindex > ntab_p .or. iindex < 0.d0 .or. jindex < 0.d0 .or. jindex > ntab_t) then
+  if (iindex > ntab_p .or. iindex < 0.d0 .or. jindex < 0.d0 .or. jindex > ntab_t) then
     print  *,' Out of Table Bounds (Span-Wagner): ', 'p [MPa] =',p, &
     ' t [C] =',t-273.15,' i=',iindex,' j=',jindex
 !geh    isucc=0
@@ -1452,7 +1453,7 @@ subroutine vappr(tm,ps,dertp,derpt,ifl1)
           df=-(ps1+(ps2*(1.d0-nu)))/((1.d0-nu)**2)
           dnu=f/df
           nu=nu-dnu
-          if(dabs(dnu).lt.xacc) goto 10
+          if (dabs(dnu).lt.xacc) goto 10
         enddo
  10     continue
         tm = tc*(1.d0-nu)

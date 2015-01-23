@@ -29,12 +29,12 @@
 ! or
 
 ! Glenn E. Hammond
-! Pacific Northwest National Laboratory
-! Energy and Environment Directorate
-! MSIN K9-36
-! (509) 375-3875
-! glenn.hammond@pnnl.gov
-! Richland, WA
+! Sandia National Laboratories
+! Applied Systems Analysis & Research
+! 413 Cherry Blossom Lp
+! Richland, WA 99352
+! (505) 235-0665
+! gehammo@sandia.gov
 
 !=======================================================================
 
@@ -60,7 +60,7 @@ subroutine BatchChemInitializeReactions(option, input, reaction)
 
   use Reaction_module
   use Reaction_Aux_module
-  use Database_module
+  use Reaction_Database_module
   use Option_module
   use Input_Aux_module
   use String_module
@@ -111,14 +111,16 @@ end subroutine BatchChemInitializeReactions
 ! ************************************************************************** !
 
 subroutine BatchChemProcessConstraints(option, input, reaction, &
-     global_auxvars, rt_auxvars, transport_constraints, constraint_coupler)
+     global_auxvars, rt_auxvars, material_auxvars, transport_constraints, &
+     constraint_coupler)
 
   use Reaction_module
   use Reaction_Aux_module
-  use Database_module
+  use Reaction_Database_module
   use Reactive_Transport_Aux_module
   use Global_Aux_module
-  use Constraint_module
+  use Material_Aux_class
+  use Transport_Constraint_module
   use Option_module
   use Input_Aux_module
   use String_module
@@ -134,6 +136,7 @@ subroutine BatchChemProcessConstraints(option, input, reaction, &
   character(len=MAXSTRINGLENGTH) :: string
   type(global_auxvar_type), pointer :: global_auxvars
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars
+  class(material_auxvar_type), pointer :: material_auxvars
 
   character(len=MAXWORDLENGTH) :: card
   character(len=MAXWORDLENGTH) :: word
@@ -195,17 +198,19 @@ subroutine BatchChemProcessConstraints(option, input, reaction, &
      option%io_buffer = "initializing constraint : " // tran_constraint%name
      call printMsg(option)
      call ReactionProcessConstraint(reaction, &
-          tran_constraint%name, &
-          tran_constraint%aqueous_species, &
-          tran_constraint%minerals, &
-          tran_constraint%surface_complexes, &
-          tran_constraint%colloids, &
-          tran_constraint%immobile_species, &
-          option)
+                                    tran_constraint%name, &
+                                    tran_constraint%aqueous_species, &
+                                    tran_constraint%free_ion_guess, &
+                                    tran_constraint%minerals, &
+                                    tran_constraint%surface_complexes, &
+                                    tran_constraint%colloids, &
+                                    tran_constraint%immobile_species, &
+                                    option)
 
      ! link the constraint to the constraint coupler
      constraint_coupler%constraint_name = tran_constraint%name
      constraint_coupler%aqueous_species => tran_constraint%aqueous_species
+     constraint_coupler%free_ion_guess => tran_constraint%free_ion_guess
      constraint_coupler%minerals => tran_constraint%minerals
      constraint_coupler%surface_complexes => tran_constraint%surface_complexes
      constraint_coupler%colloids => tran_constraint%colloids
@@ -215,17 +220,18 @@ subroutine BatchChemProcessConstraints(option, input, reaction, &
      ! equilibrate
      option%io_buffer = "equilibrate constraint : " // tran_constraint%name
      call printMsg(option)
-     call ReactionEquilibrateConstraint(rt_auxvars, global_auxvars, reaction, &
-          tran_constraint%name, &
-          tran_constraint%aqueous_species, &
-          tran_constraint%minerals, &
-          tran_constraint%surface_complexes, &
-          tran_constraint%colloids, &
-          tran_constraint%immobile_species, &
-          option%reference_porosity, &
-          num_iterations, &
-          use_prev_soln_as_guess, &
-          option)
+     call ReactionEquilibrateConstraint(rt_auxvars, global_auxvars, &
+                                        material_auxvars, reaction, &
+                                        tran_constraint%name, &
+                                        tran_constraint%aqueous_species, &
+                                        tran_constraint%free_ion_guess, &
+                                        tran_constraint%minerals, &
+                                        tran_constraint%surface_complexes, &
+                                        tran_constraint%colloids, &
+                                        tran_constraint%immobile_species, &
+                                        num_iterations, &
+                                        use_prev_soln_as_guess, &
+                                        option)
      call ReactionPrintConstraint(constraint_coupler, reaction, option)
      tran_constraint => tran_constraint%next
   enddo
@@ -243,12 +249,14 @@ program pflotran_rxn
   use Reaction_Aux_module
   use Reactive_Transport_Aux_module
   use Global_Aux_module
-  use Database_module
+  use Material_Aux_class
+  use Reaction_Database_module
   use Option_module
   use Input_Aux_module
   use String_module
   
-  use Constraint_module
+  use Transport_Constraint_module
+  use PFLOTRAN_Constants_module
 
   use BatchChem
 
@@ -267,6 +275,7 @@ program pflotran_rxn
 
   type(global_auxvar_type), pointer :: global_auxvars
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars
+  class(material_auxvar_type), pointer :: material_auxvars
 
   character(len=MAXWORDLENGTH) :: card
   character(len=MAXWORDLENGTH) :: word
@@ -328,6 +337,11 @@ program pflotran_rxn
   allocate(rt_auxvars)
   call RTAuxVarInit(rt_auxvars, reaction, option)
 
+  ! material_auxvars --> cell by cell material property data
+  allocate(material_auxvars)
+  call MaterialAuxVarInit(material_auxvars, option)
+  material_auxvars%porosity = option%reference_porosity
+
   ! assign default state values
   global_auxvars%pres = option%reference_pressure
   global_auxvars%temp = option%reference_temperature
@@ -343,9 +357,9 @@ program pflotran_rxn
   constraint_coupler => TranConstraintCouplerCreate(option)
 
   call BatchChemProcessConstraints(option, input, reaction, &
-       global_auxvars, rt_auxvars, transport_constraints, constraint_coupler)
-
-
+                                   global_auxvars, rt_auxvars, &
+                                   material_auxvars, transport_constraints, &
+                                   constraint_coupler)
 
   ! cleanup
   call TranConstraintCouplerDestroy(constraint_coupler)
@@ -354,6 +368,15 @@ program pflotran_rxn
   !call RTAuxVarDestroy(rt_auxvars)
   !call GlobalAuxVarDestroy(global_auxvars)
   call ReactionDestroy(reaction,option)
+  call GlobalAuxVarStrip(global_auxvars)
+  deallocate(global_auxvars)
+  nullify(global_auxvars)
+  call RTAuxVarStrip(rt_auxvars)
+  deallocate(rt_auxvars)
+  nullify(rt_auxvars)
+  call MaterialAuxVarStrip(material_auxvars)
+  deallocate(material_auxvars)
+  nullify(material_auxvars)
   call InputDestroy(input)
   call OptionDestroy(option)
   call PetscFinalize(ierr);CHKERRQ(ierr)

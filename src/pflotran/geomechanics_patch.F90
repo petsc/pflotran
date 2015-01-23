@@ -25,10 +25,10 @@ module Geomechanics_Patch_module
     type(geomech_material_property_type), pointer :: geomech_material_properties
     type(geomech_material_property_ptr_type),&
        pointer :: geomech_material_property_array(:)
-    type(geomech_strata_list_type), pointer       :: geomech_strata
-    type(gm_region_list_type), pointer            :: geomech_regions
-    type(geomech_coupler_list_type), pointer      :: geomech_boundary_conditions
-    type(geomech_coupler_list_type), pointer      :: geomech_source_sinks
+    type(geomech_strata_list_type), pointer       :: geomech_strata_list
+    type(gm_region_list_type), pointer            :: geomech_region_list
+    type(geomech_coupler_list_type), pointer      :: geomech_boundary_condition_list
+    type(geomech_coupler_list_type), pointer      :: geomech_source_sink_list
     type(geomech_field_type), pointer             :: geomech_field
     class(dataset_base_type), pointer             :: geomech_datasets
     type(geomech_auxiliary_type)                  :: geomech_aux
@@ -66,19 +66,19 @@ function GeomechanicsPatchCreate()
   nullify(patch%imat)
   nullify(patch%geomech_grid)
   
-  allocate(patch%geomech_boundary_conditions)
-  call GeomechCouplerInitList(patch%geomech_boundary_conditions)
-  allocate(patch%geomech_source_sinks)
-  call GeomechCouplerInitList(patch%geomech_source_sinks)  
+  allocate(patch%geomech_boundary_condition_list)
+  call GeomechCouplerInitList(patch%geomech_boundary_condition_list)
+  allocate(patch%geomech_source_sink_list)
+  call GeomechCouplerInitList(patch%geomech_source_sink_list)  
   
   nullify(patch%geomech_material_properties)
   nullify(patch%geomech_material_property_array)
   
-  allocate(patch%geomech_strata)
-  call GeomechStrataInitList(patch%geomech_strata)
+  allocate(patch%geomech_strata_list)
+  call GeomechStrataInitList(patch%geomech_strata_list)
 
-  allocate(patch%geomech_regions)
-  call GeomechRegionInitList(patch%geomech_regions)
+  allocate(patch%geomech_region_list)
+  call GeomechRegionInitList(patch%geomech_region_list)
   
   call GeomechAuxInit(patch%geomech_aux)
   
@@ -115,14 +115,14 @@ subroutine GeomechPatchLocalizeRegions(geomech_patch,regions,option)
   do
     if (.not.associated(cur_region)) exit
     patch_region => GeomechRegionCreate(cur_region)
-    call GeomechRegionAddToList(patch_region,geomech_patch%geomech_regions)
+    call GeomechRegionAddToList(patch_region,geomech_patch%geomech_region_list)
     cur_region => cur_region%next
   enddo
   
  ! Need a call to a subroutine similar to GridlocalizeRegions 
- ! call GridLocalizeRegions(patch%grid,patch%regions,option)
+ ! call GridLocalizeRegions(patch%grid,patch%region_list,option)
   call GeomechGridLocalizeRegions(geomech_patch%geomech_grid, &
-                                  geomech_patch%geomech_regions, &
+                                  geomech_patch%geomech_region_list, &
                                   option)
  
 end subroutine GeomechPatchLocalizeRegions
@@ -156,12 +156,12 @@ subroutine GeomechPatchProcessGeomechCouplers(patch,conditions,option)
   PetscInt                                         :: temp_int, isub
   
   ! boundary conditions
-  coupler => patch%geomech_boundary_conditions%first
+  coupler => patch%geomech_boundary_condition_list%first
   do
     if (.not.associated(coupler)) exit
     ! pointer to region
     coupler%region => GeomechRegionGetPtrFromList(coupler%region_name, &
-                                                  patch%geomech_regions)
+                                                  patch%geomech_region_list)
     if (.not.associated(coupler%region)) then
       option%io_buffer = 'Geomech Region "' // trim(coupler%region_name) // &
                  '" in Geomech boundary condition "' // &
@@ -198,12 +198,12 @@ subroutine GeomechPatchProcessGeomechCouplers(patch,conditions,option)
   ! SK: There are no initial conditions (at this point)
 
   ! source/sinks
-  coupler => patch%geomech_source_sinks%first
+  coupler => patch%geomech_source_sink_list%first
   do
     if (.not.associated(coupler)) exit
     ! pointer to region
     coupler%region => GeomechRegionGetPtrFromList(coupler%region_name, &
-                                                  patch%geomech_regions)
+                                                  patch%geomech_region_list)
     if (.not.associated(coupler%region)) then
       option%io_buffer = 'Geomech Region "' // trim(coupler%region_name) // &
                  '" in geomech source/sink "' // &
@@ -239,13 +239,13 @@ subroutine GeomechPatchProcessGeomechCouplers(patch,conditions,option)
     
   ! strata
   ! connect pointers from strata to regions
-  strata => patch%geomech_strata%first
+  strata => patch%geomech_strata_list%first
   do
     if (.not.associated(strata)) exit
     ! pointer to region
     if (len_trim(strata%region_name) > 1) then
       strata%region => GeomechRegionGetPtrFromList(strata%region_name, &
-                                                   patch%geomech_regions)
+                                                   patch%geomech_region_list)
       if (.not.associated(strata%region)) then
         option%io_buffer = 'Geomech Region "' // trim(strata%region_name) // &
                  '" in geomech strata not found in geomech region list'
@@ -275,7 +275,7 @@ subroutine GeomechPatchProcessGeomechCouplers(patch,conditions,option)
   ! connection list have been created.
   ! observation
 #if 0
-  observation => patch%observation%first
+  observation => patch%observation_list%first
   do
     if (.not.associated(observation)) exit
     next_observation => observation%next
@@ -283,7 +283,7 @@ subroutine GeomechPatchProcessGeomechCouplers(patch,conditions,option)
       case(OBSERVATION_SCALAR)
         ! pointer to region
         observation%region => RegionGetPtrFromList(observation%linkage_name, &
-                                                    patch%regions)
+                                                    patch%region_list)
         if (.not.associated(observation%region)) then
           option%io_buffer = 'Region "' // &
                    trim(observation%linkage_name) // &
@@ -298,7 +298,7 @@ subroutine GeomechPatchProcessGeomechCouplers(patch,conditions,option)
         endif
       case(OBSERVATION_FLUX)
         coupler => CouplerGetPtrFromList(observation%linkage_name, &
-                                         patch%boundary_conditions)
+                                         patch%boundary_condition_list)
         if (associated(coupler)) then
           observation%connection_set => coupler%connection_set
         else
@@ -340,9 +340,9 @@ subroutine GeomechPatchInitAllCouplerAuxVars(patch,option)
   
   PetscBool :: force_update_flag = PETSC_TRUE
   
-  call GeomechPatchInitCouplerAuxVars(patch%geomech_boundary_conditions,patch, &
+  call GeomechPatchInitCouplerAuxVars(patch%geomech_boundary_condition_list,patch, &
                                       option)
-  call GeomechPatchInitCouplerAuxVars(patch%geomech_source_sinks,patch, &
+  call GeomechPatchInitCouplerAuxVars(patch%geomech_source_sink_list,patch, &
                                       option)
 
   call GeomechPatchUpdateAllCouplerAuxVars(patch,force_update_flag,option)
@@ -433,9 +433,9 @@ subroutine GeomechPatchUpdateAllCouplerAuxVars(patch,force_update_flag,option)
   !geh: no need to update initial conditions as they only need updating
   !     once as performed in PatchInitCouplerAuxVars()
   call GeomechPatchUpdateCouplerAuxVars(patch, &
-                                        patch%geomech_boundary_conditions, &
+                                        patch%geomech_boundary_condition_list, &
                                         force_update_flag,option)
-  call GeomechPatchUpdateCouplerAuxVars(patch,patch%geomech_source_sinks, &
+  call GeomechPatchUpdateCouplerAuxVars(patch,patch%geomech_source_sink_list, &
                                         force_update_flag,option)
 
 end subroutine GeomechPatchUpdateAllCouplerAuxVars
@@ -693,11 +693,11 @@ subroutine GeomechanicsPatchDestroy(geomech_patch)
   nullify(geomech_patch%geomech_material_property_array)
   nullify(geomech_patch%geomech_material_properties)
 
-  call GeomechStrataDestroyList(geomech_patch%geomech_strata)
-  call GeomechRegionDestroyList(geomech_patch%geomech_regions)
+  call GeomechStrataDestroyList(geomech_patch%geomech_strata_list)
+  call GeomechRegionDestroyList(geomech_patch%geomech_region_list)
   
-  call GeomechCouplerDestroyList(geomech_patch%geomech_boundary_conditions)
-  call GeomechCouplerDestroyList(geomech_patch%geomech_source_sinks)
+  call GeomechCouplerDestroyList(geomech_patch%geomech_boundary_condition_list)
+  call GeomechCouplerDestroyList(geomech_patch%geomech_source_sink_list)
   
   nullify(geomech_patch%geomech_field)
   nullify(geomech_patch%geomech_datasets)

@@ -72,7 +72,7 @@ subroutine PMSurfaceFlowPreSolve(this)
   class(pm_surface_flow_type) :: this
 
   if (this%option%print_screen_flag) then
-    write(*,'(/,2("=")," SURFACE FLOW ",62("="))')
+    write(*,'(/,2("=")," SURFACE FLOW ",64("="))')
   endif
 
 end subroutine PMSurfaceFlowPreSolve
@@ -128,7 +128,7 @@ end subroutine PMSurfaceFlowRHSFunction
 
 ! ************************************************************************** !
 
-subroutine PMSurfaceFlowUpdateTimestep(this,dt,dt_max,iacceleration, &
+subroutine PMSurfaceFlowUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
                                     num_newton_iterations,tfac)
   ! 
   ! This routine
@@ -143,7 +143,7 @@ subroutine PMSurfaceFlowUpdateTimestep(this,dt,dt_max,iacceleration, &
 
   class(pm_surface_flow_type) :: this
   PetscReal :: dt
-  PetscReal :: dt_max
+  PetscReal :: dt_min,dt_max
   PetscInt :: iacceleration
   PetscInt :: num_newton_iterations
   PetscReal :: tfac(:)
@@ -218,7 +218,7 @@ subroutine PMSurfaceFlowPostSolve(this)
   ! Ensure evolved solution is +ve
   call VecGetArrayF90(surf_field%flow_xx,xx_p,ierr);CHKERRQ(ierr)
   do local_id = 1,this%surf_realization%discretization%grid%nlmax
-    if(xx_p(local_id)<1.d-15) xx_p(local_id) = 0.d0
+    if (xx_p(local_id)<1.d-15) xx_p(local_id) = 0.d0
   enddo
   call VecRestoreArrayF90(surf_field%flow_xx,xx_p,ierr);CHKERRQ(ierr)
 

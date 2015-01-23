@@ -324,8 +324,8 @@ subroutine DatasetGlobalHDF5ReadData(this,option,data_type)
   endif
   call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
 
-  ! initialize to -999 to catch errors
-  this%rbuffer = -999.d0
+  ! initialize to UNINITIALIZED_INTEGER to catch errors
+  this%rbuffer = UNINITIALIZED_DOUBLE
   
   if (data_type == H5T_NATIVE_DOUBLE) then
     call PetscLogEventBegin(logging%event_h5dread_f,ierr);CHKERRQ(ierr)

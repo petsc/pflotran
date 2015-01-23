@@ -115,8 +115,8 @@ subroutine PMRTInit(this)
 
 #ifndef SIMPLIFY
   use Discretization_module
-  use Structured_Communicator_class
-  use Unstructured_Communicator_class
+  use Communicator_Structured_class
+  use Communicator_Unstructured_class
   use Grid_module 
 #endif  
   
@@ -131,7 +131,7 @@ subroutine PMRTInit(this)
 #ifndef SIMPLIFY  
   ! set up communicator
   select case(this%realization%discretization%itype)
-    case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
+    case(STRUCTURED_GRID)
       this%commN => StructuredCommunicatorCreate()
     case(UNSTRUCTURED_GRID)
       this%commN => UnstructuredCommunicatorCreate()
@@ -186,6 +186,7 @@ subroutine PMRTInitializeTimestep(this)
   use Reactive_Transport_module, only : RTInitializeTimestep, &
                                         RTUpdateTransportCoefs
   use Global_module
+  use Material_module
 
   implicit none
   
@@ -199,23 +200,20 @@ subroutine PMRTInitializeTimestep(this)
   this%option%tran_dt = this%option%dt
 
   if (this%option%print_screen_flag) then
-    write(*,'(/,2("=")," REACTIVE TRANSPORT ",57("="))')
+    write(*,'(/,2("=")," REACTIVE TRANSPORT ",58("="))')
   endif
-  
-#if 0  
-  call DiscretizationLocalToLocal(discretization, &
-                                  this%realization%field%porosity_loc, &
-                                  this%realization%field%porosity_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization, &
-                                  this%realization%field%tortuosity_loc, &
-                                  this%realization%field%tortuosity_loc,ONEDOF)
-#endif  
   
   ! interpolate flow parameters/data
   ! this must remain here as these weighted values are used by both
   ! RTInitializeTimestep and RTTimeCut (which calls RTInitializeTimestep)
   if (this%option%nflowdof > 0 .and. .not. this%steady_flow) then
     call this%SetTranWeights()
+    if (this%option%flow%transient_porosity) then
+      ! weight material properties (e.g. porosity)
+      call MaterialWeightAuxVars(this%realization%patch%aux%Material, &
+                                 this%tran_weight_t0, &
+                                 this%realization%field,this%comm1)
+    endif
     ! set densities and saturations to t
     call GlobalWeightAuxvars(this%realization,this%tran_weight_t0)
   endif
@@ -223,9 +221,15 @@ subroutine PMRTInitializeTimestep(this)
   call RTInitializeTimestep(this%realization)
 
   !geh: this is a bug and should be moved to PreSolve()
-#if 1
+#if 0
   ! set densities and saturations to t+dt
   if (this%option%nflowdof > 0 .and. .not. this%steady_flow) then
+    if (this%option%flow%transient_porosity) then
+      ! weight material properties (e.g. porosity)
+      call MaterialWeightAuxVars(this%realization%patch%aux%Material, &
+                                 this%tran_weight_t1, &
+                                 this%realization%field,this%comm1)
+    endif
     call GlobalWeightAuxVars(this%realization,this%tran_weight_t1)
   endif
 
@@ -246,6 +250,7 @@ subroutine PMRTPreSolve(this)
                                         RTUpdateAuxVars
   use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
   use Global_module  
+  use Material_module
 
   implicit none
   
@@ -257,9 +262,16 @@ subroutine PMRTPreSolve(this)
   call printMsg(this%option,'PMRT%UpdatePreSolve()')
 #endif
   
-#if 0
+#if 1
+  call RTUpdateTransportCoefs(this%realization)
   ! set densities and saturations to t+dt
   if (this%option%nflowdof > 0 .and. .not. this%steady_flow) then
+    if (this%option%flow%transient_porosity) then
+      ! weight material properties (e.g. porosity)
+      call MaterialWeightAuxVars(this%realization%patch%aux%Material, &
+                                 this%tran_weight_t1, &
+                                 this%realization%field,this%comm1)
+    endif
     call GlobalWeightAuxVars(this%realization,this%tran_weight_t1)
   endif
 
@@ -315,10 +327,6 @@ subroutine PMRTFinalizeTimestep(this)
   class(pm_rt_type) :: this
   PetscReal :: time  
   
-#ifdef PM_RICHARDS_DEBUG  
-  call printMsg(this%option,'PMRichards%FinalizeTimestep()')
-#endif
-  
   call RTMaxChange(this%realization)
   if (this%option%print_screen_flag) then
     write(*,'("  --> max chng: dcmx= ",1pe12.4," dc/dt= ",1pe12.4, &
@@ -359,7 +367,7 @@ end function PMRTAcceptSolution
 
 ! ************************************************************************** !
 
-subroutine PMRTUpdateTimestep(this,dt,dt_max,iacceleration, &
+subroutine PMRTUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
                               num_newton_iterations,tfac)
   ! 
   ! Author: Glenn Hammond
@@ -370,7 +378,7 @@ subroutine PMRTUpdateTimestep(this,dt,dt_max,iacceleration, &
   
   class(pm_rt_type) :: this
   PetscReal :: dt
-  PetscReal :: dt_max
+  PetscReal :: dt_min,dt_max
   PetscInt :: iacceleration
   PetscInt :: num_newton_iterations
   PetscReal :: tfac(:)
@@ -396,6 +404,7 @@ subroutine PMRTUpdateTimestep(this,dt,dt_max,iacceleration, &
   if (dtt > 2.d0 * dt) dtt = 2.d0 * dt
   if (dtt > dt_max) dtt = dt_max
   ! geh: see comment above under flow stepper
+  dtt = max(dtt,dt_min)
   dt = dtt
 
 end subroutine PMRTUpdateTimestep
@@ -648,6 +657,7 @@ subroutine PMRTUpdateSolution2(this, update_kinetics)
   use Reactive_Transport_module
   use Condition_module
   use Mass_Transfer_module
+  use Integral_Flux_module
 
   implicit none
   
@@ -670,12 +680,6 @@ subroutine PMRTUpdateSolution2(this, update_kinetics)
   call RTUpdateEquilibriumState(this%realization)
   if (update_kinetics) &
     call RTUpdateKineticState(this%realization)
-  if (this%realization%reaction%update_porosity .or. &
-      this%realization%reaction%update_tortuosity .or. &
-      this%realization%reaction%update_permeability .or. &
-      this%realization%reaction%update_mineral_surface_area) then
-    call RealizationUpdatePropertiesTS(this%realization)
-  endif
   
   call MassTransferUpdate(this%realization%rt_mass_transfer_list, &
                           this%realization%patch%grid, &
@@ -683,7 +687,11 @@ subroutine PMRTUpdateSolution2(this, update_kinetics)
   
   if (this%realization%option%compute_mass_balance_new) then
     call RTUpdateMassBalance(this%realization)
-  endif  
+  endif
+  call IntegralFluxUpdate(this%realization%patch%integral_flux_list, &
+                          this%realization%patch%internal_tran_fluxes, &
+                          this%realization%patch%boundary_tran_fluxes, &
+                          INTEGRATE_TRANSPORT,this%option)
 
 end subroutine PMRTUpdateSolution2     
 

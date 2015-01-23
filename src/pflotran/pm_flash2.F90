@@ -81,13 +81,13 @@ subroutine PMFlash2InitializeTimestep(this)
   
   class(pm_flash2_type) :: this
 
-  call PMSubsurfaceInitializeTimestep(this)
-
   if (this%option%print_screen_flag) then
-    write(*,'(/,2("=")," FLASH2 FLOW ",62("="))')
+    write(*,'(/,2("=")," FLASH2 FLOW ",65("="))')
   endif
   
+  call PMSubsurfaceInitializeTimestepA(this)
   call Flash2InitializeTimestep(this%realization)
+  call PMSubsurfaceInitializeTimestepB(this)
   
 end subroutine PMFlash2InitializeTimestep
 
@@ -123,7 +123,7 @@ end subroutine PMFlash2PostSolve
 
 ! ************************************************************************** !
 
-subroutine PMFlash2UpdateTimestep(this,dt,dt_max,iacceleration, &
+subroutine PMFlash2UpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
                                     num_newton_iterations,tfac)
   ! 
   ! Author: Gautam Bisht
@@ -134,7 +134,7 @@ subroutine PMFlash2UpdateTimestep(this,dt,dt_max,iacceleration, &
   
   class(pm_flash2_type) :: this
   PetscReal :: dt
-  PetscReal :: dt_max
+  PetscReal :: dt_min,dt_max
   PetscInt :: iacceleration
   PetscInt :: num_newton_iterations
   PetscReal :: tfac(:)
@@ -176,6 +176,8 @@ subroutine PMFlash2UpdateTimestep(this,dt,dt_max,iacceleration, &
   
   if (dtt > 2.d0 * dt) dtt = 2.d0 * dt
   if (dtt > dt_max) dtt = dt_max
+  dtt = max(dtt,dt_min)
+
   ! geh: There used to be code here that cut the time step if it is too
   !      large relative to the simulation time.  This has been removed.
       

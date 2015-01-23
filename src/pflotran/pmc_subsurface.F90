@@ -15,6 +15,7 @@ module PMC_Subsurface_class
     class(realization_type), pointer :: realization
   contains
     procedure, public :: Init => PMCSubsurfaceInit
+    procedure, public :: SetupSolvers => PMCSubsurfaceSetupSolvers
     procedure, public :: GetAuxData => PMCSubsurfaceGetAuxData
     procedure, public :: SetAuxData => PMCSubsurfaceSetAuxData
     procedure, public :: Destroy => PMCSubsurfaceDestroy
@@ -75,6 +76,45 @@ subroutine PMCSubsurfaceInit(this)
   nullify(this%realization)
 
 end subroutine PMCSubsurfaceInit
+
+! ************************************************************************** !
+
+subroutine PMCSubsurfaceSetupSolvers(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/18/13
+  ! 
+  use PM_Base_class
+  use Timestepper_Base_class
+  use Timestepper_BE_class
+  use PM_Base_Pointer_module
+
+  implicit none
+
+  class(pmc_subsurface_type) :: this
+
+  PetscErrorCode :: ierr
+
+#ifdef DEBUG
+  call printMsg(this%option,'PMCSubsurface%SetupSolvers()')
+#endif
+
+  select type(ts => this%timestepper)
+    class is(timestepper_BE_type)
+      call SNESSetFunction(ts%solver%snes, &
+                           this%pm_ptr%ptr%residual_vec, &
+                           PMResidual, &
+                           this%pm_ptr, &
+                           ierr);CHKERRQ(ierr)
+      call SNESSetJacobian(ts%solver%snes, &
+                           ts%solver%J, &
+                           ts%solver%Jpre, &
+                           PMJacobian, &
+                           this%pm_ptr, &
+                           ierr);CHKERRQ(ierr)
+  end select
+
+end subroutine PMCSubsurfaceSetupSolvers
 
 ! ************************************************************************** !
 
@@ -205,7 +245,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
                                  option%reference_pressure,den,dum1,ierr)
 
 #if 0
-            coupler_list => patch%source_sinks
+            coupler_list => patch%source_sink_list
             coupler => coupler_list%first
             do
               if (.not.associated(coupler)) exit
@@ -214,7 +254,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
               if (associated(coupler%flow_aux_real_var)) then
 
                 ! Find the BC from the list of BCs
-                if(StringCompare(coupler%name,'from_surface_ss')) then
+                if (StringCompare(coupler%name,'from_surface_ss')) then
                   coupler_found = PETSC_TRUE
                   
                   call VecGetArrayF90(pmc%sim_aux%subsurf_mflux_exchange_with_surf, &
@@ -234,7 +274,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
             enddo
 #endif
 
-            coupler_list => patch%boundary_conditions
+            coupler_list => patch%boundary_condition_list
             coupler => coupler_list%first
             do
               if (.not.associated(coupler)) exit
@@ -242,7 +282,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
               ! FLOW
               if (associated(coupler%flow_aux_real_var)) then
                 ! Find the BC from the list of BCs
-                if(StringCompare(coupler%name,'from_surface_bc')) then
+                if (StringCompare(coupler%name,'from_surface_bc')) then
                   coupler_found = PETSC_TRUE
                   call VecGetArrayF90(pmc%sim_aux%subsurf_pres_top_bc, &
                                       head_p,ierr);CHKERRQ(ierr)
@@ -293,7 +333,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
                                INSERT_VALUES,SCATTER_FORWARD, &
                                ierr);CHKERRQ(ierr)
 
-            coupler_list => patch%boundary_conditions
+            coupler_list => patch%boundary_condition_list
             coupler => coupler_list%first
             do
               if (.not.associated(coupler)) exit
@@ -301,7 +341,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
               ! FLOW
               if (associated(coupler%flow_aux_real_var)) then
                 ! Find the BC from the list of BCs
-                if(StringCompare(coupler%name,'from_surface_bc')) then
+                if (StringCompare(coupler%name,'from_surface_bc')) then
                   coupler_found = PETSC_TRUE
 
                   call VecGetArrayF90(pmc%sim_aux%subsurf_pres_top_bc, &
@@ -332,7 +372,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
                 endif
               endif
 
-              if(StringCompare(coupler%name,'from_atm_subsurface_bc')) then
+              if (StringCompare(coupler%name,'from_atm_subsurface_bc')) then
                 coupler_found = PETSC_TRUE
 
                 call VecGetArrayF90(pmc%sim_aux%subsurf_mflux_exchange_with_surf, &
@@ -356,7 +396,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
 
         end select
 
-        if( .not. coupler_found) then
+        if ( .not. coupler_found) then
           option%io_buffer = 'Coupler not found in PMCSubsurfaceGetAuxData()'
           call printErrMsg(option)
         endif
@@ -437,7 +477,7 @@ subroutine PMCSubsurfaceSetAuxDataForSurf(this)
 
           call EOSWaterdensity(option%reference_temperature, option%reference_pressure, &
                                den,dum1,ierr)
-          coupler_list => patch%boundary_conditions
+          coupler_list => patch%boundary_condition_list
           coupler => coupler_list%first
           do
             if (.not.associated(coupler)) exit
@@ -446,7 +486,7 @@ subroutine PMCSubsurfaceSetAuxDataForSurf(this)
             if (associated(coupler%flow_aux_real_var)) then
 
               ! Find the BC from the list of BCs
-              if(StringCompare(coupler%name,'from_surface_bc')) then
+              if (StringCompare(coupler%name,'from_surface_bc')) then
                 select case(this%option%iflowmode)
                   case (RICHARDS_MODE)
                     call VecGetArrayF90(this%sim_aux%subsurf_pres_top_bc, &
@@ -493,14 +533,13 @@ subroutine PMCSubsurfaceSetAuxDataForSurf(this)
 end subroutine PMCSubsurfaceSetAuxDataForSurf
 
 ! ************************************************************************** !
-!> This routine updates subsurface data from geomechanics process model.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 01/04/14
-! ************************************************************************** !
+
 subroutine PMCSubsurfaceGetAuxDataFromGeomech(this)
+  !
+  ! This routine updates subsurface data from geomechanics process model.
+  !
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 01/04/14
 
   use Discretization_module, only : DiscretizationLocalToLocal
   use Field_module
@@ -587,14 +626,13 @@ subroutine PMCSubsurfaceGetAuxDataFromGeomech(this)
 end subroutine PMCSubsurfaceGetAuxDataFromGeomech
 
 ! ************************************************************************** !
-!> This routine sets auxiliary needed by geomechanics process model.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 01/03/14
-! ************************************************************************** !
+
 subroutine PMCSubsurfaceSetAuxDataForGeomech(this)
+  !
+  ! This routine sets auxiliary needed by geomechanics process model.
+  !
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 01/04/14
 
   use Option_module
   use Realization_class
@@ -755,21 +793,21 @@ recursive subroutine PMCSubsurfaceDestroy(this)
   call printMsg(this%option,'PMCSubsurface%Destroy()')
 #endif
 
-  call PMCSubsurfaceStrip(this)
-  
-  if (associated(this%below)) then
-    call this%below%Destroy()
+  if (associated(this%child)) then
+    call this%child%Destroy()
     ! destroy does not currently destroy; it strips
-    deallocate(this%below)
-    nullify(this%below)
+    deallocate(this%child)
+    nullify(this%child)
   endif 
   
-  if (associated(this%next)) then
-    call this%next%Destroy()
+  if (associated(this%peer)) then
+    call this%peer%Destroy()
     ! destroy does not currently destroy; it strips
-    deallocate(this%next)
-    nullify(this%next)
+    deallocate(this%peer)
+    nullify(this%peer)
   endif
+  
+  call PMCSubsurfaceStrip(this)
   
 end subroutine PMCSubsurfaceDestroy
   

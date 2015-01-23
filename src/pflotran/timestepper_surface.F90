@@ -12,7 +12,7 @@ module Timestepper_Surface_class
 
   private
 
-  type, public, extends(stepper_base_type) :: timestepper_surface_type
+  type, public, extends(timestepper_base_type) :: timestepper_surface_type
     PetscReal :: dt_max_allowable
     PetscReal :: surf_subsurf_coupling_flow_dt
     type(solver_type), pointer :: solver
@@ -22,6 +22,7 @@ module Timestepper_Surface_class
     procedure, public :: Restart => TimestepperSurfaceRestart
     procedure, public :: Reset => TimestepperSurfaceReset
     procedure, public :: SetTargetTime => TimestepperSurfaceSetTargetTime
+    procedure, public :: Strip => TimestepperSurfaceStrip
     procedure, public :: StepDT => TimestepperSurfaceStepDT
   end type timestepper_surface_type
 
@@ -62,14 +63,14 @@ function TimestepperSurfaceCreate()
   
   class(timestepper_surface_type), pointer :: TimestepperSurfaceCreate
   
-  class(timestepper_surface_type), pointer :: surf_stepper
+  class(timestepper_surface_type), pointer :: surf_timestepper
   
-  allocate(surf_stepper)
-  call surf_stepper%Init()
+  allocate(surf_timestepper)
+  call surf_timestepper%Init()
   
-  surf_stepper%solver => SolverCreate()
+  surf_timestepper%solver => SolverCreate()
   
-  TimestepperSurfaceCreate => surf_stepper
+  TimestepperSurfaceCreate => surf_timestepper
   
 end function TimestepperSurfaceCreate
 
@@ -439,5 +440,73 @@ subroutine TimestepperSurfaceReset(this)
 #endif
 
 end subroutine TimestepperSurfaceReset
+
+! ************************************************************************** !
+
+subroutine TimestepperSurfacePrintInfo(this,option)
+  ! 
+  ! Prints settings for base timestepper.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/04/14
+  ! 
+  use Option_module
+
+  implicit none
+  
+#include "finclude/petscts.h"  
+
+  class(timestepper_surface_type) :: this
+  type(option_type) :: option
+  
+  PetscErrorCode :: ierr
+  
+  if (OptionPrintToScreen(option)) then
+    write(*,*) ' '
+    write(*,*) 'Surface Flow TS Solver:'
+    call TSView(this%solver%ts,PETSC_VIEWER_STDOUT_WORLD,ierr);CHKERRQ(ierr)
+  endif
+  call TimestepperBasePrintInfo(this,option)
+  call SolverPrintNewtonInfo(this%solver,this%name,option)
+  call SolverPrintLinearInfo(this%solver,this%name,option)
+  
+end subroutine TimestepperSurfacePrintInfo
+
+! ************************************************************************** !
+
+subroutine TimestepperSurfaceStrip(this)
+  ! 
+  ! Deallocates members of a surface time stepper
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/02/14
+  ! 
+
+  implicit none
+  
+  class(timestepper_surface_type) :: this
+  
+  call TimestepperBaseStrip(this)
+  call SolverDestroy(this%solver)
+
+end subroutine TimestepperSurfaceStrip
+
+! ************************************************************************** !
+
+subroutine TimestepperSurfaceDestroy(this)
+  ! 
+  ! Deallocates a surface time stepper
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/02/14
+  ! 
+
+  implicit none
+  
+  class(timestepper_surface_type) :: this
+  
+  call TimestepperSurfaceStrip(this)
+  
+end subroutine TimestepperSurfaceDestroy
 
 end module Timestepper_Surface_class

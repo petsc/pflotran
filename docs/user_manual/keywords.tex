@@ -16,15 +16,18 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \multicolumn{1}{c}{\hypertarget{target_key}{\bf Keyword}} & \multicolumn{1}{c}{\bf Description}\\
 \midrule[1pt]
 \hyperlink{target_bcon}{\bf BOUNDARY\_CONDITION} & \\
-\hyperlink{target_brk}{\bf BREAKTHROUGH} & \\
-\hyperlink{target_brine}{\bf BRINE (BRIN)} & \\
+%\hyperlink{target_brk}{\bf BREAKTHROUGH} & \\
+\hyperlink{target_brine}{\bf BRINE} & \\
+\hyperlink{target_charcrv}{\bf CHARCTERISTIC\_CURVES} & \\
 \hyperlink{target_ckpt}{\bf CHECKPOINT} & \\
 \hyperlink{target_chem}{\bf CHEMISTRY} & \\
 \hyperlink{target_stat}{\bf COMPUTE\_STATISTICS} & \\
 \hyperlink{target_co2dat}{\bf CO2\_DATABASE} & \\
 \hyperlink{target_constraint}{\bf CONSTRAINT} & transport (optional)\\
 \hyperlink{target_datset}{\bf DATASET} & \\
+\hyperlink{target_dbase}{\bf DBASE\_DATASET} & \\
 \hyperlink{target_dbg}{\bf DEBUG} & \\
+\hyperlink{target_eos}{\bf EOS} & \\
 \hyperlink{target_flow_cond}{\bf FLOW\_CONDITION} & \\
 \hyperlink{target_fluid_property}{\bf FLUID\_PROPERTY} & \\
 \hyperlink{target_geomech}{\bf GEOMECHANICS} & \\
@@ -37,6 +40,7 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \hyperlink{target_geomech_strata}{\bf GEOMECHANICS\_STRATA} & \\
 \hyperlink{target_grid}{\bf GRID} & (required)\\
 \hyperlink{target_init}{\bf INITIAL\_CONDITION} & \\
+\hyperlink{target_int_flux}{\bf INTEGRAL\_FLUX} & \\
 \hyperlink{target_linsolv}{\bf LINEAR\_SOLVER} & \\
 \hyperlink{target_mat}{\bf MATERIAL\_PROPERTY} & \\
 \hyperlink{target_mode}{\bf MODE} & \\
@@ -68,7 +72,7 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \end{longtable}
 
 
-\subsection{\bf Conventions and Notation} 
+\subsection{Conventions and Notation} 
 
 Keywords are in boldface with optional modifying keywords in square brackets [\ldots], and user entries in typewriter font.
 Unless otherwise specified, units in the input file are assumed to be as listed in Table~\ref{tunits}.
@@ -102,7 +106,7 @@ Concentration: & molarity [M] or molality [m] (see MOLAL keyword)\\
 Enthalpy: & kiloJoule/mole [kJ/mol]\\
 Mass: & kilogram [kg]\\
 Rate: & kilogram/second [kg/s] or cubic meter/second [m$^3$/s]\\
-Surface Site Density: & mole/Meter$^{3}$ [mol/m$^{3}$]\\
+Surface Site Density: & mole/meter$^{3}$ [mol/m$^{3}$]\\
 \bottomrule[1.5pt]
 %\hline
 \end{tabular}
@@ -132,24 +136,24 @@ Surface Site Density: & mole/Meter$^{3}$ [mol/m$^{3}$]\\
 \hypertarget{target_input_file}{}
 
 \footnotesize
-:Description: 3D infiltration problem with calcite dissolution
-:colon denotes a comment line\\
+\#Description: 3D infiltration problem with calcite dissolution
+(\# denotes a comment line)\\
 
 \noindent
-: == debugging ================================================================\\
-:\hyperlink{target_dbg}{\bf DEBUG}\\
+\# == debugging ================================================================\\
+\#\hyperlink{target_dbg}{\bf DEBUG}\\
 %\hypertarget{target_key}{\bf DEBUG}\\
-:  MATVIEW\_JACOBIAN\\
-:  VECVIEW\_RESIDUAL\\
-:  VECVIEW\_SOLUTION\\
-:/
+\#  MATVIEW\_JACOBIAN\\
+\#  VECVIEW\_RESIDUAL\\
+\#  VECVIEW\_SOLUTION\\
+\#/
 
 \noindent
-: == mode =====================================================================\\
+\# == mode =====================================================================\\
 \hyperlink{target_mode}{\bf MODE} RICHARDS
 
 \noindent
-: == chemistry ================================================================\\
+\# == chemistry ================================================================\\
 \hyperlink{target_chem}{\bf CHEMISTRY}\\
 OPERATOR\_SPLIT\\
 PRIMARY\_SPECIES\\
@@ -171,13 +175,13 @@ GAS\_SPECIES\\
 MINERALS\\
   Calcite\\
 /\\
-:\\
+\#\\
 MINERAL\_KINETICS\\
 Calcite\\
 RATE\_CONSTANT 1.e-8 ! [mol/m$^2$/s]\\
 /\\
 /\\
-:\\
+\#\\
 DATABASE /Users/lichtner/flotran/database/hanford.dat\\
 LOG\_FORMULATION\\
 ACTIVITY\_COEFFICIENTS !NEWTON\_ITERATION\\
@@ -188,85 +192,85 @@ All\\
 /
 
 \noindent
-: == reference variables ======================================================\\
+\# == reference variables ======================================================\\
 REFERENCE\_POROSITY 0.25d0\\
 
 \noindent
-: == time stepping ============================================================\\
+\# == time stepping ============================================================\\
 \hyperlink{target_timestep}{\bf TIMESTEPPER}\\
 TS\_ACCELERATION 8\\
 MAX\_STEPS 100000\\
 /
 
 \noindent
-: == discretization ===========================================================\\
+\# == discretization ===========================================================\\
 \hyperlink{target_grid}{\bf GRID}\\
-%:TYPE amr ! amr grid\\
+%\#TYPE amr ! amr grid\\
 TYPE structured\\
 NXYZ 6 6 6\\
 BOUNDS\\
 0.d0 0.d0 0.d0\\
 1.d0 1.d0 1.d0\\
 /\\
-:DXYZ\\
-:1.\\
-:1.\\
-:1.\\
-:/\\
+\#DXYZ\\
+\#1.\\
+\#1.\\
+\#1.\\
+\#/\\
 /
 
 \noindent
-: == flow solvers =============================================================\\
+\# == flow solvers =============================================================\\
 \hyperlink{target_newt}{\bf NEWTON\_SOLVER} FLOW\\
 PRECONDITIONER\_MATRIX\_TYPE AIJ\\
 RTOL 1.d-8\\
 ATOL 1.d-8\\
 STOL 1.d-30\\
 ITOL\_UPDATE 1.d0\\
-:NO\_INFINITY\_NORM\\
-:NO\_PRINT\_CONVERGENCE\\
-:PRINT\_DETAILED\_CONVERGENCE\\
+\#NO\_INFINITY\_NORM\\
+\#NO\_PRINT\_CONVERGENCE\\
+\#PRINT\_DETAILED\_CONVERGENCE\\
 /
 
 \noindent
 \hyperlink{target_linsolv}{\bf LINEAR\_SOLVER} FLOW\\
-:KSP\_TYPE PREONLY\\
-:PC\_TYPE LU\\
-:KSP\_TYPE FGMRES !samrai\\
-:PC\_TYPE SHELL !samrai\\
+\#KSP\_TYPE PREONLY\\
+\#PC\_TYPE LU\\
+\#KSP\_TYPE FGMRES !samrai\\
+\#PC\_TYPE SHELL !samrai\\
 /
 
 \noindent
-: == transport solvers ========================================================\\
+\# == transport solvers ========================================================\\
 \hyperlink{target_newt}{\bf NEWTON\_SOLVER} TRANSPORT\\
 PRECONDITIONER\_MATRIX\_TYPE AIJ\\
 RTOL 1.d-12\\
 ATOL 1.d-12\\
 STOL 1.d-30\\
-:NO\_INFINITY\_NORM\\
-:NO\_PRINT\_CONVERGENCE\\
-:PRINT\_DETAILED\_CONVERGENCE\\
+\#NO\_INFINITY\_NORM\\
+\#NO\_PRINT\_CONVERGENCE\\
+\#PRINT\_DETAILED\_CONVERGENCE\\
 /
 
 \noindent
 \hyperlink{target_linsolv}{\bf LINEAR\_SOLVER} TRANSPORT\\
-:PC\_TYPE LU\\
-:KSP\_TYPE PREONLY\\
-:KSP\_TYPE FGMRES ! samrai\\
-:PC\_TYPE SHELL !samrai\\
+\#PC\_TYPE LU\\
+\#KSP\_TYPE PREONLY\\
+\#KSP\_TYPE FGMRES ! samrai\\
+\#PC\_TYPE SHELL !samrai\\
 /
 
 \noindent
-: == fluid properties =========================================================\\
+\# == fluid properties =========================================================\\
 \hyperlink{target_fluid_property}{\bf FLUID\_PROPERTY}\\
 DIFFUSION\_COEFFICIENT 1.d-9\\
 /
 
 \noindent
-:\hyperlink{target_unifvel}{\bf UNIFORM\_VELOCITY} 3.84259d-6 0.d0 0.d0  ! 1.38333 cm/h
+\#\hyperlink{target_unifvel}{\bf UNIFORM\_VELOCITY} 3.84259d-6 0.d0 0.d0  ! 1.38333 cm/h
 
 \noindent
-: == material properties ======================================================\\
+\# == material properties ======================================================\\
 \hyperlink{target_mat}{\bf MATERIAL\_PROPERTY} HD\\
 ID 1\\
 SATURATION\_FUNCTION HD\\
@@ -278,7 +282,7 @@ PERM\_ISO 5.43d-13\\
 /
 
 \noindent
-: == saturation / permeability functions ======================================\\
+\# == saturation / permeability functions ======================================\\
 \hyperlink{target_sat}{\bf SATURATION\_FUNCTION} HD\\
 SATURATION\_FUNCTION\_TYPE VAN\_GENUCHTEN\\
 RESIDUAL\_SATURATION 0.115\\
@@ -287,9 +291,9 @@ ALPHA 1.9401d-4\\
 /
 
 \noindent
-: == output ===================================================================\\
+\# == output ===================================================================\\
 \hyperlink{target_output}{\bf OUTPUT}\\
-:PERIODIC TIMESTEP 1\\
+\#PERIODIC TIMESTEP 1\\
 PERIODIC TIME 0.1 y\\
 FORMAT HDF5\\
 FORMAT TECPLOT BLOCK\\
@@ -297,7 +301,7 @@ VELOCITIES\\
 /
 
 \noindent
-: == times ====================================================================\\
+\# == times ====================================================================\\
 \hyperlink{target_time}{\bf TIME}\\
 FINAL\_TIME 1.d0 y\\
 INITIAL\ 1.e-6 y\\
@@ -305,7 +309,7 @@ MAXIMUM\_TIMESTEP\_SIZE 1.e-2 y\\
 /
 
 \noindent
-: == regions ==================================================================\\
+\# == regions ==================================================================\\
 \hyperlink{target_region}{\bf REGION} all\\
 COORDINATES\\
 0.d0 0.d0 0.d0\\
@@ -329,7 +333,7 @@ COORDINATES\\
 2.d0 2.d0 6.d0\\
 4.d0 4.d0 6.d0\\
 /\\
-:BLOCK 3 4 3 4 6 6\\
+\#BLOCK 3 4 3 4 6 6\\
 /
 
 \noindent
@@ -342,7 +346,7 @@ COORDINATES\\
 /
 
 \noindent
-: == flow conditions ==========================================================\\
+\# == flow conditions ==========================================================\\
 \hyperlink{target_flow_cond}{\bf FLOW\_CONDITION} Inlet\\
 TYPE\\
 FLUX neumann\\
@@ -360,7 +364,7 @@ PRESSURE 101325.d0\\
 /
 
 \noindent
-: == transport conditions =====================================================\\
+\# == transport conditions =====================================================\\
 \hyperlink{target_trans_cond}{\bf TRANSPORT\_CONDITION} Inlet\\
 TYPE dirichlet\\
 CONSTRAINT\_LIST\\
@@ -385,7 +389,7 @@ CONSTRAINT\_LIST\\
 /
 
 \noindent
-: == couplers =================================================================\\
+\# == couplers =================================================================\\
 \hyperlink{target_bcon}{\bf BOUNDARY\_CONDITION} Inlet\\
 \hyperlink{target_flow_cond}{\bf FLOW\_CONDITION} Inlet\\
 \hyperlink{target_trans_cond}{\bf TRANSPORT\_CONDITION} Inlet\\
@@ -407,14 +411,14 @@ CONSTRAINT\_LIST\\
 /
 
 \noindent
-: == stratigraphy =============================================================\\
+\# == stratigraphy =============================================================\\
 \hyperlink{target_strata}{\bf STRATA}\\
 MATERIAL HD\\
 REGION all\\
 /
 
 \noindent
-: == transport constraints ======================================================\\
+\# == transport constraints ======================================================\\
 \hyperlink{target_constraint}{\bf CONSTRAINT} Initial\\
 CONCENTRATIONS\\
 Ca++    1.d-4   M  Calcite\\
@@ -529,6 +533,165 @@ BRINE 4.d0 MOLAL
 %========================================================================
 
 \newpage
+\protect\hypertarget{target_charcrv}{}
+
+\subsection{Keyword: CHARACTERISTIC\_CURVES}
+
+{\noindent\bf Description:} Specifies relative permeability and saturation functions and parameters to be associated with a material property.
+
+%{\noindent\bf Required Cards:}
+
+
+\noindent {\bf Input:}
+
+\begin{deflist}{000}
+\item [CHARACTERISTIC\_CURVES] <string>
+
+\begin{deflist}{000}
+
+\item [SATURATION\_FUNCTION] [VAN\_GENUCHTEN, BROOKS\_COREY]
+\begin{deflist}{000}
+\item ALPHA \ <float> \ [Pa$^{-1}$]
+\item M \ <float> \ [---]
+\item LIQUID\_RESIDUAL\_SATURATION \ <float> \ [---]
+\item MAX\_CAPILLARY\_PRESSURE \ <float> \ [Pa] \ [Default $10^{9}$ Pa]
+\end{deflist}
+\item [\keyend] ~
+%\item [SATURATION\_FUNCTION] BROOKS\_COREY
+%\begin{deflist}{000}
+%\item ALPHA \ <float> \ [Pa$^{-1}$]
+%\item M \ <float> \ [---]
+%\item LIQUID\_RESIDUAL\_SATURATION \ <float> \ [---]
+%\item MAX\_CAPILLARY\_PRESSURE \ <float> \ [Pa] \ [Default $10^{9}$ Pa]
+%\end{deflist}
+%\item [\keyend] ~
+
+\item [PERMEABILITY\_FUNCTION] MUALEM
+\begin{deflist}{000}
+\item M
+\item LIQUID\_RESIDUAL\_SATURATION
+\end{deflist}
+\item [\keyend] ~
+
+\item [PERMEABILITY\_FUNCTION] BURDINE
+
+\begin{deflist}{000}
+\item LAMBDA
+\item LIQUID\_RESIDUAL\_SATURATION
+\end{deflist}
+\item [\keyend] ~
+
+\item [PERMEABILITY\_FUNCTION] MUALEM\_VG\_GAS
+\begin{deflist}{000}
+\item M
+\item LIQUID\_RESIDUAL\_SATURATION
+\item GAS\_RESIDUAL\_SATURATION
+\end{deflist}
+\item [\keyend] ~
+
+\item [PERMEABILITY\_FUNCTION] BURDINE\_BC\_GAS
+\begin{deflist}{000}
+\item LAMBDA
+\item LIQUID\_RESIDUAL\_SATURATION
+\item GAS\_RESIDUAL\_SATURATION
+\end{deflist}
+\item [\keyend]
+\end{deflist}
+\item [\keyend]
+\end{deflist}
+
+{\noindent\bf Parameter Description:}
+
+{\noindent\bf Required cards within block:}
+
+\begin{itemize}
+
+\item SATURATION\_FUNCTION:
+Opens a saturation function block with the string indicating the type of function (options include VAN\_GENUCHTEN, BROOKS\_COREY).
+
+\item PERMEABILITY\_FUNCTION:
+Opens a relative permeability function block with the string indicating the type of function (options include MUALEM, BURDINE, MUALEM\_VG\_GAS, BURDINE\_BC\_GAS).
+
+\item ALPHA \ <float>
+Inverse of the air entry pressure for the saturation function [Pa$^{-1}$].
+
+\item GAS\_RESIDUAL\_SATURATION \ <float>
+Residual saturation for gas phase [---].
+
+\item LAMBDA <float>
+Brooks-Corey lambda [---].
+
+\item LIQUID\_RESIDUAL\_SATURATION \ <float>
+Residual saturation for liquid phase [---].
+
+\item M \ <float>
+van Genuchten $m$ as in ($m = 1-1/n$) [---].
+
+\item SMOOTH
+Applies polynomial smoothing to relative permeability or saturation function. Strongly recommended for the Brooks-Corey saturation function if cells in the domain transition from saturated to variably-saturated conditions.
+\end{itemize}
+
+{\noindent\bf Optional Cards:}
+
+\begin{itemize}
+\item PHASE \ <string> \ Phase to which the permeability function applies [LIQUID, GAS]
+\item MAX\_CAPILLARY\_PRESSURE \ <float> \ Cut off for maximum capillary pressure (default = $10^9$ [Pa]).
+\item POWER \ <float> \ Placeholder. Currently not used.
+\end{itemize}
+
+\begin{mdframed}
+
+{\bf Examples:}
+
+\begin{verbatim}
+CHARACTERISTIC_CURVES cc1
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    LIQUID_RESIDUAL_SATURATION 0.d0
+    M 0.5d0
+    ALPHA 1.d-4
+    MAX_CAPILLARY_PRESSURE 1.d6
+  /
+  PERMEABILITY_FUNCTION MUALEM
+    PHASE LIQUID
+    LIQUID_RESIDUAL_SATURATION 0.d0
+    M 0.5d0
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_GAS
+    PHASE GAS
+    LIQUID_RESIDUAL_SATURATION 0.d0
+    GAS_RESIDUAL_SATURATION 1.d-40
+    M 0.5d0
+  /
+/
+
+CHARACTERISTIC_CURVES cc2
+  SATURATION_FUNCTION BROOKS_COREY
+    LIQUID_RESIDUAL_SATURATION 0.2d0
+    LAMBDA 0.7d0
+    ALPHA 9.869d-6
+    MAX_CAPILLARY_PRESSURE 1.d8
+    SMOOTH
+  /
+  PERMEABILITY_FUNCTION BURDINE
+    PHASE LIQUID
+    LIQUID_RESIDUAL_SATURATION 0.2d0
+    LAMBDA 0.7d0
+  /
+  PERMEABILITY_FUNCTION BURDINE_BC_GAS
+    PHASE GAS
+    LIQUID_RESIDUAL_SATURATION 0.2d0
+    GAS_RESIDUAL_SATURATION 1.d-5
+    LAMBDA 0.7d0
+  /
+/
+\end{verbatim}
+\end{mdframed}
+
+\hyperlink{target_key}{\return}
+
+%========================================================================
+
+\newpage
 \protect\hypertarget{target_ckpt}{}
 
 \subsection{Keyword: CHECKPOINT}
@@ -593,37 +756,37 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \begin{deflist}{000}
 
 \item [PRIMARY\_SPECIES] ~
-\item {\tt Name}
+\item {\tt Species Name}
 \item [\keyend]
 
 ~\\
 
 \item [SECONDARY\_SPECIES] ~
-\item {\tt Name}
+\item {\tt Species Name}
 \item [\keyend]
 
 ~\\
 
 \item [REDOX\_SPECIES] ~
-\item {\tt Name}
+\item {\tt Species Name}
 \item [\keyend]
 
 ~\\
 
 \item[GAS\_SPECIES] ~
-\item {\tt Name}
+\item {\tt Species Name}
 \item [\keyend]
 
 ~\\
 
 \item[MINERALS]
-\item {\tt Name}
+\item {\tt Mineral Name}
 \item [\keyend]
 
 ~\\
 
 \item[COLLOIDS]
-\item {\tt Name} \ \ \ \ {\tt Mobile\_Fraction} [---]
+\item {\tt Colloid Name} \ \ \ \ {\tt Mobile\_Fraction} [---]
 \item [\keyend]
 
 ~\\
@@ -635,7 +798,7 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item [Mineral Name]  \ {\tt <Char>}
 \begin{deflist}{0000}
 \item [RATE\_CONSTANT] \ {\tt <float>} [mol/m$^2$/s], \ \ \ \ {\em If} \ {\tt <float>} $<$ 0, {\tt <float>} = 10$^{\tt <float>}$
-\item [ACTIVATION\_ENERGY] \ {\tt <float>} [kJ/mol/K], \ \ \ Referenced to rate constant at 25\degc.
+\item [ACTIVATION\_ENERGY] \ {\tt <float>} [kJ/mol], \ \ \ Referenced to rate constant at 25\degc.
 ~\\
 \item [AFFINITY\_THRESHOLD] \ {\tt <float>} [---]
 \item [AFFINITY\_POWER] \ {\tt <float>} [---]
@@ -656,7 +819,7 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item [PREFACTOR] ~
 \begin{deflist}{0000}
 \item [RATE\_CONSTANT] \ {\tt <float>} [mol/m$^2$/s], \ \ \ \ {\em If} \ {\tt <float>} $<$ 0, {\tt <float>} = 10$^{\tt <float>}$
-\item [ACTIVATION\_ENERGY] \ {\tt <float>} [kJ/mol/K] 
+\item [ACTIVATION\_ENERGY] \ {\tt <float>} [kJ/mol] 
 \item [PREFACTOR\_SPECIES] \ {\tt <Char>}
 \begin{deflist}{0000}
 \item [ALPHA] \ {\tt <float>} [---]
@@ -743,9 +906,9 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \begin{deflist}{000}
 \item [CEC] {\tt <float>} \ [mol/m$^3$]
 %\item[SITE/CATION] {\tt Name} \ \ \ {\tt Site Density} [mol/m$^3$]
-\item[CATIONS] ~
+\item[CATIONS] Exchange reactions must be written in terms of a single reference cation which must appear first in the list of cations [see \eqref{ex1}].
 \begin{deflist}{000}
-\item[\tt Name]  \ \ \ {\tt Selectivity\_Coefficient}
+\item[\tt Cation Name]  \ \ \ {\tt Selectivity\_Coefficient}
 \end{deflist}
 \item [\keyend] ~
 \end{deflist}
@@ -782,7 +945,7 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 
 \item [\keyend]
 ~\\
-\item [OPERATOR\_SPLITTING] \ Toggles operator-splitting mode (Default implicit)
+\item [OPERATOR\_SPLITTING] \ Toggles operator-splitting mode (Default implicit, not currently implemented)
 ~\\
 \item[GEOTHERMAL\_HPT] Use high pressure and temperature thermodynamic database
 \item[DATABASE] {\tt Path/Database\_Name}
@@ -852,11 +1015,10 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 %\end{minipage}
 %}
 
-\noindent
-{\bf Example:} Output total and free-ion primary species concentrations.
-
 \begin{mdframed}
-
+\noindent
+{\bf Example:} 
+Output total and free-ion primary species concentrations.
 \begin{verbatim}
  OUTPUT
    ...
@@ -883,7 +1045,7 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \end{tabularx}
 
 \begin{mdframed}
-
+{\bf Example:} Linear sorption distribution coefficient and mean age of a tracer.
 \begin{verbatim}
   SORPTION
     ISOTHERM_REACTIONS
@@ -894,6 +1056,22 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
       Tracer_Age
         TYPE LINEAR 
         DISTRIBUTION_COEFFICIENT 500. ! kg water/m^3 bulk
+      /
+    /
+  /
+\end{verbatim}
+\end{mdframed}
+
+\begin{mdframed}
+{\bf Example:} Ion exchange.
+\begin{verbatim}
+  SORPTION
+    ION_EXCHANGE_RXN
+      CEC 0.11 ! eq/m3bulk
+      CATIONS
+        Na+   1.
+        Ca++  0.158489
+        K+    0.199526
       /
     /
   /
@@ -911,7 +1089,7 @@ To print secondary aqueous complex concentrations, either add the names of the s
 \end{center}
 
 \begin{mdframed}
-
+{\bf Example:} Output and redox chemistry.
 \begin{verbatim}
 CHEMISTRY
   ...
@@ -945,7 +1123,7 @@ REDOX_SPECIES
 \end{center}
 
 \begin{mdframed}
-
+{\bf Example:} Mineral kinetics.
 \begin{verbatim}
 CHEMISTRY
   ...
@@ -968,10 +1146,9 @@ END
 \end{verbatim}
 \end{mdframed}
 
-
 \begin{center}
 \begin{tabularx}{\linewidth}{lX}
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ & volume fraction and reaction rate are printed for both calcite and gibbsite and saturation indices are printed for gibbsite.  Saturation indices are not printed when only ALL or MINERALS are specified since an input deck. Outputting tens to hundreds of minerals, most of which are simply considered, but not modeled through a kinetic precipitation-dissolution reaction, would overwhelm the output. \\
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ & volume fraction and reaction rate are printed for both calcite and gibbsite and saturation indices are printed for gibbsite. Saturation indices are not printed when only ALL or MINERALS are specified since an input deck. Outputting tens to hundreds of minerals, most of which are simply considered, but not modeled through a kinetic precipitation-dissolution reaction, would overwhelm the output. \\
 
 \midrule
 \ldots & \\
@@ -985,9 +1162,7 @@ END
 
 \noindent
 {\bf Examples:}
-
-\noindent
-{\bf PREFACTOR (see Eqn.\eqref{prefactor}):}
+Using PREFACTOR for mineral TST kinetics [see Eqn.\eqref{prefactor}].
 \begin{verbatim}
 MINERAL_KINETICS
   Quartz 
@@ -1004,8 +1179,8 @@ MINERAL_KINETICS
       ACTIVATION_ENERGY 65.0d0
       PREFACTOR_SPECIES H+
         ALPHA           0.457d0
-      : BETA
-      : ATTENUATION_COEF
+      ! BETA
+      ! ATTENUATION_COEF
       /
     /
     PREFACTOR
@@ -1013,8 +1188,8 @@ MINERAL_KINETICS
       ACTIVATION_ENERGY 71.0d0
       PREFACTOR_SPECIES H+
         ALPHA           -0.572d0
-      : BETA
-      : ATTENUATION_COEF
+      ! BETA
+      ! ATTENUATION_COEF
       /
     /
   /
@@ -1254,14 +1429,73 @@ END
 
 \hyperlink{target_key}{\return}
 
+%================================================================
+
+\newpage
+\protect\hypertarget{target_dbase}{}
+
+\subsection{Keyword: DBASE\_FILENAME}
+
+Keyword {\bf DBASE\_FILENAME} allows the user to define input parameters through an external database stored in an ASCII text or HDF5 file. These parameters can be realization dependent where an array of values is provided and indexed by the realization id.
+
+{\bf DBASE\_FILENAME} \ <string> \ 
+The path/filename of the external database to be employed.
+
+{\bf DBASE\_VALUE} \ <string1> [:: <string2>] \ 
+The names of the parameters to be read from the database file. This card combination may be entered anywhere a double precision value is read from the input file. The second string <string2> must be preceded by a double colon without spaces and is optional. See example below.
+
+\begin{mdframed}
+
+{\noindent\bf Examples:}
+\begin{verbatim}
+DBASE_FILENAME 543_dbase.h5
+...
+MATERIAL_PROPERTY soil1
+  ...
+  POROSITY DBASE_VALUE POROSITY::SOIL1
+END
+MATERIAL_PROPERTY soil4
+  ...
+    PERM_X DBASE_VALUE PERMEABILITY_X::SOIL4
+END
+...
+CHARACTERISTIC_CURVES sf3
+  ...
+  ALPHA DBASE_VALUE ALPHA-sf3
+END
+...
+REGION north
+  FACE NORTH
+  COORDINATES
+    0.d0 46.d0 0.d0
+    60.d0 46.d0 DBASE_VALUE NORTH_MAX_Z
+  /
+END
+...
+CONSTRAINT river_water
+  CONCENTRATIONS
+    Tracer   1.e-3                       F
+    Tracer2  DBASE_VALUE RIVER_TRACER2   F
+  /
+END
+\end{verbatim}
+Values are assigned based on the database stored in {\tt 543\_dbase.h5} and the command line argument {\tt -realization\_id 5} (note the zero-based index of 4 in the HDF5 file is actually the 5th realization). An example script for creating the database file may be found in {\tt PFLOTRAN\_DIR/src/python/dbase\_creator.py}.
+\end{mdframed}
+
+\begin{center}
+\includegraphics[scale=0.65]{./figs/h5_dbase.png}
+\end{center}
+
+\hyperlink{target_key}{\return}
+
 %========================================================================
 
 \newpage
 \protect\hypertarget{target_dbg}{}
 
-{\noindent\bf Input:}
-
 \subsection{Keyword: DEBUG}
+
+{\noindent\bf Input:}
 \begin{deflist}{00}
 \item[DEBUG]~
 \begin{deflist}{00}
@@ -1291,6 +1525,57 @@ VIEW\_JACOBIAN\_DETAILED]
 DEBUG
   PRINT_RESIDUAL
   PRINT_JACOBIAN
+END
+\end{verbatim}
+\end{mdframed}
+
+\hyperlink{target_key}{\return}
+
+%================================================================
+
+\newpage
+\protect\hypertarget{target_eos}{}
+
+\subsection{Keyword: EOS}
+
+The {\bf EOS} keyword defines an equation of state for a simulated fluid.
+
+%Required Cards:
+\begin{deflist}{000}
+%\item EOS <string>
+\item[EOS] \ <string> \ [WATER, GAS] \ Specifies the fluid for which EOS applies.
+
+{\bf Optional Input:}
+
+\begin{deflist}{000}
+\item[DENSITY] \ <string> \ <optional parameters>
+\begin{deflist}{000}
+\item[DENSITY CONSTANT] \ <float>
+\item[DENSITY EXPONENTIAL] \ <float> <float> <float> \ (ref. density [rho0], ref. pressure [p0], compressibility) 
+$\rho = \rho_0 \e^{\kappa (p-p_0)}$.
+
+%Exponential function: rho0 * exp(compressibility*(pressure - p0))
+\item[DENSITY DEFAULT] \ 
+Default water EOS based on International Formulation Committee of the Sixth International Conference on Properties of Steam (1967)
+\item[ENTHALPY] \ <string> \ <optional parameters>
+\item[ENTHALPY CONSTANT] \ <float>
+\item[VISCOSITY] \ <string> \ <optional parameters>
+\end{deflist}
+\end{deflist}
+\item[\keyend] ~
+\end{deflist}
+
+\begin{mdframed}
+
+{\noindent\bf Examples:}
+\begin{verbatim}
+EOS WATER
+  DENSITY EXPONENTIAL 997.16d0 101325.d0 1.d-8
+END
+EOS WATER
+  DENSITY CONSTANT 997.16d0
+  ENTHALPY CONSTANT 1.8890d0
+  VISCOSITY CONSTANT 8.904156d-4
 END
 \end{verbatim}
 \end{mdframed}
@@ -1444,6 +1729,7 @@ IPHASE & Phases present & CO$_2$ concentration\\
 \begin{mdframed}
 
 {\noindent\bf Examples:}
+\footnotesize
 \begin{verbatim}
 FLOW_CONDITION initial
   TYPE
@@ -1489,6 +1775,8 @@ END
 \end{verbatim}
 \end{mdframed}
 
+\normalsize
+
 \hyperlink{target_key}{\return}
 
 %========================================================================
@@ -1498,7 +1786,7 @@ END
 
 \subsection{Keyword: FLUID\_PROPERTY}
 
-\noindent{\bf Description:}
+\noindent{\bf Description:} Assign diffusion coefficients and temperature dependence.
 
 \noindent{\bf Input:}
 \begin{deflist}{000}
@@ -1523,7 +1811,7 @@ where $D_m^\circ$ is the reference diffusion coefficient at temperature $T_0 = 2
 \begin{verbatim}
 FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9      ! m^2/s
-  DIFFUSION_ACTIVATION_ENERGY 12.6 ! kJ/K/mol
+  DIFFUSION_ACTIVATION_ENERGY 12.6 ! kJ/mol
 /
 \end{verbatim}
 \end{mdframed}
@@ -1894,6 +2182,7 @@ END
 {\bf Format of unstructured grid file:}
 
 Implicitly defined grid:
+\footnotesize
 \begin{verbatim}
 ! 
 ! type: H=hexahedron, T=tetrahedron, W=wedge, P=pyramid
@@ -1916,10 +2205,13 @@ Implicitly defined grid:
 \end{verbatim}
 \end{mdframed}
 
+\normalsize
+
 \begin{mdframed}
 
 Explicitly defined grid:
-  
+
+\footnotesize
 \begin{verbatim}
 ! Format of explicit unstructured grid file
 ! id_, id_up_, id_dn_ = integer
@@ -1948,6 +2240,8 @@ Explicitly defined grid:
 ! -----------------------------------------------------------------
 \end{verbatim}
 \end{mdframed}
+
+\normalsize
 
 \begin{mdframed}
 
@@ -2013,7 +2307,6 @@ By using the {\tt BOUNDS} keyword, the model domain is specified in a grid-indep
 \noindent{\bf Example:}
 
 \begin{verbatim}
-
 :=========== condition couplers ==============
 : initial condition
 INITIAL_CONDITION
@@ -2027,6 +2320,65 @@ END
 \hyperlink{target_key}{\return}
 
 %========================================================================
+\newpage
+
+\protect\hypertarget{Keyword: INTEGRAL\_FLUX}{}
+
+\subsection{Keyword: INTEGRAL\_FLUX}
+
+\noindent{\bf Description:} Sets up a surface through which fluxes of all primary dependent variables can be calculated.
+
+Note: add keyword {\tt PERIODIC\_OBSERVATION} to {\tt OUTPUT} keyword to toggle printing of integral fluxes to a file with the suffix {\tt '*-int.dat'}.
+
+\noindent{\bf Input:}
+\begin{deflist}{000}
+
+\item[INTEGRAL\_FLUX] \ <string [Optional]> \ 
+Opens input block and associates a name with INTEGRAL\_FLUX. [Required]
+
+\begin{deflist}{000}
+
+\item[NAME] \  <string> \
+Specifies a name that is associated with the integral fluxes in the \break {\tt '*-int.dat'} file. This name will overwrite any name specified with the INTEGRAL\_FLUX keyword. [Optional]
+
+\item[COORDINATES] \ 
+Opens a block listing coordinates $(x_1,\, y_1,\, z_1)$, $(x_2,\, y_2,\, z_2)$, defining the rectangle over which the flux is to be calculated. The coordinates must form a rectangular plane that is aligned with the coordinate axes. [Required]
+
+\item[INVERT\_DIRECTION] \ 
+Inverts the sign of the flux. For fluxes at upwind boundaries, influx will be negative. This has no impact on the actual flux values other than to change the sign of the flux. [Optional]
+\end{deflist}
+
+\item[\keyend] ~
+\end{deflist}
+
+
+\begin{mdframed}
+
+\noindent{\bf Examples:}
+
+\begin{verbatim}
+INTEGRAL_FLUX flux_up_shaft
+  COORDINATES
+    25.d0 15.d0 300.d0
+    35.d0 20.d0 300.d0
+  /
+/
+
+INTEGRAL_FLUX
+  NAME inflow
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 10.d0 5.d0
+  /
+  INVERT_DIRECTION
+/
+\end{verbatim}
+\end{mdframed}
+
+\hyperlink{target_key}{\return}
+
+%========================================================================
+
 
 \newpage
 \protect\hypertarget{target_linsolv}{}
@@ -2353,7 +2705,7 @@ MAX_CHANGE 5.d4    5.  0.02   0.05
 
 \subsection{Keyword: MODE}
 
-\noindent{\bf Description:} determines the flow mode: Richards (variably saturated porous media); MPH, \linebreak MPHASE, FLASH2 (CO$_2$ + H$_2$O); THC (Thermal-Hydrologic-Chemical, in pro\-gress); IMMIS, THS (Immisible).
+\noindent{\bf Description:} determines the flow mode: Richards (variably saturated porous media); MPH, \linebreak MPHASE, FLASH2 (CO$_2$ + H$_2$O); TH (Thermal-Hydrologic); IMMIS, THS (Immisible).
 
 \begin{comment}
 \noindent{\bf Input:}
@@ -2364,7 +2716,7 @@ MAX_CHANGE 5.d4    5.  0.02   0.05
 \item[RICHARDS]
 \item[MPHASE (MPH)]
 \item[FLASH2]
-\item[THC (\rm in progress)]
+\item[TH]
 \item[IMMIS (IMS, THS)]
 \end{deflist}
 \end{deflist}
@@ -2375,19 +2727,21 @@ MAX_CHANGE 5.d4    5.  0.02   0.05
 %\begin{center}
 \begin{tabularx}{\linewidth}{lX}
 %\toprule[1.5pt]
-\multicolumn{2}{c}{\bf MODE <option>}\\
+\multicolumn{2}{c}{\bf MODE \ <option>}\\
 %\midrule
 \multicolumn{1}{c}{\bf Option} & \multicolumn{1}{c}{\bf Description}\\
 %\midrule
-\bf RICHARDS &Single-phase, isothermal, variable saturated groundwater flow using Richards equation\\
+\bf GENERAL & Two-phase air-water, nonisothermal, variably saturated groundwater flow\\
+\bf RICHARDS & Single-phase, isothermal, variably saturated groundwater flow using Richards equation\\
 %\midrule
-\bf MPHASE (MPH) &Multiphase supercritical CO$_2$-brine-energy based on variable switching for phase changes\\
+\bf MPHASE (MPH) & Two-phase supercritical CO$_2$-brine-energy based on variable switching for phase changes\\
 %\midrule
-\bf FLASH2 &Multiphase supercritical CO$_2$-brine-energy based on the flash method for phase changes with a persistent set of unknowns\\
+\bf FLASH2 & Two-phase supercritical CO$_2$-brine-energy based on the flash method for phase changes with a persistent set of unknowns\\
 %\midrule
-\bf THC &Thermo-Hydro-Chemical coupled groundwater flow, thermal and solute transport\\
+\bf TH & Thermal-Hydrologic coupled groundwater flow\\
 %\midrule
-\bf IMMIS (IMS, THS) &Immissible CO$_2$-water-energy\\
+\bf IMMIS (IMS, THS) & Immissible CO$_2$-water-energy\\
+\bf MIS & Missible H$_2$O-glycol fluid\\
 %\bottomrule[1.5pt]
 \end{tabularx}
 %\end{center}
@@ -2396,7 +2750,7 @@ MAX_CHANGE 5.d4    5.  0.02   0.05
 
 \noindent{\bf Example:}
 \begin{verbatim}
-MODE THC
+MODE TH
 \end{verbatim}
 \end{mdframed}
 
@@ -2745,7 +3099,7 @@ END
 \item[VELOCITY\_AT\_FACE] -Output interface velocities 
 \item[~] -Structured grid: velocity outputted at internal faces only. Visualization support is available via XDMF.
 \item[~] -Unstructured grid: velocity outputted for internal and boundary faces. Data is outputted in HDF5 format only with no visualization support via XDMF.
-\item[VELOCITY\_AT\_CENTER] -Output cell-centered velocities (supported for structured and unstructured grids, applies to TecPlot and HDF5 output formats)
+\item[VELOCITY\_AT\_CENTER] -Output cell-centered velocities (supported for structured and unstructured grids, applies to TecPlot and HDF5 output formats). Note that this is compatible only with TecPlot BLOCK format.
 
 \item[MASS\_BALANCE:] \ output the mass balance of the system if this card is activated. It includes global mass balance as well as fluxes at all boundaries for water and chemical species specified for output in the CHEMISTRY card. For the MPHASE mode only global mass balances are provided including supercritical CO$_2$. Output times are controlled by {\tt PERIODIC\_OBSERVATION TIMESTEP and TIME}, and printout times.
 \end{deflist}
@@ -2838,11 +3192,11 @@ where $s_\a^0$ denotes the residual saturation. There are as many rows of cumula
 
 \begin{verbatim}
 OUTPUT
-  :SCREEN PERIODIC 10
-  :PERIODIC TIME 10 h
+  !SCREEN PERIODIC 10
+  !PERIODIC TIME 10 h
   PERIODIC_OBSERVATION TIMESTEP 1
-  :times h 1.
-  :PERIODIC_OBSERVATION TIME 50 h
+  !times h 1.
+  !PERIODIC_OBSERVATION TIME 50 h
   FORMAT TECPLOT POINT ! or BLOCK
   FORMAT HDF5
   VELOCITIES
@@ -3060,7 +3414,7 @@ RESTART pflotran.chk3000
 {\bf THOMEER\_COREY}, \ {\bf NMT\_EXP}, \ {\bf PRUESS\_1}, \ {\bf VAN\_GENUCHTEN\_PARKER}]
 
 \item[PERMEABILITY\_FUNCTION\_TYPE] \ [{\bf MUALEM}, \ {\bf BURDINE}]
-\item[RESIDUAL\_SATURATION] \ {\tt <Value>} \ \ MODES: RICHARDS, TH, THC
+\item[RESIDUAL\_SATURATION] \ {\tt <Value>} \ \ MODES: RICHARDS, TH
 \item[RESIDUAL\_SATURATION\_LIQUID] \ {\tt <Value>} \ \ MODES: MPHASE
 \item[RESIDUAL\_SATURATION\_GAS] \ {\tt <Value>} 
 
@@ -3505,14 +3859,15 @@ UNIFORM_VELOCITY 3.84259d-6 0.d0 0.d0  ! 1.38333 cm/h
 \begin{mdframed}
 
 \noindent{\bf Example:}
+\footnotesize
 \begin{verbatim}
 VELOCITY_DATASET
   UNITS cm/h
   CYCLIC ! cycles the data set using last time as offset
   :INTERPOLATION STEP ! interpolation method (step [default] or linear)
   VELOCITY
-    :time velx vely velz
-    :time units = time unit in velocity units
+    !time velx vely velz
+    !time units = time unit in velocity units
     0.d0       1.38333d0 0.d0 0.d0 
     12.d0     -1.38333d0 0.d0 0.d0 
     24.d0      1.38333d0 0.d0 0.d0 
@@ -3521,6 +3876,7 @@ END
 \end{verbatim}
 
 \end{mdframed}
+\normalsize
 
 \hyperlink{target_key}{\return}
 

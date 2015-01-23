@@ -81,8 +81,6 @@ subroutine ImmisTimeCut(realization)
   option => realization%option
   field => realization%field
 
-  call VecCopy(field%flow_yy,field%flow_xx,ierr);CHKERRQ(ierr)
-
 end subroutine ImmisTimeCut
 
 ! ************************************************************************** !
@@ -203,7 +201,7 @@ subroutine ImmisSetupPatch(realization)
   ! print *,' ims setup allocate app array'
    ! count the number of boundary connections and allocate
   ! auxvar data structures for them  
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -220,7 +218,7 @@ subroutine ImmisSetupPatch(realization)
   patch%aux%Immis%num_aux_bc = sum_connection
   
  ! Allocate source /sink  
-  source_sink => patch%source_sinks%first
+  source_sink => patch%source_sink_list%first
   sum_connection = 0    
   do 
     if (.not.associated(source_sink)) exit
@@ -418,17 +416,17 @@ end subroutine ImmisZeroMassBalDeltaPatch
     if (.not.associated(cur_patch)) exit
     realization%patch => cur_patch
     ipass= ImmisInitGuessCheckPatch(realization)
-    if(ipass<=0)then
+    if (ipass<=0)then
       exit 
     endif
     cur_patch => cur_patch%next
   enddo
 
   call MPI_Barrier(option%mycomm,ierr)
-  if(option%mycommsize >1)then
+  if (option%mycommsize >1)then
       call MPI_Allreduce(ipass,ipass0,ONE_INTEGER_MPI,MPIU_INTEGER, &
                          MPI_SUM,option%mycomm,ierr)
-      if(ipass0 < option%mycommsize) ipass=-1
+      if (ipass0 < option%mycommsize) ipass=-1
    endif
    ImmisInitGuessCheck =ipass
 
@@ -469,7 +467,7 @@ subroutine ImmisUpdateReasonPatch(reason,realization)
 
   re=1
  
-  if(re>0)then
+  if (re>0)then
      call VecGetArrayF90(field%flow_xx, xx_p, ierr);CHKERRQ(ierr)
      call VecGetArrayF90(field%flow_yy, yy_p, ierr);CHKERRQ(ierr)
 
@@ -481,27 +479,27 @@ subroutine ImmisUpdateReasonPatch(reason,realization)
         n0=(n-1)* option%nflowdof
   
 ! ******** Too huge change in pressure ****************     
-        if(dabs(xx_p(n0 + 1)- yy_p(n0 + 1))> (10.0D0 * option%dpmxe))then
+        if (dabs(xx_p(n0 + 1)- yy_p(n0 + 1))> (10.0D0 * option%dpmxe))then
            re=0; print *,'huge change in p', xx_p(n0 + 1), yy_p(n0 + 1)
            exit
         endif
 
 ! ******** Too huge change in temperature ****************
-        if(dabs(xx_p(n0 + 2)- yy_p(n0 + 2))> (10.0D0 * option%dtmpmxe))then
+        if (dabs(xx_p(n0 + 2)- yy_p(n0 + 2))> (10.0D0 * option%dtmpmxe))then
            re=0; print *,'huge change in T', xx_p(n0 + 2), yy_p(n0 + 2)
            exit
         endif
  
 ! ******* Check 0<=sat/con<=1 **************************
-           if(xx_p(n0 + 3) > 1.D0)then
+           if (xx_p(n0 + 3) > 1.D0)then
               re=0; exit
            endif
-           if(xx_p(n0 + 3) < 0.)then
+           if (xx_p(n0 + 3) < 0.)then
               re=0; exit
            endif
      end do
   
-    if(re<=0) print *,'Sat out of Region at: ',n,xx_p(n0+1:n0+3)
+    if (re<=0) print *,'Sat out of Region at: ',n,xx_p(n0+1:n0+3)
     call VecRestoreArrayF90(field%flow_xx, xx_p, ierr);CHKERRQ(ierr)
     call VecRestoreArrayF90(field%flow_yy, yy_p, ierr);CHKERRQ(ierr)
 
@@ -538,7 +536,7 @@ subroutine ImmisUpdateReason(reason, realization)
     if (.not.associated(cur_patch)) exit
     realization%patch => cur_patch
     call ImmisUpdateReasonPatch(re, realization)
-    if(re<=0)then
+    if (re<=0)then
       exit 
     endif
     cur_patch => cur_patch%next
@@ -546,14 +544,14 @@ subroutine ImmisUpdateReason(reason, realization)
 
   call MPI_Barrier(realization%option%mycomm,ierr)
   
-  if(realization%option%mycommsize >1)then
+  if (realization%option%mycommsize >1)then
      call MPI_Allreduce(re,re0,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
           realization%option%mycomm,ierr)
-     if(re0<realization%option%mycommsize) re=0
+     if (re0<realization%option%mycommsize) re=0
   endif
   reason=re
   
-  if(reason<=0 .and. realization%option%myrank ==0) print *,'Sat or Con out of Region', re
+  if (reason<=0 .and. realization%option%myrank ==0) print *,'Sat or Con out of Region', re
 end subroutine ImmisUpdateReason
 
 ! ************************************************************************** !
@@ -601,15 +599,15 @@ end subroutine ImmisUpdateReason
        endif
       
 !   insure zero liquid sat not passed to ptran (no effect on pflow)
-       if(xx_p((local_id-1)*option%nflowdof+3) < 0.D0)xx_p((local_id-1)*option%nflowdof+3) = zerocut
-       if(xx_p((local_id-1)*option%nflowdof+3) > 1.D0)xx_p((local_id-1)*option%nflowdof+3) = 1.D0 - zerocut
+       if (xx_p((local_id-1)*option%nflowdof+3) < 0.D0)xx_p((local_id-1)*option%nflowdof+3) = zerocut
+       if (xx_p((local_id-1)*option%nflowdof+3) > 1.D0)xx_p((local_id-1)*option%nflowdof+3) = 1.D0 - zerocut
     
 !   check if p,T within range of table  
-       if(xx_p((local_id-1)*option%nflowdof+1)< p0_tab*1D6 &
+       if (xx_p((local_id-1)*option%nflowdof+1)< p0_tab*1D6 &
             .or. xx_p((local_id-1)*option%nflowdof+1)>(ntab_p*dp_tab + p0_tab)*1D6)then
           ipass=-1; exit  
        endif
-       if(xx_p((local_id-1)*option%nflowdof+2)< t0_tab -273.15D0 &
+       if (xx_p((local_id-1)*option%nflowdof+2)< t0_tab -273.15D0 &
             .or. xx_p((local_id-1)*option%nflowdof+2)>ntab_t*dt_tab + t0_tab-273.15D0)then
           ipass=-1; exit
        endif
@@ -715,7 +713,7 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
     endif
     iend = ghosted_id*option%nflowdof
     istart = iend-option%nflowdof+1
-    if(.not. associated(patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr))then
+    if (.not. associated(patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr))then
        print*, 'error!!! saturation function not allocated', ghosted_id,icap_loc_p(ghosted_id)
     endif
    
@@ -741,7 +739,7 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
     endif
   enddo
 
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -796,7 +794,7 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
 
 
 ! source/sinks
-  source_sink => patch%source_sinks%first
+  source_sink => patch%source_sink_list%first
   sum_connection = 0    
   do 
     if (.not.associated(source_sink)) exit
@@ -869,9 +867,6 @@ subroutine ImmisUpdateSolution(realization)
   
   field => realization%field
   
-  call VecCopy(realization%field%flow_xx,realization%field%flow_yy, &
-               ierr);CHKERRQ(ierr)
-
   cur_patch => realization%patch_list%first
   do
     if (.not.associated(cur_patch)) exit
@@ -1103,7 +1098,7 @@ subroutine ImmisAccumulation(auxvar,por,vol,rock_dencpr,option,iireac,Res)
     eng = eng + auxvar%sat(np) * auxvar%den(np) * auxvar%u(np)
   enddo
   mol = mol * porXvol
- ! if(option%use_isothermal == PETSC_FALSE) &
+ ! if (option%use_isothermal == PETSC_FALSE) &
   eng = eng * porXvol + (1.d0 - por) * vol * rock_dencpr * auxvar%temp 
  
 ! Reaction terms here
@@ -1203,12 +1198,12 @@ subroutine ImmisSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,auxvar,isrctype,Res, &
     
       if (msrc(2) > 0.d0) then ! CO2 injection
 !       call printErrMsg(option,"concentration source not yet implemented in Immis")
-        if(option%co2eos == EOS_SPAN_WAGNER) then
+        if (option%co2eos == EOS_SPAN_WAGNER) then
          !  span-wagner
           rho = auxvar%den(jco2)*FMWCO2  
           select case(option%itable)  
             case(0,1,2,4,5)
-              if(option%itable >=4) then
+              if (option%itable >=4) then
               call co2_sw_interp(auxvar%pres*1.D-6,&
                 tsrc,rho,dddt,dddp,fg,dfgdp,dfgdt, &
                 eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,option%itable)
@@ -1230,7 +1225,7 @@ subroutine ImmisSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,auxvar,isrctype,Res, &
           ! qsrc_phase [m^3/sec] = msrc [kmol/sec] / [kg/m^3] * [kg/kmol]  
           qsrc_phase(2) = msrc(2)*rho/FMWCO2
           
-        else if(option%co2eos == EOS_MRK)then
+        else if (option%co2eos == EOS_MRK)then
 ! MRK eos [modified version from  Kerrick and Jacobs (1981) and Weir et al. (1996).]
           call CO2(tsrc,auxvar%pres, rho,fg, xphi,enth_src_co2)
           qsrc_phase(2) = msrc(2)*rho/FMWCO2
@@ -1270,17 +1265,17 @@ subroutine ImmisSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,auxvar,isrctype,Res, &
       well_inj_water = msrc(6)
       well_inj_co2 = msrc(7)
     
-!     if(pressure_min < 0D0) pressure_min = 0D0 !not limited by pressure lower bound   
+!     if (pressure_min < 0D0) pressure_min = 0D0 !not limited by pressure lower bound   
 
     ! production well (well status = -1)
-      if( dabs(well_status + 1D0) < 1D-1) then 
-        if(auxvar%pres > pressure_min) then
+      if ( dabs(well_status + 1D0) < 1D-1) then 
+        if (auxvar%pres > pressure_min) then
           Dq = well_factor 
           do np = 1, option%nphase
             dphi = auxvar%pres - auxvar%pc(np) - pressure_bh
             if (dphi>=0.D0) then ! outflow only
               ukvr = auxvar%kvr(np)
-              if(ukvr<1e-20) ukvr=0D0
+              if (ukvr<1e-20) ukvr=0D0
               v_darcy=0D0
               if (ukvr*Dq>floweps) then
                 v_darcy = Dq * ukvr * dphi
@@ -1292,7 +1287,7 @@ subroutine ImmisSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,auxvar,isrctype,Res, &
                 Res(2) = Res(2) - v_darcy* auxvar%den(np)* &
 !                 auxvar%xmol((np-1)*option%nflowspec+2)*
                   option%flow_dt
-                if(energy_flag) Res(3) = Res(3) - v_darcy * auxvar%den(np)* &
+                if (energy_flag) Res(3) = Res(3) - v_darcy * auxvar%den(np)* &
                   auxvar%h(np)*option%flow_dt
               ! print *,'produce: ',np,v_darcy
               endif
@@ -1302,7 +1297,7 @@ subroutine ImmisSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,auxvar,isrctype,Res, &
       endif 
      !print *,'well-prod: ',  auxvar%pres,psrc(1), res
     ! injection well (well status = 2)
-      if( dabs(well_status - 2.D0) < 1.D-1) then 
+      if ( dabs(well_status - 2.D0) < 1.D-1) then 
 
         call EOSWaterDensityEnthalpy(tsrc,auxvar%pres,dw_kg,dw_mol, &
                                      enth_src_h2o,ierr)
@@ -1312,7 +1307,7 @@ subroutine ImmisSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,auxvar,isrctype,Res, &
         Dq = msrc(2) ! well parameter, read in input file
                       ! Take the place of 2nd parameter 
         ! Flow term
-        if( auxvar%pres < pressure_max)then  
+        if ( auxvar%pres < pressure_max)then  
           do np = 1, option%nphase
             dphi = pressure_bh - auxvar%pres + auxvar%pc(np)
             if (dphi>=0.D0) then ! outflow only
@@ -1330,9 +1325,9 @@ subroutine ImmisSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,auxvar,isrctype,Res, &
 !                 auxvar%xmol((np-1)*option%nflowspec+2) * option%flow_dt
 !                 csrc * option%flow_dt
                   option%flow_dt
-!               if(energy_flag) Res(3) = Res(3) + v_darcy*auxvar%den(np)* &
+!               if (energy_flag) Res(3) = Res(3) + v_darcy*auxvar%den(np)* &
 !                 auxvar%h(np)*option%flow_dt
-                if(energy_flag) Res(3) = Res(3) + v_darcy*auxvar%den(np)* &
+                if (energy_flag) Res(3) = Res(3) + v_darcy*auxvar%den(np)* &
                   enth_src_h2o*option%flow_dt
                 
 !               print *,'inject: ',np,v_darcy
@@ -1416,11 +1411,11 @@ subroutine ImmisFlux(auxvar_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
       ! note uxmol only contains one phase xmol
       if (dphi >= 0.D0) then
         ukvr = auxvar_up%kvr(np)
-        ! if(option%use_isothermal == PETSC_FALSE)&
+        ! if (option%use_isothermal == PETSC_FALSE)&
         uh = auxvar_up%h(np)
       else
         ukvr = auxvar_dn%kvr(np)
-        ! if(option%use_isothermal == PETSC_FALSE)&
+        ! if (option%use_isothermal == PETSC_FALSE)&
         uh = auxvar_dn%h(np)
       endif
    
@@ -1430,7 +1425,7 @@ subroutine ImmisFlux(auxvar_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
         vv_darcy(np) = v_darcy
         q = v_darcy * area
         fluxm(np)=fluxm(np) + q * density_ave
-        ! if(option%use_isothermal == PETSC_FALSE)&
+        ! if (option%use_isothermal == PETSC_FALSE)&
         fluxe = fluxe + q*density_ave*uh
       endif
     endif
@@ -1452,13 +1447,13 @@ subroutine ImmisFlux(auxvar_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   enddo
 
 ! conduction term
-  !if(option%use_isothermal == PETSC_FALSE) then     
+  !if (option%use_isothermal == PETSC_FALSE) then     
   Dk = (Dk_up * Dk_dn) / (dd_dn*Dk_up + dd_up*Dk_dn)
   cond = Dk*area*(auxvar_up%temp-auxvar_dn%temp)
   fluxe = fluxe + cond
  ! end if
 
-  !if(option%use_isothermal)then
+  !if (option%use_isothermal)then
   !   Res(1:option%nflowdof) = fluxm(:) * option%flow_dt
  ! else
   Res(1:option%nphase) = fluxm(:) * option%flow_dt
@@ -1568,18 +1563,18 @@ subroutine ImmisBCFlux(ibndtype,auxvars,auxvar_up,auxvar_dn, &
      uxmol=0.D0
 
      if (v_darcy >= 0.D0) then
-        !if(option%use_isothermal == PETSC_FALSE)&
+        !if (option%use_isothermal == PETSC_FALSE)&
          uh = auxvar_up%h(np)
         ! uxmol(:)=auxvar_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
      else
-         !if(option%use_isothermal == PETSC_FALSE)&
+         !if (option%use_isothermal == PETSC_FALSE)&
         uh = auxvar_dn%h(np)
          ! uxmol(:)=auxvar_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
      endif
 
         fluxm(np) = fluxm(np) + q*density_ave ! *uxmol(ispec)
 
-      !if(option%use_isothermal == PETSC_FALSE) &
+      !if (option%use_isothermal == PETSC_FALSE) &
       fluxe = fluxe + q*density_ave*uh
  !print *,'FLBC', ibndtype(1),np, ukvr, v_darcy, uh, uxmol
    enddo
@@ -1591,7 +1586,7 @@ subroutine ImmisBCFlux(ibndtype,auxvars,auxvar_up,auxvar_dn, &
      !      if (auxvar_up%sat > eps .and. auxvar_dn%sat > eps) then
      !        diff = diffdp * 0.25D0*(auxvar_up%sat+auxvar_dn%sat)*(auxvar_up%den+auxvar_dn%den)
         do np = 1, option%nphase
-          if(auxvar_up%sat(np)>eps .and. auxvar_dn%sat(np)>eps)then
+          if (auxvar_up%sat(np)>eps .and. auxvar_dn%sat(np)>eps)then
               diff =diffdp * 0.25D0*(auxvar_up%sat(np)+auxvar_dn%sat(np))*&
                     (auxvar_up%den(np)+auxvar_up%den(np))
            do ispec = 1, option%nflowspec
@@ -1605,7 +1600,7 @@ subroutine ImmisBCFlux(ibndtype,auxvars,auxvar_up,auxvar_dn, &
   end select
 #endif
   ! Conduction term
-! if(option%use_isothermal == PETSC_FALSE) then
+! if (option%use_isothermal == PETSC_FALSE) then
     select case(ibndtype(2))
     case(DIRICHLET_BC)
        Dk =  Dk_dn / dd_up
@@ -1665,7 +1660,7 @@ subroutine ImmisResidual(snes,xx,r,realization,ierr)
 !  call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
  ! check initial guess -----------------------------------------------
   ierr = ImmisInitGuessCheck(realization)
-  if(ierr<0)then
+  if (ierr<0)then
     !ierr = PETSC_ERR_ARG_OUTOFRANGE
     if (option%myrank==0) print *,'table out of range: ',ierr
     call SNESSetFunctionDomainError() 
@@ -1774,6 +1769,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
   PetscInt :: sum_connection
   PetscReal :: distance, fraction_upwind
   PetscReal :: distance_gravity
+  PetscReal :: ss_flow_vol_flux(realization%option%nphase)
   
   character(len=MAXSTRINGLENGTH) :: string
 
@@ -1834,7 +1830,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
       patch%aux%Immis%delx(1,ng) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
         patch%aux%Immis%delx(2,ng) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
  
-      if(xx_loc_p((ng-1)*option%nflowdof+3) <=0.9)then
+      if (xx_loc_p((ng-1)*option%nflowdof+3) <=0.9)then
         patch%aux%Immis%delx(3,ng) = dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
       else
         patch%aux%Immis%delx(3,ng) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
@@ -1887,7 +1883,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
 
 #if 1
   ! Source/sink terms -------------------------------------
-  source_sink => patch%source_sinks%first 
+  source_sink => patch%source_sink_list%first 
   sum_connection = 0
   do 
     if (.not.associated(source_sink)) exit
@@ -1939,9 +1935,14 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
       sum_connection = sum_connection + 1
       call ImmisSourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,auxvars(ghosted_id)%auxvar_elem(0),&
             source_sink%flow_condition%itype(1),Res, &
-            patch%ss_fluid_fluxes(:,sum_connection), &
+            ss_flow_vol_flux, &
             enthalpy_flag, option)
-
+      if (associated(patch%ss_flow_fluxes)) then
+        patch%ss_flow_fluxes(:,sum_connection) = Res(:)/option%flow_dt
+      endif
+      if (associated(patch%ss_flow_vol_fluxes)) then
+        patch%ss_flow_vol_fluxes(:,sum_connection) = ss_flow_vol_flux/option%flow_dt
+      endif
       if (option%compute_mass_balance_new) then
         global_auxvars_ss(sum_connection)%mass_balance_delta(:,1) = &
           global_auxvars_ss(sum_connection)%mass_balance_delta(:,1) - &
@@ -1970,7 +1971,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
 
 #if 1
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -2014,7 +2015,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
              xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
            case(HYDROSTATIC_BC)
              xxbc(MPH_PRESSURE_DOF) = boundary_condition%flow_aux_real_var(MPH_PRESSURE_DOF,iconn)
-             if(idof>=MPH_TEMPERATURE_DOF)then
+             if (idof>=MPH_TEMPERATURE_DOF)then
                xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
              endif
            case(NEUMANN_BC, ZERO_GRADIENT_BC)
@@ -2050,6 +2051,9 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
       endif
 
       patch%boundary_velocities(:,sum_connection) = v_darcy(:)
+      if (associated(patch%boundary_flow_fluxes)) then
+        patch%boundary_flow_fluxes(:,sum_connection) = Res(:)
+      endif        
       iend = local_id*option%nflowdof
       istart = iend-option%nflowdof+1
       r_p(istart:iend) = r_p(istart:iend) - Res(1:option%nflowdof)
@@ -2123,6 +2127,9 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
                 upweight,option,v_darcy,Res)
 
       patch%internal_velocities(:,sum_connection) = v_darcy(:)
+      if (associated(patch%internal_flow_fluxes)) then
+        patch%internal_flow_fluxes(:,sum_connection) = Res(:)
+      endif      
       patch%aux%Immis%res_old_FL(sum_connection,1:option%nflowdof)= Res(1:option%nflowdof)
  
       if (local_id_up>0) then
@@ -2147,7 +2154,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
   case(1) 
     r_p(:) = r_p(:)/option%flow_dt
   case(-1)
-    if(option%flow_dt>1.D0) r_p(:) = r_p(:)/option%flow_dt
+    if (option%flow_dt>1.D0) r_p(:) = r_p(:)/option%flow_dt
   end select
   
   do local_id = 1, grid%nlmax
@@ -2156,12 +2163,12 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
     endif
 
     istart = 1 + (local_id-1)*option%nflowdof
-    if(volume_p(local_id)>1.D0) r_p (istart:istart+2)=r_p(istart:istart+2)/volume_p(local_id)
-    if(r_p(istart) >1E20 .or. r_p(istart) <-1E20) print *, r_p (istart:istart+2)
+    if (volume_p(local_id)>1.D0) r_p (istart:istart+2)=r_p(istart:istart+2)/volume_p(local_id)
+    if (r_p(istart) >1E20 .or. r_p(istart) <-1E20) print *, r_p (istart:istart+2)
   enddo
 
 ! print *,'finished rp vol scale'
-!  if(option%use_isothermal) then
+!  if (option%use_isothermal) then
 #ifdef ISOTHERMAL
     do local_id = 1, grid%nlmax  ! For each local node do...
       ghosted_id = grid%nL2G(local_id)   ! corresponding ghost index
@@ -2399,7 +2406,7 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,realization,ierr)
 #endif
 #if 1
   ! Source/sink terms -------------------------------------
-  source_sink => patch%source_sinks%first 
+  source_sink => patch%source_sink_list%first 
   do 
     if (.not.associated(source_sink)) exit
     
@@ -2467,7 +2474,7 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,realization,ierr)
 ! Boundary conditions
 #if 1
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -2565,7 +2572,7 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,realization,ierr)
     do neq=1, option%nflowdof
       do nvar=1, option%nflowdof
         ra(neq,nvar)=(ResInc(local_id,neq,nvar)-patch%aux%Immis%res_old_AR(local_id,neq))/patch%aux%Immis%delx(nvar,ghosted_id)
-        if(max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
+        if (max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
       enddo
     enddo
    
@@ -2573,13 +2580,13 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,realization,ierr)
       case(1) 
         ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
       case(-1)
-        if(option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
+        if (option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
     end select
 
     Jup=ra(1:option%nflowdof,1:option%nflowdof)
-    if(volume_p(local_id)>1.D0 ) Jup=Jup / volume_p(local_id)
+    if (volume_p(local_id)>1.D0 ) Jup=Jup / volume_p(local_id)
    
-     ! if(n==1) print *,  blkmat11, volume_p(n), ra
+     ! if (n==1) print *,  blkmat11, volume_p(n), ra
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES, &
                                   ierr);CHKERRQ(ierr)
   end do
@@ -2674,12 +2681,12 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,realization,ierr)
     case(1)
        ra =ra / option%flow_dt
     case(-1)  
-       if(option%flow_dt>1)  ra =ra / option%flow_dt
+       if (option%flow_dt>1)  ra =ra / option%flow_dt
     end select
     
     if (local_id_up > 0) then
        voltemp=1.D0
-       if(volume_p(local_id_up)>1.D0)then
+       if (volume_p(local_id_up)>1.D0)then
          voltemp = 1.D0/volume_p(local_id_up)
        endif
        Jup(:,1:option%nflowdof)= ra(:,1:option%nflowdof)*voltemp !11
@@ -2692,7 +2699,7 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,realization,ierr)
     endif
     if (local_id_dn > 0) then
        voltemp=1.D0
-       if(volume_p(local_id_dn)>1.D0)then
+       if (volume_p(local_id_dn)>1.D0)then
          voltemp=1.D0/volume_p(local_id_dn)
        endif
        Jup(:,1:option%nflowdof)= -ra(:,1:option%nflowdof)*voltemp !21

@@ -124,7 +124,7 @@ contains
       write(string,*) i
       string = 'Brooks-Corey-Burdine pressure polynomial coefficient #' // &
                trim(adjustl(string))
-      @assertEqual(this%sf_Brooks_Corey_Burdine%pres_spline_coefficients(i), values(i), dabs(values(i))*tolerance, string)
+      @assertEqual(values(i), this%sf_Brooks_Corey_Burdine%pres_spline_coefficients(i), dabs(values(i))*tolerance, string)
     enddo
 
     ! saturation spline
@@ -132,9 +132,9 @@ contains
               -89688590.763502657d0, 0.d0]
     do i = 1, 3
       write(string,*) i
-      string = 'Brooks-Corey-Burdine pressure spline coefficient #' // &
+      string = 'Brooks-Corey-Burdine saturation spline coefficient #' // &
                trim(adjustl(string))
-      @assertEqual(this%sf_Brooks_Corey_Burdine%sat_spline_coefficients(i), values(i), dabs(values(i))*tolerance, string)
+      @assertEqual(values(i), this%sf_Brooks_Corey_Burdine%sat_spline_coefficients(i), dabs(values(i))*tolerance, string)
     enddo
 
   end subroutine testBrooks_Corey_Burdine_Poly
@@ -169,19 +169,19 @@ contains
     string = 'Brooks-Corey-Burdine saturation as a function of capillary ' // &
              'pressure below polynomial fit'
     value = 1.d0
-    @assertEqual(saturation, value, dabs(value)*tolerance, string)
+    @assertEqual(value, saturation, dabs(value)*tolerance, string)
     string = 'Brooks-Corey-Burdine relative permeability as a function of ' // &
              'capillary pressure below polynomial fit'
     value = 1.d0
-    @assertEqual(relative_perm, value, dabs(value)*tolerance, string)
+    @assertEqual(value, relative_perm, dabs(value)*tolerance, string)
     string = 'Brooks-Corey-Burdine derivative of saturation as a function ' // &
              'of capillary pressure below polynomial fit'
     value = 0.d0
-    @assertEqual(dsat_pres, value, dabs(value)*tolerance, string)
+    @assertEqual(value, dsat_pres, dabs(value)*tolerance, string)
     string = 'Brooks-Corey-Burdine derivative of relative permeability as ' // &
              'a function of capillary pressure below polynomial fit'
     value = 0.d0
-    @assertEqual(dkr_pres, value, dabs(value)*tolerance, string)
+    @assertEqual(value, dkr_pres, dabs(value)*tolerance, string)
 
     ! saturation = f(capillary_pressure) within the polynomial fit
     capillary_pressure = 0.96d0/this%sf_Brooks_Corey_Burdine%alpha
@@ -193,19 +193,19 @@ contains
     string = 'Brooks-Corey-Burdine saturation as a function of capillary ' // &
              'pressure within polynomial fit'
     value = 0.99971176979312304d0
-    @assertEqual(saturation, value, dabs(value)*tolerance, string)
+    @assertEqual(value, saturation, dabs(value)*tolerance, string)
     string = 'Brooks-Corey-Burdine relative permeability as a function of ' // &
              'capillary pressure within polynomial fit'
     value = 0.99789158871529349d0
-    @assertEqual(relative_perm, value, dabs(value)*tolerance, string)
+    @assertEqual(value, relative_perm, dabs(value)*tolerance, string)
     string = 'Brooks-Corey-Burdine derivative of saturation as a function ' // &
              'of capillary pressure within polynomial fit'
     value = 5.6675690490728353d-7
-    @assertEqual(dsat_pres, value, dabs(value)*tolerance, string)
+    @assertEqual(value, dsat_pres, dabs(value)*tolerance, string)
     string = 'Brooks-Corey-Burdine derivative of relative permeability as ' // &
              'a function of capillary pressure within polynomial fit'
     value = 4.1422137957785640d-6
-    @assertEqual(dkr_pres, value, dabs(value)*tolerance, string)
+    @assertEqual(value, dkr_pres, dabs(value)*tolerance, string)
 
     ! saturation = f(capillary_pressure) above the polynomial fit
     capillary_pressure = 1.06d0/this%sf_Brooks_Corey_Burdine%alpha
@@ -217,19 +217,19 @@ contains
     string = 'Brooks-Corey-Burdine saturation as a function of capillary ' // &
              'pressure above polynomial fit'
     value = 0.96802592722174041d0
-    @assertEqual(saturation, value, dabs(value)*tolerance, string)
+    @assertEqual(value, saturation, dabs(value)*tolerance, string)
     string = 'Brooks-Corey-Burdine relative permeability as a function of ' // &
              'capillary pressure above polynomial fit'
     value = 0.78749164071142996d0
-    @assertEqual(relative_perm, value, dabs(value)*tolerance, string)
+    @assertEqual(value, relative_perm, dabs(value)*tolerance, string)
     string = 'Brooks-Corey-Burdine derivative of saturation as a function ' // &
              'of capillary pressure above polynomial fit'
     value = 5.0054278424773111d-6
-    @assertEqual(dsat_pres, value, dabs(value)*tolerance, string)
+    @assertEqual(value, dsat_pres, dabs(value)*tolerance, string)
     string = 'Brooks-Corey-Burdine derivative of relative permeability as ' // &
              'a function of capillary pressure above polynomial fit'
     value = 3.0060561800889165d-5
-    @assertEqual(dkr_pres, value, dabs(value)*tolerance, string)
+    @assertEqual(value, dkr_pres, dabs(value)*tolerance, string)
 
   end subroutine testBrooks_Corey_Burdine_SF
 
@@ -257,7 +257,7 @@ contains
     string = 'Brooks-Corey-Burdine capillary pressure as a function of ' // &
              'saturation well within polynomial fit'
     value = 54.068777590990067d0
-    @assertEqual(capillary_pressure, value, dabs(value)*tolerance, string)
+    @assertEqual(value, capillary_pressure, dabs(value)*tolerance, string)
 
     ! capillary pressure = f(saturation) slightly within polynomial fit
     saturation = 1.04d0**(-this%sf_Brooks_Corey_Burdine%lambda)
@@ -267,7 +267,7 @@ contains
     string = 'Brooks-Corey-Burdine capillary pressure as a function of ' // &
              'saturation slightly within polynomial fit'
     value = 106436.99642977261d0
-    @assertEqual(capillary_pressure, value, dabs(value)*tolerance, string)
+    @assertEqual(value, capillary_pressure, dabs(value)*tolerance, string)
 
     ! capillary pressure = f(saturation) above polynomial fit
     saturation = 1.06d0**(-this%sf_Brooks_Corey_Burdine%lambda)
@@ -277,7 +277,7 @@ contains
     string = 'Brooks-Corey-Burdine capillary pressure as a function of ' // &
              'saturation above polynomial fit'
     value = 109024.42772683989d0
-    @assertEqual(capillary_pressure, value, dabs(value)*tolerance, string)
+    @assertEqual(value, capillary_pressure, dabs(value)*tolerance, string)
 
   end subroutine testBrooks_Corey_Burdine_CP
 
@@ -305,10 +305,11 @@ contains
     string = 'Brooks-Corey-Burdine liquid relative permeability as a ' // &
              'function of liquid saturation'
     value = 3.1991918327000197d-3
-    @assertEqual(relative_perm, value, dabs(value)*tolerance, string)
+    @assertEqual(value, relative_perm, dabs(value)*tolerance, string)
     string = 'Brooks-Corey-Burdine derivative of liquid relative ' // &
              'permeability as a function of liquid saturation'
-    @assertEqual(dkr_Se, 4.9968329577409848d-2, 1.d-8, string)
+    value = 4.9968329577409848d-2
+    @assertEqual(value, dkr_Se, 1.d-8, string)
 
     ! gas relative permeability = f(saturation)
     call SatFuncGetGasRelPermFromSat(saturation,relative_perm, &
@@ -317,7 +318,7 @@ contains
     string = 'Brooks-Corey-Burdine gas relative permeability as a ' // &
              'function of liquid saturation'
     value = 0.38173220142506209d0
-    @assertEqual(relative_perm, value, dabs(value)*tolerance, string)
+    @assertEqual(value, relative_perm, dabs(value)*tolerance, string)
 
   end subroutine testBrooks_Corey_Burdine_RP
 
@@ -351,19 +352,19 @@ contains
     string = 'van Genuchten-Mualem saturation as a function of capillary ' // &
              'pressure at low capillary pressure'
     value = 0.99999995045230206d0
-    @assertEqual(saturation, value, dabs(value)*tolerance, string)
+    @assertEqual(value, saturation, dabs(value)*tolerance, string)
     string = 'van Genuchten-Mualem relative permeability as a function of ' // &
              'capillary pressure at low capillary pressure'
     value = 0.99957025105913566d0
-    @assertEqual(relative_perm, value, dabs(value)*tolerance, string)
+    @assertEqual(value, relative_perm, dabs(value)*tolerance, string)
     string = 'van Genuchten-Mualem derivative of saturation as a function ' // &
              'of capillary pressure at low capillary pressure'
     value = 1.0475199529417896d-8
-    @assertEqual(dsat_pres, value, dabs(value)*tolerance, string)
+    @assertEqual(value, dsat_pres, dabs(value)*tolerance, string)
     string = 'van Genuchten-Mualem derivative of relative permeability as ' // &
              'a function of capillary pressure at low capillary pressure'
     value = 4.7878857031474202d-5
-    @assertEqual(dkr_pres, value, dabs(value)*tolerance, string)
+    @assertEqual(value, dkr_pres, dabs(value)*tolerance, string)
 
     ! saturation = f(capillary_pressure) at high capillary pressure
     capillary_pressure = 10.d0/this%sf_van_Genuchten_Mualem%alpha
@@ -375,19 +376,19 @@ contains
     string = 'van Genuchten-Mualem saturation as a function of capillary ' // &
              'pressure at high capillary pressure'
     value = 0.20862404282784081d0
-    @assertEqual(saturation, value, dabs(value)*tolerance, string)
+    @assertEqual(value, saturation, dabs(value)*tolerance, string)
     string = 'van Genuchten-Mualem relative permeability as a function of ' // &
              'capillary pressure at high capillary pressure'
     value = 4.4900562293186444d-6
-    @assertEqual(relative_perm, value, dabs(value)*tolerance, string)
+    @assertEqual(value, relative_perm, dabs(value)*tolerance, string)
     string = 'van Genuchten-Mualem derivative of saturation as a function ' // &
              'of capillary pressure at high capillary pressure'
     value = 3.7043838142841442d-7
-    @assertEqual(dsat_pres, value, dabs(value)*tolerance, string)
+    @assertEqual(value, dsat_pres, dabs(value)*tolerance, string)
     string = 'van Genuchten-Mualem derivative of relative permeability as ' // &
              'a function of capillary pressure at high capillary pressure'
     value = 1.0903614584398358d-10
-    @assertEqual(dkr_pres, value, dabs(value)*tolerance, string)
+    @assertEqual(value, dkr_pres, dabs(value)*tolerance, string)
 
   end subroutine testvan_Genuchten_Mualem_SF
 
@@ -411,11 +412,11 @@ contains
     saturation = 0.5d0
     call SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
                                      temperature, &
-                                     this%sf_Brooks_Corey_Burdine,this%option)
+                                     this%sf_van_Genuchten_Mualem,this%option)
     string = 'van Genuchten-Mualem capillary pressure as a function of ' // &
              'saturation'
-    value = 411389.88697966514d0
-    @assertEqual(capillary_pressure, value, dabs(value)*tolerance, string)
+    value = 38910.985405751228d0
+    @assertEqual(value, capillary_pressure, dabs(value)*tolerance, string)
 
   end subroutine testvan_Genuchten_Mualem_CP
 
@@ -443,11 +444,11 @@ contains
     string = 'van Genuchten-Mualem liquid relative permeability as a ' // &
              'function of liquid saturation'
     value = 7.1160141309814171d-3
-    @assertEqual(relative_perm, value, dabs(value)*tolerance, string)
+    @assertEqual(value, relative_perm, dabs(value)*tolerance, string)
     string = 'van Genuchten-Mualem derivative of liquid relative ' // &
              'permeability as a function of liquid saturation'
     value = 7.6770090168664040d-2
-    @assertEqual(dkr_Se, value, dabs(value)*tolerance, string)
+    @assertEqual(value, dkr_Se, dabs(value)*tolerance, string)
 
     ! gas relative permeability = f(saturation)
     call SatFuncGetGasRelPermFromSat(saturation,relative_perm, &
@@ -456,7 +457,7 @@ contains
     string = 'van Genuchten-Mualem gas relative permeability as a ' // &
              'function of liquid saturation'
     value = 0.61184154078016839d0
-    @assertEqual(relative_perm, value, dabs(value)*tolerance, string)
+    @assertEqual(value, relative_perm, dabs(value)*tolerance, string)
 
   end subroutine testvan_Genuchten_Mualem_RP
 

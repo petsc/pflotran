@@ -119,7 +119,7 @@ function GeomechRegionCreateWithGeomechRegion(region)
   ! Date: 06/06/13
   ! 
 
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Cell_module
 
   implicit none
   
@@ -301,7 +301,7 @@ subroutine GeomechRegionReadFromFileId(region,input,option)
   use Option_module
   use Utility_module
   use Logging_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Cell_module
   
   implicit none
   

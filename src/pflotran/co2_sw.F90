@@ -34,8 +34,46 @@ module co2_sw_module
       PetscReal, parameter, private ::  denc = 467.6d0, tc = 304.1282d0,&
                                      rg = 0.1889241d0, pc = 7.3773d0
 
-      public initialize_sw_interp, co2_sw_interp      
+      public initialize_sw_interp, co2_sw_interp, init_span_wagner  
  contains
+
+     
+! ************************************************************************** !
+
+subroutine init_span_wagner(option)
+  ! 
+  ! init_span_wagner
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 5/13/08
+  ! 
+  use Option_module
+  use co2_span_wagner_module
+  use co2_span_wagner_spline_module
+
+  implicit none
+  type(option_type) :: option
+  PetscMPIInt :: myrank
+
+  if (option%co2eos == EOS_SPAN_WAGNER) then
+    select case(option%itable)
+       case(0,1,2)
+         call initialize_span_wagner(option%itable, &
+                                     option%myrank, &
+                                     option)
+       case(4,5)
+         myrank = option%myrank
+         call initialize_span_wagner(ZERO_INTEGER,myrank, &
+                                     option)
+         call initialize_sw_interp(option%itable,myrank)
+       case(3)
+         call sw_spline_read
+       case default
+         print *, 'Wrong table option : STOP'
+         stop
+    end select
+  endif
+end subroutine init_span_wagner
 
 ! ************************************************************************** !
 
@@ -98,7 +136,7 @@ subroutine initialize_sw_interp(itable,myrank)
 
              
              dpres = 1.e-3
-             if(t >ts) dpres = - dpres
+             if (t >ts) dpres = - dpres
               call co2_span_wagner(p+dpres,t,rhodp,co2_prop_sw_c(i,j,4),&
                       co2_prop_sw_c(i,j,5),fgdp,co2_prop_sw_c(i,j,7),&
                       co2_prop_sw_c(i,j,8),engdp,entdp,&
@@ -107,7 +145,7 @@ subroutine initialize_sw_interp(itable,myrank)
 
         
                dtemp = 1.e-6
-               if(t  < ts) dtemp = -dtemp
+               if (t  < ts) dtemp = -dtemp
                call co2_span_wagner(p,t+dtemp,rhodt,co2_prop_sw_c(i,j,4),&
                  co2_prop_sw_c(i,j,5),fgdt,co2_prop_sw_c(i,j,7),&
                  co2_prop_sw_c(i,j,8),engdt,entdt,&
@@ -115,7 +153,7 @@ subroutine initialize_sw_interp(itable,myrank)
                  co2_prop_sw_c(i,j,14),co2_prop_sw_c(i,j,15),iflag)
 
                tmp = co2_prop_sw_c(i,j,3)
-               if(j==0) tmp2 = co2_prop_sw_c(i,j,3)
+               if (j==0) tmp2 = co2_prop_sw_c(i,j,3)
       
                 
                    !dddt
@@ -171,7 +209,7 @@ subroutine initialize_sw_interp(itable,myrank)
 
              
              dpres = 1.e-3
-             if(t >ts) dpres = - dpres
+             if (t >ts) dpres = - dpres
               call co2_span_wagner(p+dpres,t,rhodp,co2_prop_sw_f(i,j,4),&
                       co2_prop_sw_f(i,j,5),fgdp,co2_prop_sw_f(i,j,7),&
                       co2_prop_sw_f(i,j,8),engdp,entdp,&
@@ -180,7 +218,7 @@ subroutine initialize_sw_interp(itable,myrank)
 
         
                dtemp = 1.e-6
-               if(t < ts) dtemp = -dtemp
+               if (t < ts) dtemp = -dtemp
                call co2_span_wagner(p,t+dtemp,rhodt,co2_prop_sw_f(i,j,4),&
                  co2_prop_sw_f(i,j,5),fgdt,co2_prop_sw_f(i,j,7),&
                  co2_prop_sw_f(i,j,8),engdt,entdt,&
@@ -188,7 +226,7 @@ subroutine initialize_sw_interp(itable,myrank)
                  co2_prop_sw_f(i,j,14),co2_prop_sw_f(i,j,15),iflag)
 
                tmp = co2_prop_sw_f(i,j,3)
-               if(j==0) tmp2 = co2_prop_sw_f(i,j,3)
+               if (j==0) tmp2 = co2_prop_sw_f(i,j,3)
       
                 
                    !dddt
@@ -293,7 +331,7 @@ PetscReal function co2_prop_spwag(ip,it,iv)
      PetscInt ip,it,iv
       
       
-      if(ifinetable)then
+      if (ifinetable)then
          co2_prop_spwag = co2_prop_sw_f(ip,it,iv) 
        else
           co2_prop_spwag = co2_prop_sw_c(ip,it,iv) 
@@ -323,14 +361,14 @@ subroutine interp(x1,x2,y)
       PetscInt :: iflag = 1
       
       ifinetable = PETSC_FALSE
-      if(x2 <= co2_sw_f_t1_tab .and. x1<= co2_sw_f_p1_tab) then
+      if (x2 <= co2_sw_f_t1_tab .and. x1<= co2_sw_f_p1_tab) then
        ! within the fine grid table 
         ifinetable = PETSC_TRUE
       endif   
 
 
     isucc= 0 
-    if(ifinetable)then
+    if (ifinetable)then
       ntab_t = ntab_t_f
       ntab_p = ntab_p_f
       dt_tab = dt_tab_f 
@@ -357,30 +395,30 @@ subroutine interp(x1,x2,y)
     icross =0
     if (ifinetable) then
       call vappr(co2_prop_spwag(i1,j1,TWO_INTEGER),ps,tmp,tmp2,ELEVEN_INTEGER)
-      if((ps - co2_prop_spwag(i1,j1,ONE_INTEGER)) * (ps - co2_prop_spwag(i1,j2,ONE_INTEGER)) <0.D0)then
+      if ((ps - co2_prop_spwag(i1,j1,ONE_INTEGER)) * (ps - co2_prop_spwag(i1,j2,ONE_INTEGER)) <0.D0)then
         icross = 1; isucc=0
       else
         call vappr(co2_prop_spwag(i2,j1,TWO_INTEGER),ps,tmp,tmp,ELEVEN_INTEGER)
-        if((ps - co2_prop_spwag(i2,j1,ONE_INTEGER)) * (ps - co2_prop_spwag(i2,j2,ONE_INTEGER)) <0.D0)then
+        if ((ps - co2_prop_spwag(i2,j1,ONE_INTEGER)) * (ps - co2_prop_spwag(i2,j2,ONE_INTEGER)) <0.D0)then
           icross = 1; isucc=0
     !     else
     !     call vappr(0.5D0 * (co2_prop_spwag(i1,j1,TWO_INTEGER)+co2_prop_spwag(i2,j1,TWO_INTEGER)),ps, tmp,tmp2,TWELVE_INTEGER)
-    !     if((ts - co2_prop_spwag(i2,j1,TWO_INTEGER)) * (ts - co2_prop_spwag(i2,j2,TWO_INTEGER)) <0.D0)then
+    !     if ((ts - co2_prop_spwag(i2,j1,TWO_INTEGER)) * (ts - co2_prop_spwag(i2,j2,TWO_INTEGER)) <0.D0)then
     !       icross = 1; isucc=0
     !     endif
         endif
       endif   
     endif
 
-    if(icross == 1) print *,'co2_sw: cross sat line'
+    if (icross == 1) print *,'co2_sw: cross sat line'
 
-    if(iindex > ntab_p .or. iindex < 0.d0 .or. jindex < 0.d0 .or. jindex > ntab_t) then
+    if (iindex > ntab_p .or. iindex < 0.d0 .or. jindex < 0.d0 .or. jindex > ntab_t) then
       print  *,' Out of Table Bounds (interp): ', 'p=',x1,' t=',x2,' i=',iindex,' j=',jindex
       isucc=0
     endif
 
 
-    if(isucc>0 .and. icross ==0 )then
+    if (isucc>0 .and. icross ==0 )then
 
       factor(1)= (iindex-i2) * (jindex-j2)
       factor(2)= -(iindex-i1) * (jindex-j2)
@@ -410,7 +448,7 @@ subroutine interp(x1,x2,y)
   ! print *, 'Table: T',iindex,jindex,factor,i,isucc,itable
 
 
-    if(isucc==1)then
+    if (isucc==1)then
        
       do i =3,15
       ! if (i==var_index(1) .or. i==var_index(2) .or.i==var_index(3) .or.i==var_index(4)) cycle
@@ -467,7 +505,7 @@ subroutine interp(x1,x2,y)
 !#endif
        endif
        
-      if((icross ==1 .and. ifinetable).or. isucc < 1)then
+      if ((icross ==1 .and. ifinetable).or. isucc < 1)then
       ! print *, ' Exit table looking', icross, isucc, ifinetable
        call co2_span_wagner(x1,x2,y(3),y(4),y(5),y(6),y(7),y(8), &
         y(9),y(10),y(11),y(12),y(13),y(14),y(15),ZERO_INTEGER,iflag)

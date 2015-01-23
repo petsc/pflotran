@@ -84,7 +84,7 @@ end function ObservationCreate1
 
 function ObservationCreateFromObservation(observation)
   ! 
-  ! ObservationCreate: Create object that stores observation regions
+  ! Create object that stores observation regions
   ! 
   ! Author: Glenn Hammond
   ! Date: 02/11/08
@@ -152,7 +152,8 @@ subroutine ObservationRead(observation,input,option)
       case('BOUNDARY_CONDITION')
         call InputReadWord(input,option,observation%linkage_name,PETSC_TRUE)
         call InputErrorMsg(input,option,'boundary condition name','OBSERVATION')
-        option%transport%store_solute_fluxes = PETSC_TRUE
+        option%flow%store_fluxes = PETSC_TRUE
+        option%transport%store_fluxes = PETSC_TRUE
         observation%itype = OBSERVATION_FLUX
       case('REGION')
         call InputReadWord(input,option,observation%linkage_name,PETSC_TRUE)
@@ -161,46 +162,45 @@ subroutine ObservationRead(observation,input,option)
       case('VELOCITY')
         observation%print_velocities = PETSC_TRUE
       case('SECONDARY_TEMPERATURE')
-      if (option%use_mc) then
-        observation%print_secondary_data(1) = PETSC_TRUE
-      else
-        option%io_buffer = 'Keyword SECONDARY_TEMPERATURE can only be used' // &
-                           ' MULTIPLE_CONTINUUM keyword'
-        call printErrMsg(option)
-      endif
+        if (option%use_mc) then
+          observation%print_secondary_data(1) = PETSC_TRUE
+        else
+          option%io_buffer = 'Keyword SECONDARY_TEMPERATURE can only be used' // &
+                             ' MULTIPLE_CONTINUUM keyword'
+          call printErrMsg(option)
+        endif
       case('SECONDARY_CONCENTRATION')
-      if (option%use_mc) then
-        observation%print_secondary_data(2) = PETSC_TRUE
-      else
-        option%io_buffer = 'Keyword SECONDARY_CONCENTRATION can only be used' // &
-                           ' MULTIPLE_CONTINUUM keyword'
-        call printErrMsg(option)
-      endif
+        if (option%use_mc) then
+          observation%print_secondary_data(2) = PETSC_TRUE
+        else
+          option%io_buffer = 'Keyword SECONDARY_CONCENTRATION can only be used' // &
+                             ' MULTIPLE_CONTINUUM keyword'
+          call printErrMsg(option)
+        endif
       case('SECONDARY_MINERAL_VOLFRAC')
-      if (option%use_mc) then
-        observation%print_secondary_data(3) = PETSC_TRUE
-      else
-        option%io_buffer = 'Keyword SECONDARY_MINERAL_VOLFRAC can only be used' // &
-                           ' MULTIPLE_CONTINUUM keyword'
-        call printErrMsg(option)
-      endif
+        if (option%use_mc) then
+          observation%print_secondary_data(3) = PETSC_TRUE
+        else
+          option%io_buffer = 'Keyword SECONDARY_MINERAL_VOLFRAC can ' // &
+                             'only be used MULTIPLE_CONTINUUM keyword'
+          call printErrMsg(option)
+        endif
       case('SECONDARY_MINERAL_RATE')
-      if (option%use_mc) then
-        observation%print_secondary_data(4) = PETSC_TRUE
-      else
-        option%io_buffer = 'Keyword SECONDARY_MINERAL_RATE can only be used' // &
-                           ' MULTIPLE_CONTINUUM keyword'
-        call printErrMsg(option)
-      endif
+        if (option%use_mc) then
+          observation%print_secondary_data(4) = PETSC_TRUE
+        else
+          option%io_buffer = 'Keyword SECONDARY_MINERAL_RATE can ' // &
+                             'only be used MULTIPLE_CONTINUUM keyword'
+          call printErrMsg(option)
+        endif
       case('SECONDARY_MINERAL_SI')
-      if (option%use_mc) then
-        observation%print_secondary_data(5) = PETSC_TRUE
-      else
-        option%io_buffer = 'Keyword SECONDARY_MINERAL_SIcan only be used' // &
-                           ' MULTIPLE_CONTINUUM keyword'
-        call printErrMsg(option)
-      endif
-
+        if (option%use_mc) then
+          observation%print_secondary_data(5) = PETSC_TRUE
+        else
+          option%io_buffer = 'Keyword SECONDARY_MINERAL_SI can ' // &
+                             'only be used MULTIPLE_CONTINUUM keyword'
+          call printErrMsg(option)
+        endif
       case('AT_CELL_CENTER')
         observation%at_cell_center = PETSC_TRUE
       case('AT_COORDINATE')

@@ -7,9 +7,9 @@ module Condition_module
   use Dataset_Ascii_class
   use Time_Storage_module
   
-  use Constraint_module
-!  use Surface_Complexation_Aux_module  
-!  use Mineral_Aux_module
+  use Transport_Constraint_module
+!  use Reaction_Surface_Complexation_Aux_module  
+!  use Reaction_Mineral_Aux_module
   
   use PFLOTRAN_Constants_module
 
@@ -49,8 +49,6 @@ module Condition_module
 
   ! data structure for general phase
   type, public :: flow_general_condition_type
-    !TODO(geh): check to ensure that general condition is considerered 
-    !           wherever sub_condition_ptr is used.
     type(flow_sub_condition_type), pointer :: liquid_pressure
     type(flow_sub_condition_type), pointer :: gas_pressure
     type(flow_sub_condition_type), pointer :: gas_saturation
@@ -368,7 +366,7 @@ function FlowSubConditionCreate(ndof)
   sub_condition%isubtype = 0
   sub_condition%ctype = ''
   sub_condition%name = ''
-  sub_condition%aux_real = -999.d0
+  sub_condition%aux_real = UNINITIALIZED_DOUBLE
   nullify(sub_condition%gradient)
   nullify(sub_condition%dataset)
 
@@ -743,6 +741,8 @@ subroutine FlowConditionRead(condition,input,option)
               sub_condition_ptr%itype = HET_DIRICHLET
             case('heterogeneous_surface_seepage')
               sub_condition_ptr%itype = HET_SURF_SEEPAGE_BC
+            case('spillover')
+              sub_condition_ptr%itype = SPILLOVER_BC
             case default
               option%io_buffer = 'bc type "' // trim(word) // &
                                  '" not recognized in condition,type'
@@ -1931,9 +1931,9 @@ subroutine ConditionReadValues(input,option,keyword,string,dataset_base,units)
         ! alright, the 2d data is layed out in C-style.  now place it in
         ! the appropriate arrays
         allocate(flow_dataset%time_series%times(dims(2)))
-        flow_dataset%time_series%times = -999.d0
+        flow_dataset%time_series%times = UNINITIALIZED_DOUBLE
         allocate(flow_dataset%time_series%values(flow_dataset%time_series%rank,dims(2))) 
-        flow_dataset%time_series%values = -999.d0
+        flow_dataset%time_series%values = UNINITIALIZED_DOUBLE
         icount = 1
         do i = 1, dims(2)
           flow_dataset%time_series%times(i) = real_buffer(icount)
@@ -2146,6 +2146,8 @@ function GetSubConditionName(subcon_itype)
       string = 'heterogeneous energy rate'
     case(HET_SURF_SEEPAGE_BC)
       string = 'heterogeneous surface seepage'
+    case(SPILLOVER_BC)
+      string = 'spillover'
   end select
 
   GetSubConditionName = trim(string)
@@ -2554,6 +2556,7 @@ subroutine FlowConditionDestroy(condition)
 
   use Dataset_module
   use Dataset_Ascii_class
+  use Utility_module
   
   implicit none
   
@@ -2578,8 +2581,7 @@ subroutine FlowConditionDestroy(condition)
     nullify(condition%sub_condition_ptr)
   endif
 
-  if (associated(condition%itype)) deallocate(condition%itype)
-  nullify(condition%itype)
+  call DeallocateArray(condition%itype)
   
   call FlowSubConditionDestroy(condition%pressure)
   call FlowSubConditionDestroy(condition%saturation)

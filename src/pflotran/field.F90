@@ -17,18 +17,22 @@ module Field_module
     !get material id
     ! 1 degree of freedom
     Vec :: porosity0
-    Vec :: porosity_mnrl_loc
+    Vec :: porosity_base_store
+    Vec :: porosity_t
+    Vec :: porosity_tpdt
     Vec :: tortuosity0
     Vec :: ithrm_loc
     Vec :: icap_loc
     Vec :: iphas_loc, iphas_old_loc
 
     Vec :: perm0_xx, perm0_yy, perm0_zz
-    Vec :: perm0_xz, perm0_xy, perm0_yz
+    !geh: required for higher order, but not supported at this time.
+!    Vec :: perm0_xz, perm0_xy, perm0_yz
     
     Vec :: work, work_loc
 
     Vec :: volume0
+    Vec :: compressibility0
     
     ! residual vectors
     Vec :: flow_r          
@@ -46,13 +50,6 @@ module Field_module
     
     Vec :: flow_ts_mass_balance, flow_total_mass_balance
     Vec :: tran_ts_mass_balance, tran_total_mass_balance
-
-    ! residual vectors for face unknows
-    Vec :: flow_r_faces, flow_r_loc_faces          
-      
-    ! Solution vectors for face unknows
-    Vec :: flow_xx_faces, flow_xx_loc_faces, flow_dxx_faces, flow_yy_faces, flow_bc_loc_faces
-    Vec :: work_loc_faces   
 
     ! vector that holds the second layer of ghost cells for tvd
     Vec :: tvd_ghosts
@@ -99,7 +96,9 @@ function FieldCreate()
   
   ! nullify PetscVecs
   field%porosity0 = 0
-  field%porosity_mnrl_loc = 0
+  field%porosity_base_store = 0
+  field%porosity_t = 0
+  field%porosity_tpdt = 0
   field%tortuosity0 = 0
   field%ithrm_loc = 0
   field%icap_loc = 0
@@ -109,14 +108,12 @@ function FieldCreate()
   field%perm0_xx = 0
   field%perm0_yy = 0
   field%perm0_zz = 0
-  field%perm0_xz = 0
-  field%perm0_xy = 0
-  field%perm0_yz = 0
   
   field%work = 0
   field%work_loc = 0
 
   field%volume0 = 0
+  field%compressibility0 = 0
   
   field%flow_r = 0
   field%flow_xx = 0
@@ -143,15 +140,6 @@ function FieldCreate()
   field%flow_total_mass_balance = 0
   field%tran_ts_mass_balance = 0
   field%tran_total_mass_balance = 0
-
-  field%flow_r_faces = 0
-  field%flow_r_loc_faces = 0
-  field%flow_xx_faces = 0
-  field%flow_xx_loc_faces = 0
-  field%flow_dxx_faces = 0
-  field%flow_yy_faces = 0
-  field%flow_bc_loc_faces = 0
-  field%work_loc_faces = 0
 
   nullify(field%avg_vars_vec)
   field%nvars = 0
@@ -190,8 +178,14 @@ subroutine FieldDestroy(field)
   if (field%porosity0 /= 0) then
     call VecDestroy(field%porosity0,ierr);CHKERRQ(ierr)
   endif
-  if (field%porosity_mnrl_loc /= 0) then
-    call VecDestroy(field%porosity_mnrl_loc,ierr);CHKERRQ(ierr)
+  if (field%porosity_base_store /= 0) then
+    call VecDestroy(field%porosity_base_store,ierr);CHKERRQ(ierr)
+  endif
+  if (field%porosity_t /= 0) then
+    call VecDestroy(field%porosity_t,ierr);CHKERRQ(ierr)
+  endif
+  if (field%porosity_tpdt /= 0) then
+    call VecDestroy(field%porosity_tpdt,ierr);CHKERRQ(ierr)
   endif
   if (field%tortuosity0 /= 0) then
     call VecDestroy(field%tortuosity0,ierr);CHKERRQ(ierr)
@@ -218,15 +212,6 @@ subroutine FieldDestroy(field)
   if (field%perm0_zz /= 0) then
     call VecDestroy(field%perm0_zz,ierr);CHKERRQ(ierr)
   endif
-  if (field%perm0_xz /= 0) then
-    call VecDestroy(field%perm0_xz,ierr);CHKERRQ(ierr)
-  endif
-  if (field%perm0_xy /= 0) then
-    call VecDestroy(field%perm0_xy,ierr);CHKERRQ(ierr)
-  endif
-  if (field%perm0_yz /= 0) then
-    call VecDestroy(field%perm0_yz,ierr);CHKERRQ(ierr)
-  endif
   
   if (field%work /= 0) then
     call VecDestroy(field%work,ierr);CHKERRQ(ierr)
@@ -238,7 +223,11 @@ subroutine FieldDestroy(field)
   if (field%volume0 /= 0) then
     call VecDestroy(field%volume0,ierr);CHKERRQ(ierr)
   endif
-  
+
+  if (field%compressibility0 /= 0) then
+    call VecDestroy(field%compressibility0,ierr);CHKERRQ(ierr)
+  endif
+ 
   if (field%flow_r /= 0) then
     call VecDestroy(field%flow_r,ierr);CHKERRQ(ierr)
   endif
@@ -305,38 +294,6 @@ subroutine FieldDestroy(field)
     
   if (field%tvd_ghosts /= 0) then
     call VecDestroy(field%tvd_ghosts,ierr);CHKERRQ(ierr)
-  endif
-
-  if (field%flow_r_faces/= 0) then
-    call VecDestroy(field%flow_r_faces,ierr);CHKERRQ(ierr)
-  endif
-
-  if (field%flow_r_loc_faces /= 0) then
-    call VecDestroy(field%flow_r_loc_faces ,ierr);CHKERRQ(ierr)
-  endif
-
-  if (field%flow_xx_faces /= 0) then
-    call VecDestroy(field%flow_xx_faces ,ierr);CHKERRQ(ierr)
-  endif
-
-  if (field%flow_xx_loc_faces /= 0) then
-    call VecDestroy(field%flow_xx_loc_faces ,ierr);CHKERRQ(ierr)
-  endif
-
-  if (field%flow_dxx_faces /= 0) then
-    call VecDestroy(field%flow_dxx_faces ,ierr);CHKERRQ(ierr)
-  endif
-
-  if (field%flow_yy_faces /= 0) then
-    call VecDestroy(field%flow_yy_faces ,ierr);CHKERRQ(ierr)
-  endif
-
-  if (field%flow_bc_loc_faces /= 0) then
-    call VecDestroy(field%flow_bc_loc_faces ,ierr);CHKERRQ(ierr)
-  endif
-
-  if (field%work_loc_faces /= 0) then
-    call VecDestroy(field%work_loc_faces ,ierr);CHKERRQ(ierr)
   endif
 
   do ivar = 1,field%nvars

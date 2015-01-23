@@ -89,7 +89,7 @@ subroutine SurfaceMaterialPropertyRead(surf_material_property,input,option)
   do
     call InputReadPflotranString(input,option)
     
-    if(InputCheckExit(input,option)) exit
+    if (InputCheckExit(input,option)) exit
   
     call InputReadWord(input,option,keyword,PETSC_TRUE)
     call InputErrorMsg(input,option,'keyword','SURFACE_MATERIAL_PROPERTY')
@@ -157,7 +157,7 @@ recursive subroutine SurfaceMaterialPropertyDestroy(surf_material_property)
   
   type(surface_material_property_type), pointer :: surf_material_property
   
-  if(.not.associated(surf_material_property)) return
+  if (.not.associated(surf_material_property)) return
   
   call SurfaceMaterialPropertyDestroy(surf_material_property%next)
   
@@ -339,7 +339,7 @@ function SurfaceMaterialGetMaxExternalID(surf_material_property_array)
 
   PetscInt :: i
 
-  SurfaceMaterialGetMaxExternalID = -999
+  SurfaceMaterialGetMaxExternalID = UNINITIALIZED_INTEGER
   do i = 1, size(surf_material_property_array)
     SurfaceMaterialGetMaxExternalID = max(SurfaceMaterialGetMaxExternalID, &
                                          (surf_material_property_array(i)%ptr%external_id))
@@ -365,7 +365,7 @@ subroutine SurfaceMaterialCreateIntToExtMapping(surf_material_property_array,map
   PetscInt :: i
 
   allocate(mapping(size(surf_material_property_array)))
-  mapping = -999
+  mapping = UNINITIALIZED_INTEGER
 
   do i = 1, size(surf_material_property_array)
     mapping(surf_material_property_array(i)%ptr%internal_id) = &

@@ -49,8 +49,12 @@ subroutine RichardsAccumDerivative(rich_auxvar,global_auxvar, &
 
   use Option_module
   use Saturation_Function_module
-  use Material_module, only : MaterialCompressSoil
-  use Material_Aux_class
+  use Material_Aux_class, only : material_auxvar_type, &
+                                 soil_compressibility_index, &
+                                 MaterialAuxVarInit, &
+                                 MaterialAuxVarCopy, &
+                                 MaterialAuxVarStrip, &
+                                 MaterialCompressSoil
   
   implicit none
 
@@ -110,19 +114,6 @@ subroutine RichardsAccumDerivative(rich_auxvar,global_auxvar, &
     
     call RichardsAuxVarCompute(x_pert(1),rich_auxvar_pert,global_auxvar_pert, &
                                material_auxvar_pert,sat_func,option)
-#if 0      
-      select case(ideriv)
-        case(1)
-!         print *, 'dvis_dp:', auxvar%dvis_dp, (auxvar_pert%vis-auxvar%vis)/pert(ideriv)
-!         print *, 'dkr_dp:', auxvar%dkr_dp, (auxvar_pert%kr-auxvar%kr)/pert(ideriv)
-          print *, 'dsat_dp:', auxvar%dsat_dp, (global_auxvar_pert%sat-global_auxvar%sat)/pert
-          print *, 'dden_dp:', auxvar%dden_dp, (global_auxvar_pert%den-global_auxvar%den)/pert
-!          print *, 'dkvr_dp:', auxvar%dkvr_dp, (rich_auxvar_pert%kvr-rich_auxvar%kvr)/pert
-          print *, 'dkvr_x_dp:', auxvar%dkvr_x_dp, (rich_auxvar_pert%kvr_x-rich_auxvar%kvr_x)/pert
-          print *, 'dkvr_y_dp:', auxvar%dkvr_y_dp, (rich_auxvar_pert%kvr_y-rich_auxvar%kvr_y)/pert
-          print *, 'dkvr_z_dp:', auxvar%dkvr_z_dp, (rich_auxvar_pert%kvr_z-rich_auxvar%kvr_z)/pert
-      end select     
-#endif     
     call RichardsAccumulation(rich_auxvar_pert,global_auxvar_pert, &
                               material_auxvar_pert, &
                               option,res_pert)
@@ -148,8 +139,9 @@ subroutine RichardsAccumulation(rich_auxvar,global_auxvar, &
   ! 
 
   use Option_module
-  use Material_module
-  use Material_Aux_class
+  use Material_Aux_class, only : material_auxvar_type, &
+                                 soil_compressibility_index, &
+                                 MaterialCompressSoil
   
   implicit none
 
@@ -168,6 +160,7 @@ subroutine RichardsAccumulation(rich_auxvar,global_auxvar, &
   if (soil_compressibility_index > 0) then
     call MaterialCompressSoil(material_auxvar,global_auxvar%pres(1), &
                               compressed_porosity,dcompressed_porosity_dp)
+    material_auxvar%porosity = compressed_porosity
     por = compressed_porosity
   endif
     

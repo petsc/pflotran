@@ -10,7 +10,7 @@ module Timestepper_Geomechanics_class
 
 #include "finclude/petscsys.h"
  
-  type, public, extends(stepper_base_type) :: timestepper_geomechanics_type
+  type, public, extends(timestepper_base_type) :: timestepper_geomechanics_type
   
     PetscInt :: num_newton_iterations ! number of Newton iterations in a time step
     PetscInt :: num_linear_iterations ! number of linear solver iterations in a time step
@@ -93,7 +93,6 @@ subroutine TimestepperGeomechanicsStepDT(this, process_model, stop_flag)
   use Option_module
   use Output_module, only : Output
 
-  use Option_module
   use Solver_module
 
   implicit none

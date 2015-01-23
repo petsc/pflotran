@@ -7,9 +7,10 @@ module Realization_class
   use Input_Aux_module
   use Region_module
   use Condition_module
-  use Constraint_module
+  use Transport_Constraint_module
   use Material_module
   use Saturation_Function_module
+  use Characteristic_Curves_module
   use Dataset_Base_class
   use Fluid_module
   use Discretization_module
@@ -35,7 +36,7 @@ private
 #include "finclude/petscvec.h90"
   type, public, extends(realization_base_type) :: realization_type
 
-    type(region_list_type), pointer :: regions
+    type(region_list_type), pointer :: region_list
     type(condition_list_type), pointer :: flow_conditions
     type(tran_condition_list_type), pointer :: transport_conditions
     type(tran_constraint_list_type), pointer :: transport_constraints
@@ -45,12 +46,13 @@ private
     type(fluid_property_type), pointer :: fluid_properties
     type(fluid_property_type), pointer :: fluid_property_array(:)
     type(saturation_function_type), pointer :: saturation_functions
+    class(characteristic_curves_type), pointer :: characteristic_curves
     class(dataset_base_type), pointer :: datasets
     
     type(uniform_velocity_dataset_type), pointer :: uniform_velocity_dataset
     character(len=MAXSTRINGLENGTH) :: nonuniform_velocity_filename
     
-    type(waypoint_list_type), pointer :: waypoints
+    type(waypoint_list_type), pointer :: waypoint_list
     
   end type realization_type
 
@@ -71,7 +73,6 @@ private
             RealizationLocalizeRegions, &
             RealizationAddCoupler, &
             RealizationAddStrata, &
-            RealizationAddObservation, &
             RealizUpdateUniformVelocity, &
             RealizationRevertFlowParameters, &
 !            RealizationGetVariable, &
@@ -83,14 +84,15 @@ private
             RealProcessFluidProperties, &
             RealizationUpdatePropertiesTS, &
             RealizationUpdatePropertiesNI, &
+            RealizationCalcMineralPorosity, &
             RealizationCountCells, &
             RealizationPrintGridStatistics, &
-            RealizationSetUpBC4Faces, &
             RealizationPassPtrsToPatches, &
             RealLocalToLocalWithArray, &
             RealizationCalculateCFL1Timestep, &
             RealizationNonInitializedData, &
-            RealizUpdateAllCouplerAuxVars
+            RealizUpdateAllCouplerAuxVars, &
+            RealizCreateSyncWaypointList
 
   !TODO(intel)
   ! public from Realization_Base_class
@@ -141,8 +143,8 @@ function RealizationCreate2(option)
   allocate(realization)
   call RealizationBaseInit(realization,option)
 
-  allocate(realization%regions)
-  call RegionInitList(realization%regions)
+  allocate(realization%region_list)
+  call RegionInitList(realization%region_list)
 
   allocate(realization%flow_conditions)
   call FlowConditionInitList(realization%flow_conditions)
@@ -155,12 +157,13 @@ function RealizationCreate2(option)
   nullify(realization%fluid_properties)
   nullify(realization%fluid_property_array)
   nullify(realization%saturation_functions)
+  nullify(realization%characteristic_curves)
   nullify(realization%datasets)
   nullify(realization%uniform_velocity_dataset)
   nullify(realization%sec_transport_constraint)
   realization%nonuniform_velocity_filename = ''
 
-  nullify(realization%waypoints)
+  nullify(realization%waypoint_list)
 
   RealizationCreate2 => realization
   
@@ -177,17 +180,16 @@ subroutine RealizationCreateDiscretization(realization)
   ! 
 
   use Grid_module
-  use Unstructured_Grid_Aux_module
-  use Unstructured_Grid_module, only : UGridEnsureRightHandRule
-  use Structured_Grid_module, only : StructGridCreateTVDGhosts
-  use MFD_module
+  use Grid_Unstructured_Aux_module
+  use Grid_Unstructured_module, only : UGridEnsureRightHandRule
+  use Grid_Structured_module, only : StructGridCreateTVDGhosts
   use Coupler_module
   use Discretization_module
-  use Unstructured_Cell_module
+  use Grid_Unstructured_Cell_module
   use DM_Kludge_module
   use Variables_module, only : VOLUME
-  use Structured_Communicator_class, only : StructuredCommunicatorCreate
-  use Unstructured_Communicator_class, only : UnstructuredCommunicatorCreate
+  use Communicator_Structured_class, only : StructuredCommunicatorCreate
+  use Communicator_Unstructured_class, only : UnstructuredCommunicatorCreate
   
   implicit none
   
@@ -202,12 +204,6 @@ subroutine RealizationCreateDiscretization(realization)
   type(option_type), pointer :: option
   type(coupler_type), pointer :: boundary_condition
   PetscErrorCode :: ierr
-  PetscInt, allocatable :: int_tmp(:)
-  PetscInt :: test,j, num_LP_dof
-  PetscOffset :: i_da
-  PetscReal, pointer :: real_tmp(:)
-  type(dm_ptr_type), pointer :: dm_ptr
-  Vec :: is_bnd_vec
   PetscInt :: ivar
 
   option => realization%option
@@ -229,12 +225,20 @@ subroutine RealizationCreateDiscretization(realization)
                                      field%tortuosity0)
   call DiscretizationDuplicateVector(discretization,field%work, &
                                      field%volume0)
+  call DiscretizationDuplicateVector(discretization,field%work, &
+                                     field%compressibility0)
+  if (option%flow%transient_porosity) then
+    call DiscretizationDuplicateVector(discretization,field%work, &
+                                       field%porosity_base_store)
+    call DiscretizationDuplicateVector(discretization,field%work, &
+                                       field%porosity_t)
+    call DiscretizationDuplicateVector(discretization,field%work, &
+                                       field%porosity_tpdt)
+  endif
 
   ! 1 degree of freedom, local
   call DiscretizationCreateVector(discretization,ONEDOF,field%work_loc, &
                                   LOCAL,option)
-  call DiscretizationDuplicateVector(discretization,field%work_loc, &
-                                     field%porosity_mnrl_loc)
   
   if (option%nflowdof > 0) then
 
@@ -245,15 +249,6 @@ subroutine RealizationCreateDiscretization(realization)
                                        field%perm0_yy)
     call DiscretizationDuplicateVector(discretization,field%work, &
                                        field%perm0_zz)
-    if (discretization%itype == STRUCTURED_GRID_MIMETIC.or. &
-        discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
-      call DiscretizationDuplicateVector(discretization,field%work, &
-                                         field%perm0_xz)
-      call DiscretizationDuplicateVector(discretization,field%work, &
-                                         field%perm0_xy)
-      call DiscretizationDuplicateVector(discretization,field%work, &
-                                         field%perm0_yz)
-    endif
 
     ! 1-dof local
     call DiscretizationDuplicateVector(discretization,field%work_loc, &
@@ -332,13 +327,12 @@ subroutine RealizationCreateDiscretization(realization)
   endif
 
   select case(discretization%itype)
-    case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
+    case(STRUCTURED_GRID)
       grid => discretization%grid
       ! set up nG2L, nL2G, etc.
       call GridMapIndices(grid, &
                           discretization%dm_1dof, &
                           discretization%stencil_type,&
-                          discretization%lsm_flux_method, &
                           option)
       if (option%itranmode == EXPLICIT_ADVECTION) then
         call StructGridCreateTVDGhosts(grid%structured_grid, &
@@ -354,24 +348,12 @@ subroutine RealizationCreateDiscretization(realization)
       call GridComputeVolumes(grid,field%volume0,option)
       ! set up internal connectivity, distance, etc.
       call GridComputeInternalConnect(grid,option)
-      if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
-          call GridComputeCell2FaceConnectivity(grid, discretization%MFD, option)
-      end if
-      if (discretization%lsm_flux_method) then
-        call DiscretizationDuplicateVector(discretization,field%work_loc, &
-                                          is_bnd_vec)
-        call GridComputeNeighbors(grid,field%work_loc,option)
-        call DiscretizationLocalToLocal(discretization,field%work_loc,is_bnd_vec,ONEDOF)
-        call GridSaveBoundaryCellInfo(discretization%grid,is_bnd_vec,option)
-        call VecDestroy(is_bnd_vec,ierr);CHKERRQ(ierr)
-      endif
-    case(UNSTRUCTURED_GRID,UNSTRUCTURED_GRID_MIMETIC)
+    case(UNSTRUCTURED_GRID)
       grid => discretization%grid
       ! set up nG2L, NL2G, etc.
       call GridMapIndices(grid, &
                           discretization%dm_1dof, &
                           discretization%stencil_type,&
-                          discretization%lsm_flux_method, &
                           option)
       call GridComputeCoordinates(grid,discretization%origin,option, & 
                                     discretization%dm_1dof%ugdm) 
@@ -384,55 +366,11 @@ subroutine RealizationCreateDiscretization(realization)
       call GridComputeInternalConnect(grid,option, &
                                       discretization%dm_1dof%ugdm) 
       call GridComputeVolumes(grid,field%volume0,option)
-#ifdef MFD_UGRID
-      call GridComputeCell2FaceConnectivity(discretization%grid,discretization%MFD,option)
-#endif
   end select
  
-  ! Vectors with face degrees of freedom
-#ifdef DASVYAT
-  if (discretization%itype == STRUCTURED_GRID_MIMETIC .or. &
-        discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
-
-    if (option%nflowdof > 0) then
-      num_LP_dof = (grid%nlmax_faces + grid%nlmax)*option%nflowdof
-      call VecCreateMPI(option%mycomm, num_LP_dof, &
-                  PETSC_DETERMINE,field%flow_xx_faces,ierr);CHKERRQ(ierr)
-      call VecSetBlockSize(field%flow_xx_faces,option%nflowdof, &
-                           ierr);CHKERRQ(ierr)
-
-      call DiscretizationDuplicateVector(discretization, field%flow_xx_faces, &
-                                        field%flow_r_faces)
-      call DiscretizationDuplicateVector(discretization, field%flow_xx_faces, &
-                                        field%flow_dxx_faces)
-      call DiscretizationDuplicateVector(discretization, field%flow_xx_faces, &
-                                        field%flow_yy_faces)
-
-      call VecCreateSeq(PETSC_COMM_SELF, (grid%ngmax_faces + grid%ngmax)*option%nflowdof, &
-                                              field%flow_xx_loc_faces,  &
-                        ierr);CHKERRQ(ierr)
-      call VecSetBlockSize(field%flow_xx_loc_faces,option%nflowdof, &
-                           ierr);CHKERRQ(ierr)
-
-      call DiscretizationDuplicateVector(discretization, field%flow_xx_loc_faces, &
-                                          field%flow_r_loc_faces)
-      call DiscretizationDuplicateVector(discretization, field%flow_xx_loc_faces, &
-                                          field%flow_bc_loc_faces)
-      call DiscretizationDuplicateVector(discretization, field%flow_xx_loc_faces, &
-                                          field%work_loc_faces)
-     endif
-
-    call RealizationCreatenG2LP(realization)
-
-    dm_ptr => DiscretizationGetDMPtrFromIndex(discretization, NFLOWDOF)
-    call GridComputeGlobalCell2FaceConnectivity(grid, discretization%MFD, &
-                                                  dm_ptr%dm, NFLOWDOF, option)
-   endif
-#endif
- 
-  ! initialize to -999.d0 for check later that verifies all values 
+  ! initialize to UNINITIALIZED_DOUBLE for check later that verifies all values 
   ! have been set
-  call VecSet(field%porosity0,-999.d0,ierr);CHKERRQ(ierr)
+  call VecSet(field%porosity0,UNINITIALIZED_DOUBLE,ierr);CHKERRQ(ierr)
 
   ! Allocate vectors to hold temporally average output quantites
   if (realization%output_option%aveg_output_variable_list%nvars>0) then
@@ -491,7 +429,7 @@ subroutine RealizationCreateDiscretization(realization)
   endif
 
   select case(realization%discretization%itype)
-    case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
+    case(STRUCTURED_GRID)
       realization%comm1 => StructuredCommunicatorCreate()
     case(UNSTRUCTURED_GRID)
       realization%comm1 => UnstructuredCommunicatorCreate()
@@ -524,7 +462,7 @@ subroutine RealizationLocalizeRegions(realization)
   option => realization%option
 
   ! check to ensure that region names are not duplicated
-  cur_region => realization%regions%first
+  cur_region => realization%region_list%first
   do
     if (.not.associated(cur_region)) exit
     cur_region2 => cur_region%next
@@ -539,7 +477,7 @@ subroutine RealizationLocalizeRegions(realization)
     cur_region => cur_region%next
   enddo
 
-  call PatchLocalizeRegions(realization%patch,realization%regions, &
+  call PatchLocalizeRegions(realization%patch,realization%region_list, &
                             realization%option)
 
 end subroutine RealizationLocalizeRegions
@@ -593,139 +531,17 @@ subroutine RealizationAddCoupler(realization,coupler)
   new_coupler => CouplerCreate(coupler)
   select case(coupler%itype)
     case(BOUNDARY_COUPLER_TYPE)
-      call CouplerAddToList(new_coupler,patch%boundary_conditions)
+      call CouplerAddToList(new_coupler,patch%boundary_condition_list)
     case(INITIAL_COUPLER_TYPE)
-      call CouplerAddToList(new_coupler,patch%initial_conditions)
+      call CouplerAddToList(new_coupler,patch%initial_condition_list)
     case(SRC_SINK_COUPLER_TYPE)
-      call CouplerAddToList(new_coupler,patch%source_sinks)
+      call CouplerAddToList(new_coupler,patch%source_sink_list)
   end select
   nullify(new_coupler)
 
   call CouplerDestroy(coupler)
  
 end subroutine RealizationAddCoupler
-
-! ************************************************************************** !
-
-subroutine RealizationCreatenG2LP(realization)
-  ! 
-  ! This routine sets up nG2LP() mapping for MIMETIC discretization.
-  ! nG2LP: For a given ghosted cell ID, return the index within the PETSc
-  ! solution vector that contains solution at cell centers + cell faces.
-  ! The index returned is in PETSc order (0-based).
-  ! 
-  ! Author: ???
-  ! Date: ???
-  ! 
-
-  use Grid_module
-
-  implicit none
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petscviewer.h"
-#include "finclude/petscsnes.h"
-#include "finclude/petscpc.h"
-#include "finclude/petscsys.h"
-
-  type(realization_type) :: realization
-
-  type(option_type), pointer :: option
-  type(discretization_type), pointer :: discretization
-  type(grid_type), pointer :: grid
-  PetscInt :: global_offset
-  PetscInt :: ghosted_id
-  PetscInt :: local_id
-  PetscInt :: num_ghosted
-  PetscErrorCode :: ierr
-
-  Vec :: vec_LP_cell_id
-  Vec :: vec_LP_cell_id_loc
-
-  IS :: is_ghosted, is_global
-  VecScatter :: VC_global2ghosted
-
-  PetscScalar, pointer :: lp_cell_ids(:), lp_cell_ids_loc(:)
-  PetscInt, pointer :: int_tmp_gh(:), int_tmp_gl(:)
-
-  option => realization%option
-  discretization => realization%discretization
-  grid => discretization%grid
-  
-  global_offset = 0
-  grid%global_faces_offset = 0
-  grid%global_cell_offset = 0
-
-  allocate(grid%nG2LP(grid%ngmax))
-
-  call MPI_Exscan(grid%nlmax_faces, grid%global_faces_offset, &
-                  ONE_INTEGER,MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
-  call MPI_Exscan(grid%nlmax, grid%global_cell_offset, &
-                  ONE_INTEGER,MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
-
-  global_offset = grid%global_faces_offset + grid%global_cell_offset
-
-  call DiscretizationCreateVector(discretization,ONEDOF,vec_LP_cell_id, &
-                                  GLOBAL,option)
-  call DiscretizationCreateVector(discretization,ONEDOF,vec_LP_cell_id_loc, &
-                                  LOCAL,option)
-  call VecGetArrayF90(vec_LP_cell_id,lp_cell_ids,ierr);CHKERRQ(ierr)
-  do local_id=1,grid%nlmax
-    grid%nG2LP(grid%nL2G(local_id))=global_offset+grid%nlmax_faces+local_id-1
-    lp_cell_ids(local_id)=global_offset+grid%nlmax_faces+local_id
-  enddo
-  call VecRestoreArrayF90(vec_LP_cell_id,lp_cell_ids,ierr);CHKERRQ(ierr)
-
-  allocate(int_tmp_gh(grid%ngmax-grid%nlmax))
-  allocate(int_tmp_gl(grid%ngmax-grid%nlmax))
-
-  num_ghosted = 1
-  do ghosted_id = 1,grid%ngmax
-    if (grid%nG2L(ghosted_id) < 1) then
-      int_tmp_gh(num_ghosted) = ghosted_id - 1
-      int_tmp_gl(num_ghosted) = grid%nG2P(ghosted_id)
-      num_ghosted=num_ghosted+1
-    endif
-  enddo
-
-  call ISCreateBlock(option%mycomm, ONEDOF, grid%ngmax - grid%nlmax, &
-                     int_tmp_gh, PETSC_COPY_VALUES, is_ghosted,  &
-                     ierr);CHKERRQ(ierr)
-  call ISCreateBlock(option%mycomm, ONEDOF, grid%ngmax - grid%nlmax, &
-                     int_tmp_gl, PETSC_COPY_VALUES, is_global,  &
-                     ierr);CHKERRQ(ierr)
-  call VecScatterCreate(vec_LP_cell_id, is_global, vec_LP_cell_id_loc, &
-                        is_ghosted, VC_global2ghosted, ierr);CHKERRQ(ierr)
-  deallocate(int_tmp_gh)
-  deallocate(int_tmp_gl)
-
-  call VecScatterBegin(VC_global2ghosted, vec_LP_cell_id, vec_LP_cell_id_loc, &
-                      INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
-  call VecScatterEnd(VC_global2ghosted, vec_LP_cell_id, vec_LP_cell_id_loc, &
-                      INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
-
-  call VecGetArrayF90(vec_LP_cell_id_loc,lp_cell_ids_loc,ierr);CHKERRQ(ierr)
-  do ghosted_id=1,grid%ngmax
-    if (grid%nG2L(ghosted_id)<1) then
-      grid%nG2LP(ghosted_id)=int(lp_cell_ids_loc(ghosted_id))-1
-    endif
-  end do
-  call VecRestoreArrayF90(vec_LP_cell_id_loc,lp_cell_ids_loc, &
-                          ierr);CHKERRQ(ierr)
-
-  call VecDestroy(vec_LP_cell_id, ierr);CHKERRQ(ierr)
-  call VecDestroy(vec_LP_cell_id_loc, ierr);CHKERRQ(ierr)
-  call VecScatterDestroy(VC_global2ghosted , ierr);CHKERRQ(ierr)
-  call ISDestroy(is_ghosted, ierr);CHKERRQ(ierr)
-  call ISDestroy(is_global, ierr);CHKERRQ(ierr)
-
-end subroutine RealizationCreatenG2LP
 
 ! ************************************************************************** !
 
@@ -747,40 +563,13 @@ subroutine RealizationAddStrata(realization,strata)
   type(strata_type), pointer :: new_strata
   
   new_strata => StrataCreate(strata)
-  call StrataAddToList(new_strata,realization%patch%strata)
+  call StrataAddToList(new_strata,realization%patch%strata_list)
   nullify(new_strata)
   
   call StrataDestroy(strata)
  
 end subroutine RealizationAddStrata
 
-! ************************************************************************** !
-
-subroutine RealizationAddObservation(realization,observation)
-  ! 
-  ! Adds a copy of a observation object to a list
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 02/22/08
-  ! 
-
-  use Observation_module
-
-  implicit none
-  
-  type(realization_type) :: realization
-  type(observation_type), pointer :: observation
-  
-  type(observation_type), pointer :: new_observation
-  
-  new_observation => ObservationCreate(observation)
-  call ObservationAddToList(new_observation, &
-                            realization%patch%observation)
-  nullify(new_observation)
-
-  call ObservationDestroy(observation)
- 
-end subroutine RealizationAddObservation
 
 ! ************************************************************************** !
 
@@ -881,24 +670,24 @@ subroutine RealProcessMatPropAndSatFunc(realization)
   option => realization%option
   patch => realization%patch
   
-!  ! organize lists
-  call MaterialPropConvertListToArray(realization%material_properties, &
-                                      patch%material_property_array, &
-                                      option)
-  call SaturatFuncConvertListToArray(realization%saturation_functions, &
-                                      patch%saturation_function_array, &
-                                      option)
-
   ! set up mirrored pointer arrays within patches to saturation functions
   ! and material properties
   patch%material_properties => realization%material_properties
   call MaterialPropConvertListToArray(patch%material_properties, &
                                       patch%material_property_array, &
                                       option)
-  patch%saturation_functions => realization%saturation_functions
-  call SaturatFuncConvertListToArray(patch%saturation_functions, &
-                                      patch%saturation_function_array, &
+  if (associated(realization%saturation_functions)) then
+    patch%saturation_functions => realization%saturation_functions
+    call SaturatFuncConvertListToArray(patch%saturation_functions, &
+                                       patch%saturation_function_array, &
+                                       option)
+  endif
+  if (associated(realization%characteristic_curves)) then
+    patch%characteristic_curves => realization%characteristic_curves
+    call CharCurvesConvertListToArray(patch%characteristic_curves, &
+                                      patch%characteristic_curves_array, &
                                       option)
+  endif
                                       
   ! create mapping of internal to external material id
   call MaterialCreateIntToExtMapping(patch%material_property_array, &
@@ -910,10 +699,18 @@ subroutine RealProcessMatPropAndSatFunc(realization)
 
     ! obtain saturation function id
     if (option%iflowmode /= NULL_MODE) then
-      cur_material_property%saturation_function_id = &
-        SaturationFunctionGetID(realization%saturation_functions, &
-                                cur_material_property%saturation_function_name, &
-                                cur_material_property%name,option)
+      if (associated(patch%saturation_function_array)) then
+        cur_material_property%saturation_function_id = &
+          SaturationFunctionGetID(patch%saturation_functions, &
+                             cur_material_property%saturation_function_name, &
+                             cur_material_property%name,option)
+      endif
+      if (associated(patch%characteristic_curves_array)) then
+        cur_material_property%saturation_function_id = &
+          CharacteristicCurvesGetID(patch%characteristic_curves_array, &
+                             cur_material_property%saturation_function_name, &
+                             cur_material_property%name,option)
+      endif
     endif
     
     ! if named, link dataset to property
@@ -943,7 +740,22 @@ subroutine RealProcessMatPropAndSatFunc(realization)
         class is (dataset_common_hdf5_type)
           cur_material_property%permeability_dataset => dataset
         class default
-          option%io_buffer = 'Incorrect dataset type for porosity.'
+          option%io_buffer = 'Incorrect dataset type for permeability.'
+          call printErrMsg(option)
+      end select      
+    endif
+    if (.not.StringNull(cur_material_property%compressibility_dataset_name)) then
+      string = 'MATERIAL_PROPERTY(' // trim(cur_material_property%name) // &
+               '),SOIL_COMPRESSIBILITY'
+      dataset => &
+        DatasetBaseGetPointer(realization%datasets, &
+                              cur_material_property%compressibility_dataset_name, &
+                              string,option)
+      select type(dataset)
+        class is (dataset_common_hdf5_type)
+          cur_material_property%compressibility_dataset => dataset
+        class default
+          option%io_buffer = 'Incorrect dataset type for soil_compressibility.'
           call printErrMsg(option)
       end select      
     endif
@@ -980,9 +792,9 @@ subroutine RealProcessFluidProperties(realization)
     if (.not.associated(cur_fluid_property)) exit
     found = PETSC_TRUE
     select case(trim(cur_fluid_property%phase_name))
-      case('LIQUID_PHASE')
+      case('LIQUID')
         cur_fluid_property%phase_id = LIQUID_PHASE
-      case('GAS_PHASE')
+      case('GAS')
         cur_fluid_property%phase_id = GAS_PHASE
       case default
         cur_fluid_property%phase_id = LIQUID_PHASE
@@ -1064,7 +876,7 @@ subroutine RealProcessTranConditions(realization)
 
   use String_module
   use Reaction_module
-  use Constraint_module
+  use Transport_Constraint_module
   
   implicit none
   
@@ -1109,6 +921,7 @@ subroutine RealProcessTranConditions(realization)
     call ReactionProcessConstraint(realization%reaction, &
                                    cur_constraint%name, &
                                    cur_constraint%aqueous_species, &
+                                   cur_constraint%free_ion_guess, &
                                    cur_constraint%minerals, &
                                    cur_constraint%surface_complexes, &
                                    cur_constraint%colloids, &
@@ -1121,6 +934,7 @@ subroutine RealProcessTranConditions(realization)
     call ReactionProcessConstraint(realization%reaction, &
                                    realization%sec_transport_constraint%name, &
                                    realization%sec_transport_constraint%aqueous_species, &
+                                   realization%sec_transport_constraint%free_ion_guess, &
                                    realization%sec_transport_constraint%minerals, &
                                    realization%sec_transport_constraint%surface_complexes, &
                                    realization%sec_transport_constraint%colloids, &
@@ -1144,6 +958,7 @@ subroutine RealProcessTranConditions(realization)
                              cur_constraint_coupler%constraint_name, &
                              MAXWORDLENGTH)) then
             cur_constraint_coupler%aqueous_species => cur_constraint%aqueous_species
+            cur_constraint_coupler%free_ion_guess => cur_constraint%free_ion_guess
             cur_constraint_coupler%minerals => cur_constraint%minerals
             cur_constraint_coupler%surface_complexes => cur_constraint%surface_complexes
             cur_constraint_coupler%colloids => cur_constraint%colloids
@@ -1243,21 +1058,21 @@ subroutine RealizationPrintCouplers(realization)
   do
     if (.not.associated(cur_patch)) exit
 
-    cur_coupler => cur_patch%initial_conditions%first
+    cur_coupler => cur_patch%initial_condition_list%first
     do
       if (.not.associated(cur_coupler)) exit
       call RealizationPrintCoupler(cur_coupler,reaction,option)    
       cur_coupler => cur_coupler%next
     enddo
      
-    cur_coupler => cur_patch%boundary_conditions%first
+    cur_coupler => cur_patch%boundary_condition_list%first
     do
       if (.not.associated(cur_coupler)) exit
       call RealizationPrintCoupler(cur_coupler,reaction,option)    
       cur_coupler => cur_coupler%next
     enddo
      
-    cur_coupler => cur_patch%source_sinks%first
+    cur_coupler => cur_patch%source_sink_list%first
     do
       if (.not.associated(cur_coupler)) exit
       call RealizationPrintCoupler(cur_coupler,reaction,option)    
@@ -1526,6 +1341,7 @@ subroutine RealizationAddWaypointsToList(realization)
   use Option_module
   use Waypoint_module
   use Time_Storage_module
+  use Strata_module
 
   implicit none
   
@@ -1539,12 +1355,13 @@ subroutine RealizationAddWaypointsToList(realization)
   type(mass_transfer_type), pointer :: cur_mass_transfer
   type(waypoint_type), pointer :: waypoint, cur_waypoint
   type(option_type), pointer :: option
+  type(strata_type), pointer :: cur_strata
   PetscInt :: itime, isub_condition
   PetscReal :: temp_real, final_time
   PetscReal, pointer :: times(:)
 
   option => realization%option
-  waypoint_list => realization%waypoints
+  waypoint_list => realization%waypoint_list
   nullify(times)
   
   ! set flag for final output
@@ -1642,7 +1459,7 @@ subroutine RealizationAddWaypointsToList(realization)
           waypoint => WaypointCreate()
           waypoint%time = cur_mass_transfer%dataset%time_storage%times(itime)
           waypoint%update_conditions = PETSC_TRUE
-          call WaypointInsertInList(waypoint,realization%waypoints)
+          call WaypointInsertInList(waypoint,realization%waypoint_list)
         enddo
       endif
       cur_mass_transfer => cur_mass_transfer%next
@@ -1659,7 +1476,7 @@ subroutine RealizationAddWaypointsToList(realization)
           waypoint => WaypointCreate()
           waypoint%time = cur_mass_transfer%dataset%time_storage%times(itime)
           waypoint%update_conditions = PETSC_TRUE
-          call WaypointInsertInList(waypoint,realization%waypoints)
+          call WaypointInsertInList(waypoint,realization%waypoint_list)
         enddo
       endif
       cur_mass_transfer => cur_mass_transfer%next
@@ -1679,7 +1496,7 @@ subroutine RealizationAddWaypointsToList(realization)
         waypoint => WaypointCreate()
         waypoint%time = temp_real
         waypoint%print_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,realization%waypoints)
+        call WaypointInsertInList(waypoint,realization%waypoint_list)
       enddo
     endif
     
@@ -1692,7 +1509,7 @@ subroutine RealizationAddWaypointsToList(realization)
         waypoint => WaypointCreate()
         waypoint%time = temp_real
         waypoint%print_tr_output = PETSC_TRUE 
-        call WaypointInsertInList(waypoint,realization%waypoints)
+        call WaypointInsertInList(waypoint,realization%waypoint_list)
       enddo
     endif
 
@@ -1709,11 +1526,71 @@ subroutine RealizationAddWaypointsToList(realization)
       waypoint => WaypointCreate()
       waypoint%time = temp_real
       waypoint%print_checkpoint = PETSC_TRUE
-      call WaypointInsertInList(waypoint,realization%waypoints)
+      call WaypointInsertInList(waypoint,realization%waypoint_list)
     enddo
   endif
 
+  ! add in strata that change over time
+  cur_strata => realization%patch%strata_list%first
+  do
+    if (.not.associated(cur_strata)) exit
+    if (Initialized(cur_strata%start_time)) then
+      waypoint => WaypointCreate()
+      waypoint%time = cur_strata%start_time
+      waypoint%sync = PETSC_TRUE
+      call WaypointInsertInList(waypoint,realization%waypoint_list)
+    endif
+    if (Initialized(cur_strata%end_time)) then
+      waypoint => WaypointCreate()
+      waypoint%time = cur_strata%end_time
+      waypoint%sync = PETSC_TRUE
+      call WaypointInsertInList(waypoint,realization%waypoint_list)
+    endif
+    cur_strata => cur_strata%next
+  enddo
+
 end subroutine RealizationAddWaypointsToList
+
+! ************************************************************************** !
+
+function RealizCreateSyncWaypointList(realization)
+  ! 
+  ! Creates a list of waypoints for outer synchronization of simulation process
+  ! model couplers
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/08/14
+  ! 
+
+  use Option_module
+  use Waypoint_module
+  use Time_Storage_module
+
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  type(waypoint_list_type), pointer :: RealizCreateSyncWaypointList
+
+  type(waypoint_list_type), pointer :: new_waypoint_list
+  type(waypoint_type), pointer :: cur_waypoint
+  type(waypoint_type), pointer :: new_waypoint
+
+  new_waypoint_list => WaypointListCreate()
+  
+  cur_waypoint => realization%waypoint_list%first
+  do
+    if (.not.associated(cur_waypoint)) exit
+    if (cur_waypoint%sync .or. cur_waypoint%final) then
+      new_waypoint => WaypointCreate(cur_waypoint)
+      call WaypointInsertInList(new_waypoint,new_waypoint_list)
+      if (cur_waypoint%final) exit
+    endif
+    cur_waypoint => cur_waypoint%next
+  enddo
+  RealizCreateSyncWaypointList => new_waypoint_list
+
+end function RealizCreateSyncWaypointList
 
 ! ************************************************************************** !
 
@@ -1752,10 +1629,12 @@ subroutine RealizationUpdatePropertiesTS(realization)
   PetscBool :: porosity_updated
   PetscReal, pointer :: vec_p(:)
   PetscReal, pointer :: porosity0_p(:)
-  PetscReal, pointer :: porosity_mnrl_loc_p(:)
   PetscReal, pointer :: tortuosity0_p(:)
   PetscReal, pointer :: perm0_xx_p(:), perm0_yy_p(:), perm0_zz_p(:)
-  PetscReal :: min_value  
+  PetscReal, pointer :: perm_ptr(:)
+  PetscReal :: min_value
+  PetscReal :: critical_porosity
+  PetscReal :: porosity_base
   PetscInt :: ivalue
   PetscErrorCode :: ierr
 
@@ -1769,45 +1648,10 @@ subroutine RealizationUpdatePropertiesTS(realization)
   rt_auxvars => patch%aux%RT%auxvars
   material_auxvars => patch%aux%Material%auxvars
 
-  if (.not.associated(patch%imat)) then
-    option%io_buffer = 'Materials IDs not present in run.  Material ' // &
-      ' properties cannot be updated without material ids ask Glenn'
-    call printErrMsg(option)
-  endif
-
   porosity_updated = PETSC_FALSE
   if (reaction%update_porosity) then
     porosity_updated = PETSC_TRUE
-  
-    if (reaction%mineral%nkinmnrl > 0) then
-      call VecGetArrayF90(field%porosity0,porosity0_p,ierr);CHKERRQ(ierr)
-      call VecGetArrayF90(field%porosity_mnrl_loc,porosity_mnrl_loc_p, &
-                          ierr);CHKERRQ(ierr)
-      do local_id = 1, grid%nlmax
-        ghosted_id = grid%nL2G(local_id)
-        ! Go ahead and compute for inactive cells since their porosity does
-        ! not matter (avoid check on active/inactive)
-        sum_volfrac = 0.d0
-        do imnrl = 1, reaction%mineral%nkinmnrl
-          sum_volfrac = sum_volfrac + &
-                        rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl)
-        enddo 
-        ! the adjusted porosity becomes:
-        ! 1 - sum(porosity0 + mineral volume fractions), but is truncated.
-        porosity_mnrl_loc_p(ghosted_id) = &
-          max(porosity0_p(local_id)-sum_volfrac,reaction%minimum_porosity)
-      enddo
-      call VecRestoreArrayF90(field%porosity0,porosity0_p,ierr);CHKERRQ(ierr)
-      call VecRestoreArrayF90(field%porosity_mnrl_loc,porosity_mnrl_loc_p, &
-                              ierr);CHKERRQ(ierr)
-    endif
-    
-    call MaterialGetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
-                                 POROSITY,ZERO_INTEGER)
-    call DiscretizationLocalToLocal(discretization,field%work_loc, &
-                                    field%work_loc,ONEDOF)
-    call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
-                                 POROSITY,ZERO_INTEGER)
+    call RealizationCalcMineralPorosity(realization)
   endif
   
   if ((porosity_updated .and. &
@@ -1818,16 +1662,13 @@ subroutine RealizationUpdatePropertiesTS(realization)
       (reaction%update_mineral_surface_area .and. &
        reaction%update_mnrl_surf_with_porosity)) then
     call VecGetArrayF90(field%porosity0,porosity0_p,ierr);CHKERRQ(ierr)
-    call VecGetArrayF90(field%porosity_mnrl_loc,porosity_mnrl_loc_p, &
-                        ierr);CHKERRQ(ierr)
     call VecGetArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
-      vec_p(local_id) = porosity_mnrl_loc_p(ghosted_id) / porosity0_p(local_id)
+      vec_p(local_id) = material_auxvars(ghosted_id)%porosity_base / &
+                        porosity0_p(local_id)
     enddo
     call VecRestoreArrayF90(field%porosity0,porosity0_p,ierr);CHKERRQ(ierr)
-    call VecRestoreArrayF90(field%porosity_mnrl_loc,porosity_mnrl_loc_p, &
-                            ierr);CHKERRQ(ierr)
     call VecRestoreArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
   endif      
 
@@ -1950,46 +1791,42 @@ subroutine RealizationUpdatePropertiesTS(realization)
   endif
       
   if (reaction%update_permeability) then
-    call VecGetArrayF90(field%porosity_mnrl_loc,porosity_mnrl_loc_p, &
-                        ierr);CHKERRQ(ierr)
     call VecGetArrayF90(field%perm0_xx,perm0_xx_p,ierr);CHKERRQ(ierr)
     call VecGetArrayF90(field%perm0_zz,perm0_zz_p,ierr);CHKERRQ(ierr)
     call VecGetArrayF90(field%perm0_yy,perm0_yy_p,ierr);CHKERRQ(ierr)
-!   call VecGetArrayF90(field%work,vec_p,ierr)
+    call VecGetArrayF90(field%porosity0,porosity0_p,ierr);CHKERRQ(ierr)
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       imat = patch%imat(ghosted_id)
-      if (porosity_mnrl_loc_p(ghosted_id) >= &
-          material_property_array(imat)%ptr%permeability_crit_por) then
-        scale = ((porosity_mnrl_loc_p(ghosted_id) - &
-                  material_property_array(imat)%ptr%permeability_crit_por) &
-                /(porosity0_p(local_id) - &
-                  material_property_array(imat)%ptr%permeability_crit_por))** &
+      critical_porosity = material_property_array(imat)%ptr% &
+                            permeability_crit_por
+      porosity_base = material_auxvars(ghosted_id)%porosity_base
+      scale = 0.d0
+      if (porosity_base > critical_porosity .and. &
+          porosity0_p(local_id) > critical_porosity) then
+        scale = ((porosity_base - critical_porosity) / &
+                 (porosity0_p(local_id) - critical_porosity)) ** &
                 material_property_array(imat)%ptr%permeability_pwr
-
-#ifdef PERM
-        scale = scale*((1.001-porosity0_p(local_id)**2.d0) / &
-                (1.001-porosity_mnrl_loc_p(ghosted_id)**2.d0))
-#endif
-      option%io_buffer = 'Incorrect scaling in RealizationUpdatePropertiesPatch()'
-      call printErrMsg(option)
-      !geh: I am not sure who wrote this but it cannot possibly be correct!!!
-        if (scale < material_property_array(patch%imat(ghosted_id))%ptr%permeability_min_scale_fac) &
-          scale = material_property_array(patch%imat(ghosted_id))%ptr%permeability_min_scale_fac
-      else
-        scale = material_property_array(patch%imat(ghosted_id))%ptr%permeability_min_scale_fac
       endif
-!     scale = vec_p(local_id)** &
-!             material_property_array(patch%imat(ghosted_id))%ptr%permeability_pwr
+      scale = max(material_property_array(imat)%ptr% &
+                    permeability_min_scale_fac,scale)
+      !geh: this is a kludge for gfortran.  the code reports errors when 
+      !     material_auxvars(ghosted_id)%permeability is used.
+      ! This is not an issue with Intel
+#if 1
+      perm_ptr => material_auxvars(ghosted_id)%permeability
+      perm_ptr(perm_xx_index) = perm0_xx_p(local_id)*scale
+      perm_ptr(perm_yy_index) = perm0_yy_p(local_id)*scale
+      perm_ptr(perm_zz_index) = perm0_zz_p(local_id)*scale
+#else
       material_auxvars(ghosted_id)%permeability(perm_xx_index) = &
         perm0_xx_p(local_id)*scale
       material_auxvars(ghosted_id)%permeability(perm_yy_index) = &
         perm0_yy_p(local_id)*scale
       material_auxvars(ghosted_id)%permeability(perm_zz_index) = &
         perm0_zz_p(local_id)*scale
+#endif
     enddo
-    call VecRestoreArrayF90(field%porosity_mnrl_loc,porosity_mnrl_loc_p, &
-                            ierr);CHKERRQ(ierr)
     call VecRestoreArrayF90(field%perm0_xx,perm0_xx_p,ierr);CHKERRQ(ierr)
     call VecRestoreArrayF90(field%perm0_zz,perm0_zz_p,ierr);CHKERRQ(ierr)
     call VecRestoreArrayF90(field%perm0_yy,perm0_yy_p,ierr);CHKERRQ(ierr)
@@ -2016,7 +1853,9 @@ subroutine RealizationUpdatePropertiesTS(realization)
   
   ! perform check to ensure that porosity is bounded between 0 and 1
   ! since it is calculated as 1.d-sum_volfrac, it cannot be > 1
-  call VecMin(field%porosity_mnrl_loc,ivalue,min_value,ierr);CHKERRQ(ierr)
+  call MaterialGetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                               POROSITY,POROSITY_MINERAL)
+  call VecMin(field%work_loc,ivalue,min_value,ierr);CHKERRQ(ierr)
   if (min_value < 0.d0) then
     write(option%io_buffer,*) 'Sum of mineral volume fractions has ' // &
       'exceeded 1.d0 at cell (note PETSc numbering): ', ivalue
@@ -2082,6 +1921,76 @@ subroutine RealizationUpdatePropertiesNI(realization)
 #endif
 
 end subroutine RealizationUpdatePropertiesNI
+
+! ************************************************************************** !
+
+subroutine RealizationCalcMineralPorosity(realization)
+  ! 
+  ! Calculates porosity based on the sum of mineral volume fractions
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/03/14
+  !
+
+  use Grid_module
+  use Reactive_Transport_Aux_module
+  use Material_Aux_class
+  use Variables_module, only : POROSITY
+ 
+  implicit none
+  
+  type(realization_type) :: realization
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(field_type), pointer :: field
+  type(reaction_type), pointer :: reaction
+  type(grid_type), pointer :: grid
+  type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:) 
+  type(discretization_type), pointer :: discretization
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: imnrl 
+  PetscReal :: sum_volfrac
+  PetscErrorCode :: ierr
+
+  option => realization%option
+  discretization => realization%discretization
+  patch => realization%patch
+  field => realization%field
+  reaction => realization%reaction
+  grid => patch%grid
+  rt_auxvars => patch%aux%RT%auxvars
+  material_auxvars => patch%aux%Material%auxvars
+
+  if (reaction%mineral%nkinmnrl > 0) then
+    do local_id = 1, grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
+      ! Go ahead and compute for inactive cells since their porosity does
+      ! not matter (avoid check on active/inactive)
+      sum_volfrac = 0.d0
+      do imnrl = 1, reaction%mineral%nkinmnrl
+        sum_volfrac = sum_volfrac + &
+                      rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl)
+      enddo 
+      ! the adjusted porosity becomes:
+      ! 1 - sum(mineral volume fractions), but is truncated.
+      material_auxvars(ghosted_id)%porosity_base = &
+        max(1.d0-sum_volfrac,reaction%minimum_porosity)
+    enddo
+  endif
+  ! update ghosted porosities
+  call MaterialGetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                               POROSITY,POROSITY_MINERAL)
+  call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                  field%work_loc,ONEDOF)
+  call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                               POROSITY,POROSITY_CURRENT)
+  call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                               POROSITY,POROSITY_MINERAL)
+
+end subroutine RealizationCalcMineralPorosity
 
 ! ************************************************************************** !
 
@@ -2179,90 +2088,6 @@ end subroutine RealizationCountCells
 
 ! ************************************************************************** !
 
-subroutine RealizationSetUpBC4Faces(realization)
-
-  use Connection_module
-  use Coupler_module
-  use Patch_module
-  use Grid_module
-  use Field_module
-  use MFD_Aux_module
-  
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-
-  type(realization_type) :: realization
-
-#ifdef DASVYAT
-  type(grid_type), pointer :: grid
-  type(patch_type), pointer :: patch
-  type(field_type), pointer :: field
-  
-
-  type(mfd_auxvar_type), pointer :: auxvar
-  type(connection_set_type), pointer :: conn
-  type(coupler_type), pointer ::  boundary_condition
-
-  PetscReal, pointer :: bc_faces_p(:), xx_faces_p(:)
-  PetscInt :: iconn, sum_connection, bc_type, bound_id
-  PetscInt :: local_id, ghosted_id, ghost_face_id, j, jface, local_face_id
-  PetscErrorCode :: ierr
-
-  patch => realization%patch
-  grid => patch%grid
-  field => realization%field
-
-  call VecGetArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr);CHKERRQ(ierr)
-  call VecGetArrayF90(field%flow_xx_faces, xx_faces_p, ierr);CHKERRQ(ierr)
-
-  boundary_condition => patch%boundary_conditions%first
-  sum_connection = 0
-  do
-    if (.not.associated(boundary_condition)) exit
-    bc_type = boundary_condition%flow_condition%itype(RICHARDS_PRESSURE_DOF)
-
-    do iconn = 1, boundary_condition%numfaces_set
-      sum_connection = sum_connection + 1
-
-      local_id = boundary_condition%region%cell_ids(iconn)
-      ghosted_id = grid%nL2G(local_id)
-
-      auxvar => grid%MFD%auxvars(local_id)
-      do j = 1, auxvar%numfaces
-        ghost_face_id = auxvar%face_id_gh(j)
-        local_face_id = grid%fG2L(ghost_face_id)
-        conn => grid%faces(ghost_face_id)%conn_set_ptr
-        jface = grid%faces(ghost_face_id)%id
-        if (boundary_condition%faces_set(iconn) == ghost_face_id) then
-          if ((bc_type == DIRICHLET_BC).or.(bc_type == HYDROSTATIC_BC)  &
-              .or.(bc_type == SEEPAGE_BC).or.(bc_type == CONDUCTANCE_BC) ) then
-            bc_faces_p(ghost_face_id) = boundary_condition%flow_aux_real_var(1,iconn)*conn%area(jface)
-            xx_faces_p(local_face_id) = boundary_condition%flow_aux_real_var(1,iconn)
-          else if ((bc_type == NEUMANN_BC)) then
-            bc_faces_p(ghost_face_id) = boundary_condition%flow_aux_real_var(1,iconn)*conn%area(jface)
-            bound_id = grid%fL2B(local_face_id)
-            if (bound_id>0) then
-              patch%boundary_velocities(realization%option%nphase, bound_id) = &
-                boundary_condition%flow_aux_real_var(1,iconn)
-            endif
-          endif
-        endif
-      enddo
-    enddo
-    boundary_condition => boundary_condition%next
-  enddo
-
-  call VecRestoreArrayF90(field%flow_xx_faces, xx_faces_p, ierr);CHKERRQ(ierr)
-  call VecRestoreArrayF90(field%flow_bc_loc_faces, bc_faces_p,  &
-                          ierr);CHKERRQ(ierr)
-
-#endif
-
-end subroutine RealizationSetUpBC4Faces
-
-! ************************************************************************** !
-
 subroutine RealizationPrintGridStatistics(realization)
   ! 
   ! Prints statistics regarding the numerical
@@ -2346,9 +2171,9 @@ subroutine RealizationPrintGridStatistics(realization)
     r1 = r1 + inactive_percentages(i1)
   enddo
                                 
-  i1 = -999
-  i2 = -999
-  i3 = -999
+  i1 = UNINITIALIZED_INTEGER
+  i2 = UNINITIALIZED_INTEGER
+  i3 = UNINITIALIZED_INTEGER
   if (associated(grid%structured_grid)) then
     i1 = grid%structured_grid%npx_final
     i2 = grid%structured_grid%npy_final
@@ -2541,7 +2366,7 @@ subroutine RealizationNonInitializedData(realization)
   call MPI_Allreduce(min_value,global_value,ONE_INTEGER_MPI, &
                      MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
   
-  if (global_value < -998.d0) then
+  if (Uninitialized(global_value)) then
     option%io_buffer = 'Porosity not initialized at all cells.  ' // &
                        'Ensure that REGIONS cover entire domain!!!'
     call printErrMsg(option)
@@ -2594,7 +2419,7 @@ subroutine RealizationDestroyLegacy(realization)
 
 !  call OptionDestroy(realization%option) !geh it will be destroy externally
   call OutputOptionDestroy(realization%output_option)
-  call RegionDestroyList(realization%regions)
+  call RegionDestroyList(realization%region_list)
   
   call FlowConditionDestroyList(realization%flow_conditions)
   call TranConditionDestroyList(realization%transport_conditions)
@@ -2613,6 +2438,9 @@ subroutine RealizationDestroyLegacy(realization)
   call MaterialPropertyDestroy(realization%material_properties)
 
   call SaturationFunctionDestroy(realization%saturation_functions)
+  print *, 'RealizationDestroyLegacy cannot be removed.'
+  stop
+  call CharacteristicCurvesDestroy(realization%characteristic_curves)
 
   call DatasetDestroy(realization%datasets)
   
@@ -2626,7 +2454,7 @@ subroutine RealizationDestroyLegacy(realization)
   call MassTransferDestroy(realization%flow_mass_transfer_list)
   call MassTransferDestroy(realization%rt_mass_transfer_list)
   
-  call WaypointListDestroy(realization%waypoints)
+  call WaypointListDestroy(realization%waypoint_list)
   
   deallocate(realization)
   nullify(realization)
@@ -2650,7 +2478,7 @@ subroutine RealizationStrip(this)
   class(realization_type) :: this
   
   call RealizationBaseStrip(this)
-  call RegionDestroyList(this%regions)
+  call RegionDestroyList(this%region_list)
   
   call FlowConditionDestroyList(this%flow_conditions)
   call TranConditionDestroyList(this%transport_conditions)
@@ -2664,6 +2492,7 @@ subroutine RealizationStrip(this)
   call MaterialPropertyDestroy(this%material_properties)
 
   call SaturationFunctionDestroy(this%saturation_functions)
+  call CharacteristicCurvesDestroy(this%characteristic_curves)  
 
   call DatasetDestroy(this%datasets)
   
@@ -2673,7 +2502,7 @@ subroutine RealizationStrip(this)
   
   call TranConstraintDestroy(this%sec_transport_constraint)
   
-  call WaypointListDestroy(this%waypoints)
+  call WaypointListDestroy(this%waypoint_list)
   
 end subroutine RealizationStrip
 

@@ -54,8 +54,7 @@ function rnd()
 
   implicit none
 
-!  common/rndnr/iseed
-  integer*8 iseed
+  integer*8, save :: iseed = 1
   PetscReal :: rnd
 
   iseed = iseed*125
@@ -191,26 +190,26 @@ subroutine Natural2LocalIndex(ir, nl, llist, llength)
   itt=0
   nori0 =1
   nori1 = llength
-  if(na>=llist(1) .and. na <= llist(llength))then
+  if (na>=llist(1) .and. na <= llist(llength))then
   do while(l_search > 1 .and.itt<=50)
   
     itt=itt+1
-    if(na == llist(nori0))then
+    if (na == llist(nori0))then
       nl = nori0
       exit
-    elseif(na == llist(nori1))then
+    elseif (na == llist(nori1))then
        nl = nori1
       exit
     endif   
      
      ! nori = int((real(nori0 + nori1))/ 2.) + mod ( nori0 + nori1,2 )
     nori =  int(floor(real(nori0+nori1)/2D0 + .75D0))
-    if( na > llist(nori)) then
+    if ( na > llist(nori)) then
       nori0 = nori
-    elseif(na < llist(nori))then
+    elseif (na < llist(nori))then
       nori1 = nori
     else
-      if(na == llist(nori))then
+      if (na == llist(nori))then
         nl = nori
         exit
       else
@@ -614,11 +613,13 @@ subroutine Interpolate(x_high,x_low,x,y_high,y_low,y)
   PetscReal :: y_high, y_low, y
   
   PetscReal :: weight
+  PetscReal :: x_diff
   
-  if (dabs(x_high-x_low) < 1.d-10) then
+  x_diff = x_high-x_low
+  if (dabs(x_diff) < 1.d-10) then
     y = y_low
   else
-    weight = (x-x_low)/(x_high-x_low)
+    weight = (x-x_low)/x_diff
     y = y_low + weight*(y_high-y_low)
   endif
 
@@ -739,7 +740,7 @@ end function CrossProduct1
 
 ! ************************************************************************** !
 
-function Erf(x)
+function Erf_(x)
   ! 
   ! Computes an approximate to erf(x)
   ! from: http://jin.ece.uiuc.edu/routines/merror.for
@@ -752,7 +753,7 @@ function Erf(x)
   
   PetscReal :: x
   
-  PetscReal :: Erf
+  PetscReal :: Erf_
 
   PetscReal, parameter :: EPS = 1.d-15
   PetscReal, parameter :: PI=3.141592653589793d0
@@ -769,7 +770,7 @@ function Erf(x)
       if (dabs(r) < dabs(er)*EPS) exit
     enddo
     co=2.d0/sqrt(PI)*x*exp(-x2)
-    Erf=co*er
+    Erf_=co*er
   else
     er=1.d0
     r=1.d0
@@ -778,11 +779,11 @@ function Erf(x)
       er=er+r
     enddo
     co=exp(-x2)/(dabs(x)*sqrt(PI))
-    Erf=1.d0-co*er
-    if (x < 0.d0) Erf=-Erf
+    Erf_=1.d0-co*er
+    if (x < 0.d0) Erf_=-Erf_
   endif
 
-end function Erf
+end function Erf_
 
 ! ************************************************************************** !
 
@@ -824,10 +825,12 @@ function InverseErf(p)
   PetscReal, parameter :: B(5) = (/-5.447609879822406d+1,1.615858368580409d+2, &
                                   -1.556989798598866d+2,6.680131188771972d+1, &
                                   -1.328068155288572d+1/)
-  PetscReal, parameter :: C(6) = (/-7.784894002430293d-3,-3.223964580411365d-1, &
+  PetscReal, parameter :: C(6) = (/-7.784894002430293d-3, &
+                                  -3.223964580411365d-1, &
                                   -2.400758277161838d+0,-2.549732539343734d+0, &
                                   4.374664141464968d+0,2.938163982698783d+0/)
-  PetscReal, parameter :: D(4) = (/7.784695709041462d-03,  3.224671290700398d-01, &
+  PetscReal, parameter :: D(4) = (/7.784695709041462d-03, &
+                                  3.224671290700398d-01, &
                                   2.445134137142996d+00,  3.754408661907416d+0/)
 
   ! Define break-points.

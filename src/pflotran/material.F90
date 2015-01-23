@@ -36,6 +36,8 @@ module Material_module
     character(len=MAXWORDLENGTH) :: soil_compressibility_function
     PetscReal :: soil_compressibility
     PetscReal :: soil_reference_pressure
+    character(len=MAXWORDLENGTH) :: compressibility_dataset_name
+    class(dataset_common_hdf5_type), pointer :: compressibility_dataset
 
     ! ice properties
     PetscReal :: thermal_conductivity_frozen
@@ -80,27 +82,6 @@ module Material_module
     type(material_property_type), pointer :: ptr
   end type material_property_ptr_type
   
-  ! procedure pointer declarations
-  procedure(MaterialCompressSoilDummy), pointer :: &
-    MaterialCompressSoilPtr => null()
- 
-  ! interface blocks
-  interface
-    subroutine MaterialCompressSoilDummy(auxvar,pressure,compressed_porosity, &
-                                         dcompressed_porosity_dp)
-    use Material_Aux_class
-    implicit none
-    class(material_auxvar_type), intent(in) :: auxvar
-    PetscReal, intent(in) :: pressure
-    PetscReal, intent(out) :: compressed_porosity
-    PetscReal, intent(out) :: dcompressed_porosity_dp
-    end subroutine MaterialCompressSoilDummy
-  end interface 
-  
-  interface MaterialCompressSoil
-    procedure MaterialCompressSoilPtr
-  end interface
-  
   public :: MaterialPropertyCreate, &
             MaterialPropertyDestroy, &
             MaterialPropertyAddToList, &
@@ -112,12 +93,12 @@ module Material_module
             MaterialSetAuxVarVecLoc, &
             MaterialGetAuxVarVecLoc, &
             MaterialAuxVarCommunicate, &
-            MaterialCompressSoil, &
             MaterialPropertyRead, &
             MaterialInitAuxIndices, &
             MaterialAssignPropertyToAux, &
             MaterialSetup, &
             MaterialUpdateAuxVars, &
+            MaterialStoreAuxVars, &
             MaterialWeightAuxVars, &
             MaterialGetMaxExternalID, &
             MaterialCreateIntToExtMapping, &
@@ -146,38 +127,40 @@ function MaterialPropertyCreate()
   material_property%external_id = 0
   material_property%internal_id = 0
   material_property%name = ''
-  ! initialize to -999.d0 to catch bugs
-  material_property%permeability = -999.d0
+  ! initialize to UNINITIALIZED_DOUBLE to catch bugs
+  material_property%permeability = UNINITIALIZED_DOUBLE
   material_property%isotropic_permeability = PETSC_TRUE
   material_property%vertical_anisotropy_ratio = 0.d0
   material_property%permeability_scaling_factor = 0.d0
-  material_property%permeability_pwr = 0.d0
+  material_property%permeability_pwr = 1.d0
   material_property%permeability_crit_por = 0.d0
   material_property%permeability_min_scale_fac = 1.d0
   material_property%permeability_dataset_name = ''
   nullify(material_property%permeability_dataset)
-  ! initialize to -999.d0 to catch bugs
-  material_property%porosity = -999.d0
+  ! initialize to UNINITIALIZED_DOUBLE to catch bugs
+  material_property%porosity = UNINITIALIZED_DOUBLE
   material_property%porosity_dataset_name = ''
   nullify(material_property%porosity_dataset)
   material_property%tortuosity = 1.d0
   material_property%tortuosity_pwr = 0.d0
   material_property%saturation_function_id = 0
   material_property%saturation_function_name = ''
-  material_property%rock_density = -999.d0
-  material_property%specific_heat = -999.d0
-  material_property%thermal_conductivity_dry = -999.d0
-  material_property%thermal_conductivity_wet = -999.d0
+  material_property%rock_density = UNINITIALIZED_DOUBLE
+  material_property%specific_heat = UNINITIALIZED_DOUBLE
+  material_property%thermal_conductivity_dry = UNINITIALIZED_DOUBLE
+  material_property%thermal_conductivity_wet = UNINITIALIZED_DOUBLE
   material_property%alpha = 0.45d0
 
   material_property%soil_compressibility_function = ''
-  material_property%soil_compressibility = -999.d0
-  material_property%soil_reference_pressure = -999.d0
+  material_property%soil_compressibility = UNINITIALIZED_DOUBLE
+  material_property%soil_reference_pressure = UNINITIALIZED_DOUBLE
+  material_property%compressibility_dataset_name = ''
+  nullify(material_property%compressibility_dataset)
 
   material_property%thermal_conductivity_frozen = 0.d0
   material_property%alpha_fr = 0.95d0
 
-  material_property%pore_compressibility = -999.d0
+  material_property%pore_compressibility = UNINITIALIZED_DOUBLE
   material_property%thermal_expansitivity = 0.d0  
   material_property%dispersivity = 0.d0
   material_property%min_pressure = 0.d0
@@ -233,6 +216,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
   PetscInt :: length
   PetscBool :: therm_k_frz
   PetscBool :: therm_k_exp_frz
+  PetscReal :: tempreal
 
   therm_k_frz = PETSC_FALSE
   therm_k_exp_frz = PETSC_FALSE
@@ -256,7 +240,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
       case('ID') 
         call InputReadInt(input,option,material_property%external_id)
         call InputErrorMsg(input,option,'id','MATERIAL_PROPERTY')
-      case('SATURATION_FUNCTION') 
+      case('SATURATION_FUNCTION','CHARACTERISTIC_CURVES') 
         call InputReadWord(input,option, &
                            material_property%saturation_function_name, &
                            PETSC_TRUE)
@@ -316,10 +300,27 @@ subroutine MaterialPropertyRead(material_property,input,option)
         call InputErrorMsg(input,option,'soil compressibility function', &
                            'MATERIAL_PROPERTY')
       case('SOIL_COMPRESSIBILITY') 
-        call InputReadDouble(input,option, &
-                             material_property%soil_compressibility)
-        call InputErrorMsg(input,option,'soil compressibility', &
-                           'MATERIAL_PROPERTY')
+ !       call InputReadDouble(input,option, &
+ !                            material_property%soil_compressibility)
+ !       call InputErrorMsg(input,option,'soil compressibility', &
+ !                          'MATERIAL_PROPERTY')
+        buffer_save = input%buf
+        call InputReadNChars(input,option,string,MAXSTRINGLENGTH,PETSC_TRUE)
+        call InputErrorMsg(input,option,'soil compressibility','MATERIAL_PROPERTY')
+        call StringToUpper(string)
+        if (StringCompare(string,'DATASET',SEVEN_INTEGER)) then
+          call InputReadNChars(input,option, &
+                               material_property%compressibility_dataset_name,&
+                               MAXWORDLENGTH,PETSC_TRUE)
+          call InputErrorMsg(input,option,'DATASET,NAME', &
+                             'MATERIAL_PROPERTY,SOIL_COMPRESSIBILITY')   
+        else
+          input%buf = buffer_save
+          call InputReadDouble(input,option, &
+                               material_property%soil_compressibility)
+          call InputErrorMsg(input,option,'soil compressibility', &
+                             'MATERIAL_PROPERTY')
+        endif
       case('SOIL_REFERENCE_PRESSURE') 
         call InputReadDouble(input,option, &
                              material_property%soil_reference_pressure)
@@ -392,6 +393,21 @@ subroutine MaterialPropertyRead(material_property,input,option)
                                    material_property%permeability(3,3))
               call InputErrorMsg(input,option,'z permeability', &
                                  'MATERIAL_PROPERTY,PERMEABILITY')
+            case('PERM_X_LOG10')
+              call InputReadDouble(input,option, tempreal)
+              call InputErrorMsg(input,option,'log10 x permeability', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
+              material_property%permeability(1,1) = 10.d0**tempreal
+            case('PERM_Y_LOG10')
+              call InputReadDouble(input,option, tempreal)
+              call InputErrorMsg(input,option,'log10 y permeability', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
+              material_property%permeability(2,2) = 10.d0**tempreal
+            case('PERM_Z_LOG10')
+              call InputReadDouble(input,option, tempreal)
+              call InputErrorMsg(input,option,'log10 z permeability', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
+              material_property%permeability(3,3) = 10.d0**tempreal
             case('PERM_XZ')
               call InputReadDouble(input,option, &
                                    material_property%permeability(1,3))
@@ -407,6 +423,28 @@ subroutine MaterialPropertyRead(material_property,input,option)
                                    material_property%permeability(2,3))
               call InputErrorMsg(input,option,'yz permeability', &
                                  'MATERIAL_PROPERTY,PERMEABILITY')
+            case('PERM_XZ_LOG10')
+              call InputReadDouble(input,option, tempreal)
+              call InputErrorMsg(input,option,'log10 xz permeability', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
+              material_property%permeability(1,3) = 10.d0**tempreal
+            case('PERM_XY_LOG10')
+              call InputReadDouble(input,option, tempreal)
+              call InputErrorMsg(input,option,'log10 xy permeability', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
+              material_property%permeability(1,2) = 10.d0**tempreal
+            case('PERM_YZ_LOG10')
+              call InputReadDouble(input,option, tempreal)
+              call InputErrorMsg(input,option,'log10 yz permeability', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
+              material_property%permeability(2,3) = 10.d0**tempreal
+            case('PERM_ISO_LOG10')
+              call InputReadDouble(input,option, tempreal)
+              call InputErrorMsg(input,option,'log10 isotropic permeability', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
+              material_property%permeability(1,1) = 10.d0**tempreal
+              material_property%permeability(2,2) = 10.d0**tempreal
+              material_property%permeability(3,3) = 10.d0**tempreal
             case('PERM_ISO')
               call InputReadDouble(input,option, &
                                    material_property%permeability(1,1))
@@ -480,11 +518,11 @@ subroutine MaterialPropertyRead(material_property,input,option)
         call InputReadDouble(input,option, &
                              material_property%permeability_pwr)
         call InputErrorMsg(input,option,'permeability power','MATERIAL_PROPERTY')
-      case('PERMEABILITY_CRIT_POROSITY')
+      case('PERMEABILITY_CRITICAL_POROSITY')
         call InputReadDouble(input,option, &
                              material_property%permeability_crit_por)
         call InputErrorMsg(input,option,'permeability critical porosity','MATERIAL_PROPERTY')
-      case('PERMEABILITY_MIN_SCALE_FAC')
+      case('PERMEABILITY_MIN_SCALE_FACTOR')
         call InputReadDouble(input,option, &
                              material_property%permeability_min_scale_fac)
         call InputErrorMsg(input,option,'permeability min scale factor','MATERIAL_PROPERTY')
@@ -632,18 +670,31 @@ subroutine MaterialPropertyRead(material_property,input,option)
   endif
 
   if (len(trim(material_property%soil_compressibility_function)) > 0) then
-    if (material_property%soil_compressibility<-998.d0) then
+    option%flow%transient_porosity = PETSC_TRUE
+    if (Uninitialized(material_property%soil_compressibility) .and. &
+         (material_property%compressibility_dataset_name == '')) then
       option%io_buffer = 'SOIL_COMPRESSIBILITY_FUNCTION is specified in ' // &
         'inputdeck for MATERIAL_PROPERTY card, but SOIL_COMPRESSIBILITY ' // &
         'is not defined.'
       call printErrMsg(option)
     endif
-    if (material_property%soil_reference_pressure<-998.d0) then
+    if (Uninitialized(material_property%soil_reference_pressure)) then
       option%io_buffer = 'SOIL_COMPRESSIBILITY_FUNCTION is specified in ' // &
         'inputdeck for MATERIAL_PROPERTY card, but SOIL_REFERENCE_PRESSURE ' // &
         'is not defined.'
       call printErrMsg(option)
     endif
+  endif
+
+  ! material id must be > 0
+  if (material_property%external_id <= 0) then
+    write(word,*) material_property%external_id
+    option%io_buffer = 'Material ID in MATERIAL_PROPERTY "' // &
+      trim(material_property%name) // '" must be > 0 (' // &
+      trim(adjustl(word)) // '). If you would like to inactivate a ' // &
+      'material, please do so by adding INACTIVE to the STRATA to which ' // &
+      'the MATERIAL_PROPERTY is coupled.'
+    call printErrMsg(option)
   endif
 
 end subroutine MaterialPropertyRead
@@ -760,7 +811,7 @@ subroutine MaterialPropConvertListToArray(list,array,option)
     cur_material_property => cur_material_property%next
   enddo
   
-  if(associated(array)) deallocate(array)
+  if (associated(array)) deallocate(array)
   allocate(array(max_internal_id))
   do i = 1, max_internal_id
     nullify(array(i)%ptr)
@@ -843,7 +894,7 @@ function MaterialGetMaxExternalID(material_property_array)
   
   PetscInt :: i
 
-  MaterialGetMaxExternalID = -999
+  MaterialGetMaxExternalID = UNINITIALIZED_INTEGER
   do i = 1, size(material_property_array)
     MaterialGetMaxExternalID = max(MaterialGetMaxExternalID, &
                                   (material_property_array(i)%ptr%external_id))
@@ -867,8 +918,9 @@ subroutine MaterialCreateIntToExtMapping(material_property_array,mapping)
 
   PetscInt :: i
   
-  allocate(mapping(size(material_property_array)))
-  mapping = -999
+  allocate(mapping(0:size(material_property_array)))
+  mapping = UNINITIALIZED_INTEGER
+  mapping(0) = 0
   
   do i = 1, size(material_property_array)
     mapping(material_property_array(i)%ptr%internal_id) = &
@@ -894,8 +946,9 @@ subroutine MaterialCreateExtToIntMapping(material_property_array,mapping)
   
   PetscInt :: i
   
-  allocate(mapping(MaterialGetMaxExternalID(material_property_array)))
+  allocate(mapping(0:MaterialGetMaxExternalID(material_property_array)))
   mapping = -888
+  mapping(0) = 0
   
   do i = 1, size(material_property_array)
     mapping(material_property_array(i)%ptr%external_id) = &
@@ -915,14 +968,14 @@ subroutine MaterialApplyMapping(mapping,array)
   ! 
   implicit none
   
-  PetscInt :: mapping(:)
+  PetscInt :: mapping(0:)
   PetscInt :: array(:)
 
   PetscInt :: i
   PetscInt :: mapping_size
   PetscInt :: mapped_id
 
-  mapping_size = size(mapping)
+  mapping_size = size(mapping)-1 ! subtract 1 for 0 index
   do i = 1, size(array)
     if (array(i) <= mapping_size) then
       mapped_id = mapping(array(i))
@@ -940,7 +993,7 @@ end subroutine MaterialApplyMapping
 ! ************************************************************************** !
 
 subroutine MaterialSetup(material_parameter, material_property_array, &
-                         saturation_function_array, option)
+                         characteristic_curves_array, option)
   ! 
   ! Creates arrays for material parameter object
   ! 
@@ -948,37 +1001,36 @@ subroutine MaterialSetup(material_parameter, material_property_array, &
   ! Date: 02/05/14
   !
   use Option_module
-  use Saturation_Function_module
+  use Characteristic_Curves_module
   
   implicit none
   
   type(material_parameter_type) :: material_parameter
   type(material_property_ptr_type) :: material_property_array(:)
-  type(saturation_function_ptr_type) :: saturation_function_array(:)
+  type(characteristic_curves_ptr_type) :: characteristic_curves_array(:)
   type(option_type), pointer :: option
   
-  PetscInt :: num_sat_func
+  PetscInt :: num_characteristic_curves
   PetscInt :: num_mat_prop
   PetscInt :: i
   
   num_mat_prop = size(material_property_array)
-  num_sat_func = size(saturation_function_array)
+  num_characteristic_curves = size(characteristic_curves_array)
   
   allocate(material_parameter%soil_residual_saturation(option%nphase, &
-                                                       num_sat_func))
-  material_parameter%soil_residual_saturation = -999.d0
-  do i = 1, num_sat_func
-    if (associated(saturation_function_array(i)%ptr)) then
-      material_parameter%soil_residual_saturation(:, &
-                         saturation_function_array(i)%ptr%id) = &
-        saturation_function_array(i)%ptr%Sr(:)
+                                                   num_characteristic_curves))
+  material_parameter%soil_residual_saturation = UNINITIALIZED_DOUBLE
+  do i = 1, num_characteristic_curves
+    if (associated(characteristic_curves_array(i)%ptr)) then
+      material_parameter%soil_residual_saturation(:,i) = &
+        CharCurvesGetGetResidualSats(characteristic_curves_array(i)%ptr,option)
     endif
   enddo
 
   allocate(material_parameter%soil_heat_capacity(num_mat_prop))
   allocate(material_parameter%soil_thermal_conductivity(2,num_mat_prop))
-  material_parameter%soil_heat_capacity = -999.d0
-  material_parameter%soil_thermal_conductivity = -999.d0
+  material_parameter%soil_heat_capacity = UNINITIALIZED_DOUBLE
+  material_parameter%soil_thermal_conductivity = UNINITIALIZED_DOUBLE
   do i = 1, num_mat_prop
     if (associated(material_property_array(i)%ptr)) then
       ! kg rock/m^3 rock * J/kg rock-K * 1.e-6 MJ/J
@@ -1171,14 +1223,15 @@ subroutine MaterialInitAuxIndices(material_property_ptrs,option)
         'same soil compressibility function.'
       call printErrMsg(option)
     endif
-    if (material_property_ptrs(i)%ptr%soil_compressibility > -998.d0) then
+    if (Initialized(material_property_ptrs(i)%ptr%soil_compressibility) .or. &
+        associated(material_property_ptrs(i)%ptr%compressibility_dataset)) then
       if (soil_compressibility_index == 0) then
         icount = icount + 1
         soil_compressibility_index = icount
       endif
       num_soil_compress = num_soil_compress + 1
     endif
-    if (material_property_ptrs(i)%ptr%soil_reference_pressure > -998.d0) then
+    if (Initialized(material_property_ptrs(i)%ptr%soil_reference_pressure)) then
       if (soil_reference_pressure_index == 0) then
         icount = icount + 1
         soil_reference_pressure_index = icount
@@ -1243,7 +1296,7 @@ subroutine MaterialAssignPropertyToAux(material_auxvar,material_property, &
   type(material_property_type) :: material_property
   type(option_type) :: option
 
-  if (material_property%rock_density > -998.d0) then
+  if (Initialized(material_property%rock_density)) then
     material_auxvar%soil_particle_density = &
       material_property%rock_density
   endif
@@ -1365,28 +1418,24 @@ subroutine MaterialSetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
   call VecGetArrayReadF90(vec_loc,vec_loc_p,ierr);CHKERRQ(ierr)
   
   select case(ivar)
+    case(SOIL_COMPRESSIBILITY)
+      do ghosted_id=1, Material%num_aux
+        Material%auxvars(ghosted_id)% &
+          soil_properties(soil_compressibility_index) = vec_loc_p(ghosted_id)
+      enddo      
     case(VOLUME)
       do ghosted_id=1, Material%num_aux
         Material%auxvars(ghosted_id)%volume = vec_loc_p(ghosted_id)
       enddo
     case(POROSITY)
-!      do ghosted_id=1, Material%num_aux
-!        Material%auxvars(ghosted_id)%porosity = vec_loc_p(ghosted_id)
-!      enddo
       select case(isubvar)
-        case(TIME_T)
-          do ghosted_id=1, Material%num_aux
-            Material%auxvars(ghosted_id)%porosity_store(TIME_T) = &
-              vec_loc_p(ghosted_id)
-          enddo
-        case(TIME_TpDT)
-          do ghosted_id=1, Material%num_aux
-            Material%auxvars(ghosted_id)%porosity_store(TIME_TpDT) = &
-              vec_loc_p(ghosted_id)
-          enddo
-        case default
+        case(POROSITY_CURRENT)
           do ghosted_id=1, Material%num_aux
             Material%auxvars(ghosted_id)%porosity = vec_loc_p(ghosted_id)
+          enddo
+        case(POROSITY_MINERAL)
+          do ghosted_id=1, Material%num_aux
+            Material%auxvars(ghosted_id)%porosity_base = vec_loc_p(ghosted_id)
           enddo
       end select
     case(TORTUOSITY)
@@ -1462,14 +1511,27 @@ subroutine MaterialGetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
   call VecGetArrayReadF90(vec_loc,vec_loc_p,ierr);CHKERRQ(ierr)
   
   select case(ivar)
+    case(SOIL_COMPRESSIBILITY)
+      do ghosted_id=1, Material%num_aux
+        vec_loc_p(ghosted_id) = Material%auxvars(ghosted_id)% &
+                                   soil_properties(soil_compressibility_index)
+      enddo
     case(VOLUME)
       do ghosted_id=1, Material%num_aux
         vec_loc_p(ghosted_id) = Material%auxvars(ghosted_id)%volume
       enddo
     case(POROSITY)
-      do ghosted_id=1, Material%num_aux
-        vec_loc_p(ghosted_id) = Material%auxvars(ghosted_id)%porosity
-      enddo
+      select case(isubvar)
+        case(POROSITY_CURRENT)
+          do ghosted_id=1, Material%num_aux
+            vec_loc_p(ghosted_id) = &
+              Material%auxvars(ghosted_id)%porosity
+          enddo
+        case(POROSITY_MINERAL)
+          do ghosted_id=1, Material%num_aux
+            vec_loc_p(ghosted_id) = Material%auxvars(ghosted_id)%porosity_base
+          enddo
+      end select
     case(TORTUOSITY)
       do ghosted_id=1, Material%num_aux
         vec_loc_p(ghosted_id) = Material%auxvars(ghosted_id)%tortuosity
@@ -1512,7 +1574,7 @@ end subroutine MaterialGetAuxVarVecLoc
 
 ! ************************************************************************** !
 
-subroutine MaterialWeightAuxVars(Material,weight)
+subroutine MaterialWeightAuxVars(Material,weight,field,comm1)
   ! 
   ! Updates the porosities in auxiliary variables associated with 
   ! reactive transport
@@ -1522,28 +1584,62 @@ subroutine MaterialWeightAuxVars(Material,weight)
   ! 
 
   use Option_module
+  use Field_module
+  use Communicator_Base_module
+  use Variables_module, only : POROSITY
   
   implicit none
 
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
   type(material_type) :: Material
+  type(field_type) :: field
   PetscReal :: weight
+  class(communicator_type) :: comm1
   
-  class(material_auxvar_type), pointer :: material_auxvars(:)
-  PetscInt :: ghosted_id
+  PetscErrorCode :: ierr
   
 !  material_auxvars => Material%auxvars
 !geh: can't use this pointer as gfortran does not like it.  Must use
 !     Material%auxvars%....
-
-  do ghosted_id = 1, Material%num_aux
-    ! interpolate porosity based on weight
-    Material%auxvars(ghosted_id)%porosity = &
-      (weight*Material%auxvars(ghosted_id)%porosity_store(TIME_TpDT)+ &
-       (1.d0-weight)*Material%auxvars(ghosted_id)%porosity_store(TIME_T))
-  enddo
+  call VecCopy(field%porosity_t,field%work,ierr)
+  call VecAXPBY(field%work,weight,1.d0-weight, &
+                field%porosity_tpdt,ierr);CHKERRQ(ierr)
+  call comm1%GlobalToLocal(field%work,field%work_loc)
+  call MaterialSetAuxVarVecLoc(Material,field%work_loc,POROSITY, &
+                               POROSITY_CURRENT)
   
- end subroutine MaterialWeightAuxVars
+end subroutine MaterialWeightAuxVars
  
+! ************************************************************************** !
+
+subroutine MaterialStoreAuxVars(Material,time)
+  ! 
+  ! Moves material properties from TIME_TpDT -> TIME_T in storage arrays
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/30/14
+  ! 
+
+  use Option_module
+
+  implicit none
+
+  type(material_type) :: Material
+  PetscReal :: time
+  
+  PetscInt :: ghosted_id
+  
+  Material%time_t = time
+  
+  do ghosted_id=1, Material%num_aux
+!    Material%auxvars(ghosted_id)%porosity_store(TIME_T) = &
+!      Material%auxvars(ghosted_id)%porosity_store(TIME_TpDT)
+  enddo
+
+end subroutine MaterialStoreAuxVars
+
 ! ************************************************************************** !
 
 subroutine MaterialUpdateAuxVars(Material,comm1,vec_loc,time_level,time)
@@ -1576,12 +1672,14 @@ subroutine MaterialUpdateAuxVars(Material,comm1,vec_loc,time_level,time)
       Material%time_tpdt = time
   end select  
   
+  print *, 'MaterialUpdateAuxVars not implemented.'
+  stop
   ! porosity
-  call MaterialGetAuxVarVecLoc(Material,vec_loc,POROSITY,ZERO_INTEGER)
-  call comm1%LocalToLocal(vec_loc,vec_loc)
+!  call MaterialGetAuxVarVecLoc(Material,vec_loc,POROSITY,ZERO_INTEGER)
+!  call comm1%LocalToLocal(vec_loc,vec_loc)
   ! note that 'time_level' is not ZERO_INTEGER.  thus, this differs
   ! from MaterialAuxVarCommunicate.
-  call MaterialSetAuxVarVecLoc(Material,vec_loc,POROSITY,time_level)
+!  call MaterialSetAuxVarVecLoc(Material,vec_loc,POROSITY,time_level)
 
 end subroutine MaterialUpdateAuxVars
 
@@ -1662,68 +1760,6 @@ end subroutine MaterialUpdatePorosity
   
 ! ************************************************************************** !
 
-subroutine MaterialCompressSoilLeijnse(auxvar,pressure, &
-                                       compressed_porosity, &
-                                       dcompressed_porosity_dp)
-  ! 
-  ! Calculates soil matrix compression based on Leijnse, 1992.
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 01/14/14
-  ! 
-
-  implicit none
-
-  class(material_auxvar_type), intent(in) :: auxvar
-  PetscReal, intent(in) :: pressure
-  PetscReal, intent(out) :: compressed_porosity
-  PetscReal, intent(out) :: dcompressed_porosity_dp
-  
-  PetscReal :: compressibility
-  PetscReal :: compression
-  PetscReal :: tempreal
-  
-  compressibility = auxvar%soil_properties(soil_compressibility_index)
-  compression = &
-    exp(-1.d0 * compressibility * &
-        (pressure - auxvar%soil_properties(soil_reference_pressure_index)))
-  tempreal = (1.d0 - auxvar%porosity) * compression
-  compressed_porosity = 1.d0 - tempreal
-  dcompressed_porosity_dp = tempreal * compressibility
-  
-end subroutine MaterialCompressSoilLeijnse
-
-! ************************************************************************** !
-
-subroutine MaterialCompressSoilBRAGFLO(auxvar,pressure, &
-                                       compressed_porosity, &
-                                       dcompressed_porosity_dp)
-  ! 
-  ! Calculates soil matrix compression based on Eq. 9.6.9 of BRAGFLO
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 01/14/14
-  ! 
-
-  implicit none
-
-  class(material_auxvar_type), intent(in) :: auxvar
-  PetscReal, intent(in) :: pressure
-  PetscReal, intent(out) :: compressed_porosity
-  PetscReal, intent(out) :: dcompressed_porosity_dp
-  
-  PetscReal :: compressibility
-  
-  compressibility = auxvar%soil_properties(soil_compressibility_index)
-  compressed_porosity = auxvar%porosity * &
-    exp(compressibility * &
-        (pressure - auxvar%soil_properties(soil_reference_pressure_index)))
-  dcompressed_porosity_dp = compressibility * compressed_porosity
-  
-end subroutine MaterialCompressSoilBRAGFLO
-
-! ************************************************************************** !
-
 recursive subroutine MaterialPropertyDestroy(material_property)
   ! 
   ! Destroys a material_property
@@ -1743,6 +1779,7 @@ recursive subroutine MaterialPropertyDestroy(material_property)
   ! simply nullify since the datasets reside in a list within realization
   nullify(material_property%permeability_dataset)
   nullify(material_property%porosity_dataset)
+  nullify(material_property%compressibility_dataset)
     
   deallocate(material_property)
   nullify(material_property)

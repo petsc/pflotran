@@ -12,17 +12,29 @@ contains
     implicit none
     integer :: sz
     
- 
+    log_file = 'e4d_'//trim(adjustl(pflotran_group_prefix))//'.log'   
+    open(13,file=trim(log_file),action='write',status='replace')
+    close(13)
     
-    if(my_rank>0) then
+    if (my_rank>0) then
        call slave_setup
        return
     end if
  
 !#if 0
-    call read_input   
+    call read_input 
+    if (ios .eq. -1) then
+       call send_command(0)
+       return
+    end if
+
     call send_info
+
     call setup_forward
+    if (ios .eq. -1) then
+       call send_command(0)
+       return
+    end if
   
 !#endif
 !    call send_info_geh
@@ -36,22 +48,61 @@ contains
   subroutine read_input
     implicit none
     
-    integer :: nchar,junk,i,check,j
+    integer :: nchar,junk,i,check,j,nchr,npre,flg,flnum
+    integer :: a,b,m,n
+    real :: ex,ey,ez,eflg,vi,wd,tsig
     real, dimension(4) :: etmp 
     logical :: exst
 
     !get the name of the mesh file
-    open(10,file='e4d.inp',status='old',action='read') 
-    read(10,*) mshfile
-    read(10,*) efile
-    read(10,*) mapfile
+    call elog(0,0,flg)
+    if (flg .ne. 0) then
+       ios = -1
+       return
+    end if
 
+    open(10,file='e4d.inp',status='old',action='read') 
+    read(10,*,IOSTAT=ios) mshfile
+    call elog(1,ios,flg); 
+    if (flg .eq. -1) then
+       ios=-1
+       return
+    end if
+
+    read(10,*,IOSTAT=ios) efile
+    call elog(2,ios,flg); 
+    if (flg .eq. -1) then
+       ios=-1
+       return
+    end if
+
+    read(10,*,IOSTAT=ios) sigfile
+    call elog(3,ios,flg); 
+    if (flg .eq. -1) then
+       ios=-1
+       return
+    end if
+
+    read(10,*,IOSTAT=ios) mapfile
+    call elog(4,ios,flg); 
+    if (flg .eq. -1) then
+       ios=-1
+       return
+    end if
+   
+
+    read(10,*,IOSTAT=ios) list_file
+    call elog(23,ios,flg)
+    if (flg .eq. -1) then
+       ios=-1
+       return
+    end if
     close(10)
 
     !get the number of character is in the prefix
     nchar = 0
     do i=1,40
-       if(mshfile(i:i) == '.') then
+       if (mshfile(i:i) == '.') then
           nchar = i
           exit
        end if
@@ -61,48 +112,225 @@ contains
 
     !!Allocate/read the electrode positions and survey conf
      open(10,file=efile,status='old',action='read')   
-       read(10,*,IOSTAT=ios) ne
-       !if(ios .ne. 0) goto 1007
-       !write(51,*) "NUMBER OF ELECTRODE LOCATIONS = ",ne
+     read(10,*,IOSTAT=ios) ne
+     call elog(5,ios,flg)
+     if (ios .ne. 0) then
+        ios=-1
+        return
+     end if
        
        
-       allocate(e_pos(ne,4))
-       do i=1,ne
-          read(10,*,IOSTAT=ios) junk,etmp
-          !if(ios .ne. 0) goto 1008
-          !if(junk>ne) then
-          !   write(51,*) 'ELECTRODE ',junk,' IS GREATER THAN THE NUMBER OF ELLECTRODES ',ne
-          !   close(51)
-          !   call crash_exit
-          !end if
-          e_pos(junk,1:4)=etmp
+     allocate(e_pos(ne,4))
+     do i=1,ne
+        read(10,*,IOSTAT=ios) junk,etmp
+        if (ios .ne. 0) then
+           call elog(6,i,flg)
+           ios=-1
+           return
+        end if
+        e_pos(junk,1:4)=etmp
+     end do
+     
+     !get the meshfile prefix
+     nchr=len_trim(mshfile)
+     do i=1,nchr
+        if (mshfile(i:i)=='.') then
+           npre=i-1;
+           exit
+        end if
+     end do
+
+     !!translate electrodes
+     call elog(7,npre,flg)
+     if (flg.eq.-1) then
+        ios=-1
+        return
+     end if
+
+     open(21,file=mshfile(1:npre)//".trn",status="old",action="read")
+     read(21,*,IOSTAT=ios) xorig,yorig,zorig
+     if (ios .ne. 0) then
+        call elog(8,ios,flg)
+        ios=-1
+        return
+     end if
+     close(21)
+     e_pos(:,1) = e_pos(:,1)-xorig
+     e_pos(:,2) = e_pos(:,2)-yorig
+     e_pos(:,3) = e_pos(:,3)-zorig
+
+     !!Read in the survey
+     read(10,*,IOSTAT=ios) nm
+     call elog(9,ios,flg)
+     if (ios .ne. 0) then
+        ios = -1
+        return
+     end if
+
+     allocate(s_conf(nm,4))
+     do i=1,nm
+        read(10,*,IOSTAT=ios) junk,s_conf(i,1:4)
+        if (ios.ne.0) then
+           call elog(10,i,flg)
+           ios=-1
+           return
+        end if
+     end do
+     close(10) 
+       
+       !!Read the conductivity file
+       open(10,file=trim(sigfile),status='old',action='read')
+       read(10,*,IOSTAT=ios) j !FF,sw_sig,gw_sig
+       call elog(11,ios,j)
+       if (ios .ne. 0) then
+          ios=-1
+          close(10)
+          return
+       end if
+
+       allocate(base_sigma(j))
+       do i=1,j
+          read(10,*,IOSTAT=ios) base_sigma(i)
+          if (ios .ne. 0) then
+             call elog(12,i,flg)
+             ios=-1
+             close(10)
+             return
+          end if
        end do
-
-       !!translate electrodes
-       open(21,file='trans.txt',status='old')
-       read(21,*,IOSTAT=ios) xorig,yorig,zorig
-       !if(ios .ne. 0) goto 1009
-       close(21)
-       e_pos(:,1) = e_pos(:,1)-xorig
-       e_pos(:,2) = e_pos(:,2)-yorig
-       e_pos(:,3) = e_pos(:,3)-zorig
-
-       !!Read in the survey
-       read(10,*,IOSTAT=ios) nm
-       allocate(s_conf(nm,4))
-       do i=1,nm
-          read(10,*,IOSTAT=ios) junk,s_conf(i,1:4)
-       end do
-       close(10) 
-
+       close(10)
+      
        open(10,file=trim(mapfile),status='old',action='read')
-       read(10,*) nmap
+       read(10,*,IOSTAT=ios) nmap
+       call elog(13,ios,flg)
+       if (flg.ne.0) then
+          ios=-1
+          close(10)
+          return
+       end if
+          
        allocate(map_inds(nmap,2),map(nmap)) 
        do i=1,nmap
-          read(10,*) map_inds(i,:),map(i)
+          read(10,*,IOSTAT=ios) map_inds(i,:),map(i)
+          if (ios .ne. 0) then
+             call elog(14,i,flg)
+             ios=-1
+             close(10)
+             return
+          end if
        end do
        close(10) 
-  
+
+       !!read the list file and all files listed and check for errors
+       open(10,file=trim(list_file),status='old',action='read')
+       read(10,*,IOSTAT=ios) ntime,FF,sw_sig,gw_sig
+       call elog(24,ios,flg)
+       if (flg==-1) then
+          ios=-1
+          close(10)
+          return
+       end if
+       flnum=0
+       do j=1,ntime
+          flnum=flnum+1
+          read(10,*,IOSTAT=ios) e4d_time,csrv_file,ccond_file
+          call elog(25,ios,flnum)
+          if (ios .ne. 0) then
+             ios=-1
+             close(10)
+             return
+          end if
+          call elog(26,ios,flnum)
+          if (flnum .ne. 0) then
+             ios=-1
+             close(10)
+             return
+          end if
+       end do
+          
+!!$          !!check the survey files
+!!$          open(11,file=trim(csrv_file),status='old',action='read')
+!!$          read(11,*,IOSTAT=ios) junk
+!!$          call elog(27,ios,junk)
+!!$          if (ios .ne. 0) then
+!!$             ios=-1
+!!$             close(10)
+!!$             close(11)
+!!$             return
+!!$          end if
+!!$          do i=1,ne
+!!$             read(11,*,IOSTAT=ios) junk,ex,ey,ez,eflg
+!!$             ex=ex-xorig
+!!$             ey=ey-yorig
+!!$             ez=ez-zorig
+!!$             if (ios.ne.0 .or. ex.ne.e_pos(i,1) .or. ey.ne.(e_pos(i,2)) &
+!!$                  .or. ez.ne.e_pos(i,3) .or. eflg.ne.e_pos(i,4)) then
+!!$                write(13,*) e_pos(i,:)
+!!$                write(13,*) ex,ey,ez,eflg
+!!$                call elog(28,i,flg)
+!!$                ios=-1
+!!$                close(10)
+!!$                close(11)
+!!$                return
+!!$             end if
+!!$          end do
+!!$
+!!$          read(11,*,IOSTAT=ios) junk
+!!$          call elog(29,ios,junk)
+!!$          if (ios .ne. 0) then
+!!$             ios=-1
+!!$             close(10)
+!!$             close(11)
+!!$             return
+!!$          end if
+!!$          do i=1,nm
+!!$             read(11,*,IOSTAT=ios) junk,a,b,m,n,vi,wd
+!!$             if (ios.ne.0 .or. a.ne.s_conf(i,1) .or. b.ne.s_conf(i,2) &
+!!$                  .or. m.ne.s_conf(i,3) .or. n.ne.s_conf(i,4)) then
+!!$                call elog(30,i,flg)
+!!$                ios=-1
+!!$                close(10)
+!!$                close(11)
+!!$                return
+!!$             end if
+!!$          end do
+!!$          close(11)
+!!$
+!!$          !!check the conductivity file
+!!$          open(11,file=trim(ccond_file),status='old',action='read')
+!!$          read(11,*,IOSTAT=ios) junk
+!!$          if (ios.ne.0) then
+!!$             call elog(31,flnum,flg)
+!!$             ios=-1
+!!$             close(10)
+!!$             close(11)
+!!$             return
+!!$          end if
+!!$          if (flnum.le.1) then
+!!$             nsig=junk
+!!$          else
+!!$             if (junk .ne. nsig) then
+!!$                call elog(32,junk,flnum)
+!!$                 ios=-1
+!!$                 close(10)
+!!$                 close(11)
+!!$                 return
+!!$              end if
+!!$           end if
+!!$
+!!$           do i=1,nsig
+!!$              read(11,*,IOSTAT=ios) tsig
+!!$              if (ios.ne.0 .or. tsig .le.0) then
+!!$                 call elog(33,i,flg)
+!!$                 ios=-1
+!!$                 close(10)
+!!$                 close(11)
+!!$                 return
+!!$              end if
+!!$           end do
+!!$           close(11)
+!!$        end do
+       
   end subroutine read_input
   !________________________________________________________________
 
@@ -121,7 +349,7 @@ contains
   subroutine setup_forward
     implicit none
     
-    integer :: npre,i,nchr,dim,bflag,ns,itmp
+    integer :: npre,i,nchr,dim,bflag,ns,itmp,ios,flg
     real :: jnk,jnk1 
     integer :: status(MPI_STATUS_SIZE)
     
@@ -132,7 +360,7 @@ contains
     !!Determine the prefix of the tetgen output files
     nchr=len_trim(mshfile)
     do i=1,nchr
-       if(mshfile(i:i)=='.') then
+       if (mshfile(i:i)=='.') then
           npre=i+1;
           exit
        end if
@@ -140,31 +368,69 @@ contains
 
     !!OPEN AND READ THE NODE POSITIONS 
     !!nodes(x,y,z) and nbounds
+    call elog(15,npre,flg)
+    if (flg==-1) then
+       ios=-1
+       return
+    end if
+
     open(10,file=mshfile(1:npre)//".node",status="old",action="read")
-    read(10,*) nnodes,dim,jnk,bflag
+    read(10,*,IOSTAT=ios) nnodes,dim,jnk,bflag
+    if (ios .ne. 0) then
+       call elog(16,ios,flg)
+       ios=-1
+       return
+    end if
   
     allocate(nodes(nnodes,3),nbounds(nnodes))
    
     do i=1,nnodes
-       read(10,*) jnk,nodes(i,1:3),jnk1,nbounds(i)
-       !write(*,*) i,nodes(i,:),nbounds(i)
-       if(nbounds(i)>2) nbounds(i)=7
+       read(10,*,IOSTAT=ios) jnk,nodes(i,1:3),jnk1,nbounds(i)
+       if (ios .ne. 0) then
+          call elog(17,i,flg)
+          ios = -1
+          return
+       end if
+       if (nbounds(i)>2) nbounds(i)=7
     end do
     close(10)
-    write(*,*) 'master',my_rank,nnodes
+
     !!Send the nodes to the slaves
     call MPI_BCAST(nnodes, 1, MPI_INTEGER , 0, E4D_COMM, ierr )
     call MPI_BCAST(nodes, nnodes*3, MPI_REAL , 0, E4D_COMM, ierr )
     call MPI_BCAST(nbounds, nnodes, MPI_INTEGER , 0, E4D_COMM, ierr )
    
     !!Read in the elements and send each slave it's assigned elements
+    call elog(18,npre,flg)
+    if (flg==-1) then
+       ios=-1
+       return
+    end if
+
     open(10,file=mshfile(1:npre)//".ele",status="old",action="read")
-    read(10,*) nelem,dim,jnk
+    read(10,*,IOSTAT=ios) nelem,dim,jnk
+    if (ios .ne. 0) then
+       call elog(19,ios,flg)
+       ios=-1
+       return
+    end if
+!!$    if (nelem .ne. nsig) then
+!!$       call elog(34,nsig,nelem)
+!!$       ios=-1
+!!$       return
+!!$    end if
+
     allocate(elements(nelem,4),zones(nelem))
     do i=1,nelem
-       read(10,*) jnk,elements(i,1:4),zones(i)
+       read(10,*,IOSTAT=ios) jnk,elements(i,1:4),zones(i)
+       if (ios .ne. 0) then
+          call elog(20,i,flg)
+          ios = -1
+          return
+       end if
     end do
     close(10)
+
     call MPI_BCAST(nelem, 1, MPI_INTEGER, 0,E4D_COMM,ierr)
     call MPI_BCAST(elements, nelem*4,MPI_INTEGER,0,E4D_COMM,ierr)
        
@@ -174,6 +440,8 @@ contains
     !get electrode nodes
     call get_electrode_nodes 
  
+    call elog(21,ios,flg)
+    ios=0
   end subroutine setup_forward
   !____________________________________________________________________
 
@@ -189,11 +457,11 @@ contains
     tne = ne  
     neven = ne/(n_rank-1)
     nextra = ne - neven*(n_rank-1)  
-    if(allocated(eind)) deallocate(eind)
+    if (allocated(eind)) deallocate(eind)
     allocate(eind(n_rank-1,2))
     
     !!Build eind
-    if(neven > 0) then
+    if (neven > 0) then
        ce = 1
        do i=1,n_rank-1-nextra
           eind(i,1) = ce
@@ -201,7 +469,7 @@ contains
           ce = ce+neven
        end do
        
-       if(nextra > 0) then
+       if (nextra > 0) then
           do i=n_rank-nextra,n_rank-1    
              eind(i,1) = ce
              eind(i,2) = ce+neven
@@ -232,7 +500,7 @@ contains
     integer :: i
     integer, dimension(1) :: indb
    
-    if(.not.allocated(e_nods)) then
+    if (.not.allocated(e_nods)) then
        allocate (e_nods(tne))
     end if
   
@@ -243,8 +511,8 @@ contains
        
        indb = minloc(dist)
        
-       if(my_rank==1) then
-          if(dist(indb(1)) > 0.1) then
+       if (my_rank==1) then
+          if (dist(indb(1)) > 0.1) then
              !!There should always be a node at all
              !!electrode locations. If not, something is
              !!wrong
@@ -282,18 +550,18 @@ contains
     
     
     !return to main
-    if(command == 0) then
+    if (command == 0) then
        return
 
-    else if(command == 2) then
+    else if (command == 2) then
        call setup_frun
        goto 100
 
-    else if(command == 7) then
+    else if (command == 7) then
        call receive_info
        goto 100
        
-    else if(command == 86) then
+    else if (command == 86) then
        call receive_info_geh
        goto 100
        
@@ -309,7 +577,7 @@ contains
     implicit none
     integer :: i
     
-    if(allocated(s_conf)) deallocate(s_conf)
+    if (allocated(s_conf)) deallocate(s_conf)
     call MPI_BCAST(nm, 1, MPI_INTEGER, 0,E4D_COMM,ierr)
     allocate(s_conf(nm,4))
     call MPI_BCAST(s_conf, 4*nm,MPI_INTEGER,0,E4D_COMM,ierr)
@@ -388,8 +656,8 @@ contains
     
     integer :: i
    
-    if(allocated(eind)) deallocate(eind)
-    if(allocated(e_pos)) deallocate(e_pos)
+    if (allocated(eind)) deallocate(eind)
+    if (allocated(e_pos)) deallocate(e_pos)
     allocate(eind(n_rank-1,2))
     
     call MPI_BCAST(tne, 1, MPI_INTEGER , 0, E4D_COMM, ierr )
@@ -469,7 +737,7 @@ contains
                 !!loop over each pair found thus far (nvals pairs)
                 !!and determine if the pair (rn,cn) is already 
                 !!represeneted
-                if(A_tmp(rn,1) == 0) then
+                if (A_tmp(rn,1) == 0) then
                    nvals = nvals + 1
                    A_tmp(rn,1) = 1
                    A_tmp(rn,2) = nvals
@@ -481,7 +749,7 @@ contains
                 else
                    
                    do l=1,A_tmp(rn,1)
-                      if(cn == A_tmp(rn,2*l+1)) then
+                      if (cn == A_tmp(rn,2*l+1)) then
                          A_map(mcount) = A_tmp(rn,2*l)
                          goto 11
                       end if
@@ -558,7 +826,7 @@ contains
        !!get the volume of this element
        call get_vol (x1,y1,z1,x2,y2,z2,x3,y3,z3,x4,y4,z4,evol)  
    
-       if(evol==0) goto 12
+       if (evol==0) goto 12
        !!build the linear shape function matrix for this element
        atild(1,:) = (/1,1,1,1/)
        atild(2,:) = (/x1,x2,x3,x4/)
@@ -696,7 +964,7 @@ contains
     allocate(sigma(nm))
     nelem = nm
     sigma = 0.d0
-    print *, 'slave:', nm
+    !print *, 'slave:', nm
     
   end subroutine receive_info_geh
   !__________________________________________________________________
@@ -764,8 +1032,11 @@ contains
     if (allocated(poles)) then
       deallocate(poles)
     endif
-    if (allocated(pf_sol)) then
-      deallocate(pf_sol)
+    if (allocated(pf_tracer)) then
+      deallocate(pf_tracer)
+    endif
+    if (allocated(pf_saturation)) then
+      deallocate(pf_saturation)
     endif
     if (allocated(sigma)) then
       deallocate(sigma)

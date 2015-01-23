@@ -460,8 +460,8 @@ end subroutine RegressionCreateMapping
 
 ! ************************************************************************** !
 
-subroutine RegressionOutput(regression,realization,flow_stepper, &
-                            tran_stepper)
+subroutine RegressionOutput(regression,realization,flow_timestepper, &
+                            tran_timestepper)
   !
   ! Prints regression output through the io_rank
   ! 
@@ -483,8 +483,8 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
   type(regression_type), pointer :: regression
   type(realization_type) :: realization
   ! these must be pointers as they can be null
-  class(stepper_BE_type), pointer :: flow_stepper
-  class(stepper_BE_type), pointer :: tran_stepper  
+  class(timestepper_BE_type), pointer :: flow_timestepper
+  class(timestepper_BE_type), pointer :: tran_timestepper  
   
   character(len=MAXSTRINGLENGTH) :: string
   Vec :: global_vec
@@ -775,25 +775,25 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
 103 format(es21.13)
 
   ! timestep, newton iteration, solver iteration output
-  if (associated(flow_stepper)) then
+  if (associated(flow_timestepper)) then
     call VecNorm(realization%field%flow_xx,NORM_2,x_norm,ierr);CHKERRQ(ierr)
     call VecNorm(realization%field%flow_r,NORM_2,r_norm,ierr);CHKERRQ(ierr)
     if (option%myrank == option%io_rank) then
       write(OUTPUT_UNIT,'(''-- SOLUTION: Flow --'')')
       write(OUTPUT_UNIT,'(''   Time (seconds): '',es21.13)') &
-        flow_stepper%cumulative_solver_time
-      write(OUTPUT_UNIT,'(''   Time Steps: '',i12)') flow_stepper%steps
+        flow_timestepper%cumulative_solver_time
+      write(OUTPUT_UNIT,'(''   Time Steps: '',i12)') flow_timestepper%steps
       write(OUTPUT_UNIT,'(''   Newton Iterations: '',i12)') &
-        flow_stepper%cumulative_newton_iterations
+        flow_timestepper%cumulative_newton_iterations
       write(OUTPUT_UNIT,'(''   Solver Iterations: '',i12)') &
-        flow_stepper%cumulative_linear_iterations
+        flow_timestepper%cumulative_linear_iterations
       write(OUTPUT_UNIT,'(''   Time Step Cuts: '',i12)') &
-        flow_stepper%cumulative_time_step_cuts
+        flow_timestepper%cumulative_time_step_cuts
       write(OUTPUT_UNIT,'(''   Solution 2-Norm: '',es21.13)') x_norm
       write(OUTPUT_UNIT,'(''   Residual 2-Norm: '',es21.13)') r_norm
     endif
   endif
-  if (associated(tran_stepper)) then
+  if (associated(tran_timestepper)) then
     call VecNorm(realization%field%tran_xx,NORM_2,x_norm,ierr);CHKERRQ(ierr)
     if (option%transport%reactive_transport_coupling == GLOBAL_IMPLICIT) then
       call VecNorm(realization%field%tran_r,NORM_2,r_norm,ierr);CHKERRQ(ierr)
@@ -801,14 +801,14 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
     if (option%myrank == option%io_rank) then
       write(OUTPUT_UNIT,'(''-- SOLUTION: Transport --'')')
       write(OUTPUT_UNIT,'(''   Time (seconds): '',es21.13)') &
-        tran_stepper%cumulative_solver_time
-      write(OUTPUT_UNIT,'(''   Time Steps: '',i12)') tran_stepper%steps
+        tran_timestepper%cumulative_solver_time
+      write(OUTPUT_UNIT,'(''   Time Steps: '',i12)') tran_timestepper%steps
       write(OUTPUT_UNIT,'(''   Newton Iterations: '',i12)') &
-        tran_stepper%cumulative_newton_iterations
+        tran_timestepper%cumulative_newton_iterations
       write(OUTPUT_UNIT,'(''   Solver Iterations: '',i12)') &
-        tran_stepper%cumulative_linear_iterations
+        tran_timestepper%cumulative_linear_iterations
       write(OUTPUT_UNIT,'(''   Time Step Cuts: '',i12)') &
-        tran_stepper%cumulative_time_step_cuts
+        tran_timestepper%cumulative_time_step_cuts
       write(OUTPUT_UNIT,'(''   Solution 2-Norm: '',es21.13)') x_norm
       if (option%transport%reactive_transport_coupling == GLOBAL_IMPLICIT) then
         write(OUTPUT_UNIT,'(''   Residual 2-Norm: '',es21.13)') r_norm

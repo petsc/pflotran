@@ -81,8 +81,6 @@ subroutine Flash2TimeCut(realization)
   option => realization%option
   field => realization%field
 
-  call VecCopy(field%flow_yy,field%flow_xx,ierr);CHKERRQ(ierr)
-
 end subroutine Flash2TimeCut
 
 ! ************************************************************************** !
@@ -198,16 +196,10 @@ subroutine Flash2SetupPatch(realization)
 !  allocate(Resold_FL(ConnectionGetNumberInList(patch%grid%&
 !           internal_connection_set_list),option%nflowdof))
 
-#ifdef YE_FLUX
-  allocate(patch%internal_fluxes(3,1,ConnectionGetNumberInList(patch%grid%&
-           internal_connection_set_list)))
-  patch%internal_fluxes = 0.d0
-#endif
-
   !print *,' Flash2 setup allocate app array'
    ! count the number of boundary connections and allocate
   ! auxvar data structures for them  
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -510,17 +502,17 @@ end subroutine FLASH2UpdateMassBalancePatch
     if (.not.associated(cur_patch)) exit
     realization%patch => cur_patch
     ipass= Flash2InitGuessCheckPatch(realization)
-    if(ipass<=0)then
+    if (ipass<=0)then
       exit 
     endif
     cur_patch => cur_patch%next
   enddo
 
    call MPI_Barrier(option%mycomm,ierr)
-   if(option%mycommsize >1)then
+   if (option%mycommsize >1)then
       call MPI_Allreduce(ipass,ipass0,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
                          option%mycomm,ierr)
-      if(ipass0 < option%mycommsize) ipass=-1
+      if (ipass0 < option%mycommsize) ipass=-1
    endif
    Flash2InitGuessCheck =ipass
  end function Flash2InitGuessCheck
@@ -594,7 +586,7 @@ subroutine Flash2UpdateReasonPatch(reason,realization)
         endif
      enddo
   
-    !if(re<=0) print *,'Sat out of Region at: ',n,iipha,xx_p(n0+1:n0+3)
+    !if (re<=0) print *,'Sat out of Region at: ',n,iipha,xx_p(n0+1:n0+3)
     call VecRestoreArrayF90(field%flow_xx, xx_p, ierr);CHKERRQ(ierr)
     call VecRestoreArrayF90(field%flow_yy, yy_p, ierr);CHKERRQ(ierr)
 
@@ -639,14 +631,14 @@ subroutine Flash2UpdateReason(reason, realization)
 
   call MPI_Barrier(realization%option%mycomm,ierr)
 !  print *, 'flash reason ', re
-  if(realization%option%mycommsize >1)then
+  if (realization%option%mycommsize >1)then
      call MPI_Allreduce(re,re0,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
                         realization%option%mycomm,ierr)
-     if(re0<realization%option%mycommsize) re=0
+     if (re0<realization%option%mycommsize) re=0
   endif
   reason=re
   
-  if(reason<=0 .and. realization%option%myrank ==0) print *,'Sat or Con out of Region', re
+  if (reason<=0 .and. realization%option%myrank ==0) print *,'Sat or Con out of Region', re
 end subroutine Flash2UpdateReason
 
 ! ************************************************************************** !
@@ -806,7 +798,7 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
     endif
     iend = ghosted_id*option%nflowdof
     istart = iend-option%nflowdof+1
-    if(.not. associated(patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr))then
+    if (.not. associated(patch%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr))then
        print*, 'error!!! saturation function not allocated', ghosted_id,icap_loc_p(ghosted_id)
     endif
     
@@ -817,7 +809,7 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
                        realization%fluid_properties,option)
                       
  ! update global variables
-    if( associated(global_auxvars))then
+    if ( associated(global_auxvars))then
     
       global_auxvars(ghosted_id)%pres(:) = auxvars(ghosted_id)%auxvar_elem(0)%pres -&
                auxvars(ghosted_id)%auxvar_elem(0)%pc(:)
@@ -828,7 +820,7 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
       global_auxvars(ghosted_id)%den_kg(:) = auxvars(ghosted_id)%auxvar_elem(0)%den(:) &
                                           * auxvars(ghosted_id)%auxvar_elem(0)%avgmw(:)
       mnacl= global_auxvars(ghosted_id)%m_nacl(1)
-      if(global_auxvars(ghosted_id)%m_nacl(2) > mnacl) mnacl = global_auxvars(ghosted_id)%m_nacl(2)
+      if (global_auxvars(ghosted_id)%m_nacl(2) > mnacl) mnacl = global_auxvars(ghosted_id)%m_nacl(2)
       ynacl = mnacl/(1.d3/FMWH2O + mnacl)
       global_auxvars(ghosted_id)%xmass(1) = (1.d0-ynacl)&
                               *auxvars(ghosted_id)%auxvar_elem(0)%xmol(1) * FMWH2O&
@@ -847,7 +839,7 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
 
   enddo
 ! print *,'Flash2UpdateAuxVarsPatch: end internal'
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -888,7 +880,7 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
         global_auxvars_bc(sum_connection)%den_kg = auxvars_bc(sum_connection)%auxvar_elem(0)%den(:) &
                               * auxvars_bc(sum_connection)%auxvar_elem(0)%avgmw(:)
         mnacl= global_auxvars_bc(sum_connection)%m_nacl(1)
-        if(global_auxvars_bc(sum_connection)%m_nacl(2)>mnacl) mnacl= global_auxvars_bc(sum_connection)%m_nacl(2)
+        if (global_auxvars_bc(sum_connection)%m_nacl(2)>mnacl) mnacl= global_auxvars_bc(sum_connection)%m_nacl(2)
         ynacl = mnacl/(1.d3/FMWH2O + mnacl)
         global_auxvars_bc(sum_connection)%xmass(1) = (1.d0-ynacl)&
                               *auxvars_bc(sum_connection)%auxvar_elem(0)%xmol(1) * FMWH2O&
@@ -951,9 +943,6 @@ subroutine Flash2UpdateSolution(realization)
 
   PetscErrorCode :: ierr
   
-  call VecCopy(realization%field%flow_xx,realization%field%flow_yy, &
-               ierr);CHKERRQ(ierr)
-
 ! make room for hysteric s-Pc-kr
 
   if (realization%option%compute_mass_balance_new) then
@@ -1107,11 +1096,11 @@ subroutine Flash2Accumulation(auxvar,global_auxvar,por,vol,rock_dencpr,option,ii
         auxvar%den(np) * &
         auxvar%xmol(ispec + (np-1)*option%nflowspec)
     enddo
-! if(option%use_isothermal == PETSC_FALSE) &
+! if (option%use_isothermal == PETSC_FALSE) &
     eng = eng + auxvar%sat(np) * auxvar%den(np) * auxvar%u(np)
   enddo
   mol = mol * porXvol
- ! if(option%use_isothermal == PETSC_FALSE) &
+ ! if (option%use_isothermal == PETSC_FALSE) &
   eng = eng * porXvol + (1.d0 - por)* vol * rock_dencpr * auxvar%temp 
  
 ! Reaction terms here
@@ -1208,7 +1197,7 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype,R
     
       if (msrc(2) > 0.d0) then ! CO2 injection
 !        call printErrMsg(option,"concentration source not yet implemented in Flash2")
-        if(option%co2eos == EOS_SPAN_WAGNER) then
+        if (option%co2eos == EOS_SPAN_WAGNER) then
          !  span-wagner
           rho = auxvar%den(jco2)*FMWCO2  
           select case(option%itable)  
@@ -1232,7 +1221,7 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype,R
           enth_src_co2 = enth_src_co2 * FMWCO2
           qsrc_phase(2) = msrc(2)*rho/FMWCO2
             
-        else if(option%co2eos == EOS_MRK)then
+        else if (option%co2eos == EOS_MRK)then
 ! MRK eos [modified version from  Kerrick and Jacobs (1981) and Weir et al. (1996).]
             call CO2(tsrc,auxvar%pres, rho,fg, xphi,enth_src_co2)
             enth_src_co2 = enth_src_co2*FMWCO2*option%scale
@@ -1259,7 +1248,7 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype,R
 !   4. max pressure: [Pa]
 !   5. min pressure: [Pa]   
 !   6. preferred mass flux of water [kg/s]
-!   7. preferred mass flux of Co2 [kg/s]
+!   7. preferred mass flux of CO2 [kg/s]
 !   8. well diameter, not used now
 !   9. skin factor, not used now
 
@@ -1271,7 +1260,7 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype,R
       well_inj_water = msrc(6)
       well_inj_co2 = msrc(7)
     
-!     if(pressure_min < 0D0) pressure_min = 0D0 !not limited by pressure lower bound   
+!     if (pressure_min < 0D0) pressure_min = 0D0 !not limited by pressure lower bound   
 
     ! production well (well status = -1)
       if (dabs(well_status + 1D0) < 1D-1) then
@@ -1281,7 +1270,7 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype,R
             dphi = auxvar%pres - auxvar%pc(np) - pressure_bh
             if (dphi >= 0.D0) then ! outflow only
               ukvr = auxvar%kvr(np)
-              if(ukvr < 1e-20) ukvr=0D0
+              if (ukvr < 1e-20) ukvr=0D0
               v_darcy = 0D0
               if (ukvr*Dq > floweps) then
                 v_darcy = Dq * ukvr * dphi
@@ -1325,8 +1314,8 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype,R
                 Res(2) = Res(2) + v_darcy* auxvar%den(np)* &
 !                 auxvar%xmol((np-1)*option%nflowspec+2) * option%flow_dt
                   csrc * option%flow_dt
-!               if(energy_flag) Res(3) = Res(3) + v_darcy*auxvar%den(np)*auxvar%h(np)*option%flow_dt
-                if(energy_flag) Res(3) = Res(3) + v_darcy*auxvar%den(np)* &
+!               if (energy_flag) Res(3) = Res(3) + v_darcy*auxvar%den(np)*auxvar%h(np)*option%flow_dt
+                if (energy_flag) Res(3) = Res(3) + v_darcy*auxvar%den(np)* &
                   enth_src_h2o*option%flow_dt
                 
 !               print *,'inject: ',np,v_darcy
@@ -1411,12 +1400,12 @@ subroutine Flash2Flux(auxvar_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
       if (dphi >= 0.D0) then
         ukvr = auxvar_up%kvr(np)
         uxmol(:)=auxvar_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
-           ! if(option%use_isothermal == PETSC_FALSE)&
+           ! if (option%use_isothermal == PETSC_FALSE)&
         uh = auxvar_up%h(np)
       else
         ukvr = auxvar_dn%kvr(np)
         uxmol(:)=auxvar_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
-           ! if(option%use_isothermal == PETSC_FALSE)&
+           ! if (option%use_isothermal == PETSC_FALSE)&
         uh = auxvar_dn%h(np)
       endif
    
@@ -1428,7 +1417,7 @@ subroutine Flash2Flux(auxvar_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
         do ispec = 1, option%nflowspec
           fluxm(ispec) = fluxm(ispec) + q * density_ave * uxmol(ispec)
         enddo
-        ! if(option%use_isothermal == PETSC_FALSE) &
+        ! if (option%use_isothermal == PETSC_FALSE) &
         fluxe = fluxe + q*density_ave*uh
       endif
     endif
@@ -1450,17 +1439,17 @@ subroutine Flash2Flux(auxvar_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   enddo
 
 ! conduction term
-  !if(option%use_isothermal == PETSC_FALSE) then     
+  !if (option%use_isothermal == PETSC_FALSE) then     
   Dk = (Dk_up * Dk_dn) / (dd_dn*Dk_up + dd_up*Dk_dn)
   cond = Dk*area*(auxvar_up%temp-auxvar_dn%temp)
   fluxe=fluxe + cond
  ! end if
 
-  !if(option%use_isothermal)then
+  !if (option%use_isothermal)then
   !   Res(1:option%nflowdof) = fluxm(:) * option%flow_dt
  ! else
   Res(1:option%nflowspec) = fluxm(:) * option%flow_dt
-   ! if(option%use_isothermal == PETSC_FALSE)&
+   ! if (option%use_isothermal == PETSC_FALSE)&
   Res(option%nflowdof) = fluxe * option%flow_dt
  ! end if
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
@@ -1536,12 +1525,12 @@ subroutine Flash2FluxAdv(auxvar_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
       if (dphi >= 0.D0) then
         ukvr = auxvar_up%kvr(np)
         uxmol(:)=auxvar_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
-           ! if(option%use_isothermal == PETSC_FALSE)&
+           ! if (option%use_isothermal == PETSC_FALSE)&
         uh = auxvar_up%h(np)
       else
         ukvr = auxvar_dn%kvr(np)
         uxmol(:)=auxvar_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
-           ! if(option%use_isothermal == PETSC_FALSE)&
+           ! if (option%use_isothermal == PETSC_FALSE)&
         uh = auxvar_dn%h(np)
       endif
    
@@ -1553,14 +1542,14 @@ subroutine Flash2FluxAdv(auxvar_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
         do ispec =1, option%nflowspec
           fluxm(ispec)=fluxm(ispec) + q * density_ave * uxmol(ispec)
         enddo
-        ! if(option%use_isothermal == PETSC_FALSE)&
+        ! if (option%use_isothermal == PETSC_FALSE)&
         fluxe = fluxe + q*density_ave*uh
       endif
     endif
   end do
      
   Res(1:option%nflowspec) = fluxm(:) * option%flow_dt
-!  if(option%use_isothermal == PETSC_FALSE)&
+!  if (option%use_isothermal == PETSC_FALSE)&
   Res(option%nflowdof) = fluxe * option%flow_dt
  ! end if
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
@@ -1626,17 +1615,17 @@ subroutine Flash2FluxDiffusion(auxvar_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_u
   enddo
 
 ! conduction term
-  !if(option%use_isothermal == PETSC_FALSE) then     
+  !if (option%use_isothermal == PETSC_FALSE) then     
   Dk = (Dk_up * Dk_dn) / (dd_dn*Dk_up + dd_up*Dk_dn)
   cond = Dk*area*(auxvar_up%temp-auxvar_dn%temp)
   fluxe=fluxe + cond
  ! end if
 
-  !if(option%use_isothermal)then
+  !if (option%use_isothermal)then
   !   Res(1:option%nflowdof) = fluxm(:) * option%flow_dt
  ! else
   Res(1:option%nflowspec) = fluxm(:) * option%flow_dt
- ! if(option%use_isothermal)    
+ ! if (option%use_isothermal)    
   Res(option%nflowdof) = fluxe * option%flow_dt
  ! end if
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
@@ -1739,18 +1728,18 @@ subroutine Flash2BCFlux(ibndtype,auxvars,auxvar_up,auxvar_dn, &
     uxmol=0.D0
      
     if (v_darcy >= 0.D0) then
-        !if(option%use_isothermal == PETSC_FALSE)&
+        !if (option%use_isothermal == PETSC_FALSE)&
       uh = auxvar_up%h(np)
       uxmol(:)=auxvar_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
     else
-         !if(option%use_isothermal == PETSC_FALSE)&
+         !if (option%use_isothermal == PETSC_FALSE)&
       uh = auxvar_dn%h(np)
       uxmol(:)=auxvar_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
     endif
     do ispec=1, option%nflowspec
       fluxm(ispec) = fluxm(ispec) + q*density_ave * uxmol(ispec)
     end do
-      !if(option%use_isothermal == PETSC_FALSE) &
+      !if (option%use_isothermal == PETSC_FALSE) &
     fluxe = fluxe + q*density_ave*uh
 !     print *,'FLBC', ibndtype(1),np, ukvr, v_darcy, uh, uxmol, density_ave
   enddo
@@ -1777,7 +1766,7 @@ subroutine Flash2BCFlux(ibndtype,auxvars,auxvar_up,auxvar_dn, &
   end select
 #endif
   ! Conduction term
-! if(option%use_isothermal == PETSC_FALSE) then
+! if (option%use_isothermal == PETSC_FALSE) then
   select case(ibndtype(2))
     case(DIRICHLET_BC)
       Dk =  Dk_dn / dd_up
@@ -1889,11 +1878,11 @@ subroutine Flash2BCFluxAdv(ibndtype,auxvars,auxvar_up,auxvar_dn, &
     uxmol=0.D0
      
     if (v_darcy >= 0.D0) then
-        !if(option%use_isothermal == PETSC_FALSE)&
+        !if (option%use_isothermal == PETSC_FALSE)&
       uh = auxvar_up%h(np)
       uxmol(:)=auxvar_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
     else
-         !if(option%use_isothermal == PETSC_FALSE)&
+         !if (option%use_isothermal == PETSC_FALSE)&
       uh = auxvar_dn%h(np)
       uxmol(:)=auxvar_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
     endif
@@ -1901,7 +1890,7 @@ subroutine Flash2BCFluxAdv(ibndtype,auxvars,auxvar_up,auxvar_dn, &
       fluxm(ispec) = fluxm(ispec) + q*density_ave * uxmol(ispec)
     end do
 
-      !if(option%use_isothermal == PETSC_FALSE) &
+      !if (option%use_isothermal == PETSC_FALSE) &
     fluxe = fluxe + q*density_ave*uh
  !print *,'FLBC', ibndtype(1),np, ukvr, v_darcy, uh, uxmol
   enddo
@@ -1968,7 +1957,7 @@ subroutine Flash2BCFluxDiffusion(ibndtype,auxvars,auxvar_up,auxvar_dn, &
      
   end select
 ! Conduction term
-! if(option%use_isothermal == PETSC_FALSE) then
+! if (option%use_isothermal == PETSC_FALSE) then
   select case(ibndtype(2))
   case(DIRICHLET_BC, 4)
     Dk = Dk_dn / dd_up
@@ -2032,7 +2021,7 @@ subroutine Flash2Residual(snes,xx,r,realization,ierr)
 
  ! check initial guess -----------------------------------------------
   ierr = Flash2InitGuessCheck(realization)
-  if(ierr<0)then
+  if (ierr<0)then
     !ierr = PETSC_ERR_ARG_OUTOFRANGE
     if (option%myrank==0) print *,'table out of range: ',ierr
     call SNESSetFunctionDomainError(snes,ierr);CHKERRQ(ierr)
@@ -2168,6 +2157,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
   PetscReal :: distance, fraction_upwind
   PetscReal :: distance_gravity
   PetscReal, pointer :: Resold_AR(:), Resold_FL(:), delx(:)
+  PetscReal :: ss_flow_vol_flux(realization%option%nphase)
   character(len=MAXSTRINGLENGTH) :: string
 
   patch => realization%patch
@@ -2256,7 +2246,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
             auxvars(ng)%auxvar_elem(1:option%nflowdof),global_auxvars(ng),&
             patch%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
             realization%fluid_properties,option)
-!         if(auxvars(ng)%auxvar_elem(option%nflowdof)%sat(2)>1D-8 .and. &
+!         if (auxvars(ng)%auxvar_elem(option%nflowdof)%sat(2)>1D-8 .and. &
 !            auxvars(ng)%auxvar_elem(0)%sat(2)<1D-12)then
 !            print *, 'Flash winc', delx(3,ng)
 !         endif   
@@ -2294,7 +2284,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
 #endif
 #if 1
   ! Source/sink terms -------------------------------------
-  source_sink => patch%source_sinks%first 
+  source_sink => patch%source_sink_list%first 
   sum_connection = 0 
   do 
     if (.not.associated(source_sink)) exit
@@ -2340,9 +2330,14 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
       endif
       call Flash2SourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1,auxvars(ghosted_id)%auxvar_elem(0),&
                             source_sink%flow_condition%itype(1),Res, &
-                            patch%ss_fluid_fluxes(:,sum_connection), &
+                            ss_flow_vol_flux, &
                             enthalpy_flag, option)
- 
+      if (associated(patch%ss_flow_fluxes)) then
+        patch%ss_flow_fluxes(:,sum_connection) = Res(:)/option%flow_dt
+      endif    
+      if (associated(patch%ss_flow_vol_fluxes)) then
+        patch%ss_flow_vol_fluxes(:,sum_connection) = ss_flow_vol_flux(:)/option%flow_dt
+      endif    
       r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o)-Res(jh2o)
       r_p((local_id-1)*option%nflowdof + jco2) = r_p((local_id-1)*option%nflowdof + jco2)-Res(jco2)
       patch%aux%Flash2%Resold_AR(local_id,jh2o)= patch%aux%Flash2%Resold_AR(local_id,jh2o) - Res(jh2o)    
@@ -2360,7 +2355,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
 #endif
 #if 1
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -2450,6 +2445,9 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
       r_p(istart:iend)= r_p(istart:iend) - Res(1:option%nflowdof)
       patch%aux%Flash2%Resold_AR(local_id,1:option%nflowdof) = &
       patch%aux%Flash2%ResOld_AR(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
+      if (associated(patch%boundary_flow_fluxes)) then
+        patch%boundary_flow_fluxes(:,sum_connection) = Res(:)/option%flow_dt
+      endif      
     enddo
     boundary_condition => boundary_condition%next
   enddo
@@ -2532,10 +2530,9 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
         r_p(istart:iend) = r_p(istart:iend) - Res(1:option%nflowdof)
       endif
 
-#ifdef YE_FLUX
-      patch%internal_fluxes(1:option%nflowdof,1,sum_connection) = &
-                                        Res(1:option%nflowdof)
-#endif
+      if (associated(patch%internal_flow_fluxes)) then
+        patch%internal_flow_fluxes(:,sum_connection) = Res(:)/option%flow_dt
+      endif
 
     enddo
     cur_connection_set => cur_connection_set%next
@@ -2547,7 +2544,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
   case(1) 
      r_p(:) = r_p(:)/option%flow_dt
   case(-1)
-     if(option%flow_dt>1.D0) r_p(:) = r_p(:)/option%flow_dt
+     if (option%flow_dt>1.D0) r_p(:) = r_p(:)/option%flow_dt
   end select
   
   do local_id = 1, grid%nlmax
@@ -2556,11 +2553,11 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
     endif
     ghosted_id = grid%nL2G(local_id)
     istart = 1 + (local_id-1)*option%nflowdof
-    if(material_auxvars(ghosted_id)%volume>1.D0) then
+    if (material_auxvars(ghosted_id)%volume>1.D0) then
       r_p (istart:istart+2)=r_p(istart:istart+2) / &
          material_auxvars(ghosted_id)%volume
     endif
-    if(r_p(istart) >1E20 .or. r_p(istart) <-1E20) print *, r_p (istart:istart+2)
+    if (r_p(istart) >1E20 .or. r_p(istart) <-1E20) print *, r_p (istart:istart+2)
 !     print *,'flash res', local_id, r_p (istart:istart+2)
   enddo
 
@@ -2709,7 +2706,7 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
   r_p = 0.d0
  
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -2981,7 +2978,7 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
 #if 1
   ! Pertubations for aux terms --------------------------------
   do ng = 1, grid%ngmax
-    if(grid%nG2L(ng)<0)cycle
+    if (grid%nG2L(ng)<0)cycle
     if (associated(patch%imat)) then
       if (patch%imat(ng) <= 0) cycle
     endif
@@ -2994,7 +2991,7 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
           realization%fluid_properties,option, xphi)
 !    print *,'flash ', xx_loc_p(istart:iend),auxvars(ng)%auxvar_elem(0)%den
 #if 1
-    if(associated(global_auxvars)) then
+    if (associated(global_auxvars)) then
       global_auxvars(ghosted_id)%pres(:)= auxvars(ghosted_id)%auxvar_elem(0)%pres -&
                auxvars(ghosted_id)%auxvar_elem(0)%pc(:)
       global_auxvars(ghosted_id)%temp=auxvars(ghosted_id)%auxvar_elem(0)%temp
@@ -3015,19 +3012,19 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
       delx(1) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
       delx(2) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
  
-      if(xx_loc_p((ng-1)*option%nflowdof+3) <=0.9) then
+      if (xx_loc_p((ng-1)*option%nflowdof+3) <=0.9) then
         delx(3) = dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1 
       else
         delx(3) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1 
       endif
-      if(delx(3) < 1D-8 .and.  delx(3)>=0.D0) delx(3) = 1D-8
-      if(delx(3) >-1D-8 .and.  delx(3)<0.D0) delx(3) =-1D-8
+      if (delx(3) < 1D-8 .and.  delx(3)>=0.D0) delx(3) = 1D-8
+      if (delx(3) >-1D-8 .and.  delx(3)<0.D0) delx(3) =-1D-8
 
            
-      if((delx(3)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0) then
+      if ((delx(3)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0) then
             delx(3) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+3))*1D-4
       endif
-      if((delx(3)+xx_loc_p((ng-1)*option%nflowdof+3))<0.D0) then
+      if ((delx(3)+xx_loc_p((ng-1)*option%nflowdof+3))<0.D0) then
             delx(3) = xx_loc_p((ng-1)*option%nflowdof+3)*1D-4
       endif
 
@@ -3036,7 +3033,7 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
             auxvars(ng)%auxvar_elem(1:option%nflowdof),global_auxvars(ng),&
             patch%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
             realization%fluid_properties,option)
-!         if(auxvars(ng)%auxvar_elem(option%nflowdof)%sat(2)>1D-8 .and. &
+!         if (auxvars(ng)%auxvar_elem(option%nflowdof)%sat(2)>1D-8 .and. &
 !            auxvars(ng)%auxvar_elem(0)%sat(2)<1D-12)then
 !            print *, 'Flash winc', delx(3,ng)
 !         endif   
@@ -3117,6 +3114,7 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
   PetscInt :: sum_connection
   PetscReal :: distance, fraction_upwind
   PetscReal :: distance_gravity
+  PetscReal :: ss_flow_vol_flux(realization%option%nphase)
   
   patch => realization%patch
   grid => patch%grid
@@ -3169,7 +3167,7 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
 
 #if 1
   ! Source/sink terms -------------------------------------
-  source_sink => patch%source_sinks%first
+  source_sink => patch%source_sink_list%first
   sum_connection = 0 
   do 
     if (.not.associated(source_sink)) exit
@@ -3216,12 +3214,18 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
       
       call Flash2SourceSink(msrc,nsrcpara, psrc,tsrc1,hsrc1,csrc1,auxvars(ghosted_id)%auxvar_elem(0),&
                             source_sink%flow_condition%itype(1),Res, &
-                            patch%ss_fluid_fluxes(:,sum_connection), &
+                            ss_flow_vol_flux, &
                             enthalpy_flag, option)
       if (option%compute_mass_balance_new) then
         global_auxvars_ss(sum_connection)%mass_balance_delta(:,1) = &
           global_auxvars_ss(sum_connection)%mass_balance_delta(:,1) - &
           Res(:)/option%flow_dt
+      endif
+      if (associated(patch%ss_flow_fluxes)) then
+        patch%ss_flow_fluxes(:,sum_connection) = Res/option%flow_dt
+      endif
+      if (associated(patch%ss_flow_vol_fluxes)) then
+        patch%ss_flow_vol_fluxes(:,sum_connection) = ss_flow_vol_flux/option%flow_dt
       endif
       r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o)-Res(jh2o)
       r_p((local_id-1)*option%nflowdof + jco2) = r_p((local_id-1)*option%nflowdof + jco2)-Res(jco2)
@@ -3245,7 +3249,7 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
   case(1) 
      r_p(:) = r_p(:)/option%flow_dt
   case(-1)
-     if(option%flow_dt>1.D0) r_p(:) = r_p(:)/option%flow_dt
+     if (option%flow_dt>1.D0) r_p(:) = r_p(:)/option%flow_dt
   end select
   
   do local_id = 1, grid%nlmax
@@ -3254,16 +3258,16 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
      endif
      ghosted_id = grid%nL2G(local_id)
      istart = 1 + (local_id-1)*option%nflowdof
-     if(material_auxvars(ghosted_id)%volume>1.D0) then
+     if (material_auxvars(ghosted_id)%volume>1.D0) then
        r_p (istart:istart+2)=r_p(istart:istart+2) / &
        material_auxvars(ghosted_id)%volume
      endif
-     if(r_p(istart) >1E20 .or. r_p(istart) <-1E20) print *, r_p (istart:istart+2)
+     if (r_p(istart) >1E20 .or. r_p(istart) <-1E20) print *, r_p (istart:istart+2)
 !     print *,'flash res', local_id, r_p (istart:istart+2)
   enddo
 
 ! print *,'finished rp vol scale'
-  if(option%use_isothermal) then
+  if (option%use_isothermal) then
      do local_id = 1, grid%nlmax  ! For each local node do...
         ghosted_id = grid%nL2G(local_id)   ! corresponding ghost index
         if (associated(patch%imat)) then
@@ -3527,7 +3531,7 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,realization,ierr)
 #endif
 #if 1
   ! Source/sink terms -------------------------------------
-  source_sink => patch%source_sinks%first
+  source_sink => patch%source_sink_list%first
   sum_connection = 0 
   do 
     if (.not.associated(source_sink)) exit
@@ -3593,7 +3597,7 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,realization,ierr)
 ! Boundary conditions
 #if 1
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -3695,7 +3699,7 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,realization,ierr)
       do nvar=1, option%nflowdof
         ra(neq,nvar)=(ResInc(local_id,neq,nvar)-patch%aux%Flash2%ResOld_AR(local_id,neq))&
               /patch%aux%Flash2%delx(nvar,ghosted_id)
-        if(max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
+        if (max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
       enddo
     enddo
    
@@ -3703,13 +3707,13 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,realization,ierr)
       case(1) 
         ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
       case(-1)
-        if(option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:) /option%flow_dt
+        if (option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:) /option%flow_dt
     end select
 
     Jup = ra(1:option%nflowdof,1:option%nflowdof)
     if (material_auxvars(ghosted_id)%volume > 1.D0) Jup=Jup / material_auxvars(ghosted_id)%volume
    
-!      if(local_id==1) print *, 'flash jac', volume_p(local_id), ra
+!      if (local_id==1) print *, 'flash jac', volume_p(local_id), ra
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES, &
                                   ierr);CHKERRQ(ierr)
   end do
@@ -3810,7 +3814,7 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,realization,ierr)
       case(1)
         ra = ra / option%flow_dt
       case(-1)
-        if(option%flow_dt > 1)  ra = ra / option%flow_dt
+        if (option%flow_dt > 1)  ra = ra / option%flow_dt
       end select
     
       if (local_id_up > 0) then
@@ -4060,7 +4064,7 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,realization,ierr)
 ! Boundary conditions
 #if 1
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -4105,7 +4109,7 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,realization,ierr)
           delxbc(idof)=0.D0
         case(HYDROSTATIC_BC)
           xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
-          if(idof>=2)then
+          if (idof>=2)then
              xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
              delxbc(idof)=patch%aux%Flash2%delx(idof,ghosted_id)
           endif 
@@ -4161,7 +4165,7 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,realization,ierr)
         do nvar=1, option%nflowdof
            ra(neq,nvar)=(ResInc(local_id,neq,nvar)-patch%aux%Flash2%ResOld_BC(local_id,neq))&
               /patch%aux%Flash2%delx(nvar,ghosted_id)
-           if(max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
+           if (max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
         enddo
      enddo
    
@@ -4169,13 +4173,13 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,realization,ierr)
       case(1) 
         ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
       case(-1)
-        if(option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:) /option%flow_dt
+        if (option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:) /option%flow_dt
     end select
 
      Jup=ra(1:option%nflowdof,1:option%nflowdof)
-     if(material_auxvars(ghosted_id)%volume>1.D0 ) Jup=Jup / material_auxvars(ghosted_id)%volume
+     if (material_auxvars(ghosted_id)%volume>1.D0 ) Jup=Jup / material_auxvars(ghosted_id)%volume
    
-!      if(local_id==1) print *, 'flash jac', volume_p(local_id), ra
+!      if (local_id==1) print *, 'flash jac', volume_p(local_id), ra
      call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES, &
                                    ierr);CHKERRQ(ierr)
   end do
@@ -4280,12 +4284,12 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,realization,ierr)
       case(1)
         ra = ra / option%flow_dt
       case(-1)
-       if(option%flow_dt>1) ra =ra / option%flow_dt
+       if (option%flow_dt>1) ra =ra / option%flow_dt
       end select
     
       if (local_id_up > 0) then
         voltemp=1.D0
-        if(material_auxvars(ghosted_id_up)%volume > 1.D0)then
+        if (material_auxvars(ghosted_id_up)%volume > 1.D0)then
           voltemp = 1.D0/material_auxvars(ghosted_id_up)%volume
         endif
         Jup(:,1:option%nflowdof) = ra(:,1:option%nflowdof)*voltemp !11
@@ -4481,7 +4485,7 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,realization,ierr)
 #endif
 #if 1
   ! Source/sink terms -------------------------------------
-  source_sink => patch%source_sinks%first
+  source_sink => patch%source_sink_list%first
   sum_connection = 0 
   do 
     if (.not.associated(source_sink)) exit
@@ -4558,7 +4562,7 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,realization,ierr)
       do nvar=1, option%nflowdof
         ra(neq,nvar)=(ResInc(local_id,neq,nvar)-patch%aux%Flash2%ResOld_AR(local_id,neq))&
               /patch%aux%Flash2%delx(nvar,ghosted_id)
-        if(max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
+        if (max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
       enddo
     enddo
    
@@ -4566,14 +4570,14 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,realization,ierr)
     case(1)
       ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
     case(-1)
-      if(option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:) /option%flow_dt
+      if (option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:) /option%flow_dt
     end select
 
     Jup=ra(1:option%nflowdof,1:option%nflowdof)
     if (material_auxvars(ghosted_id)%volume > 1.D0) &
       Jup=Jup / material_auxvars(ghosted_id)%volume
    
-!      if(local_id==1) print *, 'flash jac', volume_p(local_id), ra
+!      if (local_id==1) print *, 'flash jac', volume_p(local_id), ra
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES, &
                                   ierr);CHKERRQ(ierr)
   end do

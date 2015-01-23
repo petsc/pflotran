@@ -166,6 +166,14 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
   character(len=MAXSTRINGLENGTH) :: string
   PetscReal :: tempreal
 
+  select case(option%iflowmode)
+    case(G_MODE)
+      option%io_buffer = 'SATURATION_FUNCTION card is no longer ' // &
+        'supported for GENERAL mode.  Please use CHARACTERISTIC_' // &
+        'CURVES card defined on the PFLOTRAN wiki.'
+      call printErrMsg(option)
+  end select
+  
   input%ierr = 0
   do
   
@@ -316,7 +324,7 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
         end select
       case('LAMBDA') 
         call InputReadDouble(input,option,saturation_function%lambda)
-        call InputErrorMsg(input,option,'residual saturation','SATURATION_FUNCTION')
+        call InputErrorMsg(input,option,'lambda','SATURATION_FUNCTION')
         saturation_function%m = saturation_function%lambda
       case('ALPHA') 
         call InputReadDouble(input,option,saturation_function%alpha)
@@ -676,7 +684,7 @@ subroutine SaturatFuncConvertListToArray(list,array,option)
     cur_saturation_function => cur_saturation_function%next
   enddo
   
-  if(associated(array)) deallocate(array)
+  if (associated(array)) deallocate(array)
   allocate(array(count))
   
   count = 0
@@ -1975,7 +1983,7 @@ subroutine SatFuncComputeIceDallAmico(pl, T, &
   PetscReal, parameter :: L_f = 3.34d5         ! in J/kg
   PetscReal, parameter :: k = 1.d6
 
-  T_star_th = 5.d0 ! [K]
+  T_star_th = 5.d-1 ! [K]
 
   s_g = 0.d0
   dsg_dpl = 0.d0
@@ -2237,6 +2245,8 @@ subroutine SatFuncGetGasRelPermFromSat(liquid_saturation, &
 
   PetscReal :: liquid_saturation
   PetscReal :: gas_relative_perm
+  PetscReal :: power, pct_over_pcmax, pc_over_pcmax, pc_log_ratio
+  PetscReal :: pcmax, one_over_alpha, alpha, liq_relative_perm
   type(saturation_function_type) :: saturation_function
   PetscBool :: derivative
   type(option_type) :: option
@@ -2299,7 +2309,19 @@ subroutine SatFuncGetGasRelPermFromSat(liquid_saturation, &
       call printErrMsg(option)
       select case(saturation_function%permeability_function_itype)
         case(BURDINE)
+          gas_relative_perm = Sg  
         case(MUALEM)
+          power = 5.d-1
+          alpha = saturation_function%alpha
+          one_over_alpha = 1.d0/alpha
+          pcmax = saturation_function%pcwmax
+          
+          pct_over_pcmax = one_over_alpha/pcmax
+          pc_over_pcmax = 1.d0-(1.d0-pct_over_pcmax)*S_star
+          pc_log_ratio = log(pc_over_pcmax)/log(pct_over_pcmax)
+          liq_relative_perm = (S_star**power)*(pc_log_ratio**2.d0)
+          
+          gas_relative_perm = Sg**power * liq_relative_perm * S_hat**(-power)
         case default
           option%io_buffer = 'Unknown relative permeabilty function'
           call printErrMsg(option)
@@ -2588,9 +2610,9 @@ subroutine SaturationFunctionVerify(saturation_function,option)
   
   character(len=MAXSTRINGLENGTH) :: string
   PetscReal :: pc, pc_increment, pc_max
-  PetscReal :: sat
+  PetscReal :: sat, dummy_real
   PetscInt :: count, i
-  PetscReal :: x(101), y(101)
+  PetscReal :: x(101), y(101), krl(101), krg(101)
 
   if (.not.(saturation_function%saturation_function_itype == VAN_GENUCHTEN .or.&
             saturation_function%saturation_function_itype == BROOKS_COREY)) then
@@ -2626,9 +2648,13 @@ subroutine SaturationFunctionVerify(saturation_function,option)
   do i = 1, 101
     sat = dble(i-1)*0.01d0
     call SatFuncGetCapillaryPressure(pc,sat,option%reference_temperature, &
-         saturation_function,option)
+                                     saturation_function,option)
     x(i) = sat
     y(i) = pc
+    call SatFuncGetLiqRelPermFromSat(sat,krl(i),dummy_real, &
+                                     saturation_function,1, &
+                                     PETSC_FALSE,option)
+    call SatFuncGetGasRelPermFromSat(sat,krg(i),saturation_function,option)
   enddo  
   count = 101
   
@@ -2638,6 +2664,24 @@ subroutine SaturationFunctionVerify(saturation_function,option)
   write(86,*) '"saturation", "capillary pressure"' 
   do i = 1, count
     write(86,'(2es14.6)') x(i), y(i)
+  enddo
+  close(86)
+  
+  write(string,*) saturation_function%name
+  string = trim(saturation_function%name) // '_krl.dat'
+  open(unit=86,file=string)
+  write(86,*) '"saturation", "liquid relative permeability"' 
+  do i = 1, count
+    write(86,'(2es14.6)') x(i), krl(i)
+  enddo
+  close(86)
+  
+  write(string,*) saturation_function%name
+  string = trim(saturation_function%name) // '_krg.dat'
+  open(unit=86,file=string)
+  write(86,*) '"saturation", "gas relative permeability"' 
+  do i = 1, count
+    write(86,'(2es14.6)') x(i), krg(i)
   enddo
   close(86)
   
