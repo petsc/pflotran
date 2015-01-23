@@ -736,7 +736,6 @@ subroutine UGridDMCreateJacobian(unstructured_grid,ugdm,mat_type,J,option)
 
   PetscInt, allocatable :: d_nnz(:), o_nnz(:)
   PetscInt :: local_id, ineighbor, neighbor_id
-  PetscInt :: aij_row_idx, block_row_idx
   PetscInt :: iconn, id_up, id_dn
   PetscInt :: ndof_local
   PetscErrorCode :: ierr
