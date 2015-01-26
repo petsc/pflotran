@@ -1193,7 +1193,9 @@ function InputCheckExit(input,option)
   if (input%buf(i:i) == '/' .or. &
 !geh: this fails when the keyword starts with END
 !geh      StringCompare(input%buf(i:),'END',THREE_INTEGER)) then
-      StringCompare(input%buf(i:),'END')) then
+      StringCompare(input%buf(i:),'END') .or. &
+      ! to end a block, e.g. END_SUBSURFACE
+      StringStartsWith(input%buf(i:),'END_')) then
     InputCheckExit = PETSC_TRUE
   else
     InputCheckExit = PETSC_FALSE

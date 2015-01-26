@@ -4,6 +4,7 @@ module Simulation_Subsurface_class
   use Regression_module
   use Option_module
   use PMC_Subsurface_class
+  use PMC_Third_Party_class
   use PMC_Base_class
   use Realization_class
 
@@ -20,6 +21,7 @@ module Simulation_Subsurface_class
     class(pmc_subsurface_type), pointer :: flow_process_model_coupler
     ! pointer to reactive transport process model coupler
     class(pmc_subsurface_type), pointer :: rt_process_model_coupler
+    class(pmc_third_party_type), pointer :: misc_process_model_coupler
     ! pointer to realization object shared by flow and reactive transport
     class(realization_type), pointer :: realization 
     ! regression object
@@ -86,6 +88,10 @@ subroutine SubsurfaceSimulationInit(this,option)
   type(option_type), pointer :: option
   
   call SimulationBaseInit(this,option)
+  nullify(this%flow_process_model_coupler)
+  nullify(this%rt_process_model_coupler)
+  nullify(this%misc_process_model_coupler)
+  nullify(this%realization)
   nullify(this%regression)
   
 end subroutine SubsurfaceSimulationInit
