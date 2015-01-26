@@ -779,42 +779,26 @@ subroutine UGridDMCreateJacobian(unstructured_grid,ugdm,mat_type,J,option)
   endif
 
   ndof_local = unstructured_grid%nlmax*ugdm%ndof
-!  if (option%mycommsize > 1) then
-    select case(mat_type)
-      case(MATAIJ)
-        d_nnz = d_nnz*ugdm%ndof
-        o_nnz = o_nnz*ugdm%ndof
-        call MatCreateAIJ(option%mycomm,ndof_local,ndof_local, &
-                          PETSC_DETERMINE,PETSC_DETERMINE, &
-                          PETSC_NULL_INTEGER,d_nnz, &
-                          PETSC_NULL_INTEGER,o_nnz,J,ierr);CHKERRQ(ierr)
-        call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltog, &
-                                        ugdm%mapping_ltog,ierr);CHKERRQ(ierr)
-      case(MATBAIJ)
-        call MatCreateBAIJ(option%mycomm,ugdm%ndof,ndof_local,ndof_local, &
-                           PETSC_DETERMINE,PETSC_DETERMINE, &
-                           PETSC_NULL_INTEGER,d_nnz, &
-                           PETSC_NULL_INTEGER,o_nnz,J,ierr);CHKERRQ(ierr)
-        call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltog, &
-                                        ugdm%mapping_ltog,ierr);CHKERRQ(ierr)
-      case default
-        option%io_buffer = 'MatType not recognized in UGridDMCreateJacobian'
-        call printErrMsg(option)
-    end select
-!  else
-!    select case(mat_type)
-!      case(MATAIJ)
-!        d_nnz = d_nnz*ugdm%ndof
-!        call MatCreateSeqAIJ(option%mycomm,ndof_local,ndof_local, &
-!                             PETSC_NULL_INTEGER,d_nnz,J,ierr)
-!      case(MATBAIJ)
-!        call MatCreateSeqBAIJ(option%mycomm,ugdm%ndof,ndof_local,ndof_local, &
-!                             PETSC_NULL_INTEGER,d_nnz,J,ierr)
-!      case default
-!        option%io_buffer = 'MatType not recognized in UGridDMCreateJacobian'
-!        call printErrMsg(option)
-!    end select
-!  endif
+
+  call MatCreate(option%mycomm,J,ierr); CHKERRQ(ierr)
+  select case(mat_type)
+    case(MATAIJ)
+      call MatSetType(J, MATAIJ, ierr); CHKERRQ(ierr) 
+    case(MATBAIJ)
+      call MatSetType(J, MATBAIJ, ierr); CHKERRQ(ierr) 
+    case default
+      option%io_buffer = 'MatType not recognized in UGridDMCreateJacobian'
+      call printErrMsg(option)
+  end select
+
+  call MatSetSizes(J,ndof_local,ndof_local,PETSC_DETERMINE,PETSC_DETERMINE, &
+                  ierr) ;CHKERRQ(ierr) 
+  call MatXAIJSetPreallocation(J,ugdm%ndof,d_nnz,o_nnz, &
+                               PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+                               ierr); CHKERRQ(ierr)
+
+  call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltog, &
+                                  ugdm%mapping_ltog,ierr);CHKERRQ(ierr)
 
   deallocate(d_nnz)
   deallocate(o_nnz)

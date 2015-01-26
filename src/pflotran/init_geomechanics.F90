@@ -73,6 +73,10 @@ subroutine InitGeomechSetupRealization(simulation)
   call WaypointListFillIn(option,simulation%geomech_realization%waypoint_list)
   call WaypointListRemoveExtraWaypnts(option, &
                                   simulation%geomech_realization%waypoint_list)
+  if (associated(simulation%flow_timestepper)) then
+    simulation%geomech_timestepper%cur_waypoint => simulation% &
+      geomech_realization%waypoint_list%first
+  endif
   call GeomechForceSetup(simulation%geomech_realization)
   call GeomechGlobalSetup(simulation%geomech_realization)
     
@@ -150,11 +154,11 @@ subroutine InitGeomechSetupSolvers(geomech_realization,realization,solver)
 
   call SNESSetFunction(solver%snes,geomech_realization%geomech_field%disp_r, &
                        GeomechForceResidual, &
-                       realization,ierr);CHKERRQ(ierr)
+                       geomech_realization,ierr);CHKERRQ(ierr)
 
   call SNESSetJacobian(solver%snes,solver%J, &
                        solver%Jpre,GeomechForceJacobian, &
-                       realization,ierr);CHKERRQ(ierr)
+                       geomech_realization,ierr);CHKERRQ(ierr)
   ! by default turn off line search
   call SNESGetLineSearch(solver%snes,linesearch, ierr);CHKERRQ(ierr)
   call SNESLineSearchSetType(linesearch,SNESLINESEARCHBASIC, &
