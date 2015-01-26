@@ -37,7 +37,7 @@ module PM_Base_class
     procedure, public :: UpdateTimestep => PMBaseUpdateTimestep
     procedure, public :: InitializeTimestep => PMBaseThisOnly
     procedure, public :: PreSolve => PMBaseThisOnly
-    procedure, public :: Solve => PMBaseThisOnly
+    procedure, public :: Solve => PMBaseThisTimeError
     procedure, public :: PostSolve => PMBaseThisOnly
     procedure, public :: FinalizeTimestep => PMBaseThisOnly
     procedure, public :: AcceptSolution => PMBaseFunctionThisOnly
@@ -178,16 +178,6 @@ end subroutine PMBaseCheckUpdatePost
 
 ! ************************************************************************** !
 
-subroutine PMBasePostSolve(this)
-  implicit none
-  class(pm_base_type) :: this
-  PetscBool :: solution_accepted
-  print *, 'Must extend PMBasePostSolve.'
-  stop
-end subroutine PMBasePostSolve
-
-! ************************************************************************** !
-
 subroutine PMBaseThisOnly(this)
   implicit none
   class(pm_base_type) :: this
@@ -204,6 +194,17 @@ subroutine PMBaseThisTime(this,time)
   print *, 'Must extend PMBaseThisTime.'
   stop
 end subroutine PMBaseThisTime
+
+! ************************************************************************** !
+
+subroutine PMBaseThisTimeError(this,time,ierr)
+  implicit none
+  class(pm_base_type) :: this
+  PetscReal :: time
+  PetscInt :: ierr
+  print *, 'Must extend PMBaseThisTimeError.'
+  stop
+end subroutine PMBaseThisTimeError
 
 ! ************************************************************************** !
 

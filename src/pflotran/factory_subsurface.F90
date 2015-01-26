@@ -78,6 +78,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
 #else  
   use Simulation_Subsurface_class
   use PMC_Subsurface_class
+  use PMC_Third_Party_class
   use Solver_module
   use Waypoint_module
   use Init_Subsurface_module
@@ -89,6 +90,8 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   class(subsurface_simulation_type) :: simulation
   type(option_type), pointer :: option
   
+  class(pmc_subsurface_type), pointer :: pmc_subsurface
+  class(pmc_third_party_type), pointer :: pmc_third_party
   class(pm_subsurface_type), pointer :: pm_flow
   class(pm_rt_type), pointer :: pm_rt
   class(pm_mpm_type), pointer :: pm_waste_form
@@ -143,38 +146,40 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   simulation%realization => realization
   realization%waypoint_list => WaypointListCreate()
   if (associated(pm_flow)) then
-    simulation%flow_process_model_coupler => PMCSubsurfaceCreate()
-    simulation%process_model_coupler_list => simulation%flow_process_model_coupler
-    simulation%flow_process_model_coupler%option => option
-    simulation%flow_process_model_coupler%pms => pm_flow
-    simulation%flow_process_model_coupler%pm_ptr%ptr => pm_flow
-    simulation%flow_process_model_coupler%realization => realization
+    pmc_subsurface => PMCSubsurfaceCreate()
+    pmc_subsurface%option => option
+    pmc_subsurface%pms => pm_flow
+    pmc_subsurface%pm_ptr%ptr => pm_flow
+    pmc_subsurface%realization => realization
     ! set up logging stage
     string = trim(pm_flow%name) // 'Flow'
-    call LoggingCreateStage(string,simulation%flow_process_model_coupler%stage)
+    call LoggingCreateStage(string,pmc_subsurface%stage)
 !    timestepper => TimestepperBECreate()
 !    timestepper%solver => SolverCreate()
 !    simulation%flow_process_model_coupler%timestepper => timestepper
+    simulation%flow_process_model_coupler => pmc_subsurface
+    simulation%process_model_coupler_list => simulation%flow_process_model_coupler
+    nullify(pmc_subsurface)
   endif
   if (associated(pm_rt)) then
-    simulation%rt_process_model_coupler => PMCSubsurfaceCreate()
-    if (.not.associated(simulation%process_model_coupler_list)) then
-      simulation%process_model_coupler_list => &
-        simulation%rt_process_model_coupler
-    else
-      simulation%flow_process_model_coupler%child => &
-        simulation%rt_process_model_coupler%CastToBase()
-    endif
-    simulation%rt_process_model_coupler%option => option
-    simulation%rt_process_model_coupler%pms => pm_rt
-    simulation%rt_process_model_coupler%pm_ptr%ptr => pm_rt
-    simulation%rt_process_model_coupler%realization => realization
+    pmc_subsurface => PMCSubsurfaceCreate()
+    pmc_subsurface%option => option
+    pmc_subsurface%pms => pm_rt
+    pmc_subsurface%pm_ptr%ptr => pm_rt
+    pmc_subsurface%realization => realization
     ! set up logging stage
     string = 'Reactive Transport'
-    call LoggingCreateStage(string,simulation%rt_process_model_coupler%stage)
+    call LoggingCreateStage(string,pmc_subsurface%stage)
 !    timestepper => TimestepperBECreate()
 !    timestepper%solver => SolverCreate()
 !    simulation%rt_process_model_coupler%timestepper => timestepper
+    simulation%rt_process_model_coupler => pmc_subsurface
+    if (.not.associated(simulation%process_model_coupler_list)) then
+      simulation%process_model_coupler_list => pmc_subsurface
+    else
+      simulation%flow_process_model_coupler%child => pmc_subsurface
+    endif
+    nullify(pmc_subsurface)
   endif
 
   realization%input => InputCreate(IN_UNIT,option%input_filename,option)
@@ -190,6 +195,16 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   call InitSubsurfaceSimulation(simulation)
   
   if (associated(pm_waste_form)) then
+    pmc_third_party => PMCThirdPartyCreate()
+    pmc_third_party%option => option
+    pmc_third_party%pms => pm_rt
+    pmc_third_party%pm_ptr%ptr => pm_rt
+    pmc_third_party%realization => realization
+    ! set up logging stage
+    string = 'MPM'
+    call LoggingCreateStage(string,pmc_third_party%stage)
+    simulation%rt_process_model_coupler%child => pmc_third_party
+    nullify(pmc_third_party)
   endif
   
 #endif

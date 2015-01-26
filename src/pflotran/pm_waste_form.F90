@@ -43,6 +43,7 @@ module PM_Waste_Form_class
 !    procedure, public :: InitializeTimestep => PMWasteFormInitializeTimestep
 !    procedure, public :: FinalizeTimestep => PMWasteFormFinalizeTimestep
 !    procedure, public :: PreSolve => PMWasteFormPreSolve
+    procedure, public :: Solve => PMWasteFormSolve
 !    procedure, public :: PostSolve => PMWasteFormPostSolve
 !    procedure, public :: AcceptSolution => PMWasteFormAcceptSolution
 !    procedure, public :: TimeCut => PMWasteFormTimeCut
@@ -352,7 +353,7 @@ end subroutine PMWasteFormPreSolve
 
 ! ************************************************************************** !
 
-subroutine PMWasteFormSolve(this)
+subroutine PMWasteFormSolve(this,time,ierr)
   ! 
   ! Author: Glenn Hammond
   ! Date: 01/15/15
@@ -362,9 +363,10 @@ subroutine PMWasteFormSolve(this)
   implicit none
   
   class(pm_mpm_type) :: this
+  PetscReal :: time
+  PetscInt :: ierr
   
   PetscReal :: conc(4)
-  PetscReal :: time
   
   PetscInt :: i
   
