@@ -69,6 +69,8 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   use PM_Base_class
   use PM_RT_class
   use PM_Waste_Form_class
+  use PMC_Subsurface_class
+  use PMC_Third_Party_class
   use Timestepper_BE_class
   use Realization_class
   use Logging_module
@@ -77,8 +79,6 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   use Init_Common_module
 #else  
   use Simulation_Subsurface_class
-  use PMC_Subsurface_class
-  use PMC_Third_Party_class
   use Solver_module
   use Waypoint_module
   use Init_Subsurface_module
