@@ -214,8 +214,8 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   if (associated(pm_waste_form)) then
     pmc_third_party => PMCThirdPartyCreate()
     pmc_third_party%option => option
-    pmc_third_party%pms => pm_rt
-    pmc_third_party%pm_ptr%ptr => pm_rt
+    pmc_third_party%pms => pm_waste_form
+    pmc_third_party%pm_ptr%ptr => pm_waste_form
     pmc_third_party%realization => realization
     ! set up logging stage
     string = 'MPM'

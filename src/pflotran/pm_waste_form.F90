@@ -38,7 +38,7 @@ module PM_Waste_Form_class
      procedure, public :: Read => PMWasteFormRead
 !    procedure, public :: SetupSolvers => PMWasteFormSetupSolvers
     procedure, public :: PMWasteFormSetRealization
-!    procedure, public :: InitializeRun => PMWasteFormInitializeRun
+    procedure, public :: InitializeRun => PMWasteFormInitializeRun
 !!    procedure, public :: FinalizeRun => PMWasteFormFinalizeRun
 !    procedure, public :: InitializeTimestep => PMWasteFormInitializeTimestep
 !    procedure, public :: FinalizeTimestep => PMWasteFormFinalizeTimestep
@@ -49,9 +49,9 @@ module PM_Waste_Form_class
 !    procedure, public :: TimeCut => PMWasteFormTimeCut
 !    procedure, public :: UpdateSolution => PMWasteFormUpdateSolution
 !    procedure, public :: UpdateAuxvars => PMWasteFormUpdateAuxvars
-!    procedure, public :: Checkpoint => PMWasteFormCheckpoint    
-!    procedure, public :: Restart => PMWasteFormRestart  
-!    procedure, public :: Destroy => PMWasteFormDestroy
+    procedure, public :: Checkpoint => PMWasteFormCheckpoint    
+    procedure, public :: Restart => PMWasteFormRestart  
+    procedure, public :: Destroy => PMWasteFormDestroy
   end type pm_mpm_type
   
   public :: PMWasteFormCreate, &
@@ -235,7 +235,7 @@ subroutine PMWasteFormInit(this)
       end select
       if (local_id > 0) then
         num_local_coordinates = num_local_coordinates + 1
-        cell_ids(1,num_local_coordinates) = i
+        cell_ids(1,num_local_coordinates) = icoord
         cell_ids(2,num_local_coordinates) = local_id
       endif
   enddo
@@ -293,6 +293,14 @@ recursive subroutine PMWasteFormInitializeRun(this)
   implicit none
   
   class(pm_mpm_type) :: this
+  
+#ifdef PM_WP_DEBUG  
+  call printMsg(this%option,'PMRT%InitializeRun()')
+#endif
+  ! restart
+  if (this%option%restart_flag .and. &
+      this%option%overwrite_restart_transport) then
+  endif
 
 end subroutine PMWasteFormInitializeRun
 
@@ -365,7 +373,7 @@ subroutine PMWasteFormSolve(this,time,ierr)
   
   class(pm_mpm_type) :: this
   PetscReal :: time
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   
   PetscReal :: conc(4)
   
@@ -563,6 +571,9 @@ subroutine PMWasteFormDestroy(this)
   implicit none
   
   class(pm_mpm_type) :: this
+  
+  deallocate(this%waste_form)
+  nullify(this%waste_form)
   
 end subroutine PMWasteFormDestroy
   

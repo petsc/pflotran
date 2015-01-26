@@ -577,7 +577,10 @@ recursive subroutine PMCBaseCheckpoint(this,viewer,id,id_stamp)
     call PetscBagDestroy(bag,ierr);CHKERRQ(ierr)
   endif
   
-  call this%timestepper%Checkpoint(viewer,this%option)
+  if (associated(this%timestepper)) then
+    call this%timestepper%Checkpoint(viewer,this%option)
+  endif
+  
   cur_pm => this%pms
   do
     if (.not.associated(cur_pm)) exit

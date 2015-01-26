@@ -83,7 +83,7 @@ recursive subroutine PMCThirdPartyRunToTime(this,sync_time,stop_flag)
   ! Date: 07/02/13
   ! 
 
-  use Timestepper_Base_class, only : TS_CONTINUE
+  use Timestepper_Base_class, only : TS_CONTINUE, TS_STOP_FAILURE
 
   implicit none
   
@@ -92,6 +92,7 @@ recursive subroutine PMCThirdPartyRunToTime(this,sync_time,stop_flag)
   PetscInt :: stop_flag
   
   class(pmc_base_type), pointer :: pmc_base
+  PetscErrorCode :: ierr
   PetscInt :: local_stop_flag
   
   this%option%io_buffer = trim(this%name)
@@ -101,7 +102,8 @@ recursive subroutine PMCThirdPartyRunToTime(this,sync_time,stop_flag)
   
   local_stop_flag = TS_CONTINUE
 
-  call this%pms%Solve(sync_time,local_stop_flag)
+  call this%pms%Solve(sync_time,ierr)
+  if (ierr /= 0) local_stop_flag = TS_STOP_FAILURE
 
   ! Run neighboring process model couplers
   if (associated(this%child)) then
