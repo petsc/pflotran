@@ -206,6 +206,7 @@ subroutine PMWasteFormInit(this)
   
   grid => this%realization%patch%grid
   option => this%realization%option
+  reaction => this%realization%reaction
   
   allocate(cell_ids(2,size(this%coordinates)))
   num_local_coordinates = 0

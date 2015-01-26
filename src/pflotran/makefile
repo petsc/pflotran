@@ -523,8 +523,8 @@ factory_subsurface.o : condition_control.o general.o global.o init_common.o \
                        pm_immis.o pm_miscible.o pm_mphase.o pm_richards.o \
                        pm_rt.o pm_subsurface.o pm_th.o pm_waste_form.o \
                        pmc_base.o pmc_material.o pmc_subsurface.o \
-                       reactive_transport.o realization.o regression.o \
-                       richards.o simulation.o simulation_base.o \
+                       pmc_third_party.o reactive_transport.o realization.o \
+                       regression.o richards.o simulation.o simulation_base.o \
                        simulation_subsurface.o solver.o strata.o string.o th.o \
                        timestepper.o timestepper_BE.o timestepper_base.o \
                        waypoint.o
@@ -759,12 +759,6 @@ miscible.o : co2_span_wagner.o co2_span_wagner_spline.o co2_sw.o co2eos.o \
              option.o output_aux.o patch.o pflotran_constants.o realization.o \
              variables.o
 miscible_aux.o : fluid.o global_aux.o option.o pflotran_constants.o
-mphase.o : co2_span_wagner.o co2_span_wagner_spline.o co2_sw.o co2eos.o \
-           connection.o coupler.o debug.o discretization.o eos_water.o field.o \
-           gas_eos_mod.o global_aux.o grid.o material.o material_aux.o \
-           mphase_aux.o option.o output_aux.o patch.o pflotran_constants.o \
-           realization.o secondary_continuum.o secondary_continuum_aux.o \
-           variables.o
 mphase.o : co2_span_wagner.o co2_span_wagner_spline.o co2_sw.o co2eos.o \
            connection.o coupler.o debug.o discretization.o eos_water.o field.o \
            gas_eos_mod.o global_aux.o grid.o material.o material_aux.o \
@@ -1092,9 +1086,10 @@ simulation_hydrogeophysics.o : option.o pflotran_constants.o \
                                wrapper_hydrogeophysics.o
 simulation_subsurface.o : logging.o option.o output.o output_aux.o \
                           pflotran_constants.o pmc_base.o pmc_subsurface.o \
-                          reaction_clm.o reaction_sandbox.o realization.o \
-                          regression.o simulation_base.o srcsink_sandbox.o \
-                          timestepper_BE.o timestepper_base.o wipp.o
+                          pmc_third_party.o reaction_clm.o reaction_sandbox.o \
+                          realization.o regression.o simulation_base.o \
+                          srcsink_sandbox.o timestepper_BE.o \
+                          timestepper_base.o wipp.o
 simulation_surface.o : logging.o option.o output.o pflotran_constants.o \
                        pmc_base.o pmc_surface.o regression.o simulation_base.o \
                        surface_realization.o timestepper_base.o
