@@ -117,6 +117,7 @@ subroutine HijackSurfaceSimulation(simulation_old,simulation)
   class(pm_base_type), pointer :: cur_process_model
   
   class(surface_realization_type), pointer :: surf_realization
+  type(surface_realization_type), pointer :: kludge
   type(option_type), pointer :: option
   character(len=MAXSTRINGLENGTH) :: string  
   PetscErrorCode :: ierr
@@ -126,7 +127,8 @@ subroutine HijackSurfaceSimulation(simulation_old,simulation)
 
 
 ! begin from old Init()   
-  call InitSurfaceSetupRealization(simulation_old)
+  kludge => surf_realization
+  call InitSurfaceSetupRealization(kludge,simulation_old%realization)
   call InitSurfaceSetupSolvers(surf_realization,simulation_old%surf_flow_timestepper%solver)
 ! end from old Init()   
   
@@ -156,6 +158,10 @@ subroutine HijackSurfaceSimulation(simulation_old,simulation)
     surf_flow_process_model_coupler%pm_ptr%ptr => cur_process_model
     call HijackTimestepper(simulation_old%surf_flow_timestepper, &
                            surf_flow_process_model_coupler%timestepper)
+    if (associated(surf_flow_process_model_coupler%timestepper)) then
+      surf_flow_process_model_coupler%timestepper%cur_waypoint => &
+        surf_realization%waypoint_list%first
+    endif                           
     ! set up logging stage
     string = 'Surface'
     call LoggingCreateStage(string,surf_flow_process_model_coupler%stage)                           

@@ -4,6 +4,8 @@ module Surface_Init_module
 
   implicit none
 
+  private 
+  
 #include "finclude/petscsys.h"
 
 #include "finclude/petscvec.h"
@@ -840,6 +842,9 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
           endif
         endif
 
+      case('END_SURFACE_FLOW')
+        exit
+        
       case default
         option%io_buffer = 'Keyword ' // trim(word) // ' in input file ' // &
                            'not recognized'
