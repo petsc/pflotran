@@ -32,7 +32,7 @@ subroutine InitSubsurfTranSetupRealization(realization)
   
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(option_type), pointer :: option
   
@@ -88,7 +88,7 @@ subroutine InitSubsurfTranSetupSolvers(realization,solver)
 #include "finclude/petscsnes.h"
 #include "finclude/petscpc.h"
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   type(solver_type), pointer :: solver
   
   type(option_type), pointer :: option

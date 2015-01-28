@@ -163,7 +163,7 @@ subroutine GeneralSetup(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type),pointer :: patch
@@ -343,7 +343,7 @@ subroutine GeneralInitializeTimestep(realization)
   
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   call GeneralUpdateFixedAccum(realization)
   
@@ -380,7 +380,7 @@ subroutine GeneralUpdateSolution(realization)
   
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -434,7 +434,7 @@ subroutine GeneralTimeCut(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
@@ -483,7 +483,7 @@ subroutine GeneralComputeMassBalance(realization,mass_balance)
  
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%nflowspec, &
                             realization%option%nphase)
 
@@ -549,7 +549,7 @@ subroutine GeneralZeroMassBalanceDelta(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -590,7 +590,7 @@ subroutine GeneralUpdateMassBalance(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -649,7 +649,7 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
   
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscBool :: update_state
   
   type(option_type), pointer :: option
@@ -899,7 +899,7 @@ subroutine GeneralUpdateFixedAccum(realization)
 
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -2124,7 +2124,7 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   SNES :: snes
   Vec :: xx
   Vec :: r
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscViewer :: viewer
   PetscErrorCode :: ierr
   
@@ -2501,7 +2501,7 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscErrorCode :: ierr
 
   Mat :: J
@@ -2972,7 +2972,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   Vec :: X
   Vec :: dX
   PetscBool :: changed
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   PetscReal, pointer :: X_p(:)
   PetscReal, pointer :: dX_p(:)
@@ -3452,7 +3452,7 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   Vec :: X0
   Vec :: dX
   Vec :: X1
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   ! ignore changed flag for now.
   PetscBool :: dX_changed
   PetscBool :: X1_changed
@@ -3700,7 +3700,7 @@ subroutine GeneralCheckUpdatePost2(line_search,X0,dX,X1,dX_changed, &
   Vec :: X0
   Vec :: dX
   Vec :: X1
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   ! ignore changed flag for now.
   PetscBool :: dX_changed
   PetscBool :: X1_changed
@@ -3836,7 +3836,7 @@ function GeneralGetTecplotHeader(realization,icolumn)
   implicit none
   
   character(len=MAXSTRINGLENGTH) :: GeneralGetTecplotHeader
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscInt :: icolumn
   
   character(len=MAXSTRINGLENGTH) :: string, string2
@@ -3961,7 +3961,7 @@ subroutine GeneralSetPlotVariables(realization)
     
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   character(len=MAXWORDLENGTH) :: name, units
   type(output_variable_list_type), pointer :: list
@@ -4257,7 +4257,7 @@ subroutine GeneralMapBCAuxvarsToGlobal(realization)
 
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -4309,7 +4309,7 @@ subroutine GeneralDestroy(realization)
 
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   ! place anything that needs to be freed here.
   ! auxvars are deallocated in auxiliary.F90.

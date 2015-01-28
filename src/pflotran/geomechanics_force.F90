@@ -51,7 +51,7 @@ subroutine GeomechForceSetup(geomech_realization)
 
   use Geomechanics_Realization_class
 
-  type(geomech_realization_type) :: geomech_realization
+  class(geomech_realization_type) :: geomech_realization
 
   call GeomechForceSetupPatch(geomech_realization)
   call GeomechForceSetPlotVariables(geomech_realization)
@@ -74,7 +74,7 @@ subroutine GeomechForceSetupPatch(geomech_realization)
  
   implicit none
 
-  type(geomech_realization_type) :: geomech_realization
+  class(geomech_realization_type) :: geomech_realization
   type(option_type), pointer :: option
   type(geomech_patch_type), pointer :: patch
 
@@ -130,7 +130,7 @@ subroutine GeomechForceSetPlotVariables(geomech_realization)
     
   implicit none
   
-  type(geomech_realization_type) :: geomech_realization
+  class(geomech_realization_type) :: geomech_realization
   
   character(len=MAXWORDLENGTH) :: name, units
   type(output_variable_list_type), pointer :: list
@@ -260,7 +260,7 @@ subroutine GeomechanicsForceInitialGuess(geomech_realization)
   
   implicit none
   
-  type(geomech_realization_type) :: geomech_realization
+  class(geomech_realization_type) :: geomech_realization
   
   type(option_type), pointer :: option
   type(geomech_field_type), pointer :: field
@@ -357,7 +357,7 @@ subroutine GeomechForceUpdateAuxVars(geomech_realization)
 
   implicit none
 
-  type(geomech_realization_type)            :: geomech_realization
+  class(geomech_realization_type)            :: geomech_realization
   
   type(option_type), pointer                :: option
   type(geomech_patch_type), pointer         :: patch
@@ -434,7 +434,7 @@ subroutine GeomechForceResidual(snes,xx,r,geomech_realization,ierr)
   SNES :: snes
   Vec :: xx
   Vec :: r
-  type(geomech_realization_type) :: geomech_realization
+  class(geomech_realization_type) :: geomech_realization
   PetscViewer :: viewer
   PetscErrorCode :: ierr
   
@@ -504,7 +504,7 @@ subroutine GeomechForceResidualPatch(snes,xx,r,geomech_realization,ierr)
   SNES :: snes
   Vec :: xx
   Vec :: r
-  type(geomech_realization_type) :: geomech_realization
+  class(geomech_realization_type) :: geomech_realization
   PetscViewer :: viewer
   PetscErrorCode :: ierr
   
@@ -1276,7 +1276,7 @@ subroutine GeomechForceJacobian(snes,xx,A,B,geomech_realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  type(geomech_realization_type) :: geomech_realization
+  class(geomech_realization_type) :: geomech_realization
   PetscErrorCode :: ierr
   
   Mat :: J
@@ -1362,7 +1362,7 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,geomech_realization,ierr)
 
   PetscErrorCode :: ierr
    
-  type(geomech_realization_type) :: geomech_realization
+  class(geomech_realization_type) :: geomech_realization
   type(geomech_discretization_type), pointer :: geomech_discretization
   type(geomech_patch_type), pointer :: patch
   type(geomech_field_type), pointer :: field
@@ -1566,8 +1566,8 @@ subroutine GeomechUpdateFromSubsurf(realization,geomech_realization)
   
   implicit none
   
-  type(realization_type)                       :: realization
-  type(geomech_realization_type)               :: geomech_realization
+  class(realization_type)                       :: realization
+  class(geomech_realization_type)               :: geomech_realization
   type(grid_type), pointer                     :: grid
   type(geomech_grid_type), pointer             :: geomech_grid
   type(option_type), pointer                   :: option
@@ -1670,8 +1670,8 @@ subroutine GeomechUpdateSubsurfFromGeomech(realization,geomech_realization)
   
   implicit none
   
-  type(realization_type)                       :: realization
-  type(geomech_realization_type)               :: geomech_realization
+  class(realization_type)                       :: realization
+  class(geomech_realization_type)               :: geomech_realization
   type(grid_type), pointer                     :: grid
   type(geomech_grid_type), pointer             :: geomech_grid
   type(option_type), pointer                   :: option
@@ -1750,8 +1750,8 @@ subroutine GeomechCreateGeomechSubsurfVec(realization,geomech_realization)
 #include "finclude/petscmat.h"
 #include "finclude/petscmat.h90"
 
-  type(realization_type)               :: realization
-  type(geomech_realization_type)       :: geomech_realization
+  class(realization_type)               :: realization
+  class(geomech_realization_type)       :: geomech_realization
 
   type(grid_type), pointer             :: grid
   type(geomech_grid_type), pointer     :: geomech_grid
@@ -1800,8 +1800,8 @@ subroutine GeomechCreateSubsurfStressStrainVec(realization,geomech_realization)
 #include "finclude/petscmat.h"
 #include "finclude/petscmat.h90"
 
-  type(realization_type)               :: realization
-  type(geomech_realization_type)       :: geomech_realization
+  class(realization_type)               :: realization
+  class(geomech_realization_type)       :: geomech_realization
 
   type(grid_type), pointer             :: grid
   type(geomech_grid_type), pointer     :: geomech_grid
@@ -1877,7 +1877,7 @@ subroutine GeomechForceStressStrain(geomech_realization)
 
   implicit none
 
-  type(geomech_realization_type) :: geomech_realization
+  class(geomech_realization_type) :: geomech_realization
   type(geomech_discretization_type), pointer :: geomech_discretization
   type(geomech_patch_type), pointer :: patch
   type(geomech_field_type), pointer :: field
@@ -2176,7 +2176,7 @@ subroutine GeomechUpdateSolution(geomech_realization)
   
   implicit none 
   
-  type(geomech_realization_type) :: geomech_realization
+  class(geomech_realization_type) :: geomech_realization
   type(geomech_field_type), pointer :: field
   
   PetscErrorCode :: ierr 
@@ -2203,7 +2203,7 @@ subroutine geomechupdatesolutionpatch(geomech_realization)
     
   implicit none 
   
-  type(geomech_realization_type) :: geomech_realization
+  class(geomech_realization_type) :: geomech_realization
 
   call geomechforcestressstrain(geomech_realization)
 
@@ -2224,7 +2224,7 @@ subroutine GeomechStoreInitialPressTemp(geomech_realization)
     
   implicit none 
   
-  type(geomech_realization_type) :: geomech_realization
+  class(geomech_realization_type) :: geomech_realization
 
   PetscErrorCode :: ierr
 
@@ -2255,8 +2255,8 @@ subroutine GeomechStoreInitialPorosity(realization,geomech_realization)
     
   implicit none 
   
-  type(geomech_realization_type) :: geomech_realization
-  type(realization_type) :: realization
+  class(geomech_realization_type) :: geomech_realization
+  class(realization_type) :: realization
   type(discretization_type) :: discretization
 
   PetscErrorCode :: ierr
@@ -2283,7 +2283,7 @@ subroutine GeomechStoreInitialDisp(geomech_realization)
     
   implicit none 
   
-  type(geomech_realization_type) :: geomech_realization
+  class(geomech_realization_type) :: geomech_realization
 
   PetscErrorCode :: ierr
 
@@ -2318,8 +2318,8 @@ subroutine GeomechUpdateSubsurfPorosity(realization,geomech_realization)
 
   implicit none
   
-  type(realization_type) :: realization
-  type(geomech_realization_type) :: geomech_realization
+  class(realization_type) :: realization
+  class(geomech_realization_type) :: geomech_realization
   type(field_type), pointer :: field
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch

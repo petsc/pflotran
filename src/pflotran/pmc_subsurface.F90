@@ -559,7 +559,6 @@ subroutine PMCSubsurfaceGetAuxDataFromGeomech(this)
 
   class (pmc_subsurface_type) :: this
 
-  type(realization_type)      :: subsurf_realization
   type(grid_type), pointer    :: subsurf_grid
   type(option_type), pointer  :: option
   type(field_type), pointer   :: subsurf_field
@@ -648,7 +647,6 @@ subroutine PMCSubsurfaceSetAuxDataForGeomech(this)
 
   class (pmc_subsurface_type) :: this
 
-  type(realization_type)                       :: subsurf_realization
   type(grid_type), pointer                     :: subsurf_grid
   type(option_type), pointer                   :: option
   type(field_type), pointer                    :: subsurf_field

@@ -20,12 +20,12 @@ module Simulation_module
 
   type, public :: simulation_type
 
-    type(realization_type), pointer :: realization
+    class(realization_type), pointer :: realization
     type(timestepper_type), pointer :: flow_timestepper
     type(timestepper_type), pointer :: tran_timestepper
     type(timestepper_type), pointer :: surf_flow_timestepper
-    type(surface_realization_type), pointer :: surf_realization
-    type(geomech_realization_type), pointer :: geomech_realization
+    class(surface_realization_type), pointer :: surf_realization
+    class(geomech_realization_type), pointer :: geomech_realization
     type(timestepper_type), pointer :: geomech_timestepper
     type(regression_type), pointer :: regression
   end type simulation_type

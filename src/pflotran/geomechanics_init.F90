@@ -44,7 +44,7 @@ subroutine GeomechicsInitReadRequiredCards(geomech_realization)
   
   implicit none
   
-  type(geomech_realization_type)             :: geomech_realization
+  class(geomech_realization_type)             :: geomech_realization
   type(geomech_discretization_type), pointer :: geomech_discretization
   
   character(len=MAXSTRINGLENGTH) :: string
@@ -95,7 +95,7 @@ subroutine GeomechanicsInit(geomech_realization,input,option)
   
   implicit none
   
-  type(geomech_realization_type)             :: geomech_realization
+  class(geomech_realization_type)             :: geomech_realization
   type(geomech_discretization_type), pointer :: geomech_discretization
   type(geomech_patch_type), pointer          :: patch
   type(input_type)                           :: input
@@ -201,7 +201,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
   
   implicit none
   
-  type(geomech_realization_type)               :: geomech_realization
+  class(geomech_realization_type)               :: geomech_realization
   type(solver_type)                            :: geomech_solver
   type(input_type)                             :: input
   type(option_type)                            :: option
@@ -626,7 +626,7 @@ subroutine GeomechInitMatPropToGeomechRegions(geomech_realization)
 
   implicit none
   
-  type(geomech_realization_type) :: geomech_realization
+  class(geomech_realization_type) :: geomech_realization
   
   PetscReal, pointer :: vec_p(:)
   
@@ -844,8 +844,8 @@ subroutine InitGeomechSetupSolvers(geomech_realization,realization,solver)
 #include "finclude/petscsnes.h"
 #include "finclude/petscpc.h"
   
-  type(geomech_realization_type) :: geomech_realization
-  type(realization_type) :: realization
+  class(geomech_realization_type) :: geomech_realization
+  class(realization_type) :: realization
   type(solver_type), pointer :: solver
 
   type(option_type), pointer :: option
