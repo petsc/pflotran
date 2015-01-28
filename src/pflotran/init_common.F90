@@ -19,7 +19,8 @@ module Init_Common_module
   public :: Init, &
             InitCommonReadRegionFiles, &
             InitCommonReadVelocityField, &
-            InitCommonVerifyAllCouplers
+            InitCommonVerifyAllCouplers, &
+            setSurfaceFlowMode
             
 contains
 
