@@ -104,7 +104,7 @@ subroutine Init(simulation)
   type(timestepper_type), pointer :: tran_timestepper
   type(solver_type), pointer :: flow_solver
   type(solver_type), pointer :: tran_solver
-  type(realization_type), pointer :: realization
+  class(realization_type), pointer :: realization
   type(discretization_type), pointer :: discretization
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -122,10 +122,10 @@ subroutine Init(simulation)
   SNESLineSearch :: linesearch
   type(timestepper_type), pointer               :: surf_flow_timestepper
   type(solver_type), pointer                :: surf_flow_solver
-  type(surface_realization_type), pointer   :: surf_realization
+  class(surface_realization_type), pointer   :: surf_realization
   type(solver_type), pointer                :: geomech_solver
   type(timestepper_type), pointer               :: geomech_timestepper
-  type(geomech_realization_type), pointer   :: geomech_realization
+  class(geomech_realization_type), pointer   :: geomech_realization
 
   ! set pointers to objects
   realization => simulation%realization
@@ -322,7 +322,7 @@ subroutine InitSubsurfaceReadRequiredCards(realization)
 
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
@@ -562,7 +562,7 @@ subroutine InitReadInput(simulation)
   type(saturation_function_type), pointer :: saturation_function
   class(characteristic_curves_type), pointer :: characteristic_curves
 
-  type(realization_type), pointer :: realization
+  class(realization_type), pointer :: realization
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
@@ -581,7 +581,7 @@ subroutine InitReadInput(simulation)
   type(mass_transfer_type), pointer :: flow_mass_transfer
   type(mass_transfer_type), pointer :: rt_mass_transfer
   type(input_type), pointer :: input
-  type(geomech_realization_type), pointer :: geomech_realization
+  class(geomech_realization_type), pointer :: geomech_realization
 
   nullify(flow_timestepper)
   nullify(tran_timestepper)
@@ -2017,7 +2017,7 @@ subroutine InitCommonVerifyAllCouplers(realization)
 
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(patch_type), pointer :: cur_patch
 
@@ -2059,7 +2059,7 @@ subroutine InitCommonVerifyCoupler(realization,patch,coupler_list)
 
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   type(coupler_list_type), pointer :: coupler_list
 
   type(option_type), pointer :: option
@@ -2143,7 +2143,7 @@ subroutine InitCommonReadRegionFiles(realization)
 
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(region_type), pointer :: region
  
@@ -2206,7 +2206,7 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
   
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   Vec :: vector
   character(len=MAXWORDLENGTH) :: filename
   PetscInt :: vector_type
@@ -2425,7 +2425,7 @@ subroutine InitCommonReadVelocityField(realization)
 
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   character(len=MAXSTRINGLENGTH) :: filename
   
   type(field_type), pointer :: field

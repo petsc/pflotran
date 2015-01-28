@@ -32,7 +32,7 @@ subroutine SurfaceGlobalSetup(surf_realization)
   
   implicit none
 
-  type(surface_realization_type) :: surf_realization
+  class(surface_realization_type) :: surf_realization
   
   type(patch_type), pointer :: cur_patch
   
@@ -65,7 +65,7 @@ subroutine SurfaceGlobalSetupPatch(surf_realization)
  
   implicit none
   
-  type(surface_realization_type) :: surf_realization
+  class(surface_realization_type) :: surf_realization
 
   type(option_type), pointer :: option
   type(patch_type),pointer :: patch
@@ -158,7 +158,7 @@ subroutine SurfaceGlobalSetAuxVarScalar(surf_realization,value,ivar)
 
   implicit none
 
-  type(surface_realization_type) :: surf_realization
+  class(surface_realization_type) :: surf_realization
   PetscReal :: value
   PetscInt :: ivar
   
@@ -187,7 +187,7 @@ subroutine SurfaceGlobalSetAuxVarScalarPatch(surf_realization,value,ivar)
   
   implicit none
 
-  type(surface_realization_type) :: surf_realization
+  class(surface_realization_type) :: surf_realization
   PetscReal :: value
   PetscInt :: ivar
 
@@ -243,7 +243,7 @@ subroutine SurfaceGlobalSetAuxVarVecLoc(surf_realization,vec_loc,ivar,isubvar)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"  
 
-  type(surface_realization_type) :: surf_realization
+  class(surface_realization_type) :: surf_realization
   Vec :: vec_loc
   PetscInt :: ivar
   PetscInt :: isubvar
@@ -283,7 +283,7 @@ subroutine SurfaceGlobalSetAuxVarVecLocPatch(surf_realization,vec_loc,ivar,isubv
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-  type(surface_realization_type) :: surf_realization
+  class(surface_realization_type) :: surf_realization
   Vec :: vec_loc
   PetscInt :: ivar
   PetscInt :: isubvar  
@@ -350,7 +350,7 @@ subroutine SurfaceGlobalUpdateAuxVars(surf_realization,time_level)
                                SURFACE_LIQUID_TEMPERATURE, &
                                LIQUID_DENSITY
   
-  type(surface_realization_type) :: surf_realization
+  class(surface_realization_type) :: surf_realization
   PetscInt :: time_level
   
   type(surface_field_type), pointer :: surf_field

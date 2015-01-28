@@ -46,7 +46,7 @@ subroutine SurfaceFlowSetup(surf_realization)
 
   use Surface_Realization_class
   
-  type(surface_realization_type) :: surf_realization
+  class(surface_realization_type) :: surf_realization
 
   call SurfaceFlowSetPlotVariables(surf_realization)
   
@@ -68,7 +68,7 @@ subroutine SurfaceFlowSetPlotVariables(surf_realization)
     
   implicit none
   
-  type(surface_realization_type) :: surf_realization
+  class(surface_realization_type) :: surf_realization
   
   character(len=MAXWORDLENGTH) :: name, units
   type(output_variable_list_type), pointer :: list
@@ -233,7 +233,7 @@ subroutine SurfaceFlowUpdateSolution(surf_realization)
 
   implicit none
 
-  type(surface_realization_type)   :: surf_realization
+  class(surface_realization_type)   :: surf_realization
 
   type(surface_field_type),pointer :: surf_field
   PetscErrorCode                   :: ierr
@@ -272,7 +272,7 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   PetscReal                      :: t
   Vec                            :: xx
   Vec                            :: ff
-  type(surface_realization_type) :: surf_realization
+  class(surface_realization_type) :: surf_realization
   PetscErrorCode                 :: ierr
 
   PetscViewer :: viewer
@@ -524,7 +524,7 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
 
   implicit none
   
-  type(surface_realization_type) :: surf_realization
+  class(surface_realization_type) :: surf_realization
   PetscErrorCode                 :: ierr
 
   type(grid_type), pointer                  :: grid
@@ -802,7 +802,7 @@ subroutine SurfaceFlowUpdateAuxVars(surf_realization)
 
   implicit none
 
-  type(surface_realization_type) :: surf_realization
+  class(surface_realization_type) :: surf_realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -911,7 +911,7 @@ function SurfaceFlowGetTecplotHeader(surf_realization,icolumn)
   implicit none
 
   character(len=MAXSTRINGLENGTH) :: SurfaceFlowGetTecplotHeader
-  type(surface_realization_type) :: surf_realization
+  class(surface_realization_type) :: surf_realization
   PetscInt :: icolumn
 
   character(len=MAXSTRINGLENGTH) :: string, string2
@@ -966,7 +966,7 @@ subroutine SurfaceFlowUpdateSurfState(surf_realization)
 #include "finclude/petscmat.h"
 #include "finclude/petscmat.h90"
 
-  type(surface_realization_type) :: surf_realization
+  class(surface_realization_type) :: surf_realization
 
   type(coupler_list_type), pointer    :: coupler_list
   type(coupler_type), pointer         :: coupler

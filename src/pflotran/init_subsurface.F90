@@ -55,7 +55,7 @@ subroutine InitSubsurfSetupRealization(realization)
   
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(option_type), pointer :: option
   PetscReal :: dum1
@@ -162,7 +162,7 @@ subroutine SubsurfInitMaterialProperties(realization)
   
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   call SubsurfAllocMatPropDataStructs(realization)
   call InitSubsurfAssignMatIDsToRegns(realization)
@@ -188,7 +188,7 @@ subroutine SubsurfAllocMatPropDataStructs(realization)
   
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   PetscInt :: ghosted_id
   PetscInt :: istart, iend
@@ -255,7 +255,7 @@ subroutine InitSubsurfAssignMatIDsToRegns(realization)
   
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   PetscInt :: icell, local_id, ghosted_id
   PetscInt :: istart, iend
@@ -359,7 +359,7 @@ subroutine InitSubsurfAssignMatProperties(realization)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   PetscReal, pointer :: icap_loc_p(:)
   PetscReal, pointer :: ithrm_loc_p(:)
@@ -619,7 +619,7 @@ subroutine SubsurfReadMaterialIDsFromFile(realization,realization_dependent, &
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscBool :: realization_dependent
   character(len=MAXSTRINGLENGTH) :: filename
   
@@ -716,7 +716,7 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   type(material_property_type) :: material_property
 
   type(field_type), pointer :: field
@@ -896,7 +896,7 @@ subroutine SubsurfReadCompressFromFile(realization,material_property)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   type(material_property_type) :: material_property
 
   type(field_type), pointer :: field
@@ -997,7 +997,7 @@ subroutine SubsurfAssignVolsToMatAuxVars(realization)
   
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(field_type), pointer :: field
@@ -1024,7 +1024,7 @@ subroutine SubsurfSandboxesSetup(realization)
   use Realization_class
   use SrcSink_Sandbox_module
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
    call SSSandboxSetup(realization%patch%region_list,realization%option)
   

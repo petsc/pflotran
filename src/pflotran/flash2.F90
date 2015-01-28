@@ -70,7 +70,7 @@ subroutine Flash2TimeCut(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   
@@ -97,7 +97,7 @@ subroutine Flash2Setup(realization)
 !  use co2_sw_module
 !  use span_wagner_spline_module 
    
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(patch_type), pointer :: cur_patch
  
@@ -132,7 +132,7 @@ subroutine Flash2SetupPatch(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type),pointer :: patch
@@ -241,7 +241,7 @@ subroutine Flash2ComputeMassBalance(realization,mass_balance,mass_trapped)
   use Realization_class
   use Patch_module
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
   PetscReal :: mass_trapped(realization%option%nphase)
 
@@ -281,7 +281,7 @@ subroutine Flash2ComputeMassBalancePatch(realization,mass_balance,mass_trapped)
 
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 ! type(saturation_function_type) :: saturation_function_type
 
   PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
@@ -376,7 +376,7 @@ subroutine FLASH2ZeroMassBalDeltaPatch(realization)
 
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -430,7 +430,7 @@ subroutine FLASH2UpdateMassBalancePatch(realization)
 
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -489,7 +489,7 @@ end subroutine FLASH2UpdateMassBalancePatch
   use Option_module
 
   PetscInt ::  Flash2InitGuessCheck
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   type(option_type), pointer:: option
   type(patch_type), pointer :: cur_patch
   PetscInt :: ipass, ipass0
@@ -537,7 +537,7 @@ subroutine Flash2UpdateReasonPatch(reason,realization)
 
 
   PetscInt, intent(out):: reason
-  type(realization_type) :: realization  
+  class(realization_type) :: realization  
   type(patch_type),pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
@@ -609,7 +609,7 @@ subroutine Flash2UpdateReason(reason, realization)
   use Patch_module
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(patch_type), pointer :: cur_patch
   PetscInt :: reason
@@ -659,7 +659,7 @@ end subroutine Flash2UpdateReason
     implicit none
     
     PetscInt :: Flash2InitGuessCheckPatch 
-    type(realization_type) :: realization
+    class(realization_type) :: realization
     type(grid_type), pointer :: grid
     type(patch_type), pointer :: patch
     type(option_type), pointer :: option
@@ -722,7 +722,7 @@ subroutine Flash2UpdateAuxVars(realization)
   use Realization_class
   use Patch_module
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(patch_type), pointer :: cur_patch
   
@@ -758,7 +758,7 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
   
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -919,7 +919,7 @@ subroutine Flash2InitializeTimestep(realization)
   
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   call Flash2UpdateFixedAccumulation(realization)
 
@@ -939,7 +939,7 @@ subroutine Flash2UpdateSolution(realization)
   
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   PetscErrorCode :: ierr
   
@@ -965,7 +965,7 @@ subroutine Flash2UpdateFixedAccumulation(realization)
   use Realization_class
   use Patch_module
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(patch_type), pointer :: cur_patch
   
@@ -999,7 +999,7 @@ subroutine Flash2UpdateFixedAccumPatch(realization)
   
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -1997,7 +1997,7 @@ subroutine Flash2Residual(snes,xx,r,realization,ierr)
   SNES :: snes
   Vec :: xx
   Vec :: r
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscViewer :: viewer
   PetscErrorCode :: ierr
   
@@ -2107,7 +2107,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: i, jn
@@ -2633,7 +2633,7 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: i, jn
@@ -2914,7 +2914,7 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: i, jn
@@ -3072,7 +3072,7 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: i, jn
@@ -3313,7 +3313,7 @@ subroutine Flash2Jacobian(snes,xx,A,B,realization,ierr)
   Vec :: xx
   Mat :: A, B, J
   MatType :: mat_type
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscErrorCode :: ierr
   PetscViewer :: viewer
   type(patch_type), pointer :: cur_patch
@@ -3403,7 +3403,7 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: nvar,neq,nr
@@ -3959,7 +3959,7 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: nvar,neq,nr
@@ -4359,7 +4359,7 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: nvar,neq,nr
@@ -4777,7 +4777,7 @@ subroutine Flash2MaxChange(realization)
 
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(field_type), pointer :: field
@@ -4823,7 +4823,7 @@ function Flash2GetTecplotHeader(realization, icolumn)
   implicit none
   
   character(len=MAXSTRINGLENGTH) :: Flash2GetTecplotHeader
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscInt :: icolumn
   
   character(len=MAXSTRINGLENGTH) :: string, string2
@@ -4979,7 +4979,7 @@ subroutine Flash2SetPlotVariables(realization)
   
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   type(output_variable_type) :: output_variable
   
   character(len=MAXWORDLENGTH) :: name, units
@@ -5098,7 +5098,7 @@ subroutine Flash2Destroy(realization)
 
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   ! need to free array in aux vars
   !call Flash2AuxDestroy(patch%aux%Flash2)

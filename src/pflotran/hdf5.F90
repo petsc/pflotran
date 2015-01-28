@@ -1718,7 +1718,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   type(region_type) :: region
   character(len=MAXSTRINGLENGTH) :: filename
 
@@ -1952,7 +1952,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-  !type(realization_type)         :: realization
+  !class(realization_type)         :: realization
   type(option_type), pointer :: option
   type(region_type)              :: region
   type(region_sideset_type),pointer:: sideset
@@ -2212,7 +2212,7 @@ subroutine HDF5ReadCellIndexedIntegerArray(realization,global_vec,filename, &
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   Vec :: global_vec
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: group_name
@@ -2429,7 +2429,7 @@ subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   Vec :: global_vec
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: group_name
@@ -2699,7 +2699,6 @@ subroutine HDF5WriteUnstructuredDataSetFromVec(name,option,vec,file_id,data_type
 #include "finclude/petscvec.h90"
 
   character(len=32) :: name
-  type(realization_type) :: realization
   Vec :: vec
   integer(HID_T) :: file_id
   integer(HID_T) :: data_type
@@ -2722,10 +2721,6 @@ subroutine HDF5WriteUnstructuredDataSetFromVec(name,option,vec,file_id,data_type
   PetscInt, pointer :: int_array(:)
   PetscReal, pointer :: double_array(:)
 
-!  patch => realization%patch
-!  grid => patch%grid
-!  option => realization%option
-  
   call VecGetLocalSize(vec,local_size,ierr);CHKERRQ(ierr)
   call VecGetSize(vec,global_size,ierr);CHKERRQ(ierr)
   

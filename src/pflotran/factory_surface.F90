@@ -117,7 +117,7 @@ subroutine HijackSurfaceSimulation(simulation_old,simulation)
   class(pm_base_type), pointer :: cur_process_model
   
   class(surface_realization_type), pointer :: surf_realization
-  type(surface_realization_type), pointer :: kludge
+  class(surface_realization_type), pointer :: kludge
   type(option_type), pointer :: option
   character(len=MAXSTRINGLENGTH) :: string  
   PetscErrorCode :: ierr

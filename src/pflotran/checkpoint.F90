@@ -132,7 +132,7 @@ subroutine CheckpointFlowProcessModel(viewer,realization)
 #include "finclude/petscvec.h90"
 
   PetscViewer :: viewer
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscErrorCode :: ierr
 
   type(option_type), pointer :: option
@@ -227,7 +227,7 @@ subroutine RestartFlowProcessModel(viewer,realization)
 #include "finclude/petscvec.h90"
 
   PetscViewer :: viewer
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscErrorCode :: ierr
 
   type(option_type), pointer :: option
