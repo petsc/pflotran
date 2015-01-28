@@ -574,14 +574,54 @@ subroutine InitSubsurfaceSimulation(simulation)
   use PMC_Material_class
   use PMC_Base_class
   use PM_Base_class
+  use PM_Base_Pointer_module
   use PM_Subsurface_class
   use PM_RT_class
+  
+  !TODO(geh): these modules should be removed
+  use PM_General_class
+  use PM_Richards_class
+  use PM_TH_class
+  use General_module
+  use TH_module
+  use Richards_module
+  use Reactive_Transport_module
+    
   use PM_Waste_Form_class
   use Timestepper_BE_class
   
   implicit none
   
-#include "finclude/petscsnes.h"  
+#include "finclude/petscsnes.h" 
+
+  interface
+#if 0
+    subroutine PMCheckUpdatePre(line_search,X,dX,changed,this,ierr)
+      use PM_Base_class
+      implicit none
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscsnes.h"
+      SNESLineSearch :: line_search
+      Vec :: X
+      Vec :: dX
+      PetscBool :: changed
+      class(pm_base_type) :: this
+      PetscErrorCode :: ierr
+    end subroutine
+#endif
+    subroutine SNESLineSearchSetPreCheck(linesearch, &
+                                         PMCheckUpdatePre, &
+                                         cur_process_model, &
+                                         ierr)
+      use PM_Base_class
+      implicit none
+      SNESLineSearch :: linesearch
+      external PMCheckUpdatePre
+      class(pm_base_type) :: cur_process_model
+      PetscErrorCode :: ierr
+    end subroutine
+  end interface
   
   class(subsurface_simulation_type) :: simulation
   
@@ -714,11 +754,12 @@ subroutine InitSubsurfaceSimulation(simulation)
             call cur_process_model%SetupSolvers(ts%solver)
         end select
 #endif
-#if 0
+#if 1
         select type(ts => cur_process_model_coupler%timestepper)
           class is(timestepper_BE_type)
             call SNESGetLineSearch(ts%solver%snes, linesearch, ierr);CHKERRQ(ierr)
             select type(cur_process_model)
+#if 0
               class is(pm_richards_type)
                 if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
                     dabs(option%saturation_change_limit) > 0.d0) then
@@ -753,10 +794,15 @@ subroutine InitSubsurfaceSimulation(simulation)
                                                   THCheckUpdatePost, &
                                                   realization,ierr);CHKERRQ(ierr)        
                 endif
+#endif
               class is(pm_rt_type)
                 if (realization%reaction%check_update) then
+#if 0
                   call SNESLineSearchSetPreCheck(linesearch,RTCheckUpdatePre, &
                                                  realization,ierr);CHKERRQ(ierr)
+#endif
+                  call SNESLineSearchSetPreCheck(linesearch,PMCheckUpdatePre, &
+                                                 cur_process_model,ierr);CHKERRQ(ierr)
                 endif
                 if (ts%solver%check_post_convergence) then
                   call SNESLineSearchSetPostCheck(linesearch,RTCheckUpdatePost, &
@@ -766,7 +812,7 @@ subroutine InitSubsurfaceSimulation(simulation)
             end select
         end select
 #endif
-#if 0        
+#if 1        
         select type(cur_process_model)
           class default
             select type(ts => cur_process_model_coupler%timestepper)
@@ -774,14 +820,27 @@ subroutine InitSubsurfaceSimulation(simulation)
                 call SNESSetFunction(ts%solver%snes, &
                                      cur_process_model%residual_vec, &
                                      PMResidual, &
-                                     cur_process_model_coupler%pm_ptr, &
+                                     cur_process_model, &
                                      ierr);CHKERRQ(ierr)
                 call SNESSetJacobian(ts%solver%snes, &
                                      ts%solver%J, &
                                      ts%solver%Jpre, &
                                      PMJacobian, &
+                                     cur_process_model, &
+                                     ierr);CHKERRQ(ierr)
+#if 0              
+                call SNESSetFunction(ts%solver%snes, &
+                                     cur_process_model%residual_vec, &
+                                     PMResidualPtr, &
                                      cur_process_model_coupler%pm_ptr, &
                                      ierr);CHKERRQ(ierr)
+                call SNESSetJacobian(ts%solver%snes, &
+                                     ts%solver%J, &
+                                     ts%solver%Jpre, &
+                                     PMJacobianPtr, &
+                                     cur_process_model_coupler%pm_ptr, &
+                                     ierr);CHKERRQ(ierr)
+#endif
             end select
         end select
 #endif            
