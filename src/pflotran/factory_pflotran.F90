@@ -208,7 +208,9 @@ subroutine PFLOTRANReadSimulation(simulation,option)
     case('SUBSURFACE_FLOW','SUBSURFACE_TRANSPORT','SUBSURFACE_FLOW_AND_TRAN')
       call SubsurfaceInitialize(simulation,pm_master,option)  
     case('HYDROGEOPHYICS')
+#ifdef INIT_REFACTOR
       call HydrogeophysicsInitialize(simulation,pm_master,option)
+#endif
   end select
   
   call InputDestroy(input)
