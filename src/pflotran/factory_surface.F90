@@ -12,7 +12,7 @@ module Factory_Surface_module
 
   public :: SurfaceInitialize, &
             SurfaceInitializePostPETSc, &
-            HijackSurfaceSimulation, &
+!            HijackSurfaceSimulation, &
             SurfaceJumpStart
 
 contains
@@ -57,7 +57,6 @@ subroutine SurfaceInitializePostPETSc(simulation, option)
   ! Date: 06/27/13
   ! 
 
-  use Simulation_module
   use Option_module
   use Init_Common_module
   
@@ -66,6 +65,7 @@ subroutine SurfaceInitializePostPETSc(simulation, option)
   class(surface_simulation_type) :: simulation
   type(option_type), pointer :: option
   
+#if 0
   type(simulation_type), pointer :: simulation_old
   
   !! process command line arguments specific to surface
@@ -76,12 +76,14 @@ subroutine SurfaceInitializePostPETSc(simulation, option)
   call HijackSurfaceSimulation(simulation_old,simulation)
   ! no longer need simulation
   deallocate(simulation_old)
+#endif
   call SurfaceJumpStart(simulation)
 
 end subroutine SurfaceInitializePostPETSc
 
 ! ************************************************************************** !
 
+#if 0
 subroutine HijackSurfaceSimulation(simulation_old,simulation)
   ! 
   ! This routine
@@ -90,7 +92,6 @@ subroutine HijackSurfaceSimulation(simulation_old,simulation)
   ! Date: 06/27/13
   ! 
 
-  use Simulation_module
   use Surface_Realization_class
   use Option_module
   
@@ -224,6 +225,7 @@ subroutine HijackSurfaceSimulation(simulation_old,simulation)
   !simulation%process_model_coupler_list%Output => Output
 
 end subroutine HijackSurfaceSimulation
+#endif
 
 ! ************************************************************************** !
 
@@ -373,6 +375,7 @@ end subroutine SurfaceJumpStart
 
 ! ************************************************************************** !
 
+#if 0
 subroutine HijackTimestepper(timestepper_old,stepper_base)
   ! 
   ! This routine
@@ -383,7 +386,6 @@ subroutine HijackTimestepper(timestepper_old,stepper_base)
 
   use Timestepper_Surface_class
   use Timestepper_Base_class
-  use Timestepper_module
 
   implicit none
   
@@ -437,5 +439,6 @@ subroutine HijackTimestepper(timestepper_old,stepper_base)
   stepper_base => stepper
   
 end subroutine HijackTimestepper
+#endif
 
 end module Factory_Surface_module

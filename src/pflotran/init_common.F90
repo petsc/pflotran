@@ -16,7 +16,8 @@ module Init_Common_module
 #include "finclude/petscpc.h"
 #include "finclude/petscts.h"
 
-  public :: Init, &
+  public :: &
+!            Init, &
             InitCommonReadRegionFiles, &
             InitCommonReadVelocityField, &
             InitCommonVerifyAllCouplers, &
@@ -25,7 +26,7 @@ module Init_Common_module
 contains
 
 ! ************************************************************************** !
-
+#if 0
 subroutine Init(simulation)
   ! 
   ! Initializes pflotran
@@ -34,14 +35,12 @@ subroutine Init(simulation)
   ! Date: 10/23/07
   ! 
 
-  use Simulation_module
   use Option_module
   use Grid_module
   use Solver_module
   use Discretization_module
   use Realization_class
   use Material_module
-  use Timestepper_module
   use Field_module
   use Connection_module   
   use Coupler_module
@@ -228,7 +227,7 @@ subroutine Init(simulation)
   call InputDestroy(geomech_realization%input) ! allocated in Line 186)
 
 end subroutine Init
-
+#endif
 ! ************************************************************************** !
 
 subroutine InitReadInputFilenames(option,filenames)
@@ -461,7 +460,7 @@ subroutine InitSubsurfaceReadRequiredCards(realization)
 end subroutine InitSubsurfaceReadRequiredCards
 
 ! ************************************************************************** !
-
+#if 0
 subroutine InitReadInput(simulation)
   ! 
   ! Reads pflow input file
@@ -470,7 +469,6 @@ subroutine InitReadInput(simulation)
   ! Date: 10/23/07
   ! 
 
-  use Simulation_module
   use Option_module
   use Field_module
   use Grid_module
@@ -485,7 +483,6 @@ subroutine InitReadInput(simulation)
   use Dataset_Common_HDF5_class
   use Fluid_module
   use Realization_class
-  use Timestepper_module
   use Region_module
   use Condition_module
   use Transport_Constraint_module
@@ -1970,6 +1967,7 @@ subroutine InitSetFlowMode(option)
   end select
   
 end subroutine InitSetFlowMode
+#endif
 
 ! ************************************************************************** !
 

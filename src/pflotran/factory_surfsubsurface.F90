@@ -54,7 +54,6 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
   ! Date: 06/28/13
   ! 
 
-  use Simulation_module
   use Simulation_Surface_class
   use Simulation_Subsurface_class
   use Factory_Surface_module
@@ -88,7 +87,6 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
   
   type(surface_simulation_type) :: surf_simulation
   type(subsurface_simulation_type) :: subsurf_simulation
-  type(simulation_type), pointer :: simulation_old
   class(realization_type), pointer :: subsurf_realization
   class(surface_realization_type), pointer :: surf_realization
   class(pmc_base_type), pointer :: cur_process_model_coupler
@@ -242,20 +240,20 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
   ! sim_aux: Create PETSc Vectors and VectorScatters
   if (option%surf_flow_on .and. option%subsurf_surf_coupling /= DECOUPLED) then
 
-    call SurfSubsurfCreateSubsurfVecs(simulation_old%realization, option, &
+    call SurfSubsurfCreateSubsurfVecs(subsurf_realization, option, &
                                       vec_subsurf_pres, vec_subsurf_pres_top_bc)
     call SimAuxCopySubsurfVec(simulation%sim_aux, vec_subsurf_pres)
     call SimAuxCopySubsurfTopBCVec(simulation%sim_aux, vec_subsurf_pres_top_bc)
     call VecDestroy(vec_subsurf_pres, ierr);CHKERRQ(ierr)
     call VecDestroy(vec_subsurf_pres_top_bc, ierr);CHKERRQ(ierr)
 
-    call SurfSubsurfCreateSurfVecs(simulation_old%surf_realization, option, &
+    call SurfSubsurfCreateSurfVecs(surf_realization, option, &
                                    vec_surf_head)
     call SimAuxCopySurfVec(simulation%sim_aux, vec_surf_head)
     call VecDestroy(vec_surf_head, ierr);CHKERRQ(ierr)
 
-    call SurfSubsurfCreateSurfSubSurfVScats(simulation_old%realization, &
-          simulation_old%surf_realization, vscat_surf_to_subsurf, vscat_subsurf_to_surf)
+    call SurfSubsurfCreateSurfSubSurfVScats(subsurf_realization, &
+          surf_realization, vscat_surf_to_subsurf, vscat_subsurf_to_surf)
     call SimAuxCopyVecScatter(simulation%sim_aux, vscat_surf_to_subsurf, SURF_TO_SUBSURF)
     call SimAuxCopyVecScatter(simulation%sim_aux, vscat_subsurf_to_surf, SUBSURF_TO_SURF)
     call VecScatterDestroy(vscat_surf_to_subsurf, ierr);CHKERRQ(ierr)

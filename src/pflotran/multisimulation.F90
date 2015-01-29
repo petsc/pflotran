@@ -49,7 +49,6 @@ end function MultiSimulationCreate
 subroutine MultiSimulationInitialize(multisimulation,option)
   ! Author: Glenn Hammond
   ! Date: 02/04/09, 01/06/14
-  use Simulation_module
   use Option_module
   use Input_Aux_module
   

@@ -764,8 +764,7 @@ subroutine InitGeomechSetupRealization(simulation)
   ! Author: Glenn Hammond
   ! Date: 12/04/14
   ! 
-  use Simulation_module
-  
+  use Simulation_Geomechanics_class 
   use Geomechanics_Realization_class
   use Geomechanics_Global_module
   use Geomechanics_Force_module
@@ -775,7 +774,7 @@ subroutine InitGeomechSetupRealization(simulation)
   
   implicit none
   
-  type(simulation_type) :: simulation
+  type(geomechanics_simulation_type) :: simulation
   
   type(option_type), pointer :: option
   

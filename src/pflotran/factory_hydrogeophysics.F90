@@ -340,7 +340,6 @@ subroutine HydrogeophysicsInitPostPetsc(simulation, option)
   ! Date: 06/17/13
   ! 
 
-  use Simulation_module
   use Factory_Subsurface_module
   use PMC_Hydrogeophysics_class
   use Option_module

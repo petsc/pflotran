@@ -62,7 +62,6 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
   use Geomechanics_Force_module
   use Geomechanics_Realization_class
   use Simulation_Geomechanics_class
-  use Simulation_module
   use Simulation_Aux_module
   use Simulation_Subsurface_class
   use Factory_Subsurface_module
@@ -76,10 +75,13 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
   
   type(geomechanics_simulation_type) :: geomech_simulation
   type(subsurface_simulation_type) :: subsurf_simulation
+#if 0
   type(simulation_type), pointer :: simulation_old
+#endif
   class(pmc_base_type), pointer :: cur_process_model_coupler
   type(gmdm_ptr_type), pointer                 :: dm_ptr
 
+#if 0
   allocate(simulation_old)
   simulation_old => SimulationCreate(option)
   call Init(simulation_old)
@@ -184,11 +186,13 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
   endif
 
   deallocate(simulation_old)
+#endif
 
 end subroutine GeomechanicsInitializePostPETSc
 
 ! ************************************************************************** !
 
+#if 0
 subroutine HijackGeomechanicsSimulation(simulation_old,simulation)
   ! 
   ! This routine
@@ -197,7 +201,6 @@ subroutine HijackGeomechanicsSimulation(simulation_old,simulation)
   ! Date: 01/01/14
   ! 
 
-  use Simulation_module
   use Geomechanics_Realization_class
   use Option_module
   
@@ -321,6 +324,7 @@ subroutine HijackGeomechanicsSimulation(simulation_old,simulation)
   geomech_process_model_coupler%geomech_realization => geomech_realization
 
 end subroutine HijackGeomechanicsSimulation
+#endif
 
 ! ************************************************************************** !
 
@@ -387,7 +391,7 @@ subroutine GeomechanicsJumpStart(simulation)
 end subroutine GeomechanicsJumpStart
 
 ! ************************************************************************** !
-
+#if 0
 subroutine HijackTimestepper(timestepper_old,timestepper_base)
   ! 
   ! This routine
@@ -398,7 +402,6 @@ subroutine HijackTimestepper(timestepper_old,timestepper_base)
 
   use Timestepper_Geomechanics_class
   use Timestepper_Base_class
-  use Timestepper_module
 
   implicit none
   
@@ -452,5 +455,5 @@ subroutine HijackTimestepper(timestepper_old,timestepper_base)
   timestepper_base => timestepper
 
 end subroutine HijackTimestepper
-
+#endif
 end module Factory_Geomechanics_module
