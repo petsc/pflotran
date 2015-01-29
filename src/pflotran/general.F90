@@ -3549,11 +3549,12 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
       istate = global_auxvars(ghosted_id)%istate
       do idof = 1, option%nflowdof
         ival = offset+idof
-        if (accum_p(ival) < option%flow%inf_scaled_res_tol) then
-          R_A = dabs(r_p(ival))
+        if (accum_p2(ival) < 1.d0) then
+          R_A = dabs(r_p(ival)/material_auxvars(ghosted_id)%volume*option%flow_dt)
         else
           R_A = dabs(r_p(ival)/accum_p2(ival))
         endif
+        !R_A = dabs(r_p(ival)/accum_p(ival))
         dX_X0 = dabs(dX_p(ival)/X0_p(ival))
         inf_norm_update(idof,istate) = max(inf_norm_update(idof,istate), &
                                            dabs(dX_p(ival)))

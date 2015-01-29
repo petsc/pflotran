@@ -517,6 +517,9 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
 
       call EOSGasHenry(gen_auxvar%temp,gen_auxvar%pres(spid),K_H_tilde)
       gen_auxvar%xmol(acid,lid) = gen_auxvar%pres(apid) / K_H_tilde
+      ! immiscible.
+!      gen_auxvar%xmol(acid,lid) = 1.d-10
+      
       gen_auxvar%xmol(wid,lid) = 1.d0 - gen_auxvar%xmol(acid,lid)
       gen_auxvar%xmol(acid,gid) = gen_auxvar%pres(apid) / &
                                    gen_auxvar%pres(gid)
