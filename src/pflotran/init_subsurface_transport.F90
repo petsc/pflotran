@@ -200,7 +200,7 @@ subroutine InitSubsurfTranSetupSolvers(realization,solver)
     ! this update check must be in place, otherwise reactive transport is likely
     ! to fail
     if (associated(realization%reaction)) then
-#if 1
+#ifndef INIT_REFACTOR
       call SNESGetLineSearch(solver%snes, linesearch,  &
                               ierr);CHKERRQ(ierr)
       if (realization%reaction%check_update) then
@@ -211,8 +211,8 @@ subroutine InitSubsurfTranSetupSolvers(realization,solver)
         call SNESLineSearchSetPostCheck(linesearch,RTCheckUpdatePost, &
                                         realization,ierr);CHKERRQ(ierr)
       endif
-    endif
 #endif
+    endif
   endif
     
   call printMsg(option,"  Finished setting up TRAN SNES ")

@@ -609,7 +609,6 @@ subroutine InitSubsurfaceSimulation(simulation)
       class(pm_base_type) :: this
       PetscErrorCode :: ierr
     end subroutine
-#endif
     subroutine SNESLineSearchSetPreCheck(linesearch, &
                                          PMCheckUpdatePre, &
                                          cur_process_model, &
@@ -621,6 +620,7 @@ subroutine InitSubsurfaceSimulation(simulation)
       class(pm_base_type) :: cur_process_model
       PetscErrorCode :: ierr
     end subroutine
+#endif
   end interface
   
   class(subsurface_simulation_type) :: simulation
@@ -754,65 +754,51 @@ subroutine InitSubsurfaceSimulation(simulation)
             call cur_process_model%SetupSolvers(ts%solver)
         end select
 #endif
-#if 1
+#ifdef INIT_REFACTOR
         select type(ts => cur_process_model_coupler%timestepper)
           class is(timestepper_BE_type)
-            call SNESGetLineSearch(ts%solver%snes, linesearch, ierr);CHKERRQ(ierr)
+            call SNESGetLineSearch(ts%solver%snes,linesearch,ierr);CHKERRQ(ierr)
+            ! Post
+            if (ts%solver%check_post_convergence) then
+              call SNESLineSearchSetPostCheck(linesearch, &
+                                              PMCheckUpdatePostPtr, &
+                                             cur_process_model_coupler%pm_ptr, &
+                                              ierr);CHKERRQ(ierr)
+            endif
+            ! Pre
             select type(cur_process_model)
-#if 0
               class is(pm_richards_type)
                 if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
                     dabs(option%saturation_change_limit) > 0.d0) then
                   call SNESLineSearchSetPreCheck(linesearch, &
-                                                 RichardsCheckUpdatePre, &
-                                                 realization,ierr);CHKERRQ(ierr)
+                                                 PMCheckUpdatePrePtr, &
+                                             cur_process_model_coupler%pm_ptr, &
+                                                 ierr);CHKERRQ(ierr)
                 endif              
-                if (ts%solver%check_post_convergence) then
-                  call SNESLineSearchSetPostCheck(linesearch, &
-                                                  RichardsCheckUpdatePost, &
-                                                  realization,ierr);CHKERRQ(ierr)        
-                endif
               class is(pm_general_type)
                 call SNESLineSearchSetPreCheck(linesearch, &
-                                               GeneralCheckUpdatePre, &
-                                               realization,ierr);CHKERRQ(ierr)              
-                if (ts%solver%check_post_convergence) then
-                  call SNESLineSearchSetPostCheck(linesearch, &
-                                                  GeneralCheckUpdatePost, &
-                                                  realization,ierr);CHKERRQ(ierr)        
-                endif
+                                               PMCheckUpdatePrePtr, &
+                                             cur_process_model_coupler%pm_ptr, &
+                                               ierr);CHKERRQ(ierr)
               class is(pm_th_type)
                 if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
                     dabs(option%pressure_change_limit) > 0.d0 .or. &
                     dabs(option%temperature_change_limit) > 0.d0) then
                   call SNESLineSearchSetPreCheck(linesearch, &
-                                                 THCheckUpdatePre, &
-                                                 realization,ierr);CHKERRQ(ierr)
+                                                 PMCheckUpdatePrePtr, &
+                                             cur_process_model_coupler%pm_ptr, &
+                                                 ierr);CHKERRQ(ierr)
                 endif 
-                if (ts%solver%check_post_convergence) then
-                  call SNESLineSearchSetPostCheck(linesearch, &
-                                                  THCheckUpdatePost, &
-                                                  realization,ierr);CHKERRQ(ierr)        
-                endif
-#endif
               class is(pm_rt_type)
                 if (realization%reaction%check_update) then
-#if 0
-                  call SNESLineSearchSetPreCheck(linesearch,RTCheckUpdatePre, &
-                                                 realization,ierr);CHKERRQ(ierr)
-#endif
-                  call SNESLineSearchSetPreCheck(linesearch,PMCheckUpdatePre, &
-                                                 cur_process_model,ierr);CHKERRQ(ierr)
+                  call SNESLineSearchSetPreCheck(linesearch, &
+                                                 PMCheckUpdatePrePtr, &
+                                             cur_process_model_coupler%pm_ptr, &
+                                                 ierr);CHKERRQ(ierr)
                 endif
-                if (ts%solver%check_post_convergence) then
-                  call SNESLineSearchSetPostCheck(linesearch,RTCheckUpdatePost, &
-                                                  realization,ierr);CHKERRQ(ierr)
-                endif        
               class default
             end select
         end select
-#endif
-#if 1        
         select type(cur_process_model)
           class default
             select type(ts => cur_process_model_coupler%timestepper)
@@ -828,19 +814,6 @@ subroutine InitSubsurfaceSimulation(simulation)
                                      PMJacobian, &
                                      cur_process_model, &
                                      ierr);CHKERRQ(ierr)
-#if 0              
-                call SNESSetFunction(ts%solver%snes, &
-                                     cur_process_model%residual_vec, &
-                                     PMResidualPtr, &
-                                     cur_process_model_coupler%pm_ptr, &
-                                     ierr);CHKERRQ(ierr)
-                call SNESSetJacobian(ts%solver%snes, &
-                                     ts%solver%J, &
-                                     ts%solver%Jpre, &
-                                     PMJacobianPtr, &
-                                     cur_process_model_coupler%pm_ptr, &
-                                     ierr);CHKERRQ(ierr)
-#endif
             end select
         end select
 #endif            

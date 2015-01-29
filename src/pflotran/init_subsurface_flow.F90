@@ -313,7 +313,7 @@ subroutine InitSubsurfFlowSetupSolvers(realization,solver)
                               PETSC_NULL_FUNCTION,ierr);CHKERRQ(ierr)
     
  
-#if 1
+#ifndef INIT_REFACTOR
   call SNESGetLineSearch(solver%snes, linesearch, ierr);CHKERRQ(ierr)
   select case(option%iflowmode)
     case(RICHARDS_MODE)
