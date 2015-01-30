@@ -29,6 +29,7 @@ def refactor_file(filename):
   flow = False
   transport = False
   surface_flow = False
+  flow_option_strings = []
   skip_count = 0
   f = open(filename,'r')
   while 1:
@@ -45,13 +46,15 @@ def refactor_file(filename):
         w = string.strip().split()
         flow_mode = w[1]
         flow = True
-        flow_option_strings = []
         if len(w) > 2 and w[2].startswith('MORE'):
           while 1:
             string = f.readline()
-            if string.strip().startswith('/') or string.strip().startswith('END'):
+            if string.strip().startswith('/') or \
+               string.strip().startswith('END'):
               break
             flow_option_strings.append(string)
+      elif string.startswith('ICE_MODEL'):
+        flow_option_strings.append(string)
       elif string.startswith('CHEMISTRY'):
         transport = True
       elif string.startswith('SURFACE_FLOW'):
@@ -63,13 +66,19 @@ def refactor_file(filename):
     # skip surface flow files.
     print('\n%s skipped due to surface flow\n' % filename)
     return
+
+  print('Options:')
+  for i in range(len(flow_option_strings)):
+    print(flow_option_strings[i])
+  print('after')
+
   f = open(filename,'r')
   f2 = open(filename+'.tmp','w')
   # copy comment lines
   for line in f:
     if not (line.strip().startswith('#') or line.strip().startswith('!')):
       break
-    f2.write(line)
+    f2.write('%s\n' % line.rstrip())
   # add new simulation cards
   if flow and transport:
     f2.write(simulation % 'SUBSURFACE_FLOW_AND_TRAN')
@@ -82,7 +91,7 @@ def refactor_file(filename):
     if len(flow_option_strings) > 0:
       f2.write('      OPTIONS\n')
       for i in range(len(flow_option_strings)):
-        f2.write('       %s' % flow_option_strings[i])
+        f2.write('       %s\n' % flow_option_strings[i])
       f2.write('      /\n')
     f2.write('    /\n')
   if transport:
@@ -92,11 +101,20 @@ def refactor_file(filename):
   # write remainder of file
   surface_found = False
   for line in f:
+    line = line.rstrip()
+    if line.strip().startswith('MODE'):
+      if line.strip().endswith('MORE'):
+        for line in f:
+          if line.strip().startswith('/') or line.strip().startswith('END'):
+            break
+      continue
+    elif line.strip().startswith('ICE_MODEL'):
+      continue
     if line.strip().startswith('SURFACE_FLOW') and not surface_found:
       surface_found = True
       f2.write(end_subsurface_string)
       f2.write(surface_string)
-    f2.write(line)
+    f2.write('%s\n' % line)
   # append end string
   if surface_found:
     f2.write(end_surface_string)
