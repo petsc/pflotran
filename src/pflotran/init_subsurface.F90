@@ -1910,18 +1910,22 @@ subroutine InitSubsurfaceReadInput(simulation)
         select case(word)
           case('FLOW')
             call SolverReadNewton(flow_timestepper%solver,input,option)
-            option%flow%check_post_convergence = PETSC_TRUE
-            option%flow%inf_scaled_res_tol = &
-              flow_timestepper%solver%newton_inf_scaled_res_tol
-            option%flow%inf_rel_update_tol = &
-              flow_timestepper%solver%newton_inf_rel_update_tol
+            if (flow_timestepper%solver%check_post_convergence) then
+              option%flow%check_post_convergence = PETSC_TRUE
+              option%flow%inf_scaled_res_tol = &
+                flow_timestepper%solver%newton_inf_scaled_res_tol
+              option%flow%inf_rel_update_tol = &
+                flow_timestepper%solver%newton_inf_rel_update_tol
+            endif
           case('TRAN','TRANSPORT')
             call SolverReadNewton(tran_timestepper%solver,input,option)
-            option%transport%check_post_convergence = PETSC_TRUE
-            option%transport%inf_scaled_res_tol = &
-              tran_timestepper%solver%newton_inf_scaled_res_tol
-            option%transport%inf_rel_update_tol = &
-              tran_timestepper%solver%newton_inf_rel_update_tol
+            if (tran_timestepper%solver%check_post_convergence) then
+              option%transport%check_post_convergence = PETSC_TRUE
+              option%transport%inf_scaled_res_tol = &
+                tran_timestepper%solver%newton_inf_scaled_res_tol
+              option%transport%inf_rel_update_tol = &
+                tran_timestepper%solver%newton_inf_rel_update_tol
+            endif
           case default
             option%io_buffer = 'NEWTON_SOLVER must specify FLOW or TRANSPORT.'
             call printErrMsg(option)

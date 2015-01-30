@@ -764,12 +764,23 @@ subroutine InitSubsurfaceSimulation(simulation)
           class is(timestepper_BE_type)
             call SNESGetLineSearch(ts%solver%snes,linesearch,ierr);CHKERRQ(ierr)
             ! Post
-            if (ts%solver%check_post_convergence) then
-              call SNESLineSearchSetPostCheck(linesearch, &
-                                              PMCheckUpdatePostPtr, &
+            select type(cur_process_model)
+              ! flow solutions
+              class is(pm_subsurface_type)
+                if (ts%solver%check_post_convergence) then
+                  call SNESLineSearchSetPostCheck(linesearch, &
+                                                  PMCheckUpdatePostPtr, &
                                              cur_process_model_coupler%pm_ptr, &
-                                              ierr);CHKERRQ(ierr)
-            endif
+                                                  ierr);CHKERRQ(ierr)
+                endif
+              class is(pm_rt_type)
+                if (ts%solver%check_post_convergence .or. option%use_mc) then
+                  call SNESLineSearchSetPostCheck(linesearch, &
+                                                  PMCheckUpdatePostPtr, &
+                                             cur_process_model_coupler%pm_ptr, &
+                                                  ierr);CHKERRQ(ierr)
+                endif
+            end select
             ! Pre
             select type(cur_process_model)
               class is(pm_richards_type)
