@@ -53,6 +53,8 @@ def refactor_file(filename):
                string.strip().startswith('END'):
               break
             flow_option_strings.append(string)
+        elif string.strip().endswith(' FREEZING'):
+          flow_option_strings.append('FREEZING')
       elif string.startswith('ICE_MODEL'):
         flow_option_strings.append(string)
       elif string.startswith('CHEMISTRY'):
@@ -67,10 +69,10 @@ def refactor_file(filename):
     print('\n%s skipped due to surface flow\n' % filename)
     return
 
-  print('Options:')
-  for i in range(len(flow_option_strings)):
-    print(flow_option_strings[i])
-  print('after')
+#  print('Options:')
+#  for i in range(len(flow_option_strings)):
+#    print(flow_option_strings[i])
+#  print('after')
 
   f = open(filename,'r')
   f2 = open(filename+'.tmp','w')
@@ -91,7 +93,7 @@ def refactor_file(filename):
     if len(flow_option_strings) > 0:
       f2.write('      OPTIONS\n')
       for i in range(len(flow_option_strings)):
-        f2.write('       %s\n' % flow_option_strings[i])
+        f2.write('        %s\n' % flow_option_strings[i])
       f2.write('      /\n')
     f2.write('    /\n')
   if transport:

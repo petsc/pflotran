@@ -1353,6 +1353,7 @@ subroutine InitSubsurfaceReadInput(simulation)
     select case(trim(card))
 
 !....................
+#ifndef INIT_REFACTOR
       case ('MODE')
          call InputReadWord(input, option, word, PETSC_FALSE)
          call StringToUpper(word)
@@ -1382,6 +1383,7 @@ subroutine InitSubsurfaceReadInput(simulation)
              call InputSkipToEnd(input,option,card)
            endif
          endif  
+#endif
          
 !....................
       case('CREEP_CLOSURE')
@@ -1391,6 +1393,7 @@ subroutine InitSubsurfaceReadInput(simulation)
         option%flow%transient_porosity = PETSC_TRUE
         
 !....................
+#ifndef INIT_REFACTOR
       case ('ICE_MODEL')
         call InputReadWord(input,option,word,PETSC_FALSE)
         call StringToUpper(word)
@@ -1412,6 +1415,7 @@ subroutine InitSubsurfaceReadInput(simulation)
              ' or DALL_AMICO.'
             call printErrMsg(option)
           end select
+#endif
 
 !....................
       case ('ONLY_VERTICAL_FLOW')
