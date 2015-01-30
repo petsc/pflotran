@@ -72,6 +72,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
   use PM_Base_class
   use PM_Base_Pointer_module
   use PM_Surface_class
+  use PM_Surface_TH_class
   use Input_Aux_module
   use Realization_class
   use String_module
@@ -90,7 +91,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
   class(realization_type), pointer :: subsurf_realization
   class(surface_realization_type), pointer :: surf_realization
   class(pmc_base_type), pointer :: cur_process_model_coupler
-  class(pm_surface_type), pointer :: pm_surface
+  class(pm_surface_th_type), pointer :: pm_surface_th
   class(pm_base_type), pointer :: cur_pm, prev_pm
   class(pmc_surface_type), pointer :: pmc_surface
   class(timestepper_surface_type), pointer :: timestepper
@@ -130,8 +131,8 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
   do
     if (.not.associated(cur_pm)) exit
     select type(cur_pm)
-      class is(pm_surface_type)
-        pm_surface => cur_pm
+      class is(pm_surface_th_type)
+        pm_surface_th => cur_pm
         if (associated(prev_pm)) then
           prev_pm%next => cur_pm%next
         else
@@ -184,19 +185,19 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
     call setSurfaceFlowMode(option)
     surf_realization%waypoint_list => WaypointListCreate()
   
-    pm_surface%output_option => simulation%surf_realization%output_option
+    pm_surface_th%output_option => simulation%surf_realization%output_option
     pmc_surface => PMCSurfaceCreate()
     pmc_surface%name = 'PMCSurface'
     simulation%surf_flow_process_model_coupler => pmc_surface
     pmc_surface%option => option
-    pmc_surface%pms => pm_surface
-    pmc_surface%pm_ptr%ptr => pm_surface
+    pmc_surface%pms => pm_surface_th
+    pmc_surface%pm_ptr%ptr => pm_surface_th
     pmc_surface%surf_realization => simulation%surf_realization
     pmc_surface%subsurf_realization => simulation%realization
     timestepper => TimestepperSurfaceCreate()
     pmc_surface%timestepper => timestepper
     ! set up logging stage
-    string = trim(pm_surface%name) // 'Surface'
+    string = trim(pm_surface_th%name) // 'Surface'
     call LoggingCreateStage(string,pmc_surface%stage)
     
     input => InputCreate(IN_UNIT,option%input_filename,option)    
@@ -233,10 +234,10 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
     option%surf_subsurf_coupling_flow_dt = surf_realization%dt_coupling
     option%surf_flow_dt=pmc_surface%timestepper%dt_init
 
-    call pm_surface%PMSurfaceSetRealization(surf_realization) 
-    call pm_surface%Init()
+    call pm_surface_th%PMSurfaceSetRealization(surf_realization) 
+    call pm_surface_th%Init()
     call TSSetRHSFunction(timestepper%solver%ts, &
-                          pm_surface%residual_vec, &
+                          pm_surface_th%residual_vec, &
                           PMRHSFunction, &
                           pmc_surface%pm_ptr, &
                           ierr);CHKERRQ(ierr)

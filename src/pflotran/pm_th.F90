@@ -89,7 +89,8 @@ subroutine PMTHRead(this,input,option)
   use Input_Aux_module
   use String_module
   use Utility_module
-  
+  use EOS_Water_module  
+ 
   implicit none
   
   class(pm_th_type) :: this
@@ -113,6 +114,13 @@ subroutine PMTHRead(this,input,option)
     call StringToUpper(word)
     
     select case(trim(word))
+      case('FREEZING')
+        option%use_th_freezing = PETSC_TRUE
+        option%io_buffer = ' TH: using FREEZING submode!'
+        call printMsg(option)
+        ! Override the default setting for TH-mode with freezing
+        call EOSWaterSetDensityPainter()
+        call EOSWaterSetEnthalpyPainter()
       case('ICE_MODEL')
         call InputReadWord(input,option,word,PETSC_FALSE)
         call StringToUpper(word)
