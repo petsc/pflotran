@@ -1986,14 +1986,15 @@ subroutine setSurfaceFlowMode(option)
 
   type(option_type) :: option
   
-  call StringToUpper(option%flowmode)
-  select case(option%flowmode)
-    case('RICHARDS')
+  select case(option%iflowmode)
+    case(RICHARDS_MODE)
       option%nsurfflowdof = ONE_INTEGER
-    case('TH')
+    case(TH_MODE)
       option%nsurfflowdof = TWO_INTEGER
     case default
-      option%io_buffer = 'Mode: '//trim(option%flowmode)//' not recognized.'
+      write(option%io_buffer,*) option%iflowmode
+      option%io_buffer = 'Flow Mode ' // &
+        trim(option%io_buffer) // ' not recognized in setSurfaceFlowMode().'
       call printErrMsg(option)
   end select
   

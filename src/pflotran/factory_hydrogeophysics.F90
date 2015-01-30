@@ -15,11 +15,7 @@ module Factory_Hydrogeophysics_module
 contains
 
 ! ************************************************************************** !
-#ifdef INIT_REFACTOR
 subroutine HydrogeophysicsInitialize(simulation_base,pm_list,option)
-#else
-subroutine HydrogeophysicsInitialize(simulation_base,option)
-#endif
   ! 
   ! Sets up hydrogeophysics simulation
   ! 

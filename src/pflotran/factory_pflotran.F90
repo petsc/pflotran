@@ -109,10 +109,12 @@ subroutine PFLOTRANReadSimulation(simulation,option)
   
   use Simulation_Base_class
   use PM_Base_class
+  use PM_Surface_TH_class
   use PMC_Base_class
   
   use Factory_Subsurface_module
   use Factory_Hydrogeophysics_module
+  use Factory_Surf_Subsurf_module
   
   implicit none
   
@@ -175,6 +177,8 @@ subroutine PFLOTRANReadSimulation(simulation,option)
               call SubsurfaceReadWasteFormPM(input, option,new_pm)
             case('HYDROGEOPHYSICS')
             case('SURFACE_SUBSURFACE')
+              option%surf_flow_on = PETSC_TRUE
+              new_pm => PMSurfaceTHCreate()
             case('GEOMECHANICS')
           end select
           new_pm%name = name
@@ -208,9 +212,9 @@ subroutine PFLOTRANReadSimulation(simulation,option)
     case('SUBSURFACE_FLOW','SUBSURFACE_TRANSPORT','SUBSURFACE_FLOW_AND_TRAN')
       call SubsurfaceInitialize(simulation,pm_master,option)  
     case('HYDROGEOPHYICS')
-#ifdef INIT_REFACTOR
       call HydrogeophysicsInitialize(simulation,pm_master,option)
-#endif
+    case('SURFACE_SUBSURFACE_FLOW')
+      call SurfSubsurfaceInitialize(simulation,pm_master,option)
   end select
   
   call InputDestroy(input)

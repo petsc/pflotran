@@ -16,7 +16,7 @@ contains
 
 ! ************************************************************************** !
 
-subroutine SurfSubsurfaceInitialize(simulation_base,option)
+subroutine SurfSubsurfaceInitialize(simulation_base,pm_list,option)
   ! 
   ! This routine
   ! 
@@ -25,19 +25,20 @@ subroutine SurfSubsurfaceInitialize(simulation_base,option)
   ! 
 
   use Option_module
-  use Input_Aux_module
-  use Timestepper_Base_class
   use Simulation_Base_class
+  use PM_Base_class
   
   implicit none
   
   class(simulation_base_type), pointer :: simulation_base
+  class(pm_base_type), pointer :: pm_list
   type(option_type), pointer :: option
 
   class(surfsubsurface_simulation_type), pointer :: simulation
 
   ! NOTE: PETSc must already have been initialized here!
   simulation => SurfSubsurfaceSimulationCreate(option)
+  simulation%process_model_list => pm_list
   call SurfSubsurfaceInitializePostPETSc(simulation,option)
   
   simulation_base => simulation
@@ -69,6 +70,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
   use PMC_Surface_class
   use PFLOTRAN_Constants_module
   use PM_Base_class
+  use PM_Base_Pointer_module
   use PM_Surface_class
   use Input_Aux_module
   use Realization_class
@@ -85,8 +87,6 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
   class(surfsubsurface_simulation_type) :: simulation
   type(option_type), pointer :: option
   
-  type(surface_simulation_type) :: surf_simulation
-  type(subsurface_simulation_type) :: subsurf_simulation
   class(realization_type), pointer :: subsurf_realization
   class(surface_realization_type), pointer :: surf_realization
   class(pmc_base_type), pointer :: cur_process_model_coupler
@@ -143,10 +143,10 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
     prev_pm => cur_pm
     cur_pm => cur_pm%next
   enddo
-  call SubsurfaceInitializePostPetsc(subsurf_simulation,option)
+  call SubsurfaceInitializePostPetsc(simulation,option)
   ! in SubsurfaceInitializePostPetsc, the first pmc in the list is set as
   ! the master, we need to negate this setting
-  subsurf_simulation%process_model_coupler_list%is_master = PETSC_FALSE
+  simulation%process_model_coupler_list%is_master = PETSC_FALSE
 #endif  
 
   if (option%surf_flow_on) then
@@ -173,17 +173,21 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
     nullify(surf_simulation%process_model_coupler_list)
 
 #else
-  surf_realization => simulation%surf_realization
-  subsurf_realization => simulation%realization
-  surf_realization%input => InputCreate(IN_UNIT,option%input_filename,option)
-  surf_realization%subsurf_filename = subsurf_realization%discretization%filename
-  call SurfaceInitReadRequiredCards(simulation%surf_realization)
-
+    simulation%surf_realization => SurfRealizCreate(option)
+    surf_realization => simulation%surf_realization
+    subsurf_realization => simulation%realization
+    surf_realization%input => InputCreate(IN_UNIT,option%input_filename,option)
+    surf_realization%subsurf_filename = &
+      subsurf_realization%discretization%filename
+    call SurfaceInitReadRequiredCards(simulation%surf_realization)
+  
     call setSurfaceFlowMode(option)
     surf_realization%waypoint_list => WaypointListCreate()
-
-    simulation%surf_realization => SurfRealizCreate(option)
+  
+    pm_surface%output_option => simulation%surf_realization%output_option
     pmc_surface => PMCSurfaceCreate()
+    pmc_surface%name = 'PMCSurface'
+    simulation%surf_flow_process_model_coupler => pmc_surface
     pmc_surface%option => option
     pmc_surface%pms => pm_surface
     pmc_surface%pm_ptr%ptr => pm_surface
@@ -201,41 +205,47 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
     call InputFindStringErrorMsg(input,option,string)  
     call SurfaceInitReadInput(surf_realization, &
                               timestepper%solver,input,option)
-    pmc_surface%timestepper%dt_init = surf_realization%dt_init
-    pmc_surface%timestepper%dt_max = surf_realization%dt_max
-    option%surf_subsurf_coupling_flow_dt = surf_realization%dt_coupling
-    option%surf_flow_dt=pmc_surface%timestepper%dt_init
-
     ! Add first waypoint
     waypoint => WaypointCreate()
     waypoint%time = 0.d0
     call WaypointInsertInList(waypoint,surf_realization%waypoint_list)
-
+  
     ! Add final_time waypoint to surface_realization
     waypoint => WaypointCreate()
     waypoint%final = PETSC_TRUE
     waypoint%time = simulation%realization%waypoint_list%last%time
     waypoint%print_output = PETSC_TRUE
     call WaypointInsertInList(waypoint,surf_realization%waypoint_list)   
-    
-    
+      
+    if (associated(simulation%surf_flow_process_model_coupler)) then
+      if (associated(simulation%surf_flow_process_model_coupler% &
+                     timestepper)) then
+        simulation%surf_flow_process_model_coupler%timestepper%cur_waypoint => &
+          surf_realization%waypoint_list%first
+      endif
+    endif
+
     call InitSurfaceSetupRealization(surf_realization,subsurf_realization)
     call InitSurfaceSetupSolvers(surf_realization,timestepper%solver)
-  
+
+    pmc_surface%timestepper%dt_init = surf_realization%dt_init
+    pmc_surface%timestepper%dt_max = surf_realization%dt_max
+    option%surf_subsurf_coupling_flow_dt = surf_realization%dt_coupling
+    option%surf_flow_dt=pmc_surface%timestepper%dt_init
+
+    call pm_surface%PMSurfaceSetRealization(surf_realization) 
+    call pm_surface%Init()
+    call TSSetRHSFunction(timestepper%solver%ts, &
+                          pm_surface%residual_vec, &
+                          PMRHSFunction, &
+                          pmc_surface%pm_ptr, &
+                          ierr);CHKERRQ(ierr)
+    timestepper%dt = option%surf_flow_dt
+    
 #endif
   
-   else
-      ! Only subsurface flow active
-      simulation%process_model_coupler_list => &
-           subsurf_simulation%process_model_coupler_list
-      simulation%process_model_coupler_list%is_master = PETSC_TRUE
-      ! call printErrMsg(option,'Only subsurface-flow is active. ' // &
-      !        'Check inputfile or switch -simulation_mode subsurface')
-      nullify(simulation%surf_realization)
-      nullify(simulation%surf_flow_process_model_coupler)
-   endif
-
-   nullify(subsurf_simulation%process_model_coupler_list)
+    nullify(simulation%process_model_coupler_list)
+  endif
 
   ! sim_aux: Create PETSc Vectors and VectorScatters
   if (option%surf_flow_on .and. option%subsurf_surf_coupling /= DECOUPLED) then
@@ -265,8 +275,17 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
   if (associated(simulation%rt_process_model_coupler)) &
     simulation%rt_process_model_coupler%sim_aux => simulation%sim_aux
   if (option%surf_flow_on .and. &
-     associated(surf_simulation%surf_flow_process_model_coupler)) &
-    surf_simulation%surf_flow_process_model_coupler%sim_aux => simulation%sim_aux
+     associated(simulation%surf_flow_process_model_coupler)) &
+    simulation%surf_flow_process_model_coupler%sim_aux => simulation%sim_aux
+
+  ! set surface flow as master
+  simulation%surf_flow_process_model_coupler%is_master = PETSC_TRUE
+  ! link surface flow and master
+  simulation%process_model_coupler_list => &
+    simulation%surf_flow_process_model_coupler
+  ! link subsurface flow as peer
+  simulation%process_model_coupler_list%peer => &
+    simulation%flow_process_model_coupler
 
   ! Set data in sim_aux
   cur_process_model_coupler => simulation%process_model_coupler_list

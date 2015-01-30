@@ -31,7 +31,6 @@ subroutine SubsurfaceInitialize(simulation_base,pm_list,option)
   ! 
 
   use Option_module
-  use Input_Aux_module
   use Simulation_Base_class
   use PM_Base_class
   
@@ -446,12 +445,19 @@ subroutine SubsurfaceReadFlowPM(input, option, pm)
             call printErrMsg(option)
         end select
       case('OPTIONS')
+        if (.not.associated(pm)) then
+          option%io_buffer = 'MODE keyword must be read first under ' // &
+            'SUBSURFACE_FLOW PROCESS_MODEL.'
+          call printErrMsg(option)
+        endif
         select type(pm)
           class is(pm_general_type)
             ! inorder to not immediately return out of GeneralRead
             !TODO(geh): remove dummy word
             input%buf = 'dummy_word'
             call GeneralRead(input,option)
+          class is(pm_th_type)
+            call pm%Read(input,option)
           class default
             option%io_buffer = 'OPTIONS not set up for PM.'
             call printErrMsg(option)
