@@ -1,7 +1,19 @@
 #Description: 
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE_FLOW
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+  /
+END
+
+SUBSURFACE
+
+
 #=========================== flow mode ========================================
-MODE TH no_freezing
+#MODE TH no_freezing
 
 #=========================== discretization ===================================
 GRID
@@ -122,6 +134,8 @@ STRATA
   REGION all
   MATERIAL soil1
 END
+
+END_SUBSURFACE
 
 #===============================================================================
 #=========================== surface flow ======================================
