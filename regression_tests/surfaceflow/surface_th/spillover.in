@@ -1,5 +1,22 @@
 ! Single 1D column which exfiltrates by setting a large pressure on the bottom
 ! boundary. Spillover condition keeps the water level at 10cm.
+
+SIMULATION
+  SIMULATION_TYPE SURFACE_SUBSURFACE_FLOW
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE TH
+      OPTIONS
+        FREEZING
+        ICE_MODEL PAINTER_KARRA_EXPLICIT
+      /
+    /
+    SURFACE_SUBSURFACE flow
+  /
+END
+
+SUBSURFACE
+
 !=========================== flow mode ========================================
 MODE TH FREEZING
 ICE_MODEL PAINTER_KARRA_EXPLICIT
@@ -128,6 +145,10 @@ END
 !===============================================================================
 !=========================== surface flow ======================================
 !===============================================================================
+END_SUBSURFACE
+
+SURFACE
+
 SURFACE_FLOW
 SURF_GRID
   TYPE unstructured ./mesh_simple1D.h5
@@ -219,3 +240,5 @@ STRATA
 END
 
 END
+
+END_SURFACE
