@@ -28,6 +28,7 @@ def refactor_file(filename):
   # search through file for keywords
   flow = False
   transport = False
+  surface_flow = False
   skip_count = 0
   f = open(filename,'r')
   while 1:
@@ -53,13 +54,20 @@ def refactor_file(filename):
             flow_option_strings.append(string)
       elif string.startswith('CHEMISTRY'):
         transport = True
-    if flow and transport:
+      elif string.startswith('SURFACE_FLOW'):
+        surface_flow = True
+    if flow and transport and surface_flow:
       break
+  f.close()
+  if surface_flow:
+    # skip surface flow files.
+    print('\n%s skipped due to surface flow\n' % filename)
+    return
   f = open(filename,'r')
   f2 = open(filename+'.tmp','w')
   # copy comment lines
   for line in f:
-    if not line.strip().startswith('#'):
+    if not (line.strip().startswith('#') or line.strip().startswith('!')):
       break
     f2.write(line)
   # add new simulation cards
