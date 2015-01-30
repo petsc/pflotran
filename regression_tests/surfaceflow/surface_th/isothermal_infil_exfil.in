@@ -19,8 +19,8 @@ END
 
 SUBSURFACE
 
-MODE TH FREEZING
-ICE_MODEL DALL_AMICO
+#MODE TH FREEZING
+#ICE_MODEL DALL_AMICO
 #=========================== discretization ===========================
 REGRESSION
   CELLS

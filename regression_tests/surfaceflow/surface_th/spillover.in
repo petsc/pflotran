@@ -18,8 +18,8 @@ END
 SUBSURFACE
 
 !=========================== flow mode ========================================
-MODE TH FREEZING
-ICE_MODEL PAINTER_KARRA_EXPLICIT
+#MODE TH FREEZING
+#ICE_MODEL PAINTER_KARRA_EXPLICIT
 !=========================== regression ===================================
 REGRESSION
   CELLS
