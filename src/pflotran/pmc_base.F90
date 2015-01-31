@@ -700,6 +700,9 @@ recursive subroutine PMCBaseRestart(this,viewer)
 
   ! if the top PMC, 
   if (this%is_master) then
+    this%option%io_buffer = 'Restarting with checkpoint file "' // &
+      trim(this%option%restart_filename) // '".'
+    call printMsg(this%option)
     call PetscLogEventBegin(logging%event_restart,ierr);CHKERRQ(ierr)
     call PetscTime(tstart,ierr);CHKERRQ(ierr)
     call PetscViewerBinaryOpen(this%option%mycomm, &
