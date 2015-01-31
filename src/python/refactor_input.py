@@ -82,12 +82,13 @@ def refactor_file(filename):
       break
     f2.write('%s\n' % line.rstrip())
   # add new simulation cards
-  if flow and transport:
-    f2.write(simulation % 'SUBSURFACE_FLOW_AND_TRAN')
-  elif flow:
-    f2.write(simulation % 'SUBSURFACE_FLOW')
-  elif transport:
-    f2.write(simulation % 'SUBSURFACE_TRANSPORT')
+#  if flow and transport:
+#    f2.write(simulation % 'SUBSURFACE_FLOW_AND_TRAN')
+#  elif flow:
+#    f2.write(simulation % 'SUBSURFACE_FLOW')
+#  elif transport:
+#    f2.write(simulation % 'SUBSURFACE_TRANSPORT')
+  f2.write(simulation % 'SUBSURFACE')
   if flow:
     f2.write(flow_string % flow_mode)
     if len(flow_option_strings) > 0:

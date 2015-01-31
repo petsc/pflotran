@@ -209,11 +209,11 @@ subroutine PFLOTRANReadSimulation(simulation,option)
         cur_pm => cur_pm%next
       enddo
       call pmc_master%CheckNullPM(option)
-    case('SUBSURFACE_FLOW','SUBSURFACE_TRANSPORT','SUBSURFACE_FLOW_AND_TRAN')
+    case('SUBSURFACE')
       call SubsurfaceInitialize(simulation,pm_master,option)  
     case('HYDROGEOPHYICS')
       call HydrogeophysicsInitialize(simulation,pm_master,option)
-    case('SURFACE_SUBSURFACE_FLOW')
+    case('SURFACE_SUBSURFACE')
       call SurfSubsurfaceInitialize(simulation,pm_master,option)
   end select
   
