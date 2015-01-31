@@ -2,7 +2,7 @@
 ! boundary. Spillover condition keeps the water level at 10cm.
 
 SIMULATION
-  SIMULATION_TYPE SURFACE_SUBSURFACE_FLOW
+  SIMULATION_TYPE SURFACE_SUBSURFACE
   PROCESS_MODELS
     SUBSURFACE_FLOW flow
       MODE TH

@@ -1,7 +1,7 @@
 #Description: surface flow decoupled from subsurface flow
 
 SIMULATION
-  SIMULATION_TYPE SUBSURFACE_FLOW
+  SIMULATION_TYPE SUBSURFACE
   PROCESS_MODELS
     SUBSURFACE_FLOW flow
       MODE RICHARDS

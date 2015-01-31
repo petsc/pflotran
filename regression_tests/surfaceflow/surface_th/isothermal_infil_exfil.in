@@ -4,7 +4,7 @@
 #=========================== flow mode ================================
 
 SIMULATION
-  SIMULATION_TYPE SURFACE_SUBSURFACE_FLOW
+  SIMULATION_TYPE SURFACE_SUBSURFACE
   PROCESS_MODELS
     SUBSURFACE_FLOW flow
       MODE TH
