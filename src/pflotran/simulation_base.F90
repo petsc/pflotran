@@ -117,13 +117,15 @@ subroutine SimulationBaseInitializeRun(this)
   call printMsg(this%option,'SimulationBaseInitializeRun()')
 #endif
   
-  if (this%option%restart_flag) then
-    call this%process_model_coupler_list%Restart(viewer)
-  endif
+  if (associated(this%process_model_coupler_list)) then
+    if (this%option%restart_flag) then
+      call this%process_model_coupler_list%Restart(viewer)
+    endif
   
-  ! initialize performs overwrite of restart, if applicable
-  call this%process_model_coupler_list%InitializeRun()  
-  call this%JumpStart()
+    ! initialize performs overwrite of restart, if applicable
+    call this%process_model_coupler_list%InitializeRun()  
+    call this%JumpStart()
+  endif
   
   call printMsg(this%option," ")
   call printMsg(this%option,"  Finished Initialization")
@@ -185,6 +187,10 @@ subroutine ExecuteRun(this)
 #ifdef DEBUG
   call printMsg(this%option,'SimulationBaseExecuteRun()')
 #endif
+
+  if (.not.associated(this%process_model_coupler_list)) then
+    return
+  endif
 
   final_time = SimulationGetFinalWaypointTime(this)
   cur_waypoint => this%waypoint_list%first
@@ -261,7 +267,9 @@ subroutine SimulationBaseFinalizeRun(this)
     call printMsg(this%option,"")
   endif
   
-  call this%process_model_coupler_list%FinalizeRun()
+  if (associated(this%process_model_coupler_list)) then
+    call this%process_model_coupler_list%FinalizeRun()
+  endif
   
   ! pushed in InitializeRun()
   call PetscLogStagePop(ierr);CHKERRQ(ierr)
