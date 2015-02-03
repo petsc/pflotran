@@ -1837,7 +1837,8 @@ subroutine OutputMassBalance(realization_base)
   use Coupler_module
   use Utility_module
   
-  use Richards_module, only : RichardsComputeMassBalance
+!  use Richards_module, only : RichardsComputeMassBalance
+  use Richards_module
   use Mphase_module, only : MphaseComputeMassBalance
   use Flash2_module, only : Flash2ComputeMassBalance
   use Immis_module, only : ImmisComputeMassBalance
