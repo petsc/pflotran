@@ -1073,7 +1073,6 @@ subroutine CondControlReadTransportIC(realization,filename)
   use Field_module
   use Grid_module
   use Patch_module
-  use Reactive_Transport_module
   use Reaction_Aux_module
   use Discretization_module
   use HDF5_module
