@@ -5,22 +5,25 @@ module e4d_run
   logical :: first_sol = .true.
   logical :: sim_e4d = .false.
   integer :: mcomm
-  real*8 :: pf_time
+  !real*8 :: pf_time
 contains
   
   !_____________________________________________________________________
   subroutine run_e4d
   
     implicit none
+    logical :: first_flag = .true.
     
     if (my_rank>0) then
        call slave_run
        return
     end if
-
+   
     if (.not. allocated(pf_tracer)) allocate(pf_tracer(pflotran_vec_size))
     if (.not. allocated(pf_saturation)) allocate(pf_saturation(pflotran_vec_size))
+    if (.not. allocated(pf_saturation_0)) allocate(pf_saturation_0(pflotran_vec_size))
     if (.not. allocated(sigma)) allocate(sigma(nelem))
+   
 
     call get_mcomm
     call cpu_time(Cbeg)
@@ -28,8 +31,10 @@ contains
 
        call get_pf_time      !!get the pflotran solution time
        call get_pf_sol       !!get the pflotran solution
-       call cpu_time(Cend)
-       etm=Cend-Cbeg
+       if (first_flag) then
+          pf_saturation_0 = pf_saturation
+          first_flag = .false.
+       end if
        call elog(36,mcomm,mcomm)
 
        call check_e4d_sim    !!see if we should do an e4d sim for this time
@@ -161,29 +166,32 @@ contains
 
   !____________________________________________________________________
   subroutine map_pf_e4d
+
     implicit none
-    integer :: i 
+    integer :: i,cnt 
     character*40 :: filename, word
-    real :: K
-   
-  
+    real :: K,St,C,parSat,delSigb,delSigf,delSigb_min
+    real, parameter :: m=2.0      !!m is the saturation exponent ... assumed to be 2    
+
+    !sigma=0.1
+    delSigb_min = (sw_sig-gw_sig)/FF
     do i=1,nmap
-       if (zones(map_inds(i,1))==2) then
-          sigma(map_inds(i,1))=base_sigma(map_inds(i,1))
-       end if
+       !parSat  = m*gw_sig*pf_saturation_0(map_inds(i,2))/FF  !partial of sig bulk w.r.t. saturation
+       !parSigf = (pf_saturation_0(map_inds(i,2))**(m))/FF    !partial of sig bulk w.r.t. sig fluid
+       !delSat  = pf_saturation(map_inds(i,2))-pf_saturation_0(map_inds(i,2)) !change in sat from baseline
+       delSigf = gw_sig + (sw_sig-gw_sig)*pf_tracer(map_inds(i,2))           !change in pore sig from baseline
+       delSigb = (delSigf*pf_saturation(map_inds(i,2))**(m) - gw_sig*pf_saturation_0(map_inds(i,2))**(m))/FF
+       !if (delSigb > delSigb_min) delSigb=delSigb_min
+       sigma(map_inds(i,1)) = sigma(map_inds(i,1)) + map(i)*delSigb
+   
     end do
   
-    K=(sw_sig-gw_sig)/FF
    
-    do i=1,nmap
-       if (zones(map_inds(i,1))==2) then
-          sigma(map_inds(i,1))=sigma(map_inds(i,1))+pf_tracer(map_inds(i,2))*map(i)*K
-       end if
-    end do
     do i=1,nelem
        if (sigma(i)<1e-5) sigma(i)=1e-5
     end do
-    write(*,*) pf_time
+
+    !write(*,*) pf_time
     write(word,'(i15.15)') int(pf_time)
     filename = 'sigma_' // &
                trim(adjustl(pflotran_group_prefix)) // &
@@ -192,7 +200,7 @@ contains
                '.txt' 
     !write(*,*) filename
     open(unit=86,file=trim(filename),status='replace',action='write')
-    write(86,*) nelem, "1"
+    write(86,*) nelem, "1", minval(sigma),maxval(sigma)
     do i = 1, nelem
        write(86,*) sigma(i) 
     enddo

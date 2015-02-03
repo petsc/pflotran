@@ -47,7 +47,7 @@ module vars
   real :: sw_sig                                           !!surface water electrical condctivity
   real :: FF                                               !!formation factor
   real :: Cbeg,Cend,etm                                    !!timing variables
-  real*8 :: e4d_time
+  real*8 :: e4d_time, pf_time
   
   integer, dimension(:,:), allocatable :: map_inds
   integer, dimension(:,:), allocatable :: s_conf           !!abmn survey configuration
@@ -67,6 +67,7 @@ module vars
   real, dimension(:,:), allocatable :: poles               !!pole solutions
   real, dimension(:), allocatable :: pf_tracer             !!pflotran tracer solution
   real, dimension(:), allocatable :: pf_saturation         !!pflotran saturation solution
+  real, dimension(:), allocatable :: pf_saturation_0       !!pflotran saturation solution at time 0
   real, dimension(:), allocatable :: sigma                 !!element conductivities
   real, dimension(:), allocatable :: dpred                 !!simulated data vector
   real, dimension(:), allocatable :: dobs                  !!observed data
@@ -564,7 +565,7 @@ subroutine elog(com,i1,i2)
         
      case(36)
         open(13,file=trim(log_file),status='old',action='write',position='append')
-        write(13,*) "Waited ",etm," for pflotran command"
+        write(13,*) "Received Time: ",pf_time, " from PFLOTRAN"
         close(13)
      end select
 end subroutine elog
