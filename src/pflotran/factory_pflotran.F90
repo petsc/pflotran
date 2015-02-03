@@ -178,6 +178,10 @@ subroutine PFLOTRANReadSimulation(simulation,option)
               option%surf_flow_on = PETSC_TRUE
               new_pm => PMSurfaceTHCreate()
             case('GEOMECHANICS')
+            case default
+              option%io_buffer =  'PROCESS_MODEL " ' // trim(word) // &
+                '" not recognized.'
+              call printErrMsg(option)
           end select
           new_pm%name = name
           new_pm%option => option
@@ -213,6 +217,10 @@ subroutine PFLOTRANReadSimulation(simulation,option)
       call HydrogeophysicsInitialize(simulation,pm_master,option)
     case('SURFACE_SUBSURFACE')
       call SurfSubsurfaceInitialize(simulation,pm_master,option)
+    case default
+      option%io_buffer =  'SIMULATION_TYPE " ' // trim(word) // &
+        '" not recognized.'
+      call printErrMsg(option)
   end select
   
   call InputDestroy(input)
