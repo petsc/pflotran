@@ -403,7 +403,6 @@ subroutine CondControlAssignTranInitCond(realization)
   use Global_Aux_module
   use Material_Aux_class
   use Reaction_module
-  use Reactive_Transport_module
   use HDF5_module
   
   implicit none
