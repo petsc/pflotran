@@ -94,7 +94,7 @@ def refactor_file(filename):
     if len(flow_option_strings) > 0:
       f2.write('      OPTIONS\n')
       for i in range(len(flow_option_strings)):
-        f2.write('        %s\n' % flow_option_strings[i])
+        f2.write('        %s\n' % flow_option_strings[i].strip())
       f2.write('      /\n')
     f2.write('    /\n')
   if transport:
