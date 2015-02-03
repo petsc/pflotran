@@ -3,10 +3,23 @@
 #08/5/2012
 #Satish Karra
 
-#===================== TH mode ===============================
-MODE TH freezing
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE TH
+      OPTIONS
+        FREEZING
+        ICE_MODEL PAINTER_EXPLICIT
+      /
+    /
+  /
+END
 
-ICE_MODEL PAINTER_EXPLICIT
+SUBSURFACE
+
+#===================== TH mode ===============================
+
 
 #=========================== regression =======================================
 REGRESSION
@@ -24,7 +37,7 @@ TYPE structured
 ORIGIN 0.d0 0.d0 0.d0
 NXYZ 1 1 100
 BOUNDS
-0.d0 0.d0 0.d0 
+0.d0 0.d0 0.d0
 1.d0 1.d0 10.d0
 /
 END
@@ -64,9 +77,9 @@ THERMAL_CONDUCTIVITY_WET 1.3d0
 THERMAL_COND_EXPONENT 0.45
 THERMAL_CONDUCTIVITY_FROZEN 2.3588d0
 THERMAL_COND_EXPONENT_FROZEN 0.95
-SATURATION_FUNCTION default 
+SATURATION_FUNCTION default
 LONGITUDINAL_DISPERSIVITY 3.1536d0
-PERMEABILITY 
+PERMEABILITY
 PERM_X 1.3d-13
 PERM_Y 1.3d-13
 PERM_Z 1.3d-13
@@ -150,7 +163,7 @@ END
 
 FLOW_CONDITION bottom
 UNITS Pa, C
-TYPE 
+TYPE
 PRESSURE hydrostatic
 TEMPERATURE dirichlet
 /
@@ -185,3 +198,4 @@ REGION all
 MATERIAL soil1
 END
 
+END_SUBSURFACE

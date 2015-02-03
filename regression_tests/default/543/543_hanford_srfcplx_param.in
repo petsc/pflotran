@@ -1,6 +1,20 @@
 #Description: 3D test problem for testing chemical reactions
 #             based on chemistry from Hammond and Lichtner, WRR, 2010
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
 #=========================== regression =======================================
 REGRESSION
   CELLS_PER_PROCESS 2
@@ -10,7 +24,6 @@ REGRESSION
 END
 
 #=========================== flow mode ========================================
-MODE RICHARDS
 
 #=========================== chemistry ========================================
 CHEMISTRY
@@ -160,10 +173,10 @@ CHEMISTRY
     Torbernite
   /
   MINERAL_KINETICS
-    Calcite 
+    Calcite
       RATE_CONSTANT 1.e-12 mol/cm^2-sec
     /
-    Metatorbernite 
+    Metatorbernite
       RATE_CONSTANT 2.e-17 mol/cm^2-sec
     /
   /
@@ -249,18 +262,18 @@ GRID
 END
 
 #=========================== fluid properties =================================
-FLUID_PROPERTY 
+FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
 #=========================== datasets =========================================
 DATASET initial_U
-  HDF5_DATASET_NAME U 
+  HDF5_DATASET_NAME U
   FILENAME parameters-543.h5
 END
 
 DATASET initial_Calcite_vol_frac
-  HDF5_DATASET_NAME Calcite_vol_frac 
+  HDF5_DATASET_NAME Calcite_vol_frac
   FILENAME parameters-543.h5
 END
 
@@ -353,7 +366,7 @@ END
 
 #=========================== output options ===================================
 OUTPUT
-#  TIMES d 0.001 0.01 0.1 1. 10. 
+#  TIMES d 0.001 0.01 0.1 1. 10.
 #  PERIODIC TIME 1 d
   VARIABLES
     LIQUID_PRESSURE
@@ -435,7 +448,7 @@ REGION plume
 END
 
 REGION well
-  BLOCK 4 4 2 3 3 3 
+  BLOCK 4 4 2 3 3 3
 END
 
 #=========================== flow conditions ==================================
@@ -680,3 +693,4 @@ STRATA
   MATERIAL ./543.h5
 END
 
+END_SUBSURFACE

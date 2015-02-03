@@ -1,6 +1,17 @@
 #Description: 1D soil layer model for testing coupling with mass transfer
 #             source/sink.
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
 #=========================== regression =======================================
 REGRESSION
   CELLS
@@ -54,7 +65,7 @@ GRID
 END
 
 #=========================== fluid properties =================================
-FLUID_PROPERTY 
+FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 0.d0
 END
 
@@ -85,7 +96,7 @@ END
 
 REGION bottom
   FACE bottom
-  BLOCK 1 1 1 1 1 1 
+  BLOCK 1 1 1 1 1 1
 END
 
 REGION top
@@ -132,17 +143,17 @@ END
 #=========================== mass transfer ====================================
 RT_MASS_TRANSFER A(im)
   IDOF 2
-  DATASET A(im) 
+  DATASET A(im)
 END
 
 RT_MASS_TRANSFER B(im)
   IDOF 3
-  DATASET B(im) 
+  DATASET B(im)
 END
 
 RT_MASS_TRANSFER C(im)
   IDOF 4
-  DATASET C(im) 
+  DATASET C(im)
 END
 #=========================== condition couplers ===============================
 # initial condition
@@ -158,3 +169,4 @@ STRATA
 END
 
 
+END_SUBSURFACE

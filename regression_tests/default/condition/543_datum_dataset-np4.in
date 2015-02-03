@@ -1,5 +1,19 @@
 #Description: 3D test problem for variably saturated flow and tracer transport
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
 #=========================== regression =======================================
 REGRESSION
   CELLS_PER_PROCESS 2
@@ -24,7 +38,6 @@ REGRESSION
 END
 
 #=========================== flow mode ========================================
-MODE RICHARDS
 
 DEBUG
 #  PRINT_COUPLERS west south
@@ -80,7 +93,7 @@ GRID
 END
 
 #=========================== fluid properties =================================
-FLUID_PROPERTY 
+FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 /
 
@@ -235,7 +248,7 @@ REGION south
 END
 
 REGION well
-  BLOCK 4 4 2 3 3 3 
+  BLOCK 4 4 2 3 3 3
 END
 
 #=========================== flow conditions ==================================
@@ -367,3 +380,4 @@ STRATA
   MATERIAL ./543.h5
 END
 
+END_SUBSURFACE

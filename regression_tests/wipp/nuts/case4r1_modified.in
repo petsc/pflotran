@@ -2,9 +2,20 @@
 # This problem has been changed from NUTS test case 4 by increasing the
 # coefficient of molecular diffusion and decreasing the half-life
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
 #=========================== regression =======================================
 REGRESSION
-  CELLS 
+  CELLS
     1
     2
     4
@@ -51,7 +62,7 @@ GRID
 END
 
 #=========================== fluid properties =================================
-FLUID_PROPERTY 
+FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 7.5d-6
 END
 
@@ -136,7 +147,7 @@ END
 
 CONSTRAINT inlet_constraint
   CONCENTRATIONS
-    Tracer1    1.d0         T  ! 1.0 kg/s 
+    Tracer1    1.d0         T  ! 1.0 kg/s
   /
 END
 
@@ -163,3 +174,4 @@ STRATA
   MATERIAL rock1
 END
 
+END_SUBSURFACE

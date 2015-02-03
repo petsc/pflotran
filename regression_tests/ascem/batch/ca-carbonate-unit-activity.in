@@ -1,5 +1,16 @@
 #Description: Batch carbonate equilibrium speciation reaction
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
 #=========================== regression =======================================
 REGRESSION
   CELLS_PER_PROCESS 1
@@ -68,7 +79,7 @@ BOUNDS
 END
 
 #=========================== fluid properties =================================
-FLUID_PROPERTY 
+FLUID_PROPERTY
 DIFFUSION_COEFFICIENT 1.d-9
 /
 
@@ -142,3 +153,4 @@ MATERIAL soil1
 END
 
 
+END_SUBSURFACE

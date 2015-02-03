@@ -1,4 +1,15 @@
-#Description: 
+#Description:
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE GENERAL
+    /
+  /
+END
+
+SUBSURFACE
 
 #=========================== regression =======================================
 REGRESSION
@@ -9,7 +20,6 @@ REGRESSION
 END
 
 #=========================== flow mode ========================================
-MODE GENERAL
 
 #=========================== debug settings ===================================
 #USE_TOUCH_OPTIONS
@@ -138,12 +148,12 @@ REGION gas_side
 /
 
 #=========================== observation points ===============================
-OBSERVATION 
+OBSERVATION
   REGION liquid_side
   VELOCITY
 /
 
-OBSERVATION 
+OBSERVATION
   REGION gas_side
   VELOCITY
 /
@@ -206,3 +216,4 @@ STRATA
 /
 
 
+END_SUBSURFACE

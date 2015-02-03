@@ -1,5 +1,16 @@
 #Description: Tracer adsorption decay test case
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
 REGRESSION
   CELLS
     1
@@ -7,7 +18,7 @@ REGRESSION
 END
 
 #=========================== useful tranport parameters ==================
-REFERENCE_DENSITY  997.d0   ! water density kg/m^3 
+REFERENCE_DENSITY  997.d0   ! water density kg/m^3
 
 #=========================== chemistry ========================================
 CHEMISTRY
@@ -31,9 +42,9 @@ CHEMISTRY
   /
 # First order decay of Tracer2 to Tracer3
   RADIOACTIVE_DECAY_REACTION
-    REACTION Tracer1 <-> Tracer2 
+    REACTION Tracer1 <-> Tracer2
     RATE_CONSTANT  8.0225d-7   ! half life of 8.64d+5 seconds
-#    HALF_LIFE  864003.964552d0 
+#    HALF_LIFE  864003.964552d0
 #    HALF_LIFE  0.027397385989d0 y
   /
   DATABASE ../../../database/hanford.dat
@@ -59,7 +70,7 @@ GRID
 END
 
 #=========================== fluid properties =================================
-FLUID_PROPERTY 
+FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
@@ -126,7 +137,7 @@ END
 
 CONSTRAINT inlet_constraint
   CONCENTRATIONS
-    Tracer1    0.008d0      T  ! 0.008 kg/s 
+    Tracer1    0.008d0      T  ! 0.008 kg/s
     Tracer2    1.0d-90      T
   /
 END
@@ -150,3 +161,4 @@ STRATA
 END
 
 
+END_SUBSURFACE

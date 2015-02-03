@@ -1,24 +1,35 @@
 #Description: 1D geochemical transport with ion exchange based on Valocchi's
 #             work.
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
 #=========================== regression =======================================
 REGRESSION
 #  CELLS_PER_PROCESS 5
   CELLS
     1
-    20 
-    25 
-    30 
-    35 
-    40 
-    45 
-    50 
-    55 
-    60 
-    65 
-    70 
-    75 
-    80 
+    20
+    25
+    30
+    35
+    40
+    45
+    50
+    55
+    60
+    65
+    70
+    75
+    80
     100
   /
 END
@@ -81,7 +92,7 @@ GRID
 END
 
 #=========================== fluid properties =================================
-FLUID_PROPERTY 
+FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
@@ -164,7 +175,7 @@ END
 CONSTRAINT inlet
   CONCENTRATIONS
     Na+     9.4d-3  T
-    Ca++    5.d-4   T 
+    Ca++    5.d-4   T
     Mg++    2.13d-3 T
     Cl-     1.d-2  Z
   /
@@ -194,3 +205,4 @@ STRATA
 END
 
 
+END_SUBSURFACE

@@ -1,8 +1,18 @@
 #2D CO2 benchmark problem
 
-MODE FLASH2
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE FLASH2
+    /
+  /
+END
 
-CO2_DATABASE ../../../../database/co2data0.dat 
+SUBSURFACE
+
+
+CO2_DATABASE ../../../../database/co2data0.dat
 
 #=========================== regression test ========================================
 REGRESSION
@@ -69,7 +79,7 @@ VELOCITY_AT_CENTER
 noskip
 
 #=========================== fluid properties =================================
-FLUID_PROPERTY 
+FLUID_PROPERTY
 LIQUID_DIFFUSION_COEFFICIENT 1.d-9
 GAS_DIFFUSION_COEFFICIENT 2.13d-5
 /
@@ -82,7 +92,7 @@ TORTUOSITY 1d-1
 ROCK_DENSITY 2.65E3
 SPECIFIC_HEAT 1E3
 THERMAL_CONDUCTIVITY_DRY 0.5
-THERMAL_CONDUCTIVITY_WET 0.5 
+THERMAL_CONDUCTIVITY_WET 0.5
 SATURATION_FUNCTION sf2
 PERMEABILITY
 PERM_X 1.d-15
@@ -222,3 +232,4 @@ STRATA
 REGION all
 MATERIAL soil1
 END
+END_SUBSURFACE

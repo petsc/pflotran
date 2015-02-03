@@ -1,23 +1,33 @@
 #Description: 3D groundwater flow and solute transport
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+  /
+END
+
+SUBSURFACE
+
 #=========================== regression =======================================
 REGRESSION
   CELLS
     5
-    105 
-    205 
-    305 
-    405 
-    505 
-    605 
-    705 
-    805 
-    905 
+    105
+    205
+    305
+    405
+    505
+    605
+    705
+    805
+    905
   /
 END
 
 #=========================== flow mode ========================================
-MODE RICHARDS
 
 #=========================== discretization ===================================
 GRID
@@ -225,3 +235,4 @@ STRATA
 END
 
 
+END_SUBSURFACE

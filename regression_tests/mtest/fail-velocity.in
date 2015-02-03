@@ -1,12 +1,22 @@
 #Description: 1D variably saturated flow problem
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+  /
+END
+
+SUBSURFACE
+
 #=========================== regression =======================================
 REGRESSION
   CELLS_PER_PROCESS 5
 END
 
 #=========================== flow mode ========================================
-MODE RICHARDS
 
 #=========================== solver options ===================================
 LINEAR_SOLVER FLOW
@@ -119,3 +129,4 @@ STRATA
 END
 
 
+END_SUBSURFACE

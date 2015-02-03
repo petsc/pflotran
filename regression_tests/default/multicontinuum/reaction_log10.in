@@ -3,6 +3,17 @@
 # P.C.Lichtner/S. Karra
 # 11/5/12
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
 #=========================== regression =======================================
 REGRESSION
   CELLS_PER_PROCESS 5
@@ -78,8 +89,8 @@ MATERIAL_PROPERTY soil1
   ROCK_DENSITY 2.8E3
   SPECIFIC_HEAT 1E3
   THERMAL_CONDUCTIVITY_WET 0.5
-  SATURATION_FUNCTION default 
-  PERMEABILITY 
+  SATURATION_FUNCTION default
+  PERMEABILITY
     PERM_X 1.d-15
     PERM_Y 1.d-15
     PERM_Z 1.d-15
@@ -108,7 +119,7 @@ SATURATION_FUNCTION default
 #========================= output options =========================
 OUTPUT
 #  TIMES s 2.6042e4 3.9063e4 5.2083e4
-#  PERIODIC_OBSERVATION TIMESTEP 1 
+#  PERIODIC_OBSERVATION TIMESTEP 1
 #  PRINT_COLUMN_IDS
 #  FORMAT TECPLOT POINT
 /
@@ -153,7 +164,7 @@ REGION obs
   /
 END
 
-OBSERVATION 
+OBSERVATION
   REGION obs
   SECONDARY_CONCENTRATION
   SECONDARY_MINERAL_VOLFRAC
@@ -171,14 +182,14 @@ TRANSPORT_CONDITION west
   TYPE dirichlet
   CONSTRAINT_LIST
     0.d0 west
-  / 
+  /
 /
 
 TRANSPORT_CONDITION east
   TYPE zero_gradient
   CONSTRAINT_LIST
     0.d0 east
-  / 
+  /
 /
 
 #========================== initial and boundary conditions =================
@@ -243,3 +254,4 @@ A(s)      0.5d5    17.857d2
 /
 /
 
+END_SUBSURFACE

@@ -1,11 +1,24 @@
 !Description: 3D variably saturated flow with infiltration at top
 
+SIMULATION
+  SIMULATION_TYPE HYDROGEOPHYSICS
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
 !DEBUG
 !  PRINT_COUPLERS River
 !END
 
 !=========================== flow mode ========================================
-MODE RICHARDS
 
 CHEMISTRY
   PRIMARY_SPECIES
@@ -14,7 +27,7 @@ CHEMISTRY
 END
 
 !=========================== solver options ===================================
-TIMESTEPPER
+TIMESTEPPER FLOW
   TS_ACCELERATION 8
   MAX_TS_CUTS 5
 END
@@ -59,7 +72,7 @@ GRID
 END
 
 !=========================== fluid properties =================================
-FLUID_PROPERTY 
+FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
@@ -148,7 +161,7 @@ REGION bottom
   /
 END
 
-REGION top 
+REGION top
   FACE TOP
   COORDINATES
     0.d0 0.d0 110.d0
@@ -156,7 +169,7 @@ REGION top
   /
 END
 
-REGION south 
+REGION south
   FACE SOUTH
   COORDINATES
     0.d0 0.d0 90.d0
@@ -164,7 +177,7 @@ REGION south
   /
 END
 
-REGION north 
+REGION north
   FACE NORTH
   COORDINATES
     0.d0 400.d0 90.d0
@@ -172,7 +185,7 @@ REGION north
   /
 END
 
-REGION west 
+REGION west
   FACE WEST
   COORDINATES
     0.d0 0.d0 90.d0
@@ -180,7 +193,7 @@ REGION west
   /
 END
 
-REGION east 
+REGION east
   FACE EAST
   COORDINATES
     400.d0 0.d0 90.d0
@@ -271,7 +284,7 @@ END
 BOUNDARY_CONDITION east
   FLOW_CONDITION river_stage
   TRANSPORT_CONDITION solute
-  REGION east 
+  REGION east
 END
 
 ! west boundary condition
@@ -287,3 +300,4 @@ STRATA
   REGION all
 END
 
+END_SUBSURFACE

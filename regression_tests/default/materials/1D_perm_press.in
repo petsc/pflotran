@@ -1,8 +1,19 @@
 #Description: 1D test problem for permeability update with pressure
 #Satish Karra
-#01/15/2014 
+#01/15/2014
 #===================== richards mode ===============================================
-MODE RICHARDS 
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+  /
+END
+
+SUBSURFACE
+
 
 #updating permeability based on pressure
 UPDATE_FLOW_PERMEABILITY
@@ -72,8 +83,8 @@ END
 MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.5d0
-  SATURATION_FUNCTION default 
-  PERMEABILITY 
+  SATURATION_FUNCTION default
+  PERMEABILITY
     PERM_X 1.d-15
     PERM_Y 1.d-15
     PERM_Z 1.d-15
@@ -147,15 +158,15 @@ FLOW_CONDITION initial
   PRESSURE 1.5D5
 END
 
-FLOW_CONDITION east 
-  TYPE 
+FLOW_CONDITION east
+  TYPE
     PRESSURE dirichlet
   /
   PRESSURE 1.5D5
 END
 
 FLOW_CONDITION west
-  TYPE 
+  TYPE
     PRESSURE dirichlet
   /
   PRESSURE 10.0D5
@@ -185,3 +196,4 @@ STRATA
   MATERIAL soil1
 END
 
+END_SUBSURFACE

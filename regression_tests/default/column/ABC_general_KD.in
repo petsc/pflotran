@@ -1,5 +1,16 @@
 #Description: 1D general reaction with sorption.
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
 #Using solely aqueous decay, compare with:
 #
 #http://hydrolab.illinois.edu/gw_applets//sequential/SequentialDecayApplet.html
@@ -29,19 +40,19 @@ REGRESSION
 #  CELLS_PER_PROCESS 5
   CELLS
     1
-    20 
-    25 
-    30 
-    35 
-    40 
-    45 
-    50 
-    55 
-    60 
-    65 
-    70 
-    75 
-    80 
+    20
+    25
+    30
+    35
+    40
+    45
+    50
+    55
+    60
+    65
+    70
+    75
+    80
     100
   /
 END
@@ -64,7 +75,7 @@ CHEMISTRY
   GENERAL_REACTION
     REACTION A(aq) <-> B(aq)
     ! Calculating forward rate from half life
-    
+
     ! forward rate = -ln(0.5) / half life [1/sec]
 
     FORWARD_RATE 1.75836d-9  ! 1/s  half life = 12.5 yrs
@@ -98,7 +109,7 @@ CHEMISTRY
         ! R = 2, Kd = 250.
         DISTRIBUTION_COEFFICIENT 0.25d3 ! kg water/m^3 bulk
       /
-    / 
+    /
   /
   DATABASE ../../../database/hanford.dat
   OUTPUT
@@ -123,7 +134,7 @@ GRID
 END
 
 #=========================== fluid properties =================================
-FLUID_PROPERTY 
+FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
@@ -228,3 +239,4 @@ STRATA
 END
 
 
+END_SUBSURFACE

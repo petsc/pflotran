@@ -1,10 +1,21 @@
-#Description: 1D problem for testing 
+#Description: 1D problem for testing
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
 
 #=========================== regression =======================================
 REGRESSION
   CELLS_PER_PROCESS 1
 END
- 
+
 # == debugging ================================================================
 DEBUG
 #MATVIEW_JACOBIAN
@@ -148,3 +159,4 @@ STRATA
   REGION all
 /
 
+END_SUBSURFACE

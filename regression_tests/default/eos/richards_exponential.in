@@ -1,12 +1,22 @@
 #Description: Unit test problem for testing EOS
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+  /
+END
+
+SUBSURFACE
+
 #=========================== regression =======================================
 REGRESSION
   CELLS_PER_PROCESS 1
 END
 
 #=========================== flow mode ========================================
-MODE RICHARDS
 
 #=========================== solver options ===================================
 LINEAR_SOLVER FLOW
@@ -29,7 +39,7 @@ EOS WATER
 END
 
 #=========================== fluid properties =================================
-FLUID_PROPERTY 
+FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
@@ -108,3 +118,4 @@ STRATA
   REGION all
 END
 
+END_SUBSURFACE

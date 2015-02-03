@@ -1,12 +1,25 @@
 #Description: 5 Spot Copper Leaching problem
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
 #=========================== regression =======================================
 REGRESSION
   CELLS_PER_PROCESS 5
 END
 
 #=========================== flow mode ========================================
-MODE RICHARDS
 
 #=========================== checkpointing ====================================
 
@@ -163,7 +176,7 @@ GRID
 END
 
 #=========================== fluid properties =================================
-FLUID_PROPERTY 
+FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
@@ -305,8 +318,8 @@ CONSTRAINT inlet
     K+         1.3d-4   M Jarosite
     Ca++       1.1d-2   M Gypsum
     H+         1.d0    pH
-    Cu++       1.0d-8   T 
-    Al+++      2.5d-2   T 
+    Cu++       1.0d-8   T
+    Al+++      2.5d-2   T
     Fe++       3.4d-9   M Goethite
     SiO2(aq)   1.9d-3   M SiO2(am)
     HCO3-      -2.d0    G CO2(g)
@@ -341,3 +354,4 @@ STRATA
   REGION all
   MATERIAL oxide-ore
 END
+END_SUBSURFACE
