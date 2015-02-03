@@ -109,21 +109,6 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
   ! process command line arguments specific to subsurface
   !call SurfSubsurfInitCommandLineSettings(option)
   
-#ifndef INIT_REFACTOR  
-  allocate(simulation_old)
-  simulation_old => SimulationCreate(option)
-  call Init(simulation_old)
-
-  call HijackSimulation(simulation_old,subsurf_simulation)
-  call SubsurfaceJumpStart(subsurf_simulation)
-
-  simulation%realization => simulation_old%realization
-  simulation%flow_process_model_coupler => &
-       subsurf_simulation%flow_process_model_coupler
-  simulation%rt_process_model_coupler => &
-       subsurf_simulation%rt_process_model_coupler
-  simulation%regression => simulation_old%regression
-#else
   ! we need to remove the surface pm from the list while leaving the
   ! the subsurface pm linkage intact
   nullify(prev_pm)
@@ -148,32 +133,8 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
   ! in SubsurfaceInitializePostPetsc, the first pmc in the list is set as
   ! the master, we need to negate this setting
   simulation%process_model_coupler_list%is_master = PETSC_FALSE
-#endif  
 
   if (option%surf_flow_on) then
-#ifndef INIT_REFACTOR  
-    ! Both, Surface-Subsurface flow active
-    call HijackSurfaceSimulation(simulation_old,surf_simulation)
-    call SurfaceJumpStart(surf_simulation)
-
-    simulation%process_model_coupler_list => &
-      surf_simulation%process_model_coupler_list
-    surf_simulation%process_model_coupler_list%peer => &
-      subsurf_simulation%process_model_coupler_list
-    surf_simulation%surf_flow_process_model_coupler%subsurf_realization => &
-      simulation_old%realization
-    simulation%flow_process_model_coupler%realization => &
-      simulation_old%realization
-    simulation%process_model_coupler_list%is_master = PETSC_TRUE
-    subsurf_simulation%process_model_coupler_list%is_master = PETSC_FALSE
-
-    simulation%surf_realization => simulation_old%surf_realization
-    simulation%surf_flow_process_model_coupler => &
-         surf_simulation%surf_flow_process_model_coupler
-
-    nullify(surf_simulation%process_model_coupler_list)
-
-#else
     simulation%surf_realization => SurfRealizCreate(option)
     surf_realization => simulation%surf_realization
     subsurf_realization => simulation%realization
@@ -243,8 +204,6 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
                           ierr);CHKERRQ(ierr)
     timestepper%dt = option%surf_flow_dt
     
-#endif
-  
     nullify(simulation%process_model_coupler_list)
   endif
 
@@ -295,10 +254,6 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
     cur_process_model_coupler => cur_process_model_coupler%peer
     call cur_process_model_coupler%SetAuxData()
   endif
-
-#ifndef INIT_REFACTOR  
-  deallocate(simulation_old)
-#endif
 
 end subroutine SurfSubsurfaceInitializePostPETSc
 

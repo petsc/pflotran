@@ -72,12 +72,6 @@ subroutine InitGeomechSetupRealization(simulation)
   call WaypointListFillIn(option,simulation%geomech_realization%waypoint_list)
   call WaypointListRemoveExtraWaypnts(option, &
                                   simulation%geomech_realization%waypoint_list)
-#ifndef INIT_REFACTOR
-  if (associated(simulation%flow_timestepper)) then
-    simulation%geomech_timestepper%cur_waypoint => simulation% &
-      geomech_realization%waypoint_list%first
-  endif
-#endif
   call GeomechForceSetup(simulation%geomech_realization)
   call GeomechGlobalSetup(simulation%geomech_realization)
     

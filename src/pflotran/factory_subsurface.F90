@@ -72,16 +72,11 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   use Timestepper_BE_class
   use Realization_class
   use Logging_module
-#ifndef INIT_REFACTOR
-!  use Simulation_module
-  use Init_Common_module
-#else  
   use Simulation_Subsurface_class
   use Solver_module
   use Waypoint_module
   use Init_Subsurface_module
   use Input_Aux_module
-#endif  
   
   implicit none
   
@@ -98,22 +93,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   class(timestepper_BE_type), pointer :: timestepper
   character(len=MAXSTRINGLENGTH) :: string
   
-#ifndef INIT_REFACTOR
-  type(simulation_type), pointer :: simulation_old
-  
   ! process command line arguments specific to subsurface
-  call SubsurfInitCommandLineSettings(option)
-
-  simulation_old => SimulationCreate(option)
-  call Init(simulation_old)
-  call HijackSimulation(simulation_old,simulation)
-  
-  ! no longer need simulation
-  ! nullify realization and regression so that it is not destroyed
-  nullify(simulation_old%realization)
-  nullify(simulation_old%regression)
-  call SimulationDestroy(simulation_old)
-#else
   call SubsurfInitCommandLineSettings(option)
   nullify(pm_flow)
   nullify(pm_rt)
@@ -221,7 +201,6 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
     simulation%rt_process_model_coupler%child => pmc_third_party
     nullify(pmc_third_party)
   endif
-#endif
 
   call SubsurfaceJumpStart(simulation)
   ! set first process model coupler as the master
@@ -759,7 +738,6 @@ subroutine InitSubsurfaceSimulation(simulation)
             call cur_process_model%SetupSolvers(ts%solver)
         end select
 #endif
-#ifdef INIT_REFACTOR
         select type(ts => cur_process_model_coupler%timestepper)
           class is(timestepper_BE_type)
             call SNESGetLineSearch(ts%solver%snes,linesearch,ierr);CHKERRQ(ierr)
@@ -832,7 +810,6 @@ subroutine InitSubsurfaceSimulation(simulation)
                                      ierr);CHKERRQ(ierr)
             end select
         end select
-#endif            
         cur_process_model => cur_process_model%next
       enddo
       ! has to be called after realizations are set above

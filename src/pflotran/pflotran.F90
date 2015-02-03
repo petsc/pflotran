@@ -77,23 +77,6 @@ program pflotran
 
   do ! multi-simulation loop
     call PFLOTRANInitializePostPetsc(simulation,multisimulation,option)
-#ifndef INIT_REFACTOR    
-    select case(option%simulation_mode)
-      case('SUBSURFACE')
-        call SubsurfaceInitialize(simulation,dummy_list,option)
-      case('HYDROGEOPHYSICS')
-        call HydrogeophysicsInitialize(simulation,option)
-      case('SURFACE')
-        call SurfaceInitialize(simulation,option)
-      case('SURFACE_SUBSURFACE')
-        call SurfSubsurfaceInitialize(simulation,option)
-      case ('GEOMECHANICS')
-        call GeomechanicsInitialize(simulation,option)
-      case default
-        option%io_buffer = 'Simulation Mode not recognized.'
-        call printErrMsg(option)
-    end select
-#endif    
 
     call simulation%InitializeRun()
 

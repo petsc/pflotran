@@ -82,7 +82,6 @@ subroutine PFLOTRANInitializePostPetsc(simulation,multisimulation,option)
   call PetscLogStagePush(logging%stage(INIT_STAGE),ierr);CHKERRQ(ierr)
   call PetscLogEventBegin(logging%event_init,ierr);CHKERRQ(ierr)
   
-#ifdef INIT_REFACTOR 
   call EOSInit()
   filename = trim(option%global_prefix) // trim(option%group_prefix) // &
              '.out'
@@ -91,7 +90,6 @@ subroutine PFLOTRANInitializePostPetsc(simulation,multisimulation,option)
   endif
   
   call PFLOTRANReadSimulation(simulation,option)
-#endif
   
 end subroutine PFLOTRANInitializePostPetsc
 

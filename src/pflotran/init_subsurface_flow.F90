@@ -311,51 +311,7 @@ subroutine InitSubsurfFlowSetupSolvers(realization,solver)
   call SNESSetConvergenceTest(solver%snes,ConvergenceTest, &
                               convergence_context, &
                               PETSC_NULL_FUNCTION,ierr);CHKERRQ(ierr)
-    
  
-#ifndef INIT_REFACTOR
-  call SNESGetLineSearch(solver%snes, linesearch, ierr);CHKERRQ(ierr)
-  select case(option%iflowmode)
-    case(RICHARDS_MODE)
-      if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
-          dabs(option%saturation_change_limit) > 0.d0) then
-        call SNESLineSearchSetPreCheck(linesearch, &
-                                        RichardsCheckUpdatePre, &
-                                        realization,ierr);CHKERRQ(ierr)
-      endif
-    case(G_MODE)
-      call SNESLineSearchSetPreCheck(linesearch, &
-                                      GeneralCheckUpdatePre, &
-                                      realization,ierr);CHKERRQ(ierr)
-    case(TH_MODE)
-      if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
-          dabs(option%pressure_change_limit) > 0.d0 .or. &
-          dabs(option%temperature_change_limit) > 0.d0) then
-        call SNESLineSearchSetPreCheck(linesearch, &
-                                        THCheckUpdatePre, &
-                                        realization,ierr);CHKERRQ(ierr)
-      endif
-  end select
-    
-  if (solver%check_post_convergence) then
-    call SNESGetLineSearch(solver%snes, linesearch, ierr);CHKERRQ(ierr)
-    select case(option%iflowmode)
-      case(RICHARDS_MODE)
-        call SNESLineSearchSetPostCheck(linesearch, &
-                                        RichardsCheckUpdatePost, &
-                                        realization,ierr);CHKERRQ(ierr)
-      case(G_MODE)
-        call SNESLineSearchSetPostCheck(linesearch, &
-                                        GeneralCheckUpdatePost, &
-                                        realization,ierr);CHKERRQ(ierr)
-      case(TH_MODE)
-        call SNESLineSearchSetPostCheck(linesearch, &
-                                        THCheckUpdatePost, &
-                                        realization,ierr);CHKERRQ(ierr)
-    end select
-  endif
-#endif        
-    
   call printMsg(option,"  Finished setting up FLOW SNES ")
  
 end subroutine InitSubsurfFlowSetupSolvers

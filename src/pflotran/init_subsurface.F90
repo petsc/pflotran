@@ -1107,16 +1107,6 @@ subroutine InitSubsurfaceReadRequiredCards(realization)
     select case(trim(card))
 
 !....................
-#ifndef INIT_REFACTOR    
-      case ('MODE')
-        call InputReadWord(input,option,option%flowmode,PETSC_TRUE)
-        call InputErrorMsg(input,option,'flowmode','mode')
-        select case(trim(option%flowmode))
-          case('GENERAL')
-            call GeneralRead(input,option)
-        end select
-#endif  
-!....................
       case('DBASE_FILENAME')
         call InputReadWord(input,option,word,PETSC_FALSE)
         call InputErrorMsg(input,option,'filename','DBASE_FILENAME')
@@ -1353,70 +1343,12 @@ subroutine InitSubsurfaceReadInput(simulation)
     select case(trim(card))
 
 !....................
-#ifndef INIT_REFACTOR
-      case ('MODE')
-         call InputReadWord(input, option, word, PETSC_FALSE)
-         call StringToUpper(word)
-         if ('TH' == trim(word)) then
-            call InputReadWord(input, option, word, PETSC_TRUE)
-            call InputErrorMsg(input, option, 'th freezing mode', 'mode th')
-            call StringToUpper(word)
-            if ('FREEZING' == trim(word)) then
-               option%use_th_freezing = PETSC_TRUE
-               option%io_buffer = ' TH: using FREEZING submode!'
-               call printMsg(option)
-               ! Override the default setting for TH-mode with freezing
-               call EOSWaterSetDensityPainter()
-               call EOSWaterSetEnthalpyPainter()
-            else if ('NO_FREEZING' == trim(word)) then
-               option%use_th_freezing = PETSC_FALSE
-               option%io_buffer = ' TH: using NO_FREEZING submode!'
-               call printMsg(option)
-            else
-               ! NOTE(bja, 2013-12) use_th_freezing defaults to false, can skip this....
-               option%io_buffer = ' TH: must specify FREEZING or NO_FREEZING submode!'
-               call printErrMsg(option)
-            endif
-         else if (trim(word) == 'GENERAL') then
-           call InputReadWord(input, option, word, PETSC_TRUE)
-           if (input%ierr == 0) then
-             call InputSkipToEnd(input,option,card)
-           endif
-         endif  
-#endif
-         
-!....................
       case('CREEP_CLOSURE')
         call CreepClosureInit()
         creep_closure => CreepClosureCreate()
         call creep_closure%Read(input,option)
         option%flow%transient_porosity = PETSC_TRUE
         
-!....................
-#ifndef INIT_REFACTOR
-      case ('ICE_MODEL')
-        call InputReadWord(input,option,word,PETSC_FALSE)
-        call StringToUpper(word)
-        select case (trim(word))
-          case ('PAINTER_EXPLICIT')
-            option%ice_model = PAINTER_EXPLICIT
-          case ('PAINTER_KARRA_IMPLICIT')
-            option%ice_model = PAINTER_KARRA_IMPLICIT
-          case ('PAINTER_KARRA_EXPLICIT')
-            option%ice_model = PAINTER_KARRA_EXPLICIT
-          case ('PAINTER_KARRA_EXPLICIT_NOCRYO')
-            option%ice_model = PAINTER_KARRA_EXPLICIT_NOCRYO
-          case ('DALL_AMICO')
-            option%ice_model = DALL_AMICO
-          case default
-            option%io_buffer = 'Cannot identify the specificed ice model.' // &
-             'Specify PAINTER_EXPLICIT or PAINTER_KARRA_IMPLICIT' // &
-             ' or PAINTER_KARRA_EXPLICIT or PAINTER_KARRA_EXPLICIT_NOCRYO ' // &
-             ' or DALL_AMICO.'
-            call printErrMsg(option)
-          end select
-#endif
-
 !....................
       case ('ONLY_VERTICAL_FLOW')
         option%flow%only_vertical_flow = PETSC_TRUE

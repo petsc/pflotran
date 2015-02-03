@@ -10,8 +10,6 @@ include ${PETSC_DIR}/conf/variables
 include ${PETSC_DIR}/conf/rules
 
 MYFLAGS = -I.
-MYFLAGS += ${FC_DEFINE_FLAG}PROCESS_MODEL
-MYFLAGS += ${FC_DEFINE_FLAG}INIT_REFACTOR
 
 # if compiling pflotran_rxn or libpflotranchem.a, need to toggle 
 # PFLOTRAN_RXN_FLAG 
@@ -509,9 +507,9 @@ factory_hydrogeophysics.o : discretization.o factory_subsurface.o input_aux.o \
                             simulation_hydrogeophysics.o string.o \
                             wrapper_hydrogeophysics.o
 factory_pflotran.o : eos.o factory_hydrogeophysics.o factory_subsurface.o \
-                     input_aux.o logging.o multisimulation.o option.o \
-                     pflotran_constants.o pm_base.o pmc_base.o \
-                     simulation_base.o string.o
+                     factory_surfsubsurface.o input_aux.o logging.o \
+                     multisimulation.o option.o pflotran_constants.o pm_base.o \
+                     pm_surface_th.o pmc_base.o simulation_base.o string.o
 factory_subsurface.o : condition_control.o general.o global.o init_common.o \
                        init_subsurface.o init_subsurface_flow.o \
                        init_subsurface_transport.o input_aux.o logging.o \
@@ -536,14 +534,15 @@ factory_surfsubsurface.o : coupler.o discretization.o dm_kludge.o \
                            grid.o grid_unstructured.o grid_unstructured_aux.o \
                            grid_unstructured_cell.o init_common.o \
                            init_surface.o input_aux.o logging.o option.o \
-                           patch.o pflotran_constants.o pm_base.o pm_surface.o \
+                           patch.o pflotran_constants.o pm_base.o \
+                           pm_base_pointer.o pm_surface.o pm_surface_th.o \
                            pmc_base.o pmc_surface.o realization.o region.o \
                            simulation_aux.o simulation_base.o \
                            simulation_subsurface.o simulation_surface.o \
                            simulation_surfsubsurface.o string.o \
                            surface_field.o surface_flow.o surface_init.o \
                            surface_realization.o surface_th.o \
-                           timestepper_base.o timestepper_surface.o waypoint.o
+                           timestepper_surface.o waypoint.o
 field.o : pflotran_constants.o
 flash2.o : co2_span_wagner.o co2_span_wagner_spline.o co2_sw.o co2eos.o \
            connection.o coupler.o debug.o discretization.o eos_water.o field.o \
@@ -883,9 +882,9 @@ pm_surface_th.o : communicator_base.o condition.o discretization.o grid.o \
                   realization.o surface_field.o surface_realization.o \
                   surface_th.o
 pm_th.o : communicator_base.o communicator_structured.o \
-          communicator_unstructured.o discretization.o global.o grid.o \
-          option.o pflotran_constants.o pm_base.o pm_subsurface.o \
-          realization.o solver.o th.o
+          communicator_unstructured.o discretization.o eos_water.o global.o \
+          grid.o input_aux.o option.o pflotran_constants.o pm_base.o \
+          pm_subsurface.o realization.o solver.o string.o th.o utility.o
 pm_waste_form.o : amp_surrogate.o geometry.o global.o global_aux.o grid.o \
                   grid_structured.o grid_unstructured.o input_aux.o option.o \
                   pflotran_constants.o pm_base.o reaction_aux.o \
