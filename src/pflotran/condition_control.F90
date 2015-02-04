@@ -398,7 +398,7 @@ subroutine CondControlAssignTranInitCond(realization)
   use Grid_module
   use Dataset_Base_class
   use Patch_module
-  use Reactive_Transport_module
+  use Reactive_Transport_module, only : RTUpdateAuxVars
   use Reactive_Transport_Aux_module
   use Reaction_Aux_module
   use Global_Aux_module
