@@ -404,6 +404,7 @@ subroutine CondControlAssignTranInitCond(realization)
   use Global_Aux_module
   use Material_Aux_class
   use Reaction_module
+  use Reactive_Transport_module
   use HDF5_module
   
   implicit none
@@ -1074,6 +1075,7 @@ subroutine CondControlReadTransportIC(realization,filename)
   use Field_module
   use Grid_module
   use Patch_module
+  use Reactive_Transport_module
   use Reaction_Aux_module
   use Discretization_module
   use HDF5_module
