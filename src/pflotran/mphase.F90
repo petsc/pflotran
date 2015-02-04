@@ -70,7 +70,7 @@ subroutine MphaseTimeCut(realization)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   
@@ -96,7 +96,7 @@ subroutine MphaseSetup(realization)
   use Realization_class
   use Patch_module
    
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(patch_type), pointer :: cur_patch
   
@@ -133,7 +133,7 @@ subroutine MphaseSetupPatch(realization)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type),pointer :: patch
@@ -342,7 +342,7 @@ subroutine MphaseComputeMassBalance(realization,mass_balance,mass_trapped)
   use Realization_class
   use Patch_module
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
   PetscReal :: mass_trapped(realization%option%nphase)
 
@@ -382,7 +382,7 @@ subroutine MphaseComputeMassBalancePatch(realization,mass_balance,mass_trapped)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 ! type(saturation_function_type) :: saturation_function_type
 
   PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
@@ -477,7 +477,7 @@ subroutine MphaseZeroMassBalDeltaPatch(realization)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -531,7 +531,7 @@ subroutine MphaseUpdateMassBalancePatch(realization)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -590,7 +590,7 @@ function MphaseInitGuessCheck(realization)
   use Option_module
   
   PetscInt ::  MphaseInitGuessCheck
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   type(option_type), pointer:: option
   type(patch_type), pointer :: cur_patch
   PetscInt :: ipass, ipass0
@@ -633,7 +633,7 @@ subroutine MPhaseUpdateReasonPatch(reason,realization)
   implicit none
  
   PetscInt, intent(out):: reason
-  class(realization_type) :: realization  
+  type(realization_type) :: realization  
   type(patch_type),pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
@@ -740,7 +740,7 @@ subroutine MPhaseUpdateReason(reason, realization)
   use Patch_module
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(patch_type), pointer :: cur_patch
   PetscInt :: reason
@@ -791,7 +791,7 @@ end subroutine MPhaseUpdateReason
     implicit none
     
     PetscInt :: MphaseInitGuessCheckPatch 
-    class(realization_type) :: realization
+    type(realization_type) :: realization
     type(grid_type), pointer :: grid
     type(patch_type), pointer :: patch
     type(option_type), pointer :: option
@@ -850,7 +850,7 @@ subroutine MphaseUpdateAuxVars(realization)
   use Realization_class
   use Patch_module
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(patch_type), pointer :: cur_patch
   
@@ -886,7 +886,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
   
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -1099,7 +1099,7 @@ subroutine MphaseInitializeTimestep(realization)
   
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   call MphaseUpdateFixedAccumulation(realization)
 
@@ -1121,7 +1121,7 @@ subroutine MphaseUpdateSolution(realization)
   
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(field_type), pointer :: field
   type(patch_type), pointer :: cur_patch
@@ -1170,7 +1170,7 @@ subroutine MphaseUpdateSolutionPatch(realization)
     
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
@@ -1250,7 +1250,7 @@ subroutine MphaseUpdateFixedAccumulation(realization)
   use Realization_class
   use Patch_module
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(patch_type), pointer :: cur_patch
   
@@ -1285,7 +1285,7 @@ subroutine MphaseUpdateFixedAccumPatch(realization)
 
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -2083,7 +2083,7 @@ subroutine MphaseResidual(snes,xx,r,realization,ierr)
   SNES :: snes
   Vec :: xx
   Vec :: r
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscErrorCode :: ierr
   
   type(discretization_type), pointer :: discretization
@@ -2179,7 +2179,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   Vec, intent(in) :: xx
   PetscInt :: icri,ichange 
@@ -2509,7 +2509,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: i, jn
@@ -3157,7 +3157,7 @@ subroutine MphaseJacobian(snes,xx,A,B,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscErrorCode :: ierr
   
   Mat :: J
@@ -3235,7 +3235,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: nvar,neq,nr
@@ -3925,7 +3925,7 @@ subroutine MphaseMaxChange(realization)
 
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(field_type), pointer :: field
@@ -3984,7 +3984,7 @@ subroutine MphaseMaxChangePatch(realization,  max_c, max_s)
   use Option_module
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscReal :: max_s, max_c 
 
 
@@ -4058,7 +4058,7 @@ function MphaseGetTecplotHeader(realization,icolumn)
   implicit none
   
   character(len=MAXSTRINGLENGTH) :: MphaseGetTecplotHeader
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscInt :: icolumn
   
   character(len=MAXSTRINGLENGTH) :: string, string2
@@ -4223,7 +4223,7 @@ subroutine MphaseSetPlotVariables(realization)
 
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   type(output_variable_type) :: output_variable
   
   character(len=MAXWORDLENGTH) :: name, units
@@ -4529,7 +4529,7 @@ subroutine MphaseDestroy(realization)
 
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   ! need to free array in aux vars
   !call MphaseAuxDestroy(patch%aux%mphase)

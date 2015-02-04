@@ -55,7 +55,7 @@ subroutine THTimeCut(realization)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   
@@ -79,7 +79,7 @@ subroutine THSetup(realization)
   use Realization_class
   use Patch_module
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(patch_type), pointer :: cur_patch
   
@@ -118,7 +118,7 @@ subroutine THSetupPatch(realization)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -352,7 +352,7 @@ subroutine THCheckUpdatePre(line_search,P,dP,changed,realization,ierr)
   Vec :: dP
   ! ignore changed flag for now.
   PetscBool :: changed
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   PetscReal, pointer :: P_p(:)
   PetscReal, pointer :: dP_p(:)
@@ -505,7 +505,7 @@ subroutine THCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
   Vec :: P0
   Vec :: dP
   Vec :: P1
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   ! ignore changed flag for now.
   PetscBool :: dP_changed
   PetscBool :: P1_changed
@@ -600,7 +600,7 @@ subroutine THComputeMassBalance(realization, mass_balance)
   use Realization_class
   use Patch_module
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%nphase)
    
   type(patch_type), pointer :: cur_patch
@@ -639,7 +639,7 @@ subroutine THComputeMassBalancePatch(realization,mass_balance)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%nphase)
 
   type(option_type), pointer :: option
@@ -717,7 +717,7 @@ subroutine THZeroMassBalDeltaPatch(realization)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -765,7 +765,7 @@ subroutine THUpdateMassBalancePatch(realization)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -814,7 +814,7 @@ subroutine THUpdateAuxVars(realization)
   use Realization_class
   use Patch_module
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(patch_type), pointer :: cur_patch
   
@@ -850,7 +850,7 @@ subroutine THUpdateAuxVarsPatch(realization)
    
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -1069,7 +1069,7 @@ subroutine THInitializeTimestep(realization)
   
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   call THUpdateFixedAccumulation(realization)
 
@@ -1091,7 +1091,7 @@ subroutine THUpdateSolution(realization)
   
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   type(field_type), pointer :: field
   type(patch_type), pointer :: cur_patch
@@ -1132,7 +1132,7 @@ subroutine THUpdateSolutionPatch(realization)
     
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
@@ -1203,7 +1203,7 @@ subroutine THUpdateFixedAccumulation(realization)
   use Realization_class
   use Patch_module
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(patch_type), pointer :: cur_patch
   
@@ -1238,7 +1238,7 @@ subroutine THUpdateFixedAccumPatch(realization)
 
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -1351,7 +1351,7 @@ subroutine THNumericalJacobianTest(xx,realization)
   implicit none
 
   Vec :: xx
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   Vec :: xx_pert
   Vec :: res
@@ -3573,7 +3573,7 @@ subroutine THResidual(snes,xx,r,realization,ierr)
   SNES :: snes
   Vec :: xx
   Vec :: r
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscErrorCode :: ierr
   
   type(discretization_type), pointer :: discretization
@@ -3659,7 +3659,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: i, jn
@@ -4095,7 +4095,7 @@ subroutine THJacobian(snes,xx,A,B,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscErrorCode :: ierr
   
   Mat :: J
@@ -4173,7 +4173,7 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: nvar,neq,nr
@@ -4732,7 +4732,7 @@ subroutine THMaxChange(realization)
   
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(field_type), pointer :: field  
@@ -4777,7 +4777,7 @@ subroutine THResidualToMass(realization)
   implicit none
 
   Vec :: ts_mass_balance
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(field_type), pointer :: field
   type(patch_type), pointer :: cur_patch
@@ -4840,7 +4840,7 @@ function THGetTecplotHeader(realization,icolumn)
   implicit none
   
   character(len=MAXSTRINGLENGTH) :: THGetTecplotHeader
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscInt :: icolumn
   
   character(len=MAXSTRINGLENGTH) :: string, string2
@@ -4967,7 +4967,7 @@ subroutine THSetPlotVariables(realization)
 
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   type(output_variable_type) :: output_variable
   
   character(len=MAXWORDLENGTH) :: name, units
@@ -5472,7 +5472,7 @@ subroutine THUpdateSurfaceBC(realization)
 
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   PetscInt :: ghosted_id
   PetscInt :: local_id
@@ -5692,7 +5692,7 @@ subroutine THUpdateSurfaceWaterFlag(realization)
 
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   type(coupler_type), pointer :: boundary_condition
   type(TH_auxvar_type), pointer :: TH_auxvars_bc(:)
@@ -5777,7 +5777,7 @@ subroutine THComputeCoeffsForSurfFlux(realization)
 
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
