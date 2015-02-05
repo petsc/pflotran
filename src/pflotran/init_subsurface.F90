@@ -18,25 +18,6 @@ contains
 
 ! ************************************************************************** !
 
-subroutine InitSubsurfaceRead(realization)
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 12/04/14
-  ! 
-  use Init_Common_module
-  use Realization_class
-  
-  implicit none
-  
-  class(realization_type) :: realization
-  
-  ! read required cards
-  call InitSubsurfaceReadRequiredCards(realization)
-
-end subroutine InitSubsurfaceRead
-
-! ************************************************************************** !
-
 subroutine InitSubsurfSetupRealization(realization)
   ! 
   ! Initializes material property data structres and assign them to the domain.
