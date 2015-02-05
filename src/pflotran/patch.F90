@@ -1989,6 +1989,7 @@ subroutine PatchUpdateCouplerAuxVarsRich(patch,coupler,option)
   use Grid_module
   use Dataset_Common_HDF5_class
   use Dataset_Gridded_HDF5_class
+  use Dataset_Ascii_class
 
   implicit none
   
@@ -2016,20 +2017,17 @@ subroutine PatchUpdateCouplerAuxVarsRich(patch,coupler,option)
   if (associated(flow_condition%pressure)) then
     select case(flow_condition%pressure%itype)
       case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
-        if (associated(flow_condition%pressure%dataset)) then
-          coupler%flow_aux_real_var(RICHARDS_PRESSURE_DOF, &
-                                    1:num_connections) = &
-            flow_condition%pressure%dataset%rarray(1)
-        else
-          select type(dataset => &
-                      flow_condition%pressure%dataset)
-            class is(dataset_gridded_hdf5_type)
-              call PatchUpdateCouplerFromDataset(coupler,option, &
-                                              patch%grid,dataset, &
-                                              RICHARDS_PRESSURE_DOF)
-            class default
-          end select
-        endif
+        select type(dataset => &
+                    flow_condition%pressure%dataset)
+          class is(dataset_ascii_type)
+            coupler%flow_aux_real_var(RICHARDS_PRESSURE_DOF, &
+                                      1:num_connections) = dataset%rarray(1)
+          class is(dataset_gridded_hdf5_type)
+            call PatchUpdateCouplerFromDataset(coupler,option, &
+                                            patch%grid,dataset, &
+                                            RICHARDS_PRESSURE_DOF)
+          class default
+        end select
       case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
         call HydrostaticUpdateCoupler(coupler,option,patch%grid)
    !  case(SATURATION_BC)
