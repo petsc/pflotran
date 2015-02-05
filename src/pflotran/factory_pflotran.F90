@@ -142,6 +142,21 @@ subroutine PFLOTRANReadSimulation(simulation,option)
 
   string = 'SIMULATION'
   call InputFindStringInFile(input,option,string)
+  !TODO(geh): remove after 8/5/2015
+  if (input%ierr /= 0) then
+    call printMsg(option,'')
+    call printMsg(option,'***************************************************')
+    call printMsg(option,'')
+    call printMsg(option,'IMPORTANT: The PFLOTRAN input deck has been ' // &
+                 'refactored. Please see')
+    call printMsg(option,'')
+    call printMsg(option,'https://bitbucket.org/pflotran/' // &
+                  'pflotran-dev/wiki/Documentation/RefactoredInput')
+    call printMsg(option,'')
+    call printMsg(option,'for instructions on updating your input deck.')
+    call printMsg(option,'')
+    call printMsg(option,'***************************************************')
+  endif
   call InputFindStringErrorMsg(input,option,string)
   word = ''
   do
