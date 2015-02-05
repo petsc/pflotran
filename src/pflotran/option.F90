@@ -658,6 +658,7 @@ subroutine printErrMsg2(option,string)
   if (OptionPrintToScreen(option)) then
     print *
     print *, 'ERROR: ' // trim(string)
+    print *
     print *, 'Stopping!'
   endif    
   call MPI_Barrier(option%mycomm,ierr)
@@ -709,6 +710,7 @@ subroutine printErrMsgByRank2(option,string)
   write(word,*) option%myrank
   print *
   print *, 'ERROR(' // trim(adjustl(word)) // '): ' // trim(option%io_buffer)
+  print *
   print *, 'Stopping!'
   stop
   
