@@ -2031,6 +2031,10 @@ subroutine PatchUpdateCouplerAuxVarsRich(patch,coupler,option)
       case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
         call HydrostaticUpdateCoupler(coupler,option,patch%grid)
    !  case(SATURATION_BC)
+      case(HET_DIRICHLET)
+        call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
+                flow_condition%pressure%dataset, &
+                num_connections,RICHARDS_PRESSURE_DOF,option)
     end select
   endif
   if (associated(flow_condition%saturation)) then
