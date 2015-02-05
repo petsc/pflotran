@@ -170,16 +170,6 @@ subroutine InitSubsurfaceReadRequiredCards(realization)
     select case(trim(card))
 
 !....................
-#ifndef INIT_REFACTOR    
-      case ('MODE')
-        call InputReadWord(input,option,option%flowmode,PETSC_TRUE)
-        call InputErrorMsg(input,option,'flowmode','mode')
-        select case(trim(option%flowmode))
-          case('GENERAL')
-            call GeneralRead(input,option)
-        end select
-#endif  
-!....................
       case('DBASE_FILENAME')
         call InputReadWord(input,option,word,PETSC_FALSE)
         call InputErrorMsg(input,option,'filename','DBASE_FILENAME')
