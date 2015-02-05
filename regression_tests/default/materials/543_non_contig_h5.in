@@ -1,15 +1,28 @@
 #Description: 3D test problem for variably saturated flow and tracer transport
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
 #=========================== regression =======================================
 REGRESSION
   CELLS_PER_PROCESS 2
   CELLS
-    29
+    28
   /
 END
 
 #=========================== flow mode ========================================
-MODE RICHARDS
 
 #=========================== chemistry ========================================
 CHEMISTRY
@@ -22,7 +35,7 @@ CHEMISTRY
 /
 
 #=========================== solver options ===================================
-TIMESTEPPER
+TIMESTEPPER FLOW
   TS_ACCELERATION 8
 /
 
@@ -55,7 +68,7 @@ GRID
 END
 
 #=========================== fluid properties =================================
-FLUID_PROPERTY 
+FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 /
 
@@ -139,7 +152,7 @@ SATURATION_FUNCTION sf4
 
 #=========================== output options ===================================
 OUTPUT
-#  TIMES d 0.001 0.01 0.1 1. 10. 
+#  TIMES d 0.001 0.01 0.1 1. 10.
   FORMAT TECPLOT BLOCK
   !VELOCITY_AT_CENTER
   FLUXES
@@ -210,7 +223,7 @@ REGION south
 END
 
 REGION well
-  BLOCK 4 4 2 3 3 3 
+  BLOCK 4 4 2 3 3 3
 END
 
 #=========================== flow conditions ==================================
@@ -320,3 +333,4 @@ STRATA
   MATERIAL ./543_non_contig.h5
 END
 
+END_SUBSURFACE

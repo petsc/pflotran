@@ -167,7 +167,7 @@ subroutine SurfSubsurfaceExecuteRun(this)
 
   call printMsg(this%option,'SurfSubsurfaceExecuteRun()')
 
-  if(.not.associated(this%surf_realization)) then
+  if (.not.associated(this%surf_realization)) then
     call this%RunToTime(final_time)
 
   else

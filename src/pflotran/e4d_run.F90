@@ -5,21 +5,25 @@ module e4d_run
   logical :: first_sol = .true.
   logical :: sim_e4d = .false.
   integer :: mcomm
-  real*8 :: pf_time
+  !real*8 :: pf_time
 contains
   
   !_____________________________________________________________________
   subroutine run_e4d
   
     implicit none
+    logical :: first_flag = .true.
     
-    if(my_rank>0) then
+    if (my_rank>0) then
        call slave_run
        return
     end if
-
-    if(.not. allocated(pf_sol)) allocate(pf_sol(pflotran_solution_vec_size))
-    if(.not. allocated(sigma)) allocate(sigma(nelem))
+   
+    if (.not. allocated(pf_tracer)) allocate(pf_tracer(pflotran_vec_size))
+    if (.not. allocated(pf_saturation)) allocate(pf_saturation(pflotran_vec_size))
+    if (.not. allocated(pf_saturation_0)) allocate(pf_saturation_0(pflotran_vec_size))
+    if (.not. allocated(sigma)) allocate(sigma(nelem))
+   
 
     call get_mcomm
     call cpu_time(Cbeg)
@@ -27,13 +31,15 @@ contains
 
        call get_pf_time      !!get the pflotran solution time
        call get_pf_sol       !!get the pflotran solution
-       call cpu_time(Cend)
-       etm=Cend-Cbeg
+       if (first_flag) then
+          pf_saturation_0 = pf_saturation
+          first_flag = .false.
+       end if
        call elog(36,mcomm,mcomm)
 
        call check_e4d_sim    !!see if we should do an e4d sim for this time
        
-       if(sim_e4d) then
+       if (sim_e4d) then
           call map_pf_e4d       !!map/transform the solution to the E4D mesh
           call send_sigma       !!send the transformed solution to the slaves 
                    
@@ -66,15 +72,15 @@ contains
     read(10,*) tmp
     do i=1,ntime
        read(10,*) e4d_time,csrv_file,ccond_file
-       if(e4d_time .eq. pf_time) then
+       if (e4d_time .eq. pf_time) then
           call elog(35,i,tmp)
           close(10)
           
           open(10,file=trim(ccond_file),status='old',action='read')
           read(10,*,IOSTAT=ios) nsig
-          if(ios .ne. 0)       call elog(31,ios,tmp)
-          if(nsig .ne. nelem)  call elog(32,nsig,nelem)
-          if(.not.allocated(sigma)) allocate(sigma(nelem))
+          if (ios .ne. 0)       call elog(31,ios,tmp)
+          if (nsig .ne. nelem)  call elog(32,nsig,nelem)
+          if (.not.allocated(sigma)) allocate(sigma(nelem))
           do j=1,nelem
              read(10,*) sigma(j)
           end do
@@ -88,8 +94,8 @@ contains
           end do
           read(10,*,IOSTAT=ios) tmp
           call elog(29,ios,tmp)
-          if(.not. allocated(dobs)) allocate(dobs(nm))
-          if(.not. allocated(sd)) allocate(sd(nm))
+          if (.not. allocated(dobs)) allocate(dobs(nm))
+          if (.not. allocated(sd)) allocate(sd(nm))
           do j=1,nm
              read(10,*,IOSTAT=ios) tmp,a,b,m,n,dobs(j),sd(j)
           end do 
@@ -100,7 +106,7 @@ contains
     end do
 
     close(10)
-    open(13,file='e4d.log',status='old',action='write',position='append')
+    open(13,file=trim(log_file),status='old',action='write',position='append')
     write(13,*) "No E4D survey found for pflotran time: ",pf_time
     close(13)
   end subroutine check_e4d_sim
@@ -133,44 +139,59 @@ contains
     !!this code will change depending on how we send the PF solution
     !!to the E4D master process here
 !geh    call MPI_RECV(pf_sol,nelem,MPI_REAL,0,0,PFE4D_COMM,status,ierr)
-    call VecScatterBegin(pflotran_scatter,pflotran_solution_vec_mpi, &
-                         pflotran_solution_vec_seq, &
+    ! tracer
+    call VecScatterBegin(pflotran_scatter,pflotran_tracer_vec_mpi, &
+                         pflotran_tracer_vec_seq, &
                          INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
-    call VecScatterEnd(pflotran_scatter,pflotran_solution_vec_mpi, &
-                       pflotran_solution_vec_seq, &
+    call VecScatterEnd(pflotran_scatter,pflotran_tracer_vec_mpi, &
+                       pflotran_tracer_vec_seq, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
-    call VecGetArrayF90(pflotran_solution_vec_seq,vec_ptr,ierr);CHKERRQ(ierr)
-    pf_sol = vec_ptr
-    call VecRestoreArrayF90(pflotran_solution_vec_seq,vec_ptr, &
+    call VecGetArrayF90(pflotran_tracer_vec_seq,vec_ptr,ierr);CHKERRQ(ierr)
+    pf_tracer = vec_ptr
+    call VecRestoreArrayF90(pflotran_tracer_vec_seq,vec_ptr, &
+                            ierr);CHKERRQ(ierr)
+    ! saturation                
+    call VecScatterBegin(pflotran_scatter,pflotran_saturation_vec_mpi, &
+                         pflotran_saturation_vec_seq, &
+                         INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+    call VecScatterEnd(pflotran_scatter,pflotran_saturation_vec_mpi, &
+                       pflotran_saturation_vec_seq, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+    call VecGetArrayF90(pflotran_saturation_vec_seq,vec_ptr,ierr);CHKERRQ(ierr)
+    pf_saturation = vec_ptr
+    call VecRestoreArrayF90(pflotran_saturation_vec_seq,vec_ptr, &
                             ierr);CHKERRQ(ierr)
   end subroutine get_pf_sol
   !____________________________________________________________________
 
   !____________________________________________________________________
   subroutine map_pf_e4d
+
     implicit none
-    integer :: i 
+    integer :: i,cnt 
     character*40 :: filename, word
-    real :: K
-   
-  
+    real :: K,St,C,parSat,delSigb,delSigf,delSigb_min
+    real, parameter :: m=2.0      !!m is the saturation exponent ... assumed to be 2    
+
+    !sigma=0.1
+    delSigb_min = (sw_sig-gw_sig)/FF
     do i=1,nmap
-       if(zones(map_inds(i,1))==2) then
-          sigma(map_inds(i,1))=base_sigma(map_inds(i,1))
-       end if
+       !parSat  = m*gw_sig*pf_saturation_0(map_inds(i,2))/FF  !partial of sig bulk w.r.t. saturation
+       !parSigf = (pf_saturation_0(map_inds(i,2))**(m))/FF    !partial of sig bulk w.r.t. sig fluid
+       !delSat  = pf_saturation(map_inds(i,2))-pf_saturation_0(map_inds(i,2)) !change in sat from baseline
+       delSigf = gw_sig + (sw_sig-gw_sig)*pf_tracer(map_inds(i,2))           !change in pore sig from baseline
+       delSigb = (delSigf*pf_saturation(map_inds(i,2))**(m) - gw_sig*pf_saturation_0(map_inds(i,2))**(m))/FF
+       !if (delSigb > delSigb_min) delSigb=delSigb_min
+       sigma(map_inds(i,1)) = sigma(map_inds(i,1)) + map(i)*delSigb
+   
     end do
   
-    K=(sw_sig-gw_sig)/FF
    
-    do i=1,nmap
-       if(zones(map_inds(i,1))==2) then
-          sigma(map_inds(i,1))=sigma(map_inds(i,1))+pf_sol(map_inds(i,2))*map(i)*K
-       end if
-    end do
     do i=1,nelem
-       if(sigma(i)<1e-5) sigma(i)=1e-5
+       if (sigma(i)<1e-5) sigma(i)=1e-5
     end do
-    write(*,*) pf_time
+
+    !write(*,*) pf_time
     write(word,'(i15.15)') int(pf_time)
     filename = 'sigma_' // &
                trim(adjustl(pflotran_group_prefix)) // &
@@ -179,7 +200,7 @@ contains
                '.txt' 
     !write(*,*) filename
     open(unit=86,file=trim(filename),status='replace',action='write')
-    write(86,*) nelem, "1"
+    write(86,*) nelem, "1", minval(sigma),maxval(sigma)
     do i = 1, nelem
        write(86,*) sigma(i) 
     enddo
@@ -215,7 +236,7 @@ contains
     call send_command(8)
     
     !allocate dpred if not already done and zero
-    if(.not. allocated(dpred)) then
+    if (.not. allocated(dpred)) then
        allocate(dpred(nm))
     end if
     dpred = 0
@@ -277,26 +298,26 @@ contains
     call MPI_BCAST(command,1,MPI_INTEGER,0,E4D_COMM,ierr)
     
     !return to main
-    if(command == 0) then
+    if (command == 0) then
        return
 
-    else if(command == 3) then     
+    else if (command == 3) then     
        call build_A
        goto 100
          
-    else if(command == 4) then
+    else if (command == 4) then
        call receive_sigma
        goto 100
 
-    else if(command == 5) then
+    else if (command == 5) then
        call build_ksp
        goto 100
 
-    else if(command == 6) then
+    else if (command == 6) then
        call forward_run
        goto 100
        
-    else if(command == 8) then
+    else if (command == 8) then
        call send_dpred 
        goto 100
        
@@ -357,7 +378,7 @@ num_calls = num_calls + 1
        cbv=nbounds(col)
        
        !lower triangle
-       if((rbv>=2 .and. rbv<=6) .or. (cbv>=2 .and. cbv<=6)) then
+       if ((rbv>=2 .and. rbv<=6) .or. (cbv>=2 .and. cbv<=6)) then
           !one or both nodes are on a boundary so set to zero for bc's
           val(1) = 0
        else
@@ -370,7 +391,7 @@ num_calls = num_calls + 1
        
        call MatSetValues(A,1,prn,1,pcn,val,ADD_VALUES,perr)          
        !upper triangle
-       if(row .ne. col) then
+       if (row .ne. col) then
           call MatSetValues(A,1,pcn,1,prn,val,ADD_VALUES,perr)
        end if
        
@@ -429,14 +450,14 @@ num_calls = num_calls + 1
        val=0.0
        call VecSet(B,val,perr)
        
-       !if(i_flg) then
+       !if (i_flg) then
        !   call Add_Jpp(i)
        !end if
        
        eindx(1)=e_nods(enum)
        val=1.0
        call VecSetValues(B,1,eindx-1,val,ADD_VALUES,perr)
-       !if(tank_flag) call VecSetValues(B,1,i_zpot-1,-val,ADD_VALUES,perr)
+       !if (tank_flag) call VecSetValues(B,1,i_zpot-1,-val,ADD_VALUES,perr)
            
        call VecAssemblyBegin(B,perr)
        call VecAssemblyEnd(B,perr) 
@@ -452,11 +473,11 @@ num_calls = num_calls + 1
        pck(1)=tend-tstart
        pck(2)=real(niter)
        !call MPI_SEND(pck,2,MPI_REAL,0,1,MPI_COMM_WORLD,ierr)
-       write(*,*) "Slave ",my_rank," solved for pole ",eind(my_rank,1)+i-1,'in ',tend-tstart,' seconds and ',niter,' iters'
+       !write(*,*) "Slave ",my_rank," solved for pole ",eind(my_rank,1)+i-1,'in ',tend-tstart,' seconds and ',niter,' iters'
        
     end do
     
-    if(first_sol) then
+    if (first_sol) then
        call KSPSetInitialGuessNonzero(KS,PETSC_TRUE,perr)
        first_sol=.false.
     end if
@@ -488,12 +509,12 @@ num_calls = num_calls + 1
       
       e1=eind(my_rank,1)
       e2=eind(my_rank,2) 
-      if(.not.allocated(my_drows)) then
+      if (.not.allocated(my_drows)) then
          nmy_drows=0
          do i=1,nm
             a=s_conf(i,1)
             b=s_conf(i,2)
-            if((a>=e1 .and. a<=e2) .or. (b>=e1.and. b<=e2)) then
+            if ((a>=e1 .and. a<=e2) .or. (b>=e1.and. b<=e2)) then
                nmy_drows=nmy_drows+1
             end if
          end do
@@ -510,18 +531,18 @@ num_calls = num_calls + 1
          m = s_conf(i,3)
          n = s_conf(i,4)
          
-         if((a>=e1 .and. a<=e2) .or. (b>=e1.and. b<=e2)) then
+         if ((a>=e1 .and. a<=e2) .or. (b>=e1.and. b<=e2)) then
             indx=indx+1
             my_drows(indx)=i
             
             do p=e1,e2
-               if(p==a) then
-                  if(m.ne.0) my_dvals(indx)=my_dvals(indx) + real(poles(e_nods(m),a-e1+1))
-                  if(n.ne.0) my_dvals(indx)=my_dvals(indx) - real(poles(e_nods(n),a-e1+1))
+               if (p==a) then
+                  if (m.ne.0) my_dvals(indx)=my_dvals(indx) + real(poles(e_nods(m),a-e1+1))
+                  if (n.ne.0) my_dvals(indx)=my_dvals(indx) - real(poles(e_nods(n),a-e1+1))
                end if
-               if(p==b) then
-                  if(m.ne.0) my_dvals(indx)=my_dvals(indx) - real(poles(e_nods(m),b-e1+1))
-                  if(n.ne.0) my_dvals(indx)=my_dvals(indx) + real(poles(e_nods(n),b-e1+1))
+               if (p==b) then
+                  if (m.ne.0) my_dvals(indx)=my_dvals(indx) - real(poles(e_nods(m),b-e1+1))
+                  if (n.ne.0) my_dvals(indx)=my_dvals(indx) + real(poles(e_nods(n),b-e1+1))
                end if
             end do
          end if

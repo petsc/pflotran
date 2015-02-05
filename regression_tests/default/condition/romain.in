@@ -1,7 +1,18 @@
 !!#Description: 1D test problem for TH mode
-!!Tests the functionality used to assign initial 
+!!Tests the functionality used to assign initial
 !!temperature cell-wise
 ! Contributed by Romain P. <romain.pannetier57@gmail.com>
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE TH
+    /
+  /
+END
+
+SUBSURFACE
 
 #=========================== regression =======================================
 REGRESSION
@@ -9,7 +20,6 @@ REGRESSION
 END
 
 #===================== TH mode ===============================
-MODE TH NO_FREEZING
 
 #===================== Discretization =========================
 GRID
@@ -45,9 +55,9 @@ ROCK_DENSITY 2.8E3
 SPECIFIC_HEAT 1E3
 THERMAL_CONDUCTIVITY_DRY 0.5
 THERMAL_CONDUCTIVITY_WET 0.5
-SATURATION_FUNCTION default 
+SATURATION_FUNCTION default
 LONGITUDINAL_DISPERSIVITY 3.1536d0
-PERMEABILITY 
+PERMEABILITY
 PERM_X 1.d-15
 PERM_Y 1.d-15
 PERM_Z 1.d-15
@@ -109,7 +119,7 @@ TEMPERATURE DATASET Temperature
 END
 
 FLOW_CONDITION top_c
-TYPE 
+TYPE
 PRESSURE dirichlet
 TEMPERATURE dirichlet
 /
@@ -136,3 +146,4 @@ REGION all
 MATERIAL soil1
 END
 
+END_SUBSURFACE

@@ -684,7 +684,7 @@ subroutine SaturatFuncConvertListToArray(list,array,option)
     cur_saturation_function => cur_saturation_function%next
   enddo
   
-  if(associated(array)) deallocate(array)
+  if (associated(array)) deallocate(array)
   allocate(array(count))
   
   count = 0

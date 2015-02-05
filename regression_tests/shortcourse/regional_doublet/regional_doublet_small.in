@@ -1,12 +1,25 @@
 #Description: 3D groundwater flow and solute transport
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
 #=========================== regression =======================================
 REGRESSION
   CELLS_PER_PROCESS 10
 END
 
 #=========================== flow mode ========================================
-MODE RICHARDS
 #CHECKPOINT 1000000
 #RESTART restart.chk
 
@@ -22,7 +35,7 @@ CHEMISTRY
 END
 
 #=========================== solver options ===================================
-TIMESTEPPER
+TIMESTEPPER FLOW
 END
 
 NEWTON_SOLVER FLOW
@@ -79,7 +92,7 @@ MATERIAL_PROPERTY soil2
   POROSITY 0.35d0
   TORTUOSITY 0.5d0
   SATURATION_FUNCTION sf1
-  PERMEABILITY       
+  PERMEABILITY
     DATASET perm_field
     VERTICAL_ANISOTROPY_RATIO 0.1
   /
@@ -200,14 +213,14 @@ REGION top
 END
 
 REGION injection_well
-  COORDINATES 
+  COORDINATES
     1250.d0 1250.d0 20.d0
     1250.d0 1250.d0 65.d0
   /
 END
 
 REGION extraction_well
-  COORDINATES 
+  COORDINATES
     3750.d0 1250.d0 20.d0
     3750.d0 1250.d0 55.d0
   /
@@ -243,37 +256,37 @@ OBSERVATION
   AT_CELL_CENTER
   VELOCITY
 END
- 
+
 OBSERVATION
   REGION Obs_pt_center_lower
   AT_CELL_CENTER
   VELOCITY
 END
- 
+
 OBSERVATION
   REGION Obs_pt_west
   AT_CELL_CENTER
   VELOCITY
 END
- 
+
 OBSERVATION
   REGION Obs_pt_east
   AT_CELL_CENTER
   VELOCITY
 END
- 
+
 OBSERVATION
   REGION Obs_pt_south
   AT_CELL_CENTER
   VELOCITY
 END
- 
+
 OBSERVATION
   REGION Obs_pt_north
   AT_CELL_CENTER
   VELOCITY
 END
- 
+
 #=========================== flow conditions ==================================
 FLOW_CONDITION initial
   TYPE
@@ -387,14 +400,14 @@ BOUNDARY_CONDITION top
   REGION top
 END
 
-# source 
+# source
 SOURCE_SINK injection_well
   FLOW_CONDITION injection
   TRANSPORT_CONDITION injection
   REGION injection_well
 END
 
-# sink 
+# sink
 SOURCE_SINK extraction_well
   FLOW_CONDITION extraction
   TRANSPORT_CONDITION initial
@@ -422,3 +435,4 @@ STRATA
   MATERIAL soil4
 END
 
+END_SUBSURFACE

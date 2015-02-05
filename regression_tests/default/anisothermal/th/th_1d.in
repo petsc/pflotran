@@ -1,6 +1,20 @@
 #Description: 1D test problem for THC mode
 #===================== THC mode ===============================================
-MODE TH
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE TH
+    /
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
 
 #=========================== regression =======================================
 REGRESSION
@@ -98,9 +112,9 @@ MATERIAL_PROPERTY soil1
   SPECIFIC_HEAT 1E3
   THERMAL_CONDUCTIVITY_DRY 0.5
   THERMAL_CONDUCTIVITY_WET 0.5
-  SATURATION_FUNCTION default 
+  SATURATION_FUNCTION default
   LONGITUDINAL_DISPERSIVITY 3.1536d0
-  PERMEABILITY 
+  PERMEABILITY
     PERM_X 1.d-15
     PERM_Y 1.d-15
     PERM_Z 1.d-15
@@ -119,7 +133,7 @@ END
 OUTPUT
 #  TIMES y 100. 250. 500. 1000. 5000. 1.e4
 #  SCREEN PERIODIC 1
-  PERIODIC_OBSERVATION TIMESTEP 1 
+  PERIODIC_OBSERVATION TIMESTEP 1
   PRINT_COLUMN_IDS
   FORMAT TECPLOT POINT
   FORMAT HDF5
@@ -157,7 +171,7 @@ REGION east
   /
 END
 
-OBSERVATION 
+OBSERVATION
   REGION east
   VELOCITY
 END
@@ -176,14 +190,14 @@ FLOW_CONDITION initial
 END
 
 FLOW_CONDITION west
-  TYPE 
+  TYPE
     PRESSURE dirichlet
     TEMPERATURE dirichlet
     ENTHALPY dirichlet
   /
   PRESSURE 10.0D5
   TEMPERATURE 25.D0
-  ENTHALPY 0.D0 
+  ENTHALPY 0.D0
 END
 
 #=========================== transport conditions =============================
@@ -245,7 +259,8 @@ END
 CONSTRAINT inlet_constraint
   CONCENTRATIONS
     H+     3.        pH
-    HCO3-  1.d-3      T 
-    Ca++   1.d-6      T 
+    HCO3-  1.d-3      T
+    Ca++   1.d-6      T
   /
 END
+END_SUBSURFACE

@@ -1,12 +1,22 @@
 #Description: 3D variably saturated flow with infiltration at top
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+  /
+END
+
+SUBSURFACE
+
 #=========================== regression =======================================
 REGRESSION
   CELLS_PER_PROCESS 4
 END
 
 #=========================== flow mode ========================================
-MODE RICHARDS
 
 #=========================== chemistry ========================================
 skip
@@ -18,7 +28,7 @@ END
 noskip
 
 #=========================== solver options ===================================
-TIMESTEPPER
+TIMESTEPPER FLOW
   TS_ACCELERATION 8
   MAX_TS_CUTS 5
 END
@@ -65,7 +75,7 @@ GRID
 END
 
 #=========================== fluid properties =================================
-FLUID_PROPERTY 
+FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
@@ -149,7 +159,7 @@ END
 #256m domain: 96-160m
 #512m domain: 192-320m
 #1024m domain: 384-640m
-REGION infiltrometer 
+REGION infiltrometer
   FACE TOP
   COORDINATES
 #changeme - change X, Y and Z to fit domain
@@ -240,3 +250,4 @@ STRATA
   MATERIAL soil1
 END
 
+END_SUBSURFACE

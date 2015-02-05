@@ -327,10 +327,6 @@ subroutine PMRTFinalizeTimestep(this)
   class(pm_rt_type) :: this
   PetscReal :: time  
   
-#ifdef PM_RICHARDS_DEBUG  
-  call printMsg(this%option,'PMRichards%FinalizeTimestep()')
-#endif
-  
   call RTMaxChange(this%realization)
   if (this%option%print_screen_flag) then
     write(*,'("  --> max chng: dcmx= ",1pe12.4," dc/dt= ",1pe12.4, &

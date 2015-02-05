@@ -6,6 +6,17 @@
 # April 08, 2013
 #================================================
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+  /
+END
+
+SUBSURFACE
+
 DFN
 
 #========================== regression ========================================
@@ -18,7 +29,6 @@ REGRESSION
 END
 
 #=========================== flow mode ========================================
-MODE RICHARDS
 
 #=========================== discretization ===================================
 GRID
@@ -71,12 +81,12 @@ REGION All
     -1.d20 -1.d20 -1.d20
     1.d20 1.d20 1.d20
   /
-END 
+END
 
 
 REGION Front
   FILE dfn_front.ex
-END 
+END
 
 #=========================== flow conditions ==================================
 FLOW_CONDITION initial
@@ -89,7 +99,7 @@ END
 
 
 FLOW_CONDITION front
-  TYPE 
+  TYPE
      PRESSURE dirichlet
   /
   PRESSURE 2.d5
@@ -105,12 +115,13 @@ END
 
 BOUNDARY_CONDITION Front
   FLOW_CONDITION front
-  REGION Front	
+  REGION Front
 END
 
 
 #=========================== stratigraphy couplers ============================
 STRATA
-  REGION All 
+  REGION All
   MATERIAL soil1
 END
+END_SUBSURFACE

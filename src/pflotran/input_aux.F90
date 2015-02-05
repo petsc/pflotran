@@ -107,6 +107,7 @@ module Input_Aux_module
             InputGetLineCount, &
             InputReadToBuffer, &
             InputReadASCIIDbase, &
+            InputKeywordUnrecognized, &
             InputDbaseDestroy
 
 contains
@@ -1192,7 +1193,9 @@ function InputCheckExit(input,option)
   if (input%buf(i:i) == '/' .or. &
 !geh: this fails when the keyword starts with END
 !geh      StringCompare(input%buf(i:),'END',THREE_INTEGER)) then
-      StringCompare(input%buf(i:),'END')) then
+      StringCompare(input%buf(i:),'END') .or. &
+      ! to end a block, e.g. END_SUBSURFACE
+      StringStartsWith(input%buf(i:),'END_')) then
     InputCheckExit = PETSC_TRUE
   else
     InputCheckExit = PETSC_FALSE
@@ -1879,6 +1882,30 @@ subroutine DbaseLookupDouble(keyword,value,ierr)
   endif
   
 end subroutine DbaseLookupDouble
+
+! ************************************************************************** !
+subroutine InputKeywordUnrecognized(keyword,string,option)
+  ! 
+  ! Looks up double precision value in database
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/19/14
+  ! 
+  use Option_module
+  
+  implicit none
+  
+  character(len=*) :: keyword
+  character(len=*) :: string
+  type(option_type) :: option
+  
+  option%io_buffer = 'Keyword "' // &
+                     trim(keyword) // &
+                     '" not recognized in ' // &
+                     trim(string) // '.'
+  call printErrMsg(option)
+  
+end subroutine InputKeywordUnrecognized
 
 ! ************************************************************************** !
 

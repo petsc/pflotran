@@ -47,6 +47,7 @@ module PMC_Base_class
     procedure, public :: AccumulateAuxData
     procedure, public :: GetAuxData
     procedure, public :: SetAuxData
+    procedure, public :: CheckNullPM => PMCBaseCheckNullPM
   end type pmc_base_type
   
   abstract interface
@@ -576,7 +577,10 @@ recursive subroutine PMCBaseCheckpoint(this,viewer,id,id_stamp)
     call PetscBagDestroy(bag,ierr);CHKERRQ(ierr)
   endif
   
-  call this%timestepper%Checkpoint(viewer,this%option)
+  if (associated(this%timestepper)) then
+    call this%timestepper%Checkpoint(viewer,this%option)
+  endif
+  
   cur_pm => this%pms
   do
     if (.not.associated(cur_pm)) exit
@@ -696,6 +700,9 @@ recursive subroutine PMCBaseRestart(this,viewer)
 
   ! if the top PMC, 
   if (this%is_master) then
+    this%option%io_buffer = 'Restarting with checkpoint file "' // &
+      trim(this%option%restart_filename) // '".'
+    call printMsg(this%option)
     call PetscLogEventBegin(logging%event_restart,ierr);CHKERRQ(ierr)
     call PetscTime(tstart,ierr);CHKERRQ(ierr)
     call PetscViewerBinaryOpen(this%option%mycomm, &
@@ -869,6 +876,38 @@ subroutine PMCBaseUpdateMaterialProperties(this)
   class(pmc_base_type) :: this
 
 end subroutine PMCBaseUpdateMaterialProperties
+
+! ************************************************************************** !
+
+recursive subroutine PMCBaseCheckNullPM(this,option)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/10/14
+  ! 
+  use Option_module
+  
+  implicit none
+  
+  class(pmc_base_type) :: this
+  type(option_type) :: option
+  
+  if (.not.associated(this%pms)) then
+    option%io_buffer = 'Null PM in PMC "' // trim(this%name) // '".'
+    call printErrMsg(option)
+  endif
+  
+  if (associated(this%peer)) then
+    call this%peer%CheckNullPM(option)
+  endif
+  
+  if (associated(this%child)) then
+    call this%child%CheckNullPM(option)
+  endif
+
+end subroutine PMCBaseCheckNullPM
+
 ! ************************************************************************** !
 
 subroutine PMCBaseStrip(this)

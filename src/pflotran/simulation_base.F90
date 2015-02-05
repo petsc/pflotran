@@ -1,6 +1,7 @@
 module Simulation_Base_class
 
   use PMC_Base_class
+  use PM_Base_class
   use Option_module
   use Output_Aux_module
   use Output_module
@@ -21,6 +22,7 @@ module Simulation_Base_class
     type(output_option_type), pointer :: output_option
     PetscInt :: stop_flag
     class(pmc_base_type), pointer :: process_model_coupler_list
+    class(pm_base_type), pointer :: process_model_list
     type(simulation_aux_type), pointer :: sim_aux
   contains
     procedure, public :: Init => SimulationBaseInit
@@ -86,6 +88,7 @@ subroutine SimulationBaseInit(this,option)
   nullify(this%waypoint_list)
   nullify(this%output_option)
   nullify(this%process_model_coupler_list)
+  nullify(this%process_model_list)
   this%sim_aux => SimAuxCreate()
   this%stop_flag = TS_CONTINUE
 
@@ -117,13 +120,15 @@ subroutine SimulationBaseInitializeRun(this)
   call printMsg(this%option,'SimulationBaseInitializeRun()')
 #endif
   
-  if (this%option%restart_flag) then
-    call this%process_model_coupler_list%Restart(viewer)
-  endif
+  if (associated(this%process_model_coupler_list)) then
+    if (this%option%restart_flag) then
+      call this%process_model_coupler_list%Restart(viewer)
+    endif
   
-  ! initialize performs overwrite of restart, if applicable
-  call this%process_model_coupler_list%InitializeRun()  
-  call this%JumpStart()
+    ! initialize performs overwrite of restart, if applicable
+    call this%process_model_coupler_list%InitializeRun()  
+    call this%JumpStart()
+  endif
   
   call printMsg(this%option," ")
   call printMsg(this%option,"  Finished Initialization")
@@ -185,6 +190,10 @@ subroutine ExecuteRun(this)
 #ifdef DEBUG
   call printMsg(this%option,'SimulationBaseExecuteRun()')
 #endif
+
+  if (.not.associated(this%process_model_coupler_list)) then
+    return
+  endif
 
   final_time = SimulationGetFinalWaypointTime(this)
   cur_waypoint => this%waypoint_list%first
@@ -261,7 +270,9 @@ subroutine SimulationBaseFinalizeRun(this)
     call printMsg(this%option,"")
   endif
   
-  call this%process_model_coupler_list%FinalizeRun()
+  if (associated(this%process_model_coupler_list)) then
+    call this%process_model_coupler_list%FinalizeRun()
+  endif
   
   ! pushed in InitializeRun()
   call PetscLogStagePop(ierr);CHKERRQ(ierr)

@@ -205,7 +205,7 @@ subroutine RegressionCreateMapping(regression,realization)
 #include "finclude/petscviewer.h"
 
   type(regression_type), pointer :: regression
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   IS :: is_petsc
   PetscInt, allocatable :: int_array(:)
@@ -481,7 +481,7 @@ subroutine RegressionOutput(regression,realization,flow_timestepper, &
   implicit none
   
   type(regression_type), pointer :: regression
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   ! these must be pointers as they can be null
   class(timestepper_BE_type), pointer :: flow_timestepper
   class(timestepper_BE_type), pointer :: tran_timestepper  

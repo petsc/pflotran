@@ -1,5 +1,16 @@
 #Description:  small test problem for evaluating creep closure funcionality
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE GENERAL
+    /
+  /
+END
+
+SUBSURFACE
+
 #=========================== regression =======================================
 REGRESSION
   CELLS_PER_PROCESS 5
@@ -9,7 +20,6 @@ REGRESSION
 END
 
 #=========================== flow mode ========================================
-MODE GENERAL
 
 CREEP_CLOSURE
   FILENAME pflotran_closure_11x11.dat
@@ -214,16 +224,16 @@ REGION bottom_pt
 /
 
 #=========================== observation points ===============================
-OBSERVATION 
+OBSERVATION
   REGION mid_pt
 /
 
 skip
-OBSERVATION 
+OBSERVATION
   REGION bottom_pt
 /
 
-OBSERVATION 
+OBSERVATION
   REGION top_pt
 /
 noskip
@@ -285,3 +295,4 @@ STRATA
   REGION waste_package
 /
 
+END_SUBSURFACE

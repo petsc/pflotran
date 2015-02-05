@@ -154,13 +154,13 @@ subroutine UGridPolyhedraRead(ugrid, filename, option)
         temp_real_array(2,icell) = dble(temp_int)
         nfaces_per_proc(irank+1) = nfaces_per_proc(irank+1) + &
           temp_int
-        if(temp_int > max_nface_per_cell) &
+        if (temp_int > max_nface_per_cell) &
           max_nface_per_cell = temp_int
 
         call InputReadInt(input,option,temp_int)
         call InputErrorMsg(input,option,'num vertices',hint)
         temp_real_array(3,icell) = dble(temp_int)
-        if(temp_int>max_nvert_per_cell) max_nvert_per_cell = temp_int
+        if (temp_int>max_nvert_per_cell) max_nvert_per_cell = temp_int
 
         call InputReadDouble(input,option,temp_real_array(4,icell))
         call InputErrorMsg(input,option,'cell x coordinate',hint)
@@ -174,7 +174,7 @@ subroutine UGridPolyhedraRead(ugrid, filename, option)
         call InputReadDouble(input,option,temp_real_array(7,icell))
         call InputErrorMsg(input,option,'cell volume',hint)
       enddo
-      if(nfaces_per_proc(irank+1)>num_faces_local_save) &
+      if (nfaces_per_proc(irank+1)>num_faces_local_save) &
         num_faces_local_save = nfaces_per_proc(irank+1)
 
       if (irank == option%io_rank) then

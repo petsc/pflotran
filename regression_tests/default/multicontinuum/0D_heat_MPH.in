@@ -6,7 +6,17 @@
 # 02/15/2014
 #--------------------------------------------------------------------
 
-MODE MPHASE 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE MPHASE
+    /
+  /
+END
+
+SUBSURFACE
+
 
 MULTIPLE_CONTINUUM
 
@@ -32,7 +42,7 @@ BOUNDS
 END
 
 #=========================== solver options ===================================
-TIMESTEPPER
+TIMESTEPPER FLOW
   TS_ACCELERATION 5
   MAX_PRESSURE_CHANGE 1.e5
   MAX_TEMPERATURE_CHANGE 5.
@@ -59,8 +69,8 @@ MAXIMUM_TIMESTEP_SIZE 0.1d0 y
 OUTPUT
   TIMES y 0.005 0.01 0.02 0.03 0.04 0.05 0.06 0.07 0.08 0.09 0.1 \
   0.25 0.5 0.75 1.0 2.5 5. 7.5 10. \
-  15. 20. 25. 30. 35. 40. 45. 50. 55. 60. 65. 70. 75. 80. 85. 90. 95. 100. 
-  ! 125. 150. 175. 200. 
+  15. 20. 25. 30. 35. 40. 45. 50. 55. 60. 65. 70. 75. 80. 85. 90. 95. 100.
+  ! 125. 150. 175. 200.
   PERIODIC_OBSERVATION TIMESTEP 1
   SCREEN PERIODIC 10
   PRINT_COLUMN_IDS
@@ -69,12 +79,12 @@ OUTPUT
 /
 
 #=========================== fluid properties =================================
-FLUID_PROPERTY 
+FLUID_PROPERTY
 DIFFUSION_COEFFICIENT 1.d-9
 /
 
 #=========================== material properties ==============================
-MATERIAL_PROPERTY rock1 
+MATERIAL_PROPERTY rock1
 ID 1
 POROSITY 1.d-4
 ROCK_DENSITY 2.65E3
@@ -95,7 +105,7 @@ SECONDARY_CONTINUUM
   OUTER_SPACING         5.d-4
   EPSILON               0.5
   TEMPERATURE           200.d0
-  POROSITY              1.d0 
+  POROSITY              1.d0
 /
 END
 
@@ -115,7 +125,7 @@ SATURATION_FUNCTION sf2
 
 REGION all
 COORDINATES
-  0.d0 0.d0 0.d0 
+  0.d0 0.d0 0.d0
   1.d0 1.d0 1.d0
 /
 END
@@ -171,3 +181,4 @@ END
 
 
 
+END_SUBSURFACE

@@ -71,8 +71,8 @@ function GeomechRealizCreate(option)
 
   implicit none
 
-  type(geomech_realization_type), pointer    :: GeomechRealizCreate
-  type(geomech_realization_type), pointer    :: geomech_realization
+  class(geomech_realization_type), pointer    :: GeomechRealizCreate
+  class(geomech_realization_type), pointer    :: geomech_realization
   type(option_type), pointer                 :: option
   
   allocate(geomech_realization)
@@ -119,7 +119,7 @@ subroutine GeomechRealizAddStrata(geomech_realization,strata)
 
   implicit none
   
-  type(geomech_realization_type)          :: geomech_realization
+  class(geomech_realization_type)          :: geomech_realization
   type(geomech_strata_type), pointer      :: strata
   
   type(geomech_patch_type), pointer       :: geomech_patch
@@ -153,7 +153,7 @@ subroutine GeomechRealizLocalizeRegions(geomech_realization)
 
   implicit none
   
-  type(geomech_realization_type)               :: geomech_realization
+  class(geomech_realization_type)               :: geomech_realization
   type(geomech_patch_type), pointer            :: patch
   type(option_type), pointer                   :: option
 
@@ -181,7 +181,7 @@ subroutine GeomechRealizProcessMatProp(geomech_realization)
   
   implicit none
   
-  type(geomech_realization_type)               :: geomech_realization
+  class(geomech_realization_type)               :: geomech_realization
   type(geomech_patch_type), pointer            :: patch  
   type(option_type), pointer                   :: option
 
@@ -222,7 +222,7 @@ subroutine GeomechRealizCreateDiscretization(geomech_realization)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-  type(geomech_realization_type)                 :: geomech_realization
+  class(geomech_realization_type)                 :: geomech_realization
   type(geomech_discretization_type), pointer     :: geomech_discretization
   type(geomech_grid_type), pointer               :: grid
   type(option_type), pointer                     :: option
@@ -340,8 +340,8 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization,geomech_realization, &
 #include "finclude/petscis.h90"
 #include "finclude/petscviewer.h"
 
-  type(realization_type), pointer              :: realization
-  type(geomech_realization_type), pointer      :: geomech_realization
+  class(realization_type), pointer              :: realization
+  class(geomech_realization_type), pointer      :: geomech_realization
   type(geomech_grid_type), pointer             :: geomech_grid
   type(option_type)                            :: option
   type(grid_type), pointer                     :: grid
@@ -582,7 +582,7 @@ subroutine GeomechGridElemSharedByNodes(geomech_realization)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-  type(geomech_realization_type) :: geomech_realization
+  class(geomech_realization_type) :: geomech_realization
   type(geomech_grid_type), pointer :: grid
   
   PetscInt :: ielem
@@ -633,7 +633,7 @@ subroutine GeomechRealizInitAllCouplerAuxVars(geomech_realization)
 
   implicit none
   
-  type(geomech_realization_type) :: geomech_realization
+  class(geomech_realization_type) :: geomech_realization
   
   type(geomech_patch_type), pointer :: patch
   
@@ -660,7 +660,7 @@ subroutine GeomechRealizLocalToLocalWithArray(geomech_realization,array_id)
 
   implicit none
 
-  type(geomech_realization_type)            :: geomech_realization
+  class(geomech_realization_type)            :: geomech_realization
   PetscInt                                  :: array_id
   
   type(geomech_patch_type), pointer         :: patch
@@ -705,7 +705,7 @@ subroutine GeomechRealizPrintCouplers(geomech_realization)
   
   implicit none
   
-  type(geomech_realization_type) :: geomech_realization
+  class(geomech_realization_type) :: geomech_realization
   
   type(geomech_patch_type), pointer :: patch
   type(geomech_coupler_type), pointer :: cur_coupler
@@ -802,7 +802,7 @@ subroutine GeomechRealizPassFieldPtrToPatch(geomech_realization)
 
   implicit none
   
-  type(geomech_realization_type)           :: geomech_realization
+  class(geomech_realization_type)           :: geomech_realization
 
   type(geomech_patch_type), pointer        :: patch
 
@@ -825,7 +825,7 @@ subroutine GeomechRealizProcessGeomechCouplers(geomech_realization)
 
   implicit none
   
-  type(geomech_realization_type)           :: geomech_realization
+  class(geomech_realization_type)           :: geomech_realization
 
   type(geomech_patch_type), pointer        :: patch
   
@@ -853,7 +853,7 @@ subroutine GeomechRealizProcessGeomechConditions(geomech_realization)
 
   implicit none
 
-  type(geomech_realization_type), pointer   :: geomech_realization
+  class(geomech_realization_type), pointer   :: geomech_realization
   
   type(geomech_condition_type), pointer     :: cur_geomech_condition
   type(geomech_sub_condition_type), pointer :: cur_geomech_sub_condition
@@ -894,7 +894,7 @@ subroutine GeomechRealizGetDataset(geomech_realization,vec,ivar,isubvar,isubvar1
 
   implicit none
 
-  type(geomech_realization_type) :: geomech_realization
+  class(geomech_realization_type) :: geomech_realization
   Vec :: vec
   PetscInt :: ivar
   PetscInt :: isubvar
@@ -923,7 +923,7 @@ subroutine GeomechRealizAddGeomechCoupler(geomech_realization,coupler)
 
   implicit none
   
-  type(geomech_realization_type)                   :: geomech_realization
+  class(geomech_realization_type)                   :: geomech_realization
   type(geomech_coupler_type), pointer              :: coupler
   
   type(geomech_patch_type), pointer                :: patch
@@ -963,7 +963,7 @@ subroutine GeomechRealizAddWaypointsToList(geomech_realization)
 
   implicit none
   
-  type(geomech_realization_type) :: geomech_realization
+  class(geomech_realization_type) :: geomech_realization
   
   type(waypoint_list_type), pointer :: waypoint_list
   type(geomech_condition_type), pointer :: cur_geomech_condition
@@ -1076,9 +1076,9 @@ subroutine GeomechRealizDestroy(geomech_realization)
 
   implicit none
   
-  type(geomech_realization_type), pointer :: geomech_realization
+  class(geomech_realization_type), pointer :: geomech_realization
   
-  if(.not.associated(geomech_realization)) return
+  if (.not.associated(geomech_realization)) return
   
   call GeomechFieldDestroy(geomech_realization%geomech_field)
 
@@ -1101,11 +1101,11 @@ subroutine GeomechRealizDestroy(geomech_realization)
                                            geomech_material_properties)
   call GeomechDiscretizationDestroy(geomech_realization%geomech_discretization)
 
-  if(associated(geomech_realization%output_option)) &
+  if (associated(geomech_realization%output_option)) &
     deallocate(geomech_realization%output_option)
   nullify(geomech_realization%output_option)
 
-  if(associated(geomech_realization)) deallocate(geomech_realization)
+  if (associated(geomech_realization)) deallocate(geomech_realization)
   nullify(geomech_realization)
   
 end subroutine GeomechRealizDestroy

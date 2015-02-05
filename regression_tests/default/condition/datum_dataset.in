@@ -1,5 +1,16 @@
-#Description: Test problem for verifying functionality of datasets in the 
+#Description: Test problem for verifying functionality of datasets in the
 #             context of datums.
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+  /
+END
+
+SUBSURFACE
 
 #=========================== regression =======================================
 REGRESSION
@@ -24,7 +35,6 @@ REGRESSION
 END
 
 #=========================== flow mode ========================================
-MODE RICHARDS
 
 DEBUG
 #  PRINT_COUPLERS outlet east_bc
@@ -94,7 +104,7 @@ END
 TIME
   FINAL_TIME 50.d0 s
   INITIAL_TIMESTEP_SIZE 2.5d0 s
-  MAXIMUM_TIMESTEP_SIZE 10.d0 s 
+  MAXIMUM_TIMESTEP_SIZE 10.d0 s
 END
 
 #=========================== regions ==========================================
@@ -207,3 +217,4 @@ STRATA
 END
 
 
+END_SUBSURFACE

@@ -29,13 +29,49 @@ module PM_Base_Pointer_module
             PMJacobian, &
             PMCheckUpdatePre, &
             PMCheckUpdatePost, &
-            PMRHSFunction
+            PMRHSFunction, &
+            PMResidualPtr, &
+            PMJacobianPtr, &
+            PMCheckUpdatePrePtr, &
+            PMCheckUpdatePostPtr, &
+            PMRHSFunctionPtr
 
 contains
 
 ! ************************************************************************** !
 
 subroutine PMResidual(snes,xx,r,this,ierr)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
+
+  use Option_module
+  use Realization_class
+  
+  implicit none
+  
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscsnes.h"
+
+  SNES :: snes
+  Vec :: xx
+  Vec :: r
+  class(pm_base_type) :: this
+  PetscErrorCode :: ierr
+  
+#ifdef PM_TOP_DEBUG    
+  print *, 'PMResidual()'
+#endif
+
+  call this%Residual(snes,xx,r,ierr)
+
+end subroutine PMResidual
+
+! ************************************************************************** !
+
+subroutine PMResidualPtr(snes,xx,r,this,ierr)
   ! 
   ! Author: Glenn Hammond
   ! Date: 03/14/13
@@ -62,11 +98,42 @@ subroutine PMResidual(snes,xx,r,this,ierr)
 
   call this%ptr%Residual(snes,xx,r,ierr)
 
-end subroutine PMResidual
+end subroutine PMResidualPtr
 
 ! ************************************************************************** !
 
 subroutine PMJacobian(snes,xx,A,B,this,ierr)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
+
+  use Option_module
+  
+  implicit none
+  
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscsnes.h"
+
+  SNES :: snes
+  Vec :: xx
+  Mat :: A, B
+  class(pm_base_type) :: this
+  PetscErrorCode :: ierr
+  
+#ifdef PM_TOP_DEBUG    
+  print *, 'PMJacobian()'
+#endif
+
+  call this%Jacobian(snes,xx,A,B,ierr)
+    
+end subroutine PMJacobian
+
+! ************************************************************************** !
+
+subroutine PMJacobianPtr(snes,xx,A,B,this,ierr)
   ! 
   ! Author: Glenn Hammond
   ! Date: 03/14/13
@@ -93,11 +160,40 @@ subroutine PMJacobian(snes,xx,A,B,this,ierr)
 
   call this%ptr%Jacobian(snes,xx,A,B,ierr)
     
-end subroutine PMJacobian
+end subroutine PMJacobianPtr
 
 ! ************************************************************************** !
 
 subroutine PMRHSFunction(ts,time,xx,ff,this,ierr)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 04/12/13
+  ! 
+
+  implicit none
+  
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscts.h"
+
+  TS :: ts
+  PetscReal :: time
+  Vec :: xx
+  Vec :: ff
+  class(pm_base_type) :: this
+  PetscErrorCode :: ierr
+  
+#ifdef PM_TOP_DEBUG
+  print *, 'PMRHSFunction()'
+#endif
+
+  call this%RHSFunction(ts,time,xx,ff,ierr)
+
+end subroutine PMRHSFunction
+
+! ************************************************************************** !
+
+subroutine PMRHSFunctionPtr(ts,time,xx,ff,this,ierr)
   ! 
   ! Author: Gautam Bisht
   ! Date: 04/12/13
@@ -122,11 +218,42 @@ subroutine PMRHSFunction(ts,time,xx,ff,this,ierr)
 
   call this%ptr%RHSFunction(ts,time,xx,ff,ierr)
 
-end subroutine PMRHSFunction
+end subroutine PMRHSFunctionPtr
 
 ! ************************************************************************** !
 
 subroutine PMCheckUpdatePre(line_search,X,dX,changed,this,ierr)
+  ! 
+  ! Wrapper for native call to XXXCheckUpdatePre
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/02/14
+  ! 
+  
+  implicit none
+  
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscsnes.h"
+
+  SNESLineSearch :: line_search
+  Vec :: X
+  Vec :: dX
+  PetscBool :: changed
+  class(pm_base_type) :: this
+  PetscErrorCode :: ierr
+  
+#ifdef PM_TOP_DEBUG    
+  print *, 'PMCheckUpdatePre()'
+#endif
+
+  call this%CheckUpdatePre(line_search,X,dX,changed,ierr)
+    
+end subroutine PMCheckUpdatePre
+
+! ************************************************************************** !
+
+subroutine PMCheckUpdatePrePtr(line_search,X,dX,changed,this,ierr)
   ! 
   ! Wrapper for native call to XXXCheckUpdatePre
   ! 
@@ -153,12 +280,46 @@ subroutine PMCheckUpdatePre(line_search,X,dX,changed,this,ierr)
 
   call this%ptr%CheckUpdatePre(line_search,X,dX,changed,ierr)
     
-end subroutine PMCheckUpdatePre
+end subroutine PMCheckUpdatePrePtr
 
 ! ************************************************************************** !
 
 subroutine PMCheckUpdatePost(line_search,X0,dX,X1,dX_changed,X1_changed,this, &
                              ierr)
+  ! 
+  ! Wrapper for native call to XXXCheckUpdatePost
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/02/14
+  ! 
+  
+  implicit none
+  
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscsnes.h"
+
+  SNESLineSearch :: line_search
+  Vec :: X0
+  Vec :: dX
+  Vec :: X1
+  PetscBool :: dX_changed
+  PetscBool :: X1_changed
+  class(pm_base_type) :: this
+  PetscErrorCode :: ierr
+  
+#ifdef PM_TOP_DEBUG    
+  print *, 'PMCheckUpdatePost()'
+#endif
+
+  call this%CheckUpdatePost(line_search,X0,dX,X1,dX_changed,X1_changed,ierr)
+    
+end subroutine PMCheckUpdatePost
+
+! ************************************************************************** !
+
+subroutine PMCheckUpdatePostPtr(line_search,X0,dX,X1,dX_changed,X1_changed, &
+                                this,ierr)
   ! 
   ! Wrapper for native call to XXXCheckUpdatePost
   ! 
@@ -187,6 +348,6 @@ subroutine PMCheckUpdatePost(line_search,X0,dX,X1,dX_changed,X1_changed,this, &
 
   call this%ptr%CheckUpdatePost(line_search,X0,dX,X1,dX_changed,X1_changed,ierr)
     
-end subroutine PMCheckUpdatePost
+end subroutine PMCheckUpdatePostPtr
 
 end module PM_Base_Pointer_module

@@ -134,7 +134,7 @@ subroutine MiscibleAuxVarInit(auxvar,option)
      allocate ( auxvar%auxvar_elem(nvar)%kvr(option%nphase))
      allocate ( auxvar%auxvar_elem(nvar)%xmol(option%nphase*option%nflowspec))
      allocate ( auxvar%auxvar_elem(nvar)%diff(option%nphase*option%nflowspec))
-     if(nvar>0)&
+     if (nvar>0)&
      auxvar%auxvar_elem(nvar)%hysdat => auxvar%auxvar_elem(0)%hysdat
 
      auxvar%auxvar_elem(nvar)%pres = 0.d0

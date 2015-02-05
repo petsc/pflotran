@@ -1,12 +1,25 @@
 #Description: 1D Calcite dissolution problem
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
 #=========================== regression =======================================
 REGRESSION
   CELLS_PER_PROCESS 5
 END
 
 #=========================== flow mode ========================================
-MODE RICHARDS
 
 #=========================== chemistry ========================================
 CHEMISTRY
@@ -72,7 +85,7 @@ GRID
 END
 
 #=========================== fluid properties =================================
-FLUID_PROPERTY 
+FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
@@ -184,8 +197,8 @@ END
 CONSTRAINT inlet
   CONCENTRATIONS
     H+     5.         P
-    HCO3-  1.d-3      T 
-    Ca++   1.d-6      Z 
+    HCO3-  1.d-3      T
+    Ca++   1.d-6      Z
     SiO2(aq) 1.d-5    M  Quartz
   /
 END
@@ -217,3 +230,4 @@ STRATA
 END
 
 
+END_SUBSURFACE

@@ -15,7 +15,9 @@ module Output_Observation_module
   ! flags signifying the first time a routine is called during a given
   ! simulation
   PetscBool :: observation_first
+  PetscBool :: check_for_obs_points
   PetscBool :: secondary_observation_first
+  PetscBool :: secondary_check_for_obs_points
   PetscBool :: mass_balance_first
   PetscBool :: integral_flux_first
 
@@ -42,6 +44,8 @@ subroutine OutputObservationInit(num_steps)
   
   PetscInt :: num_steps
   
+  check_for_obs_points = PETSC_TRUE
+  secondary_check_for_obs_points = PETSC_TRUE
   if (num_steps == 0) then
     observation_first = PETSC_TRUE
     secondary_observation_first = PETSC_TRUE
@@ -135,7 +139,7 @@ subroutine OutputObservationTecplotColumnTXT(realization_base)
   field => realization_base%field
   output_option => realization_base%output_option
   
-  if (observation_first) then
+  if (check_for_obs_points) then
     open_file = PETSC_FALSE
     observation => patch%observation_list%first
     do
@@ -148,6 +152,7 @@ subroutine OutputObservationTecplotColumnTXT(realization_base)
       endif
       observation => observation%next
     enddo
+    check_for_obs_points = PETSC_FALSE
   endif
   
   
@@ -445,7 +450,7 @@ subroutine OutputObservationTecplotSecTXT(realization_base)
   field => realization_base%field
   output_option => realization_base%output_option
   
-  if (secondary_observation_first) then
+  if (secondary_check_for_obs_points) then
     open_file = PETSC_FALSE
     observation => patch%observation_list%first
     do
@@ -458,6 +463,7 @@ subroutine OutputObservationTecplotSecTXT(realization_base)
       endif
       observation => observation%next
     enddo
+    secondary_check_for_obs_points = PETSC_FALSE
   endif
   
   
@@ -1839,7 +1845,7 @@ subroutine OutputMassBalance(realization_base)
   use TH_module, only : THComputeMassBalance
   use Reactive_Transport_module, only : RTComputeMassBalance
   use General_module, only : GeneralComputeMassBalance
-  
+
   use Global_Aux_module
   use Reactive_Transport_Aux_module
   use Reaction_Aux_module

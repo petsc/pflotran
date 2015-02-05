@@ -536,7 +536,13 @@ subroutine OutputVelocitiesTecplotBlock(realization_base)
       IMPLICIT_UNSTRUCTURED_GRID)  then
     call WriteTecplotUGridElements(OUTPUT_UNIT,realization_base)
   endif
-
+  
+  if (realization_base%discretization%itype == UNSTRUCTURED_GRID .and. &
+      realization_base%discretization%grid%itype ==  &
+      EXPLICIT_UNSTRUCTURED_GRID) then
+    call WriteTecplotExpGridElements(OUTPUT_UNIT,realization_base)
+  endif
+  
   if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
   
 end subroutine OutputVelocitiesTecplotBlock

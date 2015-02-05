@@ -254,7 +254,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
               if (associated(coupler%flow_aux_real_var)) then
 
                 ! Find the BC from the list of BCs
-                if(StringCompare(coupler%name,'from_surface_ss')) then
+                if (StringCompare(coupler%name,'from_surface_ss')) then
                   coupler_found = PETSC_TRUE
                   
                   call VecGetArrayF90(pmc%sim_aux%subsurf_mflux_exchange_with_surf, &
@@ -282,7 +282,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
               ! FLOW
               if (associated(coupler%flow_aux_real_var)) then
                 ! Find the BC from the list of BCs
-                if(StringCompare(coupler%name,'from_surface_bc')) then
+                if (StringCompare(coupler%name,'from_surface_bc')) then
                   coupler_found = PETSC_TRUE
                   call VecGetArrayF90(pmc%sim_aux%subsurf_pres_top_bc, &
                                       head_p,ierr);CHKERRQ(ierr)
@@ -341,7 +341,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
               ! FLOW
               if (associated(coupler%flow_aux_real_var)) then
                 ! Find the BC from the list of BCs
-                if(StringCompare(coupler%name,'from_surface_bc')) then
+                if (StringCompare(coupler%name,'from_surface_bc')) then
                   coupler_found = PETSC_TRUE
 
                   call VecGetArrayF90(pmc%sim_aux%subsurf_pres_top_bc, &
@@ -372,7 +372,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
                 endif
               endif
 
-              if(StringCompare(coupler%name,'from_atm_subsurface_bc')) then
+              if (StringCompare(coupler%name,'from_atm_subsurface_bc')) then
                 coupler_found = PETSC_TRUE
 
                 call VecGetArrayF90(pmc%sim_aux%subsurf_mflux_exchange_with_surf, &
@@ -396,7 +396,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
 
         end select
 
-        if( .not. coupler_found) then
+        if ( .not. coupler_found) then
           option%io_buffer = 'Coupler not found in PMCSubsurfaceGetAuxData()'
           call printErrMsg(option)
         endif
@@ -486,7 +486,7 @@ subroutine PMCSubsurfaceSetAuxDataForSurf(this)
             if (associated(coupler%flow_aux_real_var)) then
 
               ! Find the BC from the list of BCs
-              if(StringCompare(coupler%name,'from_surface_bc')) then
+              if (StringCompare(coupler%name,'from_surface_bc')) then
                 select case(this%option%iflowmode)
                   case (RICHARDS_MODE)
                     call VecGetArrayF90(this%sim_aux%subsurf_pres_top_bc, &
@@ -559,7 +559,6 @@ subroutine PMCSubsurfaceGetAuxDataFromGeomech(this)
 
   class (pmc_subsurface_type) :: this
 
-  type(realization_type)      :: subsurf_realization
   type(grid_type), pointer    :: subsurf_grid
   type(option_type), pointer  :: option
   type(field_type), pointer   :: subsurf_field
@@ -648,7 +647,6 @@ subroutine PMCSubsurfaceSetAuxDataForGeomech(this)
 
   class (pmc_subsurface_type) :: this
 
-  type(realization_type)                       :: subsurf_realization
   type(grid_type), pointer                     :: subsurf_grid
   type(option_type), pointer                   :: option
   type(field_type), pointer                    :: subsurf_field

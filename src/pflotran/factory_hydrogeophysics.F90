@@ -15,8 +15,7 @@ module Factory_Hydrogeophysics_module
 contains
 
 ! ************************************************************************** !
-
-subroutine HydrogeophysicsInitialize(simulation_base,option)
+subroutine HydrogeophysicsInitialize(simulation_base,pm_list,option)
   ! 
   ! Sets up hydrogeophysics simulation
   ! 
@@ -28,6 +27,7 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
   use Wrapper_Hydrogeophysics_module
   use Input_Aux_module
   use Simulation_Base_class 
+  use PM_Base_class  
   use Discretization_module
   use String_module
   
@@ -39,6 +39,7 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
 #include "finclude/petscviewer.h"
   
   class(simulation_base_type), pointer :: simulation_base
+  class(pm_base_type), pointer :: pm_list  
   type(option_type), pointer :: option
 
   class(hydrogeophysics_simulation_type), pointer :: simulation
@@ -54,7 +55,8 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
   IS :: is_petsc
   PetscInt :: istart
   PetscViewer :: viewer
-  Vec :: pflotran_solution_vec_mpi, pflotran_solution_vec_seq
+  Vec :: pflotran_tracer_vec_mpi, pflotran_tracer_vec_seq
+  Vec :: pflotran_saturation_vec_mpi, pflotran_saturation_vec_seq
   VecScatter :: pflotran_scatter
   
 #ifdef PETSC_HAVE_MPIUNI
@@ -63,8 +65,10 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
 #else
 
   ! initialize PETSc Vecs to 0
-  pflotran_solution_vec_mpi = 0
-  pflotran_solution_vec_seq = 0
+  pflotran_tracer_vec_mpi = 0
+  pflotran_tracer_vec_seq = 0
+  pflotran_saturation_vec_mpi = 0
+  pflotran_saturation_vec_seq = 0
 
   string = '-num_slaves'
   num_slaves = UNINITIALIZED_INTEGER
@@ -179,6 +183,7 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
 !print *, 9, simulation%myrank_save, simulation%pf_e4d_scatter_comm, simulation%pf_e4d_master_comm, MPI_COMM_NULL
   
   if (simulation%pflotran_process) then
+    simulation%process_model_list => pm_list
     call HydrogeophysicsInitPostPetsc(simulation,option)
   else
     option%io_rank = -1 ! turn off I/O from E4D processes.
@@ -195,7 +200,7 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
     endif
 
     ! create mpi Vec that includes all PFLOTRAN processes and the E4D master
-    call VecCreate(simulation%pf_e4d_scatter_comm,pflotran_solution_vec_mpi, &
+    call VecCreate(simulation%pf_e4d_scatter_comm,pflotran_tracer_vec_mpi, &
                    ierr);CHKERRQ(ierr)
     if (simulation%pflotran_process) then
       call VecGetLocalSize(simulation%realization%field%work,local_size, &
@@ -203,9 +208,9 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
     else ! E4D master process
       local_size = 0
     endif
-    call VecSetSizes(pflotran_solution_vec_mpi,local_size,PETSC_DECIDE, &
+    call VecSetSizes(pflotran_tracer_vec_mpi,local_size,PETSC_DECIDE, &
                      ierr);CHKERRQ(ierr)
-    call VecSetFromOptions(pflotran_solution_vec_mpi,ierr);CHKERRQ(ierr)
+    call VecSetFromOptions(pflotran_tracer_vec_mpi,ierr);CHKERRQ(ierr)
 
     allocate(int_array(local_size))
     if (simulation%pflotran_process) then
@@ -215,7 +220,6 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
                           simulation%realization%patch%grid%nL2G(i))
 
       enddo
-print *, option%myrank, int_array
       int_array = int_array - 1
     endif
     call ISCreateGeneral(simulation%pf_e4d_scatter_comm,local_size,int_array, &
@@ -246,59 +250,72 @@ print *, option%myrank, int_array
 
 
     ! create seq Vec on each (all PFLOTRAN processes and the E4D master)
-    call VecGetSize(pflotran_solution_vec_mpi,local_size,ierr);CHKERRQ(ierr)
+    call VecGetSize(pflotran_tracer_vec_mpi,local_size,ierr);CHKERRQ(ierr)
     if (simulation%pflotran_process) local_size = 0
-    ! make global size the local size of pflotran_solution_vec_seq on E4D master
-!    call VecCreate(PETSC_COMM_SELF,pflotran_solution_vec_seq,ierr)
-    call VecCreate(simulation%pf_e4d_scatter_comm,pflotran_solution_vec_seq, &
+    ! make global size the local size of pflotran_tracer_vec_seq on E4D master
+!    call VecCreate(PETSC_COMM_SELF,pflotran_tracer_vec_seq,ierr)
+    call VecCreate(simulation%pf_e4d_scatter_comm,pflotran_tracer_vec_seq, &
                    ierr);CHKERRQ(ierr)
-    call VecSetSizes(pflotran_solution_vec_seq,local_size,PETSC_DECIDE, &
+    call VecSetSizes(pflotran_tracer_vec_seq,local_size,PETSC_DECIDE, &
                      ierr);CHKERRQ(ierr)
-    call VecSetFromOptions(pflotran_solution_vec_seq,ierr);CHKERRQ(ierr)
+    call VecSetFromOptions(pflotran_tracer_vec_seq,ierr);CHKERRQ(ierr)
 
 #ifdef DEBUG
-  string = 'pflotran_solution_vec_mpi.txt'
-  call PetscViewerASCIIOpen(simulation%pf_e4d_scatter_comm,trim(string),viewer, &
-                            ierr);CHKERRQ(ierr)
-  call VecView(pflotran_solution_vec_mpi,viewer,ierr);CHKERRQ(ierr)
-  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
-  string = 'pflotran_solution_vec_seq' // trim(StringFormatInt(option%global_rank)) // '.txt'
-!  call PetscViewerASCIIOpen(PETSC_COMM_SELF,trim(string),viewer,ierr)
-  call PetscViewerASCIIOpen(simulation%pf_e4d_scatter_comm,trim(string),viewer, &
-                            ierr);CHKERRQ(ierr)
-  call VecView(pflotran_solution_vec_seq,viewer,ierr);CHKERRQ(ierr)
-  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+    string = 'pflotran_tracer_vec_mpi.txt'
+    call PetscViewerASCIIOpen(simulation%pf_e4d_scatter_comm,trim(string),viewer, &
+                              ierr);CHKERRQ(ierr)
+    call VecView(pflotran_tracer_vec_mpi,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+    string = 'pflotran_tracer_vec_seq' // trim(StringFormatInt(option%global_rank)) // '.txt'
+  !  call PetscViewerASCIIOpen(PETSC_COMM_SELF,trim(string),viewer,ierr)
+    call PetscViewerASCIIOpen(simulation%pf_e4d_scatter_comm,trim(string),viewer, &
+                              ierr);CHKERRQ(ierr)
+    call VecView(pflotran_tracer_vec_seq,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif
     ! create scatter between mpi Vec and local seq Vecs (only E4D master is 
     ! relevant)
-    call VecScatterCreate(pflotran_solution_vec_mpi,is_petsc, &
-                          pflotran_solution_vec_seq,is_natural, &
+    call VecScatterCreate(pflotran_tracer_vec_mpi,is_petsc, &
+                          pflotran_tracer_vec_seq,is_natural, &
                           pflotran_scatter,ierr);CHKERRQ(ierr)
 #ifdef DEBUG
-  string = 'scatter.txt'
-  call PetscViewerASCIIOpen(simulation%pf_e4d_scatter_comm,trim(string),viewer, &
-                            ierr);CHKERRQ(ierr)
-  call VecScatterView(pflotran_scatter,viewer,ierr);CHKERRQ(ierr)
-  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+    string = 'scatter.txt'
+    call PetscViewerASCIIOpen(simulation%pf_e4d_scatter_comm,trim(string),viewer, &
+                              ierr);CHKERRQ(ierr)
+    call VecScatterView(pflotran_scatter,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif
     call ISDestroy(is_natural,ierr);CHKERRQ(ierr)
     call ISDestroy(is_petsc,ierr);CHKERRQ(ierr)
+
+    ! duplicate tracer vecs into saturation version
+    call VecDuplicate(pflotran_tracer_vec_mpi, &
+                      pflotran_saturation_vec_mpi,ierr);CHKERRQ(ierr)
+    call VecDuplicate(pflotran_tracer_vec_seq, &
+                      pflotran_saturation_vec_seq,ierr);CHKERRQ(ierr)
   endif
 !print *, 'End  -----------'
 
   simulation_base => simulation
 
   if (simulation%pflotran_process) then
-    simulation%hydrogeophysics_coupler%solution_mpi = pflotran_solution_vec_mpi
-    simulation%hydrogeophysics_coupler%solution_seq = pflotran_solution_vec_seq
-    simulation%solution_mpi = pflotran_solution_vec_mpi
+    simulation%hydrogeophysics_coupler%tracer_mpi = pflotran_tracer_vec_mpi
+    simulation%hydrogeophysics_coupler%tracer_seq = pflotran_tracer_vec_seq
+    simulation%tracer_mpi = pflotran_tracer_vec_mpi
+    simulation%hydrogeophysics_coupler%saturation_mpi = &
+      pflotran_saturation_vec_mpi
+    simulation%hydrogeophysics_coupler%saturation_seq = &
+      pflotran_saturation_vec_seq
+    simulation%saturation_mpi = pflotran_saturation_vec_mpi
     simulation%hydrogeophysics_coupler%pf_to_e4d_scatter = pflotran_scatter
     simulation%hydrogeophysics_coupler%pf_to_e4d_master_comm = &
       simulation%pf_e4d_master_comm
   else
     call HydrogeophysicsWrapperInit(option, &
-                                    pflotran_solution_vec_mpi, &
-                                    pflotran_solution_vec_seq, &
+                                    pflotran_tracer_vec_mpi, &
+                                    pflotran_tracer_vec_seq, &
+                                    pflotran_saturation_vec_mpi, &
+                                    pflotran_saturation_vec_seq, &
                                     pflotran_scatter, &
                                     simulation%pf_e4d_master_comm)
   endif
@@ -317,7 +334,6 @@ subroutine HydrogeophysicsInitPostPetsc(simulation, option)
   ! Date: 06/17/13
   ! 
 
-  use Simulation_module
   use Factory_Subsurface_module
   use PMC_Hydrogeophysics_class
   use Option_module

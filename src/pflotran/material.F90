@@ -811,7 +811,7 @@ subroutine MaterialPropConvertListToArray(list,array,option)
     cur_material_property => cur_material_property%next
   enddo
   
-  if(associated(array)) deallocate(array)
+  if (associated(array)) deallocate(array)
   allocate(array(max_internal_id))
   do i = 1, max_internal_id
     nullify(array(i)%ptr)
@@ -918,8 +918,9 @@ subroutine MaterialCreateIntToExtMapping(material_property_array,mapping)
 
   PetscInt :: i
   
-  allocate(mapping(size(material_property_array)))
+  allocate(mapping(0:size(material_property_array)))
   mapping = UNINITIALIZED_INTEGER
+  mapping(0) = 0
   
   do i = 1, size(material_property_array)
     mapping(material_property_array(i)%ptr%internal_id) = &
@@ -945,8 +946,9 @@ subroutine MaterialCreateExtToIntMapping(material_property_array,mapping)
   
   PetscInt :: i
   
-  allocate(mapping(MaterialGetMaxExternalID(material_property_array)))
+  allocate(mapping(0:MaterialGetMaxExternalID(material_property_array)))
   mapping = -888
+  mapping(0) = 0
   
   do i = 1, size(material_property_array)
     mapping(material_property_array(i)%ptr%external_id) = &
@@ -966,14 +968,14 @@ subroutine MaterialApplyMapping(mapping,array)
   ! 
   implicit none
   
-  PetscInt :: mapping(:)
+  PetscInt :: mapping(0:)
   PetscInt :: array(:)
 
   PetscInt :: i
   PetscInt :: mapping_size
   PetscInt :: mapped_id
 
-  mapping_size = size(mapping)
+  mapping_size = size(mapping)-1 ! subtract 1 for 0 index
   do i = 1, size(array)
     if (array(i) <= mapping_size) then
       mapped_id = mapping(array(i))

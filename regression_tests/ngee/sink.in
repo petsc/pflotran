@@ -1,4 +1,15 @@
-# Description: sink example for srcsink_sandbox_mass_rate_downregulated.F90 
+# Description: sink example for srcsink_sandbox_mass_rate_downregulated.F90
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+  /
+END
+
+SUBSURFACE
 
 #=========================== regression =======================================
 REGRESSION
@@ -6,7 +17,6 @@ REGRESSION
 END
 
 #=========================== flow mode ========================================
-MODE RICHARDS
 
 #=========================== solver options ===================================
 
@@ -15,15 +25,15 @@ GRID
   TYPE structured
   ORIGIN 0.d0 0.d0 0.d0
   NXYZ 1 1 38
-  DXYZ 
-    1.d0 
-    1.d0 
+  DXYZ
+    1.d0
+    1.d0
     0.1d0
   /
 END
 
 #=========================== fluid properties =================================
-FLUID_PROPERTY 
+FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
@@ -124,3 +134,4 @@ STRATA
   MATERIAL soil1
 END
 
+END_SUBSURFACE

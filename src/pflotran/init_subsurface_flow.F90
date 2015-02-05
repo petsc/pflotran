@@ -40,7 +40,7 @@ subroutine InitSubsurfFlowSetupRealization(realization)
   
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -142,7 +142,7 @@ subroutine InitSubsurfFlowSetupSolvers(realization,solver)
 #include "finclude/petscsnes.h"
 #include "finclude/petscpc.h"
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   type(solver_type), pointer :: solver
   
   type(option_type), pointer :: option
@@ -311,51 +311,7 @@ subroutine InitSubsurfFlowSetupSolvers(realization,solver)
   call SNESSetConvergenceTest(solver%snes,ConvergenceTest, &
                               convergence_context, &
                               PETSC_NULL_FUNCTION,ierr);CHKERRQ(ierr)
-    
  
-#if 1
-  call SNESGetLineSearch(solver%snes, linesearch, ierr);CHKERRQ(ierr)
-  select case(option%iflowmode)
-    case(RICHARDS_MODE)
-      if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
-          dabs(option%saturation_change_limit) > 0.d0) then
-        call SNESLineSearchSetPreCheck(linesearch, &
-                                        RichardsCheckUpdatePre, &
-                                        realization,ierr);CHKERRQ(ierr)
-      endif
-    case(G_MODE)
-      call SNESLineSearchSetPreCheck(linesearch, &
-                                      GeneralCheckUpdatePre, &
-                                      realization,ierr);CHKERRQ(ierr)
-    case(TH_MODE)
-      if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
-          dabs(option%pressure_change_limit) > 0.d0 .or. &
-          dabs(option%temperature_change_limit) > 0.d0) then
-        call SNESLineSearchSetPreCheck(linesearch, &
-                                        THCheckUpdatePre, &
-                                        realization,ierr);CHKERRQ(ierr)
-      endif
-  end select
-    
-  if (solver%check_post_convergence) then
-    call SNESGetLineSearch(solver%snes, linesearch, ierr);CHKERRQ(ierr)
-    select case(option%iflowmode)
-      case(RICHARDS_MODE)
-        call SNESLineSearchSetPostCheck(linesearch, &
-                                        RichardsCheckUpdatePost, &
-                                        realization,ierr);CHKERRQ(ierr)
-      case(G_MODE)
-        call SNESLineSearchSetPostCheck(linesearch, &
-                                        GeneralCheckUpdatePost, &
-                                        realization,ierr);CHKERRQ(ierr)
-      case(TH_MODE)
-        call SNESLineSearchSetPostCheck(linesearch, &
-                                        THCheckUpdatePost, &
-                                        realization,ierr);CHKERRQ(ierr)
-    end select
-  endif
-#endif        
-    
   call printMsg(option,"  Finished setting up FLOW SNES ")
  
 end subroutine InitSubsurfFlowSetupSolvers
@@ -383,7 +339,7 @@ subroutine InitSubsurfFlowReadInitCond(realization,filename)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   character(len=MAXSTRINGLENGTH) :: filename
   
   PetscInt :: local_id, idx, offset

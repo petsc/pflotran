@@ -1,5 +1,16 @@
 #Description: 1D test problem based on Valocchi et al., 1981
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
 #=========================== regression =======================================
 REGRESSION
   CELLS_PER_PROCESS 1
@@ -68,7 +79,7 @@ GRID
 END
 
 #=========================== fluid properties =================================
-FLUID_PROPERTY 
+FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
@@ -150,7 +161,7 @@ END
 CONSTRAINT inlet
   CONCENTRATIONS
     Na+     9.4d-3  T
-    Ca++    5.d-4   T 
+    Ca++    5.d-4   T
     Mg++    2.13d-3 T
     Cl-     1.d-2  Z
   /
@@ -180,3 +191,4 @@ STRATA
 END
 
 
+END_SUBSURFACE

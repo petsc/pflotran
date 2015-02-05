@@ -225,7 +225,7 @@ subroutine Output(realization_base,plot_flag,transient_plot_flag)
   ! Output temporally average variables 
   call OutputAvegVars(realization_base)
 
-  if(plot_flag) then
+  if (plot_flag) then
     realization_base%output_option%plot_number = realization_base%output_option%plot_number + 1
   endif
 
@@ -828,20 +828,20 @@ subroutine OutputAvegVars(realization_base)
   field => realization_base%field
 
   ! 
-  if(option%time<1.d-10) return
+  if (option%time<1.d-10) return
   
   dtime = option%time-output_option%aveg_var_time
   output_option%aveg_var_dtime = output_option%aveg_var_dtime + dtime
   output_option%aveg_var_time = output_option%aveg_var_time + dtime
   
-  if(abs(output_option%aveg_var_dtime-output_option%periodic_output_time_incr)<1.d0) then
+  if (abs(output_option%aveg_var_dtime-output_option%periodic_output_time_incr)<1.d0) then
     aveg_plot_flag=PETSC_TRUE
   else
     aveg_plot_flag=PETSC_FALSE
   endif
 
-  if(.not.associated(output_option%aveg_output_variable_list%first)) then
-    if(output_option%print_hdf5_aveg_mass_flowrate.or. &
+  if (.not.associated(output_option%aveg_output_variable_list%first)) then
+    if (output_option%print_hdf5_aveg_mass_flowrate.or. &
        output_option%print_hdf5_aveg_energy_flowrate) then
       ! There is a possibility to output average-flowrates, thus
       ! call output subroutine depending on mesh type
@@ -874,7 +874,7 @@ subroutine OutputAvegVars(realization_base)
                             ierr);CHKERRQ(ierr)
 
     ! Check if it is time to output the temporally average variable
-    if(aveg_plot_flag) then
+    if (aveg_plot_flag) then
 
       ! Divide vector values by 'time'
       call VecGetArrayF90(field%avg_vars_vec(ivar),aval_p,ierr);CHKERRQ(ierr)
@@ -887,7 +887,7 @@ subroutine OutputAvegVars(realization_base)
     cur_variable => cur_variable%next
   enddo
 
-  if(aveg_plot_flag) then
+  if (aveg_plot_flag) then
 
     if (realization_base%output_option%print_hdf5) then
       call PetscTime(tstart,ierr);CHKERRQ(ierr)

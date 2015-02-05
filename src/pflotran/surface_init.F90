@@ -4,6 +4,8 @@ module Surface_Init_module
 
   implicit none
 
+  private 
+  
 #include "finclude/petscsys.h"
 
 #include "finclude/petscvec.h"
@@ -41,7 +43,7 @@ subroutine SurfaceInitReadRequiredCards(surf_realization)
 
   implicit none
 
-  type(surface_realization_type)     :: surf_realization
+  class(surface_realization_type)     :: surf_realization
   type(discretization_type), pointer :: discretization
 
   character(len=MAXSTRINGLENGTH) :: string
@@ -118,7 +120,7 @@ subroutine SurfaceInit(surf_realization,input,option)
 
   implicit none
 
-  type(surface_realization_type)               :: surf_realization
+  class(surface_realization_type)               :: surf_realization
   type(discretization_type),pointer            :: discretization
   type(grid_type), pointer                     :: grid
   type(input_type)                             :: input
@@ -223,7 +225,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
 
   implicit none
 
-  type(surface_realization_type)               :: surf_realization
+  class(surface_realization_type)               :: surf_realization
   type(solver_type)                            :: surf_flow_solver
   type(input_type)                             :: input
   type(option_type)                            :: option
@@ -699,8 +701,8 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
             output_option%print_hdf5_energy_flowrate = energy_flowrate
             output_option%print_hdf5_aveg_mass_flowrate = aveg_mass_flowrate
             output_option%print_hdf5_aveg_energy_flowrate = aveg_energy_flowrate
-            if(aveg_mass_flowrate.or.aveg_energy_flowrate) then
-              if(output_option%periodic_output_time_incr==0.d0) then
+            if (aveg_mass_flowrate.or.aveg_energy_flowrate) then
+              if (output_option%periodic_output_time_incr==0.d0) then
                 option%io_buffer = 'Keyword: AVEGRAGE_FLOWRATES/ ' // &
                   'AVEGRAGE_MASS_FLOWRATE/ENERGY_FLOWRATE defined without' // &
                   ' PERIODIC TIME being set.'
@@ -840,6 +842,9 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
           endif
         endif
 
+      case('END_SURFACE_FLOW')
+        exit
+        
       case default
         option%io_buffer = 'Keyword ' // trim(word) // ' in input file ' // &
                            'not recognized'
@@ -848,7 +853,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
     end select
   enddo
 
-  if(option%restart_flag .neqv. option%surf_restart_flag) then
+  if (option%restart_flag .neqv. option%surf_restart_flag) then
     option%io_buffer='option%restart_flag /= option%surf_restart_flag'
     call printErrMsg(option)
   endif

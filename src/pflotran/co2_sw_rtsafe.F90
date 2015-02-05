@@ -92,7 +92,7 @@ subroutine bracket(func,x1,x2)
   call func(x2,f2,df)
   ifind = 1
   do i = 1, 200
-    if(f1*f2 < 0.d0) return
+    if (f1*f2 < 0.d0) return
     if (dabs(f1) < dabs(f2)) then
       x1 = x1+fac*(x1-x2)
       call func(x1,f1,df)

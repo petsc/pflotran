@@ -93,7 +93,7 @@ subroutine GeomechanicsMaterialPropertyRead(geomech_material_property, &
   do
     call InputReadPflotranString(input,option)
     
-    if(InputCheckExit(input,option)) exit
+    if (InputCheckExit(input,option)) exit
   
     call InputReadWord(input,option,keyword,PETSC_TRUE)
     call InputErrorMsg(input,option,'keyword','GEOMECHANICS_MATERIAL_PROPERTY')
@@ -329,7 +329,7 @@ recursive subroutine GeomechanicsMaterialPropertyDestroy(geomech_material_proper
   
   type(geomech_material_property_type), pointer :: geomech_material_property
   
-  if(.not.associated(geomech_material_property)) return
+  if (.not.associated(geomech_material_property)) return
   
   call GeomechanicsMaterialPropertyDestroy(geomech_material_property%next)
   

@@ -44,7 +44,7 @@ subroutine GeomechicsInitReadRequiredCards(geomech_realization)
   
   implicit none
   
-  type(geomech_realization_type)             :: geomech_realization
+  class(geomech_realization_type)             :: geomech_realization
   type(geomech_discretization_type), pointer :: geomech_discretization
   
   character(len=MAXSTRINGLENGTH) :: string
@@ -61,7 +61,7 @@ subroutine GeomechicsInitReadRequiredCards(geomech_realization)
   ! GEOMECHANICS information
   string = "GEOMECHANICS"
   call InputFindStringInFile(input,option,string)
-  if(InputError(input)) return
+  if (InputError(input)) return
   option%ngeomechdof = 3  ! displacements in x, y, z directions
   option%n_stress_strain_dof = 6
   
@@ -95,7 +95,7 @@ subroutine GeomechanicsInit(geomech_realization,input,option)
   
   implicit none
   
-  type(geomech_realization_type)             :: geomech_realization
+  class(geomech_realization_type)             :: geomech_realization
   type(geomech_discretization_type), pointer :: geomech_discretization
   type(geomech_patch_type), pointer          :: patch
   type(input_type)                           :: input
@@ -201,7 +201,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
   
   implicit none
   
-  type(geomech_realization_type)               :: geomech_realization
+  class(geomech_realization_type)               :: geomech_realization
   type(solver_type)                            :: geomech_solver
   type(input_type)                             :: input
   type(option_type)                            :: option
@@ -626,7 +626,7 @@ subroutine GeomechInitMatPropToGeomechRegions(geomech_realization)
 
   implicit none
   
-  type(geomech_realization_type) :: geomech_realization
+  class(geomech_realization_type) :: geomech_realization
   
   PetscReal, pointer :: vec_p(:)
   
@@ -764,8 +764,7 @@ subroutine InitGeomechSetupRealization(simulation)
   ! Author: Glenn Hammond
   ! Date: 12/04/14
   ! 
-  use Simulation_module
-  
+  use Simulation_Geomechanics_class 
   use Geomechanics_Realization_class
   use Geomechanics_Global_module
   use Geomechanics_Force_module
@@ -775,7 +774,7 @@ subroutine InitGeomechSetupRealization(simulation)
   
   implicit none
   
-  type(simulation_type) :: simulation
+  type(geomechanics_simulation_type) :: simulation
   
   type(option_type), pointer :: option
   
@@ -844,8 +843,8 @@ subroutine InitGeomechSetupSolvers(geomech_realization,realization,solver)
 #include "finclude/petscsnes.h"
 #include "finclude/petscpc.h"
   
-  type(geomech_realization_type) :: geomech_realization
-  type(realization_type) :: realization
+  class(geomech_realization_type) :: geomech_realization
+  class(realization_type) :: realization
   type(solver_type), pointer :: solver
 
   type(option_type), pointer :: option

@@ -27,6 +27,7 @@ module Geometry_module
   
   public :: GeometryCreatePolygonalVolume, &
             GeometryReadCoordinates, &
+            GeometryReadCoordinate, &
             GeometryPointInPolygonalVolume, &
             GeometryCopyCoordinates, &
             GeometryDestroyPolygonalVolume, &
@@ -100,12 +101,7 @@ subroutine GeometryReadCoordinates(input,option,region_name,coordinates)
         ' in RegionReadCoordinates()'
       call printErrMsg(option)
     endif
-    call InputReadDouble(input,option,temp_coordinates(icount)%x) 
-    call InputErrorMsg(input,option,'x-coordinate','REGION')
-    call InputReadDouble(input,option,temp_coordinates(icount)%y)
-    call InputErrorMsg(input,option,'y-coordinate','REGION')
-    call InputReadDouble(input,option,temp_coordinates(icount)%z)
-    call InputErrorMsg(input,option,'z-coordinate','REGION')
+    call GeometryReadCoordinate(input,option,temp_coordinates(icount),'REGION')
   enddo
   allocate(coordinates(icount))
   do icount = 1, size(coordinates)
@@ -115,6 +111,35 @@ subroutine GeometryReadCoordinates(input,option,region_name,coordinates)
   enddo
 
 end subroutine GeometryReadCoordinates
+
+! ************************************************************************** !
+
+subroutine GeometryReadCoordinate(input,option,coordinate,error_string)
+  ! 
+  ! Reads a list of coordinates
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/12
+  ! 
+
+  use Input_Aux_module
+  use Option_module
+
+  implicit none
+  
+  type(input_type) :: input
+  type(option_type) :: option
+  character(len=*) :: error_string
+  type(point3d_type) :: coordinate
+  
+  call InputReadDouble(input,option,coordinate%x) 
+  call InputErrorMsg(input,option,'x-coordinate',error_string)
+  call InputReadDouble(input,option,coordinate%y)
+  call InputErrorMsg(input,option,'y-coordinate',error_string)
+  call InputReadDouble(input,option,coordinate%z)
+  call InputErrorMsg(input,option,'z-coordinate',error_string)
+
+end subroutine GeometryReadCoordinate
 
 ! ************************************************************************** !
 

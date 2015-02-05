@@ -31,8 +31,7 @@ subroutine InitGeomechSetupRealization(simulation)
   ! Author: Glenn Hammond
   ! Date: 12/04/14
   ! 
-  use Simulation_module
-  
+  use Simulation_Geomechanics_class
   use Geomechanics_Realization_class
   use Geomechanics_Global_module
   use Geomechanics_Force_module
@@ -42,7 +41,7 @@ subroutine InitGeomechSetupRealization(simulation)
   
   implicit none
   
-  type(simulation_type) :: simulation
+  class(geomechanics_simulation_type) :: simulation
   
   type(option_type), pointer :: option
   
@@ -111,8 +110,8 @@ subroutine InitGeomechSetupSolvers(geomech_realization,realization,solver)
 #include "finclude/petscsnes.h"
 #include "finclude/petscpc.h"
   
-  type(geomech_realization_type) :: geomech_realization
-  type(realization_type) :: realization
+  class(geomech_realization_type) :: geomech_realization
+  class(realization_type) :: realization
   type(solver_type), pointer :: solver
 
   type(option_type), pointer :: option
@@ -150,11 +149,11 @@ subroutine InitGeomechSetupSolvers(geomech_realization,realization,solver)
 
   call SNESSetFunction(solver%snes,geomech_realization%geomech_field%disp_r, &
                        GeomechForceResidual, &
-                       realization,ierr);CHKERRQ(ierr)
+                       geomech_realization,ierr);CHKERRQ(ierr)
 
   call SNESSetJacobian(solver%snes,solver%J, &
                        solver%Jpre,GeomechForceJacobian, &
-                       realization,ierr);CHKERRQ(ierr)
+                       geomech_realization,ierr);CHKERRQ(ierr)
   ! by default turn off line search
   call SNESGetLineSearch(solver%snes,linesearch, ierr);CHKERRQ(ierr)
   call SNESLineSearchSetType(linesearch,SNESLINESEARCHBASIC, &
@@ -211,7 +210,7 @@ subroutine InitGeomechMatPropToGeomechRegions(geomech_realization)
 
   implicit none
   
-  type(geomech_realization_type) :: geomech_realization
+  class(geomech_realization_type) :: geomech_realization
   
   PetscReal, pointer :: vec_p(:)
   

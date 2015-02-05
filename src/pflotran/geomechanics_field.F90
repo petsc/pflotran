@@ -189,7 +189,7 @@ subroutine GeomechFieldDestroy(geomech_field)
     call VecDestroy(geomech_field%porosity_init_loc,ierr);CHKERRQ(ierr)
   endif
 
-  if(associated(geomech_field)) deallocate(geomech_field)
+  if (associated(geomech_field)) deallocate(geomech_field)
   nullify(geomech_field)
 
 end subroutine GeomechFieldDestroy

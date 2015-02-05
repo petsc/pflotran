@@ -32,7 +32,7 @@ subroutine InitSubsurfTranSetupRealization(realization)
   
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(option_type), pointer :: option
   
@@ -88,7 +88,7 @@ subroutine InitSubsurfTranSetupSolvers(realization,solver)
 #include "finclude/petscsnes.h"
 #include "finclude/petscpc.h"
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   type(solver_type), pointer :: solver
   
   type(option_type), pointer :: option
@@ -196,23 +196,6 @@ subroutine InitSubsurfTranSetupSolvers(realization,solver)
     call SNESSetConvergenceTest(solver%snes,ConvergenceTest, &
                                 convergence_context, &
                                 PETSC_NULL_FUNCTION,ierr);CHKERRQ(ierr)
-
-    ! this update check must be in place, otherwise reactive transport is likely
-    ! to fail
-    if (associated(realization%reaction)) then
-#if 1
-      call SNESGetLineSearch(solver%snes, linesearch,  &
-                              ierr);CHKERRQ(ierr)
-      if (realization%reaction%check_update) then
-        call SNESLineSearchSetPreCheck(linesearch,RTCheckUpdatePre, &
-                                        realization,ierr);CHKERRQ(ierr)
-      endif
-      if (solver%check_post_convergence) then
-        call SNESLineSearchSetPostCheck(linesearch,RTCheckUpdatePost, &
-                                        realization,ierr);CHKERRQ(ierr)
-      endif
-    endif
-#endif
   endif
     
   call printMsg(option,"  Finished setting up TRAN SNES ")

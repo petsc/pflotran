@@ -1,7 +1,18 @@
 #Description: surface flow decoupled from subsurface flow
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+  /
+END
+
+SUBSURFACE
+
 #=========================== flow mode ========================================
-MODE RICHARDS
+#MODE RICHARDS
 
 #=========================== discretization ===================================
 GRID
@@ -107,6 +118,8 @@ STRATA
   REGION all
   MATERIAL soil1
 END
+
+END_SUBSURFACE
 
 #===============================================================================
 #=========================== surface flow ======================================

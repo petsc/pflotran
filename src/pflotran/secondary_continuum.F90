@@ -20,6 +20,11 @@ module Secondary_Continuum_module
 #include "finclude/petscviewer.h"
 #include "finclude/petsclog.h"
 
+  ! secondary continuum cell type
+  PetscInt, parameter, public :: SLAB = 0
+  PetscInt, parameter, public :: NESTED_CUBE = 1
+  PetscInt, parameter, public :: NESTED_SPHERE = 2
+
   PetscReal, parameter :: perturbation_tolerance = 1.d-5
 
   public :: SecondaryContinuumType, &
@@ -77,7 +82,7 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
   option%nsec_cells = nmat
     
   select case (igeom)      
-    case(0) ! 1D Slab
+    case(SLAB)
     
       dy = sec_continuum%slab%length/nmat
       aream0 = sec_continuum%slab%area
@@ -120,7 +125,7 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
                                       dm2(m-1) + dm1(m)
       enddo
           
-    case(1) ! nested cubes
+    case(NESTED_CUBE)
 
       if (sec_continuum%nested_cube%fracture_spacing > 0.d0) then
 
@@ -128,7 +133,7 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
 !        override epsilon if aperture defined
         if (aperture > 0.d0) then
           r0 = fracture_spacing - aperture
-          epsilon = 1.d0 - (1.d0 + aperture/r0)**(-3.0)
+          epsilon = 1.d0 - (1.d0 + aperture/r0)**(-3.d0)
         else if (epsilon > 0.d0) then
           r0 = fracture_spacing*(1.d0-epsilon)**(1.d0/3.d0)
           aperture = r0*((1.d0-epsilon)**(-1.d0/3.d0)-1.d0)
@@ -141,7 +146,7 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
 !        override epsilon if aperture defined
         if (aperture > 0.d0) then
           fracture_spacing = r0 + aperture
-          epsilon = 1.d0 - (1.d0 + aperture/r0)**(-3.0)
+          epsilon = 1.d0 - (1.d0 + aperture/r0)**(-3.d0)
         else if (epsilon > 0.d0) then
           fracture_spacing = r0*(1.d0-epsilon)**(-1.d0/3.d0)
           aperture = fracture_spacing - r0
@@ -154,48 +159,48 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
         call SecondaryContinuumCalcLogSpacing(matrix_block_size,outer_spacing, &
                                               nmat,grid_spacing,option)
         
-        r0 = 2*grid_spacing(1)
-        dm1(1) = 0.5*grid_spacing(1)
-        dm2(1) = 0.5*grid_spacing(1)
-        volm(1) = r0**3
-        aream(1) = 6.d0*r0**2         
+        r0 = 2.d0*grid_spacing(1)
+        dm1(1) = 0.5d0*grid_spacing(1)
+        dm2(1) = 0.5d0*grid_spacing(1)
+        volm(1) = r0**3.d0
+        aream(1) = 6.d0*r0**2.d0
         do m = 2, nmat
-          dm1(m) = 0.5*grid_spacing(m)
-          dm2(m) = 0.5*grid_spacing(m)
-          r1 = r0 + 2*(dm1(m) + dm2(m))
-          volm(m) = r1**3 - r0**3
-          aream(m) = 6.d0*r1**2
+          dm1(m) = 0.5d0*grid_spacing(m)
+          dm2(m) = 0.5d0*grid_spacing(m)
+          r1 = r0 + 2.d0*(dm1(m) + dm2(m))
+          volm(m) = r1**3.d0 - r0**3.d0
+          aream(m) = 6.d0*r1**2.d0
           r0 = r1
         enddo
         r0 = matrix_block_size
-        am0 = 6.d0*r0**2
-        vm0 = r0**3
+        am0 = 6.d0*r0**2.d0
+        vm0 = r0**3.d0
         interfacial_area = am0/vm0
 
       else
         dy = r0/nmat/2.d0
      
         r0 = 2.d0*dy
-        volm(1) = r0**3
+        volm(1) = r0**3.d0
         do m = 2, nmat
           r1 = r0 + 2.d0*dy
-          volm(m) = r1**3 - r0**3
+          volm(m) = r1**3.d0 - r0**3.d0
           r0 = r1
         enddo
       
         r0 = 2.d0*dy
-        aream(1) = 6.d0*r0**2
+        aream(1) = 6.d0*r0**2.d0
         dm1(1) = 0.5d0*dy
         dm2(1) = 0.5d0*dy
         do m = 2, nmat
           dm1(m) = 0.5d0*dy
           dm2(m) = 0.5d0*dy
           r0 = r0 + 2.d0*dy
-          aream(m) = 6.d0*r0**2
+          aream(m) = 6.d0*r0**2.d0
         enddo
-        r0 = real(2*nmat)*dy
-        am0 = 6.d0*r0**2
-        vm0 = r0**3
+        r0 = real(2.d0*nmat)*dy
+        am0 = 6.d0*r0**2.d0
+        vm0 = r0**3.d0
         interfacial_area = am0/vm0
       endif
 
@@ -232,30 +237,30 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
                                       dm2(m-1) + dm1(m)
       enddo     
 
-    case(2) ! nested spheres
+    case(NESTED_SPHERE)
     
       dy = sec_continuum%nested_sphere%radius/nmat
       r0 = dy
 
-      volm(1) = 4.d0/3.d0*pi*r0**3
+      volm(1) = 4.d0/3.d0*pi*r0**3.d0
       do m = 2, nmat
         r1 = r0 + dy
-        volm(m) = 4.d0/3.d0*pi*(r1**3 - r0**3)
+        volm(m) = 4.d0/3.d0*pi*(r1**3.d0 - r0**3.d0)
         r0 = r1
       enddo
       
       r0 = dy
-      aream(1) = 4.d0*pi*r0**2
+      aream(1) = 4.d0*pi*r0**2.d0
       dm1(1) = 0.5d0*dy
       dm2(1) = 0.5d0*dy
       do m = 2, nmat
         r0 = r0 + dy
         dm1(m) = 0.5d0*dy
         dm2(m) = 0.5d0*dy
-        aream(m) = 4.d0*pi*r0**2
+        aream(m) = 4.d0*pi*r0**2.d0
       enddo
-      r0 = 0.5d0*real(2*nmat)*dy
-      am0 = 4.d0*pi*r0**2
+      r0 = 0.5d0*real(2.d0*nmat)*dy
+      am0 = 4.d0*pi*r0**2.d0
       vm0 = am0*r0/3.d0
       interfacial_area = am0/vm0
 
@@ -348,7 +353,7 @@ subroutine SecondaryContinuumSetProperties(sec_continuum, &
   
   select case(trim(sec_continuum_name))
     case("SLAB")
-      sec_continuum%itype = 0
+      sec_continuum%itype = SLAB
       sec_continuum%slab%length = sec_continuum_length
       if (sec_continuum_area == 0.d0) then
         option%io_buffer = 'Keyword "AREA" not specified for SLAB type ' // &
@@ -357,11 +362,11 @@ subroutine SecondaryContinuumSetProperties(sec_continuum, &
       endif
       sec_continuum%slab%area = sec_continuum_area
     case("NESTED_CUBES")
-      sec_continuum%itype = 1
+      sec_continuum%itype = NESTED_CUBE
       sec_continuum%nested_cube%matrix_block_size = sec_continuum_matrix_block_size
       sec_continuum%nested_cube%fracture_spacing = sec_continuum_fracture_spacing
     case("NESTED_SPHERES")
-      sec_continuum%itype = 2
+      sec_continuum%itype = NESTED_SPHERE
       sec_continuum%nested_sphere%radius = sec_continuum_radius
     case default
       option%io_buffer = 'Keyword "' // trim(sec_continuum_name) // '" not ' // &
@@ -377,10 +382,19 @@ subroutine SecondaryContinuumCalcLogSpacing(matrix_size,outer_grid_size, &
                                             sec_num_cells,grid_spacing,option)
   ! 
   ! Given the matrix block size and the
-  ! grid spacing of the outer mode secondary continuum cell, a geometric
+  ! grid spacing of the outer most secondary continuum cell, a geometric
   ! series is assumed and the grid spacing of the rest of the cells is
   ! calculated
   ! 
+  ! Equation:
+  ! \frac{1 - \rho}{1 - \rho_M}*\rho*(M-1) = \frac{2\Delta\xi_m}{l_M}
+  !
+  ! where
+  !   \Delta\xi_m: Grid spacing of the outer most continuum cell (INPUT)
+  !   l_M        : Matrix block size (INPUT)
+  !   M          : Number of secondary continuum cells (INPUT)
+  !   \rho       : Logarithmic grid spacing factor (COMPUTED)
+  !
   ! Author: Satish Karra, LANL
   ! Date: 07/17/12
   ! 
@@ -409,10 +423,10 @@ subroutine SecondaryContinuumCalcLogSpacing(matrix_size,outer_grid_size, &
   delta = 0.99d0
   
   do i = 1, maxit
-    F = (1.d0 - delta)/(1.d0 - delta**sec_num_cells)*delta**(sec_num_cells-1) - &
+    F = (1.d0 - delta)/(1.d0 - delta**sec_num_cells)*delta**(sec_num_cells - 1.d0) - &
         2.d0*outer_grid_size/matrix_size
     dF = (1.d0 + sec_num_cells*(delta - 1.d0) - delta**sec_num_cells)/ &
-         (delta**sec_num_cells - 1.d0)**2*delta**(sec_num_cells - 2) 
+         (delta**sec_num_cells - 1.d0)**2.d0*delta**(sec_num_cells - 2.d0)
     delta_new = delta + F/dF
     if ((abs(F) < tol)) exit
     delta = delta_new
@@ -452,7 +466,7 @@ subroutine SecondaryRTTimeCut(realization)
   use Reaction_Aux_module
   
   implicit none
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   type(reaction_type), pointer :: reaction
   type(sec_transport_type), pointer :: rt_sec_transport_vars(:)
   type(grid_type), pointer :: grid
@@ -1394,7 +1408,7 @@ subroutine SecondaryRTUpdateIterate(line_search,P0,dP,P1,dP_changed, &
   Vec :: P0
   Vec :: dP
   Vec :: P1
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   ! ignore changed flag for now.
   PetscBool :: dP_changed
   PetscBool :: P1_changed

@@ -2,8 +2,25 @@
 # capabilites while keeping all temperatures constant and above
 # freezing.
 #=========================== flow mode ================================
-MODE TH FREEZING
-ICE_MODEL DALL_AMICO
+
+SIMULATION
+  SIMULATION_TYPE SURFACE_SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE TH
+      OPTIONS
+        FREEZING
+        ICE_MODEL DALL_AMICO
+      /
+    /
+    SURFACE_SUBSURFACE flow
+  /
+END
+
+SUBSURFACE
+
+#MODE TH FREEZING
+#ICE_MODEL DALL_AMICO
 #=========================== discretization ===========================
 REGRESSION
   CELLS
@@ -141,6 +158,10 @@ END
 #======================================================================
 #=========================== surface flow =============================
 #======================================================================
+END_SUBSURFACE
+
+SURFACE
+
 SURFACE_FLOW
 SURF_GRID
   TYPE unstructured ./mesh_simple1D.h5
@@ -213,3 +234,5 @@ STRATA
   MATERIAL surf1
 END
 END
+
+END_SURFACE

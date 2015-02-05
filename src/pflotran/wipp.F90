@@ -262,7 +262,7 @@ subroutine CreepClosureDestroy1()
   ! Deallocates any allocated pointers in auxiliary object
   ! 
   ! Author: Glenn Hammond
-  ! Date: 04/09/08
+  ! Date: 10/13/14
   ! 
 
   implicit none
@@ -278,7 +278,7 @@ subroutine CreepClosureDestroy2(creep_closure)
   ! Deallocates any allocated pointers in auxiliary object
   ! 
   ! Author: Glenn Hammond
-  ! Date: 04/09/08
+  ! Date: 10/13/14
   ! 
 
   implicit none

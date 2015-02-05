@@ -1,7 +1,17 @@
-#Description: 
+#Description:
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE GENERAL
+    /
+  /
+END
+
+SUBSURFACE
 
 #=========================== flow mode ========================================
-MODE GENERAL
 
 #=========================== regression =======================================
 REGRESSION
@@ -183,11 +193,11 @@ REGION bottom_pt
 /
 
 #=========================== observation points ===============================
-OBSERVATION 
+OBSERVATION
   REGION bottom_pt
 /
 
-OBSERVATION 
+OBSERVATION
   REGION top_pt
 /
 
@@ -262,3 +272,4 @@ STRATA
   REGION impermeable_zone
 /
 
+END_SUBSURFACE

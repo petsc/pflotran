@@ -145,7 +145,7 @@ $\verb|make test|$
 
 Note that ParMETIS/METIS is only needed for using the unstructured grid capability in PFLOTRAN. HDF5 is recommended for large problems for use with Visit for (parallel) visualization.
 
-\paragraph{Yosemite} Special considerations are required to install PETSc and PFLOTRAN on Yosemite (MacOSX 10.10). It is necessary to install gcc-4.9 from Homebrew [other installations such as HPC MacOS X are not bug free at the time of this writing (10.23.14)]. The following steps are required:
+\paragraph{Yosemite (Mac OS X 10.10.x)} Special considerations are required to install PETSc and PFLOTRAN on Yosemite (MacOSX 10.10). It is necessary to install gcc-4.9 from Homebrew [other installations such as HPC MacOS X are not bug free at the time of this writing (10.23.14)]. The following steps are required:
 \begin{enumerate}
 \item install Homebrew (standard location /usr/local must be clean to avoid collisions)
 \item install gcc (need version 4.9.x): {\tt brew install gcc}
@@ -495,8 +495,8 @@ A number of command line options are available:
 Option & \multicolumn{1}{c}{Description}\\
 \midrule
 {\tt -pflotranin <string>} & specify input file [Default: {\tt pflotran.in}]\\
-{\tt -input\_prefix <string>} & specify input (and output) file prefix [default: {\tt pflotran}]\\
-{\tt -output\_prefix <string>} & specify output file prefix [default: {\tt pflotran}]\\
+{\tt -input\_prefix <string>} & specify input file prefix and path [default: {\tt pflotran}]\\
+{\tt -output\_prefix <string>} & specify output file prefix and path to prefix directory which must already exist [default: {\tt pflotran}]\\
 {\tt -screen\_output off} & turn off screen output\\
 %{\tt -v} &\\
 {\tt -realization\_id <integer>} & run specified realization ID\\
@@ -522,6 +522,13 @@ Option & \multicolumn{1}{c}{Description}\\
 {\tt -ksp\_monitor\_lg\_residualnorm} & \\
 \bottomrule
 \end{tabular}
+
+\begin{mdframed}
+{\bf Examples:}
+
+\verb|mpirun -np 1 ./pflotran -output_prefix ./path_to/prefix|\\
+\end{mdframed}
+
 
 \subsection{Multiple Realization Simulation Mode}
 

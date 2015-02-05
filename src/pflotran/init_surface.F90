@@ -12,19 +12,19 @@ contains
 
 ! ************************************************************************** !
 
-subroutine InitSurfaceSetupRealization(simulation)
+subroutine InitSurfaceSetupRealization(surf_realization,subsurf_realization)
   ! 
   ! Initializes material property data structres and assign them to the domain.
   ! 
   ! Author: Glenn Hammond
   ! Date: 12/04/14
   ! 
-  use Simulation_module
-  
   use Surface_Flow_module
   use Surface_Realization_class
   use Surface_TH_module
   use Surface_Global_module
+  use Timestepper_Base_class
+  use Realization_class
   
   use Option_module
   use Waypoint_module
@@ -33,13 +33,13 @@ subroutine InitSurfaceSetupRealization(simulation)
   
   implicit none
   
-  type(simulation_type) :: simulation
-  
+  class(surface_realization_type), pointer :: surf_realization
+  class(realization_type), pointer :: subsurf_realization
   type(option_type), pointer :: option
   PetscReal :: dum1
   PetscErrorCode :: ierr
   
-  option => simulation%realization%option
+  option => surf_realization%option
 
   ! initialize reference density
   if (option%reference_water_density < 1.d-40) then
@@ -49,7 +49,7 @@ subroutine InitSurfaceSetupRealization(simulation)
                          dum1,ierr)    
   endif  
   
-  call SurfRealizCreateDiscretization(simulation%surf_realization)
+  call SurfRealizCreateDiscretization(surf_realization)
 
   ! Check if surface-flow is compatible with the given flowmode
   select case(option%iflowmode)
@@ -59,41 +59,37 @@ subroutine InitSurfaceSetupRealization(simulation)
       call printErrMsgByRank(option)
   end select
 
-  call SurfaceInitReadRegionFiles(simulation%surf_realization)
-  call SurfRealizMapSurfSubsurfGrids(simulation%realization, &
-                                      simulation%surf_realization)
-  call SurfRealizLocalizeRegions(simulation%surf_realization)
-  call SurfRealizPassFieldPtrToPatches(simulation%surf_realization)
-  call SurfRealizProcessMatProp(simulation%surf_realization)
-  call SurfRealizProcessCouplers(simulation%surf_realization)
-  call SurfRealizProcessConditions(simulation%surf_realization)
-  !call RealProcessFluidProperties(simulation%surf_realization)
-  call SurfaceInitMatPropToRegions(simulation%surf_realization)
-  call SurfRealizInitAllCouplerAuxVars(simulation%surf_realization)
-  !call SurfaceRealizationPrintCouplers(simulation%surf_realization)
+  call SurfaceInitReadRegionFiles(surf_realization)
+  call SurfRealizMapSurfSubsurfGrids(subsurf_realization,surf_realization)
+  call SurfRealizLocalizeRegions(surf_realization)
+  call SurfRealizPassFieldPtrToPatches(surf_realization)
+  call SurfRealizProcessMatProp(surf_realization)
+  call SurfRealizProcessCouplers(surf_realization)
+  call SurfRealizProcessConditions(surf_realization)
+  !call RealProcessFluidProperties(surf_realization)
+  call SurfaceInitMatPropToRegions(surf_realization)
+  call SurfRealizInitAllCouplerAuxVars(surf_realization)
+  !call SurfaceRealizationPrintCouplers(surf_realization)
 
   ! add waypoints associated with boundary conditions, source/sinks etc. to list
-  call SurfRealizAddWaypointsToList(simulation%surf_realization)
-  call WaypointListFillIn(option,simulation%surf_realization%waypoint_list)
-  call WaypointListRemoveExtraWaypnts(option,simulation%surf_realization%waypoint_list)
-  if (associated(simulation%flow_timestepper)) then
-    simulation%surf_flow_timestepper%cur_waypoint => simulation%surf_realization%waypoint_list%first
-  endif
+  call SurfRealizAddWaypointsToList(surf_realization)
+  call WaypointListFillIn(option,surf_realization%waypoint_list)
+  call WaypointListRemoveExtraWaypnts(option,surf_realization%waypoint_list)
 
   select case(option%iflowmode)
     case(RICHARDS_MODE)
-      call SurfaceFlowSetup(simulation%surf_realization)
+      call SurfaceFlowSetup(surf_realization)
     case default
     case(TH_MODE)
-      call SurfaceTHSetup(simulation%surf_realization)
+      call SurfaceTHSetup(surf_realization)
   end select
 
-  call SurfaceGlobalSetup(simulation%surf_realization)
+  call SurfaceGlobalSetup(surf_realization)
   ! initialize FLOW
   ! set up auxillary variable arrays
 
   ! assign initial conditionsRealizAssignFlowInitCond
-  call CondControlAssignFlowInitCondSurface(simulation%surf_realization)
+  call CondControlAssignFlowInitCondSurface(surf_realization)
 
   ! override initial conditions if they are to be read from a file
   if (len_trim(option%surf_initialize_flow_filename) > 1) then
@@ -103,9 +99,9 @@ subroutine InitSurfaceSetupRealization(simulation)
   
   select case(option%iflowmode)
     case(RICHARDS_MODE)
-      call SurfaceFlowUpdateAuxVars(simulation%surf_realization)
+      call SurfaceFlowUpdateAuxVars(surf_realization)
     case(TH_MODE)
-      call SurfaceTHUpdateAuxVars(simulation%surf_realization)
+      call SurfaceTHUpdateAuxVars(surf_realization)
     case default
       option%io_buffer = 'For surface-flow only RICHARDS and TH mode implemented'
       call printErrMsgByRank(option)
@@ -141,7 +137,7 @@ subroutine InitSurfaceSetupSolvers(surf_realization,solver)
 #include "finclude/petscpc.h"
 #include "finclude/petscts.h"
   
-  type(surface_realization_type) :: surf_realization
+  class(surface_realization_type) :: surf_realization
   type(solver_type), pointer :: solver
   
   type(option_type), pointer :: option
@@ -212,7 +208,7 @@ subroutine SurfaceInitMatPropToRegions(surf_realization)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-  type(surface_realization_type) :: surf_realization
+  class(surface_realization_type) :: surf_realization
   
   PetscReal, pointer :: man0_p(:)
   PetscReal, pointer :: vec_p(:)
@@ -379,7 +375,7 @@ subroutine SurfaceInitReadRegionFiles(surf_realization)
 
   implicit none
 
-  type(surface_realization_type) :: surf_realization
+  class(surface_realization_type) :: surf_realization
   
   type(region_type), pointer :: surf_region
   
