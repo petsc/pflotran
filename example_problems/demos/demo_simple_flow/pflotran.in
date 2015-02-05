@@ -1,4 +1,4 @@
-#Description: 1D infiltration
+# Description: 1D infiltration
 
 #=========================== flow mode ========================================
 MODE RICHARDS
