@@ -233,7 +233,7 @@ subroutine PFLOTRANReadSimulation(simulation,option)
     case('SURFACE_SUBSURFACE')
       call SurfSubsurfaceInitialize(simulation,pm_master,option)
     case default
-      option%io_buffer =  'SIMULATION_TYPE " ' // trim(word) // &
+      option%io_buffer =  'SIMULATION_TYPE " ' // trim(simulation_type) // &
         '" not recognized.'
       call printErrMsg(option)
   end select

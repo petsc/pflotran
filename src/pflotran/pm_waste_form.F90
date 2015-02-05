@@ -16,22 +16,32 @@ module PM_Waste_Form_class
   type :: mpm_type
     PetscInt :: local_id
     type(point3d_type) :: coordinate
-    PetscReal :: dose_rate
     PetscReal :: temperature
-    PetscReal :: oxygen
-    PetscReal :: carbonate
-    PetscReal :: hydrogen
-    PetscReal :: iron
+    PetscReal, pointer :: concentration(:,:)
+    PetscReal, pointer :: flux(:)
   end type mpm_type
   
   type, public, extends(pm_base_type) :: pm_mpm_type
     class(realization_type), pointer :: realization
     type(mpm_type), pointer :: waste_form(:)
-    type(point3d_type), pointer :: coordinates(:)
-    PetscInt :: ioxygen
-    PetscInt :: icarbonate
-    PetscInt :: ihydrogen
-    PetscInt :: iiron
+    type(point3d_type), pointer :: coordinate(:)
+    PetscInt :: num_grid_cells
+    ! mapping of pflotran species into concentration array
+    PetscInt, pointer :: mapping_pflotran(:)
+    ! mapping of mpm species into concentration array
+    PetscInt, pointer :: mapping_mpm_to_pflotran(:)
+    PetscInt :: iUO2_2p
+    PetscInt :: iUCO3_2n
+    PetscInt :: iUO2
+    PetscInt :: iCO3_2n
+    PetscInt :: iO2
+    PetscInt :: iH2O2
+    PetscInt :: iFe_2p
+    PetscInt :: iH2
+    PetscInt :: iUO2_sld
+    PetscInt :: iUO3_sld
+    PetscInt :: iUO4_sld
+    PetscInt :: num_concentrations
   contains
 !geh: commented out subroutines can only be called externally
     procedure, public :: Init => PMWasteFormInit
@@ -83,12 +93,29 @@ function PMWasteFormCreate()
   allocate(PMWasteFormCreate)
   nullify(PMWasteFormCreate%realization)
   nullify(PMWasteFormCreate%waste_form)
-  nullify(PMWasteFormCreate%coordinates)
-  PMWasteFormCreate%ioxygen = UNINITIALIZED_INTEGER
-  PMWasteFormCreate%icarbonate = UNINITIALIZED_INTEGER
-  PMWasteFormCreate%ihydrogen = UNINITIALIZED_INTEGER
-  PMWasteFormCreate%iiron = UNINITIALIZED_INTEGER
-
+  nullify(PMWasteFormCreate%coordinate)
+  PMWasteFormCreate%num_grid_cells = UNINITIALIZED_INTEGER
+  PMWasteFormCreate%num_concentrations = 11
+  PMWasteFormCreate%iUO2_2p = 1
+  PMWasteFormCreate%iUCO3_2n = 2
+  PMWasteFormCreate%iUO2 = 3
+  PMWasteFormCreate%iCO3_2n = 4
+  PMWasteFormCreate%iO2 = 5
+  PMWasteFormCreate%iH2O2 = 6
+  PMWasteFormCreate%iFe_2p = 7
+  PMWasteFormCreate%iH2 = 8
+  PMWasteFormCreate%iUO2_sld = 9
+  PMWasteFormCreate%iUO3_sld = 10
+  PMWasteFormCreate%iUO4_sld = 11
+  allocate(PMWasteFormCreate%mapping_mpm_to_pflotran( &
+             PMWasteFormCreate%num_concentrations))
+  PMWasteFormCreate%mapping_mpm_to_pflotran = UNINITIALIZED_INTEGER
+  allocate(PMWasteFormCreate%mapping_pflotran(4))
+  PMWasteFormCreate%mapping_pflotran = [PMWasteFormCreate%iO2, &
+                                        PMWasteFormCreate%iCO3_2n, &
+                                        PMWasteFormCreate%iH2, &
+                                        PMWasteFormCreate%iFe_2p]
+  
   call PMBaseCreate(PMWasteFormCreate)
 
 end function PMWasteFormCreate
@@ -141,6 +168,8 @@ subroutine PMWasteFormRead(this,input,option)
     
     select case(trim(word))
     
+      case('NUM_GRID_CELLS')
+        call InputReadInt(input,option,this%num_grid_cells)
       case('COORDINATES')
         num_coordinates = 0
         do
@@ -165,14 +194,20 @@ subroutine PMWasteFormRead(this,input,option)
         call InputKeywordUnrecognized(word,error_string,option)
     end select
   enddo
-  allocate(this%coordinates(num_coordinates))
+  allocate(this%coordinate(num_coordinates))
   do i = 1, num_coordinates
-    this%coordinates(i)%x = x(i)
-    this%coordinates(i)%y = y(i)
-    this%coordinates(i)%z = z(i)
+    this%coordinate(i)%x = x(i)
+    this%coordinate(i)%y = y(i)
+    this%coordinate(i)%z = z(i)
   enddo
   deallocate(x,y,z)
-  nullify(x,y,z)  
+  nullify(x,y,z)
+  
+  if (this%num_grid_cells == UNINITIALIZED_INTEGER) then
+    option%io_buffer = &
+      'NUM_GRID_CELLS must be specified for mixed potential model.'
+    call printErrMsg(option)
+  endif
   
 end subroutine PMWasteFormRead
 
@@ -208,25 +243,25 @@ subroutine PMWasteFormInit(this)
   option => this%realization%option
   reaction => this%realization%reaction
   
-  allocate(cell_ids(2,size(this%coordinates)))
+  allocate(cell_ids(2,size(this%coordinate)))
   num_local_coordinates = 0
-  do icoord = 1, size(this%coordinates)
+  do icoord = 1, size(this%coordinate)
     local_id = -1
     select case(grid%itype)
         case(STRUCTURED_GRID)
           call StructGridGetIJKFromCoordinate(grid%structured_grid, &
-                                              this%coordinates(icoord)%x, &
-                                              this%coordinates(icoord)%y, &
-                                              this%coordinates(icoord)%z, &
+                                              this%coordinate(icoord)%x, &
+                                              this%coordinate(icoord)%y, &
+                                              this%coordinate(icoord)%z, &
                                               i,j,k)
           if (i > 0 .and. j > 0 .and. k > 0) then
             local_id = i + (j-1)*grid%structured_grid%nlx + &
                        (k-1)*grid%structured_grid%nlxy
           endif
         case(IMPLICIT_UNSTRUCTURED_GRID)
-          call UGridGetCellFromPoint(this%coordinates(icoord)%x, &
-                                     this%coordinates(icoord)%y, &
-                                     this%coordinates(icoord)%z, &
+          call UGridGetCellFromPoint(this%coordinate(icoord)%x, &
+                                     this%coordinate(icoord)%y, &
+                                     this%coordinate(icoord)%z, &
                                      grid%unstructured_grid,option,local_id)
         case default
            option%io_buffer = 'Only STRUCTURED_GRID and ' // &
@@ -241,24 +276,33 @@ subroutine PMWasteFormInit(this)
   enddo
   allocate(this%waste_form(num_local_coordinates))
   do i = 1, num_local_coordinates
+    allocate(this%waste_form(i)%concentration(this%num_concentrations, &
+                                              this%num_grid_cells))
+    this%waste_form(i)%concentration = UNINITIALIZED_DOUBLE
+    allocate(this%waste_form(i)%flux(this%num_concentrations))
+    this%waste_form(i)%flux = UNINITIALIZED_DOUBLE
     this%waste_form(i)%local_id = cell_ids(2,i)
-    this%waste_form(i)%coordinate%x = this%coordinates(cell_ids(1,i))%x
-    this%waste_form(i)%coordinate%y = this%coordinates(cell_ids(1,i))%y
-    this%waste_form(i)%coordinate%z = this%coordinates(cell_ids(1,i))%z
+    this%waste_form(i)%coordinate%x = this%coordinate(cell_ids(1,i))%x
+    this%waste_form(i)%coordinate%y = this%coordinate(cell_ids(1,i))%y
+    this%waste_form(i)%coordinate%z = this%coordinate(cell_ids(1,i))%z
   enddo
   deallocate(cell_ids)
-  deallocate(this%coordinates)
-  nullify(this%coordinates)
+  deallocate(this%coordinate)
+  nullify(this%coordinate)
   
   ! set up indexing of solute concentrations
   species_name = 'O2(aq)'
-  this%ioxygen = GetPrimarySpeciesIDFromName(species_name,reaction,option)
+  this%mapping_mpm_to_pflotran(this%iO2) = &
+    GetPrimarySpeciesIDFromName(species_name,reaction,option)
   species_name = 'HCO3-'
-  this%icarbonate = GetPrimarySpeciesIDFromName(species_name,reaction,option)
+  this%mapping_mpm_to_pflotran(this%iCO3_2n) = &
+    GetPrimarySpeciesIDFromName(species_name,reaction,option)
   species_name = 'H2(aq)'
-  this%ihydrogen = GetPrimarySpeciesIDFromName(species_name,reaction,option)
+  this%mapping_mpm_to_pflotran(this%iH2) = &
+    GetPrimarySpeciesIDFromName(species_name,reaction,option)
   species_name = 'Fe++'
-  this%iiron = GetPrimarySpeciesIDFromName(species_name,reaction,option)
+  this%mapping_mpm_to_pflotran(this%iFe_2p) = &
+    GetPrimarySpeciesIDFromName(species_name,reaction,option)
   
 end subroutine PMWasteFormInit
 
@@ -339,6 +383,8 @@ subroutine PMWasteFormPreSolve(this)
   type(global_auxvar_type), pointer :: global_auxvars(:)
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
   PetscInt :: i
+  PetscInt :: iwasteform
+  PetscInt :: icomp
   PetscInt :: local_id
   PetscInt :: ghosted_id
   
@@ -346,16 +392,16 @@ subroutine PMWasteFormPreSolve(this)
   global_auxvars => this%realization%patch%aux%Global%auxvars
   rt_auxvars => this%realization%patch%aux%RT%auxvars
   
-  do i = 1, size(this%waste_form)
+  do iwasteform = 1, size(this%waste_form)
     local_id = this%waste_form(i)%local_id
     ghosted_id = grid%nL2G(local_id)
     this%waste_form(i)%temperature = global_auxvars(ghosted_id)%temp
-    this%waste_form(i)%oxygen = rt_auxvars(ghosted_id)%total(this%ioxygen,1)
-    this%waste_form(i)%carbonate = &
-      rt_auxvars(ghosted_id)%total(this%icarbonate,1)
-    this%waste_form(i)%hydrogen = &
-      rt_auxvars(ghosted_id)%total(this%ihydrogen,1)
-    this%waste_form(i)%iron = rt_auxvars(ghosted_id)%total(this%iiron,1)
+    ! overwrite the components in this%mapping_pflotran array
+    do i = 1, size(this%mapping_pflotran)
+      icomp = this%mapping_pflotran(i)
+      this%waste_form(iwasteform)%concentration(icomp,1) = &
+        rt_auxvars(ghosted_id)%total(this%mapping_mpm_to_pflotran(icomp),1)
+    enddo
   enddo
   
 end subroutine PMWasteFormPreSolve
@@ -380,7 +426,7 @@ subroutine PMWasteFormSolve(this,time,ierr)
   PetscInt :: i
   
   do i = 1, size(this%waste_form)
-    call AMPRun(time,conc)
+    call AMPRun(time,this%waste_form(i)%concentration)
   enddo
 
 end subroutine PMWasteFormSolve
@@ -401,8 +447,9 @@ subroutine PMWasteFormPostSolve(this)
   
   class(pm_mpm_type) :: this
   
-  this%option%io_buffer = 'PMWasteFormPostSolve() must be extended.'
-  call printErrMsg(this%option)  
+  ! set the fluxes here.
+  this%option%io_buffer = 'PMWasteFormPostSolve() must be set up.'
+  call printWrnMsg(this%option)  
   
 end subroutine PMWasteFormPostSolve
 
@@ -567,11 +614,20 @@ subroutine PMWasteFormDestroy(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 01/15/15
+  use Utility_module
 
   implicit none
   
   class(pm_mpm_type) :: this
   
+  PetscInt :: i
+  
+  do i = 1, size(this%waste_form)
+    call DeallocateArray(this%waste_form(i)%concentration)
+    call DeallocateArray(this%waste_form(i)%flux)
+  enddo
+  call DeallocateArray(this%mapping_mpm_to_pflotran)
+  call DeallocateArray(this%mapping_pflotran)
   deallocate(this%waste_form)
   nullify(this%waste_form)
   

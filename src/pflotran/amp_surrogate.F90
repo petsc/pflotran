@@ -35,7 +35,7 @@ subroutine AMPRun(time,conc)
   implicit none
   
   PetscReal :: time
-  PetscReal :: conc(:)
+  PetscReal :: conc(:,:)
   
 end subroutine AMPRun
 
