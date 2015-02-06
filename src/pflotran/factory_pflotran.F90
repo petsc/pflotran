@@ -217,7 +217,7 @@ subroutine PFLOTRANReadSimulation(simulation,option)
 
   if (.not.associated(pm_master)) then
     option%io_buffer = 'No process models defined in SIMULATION block.'
-    call printErrMst(option)
+    call printErrMsg(option)
   endif
 
   select case(simulation_type)
