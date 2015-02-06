@@ -236,9 +236,8 @@ subroutine CLM_CN_Read(this,input,option)
               call InputErrorMsg(input,option,'inhibition constant', &
                      'CHEMISTRY,REACTION_SANDBOX,CLM-CN,REACTION')
             case default
-              option%io_buffer = 'CHEMISTRY,REACTION_SANDBOX,CLM-CN,' // &
-                'REACTION keyword: ' // trim(word) // ' not recognized.'
-              call printErrMsg(option)
+              call InputKeywordUnrecognized(word, &
+                     'CHEMISTRY,REACTION_SANDBOX,CLM-CN,REACTION',option)
           end select
         enddo
         
@@ -280,9 +279,8 @@ subroutine CLM_CN_Read(this,input,option)
         prev_reaction => new_reaction
         nullify(new_reaction)        
       case default
-        option%io_buffer = 'CHEMISTRY,REACTION_SANDBOX,CLM-CN keyword: ' // &
-          trim(word) // ' not recognized.'
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(word, &
+                     'CHEMISTRY,REACTION_SANDBOX,CLM-CN',option)
     end select
   enddo
   

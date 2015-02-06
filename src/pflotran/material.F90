@@ -467,10 +467,8 @@ subroutine MaterialPropertyRead(material_property,input,option)
               call InputErrorMsg(input,option,'DATASET,NAME', &
                                  'MATERIAL_PROPERTY,PERMEABILITY')   
             case default
-              option%io_buffer = 'Keyword (' // trim(word) // &
-                                 ') not recognized in MATERIAL_PROPERTY,' // &
-                                 'PERMEABILITY'
-              call printErrMsg(option)
+              call InputKeywordUnrecognized(word, &
+                     'MATERIAL_PROPERTY,PERMEABILITY',option)
           end select
         enddo
         if (dabs(material_property%permeability(1,1) - &
@@ -508,10 +506,8 @@ subroutine MaterialPropertyRead(material_property,input,option)
               call InputReadDouble(input,option,material_property%max_permfactor)
               call InputErrorMsg(input,option,'max permfactor','PERM_FACTOR')
             case default
-              option%io_buffer = 'Keyword (' // trim(word) // &
-                                 ') not recognized in MATERIAL_PROPERTY,' // &
-                                 'PERM_FACTOR'
-              call printErrMsg(option)
+              call InputKeywordUnrecognized(word, &
+                     'MATERIAL_PROPERTY,PERM_FACTOR',option)
           end select
         enddo
       case('PERMEABILITY_POWER')
@@ -640,17 +636,13 @@ subroutine MaterialPropertyRead(material_property,input,option)
               call InputErrorMsg(input,option,'secondary area scaling factor', &
                            'MATERIAL_PROPERTY')
             case default
-              option%io_buffer = 'Keyword (' // trim(word) // &
-                                 ') not recognized in MATERIAL_PROPERTY,' // &
-                                 'SECONDARY_CONTINUUM'
-              call printErrMsg(option)
+              call InputKeywordUnrecognized(word, &
+                     'MATERIAL_PROPERTY,SECONDARY_CONTINUUM',option)
           end select
         enddo
 
       case default
-        option%io_buffer = 'Keyword (' // trim(keyword) // &
-                           ') not recognized in material_property'    
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(keyword,'MATERIAL_PROPERTY',option)
     end select 
   enddo
 

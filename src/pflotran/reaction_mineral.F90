@@ -274,10 +274,9 @@ subroutine MineralReadKinetics(mineral,input,option)
                                              'attenuation coefficient', &
                                              error_string)
                         case default
-                          option%io_buffer = 'CHEMISTRY,MINERAL_KINETICS,PREFACTOR, ' // &
-                                             'SPECIES keyword: ' // &
-                                             trim(word) // ' not recognized'
-                          call printErrMsg(option)
+                          call InputKeywordUnrecognized(word, &
+                            'CHEMISTRY,MINERAL_KINETICS,PREFACTOR,SPECIES', &
+                            option)
                       end select
                     enddo
                     ! add prefactor species
@@ -296,9 +295,8 @@ subroutine MineralReadKinetics(mineral,input,option)
                     endif                    
                     error_string = 'CHEMISTRY,MINERAL_KINETICS,PREFACTOR'
                   case default
-                    option%io_buffer = 'CHEMISTRY,MINERAL_KINETICS,PREFACTOR ' // &
-                                 'keyword: ' // trim(word) // ' not recognized'
-                    call printErrMsg(option)
+                    call InputKeywordUnrecognized(word, &
+                      'CHEMISTRY,MINERAL_KINETICS,PREFACTOR',option)
                 end select
               enddo
               ! add prefactor
@@ -317,9 +315,8 @@ subroutine MineralReadKinetics(mineral,input,option)
               endif
               error_string = 'CHEMISTRY,MINERAL_KINETICS'
             case default
-              option%io_buffer = 'CHEMISTRY,MINERAL_KINETICS keyword: ' // &
-                                 trim(word) // ' not recognized'
-              call printErrMsg(option)
+              call InputKeywordUnrecognized(word, &
+                      'CHEMISTRY,MINERAL_KINETICS',option)
           end select
         enddo
         ! Loop over prefactors and set kinetic rates and activation energies

@@ -680,9 +680,8 @@ subroutine CLMDec_Read(this,input,option)
                   UnitsConvertToInternal(word,option)
               endif
             case default
-              option%io_buffer = 'CHEMISTRY,CLM_RXN,CLMDec,' // &
-                'REACTION keyword: ' // trim(word) // ' not recognized.'
-              call printErrMsg(option)
+              call InputKeywordUnrecognized(word, &
+                     'CHEMISTRY,CLM_RXN,CLMDec,REACTION',option)
           end select
         enddo
         
@@ -706,9 +705,7 @@ subroutine CLMDec_Read(this,input,option)
         prev_reaction => new_reaction
         nullify(new_reaction)        
       case default
-        option%io_buffer = 'CHEMISTRY,CLM_RXN,CLMDec keyword: ' // &
-          trim(word) // ' not recognized.'
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(word,'CHEMISTRY,CLM_RXN,CLMDec',option)
     end select
   enddo
   
@@ -3253,9 +3250,8 @@ subroutine PlantNRead(this,input,option)
       case('DEBUG_OUTPUT')
         this%bdebugoutput = PETSC_TRUE
       case default
-        option%io_buffer = 'CHEMISTRY,CLM_RXN,PLANTN,' // &
-          'REACTION keyword: ' // trim(word) // ' not recognized.'
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(word, &
+               'CHEMISTRY,CLM_RXN,PLANTN,REACTION',option)
     end select
   enddo
   
@@ -3796,10 +3792,9 @@ subroutine NitrRead(this,input,option)
               call InputErrorMsg(input,option,'Q10', &
                 'CHEMISTRY,CLM_RXN_NITRIFICATION,TEMPERATURE RESPONSE FUNCTION')
             case default
-              option%io_buffer = 'CHEMISTRY,CLM_RXN,NITRIFICATION,' // &
-                'TEMPERATURE RESPONSE FUNCTION keyword: ' // &
-                trim(word) // ' not recognized.'
-              call printErrMsg(option)
+              call InputKeywordUnrecognized(word, &
+                'CHEMISTRY,CLM_RXN,NITRIFICATION,TEMPERATURE RESPONSE FUNCTION', &
+                option)
           end select
         enddo 
       case('RATE_CONSTANT_NO3')
@@ -3837,9 +3832,8 @@ subroutine NitrRead(this,input,option)
       case('DISABLE_MRF')
          this%disable_mrf = PETSC_TRUE
       case default
-          option%io_buffer = 'CHEMISTRY,CLM_RXN,NITRIFICATION,' // &
-            'REACTION keyword: ' // trim(word) // ' not recognized.'
-          call printErrMsg(option)
+        call InputKeywordUnrecognized(word, &
+                'CHEMISTRY,CLM_RXN,NITRIFICATION,REACTION',option)
     end select
   enddo
   
@@ -4340,10 +4334,9 @@ subroutine DeniRead(this,input,option)
               call InputErrorMsg(input,option,'Q10', &
                 'CHEMISTRY,CLM_RXN,DENITRI,TEMPERATURE RESPONSE FUNCTION')
             case default
-              option%io_buffer = 'CHEMISTRY,CLM_RXN,DENITRIFICATION,' // &
-                'TEMPERATURE RESPONSE FUNCTION keyword: ' // &
-                trim(word) // ' not recognized.'
-              call printErrMsg(option)
+              call InputKeywordUnrecognized(word, &
+                'CHEMISTRY,CLM_RXN,DENITRIFICATION,TEMPERATURE RESPONSE FUNCTION', &
+                option)
           end select
         enddo 
 
@@ -4373,9 +4366,8 @@ subroutine DeniRead(this,input,option)
           call printErrMsg(option)
         endif
       case default
-          option%io_buffer = 'CHEMISTRY,CLM_RXN,DENITRIFICATION,' // &
-            'REACTION keyword: ' // trim(word) // ' not recognized.'
-          call printErrMsg(option)
+        call InputKeywordUnrecognized(word, &
+               'CHEMISTRY,CLM_RXN,DENITRIFICATION,REACTION',option)
     end select
   enddo
   
@@ -4824,9 +4816,7 @@ subroutine RCLMRxnRead2(local_clmrxn_list,input,option)
         endif
 
       case default
-        option%io_buffer = 'CHEMISTRY,CLM_RXN keyword: ' // &
-          trim(word) // ' not recognized.'
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(word,'CHEMISTRY,CLM_RXN',option)
     end select
     
     call new_clmrxn%ReadInput(input,option)

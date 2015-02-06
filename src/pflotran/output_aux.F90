@@ -860,9 +860,7 @@ subroutine OutputVariableRead(input,option,output_variable_list)
         output_variable%iformat = 1 ! integer
         call OutputVariableAddToList(output_variable_list,output_variable)
       case default
-        option%io_buffer = 'Keyword: ' // trim(word) // &
-                                 ' not recognized in VARIABLES.'
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(word,'VARIABLES',option)
     end select
 
   enddo

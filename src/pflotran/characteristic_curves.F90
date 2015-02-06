@@ -305,9 +305,7 @@ subroutine CharacteristicCurvesRead(this,input,option)
           case('LINEAR')
             this%saturation_function => SF_Linear_Create()
           case default
-            option%io_buffer = 'Keyword: ' // trim(word) // &
-              ' not a recognized in saturation function type.'    
-            call printErrMsg(option)            
+            call InputKeywordUnrecognized(word,'SATURATION_FUNCTION',option)
         end select
         call SaturationFunctionRead(this%saturation_function,input,option)
       case('PERMEABILITY_FUNCTION')
@@ -354,9 +352,7 @@ subroutine CharacteristicCurvesRead(this,input,option)
             rel_perm_function_ptr => RPF_Burdine_Linear_Gas_Create()
             phase_keyword = 'GAS'
           case default
-            option%io_buffer = 'Keyword: ' // trim(word) // &
-              ' not a recognized in relative permeability function type.'
-            call printErrMsg(option)            
+            call InputKeywordUnrecognized(word,'PERMEABILITY_FUNCTION',option)
         end select
         call PermeabilityFunctionRead(rel_perm_function_ptr,phase_keyword, &
                                       input,option)
@@ -370,9 +366,8 @@ subroutine CharacteristicCurvesRead(this,input,option)
             this%gas_rel_perm_function => rel_perm_function_ptr
             this%liq_rel_perm_function => rel_perm_function_ptr
           case default
-            option%io_buffer = 'PHASE keyword: ' // trim(word) // &
-              ' not a recognized in relative permeability function type.'
-            call printErrMsg(option)            
+            call InputKeywordUnrecognized(word, &
+              'PERMEABILITY_FUNCTION,PHASE',option)
         end select
       case('TEST') 
         this%test = PETSC_TRUE

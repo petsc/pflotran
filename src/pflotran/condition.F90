@@ -786,8 +786,8 @@ subroutine FlowConditionRead(condition,input,option)
             case('H','ENTHALPY')
               sub_condition_ptr => enthalpy
             case default
-              option%io_buffer = 'keyword not recognized in condition,type'
-              call printErrMsg(option)
+              call InputKeywordUnrecognized(word, &
+                     'FLOW CONDITION,GRADIENT,TYPE',option)
           end select
           dataset_ascii => DatasetAsciiCreate()
           call DatasetAsciiInit(dataset_ascii)

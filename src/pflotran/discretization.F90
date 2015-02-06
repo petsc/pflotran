@@ -503,10 +503,7 @@ subroutine DiscretizationRead(discretization,input,option)
                    'DISCRETIZATION,stencil type',option)
         end select
       case default
-        option%io_buffer = 'Keyword: ' // trim(word) // &
-                 ' not recognized in DISCRETIZATION, second read.'
-        call printErrMsg(option)          
-        call InputKeywordUnrecognized(word,'DISCRETIZATION',option)
+        call InputKeywordUnrecognized(word,'GRID',option)
     end select 
   enddo  
 

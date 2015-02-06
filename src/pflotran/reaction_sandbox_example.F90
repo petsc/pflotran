@@ -142,9 +142,8 @@ subroutine ExampleRead(this,input,option)
             UnitsConvertToInternal(word,option)
         endif
       case default
-        option%io_buffer = 'CHEMISTRY,REACTION_SANDBOX,TEMPLATE keyword: ' // &
-          trim(word) // ' not recognized.'
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(word, &
+                     'CHEMISTRY,REACTION_SANDBOX,TEMPLATE',option)
     end select
   enddo
   

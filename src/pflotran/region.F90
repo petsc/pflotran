@@ -525,8 +525,7 @@ subroutine RegionRead(region,input,option)
           call printErrMsg(option)
         end select
       case default
-        option%io_buffer = 'REGION keyword: '//trim(keyword)//' not recognized'
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(keyword,'REGION',option)
     end select
   enddo
  
@@ -1125,10 +1124,8 @@ subroutine RegionReadExplicitFaceSet(explicit_faceset,cell_ids,filename,option)
           call InputErrorMsg(input,option,'face area',hint)
         enddo
       case default
-        option%io_buffer = 'Keyword: ' // trim(word) // &
-                           ' not recognized while reading explicit ' // &
-                           'unstructured grid REGION.'
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(word, &
+               'REGION (explicit unstructured grid)',option)
     end select
   enddo
 

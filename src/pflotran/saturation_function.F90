@@ -302,9 +302,8 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
                 case('GAS','GAS_PHASE')
                   iphase = 2
                 case default
-                  option%io_buffer = 'Keyword "' // trim(keyword) // &
-                    '" not recognized for RESIDUAL_SATURATION phase.'
-                  call printErrMsg(option)
+                  call InputKeywordUnrecognized(keyword, &
+                    'SATURATION_FUNCTION,RESIDUAL_SATURATION',option)
               end select
               call InputReadDouble(input,option,tempreal)
               word = trim(keyword) // ' residual saturation'
@@ -350,9 +349,7 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
       case('VERIFY') 
         saturation_function%print_me = PETSC_TRUE
       case default
-        option%io_buffer = 'Keyword: ' // trim(keyword) // &
-                           ' not recognized in saturation_function'    
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(keyword,'SATURATION_FUNCTION',option)
     end select 
   
   enddo 

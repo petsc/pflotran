@@ -647,9 +647,7 @@ subroutine SolverReadLinear(solver,input,option)
         call InputDefaultMsg(input,option,'linear_lu_zero_pivot_tol')
    
       case default
-        option%io_buffer = 'Keyword: ' // trim(keyword) // &
-                           ' not recognized in linear solver'    
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(keyword,'LINEAR_SOLVER',option)
     end select 
   
   enddo  
@@ -812,9 +810,7 @@ subroutine SolverReadNewton(solver,input,option)
         end select
         
       case default
-        option%io_buffer = 'Keyword: '//keyword// &
-                           ' not recognized in Newton solver'
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(keyword,'NEWTON_SOLVER',option)
     end select 
   
   enddo  
