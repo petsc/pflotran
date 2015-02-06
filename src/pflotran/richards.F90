@@ -801,7 +801,8 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
       if (patch%imat(ghosted_id) <= 0) cycle
 
       select case(boundary_condition%flow_condition%itype(RICHARDS_PRESSURE_DOF))
-        case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC,HET_SURF_SEEPAGE_BC)
+        case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC,HET_SURF_SEEPAGE_BC, &
+             HET_DIRICHLET)
           xxbc(1) = boundary_condition%flow_aux_real_var(RICHARDS_PRESSURE_DOF,iconn)
         case(NEUMANN_BC,ZERO_GRADIENT_BC,UNIT_GRADIENT_BC)
           xxbc(1) = xx_loc_p(ghosted_id)

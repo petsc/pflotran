@@ -142,6 +142,21 @@ subroutine PFLOTRANReadSimulation(simulation,option)
 
   string = 'SIMULATION'
   call InputFindStringInFile(input,option,string)
+  !TODO(geh): remove after 8/5/2015
+  if (input%ierr /= 0) then
+    call printMsg(option,'')
+    call printMsg(option,'***************************************************')
+    call printMsg(option,'')
+    call printMsg(option,'IMPORTANT: The PFLOTRAN input deck has been ' // &
+                 'refactored. Please see')
+    call printMsg(option,'')
+    call printMsg(option,'https://bitbucket.org/pflotran/' // &
+                  'pflotran-dev/wiki/Documentation/RefactoredInput')
+    call printMsg(option,'')
+    call printMsg(option,'for instructions on updating your input deck.')
+    call printMsg(option,'')
+    call printMsg(option,'***************************************************')
+  endif
   call InputFindStringErrorMsg(input,option,string)
   word = ''
   do
@@ -179,9 +194,8 @@ subroutine PFLOTRANReadSimulation(simulation,option)
               new_pm => PMSurfaceTHCreate()
             case('GEOMECHANICS')
             case default
-              option%io_buffer =  'PROCESS_MODEL " ' // trim(word) // &
-                '" not recognized.'
-              call printErrMsg(option)
+              call InputKeywordUnrecognized(word, &
+                     'SIMULATION,PROCESS_MODELS',option)            
           end select
           new_pm%name = name
           new_pm%option => option
@@ -223,9 +237,8 @@ subroutine PFLOTRANReadSimulation(simulation,option)
     case('SURFACE_SUBSURFACE')
       call SurfSubsurfaceInitialize(simulation,pm_master,option)
     case default
-      option%io_buffer =  'SIMULATION_TYPE " ' // trim(word) // &
-        '" not recognized.'
-      call printErrMsg(option)
+      call InputKeywordUnrecognized(word, &
+                     'SIMULATION,SIMULATION_TYPE',option)            
   end select
   
   call InputDestroy(input)

@@ -126,9 +126,7 @@ subroutine GeneralRead(input,option)
         call InputReadDouble(input,option,general_damping_factor)
         call InputErrorMsg(input,option,'damping factor','GENERAL_MODE')
       case default
-        option%io_buffer = 'Keyword: ' // trim(keyword) // &
-                           ' not recognized in General Mode'    
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(keyword,'GENERAL Mode',option)
     end select
     
   enddo  

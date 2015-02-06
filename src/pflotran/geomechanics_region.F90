@@ -252,8 +252,7 @@ subroutine GeomechRegionRead(region,input,option)
         option%io_buffer = 'GEOMECHANICS_REGION LIST currently not implemented'
         call printErrMsg(option)
       case default
-        option%io_buffer = 'REGION keyword: '//trim(keyword)//' not recognized'
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(keyword,'GEOMECHANICS_REGION',option)
     end select
   enddo
  
