@@ -135,9 +135,7 @@ subroutine UniformVelocityDatasetRead(dataset,input,option)
         call UniVelocityDatasetReadValues(input,option,word,string, &
                                           dataset,units)
       case default
-        option%io_buffer = 'Keyword: ' // trim(word) // &
-                           ' not recognized in VELOCITY_DATASET'
-        call printErrMsg(option)                                 
+        call InputKeywordUnrecognized(word,'VELOCITY_DATASET',option)
     end select 
   
   enddo

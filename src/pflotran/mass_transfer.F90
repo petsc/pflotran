@@ -96,9 +96,7 @@ subroutine MassTransferRead(mass_transfer,input,option)
                              MAXWORDLENGTH,PETSC_TRUE)
         call InputErrorMsg(input,option,'DATASET,NAME','MASS_TRANSFER')
       case default
-        option%io_buffer = 'Keyword: ' // trim(keyword) // &
-                           ' not recognized in mass transfer'    
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(keyword,'MASS_TRANSFER',option)
     end select
     
   enddo  

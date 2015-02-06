@@ -593,10 +593,9 @@ subroutine ReactionReadPass1(reaction,input,option)
                         case('FREUNDLICH')
                           kd_rxn%itype = SORPTION_FREUNDLICH
                         case default
-                          option%io_buffer = &
-                            'CHEMISTRY,SORPTION,ISOTHERM_REACTIONS,TYPE keyword: ' // &
-                            trim(word)//' not recognized'
-                          call printErrMsg(option)
+                          call InputKeywordUnrecognized(word, &
+                                'CHEMISTRY,SORPTION,ISOTHERM_REACTIONS,TYPE', &
+                                option)
                       end select
                       if (option%use_mc) then
                         sec_cont_kd_rxn%itype = kd_rxn%itype
@@ -634,10 +633,8 @@ subroutine ReactionReadPass1(reaction,input,option)
                                          'ISOTHERM_REACTIONS,KD_MINERAL_NAME')
                       kd_rxn%kd_mineral_name = word                      
                     case default
-                      option%io_buffer = &
-                        'CHEMISTRY,SORPTION,ISOTHERM_REACTIONS keyword: ' // &
-                        trim(word)//' not recognized'
-                      call printErrMsg(option)
+                      call InputKeywordUnrecognized(word, &
+                              'CHEMISTRY,SORPTION,ISOTHERM_REACTIONS',option)
                   end select
                 enddo
                 ! add to list
@@ -715,9 +712,8 @@ subroutine ReactionReadPass1(reaction,input,option)
                       nullify(cation)
                     enddo
                   case default
-                    option%io_buffer = 'CHEMISTRY, ION_EXCHANGE_RXN keyword: '// &
-                                     trim(word)//' not recognized'
-                    call printErrMsg(option)
+                    call InputKeywordUnrecognized(word, &
+                              'CHEMISTRY,ION_EXCHANGE_RXN',option)
                 end select
               enddo
               if (.not.associated(reaction%ion_exchange_rxn_list)) then
@@ -775,9 +771,8 @@ subroutine ReactionReadPass1(reaction,input,option)
             case('NEWTON_ITERATION')
               reaction%act_coef_update_frequency = ACT_COEF_FREQUENCY_NEWTON_ITER
             case default
-              option%io_buffer = 'CHEMISTRY,ACTIVITY_COEFFICIENTS keyword: ' &
-                                 //trim(word)//' not recognized'
-              call printErrMsg(option)
+              call InputKeywordUnrecognized(word, &
+                        'CHEMISTRY,ACTIVITY_COEFFICIENTS',option)
           end select
         enddo
       case('NO_BDOT')
@@ -834,9 +829,8 @@ subroutine ReactionReadPass1(reaction,input,option)
             case('VANLEER')
               option%transport%tvd_flux_limiter = 5
             case default
-              option%io_buffer = 'TVD flux limiter ' // trim(word) // &
-                ' not recognized.'
-              call printErrMsg(option)
+              call InputKeywordUnrecognized(word, &
+                        'CHEMISTRY,EXPLICIT_ADVECTION',option)
           end select
           option%io_buffer = 'Flux Limiter: ' // trim(word)
           call printMsg(option)
@@ -853,8 +847,7 @@ subroutine ReactionReadPass1(reaction,input,option)
         call InputReadDouble(input,option,reaction%minimum_porosity)
         call InputErrorMsg(input,option,'minimim porosity','CHEMISTRY')
       case default
-        option%io_buffer = 'CHEMISTRY keyword: '//trim(word)//' not recognized'
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(word,'CHEMISTRY',option)
     end select
   enddo
   

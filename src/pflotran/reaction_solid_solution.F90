@@ -286,9 +286,8 @@ subroutine SolidSolutionReadFromDatabase(solid_solution_rxn,option)
         solid_solution_rxn%num_dbase_temperatures = &
           size(solid_solution_rxn%dbase_temperatures)
       case default
-        option%io_buffer = 'SOLID SOLUTION DATABASE keyword: ' // trim(word) &
-                           // 'not recognized'
-        call printErrMsg(option)        
+        call InputKeywordUnrecognized(word, &
+                     'SOLID SOLUTION,DATABASE',option)
     end select
   enddo
     

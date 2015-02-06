@@ -151,9 +151,7 @@ subroutine DatasetMapHDF5Read(this,input,option)
           call InputReadWord(input,option,this%map_filename,PETSC_TRUE)
           call InputErrorMsg(input,option,'map filename','DATASET')
         case default
-          option%io_buffer = 'Keyword: ' // trim(keyword) // &
-                             ' not recognized in dataset'    
-          call printErrMsg(option)
+          call InputKeywordUnrecognized(keyword,'dataset',option)
       end select
     endif
   

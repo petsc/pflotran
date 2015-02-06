@@ -1740,8 +1740,7 @@ subroutine OutputSurfaceVariableRead(input,option,output_variable_list)
         output_variable%iformat = 1 ! integer
         call OutputVariableAddToList(output_variable_list,output_variable)
       case default
-        option%io_buffer = 'Keyword: ' // trim(word) // &
-                                 ' not recognized in VARIABLES.'
+        call InputKeywordUnrecognized(word,'SURFACE,VARIABLES',option)
     end select
   enddo
 

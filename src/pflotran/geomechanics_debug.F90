@@ -107,9 +107,7 @@ subroutine GeomechDebugRead(debug,input,option)
       case('WAYPOINTS')
         debug%print_waypoints = PETSC_TRUE
       case default
-        option%io_buffer = 'Option "' // trim(keyword) // &
-          '" not recognized under GEOMECHANICS_DEBUG.'
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(keyword,'GEOMECHANICS_DEBUG',option)
     end select 
   
   enddo  

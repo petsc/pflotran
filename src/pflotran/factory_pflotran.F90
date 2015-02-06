@@ -194,9 +194,8 @@ subroutine PFLOTRANReadSimulation(simulation,option)
               new_pm => PMSurfaceTHCreate()
             case('GEOMECHANICS')
             case default
-              option%io_buffer =  'PROCESS_MODEL " ' // trim(word) // &
-                '" not recognized.'
-              call printErrMsg(option)
+              call InputKeywordUnrecognized(word, &
+                     'SIMULATION,PROCESS_MODELS',option)            
           end select
           new_pm%name = name
           new_pm%option => option
@@ -216,6 +215,11 @@ subroutine PFLOTRANReadSimulation(simulation,option)
     end select
   enddo
 
+  if (.not.associated(pm_master)) then
+    option%io_buffer = 'No process models defined in SIMULATION block.'
+    call printErrMsg(option)
+  endif
+
   select case(simulation_type)
     case('CUSTOM')
       ! link process models with their respective couplers
@@ -233,9 +237,8 @@ subroutine PFLOTRANReadSimulation(simulation,option)
     case('SURFACE_SUBSURFACE')
       call SurfSubsurfaceInitialize(simulation,pm_master,option)
     case default
-      option%io_buffer =  'SIMULATION_TYPE " ' // trim(simulation_type) // &
-        '" not recognized.'
-      call printErrMsg(option)
+      call InputKeywordUnrecognized(word, &
+                     'SIMULATION,SIMULATION_TYPE',option)            
   end select
   
   call InputDestroy(input)

@@ -123,9 +123,7 @@ subroutine CreepClosureRead(this,input,option)
         call InputReadWord(input,option,this%material_name,PETSC_TRUE)
         call InputErrorMsg(input,option,'material',error_string)
      case default
-        option%io_buffer = 'Keyword: ' // trim(keyword) // &
-                           ' not recognized in creep closure'    
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(keyword,'CREEP_CLOSURE',option)
     end select
   enddo
   
@@ -190,9 +188,8 @@ subroutine CreepClosureRead(this,input,option)
                                   -1, &
                                   string,input2,option)
      case default
-        option%io_buffer = 'Keyword: ' // trim(keyword) // &
-                           ' not recognized in creep closure file.'    
-        call printErrMsg(option)
+        error_string = trim(error_string) // ': ' // filename
+        call InputKeywordUnrecognized(keyword,error_string,option)
     end select
   enddo
   call InputDestroy(input2)

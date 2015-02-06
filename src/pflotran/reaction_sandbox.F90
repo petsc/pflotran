@@ -155,9 +155,7 @@ subroutine RSandboxRead2(local_sandbox_list,input,option)
       case('EXAMPLE')
         new_sandbox => EXAMPLECreate()
       case default
-        option%io_buffer = 'CHEMISTRY,REACTION_SANDBOX keyword: ' // &
-          trim(word) // ' not recognized.'
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(word,'CHEMISTRY,REACTION_SANDBOX',option)
     end select
     
     call new_sandbox%ReadInput(input,option)

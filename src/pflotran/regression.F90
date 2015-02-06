@@ -173,9 +173,7 @@ subroutine RegressionRead(regression,input,option)
         call InputReadInt(input,option,regression%num_cells_per_process)
         call InputErrorMsg(input,option,'num cells per process','REGRESSION')
       case default
-        option%io_buffer = 'Keyword: ' // trim(keyword) // &
-                           ' not recognized in regression'    
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(keyword,'REGRESSION',option)
     end select
     
   enddo

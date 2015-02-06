@@ -306,9 +306,7 @@ subroutine TimestepperBaseProcessKeyword(this,input,option,keyword)
                           'TIMESTEPPER')
 
     case default
-      option%io_buffer = 'Timestepper option: '//trim(keyword)// &
-                          ' not recognized.'
-      call printErrMsg(option)
+      call InputKeywordUnrecognized(keyword,'TIMESTEPPER',option)
   end select
 
 end subroutine TimestepperBaseProcessKeyword

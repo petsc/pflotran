@@ -393,6 +393,7 @@ subroutine SubsurfaceReadFlowPM(input, option, pm)
   
   error_string = 'SIMULATION,PROCESS_MODEL'
 
+  nullify(pm)
   word = ''
   do   
     call InputReadPflotranString(input,option)
@@ -420,8 +421,8 @@ subroutine SubsurfaceReadFlowPM(input, option, pm)
           case('TH')
             pm => PMTHCreate()
           case default
-            option%io_buffer = 'FLOW PM "' // trim(word) // '" not recognized.'
-            call printErrMsg(option)
+            call InputKeywordUnrecognized(word, &
+                     'SIMULATION,PROCESS_MODELS,SUBSURFACE_FLOW,MODE',option)
         end select
       case('OPTIONS')
         if (.not.associated(pm)) then
@@ -442,8 +443,16 @@ subroutine SubsurfaceReadFlowPM(input, option, pm)
             call printErrMsg(option)
         end select
       case default
+        error_string = trim(error_string) // ',SUBSURFACE_FLOW'
+        call InputKeywordUnrecognized(word,error_string,option)
     end select
   enddo
+  
+  if (.not.associated(pm)) then
+    option%io_buffer = 'A flow MODE (card) must be included in the ' // &
+      'SUBSURFACE_FLOW block in ' // trim(error_string) // '.'
+    call printErrMsg(option)
+  endif
   
 end subroutine SubsurfaceReadFlowPM
 

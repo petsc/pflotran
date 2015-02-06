@@ -254,6 +254,7 @@ function FlowGeneralSubConditionPtr(sub_condition_name,general, &
   ! 
 
   use Option_module
+  use Input_Aux_module, only : InputKeywordUnrecognized
 
   implicit none
 
@@ -329,9 +330,8 @@ function FlowGeneralSubConditionPtr(sub_condition_name,general, &
         general%rate => sub_condition_ptr
       endif
     case default
-      option%io_buffer = 'keyword (' // trim(sub_condition_name) // &
-                          ') not recognized in general condition,type'
-      call printErrMsg(option)
+      call InputKeywordUnrecognized(sub_condition_name, &
+                                    'general condition,type',option)
   end select
 
   FlowGeneralSubConditionPtr => sub_condition_ptr
@@ -647,9 +647,7 @@ subroutine FlowConditionRead(condition,input,option)
             case('DISPLACEMENT_Z')
               sub_condition_ptr => displacement_z
             case default
-              option%io_buffer = 'keyword (' // trim(word) // &
-                                 ') not recognized in condition,type'
-              call printErrMsg(option)
+              call InputKeywordUnrecognized(word,'condition,type',option)
           end select
           call InputReadWord(input,option,word,PETSC_TRUE)
           call InputErrorMsg(input,option,'TYPE','CONDITION')   
@@ -680,11 +678,9 @@ subroutine FlowConditionRead(condition,input,option)
                   case('perm')
                     sub_condition_ptr%isubtype = SCALE_BY_PERM
                   case default
-                    option%io_buffer = 'scaled_mass_rate type: ' // &
-                      trim(word) // &
-                      'not recognized for flow condition "' // &
-                      trim(condition%name) // '".'
-                    call printErrMsg(option)
+                    string = 'flow condition "' // trim(condition%name) // &
+                      '" scaled_mass_rate type'
+                    call InputKeywordUnrecognized(word,string,option)
                 end select
               else
                 sub_condition_ptr%isubtype = SCALE_BY_NEIGHBOR_PERM
@@ -715,11 +711,9 @@ subroutine FlowConditionRead(condition,input,option)
                   case('perm')
                     sub_condition_ptr%isubtype = SCALE_BY_PERM
                   case default
-                    option%io_buffer = 'scaled_volumetric_rate type: ' // &
-                      trim(word) // &
-                      'not recognized for flow condition "' // &
-                      trim(condition%name) // '".'
-                    call printErrMsg(option)
+                    string = 'flow condition "' // trim(condition%name) // &
+                      '" scaled_volumetric_rate type'
+                    call InputKeywordUnrecognized(word,string,option)
                 end select
               else
                 sub_condition_ptr%isubtype = SCALE_BY_NEIGHBOR_PERM
@@ -744,9 +738,7 @@ subroutine FlowConditionRead(condition,input,option)
             case('spillover')
               sub_condition_ptr%itype = SPILLOVER_BC
             case default
-              option%io_buffer = 'bc type "' // trim(word) // &
-                                 '" not recognized in condition,type'
-              call printErrMsg(option)
+              call InputKeywordUnrecognized(word,'condition bc type',option)
           end select
         enddo
       case('TIME','TIMES')
@@ -794,8 +786,8 @@ subroutine FlowConditionRead(condition,input,option)
             case('H','ENTHALPY')
               sub_condition_ptr => enthalpy
             case default
-              option%io_buffer = 'keyword not recognized in condition,type'
-              call printErrMsg(option)
+              call InputKeywordUnrecognized(word, &
+                     'FLOW CONDITION,GRADIENT,TYPE',option)
           end select
           dataset_ascii => DatasetAsciiCreate()
           call DatasetAsciiInit(dataset_ascii)
@@ -859,9 +851,7 @@ subroutine FlowConditionRead(condition,input,option)
         call InputReadDouble(input,option,pressure%aux_real(1))
         call InputErrorMsg(input,option,'CONDUCTANCE','CONDITION')   
       case default
-        option%io_buffer = 'Keyword: ' // trim(word) // &
-                           ' not recognized in flow condition'
-        call printErrMsg(option)                                 
+        call InputKeywordUnrecognized(word,'flow condition',option)
     end select 
   
   enddo  
@@ -1353,9 +1343,7 @@ subroutine FlowConditionGeneralRead(condition,input,option)
             case('heterogeneous_surface_seepage')
               sub_condition_ptr%itype = HET_SURF_SEEPAGE_BC
             case default
-              option%io_buffer = 'bc type "' // trim(word) // &
-                                 '" not recognized in condition,type'
-              call printErrMsg(option)
+              call InputKeywordUnrecognized(word,'flow condition,type',option)
           end select
         enddo
       case('DATUM')
@@ -1423,9 +1411,7 @@ subroutine FlowConditionGeneralRead(condition,input,option)
               sub_condition_ptr%dataset%rarray(:)
         end select
       case default
-        option%io_buffer = 'Keyword: ' // trim(word) // &
-                           ' not recognized in flow condition'
-        call printErrMsg(option)                                 
+        call InputKeywordUnrecognized(word,'flow condition',option)
     end select 
   
   enddo  
@@ -1694,9 +1680,8 @@ subroutine TranConditionRead(condition,constraint_list,reaction,input,option)
             case('zero_gradient')
               condition%itype = ZERO_GRADIENT_BC
             case default
-              option%io_buffer = 'Keyword ' // trim(word) // &
-                                 ' not recognized in condition,type'
-              call printErrMsg(option)
+              call InputKeywordUnrecognized(word,'transport condition type', &
+                                            option)
         end select
       case('TIME')
         call InputReadDouble(input,option,default_time)
@@ -1774,9 +1759,7 @@ subroutine TranConditionRead(condition,constraint_list,reaction,input,option)
           cur_coupler%next => constraint_coupler
         endif        
       case default
-        option%io_buffer = 'Keyword: ' // trim(word) // &
-                 ' not recognized in transport condition'
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(word,'transport condition',option)
     end select 
   
   enddo  

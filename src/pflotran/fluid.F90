@@ -116,9 +116,7 @@ subroutine FluidPropertyRead(fluid_property,input,option)
         call InputErrorMsg(input,option,'gas diffusion coefficient', &
                            'FLUID_PROPERTY')
       case default
-        option%io_buffer = 'Keyword: ' // trim(keyword) // &
-                           ' not recognized in fluid property'    
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(keyword,'FLUID_PROPERTY',option)
     end select
     
   enddo  

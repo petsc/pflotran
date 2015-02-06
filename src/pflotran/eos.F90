@@ -84,9 +84,7 @@ subroutine EOSRead(input,option)
               case('IFC67','DEFAULT')
                 call EOSWaterSetDensityIFC67()
               case default
-                option%io_buffer = 'Keyword: ' // trim(word) // &
-                                   ' not recognized in EOS,WATER,DENSITY'    
-                call printErrMsg(option)
+                call InputKeywordUnrecognized(word,'EOS,WATER,DENSITY',option)
             end select
           case('ENTHALPY') 
             call InputReadWord(input,option,word,PETSC_TRUE)
@@ -101,9 +99,7 @@ subroutine EOSRead(input,option)
               case('IFC67','DEFAULT')
                 call EOSWaterSetEnthalpyIFC67()
               case default
-                option%io_buffer = 'Keyword: ' // trim(word) // &
-                                   ' not recognized in EOS,WATER,ENTHALPY'    
-                call printErrMsg(option)
+                call InputKeywordUnrecognized(word,'EOS,WATER,ENTHALPY',option)
             end select
           case('VISCOSITY') 
             call InputReadWord(input,option,word,PETSC_TRUE)
@@ -117,9 +113,8 @@ subroutine EOSRead(input,option)
                 call EOSWaterSetViscosityConstant(tempreal)
               case('DEFAULT')
               case default
-                option%io_buffer = 'Keyword: ' // trim(word) // &
-                                   ' not recognized in EOS,WATER,VISCOSITY'    
-                call printErrMsg(option)
+                call InputKeywordUnrecognized(word,'EOS,WATER,VISCOSITY', &
+                                              option)
             end select
           case('STEAM_DENSITY') 
             call InputReadWord(input,option,word,PETSC_TRUE)
@@ -132,9 +127,8 @@ subroutine EOSRead(input,option)
                                    'EOS,WATER,STEAM_DENSITY,CONSTANT')
                 call EOSWaterSetSteamDensityConst(tempreal)
               case default
-                option%io_buffer = 'Keyword: ' // trim(word) // &
-                                   ' not recognized in EOS,WATER,STEAM_DENSITY'    
-                call printErrMsg(option)
+                call InputKeywordUnrecognized(word,'EOS,WATER,STEAM_DENSITY', &
+                                              option)
             end select
           case('STEAM_ENTHALPY') 
             call InputReadWord(input,option,word,PETSC_TRUE)
@@ -147,14 +141,11 @@ subroutine EOSRead(input,option)
                                    'EOS,WATER,STEAM_ENTHALPY,CONSTANT')
                 call EOSWaterSetSteamEnthalpyConst(tempreal)
               case default
-                option%io_buffer = 'Keyword: ' // trim(word) // &
-                                   ' not recognized in EOS,WATER,STEAM_ENTHALPY'    
-                call printErrMsg(option)
+                call InputKeywordUnrecognized(word, &
+                       'EOS,WATER,STEAM_ENTHALPY',option)
             end select
           case default
-            option%io_buffer = 'Keyword: ' // trim(keyword) // &
-                               ' not recognized in EOS,WATER'    
-            call printErrMsg(option)
+            call InputKeywordUnrecognized(keyword,'EOS,WATER',option)
         end select
       enddo
       string = ''
@@ -191,9 +182,7 @@ subroutine EOSRead(input,option)
               case('IDEAL','DEFAULT')
                 call EOSGasSetDensityIdeal()
               case default
-                option%io_buffer = 'Keyword: ' // trim(word) // &
-                                   ' not recognized in EOS,GAS,DENSITY'    
-                call printErrMsg(option)
+                call InputKeywordUnrecognized(word,'EOS,GAS,DENSITY',option)
             end select
           case('ENTHALPY') 
             call InputReadWord(input,option,word,PETSC_TRUE)
@@ -210,9 +199,7 @@ subroutine EOSRead(input,option)
               case('IDEAL','DEFAULT')
                 call EOSGasSetEnergyIdeal()
               case default
-                option%io_buffer = 'Keyword: ' // trim(word) // &
-                                   ' not recognized in EOS,GAS,ENTHALPY'    
-                call printErrMsg(option)
+                call InputKeywordUnrecognized(word,'EOS,GAS,ENTHALPY',option)
             end select
           case('VISCOSITY') 
             call InputReadWord(input,option,word,PETSC_TRUE)
@@ -226,9 +213,7 @@ subroutine EOSRead(input,option)
                 call EOSGasSetViscosityConstant(tempreal)
               case('DEFAULT')
               case default
-                option%io_buffer = 'Keyword: ' // trim(word) // &
-                                   ' not recognized in EOS,GAS,VISCOSITY'    
-                call printErrMsg(option)
+                call InputKeywordUnrecognized(word,'EOS,GAS,VISCOSITY',option)
             end select
           case('HENRYS_CONSTANT') 
             call InputReadWord(input,option,word,PETSC_TRUE)
@@ -243,14 +228,11 @@ subroutine EOSRead(input,option)
               case('DEFAULT')
                 call EOSGasSetHenry()
               case default
-                option%io_buffer = 'Keyword: ' // trim(word) // &
-                                   ' not recognized in EOS,GAS,HENRYS_CONSTANT'
-                call printErrMsg(option)
+                call InputKeywordUnrecognized(word,'EOS,GAS,HENRYS_CONSTANT', &
+                                              option)
             end select
           case default
-            option%io_buffer = 'Keyword: ' // trim(keyword) // &
-                               ' not recognized in EOS,GAS'    
-            call printErrMsg(option)
+            call InputKeywordUnrecognized(keyword,'EOS,GAS',option)
         end select
       enddo
       string = ''
@@ -263,9 +245,7 @@ subroutine EOSRead(input,option)
         call printErrMsg(option)
       endif
     case default
-      option%io_buffer = 'Keyword: ' // trim(keyword) // &
-                         ' not recognized in EOS'    
-      call printErrMsg(option)
+      call InputKeywordUnrecognized(keyword,'EOS',option)
   end select
   
 end subroutine EOSRead

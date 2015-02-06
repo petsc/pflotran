@@ -216,14 +216,11 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
                 unstructured_grid_itype = POLYHEDRA_UNSTRUCTURED_GRID
                 unstructured_grid_ctype = 'polyhedra unstructured'
             end select
-            call InputReadNChars(input,option,discretization%filename,MAXSTRINGLENGTH, &
-                                 PETSC_TRUE)
+            call InputReadNChars(input,option,discretization%filename, &
+                                 MAXSTRINGLENGTH,PETSC_TRUE)
             call InputErrorMsg(input,option,'unstructured filename','GRID')
           case default
-            option%io_buffer = 'Discretization type: ' // &
-                               trim(discretization%ctype) // &
-                               ' not recognized.'
-            call printErrMsg(option)
+            call InputKeywordUnrecognized(word,'discretization type',option)
         end select    
       case('NXYZ')
         call InputReadInt(input,option,nx)
@@ -248,9 +245,7 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
       case('DXYZ','BOUNDS')
         call InputSkipToEND(input,option,word) 
       case default
-        option%io_buffer = 'Keyword: ' // trim(word) // &
-                 ' not recognized in DISCRETIZATION, first read.'
-        call printErrMsg(option)          
+        call InputKeywordUnrecognized(word,'DISCRETIZATION',option)
     end select 
   enddo  
 
@@ -504,14 +499,11 @@ subroutine DiscretizationRead(discretization,input,option)
           case ('STAR')
             discretization%stencil_type = DMDA_STENCIL_STAR
           case default
-            option%io_buffer = 'Keyword: ' // trim(word) // &
-                 ' not recognized in DISCRETIZATION, second read.'
-            call printErrMsg(option)
+            call InputKeywordUnrecognized(word, &
+                   'DISCRETIZATION,stencil type',option)
         end select
       case default
-        option%io_buffer = 'Keyword: ' // trim(word) // &
-                 ' not recognized in DISCRETIZATION, second read.'
-        call printErrMsg(option)          
+        call InputKeywordUnrecognized(word,'GRID',option)
     end select 
   enddo  
 

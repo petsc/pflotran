@@ -122,19 +122,16 @@ subroutine MicrobialRead(microbial,input,option)
                                      'CHEMISTRY,MICROBIAL_REACTION,&
                                      &INHIBITION,THRESHOLD_INHIBITION')
                 case default
-                  option%io_buffer = &
-                    'CHEMISTRY,MICROBIAL_REACTION,INHIBITION ' // &
-                    'TYPE keyword: ' // trim(word) // ' not recognized.'
-                  call printErrMsg(option)
+                  call InputKeywordUnrecognized(word, &
+                         'CHEMISTRY,MICROBIAL_REACTION,INHIBITION,TYPE',option)
               end select
             case('INHIBITION_CONSTANT')
               call InputReadDouble(input,option,inhibition%inhibition_constant)  
               call InputErrorMsg(input,option,'inhibition constant', &
                                  'CHEMISTRY,MICROBIAL_REACTION,INHIBITION')
             case default
-              option%io_buffer = 'CHEMISTRY,MICROBIAL_REACTION,' // &
-                'INHIBITION keyword: ' // trim(word) // ' not recognized.'
-              call printErrMsg(option)
+              call InputKeywordUnrecognized(word, &
+                      'CHEMISTRY,MICROBIAL_REACTION,INHIBITION',option)
           end select        
         enddo
         if (len_trim(inhibition%species_name) < 2 .or. &
@@ -166,9 +163,8 @@ subroutine MicrobialRead(microbial,input,option)
         call InputErrorMsg(input,option,'yield', &
                            'CHEMISTRY,MICROBIAL_REACTION,BIOMASS')
       case default
-        option%io_buffer = 'CHEMISTRY,MICROBIAL_REACTION keyword: ' // &
-          trim(word) // ' not recognized.'
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(word,'CHEMISTRY,MICROBIAL_REACTION', &
+                                      option)
     end select
   enddo
   

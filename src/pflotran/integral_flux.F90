@@ -115,9 +115,7 @@ subroutine IntegralFluxRead(integral_flux,input,option)
         call GeometryReadCoordinates(input,option,integral_flux%name, &
                                      integral_flux%coordinates)
       case default
-        option%io_buffer = 'Keyword (' // trim(keyword) // &
-                           ') not recognized under integral_flux.'
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(keyword,'INTEGRAL_FLUX',option)
     end select 
   
   enddo  
