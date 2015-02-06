@@ -117,9 +117,7 @@ subroutine DebugRead(debug,input,option)
       case('BINARY_FORMAT')
         debug%binary_format = PETSC_TRUE
       case default
-        option%io_buffer = 'Option "' // trim(keyword) // &
-          '" not recognized under DEBUG.'
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(keyword,'DEBUG',option)
     end select 
   
   enddo  

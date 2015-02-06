@@ -194,9 +194,8 @@ subroutine PFLOTRANReadSimulation(simulation,option)
               new_pm => PMSurfaceTHCreate()
             case('GEOMECHANICS')
             case default
-              option%io_buffer =  'PROCESS_MODEL " ' // trim(word) // &
-                '" not recognized.'
-              call printErrMsg(option)
+              call InputKeywordUnrecognized(word, &
+                     'SIMULATION,PROCESS_MODELS',option)            
           end select
           new_pm%name = name
           new_pm%option => option
@@ -233,9 +232,8 @@ subroutine PFLOTRANReadSimulation(simulation,option)
     case('SURFACE_SUBSURFACE')
       call SurfSubsurfaceInitialize(simulation,pm_master,option)
     case default
-      option%io_buffer =  'SIMULATION_TYPE " ' // trim(word) // &
-        '" not recognized.'
-      call printErrMsg(option)
+      call InputKeywordUnrecognized(word, &
+                     'SIMULATION,SIMULATION_TYPE',option)            
   end select
   
   call InputDestroy(input)

@@ -421,8 +421,8 @@ subroutine SubsurfaceReadFlowPM(input, option, pm)
           case('TH')
             pm => PMTHCreate()
           case default
-            option%io_buffer = 'FLOW PM "' // trim(word) // '" not recognized.'
-            call printErrMsg(option)
+            call InputKeywordUnrecognized(word, &
+                     'SIMULATION,PROCESS_MODELS,SUBSURFACE_FLOW,MODE',option)
         end select
       case('OPTIONS')
         if (.not.associated(pm)) then

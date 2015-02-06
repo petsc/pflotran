@@ -227,9 +227,8 @@ subroutine GeomechCouplerRead(coupler,input,option)
         call InputReadWord(input,option,coupler%geomech_condition_name, &
                            PETSC_TRUE)
       case default
-        option%io_buffer = 'Geomech coupler card (' // trim(word) // &
-                           ') not recognized.'
-        call printErrMsg(option)        
+        call InputKeywordUnrecognized(word, &
+                     'geomechanics coupler',option)
     end select 
   
   enddo  
