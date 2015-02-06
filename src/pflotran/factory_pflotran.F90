@@ -201,6 +201,11 @@ subroutine PFLOTRANReadSimulation(simulation,option)
     end select
   enddo
 
+  if (.not.associated(pm_master)) then
+    option%io_buffer = 'No process models defined in SIMULATION block.'
+    call printErrMst(option)
+  endif
+
   select case(simulation_type)
     case('CUSTOM')
       ! link process models with their respective couplers
