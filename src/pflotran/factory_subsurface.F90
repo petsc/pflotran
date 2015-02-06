@@ -569,53 +569,19 @@ subroutine InitSubsurfaceSimulation(simulation)
   use PM_Base_class
   use PM_Base_Pointer_module
   use PM_Subsurface_class
-  use PM_RT_class
   
-  !TODO(geh): these modules should be removed
   use PM_General_class
   use PM_Richards_class
   use PM_TH_class
-  use General_module
-  use TH_module
-  use Richards_module
-  use Reactive_Transport_module
-    
+  use PM_RT_class
   use PM_Waste_Form_class
+
   use Timestepper_BE_class
   
   implicit none
   
 #include "finclude/petscsnes.h" 
 
-  interface
-#if 0
-    subroutine PMCheckUpdatePre(line_search,X,dX,changed,this,ierr)
-      use PM_Base_class
-      implicit none
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscsnes.h"
-      SNESLineSearch :: line_search
-      Vec :: X
-      Vec :: dX
-      PetscBool :: changed
-      class(pm_base_type) :: this
-      PetscErrorCode :: ierr
-    end subroutine
-    subroutine SNESLineSearchSetPreCheck(linesearch, &
-                                         PMCheckUpdatePre, &
-                                         cur_process_model, &
-                                         ierr)
-      use PM_Base_class
-      implicit none
-      SNESLineSearch :: linesearch
-      external PMCheckUpdatePre
-      class(pm_base_type) :: cur_process_model
-      PetscErrorCode :: ierr
-    end subroutine
-#endif
-  end interface
-  
   class(subsurface_simulation_type) :: simulation
   
   class(pmc_subsurface_type), pointer :: flow_process_model_coupler
@@ -921,24 +887,6 @@ subroutine SubsurfaceJumpStart(simulation)
   transport_read = PETSC_FALSE
   failure = PETSC_FALSE
 
-#if 0
-!geh: moved to within PMInitialize routines
-!geh: removed 8/11
-  if (flow_read .and. option%overwrite_restart_flow) then
-    call RealizationRevertFlowParameters(realization)
-    call CondControlAssignFlowInitCond(realization)
-  endif
-
-  if (transport_read .and. option%overwrite_restart_transport) then
-    call CondControlAssignTranInitCond(realization)  
-  endif
-
-  ! turn on flag to tell RTUpdateSolution that the code is not timestepping
-  if (associated(simulation%flow_process_model_coupler)) then
-    call simulation%flow_process_model_coupler%UpdateSolution()
-  endif
-#endif
- 
 !geh: now performed in PMRTInitializeRun()
 !  if (associated(simulation%rt_process_model_coupler)) then
 !    call simulation%rt_process_model_coupler%UpdateSolution()
@@ -956,82 +904,7 @@ subroutine SubsurfaceJumpStart(simulation)
     endif
     call RTJumpStartKineticSorption(realization)
   endif
-#if 0  
-!geh: removed 8/11
-  !if TIMESTEPPER->MAX_STEPS < 0, print out solution composition only
-  if (master_timestepper%max_time_step < 0) then
-    call printMsg(option,'')
-    write(option%io_buffer,*) master_timestepper%max_time_step
-    option%io_buffer = 'The maximum # of time steps (' // &
-                       trim(adjustl(option%io_buffer)) // &
-                       '), specified by TIMESTEPPER->MAX_STEPS, ' // &
-                       'has been met.  Stopping....'  
-    call printMsg(option)
-    call printMsg(option,'')
-    option%status = DONE
-    return
-  endif
 
-  ! print initial condition output if not a restarted sim
-  call OutputInit(master_timestepper%steps)
-  if (output_option%plot_number == 0 .and. &
-      master_timestepper%max_time_step >= 0 .and. &
-      output_option%print_initial) then
-    plot_flag = PETSC_TRUE
-    transient_plot_flag = PETSC_TRUE
-    call Output(realization,plot_flag,transient_plot_flag)
-  endif
-  
-  !if TIMESTEPPER->MAX_STEPS < 1, print out initial condition only
-  if (master_timestepper%max_time_step < 1) then
-    call printMsg(option,'')
-    write(option%io_buffer,*) master_timestepper%max_time_step
-    option%io_buffer = 'The maximum # of time steps (' // &
-                       trim(adjustl(option%io_buffer)) // &
-                       '), specified by TIMESTEPPER->MAX_STEPS, ' // &
-                       'has been met.  Stopping....'  
-    call printMsg(option)
-    call printMsg(option,'') 
-    option%status = DONE
-    return
-  endif
-
-  ! increment plot number so that 000 is always the initial condition, and nothing else
-  if (output_option%plot_number == 0) output_option%plot_number = 1
-
-  if (associated(flow_timestepper)) then
-    if (.not.associated(flow_timestepper%cur_waypoint)) then
-      option%io_buffer = &
-        'Null flow waypoint list; final time likely equal to start time.'
-      call printMsg(option)
-      option%status = FAIL
-      return
-    else
-      flow_timestepper%dt_max = flow_timestepper%cur_waypoint%dt_max
-    endif
-  endif
-  if (associated(tran_timestepper)) then
-    if (.not.associated(tran_timestepper%cur_waypoint)) then
-      option%io_buffer = &
-        'Null transport waypoint list; final time likely equal to start ' // &
-        'time or simulation time needs to be extended on a restart.'
-      call printMsg(option)
-      option%status = FAIL
-      return
-    else
-      tran_timestepper%dt_max = tran_timestepper%cur_waypoint%dt_max
-    endif
-  endif
-           
-  if (associated(flow_timestepper)) &
-    flow_timestepper%start_time_step = flow_timestepper%steps + 1
-  if (associated(tran_timestepper)) &
-    tran_timestepper%start_time_step = tran_timestepper%steps + 1
-  
-  if (realization%debug%print_couplers) then
-    call OutputPrintCouplers(realization,ZERO_INTEGER)
-  endif
-#endif
 end subroutine SubsurfaceJumpStart
 
 end module Factory_Subsurface_module

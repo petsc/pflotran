@@ -2402,44 +2402,7 @@ subroutine InitSubsurfaceReadInput(simulation)
             tran_timestepper%dt_min = dt_min
           endif
         endif
-#if 0      
-!.....................
-      case ('SURFACE_FLOW')
-        call SurfaceInitReadInput(simulation%surf_realization, &
-                              simulation%surf_flow_timestepper%solver,input,option)
-        simulation%surf_flow_timestepper%dt_init = simulation%surf_realization%dt_init
-        simulation%surf_flow_timestepper%dt_max = simulation%surf_realization%dt_max
-        option%surf_subsurf_coupling_flow_dt = simulation%surf_realization%dt_coupling
-        option%surf_flow_dt=simulation%surf_flow_timestepper%dt_init
 
-        ! Add first waypoint
-        waypoint => WaypointCreate()
-        waypoint%time = 0.d0
-        call WaypointInsertInList(waypoint,simulation%surf_realization%waypoint_list)
-
-        ! Add final_time waypoint to surface_realization
-        waypoint => WaypointCreate()
-        waypoint%final = PETSC_TRUE
-        waypoint%time = realization%waypoint_list%last%time
-        waypoint%print_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,simulation%surf_realization%waypoint_list)
-
-!......................
-      case ('GEOMECHANICS')
-        call GeomechanicsInitReadInput(geomech_realization, &
-                         simulation%geomech_timestepper%solver,input,option)
-        ! Add first waypoint
-        waypoint => WaypointCreate()
-        waypoint%time = 0.d0
-        call WaypointInsertInList(waypoint,simulation%geomech_realization%waypoint_list)
-
-        ! Add final_time waypoint to geomech_realization
-        waypoint => WaypointCreate()
-        waypoint%final = PETSC_TRUE
-        waypoint%time = realization%waypoint_list%last%time
-        waypoint%print_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,simulation%geomech_realization%waypoint_list)
-#endif
 !......................
       case ('HDF5_READ_GROUP_SIZE')
         call InputReadInt(input,option,option%hdf5_read_group_size)

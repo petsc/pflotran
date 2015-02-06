@@ -216,63 +216,10 @@ subroutine InitSubsurfFlowSetupSolvers(realization,solver)
                                            option)
   endif
     
-#if 0
-  select case(option%iflowmode)
-    case(TH_MODE)
-      call SNESSetFunction(solver%snes,field%flow_r,THResidual, &
-                            realization,ierr);CHKERRQ(ierr)
-    case(RICHARDS_MODE)
-      call SNESSetFunction(solver%snes,field%flow_r, &
-                            RichardsResidual, &
-                            realization,ierr);CHKERRQ(ierr)
-    case(MPH_MODE)
-      call SNESSetFunction(solver%snes,field%flow_r,MphaseResidual, &
-                            realization,ierr);CHKERRQ(ierr)
-    case(IMS_MODE)
-      call SNESSetFunction(solver%snes,field%flow_r,ImmisResidual, &
-                            realization,ierr);CHKERRQ(ierr)
-    case(MIS_MODE)
-      call SNESSetFunction(solver%snes,field%flow_r,MiscibleResidual, &
-                            realization,ierr);CHKERRQ(ierr)
-    case(FLASH2_MODE)
-      call SNESSetFunction(solver%snes,field%flow_r,FLASH2Residual, &
-                            realization,ierr);CHKERRQ(ierr)
-    case(G_MODE)
-      call SNESSetFunction(solver%snes,field%flow_r,GeneralResidual, &
-                            realization,ierr);CHKERRQ(ierr)
-  end select
-#endif
-    
   if (solver%J_mat_type == MATMFFD) then
     call MatCreateSNESMF(solver%snes,solver%J,ierr);CHKERRQ(ierr)
   endif
 
-#if 0
-  select case(option%iflowmode)
-    case(TH_MODE)
-      call SNESSetJacobian(solver%snes,solver%J,solver%Jpre, &
-                            THJacobian,realization,ierr);CHKERRQ(ierr)
-    case(RICHARDS_MODE)
-      call SNESSetJacobian(solver%snes,solver%J,solver%Jpre, &
-                            RichardsJacobian,realization,ierr);CHKERRQ(ierr)
-    case(MPH_MODE)
-      call SNESSetJacobian(solver%snes,solver%J,solver%Jpre, &
-                            MPHASEJacobian,realization,ierr);CHKERRQ(ierr)
-    case(IMS_MODE)
-      call SNESSetJacobian(solver%snes,solver%J,solver%Jpre, &
-                            ImmisJacobian,realization,ierr);CHKERRQ(ierr)
-    case(MIS_MODE)
-      call SNESSetJacobian(solver%snes,solver%J,solver%Jpre, &
-                            MiscibleJacobian,realization,ierr);CHKERRQ(ierr)
-    case(FLASH2_MODE)
-      call SNESSetJacobian(solver%snes,solver%J,solver%Jpre, &
-                            FLASH2Jacobian,realization,ierr);CHKERRQ(ierr)
-    case(G_MODE)
-      call SNESSetJacobian(solver%snes,solver%J,solver%Jpre, &
-                            GeneralJacobian,realization,ierr);CHKERRQ(ierr)
-  end select
-#endif
-    
   ! by default turn off line search
   call SNESGetLineSearch(solver%snes, linesearch, ierr);CHKERRQ(ierr)
   call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC,  &
