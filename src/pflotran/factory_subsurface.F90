@@ -727,89 +727,91 @@ subroutine InitSubsurfaceSimulation(simulation)
         end select
         cur_process_model%output_option => realization%output_option
         call cur_process_model%Init()
-        ! Until classes are resolved as user-defined contexts in PETSc, 
-        ! we cannot use SetupSolvers.  Therefore, everything has to be
-        ! explicitly defined here.  This may be easier in the long
-        ! run as it creates an intermediate refactor in pulling 
-        ! functionality in Init() into the factories - geh
+        if (associated(cur_process_model_coupler%timestepper)) then
+          ! Until classes are resolved as user-defined contexts in PETSc, 
+          ! we cannot use SetupSolvers.  Therefore, everything has to be
+          ! explicitly defined here.  This may be easier in the long
+          ! run as it creates an intermediate refactor in pulling 
+          ! functionality in Init() into the factories - geh
 #if 0        
-        select type(ts => cur_process_model_coupler%timestepper)
-          class is(timestepper_BE_type)
-            call cur_process_model%SetupSolvers(ts%solver)
-        end select
+          select type(ts => cur_process_model_coupler%timestepper)
+            class is(timestepper_BE_type)
+              call cur_process_model%SetupSolvers(ts%solver)
+          end select
 #endif
-        select type(ts => cur_process_model_coupler%timestepper)
-          class is(timestepper_BE_type)
-            call SNESGetLineSearch(ts%solver%snes,linesearch,ierr);CHKERRQ(ierr)
-            ! Post
-            select type(cur_process_model)
-              ! flow solutions
-              class is(pm_subsurface_type)
-                if (ts%solver%check_post_convergence) then
-                  call SNESLineSearchSetPostCheck(linesearch, &
-                                                  PMCheckUpdatePostPtr, &
-                                             cur_process_model_coupler%pm_ptr, &
-                                                  ierr);CHKERRQ(ierr)
-                endif
-              class is(pm_rt_type)
-                if (ts%solver%check_post_convergence .or. option%use_mc) then
-                  call SNESLineSearchSetPostCheck(linesearch, &
-                                                  PMCheckUpdatePostPtr, &
-                                             cur_process_model_coupler%pm_ptr, &
-                                                  ierr);CHKERRQ(ierr)
-                endif
-            end select
-            ! Pre
-            select type(cur_process_model)
-              class is(pm_richards_type)
-                if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
-                    dabs(option%saturation_change_limit) > 0.d0) then
+          select type(ts => cur_process_model_coupler%timestepper)
+            class is(timestepper_BE_type)
+              call SNESGetLineSearch(ts%solver%snes,linesearch,ierr);CHKERRQ(ierr)
+              ! Post
+              select type(cur_process_model)
+                ! flow solutions
+                class is(pm_subsurface_type)
+                  if (ts%solver%check_post_convergence) then
+                    call SNESLineSearchSetPostCheck(linesearch, &
+                                                    PMCheckUpdatePostPtr, &
+                                               cur_process_model_coupler%pm_ptr, &
+                                                    ierr);CHKERRQ(ierr)
+                  endif
+                class is(pm_rt_type)
+                  if (ts%solver%check_post_convergence .or. option%use_mc) then
+                    call SNESLineSearchSetPostCheck(linesearch, &
+                                                    PMCheckUpdatePostPtr, &
+                                               cur_process_model_coupler%pm_ptr, &
+                                                    ierr);CHKERRQ(ierr)
+                  endif
+              end select
+              ! Pre
+              select type(cur_process_model)
+                class is(pm_richards_type)
+                  if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
+                      dabs(option%saturation_change_limit) > 0.d0) then
+                    call SNESLineSearchSetPreCheck(linesearch, &
+                                                   PMCheckUpdatePrePtr, &
+                                               cur_process_model_coupler%pm_ptr, &
+                                                   ierr);CHKERRQ(ierr)
+                  endif              
+                class is(pm_general_type)
                   call SNESLineSearchSetPreCheck(linesearch, &
                                                  PMCheckUpdatePrePtr, &
-                                             cur_process_model_coupler%pm_ptr, &
+                                               cur_process_model_coupler%pm_ptr, &
                                                  ierr);CHKERRQ(ierr)
-                endif              
-              class is(pm_general_type)
-                call SNESLineSearchSetPreCheck(linesearch, &
-                                               PMCheckUpdatePrePtr, &
-                                             cur_process_model_coupler%pm_ptr, &
-                                               ierr);CHKERRQ(ierr)
-              class is(pm_th_type)
-                if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
-                    dabs(option%pressure_change_limit) > 0.d0 .or. &
-                    dabs(option%temperature_change_limit) > 0.d0) then
-                  call SNESLineSearchSetPreCheck(linesearch, &
-                                                 PMCheckUpdatePrePtr, &
-                                             cur_process_model_coupler%pm_ptr, &
-                                                 ierr);CHKERRQ(ierr)
-                endif 
-              class is(pm_rt_type)
-                if (realization%reaction%check_update) then
-                  call SNESLineSearchSetPreCheck(linesearch, &
-                                                 PMCheckUpdatePrePtr, &
-                                             cur_process_model_coupler%pm_ptr, &
-                                                 ierr);CHKERRQ(ierr)
-                endif
-              class default
-            end select
-        end select
-        select type(cur_process_model)
-          class default
-            select type(ts => cur_process_model_coupler%timestepper)
-              class is(timestepper_BE_type)
-                call SNESSetFunction(ts%solver%snes, &
-                                     cur_process_model%residual_vec, &
-                                     PMResidual, &
-                                     cur_process_model, &
-                                     ierr);CHKERRQ(ierr)
-                call SNESSetJacobian(ts%solver%snes, &
-                                     ts%solver%J, &
-                                     ts%solver%Jpre, &
-                                     PMJacobian, &
-                                     cur_process_model, &
-                                     ierr);CHKERRQ(ierr)
-            end select
-        end select
+                class is(pm_th_type)
+                  if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
+                      dabs(option%pressure_change_limit) > 0.d0 .or. &
+                      dabs(option%temperature_change_limit) > 0.d0) then
+                    call SNESLineSearchSetPreCheck(linesearch, &
+                                                   PMCheckUpdatePrePtr, &
+                                               cur_process_model_coupler%pm_ptr, &
+                                                   ierr);CHKERRQ(ierr)
+                  endif 
+                class is(pm_rt_type)
+                  if (realization%reaction%check_update) then
+                    call SNESLineSearchSetPreCheck(linesearch, &
+                                                   PMCheckUpdatePrePtr, &
+                                               cur_process_model_coupler%pm_ptr, &
+                                                   ierr);CHKERRQ(ierr)
+                  endif
+                class default
+              end select
+          end select
+          select type(cur_process_model)
+            class default
+              select type(ts => cur_process_model_coupler%timestepper)
+                class is(timestepper_BE_type)
+                  call SNESSetFunction(ts%solver%snes, &
+                                       cur_process_model%residual_vec, &
+                                       PMResidual, &
+                                       cur_process_model, &
+                                       ierr);CHKERRQ(ierr)
+                  call SNESSetJacobian(ts%solver%snes, &
+                                       ts%solver%J, &
+                                       ts%solver%Jpre, &
+                                       PMJacobian, &
+                                       cur_process_model, &
+                                       ierr);CHKERRQ(ierr)
+              end select
+          end select
+        endif ! if associated(cur_process_model_coupler%timestepper)
         cur_process_model => cur_process_model%next
       enddo
       ! has to be called after realizations are set above

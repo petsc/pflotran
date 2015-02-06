@@ -100,7 +100,7 @@ subroutine PMBaseSetupSolvers(this,solver)
   implicit none
   class(pm_base_type) :: this
   type(solver_type) :: solver
-  print *, 'Must extend PMBaseInit.'
+  print *, 'Must extend PMBaseSetupSolvers.'
   stop
 end subroutine PMBaseSetupSolvers
 

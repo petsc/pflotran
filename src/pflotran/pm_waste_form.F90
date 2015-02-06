@@ -18,7 +18,7 @@ module PM_Waste_Form_class
     type(point3d_type) :: coordinate
     PetscReal :: temperature
     PetscReal, pointer :: concentration(:,:)
-    PetscReal, pointer :: flux(:)
+    PetscReal, pointer :: flux(:,:)
   end type mpm_type
   
   type, public, extends(pm_base_type) :: pm_mpm_type
@@ -26,9 +26,9 @@ module PM_Waste_Form_class
     type(mpm_type), pointer :: waste_form(:)
     type(point3d_type), pointer :: coordinate(:)
     PetscInt :: num_grid_cells
-    ! mapping of pflotran species into concentration array
-    PetscInt, pointer :: mapping_pflotran(:)
-    ! mapping of mpm species into concentration array
+    ! mapping of mpm species into mpm concentration array
+    PetscInt, pointer :: mapping_mpm(:)
+    ! mapping of species in mpm concentration array to pflotran
     PetscInt, pointer :: mapping_mpm_to_pflotran(:)
     PetscInt :: iUO2_2p
     PetscInt :: iUCO3_2n
@@ -110,11 +110,11 @@ function PMWasteFormCreate()
   allocate(PMWasteFormCreate%mapping_mpm_to_pflotran( &
              PMWasteFormCreate%num_concentrations))
   PMWasteFormCreate%mapping_mpm_to_pflotran = UNINITIALIZED_INTEGER
-  allocate(PMWasteFormCreate%mapping_pflotran(4))
-  PMWasteFormCreate%mapping_pflotran = [PMWasteFormCreate%iO2, &
-                                        PMWasteFormCreate%iCO3_2n, &
-                                        PMWasteFormCreate%iH2, &
-                                        PMWasteFormCreate%iFe_2p]
+  allocate(PMWasteFormCreate%mapping_mpm(4))
+  PMWasteFormCreate%mapping_mpm = [PMWasteFormCreate%iO2, &
+                                   PMWasteFormCreate%iCO3_2n, &
+                                   PMWasteFormCreate%iH2, &
+                                   PMWasteFormCreate%iFe_2p]
   
   call PMBaseCreate(PMWasteFormCreate)
 
@@ -278,8 +278,11 @@ subroutine PMWasteFormInit(this)
   do i = 1, num_local_coordinates
     allocate(this%waste_form(i)%concentration(this%num_concentrations, &
                                               this%num_grid_cells))
-    this%waste_form(i)%concentration = UNINITIALIZED_DOUBLE
-    allocate(this%waste_form(i)%flux(this%num_concentrations))
+                                              
+!geh    this%waste_form(i)%concentration = UNINITIALIZED_DOUBLE
+    this%waste_form(i)%concentration = 1.d-20
+    
+    allocate(this%waste_form(i)%flux(this%num_concentrations,1))
     this%waste_form(i)%flux = UNINITIALIZED_DOUBLE
     this%waste_form(i)%local_id = cell_ids(2,i)
     this%waste_form(i)%coordinate%x = this%coordinate(cell_ids(1,i))%x
@@ -382,9 +385,10 @@ subroutine PMWasteFormPreSolve(this)
   type(grid_type), pointer :: grid
   type(global_auxvar_type), pointer :: global_auxvars(:)
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
-  PetscInt :: i
   PetscInt :: iwasteform
-  PetscInt :: icomp
+  PetscInt :: i
+  PetscInt :: icomp_mpm
+  PetscInt :: icomp_pflotran
   PetscInt :: local_id
   PetscInt :: ghosted_id
   
@@ -393,14 +397,16 @@ subroutine PMWasteFormPreSolve(this)
   rt_auxvars => this%realization%patch%aux%RT%auxvars
   
   do iwasteform = 1, size(this%waste_form)
-    local_id = this%waste_form(i)%local_id
+    local_id = this%waste_form(iwasteform)%local_id
     ghosted_id = grid%nL2G(local_id)
-    this%waste_form(i)%temperature = global_auxvars(ghosted_id)%temp
+    this%waste_form(iwasteform)%temperature = global_auxvars(ghosted_id)%temp
     ! overwrite the components in this%mapping_pflotran array
-    do i = 1, size(this%mapping_pflotran)
-      icomp = this%mapping_pflotran(i)
-      this%waste_form(iwasteform)%concentration(icomp,1) = &
-        rt_auxvars(ghosted_id)%total(this%mapping_mpm_to_pflotran(icomp),1)
+    do i = 1, size(this%mapping_mpm)
+      icomp_mpm = this%mapping_mpm(i)
+      icomp_pflotran = this%mapping_mpm_to_pflotran(icomp_mpm)
+      this%waste_form(iwasteform)%concentration(icomp_mpm,1) = &
+        ! the 1 in the second index if for the liquid phase
+        rt_auxvars(ghosted_id)%total(icomp_pflotran,1)
     enddo
   enddo
   
@@ -413,20 +419,40 @@ subroutine PMWasteFormSolve(this,time,ierr)
   ! Author: Glenn Hammond
   ! Date: 01/15/15
   !
-  use Argonne_Mixed_Potential_module
+!  use Argonne_Mixed_Potential_module
   
   implicit none
-  
+
+  interface
+    subroutine AMP_step ( sTme, conc, initialRun, flux, status )
+      real ( kind = 8), intent( in )  :: sTme   
+      real ( kind = 8), intent( inout ),  dimension (:,:) :: conc
+      logical ( kind = 4), intent( in ) :: initialRun
+      real ( kind = 8), intent(out), dimension (:,:) :: flux
+      integer ( kind = 4), intent(out) :: status
+    end subroutine
+  end interface  
+
   class(pm_mpm_type) :: this
   PetscReal :: time
   PetscErrorCode :: ierr
   
-  PetscReal :: conc(4)
+  integer ( kind = 4) :: status
+  logical ( kind = 4) :: initialRun = PETSC_FALSE
   
   PetscInt :: i
   
+  ierr = 0
+  call PMWasteFormPreSolve(this)
   do i = 1, size(this%waste_form)
-    call AMPRun(time,this%waste_form(i)%concentration)
+#ifdef MPM_MODEL  
+    call AMP_step(time, this%waste_form(i)%concentration, initialRun, &
+                  this%waste_form(i)%flux, status)
+#endif
+    if (status == 0) then
+      ierr = 1
+      exit
+    endif
   enddo
 
 end subroutine PMWasteFormSolve
@@ -627,7 +653,7 @@ subroutine PMWasteFormDestroy(this)
     call DeallocateArray(this%waste_form(i)%flux)
   enddo
   call DeallocateArray(this%mapping_mpm_to_pflotran)
-  call DeallocateArray(this%mapping_pflotran)
+  call DeallocateArray(this%mapping_mpm)
   deallocate(this%waste_form)
   nullify(this%waste_form)
   
