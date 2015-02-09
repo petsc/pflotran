@@ -212,6 +212,8 @@ subroutine PFLOTRANReadSimulation(simulation,option)
         enddo
       case('MASTER')
         call PFLOTRANSetupPMCHierarchy(input,option,pmc_master)
+      case default
+        call InputKeywordUnrecognized(word,'SIMULATION',option)            
     end select
   enddo
 

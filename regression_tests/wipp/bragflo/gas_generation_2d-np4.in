@@ -21,7 +21,7 @@ SUBSURFACE
 !=========================== flow mode ========================================
 
 REGRESSION
-  CELLS_PER_PROCESS 10
+  CELLS_PER_PROCESS 3
   CELLS
     89
     91
@@ -54,7 +54,6 @@ NEWTON_SOLVER FLOW
 /
 
 LINEAR_SOLVER FLOW
-  SOLVER DIRECT
 /
 
 !=========================== fluid properties =================================

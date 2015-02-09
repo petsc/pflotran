@@ -39,7 +39,7 @@ module Field_module
     Vec :: tran_r
     
     ! Solution vectors (yy = previous solution, xx = current iterate)
-    Vec :: flow_xx, flow_xx_loc, flow_dxx, flow_yy, flow_accum
+    Vec :: flow_xx, flow_xx_loc, flow_dxx, flow_yy, flow_accum, flow_accum2
     Vec :: tran_xx, tran_xx_loc, tran_dxx, tran_yy, tran_accum
 
     ! vectors for operator splitting
@@ -121,6 +121,7 @@ function FieldCreate()
   field%flow_dxx = 0
   field%flow_yy = 0
   field%flow_accum = 0
+  field%flow_accum2 = 0
 
   field%tran_r = 0
   field%tran_log_xx = 0
@@ -245,6 +246,9 @@ subroutine FieldDestroy(field)
   endif
   if (field%flow_accum /= 0) then
     call VecDestroy(field%flow_accum,ierr);CHKERRQ(ierr)
+  endif
+  if (field%flow_accum2 /= 0) then
+    call VecDestroy(field%flow_accum2,ierr);CHKERRQ(ierr)
   endif
   
   if (field%tran_r /= 0) then

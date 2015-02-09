@@ -79,6 +79,13 @@ def refactor_file(filename):
   # copy comment lines
   for line in f:
     if not (line.strip().startswith('#') or line.strip().startswith('!')):
+      # if we hit mode on the first non-comment line, we have to remove
+      # the entire block - argh
+      if line.strip().startswith('MODE'):
+        if line.strip().endswith('MORE'):
+          for line in f:
+            if line.strip().startswith('/') or line.strip().startswith('END'):
+              break
       break
     f2.write('%s\n' % line.rstrip())
   # add new simulation cards
