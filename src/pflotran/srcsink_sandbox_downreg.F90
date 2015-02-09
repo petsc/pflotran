@@ -140,9 +140,7 @@ subroutine DownregRead(this,input,option)
           call printErrMsg(option)
         endif 
       case default
-        option%io_buffer = 'SRCSINK_SANDBOX,DOWNREG keyword: ' // &
-          trim(word) // ' not recognized.'
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(word,'SRCSINK_SANDBOX,DOWNREG',option)
     end select
   enddo
   

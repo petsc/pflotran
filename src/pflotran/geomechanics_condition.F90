@@ -366,9 +366,8 @@ subroutine GeomechConditionRead(condition,input,option)
             case('FORCE_Z')
               sub_condition_ptr => force_z 
             case default
-              option%io_buffer = 'keyword (' // trim(word) // &
-                                 ') not recognized in condition,type'
-              call printErrMsg(option)
+              call InputKeywordUnrecognized(word, &
+                     'geomechanics condition type',option)
           end select
           call InputReadWord(input,option,word,PETSC_TRUE)
           call InputErrorMsg(input,option,'TYPE','CONDITION')   
@@ -382,9 +381,8 @@ subroutine GeomechConditionRead(condition,input,option)
             case('zero_gradient')
               sub_condition_ptr%itype = ZERO_GRADIENT_BC
             case default
-              option%io_buffer = 'bc type "' // trim(word) // &
-                                 '" not recognized in condition,type'
-              call printErrMsg(option)
+              call InputKeywordUnrecognized(word, &
+                     'geomechanics condition bc type',option)
           end select
         enddo
       case('TIME','TIMES')
@@ -415,9 +413,8 @@ subroutine GeomechConditionRead(condition,input,option)
                                  force_z%dataset, &
                                  force_z%units)
       case default
-        option%io_buffer = 'Keyword: ' // trim(word) // &
-                           ' not recognized in geomech condition'
-        call printErrMsg(option)                                 
+        call InputKeywordUnrecognized(word, &
+                     'geomechanics condition',option)
     end select 
   
   enddo  

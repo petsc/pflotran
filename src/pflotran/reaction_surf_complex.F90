@@ -119,10 +119,8 @@ subroutine SurfaceComplexationRead(reaction,input,option)
                 call InputErrorMsg(input,option,'backward_rate', &
                         'CHEMISTRY,SURFACE_COMPLEXATION_RXN,COMPLEX_KINETIC_RATE')
               case default
-                option%io_buffer = 'CHEMISTRY,SURFACE_COMPLEXATION_RXN,' // &
-                                   'COMPLEX_KINETIC_RATE keyword: ' // &
-                                    trim(word) // ' not recognized'
-                call printErrMsg(option)
+                call InputKeywordUnrecognized(word, &
+                       'CHEMISTRY,SURFACE_COMPLEXATION_RXN,COMPLEX_KINETIC_RATE',option)
             end select
           enddo
                                       
@@ -200,9 +198,8 @@ subroutine SurfaceComplexationRead(reaction,input,option)
         enddo
         nullify(prev_srfcplx)
       case default
-        option%io_buffer = 'CHEMISTRY, SURFACE_COMPLEXATION_RXN keyword: '// &
-                          trim(word)//' not recognized'
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(word, &
+                'CHEMISTRY,SURFACE_COMPLEXATION_RXN',option)
     end select
 
   enddo

@@ -142,23 +142,13 @@ subroutine InitSubsurfTranSetupSolvers(realization,solver)
 
   if (option%transport%reactive_transport_coupling == GLOBAL_IMPLICIT) then
 
-#if 0
-    call SNESSetFunction(solver%snes,field%tran_r,RTResidual,&
-                          realization,ierr);CHKERRQ(ierr)
-#endif
-
     if (solver%J_mat_type == MATMFFD) then
       call MatCreateSNESMF(solver%snes,solver%J, &
                             ierr);CHKERRQ(ierr)
     endif
       
-#if 0
-    call SNESSetJacobian(solver%snes,solver%J,solver%Jpre, &
-                          RTJacobian,realization,ierr);CHKERRQ(ierr)
-#endif
-
-    ! this could be changed in the future if there is a way to ensure that the linesearch
-    ! update does not perturb concentrations negative.
+    ! this could be changed in the future if there is a way to ensure that 
+    ! the linesearch update does not perturb concentrations negative.
     call SNESGetLineSearch(solver%snes, linesearch, ierr);CHKERRQ(ierr)
     call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC,  &
                                 ierr);CHKERRQ(ierr)

@@ -1738,14 +1738,11 @@ subroutine InitSubsurfaceReadInput(simulation)
                     call InputErrorMsg(input,option,'timestep increment', &
                                        'CHECKPOINT,PERIODIC,TIMESTEP')
                   case default
-                    option%io_buffer = 'Keyword: ' // trim(word) // &
-                                       ' not recognized in CHECKPOINT,PERIODIC.'
-                    call printErrMsg(option)
+                    call InputKeywordUnrecognized(word,'CHECKPOINT,PERIODIC', &
+                                                  option)
                 end select
               case default
-                option%io_buffer = 'Keyword: ' // trim(word) // &
-                                   ' not recognized in CHECKPOINT.'
-                call printErrMsg(option)
+                call InputKeywordUnrecognized(word,'CHECKPOINT',option)
             end select
           enddo
           if (output_option%periodic_checkpoint_time_incr /= 0.d0 .and. &
@@ -2007,17 +2004,15 @@ subroutine InitSubsurfaceReadInput(simulation)
               option%compute_mass_balance_new = PETSC_TRUE
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputDefaultMsg(input,option, &
-                                 'MASS_BALANCE,DETAILED,OUTPUT')
+                                   'OUTPUT,MASS_BALANCE,DETAILED')
               if (len_trim(word) > 0) then
                 call StringToUpper(word)
                 select case(trim(word))
                   case('DETAILED')
                     option%mass_bal_detailed = PETSC_TRUE
-                  case('DEFAULT')
-                    option%io_buffer = 'Keyword: ' // trim(word) // &
-                      ' not recognized in OUTPUT,'// &
-                      'MASS_BALANCE,DETAILED.'
-                    call printErrMsg(option)
+                  case default
+                    call InputKeywordUnrecognized(word, &
+                           'OUTPUT,MASS_BALANCE',option)
                 end select
               endif
             case('PRINT_COLUMN_IDS')
@@ -2057,11 +2052,10 @@ subroutine InitSubsurfaceReadInput(simulation)
                 case('PERIODIC')
                   call InputReadInt(input,option,output_option%output_file_imod)
                   call InputErrorMsg(input,option,'timestep increment', &
-                                     'OUTPUT,PERIODIC,OUTPUT_FILE')
+                                     'OUTPUT,OUTPUT_FILE,PERIODIC')
                 case default
-                  option%io_buffer = 'Keyword: ' // trim(word) // &
-                                     ' not recognized in OUTPUT,OUTPUT_FILE.'
-                  call printErrMsg(option)
+                  call InputKeywordUnrecognized(word, &
+                         'OUTPUT,OUTPUT_FILE',option)
               end select
             case('SCREEN')
               call InputReadWord(input,option,word,PETSC_TRUE)
@@ -2075,9 +2069,8 @@ subroutine InitSubsurfaceReadInput(simulation)
                   call InputErrorMsg(input,option,'timestep increment', &
                                      'OUTPUT,PERIODIC,SCREEN')
                 case default
-                  option%io_buffer = 'Keyword: ' // trim(word) // &
-                                     ' not recognized in OUTPUT,SCREEN.'
-                  call printErrMsg(option)
+                  call InputKeywordUnrecognized(word, &
+                         'OUTPUT,SCREEN',option)
               end select
             case('PERIODIC')
               call InputReadWord(input,option,word,PETSC_TRUE)
@@ -2141,10 +2134,8 @@ subroutine InitSubsurfaceReadInput(simulation)
                   call InputErrorMsg(input,option,'timestep increment', &
                                      'OUTPUT,PERIODIC,TIMESTEP')
                 case default
-                  option%io_buffer = 'Keyword: ' // trim(word) // &
-                                     ' not recognized in OUTPUT,PERIODIC,'// &
-                                     'TIMESTEP.'
-                  call printErrMsg(option)
+                  call InputKeywordUnrecognized(word, &
+                         'OUTPUT,PERIODIC',option)
               end select
             case('PERIODIC_OBSERVATION')
               output_option%print_observation = PETSC_TRUE
@@ -2169,10 +2160,8 @@ subroutine InitSubsurfaceReadInput(simulation)
                   call InputErrorMsg(input,option,'timestep increment', &
                                      'OUTPUT,PERIODIC_OBSERVATION,TIMESTEP')
                 case default
-                  option%io_buffer = 'Keyword: ' // trim(word) // &
-                                     ' not recognized in OUTPUT,'// &
-                                     'PERIODIC_OBSERVATION,TIMESTEP.'
-                  call printErrMsg(option)
+                  call InputKeywordUnrecognized(word, &
+                         'OUTPUT,PERIODIC_OBSERVATION',option)
               end select
             case('FORMAT')
               call InputReadWord(input,option,word,PETSC_TRUE)
@@ -2198,20 +2187,17 @@ subroutine InitSubsurfaceReadInput(simulation)
                             case('TIMES_PER_FILE')
                               call InputReadInt(input,option, &
                                               output_option%times_per_h5_file)
-                              call InputErrorMsg(input,option,'timestep increment', &
-                                        'OUTPUT,FORMAT,MULTIPLE_FILES,TIMES_PER_FILE')
+                              call InputErrorMsg(input,option, &
+                                'timestep increment', &
+                                'OUTPUT,FORMAT,HDF5,MULTIPLE_FILES,TIMES_PER_FILE')
                             case default
-                              option%io_buffer = 'Keyword: ' // trim(word) // &
-                                     ' not recognized in OUTPUT,'// &
-                                     'FORMAT,MULTIPLE_FILES,TIMES_PER_FILE.'
-                              call printErrMsg(option)
+                              call InputKeywordUnrecognized(word, &
+                                    'OUTPUT,FORMAT,HDF5,MULTIPLE_FILES',option)
                           end select
                         endif
                       case default
-                        option%io_buffer = 'HDF5 keyword (' // trim(word) // &
-                          ') not recognized.  Use "SINGLE_FILE" or ' // &
-                          '"MULTIPLE_FILES".'
-                        call printErrMsg(option)
+                        call InputKeywordUnrecognized(word, &
+                               'OUTPUT,FORMAT,HDF5',option)
                     end select
                   endif
                 case ('MAD')
@@ -2229,9 +2215,8 @@ subroutine InitSubsurfaceReadInput(simulation)
                     case('FEBRICK')
                       output_option%tecplot_format = TECPLOT_FEBRICK_FORMAT
                     case default
-                      option%io_buffer = 'TECPLOT format (' // trim(word) // &
-                                         ') not recongnized.'
-                      call printErrMsg(option)
+                      call InputKeywordUnrecognized(word, &
+                               'OUTPUT,FORMAT,TECPLOT',option)
                   end select
                   if (output_option%tecplot_format == TECPLOT_POINT_FORMAT &
                       .and. option%mycommsize > 1) then
@@ -2243,9 +2228,7 @@ subroutine InitSubsurfaceReadInput(simulation)
                 case ('VTK')
                   output_option%print_vtk = PETSC_TRUE
                 case default
-                  option%io_buffer = 'Keyword: ' // trim(word) // &
-                                     ' not recognized in OUTPUT,FORMAT.'
-                  call printErrMsg(option)
+                  call InputKeywordUnrecognized(word,'OUTPUT,FORMAT',option)
               end select
             case('VELOCITY_AT_CENTER')
               vel_cent = PETSC_TRUE
@@ -2275,9 +2258,7 @@ subroutine InitSubsurfaceReadInput(simulation)
             case('AVERAGE_VARIABLES')
               call OutputVariableRead(input,option,output_option%aveg_output_variable_list)
             case default
-              option%io_buffer = 'Keyword: ' // trim(word) // &
-                                 ' not recognized in OUTPUT.'
-              call printErrMsg(option)              
+              call InputKeywordUnrecognized(word,'OUTPUT',option)
           end select
         enddo
         if (vel_cent) then
@@ -2400,9 +2381,7 @@ subroutine InitSubsurfaceReadInput(simulation)
               endif     
               call WaypointInsertInList(waypoint,realization%waypoint_list)
             case default
-              option%io_buffer = 'Keyword: ' // trim(word) // &
-                                 ' not recognized in TIME.'
-              call printErrMsg(option)              
+              call InputKeywordUnrecognized(word,'TIME',option)
           end select
         enddo
         if (Initialized(dt_init)) then
@@ -2423,44 +2402,7 @@ subroutine InitSubsurfaceReadInput(simulation)
             tran_timestepper%dt_min = dt_min
           endif
         endif
-#if 0      
-!.....................
-      case ('SURFACE_FLOW')
-        call SurfaceInitReadInput(simulation%surf_realization, &
-                              simulation%surf_flow_timestepper%solver,input,option)
-        simulation%surf_flow_timestepper%dt_init = simulation%surf_realization%dt_init
-        simulation%surf_flow_timestepper%dt_max = simulation%surf_realization%dt_max
-        option%surf_subsurf_coupling_flow_dt = simulation%surf_realization%dt_coupling
-        option%surf_flow_dt=simulation%surf_flow_timestepper%dt_init
 
-        ! Add first waypoint
-        waypoint => WaypointCreate()
-        waypoint%time = 0.d0
-        call WaypointInsertInList(waypoint,simulation%surf_realization%waypoint_list)
-
-        ! Add final_time waypoint to surface_realization
-        waypoint => WaypointCreate()
-        waypoint%final = PETSC_TRUE
-        waypoint%time = realization%waypoint_list%last%time
-        waypoint%print_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,simulation%surf_realization%waypoint_list)
-
-!......................
-      case ('GEOMECHANICS')
-        call GeomechanicsInitReadInput(geomech_realization, &
-                         simulation%geomech_timestepper%solver,input,option)
-        ! Add first waypoint
-        waypoint => WaypointCreate()
-        waypoint%time = 0.d0
-        call WaypointInsertInList(waypoint,simulation%geomech_realization%waypoint_list)
-
-        ! Add final_time waypoint to geomech_realization
-        waypoint => WaypointCreate()
-        waypoint%final = PETSC_TRUE
-        waypoint%time = realization%waypoint_list%last%time
-        waypoint%print_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,simulation%geomech_realization%waypoint_list)
-#endif
 !......................
       case ('HDF5_READ_GROUP_SIZE')
         call InputReadInt(input,option,option%hdf5_read_group_size)
@@ -2480,11 +2422,7 @@ subroutine InitSubsurfaceReadInput(simulation)
 
 !....................
       case default
-    
-        option%io_buffer = 'Keyword ' // trim(word) // ' in input file ' // &
-                           'not recognized'
-        call printErrMsg(option)
-
+        call InputKeywordUnrecognized(word,'InitSubsurfaceReadInput()',option)
     end select
 
   enddo

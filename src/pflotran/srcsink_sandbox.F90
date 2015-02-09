@@ -153,9 +153,7 @@ subroutine SSSandboxRead2(local_sandbox_list,input,option)
       case('MASS_RATE_DOWNREGULATED')
         new_sandbox => DownregCreate()
       case default
-        option%io_buffer = 'SRCSINK_SANDBOX keyword: ' // &
-          trim(word) // ' not recognized.'
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(word,'SRCSINK_SANDBOX',option)
     end select
     
     call new_sandbox%ReadInput(input,option)

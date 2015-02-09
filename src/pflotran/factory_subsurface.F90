@@ -393,6 +393,7 @@ subroutine SubsurfaceReadFlowPM(input, option, pm)
   
   error_string = 'SIMULATION,PROCESS_MODEL'
 
+  nullify(pm)
   word = ''
   do   
     call InputReadPflotranString(input,option)
@@ -420,8 +421,8 @@ subroutine SubsurfaceReadFlowPM(input, option, pm)
           case('TH')
             pm => PMTHCreate()
           case default
-            option%io_buffer = 'FLOW PM "' // trim(word) // '" not recognized.'
-            call printErrMsg(option)
+            call InputKeywordUnrecognized(word, &
+                     'SIMULATION,PROCESS_MODELS,SUBSURFACE_FLOW,MODE',option)
         end select
       case('OPTIONS')
         if (.not.associated(pm)) then
@@ -442,8 +443,16 @@ subroutine SubsurfaceReadFlowPM(input, option, pm)
             call printErrMsg(option)
         end select
       case default
+        error_string = trim(error_string) // ',SUBSURFACE_FLOW'
+        call InputKeywordUnrecognized(word,error_string,option)
     end select
   enddo
+  
+  if (.not.associated(pm)) then
+    option%io_buffer = 'A flow MODE (card) must be included in the ' // &
+      'SUBSURFACE_FLOW block in ' // trim(error_string) // '.'
+    call printErrMsg(option)
+  endif
   
 end subroutine SubsurfaceReadFlowPM
 
@@ -560,53 +569,19 @@ subroutine InitSubsurfaceSimulation(simulation)
   use PM_Base_class
   use PM_Base_Pointer_module
   use PM_Subsurface_class
-  use PM_RT_class
   
-  !TODO(geh): these modules should be removed
   use PM_General_class
   use PM_Richards_class
   use PM_TH_class
-  use General_module
-  use TH_module
-  use Richards_module
-  use Reactive_Transport_module
-    
+  use PM_RT_class
   use PM_Waste_Form_class
+
   use Timestepper_BE_class
   
   implicit none
   
 #include "finclude/petscsnes.h" 
 
-  interface
-#if 0
-    subroutine PMCheckUpdatePre(line_search,X,dX,changed,this,ierr)
-      use PM_Base_class
-      implicit none
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscsnes.h"
-      SNESLineSearch :: line_search
-      Vec :: X
-      Vec :: dX
-      PetscBool :: changed
-      class(pm_base_type) :: this
-      PetscErrorCode :: ierr
-    end subroutine
-    subroutine SNESLineSearchSetPreCheck(linesearch, &
-                                         PMCheckUpdatePre, &
-                                         cur_process_model, &
-                                         ierr)
-      use PM_Base_class
-      implicit none
-      SNESLineSearch :: linesearch
-      external PMCheckUpdatePre
-      class(pm_base_type) :: cur_process_model
-      PetscErrorCode :: ierr
-    end subroutine
-#endif
-  end interface
-  
   class(subsurface_simulation_type) :: simulation
   
   class(pmc_subsurface_type), pointer :: flow_process_model_coupler
@@ -727,89 +702,91 @@ subroutine InitSubsurfaceSimulation(simulation)
         end select
         cur_process_model%output_option => realization%output_option
         call cur_process_model%Init()
-        ! Until classes are resolved as user-defined contexts in PETSc, 
-        ! we cannot use SetupSolvers.  Therefore, everything has to be
-        ! explicitly defined here.  This may be easier in the long
-        ! run as it creates an intermediate refactor in pulling 
-        ! functionality in Init() into the factories - geh
+        if (associated(cur_process_model_coupler%timestepper)) then
+          ! Until classes are resolved as user-defined contexts in PETSc, 
+          ! we cannot use SetupSolvers.  Therefore, everything has to be
+          ! explicitly defined here.  This may be easier in the long
+          ! run as it creates an intermediate refactor in pulling 
+          ! functionality in Init() into the factories - geh
 #if 0        
-        select type(ts => cur_process_model_coupler%timestepper)
-          class is(timestepper_BE_type)
-            call cur_process_model%SetupSolvers(ts%solver)
-        end select
+          select type(ts => cur_process_model_coupler%timestepper)
+            class is(timestepper_BE_type)
+              call cur_process_model%SetupSolvers(ts%solver)
+          end select
 #endif
-        select type(ts => cur_process_model_coupler%timestepper)
-          class is(timestepper_BE_type)
-            call SNESGetLineSearch(ts%solver%snes,linesearch,ierr);CHKERRQ(ierr)
-            ! Post
-            select type(cur_process_model)
-              ! flow solutions
-              class is(pm_subsurface_type)
-                if (ts%solver%check_post_convergence) then
-                  call SNESLineSearchSetPostCheck(linesearch, &
-                                                  PMCheckUpdatePostPtr, &
-                                             cur_process_model_coupler%pm_ptr, &
-                                                  ierr);CHKERRQ(ierr)
-                endif
-              class is(pm_rt_type)
-                if (ts%solver%check_post_convergence .or. option%use_mc) then
-                  call SNESLineSearchSetPostCheck(linesearch, &
-                                                  PMCheckUpdatePostPtr, &
-                                             cur_process_model_coupler%pm_ptr, &
-                                                  ierr);CHKERRQ(ierr)
-                endif
-            end select
-            ! Pre
-            select type(cur_process_model)
-              class is(pm_richards_type)
-                if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
-                    dabs(option%saturation_change_limit) > 0.d0) then
+          select type(ts => cur_process_model_coupler%timestepper)
+            class is(timestepper_BE_type)
+              call SNESGetLineSearch(ts%solver%snes,linesearch,ierr);CHKERRQ(ierr)
+              ! Post
+              select type(cur_process_model)
+                ! flow solutions
+                class is(pm_subsurface_type)
+                  if (ts%solver%check_post_convergence) then
+                    call SNESLineSearchSetPostCheck(linesearch, &
+                                                    PMCheckUpdatePostPtr, &
+                                               cur_process_model_coupler%pm_ptr, &
+                                                    ierr);CHKERRQ(ierr)
+                  endif
+                class is(pm_rt_type)
+                  if (ts%solver%check_post_convergence .or. option%use_mc) then
+                    call SNESLineSearchSetPostCheck(linesearch, &
+                                                    PMCheckUpdatePostPtr, &
+                                               cur_process_model_coupler%pm_ptr, &
+                                                    ierr);CHKERRQ(ierr)
+                  endif
+              end select
+              ! Pre
+              select type(cur_process_model)
+                class is(pm_richards_type)
+                  if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
+                      dabs(option%saturation_change_limit) > 0.d0) then
+                    call SNESLineSearchSetPreCheck(linesearch, &
+                                                   PMCheckUpdatePrePtr, &
+                                               cur_process_model_coupler%pm_ptr, &
+                                                   ierr);CHKERRQ(ierr)
+                  endif              
+                class is(pm_general_type)
                   call SNESLineSearchSetPreCheck(linesearch, &
                                                  PMCheckUpdatePrePtr, &
-                                             cur_process_model_coupler%pm_ptr, &
+                                               cur_process_model_coupler%pm_ptr, &
                                                  ierr);CHKERRQ(ierr)
-                endif              
-              class is(pm_general_type)
-                call SNESLineSearchSetPreCheck(linesearch, &
-                                               PMCheckUpdatePrePtr, &
-                                             cur_process_model_coupler%pm_ptr, &
-                                               ierr);CHKERRQ(ierr)
-              class is(pm_th_type)
-                if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
-                    dabs(option%pressure_change_limit) > 0.d0 .or. &
-                    dabs(option%temperature_change_limit) > 0.d0) then
-                  call SNESLineSearchSetPreCheck(linesearch, &
-                                                 PMCheckUpdatePrePtr, &
-                                             cur_process_model_coupler%pm_ptr, &
-                                                 ierr);CHKERRQ(ierr)
-                endif 
-              class is(pm_rt_type)
-                if (realization%reaction%check_update) then
-                  call SNESLineSearchSetPreCheck(linesearch, &
-                                                 PMCheckUpdatePrePtr, &
-                                             cur_process_model_coupler%pm_ptr, &
-                                                 ierr);CHKERRQ(ierr)
-                endif
-              class default
-            end select
-        end select
-        select type(cur_process_model)
-          class default
-            select type(ts => cur_process_model_coupler%timestepper)
-              class is(timestepper_BE_type)
-                call SNESSetFunction(ts%solver%snes, &
-                                     cur_process_model%residual_vec, &
-                                     PMResidual, &
-                                     cur_process_model, &
-                                     ierr);CHKERRQ(ierr)
-                call SNESSetJacobian(ts%solver%snes, &
-                                     ts%solver%J, &
-                                     ts%solver%Jpre, &
-                                     PMJacobian, &
-                                     cur_process_model, &
-                                     ierr);CHKERRQ(ierr)
-            end select
-        end select
+                class is(pm_th_type)
+                  if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
+                      dabs(option%pressure_change_limit) > 0.d0 .or. &
+                      dabs(option%temperature_change_limit) > 0.d0) then
+                    call SNESLineSearchSetPreCheck(linesearch, &
+                                                   PMCheckUpdatePrePtr, &
+                                               cur_process_model_coupler%pm_ptr, &
+                                                   ierr);CHKERRQ(ierr)
+                  endif 
+                class is(pm_rt_type)
+                  if (realization%reaction%check_update) then
+                    call SNESLineSearchSetPreCheck(linesearch, &
+                                                   PMCheckUpdatePrePtr, &
+                                               cur_process_model_coupler%pm_ptr, &
+                                                   ierr);CHKERRQ(ierr)
+                  endif
+                class default
+              end select
+          end select
+          select type(cur_process_model)
+            class default
+              select type(ts => cur_process_model_coupler%timestepper)
+                class is(timestepper_BE_type)
+                  call SNESSetFunction(ts%solver%snes, &
+                                       cur_process_model%residual_vec, &
+                                       PMResidual, &
+                                       cur_process_model, &
+                                       ierr);CHKERRQ(ierr)
+                  call SNESSetJacobian(ts%solver%snes, &
+                                       ts%solver%J, &
+                                       ts%solver%Jpre, &
+                                       PMJacobian, &
+                                       cur_process_model, &
+                                       ierr);CHKERRQ(ierr)
+              end select
+          end select
+        endif ! if associated(cur_process_model_coupler%timestepper)
         cur_process_model => cur_process_model%next
       enddo
       ! has to be called after realizations are set above
@@ -910,24 +887,6 @@ subroutine SubsurfaceJumpStart(simulation)
   transport_read = PETSC_FALSE
   failure = PETSC_FALSE
 
-#if 0
-!geh: moved to within PMInitialize routines
-!geh: removed 8/11
-  if (flow_read .and. option%overwrite_restart_flow) then
-    call RealizationRevertFlowParameters(realization)
-    call CondControlAssignFlowInitCond(realization)
-  endif
-
-  if (transport_read .and. option%overwrite_restart_transport) then
-    call CondControlAssignTranInitCond(realization)  
-  endif
-
-  ! turn on flag to tell RTUpdateSolution that the code is not timestepping
-  if (associated(simulation%flow_process_model_coupler)) then
-    call simulation%flow_process_model_coupler%UpdateSolution()
-  endif
-#endif
- 
 !geh: now performed in PMRTInitializeRun()
 !  if (associated(simulation%rt_process_model_coupler)) then
 !    call simulation%rt_process_model_coupler%UpdateSolution()
@@ -945,82 +904,7 @@ subroutine SubsurfaceJumpStart(simulation)
     endif
     call RTJumpStartKineticSorption(realization)
   endif
-#if 0  
-!geh: removed 8/11
-  !if TIMESTEPPER->MAX_STEPS < 0, print out solution composition only
-  if (master_timestepper%max_time_step < 0) then
-    call printMsg(option,'')
-    write(option%io_buffer,*) master_timestepper%max_time_step
-    option%io_buffer = 'The maximum # of time steps (' // &
-                       trim(adjustl(option%io_buffer)) // &
-                       '), specified by TIMESTEPPER->MAX_STEPS, ' // &
-                       'has been met.  Stopping....'  
-    call printMsg(option)
-    call printMsg(option,'')
-    option%status = DONE
-    return
-  endif
 
-  ! print initial condition output if not a restarted sim
-  call OutputInit(master_timestepper%steps)
-  if (output_option%plot_number == 0 .and. &
-      master_timestepper%max_time_step >= 0 .and. &
-      output_option%print_initial) then
-    plot_flag = PETSC_TRUE
-    transient_plot_flag = PETSC_TRUE
-    call Output(realization,plot_flag,transient_plot_flag)
-  endif
-  
-  !if TIMESTEPPER->MAX_STEPS < 1, print out initial condition only
-  if (master_timestepper%max_time_step < 1) then
-    call printMsg(option,'')
-    write(option%io_buffer,*) master_timestepper%max_time_step
-    option%io_buffer = 'The maximum # of time steps (' // &
-                       trim(adjustl(option%io_buffer)) // &
-                       '), specified by TIMESTEPPER->MAX_STEPS, ' // &
-                       'has been met.  Stopping....'  
-    call printMsg(option)
-    call printMsg(option,'') 
-    option%status = DONE
-    return
-  endif
-
-  ! increment plot number so that 000 is always the initial condition, and nothing else
-  if (output_option%plot_number == 0) output_option%plot_number = 1
-
-  if (associated(flow_timestepper)) then
-    if (.not.associated(flow_timestepper%cur_waypoint)) then
-      option%io_buffer = &
-        'Null flow waypoint list; final time likely equal to start time.'
-      call printMsg(option)
-      option%status = FAIL
-      return
-    else
-      flow_timestepper%dt_max = flow_timestepper%cur_waypoint%dt_max
-    endif
-  endif
-  if (associated(tran_timestepper)) then
-    if (.not.associated(tran_timestepper%cur_waypoint)) then
-      option%io_buffer = &
-        'Null transport waypoint list; final time likely equal to start ' // &
-        'time or simulation time needs to be extended on a restart.'
-      call printMsg(option)
-      option%status = FAIL
-      return
-    else
-      tran_timestepper%dt_max = tran_timestepper%cur_waypoint%dt_max
-    endif
-  endif
-           
-  if (associated(flow_timestepper)) &
-    flow_timestepper%start_time_step = flow_timestepper%steps + 1
-  if (associated(tran_timestepper)) &
-    tran_timestepper%start_time_step = tran_timestepper%steps + 1
-  
-  if (realization%debug%print_couplers) then
-    call OutputPrintCouplers(realization,ZERO_INTEGER)
-  endif
-#endif
 end subroutine SubsurfaceJumpStart
 
 end module Factory_Subsurface_module

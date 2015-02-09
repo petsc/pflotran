@@ -305,9 +305,7 @@ subroutine CharacteristicCurvesRead(this,input,option)
           case('LINEAR')
             this%saturation_function => SF_Linear_Create()
           case default
-            option%io_buffer = 'Keyword: ' // trim(word) // &
-              ' not a recognized in saturation function type.'    
-            call printErrMsg(option)            
+            call InputKeywordUnrecognized(word,'SATURATION_FUNCTION',option)
         end select
         call SaturationFunctionRead(this%saturation_function,input,option)
       case('PERMEABILITY_FUNCTION')
@@ -354,9 +352,7 @@ subroutine CharacteristicCurvesRead(this,input,option)
             rel_perm_function_ptr => RPF_Burdine_Linear_Gas_Create()
             phase_keyword = 'GAS'
           case default
-            option%io_buffer = 'Keyword: ' // trim(word) // &
-              ' not a recognized in relative permeability function type.'
-            call printErrMsg(option)            
+            call InputKeywordUnrecognized(word,'PERMEABILITY_FUNCTION',option)
         end select
         call PermeabilityFunctionRead(rel_perm_function_ptr,phase_keyword, &
                                       input,option)
@@ -370,16 +366,13 @@ subroutine CharacteristicCurvesRead(this,input,option)
             this%gas_rel_perm_function => rel_perm_function_ptr
             this%liq_rel_perm_function => rel_perm_function_ptr
           case default
-            option%io_buffer = 'PHASE keyword: ' // trim(word) // &
-              ' not a recognized in relative permeability function type.'
-            call printErrMsg(option)            
+            call InputKeywordUnrecognized(word, &
+              'PERMEABILITY_FUNCTION,PHASE',option)
         end select
       case('TEST') 
         this%test = PETSC_TRUE
       case default
-        option%io_buffer = 'Keyword: ' // trim(keyword) // &
-                           ' not recognized in charateristic_curves.'    
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(keyword,'charateristic_curves',option)
     end select 
   enddo
   
@@ -456,9 +449,8 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
             call InputReadDouble(input,option,sf%alpha)
             call InputErrorMsg(input,option,'alpha',error_string)
           case default
-            option%io_buffer = 'Keyword: ' // trim(keyword) // &
-              ' not recognized in van Genuchten saturation function.'
-            call printErrMsg(option)
+            call InputKeywordUnrecognized(keyword, &
+                   'van Genuchten saturation function',option)
         end select
       class is(sat_func_BC_type)
         select case(keyword)
@@ -469,9 +461,8 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
             call InputReadDouble(input,option,sf%alpha)
             call InputErrorMsg(input,option,'alpha',error_string)
           case default
-            option%io_buffer = 'Keyword: ' // trim(keyword) // &
-              ' not recognized in Brooks-Corey saturation function.'
-            call printErrMsg(option)
+            call InputKeywordUnrecognized(keyword, &
+                   'Brooks-Corey saturation function',option)
         end select
       class is(sat_func_Linear_type)
         select case(keyword)
@@ -479,9 +470,8 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
             call InputReadDouble(input,option,sf%alpha)
             call InputErrorMsg(input,option,'alpha',error_string)
           case default
-            option%io_buffer = 'Keyword: ' // trim(keyword) // &
-              ' not recognized in Linear saturation function.'
-            call printErrMsg(option)
+            call InputKeywordUnrecognized(keyword, &
+                   'Linear saturation function',option)
         end select
       class default
         option%io_buffer = 'Read routine not implemented for saturation ' // &
@@ -585,10 +575,9 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
             call InputReadDouble(input,option,rpf%m)
             call InputErrorMsg(input,option,'m',error_string)
           case default
-            option%io_buffer = 'Keyword: ' // trim(keyword) // &
-              ' not recognized in Mualem van Genuchten relative ' // &
-              'permeability function.'
-            call printErrMsg(option)
+            call InputKeywordUnrecognized(keyword, &
+              'Mualem van Genuchten liquid relative permeability function', &
+              option)
         end select
       class is(rpf_Mualem_VG_gas_type)
         select case(keyword)
@@ -599,10 +588,9 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
             call InputReadDouble(input,option,rpf%Srg)
             call InputErrorMsg(input,option,'Srg',error_string)
           case default
-            option%io_buffer = 'Keyword: ' // trim(keyword) // &
-              ' not recognized in Mualem van Genuchten gas relative ' // &
-              'permeability function.'
-            call printErrMsg(option)
+            call InputKeywordUnrecognized(keyword, &
+              'Mualem van Genuchten gas relative permeability function', &
+              option)
         end select
       class is(rpf_Burdine_BC_liq_type)
         select case(keyword)
@@ -610,10 +598,9 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
             call InputReadDouble(input,option,rpf%lambda)
             call InputErrorMsg(input,option,'lambda',error_string)
           case default
-            option%io_buffer = 'Keyword: ' // trim(keyword) // &
-              ' not recognized in Burdine Brooks-Corey relative ' // &
-              'permeability function.'
-            call printErrMsg(option)
+            call InputKeywordUnrecognized(keyword, &
+              'Burdine Brooks-Corey liquid relative permeability function', &
+              option)
         end select
       class is(rpf_Burdine_BC_gas_type)
         select case(keyword)
@@ -624,10 +611,9 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
             call InputReadDouble(input,option,rpf%Srg)
             call InputErrorMsg(input,option,'Srg',error_string)
           case default
-            option%io_buffer = 'Keyword: ' // trim(keyword) // &
-              ' not recognized in Burdine Brooks-Corey gas relative ' // &
-              'permeability function.'
-            call printErrMsg(option)
+            call InputKeywordUnrecognized(keyword, &
+              'Burdine Brooks-Corey gas relative permeability function', &
+              option)
         end select
       class is(rpf_TOUGH2_IRP7_gas_type)
         select case(keyword)
@@ -638,10 +624,8 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
             call InputReadDouble(input,option,rpf%Srg)
             call InputErrorMsg(input,option,'Srg',error_string)
           case default
-            option%io_buffer = 'Keyword: ' // trim(keyword) // &
-              ' not recognized in TOUGH2 IRP7 gas relative ' // &
-              'permeability function.'
-            call printErrMsg(option)
+            call InputKeywordUnrecognized(keyword, &
+                   'TOUGH2 IRP7 gas relative permeability function',option)
         end select
       class is(rpf_Mualem_BC_liq_type)
         select case(keyword)
@@ -649,10 +633,9 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
             call InputReadDouble(input,option,rpf%lambda)
             call InputErrorMsg(input,option,'lambda',error_string)
           case default
-            option%io_buffer = 'Keyword: ' // trim(keyword) // &
-              ' not recognized in Mualem Brooks-Corey gas relative ' // &
-              'permeability function.'
-            call printErrMsg(option)
+            call InputKeywordUnrecognized(keyword, &
+              'Mualem Brooks-Corey liquid relative permeability function', &
+              option)
         end select
       class is(rpf_Mualem_BC_gas_type)
         select case(keyword)
@@ -663,10 +646,9 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
             call InputReadDouble(input,option,rpf%Srg)
             call InputErrorMsg(input,option,'Srg',error_string)
           case default
-            option%io_buffer = 'Keyword: ' // trim(keyword) // &
-              ' not recognized in Mualem Brooks-Corey gas relative ' // &
-              'permeability function.'
-            call printErrMsg(option)
+            call InputKeywordUnrecognized(keyword, &
+              'Mualem Brooks-Corey gas relative permeability function', &
+              option)
         end select
       class is(rpf_Burdine_VG_liq_type)
         select case(keyword)
@@ -674,10 +656,9 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
             call InputReadDouble(input,option,rpf%m)
             call InputErrorMsg(input,option,'m',error_string)
           case default
-            option%io_buffer = 'Keyword: ' // trim(keyword) // &
-              ' not recognized in Burdine van Genuchten gas relative ' // &
-              'permeability function.'
-            call printErrMsg(option)
+            call InputKeywordUnrecognized(keyword, &
+              'Burdine van Genuchten liquid relative permeability function', &
+              option)
         end select
       class is(rpf_Burdine_VG_gas_type)
         select case(keyword)
@@ -688,10 +669,9 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
             call InputReadDouble(input,option,rpf%Srg)
             call InputErrorMsg(input,option,'Srg',error_string)
           case default
-            option%io_buffer = 'Keyword: ' // trim(keyword) // &
-              ' not recognized in Burdine van Genuchten gas relative ' // &
-              'permeability function.'
-            call printErrMsg(option)
+            call InputKeywordUnrecognized(keyword, &
+              'Burdine van Genuchten gas relative permeability function', &
+              option)
         end select
       class is(rpf_Mualem_Linear_liq_type)
         select case(keyword)
@@ -702,10 +682,9 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
             call InputReadDouble(input,option,rpf%alpha)
             call InputErrorMsg(input,option,'alpha',error_string)
           case default
-            option%io_buffer = 'Keyword: ' // trim(keyword) // &
-              ' not recognized in Mualem Linear liquid relative ' // &
-              'permeability function.'
-            call printErrMsg(option)
+            call InputKeywordUnrecognized(keyword, &
+              'Mualem Linear liquid relative permeability function', &
+              option)
         end select
       class is(rpf_Mualem_Linear_gas_type)
         select case(keyword)
@@ -719,18 +698,16 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
             call InputReadDouble(input,option,rpf%alpha)
             call InputErrorMsg(input,option,'alpha',error_string)
           case default
-            option%io_buffer = 'Keyword: ' // trim(keyword) // &
-              ' not recognized in Mualem Linear gas relative ' // &
-              'permeability function.'
-            call printErrMsg(option)
+            call InputKeywordUnrecognized(keyword, &
+              'Mualem Linear gas relative permeability function', &
+              option)
         end select
       class is(rpf_Burdine_Linear_liq_type)
         select case(keyword)
           case default
-            option%io_buffer = 'Keyword: ' // trim(keyword) // &
-              ' not recognized in Burdine Linear gas relative ' // &
-              'permeability function.'
-            call printErrMsg(option)
+            call InputKeywordUnrecognized(keyword, &
+              'Burdine Linear liquid relative permeability function', &
+              option)
         end select
       class is(rpf_Burdine_Linear_gas_type)
         select case(keyword)
@@ -738,10 +715,9 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
             call InputReadDouble(input,option,rpf%Srg)
             call InputErrorMsg(input,option,'Srg',error_string)
           case default
-            option%io_buffer = 'Keyword: ' // trim(keyword) // &
-              ' not recognized in Burdine Linear gas relative ' // &
-              'permeability function.'
-            call printErrMsg(option)
+            call InputKeywordUnrecognized(keyword, &
+              'Burdine Linear gas relative permeability function', &
+              option)
         end select
       class default
         option%io_buffer = 'Read routine not implemented for relative ' // &

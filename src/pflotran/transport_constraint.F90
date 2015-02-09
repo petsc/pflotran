@@ -281,9 +281,8 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
                 aq_species_constraint%constraint_type(icomp) = &
                   CONSTRAINT_CHARGE_BAL
               case default
-                option%io_buffer = 'Keyword: ' // trim(word) // &
-                         ' not recognized in constraint,concentration'
-                call printErrMsg(option)
+                call InputKeywordUnrecognized(word, &
+                       'CONSTRAINT,CONCENTRATION,TYPE',option)
             end select 
             
             if (aq_species_constraint%constraint_type(icomp) == &
@@ -672,9 +671,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
         constraint%immobile_species => immobile_constraint 
         
       case default
-        option%io_buffer = 'Keyword: ' // trim(word) // &
-                 ' not recognized in transport constraint'
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(word,'CONSTRAINT',option)
     end select 
   
   enddo  

@@ -104,9 +104,7 @@ subroutine WIPPWellRead(this,input,option)
         call InputReadDouble(input,option,this%productivity_index)
         call InputErrorMsg(input,option,word,'SOURCE_SINK_SANDBOX,WIPP,WELL')
       case default
-        option%io_buffer = 'SRCSINK_SANDBOX,WIPP keyword: ' // &
-          trim(word) // ' not recognized.'
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(word,'SRCSINK_SANDBOX,WIPP',option)
     end select
   enddo
 

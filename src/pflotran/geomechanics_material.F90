@@ -129,9 +129,8 @@ subroutine GeomechanicsMaterialPropertyRead(geomech_material_property, &
         call InputErrorMsg(input,option,'THERMAL_EXPANSION_COEFFICIENT', &
                            'GEOMECHANICS_MATERIAL_PROPERTY')
       case default
-        option%io_buffer = 'Keyword: ' // trim(keyword) // &
-          ' not recognized in geomechanics_material_property'
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(keyword, &
+                                 'GEOMECHANICS_MATERIAL_PROPERTY',option)
       end select
   enddo
   

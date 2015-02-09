@@ -137,9 +137,8 @@ subroutine WastePackageRead(this,input,option)
             UnitsConvertToInternal(word,option)
         endif
       case default
-        option%io_buffer = 'CHEMISTRY,REACTION_SANDBOX,UFD-WP keyword: ' // &
-          trim(word) // ' not recognized.'
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(word, &
+                     'CHEMISTRY,REACTION_SANDBOX,UFD-WP',option)
     end select
   enddo
   

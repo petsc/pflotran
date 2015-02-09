@@ -108,9 +108,7 @@ subroutine MassRateRead(this,input,option)
           call InputErrorMsg(input,option,word,'SOURCE_SINK_SANDBOX,MASS_RATE')
         enddo
       case default
-        option%io_buffer = 'SRCSINK_SANDBOX,MASS_RATE keyword: ' // &
-          trim(word) // ' not recognized.'
-        call printErrMsg(option)
+        call InputKeywordUnrecognized(word,'SRCSINK_SANDBOX,MASS_RATE',option)
     end select
   enddo
   
