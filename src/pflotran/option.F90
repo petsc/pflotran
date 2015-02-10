@@ -598,9 +598,6 @@ subroutine OptionCheckCommandLine(option)
   call PetscOptionsGetInt(PETSC_NULL_CHARACTER, '-chkptfreq', &
                           option%checkpoint_frequency, &
                           option%checkpoint_flag, ierr);CHKERRQ(ierr)
-  call PetscOptionsGetReal(PETSC_NULL_CHARACTER, '-max_manning_velocity', &
-                           option%max_manning_velocity, &
-                           option_found, ierr);CHKERRQ(ierr)
   ! check on possible modes                                                     
   option_found = PETSC_FALSE
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_richards", &

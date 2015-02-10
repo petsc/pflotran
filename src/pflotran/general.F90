@@ -97,10 +97,15 @@ subroutine GeneralRead(input,option)
     call StringToUpper(keyword)   
       
     select case(trim(keyword))
-    
+      case('TOUGH2_ITOL_SCALED_RESIDUAL')
+        call InputReadDouble(input,option,general_tough2_itol_scaled_res_e1)
+        call InputDefaultMsg(input,option,'tough_itol_scaled_residual_e1')
+        call InputReadDouble(input,option,general_tough2_itol_scaled_res_e2)
+        call InputDefaultMsg(input,option,'tough_itol_scaled_residual_e2')
+        general_tough2_conv_criteria = PETSC_True
       case('WINDOW_EPSILON') 
         call InputReadDouble(input,option,window_epsilon)
-        call InputErrorMsg(input,option,'diffusion coefficient','GENERAL_MODE')
+        call InputErrorMsg(input,option,'window epsilon','GENERAL_MODE')
       case('GAS_COMPONENT_FORMULA_WEIGHT')
         !geh: assuming gas component is index 2
         call InputReadDouble(input,option,fmw_comp(2))
@@ -911,7 +916,7 @@ subroutine GeneralUpdateFixedAccum(realization)
   PetscInt :: ghosted_id, local_id, local_start, local_end
   PetscInt :: imat
   PetscReal, pointer :: xx_p(:), iphase_loc_p(:)
-  PetscReal, pointer :: accum_p(:)
+  PetscReal, pointer :: accum_p(:), accum_p2(:)
                           
   PetscErrorCode :: ierr
   
@@ -929,6 +934,11 @@ subroutine GeneralUpdateFixedAccum(realization)
 
   call VecGetArrayF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
 
+  !Heeho initialize dynamic accumulation term for every p iteration step
+  if (general_tough2_conv_criteria) then
+    call VecGetArrayF90(field%flow_accum2, accum_p2, ierr);CHKERRQ(ierr)
+  endif
+  
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
@@ -951,11 +961,20 @@ subroutine GeneralUpdateFixedAccum(realization)
                              material_parameter%soil_heat_capacity(imat), &
                              option,accum_p(local_start:local_end)) 
   enddo
-
+  
+  if (general_tough2_conv_criteria) then
+    accum_p2 = accum_p
+  endif
+  
   call VecRestoreArrayReadF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
 
   call VecRestoreArrayF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
-
+  
+  !Heeho initialize dynamic accumulation term for every p iteration step
+  if (general_tough2_conv_criteria) then
+    call VecRestoreArrayF90(field%flow_accum2, accum_p2, ierr);CHKERRQ(ierr)
+  endif
+  
 end subroutine GeneralUpdateFixedAccum
 
 ! ************************************************************************** !
@@ -2155,7 +2174,7 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   PetscInt :: i, imat, imat_up, imat_dn
 
   PetscReal, pointer :: r_p(:)
-  PetscReal, pointer :: accum_p(:)
+  PetscReal, pointer :: accum_p(:), accum_p2(:)
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
@@ -2230,7 +2249,12 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   ! accumulation at t(k) (doesn't change during Newton iteration)
   call VecGetArrayReadF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
   r_p = -accum_p
-  call VecRestoreArrayReadF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
+
+  
+  !Heeho dynamically update p+1 accumulation term
+  if (general_tough2_conv_criteria) then
+    call VecGetArrayReadF90(field%flow_accum2, accum_p2, ierr);CHKERRQ(ierr)
+  endif
   
   ! accumulation at t(k+1)
   do local_id = 1, grid%nlmax  ! For each local node do...
@@ -2238,15 +2262,27 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
     !geh - Ignore inactive cells with inactive materials
     imat = patch%imat(ghosted_id)
     if (imat <= 0) cycle
-    local_end = local_id * option%nflowdof
-    local_start = local_end - option%nflowdof + 1
+      local_end = local_id * option%nflowdof
+      local_start = local_end - option%nflowdof + 1
     call GeneralAccumulation(gen_auxvars(ZERO_INTEGER,ghosted_id), &
                               material_auxvars(ghosted_id), &
                               material_parameter%soil_heat_capacity(imat), &
                               option,Res) 
     r_p(local_start:local_end) =  r_p(local_start:local_end) + Res(:)
+    
+    !Heeho dynamically update p+1 accumulation term
+    if (general_tough2_conv_criteria) then
+      accum_p2(local_start:local_end) = Res(:)
+    endif
+    
   enddo
 
+    
+  call VecRestoreArrayReadF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
+  !Heeho dynamically update p+1 accumulation term
+  if (general_tough2_conv_criteria) then
+    call VecRestoreArrayReadF90(field%flow_accum2, accum_p2, ierr);CHKERRQ(ierr)
+  endif
   ! Interior Flux Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
@@ -3459,7 +3495,7 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   PetscReal, pointer :: X1_p(:)
   PetscReal, pointer :: dX_p(:)
   PetscReal, pointer :: r_p(:)
-  PetscReal, pointer :: accum_p(:)
+  PetscReal, pointer :: accum_p(:), accum_p2(:)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
@@ -3515,6 +3551,7 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
     call VecGetArrayReadF90(X0,X0_p,ierr);CHKERRQ(ierr)
     call VecGetArrayReadF90(field%flow_r,r_p,ierr);CHKERRQ(ierr)
     call VecGetArrayReadF90(field%flow_accum,accum_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayReadF90(field%flow_accum2,accum_p2,ierr);CHKERRQ(ierr)
 #ifdef DEBUG_GENERAL_INFO
     icell_max_rel_update = 0
     istate_max_rel_update = 0
@@ -3531,7 +3568,15 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
       istate = global_auxvars(ghosted_id)%istate
       do idof = 1, option%nflowdof
         ival = offset+idof
-        R_A = dabs(r_p(ival)/accum_p(ival))
+        if (general_tough2_conv_criteria) then
+          if (accum_p2(ival) < general_tough2_itol_scaled_res_e2) then
+            R_A = dabs(r_p(ival)/material_auxvars(ghosted_id)%volume*option%flow_dt)
+          else
+            R_A = dabs(r_p(ival)/accum_p2(ival))
+          endif
+        else
+          R_A = dabs(r_p(ival)/accum_p(ival))
+        endif
         dX_X0 = dabs(dX_p(ival)/X0_p(ival))
         inf_norm_update(idof,istate) = max(inf_norm_update(idof,istate), &
                                            dabs(dX_p(ival)))
@@ -3575,8 +3620,13 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
     enddo  
     converged_rel_update = maxval(global_inf_norm_rel_update) < &
                            option%flow%inf_rel_update_tol
-    converged_scaled_residual = maxval(global_inf_norm_scaled_residual) < &
-                                option%flow%inf_scaled_res_tol
+    if (general_tough2_conv_criteria) then
+      converged_scaled_residual = maxval(global_inf_norm_scaled_residual) < &
+                                  general_tough2_itol_scaled_res_e1
+    else
+      converged_scaled_residual = maxval(global_inf_norm_scaled_residual) < &
+                                  option%flow%inf_scaled_res_tol
+    endif
 #if 0
     do idof = 1, option%nflowdof
       if (global_inf_norm(idof) > option%flow%post_convergence_tol) then
@@ -3670,151 +3720,10 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
     call VecRestoreArrayReadF90(X0,X0_p,ierr);CHKERRQ(ierr)
     call VecRestoreArrayReadF90(field%flow_r,r_p,ierr);CHKERRQ(ierr)
     call VecRestoreArrayReadF90(field%flow_accum,accum_p,ierr);CHKERRQ(ierr)
+    call VecRestoreArrayReadF90(field%flow_accum2,accum_p2,ierr);CHKERRQ(ierr)
   endif
 
 end subroutine GeneralCheckUpdatePost
-
-! ************************************************************************** !
-
-subroutine GeneralCheckUpdatePost2(line_search,X0,dX,X1,dX_changed, &
-                                   X1_changed,realization,ierr)
-  ! 
-  ! Checks update after to update
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/06/13
-  ! 
-
-  use Realization_class
-  use Grid_module
-  use Field_module
-  use Patch_module
-  use Option_module
-  use Material_Aux_class
- 
-  implicit none
-  
-  SNESLineSearch :: line_search
-  Vec :: X0
-  Vec :: dX
-  Vec :: X1
-  type(realization_type) :: realization
-  ! ignore changed flag for now.
-  PetscBool :: dX_changed
-  PetscBool :: X1_changed
-  
-  PetscReal, pointer :: X0_p(:)
-  PetscReal, pointer :: X1_p(:)
-  PetscReal, pointer :: dX_p(:)
-  PetscReal, pointer :: r_p(:)
-  PetscReal, pointer :: accum_p(:)
-  type(grid_type), pointer :: grid
-  type(option_type), pointer :: option
-  type(field_type), pointer :: field
-  type(patch_type), pointer :: patch
-  type(general_auxvar_type), pointer :: general_auxvars(:,:)
-  type(global_auxvar_type), pointer :: global_auxvars(:)  
-  class(material_auxvar_type), pointer :: material_auxvars(:)  
-  type(material_parameter_type), pointer :: material_parameter
-  PetscInt :: local_id, ghosted_id
-  PetscInt :: offset , ival, idof
-  PetscReal :: dX_X0, R_A, R_scaled_by_vol
-  PetscReal :: inf_norm_rel_update(3,3)
-  PetscReal :: inf_norm_scaled_residual(3,3)
-  PetscReal :: inf_norm_scaled_residual_by_vol(3,3)
-  PetscReal :: inf_norm_update(3,3)
-  PetscReal, parameter :: inf_pres_tol = 1.d-1
-  PetscReal, parameter :: inf_temp_tol = 1.d-5
-  PetscReal, parameter :: inf_sat_tol = 1.d-6
-  PetscReal, parameter :: inf_xmol_tol = 1.d-6
-  PetscReal, parameter :: inf_norm_update_tol(3,3) = &
-    reshape([inf_pres_tol,inf_xmol_tol,inf_temp_tol, &
-             inf_pres_tol,inf_pres_tol,inf_temp_tol, &
-!             inf_pres_tol,inf_pres_tol,inf_sat_tol], &
-             inf_pres_tol,inf_sat_tol,inf_temp_tol], &
-            shape(inf_norm_update_tol)) * &
-            0.d0
-  PetscMPIInt :: mpi_int
-  PetscBool :: converged_abs_update
-  PetscBool :: converged_rel_update
-  PetscBool :: converged_scaled_residual
-  PetscBool :: converged_scaled_residual_by_vol
-  PetscInt :: istate
-  PetscErrorCode :: ierr
-  
-  grid => realization%patch%grid
-  option => realization%option
-  field => realization%field
-  patch => realization%patch
-  general_auxvars => patch%aux%General%auxvars
-  global_auxvars => patch%aux%Global%auxvars
-  material_auxvars => patch%aux%Material%auxvars
-  material_parameter => patch%aux%Material%material_parameter
-  
-  dX_changed = PETSC_FALSE
-  X1_changed = PETSC_FALSE
-  
-  option%converged = PETSC_FALSE
-  if (option%flow%check_post_convergence) then
-    call VecGetArrayReadF90(dX,dX_p,ierr);CHKERRQ(ierr)
-    call VecGetArrayReadF90(X0,X0_p,ierr);CHKERRQ(ierr)
-    call VecGetArrayReadF90(field%flow_r,r_p,ierr);CHKERRQ(ierr)
-    call VecGetArrayReadF90(field%flow_accum,accum_p,ierr);CHKERRQ(ierr)
-    inf_norm_update(:,:) = -1.d20
-    inf_norm_rel_update(:,:) = -1.d20
-    inf_norm_scaled_residual(:,:) = -1.d20
-    do local_id = 1, grid%nlmax
-      offset = (local_id-1)*option%nflowdof
-      ghosted_id = grid%nL2G(local_id)
-      if (realization%patch%imat(ghosted_id) <= 0) cycle
-      istate = global_auxvars(ghosted_id)%istate
-      do idof = 1, option%nflowdof
-        ival = offset+idof
-        R_A = dabs(r_p(ival)/accum_p(ival))
-        dX_X0 = dabs(dX_p(ival)/X0_p(ival))
-        R_scaled_by_vol = dabs(r_p(ival)/material_auxvars(ghosted_id)%volume)
-        inf_norm_update(idof,istate) = max(inf_norm_update(idof,istate), &
-                                           dabs(dX_p(ival)))
-        if (inf_norm_rel_update(idof,istate) < dX_X0) then
-          inf_norm_rel_update(idof,istate) = dX_X0
-        endif
-        if (inf_norm_scaled_residual(idof,istate) < R_A) then
-          inf_norm_scaled_residual(idof,istate) = R_A
-        endif
-        ! dt = option%flow_dt
-        if (inf_norm_scaled_residual_by_vol(idof,istate) < R_scaled_by_vol) then
-          inf_norm_scaled_residual_by_vol(idof,istate) = R_scaled_by_vol
-        endif
-      enddo
-    enddo
-    converged_abs_update = PETSC_TRUE
-    do istate = 1, 3
-      do idof = 1, option%nflowdof
-        if (inf_norm_update(idof,istate) > &
-          inf_norm_update_tol(idof,istate)) then
-          converged_abs_update = PETSC_FALSE
-          exit
-        endif
-      enddo  
-    enddo  
-    converged_rel_update = maxval(inf_norm_rel_update) < &
-                           option%flow%inf_rel_update_tol
-    converged_scaled_residual = maxval(inf_norm_scaled_residual) < &
-                                option%flow%inf_scaled_res_tol
-    converged_scaled_residual_by_vol = maxval(inf_norm_scaled_residual_by_vol) < &
-                                       option%flow%inf_scaled_res_tol
-    option%converged = PETSC_FALSE
-    if (converged_abs_update .or. converged_rel_update .or. &
-        converged_scaled_residual .or. converged_scaled_residual_by_vol) then
-      option%converged = PETSC_TRUE
-    endif
-    call VecRestoreArrayReadF90(dX,dX_p,ierr);CHKERRQ(ierr)
-    call VecRestoreArrayReadF90(X0,X0_p,ierr);CHKERRQ(ierr)
-    call VecRestoreArrayReadF90(field%flow_r,r_p,ierr);CHKERRQ(ierr)
-    call VecRestoreArrayReadF90(field%flow_accum,accum_p,ierr);CHKERRQ(ierr)
-  endif
-
-end subroutine GeneralCheckUpdatePost2
 
 ! ************************************************************************** !
 

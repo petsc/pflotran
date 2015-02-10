@@ -13,6 +13,9 @@ module General_Aux_module
   PetscReal, public :: general_max_pressure_change = 5.d4
   PetscInt, public :: general_max_it_before_damping = UNINITIALIZED_INTEGER
   PetscReal, public :: general_damping_factor = 0.6d0
+  PetscReal, public :: general_tough2_itol_scaled_res_e1 = 1.d-5
+  PetscReal, public :: general_tough2_itol_scaled_res_e2 = 1.d0
+  PetscBool, public :: general_tough2_conv_criteria = PETSC_FALSE
 
   ! thermodynamic state of fluid ids
   PetscInt, parameter, public :: NULL_STATE = 0
@@ -517,6 +520,9 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
 
       call EOSGasHenry(gen_auxvar%temp,gen_auxvar%pres(spid),K_H_tilde)
       gen_auxvar%xmol(acid,lid) = gen_auxvar%pres(apid) / K_H_tilde
+      ! immiscible.
+!      gen_auxvar%xmol(acid,lid) = 1.d-10
+      
       gen_auxvar%xmol(wid,lid) = 1.d0 - gen_auxvar%xmol(acid,lid)
       gen_auxvar%xmol(acid,gid) = gen_auxvar%pres(apid) / &
                                    gen_auxvar%pres(gid)

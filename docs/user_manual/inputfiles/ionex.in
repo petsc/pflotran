@@ -1,14 +1,15 @@
-#Description: 3D 5-spot copper leaching problem
- 
-# == debugging ================================================================
-#DEBUG
-#MATVIEW_JACOBIAN
-#VECVIEW_RESIDUAL
-#VECVIEW_SOLUTION
-#/
+#Description: 1D ion exchange problem
 
-# == mode =====================================================================
-#MODE RICHARDS
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
 
 # m/s
 UNIFORM_VELOCITY 5.69333e-4 0.d0 0.d0
@@ -61,8 +62,7 @@ RATE_CONSTANT 1.e-30
 SORPTION
 ION_EXCHANGE_RXN
 MINERAL Halite
-#CEC 68.676  ! mol/m^3
-CEC 71.004
+CEC 71.004  ! mol/m^3
 CATIONS
 Na+   7.94328
 Ca++  1.
@@ -278,7 +278,6 @@ CONSTRAINT_LIST
 /
 
 # == couplers =================================================================
-
 INITIAL_CONDITION Initial
 #FLOW_CONDITION Initial
 TRANSPORT_CONDITION Initial
@@ -358,3 +357,5 @@ Cl-           3.d-4   Z
 Tracer        9.4d-3  T
 /
 /
+
+END_SUBSURFACE
