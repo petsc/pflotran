@@ -74,6 +74,7 @@ module Option_module
     character(len=MAXSTRINGLENGTH) :: surf_initialize_flow_filename
     character(len=MAXSTRINGLENGTH) :: surf_restart_filename
 
+    PetscBool  :: geomech_on
     PetscInt  :: ngeomechdof
     PetscInt  :: n_stress_strain_dof
     PetscReal :: geomech_time
@@ -426,6 +427,7 @@ subroutine OptionInitRealization(option)
   option%surf_restart_flag = PETSC_FALSE
   option%surf_restart_time = UNINITIALIZED_DOUBLE
 
+  option%geomech_on = PETSC_FALSE
   option%ngeomechdof = 0
   option%n_stress_strain_dof = 0
   option%geomech_time = 0.d0

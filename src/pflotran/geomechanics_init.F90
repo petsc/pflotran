@@ -580,6 +580,9 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
         call GeomechStrataRead(strata,input,option)
         call GeomechRealizAddStrata(geomech_realization,strata)
         nullify(strata)       
+      !.........................................................................
+      case ('END_GEOMECHANICS')
+        exit       
         
       !.........................................................................
       case default

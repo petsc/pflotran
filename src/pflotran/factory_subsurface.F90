@@ -110,7 +110,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
         pm_waste_form => cur_pm
       class default
         option%io_buffer = &
-         'PM Class unrecogmized in SubsurfaceInitializePostPetsc.'
+         'PM Class unrecognized in SubsurfaceInitializePostPetsc.'
         call printErrMsg(option)
     end select
     prev_pm => cur_pm

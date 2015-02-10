@@ -15,7 +15,7 @@ contains
 
 ! ************************************************************************** !
 
-subroutine GeomechanicsInitialize(simulation_base,option)
+subroutine GeomechanicsInitialize(simulation_base,pm_list,option)
   ! 
   ! This routine
   ! 
@@ -23,20 +23,21 @@ subroutine GeomechanicsInitialize(simulation_base,option)
   ! Date: 01/01/14
   ! 
 
-  use Option_module
-  use Input_Aux_module
-  use Timestepper_Base_class
+  use Option_module 
   use Simulation_Base_class
+  use PM_Base_class
 
   implicit none
   
   class(simulation_base_type), pointer :: simulation_base
+  class(pm_base_type), pointer :: pm_list
   type(option_type), pointer :: option
 
   class(geomechanics_simulation_type), pointer :: simulation
 
   ! NOTE: PETSc must already have been initialized here!
   simulation => GeomechanicsSimulationCreate(option)
+  simulation%process_model_list => pm_list
   call GeomechanicsInitializePostPETSc(simulation,option)
   
   simulation_base => simulation
@@ -49,11 +50,16 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
   ! 
   ! This routine
   ! 
-  ! Author: Gautam Bisht, LBNL
-  ! Date: 01/01/14
+  ! Author: Gautam Bisht, LBNL and Satish Karra, LANL
+  ! Date: 01/01/14, 02/10/15
   ! 
 
+  use Simulation_Geomechanics_class
+  use Simulation_Subsurface_class
+  use Factory_Subsurface_module
+  use Factory_Geomechanics_module  
   use Init_Common_module
+  use Init_Geomechanics_module
   use Option_module
   use PMC_Base_class
   use PMC_Geomechanics_class
@@ -61,11 +67,8 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
   use Geomechanics_Discretization_module
   use Geomechanics_Force_module
   use Geomechanics_Realization_class
-  use Simulation_Geomechanics_class
   use Simulation_Aux_module
-  use Simulation_Subsurface_class
-  use Factory_Subsurface_module
-
+  
   implicit none
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
@@ -79,8 +82,33 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
   type(simulation_type), pointer :: simulation_old
 #endif
   class(pmc_base_type), pointer :: cur_process_model_coupler
-  type(gmdm_ptr_type), pointer                 :: dm_ptr
-
+  type(gmdm_ptr_type), pointer  :: dm_ptr
+  class(pm_base_type), pointer :: cur_pm, prev_pm
+  
+  nullify(prev_pm)
+  cur_pm => simulation%process_model_list
+  do
+    if (.not.associated(cur_pm)) exit
+    select type(cur_pm)
+      class is(pm_surface_th_type)
+        pm_surface_th => cur_pm
+        if (associated(prev_pm)) then
+          prev_pm%next => cur_pm%next
+        else
+          simulation%process_model_list => cur_pm%next
+        endif
+        exit
+      class default
+    end select
+    prev_pm => cur_pm
+    cur_pm => cur_pm%next
+  enddo
+  call SubsurfaceInitializePostPetsc(simulation,option)
+  ! in SubsurfaceInitializePostPetsc, the first pmc in the list is set as
+  ! the master, we need to negate this setting
+  simulation%process_model_coupler_list%is_master = PETSC_FALSE
+    
+  
 #if 0
   allocate(simulation_old)
   simulation_old => SimulationCreate(option)
