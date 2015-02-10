@@ -299,7 +299,10 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
             call InputKeywordUnrecognized(word, &
                   'SURFACE_FLOW,SURF_FLOW_FORMULATION',option)
         end select
-
+      !.........................................................................
+      case ('SURF_MAX_MANNING_VELOCITY')
+        call InputReadDouble(input,option,temp_real)
+        option%max_manning_velocity = temp_real
       !.........................................................................
       ! Read surface material information
       case ('SURF_MATERIAL_PROPERTY')

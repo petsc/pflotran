@@ -1,7 +1,18 @@
-#Description: 1D test problem for tracer transport
+#Description: 1D test problem for tracer transport for Hanford SX-115 waste tank.
 
-#=========================== flow mode ========================================
-MODE RICHARDS
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
 
 #=========================== chemistry ========================================
 CHEMISTRY
@@ -469,3 +480,5 @@ CONSTRAINT initial
     Tracer 1.d-16 T
   /
 END
+
+END_SUBSURFACE
