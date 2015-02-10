@@ -27,6 +27,68 @@ The input file for the simulation is listed in Table~\ref{tionex}.
 
 \newpage
 
+\subsection{GENERAL\_REACTION Example}
+
+\subsubsection{Problem Description}
+
+%\subsubsection{Governing Equations}
+
+A single irreversible reaction is considered of the form
+\EQ
+A + 2 B \rightarrow C,
+\EN
+for flow in a fully saturated 1D column of length 100 m with a Darcy velocity of 1 m/y, diffusion coefficient of $10^{-9}$ m$^2$/s and porosity equal to 0.25.
+The conservation equation for advection, diffusion and reaction is given by
+\EQ
+\frac{\p}{\p t} \varphi C_l + \bnabla\cdot\bF_l \eq - \varphi \nu_l \R, \ \ \ \ (l=A,\,B,\,C), 
+\EN
+with stoichiometric coefficients $\nu_A = 1$, $\nu_B = 2$, and $\nu_C=-1$.
+The flux $\bF_l$ consists of contributions from advection and diffusion
+\EQ
+\bF_l \eq \bq C_l - \varphi D \bnabla C_l.
+\EN
+The forward reaction rate is based on a elementary aqueous reaction
+\EQ
+\R \eq k_f C_A^{\nu_A} C_B^{\nu_B}.
+\EN
+%\BA
+%\frac{\p\R}{\p C_{l}} \eq \frac{\nu_l}{C_{l}} \R
+%\EA
+Dividing through by porosity (assuming $\varphi$ = constant), the transport equation becomes
+\EQ
+\frac{\p C_l}{\p t} + \bnabla\cdot\bv C_l - D \bnabla\cdot\bnabla C_l + \nu_l^{} k_{\!f}^{} C_A^{\nu_A} C_B^{\nu_B} \eq 0,
+\EN
+with average pore velocity 
+\EQ
+\bv \eq \frac{\bq}{\varphi}.
+\EN
+Initial and boundary conditions imposed on the solution are given by
+\begin{subequations}
+\BA
+C(x,t=0) &\eq C_\infty,\\
+C(x=0,\,t) &\eq C_0,\\
+\left.\frac{\p C}{\p x} \right|_{x=l_x} &\eq 0.
+%\left.\frac{\p C}{\p y} \right|_{y=0,\,y=l_y} &\eq 0.
+\EA
+\end{subequations}
+
+\subsubsection{Simulation Results}
+
+Results are shown in Figure~\ref{fabc} for the concentrations of species A, B, C at 5 years obtained from PFLOTRAN and a prototype code written in C++ based on the PETSc TS time stepping class. The code uses a backward Euler (TSBEULER) time integrator with nodes placed at the grid cell corners. The slight discrepancy between the results of the two codes may be due to the use of a finite volume cell-centered grid in PFLOTRAN, versus the corner-node grid used in the prototype code.
+
+\begin{figure}[h]\centering
+\includegraphics[scale=0.5]{./figs/abc}
+\caption{Comparison of concentrations for species A, B, C plotted as a function of distance for an elapsed time of 5 years for PFLOTRAN and a prototype code based on PETSc's TS class.}\label{fabc}
+\end{figure}
+
+\subsubsection{PFLOTRAN Input File}
+
+\footnotesize
+\VerbatimInput{./inputfiles/ABC/ABC1d.in}\label{tabc}
+\normalsize
+
+\newpage
+
 \subsection{SX-115 Hanford Tank Farm}
 
 \subsubsection{Problem Description}

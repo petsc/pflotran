@@ -1,4 +1,18 @@
-MODE MPHASE
+# 1D supercritical CO2 comparison with TOUGHREACT
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE MPHASE
+    /
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
 
 !=========================== chemistry ========================================
 CHEMISTRY
@@ -337,3 +351,5 @@ STRATA
   REGION all
   MATERIAL trigonodusdolomite
 END
+
+END_SUBSURFACE

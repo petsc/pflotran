@@ -6,8 +6,59 @@ The PFLOTRAN input file construction is based on keywords. Lines beginning with 
 
 Initial and boundary conditions and material properties are assigned to spatial regions using a novel {\em coupler} approach. In this approach, initial and boundary conditions (keyword CONDITION) are assigned to regions (keyword REGION) using keywords INITIAL\_CONDITION and BOUNDARY\_CONDITION. Material properties (keyword MATERIAL) are assigned to regions using the keyword STRATIGRAPHY.
 
+\subsection{Input Deck Specification}
+
+PFLOTRAN input files are divided into blocks based on the process models employed. Process models are defined within the SIMULATION block which for convenience should be located at the top of the input file (but this is not required). Keywords within the SIMULATION block include:
+\begin{description}
+\item SIMULATION 
+\begin{description}
+    \item Opens the SIMULATION block.
+    \end{description}
+
+\item SIMULATION\_TYPE  <string>
+\begin{description}
+    \item Defines the domain to be modeled and the types of process 
+    models employed. Options include:
+    
+    \item SUBSURFACE
+
+    \item SURFACE\_SUBSURFACE
+
+    \item HYDROGEOPHYSICS
+\end{description}
+
+\item PROCESS\_MODELS
+\begin{description}
+\item Opens a block for defining all process models employed. 
+    At this point, the ordering and linkage of these process 
+    models is preset. For instance, SUBSURFACE\_FLOW processes 
+    always precede SUBSURFACE\_TRANSPORT processes in timestep 
+    execution. Options include:
+    
+\item SUBSURFACE\_FLOW
+
+\item SUBSURFACE\_TRANSPORT
+
+\item SURFACE\_FLOW
+\end{description}
+
+\item SUBSURFACE
+\begin{description}
+   \item Opens a block of input parameters for subsurface process models 
+    (this block is essentially, the old PFLOTRAN input file with the 
+    exception that several of the cards (i.e. flow MODE) have been 
+    moved to the SIMULATION block.
+\end{description}
+\item END\_SUBSURFACE
+\begin{description}
+    \item Closes the subsurface block.
+    \end{description}
+\end{description}
+
+Keywords for subsurface processes are listed in Table~\ref{flkeywd}. At present  manual pages and keywords for surface processes is still under development.
+
 \begin{longtable}{ll}%[h]%\centering
-%\caption{PFLOTRAN Keywords}\label{flkeywd}
+\caption{{\bf SUBSURFACE} Keywords in alphabetical order.}\label{flkeywd}\\
 
 %\vspace{4mm}
 
@@ -136,8 +187,19 @@ Surface Site Density: & mole/meter$^{3}$ [mol/m$^{3}$]\\
 \hypertarget{target_input_file}{}
 
 \footnotesize
-\#Description: 3D infiltration problem with calcite dissolution
-(\# denotes a comment line)\\
+\#Description: 3D infiltration problem using Richards model with calcite dissolution
+\#(\# or ! denotes a comment line)\\
+SIMULATION\\
+SIMULATION\_TYPE SUBSURFACE\\
+  PROCESS\_MODELS\\
+    SUBSURFACE\_TRANSPORT transport\\
+      GLOBAL\_IMPLICIT\\
+    /\\
+  /\\
+END
+
+\noindent
+SUBSURFACE ! SUBSURFACE block ends with END\_SUBSURFACE
 
 \noindent
 \# == debugging ================================================================\\
@@ -421,26 +483,33 @@ REGION all\\
 \# == transport constraints ======================================================\\
 \hyperlink{target_constraint}{\bf CONSTRAINT} Initial\\
 CONCENTRATIONS\\
-Ca++    1.d-4   M  Calcite\\
-H+      8.d0   pH\\
-CO2(aq) 1.d-2   G  CO2(g)\\
-Tracer  1.d-8   T\\
-/\\
-MINERALS ! vol. frac.  area\\
-Calcite      0.75      1.d2\\
-/\\
+\begin{tabular}{llll}
+Ca++    &1.d-4   &M  &Calcite\\[-4pt]
+H+      &8.d0   &pH\\[-4pt]
+CO2(aq) &1.d-2   &G  &CO2(g)\\[-4pt]
+Tracer  &1.d-8   &T\\[-4pt]
+/\\[-4pt]
+MINERALS &! vol. frac.  &area\\[-4pt]
+Calcite      &0.75      &1.d2\\[-4pt]
+/\\[-4pt]
+\end{tabular}\\
 /
 
 \noindent
 \hyperlink{target_constraint}{\bf CONSTRAINT} Inlet\\
 CONCENTRATIONS\\
-Ca++    1.d-6   T\\
-H+      3.d0   pH\\
-CO2(aq) 1.d-3   G  CO2(g)\\
-Tracer  1.d-0   T\\
-/\\
-/
+\begin{tabular}{lll}
+Ca++    &1.d-6   &T\\[-4pt]
+H+      &3.d0   &pH\\[-4pt]
+CO2(aq) &1.d-3   &G  CO2(g)\\[-4pt]
+Tracer  &1.d-0   &T\\[-4pt]
+/\\[-4pt]
+\end{tabular}\\
+/\\[-4pt]
+END\_SUBSURFACE
+
 \normalsize
+
 
 \newpage
 \protect\hypertarget{target_bcon}{}
