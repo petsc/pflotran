@@ -254,9 +254,9 @@ Shown in Figure~\ref{f2} is the saturation at different times following a two we
 
 \clearpage
 
-\subsubsection{PFLOTRAN Input Files}
+\subsubsection{PFLOTRAN Input File}
 
-Listing for a PFLOTRAN input file that couples Richards mode to a tracer is given below. Note that the stratigraphic zone specification in {\tt REGION} is grid independent as is the grid size specification in keyword {\tt GRID}. Therefore to change the grid spacing only the line: {\tt NXYZ 1 1 136}, needs to be changed. Also note that a line beginning with \# is read as a comment.
+Listing for the PFLOTRAN input file coupling Richards mode to a tracer is given below. Note that the stratigraphic zone specification in {\tt REGION} is grid independent as is the grid size specification in keyword {\tt GRID}. Therefore to change the grid spacing only the line: {\tt NXYZ 1 1 136}, needs to be changed. Also note that lines beginning with \# are read as a comment as is input following `!'.
 
 \bigskip
 
@@ -274,7 +274,7 @@ Source/sink file {\tt src.dat}:
 \normalsize
 
 
-\subsection{CO$_2$ Sequestration: 1D Example Problem and Comparison with TOUGHREACT}
+\subsection{CO$_2$ Sequestration: 1D Example Problem and Comparison with\\ TOUGHREACT}
 
 In this example problem involves sequentially coupling of {\tt MPHASE} and {\tt CHEMISTRY}. The chemical system consists of four primary species and 5 secondary species. Supercritical CO$_2$ is injected into a well located at the west boundary. Dirichlet pressure boundary conditions are imposed at the east boundary. The problem definition with associated parameters is given in Table~\ref{tco2}.
 
