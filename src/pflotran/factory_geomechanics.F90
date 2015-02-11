@@ -93,6 +93,7 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
   character(len=MAXSTRINGLENGTH) :: string
   type(waypoint_type), pointer :: waypoint
   type(input_type), pointer :: input
+  PetscErrorCode :: ierr
 
   nullify(prev_pm)
   cur_pm => simulation%process_model_list
@@ -115,7 +116,7 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
   call SubsurfaceInitializePostPetsc(simulation,option)
   ! in SubsurfaceInitializePostPetsc, the first pmc in the list is set as
   ! the master, we need to negate this setting
-  simulation%process_model_coupler_list%is_master = PETSC_FALSE
+  simulation%process_model_coupler_list%is_master = PETSC_TRUE
     
   if (option%geomech_on) then
     simulation%geomech_realization => GeomechRealizCreate(option)
@@ -169,7 +170,23 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
     call InitGeomechSetupRealization(geomech_realization,subsurf_realization)
     call InitGeomechSetupSolvers(geomech_realization,subsurf_realization, &
                                   timestepper%solver)
+                                  
 
+    call pm_geomech%PMGeomechForceSetRealization(geomech_realization)
+    call pm_geomech%Init()
+    call SNESSetFunction(timestepper%solver%snes, &
+                         pm_geomech%residual_vec, &
+                         PMResidual, &
+                         pmc_geomech%pm_ptr, &
+                         ierr);CHKERRQ(ierr)
+    call SNESSetJacobian(timestepper%solver%snes, &
+                         timestepper%solver%J, &
+                         timestepper%solver%Jpre, &
+                         PMJacobian, &
+                         pmc_geomech%pm_ptr, &
+                         ierr);CHKERRQ(ierr)
+                                  
+     nullify(simulation%process_model_coupler_list)                             
    endif
     
   

@@ -873,7 +873,7 @@ subroutine InitGeomechSetupSolvers(geomech_realization,realization,solver)
   call MatSetOptionsPrefix(solver%Jpre,"geomech_", &
                             ierr);CHKERRQ(ierr)
     
-
+#if 0
   call SNESSetFunction(solver%snes,geomech_realization%geomech_field%disp_r, &
                        GeomechForceResidual, &
                        geomech_realization,ierr);CHKERRQ(ierr)
@@ -881,10 +881,13 @@ subroutine InitGeomechSetupSolvers(geomech_realization,realization,solver)
   call SNESSetJacobian(solver%snes,solver%J, &
                        solver%Jpre,GeomechForceJacobian, &
                        geomech_realization,ierr);CHKERRQ(ierr)
+#endif
+
   ! by default turn off line search
   call SNESGetLineSearch(solver%snes,linesearch, ierr);CHKERRQ(ierr)
   call SNESLineSearchSetType(linesearch,SNESLINESEARCHBASIC, &
                               ierr);CHKERRQ(ierr)
+
 
   ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
   if (option%verbosity >= 1) then
