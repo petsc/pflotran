@@ -188,82 +188,24 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
                                   
      nullify(simulation%process_model_coupler_list)                             
    endif
-    
-  
-#if 0
-  allocate(simulation_old)
-  simulation_old => SimulationCreate(option)
-  call Init(simulation_old)
-
-  call HijackSimulation(simulation_old, subsurf_simulation)
-  call SubsurfaceJumpStart(subsurf_simulation)
-
-  simulation%realization => simulation_old%realization
-  simulation%flow_process_model_coupler => &
-      subsurf_simulation%flow_process_model_coupler
-  simulation%rt_process_model_coupler => &
-      subsurf_simulation%rt_process_model_coupler
-  simulation%regression => simulation_old%regression
-
-  if (option%ngeomechdof > 0) then
-    ! Both, Subsurface-flow and Geomechanics are active
-    call HijackGeomechanicsSimulation(simulation_old, geomech_simulation)
-    call GeomechanicsJumpStart(geomech_simulation)
-
-    ! 1st PMC is subsurface-flow
-    simulation%process_model_coupler_list => &
-      subsurf_simulation%process_model_coupler_list
-
-    ! 2st PMC is geomechanics
-    subsurf_simulation%process_model_coupler_list%child => &
-      geomech_simulation%process_model_coupler_list
-
-    geomech_simulation%geomech_process_model_coupler%subsurf_realization => &
-      simulation_old%realization
-    simulation%flow_process_model_coupler%realization => &
-      simulation_old%realization
-    simulation%process_model_coupler_list%is_master = PETSC_TRUE
-    geomech_simulation%process_model_coupler_list%is_master = PETSC_FALSE
-
-    simulation%geomech_realization => simulation_old%geomech_realization
-    simulation%geomech_process_model_coupler => &
-         geomech_simulation%geomech_process_model_coupler
-
-    nullify(geomech_simulation%process_model_coupler_list)
-
-  else
-
-    ! Only subsurface flow active
-    simulation%process_model_coupler_list => &
-         subsurf_simulation%process_model_coupler_list
-    simulation%process_model_coupler_list%is_master = PETSC_TRUE
-    ! call printErrMsg(option,'Only subsurface-flow is active. ' // &
-    !        'Check inputfile or switch -simulation_mode subsurface')
-    nullify(simulation%geomech_realization)
-    nullify(simulation%geomech_process_model_coupler)
-
-  endif
-
-   nullify(subsurf_simulation%process_model_coupler_list)
-
   ! sim_aux: Create PETSc Vectors and VectorScatters
   if (option%ngeomechdof > 0) then
 
-    call GeomechCreateGeomechSubsurfVec(simulation_old%realization, &
-                                        simulation_old%geomech_realization)
-    call SimAuxCopySubsurfVec(simulation%sim_aux, simulation_old%realization%field%work)
+    call GeomechCreateGeomechSubsurfVec(subsurf_realization, &
+                                        geomech_realization)
+    call SimAuxCopySubsurfVec(simulation%sim_aux,subsurf_realization%field%work)
 
-    call GeomechCreateSubsurfStressStrainVec(simulation_old%realization, &
-                                             simulation_old%geomech_realization)
+    call GeomechCreateSubsurfStressStrainVec(subsurf_realization, &
+                                             geomech_realization)
     call SimAuxCopySubsurfGeomechVec(simulation%sim_aux, &
-          simulation_old%geomech_realization%geomech_field%strain_subsurf)
+          geomech_realization%geomech_field%strain_subsurf)
 
-    call GeomechRealizMapSubsurfGeomechGrid(simulation_old%realization, &
-                                            simulation_old%geomech_realization, &
+    call GeomechRealizMapSubsurfGeomechGrid(subsurf_realization, &
+                                            geomech_realization, &
                                             option)
 
     dm_ptr => GeomechDiscretizationGetDMPtrFromIndex( &
-                simulation%geomech_realization%geomech_discretization, ONEDOF)
+                geomech_realization%geomech_discretization, ONEDOF)
 
     call SimAuxCopyVecScatter(simulation%sim_aux, &
                               dm_ptr%gmdm%scatter_subsurf_to_geomech_ndof, &
@@ -278,162 +220,33 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
   if (associated(simulation%rt_process_model_coupler)) &
     simulation%rt_process_model_coupler%sim_aux => simulation%sim_aux
   if (option%ngeomechdof>0 .and. &
-     associated(geomech_simulation%geomech_process_model_coupler)) &
-    geomech_simulation%geomech_process_model_coupler%sim_aux => simulation%sim_aux
+     associated(simulation%geomech_process_model_coupler)) &
+    simulation%geomech_process_model_coupler%sim_aux => simulation%sim_aux
+ 
+  ! set geomech as not master
+  simulation%geomech_process_model_coupler%is_master = PETSC_FALSE
+  ! link geomech and master
+  simulation%process_model_coupler_list => &
+    simulation%geomech_process_model_coupler
+  ! link subsurface flow as peer
+  simulation%process_model_coupler_list%peer => &
+    simulation%flow_process_model_coupler  
+    
 
   ! Set data in sim_aux
   cur_process_model_coupler => simulation%process_model_coupler_list
   call cur_process_model_coupler%SetAuxData()
-  if (associated(cur_process_model_coupler%child)) then
-    cur_process_model_coupler => cur_process_model_coupler%child
+  if (associated(cur_process_model_coupler%peer)) then
+    cur_process_model_coupler => cur_process_model_coupler%peer
     call cur_process_model_coupler%GetAuxData()
     call cur_process_model_coupler%SetAuxData()
     select type(pmc => cur_process_model_coupler)
       class is(pmc_geomechanics_type)
         call GeomechStoreInitialPressTemp(pmc%geomech_realization)
     end select
-  endif
-
-  deallocate(simulation_old)
-#endif
-
+  endif    
+  
 end subroutine GeomechanicsInitializePostPETSc
-
-! ************************************************************************** !
-
-#if 0
-subroutine HijackGeomechanicsSimulation(simulation_old,simulation)
-  ! 
-  ! This routine
-  ! 
-  ! Author: Gautam Bisht, LBNL
-  ! Date: 01/01/14
-  ! 
-
-  use Geomechanics_Realization_class
-  use Option_module
-  
-  use PMC_Base_class
-  use PMC_Geomechanics_class
-  use Simulation_Base_class
-  use PM_Geomechanics_Force_class
-  use Init_Geomechanics_module
-  use PM_Base_class
-  use PM_Base_Pointer_module
-  use Timestepper_Geomechanics_class
-
-  implicit none
-  
-  type(simulation_type) :: simulation_old
-  class(geomechanics_simulation_type) :: simulation
-  
-  class(pmc_geomechanics_type), pointer :: geomech_process_model_coupler
-  class(pmc_base_type), pointer :: cur_process_model_coupler
-  class(pmc_base_type), pointer :: cur_process_model_coupler_top
-  class(pm_base_type), pointer :: cur_process_model
-  
-  class(geomech_realization_type), pointer :: geomech_realization
-  type(option_type), pointer :: option
-  PetscErrorCode :: ierr
-  
-  geomech_realization => simulation_old%geomech_realization
-  option => geomech_realization%option
-
-  !----------------------------------------------------------------------------!
-  ! This section for setting up new process model approach
-  !----------------------------------------------------------------------------!
-  simulation%output_option => geomech_realization%output_option
-  simulation%option => geomech_realization%option
-  
-! begin from old Init()   
-  call InitGeomechSetupRealization(simulation_old)  
-  call InitGeomechSetupSolvers(geomech_realization,simulation_old%realization, &
-                              simulation_old%geomech_timestepper%solver)  
-
-! end from old Init()   
-
-  nullify(cur_process_model)
-
-  nullify(geomech_process_model_coupler)
-
-  ! Create Surface-flow ProcessModel & ProcessModelCoupler
-  if (option%ngeomechdof > 0) then
-    cur_process_model => PMGeomechForceCreate()
-    cur_process_model%option => geomech_realization%option
-    cur_process_model%output_option => geomech_realization%output_option
-
-    geomech_process_model_coupler => PMCGeomechanicsCreate()
-    geomech_process_model_coupler%option => option
-    geomech_process_model_coupler%pms => cur_process_model
-    geomech_process_model_coupler%pm_ptr%ptr => cur_process_model
-    call HijackTimestepper(simulation_old%geomech_timestepper, &
-                           geomech_process_model_coupler%timestepper)
-    nullify(cur_process_model)
-  endif
-
-  ! Add the ProcessModelCouplers in a list
-  if (associated(geomech_process_model_coupler)) then
-    simulation%process_model_coupler_list => geomech_process_model_coupler%CastToBase()
-  endif
-
-  ! For each ProcessModel, set:
-  ! - realization (subsurface or surface),
-  ! - stepper (flow/trans/surf_flow),
-  ! - SNES functions (Residual/Jacobain), or TS function (RHSFunction)
-  cur_process_model_coupler_top => simulation%process_model_coupler_list
-  do
-    if (.not.associated(cur_process_model_coupler_top)) exit
-    cur_process_model_coupler_top%waypoint_list => geomech_realization%waypoint_list
-    cur_process_model_coupler => cur_process_model_coupler_top
-    do
-      if (.not.associated(cur_process_model_coupler)) exit
-      cur_process_model => cur_process_model_coupler%pms
-      do
-        if (.not.associated(cur_process_model)) exit
-        select type(cur_process_model)
-          class is (pm_geomech_force_type)
-            call cur_process_model%PMGeomechForceSetRealization(geomech_realization)
-            call cur_process_model_coupler%SetTimestepper( &
-                    geomech_process_model_coupler%timestepper)
-            !geomech_process_model_coupler%timestepper%dt = option%flow_dt
-        end select
-
-        call cur_process_model%Init()
-#if 0        
-        select type(cur_process_model)
-          class is (pm_geomech_force_type)
-            select type(ts => cur_process_model_coupler%timestepper)
-              class is (timestepper_geomechanics_type)
-                call SNESSetFunction( &
-                               ts%solver%snes, &
-                               cur_process_model%residual_vec, &
-                               PMResidual, &
-                               cur_process_model_coupler%pm_ptr, &
-                                     ierr);CHKERRQ(ierr)
-                call SNESSetJacobian( &
-                               ts%solver%snes, &
-                               ts%solver%J, &
-                               ts%solver%Jpre, &
-                               PMJacobian, &
-                               cur_process_model_coupler%pm_ptr, &
-                                     ierr);CHKERRQ(ierr)
-            end select
-        end select
-#endif
-        cur_process_model => cur_process_model%next
-      enddo
-      cur_process_model_coupler => cur_process_model_coupler%child
-    enddo
-    cur_process_model_coupler_top => cur_process_model_coupler_top%peer
-  enddo
-
-  simulation%geomech_realization => geomech_realization
-  simulation%geomech_process_model_coupler => geomech_process_model_coupler
-  simulation%regression => simulation_old%regression
-  geomech_process_model_coupler%geomech_realization => geomech_realization
-
-end subroutine HijackGeomechanicsSimulation
-#endif
 
 ! ************************************************************************** !
 
