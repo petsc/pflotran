@@ -194,7 +194,7 @@ subroutine PFLOTRANReadSimulation(simulation,option)
             case('SURFACE_SUBSURFACE')
               option%surf_flow_on = PETSC_TRUE
               new_pm => PMSurfaceTHCreate()
-            case('GEOMECHANICS')
+            case('GEOMECHANICS_SUBSURFACE')
               option%geomech_on = PETSC_TRUE
               new_pm => PMGeomechForceCreate()
             case default
@@ -242,7 +242,7 @@ subroutine PFLOTRANReadSimulation(simulation,option)
       call HydrogeophysicsInitialize(simulation,pm_master,option)
     case('SURFACE_SUBSURFACE')
       call SurfSubsurfaceInitialize(simulation,pm_master,option)
-    case('GEOMECHANICS')
+    case('GEOMECHANICS_SUBSURFACE')
       call GeomechanicsInitialize(simulation,pm_master,option)
     case default
       call InputKeywordUnrecognized(word, &

@@ -57,10 +57,12 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
   use Simulation_Geomechanics_class
   use Simulation_Subsurface_class
   use Factory_Subsurface_module
-  use Factory_Geomechanics_module  
   use Init_Common_module
   use Init_Geomechanics_module
   use Option_module
+  use PM_Base_class
+  use PM_Base_Pointer_module
+  use PM_Geomechanics_Force_class
   use PMC_Base_class
   use PMC_Geomechanics_class
   use PFLOTRAN_Constants_module
@@ -68,7 +70,11 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
   use Geomechanics_Force_module
   use Geomechanics_Realization_class
   use Simulation_Aux_module
-  
+  use Realization_class
+  use Timestepper_Geomechanics_class
+  use Input_Aux_module
+  use Logging_module
+
   implicit none
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
@@ -76,22 +82,25 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
   class(geomechanics_simulation_type) :: simulation
   type(option_type), pointer :: option
   
-  type(geomechanics_simulation_type) :: geomech_simulation
-  type(subsurface_simulation_type) :: subsurf_simulation
-#if 0
-  type(simulation_type), pointer :: simulation_old
-#endif
+  class(realization_type), pointer :: subsurf_realization
+  class(geomech_realization_type), pointer :: geomech_realization
   class(pmc_base_type), pointer :: cur_process_model_coupler
   type(gmdm_ptr_type), pointer  :: dm_ptr
   class(pm_base_type), pointer :: cur_pm, prev_pm
-  
+  class(pm_geomech_force_type), pointer :: pm_geomech
+  class(pmc_geomechanics_type), pointer :: pmc_geomech
+  class(timestepper_geomechanics_type), pointer :: timestepper
+  character(len=MAXSTRINGLENGTH) :: string
+  type(waypoint_type), pointer :: waypoint
+  type(input_type), pointer :: input
+
   nullify(prev_pm)
   cur_pm => simulation%process_model_list
   do
     if (.not.associated(cur_pm)) exit
     select type(cur_pm)
-      class is(pm_surface_th_type)
-        pm_surface_th => cur_pm
+      class is(pm_geomech_force_type)
+        pm_geomech => cur_pm
         if (associated(prev_pm)) then
           prev_pm%next => cur_pm%next
         else
@@ -107,6 +116,61 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
   ! in SubsurfaceInitializePostPetsc, the first pmc in the list is set as
   ! the master, we need to negate this setting
   simulation%process_model_coupler_list%is_master = PETSC_FALSE
+    
+  if (option%geomech_on) then
+    simulation%geomech_realization => GeomechRealizCreate(option)
+    geomech_realization => simulation%geomech_realization
+    subsurf_realization => simulation%realization
+    geomech_realization%input => InputCreate(IN_UNIT,option%input_filename,option)
+    call GeomechicsInitReadRequiredCards(geomech_realization)
+    geomech_realization%waypoint_list => WaypointListCreate()
+    pm_geomech%output_option => simulation%geomech_realization%output_option
+    pmc_geomech => PMCGeomechanicsCreate()
+    pmc_geomech%name = 'PMCGeomech'
+    simulation%geomech_process_model_coupler => pmc_geomech
+    pmc_geomech%option => option
+    pmc_geomech%pms => pm_geomech
+    pmc_geomech%pm_ptr%ptr => pm_geomech
+    pmc_geomech%geomech_realization => simulation%geomech_realization
+    pmc_geomech%subsurf_realization => simulation%realization
+    timestepper => TimestepperGeomechanicsCreate()
+    pmc_geomech%timestepper => timestepper
+    ! set up logging stage
+    string = trim(pmc_geomech%name) // 'Geomechanics'
+    call LoggingCreateStage(string,pmc_geomech%stage)
+
+    input => InputCreate(IN_UNIT,option%input_filename,option)    
+    string = 'GEOMECHANICS'
+    call InputFindStringInFile(input,option,string)
+    call InputFindStringErrorMsg(input,option,string)  
+    call GeomechanicsInitReadInput(geomech_realization, &
+                              timestepper%solver,input,option)
+
+    ! Add first waypoint
+    waypoint => WaypointCreate()
+    waypoint%time = 0.d0
+    call WaypointInsertInList(waypoint,geomech_realization%waypoint_list)
+ 
+    ! Add final_time waypoint to geomech_realization
+    waypoint => WaypointCreate()
+    waypoint%final = PETSC_TRUE
+    waypoint%time = simulation%realization%waypoint_list%last%time
+    waypoint%print_output = PETSC_TRUE
+    call WaypointInsertInList(waypoint,geomech_realization%waypoint_list)   
+
+    if (associated(simulation%geomech_process_model_coupler)) then
+      if (associated(simulation%geomech_process_model_coupler% &
+                     timestepper)) then
+        simulation%geomech_process_model_coupler%timestepper%cur_waypoint => &
+          geomech_realization%waypoint_list%first
+      endif
+    endif
+ 
+    call InitGeomechSetupRealization(geomech_realization,subsurf_realization)
+    call InitGeomechSetupSolvers(geomech_realization,subsurf_realization, &
+                                  timestepper%solver)
+
+   endif
     
   
 #if 0
