@@ -28,7 +28,7 @@ module Strata_module
     PetscInt                                     :: isurf_material_property ! id of material in material array/list
     PetscInt :: surf_or_subsurf_flag
     PetscReal :: start_time
-    PetscReal :: end_time
+    PetscReal :: final_time
     type(strata_type), pointer :: next            ! pointer to next strata
   end type strata_type
   
@@ -86,7 +86,7 @@ function StrataCreate1()
   strata%imaterial_property = 0
   strata%surf_or_subsurf_flag = SUBSURFACE
   strata%start_time = UNINITIALIZED_DOUBLE
-  strata%end_time = UNINITIALIZED_DOUBLE
+  strata%final_time = UNINITIALIZED_DOUBLE
 
   nullify(strata%region)
   nullify(strata%material_property)
@@ -126,7 +126,7 @@ function StrataCreateFromStrata(strata)
   new_strata%region_name = strata%region_name
   new_strata%iregion = strata%iregion
   new_strata%start_time = strata%start_time
-  new_strata%end_time = strata%end_time
+  new_strata%final_time = strata%final_time
   ! keep these null
   nullify(new_strata%region)
   nullify(new_strata%material_property)
@@ -219,13 +219,13 @@ subroutine StrataRead(strata,input,option)
           strata%start_time = strata%start_time * &
                               UnitsConvertToInternal(word,option)
         endif
-      case('END_TIME')
-        call InputReadDouble(input,option,strata%end_time)
-        call InputErrorMsg(input,option,'end time','STRATA')
+      case('FINAL_TIME')
+        call InputReadDouble(input,option,strata%final_time)
+        call InputErrorMsg(input,option,'final time','STRATA')
         ! read units, if present
         call InputReadWord(input,option,word,PETSC_TRUE)
         if (input%ierr == 0) then
-          strata%end_time = strata%end_time * &
+          strata%final_time = strata%final_time * &
                               UnitsConvertToInternal(word,option)
         endif
       case('INACTIVE')
@@ -237,11 +237,11 @@ subroutine StrataRead(strata,input,option)
   enddo
   
   if ((Initialized(strata%start_time) .and. &
-       Uninitialized(strata%end_time)) .or. &
+       Uninitialized(strata%final_time)) .or. &
       (Uninitialized(strata%start_time) .and. &
-       Initialized(strata%end_time))) then
+       Initialized(strata%final_time))) then
     option%io_buffer = &
-      'Both START_TIME and END_TIME must be set for STRATA with region "' // &
+      'Both START_TIME and FINAL_TIME must be set for STRATA with region "' // &
       trim(strata%region_name) // '".'
     call printErrMsg(option)
   endif
@@ -293,7 +293,7 @@ function StrataWithinTimePeriod(strata,time)
   StrataWithinTimePeriod = PETSC_TRUE
   if (Initialized(strata%start_time)) then
     StrataWithinTimePeriod = (time >= strata%start_time - 1.d0 .and. &
-                              time < strata%end_time - 1.d0)
+                              time < strata%final_time - 1.d0)
   endif
   
 end function StrataWithinTimePeriod
@@ -319,7 +319,7 @@ function StrataEvolves(strata_list)
   strata => strata_list%first
   do 
     if (.not.associated(strata)) exit
-    if (Initialized(strata%start_time) .or. Initialized(strata%end_time)) then
+    if (Initialized(strata%start_time) .or. Initialized(strata%final_time)) then
       StrataEvolves = PETSC_TRUE
       exit
     endif

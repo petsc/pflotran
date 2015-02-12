@@ -1542,9 +1542,9 @@ subroutine RealizationAddWaypointsToList(realization)
       waypoint%sync = PETSC_TRUE
       call WaypointInsertInList(waypoint,realization%waypoint_list)
     endif
-    if (Initialized(cur_strata%end_time)) then
+    if (Initialized(cur_strata%final_time)) then
       waypoint => WaypointCreate()
-      waypoint%time = cur_strata%end_time
+      waypoint%time = cur_strata%final_time
       waypoint%sync = PETSC_TRUE
       call WaypointInsertInList(waypoint,realization%waypoint_list)
     endif
