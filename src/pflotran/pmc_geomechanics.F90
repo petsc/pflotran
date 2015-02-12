@@ -107,6 +107,8 @@ subroutine PMCGeomechanicsRunToTime(this,sync_time,stop_flag)
 
   local_stop_flag = 0
 
+  call SetOutputFlags(this)
+
   call this%timestepper%StepDT(this%pms,local_stop_flag)
 
   ! Have to loop over all process models coupled in this object and update

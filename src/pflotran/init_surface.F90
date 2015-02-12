@@ -156,22 +156,6 @@ subroutine InitSurfaceSetupSolvers(surf_realization,solver)
   call SolverCreateTS(solver,option%mycomm)
   call TSSetProblemType(solver%ts,TS_NONLINEAR, &
                         ierr);CHKERRQ(ierr)
-  select case(option%iflowmode)
-    case (RICHARDS_MODE)
-      call TSSetRHSFunction(solver%ts,PETSC_NULL_OBJECT, &
-                            SurfaceFlowRHSFunction, &
-                            surf_realization, &
-                            ierr);CHKERRQ(ierr)
-    case (TH_MODE)
-      call TSSetRHSFunction(solver%ts,PETSC_NULL_OBJECT, &
-                            SurfaceTHRHSFunction, &
-                            surf_realization, &
-                            ierr);CHKERRQ(ierr)
-      call TSSetIFunction(solver%ts,PETSC_NULL_OBJECT, &
-                          SurfaceTHIFunction, &
-                          surf_realization, &
-                          ierr);CHKERRQ(ierr)
-  end select
   call TSSetDuration(solver%ts,ONE_INTEGER, &
                       surf_realization%waypoint_list%last%time, &
                       ierr);CHKERRQ(ierr)

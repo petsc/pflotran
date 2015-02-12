@@ -2184,7 +2184,7 @@ subroutine RPF_TOUGH2_IRP7_Gas_RelPerm(this,liquid_saturation, &
   dkr_Se = UNINITIALIZED_DOUBLE
   
                  ! essentially zero
-  if (this%Srg < 1.d-40) then
+  if (this%Srg <= 0.d0) then
     call RPF_Mualem_VG_liq_RelPerm(this,liquid_saturation, &
                             liquid_relative_permeability, &
                             liquid_dkr_Se,option)
@@ -2192,21 +2192,16 @@ subroutine RPF_TOUGH2_IRP7_Gas_RelPerm(this,liquid_saturation, &
     return
   endif  
   
-  Se = (liquid_saturation - this%Sr) / (1.d0 - this%Sr - this%Srg)
-   
-  if (Se >= 1.d0) then
+  if ((1.d0 - liquid_saturation) <= this%Srg) then
     relative_permeability = 0.d0
-    return
-  else if (Se <=  0.d0) then
-    relative_permeability = 1.d0
-    return
+  else
+    Se = (liquid_saturation - this%Sr) / (1.d0 - this%Sr - this%Srg)
+    Seg = 1.d0 - Se
+    relative_permeability = Seg**2*(1.d0-Se*Se)
+    ! Mathematica Analytical solution (Heeho Park)
+    dkr_Se = -2.d0*Seg**2.d0*Se - 2.d0*Seg*(1.d0-Se**2.d0)
   endif
-  
-  Seg = 1.d0 - Se
-  relative_permeability = Seg*Seg*(1.d0-Se*Se)
-  ! Mathematica Analytical solution (Heeho Park)
-  dkr_Se = -2.d0*Seg**2.d0*Se - 2.d0*Seg*(1.d0-Se**2.d0)
-  
+    
 end subroutine RPF_TOUGH2_IRP7_Gas_RelPerm
 ! End RPF: Tough2 IRP7 w/ VG-Mualem (Gas)
 

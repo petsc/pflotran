@@ -6,11 +6,53 @@ The PFLOTRAN input file construction is based on keywords. Lines beginning with 
 
 Initial and boundary conditions and material properties are assigned to spatial regions using a novel {\em coupler} approach. In this approach, initial and boundary conditions (keyword CONDITION) are assigned to regions (keyword REGION) using keywords INITIAL\_CONDITION and BOUNDARY\_CONDITION. Material properties (keyword MATERIAL) are assigned to regions using the keyword STRATIGRAPHY.
 
+\subsection{Conventions and Notation} 
+
+Keywords are in boldface with optional modifying keywords in square brackets [\ldots], and user entries in typewriter font.
+Unless otherwise specified, units in the input file are assumed to be as listed in Table~\ref{tunits}.
+
+\begin{table}[h]\centering
+\caption{Units}\label{tunits}
+
+\vspace{3mm}
+
+%\rowcolors{row}{odd-row cyan}{even-row green}
+%\rowcolors[]{1}{red!20}{red!10}
+%\rowcolors[]{1}{blue!20}{blue!10}
+\rowcolors[]{1}{teal!20}{teal!10}
+%\rowcolors{1}{}{lightgray}
+%\rowcolors{1}{}{teal}
+\begin{tabular}{ll}
+\toprule[2pt]
+%\hline
+%Quantity & \multicolumn{1}{c}{Units}\\
+Quantity & \multicolumn{1}{c}{Units}\\
+\midrule[1pt]
+%\hline
+Pressure: & Pascal [Pa] (absolute)\\
+%\rowcolor[rgb]{0.5}
+Temperature: & Celcius [C]\\
+Distance: & meter [m]\\
+Volume: & meter$^3$ [m$^3$]\\
+Time: & second [s]\\
+Velocity: & meter/second [m/s]\\
+Concentration: & molarity [M] or molality [m] (see MOLAL keyword)\\
+Enthalpy: & kiloJoule/mole [kJ/mol]\\
+Mass: & kilogram [kg]\\
+Rate: & kilogram/second [kg/s] or cubic meter/second [m$^3$/s]\\
+Surface Site Density: & mole/meter$^{3}$ [mol/m$^{3}$]\\
+\bottomrule[1.5pt]
+%\hline
+\end{tabular}
+\end{table}
+
 \subsection{Input Deck Specification}
 
 \protect\hypertarget{target_simulation}{}
 
-PFLOTRAN input files are divided into blocks based on the process models employed. Process models are defined within the SIMULATION block which for convenience should be located at the top of the input file (but this is not required). Keywords within the SIMULATION block include:
+PFLOTRAN input files are divided into blocks based on the process models employed. Process models are defined within the SIMULATION block which for convenience should be located at the top of the input file (but this is not required). 
+Keywords for subsurface processes are listed in Table~\ref{flkeywd}. At present  manual pages and keywords for surface processes is still under development.
+Keywords within the SIMULATION block include:
 \begin{description}
 \item {\bf SIMULATION}
 \begin{description}
@@ -60,6 +102,7 @@ PFLOTRAN input files are divided into blocks based on the process models employe
 \begin{mdframed}
 
 {\bf Example:}
+\small
 \begin{verbatim}
 SIMULATION
   SIMULATION_TYPE SUBSURFACE
@@ -77,13 +120,96 @@ SUBSURFACE
 ...
 END_SUBSURFACE
 \end{verbatim}
+normalsize
 \end{mdframed}
 
-Keywords for subsurface processes are listed in Table~\ref{flkeywd}. At present  manual pages and keywords for surface processes is still under development.
+\newpage
+\subsubsection{Keyword: SUBSURFACE\_FLOW}
+\begin{description}
+\item {\bf SUBSURFACE\_FLOW} Block
+
+\begin{description}
+\item Required Cards
+\item MODE <string>: Specifies the flow mode to be employed. 
+%Follow the links below for a description of each flow mode's options.
+\end{description}
+
+\item Water Modes
+
+\begin{description}
+\item {\bf RICHARDS}: single-phase variably-saturated flow
+\item {\bf GENERAL}: two-phase air-water-energy
+\item {\bf TH}: variably saturated flow and energy (and optional ice phase)
+\end{description}
+
+\item CO$_2$ Related Modes
+
+\begin{description}
+\item {\bf MPHASE}: two-phase supercritical CO$_2$-water-energy
+\item {\bf IMMISCIBLE}: immiscible two-phase CO$_2$-water-energy
+\item {\bf MISCIBLE}: miscible H$_2$O-glycol
+\item {\bf FLASH2}: two-phase supercritical CO$_2$-water-energy
+\end{description}
+
+\item Optional Cards
+\item OPTIONS: MODE-dependent block for defining options for each flow process model.
+
+\end{description}
+
+\small
+\begin{mdframed}
+{\bf Example:}
+\begin{verbatim}
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE GENERAL
+      OPTIONS
+        ISOTHERMAL
+        TWO_PHASE_ENERGY_DOF TEMPERATURE
+        GAS_COMPONENT_FORMULA_WEIGHT 2.01588D0
+        MAXIMUM_PRESSURE_CHANGE 1.0D6
+      /
+    /
+  /
+END
+\end{verbatim}
+\end{mdframed}
+\normalsize
+
+\subsubsection{Keyword: SUBSURFACE\_TRANSPORT}
+
+\begin{description}
+\item {\bf SUBSURFACE\_TRANSPORT} Block
+\begin{description}
+\item Optional Cards
+\item GLOBAL\_IMPLICIT
+Specifies fully implicit coupling of transport and reaction.
+\item OPERATOR\_SPLITTING (not currently implemented)
+\end{description}
+\end{description}
+
+\small
+\begin{mdframed}
+{\bf Example:}
+\begin{verbatim}
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+\end{verbatim}
+\end{mdframed}
+\normalsize
 
 \newpage
+\subsection{Links to Subsurface Keywords}
 \begin{longtable}{ll}%[h]%\centering
-\caption{{\bf SUBSURFACE} Keywords in alphabetical order.}\label{flkeywd}\\
+\caption{{\bf SUBSURFACE} Keywords listed in alphabetical order.}\label{flkeywd}\\
 
 %\vspace{4mm}
 
@@ -147,46 +273,6 @@ Keywords for subsurface processes are listed in Table~\ref{flkeywd}. At present 
 %\end{tabular}
 \end{longtable}
 
-
-\subsection{Conventions and Notation} 
-
-Keywords are in boldface with optional modifying keywords in square brackets [\ldots], and user entries in typewriter font.
-Unless otherwise specified, units in the input file are assumed to be as listed in Table~\ref{tunits}.
-
-\begin{table}[h]\centering
-\caption{Units}\label{tunits}
-
-\vspace{3mm}
-
-%\rowcolors{row}{odd-row cyan}{even-row green}
-%\rowcolors[]{1}{red!20}{red!10}
-%\rowcolors[]{1}{blue!20}{blue!10}
-\rowcolors[]{1}{teal!20}{teal!10}
-%\rowcolors{1}{}{lightgray}
-%\rowcolors{1}{}{teal}
-\begin{tabular}{ll}
-\toprule[2pt]
-%\hline
-%Quantity & \multicolumn{1}{c}{Units}\\
-Quantity & \multicolumn{1}{c}{Units}\\
-\midrule[1pt]
-%\hline
-Pressure: & Pascal [Pa] (absolute)\\
-%\rowcolor[rgb]{0.5}
-Temperature: & Celcius [C]\\
-Distance: & meter [m]\\
-Volume: & meter$^3$ [m$^3$]\\
-Time: & second [s]\\
-Velocity: & meter/second [m/s]\\
-Concentration: & molarity [M] or molality [m] (see MOLAL keyword)\\
-Enthalpy: & kiloJoule/mole [kJ/mol]\\
-Mass: & kilogram [kg]\\
-Rate: & kilogram/second [kg/s] or cubic meter/second [m$^3$/s]\\
-Surface Site Density: & mole/meter$^{3}$ [mol/m$^{3}$]\\
-\bottomrule[1.5pt]
-%\hline
-\end{tabular}
-\end{table}
 
 \begin{comment}
 \begin{verbatim}
@@ -2843,12 +2929,30 @@ MAX_CHANGE 5.d4    5.  0.02   0.05
 %\end{center}
 
 \begin{mdframed}
-
-\noindent{\bf Example:}
+\noindent{\bf Examples:}
+\small
 \begin{verbatim}
-MODE TH
+...
+PROCESS_MODELS
+  SUBSURFACE_FLOW flow
+    MODE RICHARDS
+  /
+/
+...
+\end{verbatim}
+
+\begin{verbatim}
+...
+PROCESS_MODELS
+  SUBSURFACE_FLOW flow
+    MODE TH
+  /
+/
+...
+
 \end{verbatim}
 \end{mdframed}
+\normalsize
 
 \hyperlink{target_key}{\return}
 
