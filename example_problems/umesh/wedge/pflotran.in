@@ -1,7 +1,17 @@
 #Description: 3D toy problem for richards equation
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+  /
+END
+
+SUBSURFACE
+
 #=========================== flow mode ========================================
-MODE RICHARDS
 
 #=========================== chemistry ========================================
 skip
@@ -97,7 +107,7 @@ COORDINATES
 0.d0 0.d0 0.d0
 60.d0 46.d0 60.d0
 /
-END 
+END
 
 
 REGION West
@@ -150,9 +160,9 @@ TRANSPORT_CONDITION initial_c
 TYPE zero_gradient
 CONSTRAINT initial
 CONCENTRATIONS
-river_c 1.d-6 
-groundwater_c 1.d0 
-plume_c 1.d-6 
+river_c 1.d-6
+groundwater_c 1.d0
+plume_c 1.d-6
 END
 END
 END
@@ -162,7 +172,7 @@ noskip
 skip
 CONSTRAINT west
 CONCENTRATIONS
-river_c 1.d-6 
+river_c 1.d-6
 groundwater_c 1.d-6
 plume_c 1.d0
 END
@@ -193,8 +203,9 @@ END
 
 #=========================== stratigraphy couplers ============================
 STRATA
-REGION all 
+REGION all
 MATERIAL soil1
 END
 
 HDF5_READ_GROUP_SIZE 1
+END_SUBSURFACE

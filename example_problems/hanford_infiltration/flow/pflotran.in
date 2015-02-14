@@ -1,5 +1,16 @@
 #Description: 3D infiltration problem for Markus Flury
- 
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+  /
+END
+
+SUBSURFACE
+
 # == debugging ================================================================
 DEBUG
 #MATVIEW_JACOBIAN
@@ -8,7 +19,6 @@ DEBUG
 /
 
 # == mode =====================================================================
-MODE RICHARDS
 
 # == chemistry ================================================================
 skip
@@ -421,3 +431,4 @@ MATERIAL Rwi
 REGION Rwi
 /
 
+END_SUBSURFACE

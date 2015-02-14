@@ -1,7 +1,17 @@
 #Description: 3D groundwater flow and solute transport
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+  /
+END
+
+SUBSURFACE
+
 #=========================== flow mode ========================================
-MODE RICHARDS
 #CHECKPOINT 1000000
 #RESTART restart.chk
 
@@ -159,14 +169,14 @@ REGION top
 END
 
 REGION injection_well
-  COORDINATES 
+  COORDINATES
     1250.d0 1250.d0 20.d0
     1250.d0 1250.d0 65.d0
   /
 END
 
 REGION extraction_well
-  COORDINATES 
+  COORDINATES
     3750.d0 1250.d0 20.d0
     3750.d0 1250.d0 55.d0
   /
@@ -198,31 +208,31 @@ OBSERVATION
   AT_CELL_CENTER
   VELOCITY
 END
- 
+
 OBSERVATION
   REGION Obs_pt_west
   AT_CELL_CENTER
   VELOCITY
 END
- 
+
 OBSERVATION
   REGION Obs_pt_east
   AT_CELL_CENTER
   VELOCITY
 END
- 
+
 OBSERVATION
   REGION Obs_pt_south
   AT_CELL_CENTER
   VELOCITY
 END
- 
+
 OBSERVATION
   REGION Obs_pt_north
   AT_CELL_CENTER
   VELOCITY
 END
- 
+
 #=========================== flow conditions ==================================
 FLOW_CONDITION initial
   TYPE
@@ -322,3 +332,4 @@ STRATA
   MATERIAL soil4
 END
 
+END_SUBSURFACE

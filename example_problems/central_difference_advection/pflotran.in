@@ -1,6 +1,17 @@
 #Description: 1D test problem for tracer transport with central difference
 #             approximation for advection
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
 #=========================== flow mode ========================================
 # Uniform velocity (see below). No flow mode specified.
 
@@ -112,7 +123,7 @@ REGION middle
 END
 
 #=========================== observation points ===============================
-OBSERVATION 
+OBSERVATION
   REGION east
 #  VELOCITY
 /
@@ -122,8 +133,8 @@ TRANSPORT_CONDITION solute
   TYPE dirichlet
   CONSTRAINT_LIST
     0.d0 solute           ! at 0 years, start solute
-    1576800000.d0 initial ! at 50 years, end solute 
-    15768000000.d0 solute ! at 500 years, restart solute 
+    1576800000.d0 initial ! at 50 years, end solute
+    15768000000.d0 solute ! at 500 years, restart solute
   /
 END
 
@@ -179,3 +190,4 @@ STRATA
   MATERIAL soil1
 END
 
+END_SUBSURFACE

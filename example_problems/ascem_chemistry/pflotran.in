@@ -1,5 +1,16 @@
 #Description: 3D test problem for diffusion of tracer and reaction of calcite in a cubic domain
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
 #=========================== chemistry ========================================
 CHEMISTRY
 PRIMARY_SPECIES
@@ -322,7 +333,7 @@ CaUO4
 /
 MINERAL_KINETICS
 Calcite
-RATE_CONSTANT 1.e-8 
+RATE_CONSTANT 1.e-8
 /
 /
 #DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/savannah_river.dat
@@ -333,7 +344,7 @@ LOG_FORMULATION
 MOLAL
 /
 #=========================== solver options ===================================
-TIMESTEPPER
+TIMESTEPPER FLOW
 TS_ACCELERATION 8
 MAX_STEPS -1
 /
@@ -363,13 +374,13 @@ TYPE structured
 ORIGIN 0.d0 0.d0 0.d0
 NXYZ 32 32 32
 BOUNDS
-0.d0 0.d0 0.d0 
+0.d0 0.d0 0.d0
 1.d0 1.d0 1.d0
 /
 END
 
 #=========================== fluid properties =================================
-FLUID_PROPERTY 
+FLUID_PROPERTY
 DIFFUSION_COEFFICIENT 1.d-9
 /
 
@@ -630,3 +641,4 @@ REGION bottom_layer
 MATERIAL soil1
 END
 
+END_SUBSURFACE

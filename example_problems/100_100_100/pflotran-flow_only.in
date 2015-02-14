@@ -1,11 +1,21 @@
-#Description: This example is identical to the 100_100_100 1D test problem for 
+#Description: This example is identical to the 100_100_100 1D test problem for
 #             tracer transport, but runs the flow problem ONLY.
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+  /
+END
+
+SUBSURFACE
+
 #=========================== flow mode ========================================
-MODE RICHARDS
 
 #=========================== solver options ===================================
-TIMESTEPPER
+TIMESTEPPER FLOW
   TS_ACCELERATION 8
 /
 
@@ -40,7 +50,7 @@ GRID
 END
 
 #=========================== fluid properties =================================
-FLUID_PROPERTY 
+FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 /
 
@@ -240,3 +250,4 @@ STRATA
   MATERIAL soil1
 END
 
+END_SUBSURFACE

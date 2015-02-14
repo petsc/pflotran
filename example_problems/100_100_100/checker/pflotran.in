@@ -1,7 +1,17 @@
 #Description: 1D test problem for tracer transport
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+  /
+END
+
+SUBSURFACE
+
 #=========================== flow mode ========================================
-MODE RICHARDS
 
 #=========================== chemistry ========================================
 skip
@@ -13,7 +23,7 @@ Tracer
 noskip
 
 #=========================== solver options ===================================
-TIMESTEPPER
+TIMESTEPPER FLOW
 TS_ACCELERATION 8
 /
 
@@ -68,7 +78,7 @@ BOUNDS
 END
 
 #=========================== fluid properties =================================
-FLUID_PROPERTY 
+FLUID_PROPERTY
 DIFFUSION_COEFFICIENT 1.d-9
 /
 
@@ -657,7 +667,7 @@ TYPE
 PRESSURE hydrostatic
 /
 DATUM 0.d0 0.d0 100.d0
-PRESSURE 101325.d0 
+PRESSURE 101325.d0
 /
 
 FLOW_CONDITION atmospheric
@@ -665,7 +675,7 @@ TYPE
 PRESSURE dirichlet
 /
 DATUM 0.d0 0.d0 0.d0
-PRESSURE 101325.d0 
+PRESSURE 101325.d0
 /
 
 FLOW_CONDITION variable
@@ -673,7 +683,7 @@ TYPE
 PRESSURE dirichlet
 /
 DATUM 0.d0 0.d0 90.d0
-PRESSURE 101325.d0 
+PRESSURE 101325.d0
 /
 
 FLOW_CONDITION recharge
@@ -1110,3 +1120,4 @@ REGION region_4_4_4
 MATERIAL soil2
 END
 
+END_SUBSURFACE

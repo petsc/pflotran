@@ -1,8 +1,21 @@
-#Description: 3D test problem for unstructured richards equation with mixed 
+#Description: 3D test problem for unstructured richards equation with mixed
 #             elements
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
 #=========================== flow mode ========================================
-MODE RICHARDS
 
 #=========================== chemistry ========================================
 CHEMISTRY
@@ -14,7 +27,7 @@ CHEMISTRY
 END
 
 #=========================== solver options ===================================
-TIMESTEPPER
+TIMESTEPPER FLOW
 END
 
 #=========================== discretization ===================================
@@ -81,30 +94,30 @@ REFERENCE_PRESSURE 101325.
 REGION all
   FILE  mixed.h5
   GRID unstructured
-END 
+END
 
 REGION top
   FILE  mixed.h5
   GRID unstructured
-END 
+END
 
 REGION south
   FILE  mixed.h5
   GRID unstructured
-END 
+END
 
 REGION east
   FILE  mixed.h5
   GRID unstructured
-END 
+END
 
 REGION center_of_13
   COORDINATE 1.25d0 2.91667 1.25d0
-END 
+END
 
 REGION middle
   COORDINATE 2.50001d0 2.50001d0 2.50001d0
-END 
+END
 
 #=========================== observation points ===============================
 OBSERVATION
@@ -230,3 +243,4 @@ END
 STRATA
 MATERIAL mixed.h5
 END
+END_SUBSURFACE
