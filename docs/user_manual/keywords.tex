@@ -3688,26 +3688,33 @@ END
 
 Couples material IDs and/or properties with a region in the problem domain.
 
-%\shadowbox{
-%\begin{minipage}{6.5in}
 \begin{deflist}{00}
 \item[STRATIGRAPHY (STRATA)] ~
 \begin{deflist}{000}
 \item[MATERIAL] <string> \ name of the material property to be associated with a region
 \item[REGION] <string> \ name of region associated with a material property
-%\item  INACTIVE
+
+\item[Optional Cards:]~
+\begin{deflist}{00}
+\item[START\_TIME] <float> <string>
+Start time when STRATA card is relevant. The string specifies units. This keyword allows for changes in a material property at a given point in time (e.g. due to human intrusion).
+\item[END\_TIME] <float> <string>
+End time when STRATA card is relevant. The string specifies units.
+\item[INACTIVE]
+Inactivates all cells in the associated REGION.
+\end{deflist}
 \end{deflist}
 \item[\keyend]
 \end{deflist}
-%\end{minipage}
-%}
 
 \noindent
 Note: a filename can be provided instead of a material property name from which material IDs are read on a cell by cell basis. In this case there is no need for the {\tt REGION} keyword.
 
+\begin{mdframed}
+\small
+
 \noindent {\bf Examples:}
 
-\begin{mdframed}
 \noindent
 Assign {\tt hanford\_unit} material properties to the region {\tt source\_zone}
 
@@ -3730,17 +3737,60 @@ STRATA
 \noindent For a detailed example on creating the .h5 file see the PFLOTRAN wiki: \href{https://bitbucket.org/pflotran/pflotran-dev/wiki/Documentation/Strata}{Strata}.
 \end{mdframed}
 
+\normalsize
+
+\small
+
+\begin{mdframed}
+\noindent
+{\bf Evolving strata:}
+\begin{verbatim}
+MATERIAL_PROPERTY soil1
+  ID 1
+  ...
+  PERMEABILITY
+    PERM_ISO 1.d-12
+  /
+  ...
+END
+
+MATERIAL_PROPERTY soil2
+  ID 2
+  ...
+  PERMEABILITY
+    PERM_ISO 5.d-13
+  /
+  ...
+END
+
+STRATA
+  REGION all
+  MATERIAL soil1
+  START_TIME 0.d0 y
+  END_TIME 25.d0 y
+END
+
+STRATA
+  REGION all
+  MATERIAL soil2
+  START_TIME 25.d0 y
+  END_TIME 50.d0 y
+END
+\end{verbatim}
+\end{mdframed}
+\normalsize
+
 \hyperlink{target_key}{\return}
 
 %========================================================================
 
 \newpage
 \protect\hypertarget{target_time}{}
+\subsection{Keyword: TIME}
 
 \noindent {\bf Description:} the keyword {\bf TIME} controls the simulation time.
 
 \noindent {\bf Input:}
-\subsection{Keyword: TIME}
 \begin{deflist}{000}
 \item[TIME] ~
 \begin{deflist}{000}
