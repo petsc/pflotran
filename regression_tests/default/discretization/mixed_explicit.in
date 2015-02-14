@@ -57,7 +57,7 @@ MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.25d0
   TORTUOSITY 0.5d0
-  SATURATION_FUNCTION default
+  CHARACTERISTIC_CURVES default
   PERMEABILITY
     PERM_X 1.d-12
     PERM_Y 1.d-12
@@ -65,12 +65,18 @@ MATERIAL_PROPERTY soil1
   /
 END
 
-#=========================== saturation functions =============================
-SATURATION_FUNCTION default
-  SATURATION_FUNCTION_TYPE BROOKS_COREY
-  RESIDUAL_SATURATION 0.1d0
-  LAMBDA 0.3d0
-  ALPHA 1.d-4
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES default
+  SATURATION_FUNCTION BROOKS_COREY
+    ALPHA 1.d-4
+    LAMBDA 0.3d0
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+    SMOOTH
+  /
+  PERMEABILITY_FUNCTION MUALEM_BC_LIQ
+    LAMBDA 0.3d0
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+  /
 END
 
 #=========================== output options ===================================

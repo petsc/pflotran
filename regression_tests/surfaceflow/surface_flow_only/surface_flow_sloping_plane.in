@@ -43,7 +43,7 @@ MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.40d0
   TORTUOSITY 0.5d0
-  SATURATION_FUNCTION sf1
+  CHARACTERISTIC_CURVES sf1
   PERMEABILITY
     PERM_X 1.171d-13
     PERM_Y 1.171d-13
@@ -51,13 +51,18 @@ MATERIAL_PROPERTY soil1
   /
 END
 
-#=========================== saturation functions =============================
-SATURATION_FUNCTION sf1
-  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-  RESIDUAL_SATURATION 0.2d0
-  LAMBDA 0.5d0
-  ALPHA 1.0194d-04
-  MAX_CAPILLARY_PRESSURE 1.d8
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES sf1
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    LIQUID_RESIDUAL_SATURATION 0.2d0
+    M 0.5d0
+    ALPHA 1.0194d-04
+    MAX_CAPILLARY_PRESSURE 1.d8
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    LIQUID_RESIDUAL_SATURATION 0.2d0
+    M 0.5d0
+  /
 END
 
 #=========================== times ============================================

@@ -72,11 +72,12 @@ MATERIAL_PROPERTY soil2
   PERMEABILITY
     PERM_ISO 5.d-13
   /
-  SATURATION_FUNCTION default
+  CHARACTERISTIC_CURVES default
 END
 
-#=========================== saturation functions =============================
-SATURATION_FUNCTION default
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES default
+  DEFAULT
 END
 
 #=========================== output options ===================================

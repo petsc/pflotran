@@ -101,11 +101,12 @@ MATERIAL_PROPERTY soil1
   PERMEABILITY_POWER 0.9d0
   PERMEABILITY_CRITICAL_POROSITY 0.1d0
   PERMEABILITY_MIN_SCALE_FACTOR 1.d-2
-  SATURATION_FUNCTION default
+  CHARACTERISTIC_CURVES default
 END
 
-#=========================== saturation functions =============================
-SATURATION_FUNCTION default
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES default
+  DEFAULT
 END
 
 #=========================== output options ===================================

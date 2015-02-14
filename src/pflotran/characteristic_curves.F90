@@ -30,6 +30,13 @@ module Characteristic_Curves_module
     procedure, public :: CapillaryPressure => SFBaseCapillaryPressure
     procedure, public :: Saturation => SFBaseSaturation
   end type sat_func_base_type
+  ! Default
+  type, public, extends(sat_func_base_type) :: sat_func_default_type
+  contains
+    procedure, public :: Verify => SFDefaultVerify
+    procedure, public :: CapillaryPressure => SFDefaultCapillaryPressure
+    procedure, public :: Saturation => SFDefaultSaturation
+  end type sat_func_default_type  
   type, public, extends(sat_func_base_type) :: sat_func_VG_type
     PetscReal :: alpha
     PetscReal :: m
@@ -69,7 +76,14 @@ module Characteristic_Curves_module
     procedure, public :: Test => RPF_Base_Test
     procedure, public :: SetupPolynomials => RPFBaseSetupPolynomials
     procedure, public :: RelativePermeability => RPF_Base_RelPerm
+    procedure, public :: DRelPerm_DPressure => RPFBaseDRelPerm_DPressure
   end type rel_perm_func_base_type
+  ! Default
+  type, public, extends(rel_perm_func_base_type) :: rel_perm_func_default_type
+  contains
+    procedure, public :: Verify => RPFDefaultVerify
+    procedure, public :: RelativePermeability => RPF_DefaultRelPerm
+  end type rel_perm_func_default_type
   ! Mualem-VG
   type, public, extends(rel_perm_func_base_type) :: rpf_Mualem_VG_liq_type
     PetscReal :: m
@@ -371,6 +385,10 @@ subroutine CharacteristicCurvesRead(this,input,option)
         end select
       case('TEST') 
         this%test = PETSC_TRUE
+      case('DEFAULT')
+        this%saturation_function => SF_Default_Create()
+        this%liq_rel_perm_function => RPF_Default_Create()
+        this%gas_rel_perm_function => this%liq_rel_perm_function
       case default
         call InputKeywordUnrecognized(keyword,'charateristic_curves',option)
     end select 
@@ -1226,6 +1244,20 @@ end subroutine RPF_Base_RelPerm
 
 ! ************************************************************************** !
 
+PetscReal function RPFBaseDRelPerm_DPressure(this,ds_dp,dkr_dSe)
+
+  implicit none
+  
+  class(rel_perm_func_base_type) :: this
+  PetscReal, intent(in) :: ds_dp
+  PetscReal, intent(in) :: dkr_dSe
+
+  RPFBaseDRelPerm_DPressure = ds_dp/(1.d0-this%Sr)*dkr_dSe
+  
+end function RPFBaseDRelPerm_DPressure
+
+! ************************************************************************** !
+
 subroutine RPF_Base_Test(this,cc_name,phase,option)
 
   use Option_module
@@ -1259,6 +1291,139 @@ subroutine RPF_Base_Test(this,cc_name,phase,option)
 
 end subroutine RPF_Base_Test
 ! End Base Routines
+
+! ************************************************************************** !
+
+! Begin SF: Default
+function SF_Default_Create()
+
+  ! Creates the default saturation function object
+
+  implicit none
+  
+  class(sat_func_default_type), pointer :: SF_Default_Create
+  
+  allocate(SF_Default_Create)
+  call SFBaseInit(SF_Default_Create)
+  SF_Default_Create%Sr = 0.d0
+  
+end function SF_Default_Create
+
+! ************************************************************************** !
+
+subroutine SFDefaultVerify(this,name,option)
+
+  use Option_module
+  
+  implicit none
+  
+  class(sat_func_default_type) :: this  
+  character(len=MAXSTRINGLENGTH) :: name
+  type(option_type) :: option  
+
+  option%io_buffer = 'A default Saturation Function has been chosen in ' // &
+    trim(name) // '.'
+  call printWrnMsg(option)
+  
+end subroutine SFDefaultVerify
+
+! ************************************************************************** !
+
+subroutine SFDefaultCapillaryPressure(this,liquid_saturation, &
+                                      capillary_pressure,option)
+  use Option_module
+  
+  implicit none
+  
+  class(sat_func_default_type) :: this
+  PetscReal, intent(in) :: liquid_saturation
+  PetscReal, intent(out) :: capillary_pressure
+  type(option_type), intent(inout) :: option
+  
+  option%io_buffer = 'SFDefaultCapillaryPressure is a dummy routine used ' // &
+    'for saturated flow only.  The user must specify a valid ' // &
+    'SATURATION_FUNCTION.'
+  call printErrMsg(option)
+  
+end subroutine SFDefaultCapillaryPressure
+
+! ************************************************************************** !
+
+subroutine SFDefaultSaturation(this,capillary_pressure,liquid_saturation, &
+                               dsat_pres,option)
+  use Option_module
+
+  implicit none
+  
+  class(sat_func_default_type) :: this
+  PetscReal, intent(in) :: capillary_pressure
+  PetscReal, intent(out) :: liquid_saturation
+  PetscReal, intent(out) :: dsat_pres
+  type(option_type), intent(inout) :: option
+  
+  option%io_buffer = 'SFDefaultSaturation is a dummy routine used ' // &
+    'for saturated flow only.  The user must specify a valid ' // &
+    'SATURATION_FUNCTION.'
+  call printErrMsg(option)
+  
+end subroutine SFDefaultSaturation
+
+! ************************************************************************** !
+
+function RPF_Default_Create()
+
+  ! Creates the default relative permeability function object
+
+  implicit none
+  
+  class(rel_perm_func_default_type), pointer :: RPF_Default_Create
+  
+  allocate(RPF_Default_Create)
+  call RPFBaseInit(RPF_Default_Create)
+  RPF_Default_Create%Sr = 0.d0
+  
+end function RPF_Default_Create
+
+! ************************************************************************** !
+
+subroutine RPFDefaultVerify(this,name,option)
+
+  use Option_module
+  
+  implicit none
+  
+  class(rel_perm_func_default_type) :: this  
+  character(len=MAXSTRINGLENGTH) :: name
+  type(option_type) :: option  
+
+  option%io_buffer = 'A default Relative Permeability Function has been ' // &
+    'chosen in ' // trim(name) // '.'
+  call printWrnMsg(option)
+
+end subroutine RPFDefaultVerify
+
+! ************************************************************************** !
+
+subroutine RPF_DefaultRelPerm(this,liquid_saturation,relative_permeability, &
+                            dkr_Se,option)
+  use Option_module
+
+  implicit none
+  
+  class(rel_perm_func_default_type) :: this
+  PetscReal, intent(in) :: liquid_saturation
+  PetscReal, intent(out) :: relative_permeability
+  PetscReal, intent(out) :: dkr_Se
+  type(option_type), intent(inout) :: option
+  
+  option%io_buffer = 'RPF_Default_RelPerm must be extended.'
+  option%io_buffer = 'RPF_Default_RelPerm is a dummy routine used ' // &
+    'for saturated flow only.  The user must specify a valid ' // &
+    'PERMEABILITY_FUNCTION.'
+  call printErrMsg(option)
+  
+end subroutine RPF_DefaultRelPerm
+! End Default Routines
 
 ! ************************************************************************** !
 

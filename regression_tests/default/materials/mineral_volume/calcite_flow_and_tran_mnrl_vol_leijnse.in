@@ -100,11 +100,12 @@ MATERIAL_PROPERTY soil1
   PERMEABILITY
     PERM_ISO 1.d-12
   /
-  SATURATION_FUNCTION default
+  CHARACTERISTIC_CURVES default
 END
 
-#=========================== saturation functions =============================
-SATURATION_FUNCTION default
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES default
+  DEFAULT
 END
 
 #=========================== output options ===================================

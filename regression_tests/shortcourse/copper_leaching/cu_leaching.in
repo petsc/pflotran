@@ -188,11 +188,12 @@ MATERIAL_PROPERTY oxide-ore
   PERMEABILITY
     PERM_ISO 1.5d-13
   /
-  SATURATION_FUNCTION default
+  CHARACTERISTIC_CURVES default
 END
 
-#=========================== saturation functions =============================
-SATURATION_FUNCTION default
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES default
+  DEFAULT
 END
 
 #=========================== output options ===================================

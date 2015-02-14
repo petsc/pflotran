@@ -83,7 +83,7 @@ END
 MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.5d0
-  SATURATION_FUNCTION default
+  CHARACTERISTIC_CURVES default
   PERMEABILITY
     PERM_X 1.d-15
     PERM_Y 1.d-15
@@ -96,12 +96,17 @@ MATERIAL_PROPERTY soil1
   /
 END
 
-#========================= saturation functions ===============================
-SATURATION_FUNCTION default
-  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-  RESIDUAL_SATURATION 0.5d-1
-  LAMBDA 0.75
-  ALPHA 1.d-3
+#=========================== characteristic curves =============================
+CHARACTERISTIC_CURVES default
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    M 0.75
+    ALPHA  1.d-3
+    LIQUID_RESIDUAL_SATURATION 0.5d-1
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.75
+    LIQUID_RESIDUAL_SATURATION 0.5d-1
+  /
 END
 
 #========================= output options =====================================
