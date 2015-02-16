@@ -10,6 +10,9 @@ include ${PETSC_DIR}/conf/variables
 include ${PETSC_DIR}/conf/rules
 
 MYFLAGS = -I.
+ifndef legacy_saturation_function
+  MYFLAGS += ${FC_DEFINE_FLAG}REFACTOR_CHARACTERISTIC_CURVES
+endif
 
 # if compiling pflotran_rxn or libpflotranchem.a, need to toggle 
 # PFLOTRAN_RXN_FLAG 
@@ -24,7 +27,6 @@ endif
 ifdef glenn
 #  MYFLAGS += ${FC_DEFINE_FLAG}XINGYUAN_BC
 #  MYFLAGS += ${FC_DEFINE_FLAG}BROADCAST_DATASET
-  MYFLAGS += ${FC_DEFINE_FLAG}REFACTOR_CHARACTERISTIC_CURVES
 endif
 
 ifdef ye_flux
