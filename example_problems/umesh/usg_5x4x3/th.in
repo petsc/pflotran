@@ -1,7 +1,17 @@
 #Description: 3D toy problem for richards equation
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE TH
+    /
+  /
+END
+
+SUBSURFACE
+
 #=========================== flow mode ========================================
-MODE TH NO_FREEZING
 
 #=========================== discretization ===================================
 GRID
@@ -24,7 +34,7 @@ MATERIAL_PROPERTY soil1
   THERMAL_CONDUCTIVITY_DRY 0.5
   THERMAL_CONDUCTIVITY_WET 0.5
   LONGITUDINAL_DISPERSIVITY 3.1536d0
-  PERMEABILITY 
+  PERMEABILITY
     PERM_X 1.d-12
     PERM_Y 1.d-12
     PERM_Z 1.d-12
@@ -47,7 +57,7 @@ OUTPUT
   ENERGY_FLOWRATE
   AVERAGE_MASS_FLOWRATE
   FORMAT HDF5
-  AVERAGE_VARIABLES 
+  AVERAGE_VARIABLES
   	LIQUID_SATURATION
   END
   PERIODIC TIME 1 s
@@ -66,37 +76,37 @@ REFERENCE_PRESSURE 101325.
 REGION All
   FILE hdf5/usg_5x4x3.h5
   GRID unstructured
-END 
+END
 
 REGION Top_sidesets
   FILE hdf5/usg_5x4x3.h5
   GRID unstructured
-END 
+END
 
 REGION Bottom_sidesets
   FILE hdf5/usg_5x4x3.h5
   GRID unstructured
-END 
+END
 
 REGION North_sidesets
   FILE hdf5/usg_5x4x3.h5
   GRID unstructured
-END 
+END
 
 REGION South_sidesets
   FILE hdf5/usg_5x4x3.h5
   GRID unstructured
-END 
+END
 
 REGION East_sidesets
   FILE hdf5/usg_5x4x3.h5
   GRID unstructured
-END 
+END
 
 REGION West_sidesets
   FILE hdf5/usg_5x4x3.h5
   GRID unstructured
-END 
+END
 
 #=========================== flow conditions ==================================
 FLOW_CONDITION initial
@@ -133,8 +143,9 @@ END
 
 #=========================== stratigraphy couplers ============================
 STRATA
-  REGION All 
+  REGION All
   MATERIAL soil1
 END
 
 HDF5_READ_GROUP_SIZE 1
+END_SUBSURFACE

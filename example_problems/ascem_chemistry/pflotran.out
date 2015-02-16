@@ -1,4 +1,3 @@
- PFLOTRAN Header
 
  ! ************************************************************************** !
 
@@ -5798,10 +5797,6 @@
      0  Ion Exchange Cations
 --------------------------------------------------------------------------------
 
- Requested processors and decomposition =     1, npx,y,z=   -1  -1  -1
- Actual decomposition: npx,y,z=    1   1   1
-
-
 =+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
 
   Initial Condition
@@ -5829,7 +5824,7 @@
  mass fraction H2O:   9.9783E-01    [---]
   ----------------------------------------------------------------------------
 
-                        free        total
+  primary               free        total
   species               molal       molal       act coef     constraint
   ----------------------------------------------------------------------------
   Na+                   3.4294E-02  3.4363E-02  1.0000E+00    total aq
@@ -6324,7 +6319,7 @@
  mass fraction H2O:   9.9757E-01    [---]
   ----------------------------------------------------------------------------
 
-                        free        total
+  primary               free        total
   species               molal       molal       act coef     constraint
   ----------------------------------------------------------------------------
   Na+                   3.4294E-02  3.4363E-02  1.0000E+00    total aq
@@ -6818,7 +6813,7 @@
  mass fraction H2O:   9.9783E-01    [---]
   ----------------------------------------------------------------------------
 
-                        free        total
+  primary               free        total
   species               molal       molal       act coef     constraint
   ----------------------------------------------------------------------------
   Na+                   3.4294E-02  3.4363E-02  1.0000E+00    total aq
@@ -7313,7 +7308,7 @@
  mass fraction H2O:   9.9783E-01    [---]
   ----------------------------------------------------------------------------
 
-                        free        total
+  primary               free        total
   species               molal       molal       act coef     constraint
   ----------------------------------------------------------------------------
   Na+                   3.4294E-02  3.4363E-02  1.0000E+00    total aq
@@ -7808,7 +7803,7 @@
  mass fraction H2O:   9.9783E-01    [---]
   ----------------------------------------------------------------------------
 
-                        free        total
+  primary               free        total
   species               molal       molal       act coef     constraint
   ----------------------------------------------------------------------------
   Na+                   3.4294E-02  3.4363E-02  1.0000E+00    total aq
@@ -8303,7 +8298,7 @@
  mass fraction H2O:   9.9783E-01    [---]
   ----------------------------------------------------------------------------
 
-                        free        total
+  primary               free        total
   species               molal       molal       act coef     constraint
   ----------------------------------------------------------------------------
   Na+                   3.4294E-02  3.4363E-02  1.0000E+00    total aq
@@ -8798,7 +8793,7 @@
  mass fraction H2O:   9.9783E-01    [---]
   ----------------------------------------------------------------------------
 
-                        free        total
+  primary               free        total
   species               molal       molal       act coef     constraint
   ----------------------------------------------------------------------------
   Na+                   3.4294E-02  3.4363E-02  1.0000E+00    total aq
@@ -9293,7 +9288,7 @@
  mass fraction H2O:   9.9783E-01    [---]
   ----------------------------------------------------------------------------
 
-                        free        total
+  primary               free        total
   species               molal       molal       act coef     constraint
   ----------------------------------------------------------------------------
   Na+                   3.4294E-02  3.4363E-02  1.0000E+00    total aq
@@ -9704,93 +9699,3 @@
   UO2(PO3)2                           -10.4519   -1.6280E+01
   Soddyite_PNNL                       -10.5709    5.9800E+00
   Zincite                             -10.8689    1.1209E+01
-  Magnesite                           -11.0470    2.2936E+00
-  UO2SO4                              -12.7718    1.9681E+00
-  UPO5                                -13.1568    4.4148E-01
-  Alum-K                              -13.3211   -4.8818E+00
-  (UO2)3(PO4)2                        -13.7019   -1.4024E+01
-  Nesquehonite                        -13.7489    4.9955E+00
-  Magnetite                           -14.0256   -6.5075E+00
-  Paragonite                          -14.1076    1.7522E+01
-  Hopeite                             -14.5598   -1.0656E+01
-  Siderite                            -15.0587   -1.9200E-01
-  CaUO4                               -15.4828    1.5942E+01
-  Bassetite                           -15.7500   -1.7724E+01
-  Mn(OH)2(am)                         -16.0138    1.5310E+01
-  Brucite                             -16.0455    1.6298E+01
-  Fluorapatite                        -16.6441   -2.4994E+01
-  Zn2SiO4                             -16.7871    1.3870E+01
-  Malachite                           -16.8907    5.9399E+00
-  Boltwoodite-Na                      -18.2027    1.4583E+01
-  Manganosite                         -18.6276    1.7924E+01
-  Uranophane_PNNL                     -18.9321    1.1700E+01
-  Dolomite                            -19.3167    2.5135E+00
-  Weeksite-Na_PNNL                    -20.4694    4.4200E+00
-  Boltwoodite_PNNL                    -20.6703    1.4740E+01
-  Boltwoodite                         -20.8160    1.4886E+01
-  Antlerite                           -21.9545    8.7302E+00
-  Hausmannite                         -22.2315    1.8322E+01
-  Anorthite                           -24.3225    2.6578E+01
-  Uranophane                          -24.5171    1.7285E+01
-  Uraninite                           -27.8101    2.9112E+01
-  Birnessite                          -28.1182    1.1697E+01
-  Brochantite                         -29.6331    1.5436E+01
-  Hydroxylapatite                     -31.4985   -3.0746E+00
-  UOF4                                -33.3304    4.5737E+00
-  Weeksite_PNNL                       -41.4922    1.8840E+01
-  Weeksite                            -41.6244    1.5375E+01
-  Hydrozincite                        -46.6202    3.0308E+01
-  Zn                                  -66.6650    6.8803E+01
-  Mn                                  -81.8554    8.2950E+01
-  Sphalerite                         -129.6494    1.2688E+02
-  Wurtzite                           -131.9488    1.2918E+02
-  Chalcocite                         -144.3821    1.4112E+02
-  Pyrite                             -231.6693    2.1740E+02
-
-  gas        log part. press.  part. press. [bars]      log K
-  ----------------------------------------------------------------------------
-  CO2(g)       -1.1922E+00        6.4236E-02         -7.8136E+00
-  O2(g)        -6.9897E-01        2.0000E-01         -2.8983E+00
-  N2(g)         9.3849E-03        1.0218E+00         -1.0117E+02
-  H2(g)        -4.1203E+01        6.2659E-42          4.3002E+01
-  NH3(g)       -5.8918E+01        1.2088E-59          1.1038E+01
-  NO(g)        -7.6186E+00        2.4068E-08          7.5538E-01
-  NO2(g)       -1.2105E+01        7.8453E-13          8.3673E+00
-  CO(g)        -4.5901E+01        1.2571E-46          3.8693E+01
-
-
---------------------------------------------------------------------------------
-
-Transport Stepper:
-max steps: -1
-max constant cumulative time steps: 5
-max cuts: 16
-
-Transport Newton Solver:
-     atol:  1.0000E-50
-     rtol:  1.0000E-08
-     stol:  1.0000E-08
-     dtol: -2.0000E+00
-  maxnorm:  1.0000E+20
-inftolres:  1.0000E-50
-inftolupd:  1.0000E-50
-    maxit:    50
-     maxf: 10000
-
-matrix type:baij                
-precond. matrix type:baij                
-inexact newton: off
-print convergence: on
-print detailed convergence: off
-check infinity norm: off
-force at least 1 iteration: on
-
-Transport Linear Solver
-   solver:  bcgs
-  precond:  ilu
-     atol:  1.0000E-50
-     rtol:  1.0000E-05
-     dtol:  1.0000E+04
-    maxit:  10000
-
- Wall Clock Time:  3.9699E+00 [sec]   6.6165E-02 [min]   1.1027E-03 [hr]

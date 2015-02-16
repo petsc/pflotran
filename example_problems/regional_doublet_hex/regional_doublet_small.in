@@ -1,7 +1,20 @@
 #Description: 3D groundwater flow and solute transport
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
 #=========================== flow mode ========================================
-MODE RICHARDS
 #CHECKPOINT 1000000
 #RESTART restart.chk
 
@@ -14,7 +27,7 @@ CHEMISTRY
 END
 
 #=========================== solver options ===================================
-TIMESTEPPER
+TIMESTEPPER FLOW
 END
 
 NEWTON_SOLVER FLOW
@@ -182,14 +195,14 @@ REGION top
 END
 
 REGION injection_well
-  COORDINATES 
+  COORDINATES
     125.d0 275.d0 10.d0
     125.d0 275.d0 30.d0
   /
 END
 
 REGION extraction_well
-  COORDINATES 
+  COORDINATES
     375.d0 275.d0 10.d0
     375.d0 275.d0 30.d0
   /
@@ -223,25 +236,25 @@ OBSERVATION
   AT_CELL_CENTER
   VELOCITY
 END
- 
+
 OBSERVATION
   REGION Obs_pt_west
   AT_CELL_CENTER
   VELOCITY
 END
- 
+
 OBSERVATION
   REGION Obs_pt_east
   AT_CELL_CENTER
   VELOCITY
 END
- 
+
 OBSERVATION
   REGION Obs_pt_south
   AT_CELL_CENTER
   VELOCITY
 END
- 
+
 OBSERVATION
   REGION Obs_pt_north
   AT_CELL_CENTER
@@ -352,14 +365,14 @@ BOUNDARY_CONDITION top
   REGION top
 END
 
-# source 
+# source
 SOURCE_SINK injection_well
   FLOW_CONDITION injection
   TRANSPORT_CONDITION injection
   REGION injection_well
 END
 
-# sink 
+# sink
 SOURCE_SINK extraction_well
   FLOW_CONDITION extraction
   TRANSPORT_CONDITION initial
@@ -386,3 +399,4 @@ STRATA
   REGION layer4
   MATERIAL soil4
 END
+END_SUBSURFACE

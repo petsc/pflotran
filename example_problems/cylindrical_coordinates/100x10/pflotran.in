@@ -1,12 +1,25 @@
 #Description: 2D injection scenario with cylindrical coordinates
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
 #=========================== debugging ========================================
 #DEBUG
 #  PRINT_COUPLERS
 #END
 
 #=========================== flow mode ========================================
-MODE RICHARDS
 
 #=========================== chemistry ========================================
 CHEMISTRY
@@ -38,7 +51,7 @@ GRID
 END
 
 #=========================== fluid properties =================================
-FLUID_PROPERTY 
+FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
@@ -181,3 +194,4 @@ STRATA
 END
 
 
+END_SUBSURFACE

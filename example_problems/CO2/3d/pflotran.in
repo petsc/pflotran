@@ -1,4 +1,15 @@
-MODE MPHASE
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE MPHASE
+    /
+  /
+END
+
+SUBSURFACE
+
 #
 #=========================== discretization ===================================
 GRID
@@ -13,7 +24,7 @@ BOUNDS
 END
 #
 #=========================== solver options ===================================
-TIMESTEPPER
+TIMESTEPPER FLOW
 TS_ACCELERATION 8
 /
 
@@ -44,7 +55,7 @@ FORMAT TECPLOT BLOCK
 /
 
 #=========================== fluid properties =================================
-FLUID_PROPERTY 
+FLUID_PROPERTY
 DIFFUSION_COEFFICIENT 1.d-9
 /
 
@@ -56,7 +67,7 @@ TORTUOSITY 1d-1
 ROCK_DENSITY 2.65E3
 SPECIFIC_HEAT 1E3
 THERMAL_CONDUCTIVITY_DRY 0.5
-THERMAL_CONDUCTIVITY_WET 0.5 
+THERMAL_CONDUCTIVITY_WET 0.5
 SATURATION_FUNCTION sf2
 PERMEABILITY
 PERM_X 1.d-15
@@ -170,3 +181,4 @@ STRATA
 REGION all
 MATERIAL soil1
 END
+END_SUBSURFACE

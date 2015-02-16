@@ -1,10 +1,20 @@
 #Description: 3D toy problem for richards equation
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+  /
+END
+
+SUBSURFACE
+
 #=========================== flow mode ========================================
-MODE RICHARDS
 
 #=========================== solver options ===================================
-TIMESTEPPER
+TIMESTEPPER FLOW
 #MAX_STEPS 10
 END
 
@@ -44,7 +54,9 @@ OUTPUT
 FORMAT TECPLOT BLOCK
 HDF5_WRITE_GROUP_SIZE 1
 FORMAT HDF5
-VOLUME
+VARIABLES
+  VOLUME
+/
 /
 
 #=========================== times ============================================
@@ -62,37 +74,37 @@ REGION All
     0.d0 0.d0 0.d0
     60.d0 46.d0 60.d0
   /
-END 
+END
 
 REGION Top_sidesets
 FILE dat/Top_sidesets.ss
 GRID unstructured
-END 
+END
 
 REGION Bottom_sidesets
 FILE dat/Bottom_sidesets.ss
 GRID unstructured
-END 
+END
 
 REGION North_sidesets
 FILE dat/North_sidesets.ss
 GRID unstructured
-END 
+END
 
 REGION South_sidesets
 FILE dat/South_sidesets.ss
 GRID unstructured
-END 
+END
 
 REGION East_sidesets
 FILE dat/East_sidesets.ss
 GRID unstructured
-END 
+END
 
 REGION West_sidesets
 FILE dat/West_sidesets.ss
 GRID unstructured
-END 
+END
 
 #=========================== flow conditions ==================================
 FLOW_CONDITION initial
@@ -125,9 +137,10 @@ END
 
 #=========================== stratigraphy couplers ============================
 STRATA
-REGION All 
+REGION All
 MATERIAL soil1
 END
 
 HDF5_READ_GROUP_SIZE 1
 
+END_SUBSURFACE

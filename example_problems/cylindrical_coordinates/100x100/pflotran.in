@@ -1,9 +1,23 @@
 #Description: Cylindrical injection scenario for Richards mode
 #
-# Tracer concentration = 0.5 should reach 289.7 meters at 1 year. 
+# Tracer concentration = 0.5 should reach 289.7 meters at 1 year.
 #
 #=========================== flow mode ========================================
-MODE RICHARDS
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
 
 #=========================== chemistry ========================================
 CHEMISTRY
@@ -56,7 +70,7 @@ GRID
 END
 
 #=========================== fluid properties =================================
-FLUID_PROPERTY 
+FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
@@ -173,3 +187,4 @@ STRATA
 END
 
 
+END_SUBSURFACE

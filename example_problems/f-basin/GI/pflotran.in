@@ -1,6 +1,19 @@
 #Description: 3D test problem for diffusion of tracer and reaction of calcite in a cubic domain
- 
-MODE RICHARDS
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
 
 #DEBUG
 #PRINT_COUPLERS
@@ -344,37 +357,37 @@ CaUO4
 /
 MINERAL_KINETICS
 Quartz
-RATE_CONSTANT 1.e-18 
+RATE_CONSTANT 1.e-18
 /
 Kaolinite
-RATE_CONSTANT 2.e-17 
+RATE_CONSTANT 2.e-17
 /
 K-Feldspar
-RATE_CONSTANT 2.e-17 
+RATE_CONSTANT 2.e-17
 /
 Ferrihydrite
-RATE_CONSTANT 1.e-14 
+RATE_CONSTANT 1.e-14
 /
 Jurbanite
-RATE_CONSTANT 1.e-14 
+RATE_CONSTANT 1.e-14
 /
 Gibbsite
-RATE_CONSTANT 1.e-14 
+RATE_CONSTANT 1.e-14
 /
 Calcite
-RATE_CONSTANT 1.e-10 
+RATE_CONSTANT 1.e-10
 /
 (UO2)3(PO4)2.4H2O
-RATE_CONSTANT 1.e-10 
+RATE_CONSTANT 1.e-10
 /
 Soddyite
-RATE_CONSTANT 1.e-10 
+RATE_CONSTANT 1.e-10
 /
 Schoepite
-RATE_CONSTANT 1.e-10 
+RATE_CONSTANT 1.e-10
 /
 Chalcedony
-RATE_CONSTANT 1.e-14 
+RATE_CONSTANT 1.e-14
 /
 /
 SORPTION
@@ -523,7 +536,7 @@ BOUNDS
 END
 
 #================= fluid properties ================
-FLUID_PROPERTY 
+FLUID_PROPERTY
 DIFFUSION_COEFFICIENT 1.d-9
 /
 
@@ -770,13 +783,13 @@ END
 
 #skip
 # top boundary condition
-BOUNDARY_CONDITION 
+BOUNDARY_CONDITION
 FLOW_CONDITION Infiltration
 TRANSPORT_CONDITION Infiltration
 REGION top_left
 END
 
-BOUNDARY_CONDITION 
+BOUNDARY_CONDITION
 FLOW_CONDITION Infiltration
 TRANSPORT_CONDITION Infiltration
 REGION top_right
@@ -908,3 +921,4 @@ O2(aq)   2.e-1      G O2(g)
 Tracer   3.54135e-5 T
 /
 /
+END_SUBSURFACE

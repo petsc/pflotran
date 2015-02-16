@@ -1,7 +1,20 @@
 #Description: 3D test problem for variably saturated flow and tracer transport
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
 #=========================== flow mode ========================================
-MODE RICHARDS
 
 #=========================== chemistry ========================================
 CHEMISTRY
@@ -11,7 +24,7 @@ CHEMISTRY
 /
 
 #=========================== solver options ===================================
-TIMESTEPPER
+TIMESTEPPER FLOW
   TS_ACCELERATION 8
 /
 
@@ -44,7 +57,7 @@ GRID
 END
 
 #=========================== fluid properties =================================
-FLUID_PROPERTY 
+FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 /
 
@@ -128,21 +141,21 @@ SATURATION_FUNCTION sf4
 
 #=========================== output options ===================================
 OUTPUT
-  TIMES d 0.001 0.01 0.1 1. 10. 
+  TIMES d 0.001 0.01 0.1 1. 10.
 !  FORMAT TECPLOT BLOCK
   FORMAT TECPLOT POINT
   FORMAT HDF5 MULTIPLE_FILES TIMES_PER_FILE 5
   VELOCITY_AT_CENTER
-  PERMEABILITY
   VARIABLES
-    LIQUID_PRESSURE 
+    PERMEABILITY
+    LIQUID_PRESSURE
     LIQUID_SATURATION
   /
   AVERAGE_VARIABLES
-    LIQUID_PRESSURE 
+    LIQUID_PRESSURE
     LIQUID_SATURATION
   /
-  PERIODIC TIME 10.d0 d 
+  PERIODIC TIME 10.d0 d
 /
 
 #=========================== times ============================================
@@ -209,7 +222,7 @@ REGION south
 END
 
 REGION well
-  BLOCK 4 4 2 3 3 3 
+  BLOCK 4 4 2 3 3 3
 END
 
 #=========================== flow conditions ==================================
@@ -312,3 +325,4 @@ STRATA
   MATERIAL ./543.h5
 END
 
+END_SUBSURFACE

@@ -1,5 +1,16 @@
 #Description: 1D test problem for tracer transport
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
 CHEMISTRY
 PRIMARY_SPECIES
 Tracer
@@ -32,10 +43,10 @@ CYCLIC ! cycles the data set using last time as offset
 VELOCITY
 #time velx vely velz
 #time units = time unit in velocity units
-0.d0 250.d0 0.d0 0.d0 
-0.25d0 -250.d0 0.d0 0.d0 
-0.75d0 250.d0 0.d0 0.d0 
-1.d0 250.d0 0.d0 0.d0 
+0.d0 250.d0 0.d0 0.d0
+0.25d0 -250.d0 0.d0 0.d0
+0.75d0 250.d0 0.d0 0.d0
+1.d0 250.d0 0.d0 0.d0
 /
 /
 #noskip
@@ -176,3 +187,4 @@ REGION all
 MATERIAL soil1
 END
 
+END_SUBSURFACE

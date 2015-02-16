@@ -1,5 +1,16 @@
 #Description: 1D test problem for diffusion of tracer in a cubic domain
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
 #=========================== chemistry ========================================
 CHEMISTRY
 PRIMARY_SPECIES
@@ -43,7 +54,7 @@ BOUNDS
 END
 
 #=========================== fluid properties =================================
-FLUID_PROPERTY 
+FLUID_PROPERTY
 DIFFUSION_COEFFICIENT 1.d-9
 /
 
@@ -254,3 +265,4 @@ REGION bottom_layer
 MATERIAL soil1
 END
 
+END_SUBSURFACE
