@@ -33,16 +33,16 @@ def convert_sf2cc(filename,delete_files,old_extension):
 		print 'File: ' + filename + ' does not exist. skip.\n'
 		return
 
-	#if the file is not in general mode, it skips the file
-	for line in old:
-		words = line.split()
-		if words == []:
-			continue
-		elif words[0].upper() == 'MODE':
-			if words[1].upper() != 'GENERAL':
-				print 'File below is not in GENERAL MODE thus skips.'
-				print filename+'\n'
-				return
+#	#if the file is not in general mode, it skips the file
+#	for line in old:
+#		words = line.split()
+#		if words == []:
+#			continue
+#		elif words[0].upper() == 'MODE':
+#			if words[1].upper() != 'GENERAL':
+#				print 'File below is not in GENERAL MODE thus skips.'
+#				print filename+'\n'
+#				return
 	old.close()
 
 	#renames the old file and keep the new files as original filename
