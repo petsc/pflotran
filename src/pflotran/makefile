@@ -10,8 +10,9 @@ include ${PETSC_DIR}/conf/variables
 include ${PETSC_DIR}/conf/rules
 
 MYFLAGS = -I.
-ifndef legacy_saturation_function
-  MYFLAGS += ${FC_DEFINE_FLAG}REFACTOR_CHARACTERISTIC_CURVES
+
+ifdef legacy_saturation_function
+  MYFLAGS += ${FC_DEFINE_FLAG}LEGACY_SATURATION_FUNCTION
 endif
 
 # if compiling pflotran_rxn or libpflotranchem.a, need to toggle 

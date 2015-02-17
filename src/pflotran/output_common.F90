@@ -1,4 +1,7 @@
 module Output_Common_module
+#ifndef LEGACY_SATURATION_FUNCTION
+#define REFACTOR_CHARACTERISTIC_CURVES
+#endif
 
   use Logging_module 
   use Output_Aux_module

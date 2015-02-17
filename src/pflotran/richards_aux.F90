@@ -1,4 +1,7 @@
 module Richards_Aux_module
+#ifndef LEGACY_SATURATION_FUNCTION
+#define REFACTOR_CHARACTERISTIC_CURVES
+#endif
 
 #ifdef BUFFER_MATRIX
   use Matrix_Buffer_module

@@ -1,4 +1,7 @@
 module Richards_module
+#ifndef LEGACY_SATURATION_FUNCTION
+#define REFACTOR_CHARACTERISTIC_CURVES
+#endif
 
   use Richards_Aux_module
   use Richards_Common_module
@@ -23,7 +26,6 @@ module Richards_module
 #include "finclude/petscsnes.h"
 #include "finclude/petscviewer.h"
 #include "finclude/petsclog.h"
-
 
 ! Cutoff parameters
   PetscReal, parameter :: eps       = 1.D-8

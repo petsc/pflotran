@@ -1,4 +1,7 @@
 module Richards_Common_module
+#ifndef LEGACY_SATURATION_FUNCTION
+#define REFACTOR_CHARACTERISTIC_CURVES
+#endif
 
   use Richards_Aux_module
   use Global_Aux_module

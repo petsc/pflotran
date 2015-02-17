@@ -1,4 +1,7 @@
 module Init_Subsurface_Flow_module
+#ifndef LEGACY_SATURATION_FUNCTION
+#define REFACTOR_CHARACTERISTIC_CURVES
+#endif
 
   use PFLOTRAN_Constants_module
 
