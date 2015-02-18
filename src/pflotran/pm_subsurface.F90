@@ -56,6 +56,8 @@ module PM_Subsurface_class
             PMSubsurfaceUpdateSolution, &
             PMSubsurfaceUpdatePropertiesNI, &
             PMSubsurfaceTimeCut, &
+            PMSubsurfaceCheckpoint, &
+            PMSubsurfaceRestart, &
             PMSubsurfaceDestroy
   
 contains

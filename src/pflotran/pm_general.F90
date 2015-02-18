@@ -44,6 +44,8 @@ module PM_General_class
     procedure, public :: UpdateAuxvars => PMGeneralUpdateAuxvars
     procedure, public :: MaxChange => PMGeneralMaxChange
     procedure, public :: ComputeMassBalance => PMGeneralComputeMassBalance
+    procedure, public :: Checkpoint => PMGeneralCheckpoint
+    procedure, public :: Restart => PMGeneralRestart
     procedure, public :: Destroy => PMGeneralDestroy
   end type pm_general_type
   
@@ -523,6 +525,57 @@ subroutine PMGeneralComputeMassBalance(this,mass_balance_array)
 
 end subroutine PMGeneralComputeMassBalance
 
+! ************************************************************************** !
+
+subroutine PMGeneralCheckpoint(this,viewer)
+  ! 
+  ! Checkpoints data associated with General PM
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/18/15
+
+  use Checkpoint_module
+  use Global_module
+  use Variables_module, only : STATE
+
+  implicit none
+#include "finclude/petscviewer.h"      
+
+  class(pm_general_type) :: this
+  PetscViewer :: viewer
+  
+  call GlobalGetAuxVarVecLoc(this%realization, &
+                             this%realization%field%iphas_loc, &
+                             STATE,ZERO_INTEGER)
+  call PMSubsurfaceCheckpoint(this,viewer)
+  
+end subroutine PMGeneralCheckpoint
+
+! ************************************************************************** !
+
+subroutine PMGeneralRestart(this,viewer)
+  ! 
+  ! Restarts data associated with General PM
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/18/15
+
+  use Checkpoint_module
+  use Global_module
+  use Variables_module, only : STATE
+
+  implicit none
+#include "finclude/petscviewer.h"      
+
+  class(pm_general_type) :: this
+  PetscViewer :: viewer
+  
+  call PMSubsurfaceRestart(this,viewer)
+  call GlobalSetAuxVarVecLoc(this%realization, &
+                             this%realization%field%iphas_loc, &
+                             STATE,ZERO_INTEGER)
+  
+end subroutine PMGeneralRestart
 ! ************************************************************************** !
 
 subroutine PMGeneralDestroy(this)

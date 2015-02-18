@@ -13,6 +13,7 @@ module Global_module
   public GlobalSetup, &
          GlobalSetAuxVarScalar, &
          GlobalSetAuxVarVecLoc, &
+         GlobalGetAuxVarVecLoc, &
          GlobalWeightAuxVars, &
          GlobalUpdateState, &
          GlobalUpdateAuxVars
@@ -398,6 +399,61 @@ subroutine GlobalSetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
   call VecRestoreArrayReadF90(vec_loc,vec_loc_p,ierr);CHKERRQ(ierr)
 
 end subroutine GlobalSetAuxVarVecLoc
+
+! ************************************************************************** !
+
+subroutine GlobalGetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
+  ! 
+  ! Sets values of auxvar data using a vector.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/19/08
+  ! 
+
+  use Realization_class
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Variables_module, only : STATE
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  class(realization_type) :: realization
+  Vec :: vec_loc
+  PetscInt :: ivar
+  PetscInt :: isubvar  
+  
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  
+  PetscInt :: ghosted_id
+  PetscReal, pointer :: vec_loc_p(:)
+  PetscErrorCode :: ierr
+  
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  
+  call VecGetArrayReadF90(vec_loc,vec_loc_p,ierr);CHKERRQ(ierr)
+  
+  select case(ivar)
+    case(STATE)
+      do ghosted_id=1, grid%ngmax
+        vec_loc_p(ghosted_id) = &
+          dble(patch%aux%Global%auxvars(ghosted_id)%istate)
+      enddo
+    case default
+      option%io_buffer = 'Variable unrecognized in GlobalGetAuxVarVecLoc.'
+      call printErrMsg(option)
+  end select
+
+  call VecRestoreArrayReadF90(vec_loc,vec_loc_p,ierr);CHKERRQ(ierr)
+
+end subroutine GlobalGetAuxVarVecLoc
 
 ! ************************************************************************** !
 
