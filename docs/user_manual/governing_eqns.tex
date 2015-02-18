@@ -826,17 +826,32 @@ and
 for minerals with molar volume $\overline V_m$, mineral reaction rate $I_m$ and mineral volume fraction $\varphi_m$ referenced to an REV. 
 Sums over $\a$ in Eqn.\eqref{rteqn} are over all fluid phases in the system. The quantity $\Psi_j^\a$ denotes the total concentration of the $j$th primary species $\A_j^{\rm pri}$ in the $\a$th fluid phase defined by
 \EQ
-\Psi_j^\a = \delta_{l\a}^{} C_j^l + \sum_{i=1}^{N_{\rm sec}}\nu_{ji}^{\a} C_i^\a.
+\Psi_j^\a = \delta_{l\a}^{} C_j^l + \sum_{i=1}^{N_{\rm sec}}\nu_{ji}^{\a} C_i^\a,
 \EN
 In this equation the subscript $l$ represents the aqueous electrolyte phase from which the primary species are chosen. The secondary species concentrations $C_i^\a$ are obtained from mass action equations corresponding to equilibrium conditions of the reactions
 \EQ
 \sum_j\nu_{ji}^\a\A_j^l \arrows \A_i^\a,
 \EN
-yielding
+yielding the mass action equations
 \EQ
 C_i^\a \eq \frac{K_i^\a}{\gamma_i^\a} \prod_j \Big(\gamma_j^l C_j^l\Big)^{\nu_{ji}^\a},
 \EN
 with equilibrium constant $K_i^\a$, and activity coefficients $\gamma_k^\a$.
+For the molality of the $k$th aqueous species, the Debye-H\"uckel activity coefficient algorithm is given by
+\EQ
+\log\,\gamma_k \eq -\frac{z_k^2 A \sqrt{I}}{1+B \stackrel{\circ}{a}_k \sqrt{I}}+\dot b I,
+\EN
+and the Davies algorithm by the expression
+\EQ
+\log\,\gamma_k \eq -\frac{z_k^2}{2}\left[\frac{\sqrt{I}}{1+ \sqrt{I}}-0.3 I\right].
+\EN
+with valence $z_k$, Debye-H\"uckel parameters $A$, $B$, and ionic radius $\stackrel{\circ}{a}_k$, and ionic strength $I$ defined as
+\EQ
+I \eq \frac{1}{2}\sum_{j=1}^{N_c} m_j^2 + \frac{1}{2}\sum_{i=1}^{N_{\rm sec}} m_i^2,
+\EN
+for molality $m_j$ and $m_i$ of primary and secondary species, respectively (note: $C_i^l = \rho_l y_w^l m_i \simeq \rho_l m_i$, $\rho_l$ = fluid density, $y_w^l$ = mass fraction of H$_2$O).
+For high-ionic strength solutions (approximately above 0.1 M) the Pitzer model should be used. Currently, however, only the Debye-H\"uckel algorithm is implemented in PFLOTRAN.
+
 The total flux $\bOmega_j^\a$ for species-independent diffusion is given by
 \EQ
 \bOmega_j^\a \eq \big(\bq_\a - \varphi s_\a \bD_\a\bnabla\big)\Psi_j^\a.
@@ -885,9 +900,9 @@ a_{\rm H_2O}^{} \eq 1 - 0.017 \sum_i m_i.
 
 The reaction rate $I_m$ is based on transition state theory with the form
 \EQ\label{Im}
-I_m \eq -a_m\left(\sum_l k_{ml}(T) \P_{ml}\right) \Big(1-K_m Q_m\Big),
+I_m \eq -a_m\left(\sum_l k_{ml}(T) \P_{ml}\right) \Big(1-\big(K_m Q_m\big)^{1/\sigma_m}\Big)^{\beta_m},
 \EN
-where the sum over $l$ represents contributions from parallel reaction mechanisms such as pH dependence etc., and where $K_m$ denotes the equilibrium constant, $a_m$ refers to the specific mineral surface area, and the ion activity product $Q_m$ is defined as
+where the sum over $l$ represents contributions from parallel reaction mechanisms such as pH dependence etc., and where $K_m$ denotes the equilibrium constant, $\sigma_m$ refers to Tempkin's constant (Lichtner, 1996b), $\beta_m$ denotes the affinity power, $a_m$ refers to the specific mineral surface area, and the ion activity product $Q_m$ is defined as
 \EQ
 Q_m \eq \prod_j \big(\gamma_j m_j\big)^{\nu_{jm}},
 \EN
