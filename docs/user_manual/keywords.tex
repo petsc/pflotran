@@ -119,9 +119,10 @@ END
 SUBSURFACE
 ...
 END_SUBSURFACE
+
 \end{verbatim}
-normalsize
 \end{mdframed}
+\normalsize
 
 \newpage
 \subsubsection{Keyword: SUBSURFACE\_FLOW}
@@ -134,7 +135,7 @@ normalsize
 %Follow the links below for a description of each flow mode's options.
 \end{description}
 
-\item Water Modes
+\item Water Modes:
 
 \begin{description}
 \item {\bf RICHARDS}: single-phase variably-saturated flow
@@ -142,7 +143,7 @@ normalsize
 \item {\bf TH}: variably saturated flow and energy (and optional ice phase)
 \end{description}
 
-\item CO$_2$ Related Modes
+\item CO$_2$-Related Modes:
 
 \begin{description}
 \item {\bf MPHASE}: two-phase supercritical CO$_2$-water-energy
@@ -723,7 +724,8 @@ BRINE 4.d0 MOLAL
 
 \subsection{Keyword: CHARACTERISTIC\_CURVES}
 
-{\noindent\bf Description:} Specifies relative permeability and saturation functions and parameters to be associated with a material property.
+{\noindent\bf Description:} Specifies relative permeability and saturation functions and parameters to be associated with a material property. 
+{\bf Note: this keyword is currently only supported for GENERAL and RICHARDS modes; keyword SATURATION\_FUNCTION should be used in all other flow modes.}
 
 \hfill\hyperlink{target_key}{\return}
 
@@ -737,7 +739,7 @@ BRINE 4.d0 MOLAL
 
 \begin{deflist}{000}
 
-\item [SATURATION\_FUNCTION] [VAN\_GENUCHTEN, BROOKS\_COREY]
+\item [SATURATION\_FUNCTION] <string> [VAN\_GENUCHTEN, BROOKS\_COREY]
 \begin{deflist}{000}
 \item ALPHA \ <float> \ [Pa$^{-1}$]
 \item M \ <float> \ [---]
@@ -813,7 +815,7 @@ Brooks-Corey lambda [---].
 Residual saturation for liquid phase [---].
 
 \item M \ <float>
-van Genuchten $m$ as in ($m = 1-1/n$) [---].
+van Genuchten $m$ ($m = 1\!-\!1/n$) [---].
 
 \item SMOOTH
 Applies polynomial smoothing to relative permeability or saturation function. Strongly recommended for the Brooks-Corey saturation function if cells in the domain transition from saturated to variably-saturated conditions.
@@ -994,13 +996,13 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item [RATE\_CONSTANT] \ {\tt <float>} [mol/m$^2$/s], \ \ \ \ {\em If} \ {\tt <float>} $<$ 0, {\tt <float>} = 10$^{\tt <float>}$
 \item [ACTIVATION\_ENERGY] \ {\tt <float>} [kJ/mol], \ \ \ Referenced to rate constant at 25\degc.
 ~\\
-\item [AFFINITY\_THRESHOLD] \ {\tt <float>} [---]
-\item [AFFINITY\_POWER] \ {\tt <float>} [---]
+\item [AFFINITY\_THRESHOLD] \ {\tt <float>} \ [---]
+\item [AFFINITY\_POWER] \ {\tt <float>} \ [---] \ [see Eqn.\eqref{Im}]
 ~\\
-\item [TEMPKINS\_CONSTANT] \ {\tt <float>} [---]
+\item [TEMPKINS\_CONSTANT] \ {\tt <float>} \ [---] [See Eqn.\eqref{Im}]
 ~\\
-\item [SURFACE\_AREA\_POROSITY\_POWER] \ {\tt <float>} [---] \ \ \ [see Eqn.\eqref{surface_area_vf}]
-\item [SURFACE\_AREA\_VOL\_FRAC\_POWER] \ {\tt <float>} [---] \ \ \ [see Eqn.\eqref{surface_area_vf}]
+\item [SURFACE\_AREA\_POROSITY\_POWER] \ {\tt <float>} \ [---] \ \ \ [see Eqn.\eqref{surface_area_vf}]
+\item [SURFACE\_AREA\_VOL\_FRAC\_POWER] \ {\tt <float>} \ [---] \ \ \ [see Eqn.\eqref{surface_area_vf}]
 ~\\
 \item [RATE\_LIMITER] \ {\tt <float>} [mol/m$^2$/s] \ [see Eqn.\eqref{ratemintran}]
 ~\\
@@ -3381,13 +3383,15 @@ END
 \item[VOLUME] -Output cell volume
 \item[PERMEABILITY] -Output cell permeability
 \item[POROSITY] -Output cell porosity
+\item[MINERAL\_POROSITY] -Output cell porosity derived from mineral volume fractions
+\item[EFFECTIVE\_POROSITY] -Output cell effective porosity (GENERAL mode only)
 \item[FLUXES] -Output interface fluxes
 \item[VELOCITY\_AT\_FACE] -Output interface velocities 
 \item[~] -Structured grid: velocity outputted at internal faces only. Visualization support is available via XDMF.
 \item[~] -Unstructured grid: velocity outputted for internal and boundary faces. Data is outputted in HDF5 format only with no visualization support via XDMF.
 \item[VELOCITY\_AT\_CENTER] -Output cell-centered velocities (supported for structured and unstructured grids, applies to TecPlot and HDF5 output formats). Note that this is compatible only with TecPlot BLOCK format.
 
-\item[MASS\_BALANCE:] \ output the mass balance of the system if this card is activated. It includes global mass balance as well as fluxes at all boundaries for water and chemical species specified for output in the CHEMISTRY card. For the MPHASE mode only global mass balances are provided including supercritical CO$_2$. Output times are controlled by {\tt PERIODIC\_OBSERVATION TIMESTEP and TIME}, and printout times.
+\item[MASS\_BALANCE [DETAILED]] -Output the mass balance of the system if this card is activated. It includes global mass balance as well as fluxes at all boundaries for water and chemical species specified for output in the CHEMISTRY card. For the MPHASE mode only global mass balances are provided including supercritical CO$_2$. Output times are controlled by {\tt PERIODIC\_OBSERVATION TIMESTEP and TIME}, and printout times. Option DETAILED provides total moles of minerals.
 \end{deflist}
 \item[\keyend]
 \end{deflist}
@@ -3701,6 +3705,8 @@ RESTART pflotran.chk3000
 \includegraphics[scale=0.25]{./figs/under-construction.png}
 
 \noindent{\bf Description:} Currently being revised to use a common set of saturation and relative permeability functions across all modes. Check source code for up-to-date implementation.
+
+Note: for GENERAL and RICHARDS modes use keyword CHARACTERISTIC\_CURVES; SATURATION\_FUNCTION should be used in all other flow modes.
 
 \noindent{\bf Input:}
 \begin{deflist}{000}
