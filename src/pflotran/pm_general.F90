@@ -90,9 +90,10 @@ function PMGeneralCreate()
                                 LIQUID_MOLE_FRACTION, TEMPERATURE, &
                                 GAS_SATURATION]
   allocate(general_pm%max_change_isubvar(6))
-  ! based on option%water_id = 1
-  general_pm%max_change_isubvar = [0,0,0,1,0,0]  
-  
+                                   ! UNINITIALIZED_INTEGER avoids zeroing of 
+                                   ! pressures not represented in phase
+                                       ! 2 = air in xmol(air,liquid)
+  general_pm%max_change_isubvar = [0,0,0,2,0,0]
   
   call PMSubsurfaceCreate(general_pm)
   general_pm%name = 'PMGeneral'
@@ -457,7 +458,8 @@ subroutine PMGeneralMaxChange(this)
   PetscReal, pointer :: vec_ptr(:), vec_ptr2(:)
   PetscReal :: max_change_local(6)
   PetscReal :: max_change_global(6)
-  PetscInt :: i
+  PetscReal :: max_change
+  PetscInt :: i, j
   PetscInt :: local_id, ghosted_id
 
   
@@ -478,7 +480,14 @@ subroutine PMGeneralMaxChange(this)
     ! to customize
     call VecGetArrayF90(field%work,vec_ptr,ierr);CHKERRQ(ierr)
     call VecGetArrayF90(field%max_change_vecs(i),vec_ptr2,ierr);CHKERRQ(ierr)
-    max_change_local(i) = maxval(dabs(vec_ptr(:)-vec_ptr2(:)))
+    max_change = 0.d0
+    do j = 1, grid%nlmax
+      ! have to week out cells that changed state
+      if (dabs(vec_ptr(j)) > 1.d-40 .and. dabs(vec_ptr2(j)) > 1.d-40) then
+        max_change = max(max_change,dabs(vec_ptr(j)-vec_ptr2(j)))
+      endif
+    enddo
+    max_change_local(i) = max_change
     call VecRestoreArrayF90(field%work,vec_ptr,ierr);CHKERRQ(ierr)
     call VecRestoreArrayF90(field%max_change_vecs(i),vec_ptr2, &
                             ierr);CHKERRQ(ierr)
@@ -499,7 +508,8 @@ subroutine PMGeneralMaxChange(this)
       & " dsg= ",1pe12.4)') &
       max_change_global(1:6)
   endif
-  this%dPmax = maxval(max_change_global(1:3))
+  ! ignore air pressure as it jumps during phase change
+  this%dPmax = maxval(max_change_global(1:2))
   this%dXmax = max_change_global(4)
   this%dTmax = max_change_global(5)
   this%dSmax = max_change_global(6)

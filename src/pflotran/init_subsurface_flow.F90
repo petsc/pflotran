@@ -108,7 +108,10 @@ subroutine InitSubsurfFlowSetupRealization(realization)
       case(FLASH2_MODE)
         call Flash2UpdateAuxVars(realization)
       case(G_MODE)
-        call GeneralUpdateAuxVars(realization,PETSC_TRUE)
+        !geh: cannot update state during initialization as the guess will be
+        !     assigned as the initial conditin if the state changes. therefore,
+        !     pass in PETSC_FALSE
+        call GeneralUpdateAuxVars(realization,PETSC_FALSE)
     end select
   else ! no flow mode specified
     if (len_trim(realization%nonuniform_velocity_filename) > 0) then

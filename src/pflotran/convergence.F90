@@ -170,6 +170,12 @@ subroutine ConvergenceTest(snes_,it,xnorm,snorm,fnorm,reason,context,ierr)
   !     snes->ttol for subsequent iterations.
   call SNESConvergedDefault(snes_,it,xnorm,snorm,fnorm,reason, &
                             PETSC_NULL_OBJECT,ierr);CHKERRQ(ierr)
+#if 0
+  if (it == 0 .and. &
+      option%print_screen_flag .and. solver%print_convergence) then
+    write(*,'(i3," 2f:",es9.2)') it, fnorm
+  endif
+#endif
 
   ! for some reason (e.g. negative saturation/mole fraction in multiphase),
   ! we are forcing extra newton iterations

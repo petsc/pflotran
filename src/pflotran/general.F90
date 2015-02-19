@@ -3512,10 +3512,12 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   PetscInt :: istate_max_rel_update(3), istate_max_scaled_residual(3)
   character(len=2) :: state_char
 #endif
-  PetscReal :: dX_X0, R_A
+  PetscReal :: dX_X0, R_A, R
   PetscReal :: inf_norm_rel_update(3,3), global_inf_norm_rel_update(3,3)
   PetscReal :: inf_norm_scaled_residual(3,3), global_inf_norm_scaled_residual(3,3)
   PetscReal :: inf_norm_update(3,3), global_inf_norm_update(3,3)
+  PetscReal :: inf_norm_residual(3,3), global_inf_norm_residual(3,3)
+  PetscReal :: two_norm_residual(3,3), global_two_norm_residual(3,3)
   PetscReal, parameter :: inf_pres_tol = 1.d-1
   PetscReal, parameter :: inf_temp_tol = 1.d-5
   PetscReal, parameter :: inf_sat_tol = 1.d-6
@@ -3526,7 +3528,7 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
              inf_pres_tol,inf_pres_tol,inf_sat_tol], &
             shape(inf_norm_update_tol)) * &
             0.d0
-  PetscReal :: temp(3,9), global_temp(3,9)
+  PetscReal :: temp(3,12), global_temp(3,12)
   PetscMPIInt :: mpi_int
   PetscBool :: converged_abs_update
   PetscBool :: converged_rel_update
@@ -3562,6 +3564,8 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
     inf_norm_update(:,:) = -1.d20
     inf_norm_rel_update(:,:) = -1.d20
     inf_norm_scaled_residual(:,:) = -1.d20
+    inf_norm_residual(:,:) = -1.d20
+    two_norm_residual(:,:) = 0.d0
     do local_id = 1, grid%nlmax
       offset = (local_id-1)*option%nflowdof
       ghosted_id = grid%nL2G(local_id)
@@ -3569,14 +3573,21 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
       istate = global_auxvars(ghosted_id)%istate
       do idof = 1, option%nflowdof
         ival = offset+idof
+        R = r_p(ival)
+#ifdef DEBUG_GENERAL_INFO
+        two_norm_residual(idof,istate) = two_norm_residual(idof,istate) + R*R
+#endif
+        inf_norm_residual(idof,istate) = max(inf_norm_residual(idof,istate), &
+                                             dabs(R))
         if (general_tough2_conv_criteria) then
           if (accum_p2(ival) < general_tough2_itol_scaled_res_e2) then
-            R_A = dabs(r_p(ival)/material_auxvars(ghosted_id)%volume*option%flow_dt)
+            R_A = dabs(R/general_tough2_itol_scaled_res_e2)
+!geh            R_A = dabs(R/material_auxvars(ghosted_id)%volume*option%flow_dt)
           else
-            R_A = dabs(r_p(ival)/accum_p2(ival))
+            R_A = dabs(R/accum_p2(ival))
           endif
         else
-          R_A = dabs(r_p(ival)/accum_p(ival))
+          R_A = dabs(R/accum_p(ival))
         endif
         dX_X0 = dabs(dX_p(ival)/X0_p(ival))
         inf_norm_update(idof,istate) = max(inf_norm_update(idof,istate), &
@@ -3604,12 +3615,22 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
     temp(1:3,1:3) = inf_norm_update(:,:)
     temp(1:3,4:6) = inf_norm_rel_update(:,:)
     temp(1:3,7:9) = inf_norm_scaled_residual(:,:)
-    mpi_int = 27
+    temp(1:3,10:12) = inf_norm_residual(:,:)
+    mpi_int = 36
     call MPI_Allreduce(temp,global_temp,mpi_int, &
                        MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
     global_inf_norm_update(:,:) = global_temp(1:3,1:3)
     global_inf_norm_rel_update(:,:) = global_temp(1:3,4:6)
     global_inf_norm_scaled_residual(:,:) = global_temp(1:3,7:9)
+    global_inf_norm_residual(:,:) = global_temp(1:3,10:12)
+
+#ifdef DEBUG_GENERAL_INFO
+    mpi_int = 9
+    call MPI_Allreduce(two_norm_residual,global_two_norm_residual,mpi_int, &
+                       MPI_DOUBLE_PRECISION,MPI_SUM,option%mycomm,ierr)
+    global_two_norm_residual = sqrt(global_two_norm_residual)
+#endif
+
     converged_abs_update = PETSC_TRUE
     do istate = 1, 3
       do idof = 1, option%nflowdof
