@@ -1013,7 +1013,7 @@ end subroutine SubsurfSandboxesSetup
 
 ! ************************************************************************** !
 
-subroutine InitSubsurfaceReadRequiredCards(realization)
+subroutine InitSubsurfaceReadRequiredCards(simulation)
   ! 
   ! Reads required cards from input file
   ! 
@@ -1030,23 +1030,26 @@ subroutine InitSubsurfaceReadRequiredCards(realization)
   use Realization_class
   use HDF5_Aux_module
 
+  use Simulation_Subsurface_class
   use General_module
   use Reaction_module  
   use Reaction_Aux_module  
 
   implicit none
 
-  class(realization_type) :: realization
+  class(subsurface_simulation_type) :: simulation
 
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: card
   type(patch_type), pointer :: patch, patch2 
   type(grid_type), pointer :: grid
+  class(realization_type), pointer :: realization
   type(discretization_type), pointer :: discretization
   type(option_type), pointer :: option
   type(input_type), pointer :: input
   
+  realization => simulation%realization
   patch => realization%patch
   option => realization%option
   discretization => realization%discretization
@@ -1151,6 +1154,11 @@ subroutine InitSubsurfaceReadRequiredCards(realization)
   
 !....................
       case('CHEMISTRY')
+        if (.not.associated(simulation%rt_process_model_coupler)) then
+          option%io_buffer = 'CHEMISTRY card included when no ' // &
+            'SUBSURFACE_TRANSPORT process model included in SIMULATION block.'
+          call printErrMsg(option)
+        endif
         !geh: for some reason, we need this with CHEMISTRY read for 
         !     multicontinuum
  !       option%use_mc = PETSC_TRUE

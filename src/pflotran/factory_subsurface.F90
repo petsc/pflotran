@@ -178,7 +178,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   endif
 
   realization%input => InputCreate(IN_UNIT,option%input_filename,option)
-  call InitSubsurfaceReadRequiredCards(realization)
+  call InitSubsurfaceReadRequiredCards(simulation)
   call InitSubsurfaceReadInput(simulation)
   if (associated(pm_waste_form)) then
     string = 'MPM'
