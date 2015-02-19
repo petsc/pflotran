@@ -119,9 +119,10 @@ END
 SUBSURFACE
 ...
 END_SUBSURFACE
+
 \end{verbatim}
-normalsize
 \end{mdframed}
+\normalsize
 
 \newpage
 \subsubsection{Keyword: SUBSURFACE\_FLOW}
@@ -134,7 +135,7 @@ normalsize
 %Follow the links below for a description of each flow mode's options.
 \end{description}
 
-\item Water Modes
+\item Water Modes:
 
 \begin{description}
 \item {\bf RICHARDS}: single-phase variably-saturated flow
@@ -142,7 +143,7 @@ normalsize
 \item {\bf TH}: variably saturated flow and energy (and optional ice phase)
 \end{description}
 
-\item CO$_2$ Related Modes
+\item CO$_2$-Related Modes:
 
 \begin{description}
 \item {\bf MPHASE}: two-phase supercritical CO$_2$-water-energy
@@ -723,7 +724,8 @@ BRINE 4.d0 MOLAL
 
 \subsection{Keyword: CHARACTERISTIC\_CURVES}
 
-{\noindent\bf Description:} Specifies relative permeability and saturation functions and parameters to be associated with a material property.
+{\noindent\bf Description:} Specifies relative permeability and saturation functions and parameters to be associated with a material property. 
+{\bf Note: this keyword is currently only supported for GENERAL and RICHARDS modes; keyword SATURATION\_FUNCTION should be used in all other flow modes.}
 
 \hfill\hyperlink{target_key}{\return}
 
@@ -737,7 +739,7 @@ BRINE 4.d0 MOLAL
 
 \begin{deflist}{000}
 
-\item [SATURATION\_FUNCTION] [VAN\_GENUCHTEN, BROOKS\_COREY]
+\item [SATURATION\_FUNCTION] <string> [VAN\_GENUCHTEN, BROOKS\_COREY]
 \begin{deflist}{000}
 \item ALPHA \ <float> \ [Pa$^{-1}$]
 \item M \ <float> \ [---]
@@ -813,7 +815,7 @@ Brooks-Corey lambda [---].
 Residual saturation for liquid phase [---].
 
 \item M \ <float>
-van Genuchten $m$ as in ($m = 1-1/n$) [---].
+van Genuchten $m$ ($m = 1\!-\!1/n$) [---].
 
 \item SMOOTH
 Applies polynomial smoothing to relative permeability or saturation function. Strongly recommended for the Brooks-Corey saturation function if cells in the domain transition from saturated to variably-saturated conditions.
@@ -3703,6 +3705,8 @@ RESTART pflotran.chk3000
 \includegraphics[scale=0.25]{./figs/under-construction.png}
 
 \noindent{\bf Description:} Currently being revised to use a common set of saturation and relative permeability functions across all modes. Check source code for up-to-date implementation.
+
+Note: for GENERAL and RICHARDS modes use keyword CHARACTERISTIC\_CURVES; SATURATION\_FUNCTION should be used in all other flow modes.
 
 \noindent{\bf Input:}
 \begin{deflist}{000}

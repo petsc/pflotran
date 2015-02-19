@@ -898,15 +898,15 @@ a_{\rm H_2O}^{} \eq 1 - 0.017 \sum_i m_i.
 
 \subsubsection{Mineral Precipitation and Dissolution}
 
-The reaction rate $I_m$ is based on transition state theory with the form
+The reaction rate $I_m$ is based on transition state theory taken as positive for precipitation and negative for dissolution, with the form
 \EQ\label{Im}
-I_m \eq -a_m\left(\sum_l k_{ml}(T) \P_{ml}\right) \Big(1-\big(K_m Q_m\big)^{1/\sigma_m}\Big)^{\beta_m},
+I_m \eq -a_m\left(\sum_l k_{ml}(T) \P_{ml}\right) \Big|1-\big(K_m Q_m\big)^{1/\sigma_m}\Big|^{\beta_m} {\rm sign}(1-K_mQ_m),
 \EN
 where the sum over $l$ represents contributions from parallel reaction mechanisms such as pH dependence etc., and where $K_m$ denotes the equilibrium constant, $\sigma_m$ refers to Tempkin's constant (Lichtner, 1996b), $\beta_m$ denotes the affinity power, $a_m$ refers to the specific mineral surface area, and the ion activity product $Q_m$ is defined as
 \EQ
 Q_m \eq \prod_j \big(\gamma_j m_j\big)^{\nu_{jm}},
 \EN
-with molality $m_j$. The rate constant $k_{ml}$ is a function of temperature given by the Arrhenius relation
+with molality $m_j$ of the $j$th primary species. The rate constant $k_{ml}$ is a function of temperature given by the Arrhenius relation
 \EQ
 k_{ml} (T) \eq k_{ml}^0 \exp\left[\frac{E_{ml}}{R}\Big(\frac{1}{T_0}-\frac{1}{T}\Big)\right],
 \EN
