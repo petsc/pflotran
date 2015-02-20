@@ -30,6 +30,8 @@ module PM_RT_class
     PetscBool :: steady_flow
     PetscReal :: tran_weight_t0
     PetscReal :: tran_weight_t1
+    ! for transport only
+    PetscBool :: transient_porosity
   contains
     procedure, public :: Init => PMRTInit
     procedure, public :: PMRTSetRealization
@@ -95,6 +97,8 @@ function PMRTCreate()
   rt_pm%steady_flow = PETSC_FALSE
   rt_pm%tran_weight_t0 = 0.d0
   rt_pm%tran_weight_t1 = 0.d0
+  ! these flags can only be true for transport only
+  rt_pm%transient_porosity = PETSC_FALSE
 
   call PMBaseCreate(rt_pm)
   rt_pm%name = 'PMRT'
@@ -141,6 +145,18 @@ subroutine PMRTInit(this)
 
   ! set the communicator
   this%comm1 => this%realization%comm1
+
+  ! only set these flags if transport only
+  if (this%option%nflowdof == 0) then
+    if (associated(this%realization%reaction)) then
+      if (this%realization%reaction%update_porosity & !.or. &
+!          this%realization%reaction%update_tortuosity .or. &
+!          this%realization%reaction%update_mnrl_surf_with_porosity &
+          ) then
+        this%transient_porosity = PETSC_TRUE
+      endif
+    endif
+  endif
   
 end subroutine PMRTInit
 
@@ -174,6 +190,76 @@ subroutine PMRTSetRealization(this,realization)
   this%residual_vec = realization%field%tran_r
   
 end subroutine PMRTSetRealization
+
+! ************************************************************************** !
+
+recursive subroutine PMRTInitializeRun(this)
+  ! 
+  ! Initializes the time stepping
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/18/13
+  ! 
+
+  use Reactive_Transport_module, only : RTUpdateEquilibriumState, &
+                                        RTJumpStartKineticSorption
+  use Condition_Control_module
+  use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
+  use Reactive_Transport_module, only : RTUpdateAuxVars, &
+                                        RTClearActivityCoefficients
+  use Variables_module, only : POROSITY
+  use Material_Aux_class, only : POROSITY_MINERAL 
+  use Material_module, only : MaterialGetAuxVarVecLoc
+
+  implicit none
+  
+  class(pm_rt_type) :: this
+  PetscErrorCode :: ierr
+  
+#ifdef PM_RT_DEBUG  
+  call printMsg(this%option,'PMRT%InitializeRun()')
+#endif
+
+  if (this%transient_porosity) then
+    call RealizationCalcMineralPorosity(this%realization)
+    call MaterialGetAuxVarVecLoc(this%realization%patch%aux%Material, &
+                                 this%realization%field%work_loc, &
+                                 POROSITY,POROSITY_MINERAL)
+    call this%comm1%LocalToGlobal(this%realization%field%work_loc, &
+                                  this%realization%field%porosity0)
+    call VecCopy(this%realization%field%porosity0, &
+                 this%realization%field%porosity_t,ierr);CHKERRQ(ierr)
+    call VecCopy(this%realization%field%porosity0, &
+                 this%realization%field%porosity_tpdt,ierr);CHKERRQ(ierr)
+  endif
+  
+  ! restart
+  if (this%option%restart_flag .and. &
+      this%option%overwrite_restart_transport) then
+    call RTClearActivityCoefficients(this%realization)
+    call CondControlAssignTranInitCond(this%realization)  
+  endif
+  
+  ! pass PETSC_FALSE to turn off update of kinetic state variables
+  call PMRTUpdateSolution2(this,PETSC_FALSE)
+  
+#if 0
+  if (this%option%jumpstart_kinetic_sorption .and. &
+      this%option%time < 1.d-40) then
+    ! only user jumpstart for a restarted simulation
+    if (.not. this%option%restart_flag) then
+      this%option%io_buffer = 'Only use JUMPSTART_KINETIC_SORPTION on a ' // &
+        'restarted simulation.  ReactionEquilibrateConstraint() will ' // &
+        'appropriately set sorbed initial concentrations for a normal ' // &
+        '(non-restarted) simulation.'
+      call printErrMsg(this%option)
+    endif
+    call RTJumpStartKineticSorption(this%realization)
+  endif
+  ! check on MAX_STEPS < 0 to quit after initialization.
+#endif  
+    
+end subroutine PMRTInitializeRun
 
 ! ************************************************************************** !
 
@@ -216,6 +302,11 @@ subroutine PMRTInitializeTimestep(this)
     endif
     ! set densities and saturations to t
     call GlobalWeightAuxvars(this%realization,this%tran_weight_t0)
+  else if (this%transient_porosity) then
+    this%tran_weight_t0 = 0.d0
+    call MaterialWeightAuxVars(this%realization%patch%aux%Material, &
+                               this%tran_weight_t0, &
+                               this%realization%field,this%comm1)
   endif
 
   call RTInitializeTimestep(this%realization)
@@ -231,6 +322,11 @@ subroutine PMRTInitializeTimestep(this)
                                  this%realization%field,this%comm1)
     endif
     call GlobalWeightAuxVars(this%realization,this%tran_weight_t1)
+  else if (this%transient_porosity) then
+    this%tran_weight_t1 = 1.d0
+    call MaterialWeightAuxVars(this%realization%patch%aux%Material, &
+                               this%tran_weight_t1, &
+                               this%realization%field,this%comm1)
   endif
 
   call RTUpdateTransportCoefs(this%realization)
@@ -273,6 +369,11 @@ subroutine PMRTPreSolve(this)
                                  this%realization%field,this%comm1)
     endif
     call GlobalWeightAuxVars(this%realization,this%tran_weight_t1)
+  else if (this%transient_porosity) then
+    this%tran_weight_t1 = 1.d0
+    call MaterialWeightAuxVars(this%realization%patch%aux%Material, &
+                               this%tran_weight_t1, &
+                               this%realization%field,this%comm1)
   endif
 
   call RTUpdateTransportCoefs(this%realization)
@@ -320,12 +421,27 @@ subroutine PMRTFinalizeTimestep(this)
   ! 
 
   use Reactive_Transport_module, only : RTMaxChange
+  use Variables_module, only : POROSITY
+  use Material_module, only : MaterialGetAuxVarVecLoc
+  use Material_Aux_class, only : POROSITY_MINERAL 
   use Global_module
 
   implicit none
   
   class(pm_rt_type) :: this
   PetscReal :: time  
+  PetscErrorCode :: ierr
+
+  if (this%transient_porosity) then
+    call VecCopy(this%realization%field%porosity_tpdt, &
+                 this%realization%field%porosity_t,ierr);CHKERRQ(ierr)
+    call RealizationUpdatePropertiesTS(this%realization)
+    call MaterialGetAuxVarVecLoc(this%realization%patch%aux%Material, &
+                                 this%realization%field%work_loc, &
+                                 POROSITY,POROSITY_MINERAL)
+    call this%comm1%LocalToGlobal(this%realization%field%work_loc, &
+                                  this%realization%field%porosity_tpdt)
+  endif
   
   call RTMaxChange(this%realization)
   if (this%option%print_screen_flag) then
@@ -408,59 +524,6 @@ subroutine PMRTUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
   dt = dtt
 
 end subroutine PMRTUpdateTimestep
-
-! ************************************************************************** !
-
-recursive subroutine PMRTInitializeRun(this)
-  ! 
-  ! Initializes the time stepping
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/18/13
-  ! 
-
-  use Reactive_Transport_module, only : RTUpdateEquilibriumState, &
-                                        RTJumpStartKineticSorption
-  use Condition_Control_module
-  use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
-  use Reactive_Transport_module, only : RTUpdateAuxVars, &
-                                        RTClearActivityCoefficients
-
-  implicit none
-  
-  class(pm_rt_type) :: this
-  
-#ifdef PM_RT_DEBUG  
-  call printMsg(this%option,'PMRT%InitializeRun()')
-#endif
-  
-  ! restart
-  if (this%option%restart_flag .and. &
-      this%option%overwrite_restart_transport) then
-    call RTClearActivityCoefficients(this%realization)
-    call CondControlAssignTranInitCond(this%realization)  
-  endif
-  
-  ! pass PETSC_FALSE to turn off update of kinetic state variables
-  call PMRTUpdateSolution2(this,PETSC_FALSE)
-  
-#if 0
-  if (this%option%jumpstart_kinetic_sorption .and. &
-      this%option%time < 1.d-40) then
-    ! only user jumpstart for a restarted simulation
-    if (.not. this%option%restart_flag) then
-      this%option%io_buffer = 'Only use JUMPSTART_KINETIC_SORPTION on a ' // &
-        'restarted simulation.  ReactionEquilibrateConstraint() will ' // &
-        'appropriately set sorbed initial concentrations for a normal ' // &
-        '(non-restarted) simulation.'
-      call printErrMsg(this%option)
-    endif
-    call RTJumpStartKineticSorption(this%realization)
-  endif
-  ! check on MAX_STEPS < 0 to quit after initialization.
-#endif  
-    
-end subroutine PMRTInitializeRun
 
 ! ************************************************************************** !
 
