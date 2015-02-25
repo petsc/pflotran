@@ -87,20 +87,9 @@ FLUID_PROPERTY
 # == material properties ======================================================
 MATERIAL_PROPERTY  Hanford
   ID 1
-  SATURATION_FUNCTION sf1
   POROSITY 0.25
   TORTUOSITY 0.5
 /
-
-skip
-# == saturation / permeability functions ======================================
-SATURATION_FUNCTION sf1
-  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-  RESIDUAL_SATURATION 0.1d0
-  LAMBDA 2.67d0
-  ALPHA 2.042d-4
-/
-noskip
 
 # == output ===================================================================
 OUTPUT
