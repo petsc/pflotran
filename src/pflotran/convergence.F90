@@ -60,7 +60,7 @@ end function ConvergenceContextCreate
 
 ! ************************************************************************** !
 
-subroutine ConvergenceTest(snes_,it,xnorm,snorm,fnorm,reason,context,ierr)
+subroutine ConvergenceTest(snes_,it,xnorm,unorm,fnorm,reason,context,ierr)
   ! 
   ! User defined convergence test
   ! 
@@ -72,9 +72,9 @@ subroutine ConvergenceTest(snes_,it,xnorm,snorm,fnorm,reason,context,ierr)
   
   SNES :: snes_
   PetscInt :: it
-  PetscReal :: xnorm
-  PetscReal :: snorm
-  PetscReal :: fnorm
+  PetscReal :: xnorm ! 2-norm of updated solution
+  PetscReal :: unorm ! 2-norm of update. PETSc refers to this as snorm
+  PetscReal :: fnorm ! 2-norm of updated residual
   SNESConvergedReason :: reason
   type(convergence_context_type) :: context
   PetscErrorCode :: ierr
@@ -168,12 +168,12 @@ subroutine ConvergenceTest(snes_,it,xnorm,snorm,fnorm,reason,context,ierr)
 
   !geh: We must check the convergence here as it initializes
   !     snes->ttol for subsequent iterations.
-  call SNESConvergedDefault(snes_,it,xnorm,snorm,fnorm,reason, &
+  call SNESConvergedDefault(snes_,it,xnorm,unorm,fnorm,reason, &
                             PETSC_NULL_OBJECT,ierr);CHKERRQ(ierr)
 #if 0
   if (it == 0 .and. &
       option%print_screen_flag .and. solver%print_convergence) then
-    write(*,'(i3," 2f:",es9.2)') it, fnorm
+    write(*,'(i3," 2r:",es9.2)') it, fnorm
   endif
 #endif
 
@@ -196,7 +196,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,snorm,fnorm,reason,context,ierr)
 
 ! Checking if norm exceeds divergence tolerance
 !geh: inorm_residual is being used without being calculated.
-!      if (fnorm > solver%max_norm .or. snorm > solver%max_norm .or. &
+!      if (fnorm > solver%max_norm .or. unorm > solver%max_norm .or. &
 !        inorm_residual > solver%max_norm) then
   
   if (option%out_of_table) then
@@ -277,22 +277,22 @@ subroutine ConvergenceTest(snes_,it,xnorm,snorm,fnorm,reason,context,ierr)
           case default
             write(sec_string,'(i3)') sec_reason
         end select
-        write(*,'(i3," 2f:",es9.2, &
+        write(*,'(i3," 2r:",es9.2, &
                 & " 2x:",es9.2, &
-                & " 2s:",es9.2, &
+                & " 2u:",es9.2, &
                 & " ir:",es9.2, &
                 & " iu:",es9.2, &
                 & " irsec:",es9.2, &
-                & " rsn: ",a, ", ",a)') it, fnorm, xnorm, snorm, inorm_residual, &
+                & " rsn: ",a, ", ",a)') it, fnorm, xnorm, unorm, inorm_residual, &
                                 inorm_update, option%infnorm_res_sec, &
                                 trim(string), trim(sec_string)
       else
-        write(*,'(i3," 2f:",es9.2, &
+        write(*,'(i3," 2r:",es9.2, &
                 & " 2x:",es9.2, &
-                & " 2s:",es9.2, &
+                & " 2u:",es9.2, &
                 & " ir:",es9.2, &
                 & " iu:",es9.2, &
-                & " rsn: ",a)') it, fnorm, xnorm, snorm, inorm_residual, &
+                & " rsn: ",a)') it, fnorm, xnorm, unorm, inorm_residual, &
                                 inorm_update, trim(string)        
       endif
     endif
@@ -331,10 +331,10 @@ subroutine ConvergenceTest(snes_,it,xnorm,snorm,fnorm,reason,context,ierr)
         case default
           write(string,'(i3)') reason
       end select
-      write(*,'(i3," fnrm:",es10.2, &
-              & " pnrm:",es10.2, &
+      write(*,'(i3," 2r:",es10.2, &
+              & " 2u:",es10.2, &
               & 32x, &
-              & " rsn: ",a)') it, fnorm, snorm, trim(string)
+              & " rsn: ",a)') it, fnorm, unorm, trim(string)
       if (solver%print_linear_iterations) then
         call KSPGetIterationNumber(solver%ksp,i,ierr);CHKERRQ(ierr)
         write(option%io_buffer,'("   Linear Solver Iterations: ",i6)') i
