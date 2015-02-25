@@ -482,7 +482,7 @@ subroutine PMGeneralMaxChange(this)
     call VecGetArrayF90(field%max_change_vecs(i),vec_ptr2,ierr);CHKERRQ(ierr)
     max_change = 0.d0
     do j = 1, grid%nlmax
-      ! have to week out cells that changed state
+      ! have to weed out cells that changed state
       if (dabs(vec_ptr(j)) > 1.d-40 .and. dabs(vec_ptr2(j)) > 1.d-40) then
         max_change = max(max_change,dabs(vec_ptr(j)-vec_ptr2(j)))
       endif
