@@ -1869,6 +1869,12 @@ subroutine InitSubsurfaceReadInput(simulation)
 !....................
 
       case ('SATURATION_FUNCTION')
+#ifndef LEGACY_SATURATION_FUNCTION
+        option%io_buffer = 'Must compile with legacy_saturation_function=1 ' //&
+          'to use the SATURATION_FUNCTION keyword.  Otherwise, use ' // &
+          'CHARACTERISTIC_CURVES.'
+        call printErrMsg(option)
+#endif
         saturation_function => SaturationFunctionCreate(option)
         call InputReadWord(input,option,saturation_function%name,PETSC_TRUE)
         call InputErrorMsg(input,option,'name','SATURATION_FUNCTION')
