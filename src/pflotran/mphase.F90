@@ -925,7 +925,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
   call VecGetArrayF90(field%flow_xx_loc,xx_loc_p, ierr);CHKERRQ(ierr)
   call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr);CHKERRQ(ierr)
   call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr);CHKERRQ(ierr)
-  
+
   do ghosted_id = 1, grid%ngmax
     if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
     !geh - Ignore inactive cells with inactive materials
