@@ -5662,7 +5662,6 @@ subroutine THUpdateSurfaceBC(realization)
           surfpress_new
         boundary_condition%flow_aux_real_var(TH_TEMPERATURE_DOF,iconn) = &
           surftemp_new
-        write(*,*)'New BC: ',surfpress_new,surftemp_new
       enddo
 
     else
