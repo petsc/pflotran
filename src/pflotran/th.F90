@@ -5448,9 +5448,11 @@ subroutine EnergyToTemperatureBisection(T,TL,TR,h,energy,Cwi,Pr,option)
 
 end subroutine EnergyToTemperatureBisection
 
+! ************************************************************************** !
+
 subroutine THUpdateSurfaceBC(realization)
   ! 
-  ! Deallocates variables associated with Richard
+  ! Updates pressure and temperature BC associated with surface-flow
   ! 
   ! Author: Gautam Bisht
   ! Date: 10/23/13
@@ -5660,6 +5662,7 @@ subroutine THUpdateSurfaceBC(realization)
           surfpress_new
         boundary_condition%flow_aux_real_var(TH_TEMPERATURE_DOF,iconn) = &
           surftemp_new
+        write(*,*)'New BC: ',surfpress_new,surftemp_new
       enddo
 
     else
