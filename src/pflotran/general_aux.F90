@@ -441,7 +441,8 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
         write(option%io_buffer,'(''Negative gas pressure at cell '', &
           & i5,'' in GeneralAuxVarCompute().  Attempting bailout.'')') &
           ghosted_id
-        call printErrMsgByRank(option)
+!        call printErrMsgByRank(option)
+        call printMsgByRank(option)
         ! set vapor pressure to just under saturation pressure
         gen_auxvar%pres(vpid) = 0.5d0*gen_auxvar%pres(spid)
         ! set gas pressure to vapor pressure + air pressure
@@ -777,7 +778,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
           option%io_buffer = 'Negative gas pressure during state change ' // &
             'at ' // trim(adjustl(string))
 !          call printErrMsg(option)
-          call printMsg(option)
+          call printMsgByRank(option)
           x(GENERAL_GAS_PRESSURE_DOF) = gen_auxvar%pres(spid)
 !geh          x(GENERAL_GAS_PRESSURE_DOF) = 2.d0*gen_auxvar%pres(spid)
         endif
@@ -871,7 +872,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
           write(string,*) ghosted_id
           option%io_buffer = 'Negative air mole fraction during state change ' // &
             'at ' // trim(adjustl(string))
-          call printMsg(option)
+          call printMsgByRank(option)
           x(GENERAL_LIQUID_STATE_X_MOLE_DOF) = two_phase_epsilon
         endif
         if (general_2ph_energy_dof == GENERAL_TEMPERATURE_INDEX) then
