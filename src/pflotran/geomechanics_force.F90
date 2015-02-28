@@ -902,7 +902,7 @@ subroutine GeomechForceLocalElemResidual(size_elenodes,local_coordinates,local_d
     Kmat = Kmat + w(igpt)*mu*matmul(matmul(kron_B_eye,kron_eye_B_transpose),Trans)*detJ_map
     force = force + w(igpt)*density*matmul(kron_N_eye,bf)*detJ_map
     force = force + w(igpt)*beta*dot_product(N(:,1),local_press)*vecB_transpose(:,1)*detJ_map
-    force = force + w(igpt)*alpha*dot_product(N(:,1),local_temp)*vecB_transpose(:,1)*detJ_map
+    force = force + w(igpt)*alpha*(3*lambda+2*mu)*dot_product(N(:,1),local_temp)*vecB_transpose(:,1)*detJ_map  
     call ShapeFunctionDestroy(shapefunction)
     deallocate(N)
     deallocate(vecB_transpose)
