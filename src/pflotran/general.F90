@@ -470,6 +470,100 @@ end subroutine GeneralTimeCut
 
 ! ************************************************************************** !
 
+subroutine GeneralNumericalJacobianTest(xx,realization)
+  ! 
+  ! Computes the a test numerical jacobian
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/03/15
+  ! 
+
+  use Realization_class
+  use Patch_module
+  use Option_module
+  use Grid_module
+  use Field_module
+
+  implicit none
+
+  Vec :: xx
+  type(realization_type) :: realization
+
+  Vec :: xx_pert
+  Vec :: res
+  Vec :: res_pert
+  Mat :: A
+  PetscViewer :: viewer
+  PetscErrorCode :: ierr
+
+  PetscReal, pointer :: vec_p(:), vec2_p(:)
+
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(field_type), pointer :: field
+  PetscReal :: derivative, perturbation
+  PetscInt :: perturbation_tolerance = 1.d-6
+
+  PetscInt :: idof, idof2, icell
+
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  field => realization%field
+
+  call VecDuplicate(xx,xx_pert,ierr);CHKERRQ(ierr)
+  call VecDuplicate(xx,res,ierr);CHKERRQ(ierr)
+  call VecDuplicate(xx,res_pert,ierr);CHKERRQ(ierr)
+
+  call MatCreate(option%mycomm,A,ierr);CHKERRQ(ierr)
+  call MatSetSizes(A,PETSC_DECIDE,PETSC_DECIDE,grid%nlmax*option%nflowdof, &
+                   grid%nlmax*option%nflowdof, &
+                   ierr);CHKERRQ(ierr)
+  call MatSetType(A,MATAIJ,ierr);CHKERRQ(ierr)
+  call MatSetFromOptions(A,ierr);CHKERRQ(ierr)
+
+  call RichardsResidual(PETSC_NULL_OBJECT,xx,res,realization,ierr)
+  call VecGetArrayF90(res,vec2_p,ierr);CHKERRQ(ierr)
+  do icell = 1,grid%nlmax
+    if (patch%imat(grid%nL2G(icell)) <= 0) cycle
+    do idof = (icell-1)*option%nflowdof+1,icell*option%nflowdof 
+      call VecCopy(xx,xx_pert,ierr);CHKERRQ(ierr)
+      call VecGetArrayF90(xx_pert,vec_p,ierr);CHKERRQ(ierr)
+      perturbation = vec_p(idof)*perturbation_tolerance
+      vec_p(idof) = vec_p(idof)+perturbation
+      call VecRestoreArrayF90(xx_pert,vec_p,ierr);CHKERRQ(ierr)
+      call GeneralResidual(PETSC_NULL_OBJECT,xx_pert,res_pert,realization,ierr)
+      call VecGetArrayF90(res_pert,vec_p,ierr);CHKERRQ(ierr)
+      do idof2 = 1, grid%nlmax*option%nflowdof
+        derivative = (vec_p(idof2)-vec2_p(idof2))/perturbation
+        if (dabs(derivative) > 1.d-30) then
+          call MatSetValue(a,idof2-1,idof-1,derivative,insert_values, &
+                           ierr);CHKERRQ(ierr)
+        endif
+      enddo
+      call VecRestoreArrayF90(res_pert,vec_p,ierr);CHKERRQ(ierr)
+    enddo
+  enddo
+  call VecRestoreArrayF90(res,vec2_p,ierr);CHKERRQ(ierr)
+
+  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+  call PetscViewerASCIIOpen(option%mycomm,'numerical_jacobian.out',viewer, &
+                            ierr);CHKERRQ(ierr)
+  call MatView(A,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+
+  call MatDestroy(A,ierr);CHKERRQ(ierr)
+
+  call VecDestroy(xx_pert,ierr);CHKERRQ(ierr)
+  call VecDestroy(res,ierr);CHKERRQ(ierr)
+  call VecDestroy(res_pert,ierr);CHKERRQ(ierr)
+
+end subroutine GeneralNumericalJacobianTest
+
+! ************************************************************************** !
+
 subroutine GeneralComputeMassBalance(realization,mass_balance)
   ! 
   ! Initializes mass balance
@@ -2883,7 +2977,7 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
 #if 0
   imat = 1
   if (imat == 1) then
-    call GeneralNumericalJacTest(xx,realization) 
+    call GeneralNumericalJacobianTest(xx,realization) 
   endif
 #endif
 
