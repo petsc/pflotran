@@ -106,18 +106,20 @@ module Variables_module
   PetscInt, parameter, public :: TORTUOSITY              = 91
   PetscInt, parameter, public :: AIR_PRESSURE            = 92
   PetscInt, parameter, public :: CAPILLARY_PRESSURE      = 93
+  PetscInt, parameter, public :: VAPOR_PRESSURE          = 94
+  PetscInt, parameter, public :: SATURATION_PRESSURE     = 95
 
-  PetscInt, parameter, public :: EFFECTIVE_POROSITY      = 94
-  PetscInt, parameter, public :: LIQUID_HEAD             = 95
+  PetscInt, parameter, public :: EFFECTIVE_POROSITY      = 96
+  PetscInt, parameter, public :: LIQUID_HEAD             = 97
 
-  PetscInt, parameter, public :: GAS_CONCENTRATION       = 96
+  PetscInt, parameter, public :: GAS_CONCENTRATION       = 98
   
-  PetscInt, parameter, public :: SEC_MIN_RATE            = 97
-  PetscInt, parameter, public :: SEC_MIN_SI              = 98
-  PetscInt, parameter, public :: RESIDUAL                = 99
-  PetscInt, parameter, public :: MINERAL_POROSITY        = 100
+  PetscInt, parameter, public :: SEC_MIN_RATE            = 99
+  PetscInt, parameter, public :: SEC_MIN_SI              = 100
+  PetscInt, parameter, public :: RESIDUAL                = 101
+  PetscInt, parameter, public :: MINERAL_POROSITY        = 102
   
-  PetscInt, parameter, public :: SOIL_COMPRESSIBILITY         = 101
+  PetscInt, parameter, public :: SOIL_COMPRESSIBILITY    = 103
   
 
 !  PetscInt, parameter, public :: LIQUID_VELOCITY_CELL_CENT = 58
