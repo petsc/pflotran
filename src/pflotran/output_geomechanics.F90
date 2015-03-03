@@ -29,7 +29,7 @@ contains
 
 ! ************************************************************************** !
 
-subroutine OutputGeomechInit(geomech_realization,num_steps)
+subroutine OutputGeomechInit(num_steps)
   ! 
   ! Initializes module variables for geomechanics variables
   ! 
@@ -37,12 +37,10 @@ subroutine OutputGeomechInit(geomech_realization,num_steps)
   ! Date: 07/2/13
   ! 
 
-  use Geomechanics_Realization_class
   use Option_module
 
   implicit none
   
-  type(geomech_realization_type) :: geomech_realization
   PetscInt :: num_steps
 
   if (num_steps == 0) then
