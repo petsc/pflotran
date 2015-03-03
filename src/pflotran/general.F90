@@ -2137,6 +2137,8 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   use Debug_module
   use Material_Aux_class
 
+!  use Output_Tecplot_module
+
   implicit none
 
   SNES :: snes
@@ -2173,6 +2175,7 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   PetscInt :: local_id, ghosted_id
   PetscInt :: local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
   PetscInt :: i, imat, imat_up, imat_dn
+  PetscInt, save :: iplot = 0
 
   PetscReal, pointer :: r_p(:)
   PetscReal, pointer :: accum_p(:), accum_p2(:)
@@ -2225,9 +2228,14 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   call GeneralUpdateAuxVars(realization,PETSC_TRUE)
 
 ! for debugging a single grid cell
-!  i = 90
+!  i = 6
 !  call GeneralOutputAuxVars(gen_auxvars(0,i),global_auxvars(i),i,'genaux', &
 !                            PETSC_TRUE,option)
+! for debugging entire solution over a single SNES solve
+!  write(word,*) iplot
+!  iplot = iplot + 1
+!  realization%output_option%plot_name = 'general-ni-' // trim(adjustl(word))
+!  call OutputTecplotPoint(realization)
 
   ! override flags since they will soon be out of date
   patch%aux%General%auxvars_up_to_date = PETSC_FALSE 
@@ -2483,10 +2491,12 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
       accum_p((local_id-1)*option%nflowdof+1:local_id*option%nflowdof)
   enddo
   call VecRestoreArrayReadF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(r, r_p, ierr);CHKERRQ(ierr)
   do local_id = 1, grid%nlmax
     write(debug_unit,'(a,i5,7es24.15)') 'residual:', local_id, &
       r_p((local_id-1)*option%nflowdof+1:local_id*option%nflowdof)
   enddo
+  call VecRestoreArrayF90(r, r_p, ierr);CHKERRQ(ierr)
 #endif
   
   
