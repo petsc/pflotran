@@ -113,9 +113,8 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
     prev_pm => cur_pm
     cur_pm => cur_pm%next
   enddo
-  call SubsurfaceInitializePostPetsc(simulation,option)
-  ! in SubsurfaceInitializePostPetsc, the first pmc in the list is set as
-  ! the master, we need to negate this setting
+  
+  call SubsurfaceInitializePostPetsc(simulation,option)  
   simulation%process_model_coupler_list%is_master = PETSC_TRUE
     
   if (option%geomech_on) then
@@ -163,7 +162,7 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
       if (associated(simulation%geomech_process_model_coupler% &
                      timestepper)) then
         simulation%geomech_process_model_coupler%timestepper%cur_waypoint => &
-          geomech_realization%waypoint_list%first
+          subsurf_realization%waypoint_list%first
       endif
     endif
  
@@ -245,6 +244,8 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
         call GeomechStoreInitialPressTemp(pmc%geomech_realization)
     end select
   endif    
+
+  call GeomechanicsJumpStart(simulation)
   
 end subroutine GeomechanicsInitializePostPETSc
 
@@ -262,7 +263,8 @@ subroutine GeomechanicsJumpStart(simulation)
   use Option_module
   use Timestepper_Geomechanics_class
   use Output_Aux_module
-  use Output_module, only : Output, OutputInit, OutputPrintCouplers
+  use Output_module, only : Output, OutputPrintCouplers
+  use Output_Geomechanics_module
   use Logging_module
   use Condition_Control_module
 
@@ -309,6 +311,8 @@ subroutine GeomechanicsJumpStart(simulation)
   geomech_read = PETSC_FALSE
   failure = PETSC_FALSE
   
+  call OutputGeomechInit(master_timestepper%steps)
+
 
 end subroutine GeomechanicsJumpStart
 

@@ -1,5 +1,6 @@
 module Output_Geomechanics_module
 
+  use Logging_module 
   use Geomechanics_Logging_module
   use Output_Aux_module  
   use Output_Tecplot_module
@@ -28,7 +29,7 @@ contains
 
 ! ************************************************************************** !
 
-subroutine OutputGeomechInit(geomech_realization,num_steps)
+subroutine OutputGeomechInit(num_steps)
   ! 
   ! Initializes module variables for geomechanics variables
   ! 
@@ -36,12 +37,10 @@ subroutine OutputGeomechInit(geomech_realization,num_steps)
   ! Date: 07/2/13
   ! 
 
-  use Geomechanics_Realization_class
   use Option_module
 
   implicit none
   
-  type(geomech_realization_type) :: geomech_realization
   PetscInt :: num_steps
 
   if (num_steps == 0) then
@@ -80,8 +79,7 @@ subroutine OutputGeomechanics(geomech_realization,plot_flag, &
 
   option => geomech_realization%option
 
-  call PetscLogStagePush(geomech_logging%stage(GEOMECH_OUTPUT_STAGE), &
-                         ierr);CHKERRQ(ierr)
+  call PetscLogStagePush(logging%stage(OUTPUT_STAGE),ierr);CHKERRQ(ierr)
 
   ! check for plot request from active directory
   if (.not.plot_flag) then
@@ -104,12 +102,10 @@ subroutine OutputGeomechanics(geomech_realization,plot_flag, &
    
     if (geomech_realization%output_option%print_tecplot) then
       call PetscTime(tstart,ierr);CHKERRQ(ierr)
-      call PetscLogEventBegin(geomech_logging%event_output_tecplot, &
-                              ierr);CHKERRQ(ierr)
+      call PetscLogEventBegin(logging%event_output_tecplot,ierr);CHKERRQ(ierr)
       call OutputTecplotGeomechanics(geomech_realization)
       call PetscTime(tend,ierr);CHKERRQ(ierr)
-      call PetscLogEventEnd(geomech_logging%event_output_tecplot, &
-                            ierr);CHKERRQ(ierr)
+      call PetscLogEventEnd(logging%event_output_tecplot,ierr);CHKERRQ(ierr)
     endif
 
   endif
@@ -681,12 +677,12 @@ subroutine OutputGeomechGetVarFromArray(geomech_realization,vec,ivar,isubvar, &
   
   PetscErrorCode :: ierr
 
-  call PetscLogEventBegin(geomech_logging%event_output_get_var_from_array, &
+  call PetscLogEventBegin(logging%event_output_get_var_from_array, &
                           ierr);CHKERRQ(ierr)
                         
   call GeomechRealizGetDataset(geomech_realization,vec,ivar,isubvar,isubvar1)
 
-  call PetscLogEventEnd(geomech_logging%event_output_get_var_from_array, &
+  call PetscLogEventEnd(logging%event_output_get_var_from_array, &
                         ierr);CHKERRQ(ierr)
   
 end subroutine OutputGeomechGetVarFromArray
@@ -807,7 +803,7 @@ subroutine WriteTecplotDataSetNumPerLineGeomech(fid,geomech_realization, &
   grid => patch%geomech_grid
   option => geomech_realization%option
 
-  call PetscLogEventBegin(geomech_logging%event_output_write_tecplot, &
+  call PetscLogEventBegin(logging%event_output_write_tecplot, &
                           ierr);CHKERRQ(ierr)
 
   ! if num_per_line exceeds 100, need to change the format statement below
@@ -1020,7 +1016,7 @@ subroutine WriteTecplotDataSetNumPerLineGeomech(fid,geomech_realization, &
     deallocate(real_data)
   endif
 
-  call PetscLogEventEnd(geomech_logging%event_output_write_tecplot, &
+  call PetscLogEventEnd(logging%event_output_write_tecplot, &
                         ierr);CHKERRQ(ierr)
 
 end subroutine WriteTecplotDataSetNumPerLineGeomech
