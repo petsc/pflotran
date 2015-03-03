@@ -89,6 +89,7 @@ recursive subroutine PMCGeomechanicsRunToTime(this,sync_time,stop_flag)
   use Timestepper_Base_class
   use Option_module
   use PM_Base_class
+  use Output_Geomechanics_module
 
   implicit none
 
@@ -137,7 +138,23 @@ recursive subroutine PMCGeomechanicsRunToTime(this,sync_time,stop_flag)
     call this%SetAuxData()
     call this%child%RunToTime(this%timestepper%target_time,local_stop_flag)
   endif
-
+  
+  if (this%timestepper%time_step_cut_flag) then
+    plot_flag = PETSC_FALSE
+  endif
+  ! however, if we are using the modulus of the output_option%imod, we may
+  ! still print
+  if (mod(this%timestepper%steps,this%pms% &
+                output_option%periodic_output_ts_imod) == 0) then
+    plot_flag = PETSC_TRUE
+  endif
+  if (plot_flag .or. mod(this%timestepper%steps,this%pms%output_option% &
+                               periodic_tr_output_ts_imod) == 0) then
+    transient_plot_flag = PETSC_TRUE
+  endif
+  call OutputGeomechanics(this%geomech_realization,plot_flag, &
+                          transient_plot_flag)
+     
   ! Set data needed by process-model
   call this%SetAuxData()
 
