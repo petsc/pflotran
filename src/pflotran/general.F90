@@ -2137,7 +2137,10 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   use Debug_module
   use Material_Aux_class
 
-!  use Output_Tecplot_module
+!#define DEBUG_WITH_TECPLOT
+#ifdef DEBUG_WITH_TECPLOT
+  use Output_Tecplot_module
+#endif
 
   implicit none
 
@@ -2231,11 +2234,13 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
 !  i = 6
 !  call GeneralOutputAuxVars(gen_auxvars(0,i),global_auxvars(i),i,'genaux', &
 !                            PETSC_TRUE,option)
+#ifdef DEBUG_WITH_TECPLOT
 ! for debugging entire solution over a single SNES solve
-!  write(word,*) iplot
-!  iplot = iplot + 1
-!  realization%output_option%plot_name = 'general-ni-' // trim(adjustl(word))
-!  call OutputTecplotPoint(realization)
+  write(word,*) iplot
+  iplot = iplot + 1
+  realization%output_option%plot_name = 'general-ni-' // trim(adjustl(word))
+  call OutputTecplotPoint(realization)
+#endif
 
   ! override flags since they will soon be out of date
   patch%aux%General%auxvars_up_to_date = PETSC_FALSE 
