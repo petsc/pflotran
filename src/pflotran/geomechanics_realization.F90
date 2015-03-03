@@ -37,6 +37,7 @@ private
     type(gm_region_list_type), pointer :: geomech_region_list
     type(geomech_condition_list_type),pointer :: geomech_conditions
     class(dataset_base_type), pointer :: geomech_datasets
+    PetscReal :: dt_coupling
 
   end type geomech_realization_type
 
@@ -100,6 +101,7 @@ function GeomechRealizCreate(option)
   nullify(geomech_realization%geomech_material_property_array)
   
   nullify(geomech_realization%geomech_patch)
+  geomech_realization%dt_coupling = 0.d0
 
   GeomechRealizCreate => geomech_realization
   

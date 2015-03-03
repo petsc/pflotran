@@ -498,7 +498,8 @@ factory_geomechanics.o : condition_control.o factory_subsurface.o \
                          geomechanics_discretization.o geomechanics_force.o \
                          geomechanics_realization.o init_common.o \
                          init_geomechanics.o input_aux.o logging.o option.o \
-                         output.o output_aux.o pflotran_constants.o pm_base.o \
+                         output.o output_aux.o output_geomechanics.o \
+                         pflotran_constants.o pm_base.o \
                          pm_base_pointer.o pm_geomechanics_force.o pmc_base.o \
                          pmc_geomechanics.o realization.o simulation_aux.o \
                          simulation_base.o simulation_geomechanics.o \

@@ -327,7 +327,26 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
             call SolverReadLinear(geomech_solver,input,option)
         end select
 
-        
+      !.........................................................................
+      case ('GEOMECHANICS_TIME')
+        do
+          call InputReadPflotranString(input,option)
+          call InputReadStringErrorMsg(input,option,card)
+          if (InputCheckExit(input,option)) exit
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'word','GEOMECHANICS_TIME')
+          select case(trim(word))
+            case('COUPLING_TIMESTEP_SIZE')
+              call InputReadDouble(input,option,temp_real)
+              call InputErrorMsg(input,option,'Coupling Timestep Size','GEOMECHANICS_TIME') 
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'Coupling Timestep Size Time Units','GEOMECHANICS_TIME')
+              geomech_realization%dt_coupling = temp_real*UnitsConvertToInternal(word,option)
+            case default
+              call InputKeywordUnrecognized(word,'GEOMECHANICS_TIME',option)
+            end select
+        enddo
+                
       !.........................................................................
       case ('GEOMECHANICS_DEBUG')
         call GeomechDebugRead(geomech_realization%geomech_debug,input,option)
