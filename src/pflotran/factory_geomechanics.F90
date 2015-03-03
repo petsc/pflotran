@@ -163,7 +163,7 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
       if (associated(simulation%geomech_process_model_coupler% &
                      timestepper)) then
         simulation%geomech_process_model_coupler%timestepper%cur_waypoint => &
-          geomech_realization%waypoint_list%first
+          subsurf_realization%waypoint_list%first
       endif
     endif
  

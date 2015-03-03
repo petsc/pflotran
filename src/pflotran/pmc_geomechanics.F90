@@ -78,7 +78,7 @@ end subroutine PMCGeomechanicsInit
 
 ! ************************************************************************** !
 
-subroutine PMCGeomechanicsRunToTime(this,sync_time,stop_flag)
+recursive subroutine PMCGeomechanicsRunToTime(this,sync_time,stop_flag)
   ! 
   ! This routine runs the geomechanics simulation.
   ! 
@@ -95,8 +95,11 @@ subroutine PMCGeomechanicsRunToTime(this,sync_time,stop_flag)
   class(pmc_geomechanics_type), target :: this
   PetscReal :: sync_time
   PetscInt :: stop_flag
-
   PetscInt :: local_stop_flag
+  PetscBool :: plot_flag
+  PetscBool :: transient_plot_flag
+  PetscBool :: checkpoint_flag  
+    
   class(pm_base_type), pointer :: cur_pm
 
   this%option%io_buffer = trim(this%name) // ':' // trim(this%pms%name)
@@ -109,6 +112,9 @@ subroutine PMCGeomechanicsRunToTime(this,sync_time,stop_flag)
 
   call SetOutputFlags(this)
 
+  call this%timestepper%SetTargetTime(sync_time,this%option, &
+                                        local_stop_flag,plot_flag, &
+                                        transient_plot_flag,checkpoint_flag)
   call this%timestepper%StepDT(this%pms,local_stop_flag)
 
   ! Have to loop over all process models coupled in this object and update

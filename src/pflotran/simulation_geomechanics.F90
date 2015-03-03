@@ -28,7 +28,6 @@ module Simulation_Geomechanics_class
     procedure, public :: ExecuteRun => GeomechanicsSimulationExecuteRun
     procedure, public :: FinalizeRun => GeomechanicsSimulationFinalizeRun
     procedure, public :: Strip => GeomechanicsSimulationStrip
-    !procedure, public :: RunToTime => GeomechanicsSimulationRunToTime
   end type Geomechanics_simulation_type
   
   public :: GeomechanicsSimulationCreate, &
@@ -119,20 +118,54 @@ subroutine GeomechanicsSimulationExecuteRun(this)
   ! Date: 01/01/14
   ! 
 
+  use Waypoint_module
   use Simulation_Base_class
+  use Timestepper_Base_class, only : TS_CONTINUE
 
   implicit none
-
-#include "finclude/petscviewer.h"
-
+  
   class(geomechanics_simulation_type) :: this
-
+  
+  PetscReal :: time
   PetscReal :: final_time
+  PetscReal :: dt
+  PetscViewer :: viewer
+
+  time = this%option%time
 
   final_time = SimulationGetFinalWaypointTime(this)
-  call this%RunToTime(final_time)
+
+  call printMsg(this%option,'GeomechanicsSimulationExecuteRun()')
+
+  if (.not.associated(this%geomech_realization)) then
+    call this%RunToTime(final_time)
+
+  else
+
+    ! If simulation is decoupled subsurfac-geomech simulation, set
+    ! dt_coupling to be dt_max
+    if (this%geomech_realization%dt_coupling == 0.d0) &
+      this%geomech_realization%dt_coupling = 0.d0
+
+    do
+      if (time + this%geomech_realization%dt_coupling > final_time) then
+        dt = final_time-time
+      else
+        dt = this%geomech_realization%dt_coupling
+      endif
+
+      time = time + dt
+      call this%RunToTime(time)
+
+      if (this%stop_flag /= TS_CONTINUE) exit ! end simulation
+
+      if (time >= final_time) exit
+    enddo
+
+  endif
 
 end subroutine GeomechanicsSimulationExecuteRun
+
 
 ! ************************************************************************** !
 

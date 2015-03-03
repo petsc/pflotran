@@ -24,6 +24,7 @@ module Timestepper_Geomechanics_class
 
     procedure, public :: Init => TimestepperGeomechanicsInit
     procedure, public :: StepDT => TimestepperGeomechanicsStepDT
+    procedure, public :: UpdateDT => TimestepperGeomechanicsUpdateDT
     !procedure, public :: Checkpoint => TimestepperGeomechanicsCheckpoint
     !procedure, public :: Restart => TimestepperGeomechanicsRestart
     !procedure, public :: FinalizeRun => TimestepperGeomechanicsFinalizeRun
@@ -77,6 +78,28 @@ subroutine TimestepperGeomechanicsInit(this)
   call TimestepperBaseInit(this)
 
 end subroutine TimestepperGeomechanicsInit
+
+
+! ************************************************************************** !
+
+subroutine TimestepperGeomechanicsUpdateDT(this,process_model)
+  ! 
+  ! Updates time step
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/20/13
+  ! 
+
+  use PM_Base_class
+  use Option_module
+  
+  implicit none
+
+  class(timestepper_geomechanics_type) :: this
+  class(pm_base_type) :: process_model
+  
+
+end subroutine TimestepperGeomechanicsUpdateDT
 
 ! ************************************************************************** !
 
