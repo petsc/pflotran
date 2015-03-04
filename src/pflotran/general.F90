@@ -523,7 +523,7 @@ subroutine GeneralNumericalJacobianTest(xx,realization)
   call MatSetType(A,MATAIJ,ierr);CHKERRQ(ierr)
   call MatSetFromOptions(A,ierr);CHKERRQ(ierr)
 
-  call RichardsResidual(PETSC_NULL_OBJECT,xx,res,realization,ierr)
+  call GeneralResidual(PETSC_NULL_OBJECT,xx,res,realization,ierr)
   call VecGetArrayF90(res,vec2_p,ierr);CHKERRQ(ierr)
   do icell = 1,grid%nlmax
     if (patch%imat(grid%nL2G(icell)) <= 0) cycle
