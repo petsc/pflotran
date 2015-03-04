@@ -470,7 +470,7 @@ end subroutine GeneralTimeCut
 
 ! ************************************************************************** !
 
-subroutine GeneralNumericalJacobianTest(xx,realization)
+subroutine GeneralNumericalJacobianTest(xx,realization,B)
   ! 
   ! Computes the a test numerical jacobian
   ! 
@@ -488,6 +488,7 @@ subroutine GeneralNumericalJacobianTest(xx,realization)
 
   Vec :: xx
   type(realization_type) :: realization
+  Mat :: B
 
   Vec :: xx_pert
   Vec :: res
@@ -503,7 +504,9 @@ subroutine GeneralNumericalJacobianTest(xx,realization)
   type(patch_type), pointer :: patch
   type(field_type), pointer :: field
   PetscReal :: derivative, perturbation
-  PetscInt :: perturbation_tolerance = 1.d-6
+  PetscReal :: perturbation_tolerance = 1.d-6
+  PetscInt, save :: icall = 0
+  character(len=MAXWORDLENGTH) :: word, word2
 
   PetscInt :: idof, idof2, icell
 
@@ -512,18 +515,29 @@ subroutine GeneralNumericalJacobianTest(xx,realization)
   option => realization%option
   field => realization%field
 
+  icall = icall + 1
   call VecDuplicate(xx,xx_pert,ierr);CHKERRQ(ierr)
   call VecDuplicate(xx,res,ierr);CHKERRQ(ierr)
   call VecDuplicate(xx,res_pert,ierr);CHKERRQ(ierr)
 
   call MatCreate(option%mycomm,A,ierr);CHKERRQ(ierr)
+  call MatSetType(A,MATAIJ,ierr);CHKERRQ(ierr)
   call MatSetSizes(A,PETSC_DECIDE,PETSC_DECIDE,grid%nlmax*option%nflowdof, &
                    grid%nlmax*option%nflowdof, &
                    ierr);CHKERRQ(ierr)
-  call MatSetType(A,MATAIJ,ierr);CHKERRQ(ierr)
+  call MatSeqAIJSetPreallocation(A,27,PETSC_NULL_INTEGER,ierr);CHKERRQ(ierr)
   call MatSetFromOptions(A,ierr);CHKERRQ(ierr)
+  call MatSetOption(A,MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_FALSE,ierr); &
+       CHKERRQ(ierr)
 
+  call VecZeroEntries(res,ierr);CHKERRQ(ierr)
   call GeneralResidual(PETSC_NULL_OBJECT,xx,res,realization,ierr)
+#if 0
+  word  = 'num_0.dat'
+  call PetscViewerASCIIOpen(option%mycomm,word,viewer,ierr);CHKERRQ(ierr)
+  call VecView(res,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+#endif
   call VecGetArrayF90(res,vec2_p,ierr);CHKERRQ(ierr)
   do icell = 1,grid%nlmax
     if (patch%imat(grid%nL2G(icell)) <= 0) cycle
@@ -533,12 +547,20 @@ subroutine GeneralNumericalJacobianTest(xx,realization)
       perturbation = vec_p(idof)*perturbation_tolerance
       vec_p(idof) = vec_p(idof)+perturbation
       call VecRestoreArrayF90(xx_pert,vec_p,ierr);CHKERRQ(ierr)
+      call VecZeroEntries(res_pert,ierr);CHKERRQ(ierr)
       call GeneralResidual(PETSC_NULL_OBJECT,xx_pert,res_pert,realization,ierr)
+#if 0
+      write(word,*) idof
+      word  = 'num_' // trim(adjustl(word)) // '.dat'
+      call PetscViewerASCIIOpen(option%mycomm,word,viewer,ierr);CHKERRQ(ierr)
+      call VecView(res_pert,viewer,ierr);CHKERRQ(ierr)
+      call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+#endif
       call VecGetArrayF90(res_pert,vec_p,ierr);CHKERRQ(ierr)
       do idof2 = 1, grid%nlmax*option%nflowdof
         derivative = (vec_p(idof2)-vec2_p(idof2))/perturbation
         if (dabs(derivative) > 1.d-30) then
-          call MatSetValue(a,idof2-1,idof-1,derivative,insert_values, &
+          call MatSetValue(A,idof2-1,idof-1,derivative,INSERT_VALUES, &
                            ierr);CHKERRQ(ierr)
         endif
       enddo
@@ -549,11 +571,17 @@ subroutine GeneralNumericalJacobianTest(xx,realization)
 
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
-  call PetscViewerASCIIOpen(option%mycomm,'numerical_jacobian.out',viewer, &
-                            ierr);CHKERRQ(ierr)
+
+#if 1
+  write(word,*) icall
+  word = 'numerical_jacobian-' // trim(adjustl(word)) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,word,viewer,ierr);CHKERRQ(ierr)
   call MatView(A,viewer,ierr);CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+#endif
 
+!geh: uncomment to overwrite numerical Jacobian
+!  call MatCopy(A,B,DIFFERENT_NONZERO_PATTERN,ierr)
   call MatDestroy(A,ierr);CHKERRQ(ierr)
 
   call VecDestroy(xx_pert,ierr);CHKERRQ(ierr)
@@ -770,6 +798,11 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
   PetscInt :: real_index, variable
   PetscReal, pointer :: xx_loc_p(:)
   PetscReal :: xxbc(realization%option%nflowdof)
+!#define DEBUG_AUXVARS
+#ifdef DEBUG_AUXVARS
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt, save :: icall = 0
+#endif
   PetscErrorCode :: ierr
   
   option => realization%option
@@ -785,6 +818,11 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
     
   call VecGetArrayReadF90(field%flow_xx_loc,xx_loc_p, ierr);CHKERRQ(ierr)
 
+#ifdef DEBUG_AUXVARS
+  icall = icall + 1
+  write(word,*) icall
+  word = 'genaux' // trim(adjustl(word))
+#endif
   do ghosted_id = 1, grid%ngmax
      if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
      
@@ -812,6 +850,12 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
                                     ghosted_id, &  ! for debugging
                                     option)
     endif
+#ifdef DEBUG_AUXVARS
+!geh: for debugging
+    call GeneralOutputAuxVars(gen_auxvars(0,ghosted_id), &
+                              global_auxvars(ghosted_id),ghosted_id,word, &
+                              PETSC_TRUE,option)
+#endif
 #ifdef DEBUG_GENERAL_FILEOUTPUT
   if (debug_flag > 0) then
     write(debug_unit,'(a,i5,i3,7es24.15)') 'auxvar:', ghosted_id, &
@@ -2339,6 +2383,10 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   ! override flags since they will soon be out of date
   patch%aux%General%auxvars_up_to_date = PETSC_FALSE 
   if (option%variables_swapped) then
+    if (option%mycommsize > 1) then
+      print *, 'this needs to be addressed'
+      stop
+    endif
     !geh: since this operation is not collective (i.e. all processors may
     !     not swap), this operation may fail....
     call DiscretizationLocalToGlobal(discretization,field%flow_xx_loc,xx, &
@@ -2385,12 +2433,12 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
     
   enddo
 
-    
   call VecRestoreArrayReadF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
   !Heeho dynamically update p+1 accumulation term
   if (general_tough2_conv_criteria) then
     call VecRestoreArrayReadF90(field%flow_accum2, accum_p2, ierr);CHKERRQ(ierr)
   endif
+
   ! Interior Flux Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
@@ -2412,7 +2460,7 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
 
       icap_up = patch%sat_func_id(ghosted_id_up)
       icap_dn = patch%sat_func_id(ghosted_id_dn)
-   
+
       call GeneralFlux(gen_auxvars(ZERO_INTEGER,ghosted_id_up), &
                        global_auxvars(ghosted_id_up), &
                        material_auxvars(ghosted_id_up), &
@@ -2992,7 +3040,7 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
 #if 0
   imat = 1
   if (imat == 1) then
-    call GeneralNumericalJacobianTest(xx,realization) 
+    call GeneralNumericalJacobianTest(xx,realization,J) 
   endif
 #endif
 

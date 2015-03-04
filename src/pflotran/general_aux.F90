@@ -971,6 +971,8 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
   PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
   PetscReal, parameter :: perturbation_tolerance = 1.d-5
   PetscReal, parameter :: min_mole_fraction_pert = 1.d-12
+  PetscReal, parameter :: min_perturbation = 1.d-10
+  PetscReal, parameter :: pert_pres_tol = 1.d-8
   PetscInt :: idof
 
 #ifdef DEBUG_GENERAL
@@ -989,6 +991,8 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
          gen_auxvar(ZERO_INTEGER)%xmol(option%air_id,option%liquid_phase)
        x(GENERAL_ENERGY_DOF) = &
          gen_auxvar(ZERO_INTEGER)%temp
+!#define TOUGH2_PERT
+#ifndef TOUGH2_PERT
        ! if the liquid state, the liquid pressure will always be greater
        ! than zero.
        pert(GENERAL_LIQUID_PRESSURE_DOF) = &
@@ -1001,6 +1005,13 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
                    min_mole_fraction_pert)
        pert(GENERAL_ENERGY_DOF) = &
          -1.d0*perturbation_tolerance*x(GENERAL_ENERGY_DOF)
+#else
+       pert(GENERAL_LIQUID_PRESSURE_DOF) = &
+         pert_pres_tol*x(GENERAL_LIQUID_PRESSURE_DOF)+min_perturbation
+       pert(GENERAL_LIQUID_STATE_X_MOLE_DOF) = pert_pres_tol
+       pert(GENERAL_ENERGY_DOF) = &
+         pert_pres_tol*x(GENERAL_ENERGY_DOF)+min_perturbation
+#endif
     case(GAS_STATE)
        x(GENERAL_GAS_PRESSURE_DOF) = &
          gen_auxvar(ZERO_INTEGER)%pres(option%gas_phase)
@@ -1032,6 +1043,7 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
 !         gen_auxvar(ZERO_INTEGER)%pres(option%air_pressure_id)
        x(GENERAL_GAS_SATURATION_DOF) = &
          gen_auxvar(ZERO_INTEGER)%sat(option%gas_phase)
+#ifndef TOUGH2_PERT
        if (general_2ph_energy_dof == GENERAL_TEMPERATURE_INDEX) then
          x(GENERAL_ENERGY_DOF) = &
            gen_auxvar(ZERO_INTEGER)%temp
@@ -1063,6 +1075,19 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
          pert(GENERAL_GAS_SATURATION_DOF) = &
            perturbation_tolerance*x(GENERAL_GAS_SATURATION_DOF)
        endif
+#else
+       x(GENERAL_ENERGY_DOF) = &
+         gen_auxvar(ZERO_INTEGER)%temp
+       pert(GENERAL_GAS_PRESSURE_DOF) = &
+         pert_pres_tol*x(GENERAL_GAS_PRESSURE_DOF)+min_perturbation
+       if (x(GENERAL_GAS_SATURATION_DOF) > 0.5d0) then 
+         pert(GENERAL_GAS_SATURATION_DOF) = -1.d0*pert_pres_tol
+       else
+         pert(GENERAL_GAS_SATURATION_DOF) = pert_pres_tol
+       endif
+       pert(GENERAL_ENERGY_DOF) = &
+         pert_pres_tol*x(GENERAL_ENERGY_DOF)+min_perturbation
+#endif
   end select
   
   ! GENERAL_UPDATE_FOR_DERIVATIVE indicates call from perturbation
