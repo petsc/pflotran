@@ -201,8 +201,8 @@ subroutine PFLOTRANReadSimulation(simulation,option)
               call InputKeywordUnrecognized(word, &
                      'SIMULATION,PROCESS_MODELS',option)            
           end select
+          if (.not.associated(new_pm%option)) new_pm%option => option
           new_pm%name = name
-          new_pm%option => option
           if (associated(cur_pm)) then
             cur_pm%next => new_pm
           else

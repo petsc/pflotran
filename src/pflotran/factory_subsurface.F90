@@ -184,7 +184,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
     string = 'MPM'
     call InputFindStringInFile(realization%input,option,string)
     call InputFindStringErrorMsg(realization%input,option,string)
-    call pm_waste_form%Read(realization%input,option)
+    call pm_waste_form%Read(realization%input)
   endif
   call InputDestroy(realization%input)
   call InitSubsurfaceSimulation(simulation)
@@ -385,7 +385,7 @@ subroutine SubsurfaceReadFlowPM(input, option, pm)
   implicit none
   
   type(input_type) :: input
-  type(option_type) :: option
+  type(option_type), pointer :: option
   class(pm_base_type), pointer :: pm
   
   character(len=MAXWORDLENGTH) :: word
@@ -424,6 +424,7 @@ subroutine SubsurfaceReadFlowPM(input, option, pm)
             call InputKeywordUnrecognized(word, &
                      'SIMULATION,PROCESS_MODELS,SUBSURFACE_FLOW,MODE',option)
         end select
+        pm%option => option
       case('OPTIONS')
         if (.not.associated(pm)) then
           option%io_buffer = 'MODE keyword must be read first under ' // &
@@ -435,9 +436,9 @@ subroutine SubsurfaceReadFlowPM(input, option, pm)
             ! inorder to not immediately return out of GeneralRead
             !TODO(geh): remove dummy word
             input%buf = 'dummy_word'
-            call GeneralRead(input,option)
+            call pm%Read(input)
           class is(pm_th_type)
-            call pm%Read(input,option)
+            call pm%Read(input)
           class default
             option%io_buffer = 'OPTIONS not set up for PM.'
             call printErrMsg(option)
@@ -476,7 +477,7 @@ subroutine SubsurfaceReadRTPM(input, option, pm)
   implicit none
   
   type(input_type) :: input
-  type(option_type) :: option
+  type(option_type), pointer :: option
   class(pm_base_type), pointer :: pm
   
   character(len=MAXWORDLENGTH) :: word
@@ -485,6 +486,7 @@ subroutine SubsurfaceReadRTPM(input, option, pm)
   error_string = 'SIMULATION,PROCESS_MODEL'
 
   pm => PMRTCreate()
+  pm%option => option
   
   word = ''
   do   
@@ -517,7 +519,7 @@ subroutine SubsurfaceReadWasteFormPM(input, option, pm)
   implicit none
   
   type(input_type) :: input
-  type(option_type) :: option
+  type(option_type), pointer :: option
   class(pm_base_type), pointer :: pm
   
   character(len=MAXWORDLENGTH) :: word
@@ -526,6 +528,7 @@ subroutine SubsurfaceReadWasteFormPM(input, option, pm)
   error_string = 'SIMULATION,PROCESS_MODEL'
 
   pm => PMWasteFormCreate()
+  pm%option => option
   
   word = ''
   do   

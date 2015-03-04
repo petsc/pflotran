@@ -40,110 +40,23 @@ module General_module
   PetscInt :: debug_timestep_count
 #endif
 
-  public GeneralRead, &
-         GeneralSetup, &
-         GeneralInitializeTimestep, &
-         GeneralUpdateSolution, &
-         GeneralTimeCut,&
-         GeneralUpdateAuxVars, &
-         GeneralUpdateFixedAccum, &
-         GeneralComputeMassBalance, &
-         GeneralResidual, &
-         GeneralJacobian, &
-         GeneralGetTecplotHeader, &
-         GeneralSetPlotVariables, &
-         GeneralCheckUpdatePre, &
-         GeneralCheckUpdatePost, &
-         GeneralMapBCAuxvarsToGlobal, &
-         GeneralDestroy
+  public :: GeneralSetup, &
+            GeneralInitializeTimestep, &
+            GeneralUpdateSolution, &
+            GeneralTimeCut,&
+            GeneralUpdateAuxVars, &
+            GeneralUpdateFixedAccum, &
+            GeneralComputeMassBalance, &
+            GeneralResidual, &
+            GeneralJacobian, &
+            GeneralGetTecplotHeader, &
+            GeneralSetPlotVariables, &
+            GeneralCheckUpdatePre, &
+            GeneralCheckUpdatePost, &
+            GeneralMapBCAuxvarsToGlobal, &
+            GeneralDestroy
 
 contains
-
-! ************************************************************************** !
-
-subroutine GeneralRead(input,option)
-  ! 
-  ! Reads parameters for general phase
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 01/21/09
-  ! 
-
-  use Option_module
-  use Input_Aux_module
-  use String_module
-
-  implicit none
-  
-  type(input_type) :: input
-  type(option_type) :: option
-  
-  character(len=MAXWORDLENGTH) :: keyword, word
-
-  call InputReadWord(input,option,keyword,PETSC_TRUE)
-  if (input%ierr /= 0) then
-    return
-  endif
-  
-  input%ierr = 0
-  do
-  
-    call InputReadPflotranString(input,option)
-
-    if (InputCheckExit(input,option)) exit  
-
-    call InputReadWord(input,option,keyword,PETSC_TRUE)
-    call InputErrorMsg(input,option,'keyword','GENERAL_MODE')
-    call StringToUpper(keyword)   
-      
-    select case(trim(keyword))
-      case('TOUGH2_ITOL_SCALED_RESIDUAL')
-        call InputReadDouble(input,option,general_tough2_itol_scaled_res_e1)
-        call InputDefaultMsg(input,option,'tough_itol_scaled_residual_e1')
-        call InputReadDouble(input,option,general_tough2_itol_scaled_res_e2)
-        call InputDefaultMsg(input,option,'tough_itol_scaled_residual_e2')
-        general_tough2_conv_criteria = PETSC_True
-      case('WINDOW_EPSILON') 
-        call InputReadDouble(input,option,window_epsilon)
-        call InputErrorMsg(input,option,'window epsilon','GENERAL_MODE')
-      case('GAS_COMPONENT_FORMULA_WEIGHT')
-        !geh: assuming gas component is index 2
-        call InputReadDouble(input,option,fmw_comp(2))
-        call InputErrorMsg(input,option,'gas component formula wt.', &
-                           'GENERAL_MODE')
-      case('TWO_PHASE_ENERGY_DOF')
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        call InputErrorMsg(input,option,'two_phase_energy_dof','GENERAL_MODE')
-        call GeneralAuxSetEnergyDOF(word,option)
-      case('ISOTHERMAL')
-        general_isothermal = PETSC_TRUE
-      case('NO_AIR')
-        general_no_air = PETSC_TRUE
-      case('MAXIMUM_PRESSURE_CHANGE')
-        call InputReadDouble(input,option,general_max_pressure_change)
-        call InputErrorMsg(input,option,'maximum pressure change', &
-                           'GENERAL_MODE')
-      case('MAX_ITERATION_BEFORE_DAMPING')
-        call InputReadInt(input,option,general_max_it_before_damping)
-        call InputErrorMsg(input,option,'maximum iteration before damping', &
-                           'GENERAL_MODE')
-      case('DAMPING_FACTOR')
-        call InputReadDouble(input,option,general_damping_factor)
-        call InputErrorMsg(input,option,'damping factor','GENERAL_MODE')
-      case default
-        call InputKeywordUnrecognized(keyword,'GENERAL Mode',option)
-    end select
-    
-  enddo  
-  
-  if (general_isothermal .and. &
-      general_2ph_energy_dof == GENERAL_AIR_PRESSURE_INDEX) then
-    option%io_buffer = 'Isothermal GENERAL mode may only be run with ' // &
-                       'temperature as the two phase energy dof.'
-    call printErrMsg(option)
-  endif
-
-end subroutine GeneralRead
 
 ! ************************************************************************** !
 

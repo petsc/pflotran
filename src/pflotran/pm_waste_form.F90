@@ -122,7 +122,7 @@ end function PMWasteFormCreate
 
 ! ************************************************************************** !
 
-subroutine PMWasteFormRead(this,input,option)
+subroutine PMWasteFormRead(this,input)
   ! 
   ! Reads input file parameters associated with the waste form process model
   ! 
@@ -131,20 +131,23 @@ subroutine PMWasteFormRead(this,input,option)
   use Input_Aux_module
   use String_module
   use Utility_module
+  use Option_module
   
   implicit none
   
   class(pm_mpm_type) :: this
   type(input_type) :: input
-  type(option_type) :: option
   
   type(point3d_type) :: coordinate
   PetscReal, pointer :: x(:), y(:), z(:)
   PetscInt :: coordinate_size = 100
   PetscInt :: num_coordinates, dummy_int
   PetscInt :: i
+  type(option_type), pointer :: option
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXSTRINGLENGTH) :: error_string
+
+  option => this%option
   
   error_string = 'MPM'
   

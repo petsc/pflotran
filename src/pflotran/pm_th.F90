@@ -80,7 +80,7 @@ end function PMTHCreate
 
 ! ************************************************************************** !
 
-subroutine PMTHRead(this,input,option)
+subroutine PMTHRead(this,input)
   ! 
   ! Reads input file parameters associated with the TH process model
   ! 
@@ -90,15 +90,18 @@ subroutine PMTHRead(this,input,option)
   use String_module
   use Utility_module
   use EOS_Water_module  
+  use Option_module
  
   implicit none
   
   class(pm_th_type) :: this
   type(input_type) :: input
-  type(option_type) :: option
   
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXSTRINGLENGTH) :: error_string
+  type(option_type), pointer :: option
+
+  option => this%option
   
   error_string = 'TH Options'
   
