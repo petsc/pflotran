@@ -969,10 +969,15 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
                pert(option%nflowdof), x_pert_save(option%nflowdof)
 
   PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
+  PetscReal :: tempreal
+!#define LEGACY_PERTURBATION
+#ifdef LEGACY_PERTURBATION
   PetscReal, parameter :: perturbation_tolerance = 1.d-5
+#else
+  PetscReal, parameter :: perturbation_tolerance = 1.d-8
+#endif
   PetscReal, parameter :: min_mole_fraction_pert = 1.d-12
   PetscReal, parameter :: min_perturbation = 1.d-10
-  PetscReal, parameter :: pert_pres_tol = 1.d-8
   PetscInt :: idof
 
 #ifdef DEBUG_GENERAL
@@ -991,8 +996,7 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
          gen_auxvar(ZERO_INTEGER)%xmol(option%air_id,option%liquid_phase)
        x(GENERAL_ENERGY_DOF) = &
          gen_auxvar(ZERO_INTEGER)%temp
-!#define TOUGH2_PERT
-#ifndef TOUGH2_PERT
+#ifdef LEGACY_PERTURBATION
        ! if the liquid state, the liquid pressure will always be greater
        ! than zero.
        pert(GENERAL_LIQUID_PRESSURE_DOF) = &
@@ -1007,10 +1011,16 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
          -1.d0*perturbation_tolerance*x(GENERAL_ENERGY_DOF)
 #else
        pert(GENERAL_LIQUID_PRESSURE_DOF) = &
-         pert_pres_tol*x(GENERAL_LIQUID_PRESSURE_DOF)+min_perturbation
-       pert(GENERAL_LIQUID_STATE_X_MOLE_DOF) = pert_pres_tol
-       pert(GENERAL_ENERGY_DOF) = &
-         pert_pres_tol*x(GENERAL_ENERGY_DOF)+min_perturbation
+         perturbation_tolerance*x(GENERAL_LIQUID_PRESSURE_DOF) + &
+         min_perturbation
+       if (x(GENERAL_LIQUID_STATE_X_MOLE_DOF) > &
+           1.d3 * perturbation_tolerance) then
+         pert(GENERAL_LIQUID_STATE_X_MOLE_DOF) = -1.d0 * perturbation_tolerance
+       else
+         pert(GENERAL_LIQUID_STATE_X_MOLE_DOF) = perturbation_tolerance
+       endif
+       pert(GENERAL_ENERGY_DOF) = -1.d0 * &
+         (perturbation_tolerance*x(GENERAL_ENERGY_DOF) + min_perturbation)
 #endif
     case(GAS_STATE)
        x(GENERAL_GAS_PRESSURE_DOF) = &
@@ -1018,6 +1028,7 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
        x(GENERAL_GAS_STATE_AIR_PRESSURE_DOF) = &
          gen_auxvar(ZERO_INTEGER)%pres(option%air_pressure_id)
        x(GENERAL_ENERGY_DOF) = gen_auxvar(ZERO_INTEGER)%temp
+#ifdef LEGACY_PERTURBATION
        ! gas pressure [p(g)] must always be perturbed down as p(v) = p(g) - p(a)
        ! and p(v) >= Psat (i.e. an increase in p(v)) results in two phase.
        pert(GENERAL_GAS_PRESSURE_DOF) = &
@@ -1036,6 +1047,24 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
        endif
        pert(GENERAL_ENERGY_DOF) = &
          perturbation_tolerance*x(GENERAL_ENERGY_DOF)
+#else
+       ! gas pressure [p(g)] must always be perturbed down as p(v) = p(g) - p(a)
+       ! and p(v) >= Psat (i.e. an increase in p(v)) results in two phase.
+       pert(GENERAL_GAS_PRESSURE_DOF) = -1.d0 * &
+         (perturbation_tolerance*x(GENERAL_GAS_PRESSURE_DOF) + min_perturbation)
+       ! perturb air pressure towards gas pressure unless the perturbed
+       ! air pressure exceeds the gas pressure
+       tempreal = perturbation_tolerance* &
+                  x(GENERAL_GAS_STATE_AIR_PRESSURE_DOF) + min_perturbation
+       if (x(GENERAL_GAS_PRESSURE_DOF) - &
+           x(GENERAL_GAS_STATE_AIR_PRESSURE_DOF) > tempreal) then
+         pert(GENERAL_GAS_STATE_AIR_PRESSURE_DOF) = tempreal
+       else
+         pert(GENERAL_GAS_STATE_AIR_PRESSURE_DOF) = -1.d0 * tempreal
+       endif
+       pert(GENERAL_ENERGY_DOF) = &
+         perturbation_tolerance*x(GENERAL_ENERGY_DOF) + min_perturbation
+#endif
     case(TWO_PHASE_STATE)
        x(GENERAL_GAS_PRESSURE_DOF) = &
          gen_auxvar(ZERO_INTEGER)%pres(option%gas_phase)
@@ -1043,7 +1072,7 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
 !         gen_auxvar(ZERO_INTEGER)%pres(option%air_pressure_id)
        x(GENERAL_GAS_SATURATION_DOF) = &
          gen_auxvar(ZERO_INTEGER)%sat(option%gas_phase)
-#ifndef TOUGH2_PERT
+#ifdef LEGACY_PERTURBATION
        if (general_2ph_energy_dof == GENERAL_TEMPERATURE_INDEX) then
          x(GENERAL_ENERGY_DOF) = &
            gen_auxvar(ZERO_INTEGER)%temp
@@ -1076,17 +1105,35 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
            perturbation_tolerance*x(GENERAL_GAS_SATURATION_DOF)
        endif
 #else
+       if (general_2ph_energy_dof == GENERAL_TEMPERATURE_INDEX) then
+         x(GENERAL_ENERGY_DOF) = &
+           gen_auxvar(ZERO_INTEGER)%temp
+         pert(GENERAL_ENERGY_DOF) = &
+           perturbation_tolerance*x(GENERAL_ENERGY_DOF)+min_perturbation
+       else
+         ! here GENERAL_2PH_STATE_AIR_PRESSURE_DOF = GENERAL_ENERGY_DOF
+         x(GENERAL_ENERGY_DOF) = &
+           gen_auxvar(ZERO_INTEGER)%pres(option%air_pressure_id)
+         ! perturb air pressure towards gas pressure unless the perturbed
+         ! air pressure exceeds the gas pressure
+         tempreal = perturbation_tolerance* &
+                    x(GENERAL_2PH_STATE_AIR_PRESSURE_DOF) + min_perturbation
+         if (x(GENERAL_GAS_PRESSURE_DOF) - &
+             x(GENERAL_2PH_STATE_AIR_PRESSURE_DOF) > tempreal) then
+           pert(GENERAL_2PH_STATE_AIR_PRESSURE_DOF) = tempreal
+         else
+           pert(GENERAL_2PH_STATE_AIR_PRESSURE_DOF) = -1.d0 * tempreal
+         endif
+       endif
        x(GENERAL_ENERGY_DOF) = &
          gen_auxvar(ZERO_INTEGER)%temp
        pert(GENERAL_GAS_PRESSURE_DOF) = &
-         pert_pres_tol*x(GENERAL_GAS_PRESSURE_DOF)+min_perturbation
+         perturbation_tolerance*x(GENERAL_GAS_PRESSURE_DOF)+min_perturbation
        if (x(GENERAL_GAS_SATURATION_DOF) > 0.5d0) then 
-         pert(GENERAL_GAS_SATURATION_DOF) = -1.d0*pert_pres_tol
+         pert(GENERAL_GAS_SATURATION_DOF) = -1.d0 * perturbation_tolerance
        else
-         pert(GENERAL_GAS_SATURATION_DOF) = pert_pres_tol
+         pert(GENERAL_GAS_SATURATION_DOF) = perturbation_tolerance
        endif
-       pert(GENERAL_ENERGY_DOF) = &
-         pert_pres_tol*x(GENERAL_ENERGY_DOF)+min_perturbation
 #endif
   end select
   

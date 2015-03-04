@@ -2383,10 +2383,12 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   ! override flags since they will soon be out of date
   patch%aux%General%auxvars_up_to_date = PETSC_FALSE 
   if (option%variables_swapped) then
+#ifdef DEBUG_GENERAL
     if (option%mycommsize > 1) then
       print *, 'this needs to be addressed'
       stop
     endif
+#endif
     !geh: since this operation is not collective (i.e. all processors may
     !     not swap), this operation may fail....
     call DiscretizationLocalToGlobal(discretization,field%flow_xx_loc,xx, &
