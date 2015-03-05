@@ -499,11 +499,10 @@ factory_geomechanics.o : condition_control.o factory_subsurface.o \
                          geomechanics_realization.o init_common.o \
                          init_geomechanics.o input_aux.o logging.o option.o \
                          output.o output_aux.o output_geomechanics.o \
-                         pflotran_constants.o pm_base.o \
-                         pm_base_pointer.o pm_geomechanics_force.o pmc_base.o \
-                         pmc_geomechanics.o realization.o simulation_aux.o \
-                         simulation_base.o simulation_geomechanics.o \
-                         simulation_subsurface.o timestepper_base.o \
+                         pflotran_constants.o pm_base.o pm_base_pointer.o \
+                         pm_geomechanics_force.o pmc_base.o pmc_geomechanics.o \
+                         realization.o simulation_aux.o simulation_base.o \
+                         simulation_geomechanics.o simulation_subsurface.o \
                          timestepper_geomechanics.o
 factory_hydrogeophysics.o : discretization.o factory_subsurface.o input_aux.o \
                             logging.o option.o pflotran_constants.o pm_base.o \
@@ -561,11 +560,10 @@ gas_eos_mod.o : pflotran_constants.o
 gauss.o : grid_unstructured_cell.o pflotran_constants.o utility.o
 general.o : connection.o coupler.o debug.o discretization.o eos_gas.o \
             eos_water.o field.o fluid.o general_aux.o global_aux.o grid.o \
-            input_aux.o material.o material_aux.o option.o output_aux.o \
+            material.o material_aux.o option.o output_aux.o output_tecplot.o \
             patch.o pflotran_constants.o realization.o saturation_function.o \
             srcsink_sandbox.o srcsink_sandbox_base.o \
-            srcsink_sandbox_wipp_gas.o srcsink_sandbox_wipp_well.o string.o \
-            variables.o
+            srcsink_sandbox_wipp_gas.o srcsink_sandbox_wipp_well.o variables.o
 general_aux.o : characteristic_curves.o eos_gas.o eos_water.o global_aux.o \
                 material_aux.o option.o pflotran_constants.o string.o \
                 utility.o wipp.o
@@ -779,7 +777,7 @@ output_geomechanics.o : geomech_grid.o geomech_grid_aux.o \
                         geomechanics_discretization.o geomechanics_field.o \
                         geomechanics_logging.o geomechanics_patch.o \
                         geomechanics_realization.o grid_unstructured_cell.o \
-                        hdf5.o hdf5_aux.o option.o output_aux.o \
+                        hdf5.o hdf5_aux.o logging.o option.o output_aux.o \
                         output_common.o output_hdf5.o output_tecplot.o \
                         pflotran_constants.o string.o variables.o
 output_hdf5.o : connection.o coupler.o discretization.o field.o grid.o \
@@ -832,14 +830,14 @@ pflotran.o : factory_geomechanics.o factory_hydrogeophysics.o \
              simulation_base.o
 pflotran_constants.o :
 pflotran_provenance.o :
-pm_base.o : option.o output_aux.o pflotran_constants.o realization_base.o \
-            solver.o
+pm_base.o : input_aux.o option.o output_aux.o pflotran_constants.o \
+            realization_base.o solver.o
 pm_base_pointer.o : option.o pflotran_constants.o pm_base.o realization.o
 pm_flash2.o : flash2.o pflotran_constants.o pm_base.o pm_subsurface.o
 pm_general.o : checkpoint.o field.o general.o general_aux.o global.o \
-               global_aux.o grid.o material.o option.o pflotran_constants.o \
-               pm_base.o pm_subsurface.o realization.o realization_base.o \
-               solver.o variables.o
+               global_aux.o grid.o input_aux.o material.o option.o \
+               pflotran_constants.o pm_base.o pm_subsurface.o realization.o \
+               realization_base.o solver.o string.o variables.o
 pm_geomechanics_force.o : checkpoint.o communicator_base.o \
                           communicator_structured.o \
                           communicator_unstructured.o condition.o \
@@ -885,8 +883,8 @@ pmc_base.o : checkpoint.o logging.o option.o output.o output_aux.o \
              timestepper_base.o utility.o waypoint.o
 pmc_geomechanics.o : geomechanics_discretization.o geomechanics_force.o \
                      geomechanics_realization.o grid.o option.o \
-                     pflotran_constants.o pm_base.o pmc_base.o realization.o \
-                     timestepper_base.o
+                     output_geomechanics.o pflotran_constants.o pm_base.o \
+                     pmc_base.o realization.o timestepper_base.o
 pmc_hydrogeophysics.o : option.o pflotran_constants.o pmc_base.o realization.o \
                         realization_base.o string.o timestepper_base.o \
                         utility.o variables.o wrapper_hydrogeophysics.o
@@ -1064,7 +1062,7 @@ simulation_geomechanics.o : geomechanics_realization.o option.o output.o \
                             pflotran_constants.o pmc_base.o pmc_geomechanics.o \
                             pmc_subsurface.o realization.o regression.o \
                             simulation_base.o simulation_subsurface.o \
-                            timestepper_base.o
+                            timestepper_base.o waypoint.o
 simulation_hydrogeophysics.o : option.o pflotran_constants.o \
                                pmc_hydrogeophysics.o simulation_base.o \
                                simulation_subsurface.o \
