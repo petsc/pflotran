@@ -1125,8 +1125,6 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
            pert(GENERAL_2PH_STATE_AIR_PRESSURE_DOF) = -1.d0 * tempreal
          endif
        endif
-       x(GENERAL_ENERGY_DOF) = &
-         gen_auxvar(ZERO_INTEGER)%temp
        pert(GENERAL_GAS_PRESSURE_DOF) = &
          perturbation_tolerance*x(GENERAL_GAS_PRESSURE_DOF)+min_perturbation
        if (x(GENERAL_GAS_SATURATION_DOF) > 0.5d0) then 
