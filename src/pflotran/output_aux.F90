@@ -605,6 +605,12 @@ subroutine OutputVariableRead(input,option,output_variable_list)
     call StringToUpper(word)
     
     select case(trim(word))
+      case ('MAXIMUM_PRESSURE')
+        name = 'Maximum Pressure'
+        units = 'Pa'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_PRESSURE,units, &
+                                     MAXIMUM_PRESSURE)
       case ('LIQUID_PRESSURE')
         name = 'Liquid Pressure'
         units = 'Pa'

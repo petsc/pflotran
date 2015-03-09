@@ -2821,7 +2821,8 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
          LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,LIQUID_VISCOSITY, &
          GAS_VISCOSITY,CAPILLARY_PRESSURE,LIQUID_DENSITY_MOL, &
          LIQUID_MOBILITY,GAS_MOBILITY,SC_FUGA_COEFF,STATE,ICE_DENSITY, &
-         EFFECTIVE_POROSITY,LIQUID_HEAD,VAPOR_PRESSURE,SATURATION_PRESSURE)
+         EFFECTIVE_POROSITY,LIQUID_HEAD,VAPOR_PRESSURE,SATURATION_PRESSURE, &
+         MAXIMUM_PRESSURE)
 
       if (associated(patch%aux%TH)) then
         select case(ivar)
@@ -3177,6 +3178,13 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = &
                 patch%aux%General%auxvars(ZERO_INTEGER,grid%nL2G(local_id))%temp
+            enddo
+          case(MAXIMUM_PRESSURE)
+            do local_id=1,grid%nlmax
+              ghosted_id = grid%nL2G(local_id)
+              vec_ptr(local_id) = &
+                  maxval(patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+                           pres(option%liquid_phase:option%gas_phase))
             enddo
           case(LIQUID_PRESSURE)
             do local_id=1,grid%nlmax
@@ -3887,7 +3895,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
          GAS_VISCOSITY,AIR_PRESSURE,CAPILLARY_PRESSURE, &
          LIQUID_MOBILITY,GAS_MOBILITY,SC_FUGA_COEFF,STATE,ICE_DENSITY, &
          SECONDARY_TEMPERATURE,LIQUID_DENSITY_MOL,EFFECTIVE_POROSITY, &
-         LIQUID_HEAD,VAPOR_PRESSURE,SATURATION_PRESSURE)
+         LIQUID_HEAD,VAPOR_PRESSURE,SATURATION_PRESSURE,MAXIMUM_PRESSURE)
          
      if (associated(patch%aux%TH)) then
         select case(ivar)
@@ -4098,6 +4106,9 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
         select case(ivar)
           case(TEMPERATURE)
             value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)%temp
+          case(MAXIMUM_PRESSURE)
+            value = maxval(patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+                           pres(option%liquid_phase:option%gas_phase))
           case(LIQUID_PRESSURE)
             if (patch%aux%Global%auxvars(ghosted_id)%istate /= GAS_STATE) then
               value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
