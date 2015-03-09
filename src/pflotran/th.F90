@@ -3519,6 +3519,7 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
           
         endif
       endif
+      v_darcy = min(v_darcy,option%max_infiltration_velocity)
 
     case(NEUMANN_BC)
       if (dabs(auxvars(TH_PRESSURE_DOF)) > floweps) then
