@@ -5701,12 +5701,16 @@ subroutine THUpdateSurfaceBC(realization)
 
             TL = -100.d0
             TR =  100.d0
-            call EnergyToTemperatureBisection(surftemp_new,TL,TR, &
-                                              one, &
-                                              eng_per_unitvol_new, &
-                                              Cwi, &
-                                              option%reference_pressure, &
-                                              option)
+            if (den*Cwi*(TL+273.15d0) < eng_per_unitvol_new) then
+              surftemp_new = surftemp_old
+            else
+              call EnergyToTemperatureBisection(surftemp_new,TL,TR, &
+                                                one, &
+                                                eng_per_unitvol_new, &
+                                                Cwi, &
+                                                option%reference_pressure, &
+                                                option)
+            endif
 
             ! 2) Find new surface-temperature due to heat transfer via bulk-movement
             !    water transport
@@ -5738,12 +5742,16 @@ subroutine THUpdateSurfaceBC(realization)
 
             TL = -100.d0
             TR =  100.d0
-            call EnergyToTemperatureBisection(surftemp_new,TL,TR, &
-                                              head_new, &
-                                              eng_times_ht_per_unitvol_new, &
-                                              Cwi, &
-                                              option%reference_pressure, &
-                                              option)
+            if (den*Cwi*head_new*(TL+273.15d0) < eng_times_ht_per_unitvol_new) then
+              surftemp_new = surftemp_old
+            else
+              call EnergyToTemperatureBisection(surftemp_new,TL,TR, &
+                                                head_new, &
+                                                eng_times_ht_per_unitvol_new, &
+                                                Cwi, &
+                                                option%reference_pressure, &
+                                                option)
+            endif
 
             call EOSWaterdensity(surftemp_new,option%reference_pressure,den,dum1,ierr)
             surfpress_new = head_new*(abs(option%gravity(3)))*den + &
