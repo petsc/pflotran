@@ -304,6 +304,10 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
         call InputReadDouble(input,option,temp_real)
         option%max_manning_velocity = temp_real
       !.........................................................................
+      case ('SURF_MAX_INFILTRATION_VELOCITY')
+        call InputReadDouble(input,option,temp_real)
+        option%max_infiltration_velocity = temp_real
+      !.........................................................................
       ! Read surface material information
       case ('SURF_MATERIAL_PROPERTY')
         surf_material_property => SurfaceMaterialPropertyCreate()
