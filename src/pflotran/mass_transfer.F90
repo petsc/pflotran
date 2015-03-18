@@ -209,10 +209,8 @@ recursive subroutine MassTransferInit(mass_transfer, discretization, &
   endif 
   
   ! update the next one recursively
-  if (associated(mass_transfer%next)) then
-    call MassTransferInit(mass_transfer%next,discretization, &
-                          available_datasets,option)
-  endif  
+  call MassTransferInit(mass_transfer%next,discretization, &
+                        available_datasets,option)
   
 end subroutine MassTransferInit
 
@@ -254,9 +252,7 @@ recursive subroutine MassTransferUpdate(mass_transfer, grid, option)
   call VecRestoreArrayF90(mass_transfer%vec,vec_ptr,ierr);CHKERRQ(ierr)
   
   ! update the next one
-  if (associated(mass_transfer%next)) then
-    call MassTransferUpdate(mass_transfer%next,grid,option)
-  endif
+  call MassTransferUpdate(mass_transfer%next,grid,option)
   
 end subroutine MassTransferUpdate
 
