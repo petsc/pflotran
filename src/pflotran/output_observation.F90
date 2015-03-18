@@ -1727,9 +1727,9 @@ subroutine OutputIntegralFlux(realization_base)
     endif 
   endif     
 
-100 format(100es16.8)
-110 format(100es16.8)
-120 format(100es16.8e3)
+100 format(100es17.8)
+110 format(100es17.8)
+120 format(100es17.8e3)
 
   ! write time
   if (option%myrank == option%io_rank) then
