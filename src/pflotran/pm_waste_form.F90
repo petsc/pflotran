@@ -4,6 +4,7 @@ module PM_Waste_Form_class
   use Realization_class
   use Option_module
   use Geometry_module
+  use Mass_Transfer2_module
   
   use PFLOTRAN_Constants_module
 
@@ -25,7 +26,8 @@ module PM_Waste_Form_class
     class(realization_type), pointer :: realization
     type(mpm_type), pointer :: waste_form(:)
     type(point3d_type), pointer :: coordinate(:)
-    PetscInt :: num_grid_cells
+    PetscInt :: num_grid_cells_in_waste_form
+    PetscInt :: num_waste_forms
     ! mapping of mpm species into mpm concentration array
     PetscInt, pointer :: mapping_mpm(:)
     ! mapping of species in mpm concentration array to pflotran
@@ -42,6 +44,7 @@ module PM_Waste_Form_class
     PetscInt :: iUO3_sld
     PetscInt :: iUO4_sld
     PetscInt :: num_concentrations
+    type(mass_transfer2_type), pointer :: mass_transfer
   contains
 !geh: commented out subroutines can only be called externally
     procedure, public :: Init => PMWasteFormInit
@@ -94,7 +97,8 @@ function PMWasteFormCreate()
   nullify(PMWasteFormCreate%realization)
   nullify(PMWasteFormCreate%waste_form)
   nullify(PMWasteFormCreate%coordinate)
-  PMWasteFormCreate%num_grid_cells = UNINITIALIZED_INTEGER
+  PMWasteFormCreate%num_grid_cells_in_waste_form = UNINITIALIZED_INTEGER
+  PMWasteFormCreate%num_waste_forms = UNINITIALIZED_INTEGER
   PMWasteFormCreate%num_concentrations = 11
   PMWasteFormCreate%iUO2_2p = 1
   PMWasteFormCreate%iUCO3_2n = 2
@@ -107,6 +111,7 @@ function PMWasteFormCreate()
   PMWasteFormCreate%iUO2_sld = 9
   PMWasteFormCreate%iUO3_sld = 10
   PMWasteFormCreate%iUO4_sld = 11
+  nullify(PMWasteFormCreate%mass_transfer)
   allocate(PMWasteFormCreate%mapping_mpm_to_pflotran( &
              PMWasteFormCreate%num_concentrations))
   PMWasteFormCreate%mapping_mpm_to_pflotran = UNINITIALIZED_INTEGER
@@ -172,7 +177,7 @@ subroutine PMWasteFormRead(this,input)
     select case(trim(word))
     
       case('NUM_GRID_CELLS')
-        call InputReadInt(input,option,this%num_grid_cells)
+        call InputReadInt(input,option,this%num_grid_cells_in_waste_form)
       case('COORDINATES')
         num_coordinates = 0
         do
@@ -197,6 +202,7 @@ subroutine PMWasteFormRead(this,input)
         call InputKeywordUnrecognized(word,error_string,option)
     end select
   enddo
+  this%num_waste_forms = num_coordinates
   allocate(this%coordinate(num_coordinates))
   do i = 1, num_coordinates
     this%coordinate(i)%x = x(i)
@@ -206,7 +212,7 @@ subroutine PMWasteFormRead(this,input)
   deallocate(x,y,z)
   nullify(x,y,z)
   
-  if (this%num_grid_cells == UNINITIALIZED_INTEGER) then
+  if (this%num_grid_cells_in_waste_form == UNINITIALIZED_INTEGER) then
     option%io_buffer = &
       'NUM_GRID_CELLS must be specified for mixed potential model.'
     call printErrMsg(option)
@@ -280,7 +286,7 @@ subroutine PMWasteFormInit(this)
   allocate(this%waste_form(num_local_coordinates))
   do i = 1, num_local_coordinates
     allocate(this%waste_form(i)%concentration(this%num_concentrations, &
-                                              this%num_grid_cells))
+                                            this%num_grid_cells_in_waste_form))
                                               
 !geh    this%waste_form(i)%concentration = UNINITIALIZED_DOUBLE
     this%waste_form(i)%concentration = 1.d-20
@@ -339,10 +345,16 @@ recursive subroutine PMWasteFormInitializeRun(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 01/15/15 
-
+  use Communicator_Base_module
+  
   implicit none
   
   class(pm_mpm_type) :: this
+  
+  PetscInt :: num_waste_form_cells
+  PetscInt :: i
+  PetscInt, allocatable :: waste_form_cell_ids(:)
+  PetscErrorCode :: ierr
   
 #ifdef PM_WP_DEBUG  
   call printMsg(this%option,'PMRT%InitializeRun()')
@@ -351,6 +363,26 @@ recursive subroutine PMWasteFormInitializeRun(this)
   if (this%option%restart_flag .and. &
       this%option%overwrite_restart_transport) then
   endif
+  
+  ! set up mass transfer
+  this%mass_transfer => MassTransfer2Create()
+  ! create a Vec sized by # waste packages * # primary dofs influenced by 
+  ! waste package
+  num_waste_form_cells = size(this%waste_form)
+  call VecCreateMPI(this%option%mycomm,num_waste_form_cells, &
+                    this%num_waste_forms,this%mass_transfer%vec, &
+                    ierr);CHKERRQ(ierr)
+
+  allocate(waste_form_cell_ids(num_waste_form_cells))
+  waste_form_cell_ids = 0
+  do i = 1, num_waste_form_cells
+    waste_form_cell_ids(i) = this%waste_form(i)%local_id
+  enddo
+  call this%realization%comm1%AONaturalToPetsc(waste_form_cell_ids)
+  call VecScatterCreate(this%mass_transfer%vec,PETSC_NULL_OBJECT, &
+                        this%realization%field%work,waste_form_cell_ids, &
+                        this%mass_transfer%scatter_ctx,ierr);CHKERRQ(ierr)
+  deallocate(waste_form_cell_ids)
 
 end subroutine PMWasteFormInitializeRun
 
@@ -476,9 +508,15 @@ subroutine PMWasteFormPostSolve(this)
   
   class(pm_mpm_type) :: this
   
-  ! set the fluxes here.
-  this%option%io_buffer = 'PMWasteFormPostSolve() must be set up.'
-  call printWrnMsg(this%option)  
+  PetscReal, pointer :: vec_p(:)
+  PetscErrorCode :: ierr
+  PetscInt :: i
+  
+  call VecGetArrayF90(this%mass_transfer%vec,vec_p,ierr);CHKERRQ(ierr)
+  do i = 1, size(this%waste_form)
+    ! do something here.
+  enddo
+  call VecRestoreArrayF90(this%mass_transfer%vec,vec_p,ierr);CHKERRQ(ierr)
   
 end subroutine PMWasteFormPostSolve
 
@@ -657,6 +695,7 @@ subroutine PMWasteFormDestroy(this)
   enddo
   call DeallocateArray(this%mapping_mpm_to_pflotran)
   call DeallocateArray(this%mapping_mpm)
+  call MassTransfer2Destroy(this%mass_transfer)
   deallocate(this%waste_form)
   nullify(this%waste_form)
   
