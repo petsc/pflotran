@@ -21,7 +21,8 @@ The input file for the simulation is listed in Table~\ref{tionex}.
 \end{figure}
 
 \newpage
-\footnotesize
+%\footnotesize
+\scriptsize
 \VerbatimInput{./inputfiles/ionex.in}\label{tionex}
 \normalsize
 
@@ -83,13 +84,14 @@ Results are shown in Figure~\ref{fabc} for the concentrations of species A, B, C
 
 \subsubsection{PFLOTRAN Input File}
 
-\footnotesize
+%\footnotesize
+\scriptsize
 \VerbatimInput{./inputfiles/ABC/ABC1d.in}\label{tabc}
 \normalsize
 
 \newpage
 
-\subsection{SX-115 Hanford Tank Farm}
+\subsection{RICHARDS Mode with Tracer: SX-115 Hanford Tank Farm}
 
 \subsubsection{Problem Description}
 
@@ -261,7 +263,9 @@ Listing for the PFLOTRAN input file coupling Richards mode to a tracer is given 
 \bigskip
 
 \noindent PFLOTRAN input file {\tt pflotran.in}: 
-\footnotesize
+%\footnotesize
+\scriptsize
+
 \VerbatimInput{./inputfiles/sx115/sx115.in}
 
 \clearpage
@@ -269,12 +273,14 @@ Listing for the PFLOTRAN input file coupling Richards mode to a tracer is given 
 \normalsize
 \noindent
 Source/sink file {\tt src.dat}:
-\footnotesize
+%\footnotesize
+\scriptsize
 \VerbatimInput{./inputfiles/sx115/src.dat}
 \normalsize
 
+\subsection{MPHASE}
 
-\subsection{CO$_2$ Sequestration: 1D Example Problem and Comparison with\\ TOUGHREACT}
+\subsubsection{CO$_2$ Sequestration: 1D Example Problem and Comparison with\\ TOUGHREACT}
 
 In this example problem involves sequentially coupling of {\tt MPHASE} and {\tt CHEMISTRY}. The chemical system consists of four primary species and 5 secondary species. Supercritical CO$_2$ is injected into a well located at the west boundary. Dirichlet pressure boundary conditions are imposed at the east boundary. The problem definition with associated parameters is given in Table~\ref{tco2}.
 
@@ -309,7 +315,8 @@ The PFLOTRAN initial aqueous solution corresponds to a brine with NaCl concentra
 \begin{table}[h]
 \caption{Initial concentration of primary and secondary species. Mineral reactions are not considered.}
 \label{tinitial_co2}
-\footnotesize
+%\footnotesize
+\scriptsize
 \begin{verbatim}
   Transport Condition: Initial
   ----------------------------------------------------------------------------
@@ -389,13 +396,55 @@ shown in Figure~\ref{fp} for the liquid and CO$_2$ pressures in addition to the 
 \end{figure}
 
 
-\newpage
+\clearpage
+
+\subsubsection{CO$_2$ Sequestration in the Presence of a Leaky Well}
+
+The simulation domain has a lateral extent of $1,000\times 1,000$ m and vertical height of 160 m. 
+The leaky well is at the center of the domain and the injection well is 100 m east. There are two aquifers at the top and bottom of the domain, each 30 m thick, and an aquitard with thickness of 100 m sandwiched between the two aquifers. 
+The leaky well is modeled as a porous medium with a higher permeability compared to the formation. Parameter values used in the simulation are listed in Table~\ref{tleaky_params}. Other parameters used for characteristic curves, heat conduction, etc. may be found in the input file listing (see Table~\ref{tleaky-co2in}).The initial conditions consist of hydrostatic pressure, and isothermal temperature of 34\degc. The initial pressure at the bottom of the domain is $3.086\times 10^7$ Pa (at 3,000 m depth). 
+At the lateral boundaries, hydrostatic boundary conditions are imposed on the system. 
+The boundaries at the top and bottom of the domain are no flow boundary conditions. CO$_2$ is injected at a constant rate of 8.87 kg/s for the duration of the simulation of 1000 days and at a constant temperature of 33.6\degc. 
+
+The computational domain was discretized into $200 \!\times\! 200 \!\times\! 32$ grid blocks with spacing $\Delta x \!=\! \Delta y \!=\! 5$ m, and $\Delta z \!=\! 5$ m. The total number of degrees of freedom are 3,840,000. The problem was run on 512 processes on the supercomputer Yellowstone at the NCAR-Wyoming Supercomputing Center.
+
+\begin{table}[h]\centering
+\caption{Model parameters.}\label{tleaky_params}
+
+\vspace{3mm}
+
+\begin{tabular}{lccc}
+\toprule
+Unit & Permeability [m$^2$] & Porosity [---] & Depth [m]\\
+\midrule
+Aquifer  & $2 \times 10^{-14}$ & 0.15 & 0--30, 130--160  \\ 
+Aquitard  & $1\times 10^{-18}$ & 0.15 & 30--130\\
+Leaky well  & $1 \times 10^{-12}$ & 0.15 & 0--160\\
+\bottomrule\end{tabular}
+\end{table}
+
+Results of the simulation for an elapsed time of 250 days are shown in Figure~\ref{f250d} for liquid pressure and saturation of supercritical CO$_2$. Supercritical CO$_2$ proceeds up the leaky well until it ponds at the top of the domain where a closed boundary is imposed.
+The leakage of CO$_2$ through the leaky well as a function of time is shown in Figure \ref{fleaky_flx}. This is defined as the CO$_2$ mass flow midway between the top and bottom domain divided by the injection rate. The maximum value in the leak  occurs at approximately 800 d. The leak begins at approximately 50 d.
+%The maximum leakage value and the leakage value at t = 1,000 days.
+\begin{figure}[h]\centering
+\includegraphics[scale=0.2125]{./figs/liq_p_250d.png}
+\includegraphics[scale=0.2125]{./figs/sg-250d.png}
+\caption{Left: pressure; right: supercritical CO$_2$ saturation; for an elapsed time of 250 days.}\label{f250d}
+\end{figure}
+
+\begin{figure}[h]\centering
+\includegraphics[scale=0.35]{./figs/leakage_flx}
+\caption{Leakage rate relative to injection rate.}\label{fleaky_flx}
+\end{figure}
+
+\clearpage
 
 \begin{table}[h]
-\caption{Input file for 1D CO$_2$ sequestration example problem coupling {\tt MPHASE} and {\tt CHEMISTRY}.}
+\caption{Input file for 3D CO$_2$ sequestration example problem with a leaky well.}
 \end{table}
-\footnotesize
-\VerbatimInput{./inputfiles/CO2/co2-1d.in}\label{tco2in}
+%\footnotesize
+\scriptsize
+\VerbatimInput{./inputfiles/CO2/leaky-co2-3d.in}\label{tleaky-co2in}
 \normalsize
 
 \newpage
