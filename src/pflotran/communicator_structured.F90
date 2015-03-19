@@ -28,6 +28,7 @@ module Communicator_Structured_class
     procedure, public :: LocalToLocal => StructuredLocalToLocal
     procedure, public :: GlobalToNatural => StructuredGlobalToNatural
     procedure, public :: NaturalToGlobal => StructuredNaturalToGlobal
+    procedure, public :: AONaturalToPetsc => StructuredAONaturalToPetsc
 !geh: finalization not yet supported by gfortran.
 !    final :: StructuredCommunicatorDestroy
     procedure, public :: Destroy => StructuredCommunicatorDestroy
@@ -207,6 +208,31 @@ subroutine StructuredNaturalToGlobal(this,source,destination)
                               ierr);CHKERRQ(ierr)
   
 end subroutine StructuredNaturalToGlobal
+
+! ************************************************************************** !
+
+subroutine StructuredAONaturalToPetsc(this,array)
+  ! 
+  ! Maps indices in natural numbering to petsc using a DM
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/19/15
+  ! 
+
+  implicit none
+  
+  class(structured_communicator_type) :: this
+  PetscInt :: array(:)
+
+  AO :: ao
+  PetscInt :: n
+  PetscErrorCode :: ierr
+  
+  call DMDAGetAO(this%dm,ao,ierr);CHKERRQ(ierr)
+  n = size(array)
+  call AOApplicationToPetsc(ao,n,array,ierr);CHKERRQ(ierr)
+  
+end subroutine StructuredAONaturalToPetsc
 
 ! ************************************************************************** !
 
