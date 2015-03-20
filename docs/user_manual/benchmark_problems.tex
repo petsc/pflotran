@@ -302,7 +302,7 @@ Characteristic Curves & modified van Genuchten & [see Eqns.\eqref{pc}-\eqref{sg}
 & $\a$ & $1.9 \times 10^{-5}$ Pa$^{-1}$\\
 & $s_{rl}$ & 0\\
 & $s_{rg}$ & 0\\
-& $P_C^{\rm max}$ & $10^7$ Pa\\
+& $P_c^{\rm max}$ & $10^7$ Pa\\
 Rock Density & $\rho_r$ & 2650 kg/m$^3$\\
 Rock Specific Heat & $c_r$ & 1000 J/kg/K\\
 Rock Thermal Conductivity & $\kappa_{\rm wet,\,dry}$ & 0.5 W/m/K\\
@@ -402,7 +402,9 @@ shown in Figure~\ref{fp} for the liquid and CO$_2$ pressures in addition to the 
 
 The simulation domain has a lateral extent of $1,000\times 1,000$ m and vertical height of 160 m. 
 The leaky well is at the center of the domain and the injection well is 100 m east. There are two aquifers at the top and bottom of the domain, each 30 m thick, and an aquitard with thickness of 100 m sandwiched between the two aquifers. 
-The leaky well is modeled as a porous medium with a higher permeability compared to the formation. Parameter values used in the simulation are listed in Table~\ref{tleaky_params}. Other parameters used for characteristic curves, heat conduction, etc. may be found in the input file listing (see Table~\ref{tleaky-co2in}).The initial conditions consist of hydrostatic pressure, and isothermal temperature of 34\degc. The initial pressure at the bottom of the domain is $3.086\times 10^7$ Pa (at 3,000 m depth). 
+The leaky well is modeled as a porous medium with a higher permeability compared to the formation. Parameter values used in the simulation are listed in Table~\ref{tleaky_params}. Other parameters used for characteristic curves, heat conduction, etc. may be found in the input file listing (see Table~\ref{tleaky-co2in}).
+
+The initial conditions consist of hydrostatic pressure, and isothermal temperature of 34\degc. The initial pressure at the bottom of the domain is $3.086\times 10^7$ Pa (at 3,000 m depth). 
 At the lateral boundaries, hydrostatic boundary conditions are imposed on the system. 
 The boundaries at the top and bottom of the domain are no flow boundary conditions. CO$_2$ is injected at a constant rate of 8.87 kg/s for the duration of the simulation of 1000 days and at a constant temperature of 33.6\degc. 
 
@@ -420,12 +422,15 @@ Unit & Permeability [m$^2$] & Porosity [---] & Depth [m]\\
 Aquifer  & $2 \times 10^{-14}$ & 0.15 & 0--30, 130--160  \\ 
 Aquitard  & $1\times 10^{-18}$ & 0.15 & 30--130\\
 Leaky well  & $1 \times 10^{-12}$ & 0.15 & 0--160\\
-\bottomrule\end{tabular}
+\bottomrule
+\end{tabular}
 \end{table}
 
 Results of the simulation for an elapsed time of 250 days are shown in Figure~\ref{f250d} for liquid pressure and saturation of supercritical CO$_2$. Supercritical CO$_2$ proceeds up the leaky well until it ponds at the top of the domain where a closed boundary is imposed.
-The leakage of CO$_2$ through the leaky well as a function of time is shown in Figure \ref{fleaky_flx}. This is defined as the CO$_2$ mass flow midway between the top and bottom domain divided by the injection rate. The maximum value in the leak  occurs at approximately 800 d. The leak begins at approximately 50 d.
-%The maximum leakage value and the leakage value at t = 1,000 days.
+
+The leakage of CO$_2$ through the leaky well as a function of time is shown in Figure \ref{fleaky_flx}. This is defined as the CO$_2$ mass flow midway between the top and bottom domain divided by the injection rate. The maximum value in the leak  occurs at approximately 800 d. The leak begins at approximately 50 d. The results can be compared to Ebigo et al. (2007), Figure 8. It should be noted that the leakage rate is highly sensitive to the lateral grid spacing.
+%The maximum leakage value and the leakage value at t = 1,000 days.
+
 \begin{figure}[h]\centering
 \includegraphics[scale=0.2125]{./figs/liq_p_250d.png}
 \includegraphics[scale=0.2125]{./figs/sg-250d.png}

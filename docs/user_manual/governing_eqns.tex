@@ -1,6 +1,22 @@
-\section{Appendix: Governing Equations}
 
+\appendix
+
+%\section{Appendix: Governing Equations}
+\section*{Appendix A: Governing Equations}
+\addcontentsline{toc}{section}{\protect\numberline{}{\bf Appendix A: Governing Equations}} 
+
+\renewcommand{\thesection}{\Alph{section}}
+\setcounter{section}{1}
+\renewcommand{\thesubsection}{\Alph{section}-\arabic{subsection}}
+
+\renewcommand{\theequation}{\Alph{section}-\arabic{equation}}
 \setcounter{equation}{0}
+
+\renewcommand{\thetable}{\Alph{section}-\arabic{table}}
+\setcounter{table}{0}
+
+\renewcommand{\thefigure}{\Alph{section}-\arabic{figure}}
+\setcounter{figure}{0}
 
 \subsection{Mode: {\tt RICHARDS}}
 
@@ -263,7 +279,7 @@ State & $X_1$ & $X_2$ & $X_3$\\
 Liquid & $p_l$ & $T$ & $x_\c^l$\\
 Gas & $p_g$ & $T$ & $x_\c^g$\\
 Two-Phase & $p_g$ & $T$ & $s_g$\\
-Thermal Conductivity & $\kappa$ & 0.5 kJ/kg/K\\
+%Thermal Conductivity & $\kappa$ & 0.5 kJ/kg/K\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1454,13 +1470,20 @@ The effect of deformation on the pore structure is accounted for via
 \phi = \frac{\phi_0}{1 + (1-\phi_0) \text{tr}(\bss{\varepsilon})}.
 \EA
 
-Note that the above equations are solved using finite element method (Galerkin finite element) with the displacements solved for at the vertices. Since, the flow equations are solved via finite volume method with unknowns such as pressure and temperature solved for at the cell centers, in order to transfer data from the subsurface to geomechanics grid without interpolation, the geomechanics grid is constructed such that the vertices of the geomechanics grid coincide with the cell centers of the subsurface mesh. That is, the dual mesh of the subsurface mesh is used for the geomechanics solve.
+Note that the above equations are solved using the finite element method (Galerkin finite element) with the displacements solved for at the vertices. Since, the flow equations are solved via the finite volume method with unknowns such as pressure and temperature solved for at the cell centers, in order to transfer data from the subsurface to geomechanics grid without interpolation, the geomechanics grid is constructed such that the vertices of the geomechanics grid coincide with the cell centers of the subsurface mesh. That is, the dual mesh of the subsurface mesh is used for the geomechanics solve.
 
-Also, geomechanics grid is read as an unstructured grid. Even if one needs to work with a structured grid, they have to set it up in the unstructured grid format. 
+Also, the geomechanics grid must be read in as an unstructured grid. Even if one needs to work with a structured grid, the grid must be set up in the unstructured grid format. 
 
-\section{Appendix: Method of Solution}
+%\section{Appendix: Method of Solution}
+\section*{Appendix B: Method of Solution}
+\addcontentsline{toc}{section}{\protect\numberline{}{\bf Appendix B: Method of Solution}} 
 
+\setcounter{section}{2}
+\setcounter{subsection}{0}
 \setcounter{equation}{0}
+\setcounter{table}{0}
+\setcounter{figure}{0}
+
 
 The flow and heat equations (Modes: RICHARDS, MPHASE, FLASH2, TH, \ldots) are solved using a fully implicit backward Euler approach based on Newton-Krylov iteration.
 Both fully implicit backward Euler and operator splitting solution methods are supported for reactive transport.
