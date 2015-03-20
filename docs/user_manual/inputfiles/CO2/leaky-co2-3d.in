@@ -1,0 +1,341 @@
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE MPHASE
+    /
+  /
+END
+
+SUBSURFACE
+
+#============================================================
+#CO2_DATABASE /Users/lichtner/pflotran/pflotran-dev/database/co2data0.dat
+CO2_DATABASE ./co2data0.dat
+
+#===== define the grid ======
+GRID
+  TYPE structured
+  ORIGIN 0.d0 0.d0 0.d0
+  NXYZ 200 200 32 
+  BOUNDS
+    0.d0    0.d0    0.d0
+    1000.d0 1000.d0 160.d0
+  /
+END
+
+#=========================== solver options ===================================
+TIMESTEPPER FLOW
+  TS_ACCELERATION 8
+  MAX_PRESSURE_CHANGE 5.e6
+  MAX_TEMPERATURE_CHANGE 2.
+  MAX_CONCENTRATION_CHANGE 1.e-3
+  MAX_SATURATION_CHANGE 0.1
+# MAX_STEPS 1
+/
+
+NEWTON_SOLVER FLOW
+  ATOL 1D-8
+  RTOL 1D-8
+  STOL 1D-30
+  DTOL 1D15
+  ITOL 1D-8
+  MAXIT 25
+  MAXF 100
+  MAX_NORM 1d6
+END
+
+#===== times ======
+TIME  
+  FINAL_TIME 1000.d0 d
+  INITIAL_TIMESTEP_SIZE 1.d-6 d
+  MAXIMUM_TIMESTEP_SIZE 1.0 d
+  MAXIMUM_TIMESTEP_SIZE 10.0 d at 100 d
+/
+
+#====== output options ====
+OUTPUT
+  TIMES d 0.15 0.25 0.5 0.75 1.0 2.5 5.0 10.0 15. 20.0 \
+  25. 30.0 35. 40.0 45. 50.0 60. 70. 80. 90. \
+  100. 125. 150. 175 200. 250. 300. 350. 400. 450. \
+  500. 550. 600. 650. 700. 750. 800. 850. 900. 950. \
+  1000.
+ # PERIODIC TIME 0.1 d
+ # SCREEN PERIODIC 50
+  FORMAT HDF5 MULTIPLE_FILES
+  FORMAT TECPLOT BLOCK
+  FLUXES
+  MASS_BALANCE
+  PRINT_COLUMN_IDS
+  PERIODIC_OBSERVATION TIMESTEP 1
+/
+
+#===== fluid properties =====
+FLUID_PROPERTY
+  LIQUID_DIFFUSION_COEFFICIENT 1.d-9
+  GAS_DIFFUSION_COEFFICIENT 2.13e-5
+/
+
+!========================== intergral flux ===================================
+INTEGRAL_FLUX leakage_plane
+  NAME flx
+  COORDINATES
+    0.d0 0.d0 80.d0
+    1000.d0 1000.d0 80.d0
+  /
+/
+
+#====== material properties=====
+MATERIAL_PROPERTY aquifer
+  ID 1
+  POROSITY 0.15d0 
+  TORTUOSITY 1.d0
+  ROCK_DENSITY 2.84E3
+  SPECIFIC_HEAT 1E3
+  THERMAL_CONDUCTIVITY_DRY 0.5 
+  THERMAL_CONDUCTIVITY_WET 0.5
+  SATURATION_FUNCTION sf
+  PERMEABILITY
+    PERM_X 2.d-14
+    PERM_Y 2.d-14
+    PERM_Z 2.d-14
+  /
+/
+
+MATERIAL_PROPERTY aquitard
+  ID 2
+  POROSITY 0.15d0 
+  TORTUOSITY 1.d0
+  ROCK_DENSITY 2.84E3
+  SPECIFIC_HEAT 1E3
+  THERMAL_CONDUCTIVITY_DRY 0.5 
+  THERMAL_CONDUCTIVITY_WET 0.5
+  SATURATION_FUNCTION sf
+  PERMEABILITY
+    PERM_X 1.d-18
+    PERM_Y 1.d-18
+    PERM_Z 1.d-18
+  /
+/
+
+MATERIAL_PROPERTY well
+  ID 3
+  POROSITY 0.15d0 
+  TORTUOSITY 1.d0
+  ROCK_DENSITY 2.84E3
+  SPECIFIC_HEAT 1E3
+  THERMAL_CONDUCTIVITY_DRY 0.5 
+  THERMAL_CONDUCTIVITY_WET 0.5
+  SATURATION_FUNCTION sf
+  PERMEABILITY
+    PERM_X 1.d-12
+    PERM_Y 1.d-12
+    PERM_Z 1.d-12
+  /
+/
+
+#====== saturation functions =============
+SATURATION_FUNCTION sf
+  SATURATION_FUNCTION_TYPE BROOKS_COREY
+  RESIDUAL_SATURATION LIQUID_PHASE 0.2
+  RESIDUAL_SATURATION GAS_PHASE 0.05
+  LAMBDA 2.0
+  ALPHA 1d-4
+  MAX_CAPILLARY_PRESSURE 5.0d5
+/
+
+#======= regions ===
+REGION all
+  COORDINATES
+    0.d0    0.d0    0.d0
+    1000.d0 1000.d0 160.d0
+  /
+END
+
+REGION upper
+  COORDINATES
+    0.d0    0.d0    130.d0
+    1000.d0 1000.d0 160.d0
+  /
+END
+
+REGION middle
+  COORDINATES
+    0.d0    0.d0    30.d0
+    1000.d0 1000.d0 130.d0
+  /
+END
+
+REGION lower
+  COORDINATES
+    0.d0    0.d0    0.d0
+    1000.d0 1000.d0 30.d0
+  /
+END
+
+REGION top
+  FACE TOP
+  COORDINATES
+    0.d0    0.d0    160.d0
+    1000.d0 1000.d0 160.d0
+  /
+END
+
+REGION bottom
+  FACE BOTTOM
+  COORDINATES
+    0.d0     0.d0    0.d0
+    1000.d0  1000.d0 0.d0
+  /
+END
+
+REGION west
+  FACE WEST
+  COORDINATES
+    0.d0 0.d0    0.d0
+    0.d0 1000.d0 160.d0
+  /
+END
+
+REGION east
+  FACE EAST
+  COORDINATES
+    1000.d0 0.d0    0.d0
+    1000.d0 1000.d0 160.d0
+  /
+END
+
+REGION south
+  FACE SOUTH
+  COORDINATES
+    0.d0    0.d0 0.d0
+    1000.d0 0.d0 160.d0
+  /
+END
+
+REGION north
+  FACE NORTH
+  COORDINATES
+    0.d0    1000.d0 0.d0 
+    1000.d0 1000.d0 160.d0
+  /
+END
+
+REGION well
+  COORDINATES
+    500.d0 500.d0 0.d0
+    500.d0 500.d0 160.d0
+  /
+END
+
+REGION inj_well
+  COORDINATES
+    400.d0 500.d0 0.d0
+    400.d0 500.d0 30.d0
+  /
+END
+
+#==== flow conditions ====
+FLOW_CONDITION initial
+  UNITS Pa,C,M,yr
+  TYPE
+    PRESSURE hydrostatic
+    TEMPERATURE dirichlet
+    CONCENTRATION dirichlet
+    ENTHALPY dirichlet
+  /
+  IPHASE 1
+  # DATUM 0.d0 0.d0 200.d0
+  PRESSURE 3.086d7 3.086d7
+  TEMPERATURE 33.6d0
+  CONCENTRATION 0.d0
+  ENTHALPY 0.d0 0.d0
+/
+
+FLOW_CONDITION side
+  UNITS Pa,C,M,yr
+  TYPE
+    PRESSURE hydrostatic
+    TEMPERATURE zero_gradient
+    CONCENTRATION zero_gradient
+    ENTHALPY dirichlet
+  /
+  IPHASE 1
+  PRESSURE 3.086d7 3.086d7
+  TEMPERATURE 33.6d0
+  CONCENTRATION 0.d0
+  ENTHALPY 0.d0 0.d0
+/
+
+FLOW_CONDITION source
+  UNITS Pa,C,M,yr
+  TYPE
+    RATE mass_rate
+    TEMPERATURE dirichlet
+    CONCENTRATION dirichlet
+    ENTHALPY dirichlet
+  /
+  RATE LIST
+    TIME_UNITS d
+    DATA_UNITS kg/s
+    0.    0. 1.47833 ! = 8.87 kg/s / 6
+    1000. 0. 0.
+  /
+  TEMPERATURE 33.6d0
+  CONCENTRATION 0.d0 
+  ENTHALPY 0.d0 0.d0
+/
+
+#==== condition couplers =====
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  REGION all
+END
+
+BOUNDARY_CONDITION north
+  FLOW_CONDITION side
+  REGION north
+END
+
+BOUNDARY_CONDITION south
+  FLOW_CONDITION side
+  REGION south
+END
+
+BOUNDARY_CONDITION east
+  FLOW_CONDITION side
+  REGION east
+END
+
+BOUNDARY_CONDITION west
+  FLOW_CONDITION side
+  REGION west
+END
+
+SOURCE_SINK
+  FLOW_CONDITION source
+  REGION inj_well
+END
+
+#==== stratigraphy couplers ==
+STRATA
+  REGION upper
+  MATERIAL aquifer
+END
+
+STRATA
+  REGION middle
+  MATERIAL aquitard
+END
+
+STRATA
+  REGION lower
+  MATERIAL aquifer
+END
+
+STRATA
+  REGION well
+  MATERIAL well
+END
+
+END_SUBSURFACE
