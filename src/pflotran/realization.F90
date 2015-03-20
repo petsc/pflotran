@@ -63,7 +63,6 @@ private
   
   public :: RealizationCreate, &
             RealizationStrip, &
-            RealizationDestroyLegacy, &
             RealizationProcessCouplers, &
             RealizationInitAllCouplerAuxVars, &
             RealizationProcessConditions, &
@@ -2398,70 +2397,6 @@ subroutine RealizationNonInitializedData(realization)
   endif
 
 end subroutine RealizationNonInitializedData
-
-! ************************************************************************** !
-
-subroutine RealizationDestroyLegacy(realization)
-  ! 
-  ! Deallocates a realization
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 11/01/07
-  ! 
-
-  use Dataset_module
-
-  implicit none
-  
-  class(realization_type), pointer :: realization
-  
-  if (.not.associated(realization)) return
-    
-  call FieldDestroy(realization%field)
-
-!  call OptionDestroy(realization%option) !geh it will be destroy externally
-  call OutputOptionDestroy(realization%output_option)
-  call RegionDestroyList(realization%region_list)
-  
-  call FlowConditionDestroyList(realization%flow_conditions)
-  call TranConditionDestroyList(realization%transport_conditions)
-  call TranConstraintDestroyList(realization%transport_constraints)
-
-  call PatchDestroyList(realization%patch_list)
-
-  if (associated(realization%debug)) deallocate(realization%debug)
-  nullify(realization%debug)
-  
-  if (associated(realization%fluid_property_array)) &
-    deallocate(realization%fluid_property_array)
-  nullify(realization%fluid_property_array)
-  call FluidPropertyDestroy(realization%fluid_properties)
-  
-  call MaterialPropertyDestroy(realization%material_properties)
-
-  call SaturationFunctionDestroy(realization%saturation_functions)
-  print *, 'RealizationDestroyLegacy cannot be removed.'
-  stop
-  call CharacteristicCurvesDestroy(realization%characteristic_curves)
-
-  call DatasetDestroy(realization%datasets)
-  
-  call UniformVelocityDatasetDestroy(realization%uniform_velocity_dataset)
-  
-  call DiscretizationDestroy(realization%discretization)
-  
-  call ReactionDestroy(realization%reaction,realization%option)
-  
-  call TranConstraintDestroy(realization%sec_transport_constraint)
-  call MassTransferDestroy(realization%flow_mass_transfer_list)
-  call MassTransferDestroy(realization%rt_mass_transfer_list)
-  
-  call WaypointListDestroy(realization%waypoint_list)
-  
-  deallocate(realization)
-  nullify(realization)
-  
-end subroutine RealizationDestroyLegacy
 
 ! ************************************************************************** !
 
