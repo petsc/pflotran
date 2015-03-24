@@ -291,7 +291,6 @@ misc_obj = \
 	${common_src}geometry.o \
 	${common_src}hydrostatic.o \
 	${common_src}init_common.o \
-	${common_src}init_geomechanics.o \
 	${common_src}init_subsurface.o \
 	${common_src}init_subsurface_flow.o \
 	${common_src}init_subsurface_transport.o \
@@ -497,7 +496,7 @@ eos_water.o : pflotran_constants.o
 factory_geomechanics.o : condition_control.o factory_subsurface.o \
                          geomechanics_discretization.o geomechanics_force.o \
                          geomechanics_realization.o init_common.o \
-                         init_geomechanics.o input_aux.o logging.o option.o \
+                         geomechanics_init.o input_aux.o logging.o option.o \
                          output.o output_aux.o output_geomechanics.o \
                          pflotran_constants.o pm_base.o pm_base_pointer.o \
                          pm_geomechanics_force.o pmc_base.o pmc_geomechanics.o \
@@ -681,7 +680,7 @@ init_common.o : condition.o connection.o coupler.o discretization.o field.o \
                 option.o output.o output_tecplot.o patch.o \
                 pflotran_constants.o reaction.o reaction_aux.o realization.o \
                 region.o string.o
-init_geomechanics.o : convergence.o discretization.o geomech_grid.o \
+geomechanics_init.o : convergence.o discretization.o geomech_grid.o \
                       geomech_grid_aux.o geomechanics_condition.o \
                       geomechanics_coupler.o geomechanics_debug.o \
                       geomechanics_discretization.o geomechanics_field.o \
