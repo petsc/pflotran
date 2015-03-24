@@ -1603,6 +1603,7 @@ subroutine OutputIntegralFlux(realization_base)
   PetscInt :: istart, iend
   PetscInt :: icol
   PetscMPIInt :: int_mpi
+  PetscReal :: tempreal
   PetscErrorCode :: ierr
 
   patch => realization_base%patch
@@ -1726,8 +1727,9 @@ subroutine OutputIntegralFlux(realization_base)
     endif 
   endif     
 
-100 format(100es16.8)
-110 format(100es16.8)
+100 format(100es17.8)
+110 format(100es17.8)
+120 format(100es17.8e3)
 
   ! write time
   if (option%myrank == option%io_rank) then
@@ -1789,7 +1791,12 @@ subroutine OutputIntegralFlux(realization_base)
       if (option%nflowdof > 0) then
         do i = 1, option%nflowdof
           do j = 1, 2  ! 1 = integral, 2 = instantaneous
-            write(fid,110,advance="no") array_global(i,j)*flow_dof_scale(i)
+            tempreal = array_global(i,j)*flow_dof_scale(i)
+            if (dabs(tempreal) > 0.d0 .and. dabs(tempreal) < 1.d-99) then
+              write(fid,120,advance="no") tempreal
+            else
+              write(fid,110,advance="no") tempreal
+            endif
           enddo
         enddo
       endif
@@ -1798,7 +1805,12 @@ subroutine OutputIntegralFlux(realization_base)
         do i=1,reaction%naqcomp
           do j = 1, 2  ! 1 = integral, 2 = instantaneous
             if (reaction%primary_species_print(i)) then
-              write(fid,110,advance="no") array_global(istart+i,j)
+              tempreal = array_global(istart+i,j)
+              if (dabs(tempreal) > 0.d0 .and. dabs(tempreal) < 1.d-99) then
+                write(fid,120,advance="no") tempreal
+              else
+                write(fid,110,advance="no") tempreal
+              endif
             endif
           enddo
         enddo
