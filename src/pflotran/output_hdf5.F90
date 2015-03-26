@@ -307,15 +307,15 @@ subroutine OutputHDF5(realization_base,var_list_type)
                                          global_vec_vy,global_vec_vz, &
                                          LIQUID_PHASE)
 
-    string = "Liquid X-Velocity"
+    string = "Liquid X-Velocity [m_per_" // trim(output_option%tunit) // "]"
     call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec_vx,grp_id, &
           H5T_NATIVE_DOUBLE)
 
-    string = "Liquid Y-Velocity"
+    string = "Liquid Y-Velocity [m_per_" // trim(output_option%tunit) // "]"
     call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec_vy,grp_id, &
           H5T_NATIVE_DOUBLE)
 
-    string = "Liquid Z-Velocity"
+    string = "Liquid Z-Velocity [m_per_" // trim(output_option%tunit) // "]"
     call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec_vz,grp_id, &
           H5T_NATIVE_DOUBLE)
 
