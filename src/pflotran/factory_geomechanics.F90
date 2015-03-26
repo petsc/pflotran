@@ -58,7 +58,7 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
   use Simulation_Subsurface_class
   use Factory_Subsurface_module
   use Init_Common_module
-  use Init_Geomechanics_module
+  use Geomechanics_Init_module
   use Option_module
   use PM_Base_class
   use PM_Base_Pointer_module

@@ -144,24 +144,25 @@ subroutine GeomechanicsSimulationExecuteRun(this)
 
     ! If simulation is decoupled subsurfac-geomech simulation, set
     ! dt_coupling to be dt_max
-    if (this%geomech_realization%dt_coupling == 0.d0) &
-      this%geomech_realization%dt_coupling = 0.d0
+    if (this%geomech_realization%dt_coupling == 0.d0) then
+      this%option%io_buffer = 'Set non-zero COUPLING_TIME_SIZE in GEOMECHANICS_TIME.'
+      call printErrMsg(this%option)
+    else
+      do
+        if (time + this%geomech_realization%dt_coupling > final_time) then
+          dt = final_time-time
+        else
+          dt = this%geomech_realization%dt_coupling
+        endif
 
-    do
-      if (time + this%geomech_realization%dt_coupling > final_time) then
-        dt = final_time-time
-      else
-        dt = this%geomech_realization%dt_coupling
-      endif
+        time = time + dt
+        call this%RunToTime(time)
 
-      time = time + dt
-      call this%RunToTime(time)
-
-      if (this%stop_flag /= TS_CONTINUE) exit ! end simulation
-
-      if (time >= final_time) exit
-    enddo
-
+        if (this%stop_flag /= TS_CONTINUE) exit ! end simulation
+ 
+        if (time >= final_time) exit
+      enddo
+    endif
   endif
 
 end subroutine GeomechanicsSimulationExecuteRun
