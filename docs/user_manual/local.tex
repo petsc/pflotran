@@ -59,12 +59,13 @@ splittopskip = \topskip,roundcorner=12]{mdframed}
 \cfoot{\rm < \thepage\ >}
 %\cfoot{}
 %\footrulewidth 0.4pt
+
 \newcommand\keyend{{END \, [/ \, .]}}
 \newcommand\return{{\hfill$\hookrightarrow$ Return to List of Keywords}}
 \newcommand\returnb{{\hfill$\nearrow$ Return to List of Keywords}}
 %\newcommand\return{{\hfill\bf Return to List of Keywords}}
 
-\newcommand{\grad}{\ensuremath{\mathrm{grad}}}                                  % grad
+\newcommand{\grad}{\ensuremath{\mathrm{grad}}} % grad
 \def\EQ#1\EN{\begin{equation}#1\end{equation}}
 \def\SEQ#1\SEN{\begin{subequations}#1\end{subequations}}
 \def\BA#1\EA{\begin{align}#1\end{align}}
@@ -214,14 +215,6 @@ splittopskip = \topskip,roundcorner=12]{mdframed}
 \newcommand{\srf}{{\rm srf}}
 \def\dbar{{\mkern2mu\mathchar'26\mkern-11mu\mathrm{d}}}
 
-\newcounter{saveeqn}%
-\newcommand{\alpheqn}{\setcounter{saveeqn}{\value{equation}}%
-\stepcounter{saveeqn}\setcounter{equation}{0}%
-\renewcommand{\theequation}
-      {\mbox{\arabic{saveeqn}\alph{equation}}}}%
-\newcommand{\reseteqn}{\setcounter{equation}{\value{saveeqn}}%
-\renewcommand{\theequation}{\arabic{equation}}}%
-
 \renewcommand{\contentsname}{TABLE OF CONTENTS}
 \renewcommand{\listfigurename}{{LIST OF FIGURES}}
 \renewcommand{\listtablename}{{LIST OF TABLES}}
@@ -240,17 +233,17 @@ splittopskip = \topskip,roundcorner=12]{mdframed}
 \thispagestyle{empty}
 
 %\renewcommand{\theequation}{\arabic{equation}}
-%\renewcommand{\thetable}{{\protect\bf\arabic{table}}}
-%\renewcommand{\thefigure}{{\protect\bf\arabic{figure}}}
+\renewcommand{\theequation}{\arabic{section}-\arabic{equation}}
+\renewcommand{\thetable}{{\arabic{section}-\arabic{table}}}
+%\renewcommand{\thefigure}{\arabic{figure}}
+\renewcommand{\thefigure}{{\arabic{section}-\arabic{figure}}}
 %\renewcommand{\thepage}{\roman{page}}
 
-\renewcommand{\theequation}{\arabic{section}-\arabic{equation}}
 
 \def\EQ#1\EN{\begin{equation}#1\end{equation}}
 \def\SEQ#1\SEN{\begin{subequations}#1\end{subequations}}
 \def\BA#1\EA{\begin{align}#1\end{align}}
 \def\LM#1\EM{\begin{linenomath}#1\end{linenomath}}
-\renewcommand{\thefigure}{\arabic{figure}}
 
 
 \setlongtables
