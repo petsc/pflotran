@@ -75,6 +75,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   use Simulation_Subsurface_class
   use Solver_module
   use Waypoint_module
+  use Init_Common_module
   use Init_Subsurface_module
   use Input_Aux_module
   
@@ -201,6 +202,23 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
     simulation%rt_process_model_coupler%child => pmc_third_party
     nullify(pmc_third_party)
   endif
+
+  ! clean up waypoints
+  if (.not.option%steady_state) then
+    ! fill in holes in waypoint data
+    call WaypointListFillIn(option,realization%waypoint_list)
+    call WaypointListRemoveExtraWaypnts(option,realization%waypoint_list)
+  endif
+
+
+  ! debugging output
+  if (realization%debug%print_couplers) then
+    call InitCommonVerifyAllCouplers(realization)
+  endif
+  if (realization%debug%print_waypoints) then
+    call WaypointListPrint(realization%waypoint_list,option, &
+                           realization%output_option)
+  endif  
 
   call SubsurfaceJumpStart(simulation)
   ! set first process model coupler as the master
@@ -558,7 +576,6 @@ subroutine InitSubsurfaceSimulation(simulation)
   
   
   use Global_module
-  use Init_Common_module
   use Init_Subsurface_module
   use Init_Subsurface_Flow_module
   use Init_Subsurface_Tran_module
@@ -632,14 +649,6 @@ subroutine InitSubsurfaceSimulation(simulation)
                                       output_variable_list,option)
     ! check for non-initialized data sets, e.g. porosity, permeability
   call RealizationNonInitializedData(realization)
-
-  if (realization%debug%print_couplers) then
-    call InitCommonVerifyAllCouplers(realization)
-  endif
-  if (realization%debug%print_waypoints) then
-    call WaypointListPrint(realization%waypoint_list,option, &
-                           realization%output_option)
-  endif  
 
   if (option%nflowdof > 0) then
     select type(ts => simulation%flow_process_model_coupler%timestepper)

@@ -108,11 +108,8 @@ subroutine InitSubsurfSetupRealization(realization)
     ! add waypoints associated with boundary conditions, source/sinks etc. to list
     call RealizationAddWaypointsToList(realization)
     ! fill in holes in waypoint data
-    call WaypointListFillIn(option,realization%waypoint_list)
-    call WaypointListRemoveExtraWaypnts(option,realization%waypoint_list)
-  ! geh- no longer needed
-  !  ! convert times from input time to seconds
-  !  call WaypointConvertTimes(realization%waypoint_list,realization%output_option%tconv)
+!    call WaypointListFillIn(option,realization%waypoint_list)
+!    call WaypointListRemoveExtraWaypnts(option,realization%waypoint_list)
   endif
   call PetscLogEventEnd(logging%event_setup,ierr);CHKERRQ(ierr)
   
