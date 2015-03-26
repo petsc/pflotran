@@ -1,8 +1,6 @@
-module Mass_Transfer2_module
+module Data_Mediator_Vec_class
  
-  use Dataset_Global_HDF5_class
-  
-  use PFLOTRAN_Constants_module
+  use Data_Mediator_Base_class
 
   implicit none
 
@@ -12,96 +10,113 @@ module Mass_Transfer2_module
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
  
-  type, public :: mass_transfer2_type
+  type, public, extends(data_mediator_base_type) :: data_mediator_vec_type
     VecScatter :: scatter_ctx ! scatter context from vec to residual_vec
     Vec :: vec
-    type(mass_transfer2_type), pointer :: next
-  end type mass_transfer2_type
+  contains
+    procedure, public :: Update => DataMediatorVecUpdate
+    procedure, public :: Strip => DataMediatorVecStrip
+  end type data_mediator_vec_type
   
-  public :: MassTransfer2Create, MassTransfer2Destroy, &
-            MassTransfer2AddToList
+  public :: DataMediatorVecCreate
 
 contains
 
 ! ************************************************************************** !
 
-function MassTransfer2Create()
+function DataMediatorVecCreate()
   ! 
-  ! Creates a mass transfer object
+  ! Creates a data mediator object
   ! 
   ! Author: Glenn Hammond
-  ! Date: 05/01/13
+  ! Date: 03/24/15
   ! 
   
   implicit none
 
-  type(mass_transfer2_type), pointer :: MassTransfer2Create
+  class(data_mediator_vec_type), pointer :: DataMediatorVecCreate
   
-  type(mass_transfer2_type), pointer :: mass_transfer
+  class(data_mediator_vec_type), pointer :: data_mediator
   
-  allocate(mass_transfer)
-  mass_transfer%vec = 0
-  mass_transfer%scatter_ctx = 0
-  nullify(mass_transfer%next)
-  MassTransfer2Create => mass_transfer
+  allocate(data_mediator)
+  call DataMediatorBaseCreate(data_mediator)
+  data_mediator%vec = 0
+  data_mediator%scatter_ctx = 0
+  DataMediatorVecCreate => data_mediator
 
-end function MassTransfer2Create
+end function DataMediatorVecCreate
 
 ! ************************************************************************** !
 
-recursive subroutine MassTransfer2AddToList(mass_transfer,list)
+recursive subroutine DataMediatorVecUpdate(this,data_mediator_vec,option)
   ! 
-  ! Adds a mass transfer object to linked list
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 05/01/13
-  ! 
-
-  implicit none
-  
-  type(mass_transfer2_type), pointer :: mass_transfer
-  type(mass_transfer2_type), pointer :: list
-
-  if (associated(list)) then
-    call MassTransfer2AddToList(mass_transfer,list%next)
-  else
-    list => mass_transfer
-  endif
-  
-end subroutine MassTransfer2AddToList
-
-! ************************************************************************** !
-
-recursive subroutine MassTransfer2Destroy(mass_transfer)
-  ! 
-  ! Destroys a mass transfer object
+  ! Updates a data mediator object transfering data from
+  ! the buffer into the PETSc Vec
   ! 
   ! Author: Glenn Hammond
-  ! Date: 05/01/13
+  ! Date: 03/24/15
   ! 
 
+  use Option_module
+  
   implicit none
   
-  type(mass_transfer2_type), pointer :: mass_transfer
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"  
+  
+  class(data_mediator_vec_type) :: this
+  Vec :: data_mediator_vec
+  type(option_type) :: option  
   
   PetscErrorCode :: ierr
   
-  if (.not.associated(mass_transfer)) return
+  call VecScatterBegin(this%scatter_ctx,this%vec, &
+                       data_mediator_vec,ADD_VALUES, &
+                       SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+  call VecScatterEnd(this%scatter_ctx,this%vec, &
+                     data_mediator_vec,ADD_VALUES, &
+                     SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+                         
+  ! update the next one
+  if (associated(this%next)) then
+    call this%next%Update(data_mediator_vec,option)
+  endif
+  
+end subroutine DataMediatorVecUpdate
+
+! ************************************************************************** !
+
+recursive subroutine DataMediatorVecStrip(this)
+  ! 
+  ! Destroys a data mediator object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/24/15
+  ! 
+
+  implicit none
+  
+  class(data_mediator_vec_type) :: this
+  
+  PetscErrorCode :: ierr
+  
+  ! update the next one
+  if (associated(this%next)) then
+    call this%next%Strip()
+    deallocate(this%next)
+    nullify(this%next)
+  endif 
   
   ! Simply nullify the pointer as the dataset resides in a list to be
   ! destroyed separately.
-  !nullify(mass_transfer%dataset)
-  if (mass_transfer%scatter_ctx /= 0) then
-    call VecScatterDestroy(mass_transfer%scatter_ctx,ierr);CHKERRQ(ierr)
+  !nullify(data_mediator%dataset)
+  if (this%scatter_ctx /= 0) then
+    call VecScatterDestroy(this%scatter_ctx,ierr);CHKERRQ(ierr)
   endif
-  if (mass_transfer%vec /= 0) then
-    call VecDestroy(mass_transfer%vec ,ierr);CHKERRQ(ierr)
+  if (this%vec /= 0) then
+    call VecDestroy(this%vec,ierr);CHKERRQ(ierr)
   endif
-  call MassTransfer2Destroy(mass_transfer%next)
-
-  deallocate(mass_transfer)
-  nullify(mass_transfer)
   
-end subroutine MassTransfer2Destroy
+end subroutine DataMediatorVecStrip
 
-end module Mass_Transfer2_module
+end module Data_Mediator_Vec_class

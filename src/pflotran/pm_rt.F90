@@ -347,6 +347,7 @@ subroutine PMRTPreSolve(this)
   use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
   use Global_module  
   use Material_module
+  use Data_Mediator_module
 
   implicit none
   
@@ -391,6 +392,10 @@ subroutine PMRTPreSolve(this)
                  this%realization%field%tran_log_xx,ierr);CHKERRQ(ierr)
     call VecLog(this%realization%field%tran_log_xx,ierr);CHKERRQ(ierr)
   endif
+  
+  call DataMediatorUpdate(this%realization%tran_data_mediator_list, &
+                          this%realization%field%tran_mass_transfer, &
+                          this%realization%option)
   
 end subroutine PMRTPreSolve
 
@@ -699,7 +704,6 @@ subroutine PMRTUpdateSolution1(this)
 
   use Reactive_Transport_module
   use Condition_module
-  use Mass_Transfer_module
 
   implicit none
   
@@ -719,7 +723,6 @@ subroutine PMRTUpdateSolution2(this, update_kinetics)
 
   use Reactive_Transport_module
   use Condition_module
-  use Mass_Transfer_module
   use Integral_Flux_module
 
   implicit none
@@ -744,9 +747,11 @@ subroutine PMRTUpdateSolution2(this, update_kinetics)
   if (update_kinetics) &
     call RTUpdateKineticState(this%realization)
   
-  call MassTransferUpdate(this%realization%rt_mass_transfer_list, &
-                          this%realization%patch%grid, &
-                          this%realization%option)
+!TODO(geh): MassTransfer
+!geh - moved to RTPreSolve()
+!  call MassTransferUpdate(this%realization%rt_data_mediator_list, &
+!                          this%realization%patch%grid, &
+!                          this%realization%option)
   
   if (this%realization%option%compute_mass_balance_new) then
     call RTUpdateMassBalance(this%realization)

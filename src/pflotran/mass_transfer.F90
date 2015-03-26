@@ -1,9 +1,9 @@
-module Mass_Transfer_module
+module Data_Mediator_Dataset_class
  
+  use PFLOTRAN_Constants_module
+  use Data_Mediator_Base_class
   use Dataset_Global_HDF5_class
   
-  use PFLOTRAN_Constants_module
-
   implicit none
 
   private
@@ -12,25 +12,25 @@ module Mass_Transfer_module
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
  
-  type, public :: mass_transfer_type
+  type, public, extends(data_mediator_base_type) :: data_mediator_dataset_type
     PetscInt :: idof
-    character(len=MAXWORDLENGTH) :: name
     class(dataset_global_hdf5_type), pointer :: dataset
-    Vec :: vec
-    type(mass_transfer_type), pointer :: next
-  end type mass_transfer_type
+  contains
+    procedure, public :: Update => DataMediatorDatasetUpdate
+    procedure, public :: Strip => DataMediatorDatasetStrip    
+  end type data_mediator_dataset_type
   
-  public :: MassTransferCreate, MassTransferDestroy, &
-            MassTransferRead, MassTransferAddToList, &
-            MassTransferUpdate, MassTransferInit
+  public :: DataMediatorDatasetCreate, &
+            DataMediatorDatasetRead, &
+            DataMediatorDatasetInit
 
 contains
 
 ! ************************************************************************** !
 
-function MassTransferCreate()
+function DataMediatorDatasetCreate()
   ! 
-  ! Creates a mass transfer object
+  ! Creates a data mediator object
   ! 
   ! Author: Glenn Hammond
   ! Date: 05/01/13
@@ -38,25 +38,23 @@ function MassTransferCreate()
   
   implicit none
 
-  type(mass_transfer_type), pointer :: MassTransferCreate
+  class(data_mediator_dataset_type), pointer :: DataMediatorDatasetCreate
   
-  type(mass_transfer_type), pointer :: mass_transfer
+  class(data_mediator_dataset_type), pointer :: data_mediator
   
-  allocate(mass_transfer)
-  mass_transfer%idof = 0
-  mass_transfer%name = ''
-  nullify(mass_transfer%dataset)
-  nullify(mass_transfer%next)
-  mass_transfer%vec = 0
-  MassTransferCreate => mass_transfer
+  allocate(data_mediator)
+  call DataMediatorBaseCreate(data_mediator)
+  data_mediator%idof = 0
+  nullify(data_mediator%dataset)
+  DataMediatorDatasetCreate => data_mediator
 
-end function MassTransferCreate
+end function DataMediatorDatasetCreate
 
 ! ************************************************************************** !
 
-subroutine MassTransferRead(mass_transfer,input,option)
+subroutine DataMediatorDatasetRead(data_mediator,input,option)
   ! 
-  ! Reads in contents of a mass transfer card
+  ! Reads in contents of a data mediator card
   ! 
   ! Author: Glenn Hammond
   ! Date: 05/01/13
@@ -68,7 +66,7 @@ subroutine MassTransferRead(mass_transfer,input,option)
 
   implicit none
   
-  type(mass_transfer_type) :: mass_transfer
+  class(data_mediator_dataset_type) :: data_mediator
   type(input_type) :: input
   type(option_type) :: option
   
@@ -87,12 +85,12 @@ subroutine MassTransferRead(mass_transfer,input,option)
       
     select case(trim(keyword))
       case('IDOF') 
-        call InputReadInt(input,option,mass_transfer%idof)
+        call InputReadInt(input,option,data_mediator%idof)
         call InputErrorMsg(input,option,'idof','MASS_TRANSFER')
       case('DATASET')
-        mass_transfer%dataset => DatasetGlobalHDF5Create()
+        data_mediator%dataset => DatasetGlobalHDF5Create()
         call InputReadNChars(input,option, &
-                             mass_transfer%dataset%name,&
+                             data_mediator%dataset%name,&
                              MAXWORDLENGTH,PETSC_TRUE)
         call InputErrorMsg(input,option,'DATASET,NAME','MASS_TRANSFER')
       case default
@@ -101,45 +99,14 @@ subroutine MassTransferRead(mass_transfer,input,option)
     
   enddo  
 
-end subroutine MassTransferRead
+end subroutine DataMediatorDatasetRead
 
 ! ************************************************************************** !
 
-subroutine MassTransferAddToList(mass_transfer,list)
+subroutine DataMediatorDatasetInit(data_mediator, discretization, &
+                                   available_datasets, option)
   ! 
-  ! Adds a mass transfer object to linked list
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 05/01/13
-  ! 
-
-  implicit none
-  
-  type(mass_transfer_type), pointer :: mass_transfer
-  type(mass_transfer_type), pointer :: list
-
-  type(mass_transfer_type), pointer :: cur_mass_transfer
-  
-  if (associated(list)) then
-    cur_mass_transfer => list
-    ! loop to end of list
-    do
-      if (.not.associated(cur_mass_transfer%next)) exit
-      cur_mass_transfer => cur_mass_transfer%next
-    enddo
-    cur_mass_transfer%next => mass_transfer
-  else
-    list => mass_transfer
-  endif
-  
-end subroutine MassTransferAddToList
-
-! ************************************************************************** !
-
-recursive subroutine MassTransferInit(mass_transfer, discretization, &
-                                      available_datasets, option)
-  ! 
-  ! Initializes mass transfer object opening dataset to
+  ! Initializes data mediator object opening dataset to
   ! set up times, vectors, etc.
   ! 
   ! Author: Glenn Hammond
@@ -156,7 +123,7 @@ recursive subroutine MassTransferInit(mass_transfer, discretization, &
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"  
   
-  type(mass_transfer_type), pointer :: mass_transfer
+  class(data_mediator_dataset_type) :: data_mediator
   type(discretization_type) :: discretization
   class(dataset_base_type), pointer :: available_datasets
   type(option_type) :: option
@@ -165,68 +132,56 @@ recursive subroutine MassTransferInit(mass_transfer, discretization, &
   character(len=MAXSTRINGLENGTH) :: string
   PetscErrorCode :: ierr
   
-  if (.not.associated(mass_transfer)) return
-  
-  if (.not.associated(mass_transfer%dataset)) then
+  if (.not.associated(data_mediator%dataset)) then
     option%io_buffer = 'A "global" DATASET does not exist for ' // &
-      'MASS_TRANSFER object "' // trim(mass_transfer%name) // '".'
+      'MASS_TRANSFER object "' // trim(data_mediator%name) // '".'
     call printErrMsg(option)
   endif
 
-  string = 'Mass Transfer ' // trim(mass_transfer%name)
+  string = 'Data Mediator ' // trim(data_mediator%name)
   dataset_base_ptr => &
-    DatasetBaseGetPointer(available_datasets,mass_transfer%dataset%name, &
+    DatasetBaseGetPointer(available_datasets,data_mediator%dataset%name, &
                           string,option)
-  call DatasetGlobalHDF5Destroy(mass_transfer%dataset)
+  call DatasetGlobalHDF5Destroy(data_mediator%dataset)
   select type(dataset => dataset_base_ptr)
     class is(dataset_global_hdf5_type)
-      mass_transfer%dataset => dataset
+      data_mediator%dataset => dataset
     class default
       option%io_buffer = 'DATASET ' // trim(dataset%name) // 'is not of ' // &
         'GLOBAL type, which is necessary for all MASS_TRANSFER objects.'
       call printErrMsg(option)
   end select
   ! dm_wrapper is solely a pointer; it should not be allocated
-  mass_transfer%dataset%dm_wrapper => discretization%dm_1dof
-  mass_transfer%dataset%local_size = discretization%grid%nlmax
-  mass_transfer%dataset%global_size = discretization%grid%nmax
-  call DiscretizationCreateVector(discretization,ONEDOF,mass_transfer%vec, &
-                                    GLOBAL,option)
-  call VecZeroEntries(mass_transfer%vec,ierr);CHKERRQ(ierr)
+  data_mediator%dataset%dm_wrapper => discretization%dm_1dof
+  data_mediator%dataset%local_size = discretization%grid%nlmax
+  data_mediator%dataset%global_size = discretization%grid%nmax
   
-  if (.not.associated(mass_transfer%dataset%time_storage)) then
+  if (.not.associated(data_mediator%dataset%time_storage)) then
 #if defined(PETSC_HAVE_HDF5)    
-    call DatasetCommonHDF5ReadTimes(mass_transfer%dataset%filename, &
-                                    mass_transfer%dataset%hdf5_dataset_name, &
-                                    mass_transfer%dataset%time_storage,option)
+    call DatasetCommonHDF5ReadTimes(data_mediator%dataset%filename, &
+                                    data_mediator%dataset%hdf5_dataset_name, &
+                                    data_mediator%dataset%time_storage,option)
 #endif
     ! if time interpolation methods not set in hdf5 file, set to default of STEP
-    if (mass_transfer%dataset%time_storage%time_interpolation_method == &
+    if (data_mediator%dataset%time_storage%time_interpolation_method == &
         INTERPOLATION_NULL) then
-      mass_transfer%dataset%time_storage%time_interpolation_method = &
+      data_mediator%dataset%time_storage%time_interpolation_method = &
         INTERPOLATION_STEP
     endif
   endif 
   
-  ! update the next one recursively
-  call MassTransferInit(mass_transfer%next,discretization, &
-                        available_datasets,option)
-  
-end subroutine MassTransferInit
+end subroutine DataMediatorDatasetInit
 
 ! ************************************************************************** !
 
-recursive subroutine MassTransferUpdate(mass_transfer, grid, option)
+recursive subroutine DataMediatorDatasetUpdate(this,data_mediator_vec,option)
   ! 
-  ! Updates a mass transfer object transfering data from
+  ! Updates a data mediator object transfering data from
   ! the buffer into the PETSc Vec
   ! 
   ! Author: Glenn Hammond
   ! Date: 05/01/13
   ! 
-
-  use Discretization_module
-  use Grid_module
   use Option_module
   
   implicit none
@@ -234,33 +189,45 @@ recursive subroutine MassTransferUpdate(mass_transfer, grid, option)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"  
   
-  type(mass_transfer_type), pointer :: mass_transfer
-  type(grid_type) :: grid
+  class(data_mediator_dataset_type) :: this
+  Vec :: data_mediator_vec
   type(option_type) :: option  
-  PetscReal :: time
   
   PetscReal, pointer :: vec_ptr(:)
+  PetscInt :: ndof_per_cell
+  PetscInt :: mdof_local_size
+  PetscInt :: offset
+  PetscInt :: i
   PetscErrorCode :: ierr
   
-  if (.not.associated(mass_transfer)) return
+  call DatasetGlobalHDF5Load(this%dataset,option)
 
-  call DatasetGlobalHDF5Load(mass_transfer%dataset,option)
-
-  call VecGetArrayF90(mass_transfer%vec,vec_ptr,ierr);CHKERRQ(ierr)
-  ! multiply by -1.d0 for positive contribution to residual
-  vec_ptr(:) = -1.d0*mass_transfer%dataset%rarray(:)
-  call VecRestoreArrayF90(mass_transfer%vec,vec_ptr,ierr);CHKERRQ(ierr)
+  call VecGetLocalSize(data_mediator_vec,mdof_local_size,ierr);CHKERRQ(ierr)
+  ndof_per_cell = mdof_local_size / this%dataset%local_size
+  if (mod(mdof_local_size,this%dataset%local_size) > 0) then
+    option%io_buffer = 'Mismatched vector size in MassTransferUpdate.'
+    call printErrMsg(option)
+  endif
+  call VecGetArrayF90(data_mediator_vec,vec_ptr,ierr);CHKERRQ(ierr)
+  offset = this%idof
+  do i = 1, this%dataset%local_size
+    vec_ptr(offset) = vec_ptr(offset) + this%dataset%rarray(i)
+    offset = offset + ndof_per_cell
+  enddo
+  call VecRestoreArrayF90(data_mediator_vec,vec_ptr,ierr);CHKERRQ(ierr)
   
   ! update the next one
-  call MassTransferUpdate(mass_transfer%next,grid,option)
+  if (associated(this%next)) then
+    call this%next%Update(data_mediator_vec,option)
+  endif
   
-end subroutine MassTransferUpdate
+end subroutine DataMediatorDatasetUpdate
 
 ! ************************************************************************** !
 
-recursive subroutine MassTransferDestroy(mass_transfer)
+recursive subroutine DataMediatorDatasetStrip(this)
   ! 
-  ! Destroys a mass transfer object
+  ! Destroys a data mediator object
   ! 
   ! Author: Glenn Hammond
   ! Date: 05/01/13
@@ -268,23 +235,21 @@ recursive subroutine MassTransferDestroy(mass_transfer)
 
   implicit none
   
-  type(mass_transfer_type), pointer :: mass_transfer
+  class(data_mediator_dataset_type) :: this
   
   PetscErrorCode :: ierr
   
-  if (.not.associated(mass_transfer)) return
+  ! update the next one
+  if (associated(this%next)) then
+    call this%next%Strip()
+    deallocate(this%next)
+    nullify(this%next)
+  endif 
   
   ! Simply nullify the pointer as the dataset resides in a list to be
   ! destroyed separately.
-  nullify(mass_transfer%dataset)
-  if (mass_transfer%vec /= 0) then
-    call VecDestroy(mass_transfer%vec ,ierr);CHKERRQ(ierr)
-  endif
-  call MassTransferDestroy(mass_transfer%next)
+  nullify(this%dataset)
 
-  deallocate(mass_transfer)
-  nullify(mass_transfer)
-  
-end subroutine MassTransferDestroy
+end subroutine DataMediatorDatasetStrip
 
-end module Mass_Transfer_module
+end module Data_Mediator_Dataset_class

@@ -1215,7 +1215,6 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   use Discretization_module
   use Option_module
   use Logging_module
-  use Mass_Transfer_module, only : mass_transfer_type
   use Material_module
   use Material_Aux_class
   use Variables_module
@@ -1233,7 +1232,6 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   type(discretization_type), pointer :: discretization
   type(field_type), pointer :: field
   type(option_type), pointer :: option
-  type(mass_transfer_type), pointer :: cur_mass_transfer
   character(len=MAXSTRINGLENGTH) :: string
 
   call PetscLogEventBegin(logging%event_r_residual,ierr);CHKERRQ(ierr)
@@ -1287,17 +1285,13 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   endif
 
   call PetscLogEventEnd(logging%event_r_residual,ierr);CHKERRQ(ierr)
-
+ 
   ! Mass Transfer
-  if (associated(realization%flow_mass_transfer_list)) then
-    cur_mass_transfer => realization%flow_mass_transfer_list
-    do
-      if (.not.associated(cur_mass_transfer)) exit
-      call VecStrideScatter(cur_mass_transfer%vec,cur_mass_transfer%idof-1, &
-                            r,ADD_VALUES,ierr);CHKERRQ(ierr)
-      cur_mass_transfer => cur_mass_transfer%next
-    enddo
-  endif
+  if (field%flow_mass_transfer /= 0) then
+    ! scale by -1.d0 for contribution to residual.  A negative contribution
+    ! indicates mass being added to system.
+    call VecAXPY(r,-1.d0,field%flow_mass_transfer,ierr);CHKERRQ(ierr)
+  endif  
 
 end subroutine RichardsResidual
 

@@ -1301,7 +1301,6 @@ subroutine RTCalculateRHS_t1(realization)
   use Option_module
   use Field_module  
   use Grid_module
-  use Mass_Transfer_module, only : mass_transfer_type  
 
   implicit none
   
@@ -1327,7 +1326,6 @@ subroutine RTCalculateRHS_t1(realization)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
   type(coupler_type), pointer :: source_sink
-  type(mass_transfer_type), pointer :: cur_mass_transfer
   PetscInt :: sum_connection, iconn  
   PetscReal :: qsrc
   PetscInt :: offset, istartcoll, iendcoll, istartall, iendall, icomp, ieqgas
@@ -1498,15 +1496,11 @@ subroutine RTCalculateRHS_t1(realization)
   call VecRestoreArrayF90(field%tran_rhs,rhs_p,ierr);CHKERRQ(ierr)
 
   ! Mass Transfer
-  if (associated(realization%rt_mass_transfer_list)) then
-    cur_mass_transfer => realization%rt_mass_transfer_list
-    do
-      if (.not.associated(cur_mass_transfer)) exit
-      call VecStrideScatter(cur_mass_transfer%vec,cur_mass_transfer%idof-1, &
-                            field%tran_rhs,ADD_VALUES,ierr);CHKERRQ(ierr)
-      cur_mass_transfer => cur_mass_transfer%next
-    enddo
-  endif  
+  if (field%tran_mass_transfer /= 0) then
+    ! scale by -1.d0 for contribution to residual.  A negative contribution
+    ! indicates mass being added to system.
+    call VecAXPY(field%tran_rhs,-1.d0,field%tran_mass_transfer)
+  endif
   
 end subroutine RTCalculateRHS_t1
 
@@ -2586,7 +2580,6 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
   use Grid_module
   use Connection_module
   use Coupler_module
-  use Mass_Transfer_module, only : mass_transfer_type
   use Debug_module
   use Logging_module
   !geh: please leave the "only" clauses for Secondary_Continuum_XXX as this
@@ -2602,7 +2595,7 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
   type(realization_type) :: realization  
   PetscErrorCode :: ierr
   
-  PetscReal, pointer :: r_p(:), accum_p(:)
+  PetscReal, pointer :: r_p(:), accum_p(:), vec_p(:)
   PetscInt :: local_id, ghosted_id
   PetscInt, parameter :: iphase = 1
   PetscInt :: i
@@ -2625,7 +2618,6 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
   PetscReal :: Res(realization%reaction%ncomp)
   
   type(coupler_type), pointer :: source_sink
-  type(mass_transfer_type), pointer :: cur_mass_transfer  
   type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: iconn
   PetscReal :: qsrc, molality
@@ -2895,16 +2887,12 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
   call VecRestoreArrayReadF90(field%tran_accum, accum_p, ierr);CHKERRQ(ierr)
  
   ! Mass Transfer
-  if (associated(realization%rt_mass_transfer_list)) then
-    cur_mass_transfer => realization%rt_mass_transfer_list
-    do
-      if (.not.associated(cur_mass_transfer)) exit
-      call VecGetArrayF90(cur_mass_transfer%vec, r_p, ierr);CHKERRQ(ierr)
-      call VecRestoreArrayF90(cur_mass_transfer%vec, r_p, ierr);CHKERRQ(ierr)
-      call VecStrideScatter(cur_mass_transfer%vec,cur_mass_transfer%idof-1, &
-                            r,ADD_VALUES,ierr);CHKERRQ(ierr)
-      cur_mass_transfer => cur_mass_transfer%next
-    enddo
+  if (field%tran_mass_transfer /= 0) then
+    ! scale by -1.d0 for contribution to residual.  A negative contribution
+    ! indicates mass being added to system.
+    call VecGetArrayF90(field%tran_mass_transfer,vec_p,ierr);CHKERRQ(ierr)
+    call VecRestoreArrayF90(field%tran_mass_transfer,vec_p,ierr);CHKERRQ(ierr)
+    call VecAXPY(r,-1.d0,field%tran_mass_transfer,ierr);CHKERRQ(ierr)
   endif
 
 end subroutine RTResidualNonFlux
@@ -3587,8 +3575,8 @@ subroutine RTJacobianNonFlux(snes,xx,A,B,realization,ierr)
   ! Mass Transfer - since the current implementation of mass transfer has
   ! mass transfer being fixed.  Nothing to do here as the contribution to
   ! the derivatives is zero.
-! if (associated(realization%mass_transfer_list)) then
-! endif
+!  if (field%tran_mass_transfer /= 0) then
+!  endif
  
   if (reaction%use_log_formulation) then
     call PetscLogEventBegin(logging%event_rt_jacobian_zero_calc, &
