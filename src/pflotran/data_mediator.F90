@@ -54,11 +54,17 @@ subroutine DataMediatorUpdate(data_mediator_list,vec,option)
   Vec :: vec
   type(option_type) :: option
   
+  class(data_mediator_base_type), pointer :: cur_data_mediator
   PetscErrorCode :: ierr
   
   if (associated(data_mediator_list)) then
     call VecZeroEntries(vec,ierr);CHKERRQ(ierr)
-    call data_mediator_list%Update(vec,option)
+    cur_data_mediator => data_mediator_list
+    do
+      if (.not.associated(cur_data_mediator)) exit
+      call cur_data_mediator%Update(vec,option)
+      cur_data_mediator => cur_data_mediator%next
+    enddo
   endif
   
 end subroutine DataMediatorUpdate

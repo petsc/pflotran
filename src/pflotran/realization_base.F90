@@ -43,7 +43,7 @@ module Realization_Base_class
             RealizationGetVariable, &
             RealizGetVariableValueAtCell, &
             RealizationSetVariable, &
-            RealizCreateRTMassTransferVec, &
+            RealizCreateTranMassTransferVec, &
             RealizCreateFlowMassTransferVec, &
             RealizationBaseStrip
 
@@ -206,7 +206,7 @@ end subroutine RealizCreateFlowMassTransferVec
 
 ! ************************************************************************** !
 
-subroutine RealizCreateRTMassTransferVec(this)
+subroutine RealizCreateTranMassTransferVec(this)
   ! 
   ! Creates the Vec where mass transfer is summed prior to being added to
   ! the reactive transport residual.
@@ -225,7 +225,7 @@ subroutine RealizCreateRTMassTransferVec(this)
                       ierr);CHKERRQ(ierr)
   endif
 
-end subroutine RealizCreateRTMassTransferVec
+end subroutine RealizCreateTranMassTransferVec
 
 ! ************************************************************************** !
 

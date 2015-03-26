@@ -625,6 +625,7 @@ subroutine RealizationProcessConditions(realization)
   cur_data_mediator => realization%flow_data_mediator_list
   do
     if (.not.associated(cur_data_mediator)) exit
+    call RealizCreateFlowMassTransferVec(realization)
     select type(cur_data_mediator)
       class is(data_mediator_dataset_type)
         call DataMediatorDatasetInit(cur_data_mediator, &
@@ -641,6 +642,7 @@ subroutine RealizationProcessConditions(realization)
   cur_data_mediator => realization%tran_data_mediator_list
   do
     if (.not.associated(cur_data_mediator)) exit
+    call RealizCreateTranMassTransferVec(realization)
     select type(cur_data_mediator)
       class is(data_mediator_dataset_type)
         call DataMediatorDatasetInit(cur_data_mediator, &
@@ -1451,9 +1453,8 @@ subroutine RealizationAddWaypointsToList(realization)
   endif  
 
   ! add waypoints for rt mass transfer
-#if 0  
-  if (associated(realization%rt_data_mediator_list)) then
-    cur_data_mediator => realization%rt_data_mediator_list
+  if (associated(realization%tran_data_mediator_list)) then
+    cur_data_mediator => realization%tran_data_mediator_list
     do
       if (.not.associated(cur_data_mediator)) exit
       select type(cur_data_mediator)
@@ -1472,7 +1473,6 @@ subroutine RealizationAddWaypointsToList(realization)
       cur_data_mediator => cur_data_mediator%next
     enddo
   endif 
-#endif
 
   ! add waypoints for periodic output
   if (realization%output_option%periodic_output_time_incr > 0.d0 .or. &

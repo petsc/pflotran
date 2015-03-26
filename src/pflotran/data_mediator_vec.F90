@@ -77,11 +77,6 @@ recursive subroutine DataMediatorVecUpdate(this,data_mediator_vec,option)
                      data_mediator_vec,ADD_VALUES, &
                      SCATTER_FORWARD,ierr);CHKERRQ(ierr)
                          
-  ! update the next one
-  if (associated(this%next)) then
-    call this%next%Update(data_mediator_vec,option)
-  endif
-  
 end subroutine DataMediatorVecUpdate
 
 ! ************************************************************************** !

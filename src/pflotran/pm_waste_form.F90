@@ -386,7 +386,7 @@ recursive subroutine PMWasteFormInitializeRun(this)
                                 this%realization%reaction,this%option)
   
   ! set up mass transfer
-  call RealizCreateRTMassTransferVec(this%realization)
+  call RealizCreateTranMassTransferVec(this%realization)
   this%data_mediator => DataMediatorVecCreate()
   call this%data_mediator%AddToList(this%realization%tran_data_mediator_list)
   ! create a Vec sized by # waste packages * # primary dofs influenced by 

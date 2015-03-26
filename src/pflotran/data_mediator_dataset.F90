@@ -216,11 +216,6 @@ recursive subroutine DataMediatorDatasetUpdate(this,data_mediator_vec,option)
   enddo
   call VecRestoreArrayF90(data_mediator_vec,vec_ptr,ierr);CHKERRQ(ierr)
   
-  ! update the next one
-  if (associated(this%next)) then
-    call this%next%Update(data_mediator_vec,option)
-  endif
-  
 end subroutine DataMediatorDatasetUpdate
 
 ! ************************************************************************** !

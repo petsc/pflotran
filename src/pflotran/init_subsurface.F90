@@ -1532,7 +1532,6 @@ subroutine InitSubsurfaceReadInput(simulation)
         call DataMediatorDatasetRead(flow_data_mediator,input,option)
         call flow_data_mediator%AddToList(realization%flow_data_mediator_list)
         nullify(flow_data_mediator)
-        call RealizCreateFlowMassTransferVec(realization)        
       
 !....................
       case ('RT_MASS_TRANSFER')
@@ -1542,7 +1541,6 @@ subroutine InitSubsurfaceReadInput(simulation)
         call DataMediatorDatasetRead(rt_data_mediator,input,option)
         call rt_data_mediator%AddToList(realization%tran_data_mediator_list)
         nullify(rt_data_mediator)
-        call RealizCreateRTMassTransferVec(realization)        
       
 !....................
       case ('STRATIGRAPHY','STRATA')
