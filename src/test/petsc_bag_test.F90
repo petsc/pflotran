@@ -33,8 +33,8 @@ program test
 
   PetscBag :: bag
   PetscSizeT, parameter :: bagsize = 48
-  type(header2_type), pointer :: header
-  type(header2_type) :: dummy_header
+  class(header2_type), pointer :: header
+  class(header2_type) :: dummy_header
   character(len=1),pointer :: dummy_char(:)
   PetscErrorCode :: ierr
 

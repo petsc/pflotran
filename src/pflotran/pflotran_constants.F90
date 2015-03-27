@@ -10,7 +10,7 @@ module PFLOTRAN_Constants_module
 
   ! MUST INCREMENT THIS NUMBER EVERYTIME A CHECKPOINT FILE IS MODIFIED TO PREVENT
   ! COMPATIBILITY ISSUES - geh.
-  PetscInt, parameter, public :: CHECKPOINT_REVISION_NUMBER = 5
+  PetscInt, parameter, public :: CHECKPOINT_REVISION_NUMBER = 1
   
   PetscInt, parameter, public :: MAXSTRINGLENGTH = 512
   PetscInt, parameter, public :: MAXWORDLENGTH = 32

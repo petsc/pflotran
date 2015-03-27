@@ -60,10 +60,9 @@ module PMC_Base_class
 
   ! For checkpointing  
   type, public :: pmc_base_header_type
-    integer*8 :: plot_number      ! in the checkpoint file format
-    integer*8 :: times_per_h5_file! in the checkpoint file format
+    PetscInt :: plot_number      ! in the checkpoint file format
+    PetscInt :: times_per_h5_file! in the checkpoint file format
   end type pmc_base_header_type
-  PetscSizeT, parameter, private :: bagsize = 16
 
   interface PetscBagGetData
     subroutine PetscBagGetData(bag,header,ierr)
@@ -541,7 +540,8 @@ recursive subroutine PMCBaseCheckpoint(this,viewer,id,id_stamp)
   ! 
 
   use Logging_module
-  use Checkpoint_module, only : OpenCheckpointFile, CloseCheckpointFile
+  use Checkpoint_module, only : CheckpointOpenFileForWrite, &
+                                CheckPointWriteCompatibility
 
   implicit none
   
@@ -554,9 +554,14 @@ recursive subroutine PMCBaseCheckpoint(this,viewer,id,id_stamp)
   
   class(pm_base_type), pointer :: cur_pm
   class(pmc_base_header_type), pointer :: header
+  type(pmc_base_header_type) :: dummy_header
+  character(len=1),pointer :: dummy_char(:)
   PetscBag :: bag
+  PetscSizeT :: bagsize
   PetscLogDouble :: tstart, tend
   PetscErrorCode :: ierr
+
+  bagsize = size(transfer(dummy_header,dummy_char))
 
   ! if the top PMC, 
   if (this%is_master) then
@@ -564,10 +569,11 @@ recursive subroutine PMCBaseCheckpoint(this,viewer,id,id_stamp)
     call PetscLogEventBegin(logging%event_checkpoint,ierr);CHKERRQ(ierr)
     call PetscTime(tstart,ierr);CHKERRQ(ierr)
     if (present(id_stamp)) then
-       call OpenCheckpointFile(viewer,id,this%option,id_stamp)
+       call CheckpointOpenFileForWrite(viewer,id,this%option,id_stamp)
     else
-       call OpenCheckpointFile(viewer,id,this%option)
+       call CheckpointOpenFileForWrite(viewer,id,this%option)
     endif
+    call CheckPointWriteCompatibility(viewer,this%option)
     ! create header for storing local information specific to PMc
     call PetscBagCreate(this%option%mycomm,bagsize,bag,ierr);CHKERRQ(ierr)
     call PetscBagGetData(bag,header,ierr);CHKERRQ(ierr)
@@ -597,7 +603,8 @@ recursive subroutine PMCBaseCheckpoint(this,viewer,id,id_stamp)
   endif
   
   if (this%is_master) then
-    call CloseCheckpointFile(viewer)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer, ierr);CHKERRQ(ierr)
     call PetscTime(tend,ierr);CHKERRQ(ierr)
     write(this%option%io_buffer, &
           '("      Seconds to write to checkpoint file: ", f10.2)') &
@@ -682,7 +689,7 @@ recursive subroutine PMCBaseRestart(this,viewer)
   ! 
 
   use Logging_module
-  use Checkpoint_module, only : OpenCheckpointFile, CloseCheckpointFile
+  use Checkpoint_module, only : CheckPointReadCompatibility
 
   implicit none
   
@@ -694,9 +701,14 @@ recursive subroutine PMCBaseRestart(this,viewer)
   
   class(pm_base_type), pointer :: cur_pm
   class(pmc_base_header_type), pointer :: header
+  type(pmc_base_header_type) :: dummy_header
+  character(len=1),pointer :: dummy_char(:)
   PetscBag :: bag
+  PetscSizeT :: bagsize
   PetscLogDouble :: tstart, tend
   PetscErrorCode :: ierr
+
+  bagsize = size(transfer(dummy_header,dummy_char))
 
   ! if the top PMC, 
   if (this%is_master) then
@@ -710,7 +722,7 @@ recursive subroutine PMCBaseRestart(this,viewer)
                                FILE_MODE_READ,viewer,ierr);CHKERRQ(ierr)
     ! skip reading info file when loading, but not working
     call PetscViewerBinarySetSkipOptions(viewer,PETSC_TRUE,ierr);CHKERRQ(ierr)
-
+    call CheckPointReadCompatibility(viewer,this%option)
     ! read pmc header
     call PetscBagCreate(this%option%mycomm,bagsize,bag,ierr);CHKERRQ(ierr)
     call PetscBagGetData(bag,header,ierr);CHKERRQ(ierr)

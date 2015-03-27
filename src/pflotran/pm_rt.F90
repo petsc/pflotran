@@ -58,9 +58,8 @@ module PM_RT_class
   end type pm_rt_type
   
   type, public, extends(pm_base_header_type) :: pm_rt_header_type
-    integer*8 :: checkpoint_activity_coefs
+    PetscInt :: checkpoint_activity_coefs
   end type pm_rt_header_type  
-  PetscSizeT, parameter, private :: bagsize = 16
   
   public :: PMRTCreate
 
@@ -897,7 +896,10 @@ subroutine PMRTCheckpoint(this,viewer)
   PetscInt :: i
 
   class(pm_rt_header_type), pointer :: header
+  type(pm_rt_header_type) :: dummy_header
+  character(len=1),pointer :: dummy_char(:)
   PetscBag :: bag
+  PetscSizeT :: bagsize
   
   realization => this%realization
   option => realization%option
@@ -906,6 +908,8 @@ subroutine PMRTCheckpoint(this,viewer)
   grid => realization%patch%grid
   
   global_vec = 0
+
+  bagsize = size(transfer(dummy_header,dummy_char))
   
   call PetscBagCreate(option%mycomm,bagsize,bag,ierr);CHKERRQ(ierr)
   call PetscBagGetData(bag,header,ierr);CHKERRQ(ierr)
@@ -1031,7 +1035,10 @@ subroutine PMRTRestart(this,viewer)
   PetscInt :: i
 
   class(pm_rt_header_type), pointer :: header
+  type(pm_rt_header_type) :: dummy_header
+  character(len=1),pointer :: dummy_char(:)
   PetscBag :: bag
+  PetscSizeT :: bagsize
   
   realization => this%realization
   option => realization%option
@@ -1042,6 +1049,8 @@ subroutine PMRTRestart(this,viewer)
   global_vec = 0
   local_vec = 0
   
+  bagsize = size(transfer(dummy_header,dummy_char))
+
   call PetscBagCreate(this%option%mycomm, bagsize, bag, ierr);CHKERRQ(ierr)
   call PetscBagGetData(bag, header, ierr);CHKERRQ(ierr)
   call PetscBagRegisterInt(bag,header%checkpoint_activity_coefs,0, &

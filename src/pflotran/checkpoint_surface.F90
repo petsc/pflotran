@@ -2,6 +2,10 @@ module Checkpoint_Surface_Header_module
 
   implicit none
 
+  private
+
+#include "finclude/petscsys.h"
+
 ! We must manually specify the number of bytes required for the 
 ! checkpoint header ('surface_bagsize'), since sizeof() is not supported by 
 ! some Fortran compilers.  To be on the safe side, we assume an integer is 8 
@@ -124,6 +128,9 @@ subroutine SurfaceCheckpoint(surf_realization, &
   option => surf_realization%option
   discretization => surf_realization%discretization
   grid => discretization%grid 
+
+  option%io_buffer = 'Checkpointing of surface flow must be updated.'
+  call printErrMsg(option)
 
   ! Open the checkpoint file.
   call PetscTime(tstart,ierr);CHKERRQ(ierr)
