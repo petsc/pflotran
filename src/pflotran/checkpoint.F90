@@ -130,6 +130,8 @@ subroutine CheckpointWriteCompatibility(viewer,option)
   ! in the OS???).  Anyway, using the following test sets a size sufficiently
   ! large:
   !
+  ! see PETSC_DIR/src/sys/examples/tutorials/ex5f90.F90
+  !
   ! class(whatever_type), pointer :: header
   ! type(whatever_type) :: dummy_header
   ! character(len=1),pointer :: dummy_char(:)
