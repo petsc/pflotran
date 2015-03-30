@@ -208,7 +208,7 @@ END
 \normalsize
 
 \newpage
-\subsection{Links to Subsurface Keywords}
+\subsection{Subsurface Keyword Links}
 \begin{longtable}{ll}%[h]%\centering
 \caption{{\bf SUBSURFACE} Keywords listed in alphabetical order.}\label{flkeywd}\\
 
@@ -224,9 +224,16 @@ END
 \hyperlink{target_charcrv}{\bf CHARCTERISTIC\_CURVES} & \\
 \hyperlink{target_ckpt}{\bf CHECKPOINT} & \\
 \hyperlink{target_chem}{\bf CHEMISTRY} & \\
+\qquad \hyperlink{target_chem_minkin}{\bf MINERAL\_KINETICS} &\\
+\qquad \hyperlink{target_chem_sorp}{\bf SORPTION} &\\
+\qquad \hyperlink{target_chem_rad}{\bf RADIOACTIVE\_DECAY\_REACTION} &\\
+\qquad \hyperlink{target_chem_genrxn}{\bf GENERAL\_REACTION} &\\
+\qquad \hyperlink{target_chem_micro}{\bf MICROBIAL\_REACTION} &\\
+\qquad \hyperlink{target_chem_rxnsand}{\bf REACTION\_SANDBOX} &\\
+\qquad \hyperlink{target_chem_output}{\bf OUTPUT} &\\
 \hyperlink{target_stat}{\bf COMPUTE\_STATISTICS} & \\
 \hyperlink{target_co2dat}{\bf CO2\_DATABASE} & \\
-\hyperlink{target_constraint}{\bf CONSTRAINT} & transport (optional)\\
+\hyperlink{target_constraint}{\bf CONSTRAINT} & Transport (required)\\
 \hyperlink{target_datset}{\bf DATASET} & \\
 \hyperlink{target_dbase}{\bf DBASE\_DATASET} & \\
 \hyperlink{target_dbg}{\bf DEBUG} & \\
@@ -979,6 +986,12 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode coupling a react
 
 ~\\
 
+\item[IMMOBILE\_SPECIES]
+\item {\tt Species Name}
+\item [\keyend]
+
+~\\
+
 \item[COLLOIDS]
 \item {\tt Colloid Name} \ \ \ \ {\tt Mobile\_Fraction} [---]
 \item [\keyend]
@@ -1082,10 +1095,9 @@ REDOX_SPECIES
 \hfill\hyperlink{target_key}{\return}
 
 \clearpage
+\protect\hypertarget{target_chem_minkin}{}
 
-%\begin{deflist}{000}
 \subsubsection{Keyword: MINERAL\_KINETICS}
-%\item[MINERAL\_KINETICS] ~
 
 The keyword MINERAL\_KINETICS specifies parameters for kinetic mineral precipitation-dissolution reactions based on transition state theory.
 
@@ -1205,6 +1217,7 @@ END
 
 \hfill\hyperlink{target_key}{\return}
 \clearpage
+\protect\hypertarget{target_chem_sorb}{}
 
 \subsubsection{Keyword: SORPTION}
 
@@ -1359,9 +1372,9 @@ The keyword SORPTION specifies parameters for ion-exchange and surface-complexat
 \end{mdframed}
 
 \clearpage
+\protect\hypertarget{target_chem_rad}{}
 \subsubsection{Keyword: RADIOACTIVE\_DECAY\_REACTION}
-%\begin{deflist}{000}
-%\item[RADIOACTIVE\_DECAY\_REACTION] 
+
 Specifies parameters for radioactive decay reaction. This reaction differs from the GENERAL\_REACTION in that only one reactant species may be specified with a unit stoichiometry (i.e. the rate is always first order) and the reactant species is decayed in both the aqueous and sorbed phases.
 
 \hfill\hyperlink{target_key}{\return}
@@ -1426,13 +1439,15 @@ CHEMISTRY
 \hfill\hyperlink{target_key}{\return}
 
 \clearpage
+\protect\hypertarget{target_chem_genrxn}{}
+
 \subsubsection{Keyword: GENERAL\_REACTION}
 Specifies parameters for general aqueous forward/backward kinetic reaction.
 
 \hfill\hyperlink{target_key}{\return}
 
 \begin{deflist}{000}
-\item[GENERAL\_REACTION] 
+\item[GENERAL\_REACTION] ~
 
 \begin{deflist}{000}
 
@@ -1490,6 +1505,7 @@ CHEMISTRY
 \hfill\hyperlink{target_key}{\return}
 
 \clearpage
+\protect\hypertarget{target_chem_micro}{}
 \subsubsection{Keyword: MICROBIAL\_REACTION}
 Specifies parameters for microbially-mediated reactions.
 
@@ -1630,8 +1646,8 @@ CHEMISTRY
 \hfill\hyperlink{target_key}{\return}
 
 \clearpage
+\protect\hypertarget{target_chem_rxnsand}{}
 \subsubsection{Keyword: REACTION\_SANDBOX}
-%\item[REACTION\_SANDBOX] 
 Specifies parameters for user-defined reactions.
 
 \hfill\hyperlink{target_key}{\return}
@@ -1704,6 +1720,7 @@ REACTION_SANDBOX
 ~\\
 
 \clearpage
+\protect\hypertarget{target_chem_output}{}
 \subsubsection{Keyword: OUTPUT}
 
 \hfill\hyperlink{target_key}{\return}
@@ -3781,12 +3798,12 @@ END
 
 \hfill\hyperlink{target_key}{\return}
 
-\noindent {\bf Description:} The {\bf OUTPUT} keyword controls formatting and time of output.
+\noindent {\bf Description:} \ Specifies output options for biogeochemical transport.
 
 \noindent {\bf Input:}
 
 \begin{deflist}{000}
-\item[OUTPUT] ~
+\item[OUTPUT] 
 \begin{deflist}{000}
 \item[TIMES] {\tt Unit (s, min, h (hr), d, w, mo, y (yr))} \ \ \ {\tt <float>} 
 \item[SCREEN \ OFF] \ suppress screen output
