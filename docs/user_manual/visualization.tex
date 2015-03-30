@@ -2,15 +2,82 @@
 \section{Visualization}
 
 Visualization of the results produced by PFLOTRAN can be achieved using several different utilities including commercial and open source software. 
-Plotting 2D or 3D output files can be done using the commercial package {\bf Tecplot}, or the opensource packages \href{https://wci.llnl.gov/codes/visit/}{VisIt} and \href{http://www.paraview.org/}{ParaView}. {\bf Paraview} is similar to {\bf VisIt} and both are capable of remote visualization on parallel architectures.  In order to change the default file format in {\bf TecPlot} so that it recognizes {\tt .tec} files, place the following in the tecplot.cfg file:
+Plotting 2D or 3D output files can be done using the commercial package {\bf Tecplot}, or the opensource packages \href{https://wci.llnl.gov/codes/visit/}{VisIt} and \href{http://www.paraview.org/}{ParaView}. {\bf Paraview} is similar to {\bf VisIt}, and both are capable of remote visualization on parallel architectures.  
 
+Several potentially useful hints on using these packages are provided below.
+
+\subsection{Tecplot}
+
+\begin{itemize}
+\item In order to change the default file format in {\bf TecPlot} so that it recognizes {\tt .tec} files, place the following in the tecplot.cfg file:
+\end{itemize}
+
+\small
 \verb|$!FileConfig FNameFilter {InputDataFile = "*.tec"}|
+\normalsize
 
-For 1D problems or for plotting PFLOTRAN observation and mass balance output, the opensource software packages \href{http://www.gnuplot.info/}{gnuplot} and \href{http://matplotlib.org/}{matplotlib} are recommended.
-With {\bf gnuplot} and {\bf matplotlib} it is possible to plot data from several files in the same plot.
+\subsection{VisIt}
+
+%When using {\bf VisIt} a few useful hints follow:
+\begin{itemize}
+\item Inactive cells can be omitted by going to {\small\tt Controls -> Subset} and unchecking Material\_ID[0].
+
+\item In 3D to scale the size of one of the coordinate axes go to 
+{\tt Controls -> View}
+and check box {\small\tt Scale 3D Axes} and set desired scaling factor in box to right.
+
+\item To make 2D plots use {\small\tt Operators -> Slicing -> Slice}.
+
+\item For 3D plots {\small\tt Operators -> Slicing -> ThreeSlice} is useful.
+
+\item Instructions to set up geomechanical and flow data simultaneously in {\bf VisIt}:
+
+%Author: Satish Karra
+%Date: 10/08/13
+%==========================================================
+
+\begin{enumerate}
+\item Open VisIt.
+\item Select the $1\times 2$ layout button on Window 1 to open a new window (Window 2).
+\item Now make Window 1 active by checking the first button on Window 1.
+\item Click on Open and select *-geomech-*.xmf database.
+\item Click on Add --> Pseudocolor --> rel\_disp\_z and click Draw (Set Auto apply to avoid clicking Draw repeatedly).
+\item Select the domain and rotate it to a preferred angle.
+\item Select Window 2 and make it active.
+\item Click Open and select pflotran.h5 or pflotran-*.h5 (This file contains all the subsurface flow data).
+\item Click on e.g. Add --> Pseudocolor --> Gas Saturation (or other desired variable).
+\item Click on Lock view and Lock time on both windows (This will sync views and times on both windows).
+\item After a window pops up, select Yes.
+\item With Window 2 active select: Operators --> Slicing --> ThreeSlice.
+\item Double click on three slice and change x and y to appropriate values.
+\item Select Window 1.
+\item Select Controls --> Expressions.
+\item Click New and add a name (e.g., disp\_vector). Select Vector Mesh Variable.
+\item Under Definition, add {<rel\_disp\_x \_lb\_m\_rb\_>,<rel\_disp\_y \_lb\_m\_rb\_>,<rel\_disp\_z \_lb\_m\_rb\_>}, Apply and Dismiss.
+\item Click Add --> Vector --> disp\_vector.
+\item Double click Vector under pflotran-geomech-*.xmf database:disp\_vector.
+\item Select Form and set Scale to e.g. 0.5. Then select Rendering and change magnitude color from Default to difference (select a color scheme of your choice).
+\item Apply and Dismiss.
+\item Double click Pseudocolor --> rel\_disp\_z. Select e.g. hot\_desaturated for color table. Set opacity to 50\%. Apply and Dismiss.
+\item Next, for mesh movement click: Operators --> Transforms --> Displace. After a window pops up, dismiss it.
+\item Double click Displace, change Displacement multiplier to e.g. 10000. Click on Displacement Variable --> Vectors --> disp\_vectors. Dismiss the window saying no data etc. Apply and Dismiss.
+\item Finally, click the play button to watch movie. Rotate the domain to a convenient angle before doing so.
+\end{enumerate}
+\end{itemize}
+
+\subsection{Gnuplot, MatPlotLib}
+
+\begin{itemize}
+
+\item For 1D problems or for plotting PFLOTRAN observation, integral flux and mass balance output, the opensource software packages \href{http://www.gnuplot.info/}{gnuplot} and \href{http://matplotlib.org/}{matplotlib} are recommended.
+\item With {\bf gnuplot} and {\bf matplotlib} it is possible to plot data from several files in the same plot.
 To do this with {\bf gnuplot} it is necessary that the files have the same number of rows, e.g. time history points. The files can be merged during input by using the {\tt paste} command as a pipe: e.g.
 
 \verb|plot '< paste file1.dat file2.dat' using 1:($n1*$n2)|
 
 \noindent
 plots the product of variable in file 1 in column {\tt n1} times the variable in file 2 in column {\tt n2} of the merged file.
+
+\item When using {\bf gnuplot} it is possible to number the output file columns with 
+{\tt PRINT\_COLUMN\_IDS} added to the {\tt OUTPUT} keyword. This is only useful, however, with {\tt FORMAT TECPLOT POINT} output option.
+\end{itemize}
