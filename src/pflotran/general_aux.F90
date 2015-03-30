@@ -83,6 +83,9 @@ module General_Aux_module
 !    PetscReal, pointer :: dden_dt(:)
     PetscReal, pointer :: mobility(:) ! relative perm / kinematic viscosity
     PetscReal :: effective_porosity ! factors in compressibility
+    PetscReal :: effective_perm_x ! factors in wipp_fracture
+    PetscReal :: effective_perm_y ! factors in wipp_fracture
+    PetscReal :: effective_perm_z ! factors in wipp_fracture
     PetscReal :: pert
 !    PetscReal, pointer :: dmobility_dp(:)
   end type general_auxvar_type
@@ -209,6 +212,9 @@ subroutine GeneralAuxVarInit(auxvar,option)
   auxvar%istate_store = NULL_STATE
   auxvar%temp = 0.d0
   auxvar%effective_porosity = 0.d0
+  auxvar%effective_perm_x = 0.d0
+  auxvar%effective_perm_y = 0.d0
+  auxvar%effective_perm_z = 0.d0
   auxvar%pert = 0.d0
   
   allocate(auxvar%pres(option%nphase+FOUR_INTEGER))
@@ -543,10 +549,6 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   ! calculate effective porosity as a function of pressure
   if (option%iflag /= GENERAL_UPDATE_FOR_BOUNDARY) then
     gen_auxvar%effective_porosity = material_auxvar%porosity_base
-    if (soil_compressibility_index > 0) then
-      call MaterialCompressSoil(material_auxvar,cell_pressure, &
-                                gen_auxvar%effective_porosity,dummy)
-    endif                   
     if (associated(creep_closure)) then
       if (creep_closure%imat == material_auxvar%id) then
         ! option%time here is the t time, not t + dt time.
@@ -558,6 +560,14 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
           creep_closure%Evaluate(creep_closure_time,cell_pressure)
       endif
     endif
+    if (soil_compressibility_index > 0) then
+      call MaterialFractureWIPP(material_auxvar,cell_pressure, &
+                                gen_auxvar%effective_porosity,dummy)
+    endif  
+    if (soil_compressibility_index > 0) then
+      call MaterialCompressSoil(material_auxvar,cell_pressure, &
+                                gen_auxvar%effective_porosity,dummy)
+    endif   
     if (option%iflag /= GENERAL_UPDATE_FOR_DERIVATIVE) then
       material_auxvar%porosity = gen_auxvar%effective_porosity
     endif

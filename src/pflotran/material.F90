@@ -43,6 +43,16 @@ module Material_module
     PetscReal :: thermal_conductivity_frozen
     PetscReal :: alpha_fr
 
+    PetscBool :: wipp_fracture
+    PetscReal :: fracture_init_pressure
+    PetscReal :: fracture_altered_pressure
+    PetscReal :: fracture_maximum_porosity
+    PetscReal :: fracture_porosity_exponent
+    PetscBool :: fracture_change_perm_x
+    PetscBool :: fracture_change_perm_y
+    PetscBool :: fracture_change_perm_z
+    PetscBool :: fracture_constant_pressure
+    
     PetscReal :: pore_compressibility
     PetscReal :: thermal_expansitivity   
     PetscReal :: dispersivity(3)
@@ -151,6 +161,16 @@ function MaterialPropertyCreate()
   material_property%thermal_conductivity_wet = UNINITIALIZED_DOUBLE
   material_property%alpha = 0.45d0
 
+  material_property%wipp_fracture = PETSC_FALSE
+  material_property%fracture_init_pressure = UNINITIALIZED_DOUBLE
+  material_property%fracture_altered_pressure = UNINITIALIZED_DOUBLE
+  material_property%fracture_maximum_porosity = UNINITIALIZED_DOUBLE
+  material_property%fracture_porosity_exponent = UNINITIALIZED_DOUBLE
+  material_property%fracture_change_perm_x = PETSC_FALSE
+  material_property%fracture_change_perm_y = PETSC_FALSE
+  material_property%fracture_change_perm_z = PETSC_FALSE
+  material_property%fracture_constant_pressure = PETSC_FALSE
+  
   material_property%soil_compressibility_function = ''
   material_property%soil_compressibility = UNINITIALIZED_DOUBLE
   material_property%soil_reference_pressure = UNINITIALIZED_DOUBLE
@@ -350,13 +370,65 @@ subroutine MaterialPropertyRead(material_property,input,option)
       case('TORTUOSITY')
         call InputReadDouble(input,option,material_property%tortuosity)
         call InputErrorMsg(input,option,'tortuosity','MATERIAL_PROPERTY')
+      case('WIPP-FRACTURE')
+        fracture_index = fracture_index + 1
+        material_property%wipp_fracture = PETSC_TRUE
+        do
+          call InputReadPflotranString(input,option)
+          call InputReadStringErrorMsg(input,option, &
+                                       'MATERIAL_PROPERTY,WIPP-FRACTURE')
+          
+          if (InputCheckExit(input,option)) exit
+          
+          if (InputError(input)) exit
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword', &
+                             'MATERIAL_PROPERTY,WIPP-FRACTURE')   
+          select case(trim(word))
+            case('INITIATING_PRESSURE')
+              call InputReadDouble(input,option, &
+                                   material_property%fracture_init_pressure)
+              call InputErrorMsg(input,option, &
+                                 'initiating pressure of fracturing', &
+                                 'MATERIAL_PROPERTY,WIPP-FRACTURE')
+            case('ALTERED_PRESSURE')
+              call InputReadDouble(input,option, &
+                                   material_property%fracture_altered_pressure)
+              call InputErrorMsg(input,option, &
+                                 'altered pressure of fracturing', &
+                                 'MATERIAL_PROPERTY,WIPP-FRACTURE')
+            case('MAXIMUM_FRACTURE_POROSITY')
+              call InputReadDouble(input,option, &
+                                   material_property%fracture_maximum_porosity)
+              call InputErrorMsg(input,option, &
+                                 'maximum fracture porosity', &
+                                 'MATERIAL_PROPERTY,WIPP-FRACTURE')
+            case('FRACTURE_EXPONENT')
+              call InputReadDouble(input,option, &
+                                  material_property%fracture_porosity_exponent)
+              call InputErrorMsg(input,option, &
+                              'dimensionless fracture exponent for porosity', &
+                                 'MATERIAL_PROPERTY,WIPP-FRACTURE')
+            case('ALTER_PERM_X')
+              material_property%fracture_change_perm_x = PETSC_TRUE
+            case('ALTER_PERM_Y')
+              material_property%fracture_change_perm_y = PETSC_TRUE
+            case('ALTER_PERM_Z')
+              material_property%fracture_change_perm_z = PETSC_TRUE
+            case('USE_CONSTANT_PRESSURE')
+              material_property%fracture_constant_pressure = PETSC_TRUE
+            case default
+              call InputKeywordUnrecognized(word, &
+                      'MATERIAL_PROPERTY,WIPP-FRACTURE',option)
+          end select
+        enddo
       case('PERMEABILITY')
         do
           call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option, &
                                        'MATERIAL_PROPERTY,PERMEABILITY')
           
-          if (InputCheckExit(input,option)) exit          
+          if (InputCheckExit(input,option)) exit
           
           if (InputError(input)) exit
           call InputReadWord(input,option,word,PETSC_TRUE)
@@ -1196,7 +1268,7 @@ subroutine MaterialInitAuxIndices(material_property_ptrs,option)
       call StringToUpper(material_property_ptrs(i)%ptr% &
                            soil_compressibility_function)
       select case(material_property_ptrs(i)%ptr%soil_compressibility_function)
-        case('BRAGFLO')
+        case('BRAGFLO','WIPP')
           MaterialCompressSoilPtrTmp => MaterialCompressSoilBRAGFLO
         case('LEIJNSE','DEFAULT')
           MaterialCompressSoilPtrTmp => MaterialCompressSoilLeijnse
@@ -1293,6 +1365,24 @@ subroutine MaterialAssignPropertyToAux(material_auxvar,material_property, &
   if (Initialized(material_property%rock_density)) then
     material_auxvar%soil_particle_density = &
       material_property%rock_density
+  endif
+  if (material_property%wipp_fracture) then
+    material_auxvar%fracture_properties(frac_init_pres_index) = &
+      material_property%fracture_init_pressure
+    material_auxvar%fracture_properties(frac_alt_pres_index) = &
+      material_property%fracture_altered_pressure
+    material_auxvar%fracture_properties(frac_max_poro_index) = &
+      material_property%fracture_maximum_porosity
+    material_auxvar%fracture_properties(frac_poro_exp_index) = &
+      material_property%fracture_porosity_exponent
+    material_auxvar%fracture_flags(frac_change_perm_x_index) = &
+      material_property%fracture_change_perm_x
+    material_auxvar%fracture_flags(frac_change_perm_y_index) = &
+      material_property%fracture_change_perm_y
+    material_auxvar%fracture_flags(frac_change_perm_z_index) = &
+      material_property%fracture_change_perm_z
+    material_auxvar%fracture_flags(frac_const_pres_index) = &
+      material_property%fracture_constant_pressure
   endif
   if (soil_compressibility_index > 0) then
     material_auxvar%soil_properties(soil_compressibility_index) = &
@@ -1416,7 +1506,7 @@ subroutine MaterialSetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
       do ghosted_id=1, Material%num_aux
         Material%auxvars(ghosted_id)% &
           soil_properties(soil_compressibility_index) = vec_loc_p(ghosted_id)
-      enddo      
+      enddo
     case(VOLUME)
       do ghosted_id=1, Material%num_aux
         Material%auxvars(ghosted_id)%volume = vec_loc_p(ghosted_id)

@@ -18,12 +18,22 @@ module Material_Aux_class
   PetscInt, parameter, public :: POROSITY_CURRENT = 0
   PetscInt, parameter, public :: POROSITY_MINERAL = 1
   
+  PetscInt, parameter, public :: frac_init_pres_index = 1
+  PetscInt, parameter, public :: frac_alt_pres_index = 2
+  PetscInt, parameter, public :: frac_max_poro_index = 3
+  PetscInt, parameter, public :: frac_poro_exp_index = 4
+  PetscInt, parameter, public :: frac_change_perm_x_index = 1
+  PetscInt, parameter, public :: frac_change_perm_y_index = 2
+  PetscInt, parameter, public :: frac_change_perm_z_index = 3
+  PetscInt, parameter, public :: frac_const_pres_index = 4
+  
 !  PetscInt, public :: soil_thermal_conductivity_index
 !  PetscInt, public :: soil_heat_capacity_index
   PetscInt, public :: soil_compressibility_index
   PetscInt, public :: soil_reference_pressure_index
   PetscInt, public :: max_material_index
- 
+  PetscInt, public :: fracture_index = 0
+  
   type, public :: material_auxvar_type
     PetscInt :: id
     PetscReal :: volume
@@ -35,6 +45,8 @@ module Material_Aux_class
     PetscReal, pointer :: permeability(:)
     PetscReal, pointer :: sat_func_prop(:)
     PetscReal, pointer :: soil_properties(:) ! den, therm. cond., heat cap.
+    PetscReal, pointer :: fracture_properties(:)
+    PetscBool, pointer :: fracture_flags(:)
 !    procedure(SaturationFunction), nopass, pointer :: SaturationFunction
   contains
     procedure, public :: PermeabilityTensorToScalar => &
@@ -79,7 +91,8 @@ module Material_Aux_class
             MaterialCompressSoilPtr, &
             MaterialCompressSoil, &
             MaterialCompressSoilBragflo, &
-            MaterialCompressSoilLeijnse
+            MaterialCompressSoilLeijnse, &
+            MaterialFractureWIPP
   
   public :: MaterialAuxCreate, &
             MaterialAuxVarInit, &
@@ -154,6 +167,15 @@ subroutine MaterialAuxVarInit(auxvar,option)
     nullify(auxvar%permeability)
   endif
   nullify(auxvar%sat_func_prop)
+  if (fracture_index > 0) then
+    allocate(auxvar%fracture_properties(fracture_index*4))
+    allocate(auxvar%fracture_flags(fracture_index*4))
+    auxvar%fracture_properties = 0.d0
+    auxvar%fracture_flags = PETSC_FALSE
+  else
+    nullify(auxvar%fracture_properties)
+    nullify(auxvar%fracture_flags)
+  endif
   if (max_material_index > 0) then
     allocate(auxvar%soil_properties(max_material_index))
     ! initialize these to zero for now
@@ -354,6 +376,57 @@ end subroutine MaterialCompressSoilLeijnse
 
 ! ************************************************************************** !
 
+subroutine MaterialFractureWIPP(auxvar,pressure,compressed_porosity, &
+                                dcompressed_porosity_dp)
+  !
+  ! Calculates porosity inuced by fracture BRAGFLO_6.02_UM Eq. (136)
+  !
+  !  Author: Heeho Park
+  !  Date: 03/12/15
+  !
+
+  implicit none
+  
+  class(material_auxvar_type), intent(in) :: auxvar
+  PetscReal, intent(in) :: pressure
+  PetscReal, intent(out) :: compressed_porosity
+  PetscReal, intent(out) :: dcompressed_porosity_dp
+  
+  PetscReal :: Ci
+  PetscReal :: Ca
+  PetscReal :: P0
+  PetscReal :: Pa
+  PetscReal :: Pi
+  PetscReal :: phia
+  PetscReal :: phi0
+  PetscReal :: altered_compressibility
+
+  Ci = auxvar%soil_properties(soil_compressibility_index)
+  P0 = auxvar%soil_properties(soil_reference_pressure_index)
+  Pa = 1!auxvar%fracture_altered_pressure
+  Pi = 1!auxvar%fracture_init_pressure
+  phia = 1!auxvar%fracture_maximum_porosity
+  phi0 = auxvar%porosity_base
+  
+  if (pressure < Pi) then
+    call MaterialCompressSoil(auxvar,pressure, compressed_porosity, &
+                              dcompressed_porosity_dp)
+  else if (pressure > Pi .and. pressure < Pa) then
+    Ca = Ci*(1.d0 - 2.d0 * (Pa-P0)/(Pa-Pi)) + &
+      2.d0/(Pa-Pi)*log(phia/phi0)
+    compressed_porosity = phi0 * exp(Ci*(pressure-P0) + &
+      ((Ca-Ci)*(pressure-Pi)**2.d0)/((Pa-Pi)*2.d0))
+    !mathematica solution
+    dcompressed_porosity_dp = exp(Ci*(pressure-P0) + &
+      ((Ca-Ci)*(pressure-Pi)**2) / (2*(Pa-Pi))) * &
+      phi0 * (Ci + ((Ca-Ci)*(pressure-Pi)) / (Pa-Pi))
+  endif
+  
+
+end subroutine
+
+! ************************************************************************** !
+                                
 subroutine MaterialCompressSoilBRAGFLO(auxvar,pressure, &
                                        compressed_porosity, &
                                        dcompressed_porosity_dp)
