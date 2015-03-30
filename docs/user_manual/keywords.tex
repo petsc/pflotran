@@ -939,10 +939,8 @@ CHECKPOINT 5
 
 \noindent
 {\bf Description:}
-The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides input for primary species, secondary species, minerals, gases, colloids and colloid-facilitated transport, and sorption including ion exchange and surface complexation. Mineral reactions are described through a kinetic rate law based on transition state theory and surface complexation reactions may involve equilibrium, kinetic (reversible or irreversible) or a multirate formulation.
-
-%\shadowbox{
-%\begin{minipage}{6.5in}
+Specifies geochemisty for multicomponent transport.
+The {\bf CHEMISTRY} keyword invokes the reactive transport mode coupling a reaction network consisting of aqueous species, minerals and gases to advection, diffusion and dispersion. This keyword provides input for primary species, secondary species implemented through local equilibrium mass action relations, minerals, gases, colloids. Homogeneous aqueous complexing reactions and heterogeneous mineral precipitation and dissolution, sorption including ion exchange and surface complexation, radioactive decay, microbial reactions are provided. Homogeneous complexing reactions may be described through local equilibrium by specifying secondary species or through a kinetic formulation using the GENERAL\_REACTION keyword. Mineral precipitation and dissolution reactions are described through a kinetic rate law based on transition state theory. Surface complexation reactions may involve equilibrium, kinetic (reversible or irreversible) or a multirate formulation. Colloid-facilitated transport taking into account sorption on colloids is included.
 
 \noindent {\bf Input:}
 
@@ -986,10 +984,115 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item [\keyend]
 
 ~\\
+\end{deflist}
 
+\begin{mdframed}
+{\bf Example: } Specification of primary species, secondary species, gases and minerals.
+\small
+\begin{verbatim}
+#=========================== chemistry ==========================
+CHEMISTRY
+
+PRIMARY_SPECIES
+  Na+
+  K+
+  Ca++
+  Mg++
+  Al+++
+  H+
+  CO2(aq)
+  SiO2(aq)
+  Cl-
+/
+
+SECONDARY_SPECIES
+  OH-
+  CO3--
+  HCO3-
+  
+  CaCO3(aq)
+  CaHCO3+
+  CaCl2(aq)
+  CaCl+
+  # CaOH+
+
+  MgCO3(aq)
+  MgHCO3+
+  MgCl+
+  MgOH+
+
+  Al(OH)4-
+  Al(OH)3(aq)
+  Al(OH)2+
+  AlOH++
+
+  H3SiO4-
+  H2SiO4--
+
+  HCl(aq)
+  KCl(aq)
+  # KOH(aq)
+
+  NaCl(aq)
+  NaCO3-
+  # NaHCO3(aq)
+  NaHSiO3(aq)
+  NaOH(aq)
+/
+
+GAS_SPECIES
+  CO2(g)
+  O2(g)
+/
+
+MINERALS
+  Quartz
+  K-Feldspar
+  Kaolinite
+  Gibbsite
+  Muscovite
+  Oligoclase
+  Illite
+  Albite
+  Anorthite
+  Brucite
+  Magnesite
+  Calcite
+/
+\end{verbatim}
+\normalsize
+\end{mdframed}
+
+\begin{mdframed}
+{\bf Example: } Deactivate redox equilibrium reactions for the listed redox pairs.
+\small
+\begin{verbatim}
+REDOX_SPECIES
+  Fe++
+  Fe+++
+  SO4--
+  HS-
+  Acetate-
+  Ethanol(aq)
+/
+\end{verbatim}
+\normalsize
+\end{mdframed}
+
+\hfill\hyperlink{target_key}{\return}
+
+\clearpage
+
+%\begin{deflist}{000}
+\subsubsection{Keyword: MINERAL\_KINETICS}
+%\item[MINERAL\_KINETICS] ~
+
+The keyword MINERAL\_KINETICS specifies parameters for kinetic mineral precipitation-dissolution reactions based on transition state theory.
+
+\hfill\hyperlink{target_key}{\return}
+
+\begin{deflist}{000}
 \item[MINERAL\_KINETICS] ~
-
-%\begin{deflist}{000000000000000000000}
 \begin{deflist}{0000}
 \item [Mineral Name]  \ {\tt <Char>}
 \begin{deflist}{0000}
@@ -1032,11 +1135,85 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item [\keyend]
 \end{deflist}
 \item [\keyend] ~
+\end{deflist}
 
-~\\
+\begin{mdframed}
+{\bf Example:} Mineral kinetics.
+\small
+\begin{verbatim}
+CHEMISTRY
+  ...
+  MINERALS
+    Quartz
+    Calcite
+    Gibbsite
+  /
+  MINERAL_KINETICS
+    Calcite
+      RATE_CONSTANT 1.d-12 mol/cm^2-sec
+    /
+  /
+  OUTPUT
+    ALL
+    Gibbsite
+  /
+  ...
+END
+\end{verbatim}
+\normalsize
+\end{mdframed}
 
+\begin{mdframed}
+\noindent
+{\bf Examples:}
+Using PREFACTOR for mineral TST kinetics [see Eqn.\eqref{prefactor}].
+\small
+\begin{verbatim}
+MINERAL_KINETICS
+  Quartz 
+    RATE_CONSTANT -17.99d0 mol/cm^2-sec
+    ACTIVATION_ENERGY 87.7d0
+  /
+  Albite 
+    PREFACTOR
+      RATE_CONSTANT -16.56d0 mol/cm^2-sec
+      ACTIVATION_ENERGY 69.8d0
+    /
+    PREFACTOR
+      RATE_CONSTANT -14.16d0 mol/cm^2-sec
+      ACTIVATION_ENERGY 65.0d0
+      PREFACTOR_SPECIES H+
+        ALPHA           0.457d0
+      ! BETA
+      ! ATTENUATION_COEF
+      /
+    /
+    PREFACTOR
+      RATE_CONSTANT -19.6d0 mol/cm^2-sec
+      ACTIVATION_ENERGY 71.0d0
+      PREFACTOR_SPECIES H+
+        ALPHA           -0.572d0
+      ! BETA
+      ! ATTENUATION_COEF
+      /
+    /
+  /
+END
+\end{verbatim}
+\normalsize
+\end{mdframed}
+
+\hfill\hyperlink{target_key}{\return}
+\clearpage
+
+\subsubsection{Keyword: SORPTION}
+
+The keyword SORPTION specifies parameters for ion-exchange and surface-complexation reactions.
+
+\hfill\hyperlink{target_key}{\return}
+
+\begin{deflist}{000}
 \item[SORPTION] ~
-
 \begin{deflist}{000}
 \item[SURFACE\_COMPLEXATION\_RXN] ~
 
@@ -1091,7 +1268,6 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 
 \item [\keyend]
 \end{deflist}
-
 ~\\
 
 \begin{deflist}{000}
@@ -1131,6 +1307,7 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \end{deflist}
 
 \item [\keyend] ~
+\end{deflist}
 
 ~\\
 
@@ -1140,8 +1317,365 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \end{deflist}
 
 \item [\keyend]
+
 ~\\
-\item [OPERATOR\_SPLITTING] \ Toggles operator-splitting mode (Default implicit, not currently implemented)
+
+\begin{mdframed}
+{\bf Example:} Linear sorption distribution coefficient and mean age of a tracer.
+\small
+\begin{verbatim}
+  SORPTION
+    ISOTHERM_REACTIONS
+      Tracer
+        TYPE LINEAR 
+        DISTRIBUTION_COEFFICIENT 500. ! kg water/m^3 bulk
+      /
+      Tracer_Age
+        TYPE LINEAR 
+        DISTRIBUTION_COEFFICIENT 500. ! kg water/m^3 bulk
+      /
+    /
+  /
+\end{verbatim}
+\normalsize
+\end{mdframed}
+
+\begin{mdframed}
+{\bf Example:} Ion exchange.
+\small
+\begin{verbatim}
+  SORPTION
+    ION_EXCHANGE_RXN
+      CEC 0.11 ! eq/m3bulk
+      CATIONS
+        Na+   1.
+        Ca++  0.158489
+        K+    0.199526
+      /
+    /
+  /
+\end{verbatim}
+\normalsize
+\end{mdframed}
+
+\clearpage
+\subsubsection{Keyword: RADIOACTIVE\_DECAY\_REACTION}
+%\begin{deflist}{000}
+%\item[RADIOACTIVE\_DECAY\_REACTION] 
+Specifies parameters for radioactive decay reaction. This reaction differs from the GENERAL\_REACTION in that only one reactant species may be specified with a unit stoichiometry (i.e. the rate is always first order) and the reactant species is decayed in both the aqueous and sorbed phases.
+
+\hfill\hyperlink{target_key}{\return}
+
+\begin{deflist}{000}
+\item[RADIOACTIVE\_DECAY\_REACTION] ~
+\begin{deflist}{000}
+
+\item [REACTION] <string>
+Reaction equation. Only one reactant species may be listed on the left side of the equation (i.e. or on the right side with a negative stoichiometry). The reactant's stoichiometry is fixed at 1.0. The forward rate is applied to that one species as a first order rate constant [1/sec]. Multiple species are supported as daughter products on the right hand side and stoichiometries can be specified.
+
+\item [RATE\_CONSTANT or HALF\_LIFE] (but not both)
+
+\item [RATE\_CONSTANT] <float>
+rate constant for 1st-order decay reaction [1/sec]. The rate constant may be calculated from -ln(0.5) / half-life.
+
+\item [HALF\_LIFE] <float>
+half life of species [sec].
+Note that rate constant or half life units other than sec or 1/sec may be specified.
+\end{deflist}
+
+\item [\keyend]
+\end{deflist}
+
+\begin{mdframed}
+{\bf Examples:}
+\small
+\begin{verbatim}
+RADIOACTIVE_DECAY_REACTION
+  REACTION Tracer <-> Tracer2
+  RATE_CONSTANT 1.7584d-7 ! half life at 0.125 y
+/
+-----------------------------------
+CHEMISTRY
+  PRIMARY_SPECIES
+    A(aq)
+    B(aq)
+    C(aq)
+  /
+  ...
+  RADIOACTIVE_DECAY_REACTION
+    REACTION A(aq) <-> B(aq)
+    ! Calculating forward rate from half-life
+    ! rate = -ln(0.5) / half-life [1/sec]
+    RATE_CONSTANT 1.75836d-9  ! 1/s  half life = 12.5 yrs
+  /
+  RADIOACTIVE_DECAY_REACTION
+    REACTION B(aq) <-> C(aq)
+    RATE_CONSTANT 8.7918d-10  ! 1/s  half life = 25. yrs
+  /
+  RADIOACTIVE_DECAY_REACTION
+    ! Note that C(aq) decays with no daugher products
+    REACTION C(aq) <->
+    HALF_LIFE 5. y
+  /
+  ...
+/
+\end{verbatim}
+\normalsize
+\end{mdframed}
+
+\hfill\hyperlink{target_key}{\return}
+
+\clearpage
+\subsubsection{Keyword: GENERAL\_REACTION}
+Specifies parameters for general aqueous forward/backward kinetic reaction.
+
+\hfill\hyperlink{target_key}{\return}
+
+\begin{deflist}{000}
+\item[GENERAL\_REACTION] 
+
+\begin{deflist}{000}
+
+\item [REACTION] <string>
+Reaction equation. The forward rate is applied to reaction quotient of species on left side of reaction. The reverse or backward rate is applied to the right side.
+
+\item [FORWARD\_RATE] <float>
+rate constant for $n^{\rm th}$-order forward reaction \break [kg$^{(n-1)}$/mol$^{(n-1)}$-sec]
+\item [BACKWARD\_RATE] <float>
+rate constant for $n^{\rm th}$-order reverse reaction \break [kg$^{(n-1)}$/mol$^{(n-1)}$-sec]
+\end{deflist}
+\item[\keyend]
+\end{deflist}
+
+\begin{mdframed}
+{\bf Examples:}
+\small
+\begin{verbatim}
+GENERAL_REACTION
+  REACTION Tracer <-> Tracer2
+  FORWARD_RATE 1.7584d-7 ! half life at 0.125 y
+  BACKWARD_RATE 0.d0
+/
+CHEMISTRY
+  PRIMARY_SPECIES
+    A(aq)
+    B(aq)
+    C(aq)
+  /
+  ...
+  GENERAL_REACTION
+    REACTION A(aq) <-> B(aq)
+    ! Calculating forward rate from half-life
+    ! forward rate = -ln(0.5) / half-life [1/sec]
+    FORWARD_RATE 1.75836d-9  ! 1/s  half life = 12.5 yrs
+    BACKWARD_RATE 0.d0
+  /
+  GENERAL_REACTION
+    REACTION B(aq) <-> C(aq)
+    FORWARD_RATE 8.7918d-10  ! 1/s  half life = 25. yrs
+    BACKWARD_RATE 0.d0
+  /
+  GENERAL_REACTION
+    ! Note that C(aq) decays with no daughter products
+    REACTION C(aq) <->
+    FORWARD_RATE 4.3959d-9  ! 1/s  half life = 5. yrs
+    BACKWARD_RATE 0.d0
+  /
+  ...
+/
+\end{verbatim}
+\normalsize
+\end{mdframed}
+
+\hfill\hyperlink{target_key}{\return}
+
+\clearpage
+\subsubsection{Keyword: MICROBIAL\_REACTION}
+Specifies parameters for microbially-mediated reactions.
+
+\hfill\hyperlink{target_key}{\return}
+
+\begin{deflist}{000}
+\item[MICROBIAL\_REACTION] ~
+
+\begin{deflist}{000}
+%Required Cards:
+  \item [REACTION] <string> Reaction equation. The rate constant is multiplied by the Monod expressions for electron donor and acceptor for select species on the left side of the equation. The reaction may be inhibited by any species in the system.
+
+  \item [RATE\_CONSTANT] <float>
+Rate constant for the reaction.
+
+%Optional Cards:
+
+  \item [MONOD] <string> <float>
+Specifies the Monod equation for the electron donor and acceptor (named by the string) and the half saturation constant.
+
+  \item [INHIBITION] Specifies inhibition based on species concentration and an inhibition constant(s). Three types of inhibition are currently supported: MONOD, \linebreak INVERSE\_MONOD, and THRESHOLD.
+
+  \begin{deflist}{000}
+    \item [Monod Inhibition:] ~
+
+    \begin{deflist}{000}
+      \item [INHIBITION] ~
+      \begin{deflist}{000}
+        \item [SPECIES\_NAME] <string>
+        \item [TYPE MONOD] Specifies the type of inhibition to be Monod. The reaction proceeds as long as the species concentration is well below the half saturation constant: inhibition = C$_{th}$/ (C$_{th}$ + concentration)
+
+        \item [INHIBITION\_CONSTANT] <float> Half saturation constant.
+      \end{deflist}
+    \end{deflist}
+ 
+    \item [Inverse Monod Inhibition:] ~
+
+    \begin{deflist}{000}
+      \item [INHIBITION] ~
+
+      \begin{deflist}{000}
+         \item [SPECIES\_NAME] <string>
+
+         \item [TYPE INVERSE\_MONOD] Specifies the type of inhibition to be inverse Monod. The reaction proceeds as long as the species concentration is well above the half saturation constant: inhibition = concentration / (C$_{th}$ + concentration)
+
+        \item [INHIBITION\_CONSTANT] <float> Half saturation constant.
+
+      \end{deflist}
+    \end{deflist}
+
+\item [Threshold Inhibition:] ~ %%%%%%%%%%%%%%%%
+\begin{deflist}{000}
+\item [INHIBITION] ~
+\item [SPECIES\_NAME] <string>
+
+\item [TYPE THRESHOLD] <float>
+Specifies the type of inhibition to be threshold and the scaling factor to be applied. Inhibition is calculated based on the following equation: inhibition = 0.5 + arctan((concentration - C$_{th}$) $\times$ f) / $\pi$. Inhibition is above and below C$_{th}$ when the sign of C$_{th}$ is negative or positive, respectively.
+
+\item [INHIBITION\_CONSTANT] <float> Threshold concentration
+\end{deflist}
+\end{deflist}
+\end{deflist}
+\item[\keyend]
+\end{deflist}
+
+\begin{mdframed}
+{\bf Examples:}
+\small
+\begin{verbatim}
+CHEMISTRY
+  PRIMARY_SPECIES
+    A(aq)
+    B(aq)
+    C(aq)
+  /
+  MICROBIAL_REACTION
+    REACTION A(aq) + 2 B(aq) <-> 1.5 C(aq)
+    RATE_CONSTANT 1.d-12
+    MONOD A(aq) 1.d-5        ! A is the donor
+    MONOD B(aq) 1.d-4        ! B is the acceptor
+    INHIBITION
+      SPECIES_NAME C(aq)
+      TYPE MONOD
+      INHIBITION_CONSTANT 6.d-4   ! C is the product and 
+                                  ! inhibits when too high
+    /
+  /
+...
+CHEMISTRY
+  PRIMARY_SPECIES
+    A(aq)
+    B(aq)
+    C(aq)
+    D(aq)
+  /
+  ...
+  MICROBIAL_REACTION
+    REACTION A(aq) + 0.1 B(aq) <-> C(aq)
+    RATE_CONSTANT 1.d-6
+    MONOD A(aq) 1.d0
+    INHIBITION
+      SPECIES_NAME A(aq)
+      TYPE THRESHOLD 1.d6
+      INHIBITION_CONSTANT 1.d-9
+    /
+    INHIBITION
+      SPECIES_NAME B(aq)
+      TYPE THRESHOLD 1.d20
+      INHIBITION_CONSTANT 1.d-9
+    /
+  /
+  MICROBIAL_REACTION
+    REACTION C(aq) <-> B(aq)
+    RATE_CONSTANT 1.d-6
+    MONOD C(aq) 1.d0
+    INHIBITION
+      SPECIES_NAME C(aq)
+      TYPE THRESHOLD 1.d20
+      INHIBITION_CONSTANT 1.d-9
+    /
+  /
+  MICROBIAL_REACTION
+    REACTION B(aq) <-> D(aq)
+    RATE_CONSTANT 1.d-6
+    MONOD B(aq) 1.d0
+    INHIBITION
+      SPECIES_NAME B(aq)
+      TYPE THRESHOLD 1.d20
+      INHIBITION_CONSTANT 1.d-9
+    /
+  /
+  ...
+/
+\end{verbatim}
+\normalsize
+\end{mdframed}
+
+\hfill\hyperlink{target_key}{\return}
+
+\clearpage
+\subsubsection{Keyword: REACTION\_SANDBOX}
+%\item[REACTION\_SANDBOX] 
+Specifies parameters for user-defined reactions.
+
+\hfill\hyperlink{target_key}{\return}
+
+\begin{deflist}{000}
+%Required Cards:
+\item [REACTION\_SANDBOX]
+Opens the reaction sandbox block. Terminate with END, ., /.
+%Optional Cards:
+\item [CLM-CN]
+Block for specifying CLM-CN reaction parameters
+\end{deflist}
+
+\begin{mdframed}
+{\bf Examples:}
+\small
+\begin{verbatim}
+REACTION_SANDBOX
+  CLM-CN
+    POOLS
+      SOM1 12.d0
+      Lit1
+    /
+    REACTION
+      UPSTREAM_POOL Lit1
+      DOWNSTREAM_POOL SOM1
+      TURNOVER_TIME 20. h
+      RESPIRATION_FRACTION 0.39d0
+      N_INHIBITION 1.d-10
+    /
+  /
+/
+\end{verbatim}
+\normalsize
+\end{mdframed}
+
+\hfill\hyperlink{target_key}{\return}
+
+\clearpage
+
+%~\\
+\begin{deflist}{000}
+
+\item[OPERATOR\_SPLITTING] \ Toggles operator-splitting mode (Default implicit, {\bf not currently implemented})
 ~\\
 \item[GEOTHERMAL\_HPT] Use high pressure and temperature thermodynamic database
 \item[DATABASE] {\tt Path/Database\_Name}
@@ -1163,9 +1697,20 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 %\item[UPDATE\_MINERAL\_SURFACE\_AREA]
 \item[MAX\_DLNC] \rm (Default 5)
 
+\item[MAX\_RELATIVE\_CHANGE\_TOLERANCE] Relative speciation tolerance (Default 1.d-12)
+\item[MAX\_RESIDUAL\_TOLERANCE] Speciation tolerance (Default 1.d-12)
+
+\end{deflist}
 ~\\
 
-\item[OUTPUT] ~
+\clearpage
+\subsubsection{Keyword: OUTPUT}
+
+\hfill\hyperlink{target_key}{\return}
+
+\begin{deflist}{000}
+\item [OUTPUT] ~
+
 \begin{deflist}{000000000000000000000000}
 \item[MOLALITY]
 \item[MOLARITY]
@@ -1196,25 +1741,16 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item[SITE\_DENSITY]
 \end{deflist}
 
-\item [\keyend]
-
-~ 
-
-\end{deflist}
-\begin{deflist}{000000000000000000000}
-\item[MAX\_RELATIVE\_CHANGE\_TOLERANCE] Relative speciation tolerance (Default 1.d-12)
-\item[MAX\_RESIDUAL\_TOLERANCE] Speciation tolerance (Default 1.d-12)
+\item [\keyend] ~
 \end{deflist}
 
 \item [\keyend]
 \end{deflist}
-%\end{minipage}
-%}
 
 \begin{mdframed}
 \noindent
-{\bf Example:} 
-Output total and free-ion primary species concentrations.
+{\bf Example:} Output total and free-ion primary species concentrations.
+\small
 \begin{verbatim}
  OUTPUT
    ...
@@ -1224,55 +1760,26 @@ Output total and free-ion primary species concentrations.
    ...
  /
 \end{verbatim}
+\normalsize
 \end{mdframed}
+
+\hfill\hyperlink{target_key}{\return}
 
 \begin{center}
 \begin{tabularx}{\linewidth}{lX}
 \toprule
-\bf Keyword & \bf Description\\
+\bf Keyword & \multicolumn{1}{c}{\bf Description}\\
 \midrule
-\bf Primary\_Species & List of primary species that fully describe the chemical composition of the fluid. The set of primary species must form an independent set of species in terms of which all homogeneous aqueous equilibrium reactions can be expressed.\\
+\bf Primary\_Species & List of primary species that fully describe the chemical composition of the fluid terminated by END, ., or /. The set of primary species must form an independent set of species in terms of which all homogeneous aqueous equilibrium reactions can be expressed.\\
 \midrule
-\bf Secondary\_Species & List of aqueous species in equilibrium with primary species.\\
+\bf Secondary\_Species & List of aqueous species in equilibrium with primary species terminated by END, ., or /.\\
 \midrule
-\bf Gas\_Species & List of gas species.\\
+\bf Gas\_Species & List of gas species terminated by END, ., or /.\\
+\midrule
+\bf Minerals & List of minerals, both passive and active, terminated by END, ., or /. Active minerals must be associated with a kinetic rate law under MINERAL\_KINETICS and listed under CONSTRAINTS. For passive mineral only the mineral saturation index is calculated for initial and boundary conditions.\\
 \midrule
 \bf Sorption & Surface complexation, ion exchange and specified isotherm.\\
 \end{tabularx}
-
-\begin{mdframed}
-{\bf Example:} Linear sorption distribution coefficient and mean age of a tracer.
-\begin{verbatim}
-  SORPTION
-    ISOTHERM_REACTIONS
-      Tracer
-        TYPE LINEAR 
-        DISTRIBUTION_COEFFICIENT 500. ! kg water/m^3 bulk
-      /
-      Tracer_Age
-        TYPE LINEAR 
-        DISTRIBUTION_COEFFICIENT 500. ! kg water/m^3 bulk
-      /
-    /
-  /
-\end{verbatim}
-\end{mdframed}
-
-\begin{mdframed}
-{\bf Example:} Ion exchange.
-\begin{verbatim}
-  SORPTION
-    ION_EXCHANGE_RXN
-      CEC 0.11 ! eq/m3bulk
-      CATIONS
-        Na+   1.
-        Ca++  0.158489
-        K+    0.199526
-      /
-    /
-  /
-\end{verbatim}
-\end{mdframed}
 
 \end{center}
 
@@ -1280,12 +1787,13 @@ Output total and free-ion primary species concentrations.
 \begin{tabularx}{\linewidth}{lX}
 \midrule
 \bf Output &
-To print secondary aqueous complex concentrations, either add the names of the secondary species of interest or the keyword ``SECONDARY\_SPECIES'' for all secondary species to the CHEMISTRY OUTPUT card:
+To print secondary aqueous complex concentrations, either add the individual names of the secondary species of interest or add the keyword ``SECONDARY\_SPECIES'' for all secondary species to the CHEMISTRY OUTPUT card:
 \end{tabularx}
 \end{center}
 
 \begin{mdframed}
-{\bf Example:} Output and redox chemistry.
+{\bf Example:}
+\small
 \begin{verbatim}
 CHEMISTRY
   ...
@@ -1298,54 +1806,14 @@ CHEMISTRY
   ...
 END
 \end{verbatim}
-
-Deactivate redox equilibrium reactions for the listed redox pairs:
-\begin{verbatim}
-REDOX_SPECIES
-  Fe++
-  Fe+++
-  SO4--
-  HS-
-  Acetate-
-  Ethanol(aq)
-/
-\end{verbatim}
+\normalsize
 \end{mdframed}
 
 \begin{center}
 \begin{tabularx}{\linewidth}{lX}
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ & By default, if ALL or MINERALS are listed under CHEMISTRY OUTPUT, the volume fractions and rates of kinetic minerals are printed.  To print out the saturation indices of minerals listed under the MINERAL keyword, add the name of the mineral to the OUTPUT specification.  In other words, if the following appears in the input deck:
-\end{tabularx}
-\end{center}
-
-\begin{mdframed}
-{\bf Example:} Mineral kinetics.
-\begin{verbatim}
-CHEMISTRY
-  ...
-  MINERALS
-    Quartz
-    Calcite
-    Gibbsite
-  /
-  MINERAL_KINETICS
-    Calcite
-      RATE_CONSTANT 1.d-12 mol/cm^2-sec
-    /
-  /
-  OUTPUT
-    ALL
-    Gibbsite
-  /
-  ...
-END
-\end{verbatim}
-\end{mdframed}
-
-\begin{center}
-\begin{tabularx}{\linewidth}{lX}
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ & volume fraction and reaction rate are printed for both calcite and gibbsite and saturation indices are printed for gibbsite. Saturation indices are not printed when only ALL or MINERALS are specified since an input deck. Outputting tens to hundreds of minerals, most of which are simply considered, but not modeled through a kinetic precipitation-dissolution reaction, would overwhelm the output. \\
-
+& 
+By default, if ALL or MINERALS are listed under CHEMISTRY OUTPUT, the volume fractions and rates of kinetic minerals are printed.  To print out the saturation indices of minerals listed under the MINERAL keyword, add the name of the mineral to the OUTPUT specification.  
+Saturation indices are not printed when only ALL or MINERALS are specified. Outputting tens to hundreds of minerals, most of which are simply considered as potential candidates for active minerals, but not modeled through a kinetic precipitation-dissolution reaction, would overwhelm the output. \\
 \midrule
 \ldots & \\
 \bottomrule
@@ -1353,45 +1821,6 @@ END
 \end{center}
 
 \bigskip
-
-\begin{mdframed}
-
-\noindent
-{\bf Examples:}
-Using PREFACTOR for mineral TST kinetics [see Eqn.\eqref{prefactor}].
-\begin{verbatim}
-MINERAL_KINETICS
-  Quartz 
-    RATE_CONSTANT -17.99d0 mol/cm^2-sec
-    ACTIVATION_ENERGY 87.7d0
-  /
-  Albite 
-    PREFACTOR
-      RATE_CONSTANT -16.56d0 mol/cm^2-sec
-      ACTIVATION_ENERGY 69.8d0
-    /
-    PREFACTOR
-      RATE_CONSTANT -14.16d0 mol/cm^2-sec
-      ACTIVATION_ENERGY 65.0d0
-      PREFACTOR_SPECIES H+
-        ALPHA           0.457d0
-      ! BETA
-      ! ATTENUATION_COEF
-      /
-    /
-    PREFACTOR
-      RATE_CONSTANT -19.6d0 mol/cm^2-sec
-      ACTIVATION_ENERGY 71.0d0
-      PREFACTOR_SPECIES H+
-        ALPHA           -0.572d0
-      ! BETA
-      ! ATTENUATION_COEF
-      /
-    /
-  /
-END
-\end{verbatim}
-\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -1426,7 +1855,6 @@ COMPUTE_STATISTICS
 \end{mdframed}
 
 \hyperlink{target_key}{\return}
-
 
 %========================================================================
 
@@ -2360,55 +2788,66 @@ END
 
 \noindent{\bf Description:} this keyword defines the descritization scheme, the type of grid and resolution, and the geometry employed in the simulation.
 
-\begin{description}
+\begin{deflist}{000}
 \item[GRID]~
 \item[Required Input Parameters:]~
 
-\begin{description}
-\item[TYPE <type> <symmetry>:] ~
+\begin{deflist}{000}
+\item[TYPE] \ <type> \ <symmetry>
 
-\begin{description}
-\item Grid type (structured, structured\_mimetic, unstructured, amr)
+\begin{deflist}{000}
+\item Grid type (structured, structured\_mimetic, unstructured)
 
 \item Symmetry type (cartesian [default], cylindrical, spherical)
-\end{description}
+\end{deflist}
 
-\item[NXYZ <\# \# \#>:] \# of grid cells in $x$, $y$, $z$ directions (structured only)
+\item[NXYZ] \ <\# \# \#> \ \# of grid cells in $x$, $y$, $z$ directions (structured only)
 
-\item[FILE <filename>:] Name of file containing grid information (unstructured only)
+\item[FILE] \ <filename> \ Name of file containing grid information (unstructured only)
 
 ~\\
 
 \noindent
-\item[BOUNDS:] ~
-\begin{description}
+\item[BOUNDS] ~
+\begin{deflist}{000}
 \item[<x\_min, \ y\_min, \ z\_min>]~
 \item[<x\_max, \ y\_max, \ z\_max>]~
-\end{description}
+\end{deflist}
 \item[\keyend] ~
 
 ~\\
 
-\item[DXYZ:] Specifies grid spacing of structured cartesian grid (see examples below)
-\begin{description}
+\item[DXYZ] \ Specifies grid spacing of structured cartesian grid (see examples below)
+\begin{deflist}{000000}
 \item[<{\bf dx}>] ~
 \item[<{\bf dy}>] ~
 \item[<{\bf dz}>] ~
-\end{description}
+\end{deflist}
 \item[\keyend] ~
-\end{description}
+\end{deflist}
 
 \item[Optional Input Parameters:] ~
 
-\begin{description}
+\begin{deflist}{000000000000000000}
 
-\item[GRAVITY <\# \# \#>:] Specifies gravity vector [Default: 0 0 $-$9.8068 m/s$^2$]
+\item[GRAVITY <\# \# \#>] \ Specifies gravity vector [Default: 0 0 $-$9.8068 m/s$^2$]
 
-\item[ORIGIN <\# \# \#>:] Coordinate of grid origin [Default: 0 0 0]
+\item[ORIGIN <\# \# \#>] \ Coordinate of grid origin [Default: 0 0 0]
 
-\item[INVERT\_Z:] Inverts the $z$-axis [Default: positive $z$ points downward]
-\end{description}
-\end{description}
+\item[INVERT\_Z] \ Inverts the $z$-axis [Default: positive $z$ points upward]
+
+\item[FILE] \ Read from file
+\item[MAX\_CELLS\_SHARING\_A\_VERTEX] ~
+\item[STENCIL\_WIDTH] ~
+\item[STENCIL\_TYPE] ~
+\begin{deflist}{000000}
+\item [BOX]
+\item [STAR]
+\end{deflist}
+%\item[FLUX\_METHOD]
+\end{deflist}
+\item[\keyend]
+\end{deflist}
 
 \begin{mdframed}
 
