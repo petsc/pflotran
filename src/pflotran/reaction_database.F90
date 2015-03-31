@@ -2966,7 +2966,7 @@ subroutine BasisInit(reaction,option)
                                        reaction%nimcomp, &
                                        reaction%offset_immobile, &
                                        reaction%immobile%names, &
-                                       option)
+                                       PETSC_FALSE,option)
       cur_radiodecay_rxn => cur_radiodecay_rxn%next
     enddo
     nullify(cur_radiodecay_rxn)
@@ -3059,7 +3059,7 @@ subroutine BasisInit(reaction,option)
                                        reaction%nimcomp, &
                                        reaction%offset_immobile, &
                                        reaction%immobile%names, &
-                                       option)
+                                       PETSC_FALSE,option)
       cur_general_rxn => cur_general_rxn%next
     enddo
     nullify(cur_general_rxn)
@@ -3180,7 +3180,7 @@ subroutine BasisInit(reaction,option)
                                        reaction%nimcomp, &
                                        reaction%offset_immobile, &
                                        reaction%immobile%names, &
-                                       option)
+                                       PETSC_TRUE,option)
       temp_int = cur_microbial_rxn%dbaserxn%nspec
       if (temp_int > max_species_count) max_species_count = temp_int
       temp_int = MicrobialGetMonodCount(cur_microbial_rxn)

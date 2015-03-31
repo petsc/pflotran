@@ -61,6 +61,7 @@ function DatabaseRxnCreateFromRxnString(reaction_string, &
                                         primary_aq_species_names, &
                                         nimcomp, im_offset, &
                                         primary_im_species_names, &
+                                        consider_immobile_species,&
                                         option)
   ! 
   ! Creates a database reaction given a
@@ -83,6 +84,7 @@ function DatabaseRxnCreateFromRxnString(reaction_string, &
   PetscInt :: nimcomp ! immobile primary speces (e.g. biomass)
   PetscInt :: im_offset ! offset for aqueous species
   character(len=MAXWORDLENGTH) :: primary_im_species_names(nimcomp)
+  PetscBool :: consider_immobile_species
   type(option_type) :: option
     
   type(database_rxn_type), pointer :: DatabaseRxnCreateFromRxnString
@@ -193,7 +195,7 @@ function DatabaseRxnCreateFromRxnString(reaction_string, &
             endif
           enddo
           ! set the primary immobile species id
-          if (.not.found) then
+          if (.not.found .and. consider_immobile_species) then
             do i = 1, nimcomp
               if (StringCompare(word,primary_im_species_names(i), &
                                 MAXWORDLENGTH)) then
@@ -211,9 +213,13 @@ function DatabaseRxnCreateFromRxnString(reaction_string, &
             dbaserxn%stoich(icount) = UNINITIALIZED_DOUBLE
             ! don't increment icount
           else if (.not.found) then
-            option%io_buffer = 'Species ' // trim(word) // &
-                      ' in microbial reaction' // &
-                      ' not found among primary species list.'
+            if (consider_immobile_species) then
+              option%io_buffer = 'Species ' // trim(word) // &
+                        ' in reaction not found among primary species list.'
+            else
+              option%io_buffer = 'Species ' // trim(word) // &
+                ' in reaction not found among primary aqueous species list.'
+            endif
             call printErrMsg(option)     
           else
             icount = icount + 1
