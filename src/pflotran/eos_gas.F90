@@ -13,7 +13,13 @@ module EOS_Gas_module
   PetscReal :: constant_enthalpy
   PetscReal :: constant_viscosity
   PetscReal :: constant_henry
-
+  PetscBool :: hydrogen
+  PetscReal :: Tc
+  PetscReal :: Pc
+  PetscReal :: acentric
+  PetscReal :: coeff_a
+  PetscReal :: coeff_b
+  
   ! exponential
   PetscReal :: exponent_reference_density
   PetscReal :: exponent_reference_pressure
@@ -206,6 +212,40 @@ subroutine EOSGasVerify(ierr,error_string)
     ierr = 1
   endif
   
+  if (associated(EOSGasDensityPtr,EOSGasDensityRKS)) then
+    if (hydrogen) then
+      if (Uninitialized(Tc)) then
+        Tc = 41.67d0
+        ierr = 5
+        error_string = trim(error_string) // & " Tc"
+      endif
+      if (Uninitialized(Pc)) then
+        Pc = 2.1029d6
+        ierr = 5
+        error_string = trim(error_string) // & " Pc"
+      endif
+      if (Uninitialized(coeff_a)) then
+        coeff_a = 0.42747d0
+        ierr = 5
+        error_string = trim(error_string) // & " omega_a"
+      endif
+      if (Uninitialized(coeff_b)) then
+        coeff_b = 0.08664d0
+        ierr = 5
+        error_string = trim(error_string) // & " omega_b"
+      endif
+    else
+      if (Uninitialized(Tc) .or. Uninitialized(coeff_a) .or. &
+        Uninitialized(Pc) .or. Uninitialized(coeff_b) .or. &
+        Uninitialized(acentric)) then
+          error_string = trim(error_string) // &
+          " RKS parameters not set for non-hydrogen gas"
+          ierr = 1
+      endif
+    endif
+  endif
+
+      
 end subroutine EOSGasVerify
 
 ! ************************************************************************** !
@@ -221,9 +261,23 @@ end subroutine EOSGasSetDensityIdeal
 
 ! ************************************************************************** !
 
-subroutine EOSGasSetDensityRKS()
+subroutine EOSGasSetDensityRKS(h,rks_tc,rks_pc,rks_acen,rks_omegaa,rks_omegab)
 
   implicit none
+
+  PetscBool :: h
+  PetscReal :: rks_tc
+  PetscReal :: rks_pc
+  PetscReal :: rks_acen
+  PetscReal :: rks_omegaa
+  PetscReal :: rks_omegab
+  
+  hydrogen = h
+  Tc = rks_tc
+  Pc = rks_pc
+  acentric = rks_acen
+  coeff_a = rks_omegaa
+  coeff_b = rks_omegab
   
   EOSGasDensityEnergyPtr => EOSGasDensityEnergyGeneral
   EOSGasDensityPtr => EOSGasDensityRKS
@@ -662,18 +716,20 @@ subroutine EOSGasDensityRKS(T,P,Rho_gas,dRho_dT,dRho_dP,ierr)
   PetscReal, intent(out) :: dRho_dP ! derivative gas density wrt pressure
   PetscErrorCode, intent(out) :: ierr
   
-  PetscReal, parameter :: Rg = 8.31451 
+  PetscReal, parameter :: Rg = 8.31451d0
   PetscReal :: T_kelvin, RT, alpha, a, B , a_RT, p_RT
   PetscReal :: b2, V, f, dfdV, dVd
   PetscInt :: i
-  PetscReal, parameter :: coeff_a = 0.42747
-  PetscReal, parameter :: coeff_b = 0.08664
+  PetscReal :: coeff_alpha
+!  PetscReal :: coeff_a = 0.42747d0
+!  PetscReal :: coeff_b = 0.08664d0
+!  PetscReal :: acentric = 0.00d0
   
   !for hydrogen
   ! American Petroleum Institute,
   ! "Technical Data Book-Petroleum Refining" (1977)
-  PetscReal, parameter :: Tc = 41.67d0
-  PetscReal, parameter :: Pc = 2.1029d6
+!  PetscReal :: Tc = 41.67d0
+!  PetscReal :: Pc = 2.1029d6
   
   !solver
   PetscReal :: coef(4)
@@ -684,16 +740,16 @@ subroutine EOSGasDensityRKS(T,P,Rho_gas,dRho_dT,dRho_dP,ierr)
   T_kelvin = T + 273.15d0
   RT = Rg * T_kelvin
   
-  ! if hydrogen then
+  if (hydrogen) then
     ! suggested by Peter Lichtner
     ! this function honors alpha(Tc)=1 while closely fitting Graboski curve from
     ! "A Modified Soave Equation of State for Phase Equilibrium
     !  Calculations. 3. Systems Containing Hydrogen"
     alpha = EXP(0.340d0*(1-T_kelvin/Tc))
-  ! else
-  !   coeff_alpha = 0.48508d0 + acentric*(1.55171d0 - 0.15613*acentric)
-  !   alpha = (1.d0 + coeff_alpha*(1.d0 - SQRT(T_Kelvin/Tc)))**2
-  ! end if
+  else
+    coeff_alpha = 0.48508d0 + acentric*(1.55171d0 - 0.15613*acentric)
+    alpha = (1.d0 + coeff_alpha*(1.d0 - SQRT(T_Kelvin/Tc)))**2
+  end if
   
   a = coeff_a * alpha * (Rg * Tc)**2 / Pc
   b = coeff_b * Rg * Tc / Pc

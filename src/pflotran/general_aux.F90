@@ -560,7 +560,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
           creep_closure%Evaluate(creep_closure_time,cell_pressure)
       endif
     endif
-    if (soil_compressibility_index > 0) then
+    if (fracture_index > 0) then
       call MaterialFractureWIPP(material_auxvar,cell_pressure, &
                                 gen_auxvar%effective_porosity,dummy)
     endif  

@@ -399,13 +399,12 @@ subroutine MaterialFractureWIPP(auxvar,pressure,compressed_porosity, &
   PetscReal :: Pi
   PetscReal :: phia
   PetscReal :: phi0
-  PetscReal :: altered_compressibility
 
   Ci = auxvar%soil_properties(soil_compressibility_index)
   P0 = auxvar%soil_properties(soil_reference_pressure_index)
-  Pa = 1!auxvar%fracture_altered_pressure
-  Pi = 1!auxvar%fracture_init_pressure
-  phia = 1!auxvar%fracture_maximum_porosity
+  Pa = auxvar%fracture_properties(frac_alt_pres_index)
+  Pi = auxvar%fracture_properties(frac_init_pres_index)
+  phia = auxvar%fracture_properties(frac_max_poro_index)
   phi0 = auxvar%porosity_base
   
   if (pressure < Pi) then
@@ -421,7 +420,6 @@ subroutine MaterialFractureWIPP(auxvar,pressure,compressed_porosity, &
       ((Ca-Ci)*(pressure-Pi)**2) / (2*(Pa-Pi))) * &
       phi0 * (Ci + ((Ca-Ci)*(pressure-Pi)) / (Pa-Pi))
   endif
-  
 
 end subroutine
 
