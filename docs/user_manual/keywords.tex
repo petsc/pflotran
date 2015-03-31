@@ -1426,7 +1426,7 @@ CHEMISTRY
     RATE_CONSTANT 8.7918d-10  ! 1/s  half life = 25. yrs
   /
   RADIOACTIVE_DECAY_REACTION
-    ! Note that C(aq) decays with no daugher products
+    ! Note that C(aq) decays with no daughter products
     REACTION C(aq) <->
     HALF_LIFE 5. y
   /
@@ -1442,7 +1442,7 @@ CHEMISTRY
 \protect\hypertarget{target_chem_genrxn}{}
 
 \subsubsection{Keyword: GENERAL\_REACTION}
-Specifies parameters for general aqueous forward/backward kinetic reaction.
+Specifies rate constants and stoichiometry for a general kinetic homogeneous aqueous forward/backward reaction. It does not apply to reactions containing a solid phase, however.
 
 \hfill\hyperlink{target_key}{\return}
 
@@ -1452,7 +1452,7 @@ Specifies parameters for general aqueous forward/backward kinetic reaction.
 \begin{deflist}{000}
 
 \item [REACTION] <string>
-Reaction equation. The forward rate is applied to reaction quotient of species on left side of reaction. The reverse or backward rate is applied to the right side.
+Reaction equation. The forward rate is applied to reaction quotient of species on left side of reaction. The reverse or backward rate is applied to the right side. Reactions can also be irreversible if one of the rate constants is zero.
 
 \item [FORWARD\_RATE] <float>
 rate constant for $n^{\rm th}$-order forward reaction \break [kg$^{(n-1)}$/mol$^{(n-1)}$-sec]
