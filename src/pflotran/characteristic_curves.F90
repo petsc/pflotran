@@ -2106,7 +2106,11 @@ subroutine SF_BF_KRP9_CapillaryPressure(this,liquid_saturation, &
                                    capillary_pressure,option)
   ! 
   ! Computes the capillary_pressure as a function of saturation
-  ! 
+  ! based on experimental measurements and analyses done by Vauclin et al.
+  ! as discussed by Moridis and Pruess.  
+  ! 14.	Moridis, G. J., and K. Pruess.  1992.  TOUGH Simulations of 
+  ! Updegraff’s Set of Fluid and Heat Flow Problems.  LBL-32611, ERMS# 138458. 
+  ! Berkeley, CA:  Lawrence Berkeley Laboratory.
   ! Author: Heeho Park
   ! Date: 03/26/15
   !
@@ -3729,7 +3733,11 @@ subroutine RPF_BRAGFLO_KRP9_Liq_RelPerm(this,liquid_saturation, &
   ! 
   ! Computes the relative permeability (and associated derivatives) as a 
   ! function of saturation
-  !   
+  ! based on experimental measurements and analyses done by Vauclin et al.
+  ! as discussed by Moridis and Pruess. 
+  ! 14.	Moridis, G. J., and K. Pruess.  1992.  TOUGH Simulations of 
+  ! Updegraff’s Set of Fluid and Heat Flow Problems.  LBL-32611, ERMS# 138458. 
+  ! Berkeley, CA:  Lawrence Berkeley Laboratory.
   ! Author: Heeho Park
   ! Date: 03/26/15
   ! 
@@ -3823,7 +3831,11 @@ subroutine RPF_BRAGFLO_KRP9_Gas_RelPerm(this,liquid_saturation, &
   ! 
   ! Computes the relative permeability (and associated derivatives) as a 
   ! function of saturation
-  !   
+  ! based on experimental measurements and analyses done by Vauclin et al.
+  ! as discussed by Moridis and Pruess.  
+  ! 14.	Moridis, G. J., and K. Pruess.  1992.  TOUGH Simulations of 
+  ! Updegraff’s Set of Fluid and Heat Flow Problems.  LBL-32611, ERMS# 138458. 
+  ! Berkeley, CA:  Lawrence Berkeley Laboratory.
   ! Author: Heeho Park
   ! Date: 03/26/15
   ! 

@@ -371,6 +371,10 @@ subroutine MaterialPropertyRead(material_property,input,option)
         call InputReadDouble(input,option,material_property%tortuosity)
         call InputErrorMsg(input,option,'tortuosity','MATERIAL_PROPERTY')
       case('WIPP-FRACTURE')
+  ! Calculates permeability and porosity induced by fracture,
+  ! which is described by pressure within certain range of pressure
+  ! BRAGFLO_6.02_UM Eq. (136)
+  ! 4.10 Pressure-Induced Fracture Treatment
         material_property%wipp_fracture = PETSC_TRUE
         do
           call InputReadPflotranString(input,option)

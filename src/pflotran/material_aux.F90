@@ -380,7 +380,8 @@ end subroutine MaterialCompressSoilLeijnse
 subroutine MaterialFracturePorosityWIPP(auxvar,pressure,compressed_porosity, &
                                 dcompressed_porosity_dp)
   !
-  ! Calculates porosity inuced by fracture BRAGFLO_6.02_UM Eq. (136)
+  ! Calculates porosity induced by fracture BRAGFLO_6.02_UM Eq. (136)
+  ! 4.10 Pressure-Induced Fracture Treatment
   !
   !  Author: Heeho Park
   !  Date: 03/12/15
@@ -436,7 +437,8 @@ end subroutine
 subroutine MaterialFracturePermWIPP(auxvar,permeability,altered_perm, &
                                     daltered_perm_dp)
   !
-  ! Calculates porosity inuced by fracture BRAGFLO_6.02_UM Eq. (136)
+  ! Calculates permeability induced by fracture BRAGFLO_6.02_UM Eq. (136)
+  ! 4.10 Pressure-Induced Fracture Treatment
   !
   !  Author: Heeho Park
   !  Date: 03/12/15
