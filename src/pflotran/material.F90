@@ -371,7 +371,6 @@ subroutine MaterialPropertyRead(material_property,input,option)
         call InputReadDouble(input,option,material_property%tortuosity)
         call InputErrorMsg(input,option,'tortuosity','MATERIAL_PROPERTY')
       case('WIPP-FRACTURE')
-        fracture_index = fracture_index + 1
         material_property%wipp_fracture = PETSC_TRUE
         do
           call InputReadPflotranString(input,option)
@@ -1366,6 +1365,8 @@ subroutine MaterialAssignPropertyToAux(material_auxvar,material_property, &
     material_auxvar%soil_particle_density = &
       material_property%rock_density
   endif
+  material_auxvar%fracture_bool = &
+    material_property%wipp_fracture
   if (material_property%wipp_fracture) then
     material_auxvar%fracture_properties(frac_init_pres_index) = &
       material_property%fracture_init_pressure

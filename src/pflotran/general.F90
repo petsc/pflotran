@@ -1191,6 +1191,8 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   PetscReal :: k_eff_up, k_eff_dn, k_eff_ave, heat_flux
   PetscReal :: adv_flux(3), diff_flux(3)
   PetscReal :: debug_flux(3,3), debug_dphi(2)
+  
+  PetscReal :: dummy_perm_up, dummy_perm_dn
    
   wat_comp_id = option%water_id
   air_comp_id = option%air_id
@@ -1201,9 +1203,43 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   call material_auxvar_up%PermeabilityTensorToScalar(dist,perm_up)
   call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
   
+  ! Fracture permeability change only available for structured grid (Heeho)
+  if (material_auxvar_up%fracture_bool) then
+    if (material_auxvar_up%fracture_flags(frac_change_perm_x_index) == &
+        PETSC_TRUE .and. dist(1) == 1) then
+      call MaterialFracturePermWIPP(material_auxvar_up,perm_up,perm_up, &
+                               dummy_perm_up)
+    else if (material_auxvar_up%fracture_flags(frac_change_perm_y_index) == &
+        PETSC_TRUE .and. dist(2) == 1) then
+      call MaterialFracturePermWIPP(material_auxvar_up,perm_up,perm_up, &
+                               dummy_perm_up)
+    else if (material_auxvar_up%fracture_flags(frac_change_perm_z_index) == &
+        PETSC_TRUE .and. dist(3) == 1) then
+      call MaterialFracturePermWIPP(material_auxvar_up,perm_up,perm_up, &
+                               dummy_perm_up)
+    endif
+  endif
+  
+  if (material_auxvar_dn%fracture_bool) then
+    if (material_auxvar_dn%fracture_flags(frac_change_perm_x_index) == &
+        PETSC_TRUE .and. dist(1) == 1) then
+      call MaterialFracturePermWIPP(material_auxvar_dn,perm_dn,perm_dn, &
+                               dummy_perm_dn)
+    else if (material_auxvar_dn%fracture_flags(frac_change_perm_y_index) == &
+        PETSC_TRUE .and. dist(2) == 1) then
+      call MaterialFracturePermWIPP(material_auxvar_dn,perm_dn,perm_dn, &
+                               dummy_perm_dn)
+    else if (material_auxvar_dn%fracture_flags(frac_change_perm_z_index) == &
+        PETSC_TRUE .and. dist(3) == 1) then
+      call MaterialFracturePermWIPP(material_auxvar_dn,perm_dn,perm_dn, &
+                               dummy_perm_dn)
+    endif
+  endif
+  
   perm_ave_over_dist = (perm_up * perm_dn)/(dist_up*perm_dn + dist_dn*perm_up)
-
+      
   Res = 0.d0
+  
   v_darcy = 0.d0
 #ifdef DEBUG_FLUXES  
   adv_flux = 0.d0
@@ -1465,6 +1501,8 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
   PetscInt :: idof
   PetscBool :: neumann_bc_present
   
+  PetscReal :: dummy_perm_dn
+  
   wat_comp_id = option%water_id
   air_comp_id = option%air_id
   energy_id = option%energy_id
@@ -1483,6 +1521,23 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
   neumann_bc_present = PETSC_FALSE
   
   call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
+
+    ! Fracture permeability change only available for structured grid (Heeho)
+  if (material_auxvar_dn%fracture_bool) then
+    if (material_auxvar_dn%fracture_flags(frac_change_perm_x_index) == &
+        PETSC_TRUE .and. dist(1) == 1) then
+      call MaterialFracturePermWIPP(material_auxvar_dn,perm_dn,perm_dn, &
+                               dummy_perm_dn)
+    else if (material_auxvar_dn%fracture_flags(frac_change_perm_y_index) == &
+        PETSC_TRUE .and. dist(2) == 1) then
+      call MaterialFracturePermWIPP(material_auxvar_dn,perm_dn,perm_dn, &
+                               dummy_perm_dn)
+    else if (material_auxvar_dn%fracture_flags(frac_change_perm_z_index) == &
+        PETSC_TRUE .and. dist(3) == 1) then
+      call MaterialFracturePermWIPP(material_auxvar_dn,perm_dn,perm_dn, &
+                               dummy_perm_dn)
+    endif
+  endif
   
 #ifdef CONVECTION  
   do iphase = 1, option%nphase

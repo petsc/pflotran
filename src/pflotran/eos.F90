@@ -42,7 +42,6 @@ subroutine EOSRead(input,option)
   character(len=MAXWORDLENGTH) :: keyword, word
   character(len=MAXSTRINGLENGTH) :: string
   PetscReal :: tempreal, tempreal2, tempreal3
-  !RKS default values for hydrogen
   PetscReal :: rks_tc = UNINITIALIZED_DOUBLE
   PetscReal :: rks_pc = UNINITIALIZED_DOUBLE
   PetscReal :: rks_acen = UNINITIALIZED_DOUBLE

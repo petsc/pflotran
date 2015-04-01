@@ -214,6 +214,7 @@ subroutine EOSGasVerify(ierr,error_string)
   
   if (associated(EOSGasDensityPtr,EOSGasDensityRKS)) then
     if (hydrogen) then
+      ! Assign default hydrogen parameters if not assigned
       if (Uninitialized(Tc)) then
         Tc = 41.67d0
         ierr = 5
@@ -721,15 +722,10 @@ subroutine EOSGasDensityRKS(T,P,Rho_gas,dRho_dT,dRho_dP,ierr)
   PetscReal :: b2, V, f, dfdV, dVd
   PetscInt :: i
   PetscReal :: coeff_alpha
-!  PetscReal :: coeff_a = 0.42747d0
-!  PetscReal :: coeff_b = 0.08664d0
-!  PetscReal :: acentric = 0.00d0
   
   !for hydrogen
   ! American Petroleum Institute,
   ! "Technical Data Book-Petroleum Refining" (1977)
-!  PetscReal :: Tc = 41.67d0
-!  PetscReal :: Pc = 2.1029d6
   
   !solver
   PetscReal :: coef(4)
