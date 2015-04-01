@@ -3859,7 +3859,8 @@ subroutine UGridGrowStencilSupport(unstructured_grid,stencil_width, &
         do ivertex=1,nvertices
           vertex_id_local=unstructured_grid%cell_vertices(ivertex,local_id)
           vertex_id_nat=unstructured_grid%vertex_ids_natural(vertex_id_local)
-          call MatSetValues(Mat_vert_to_proc,1,option%myrank,1,vertex_id_nat-1,1.d0,INSERT_VALUES, &
+          call MatSetValues(Mat_vert_to_proc,1,option%myrank, &
+                            1,vertex_id_nat-1,1.d0,INSERT_VALUES, &
                             ierr);CHKERRQ(ierr)
         enddo
       enddo
@@ -3871,7 +3872,8 @@ subroutine UGridGrowStencilSupport(unstructured_grid,stencil_width, &
         do ivertex=1,nvertices
           vertex_id_local=unstructured_grid%cell_vertices(ivertex,ghosted_id)
           vertex_id_nat=unstructured_grid%vertex_ids_natural(vertex_id_local)
-          call MatSetValues(Mat_vert_to_proc,1,option%myrank,1,vertex_id_nat-1,1.d0,INSERT_VALUES, &
+          call MatSetValues(Mat_vert_to_proc,1,option%myrank, &
+                            1,vertex_id_nat-1,1.d0,INSERT_VALUES, &
                             ierr);CHKERRQ(ierr)
         enddo
       enddo

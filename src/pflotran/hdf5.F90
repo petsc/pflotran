@@ -1852,6 +1852,10 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   option%io_buffer = 'Opening group: ' // trim(string)
   call printMsg(option)  
   call h5gopen_f(grp_id,string,grp_id2,hdf5_err)
+  if (hdf5_err /= 0) then
+    option%io_buffer = 'HDF5 group "' // trim(region%name) // '" not found.'
+    call printErrMsg(option)
+  endif
 
  allocate(indices(grid%nlmax))
  ! Read Cell Ids

@@ -46,11 +46,10 @@ module Timestepper_BE_class
   
   ! For checkpointing
   type, public, extends(stepper_base_header_type) :: stepper_BE_header_type
-    integer*8 :: cumulative_newton_iterations
-    integer*8 :: cumulative_linear_iterations
-    integer*8 :: num_newton_iterations
+    PetscInt :: cumulative_newton_iterations
+    PetscInt :: cumulative_linear_iterations
+    PetscInt :: num_newton_iterations
   end type stepper_BE_header_type
-  PetscSizeT, parameter, private :: bagsize = 88 ! 64 (base) + 24 (BE)
 
   interface PetscBagGetData
     subroutine PetscBagGetData(bag,header,ierr)
@@ -461,8 +460,13 @@ subroutine TimestepperBECheckpoint(this,viewer,option)
   type(option_type) :: option
   
   class(stepper_BE_header_type), pointer :: header
+  type(stepper_BE_header_type) :: dummy_header
+  character(len=1),pointer :: dummy_char(:)
   PetscBag :: bag
+  PetscSizeT :: bagsize
   PetscErrorCode :: ierr
+
+  bagsize = size(transfer(dummy_header,dummy_char))
 
   call PetscBagCreate(option%mycomm,bagsize,bag,ierr);CHKERRQ(ierr)
   call PetscBagGetData(bag,header,ierr);CHKERRQ(ierr)
@@ -496,7 +500,6 @@ subroutine TimestepperBERegisterHeader(this,bag,header)
   
   PetscErrorCode :: ierr
   
-  ! bagsize = 3 * 8 bytes = 24 bytes
   call PetscBagRegisterInt(bag,header%cumulative_newton_iterations,0, &
                            "cumulative_newton_iterations","", &
                            ierr);CHKERRQ(ierr)
@@ -564,8 +567,13 @@ subroutine TimestepperBERestart(this,viewer,option)
   type(option_type) :: option
   
   class(stepper_BE_header_type), pointer :: header
+  type(stepper_BE_header_type) :: dummy_header
+  character(len=1),pointer :: dummy_char(:)
   PetscBag :: bag
+  PetscSizeT :: bagsize
   PetscErrorCode :: ierr
+
+  bagsize = size(transfer(dummy_header,dummy_char))
   
   call PetscBagCreate(option%mycomm,bagsize,bag,ierr);CHKERRQ(ierr)
   call PetscBagGetData(bag,header,ierr);CHKERRQ(ierr)

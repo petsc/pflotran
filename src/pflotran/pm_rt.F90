@@ -58,9 +58,8 @@ module PM_RT_class
   end type pm_rt_type
   
   type, public, extends(pm_base_header_type) :: pm_rt_header_type
-    integer*8 :: checkpoint_activity_coefs
+    PetscInt :: checkpoint_activity_coefs
   end type pm_rt_header_type  
-  PetscSizeT, parameter, private :: bagsize = 16
   
   public :: PMRTCreate
 
@@ -347,6 +346,7 @@ subroutine PMRTPreSolve(this)
   use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
   use Global_module  
   use Material_module
+  use Data_Mediator_module
 
   implicit none
   
@@ -391,6 +391,10 @@ subroutine PMRTPreSolve(this)
                  this%realization%field%tran_log_xx,ierr);CHKERRQ(ierr)
     call VecLog(this%realization%field%tran_log_xx,ierr);CHKERRQ(ierr)
   endif
+  
+  call DataMediatorUpdate(this%realization%tran_data_mediator_list, &
+                          this%realization%field%tran_mass_transfer, &
+                          this%realization%option)
   
 end subroutine PMRTPreSolve
 
@@ -699,7 +703,6 @@ subroutine PMRTUpdateSolution1(this)
 
   use Reactive_Transport_module
   use Condition_module
-  use Mass_Transfer_module
 
   implicit none
   
@@ -719,7 +722,6 @@ subroutine PMRTUpdateSolution2(this, update_kinetics)
 
   use Reactive_Transport_module
   use Condition_module
-  use Mass_Transfer_module
   use Integral_Flux_module
 
   implicit none
@@ -744,9 +746,11 @@ subroutine PMRTUpdateSolution2(this, update_kinetics)
   if (update_kinetics) &
     call RTUpdateKineticState(this%realization)
   
-  call MassTransferUpdate(this%realization%rt_mass_transfer_list, &
-                          this%realization%patch%grid, &
-                          this%realization%option)
+!TODO(geh): MassTransfer
+!geh - moved to RTPreSolve()
+!  call MassTransferUpdate(this%realization%rt_data_mediator_list, &
+!                          this%realization%patch%grid, &
+!                          this%realization%option)
   
   if (this%realization%option%compute_mass_balance_new) then
     call RTUpdateMassBalance(this%realization)
@@ -892,7 +896,10 @@ subroutine PMRTCheckpoint(this,viewer)
   PetscInt :: i
 
   class(pm_rt_header_type), pointer :: header
+  type(pm_rt_header_type) :: dummy_header
+  character(len=1),pointer :: dummy_char(:)
   PetscBag :: bag
+  PetscSizeT :: bagsize
   
   realization => this%realization
   option => realization%option
@@ -901,6 +908,8 @@ subroutine PMRTCheckpoint(this,viewer)
   grid => realization%patch%grid
   
   global_vec = 0
+
+  bagsize = size(transfer(dummy_header,dummy_char))
   
   call PetscBagCreate(option%mycomm,bagsize,bag,ierr);CHKERRQ(ierr)
   call PetscBagGetData(bag,header,ierr);CHKERRQ(ierr)
@@ -1026,7 +1035,10 @@ subroutine PMRTRestart(this,viewer)
   PetscInt :: i
 
   class(pm_rt_header_type), pointer :: header
+  type(pm_rt_header_type) :: dummy_header
+  character(len=1),pointer :: dummy_char(:)
   PetscBag :: bag
+  PetscSizeT :: bagsize
   
   realization => this%realization
   option => realization%option
@@ -1037,6 +1049,8 @@ subroutine PMRTRestart(this,viewer)
   global_vec = 0
   local_vec = 0
   
+  bagsize = size(transfer(dummy_header,dummy_char))
+
   call PetscBagCreate(this%option%mycomm, bagsize, bag, ierr);CHKERRQ(ierr)
   call PetscBagGetData(bag, header, ierr);CHKERRQ(ierr)
   call PetscBagRegisterInt(bag,header%checkpoint_activity_coefs,0, &

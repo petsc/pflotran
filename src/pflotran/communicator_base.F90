@@ -17,6 +17,7 @@ module Communicator_Base_module
     procedure(VecToVec), public, deferred :: LocalToLocal 
     procedure(VecToVec), public, deferred :: GlobalToNatural 
     procedure(VecToVec), public, deferred :: NaturalToGlobal 
+    procedure(MapArray), public, deferred :: AONaturalToPetsc 
     procedure(BaseDestroy), public, deferred :: Destroy 
   end type communicator_type
   
@@ -44,6 +45,13 @@ module Communicator_Base_module
       Vec :: source
       Vec :: destination
     end subroutine VecToVec
+
+    subroutine MapArray(this,array)
+      import communicator_type
+      implicit none
+      class(communicator_type) :: this
+      PetscInt :: array(:)
+    end subroutine MapArray
 
     subroutine BaseDestroy(this)
       import communicator_type

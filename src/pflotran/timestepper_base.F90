@@ -73,14 +73,14 @@ module Timestepper_Base_class
   end type timestepper_base_type
   
   type, public :: stepper_base_header_type
-    real*8 :: time
-    real*8 :: dt
-    real*8 :: prev_dt
-    integer*8 :: num_steps
-    integer*8 :: cumulative_time_step_cuts
-    integer*8 :: num_constant_time_steps
-    integer*8 :: num_contig_revert_due_to_sync
-    integer*8 :: revert_dt
+    PetscReal :: time
+    PetscReal :: dt
+    PetscReal :: prev_dt
+    PetscInt :: num_steps
+    PetscInt :: cumulative_time_step_cuts
+    PetscInt :: num_constant_time_steps
+    PetscInt :: num_contig_revert_due_to_sync
+    PetscInt :: revert_dt
   end type stepper_base_header_type
   
   public :: TimestepperBaseCreate, &

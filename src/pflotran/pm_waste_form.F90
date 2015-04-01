@@ -4,6 +4,7 @@ module PM_Waste_Form_class
   use Realization_class
   use Option_module
   use Geometry_module
+  use Data_Mediator_Vec_class
   
   use PFLOTRAN_Constants_module
 
@@ -25,7 +26,8 @@ module PM_Waste_Form_class
     class(realization_type), pointer :: realization
     type(mpm_type), pointer :: waste_form(:)
     type(point3d_type), pointer :: coordinate(:)
-    PetscInt :: num_grid_cells
+    PetscInt :: num_grid_cells_in_waste_form
+    PetscInt :: num_waste_forms
     ! mapping of mpm species into mpm concentration array
     PetscInt, pointer :: mapping_mpm(:)
     ! mapping of species in mpm concentration array to pflotran
@@ -42,6 +44,8 @@ module PM_Waste_Form_class
     PetscInt :: iUO3_sld
     PetscInt :: iUO4_sld
     PetscInt :: num_concentrations
+    character(len=MAXWORDLENGTH) :: data_mediator_species
+    class(data_mediator_vec_type), pointer :: data_mediator
   contains
 !geh: commented out subroutines can only be called externally
     procedure, public :: Init => PMWasteFormInit
@@ -94,7 +98,8 @@ function PMWasteFormCreate()
   nullify(PMWasteFormCreate%realization)
   nullify(PMWasteFormCreate%waste_form)
   nullify(PMWasteFormCreate%coordinate)
-  PMWasteFormCreate%num_grid_cells = UNINITIALIZED_INTEGER
+  PMWasteFormCreate%num_grid_cells_in_waste_form = UNINITIALIZED_INTEGER
+  PMWasteFormCreate%num_waste_forms = UNINITIALIZED_INTEGER
   PMWasteFormCreate%num_concentrations = 11
   PMWasteFormCreate%iUO2_2p = 1
   PMWasteFormCreate%iUCO3_2n = 2
@@ -107,6 +112,8 @@ function PMWasteFormCreate()
   PMWasteFormCreate%iUO2_sld = 9
   PMWasteFormCreate%iUO3_sld = 10
   PMWasteFormCreate%iUO4_sld = 11
+  nullify(PMWasteFormCreate%data_mediator)
+  PMWasteFormCreate%data_mediator_species = ''
   allocate(PMWasteFormCreate%mapping_mpm_to_pflotran( &
              PMWasteFormCreate%num_concentrations))
   PMWasteFormCreate%mapping_mpm_to_pflotran = UNINITIALIZED_INTEGER
@@ -172,7 +179,11 @@ subroutine PMWasteFormRead(this,input)
     select case(trim(word))
     
       case('NUM_GRID_CELLS')
-        call InputReadInt(input,option,this%num_grid_cells)
+        call InputReadInt(input,option,this%num_grid_cells_in_waste_form)
+        call InputErrorMsg(input,option,'num_grid_cells',error_string)
+      case('DATA_MEDIATOR_SPECIES')
+        call InputReadWord(input,option,this%data_mediator_species,PETSC_TRUE)
+        call InputErrorMsg(input,option,'data_mediator_species',error_string)
       case('COORDINATES')
         num_coordinates = 0
         do
@@ -197,6 +208,7 @@ subroutine PMWasteFormRead(this,input)
         call InputKeywordUnrecognized(word,error_string,option)
     end select
   enddo
+  this%num_waste_forms = num_coordinates
   allocate(this%coordinate(num_coordinates))
   do i = 1, num_coordinates
     this%coordinate(i)%x = x(i)
@@ -206,7 +218,7 @@ subroutine PMWasteFormRead(this,input)
   deallocate(x,y,z)
   nullify(x,y,z)
   
-  if (this%num_grid_cells == UNINITIALIZED_INTEGER) then
+  if (this%num_grid_cells_in_waste_form == UNINITIALIZED_INTEGER) then
     option%io_buffer = &
       'NUM_GRID_CELLS must be specified for mixed potential model.'
     call printErrMsg(option)
@@ -280,7 +292,7 @@ subroutine PMWasteFormInit(this)
   allocate(this%waste_form(num_local_coordinates))
   do i = 1, num_local_coordinates
     allocate(this%waste_form(i)%concentration(this%num_concentrations, &
-                                              this%num_grid_cells))
+                                            this%num_grid_cells_in_waste_form))
                                               
 !geh    this%waste_form(i)%concentration = UNINITIALIZED_DOUBLE
     this%waste_form(i)%concentration = 1.d-20
@@ -339,10 +351,27 @@ recursive subroutine PMWasteFormInitializeRun(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 01/15/15 
-
-  implicit none
+  use Communicator_Base_module
+  use Reaction_Aux_module
+  use Realization_Base_class
+  use Data_Mediator_Vec_class
   
+  implicit none
+
+#include "finclude/petscis.h"
+#include "finclude/petscis.h90"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
   class(pm_mpm_type) :: this
+  
+  IS :: is
+  PetscInt :: num_waste_form_cells
+  PetscInt :: i
+  PetscInt :: data_mediator_species_id
+  PetscInt, allocatable :: waste_form_cell_ids(:)
+  PetscReal :: time
+  PetscErrorCode :: ierr
   
 #ifdef PM_WP_DEBUG  
   call printMsg(this%option,'PMRT%InitializeRun()')
@@ -351,6 +380,43 @@ recursive subroutine PMWasteFormInitializeRun(this)
   if (this%option%restart_flag .and. &
       this%option%overwrite_restart_transport) then
   endif
+
+  data_mediator_species_id = &
+    GetPrimarySpeciesIDFromName(this%data_mediator_species, &
+                                this%realization%reaction,this%option)
+  
+  ! set up mass transfer
+  call RealizCreateTranMassTransferVec(this%realization)
+  this%data_mediator => DataMediatorVecCreate()
+  call this%data_mediator%AddToList(this%realization%tran_data_mediator_list)
+  ! create a Vec sized by # waste packages * # primary dofs influenced by 
+  ! waste package
+  num_waste_form_cells = size(this%waste_form)
+  call VecCreateSeq(PETSC_COMM_SELF,num_waste_form_cells, &
+                    this%data_mediator%vec,ierr);CHKERRQ(ierr)
+  call VecSetFromOptions(this%data_mediator%vec,ierr);CHKERRQ(ierr)
+
+  allocate(waste_form_cell_ids(num_waste_form_cells))
+  waste_form_cell_ids = 0
+  do i = 1, num_waste_form_cells
+    waste_form_cell_ids(i) = this%waste_form(i)%local_id
+  enddo                             ! zero-based indexing
+  waste_form_cell_ids(:) = waste_form_cell_ids(:) - 1
+  call this%realization%comm1%AONaturalToPetsc(waste_form_cell_ids)
+  waste_form_cell_ids(:) = waste_form_cell_ids(:) * this%option%ntrandof
+  waste_form_cell_ids(:) = waste_form_cell_ids(:)  + &
+                           data_mediator_species_id - 1
+  call ISCreateGeneral(this%option%mycomm,num_waste_form_cells, &
+                       waste_form_cell_ids,PETSC_COPY_VALUES,is, &
+                       ierr);CHKERRQ(ierr)
+  deallocate(waste_form_cell_ids)
+  call VecScatterCreate(this%data_mediator%vec,PETSC_NULL_OBJECT, &
+                        this%realization%field%tran_r,is, &
+                        this%data_mediator%scatter_ctx,ierr);CHKERRQ(ierr)
+  call ISDestroy(is,ierr);CHKERRQ(ierr)
+  
+  time = 0.d0
+  call PMWasteFormSolve(this,time,ierr)  
 
 end subroutine PMWasteFormInitializeRun
 
@@ -426,6 +492,9 @@ subroutine PMWasteFormSolve(this,time,ierr)
   
   implicit none
 
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
   interface
     subroutine AMP_step ( sTme, conc, initialRun, flux, status )
       real ( kind = 8), intent( in )  :: sTme   
@@ -440,13 +509,15 @@ subroutine PMWasteFormSolve(this,time,ierr)
   PetscReal :: time
   PetscErrorCode :: ierr
   
-  integer ( kind = 4) :: status
-  logical ( kind = 4) :: initialRun = PETSC_FALSE
-  
+  PetscReal, pointer :: vec_p(:)
   PetscInt :: i
   
+  integer ( kind = 4) :: status
+  logical ( kind = 4) :: initialRun = PETSC_FALSE
+
   ierr = 0
   call PMWasteFormPreSolve(this)
+  call VecGetArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
   do i = 1, size(this%waste_form)
 #ifdef MPM_MODEL  
     call AMP_step(time, this%waste_form(i)%concentration, initialRun, &
@@ -456,8 +527,10 @@ subroutine PMWasteFormSolve(this,time,ierr)
       ierr = 1
       exit
     endif
+    vec_p(i) = 1.d-10
   enddo
-
+  call VecRestoreArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
+  
 end subroutine PMWasteFormSolve
 
 ! ************************************************************************** !
@@ -469,16 +542,9 @@ subroutine PMWasteFormPostSolve(this)
   ! Author: Glenn Hammond
   ! Date: 03/14/13
   ! 
-
-  use Global_module
-
   implicit none
   
   class(pm_mpm_type) :: this
-  
-  ! set the fluxes here.
-  this%option%io_buffer = 'PMWasteFormPostSolve() must be set up.'
-  call printWrnMsg(this%option)  
   
 end subroutine PMWasteFormPostSolve
 
@@ -657,6 +723,8 @@ subroutine PMWasteFormDestroy(this)
   enddo
   call DeallocateArray(this%mapping_mpm_to_pflotran)
   call DeallocateArray(this%mapping_mpm)
+  ! this is solely a pointer
+!  call DataMediatorVecDestroy(this%data_mediator)
   deallocate(this%waste_form)
   nullify(this%waste_form)
   

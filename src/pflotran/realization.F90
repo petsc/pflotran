@@ -19,7 +19,6 @@ module Realization_class
   use Uniform_Velocity_module
   use Waypoint_module
   use Output_Aux_module
-  use Mass_Transfer_module  
   
   use Reaction_Aux_module
   
@@ -67,7 +66,6 @@ private
             RealizationProcessCouplers, &
             RealizationInitAllCouplerAuxVars, &
             RealizationProcessConditions, &
-            RealizationUpdate, &
             RealizationAddWaypointsToList, &
             RealizationCreateDiscretization, &
             RealizationLocalizeRegions, &
@@ -605,12 +603,14 @@ subroutine RealizationProcessConditions(realization)
   ! Author: Glenn Hammond
   ! Date: 10/14/08
   ! 
-
+  use Data_Mediator_Base_class
+  use Data_Mediator_Dataset_class
   use Dataset_module
   
   implicit none
   
   class(realization_type) :: realization
+  class(data_mediator_base_type), pointer :: cur_data_mediator
 
   call DatasetScreenForNonCellIndexed(realization%datasets,realization%option)
   
@@ -620,25 +620,41 @@ subroutine RealizationProcessConditions(realization)
   if (realization%option%ntrandof > 0) then
     call RealProcessTranConditions(realization)
   endif
-  if (associated(realization%flow_mass_transfer_list)) then
-    call MassTransferInit(realization%flow_mass_transfer_list, &
-                          realization%discretization, &
-                          realization%datasets, &
-                          realization%option)
-    call MassTransferUpdate(realization%flow_mass_transfer_list, &
-                            realization%patch%grid, &
-                            realization%option)
-  endif
-  if (associated(realization%rt_mass_transfer_list)) then
-    call MassTransferInit(realization%rt_mass_transfer_list, &
-                          realization%discretization, &
-                          realization%datasets, &
-                          realization%option)
-    call MassTransferUpdate(realization%rt_mass_transfer_list, &
-                            realization%patch%grid, &
-                            realization%option)
-  endif
+  
+  ! update data mediators
+  cur_data_mediator => realization%flow_data_mediator_list
+  do
+    if (.not.associated(cur_data_mediator)) exit
+    call RealizCreateFlowMassTransferVec(realization)
+    select type(cur_data_mediator)
+      class is(data_mediator_dataset_type)
+        call DataMediatorDatasetInit(cur_data_mediator, &
+                                     realization%discretization, &
+                                     realization%datasets, &
+                                     realization%option)
+        call cur_data_mediator%Update(realization%field%flow_mass_transfer, &
+                                      realization%option)
+      class default
+    end select
+    cur_data_mediator => cur_data_mediator%next
+  enddo
 
+  cur_data_mediator => realization%tran_data_mediator_list
+  do
+    if (.not.associated(cur_data_mediator)) exit
+    call RealizCreateTranMassTransferVec(realization)
+    select type(cur_data_mediator)
+      class is(data_mediator_dataset_type)
+        call DataMediatorDatasetInit(cur_data_mediator, &
+                                     realization%discretization, &
+                                     realization%datasets, &
+                                     realization%option)
+        call cur_data_mediator%Update(realization%field%tran_mass_transfer, &
+                                      realization%option)
+      class default
+    end select
+    cur_data_mediator => cur_data_mediator%next
+  enddo
 
 end subroutine RealizationProcessConditions
 
@@ -1217,45 +1233,6 @@ end subroutine RealizUpdateAllCouplerAuxVars
 
 ! ************************************************************************** !
 
-subroutine RealizationUpdate(realization)
-  ! 
-  ! Update parameters in realization (e.g. conditions, bcs, srcs)
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 11/09/07
-  ! 
-
-  implicit none
-  
-  class(realization_type) :: realization
-  
-  PetscBool :: force_update_flag = PETSC_FALSE
-  
-  ! must update conditions first
-  call FlowConditionUpdate(realization%flow_conditions,realization%option, &
-                           realization%option%time)
-  call TranConditionUpdate(realization%transport_conditions, &
-                           realization%option, &
-                           realization%option%time)
-  call RealizUpdateAllCouplerAuxVars(realization,force_update_flag)
-  if (associated(realization%uniform_velocity_dataset)) then
-    call RealizUpdateUniformVelocity(realization)
-  endif
-! currently don't use auxvars, just condition for src/sinks
-!  call RealizationUpdateSrcSinks(realization)
-
-  call MassTransferUpdate(realization%flow_mass_transfer_list, &
-                          realization%patch%grid, &
-                          realization%option)
-
-  call MassTransferUpdate(realization%rt_mass_transfer_list, &
-                          realization%patch%grid, &
-                          realization%option)
-
-end subroutine RealizationUpdate
-
-! ************************************************************************** !
-
 subroutine RealizationRevertFlowParameters(realization)
   ! 
   ! Assigns initial porosity/perms to vecs
@@ -1343,6 +1320,8 @@ subroutine RealizationAddWaypointsToList(realization)
   use Option_module
   use Waypoint_module
   use Time_Storage_module
+  use Data_Mediator_Base_class
+  use Data_Mediator_Dataset_class
   use Strata_module
 
   implicit none
@@ -1354,7 +1333,7 @@ subroutine RealizationAddWaypointsToList(realization)
   type(tran_condition_type), pointer :: cur_tran_condition
   type(flow_sub_condition_type), pointer :: sub_condition
   type(tran_constraint_coupler_type), pointer :: cur_constraint_coupler
-  type(mass_transfer_type), pointer :: cur_mass_transfer
+  class(data_mediator_base_type), pointer :: cur_data_mediator
   type(waypoint_type), pointer :: waypoint, cur_waypoint
   type(option_type), pointer :: option
   type(strata_type), pointer :: cur_strata
@@ -1452,38 +1431,48 @@ subroutine RealizationAddWaypointsToList(realization)
   endif
   
   ! add waypoints for flow mass transfer
-  if (associated(realization%flow_mass_transfer_list)) then
-    cur_mass_transfer => realization%flow_mass_transfer_list
+  if (associated(realization%flow_data_mediator_list)) then
+    cur_data_mediator => realization%flow_data_mediator_list
     do
-      if (.not.associated(cur_mass_transfer)) exit
-      if (associated(cur_mass_transfer%dataset%time_storage)) then
-        do itime = 1, cur_mass_transfer%dataset%time_storage%max_time_index
-          waypoint => WaypointCreate()
-          waypoint%time = cur_mass_transfer%dataset%time_storage%times(itime)
-          waypoint%update_conditions = PETSC_TRUE
-          call WaypointInsertInList(waypoint,realization%waypoint_list)
-        enddo
-      endif
-      cur_mass_transfer => cur_mass_transfer%next
+      if (.not.associated(cur_data_mediator)) exit
+      select type(cur_data_mediator)
+        class is(data_mediator_dataset_type)
+          if (associated(cur_data_mediator%dataset%time_storage)) then
+            do itime = 1, cur_data_mediator%dataset%time_storage%max_time_index
+              waypoint => WaypointCreate()
+              waypoint%time = &
+                cur_data_mediator%dataset%time_storage%times(itime)
+              waypoint%update_conditions = PETSC_TRUE
+              call WaypointInsertInList(waypoint,realization%waypoint_list)
+            enddo
+          endif
+        class default
+      end select 
+      cur_data_mediator => cur_data_mediator%next
     enddo
   endif  
 
   ! add waypoints for rt mass transfer
-  if (associated(realization%rt_mass_transfer_list)) then
-    cur_mass_transfer => realization%rt_mass_transfer_list
+  if (associated(realization%tran_data_mediator_list)) then
+    cur_data_mediator => realization%tran_data_mediator_list
     do
-      if (.not.associated(cur_mass_transfer)) exit
-      if (associated(cur_mass_transfer%dataset%time_storage)) then
-        do itime = 1, cur_mass_transfer%dataset%time_storage%max_time_index
-          waypoint => WaypointCreate()
-          waypoint%time = cur_mass_transfer%dataset%time_storage%times(itime)
-          waypoint%update_conditions = PETSC_TRUE
-          call WaypointInsertInList(waypoint,realization%waypoint_list)
-        enddo
-      endif
-      cur_mass_transfer => cur_mass_transfer%next
+      if (.not.associated(cur_data_mediator)) exit
+      select type(cur_data_mediator)
+        class is(data_mediator_dataset_type)
+          if (associated(cur_data_mediator%dataset%time_storage)) then
+            do itime = 1, cur_data_mediator%dataset%time_storage%max_time_index
+              waypoint => WaypointCreate()
+              waypoint%time = &
+                cur_data_mediator%dataset%time_storage%times(itime)
+              waypoint%update_conditions = PETSC_TRUE
+              call WaypointInsertInList(waypoint,realization%waypoint_list)
+            enddo
+          endif
+        class default
+      end select           
+      cur_data_mediator => cur_data_mediator%next
     enddo
-  endif  
+  endif 
 
   ! add waypoints for periodic output
   if (realization%output_option%periodic_output_time_incr > 0.d0 .or. &
@@ -2453,8 +2442,6 @@ subroutine RealizationDestroyLegacy(realization)
   call ReactionDestroy(realization%reaction,realization%option)
   
   call TranConstraintDestroy(realization%sec_transport_constraint)
-  call MassTransferDestroy(realization%flow_mass_transfer_list)
-  call MassTransferDestroy(realization%rt_mass_transfer_list)
   
   call WaypointListDestroy(realization%waypoint_list)
   

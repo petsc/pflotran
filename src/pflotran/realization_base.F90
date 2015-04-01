@@ -9,7 +9,7 @@ module Realization_Base_class
   use Output_Aux_module
   use Field_module
   use Reaction_Aux_module
-  use Mass_Transfer_module
+  use Data_Mediator_Base_class
   use Communicator_Base_module
 
   use PFLOTRAN_Constants_module
@@ -32,8 +32,8 @@ module Realization_Base_class
     type(field_type), pointer :: field
     type(debug_type), pointer :: debug
     type(output_option_type), pointer :: output_option
-    type(mass_transfer_type), pointer :: flow_mass_transfer_list
-    type(mass_transfer_type), pointer :: rt_mass_transfer_list
+    class(data_mediator_base_type), pointer :: flow_data_mediator_list
+    class(data_mediator_base_type), pointer :: tran_data_mediator_list
     
     type(reaction_type), pointer :: reaction
     
@@ -43,6 +43,8 @@ module Realization_Base_class
             RealizationGetVariable, &
             RealizGetVariableValueAtCell, &
             RealizationSetVariable, &
+            RealizCreateTranMassTransferVec, &
+            RealizCreateFlowMassTransferVec, &
             RealizationBaseStrip
 
 contains
@@ -80,8 +82,8 @@ subroutine RealizationBaseInit(realization_base,option)
   nullify(realization_base%reaction)
 
   nullify(realization_base%patch)
-  nullify(realization_base%flow_mass_transfer_list)
-  nullify(realization_base%rt_mass_transfer_list)
+  nullify(realization_base%flow_data_mediator_list)
+  nullify(realization_base%tran_data_mediator_list)
 
 end subroutine RealizationBaseInit
 
@@ -181,6 +183,52 @@ end subroutine RealizationSetVariable
 
 ! ************************************************************************** !
 
+subroutine RealizCreateFlowMassTransferVec(this)
+  ! 
+  ! Creates the Vec where mass transfer is summed prior to being added to
+  ! the reactive transport residual.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/20/15
+  ! 
+  implicit none
+  
+  class(realization_base_type) :: this
+  
+  PetscInt :: ierr
+  
+  if (this%field%flow_mass_transfer == 0) then
+    call VecDuplicate(this%field%flow_xx,this%field%flow_mass_transfer, &
+                      ierr);CHKERRQ(ierr)
+  endif
+
+end subroutine RealizCreateFlowMassTransferVec
+
+! ************************************************************************** !
+
+subroutine RealizCreateTranMassTransferVec(this)
+  ! 
+  ! Creates the Vec where mass transfer is summed prior to being added to
+  ! the reactive transport residual.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/20/15
+  ! 
+  implicit none
+  
+  class(realization_base_type) :: this
+  
+  PetscInt :: ierr
+  
+  if (this%field%tran_mass_transfer == 0) then
+    call VecDuplicate(this%field%tran_xx,this%field%tran_mass_transfer, &
+                      ierr);CHKERRQ(ierr)
+  endif
+
+end subroutine RealizCreateTranMassTransferVec
+
+! ************************************************************************** !
+
 subroutine RealizationBaseStrip(this)
   ! 
   ! Deallocates members of base realization
@@ -188,7 +236,8 @@ subroutine RealizationBaseStrip(this)
   ! Author: Glenn Hammond
   ! Date: 01/13/14
   ! 
-
+  use Data_Mediator_module
+  
   implicit none
   
   class(realization_base_type) :: this
@@ -211,9 +260,9 @@ subroutine RealizationBaseStrip(this)
 
   call DebugDestroy(this%debug)
   
-  call MassTransferDestroy(this%flow_mass_transfer_list)
-  call MassTransferDestroy(this%rt_mass_transfer_list)
-   
+  call DataMediatorDestroy(this%flow_data_mediator_list)
+  call DataMediatorDestroy(this%tran_data_mediator_list)
+
 end subroutine RealizationBaseStrip
 
 end module Realization_Base_class

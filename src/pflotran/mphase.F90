@@ -2968,7 +2968,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 
       if (associated(patch%boundary_flow_fluxes)) then
         patch%boundary_flow_fluxes(1:option%nflowdof,sum_connection) = &
-                                                       Res(1:option%nflowdof)
+                                   Res(1:option%nflowdof)/option%flow_dt
       endif
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
@@ -3061,7 +3061,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       endif
 
       if (associated(patch%internal_flow_fluxes)) then
-        patch%internal_flow_fluxes(:,sum_connection) = Res(:)
+        patch%internal_flow_fluxes(:,sum_connection) = Res(:)/option%flow_dt
       endif
 
     enddo

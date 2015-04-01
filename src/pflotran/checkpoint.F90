@@ -6,11 +6,6 @@ module Checkpoint_module
   
   private
 
-  public :: OpenCheckpointFile, &
-            CloseCheckpointFile, &
-            CheckpointFlowProcessModel, &
-            RestartFlowProcessModel
-
 #include "finclude/petscsys.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
@@ -21,13 +16,51 @@ module Checkpoint_module
 #include "finclude/petscis.h90"
 #include "finclude/petsclog.h"
 #include "finclude/petscviewer.h"
+
+  type :: checkpoint_header_type
+    PetscInt :: version
+    PetscInt :: test_header_size
+  end type checkpoint_header_type
+
+  ! for testing purposes only
+  type :: base_test_header_type
+    PetscInt :: int1
+    PetscReal :: real1
+    PetscInt :: int2
+    PetscReal :: real2
+    PetscInt :: int3
+    PetscReal :: real3
+    PetscInt :: int4
+  end type base_test_header_type
+
+  type, extends(base_test_header_type) :: extended_test_header_type
+    PetscReal :: real4
+    PetscInt :: int5
+    PetscReal :: real5
+  end type extended_test_header_type
+
+  interface PetscBagGetData
+    subroutine PetscBagGetData(bag,header,ierr)
+      import :: checkpoint_header_type
+      implicit none
 #include "finclude/petscbag.h"
+      PetscBag :: bag
+      type(checkpoint_header_type), pointer :: header
+      PetscErrorCode :: ierr
+    end subroutine
+  end interface PetscBagGetData
+
+  public :: CheckpointOpenFileForWrite, &
+            CheckPointWriteCompatibility, &
+            CheckPointReadCompatibility, &
+            CheckpointFlowProcessModel, &
+            RestartFlowProcessModel
 
 contains
 
 ! ************************************************************************** !
 
-subroutine OpenCheckpointFile(viewer,id,option,id_stamp)
+subroutine CheckpointOpenFileForWrite(viewer,id,option,id_stamp)
   ! 
   ! Opens checkpoint file; sets format
   ! 
@@ -41,6 +74,7 @@ subroutine OpenCheckpointFile(viewer,id,option,id_stamp)
   implicit none
 
 #include "finclude/petscviewer.h"
+#include "finclude/petscbag.h"
 
   PetscViewer :: viewer
   PetscInt :: id
@@ -81,30 +115,142 @@ subroutine OpenCheckpointFile(viewer,id,option,id_stamp)
     trim(adjustl(filename))
   call printMsg(option)
 
-end subroutine OpenCheckpointFile
+end subroutine CheckpointOpenFileForWrite
 
 ! ************************************************************************** !
 
-subroutine CloseCheckpointFile(viewer)
+subroutine CheckpointWriteCompatibility(viewer,option)
   ! 
-  ! Closes checkpoint file
+  ! Writes a PetscBag holding the version number and the size of a
+  ! complex extended class to ensure that the size of the class matches.
+  ! The purpose of this test is to catch incompatibility.  
+  !
+  ! Technically, the BagSize should be 8 * the number of objects (int, real,
+  ! etc.).  If we use 4 for PetscInt, the size is incorrect (due to padding
+  ! in the OS???).  Anyway, using the following test sets a size sufficiently
+  ! large:
+  !
+  ! see PETSC_DIR/src/sys/examples/tutorials/ex5f90.F90
+  !
+  ! class(whatever_type), pointer :: header
+  ! type(whatever_type) :: dummy_header
+  ! character(len=1),pointer :: dummy_char(:)
+  ! PetscSizeT :: bagsize = size(transfer(dummy_header,dummy_char)) 
   ! 
   ! Author: Glenn Hammond
-  ! Date: 07/26/13
+  ! Date: 003/26/15
   ! 
-
   use Option_module
   
   implicit none
 
 #include "finclude/petscviewer.h"
+#include "finclude/petscbag.h"
 
   PetscViewer :: viewer
+  type(option_type) :: option
+
+  type(checkpoint_header_type), pointer :: header
+  type(checkpoint_header_type) :: dummy_header
+  character(len=1),pointer :: dummy_char(:)
+  PetscBag :: bag
+  PetscSizeT :: bagsize
   PetscErrorCode :: ierr
 
-  call PetscViewerDestroy(viewer, ierr);CHKERRQ(ierr)
+  ! solely for test purposes here
+  type(extended_test_header_type) :: test_header
 
-end subroutine CloseCheckpointFile
+  bagsize = size(transfer(dummy_header,dummy_char))
+
+  call PetscBagCreate(option%mycomm,bagsize,bag,ierr);CHKERRQ(ierr)
+  call PetscBagGetData(bag,header,ierr);CHKERRQ(ierr)
+  call PetscBagRegisterInt(bag,header%version,0, &
+                           "checkpoint_version","",ierr);CHKERRQ(ierr)
+  call PetscBagRegisterInt(bag,header%test_header_size,0, &
+                           "test_header_size","",ierr);CHKERRQ(ierr)
+  header%version = CHECKPOINT_REVISION_NUMBER
+  header%test_header_size = size(transfer(test_header,dummy_char))
+  call PetscBagView(bag,viewer,ierr);CHKERRQ(ierr)
+  call PetscBagDestroy(bag,ierr);CHKERRQ(ierr)
+
+end subroutine CheckpointWriteCompatibility
+
+! ************************************************************************** !
+
+subroutine CheckpointReadCompatibility(viewer,option)
+  ! 
+  ! Reads in a PetscBag holding the version number and the size of a
+  ! complex extended class to ensure that the size of the class matches.
+  ! The purpose of this test is to catch incompatibility.  
+  !
+  ! Technically, the BagSize should be 8 * the number of objects (int, real,
+  ! etc.).  If we use 4 for PetscInt, the size is incorrect (due to padding
+  ! in the OS???).  Anyway, using the following test sets a size sufficiently
+  ! large:
+  !
+  ! class(whatever_type), pointer :: header
+  ! type(whatever_type) :: dummy_header
+  ! character(len=1),pointer :: dummy_char(:)
+  ! PetscSizeT :: bagsize = size(transfer(dummy_header,dummy_char)) 
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 003/26/15
+  ! 
+  use Option_module
+  
+  implicit none
+
+#include "finclude/petscviewer.h"
+#include "finclude/petscbag.h"
+
+  PetscViewer :: viewer
+  type(option_type) :: option
+
+  type(checkpoint_header_type), pointer :: header
+  type(checkpoint_header_type) :: dummy_header
+  character(len=1),pointer :: dummy_char(:)
+  PetscBag :: bag
+  PetscSizeT :: bagsize
+  PetscErrorCode :: ierr
+  character(len=MAXWORDLENGTH) :: word, word2
+  PetscInt :: temp_int
+
+  ! solely for test purposes here
+  type(extended_test_header_type) :: test_header
+
+  bagsize = size(transfer(dummy_header,dummy_char))
+
+  call PetscBagCreate(option%mycomm,bagsize,bag,ierr);CHKERRQ(ierr)
+  call PetscBagGetData(bag,header,ierr);CHKERRQ(ierr)
+  call PetscBagRegisterInt(bag,header%version,0, &
+                           "checkpoint_version","",ierr);CHKERRQ(ierr)
+  call PetscBagRegisterInt(bag,header%test_header_size,0, &
+                           "test_header_size","",ierr);CHKERRQ(ierr)
+  call PetscBagLoad(viewer,bag,ierr);CHKERRQ(ierr)
+
+  ! check compatibility
+  if (header%version /= CHECKPOINT_REVISION_NUMBER) then
+    write(word,*) header%version
+    write(word2,*) CHECKPOINT_REVISION_NUMBER
+    option%io_buffer = 'Incorrect checkpoint file format (' // &
+      trim(adjustl(word)) // ' vs ' // &
+      trim(adjustl(word2)) // ').'
+    call printErrMsg(option)
+  endif
+  
+  temp_int = size(transfer(test_header,dummy_char))
+  if (header%test_header_size /= temp_int) then
+    write(word,*) header%test_header_size
+    write(word2,*) temp_int
+    option%io_buffer = 'Inconsistent PetscBagSize (' // &
+      trim(adjustl(word)) // ' vs ' // &
+      trim(adjustl(word2)) // ').'
+    call printErrMsg(option)
+  endif
+
+  call PetscBagDestroy(bag,ierr);CHKERRQ(ierr)
+
+end subroutine CheckpointReadCompatibility
 
 ! ************************************************************************** !
 

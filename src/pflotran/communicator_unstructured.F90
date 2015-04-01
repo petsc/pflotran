@@ -32,6 +32,7 @@ module Communicator_Unstructured_class
     procedure, public :: LocalToLocal => UnstructuredLocalToLocal
     procedure, public :: GlobalToNatural => UnstructuredGlobalToNatural
     procedure, public :: NaturalToGlobal => UnstructuredNaturalToGlobal
+    procedure, public :: AONaturalToPetsc => UnstructuredAONaturalToPetsc
 !geh: finalization not yet supported by gfortran.
 !    final :: UnstructuredCommunicatorDestroy
     procedure, public :: Destroy => UnstructuredCommunicatorDestroy
@@ -227,6 +228,31 @@ subroutine UnstructuredNaturalToGlobal(this,source,destination)
 !  call DMDANaturalToGlobalEnd(this%dm,source,INSERT_VALUES,destination,ierr)
   
 end subroutine UnstructuredNaturalToGlobal
+
+! ************************************************************************** !
+
+subroutine UnstructuredAONaturalToPetsc(this,array)
+  ! 
+  ! Maps indices in natural numbering to petsc
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/19/15
+  ! 
+
+  implicit none
+  
+  class(unstructured_communicator_type) :: this
+  PetscInt :: array(:)
+
+  AO :: ao
+  PetscInt :: n
+  PetscErrorCode :: ierr
+  
+  n = size(array)
+  call AOApplicationToPetsc(this%ugdm%ao_natural_to_petsc,n,array, &
+                            ierr);CHKERRQ(ierr)
+  
+end subroutine UnstructuredAONaturalToPetsc
 
 ! ************************************************************************** !
 

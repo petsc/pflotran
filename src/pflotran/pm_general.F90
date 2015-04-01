@@ -150,7 +150,7 @@ subroutine PMGeneralRead(this,input)
         call InputDefaultMsg(input,option,'tough_itol_scaled_residual_e1')
         call InputReadDouble(input,option,general_tough2_itol_scaled_res_e2)
         call InputDefaultMsg(input,option,'tough_itol_scaled_residual_e2')
-        general_tough2_conv_criteria = PETSC_True
+        general_tough2_conv_criteria = PETSC_TRUE
       case('WINDOW_EPSILON') 
         call InputReadDouble(input,option,window_epsilon)
         call InputErrorMsg(input,option,'window epsilon','GENERAL_MODE')

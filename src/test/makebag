@@ -1,0 +1,9 @@
+include ${PETSC_DIR}/conf/variables
+include ${PETSC_DIR}/conf/rules
+
+petsc_bag_test : petsc_bag_test.o
+	${FLINKER}   -o petsc_bag_test petsc_bag_test.o ${PETSC_LIB} ${LIBS} 
+
+# Should add this to default PETSc targets as well?
+%.mod : %.F90
+	${FC} -c ${FC_FLAGS} ${FFLAGS} ${FCPPFLAGS} $<

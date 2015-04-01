@@ -55,7 +55,7 @@ module PM_Base_class
   end type pm_base_type
   
   type, public :: pm_base_header_type
-    integer*8 :: ndof
+    PetscInt :: ndof
   end type pm_base_header_type
     
   public :: PMBaseCreate
