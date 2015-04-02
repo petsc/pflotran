@@ -1205,32 +1205,32 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   
   ! Fracture permeability change only available for structured grid (Heeho)
   if (material_auxvar_up%fracture_bool) then
-    if (material_auxvar_up%fracture_flags(frac_change_perm_x_index) == &
-        PETSC_TRUE .and. dist(1) == 1) then
+    if (material_auxvar_up%fracture_flags(frac_change_perm_x_index) &
+        .and. dist(1) == 1) then
       call MaterialFracturePermWIPP(material_auxvar_up,perm_up,perm_up, &
                                dummy_perm_up)
-    else if (material_auxvar_up%fracture_flags(frac_change_perm_y_index) == &
-        PETSC_TRUE .and. dist(2) == 1) then
+    else if (material_auxvar_up%fracture_flags(frac_change_perm_y_index) &
+        .and. dist(2) == 1) then
       call MaterialFracturePermWIPP(material_auxvar_up,perm_up,perm_up, &
                                dummy_perm_up)
-    else if (material_auxvar_up%fracture_flags(frac_change_perm_z_index) == &
-        PETSC_TRUE .and. dist(3) == 1) then
+    else if (material_auxvar_up%fracture_flags(frac_change_perm_z_index) &
+        .and. dist(3) == 1) then
       call MaterialFracturePermWIPP(material_auxvar_up,perm_up,perm_up, &
                                dummy_perm_up)
     endif
   endif
   
   if (material_auxvar_dn%fracture_bool) then
-    if (material_auxvar_dn%fracture_flags(frac_change_perm_x_index) == &
-        PETSC_TRUE .and. dist(1) == 1) then
+    if (material_auxvar_dn%fracture_flags(frac_change_perm_x_index) &
+        .and. dist(1) == 1) then
       call MaterialFracturePermWIPP(material_auxvar_dn,perm_dn,perm_dn, &
                                dummy_perm_dn)
-    else if (material_auxvar_dn%fracture_flags(frac_change_perm_y_index) == &
-        PETSC_TRUE .and. dist(2) == 1) then
+    else if (material_auxvar_dn%fracture_flags(frac_change_perm_y_index) &
+        .and. dist(2) == 1) then
       call MaterialFracturePermWIPP(material_auxvar_dn,perm_dn,perm_dn, &
                                dummy_perm_dn)
-    else if (material_auxvar_dn%fracture_flags(frac_change_perm_z_index) == &
-        PETSC_TRUE .and. dist(3) == 1) then
+    else if (material_auxvar_dn%fracture_flags(frac_change_perm_z_index) &
+        .and. dist(3) == 1) then
       call MaterialFracturePermWIPP(material_auxvar_dn,perm_dn,perm_dn, &
                                dummy_perm_dn)
     endif
@@ -1524,16 +1524,16 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
 
     ! Fracture permeability change only available for structured grid (Heeho)
   if (material_auxvar_dn%fracture_bool) then
-    if (material_auxvar_dn%fracture_flags(frac_change_perm_x_index) == &
-        PETSC_TRUE .and. dist(1) == 1) then
+    if (material_auxvar_dn%fracture_flags(frac_change_perm_x_index) & 
+	.and. dist(1) == 1) then
       call MaterialFracturePermWIPP(material_auxvar_dn,perm_dn,perm_dn, &
                                dummy_perm_dn)
-    else if (material_auxvar_dn%fracture_flags(frac_change_perm_y_index) == &
-        PETSC_TRUE .and. dist(2) == 1) then
+    else if (material_auxvar_dn%fracture_flags(frac_change_perm_y_index) &
+        .and. dist(2) == 1) then
       call MaterialFracturePermWIPP(material_auxvar_dn,perm_dn,perm_dn, &
                                dummy_perm_dn)
-    else if (material_auxvar_dn%fracture_flags(frac_change_perm_z_index) == &
-        PETSC_TRUE .and. dist(3) == 1) then
+    else if (material_auxvar_dn%fracture_flags(frac_change_perm_z_index) &
+        .and. dist(3) == 1) then
       call MaterialFracturePermWIPP(material_auxvar_dn,perm_dn,perm_dn, &
                                dummy_perm_dn)
     endif

@@ -218,22 +218,22 @@ subroutine EOSGasVerify(ierr,error_string)
       if (Uninitialized(Tc)) then
         Tc = 41.67d0
         ierr = 5
-        error_string = trim(error_string) // & " Tc"
+        error_string = trim(error_string) // " Tc"
       endif
       if (Uninitialized(Pc)) then
         Pc = 2.1029d6
         ierr = 5
-        error_string = trim(error_string) // & " Pc"
+        error_string = trim(error_string) // " Pc"
       endif
       if (Uninitialized(coeff_a)) then
         coeff_a = 0.42747d0
         ierr = 5
-        error_string = trim(error_string) // & " omega_a"
+        error_string = trim(error_string) // " omega_a"
       endif
       if (Uninitialized(coeff_b)) then
         coeff_b = 0.08664d0
         ierr = 5
-        error_string = trim(error_string) // & " omega_b"
+        error_string = trim(error_string) // " omega_b"
       endif
     else
       if (Uninitialized(Tc) .or. Uninitialized(coeff_a) .or. &
