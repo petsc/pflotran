@@ -70,7 +70,7 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
   use Geomechanics_Realization_class
   use Simulation_Aux_module
   use Realization_class
-  use Timestepper_Geomechanics_class
+  use Timestepper_Steady_class
   use Input_Aux_module
   use Logging_module
 
@@ -132,7 +132,7 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
     pmc_geomech%pm_ptr%ptr => pm_geomech
     pmc_geomech%geomech_realization => simulation%geomech_realization
     pmc_geomech%subsurf_realization => simulation%realization
-    timestepper => TimestepperGeomechanicsCreate()
+    timestepper => TimestepperSteadyCreate()
     pmc_geomech%timestepper => timestepper
     ! set up logging stage
     string = trim(pmc_geomech%name) // 'Geomechanics'
@@ -260,7 +260,7 @@ subroutine GeomechanicsJumpStart(simulation)
 
   use Geomechanics_Realization_class
   use Option_module
-  use Timestepper_Geomechanics_class
+  use Timestepper_Steady_class
   use Output_Aux_module
   use Output_module, only : Output, OutputPrintCouplers
   use Output_Geomechanics_module
