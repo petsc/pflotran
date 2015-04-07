@@ -88,7 +88,7 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
   class(pm_base_type), pointer :: cur_pm, prev_pm
   class(pm_geomech_force_type), pointer :: pm_geomech
   class(pmc_geomechanics_type), pointer :: pmc_geomech
-  class(timestepper_geomechanics_type), pointer :: timestepper
+  class(timestepper_steady_type), pointer :: timestepper
   character(len=MAXSTRINGLENGTH) :: string
   type(waypoint_type), pointer :: waypoint
   type(input_type), pointer :: input
@@ -272,8 +272,8 @@ subroutine GeomechanicsJumpStart(simulation)
   type(geomechanics_simulation_type) :: simulation
 
   class(geomech_realization_type), pointer :: geomch_realization
-  class(timestepper_geomechanics_type), pointer :: master_timestepper
-  class(timestepper_geomechanics_type), pointer :: geomech_timestepper
+  class(timestepper_steady_type), pointer :: master_timestepper
+  class(timestepper_steady_type), pointer :: geomech_timestepper
   type(option_type), pointer :: option
   type(output_option_type), pointer :: output_option
 
@@ -286,7 +286,7 @@ subroutine GeomechanicsJumpStart(simulation)
   geomch_realization => simulation%geomech_realization
 
   select type(ts => simulation%geomech_process_model_coupler%timestepper)
-    class is(timestepper_geomechanics_type)
+    class is(timestepper_steady_type)
       geomech_timestepper => ts
   end select
   nullify(master_timestepper)

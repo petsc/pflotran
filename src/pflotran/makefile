@@ -375,7 +375,7 @@ geomech_obj = \
 	${common_src}pmc_geomechanics.o \
 	${common_src}simulation_geomechanics.o \
 	${common_src}shape_function.o \
-	${common_src}timestepper_geomechanics.o
+	${common_src}timestepper_steady.o
 
 # End Source Block
 
@@ -511,7 +511,7 @@ factory_geomechanics.o : condition_control.o factory_subsurface.o \
                          pm_geomechanics_force.o pmc_base.o pmc_geomechanics.o \
                          realization.o simulation_aux.o simulation_base.o \
                          simulation_geomechanics.o simulation_subsurface.o \
-                         timestepper_geomechanics.o
+                         timestepper_steady.o
 factory_hydrogeophysics.o : discretization.o factory_subsurface.o input_aux.o \
                             logging.o option.o pflotran_constants.o pm_base.o \
                             pmc_hydrogeophysics.o simulation_base.o \
@@ -1137,7 +1137,7 @@ timestepper_BE.o : convergence.o input_aux.o option.o output.o \
                    timestepper_base.o utility.o
 timestepper_base.o : input_aux.o option.o output.o pflotran_constants.o \
                      pm_base.o string.o waypoint.o
-timestepper_geomechanics.o : convergence.o option.o output.o \
+timestepper_steady.o : convergence.o option.o output.o \
                              pflotran_constants.o pm_base.o \
                              pm_geomechanics_force.o solver.o \
                              timestepper_base.o waypoint.o
