@@ -354,7 +354,6 @@ geomech_obj = \
 	${common_src}factory_geomechanics.o \
 	${common_src}gauss.o \
 	${common_src}geomechanics_auxiliary.o \
-	${common_src}geomechanics_init.o \
 	${common_src}geomechanics_realization.o \
 	${common_src}geomechanics_discretization.o \
 	${common_src}geomech_grid.o \
@@ -505,7 +504,7 @@ eos_gas.o : pflotran_constants.o
 eos_water.o : pflotran_constants.o
 factory_geomechanics.o : condition_control.o factory_subsurface.o \
                          geomechanics_discretization.o geomechanics_force.o \
-                         geomechanics_init.o geomechanics_realization.o \
+                         geomechanics_realization.o \
                          init_common.o input_aux.o logging.o option.o output.o \
                          output_aux.o output_geomechanics.o \
                          pflotran_constants.o pm_base.o pm_base_pointer.o \
@@ -609,18 +608,6 @@ geomechanics_global.o : geomech_grid.o geomech_grid_aux.o \
                         geomechanics_patch.o geomechanics_realization.o \
                         option.o pflotran_constants.o variables.o
 geomechanics_global_aux.o : option.o pflotran_constants.o utility.o
-geomechanics_init.o : convergence.o discretization.o geomech_grid.o \
-                      geomech_grid_aux.o geomechanics_condition.o \
-                      geomechanics_coupler.o geomechanics_debug.o \
-                      geomechanics_discretization.o geomechanics_field.o \
-                      geomechanics_force.o geomechanics_global.o \
-                      geomechanics_material.o geomechanics_patch.o \
-                      geomechanics_realization.o geomechanics_region.o \
-                      geomechanics_strata.o grid_unstructured.o \
-                      grid_unstructured_aux.o input_aux.o option.o \
-                      output_aux.o output_tecplot.o patch.o \
-                      pflotran_constants.o realization.o solver.o string.o \
-                      units.o waypoint.o
 geomechanics_logging.o : pflotran_constants.o
 geomechanics_material.o : input_aux.o option.o pflotran_constants.o string.o
 geomechanics_patch.o : dataset_base.o geomech_grid.o geomech_grid_aux.o \
