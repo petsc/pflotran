@@ -511,7 +511,7 @@ factory_geomechanics.o : condition_control.o factory_subsurface.o \
                          pm_geomechanics_force.o pmc_base.o pmc_geomechanics.o \
                          realization.o simulation_aux.o simulation_base.o \
                          simulation_geomechanics.o simulation_subsurface.o \
-                         timestepper_steady.o
+                         timestepper_steady.o geomechanics_global.o
 factory_hydrogeophysics.o : discretization.o factory_subsurface.o input_aux.o \
                             logging.o option.o pflotran_constants.o pm_base.o \
                             pmc_hydrogeophysics.o simulation_base.o \
