@@ -690,7 +690,8 @@ init_subsurface.o : characteristic_curves.o condition.o coupler.o \
                     region.o regression.o saturation_function.o \
                     simulation_subsurface.o solver.o srcsink_sandbox.o \
                     strata.o string.o timestepper_BE.o transport_constraint.o \
-                    uniform_velocity.o units.o variables.o waypoint.o wipp.o
+                    uniform_velocity.o units.o variables.o waypoint.o wipp.o \
+                    timestepper_steady.o
 init_subsurface_flow.o : co2_sw.o condition_control.o convergence.o \
                          discretization.o field.o flash2.o general.o grid.o \
                          hdf5.o immis.o init_common.o material.o miscible.o \
