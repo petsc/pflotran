@@ -312,6 +312,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   use Characteristic_Curves_module
   use Material_Aux_class
   use Creep_Closure_module
+  use Fracture_module
   
   implicit none
 
@@ -554,7 +555,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
           creep_closure%Evaluate(creep_closure_time,cell_pressure)
       endif
     else if (material_auxvar%fracture_bool) then
-      call MaterialFracturePorosityWIPP(material_auxvar,cell_pressure, &
+      call FracturePoroEvaluate(material_auxvar,cell_pressure, &
                                 gen_auxvar%effective_porosity,dummy)
     else if (soil_compressibility_index > 0) then
       call MaterialCompressSoil(material_auxvar,cell_pressure, &
