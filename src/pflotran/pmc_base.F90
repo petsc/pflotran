@@ -346,6 +346,9 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
                                periodic_tr_output_ts_imod) == 0) then
         transient_plot_flag = PETSC_TRUE
       endif
+      
+      if (this%option%steady_state) plot_flag = PETSC_TRUE
+      
       call this%Output(this%pms%realization_base,plot_flag, &
                        transient_plot_flag)
     endif

@@ -440,8 +440,8 @@ subroutine GeneralNumericalJacobianTest(xx,realization,B)
                    ierr);CHKERRQ(ierr)
   call MatSeqAIJSetPreallocation(A,27,PETSC_NULL_INTEGER,ierr);CHKERRQ(ierr)
   call MatSetFromOptions(A,ierr);CHKERRQ(ierr)
-  call MatSetOption(A,MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_FALSE,ierr); &
-       CHKERRQ(ierr)
+  call MatSetOption(A,MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_FALSE, &
+                    ierr);CHKERRQ(ierr)
 
   call VecZeroEntries(res,ierr);CHKERRQ(ierr)
   call GeneralResidual(PETSC_NULL_OBJECT,xx,res,realization,ierr)

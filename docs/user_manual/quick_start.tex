@@ -5,7 +5,7 @@ For those adverse to reading manuals the following is a quick start guide to get
 \begin{description}
 \item[Required Software Packages] ~
 \begin{itemize}
-\item Compilers (compatible with Fortran 2003: gcc 4.7.x, Intel 13.x.x)
+\item Compilers (compatible with Fortran 2003: gcc 4.7.x, Intel 14.x.x)
 
 For MacOSX 10.10.x the latest Fortran compiler binaries (gcc/gfortran 4.9 at the time of this writing) may be downloaded from the web site \href{http://hpc.sourceforge.net}{HPC for MacOSX}.
 
@@ -178,7 +178,7 @@ Make sure the correct compilers are loaded that are compatible with Fortran 2003
 \noindent
 Use a recent version of CMAKE: {\footnotesize\tt module load cmake/2.8.10.2}.
 
-\noindent Set the environmental variable for the BLAS/LAPACK libraries to use MKL:
+\noindent Set the environmental variable for the BLAS/LAPACK libraries to use MKL: e.g.
 
 \noindent
 {\footnotesize\tt setenv BLAS\_LAPACK\_LIB\_DIR /ncar/opt/intel/12.1.0.233/composer\_xe\_2013.1.117/mkl}

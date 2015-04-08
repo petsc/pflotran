@@ -874,7 +874,8 @@ subroutine SubsurfaceJumpStart(simulation)
 
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-vecload_block_size", & 
                            failure, ierr);CHKERRQ(ierr)
-                             
+
+#if 0
   if (option%steady_state) then
     option%io_buffer = 'Running in steady-state not yet supported in refactored code.'
     call printErrMsg(option)
@@ -885,7 +886,8 @@ subroutine SubsurfaceJumpStart(simulation)
     option%status = DONE
     return 
   endif
-  
+#endif  
+
   if (associated(flow_timestepper)) then
     master_timestepper => flow_timestepper
   else
