@@ -533,7 +533,7 @@ factory_subsurface.o : condition_control.o general.o global.o init_common.o \
                        pmc_third_party.o reactive_transport.o realization.o \
                        regression.o simulation_base.o simulation_subsurface.o \
                        solver.o strata.o string.o timestepper_BE.o \
-                       timestepper_base.o waypoint.o
+                       timestepper_base.o waypoint.o timestepper_steady.o
 factory_surface.o : checkpoint_surface.o condition_control.o init_common.o \
                     input_aux.o logging.o option.o output.o output_aux.o \
                     output_surface.o pflotran_constants.o simulation_base.o \

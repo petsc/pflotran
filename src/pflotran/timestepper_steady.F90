@@ -1,5 +1,6 @@
 module Timestepper_Steady_class
 
+  use Timestepper_BE_class
   use Timestepper_Base_class
   use Convergence_module
   use Solver_module
@@ -10,25 +11,26 @@ module Timestepper_Steady_class
 
 #include "finclude/petscsys.h"
  
-  type, public, extends(timestepper_base_type) :: timestepper_steady_type
+  type, public, extends(timestepper_BE_type) :: timestepper_steady_type
   
-    PetscInt :: num_newton_iterations ! number of Newton iterations in a time step
-    PetscInt :: num_linear_iterations ! number of linear solver iterations in a time step
-    PetscInt :: cumulative_newton_iterations       ! Total number of Newton iterations
-    PetscInt :: cumulative_linear_iterations     ! Total number of linear iterations
+ !   PetscInt :: num_newton_iterations ! number of Newton iterations in a time step
+ !   PetscInt :: num_linear_iterations ! number of linear solver iterations in a time step
+ !   PetscInt :: cumulative_newton_iterations       ! Total number of Newton iterations
+ !   PetscInt :: cumulative_linear_iterations     ! Total number of linear iterations
 
-    type(solver_type), pointer :: solver
-    type(convergence_context_type), pointer :: convergence_context
+ !   type(solver_type), pointer :: solver
+ !   type(convergence_context_type), pointer :: convergence_context
   
   contains
 
-    procedure, public :: Init => TimestepperSteadyInit
+ !   procedure, public :: Init => TimestepperSteadyInit
     procedure, public :: StepDT => TimestepperSteadyStepDT
     procedure, public :: UpdateDT => TimestepperSteadyUpdateDT
 
   end type timestepper_steady_type
 
-  public :: TimestepperSteadyCreate
+  public :: TimestepperSteadyCreate, &
+            TimestepperSteadyCreateFromBE
 
 contains
 
@@ -59,12 +61,94 @@ end function TimestepperSteadyCreate
 
 ! ************************************************************************** !
 
+subroutine TimestepperSteadyCreateFromBE(timestepper_BE)
+  ! 
+  ! This routine creates timestepper for steady solve
+  ! 
+  ! Author: Gautam Bisht, LBNL and Satish Karra, LANL
+  ! Date: 01/01/14, 04/07/2015
+  ! 
+
+  implicit none
+
+  class(timestepper_BE_type), pointer :: timestepper_BE
+
+  class(timestepper_steady_type), pointer :: stepper
+
+  allocate(stepper)
+  
+  stepper%name = timestepper_BE%name
+  stepper%steps = timestepper_BE%steps
+  stepper%num_constant_time_steps = timestepper_BE%num_constant_time_steps
+
+  stepper%max_time_step = timestepper_BE%max_time_step
+  stepper%max_time_step_cuts = timestepper_BE%max_time_step_cuts
+  stepper%constant_time_step_threshold = timestepper_BE%constant_time_step_threshold
+
+  stepper%cumulative_time_step_cuts = timestepper_BE%cumulative_time_step_cuts    
+  stepper%cumulative_solver_time = timestepper_BE%cumulative_solver_time
+
+  stepper%start_time = timestepper_BE%start_time
+  stepper%start_time_step = timestepper_BE%start_time_step
+  stepper%time_step_tolerance = timestepper_BE%time_step_tolerance
+  stepper%target_time = timestepper_BE%target_time
+  
+  stepper%prev_dt = timestepper_BE%prev_dt
+  stepper%dt = timestepper_BE%dt
+  stepper%dt_init = timestepper_BE%dt_init
+  stepper%dt_max = timestepper_BE%dt_max
+  stepper%cfl_limiter = timestepper_BE%cfl_limiter
+  stepper%cfl_limiter_ts = timestepper_BE%cfl_limiter_ts
+  
+  stepper%time_step_cut_flag = timestepper_BE%time_step_cut_flag
+  
+  stepper%init_to_steady_state = timestepper_BE%init_to_steady_state
+  stepper%steady_state_rel_tol = timestepper_BE%steady_state_rel_tol
+  stepper%run_as_steady_state = timestepper_BE%run_as_steady_state
+  
+  stepper%cur_waypoint => timestepper_BE%cur_waypoint
+  stepper%prev_waypoint => timestepper_BE%prev_waypoint
+  stepper%revert_dt = timestepper_BE%revert_dt
+  stepper%num_contig_revert_due_to_sync = timestepper_BE%num_contig_revert_due_to_sync
+      
+  stepper%num_newton_iterations = timestepper_BE%num_newton_iterations
+  stepper%num_linear_iterations = timestepper_BE%num_linear_iterations
+
+  stepper%cumulative_newton_iterations = timestepper_BE%cumulative_newton_iterations
+  stepper%cumulative_linear_iterations = timestepper_BE%cumulative_linear_iterations
+
+  stepper%iaccel = timestepper_BE%iaccel
+  stepper%ntfac = timestepper_BE%ntfac
+  allocate(stepper%tfac(13))
+  stepper%tfac(1) = timestepper_BE%tfac(1)  
+  stepper%tfac(2) = timestepper_BE%tfac(2)  
+  stepper%tfac(3) = timestepper_BE%tfac(3)  
+  stepper%tfac(4) = timestepper_BE%tfac(4)  
+  stepper%tfac(5) = timestepper_BE%tfac(5)  
+  stepper%tfac(6) = timestepper_BE%tfac(6)  
+  stepper%tfac(7) = timestepper_BE%tfac(7)  
+  stepper%tfac(8) = timestepper_BE%tfac(8)  
+  stepper%tfac(9) = timestepper_BE%tfac(9)  
+  stepper%tfac(10) = timestepper_BE%tfac(10)  
+  stepper%tfac(11) = timestepper_BE%tfac(11)  
+  stepper%tfac(12) = timestepper_BE%tfac(12)  
+  stepper%tfac(13) = timestepper_BE%tfac(13)  
+  
+  stepper%solver => timestepper_BE%solver
+  stepper%convergence_context => timestepper_BE%convergence_context
+
+  timestepper_BE => stepper
+
+end subroutine TimestepperSteadyCreateFromBE
+
+! ************************************************************************** !
+
 subroutine TimestepperSteadyInit(this)
   ! 
   ! This routine
   ! 
-  ! Author: Gautam Bisht, LBNL
-  ! Date: 01/01/14
+  ! Author: Gautam Bisht, LBNL and Satish Karra, LANL
+  ! Date: 01/01/14, 04/07/2015
   ! 
 
   implicit none
@@ -82,8 +166,8 @@ subroutine TimestepperSteadyUpdateDT(this,process_model)
   ! 
   ! Updates time step
   ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/20/13
+  ! Author: Gautam Bisht, LBNL and Satish Karra, LANL
+  ! Date: 01/01/14, 04/07/2015
   ! 
 
   use PM_Base_class
@@ -103,8 +187,8 @@ subroutine TimestepperSteadyStepDT(this, process_model, stop_flag)
   ! 
   ! This routine
   ! 
-  ! Author: Gautam Bisht, LBNL
-  ! Date: 01/01/14
+  ! Author: Gautam Bisht, LBNL and Satish Karra, LANL
+  ! Date: 01/01/14, 04/07/2015
   ! 
 
   use PM_Base_class
@@ -167,6 +251,7 @@ subroutine TimestepperSteadyStepDT(this, process_model, stop_flag)
                 snes_reason
     endif
     failure = PETSC_TRUE
+    stop_flag = TS_STOP_END_SIMULATION
     return
   endif
 
@@ -221,6 +306,9 @@ subroutine TimestepperSteadyStepDT(this, process_model, stop_flag)
   call process_model%FinalizeTimestep()
   
   if (option%print_screen_flag) print *, ""
+  ! check if the steady state option is selected in input deck
+  ! if yes then end simulation
+  if (option%steady_state) stop_flag = TS_STOP_END_SIMULATION
 
 end subroutine TimestepperSteadyStepDT
 
