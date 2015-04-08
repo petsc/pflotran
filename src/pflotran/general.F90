@@ -1153,7 +1153,8 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   use Option_module
   use Material_Aux_class
   use Connection_module
-    
+  use Fracture_module
+  
   implicit none
   
   type(general_auxvar_type) :: gen_auxvar_up, gen_auxvar_dn
@@ -1206,32 +1207,32 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   ! Fracture permeability change only available for structured grid (Heeho)
   if (material_auxvar_up%fracture_bool) then
     if (material_auxvar_up%fracture_flags(frac_change_perm_x_index) &
-        .and. dist(1) == 1) then
-      call MaterialFracturePermWIPP(material_auxvar_up,perm_up,perm_up, &
+        .and. dist(1) > 0.99999d0) then
+      call FracturePermEvaluate(material_auxvar_up,perm_up,perm_up, &
                                dummy_perm_up)
     else if (material_auxvar_up%fracture_flags(frac_change_perm_y_index) &
-        .and. dist(2) == 1) then
-      call MaterialFracturePermWIPP(material_auxvar_up,perm_up,perm_up, &
+        .and. dist(2) > 0.99999d0) then
+      call FracturePermEvaluate(material_auxvar_up,perm_up,perm_up, &
                                dummy_perm_up)
     else if (material_auxvar_up%fracture_flags(frac_change_perm_z_index) &
-        .and. dist(3) == 1) then
-      call MaterialFracturePermWIPP(material_auxvar_up,perm_up,perm_up, &
+        .and. dist(3) > 0.99999d0) then
+      call FracturePermEvaluate(material_auxvar_up,perm_up,perm_up, &
                                dummy_perm_up)
     endif
   endif
   
   if (material_auxvar_dn%fracture_bool) then
     if (material_auxvar_dn%fracture_flags(frac_change_perm_x_index) &
-        .and. dist(1) == 1) then
-      call MaterialFracturePermWIPP(material_auxvar_dn,perm_dn,perm_dn, &
+        .and. dist(1) > 0.99999d0) then
+      call FracturePermEvaluate(material_auxvar_dn,perm_dn,perm_dn, &
                                dummy_perm_dn)
     else if (material_auxvar_dn%fracture_flags(frac_change_perm_y_index) &
-        .and. dist(2) == 1) then
-      call MaterialFracturePermWIPP(material_auxvar_dn,perm_dn,perm_dn, &
+        .and. dist(2) > 0.99999d0) then
+      call FracturePermEvaluate(material_auxvar_dn,perm_dn,perm_dn, &
                                dummy_perm_dn)
     else if (material_auxvar_dn%fracture_flags(frac_change_perm_z_index) &
-        .and. dist(3) == 1) then
-      call MaterialFracturePermWIPP(material_auxvar_dn,perm_dn,perm_dn, &
+        .and. dist(3) > 0.99999d0) then
+      call FracturePermEvaluate(material_auxvar_dn,perm_dn,perm_dn, &
                                dummy_perm_dn)
     endif
   endif
@@ -1464,6 +1465,7 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
   ! 
   use Option_module                              
   use Material_Aux_class
+  use Fracture_module
   
   implicit none
   
@@ -1525,16 +1527,16 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
     ! Fracture permeability change only available for structured grid (Heeho)
   if (material_auxvar_dn%fracture_bool) then
     if (material_auxvar_dn%fracture_flags(frac_change_perm_x_index) & 
-	.and. dist(1) == 1) then
-      call MaterialFracturePermWIPP(material_auxvar_dn,perm_dn,perm_dn, &
+        .and. dist(1) > 0.99999d0) then
+      call FracturePermEvaluate(material_auxvar_dn,perm_dn,perm_dn, &
                                dummy_perm_dn)
     else if (material_auxvar_dn%fracture_flags(frac_change_perm_y_index) &
-        .and. dist(2) == 1) then
-      call MaterialFracturePermWIPP(material_auxvar_dn,perm_dn,perm_dn, &
+        .and. dist(2) > 0.99999d0) then
+      call FracturePermEvaluate(material_auxvar_dn,perm_dn,perm_dn, &
                                dummy_perm_dn)
     else if (material_auxvar_dn%fracture_flags(frac_change_perm_z_index) &
-        .and. dist(3) == 1) then
-      call MaterialFracturePermWIPP(material_auxvar_dn,perm_dn,perm_dn, &
+        .and. dist(3) > 0.99999d0) then
+      call FracturePermEvaluate(material_auxvar_dn,perm_dn,perm_dn, &
                                dummy_perm_dn)
     endif
   endif

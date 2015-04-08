@@ -91,9 +91,7 @@ module Material_Aux_class
             MaterialCompressSoilPtr, &
             MaterialCompressSoil, &
             MaterialCompressSoilBragflo, &
-            MaterialCompressSoilLeijnse, &
-            MaterialFracturePorosityWIPP, &
-            MaterialFracturePermWIPP
+            MaterialCompressSoilLeijnse
   
   public :: MaterialAuxCreate, &
             MaterialAuxVarInit, &
@@ -375,121 +373,6 @@ subroutine MaterialCompressSoilLeijnse(auxvar,pressure, &
   
 end subroutine MaterialCompressSoilLeijnse
 
-! ************************************************************************** !
-
-subroutine MaterialFracturePorosityWIPP(auxvar,pressure,compressed_porosity, &
-                                dcompressed_porosity_dp)
-  !
-  ! Calculates porosity induced by fracture BRAGFLO_6.02_UM Eq. (136)
-  ! 4.10 Pressure-Induced Fracture Treatment
-  !
-  !  Author: Heeho Park
-  !  Date: 03/12/15
-  !
-
-  use Option_module
-
-  implicit none
-  
-  type(option_type) :: option
-  
-  class(material_auxvar_type), intent(in) :: auxvar
-  PetscReal, intent(in) :: pressure
-  PetscReal, intent(out) :: compressed_porosity
-  PetscReal, intent(out) :: dcompressed_porosity_dp
-  
-  PetscReal :: Ci, Ca
-  PetscReal :: P0, Pa, Pi
-  PetscReal :: phia, phi0
-
-  Ci = auxvar%soil_properties(soil_compressibility_index)
-  P0 = auxvar%soil_properties(soil_reference_pressure_index)
-  Pa = auxvar%fracture_properties(frac_alt_pres_index)
-  Pi = auxvar%fracture_properties(frac_init_pres_index)
-  phia = auxvar%fracture_properties(frac_max_poro_index)
-  phi0 = auxvar%porosity_base
-  
-  if (.not.associated(MaterialCompressSoilPtr, &
-                      MaterialCompressSoilBRAGFLO)) then
-    option%io_buffer = 'WIPP Fracture Function must be used with ' // &
-      'BRAGFLO soil compressibility function.'
-    call printErrMsg(option)
-  endif
-  
-  if (pressure < Pi) then
-    call MaterialCompressSoil(auxvar,pressure, compressed_porosity, &
-                              dcompressed_porosity_dp)
-  else if (pressure > Pi .and. pressure < Pa) then
-    Ca = Ci*(1.d0 - 2.d0 * (Pa-P0)/(Pa-Pi)) + &
-      2.d0/(Pa-Pi)*log(phia/phi0)
-    compressed_porosity = phi0 * exp(Ci*(pressure-P0) + &
-      ((Ca-Ci)*(pressure-Pi)**2.d0)/(2.d0*(Pa-Pi)))
-    !mathematica solution
-    dcompressed_porosity_dp = exp(Ci*(pressure-P0) + &
-      ((Ca-Ci)*(pressure-Pi)**2.d0) / (2.d0*(Pa-Pi))) * &
-      phi0 * (Ci + ((Ca-Ci)*(pressure-Pi)) / (Pa-Pi))
-  endif
-
-end subroutine
-
-! ************************************************************************** !
-                                
-subroutine MaterialFracturePermWIPP(auxvar,permeability,altered_perm, &
-                                    daltered_perm_dp)
-  !
-  ! Calculates permeability induced by fracture BRAGFLO_6.02_UM Eq. (136)
-  ! 4.10 Pressure-Induced Fracture Treatment
-  !
-  !  Author: Heeho Park
-  !  Date: 03/12/15
-  !
-
-  use Option_module
-
-  implicit none
-  
-  type(option_type) :: option
-  
-  class(material_auxvar_type), intent(in) :: auxvar
-  PetscReal, intent(in) :: permeability
-  PetscReal, intent(out) :: altered_perm
-  PetscReal, intent(out) :: daltered_perm_dp
-
-  PetscReal :: phii, dphii_dp, n
-  PetscReal :: Pi
-  PetscReal :: phi
-
-  phi = auxvar%porosity
-  Pi = auxvar%fracture_properties(frac_init_pres_index)
-  n = auxvar%fracture_properties(frac_poro_exp_index)
-
-  if (.not.associated(MaterialCompressSoilPtr, &
-                      MaterialCompressSoilBRAGFLO)) then
-    option%io_buffer = 'WIPP Fracture Function must be used with ' // &
-      'BRAGFLO soil compressibility function.'
-    call printErrMsg(option)
-  endif
-  
-  call MaterialCompressSoil(auxvar, Pi, phii, dphii_dp)
-  
-  ! phi = altered porosity
-  ! phii = porosity at initiating pressure
-  altered_perm = permeability * (phi/phii)**n
-  !the derivative ignored at this time since it requires additional parameters
-  !and calculations. we'll will need cell_pressure as an input and other 
-  !parameters used in MaterialFracturePorosityWIPP
-  daltered_perm_dp = 1.d-10
-  ! Mathematica solution
-  !Ca = Ci*(1.d0 - 2.d0 * (Pa-P0)/(Pa-Pi)) + &
-  !   2.d0/(Pa-Pi)*log(phia/phi0)
-  !a = exp(Ci*(pressure-P0) + &
-  !    ((Ca-Ci)*(pressure-Pi)**2.d0) / (2.d0*(Pa-Pi))) * &
-  !    phi0 * (Ci + ((Ca-Ci)*(pressure-Pi)) / (Pa-Pi))
-  !b = exp(Ci*(pressure-P0) + &
-  !    ((Ca-Ci)*(pressure-Pi)**2.d0) / (2.d0*(Pa-Pi)))
-  !daltered_perm_dp = a * permeability * n * (b*phi0/phii)**(n-1)
-  
-end subroutine
 ! ************************************************************************** !
                                 
 subroutine MaterialCompressSoilBRAGFLO(auxvar,pressure, &
