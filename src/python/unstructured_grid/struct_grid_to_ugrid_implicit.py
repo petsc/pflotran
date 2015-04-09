@@ -80,4 +80,4 @@ for k in range(nzp1):
 h5dset = h5file.create_dataset('Domain/Vertices', data=vertex_array)
 
 h5file.close()
-print 'done'
+print('done')
