@@ -49,7 +49,21 @@ x = 0.
 y = 0.
 z = 0.
 for k in range(nzp1):
+  if len(dz) == 1:
+    z = k*dz[0] + z_origin
+  else:
+    if k == 0:
+      z = z_origin
+    else:
+      z += dz[k-1]
   for j in range(nyp1):
+    if len(dy) == 1:
+      y = j*dy[0] + y_origin
+    else:
+      if j == 0:
+        y = y_origin
+      else:
+        y += dy[j-1]
     for i in range(nxp1):
       vertex_id = i + j*nxp1 + k*nxp1*nyp1
       if len(dx) == 1:
@@ -59,20 +73,6 @@ for k in range(nzp1):
           x = x_origin
         else:
           x += dx[i-1]
-      if len(dy) == 1:
-        y = j*dy[0] + y_origin
-      else:
-        if j == 0:
-          y = y_origin
-        else:
-          y += dy[j-1]
-      if len(dz) == 1:
-        z = k*dz[0] + z_origin
-      else:
-        if k == 0:
-          z = z_origin
-        else:
-          z += dz[k-1]
       vertex_array[vertex_id,0] = x
       vertex_array[vertex_id,1] = y
       vertex_array[vertex_id,2] = z
