@@ -88,6 +88,7 @@ function ImmobileCreate()
 
   allocate(immobile)  
   nullify(immobile%list)
+  nullify(immobile%decay_rxn_list)
   immobile%nimmobile = 0
   immobile%print_all = PETSC_FALSE
   nullify(immobile%names)
