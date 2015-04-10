@@ -4578,8 +4578,6 @@ END
 
 \subsection{Keyword: TIMESTEPPER}
 
-\hfill\hyperlink{target_key}{\return}
-
 \noindent{\bf Description:} the keyword {\bf TIMESTEPPER} controls time stepping.
 
 \hfill
@@ -4587,7 +4585,7 @@ END
 
 \noindent{\bf Input:}
 \begin{deflist}{000}
-\item[TIMESTEPPER] [{\bf FLOW, TRAN, TRANSPORT}]
+\item[TIMESTEPPER] [{\bf FLOW, TRANSPORT}] Must include one of FLOW or TRANSPORT
 \begin{deflist}{000}
 \item[NUM\_STEPS\_AFTER\_CUT] \ {\tt <int>} 
 
@@ -4613,9 +4611,8 @@ The maximum CFL number allowed for transport. Enables Courant (CFL) number limit
 
 Array of floating point numbers of tfac array {\em (expert users only)}.
 
-\item[INITIALIZE\_TO\_STEADY\_STATE] ~
-
-Flag indicating that the simulation is to be run as steady state {\em (Warning: not robust)}.
+\item[INITIALIZE\_TO\_STEADY\_STATE] \ {\tt <float>} (steady state convergence relative tolerance).
+Flag indicating that the simulation is to be initialized as steady state {\em (Warning: not robust)}.
 
 \item[RUN\_AS\_STEADY\_STATE] ~
 
