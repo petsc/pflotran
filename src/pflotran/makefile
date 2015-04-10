@@ -25,6 +25,10 @@ ifdef uo2
   MYFLAGS += ${FC_DEFINE_FLAG}COMPUTE_INTERNAL_MASS_FLUX
 endif
 
+ifdef fmdm
+  MYFLAGS += ${FC_DEFINE_FLAG}MPM_MODEL
+endif
+
 ifdef glenn
 #  MYFLAGS += ${FC_DEFINE_FLAG}XINGYUAN_BC
 #  MYFLAGS += ${FC_DEFINE_FLAG}BROADCAST_DATASET
@@ -389,6 +393,9 @@ pflotran_rxn_obj = ${pflotran_src}pflotran_rxn.o
 
 pflotran : $(pflotran_obj)
 	${FLINKER} -o pflotran $(pflotran_obj) ${PETSC_LIB} ${LIBS} 
+
+libpflotran.a : $(pflotran_obj)
+	$(AR) $(ARFLAGS) $@ $(pflotran_obj)
 
 libpflotranchem.a : $(util_obj) $(shared_mode_aux_obj) $(chem_obj)
 	$(AR) $(ARFLAGS) $@ $(util_obj) $(shared_mode_aux_obj) $(chem_obj)
