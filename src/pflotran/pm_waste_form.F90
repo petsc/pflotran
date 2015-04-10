@@ -398,20 +398,23 @@ recursive subroutine PMWasteFormInitializeRun(this)
                     this%data_mediator%vec,ierr);CHKERRQ(ierr)
   call VecSetFromOptions(this%data_mediator%vec,ierr);CHKERRQ(ierr)
 
-  allocate(waste_form_cell_ids(num_waste_form_cells))
-  waste_form_cell_ids = 0
-  do i = 1, num_waste_form_cells
-    waste_form_cell_ids(i) = this%waste_form(i)%local_id
-  enddo                             ! zero-based indexing
-  waste_form_cell_ids(:) = waste_form_cell_ids(:) - 1
-  call this%realization%comm1%AONaturalToPetsc(waste_form_cell_ids)
-  waste_form_cell_ids(:) = waste_form_cell_ids(:) * this%option%ntrandof
-  waste_form_cell_ids(:) = waste_form_cell_ids(:)  + &
-                           data_mediator_species_id - 1
+  if (num_waste_form_cells > 0) then
+    allocate(waste_form_cell_ids(num_waste_form_cells))
+    waste_form_cell_ids = 0
+    do i = 1, num_waste_form_cells
+      waste_form_cell_ids(i) = this%waste_form(i)%local_id
+    enddo                             ! zero-based indexing
+    waste_form_cell_ids(:) = waste_form_cell_ids(:) - 1
+    waste_form_cell_ids(:) = waste_form_cell_ids(:) + &
+                             this%realization%patch%grid%global_offset
+    waste_form_cell_ids(:) = waste_form_cell_ids(:) * this%option%ntrandof
+    waste_form_cell_ids(:) = waste_form_cell_ids(:)  + &
+                             data_mediator_species_id - 1
+  endif
   call ISCreateGeneral(this%option%mycomm,num_waste_form_cells, &
                        waste_form_cell_ids,PETSC_COPY_VALUES,is, &
                        ierr);CHKERRQ(ierr)
-  deallocate(waste_form_cell_ids)
+  if (allocated(waste_form_cell_ids)) deallocate(waste_form_cell_ids)
   call VecScatterCreate(this%data_mediator%vec,PETSC_NULL_OBJECT, &
                         this%realization%field%tran_r,is, &
                         this%data_mediator%scatter_ctx,ierr);CHKERRQ(ierr)
