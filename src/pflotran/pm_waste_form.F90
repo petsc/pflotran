@@ -19,7 +19,8 @@ module PM_Waste_Form_class
     type(point3d_type) :: coordinate
     PetscReal :: temperature
     PetscReal, pointer :: concentration(:,:)
-    PetscReal, pointer :: flux(:,:)
+    PetscReal :: fuel_dissolution_rate
+    PetscReal :: specific_surface_area
   end type mpm_type
   
   type, public, extends(pm_base_type) :: pm_mpm_type
@@ -46,6 +47,7 @@ module PM_Waste_Form_class
     PetscInt :: num_concentrations
     character(len=MAXWORDLENGTH) :: data_mediator_species
     class(data_mediator_vec_type), pointer :: data_mediator
+    PetscBool :: initialized
   contains
 !geh: commented out subroutines can only be called externally
     procedure, public :: Init => PMWasteFormInit
@@ -54,8 +56,8 @@ module PM_Waste_Form_class
     procedure, public :: PMWasteFormSetRealization
     procedure, public :: InitializeRun => PMWasteFormInitializeRun
 !!    procedure, public :: FinalizeRun => PMWasteFormFinalizeRun
-!    procedure, public :: InitializeTimestep => PMWasteFormInitializeTimestep
-!    procedure, public :: FinalizeTimestep => PMWasteFormFinalizeTimestep
+    procedure, public :: InitializeTimestep => PMWasteFormInitializeTimestep
+    procedure, public :: FinalizeTimestep => PMWasteFormFinalizeTimestep
 !    procedure, public :: PreSolve => PMWasteFormPreSolve
     procedure, public :: Solve => PMWasteFormSolve
 !    procedure, public :: PostSolve => PMWasteFormPostSolve
@@ -122,7 +124,7 @@ function PMWasteFormCreate()
                                    PMWasteFormCreate%iCO3_2n, &
                                    PMWasteFormCreate%iH2, &
                                    PMWasteFormCreate%iFe_2p]
-  
+  PMWasteFormCreate%initialized = PETSC_FALSE
   call PMBaseCreate(PMWasteFormCreate)
 
 end function PMWasteFormCreate
@@ -296,9 +298,9 @@ subroutine PMWasteFormInit(this)
                                               
 !geh    this%waste_form(i)%concentration = UNINITIALIZED_DOUBLE
     this%waste_form(i)%concentration = 1.d-20
-    
-    allocate(this%waste_form(i)%flux(this%num_concentrations,1))
-    this%waste_form(i)%flux = UNINITIALIZED_DOUBLE
+    this%waste_form(i)%temperature = UNINITIALIZED_DOUBLE    
+    this%waste_form(i)%fuel_dissolution_rate = UNINITIALIZED_DOUBLE
+    this%waste_form(i)%specific_surface_area = 1.d0
     this%waste_form(i)%local_id = cell_ids(2,i)
     this%waste_form(i)%coordinate%x = this%coordinate(cell_ids(1,i))%x
     this%waste_form(i)%coordinate%y = this%coordinate(cell_ids(1,i))%y
@@ -433,6 +435,9 @@ subroutine PMWasteFormInitializeTimestep(this)
   
   class(pm_mpm_type) :: this
 
+  if (this%option%print_screen_flag) then
+    write(*,'(/,2("=")," FUEL MATRIX DEGRADATION MODEL ",47("="))')
+  endif
 
 end subroutine PMWasteFormInitializeTimestep
 
@@ -496,11 +501,13 @@ subroutine PMWasteFormSolve(this,time,ierr)
 #include "finclude/petscvec.h90"
 
   interface
-    subroutine AMP_step ( sTme, conc, initialRun, flux, status )
+    subroutine AMP_step ( sTme, temperature_C, conc, initialRun, &
+                          fuelDisRate, status )
       real ( kind = 8), intent( in )  :: sTme   
+      real ( kind = 8), intent( in )  :: temperature_C   
       real ( kind = 8), intent( inout ),  dimension (:,:) :: conc
       logical ( kind = 4), intent( in ) :: initialRun
-      real ( kind = 8), intent(out), dimension (:,:) :: flux
+      real ( kind = 8), intent(out) :: fuelDisRate
       integer ( kind = 4), intent(out) :: status
     end subroutine
   end interface  
@@ -510,24 +517,35 @@ subroutine PMWasteFormSolve(this,time,ierr)
   PetscErrorCode :: ierr
   
   PetscReal, pointer :: vec_p(:)
-  PetscInt :: i
+  PetscInt :: i                        ! g(U)/m^2/yr -> mol(U)/m^2/sec
+  PetscReal, parameter :: conversion = 1.d0/238.d0/(365.d0*24.d0*3600.d0)
   
   integer ( kind = 4) :: status
-  logical ( kind = 4) :: initialRun = PETSC_FALSE
+  logical ( kind = 4) :: initialRun
+  
+  if (this%initialized) then
+    initialRun = PETSC_FALSE
+  else
+    initialRun = PETSC_TRUE
+    this%initialized = PETSC_TRUE
+  endif
 
   ierr = 0
   call PMWasteFormPreSolve(this)
   call VecGetArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
   do i = 1, size(this%waste_form)
 #ifdef MPM_MODEL  
-    call AMP_step(time, this%waste_form(i)%concentration, initialRun, &
-                  this%waste_form(i)%flux, status)
+    call AMP_step(time, this%waste_form(i)%temperature, &
+                  this%waste_form(i)%concentration, initialRun, &
+                  this%waste_form(i)%fuel_dissolution_rate, status)
 #endif
     if (status == 0) then
       ierr = 1
       exit
     endif
-    vec_p(i) = 1.d-10
+    vec_p(i) = this%waste_form(i)%fuel_dissolution_rate * & ! g/m^2/yr
+               this%waste_form(i)%specific_surface_area * &
+               conversion
   enddo
   call VecRestoreArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
   
@@ -608,7 +626,7 @@ subroutine PMWasteFormFinalizeTimestep(this)
   implicit none
   
   class(pm_mpm_type) :: this
-
+  
 end subroutine PMWasteFormFinalizeTimestep
 
 ! ************************************************************************** !
@@ -719,7 +737,6 @@ subroutine PMWasteFormDestroy(this)
   
   do i = 1, size(this%waste_form)
     call DeallocateArray(this%waste_form(i)%concentration)
-    call DeallocateArray(this%waste_form(i)%flux)
   enddo
   call DeallocateArray(this%mapping_mpm_to_pflotran)
   call DeallocateArray(this%mapping_mpm)

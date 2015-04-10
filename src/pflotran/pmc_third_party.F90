@@ -102,7 +102,9 @@ recursive subroutine PMCThirdPartyRunToTime(this,sync_time,stop_flag)
   
   local_stop_flag = TS_CONTINUE
 
+  call this%pms%InitializeTimestep()
   call this%pms%Solve(sync_time,ierr)
+  call this%pms%FinalizeTimestep()
   if (ierr /= 0) local_stop_flag = TS_STOP_FAILURE
 
   ! Run neighboring process model couplers
