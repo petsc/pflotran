@@ -1224,6 +1224,7 @@ subroutine InitSubsurfaceReadInput(simulation)
   use Simulation_Subsurface_class
   use PMC_Subsurface_class
   use Timestepper_BE_class
+  use Timestepper_Steady_class
   
 #ifdef SOLID_SOLUTION
   use Reaction_Solid_Solution_module, only : SolidSolutionReadFromInputFile
@@ -2443,6 +2444,7 @@ subroutine InitSubsurfaceReadInput(simulation)
   
   if (associated(simulation%flow_process_model_coupler)) then
     flow_timestepper%name = 'FLOW'
+    if (option%steady_state) call TimestepperSteadyCreateFromBE(flow_timestepper)
     simulation%flow_process_model_coupler%timestepper => flow_timestepper
   else
     call flow_timestepper%Destroy()
@@ -2451,6 +2453,7 @@ subroutine InitSubsurfaceReadInput(simulation)
   endif
   if (associated(simulation%rt_process_model_coupler)) then
     tran_timestepper%name = 'TRAN'
+    if (option%steady_state) call TimestepperSteadyCreateFromBE(tran_timestepper)    
     simulation%rt_process_model_coupler%timestepper => tran_timestepper
   else
     call tran_timestepper%Destroy()

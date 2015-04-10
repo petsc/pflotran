@@ -836,11 +836,11 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
       call UGridDMCreateJacobian(discretization%grid%unstructured_grid, &
                                  dm_ptr%ugdm,mat_type,Jacobian,option)
   end select
-  call MatSetOption(Jacobian,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE,ierr); &
-                    CHKERRQ(ierr)
+  call MatSetOption(Jacobian,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE, &
+                    ierr);CHKERRQ(ierr)
   call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr);CHKERRQ(ierr)
-  call MatSetOption(Jacobian,MAT_NO_OFF_PROC_ZERO_ROWS,PETSC_TRUE,ierr); &
-                    CHKERRQ(ierr)
+  call MatSetOption(Jacobian,MAT_NO_OFF_PROC_ZERO_ROWS,PETSC_TRUE, &
+                    ierr);CHKERRQ(ierr)
 
 end subroutine DiscretizationCreateJacobian
 
