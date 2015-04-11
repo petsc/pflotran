@@ -297,6 +297,8 @@ FLOW_CONDITION injection_well
   RATE 1 m^3/hr
 END
 
+INITIALIZE_FLOW_FROM_FILE 543_initial_pressure.h5
+
 #=========================== condition couplers ===============================
 # initial condition
 INITIAL_CONDITION
