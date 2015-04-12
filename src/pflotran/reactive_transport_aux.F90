@@ -60,7 +60,7 @@ module Reactive_Transport_Aux_module
     type(colloid_auxvar_type), pointer :: colloid
     
     ! immobile species such as biomass
-    PetscReal, pointer :: immobile(:)
+    PetscReal, pointer :: immobile(:) ! mol/m^3 bulk
     
   end type reactive_transport_auxvar_type
 

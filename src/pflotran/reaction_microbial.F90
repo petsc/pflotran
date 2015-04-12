@@ -384,7 +384,7 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
 !      option%io_buffer = "Shouldn't biomass contribution be negative"
 !      call printErrMsg(option)
       do i = 1, ncomp
-        ! units = (mol/sec)*(kg water/mol) = kg water/sec
+        ! units = (mol/sec)*(m^3/mol) = m^3/sec
         Jac(icomp,immobile_id) = Jac(icomp,immobile_id) + &
                             microbial%stoich(i,irxn)*dR_dbiomass
       enddo

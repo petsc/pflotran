@@ -11,7 +11,9 @@ module Reaction_Immobile_module
 #include "finclude/petscsys.h"
 
   public :: ImmobileRead, &
-            ImmobileProcessConstraint
+            ImmobileDecayRxnRead, &
+            ImmobileProcessConstraint, &
+            RImmobileDecay
 
 contains
 
@@ -63,6 +65,74 @@ subroutine ImmobileRead(immobile,input,option)
   enddo
 
 end subroutine ImmobileRead
+
+! ************************************************************************** !
+
+subroutine ImmobileDecayRxnRead(immobile,input,option)
+  ! 
+  ! Reads chemical species
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/16/12
+  ! 
+
+  use Option_module
+  use String_module
+  use Input_Aux_module
+  use Utility_module
+  
+  implicit none
+  
+  type(immobile_type) :: immobile
+  type(input_type) :: input
+  type(option_type) :: option
+  
+  character(len=MAXWORDLENGTH) :: word
+  type(immobile_decay_rxn_type), pointer :: immobile_decay_rxn
+  type(immobile_decay_rxn_type), pointer :: cur_immobile_decay_rxn
+  
+  immobile%ndecay_rxn = immobile%ndecay_rxn + 1
+        
+  immobile_decay_rxn => ImmobileDecayRxnCreate()
+  do 
+    call InputReadPflotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit
+
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword', &
+                       'CHEMISTRY,IMMOBILE_DECAY_REACTION')
+    call StringToUpper(word)   
+
+    select case(trim(word))
+      case('SPECIES_NAME')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'species name', &
+                           'CHEMISTRY,IMMOBILE_DECAY_REACTION')
+        immobile_decay_rxn%species_name = word
+      case('RATE_CONSTANT')
+        call InputReadDouble(input,option,immobile_decay_rxn%rate_constant)  
+        call InputDefaultMsg(input,option, &
+                             'CHEMISTRY,IMMOBILE_DECAY_REACTION,RATE_CONSTANT') 
+    end select
+  enddo
+  if (.not.associated(immobile%decay_rxn_list)) then
+    immobile%decay_rxn_list => immobile_decay_rxn
+    immobile_decay_rxn%id = 1
+  else
+    cur_immobile_decay_rxn => immobile%decay_rxn_list
+    do
+      if (.not.associated(cur_immobile_decay_rxn%next)) then
+        cur_immobile_decay_rxn%next => immobile_decay_rxn
+        immobile_decay_rxn%id = cur_immobile_decay_rxn%id + 1
+        exit
+      endif
+      cur_immobile_decay_rxn => cur_immobile_decay_rxn%next
+    enddo
+  endif
+  nullify(immobile_decay_rxn)
+
+end subroutine ImmobileDecayRxnRead
 
 ! ************************************************************************** !
 
@@ -132,5 +202,60 @@ subroutine ImmobileProcessConstraint(immobile,constraint_name, &
 
 end subroutine ImmobileProcessConstraint
 
+! ************************************************************************** !
+
+subroutine RImmobileDecay(Res,Jac,compute_derivative,rt_auxvar, &
+                          global_auxvar,material_auxvar,reaction, &
+                          option)
+  ! 
+  ! Computes decay of biomass species 
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/31/15
+  ! 
+  use Option_module
+  use Reaction_Aux_module
+  use Reactive_Transport_Aux_module
+  use Global_Aux_module
+  use Material_Aux_class
+  
+  implicit none
+  
+  type(option_type) :: option
+  type(reaction_type) :: reaction
+  PetscBool :: compute_derivative
+  PetscReal :: Res(reaction%ncomp)
+  PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
+  
+  PetscInt :: icomp, irxn, immobile_id
+  PetscReal :: rate_constant, rate, volume
+
+  PetscInt, parameter :: iphase = 1
+
+  volume = material_auxvar%volume
+
+  do irxn = 1, reaction%immobile%ndecay_rxn ! for each reaction
+    
+    
+    ! we assume only one chemical component involved in decay reaction
+    icomp = reaction%immobile%decayspecid(irxn)
+    ! units = 1/sec
+    rate_constant = reaction%immobile%decay_rateconstant(irxn)
+    rate = rate_constant*rt_auxvar%immobile(icomp)
+    immobile_id = reaction%offset_immobile + icomp
+    
+    ! units = mol/sec              ! implicit stoichiometry of -1.d0 (- -1.d0*)
+    Res(immobile_id) = Res(immobile_id) + rate
+
+    if (.not. compute_derivative) cycle
+    ! units = (mol/sec)*(m^3/mol) = m^3/sec
+    Jac(immobile_id,immobile_id) = Jac(immobile_id,immobile_id) + rate_constant
+    
+  enddo  ! loop over reactions
+    
+end subroutine RImmobileDecay
 
 end module Reaction_Immobile_module
