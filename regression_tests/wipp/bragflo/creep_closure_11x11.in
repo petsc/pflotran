@@ -21,7 +21,7 @@ END
 
 #=========================== flow mode ========================================
 
-CREEP_CLOSURE
+WIPP-CREEP_CLOSURE
   FILENAME pflotran_closure_11x11.dat
   MATERIAL waste_package
 /

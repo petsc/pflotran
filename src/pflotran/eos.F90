@@ -42,6 +42,12 @@ subroutine EOSRead(input,option)
   character(len=MAXWORDLENGTH) :: keyword, word
   character(len=MAXSTRINGLENGTH) :: string
   PetscReal :: tempreal, tempreal2, tempreal3
+  PetscReal :: rks_tc = UNINITIALIZED_DOUBLE
+  PetscReal :: rks_pc = UNINITIALIZED_DOUBLE
+  PetscReal :: rks_acen = UNINITIALIZED_DOUBLE
+  PetscReal :: rks_omegaa = UNINITIALIZED_DOUBLE
+  PetscReal :: rks_omegab = UNINITIALIZED_DOUBLE
+  PetscBool :: rks_hydrogen = PETSC_TRUE
   PetscErrorCode :: ierr
 
   input%ierr = 0
@@ -176,7 +182,54 @@ subroutine EOSRead(input,option)
                                    'EOS,GAS,DENSITY,CONSTANT')
                 call EOSGasSetDensityConstant(tempreal)
               case('RKS')
-                call EOSGasSetDensityRKS()
+                ! if nothing is entered, it will calculate as hydrogen gas
+                  do
+                    call InputReadPflotranString(input,option)
+                    call InputReadStringErrorMsg(input,option, &
+                                                 'EOS GAS,RKS')
+                    if (InputCheckExit(input,option)) exit
+                    if (InputError(input)) exit
+                    call InputReadWord(input,option,word,PETSC_TRUE)
+                    call InputErrorMsg(input,option,'keyword', &
+                                       'EOS GAS, RKS')
+                    select case(trim(word))
+                      case('HYDROGEN')
+                        rks_hydrogen = PETSC_TRUE
+                      case('NON-HYDROGEN')
+                        rks_hydrogen = PETSC_FALSE
+                      case('CRITICAL_TEMPERATURE','TC')
+                        call InputReadDouble(input,option,rks_tc)
+                        call InputErrorMsg(input,option, &
+                                            'critical temperature for RKS', &
+                                            'EOS GAS,RKS')
+                      case('CRITICAL_PRESSURE','PC')
+                        call InputReadDouble(input,option,rks_pc)
+                        call InputErrorMsg(input,option, &
+                                            'critical pressure for RKS', &
+                                            'EOS GAS,RKS')
+                      case('ACENTRIC,ACENTRIC_FACTOR','ACEN','AC')
+                        ! acentric factor is only used for non-hydrogen gas
+                        call InputReadDouble(input,option,rks_acen)
+                        call InputErrorMsg(input,option, &
+                                            'accentric factor for RKS', &
+                                            'EOS GAS,RKS')
+                      case('OMEGAA','A')
+                        call InputReadDouble(input,option,rks_omegaa)
+                        call InputErrorMsg(input,option, &
+                                        'omega_a factor for RKS', &
+                                            'EOS GAS,RKS')
+                      case('OMEGAB','B')
+                        call InputReadDouble(input,option,rks_omegab)
+                        call InputErrorMsg(input,option, &
+                                        'omega_b factor for RKS', &
+                                            'EOS GAS,RKS')
+                      case default
+                        call InputKeywordUnrecognized(word, &
+                                'EOS GAS,RKS',option)
+                    end select
+                enddo
+                call EOSGasSetDensityRKS(rks_hydrogen,rks_tc,rks_pc,rks_acen, &
+                                         rks_omegaa,rks_omegab)
               case('PR_METHANE')
                 call EOSGasSetDensityPRMethane()
               case('IDEAL','DEFAULT')
@@ -237,7 +290,13 @@ subroutine EOSRead(input,option)
       enddo
       string = ''
       call EOSGasVerify(ierr,string)
-      if (ierr /= 0) then
+      if (ierr == 5) then
+        option%io_buffer = 'set to default value for RKS hydrogen'
+        if (len_trim(string) > 1) then
+          option%io_buffer =  trim(string) // ': ' // trim(option%io_buffer)
+        endif
+        call printMsg(option)
+      else if (ierr /= 0) then
         option%io_buffer = 'Error in Gas EOS'    
         if (len_trim(string) > 1) then
           option%io_buffer = trim(option%io_buffer) // ': ' // trim(string)

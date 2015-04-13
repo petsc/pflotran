@@ -18,12 +18,21 @@ module Material_Aux_class
   PetscInt, parameter, public :: POROSITY_CURRENT = 0
   PetscInt, parameter, public :: POROSITY_MINERAL = 1
   
+  PetscInt, parameter, public :: frac_init_pres_index = 1
+  PetscInt, parameter, public :: frac_alt_pres_index = 2
+  PetscInt, parameter, public :: frac_max_poro_index = 3
+  PetscInt, parameter, public :: frac_poro_exp_index = 4
+  PetscInt, parameter, public :: frac_change_perm_x_index = 1
+  PetscInt, parameter, public :: frac_change_perm_y_index = 2
+  PetscInt, parameter, public :: frac_change_perm_z_index = 3
+  PetscInt, parameter, public :: frac_const_pres_index = 4
+  
 !  PetscInt, public :: soil_thermal_conductivity_index
 !  PetscInt, public :: soil_heat_capacity_index
   PetscInt, public :: soil_compressibility_index
   PetscInt, public :: soil_reference_pressure_index
   PetscInt, public :: max_material_index
- 
+  
   type, public :: material_auxvar_type
     PetscInt :: id
     PetscReal :: volume
@@ -35,6 +44,9 @@ module Material_Aux_class
     PetscReal, pointer :: permeability(:)
     PetscReal, pointer :: sat_func_prop(:)
     PetscReal, pointer :: soil_properties(:) ! den, therm. cond., heat cap.
+    PetscReal, pointer :: fracture_properties(:)
+    PetscBool, pointer :: fracture_flags(:)
+    PetscBool :: fracture_bool
 !    procedure(SaturationFunction), nopass, pointer :: SaturationFunction
   contains
     procedure, public :: PermeabilityTensorToScalar => &
@@ -154,6 +166,15 @@ subroutine MaterialAuxVarInit(auxvar,option)
     nullify(auxvar%permeability)
   endif
   nullify(auxvar%sat_func_prop)
+  if (auxvar%fracture_bool) then
+    allocate(auxvar%fracture_properties(4))
+    allocate(auxvar%fracture_flags(4))
+    auxvar%fracture_properties = 0.d0
+    auxvar%fracture_flags = PETSC_FALSE
+  else
+    nullify(auxvar%fracture_properties)
+    nullify(auxvar%fracture_flags)
+  endif
   if (max_material_index > 0) then
     allocate(auxvar%soil_properties(max_material_index))
     ! initialize these to zero for now
@@ -353,7 +374,7 @@ subroutine MaterialCompressSoilLeijnse(auxvar,pressure, &
 end subroutine MaterialCompressSoilLeijnse
 
 ! ************************************************************************** !
-
+                                
 subroutine MaterialCompressSoilBRAGFLO(auxvar,pressure, &
                                        compressed_porosity, &
                                        dcompressed_porosity_dp)

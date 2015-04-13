@@ -586,7 +586,8 @@ general.o : connection.o coupler.o debug.o discretization.o eos_gas.o \
             material.o material_aux.o option.o output_aux.o output_tecplot.o \
             patch.o pflotran_constants.o realization.o saturation_function.o \
             srcsink_sandbox.o srcsink_sandbox_base.o \
-            srcsink_sandbox_wipp_gas.o srcsink_sandbox_wipp_well.o variables.o
+            srcsink_sandbox_wipp_gas.o srcsink_sandbox_wipp_well.o variables.o \
+            wipp.o
 general_aux.o : characteristic_curves.o eos_gas.o eos_water.o global_aux.o \
                 material_aux.o option.o pflotran_constants.o string.o \
                 utility.o wipp.o
@@ -730,7 +731,7 @@ logging.o : pflotran_constants.o
 lookup_table.o : pflotran_constants.o utility.o
 material.o : characteristic_curves.o communicator_base.o dataset_common_hdf5.o \
              field.o global_aux.o input_aux.o material_aux.o option.o \
-             pflotran_constants.o string.o variables.o
+             pflotran_constants.o string.o variables.o wipp.o
 material_aux.o : option.o pflotran_constants.o utility.o variables.o
 matrix_block_aux.o : option.o pflotran_constants.o utility.o
 matrix_buffer.o : grid.o grid_structured.o pflotran_constants.o
@@ -1174,8 +1175,8 @@ units.o : option.o pflotran_constants.o
 utility.o : input_aux.o option.o pflotran_constants.o string.o
 variables.o :
 waypoint.o : option.o output_aux.o pflotran_constants.o utility.o
-wipp.o : input_aux.o lookup_table.o option.o pflotran_constants.o string.o \
-         units.o utility.o
+wipp.o : input_aux.o lookup_table.o material_aux.o option.o \
+         pflotran_constants.o string.o units.o utility.o
 wrapper_hydrogeophysics.o : e4d_run.o e4d_setup.o e4d_vars.o option.o \
                             pflotran_constants.o
 
