@@ -422,7 +422,11 @@ subroutine TimestepperBaseSetTargetTime(this,sync_time,option, &
   do ! we cycle just in case the next waypoint is beyond the target_time
     if (equal_to_or_exceeds_sync_time .or. &
         (equal_to_or_exceeds_waypoint .and. force_to_match_waypoint)) then
-      max_time = min(sync_time,cur_waypoint%time)
+      if (force_to_match_waypoint) then
+        max_time = min(sync_time,cur_waypoint%time)
+      else
+        max_time = sync_time
+      endif
       ! decrement by time step size
       target_time = target_time - dt
       ! set new time step size based on max time
