@@ -46,7 +46,7 @@ module Material_Aux_class
     PetscReal, pointer :: soil_properties(:) ! den, therm. cond., heat cap.
     PetscReal, pointer :: fracture_properties(:)
     PetscBool, pointer :: fracture_flags(:)
-    PetscBool :: fracture_bool
+    PetscBool :: fracture_bool = PETSC_FALSE
 !    procedure(SaturationFunction), nopass, pointer :: SaturationFunction
   contains
     procedure, public :: PermeabilityTensorToScalar => &
@@ -166,7 +166,8 @@ subroutine MaterialAuxVarInit(auxvar,option)
     nullify(auxvar%permeability)
   endif
   nullify(auxvar%sat_func_prop)
-  if (auxvar%fracture_bool) then
+  if (max_material_index > 0) then
+  ! fracture properties must be used with BRAGFLO soil properties    
     allocate(auxvar%fracture_properties(4))
     allocate(auxvar%fracture_flags(4))
     auxvar%fracture_properties = 0.d0
