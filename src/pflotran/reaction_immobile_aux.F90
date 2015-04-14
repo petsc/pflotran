@@ -27,16 +27,30 @@ module Reaction_Immobile_Aux_module
     PetscBool, pointer :: external_dataset(:)
   end type immobile_constraint_type
   
+  type, public :: immobile_decay_rxn_type
+    PetscInt :: id
+    character(len=MAXWORDLENGTH) :: species_name
+    PetscReal :: rate_constant
+    PetscBool :: print_me
+    type(immobile_decay_rxn_type), pointer :: next
+  end type immobile_decay_rxn_type
+  
   type, public :: immobile_type
 
     PetscInt :: nimmobile
     PetscBool :: print_all
     
     type(immobile_species_type), pointer :: list
+    type(immobile_decay_rxn_type), pointer :: decay_rxn_list
 
     ! immobile species
     character(len=MAXWORDLENGTH), pointer :: names(:)
     PetscBool, pointer :: print_me(:)    
+    
+    ! decay rxn
+    PetscInt :: ndecay_rxn
+    PetscInt, pointer :: decayspecid(:)
+    PetscReal, pointer :: decay_rateconstant(:)    
 
   end type immobile_type
   
@@ -48,6 +62,7 @@ module Reaction_Immobile_Aux_module
   public :: ImmobileCreate, &
             ImmobileSpeciesCreate, &
             ImmobileConstraintCreate, &
+            ImmobileDecayRxnCreate, &
             ImmobileGetCount, &
             ImmobileConstraintDestroy, &
             GetImmobileSpeciesIDFromName, &
@@ -73,10 +88,15 @@ function ImmobileCreate()
 
   allocate(immobile)  
   nullify(immobile%list)
+  nullify(immobile%decay_rxn_list)
   immobile%nimmobile = 0
   immobile%print_all = PETSC_FALSE
   nullify(immobile%names)
   nullify(immobile%print_me)
+  
+  immobile%ndecay_rxn = 0
+  nullify(immobile%decayspecid)
+  nullify(immobile%decay_rateconstant)
 
   ImmobileCreate => immobile
   
@@ -142,6 +162,33 @@ function ImmobileConstraintCreate(immobile,option)
   ImmobileConstraintCreate => constraint
 
 end function ImmobileConstraintCreate
+
+! ************************************************************************** !
+
+function ImmobileDecayRxnCreate()
+  ! 
+  ! Allocate and initialize a immobile decay reaction
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/31/15
+  ! 
+
+  implicit none
+    
+  type(immobile_decay_rxn_type), pointer :: ImmobileDecayRxnCreate
+
+  type(immobile_decay_rxn_type), pointer :: rxn
+  
+  allocate(rxn)
+  rxn%id = 0
+  rxn%species_name = ''
+  rxn%rate_constant = 0.d0
+  rxn%print_me = PETSC_FALSE
+  nullify(rxn%next)
+  
+  ImmobileDecayRxnCreate => rxn
+  
+end function ImmobileDecayRxnCreate
 
 ! ************************************************************************** !
 
@@ -277,6 +324,29 @@ end subroutine ImmobileSpeciesDestroy
 
 ! ************************************************************************** !
 
+recursive subroutine ImmobileDecayRxnDestroy(rxn)
+  ! 
+  ! Deallocates a general reaction
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/31/15
+  ! 
+
+  implicit none
+    
+  type(immobile_decay_rxn_type), pointer :: rxn
+
+  if (.not.associated(rxn)) return
+  
+  call ImmobileDecayRxnDestroy(rxn%next)
+  nullify(rxn%next)
+  deallocate(rxn)  
+  nullify(rxn)
+
+end subroutine ImmobileDecayRxnDestroy
+
+! ************************************************************************** !
+
 subroutine ImmobileConstraintDestroy(constraint)
   ! 
   ! Destroys a colloid constraint object
@@ -336,6 +406,10 @@ subroutine ImmobileDestroy(immobile)
   
   call DeallocateArray(immobile%names)
   call DeallocateArray(immobile%print_me)
+  
+  call ImmobileDecayRxnDestroy(immobile%decay_rxn_list)
+  call DeallocateArray(immobile%decayspecid)
+  call DeallocateArray(immobile%decay_rateconstant)
   
   deallocate(immobile)
   nullify(immobile)

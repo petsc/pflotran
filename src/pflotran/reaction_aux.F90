@@ -2054,7 +2054,7 @@ subroutine ReactionDestroy(reaction,option)
   enddo    
   nullify(reaction%ion_exchange_rxn_list)
 
-  ! general reactions
+  ! radioactive decay reactions
   radioactive_decay_rxn => reaction%radioactive_decay_rxn_list
   do
     if (.not.associated(radioactive_decay_rxn)) exit

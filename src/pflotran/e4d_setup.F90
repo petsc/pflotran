@@ -1038,17 +1038,29 @@ contains
     if (allocated(pf_saturation)) then
       deallocate(pf_saturation)
     endif
+    if (allocated(pf_saturation_0)) then
+      deallocate(pf_saturation_0)
+    endif
     if (allocated(sigma)) then
       deallocate(sigma)
     endif
     if (allocated(dpred)) then
       deallocate(dpred)
     endif
+    if (allocated(dobs)) then
+      deallocate(dobs)
+    endif
+    if (allocated(sd)) then
+      deallocate(sd)
+    endif
     if (allocated(my_dvals)) then
       deallocate(my_dvals)
     endif
     if (allocated(map)) then
       deallocate(map)
+    endif
+    if (allocated(base_sigma)) then
+      deallocate(base_sigma)
     endif
     if (allocated(d_nnz)) then
       deallocate(d_nnz)

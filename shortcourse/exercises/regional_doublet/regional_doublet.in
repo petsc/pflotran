@@ -1,9 +1,19 @@
 #Description: 3D groundwater flow and solute transport
 
-#=========================== flow mode ========================================
-MODE RICHARDS
-#CHECKPOINT 1000000
-#RESTART restart.chk
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
 
 #=========================== chemistry ========================================
 CHEMISTRY
@@ -14,7 +24,7 @@ CHEMISTRY
 END
 
 #=========================== solver options ===================================
-TIMESTEPPER
+TIMESTEPPER FLOW
 END
 
 NEWTON_SOLVER FLOW
@@ -50,7 +60,7 @@ MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.25d0
   TORTUOSITY 0.5d0
-  SATURATION_FUNCTION sf1
+  CHARACTERISTIC_CURVES sf1
   PERMEABILITY
     PERM_X 1.d-10
     PERM_Y 1.d-10
@@ -62,7 +72,7 @@ MATERIAL_PROPERTY soil2
   ID 2
   POROSITY 0.35d0
   TORTUOSITY 0.5d0
-  SATURATION_FUNCTION sf1
+  CHARACTERISTIC_CURVES sf1
   PERMEABILITY
     PERM_X 2.d-10
     PERM_Y 2.d-10
@@ -74,7 +84,7 @@ MATERIAL_PROPERTY soil3
   ID 3
   POROSITY 0.25d0
   TORTUOSITY 0.5d0
-  SATURATION_FUNCTION sf1
+  CHARACTERISTIC_CURVES sf1
   PERMEABILITY
     PERM_X 5.d-11
     PERM_Y 5.d-11
@@ -86,7 +96,7 @@ MATERIAL_PROPERTY soil4
   ID 4
   POROSITY 0.2d0
   TORTUOSITY 0.5d0
-  SATURATION_FUNCTION sf1
+  CHARACTERISTIC_CURVES sf1
   PERMEABILITY
     PERM_X 1.d-10
     PERM_Y 1.d-10
@@ -95,13 +105,17 @@ MATERIAL_PROPERTY soil4
 END
 
 #=========================== saturation functions =============================
-SATURATION_FUNCTION sf1
-  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-  RESIDUAL_SATURATION 0.1d0
-  LAMBDA 0.5d0
-  ALPHA 1.d-4
-  MAX_CAPILLARY_PRESSURE 1.d8
-
+CHARACTERISTIC_CURVES sf1
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    ALPHA  1.d-4
+    M 0.5d0
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+    MAX_CAPILLARY_PRESSURE 1.d8
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.5d0
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+  /
 END
 
 #=========================== output options ===================================
@@ -405,3 +419,4 @@ STRATA
   MATERIAL soil4
 END
 
+END_SUBSURFACE

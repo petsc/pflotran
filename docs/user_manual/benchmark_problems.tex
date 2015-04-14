@@ -232,7 +232,7 @@ MRG & 2.8 & 800 & 0.5 & 2 & 0.1643 & 0.0609 & 6.340e-5 & 0.3922  &2.004e-13\\
 
 \subsubsection{Simulation Results}
 
-The calculations are carried out for an isothermal system using Richards equation. First, the steady-state saturation profile is obtained without the tank leak present. Then using the steady-state profile as the initial condition the tank leak is turned on. The results for the steady-state saturation and pressure profiles are shown in Figure~\ref{f1} for infiltration rates at the surface of 0, 8 and 80 mm/y. The mean infiltration rate at the Hanford site is approximately 8 mm/y. A 1D column 68 m heigh with the water table located at a height of 6 m from the bottom is used in the simulation. A uniform grid spacing of 0.5 m is used to discretize Richards equation.
+The calculations are carried out for an isothermal system using Richards equation. First, the steady-state saturation profile is obtained without the tank leak present. Then using the steady-state profile as the initial condition the tank leak is turned on. This can be easily accomplished using CHECKPOINTING and RESTART keywords. The results for the steady-state saturation and pressure profiles are shown in Figure~\ref{f1} for infiltration rates at the surface of 0, 8 and 80 mm/y. The mean infiltration rate at the Hanford site is approximately 8 mm/y. A 1D column 68 m heigh with the water table located at a height of 6 m from the bottom is used in the simulation. A uniform grid spacing of 0.5 m is used to discretize Richards equation.
 
 Shown in Figure~\ref{f2} is the saturation at different times following a two week leak releasing 60,000 gallons from the SX-115 tank at a depth of 16 m. In the simulation a release rate of $1.87\!\times\! 10^{-3}$ kg/s is used.
 
@@ -246,12 +246,12 @@ Shown in Figure~\ref{f2} is the saturation at different times following a two we
 
 \begin{figure}[h]\centering
 \includegraphics[scale=0.45]{./figs/sat_leak}
-\caption{Simulation of a tank leak with a duration of two weeks showing the saturation profile for different times indicated in the figure.}\label{f2}
+\caption{Simulation of a tank leak with a duration of two weeks showing the saturation profile for different times indicated in the figure for an infiltration rate of 8 mm/y.}\label{f2}
 \end{figure}
 
 \begin{figure}[h]\centering
 \includegraphics[scale=0.45]{./figs/conc}
-\caption{The solute concentration profile corresponding to Figure~\ref{t2} for different times indicated in the figure.}\label{f3}
+\caption{The solute concentration profile corresponding to Figure~\ref{t2} for different times indicated in the figure for an infiltration rate of 8 mm/y.}\label{f3}
 \end{figure}
 
 \clearpage
@@ -260,9 +260,10 @@ Shown in Figure~\ref{f2} is the saturation at different times following a two we
 
 Listing for the PFLOTRAN input file coupling Richards mode to a tracer is given below. Note that the stratigraphic zone specification in {\tt REGION} is grid independent as is the grid size specification in keyword {\tt GRID}. Therefore to change the grid spacing only the line: {\tt NXYZ 1 1 136}, needs to be changed. Also note that lines beginning with \# are read as a comment as is input following `!'.
 
+Note that the input file looks for the RESTART file for the transient run in the subdirectory: {\small\tt ./ss/sx115-restart.chk}.
 \bigskip
 
-\noindent PFLOTRAN input file {\tt pflotran.in}: 
+\noindent PFLOTRAN input file {\tt sx115.in}: 
 %\footnotesize
 \scriptsize
 
@@ -271,12 +272,17 @@ Listing for the PFLOTRAN input file coupling Richards mode to a tracer is given 
 %\clearpage
 
 \normalsize
+
+\begin{comment}
 \noindent
 Source/sink file {\tt src.dat}:
 %\footnotesize
 \scriptsize
 \VerbatimInput{./inputfiles/sx115/src.dat}
 \normalsize
+\end{comment}
+
+\clearpage
 
 \subsection{MPHASE}
 

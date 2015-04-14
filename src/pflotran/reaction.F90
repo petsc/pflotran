@@ -288,6 +288,8 @@ subroutine ReactionReadPass1(reaction,input,option)
           prev_immobile_species => immobile_species
           nullify(immobile_species)
         enddo        
+      case('IMMOBILE_DECAY_REACTION')
+        call ImmobileDecayRxnRead(reaction%immobile,input,option)
       case('RADIOACTIVE_DECAY_REACTION')
         reaction%nradiodecay_rxn = reaction%nradiodecay_rxn + 1
         radioactive_decay_rxn => RadioactiveDecayRxnCreate()
@@ -3492,6 +3494,11 @@ subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar, &
                     material_auxvar,reaction,option)
   endif
   
+  if (reaction%immobile%ndecay_rxn > 0) then
+    call RImmobileDecay(Res,Jac,derivative,rt_auxvar,global_auxvar, &
+                        material_auxvar,reaction,option)
+  endif
+  
   if (associated(rxn_sandbox_list)) then
     call RSandbox(Res,Jac,derivative,rt_auxvar,global_auxvar, &
                   material_auxvar,reaction,option)
@@ -4578,7 +4585,7 @@ subroutine RRadioactiveDecay(Res,Jac,compute_derivative,rt_auxvar, &
   L_water = material_auxvar%porosity*global_auxvar%sat(iphase)* &
             material_auxvar%volume*1.d3 ! L water
 
-  do irxn = 1, reaction%nradiodecay_rxn ! for each mineral
+  do irxn = 1, reaction%nradiodecay_rxn ! for each reaction
     
     ! units(kf): 1/sec
     

@@ -212,4 +212,5 @@ clean-tests :
 	-rm -f shortcourse/copper_leaching/cu_leaching-int.dat
 	-rm -f wipp/nuts/case3-int.dat
 	-rm -f wipp/nuts/case4r1_modified-int.dat
+	-rm -f wipp/bragflo/gas_generation_2d-np4.h5
 
