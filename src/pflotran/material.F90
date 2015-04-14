@@ -1309,7 +1309,8 @@ subroutine MaterialAssignPropertyToAux(material_auxvar,material_property, &
       material_property%rock_density
   endif
 
-  if (associated(material_property%fracture)) then
+  material_auxvar%fracture_bool = associated(material_property%fracture)
+  if (material_auxvar%fracture_bool) then
     material_auxvar%fracture_properties(frac_init_pres_index) = &
       material_property%fracture%init_pressure
     material_auxvar%fracture_properties(frac_alt_pres_index) = &
