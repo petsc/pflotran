@@ -312,6 +312,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   use Characteristic_Curves_module
   use Material_Aux_class
   use Creep_Closure_module
+  use Fracture_module
   
   implicit none
 
@@ -543,10 +544,6 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   ! calculate effective porosity as a function of pressure
   if (option%iflag /= GENERAL_UPDATE_FOR_BOUNDARY) then
     gen_auxvar%effective_porosity = material_auxvar%porosity_base
-    if (soil_compressibility_index > 0) then
-      call MaterialCompressSoil(material_auxvar,cell_pressure, &
-                                gen_auxvar%effective_porosity,dummy)
-    endif                   
     if (associated(creep_closure)) then
       if (creep_closure%imat == material_auxvar%id) then
         ! option%time here is the t time, not t + dt time.
@@ -557,7 +554,13 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
         gen_auxvar%effective_porosity = &
           creep_closure%Evaluate(creep_closure_time,cell_pressure)
       endif
-    endif
+    else if (material_auxvar%fracture_bool) then
+      call FracturePoroEvaluate(material_auxvar,cell_pressure, &
+                                gen_auxvar%effective_porosity,dummy)
+    else if (soil_compressibility_index > 0) then
+      call MaterialCompressSoil(material_auxvar,cell_pressure, &
+                                gen_auxvar%effective_porosity,dummy)
+    endif   
     if (option%iflag /= GENERAL_UPDATE_FOR_DERIVATIVE) then
       material_auxvar%porosity = gen_auxvar%effective_porosity
     endif

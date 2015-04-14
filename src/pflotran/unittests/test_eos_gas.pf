@@ -146,9 +146,9 @@ contains
 
     PetscReal, parameter :: not_calculated_dden_dt = UNINITIALIZED_DOUBLE
     PetscReal, parameter :: not_calculated_dden_dp = UNINITIALIZED_DOUBLE
-    PetscReal, parameter :: correct_density1 = 7.6980860672855644d-2
-    PetscReal, parameter :: correct_density2 = 0.22973287314555987d0
-    PetscReal, parameter :: correct_density3 = 0.85505760925812935d0
+    PetscReal, parameter :: correct_density1 = 7.6980863871687219d-2
+    PetscReal, parameter :: correct_density2 = 0.22973288269387737d0
+    PetscReal, parameter :: correct_density3 = 0.85505764482991498d0
     PetscReal, parameter :: temperature1 = 23.4d0
     PetscReal, parameter :: pressure1 = 1.9d5
     PetscReal, parameter :: temperature2 = 40.01d0
@@ -161,8 +161,7 @@ contains
     PetscReal :: dden_dt
     PetscReal :: dden_dp
 
-    call EOSGasSetDensityRKS()
-
+    call EOSGasSetDensityRKS(PETSC_TRUE,41.67d0,2.1029d6,0.0d0,0.42747d0,0.08664d0)
     call EOSGasVerify(ierr, error_string)
     @assertEqual(0, ierr)
 

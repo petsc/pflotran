@@ -1331,7 +1331,7 @@ subroutine InitSubsurfaceReadInput(simulation)
     select case(trim(card))
 
 !....................
-      case('CREEP_CLOSURE')
+      case('WIPP-CREEP_CLOSURE')
         call CreepClosureInit()
         creep_closure => CreepClosureCreate()
         call creep_closure%Read(input,option)

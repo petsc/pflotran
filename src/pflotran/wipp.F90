@@ -1,3 +1,296 @@
+module Fracture_module
+  
+  use PFLOTRAN_Constants_module
+
+  implicit none
+  
+  private
+
+#include "finclude/petscsys.h"
+  
+  type, public :: fracture_type
+    PetscReal :: init_pressure
+    PetscReal :: altered_pressure
+    PetscReal :: maximum_porosity
+    PetscReal :: porosity_exponent
+    PetscBool :: change_perm_x
+    PetscBool :: change_perm_y
+    PetscBool :: change_perm_z
+    PetscBool :: constant_pressure
+  contains
+    procedure, public :: Read => FractureRead
+  end type fracture_type
+  
+!  class(fracture_type), pointer, public :: fracture
+
+  public :: FractureInit, &
+            FractureCreate, &
+            FractureDestroy, &
+            FracturePoroEvaluate, &
+            FracturePermEvaluate
+  
+  contains
+
+! ************************************************************************** !
+
+function FractureCreate()
+  !
+  ! Author: Heeho Park
+  ! Date: 4/7/15
+  !
+
+  implicit none
+  
+  class(fracture_type), pointer :: FractureCreate
+  class(fracture_type), pointer :: fracture
+  
+  allocate(fracture)
+  call FractureInit(fracture)
+  
+  FractureCreate => fracture
+  
+end function FractureCreate
+
+! ************************************************************************** !
+
+subroutine FractureInit(this)
+  !
+  ! Author: Heeho Park
+  ! Date: 4/7/2015
+  !
+
+  implicit none
+  
+  class(fracture_type), pointer :: this
+  
+  this%init_pressure = UNINITIALIZED_DOUBLE
+  this%altered_pressure = UNINITIALIZED_DOUBLE
+  this%maximum_porosity = UNINITIALIZED_DOUBLE
+  this%porosity_exponent = UNINITIALIZED_DOUBLE
+  this%change_perm_x = PETSC_FALSE
+  this%change_perm_y = PETSC_FALSE
+  this%change_perm_z = PETSC_FALSE
+  this%constant_pressure = PETSC_FALSE
+
+end subroutine FractureInit
+
+! ************************************************************************** !
+
+subroutine FractureRead(this,input,option)
+  ! 
+  ! Author: Heeho Park
+  ! Date: 4/7/15
+  ! 
+  use Option_module
+  use Input_Aux_module
+  use String_module
+  
+  implicit none
+  
+  class(fracture_type) :: this
+  type(input_type) :: input
+  type(option_type) :: option
+  character(len=MAXWORDLENGTH) :: keyword, word
+  
+  do
+      call InputReadPflotranString(input,option)
+      call InputReadStringErrorMsg(input,option, &
+                                    'MATERIAL_PROPERTY,WIPP-FRACTURE')
+          
+      if (InputCheckExit(input,option)) exit
+          
+      if (InputError(input)) exit
+      call InputReadWord(input,option,word,PETSC_TRUE)
+      call InputErrorMsg(input,option,'keyword', &
+                          'MATERIAL_PROPERTY,WIPP-FRACTURE')   
+      select case(trim(word))
+        case('INITIATING_PRESSURE')
+          call InputReadDouble(input,option, &
+                                this%init_pressure)
+          call InputErrorMsg(input,option, &
+                              'initiating pressure of fracturing', &
+                              'MATERIAL_PROPERTY,WIPP-FRACTURE')
+        case('ALTERED_PRESSURE')
+          call InputReadDouble(input,option, &
+                                this%altered_pressure)
+          call InputErrorMsg(input,option, &
+                              'altered pressure of fracturing', &
+                              'MATERIAL_PROPERTY,WIPP-FRACTURE')
+        case('MAXIMUM_FRACTURE_POROSITY')
+          call InputReadDouble(input,option, &
+                                this%maximum_porosity)
+          call InputErrorMsg(input,option, &
+                              'maximum fracture porosity', &
+                              'MATERIAL_PROPERTY,WIPP-FRACTURE')
+        case('FRACTURE_EXPONENT')
+          call InputReadDouble(input,option, &
+                              this%porosity_exponent)
+          call InputErrorMsg(input,option, &
+                          'dimensionless fracture exponent for porosity', &
+                              'MATERIAL_PROPERTY,WIPP-FRACTURE')
+        case('ALTER_PERM_X')
+          this%change_perm_x = PETSC_TRUE
+        case('ALTER_PERM_Y')
+          this%change_perm_y = PETSC_TRUE
+        case('ALTER_PERM_Z')
+          this%change_perm_z = PETSC_TRUE
+        case('USE_CONSTANT_PRESSURE')
+          this%constant_pressure = PETSC_TRUE
+        case default
+          call InputKeywordUnrecognized(word, &
+                  'MATERIAL_PROPERTY,WIPP-FRACTURE',option)
+      end select
+    enddo
+
+end subroutine FractureRead
+
+! ************************************************************************** !
+
+subroutine FracturePoroEvaluate(auxvar,pressure,compressed_porosity, &
+                                dcompressed_porosity_dp)
+  !
+  ! Calculates porosity induced by fracture BRAGFLO_6.02_UM Eq. (136)
+  ! 4.10 Pressure-Induced Fracture Treatment
+  !
+  ! Author: Heeho Park
+  ! Date: 03/12/15
+  !
+
+  use Option_module
+  use Material_Aux_class
+  
+  implicit none
+  
+  type(option_type) :: option
+  
+!  class(fracture_type) :: this
+  class(material_auxvar_type), intent(in) :: auxvar
+  PetscReal, intent(in) :: pressure
+  PetscReal, intent(out) :: compressed_porosity
+  PetscReal, intent(out) :: dcompressed_porosity_dp
+  
+  PetscReal :: Ci, Ca
+  PetscReal :: P0, Pa, Pi
+  PetscReal :: phia, phi0
+
+  Ci = auxvar%soil_properties(soil_compressibility_index)
+  P0 = auxvar%soil_properties(soil_reference_pressure_index)
+  Pa = auxvar%fracture_properties(frac_alt_pres_index)
+  Pi = auxvar%fracture_properties(frac_init_pres_index)
+  phia = auxvar%fracture_properties(frac_max_poro_index)
+  phi0 = auxvar%porosity_base
+  
+  if (.not.associated(MaterialCompressSoilPtr, &
+                      MaterialCompressSoilBRAGFLO)) then
+    option%io_buffer = 'WIPP Fracture Function must be used with ' // &
+      'BRAGFLO soil compressibility function.'
+    call printErrMsg(option)
+  endif
+  
+  if (pressure < Pi) then
+    call MaterialCompressSoil(auxvar,pressure, compressed_porosity, &
+                              dcompressed_porosity_dp)
+  else if (pressure > Pi .and. pressure < Pa) then
+    Ca = Ci*(1.d0 - 2.d0 * (Pa-P0)/(Pa-Pi)) + &
+      2.d0/(Pa-Pi)*log(phia/phi0)
+    compressed_porosity = phi0 * exp(Ci*(pressure-P0) + &
+      ((Ca-Ci)*(pressure-Pi)**2.d0)/(2.d0*(Pa-Pi)))
+    !mathematica solution
+    dcompressed_porosity_dp = exp(Ci*(pressure-P0) + &
+      ((Ca-Ci)*(pressure-Pi)**2.d0) / (2.d0*(Pa-Pi))) * &
+      phi0 * (Ci + ((Ca-Ci)*(pressure-Pi)) / (Pa-Pi))
+  endif
+
+end subroutine FracturePoroEvaluate
+
+! ************************************************************************** !
+                                
+subroutine FracturePermEvaluate(auxvar,permeability,altered_perm, &
+                                    daltered_perm_dp)
+  !
+  ! Calculates permeability induced by fracture BRAGFLO_6.02_UM Eq. (136)
+  ! 4.10 Pressure-Induced Fracture Treatment
+  !
+  ! Author: Heeho Park
+  ! Date: 03/12/15
+  !
+
+  use Option_module
+  use Material_Aux_class
+  
+  implicit none
+  
+  type(option_type) :: option
+  
+!  class(fracture_type) :: this
+  class(material_auxvar_type), intent(in) :: auxvar
+  PetscReal, intent(in) :: permeability
+  PetscReal, intent(out) :: altered_perm
+  PetscReal, intent(out) :: daltered_perm_dp
+
+  PetscReal :: phii, dphii_dp, n
+  PetscReal :: Pi
+  PetscReal :: phi
+
+  phi = auxvar%porosity
+  Pi = auxvar%fracture_properties(frac_init_pres_index)
+  n = auxvar%fracture_properties(frac_poro_exp_index)
+
+  if (.not.associated(MaterialCompressSoilPtr, &
+                      MaterialCompressSoilBRAGFLO)) then
+    option%io_buffer = 'WIPP Fracture Function must be used with ' // &
+      'BRAGFLO soil compressibility function.'
+    call printErrMsg(option)
+  endif
+  
+  call MaterialCompressSoil(auxvar, Pi, phii, dphii_dp)
+  
+  ! phi = altered porosity
+  ! phii = porosity at initiating pressure
+  altered_perm = permeability * (phi/phii)**n
+  !the derivative ignored at this time since it requires additional parameters
+  !and calculations. we'll will need cell_pressure as an input and other 
+  !parameters used in MaterialFracturePorosityWIPP
+  daltered_perm_dp = 1.d-10
+  ! Mathematica solution
+  !Ca = Ci*(1.d0 - 2.d0 * (Pa-P0)/(Pa-Pi)) + &
+  !   2.d0/(Pa-Pi)*log(phia/phi0)
+  !a = exp(Ci*(pressure-P0) + &
+  !    ((Ca-Ci)*(pressure-Pi)**2.d0) / (2.d0*(Pa-Pi))) * &
+  !    phi0 * (Ci + ((Ca-Ci)*(pressure-Pi)) / (Pa-Pi))
+  !b = exp(Ci*(pressure-P0) + &
+  !    ((Ca-Ci)*(pressure-Pi)**2.d0) / (2.d0*(Pa-Pi)))
+  !daltered_perm_dp = a * permeability * n * (b*phi0/phii)**(n-1)
+  
+end subroutine FracturePermEvaluate
+
+! ************************************************************************** !
+
+subroutine FractureDestroy(this)
+  ! 
+  ! Deallocates any allocated pointers in auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/13/14
+  ! 
+
+  implicit none
+  
+  class(fracture_type), pointer :: this
+  
+  if (.not.associated(this)) return
+
+  deallocate(this)
+  nullify(this)
+
+end subroutine FractureDestroy
+
+end module Fracture_module
+
+! ************************************************************************** !
+! ************************************************************************** !
+! ************************************************************************** !
+  
 module Creep_Closure_module
   
   use PFLOTRAN_Constants_module
@@ -27,13 +320,13 @@ module Creep_Closure_module
     module procedure CreepClosureDestroy1
     module procedure CreepClosureDestroy2
   end interface
-  
+
   public :: CreepClosureInit, &
             CreepClosureCreate, &
             CreepClosureDestroy
   
-contains
-
+  contains
+  
 ! ************************************************************************** !
 
 subroutine CreepClosureInit()

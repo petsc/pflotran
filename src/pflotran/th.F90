@@ -4092,7 +4092,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
                                      cur_connection_set%dist(1:3,iconn))
 
       icap_dn = int(icap_loc_p(ghosted_id))
-	
+  
       call THBCFlux(boundary_condition%flow_condition%itype, &
                                 boundary_condition%flow_aux_real_var(:,iconn), &
                                 auxvars_bc(sum_connection), &

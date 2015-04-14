@@ -1,5 +1,6 @@
 #Description: 3D groundwater flow and solute transport
-#
+
+
 SIMULATION
   SIMULATION_TYPE SUBSURFACE
   PROCESS_MODELS
@@ -23,7 +24,7 @@ CHEMISTRY
 END
 
 #=========================== solver options ===================================
-TIMESTEPPER
+TIMESTEPPER FLOW
 END
 
 NEWTON_SOLVER FLOW
