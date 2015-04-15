@@ -265,7 +265,7 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
   PetscReal :: act_coef
   PetscReal :: monod(10)
   PetscReal :: inhibition(10)
-  PetscReal :: biomass_conc
+  PetscReal :: biomass_conc, yield
   PetscInt :: immobile_id
   PetscReal :: denominator, dR_dX, dX_dc, dR_dc, dR_dbiomass
   PetscReal :: tempreal
@@ -284,8 +284,12 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
     ! units:
     !   without biomass: mol/L-sec
     !   with biomass: mol/L-sec * (m^3 bulk / mol biomass)
+
+    ncomp = microbial%specid(0,irxn)
     rate_constant = microbial%rate_constant(irxn)
     Im = rate_constant
+    yield = 0.d0
+    biomass_conc = 0.d0
 
     ! monod expressions
     do ii = 1, microbial%monodid(0,irxn)
@@ -326,6 +330,7 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
     if (ibiomass > 0) then
       immobile_id = reaction%offset_immobile + ibiomass
       biomass_conc = rt_auxvar%immobile(ibiomass)
+      yield = microbial%biomass_yield(irxn)
       Im = Im*biomass_conc
     endif
     
@@ -337,14 +342,13 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
     Im = Im * 1.d3*por_sat_vol
     ! Im units (after): mol/sec
     
-    ncomp = microbial%specid(0,irxn)
     do i = 1, ncomp
       icomp = microbial%specid(i,irxn)
       Res(icomp) = Res(icomp) - microbial%stoich(i,irxn)*Im
     enddo
 
     if (ibiomass > 0) then
-      Res(immobile_id) = Res(immobile_id) - microbial%biomass_yield(irxn)*Im
+      Res(immobile_id) = Res(immobile_id) - yield*Im
     endif
     
     if (.not. compute_derivative) cycle
@@ -373,8 +377,7 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
                             microbial%stoich(i,irxn)*dR_dc
       enddo
       if (ibiomass > 0) then
-        Jac(immobile_id,jcomp) = Jac(immobile_id,jcomp) + &
-          microbial%biomass_yield(irxn)*dR_dc      
+        Jac(immobile_id,jcomp) = Jac(immobile_id,jcomp) + yield*dR_dc      
       endif      
     enddo
 
@@ -413,23 +416,21 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
                             microbial%stoich(i,irxn)*dR_dc
       enddo
       if (ibiomass > 0) then
-        Jac(immobile_id,jcomp) = Jac(immobile_id,jcomp) + &
-          microbial%biomass_yield(irxn)*dR_dc      
+        Jac(immobile_id,jcomp) = Jac(immobile_id,jcomp) + yield*dR_dc        
       endif
     enddo
 
     ! biomass expression
     if (ibiomass > 0) then
-      dR_dbiomass = Im / biomass_conc
-!      option%io_buffer = "Shouldn't biomass contribution be negative"
-!      call printErrMsg(option)
+      dR_dbiomass = -1.d0*Im / biomass_conc
       do i = 1, ncomp
+        icomp = microbial%specid(i,irxn)
         ! units = (mol/sec)*(m^3/mol) = m^3/sec
         Jac(icomp,immobile_id) = Jac(icomp,immobile_id) + &
                             microbial%stoich(i,irxn)*dR_dbiomass
       enddo
       Jac(immobile_id,immobile_id) = Jac(immobile_id,immobile_id) + &
-        microbial%biomass_yield(irxn)*dR_dbiomass
+        yield*dR_dbiomass
     endif
     
   enddo
