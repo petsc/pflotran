@@ -49,8 +49,14 @@ CHEMISTRY
   MICROBIAL_REACTION
     REACTION A(aq) + 2 B(aq) <-> 1.5 C(aq)
     RATE_CONSTANT 1.d-12
-    MONOD A(aq) 1.d-5        ! A is the donor
-    MONOD B(aq) 1.d-4        ! B is the acceptor
+    MONOD
+      SPECIES_NAME A(aq)     ! A is the donor
+      HALF_SATURATION_CONSTANT 1.d-5
+    /
+    MONOD
+      SPECIES_NAME B(aq)     ! B is the acceptor
+      HALF_SATURATION_CONSTANT 1.d-4
+    /
     INHIBITION
       SPECIES_NAME C(aq)
       TYPE MONOD
