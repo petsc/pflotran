@@ -117,8 +117,10 @@ END
 #=========================== output options ===================================
 OUTPUT
 #  TIMES y 5. 10. 15. 20.
+skip
   FORMAT TECPLOT POINT
   PERIODIC_OBSERVATION TIMESTEP 1
+noskip
 END
 
 #=========================== times ============================================
