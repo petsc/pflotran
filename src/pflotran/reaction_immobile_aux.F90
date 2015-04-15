@@ -50,7 +50,7 @@ module Reaction_Immobile_Aux_module
     ! decay rxn
     PetscInt :: ndecay_rxn
     PetscInt, pointer :: decayspecid(:)
-    PetscReal, pointer :: decay_rateconstant(:)    
+    PetscReal, pointer :: decay_rate_constant(:)    
 
   end type immobile_type
   
@@ -96,7 +96,7 @@ function ImmobileCreate()
   
   immobile%ndecay_rxn = 0
   nullify(immobile%decayspecid)
-  nullify(immobile%decay_rateconstant)
+  nullify(immobile%decay_rate_constant)
 
   ImmobileCreate => immobile
   
@@ -409,7 +409,7 @@ subroutine ImmobileDestroy(immobile)
   
   call ImmobileDecayRxnDestroy(immobile%decay_rxn_list)
   call DeallocateArray(immobile%decayspecid)
-  call DeallocateArray(immobile%decay_rateconstant)
+  call DeallocateArray(immobile%decay_rate_constant)
   
   deallocate(immobile)
   nullify(immobile)

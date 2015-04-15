@@ -942,8 +942,8 @@ subroutine ReactionReadPass2(reaction,input,option)
     select case(trim(word))
       case('PRIMARY_SPECIES','SECONDARY_SPECIES','GAS_SPECIES', &
             'MINERALS','COLLOIDS','GENERAL_REACTION', &
-            'IMMOBILE_SPECIES', &
-            'RADIOACTIVE_DECAY_REACTION')
+            'IMMOBILE_SPECIES','RADIOACTIVE_DECAY_REACTION', &
+            'IMMOBILE_DECAY_REACTION')
         call InputSkipToEND(input,option,card)
       case('REDOX_SPECIES')
         call ReactionReadRedoxSpecies(reaction,input,option)
@@ -1017,7 +1017,7 @@ subroutine ReactionReadPass2(reaction,input,option)
           call InputReadWord(input,option,word,PETSC_TRUE)
           call InputErrorMsg(input,option,'MICROBIAL_REACTION','CHEMISTRY')
           select case(trim(word))
-            case('INHIBITION')
+            case('INHIBITION','MONOD','BIOMASS')
               call InputSkipToEND(input,option,word)
           end select 
         enddo

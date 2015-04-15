@@ -114,6 +114,9 @@ subroutine ImmobileDecayRxnRead(immobile,input,option)
         call InputReadDouble(input,option,immobile_decay_rxn%rate_constant)  
         call InputDefaultMsg(input,option, &
                              'CHEMISTRY,IMMOBILE_DECAY_REACTION,RATE_CONSTANT') 
+      case default
+        call InputKeywordUnrecognized(word,'CHEMISTRY,IMMOBILE_DECAY_REACTION', &
+                                      option)
     end select
   enddo
   if (.not.associated(immobile%decay_rxn_list)) then
@@ -243,7 +246,7 @@ subroutine RImmobileDecay(Res,Jac,compute_derivative,rt_auxvar, &
     ! we assume only one chemical component involved in decay reaction
     icomp = reaction%immobile%decayspecid(irxn)
     ! units = 1/sec
-    rate_constant = reaction%immobile%decay_rateconstant(irxn)
+    rate_constant = reaction%immobile%decay_rate_constant(irxn)
     rate = rate_constant*rt_auxvar%immobile(icomp)
     immobile_id = reaction%offset_immobile + icomp
     

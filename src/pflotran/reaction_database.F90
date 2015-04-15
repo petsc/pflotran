@@ -816,6 +816,7 @@ subroutine BasisInit(reaction,option)
   type(general_rxn_type), pointer :: cur_general_rxn
   type(radioactive_decay_rxn_type), pointer :: cur_radiodecay_rxn
   type(microbial_rxn_type), pointer :: cur_microbial_rxn
+  type(immobile_decay_rxn_type), pointer :: cur_immobile_decay_rxn
   type(kd_rxn_type), pointer :: cur_kd_rxn, sec_cont_cur_kd_rxn
   type(colloid_type), pointer :: cur_colloid
   type(database_rxn_type), pointer :: dbaserxn
@@ -3201,7 +3202,7 @@ subroutine BasisInit(reaction,option)
     allocate(microbial%specid(0:max_species_count,microbial%nrxn))
     microbial%specid = 0
     allocate(microbial%stoich(max_species_count,microbial%nrxn))
-    microbial%stoich = 0
+    microbial%stoich = 0.d0
     
     ! biomass id and yield
     allocate(microbial%biomassid(microbial%nrxn))
@@ -3220,7 +3221,9 @@ subroutine BasisInit(reaction,option)
     allocate(microbial%monod_specid(monod_count))
     microbial%monod_specid = 0
     allocate(microbial%monod_K(monod_count))
-    microbial%monod_K = 0
+    microbial%monod_K = 0.d0
+    allocate(microbial%monod_Cth(monod_count))
+    microbial%monod_Cth = 0.d0
     
     ! inhibition 
     allocate(microbial%inhibition_specid(inhibition_count))
@@ -3228,9 +3231,9 @@ subroutine BasisInit(reaction,option)
     allocate(microbial%inhibition_type(inhibition_count))
     microbial%inhibition_type = 0
     allocate(microbial%inhibition_C(inhibition_count))
-    microbial%inhibition_C = 0
+    microbial%inhibition_C = 0.d0
     allocate(microbial%inhibition_C2(inhibition_count))
-    microbial%inhibition_C2 = 0
+    microbial%inhibition_C2 = 0.d0
 
     ! load the data into the compressed arrays
     irxn = 0
@@ -3309,6 +3312,7 @@ subroutine BasisInit(reaction,option)
         microbial%monod_specid(monod_count) = &
           GetPrimarySpeciesIDFromName(cur_monod%species_name,reaction,option)
         microbial%monod_K(monod_count) = cur_monod%half_saturation_constant
+        microbial%monod_Cth(monod_count) = cur_monod%threshold_concentration
         cur_monod => cur_monod%next
       enddo
       
@@ -3350,6 +3354,44 @@ subroutine BasisInit(reaction,option)
       
     enddo
               
+  endif 
+  
+  ! immobile decay reaction
+  
+  if (reaction%immobile%ndecay_rxn > 0) then
+  
+    allocate(reaction%immobile%decayspecid(reaction%immobile%ndecay_rxn))
+    allocate(reaction%immobile%decay_rate_constant(reaction%immobile%ndecay_rxn))
+  
+    cur_immobile_decay_rxn => reaction%immobile%decay_rxn_list
+    irxn = 0
+    do
+      if (.not.associated(cur_immobile_decay_rxn)) exit
+      
+      irxn = irxn + 1
+
+      found = PETSC_FALSE
+      do i = 1, reaction%immobile%nimmobile
+        if (StringCompare(cur_immobile_decay_rxn%species_name, &
+                          reaction%immobile%names(i), &
+                          MAXWORDLENGTH)) then
+          reaction%immobile%decayspecid(irxn) = i
+          found = PETSC_TRUE
+          exit      
+        endif
+      enddo
+      if (.not.found) then
+        option%io_buffer = 'Species "' // &
+        trim(cur_immobile_decay_rxn%species_name) // &
+        '" in immobile decay reaction not found among immobile species.'
+        call printErrMsg(option)
+      endif
+      reaction%immobile%decay_rate_constant(irxn) = &
+        cur_immobile_decay_rxn%rate_constant
+      cur_immobile_decay_rxn => cur_immobile_decay_rxn%next
+    enddo
+    nullify(cur_immobile_decay_rxn)
+
   endif 
   
   ! Kd reactions

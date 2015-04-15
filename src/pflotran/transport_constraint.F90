@@ -186,6 +186,8 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
   character(len=MAXSTRINGLENGTH) :: block_string
   PetscInt :: icomp, imnrl, iimmobile
   PetscInt :: isrfcplx
+  PetscInt :: num_aqcomp_read, num_mnrl_read, num_colloid_read
+  PetscInt :: num_srfcplx_read, num_immobile_read
   PetscInt :: length
   type(aq_species_constraint_type), pointer :: aq_species_constraint
   type(guess_constraint_type), pointer :: free_ion_guess_constraint
@@ -198,6 +200,12 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
 
   call PetscLogEventBegin(logging%event_tran_constraint_read, &
                           ierr);CHKERRQ(ierr)
+                          
+  num_aqcomp_read = 0
+  num_mnrl_read = 0
+  num_colloid_read = 0
+  num_srfcplx_read = 0
+  num_immobile_read = 0
 
   ! read the constraint
   input%ierr = 0
@@ -213,7 +221,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
       
     select case(trim(word))
 
-      case('CONC','CONCENTRATIONS')
+      case('CONCENTRATIONS')
 
         aq_species_constraint => &
           AqueousSpeciesConstraintCreate(reaction,option)
@@ -315,18 +323,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
         
         enddo  
         
-        if (icomp < reaction%naqcomp) then
-          option%io_buffer = &
-                   'Number of concentration constraints is less than ' // &
-                   'number of primary species in aqueous constraint.'
-          call printErrMsg(option)        
-        endif
-        if (icomp > reaction%naqcomp) then
-          option%io_buffer = &
-                   'Number of concentration constraints is greater than ' // &
-                   'number of primary species in aqueous constraint.'
-          call printWrnMsg(option)        
-        endif
+        num_aqcomp_read = icomp 
         
         if (associated(constraint%aqueous_species)) &
           call AqueousSpeciesConstraintDestroy(constraint%aqueous_species)
@@ -368,15 +365,9 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
 
         if (icomp < reaction%naqcomp) then
           option%io_buffer = &
-                   'Number of free ion guess constraints is less than ' // &
-                   'number of primary species in aqueous constraint.'
+                    'Number of free ion guess constraints is less than ' // &
+                    'number of primary species in aqueous constraint.'
           call printErrMsg(option)        
-        endif
-        if (icomp > reaction%naqcomp) then
-          option%io_buffer = &
-                   'Number of free ion guess constraints is greater than ' // &
-                   'number of primary species in aqueous constraint.'
-          call printWrnMsg(option)        
         endif
         
         if (associated(constraint%free_ion_guess)) &
@@ -384,7 +375,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
         constraint%free_ion_guess => free_ion_guess_constraint
         nullify(free_ion_guess_constraint)
 
-      case('MNRL','MINERALS')
+      case('MINERALS')
 
         mineral_constraint => MineralConstraintCreate(reaction%mineral,option)
 
@@ -476,15 +467,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
           endif
         enddo  
         
-        if (imnrl < reaction%mineral%nkinmnrl) then
-          option%io_buffer = &
-                   'Mineral lists in constraints must provide a volume ' // &
-                   'fraction and surface area for all kinetic minerals ' // &
-                   '(listed under MINERAL_KINETICS card in CHEMISTRY), ' // &
-                   'regardless of whether or not they are present (just ' // &
-                   'assign a zero volume fraction if not present).'
-          call printErrMsg(option)        
-        endif
+        num_mnrl_read = imnrl
         
         if (associated(constraint%minerals)) then
           call MineralConstraintDestroy(constraint%minerals)
@@ -525,13 +508,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
           call InputErrorMsg(input,option,'concentration',block_string)
         enddo  
         
-        if (isrfcplx < reaction%surface_complexation%nkinsrfcplx) then
-          option%io_buffer = &
-                   'Number of surface complex constraints is less than ' // &
-                   'number of kinetic surface complexes in surface ' // &
-                   'complex constraint.'
-          call printErrMsg(option)        
-        endif
+        num_srfcplx_read = isrfcplx
         
         if (associated(constraint%surface_complexes)) then
           call SurfaceComplexConstraintDestroy(constraint%surface_complexes)
@@ -576,22 +553,12 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
         
         enddo  
         
-        if (icomp < reaction%ncoll) then
-          option%io_buffer = &
-                   'Colloid lists in constraints must provide mobile ' // &
-                   'and immobile concentrations for all colloids ' // &
-                   '(listed under the COLLOIDS card in CHEMISTRY), ' // &
-                   'regardless of whether or not they are present (just ' // &
-                   'assign a small value (e.g. 1.d-40) if not present).'
-          call printErrMsg(option)        
-        endif
-        
+        num_colloid_read = icomp
+
         if (associated(constraint%colloids)) then
           call ColloidConstraintDestroy(constraint%colloids)
         endif
         constraint%colloids => colloid_constraint 
-
-        
         
       case('IMMOBILE')
 
@@ -656,15 +623,8 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
           endif
         enddo  
         
-        if (iimmobile < reaction%immobile%nimmobile) then
-          option%io_buffer = &
-                   'Immobile lists in constraints must provide a ' // &
-                   'concentration all immobile species ' // &
-                   '(listed under IMMOBILE card in CHEMISTRY), ' // &
-                   'regardless of whether or not they are present.'
-          call printErrMsg(option)        
-        endif
-        
+        num_immobile_read = iimmobile
+
         if (associated(constraint%immobile_species)) then
           call ImmobileConstraintDestroy(constraint%immobile_species)
         endif
@@ -674,7 +634,60 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
         call InputKeywordUnrecognized(word,'CONSTRAINT',option)
     end select 
   
-  enddo  
+  enddo 
+  
+  ! check the appropriate numbers of constraints have been read
+  ! CONCENTRATIONS
+  if (num_aqcomp_read < reaction%naqcomp) then
+    option%io_buffer = &
+              'Number of concentration constraints is less than ' // &
+              'number of primary species in aqueous constraint.'
+    call printErrMsg(option)        
+  endif
+        
+  ! FREE_ION_GUESS
+  ! the guess is optional
+        
+  ! MINERALS
+  if (num_mnrl_read < reaction%mineral%nkinmnrl) then
+    option%io_buffer = &
+              'Mineral lists in constraints must provide a volume ' // &
+              'fraction and surface area for all kinetic minerals ' // &
+              '(listed under MINERAL_KINETICS card in CHEMISTRY), ' // &
+              'regardless of whether or not they are present (just ' // &
+              'assign a zero volume fraction if not present).'
+    call printErrMsg(option)        
+  endif
+        
+  ! SURFACE COMPLEXES
+  if (num_srfcplx_read < reaction%surface_complexation%nkinsrfcplx) then
+    option%io_buffer = &
+              'Number of surface complex constraints is less than ' // &
+              'number of kinetic surface complexes in surface ' // &
+              'complex constraint.'
+    call printErrMsg(option)        
+  endif
+        
+  ! COLLOIDS
+  if (num_colloid_read < reaction%ncoll) then
+    option%io_buffer = &
+              'Colloid lists in constraints must provide mobile ' // &
+              'and immobile concentrations for all colloids ' // &
+              '(listed under the COLLOIDS card in CHEMISTRY), ' // &
+              'regardless of whether or not they are present (just ' // &
+              'assign a small value (e.g. 1.d-40) if not present).'
+    call printErrMsg(option)        
+  endif
+        
+  ! IMMOBILE
+  if (num_immobile_read < reaction%immobile%nimmobile) then
+    option%io_buffer = &
+              'Immobile lists in constraints must provide a ' // &
+              'concentration all immobile species ' // &
+              '(listed under IMMOBILE card in CHEMISTRY), ' // &
+              'regardless of whether or not they are present.'
+    call printErrMsg(option)        
+  endif
   
   call PetscLogEventEnd(logging%event_tran_constraint_read,ierr);CHKERRQ(ierr)
 

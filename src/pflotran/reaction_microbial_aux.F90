@@ -32,6 +32,7 @@ module Reaction_Microbial_Aux_module
     PetscInt :: id
     character(len=MAXWORDLENGTH) :: species_name
     PetscReal :: half_saturation_constant
+    PetscReal :: threshold_concentration
     type(monod_type), pointer :: next
   end type monod_type
 
@@ -66,6 +67,7 @@ module Reaction_Microbial_Aux_module
     PetscInt, pointer :: inhibitionid(:,:)
     PetscInt, pointer :: monod_specid(:)
     PetscReal, pointer :: monod_K(:)
+    PetscReal, pointer :: monod_Cth(:)
     PetscInt, pointer :: inhibition_type(:)
     PetscInt, pointer :: inhibition_specid(:)
     PetscReal, pointer :: inhibition_C(:)
@@ -118,6 +120,7 @@ function MicrobialCreate()
   nullify(microbial%inhibitionid)
   nullify(microbial%monod_specid)
   nullify(microbial%monod_K)
+  nullify(microbial%monod_Cth)
   nullify(microbial%inhibition_type)
   nullify(microbial%inhibition_specid)
   nullify(microbial%inhibition_C)
@@ -179,6 +182,7 @@ function MicrobialMonodCreate()
   monod%id = 0
   monod%species_name = ''
   monod%half_saturation_constant = 0.d0
+  monod%threshold_concentration = 0.d0
   nullify(monod%next)
   
   MicrobialMonodCreate => monod
@@ -460,6 +464,7 @@ subroutine MicrobialDestroy(microbial)
   call DeallocateArray(microbial%inhibitionid)
   call DeallocateArray(microbial%monod_specid)
   call DeallocateArray(microbial%monod_K)
+  call DeallocateArray(microbial%monod_Cth)
   call DeallocateArray(microbial%inhibition_type)
   call DeallocateArray(microbial%inhibition_specid)
   call DeallocateArray(microbial%inhibition_C)
