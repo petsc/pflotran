@@ -343,6 +343,10 @@ subroutine ReactionReadPass1(reaction,input,option)
               ! convert half life to rate constant
               radioactive_decay_rxn%rate_constant = &
                 -1.d0*log(0.5d0)/radioactive_decay_rxn%rate_constant
+            case default
+              call InputKeywordUnrecognized(word, &
+                                          'CHEMISTRY,IMMOBILE_DECAY_REACTION', &
+                                            option)
           end select
         enddo   
         if (Uninitialized(radioactive_decay_rxn%rate_constant)) then

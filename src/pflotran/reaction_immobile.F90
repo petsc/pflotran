@@ -80,6 +80,7 @@ subroutine ImmobileDecayRxnRead(immobile,input,option)
   use String_module
   use Input_Aux_module
   use Utility_module
+  use Units_module
   
   implicit none
   
@@ -112,13 +113,45 @@ subroutine ImmobileDecayRxnRead(immobile,input,option)
         immobile_decay_rxn%species_name = word
       case('RATE_CONSTANT')
         call InputReadDouble(input,option,immobile_decay_rxn%rate_constant)  
-        call InputDefaultMsg(input,option, &
-                             'CHEMISTRY,IMMOBILE_DECAY_REACTION,RATE_CONSTANT') 
+        call InputErrorMsg(input,option,'rate cosntant', &
+                             'CHEMISTRY,IMMOBILE_DECAY_REACTION') 
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (InputError(input)) then
+          call InputDefaultMsg(input,option, &
+                        'CHEMISTRY,IMMOBILE_DECAY_REACTION RATE_CONSTANT UNITS')
+        else
+          immobile_decay_rxn%rate_constant = &
+            UnitsConvertToInternal(word,option) * &
+            immobile_decay_rxn%rate_constant
+        endif
+      case('HALF_LIFE')
+        call InputReadDouble(input,option, &
+                             immobile_decay_rxn%rate_constant)
+        call InputErrorMsg(input,option,'half life', &
+                         'CHEMISTRY,IMMOBILE_DECAY_REACTION,REACTION')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (InputError(input)) then
+          call InputDefaultMsg(input,option, &
+                            'CHEMISTRY,IMMOBILE_DECAY_REACTION HALF_LIFE UNITS')
+        else
+          immobile_decay_rxn%rate_constant = &
+            UnitsConvertToInternal(word,option) * &
+            immobile_decay_rxn%rate_constant
+        endif
+        ! convert half life to rate constant
+        immobile_decay_rxn%rate_constant = &
+          -1.d0*log(0.5d0)/immobile_decay_rxn%rate_constant
       case default
-        call InputKeywordUnrecognized(word,'CHEMISTRY,IMMOBILE_DECAY_REACTION', &
+        call InputKeywordUnrecognized(word, &
+                                      'CHEMISTRY,IMMOBILE_DECAY_REACTION', &
                                       option)
     end select
   enddo
+  if (Uninitialized(immobile_decay_rxn%rate_constant)) then
+    option%io_buffer = 'RATE_CONSTANT or HALF_LIFE must be set in ' // &
+      'IMMOBILE_DECAY_REACTION.'
+    call printErrMsg(option)
+  endif
   if (.not.associated(immobile%decay_rxn_list)) then
     immobile%decay_rxn_list => immobile_decay_rxn
     immobile_decay_rxn%id = 1
