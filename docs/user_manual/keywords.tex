@@ -3169,10 +3169,20 @@ By using the {\tt BOUNDS} keyword, the model domain is specified in a grid-indep
 
 \footnotesize
 \begin{verbatim}
+CHEMISTRY
+  PRIMARY_SPECIES
+    ...
+  /
+  IMMOBILE_SPECIES
+    D(im)
+  /
+  ...
   IMMOBILE_DECAY_REACTION
     SPECIES_NAME D(im)
     RATE_CONSTANT 1.d-9
   /
+  ...
+/
 \end{verbatim}
 \normalsize
 \end{mdframed}
