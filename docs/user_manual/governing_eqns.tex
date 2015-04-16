@@ -1340,6 +1340,53 @@ I_k^m \eq k_k\big(S_k^m - S_{km}^{\rm eq}\big),
 \EN
 with rate constant $k_k$ and where $S_{km}^{\rm eq}$ is a known function of the solute concentrations. In this case, Eqn.\eqref{mobile} must be added to the primary species transport equations. Further reduction of the transport equations for the case where a flux term is present in the kinetic equation is not possible in general for complex flux terms.
 
+%\begin{comment}
+\subsubsection{Microbial Reactions}
+
+Kinetic rate law:
+\EQ
+\R_i = k_i X_i \frac{C_a }{(K_a + C_a)} \frac{C_d }{ (K_d + C_d)} I_i
+\EN
+\EQ
+\R_i = k_i (X_i-X_i^{th}) \left[\frac{(C_a^{}-C_a^{th})}{(K_a^{} + C_a^{}-C_a^{th})}\right] \left[\frac{(C_d^{}-C_d^{th}) }{ (K_d^{} + C_d^{}-C_d^{th})}\right] I_i
+\EN
+
+\noindent
+Biomass creation and degradation:
+\EQ
+\frac{dX_i}{dt} \eq \Y_i \, \R_i - k_{{\rm decay},\,i} X_i,
+\EN
+where $\Y_i$ denotes the yield and $k_{{\rm decay},\,i}$ refers to the biomass decay rate constant. Other parameters are listed in Table~\ref{tmicrobial}.
+
+\begin{table}[h]\centering
+\caption{Definition of symbols used in modeling microbial reactions.}
+\label{tmicrobial}
+\vspace{3mm}
+\begin{tabular}{ll}
+\toprule
+Symbol &  \multicolumn{1}{c}{Definition}\\
+\midrule
+$\R_i$ & reaction rate for $i$th biomass reaction\\
+$k_i$ & rate constant\\
+$X_i$ & biomass concentration\\
+$I_i$ & inhibition factor\\
+$C_a$ & electron acceptor concentration\\
+$C_d$ & electron donor concentration\\
+$C_a^{th}$ & electron acceptor threshold concentration\\
+$C_d^{th}$ & electron donor threshold concentration\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+\begin{itemize}
+\item Monod inhibition below a concentration [$K_i$]: $I_i = C / (K_i + C)$\\
+\item Inverse monod inhibition above a concentration [$K_i$]: $I_i = K_i / (K_i + C)$\\
+\item Kinzelbach inhibition: $I_i$ = 1/2 $\pm$ arctan[($C-C_i^{th}$) $f_i$]/$\pi$ where $f _i\simeq 10^8$\\
+\item Thermodynamic inhibition: $1-Q_i/K_i$
+\end{itemize}
+%\end{comment}
+
 \subsection{Tracer Mean Age}
 
 PFLOTRAN implements the Eulerian formulation of solute age for a nonreactive tracer following Goode (1996). PFLOTRAN solves the advection-diffusion/dispersion equation for the mean age given by

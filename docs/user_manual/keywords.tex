@@ -79,12 +79,26 @@ Keywords within the SIMULATION block include:
     always precede SUBSURFACE\_TRANSPORT processes in timestep 
     execution. Options include:
     
-\item {\bf SUBSURFACE\_FLOW}
-
-\item {\bf SUBSURFACE\_TRANSPORT}
-
-\item {\bf SURFACE\_FLOW}
+\item {\bf SUBSURFACE\_FLOW} \ <string>
+\begin{description}
+\item GENERAL, RICHARDS, MPHASE
 \end{description}
+\item \keyend
+
+\item {\bf SUBSURFACE\_TRANSPORT} \ <string>
+\begin{description}
+\item GLOBAL\_IMPLICIT
+\end{description}
+\item \keyend
+
+\item {\bf SURFACE\_FLOW} \ <string>
+\begin{description}
+\item \ldots
+\end{description}
+\item \keyend
+\end{description}
+
+\item \keyend
 
 \item {\bf SUBSURFACE}
 \begin{description}
@@ -108,16 +122,20 @@ SIMULATION
   SIMULATION_TYPE SUBSURFACE
   PROCESS_MODELS
     SUBSURFACE_FLOW flow
-      ...
+      RICHARDS
     /
     SUBSURFACE_TRANSPORT transport
-      ...
+      GLOBAL_IMPLICIT
     /
   /
 END
 
 SUBSURFACE
-...
+
+.
+.
+.
+
 END_SUBSURFACE
 
 \end{verbatim}
@@ -253,7 +271,10 @@ END
 \hyperlink{target_geomech_bc}{\bf GEOMECHANICS\_BOUNDARY\_CONDITION} & \\
 \hyperlink{target_geomech_strata}{\bf GEOMECHANICS\_STRATA} & \\
 \hyperlink{target_grid}{\bf GRID} & (required)\\
+\hyperlink{target_immob}{\bf IMMOBILE\_DECAY\_REACTION} & \\
 \hyperlink{target_init}{\bf INITIAL\_CONDITION} & \\
+\hyperlink{target_init_flow}{\bf INITIALIZE\_FLOW\_FROM\_FILE} & \\
+\hyperlink{target_init_trans}{\bf INITIALIZE\_TRANSPORT\_FROM\_FILE} & \\
 \hyperlink{target_int_flux}{\bf INTEGRAL\_FLUX} & \\
 \hyperlink{target_linsolv}{\bf LINEAR\_SOLVER} & \\
 \hyperlink{target_mat}{\bf MATERIAL\_PROPERTY} & \\
@@ -1003,6 +1024,16 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode coupling a react
 
 ~\\
 
+\item[IMMOBILE\_DECAY\_REACTION] ~
+\begin{deflist}{000}
+\item SPECIES\_NAME \ <string>
+\item RATE\_CONSTANT \ <float>
+\end{deflist}
+
+\item [\keyend]
+
+~\\
+
 \item[COLLOIDS]
 \item {\tt Colloid Name} \ \ \ \ {\tt Mobile\_Fraction} [---]
 \item [\keyend]
@@ -1400,7 +1431,7 @@ Reaction equation. Only one reactant species may be listed on the left side of t
 \item [RATE\_CONSTANT or HALF\_LIFE] (but not both)
 
 \item [RATE\_CONSTANT] <float>
-rate constant for 1st-order decay reaction [1/sec]. The rate constant may be calculated from -ln(0.5) / half-life.
+rate constant for 1st-order decay reaction [1/sec]. The rate constant may be calculated from ln(2) / half-life.
 
 \item [HALF\_LIFE] <float>
 half life of species [sec].
@@ -1527,14 +1558,14 @@ Specifies parameters for microbially-mediated reactions.
 
 \begin{deflist}{000}
 %Required Cards:
-  \item [REACTION] <string> Reaction equation. The rate constant is multiplied by the Monod expressions for electron donor and acceptor for select species on the left side of the equation. The reaction may be inhibited by any species in the system.
+  \item [REACTION] \ <string> \ Reaction equation. The rate constant is multiplied by the Monod expressions for electron donor and acceptor for select species on the left side of the equation. The reaction may be inhibited by any species in the system.
 
-  \item [RATE\_CONSTANT] <float>
+  \item [RATE\_CONSTANT] \ <float>
 Rate constant for the reaction.
 
 %Optional Cards:
 
-  \item [MONOD] <string> <float>
+  \item [MONOD] \ <string> \ <float> \ 
 Specifies the Monod equation for the electron donor and acceptor (named by the string) and the half saturation constant.
 
   \item [INHIBITION] Specifies inhibition based on species concentration and an inhibition constant(s). Three types of inhibition are currently supported: MONOD, \linebreak INVERSE\_MONOD, and THRESHOLD.
@@ -1545,7 +1576,7 @@ Specifies the Monod equation for the electron donor and acceptor (named by the s
     \begin{deflist}{000}
       \item [INHIBITION] ~
       \begin{deflist}{000}
-        \item [SPECIES\_NAME] <string>
+        \item [SPECIES\_NAME] \ <string>
         \item [TYPE MONOD] Specifies the type of inhibition to be Monod. The reaction proceeds as long as the species concentration is well below the half saturation constant: inhibition = C$_{th}$/ (C$_{th}$ + concentration)
 
         \item [INHIBITION\_CONSTANT] <float> Half saturation constant.
@@ -1558,11 +1589,11 @@ Specifies the Monod equation for the electron donor and acceptor (named by the s
       \item [INHIBITION] ~
 
       \begin{deflist}{000}
-         \item [SPECIES\_NAME] <string>
+         \item [SPECIES\_NAME] \ <string>
 
          \item [TYPE INVERSE\_MONOD] Specifies the type of inhibition to be inverse Monod. The reaction proceeds as long as the species concentration is well above the half saturation constant: inhibition = concentration / (C$_{th}$ + concentration)
 
-        \item [INHIBITION\_CONSTANT] <float> Half saturation constant.
+        \item [INHIBITION\_CONSTANT] \ <float> \ Half saturation constant.
 
       \end{deflist}
     \end{deflist}
@@ -1570,20 +1601,27 @@ Specifies the Monod equation for the electron donor and acceptor (named by the s
 \item [Threshold Inhibition:] ~ %%%%%%%%%%%%%%%%
 \begin{deflist}{000}
 \item [INHIBITION] ~
-\item [SPECIES\_NAME] <string>
+\item [SPECIES\_NAME] \ <string>
 
-\item [TYPE THRESHOLD] <float>
-Specifies the type of inhibition to be threshold and the scaling factor to be applied. Inhibition is calculated based on the following equation: inhibition = 0.5 + arctan((concentration - C$_{th}$) $\times$ f) / $\pi$. Inhibition is above and below C$_{th}$ when the sign of C$_{th}$ is negative or positive, respectively.
+\item [TYPE THRESHOLD] \ <float> \ 
+Specifies the type of inhibition to be threshold and the scaling factor to be applied. Inhibition is calculated based on the following equation: inhibition = 0.5 + arctan((concentration $-$ C$_{th}$) $\times$ f) / $\pi$. Inhibition is above and below C$_{th}$ when the sign of C$_{th}$ is negative or positive, respectively.
 
-\item [INHIBITION\_CONSTANT] <float> Threshold concentration
+\item [INHIBITION\_CONSTANT] \ <float> \ Threshold concentration
 \end{deflist}
 \end{deflist}
+\item[\keyend]
+\item [BIOMASS] ~
+\begin{deflist}{000}
+\item [SPECIES\_NAME]  <string> \ Specifies biomass species.
+\item [YIELD] \ <float> \  Biomass yield.
+\end{deflist}
+\item[\keyend]
 \end{deflist}
 \item[\keyend]
 \end{deflist}
 
-\begin{mdframed}
 {\bf Examples:}
+\begin{mdframed}
 \footnotesize
 \begin{verbatim}
 CHEMISTRY
@@ -1605,51 +1643,42 @@ CHEMISTRY
     /
   /
 ...
+\end{verbatim}
+\end{mdframed}
+
+\begin{mdframed}
+\footnotesize
+\begin{verbatim}
 CHEMISTRY
   PRIMARY_SPECIES
     A(aq)
     B(aq)
     C(aq)
-    D(aq)
+  /
+  IMMOBILE_SPECIES
+    Microbe_D
+  /
+  MICROBIAL_REACTION
+    REACTION A(aq) + 2 B(aq) <-> 1.5 C(aq)
+    RATE_CONSTANT 1.d-12
+    MONOD A(aq) 1.d-5      ! A is the donor
+    MONOD B(aq) 1.d-4      ! B is the acceptor
+    INHIBITION C(aq) 6.d-4 ! C is the product and inhibits when too high
+    BIOMASS Microbe_D 1.d-1
   /
   ...
-  MICROBIAL_REACTION
-    REACTION A(aq) + 0.1 B(aq) <-> C(aq)
-    RATE_CONSTANT 1.d-6
-    MONOD A(aq) 1.d0
-    INHIBITION
-      SPECIES_NAME A(aq)
-      TYPE THRESHOLD 1.d6
-      INHIBITION_CONSTANT 1.d-9
-    /
-    INHIBITION
-      SPECIES_NAME B(aq)
-      TYPE THRESHOLD 1.d20
-      INHIBITION_CONSTANT 1.d-9
-    /
+END
+
+CONSTRAINT biomass
+  CONCENTRATIONS
+    A(aq) 1.d-7  T
+    B(aq) 1.d-7  T
+    C(aq) 1.d-7  T
   /
-  MICROBIAL_REACTION
-    REACTION C(aq) <-> B(aq)
-    RATE_CONSTANT 1.d-6
-    MONOD C(aq) 1.d0
-    INHIBITION
-      SPECIES_NAME C(aq)
-      TYPE THRESHOLD 1.d20
-      INHIBITION_CONSTANT 1.d-9
-    /
+  IMMOBILE
+    Microbe_D 1.d0
   /
-  MICROBIAL_REACTION
-    REACTION B(aq) <-> D(aq)
-    RATE_CONSTANT 1.d-6
-    MONOD B(aq) 1.d0
-    INHIBITION
-      SPECIES_NAME B(aq)
-      TYPE THRESHOLD 1.d20
-      INHIBITION_CONSTANT 1.d-9
-    /
-  /
-  ...
-/
+END
 \end{verbatim}
 \normalsize
 \end{mdframed}
@@ -3113,6 +3142,47 @@ By using the {\tt BOUNDS} keyword, the model domain is specified in a grid-indep
 %========================================================================
 
 \newpage
+\protect\hypertarget{target_immob}{}
+
+\subsection{Keyword: IMMOBILE\_DECAY\_REACTION}
+
+\hfill\hyperlink{target_key}{\return}
+
+\noindent{\bf Description:} Specifies parameters for first-order decay of an immobile species.
+
+\noindent{\bf Input:}
+\begin{deflist}{000}
+\item[IMMOBILE\_DECAY\_REACTION] \ [{\tt Name}]
+\begin{deflist}{000}
+\item[SPECIES\_NAME] \ <string> \ Name of immobile species to undergo first-order decay.
+\item[RATE\_CONSTANT] \ <float> \ First-order rate constant [1/sec].
+\item[HALF\_LIFE] \ <float> \ Species half life [sec]. 
+\end{deflist}
+\item[\keyend] ~
+\end{deflist}
+
+\noindent{\bf Explanation:} {\em Note that units for rate constant or half life other than 1/sec or sec, respectively, may be specified.} Only specify one of rate constant or half life, but not both.
+
+\begin{mdframed}
+
+\noindent{\bf Example:}
+
+\footnotesize
+\begin{verbatim}
+  IMMOBILE_DECAY_REACTION
+    SPECIES_NAME D(im)
+    RATE_CONSTANT 1.d-9
+  /
+\end{verbatim}
+\normalsize
+\end{mdframed}
+
+\hyperlink{target_key}{\return}
+
+
+%========================================================================
+
+\newpage
 \protect\hypertarget{target_init}{}
 
 \subsection{Keyword: INITIAL\_CONDITION}
@@ -3154,6 +3224,55 @@ END
 \end{mdframed}
 
 \hyperlink{target_key}{\return}
+
+
+%========================================================================
+
+\newpage
+\protect\hypertarget{target_init_flow}{}
+
+\subsection{Keyword: INITIALIZE\_FLOW\_FROM\_FILE}
+
+\hfill\hyperlink{target_key}{\return}
+
+\begin{deflist}{000}
+\item[INITIALIZE\_FLOW\_FROM\_FILE] \ <string> \ Filename
+\end{deflist}
+
+\noindent{\bf Description:} Set initial conditions for flow from specified HDF5 file.
+
+\begin{mdframed}
+\noindent{\bf Example: } {\footnotesize\tt ./regression\_tests/default/543/543\_flow.in}
+\footnotesize
+\begin{verbatim}
+INITIALIZE_FLOW_FROM_FILE 543_initial_pressure.h5
+\end{verbatim}
+\normalsize
+\end{mdframed}
+
+\protect\hypertarget{target_init_trans}{}
+
+\subsection{Keyword: INITIALIZE\_TRANSPORT\_FROM\_FILE}
+
+%\hfill\hyperlink{target_key}{\return}
+
+\begin{deflist}{000}
+\item[INITIALIZE\_TRANSPORT\_FROM\_FILE] \ <string> \ Filename
+\end{deflist}
+
+\noindent{\bf Description:} Set initial conditions for transport from specified HDF5 file.
+
+\begin{mdframed}
+\noindent{\bf Example: } %{\footnotesize\tt ./regression\_tests/default/543/543\_flow.in}
+\footnotesize
+\begin{verbatim}
+INITIALIZE_TRANSPORT_FROM_FILE filename.h5 
+\end{verbatim}
+\normalsize
+\end{mdframed}
+
+\hyperlink{target_key}{\return}
+
 
 %========================================================================
 \newpage
@@ -4120,23 +4239,45 @@ END
 %========================================================================
 
 \newpage
+\protect\hypertarget{target_overwrite_restart_flow}{}
+
+\subsection{Keyword: OVERWRITE\_RESTART\_FLOW\_PARAMS}
+
+\hfill\hyperlink{target_key}{\return}
+
+\begin{deflist}{0000000000}
+\item[OVERWRITE\_RESTART\_FLOW\_PARAMS] \{overwrite\_restart\_flow\_params = .true.\}
+\end{deflist}
+
+Overwrites checkpointing values with values read in from the input file on restart.
+
+\protect\hypertarget{target_overwrite_restart}{}
+
+\subsection{Keyword: OVERWRITE\_RESTART\_TRANSPORT}
+
+\hfill\hyperlink{target_key}{\return}
+
+\begin{deflist}{0000000000}
+\item[OVERWRITE\_RESTART\_TRANSPORT] ~
+\end{deflist}
+
+Overwrites checkpointing values with values read in from the input file on restart.
+
 \protect\hypertarget{target_overwrite}{}
 
 \subsection{Keyword: OVERWRITE\_RESTART\_TRANSPORT}
 
 \hfill\hyperlink{target_key}{\return}
 
-%\shadowbox{
-%\begin{minipage}{6.5in}
 \begin{deflist}{0000000000}
 \item[OVERWRITE\_RESTART\_TRANSPORT] \{overwrite\_restart\_transport = .true.\}
 \end{deflist}
-%\end{minipage}
-%}
 
 Overwrites checkpointing values with values read in from the input file on restart.
 
 \hyperlink{target_key}{\return}
+
+
 
 %================================================================
 
