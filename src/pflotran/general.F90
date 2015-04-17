@@ -1154,6 +1154,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   use Material_Aux_class
   use Connection_module
   use Fracture_module
+  use Klinkenberg_module
   
   implicit none
   
@@ -1177,11 +1178,11 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   PetscInt :: icomp, iphase
   
   PetscReal :: xmol(option%nflowspec)
-  PetscReal :: perm_up, perm_dn
   PetscReal :: density_ave, density_kg_ave
   PetscReal :: uH
   PetscReal :: H_ave
-  PetscReal :: perm_ave_over_dist
+  PetscReal :: perm_ave_over_dist(option%nphase)
+  PetscReal :: perm_up, perm_dn
   PetscReal :: delta_pressure, delta_xmol, delta_temp
   PetscReal :: pressure_ave
   PetscReal :: gravity_term
@@ -1209,15 +1210,15 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
     if (material_auxvar_up%fracture_flags(frac_change_perm_x_index) &
         .and. dist(1) > 0.99999d0) then
       call FracturePermEvaluate(material_auxvar_up,perm_up,perm_up, &
-                               dummy_perm_up)
+                                dummy_perm_up)
     else if (material_auxvar_up%fracture_flags(frac_change_perm_y_index) &
         .and. dist(2) > 0.99999d0) then
       call FracturePermEvaluate(material_auxvar_up,perm_up,perm_up, &
-                               dummy_perm_up)
+                                dummy_perm_up)
     else if (material_auxvar_up%fracture_flags(frac_change_perm_z_index) &
         .and. dist(3) > 0.99999d0) then
       call FracturePermEvaluate(material_auxvar_up,perm_up,perm_up, &
-                               dummy_perm_up)
+                                dummy_perm_up)
     endif
   endif
   
@@ -1225,19 +1226,31 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
     if (material_auxvar_dn%fracture_flags(frac_change_perm_x_index) &
         .and. dist(1) > 0.99999d0) then
       call FracturePermEvaluate(material_auxvar_dn,perm_dn,perm_dn, &
-                               dummy_perm_dn)
+                                dummy_perm_dn)
     else if (material_auxvar_dn%fracture_flags(frac_change_perm_y_index) &
         .and. dist(2) > 0.99999d0) then
       call FracturePermEvaluate(material_auxvar_dn,perm_dn,perm_dn, &
-                               dummy_perm_dn)
+                                dummy_perm_dn)
     else if (material_auxvar_dn%fracture_flags(frac_change_perm_z_index) &
         .and. dist(3) > 0.99999d0) then
       call FracturePermEvaluate(material_auxvar_dn,perm_dn,perm_dn, &
-                               dummy_perm_dn)
+                                dummy_perm_dn)
     endif
   endif
   
-  perm_ave_over_dist = (perm_up * perm_dn)/(dist_up*perm_dn + dist_dn*perm_up)
+  if (associated(klinkenberg)) then
+    perm_ave_over_dist(1) = (perm_up * perm_dn) / &
+                            (dist_up*perm_dn + dist_dn*perm_up)
+    dummy_perm_up = klinkenberg%Evaluate(perm_up, &
+                                         gen_auxvar_up%pres(option%gas_phase))
+    dummy_perm_dn = klinkenberg%Evaluate(perm_dn, &
+                                         gen_auxvar_dn%pres(option%gas_phase))
+    perm_ave_over_dist(2) = (dummy_perm_up * dummy_perm_dn) / &
+                            (dist_up*dummy_perm_dn + dist_dn*dummy_perm_up)
+  else
+    perm_ave_over_dist(:) = (perm_up * perm_dn) / &
+                            (dist_up*perm_dn + dist_dn*perm_up)
+  endif
       
   Res = 0.d0
   
@@ -1288,7 +1301,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
     if (mobility > floweps) then
       ! v_darcy[m/sec] = perm[m^2] / dist[m] * kr[-] / mu[Pa-sec]
       !                    dP[Pa]]
-      v_darcy(iphase) = perm_ave_over_dist * mobility * delta_pressure
+      v_darcy(iphase) = perm_ave_over_dist(iphase) * mobility * delta_pressure
       density_ave = GeneralAverageDensity(iphase, &
                                           global_auxvar_up%istate, &
                                           global_auxvar_dn%istate, &
@@ -1466,6 +1479,7 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
   use Option_module                              
   use Material_Aux_class
   use Fracture_module
+  use Klinkenberg_module
   
   implicit none
   
@@ -1489,7 +1503,9 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
   PetscReal :: xmol(option%nflowspec)  
   PetscReal :: density_ave, density_kg_ave
   PetscReal :: H_ave, uH
-  PetscReal :: perm_ave_over_dist, dist_gravity
+  PetscReal :: perm_dn_adj(option%nphase)
+  PetscReal :: perm_ave_over_dist
+  PetscReal :: dist_gravity
   PetscReal :: delta_pressure, delta_xmol, delta_temp
   PetscReal :: gravity_term
   PetscReal :: mobility, mole_flux, q
@@ -1529,32 +1545,41 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
     if (material_auxvar_dn%fracture_flags(frac_change_perm_x_index) & 
         .and. dist(1) > 0.99999d0) then
       call FracturePermEvaluate(material_auxvar_dn,perm_dn,perm_dn, &
-                               dummy_perm_dn)
+                                dummy_perm_dn)
     else if (material_auxvar_dn%fracture_flags(frac_change_perm_y_index) &
         .and. dist(2) > 0.99999d0) then
       call FracturePermEvaluate(material_auxvar_dn,perm_dn,perm_dn, &
-                               dummy_perm_dn)
+                                dummy_perm_dn)
     else if (material_auxvar_dn%fracture_flags(frac_change_perm_z_index) &
         .and. dist(3) > 0.99999d0) then
       call FracturePermEvaluate(material_auxvar_dn,perm_dn,perm_dn, &
-                               dummy_perm_dn)
+                                dummy_perm_dn)
     endif
+  endif
+
+  if (associated(klinkenberg)) then
+    perm_dn_adj(1) = perm_dn
+                                          
+    perm_dn_adj(2) = klinkenberg%Evaluate(perm_dn, &
+                                          gen_auxvar_dn%pres(option%gas_phase))
+  else
+    perm_dn_adj(:) = perm_dn
   endif
   
 #ifdef CONVECTION  
   do iphase = 1, option%nphase
  
-     bc_type = ibndtype(iphase)
-     select case(bc_type)
+    bc_type = ibndtype(iphase)
+    select case(bc_type)
       ! figure out the direction of flow
       case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
 
-      ! dist(0) = scalar - magnitude of distance
-      ! gravity = vector(3)
-      ! dist(1:3) = vector(3) - unit vector
-      dist_gravity = dist(0) * dot_product(option%gravity,dist(1:3))
+        ! dist(0) = scalar - magnitude of distance
+        ! gravity = vector(3)
+        ! dist(1:3) = vector(3) - unit vector
+        dist_gravity = dist(0) * dot_product(option%gravity,dist(1:3))
       
-      if (bc_type == CONDUCTANCE_BC) then
+        if (bc_type == CONDUCTANCE_BC) then
           select case(iphase)
             case(LIQUID_PHASE)
               idof = auxvar_mapping(GENERAL_LIQUID_CONDUCTANCE_INDEX)
@@ -1563,7 +1588,7 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
           end select        
           perm_ave_over_dist = auxvars(idof)
         else
-          perm_ave_over_dist = perm_dn / dist(0)
+          perm_ave_over_dist = perm_dn_adj(iphase) / dist(0)
         endif
         
           

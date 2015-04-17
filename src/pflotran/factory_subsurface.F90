@@ -33,6 +33,8 @@ subroutine SubsurfaceInitialize(simulation_base,pm_list,option)
   use Option_module
   use Simulation_Base_class
   use PM_Base_class
+  use Creep_Closure_module
+  use Klinkenberg_module
   
   implicit none
   
@@ -42,6 +44,10 @@ subroutine SubsurfaceInitialize(simulation_base,pm_list,option)
 
   class(subsurface_simulation_type), pointer :: simulation
 
+  ! Modules that must be initialized
+  call CreepClosureInit()
+  call KlinkenbergInit()
+  
   ! NOTE: PETSc must already have been initialized here!
   simulation => SubsurfaceSimulationCreate(option)
   simulation%process_model_list => pm_list

@@ -584,3 +584,219 @@ subroutine CreepClosureDestroy2(creep_closure)
 end subroutine CreepClosureDestroy2
 
 end module Creep_Closure_module
+
+! ************************************************************************** !
+! ************************************************************************** !
+! ************************************************************************** !
+  
+module Klinkenberg_module
+  
+  use PFLOTRAN_Constants_module
+  use Lookup_Table_module
+
+  implicit none
+  
+  private
+
+#include "finclude/petscsys.h"
+
+  type, public :: klinkenberg_type
+    PetscReal :: a
+    PetscReal :: b
+  contains
+    procedure, public :: Read => KlinkenbergRead
+    procedure, public :: Evaluate => KlinkenbergEvaluate
+    procedure, public :: Test => KlinkenbergTest
+  end type klinkenberg_type
+  
+  class(klinkenberg_type), pointer, public :: klinkenberg
+  
+  interface KlinkenbergDestroy
+    module procedure KlinkenbergDestroy1
+    module procedure KlinkenbergDestroy2
+  end interface
+
+  public :: KlinkenbergInit, &
+            KlinkenbergCreate, &
+            KlinkenbergDestroy
+  
+  contains
+  
+! ************************************************************************** !
+
+subroutine KlinkenbergInit()
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/13/14
+  ! 
+
+  implicit none
+  
+  class(klinkenberg_type), pointer :: KlinkenbergCreate
+  
+  if (associated(klinkenberg)) then
+    call KlinkenbergDestroy(klinkenberg)
+  endif
+  nullify(klinkenberg)
+  
+end subroutine KlinkenbergInit
+
+! ************************************************************************** !
+
+function KlinkenbergCreate()
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/13/14
+  ! 
+
+  implicit none
+  
+  class(klinkenberg_type), pointer :: KlinkenbergCreate
+  
+  allocate(KlinkenbergCreate)
+  KlinkenbergCreate%a = UNINITIALIZED_DOUBLE
+  KlinkenbergCreate%b = UNINITIALIZED_DOUBLE
+  
+end function KlinkenbergCreate
+
+! ************************************************************************** !
+
+subroutine KlinkenbergRead(this,input,option)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/13/14
+  ! 
+  use Option_module
+  use Input_Aux_module
+  use String_module
+  use Utility_module
+  use Units_module
+  
+  implicit none
+  
+  class(klinkenberg_type) :: this
+  type(input_type) :: input
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: keyword
+  character(len=MAXSTRINGLENGTH) :: error_string = 'KLINKENBERG_EFFECT'
+
+  input%ierr = 0
+  do
+  
+    call InputReadPflotranString(input,option)
+
+    if (InputCheckExit(input,option)) exit  
+
+    call InputReadWord(input,option,keyword,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword',error_string)
+    call StringToUpper(keyword)   
+      
+    select case(trim(keyword))
+      case('A') 
+        call InputReadDouble(input,option,this%a)
+        call InputErrorMsg(input,option,'a',error_string)
+      case('B') 
+        call InputReadDouble(input,option,this%b)
+        call InputErrorMsg(input,option,'b',error_string)
+     case default
+        call InputKeywordUnrecognized(keyword,error_string,option)
+    end select
+  enddo
+  
+  if (Uninitialized(this%a)) then
+    option%io_buffer = &
+      'Parameter "a" must be included to model the Klinkenberg Effect.'
+    call printErrMsg(option)
+  endif
+  if (Uninitialized(this%b)) then
+    option%io_buffer = &
+      'Parameter "b" must be included to model the Klinkenberg Effect.'
+    call printErrMsg(option)
+  endif
+  
+end subroutine KlinkenbergRead
+
+! ************************************************************************** !
+
+function KlinkenbergEvaluate(this,liquid_permeability,pressure)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/13/14
+  ! 
+  implicit none
+  
+  class(klinkenberg_type) :: this
+  PetscReal :: liquid_permeability
+  PetscReal :: pressure
+  
+  PetscReal :: KlinkenbergEvaluate
+  PetscReal :: gas_permeability
+  
+  gas_permeability = liquid_permeability * &
+                        (1.d0 + &
+                         this%b * (liquid_permeability**this%a) / &
+                           pressure)
+  KlinkenbergEvaluate = gas_permeability
+  
+end function KlinkenbergEvaluate
+
+! ************************************************************************** !
+
+subroutine KlinkenbergTest(this,liquid_permeability,pressure)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/13/14
+  ! 
+  implicit none
+  
+  class(klinkenberg_type) :: this
+  PetscReal :: liquid_permeability
+  PetscReal :: pressure
+  
+  PetscReal :: KlinkenbergEvaluate
+  
+  print *, liquid_permeability, pressure, &
+           this%Evaluate(liquid_permeability,pressure)
+  
+end subroutine Klinkenbergtest
+
+! ************************************************************************** !
+
+subroutine KlinkenbergDestroy1()
+  ! 
+  ! Deallocates any allocated pointers in auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/13/14
+  ! 
+
+  implicit none
+  
+  call KlinkenbergDestroy(klinkenberg)
+
+end subroutine KlinkenbergDestroy1
+
+! ************************************************************************** !
+
+subroutine KlinkenbergDestroy2(klinkenberg)
+  ! 
+  ! Deallocates any allocated pointers in auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/13/14
+  ! 
+
+  implicit none
+  
+  class(klinkenberg_type), pointer :: klinkenberg
+  
+  if (.not.associated(klinkenberg)) return
+
+  deallocate(klinkenberg)
+  nullify(klinkenberg)
+
+end subroutine KlinkenbergDestroy2
+
+end module Klinkenberg_module

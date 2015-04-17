@@ -1220,6 +1220,7 @@ subroutine InitSubsurfaceReadInput(simulation)
   use EOS_Water_module
   use SrcSink_Sandbox_module
   use Creep_Closure_module
+  use Klinkenberg_module
   
   use Simulation_Subsurface_class
   use PMC_Subsurface_class
@@ -1329,38 +1330,6 @@ subroutine InitSubsurfaceReadInput(simulation)
     call printMsg(option)
 
     select case(trim(card))
-
-!....................
-      case('WIPP-CREEP_CLOSURE')
-        call CreepClosureInit()
-        creep_closure => CreepClosureCreate()
-        call creep_closure%Read(input,option)
-        option%flow%transient_porosity = PETSC_TRUE
-        
-!....................
-      case ('ONLY_VERTICAL_FLOW')
-        option%flow%only_vertical_flow = PETSC_TRUE
-        if (option%iflowmode /= TH_MODE) then
-          option%io_buffer = 'ONLY_VERTICAL_FLOW implemented in TH_MODE'
-          call printErrMsg(option)
-        endif
-
-!....................
-      case ('RELATIVE_PERMEABILITY_AVERAGE')
-        call InputReadWord(input,option,word,PETSC_FALSE)
-        call StringToUpper(word)
-        select case (trim(word))
-          case ('UPWIND')
-            option%rel_perm_aveg = UPWIND
-          case ('HARMONIC')
-            option%rel_perm_aveg = HARMONIC
-          case ('DYNAMIC_HARMONIC')
-            option%rel_perm_aveg = DYNAMIC_HARMONIC
-          case default
-            option%io_buffer = 'Cannot identify the specificed ' // &
-              'RELATIVE_PERMEABILITY_AVERAGE.'
-            call printErrMsg(option)
-          end select
 
 !....................
       case ('GRID')
@@ -2428,6 +2397,44 @@ subroutine InitSubsurfaceReadInput(simulation)
         call InputReadInt(input,option,option%hdf5_write_group_size)
         call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE','Group size')
 
+!....................
+      case('WIPP-CREEP_CLOSURE')
+        call CreepClosureInit()
+        creep_closure => CreepClosureCreate()
+        call creep_closure%Read(input,option)
+        option%flow%transient_porosity = PETSC_TRUE
+        
+!....................
+      case('KLINKENBERG_EFFECT')
+        call KlinkenbergInit()
+        klinkenberg => KlinkenbergCreate()
+        call Klinkenberg%Read(input,option)
+        
+!....................
+      case ('ONLY_VERTICAL_FLOW')
+        option%flow%only_vertical_flow = PETSC_TRUE
+        if (option%iflowmode /= TH_MODE) then
+          option%io_buffer = 'ONLY_VERTICAL_FLOW implemented in TH_MODE'
+          call printErrMsg(option)
+        endif
+
+!....................
+      case ('RELATIVE_PERMEABILITY_AVERAGE')
+        call InputReadWord(input,option,word,PETSC_FALSE)
+        call StringToUpper(word)
+        select case (trim(word))
+          case ('UPWIND')
+            option%rel_perm_aveg = UPWIND
+          case ('HARMONIC')
+            option%rel_perm_aveg = HARMONIC
+          case ('DYNAMIC_HARMONIC')
+            option%rel_perm_aveg = DYNAMIC_HARMONIC
+          case default
+            option%io_buffer = 'Cannot identify the specificed ' // &
+              'RELATIVE_PERMEABILITY_AVERAGE.'
+            call printErrMsg(option)
+          end select
+          
 !....................
       case ('DBASE_FILENAME')
 
