@@ -548,7 +548,7 @@ factory_subsurface.o : condition_control.o general.o global.o init_common.o \
                        pmc_third_party.o reactive_transport.o realization.o \
                        regression.o simulation_base.o simulation_subsurface.o \
                        solver.o strata.o string.o timestepper_BE.o \
-                       timestepper_base.o waypoint.o
+                       timestepper_base.o waypoint.o wipp.o
 factory_surface.o : checkpoint_surface.o condition_control.o init_common.o \
                     input_aux.o logging.o option.o output.o output_aux.o \
                     output_surface.o pflotran_constants.o simulation_base.o \
@@ -945,7 +945,7 @@ reaction_database_hpt.o : input_aux.o option.o pflotran_constants.o reaction.o \
 reaction_immobile.o : global_aux.o input_aux.o material_aux.o option.o \
                       pflotran_constants.o reaction_aux.o \
                       reaction_immobile_aux.o reactive_transport_aux.o \
-                      string.o utility.o
+                      string.o units.o utility.o
 reaction_immobile_aux.o : option.o pflotran_constants.o \
                           reaction_database_aux.o string.o utility.o
 reaction_microbial.o : global_aux.o input_aux.o material_aux.o option.o \
