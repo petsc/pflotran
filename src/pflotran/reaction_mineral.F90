@@ -810,7 +810,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
     endif
     
     if (associated(mineral%kinmnrl_Tempkin_const)) then
-      dIm_dQK = dIm_dQK*(1.d0/mineral%kinmnrl_Tempkin_const(imnrl))/QK
+      dIm_dQK = dIm_dQK*(1.d0/mineral%kinmnrl_Tempkin_const(imnrl))/QK*(1.d0-affinity_factor)
     endif
     
     ! derivatives with respect to primary species in reaction quotient
