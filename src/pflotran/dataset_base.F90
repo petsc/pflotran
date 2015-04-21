@@ -509,7 +509,7 @@ subroutine DatasetBasePrint(this,option)
     if (associated(this%dims)) then
       write(option%fid_out,'(12x,''Dims: '',10i4)') this%dims
     endif
-    write(option%fid_out,'(12x,''Buffer Slice Size: '',i2)') this%buffer_nslice
+    write(option%fid_out,'(12x,''Buffer Slice Size: '',i3)') this%buffer_nslice
   endif
 
 end subroutine DatasetBasePrint
