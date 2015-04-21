@@ -47,6 +47,8 @@ module Material_Aux_class
     PetscReal, pointer :: fracture_properties(:)
     PetscBool, pointer :: fracture_flags(:)
     PetscBool :: fracture_bool = PETSC_FALSE
+    PetscBool :: setup_fracture = PETSC_TRUE
+    PetscBool :: setup_reference_pressure = PETSC_TRUE
 !    procedure(SaturationFunction), nopass, pointer :: SaturationFunction
   contains
     procedure, public :: PermeabilityTensorToScalar => &
@@ -91,7 +93,8 @@ module Material_Aux_class
             MaterialCompressSoilPtr, &
             MaterialCompressSoil, &
             MaterialCompressSoilBragflo, &
-            MaterialCompressSoilLeijnse
+            MaterialCompressSoilLeijnse, &
+            MaterialReferencePressureSetup
   
   public :: MaterialAuxCreate, &
             MaterialAuxVarInit, &
@@ -373,6 +376,20 @@ subroutine MaterialCompressSoilLeijnse(auxvar,pressure, &
   dcompressed_porosity_dp = tempreal * compressibility
   
 end subroutine MaterialCompressSoilLeijnse
+
+! ************************************************************************** !
+
+subroutine MaterialReferencePressureSetup(auxvar,init_pres)
+  
+  implicit none
+  
+  class(material_auxvar_type), intent(inout) :: auxvar
+  PetscReal, intent(in) :: init_pres
+  
+  auxvar%soil_properties(soil_reference_pressure_index) = init_pres
+  auxvar%setup_reference_pressure = PETSC_FALSE
+
+end subroutine MaterialReferencePressureSetup
 
 ! ************************************************************************** !
                                 

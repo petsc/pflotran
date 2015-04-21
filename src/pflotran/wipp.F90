@@ -25,6 +25,7 @@ module Fracture_module
 
   public :: FractureInit, &
             FractureCreate, &
+            FractureSetup, &
             FractureDestroy, &
             FracturePoroEvaluate, &
             FracturePermEvaluate
@@ -75,7 +76,6 @@ subroutine FractureInit(this)
 end subroutine FractureInit
 
 ! ************************************************************************** !
-
 subroutine FractureRead(this,input,option)
   ! 
   ! Author: Heeho Park
@@ -143,6 +143,26 @@ subroutine FractureRead(this,input,option)
     enddo
 
 end subroutine FractureRead
+
+! ************************************************************************** !
+
+subroutine FractureSetup(auxvar,init_pres)
+
+  use Material_Aux_class
+  
+  implicit none
+  
+  class(material_auxvar_type), intent(inout) :: auxvar
+  PetscReal, intent(in) :: init_pres
+  
+  auxvar%fracture_properties(frac_init_pres_index) = &
+    auxvar%fracture_properties(frac_init_pres_index) + init_pres
+  auxvar%fracture_properties(frac_alt_pres_index) = &
+    auxvar%fracture_properties(frac_alt_pres_index) + &
+    auxvar%fracture_properties(frac_init_pres_index)
+  auxvar%setup_fracture = PETSC_FALSE
+
+end subroutine FractureSetup
 
 ! ************************************************************************** !
 
@@ -233,7 +253,7 @@ subroutine FracturePermEvaluate(auxvar,permeability,altered_perm, &
   PetscReal :: phi
 
   phi = auxvar%porosity
-  Pi = auxvar%fracture_properties(frac_init_pres_index)
+  phii = auxvar%porosity_base
   n = auxvar%fracture_properties(frac_poro_exp_index)
 
   if (.not.associated(MaterialCompressSoilPtr, &
@@ -242,8 +262,6 @@ subroutine FracturePermEvaluate(auxvar,permeability,altered_perm, &
       'BRAGFLO soil compressibility function.'
     call printErrMsg(option)
   endif
-  
-  call MaterialCompressSoil(auxvar, Pi, phii, dphii_dp)
   
   ! phi = altered porosity
   ! phii = porosity at initiating pressure
