@@ -1445,7 +1445,7 @@ subroutine StructGridComputeVolumes(radius,structured_grid,option,nL2G,volume)
   
   call VecRestoreArrayF90(volume,volume_p, ierr);CHKERRQ(ierr)
   
-  if (OptionPrintToScreen(option) .and. &
+  if (option%print_to_screen .and. &
       option%mycommsize > 1 .and. option%mycommsize <= 16) then
     write(*,'(" rank= ",i3,", nlmax= ",i6,", nlx,y,z= ",3i4, &
       & ", nxs,e = ",2i4,", nys,e = ",2i4,", nzs,e = ",2i4)') &
