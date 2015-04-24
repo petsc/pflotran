@@ -1413,7 +1413,7 @@ function UGridExplicitSetConnections(explicit_grid,cell_ids,connection_type, &
   type(connection_set_type), pointer :: UGridExplicitSetConnections
 
   type(unstructured_explicit_type) :: explicit_grid
-  PetscInt :: cell_ids(:)
+  PetscInt, pointer :: cell_ids(:)
   PetscInt :: connection_type
   type(option_type) :: option
   
@@ -1422,7 +1422,10 @@ function UGridExplicitSetConnections(explicit_grid,cell_ids,connection_type, &
   PetscInt :: iconn
   PetscInt :: id
   
-  num_connections = size(cell_ids)
+  num_connections = 0
+  if (associated(cell_ids)) then
+    num_connections = size(cell_ids)
+  endif
   connections => ConnectionCreate(num_connections,connection_type)
     
   do iconn = 1, num_connections

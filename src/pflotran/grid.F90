@@ -1727,8 +1727,15 @@ subroutine GridLocalizeRegionFromCoordinates(grid,region,option)
           else
             region%num_cells = 0
           endif
+        case(EXPLICIT_UNSTRUCTURED_GRID)
+          if (grid%itype == EXPLICIT_UNSTRUCTURED_GRID) then
+            option%io_buffer = 'Regions defined with a point are not ' // &
+              'supported with explicit unstructured grids.'
+            call printErrMsg(option)
+          endif
         case(POLYHEDRA_UNSTRUCTURED_GRID)
-           option%io_buffer = 'add code POLYHDERA in GridLocalizeRegionFromCoordinates'
+           option%io_buffer = &
+             'add code POLYHDERA in GridLocalizeRegionFromCoordinates'
            call printErrMsg(option)
       end select
     endif
@@ -1856,7 +1863,8 @@ subroutine GridLocalizeRegionFromCoordinates(grid,region,option)
           else
             iflag = 1
           endif
-        case(IMPLICIT_UNSTRUCTURED_GRID,EXPLICIT_UNSTRUCTURED_GRID,POLYHEDRA_UNSTRUCTURED_GRID)
+        case(IMPLICIT_UNSTRUCTURED_GRID,EXPLICIT_UNSTRUCTURED_GRID, &
+             POLYHEDRA_UNSTRUCTURED_GRID)
           del_x = x_max-x_min
           del_y = y_max-y_min
           del_z = z_max-z_min
@@ -1901,8 +1909,12 @@ subroutine GridLocalizeRegionFromCoordinates(grid,region,option)
                    del_z > 1.d-10) .or. &
                   (del_x > 1.d-10 .and. del_y > 1.d-10 .and. &
                    del_z < 1.d-10)) then
-            if (grid%itype == IMPLICIT_UNSTRUCTURED_GRID .or. &
-                grid%itype == EXPLICIT_UNSTRUCTURED_GRID) then
+            if (grid%itype == EXPLICIT_UNSTRUCTURED_GRID) then
+              option%io_buffer = 'Regions defined with 2D planes are not ' // &
+                'supported with explicit unstructured grids.'
+              call printErrMsg(option)
+            endif
+            if (grid%itype == IMPLICIT_UNSTRUCTURED_GRID) then
               call UGridGetCellsInRectangle(x_min,x_max,y_min,y_max, &
                                             z_min,z_max, &
                                             grid%unstructured_grid,option, &
@@ -1910,10 +1922,10 @@ subroutine GridLocalizeRegionFromCoordinates(grid,region,option)
                                             region%faces)
             else
               call UGridPolyhedraGetCellsInRectangle(x_min,x_max,y_min,y_max, &
-                                                     z_min,z_max, &
-                                                     grid%unstructured_grid,option, &
-                                                     region%num_cells,region%cell_ids, &
-                                                     region%faces)
+                                             z_min,z_max, &
+                                             grid%unstructured_grid,option, &
+                                             region%num_cells,region%cell_ids, &
+                                             region%faces)
             endif
 
           endif
