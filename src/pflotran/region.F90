@@ -16,7 +16,7 @@ module Region_module
   PetscInt, parameter, public :: DEFINED_BY_BLOCK = 1
   PetscInt, parameter, public :: DEFINED_BY_COORD = 2
   PetscInt, parameter, public :: DEFINED_BY_CELL_IDS = 3
-  PetscInt, parameter, public :: DEFINED_BY_CELL_IDS_WTIH_FACE_IDS = 4
+  PetscInt, parameter, public :: DEFINED_BY_CELL_AND_FACE_IDS = 4
   PetscInt, parameter, public :: DEFINED_BY_VERTEX_IDS = 5
   PetscInt, parameter, public :: DEFINED_BY_SIDESET_UGRID = 6
   PetscInt, parameter, public :: DEFINED_BY_FACE_UGRID_EXP = 7
@@ -721,7 +721,7 @@ subroutine RegionReadFromFileId(region,input,option)
     cell_ids_p(1) = temp_int_array(1)
     face_ids_p(1) = temp_int_array(2)
     count = 1 ! reset the counter to represent the num of rows read
-    region%def_type = DEFINED_BY_CELL_IDS_WTIH_FACE_IDS
+    region%def_type = DEFINED_BY_CELL_AND_FACE_IDS
 
     ! Read the data
     do

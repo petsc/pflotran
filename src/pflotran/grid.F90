@@ -562,13 +562,13 @@ subroutine GridLocalizeRegions(grid,region_list,option)
           case(EXPLICIT_UNSTRUCTURED_GRID)
             call GridLocalizeRegionsFromCellIDsUGrid(grid,region,option)
         end select
-      case (DEFINED_BY_CELL_IDS_WTIH_FACE_IDS)
+      case (DEFINED_BY_CELL_AND_FACE_IDS)
         select case(grid%itype)
           case (STRUCTURED_GRID)
             ! Do nothing since the region was localized during the reading process
           case default
             option%io_buffer = 'Extended GridLocalizeRegions() for region ' // &
-            'DEFINED_BY_CELL_IDS_WTIH_FACE_IDS'
+            'DEFINED_BY_CELL_AND_FACE_IDS'
             call printErrMsg(option)
         end select
       case (DEFINED_BY_VERTEX_IDS)
