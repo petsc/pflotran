@@ -535,6 +535,17 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
     call saturation_function%SetupPolynomials(option,error_string)
   endif
 
+  select type(sf => saturation_function)
+    class is(sat_func_VG_type)
+    class is(sat_func_BC_type)
+      if (.not.smooth) then
+        option%io_buffer = 'Brooks-Corey saturation function is being used ' // &
+          'without SMOOTH option.'
+        call printWrnMsg(option)
+      endif
+    class is(sat_func_Linear_type)
+  end select
+
 end subroutine SaturationFunctionRead
 
 ! ************************************************************************** !
@@ -1898,6 +1909,12 @@ subroutine SF_BC_Saturation(this,capillary_pressure,liquid_saturation, &
                                    capillary_pressure,Se,dSe_pc)
       liquid_saturation = this%Sr + (1.d0-this%Sr)*Se
       dsat_pres = -(1.d0-this%Sr)*dSe_pc
+      return
+    endif
+  else
+    if (capillary_pressure < 1.d0/this%alpha) then
+      liquid_saturation = 1.d0
+      dsat_pres = 0.d0
       return
     endif
   endif

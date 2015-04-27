@@ -2025,7 +2025,7 @@ subroutine BasisInit(reaction,option)
       endif
     endif
     
-    ! Determine whether Tempkins constant is used in any TST reactions
+    ! Determine whether Temkin's constant is used in any TST reactions
     cur_mineral => mineral%mineral_list
     found = PETSC_FALSE
     do
@@ -2039,8 +2039,8 @@ subroutine BasisInit(reaction,option)
       cur_mineral => cur_mineral%next
     enddo
     if (found) then
-      allocate(mineral%kinmnrl_Tempkin_const(mineral%nkinmnrl))
-      mineral%kinmnrl_Tempkin_const = 1.d0    
+      allocate(mineral%kinmnrl_Temkin_const(mineral%nkinmnrl))
+      mineral%kinmnrl_Temkin_const = 1.d0
     endif
 
     ! Determine whether affinity factor has power
@@ -2312,7 +2312,7 @@ subroutine BasisInit(reaction,option)
               tstrxn%activation_energy
           endif
           if (Initialized(tstrxn%affinity_factor_sigma)) then
-            mineral%kinmnrl_Tempkin_const(ikinmnrl) = &
+            mineral%kinmnrl_Temkin_const(ikinmnrl) = &
               tstrxn%affinity_factor_sigma
           endif
           if (Initialized(tstrxn%affinity_factor_beta)) then
