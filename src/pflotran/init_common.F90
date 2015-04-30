@@ -698,6 +698,7 @@ subroutine InitCommonReadVelocityField(realization)
   use Connection_module
   use Discretization_module
   use HDF5_module
+  use HDF5_Aux_module
 
   implicit none
   
@@ -739,6 +740,11 @@ subroutine InitCommonReadVelocityField(realization)
       case(3)
         dataset_name = 'Internal Velocity Z'
     end select
+    if (.not.HDF5DatasetExists(filename,group_name,dataset_name,option)) then
+      option%io_buffer = 'Dataset "' // trim(group_name) // '/' // trim(dataset_name) // &
+        '" not found in HDF5 file "' // trim(filename) // '".'
+      call printErrMsg(option)
+    endif
     call HDF5ReadCellIndexedRealArray(realization,field%work,filename, &
                                       group_name,dataset_name,PETSC_FALSE)
     call DiscretizationGlobalToLocal(discretization,field%work,field%work_loc, &
@@ -766,6 +772,11 @@ subroutine InitCommonReadVelocityField(realization)
   do 
     if (.not.associated(boundary_condition)) exit
     dataset_name = boundary_condition%name
+    if (.not.HDF5DatasetExists(filename,group_name,dataset_name,option)) then
+      option%io_buffer = 'Dataset "' // trim(group_name) // '/' // trim(dataset_name) // &
+        '" not found in HDF5 file "' // trim(filename) // '".'
+      call printErrMsg(option)
+    endif
     call HDF5ReadCellIndexedRealArray(realization,field%work,filename, &
                                       group_name,dataset_name,PETSC_FALSE)
     call VecGetArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
