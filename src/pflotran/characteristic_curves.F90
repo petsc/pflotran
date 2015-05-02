@@ -1211,7 +1211,7 @@ end subroutine SFBaseCapillaryPressure
 ! ************************************************************************** !
 
 subroutine SFBaseSaturation(this,capillary_pressure,liquid_saturation, &
-                              dsat_pres,option)
+                              dsat_dpres,option)
   use Option_module
 
   implicit none
@@ -1219,7 +1219,7 @@ subroutine SFBaseSaturation(this,capillary_pressure,liquid_saturation, &
   class(sat_func_base_type) :: this
   PetscReal, intent(in) :: capillary_pressure
   PetscReal, intent(out) :: liquid_saturation
-  PetscReal, intent(out) :: dsat_pres
+  PetscReal, intent(out) :: dsat_dpres
   type(option_type), intent(inout) :: option
   
   option%io_buffer = 'SFBaseSaturation must be extended.'
@@ -1415,7 +1415,7 @@ end subroutine SFDefaultCapillaryPressure
 ! ************************************************************************** !
 
 subroutine SFDefaultSaturation(this,capillary_pressure,liquid_saturation, &
-                               dsat_pres,option)
+                               dsat_dpres,option)
   use Option_module
 
   implicit none
@@ -1423,7 +1423,7 @@ subroutine SFDefaultSaturation(this,capillary_pressure,liquid_saturation, &
   class(sat_func_default_type) :: this
   PetscReal, intent(in) :: capillary_pressure
   PetscReal, intent(out) :: liquid_saturation
-  PetscReal, intent(out) :: dsat_pres
+  PetscReal, intent(out) :: dsat_dpres
   type(option_type), intent(inout) :: option
   
   option%io_buffer = 'SFDefaultSaturation is a dummy routine used ' // &
@@ -1605,7 +1605,7 @@ end subroutine SF_VG_CapillaryPressure
 ! ************************************************************************** !
 
 subroutine SF_VG_Saturation(this,capillary_pressure,liquid_saturation, &
-                            dsat_pres,option)
+                            dsat_dpres,option)
   ! 
   ! Computes the saturation (and associated derivatives) as a function of 
   ! capillary pressure
@@ -1626,7 +1626,7 @@ subroutine SF_VG_Saturation(this,capillary_pressure,liquid_saturation, &
   class(sat_func_VG_type) :: this
   PetscReal, intent(in) :: capillary_pressure
   PetscReal, intent(out) :: liquid_saturation
-  PetscReal, intent(out) :: dsat_pres
+  PetscReal, intent(out) :: dsat_dpres
   type(option_type), intent(inout) :: option
   
   PetscReal, parameter :: pc_alpha_n_epsilon = 1.d-15
@@ -1635,9 +1635,9 @@ subroutine SF_VG_Saturation(this,capillary_pressure,liquid_saturation, &
   PetscReal :: pc_alpha_n
   PetscReal :: one_plus_pc_alpha_n
   PetscReal :: Se
-  PetscReal :: dSe_pc
+  PetscReal :: dSe_dpc
   
-  dsat_pres = 0.d0
+  dsat_dpres = 0.d0
   
   if (associated(this%pres_poly)) then
     if (capillary_pressure < this%pres_poly%low) then
@@ -1645,9 +1645,9 @@ subroutine SF_VG_Saturation(this,capillary_pressure,liquid_saturation, &
       return
     else if (capillary_pressure < this%pres_poly%high) then
       call CubicPolynomialEvaluate(this%pres_poly%coefficients, &
-                                   capillary_pressure,Se,dSe_pc)
+                                   capillary_pressure,Se,dSe_dpc)
       liquid_saturation = this%Sr + (1.d0-this%Sr)*Se
-      dsat_pres = -(1.d0-this%Sr)*dSe_pc
+      dsat_dpres = -(1.d0-this%Sr)*dSe_dpc
       return
     endif
   endif
@@ -1670,10 +1670,10 @@ subroutine SF_VG_Saturation(this,capillary_pressure,liquid_saturation, &
     endif
     one_plus_pc_alpha_n = 1.d0+pc_alpha_n
     Se = one_plus_pc_alpha_n**(-this%m)
-    dSe_pc = -this%m*n*this%alpha*pc_alpha_n/ &
+    dSe_dpc = -this%m*n*this%alpha*pc_alpha_n/ &
             (pc_alpha*one_plus_pc_alpha_n**(this%m+1.d0))
     liquid_saturation = this%Sr + (1.d0-this%Sr)*Se
-    dsat_pres = -(1.d0-this%Sr)*dSe_pc
+    dsat_dpres = -(1.d0-this%Sr)*dSe_dpc
   endif
   
 end subroutine SF_VG_Saturation
@@ -1869,7 +1869,7 @@ end subroutine SF_BC_CapillaryPressure
 ! ************************************************************************** !
 
 subroutine SF_BC_Saturation(this,capillary_pressure,liquid_saturation, &
-                            dsat_pres,option)
+                            dsat_dpres,option)
   ! 
   ! Computes the saturation (and associated derivatives) as a function of 
   ! capillary pressure
@@ -1890,14 +1890,14 @@ subroutine SF_BC_Saturation(this,capillary_pressure,liquid_saturation, &
   class(sat_func_BC_type) :: this
   PetscReal, intent(in) :: capillary_pressure
   PetscReal, intent(out) :: liquid_saturation
-  PetscReal, intent(out) :: dsat_pres
+  PetscReal, intent(out) :: dsat_dpres
   type(option_type), intent(inout) :: option
   
   PetscReal :: pc_alpha_neg_lambda
   PetscReal :: Se
-  PetscReal :: dSe_pc
+  PetscReal :: dSe_dpc
   
-  dsat_pres = 0.d0
+  dsat_dpres = 0.d0
   
   ! reference #1
   if (associated(this%pres_poly)) then
@@ -1906,24 +1906,24 @@ subroutine SF_BC_Saturation(this,capillary_pressure,liquid_saturation, &
       return
     else if (capillary_pressure < this%pres_poly%high) then
       call CubicPolynomialEvaluate(this%pres_poly%coefficients, &
-                                   capillary_pressure,Se,dSe_pc)
+                                   capillary_pressure,Se,dSe_dpc)
       liquid_saturation = this%Sr + (1.d0-this%Sr)*Se
-      dsat_pres = -(1.d0-this%Sr)*dSe_pc
+      dsat_dpres = -(1.d0-this%Sr)*dSe_dpc
       return
     endif
   else
     if (capillary_pressure < 1.d0/this%alpha) then
       liquid_saturation = 1.d0
-      dsat_pres = 0.d0
+      dsat_dpres = 0.d0
       return
     endif
   endif
 
   pc_alpha_neg_lambda = (capillary_pressure*this%alpha)**(-this%lambda)
   Se = pc_alpha_neg_lambda
-  dSe_pc = -this%lambda/capillary_pressure*pc_alpha_neg_lambda
+  dSe_dpc = -this%lambda/capillary_pressure*pc_alpha_neg_lambda
   liquid_saturation = this%Sr + (1.d0-this%Sr)*Se
-  dsat_pres = -(1.d0-this%Sr)*dSe_pc
+  dsat_dpres = -(1.d0-this%Sr)*dSe_dpc
   
 end subroutine SF_BC_Saturation
 ! End SF: Brooks-Corey
@@ -2026,7 +2026,7 @@ end subroutine SF_Linear_CapillaryPressure
 ! ************************************************************************** !
 
 subroutine SF_Linear_Saturation(this,capillary_pressure,liquid_saturation, &
-                            dsat_pres,option)
+                            dsat_dpres,option)
   ! 
   ! Computes the saturation (and associated derivatives) as a function of 
   ! capillary pressure
@@ -2043,22 +2043,22 @@ subroutine SF_Linear_Saturation(this,capillary_pressure,liquid_saturation, &
   class(sat_func_Linear_type) :: this
   PetscReal, intent(in) :: capillary_pressure
   PetscReal, intent(out) :: liquid_saturation
-  PetscReal, intent(out) :: dsat_pres
+  PetscReal, intent(out) :: dsat_dpres
   type(option_type), intent(inout) :: option
   
   PetscReal :: Se
-  PetscReal :: dSe_pc
+  PetscReal :: dSe_dpc
   
-  dsat_pres = 0.d0
+  dsat_dpres = 0.d0
 
   if (capillary_pressure <= 0.d0) then
     liquid_saturation = 1.d0
     return
   else
     Se = (this%pcmax-capillary_pressure) / (this%pcmax-1.d0/this%alpha)
-    dSe_pc = -1.d0/(this%pcmax-1.d0/this%alpha)
+    dSe_dpc = -1.d0/(this%pcmax-1.d0/this%alpha)
     liquid_saturation = this%Sr + (1.d0-this%Sr)*Se
-    dsat_pres = -(1.d0-this%Sr)*dSe_pc
+    dsat_dpres = -(1.d0-this%Sr)*dSe_dpc
   endif 
 
 end subroutine SF_Linear_Saturation
@@ -2160,7 +2160,7 @@ end subroutine SF_BF_KRP9_CapillaryPressure
 ! ************************************************************************** !
 
 subroutine SF_BF_KRP9_Saturation(this,capillary_pressure,liquid_saturation, &
-                            dsat_pres,option)
+                            dsat_dpres,option)
   ! 
   ! Computes the saturation (and associated derivatives) as a function of 
   ! capillary pressure
@@ -2177,13 +2177,13 @@ subroutine SF_BF_KRP9_Saturation(this,capillary_pressure,liquid_saturation, &
   class(sat_func_BF_KRP9_type) :: this
   PetscReal, intent(in) :: capillary_pressure
   PetscReal, intent(out) :: liquid_saturation
-  PetscReal, intent(out) :: dsat_pres
+  PetscReal, intent(out) :: dsat_dpres
   type(option_type), intent(inout) :: option
   
   PetscReal :: Se
-  PetscReal :: dSe_pc
+  PetscReal :: dSe_dpc
   
-  dsat_pres = 0.d0
+  dsat_dpres = 0.d0
 
   if (capillary_pressure <= 0.d0) then
     liquid_saturation = 1.d0
