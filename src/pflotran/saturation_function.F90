@@ -704,7 +704,7 @@ end subroutine SaturatFuncConvertListToArray
 
 subroutine SaturationFunctionCompute1(capillary_pressure,saturation, &
                                       relative_perm, &
-                                      dsat_pres,dkr_pres, &
+                                      dsat_dpres,dkr_dpres, &
                                       saturation_function, &
                                       auxvar1,auxvar2, &
                                       option)
@@ -721,7 +721,7 @@ subroutine SaturationFunctionCompute1(capillary_pressure,saturation, &
   implicit none
 
   PetscReal :: capillary_pressure, saturation, relative_perm
-  PetscReal :: dsat_pres, dkr_pres
+  PetscReal :: dsat_dpres, dkr_dpres
   type(saturation_function_type) :: saturation_function
   PetscReal :: auxvar1,auxvar2
   type(option_type) :: option
@@ -730,7 +730,7 @@ subroutine SaturationFunctionCompute1(capillary_pressure,saturation, &
   
   call SaturationFunctionCompute2(capillary_pressure,saturation, &
                                   relative_perm, &
-                                  dsat_pres,dkr_pres, &
+                                  dsat_dpres,dkr_dpres, &
                                   saturation_function, &
                                   auxvar1,auxvar2, &
                                   switch_to_saturated,option)
@@ -741,7 +741,7 @@ end subroutine SaturationFunctionCompute1
 
 subroutine SaturationFunctionCompute2(capillary_pressure,saturation, &
                                       relative_perm, &
-                                      dsat_pres,dkr_pres, &
+                                      dsat_dpres,dkr_dpres, &
                                       saturation_function, &
                                       auxvar1,auxvar2, &
                                       switch_to_saturated,option)
@@ -764,7 +764,7 @@ subroutine SaturationFunctionCompute2(capillary_pressure,saturation, &
   implicit none
 
   PetscReal :: capillary_pressure, saturation, relative_perm 
-  PetscReal :: dsat_pres, dkr_pres
+  PetscReal :: dsat_dpres, dkr_dpres
   type(saturation_function_type) :: saturation_function
   PetscReal :: auxvar1,auxvar2
   PetscBool :: switch_to_saturated
@@ -772,8 +772,8 @@ subroutine SaturationFunctionCompute2(capillary_pressure,saturation, &
 
   PetscInt :: iphase
   PetscReal :: alpha, lambda, m, n, Sr, one_over_alpha, pcmax
-  PetscReal :: pc, Se, one_over_m, Se_one_over_m, dSe_pc, dsat_pc, dkr_pc
-  PetscReal :: dkr_Se, power
+  PetscReal :: pc, Se, one_over_m, Se_one_over_m, dSe_dpc, dsat_dpc, dkr_dpc
+  PetscReal :: dkr_dSe, power
   PetscReal :: pc_alpha, pc_alpha_n, one_plus_pc_alpha_n
   PetscReal :: pc_alpha_neg_lambda
   PetscReal :: por, perm
@@ -782,8 +782,8 @@ subroutine SaturationFunctionCompute2(capillary_pressure,saturation, &
   PetscReal, parameter :: pc_alpha_n_epsilon = 1.d-15
   
   iphase = 1
-  dsat_pres = 0.d0
-  dkr_pres = 0.d0
+  dsat_dpres = 0.d0
+  dkr_dpres = 0.d0
   
   ! compute saturation
   select case(saturation_function%saturation_function_itype)
@@ -798,9 +798,9 @@ subroutine SaturationFunctionCompute2(capillary_pressure,saturation, &
       else if (pc < saturation_function%spline_high) then
         Sr = saturation_function%Sr(iphase)
         call CubicPolynomialEvaluate(saturation_function%spline_coefficients, &
-                                     pc,Se,dSe_pc)
+                                     pc,Se,dSe_dpc)
         saturation = Sr + (1.d0-Sr)*Se
-        dsat_pc = (1.d0-Sr)*dSe_pc
+        dsat_dpc = (1.d0-Sr)*dSe_dpc
 #else
       if (capillary_pressure <= 0.d0) then
         saturation = 1.d0
@@ -816,7 +816,7 @@ subroutine SaturationFunctionCompute2(capillary_pressure,saturation, &
         pc_alpha = pc*alpha
         pc_alpha_n = pc_alpha**n
         !geh:  This conditional does not catch potential cancelation in 
-        !      the dkr_Se deriviative calculation.  Therefore, I am setting
+        !      the dkr_dSe deriviative calculation.  Therefore, I am setting
         !      an epsilon here
 !        if (1.d0 + pc_alpha_n == 1.d0) then ! check for zero perturbation
         if (pc_alpha_n < pc_alpha_n_epsilon) then 
@@ -828,9 +828,9 @@ subroutine SaturationFunctionCompute2(capillary_pressure,saturation, &
         one_plus_pc_alpha_n = 1.d0+pc_alpha_n
         Sr = saturation_function%Sr(iphase)
         Se = one_plus_pc_alpha_n**(-m)
-        dSe_pc = -m*n*alpha*pc_alpha_n/(pc_alpha*one_plus_pc_alpha_n**(m+1))
+        dSe_dpc = -m*n*alpha*pc_alpha_n/(pc_alpha*one_plus_pc_alpha_n**(m+1))
         saturation = Sr + (1.d0-Sr)*Se
-        dsat_pc = (1.d0-Sr)*dSe_pc
+        dsat_dpc = (1.d0-Sr)*dSe_dpc
       endif
       if (saturation > 1.d0) then
         print *, option%myrank, 'vG Saturation > 1:', saturation
@@ -844,29 +844,29 @@ subroutine SaturationFunctionCompute2(capillary_pressure,saturation, &
           one_over_m = 1.d0/m
           Se_one_over_m = Se**one_over_m
           relative_perm = Se*Se*(1.d0-(1.d0-Se_one_over_m)**m)
-          dkr_Se = 2.d0*relative_perm/Se + &
+          dkr_dSe = 2.d0*relative_perm/Se + &
                    Se*Se_one_over_m*(1.d0-Se_one_over_m)**(m-1.d0)
-          dkr_pc = dkr_Se*dSe_pc
+          dkr_dpc = dkr_dSe*dSe_dpc
         case(MUALEM)
           ! reference #1
 #ifdef MUALEM_SPLINE
           if (Se > saturation_function%spline_low) then
             call CubicPolynomialEvaluate( &
               saturation_function%spline_coefficients, &
-              Se,relative_perm,dkr_Se)
+              Se,relative_perm,dkr_dSe)
           else
 #endif          
           one_over_m = 1.d0/m
           Se_one_over_m = Se**one_over_m
           relative_perm = sqrt(Se)*(1.d0-(1.d0-Se_one_over_m)**m)**2.d0
-          dkr_Se = 0.5d0*relative_perm/Se+ &
+          dkr_dSe = 0.5d0*relative_perm/Se+ &
                    2.d0*Se**(one_over_m-0.5d0)* &
                         (1.d0-Se_one_over_m)**(m-1.d0)* &
                         (1.d0-(1.d0-Se_one_over_m)**m)
 #ifdef MUALEM_SPLINE
           endif
 #endif          
-          dkr_pc = dkr_Se*dSe_pc
+          dkr_dpc = dkr_dSe*dSe_dpc
         case default
           option%io_buffer = 'Unknown relative permeabilty function' 
           call printErrMsg(option)
@@ -886,18 +886,18 @@ subroutine SaturationFunctionCompute2(capillary_pressure,saturation, &
         Sr = saturation_function%Sr(iphase)
         call CubicPolynomialEvaluate(saturation_function% &
                                      pres_spline_coefficients, &
-                                     pc,Se,dSe_pc)
+                                     pc,Se,dSe_dpc)
         saturation = Sr + (1.d0-Sr)*Se
-        dsat_pc = (1.d0-Sr)*dSe_pc
+        dsat_dpc = (1.d0-Sr)*dSe_dpc
       else
         lambda = saturation_function%lambda
         Sr = saturation_function%Sr(iphase)
         pc_alpha_neg_lambda = (pc*alpha)**(-lambda)
         Se = pc_alpha_neg_lambda
-        dSe_pc = -lambda/pc*pc_alpha_neg_lambda
+        dSe_dpc = -lambda/pc*pc_alpha_neg_lambda
         saturation = Sr + (1.d0-Sr)*Se
-!        dsat_pc = -lambda*(1.d0-Sr)/pc*pc_alpha_neg_lambda
-        dsat_pc = (1.d0-Sr)*dSe_pc
+!        dsat_dpc = -lambda*(1.d0-Sr)/pc*pc_alpha_neg_lambda
+        dsat_dpc = (1.d0-Sr)*dSe_dpc
       endif
       if (saturation > 1.d0) then
         print *, option%myrank, 'BC Saturation > 1:', saturation
@@ -910,14 +910,14 @@ subroutine SaturationFunctionCompute2(capillary_pressure,saturation, &
           ! reference #1
           power = 3.d0+2.d0/lambda
           relative_perm = Se**power
-          dkr_Se = power*relative_perm/Se
-          dkr_pc = dkr_Se*dSe_pc
+          dkr_dSe = power*relative_perm/Se
+          dkr_dpc = dkr_dSe*dSe_dpc
         case(MUALEM)
           ! reference #1
           power = 2.5d0+2.d0/lambda
           relative_perm = Se**power
-          dkr_Se = power*relative_perm/Se
-          dkr_pc = dkr_Se*dSe_pc
+          dkr_dSe = power*relative_perm/Se
+          dkr_dpc = dkr_dSe*dSe_dpc
         case default
           option%io_buffer = 'Unknown relative permeabilty function'
           call printErrMsg(option)
@@ -938,9 +938,9 @@ subroutine SaturationFunctionCompute2(capillary_pressure,saturation, &
       else
         Sr = saturation_function%Sr(iphase)
         Se = (pcmax-pc)/(pcmax-one_over_alpha)
-        dSe_pc = -1.d0/(pcmax-one_over_alpha)
+        dSe_dpc = -1.d0/(pcmax-one_over_alpha)
         saturation = Sr + (1.d0-Sr)*Se
-        dsat_pc = (1.d0-Sr)*dSe_pc
+        dsat_dpc = (1.d0-Sr)*dSe_dpc
       endif
       if (saturation > 1.d0) then
         print *, option%myrank, 'BC Saturation > 1:', saturation
@@ -950,7 +950,7 @@ subroutine SaturationFunctionCompute2(capillary_pressure,saturation, &
       select case(saturation_function%permeability_function_itype)
         case(BURDINE)
           relative_perm = Se
-          dkr_Se = 1.d0
+          dkr_dSe = 1.d0
         case(MUALEM)
           power = 5.d-1
           pct_over_pcmax = one_over_alpha/pcmax
@@ -977,10 +977,10 @@ subroutine SaturationFunctionCompute2(capillary_pressure,saturation, &
         n = 1.d0-exp(-Fg/log10(m/Pd))
         n = (n-saturation)/(alpha-pc)
 #endif        
-        dsat_pc = (saturation-1.d0)*Fg/(log10(PHg/Pd)**2.d0)/(pc*2.30258509d0)
+        dsat_dpc = (saturation-1.d0)*Fg/(log10(PHg/Pd)**2.d0)/(pc*2.30258509d0)
         ! Sr assumed to be zero
         relative_perm = saturation**a
-        dkr_pc = a*saturation**(a-1.d0)*dsat_pc
+        dkr_dpc = a*saturation**(a-1.d0)*dsat_dpc
       else
         saturation = 1.d0
         relative_perm = 1.d0
@@ -992,8 +992,8 @@ subroutine SaturationFunctionCompute2(capillary_pressure,saturation, &
       call printErrMsg(option)
   end select
 
-  dsat_pres = -dsat_pc 
-  dkr_pres = -dkr_pc
+  dsat_dpres = -dsat_dpc 
+  dkr_dpres = -dkr_dpc
 
 end subroutine SaturationFunctionCompute2
 
@@ -1014,7 +1014,7 @@ subroutine SaturationFunctionCompute3(capillary_pressure,saturation, &
   implicit none
 
   PetscReal :: capillary_pressure, saturation
-  PetscReal :: relative_perm_dummy, dsat_pres_dummy, dkr_pres_dummy
+  PetscReal :: relative_perm_dummy, dsat_dpres_dummy, dkr_dpres_dummy
   type(saturation_function_type) :: saturation_function
   PetscReal :: auxvar1_dummy, auxvar2_dummy
   type(option_type) :: option
@@ -1023,7 +1023,7 @@ subroutine SaturationFunctionCompute3(capillary_pressure,saturation, &
   
   call SaturationFunctionCompute2(capillary_pressure,saturation, &
                                   relative_perm_dummy, &
-                                  dsat_pres_dummy,dkr_pres_dummy, &
+                                  dsat_dpres_dummy,dkr_dpres_dummy, &
                                   saturation_function, &
                                   auxvar1_dummy,auxvar2_dummy, &
                                   switch_to_saturated_dummy,option)
@@ -1067,8 +1067,8 @@ implicit none
   type(option_type) :: option
 
   PetscReal :: alpha, lambda, m, n
-  PetscReal :: pc, Se, one_over_m, Se_one_over_m, dSe_pc, dkr_pc
-  PetscReal :: dkr_Se, power
+  PetscReal :: pc, Se, one_over_m, Se_one_over_m, dSe_dpc, dkr_dpc
+  PetscReal :: dkr_dSe, power
   PetscReal :: pc_alpha, pc_alpha_n, one_plus_pc_alpha_n
   PetscReal :: pc_alpha_neg_lambda
   PetscReal :: function_A, function_B
@@ -1077,7 +1077,7 @@ implicit none
   PetscReal :: dfunc_A_temp
   PetscReal :: dfunc_B_pl
   PetscReal :: liq_sat_one_over_m, dkr_ds_liq, dkr_temp
-  PetscReal :: pth, dSe_pc_at_pth
+  PetscReal :: pth, dSe_dpc_at_pth
   PetscReal, parameter :: den_ice = 9.167d2 !in kg/m3 at 273.15K
   PetscReal, parameter :: interfacial_tensions_ratio = 2.33
   PetscReal, parameter :: T_0 = 273.15d0 !in K
@@ -1110,15 +1110,15 @@ implicit none
         pc_alpha_n = pc_alpha**n
         one_plus_pc_alpha_n = 1.d0 + pc_alpha_n
         Se = one_plus_pc_alpha_n**(-m)
-        dSe_pc = -m*n*alpha*pc_alpha_n/(pc_alpha*one_plus_pc_alpha_n**(m+1))
+        dSe_dpc = -m*n*alpha*pc_alpha_n/(pc_alpha*one_plus_pc_alpha_n**(m+1))
         if (pc >= pth) then
-          dSe_pc_at_pth = -m*n*(1.d0 + (alpha*pth)**n)**(-1.d0-m)*(alpha**n*pth**(n-1.d0))
-          Se = (pc - 1.d8)*dSe_pc_at_pth
-          dSe_pc = dSe_pc_at_pth
-        ! write (*,*) option%myrank, 'pc:', pc, 'Se:', Se, 'dSe_pc', dSe_pc 
+          dSe_dpc_at_pth = -m*n*(1.d0 + (alpha*pth)**n)**(-1.d0-m)*(alpha**n*pth**(n-1.d0))
+          Se = (pc - 1.d8)*dSe_dpc_at_pth
+          dSe_dpc = dSe_dpc_at_pth
+        ! write (*,*) option%myrank, 'pc:', pc, 'Se:', Se, 'dSe_dpc', dSe_dpc 
         endif 
         function_B = 1.d0/Se
-        dfunc_B_pl = 1.d0/(Se**(2.d0))*dSe_pc        
+        dfunc_B_pl = 1.d0/(Se**(2.d0))*dSe_dpc        
       endif
       if (temperature >= 0.d0) then
         function_A = 1.d0
@@ -1277,7 +1277,7 @@ subroutine CalculateImplicitIceFunc(alpha,lambda,Pcgl,T,s_i,func_val,dfunc_val)
   PetscReal :: temp_term, PC 
   PetscReal :: sat, dsat, sat_term
   PetscReal :: sat_inv, dsat_inv
-  PetscReal :: sat_PC, dsat_PC, dfunc_val
+  PetscReal :: sat_PC, dsat_dpc, dfunc_val
   PetscReal, parameter :: beta = 2.33          ! dimensionless -- ratio of surf. tens
   PetscReal, parameter :: rho_i = 9.167d2      ! in kg/m^3
   PetscReal, parameter :: T_0 = 273.15         ! in K
@@ -1291,9 +1291,9 @@ subroutine CalculateImplicitIceFunc(alpha,lambda,Pcgl,T,s_i,func_val,dfunc_val)
   sat_term = (s_i + (1.d0 - s_i)*sat)
   call ComputeInvVGAndDerivative(alpha,lambda,sat_term,sat_inv,dsat_inv)
   PC = temp_term + sat_inv
-  call ComputeVGAndDerivative(alpha,lambda,PC,sat_PC,dsat_PC)
+  call ComputeVGAndDerivative(alpha,lambda,PC,sat_PC,dsat_dPC)
   func_val = (1.d0 - s_i)*sat - sat_PC
-  dfunc_val = -sat - dsat_PC*dsat_inv*(1.d0 - sat)
+  dfunc_val = -sat - dsat_dpc*dsat_inv*(1.d0 - sat)
   
 end subroutine CalculateImplicitIceFunc
 
@@ -1433,7 +1433,7 @@ subroutine CalcPhasePartitionIceDeriv(alpha,lambda,Pcgl,T,s_g,s_i,s_l, &
   PetscReal :: s_g, s_i, s_l
   PetscReal :: sat, dsat
   PetscReal :: sat_inv, dsat_inv
-  PetscReal :: PC, sat_PC, dsat_PC
+  PetscReal :: PC, sat_PC, dsat_dpc
   PetscReal :: G, dS_dpl, temp_term
   PetscReal :: L, M, N
   PetscReal, parameter :: beta = 2.33          ! dimensionless -- ratio of surf. tens
@@ -1474,9 +1474,9 @@ subroutine CalcPhasePartitionIceDeriv(alpha,lambda,Pcgl,T,s_g,s_i,s_l, &
   endif
   call ComputeInvVGAndDerivative(alpha,lambda,(s_i + s_l),sat_inv,dsat_inv)
   PC = temp_term + sat_inv 
-  call ComputeVGAndDerivative(alpha,lambda,PC,sat_PC,dsat_PC)
+  call ComputeVGAndDerivative(alpha,lambda,PC,sat_PC,dsat_dPC)
   call ComputeVGAndDerivative(alpha,lambda,Pcgl,sat,dsat)
-  G = dsat_PC*dsat_inv
+  G = dsat_dpc*dsat_inv
   dS_dpl = dsat*(-1.d0)
   if (G == 1.d0) then
     dsi_dpl = 0.d0
@@ -1489,7 +1489,7 @@ subroutine CalcPhasePartitionIceDeriv(alpha,lambda,Pcgl,T,s_g,s_i,s_l, &
 
   
   ! Calculate the derivatives of saturation with respect to temp
-  L = dsat_PC
+  L = dsat_dpc
   if (T >= 0.d0) then
     M = 0.d0
   else
@@ -2090,7 +2090,7 @@ end subroutine SatFuncComputeIceDallAmico
 
 ! ************************************************************************** !
 
-subroutine SatFuncGetLiqRelPermFromSat(saturation,relative_perm,dkr_Se, &
+subroutine SatFuncGetLiqRelPermFromSat(saturation,relative_perm,dkr_dSe, &
                                        saturation_function,iphase, &
                                        derivative,option)
   ! 
@@ -2110,7 +2110,7 @@ subroutine SatFuncGetLiqRelPermFromSat(saturation,relative_perm,dkr_Se, &
   
   implicit none
 
-  PetscReal :: saturation, relative_perm, dkr_Se
+  PetscReal :: saturation, relative_perm, dkr_dSe
   PetscReal :: power, pct_over_pcmax, pc_over_pcmax, pc_log_ratio
   PetscReal :: pcmax, one_over_alpha, alpha, lambda
   PetscInt :: iphase
@@ -2128,7 +2128,7 @@ subroutine SatFuncGetLiqRelPermFromSat(saturation,relative_perm,dkr_Se, &
   ! two-phase with dry-out), need to bail out.
   if (Se <= 0.d0) then
     relative_perm = 0.d0
-    dkr_Se = 0.d0
+    dkr_dSe = 0.d0
     return
   else if (Se > 1.d0) then
     Se = 1.d0
@@ -2146,7 +2146,7 @@ subroutine SatFuncGetLiqRelPermFromSat(saturation,relative_perm,dkr_Se, &
           Se_one_over_m = Se**one_over_m
           relative_perm = Se*Se*(1.d0-(1.d0-Se_one_over_m)**m)
           if (derivative) then
-            dkr_Se = 2.d0*relative_perm/Se + &
+            dkr_dSe = 2.d0*relative_perm/Se + &
                  Se*Se_one_over_m*(1.d0-Se_one_over_m)**(m-1.d0)
           endif
         case(MUALEM)
@@ -2156,7 +2156,7 @@ subroutine SatFuncGetLiqRelPermFromSat(saturation,relative_perm,dkr_Se, &
           Se_one_over_m = Se**one_over_m
           relative_perm = sqrt(Se)*(1.d0-(1.d0-Se_one_over_m)**m)**2.d0
           if (derivative) then
-            dkr_Se = 0.5d0*relative_perm/Se+ &
+            dkr_dSe = 0.5d0*relative_perm/Se+ &
                  2.d0*Se**(one_over_m-0.5d0)* &
                       (1.d0-Se_one_over_m)**(m-1.d0)* &
                       (1.d0-(1.d0-Se_one_over_m)**m)
@@ -2172,13 +2172,13 @@ subroutine SatFuncGetLiqRelPermFromSat(saturation,relative_perm,dkr_Se, &
           lambda = saturation_function%lambda
           power = 3.d0+2.d0/lambda
           relative_perm = Se**power
-          dkr_Se = power*relative_perm/Se
+          dkr_dSe = power*relative_perm/Se
         case(MUALEM)
           ! reference #1
           lambda = saturation_function%lambda
           power = 2.5d0+2.d0/lambda
           relative_perm = Se**power
-          dkr_Se = power*relative_perm/Se
+          dkr_dSe = power*relative_perm/Se
         case default
           option%io_buffer = 'Unknown relative permeabilty function'
           call printErrMsg(option)
@@ -2188,7 +2188,7 @@ subroutine SatFuncGetLiqRelPermFromSat(saturation,relative_perm,dkr_Se, &
         case(BURDINE)
           relative_perm = Se
           if (derivative) then
-            dkr_Se = 1.d0
+            dkr_dSe = 1.d0
           endif
         case(MUALEM)
           power = 5.d-1
@@ -2209,7 +2209,7 @@ subroutine SatFuncGetLiqRelPermFromSat(saturation,relative_perm,dkr_Se, &
         case(FATT_KLIKOFF)
           relative_perm = Se**3
           if (derivative) then
-            dkr_Se = 3.d0 * Se**2
+            dkr_dSe = 3.d0 * Se**2
           endif
         case default
           option%io_buffer = 'Unknown relative permeabilty function'
@@ -2521,10 +2521,10 @@ subroutine SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
         n = 1.d0-exp(-Fg/log10(m/Pd))
         n = (n-saturation)/(alpha-pc)
 #endif        
-        dsat_pc = (saturation-1.d0)*Fg/(log10(PHg/Pd)**2.d0)/(pc*2.30258509d0)
+        dsat_dpc = (saturation-1.d0)*Fg/(log10(PHg/Pd)**2.d0)/(pc*2.30258509d0)
         ! Sr assumed to be zero
         relative_perm = saturation**a
-        dkr_pc = a*saturation**(a-1.d0)*dsat_pc
+        dkr_dpc = a*saturation**(a-1.d0)*dsat_dpc
       else
         saturation = 1.d0
         relative_perm = 1.d0

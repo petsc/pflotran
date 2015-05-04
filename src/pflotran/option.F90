@@ -91,8 +91,6 @@ module Option_module
 
     PetscInt :: ntrandof
   
-    PetscBool :: variables_swapped
-    
     PetscInt :: iflag
     PetscInt :: status
     !geh: remove once legacy code is gone.
@@ -555,7 +553,6 @@ subroutine OptionInitRealization(option)
   option%use_matrix_buffer = PETSC_FALSE
   option%status = PROCEED 
   option%force_newton_iteration = PETSC_FALSE
-  option%variables_swapped = PETSC_FALSE
   option%print_explicit_primal_grid = PETSC_FALSE
   option%print_explicit_dual_grid = PETSC_FALSE  
   option%secondary_continuum_solver = 1

@@ -1813,7 +1813,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
                               integer_array)
                             
     region%faces => integer_array
-    region%def_type = DEFINED_BY_CELL_IDS_WTIH_FACE_IDS
+    region%def_type = DEFINED_BY_CELL_AND_FACE_IDS
   endif
   region%num_cells = num_indices
   deallocate(indices)
@@ -1896,7 +1896,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
                               integer_array)
                             
     region%faces => integer_array
-    region%def_type = DEFINED_BY_CELL_IDS_WTIH_FACE_IDS
+    region%def_type = DEFINED_BY_CELL_AND_FACE_IDS
   endif
   region%num_cells = num_indices
   deallocate(indices)
@@ -2144,7 +2144,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
        !
        ! Input data is: Cell IDs + Face IDs
        !
-       region%def_type = DEFINED_BY_CELL_IDS_WTIH_FACE_IDS
+       region%def_type = DEFINED_BY_CELL_AND_FACE_IDS
        region%num_cells = region%num_verts
        allocate(region%cell_ids(region%num_cells))
        allocate(region%faces(region%num_cells))
