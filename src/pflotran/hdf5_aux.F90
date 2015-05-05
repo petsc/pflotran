@@ -36,6 +36,7 @@ module HDF5_Aux_module
             HDF5GroupExists, &
 #else
             HDF5GroupExists, &
+            HDF5DatasetExists, &
 #endif
 ! SCORPIO
             HDF5MakeStringCompatible, &
@@ -400,6 +401,95 @@ function HDF5GroupExists(filename,group_name,option)
 !SCORPIO
 
 end function HDF5GroupExists
+
+! ************************************************************************** !
+
+function HDF5DatasetExists(filename,group_name,dataset_name,option)
+  !
+  ! SCORPIO
+  ! Returns true if a dataset exists
+  !
+  ! Author: Gautam Bisht
+  ! Date: 04/30/2015
+  !
+
+  use hdf5
+  use Option_module
+
+  implicit none
+
+#if defined(SCORPIO)
+  include "scorpiof.h"
+#endif
+
+  character(len=MAXSTRINGLENGTH) :: filename
+  character(len=MAXWORDLENGTH) :: group_name
+  character(len=MAXWORDLENGTH) :: dataset_name
+  type(option_type) :: option
+
+  character(len=MAXWORDLENGTH) :: group_name_local
+  integer(HID_T) :: file_id
+  integer(HID_T) :: grp_id
+  integer(HID_T) :: prop_id
+  integer(HID_T) :: dataset_id
+  PetscMPIInt, parameter :: ON=1, OFF=0
+  PetscBool :: group_exists
+  PetscBool :: dataset_exists
+
+  PetscBool :: HDF5DatasetExists
+
+#if defined(SCORPIO)
+
+  option%io_buffer = 'Need to extend HDF5DatasetExists() for SCORPIO.'
+  call printErrMsg(option)
+
+#else
+
+  if (len_trim(group_name) == 0) then
+    group_name_local = "/" // CHAR(0)
+  else
+    group_name_local = trim(group_name) // "/" // CHAR(0)
+  endif
+
+  ! open the file
+  call h5open_f(hdf5_err)
+  ! set read file access property
+  call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+  call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
+#endif
+  call h5fopen_f(filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
+  call h5pclose_f(prop_id,hdf5_err)
+
+  ! I turn off error messaging since if the group does not exist, an error
+  ! will be printed, but the user does not need to see this.
+  call h5eset_auto_f(OFF,hdf5_err)
+  call h5gopen_f(file_id,group_name_local,grp_id,hdf5_err)
+  group_exists = .not.(hdf5_err < 0)
+  call h5eset_auto_f(ON,hdf5_err)
+
+  if (.not.group_exists) then
+    HDF5DatasetExists = PETSC_FALSE
+  endif
+
+  call h5dopen_f(grp_id,dataset_name,dataset_id,hdf5_err)
+  dataset_exists = .not.(hdf5_err < 0)
+
+  if (.not.dataset_exists) then
+    HDF5DatasetExists = PETSC_FALSE
+  else
+    HDF5DatasetExists = PETSC_TRUE
+    call h5dclose_f(dataset_id,hdf5_err)
+  endif
+
+  if (group_exists) call h5gclose_f(grp_id,hdf5_err)
+
+  call h5fclose_f(file_id,hdf5_err)
+  call h5close_f(hdf5_err)
+#endif
+!SCORPIO
+
+end function HDF5DatasetExists
 
 ! ************************************************************************** !
 

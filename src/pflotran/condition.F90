@@ -1763,7 +1763,13 @@ subroutine TranConditionRead(condition,constraint_list,reaction,input,option)
     end select 
   
   enddo  
-  
+
+  if (.not.associated(condition%constraint_coupler_list)) then
+    option%io_buffer = 'No CONSTRAINT or CONSTRAINT_LIST defined in Transport Condition "' // &
+      trim(condition%name) // '".'
+    call printErrMsg(option)
+  endif
+
   if (len_trim(default_time_units) > 0) then
     conversion = UnitsConvertToInternal(default_time_units,option)
     cur_coupler => condition%constraint_coupler_list
