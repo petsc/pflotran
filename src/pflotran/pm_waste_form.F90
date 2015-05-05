@@ -21,6 +21,7 @@ module PM_Waste_Form_class
     PetscReal, pointer :: concentration(:,:)
     PetscReal :: fuel_dissolution_rate
     PetscReal :: specific_surface_area
+    PetscReal :: burnup
   end type mpm_type
   
   type, public, extends(pm_base_type) :: pm_mpm_type
@@ -301,6 +302,7 @@ subroutine PMWasteFormInit(this)
     this%waste_form(i)%temperature = UNINITIALIZED_DOUBLE    
     this%waste_form(i)%fuel_dissolution_rate = UNINITIALIZED_DOUBLE
     this%waste_form(i)%specific_surface_area = 1.d0
+    this%waste_form(i)%burnup = 60.d0
     this%waste_form(i)%local_id = cell_ids(2,i)
     this%waste_form(i)%coordinate%x = this%coordinate(cell_ids(1,i))%x
     this%waste_form(i)%coordinate%y = this%coordinate(cell_ids(1,i))%y
@@ -504,8 +506,9 @@ subroutine PMWasteFormSolve(this,time,ierr)
 #include "finclude/petscvec.h90"
 
   interface
-    subroutine AMP_step ( sTme, temperature_C, conc, initialRun, &
+    subroutine AMP_step ( burnup, sTme, temperature_C, conc, initialRun, &
                           fuelDisRate, status )
+      real ( kind = 8), intent( in )  :: burnup   
       real ( kind = 8), intent( in )  :: sTme   
       real ( kind = 8), intent( in )  :: temperature_C   
       real ( kind = 8), intent( inout ),  dimension (:,:) :: conc
@@ -538,7 +541,8 @@ subroutine PMWasteFormSolve(this,time,ierr)
   call VecGetArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
   do i = 1, size(this%waste_form)
 #ifdef MPM_MODEL  
-    call AMP_step(time, this%waste_form(i)%temperature, &
+    call AMP_step(this%waste_form(i)%burnup, time, &
+                  this%waste_form(i)%temperature, &
                   this%waste_form(i)%concentration, initialRun, &
                   this%waste_form(i)%fuel_dissolution_rate, status)
 #endif
