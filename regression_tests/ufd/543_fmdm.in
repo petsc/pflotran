@@ -49,16 +49,16 @@ NEWTON_SOLVER FLOW
 END
 
 LINEAR_SOLVER FLOW
-  KSP_TYPE PREONLY
-  PC_TYPE LU
+#  KSP_TYPE PREONLY
+#  PC_TYPE LU
 END
 
 NEWTON_SOLVER TRANSPORT
 END
 
 LINEAR_SOLVER TRANSPORT
-  KSP_TYPE PREONLY
-  PC_TYPE LU
+#  KSP_TYPE PREONLY
+#  PC_TYPE LU
 END
 
 #=========================== discretization ===================================
@@ -194,7 +194,7 @@ OUTPUT
 #  TIMES d 0.001 0.01 0.1 1. 10. 
   PERIODIC TIME 5 d
 #  FORMAT TECPLOT BLOCK
-  FORMAT HDF5
+#  FORMAT HDF5
   VELOCITY_AT_CENTER
 END
 
@@ -370,7 +370,7 @@ STRATA
 END
 
 #=========================== checkpoint / restart =============================
-CHECKPOINT 10
+#CHECKPOINT 10
 
 END_SUBSURFACE
 
