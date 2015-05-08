@@ -421,10 +421,10 @@ recursive subroutine PMWasteFormInitializeRun(this)
 #endif
 
 #ifndef FMDM_MODEL
-  option%io_buffer = 'Preprocessing statement FMDM_MODEL must be defined ' // &
-    'and the ANL FMDM library must be linked to PFLOTRAN to employ ' // &
-    'the fuel matrix degradation model.
-  call printErrMsg(option)
+  this%option%io_buffer = 'Preprocessing statement FMDM_MODEL must be ' // &
+    'defined and the ANL FMDM library must be linked to PFLOTRAN to ' // &
+    'employ the fuel matrix degradation model.'
+  call printErrMsg(this%option)
 #endif
 
   ! restart
