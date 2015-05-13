@@ -2354,24 +2354,24 @@ The {\bf FLOW\_CONDITION} keyword specifies scalar or vector data sets to be ass
 \end{deflist}
 \item[GRADIENT, GRAD] ~
 \begin{deflist}{000}
-\item [PRES, PRESS, PRESSURE] ~
+\item [PRESSURE] ~
 \begin{deflist}{000}
 \item[$d_{dx}$ $d_{dy}$ $d_{dz}$]
 \item[{\bf FILE} \ {\tt file\_name}]
 \end{deflist}
 \item [FLUX]
-\item [TEMP, \ TEMPERATURE]
-\item [CONC, \ CONCENTRATION]
+\item [TEMPERATURE]
+\item [CONCENTRATION]
 \item [H, \ ENTHALPY]
 \end{deflist}
 \item[\keyend]
 \item[TEMPERATURE, \ TEMP] \ {\tt <float>}
-\item[ENTHALPY, H] \ {\tt <float>}
-\item[PRESSURE, \ PRES, \ RESS] \ {\tt <float>}
+\item[ENTHALPY] \ {\tt <float>}
+\item[PRESSURE] \ {\tt <float>}
 \item[RATE] \ {\tt <float>}
 \item[FLUX, \ VELOCITY, \ VEL] \ {\tt <float>}
-\item[CONC, \ CONCENTRATION] \ {\tt <float>}
-\item[SAT, \ SATURATION] \ {\tt <float>}
+\item[CONCENTRATION] \ {\tt <float>}
+\item[SATURATION] \ {\tt <float>}
 \item[CONDUCTANCE] \ {\tt <float>}
 %\item[CONSTRAINT\_LIST]
 \end{deflist}
@@ -4833,8 +4833,8 @@ END
 
 \begin{deflist}{000}
 \item[TYPE] [{\bf dirichlet, dirichlet\_zero\_gradient, equilibrium, neumann, mole, mole\_rate, \linebreak zero\_gradient}]
-\item[TIME] \ {\tt <Value>}
-\item[UNITS] \ {\bf s, sec, min, hr, d, day, y, yr}
+%\item[TIME\_UNITS] \ {\tt <Value>}
+%\item[UNITS] \ {\bf s, sec, min, hr, d, day, y, yr}
 \item[CONSTRAINT\_LIST]
 \item {\tt time} \ {\tt constraint\_name}
 \item[\keyend]
@@ -4917,6 +4917,29 @@ CONSTRAINT initial
     :mineral     vol. frac. area
     Calcite        0.1   1.
     Metatorbernite 0.    1.
+  /
+END
+\end{verbatim}
+
+\end{mdframed}
+
+\begin{mdframed}
+\footnotesize
+\begin{verbatim}
+TRANSPORT_CONDITION
+  TIME_UNITS h
+  CONSTRAINT_LIST
+    0. name_of_constraint
+    1. name_of_constraint
+    2. name_of_constraint
+  /
+END
+ 
+TRANSPORT_CONDITION
+  CONSTRAINT_LIST
+    0. h name_of_constraint
+    1. h name_of_constraint
+    2. h name_of_constraint
   /
 END
 \end{verbatim}
