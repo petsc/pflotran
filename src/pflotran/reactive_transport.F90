@@ -2928,7 +2928,8 @@ subroutine RTResidualEquilibrateCO2(r,realization)
   PetscInt :: jco2
   PetscReal :: tc, pg, henry, m_na, m_cl
   PetscReal :: Qkco2, mco2eq, xphi
-  
+  PetscReal :: eps = 1.d-6
+
   ! CO2-specific
   PetscReal :: dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,&
                yco2,sat_pressure,lngamco2
@@ -2959,8 +2960,8 @@ subroutine RTResidualEquilibrateCO2(r,realization)
   do local_id = 1, grid%nlmax  ! For each local node do...
     ghosted_id = grid%nL2G(local_id)
     if (patch%imat(ghosted_id) <= 0) cycle
-    if (global_auxvars(ghosted_id)%sat(GAS_PHASE) > 0.d0 .and. &
-      global_auxvars(ghosted_id)%sat(GAS_PHASE) < 1.d0) then
+    if (global_auxvars(ghosted_id)%sat(GAS_PHASE) > eps .and. &
+      global_auxvars(ghosted_id)%sat(GAS_PHASE) < 1.d0-eps) then
 
       jco2 = reaction%species_idx%co2_aq_id
 
@@ -3665,7 +3666,8 @@ subroutine RTJacobianEquilibrateCO2(J,realization)
   PetscInt :: zero_count
   PetscInt :: i, jco2
   PetscReal :: jacobian_entry
-  
+  PetscReal :: eps = 1.d-6
+
   option => realization%option
   field => realization%field
   patch => realization%patch  
@@ -3686,8 +3688,8 @@ subroutine RTJacobianEquilibrateCO2(J,realization)
   do local_id = 1, grid%nlmax  ! For each local node do...
     ghosted_id = grid%nL2G(local_id)
     if (patch%imat(ghosted_id) <= 0) cycle
-    if (global_auxvars(ghosted_id)%sat(GAS_PHASE) > 0.d0 .and. &
-      global_auxvars(ghosted_id)%sat(GAS_PHASE) < 1.d0) then
+    if (global_auxvars(ghosted_id)%sat(GAS_PHASE) > eps .and. &
+      global_auxvars(ghosted_id)%sat(GAS_PHASE) < 1.d0-eps) then
       zero_count = zero_count + 1
       zero_rows(zero_count) = jco2+(ghosted_id-1)*reaction%ncomp-1
       ghosted_rows(zero_count) = ghosted_id
