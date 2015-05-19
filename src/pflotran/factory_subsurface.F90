@@ -94,7 +94,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   class(pmc_third_party_type), pointer :: pmc_third_party
   class(pm_subsurface_type), pointer :: pm_flow
   class(pm_rt_type), pointer :: pm_rt
-  class(pm_mpm_type), pointer :: pm_waste_form
+  class(pm_fmdm_type), pointer :: pm_waste_form
   class(pm_base_type), pointer :: cur_pm, prev_pm
   class(realization_type), pointer :: realization
   class(timestepper_BE_type), pointer :: timestepper
@@ -113,7 +113,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
         pm_flow => cur_pm
       class is(pm_rt_type)
         pm_rt => cur_pm
-      class is (pm_mpm_type)
+      class is (pm_fmdm_type)
         pm_waste_form => cur_pm
       class default
         option%io_buffer = &
@@ -188,7 +188,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   call InitSubsurfaceReadRequiredCards(simulation)
   call InitSubsurfaceReadInput(simulation)
   if (associated(pm_waste_form)) then
-    string = 'MPM'
+    string = 'FMDM'
     call InputFindStringInFile(realization%input,option,string)
     call InputFindStringErrorMsg(realization%input,option,string)
     call pm_waste_form%Read(realization%input)
@@ -203,7 +203,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
     pmc_third_party%pm_ptr%ptr => pm_waste_form
     pmc_third_party%realization => realization
     ! set up logging stage
-    string = 'MPM'
+    string = 'FMDM'
     call LoggingCreateStage(string,pmc_third_party%stage)
     simulation%rt_process_model_coupler%child => pmc_third_party
     nullify(pmc_third_party)
@@ -708,7 +708,7 @@ subroutine InitSubsurfaceSimulation(simulation)
             call cur_process_model%PMSubsurfaceSetRealization(realization)
           class is (pm_rt_type)
             call cur_process_model%PMRTSetRealization(realization)
-          class is (pm_mpm_type)
+          class is (pm_fmdm_type)
             call cur_process_model%PMwasteFormSetRealization(realization)
         end select
         ! set time stepper

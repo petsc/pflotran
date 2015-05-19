@@ -118,14 +118,19 @@ REGION center_of_13
   FILE 13.txt
 END
 
+skip
+! not supported with explicit unstructured grids
 REGION middle
   COORDINATE 2.50001d0 2.50001d0 2.50001d0
 END
+noskip
 
 #=========================== observation points ===============================
+skip
 OBSERVATION
   REGION middle
 /
+noskip
 
 #=========================== flow conditions ==================================
 FLOW_CONDITION initial

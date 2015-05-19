@@ -26,7 +26,7 @@ ifdef uo2
 endif
 
 ifdef fmdm
-  MYFLAGS += ${FC_DEFINE_FLAG}MPM_MODEL
+  MYFLAGS += ${FC_DEFINE_FLAG}FMDM_MODEL
 endif
 
 ifdef glenn

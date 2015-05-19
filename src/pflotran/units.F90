@@ -146,7 +146,7 @@ function UnitsConvert(unit,option)
     case('w','week')
       UnitsConvert = 7.d0*24.d0*3600.d0 
     case('mo','month')
-      UnitsConvert = 30.d0*24.d0*3600.d0 
+      UnitsConvert = 365.d0/12.d0*24.d0*3600.d0 
     case('y','yr')
       UnitsConvert = 365.d0*24.d0*3600.d0
     ! convert length to meters

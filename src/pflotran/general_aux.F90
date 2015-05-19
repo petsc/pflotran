@@ -946,7 +946,6 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
                              'After Update',option)
 #endif
 !#endif
-    option%variables_swapped = PETSC_TRUE
   endif
 
 end subroutine GeneralAuxVarUpdateState

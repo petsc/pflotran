@@ -2359,7 +2359,6 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   ! These 3 must be called before GeneralUpdateAuxVars()
   call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
   
-  option%variables_swapped = PETSC_FALSE
                                              ! do update state
   call GeneralUpdateAuxVars(realization,PETSC_TRUE)
 
@@ -2377,18 +2376,10 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
 
   ! override flags since they will soon be out of date
   patch%aux%General%auxvars_up_to_date = PETSC_FALSE 
-  if (option%variables_swapped) then
-#ifdef DEBUG_GENERAL
-    if (option%mycommsize > 1) then
-      print *, 'this needs to be addressed'
-      stop
-    endif
-#endif
-    !geh: since this operation is not collective (i.e. all processors may
-    !     not swap), this operation may fail....
-    call DiscretizationLocalToGlobal(discretization,field%flow_xx_loc,xx, &
-                                     NFLOWDOF)
-  endif
+
+  ! always assume variables have been swapped; therefore, must copy back
+  call DiscretizationLocalToGlobal(discretization,field%flow_xx_loc,xx, &
+                                   NFLOWDOF)
 
   if (option%compute_mass_balance_new) then
     call GeneralZeroMassBalanceDelta(realization)

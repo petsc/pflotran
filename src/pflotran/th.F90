@@ -3791,6 +3791,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   type(TH_auxvar_type), pointer :: auxvars(:), auxvars_bc(:)
   type(TH_auxvar_type), pointer :: auxvars_ss(:)
   type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars_ss(:)
   class(material_auxvar_type), pointer :: material_auxvars(:)
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_set_list_type), pointer :: connection_set_list
@@ -3823,6 +3824,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   auxvars_ss => patch%aux%TH%auxvars_ss
   global_auxvars => patch%aux%Global%auxvars
   global_auxvars_bc => patch%aux%Global%auxvars_bc
+  global_auxvars_ss => patch%aux%Global%auxvars_ss
   material_auxvars => patch%aux%Material%auxvars
   TH_sec_heat_vars => patch%aux%SC_heat%sec_heat_vars
   
@@ -3916,19 +3918,24 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
     do iconn = 1, cur_connection_set%num_connections      
       sum_connection = sum_connection + 1
       local_id = cur_connection_set%id_dn(iconn)
+      iend = local_id * option%nflowdof
+      istart = iend - option%nflowdof + 1
       ghosted_id = grid%nL2G(local_id)
       if (patch%imat(ghosted_id) <= 0) cycle
       
+      Res = 0.d0
       select case (source_sink%flow_condition%rate%itype)
         case(MASS_RATE_SS)
-          r_p((local_id-1)*option%nflowdof + jh2o) = &
-            r_p((local_id-1)*option%nflowdof + jh2o) - &
-            qsrc1
+          Res(jh2o) = qsrc1
+!          r_p((local_id-1)*option%nflowdof + jh2o) = &
+!            r_p((local_id-1)*option%nflowdof + jh2o) - &
+!            qsrc1
         case(HET_MASS_RATE_SS)
           qsrc1 = source_sink%flow_aux_real_var(ONE_INTEGER,iconn)/FMWH2O
-          r_p((local_id-1)*option%nflowdof + jh2o) = &
-            r_p((local_id-1)*option%nflowdof + jh2o) - &
-            qsrc1
+!          r_p((local_id-1)*option%nflowdof + jh2o) = &
+!            r_p((local_id-1)*option%nflowdof + jh2o) - &
+!            qsrc1
+          Res(jh2o) = qsrc1
         case default
           write(string,*) source_sink%flow_condition%rate%itype
           option%io_buffer='TH mode source_sink%flow_condition%rate%itype = ' // &
@@ -3943,16 +3950,28 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
           esrc1 = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
       end select
       ! convert J/s --> MJ/s
-      r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - esrc1*option%scale
+!      r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - esrc1*option%scale
+      Res(2) = esrc1*option%scale
 
       ! Update residual term associated with T
       if (qsrc1 > 0.d0) then ! injection
-        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - &
+!        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - &
+        Res(2) = Res(2) - &
               qsrc1*auxvars_ss(sum_connection)%h
       else
         ! extraction
-        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - &
+!        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - &
+        Res(2) = Res(2) - &
               qsrc1*auxvars(ghosted_id)%h
+      endif
+
+      r_p(istart:iend) = r_p(istart:iend) - Res(1:2)
+
+      if (option%compute_mass_balance_new) then
+        ! contribution to boundary
+        global_auxvars_ss(sum_connection)%mass_balance_delta(1:2,1) = &
+          global_auxvars_ss(sum_connection)%mass_balance_delta(1:2,1) - &
+          Res(1:2)
       endif
 
     enddo
@@ -4113,6 +4132,12 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
       patch%boundary_flow_fluxes(:,sum_connection) = Res(:)
       patch%boundary_energy_flux(1,sum_connection) = fluxe_bulk
       patch%boundary_energy_flux(2,sum_connection) = fluxe_cond
+
+      if (option%compute_mass_balance_new) then
+        ! contribution to boundary
+        global_auxvars_bc(sum_connection)%mass_balance_delta(1:2,1) = &
+          global_auxvars_bc(sum_connection)%mass_balance_delta(1:2,1) - Res(1:2)
+      endif
 
       iend = local_id*option%nflowdof
       istart = iend-option%nflowdof+1
