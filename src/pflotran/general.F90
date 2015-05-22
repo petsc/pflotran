@@ -1920,7 +1920,7 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
                                                         enthalpy
       endif
     else
-      Res(option%energy_id) = qsrc(THREE_INTEGER) ! MJ/s
+      Res(option%energy_id) = qsrc(THREE_INTEGER)*scale ! MJ/s
     endif
   endif
   

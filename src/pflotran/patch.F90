@@ -843,13 +843,15 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
                 coupler%flow_aux_int_var = 0
 
               case(TH_MODE)
-                allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
+                allocate(coupler%flow_aux_real_var(option%nflowdof* &
+                                                 option%nphase,num_connections))
                 allocate(coupler%flow_aux_int_var(1,num_connections))
                 coupler%flow_aux_real_var = 0.d0
                 coupler%flow_aux_int_var = 0
 
               case(MPH_MODE, IMS_MODE, FLASH2_MODE, MIS_MODE)
-                allocate(coupler%flow_aux_real_var(option%nflowdof,num_connections))
+                allocate(coupler%flow_aux_real_var(option%nflowdof, &
+                                                   num_connections))
                 allocate(coupler%flow_aux_int_var(1,num_connections))
                 coupler%flow_aux_real_var = 0.d0
                 coupler%flow_aux_int_var = 0
@@ -857,7 +859,8 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
               case(G_MODE)
                 allocate(coupler%flow_aux_mapping(GENERAL_MAX_INDEX))
                 allocate(coupler%flow_bc_type(THREE_INTEGER))
-                allocate(coupler%flow_aux_real_var(FIVE_INTEGER,num_connections))
+                allocate(coupler%flow_aux_real_var(FIVE_INTEGER, &
+                                                   num_connections))
                 allocate(coupler%flow_aux_int_var(ONE_INTEGER,num_connections))
                 coupler%flow_aux_mapping = 0
                 coupler%flow_bc_type = 0
@@ -898,6 +901,15 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
                   trim(adjustl(string))
                 call printErrMsg(option)
             end select
+          ! handles source/sinks in general mode
+          else if (associated(coupler%flow_condition%general)) then
+            if (associated(coupler%flow_condition%general%rate)) then
+              select case(coupler%flow_condition%general%rate%itype)
+                case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
+                  allocate(coupler%flow_aux_real_var(1,num_connections))
+                  coupler%flow_aux_real_var = 0.d0
+              end select
+            endif
           endif ! associated(coupler%flow_condition%rate)
         endif ! coupler%itype == SRC_SINK_COUPLER_TYPE
       endif ! associated(coupler%flow_condition)
@@ -1337,7 +1349,10 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
           call printErrMsg(option)
       end select                
     case(ANY_STATE)
-      coupler%flow_aux_int_var(GENERAL_STATE_INDEX,1:num_connections) = ANY_STATE
+      if (associated(coupler%flow_aux_int_var)) then ! not used with rate
+        coupler%flow_aux_int_var(GENERAL_STATE_INDEX,1:num_connections) = &
+          ANY_STATE
+      endif
       if (associated(general%temperature)) then
         real_count = real_count + 1
         select case(general%temperature%itype)
@@ -1390,6 +1405,13 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
     coupler%flow_aux_real_var(real_count,1:num_connections) = &
       general%energy_flux%dataset%rarray(1)
     dof3 = PETSC_TRUE
+  endif
+
+  if (associated(general%rate)) then
+    select case(general%rate%itype)
+      case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
+        call PatchScaleSourceSink(patch,coupler,option)
+    end select
   endif
 
   !geh: is this really correct, or should it be .or.
@@ -2153,7 +2175,12 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
 
   cur_connection_set => source_sink%connection_set
 
-  iscale_type = source_sink%flow_condition%rate%isubtype
+  select case(option%iflowmode)
+    case(G_MODE)
+      iscale_type = source_sink%flow_condition%general%rate%isubtype
+    case default
+      iscale_type = source_sink%flow_condition%rate%isubtype
+  end select
   
   select case(iscale_type)
     case(SCALE_BY_VOLUME)
