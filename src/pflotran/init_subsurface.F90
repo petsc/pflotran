@@ -2443,6 +2443,12 @@ subroutine InitSubsurfaceReadInput(simulation)
         exit
 
 !....................
+      case ('MIN_ALLOWABLE_SCALE')
+        call InputReadDouble(input,option,option%min_allowable_scale)
+        call InputErrorMsg(input,option,'minimium allowable scaling factor', &
+                           'InitSubsurface')
+
+!....................
       case default
         call InputKeywordUnrecognized(word,'InitSubsurfaceReadInput()',option)
     end select
