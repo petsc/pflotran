@@ -185,13 +185,10 @@ subroutine ConvergenceTest(snes_,it,xnorm,unorm,fnorm,reason,context,ierr)
     return
   endif
   
-  ! always take one iteration
-  if (solver%force_at_least_1_iteration) then
-!    call SNESGetIterationNumber(snes_,it,ierr)
-    if (it == 0) then
-      reason = 0
-      return
-    endif
+  ! force the minimum number of iterations
+  if (it < solver%newton_min_iterations) then
+    reason = 0
+    return
   endif
 
 ! Checking if norm exceeds divergence tolerance

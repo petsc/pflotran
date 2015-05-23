@@ -1330,10 +1330,48 @@ subroutine FlowConditionGeneralRead(condition,input,option)
               sub_condition_ptr%itype = MASS_RATE_SS
             case('scaled_mass_rate')
               sub_condition_ptr%itype = SCALED_MASS_RATE_SS
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              if (input%ierr == 0) then
+                call StringToLower(word)
+                sub_condition_ptr%ctype = trim(sub_condition_ptr%ctype) // word
+                select case(word)
+                  case('neighbor_perm')
+                    sub_condition_ptr%isubtype = SCALE_BY_NEIGHBOR_PERM
+                  case('volume')
+                    sub_condition_ptr%isubtype = SCALE_BY_VOLUME
+                  case('perm')
+                    sub_condition_ptr%isubtype = SCALE_BY_PERM
+                  case default
+                    string = 'flow condition "' // trim(condition%name) // &
+                      '" scaled_mass_rate type'
+                    call InputKeywordUnrecognized(word,string,option)
+                end select
+              else
+                sub_condition_ptr%isubtype = SCALE_BY_NEIGHBOR_PERM
+              endif
             case('volumetric_rate')
               sub_condition_ptr%itype = VOLUMETRIC_RATE_SS
             case('scaled_volumetric_rate')
               sub_condition_ptr%itype = SCALED_VOLUMETRIC_RATE_SS
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              if (input%ierr == 0) then
+                call StringToLower(word)
+                sub_condition_ptr%ctype = trim(sub_condition_ptr%ctype) // word
+                select case(word)
+                  case('neighbor_perm')
+                    sub_condition_ptr%isubtype = SCALE_BY_NEIGHBOR_PERM
+                  case('volume')
+                    sub_condition_ptr%isubtype = SCALE_BY_VOLUME
+                  case('perm')
+                    sub_condition_ptr%isubtype = SCALE_BY_PERM
+                  case default
+                    string = 'flow condition "' // trim(condition%name) // &
+                      '" scaled_volumetric_rate type'
+                    call InputKeywordUnrecognized(word,string,option)
+                end select
+              else
+                sub_condition_ptr%isubtype = SCALE_BY_NEIGHBOR_PERM
+              endif
             case('heterogeneous_volumetric_rate')
               sub_condition_ptr%itype = HET_VOL_RATE_SS
             case('heterogeneous_mass_rate')

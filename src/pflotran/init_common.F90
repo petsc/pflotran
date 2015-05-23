@@ -19,7 +19,9 @@ module Init_Common_module
   public :: &
 !            Init, &
             InitCommonReadRegionFiles, &
+#if defined(PETSC_HAVE_HDF5)
             InitCommonReadVelocityField, &
+#endif
             InitCommonVerifyAllCouplers, &
             setSurfaceFlowMode
             
@@ -681,6 +683,8 @@ end subroutine InitCommonPrintPFLOTRANHeader
 
 ! ************************************************************************** !
 
+#if defined(PETSC_HAVE_HDF5)
+
 subroutine InitCommonReadVelocityField(realization)
   ! 
   ! Reads fluxes in for transport with no flow.
@@ -791,5 +795,7 @@ subroutine InitCommonReadVelocityField(realization)
   enddo
   
 end subroutine InitCommonReadVelocityField
+
+#endif
 
 end module Init_Common_module

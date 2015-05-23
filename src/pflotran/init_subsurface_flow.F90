@@ -115,7 +115,13 @@ subroutine InitSubsurfFlowSetupRealization(realization)
     end select
   else ! no flow mode specified
     if (len_trim(realization%nonuniform_velocity_filename) > 0) then
+#if defined(PETSC_HAVE_HDF5)
       call InitCommonReadVelocityField(realization)
+#else
+      write(option%io_buffer,'("PFLOTRAN must be compiled with HDF5 to ", &
+                               &"read HDF5 formatted fluxes in for transport with no flow.")')
+      call printErrMsg(option)
+#endif
     endif
   endif  
   
