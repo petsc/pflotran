@@ -1437,13 +1437,13 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   ! area = m^2
   ! heat_flux = k_eff * delta_temp * area = J/s
   delta_temp = gen_auxvar_up%temp - gen_auxvar_dn%temp
-  heat_flux = k_eff_ave * delta_temp * area
+  heat_flux = k_eff_ave * delta_temp * area * 1.d-6 ! J/s -> MJ/s
   ! MJ/s
-  Res(energy_id) = Res(energy_id) + heat_flux * 1.d-6 ! J/s -> MJ/s
+  Res(energy_id) = Res(energy_id) + heat_flux
 ! CONDUCTION
 #endif
 #ifdef DEBUG_FLUXES  
-  diff_flux(3) = diff_flux(3) + heat_flux * 1.d-6
+  diff_flux(3) = diff_flux(3) + heat_flux
 
   if (option%iflag == 1) then  
     write(*,'(a,7es12.4)') 'in: ', adv_flux(:)*dist(3), diff_flux(:)*dist(3)
@@ -1451,7 +1451,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
 #endif
 
 #ifdef DEBUG_GENERAL_FILEOUTPUT
-  debug_flux(energy_id,1) = debug_flux(energy_id,1) + heat_flux * 1.d-6
+  debug_flux(energy_id,1) = debug_flux(energy_id,1) + heat_flux
   if (debug_flag > 0) then  
     write(debug_unit,'(a,7es24.15)') 'dif flux (liquid):', debug_flux(:,1)
     write(debug_unit,'(a,7es24.15)') 'dif flux (gas):', debug_flux(:,2)
@@ -1811,9 +1811,9 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
       ! heat_flux = J/s
       k_eff_ave = k_eff_dn / dist(0)
       delta_temp = gen_auxvar_up%temp - gen_auxvar_dn%temp
-      heat_flux = k_eff_ave * delta_temp * area
+      heat_flux = k_eff_ave * delta_temp * area * 1.d-6 ! convert W -> MW
     case(NEUMANN_BC)
-                  ! flux prescribed as W/m^2
+                  ! flux prescribed as MW/m^2
       heat_flux = auxvars(auxvar_mapping(GENERAL_ENERGY_FLUX_INDEX)) * area
 
     case default
@@ -1821,19 +1821,19 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
         'GeneralBCFlux heat conduction loop.'
       call printErrMsg(option)
   end select
-  Res(energy_id) = Res(energy_id) + heat_flux * 1.d-6 ! J/s -> MJ/s
+  Res(energy_id) = Res(energy_id) + heat_flux ! MW
 ! CONDUCTION
 #endif
 
 #ifdef DEBUG_FLUXES  
-  diff_flux(3) = diff_flux(3) + heat_flux * 1.d-6
+  diff_flux(3) = diff_flux(3) + heat_flux
   if (option%iflag == 1) then
     write(*,'(a,7es12.4)') 'bc: ', adv_flux(:)*dist(3), diff_flux(:)*dist(3)
   endif
 #endif
 
 #ifdef DEBUG_GENERAL_FILEOUTPUT
-  debug_flux(energy_id,1) = debug_flux(energy_id,1) + heat_flux * 1.d-6
+  debug_flux(energy_id,1) = debug_flux(energy_id,1) + heat_flux
   if (debug_flag > 0) then  
     write(debug_unit,'(a,7es24.15)') 'bc dif flux (liquid):', debug_flux(:,1)*dist(3)
     write(debug_unit,'(a,7es24.15)') 'bc dif flux (gas):', debug_flux(:,2)*dist(3)
