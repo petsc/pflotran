@@ -659,13 +659,15 @@ subroutine InitSubsurfaceSimulation(simulation)
   if (option%nflowdof > 0) then
     select type(ts => simulation%flow_process_model_coupler%timestepper)
       class is (timestepper_BE_type)
-        call InitSubsurfFlowSetupSolvers(realization,ts%solver)
+        call InitSubsurfFlowSetupSolvers(realization,ts%convergence_context, &
+                                         ts%solver)
     end select
   endif
   if (option%ntrandof > 0) then
     select type(ts => simulation%rt_process_model_coupler%timestepper)
       class is (timestepper_BE_type)
-        call InitSubsurfTranSetupSolvers(realization,ts%solver)
+        call InitSubsurfTranSetupSolvers(realization,ts%convergence_context, &
+                                         ts%solver)
     end select
   endif
   call RegressionCreateMapping(simulation%regression,realization)

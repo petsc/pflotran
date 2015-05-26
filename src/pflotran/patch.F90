@@ -710,7 +710,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     endif
     ! transport
     if (option%ntrandof > 0) then
-      allocate(patch%boundary_tran_coefs(option%ntrandof,temp_int))
+      allocate(patch%boundary_tran_coefs(option%nphase,temp_int))
       patch%boundary_tran_coefs = 0.d0
       if (option%transport%store_fluxes) then
         allocate(patch%boundary_tran_fluxes(option%ntrandof,temp_int))

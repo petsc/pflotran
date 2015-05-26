@@ -1304,10 +1304,8 @@ subroutine InitSubsurfaceReadInput(simulation)
   input => realization%input
   
   flow_timestepper => TimestepperBECreate()
-  flow_timestepper%solver => SolverCreate()
   flow_timestepper%solver%itype = FLOW_CLASS
   tran_timestepper => TimestepperBECreate()
-  tran_timestepper%solver => SolverCreate()
   tran_timestepper%solver%itype = TRANSPORT_CLASS
 
   backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
