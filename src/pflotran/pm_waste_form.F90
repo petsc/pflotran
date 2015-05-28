@@ -250,6 +250,7 @@ subroutine PMWasteFormRead(this,input)
           prev_waste_form => new_waste_form
         else
           prev_waste_form%next => new_waste_form
+          prev_waste_form => new_waste_form
         endif
         nullify(new_waste_form)
         error_string = 'FMDM'
