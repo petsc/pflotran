@@ -2038,6 +2038,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   PetscReal :: sum_molality, sum_mass, mole_fraction_h2o, mass_fraction_h2o, &
                mass_fraction_co2, mole_fraction_co2
   PetscReal :: ehfac,eh,pe,tk
+  PetscReal :: affinity, rgas = 8.3144621d-3
 
   aq_species_constraint => constraint_coupler%aqueous_species
   mineral_constraint => constraint_coupler%minerals
@@ -2305,7 +2306,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
       if (finished) exit
     enddo
             
-    110 format(/,'  complex               molality    act coef  logK')  
+    110 format(/,'  complex               molality    act coef        logK')  
     write(option%fid_out,110)
     write(option%fid_out,90)
     111 format(2x,a20,es12.4,es12.4,2x,es12.4)
@@ -2562,8 +2563,9 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   
   if (mineral_reaction%nmnrl > 0) then
   
-    130 format(/,'  mineral                             log SI    log K')
-    131 format(2x,a30,2x,f12.4,2x,1pe12.4)
+    130 format(/,'  mineral                             log SI       Affinity     log K', &
+           /,51x,'[kJ/mol]')
+    131 format(2x,a30,2x,2f12.4,2x,1pe12.4)
 
     do imnrl = 1, mineral_reaction%nmnrl
       ! compute saturation
@@ -2602,8 +2604,9 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   
     do imnrl = 1, mineral_reaction%nmnrl
       i = eqminsort(imnrl)
+      affinity = -rgas*(global_auxvar%temp+273.15d0)*lnQK(i)
       write(option%fid_out,131) mineral_reaction%mineral_names(i), &
-                                lnQK(i)*LN_TO_LOG, &
+                                lnQK(i)*LN_TO_LOG, affinity, &
                                 mineral_reaction%mnrl_logK(i)
     enddo
   endif
