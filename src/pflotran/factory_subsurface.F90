@@ -312,6 +312,8 @@ subroutine SubsurfaceSetFlowMode(pm_flow,option)
       option%nflowspec = 2
       option%itable = 2
       option%use_isothermal = PETSC_FALSE
+      option%water_id = 1
+      option%air_id = 2
     class is (pm_general_type)
       option%iflowmode = G_MODE
       option%nphase = 2
@@ -359,6 +361,8 @@ subroutine SubsurfaceSetFlowMode(pm_flow,option)
       option%itable = 2 ! read CO2DATA0.dat
 !     option%itable = 1 ! create CO2 database: co2data.dat
       option%use_isothermal = PETSC_FALSE
+      option%water_id = 1
+      option%air_id = 2
     class is (pm_richards_type)
       option%iflowmode = RICHARDS_MODE
       option%nphase = 1
