@@ -147,7 +147,7 @@ function UnitsConvert(unit,option)
       UnitsConvert = 7.d0*24.d0*3600.d0 
     case('mo','month')
       UnitsConvert = 365.d0/12.d0*24.d0*3600.d0 
-    case('y','yr')
+    case('y','yr','year')
       UnitsConvert = 365.d0*24.d0*3600.d0
     ! convert length to meters
     case('km')
