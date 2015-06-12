@@ -1894,6 +1894,13 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
     ss_flow_vol_flux(icomp) = qsrc_mol/gen_auxvar%den(icomp)
     Res(icomp) = qsrc_mol
   enddo
+  if (dabs(qsrc(TWO_INTEGER)) < 1.d-40) then
+    ! Res(1) holds qsrc_mol for water.  If the src/sink value for air is zero,
+    ! remove/add the equivalent mole fraction of air in the liquid phase.
+    qsrc_mol = Res(ONE_INTEGER)*gen_auxvar%xmol(TWO_INTEGER,ONE_INTEGER)
+    Res(TWO_INTEGER) = qsrc_mol
+    ss_flow_vol_flux(TWO_INTEGER) = qsrc_mol/gen_auxvar%den(TWO_INTEGER)
+  endif
   ! energy units: MJ/sec
   if (size(qsrc) == THREE_INTEGER) then
     if (dabs(qsrc(THREE_INTEGER)) < 1.d-40) then
