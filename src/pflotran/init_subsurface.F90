@@ -1713,6 +1713,22 @@ subroutine InitSubsurfaceReadInput(simulation)
                     call InputKeywordUnrecognized(word,'CHECKPOINT,PERIODIC', &
                                                   option)
                 end select
+
+              case ('FORMAT')
+                call InputReadWord(input,option,word,PETSC_TRUE)
+                call InputErrorMsg(input,option,'format type', &
+                                   'CHECKPOINT,FORMAT')
+                call StringToUpper(word)
+                select case(trim(word))
+                  case('BINARY')
+                    option%checkpoint_format_binary = PETSC_TRUE
+                  case('HDF5')
+                    option%checkpoint_format_hdf5 = PETSC_TRUE
+                  case default
+                    call InputKeywordUnrecognized(word,'CHECKPOINT,FORMAT', &
+                                                  option)
+                end select
+
               case default
                 call InputKeywordUnrecognized(word,'CHECKPOINT',option)
             end select
