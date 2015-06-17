@@ -50,8 +50,8 @@ module PM_Base_class
     procedure, public :: ComputeMassBalance => PMBaseComputeMassBalance
     procedure, public :: Destroy => PMBaseThisOnly
     procedure, public :: RHSFunction => PMBaseRHSFunction
-    procedure, public :: Checkpoint => PMBaseCheckpoint
-    procedure, public :: Restart => PMBaseCheckpoint
+    procedure, public :: CheckpointBinary => PMBaseCheckpointBinary
+    procedure, public :: RestartBinary => PMBaseCheckpointBinary
   end type pm_base_type
   
   type, public :: pm_base_header_type
@@ -255,13 +255,13 @@ end subroutine PMBaseRHSFunction
 
 ! ************************************************************************** !
 
-subroutine PMBaseCheckpoint(this,viewer)
+subroutine PMBaseCheckpointBinary(this,viewer)
   implicit none
 #include "finclude/petscviewer.h"      
   class(pm_base_type) :: this
   PetscViewer :: viewer
-  print *, 'Must extend PMBaseCheckpoint/Restart.'
+  print *, 'Must extend PMBaseCheckpointBinary/RestartBinary.'
   stop
-end subroutine PMBaseCheckpoint
+end subroutine PMBaseCheckpointBinary
 
 end module PM_Base_class

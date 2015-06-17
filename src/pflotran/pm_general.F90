@@ -45,8 +45,8 @@ module PM_General_class
     procedure, public :: UpdateAuxvars => PMGeneralUpdateAuxvars
     procedure, public :: MaxChange => PMGeneralMaxChange
     procedure, public :: ComputeMassBalance => PMGeneralComputeMassBalance
-    procedure, public :: Checkpoint => PMGeneralCheckpoint
-    procedure, public :: Restart => PMGeneralRestart
+    procedure, public :: CheckpointBinary => PMGeneralCheckpointBinary
+    procedure, public :: RestartBinary => PMGeneralRestartBinary
     procedure, public :: Destroy => PMGeneralDestroy
   end type pm_general_type
   
@@ -646,7 +646,7 @@ end subroutine PMGeneralComputeMassBalance
 
 ! ************************************************************************** !
 
-subroutine PMGeneralCheckpoint(this,viewer)
+subroutine PMGeneralCheckpointBinary(this,viewer)
   ! 
   ! Checkpoints data associated with General PM
   ! 
@@ -666,13 +666,13 @@ subroutine PMGeneralCheckpoint(this,viewer)
   call GlobalGetAuxVarVecLoc(this%realization, &
                              this%realization%field%iphas_loc, &
                              STATE,ZERO_INTEGER)
-  call PMSubsurfaceCheckpoint(this,viewer)
+  call PMSubsurfaceCheckpointBinary(this,viewer)
   
-end subroutine PMGeneralCheckpoint
+end subroutine PMGeneralCheckpointBinary
 
 ! ************************************************************************** !
 
-subroutine PMGeneralRestart(this,viewer)
+subroutine PMGeneralRestartBinary(this,viewer)
   ! 
   ! Restarts data associated with General PM
   ! 
@@ -689,12 +689,12 @@ subroutine PMGeneralRestart(this,viewer)
   class(pm_general_type) :: this
   PetscViewer :: viewer
   
-  call PMSubsurfaceRestart(this,viewer)
+  call PMSubsurfaceRestartBinary(this,viewer)
   call GlobalSetAuxVarVecLoc(this%realization, &
                              this%realization%field%iphas_loc, &
                              STATE,ZERO_INTEGER)
   
-end subroutine PMGeneralRestart
+end subroutine PMGeneralRestartBinary
 ! ************************************************************************** !
 
 subroutine PMGeneralDestroy(this)

@@ -52,8 +52,8 @@ module PM_RT_class
     procedure, public :: MaxChange => PMRTMaxChange
     procedure, public :: ComputeMassBalance => PMRTComputeMassBalance
     procedure, public :: SetTranWeights => SetTranWeights
-    procedure, public :: Checkpoint => PMRTCheckpoint
-    procedure, public :: Restart => PMRTRestart
+    procedure, public :: CheckpointBinary => PMRTCheckpointBinary
+    procedure, public :: RestartBinary => PMRTRestartBinary
     procedure, public :: Destroy => PMRTDestroy
   end type pm_rt_type
   
@@ -842,7 +842,7 @@ end subroutine SetTranWeights
 
 ! ************************************************************************** !
 
-subroutine PMRTCheckpoint(this,viewer)
+subroutine PMRTCheckpointBinary(this,viewer)
   ! 
   ! Checkpoints flow reactive transport process model
   ! 
@@ -856,7 +856,7 @@ subroutine PMRTCheckpoint(this,viewer)
   use Field_module
   use Discretization_module
   use Grid_module
-  use Reactive_Transport_module, only : RTCheckpointKineticSorption  
+  use Reactive_Transport_module, only : RTCheckpointKineticSorptionBinary  
   use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
   use Variables_module, only : PRIMARY_ACTIVITY_COEF, &
                                SECONDARY_ACTIVITY_COEF, &
@@ -968,7 +968,7 @@ subroutine PMRTCheckpoint(this,viewer)
     if (realization%reaction%surface_complexation%nkinmrsrfcplxrxn > 0 .and. &
         .not.option%transport%no_checkpoint_kinetic_sorption) then
       ! PETSC_TRUE flag indicates write to file
-      call RTCheckpointKineticSorption(realization,viewer,PETSC_TRUE)
+      call RTCheckpointKineticSorptionBinary(realization,viewer,PETSC_TRUE)
     endif
   endif
 
@@ -976,11 +976,11 @@ subroutine PMRTCheckpoint(this,viewer)
     call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
   endif
   
-end subroutine PMRTCheckpoint
+end subroutine PMRTCheckpointBinary
 
 ! ************************************************************************** !
 
-subroutine PMRTRestart(this,viewer)
+subroutine PMRTRestartBinary(this,viewer)
   ! 
   ! Restarts flow reactive transport process model
   ! 
@@ -994,7 +994,7 @@ subroutine PMRTRestart(this,viewer)
   use Field_module
   use Discretization_module
   use Grid_module
-  use Reactive_Transport_module, only : RTCheckpointKineticSorption, &
+  use Reactive_Transport_module, only : RTCheckpointKineticSorptionBinary, &
                                         RTUpdateAuxVars
   use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
   use Variables_module, only : PRIMARY_ACTIVITY_COEF, &
@@ -1106,7 +1106,7 @@ subroutine PMRTRestart(this,viewer)
       ! checkpoint file
       .not.option%transport%no_restart_kinetic_sorption) then
     ! PETSC_FALSE flag indicates read from file
-    call RTCheckpointKineticSorption(realization,viewer,PETSC_FALSE)
+    call RTCheckpointKineticSorptionBinary(realization,viewer,PETSC_FALSE)
   endif
     
   ! We are finished, so clean up.
@@ -1126,7 +1126,7 @@ subroutine PMRTRestart(this,viewer)
   ! do not update kinetics.
   call PMRTUpdateSolution2(this,PETSC_FALSE)
   
-end subroutine PMRTRestart
+end subroutine PMRTRestartBinary
 
 ! ************************************************************************** !
 

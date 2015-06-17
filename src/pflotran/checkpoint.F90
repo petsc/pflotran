@@ -53,8 +53,8 @@ module Checkpoint_module
   public :: CheckpointOpenFileForWrite, &
             CheckPointWriteCompatibility, &
             CheckPointReadCompatibility, &
-            CheckpointFlowProcessModel, &
-            RestartFlowProcessModel
+            CheckpointFlowProcessModelBinary, &
+            RestartFlowProcessModelBinary
 
 contains
 
@@ -254,7 +254,7 @@ end subroutine CheckpointReadCompatibility
 
 ! ************************************************************************** !
 
-subroutine CheckpointFlowProcessModel(viewer,realization)
+subroutine CheckpointFlowProcessModelBinary(viewer,realization)
   ! 
   ! Checkpoints flow process model vectors
   ! 
@@ -344,11 +344,11 @@ subroutine CheckpointFlowProcessModel(viewer,realization)
     call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
   endif  
   
-end subroutine CheckpointFlowProcessModel
+end subroutine CheckpointFlowProcessModelBinary
 
 ! ************************************************************************** !
 
-subroutine RestartFlowProcessModel(viewer,realization)
+subroutine RestartFlowProcessModelBinary(viewer,realization)
   ! 
   ! Restarts flow process model
   ! 
@@ -451,6 +451,6 @@ subroutine RestartFlowProcessModel(viewer,realization)
     call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
   endif  
   
-end subroutine RestartFlowProcessModel
+end subroutine RestartFlowProcessModelBinary
 
 end module Checkpoint_module

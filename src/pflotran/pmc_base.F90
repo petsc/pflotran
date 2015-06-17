@@ -38,8 +38,8 @@ module PMC_Base_class
     procedure, public :: SetTimestepper => PMCBaseSetTimestepper
     procedure, public :: SetupSolvers => PMCBaseSetupSolvers
     procedure, public :: RunToTime => PMCBaseRunToTime
-    procedure, public :: Checkpoint => PMCBaseCheckpoint
-    procedure, public :: Restart => PMCBaseRestart
+    procedure, public :: CheckpointBinary => PMCBaseCheckpointBinary
+    procedure, public :: RestartBinary => PMCBaseRestartBinary
     procedure, public :: FinalizeRun
     procedure, public :: OutputLocal
     procedure, public :: UpdateSolution => PMCBaseUpdateSolution
@@ -374,7 +374,7 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
       if (associated(this%peer)) then
         call this%peer%RunToTime(this%timestepper%target_time,local_stop_flag)
       endif
-      call this%Checkpoint(viewer,this%timestepper%steps)
+      call this%CheckpointBinary(viewer,this%timestepper%steps)
     endif
     
     if (this%is_master) then
@@ -534,7 +534,7 @@ end subroutine OutputLocal
 
 ! ************************************************************************** !
 
-recursive subroutine PMCBaseCheckpoint(this,viewer,id,id_stamp)
+recursive subroutine PMCBaseCheckpointBinary(this,viewer,id,id_stamp)
   ! 
   ! Checkpoints PMC timestepper and state variables.
   ! 
@@ -587,22 +587,22 @@ recursive subroutine PMCBaseCheckpoint(this,viewer,id,id_stamp)
   endif
   
   if (associated(this%timestepper)) then
-    call this%timestepper%Checkpoint(viewer,this%option)
+    call this%timestepper%CheckpointBinary(viewer,this%option)
   endif
   
   cur_pm => this%pms
   do
     if (.not.associated(cur_pm)) exit
-    call cur_pm%Checkpoint(viewer)
+    call cur_pm%CheckpointBinary(viewer)
     cur_pm => cur_pm%next
   enddo
   
   if (associated(this%child)) then
-    call this%child%Checkpoint(viewer,UNINITIALIZED_INTEGER)
+    call this%child%CheckpointBinary(viewer,UNINITIALIZED_INTEGER)
   endif
   
   if (associated(this%peer)) then
-    call this%peer%Checkpoint(viewer,UNINITIALIZED_INTEGER)
+    call this%peer%CheckpointBinary(viewer,UNINITIALIZED_INTEGER)
   endif
   
   if (this%is_master) then
@@ -617,7 +617,7 @@ recursive subroutine PMCBaseCheckpoint(this,viewer,id,id_stamp)
     call PetscLogStagePop(ierr);CHKERRQ(ierr)
   endif
     
-end subroutine PMCBaseCheckpoint
+end subroutine PMCBaseCheckpointBinary
 
 ! ************************************************************************** !
 
@@ -683,7 +683,7 @@ end subroutine PMCBaseSetHeader
 
 ! ************************************************************************** !
 
-recursive subroutine PMCBaseRestart(this,viewer)
+recursive subroutine PMCBaseRestartBinary(this,viewer)
   ! 
   ! Restarts PMC timestepper and state variables.
   ! 
@@ -738,7 +738,7 @@ recursive subroutine PMCBaseRestart(this,viewer)
     call PetscBagDestroy(bag,ierr);CHKERRQ(ierr)
   endif
   
-  call this%timestepper%Restart(viewer,this%option)
+  call this%timestepper%RestartBinary(viewer,this%option)
   if (Initialized(this%option%restart_time)) then
     ! simply a flag to set time back to zero, no matter what the restart
     ! time is set to.
@@ -760,16 +760,16 @@ recursive subroutine PMCBaseRestart(this,viewer)
   cur_pm => this%pms
   do
     if (.not.associated(cur_pm)) exit
-    call cur_pm%Restart(viewer)
+    call cur_pm%RestartBinary(viewer)
     cur_pm => cur_pm%next
   enddo
   
   if (associated(this%child)) then
-    call this%child%Restart(viewer)
+    call this%child%RestartBinary(viewer)
   endif
   
   if (associated(this%peer)) then
-    call this%peer%Restart(viewer)
+    call this%peer%RestartBinary(viewer)
   endif
   
   if (this%is_master) then
@@ -782,7 +782,7 @@ recursive subroutine PMCBaseRestart(this,viewer)
     call PetscLogEventEnd(logging%event_restart,ierr);CHKERRQ(ierr)
   endif
     
-end subroutine PMCBaseRestart
+end subroutine PMCBaseRestartBinary
 
 ! ************************************************************************** !
 

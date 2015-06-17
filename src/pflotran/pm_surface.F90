@@ -28,8 +28,8 @@ module PM_Surface_class
     procedure, public :: InitializeRun => PMSurfaceInitializeRun
     procedure, public :: PreSolve => PMSurfacePreSolve
     procedure, public :: PostSolve => PMSurfacePostSolve
-    procedure, public :: Checkpoint => PMSurfaceCheckpoint
-    procedure, public :: Restart => PMSurfaceRestart
+    procedure, public :: CheckpointBinary => PMSurfaceCheckpointBinary
+    procedure, public :: RestartBinary => PMSurfaceRestartBinary
     procedure, public :: UpdateAuxvars => PMSurfaceUpdateAuxvars
   end type pm_surface_type
 
@@ -217,7 +217,7 @@ end subroutine PMSurfaceUpdateAuxvars
 
 ! ************************************************************************** !
 
-subroutine PMSurfaceCheckpoint(this,viewer)
+subroutine PMSurfaceCheckpointBinary(this,viewer)
   ! 
   ! This routine checkpoints data associated with surface-flow PM
   ! 
@@ -233,13 +233,13 @@ subroutine PMSurfaceCheckpoint(this,viewer)
   class(pm_surface_type) :: this
   PetscViewer :: viewer
 
-  call SurfaceCheckpointProcessModel(viewer,this%surf_realization)
+  call SurfaceCheckpointProcessModelBinary(viewer,this%surf_realization)
 
-end subroutine PMSurfaceCheckpoint
+end subroutine PMSurfaceCheckpointBinary
 
 ! ************************************************************************** !
 
-subroutine PMSurfaceRestart(this,viewer)
+subroutine PMSurfaceRestartBinary(this,viewer)
   ! 
   ! This routine reads checkpoint data associated with surface-flow PM
   ! 
@@ -255,11 +255,11 @@ subroutine PMSurfaceRestart(this,viewer)
   class(pm_surface_type) :: this
   PetscViewer :: viewer
 
-  call SurfaceRestartProcessModel(viewer,this%surf_realization)
+  call SurfaceRestartProcessModelBinary(viewer,this%surf_realization)
   call this%UpdateAuxVars()
   call this%UpdateSolution()
 
-end subroutine PMSurfaceRestart
+end subroutine PMSurfaceRestartBinary
 
 ! ************************************************************************** !
 

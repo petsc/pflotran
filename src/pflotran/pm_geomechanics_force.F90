@@ -32,8 +32,8 @@ module PM_Geomechanics_Force_class
     procedure, public :: Jacobian => PMGeomechForceJacobian
     procedure, public :: PreSolve => PMGeomechForcePreSolve
     procedure, public :: UpdateSolution => PMGeomechForceUpdateSolution
-    procedure, public :: Checkpoint => PMGeomechForceCheckpoint
-    procedure, public :: Restart => PMGeomechForceRestart
+    procedure, public :: CheckpointBinary => PMGeomechForceCheckpointBinary
+    procedure, public :: RestartBinary => PMGeomechForceRestartBinary
     procedure, public :: Destroy => PMGeomechForceDestroy
     procedure, public :: FinalizeTimestep => PMGeomechForceFinalizeTimestep
   end type pm_geomech_force_type
@@ -325,7 +325,7 @@ end subroutine PMGeomechForceFinalizeTimestep
 
 ! ************************************************************************** !
 
-subroutine PMGeomechForceCheckpoint(this,viewer)
+subroutine PMGeomechForceCheckpointBinary(this,viewer)
   ! 
   ! This routine
   ! 
@@ -343,11 +343,11 @@ subroutine PMGeomechForceCheckpoint(this,viewer)
   
   call printErrMsg(this%option,'add code for checkpointing Geomech in PM approach')
   
-end subroutine PMGeomechForceCheckpoint
+end subroutine PMGeomechForceCheckpointBinary
 
 ! ************************************************************************** !
 
-subroutine PMGeomechForceRestart(this,viewer)
+subroutine PMGeomechForceRestartBinary(this,viewer)
   ! 
   ! This routine
   ! 
@@ -365,7 +365,7 @@ subroutine PMGeomechForceRestart(this,viewer)
   
   call printErrMsg(this%option,'add code for restarting Geomech in PM approach')
   
-end subroutine PMGeomechForceRestart
+end subroutine PMGeomechForceRestartBinary
 
 ! ************************************************************************** !
 

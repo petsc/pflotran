@@ -34,8 +34,8 @@ module Timestepper_BE_class
 !    procedure, public :: SetTargetTime => TimestepperBaseSetTargetTime
     procedure, public :: StepDT => TimestepperBEStepDT
     procedure, public :: UpdateDT => TimestepperBEUpdateDT
-    procedure, public :: Checkpoint => TimestepperBECheckpoint
-    procedure, public :: Restart => TimestepperBERestart
+    procedure, public :: CheckpointBinary => TimestepperBECheckpointBinary
+    procedure, public :: RestartBinary => TimestepperBERestartBinary
     procedure, public :: Reset => TimestepperBEReset
     procedure, public :: PrintInfo => TimestepperBEPrintInfo
     procedure, public :: FinalizeRun => TimestepperBEFinalizeRun
@@ -439,7 +439,7 @@ end subroutine TimestepperBEStepDT
 
 ! ************************************************************************** !
 
-subroutine TimestepperBECheckpoint(this,viewer,option)
+subroutine TimestepperBECheckpointBinary(this,viewer,option)
   ! 
   ! Checkpoints parameters/variables associated with
   ! a time stepper.
@@ -475,7 +475,7 @@ subroutine TimestepperBECheckpoint(this,viewer,option)
   call PetscBagView(bag,viewer,ierr);CHKERRQ(ierr)
   call PetscBagDestroy(bag,ierr);CHKERRQ(ierr)
 
-end subroutine TimestepperBECheckpoint
+end subroutine TimestepperBECheckpointBinary
 
 ! ************************************************************************** !
 
@@ -546,7 +546,7 @@ end subroutine TimestepperBESetHeader
 
 ! ************************************************************************** !
 
-subroutine TimestepperBERestart(this,viewer,option)
+subroutine TimestepperBERestartBinary(this,viewer,option)
   ! 
   ! Checkpoints parameters/variables associated with
   ! a time stepper.
@@ -582,7 +582,7 @@ subroutine TimestepperBERestart(this,viewer,option)
   call TimestepperBEGetHeader(this,header)
   call PetscBagDestroy(bag,ierr);CHKERRQ(ierr)
 
-end subroutine TimestepperBERestart
+end subroutine TimestepperBERestartBinary
 
 ! ************************************************************************** !
 

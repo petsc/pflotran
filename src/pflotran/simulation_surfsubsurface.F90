@@ -117,7 +117,7 @@ subroutine SurfSubsurfaceInitializeRun(this)
   call this%process_model_coupler_list%InitializeRun()
 
   if (this%option%restart_flag) then
-    call this%process_model_coupler_list%Restart(viewer)
+    call this%process_model_coupler_list%RestartBinary(viewer)
     cur_process_model_coupler => this%process_model_coupler_list
     select type(pmc => cur_process_model_coupler)
       class is(pmc_surface_type)
@@ -194,7 +194,7 @@ subroutine SurfSubsurfaceExecuteRun(this)
 
   endif
   if (this%option%checkpoint_flag) then
-    call this%process_model_coupler_list%Checkpoint(viewer,-1)
+    call this%process_model_coupler_list%CheckpointBinary(viewer,-1)
   endif
 
 end subroutine SurfSubsurfaceExecuteRun

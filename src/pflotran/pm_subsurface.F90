@@ -42,8 +42,8 @@ module PM_Subsurface_class
 !    procedure, public :: TimeCut => PMSubsurfaceTimeCut
 !    procedure, public :: UpdateSolution => PMSubsurfaceUpdateSolution
     procedure, public :: UpdateAuxvars => PMSubsurfaceUpdateAuxvars
-    procedure, public :: Checkpoint => PMSubsurfaceCheckpoint    
-    procedure, public :: Restart => PMSubsurfaceRestart  
+    procedure, public :: CheckpointBinary => PMSubsurfaceCheckpointBinary
+    procedure, public :: RestartBinary => PMSubsurfaceRestartBinary
 !    procedure, public :: Destroy => PMSubsurfaceDestroy
   end type pm_subsurface_type
   
@@ -56,8 +56,8 @@ module PM_Subsurface_class
             PMSubsurfaceUpdateSolution, &
             PMSubsurfaceUpdatePropertiesNI, &
             PMSubsurfaceTimeCut, &
-            PMSubsurfaceCheckpoint, &
-            PMSubsurfaceRestart, &
+            PMSubsurfaceCheckpointBinary, &
+            PMSubsurfaceRestartBinary, &
             PMSubsurfaceDestroy
   
 contains
@@ -510,7 +510,7 @@ end subroutine PMSubsurfaceUpdateAuxvars
 
 ! ************************************************************************** !
 
-subroutine PMSubsurfaceCheckpoint(this,viewer)
+subroutine PMSubsurfaceCheckpointBinary(this,viewer)
   ! 
   ! Checkpoints data associated with Subsurface PM
   ! 
@@ -525,13 +525,13 @@ subroutine PMSubsurfaceCheckpoint(this,viewer)
   class(pm_subsurface_type) :: this
   PetscViewer :: viewer
   
-  call CheckpointFlowProcessModel(viewer,this%realization) 
+  call CheckpointFlowProcessModelBinary(viewer,this%realization) 
   
-end subroutine PMSubsurfaceCheckpoint
+end subroutine PMSubsurfaceCheckpointBinary
 
 ! ************************************************************************** !
 
-subroutine PMSubsurfaceRestart(this,viewer)
+subroutine PMSubsurfaceRestartBinary(this,viewer)
   ! 
   ! Restarts data associated with Subsurface PM
   ! 
@@ -546,11 +546,11 @@ subroutine PMSubsurfaceRestart(this,viewer)
   class(pm_subsurface_type) :: this
   PetscViewer :: viewer
   
-  call RestartFlowProcessModel(viewer,this%realization)
+  call RestartFlowProcessModelBinary(viewer,this%realization)
   call this%UpdateAuxVars()
   call this%UpdateSolution()
   
-end subroutine PMSubsurfaceRestart
+end subroutine PMSubsurfaceRestartBinary
 
 ! ************************************************************************** !
 

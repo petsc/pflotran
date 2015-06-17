@@ -61,8 +61,8 @@ module Timestepper_Base_class
     procedure, public :: SetTargetTime => TimestepperBaseSetTargetTime
     procedure, public :: StepDT => TimestepperBaseStepDT
     procedure, public :: UpdateDT => TimestepperBaseUpdateDT
-    procedure, public :: Checkpoint => TimestepperBaseCheckpoint
-    procedure, public :: Restart => TimestepperBaseRestart
+    procedure, public :: CheckpointBinary => TimestepperBaseCheckpointBinary
+    procedure, public :: RestartBinary => TimestepperBaseRestartBinary
     procedure, public :: Reset => TimestepperBaseReset
     procedure, public :: WallClockStop => TimestepperBaseWallClockStop
     procedure, public :: PrintInfo => TimestepperBasePrintInfo
@@ -581,7 +581,7 @@ end subroutine TimestepperBasePrintInfo
 
 ! ************************************************************************** !
 
-subroutine TimestepperBaseCheckpoint(this,viewer,option)
+subroutine TimestepperBaseCheckpointBinary(this,viewer,option)
   ! 
   ! Checkpoints parameters/variables associated with
   ! a time stepper.
@@ -600,10 +600,10 @@ subroutine TimestepperBaseCheckpoint(this,viewer,option)
   PetscViewer :: viewer
   type(option_type) :: option
   
-  option%io_buffer = 'TimestepperBaseCheckpoint must be extended.'
+  option%io_buffer = 'TimestepperBaseCheckpointBinary must be extended.'
   call printErrMsg(option)  
     
-end subroutine TimestepperBaseCheckpoint
+end subroutine TimestepperBaseCheckpointBinary
 
 ! ************************************************************************** !
 
@@ -684,7 +684,7 @@ end subroutine TimestepperBaseSetHeader
 
 ! ************************************************************************** !
 
-subroutine TimestepperBaseRestart(this,viewer,option)
+subroutine TimestepperBaseRestartBinary(this,viewer,option)
   ! 
   ! Restarts parameters/variables associated with
   ! a time stepper.
@@ -703,10 +703,10 @@ subroutine TimestepperBaseRestart(this,viewer,option)
   PetscViewer :: viewer
   type(option_type) :: option
   
-  option%io_buffer = 'TimestepperBaseRestart must be extended.'
+  option%io_buffer = 'TimestepperBaseRestartBinary must be extended.'
   call printErrMsg(option)  
     
-end subroutine TimestepperBaseRestart
+end subroutine TimestepperBaseRestartBinary
 
 ! ************************************************************************** !
 

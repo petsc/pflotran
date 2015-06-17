@@ -122,7 +122,7 @@ subroutine SimulationBaseInitializeRun(this)
   
   if (associated(this%process_model_coupler_list)) then
     if (this%option%restart_flag) then
-      call this%process_model_coupler_list%Restart(viewer)
+      call this%process_model_coupler_list%RestartBinary(viewer)
     endif
   
     ! initialize performs overwrite of restart, if applicable
@@ -205,7 +205,7 @@ subroutine ExecuteRun(this)
     cur_waypoint => cur_waypoint%next
   enddo
   if (this%option%checkpoint_flag) then
-    call this%process_model_coupler_list%Checkpoint(viewer,-1)
+    call this%process_model_coupler_list%CheckpointBinary(viewer,-1)
   endif
   
 end subroutine ExecuteRun

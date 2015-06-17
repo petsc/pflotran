@@ -66,8 +66,8 @@ module PM_Waste_Form_class
 !    procedure, public :: TimeCut => PMWasteFormTimeCut
 !    procedure, public :: UpdateSolution => PMWasteFormUpdateSolution
 !    procedure, public :: UpdateAuxvars => PMWasteFormUpdateAuxvars
-    procedure, public :: Checkpoint => PMWasteFormCheckpoint    
-    procedure, public :: Restart => PMWasteFormRestart  
+    procedure, public :: CheckpointBinary => PMWasteFormCheckpointBinary
+    procedure, public :: RestartBinary => PMWasteFormRestartBinary
     procedure, public :: Destroy => PMWasteFormDestroy
   end type pm_fmdm_type
   
@@ -738,7 +738,7 @@ end subroutine PMWasteFormUpdateAuxvars
 
 ! ************************************************************************** !
 
-subroutine PMWasteFormCheckpoint(this,viewer)
+subroutine PMWasteFormCheckpointBinary(this,viewer)
   ! 
   ! Checkpoints data associated with Subsurface PM
   ! 
@@ -751,11 +751,11 @@ subroutine PMWasteFormCheckpoint(this,viewer)
   class(pm_fmdm_type) :: this
   PetscViewer :: viewer
   
-end subroutine PMWasteFormCheckpoint
+end subroutine PMWasteFormCheckpointBinary
 
 ! ************************************************************************** !
 
-subroutine PMWasteFormRestart(this,viewer)
+subroutine PMWasteFormRestartBinary(this,viewer)
   ! 
   ! Restarts data associated with Subsurface PM
   ! 
@@ -772,7 +772,7 @@ subroutine PMWasteFormRestart(this,viewer)
 !  call this%UpdateAuxVars()
 !  call this%UpdateSolution()
   
-end subroutine PMWasteFormRestart
+end subroutine PMWasteFormRestartBinary
 
 ! ************************************************************************** !
 

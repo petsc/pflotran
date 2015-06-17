@@ -17,9 +17,9 @@ module Timestepper_Surface_class
     PetscReal :: surf_subsurf_coupling_flow_dt
     type(solver_type), pointer :: solver
   contains
-    procedure, public :: Checkpoint => TimestepperSurfaceCheckpoint
+    procedure, public :: CheckpointBinary => TimestepperSurfaceCheckpointBinary
     procedure, public :: Init => TimestepperSurfaceInit
-    procedure, public :: Restart => TimestepperSurfaceRestart
+    procedure, public :: RestartBinary => TimestepperSurfaceRestartBinary
     procedure, public :: Reset => TimestepperSurfaceReset
     procedure, public :: SetTargetTime => TimestepperSurfaceSetTargetTime
     procedure, public :: Strip => TimestepperSurfaceStrip
@@ -256,7 +256,7 @@ end subroutine TimestepperSurfaceStepDT
 
 ! ************************************************************************** !
 
-subroutine TimestepperSurfaceCheckpoint(this,viewer,option)
+subroutine TimestepperSurfaceCheckpointBinary(this,viewer,option)
   ! 
   ! This checkpoints parameters/variables associated with surface-timestepper
   ! 
@@ -286,11 +286,11 @@ subroutine TimestepperSurfaceCheckpoint(this,viewer,option)
   call PetscBagView(bag,viewer,ierr);CHKERRQ(ierr)
   call PetscBagDestroy(bag,ierr);CHKERRQ(ierr)
 
-end subroutine TimestepperSurfaceCheckpoint
+end subroutine TimestepperSurfaceCheckpointBinary
 
 ! ************************************************************************** !
 
-subroutine TimestepperSurfaceRestart(this,viewer,option)
+subroutine TimestepperSurfaceRestartBinary(this,viewer,option)
   ! 
   ! This checkpoints parameters/variables associated with surface-timestepper
   ! 
@@ -320,7 +320,7 @@ subroutine TimestepperSurfaceRestart(this,viewer,option)
   call TimestepperSurfaceGetHeader(this,header)
   call PetscBagDestroy(bag,ierr);CHKERRQ(ierr)
 
-end subroutine TimestepperSurfaceRestart
+end subroutine TimestepperSurfaceRestartBinary
 
 ! ************************************************************************** !
 

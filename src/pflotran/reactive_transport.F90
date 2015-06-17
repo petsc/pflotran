@@ -47,7 +47,7 @@ module Reactive_Transport_module
             RTCheckUpdatePre, &
             RTCheckUpdatePost, &
             RTJumpStartKineticSorption, &
-            RTCheckpointKineticSorption, &
+            RTCheckpointKineticSorptionBinary, &
             RTExplicitAdvection, &
             RTClearActivityCoefficients
   
@@ -4617,7 +4617,7 @@ end subroutine RTJumpStartKineticSorption
 
 ! ************************************************************************** !
 
-subroutine RTCheckpointKineticSorption(realization,viewer,checkpoint)
+subroutine RTCheckpointKineticSorptionBinary(realization,viewer,checkpoint)
   ! 
   ! Checkpoints expliclity stored sorbed
   ! concentrations
@@ -4703,7 +4703,7 @@ subroutine RTCheckpointKineticSorption(realization,viewer,checkpoint)
     endif
   enddo
 
-end subroutine RTCheckpointKineticSorption
+end subroutine RTCheckpointKineticSorptionBinary
 
 ! ************************************************************************** !
 

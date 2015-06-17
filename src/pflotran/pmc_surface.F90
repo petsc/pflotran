@@ -234,7 +234,7 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
         call this%peer%RunToTime(this%timestepper%target_time,local_stop_flag)
       endif
       call this%GetAuxData()
-      call this%Checkpoint(viewer,this%timestepper%steps)
+      call this%CheckpointBinary(viewer,this%timestepper%steps)
     endif
 
   enddo
