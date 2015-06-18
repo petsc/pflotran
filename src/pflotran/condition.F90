@@ -1900,109 +1900,116 @@ subroutine ConditionReadValues(input,option,keyword,string,dataset_base,units)
   call InputErrorMsg(input,option,'file or value','CONDITION')
   call StringToLower(word)
   length = len_trim(word)
-  if (length == FOUR_INTEGER .and. StringCompare(word,'file',FOUR_INTEGER)) then 
-    input%err_buf2 = trim(keyword) // ', FILE'
-    input%err_buf = 'keyword'
-    call InputReadNChars(input,option,string2,MAXSTRINGLENGTH,PETSC_TRUE)
-    if (input%ierr == 0) then
-      filename = string2
-    else
-      option%io_buffer = 'The ability to read realization dependent ' // &
-        'datasets outside the DATASET block is no longer supported'
-      call printErrMsg(option)
-    endif
+  if (StringStartsWithAlpha(word)) then
+    if (length == FOUR_INTEGER .and. StringCompare(word,'file',FOUR_INTEGER)) then 
+      input%err_buf2 = trim(keyword) // ', FILE'
+      input%err_buf = 'keyword'
+      call InputReadNChars(input,option,string2,MAXSTRINGLENGTH,PETSC_TRUE)
+      if (input%ierr == 0) then
+        filename = string2
+      else
+        option%io_buffer = 'The ability to read realization dependent ' // &
+          'datasets outside the DATASET block is no longer supported'
+        call printErrMsg(option)
+      endif
     
-    if (len_trim(filename) < 2) then
-      option%io_buffer = 'No filename listed under Flow_Condition: ' // &
-                         trim(keyword)
-      call printErrMsg(option)
-    endif
-
-    if (index(filename,'.h5') > 0) then
-      write(option%io_buffer,'("Reading of ASCII datasets for flow ", &
-                               &"conditions not currently supported.")')
-      call printErrMsg(option)
-#if 0      
-#if !defined(PETSC_HAVE_HDF5)
-      write(option%io_buffer,'("PFLOTRAN must be compiled with HDF5 to ", &
-                               &"read HDF5 formatted flow conditions.")')
-      call printErrMsg(option)
-#else   
-      if (len_trim(hdf5_path) < 1) then
-        option%io_buffer = 'No hdf5 path listed under Flow_Condition: ' // &
+      if (len_trim(filename) < 2) then
+        option%io_buffer = 'No filename listed under Flow_Condition: ' // &
                            trim(keyword)
         call printErrMsg(option)
       endif
 
-      call h5open_f(hdf5_err)
-      option%io_buffer = 'Opening hdf5 file: ' // trim(filename)
-      call printMsg(option)
-      call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
-#ifndef SERIAL_HDF5
-      call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
-#endif
-      call h5fopen_f(filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
-      call h5pclose_f(prop_id,hdf5_err)
-
-      hdf5_path = trim(hdf5_path) // trim(realization_word)
-      call HDF5ReadNDimRealArray(option,file_id,hdf5_path,ndims,dims, &
-                                 real_buffer)
-      option%io_buffer = 'Closing hdf5 file: ' // trim(filename)
-      call printMsg(option)  
-      call h5fclose_f(file_id,hdf5_err)
-      call h5close_f(hdf5_err)
-      
-      ! dims(1) = size of array
-      ! dims(2) = number of data point in time
-      if (dims(1)-1 == flow_dataset%time_series%rank) then
-        ! alright, the 2d data is layed out in C-style.  now place it in
-        ! the appropriate arrays
-        allocate(flow_dataset%time_series%times(dims(2)))
-        flow_dataset%time_series%times = UNINITIALIZED_DOUBLE
-        allocate(flow_dataset%time_series%values(flow_dataset%time_series%rank,dims(2))) 
-        flow_dataset%time_series%values = UNINITIALIZED_DOUBLE
-        icount = 1
-        do i = 1, dims(2)
-          flow_dataset%time_series%times(i) = real_buffer(icount)
-          icount = icount + 1
-          do irank = 1, flow_dataset%time_series%rank
-            flow_dataset%time_series%values(irank,i) = real_buffer(icount)
-            icount = icount + 1
-          enddo
-        enddo  
-      else
-        option%io_buffer = 'HDF condition data set rank does not match' // &
-          'rank of internal data set.  Email Glenn for additions'
+      if (index(filename,'.h5') > 0) then
+        write(option%io_buffer,'("Reading of ASCII datasets for flow ", &
+                                 &"conditions not currently supported.")')
         call printErrMsg(option)
-      endif
-      if (associated(dims)) deallocate(dims)
-      nullify(dims)
-      if (associated(real_buffer)) deallocate(real_buffer)
-      nullify(real_buffer)
+#if 0      
+#if !defined(PETSC_HAVE_HDF5)
+        write(option%io_buffer,'("PFLOTRAN must be compiled with HDF5 to ", &
+                                 &"read HDF5 formatted flow conditions.")')
+        call printErrMsg(option)
+#else   
+        if (len_trim(hdf5_path) < 1) then
+          option%io_buffer = 'No hdf5 path listed under Flow_Condition: ' // &
+                             trim(keyword)
+          call printErrMsg(option)
+        endif
+
+        call h5open_f(hdf5_err)
+        option%io_buffer = 'Opening hdf5 file: ' // trim(filename)
+        call printMsg(option)
+        call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+        call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
+#endif
+        call h5fopen_f(filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
+        call h5pclose_f(prop_id,hdf5_err)
+
+        hdf5_path = trim(hdf5_path) // trim(realization_word)
+        call HDF5ReadNDimRealArray(option,file_id,hdf5_path,ndims,dims, &
+                                   real_buffer)
+        option%io_buffer = 'Closing hdf5 file: ' // trim(filename)
+        call printMsg(option)  
+        call h5fclose_f(file_id,hdf5_err)
+        call h5close_f(hdf5_err)
+      
+        ! dims(1) = size of array
+        ! dims(2) = number of data point in time
+        if (dims(1)-1 == flow_dataset%time_series%rank) then
+          ! alright, the 2d data is layed out in C-style.  now place it in
+          ! the appropriate arrays
+          allocate(flow_dataset%time_series%times(dims(2)))
+          flow_dataset%time_series%times = UNINITIALIZED_DOUBLE
+          allocate(flow_dataset%time_series%values(flow_dataset%time_series%rank,dims(2))) 
+          flow_dataset%time_series%values = UNINITIALIZED_DOUBLE
+          icount = 1
+          do i = 1, dims(2)
+            flow_dataset%time_series%times(i) = real_buffer(icount)
+            icount = icount + 1
+            do irank = 1, flow_dataset%time_series%rank
+              flow_dataset%time_series%values(irank,i) = real_buffer(icount)
+              icount = icount + 1
+            enddo
+          enddo  
+        else
+          option%io_buffer = 'HDF condition data set rank does not match' // &
+            'rank of internal data set.  Email Glenn for additions'
+          call printErrMsg(option)
+        endif
+        if (associated(dims)) deallocate(dims)
+        nullify(dims)
+        if (associated(real_buffer)) deallocate(real_buffer)
+        nullify(real_buffer)
 #endif    
 #endif    ! if 0
-    else
-      i = index(filename,'.',PETSC_TRUE)
-      if (i > 2) then
-        filename = filename(1:i-1) // trim(realization_word) // filename(i:)
       else
-        filename = trim(filename) // trim(realization_word)
+        i = index(filename,'.',PETSC_TRUE)
+        if (i > 2) then
+          filename = filename(1:i-1) // trim(realization_word) // filename(i:)
+        else
+          filename = trim(filename) // trim(realization_word)
+        endif
+        input2 => InputCreate(IUNIT_TEMP,filename,option)
+        call DatasetAsciiRead(dataset_ascii,input2,option)
+        dataset_ascii%filename = filename
+        call InputDestroy(input2)
       endif
-      input2 => InputCreate(IUNIT_TEMP,filename,option)
-      call DatasetAsciiRead(dataset_ascii,input2,option)
-      dataset_ascii%filename = filename
-      call InputDestroy(input2)
+    else if (StringCompare(word,'dataset')) then
+      call InputReadWord(input,option,word,PETSC_TRUE)    
+      input%err_buf2 = trim(keyword) // ', DATASET'
+      input%err_buf = 'dataset name'
+      call InputErrorMsg(input,option)
+      call DatasetDestroy(dataset_base)
+      dataset_base => DatasetBaseCreate()
+      dataset_base%name = word
+    else if (length==FOUR_INTEGER .and. StringCompare(word,'list',length)) then 
+      call DatasetAsciiRead(dataset_ascii,input,option)
+    else
+      option%io_buffer = 'Keyword "' // trim(word) // &
+        '" not recognized in when reading condition values for "' // &
+        trim(keyword) // '".'
+      call printErrMsg(option)
     endif
-  else if (StringCompare(word,'dataset')) then
-    call InputReadWord(input,option,word,PETSC_TRUE)    
-    input%err_buf2 = trim(keyword) // ', DATASET'
-    input%err_buf = 'dataset name'
-    call InputErrorMsg(input,option)
-    call DatasetDestroy(dataset_base)
-    dataset_base => DatasetBaseCreate()
-    dataset_base%name = word
-  else if (length==FOUR_INTEGER .and. StringCompare(word,'list',length)) then  !sp 
-    call DatasetAsciiRead(dataset_ascii,input,option)
   else
     input%buf = trim(string2)
     allocate(dataset_ascii%rarray(dataset_ascii%array_rank))
