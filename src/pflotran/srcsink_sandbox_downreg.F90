@@ -150,7 +150,10 @@ subroutine DownregRead(this,input,option)
     end select
   enddo
 
-  this%dataset%time_storage%time_interpolation_method = INTERPOLATION_STEP
+  if (associated(this%dataset%time_storage)) then
+    ! for now, forcing to step, which makes sense for src/sinks.
+    this%dataset%time_storage%time_interpolation_method = INTERPOLATION_STEP
+  endif
   call DatasetVerify(this%dataset,null_time_storage,option)
   
 end subroutine DownregRead
