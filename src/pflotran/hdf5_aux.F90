@@ -679,9 +679,10 @@ subroutine HDF5OpenFileReadOnly(filename,file_id,prop_id,option)
   ! Author: Glenn Hammond
   ! Date: 06/22/15
   ! 
+  use hdf5
   use Option_module
   
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=*) :: filename  ! must be of variable length
   integer(HID_T) :: file_id
   integer(HID_T) :: prop_id
   type(option_type) :: option
