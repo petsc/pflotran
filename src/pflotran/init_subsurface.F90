@@ -2411,8 +2411,9 @@ subroutine InitSubsurfaceReadInput(simulation)
 !....................
       case ('ONLY_VERTICAL_FLOW')
         option%flow%only_vertical_flow = PETSC_TRUE
-        if (option%iflowmode /= TH_MODE) then
-          option%io_buffer = 'ONLY_VERTICAL_FLOW implemented in TH_MODE'
+        if (option%iflowmode /= TH_MODE .and. &
+            option%iflowmode /= RICHARDS_MODE) then
+          option%io_buffer = 'ONLY_VERTICAL_FLOW implemented in RICHARDS and TH mode.'
           call printErrMsg(option)
         endif
 

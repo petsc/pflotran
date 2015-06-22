@@ -31,6 +31,7 @@ module Richards_module
   PetscReal, parameter :: eps       = 1.D-8
   PetscReal, parameter :: floweps   = 1.D-24
   PetscReal, parameter :: perturbation_tolerance = 1.d-6
+  PetscReal, parameter :: unit_z(3) = [0.d0,0.d0,1.d0]
   
   public RichardsResidual, &
          RichardsJacobian, &
@@ -1411,6 +1412,13 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       if (patch%imat(ghosted_id_up) <= 0 .or.  &
           patch%imat(ghosted_id_dn) <= 0) cycle
 
+      if (option%flow%only_vertical_flow) then
+        !geh: place second conditional within first to avoid excessive 
+        !     dot products when .not. option%flow%only_vertical_flow
+        if (dot_product(cur_connection_set%dist(1:3,iconn),unit_z) < &
+            1.d-10) cycle
+      endif
+
       icap_up = patch%sat_func_id(ghosted_id_up)
       icap_dn = patch%sat_func_id(ghosted_id_dn)
 
@@ -1929,6 +1937,13 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
 
       if (patch%imat(ghosted_id_up) <= 0 .or. &
           patch%imat(ghosted_id_dn) <= 0) cycle
+
+      if (option%flow%only_vertical_flow) then
+        !geh: place second conditional within first to avoid excessive 
+        !     dot products when .not. option%flow%only_vertical_flow
+        if (dot_product(cur_connection_set%dist(1:3,iconn),unit_z) < &
+            1.d-10) cycle
+      endif
 
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
       local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
