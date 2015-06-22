@@ -40,7 +40,8 @@ module HDF5_Aux_module
 #endif
 ! SCORPIO
             HDF5MakeStringCompatible, &
-            HDF5ReadDbase
+            HDF5ReadDbase, &
+            HDF5OpenFileReadOnly
 
 contains
 
@@ -370,7 +371,7 @@ function HDF5GroupExists(filename,group_name,option)
 #ifndef SERIAL_HDF5
   call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
 #endif
-  call h5fopen_f(filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
+  call HDF5OpenFileReadOnly(filename,file_id,prop_id,option)
   call h5pclose_f(prop_id,hdf5_err)
 
   option%io_buffer = 'Testing group: ' // trim(group_name)
@@ -458,7 +459,7 @@ function HDF5DatasetExists(filename,group_name,dataset_name,option)
 #ifndef SERIAL_HDF5
   call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
 #endif
-  call h5fopen_f(filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
+  call HDF5OpenFileReadOnly(filename,file_id,prop_id,option)
   call h5pclose_f(prop_id,hdf5_err)
 
   ! I turn off error messaging since if the group does not exist, an error
@@ -564,7 +565,7 @@ subroutine HDF5ReadDbase(filename,option)
 #ifndef SERIAL_HDF5
   call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
 #endif
-  call h5fopen_f(filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
+  call HDF5OpenFileReadOnly(filename,file_id,prop_id,option)
   call h5pclose_f(prop_id,hdf5_err)
   call h5gn_members_f(file_id, '.',num_objects, hdf5_err)
   icount = 0
@@ -667,6 +668,33 @@ subroutine HDF5ReadDbase(filename,option)
   call h5close_f(hdf5_err)
       
 end subroutine HDF5ReadDbase
+
+! ************************************************************************** !
+
+subroutine HDF5OpenFileReadOnly(filename,file_id,prop_id,option)
+  ! 
+  ! Opens an HDF5 file.  This wrapper provides error messaging if the file
+  ! does not exist.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/22/15
+  ! 
+  use Option_module
+  
+  character(len=MAXWORDLENGTH) :: filename
+  integer(HID_T) :: file_id
+  integer(HID_T) :: prop_id
+  type(option_type) :: option
+  
+  PetscMPIInt :: hdf5_err
+
+  call h5fopen_f(filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
+  if (hdf5_err /= 0) then
+    option%io_buffer = 'HDF5 file "' // trim(filename) // '" not found.'
+    call printErrMsg(option)
+  endif
+  
+end subroutine HDF5OpenFileReadOnly
 
 #endif
 ! defined(PETSC_HAVE_HDF5)
