@@ -150,6 +150,7 @@ subroutine DownregRead(this,input,option)
     end select
   enddo
 
+  this%dataset%time_storage%time_interpolation_method = INTERPOLATION_STEP
   call DatasetVerify(this%dataset,null_time_storage,option)
   
 end subroutine DownregRead
