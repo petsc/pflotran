@@ -232,6 +232,13 @@ subroutine GeneralSetup(realization)
 
   call GeneralSetPlotVariables(realization) 
   
+  if (general_tough2_conv_criteria .and. &
+      Initialized(option%flow%inf_scaled_res_tol)) then
+    ! override what was set in OPTION block of GENERAL process model
+    general_tough2_itol_scaled_res_e1 = option%flow%inf_scaled_res_tol
+  endif
+      
+  
 #ifdef DEBUG_GENERAL_FILEOUTPUT
   debug_flag = 0
   debug_iteration_count = 0
