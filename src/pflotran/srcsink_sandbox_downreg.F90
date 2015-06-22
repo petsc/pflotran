@@ -38,6 +38,7 @@ module SrcSink_Sandbox_Downreg_class
   contains
     procedure, public :: ReadInput => DownregRead
     procedure, public :: Setup => DownregSetup
+    procedure, public :: Update => DownregUpdate
     procedure, public :: Evaluate => DownregSrcSink
     procedure, public :: Destroy => DownregDestroy
   end type srcsink_sandbox_downreg_type
@@ -82,7 +83,9 @@ subroutine DownregRead(this,input,option)
   use Input_Aux_module
   use Units_module, only : UnitsConvertToInternal
   use Condition_module 
+  use Dataset_module
   use Dataset_Ascii_class
+  use Time_Storage_module
   
   implicit none
   
@@ -95,7 +98,10 @@ subroutine DownregRead(this,input,option)
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: units
+  type(time_storage_type), pointer :: null_time_storage
   PetscBool :: found
+
+  nullify(null_time_storage)
   
   dataset_ascii => DatasetAsciiCreate()
   call DatasetAsciiInit(dataset_ascii)
@@ -143,6 +149,8 @@ subroutine DownregRead(this,input,option)
         call InputKeywordUnrecognized(word,'SRCSINK_SANDBOX,DOWNREG',option)
     end select
   enddo
+
+  call DatasetVerify(this%dataset,null_time_storage,option)
   
 end subroutine DownregRead
 
@@ -170,6 +178,23 @@ subroutine DownregSetup(this,region_list,option)
   call SSSandboxBaseSetup(this,region_list,option)
 
 end subroutine DownregSetup 
+
+! ************************************************************************** !
+
+subroutine DownregUpdate(this,time,option)
+
+  use Option_module
+  use Dataset_module
+
+  implicit none
+
+  class(srcsink_sandbox_downreg_type) :: this
+  PetscReal :: time
+  type(option_type) :: option
+
+  call DatasetUpdate(this%dataset,time,option)
+
+end subroutine DownregUpdate
 
 ! ************************************************************************** !
 

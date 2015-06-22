@@ -28,6 +28,7 @@ module SrcSink_Sandbox_module
   public :: SSSandboxInit, &
             SSSandboxRead, &
             SSSandboxSetup, &
+            SSSandboxUpdate, &
             SSSandbox, &
             SSSandboxDestroy
 
@@ -257,6 +258,34 @@ subroutine SSSandbox(residual,Jacobian,compute_derivative, &
   endif
 
 end subroutine SSSandbox
+
+! ************************************************************************** !
+
+subroutine SSSandboxUpdate(sandbox_list,time,option)
+  ! 
+  ! Updates datasets associated with a sandbox, if they exist
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/22/15
+  ! 
+  use Option_module
+
+  implicit none
+
+  class(srcsink_sandbox_base_type), pointer :: sandbox_list
+  PetscReal :: time
+  type(option_type) :: option
+
+  class(srcsink_sandbox_base_type), pointer :: cur_sandbox
+  
+  cur_sandbox => sandbox_list
+  do
+    if (.not.associated(cur_sandbox)) exit
+    call cur_sandbox%Update(time,option)
+    cur_sandbox => cur_sandbox%next
+  enddo  
+
+end subroutine SSSandboxUpdate
 
 ! ************************************************************************** !
 
