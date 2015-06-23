@@ -11,10 +11,6 @@ include ${PETSC_DIR}/conf/rules
 
 MYFLAGS = -I.
 
-ifdef legacy_saturation_function
-  MYFLAGS += ${FC_DEFINE_FLAG}LEGACY_SATURATION_FUNCTION
-endif
-
 # if compiling pflotran_rxn or libpflotranchem.a, need to toggle 
 # PFLOTRAN_RXN_FLAG 
 ifneq (,$(filter libpflotranchem.a pflotran_rxn,$(MAKECMDGOALS)))
