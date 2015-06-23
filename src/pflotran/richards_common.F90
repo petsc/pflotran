@@ -1,7 +1,4 @@
 module Richards_Common_module
-#ifndef LEGACY_SATURATION_FUNCTION
-#define REFACTOR_CHARACTERISTIC_CURVES
-#endif
 
   use Richards_Aux_module
   use Global_Aux_module
@@ -42,11 +39,7 @@ contains
 subroutine RichardsAccumDerivative(rich_auxvar,global_auxvar, &
                                    material_auxvar, &
                                    option, &
-#ifdef REFACTOR_CHARACTERISTIC_CURVES
                                    characteristic_curves, &
-#else
-                                   sat_func, &
-#endif
                                    J)
   ! 
   ! Computes derivatives of the accumulation
@@ -57,11 +50,7 @@ subroutine RichardsAccumDerivative(rich_auxvar,global_auxvar, &
   ! 
 
   use Option_module
-#ifdef REFACTOR_CHARACTERISTIC_CURVES
   use Characteristic_Curves_module
-#else
-  use Saturation_Function_module
-#endif
   use Material_Aux_class, only : material_auxvar_type, &
                                  soil_compressibility_index, &
                                  MaterialAuxVarInit, &
@@ -75,11 +64,7 @@ subroutine RichardsAccumDerivative(rich_auxvar,global_auxvar, &
   type(global_auxvar_type) :: global_auxvar
   class(material_auxvar_type) :: material_auxvar
   type(option_type) :: option
-#ifdef REFACTOR_CHARACTERISTIC_CURVES
   type(characteristic_curves_type) :: characteristic_curves
-#else
-  type(saturation_function_type) :: sat_func
-#endif
   PetscReal :: J(option%nflowdof,option%nflowdof)
      
   PetscInt :: ispec 
@@ -131,11 +116,7 @@ subroutine RichardsAccumDerivative(rich_auxvar,global_auxvar, &
     
     call RichardsAuxVarCompute(x_pert(1),rich_auxvar_pert,global_auxvar_pert, &
                                material_auxvar_pert, &
-#ifdef REFACTOR_CHARACTERISTIC_CURVES
                                characteristic_curves, &
-#else
-                               sat_func, &
-#endif
                                option)
     call RichardsAccumulation(rich_auxvar_pert,global_auxvar_pert, &
                               material_auxvar_pert, &
@@ -201,12 +182,8 @@ subroutine RichardsFluxDerivative(rich_auxvar_up,global_auxvar_up, &
                                   material_auxvar_dn,sir_dn, &
                                   area, dist, &
                                   option, &
-#ifdef REFACTOR_CHARACTERISTIC_CURVES
                                   characteristic_curves_up, &
                                   characteristic_curves_dn, &
-#else
-                                  sat_func_up,sat_func_dn, &
-#endif
                                   Jup,Jdn)
   ! 
   ! Computes the derivatives of the internal flux terms
@@ -216,11 +193,7 @@ subroutine RichardsFluxDerivative(rich_auxvar_up,global_auxvar_up, &
   ! Date: 12/13/07
   ! 
   use Option_module 
-#ifdef REFACTOR_CHARACTERISTIC_CURVES
   use Characteristic_Curves_module
-#else
-  use Saturation_Function_module 
-#endif
   use Material_Aux_class
   use Connection_module
   
@@ -232,12 +205,8 @@ subroutine RichardsFluxDerivative(rich_auxvar_up,global_auxvar_up, &
   type(option_type) :: option
   PetscReal :: sir_up, sir_dn
   PetscReal :: v_darcy, area, dist(-1:3)
-#ifdef REFACTOR_CHARACTERISTIC_CURVES
   type(characteristic_curves_type) :: characteristic_curves_up
   type(characteristic_curves_type) :: characteristic_curves_dn
-#else
-  type(saturation_function_type) :: sat_func_up, sat_func_dn
-#endif
   PetscReal :: Jup(option%nflowdof,option%nflowdof)
   PetscReal :: Jdn(option%nflowdof,option%nflowdof)
      
@@ -392,20 +361,12 @@ subroutine RichardsFluxDerivative(rich_auxvar_up,global_auxvar_up, &
     call RichardsAuxVarCompute(x_pert_up(1),rich_auxvar_pert_up, &
                                global_auxvar_pert_up, &
                                material_auxvar_pert_up, &
-#ifdef REFACTOR_CHARACTERISTIC_CURVES
                                characteristic_curves_up, &
-#else
-                               sat_func_up, &
-#endif
                                option)
     call RichardsAuxVarCompute(x_pert_dn(1),rich_auxvar_pert_dn, &
                                global_auxvar_pert_dn, &
                                material_auxvar_pert_dn, &
-#ifdef REFACTOR_CHARACTERISTIC_CURVES
                                characteristic_curves_dn, &
-#else
-                               sat_func_dn, &
-#endif
                                option)
     call RichardsFlux(rich_auxvar_pert_up,global_auxvar_pert_up, &
                       material_auxvar_pert_up,sir_up, &
@@ -544,11 +505,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,auxvars, &
                                     material_auxvar_dn, &
                                     sir_dn, &
                                     area,dist,option, &
-#ifdef REFACTOR_CHARACTERISTIC_CURVES
                                     characteristic_curves_dn, &
-#else
-                                    sat_func_dn, &
-#endif
                                     Jdn)
   ! 
   ! Computes the derivatives of the boundary flux
@@ -558,11 +515,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,auxvars, &
   ! Date: 12/13/07
   ! 
   use Option_module
-#ifdef REFACTOR_CHARACTERISTIC_CURVES
   use Characteristic_Curves_module
-#else
-  use Saturation_Function_module
-#endif
   use Material_Aux_class
   use EOS_Water_module
   use Utility_module
@@ -582,11 +535,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,auxvars, &
   ! dist(1:3) = unit vector
   ! dist(0)*dist(1:3) = vector
   PetscReal :: dist(-1:3)
-#ifdef REFACTOR_CHARACTERISTIC_CURVES
   type(characteristic_curves_type) :: characteristic_curves_dn
-#else
-  type(saturation_function_type) :: sat_func_dn  
-#endif
   PetscReal :: Jdn(option%nflowdof,option%nflowdof)
   
   PetscReal :: dist_gravity  ! distance along gravity vector
@@ -854,20 +803,12 @@ subroutine RichardsBCFluxDerivative(ibndtype,auxvars, &
     call RichardsAuxVarCompute(x_pert_dn(1),rich_auxvar_pert_dn, &
                                global_auxvar_pert_dn, &
                                material_auxvar_pert_dn, &
-#ifdef REFACTOR_CHARACTERISTIC_CURVES
                                characteristic_curves_dn, &
-#else
-                               sat_func_dn, &
-#endif
                                option)
     call RichardsAuxVarCompute(x_pert_up(1),rich_auxvar_pert_up, &
                                global_auxvar_pert_up, &
                                material_auxvar_pert_up, &
-#ifdef REFACTOR_CHARACTERISTIC_CURVES
                                characteristic_curves_dn, &
-#else
-                               sat_func_dn, &
-#endif
                                option)
     call RichardsBCFlux(ibndtype,auxvars, &
                         rich_auxvar_pert_up,global_auxvar_pert_up, &
