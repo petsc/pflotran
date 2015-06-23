@@ -1833,7 +1833,6 @@ subroutine InitSubsurfaceReadInput(simulation)
 !....................
 
       case ('SATURATION_FUNCTION')
-#ifndef LEGACY_SATURATION_FUNCTION
         if (option%iflowmode == RICHARDS_MODE .or. &
             option%iflowmode == G_MODE) then
           option%io_buffer = &
@@ -1842,7 +1841,6 @@ subroutine InitSubsurfaceReadInput(simulation)
             'CHARACTERISTIC_CURVES.'
           call printErrMsg(option)
         endif
-#endif
         saturation_function => SaturationFunctionCreate(option)
         call InputReadWord(input,option,saturation_function%name,PETSC_TRUE)
         call InputErrorMsg(input,option,'name','SATURATION_FUNCTION')

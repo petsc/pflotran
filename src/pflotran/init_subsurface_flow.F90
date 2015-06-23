@@ -1,7 +1,4 @@
 module Init_Subsurface_Flow_module
-#ifndef LEGACY_SATURATION_FUNCTION
-#define REFACTOR_CHARACTERISTIC_CURVES
-#endif
 
   use PFLOTRAN_Constants_module
 
@@ -59,12 +56,10 @@ subroutine InitSubsurfFlowSetupRealization(realization)
       case(TH_MODE)
         call THSetup(realization)
       case(RICHARDS_MODE)
-#ifdef REFACTOR_CHARACTERISTIC_CURVES
         call MaterialSetup(realization%patch%aux%Material%material_parameter, &
                            patch%material_property_array, &
                            patch%characteristic_curves_array, &
                            realization%option)
-#endif
         call RichardsSetup(realization)
       case(MPH_MODE)
         call init_span_wagner(option)      

@@ -1,7 +1,4 @@
 module Richards_Aux_module
-#ifndef LEGACY_SATURATION_FUNCTION
-#define REFACTOR_CHARACTERISTIC_CURVES
-#endif
 
 #ifdef BUFFER_MATRIX
   use Matrix_Buffer_module
@@ -40,12 +37,6 @@ module Richards_Aux_module
 
   end type richards_auxvar_type
   
-#ifndef REFACTOR_CHARACTERISTIC_CURVES
-  type, public :: richards_parameter_type
-    PetscReal, pointer :: sir(:,:)
-  end type richards_parameter_type
-#endif
-  
   type, public :: richards_type
     PetscInt :: n_zero_rows
     PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
@@ -54,9 +45,6 @@ module Richards_Aux_module
     PetscBool :: auxvars_cell_pressures_up_to_date
     PetscBool :: inactive_cells_exist
     PetscInt :: num_aux, num_aux_bc, num_aux_ss
-#ifndef REFACTOR_CHARACTERISTIC_CURVES
-    type(richards_parameter_type), pointer :: richards_parameter
-#endif
     type(richards_auxvar_type), pointer :: auxvars(:)
     type(richards_auxvar_type), pointer :: auxvars_bc(:)
     type(richards_auxvar_type), pointer :: auxvars_ss(:)
@@ -100,12 +88,6 @@ function RichardsAuxCreate()
   nullify(aux%auxvars_bc)
   nullify(aux%auxvars_ss)
   aux%n_zero_rows = 0
-#ifndef REFACTOR_CHARACTERISTIC_CURVES
-  allocate(aux%richards_parameter)
-  ! don't allocate richards_parameter%sir quite yet, since we don't know the
-  ! number of saturation functions
-  nullify(aux%richards_parameter%sir)
-#endif
   nullify(aux%zero_rows_local)
   nullify(aux%zero_rows_local_ghosted)
 #ifdef BUFFER_MATRIX
@@ -204,11 +186,7 @@ end subroutine RichardsAuxVarCopy
 ! ************************************************************************** !
 
 subroutine RichardsAuxVarCompute(x,auxvar,global_auxvar,material_auxvar, &
-#ifdef REFACTOR_CHARACTERISTIC_CURVES
                                  characteristic_curves,option)
-#else
-                                 saturation_function,option)
-#endif
   ! 
   ! Computes auxiliary variables for each grid cell
   ! 
@@ -220,21 +198,13 @@ subroutine RichardsAuxVarCompute(x,auxvar,global_auxvar,material_auxvar, &
   use Global_Aux_module
   
   use EOS_Water_module
-#ifdef REFACTOR_CHARACTERISTIC_CURVES
   use Characteristic_Curves_module
-#else
-  use Saturation_Function_module
-#endif
   use Material_Aux_class
   
   implicit none
 
   type(option_type) :: option
-#ifdef REFACTOR_CHARACTERISTIC_CURVES
   class(characteristic_curves_type) :: characteristic_curves
-#else
-  type(saturation_function_type) :: saturation_function
-#endif
   PetscReal :: x(option%nflowdof)
   type(richards_auxvar_type) :: auxvar
   type(global_auxvar_type) :: global_auxvar
@@ -249,9 +219,7 @@ subroutine RichardsAuxVarCompute(x,auxvar,global_auxvar,material_auxvar, &
   PetscReal :: dw_dp, dw_dt, hw_dp, hw_dt
   PetscReal :: pert, pw_pert, dw_kg_pert
   PetscReal :: fs, ani_A, ani_B, ani_C, ani_n, ani_coef
-#ifdef REFACTOR_CHARACTERISTIC_CURVES
   PetscReal :: dkr_Se
-#endif
   PetscReal, parameter :: tol = 1.d-3
   
   global_auxvar%sat = 0.d0
@@ -279,7 +247,6 @@ subroutine RichardsAuxVarCompute(x,auxvar,global_auxvar,material_auxvar, &
   dkr_dp = 0.d0
   if (auxvar%pc > 0.d0) then
     saturated = PETSC_FALSE
-#ifdef REFACTOR_CHARACTERISTIC_CURVES
     call characteristic_curves%saturation_function% &
                                Saturation(auxvar%pc, &
                                           global_auxvar%sat(1), &
@@ -294,16 +261,6 @@ subroutine RichardsAuxVarCompute(x,auxvar,global_auxvar,material_auxvar, &
       dkr_dp = characteristic_curves%liq_rel_perm_function% &
                                   DRelPerm_DPressure(ds_dp,dkr_Se)
     endif
-#else
-    call SaturationFunctionCompute(auxvar%pc, &
-                                global_auxvar%sat(1),kr, &
-                                ds_dp,dkr_dp, &
-                                saturation_function, &
-                                material_auxvar%porosity, &
-                                material_auxvar%permeability(perm_xx_index), &
-                                saturated, &
-                                option)
-#endif
   else
     saturated = PETSC_TRUE
   endif  
@@ -401,13 +358,6 @@ subroutine RichardsAuxDestroy(aux)
   
   call DeallocateArray(aux%zero_rows_local)
   call DeallocateArray(aux%zero_rows_local_ghosted)
-#ifndef REFACTOR_CHARACTERISTIC_CURVES
-  if (associated(aux%richards_parameter)) then
-    call DeallocateArray(aux%richards_parameter%sir)
-    deallocate(aux%richards_parameter)
-  endif
-  nullify(aux%richards_parameter)
-#endif
 
 #ifdef BUFFER_MATRIX
   if (associated(aux%matrix_buffer)) then
