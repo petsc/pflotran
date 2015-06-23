@@ -593,6 +593,7 @@ subroutine UGridReadHDF5SurfGrid(unstructured_grid,filename,option)
 
   use Input_Aux_module
   use Option_module
+  use HDF5_Aux_module
 
   implicit none
 
@@ -640,7 +641,7 @@ subroutine UGridReadHDF5SurfGrid(unstructured_grid,filename,option)
 #endif
 
   ! Open the file collectively
-  call h5fopen_f(filename, H5F_ACC_RDONLY_F, file_id, hdf5_err, prop_id)
+  call HDF5OpenFileReadOnly(filename,file_id,prop_id,option)
   call h5pclose_f(prop_id, hdf5_err)
   
   !
@@ -871,6 +872,7 @@ subroutine UGridReadHDF5(unstructured_grid,filename,option)
 
   use Input_Aux_module
   use Option_module
+  use HDF5_Aux_module
 
   implicit none
 
@@ -918,7 +920,7 @@ subroutine UGridReadHDF5(unstructured_grid,filename,option)
 #endif
 
   ! Open the file collectively
-  call h5fopen_f(filename, H5F_ACC_RDONLY_F, file_id, hdf5_err, prop_id)
+  call HDF5OpenFileReadOnly(filename,file_id,prop_id,option)
   call h5pclose_f(prop_id, hdf5_err)
   
   !

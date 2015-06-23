@@ -11,10 +11,6 @@ include ${PETSC_DIR}/conf/rules
 
 MYFLAGS = -I.
 
-ifdef legacy_saturation_function
-  MYFLAGS += ${FC_DEFINE_FLAG}LEGACY_SATURATION_FUNCTION
-endif
-
 # if compiling pflotran_rxn or libpflotranchem.a, need to toggle 
 # PFLOTRAN_RXN_FLAG 
 ifneq (,$(filter libpflotranchem.a pflotran_rxn,$(MAKECMDGOALS)))
@@ -487,14 +483,14 @@ dataset_common_hdf5.o : dataset_base.o hdf5_aux.o input_aux.o logging.o \
                         option.o pflotran_constants.o string.o time_storage.o \
                         units.o
 dataset_global_hdf5.o : dataset_base.o dataset_common_hdf5.o dm_kludge.o \
-                        logging.o option.o pflotran_constants.o time_storage.o \
-                        utility.o
-dataset_gridded_hdf5.o : dataset_base.o dataset_common_hdf5.o logging.o \
-                         option.o pflotran_constants.o string.o time_storage.o \
-                         units.o utility.o
-dataset_map_hdf5.o : dataset_base.o dataset_common_hdf5.o input_aux.o \
-                     logging.o option.o pflotran_constants.o string.o \
-                     time_storage.o units.o utility.o
+                        hdf5_aux.o logging.o option.o pflotran_constants.o \
+                        time_storage.o utility.o
+dataset_gridded_hdf5.o : dataset_base.o dataset_common_hdf5.o hdf5_aux.o \
+                         logging.o option.o pflotran_constants.o string.o \
+                         time_storage.o units.o utility.o
+dataset_map_hdf5.o : dataset_base.o dataset_common_hdf5.o hdf5_aux.o \
+                     input_aux.o logging.o option.o pflotran_constants.o \
+                     string.o time_storage.o units.o utility.o
 debug.o : input_aux.o option.o pflotran_constants.o
 discretization.o : dm_kludge.o grid.o grid_structured.o grid_unstructured.o \
                    grid_unstructured_aux.o grid_unstructured_explicit.o \

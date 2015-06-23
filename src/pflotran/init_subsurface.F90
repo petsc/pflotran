@@ -1833,7 +1833,6 @@ subroutine InitSubsurfaceReadInput(simulation)
 !....................
 
       case ('SATURATION_FUNCTION')
-#ifndef LEGACY_SATURATION_FUNCTION
         if (option%iflowmode == RICHARDS_MODE .or. &
             option%iflowmode == G_MODE) then
           option%io_buffer = &
@@ -1842,7 +1841,6 @@ subroutine InitSubsurfaceReadInput(simulation)
             'CHARACTERISTIC_CURVES.'
           call printErrMsg(option)
         endif
-#endif
         saturation_function => SaturationFunctionCreate(option)
         call InputReadWord(input,option,saturation_function%name,PETSC_TRUE)
         call InputErrorMsg(input,option,'name','SATURATION_FUNCTION')
@@ -2411,8 +2409,9 @@ subroutine InitSubsurfaceReadInput(simulation)
 !....................
       case ('ONLY_VERTICAL_FLOW')
         option%flow%only_vertical_flow = PETSC_TRUE
-        if (option%iflowmode /= TH_MODE) then
-          option%io_buffer = 'ONLY_VERTICAL_FLOW implemented in TH_MODE'
+        if (option%iflowmode /= TH_MODE .and. &
+            option%iflowmode /= RICHARDS_MODE) then
+          option%io_buffer = 'ONLY_VERTICAL_FLOW implemented in RICHARDS and TH mode.'
           call printErrMsg(option)
         endif
 
@@ -2439,6 +2438,12 @@ subroutine InitSubsurfaceReadInput(simulation)
 !....................
       case ('END_SUBSURFACE')
         exit
+
+!....................
+      case ('MIN_ALLOWABLE_SCALE')
+        call InputReadDouble(input,option,option%min_allowable_scale)
+        call InputErrorMsg(input,option,'minimium allowable scaling factor', &
+                           'InitSubsurface')
 
 !....................
       case default

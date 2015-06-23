@@ -464,6 +464,7 @@ subroutine PMSubsurfaceUpdateSolution(this)
 
   use Condition_module
   use Integral_Flux_module
+  use SrcSink_Sandbox_module
 
   implicit none
   
@@ -479,6 +480,8 @@ subroutine PMSubsurfaceUpdateSolution(this)
   call FlowConditionUpdate(this%realization%flow_conditions, &
                            this%realization%option, &
                            this%realization%option%time)
+  call SSSandboxUpdate(ss_sandbox_list,this%realization%option%time, &
+                       this%realization%option)
   ! right now, RealizUpdateAllCouplerAuxVars only updates flow
   call RealizUpdateAllCouplerAuxVars(this%realization,force_update_flag)
   if (associated(this%realization%uniform_velocity_dataset)) then

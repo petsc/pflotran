@@ -385,7 +385,7 @@ subroutine RTCheckUpdatePre(line_search,C,dC,changed,realization,ierr)
                        
     ! scale if necessary
     if (min_ratio < 1.d0) then
-      if (min_ratio < min_allowable_scale) then
+      if (min_ratio < realization%option%min_allowable_scale) then
         write(string,'(es9.3)') min_ratio
         string = 'The update of primary species concentration is being ' // &
           'scaled by a very small value (i.e. ' // &

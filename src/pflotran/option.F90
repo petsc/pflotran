@@ -210,6 +210,9 @@ module Option_module
     PetscReal :: max_manning_velocity
     PetscReal :: max_infiltration_velocity
 
+    ! when the scaling factor is too small, stop in reactive transport 
+    PetscReal :: min_allowable_scale
+
   end type option_type
   
   PetscInt, parameter, public :: SUBSURFACE_SIM_TYPE = 1
@@ -560,6 +563,9 @@ subroutine OptionInitRealization(option)
   ! initially set to a large value to effectively disable
   option%max_manning_velocity = 1.d20
   option%max_infiltration_velocity = 1.d20
+  
+  ! when the scaling factor is too small, stop in reactive transport 
+  option%min_allowable_scale = 1.0d-10
   
 end subroutine OptionInitRealization
 
