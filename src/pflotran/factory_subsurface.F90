@@ -713,6 +713,11 @@ subroutine InitSubsurfaceSimulation(simulation)
           class is (pm_subsurface_type)
             call cur_process_model%PMSubsurfaceSetRealization(realization)
           class is (pm_rt_type)
+            if (.not.associated(realization%reaction)) then
+              option%io_buffer = 'SUBSURFACE_TRANSPORT specified as a ' // &
+                'process model without a corresponding CHEMISTRY block.'
+              call printErrMsg(option)
+            endif
             call cur_process_model%PMRTSetRealization(realization)
           class is (pm_fmdm_type)
             call cur_process_model%PMwasteFormSetRealization(realization)
