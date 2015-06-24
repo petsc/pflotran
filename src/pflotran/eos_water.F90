@@ -173,8 +173,9 @@ module EOS_Water_module
             EOSWaterInternalEnergyIce, &
             EOSWaterDensityIcePainter, &
             EOSWaterSaturationTemperature, &
-            EOSWaterDensityIce
-  
+            EOSWaterDensityIce, &
+            EOSWaterDensityTGDPB01
+
   public :: EOSWaterSetDensityIFC67, &
             EOSWaterSetEnthalpyIFC67, &
             EOSWaterSetDensityConstant, &
@@ -184,7 +185,8 @@ module EOS_Water_module
             EOSWaterSetSteamEnthalpyConst, &
             EOSWaterSetDensityExponential, &
             EOSWaterSetDensityPainter, &
-            EOSWaterSetEnthalpyPainter
+            EOSWaterSetEnthalpyPainter, &
+            EOSWaterSetDensityTGDPB01
  
   contains
 
@@ -2314,5 +2316,89 @@ subroutine EOSWaterDensityIceDerive(t,p,dw,dwp,dwt,ierr)
   call EOSWaterDensityIcePtr(t,p,dw,PETSC_TRUE,dwp,dwt,ierr)
 
 end subroutine EOSWaterDensityIceDerive
+
+! ************************************************************************** !
+
+subroutine EOSWaterSetDensityTGDPB01()
+
+  implicit none
+
+  EOSWaterDensityPtr => EOSWaterDensityTGDPB01
+
+end subroutine EOSWaterSetDensityTGDPB01
+
+! ************************************************************************** !
+
+subroutine EOSWaterDensityTGDPB01(t, p, dw, dwmol, &
+                                  calculate_derivatives, &
+                                  dwp, dwt, ierr)
+
+  ! 
+  ! Tanaka M. , G. Girard, R. Davis, A. Peuto, and N. Bignell. 2001.
+  ! Recommended table for the density of water between 0 °C
+  ! and 40 °C based on recent experimental reports. Metrologia,
+  ! 38:301-309 [doi:10.1088/0026-1394/38/4/3].
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 24/06/15
+  ! 
+  implicit none
+
+  PetscReal, intent(in) :: t   ! Temperature in centigrade
+  PetscReal, intent(in) :: p   ! Pressure in Pascals
+  PetscBool, intent(in) :: calculate_derivatives
+  PetscReal, intent(out) :: dw,dwmol,dwp,dwt
+  PetscErrorCode, intent(out) :: ierr
+
+  PetscReal,parameter :: a1 = -3.983035d0     ! [degC]
+  PetscReal,parameter :: a2 = 301.797d0       ! [degC]
+  PetscReal,parameter :: a3 = 522528.9d0      ! [degC^{2}]
+  PetscReal,parameter :: a4 = 69.34881d0      ! [degC]
+  PetscReal,parameter :: a5 = 999.974950d0    ! [kg m^{-3}]
+  PetscReal,parameter :: k0 = 50.74d-11       ! [Pa^{-1}]
+  PetscReal,parameter :: k1 = -0.326d-11      ! [Pa^{-1} degC^{-1}]
+  PetscReal,parameter :: k2 = 0.00416d-11     ! [Pa^{-1} degC^{-2}]
+  PetscReal,parameter :: p0 = 101325.d0       ! [Pa]
+  PetscReal :: t_c
+  PetscReal :: dent
+  PetscReal :: kappa
+  PetscReal :: ddent_dt
+  PetscReal :: ddent_dt_1
+  PetscReal :: ddent_dt_2
+  PetscReal :: ddent_dt_3
+  PetscReal :: ddent_dp
+  PetscReal :: dkappa_dp
+  PetscReal :: dkappa_dt
+  PetscReal :: dden_dt
+
+  ! Density of water as function of temperature
+  dent = a5*(1.d0 - ((t + a1)**2.d0)*(t + a2)/a3/(t + a4))
+
+  ! Compressibility of water
+  kappa = (1.d0 + (k0 + k1*t + k2*t**2.d0)*(p - p0))
+
+  ! Density of water
+  dw    = dent*kappa ! [kg m^{-3}]
+  dwmol = dw/FMWH2O  ! [kmol m^{-3}]
+
+  if (calculate_derivatives) then
+    ! Derivative
+    ddent_dp = 0.d0
+    ddent_dt_1 = -((t + a1)**2.d0)/a3/(t + a4)
+    ddent_dt_2 = -2.d0*(t + a1)*(t + a2)/a3/(t + a4)
+    ddent_dt_3 =  ((t + a1)**2.d0)*(t + a2)/a3/((t + a4)**2.d0)
+    ddent_dt   = a5*(ddent_dt_1 + ddent_dt_2 + ddent_dt_3)
+
+    dkappa_dp = (k0 + k1*t + k2*t**2.d0)
+    dkappa_dt = (k1 + 2.d0*k2*t)*(p - p0)
+
+    dwt = (ddent_dt*kappa + dent*dkappa_dt)/FMWH2O ! [kmol m^{-3} degC^{-1}]
+    dwp = (ddent_dp*kappa + dent*dkappa_dp)/FMWH2O ! [kmol m^{-3} Pa^{-1}]
+  else
+    dwt = UNINITIALIZED_DOUBLE
+    dwp = UNINITIALIZED_DOUBLE
+  endif
+
+end subroutine EOSWaterDensityTGDPB01
 
 end module EOS_Water_module
