@@ -754,6 +754,8 @@ subroutine GridLocalizeRegionsFromCellIDsUGrid(grid, region, option)
   PetscOffset                     :: iia,jja,aaa,iicol
   PetscBool                       :: done,found
   PetscScalar                     :: aa(1)
+  PetscInt                        :: cell_id_max_local
+  PetscInt                        :: cell_id_max_global
   ! PetscScalar, pointer            :: aa(:)
   ! Would like to use the above, but I have to fix MatGetArrayF90() first. --RTM
   
@@ -772,11 +774,21 @@ subroutine GridLocalizeRegionsFromCellIDsUGrid(grid, region, option)
     allocate(tmp_scl_array(region%num_cells))
 
     count = 0
+    cell_id_max_local = -1
     do ii = 1, region%num_cells
       count = count + 1
       tmp_int_array(count) = region%cell_ids(ii) - 1
       tmp_scl_array(count) = 1.d0
+      cell_id_max_local = max(cell_id_max_local, region%cell_ids(ii))
     enddo
+
+    call MPI_AllReduce(cell_id_max_local, cell_id_max_global, ONE_INTEGER_MPI, MPI_INTEGER, &
+                       MPI_MAX, option%mycomm,ierr)
+    if (cell_id_max_global > grid%nmax) then
+       option%io_buffer = 'The following region includes a cell-id that is greater than ' // &
+            'number of control volumes present in the grid: ' // trim(region%name)
+       call printErrMsg(option)
+    endif
 
     call VecSetValues(vec_cell_ids, region%num_cells, tmp_int_array, &
                       tmp_scl_array, ADD_VALUES, ierr);CHKERRQ(ierr)
