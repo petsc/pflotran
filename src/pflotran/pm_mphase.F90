@@ -31,7 +31,7 @@ module PM_Mphase_class
 #endif
     procedure, public :: TimeCut => PMMphaseTimeCut
     procedure, public :: UpdateSolution => PMMphaseUpdateSolution
-    procedure, public :: UpdateAuxvars => PMMphaseUpdateAuxvars
+    procedure, public :: UpdateAuxVars => PMMphaseUpdateAuxVars
     procedure, public :: MaxChange => PMMphaseMaxChange
     procedure, public :: ComputeMassBalance => PMMphaseComputeMassBalance
     procedure, public :: Destroy => PMMphaseDestroy
@@ -320,7 +320,7 @@ end subroutine PMMphaseUpdateSolution
 
 ! ************************************************************************** !
 
-subroutine PMMphaseUpdateAuxvars(this)
+subroutine PMMphaseUpdateAuxVars(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/21/14
@@ -333,7 +333,7 @@ subroutine PMMphaseUpdateAuxvars(this)
 
   call MphaseUpdateAuxVars(this%realization)
 
-end subroutine PMMphaseUpdateAuxvars   
+end subroutine PMMphaseUpdateAuxVars   
 
 ! ************************************************************************** !
 

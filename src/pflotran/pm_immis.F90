@@ -31,7 +31,7 @@ module PM_Immis_class
 #endif
     procedure, public :: TimeCut => PMImmisTimeCut
     procedure, public :: UpdateSolution => PMImmisUpdateSolution
-    procedure, public :: UpdateAuxvars => PMImmisUpdateAuxvars
+    procedure, public :: UpdateAuxVars => PMImmisUpdateAuxVars
     procedure, public :: MaxChange => PMImmisMaxChange
     procedure, public :: ComputeMassBalance => PMImmisComputeMassBalance
     procedure, public :: Destroy => PMImmisDestroy
@@ -322,7 +322,7 @@ end subroutine PMImmisUpdateSolution
 
 ! ************************************************************************** !
 
-subroutine PMImmisUpdateAuxvars(this)
+subroutine PMImmisUpdateAuxVars(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/21/14
@@ -335,7 +335,7 @@ subroutine PMImmisUpdateAuxvars(this)
 
   call ImmisUpdateAuxVars(this%realization)
 
-end subroutine PMImmisUpdateAuxvars   
+end subroutine PMImmisUpdateAuxVars   
 
 ! ************************************************************************** !
 

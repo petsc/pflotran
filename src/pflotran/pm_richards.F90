@@ -29,7 +29,7 @@ module PM_Richards_class
     procedure, public :: CheckUpdatePost => PMRichardsCheckUpdatePost
     procedure, public :: TimeCut => PMRichardsTimeCut
     procedure, public :: UpdateSolution => PMRichardsUpdateSolution
-    procedure, public :: UpdateAuxvars => PMRichardsUpdateAuxvars
+    procedure, public :: UpdateAuxVars => PMRichardsUpdateAuxVars
     procedure, public :: MaxChange => PMRichardsMaxChange
     procedure, public :: ComputeMassBalance => PMRichardsComputeMassBalance
     procedure, public :: Destroy => PMRichardsDestroy
@@ -347,7 +347,7 @@ end subroutine PMRichardsUpdateSolution
 
 ! ************************************************************************** !
 
-subroutine PMRichardsUpdateAuxvars(this)
+subroutine PMRichardsUpdateAuxVars(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/21/14
@@ -360,7 +360,7 @@ subroutine PMRichardsUpdateAuxvars(this)
 
   call RichardsUpdateAuxVars(this%realization)
 
-end subroutine PMRichardsUpdateAuxvars   
+end subroutine PMRichardsUpdateAuxVars   
 
 ! ************************************************************************** !
 

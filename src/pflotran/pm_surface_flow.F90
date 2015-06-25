@@ -25,7 +25,7 @@ module PM_Surface_Flow_class
     procedure, public :: UpdateSolution => PMSurfaceFlowUpdateSolution
     procedure, public :: Destroy => PMSurfaceFlowDestroy
     procedure, public :: RHSFunction => PMSurfaceFlowRHSFunction
-    procedure, public :: UpdateAuxvars => PMSurfaceFlowUpdateAuxvars
+    procedure, public :: UpdateAuxVars => PMSurfaceFlowUpdateAuxVars
   end type pm_surface_flow_type
 
   public :: PMSurfaceFlowCreate, &
@@ -232,7 +232,7 @@ subroutine PMSurfaceFlowPostSolve(this)
 end subroutine PMSurfaceFlowPostSolve
 
 ! ************************************************************************** !
-subroutine PMSurfaceFlowUpdateAuxvars(this)
+subroutine PMSurfaceFlowUpdateAuxVars(this)
   ! 
   ! Author: Gautam Bisht, LBNL
   ! Date: 04/30/14
@@ -245,7 +245,7 @@ subroutine PMSurfaceFlowUpdateAuxvars(this)
 
   call SurfaceFlowUpdateAuxVars(this%surf_realization)
 
-end subroutine PMSurfaceFlowUpdateAuxvars
+end subroutine PMSurfaceFlowUpdateAuxVars
 
 ! ************************************************************************** !
 

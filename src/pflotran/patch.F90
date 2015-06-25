@@ -3064,9 +3064,18 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
               vec_ptr(local_id) = patch%aux%Global%auxvars(grid%nL2G(local_id))%sat(1)
             enddo
           case(LIQUID_DENSITY)
+!geh: CO2 Mass Balance Fix (change to #if 0 to scale the mixture density by the water mole fraction)
+#if 1          
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%Global%auxvars(grid%nL2G(local_id))%den_kg(1)
             enddo
+#else
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Global%auxvars(grid%nL2G(local_id))%den(1) * &
+                                  patch%aux%Mphase%auxvars(grid%nL2G(local_id))%auxvar_elem(0)%xmol(1) * &
+                                  FMWH2O
+            enddo
+#endif
           case(LIQUID_VISCOSITY)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%Mphase%auxvars(grid%nL2G(local_id))%auxvar_elem(0)%vis(1)

@@ -30,7 +30,7 @@ module PM_Surface_class
     procedure, public :: PostSolve => PMSurfacePostSolve
     procedure, public :: Checkpoint => PMSurfaceCheckpoint
     procedure, public :: Restart => PMSurfaceRestart
-    procedure, public :: UpdateAuxvars => PMSurfaceUpdateAuxvars
+    procedure, public :: UpdateAuxVars => PMSurfaceUpdateAuxVars
   end type pm_surface_type
 
   public :: PMSurfaceCreate, &
@@ -201,7 +201,7 @@ end subroutine PMSurfaceUpdateSolution
 
 ! ************************************************************************** !
 
-subroutine PMSurfaceUpdateAuxvars(this)
+subroutine PMSurfaceUpdateAuxVars(this)
   ! 
   ! Author: Gautam Bisht, LBNL
   ! Date: 04/22/14
@@ -210,10 +210,10 @@ subroutine PMSurfaceUpdateAuxvars(this)
   
   class(pm_surface_type) :: this
 
-  this%option%io_buffer = 'PMSurfaceUpdateAuxvars() must be extended.'
+  this%option%io_buffer = 'PMSurfaceUpdateAuxVars() must be extended.'
   call printErrMsg(this%option)
 
-end subroutine PMSurfaceUpdateAuxvars
+end subroutine PMSurfaceUpdateAuxVars
 
 ! ************************************************************************** !
 

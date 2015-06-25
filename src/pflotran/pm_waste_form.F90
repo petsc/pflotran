@@ -65,7 +65,7 @@ module PM_Waste_Form_class
 !    procedure, public :: AcceptSolution => PMWasteFormAcceptSolution
 !    procedure, public :: TimeCut => PMWasteFormTimeCut
 !    procedure, public :: UpdateSolution => PMWasteFormUpdateSolution
-!    procedure, public :: UpdateAuxvars => PMWasteFormUpdateAuxvars
+!    procedure, public :: UpdateAuxVars => PMWasteFormUpdateAuxVars
     procedure, public :: Checkpoint => PMWasteFormCheckpoint    
     procedure, public :: Restart => PMWasteFormRestart  
     procedure, public :: Destroy => PMWasteFormDestroy
@@ -722,7 +722,7 @@ end subroutine PMWasteFormUpdateSolution
 
 ! ************************************************************************** !
 
-subroutine PMWasteFormUpdateAuxvars(this)
+subroutine PMWasteFormUpdateAuxVars(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 01/15/15
@@ -731,10 +731,10 @@ subroutine PMWasteFormUpdateAuxvars(this)
   
   class(pm_fmdm_type) :: this
 
-  this%option%io_buffer = 'PMWasteFormUpdateAuxvars() must be extended.'
+  this%option%io_buffer = 'PMWasteFormUpdateAuxVars() must be extended.'
   call printErrMsg(this%option)
 
-end subroutine PMWasteFormUpdateAuxvars   
+end subroutine PMWasteFormUpdateAuxVars   
 
 ! ************************************************************************** !
 

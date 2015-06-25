@@ -340,7 +340,7 @@ subroutine SubsurfaceSetFlowMode(pm_flow,option)
       option%nflowdof = 3
       option%nflowspec = 2
       option%itable = 2
-      option%io_buffer = 'Material Auxvars must be refactored for IMMIS.'
+      option%io_buffer = 'Material AuxVars must be refactored for IMMIS.'
       call printErrMsg(option)
     class is (pm_miscible_type)
       option%iflowmode = MIS_MODE
@@ -349,7 +349,7 @@ subroutine SubsurfaceSetFlowMode(pm_flow,option)
       option%gas_phase = 2      
       option%nflowdof = 2
       option%nflowspec = 2
-      option%io_buffer = 'Material Auxvars must be refactored for MISCIBLE.'
+      option%io_buffer = 'Material AuxVars must be refactored for MISCIBLE.'
       call printErrMsg(option)
     class is (pm_mphase_type)
       option%iflowmode = MPH_MODE

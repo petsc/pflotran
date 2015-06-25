@@ -42,7 +42,7 @@ module PM_General_class
     procedure, public :: CheckUpdatePost => PMGeneralCheckUpdatePost
     procedure, public :: TimeCut => PMGeneralTimeCut
     procedure, public :: UpdateSolution => PMGeneralUpdateSolution
-    procedure, public :: UpdateAuxvars => PMGeneralUpdateAuxvars
+    procedure, public :: UpdateAuxVars => PMGeneralUpdateAuxVars
     procedure, public :: MaxChange => PMGeneralMaxChange
     procedure, public :: ComputeMassBalance => PMGeneralComputeMassBalance
     procedure, public :: Checkpoint => PMGeneralCheckpoint
@@ -508,7 +508,7 @@ subroutine PMGeneralUpdateSolution(this)
   ! 
 
   use General_module, only : GeneralUpdateSolution, &
-                             GeneralMapBCAuxvarsToGlobal
+                             GeneralMapBCAuxVarsToGlobal
 
   implicit none
   
@@ -516,13 +516,13 @@ subroutine PMGeneralUpdateSolution(this)
   
   call PMSubsurfaceUpdateSolution(this)
   call GeneralUpdateSolution(this%realization)
-  call GeneralMapBCAuxvarsToGlobal(this%realization)
+  call GeneralMapBCAuxVarsToGlobal(this%realization)
 
 end subroutine PMGeneralUpdateSolution     
 
 ! ************************************************************************** !
 
-subroutine PMGeneralUpdateAuxvars(this)
+subroutine PMGeneralUpdateAuxVars(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/21/14
@@ -534,7 +534,7 @@ subroutine PMGeneralUpdateAuxvars(this)
 
   call GeneralUpdateAuxVars(this%realization,PETSC_FALSE)
 
-end subroutine PMGeneralUpdateAuxvars   
+end subroutine PMGeneralUpdateAuxVars   
 
 ! ************************************************************************** !
 
