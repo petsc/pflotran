@@ -89,6 +89,8 @@ subroutine EOSRead(input,option)
                                                    tempreal3)
               case('IFC67','DEFAULT')
                 call EOSWaterSetDensityIFC67()
+              case('TGDPB01')
+                call EOSWaterSetDensityTGDPB01()
               case default
                 call InputKeywordUnrecognized(word,'EOS,WATER,DENSITY',option)
             end select
