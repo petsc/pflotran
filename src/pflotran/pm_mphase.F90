@@ -99,10 +99,101 @@ subroutine PMMphasePreSolve(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 03/14/13
+  use Option_module
+  use Reaction_Aux_module
+  use Reactive_Transport_Aux_module
+  use Grid_module
+  use Patch_module
+  use Global_Aux_module
+  use Coupler_module
+  use Connection_module  
 
   implicit none
   
   class(pm_mphase_type) :: this
+
+  type(reaction_type), pointer :: reaction
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+  type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+  type(coupler_type), pointer :: boundary_condition
+  type(connection_set_type), pointer :: cur_connection_set
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: sum_connection
+  PetscInt :: iconn
+  PetscInt :: na_id, cl_id
+  
+  reaction => this%realization%reaction
+  option => this%realization%option
+#if 0
+  if (associated(reaction)) then
+    if (associated(reaction%species_idx)) then
+      patch => this%realization%patch
+      global_auxvars => patch%aux%Global%auxvars
+      if (associated(global_auxvars(1)%m_nacl)) then
+        na_id = reaction%species_idx%na_ion_id
+        cl_id = reaction%species_idx%cl_ion_id
+ 
+        grid => patch%grid
+        rt_auxvars => patch%aux%RT%auxvars
+        global_auxvars => patch%aux%Global%auxvars
+
+        if (na_id > 0 .and. cl_id > 0) then
+          do ghosted_id = 1, grid%ngmax
+            if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
+            !geh - Ignore inactive cells with inactive materials
+            if (patch%imat(ghosted_id) <= 0) cycle
+            global_auxvars(ghosted_id)%m_nacl(1) = &
+              rt_auxvars(ghosted_id)%pri_molal(na_id)
+            global_auxvars(ghosted_id)%m_nacl(2) = &
+              rt_auxvars(ghosted_id)%pri_molal(cl_id)
+          enddo
+        else    
+          do ghosted_id = 1, grid%ngmax
+            if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
+            !geh - Ignore inactive cells with inactive materials
+            if (patch%imat(ghosted_id) <= 0) cycle
+            global_auxvars(ghosted_id)%m_nacl = option%m_nacl
+          enddo
+        endif
+      
+        rt_auxvars => this%realization%patch%aux%RT%auxvars_bc
+        global_auxvars => this%realization%patch%aux%Global%auxvars_bc
+    
+        boundary_condition => patch%boundary_condition_list%first
+        sum_connection = 0 
+        do 
+          if (.not.associated(boundary_condition)) exit
+          cur_connection_set => boundary_condition%connection_set
+          if (na_id > 0 .and. cl_id > 0) then
+            do iconn = 1, cur_connection_set%num_connections
+              sum_connection = sum_connection + 1
+              local_id = cur_connection_set%id_dn(iconn)
+              ghosted_id = grid%nL2G(local_id)
+              if (patch%imat(ghosted_id) <= 0) cycle
+              global_auxvars(sum_connection)%m_nacl(1) = &
+                rt_auxvars(sum_connection)%pri_molal(na_id)
+              global_auxvars(sum_connection)%m_nacl(2) = &
+                rt_auxvars(sum_connection)%pri_molal(cl_id)
+            enddo
+          else    
+            do iconn = 1, cur_connection_set%num_connections
+              sum_connection = sum_connection + 1
+              local_id = cur_connection_set%id_dn(iconn)
+              ghosted_id = grid%nL2G(local_id)
+              if (patch%imat(ghosted_id) <= 0) cycle
+              global_auxvars(sum_connection)%m_nacl = option%m_nacl
+            enddo
+          endif        
+          boundary_condition => boundary_condition%next
+        enddo
+      endif
+    endif
+  endif   
+#endif
 
 end subroutine PMMphasePreSolve
 
