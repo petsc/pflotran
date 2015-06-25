@@ -228,8 +228,8 @@ recursive subroutine PMSubsurfaceInitializeRun(this)
                                  POROSITY,POROSITY_CURRENT)
   endif  
 
-!  call this%PreSolve()
-!  call this%UpdateAuxVars()
+  call this%PreSolve()
+  call this%UpdateAuxVars()
   call this%UpdateSolution() 
     
 end subroutine PMSubsurfaceInitializeRun

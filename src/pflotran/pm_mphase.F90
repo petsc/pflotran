@@ -128,7 +128,7 @@ subroutine PMMphasePreSolve(this)
   
   reaction => this%realization%reaction
   option => this%realization%option
-#if 0
+#if 1
   if (associated(reaction)) then
     if (associated(reaction%species_idx)) then
       patch => this%realization%patch

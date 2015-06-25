@@ -3849,7 +3849,7 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
                            patch%aux%Global%auxvars(ghosted_id), &
                            patch%aux%Material%auxvars(ghosted_id), &
                            reaction,option)
-#if 1                           
+#if 0                           
       if (associated(reaction%species_idx) .and. &
           associated(patch%aux%Global%auxvars(ghosted_id)%m_nacl)) then
         if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
@@ -4103,7 +4103,7 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
             ! print *,'RT redo constrain on BCs: 2: ', sum_connection  
           endif         
         endif
-#if 1
+#if 0
         if (associated(reaction%species_idx) .and. &
             associated(patch%aux%Global%auxvars_bc(sum_connection)%m_nacl)) then
           if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
