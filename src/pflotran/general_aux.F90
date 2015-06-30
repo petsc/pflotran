@@ -440,7 +440,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       ! two phase or everything blows up:
       if (gen_auxvar%pres(gid) <= 0.d0) then
         write(option%io_buffer,'(''Negative gas pressure at cell '', &
-          & i5,'' in GeneralAuxVarCompute().  Attempting bailout.'')') &
+          & i5,'' in GeneralAuxVarCompute(LIQUID_STATE).  Attempting bailout.'')') &
           ghosted_id
 !        call printErrMsgByRank(option)
         call printMsgByRank(option)
@@ -770,6 +770,11 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
 !#endif      
         global_auxvar%istate = TWO_PHASE_STATE
         liquid_epsilon = epsilon
+#if 0
+!geh: this fix does not work because (1) liquid pressure may be negative, (2) setting
+!     gas pressure equal to saturation pressure can result in negative air pressure.
+!     gas pressure should already be corrected for a negative liquid pressure in
+!     GeneralAuxVarCompute(); so just use %pres(gid).
         ! gas pressure can never be less than zero.
         x(GENERAL_GAS_PRESSURE_DOF) = &
           gen_auxvar%pres(lid) * (1.d0 + liquid_epsilon)
@@ -785,6 +790,9 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
           x(GENERAL_GAS_PRESSURE_DOF) = gen_auxvar%pres(spid)
 !geh          x(GENERAL_GAS_PRESSURE_DOF) = 2.d0*gen_auxvar%pres(spid)
         endif
+#else
+        x(GENERAL_GAS_PRESSURE_DOF) = gen_auxvar%pres(gid)*(1.d0 + liquid_epsilon)
+#endif
         if (general_2ph_energy_dof == GENERAL_TEMPERATURE_INDEX) then
           ! do nothing as the energy dof has not changed
           if (.not.general_isothermal) then
