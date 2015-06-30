@@ -2237,6 +2237,8 @@ subroutine InitSubsurfaceReadInput(simulation)
               call OutputVariableRead(input,option,output_option%output_variable_list)
             case('AVERAGE_VARIABLES')
               call OutputVariableRead(input,option,output_option%aveg_output_variable_list)
+            case('UNFILTER_NON_STATE_VARIABLES')
+              output_option%filter_non_state_variables = PETSC_FALSE
             case default
               call InputKeywordUnrecognized(word,'OUTPUT',option)
           end select
