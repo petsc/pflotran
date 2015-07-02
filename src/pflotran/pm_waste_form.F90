@@ -14,6 +14,8 @@ module PM_Waste_Form_class
 
 #include "finclude/petscsys.h"
 
+  PetscBool, public :: bypass_warning_message = PETSC_FALSE
+
   type :: fmdm_type
     PetscInt :: local_id
     type(point3d_type) :: coordinate
@@ -254,6 +256,8 @@ subroutine PMWasteFormRead(this,input)
         endif
         nullify(new_waste_form)
         error_string = 'FMDM'
+      case('BYPASS_WARNING_MESSAGE')
+        bypass_warning_message = PETSC_TRUE
       case default
         call InputKeywordUnrecognized(word,error_string,option)
     end select
@@ -425,7 +429,9 @@ recursive subroutine PMWasteFormInitializeRun(this)
   this%option%io_buffer = 'Preprocessing statement FMDM_MODEL must be ' // &
     'defined and the ANL FMDM library must be linked to PFLOTRAN to ' // &
     'employ the fuel matrix degradation model.'
-  call printErrMsg(this%option)
+  if (.not.bypass_warning_message) then
+    call printErrMsg(this%option)
+  endif
 #endif
 
   ! restart
@@ -570,14 +576,14 @@ subroutine PMWasteFormSolve(this,time,ierr)
 
   interface
     subroutine AMP_step ( burnup, sTme, temperature_C, conc, initialRun, &
-                          fuelDisRate, status )
+                          fuelDisRate, success )
       real ( kind = 8), intent( in )  :: burnup   
       real ( kind = 8), intent( in )  :: sTme   
       real ( kind = 8), intent( in )  :: temperature_C   
       real ( kind = 8), intent( inout ),  dimension (:,:) :: conc
       logical ( kind = 4), intent( in ) :: initialRun
       real ( kind = 8), intent(out) :: fuelDisRate
-      integer ( kind = 4), intent(out) :: status
+      integer ( kind = 4), intent(out) :: success
     end subroutine
   end interface  
 
@@ -590,7 +596,7 @@ subroutine PMWasteFormSolve(this,time,ierr)
   PetscReal, pointer :: vec_p(:)       ! g(U)/m^2/yr -> mol(U)/m^2/sec
   PetscReal, parameter :: conversion = 1.d0/238.d0/(365.d0*24.d0*3600.d0)
   
-  integer ( kind = 4) :: status
+  integer ( kind = 4) :: success
   logical ( kind = 4) :: initialRun
   
   if (this%initialized) then
@@ -612,9 +618,12 @@ subroutine PMWasteFormSolve(this,time,ierr)
     call AMP_step(cur_waste_form%burnup, time, &
                   cur_waste_form%temperature, &
                   cur_waste_form%concentration, initialRun, &
-                  cur_waste_form%fuel_dissolution_rate, status)
+                  cur_waste_form%fuel_dissolution_rate, success)
+#else
+    success = 1
+    cur_waste_form%fuel_dissolution_rate = cur_waste_form%burnup
 #endif
-    if (status == 0) then
+    if (success == 0) then
       ierr = 1
       exit
     endif
