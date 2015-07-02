@@ -189,7 +189,6 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
     call pm_ufd_decay%Read(realization%input)
   endif
   call InputDestroy(realization%input)
-  call InitSubsurfaceSimulation(simulation)
   
   if (associated(pm_waste_form)) then
     if (.not.associated(simulation%rt_process_model_coupler)) then
@@ -231,6 +230,9 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
     nullify(pmc_third_party)
   endif  
   
+  ! InitSubsurfaceSimulation() must be called after pmc linkages are set above.
+  call InitSubsurfaceSimulation(simulation)
+
   ! clean up waypoints
   if (.not.option%steady_state) then
     ! fill in holes in waypoint data
