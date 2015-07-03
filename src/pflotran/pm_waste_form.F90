@@ -200,6 +200,12 @@ subroutine PMWasteFormRead(this,input)
       case('NUM_GRID_CELLS')
         call InputReadInt(input,option,this%num_grid_cells_in_waste_form)
         call InputErrorMsg(input,option,'num_grid_cells',error_string)
+        if (this%num_grid_cells_in_waste_form /= 40) then
+          option%io_buffer = 'The FMDM model is currently hardwired to 40 ' // &
+            'grid cells.  Please set NUM_GRID_CELLs to 40. This will be ' // &
+            'fixed in the future.'
+          call printErrMsg(option)
+        endif
       case('DATA_MEDIATOR_SPECIES')
         call InputReadWord(input,option,this%data_mediator_species,PETSC_TRUE)
         call InputErrorMsg(input,option,'data_mediator_species',error_string)
