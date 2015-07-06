@@ -223,8 +223,10 @@ subroutine RealizationCreateDiscretization(realization)
                                      field%tortuosity0)
   call DiscretizationDuplicateVector(discretization,field%work, &
                                      field%volume0)
-  call DiscretizationDuplicateVector(discretization,field%work, &
-                                     field%compressibility0)
+!geh: this is now allocated in 
+!     init_subsurface.F90:SubsurfAllocMatPropDataStructs()
+!  call DiscretizationDuplicateVector(discretization,field%work, &
+!                                     field%compressibility0)
   if (option%flow%transient_porosity) then
     call DiscretizationDuplicateVector(discretization,field%work, &
                                        field%porosity_base_store)

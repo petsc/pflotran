@@ -160,6 +160,7 @@ subroutine SubsurfAllocMatPropDataStructs(realization)
   use Realization_class
   use Material_module
   use Option_module
+  use Discretization_module
   use Grid_module
   use Patch_module
   use Material_Aux_class
@@ -209,6 +210,13 @@ subroutine SubsurfAllocMatPropDataStructs(realization)
     
     cur_patch => cur_patch%next
   enddo
+
+  ! Create Vec that holds compressibility
+  if (soil_compressibility_index > 0) then
+    call DiscretizationDuplicateVector(realization%discretization, &
+                                       realization%field%work, &
+                                       realization%field%compressibility0)
+  endif
 
 end subroutine SubsurfAllocMatPropDataStructs
 
@@ -351,6 +359,7 @@ subroutine InitSubsurfAssignMatProperties(realization)
   PetscReal, pointer :: perm_yz_p(:)
   PetscReal, pointer :: perm_pow_p(:)
   PetscReal, pointer :: vec_p(:)
+  PetscReal, pointer :: compress_p(:)
   
   character(len=MAXSTRINGLENGTH) :: string, string2
   type(material_property_type), pointer :: material_property, null_material_property
@@ -381,6 +390,9 @@ subroutine InitSubsurfAssignMatProperties(realization)
     call VecGetArrayF90(field%perm0_xx,perm_xx_p,ierr);CHKERRQ(ierr)
     call VecGetArrayF90(field%perm0_yy,perm_yy_p,ierr);CHKERRQ(ierr)
     call VecGetArrayF90(field%perm0_zz,perm_zz_p,ierr);CHKERRQ(ierr)
+    if (soil_compressibility_index > 0) then
+      call VecGetArrayF90(field%compressibility0,compress_p,ierr);CHKERRQ(ierr)
+    endif
   endif
   call VecGetArrayF90(field%porosity0,por0_p,ierr);CHKERRQ(ierr)
   call VecGetArrayF90(field%tortuosity0,tor0_p,ierr);CHKERRQ(ierr)
@@ -443,6 +455,9 @@ subroutine InitSubsurfAssignMatProperties(realization)
       call MaterialAssignPropertyToAux(material_auxvars(ghosted_id), &
                                         material_property,option)
     endif
+    if (soil_compressibility_index > 0) then
+      compress_p(local_id) = material_property%soil_compressibility
+    endif
     por0_p(local_id) = material_property%porosity
     tor0_p(local_id) = material_property%tortuosity
   enddo
@@ -454,6 +469,10 @@ subroutine InitSubsurfAssignMatProperties(realization)
     call VecRestoreArrayF90(field%perm0_xx,perm_xx_p,ierr);CHKERRQ(ierr)
     call VecRestoreArrayF90(field%perm0_yy,perm_yy_p,ierr);CHKERRQ(ierr)
     call VecRestoreArrayF90(field%perm0_zz,perm_zz_p,ierr);CHKERRQ(ierr)
+    if (soil_compressibility_index > 0) then
+      call VecRestoreArrayF90(field%compressibility0,compress_p,ierr); &
+                              CHKERRQ(ierr)
+    endif
   endif
   call VecRestoreArrayF90(field%porosity0,por0_p,ierr);CHKERRQ(ierr)
   call VecRestoreArrayF90(field%tortuosity0,tor0_p,ierr);CHKERRQ(ierr)
@@ -511,10 +530,12 @@ subroutine InitSubsurfAssignMatProperties(realization)
                                     field%ithrm_loc,ONEDOF)
     call RealLocalToLocalWithArray(realization,SATURATION_FUNCTION_ID_ARRAY)
     
-    call DiscretizationGlobalToLocal(discretization,field%compressibility0, &
-                                     field%work_loc,ONEDOF)
-    call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
-                                 SOIL_COMPRESSIBILITY,0)
+    if (soil_compressibility_index > 0) then
+      call DiscretizationGlobalToLocal(discretization,field%compressibility0, &
+                                       field%work_loc,ONEDOF)
+      call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                   SOIL_COMPRESSIBILITY,0)
+    endif
   endif
   
   call DiscretizationGlobalToLocal(discretization,field%porosity0, &
