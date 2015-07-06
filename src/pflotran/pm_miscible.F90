@@ -31,7 +31,7 @@ module PM_Miscible_class
 #endif
     procedure, public :: TimeCut => PMMiscibleTimeCut
     procedure, public :: UpdateSolution => PMMiscibleUpdateSolution
-    procedure, public :: UpdateAuxvars => PMMiscibleUpdateAuxvars
+    procedure, public :: UpdateAuxVars => PMMiscibleUpdateAuxVars
     procedure, public :: MaxChange => PMMiscibleMaxChange
     procedure, public :: ComputeMassBalance => PMMiscibleComputeMassBalance
     procedure, public :: Destroy => PMMiscibleDestroy
@@ -330,7 +330,7 @@ end subroutine PMMiscibleUpdateSolution
 
 ! ************************************************************************** !
 
-subroutine PMMiscibleUpdateAuxvars(this)
+subroutine PMMiscibleUpdateAuxVars(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/21/14
@@ -343,7 +343,7 @@ subroutine PMMiscibleUpdateAuxvars(this)
 
   call MiscibleUpdateAuxVars(this%realization)
 
-end subroutine PMMiscibleUpdateAuxvars   
+end subroutine PMMiscibleUpdateAuxVars   
 
 ! ************************************************************************** !
 

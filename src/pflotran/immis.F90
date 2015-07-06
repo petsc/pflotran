@@ -1223,12 +1223,12 @@ subroutine ImmisSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,auxvar,isrctype,Res, &
           
           ! store volumetric rate for ss_fluid_fluxes()
           ! qsrc_phase [m^3/sec] = msrc [kmol/sec] / [kg/m^3] * [kg/kmol]  
-          qsrc_phase(2) = msrc(2)*rho/FMWCO2
+          qsrc_phase(2) = msrc(2)/auxvar%den(jco2)
           
         else if (option%co2eos == EOS_MRK)then
 ! MRK eos [modified version from  Kerrick and Jacobs (1981) and Weir et al. (1996).]
           call CO2(tsrc,auxvar%pres, rho,fg, xphi,enth_src_co2)
-          qsrc_phase(2) = msrc(2)*rho/FMWCO2
+          qsrc_phase(2) = msrc(2)/auxvar%den(jco2)
           enth_src_co2 = enth_src_co2*FMWCO2*option%scale
       else
          call printErrMsg(option,'pflow Immis ERROR: Need specify CO2 EOS')

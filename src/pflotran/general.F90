@@ -53,7 +53,7 @@ module General_module
             GeneralSetPlotVariables, &
             GeneralCheckUpdatePre, &
             GeneralCheckUpdatePost, &
-            GeneralMapBCAuxvarsToGlobal, &
+            GeneralMapBCAuxVarsToGlobal, &
             GeneralDestroy
 
 contains
@@ -4338,7 +4338,7 @@ end subroutine GeneralSSSandboxLoadAuxReal
 
 ! ************************************************************************** !
 
-subroutine GeneralMapBCAuxvarsToGlobal(realization)
+subroutine GeneralMapBCAuxVarsToGlobal(realization)
   ! 
   ! Deallocates variables associated with Richard
   ! 
@@ -4390,7 +4390,7 @@ subroutine GeneralMapBCAuxvarsToGlobal(realization)
     boundary_condition => boundary_condition%next
   enddo
   
-end subroutine GeneralMapBCAuxvarsToGlobal
+end subroutine GeneralMapBCAuxVarsToGlobal
 
 ! ************************************************************************** !
 

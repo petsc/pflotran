@@ -1219,13 +1219,13 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype,R
 
          !  units: rho [kg/m^3]; csrc1 [kmol/s]
           enth_src_co2 = enth_src_co2 * FMWCO2
-          qsrc_phase(2) = msrc(2)*rho/FMWCO2
+          qsrc_phase(2) = msrc(2)/auxvar%den(jco2)
             
         else if (option%co2eos == EOS_MRK)then
 ! MRK eos [modified version from  Kerrick and Jacobs (1981) and Weir et al. (1996).]
             call CO2(tsrc,auxvar%pres, rho,fg, xphi,enth_src_co2)
             enth_src_co2 = enth_src_co2*FMWCO2*option%scale
-            qsrc_phase(2) = msrc(2)*rho/FMWCO2
+            qsrc_phase(2) = msrc(2)/auxvar%den(jco2)
         else
           call printErrMsg(option,'pflow Flash2 ERROR: Need specify CO2 EOS')
         endif
