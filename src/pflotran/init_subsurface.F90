@@ -511,12 +511,10 @@ subroutine InitSubsurfAssignMatProperties(realization)
                                     field%ithrm_loc,ONEDOF)
     call RealLocalToLocalWithArray(realization,SATURATION_FUNCTION_ID_ARRAY)
     
-    if (associated(material_property%compressibility_dataset)) then
-      call DiscretizationGlobalToLocal(discretization,field%compressibility0, &
-                                       field%work_loc,ONEDOF)
-      call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
-                                   SOIL_COMPRESSIBILITY,0)
-    endif
+    call DiscretizationGlobalToLocal(discretization,field%compressibility0, &
+                                     field%work_loc,ONEDOF)
+    call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                 SOIL_COMPRESSIBILITY,0)
   endif
   
   call DiscretizationGlobalToLocal(discretization,field%porosity0, &
@@ -913,7 +911,8 @@ subroutine SubsurfReadCompressFromFile(realization,material_property)
                                     option)
     call HDF5ReadCellIndexedRealArray(realization,global_vec, &
                           material_property%compressibility_dataset%filename, &
-                          group_name,dataset_name,append_realization_id)
+                          group_name,dataset_name, &
+                material_property%compressibility_dataset%realization_dependent)
     call VecGetArrayF90(global_vec,vec_p,ierr);CHKERRQ(ierr)
     do local_id = 1, grid%nlmax
       if (patch%imat(grid%nL2G(local_id)) == &
