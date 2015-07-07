@@ -2831,7 +2831,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
   PetscReal, pointer :: vec_ptr(:), vec_ptr2(:)
   PetscReal :: xmass, lnQKgas, ehfac, eh0, pe0, ph0, tk
   PetscReal :: tempreal
-  PetscInt :: tempint
+  PetscInt :: tempint, tempint2
   PetscInt :: irate, istate, irxn, ifo2, jcomp, comp_id
   PetscErrorCode :: ierr
 
@@ -2849,7 +2849,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
          GAS_VISCOSITY,CAPILLARY_PRESSURE,LIQUID_DENSITY_MOL, &
          LIQUID_MOBILITY,GAS_MOBILITY,SC_FUGA_COEFF,STATE,ICE_DENSITY, &
          EFFECTIVE_POROSITY,LIQUID_HEAD,VAPOR_PRESSURE,SATURATION_PRESSURE, &
-         MAXIMUM_PRESSURE)
+         MAXIMUM_PRESSURE,LIQUID_MASS_FRACTION,GAS_MASS_FRACTION)
 
       if (associated(patch%aux%TH)) then
         select case(ivar)
@@ -3312,11 +3312,19 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
                       grid%nL2G(local_id))%den(option%liquid_phase)
               enddo
             endif
-          case(LIQUID_MOLE_FRACTION)
+          case(LIQUID_MOLE_FRACTION,LIQUID_MASS_FRACTION)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%General%auxvars(ZERO_INTEGER, &
                   grid%nL2G(local_id))%xmol(isubvar,option%liquid_phase)
             enddo
+            if (ivar == LIQUID_MASS_FRACTION) then
+              tempint = isubvar
+              tempint2 = tempint+1
+              if (tempint2 > 2) tempint2 = 1
+              vec_ptr(:) = vec_ptr(:)*fmw_comp(tempint) / &
+                           (vec_ptr(:)*fmw_comp(tempint) + &
+                            (1.d0-vec_ptr(:))*fmw_comp(tempint2))
+            endif
           case(LIQUID_MOBILITY)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%General%auxvars(ZERO_INTEGER, &
@@ -3351,11 +3359,19 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
               vec_ptr(local_id) = patch%aux%General%auxvars(ZERO_INTEGER, &
                   grid%nL2G(local_id))%den(option%gas_phase)
             enddo
-          case(GAS_MOLE_FRACTION)
+          case(GAS_MOLE_FRACTION,GAS_MASS_FRACTION)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%General%auxvars(ZERO_INTEGER, &
                   grid%nL2G(local_id))%xmol(isubvar,option%gas_phase)
             enddo
+            if (ivar == GAS_MASS_FRACTION) then
+              tempint = isubvar
+              tempint2 = tempint+1
+              if (tempint2 > 2) tempint2 = 1
+              vec_ptr(:) = vec_ptr(:)*fmw_comp(tempint) / &
+                           (vec_ptr(:)*fmw_comp(tempint) + &
+                            (1.d0-vec_ptr(:))*fmw_comp(tempint2))
+            endif
           case(GAS_MOBILITY)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%General%auxvars(ZERO_INTEGER, &
@@ -3897,6 +3913,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
   class(material_auxvar_type), pointer :: material_auxvars(:)
   PetscInt :: ivar
   PetscInt :: isubvar
+  PetscInt :: tempint, tempint2
   PetscInt, optional :: isubvar1
   PetscInt :: iphase
   PetscInt :: ghosted_id, local_id
@@ -3931,7 +3948,8 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
          GAS_VISCOSITY,AIR_PRESSURE,CAPILLARY_PRESSURE, &
          LIQUID_MOBILITY,GAS_MOBILITY,SC_FUGA_COEFF,STATE,ICE_DENSITY, &
          SECONDARY_TEMPERATURE,LIQUID_DENSITY_MOL,EFFECTIVE_POROSITY, &
-         LIQUID_HEAD,VAPOR_PRESSURE,SATURATION_PRESSURE,MAXIMUM_PRESSURE)
+         LIQUID_HEAD,VAPOR_PRESSURE,SATURATION_PRESSURE,MAXIMUM_PRESSURE, &
+         LIQUID_MASS_FRACTION,GAS_MASS_FRACTION)
          
      if (associated(patch%aux%TH)) then
         select case(ivar)
@@ -4198,9 +4216,17 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
                       patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                         den(option%liquid_phase)
             endif
-          case(LIQUID_MOLE_FRACTION)
+          case(LIQUID_MOLE_FRACTION,LIQUID_MASS_FRACTION)
             value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                       xmol(isubvar,option%liquid_phase)
+            if (ivar == LIQUID_MASS_FRACTION) then
+              tempint = isubvar
+              tempint2 = tempint+1
+              if (tempint2 > 2) tempint2 = 1
+              value = value*fmw_comp(tempint) / &
+                      (value*fmw_comp(tempint) + &
+                       (1.d0-value)*fmw_comp(tempint2))
+            endif                      
           case(LIQUID_MOBILITY)
             value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                       mobility(option%liquid_phase)
@@ -4223,9 +4249,17 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
                       patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                         den(option%gas_phase)
             endif
-          case(GAS_MOLE_FRACTION)
+          case(GAS_MOLE_FRACTION,GAS_MASS_FRACTION)
             value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                       xmol(isubvar,option%gas_phase)
+            if (ivar == GAS_MASS_FRACTION) then
+              tempint = isubvar
+              tempint2 = tempint+1
+              if (tempint2 > 2) tempint2 = 1
+              value = value*fmw_comp(tempint) / &
+                      (value*fmw_comp(tempint) + &
+                       (1.d0-value)*fmw_comp(tempint2))
+            endif                      
           case(GAS_MOBILITY)
             value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                       mobility(option%gas_phase)
@@ -5316,6 +5350,10 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
     case(PROCESS_ID)
       call printErrMsg(option, &
                        'Cannot set PROCESS_ID through PatchSetVariable()')
+    case default
+      write(option%io_buffer, &
+            '(''IVAR ('',i3,'') not found in PatchSetVariable'')') ivar
+      call printErrMsg(option)
   end select
 
   call VecRestoreArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
