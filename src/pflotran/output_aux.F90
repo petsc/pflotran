@@ -755,26 +755,26 @@ subroutine OutputVariableRead(input,option,output_variable_list)
                                      GAS_MOLE_FRACTION, &
                                      option%water_id)
       case ('LIQUID_MASS_FRACTIONS')
-        name = 'M_g^l'
+        name = 'w_g^l'
         units = ''
         call OutputVariableAddToList(output_variable_list,name, &
                                      OUTPUT_GENERIC,units, &
                                      LIQUID_MASS_FRACTION, &
                                      option%air_id)
-        name = 'M_l^l'
+        name = 'w_l^l'
         units = ''
         call OutputVariableAddToList(output_variable_list,name, &
                                      OUTPUT_GENERIC,units, &
                                      LIQUID_MASS_FRACTION, &
                                      option%water_id)
       case ('GAS_MASS_FRACTIONS')
-        name = 'M_g^g'
+        name = 'w_g^g'
         units = ''
         call OutputVariableAddToList(output_variable_list,name, &
                                      OUTPUT_GENERIC,units, &
                                      GAS_MASS_FRACTION, &
                                      option%air_id)
-        name = 'M_l^g'
+        name = 'w_l^g'
         units = ''
         call OutputVariableAddToList(output_variable_list,name, &
                                      OUTPUT_GENERIC,units, &
