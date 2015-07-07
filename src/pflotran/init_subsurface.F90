@@ -1976,6 +1976,12 @@ subroutine InitSubsurfaceReadInput(simulation)
           call InputErrorMsg(input,option,'keyword','OUTPUT') 
           call StringToUpper(word)
           select case(trim(word))
+            case('TIME_UNITS')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'Output Time Units','OUTPUT')
+              realization%output_option%tunit = trim(word)
+              realization%output_option%tconv = &
+                UnitsConvertToInternal(word,option)
             case('NO_FINAL','NO_PRINT_FINAL')
               output_option%print_final = PETSC_FALSE
             case('NO_INITIAL','NO_PRINT_INITIAL')
@@ -2335,11 +2341,14 @@ subroutine InitSubsurfaceReadInput(simulation)
               call InputErrorMsg(input,option,'Final Time','TIME') 
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'Final Time Units','TIME')
-              realization%output_option%tunit = trim(word)
-              realization%output_option%tconv = UnitsConvertToInternal(word,option)
+              temp_real2 = UnitsConvertToInternal(word,option)
+              if (len_trim(realization%output_option%tunit) == 0) then
+                realization%output_option%tunit = trim(word)
+                realization%output_option%tconv = temp_real2
+              endif
               waypoint => WaypointCreate()
               waypoint%final = PETSC_TRUE
-              waypoint%time = temp_real*realization%output_option%tconv
+              waypoint%time = temp_real*temp_real2
               waypoint%print_output = PETSC_TRUE              
               call WaypointInsertInList(waypoint,realization%waypoint_list)
             case('INITIAL_TIMESTEP_SIZE')
@@ -2471,7 +2480,7 @@ subroutine InitSubsurfaceReadInput(simulation)
     end select
 
   enddo
-  
+
   if (associated(simulation%flow_process_model_coupler)) then
     flow_timestepper%name = 'FLOW'
     if (option%steady_state) call TimestepperSteadyCreateFromBE(flow_timestepper)

@@ -13,7 +13,7 @@ module Output_Aux_module
 
   type, public :: output_option_type
 
-    character(len=2) :: tunit
+    character(len=MAXWORDLENGTH) :: tunit
     PetscReal :: tconv
 
     PetscBool :: print_initial
@@ -185,7 +185,7 @@ function OutputOptionCreate()
   output_option%aveg_output_variable_list => OutputVariableListCreate()
   
   output_option%tconv = 1.d0
-  output_option%tunit = 's'
+  output_option%tunit = ''
   
   output_option%print_hydrograph = PETSC_FALSE
 
