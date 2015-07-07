@@ -368,7 +368,7 @@ subroutine InitSubsurfAssignMatProperties(realization)
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch
-  class(material_auxvar_type), pointer :: material_auxvars(:)
+  type(material_type), pointer :: Material
   PetscInt :: local_id, ghosted_id, material_id
   PetscInt :: i
   PetscInt :: tempint
@@ -397,7 +397,9 @@ subroutine InitSubsurfAssignMatProperties(realization)
   call VecGetArrayF90(field%porosity0,por0_p,ierr);CHKERRQ(ierr)
   call VecGetArrayF90(field%tortuosity0,tor0_p,ierr);CHKERRQ(ierr)
         
-  material_auxvars => patch%aux%Material%auxvars
+  ! have to use Material%auxvars() and not material_auxvars() due to memory
+  ! errors in gfortran
+  Material => patch%aux%Material
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
@@ -451,8 +453,8 @@ subroutine InitSubsurfAssignMatProperties(realization)
       perm_yy_p(local_id) = material_property%permeability(2,2)
       perm_zz_p(local_id) = material_property%permeability(3,3)
     endif
-    if (associated(material_auxvars)) then
-      call MaterialAssignPropertyToAux(material_auxvars(ghosted_id), &
+    if (associated(Material%auxvars)) then
+      call MaterialAssignPropertyToAux(Material%auxvars(ghosted_id), &
                                         material_property,option)
     endif
     if (soil_compressibility_index > 0) then
@@ -555,8 +557,7 @@ subroutine InitSubsurfAssignMatProperties(realization)
       ghosted_id = patch%grid%nL2G(local_id)
       if (patch%imat(ghosted_id) > 0) then
         vec_p(local_id) = &
-          patch%aux%Material%auxvars(patch%grid%nL2G(local_id))% &
-          soil_properties(i)
+          Material%auxvars(patch%grid%nL2G(local_id))%soil_properties(i)
       else
         vec_p(local_id) = 1.d-40 ! some initialized value for inactive cells.
       endif
@@ -573,7 +574,7 @@ subroutine InitSubsurfAssignMatProperties(realization)
                                      field%work_loc,ONEDOF)
     call VecGetArrayF90(field%work_loc,vec_p,ierr);CHKERRQ(ierr)
     do ghosted_id = 1, patch%grid%ngmax
-      patch%aux%Material%auxvars(ghosted_id)%soil_properties(i) = &
+      Material%auxvars(ghosted_id)%soil_properties(i) = &
          vec_p(ghosted_id)
     enddo
     call VecRestoreArrayF90(field%work_loc,vec_p,ierr);CHKERRQ(ierr)
