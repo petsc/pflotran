@@ -949,9 +949,9 @@ subroutine EOSGasEnergyIdeal(T,P,H,dH_dT,dH_dP,U,dU_dT,dU_dP,ierr)
   PetscReal, intent(out) :: dU_dP   ! deriv. internal energy wrt pressure
   PetscErrorCode, intent(out) :: ierr
 
-  PetscReal, parameter:: Rg = 8.31415 
+  PetscReal, parameter:: Rg = 8.31415  ! J/mol-K
   ! Cv_air units: J/mol-K
-  PetscReal, parameter:: Cv_air = 20.85 ! head capacity wiki
+  PetscReal, parameter:: Cv_air = 20.85 ! heat capacity wiki [J/mol-K]
   PetscReal  T_kelvin
 
   T_kelvin = T + 273.15d0

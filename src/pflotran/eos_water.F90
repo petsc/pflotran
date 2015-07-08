@@ -1609,12 +1609,12 @@ subroutine EOSWaterSteamDensityEnthalpyIFC67(t,pv,dg,dgmol,hg, &
     
   ierr = 0
   
-  tc1 = 647.3d0    
-  pc1 = 2.212d7     
-  vc1 = 0.00317d0
+  tc1 = 647.3d0       ! K
+  pc1 = 2.212d7       ! Pa
+  vc1 = 0.00317d0     ! m^3/kg
   utc1 = one/tc1
   upc1 = one/pc1
-  vc1mol = vc1*FMWH2O
+  vc1mol = vc1*FMWH2O ! m^3/kmol
 
   theta  = (t+273.15d0)*utc1
   beta   = pv*upc1
@@ -1812,8 +1812,8 @@ subroutine EOSWaterSteamDensityEnthalpyIFC67(t,pv,dg,dgmol,hg, &
   hrpt = (hrt-hr)/delt
   hrpp = (hrp-hr)/delp
     
-  v1 = pc1*vc1mol
-  hg = hr*v1
+  v1 = pc1*vc1mol  ! Pa = (nRT/V) = J/m^3 : J/m^3 * m^3/kmol = J/kmol
+  hg = hr*v1       ! J/kmol
   
   if (calculate_derivatives) then
     hgt = hrpt*v1*utc1
