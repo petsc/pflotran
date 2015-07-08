@@ -14,17 +14,17 @@
      Mean:   1.0005355440824E+03
         1:   1.0005355440824E+03
 -- GENERIC: Liquid Mobility --
-      Max:   1.1230766956100E+03
-      Min:   1.1230766956100E+03
-     Mean:   1.1230766956100E+03
-        1:   1.1230766956100E+03
+      Max:   1.1230766962554E+03
+      Min:   1.1230766962554E+03
+     Mean:   1.1230766962554E+03
+        1:   1.1230766962554E+03
 -- DISCRETE: Material ID --
       Max:         1
       Min:         1
      Mean:   1.0000000000000E+00
         1:         1
 -- SOLUTION: Flow --
-   Time (seconds):   2.9439926147461E-03
+   Time (seconds):   7.7917575836182E-03
    Time Steps:           10
    Newton Iterations:           10
    Solver Iterations:           10
