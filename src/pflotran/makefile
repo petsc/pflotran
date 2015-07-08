@@ -840,7 +840,9 @@ pm_geomechanics_force.o : checkpoint.o communicator_base.o \
                           pflotran_constants.o pm_base.o
 pm_immis.o : immis.o pflotran_constants.o pm_base.o pm_subsurface.o
 pm_miscible.o : miscible.o pflotran_constants.o pm_base.o pm_subsurface.o
-pm_mphase.o : mphase.o pflotran_constants.o pm_base.o pm_subsurface.o
+pm_mphase.o : connection.o coupler.o global_aux.o grid.o mphase.o option.o \
+              patch.o pflotran_constants.o pm_base.o pm_subsurface.o \
+              reaction_aux.o reactive_transport_aux.o
 pm_richards.o : pflotran_constants.o pm_base.o pm_subsurface.o richards.o \
                 solver.o
 pm_rt.o : communicator_base.o communicator_structured.o \
