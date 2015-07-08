@@ -41,7 +41,6 @@ subroutine CO2(TX,PCX,DC,FC,PHI,HC)
   ! Initial entry
   ! 
       
-  use PFLOTRAN_Constants_module
 
       implicit none
       
@@ -1089,6 +1088,8 @@ end subroutine VISCO2
 subroutine SAT(T,P)
 !--------- Fast SAT M.J.O'Sullivan - 17 SEPT 1990 ---------
 !
+      use PFLOTRAN_Constants_module, only : H2O_CRITICAL_PRESSURE, &
+                                            H2O_CRITICAL_TEMPERATURE
       implicit none
 
       PetscReal :: T,P,A1,A2,A3,A4,A5,A6,A7,A8,A9
@@ -1099,7 +1100,7 @@ subroutine SAT(T,P)
       -1.189646225E2,4.167117320,2.097506760E1,1.E9,6./
 
       if (T.LT.1..OR.T.GT.500.) GOTO 10
-      TC=(T+273.15d0)/647.3d0
+      TC=(T+273.15d0)/H2O_CRITICAL_TEMPERATURE
       X1=1.d0-TC
       X2=X1*X1
       SC=A5*X1+A4
@@ -1108,7 +1109,7 @@ subroutine SAT(T,P)
       SC=SC*X1+A1
       SC=SC*X1
       PC_=EXP(SC/(TC*(1.d0+A6*X1+A7*X2))-X1/(A8*X2+A9))
-      P=PC_*2.212E7
+      P=PC_*H2O_CRITICAL_PRESSURE
       RETURN
    10 continue
       WRITE(6,1) ' ',T
@@ -1120,6 +1121,8 @@ end subroutine SAT
 
 subroutine COWAT0(TF,PP,D,U)
 !--------- Fast COWAT M.J.O'Sullivan - 17 SEPT 1990 ---------
+      use PFLOTRAN_Constants_module, only : H2O_CRITICAL_PRESSURE, &
+                                            H2O_CRITICAL_TEMPERATURE
 
       implicit none
       
@@ -1145,7 +1148,7 @@ subroutine COWAT0(TF,PP,D,U)
       4.975858870E-2,6.537154300E-1,1.150E-6,1.51080E-5, &
       1.41880E-1,7.002753165E0,2.995284926E-4,2.040E-1   /
 
-      TKR=(TF+273.15)/647.3
+      TKR=(TF+273.15)/H2O_CRITICAL_TEMPERATURE
       TKR2=TKR*TKR
       TKR3=TKR*TKR2
       TKR4=TKR2*TKR2
@@ -1159,7 +1162,7 @@ subroutine COWAT0(TF,PP,D,U)
       TKR19=TKR8*TKR11
       TKR18=TKR8*TKR10
       TKR20=TKR10*TKR10
-      PNMR=PP/2.212E7
+      PNMR=PP/H2O_CRITICAL_PRESSURE
       PNMR2=PNMR*PNMR
       PNMR3=PNMR*PNMR2
       PNMR4=PNMR*PNMR3
@@ -1228,6 +1231,8 @@ subroutine SUPST(T,P,D,U)
 ! SUPST    1.0 S     1 February  1991
 ! VAPOR DENSITY AND INTERNAL ENERGY AS FUNCTION OF TEMPERATURE AND 
 ! PRESSURE (M. OS.)
+      use PFLOTRAN_Constants_module, only : H2O_CRITICAL_PRESSURE, &
+                                            H2O_CRITICAL_TEMPERATURE
       
       implicit none
       
@@ -1260,8 +1265,8 @@ subroutine SUPST(T,P,D,U)
       7.633333333E-1,4.006073948E-1,8.636081627E-2,-8.532322921E-1, &
       3.460208861E-1/
 
-      THETA=(T+273.15)/647.3
-      BETA=P/2.212E7
+      THETA=(T+273.15)/H2O_CRITICAL_TEMPERATURE
+      BETA=P/H2O_CRITICAL_PRESSURE
       I1=4.260321148
       X=EXP(SB*(1.d0-THETA))
 
@@ -1412,6 +1417,7 @@ end subroutine TSAT
 ! ************************************************************************** !
 
 subroutine SIGMA(T,ST)
+      use PFLOTRAN_Constants_module, only : H2O_CRITICAL_TEMPERATURE
       implicit none
 !
 !-----COMPUTE SURFACE TENSION OF WATER, USING THE
@@ -1421,8 +1427,8 @@ subroutine SIGMA(T,ST)
       PetscReal :: T,ST
       
       if (T.GE.374.15) GOTO 1
-      ST=1.-0.625*(374.15-T)/647.3
-      ST=ST*.2358*((374.15-T)/647.3)**1.256
+      ST=1.-0.625*(374.15-T)/H2O_CRITICAL_TEMPERATURE
+      ST=ST*.2358*((374.15-T)/H2O_CRITICAL_TEMPERATURE)**1.256
       RETURN
 
     1 CONTINUE

@@ -558,7 +558,7 @@ subroutine EOSWaterSaturationPressureIFC67(T, PS, calculate_derivatives, dPS_dT,
       ierr = 1
       return
     end if
-    TC = (T+273.15d0)/647.3d0
+    TC = (T+273.15d0)/H2O_CRITICAL_TEMPERATURE
     one_m_tc = 1.d0-TC
     one_m_tc_sq = one_m_tc*one_m_tc
     SC = A(1)*one_m_tc+A(2)*one_m_tc_sq+A(3)*one_m_tc**3.d0+ &
@@ -568,10 +568,10 @@ subroutine EOSWaterSaturationPressureIFC67(T, PS, calculate_derivatives, dPS_dT,
     E2 = one_m_tc/E2_bottom
     PCAP = EXP(SC/E1-E2)
    
-    PS = PCAP*2.212d7
+    PS = PCAP*H2O_CRITICAL_PRESSURE
     
     if (calculate_derivatives) then
-      dTC_dT = 1.d0/647.3d0
+      dTC_dT = 1.d0/H2O_CRITICAL_TEMPERATURE
       dSC_dTC = -A(1)-2.d0*A(2)*one_m_tc-3.d0*A(3)*one_m_tc_sq- &
                 4.d0*A(4)*one_m_tc**3.-5.d0*A(5)*one_m_tc**4.
       dE1_dTC = (1.d0+A(6)*one_m_tc+A(7)*one_m_tc_sq)+ &
@@ -579,7 +579,7 @@ subroutine EOSWaterSaturationPressureIFC67(T, PS, calculate_derivatives, dPS_dT,
       dE2_dTC = -1.d0/E2_bottom+one_m_tc/(E2_bottom*E2_bottom)*2.d0*one_m_tc
       dPC_dTC = (-SC/(E1*E1)*dE1_dTC-dE2_dTC)*PCAP
       dPC_dSC = 1.d0/E1*PCAP
-      dPS_dT = (dPC_dSC*dSC_dTC+dPC_dTC)*dTC_dT*2.212d7
+      dPS_dT = (dPC_dSC*dSC_dTC+dPC_dTC)*dTC_dT*H2O_CRITICAL_PRESSURE
     else
       dPS_dT = UNINITIALIZED_DOUBLE
     endif
@@ -810,8 +810,8 @@ subroutine EOSWaterDensityEnthalpyIFC67(t,p,dw,dwmol,hw, &
     
   ierr = 0
 
-  tc1 = 647.3d0    ! K
-  pc1 = 2.212d7    ! Pa 
+  tc1 = H2O_CRITICAL_TEMPERATURE    ! K
+  pc1 = H2O_CRITICAL_PRESSURE     ! Pa 
   vc1 = 0.00317d0  ! m^3/kg
   utc1 = one/tc1   ! 1/C
   upc1 = one/pc1   ! 1/Pa
@@ -1070,8 +1070,8 @@ subroutine EOSWaterDensityIFC67(t,p,dw,dwmol, &
     
   ierr = 0
 
-  tc1 = 647.3d0    ! K
-  pc1 = 2.212d7    ! Pa 
+  tc1 = H2O_CRITICAL_TEMPERATURE    ! K
+  pc1 = H2O_CRITICAL_PRESSURE     ! Pa 
   vc1 = 0.00317d0  ! m^3/kg
   utc1 = one/tc1   ! 1/C
   upc1 = one/pc1   ! 1/Pa
@@ -1244,8 +1244,8 @@ subroutine EOSWaterEnthalpyIFC67(t,p,hw, &
     
   ierr = 0
 
-  tc1 = 647.3d0    ! K
-  pc1 = 2.212d7    ! Pa 
+  tc1 = H2O_CRITICAL_TEMPERATURE    ! K
+  pc1 = H2O_CRITICAL_PRESSURE     ! Pa 
   vc1 = 0.00317d0  ! m^3/kg
   utc1 = one/tc1   ! 1/C
   upc1 = one/pc1   ! 1/Pa
@@ -1609,8 +1609,8 @@ subroutine EOSWaterSteamDensityEnthalpyIFC67(t,pv,dg,dgmol,hg, &
     
   ierr = 0
   
-  tc1 = 647.3d0       ! K
-  pc1 = 2.212d7       ! Pa
+  tc1 = H2O_CRITICAL_TEMPERATURE       ! K
+  pc1 = H2O_CRITICAL_PRESSURE        ! Pa
   vc1 = 0.00317d0     ! m^3/kg
   utc1 = one/tc1
   upc1 = one/pc1
@@ -1995,8 +1995,8 @@ subroutine EOSWaterSaturationTemperature(ts,ps,t_ps,ts_guess,ierr)
   
 
   PetscReal, parameter :: epsilon = 1.d-10
-  PetscReal, parameter :: tc1 = 647.3d0
-  PetscReal, parameter :: pc1 = 2.212d7  
+  PetscReal, parameter :: tc1 = H2O_CRITICAL_TEMPERATURE
+  PetscReal, parameter :: pc1 = H2O_CRITICAL_PRESSURE
       
   PetscReal :: theta, beta, u1, err
   PetscReal :: t1num, t1nump

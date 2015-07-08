@@ -32,6 +32,10 @@ module PFLOTRAN_Constants_module
   PetscReal, parameter, public :: FMWCO2 = 44.0098d0
   PetscReal, parameter, public :: FMWAIR = 28.96d0
   PetscReal, parameter, public :: FMWGLYC = 76.09d0 ! propylene glycol (C3H8O2)
+
+  ! critical point
+  PetscReal, parameter, public :: H2O_CRITICAL_TEMPERATURE = 647.3d0  ! K
+  PetscReal, parameter, public :: H2O_CRITICAL_PRESSURE = 22.064d6 ! Pa
   
   ! conversion factors
   PetscReal, parameter, public :: LOG_TO_LN = 2.30258509299d0
