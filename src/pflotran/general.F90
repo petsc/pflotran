@@ -54,6 +54,7 @@ module General_module
             GeneralCheckUpdatePre, &
             GeneralCheckUpdatePost, &
             GeneralMapBCAuxVarsToGlobal, &
+            GeneralSetFractureInitPressure, &
             GeneralDestroy
 
 contains
@@ -1213,36 +1214,13 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
   
   ! Fracture permeability change only available for structured grid (Heeho)
-  if (material_auxvar_up%fracture_bool) then
-    if (material_auxvar_up%fracture_flags(frac_change_perm_x_index) &
-        .and. dist(1) > 0.99999d0) then
-      call FracturePermEvaluate(material_auxvar_up,perm_up,perm_up, &
-                                dummy_perm_up)
-    else if (material_auxvar_up%fracture_flags(frac_change_perm_y_index) &
-        .and. dist(2) > 0.99999d0) then
-      call FracturePermEvaluate(material_auxvar_up,perm_up,perm_up, &
-                                dummy_perm_up)
-    else if (material_auxvar_up%fracture_flags(frac_change_perm_z_index) &
-        .and. dist(3) > 0.99999d0) then
-      call FracturePermEvaluate(material_auxvar_up,perm_up,perm_up, &
-                                dummy_perm_up)
-    endif
+  if (associated(material_auxvar_up%fracture)) then
+    call FracturePermEvaluate(material_auxvar_up,perm_up,perm_up, &
+                              dummy_perm_up,dist)
   endif
-  
-  if (material_auxvar_dn%fracture_bool) then
-    if (material_auxvar_dn%fracture_flags(frac_change_perm_x_index) &
-        .and. dist(1) > 0.99999d0) then
-      call FracturePermEvaluate(material_auxvar_dn,perm_dn,perm_dn, &
-                                dummy_perm_dn)
-    else if (material_auxvar_dn%fracture_flags(frac_change_perm_y_index) &
-        .and. dist(2) > 0.99999d0) then
-      call FracturePermEvaluate(material_auxvar_dn,perm_dn,perm_dn, &
-                                dummy_perm_dn)
-    else if (material_auxvar_dn%fracture_flags(frac_change_perm_z_index) &
-        .and. dist(3) > 0.99999d0) then
-      call FracturePermEvaluate(material_auxvar_dn,perm_dn,perm_dn, &
-                                dummy_perm_dn)
-    endif
+  if (associated(material_auxvar_dn%fracture)) then
+    call FracturePermEvaluate(material_auxvar_dn,perm_dn,perm_dn, &
+                              dummy_perm_dn,dist)
   endif
   
   if (associated(klinkenberg)) then
@@ -1547,23 +1525,12 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
   
   call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
 
-    ! Fracture permeability change only available for structured grid (Heeho)
-  if (material_auxvar_dn%fracture_bool) then
-    if (material_auxvar_dn%fracture_flags(frac_change_perm_x_index) & 
-        .and. dist(1) > 0.99999d0) then
-      call FracturePermEvaluate(material_auxvar_dn,perm_dn,perm_dn, &
-                                dummy_perm_dn)
-    else if (material_auxvar_dn%fracture_flags(frac_change_perm_y_index) &
-        .and. dist(2) > 0.99999d0) then
-      call FracturePermEvaluate(material_auxvar_dn,perm_dn,perm_dn, &
-                                dummy_perm_dn)
-    else if (material_auxvar_dn%fracture_flags(frac_change_perm_z_index) &
-        .and. dist(3) > 0.99999d0) then
-      call FracturePermEvaluate(material_auxvar_dn,perm_dn,perm_dn, &
-                                dummy_perm_dn)
-    endif
-  endif
-
+  ! Fracture permeability change only available for structured grid (Heeho)
+  if (associated(material_auxvar_dn%fracture)) then
+    call FracturePermEvaluate(material_auxvar_dn,perm_dn,perm_dn, &
+                              dummy_perm_dn,dist)
+  endif  
+  
   if (associated(klinkenberg)) then
     perm_dn_adj(1) = perm_dn
                                           
@@ -4391,6 +4358,58 @@ subroutine GeneralMapBCAuxVarsToGlobal(realization)
   enddo
   
 end subroutine GeneralMapBCAuxVarsToGlobal
+
+! ************************************************************************** !
+
+subroutine GeneralSetFractureInitPressure(realization)
+  ! 
+  ! Sets the initial pressure associated with WIPP fracture module.  This is
+  ! WIPP specific.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/09/15
+  ! 
+  use Realization_class
+  use Realization_Base_class
+  use Patch_module
+  use Grid_module
+  use Material_Aux_class
+  use Fracture_module
+  use Variables_module, only : MAXIMUM_PRESSURE
+
+  implicit none
+
+  type(realization_type) :: realization
+
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+  PetscReal, pointer :: vec_loc_p(:)
+
+  PetscInt :: ghosted_id
+  PetscErrorCode :: ierr
+
+  patch => realization%patch
+  grid => patch%grid
+  material_auxvars => patch%aux%Material%auxvars
+  
+  call RealizationGetVariable(realization,realization%field%work_loc, &
+                              MAXIMUM_PRESSURE,ZERO_INTEGER)
+  call VecGetArrayReadF90(realization%field%work_loc,vec_loc_p, &
+                          ierr); CHKERRQ(ierr)
+
+  do ghosted_id = 1, grid%ngmax
+    if (patch%imat(ghosted_id) <= 0) cycle
+    if (associated(material_auxvars(ghosted_id)%fracture)) then
+      call FractureSetInitialPressure(material_auxvars(ghosted_id)%fracture, &
+                                      vec_loc_p(ghosted_id))
+    endif
+  enddo
+
+  call VecRestoreArrayReadF90(realization%field%work_loc,vec_loc_p, &
+                              ierr); CHKERRQ(ierr)
+
+end subroutine GeneralSetFractureInitPressure
 
 ! ************************************************************************** !
 

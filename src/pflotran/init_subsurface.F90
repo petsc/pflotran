@@ -334,6 +334,7 @@ subroutine InitSubsurfAssignMatProperties(realization)
   use Material_module
   use Option_module
   use Creep_Closure_module
+  use Fracture_module
   use Variables_module, only : PERMEABILITY_X, PERMEABILITY_Y, &
                                PERMEABILITY_Z, PERMEABILITY_XY, &
                                PERMEABILITY_YZ, PERMEABILITY_XZ, &
@@ -401,6 +402,17 @@ subroutine InitSubsurfAssignMatProperties(realization)
   ! errors in gfortran
   Material => patch%aux%Material
 
+  !if material is associated with fracture, then allocate memory.  
+  do ghosted_id = 1, grid%ngmax
+    material_id = patch%imat(ghosted_id)
+    if (material_id > 0) then
+      material_property => &
+        patch%material_property_array(material_id)%ptr
+      call FractureAuxvarInit(material_property%fracture, &
+        patch%aux%Material%auxvars(ghosted_id))
+    endif
+  enddo
+  
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     material_id = patch%imat(ghosted_id)

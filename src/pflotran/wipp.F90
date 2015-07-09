@@ -7,16 +7,23 @@ module Fracture_module
   private
 
 #include "finclude/petscsys.h"
+
+  PetscInt, parameter, public :: frac_init_pres_index = 1
+  PetscInt, parameter, public :: frac_alt_pres_index = 2
+  PetscInt, parameter, public :: frac_max_poro_index = 3
+  PetscInt, parameter, public :: frac_poro_exp_index = 4
+  PetscInt, parameter, public :: frac_change_perm_x_index = 1
+  PetscInt, parameter, public :: frac_change_perm_y_index = 2
+  PetscInt, parameter, public :: frac_change_perm_z_index = 3
   
   type, public :: fracture_type
     PetscReal :: init_pressure
     PetscReal :: altered_pressure
     PetscReal :: maximum_porosity
     PetscReal :: porosity_exponent
-    PetscBool :: change_perm_x
-    PetscBool :: change_perm_y
-    PetscBool :: change_perm_z
-    PetscBool :: constant_pressure
+    PetscReal :: change_perm_x
+    PetscReal :: change_perm_y
+    PetscReal :: change_perm_z
   contains
     procedure, public :: Read => FractureRead
   end type fracture_type
@@ -25,6 +32,9 @@ module Fracture_module
 
   public :: FractureInit, &
             FractureCreate, &
+            FractureSetInitialPressure, &
+            FractureAuxvarInit, &
+            FracturePropertytoAux, &
             FractureDestroy, &
             FracturePoroEvaluate, &
             FracturePermEvaluate
@@ -67,12 +77,69 @@ subroutine FractureInit(this)
   this%altered_pressure = UNINITIALIZED_DOUBLE
   this%maximum_porosity = UNINITIALIZED_DOUBLE
   this%porosity_exponent = UNINITIALIZED_DOUBLE
-  this%change_perm_x = PETSC_FALSE
-  this%change_perm_y = PETSC_FALSE
-  this%change_perm_z = PETSC_FALSE
-  this%constant_pressure = PETSC_FALSE
+  this%change_perm_x = 0.d0
+  this%change_perm_y = 0.d0
+  this%change_perm_z = 0.d0
 
 end subroutine FractureInit
+
+! ************************************************************************** !
+
+subroutine FractureAuxvarInit(fracture_material,auxvar)
+  !
+  ! Author: Heeho Park
+  ! Date: 7/8/2015
+  !
+
+  use Material_Aux_class
+  
+  implicit none
+  
+  class(fracture_type), pointer :: fracture_material
+  class(material_auxvar_type), intent(inout) :: auxvar
+
+  if (associated(fracture_material)) then
+    allocate(auxvar%fracture)
+    allocate(auxvar%fracture%properties(4))
+    allocate(auxvar%fracture%vector(3))
+    auxvar%fracture%properties = 0.d0
+    auxvar%fracture%vector = 0.d0
+  endif
+
+end subroutine FractureAuxvarInit
+
+! ************************************************************************** !
+
+subroutine FracturePropertytoAux(auxvar,fracture_property)
+  !
+  ! Author: Heeho Park
+  ! Date: 7/8/2015
+  !
+
+  use Material_Aux_class
+  
+  implicit none
+
+  class(material_auxvar_type), intent(inout) :: auxvar
+  class(fracture_type), pointer :: fracture_property
+
+  
+  auxvar%fracture%properties(frac_init_pres_index) = &
+    fracture_property%init_pressure
+  auxvar%fracture%properties(frac_alt_pres_index) = &
+    fracture_property%altered_pressure
+  auxvar%fracture%properties(frac_max_poro_index) = &
+    fracture_property%maximum_porosity
+  auxvar%fracture%properties(frac_poro_exp_index) = &
+    fracture_property%porosity_exponent
+  auxvar%fracture%vector(frac_change_perm_x_index) = &
+    fracture_property%change_perm_x
+  auxvar%fracture%vector(frac_change_perm_y_index) = &
+    fracture_property%change_perm_y
+  auxvar%fracture%vector(frac_change_perm_z_index) = &
+    fracture_property%change_perm_z
+
+end subroutine FracturePropertytoAux
 
 ! ************************************************************************** !
 
@@ -129,13 +196,11 @@ subroutine FractureRead(this,input,option)
                           'dimensionless fracture exponent for porosity', &
                               'MATERIAL_PROPERTY,WIPP-FRACTURE')
         case('ALTER_PERM_X')
-          this%change_perm_x = PETSC_TRUE
+          this%change_perm_x = 1.d0
         case('ALTER_PERM_Y')
-          this%change_perm_y = PETSC_TRUE
+          this%change_perm_y = 1.d0
         case('ALTER_PERM_Z')
-          this%change_perm_z = PETSC_TRUE
-        case('USE_CONSTANT_PRESSURE')
-          this%constant_pressure = PETSC_TRUE
+          this%change_perm_z = 1.d0
         case default
           call InputKeywordUnrecognized(word, &
                   'MATERIAL_PROPERTY,WIPP-FRACTURE',option)
@@ -143,6 +208,27 @@ subroutine FractureRead(this,input,option)
     enddo
 
 end subroutine FractureRead
+
+! ************************************************************************** !
+
+subroutine FractureSetInitialPressure(fracture,initial_cell_pressure)
+  !
+  ! Sets the pressure referenced in fracture
+  !
+  use Material_Aux_class
+
+  implicit none
+  
+  type(fracture_auxvar_type) :: fracture
+  PetscReal, intent(in) :: initial_cell_pressure
+  
+  fracture%properties(frac_init_pres_index) = &
+    fracture%properties(frac_init_pres_index) + initial_cell_pressure
+  fracture%properties(frac_alt_pres_index) = &
+    fracture%properties(frac_alt_pres_index) + &
+    fracture%properties(frac_init_pres_index)
+
+end subroutine FractureSetInitialPressure
 
 ! ************************************************************************** !
 
@@ -175,9 +261,9 @@ subroutine FracturePoroEvaluate(auxvar,pressure,compressed_porosity, &
 
   Ci = auxvar%soil_properties(soil_compressibility_index)
   P0 = auxvar%soil_properties(soil_reference_pressure_index)
-  Pa = auxvar%fracture_properties(frac_alt_pres_index)
-  Pi = auxvar%fracture_properties(frac_init_pres_index)
-  phia = auxvar%fracture_properties(frac_max_poro_index)
+  Pa = auxvar%fracture%properties(frac_alt_pres_index)
+  Pi = auxvar%fracture%properties(frac_init_pres_index)
+  phia = auxvar%fracture%properties(frac_max_poro_index)
   phi0 = auxvar%porosity_base
   
   if (.not.associated(MaterialCompressSoilPtr, &
@@ -206,7 +292,7 @@ end subroutine FracturePoroEvaluate
 ! ************************************************************************** !
                                 
 subroutine FracturePermEvaluate(auxvar,permeability,altered_perm, &
-                                    daltered_perm_dp)
+                                    daltered_perm_dp,dist)
   !
   ! Calculates permeability induced by fracture BRAGFLO_6.02_UM Eq. (136)
   ! 4.10 Pressure-Induced Fracture Treatment
@@ -227,14 +313,17 @@ subroutine FracturePermEvaluate(auxvar,permeability,altered_perm, &
   PetscReal, intent(in) :: permeability
   PetscReal, intent(out) :: altered_perm
   PetscReal, intent(out) :: daltered_perm_dp
+  PetscReal :: dist(-1:3)
 
   PetscReal :: phii, dphii_dp, n
   PetscReal :: Pi
   PetscReal :: phi
 
+  if (dot_product(dist(1:3),auxvar%fracture%vector) < 1.d-40) return
+  
   phi = auxvar%porosity
-  Pi = auxvar%fracture_properties(frac_init_pres_index)
-  n = auxvar%fracture_properties(frac_poro_exp_index)
+  phii = auxvar%porosity_base
+  n = auxvar%fracture%properties(frac_poro_exp_index)
 
   if (.not.associated(MaterialCompressSoilPtr, &
                       MaterialCompressSoilBRAGFLO)) then
@@ -242,8 +331,6 @@ subroutine FracturePermEvaluate(auxvar,permeability,altered_perm, &
       'BRAGFLO soil compressibility function.'
     call printErrMsg(option)
   endif
-  
-  call MaterialCompressSoil(auxvar, Pi, phii, dphii_dp)
   
   ! phi = altered porosity
   ! phii = porosity at initiating pressure

@@ -73,9 +73,9 @@ def convert_sf2cc(filename,delete_files,old_extension):
 	rliq = '-999.0'
 	lamb = '-999.0'
 	alph = '-999.0'
-	mcap = '-999.0'
+	mcap = '1.d+08'
 	satf = 'BROOKS_COREY'
-	perf = 'BURDINE'
+	perf = 'MUALEM'
 	for line in old:
 		words = line.split()
 		
@@ -109,6 +109,8 @@ def convert_sf2cc(filename,delete_files,old_extension):
 				elif words[1] == 'GAS' or words[1] == 'CO2' or \
 				words[1] == 'GAS_PHASE' or words[1] == 'CO2_PHASE':
 					rgas = words[2]
+				else:
+					rliq = words[1]
 			elif words[0] == 'LAMBDA':
 				lamb = words[1]
 			elif words[0] == 'ALPHA':
@@ -201,8 +203,8 @@ def convert_sf2cc(filename,delete_files,old_extension):
 # This code will change parent directory files and all subdirectory files.
 # set one_file to '' if you want to have all files under a directory 
 # to be converted
-one_file = 'C:/Sandia/98806/PFloTran/'
-parent_dir = 'C:/Sandia'
+one_file = ''
+parent_dir = 'C:/Sandia/98806/PFLOTRAN_test_cases/case1/pflotran'
 extension = '.in'
 # False if you want to keep old files which will have old_file_extension 
 delete_old_files = False
