@@ -2976,7 +2976,7 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nG2A,nl2G,option)
             vertex_8(ivertex)%z = &
               unstructured_grid%vertices(vertex_id)%z
           enddo
-          write(string,'(f8.2)') &
+          write(string,'(es12.4)') &
             UCellComputeArea(cell_type,vertex_8,option)
           option%io_buffer = trim(option%io_buffer) // ' and area: ' // &
             trim(adjustl(string)) // '.'
@@ -3013,7 +3013,7 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nG2A,nl2G,option)
             vertex_8(ivertex)%z = &
               unstructured_grid%vertices(vertex_id)%z
           enddo
-          write(string,'(f8.2)') &
+          write(string,'(es12.4)') &
             UCellComputeVolume(cell_type,vertex_8,option)
           option%io_buffer = trim(option%io_buffer) // ' and volume: ' // &
             trim(adjustl(string)) // '.'
