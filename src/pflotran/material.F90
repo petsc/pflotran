@@ -1297,6 +1297,7 @@ subroutine MaterialAssignPropertyToAux(material_auxvar,material_property, &
   !
   use Material_Aux_class
   use Option_module
+  use Fracture_module 
   
   implicit none
   
@@ -1308,25 +1309,9 @@ subroutine MaterialAssignPropertyToAux(material_auxvar,material_property, &
     material_auxvar%soil_particle_density = &
       material_property%rock_density
   endif
-
-  material_auxvar%fracture_bool = associated(material_property%fracture)
-  if (material_auxvar%fracture_bool) then
-    material_auxvar%fracture_properties(frac_init_pres_index) = &
-      material_property%fracture%init_pressure
-    material_auxvar%fracture_properties(frac_alt_pres_index) = &
-      material_property%fracture%altered_pressure
-    material_auxvar%fracture_properties(frac_max_poro_index) = &
-      material_property%fracture%maximum_porosity
-    material_auxvar%fracture_properties(frac_poro_exp_index) = &
-      material_property%fracture%porosity_exponent
-    material_auxvar%fracture_flags(frac_change_perm_x_index) = &
-      material_property%fracture%change_perm_x
-    material_auxvar%fracture_flags(frac_change_perm_y_index) = &
-      material_property%fracture%change_perm_y
-    material_auxvar%fracture_flags(frac_change_perm_z_index) = &
-      material_property%fracture%change_perm_z
-    material_auxvar%fracture_flags(frac_const_pres_index) = &
-      material_property%fracture%constant_pressure
+  
+  if (associated(material_property%fracture)) then
+    call FracturePropertytoAux(material_auxvar, material_property%fracture)
   endif
   
   if (soil_compressibility_index > 0) then
@@ -1804,6 +1789,7 @@ recursive subroutine MaterialPropertyDestroy(material_property)
   if (.not.associated(material_property)) return
   
   call MaterialPropertyDestroy(material_property%next)
+  call FractureDestroy(material_property%fracture)
   
   ! simply nullify since the datasets reside in a list within realization
   nullify(material_property%permeability_dataset)

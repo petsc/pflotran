@@ -544,11 +544,11 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   ! calculate effective porosity as a function of pressure
   if (option%iflag /= GENERAL_UPDATE_FOR_BOUNDARY) then
     gen_auxvar%effective_porosity = material_auxvar%porosity_base
-    if (material_auxvar%fracture_bool .and. & 
-      material_auxvar%setup_fracture) then
+    if (associated(material_auxvar%fracture) .and. & 
+      material_auxvar%fracture%setup) then
       ! The initiating pressure and maximum pressure must be calculated
       ! before fracture function applies - Heeho
-      call FractureSetup(material_auxvar,cell_pressure)
+      call FractureInitialSetup(material_auxvar,cell_pressure)
     endif
     if (soil_compressibility_index > 0 .and. &
       material_auxvar%setup_reference_pressure) then
@@ -564,7 +564,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
         gen_auxvar%effective_porosity = &
           creep_closure%Evaluate(creep_closure_time,cell_pressure)
       endif
-    else if (material_auxvar%fracture_bool) then
+    else if (associated(material_auxvar%fracture)) then
       call FracturePoroEvaluate(material_auxvar,cell_pressure, &
                                 gen_auxvar%effective_porosity,dummy)
     else if (soil_compressibility_index > 0) then

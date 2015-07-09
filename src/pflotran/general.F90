@@ -1206,36 +1206,13 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
   
   ! Fracture permeability change only available for structured grid (Heeho)
-  if (material_auxvar_up%fracture_bool) then
-    if (material_auxvar_up%fracture_flags(frac_change_perm_x_index) &
-        .and. dist(1) > 0.99999d0) then
-      call FracturePermEvaluate(material_auxvar_up,perm_up,perm_up, &
-                                dummy_perm_up)
-    else if (material_auxvar_up%fracture_flags(frac_change_perm_y_index) &
-        .and. dist(2) > 0.99999d0) then
-      call FracturePermEvaluate(material_auxvar_up,perm_up,perm_up, &
-                                dummy_perm_up)
-    else if (material_auxvar_up%fracture_flags(frac_change_perm_z_index) &
-        .and. dist(3) > 0.99999d0) then
-      call FracturePermEvaluate(material_auxvar_up,perm_up,perm_up, &
-                                dummy_perm_up)
-    endif
+  if (associated(material_auxvar_up%fracture)) then
+    call FracturePermEvaluate(material_auxvar_up,perm_up,perm_up, &
+                              dummy_perm_up,dist)
   endif
-  
-  if (material_auxvar_dn%fracture_bool) then
-    if (material_auxvar_dn%fracture_flags(frac_change_perm_x_index) &
-        .and. dist(1) > 0.99999d0) then
-      call FracturePermEvaluate(material_auxvar_dn,perm_dn,perm_dn, &
-                                dummy_perm_dn)
-    else if (material_auxvar_dn%fracture_flags(frac_change_perm_y_index) &
-        .and. dist(2) > 0.99999d0) then
-      call FracturePermEvaluate(material_auxvar_dn,perm_dn,perm_dn, &
-                                dummy_perm_dn)
-    else if (material_auxvar_dn%fracture_flags(frac_change_perm_z_index) &
-        .and. dist(3) > 0.99999d0) then
-      call FracturePermEvaluate(material_auxvar_dn,perm_dn,perm_dn, &
-                                dummy_perm_dn)
-    endif
+  if (associated(material_auxvar_dn%fracture)) then
+    call FracturePermEvaluate(material_auxvar_dn,perm_dn,perm_dn, &
+                              dummy_perm_dn,dist)
   endif
   
   if (associated(klinkenberg)) then
@@ -1540,23 +1517,12 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
   
   call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
 
-    ! Fracture permeability change only available for structured grid (Heeho)
-  if (material_auxvar_dn%fracture_bool) then
-    if (material_auxvar_dn%fracture_flags(frac_change_perm_x_index) & 
-        .and. dist(1) > 0.99999d0) then
-      call FracturePermEvaluate(material_auxvar_dn,perm_dn,perm_dn, &
-                                dummy_perm_dn)
-    else if (material_auxvar_dn%fracture_flags(frac_change_perm_y_index) &
-        .and. dist(2) > 0.99999d0) then
-      call FracturePermEvaluate(material_auxvar_dn,perm_dn,perm_dn, &
-                                dummy_perm_dn)
-    else if (material_auxvar_dn%fracture_flags(frac_change_perm_z_index) &
-        .and. dist(3) > 0.99999d0) then
-      call FracturePermEvaluate(material_auxvar_dn,perm_dn,perm_dn, &
-                                dummy_perm_dn)
-    endif
-  endif
-
+  ! Fracture permeability change only available for structured grid (Heeho)
+  if (associated(material_auxvar_dn%fracture)) then
+    call FracturePermEvaluate(material_auxvar_dn,perm_dn,perm_dn, &
+                              dummy_perm_dn,dist)
+  endif  
+  
   if (associated(klinkenberg)) then
     perm_dn_adj(1) = perm_dn
                                           
