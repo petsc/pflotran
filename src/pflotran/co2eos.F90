@@ -40,7 +40,7 @@ subroutine CO2(TX,PCX,DC,FC,PHI,HC)
   ! Revision 1.1  2002/04/12 19:03:10  lichtner
   ! Initial entry
   ! 
-      
+      use PFLOTRAN_Constants_module, only : IDEAL_GAS_CONSTANT    
 
       implicit none
       
@@ -84,7 +84,7 @@ subroutine CO2(TX,PCX,DC,FC,PHI,HC)
 !
 
       PARAMETER(XMWC = 4.40098D-02)
-      PARAMETER(R    = 8.3147295D0)
+      PARAMETER(R    = IDEAL_GAS_CONSTANT)
       PARAMETER(B    = 5.8D-05)
 !      
 !
@@ -161,6 +161,8 @@ end subroutine CO2
 
 subroutine MRK(Y,T,PCX,V,DV,AT)
       
+      use PFLOTRAN_Constants_module, only : IDEAL_GAS_CONSTANT    
+
       implicit none
 
 !     MODIFIED REDLICH-KWONG EQUATION OF STATE FOR CO2
@@ -197,7 +199,7 @@ subroutine MRK(Y,T,PCX,V,DV,AT)
       PetscReal :: T2,V2,V3,V4,Y2,Y3
       PetscReal :: B2,B3,CT,DT,ET,FT,FV
 
-      PARAMETER(R   =  8.3147295D0)
+      PARAMETER(R   =  IDEAL_GAS_CONSTANT)
       PARAMETER(B   =  5.8D-05)
       PARAMETER(C1  =  2.39534D+01)
       PARAMETER(C2  = -4.55309D-02)
@@ -255,6 +257,8 @@ end subroutine MRK
 
 subroutine FUGACITY(Y,T,V,Z,PHI)
       
+      use PFLOTRAN_Constants_module, only : IDEAL_GAS_CONSTANT    
+
       implicit none
 
 !
@@ -289,7 +293,7 @@ subroutine FUGACITY(Y,T,V,Z,PHI)
       PetscReal :: R,B,C1,C2,C3,D1,D2,D3,E1,E2,E3,F1,F2,F3
       PetscReal :: T2,V2,V3,B2,B3,B4,CT,DT,ET,FT
       
-      PARAMETER(R   =  8.3147295D0)
+      PARAMETER(R   =  IDEAL_GAS_CONSTANT)
       PARAMETER(B   =  5.8D-05)
       PARAMETER(C1  =  2.39534D+01)
       PARAMETER(C2  = -4.55309D-02)
@@ -350,6 +354,8 @@ end subroutine FUGACITY
 
 subroutine ENTHALPY(T,V,Z,H)
 
+      use PFLOTRAN_Constants_module, only : IDEAL_GAS_CONSTANT    
+
       implicit none
 !
 !     This subroutine is called from subroutine CO2 during the       
@@ -400,7 +406,7 @@ subroutine ENTHALPY(T,V,Z,H)
                    B2,B3,B4,XI1,XI2,URES
       
       PARAMETER(BETA=  304.21D0)
-      PARAMETER(R   =  8.3147295D0)
+      PARAMETER(R   =  IDEAL_GAS_CONSTANT)
       PARAMETER(TREF=  2.7316D+02)
       PARAMETER(B   =  5.8D-05)
       PARAMETER(C1  =  2.39534D+01)
@@ -508,6 +514,8 @@ subroutine duanco2 (tt,p,dc,fc,phi)
   ! 8000 bar. Geochimica Cosmochimica Acta, 56, 2605-2617.
   ! 
 
+      use PFLOTRAN_Constants_module, only : IDEAL_GAS_CONSTANT    
+
       implicit none
       
       PetscReal :: a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,alpha,beta,gamma
@@ -552,7 +560,7 @@ subroutine duanco2 (tt,p,dc,fc,phi)
       d = a7 + (a8 + a9*tr1)*tr2
       e = a10 + (a11 + a12*tr1)*tr2
 
-      rgas = 0.083144621 !bar dm**3 / k
+      rgas = IDEAL_GAS_CONSTANT * 1.d-2 !bar dm**3 / k
       vc = rgas*tc/pc
 
 !-----solve
@@ -823,7 +831,7 @@ subroutine HENRY_co2_noderiv(xmole,x1m,tx,pcx,xphi,rkh,poyn)
 
 !-----Poynting term
 !     vid = 3.5d-5
-!     rgas = 8.3144621D0
+!     rgas = IDEAL_GAS_CONSTANT
 !     call sat(tx,ps)
  
 !     poyn = exp(-(VID*(PCX-PS))/(Rgas*Tk))
@@ -841,6 +849,8 @@ end subroutine HENRY_CO2_NODERIV
 ! ************************************************************************** !
 
 subroutine HENRY_sullivan (TX,PCX,PS,FC,X1M,XCO2,HP)
+
+      use PFLOTRAN_Constants_module, only : IDEAL_GAS_CONSTANT    
 
       implicit none
 
@@ -888,7 +898,7 @@ subroutine HENRY_sullivan (TX,PCX,PS,FC,X1M,XCO2,HP)
       
       PARAMETER(XMWC = 4.40098D-02)
       PARAMETER(XMWW = 1.801534D-02)
-      PARAMETER(R    = 8.3147295D0)
+      PARAMETER(R    = IDEAL_GAS_CONSTANT)
       PARAMETER(VID  = 3.0D-05)
 
 !    Calculate TAU:
