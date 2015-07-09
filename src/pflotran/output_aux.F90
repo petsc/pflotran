@@ -903,6 +903,14 @@ subroutine OutputVariableRead(input,option,output_variable_list)
         output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
         output_variable%iformat = 1 ! integer
         call OutputVariableAddToList(output_variable_list,output_variable)
+      case ('MATERIAL_ID_KLUDGE_FOR_VISIT')
+        units = ''
+        name = 'Kludged material ids for VisIt'
+        output_variable => OutputVariableCreate(name,OUTPUT_DISCRETE, &
+                                                units,MATERIAL_ID)
+        output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
+        output_variable%iformat = 1 ! integer
+        call OutputVariableAddToList(output_variable_list,output_variable)
       case default
         call InputKeywordUnrecognized(word,'VARIABLES',option)
     end select
