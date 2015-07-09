@@ -26,7 +26,7 @@
        61:         1
        81:         1
 -- SOLUTION: Flow --
-   Time (seconds):   4.0157651901245E-01
+   Time (seconds):   3.9167475700378E-01
    Time Steps:          209
    Newton Iterations:          360
    Solver Iterations:          360
