@@ -255,6 +255,7 @@ recursive subroutine PMGeneralInitializeRun(this)
   ! Date: 04/21/14 
 
   use Realization_Base_class
+  use General_module, only : GeneralSetFractureInitPressure
   
   implicit none
   
@@ -277,6 +278,8 @@ recursive subroutine PMGeneralInitializeRun(this)
   
   ! call parent implementation
   call PMSubsurfaceInitializeRun(this)
+
+  call GeneralSetFractureInitPressure(this%realization)
 
 end subroutine PMGeneralInitializeRun
 

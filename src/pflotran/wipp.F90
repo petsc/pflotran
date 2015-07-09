@@ -7,6 +7,14 @@ module Fracture_module
   private
 
 #include "finclude/petscsys.h"
+
+  PetscInt, parameter, public :: frac_init_pres_index = 1
+  PetscInt, parameter, public :: frac_alt_pres_index = 2
+  PetscInt, parameter, public :: frac_max_poro_index = 3
+  PetscInt, parameter, public :: frac_poro_exp_index = 4
+  PetscInt, parameter, public :: frac_change_perm_x_index = 1
+  PetscInt, parameter, public :: frac_change_perm_y_index = 2
+  PetscInt, parameter, public :: frac_change_perm_z_index = 3
   
   type, public :: fracture_type
     PetscReal :: init_pressure
@@ -24,7 +32,7 @@ module Fracture_module
 
   public :: FractureInit, &
             FractureCreate, &
-            FractureInitialSetup, &
+            FractureSetInitialPressure, &
             FractureAuxvarInit, &
             FracturePropertytoAux, &
             FractureDestroy, &
@@ -96,7 +104,6 @@ subroutine FractureAuxvarInit(fracture_material,auxvar)
     allocate(auxvar%fracture%vector(3))
     auxvar%fracture%properties = 0.d0
     auxvar%fracture%vector = 0.d0
-    auxvar%fracture%setup = PETSC_TRUE
   endif
 
 end subroutine FractureAuxvarInit
@@ -204,23 +211,24 @@ end subroutine FractureRead
 
 ! ************************************************************************** !
 
-subroutine FractureInitialSetup(auxvar,init_pres)
-
+subroutine FractureSetInitialPressure(fracture,initial_cell_pressure)
+  !
+  ! Sets the pressure referenced in fracture
+  !
   use Material_Aux_class
-  
+
   implicit none
   
-  class(material_auxvar_type), intent(inout) :: auxvar
-  PetscReal, intent(in) :: init_pres
+  type(fracture_auxvar_type) :: fracture
+  PetscReal, intent(in) :: initial_cell_pressure
   
-  auxvar%fracture%properties(frac_init_pres_index) = &
-    auxvar%fracture%properties(frac_init_pres_index) + init_pres
-  auxvar%fracture%properties(frac_alt_pres_index) = &
-    auxvar%fracture%properties(frac_alt_pres_index) + &
-    auxvar%fracture%properties(frac_init_pres_index)
-  auxvar%fracture%setup = PETSC_FALSE
+  fracture%properties(frac_init_pres_index) = &
+    fracture%properties(frac_init_pres_index) + initial_cell_pressure
+  fracture%properties(frac_alt_pres_index) = &
+    fracture%properties(frac_alt_pres_index) + &
+    fracture%properties(frac_init_pres_index)
 
-end subroutine FractureInitialSetup
+end subroutine FractureSetInitialPressure
 
 ! ************************************************************************** !
 

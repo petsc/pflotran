@@ -18,14 +18,6 @@ module Material_Aux_class
   PetscInt, parameter, public :: POROSITY_CURRENT = 0
   PetscInt, parameter, public :: POROSITY_MINERAL = 1
   
-  PetscInt, parameter, public :: frac_init_pres_index = 1
-  PetscInt, parameter, public :: frac_alt_pres_index = 2
-  PetscInt, parameter, public :: frac_max_poro_index = 3
-  PetscInt, parameter, public :: frac_poro_exp_index = 4
-  PetscInt, parameter, public :: frac_change_perm_x_index = 1
-  PetscInt, parameter, public :: frac_change_perm_y_index = 2
-  PetscInt, parameter, public :: frac_change_perm_z_index = 3
-  
 !  PetscInt, public :: soil_thermal_conductivity_index
 !  PetscInt, public :: soil_heat_capacity_index
   PetscInt, public :: soil_compressibility_index
@@ -43,8 +35,7 @@ module Material_Aux_class
     PetscReal, pointer :: permeability(:)
     PetscReal, pointer :: sat_func_prop(:)
     PetscReal, pointer :: soil_properties(:) ! den, therm. cond., heat cap.
-    PetscBool :: setup_reference_pressure = PETSC_TRUE
-    class(fracture_auxvar_type), pointer :: fracture
+    type(fracture_auxvar_type), pointer :: fracture
 
 !    procedure(SaturationFunction), nopass, pointer :: SaturationFunction
   contains
@@ -55,7 +46,6 @@ module Material_Aux_class
   type, public :: fracture_auxvar_type
     PetscReal, pointer :: properties(:)
     PetscReal, pointer :: vector(:) ! < 0. 0. 0. >
-    PetscBool :: setup = PETSC_TRUE
   end type fracture_auxvar_type
   
   type, public :: material_parameter_type
@@ -96,8 +86,7 @@ module Material_Aux_class
             MaterialCompressSoilPtr, &
             MaterialCompressSoil, &
             MaterialCompressSoilBragflo, &
-            MaterialCompressSoilLeijnse, &
-            MaterialReferencePressureSetup
+            MaterialCompressSoilLeijnse
   
   public :: MaterialAuxCreate, &
             MaterialAuxVarInit, &
@@ -374,20 +363,6 @@ end subroutine MaterialCompressSoilLeijnse
 
 ! ************************************************************************** !
 
-subroutine MaterialReferencePressureSetup(auxvar,init_pres)
-  
-  implicit none
-  
-  class(material_auxvar_type), intent(inout) :: auxvar
-  PetscReal, intent(in) :: init_pres
-  
-  auxvar%soil_properties(soil_reference_pressure_index) = init_pres
-  auxvar%setup_reference_pressure = PETSC_FALSE
-
-end subroutine MaterialReferencePressureSetup
-
-! ************************************************************************** !
-                                
 subroutine MaterialCompressSoilBRAGFLO(auxvar,pressure, &
                                        compressed_porosity, &
                                        dcompressed_porosity_dp)

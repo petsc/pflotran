@@ -544,6 +544,8 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   ! calculate effective porosity as a function of pressure
   if (option%iflag /= GENERAL_UPDATE_FOR_BOUNDARY) then
     gen_auxvar%effective_porosity = material_auxvar%porosity_base
+#if 0
+!geh this code is no longer valid
     if (associated(material_auxvar%fracture) .and. & 
       material_auxvar%fracture%setup) then
       ! The initiating pressure and maximum pressure must be calculated
@@ -554,6 +556,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       material_auxvar%setup_reference_pressure) then
       call MaterialReferencePressureSetup(material_auxvar,cell_pressure)
     endif
+#endif
     if (associated(creep_closure)) then
       if (creep_closure%imat == material_auxvar%id) then
         ! option%time here is the t time, not t + dt time.
