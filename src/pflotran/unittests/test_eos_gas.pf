@@ -107,7 +107,7 @@ contains
 
     PetscReal, parameter :: correct_density = 7.7058690453347650d-2
     PetscReal, parameter :: correct_dden_dt = -2.5985058321816783d-4
-    PetscReal, parameter :: correct_dden_dp = 4.0557205501761923E-007
+    PetscReal, parameter :: correct_dden_dp = 4.0557205501761923d-7
     PetscReal, parameter :: temperature = 23.4d0
     PetscReal, parameter :: pressure = 1.9d5
     PetscReal :: density
