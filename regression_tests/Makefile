@@ -58,6 +58,7 @@ STANDARD_CFG = \
 	shortcourse/1D_variably_saturated_flow/vsat_flow.cfg \
 	shortcourse/regional_doublet/regional_doublet.cfg \
 	shortcourse/copper_leaching/cu_leaching.cfg \
+	ufd/ufd.cfg \
 	wipp/nuts/nuts.cfg \
 	wipp/bragflo/bragflo.cfg
 
@@ -82,6 +83,7 @@ GEOCHEMISTRY_CFG = \
         ngee/ngee.cfg \
 	shortcourse/1D_Calcite/calcite.cfg \
 	shortcourse/copper_leaching/cu_leaching.cfg \
+	ufd/ufd.cfg \
 	wipp/nuts/nuts.cfg
 
 FLOW_CFG = \

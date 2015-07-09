@@ -49,6 +49,7 @@ module PM_RT_class
     procedure, public :: CheckUpdatePost => PMRTCheckUpdatePost
     procedure, public :: TimeCut => PMRTTimeCut
     procedure, public :: UpdateSolution => PMRTUpdateSolution1
+    procedure, public :: UpdateAuxVars => PMRTUpdateAuxVars
     procedure, public :: MaxChange => PMRTMaxChange
     procedure, public :: ComputeMassBalance => PMRTComputeMassBalance
     procedure, public :: SetTranWeights => SetTranWeights
@@ -300,7 +301,7 @@ subroutine PMRTInitializeTimestep(this)
                                  this%realization%field,this%comm1)
     endif
     ! set densities and saturations to t
-    call GlobalWeightAuxvars(this%realization,this%tran_weight_t0)
+    call GlobalWeightAuxVars(this%realization,this%tran_weight_t0)
   else if (this%transient_porosity) then
     this%tran_weight_t0 = 0.d0
     call MaterialWeightAuxVars(this%realization%patch%aux%Material, &
@@ -761,6 +762,23 @@ subroutine PMRTUpdateSolution2(this, update_kinetics)
                           INTEGRATE_TRANSPORT,this%option)
 
 end subroutine PMRTUpdateSolution2     
+
+! ************************************************************************** !
+
+subroutine PMRTUpdateAuxVars(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 04/21/14
+
+  use Reactive_Transport_module, only : RTUpdateAuxVars
+  
+  implicit none
+  
+  class(pm_rt_type) :: this
+                                      ! cells      bcs         act. coefs.
+  call RTUpdateAuxVars(this%realization,PETSC_TRUE,PETSC_FALSE,PETSC_FALSE)
+
+end subroutine PMRTUpdateAuxVars  
 
 ! ************************************************************************** !
 

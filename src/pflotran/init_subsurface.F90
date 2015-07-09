@@ -160,6 +160,7 @@ subroutine SubsurfAllocMatPropDataStructs(realization)
   use Realization_class
   use Material_module
   use Option_module
+  use Discretization_module
   use Grid_module
   use Patch_module
   use Material_Aux_class
@@ -209,6 +210,13 @@ subroutine SubsurfAllocMatPropDataStructs(realization)
     
     cur_patch => cur_patch%next
   enddo
+
+  ! Create Vec that holds compressibility
+  if (soil_compressibility_index > 0) then
+    call DiscretizationDuplicateVector(realization%discretization, &
+                                       realization%field%work, &
+                                       realization%field%compressibility0)
+  endif
 
 end subroutine SubsurfAllocMatPropDataStructs
 
@@ -352,6 +360,7 @@ subroutine InitSubsurfAssignMatProperties(realization)
   PetscReal, pointer :: perm_yz_p(:)
   PetscReal, pointer :: perm_pow_p(:)
   PetscReal, pointer :: vec_p(:)
+  PetscReal, pointer :: compress_p(:)
   
   character(len=MAXSTRINGLENGTH) :: string, string2
   type(material_property_type), pointer :: material_property, null_material_property
@@ -360,7 +369,7 @@ subroutine InitSubsurfAssignMatProperties(realization)
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch
-  class(material_auxvar_type), pointer :: material_auxvars(:)
+  type(material_type), pointer :: Material
   PetscInt :: local_id, ghosted_id, material_id
   PetscInt :: i
   PetscInt :: tempint
@@ -382,11 +391,16 @@ subroutine InitSubsurfAssignMatProperties(realization)
     call VecGetArrayF90(field%perm0_xx,perm_xx_p,ierr);CHKERRQ(ierr)
     call VecGetArrayF90(field%perm0_yy,perm_yy_p,ierr);CHKERRQ(ierr)
     call VecGetArrayF90(field%perm0_zz,perm_zz_p,ierr);CHKERRQ(ierr)
+    if (soil_compressibility_index > 0) then
+      call VecGetArrayF90(field%compressibility0,compress_p,ierr);CHKERRQ(ierr)
+    endif
   endif
   call VecGetArrayF90(field%porosity0,por0_p,ierr);CHKERRQ(ierr)
   call VecGetArrayF90(field%tortuosity0,tor0_p,ierr);CHKERRQ(ierr)
         
-  material_auxvars => patch%aux%Material%auxvars
+  ! have to use Material%auxvars() and not material_auxvars() due to memory
+  ! errors in gfortran
+  Material => patch%aux%Material
 
   !if material is associated with fracture, then allocate memory.  
   do ghosted_id = 1, grid%ngmax
@@ -451,9 +465,12 @@ subroutine InitSubsurfAssignMatProperties(realization)
       perm_yy_p(local_id) = material_property%permeability(2,2)
       perm_zz_p(local_id) = material_property%permeability(3,3)
     endif
-    if (associated(material_auxvars)) then
-      call MaterialAssignPropertyToAux(material_auxvars(ghosted_id), &
+    if (associated(Material%auxvars)) then
+      call MaterialAssignPropertyToAux(Material%auxvars(ghosted_id), &
                                         material_property,option)
+    endif
+    if (soil_compressibility_index > 0) then
+      compress_p(local_id) = material_property%soil_compressibility
     endif
     por0_p(local_id) = material_property%porosity
     tor0_p(local_id) = material_property%tortuosity
@@ -466,6 +483,10 @@ subroutine InitSubsurfAssignMatProperties(realization)
     call VecRestoreArrayF90(field%perm0_xx,perm_xx_p,ierr);CHKERRQ(ierr)
     call VecRestoreArrayF90(field%perm0_yy,perm_yy_p,ierr);CHKERRQ(ierr)
     call VecRestoreArrayF90(field%perm0_zz,perm_zz_p,ierr);CHKERRQ(ierr)
+    if (soil_compressibility_index > 0) then
+      call VecRestoreArrayF90(field%compressibility0,compress_p,ierr); &
+                              CHKERRQ(ierr)
+    endif
   endif
   call VecRestoreArrayF90(field%porosity0,por0_p,ierr);CHKERRQ(ierr)
   call VecRestoreArrayF90(field%tortuosity0,tor0_p,ierr);CHKERRQ(ierr)
@@ -523,7 +544,7 @@ subroutine InitSubsurfAssignMatProperties(realization)
                                     field%ithrm_loc,ONEDOF)
     call RealLocalToLocalWithArray(realization,SATURATION_FUNCTION_ID_ARRAY)
     
-    if (associated(material_property%compressibility_dataset)) then
+    if (soil_compressibility_index > 0) then
       call DiscretizationGlobalToLocal(discretization,field%compressibility0, &
                                        field%work_loc,ONEDOF)
       call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
@@ -548,8 +569,7 @@ subroutine InitSubsurfAssignMatProperties(realization)
       ghosted_id = patch%grid%nL2G(local_id)
       if (patch%imat(ghosted_id) > 0) then
         vec_p(local_id) = &
-          patch%aux%Material%auxvars(patch%grid%nL2G(local_id))% &
-          soil_properties(i)
+          Material%auxvars(patch%grid%nL2G(local_id))%soil_properties(i)
       else
         vec_p(local_id) = 1.d-40 ! some initialized value for inactive cells.
       endif
@@ -566,7 +586,7 @@ subroutine InitSubsurfAssignMatProperties(realization)
                                      field%work_loc,ONEDOF)
     call VecGetArrayF90(field%work_loc,vec_p,ierr);CHKERRQ(ierr)
     do ghosted_id = 1, patch%grid%ngmax
-      patch%aux%Material%auxvars(ghosted_id)%soil_properties(i) = &
+      Material%auxvars(ghosted_id)%soil_properties(i) = &
          vec_p(ghosted_id)
     enddo
     call VecRestoreArrayF90(field%work_loc,vec_p,ierr);CHKERRQ(ierr)
@@ -925,7 +945,8 @@ subroutine SubsurfReadCompressFromFile(realization,material_property)
                                     option)
     call HDF5ReadCellIndexedRealArray(realization,global_vec, &
                           material_property%compressibility_dataset%filename, &
-                          group_name,dataset_name,append_realization_id)
+                          group_name,dataset_name, &
+                material_property%compressibility_dataset%realization_dependent)
     call VecGetArrayF90(global_vec,vec_p,ierr);CHKERRQ(ierr)
     do local_id = 1, grid%nlmax
       if (patch%imat(grid%nL2G(local_id)) == &
@@ -1316,10 +1337,8 @@ subroutine InitSubsurfaceReadInput(simulation)
   input => realization%input
   
   flow_timestepper => TimestepperBECreate()
-  flow_timestepper%solver => SolverCreate()
   flow_timestepper%solver%itype = FLOW_CLASS
   tran_timestepper => TimestepperBECreate()
-  tran_timestepper%solver => SolverCreate()
   tran_timestepper%solver%itype = TRANSPORT_CLASS
 
   backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
@@ -1847,7 +1866,6 @@ subroutine InitSubsurfaceReadInput(simulation)
 !....................
 
       case ('SATURATION_FUNCTION')
-#ifndef LEGACY_SATURATION_FUNCTION
         if (option%iflowmode == RICHARDS_MODE .or. &
             option%iflowmode == G_MODE) then
           option%io_buffer = &
@@ -1856,7 +1874,6 @@ subroutine InitSubsurfaceReadInput(simulation)
             'CHARACTERISTIC_CURVES.'
           call printErrMsg(option)
         endif
-#endif
         saturation_function => SaturationFunctionCreate(option)
         call InputReadWord(input,option,saturation_function%name,PETSC_TRUE)
         call InputErrorMsg(input,option,'name','SATURATION_FUNCTION')
@@ -1972,6 +1989,12 @@ subroutine InitSubsurfaceReadInput(simulation)
           call InputErrorMsg(input,option,'keyword','OUTPUT') 
           call StringToUpper(word)
           select case(trim(word))
+            case('TIME_UNITS')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'Output Time Units','OUTPUT')
+              realization%output_option%tunit = trim(word)
+              realization%output_option%tconv = &
+                UnitsConvertToInternal(word,option)
             case('NO_FINAL','NO_PRINT_FINAL')
               output_option%print_final = PETSC_FALSE
             case('NO_INITIAL','NO_PRINT_INITIAL')
@@ -2331,11 +2354,14 @@ subroutine InitSubsurfaceReadInput(simulation)
               call InputErrorMsg(input,option,'Final Time','TIME') 
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'Final Time Units','TIME')
-              realization%output_option%tunit = trim(word)
-              realization%output_option%tconv = UnitsConvertToInternal(word,option)
+              temp_real2 = UnitsConvertToInternal(word,option)
+              if (len_trim(realization%output_option%tunit) == 0) then
+                realization%output_option%tunit = trim(word)
+                realization%output_option%tconv = temp_real2
+              endif
               waypoint => WaypointCreate()
               waypoint%final = PETSC_TRUE
-              waypoint%time = temp_real*realization%output_option%tconv
+              waypoint%time = temp_real*temp_real2
               waypoint%print_output = PETSC_TRUE              
               call WaypointInsertInList(waypoint,realization%waypoint_list)
             case('INITIAL_TIMESTEP_SIZE')
@@ -2425,8 +2451,9 @@ subroutine InitSubsurfaceReadInput(simulation)
 !....................
       case ('ONLY_VERTICAL_FLOW')
         option%flow%only_vertical_flow = PETSC_TRUE
-        if (option%iflowmode /= TH_MODE) then
-          option%io_buffer = 'ONLY_VERTICAL_FLOW implemented in TH_MODE'
+        if (option%iflowmode /= TH_MODE .and. &
+            option%iflowmode /= RICHARDS_MODE) then
+          option%io_buffer = 'ONLY_VERTICAL_FLOW implemented in RICHARDS and TH mode.'
           call printErrMsg(option)
         endif
 
@@ -2455,12 +2482,18 @@ subroutine InitSubsurfaceReadInput(simulation)
         exit
 
 !....................
+      case ('MIN_ALLOWABLE_SCALE')
+        call InputReadDouble(input,option,option%min_allowable_scale)
+        call InputErrorMsg(input,option,'minimium allowable scaling factor', &
+                           'InitSubsurface')
+
+!....................
       case default
         call InputKeywordUnrecognized(word,'InitSubsurfaceReadInput()',option)
     end select
 
   enddo
-  
+
   if (associated(simulation%flow_process_model_coupler)) then
     flow_timestepper%name = 'FLOW'
     if (option%steady_state) call TimestepperSteadyCreateFromBE(flow_timestepper)

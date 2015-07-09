@@ -139,7 +139,7 @@ contains
     PetscErrorCode :: ierr
     character(len=MAXSTRINGLENGTH) :: error_string
 
-    PetscReal, parameter :: stp_density = 998.32328795198055d0
+    PetscReal, parameter :: stp_density = 998.32340486329440d0
     PetscReal, parameter :: temperature = 20.0d0
     PetscReal, parameter :: pressure = 101325.0d0
     PetscReal :: density

@@ -42,12 +42,17 @@ PERM_Z 1.d-12
 /
 
 #=========================== saturation functions =============================
-SATURATION_FUNCTION default
-SATURATION_FUNCTION_TYPE BROOKS_COREY
-RESIDUAL_SATURATION 0.1d0
-LAMBDA 0.3d0
-ALPHA 1.d-4
-/
+CHARACTERISTIC_CURVES default
+  SATURATION_FUNCTION BROOKS_COREY
+    LAMBDA 0.3d0
+    ALPHA  1.d-4
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+  /
+  PERMEABILITY_FUNCTION MUALEM_BC_LIQ
+    LAMBDA 0.3d0
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+  /
+END
 
 #=========================== output options ===================================
 OUTPUT

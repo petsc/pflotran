@@ -122,6 +122,8 @@ module Variables_module
   
   PetscInt, parameter, public :: SOIL_COMPRESSIBILITY    = 104
   
+  PetscInt, parameter, public :: LIQUID_MASS_FRACTION    = 105
+  PetscInt, parameter, public :: GAS_MASS_FRACTION       = 106
 
 !  PetscInt, parameter, public :: LIQUID_VELOCITY_CELL_CENT = 58
 !  PetscInt, parameter, public :: LIQUID_VELOCITY_CELL_FACE = 59

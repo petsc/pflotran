@@ -719,13 +719,13 @@ subroutine THAuxVarComputeFreezing(x, auxvar, global_auxvar, &
   call EOSWaterSaturationPressure(global_auxvar%temp, p_sat, ierr)
 
   p_g            = option%reference_pressure
-  auxvar%den_gas = p_g/(IDEAL_GAS_CONST*(global_auxvar%temp + 273.15d0))*1.d-3 !in kmol/m3
+  auxvar%den_gas = p_g/(IDEAL_GAS_CONSTANT*(global_auxvar%temp + 273.15d0))*1.d-3 !in kmol/m3
   mol_g          = p_sat/p_g
   C_g            = C_wv*mol_g*FMWH2O + C_a*(1.d0 - mol_g)*FMWAIR ! in MJ/kmol/K
   auxvar%u_gas   = C_g*(global_auxvar%temp + 273.15d0)           ! in MJ/kmol
   auxvar%mol_gas = mol_g
 
-  auxvar%dden_gas_dt = - p_g/(IDEAL_GAS_CONST*(global_auxvar%temp + 273.15d0)**2)*1.d-3
+  auxvar%dden_gas_dt = - p_g/(IDEAL_GAS_CONSTANT*(global_auxvar%temp + 273.15d0)**2)*1.d-3
   dmolg_dt           = dpsat_dt/p_g
   auxvar%du_gas_dt   = C_g + (C_wv*dmolg_dt*FMWH2O - C_a*dmolg_dt*FMWAIR)* &
                        (global_auxvar%temp + 273.15d0)

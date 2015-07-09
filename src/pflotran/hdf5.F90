@@ -1712,6 +1712,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   use Grid_module
   use Region_module
   use Patch_module
+  use HDF5_Aux_module
   
   implicit none
 
@@ -1838,7 +1839,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
 #ifndef SERIAL_HDF5
   call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
 #endif
-  call h5fopen_f(filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
+  call HDF5OpenFileReadOnly(filename,file_id,prop_id,option)
   call h5pclose_f(prop_id,hdf5_err)
 
   ! Open the Regions group
@@ -2002,7 +2003,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
 #endif
 
   ! Open the file collectively
-  call h5fopen_f(filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
+  call HDF5OpenFileReadOnly(filename,file_id,prop_id,option)
   call h5pclose_f(prop_id,hdf5_err)
   
   ! Open dataset
@@ -2210,6 +2211,7 @@ subroutine HDF5ReadCellIndexedIntegerArray(realization,global_vec,filename, &
   use Grid_module
   use Field_module
   use Patch_module
+  use HDF5_Aux_module
   
   implicit none
 
@@ -2330,7 +2332,7 @@ subroutine HDF5ReadCellIndexedIntegerArray(realization,global_vec,filename, &
 #ifndef SERIAL_HDF5
   call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
 #endif
-  call h5fopen_f(filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
+  call HDF5OpenFileReadOnly(filename,file_id,prop_id,option)
   call h5pclose_f(prop_id,hdf5_err)
 
   option%io_buffer = 'Setting up grid cell indices'
@@ -2427,6 +2429,7 @@ subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
   use Grid_module
   use Field_module
   use Patch_module
+  use HDF5_Aux_module
   
   implicit none
 
@@ -2549,7 +2552,7 @@ subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
 #ifndef SERIAL_HDF5
   call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
 #endif
-  call h5fopen_f(filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
+  call HDF5OpenFileReadOnly(filename,file_id,prop_id,option)
   call h5pclose_f(prop_id,hdf5_err)
 
   option%io_buffer = 'Setting up grid cell indices'

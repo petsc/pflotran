@@ -710,7 +710,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     endif
     ! transport
     if (option%ntrandof > 0) then
-      allocate(patch%boundary_tran_coefs(option%ntrandof,temp_int))
+      allocate(patch%boundary_tran_coefs(option%nphase,temp_int))
       patch%boundary_tran_coefs = 0.d0
       if (option%transport%store_fluxes) then
         allocate(patch%boundary_tran_fluxes(option%ntrandof,temp_int))
@@ -843,13 +843,15 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
                 coupler%flow_aux_int_var = 0
 
               case(TH_MODE)
-                allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
+                allocate(coupler%flow_aux_real_var(option%nflowdof* &
+                                                 option%nphase,num_connections))
                 allocate(coupler%flow_aux_int_var(1,num_connections))
                 coupler%flow_aux_real_var = 0.d0
                 coupler%flow_aux_int_var = 0
 
               case(MPH_MODE, IMS_MODE, FLASH2_MODE, MIS_MODE)
-                allocate(coupler%flow_aux_real_var(option%nflowdof,num_connections))
+                allocate(coupler%flow_aux_real_var(option%nflowdof, &
+                                                   num_connections))
                 allocate(coupler%flow_aux_int_var(1,num_connections))
                 coupler%flow_aux_real_var = 0.d0
                 coupler%flow_aux_int_var = 0
@@ -857,7 +859,8 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
               case(G_MODE)
                 allocate(coupler%flow_aux_mapping(GENERAL_MAX_INDEX))
                 allocate(coupler%flow_bc_type(THREE_INTEGER))
-                allocate(coupler%flow_aux_real_var(FIVE_INTEGER,num_connections))
+                allocate(coupler%flow_aux_real_var(FIVE_INTEGER, &
+                                                   num_connections))
                 allocate(coupler%flow_aux_int_var(ONE_INTEGER,num_connections))
                 coupler%flow_aux_mapping = 0
                 coupler%flow_bc_type = 0
@@ -898,6 +901,15 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
                   trim(adjustl(string))
                 call printErrMsg(option)
             end select
+          ! handles source/sinks in general mode
+          else if (associated(coupler%flow_condition%general)) then
+            if (associated(coupler%flow_condition%general%rate)) then
+              select case(coupler%flow_condition%general%rate%itype)
+                case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
+                  allocate(coupler%flow_aux_real_var(1,num_connections))
+                  coupler%flow_aux_real_var = 0.d0
+              end select
+            endif
           endif ! associated(coupler%flow_condition%rate)
         endif ! coupler%itype == SRC_SINK_COUPLER_TYPE
       endif ! associated(coupler%flow_condition)
@@ -1337,7 +1349,10 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
           call printErrMsg(option)
       end select                
     case(ANY_STATE)
-      coupler%flow_aux_int_var(GENERAL_STATE_INDEX,1:num_connections) = ANY_STATE
+      if (associated(coupler%flow_aux_int_var)) then ! not used with rate
+        coupler%flow_aux_int_var(GENERAL_STATE_INDEX,1:num_connections) = &
+          ANY_STATE
+      endif
       if (associated(general%temperature)) then
         real_count = real_count + 1
         select case(general%temperature%itype)
@@ -1390,6 +1405,13 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
     coupler%flow_aux_real_var(real_count,1:num_connections) = &
       general%energy_flux%dataset%rarray(1)
     dof3 = PETSC_TRUE
+  endif
+
+  if (associated(general%rate)) then
+    select case(general%rate%itype)
+      case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
+        call PatchScaleSourceSink(patch,coupler,option)
+    end select
   endif
 
   !geh: is this really correct, or should it be .or.
@@ -2153,7 +2175,12 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
 
   cur_connection_set => source_sink%connection_set
 
-  iscale_type = source_sink%flow_condition%rate%isubtype
+  select case(option%iflowmode)
+    case(G_MODE)
+      iscale_type = source_sink%flow_condition%general%rate%isubtype
+    case default
+      iscale_type = source_sink%flow_condition%rate%isubtype
+  end select
   
   select case(iscale_type)
     case(SCALE_BY_VOLUME)
@@ -2804,7 +2831,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
   PetscReal, pointer :: vec_ptr(:), vec_ptr2(:)
   PetscReal :: xmass, lnQKgas, ehfac, eh0, pe0, ph0, tk
   PetscReal :: tempreal
-  PetscInt :: tempint
+  PetscInt :: tempint, tempint2
   PetscInt :: irate, istate, irxn, ifo2, jcomp, comp_id
   PetscErrorCode :: ierr
 
@@ -2822,7 +2849,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
          GAS_VISCOSITY,CAPILLARY_PRESSURE,LIQUID_DENSITY_MOL, &
          LIQUID_MOBILITY,GAS_MOBILITY,SC_FUGA_COEFF,STATE,ICE_DENSITY, &
          EFFECTIVE_POROSITY,LIQUID_HEAD,VAPOR_PRESSURE,SATURATION_PRESSURE, &
-         MAXIMUM_PRESSURE)
+         MAXIMUM_PRESSURE,LIQUID_MASS_FRACTION,GAS_MASS_FRACTION)
 
       if (associated(patch%aux%TH)) then
         select case(ivar)
@@ -3037,9 +3064,18 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
               vec_ptr(local_id) = patch%aux%Global%auxvars(grid%nL2G(local_id))%sat(1)
             enddo
           case(LIQUID_DENSITY)
+!geh: CO2 Mass Balance Fix (change to #if 0 to scale the mixture density by the water mole fraction)
+#if 1          
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%Global%auxvars(grid%nL2G(local_id))%den_kg(1)
             enddo
+#else
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Global%auxvars(grid%nL2G(local_id))%den(1) * &
+                                  patch%aux%Mphase%auxvars(grid%nL2G(local_id))%auxvar_elem(0)%xmol(1) * &
+                                  FMWH2O
+            enddo
+#endif
           case(LIQUID_VISCOSITY)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%Mphase%auxvars(grid%nL2G(local_id))%auxvar_elem(0)%vis(1)
@@ -3276,11 +3312,19 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
                       grid%nL2G(local_id))%den(option%liquid_phase)
               enddo
             endif
-          case(LIQUID_MOLE_FRACTION)
+          case(LIQUID_MOLE_FRACTION,LIQUID_MASS_FRACTION)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%General%auxvars(ZERO_INTEGER, &
                   grid%nL2G(local_id))%xmol(isubvar,option%liquid_phase)
             enddo
+            if (ivar == LIQUID_MASS_FRACTION) then
+              tempint = isubvar
+              tempint2 = tempint+1
+              if (tempint2 > 2) tempint2 = 1
+              vec_ptr(:) = vec_ptr(:)*fmw_comp(tempint) / &
+                           (vec_ptr(:)*fmw_comp(tempint) + &
+                            (1.d0-vec_ptr(:))*fmw_comp(tempint2))
+            endif
           case(LIQUID_MOBILITY)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%General%auxvars(ZERO_INTEGER, &
@@ -3315,11 +3359,19 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
               vec_ptr(local_id) = patch%aux%General%auxvars(ZERO_INTEGER, &
                   grid%nL2G(local_id))%den(option%gas_phase)
             enddo
-          case(GAS_MOLE_FRACTION)
+          case(GAS_MOLE_FRACTION,GAS_MASS_FRACTION)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%General%auxvars(ZERO_INTEGER, &
                   grid%nL2G(local_id))%xmol(isubvar,option%gas_phase)
             enddo
+            if (ivar == GAS_MASS_FRACTION) then
+              tempint = isubvar
+              tempint2 = tempint+1
+              if (tempint2 > 2) tempint2 = 1
+              vec_ptr(:) = vec_ptr(:)*fmw_comp(tempint) / &
+                           (vec_ptr(:)*fmw_comp(tempint) + &
+                            (1.d0-vec_ptr(:))*fmw_comp(tempint2))
+            endif
           case(GAS_MOBILITY)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%General%auxvars(ZERO_INTEGER, &
@@ -3381,7 +3433,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
               enddo
               tk = patch%aux%Global%auxvars(ghosted_id)%temp + &
                    273.15d0
-              ehfac = IDEAL_GAS_CONST*tk*LOG_TO_LN/faraday
+              ehfac = IDEAL_GAS_CONSTANT*tk*LOG_TO_LN/faraday
               eh0 = ehfac*(-4.d0*ph0+lnQKgas*LN_TO_LOG+logKeh(tk))/4.d0
               pe0 = eh0/ehfac
               vec_ptr(local_id) = eh0
@@ -3415,7 +3467,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
               enddo
               tk = patch%aux%Global%auxvars(ghosted_id)%temp + &
                    273.15d0
-              ehfac = IDEAL_GAS_CONST*tk*LOG_TO_LN/faraday
+              ehfac = IDEAL_GAS_CONSTANT*tk*LOG_TO_LN/faraday
               eh0 = ehfac*(-4.d0*ph0+lnQKgas*LN_TO_LOG+logKeh(tk))/4.d0
               pe0 = eh0/ehfac
               vec_ptr(local_id) = pe0
@@ -3861,6 +3913,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
   class(material_auxvar_type), pointer :: material_auxvars(:)
   PetscInt :: ivar
   PetscInt :: isubvar
+  PetscInt :: tempint, tempint2
   PetscInt, optional :: isubvar1
   PetscInt :: iphase
   PetscInt :: ghosted_id, local_id
@@ -3895,7 +3948,8 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
          GAS_VISCOSITY,AIR_PRESSURE,CAPILLARY_PRESSURE, &
          LIQUID_MOBILITY,GAS_MOBILITY,SC_FUGA_COEFF,STATE,ICE_DENSITY, &
          SECONDARY_TEMPERATURE,LIQUID_DENSITY_MOL,EFFECTIVE_POROSITY, &
-         LIQUID_HEAD,VAPOR_PRESSURE,SATURATION_PRESSURE,MAXIMUM_PRESSURE)
+         LIQUID_HEAD,VAPOR_PRESSURE,SATURATION_PRESSURE,MAXIMUM_PRESSURE, &
+         LIQUID_MASS_FRACTION,GAS_MASS_FRACTION)
          
      if (associated(patch%aux%TH)) then
         select case(ivar)
@@ -4162,9 +4216,17 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
                       patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                         den(option%liquid_phase)
             endif
-          case(LIQUID_MOLE_FRACTION)
+          case(LIQUID_MOLE_FRACTION,LIQUID_MASS_FRACTION)
             value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                       xmol(isubvar,option%liquid_phase)
+            if (ivar == LIQUID_MASS_FRACTION) then
+              tempint = isubvar
+              tempint2 = tempint+1
+              if (tempint2 > 2) tempint2 = 1
+              value = value*fmw_comp(tempint) / &
+                      (value*fmw_comp(tempint) + &
+                       (1.d0-value)*fmw_comp(tempint2))
+            endif                      
           case(LIQUID_MOBILITY)
             value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                       mobility(option%liquid_phase)
@@ -4187,9 +4249,17 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
                       patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                         den(option%gas_phase)
             endif
-          case(GAS_MOLE_FRACTION)
+          case(GAS_MOLE_FRACTION,GAS_MASS_FRACTION)
             value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                       xmol(isubvar,option%gas_phase)
+            if (ivar == GAS_MASS_FRACTION) then
+              tempint = isubvar
+              tempint2 = tempint+1
+              if (tempint2 > 2) tempint2 = 1
+              value = value*fmw_comp(tempint) / &
+                      (value*fmw_comp(tempint) + &
+                       (1.d0-value)*fmw_comp(tempint2))
+            endif                      
           case(GAS_MOBILITY)
             value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                       mobility(option%gas_phase)
@@ -4236,7 +4306,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           enddo
 
           tk = patch%aux%Global%auxvars(ghosted_id)%temp+273.15d0
-          ehfac = IDEAL_GAS_CONST*tk*LOG_TO_LN/faraday
+          ehfac = IDEAL_GAS_CONSTANT*tk*LOG_TO_LN/faraday
           eh0 = ehfac*(-4.d0*ph0+lnQKgas*LN_TO_LOG+logKeh(tk))/4.d0
 
           value = eh0
@@ -4264,7 +4334,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           enddo
 
           tk = patch%aux%Global%auxvars(ghosted_id)%temp+273.15d0
-          ehfac = IDEAL_GAS_CONST*tk*LOG_TO_LN/faraday
+          ehfac = IDEAL_GAS_CONSTANT*tk*LOG_TO_LN/faraday
           eh0 = ehfac*(-4.d0*ph0+lnQKgas*LN_TO_LOG+logKeh(tk))/4.d0
           pe0 = eh0/ehfac
           value = pe0
@@ -5280,6 +5350,10 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
     case(PROCESS_ID)
       call printErrMsg(option, &
                        'Cannot set PROCESS_ID through PatchSetVariable()')
+    case default
+      write(option%io_buffer, &
+            '(''IVAR ('',i3,'') not found in PatchSetVariable'')') ivar
+      call printErrMsg(option)
   end select
 
   call VecRestoreArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)

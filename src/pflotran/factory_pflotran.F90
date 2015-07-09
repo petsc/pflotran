@@ -190,6 +190,8 @@ subroutine PFLOTRANReadSimulation(simulation,option)
               call SubsurfaceReadRTPM(input, option, new_pm)
             case('WASTE_FORM')
               call SubsurfaceReadWasteFormPM(input, option,new_pm)
+            case('UFD_DECAY')
+              call SubsurfaceReadUFDDecayPM(input, option,new_pm)
             case('HYDROGEOPHYSICS')
             case('SURFACE_SUBSURFACE')
               option%surf_flow_on = PETSC_TRUE

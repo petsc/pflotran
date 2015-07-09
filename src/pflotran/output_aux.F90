@@ -13,7 +13,7 @@ module Output_Aux_module
 
   type, public :: output_option_type
 
-    character(len=2) :: tunit
+    character(len=MAXWORDLENGTH) :: tunit
     PetscReal :: tconv
 
     PetscBool :: print_initial
@@ -185,7 +185,7 @@ function OutputOptionCreate()
   output_option%aveg_output_variable_list => OutputVariableListCreate()
   
   output_option%tconv = 1.d0
-  output_option%tunit = 's'
+  output_option%tunit = ''
   
   output_option%print_hydrograph = PETSC_FALSE
 
@@ -754,6 +754,32 @@ subroutine OutputVariableRead(input,option,output_variable_list)
                                      OUTPUT_GENERIC,units, &
                                      GAS_MOLE_FRACTION, &
                                      option%water_id)
+      case ('LIQUID_MASS_FRACTIONS')
+        name = 'w_g^l'
+        units = ''
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     LIQUID_MASS_FRACTION, &
+                                     option%air_id)
+        name = 'w_l^l'
+        units = ''
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     LIQUID_MASS_FRACTION, &
+                                     option%water_id)
+      case ('GAS_MASS_FRACTIONS')
+        name = 'w_g^g'
+        units = ''
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     GAS_MASS_FRACTION, &
+                                     option%air_id)
+        name = 'w_l^g'
+        units = ''
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     GAS_MASS_FRACTION, &
+                                     option%water_id)
       case ('AIR_PRESSURE')
         name = 'Air Pressure'
         units = 'Pa'
@@ -872,6 +898,14 @@ subroutine OutputVariableRead(input,option,output_variable_list)
       case ('MATERIAL_ID')
         units = ''
         name = 'Material ID'
+        output_variable => OutputVariableCreate(name,OUTPUT_DISCRETE, &
+                                                units,MATERIAL_ID)
+        output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
+        output_variable%iformat = 1 ! integer
+        call OutputVariableAddToList(output_variable_list,output_variable)
+      case ('MATERIAL_ID_KLUDGE_FOR_VISIT')
+        units = ''
+        name = 'Kludged material ids for VisIt'
         output_variable => OutputVariableCreate(name,OUTPUT_DISCRETE, &
                                                 units,MATERIAL_ID)
         output_variable%plot_only = PETSC_TRUE ! toggle output off for observation

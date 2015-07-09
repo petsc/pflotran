@@ -1,7 +1,4 @@
 module Output_Common_module
-#ifndef LEGACY_SATURATION_FUNCTION
-#define REFACTOR_CHARACTERISTIC_CURVES
-#endif
 
   use Logging_module 
   use Output_Aux_module
@@ -1708,9 +1705,6 @@ subroutine OutputGetExplicitAuxVars(realization_base,count,vec_proc,density)
   type(connection_set_type), pointer :: cur_connection_set
   type(global_auxvar_type), pointer :: global_auxvar(:)
   type(material_parameter_type), pointer :: material_parameter
-#ifndef REFACTOR_CHARACTERISTIC_CURVES
-  type(richards_parameter_type), pointer :: richards_parameter
-#endif
 
 
   PetscReal, pointer :: vec_proc_ptr(:)
@@ -1737,12 +1731,7 @@ subroutine OutputGetExplicitAuxVars(realization_base,count,vec_proc,density)
   field => realization_base%field
   grid => patch%grid
   global_auxvar => patch%aux%Global%auxvars
-#ifndef REFACTOR_CHARACTERISTIC_CURVES
-  richards_parameter => patch%aux%Richards%richards_parameter
-#else
   material_parameter => patch%aux%Material%material_parameter
-#endif
-  
  
   allocate(density(count))
   call VecGetArrayF90(vec_proc,vec_proc_ptr,ierr);CHKERRQ(ierr)
@@ -1762,13 +1751,8 @@ subroutine OutputGetExplicitAuxVars(realization_base,count,vec_proc,density)
       icap_dn = patch%sat_func_id(ghosted_id_dn)
       if (option%myrank == int(vec_proc_ptr(sum_connection))) then
         count = count + 1
-#ifdef REFACTOR_CHARACTERISTIC_CURVES
         sir_up = material_parameter%soil_residual_saturation(1,icap_up)
         sir_dn = material_parameter%soil_residual_saturation(1,icap_dn)
-#else
-        sir_up = richards_parameter%sir(1,icap_up)
-        sir_dn = richards_parameter%sir(1,icap_dn)
-#endif
 
         if (global_auxvar(ghosted_id_up)%sat(1) > sir_up .or. &
             global_auxvar(ghosted_id_dn)%sat(1) > sir_dn) then

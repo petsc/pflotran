@@ -46,6 +46,7 @@ module PM_Base_class
     procedure, public :: CheckUpdatePost => PMBaseCheckUpdatePost
     procedure, public :: TimeCut => PMBaseThisOnly
     procedure, public :: UpdateSolution => PMBaseThisOnly
+    procedure, public :: UpdateAuxVars => PMBaseThisOnly
     procedure, public :: MaxChange => PMBaseThisOnly
     procedure, public :: ComputeMassBalance => PMBaseComputeMassBalance
     procedure, public :: Destroy => PMBaseThisOnly

@@ -2494,8 +2494,9 @@ subroutine SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
       Se = (saturation-Sr)/(1.d0-Sr)
       os = 1.d0-Se
       f = os*(1.417d0 + os*(-2.120d0 + 1.263d0*os))
-      sigma = 1.d0 - 0.625d0 * (374.15d0 - tk)/647.3d0
-      sigma = sigma * 0.2358d0 * ((374.15d0 - tk)/647.3d0)**1.256d0
+      sigma = 1.d0 - 0.625d0 * (374.15d0 - tk)/H2O_CRITICAL_TEMPERATURE
+      sigma = sigma * 0.2358d0 * &
+              ((374.15d0 - tk)/H2O_CRITICAL_TEMPERATURE)**1.256d0
       capillary_pressure = 632455.53d0 * sigma * f
     case(LINEAR_MODEL)
       alpha = saturation_function%alpha

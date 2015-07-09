@@ -30,7 +30,7 @@ module PM_Surface_TH_class
     procedure, public :: UpdateSolution => PMSurfaceTHUpdateSolution
     procedure, public :: Destroy => PMSurfaceTHDestroy
     procedure, public :: RHSFunction => PMSurfaceTHRHSFunction
-    procedure, public :: UpdateAuxvars => PMSurfaceTHUpdateAuxvars
+    procedure, public :: UpdateAuxVars => PMSurfaceTHUpdateAuxVars
   end type pm_surface_th_type
 
   public :: PMSurfaceTHCreate, &
@@ -255,7 +255,7 @@ subroutine PMSurfaceTHPostSolve(this)
 end subroutine PMSurfaceTHPostSolve
 
 ! ************************************************************************** !
-subroutine PMSurfaceTHUpdateAuxvars(this)
+subroutine PMSurfaceTHUpdateAuxVars(this)
   ! 
   ! Author: Gautam Bisht, LBNL
   ! Date: 04/30/14
@@ -268,7 +268,7 @@ subroutine PMSurfaceTHUpdateAuxvars(this)
 
   call SurfaceTHUpdateAuxVars(this%surf_realization)
 
-end subroutine PMSurfaceTHUpdateAuxvars
+end subroutine PMSurfaceTHUpdateAuxVars
 
 ! ************************************************************************** !
 

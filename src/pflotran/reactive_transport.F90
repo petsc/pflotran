@@ -385,7 +385,7 @@ subroutine RTCheckUpdatePre(line_search,C,dC,changed,realization,ierr)
                        
     ! scale if necessary
     if (min_ratio < 1.d0) then
-      if (min_ratio < min_allowable_scale) then
+      if (min_ratio < realization%option%min_allowable_scale) then
         write(string,'(es9.3)') min_ratio
         string = 'The update of primary species concentration is being ' // &
           'scaled by a very small value (i.e. ' // &
@@ -3849,6 +3849,7 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
                            patch%aux%Global%auxvars(ghosted_id), &
                            patch%aux%Material%auxvars(ghosted_id), &
                            reaction,option)
+#if 0                           
       if (associated(reaction%species_idx) .and. &
           associated(patch%aux%Global%auxvars(ghosted_id)%m_nacl)) then
         if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
@@ -3860,6 +3861,7 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
           patch%aux%Global%auxvars(ghosted_id)%m_nacl = option%m_nacl
         endif
       endif
+#endif
     enddo
 
     call PetscLogEventEnd(logging%event_rt_auxvars,ierr);CHKERRQ(ierr)
@@ -4101,7 +4103,7 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
             ! print *,'RT redo constrain on BCs: 2: ', sum_connection  
           endif         
         endif
-
+#if 0
         if (associated(reaction%species_idx) .and. &
             associated(patch%aux%Global%auxvars_bc(sum_connection)%m_nacl)) then
           if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
@@ -4113,6 +4115,7 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
             patch%aux%Global%auxvars_bc(sum_connection)%m_nacl = option%m_nacl
           endif
         endif
+#endif        
       enddo ! iconn
       boundary_condition => boundary_condition%next
     enddo

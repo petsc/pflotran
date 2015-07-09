@@ -216,6 +216,7 @@ subroutine DatasetMapHDF5ReadData(this,option)
   use Option_module
   use Units_module
   use Logging_module
+  use HDF5_Aux_module
   
   implicit none
   
@@ -256,7 +257,7 @@ subroutine DatasetMapHDF5ReadData(this,option)
 #ifndef SERIAL_HDF5
   call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
 #endif
-  call h5fopen_f(this%filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
+  call HDF5OpenFileReadOnly(this%filename,file_id,prop_id,option)
   call h5pclose_f(prop_id,hdf5_err)
 
   ! the dataset is actually stored in a group.  the group contains
@@ -421,6 +422,7 @@ subroutine DatasetMapHDF5ReadMap(this,option)
   use Option_module
   use Units_module
   use Logging_module
+  use HDF5_Aux_module
   
   implicit none
   
@@ -456,7 +458,7 @@ subroutine DatasetMapHDF5ReadMap(this,option)
 #ifndef SERIAL_HDF5
   call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
 #endif
-  call h5fopen_f(this%map_filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
+  call HDF5OpenFileReadOnly(this%map_filename,file_id,prop_id,option)
   call h5pclose_f(prop_id,hdf5_err)
 
   ! the dataset is actually stored in a group.  the group contains

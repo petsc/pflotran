@@ -131,10 +131,10 @@ function SolverCreate()
   solver%newton_stol = PETSC_DEFAULT_REAL
   solver%newton_dtol = PETSC_DEFAULT_REAL 
   solver%max_norm = 1.d20     ! set to a large value
-  solver%newton_inf_res_tol = 1.d-50 ! arbitrarily set by geh
-  solver%newton_inf_upd_tol = 1.d-50 ! arbitrarily set by geh
-  solver%newton_inf_rel_update_tol = 1.d-50 ! arbitrarily set by geh
-  solver%newton_inf_scaled_res_tol = 1.d-50 ! arbitrarily set by geh
+  solver%newton_inf_res_tol = UNINITIALIZED_DOUBLE
+  solver%newton_inf_upd_tol = UNINITIALIZED_DOUBLE
+  solver%newton_inf_rel_update_tol = UNINITIALIZED_DOUBLE
+  solver%newton_inf_scaled_res_tol = UNINITIALIZED_DOUBLE
   solver%check_post_convergence = PETSC_FALSE
   solver%newton_inf_res_tol_sec = 1.d-10
   solver%newton_max_iterations = PETSC_DEFAULT_INTEGER

@@ -32,13 +32,18 @@ module PFLOTRAN_Constants_module
   PetscReal, parameter, public :: FMWCO2 = 44.0098d0
   PetscReal, parameter, public :: FMWAIR = 28.96d0
   PetscReal, parameter, public :: FMWGLYC = 76.09d0 ! propylene glycol (C3H8O2)
+
+  ! constants
+  PetscReal, parameter, public :: H2O_CRITICAL_TEMPERATURE = 647.3d0  ! K
+  PetscReal, parameter, public :: H2O_CRITICAL_PRESSURE = 22.064d6 ! Pa
   
   ! conversion factors
   PetscReal, parameter, public :: LOG_TO_LN = 2.30258509299d0
   PetscReal, parameter, public :: LN_TO_LOG = 0.434294481904d0  
   
   ! constants
-  PetscReal, parameter, public :: IDEAL_GAS_CONST = 8.314472d0 ! J/mol/K
+                             ! from http://physics.nist.gov/cgi-bin/cuu/Value?r
+  PetscReal, parameter, public :: IDEAL_GAS_CONSTANT = 8.31446d0 ! J/mol-K
   PetscReal, parameter, public :: HEAT_OF_FUSION = 3.34d5  ! J/kg
   PetscReal, parameter, public :: PI = 3.14159265359d0
   PetscReal, parameter, public :: Faraday = 96485.3365d0 ! C/mol

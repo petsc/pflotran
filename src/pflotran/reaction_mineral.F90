@@ -603,7 +603,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
 
   PetscInt, parameter :: needs_to_be_fixed = 1
   
-  PetscReal :: arrhenius_factor, rgas = 8.3144621d-3
+  PetscReal :: arrhenius_factor
 
   iphase = 1  
   mineral => reaction%mineral
@@ -742,7 +742,8 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
           arrhenius_factor = 1.d0
           if (mineral%kinmnrl_pref_activation_energy(ipref,imnrl) > 0.d0) then
             arrhenius_factor = &
-              exp(mineral%kinmnrl_pref_activation_energy(ipref,imnrl)/rgas &
+              exp(mineral%kinmnrl_pref_activation_energy(ipref,imnrl)/ &
+                  IDEAL_GAS_CONSTANT &
                   *(1.d0/(25.d0+273.15d0)-1.d0/(global_auxvar%temp+ &
                                                 273.15d0)))
           endif
@@ -754,7 +755,8 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
         ! Arrhenius factor
         arrhenius_factor = 1.d0
         if (mineral%kinmnrl_activation_energy(imnrl) > 0.d0) then
-          arrhenius_factor = exp(mineral%kinmnrl_activation_energy(imnrl)/rgas &
+          arrhenius_factor = exp(mineral%kinmnrl_activation_energy(imnrl)/ &
+                                 IDEAL_GAS_CONSTANT &
             *(1.d0/(25.d0+273.15d0)-1.d0/(global_auxvar%temp+273.15d0)))
         endif
         sum_prefactor_rate = mineral%kinmnrl_rate(imnrl)*arrhenius_factor
@@ -858,7 +860,8 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
         arrhenius_factor = 1.d0
         if (mineral%kinmnrl_pref_activation_energy(ipref,imnrl) > 0.d0) then
           arrhenius_factor = &
-            exp(mineral%kinmnrl_pref_activation_energy(ipref,imnrl)/rgas &
+            exp(mineral%kinmnrl_pref_activation_energy(ipref,imnrl)/ &
+                IDEAL_GAS_CONSTANT &
                 *(1.d0/(25.d0+273.15d0)-1.d0/(global_auxvar%temp+ &
                                               273.15d0)))
         endif
@@ -987,7 +990,6 @@ subroutine RMineralRate(imnrl,ln_act,ln_sec_act,rt_auxvar,global_auxvar, &
   PetscReal :: ln_prefactor, ln_numerator, ln_denominator
   
   PetscReal :: arrhenius_factor
-  PetscReal, parameter :: rgas = 8.3144621d-3
   PetscInt, parameter :: iphase = 1
   
   cycle_ = PETSC_FALSE
@@ -1076,7 +1078,8 @@ subroutine RMineralRate(imnrl,ln_act,ln_sec_act,rt_auxvar,global_auxvar, &
         arrhenius_factor = 1.d0
         if (mineral%kinmnrl_pref_activation_energy(ipref,imnrl) > 0.d0) then
           arrhenius_factor = &
-            exp(mineral%kinmnrl_pref_activation_energy(ipref,imnrl)/rgas &
+            exp(mineral%kinmnrl_pref_activation_energy(ipref,imnrl)/ &
+                IDEAL_GAS_CONSTANT &
                 *(1.d0/(25.d0+273.15d0)-1.d0/(global_auxvar%temp+ &
                                               273.15d0)))
         endif
@@ -1088,7 +1091,8 @@ subroutine RMineralRate(imnrl,ln_act,ln_sec_act,rt_auxvar,global_auxvar, &
       ! Arrhenius factor
       arrhenius_factor = 1.d0
       if (mineral%kinmnrl_activation_energy(imnrl) > 0.d0) then
-        arrhenius_factor = exp(mineral%kinmnrl_activation_energy(imnrl)/rgas &
+        arrhenius_factor = exp(mineral%kinmnrl_activation_energy(imnrl)/ &
+                               IDEAL_GAS_CONSTANT &
           *(1.d0/(25.d0+273.15d0)-1.d0/(global_auxvar%temp+273.15d0)))
       endif
       sum_prefactor_rate = mineral%kinmnrl_rate(imnrl)*arrhenius_factor
