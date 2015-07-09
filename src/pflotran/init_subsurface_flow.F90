@@ -1,7 +1,4 @@
 module Init_Subsurface_Flow_module
-#ifndef LEGACY_SATURATION_FUNCTION
-#define REFACTOR_CHARACTERISTIC_CURVES
-#endif
 
   use PFLOTRAN_Constants_module
 
@@ -59,12 +56,10 @@ subroutine InitSubsurfFlowSetupRealization(realization)
       case(TH_MODE)
         call THSetup(realization)
       case(RICHARDS_MODE)
-#ifdef REFACTOR_CHARACTERISTIC_CURVES
         call MaterialSetup(realization%patch%aux%Material%material_parameter, &
                            patch%material_property_array, &
                            patch%characteristic_curves_array, &
                            realization%option)
-#endif
         call RichardsSetup(realization)
       case(MPH_MODE)
         call init_span_wagner(option)      
@@ -129,7 +124,7 @@ end subroutine InitSubsurfFlowSetupRealization
 
 ! ************************************************************************** !
 
-subroutine InitSubsurfFlowSetupSolvers(realization,solver)
+subroutine InitSubsurfFlowSetupSolvers(realization,convergence_context,solver)
   ! 
   ! Initializes material property data structres and assign them to the domain.
   ! 
@@ -161,10 +156,10 @@ subroutine InitSubsurfFlowSetupSolvers(realization,solver)
 #include "finclude/petscpc.h"
   
   class(realization_type) :: realization
+  type(convergence_context_type), pointer :: convergence_context
   type(solver_type), pointer :: solver
   
   type(option_type), pointer :: option
-  type(convergence_context_type), pointer :: convergence_context
   SNESLineSearch :: linesearch
   character(len=MAXSTRINGLENGTH) :: string
   PetscErrorCode :: ierr
@@ -269,8 +264,6 @@ subroutine InitSubsurfFlowSetupSolvers(realization,solver)
 
   ! shell for custom convergence test.  The default SNES convergence test  
   ! is call within this function.
-  !TODO(geh): free this convergence context somewhere!
-  option%io_buffer = 'DEALLOCATE FLOW CONVERGENCE CONTEXT somewhere!!!'
   convergence_context => ConvergenceContextCreate(solver,option, &
                                                   realization%patch%grid)
   call SNESSetConvergenceTest(solver%snes,ConvergenceTest, &

@@ -407,7 +407,7 @@ subroutine Flash2AuxVarCompute_NINC(x,auxvar,global_auxvar, &
 !       fluid_properties%diff_base(2)
 
 !  z factor    
-    auxvar%zco2=auxvar%den(2)/(p/IDEAL_GAS_CONST/(t+273.15D0)*1D-3)
+    auxvar%zco2=auxvar%den(2)/(p/IDEAL_GAS_CONSTANT/(t+273.15D0)*1D-3)
 
  !***************  Liquid phase properties **************************
  

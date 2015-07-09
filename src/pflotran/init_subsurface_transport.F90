@@ -62,7 +62,7 @@ end subroutine InitSubsurfTranSetupRealization
 
 ! ************************************************************************** !
 
-subroutine InitSubsurfTranSetupSolvers(realization,solver)
+subroutine InitSubsurfTranSetupSolvers(realization,convergence_context,solver)
   ! 
   ! Initializes material property data structres and assign them to the domain.
   ! 
@@ -89,10 +89,10 @@ subroutine InitSubsurfTranSetupSolvers(realization,solver)
 #include "finclude/petscpc.h"
   
   class(realization_type) :: realization
+  type(convergence_context_type), pointer :: convergence_context
   type(solver_type), pointer :: solver
   
   type(option_type), pointer :: option
-  type(convergence_context_type), pointer :: convergence_context
   SNESLineSearch :: linesearch
   character(len=MAXSTRINGLENGTH) :: string
   PetscErrorCode :: ierr

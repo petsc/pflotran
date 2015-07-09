@@ -16,7 +16,8 @@ module Factory_Subsurface_module
             ! move to init_subsurface
             SubsurfaceReadFlowPM, &
             SubsurfaceReadRTPM, &
-            SubsurfaceReadWasteFormPM
+            SubsurfaceReadWasteFormPM, &
+            SubsurfaceReadUFDDecayPM
 
 contains
 
@@ -73,6 +74,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   use PM_Base_class
   use PM_RT_class
   use PM_Waste_Form_class
+  use PM_UFD_Decay_class
   use PMC_Subsurface_class
   use PMC_Third_Party_class
   use Timestepper_BE_class
@@ -95,6 +97,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   class(pm_subsurface_type), pointer :: pm_flow
   class(pm_rt_type), pointer :: pm_rt
   class(pm_fmdm_type), pointer :: pm_waste_form
+  class(pm_ufd_decay_type), pointer :: pm_ufd_decay
   class(pm_base_type), pointer :: cur_pm, prev_pm
   class(realization_type), pointer :: realization
   class(timestepper_BE_type), pointer :: timestepper
@@ -105,6 +108,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   nullify(pm_flow)
   nullify(pm_rt)
   nullify(pm_waste_form)
+  nullify(pm_ufd_decay)
   cur_pm => simulation%process_model_list
   do
     if (.not.associated(cur_pm)) exit
@@ -115,6 +119,8 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
         pm_rt => cur_pm
       class is (pm_fmdm_type)
         pm_waste_form => cur_pm
+      class is (pm_ufd_decay_type)
+        pm_ufd_decay => cur_pm
       class default
         option%io_buffer = &
          'PM Class unrecognized in SubsurfaceInitializePostPetsc.'
@@ -166,23 +172,6 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
     endif
     nullify(pmc_subsurface)
   endif
-  if (associated(pm_waste_form)) then
-    if (.not.associated(simulation%rt_process_model_coupler)) then
-      option%io_buffer = 'The waste form process model requires reactive ' // &
-        'transport.'
-      call printErrMsg(option)
-    endif
-    simulation%misc_process_model_coupler => PMCThirdPartyCreate()
-    simulation%rt_process_model_coupler%child => &
-      simulation%misc_process_model_coupler%CastToBase()
-    simulation%misc_process_model_coupler%option => option
-    simulation%misc_process_model_coupler%pms => pm_waste_form
-    simulation%misc_process_model_coupler%pm_ptr%ptr => pm_waste_form
-    simulation%misc_process_model_coupler%realization => realization
-    ! set up logging stage
-    string = 'Waste Form'
-    call LoggingCreateStage(string,simulation%misc_process_model_coupler%stage)
-  endif
 
   realization%input => InputCreate(IN_UNIT,option%input_filename,option)
   call InitSubsurfaceReadRequiredCards(simulation)
@@ -193,10 +182,20 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
     call InputFindStringErrorMsg(realization%input,option,string)
     call pm_waste_form%Read(realization%input)
   endif
+  if (associated(pm_ufd_decay)) then
+    string = 'UFD_DECAY'
+    call InputFindStringInFile(realization%input,option,string)
+    call InputFindStringErrorMsg(realization%input,option,string)
+    call pm_ufd_decay%Read(realization%input)
+  endif
   call InputDestroy(realization%input)
-  call InitSubsurfaceSimulation(simulation)
   
   if (associated(pm_waste_form)) then
+    if (.not.associated(simulation%rt_process_model_coupler)) then
+      option%io_buffer = 'The FMDM process model requires reactive ' // &
+        'transport.'
+      call printErrMsg(option)
+    endif
     pmc_third_party => PMCThirdPartyCreate()
     pmc_third_party%option => option
     pmc_third_party%pms => pm_waste_form
@@ -208,6 +207,31 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
     simulation%rt_process_model_coupler%child => pmc_third_party
     nullify(pmc_third_party)
   endif
+
+  if (associated(pm_ufd_decay)) then
+    if (.not.associated(simulation%rt_process_model_coupler)) then
+      option%io_buffer = 'The UFD Decay process model requires reactive ' // &
+        'transport.'
+      call printErrMsg(option)
+    endif
+    pmc_third_party => PMCThirdPartyCreate()
+    pmc_third_party%option => option
+    pmc_third_party%pms => pm_ufd_decay
+    pmc_third_party%pm_ptr%ptr => pm_ufd_decay
+    pmc_third_party%realization => realization
+    ! set up logging stage
+    string = 'UFD Decay'
+    call LoggingCreateStage(string,pmc_third_party%stage)
+    !geh: at this point, we have not resolved the linkage between the waste
+    !     form and the ufd decay.  They may both exist, and in that case
+    !     we need to make them peers below reactive transport, but which
+    !     is the lead?  I would say pm_ufd_decay.
+    simulation%rt_process_model_coupler%child => pmc_third_party
+    nullify(pmc_third_party)
+  endif  
+  
+  ! InitSubsurfaceSimulation() must be called after pmc linkages are set above.
+  call InitSubsurfaceSimulation(simulation)
 
   ! clean up waypoints
   if (.not.option%steady_state) then
@@ -312,6 +336,8 @@ subroutine SubsurfaceSetFlowMode(pm_flow,option)
       option%nflowspec = 2
       option%itable = 2
       option%use_isothermal = PETSC_FALSE
+      option%water_id = 1
+      option%air_id = 2
     class is (pm_general_type)
       option%iflowmode = G_MODE
       option%nphase = 2
@@ -338,7 +364,7 @@ subroutine SubsurfaceSetFlowMode(pm_flow,option)
       option%nflowdof = 3
       option%nflowspec = 2
       option%itable = 2
-      option%io_buffer = 'Material Auxvars must be refactored for IMMIS.'
+      option%io_buffer = 'Material AuxVars must be refactored for IMMIS.'
       call printErrMsg(option)
     class is (pm_miscible_type)
       option%iflowmode = MIS_MODE
@@ -347,7 +373,7 @@ subroutine SubsurfaceSetFlowMode(pm_flow,option)
       option%gas_phase = 2      
       option%nflowdof = 2
       option%nflowspec = 2
-      option%io_buffer = 'Material Auxvars must be refactored for MISCIBLE.'
+      option%io_buffer = 'Material AuxVars must be refactored for MISCIBLE.'
       call printErrMsg(option)
     class is (pm_mphase_type)
       option%iflowmode = MPH_MODE
@@ -359,6 +385,8 @@ subroutine SubsurfaceSetFlowMode(pm_flow,option)
       option%itable = 2 ! read CO2DATA0.dat
 !     option%itable = 1 ! create CO2 database: co2data.dat
       option%use_isothermal = PETSC_FALSE
+      option%water_id = 1
+      option%air_id = 2
     class is (pm_richards_type)
       option%iflowmode = RICHARDS_MODE
       option%nphase = 1
@@ -415,7 +443,7 @@ subroutine SubsurfaceReadFlowPM(input, option, pm)
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXSTRINGLENGTH) :: error_string
   
-  error_string = 'SIMULATION,PROCESS_MODEL'
+  error_string = 'SIMULATION,PROCESS_MODELS,SUBSURFACE_FLOW'
 
   nullify(pm)
   word = ''
@@ -427,7 +455,7 @@ subroutine SubsurfaceReadFlowPM(input, option, pm)
     select case(word)
       case('MODE')
         call InputReadWord(input,option,word,PETSC_FALSE)
-        call InputErrorMsg(input,option,'flow mode',error_string)
+        call InputErrorMsg(input,option,'mode',error_string)
         call StringToUpper(word)
         select case(word)
           case('GENERAL')
@@ -445,14 +473,14 @@ subroutine SubsurfaceReadFlowPM(input, option, pm)
           case('TH')
             pm => PMTHCreate()
           case default
-            call InputKeywordUnrecognized(word, &
-                     'SIMULATION,PROCESS_MODELS,SUBSURFACE_FLOW,MODE',option)
+            error_string = trim(error_string) // ',MODE'
+            call InputKeywordUnrecognized(word,error_string,option)
         end select
         pm%option => option
       case('OPTIONS')
         if (.not.associated(pm)) then
           option%io_buffer = 'MODE keyword must be read first under ' // &
-            'SUBSURFACE_FLOW PROCESS_MODEL.'
+            error_string
           call printErrMsg(option)
         endif
         select type(pm)
@@ -507,7 +535,7 @@ subroutine SubsurfaceReadRTPM(input, option, pm)
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXSTRINGLENGTH) :: error_string
   
-  error_string = 'SIMULATION,PROCESS_MODEL'
+  error_string = 'SIMULATION,PROCESS_MODELS,SUBSURFACE_TRANSPORT'
 
   pm => PMRTCreate()
   pm%option => option
@@ -549,7 +577,7 @@ subroutine SubsurfaceReadWasteFormPM(input, option, pm)
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXSTRINGLENGTH) :: error_string
   
-  error_string = 'SIMULATION,PROCESS_MODEL'
+  error_string = 'SIMULATION,PROCESS_MODELS,WASTE_FORM'
 
   pm => PMWasteFormCreate()
   pm%option => option
@@ -566,6 +594,47 @@ subroutine SubsurfaceReadWasteFormPM(input, option, pm)
   enddo
   
 end subroutine SubsurfaceReadWasteFormPM
+
+! ************************************************************************** !
+
+subroutine SubsurfaceReadUFDDecayPM(input, option, pm)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/11/13
+  !
+  use Input_Aux_module
+  use Option_module
+  use String_module
+  
+  use PM_Base_class
+  use PM_UFD_Decay_class
+
+  implicit none
+  
+  type(input_type) :: input
+  type(option_type), pointer :: option
+  class(pm_base_type), pointer :: pm
+  
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXSTRINGLENGTH) :: error_string
+  
+  error_string = 'SIMULATION,PROCESS_MODELS,UFD_DECAY'
+
+  pm => PMUFDDecayCreate()
+  pm%option => option
+  
+  word = ''
+  do   
+    call InputReadPflotranString(input,option)
+    if (InputCheckExit(input,option)) exit
+    call InputReadWord(input,option,word,PETSC_FALSE)
+    call StringToUpper(word)
+    select case(word)
+      case default
+    end select
+  enddo
+  
+end subroutine SubsurfaceReadUFDDecayPM
 
 ! ************************************************************************** !
 
@@ -601,6 +670,7 @@ subroutine InitSubsurfaceSimulation(simulation)
   use PM_TH_class
   use PM_RT_class
   use PM_Waste_Form_class
+  use PM_UFD_Decay_class
 
   use Timestepper_BE_class
   
@@ -659,13 +729,15 @@ subroutine InitSubsurfaceSimulation(simulation)
   if (option%nflowdof > 0) then
     select type(ts => simulation%flow_process_model_coupler%timestepper)
       class is (timestepper_BE_type)
-        call InitSubsurfFlowSetupSolvers(realization,ts%solver)
+        call InitSubsurfFlowSetupSolvers(realization,ts%convergence_context, &
+                                         ts%solver)
     end select
   endif
   if (option%ntrandof > 0) then
     select type(ts => simulation%rt_process_model_coupler%timestepper)
       class is (timestepper_BE_type)
-        call InitSubsurfTranSetupSolvers(realization,ts%solver)
+        call InitSubsurfTranSetupSolvers(realization,ts%convergence_context, &
+                                         ts%solver)
     end select
   endif
   call RegressionCreateMapping(simulation%regression,realization)
@@ -707,9 +779,16 @@ subroutine InitSubsurfaceSimulation(simulation)
           class is (pm_subsurface_type)
             call cur_process_model%PMSubsurfaceSetRealization(realization)
           class is (pm_rt_type)
+            if (.not.associated(realization%reaction)) then
+              option%io_buffer = 'SUBSURFACE_TRANSPORT specified as a ' // &
+                'process model without a corresponding CHEMISTRY block.'
+              call printErrMsg(option)
+            endif
             call cur_process_model%PMRTSetRealization(realization)
           class is (pm_fmdm_type)
-            call cur_process_model%PMwasteFormSetRealization(realization)
+            call cur_process_model%PMWasteFormSetRealization(realization)
+          class is (pm_ufd_decay_type)
+            call cur_process_model%PMUFDDecaySetRealization(realization)
         end select
         ! set time stepper
         select type(cur_process_model)

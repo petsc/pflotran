@@ -31,7 +31,7 @@ module PM_Flash2_class
 #endif
     procedure, public :: TimeCut => PMFlash2TimeCut
     procedure, public :: UpdateSolution => PMFlash2UpdateSolution
-    procedure, public :: UpdateAuxvars => PMFlash2UpdateAuxvars
+    procedure, public :: UpdateAuxVars => PMFlash2UpdateAuxVars
     procedure, public :: MaxChange => PMFlash2MaxChange
     procedure, public :: ComputeMassBalance => PMFlash2ComputeMassBalance
     procedure, public :: Destroy => PMFlash2Destroy
@@ -322,7 +322,7 @@ end subroutine PMFlash2UpdateSolution
 
 ! ************************************************************************** !
 
-subroutine PMFlash2UpdateAuxvars(this)
+subroutine PMFlash2UpdateAuxVars(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/21/14
@@ -335,7 +335,7 @@ subroutine PMFlash2UpdateAuxvars(this)
 
   call Flash2UpdateAuxVars(this%realization)
 
-end subroutine PMFlash2UpdateAuxvars   
+end subroutine PMFlash2UpdateAuxVars   
 
 ! ************************************************************************** !
 

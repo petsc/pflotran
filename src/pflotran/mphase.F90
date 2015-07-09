@@ -1560,8 +1560,8 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype,R
           enth_src_co2 = enth_src_co2 * FMWCO2
           
           ! store volumetric rate for ss_fluid_fluxes()
-          ! qsrc_phase [m^3/sec] = msrc [kmol/sec] / [kg/m^3] * [kg/kmol]  
-          qsrc_vol(2) = msrc(2)*rho/FMWCO2
+          ! qsrc_phase [m^3/sec] = msrc [kmol/sec] / [kmol/m^3]
+          qsrc_vol(2) = msrc(2)/auxvar%den(jco2)
 
         else if (option%co2eos == EOS_MRK) then
 ! MRK eos [modified version from  Kerrick and Jacobs (1981) and Weir et al. (1996).]

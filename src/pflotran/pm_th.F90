@@ -37,7 +37,7 @@ module PM_TH_class
     procedure, public :: CheckUpdatePost => PMTHCheckUpdatePost
     procedure, public :: TimeCut => PMTHTimeCut
     procedure, public :: UpdateSolution => PMTHUpdateSolution
-    procedure, public :: UpdateAuxvars => PMTHUpdateAuxvars
+    procedure, public :: UpdateAuxVars => PMTHUpdateAuxVars
     procedure, public :: MaxChange => PMTHMaxChange
     procedure, public :: ComputeMassBalance => PMTHComputeMassBalance
     procedure, public :: Destroy => PMTHDestroy
@@ -491,7 +491,7 @@ end subroutine PMTHUpdateSolution
 
 ! ************************************************************************** !
 
-subroutine PMTHUpdateAuxvars(this)
+subroutine PMTHUpdateAuxVars(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/21/14
@@ -504,7 +504,7 @@ subroutine PMTHUpdateAuxvars(this)
 
   call THUpdateAuxVars(this%realization)
 
-end subroutine PMTHUpdateAuxvars   
+end subroutine PMTHUpdateAuxVars   
 
 ! ************************************************************************** !
 

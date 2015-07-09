@@ -185,12 +185,6 @@ subroutine ConvergenceTest(snes_,it,xnorm,unorm,fnorm,reason,context,ierr)
     return
   endif
   
-  ! force the minimum number of iterations
-  if (it < solver%newton_min_iterations) then
-    reason = 0
-    return
-  endif
-
 ! Checking if norm exceeds divergence tolerance
 !geh: inorm_residual is being used without being calculated.
 !      if (fnorm > solver%max_norm .or. unorm > solver%max_norm .or. &
@@ -242,7 +236,12 @@ subroutine ConvergenceTest(snes_,it,xnorm,unorm,fnorm,reason,context,ierr)
         reason = 0
       endif
     endif
-  
+    
+    ! force the minimum number of iterations
+    if (it < solver%newton_min_iterations) then
+      reason = 0
+    endif
+
     if (option%print_screen_flag .and. solver%print_convergence) then
       i = int(reason)
       select case(i)
@@ -306,6 +305,11 @@ subroutine ConvergenceTest(snes_,it,xnorm,unorm,fnorm,reason,context,ierr)
       endif
     endif
     
+    ! force the minimum number of iterations
+    if (it < solver%newton_min_iterations) then
+      reason = 0
+    endif
+
     if (option%print_screen_flag .and. solver%print_convergence) then
       i = int(reason)
       select case(i)

@@ -372,7 +372,7 @@ subroutine ImmisAuxVarCompute_NINC(x,auxvar,saturation_function, &
 !   auxvar%diff(option%nflowspec+1:option%nflowspec*2) = 2.13D-5
 !       fluid_properties%diff_base(2)
 ! Note: not temperature dependent yet.       
-   auxvar%zco2 = auxvar%den(2)/(p/IDEAL_GAS_CONST/(t+273.15D0)*1D-3)
+   auxvar%zco2 = auxvar%den(2)/(p/IDEAL_GAS_CONSTANT/(t+273.15D0)*1D-3)
 !***************  Liquid phase properties **************************
  
 !  avgmw(1)= xmol(1)*FMWH2O + xmol(2)*FMWCO2 

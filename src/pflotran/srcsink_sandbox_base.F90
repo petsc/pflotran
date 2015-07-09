@@ -16,6 +16,7 @@ module SrcSink_Sandbox_Base_class
   contains
     procedure, public :: ReadInput => Base_Read
     procedure, public :: Setup => SSSandboxBaseSetup
+    procedure, public :: Update => Base_Update
     procedure, public :: Evaluate => Base_SrcSink
     procedure, public :: Destroy => SSSandboxBaseDestroy    
   end type srcsink_sandbox_base_type
@@ -104,6 +105,20 @@ subroutine Base_Read(this,input,option)
   type(option_type) :: option
   
 end subroutine Base_Read   
+
+! ************************************************************************** !
+
+subroutine Base_Update(this,time,option)
+    
+  use Option_module
+  
+  implicit none
+  
+  class(srcsink_sandbox_base_type) :: this
+  PetscReal :: time
+  type(option_type) :: option
+  
+end subroutine Base_Update   
 
 ! ************************************************************************** !
 

@@ -240,6 +240,7 @@ subroutine DatasetCommonHDF5ReadTimes(filename,dataset_name,time_storage, &
   use Units_module, only : UnitsConvertToInternal
   use Option_module
   use Logging_module
+  use HDF5_Aux_module
   
   implicit none
 
@@ -291,7 +292,7 @@ subroutine DatasetCommonHDF5ReadTimes(filename,dataset_name,time_storage, &
 !#ifndef SERIAL_HDF5
 !    call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
 !#endif
-    call h5fopen_f(filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
+    call HDF5OpenFileReadOnly(filename,file_id,prop_id,option)
     h5fopen_err = hdf5_err
     call h5pclose_f(prop_id,hdf5_err)
 

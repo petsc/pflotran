@@ -443,7 +443,7 @@ subroutine MphaseAuxVarCompute_NINC(x,auxvar,global_auxvar,iphase,saturation_fun
 !   print *,'gas diff: ',fluid_properties%gas_diffusion_coefficient,p,t
        
 !  z factor    
-    auxvar%zco2=auxvar%den(2)/(p/IDEAL_GAS_CONST/(t+273.15D0)*1.D-3)
+    auxvar%zco2=auxvar%den(2)/(p/IDEAL_GAS_CONSTANT/(t+273.15D0)*1.D-3)
 
 !***************  Liquid phase properties **************************
  

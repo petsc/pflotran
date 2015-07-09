@@ -181,8 +181,9 @@ FLOW_CONDITION gas_phase
   ! psat at 25 C is 3165.9896022949661
   ! at 100% humidity, p_a = p_g - p_sat
   ! mole fraction = p_a / p_g = (p_g - p_sat) / p_g
-  !               = (111325. - 3165.9896022949661) / 101325.
-  MOLE_FRACTION 0.971560838967d0
+  !               = (111325. - 3157.9744387448523) / 111325.
+  !               = 0.971632836838d0
+  MOLE_FRACTION 0.971632837d0
   TEMPERATURE 25.d0
 /
 

@@ -41,7 +41,7 @@ module PM_Subsurface_class
     procedure, public :: AcceptSolution => PMSubsurfaceAcceptSolution
 !    procedure, public :: TimeCut => PMSubsurfaceTimeCut
 !    procedure, public :: UpdateSolution => PMSubsurfaceUpdateSolution
-    procedure, public :: UpdateAuxvars => PMSubsurfaceUpdateAuxvars
+    procedure, public :: UpdateAuxVars => PMSubsurfaceUpdateAuxVars
     procedure, public :: Checkpoint => PMSubsurfaceCheckpoint    
     procedure, public :: Restart => PMSubsurfaceRestart  
 !    procedure, public :: Destroy => PMSubsurfaceDestroy
@@ -228,7 +228,9 @@ recursive subroutine PMSubsurfaceInitializeRun(this)
                                  POROSITY,POROSITY_CURRENT)
   endif  
 
-  call this%UpdateSolution()  
+  call this%PreSolve()
+  call this%UpdateAuxVars()
+  call this%UpdateSolution() 
     
 end subroutine PMSubsurfaceInitializeRun
 
@@ -464,6 +466,7 @@ subroutine PMSubsurfaceUpdateSolution(this)
 
   use Condition_module
   use Integral_Flux_module
+  use SrcSink_Sandbox_module
 
   implicit none
   
@@ -479,6 +482,8 @@ subroutine PMSubsurfaceUpdateSolution(this)
   call FlowConditionUpdate(this%realization%flow_conditions, &
                            this%realization%option, &
                            this%realization%option%time)
+  call SSSandboxUpdate(ss_sandbox_list,this%realization%option%time, &
+                       this%realization%option)
   ! right now, RealizUpdateAllCouplerAuxVars only updates flow
   call RealizUpdateAllCouplerAuxVars(this%realization,force_update_flag)
   if (associated(this%realization%uniform_velocity_dataset)) then
@@ -494,7 +499,7 @@ end subroutine PMSubsurfaceUpdateSolution
 
 ! ************************************************************************** !
 
-subroutine PMSubsurfaceUpdateAuxvars(this)
+subroutine PMSubsurfaceUpdateAuxVars(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/21/14
@@ -503,10 +508,10 @@ subroutine PMSubsurfaceUpdateAuxvars(this)
   
   class(pm_subsurface_type) :: this
 
-  this%option%io_buffer = 'PMSubsurfaceUpdateAuxvars() must be extended.'
+  this%option%io_buffer = 'PMSubsurfaceUpdateAuxVars() must be extended.'
   call printErrMsg(this%option)
 
-end subroutine PMSubsurfaceUpdateAuxvars   
+end subroutine PMSubsurfaceUpdateAuxVars   
 
 ! ************************************************************************** !
 
