@@ -1850,7 +1850,6 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
   PetscReal :: Ke_fr_up,Ke_fr_dn   ! frozen soil Kersten numbers
   PetscReal :: dKe_fr_dt_up, dKe_fr_dt_dn
   PetscReal :: dKe_fr_dp_up, dKe_fr_dp_dn
-  PetscReal, parameter :: R_gas_constant = 8.3144621 ! Gas constant in J/mol/K
   PetscReal :: fv_up, fv_dn
   PetscReal :: dfv_dt_up, dfv_dt_dn
   PetscReal :: dfv_dp_up, dfv_dp_dn
@@ -2029,8 +2028,8 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
     satg_dn = auxvar_dn%sat_gas
     if ((satg_up > eps) .and. (satg_dn > eps)) then
       p_g = option%reference_pressure  ! set to reference pressure
-      deng_up = p_g/(IDEAL_GAS_CONST*(global_auxvar_up%temp + 273.15d0))*1.d-3
-      deng_dn = p_g/(IDEAL_GAS_CONST*(global_auxvar_dn%temp + 273.15d0))*1.d-3
+      deng_up = p_g/(IDEAL_GAS_CONSTANT*(global_auxvar_up%temp + 273.15d0))*1.d-3
+      deng_dn = p_g/(IDEAL_GAS_CONSTANT*(global_auxvar_dn%temp + 273.15d0))*1.d-3
 
       Diffg_ref = 2.13D-5 ! Reference diffusivity, need to read from input file
       p_ref = 1.01325d5   ! in Pa
@@ -2048,29 +2047,29 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
 
       ! vapor pressure lowering due to capillary pressure
       fv_up = exp(-auxvar_up%pc/(global_auxvar_up%den(1)* &
-           R_gas_constant*(global_auxvar_up%temp + 273.15d0)))
+           IDEAL_GAS_CONSTANT*(global_auxvar_up%temp + 273.15d0)))
       fv_dn = exp(-auxvar_dn%pc/(global_auxvar_dn%den(1)* &
-           R_gas_constant*(global_auxvar_dn%temp + 273.15d0)))
+           IDEAL_GAS_CONSTANT*(global_auxvar_dn%temp + 273.15d0)))
 
       molg_up = psat_up*fv_up/p_g
       molg_dn = psat_dn*fv_dn/p_g
 
-      dfv_dt_up = fv_up*(auxvar_up%pc/R_gas_constant/(global_auxvar_up%den(1)* &
+      dfv_dt_up = fv_up*(auxvar_up%pc/IDEAL_GAS_CONSTANT/(global_auxvar_up%den(1)* &
            (global_auxvar_up%temp + 273.15d0))**2)* &
            (auxvar_up%dden_dt*(global_auxvar_up%temp + 273.15d0) &
            + global_auxvar_up%den(1))
-      dfv_dt_dn = fv_dn*(auxvar_dn%pc/R_gas_constant/(global_auxvar_dn%den(1)* &
+      dfv_dt_dn = fv_dn*(auxvar_dn%pc/IDEAL_GAS_CONSTANT/(global_auxvar_dn%den(1)* &
            (global_auxvar_dn%temp + 273.15d0))**2)* &
            (auxvar_dn%dden_dt*(global_auxvar_dn%temp + 273.15d0) &
            + global_auxvar_dn%den(1))
 
-      dfv_dp_up = fv_up*(auxvar_up%pc/R_gas_constant/(global_auxvar_up%den(1))**2/ &
+      dfv_dp_up = fv_up*(auxvar_up%pc/IDEAL_GAS_CONSTANT/(global_auxvar_up%den(1))**2/ &
            (global_auxvar_up%temp + 273.15d0)*auxvar_up%dden_dp &
-           + 1.d0/R_gas_constant/global_auxvar_up%den(1)/ &
+           + 1.d0/IDEAL_GAS_CONSTANT/global_auxvar_up%den(1)/ &
            (global_auxvar_up%temp + 273.15d0))
-      dfv_dp_dn = fv_dn*(auxvar_dn%pc/R_gas_constant/(global_auxvar_dn%den(1))**2/ &
+      dfv_dp_dn = fv_dn*(auxvar_dn%pc/IDEAL_GAS_CONSTANT/(global_auxvar_dn%den(1))**2/ &
            (global_auxvar_dn%temp + 273.15d0)*auxvar_dn%dden_dp &
-           + 1.d0/R_gas_constant/global_auxvar_dn%den(1)/ &
+           + 1.d0/IDEAL_GAS_CONSTANT/global_auxvar_dn%den(1)/ &
            (global_auxvar_dn%temp + 273.15d0))
 
       dmolg_dt_up = (1/p_g)*dpsat_dt_up*fv_up + psat_up/p_g*dfv_dt_up
@@ -2079,9 +2078,9 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
       dmolg_dp_up = psat_up/p_g*dfv_dp_up
       dmolg_dp_dn = psat_dn/p_g*dfv_dp_dn
 
-      ddeng_dt_up = - p_g/(IDEAL_GAS_CONST*(global_auxvar_up%temp + &
+      ddeng_dt_up = - p_g/(IDEAL_GAS_CONSTANT*(global_auxvar_up%temp + &
            273.15d0)**2)*1.d-3
-      ddeng_dt_dn = - p_g/(IDEAL_GAS_CONST*(global_auxvar_dn%temp + &
+      ddeng_dt_dn = - p_g/(IDEAL_GAS_CONSTANT*(global_auxvar_dn%temp + &
            273.15d0)**2)*1.d-3
 
       dDiffg_dt_up = 1.8*Diffg_up/(global_auxvar_up%temp + 273.15d0)
@@ -2421,7 +2420,6 @@ subroutine THFlux(auxvar_up,global_auxvar_up, &
   PetscErrorCode :: ierr
   PetscReal :: Ke_fr_up,Ke_fr_dn   ! frozen soil Kersten numbers
   PetscReal :: fv_up, fv_dn
-  PetscReal, parameter :: R_gas_constant = 8.3144621 ! Gas constant in J/mol/K
      
   call ConnectionCalculateDistances(dist,option%gravity,dd_up,dd_dn, &
                                     dist_gravity,upweight)
@@ -2493,8 +2491,8 @@ subroutine THFlux(auxvar_up,global_auxvar_up, &
     satg_dn = auxvar_dn%sat_gas
     if ((satg_up > eps) .and. (satg_dn > eps)) then
       p_g = option%reference_pressure ! set to reference pressure
-      deng_up = p_g/(IDEAL_GAS_CONST*(global_auxvar_up%temp + 273.15d0))*1.d-3
-      deng_dn = p_g/(IDEAL_GAS_CONST*(global_auxvar_dn%temp + 273.15d0))*1.d-3
+      deng_up = p_g/(IDEAL_GAS_CONSTANT*(global_auxvar_up%temp + 273.15d0))*1.d-3
+      deng_dn = p_g/(IDEAL_GAS_CONSTANT*(global_auxvar_dn%temp + 273.15d0))*1.d-3
 
       Diffg_ref = 2.13D-5 ! Reference diffusivity, need to read from input file
       p_ref = 1.01325d5 ! in Pa
@@ -2512,9 +2510,9 @@ subroutine THFlux(auxvar_up,global_auxvar_up, &
 
       ! vapor pressure lowering due to capillary pressure
       fv_up = exp(-auxvar_up%pc/(global_auxvar_up%den(1)* &
-           R_gas_constant*(global_auxvar_up%temp + 273.15d0)))
+           IDEAL_GAS_CONSTANT*(global_auxvar_up%temp + 273.15d0)))
       fv_dn = exp(-auxvar_dn%pc/(global_auxvar_dn%den(1)* &
-           R_gas_constant*(global_auxvar_dn%temp + 273.15d0)))
+           IDEAL_GAS_CONSTANT*(global_auxvar_dn%temp + 273.15d0)))
 
       molg_up = psat_up*fv_up/p_g
       molg_dn = psat_dn*fv_dn/p_g
@@ -3094,9 +3092,9 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
          satg_dn = auxvar_dn%sat_gas
          if ((satg_up > eps) .and. (satg_dn > eps)) then
             p_g = option%reference_pressure  ! set to reference pressure
-            deng_up = p_g/(IDEAL_GAS_CONST*(global_auxvar_up%temp + &
+            deng_up = p_g/(IDEAL_GAS_CONSTANT*(global_auxvar_up%temp + &
                  273.15d0))*1.d-3
-            deng_dn = p_g/(IDEAL_GAS_CONST*(global_auxvar_dn%temp + &
+            deng_dn = p_g/(IDEAL_GAS_CONSTANT*(global_auxvar_dn%temp + &
                  273.15d0))*1.d-3
         
             Diffg_ref = 2.13D-5 ! Reference diffusivity, need to read from input file
@@ -3113,7 +3111,7 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
             call EOSWaterSaturationPressure(global_auxvar_dn%temp, psat_dn, dpsat_dt_dn, ierr)
             molg_up = psat_up/p_g
             molg_dn = psat_dn/p_g
-            ddeng_dt_dn = - p_g/(IDEAL_GAS_CONST*(global_auxvar_dn%temp + &
+            ddeng_dt_dn = - p_g/(IDEAL_GAS_CONSTANT*(global_auxvar_dn%temp + &
                  273.15d0)**2)*1.d-3
             dmolg_dt_dn = (1/p_g)*dpsat_dt_dn
             dDiffg_dt_dn = 1.8*Diffg_dn/(global_auxvar_dn%temp + 273.15d0)
@@ -3345,7 +3343,6 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
   PetscReal :: Diffg_ref, p_ref, T_ref
   PetscErrorCode :: ierr
   PetscReal :: fv_up, fv_dn
-  PetscReal, parameter :: R_gas_constant = 8.3144621 ! Gas constant in J/mol/K
   PetscReal :: v_darcy_allowable
   PetscReal :: rho,dum1
   PetscReal :: q_approx, dq_approx
@@ -3592,8 +3589,8 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
          satg_dn = auxvar_dn%sat_gas
          if ((satg_up > eps) .and. (satg_dn > eps)) then
             p_g = option%reference_pressure ! set to reference pressure
-            deng_up = p_g/(IDEAL_GAS_CONST*(global_auxvar_up%temp + 273.15d0))*1.d-3
-            deng_dn = p_g/(IDEAL_GAS_CONST*(global_auxvar_dn%temp + 273.15d0))*1.d-3
+            deng_up = p_g/(IDEAL_GAS_CONSTANT*(global_auxvar_up%temp + 273.15d0))*1.d-3
+            deng_dn = p_g/(IDEAL_GAS_CONSTANT*(global_auxvar_dn%temp + 273.15d0))*1.d-3
   
             Diffg_ref = 2.13D-5 ! Reference diffusivity, need to read from input file
             p_ref = 1.01325d5 ! in Pa
@@ -3610,9 +3607,9 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
         
             ! vapor pressure lowering due to capillary pressure
             fv_up = exp(-auxvar_up%pc/(global_auxvar_up%den(1)* &
-                 R_gas_constant*(global_auxvar_up%temp + 273.15d0)))
+                 IDEAL_GAS_CONSTANT*(global_auxvar_up%temp + 273.15d0)))
             fv_dn = exp(-auxvar_dn%pc/(global_auxvar_dn%den(1)* &
-                 R_gas_constant*(global_auxvar_dn%temp + 273.15d0)))
+                 IDEAL_GAS_CONSTANT*(global_auxvar_dn%temp + 273.15d0)))
 
             molg_up = psat_up*fv_up/p_g
             molg_dn = psat_dn*fv_dn/p_g

@@ -104,7 +104,6 @@ subroutine TDispersion(global_auxvar_up,material_auxvar_up, &
   PetscReal :: temp_up, temp_dn         
   PetscReal :: Ddiff_up, Ddiff_dn 
   PetscReal :: Ddiff_avg
-  PetscReal, parameter :: R_gas_constant = 8.3144621d-3 ! Gas constant in kJ/mol/K
   PetscReal :: T_ref_inv
   PetscReal :: weight_new
 #endif
@@ -175,10 +174,10 @@ subroutine TDispersion(global_auxvar_up,material_auxvar_up, &
     temp_dn = global_auxvar_dn%temp
     Ddiff_up = rt_parameter%diffusion_coefficient(iphase)* &
                exp(rt_parameter%diffusion_activation_energy(iphase) &
-               /R_gas_constant*(T_ref_inv - 1.d0/(temp_up + 273.15d0)))
+               /IDEAL_GAS_CONSTANT*(T_ref_inv - 1.d0/(temp_up + 273.15d0)))
     Ddiff_dn = rt_parameter%diffusion_coefficient(iphase)* &
                exp(rt_parameter%diffusion_activation_energy(iphase) &
-               /R_gas_constant*(T_ref_inv - 1.d0/(temp_dn + 273.15d0)))
+               /IDEAL_GAS_CONSTANT*(T_ref_inv - 1.d0/(temp_dn + 273.15d0)))
     weight_new = (stp_up*Ddiff_up*stp_dn*Ddiff_dn)/ &
                  (stp_up*Ddiff_up*dist_dn + stp_dn*Ddiff_dn*dist_up)
     dispersion(iphase) = dispersion(iphase) + weight_new - &
@@ -216,10 +215,10 @@ subroutine TDispersion(global_auxvar_up,material_auxvar_up, &
           temp_dn = global_auxvar_dn%temp
           Ddiff_up = rt_parameter%diffusion_coefficient(iphase)* &
                     exp(rt_parameter%diffusion_activation_energy(iphase) &
-                    /R_gas_constant*(T_ref_inv - 1.d0/(temp_up + 273.15d0)))
+                    /IDEAL_GAS_CONSTANT*(T_ref_inv - 1.d0/(temp_up + 273.15d0)))
           Ddiff_dn = rt_parameter%diffusion_coefficient(iphase)* &
                     exp(rt_parameter%diffusion_activation_energy(iphase) &
-                    /R_gas_constant*(T_ref_inv - 1.d0/(temp_dn + 273.15d0)))
+                    /IDEAL_GAS_CONSTANT*(T_ref_inv - 1.d0/(temp_dn + 273.15d0)))
           weight_new = (stp_up*Ddiff_up*stp_dn*Ddiff_dn)/ &
                        (stp_up*Ddiff_up*dist_dn + stp_dn*Ddiff_dn*dist_up)
           dispersion(iphase) = dispersion(iphase) + weight_new - &
@@ -274,7 +273,6 @@ subroutine TDispersionBC(ibndtype, &
 
 #if defined(TEMP_DEPENDENT_LOGK) || defined (CHUAN_HPT)
   PetscReal :: temp_up                 ! variable to store temperature at the boundary
-  PetscReal, parameter :: R_gas_constant = 8.3144621d-3 ! Gas constant in kJ/mol/K
   PetscReal :: T_ref_inv
 #endif
 
@@ -323,7 +321,7 @@ subroutine TDispersionBC(ibndtype, &
       dispersion(iphase) = dispersion(iphase) + &
         stp_ave_over_dist*rt_parameter%diffusion_coefficient(iphase)* &
         (exp(rt_parameter%diffusion_activation_energy(iphase)/ &
-        R_gas_constant*(T_ref_inv-1.d0/(temp_up + 273.15d0))) - 1.d0)
+        IDEAL_GAS_CONSTANT*(T_ref_inv-1.d0/(temp_up + 273.15d0))) - 1.d0)
 #endif
 
     case(DIRICHLET_ZERO_GRADIENT_BC)
@@ -347,7 +345,7 @@ subroutine TDispersionBC(ibndtype, &
         dispersion(iphase) = dispersion(iphase) + &
           stp_ave_over_dist*rt_parameter%diffusion_coefficient(iphase)* &
           (exp(rt_parameter%diffusion_activation_energy(iphase)/ &
-          R_gas_constant*(T_ref_inv-1.d0/(temp_up + 273.15d0))) - 1.d0)
+          IDEAL_GAS_CONSTANT*(T_ref_inv-1.d0/(temp_up + 273.15d0))) - 1.d0)
 #endif
       endif
     case(CONCENTRATION_SS,NEUMANN_BC,ZERO_GRADIENT_BC)
@@ -386,7 +384,7 @@ subroutine TDispersionBC(ibndtype, &
             dispersion(iphase) = dispersion(iphase) + &
               stp_ave_over_dist*rt_parameter%diffusion_coefficient(iphase)* &
               (exp(rt_parameter%diffusion_activation_energy(iphase)/ &
-              R_gas_constant*(T_ref_inv-1.d0/(temp_up + 273.15d0))) - 1.d0)
+              IDEAL_GAS_CONSTANT*(T_ref_inv-1.d0/(temp_up + 273.15d0))) - 1.d0)
 #endif
           endif    
           
@@ -405,7 +403,7 @@ subroutine TDispersionBC(ibndtype, &
               dispersion(iphase) = dispersion(iphase) + &
                 stp_ave_over_dist*rt_parameter%diffusion_coefficient(iphase)* &
                 (exp(rt_parameter%diffusion_activation_energy(iphase)/ &
-                R_gas_constant*(T_ref_inv-1.d0/(temp_up + 273.15d0))) - 1.d0)
+               IDEAL_GAS_CONSTANT*(T_ref_inv-1.d0/(temp_up + 273.15d0))) - 1.d0)
 #endif
             endif 
           endif

@@ -1671,7 +1671,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           lnQK = -reaction%eqgas_logK(igas)*LOG_TO_LN
  
           ! divide K by RT
-          !lnQK = lnQK - log((auxvar%temp+273.15d0)*IDEAL_GAS_CONST)
+          !lnQK = lnQK - log((auxvar%temp+273.15d0)*IDEAL_GAS_CONSTANT)
           
           ! activity of water
           if (reaction%eqgash2oid(igas) > 0) then
@@ -2038,7 +2038,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   PetscReal :: sum_molality, sum_mass, mole_fraction_h2o, mass_fraction_h2o, &
                mass_fraction_co2, mole_fraction_co2
   PetscReal :: ehfac,eh,pe,tk
-  PetscReal :: affinity, rgas = 8.3144621d-3
+  PetscReal :: affinity
 
   aq_species_constraint => constraint_coupler%aqueous_species
   mineral_constraint => constraint_coupler%minerals
@@ -2182,7 +2182,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
         enddo
 
         tk = global_auxvar%temp+273.15d0
-        ehfac = IDEAL_GAS_CONST*tk*LOG_TO_LN/faraday
+        ehfac = IDEAL_GAS_CONSTANT*tk*LOG_TO_LN/faraday
         eh = ehfac*(-4.d0*ph+lnQKgas(ifo2)*LN_TO_LOG+logKeh(tk))/4.d0
         pe = eh/ehfac
 
@@ -2604,7 +2604,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   
     do imnrl = 1, mineral_reaction%nmnrl
       i = eqminsort(imnrl)
-      affinity = -rgas*(global_auxvar%temp+273.15d0)*lnQK(i)
+      affinity = -1.d0*IDEAL_GAS_CONSTANT*(global_auxvar%temp+273.15d0)*lnQK(i)
       write(option%fid_out,131) mineral_reaction%mineral_names(i), &
                                 lnQK(i)*LN_TO_LOG, affinity, &
                                 mineral_reaction%mnrl_logK(i)
@@ -2625,7 +2625,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
       lnQKgas(igas) = -reaction%eqgas_logK(igas)*LOG_TO_LN
       
       ! divide K by RT
-      !lnQKgas = lnQKgas - log((auxvar%temp+273.15d0)*IDEAL_GAS_CONST)
+      !lnQKgas = lnQKgas - log((auxvar%temp+273.15d0)*IDEAL_GAS_CONSTANT)
       
       ! activity of water
       if (reaction%eqgash2oid(igas) > 0) then
@@ -2722,7 +2722,6 @@ subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
   type(reactive_transport_auxvar_type), pointer :: rt_auxvar
   type(global_auxvar_type), pointer :: global_auxvar
 
-  PetscReal, parameter :: rgas = 8.3144621d0
   PetscReal, parameter :: tk = 273.15d0
   PetscReal, parameter :: epsilon = 78.5d0
   PetscReal, parameter :: epsilon0 = 8.854187817d-12
@@ -2762,9 +2761,9 @@ subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
     tempk = tk + global_auxvar%temp
     
     potential = 0.1d0 ! initial guess
-    boltzmann = exp(-faraday*potential/(rgas*tempk))
+    boltzmann = exp(-faraday*potential/(IDEAL_GAS_CONSTANT*tempk))
         
-    fac = sqrt(epsilon*epsilon0*rgas*tempk)
+    fac = sqrt(epsilon*epsilon0*IDEAL_GAS_CONSTANT*tempk)
     
     ionic_strength = 0.d0
     charge_balance = 0.d0
@@ -2796,7 +2795,7 @@ subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
     endif
     
     srfchrg_capacitance_model = faraday*potential* &
-      sqrt(2.d0*epsilon*epsilon0*ionic_strength/(rgas*tempk))
+      sqrt(2.d0*epsilon*epsilon0*ionic_strength/(IDEAL_GAS_CONSTANT*tempk))
     
     surface_charge = 0.d0
     do irxn = 1, reaction%neqsrfcplxrxn
@@ -2857,7 +2856,7 @@ subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
           ! compute ion activity product
           lnQK = -reaction%eqsrfcplx_logK(icplx)*LOG_TO_LN &
                  + reaction%eqsrfcplx_Z(icplx)*faraday*potential &
-                 /(rgas*tempk)/LOG_TO_LN
+                 /(IDEAL_GAS_CONSTANT*tempk)/LOG_TO_LN
 
           ! activity of water
           if (reaction%eqsrfcplxh2oid(icplx) > 0) then
@@ -2902,7 +2901,6 @@ subroutine srfcmplx(irxn,icplx,lnQK,logK,Z,potential,tempk, &
 
 implicit none
 
-  PetscReal, parameter :: rgas = 8.3144621d0
   PetscReal, parameter :: tk = 273.15d0
   PetscReal, parameter :: faraday = 96485.d0
   
@@ -2925,7 +2923,7 @@ implicit none
           ! compute secondary species concentration
           lnQK = -logK(icplx)*LOG_TO_LN &
                  + Z(icplx)*faraday*potential &
-                 /(rgas*tempk)/LOG_TO_LN
+                 /(IDEAL_GAS_CONSTANT*tempk)/LOG_TO_LN
 
           ! activity of water
           if (reaction%eqsrfcplxh2oid(icplx) > 0) then
@@ -4136,7 +4134,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
         
 !     rt_auxvar%gas_molar(ieqgas) = &
 !         exp(lnQK+lngamco2)*rt_auxvar%pri_molal(icomp) &
-!         /(IDEAL_GAS_CONST*1.d-2*(temperature+273.15D0)*xphico2)
+!         /(IDEAL_GAS_CONSTANT*1.d-2*(temperature+273.15D0)*xphico2)
 
 !     This form includes factor Z in pV = ZRT for nonideal gas
       rt_auxvar%gas_molar(ieqgas) = &

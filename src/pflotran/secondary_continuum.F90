@@ -738,7 +738,6 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,auxvar, &
   PetscReal :: area_fm
   PetscReal :: diffusion_coefficient
   PetscReal :: porosity
-  PetscReal, parameter :: rgas = 8.3144621d-3
   PetscReal :: arrhenius_factor
   PetscReal :: pordt, pordiff
   PetscReal :: prim_vol ! volume of primary grid cell

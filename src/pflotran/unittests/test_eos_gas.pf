@@ -105,9 +105,9 @@ contains
     PetscErrorCode :: ierr
     character(len=MAXSTRINGLENGTH) :: error_string
 
-    PetscReal, parameter :: correct_density = 7.7058223852792929d-2
-    PetscReal, parameter :: correct_dden_dt = -2.5984900978854474d-4
-    PetscReal, parameter :: correct_dden_dp = 4.0556959922522593d-7
+    PetscReal, parameter :: correct_density = 7.7058690453347650d-2
+    PetscReal, parameter :: correct_dden_dt = -2.5985058321816783d-4
+    PetscReal, parameter :: correct_dden_dp = 4.0557205501761923E-007
     PetscReal, parameter :: temperature = 23.4d0
     PetscReal, parameter :: pressure = 1.9d5
     PetscReal :: density
@@ -146,9 +146,9 @@ contains
 
     PetscReal, parameter :: not_calculated_dden_dt = UNINITIALIZED_DOUBLE
     PetscReal, parameter :: not_calculated_dden_dp = UNINITIALIZED_DOUBLE
-    PetscReal, parameter :: correct_density1 = 7.6980863871687219d-2
-    PetscReal, parameter :: correct_density2 = 0.22973288269387737d0
-    PetscReal, parameter :: correct_density3 = 0.85505764482991498d0
+    PetscReal, parameter :: correct_density1 = 7.6981326805322534d-2
+    PetscReal, parameter :: correct_density2 = 0.22973426422005402d0
+    PetscReal, parameter :: correct_density3 = 0.85506278682136605d0
     PetscReal, parameter :: temperature1 = 23.4d0
     PetscReal, parameter :: pressure1 = 1.9d5
     PetscReal, parameter :: temperature2 = 40.01d0
