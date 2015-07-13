@@ -82,9 +82,18 @@ MATERIAL_PROPERTY soil2
   /
 /
 
-#=========================== saturation functions =============================
-SATURATION_FUNCTION default
-/
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES default
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    M 0.286d0
+    ALPHA  1.9401d-4
+    LIQUID_RESIDUAL_SATURATION 0.115
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.286d0
+    LIQUID_RESIDUAL_SATURATION 0.115
+  /
+END
 
 #=========================== output options ===================================
 OUTPUT
