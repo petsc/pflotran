@@ -1,0 +1,196 @@
+! Test Case #2+3.  Horizontal one-dimensional infiltration.
+! MUST RUN THIS SIMULATION IN IMMISCIBLE PFLOTRAN
+! For more descriptions of the problem please read case_2+3.docx
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+    PROCESS_MODELS
+      SUBSURFACE_FLOW flow
+        MODE GENERAL
+        OPTIONS
+        ISOTHERMAL
+        MAXIMUM_PRESSURE_CHANGE 5.0D3
+        TOUGH2_ITOL_SCALED_RESIDUAL 1.d-5
+        GAS_COMPONENT_FORMULA_WEIGHT 2.01588D0 !H2
+      /
+    /
+  /
+END
+
+SUBSURFACE
+
+REGRESSION
+  CELLS_PER_PROCESS 5
+  CELLS
+    1
+    50
+  /
+END
+
+!=========================== flow mode ========================================
+NEWTON_SOLVER FLOW
+  MAXIT 20
+/
+
+!=========================== discretization ===================================
+GRID
+  TYPE structured
+  ORIGIN 0.d0 0.d0 0.d0
+  NXYZ 40 1 1
+  DXYZ 
+    40*0.005 !1@0.000001
+    1.d0 
+    1.d0 
+  /
+END
+
+!=========================== material properties ==============================
+MATERIAL_PROPERTY soil
+  ID 1
+  POROSITY 0.45d0
+  TORTUOSITY 1.0d0
+  ROCK_DENSITY 2650.0
+  THERMAL_CONDUCTIVITY_DRY 0.5
+  THERMAL_CONDUCTIVITY_WET 2.
+  HEAT_CAPACITY 830.
+  CHARACTERISTIC_CURVES sf1
+  PERMEABILITY
+    PERM_ISO 1.18d-14
+  /
+END
+
+!=========================== saturation functions =============================
+CHARACTERISTIC_CURVES sf1
+  SATURATION_FUNCTION LINEAR
+    LIQUID_RESIDUAL_SATURATION 0.3333333d0
+    ALPHA 1.d30
+    MAX_CAPILLARY_PRESSURE 9807.0
+  /
+  PERMEABILITY_FUNCTION BURDINE_LINEAR_LIQ
+    PHASE LIQUID
+    LIQUID_RESIDUAL_SATURATION 0.3333333d0
+  /
+  PERMEABILITY_FUNCTION BURDINE_LINEAR_GAS
+    PHASE GAS
+    LIQUID_RESIDUAL_SATURATION 0.33333333d0
+    GAS_RESIDUAL_SATURATION 0.0D0
+  /
+END
+
+#=========================== fluid properties =================================
+FLUID_PROPERTY
+  PHASE LIQUID
+  DIFFUSION_COEFFICIENT 0.0 !1d-9
+/
+
+FLUID_PROPERTY
+  PHASE GAS
+  DIFFUSION_COEFFICIENT 0.0 !1d-9
+/
+
+EOS WATER
+  DENSITY CONSTANT 1000.0d0
+  ENTHALPY CONSTANT 1.8890d0
+  VISCOSITY CONSTANT 1.d-3
+END
+
+EOS GAS
+  VISCOSITY CONSTANT 8.92d-6
+  DENSITY Ideal
+END
+!=========================== output options ===================================
+skip
+OUTPUT
+  FORMAT TECPLOT POINT
+  FORMAT HDF5
+  TIMES s 864 5184 9504
+  VARIABLES
+    LIQUID_PRESSURE
+    GAS_PRESSURE
+    MINERAL_POROSITY
+    EFFECTIVE_POROSITY
+    LIQUID_DENSITY
+    GAS_DENSITY
+    LIQUID_SATURATION
+    GAS_SATURATION
+    GAS_MOLE_FRACTIONS
+    PERMEABILITY_X
+    PERMEABILITY_Y
+    PERMEABILITY_Z
+    MAXIMUM_PRESSURE
+  /
+END
+noskip
+
+!=========================== times ============================================
+TIME
+  FINAL_TIME 9.504d3 s
+  MAXIMUM_TIMESTEP_SIZE 1.d3 s
+END
+
+!=========================== regions ========================================== 
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    2.d-1 1.d0 1.d0
+  /
+END
+
+REGION rleft
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 1.d0 1.d0
+  /
+  FACE west
+END
+
+REGION rright
+  COORDINATES
+    2.d-1 0.d0 0.d0
+    2.d-1 1.d0 1.d0
+  /
+  FACE EAST
+END
+
+!=========================== flow conditions ==================================
+FLOW_CONDITION left
+  TYPE
+    MOLE_FRACTION dirichlet
+    LIQUID_PRESSURE dirichlet
+    TEMPERATURE dirichlet
+  /
+  MOLE_FRACTION 1.d-10
+  LIQUID_PRESSURE 109525.d0
+  TEMPERATURE 27.0
+END
+
+FLOW_CONDITION initial_sat
+  TYPE
+    LIQUID_SATURATION dirichlet
+    GAS_PRESSURE dirichlet
+    TEMPERATURE dirichlet
+  /
+  LIQUID_SATURATION 0.44444444d0
+  GAS_PRESSURE 101325.d0
+  TEMPERATURE 27.0
+END
+
+!=========================== condition couplers ===============================
+! initial condition
+INITIAL_CONDITION
+  FLOW_CONDITION initial_sat
+  REGION all
+END
+
+BOUNDARY_CONDITION
+  FLOW_CONDITION left
+  REGION rleft
+END
+!=========================== stratigraphy couplers ============================
+ 
+STRATA
+  REGION all
+  MATERIAL soil
+END
+
+END_SUBSURFACE

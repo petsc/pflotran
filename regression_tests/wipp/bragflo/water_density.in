@@ -1,0 +1,141 @@
+! 9.11  Test Case #11.  Pressure and Density of Water Column in Equilibrium
+! For more descriptions of the problem please read case_11.docx
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE GENERAL
+      OPTIONS
+        ISOTHERMAL                        ! BF is fundamentally isothermal
+        TWO_PHASE_ENERGY_DOF TEMPERATURE  ! isothermal ignores this but needs to be specified
+        GAS_COMPONENT_FORMULA_WEIGHT 2.01588D0 ! hydrogen gas that BF uses (kg/kmol)
+        MAXIMUM_PRESSURE_CHANGE 5.0D3          ! PRESNORM in BF
+      /
+    /
+  /
+END
+
+SUBSURFACE
+
+REGRESSION
+  CELLS_PER_PROCESS 7
+  CELLS
+    1
+    10
+  /
+END
+
+!=========================== flow mode ========================================
+EOS WATER
+  DENSITY EXPONENTIAL 1000.0 101320.d0 1.0e-8
+  VISCOSITY CONSTANT 1.00000E-03  
+  ENTHALPY CONSTANT 1.8890d6    
+/
+FLUID_PROPERTY
+  PHASE LIQUID
+  DIFFUSION_COEFFICIENT 0.d-0  ! no diffusion as BF runs on immiscible flow
+END
+
+FLUID_PROPERTY
+  PHASE GAS
+  DIFFUSION_COEFFICIENT 0.d-0  ! no diffusion as BF runs on immiscible flow
+END
+
+!=========================== discretization ===================================
+GRID
+  TYPE structured cylindrical
+  NXYZ 1 1 50
+  DXYZ
+    1.0
+    1.0
+    10.0
+  /
+END
+
+!=========================== material properties ==============================
+MATERIAL_PROPERTY ROCK
+  ID 1
+  POROSITY 0.30d0
+  TORTUOSITY 1.d0
+  ROCK_DENSITY 2650.d0      ! thermal parameter. isothermal ignores this.
+  THERMAL_CONDUCTIVITY_DRY 0.5   ! thermal parameter. isothermal ignores this.
+  THERMAL_CONDUCTIVITY_WET 2.    ! thermal parameter. isothermal ignores this.
+  HEAT_CAPACITY 830.             ! thermal parameter. isothermal ignores this.
+  SOIL_COMPRESSIBILITY_FUNCTION BRAGFLO  !Function used in BF
+  SOIL_COMPRESSIBILITY 1.d-8     ! COMPRES in BF
+  SOIL_REFERENCE_PRESSURE 101325.d0 ! REFERENCE TEMPERATURE AND PRESSURE FOR DENSITY CALCULATIONS in BF
+  PERMEABILITY
+    PERM_ISO 1.0d-10
+  /
+  CHARACTERISTIC_CURVES SF1
+END
+
+!=========================== material properties ==============================
+CHARACTERISTIC_CURVES SF1
+  SATURATION_FUNCTION BROOKS_COREY
+    SMOOTH
+    LAMBDA 0.7D0
+    ALPHA  1.D30
+    LIQUID_RESIDUAL_SATURATION 0.0d+0
+    MAX_CAPILLARY_PRESSURE  1.d8
+  /
+  PERMEABILITY_FUNCTION BURDINE_BC_LIQ
+    LAMBDA 0.7D0
+    LIQUID_RESIDUAL_SATURATION 0.0d+0
+  /
+  PERMEABILITY_FUNCTION BURDINE_BC_GAS
+    LAMBDA 0.7D0
+    LIQUID_RESIDUAL_SATURATION 0.0d+0
+    GAS_RESIDUAL_SATURATION    0.0d+0
+  /
+END
+
+!=========================== output options ===================================
+skip
+OUTPUT
+  FORMAT HDF5
+END
+noskip
+!=========================== times ============================================
+TIME
+  FINAL_TIME 1.d6 s
+  INITIAL_TIMESTEP_SIZE 1.d1 s
+  MAXIMUM_TIMESTEP_SIZE 1.d5 s
+END
+
+!=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    1.d0 1.d0 500.d0
+  /
+END
+
+!=========================== flow conditions ==================================
+FLOW_CONDITION initial
+  TYPE
+    LIQUID_PRESSURE DIRICHLET
+    MOLE_FRACTION DIRICHLET
+    TEMPERATURE DIRICHLET
+  /
+  LIQUID_PRESSURE 1.D7
+  MOLE_FRACTION 1.D-10
+  TEMPERATURE 25.D0
+END
+
+!=========================== condition couplers ===============================
+! initial condition
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  REGION all
+END
+
+
+!=========================== stratigraphy couplers ============================
+STRATA
+  REGION all
+  MATERIAL ROCK
+END
+
+END_SUBSURFACE

@@ -1,0 +1,247 @@
+! 9.10  Test Case #10.  No Flow Boundary Conditions
+! For more descriptions of the problem please read case_10.docx
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE GENERAL
+      OPTIONS
+        ISOTHERMAL                        ! BF is fundamentally isothermal
+        TWO_PHASE_ENERGY_DOF TEMPERATURE  ! isothermal ignores this but needs to be specified
+        GAS_COMPONENT_FORMULA_WEIGHT 2.01588D0 ! hydrogen gas that BF uses (kg/kmol)
+        TOUGH2_ITOL_SCALED_RESIDUAL 1.d-4
+        MAXIMUM_PRESSURE_CHANGE 1.0D6          ! PRESNORM in BF
+      /
+    /
+  /
+END
+
+SUBSURFACE
+
+REGRESSION
+  CELLS_PER_PROCESS 7
+  CELLS
+    1
+    50
+  /
+END
+
+NEWTON_SOLVER FLOW
+  RTOL 1.d-30       ! Turn off RTOL criteria
+  ATOL 1.d-30       ! Turn off ATOL criteria
+  STOL 1.d-30       ! Turn off STOL criteria
+  ITOL_RELATIVE_UPDATE 1.d-30  ! Turn off ITOL_RELATIVE_UPDATE criteria
+  MAXIT 20          ! Maximum newton iteration number
+/
+
+!=========================== flow mode ========================================
+
+EOS WATER
+  DENSITY CONSTANT 1.00E+3 
+  VISCOSITY CONSTANT 1.80000E-03  
+  ENTHALPY CONSTANT 1.8890d6    
+/
+
+FLUID_PROPERTY
+  PHASE LIQUID
+  DIFFUSION_COEFFICIENT 0.d-0  ! no diffusion as BF runs on immiscible flow
+END
+
+FLUID_PROPERTY
+  PHASE GAS
+  DIFFUSION_COEFFICIENT 0.d-0  ! no diffusion as BF runs on immiscible flow
+END
+
+!=========================== discretization ===================================
+GRID
+  TYPE structured cylindrical
+  NXYZ 50 1 1
+  DXYZ
+    1.0000000E-02  2.0679264E-03  2.4955584E-03  3.0116215E-03  3.6344026E-03 \
+    4.3859703E-03  5.2929567E-03  6.3875012E-03  7.7083895E-03  9.3024277E-03 \
+    1.1226101E-02  1.3547576E-02  1.6349116E-02  1.9729992E-02  2.3810010E-02 \
+    2.8733744E-02  3.4675671E-02  4.1846345E-02  5.0499861E-02  6.0942860E-02 \
+    7.3545395E-02  8.8754042E-02  1.0710772E-01  1.2925681E-01  1.5598617E-01 \
+    1.8824296E-01  2.2717022E-01  2.7414735E-01  3.3083901E-01  3.9925408E-01 \
+    4.8181689E-01  5.8145307E-01  7.0169329E-01  8.4679830E-01  1.0219100E+00 \
+    1.2332334E+00  1.4882570E+00  1.7960176E+00  2.1674208E+00  2.6156275E+00 \
+    3.1565200E+00  3.8092651E+00  4.5969931E+00  5.5476175E+00  6.6948239E+00 \
+    8.0792643E+00  9.7499967E+00  1.1766224E+01  1.4199393E+01  1.7135723E+01
+    1.0
+    1.0
+  /
+END
+
+!=========================== material properties ==============================
+MATERIAL_PROPERTY ROCK
+  ID 1
+  POROSITY 0.10d0
+  TORTUOSITY 1.d0
+  ROCK_DENSITY 2650.d0      ! thermal parameter. isothermal ignores this.
+  THERMAL_CONDUCTIVITY_DRY 0.5   ! thermal parameter. isothermal ignores this.
+  THERMAL_CONDUCTIVITY_WET 2.    ! thermal parameter. isothermal ignores this.
+  HEAT_CAPACITY 830.             ! thermal parameter. isothermal ignores this.
+  SOIL_COMPRESSIBILITY_FUNCTION BRAGFLO  !Function used in BF
+  SOIL_COMPRESSIBILITY 1.d-8     ! COMPRES in BF
+  SOIL_REFERENCE_PRESSURE 1.d7 ! REFERENCE TEMPERATURE AND PRESSURE FOR DENSITY CALCULATIONS in BF
+  PERMEABILITY
+    PERM_ISO 1.8d-12
+  /
+  CHARACTERISTIC_CURVES SF1
+END
+
+MATERIAL_PROPERTY WELLBORE
+  ID 2
+  POROSITY 0.10d0
+  TORTUOSITY 1.d0
+  ROCK_DENSITY 2650.d0      ! thermal parameter. isothermal ignores this.
+  THERMAL_CONDUCTIVITY_DRY 0.5   ! thermal parameter. isothermal ignores this.
+  THERMAL_CONDUCTIVITY_WET 2.    ! thermal parameter. isothermal ignores this.
+  HEAT_CAPACITY 830.             ! thermal parameter. isothermal ignores this.
+  SOIL_COMPRESSIBILITY_FUNCTION BRAGFLO  !Function used in BF
+  SOIL_COMPRESSIBILITY 1.d-8     ! COMPRES in BF
+  SOIL_REFERENCE_PRESSURE 1.d7 ! REFERENCE TEMPERATURE AND PRESSURE FOR DENSITY CALCULATIONS in BF
+  PERMEABILITY
+    PERM_ISO 1.8d-08
+  /
+  CHARACTERISTIC_CURVES SF2
+END
+
+!=========================== material properties ==============================
+CHARACTERISTIC_CURVES SF1
+  SATURATION_FUNCTION BROOKS_COREY
+    SMOOTH
+    LAMBDA 0.7D0
+    ALPHA  1.D30
+    LIQUID_RESIDUAL_SATURATION 0.0d+0
+    MAX_CAPILLARY_PRESSURE  1.d8
+  /
+  PERMEABILITY_FUNCTION BURDINE_BC_LIQ
+    LAMBDA 0.7D0
+    LIQUID_RESIDUAL_SATURATION 0.0d+0
+  /
+  PERMEABILITY_FUNCTION BURDINE_BC_GAS
+    LAMBDA 0.7D0
+    LIQUID_RESIDUAL_SATURATION 0.0d+0
+    GAS_RESIDUAL_SATURATION    0.0d+0
+  /
+END
+
+CHARACTERISTIC_CURVES SF2
+  SATURATION_FUNCTION BROOKS_COREY
+    SMOOTH
+    LAMBDA 0.7D0
+    ALPHA  1.D30
+    LIQUID_RESIDUAL_SATURATION 0.0d+0
+    MAX_CAPILLARY_PRESSURE  1.d8
+  /
+  PERMEABILITY_FUNCTION BURDINE_BC_LIQ
+    LAMBDA 0.7D0
+    LIQUID_RESIDUAL_SATURATION 0.0d+0
+  /
+  PERMEABILITY_FUNCTION BURDINE_BC_GAS
+    LAMBDA 0.7D0
+    LIQUID_RESIDUAL_SATURATION 0.0d+0
+    GAS_RESIDUAL_SATURATION    0.0d+0
+  /
+END
+
+!=========================== output options ===================================
+skip
+OUTPUT
+  FORMAT HDF5
+END
+noskip
+!=========================== times ============================================
+TIME
+  FINAL_TIME 1.d5 s
+  INITIAL_TIMESTEP_SIZE 1.d-3 s
+  MAXIMUM_TIMESTEP_SIZE 1.d5 s
+END
+
+!=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    1.d2 1.d0 1.d0
+  /
+END
+
+REGION r_wellbore
+  BLOCK 1 1 1 1 1 1 
+END
+
+REGION r_rock
+  BLOCK 2 50 1 1 1 1 
+END
+
+REGION top
+  FACE top
+  COORDINATES
+    0.d0 0.d0 1.d0
+    1.0d2 1.d0 1.d0
+  /
+END
+
+REGION center
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.0d0 1.0d0 1.0d0
+  /
+END
+
+REGION outside
+  FACE east
+  COORDINATES
+    1.0d2 0.d0 0.d0
+    1.0d2 1.d0 1.d0
+  /
+END
+
+!=========================== flow conditions ==================================
+FLOW_CONDITION initial
+  TYPE
+    LIQUID_PRESSURE DIRICHLET
+    MOLE_FRACTION DIRICHLET
+    TEMPERATURE DIRICHLET
+  /
+  LIQUID_PRESSURE 1.D7
+  MOLE_FRACTION 1.D-9
+  TEMPERATURE 25.D0
+END
+
+FLOW_CONDITION well
+  TYPE
+    RATE mass_rate
+  /
+  RATE -1.0 0.0 0.0 kg/s
+END
+
+! farfield boundary condition is no flow as a default.
+
+!=========================== condition couplers ===============================
+! initial condition
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  REGION all
+END
+
+SOURCE_SINK well
+  FLOW_CONDITION well
+  REGION center
+
+END
+
+!=========================== stratigraphy couplers ============================
+STRATA
+  REGION r_wellbore
+  MATERIAL WELLBORE
+END
+
+STRATA
+  REGION r_rock
+  MATERIAL ROCK
+END
+
+END_SUBSURFACE

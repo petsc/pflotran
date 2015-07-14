@@ -1,0 +1,626 @@
+! 9.6 Test Case #6-a. Gas Generation.
+! BF = BRAGFLO
+! For more descriptions of the problem please read case_6-a.docx
+!=========================== flow mode ========================================
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE GENERAL
+      OPTIONS
+        ISOTHERMAL                        ! BF is fundamentally isothermal
+        TWO_PHASE_ENERGY_DOF TEMPERATURE  ! isothermal ignores this but needs to be specified
+        GAS_COMPONENT_FORMULA_WEIGHT 2.01588D0 ! hydrogen gas that BF uses (kg/kmol)
+        MAXIMUM_PRESSURE_CHANGE 5.0D5          ! PRESNORM in BF
+	TOUGH2_ITOL_SCALED_RESIDUAL 1.d-5
+      /
+    /
+  /
+END
+
+SUBSURFACE
+
+REGRESSION
+  CELLS_PER_PROCESS 10
+  CELLS
+    89
+    111
+    113
+    133
+  /
+END
+
+!=========================== discretization ===================================
+GRID
+  TYPE structured
+  NXYZ 11 1 21      ! MODEL TYPE AND NUMBER OF GRID BLOCKS IN X, Y, AND Z in BF
+  DXYZ
+    0.5d0 10*1.d0   ! GRID DATA CARDS: GRID BLOCK DX'S
+    1.d0            ! GRID DATA CARDS: GRID BLOCK DY'S
+    1.d0            ! GRID DATA CARDS: GRID BLOCK DZ'S
+  /
+/
+
+!=========================== solver options ===================================
+NEWTON_SOLVER FLOW
+  RTOL 1.d-30       ! Turn off RTOL criteria
+  ATOL 1.d-30       ! Turn off ATOL criteria
+  STOL 1.d-30       ! Turn off STOL criteria
+  ITOL_RELATIVE_UPDATE 1.d-30  ! Turn off ITOL_RELATIVE_UPDATE criteria
+  MAXIT 20          ! Maximum newton iteration number
+/
+
+LINEAR_SOLVER FLOW  !default convergence criteria by PFLOTRAN
+
+/
+
+!=========================== fluid properties =================================
+! BF is fundamentally immiscible and PFLOTRAN is miscible. We currently do not
+! have an option to change PFLOTRAN to miscible mode.
+FLUID_PROPERTY
+  PHASE LIQUID
+  DIFFUSION_COEFFICIENT 0.d-0  ! no diffusion as BF runs on immiscible flow
+END
+
+FLUID_PROPERTY
+  PHASE GAS
+  DIFFUSION_COEFFICIENT 0.d-0  ! no diffusion as BF runs on immiscible flow
+END
+
+EOS WATER
+  DENSITY EXPONENTIAL 996.629 101320.d0 4.45d-10  ! DEN_BR in BF
+	                                              ! REFERENCE TEMPERATURE AND PRESSURE FOR DENSITY CALCULATIONS in BF
+												  ! COMPR_BR
+  VISCOSITY CONSTANT 8.5077d-4  ! VISC_BR in BF
+  ENTHALPY CONSTANT 1.8890d6    ! default water enthalpy constant. isothermal ignores this.
+/
+
+EOS GAS
+  VISCOSITY CONSTANT 9.0829d-6  ! VISC_GAS in BF
+/
+
+!=========================== material properties ==============================
+MATERIAL_PROPERTY soil
+  ID 1
+  CHARACTERISTIC_CURVES SF1
+  POROSITY 0.45             ! POROSITY in BF
+  TORTUOSITY 1.             ! always 1 in BF
+  ROCK_DENSITY 2650.d0      ! thermal parameter. isothermal ignores this.
+  THERMAL_CONDUCTIVITY_DRY 0.5   ! thermal parameter. isothermal ignores this.
+  THERMAL_CONDUCTIVITY_WET 2.    ! thermal parameter. isothermal ignores this.
+  HEAT_CAPACITY 830.             ! thermal parameter. isothermal ignores this.
+  SOIL_COMPRESSIBILITY_FUNCTION BRAGFLO  !Function used in BF
+  SOIL_COMPRESSIBILITY 1.d-8     ! COMPRES in BF
+  SOIL_REFERENCE_PRESSURE 4e6 ! 101320.d0 ! REFERENCE TEMPERATURE AND PRESSURE FOR DENSITY CALCULATIONS in BF
+  PERMEABILITY
+    PERM_ISO 1.d-17         ! PERMX, PERMY, PERMZ in BF. use PERM_ISO when uniform.
+                            ! otherwise use PERM_X, PERM_Y, PERM_Z in PFLOTRAN
+  /
+/
+
+!=========================== saturation functions =============================
+CHARACTERISTIC_CURVES SF1
+  SATURATION_FUNCTION BROOKS_COREY  !KRP = 4 in BF
+	SMOOTH              !required for convergence
+    LAMBDA 0.7D0        !LAMBDA in BF
+    ALPHA  1.20482D-5     !ALPHA = 1/(PCT_A*PERMX**PCT_EXP) for KRP = 4 in BF
+    LIQUID_RESIDUAL_SATURATION 0.2D0  !SOR = 0.2
+    MAX_CAPILLARY_PRESSURE 1.D8       !PCMAX = 1.0E+08
+  /
+  PERMEABILITY_FUNCTION BURDINE
+    LAMBDA 0.7D0                      !LAMBDA in BF
+    LIQUID_RESIDUAL_SATURATION 0.2D0  !SOR = 0.2
+  /
+  PERMEABILITY_FUNCTION BURDINE_BC_GAS
+    LAMBDA 0.7D0                      !LAMBDA in BF
+    LIQUID_RESIDUAL_SATURATION 0.2D0  !SOR = 0.2 in BF
+    GAS_RESIDUAL_SATURATION    1.D-5  !SGR = 0.00001 in BF
+  /
+END
+
+!=========================== output options ===================================
+skip
+OUTPUT
+  TIMES s 1.d6 1.d7 1.d8 1.d9 5.d9   ! USER REQUESTED PRINTOUT TIMES
+  FORMAT HDF5
+  VARIABLES
+    LIQUID_PRESSURE
+    GAS_PRESSURE
+    GAS_SATURATION
+  /
+/
+noskip
+!=========================== times ============================================
+TIME
+  FINAL_TIME 5.d9 s ! TMAX
+  INITIAL_TIMESTEP_SIZE 1.d0 s    ! DT_INIT in BF: BF units are all in seconds
+  MAXIMUM_TIMESTEP_SIZE 1000.d0 s  ! DT_MAX in BF: BF units are all in seconds
+  MAXIMUM_TIMESTEP_SIZE 1.d9 s at 5000 s   ! DT_MAX in BF: BF units are all in seconds
+/
+
+!=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    10.5d0 1.d0 21.d0
+  /
+/
+
+REGION top
+  FACE top
+  COORDINATES
+    0.d0 0.d0 21.d0
+    10.5d0 1.d0 21.d0
+  /
+/
+
+REGION injection_point
+  BLOCK 1 1 1 1 11 11   ! WELL DATA in BF
+/
+
+REGION 1
+  BLOCK 1 11 1 1 1 1
+END
+
+REGION 2
+  BLOCK 1 11 1 1 2 2
+END
+
+REGION 3
+  BLOCK 1 11 1 1 3 3
+END
+
+REGION 4
+  BLOCK 1 11 1 1 4 4
+END
+
+REGION 5
+  BLOCK 1 11 1 1 5 5
+END
+
+REGION 6
+  BLOCK 1 11 1 1 6 6
+END
+
+REGION 7
+  BLOCK 1 11 1 1 7 7
+END
+
+REGION 8
+  BLOCK 1 11 1 1 8 8
+END
+
+REGION 9
+  BLOCK 1 11 1 1 9 9
+END
+
+REGION 10
+  BLOCK 1 11 1 1 10 10
+END
+
+REGION 11
+  BLOCK 1 11 1 1 11 11
+END
+
+REGION 12
+  BLOCK 1 11 1 1 12 12
+END
+
+REGION 13
+  BLOCK 1 11 1 1 13 13
+END
+
+REGION 14
+  BLOCK 1 11 1 1 14 14
+END
+
+REGION 15
+  BLOCK 1 11 1 1 15 15
+END
+
+REGION 16
+  BLOCK 1 11 1 1 16 16
+END
+
+REGION 17
+  BLOCK 1 11 1 1 17 17
+END
+
+REGION 18
+  BLOCK 1 11 1 1 18 18
+END
+
+REGION 19
+  BLOCK 1 11 1 1 19 19
+END
+
+REGION 20
+  BLOCK 1 11 1 1 20 20
+END
+
+REGION 21
+  BLOCK 1 11 1 1 21 21
+END
+
+!=========================== flow conditions ==================================
+! GRID BLOCK BRINE PRESSURE INITIAL CONDITIONS in BF
+! GRID BLOCK BRINE SATURATION INITIAL CONDITIONS in BF
+! undefined boundary condition in both BF and PFLOTRAN is defined to be NEUMANN no-flow
+FLOW_CONDITION 1
+  TYPE
+
+    GAS_PRESSURE dirichlet  ! later defines these as initial conditions below
+    LIQUID_SATURATION dirichlet
+    TEMPERATURE dirichlet
+  /
+  GAS_PRESSURE 4.08320E+06
+  LIQUID_SATURATION 9.999900e-01
+  TEMPERATURE 25.d0  !isothermal ignores this
+END
+
+FLOW_CONDITION 2
+  TYPE
+
+    GAS_PRESSURE dirichlet
+    LIQUID_SATURATION dirichlet
+    TEMPERATURE dirichlet
+  /
+  GAS_PRESSURE 4.07340E+06
+  LIQUID_SATURATION 9.999900e-01
+  TEMPERATURE 25.d0
+END
+
+FLOW_CONDITION 3
+  TYPE
+
+    GAS_PRESSURE dirichlet
+    LIQUID_SATURATION dirichlet
+    TEMPERATURE dirichlet
+  /
+  GAS_PRESSURE 4.06360E+06
+  LIQUID_SATURATION 9.999900e-01
+  TEMPERATURE 25.d0
+END
+
+FLOW_CONDITION 4
+  TYPE
+
+    GAS_PRESSURE dirichlet
+    LIQUID_SATURATION dirichlet
+    TEMPERATURE dirichlet
+  /
+  GAS_PRESSURE 4.05380E+06
+  LIQUID_SATURATION 9.999900e-01
+  TEMPERATURE 25.d0
+END
+
+FLOW_CONDITION 5
+  TYPE
+
+    GAS_PRESSURE dirichlet
+    LIQUID_SATURATION dirichlet
+    TEMPERATURE dirichlet
+  /
+  GAS_PRESSURE 4.04400E+06
+  LIQUID_SATURATION 9.999900e-01
+  TEMPERATURE 25.d0
+END
+
+FLOW_CONDITION 6
+  TYPE
+
+    GAS_PRESSURE dirichlet
+    LIQUID_SATURATION dirichlet
+    TEMPERATURE dirichlet
+  /
+  GAS_PRESSURE 4.03420E+06
+  LIQUID_SATURATION 9.999900e-01
+  TEMPERATURE 25.d0
+END
+
+FLOW_CONDITION 7
+  TYPE
+
+    GAS_PRESSURE dirichlet
+    LIQUID_SATURATION dirichlet
+    TEMPERATURE dirichlet
+  /
+  GAS_PRESSURE 4.02440E+06
+  LIQUID_SATURATION 9.999900e-01
+  TEMPERATURE 25.d0
+END
+
+FLOW_CONDITION 8
+  TYPE
+
+    GAS_PRESSURE dirichlet
+    LIQUID_SATURATION dirichlet
+    TEMPERATURE dirichlet
+  /
+  GAS_PRESSURE 4.01470E+06
+  LIQUID_SATURATION 9.999900e-01
+  TEMPERATURE 25.d0
+END
+
+FLOW_CONDITION 9
+  TYPE
+
+    GAS_PRESSURE dirichlet
+    LIQUID_SATURATION dirichlet
+    TEMPERATURE dirichlet
+  /
+  GAS_PRESSURE 4.00490E+06
+  LIQUID_SATURATION 9.999900e-01
+  TEMPERATURE 25.d0
+END
+
+FLOW_CONDITION 10
+  TYPE
+
+    GAS_PRESSURE dirichlet
+    LIQUID_SATURATION dirichlet
+    TEMPERATURE dirichlet
+  /
+  GAS_PRESSURE 3.99510E+06
+  LIQUID_SATURATION 9.999900e-01
+  TEMPERATURE 25.d0
+END
+
+FLOW_CONDITION 11
+  TYPE
+
+    GAS_PRESSURE dirichlet
+    LIQUID_SATURATION dirichlet
+    TEMPERATURE dirichlet
+  /
+  GAS_PRESSURE 3.98530E+06
+  LIQUID_SATURATION 9.999900e-01
+  TEMPERATURE 25.d0
+END
+
+FLOW_CONDITION 12
+  TYPE
+
+    GAS_PRESSURE dirichlet
+    LIQUID_SATURATION dirichlet
+    TEMPERATURE dirichlet
+  /
+  GAS_PRESSURE 3.97552E+06
+  LIQUID_SATURATION 9.999800e-01
+  TEMPERATURE 25.d0
+END
+
+FLOW_CONDITION 13
+  TYPE
+
+    GAS_PRESSURE dirichlet
+    LIQUID_SATURATION dirichlet
+    TEMPERATURE dirichlet
+  /
+  GAS_PRESSURE 3.9657E+06
+  LIQUID_SATURATION 9.972900e-01
+  TEMPERATURE 25.d0
+END
+
+FLOW_CONDITION 14
+  TYPE
+
+    GAS_PRESSURE dirichlet
+    LIQUID_SATURATION dirichlet
+    TEMPERATURE dirichlet
+  /
+  GAS_PRESSURE 3.9559E+06
+  LIQUID_SATURATION 9.919200e-01
+  TEMPERATURE 25.d0
+END
+
+FLOW_CONDITION 15
+  TYPE
+
+    GAS_PRESSURE dirichlet
+    LIQUID_SATURATION dirichlet
+    TEMPERATURE dirichlet
+  /
+  GAS_PRESSURE 3.9461E+06
+  LIQUID_SATURATION 9.866300e-01
+  TEMPERATURE 25.d0
+END
+
+FLOW_CONDITION 16
+  TYPE
+
+    GAS_PRESSURE dirichlet
+    LIQUID_SATURATION dirichlet
+    TEMPERATURE dirichlet
+  /
+  GAS_PRESSURE 3.9363E+06
+  LIQUID_SATURATION 9.814300e-01
+  TEMPERATURE 25.d0
+END
+
+FLOW_CONDITION 17
+  TYPE
+
+    GAS_PRESSURE dirichlet
+    LIQUID_SATURATION dirichlet
+    TEMPERATURE dirichlet
+  /
+  GAS_PRESSURE 3.9265E+06
+  LIQUID_SATURATION 9.763100e-01
+  TEMPERATURE 25.d0
+END
+
+FLOW_CONDITION 18
+  TYPE
+
+    GAS_PRESSURE dirichlet
+    LIQUID_SATURATION dirichlet
+    TEMPERATURE dirichlet
+  /
+  GAS_PRESSURE 3.9167E+06
+  LIQUID_SATURATION 9.712700e-01
+  TEMPERATURE 25.d0
+END
+
+FLOW_CONDITION 19
+  TYPE
+
+    GAS_PRESSURE dirichlet
+    LIQUID_SATURATION dirichlet
+    TEMPERATURE dirichlet
+  /
+  GAS_PRESSURE 3.9069E+06
+  LIQUID_SATURATION 9.663100e-01
+  TEMPERATURE 25.d0
+END
+
+FLOW_CONDITION 20
+  TYPE
+
+    GAS_PRESSURE dirichlet
+    LIQUID_SATURATION dirichlet
+    TEMPERATURE dirichlet
+  /
+  GAS_PRESSURE 3.8971E+06
+  LIQUID_SATURATION 9.614300e-01
+  TEMPERATURE 25.d0
+END
+
+FLOW_CONDITION 21
+  TYPE
+
+    GAS_PRESSURE dirichlet
+    LIQUID_SATURATION dirichlet
+    TEMPERATURE dirichlet
+  /
+  GAS_PRESSURE 3.8873E+06
+  LIQUID_SATURATION 9.566200e-01
+  TEMPERATURE 25.d0
+END
+
+!=========================== condition couplers ===============================
+INITIAL_CONDITION
+  FLOW_CONDITION 1
+  REGION 1
+END
+
+INITIAL_CONDITION
+  FLOW_CONDITION 2
+  REGION 2
+END
+
+INITIAL_CONDITION
+  FLOW_CONDITION 3
+  REGION 3
+END
+
+INITIAL_CONDITION
+  FLOW_CONDITION 4
+  REGION 4
+END
+
+INITIAL_CONDITION
+  FLOW_CONDITION 5
+  REGION 5
+END
+
+INITIAL_CONDITION
+  FLOW_CONDITION 6
+  REGION 6
+END
+
+INITIAL_CONDITION
+  FLOW_CONDITION 7
+  REGION 7
+END
+
+INITIAL_CONDITION
+  FLOW_CONDITION 8
+  REGION 8
+END
+
+INITIAL_CONDITION
+  FLOW_CONDITION 9
+  REGION 9
+END
+
+INITIAL_CONDITION
+  FLOW_CONDITION 10
+  REGION 10
+END
+
+INITIAL_CONDITION
+  FLOW_CONDITION 11
+  REGION 11
+END
+
+INITIAL_CONDITION
+  FLOW_CONDITION 12
+  REGION 12
+END
+
+INITIAL_CONDITION
+  FLOW_CONDITION 13
+  REGION 13
+END
+
+INITIAL_CONDITION
+  FLOW_CONDITION 14
+  REGION 14
+END
+
+INITIAL_CONDITION
+  FLOW_CONDITION 15
+  REGION 15
+END
+
+INITIAL_CONDITION
+  FLOW_CONDITION 16
+  REGION 16
+END
+
+INITIAL_CONDITION
+  FLOW_CONDITION 17
+  REGION 17
+END
+
+INITIAL_CONDITION
+  FLOW_CONDITION 18
+  REGION 18
+END
+
+INITIAL_CONDITION
+  FLOW_CONDITION 19
+  REGION 19
+END
+
+INITIAL_CONDITION
+  FLOW_CONDITION 20
+  REGION 20
+END
+
+INITIAL_CONDITION
+  FLOW_CONDITION 21
+  REGION 21
+END
+
+SOURCE_SINK_SANDBOX
+  WIPP-GAS_GENERATION
+    REGION injection_point
+    INUNDATED_CORROSION_RATE 3d-7  ! RATE CONSTANTS: CORROSION (RKCOR) in BF
+    INUNDATED_DEGRADATION_RATE 1.5d-6  ! BIODEGRADATION (RKBIO) in BF
+    HUMID_CORROSION_FACTOR 1.0d-3  ! HUMIDITY FACTORS: HUMFAC_COR
+    HUMID_DEGREDATION_FACTOR 0.2d0  ! HUMFAC_BIO
+    H2_FE_RATIO 1.3081d0  ! S_H2
+    H2_CH2O_RATIO 1.1100d0  ! RATE COEFFICIENTS: RXH2S
+  /
+/
+
+!=========================== stratigraphy couplers ============================
+STRATA
+  MATERIAL soil
+  REGION all
+/
+
+END_SUBSURFACE
