@@ -553,7 +553,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   do
     if (.not.associated(strata)) exit
     ! pointer to region
-    if (len_trim(strata%region_name) > 1) then
+    if (len_trim(strata%region_name) > 0) then
       strata%region => RegionGetPtrFromList(strata%region_name, &
                                                   patch%region_list)
       if (.not.associated(strata%region)) then
