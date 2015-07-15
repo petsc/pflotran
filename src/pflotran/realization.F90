@@ -731,6 +731,12 @@ subroutine RealProcessMatPropAndSatFunc(realization)
                              cur_material_property%saturation_function_name, &
                              cur_material_property%name,option)
       endif
+      if (cur_material_property%saturation_function_id == 0) then
+        option%io_buffer = 'Characteristic curve "' // &
+          trim(cur_material_property%saturation_function_name) // &
+          '" not found.'
+        call printErrMsg(option)
+      endif
     endif
     
     ! if named, link dataset to property
