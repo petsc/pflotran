@@ -1,0 +1,174 @@
+! 9.6 Test Case #6-e. Redlich-Kwong-Soave equation of state for gas density.
+! EOS Redlich-Kwong-Soave test case. 
+! run in immiscible mode of pflotran.
+! uncomment gen_auxvar%xmol(acid,lid) = 1.d-10 in general_aux.F90
+! For more descriptions of the problem please read case_6-e.docx
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE GENERAL
+      OPTIONS
+        !  WINDOW_EPSILON 1.d-4
+        ISOTHERMAL
+        TWO_PHASE_ENERGY_DOF TEMPERATURE
+        GAS_COMPONENT_FORMULA_WEIGHT 2.01588D0 ! kg/kmol
+        MAXIMUM_PRESSURE_CHANGE 1.0D6
+	TOUGH2_ITOL_SCALED_RESIDUAL 1.d-5
+      /
+    /
+  /
+END
+
+SUBSURFACE
+
+REGRESSION
+  CELLS
+    1
+  /
+END
+
+NEWTON_SOLVER FLOW
+  RTOL 1.d-30       ! Turn off RTOL criteria
+  ATOL 1.d-30       ! Turn off ATOL criteria
+  STOL 1.d-30       ! Turn off STOL criteria
+  ITOL_RELATIVE_UPDATE 1.d-30  ! Turn off ITOL_RELATIVE_UPDATE criteria
+  MAXIT 20          ! Maximum newton iteration number
+/
+
+!=========================== discretization ===================================
+GRID
+  TYPE structured
+  NXYZ 1 1 1
+  DXYZ
+    10.d0
+    10.d0
+    10.d0
+  /
+/
+!=========================== flow mode ========================================
+!=========================== times ============================================
+TIME
+  FINAL_TIME 1.d5 s ! 0.317... y
+  INITIAL_TIMESTEP_SIZE 1.d0 s
+  MAXIMUM_TIMESTEP_SIZE 1.d4 s
+/
+!=========================== output options ===================================
+skip
+OUTPUT
+!  PERIODIC_OBSERVATION TIMESTEP 1
+  TIMES s 2.d4 4.d4 6.d4 8.d4
+  FORMAT HDF5
+/
+noskip
+!=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 0.d-0
+/
+
+EOS WATER
+  DENSITY CONSTANT 996.629 ! 101325.d0 4.45d-10
+  VISCOSITY CONSTANT 8.5077d-4
+  ENTHALPY CONSTANT 1.8890d6
+/
+
+EOS GAS
+  DENSITY RKS
+    HYDROGEN
+    TC 41.67
+    PC 2.1029d6
+    AC 0.00
+    A 0.42747
+    B 0.08664
+  END
+  VISCOSITY CONSTANT 9.0829d-6
+/
+
+FLOW_CONDITION well  ! INJQ in BF
+  TYPE
+    RATE mass_rate
+  /
+  RATE 0.d0 1.d-3 0.d0
+/
+
+!=========================== material properties ==============================
+MATERIAL_PROPERTY soil
+  ID 1
+  TORTUOSITY 1.d0
+  POROSITY 3.0000d-01
+  ROCK_DENSITY 999.d0
+  THERMAL_CONDUCTIVITY_DRY 0.999d0
+  THERMAL_CONDUCTIVITY_WET 0.999d0
+  HEAT_CAPACITY 999.d0
+  SOIL_COMPRESSIBILITY_FUNCTION BRAGFLO
+  SOIL_COMPRESSIBILITY 0.0d0
+  SOIL_REFERENCE_PRESSURE 101325.d0
+  CHARACTERISTIC_CURVES SF_BH_OPEN
+  PERMEABILITY
+    PERM_ISO_LOG10 -15.d0
+  /
+END
+
+!=========================== saturation functions =============================
+CHARACTERISTIC_CURVES SF_BH_OPEN
+  SATURATION_FUNCTION LINEAR
+    ALPHA  1.d30
+    LIQUID_RESIDUAL_SATURATION 0.00000d+00
+    MAX_CAPILLARY_PRESSURE 1.00000d+08
+  /
+  PERMEABILITY_FUNCTION BURDINE_LINEAR_LIQ
+    LIQUID_RESIDUAL_SATURATION 0.00000d+00
+  /
+  PERMEABILITY_FUNCTION BURDINE_LINEAR_GAS
+    LIQUID_RESIDUAL_SATURATION 0.00000d+00
+    GAS_RESIDUAL_SATURATION    0.00000d+00
+  /
+END
+
+SOURCE_SINK well
+  FLOW_CONDITION well
+  REGION injection_point
+/
+
+REGION injection_point
+  BLOCK 1 1 1 1 1 1
+/
+
+!=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    10.d0 10.d0 10.d0
+  /
+/
+
+REGION 1
+  BLOCK 1 1 1 1 1 1
+END
+
+!=========================== flow conditions ==================================
+FLOW_CONDITION 1
+  TYPE
+    GAS_PRESSURE dirichlet
+    LIQUID_SATURATION dirichlet
+    TEMPERATURE dirichlet
+  /
+  GAS_PRESSURE 1.00E+06
+  LIQUID_SATURATION 9.0000e-01
+  TEMPERATURE 25.d0
+END
+
+!=========================== condition couplers ===============================
+INITIAL_CONDITION
+  FLOW_CONDITION 1
+  REGION 1
+END
+
+!=========================== stratigraphy couplers ============================
+STRATA
+  MATERIAL soil
+  REGION all
+/
+
+END_SUBSURFACE

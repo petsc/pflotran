@@ -1,0 +1,197 @@
+! Test case #1. Pressure drawdown with radial grid
+! For more descriptions of the problem please read case_1.docx
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS    ! single phase
+    /
+  /
+END
+
+SUBSURFACE    ! subsurface description card
+
+REGRESSION
+  CELLS_PER_PROCESS 10
+  CELLS
+    1
+    50
+  /
+END
+
+!=========================== discretization ===================================
+GRID
+  TYPE structured cylindrical
+  NXYZ 50 1 1    ! 1D radial problem
+  DXYZ
+  0.1000000E-01  0.1300000E-01  0.1690000E-01  0.2197000E-01  0.2856100E-01 \
+  0.3712929E-01  0.4826808E-01  0.6274850E-01  0.8157305E-01  0.1060450E+00 \
+  0.1378584E+00  0.1792160E+00  0.2329807E+00  0.3028749E+00  0.3937374E+00 \
+  0.5118586E+00  0.6654161E+00  0.8650409E+00  0.1124553E+01  0.1461919E+01 \
+  0.1900495E+01  0.2470643E+01  0.3211836E+01  0.4175386E+01  0.5428001E+01 \
+  0.7056402E+01  0.9173322E+01  0.1192532E+02  0.1550291E+02  0.2015379E+02 \
+  0.2619992E+02  0.3405989E+02  0.4427786E+02  0.5756122E+02  0.7482958E+02 \
+  0.9727845E+02  0.1264620E+03  0.1644006E+03  0.2137207E+03  0.2778369E+03 \
+  0.3611880E+03  0.4695444E+03  0.6104077E+03  0.7935300E+03  0.1031589E+04 \
+  0.1341066E+04  0.1743385E+04  0.2266401E+04  0.2946321E+04  0.3830217E+04
+  1.0
+  1.0
+  END
+END
+
+!=========================== material properties ==============================
+MATERIAL_PROPERTY soil1    ! subsurface soil property
+  ID 1
+  POROSITY 0.1d0
+  TORTUOSITY 1.d0
+  PERMEABILITY
+    PERM_ISO 1.8d-11
+  /
+  CHARACTERISTIC_CURVES SF1
+END
+
+!=========================== material properties ==============================
+CHARACTERISTIC_CURVES SF1
+  SATURATION_FUNCTION BROOKS_COREY
+    SMOOTH
+    LAMBDA 0.7D0
+    ALPHA  1.D30
+    LIQUID_RESIDUAL_SATURATION 2.00E-01
+    MAX_CAPILLARY_PRESSURE  1.d8
+  /
+  PERMEABILITY_FUNCTION BURDINE_BC_LIQ
+    LAMBDA 0.7D0
+    LIQUID_RESIDUAL_SATURATION 2.00E-01
+  /
+  PERMEABILITY_FUNCTION BURDINE_BC_GAS
+    LAMBDA 0.7D0
+    LIQUID_RESIDUAL_SATURATION 2.00E-01
+    GAS_RESIDUAL_SATURATION    0.0d+0
+  /
+END
+
+
+!=========================== output options ===================================
+skip
+OUTPUT
+  FORMAT HDF5
+  TIMES s   0.             10.             19.99990217     32.99977658 \
+           49.8996174      71.8693947     100.43012096    137.5590588  \
+          185.82664642    248.57454189    330.14671448    436.19062406 \
+          574.04802207    753.26203992    986.24086269   1289.11292206 \
+         1682.84653612   2194.70058153   2860.11065122   3725.14418362 \
+         4849.68802818   5000.           5010.00039131   5020.00078261 \
+         5032.99908232   5049.90097435   5071.87090943   5100.42993162 \
+         5137.55981616   5185.82614151   5248.57394231   5330.1486079  \
+         5436.19251747   5574.04896878   5753.26393333   5986.24244054 \
+         6289.11323763   6682.84590498   7194.70247495   7860.1119135  \
+         8725.14418362   9849.68802818  10000.
+END
+noskip
+
+OBSERVATION
+  REGION obspoint
+END
+
+
+!=========================== times ============================================
+TIME
+  FINAL_TIME 1.d5 s
+  INITIAL_TIMESTEP_SIZE 1.0 s
+  MAXIMUM_TIMESTEP_SIZE 1.d3 s 
+END
+
+!=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    16597.57597492 1.d0 1.d0
+  /
+END
+
+REGION top
+  FACE top
+  COORDINATES
+    0.d0 0.d0 1.d0
+    16597.57597492 1.d0 1.d0
+  /
+END
+
+REGION center
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.0d0 1.d0 1.d0
+  /
+END
+
+REGION outside
+  FACE east
+  COORDINATES
+    16597.57597492 0.d0 0.d0
+    16597.57597492 1.d0 1.d0
+  /
+END
+
+REGION obspoint
+  COORDINATES
+  100.0  0.0 0.5
+/
+END
+
+EOS WATER
+  !             DENSITY BRINE REF. PRESSURE COMPRESSIBILITY
+  DENSITY EXPONENTIAL 1.2300d+03 101320.d0 2.5000E-10 
+  VISCOSITY CONSTANT 1.80000E-03  ! VISC_BR in BF
+  ENTHALPY CONSTANT 1.8890d6    ! default water enthalpy constant. RICHARDS ignores this.
+/
+!=========================== flow conditions ==================================
+FLOW_CONDITION initial
+  TYPE
+    PRESSURE hydrostatic
+  /
+  DATUM 0. 0. 0.
+  PRESSURE 1.d7
+END
+
+FLOW_CONDITION well
+  TYPE
+    RATE mass_rate
+  /
+  RATE LIST
+    TIME_UNITS s
+    DATA_UNITS kg/s
+    0.d0 -12.33
+    5.d3  0.d0
+  /
+END
+
+FLOW_CONDITION farfield
+  TYPE
+    FLUX neumann
+  /
+  FLUX 0.d0
+END
+
+!=========================== condition couplers ===============================
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  REGION all
+END
+
+BOUNDARY_CONDITION outlet
+  FLOW_CONDITION initial
+  REGION outside
+END
+
+SOURCE_SINK well
+  FLOW_CONDITION well
+  REGION center
+END
+
+!=========================== stratigraphy couplers ============================
+STRATA
+  REGION all
+  MATERIAL soil1
+END
+
+END_SUBSURFACE
