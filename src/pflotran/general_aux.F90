@@ -608,45 +608,6 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
                        (cell_pressure / gen_auxvar%den(lid) * &
                         1.d-6)
 
-#if 1     
-  ! Gas phase thermodynamic properties
-  ! we cannot use %pres(vpid) as vapor pressre in the liquid phase, since
-  ! it can go negative
-  if (global_auxvar%istate /= LIQUID_STATE) then
-    if (global_auxvar%istate == GAS_STATE) then
-      water_vapor_pressure = gen_auxvar%pres(vpid)
-    else
-      water_vapor_pressure = gen_auxvar%pres(spid)
-    endif
-    call EOSGasDensityEnergy(gen_auxvar%temp,gen_auxvar%pres(apid),den_air, &
-                             h_air,u_air,ierr)
-    h_air = h_air * 1.d-6
-    u_air = u_air * 1.d-6
-    call EOSWaterSteamDensityEnthalpy(gen_auxvar%temp,water_vapor_pressure, &
-                                      den_kg_water_vapor,den_water_vapor, &
-                                      h_water_vapor,ierr)
-    h_water_vapor = h_water_vapor * 1.d-6                                  
-    gen_auxvar%den(gid) = den_water_vapor + den_air
-    gen_auxvar%den_kg(gid) = den_kg_water_vapor + den_air*fmw_comp(gid)
-    ! if xmol not set for gas phase, as is the case for LIQUID_STATE, 
-    ! set based on densities
-!    if (gen_auxvar%xmol(acid,gid) < 1.d-40) then
-!      xmol_air_in_gas = den_air / gen_auxvar%den(gid)
-!      xmol_water_in_gas = 1.d0 - gen_auxvar%xmol(acid,gid)
-!    else
-      xmol_air_in_gas = gen_auxvar%xmol(acid,gid)
-      xmol_water_in_gas = gen_auxvar%xmol(wid,gid)
-!    endif
-    ! MJ/kmol
-    gen_auxvar%H(gid) = xmol_water_in_gas*h_water_vapor + &
-                        xmol_air_in_gas*h_air
-                        ! Pa / kmol/m^3 * 1.e-6 = MJ/kmol
-    gen_auxvar%U(gid) = xmol_water_in_gas * &
-                          (h_water_vapor - &
-                           water_vapor_pressure / den_water_vapor * 1.d-6) + &
-                        xmol_air_in_gas * u_air
-  endif ! istate /= LIQUID_STATE
-#else
   ! Gas phase thermodynamic properties
   ! we cannot use %pres(vpid) as vapor pressre in the liquid phase, since
   ! it can go negative
@@ -703,7 +664,6 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
                         ! Pa / kmol/m^3 * 1.e-6 = MJ/kmol
                         gen_auxvar%pres(gid)/gen_auxvar%den(gid) * 1.d-6
   endif ! istate /= LIQUID_STATE
-#endif
   
   if (global_auxvar%istate == LIQUID_STATE .or. &
       global_auxvar%istate == TWO_PHASE_STATE) then
