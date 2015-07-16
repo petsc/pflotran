@@ -17,7 +17,11 @@ module General_Aux_module
   PetscReal, public :: general_tough2_itol_scaled_res_e2 = 1.d0
   PetscBool, public :: general_tough2_conv_criteria = PETSC_FALSE
   PetscInt, public :: general_debug_cell_id = UNINITIALIZED_INTEGER
+#if defined(MATCH_TOUGH2)
+  PetscBool, public :: general_temp_dep_gas_air_diff = PETSC_FALSE
+#else
   PetscBool, public :: general_temp_dep_gas_air_diff = PETSC_TRUE
+#endif
 
   ! thermodynamic state of fluid ids
   PetscInt, parameter, public :: NULL_STATE = 0

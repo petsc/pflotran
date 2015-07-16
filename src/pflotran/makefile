@@ -17,6 +17,10 @@ ifneq (,$(filter libpflotranchem.a pflotran_rxn,$(MAKECMDGOALS)))
   PFLOTRAN_RXN_FLAG := 1
 endif
 
+ifdef tough2
+  MYFLAGS += ${FC_DEFINE_FLAG}MATCH_TOUGH2
+endif
+
 ifdef uo2
   MYFLAGS += ${FC_DEFINE_FLAG}COMPUTE_INTERNAL_MASS_FLUX
 endif
@@ -581,8 +585,8 @@ gauss.o : grid_unstructured_cell.o pflotran_constants.o utility.o
 general.o : connection.o coupler.o debug.o discretization.o eos_gas.o \
             eos_water.o field.o fluid.o general_aux.o global_aux.o grid.o \
             material.o material_aux.o option.o output_aux.o output_tecplot.o \
-            patch.o pflotran_constants.o realization.o saturation_function.o \
-            srcsink_sandbox.o srcsink_sandbox_base.o \
+            patch.o pflotran_constants.o realization.o realization_base.o \
+            saturation_function.o srcsink_sandbox.o srcsink_sandbox_base.o \
             srcsink_sandbox_wipp_gas.o srcsink_sandbox_wipp_well.o variables.o \
             wipp.o
 general_aux.o : characteristic_curves.o eos_gas.o eos_water.o global_aux.o \
