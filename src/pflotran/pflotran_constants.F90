@@ -35,8 +35,12 @@ module PFLOTRAN_Constants_module
 
   ! constants
   PetscReal, parameter, public :: H2O_CRITICAL_TEMPERATURE = 647.3d0  ! K
+#if defined(MATCH_TOUGH2)
+  PetscReal, parameter, public :: H2O_CRITICAL_PRESSURE = 22.12d6 ! Pa
+#else
   PetscReal, parameter, public :: H2O_CRITICAL_PRESSURE = 22.064d6 ! Pa
-  
+#endif
+
   ! conversion factors
   PetscReal, parameter, public :: LOG_TO_LN = 2.30258509299d0
   PetscReal, parameter, public :: LN_TO_LOG = 0.434294481904d0  

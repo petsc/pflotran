@@ -27,7 +27,11 @@ module EOS_Gas_module
 
   ! This is the offset added to temperature [C] used to calculate the energy
   ! equation of state.  Swithing between 0. and 273.15 greatly changes results.
+#if defined(MATCH_TOUGH2)
+  PetscReal, parameter :: T_energy_offset = 0.d0
+#else
   PetscReal, parameter :: T_energy_offset = 273.15d0
+#endif
 
   ! In order to support generic EOS subroutines, we need the following:
   ! 1. An interface declaration that defines the argument list (best to have 

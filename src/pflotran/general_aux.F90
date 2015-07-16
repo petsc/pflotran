@@ -16,6 +16,8 @@ module General_Aux_module
   PetscReal, public :: general_tough2_itol_scaled_res_e1 = 1.d-5
   PetscReal, public :: general_tough2_itol_scaled_res_e2 = 1.d0
   PetscBool, public :: general_tough2_conv_criteria = PETSC_FALSE
+  PetscInt, public :: general_debug_cell_id = UNINITIALIZED_INTEGER
+  PetscBool, public :: general_temp_dep_gas_air_diff = PETSC_TRUE
 
   ! thermodynamic state of fluid ids
   PetscInt, parameter, public :: NULL_STATE = 0
@@ -326,7 +328,8 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
 
   PetscInt :: gid, lid, acid, wid, eid
   PetscReal :: cell_pressure, water_vapor_pressure
-  PetscReal :: den_water_vapor, den_kg_water_vapor, h_water_vapor
+  PetscReal :: den_water_vapor, den_kg_water_vapor
+  PetscReal :: u_water_vapor, h_water_vapor
   PetscReal :: den_air, h_air, u_air
   PetscReal :: xmol_air_in_gas, xmol_water_in_gas
   PetscReal :: krl, visl, dkrl_Se
@@ -336,6 +339,12 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   PetscInt :: apid, cpid, vpid, spid
   PetscReal :: NaN
   PetscReal :: creep_closure_time
+  PetscReal :: xmass_air_in_gas
+  PetscReal :: xmass_air_in_liquid
+  PetscReal :: Ugas_J_kg, Hgas_J_kg
+  PetscReal :: Uair_J_kg, Hair_J_kg
+  PetscReal :: Uvapor_J_kg, Hvapor_J_kg
+  PetscReal :: Hg_mixture_fractioned  
   character(len=8) :: state_char
   PetscErrorCode :: ierr
 
@@ -593,6 +602,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
                        (cell_pressure / gen_auxvar%den(lid) * &
                         1.d-6)
 
+#if 1     
   ! Gas phase thermodynamic properties
   ! we cannot use %pres(vpid) as vapor pressre in the liquid phase, since
   ! it can go negative
@@ -630,6 +640,62 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
                            water_vapor_pressure / den_water_vapor * 1.d-6) + &
                         xmol_air_in_gas * u_air
   endif ! istate /= LIQUID_STATE
+#else
+  ! Gas phase thermodynamic properties
+  ! we cannot use %pres(vpid) as vapor pressre in the liquid phase, since
+  ! it can go negative
+  if (global_auxvar%istate /= LIQUID_STATE) then
+    if (global_auxvar%istate == GAS_STATE) then
+      water_vapor_pressure = gen_auxvar%pres(vpid)
+    else
+      water_vapor_pressure = gen_auxvar%pres(spid)
+    endif
+    call EOSGasDensityEnergy(gen_auxvar%temp,gen_auxvar%pres(apid),den_air, &
+                             h_air,u_air,ierr)
+    h_air = h_air * 1.d-6 ! J/kmol -> MJ/kmol
+    u_air = u_air * 1.d-6 ! J/kmol -> MJ/kmol
+    call EOSWaterSteamDensityEnthalpy(gen_auxvar%temp,water_vapor_pressure, &
+                                      den_kg_water_vapor,den_water_vapor, &
+                                      h_water_vapor,ierr)
+    u_water_vapor = h_water_vapor - &
+                    ! Pa / kmol/m^3 = J/kmol
+                    water_vapor_pressure / den_water_vapor
+    h_water_vapor = h_water_vapor * 1.d-6 ! J/kmol -> MJ/kmol
+    u_water_vapor = u_water_vapor * 1.d-6 ! J/kmol -> MJ/kmol
+    gen_auxvar%den(gid) = den_water_vapor + den_air
+    gen_auxvar%den_kg(gid) = den_kg_water_vapor + den_air*fmw_comp(gid)
+    ! if xmol not set for gas phase, as is the case for LIQUID_STATE, 
+    ! set based on densities
+!    if (gen_auxvar%xmol(acid,gid) < 1.d-40) then
+!      xmol_air_in_gas = den_air / gen_auxvar%den(gid)
+!      xmol_water_in_gas = 1.d0 - gen_auxvar%xmol(acid,gid)
+!    else
+      xmol_air_in_gas = gen_auxvar%xmol(acid,gid)
+      xmol_water_in_gas = gen_auxvar%xmol(wid,gid)
+!    endif
+      
+    xmass_air_in_gas = xmol_air_in_gas*fmw_comp(gid) / &
+                       (xmol_water_in_gas*FMWH2O + &
+                        xmol_air_in_gas*fmw_comp(gid))
+    Hair_J_kg = h_air*1.d6/fmw_comp(gid)
+    Uair_J_kg = u_air*1.d6/fmw_comp(gid)
+    Hvapor_J_kg = h_water_vapor*1.d6/FMWH2O
+    Uvapor_J_kg = u_water_vapor*1.d6/FMWH2O
+    Ugas_J_kg = xmass_air_in_gas*Uair_J_kg + &
+                (1.d0-xmass_air_in_gas)*Uvapor_J_kg
+    Hgas_J_kg = Ugas_J_kg + &
+                gen_auxvar%pres(gid)/gen_auxvar%den_kg(gid)
+    
+    ! MJ/kmol
+    gen_auxvar%U(gid) = xmol_water_in_gas * u_water_vapor + &
+                        xmol_air_in_gas * u_air
+    Hg_mixture_fractioned = xmol_water_in_gas*h_water_vapor + &
+                            xmol_air_in_gas*h_air
+    gen_auxvar%H(gid) = gen_auxvar%U(gid) + &
+                        ! Pa / kmol/m^3 * 1.e-6 = MJ/kmol
+                        gen_auxvar%pres(gid)/gen_auxvar%den(gid) * 1.d-6
+  endif ! istate /= LIQUID_STATE
+#endif
   
   if (global_auxvar%istate == LIQUID_STATE .or. &
       global_auxvar%istate == TWO_PHASE_STATE) then

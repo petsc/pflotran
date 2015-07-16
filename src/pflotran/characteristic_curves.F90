@@ -1597,7 +1597,7 @@ subroutine SF_VG_CapillaryPressure(this,liquid_saturation, &
   pc_alpha_n = one_plus_pc_alpha_n - 1.d0
   pc_alpha = pc_alpha_n**(1.d0/n)
   capillary_pressure = pc_alpha/this%alpha  
-#if defined(TOUGH2_PCAP_CLIPPING)
+#if defined(MATCH_TOUGH2)
   if (liquid_saturation > 0.999d0) then
     capillary_pressure = capillary_pressure*(1.d0-liquid_saturation)/0.001d0
   endif
@@ -1867,7 +1867,7 @@ subroutine SF_BC_CapillaryPressure(this,liquid_saturation, &
     endif
   endif
   capillary_pressure = (Se**(-1.d0/this%lambda))/this%alpha
-#if defined(TOUGH2_PCAP_CLIPPING)
+#if defined(MATCH_TOUGH2)
   if (liquid_saturation > 0.999d0) then
     capillary_pressure = capillary_pressure*(1.d0-liquid_saturation)/0.001d0
   endif
@@ -2029,7 +2029,7 @@ subroutine SF_Linear_CapillaryPressure(this,liquid_saturation, &
   
   Se = (liquid_saturation-this%Sr)/(1.d0-this%Sr)
   capillary_pressure = (1.d0/this%alpha-this%pcmax)*Se + this%pcmax
-#if defined(TOUGH2_PCAP_CLIPPING)
+#if defined(MATCH_TOUGH2)
   if (liquid_saturation > 0.999d0) then
     capillary_pressure = capillary_pressure*(1.d0-liquid_saturation)/0.001d0
   endif
@@ -2168,7 +2168,7 @@ subroutine SF_BF_KRP9_CapillaryPressure(this,liquid_saturation, &
   
   Se = (1.d0-liquid_saturation)/(liquid_saturation)
   capillary_pressure = 3783.0145d0*Se**(1.d0/2.9d0)
-#if defined(TOUGH2_PCAP_CLIPPING)
+#if defined(MATCH_TOUGH2)
   if (liquid_saturation > 0.999d0) then
     capillary_pressure = capillary_pressure*(1.d0-liquid_saturation)/0.001d0
   endif

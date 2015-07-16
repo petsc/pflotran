@@ -196,6 +196,11 @@ subroutine PMGeneralRead(this,input)
         call InputErrorMsg(input,option, &
                            'maximum allowable mole fraction change', &
                            'GENERAL_MODE')
+      case('DEBUG_CELL')
+        call InputReadInt(input,option,general_debug_cell_id)
+        call InputErrorMsg(input,option,'debug cell id','GENERAL_MODE')
+      case('NO_TEMP_DEPENDENT_DIFFUSION')
+        general_temp_dep_gas_air_diff = PETSC_FALSE
       case default
         call InputKeywordUnrecognized(keyword,'GENERAL Mode',option)
     end select
