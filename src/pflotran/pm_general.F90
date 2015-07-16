@@ -201,6 +201,8 @@ subroutine PMGeneralRead(this,input)
         call InputErrorMsg(input,option,'debug cell id','GENERAL_MODE')
       case('NO_TEMP_DEPENDENT_DIFFUSION')
         general_temp_dep_gas_air_diff = PETSC_FALSE
+      case('DIFFUSE_XMASS')
+        general_diffuse_xmol = PETSC_FALSE
       case default
         call InputKeywordUnrecognized(keyword,'GENERAL Mode',option)
     end select

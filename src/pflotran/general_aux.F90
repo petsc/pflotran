@@ -19,7 +19,9 @@ module General_Aux_module
   PetscInt, public :: general_debug_cell_id = UNINITIALIZED_INTEGER
 #if defined(MATCH_TOUGH2)
   PetscBool, public :: general_temp_dep_gas_air_diff = PETSC_FALSE
+  PetscBool, public :: general_diffuse_xmol = PETSC_FALSE
 #else
+  PetscBool, public :: general_diffuse_xmol = PETSC_TRUE
   PetscBool, public :: general_temp_dep_gas_air_diff = PETSC_TRUE
 #endif
 
@@ -678,6 +680,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       xmol_water_in_gas = gen_auxvar%xmol(wid,gid)
 !    endif
       
+#ifdef DEBUG_GENERAL  
     xmass_air_in_gas = xmol_air_in_gas*fmw_comp(gid) / &
                        (xmol_water_in_gas*FMWH2O + &
                         xmol_air_in_gas*fmw_comp(gid))
@@ -689,6 +692,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
                 (1.d0-xmass_air_in_gas)*Uvapor_J_kg
     Hgas_J_kg = Ugas_J_kg + &
                 gen_auxvar%pres(gid)/gen_auxvar%den_kg(gid)
+#endif
     
     ! MJ/kmol
     gen_auxvar%U(gid) = xmol_water_in_gas * u_water_vapor + &
