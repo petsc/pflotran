@@ -20,9 +20,11 @@ module General_Aux_module
 #if defined(MATCH_TOUGH2)
   PetscBool, public :: general_temp_dep_gas_air_diff = PETSC_FALSE
   PetscBool, public :: general_diffuse_xmol = PETSC_FALSE
+  PetscBool, public :: general_harmonic_diff_density = PETSC_TRUE
 #else
   PetscBool, public :: general_diffuse_xmol = PETSC_TRUE
   PetscBool, public :: general_temp_dep_gas_air_diff = PETSC_TRUE
+  PetscBool, public :: general_harmonic_diff_density = PETSC_FALSE
 #endif
 
   ! thermodynamic state of fluid ids

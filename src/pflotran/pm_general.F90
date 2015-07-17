@@ -203,6 +203,8 @@ subroutine PMGeneralRead(this,input)
         general_temp_dep_gas_air_diff = PETSC_FALSE
       case('DIFFUSE_XMASS')
         general_diffuse_xmol = PETSC_FALSE
+      case('HARMONIC_GAS_DIFFUSIVE_DENSITY')
+        general_harmonic_diff_density = PETSC_TRUE
       case default
         call InputKeywordUnrecognized(keyword,'GENERAL Mode',option)
     end select

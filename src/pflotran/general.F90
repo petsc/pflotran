@@ -1201,9 +1201,9 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   PetscReal :: pressure_ave
   PetscReal :: gravity_term
   PetscReal :: mobility, mole_flux, q
-  PetscReal :: stp_up, stp_dn
-  PetscReal :: sat_up, sat_dn
-  PetscReal :: temp_ave, stp_ave_over_dist, v_air, tempreal
+  PetscReal :: stpd_up, stpd_dn
+  PetscReal :: sat_up, sat_dn, den_up, den_dn
+  PetscReal :: temp_ave, stpd_ave_over_dist, tempreal
   PetscReal :: k_eff_up, k_eff_dn, k_eff_ave, heat_flux
   PetscReal :: adv_flux(3,2), diff_flux(2,2)
   PetscReal :: debug_flux(3,3), debug_dphi(2)
@@ -1363,23 +1363,24 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
           sat_dn = max(sat_dn,eps)
         endif
       endif
-#if defined(MATCH_TOUGH2)
-      density_ave = 1.d0
-      stp_up = sat_up*material_auxvar_up%tortuosity* &
-               gen_auxvar_up%effective_porosity*gen_auxvar_up%den(iphase)
-      stp_dn = sat_dn*material_auxvar_dn%tortuosity* &
-               gen_auxvar_dn%effective_porosity*gen_auxvar_dn%den(iphase)
-#else
-      density_ave = GeneralAverageDensity(iphase, &
-                                          global_auxvar_up%istate, &
-                                          global_auxvar_dn%istate, &
-                                          gen_auxvar_up%den, &
-                                          gen_auxvar_dn%den)
-      stp_up = sat_up*material_auxvar_up%tortuosity* &
-               gen_auxvar_up%effective_porosity
-      stp_dn = sat_dn*material_auxvar_dn%tortuosity* &
-               gen_auxvar_dn%effective_porosity
-#endif
+      if (general_harmonic_diff_density) then
+        den_up = gen_auxvar_up%den(iphase)
+        den_dn = gen_auxvar_dn%den(iphase)
+      else
+        ! we use upstream weighting when iphase is not equal, otherwise
+        ! arithmetic with 50/50 weighting
+        den_up = GeneralAverageDensity(iphase, &
+                                       global_auxvar_up%istate, &
+                                       global_auxvar_dn%istate, &
+                                       gen_auxvar_up%den, &
+                                       gen_auxvar_dn%den)
+        ! by setting both equal, we avoid the harmonic weighting below
+        den_dn = den_up
+      endif
+      stpd_up = sat_up*material_auxvar_up%tortuosity* &
+                gen_auxvar_up%effective_porosity*den_up
+      stpd_dn = sat_dn*material_auxvar_dn%tortuosity* &
+                gen_auxvar_dn%effective_porosity*den_dn
       if (general_diffuse_xmol) then
         delta_xmol = gen_auxvar_up%xmol(air_comp_id,iphase) - &
                      gen_auxvar_dn%xmol(air_comp_id,iphase)
@@ -1394,9 +1395,9 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
         delta_xmass = xmass_air_up - xmass_air_dn
         delta_X_whatever = delta_xmass
       endif
-      stp_ave_over_dist = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
+      ! units = [mole/m^4 bulk]
+      stpd_ave_over_dist = (stpd_up*stpd_dn)/(stpd_up*dist_dn+stpd_dn*dist_up)
       ! need to account for multiple phases
-      ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
       tempreal = 1.d0
       ! Eq. 1.9b.  The gas density is added below
       if (general_temp_dep_gas_air_diff .and. &
@@ -1407,11 +1408,10 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
         tempreal = ((temp_ave+273.15)/273.15d0)**1.8d0 * &
                     101325.d0 / pressure_ave
       endif
-      v_air = stp_ave_over_dist * tempreal * &
-              general_parameter%diffusion_coefficient(iphase) * &
-              delta_X_whatever
-      q =  v_air * area
-      mole_flux = q * density_ave
+      ! units = mole/sec
+      mole_flux = stpd_ave_over_dist * tempreal * &
+                  general_parameter%diffusion_coefficient(iphase) * &
+                  delta_X_whatever * area
       Res(wat_comp_id) = Res(wat_comp_id) - mole_flux
       Res(air_comp_id) = Res(air_comp_id) + mole_flux
 #ifdef DEBUG_FLUXES  
@@ -1543,8 +1543,8 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
   PetscReal :: delta_pressure, delta_xmol, delta_temp
   PetscReal :: gravity_term
   PetscReal :: mobility, mole_flux, q
-  PetscReal :: sat_dn, perm_dn
-  PetscReal :: temp_ave, stp_ave_over_dist, v_air, pres_ave
+  PetscReal :: sat_dn, perm_dn, den_dn
+  PetscReal :: temp_ave, stpd_ave_over_dist, pres_ave
   PetscReal :: k_eff_up, k_eff_dn, k_eff_ave, heat_flux
   PetscReal :: adv_flux(3,2), diff_flux(2,2)
   PetscReal :: debug_flux(3,3), debug_dphi(2)
@@ -1773,26 +1773,21 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
     ! phase.
     if (gen_auxvar_dn%sat(iphase) > eps) then
       sat_dn = gen_auxvar_dn%sat(iphase)
-#if defined(MATCH_TOUGH2)
-      density_ave = 1.d0
-      stp_ave_over_dist = sat_dn*material_auxvar_dn%tortuosity * &
-                          gen_auxvar_dn%effective_porosity * &
-                          gen_auxvar_dn%den(iphase) / dist(0)
-#else
-      density_ave = GeneralAverageDensity(iphase, &
-                                          global_auxvar_up%istate, &
-                                          global_auxvar_dn%istate, &
-                                          gen_auxvar_up%den, &
-                                          gen_auxvar_dn%den)
-      ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) 
-      !       = m^3 water/m^4 bulk 
-      !    stp_ave = tor_dn*por_dn*(sat_up*sat_dn)/ &
-      !              ((sat_up+sat_dn)*dist_dn)
-      ! should saturation be distance weighted?
-      stp_ave_over_dist = material_auxvar_dn%tortuosity * &
-                          gen_auxvar_dn%effective_porosity * &
-                          sat_dn / dist(0)
-#endif
+      if (general_harmonic_diff_density) then
+        den_dn = gen_auxvar_dn%den(iphase)
+      else
+        ! we use upstream weighting when iphase is not equal, otherwise
+        ! arithmetic with 50/50 weighting
+        den_dn = GeneralAverageDensity(iphase, &
+                                       global_auxvar_up%istate, &
+                                       global_auxvar_dn%istate, &
+                                       gen_auxvar_up%den, &
+                                       gen_auxvar_dn%den)
+      endif
+      ! units = [mole/m^4 bulk]
+      stpd_ave_over_dist = sat_dn*material_auxvar_dn%tortuosity * &
+                           gen_auxvar_dn%effective_porosity * &
+                           den_dn / dist(0)
       if (general_diffuse_xmol) then
         delta_xmol = gen_auxvar_up%xmol(air_comp_id,iphase) - &
                      gen_auxvar_dn%xmol(air_comp_id,iphase)
@@ -1819,11 +1814,10 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
         tempreal = ((temp_ave+273.15)/273.15d0)**1.8d0 * &
                     101325.d0 / pres_ave
       endif
-      v_air = stp_ave_over_dist * tempreal * &
-              general_parameter%diffusion_coefficient(iphase) * &
-              delta_X_whatever
-      q =  v_air * area
-      mole_flux = q * density_ave
+      ! units = mole/sec
+      mole_flux = stpd_ave_over_dist * tempreal * &
+                  general_parameter%diffusion_coefficient(iphase) * &
+                  delta_X_whatever * area
       Res(wat_comp_id) = Res(wat_comp_id) - mole_flux
       Res(air_comp_id) = Res(air_comp_id) + mole_flux
 #ifdef DEBUG_FLUXES  
