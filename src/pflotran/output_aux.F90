@@ -53,6 +53,8 @@ module Output_Aux_module
     PetscReal :: periodic_output_time_incr
     PetscReal :: periodic_tr_output_time_incr
     PetscReal :: periodic_checkpoint_time_incr
+    
+    PetscBool :: filter_non_state_variables
 
     PetscInt :: xmf_vert_len
     
@@ -178,6 +180,7 @@ function OutputOptionCreate()
   output_option%aveg_var_dtime = 0.d0
   output_option%periodic_checkpoint_time_incr = 0.d0
   output_option%xmf_vert_len = 0
+  output_option%filter_non_state_variables = PETSC_TRUE
 
   nullify(output_option%output_variable_list)
   output_option%output_variable_list => OutputVariableListCreate()

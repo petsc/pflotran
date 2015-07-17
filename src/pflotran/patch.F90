@@ -3223,40 +3223,67 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
                            pres(option%liquid_phase:option%gas_phase))
             enddo
           case(LIQUID_PRESSURE)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              if (patch%aux%Global%auxvars(ghosted_id)%istate /= GAS_STATE) then
+            if (output_option%filter_non_state_variables) then
+              do local_id=1,grid%nlmax
+                ghosted_id = grid%nL2G(local_id)
+                if (patch%aux%Global%auxvars(ghosted_id)%istate /= GAS_STATE) then
+                  vec_ptr(local_id) = &
+                    patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+                      pres(option%liquid_phase)
+                else
+                  vec_ptr(local_id) = 0.d0
+                endif
+              enddo
+            else
+              do local_id=1,grid%nlmax
+                ghosted_id = grid%nL2G(local_id)
                 vec_ptr(local_id) = &
                   patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                     pres(option%liquid_phase)
-              else
-                vec_ptr(local_id) = 0.d0
-              endif
-            enddo
+              enddo
+            endif
           case(GAS_PRESSURE)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              if (patch%aux%Global%auxvars(ghosted_id)%istate /= &
-                  LIQUID_STATE) then
+            if (output_option%filter_non_state_variables) then
+              do local_id=1,grid%nlmax
+                ghosted_id = grid%nL2G(local_id)
+                if (patch%aux%Global%auxvars(ghosted_id)%istate /= &
+                    LIQUID_STATE) then
+                  vec_ptr(local_id) = &
+                    patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+                      pres(option%gas_phase)
+                else
+                  vec_ptr(local_id) = 0.d0
+                endif
+              enddo
+            else
+              do local_id=1,grid%nlmax
+                ghosted_id = grid%nL2G(local_id)
                 vec_ptr(local_id) = &
                   patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                     pres(option%gas_phase)
-              else
-                vec_ptr(local_id) = 0.d0
-              endif
-            enddo
+              enddo
+            endif
           case(AIR_PRESSURE)
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              if (patch%aux%Global%auxvars(ghosted_id)%istate /= &
-                  LIQUID_STATE) then
+            if (output_option%filter_non_state_variables) then
+              do local_id=1,grid%nlmax
+                ghosted_id = grid%nL2G(local_id)
+                if (patch%aux%Global%auxvars(ghosted_id)%istate /= &
+                    LIQUID_STATE) then
+                  vec_ptr(local_id) = &
+                    patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+                      pres(option%air_pressure_id)
+                else
+                  vec_ptr(local_id) = 0.d0
+                endif
+              enddo
+            else
+              do local_id=1,grid%nlmax
+                ghosted_id = grid%nL2G(local_id)
                 vec_ptr(local_id) = &
                   patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                     pres(option%air_pressure_id)
-              else
-                vec_ptr(local_id) = 0.d0
-              endif
-            enddo
+              enddo
+            endif
           case(CAPILLARY_PRESSURE)
             do local_id=1,grid%nlmax
               ghosted_id = grid%nL2G(local_id)
@@ -4164,27 +4191,42 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
             value = maxval(patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                            pres(option%liquid_phase:option%gas_phase))
           case(LIQUID_PRESSURE)
-            if (patch%aux%Global%auxvars(ghosted_id)%istate /= GAS_STATE) then
+            if (output_option%filter_non_state_variables) then
+              if (patch%aux%Global%auxvars(ghosted_id)%istate /= GAS_STATE) then
+                value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+                          pres(option%liquid_phase)
+              else
+                value = 0.d0
+              endif
+            else
               value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                         pres(option%liquid_phase)
-            else
-              value = 0.d0
             endif
           case(GAS_PRESSURE)
-            if (patch%aux%Global%auxvars(ghosted_id)%istate /= &
-                LIQUID_STATE) then
+            if (output_option%filter_non_state_variables) then
+              if (patch%aux%Global%auxvars(ghosted_id)%istate /= &
+                  LIQUID_STATE) then
+                value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+                          pres(option%gas_phase)
+              else
+                value = 0.d0
+              endif
+            else
               value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                         pres(option%gas_phase)
-            else
-              value = 0.d0
             endif
           case(AIR_PRESSURE)
-            if (patch%aux%Global%auxvars(ghosted_id)%istate /= &
-                LIQUID_STATE) then
+            if (output_option%filter_non_state_variables) then
+              if (patch%aux%Global%auxvars(ghosted_id)%istate /= &
+                  LIQUID_STATE) then
+                value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
+                          pres(option%air_pressure_id)
+              else
+                value = 0.d0
+              endif
+            else
               value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &
                         pres(option%air_pressure_id)
-            else
-              value = 0.d0
             endif
           case(CAPILLARY_PRESSURE)
             value = patch%aux%General%auxvars(ZERO_INTEGER,ghosted_id)% &

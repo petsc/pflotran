@@ -457,7 +457,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       ! two phase or everything blows up:
       if (gen_auxvar%pres(gid) <= 0.d0) then
         write(option%io_buffer,'(''Negative gas pressure at cell '', &
-          & i5,'' in GeneralAuxVarCompute().  Attempting bailout.'')') &
+          & i5,'' in GeneralAuxVarCompute(LIQUID_STATE).  Attempting bailout.'')') &
           ghosted_id
 !        call printErrMsgByRank(option)
         call printMsgByRank(option)

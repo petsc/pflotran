@@ -230,6 +230,11 @@ subroutine DatasetAsciiLoad(this,input,option)
     endif  
   enddo
   
+  if (row_count == 0) then
+    option%io_buffer = 'No values provided in Ascii Dataset.'
+    call printErrMsg(option)
+  endif
+  
   this%data_type = DATASET_REAL
   this%rank = 2
   allocate(this%dims(this%rank))
