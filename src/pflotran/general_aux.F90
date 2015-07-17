@@ -766,7 +766,8 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
   class(material_auxvar_type) :: material_auxvar
 
 ! based on min_pressure in CheckPre set to zero
-  PetscReal, parameter :: epsilon = 1.d-6
+!  PetscReal, parameter :: epsilon = 1.d-6
+  PetscReal, parameter :: epsilon = 0.d0
   PetscReal :: liquid_epsilon
   PetscReal :: two_phase_epsilon
   PetscReal :: x(option%nflowdof)
@@ -817,21 +818,10 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
 !#endif      
         global_auxvar%istate = TWO_PHASE_STATE
         liquid_epsilon = epsilon
-        ! gas pressure can never be less than zero.
-        x(GENERAL_GAS_PRESSURE_DOF) = &
-          gen_auxvar%pres(lid) * (1.d0 + liquid_epsilon)
-!geh          max(gen_auxvar%pres(lid) * (1.d0 + liquid_epsilon), &
-!geh              gen_auxvar%pres(apid) + gen_auxvar%pres(spid))
-        if (x(GENERAL_GAS_PRESSURE_DOF) <= 0.d0) then
-!geh        if (x(GENERAL_GAS_PRESSURE_DOF) <= gen_auxvar%pres(spid)) then
-          write(string,*) ghosted_id
-          option%io_buffer = 'Negative gas pressure during state change ' // &
-            'at ' // trim(adjustl(string))
-!          call printErrMsg(option)
-          call printMsgByRank(option)
-          x(GENERAL_GAS_PRESSURE_DOF) = gen_auxvar%pres(spid)
-!geh          x(GENERAL_GAS_PRESSURE_DOF) = 2.d0*gen_auxvar%pres(spid)
-        endif
+!TOUGH2 approach
+        x(GENERAL_GAS_PRESSURE_DOF) = max(gen_auxvar%pres(gid), &
+                                          gen_auxvar%pres(spid))* &
+                                         (1.d0 + liquid_epsilon)
         if (general_2ph_energy_dof == GENERAL_TEMPERATURE_INDEX) then
           ! do nothing as the energy dof has not changed
           if (.not.general_isothermal) then
@@ -852,7 +842,8 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
               0.01d0*x(GENERAL_GAS_PRESSURE_DOF)
           endif
         endif
-        x(GENERAL_GAS_SATURATION_DOF) = liquid_epsilon
+        x(GENERAL_GAS_SATURATION_DOF) = 1.d-6
+!        x(GENERAL_GAS_SATURATION_DOF) = liquid_epsilon
         flag = PETSC_TRUE
       endif
     case(GAS_STATE)
@@ -887,7 +878,8 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         else
           X(GENERAL_ENERGY_DOF) = gen_auxvar%pres(apid)*(1.d0-epsilon)
         endif
-        x(GENERAL_GAS_SATURATION_DOF) = 1.d0 - epsilon
+!        x(GENERAL_GAS_SATURATION_DOF) = 1.d0 - epsilon
+        x(GENERAL_GAS_SATURATION_DOF) = 1.d0 - 1.d-6
         flag = PETSC_TRUE
       endif
     case(TWO_PHASE_STATE)

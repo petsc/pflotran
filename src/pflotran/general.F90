@@ -3269,6 +3269,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   PetscInt :: liquid_pressure_index, gas_pressure_index, air_pressure_index
   PetscInt :: saturation_index, temperature_index, xmol_index
   PetscInt :: lid, gid, apid, cpid, vpid, spid
+  PetscInt :: pgas_index
   PetscReal :: liquid_pressure0, liquid_pressure1, del_liquid_pressure
   PetscReal :: gas_pressure0, gas_pressure1, del_gas_pressure
   PetscReal :: air_pressure0, air_pressure1, del_air_pressure
@@ -3316,11 +3317,19 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
         xmol_index = offset + GENERAL_LIQUID_STATE_X_MOLE_DOF
         if (X_p(xmol_index) - dX_p(xmol_index) < 0.d0) then
           ! we use 1.d-10 since cancelation can occur with smaller values
-          dX_p(xmol_index) = X_p(xmol_index) - 1.d-10
+          dX_p(xmol_index) = X_p(xmol_index)
+        endif
+      case(TWO_PHASE_STATE)
+        pgas_index = offset + GENERAL_GAS_PRESSURE_DOF
+        if (X_p(pgas_index) - dX_p(pgas_index) < &
+            gen_auxvars(ZERO_INTEGER,ghosted_id)% &
+              pres(option%saturation_pressure_id)) then
+          dX_p(pgas_index) = X_p(pgas_index) - &
+            gen_auxvars(ZERO_INTEGER,ghosted_id)% &
+              pres(option%saturation_pressure_id)
         endif
     end select
   enddo
-
 
   scale = initial_scale
   if (general_max_it_before_damping > 0 .and. &
