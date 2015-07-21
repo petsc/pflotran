@@ -1405,7 +1405,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
         temp_ave = 0.5d0*(gen_auxvar_up%temp+gen_auxvar_dn%temp)
         pressure_ave = 0.5d0*(gen_auxvar_up%pres(iphase)+ &
                               gen_auxvar_dn%pres(iphase))
-        tempreal = ((temp_ave+273.15)/273.15d0)**1.8d0 * &
+        tempreal = ((temp_ave+273.15d0)/273.15d0)**1.8d0 * &
                     101325.d0 / pressure_ave
       endif
       ! units = mole/sec
@@ -1811,7 +1811,7 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
         temp_ave = 0.5d0*(gen_auxvar_up%temp+gen_auxvar_dn%temp)
         pres_ave = 0.5d0*(gen_auxvar_up%pres(iphase)+ &
                           gen_auxvar_dn%pres(iphase))
-        tempreal = ((temp_ave+273.15)/273.15d0)**1.8d0 * &
+        tempreal = ((temp_ave+273.15d0)/273.15d0)**1.8d0 * &
                     101325.d0 / pres_ave
       endif
       ! units = mole/sec
