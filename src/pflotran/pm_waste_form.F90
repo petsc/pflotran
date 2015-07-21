@@ -49,6 +49,7 @@ module PM_Waste_Form_class
     PetscReal :: specific_surface_area
     PetscReal :: formula_weight
     PetscReal :: mass_fraction
+    PetscReal :: glass_density
   contains
     procedure, public :: Setup => PMGlassSetup
     procedure, public :: Read => PMGlassRead
@@ -138,7 +139,7 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
   ! Reads input file parameters associated with the waste form process model
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 01/15/15, 07/20/15
   use Input_Aux_module
   use String_module
   use Utility_module
@@ -191,7 +192,7 @@ subroutine PMWasteFormStrip(this)
   ! Destroys a waste form process model
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 07/20/15
   use Utility_module, only : DeallocateArray
 
   implicit none
@@ -210,7 +211,7 @@ subroutine GlassInit(glass)
   ! Initializes the fuel matrix degradation model waste form
   ! 
   ! Author: Glenn Hammond
-  ! Date: 05/05/2015
+  ! Date: 07/20/15
 
   implicit none
   
@@ -234,7 +235,7 @@ function PMGlassCreate()
   ! Creates the Glass waste form process model
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 07/20/15
 
   implicit none
   
@@ -246,6 +247,7 @@ function PMGlassCreate()
   PMGlassCreate%specific_surface_area = UNINITIALIZED_DOUBLE
   PMGlassCreate%formula_weight = UNINITIALIZED_DOUBLE
   PMGlassCreate%mass_fraction = UNINITIALIZED_DOUBLE
+  PMGlassCreate%glass_density = 2.65d3 ! kg/m^3
 
 end function PMGlassCreate
 
@@ -256,7 +258,8 @@ subroutine PMGlassRead(this,input)
   ! Reads input file parameters associated with the waste form process model
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 07/20/15
+
   use Input_Aux_module
   use String_module
   use Utility_module
@@ -354,6 +357,9 @@ subroutine PMGlassRead(this,input)
       case('MASS_FRACTION')
         call InputReadDouble(input,option,this%mass_fraction)
         call InputErrorMsg(input,option,'mass fraction',error_string)
+      case('GLASS_DENSITY')
+        call InputReadDouble(input,option,this%glass_density)
+        call InputErrorMsg(input,option,'glass density',error_string)
       case default
         call InputKeywordUnrecognized(word,error_string,option)
     end select
@@ -390,7 +396,7 @@ subroutine PMGlassSetup(this)
   ! Initializes variables associated with subsurface process models
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 07/20/15
 
   use Grid_module
   use Grid_Structured_module
@@ -466,7 +472,8 @@ recursive subroutine PMGlassInitializeRun(this)
   ! Initializes the time stepping
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15 
+  ! Date: 07/20/15
+
   use Communicator_Base_module
   use Reaction_Aux_module
   use Realization_Base_class
@@ -544,6 +551,8 @@ recursive subroutine PMGlassInitializeRun(this)
                         this%data_mediator%scatter_ctx,ierr);CHKERRQ(ierr)
   call ISDestroy(is,ierr);CHKERRQ(ierr)
   
+  call PMGlassSolve(this,0.d0,ierr)
+  
 end subroutine PMGlassInitializeRun
 
 ! ************************************************************************** !
@@ -551,17 +560,37 @@ end subroutine PMGlassInitializeRun
 subroutine PMGlassInitializeTimestep(this)
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 07/20/15
 
-  use Global_module
-  
   implicit none
   
   class(pm_glass_type) :: this
-
+  
+  type(glass_type), pointer :: cur_waste_form
+  PetscReal :: rate
+  PetscReal :: dV
+  PetscReal, parameter :: conversion = 1.d0/(24.d0*3600.d0)
+  
   if (this%option%print_screen_flag) then
     write(*,'(/,2("=")," GLASS MODEL ",65("="))')
   endif
+  
+  ! update mass balances after transport step
+  cur_waste_form => this%waste_form_list
+  do 
+    if (.not.associated(cur_waste_form)) exit
+            ! kg glass/sec
+    rate = cur_waste_form%fuel_dissolution_rate * &  ! kg glass/m^2/day
+            this%specific_surface_area * &            ! m^2/kg glass
+            cur_waste_form%exposure_factor * &        ! [-]
+            cur_waste_form%volume * &                 ! m^3 glass
+            this%glass_density * &                    ! kg glass/m^3 glass
+            conversion                                ! 1/day -> 1/sec  
+         ! m^3
+    dV = rate / this%glass_density * this%option%tran_dt
+    cur_waste_form%volume = cur_waste_form%volume - dV
+    cur_waste_form => cur_waste_form%next
+  enddo
 
 end subroutine PMGlassInitializeTimestep
 
@@ -570,7 +599,7 @@ end subroutine PMGlassInitializeTimestep
 subroutine PMGlassPreSolve(this)
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 07/20/15
 
   implicit none
   
@@ -583,7 +612,7 @@ end subroutine PMGlassPreSolve
 subroutine PMGlassSolve(this,time,ierr)
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 07/20/15
   !
   use Grid_module
   use Global_Aux_module
@@ -619,15 +648,16 @@ subroutine PMGlassSolve(this,time,ierr)
     ghosted_id = grid%nL2G(local_id)
     if (cur_waste_form%volume > 0.d0) then
       cur_waste_form%fuel_dissolution_rate = &
-        560.d0*exp(-7397d0/global_auxvars(ghosted_id)%temp+273.15d0)
-      vec_p(i) = cur_waste_form%fuel_dissolution_rate * &     ! kg/m^2/day
-                 this%formula_weight * &            ! kmol/kg
-                 this%mass_fraction * & ! kg/kg
-                 this%specific_surface_area * &     ! m^2/kg glass
-                 cur_waste_form%exposure_factor * &           ! [-]
-                 cur_waste_form%volume * &                    ! m^3 glass
-                 2.65d3 * &                                   ! kg/m^3 (glass)
-                 conversion
+        560.d0*exp(-7397.d0/global_auxvars(ghosted_id)%temp+273.15d0)
+      ! kmol/sec
+      vec_p(i) = cur_waste_form%fuel_dissolution_rate * &  ! kg glass/m^2/day
+                 this%formula_weight * &                   ! kmol radionuclide/kg radionuclide
+                 this%mass_fraction * &                    ! kg radionuclude/kg glass
+                 this%specific_surface_area * &            ! m^2/kg glass
+                 cur_waste_form%exposure_factor * &        ! [-]
+                 cur_waste_form%volume * &                 ! m^3 glass
+                 this%glass_density * &                    ! kg glass/m^3 glass
+                 conversion                                ! 1/day -> 1/sec
     else
       cur_waste_form%fuel_dissolution_rate = 0.d0
     endif
@@ -643,7 +673,7 @@ end subroutine PMGlassSolve
 subroutine PMGlassFinalizeTimestep(this)
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 07/20/15
 
   implicit none
   
@@ -656,7 +686,7 @@ end subroutine PMGlassFinalizeTimestep
 subroutine PMGlassUpdateSolution(this)
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 07/20/15
 
   implicit none
   
@@ -673,7 +703,7 @@ end subroutine PMGlassUpdateSolution
 subroutine PMGlassUpdateAuxVars(this)
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 07/20/15
 
   implicit none
   
@@ -691,7 +721,7 @@ subroutine PMGlassCheckpoint(this,viewer)
   ! Checkpoints data associated with Subsurface PM
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 07/20/15
 
   implicit none
 #include "finclude/petscviewer.h"      
@@ -708,7 +738,7 @@ subroutine PMGlassRestart(this,viewer)
   ! Restarts data associated with Subsurface PM
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 07/20/15
 
   implicit none
 #include "finclude/petscviewer.h"      
@@ -729,7 +759,7 @@ recursive subroutine PMGlassFinalizeRun(this)
   ! Finalizes the time stepping
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 07/20/15
   
   implicit none
   
@@ -742,22 +772,6 @@ recursive subroutine PMGlassFinalizeRun(this)
   endif  
   
 end subroutine PMGlassFinalizeRun
-
-! ************************************************************************** !
-
-subroutine GlassDestroy()
-  ! 
-  ! Initializes the fuel matrix degradation model waste form
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 05/05/2015
-  use Utility_module, only : DeallocateArray
-
-  implicit none
-  
-  type(glass_type) :: glass
-
-end subroutine GlassDestroy
 
 ! ************************************************************************** !
 
@@ -807,22 +821,6 @@ subroutine PMGlassDestroy(this)
   
 end subroutine PMGlassDestroy
   
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ! ************************************************************************** !
 
 subroutine FMDMInit(fmdm)
