@@ -2511,7 +2511,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
       124 format(2x,a12,4x,1pe12.4)
 
 #ifdef DOUBLE_LAYER
-      call RDoubleLayer (constraint_coupler,reaction,option)
+      call ReactionDoubleLayer (constraint_coupler,reaction,option)
 #endif
 
     endif
@@ -2721,6 +2721,10 @@ subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
 
   type(reactive_transport_auxvar_type), pointer :: rt_auxvar
   type(global_auxvar_type), pointer :: global_auxvar
+  type(aq_species_constraint_type), pointer :: aq_species_constraint
+  type(mineral_constraint_type), pointer :: mineral_constraint
+  type(surface_complexation_type), pointer :: surface_complexation
+  type(mineral_type), pointer :: mineral_reaction
 
   PetscReal, parameter :: tk = 273.15d0
   PetscReal, parameter :: epsilon = 78.5d0
@@ -2729,7 +2733,7 @@ subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
   
   PetscReal :: fac, boltzmann, dbl_charge, surface_charge, ionic_strength, &
                charge_balance, potential, tempk, debye_length, &
-               srfchrg_capacitance_model
+               srfchrg_capacitance_model, capacitance
                
   PetscReal :: ln_conc(reaction%naqcomp)
   PetscReal :: ln_act(reaction%naqcomp)
@@ -2749,10 +2753,8 @@ subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
 
   PetscBool :: one_more
 
-    option%io_buffer = 'ReactionDoubleLayer needs to be fixed'
-    call printErrMsg(option)
-    
-#if 0
+#if 1
+    surface_complexation => reaction%surface_complexation
     rt_auxvar => constraint_coupler%rt_auxvar
     global_auxvar => constraint_coupler%global_auxvar
 
@@ -2764,7 +2766,7 @@ subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
     boltzmann = exp(-faraday*potential/(IDEAL_GAS_CONSTANT*tempk))
         
     fac = sqrt(epsilon*epsilon0*IDEAL_GAS_CONSTANT*tempk)
-    
+
     ionic_strength = 0.d0
     charge_balance = 0.d0
     dbl_charge = 0.d0
@@ -2777,7 +2779,7 @@ subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
       dbl_charge = dbl_charge + rt_auxvar%pri_molal(icomp)* &
                    (boltzmann**reaction%primary_spec_Z(icomp) - 1.d0)
     enddo
-    
+
     if (reaction%neqcplx > 0) then    
       do i = 1, reaction%neqcplx
         ionic_strength = ionic_strength + reaction%eqcplx_Z(i)**2* &
@@ -2793,22 +2795,24 @@ subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
       print *,'neg. dbl_charge: ',dbl_charge
       dbl_charge = fac*sqrt(2.d0*(-dbl_charge))
     endif
-    
-    srfchrg_capacitance_model = faraday*potential* &
-      sqrt(2.d0*epsilon*epsilon0*ionic_strength/(IDEAL_GAS_CONSTANT*tempk))
-    
+
+    srfchrg_capacitance_model = faraday* &
+      sqrt(2.d0*epsilon*epsilon0*ionic_strength*1.d3/(IDEAL_GAS_CONSTANT*tempk))
+
     surface_charge = 0.d0
-    do irxn = 1, reaction%neqsrfcplxrxn
-      ncplx = reaction%srfcplxrxn_to_complex(0,irxn)
+    do irxn = 1, surface_complexation%neqsrfcplxrxn
+      ncplx = surface_complexation%srfcplxrxn_to_complex(0,irxn)
       do i = 1, ncplx
-        icplx = reaction%srfcplxrxn_to_complex(i,irxn)
-        surface_charge = surface_charge + reaction%eqsrfcplx_Z(icplx)* &
+        icplx = surface_complexation%srfcplxrxn_to_complex(i,irxn)
+        surface_charge = surface_charge + surface_complexation%srfcplx_Z(icplx)* &
                          rt_auxvar%eqsrfcplx_conc(icplx)
       enddo
     enddo
     surface_charge = faraday*surface_charge
-    
+
     debye_length = sqrt(fac/(2.d0*ionic_strength*1.d3))/faraday
+    capacitance = sqrt(2.d0*epsilon*epsilon0*ionic_strength*1.d3/ &
+                    (IDEAL_GAS_CONSTANT*tempk)) * faraday
     
     print *,'========================='
     print *,'dbl: debye_length = ',debye_length
@@ -2817,20 +2821,21 @@ subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
     print *,'ionic strength = ',ionic_strength
     print *,'chrg bal. = ',charge_balance,' Tk = ',tempk,' Boltz. = ',boltzmann
     print *,'srfcmplx: ',rt_auxvar%eqsrfcplx_conc
+    print *,'capacitance: ',capacitance
     print *,'========================='
 
 !   compute surface complex concentrations  
     ln_conc = log(rt_auxvar%pri_molal)
     ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
 
-  do irxn = 1, reaction%neqsrfcplxrxn
+  do irxn = 1, surface_complexation%neqsrfcplxrxn
   
-    ncplx = reaction%srfcplxrxn_to_complex(0,irxn)
+    ncplx = surface_complexation%srfcplxrxn_to_complex(0,irxn)
     
-    free_site_conc = rt_auxvar%eqsrfcplx_free_site_conc( &
-                       reaction%eqsrfcplxrxn_to_srfcplxrxn(irxn))
+    free_site_conc = rt_auxvar%srfcplxrxn_free_site_conc( &
+                       surface_complexation%eqsrfcplxrxn_to_srfcplxrxn(irxn))
 
-    site_density(1) = reaction%eqsrfcplx_rxn_site_density(irxn)
+    site_density(1) = surface_complexation%srfcplxrxn_site_density(irxn)
     num_types_of_sites = 1
     
     do isite = 1, num_types_of_sites
@@ -2851,7 +2856,7 @@ subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
 
 #if 0
         do j = 1, ncplx
-          icplx = reaction%srfcplxrxn_to_complex(j,irxn)
+          icplx = surface_complexation%srfcplxrxn_to_complex(j,irxn)
           
           ! compute ion activity product
           lnQK = -reaction%eqsrfcplx_logK(icplx)*LOG_TO_LN &
@@ -2859,21 +2864,21 @@ subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
                  /(IDEAL_GAS_CONSTANT*tempk)/LOG_TO_LN
 
           ! activity of water
-          if (reaction%eqsrfcplxh2oid(icplx) > 0) then
-            lnQK = lnQK + reaction%eqsrfcplxh2ostoich(icplx)*rt_auxvar%ln_act_h2o
+          if (surface_complexation%eqsrfcplxh2oid(icplx) > 0) then
+            lnQK = lnQK + surface_complexation%eqsrfcplxh2ostoich(icplx)*rt_auxvar%ln_act_h2o
           endif
 
-          lnQK = lnQK + reaction%eqsrfcplx_free_site_stoich(icplx)* &
+          lnQK = lnQK + surface_complexation%eqsrfcplx_free_site_stoich(icplx)* &
                         ln_free_site
         
-          ncomp = reaction%srfcplxspecid(0,icplx)
+          ncomp = surface_complexation%srfcplxspecid(0,icplx)
           do i = 1, ncomp
-            icomp = reaction%srfcplxspecid(i,icplx)
-            lnQK = lnQK + reaction%eqsrfcplxstoich(i,icplx)*ln_act(icomp)
+            icomp = surface_complexation%srfcplxspecid(i,icplx)
+            lnQK = lnQK + surface_complexation%eqsrfcplxstoich(i,icplx)*ln_act(icomp)
           enddo
           srfcplx_conc(icplx) = exp(lnQK)
           
-          total = total + reaction%eqsrfcplx_free_site_stoich(icplx)*srfcplx_conc(icplx) 
+          total = total + surface_complexation%eqsrfcplx_free_site_stoich(icplx)*srfcplx_conc(icplx)
           
         enddo
 #endif
@@ -2888,7 +2893,7 @@ subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
     enddo
   enddo
 #endif  
-  print *,'srfcmplx1: ',srfcplx_conc
+  print *,'exit srfcmplx1: ',srfcplx_conc
 
 end subroutine ReactionDoubleLayer
 
