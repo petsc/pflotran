@@ -28,7 +28,7 @@ module PM_Base_class
     class(realization_base_type), pointer :: realization_base
     class(pm_base_type), pointer :: next
   contains
-    procedure, public :: Init => PMBaseInit
+    procedure, public :: Setup => PMBaseInit
     procedure, public :: Read => PMBaseRead
     procedure, public :: SetupSolvers => PMBaseSetupSolvers
     procedure, public :: InitializeRun => PMBaseThisOnly
@@ -59,7 +59,7 @@ module PM_Base_class
     PetscInt :: ndof
   end type pm_base_header_type
     
-  public :: PMBaseCreate
+  public :: PMBaseInit
   
   public :: PMBaseResidual
   public :: PMBaseJacobian
@@ -69,7 +69,7 @@ contains
 
 ! ************************************************************************** !
 
-subroutine PMBaseCreate(this)
+subroutine PMBaseInit(this)
 
   implicit none
   
@@ -84,7 +84,7 @@ subroutine PMBaseCreate(this)
   this%residual_vec = 0
   nullify(this%next)
   
-end subroutine PMBaseCreate
+end subroutine PMBaseInit
 
 ! ************************************************************************** !
 
@@ -99,12 +99,12 @@ end subroutine PMBaseRead
 
 ! ************************************************************************** !
 
-subroutine PMBaseInit(this)
+subroutine PMBaseSetup(this)
   implicit none
   class(pm_base_type) :: this
-  print *, 'Must extend PMBaseInit.'
+  print *, 'Must extend c.'
   stop
-end subroutine PMBaseInit
+end subroutine PMBaseSetup
 
 ! ************************************************************************** !
 

@@ -172,7 +172,7 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
                                   
 
     call pm_geomech%PMGeomechForceSetRealization(geomech_realization)
-    call pm_geomech%Init()
+    call pm_geomech%Setup()
     call SNESSetFunction(timestepper%solver%snes, &
                          pm_geomech%residual_vec, &
                          PMResidual, &

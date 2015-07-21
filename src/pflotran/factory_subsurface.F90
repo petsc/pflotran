@@ -96,7 +96,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   class(pmc_third_party_type), pointer :: pmc_third_party
   class(pm_subsurface_type), pointer :: pm_flow
   class(pm_rt_type), pointer :: pm_rt
-  class(pm_fmdm_type), pointer :: pm_waste_form
+  class(pm_waste_form_type), pointer :: pm_waste_form
   class(pm_ufd_decay_type), pointer :: pm_ufd_decay
   class(pm_base_type), pointer :: cur_pm, prev_pm
   class(realization_type), pointer :: realization
@@ -117,9 +117,9 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
         pm_flow => cur_pm
       class is(pm_rt_type)
         pm_rt => cur_pm
-      class is (pm_fmdm_type)
+      class is(pm_waste_form_type)
         pm_waste_form => cur_pm
-      class is (pm_ufd_decay_type)
+      class is(pm_ufd_decay_type)
         pm_ufd_decay => cur_pm
       class default
         option%io_buffer = &
@@ -177,7 +177,12 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   call InitSubsurfaceReadRequiredCards(simulation)
   call InitSubsurfaceReadInput(simulation)
   if (associated(pm_waste_form)) then
-    string = 'FMDM'
+    select type(pm_waste_form)
+      class is (pm_fmdm_type)
+        string = 'FMDM'
+      class is (pm_glass_type)
+        string = 'GLASS'
+    end select
     call InputFindStringInFile(realization%input,option,string)
     call InputFindStringErrorMsg(realization%input,option,string)
     call pm_waste_form%Read(realization%input)
@@ -192,8 +197,8 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   
   if (associated(pm_waste_form)) then
     if (.not.associated(simulation%rt_process_model_coupler)) then
-      option%io_buffer = 'The FMDM process model requires reactive ' // &
-        'transport.'
+      option%io_buffer = 'The Waste Form process models require ' // &
+        'reactive transport.'
       call printErrMsg(option)
     endif
     pmc_third_party => PMCThirdPartyCreate()
@@ -202,7 +207,12 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
     pmc_third_party%pm_ptr%ptr => pm_waste_form
     pmc_third_party%realization => realization
     ! set up logging stage
-    string = 'FMDM'
+    select type(pm_waste_form)
+      class is (pm_fmdm_type)
+        string = 'FMDM'
+      class is (pm_glass_type)
+        string = 'GLASS'
+    end select
     call LoggingCreateStage(string,pmc_third_party%stage)
     simulation%rt_process_model_coupler%child => pmc_third_party
     nullify(pmc_third_party)
@@ -579,9 +589,6 @@ subroutine SubsurfaceReadWasteFormPM(input, option, pm)
   
   error_string = 'SIMULATION,PROCESS_MODELS,WASTE_FORM'
 
-  pm => PMWasteFormCreate()
-  pm%option => option
-  
   word = ''
   do   
     call InputReadPflotranString(input,option)
@@ -589,9 +596,30 @@ subroutine SubsurfaceReadWasteFormPM(input, option, pm)
     call InputReadWord(input,option,word,PETSC_FALSE)
     call StringToUpper(word)
     select case(word)
+      case('TYPE')
+        call InputReadWord(input,option,word,PETSC_FALSE)
+        call InputErrorMsg(input,option,'mode',error_string)
+        call StringToUpper(word)
+        select case(word)
+          case('FMDM')
+            pm => PMFMDMCreate()
+          case('GLASS')
+            pm => PMGlassCreate()
+          case default
+            option%io_buffer = 'WASTE FORM type "' // trim(word) // &
+              '" not recognized.'
+            call printErrMsg(option)
+        end select
       case default
     end select
   enddo
+  
+  if (.not.associated(pm)) then
+    option%io_buffer = 'TYPE card missing in ' // trim(error_string)
+    call printErrMsg(option)
+  endif
+  
+  pm%option => option
   
 end subroutine SubsurfaceReadWasteFormPM
 
@@ -785,7 +813,7 @@ subroutine InitSubsurfaceSimulation(simulation)
               call printErrMsg(option)
             endif
             call cur_process_model%PMRTSetRealization(realization)
-          class is (pm_fmdm_type)
+          class is (pm_waste_form_type)
             call cur_process_model%PMWasteFormSetRealization(realization)
           class is (pm_ufd_decay_type)
             call cur_process_model%PMUFDDecaySetRealization(realization)
@@ -798,7 +826,7 @@ subroutine InitSubsurfaceSimulation(simulation)
             cur_process_model_coupler%timestepper%dt = option%tran_dt
         end select
         cur_process_model%output_option => realization%output_option
-        call cur_process_model%Init()
+        call cur_process_model%Setup()
         if (associated(cur_process_model_coupler%timestepper)) then
           ! Until classes are resolved as user-defined contexts in PETSc, 
           ! we cannot use SetupSolvers.  Therefore, everything has to be

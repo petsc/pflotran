@@ -29,7 +29,7 @@ module PM_Subsurface_class
     PetscBool :: store_porosity_for_transport
   contains
 !geh: commented out subroutines can only be called externally
-    procedure, public :: Init => PMSubsurfaceInit
+    procedure, public :: Setup => PMSubsurfaceSetup
     procedure, public :: SetupSolvers => PMSubsurfaceSetupSolvers
     procedure, public :: PMSubsurfaceSetRealization
     procedure, public :: InitializeRun => PMSubsurfaceInitializeRun
@@ -48,7 +48,7 @@ module PM_Subsurface_class
   end type pm_subsurface_type
   
   public :: PMSubsurfaceCreate, &
-            PMSubsurfaceInit, &
+            PMSubsurfaceSetup, &
             PMSubsurfaceSetupSolvers, &
             PMSubsurfaceInitializeTimestepA, &
             PMSubsurfaceInitializeTimestepB, &
@@ -81,13 +81,13 @@ subroutine PMSubsurfaceCreate(this)
   this%store_porosity_for_ts_cut = PETSC_FALSE
   this%store_porosity_for_transport = PETSC_FALSE
   
-  call PMBaseCreate(this)
+  call PMBaseInit(this)
 
 end subroutine PMSubsurfaceCreate
 
 ! ************************************************************************** !
 
-subroutine PMSubsurfaceInit(this)
+subroutine PMSubsurfaceSetup(this)
   ! 
   ! Initializes variables associated with subsurface process models
   ! 
@@ -123,7 +123,7 @@ subroutine PMSubsurfaceInit(this)
     endif
   endif
   
-end subroutine PMSubsurfaceInit
+end subroutine PMSubsurfaceSetup
 
 ! ************************************************************************** !
 

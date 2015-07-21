@@ -23,7 +23,7 @@ module PM_Geomechanics_Force_class
     class(geomech_realization_type), pointer :: geomech_realization
     class(communicator_type), pointer :: comm1
   contains
-    procedure, public :: Init => PMGeomechForceInit
+    procedure, public :: Setup => PMGeomechForceSetup
     procedure, public :: PMGeomechForceSetRealization
     procedure, public :: InitializeRun => PMGeomechForceInitializeRun
     procedure, public :: FinalizeRun => PMGeomechForceFinalizeRun
@@ -64,7 +64,7 @@ function PMGeomechForceCreate()
   nullify(geomech_force_pm%geomech_realization)
   nullify(geomech_force_pm%comm1)
 
-  call PMBaseCreate(geomech_force_pm)
+  call PMBaseInit(geomech_force_pm)
 
   PMGeomechForceCreate => geomech_force_pm
 
@@ -72,7 +72,7 @@ end function PMGeomechForceCreate
 
 ! ************************************************************************** !
 
-subroutine PMGeomechForceInit(this)
+subroutine PMGeomechForceSetup(this)
   ! 
   ! This routine
   ! 
@@ -99,7 +99,7 @@ subroutine PMGeomechForceInit(this)
 
   !call this%comm1%SetDM(this%geomech_realization%geomech_discretization%dm_1dof)
 
-end subroutine PMGeomechForceInit
+end subroutine PMGeomechForceSetup
 
 ! ************************************************************************** !
 

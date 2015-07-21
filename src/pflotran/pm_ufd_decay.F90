@@ -66,7 +66,7 @@ function PMUFDDecayCreate()
   allocate(PMUFDDecayCreate)
   nullify(PMUFDDecayCreate%realization)
 
-  call PMBaseCreate(PMUFDDecayCreate)
+  call PMBaseInit(PMUFDDecayCreate)
 
 end function PMUFDDecayCreate
 

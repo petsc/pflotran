@@ -33,7 +33,7 @@ module PM_RT_class
     ! for transport only
     PetscBool :: transient_porosity
   contains
-    procedure, public :: Init => PMRTInit
+    procedure, public :: Setup => PMRTSetup
     procedure, public :: PMRTSetRealization
     procedure, public :: InitializeRun => PMRTInitializeRun
     procedure, public :: FinalizeRun => PMRTFinalizeRun
@@ -100,7 +100,7 @@ function PMRTCreate()
   ! these flags can only be true for transport only
   rt_pm%transient_porosity = PETSC_FALSE
 
-  call PMBaseCreate(rt_pm)
+  call PMBaseInit(rt_pm)
   rt_pm%name = 'PMRT'
   
   PMRTCreate => rt_pm
@@ -109,7 +109,7 @@ end function PMRTCreate
 
 ! ************************************************************************** !
 
-subroutine PMRTInit(this)
+subroutine PMRTSetup(this)
   ! 
   ! Initializes variables associated with reactive transport
   ! 
@@ -129,7 +129,7 @@ subroutine PMRTInit(this)
   class(pm_rt_type) :: this
 
 #ifdef PM_RT_DEBUG  
-  call printMsg(this%option,'PMRT%Init()')
+  call printMsg(this%option,'PMRT%Setup()')
 #endif
   
 #ifndef SIMPLIFY  
@@ -158,7 +158,7 @@ subroutine PMRTInit(this)
     endif
   endif
   
-end subroutine PMRTInit
+end subroutine PMRTSetup
 
 ! ************************************************************************** !
 

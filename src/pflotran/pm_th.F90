@@ -25,7 +25,7 @@ module PM_TH_class
   type, public, extends(pm_subsurface_type) :: pm_th_type
     class(communicator_type), pointer :: commN
   contains
-    procedure, public :: Init => PMTHInit
+    procedure, public :: Setup => PMTHSetup
     procedure, public :: Read => PMTHRead
     procedure, public :: InitializeTimestep => PMTHInitializeTimestep
     procedure, public :: Residual => PMTHResidual
@@ -154,7 +154,7 @@ end subroutine PMTHRead
 
 ! ************************************************************************** !
 
-subroutine PMTHInit(this)
+subroutine PMTHSetup(this)
   ! 
   ! This routine
   ! 
@@ -171,7 +171,7 @@ subroutine PMTHInit(this)
   
   class(pm_th_type) :: this
 
-  call PMSubsurfaceInit(this)
+  call PMSubsurfaceSetup(this)
   
   ! set up communicator
   select case(this%realization%discretization%itype)
@@ -182,7 +182,7 @@ subroutine PMTHInit(this)
   end select
   call this%commN%SetDM(this%realization%discretization%dm_nflowdof)
 
-end subroutine PMTHInit
+end subroutine PMTHSetup
 
 ! ************************************************************************** !
 
