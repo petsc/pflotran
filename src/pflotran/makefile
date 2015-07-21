@@ -17,7 +17,7 @@ ifneq (,$(filter libpflotranchem.a pflotran_rxn,$(MAKECMDGOALS)))
   PFLOTRAN_RXN_FLAG := 1
 endif
 
-ifdef tough2
+ifdef match_tough2
   MYFLAGS += ${FC_DEFINE_FLAG}MATCH_TOUGH2
 endif
 
