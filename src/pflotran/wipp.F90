@@ -906,7 +906,7 @@ module WIPP_module
     class(creep_closure_type), pointer :: creep_closure
   end type wipp_type
   
-  class(wipp_type), pointer, public :: wipp
+  type(wipp_type), pointer, public :: wipp
   
   interface WIPPDestroy
     module procedure WIPPDestroy1
@@ -931,7 +931,7 @@ subroutine WIPPInit()
 
   implicit none
   
-  class(wipp_type), pointer :: WIPPCreate
+  type(wipp_type), pointer :: WIPPCreate
 
   if (associated(wipp)) then
     call WIPPDestroy(wipp)
@@ -950,7 +950,7 @@ function WIPPGetPtr()
 
   implicit none
   
-  class(wipp_type), pointer :: WIPPGetPtr
+  type(wipp_type), pointer :: WIPPGetPtr
 
   if (.not.associated(wipp)) then
     allocate(wipp)
@@ -1037,7 +1037,7 @@ subroutine WippDestroy2(wipp)
 
   implicit none
   
-  class(wipp_type), pointer :: wipp
+  type(wipp_type), pointer :: wipp
   
   if (.not.associated(wipp)) return
 
