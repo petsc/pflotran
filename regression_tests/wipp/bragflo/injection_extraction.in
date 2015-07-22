@@ -58,6 +58,10 @@ GRID
 END
 
 !=========================== material properties ==============================
+WIPP
+  SET_CELL_BY_CELL_SOIL_REF_PRES
+END
+ 
 MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.10d0

@@ -107,6 +107,10 @@ END
 
 !======== materials  ========
 
+WIPP
+  SET_CELL_BY_CELL_SOIL_REF_PRES
+END
+
 MATERIAL_PROPERTY S_MB138
   ID 1
   TORTUOSITY 1.d0
@@ -164,13 +168,13 @@ STRATA
 END
 
 !=========================== output options ===================================
-skip
 OUTPUT
 !  PERIODIC_OBSERVATION TIMESTEP 1
-  TIMES y .0010 .0030 .0050 .0100 .0300 .0500 .1000 .3000 .5000\
-   .5010 .5030 .5050 .5100 .5300 .5500 .6000 .8000 1
-  FORMAT HDF5
+!  TIMES y .0010 .0030 .0050 .0100 .0300 .0500 .1000 .3000 .5000\
+!   .5010 .5030 .5050 .5100 .5300 .5500 .6000 .8000 1
+!  FORMAT HDF5
   VARIABLES
+    TEMPERATURE
     LIQUID_PRESSURE
     GAS_PRESSURE
     MINERAL_POROSITY
@@ -183,9 +187,10 @@ OUTPUT
     PERMEABILITY_X
     PERMEABILITY_Y
     PERMEABILITY_Z
+    LIQUID_ENERGY
+    SOIL_REFERENCE_PRESSURE
   /
 /
-noskip
 !=========================== times ============================================
 TIME
   FINAL_TIME 1 y ! 0.317... y
