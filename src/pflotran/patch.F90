@@ -2782,8 +2782,8 @@ end function PatchAuxVarsUpToDate
 
 ! ************************************************************************** !
 
-subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar, &
-                             isubvar,isubvar1)
+subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
+                             ivar,isubvar,isubvar1)
   ! 
   ! PatchGetVariable: Extracts variables indexed by ivar and isubvar from a patch
   ! 
@@ -2833,6 +2833,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
   PetscReal :: tempreal
   PetscInt :: tempint, tempint2
   PetscInt :: irate, istate, irxn, ifo2, jcomp, comp_id
+  PetscInt :: ivar_temp
   PetscErrorCode :: ierr
 
   grid => patch%grid
@@ -3800,54 +3801,17 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
             endif
           enddo        
       end select
-    case(POROSITY)
+    case(POROSITY,MINERAL_POROSITY,PERMEABILITY,PERMEABILITY_X, &
+         PERMEABILITY_Y, PERMEABILITY_Z,PERMEABILITY_XY,PERMEABILITY_XZ, &
+         PERMEABILITY_YZ,VOLUME,TORTUOSITY,SOIL_COMPRESSIBILITY, &
+         SOIL_REFERENCE_PRESSURE)
+      ivar_temp = ivar
+      if (ivar_temp == PERMEABILITY) ivar_temp = PERMEABILITY_X 
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = &
           MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
-                                 POROSITY)
+                                 ivar_temp)
       enddo
-    case(MINERAL_POROSITY)
-      do local_id=1,grid%nlmax
-        vec_ptr(local_id) = &
-          MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
-                                 MINERAL_POROSITY)
-      enddo
-    case(PERMEABILITY,PERMEABILITY_X)
-      do local_id=1,grid%nlmax
-        vec_ptr(local_id) = &
-          MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
-                                 PERMEABILITY_X)
-      enddo
-    case(PERMEABILITY_Y)
-      do local_id=1,grid%nlmax
-        vec_ptr(local_id) = &
-          MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
-                                 PERMEABILITY_Y)
-      enddo
-    case(PERMEABILITY_Z)
-      do local_id=1,grid%nlmax
-        vec_ptr(local_id) = &
-          MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
-                                 PERMEABILITY_Z)
-      enddo
-    case(PERMEABILITY_XY)
-      do local_id=1,grid%nlmax
-        vec_ptr(local_id) = &
-          MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
-                                 PERMEABILITY_XY)
-      enddo
-    case(PERMEABILITY_XZ)
-      do local_id=1,grid%nlmax
-        vec_ptr(local_id) = &
-          MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
-                                 PERMEABILITY_XZ)
-      enddo
-    case(PERMEABILITY_YZ)
-      do local_id=1,grid%nlmax
-        vec_ptr(local_id) = &
-          MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
-                                 PERMEABILITY_YZ)
-      enddo      
     case(PHASE)
       call VecGetArrayF90(field%iphas_loc,vec_ptr2,ierr);CHKERRQ(ierr)
       do local_id=1,grid%nlmax
@@ -3863,34 +3827,10 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = option%myrank
       enddo
-    case(VOLUME)
-      do local_id=1,grid%nlmax
-        vec_ptr(local_id) = &
-          MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
-                                 VOLUME)
-      enddo      
-    case(TORTUOSITY)
-      do local_id=1,grid%nlmax
-        vec_ptr(local_id) = &
-          MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
-                                 TORTUOSITY)
-      enddo      
     case(RESIDUAL)
       call VecRestoreArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
       call VecStrideGather(field%flow_r,isubvar-1,vec,INSERT_VALUES,ierr)
       call VecGetArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
-    case(SOIL_COMPRESSIBILITY)
-      do local_id=1,grid%nlmax
-        vec_ptr(local_id) = &
-          MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
-                                 SOIL_COMPRESSIBILITY)
-      enddo
-    case(SOIL_REFERENCE_PRESSURE)
-      do local_id=1,grid%nlmax
-        vec_ptr(local_id) = &
-          MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
-                                 SOIL_REFERENCE_PRESSURE)
-      enddo
     case default
       write(option%io_buffer, &
             '(''IVAR ('',i3,'') not found in PatchGetVariable'')') ivar
@@ -3950,6 +3890,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
   PetscInt, optional :: isubvar1
   PetscInt :: iphase
   PetscInt :: ghosted_id, local_id
+  PetscInt :: ivar_temp
 
   PetscReal :: value, xmass, lnQKgas, tk, ehfac, eh0, pe0, ph0
   PetscInt :: irate, istate, irxn, ifo2, jcomp, comp_id
@@ -4548,27 +4489,13 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
             output_option%tconv
           endif
       end select
-    case(POROSITY)
-      value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
-                                     POROSITY)
-    case(MINERAL_POROSITY)
-      value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
-                                     MINERAL_POROSITY)
-    case(PERMEABILITY,PERMEABILITY_X)
-      value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
-                                     PERMEABILITY_X)
-    case(PERMEABILITY_Y)
-      value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
-                                     PERMEABILITY_Y)
-    case(PERMEABILITY_Z)
-      value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
-                                     PERMEABILITY_Z)
-    case(SOIL_COMPRESSIBILITY)
-      value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
-                                     SOIL_COMPRESSIBILITY)
-    case(SOIL_REFERENCE_PRESSURE)
-      value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
-                                     SOIL_REFERENCE_PRESSURE)
+    case(POROSITY,MINERAL_POROSITY,PERMEABILITY,PERMEABILITY_X, &
+         PERMEABILITY_Y, PERMEABILITY_Z,PERMEABILITY_XY,PERMEABILITY_XZ, &
+         PERMEABILITY_YZ,VOLUME,TORTUOSITY,SOIL_COMPRESSIBILITY, &
+         SOIL_REFERENCE_PRESSURE)
+      ivar_temp = ivar
+      if (ivar_temp == PERMEABILITY) ivar_temp = PERMEABILITY_X 
+      value = MaterialAuxVarGetValue(material_auxvars(ghosted_id),ivar_temp)
     case(PHASE)
       call VecGetArrayF90(field%iphas_loc,vec_ptr2,ierr);CHKERRQ(ierr)
       value = vec_ptr2(ghosted_id)
@@ -4599,12 +4526,6 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
                                       sec_rt_auxvar(isubvar), &
                                       patch%aux%Global%auxvars(ghosted_id),&
                                       reaction,option)      
-    case(TORTUOSITY)
-      value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
-                                     TORTUOSITY)
-    case(VOLUME)
-      value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
-                                     VOLUME)
     case(RESIDUAL)
       local_id = grid%nG2L(ghosted_id)
       call VecGetArrayF90(field%flow_r,vec_ptr2,ierr);CHKERRQ(ierr)
@@ -5345,30 +5266,23 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
         case(COLLOID_IMMOBILE)
           call printErrMsg(option,'Setting of immobile colloid concentration at grid cell not supported.')
       end select
-    case(POROSITY)
+    case(POROSITY,MINERAL_POROSITY)
       if (vec_format == GLOBAL) then
         do local_id=1,grid%nlmax
           call MaterialAuxVarSetValue(material_auxvars(grid%nL2G(local_id)), &
-                                      POROSITY,vec_ptr(local_id))
+                                      ivar,vec_ptr(local_id))
         enddo
       else if (vec_format == LOCAL) then
         do ghosted_id=1,grid%ngmax
           call MaterialAuxVarSetValue(material_auxvars(ghosted_id), &
-                                      POROSITY,vec_ptr(ghosted_id))
+                                      ivar,vec_ptr(ghosted_id))
         enddo
       endif
-    case(MINERAL_POROSITY)
-      if (vec_format == GLOBAL) then
-        do local_id=1,grid%nlmax
-          call MaterialAuxVarSetValue(material_auxvars(grid%nL2G(local_id)), &
-                                      MINERAL_POROSITY,vec_ptr(local_id))
-        enddo
-      else if (vec_format == LOCAL) then
-        do ghosted_id=1,grid%ngmax
-          call MaterialAuxVarSetValue(material_auxvars(ghosted_id), &
-                                      MINERAL_POROSITY,vec_ptr(ghosted_id))
-        enddo
-      endif
+    case(VOLUME,TORTUOSITY,SOIL_COMPRESSIBILITY,SOIL_REFERENCE_PRESSURE)
+      option%io_buffer = 'Setting of volume, tortuosity, ' // &
+        'soil compressibility or soil reference pressure in ' // &
+        '"PatchSetVariable" not supported.'
+      call printErrMsg(option)
     case(PERMEABILITY,PERMEABILITY_X,PERMEABILITY_Y,PERMEABILITY_Z)
       option%io_buffer = 'Setting of permeability in "PatchSetVariable"' // &
         ' not supported.'

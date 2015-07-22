@@ -1531,15 +1531,23 @@ subroutine MaterialGetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
   
   select case(ivar)
     case(SOIL_COMPRESSIBILITY)
-      do ghosted_id=1, Material%num_aux
-        vec_loc_p(ghosted_id) = Material%auxvars(ghosted_id)% &
-                                   soil_properties(soil_compressibility_index)
-      enddo
+      if (soil_compressibility_index > 0) then
+        do ghosted_id=1, Material%num_aux
+          vec_loc_p(ghosted_id) = Material%auxvars(ghosted_id)% &
+                                     soil_properties(soil_compressibility_index)
+        enddo
+      else
+        vec_loc_p(:) = UNINITIALIZED_DOUBLE
+      endif
     case(SOIL_REFERENCE_PRESSURE)
-      do ghosted_id=1, Material%num_aux
-        vec_loc_p(ghosted_id) = Material%auxvars(ghosted_id)% &
-                                   soil_properties(soil_reference_pressure_index)
-      enddo
+      if (soil_reference_pressure_index > 0) then
+        do ghosted_id=1, Material%num_aux
+          vec_loc_p(ghosted_id) = Material%auxvars(ghosted_id)% &
+                                  soil_properties(soil_reference_pressure_index)
+        enddo
+      else
+        vec_loc_p(:) = UNINITIALIZED_DOUBLE
+      endif
     case(VOLUME)
       do ghosted_id=1, Material%num_aux
         vec_loc_p(ghosted_id) = Material%auxvars(ghosted_id)%volume
