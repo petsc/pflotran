@@ -1252,8 +1252,8 @@ subroutine InitSubsurfaceReadInput(simulation)
   use EOS_module
   use EOS_Water_module
   use SrcSink_Sandbox_module
-  use Creep_Closure_module
   use Klinkenberg_module
+  use WIPP_module
   
   use Simulation_Subsurface_class
   use PMC_Subsurface_class
@@ -2438,14 +2438,13 @@ subroutine InitSubsurfaceReadInput(simulation)
         call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE','Group size')
 
 !....................
-      case('WIPP-CREEP_CLOSURE')
-        call CreepClosureInit()
-        creep_closure => CreepClosureCreate()
-        call creep_closure%Read(input,option)
-        option%flow%transient_porosity = PETSC_TRUE
+      case('WIPP')
+        wipp => WIPPGetPtr()
+        call WIPPRead(input,option)
         
 !....................
       case('KLINKENBERG_EFFECT')
+        wipp => WIPPGetPtr()
         call KlinkenbergInit()
         klinkenberg => KlinkenbergCreate()
         call Klinkenberg%Read(input,option)

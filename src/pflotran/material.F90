@@ -1437,6 +1437,11 @@ subroutine MaterialSetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
         Material%auxvars(ghosted_id)% &
           soil_properties(soil_compressibility_index) = vec_loc_p(ghosted_id)
       enddo
+    case(SOIL_REFERENCE_PRESSURE)
+      do ghosted_id=1, Material%num_aux
+        Material%auxvars(ghosted_id)% &
+          soil_properties(soil_reference_pressure_index) = vec_loc_p(ghosted_id)
+      enddo
     case(VOLUME)
       do ghosted_id=1, Material%num_aux
         Material%auxvars(ghosted_id)%volume = vec_loc_p(ghosted_id)
@@ -1529,6 +1534,11 @@ subroutine MaterialGetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
       do ghosted_id=1, Material%num_aux
         vec_loc_p(ghosted_id) = Material%auxvars(ghosted_id)% &
                                    soil_properties(soil_compressibility_index)
+      enddo
+    case(SOIL_REFERENCE_PRESSURE)
+      do ghosted_id=1, Material%num_aux
+        vec_loc_p(ghosted_id) = Material%auxvars(ghosted_id)% &
+                                   soil_properties(soil_reference_pressure_index)
       enddo
     case(VOLUME)
       do ghosted_id=1, Material%num_aux

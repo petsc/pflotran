@@ -229,7 +229,8 @@ subroutine SubsurfaceFinalizeRun(this)
   use Timestepper_BE_class
   use Reaction_Sandbox_module, only : RSandboxDestroy
   use SrcSink_Sandbox_module, only : SSSandboxDestroy
-  use Creep_Closure_module, only : CreepClosureDestroy
+  use WIPP_module, only : WIPPDestroy
+  use Klinkenberg_module, only : KlinkenbergDestroy
   use CLM_Rxn_module, only : RCLMRxnDestroy
 
   implicit none
@@ -255,7 +256,8 @@ subroutine SubsurfaceFinalizeRun(this)
         flow_timestepper => ts
     end select
     call SSSandboxDestroy()
-    call CreepClosureDestroy()
+    call WIPPDestroy()
+    call KlinkenbergDestroy()
   endif
   if (associated(this%rt_process_model_coupler)) then
     select type(ts => this%rt_process_model_coupler%timestepper)

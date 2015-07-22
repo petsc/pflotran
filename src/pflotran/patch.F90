@@ -3885,6 +3885,12 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
           MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
                                  SOIL_COMPRESSIBILITY)
       enddo
+    case(SOIL_REFERENCE_PRESSURE)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = &
+          MaterialAuxVarGetValue(material_auxvars(grid%nL2G(local_id)), &
+                                 SOIL_REFERENCE_PRESSURE)
+      enddo
     case default
       write(option%io_buffer, &
             '(''IVAR ('',i3,'') not found in PatchGetVariable'')') ivar
@@ -4560,7 +4566,9 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
     case(SOIL_COMPRESSIBILITY)
       value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
                                      SOIL_COMPRESSIBILITY)
-
+    case(SOIL_REFERENCE_PRESSURE)
+      value = MaterialAuxVarGetValue(material_auxvars(ghosted_id), &
+                                     SOIL_REFERENCE_PRESSURE)
     case(PHASE)
       call VecGetArrayF90(field%iphas_loc,vec_ptr2,ierr);CHKERRQ(ierr)
       value = vec_ptr2(ghosted_id)

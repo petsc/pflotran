@@ -54,7 +54,7 @@ module General_module
             GeneralCheckUpdatePre, &
             GeneralCheckUpdatePost, &
             GeneralMapBCAuxVarsToGlobal, &
-            GeneralSetFractureInitPressure, &
+            GeneralSetReferencePressures, &
             GeneralDestroy
 
 contains
@@ -4476,7 +4476,7 @@ end subroutine GeneralMapBCAuxVarsToGlobal
 
 ! ************************************************************************** !
 
-subroutine GeneralSetFractureInitPressure(realization)
+subroutine GeneralSetReferencePressures(realization)
   ! 
   ! Sets the initial pressure associated with WIPP fracture module.  This is
   ! WIPP specific.
@@ -4490,7 +4490,8 @@ subroutine GeneralSetFractureInitPressure(realization)
   use Grid_module
   use Material_Aux_class
   use Fracture_module
-  use Variables_module, only : MAXIMUM_PRESSURE
+  use WIPP_module, only : wipp
+  use Variables_module, only : MAXIMUM_PRESSURE, SOIL_REFERENCE_PRESSURE
 
   implicit none
 
@@ -4499,6 +4500,7 @@ subroutine GeneralSetFractureInitPressure(realization)
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   class(material_auxvar_type), pointer :: material_auxvars(:)
+  type(material_type), pointer :: Material  
   PetscReal, pointer :: vec_loc_p(:)
 
   PetscInt :: ghosted_id
@@ -4520,11 +4522,24 @@ subroutine GeneralSetFractureInitPressure(realization)
                                       vec_loc_p(ghosted_id))
     endif
   enddo
+  if (associated(wipp)) then
+    if (wipp%cell_by_cell_soil_ref_pres) then
+      Material => patch%aux%Material
+      do ghosted_id = 1, grid%ngmax
+        if (patch%imat(ghosted_id) <= 0) cycle
+          ! use patch%aux%Material due to a bug in setting array members of 
+          ! material_auxvar class
+          call MaterialAuxVarSetValue(Material%auxvars(ghosted_id), &
+                                      SOIL_REFERENCE_PRESSURE, &
+                                      vec_loc_p(ghosted_id))
+      enddo
+    endif
+  endif
 
   call VecRestoreArrayReadF90(realization%field%work_loc,vec_loc_p, &
                               ierr); CHKERRQ(ierr)
 
-end subroutine GeneralSetFractureInitPressure
+end subroutine GeneralSetReferencePressures
 
 ! ************************************************************************** !
 

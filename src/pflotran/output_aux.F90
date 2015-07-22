@@ -882,6 +882,12 @@ subroutine OutputVariableRead(input,option,output_variable_list)
         call OutputVariableAddToList(output_variable_list,name, &
                                      OUTPUT_GENERIC,units, &
                                      SOIL_COMPRESSIBILITY)
+      case ('SOIL_REFERENCE_PRESSURE')
+        units = 'Pa'
+        name = 'Soil Reference Pressure'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     SOIL_REFERENCE_PRESSURE)
       case ('PROCESS_ID')
         units = ''
         name = 'Process ID'

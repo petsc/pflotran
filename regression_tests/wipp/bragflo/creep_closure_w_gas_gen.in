@@ -77,9 +77,11 @@ GRID
   /
 END
 
-WIPP-CREEP_CLOSURE
-  FILENAME pflotran_closure.dat
-  MATERIAL M_WP
+WIPP
+  CREEP_CLOSURE
+    FILENAME pflotran_closure.dat
+    MATERIAL M_WP
+  END
 /
 
 !======== regions & strata ========

@@ -266,7 +266,7 @@ recursive subroutine PMGeneralInitializeRun(this)
   ! Date: 04/21/14 
 
   use Realization_Base_class
-  use General_module, only : GeneralSetFractureInitPressure
+  use General_module, only : GeneralSetReferencePressures
   
   implicit none
   
@@ -286,11 +286,13 @@ recursive subroutine PMGeneralInitializeRun(this)
                                 this%max_change_ivar(i), &
                                 this%max_change_isubvar(i))
   enddo
-  
+
+  ! this call must come before PMSubsurfaceInitializeRun() so that auxvars
+  ! are updated at beginning of run and prior to initial output.
+  call GeneralSetReferencePressures(this%realization)
+
   ! call parent implementation
   call PMSubsurfaceInitializeRun(this)
-
-  call GeneralSetFractureInitPressure(this%realization)
 
 end subroutine PMGeneralInitializeRun
 

@@ -630,7 +630,7 @@ subroutine CreepClosureTest(this,time,pressure)
   
   print *, time, pressure, this%Evaluate(time,pressure)
   
-end subroutine CreepClosuretest
+end subroutine CreepClosureTest
 
 ! ************************************************************************** !
 
@@ -887,3 +887,164 @@ subroutine KlinkenbergDestroy2(klinkenberg)
 end subroutine KlinkenbergDestroy2
 
 end module Klinkenberg_module
+
+! ************************************************************************** !
+
+module WIPP_module
+  
+  use PFLOTRAN_Constants_module
+  use Creep_Closure_module
+
+  implicit none
+  
+  private
+
+#include "finclude/petscsys.h"
+
+  type :: wipp_type
+    PetscBool :: cell_by_cell_soil_ref_pres
+    class(creep_closure_type), pointer :: creep_closure
+  end type wipp_type
+  
+  class(wipp_type), pointer, public :: wipp
+  
+  interface WIPPDestroy
+    module procedure WIPPDestroy1
+    module procedure WIPPDestroy2
+  end interface
+  
+  public :: WIPPInit, &
+            WIPPGetPtr, &
+            WIPPRead, &
+            WIPPDestroy
+
+contains
+
+
+! ************************************************************************** !
+
+subroutine WIPPInit()
+  !
+  ! Author: Glenn Hammond
+  ! Date: 07/22/15
+  !
+
+  implicit none
+  
+  class(wipp_type), pointer :: WIPPCreate
+
+  if (associated(wipp)) then
+    call WIPPDestroy(wipp)
+  endif
+  nullify(wipp)  
+  
+end subroutine WIPPInit
+
+! ************************************************************************** !
+
+function WIPPGetPtr()
+  !
+  ! Author: Glenn Hammond
+  ! Date: 07/22/15
+  !
+
+  implicit none
+  
+  class(wipp_type), pointer :: WIPPGetPtr
+
+  if (.not.associated(wipp)) then
+    allocate(wipp)
+    wipp%cell_by_cell_soil_ref_pres = PETSC_FALSE
+    nullify(wipp%creep_closure)
+  endif
+  
+  WIPPGetPtr => wipp
+  
+end function WIPPGetPtr
+
+! ************************************************************************** !
+
+subroutine WIPPRead(input,option)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/13/14
+  ! 
+  use Option_module
+  use Input_Aux_module
+  use String_module
+  use Creep_Closure_module
+  
+  implicit none
+  
+  type(input_type) :: input
+  type(option_type) :: option
+  
+  type(wipp_type), pointer :: wipp
+  character(len=MAXWORDLENGTH) :: keyword
+  character(len=MAXSTRINGLENGTH) :: error_string = 'WIPP'
+
+  wipp => WIPPGetPtr()
+  
+  input%ierr = 0
+  do
+  
+    call InputReadPflotranString(input,option)
+
+    if (InputCheckExit(input,option)) exit  
+
+    call InputReadWord(input,option,keyword,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword',error_string)
+    call StringToUpper(keyword)   
+      
+    select case(trim(keyword))
+    
+      case('SET_CELL_BY_CELL_SOIL_REF_PRES')
+        wipp%cell_by_cell_soil_ref_pres = PETSC_TRUE
+      case('CREEP_CLOSURE')
+        call CreepClosureInit()
+        creep_closure => CreepClosureCreate()
+        call creep_closure%Read(input,option)
+        option%flow%transient_porosity = PETSC_TRUE
+        wipp%creep_closure => creep_closure      
+     case default
+        call InputKeywordUnrecognized(keyword,error_string,option)
+    end select
+  enddo
+  
+end subroutine WIPPRead
+
+! ************************************************************************** !
+
+subroutine WIPPDestroy1()
+  !
+  ! Author: Glenn Hammond
+  ! Date: 07/22/15
+  !
+
+  implicit none
+  
+  call WIPPDestroy(wipp)
+
+end subroutine WIPPDestroy1
+
+! ************************************************************************** !
+
+subroutine WippDestroy2(wipp)
+  !
+  ! Author: Glenn Hammond
+  ! Date: 07/22/15
+  !
+
+  implicit none
+  
+  class(wipp_type), pointer :: wipp
+  
+  if (.not.associated(wipp)) return
+
+  call CreepClosureDestroy(wipp%creep_closure)
+  deallocate(wipp)
+  nullify(wipp)
+
+end subroutine WippDestroy2
+
+end module WIPP_module
