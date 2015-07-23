@@ -228,6 +228,12 @@ class RegressionTest(object):
         #geh: kludge for -malloc 0
         command.append("-malloc")
         command.append("0")
+        #geh: we now set the successful exit code through the command line
+        #     so that users are not confused by any error codes reported by
+        #     wrapper libraries (e.g. MPICH2) due to the non-zero 
+        #     PFLOTRAN_SUCCESS.
+        command.append("-successful_exit_code")
+        command.append("%d" % self._PFLOTRAN_SUCCESS)
         if self._input_arg is not None:
             command.append(self._input_arg)
             command.append(test_name)
