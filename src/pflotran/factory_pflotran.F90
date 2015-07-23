@@ -422,6 +422,10 @@ subroutine PFLOTRANInitCommandLineSettings(option)
   call InputGetCommandLineInt(string,i,option_found,option)
   if (option_found) option%verbosity = i
  
+  string = '-successful_exit_code'
+  call InputGetCommandLineInt(string,i,option_found,option)
+  if (option_found) option%successful_exit_code = i
+ 
   ! this will get overwritten later if stochastic
   string = '-realization_id'
   call InputGetCommandLineInt(string,i,option_found,option)
