@@ -11,7 +11,7 @@ module Dataset_Ascii_class
 #include "finclude/petscsys.h"
 
   type, public, extends(dataset_base_type) :: dataset_ascii_type
-    PetscInt :: array_rank
+    PetscInt :: array_width
   end type dataset_ascii_type
   
   interface DatasetAsciiRead
@@ -97,7 +97,7 @@ subroutine DatasetAsciiInit(this)
   class(dataset_ascii_type) :: this
   
   call DatasetBaseInit(this)
-  this%array_rank = 0
+  this%array_width = 0
     
 end subroutine DatasetAsciiInit
 
@@ -289,17 +289,17 @@ subroutine DatasetAsciiLoad(this,input,option)
   deallocate(temp_array)
   nullify(temp_array)
 
-  if (this%array_rank > 0) then
-    if (this%array_rank /= data_count) then
-      write(word,*) this%array_rank
+  if (this%array_width > 0) then
+    if (this%array_width /= data_count) then
+      write(word,*) this%array_width
       option%io_buffer = 'Inconsistency between dataset prescribed rank (' // &
         trim(word) // ') and rank in file ('
       write(word,*) data_count
-      option%io_buffer = trim(option%io_buffer) // ').'
+      option%io_buffer = trim(option%io_buffer) // trim(word) // ').'
       call printErrMsg(option)
     endif
   else
-    this%array_rank = data_count
+    this%array_width = data_count
   endif
   
 end subroutine DatasetAsciiLoad
@@ -351,13 +351,14 @@ subroutine DatasetAsciiVerify(this,option)
   endif
   call DatasetBaseVerify(this,option)
   if (associated(this%rbuffer)) then
-    if (this%array_rank /= this%dims(1)) then
-      option%io_buffer = '"array_rank" is not equal to "dims(1)" in dataset: ' &
-                         // trim(this%name)
+    if (this%array_width /= this%dims(1)) then
+      option%io_buffer = &
+        '"array_width" is not equal to "dims(1)" in dataset: ' // &
+        trim(this%name)
       call printErrMsg(option)
     endif
     ! set initial values
-    this%rarray(:) = this%rbuffer(1:this%array_rank)
+    this%rarray(:) = this%rbuffer(1:this%array_width)
   endif
     
 end subroutine DatasetAsciiVerify
@@ -379,7 +380,7 @@ subroutine DatasetAsciiPrint(this,option)
   class(dataset_ascii_type) :: this
   type(option_type) :: option
   
-  write(option%fid_out,'(10x,''Array Rank: '',i2)') this%array_rank
+  write(option%fid_out,'(10x,''Array Rank: '',i2)') this%array_width
   
 end subroutine DatasetAsciiPrint
 

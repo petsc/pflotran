@@ -154,7 +154,7 @@ function GeomechSubConditionCreate(ndof)
   ! by default, all dataset are of type dataset_ascii_type, unless overwritten
   dataset_ascii => DatasetAsciiCreate()
   call DatasetAsciiInit(dataset_ascii)
-  dataset_ascii%array_rank = ndof
+  dataset_ascii%array_width = ndof
   dataset_ascii%data_type = DATASET_REAL
   sub_condition%dataset => dataset_ascii
   nullify(dataset_ascii)

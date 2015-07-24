@@ -105,7 +105,7 @@ subroutine DownregRead(this,input,option)
   
   dataset_ascii => DatasetAsciiCreate()
   call DatasetAsciiInit(dataset_ascii)
-  dataset_ascii%array_rank = option%nflowdof
+  dataset_ascii%array_width = option%nflowdof
   dataset_ascii%data_type = DATASET_REAL
   this%dataset => dataset_ascii
   nullify(dataset_ascii)

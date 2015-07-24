@@ -373,7 +373,7 @@ function FlowSubConditionCreate(ndof)
   ! by default, all dataset are of type dataset_ascii_type, unless overwritten
   dataset_ascii => DatasetAsciiCreate()
   call DatasetAsciiInit(dataset_ascii)
-  dataset_ascii%array_rank = ndof
+  dataset_ascii%array_width = ndof
   dataset_ascii%data_type = DATASET_REAL
   sub_condition%dataset => dataset_ascii
   nullify(dataset_ascii)
@@ -750,7 +750,7 @@ subroutine FlowConditionRead(condition,input,option)
       case('DATUM')
         dataset_ascii => DatasetAsciiCreate()
         call DatasetAsciiInit(dataset_ascii)
-        dataset_ascii%array_rank = 3
+        dataset_ascii%array_width = 3
         dataset_ascii%data_type = DATASET_REAL
         condition%datum => dataset_ascii
         nullify(dataset_ascii)        
@@ -791,7 +791,7 @@ subroutine FlowConditionRead(condition,input,option)
           end select
           dataset_ascii => DatasetAsciiCreate()
           call DatasetAsciiInit(dataset_ascii)
-          dataset_ascii%array_rank = 3
+          dataset_ascii%array_width = 3
           dataset_ascii%data_type = DATASET_REAL
           sub_condition_ptr%gradient => dataset_ascii
           nullify(dataset_ascii)
@@ -1387,7 +1387,7 @@ subroutine FlowConditionGeneralRead(condition,input,option)
       case('DATUM')
         dataset_ascii => DatasetAsciiCreate()
         call DatasetAsciiInit(dataset_ascii)
-        dataset_ascii%array_rank = 3
+        dataset_ascii%array_width = 3
         dataset_ascii%data_type = DATASET_REAL
         condition%datum => dataset_ascii
         nullify(dataset_ascii)        
@@ -1411,7 +1411,7 @@ subroutine FlowConditionGeneralRead(condition,input,option)
           end select
           dataset_ascii => DatasetAsciiCreate()
           call DatasetAsciiInit(dataset_ascii)
-          dataset_ascii%array_rank = 3
+          dataset_ascii%array_width = 3
           dataset_ascii%data_type = DATASET_REAL
           sub_condition_ptr%gradient => dataset_ascii
           nullify(dataset_ascii)
@@ -2012,8 +2012,8 @@ subroutine ConditionReadValues(input,option,keyword,string,dataset_base,units)
     endif
   else
     input%buf = trim(string2)
-    allocate(dataset_ascii%rarray(dataset_ascii%array_rank))
-    do irank=1,dataset_ascii%array_rank
+    allocate(dataset_ascii%rarray(dataset_ascii%array_width))
+    do irank=1,dataset_ascii%array_width
       call InputReadDouble(input,option,dataset_ascii%rarray(irank))
       write(input%err_buf,'(a,i2)') trim(keyword) // ' dataset_values, irank = ', irank
       input%err_buf2 = 'CONDITION'
