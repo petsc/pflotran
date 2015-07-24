@@ -351,6 +351,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   type(integral_flux_type), pointer :: integral_flux
   
   PetscInt :: temp_int, isub
+  PetscErrorCode :: ierr
   
   ! boundary conditions
   coupler => patch%boundary_condition_list%first
@@ -623,6 +624,15 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
                  '" in observation point "' // &
                  trim(observation%name) // &
                  '" not found in region list'                   
+          call printErrMsg(option)
+        endif
+        call MPI_Allreduce(observation%region%num_cells,temp_int, &
+                           ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
+                           option%mycomm,ierr)
+        if (temp_int == 0) then
+          option%io_buffer = 'Region "' // trim(observation%region%name) // &
+            '" is used in an observation point but lies outside the ' // &
+            'model domain.'
           call printErrMsg(option)
         endif
         if (observation%region%num_cells == 0) then
