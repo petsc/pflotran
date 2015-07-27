@@ -24,6 +24,7 @@ module PM_Waste_Form_class
     PetscReal, pointer :: concentration(:,:)
     PetscReal :: fuel_dissolution_rate
     PetscReal :: specific_surface_area
+    PetscReal :: volume
     PetscReal :: burnup
     type(fmdm_type), pointer :: next
   end type fmdm_type
@@ -363,6 +364,7 @@ subroutine PMGlassRead(this,input)
         dataset_ascii => DatasetAsciiCreate()
         dataset_ascii%array_width = 1 ! does not include time
         this%mass_fraction_dataset => dataset_ascii
+        dataset_ascii%data_type = DATASET_REAL
         call ConditionReadValues(input,option,word, &
                                  this%mass_fraction_dataset,units)
         if (associated(dataset_ascii%time_storage)) then
@@ -607,7 +609,7 @@ subroutine PMGlassInitializeTimestep(this)
             cur_waste_form%volume * &                 ! m^3 glass
             this%glass_density * &                    ! kg glass/m^3 glass
             conversion                                ! 1/day -> 1/sec  
-         ! m^3
+         ! kg glass/sec / kg glass/m^3 glass = m^3 glass
     dV = rate / this%glass_density * this%option%tran_dt
     cur_waste_form%volume = cur_waste_form%volume - dV
     cur_waste_form => cur_waste_form%next
@@ -655,8 +657,8 @@ subroutine PMGlassSolve(this,time,ierr)
   PetscInt :: local_id
   PetscInt :: ghosted_id  
   PetscInt :: i
-  PetscReal, pointer :: vec_p(:)       ! 1/day -> 1/sec
-  PetscReal, parameter :: conversion = 1.d0/(24.d0*3600.d0)
+  PetscReal, pointer :: vec_p(:)       ! kmol/day -> mol/sec
+  PetscReal, parameter :: conversion = 1.d3/(24.d0*3600.d0)
 
   grid => this%realization%patch%grid
   global_auxvars => this%realization%patch%aux%Global%auxvars
@@ -670,9 +672,9 @@ subroutine PMGlassSolve(this,time,ierr)
     local_id = cur_waste_form%local_id
     ghosted_id = grid%nL2G(local_id)
     if (cur_waste_form%volume > 0.d0) then
-      cur_waste_form%fuel_dissolution_rate = &
+      cur_waste_form%fuel_dissolution_rate = & ! kg glass/m^2/day
         560.d0*exp(-7397.d0/global_auxvars(ghosted_id)%temp+273.15d0)
-      ! kmol/sec
+      ! mol/sec
       vec_p(i) = cur_waste_form%fuel_dissolution_rate * &  ! kg glass/m^2/day
                  this%formula_weight * &                   ! kmol radionuclide/kg radionuclide
                  this%mass_fraction_dataset%rarray(1) * &  ! kg radionuclude/kg glass
@@ -680,7 +682,7 @@ subroutine PMGlassSolve(this,time,ierr)
                  cur_waste_form%exposure_factor * &        ! [-]
                  cur_waste_form%volume * &                 ! m^3 glass
                  this%glass_density * &                    ! kg glass/m^3 glass
-                 conversion                                ! 1/day -> 1/sec
+                 conversion                                ! kmol/day -> mol/sec
     else
       cur_waste_form%fuel_dissolution_rate = 0.d0
     endif
@@ -866,6 +868,7 @@ subroutine FMDMInit(fmdm)
   fmdm%temperature = UNINITIALIZED_DOUBLE
   fmdm%fuel_dissolution_rate = UNINITIALIZED_DOUBLE
   fmdm%specific_surface_area = UNINITIALIZED_DOUBLE
+  fmdm%volume = UNINITIALIZED_DOUBLE
   fmdm%burnup = UNINITIALIZED_DOUBLE
   nullify(fmdm%concentration)
   nullify(fmdm%next)
@@ -984,6 +987,9 @@ subroutine PMFMDMRead(this,input)
                                    new_waste_form%specific_surface_area)
               call InputErrorMsg(input,option,'specific surface area', &
                                  error_string)
+            case('VOLUME')
+              call InputReadDouble(input,option,new_waste_form%volume)
+              call InputErrorMsg(input,option,'volume',error_string)
             case('BURNUP')
               call InputReadDouble(input,option,new_waste_form%burnup)
               call InputErrorMsg(input,option,'burnup',error_string)
@@ -996,6 +1002,12 @@ subroutine PMFMDMRead(this,input)
         if (Uninitialized(new_waste_form%specific_surface_area)) then
           option%io_buffer = &
             'SPECIFIC_SURFACE_AREA must be specified for all fuel matrix ' // &
+            'degradation model waste packages.'
+          call printErrMsg(option)
+        endif
+        if (Uninitialized(new_waste_form%volume)) then
+          option%io_buffer = &
+            'VOLUME must be specified for all fuel matrix ' // &
             'degradation model waste packages.'
           call printErrMsg(option)
         endif
@@ -1371,10 +1383,11 @@ subroutine PMFMDMSolve(this,time,ierr)
     if (success == 0) then
       ierr = 1
       exit
-    endif
+    endif      ! mol(U)/sec
     vec_p(i) = cur_waste_form%fuel_dissolution_rate * & ! g/m^2/yr
-               cur_waste_form%specific_surface_area * &
-               conversion
+               cur_waste_form%specific_surface_area * & ! m^2/m^3 waste
+               cur_waste_form%volume * &                ! m^3 waste
+               conversion                               ! g(U)/yr -> mol(U)/sec
     cur_waste_form => cur_waste_form%next
   enddo
   call VecRestoreArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
