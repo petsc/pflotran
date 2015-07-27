@@ -159,6 +159,7 @@ subroutine DatasetAsciiLoad(this,input,option)
   PetscReal :: conversion
   PetscInt :: max_size, offset
   PetscInt :: row_count, column_count, data_count, i
+  PetscInt :: default_interpolation_method
   PetscBool :: force_units_for_all_data
   PetscErrorCode :: ierr
   
@@ -168,6 +169,7 @@ subroutine DatasetAsciiLoad(this,input,option)
 
   row_count = 0
   ierr = 0
+  default_interpolation_method = INTERPOLATION_NULL
   do
     call InputReadPflotranString(input,option)
     ! reach the end of file or close out block
@@ -188,6 +190,20 @@ subroutine DatasetAsciiLoad(this,input,option)
                              'CONDITION (LIST or FILE)')
           call StringToLower(time_units) 
           cycle
+        case('INTERPOLATION')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'INTERPOLATION','CONDITION')   
+        call StringToUpper(word)
+        select case(word)
+          case('STEP')
+            default_interpolation_method = INTERPOLATION_STEP
+          case('LINEAR') 
+            default_interpolation_method = INTERPOLATION_LINEAR
+          case default
+            call InputKeywordUnrecognized(word,'CONDITION,INTERPOLATION', &
+                                          option)
+        end select
+
         case('DATA_UNITS')
           ! it is possible to have more than one data unit. therefore, read the
           ! entire string
@@ -300,6 +316,10 @@ subroutine DatasetAsciiLoad(this,input,option)
     endif
   else
     this%array_width = data_count
+  endif
+  
+  if (default_interpolation_method /= INTERPOLATION_NULL) then
+    this%time_storage%time_interpolation_method = default_interpolation_method
   endif
   
 end subroutine DatasetAsciiLoad

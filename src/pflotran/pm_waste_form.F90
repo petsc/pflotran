@@ -5,7 +5,8 @@ module PM_Waste_Form_class
   use Option_module
   use Geometry_module
   use Data_Mediator_Vec_class
-  
+  use Dataset_Base_class
+ 
   use PFLOTRAN_Constants_module
 
   implicit none
@@ -48,7 +49,7 @@ module PM_Waste_Form_class
     type(glass_type), pointer :: waste_form_list
     PetscReal :: specific_surface_area
     PetscReal :: formula_weight
-    PetscReal :: mass_fraction
+    class(dataset_base_type), pointer ::  mass_fraction_dataset
     PetscReal :: glass_density
   contains
     procedure, public :: Setup => PMGlassSetup
@@ -246,7 +247,7 @@ function PMGlassCreate()
   nullify(PMGlassCreate%waste_form_list)
   PMGlassCreate%specific_surface_area = UNINITIALIZED_DOUBLE
   PMGlassCreate%formula_weight = UNINITIALIZED_DOUBLE
-  PMGlassCreate%mass_fraction = UNINITIALIZED_DOUBLE
+  nullify(PMGlassCreate%mass_fraction_dataset)
   PMGlassCreate%glass_density = 2.65d3 ! kg/m^3
 
 end function PMGlassCreate
@@ -264,6 +265,8 @@ subroutine PMGlassRead(this,input)
   use String_module
   use Utility_module
   use Option_module
+  use Condition_module, only : ConditionReadValues
+  use Dataset_Ascii_class
   
   implicit none
   
@@ -271,10 +274,12 @@ subroutine PMGlassRead(this,input)
   type(input_type) :: input
   
   type(option_type), pointer :: option
-  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: word, units
+  character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXSTRINGLENGTH) :: error_string
   PetscBool :: found
   type(glass_type), pointer :: new_waste_form, prev_waste_form
+  class(dataset_ascii_type), pointer :: dataset_ascii
 
   option => this%option
   
@@ -355,8 +360,19 @@ subroutine PMGlassRead(this,input)
         call InputReadDouble(input,option,this%formula_weight)
         call InputErrorMsg(input,option,'formula_weight',error_string)
       case('MASS_FRACTION')
-        call InputReadDouble(input,option,this%mass_fraction)
-        call InputErrorMsg(input,option,'mass fraction',error_string)
+        dataset_ascii => DatasetAsciiCreate()
+        dataset_ascii%array_width = 1 ! does not include time
+        this%mass_fraction_dataset => dataset_ascii
+        call ConditionReadValues(input,option,word, &
+                                 this%mass_fraction_dataset,units)
+        if (associated(dataset_ascii%time_storage)) then
+          ! default time interpolation is linear
+          if (dataset_ascii%time_storage%time_interpolation_method /= &
+              INTERPOLATION_NULL) then
+            dataset_ascii%time_storage%time_interpolation_method = &
+              INTERPOLATION_LINEAR
+          endif
+        endif
       case('GLASS_DENSITY')
         call InputReadDouble(input,option,this%glass_density)
         call InputErrorMsg(input,option,'glass density',error_string)
@@ -375,7 +391,7 @@ subroutine PMGlassRead(this,input)
       trim(error_string)
     call printErrMsg(option)
   endif
-  if (Uninitialized(this%mass_fraction)) then
+  if (.not.associated(this%mass_fraction_dataset)) then
     option%io_buffer = 'MASS_FRACTION must be specified in ' // &
       trim(error_string)
     call printErrMsg(option)
@@ -478,6 +494,8 @@ recursive subroutine PMGlassInitializeRun(this)
   use Reaction_Aux_module
   use Realization_Base_class
   use Data_Mediator_Vec_class
+  use Dataset_module
+  use Time_Storage_module
   
   implicit none
 
@@ -495,6 +513,7 @@ recursive subroutine PMGlassInitializeRun(this)
   PetscInt :: data_mediator_species_id
   PetscInt, allocatable :: waste_form_cell_ids(:)
   PetscReal :: time
+  type(time_storage_type), pointer :: null_time_storage
   PetscErrorCode :: ierr
   
   ! restart
@@ -505,7 +524,8 @@ recursive subroutine PMGlassInitializeRun(this)
   data_mediator_species_id = &
     GetPrimarySpeciesIDFromName(this%data_mediator_species, &
                                 this%realization%reaction,this%option)
-  
+  nullify(null_time_storage)
+  call DatasetVerify(this%mass_fraction_dataset,null_time_storage,this%option)
   ! set up mass transfer
   call RealizCreateTranMassTransferVec(this%realization)
   this%data_mediator => DataMediatorVecCreate()
@@ -561,7 +581,8 @@ subroutine PMGlassInitializeTimestep(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 07/20/15
-
+  use Dataset_module
+  
   implicit none
   
   class(pm_glass_type) :: this
@@ -591,6 +612,8 @@ subroutine PMGlassInitializeTimestep(this)
     cur_waste_form%volume = cur_waste_form%volume - dV
     cur_waste_form => cur_waste_form%next
   enddo
+  
+  call DatasetUpdate(this%mass_fraction_dataset,this%option%time,this%option)
 
 end subroutine PMGlassInitializeTimestep
 
@@ -652,7 +675,7 @@ subroutine PMGlassSolve(this,time,ierr)
       ! kmol/sec
       vec_p(i) = cur_waste_form%fuel_dissolution_rate * &  ! kg glass/m^2/day
                  this%formula_weight * &                   ! kmol radionuclide/kg radionuclide
-                 this%mass_fraction * &                    ! kg radionuclude/kg glass
+                 this%mass_fraction_dataset%rarray(1) * &  ! kg radionuclude/kg glass
                  this%specific_surface_area * &            ! m^2/kg glass
                  cur_waste_form%exposure_factor * &        ! [-]
                  cur_waste_form%volume * &                 ! m^3 glass
@@ -782,6 +805,7 @@ subroutine PMGlassStrip(this)
   ! Author: Glenn Hammond
   ! Date: 01/15/15
   use Utility_module, only : DeallocateArray
+  use Dataset_module
 
   implicit none
   
@@ -791,7 +815,8 @@ subroutine PMGlassStrip(this)
   PetscInt :: i
   
   call PMWasteFormStrip(this)
-  
+  call DatasetDestroy(this%mass_fraction_dataset)
+
   cur_waste_form => this%waste_form_list
   do
     if (.not.associated(cur_waste_form)) exit

@@ -389,27 +389,27 @@ subroutine GeomechConditionRead(condition,input,option)
         call InputReadDouble(input,option,default_time)
         call InputErrorMsg(input,option,'TIME','CONDITION')   
       case('DISPLACEMENT_X')
-        call ConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word, &
                                  displacement_x%dataset, &
                                  displacement_x%units)
       case('DISPLACEMENT_Y')
-        call ConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word, &
                                  displacement_y%dataset, &
                                  displacement_y%units) 
       case('DISPLACEMENT_Z')
-        call ConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word, &
                                  displacement_z%dataset, &
                                  displacement_z%units)
       case('FORCE_X')
-        call ConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word, &
                                  force_x%dataset, &
                                  force_x%units)
       case('FORCE_Y')
-        call ConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word, &
                                  force_y%dataset, &
                                  force_y%units)
       case('FORCE_Z')
-        call ConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word, &
                                  force_z%dataset, &
                                  force_z%units)
       case default

@@ -729,7 +729,7 @@ subroutine InputReadWord2(string, word, return_blank_error, ierr)
   PetscBool :: return_blank_error
   PetscErrorCode :: ierr
   
-  PetscInt :: i, begins, ends
+  PetscInt :: i, begins, ends, length
   character(len=1) :: tab, backslash  
 
   if (ierr /= 0) return
@@ -747,9 +747,9 @@ subroutine InputReadWord2(string, word, return_blank_error, ierr)
   !   word(i:i) = ' '
   ! enddo
 
-  ierr = len_trim(string)
+  length = len_trim(string)
   
-  if (ierr == 0) then
+  if (length == 0) then
     if (return_blank_error) then
       ierr = 1
     else
@@ -761,11 +761,20 @@ subroutine InputReadWord2(string, word, return_blank_error, ierr)
 
     ! Remove leading blanks and tabs
     i=1
-    do while(string(i:i) == ' ' .or. string(i:i) == ',' .or. &
-             string(i:i) == tab) 
+    do while((string(i:i) == ' ' .or. string(i:i) == ',' .or. &
+             string(i:i) == tab) .and. i <= length) 
       i=i+1
     enddo
 
+    if (i > length) then
+      if (return_blank_error) then
+        ierr = 1
+      else
+        ierr = 0
+      endif
+      return
+    endif
+    
     begins=i
 
     ! Count # of continuous characters (no blanks, commas, etc. in between)

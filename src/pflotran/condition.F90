@@ -609,6 +609,9 @@ subroutine FlowConditionRead(condition,input,option)
           case('linear') 
             default_time_storage%time_interpolation_method = &
               INTERPOLATION_LINEAR
+          case default
+            call InputKeywordUnrecognized(word,'condition,interpolation', &
+                                          option)
         end select
       case('TYPE') ! read condition type (dirichlet, neumann, etc) for each dof
         do
@@ -754,7 +757,7 @@ subroutine FlowConditionRead(condition,input,option)
         dataset_ascii%data_type = DATASET_REAL
         condition%datum => dataset_ascii
         nullify(dataset_ascii)        
-        call ConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word, &
                                      condition%datum,word)
       case('GRADIENT','GRAD')
         do
@@ -795,56 +798,56 @@ subroutine FlowConditionRead(condition,input,option)
           dataset_ascii%data_type = DATASET_REAL
           sub_condition_ptr%gradient => dataset_ascii
           nullify(dataset_ascii)
-          call ConditionReadValues(input,option,word,string, &
+          call ConditionReadValues(input,option,word, &
                                        sub_condition_ptr%gradient,word)
           nullify(sub_condition_ptr)
         enddo
       case('TEMPERATURE','TEMP')
-        call ConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word, &
                                      temperature%dataset, &
                                      temperature%units)
       case('ENTHALPY','H')
-        call ConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word, &
                                      enthalpy%dataset, &
                                      enthalpy%units)
       case('PRESSURE','PRES','PRESS')
-        call ConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word, &
                                      pressure%dataset, &
                                      pressure%units)
       case('RATE')
-        call ConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word, &
                                      rate%dataset, &
                                      rate%units)
       case('ENERGY_RATE')
-        call ConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word, &
                                      energy_rate%dataset, &
                                      energy_rate%units)
       case('WELL')
-        call ConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word, &
                                      well%dataset, &
                                      well%units)
       case('FLUX','VELOCITY','VEL')
-        call ConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word, &
                                      pressure%dataset, &
                                      pressure%units)
       case('CONC','CONCENTRATION')
-        call ConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word, &
                                      concentration%dataset, &
                                      concentration%units)
       case('SAT','SATURATION')
-        call ConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word, &
                                      saturation%dataset, &
                                      saturation%units)
       case('DISPLACEMENT_X')
-        call ConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word, &
                                      displacement_x%dataset, &
                                      displacement_x%units)
       case('DISPLACEMENT_Y')
-        call ConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word, &
                                      displacement_y%dataset, &
                                      displacement_y%units) 
       case('DISPLACEMENT_Z')
-        call ConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word, &
                                      displacement_z%dataset, &
                                      displacement_z%units)
       case('CONDUCTANCE')
@@ -1391,7 +1394,7 @@ subroutine FlowConditionGeneralRead(condition,input,option)
         dataset_ascii%data_type = DATASET_REAL
         condition%datum => dataset_ascii
         nullify(dataset_ascii)        
-        call ConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word, &
                                      condition%datum,word)
       case('GRADIENT')
         do
@@ -1415,8 +1418,8 @@ subroutine FlowConditionGeneralRead(condition,input,option)
           dataset_ascii%data_type = DATASET_REAL
           sub_condition_ptr%gradient => dataset_ascii
           nullify(dataset_ascii)
-          call ConditionReadValues(input,option,word,string, &
-                                       sub_condition_ptr%gradient,word)
+          call ConditionReadValues(input,option,word, &
+                                   sub_condition_ptr%gradient,word)
           nullify(sub_condition_ptr)
         enddo
       case('CONDUCTANCE')
@@ -1436,9 +1439,9 @@ subroutine FlowConditionGeneralRead(condition,input,option)
             sub_condition_ptr => FlowGeneralSubConditionPtr(word,general, &
                                                             option)
         end select
-        call ConditionReadValues(input,option,word,string, &
-                                     sub_condition_ptr%dataset, &
-                                     sub_condition_ptr%units)
+        call ConditionReadValues(input,option,word, &
+                                 sub_condition_ptr%dataset, &
+                                 sub_condition_ptr%units)
         select case(word)
           case('LIQUID_SATURATION') ! convert to gas saturation
             if (associated(sub_condition_ptr%dataset%rbuffer)) then
@@ -1826,7 +1829,7 @@ end subroutine TranConditionRead
 
 ! ************************************************************************** !
 
-subroutine ConditionReadValues(input,option,keyword,string,dataset_base,units)
+subroutine ConditionReadValues(input,option,keyword,dataset_base,units)
   ! 
   ! Read the value(s) of a condition variable
   ! 
@@ -1851,7 +1854,6 @@ subroutine ConditionReadValues(input,option,keyword,string,dataset_base,units)
   
   type(input_type) :: input
   type(option_type) :: option
-  character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: keyword
   class(dataset_base_type), pointer :: dataset_base
   character(len=MAXWORDLENGTH) :: units
