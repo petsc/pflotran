@@ -673,7 +673,7 @@ subroutine PMGlassSolve(this,time,ierr)
     ghosted_id = grid%nL2G(local_id)
     if (cur_waste_form%volume > 0.d0) then
       cur_waste_form%fuel_dissolution_rate = & ! kg glass/m^2/day
-        560.d0*exp(-7397.d0/global_auxvars(ghosted_id)%temp+273.15d0)
+        560.d0*exp(-7397.d0/(global_auxvars(ghosted_id)%temp+273.15d0))
       ! mol/sec
       vec_p(i) = cur_waste_form%fuel_dissolution_rate * &  ! kg glass/m^2/day
                  this%formula_weight * &                   ! kmol radionuclide/kg radionuclide
