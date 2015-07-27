@@ -369,7 +369,7 @@ subroutine PMGlassRead(this,input)
                                  this%mass_fraction_dataset,units)
         if (associated(dataset_ascii%time_storage)) then
           ! default time interpolation is linear
-          if (dataset_ascii%time_storage%time_interpolation_method /= &
+          if (dataset_ascii%time_storage%time_interpolation_method == &
               INTERPOLATION_NULL) then
             dataset_ascii%time_storage%time_interpolation_method = &
               INTERPOLATION_LINEAR
