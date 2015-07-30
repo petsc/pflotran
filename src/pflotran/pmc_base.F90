@@ -39,6 +39,7 @@ module PMC_Base_class
     procedure, public :: SetupSolvers => PMCBaseSetupSolvers
     procedure, public :: RunToTime => PMCBaseRunToTime
     procedure, public :: CheckpointBinary => PMCBaseCheckpointBinary
+    procedure, public :: CheckpointHDF5 => PMCBaseCheckpointHDF5
     procedure, public :: RestartBinary => PMCBaseRestartBinary
     procedure, public :: FinalizeRun
     procedure, public :: OutputLocal
@@ -260,7 +261,18 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
   ! Date: 03/18/13
   ! 
 
+#if  !defined(PETSC_HAVE_HDF5)
+  implicit none
+  class(pmc_base_type), target :: this
+  PetscReal :: sync_time
+  PetscInt :: stop_flag
+  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
+        'write HDF5 formatted checkpoint file. Darn.'
+  stop
+#else
+
   use Timestepper_Base_class
+  use hdf5
   
   implicit none
   
@@ -278,6 +290,12 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
   class(pm_base_type), pointer :: cur_pm
   PetscViewer :: viewer
   PetscErrorCode :: ierr
+
+#if defined(SCORPIO_WRITE)
+  integer :: chk_grp_id
+#else
+  integer(HID_T) :: chk_grp_id
+#endif
   
   if (this%stage /= 0) then
     call PetscLogStagePush(this%stage,ierr);CHKERRQ(ierr)
@@ -375,6 +393,9 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
         call this%peer%RunToTime(this%timestepper%target_time,local_stop_flag)
       endif
       call this%CheckpointBinary(viewer,this%timestepper%steps)
+      if (this%option%checkpoint_format_hdf5) then
+        call this%CheckpointHDF5(chk_grp_id,this%timestepper%steps)
+      endif
     endif
     
     if (this%is_master) then
@@ -398,6 +419,7 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
   if (this%stage /= 0) then
     call PetscLogStagePop(ierr);CHKERRQ(ierr)
   endif
+#endif
   
 end subroutine PMCBaseRunToTime
 
@@ -683,6 +705,92 @@ end subroutine PMCBaseSetHeader
 
 ! ************************************************************************** !
 
+subroutine PMCBaseSetHeaderHDF5(this, chk_grp_id, option)
+  ! 
+  ! Similar to PMCBaseSetHeader(), except this subroutine writes values in
+  ! a HDF5.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 07/30/15
+  ! 
+
+#if  !defined(PETSC_HAVE_HDF5)
+  use Option_module
+  implicit none
+  class(pmc_base_type) :: this
+  integer :: chk_grp_id
+  type(option_type) :: option
+  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
+        'write HDF5 formatted checkpoint file. Darn.'
+  stop
+#else
+
+  use Option_module
+  use Checkpoint_module, only: CheckPointWriteIntDatasetHDF5
+  use hdf5
+
+  implicit none
+
+#include "finclude/petscviewer.h"
+#include "finclude/petscbag.h"
+
+  class(pmc_base_type) :: this
+#if defined(SCORPIO_WRITE)
+  integer :: chk_grp_id
+#else
+  integer(HID_T) :: chk_grp_id
+#endif
+  type(option_type) :: option
+  
+#if defined(SCORPIO_WRITE)
+  integer, pointer :: dims(:)
+  integer, pointer :: start(:)
+  integer, pointer :: stride(:)
+  integer, pointer :: length(:)
+#else
+  integer(HSIZE_T), pointer :: dims(:)
+  integer(HSIZE_T), pointer :: start(:)
+  integer(HSIZE_T), pointer :: stride(:)
+  integer(HSIZE_T), pointer :: length(:)
+#endif
+
+  PetscMPIInt :: dataset_rank
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+  PetscInt, pointer :: int_array(:)
+
+  allocate(start(1))
+  allocate(dims(1))
+  allocate(length(1))
+  allocate(stride(1))
+  allocate(int_array(1))
+
+  dataset_rank = 1
+  dims(1) = ONE_INTEGER
+  start(1) = 0
+  length(1) = ONE_INTEGER
+  stride(1) = ONE_INTEGER
+
+  dataset_name = "Output_plot_number" // CHAR(0)
+  int_array(1) = this%pms%realization_base%output_option%plot_number
+  call CheckPointWriteIntDatasetHDF5(chk_grp_id, dataset_name, dataset_rank, &
+                                     dims, start, length, stride, int_array, option)
+
+  dataset_name = "Output_times_per_h5_file" // CHAR(0)
+  int_array(1) = this%pms%realization_base%output_option%times_per_h5_file
+  call CheckPointWriteIntDatasetHDF5(chk_grp_id, dataset_name, dataset_rank, &
+                                     dims, start, length, stride, int_array, option)
+
+  deallocate(start)
+  deallocate(dims)
+  deallocate(length)
+  deallocate(stride)
+  deallocate(int_array)
+#endif
+
+end subroutine PMCBaseSetHeaderHDF5
+
+! ************************************************************************** !
+
 recursive subroutine PMCBaseRestartBinary(this,viewer)
   ! 
   ! Restarts PMC timestepper and state variables.
@@ -783,6 +891,128 @@ recursive subroutine PMCBaseRestartBinary(this,viewer)
   endif
     
 end subroutine PMCBaseRestartBinary
+
+! ************************************************************************** !
+
+recursive subroutine PMCBaseCheckpointHDF5(this,chk_grp_id,id,id_stamp)
+  !
+  ! Checkpoints PMC timestepper and state variables in HDF5 format.
+  !
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 07/29/15
+  !
+
+#if  !defined(PETSC_HAVE_HDF5)
+  implicit none
+  class(pmc_base_type) :: this
+  integer :: chk_grp_id
+  PetscInt :: id
+  character(len=MAXWORDLENGTH), optional, intent(in) :: id_stamp
+  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
+        'write HDF5 formatted checkpoint file. Darn.'
+  stop
+#else
+  use Logging_module
+  use Checkpoint_module, only : CheckpointOpenFileForWriteHDF5, &
+                                CheckPointWriteCompatibilityHDF5
+  use hdf5
+
+  implicit none
+
+  class(pmc_base_type) :: this
+#if defined(SCORPIO_WRITE)
+  integer :: chk_grp_id
+#else
+  integer(HID_T) :: chk_grp_id
+#endif
+
+  PetscInt :: id
+  character(len=MAXWORDLENGTH), optional, intent(in) :: id_stamp
+
+#if defined(SCORPIO_WRITE)
+  integer :: h5_file_id
+  integer :: pmc_grp_id
+  integer :: pm_grp_id
+#else
+  integer(HID_T) :: h5_file_id
+  integer(HID_T) :: pmc_grp_id
+  integer(HID_T) :: pm_grp_id
+#endif
+
+  class(pm_base_type), pointer :: cur_pm
+  class(pmc_base_header_type), pointer :: header
+  type(pmc_base_header_type) :: dummy_header
+  character(len=1),pointer :: dummy_char(:)
+  PetscBag :: bag
+  PetscSizeT :: bagsize
+  PetscLogDouble :: tstart, tend
+  PetscErrorCode :: ierr
+  PetscMPIInt :: hdf5_err
+
+  bagsize = size(transfer(dummy_header,dummy_char))
+
+  ! if the top PMC
+  if (this%is_master) then
+    call PetscLogStagePush(logging%stage(OUTPUT_STAGE),ierr);CHKERRQ(ierr)
+    call PetscLogEventBegin(logging%event_checkpoint,ierr);CHKERRQ(ierr)
+    call PetscTime(tstart,ierr);CHKERRQ(ierr)
+    if (present(id_stamp)) then
+       call CheckpointOpenFileForWriteHDF5(h5_file_id, chk_grp_id, &
+                                           id, this%option, id_stamp)
+    else
+       call CheckpointOpenFileForWriteHDF5(h5_file_id, chk_grp_id, &
+                                           id, this%option)
+    endif
+    call CheckPointWriteCompatibilityHDF5(chk_grp_id, this%option)
+    call h5gcreate_f(chk_grp_id, trim(this%name), pmc_grp_id, &
+         hdf5_err, OBJECT_NAMELEN_DEFAULT_F)
+    call PMCBaseSetHeaderHDF5(this, pmc_grp_id, this%option)
+  else
+    call h5gcreate_f(chk_grp_id, trim(this%name), pmc_grp_id, &
+         hdf5_err, OBJECT_NAMELEN_DEFAULT_F)
+  endif
+
+  if (associated(this%timestepper)) then
+    call this%timestepper%CheckpointHDF5(pmc_grp_id, this%option)
+  endif
+
+  cur_pm => this%pms
+  do
+    if (.not.associated(cur_pm)) exit
+
+    call h5gcreate_f(pmc_grp_id, trim(cur_pm%name), pm_grp_id, &
+         hdf5_err, OBJECT_NAMELEN_DEFAULT_F)
+    call cur_pm%CheckpointHDF5(pm_grp_id)
+    call h5gclose_f(pm_grp_id, hdf5_err)
+
+    cur_pm => cur_pm%next
+  enddo
+
+  call h5gclose_f(pmc_grp_id, hdf5_err)
+
+  if (associated(this%child)) then
+    call this%child%CheckpointHDF5(chk_grp_id,UNINITIALIZED_INTEGER)
+  endif
+
+  if (associated(this%peer)) then
+    call this%peer%CheckpointHDF5(chk_grp_id,UNINITIALIZED_INTEGER)
+  endif
+
+  if (this%is_master) then
+    call h5gclose_f(chk_grp_id, hdf5_err)
+    call h5fclose_f(h5_file_id,hdf5_err)
+    call h5close_f(hdf5_err)
+    call PetscTime(tend,ierr);CHKERRQ(ierr)
+    write(this%option%io_buffer, &
+          '("      Seconds to write to checkpoint file: ", f10.2)') &
+      tend-tstart
+    call printMsg(this%option)
+    call PetscLogEventEnd(logging%event_checkpoint,ierr);CHKERRQ(ierr)
+    call PetscLogStagePop(ierr);CHKERRQ(ierr)
+  endif
+#endif
+
+end subroutine PMCBaseCheckpointHDF5
 
 ! ************************************************************************** !
 

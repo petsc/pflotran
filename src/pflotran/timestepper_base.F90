@@ -62,6 +62,7 @@ module Timestepper_Base_class
     procedure, public :: StepDT => TimestepperBaseStepDT
     procedure, public :: UpdateDT => TimestepperBaseUpdateDT
     procedure, public :: CheckpointBinary => TimestepperBaseCheckpointBinary
+    procedure, public :: CheckpointHDF5 => TimestepperBaseCheckpointHDF5
     procedure, public :: RestartBinary => TimestepperBaseRestartBinary
     procedure, public :: Reset => TimestepperBaseReset
     procedure, public :: WallClockStop => TimestepperBaseWallClockStop
@@ -604,6 +605,48 @@ subroutine TimestepperBaseCheckpointBinary(this,viewer,option)
   call printErrMsg(option)  
     
 end subroutine TimestepperBaseCheckpointBinary
+
+! ************************************************************************** !
+
+subroutine TimestepperBaseCheckpointHDF5(this, chk_grp_id, option)
+  ! 
+  ! Checkpoints parameters/variables associated with a time stepper to a HDF5.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 07/30/15
+  ! 
+
+#if  !defined(PETSC_HAVE_HDF5)
+  use Option_module
+  implicit none
+  class(timestepper_base_type) :: this
+  integer :: chk_grp_id
+  type(option_type) :: option
+  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
+        'write HDF5 formatted checkpoint file. Darn.'
+  stop
+#else
+
+  use Option_module
+  use hdf5
+
+  implicit none
+
+#include "finclude/petscviewer.h"
+
+  class(timestepper_base_type) :: this
+#if defined(SCORPIO_WRITE)
+  integer :: chk_grp_id
+#else
+  integer(HID_T) :: chk_grp_id
+#endif
+  type(option_type) :: option
+
+  option%io_buffer = 'TimestepperBaseCheckpointHDF5 must be extended.'
+  call printErrMsg(option)
+#endif
+
+end subroutine TimestepperBaseCheckpointHDF5
 
 ! ************************************************************************** !
 

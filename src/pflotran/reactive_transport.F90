@@ -48,6 +48,7 @@ module Reactive_Transport_module
             RTCheckUpdatePost, &
             RTJumpStartKineticSorption, &
             RTCheckpointKineticSorptionBinary, &
+            RTCheckpointKineticSorptionHDF5, &
             RTExplicitAdvection, &
             RTClearActivityCoefficients
   
@@ -4704,6 +4705,133 @@ subroutine RTCheckpointKineticSorptionBinary(realization,viewer,checkpoint)
   enddo
 
 end subroutine RTCheckpointKineticSorptionBinary
+
+! ************************************************************************** !
+
+subroutine RTCheckpointKineticSorptionHDF5(realization, pm_grp_id, checkpoint)
+  !
+  ! Checkpoints expliclity stored sorbed
+  ! concentrations
+  !
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 07/30/15
+  !
+
+#if  !defined(PETSC_HAVE_HDF5)
+  use Realization_class
+  use Option_module
+
+  implicit none
+
+  type(realization_type) :: realization
+  integer :: pm_grp_id
+  PetscBool :: checkpoint
+
+  PetscErrorCode :: ierr
+
+  call printMsg(realization%option,'')
+  write(realization%option%io_buffer, &
+        '("PFLOTRAN must be compiled with HDF5 to &
+        &write HDF5 formatted checkpoint file. Darn.")')
+  call printErrMsg(realization%option)
+
+#else
+
+  use Realization_class
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Field_module
+  use hdf5
+  use Discretization_module
+  use HDF5_module, only : HDF5WriteUnstructuredDataSetFromVec
+
+  type(realization_type) :: realization
+#if defined(SCORPIO_WRITE)
+  integer :: pm_grp_id
+#else
+  integer(HID_T) :: pm_grp_id
+#endif
+  PetscBool :: checkpoint
+
+  type(option_type), pointer :: option
+  type(reaction_type), pointer :: reaction
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch
+  type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
+  PetscReal, pointer :: vec_p(:)
+
+  Vec :: natural_vec
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+
+  PetscBool :: checkpoint_flag(realization%reaction%naqcomp)
+  PetscInt :: i, j, irxn, icomp, icplx, ncomp, ncplx, irate, ikinmrrxn
+  PetscInt :: local_id
+  PetscErrorCode :: ierr
+
+  option => realization%option
+  reaction => realization%reaction
+  field => realization%field
+  patch => realization%patch
+  
+  checkpoint_flag = PETSC_FALSE
+
+  call DiscretizationCreateVector(realization%discretization, ONEDOF, &
+                                  natural_vec, NATURAL, option)
+
+  ! Loop over sorption reactions to find the necessary components
+
+  do ikinmrrxn = 1, reaction%surface_complexation%nkinmrsrfcplxrxn
+    irxn = reaction%surface_complexation%kinmrsrfcplxrxn_to_srfcplxrxn(ikinmrrxn)
+    ncplx = reaction%surface_complexation%srfcplxrxn_to_complex(0,irxn)
+    do j = 1, ncplx
+      icplx = reaction%surface_complexation%srfcplxrxn_to_complex(j,irxn)
+      ncomp = reaction%surface_complexation%srfcplxspecid(0,icplx)
+      do i = 1, ncomp
+        icomp = reaction%surface_complexation%srfcplxspecid(i,icplx)
+        checkpoint_flag(icomp) = PETSC_TRUE
+      enddo
+    enddo
+  enddo
+
+  rt_auxvars => patch%aux%RT%auxvars
+  grid => patch%grid
+  do icomp = 1, reaction%naqcomp
+    if (checkpoint_flag(icomp)) then
+      do irxn = 1, reaction%surface_complexation%nkinmrsrfcplxrxn
+        do irate = 1, reaction%surface_complexation%kinmr_nrate(irxn)
+          if (checkpoint) then
+            call VecGetArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
+            do local_id = 1, grid%nlmax
+              vec_p(local_id) = &
+                rt_auxvars(grid%nL2G(local_id))% &
+                  kinmr_total_sorb(icomp,irate,irxn)
+            enddo
+            call VecRestoreArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
+
+            call DiscretizationGlobalToNatural(realization%discretization, field%work, &
+                                        natural_vec, NTRANDOF)
+            write(string,*) icomp
+            dataset_name = 'Kinetic_sorption_' // trim(adjustl(string)) // 'comp_'
+            write(string,*) irxn
+            dataset_name = trim(adjustl(dataset_name)) // trim(adjustl(string)) // 'rxn_'
+            write(string,*) irate
+            dataset_name = trim(adjustl(dataset_name)) // trim(adjustl(string)) // 'rate'
+            call HDF5WriteUnstructuredDataSetFromVec(dataset_name, option, natural_vec, &
+                  pm_grp_id, H5T_NATIVE_DOUBLE)
+          else
+            write(*,*)'In RTCheckpointKineticSorptionHDF5: Something went wrong.'
+            stop
+          endif
+        enddo
+      enddo
+    endif
+  enddo
+#endif
+
+end subroutine RTCheckpointKineticSorptionHDF5
 
 ! ************************************************************************** !
 

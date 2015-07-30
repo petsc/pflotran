@@ -51,6 +51,7 @@ module PM_Base_class
     procedure, public :: Destroy => PMBaseThisOnly
     procedure, public :: RHSFunction => PMBaseRHSFunction
     procedure, public :: CheckpointBinary => PMBaseCheckpointBinary
+    procedure, public :: CheckpointHDF5 => PMBaseCheckpointHDF5
     procedure, public :: RestartBinary => PMBaseCheckpointBinary
   end type pm_base_type
   
@@ -263,5 +264,33 @@ subroutine PMBaseCheckpointBinary(this,viewer)
   print *, 'Must extend PMBaseCheckpointBinary/RestartBinary.'
   stop
 end subroutine PMBaseCheckpointBinary
+
+! ************************************************************************** !
+
+subroutine PMBaseCheckpointHDF5(this, pm_grp_id)
+
+#if  !defined(PETSC_HAVE_HDF5)
+  implicit none
+  class(pm_base_type) :: this
+  integer :: pm_grp_id
+  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
+        'write HDF5 formatted checkpoint file. Darn.'
+  stop
+#else
+
+  use hdf5
+  implicit none
+
+  class(pm_base_type) :: this
+#if defined(SCORPIO_WRITE)
+  integer :: pm_grp_id
+#else
+  integer(HID_T) :: pm_grp_id
+#endif
+  print *, 'Must extend PMBaseCheckpointHDF5/RestartHDF5.'
+  stop
+#endif
+
+end subroutine PMBaseCheckpointHDF5
 
 end module PM_Base_class

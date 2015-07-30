@@ -35,6 +35,7 @@ module Timestepper_BE_class
     procedure, public :: StepDT => TimestepperBEStepDT
     procedure, public :: UpdateDT => TimestepperBEUpdateDT
     procedure, public :: CheckpointBinary => TimestepperBECheckpointBinary
+    procedure, public :: CheckpointHDF5 => TimestepperBECheckpointHDF5
     procedure, public :: RestartBinary => TimestepperBERestartBinary
     procedure, public :: Reset => TimestepperBEReset
     procedure, public :: PrintInfo => TimestepperBEPrintInfo
@@ -543,6 +544,104 @@ subroutine TimestepperBESetHeader(this,bag,header)
   call TimestepperBaseSetHeader(this,bag,header)
   
 end subroutine TimestepperBESetHeader
+
+! ************************************************************************** !
+
+subroutine TimestepperBECheckpointHDF5(this, chk_grp_id, option)
+  !
+  ! Checkpoints parameters/variables associated with
+  ! a time stepper.
+  !
+  ! Author: Gautam Bisht
+  ! Date: 07/30/15
+  !
+
+#if  !defined(PETSC_HAVE_HDF5)
+  use Option_module
+  implicit none
+  class(timestepper_BE_type) :: this
+  integer :: chk_grp_id
+  PetscInt :: stop_flag
+  type(option_type) :: option
+  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
+        'write HDF5 formatted checkpoint file. Darn.'
+  stop
+#else
+  use Option_module
+  use hdf5
+  use Checkpoint_module, only : CheckPointWriteIntDatasetHDF5
+
+  implicit none
+
+  class(timestepper_BE_type) :: this
+#if defined(SCORPIO_WRITE)
+  integer :: chk_grp_id
+#else
+  integer(HID_T) :: chk_grp_id
+#endif
+  type(option_type) :: option
+
+#if defined(SCORPIO_WRITE)
+  integer, pointer :: dims(:)
+  integer, pointer :: start(:)
+  integer, pointer :: stride(:)
+  integer, pointer :: length(:)
+  integer :: timestepper_grp_id
+#else
+  integer(HSIZE_T), pointer :: dims(:)
+  integer(HSIZE_T), pointer :: start(:)
+  integer(HSIZE_T), pointer :: stride(:)
+  integer(HSIZE_T), pointer :: length(:)
+  integer(HID_T) :: timestepper_grp_id
+#endif
+
+  PetscMPIInt :: dataset_rank
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscInt, pointer :: int_array(:)
+  PetscMPIInt :: hdf5_err
+
+  string = "Timestepper"
+  call h5gcreate_f(chk_grp_id, string, timestepper_grp_id, hdf5_err, OBJECT_NAMELEN_DEFAULT_F)
+
+  allocate(start(1))
+  allocate(dims(1))
+  allocate(length(1))
+  allocate(stride(1))
+  allocate(int_array(1))
+
+  dataset_rank = 1
+  dims(1) = ONE_INTEGER
+  start(1) = 0
+  length(1) = ONE_INTEGER
+  stride(1) = ONE_INTEGER
+
+  dataset_name = "Cumulative_newton_iterations" // CHAR(0)
+  int_array(1) = this%cumulative_newton_iterations
+  call CheckPointWriteIntDatasetHDF5(timestepper_grp_id, dataset_name, dataset_rank, &
+                                     dims, start, length, stride, int_array, option)
+
+  dataset_name = "Cumulative_linear_iterations" // CHAR(0)
+  int_array(1) = this%cumulative_linear_iterations
+  call CheckPointWriteIntDatasetHDF5(timestepper_grp_id, dataset_name, dataset_rank, &
+                                     dims, start, length, stride, int_array, option)
+
+  dataset_name = "Num_newton_iterations" // CHAR(0)
+  int_array(1) = this%num_newton_iterations
+  call CheckPointWriteIntDatasetHDF5(timestepper_grp_id, dataset_name, dataset_rank, &
+                                     dims, start, length, stride, int_array, option)
+
+
+  call h5gclose_f(timestepper_grp_id, hdf5_err)
+
+  deallocate(start)
+  deallocate(dims)
+  deallocate(length)
+  deallocate(stride)
+  deallocate(int_array)
+#endif
+
+end subroutine TimestepperBECheckpointHDF5
 
 ! ************************************************************************** !
 

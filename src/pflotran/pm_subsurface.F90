@@ -43,6 +43,7 @@ module PM_Subsurface_class
 !    procedure, public :: UpdateSolution => PMSubsurfaceUpdateSolution
     procedure, public :: UpdateAuxvars => PMSubsurfaceUpdateAuxvars
     procedure, public :: CheckpointBinary => PMSubsurfaceCheckpointBinary
+    procedure, public :: CheckpointHDF5 => PMSubsurfaceCheckpointHDF5
     procedure, public :: RestartBinary => PMSubsurfaceRestartBinary
 !    procedure, public :: Destroy => PMSubsurfaceDestroy
   end type pm_subsurface_type
@@ -57,6 +58,7 @@ module PM_Subsurface_class
             PMSubsurfaceUpdatePropertiesNI, &
             PMSubsurfaceTimeCut, &
             PMSubsurfaceCheckpointBinary, &
+            PMSubsurfaceCheckpointHDF5, &
             PMSubsurfaceRestartBinary, &
             PMSubsurfaceDestroy
   
@@ -551,6 +553,42 @@ subroutine PMSubsurfaceRestartBinary(this,viewer)
   call this%UpdateSolution()
   
 end subroutine PMSubsurfaceRestartBinary
+
+! ************************************************************************** !
+
+subroutine PMSubsurfaceCheckpointHDF5(this, pm_grp_id)
+  !
+  ! Checkpoints data associated with Subsurface PM
+  !
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 07/30/15
+
+#if  !defined(PETSC_HAVE_HDF5)
+  implicit none
+  class(pm_subsurface_type) :: this
+  integer :: pm_grp_id
+  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
+        'write HDF5 formatted checkpoint file. Darn.'
+  stop
+#else
+
+  use Checkpoint_module
+  use hdf5
+
+  implicit none
+
+  class(pm_subsurface_type) :: this
+#if defined(SCORPIO_WRITE)
+  integer :: pm_grp_id
+#else
+  integer(HID_T) :: pm_grp_id
+#endif
+
+  call CheckpointFlowProcessModelHDF5(pm_grp_id, this%realization)
+
+#endif
+
+end subroutine PMSubsurfaceCheckpointHDF5
 
 ! ************************************************************************** !
 

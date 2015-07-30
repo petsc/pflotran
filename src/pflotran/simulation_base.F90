@@ -175,8 +175,17 @@ subroutine ExecuteRun(this)
   ! Author: Glenn Hammond
   ! Date: 06/11/13
   ! 
+#if  !defined(PETSC_HAVE_HDF5)
+  implicit none
+  class(simulation_base_type) :: this
+  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
+        'write HDF5 formatted checkpoint file. Darn.'
+  stop
+#else
+
   use Waypoint_module
   use Timestepper_Base_class, only : TS_CONTINUE
+  use hdf5
 
   implicit none
   
@@ -186,6 +195,11 @@ subroutine ExecuteRun(this)
   PetscReal :: sync_time
   type(waypoint_type), pointer :: cur_waypoint
   PetscViewer :: viewer
+#if defined(SCORPIO_WRITE)
+  integer :: chk_grp_id
+#else
+  integer(HID_T) :: chk_grp_id
+#endif
   
 #ifdef DEBUG
   call printMsg(this%option,'SimulationBaseExecuteRun()')
@@ -206,7 +220,11 @@ subroutine ExecuteRun(this)
   enddo
   if (this%option%checkpoint_flag) then
     call this%process_model_coupler_list%CheckpointBinary(viewer,-1)
+    if (this%option%checkpoint_format_hdf5) then
+      call this%process_model_coupler_list%CheckpointHDF5(chk_grp_id,-1)
+    endif
   endif
+#endif
   
 end subroutine ExecuteRun
 
