@@ -50,9 +50,9 @@ module Checkpoint_module
     end subroutine
   end interface PetscBagGetData
 
-  public :: CheckpointOpenFileForWrite, &
-            CheckPointWriteCompatibility, &
-            CheckPointReadCompatibility, &
+  public :: CheckpointOpenFileForWriteBinary, &
+            CheckPointWriteCompatibilityBinary, &
+            CheckPointReadCompatibilityBinary, &
             CheckpointFlowProcessModelBinary, &
             RestartFlowProcessModelBinary
 
@@ -60,7 +60,7 @@ contains
 
 ! ************************************************************************** !
 
-subroutine CheckpointOpenFileForWrite(viewer,id,option,id_stamp)
+subroutine CheckpointOpenFileForWriteBinary(viewer,id,option,id_stamp)
   ! 
   ! Opens checkpoint file; sets format
   ! 
@@ -115,11 +115,11 @@ subroutine CheckpointOpenFileForWrite(viewer,id,option,id_stamp)
     trim(adjustl(filename))
   call printMsg(option)
 
-end subroutine CheckpointOpenFileForWrite
+end subroutine CheckpointOpenFileForWriteBinary
 
 ! ************************************************************************** !
 
-subroutine CheckpointWriteCompatibility(viewer,option)
+subroutine CheckPointWriteCompatibilityBinary(viewer,option)
   ! 
   ! Writes a PetscBag holding the version number and the size of a
   ! complex extended class to ensure that the size of the class matches.
@@ -173,11 +173,11 @@ subroutine CheckpointWriteCompatibility(viewer,option)
   call PetscBagView(bag,viewer,ierr);CHKERRQ(ierr)
   call PetscBagDestroy(bag,ierr);CHKERRQ(ierr)
 
-end subroutine CheckpointWriteCompatibility
+end subroutine CheckPointWriteCompatibilityBinary
 
 ! ************************************************************************** !
 
-subroutine CheckpointReadCompatibility(viewer,option)
+subroutine CheckPointReadCompatibilityBinary(viewer,option)
   ! 
   ! Reads in a PetscBag holding the version number and the size of a
   ! complex extended class to ensure that the size of the class matches.
@@ -250,7 +250,7 @@ subroutine CheckpointReadCompatibility(viewer,option)
 
   call PetscBagDestroy(bag,ierr);CHKERRQ(ierr)
 
-end subroutine CheckpointReadCompatibility
+end subroutine CheckPointReadCompatibilityBinary
 
 ! ************************************************************************** !
 

@@ -543,8 +543,8 @@ recursive subroutine PMCBaseCheckpointBinary(this,viewer,id,id_stamp)
   ! 
 
   use Logging_module
-  use Checkpoint_module, only : CheckpointOpenFileForWrite, &
-                                CheckPointWriteCompatibility
+  use Checkpoint_module, only : CheckpointOpenFileForWriteBinary, &
+                                CheckPointWriteCompatibilityBinary
 
   implicit none
   
@@ -572,11 +572,11 @@ recursive subroutine PMCBaseCheckpointBinary(this,viewer,id,id_stamp)
     call PetscLogEventBegin(logging%event_checkpoint,ierr);CHKERRQ(ierr)
     call PetscTime(tstart,ierr);CHKERRQ(ierr)
     if (present(id_stamp)) then
-       call CheckpointOpenFileForWrite(viewer,id,this%option,id_stamp)
+       call CheckpointOpenFileForWriteBinary(viewer,id,this%option,id_stamp)
     else
-       call CheckpointOpenFileForWrite(viewer,id,this%option)
+       call CheckpointOpenFileForWriteBinary(viewer,id,this%option)
     endif
-    call CheckPointWriteCompatibility(viewer,this%option)
+    call CheckPointWriteCompatibilityBinary(viewer,this%option)
     ! create header for storing local information specific to PMc
     call PetscBagCreate(this%option%mycomm,bagsize,bag,ierr);CHKERRQ(ierr)
     call PetscBagGetData(bag,header,ierr);CHKERRQ(ierr)
@@ -692,7 +692,7 @@ recursive subroutine PMCBaseRestartBinary(this,viewer)
   ! 
 
   use Logging_module
-  use Checkpoint_module, only : CheckPointReadCompatibility
+  use Checkpoint_module, only : CheckPointReadCompatibilityBinary
 
   implicit none
   
@@ -725,7 +725,7 @@ recursive subroutine PMCBaseRestartBinary(this,viewer)
                                FILE_MODE_READ,viewer,ierr);CHKERRQ(ierr)
     ! skip reading info file when loading, but not working
     call PetscViewerBinarySetSkipOptions(viewer,PETSC_TRUE,ierr);CHKERRQ(ierr)
-    call CheckPointReadCompatibility(viewer,this%option)
+    call CheckPointReadCompatibilityBinary(viewer,this%option)
     ! read pmc header
     call PetscBagCreate(this%option%mycomm,bagsize,bag,ierr);CHKERRQ(ierr)
     call PetscBagGetData(bag,header,ierr);CHKERRQ(ierr)
