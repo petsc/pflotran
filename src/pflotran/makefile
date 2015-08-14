@@ -116,10 +116,10 @@ endif
 # Set this accordingly on your platform
 # SCORPIO_DIR=${HOME}/soft/scorpio
 ifdef scorpio
-  LIBS += -L${SCORPIO_DIR} -lscorpio
+  LIBS += -L${SCORPIO_DIR}/lib -lscorpio
   MYFLAGS += ${FC_DEFINE_FLAG}SCORPIO
   MYFLAGS += ${FC_DEFINE_FLAG}SCORPIO_WRITE
-  MYFLAGS += -I${SCORPIO_DIR}
+  MYFLAGS += -I${SCORPIO_DIR}/include
 endif
 
 ifdef tau
