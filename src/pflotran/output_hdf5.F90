@@ -431,6 +431,7 @@ subroutine OutputHDF5OpenFile(option, output_option, var_list_type, file_id, &
   PetscInt, intent(in) :: var_list_type
   character(len=MAXSTRINGLENGTH) :: filename
   PetscBool, intent(out) :: first
+  PetscErrorCode :: ierr
 
 #if defined(SCORPIO_WRITE)
   integer, intent(out) :: file_id
@@ -1046,14 +1047,14 @@ subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
   PetscInt :: var_list_type
 
 #if defined(SCORPIO_WRITE)
-  integer:: file_id
+  integer:: file_id, new_file_id
   integer:: data_type
-  integer:: grp_id
+  integer:: grp_id, new_grp_id
   integer:: file_space_id
   integer:: memory_space_id
   integer:: data_set_id
   integer:: realization_set_id
-  integer:: prop_id
+  integer:: prop_id, new_prop_id
   PetscMPIInt :: rank
   integer :: rank_mpi,file_space_rank_mpi
   integer:: dims(3)

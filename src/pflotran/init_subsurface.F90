@@ -1064,6 +1064,7 @@ subroutine InitSubsurfaceReadRequiredCards(simulation)
   use General_module
   use Reaction_module  
   use Reaction_Aux_module  
+  use Init_Common_module
 
   implicit none
 

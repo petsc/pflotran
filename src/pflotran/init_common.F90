@@ -24,7 +24,11 @@ module Init_Common_module
 #endif
             InitCommonVerifyAllCouplers, &
             setSurfaceFlowMode
-            
+
+#if defined(SCORPIO)
+  public :: InitCommonCreateIOGroups
+#endif  
+  
 contains
 
 ! ************************************************************************** !

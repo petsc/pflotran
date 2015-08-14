@@ -34,6 +34,7 @@ module HDF5_Aux_module
             HDF5ReadDatasetInteger2D, &
             HDF5ReadDatasetReal2D, &
             HDF5GroupExists, &
+            HDF5DatasetExists, &
 #else
             HDF5GroupExists, &
             HDF5DatasetExists, &
