@@ -190,10 +190,10 @@ subroutine HDF5ReadDatasetInteger2D(filename,dataset_name,read_option,option, &
   
   ! Open file collectively
   filename = trim(filename) // CHAR(0)
-  call scorpio_open_file(filename, option%ioread_group_id, SCORPIO_FILE_READONLY, file_id, ierr)
+  call fscorpio_open_file(filename, option%ioread_group_id, SCORPIO_FILE_READONLY, file_id, ierr)
 
   ! Get dataset dimnesions
-  call scorpio_get_dataset_ndims(ndims, file_id, dataset_name, option%ioread_group_id, ierr)
+  call fscorpio_get_dataset_ndims(ndims, file_id, dataset_name, option%ioread_group_id, ierr)
   if (ndims > 2) then
     option%io_buffer='Dimension of ' // dataset_name // ' dataset in ' // filename // &
     ' is greater than to 2.'
@@ -201,7 +201,7 @@ subroutine HDF5ReadDatasetInteger2D(filename,dataset_name,read_option,option, &
   endif
   
   ! Get size of each dimension
-  call scorpio_get_dataset_dims(dataset_dims, file_id, dataset_name, option%ioread_group_id, ierr)
+  call fscorpio_get_dataset_dims(dataset_dims, file_id, dataset_name, option%ioread_group_id, ierr)
   
   data_dims(1) = dataset_dims(1)/option%mycommsize
   data_dims(2) = dataset_dims(2)
@@ -212,10 +212,10 @@ subroutine HDF5ReadDatasetInteger2D(filename,dataset_name,read_option,option, &
   
   allocate(data(data_dims(2),dataset_dims(1)))
   
-  call scorpio_get_dataset_dims(dataset_dims, file_id, dataset_name, option%ioread_group_id, ierr)
+  call fscorpio_get_dataset_dims(dataset_dims, file_id, dataset_name, option%ioread_group_id, ierr)
 
   ! Read the dataset collectively
-  call scorpio_read_dataset( data, SCORPIO_INTEGER, ndims, dataset_dims, data_dims, & 
+  call fscorpio_read_dataset( data, SCORPIO_INTEGER, ndims, dataset_dims, data_dims, & 
             file_id, dataset_name, option%ioread_group_id, SCORPIO_NONUNIFORM_CONTIGUOUS_READ, ierr)
   
   data_dims(1) = data_dims(1) + data_dims(2)
@@ -227,7 +227,7 @@ subroutine HDF5ReadDatasetInteger2D(filename,dataset_name,read_option,option, &
   dataset_dims(1) = dataset_dims(1) - dataset_dims(2)
 
   ! Close file
-  call scorpio_close_file( file_id, option%ioread_group_id, ierr)  
+  call fscorpio_close_file( file_id, option%ioread_group_id, ierr)  
 
 end subroutine HDF5ReadDatasetInteger2D
 #endif
@@ -268,10 +268,10 @@ subroutine HDF5ReadDatasetReal2D(filename,dataset_name,read_option,option, &
   
   ! Open file collectively
   filename = trim(filename) // CHAR(0)
-  call scorpio_open_file(filename, option%ioread_group_id, SCORPIO_FILE_READONLY, file_id, ierr)
+  call fscorpio_open_file(filename, option%ioread_group_id, SCORPIO_FILE_READONLY, file_id, ierr)
 
   ! Get dataset dimnesions
-  call scorpio_get_dataset_ndims(ndims, file_id, dataset_name, option%ioread_group_id, ierr)
+  call fscorpio_get_dataset_ndims(ndims, file_id, dataset_name, option%ioread_group_id, ierr)
   if (ndims > 2) then
     option%io_buffer='Dimension of ' // dataset_name // ' dataset in ' // filename // &
     ' is greater than to 2.'
@@ -279,7 +279,7 @@ subroutine HDF5ReadDatasetReal2D(filename,dataset_name,read_option,option, &
   endif
   
   ! Get size of each dimension
-  call scorpio_get_dataset_dims(dataset_dims, file_id, dataset_name, option%ioread_group_id, ierr)
+  call fscorpio_get_dataset_dims(dataset_dims, file_id, dataset_name, option%ioread_group_id, ierr)
   
   data_dims(1) = dataset_dims(1)/option%mycommsize
   data_dims(2) = dataset_dims(2)
@@ -290,10 +290,10 @@ subroutine HDF5ReadDatasetReal2D(filename,dataset_name,read_option,option, &
   
   allocate(data(data_dims(2),dataset_dims(1)))
   
-  call scorpio_get_dataset_dims(dataset_dims, file_id, dataset_name, option%ioread_group_id, ierr)
+  call fscorpio_get_dataset_dims(dataset_dims, file_id, dataset_name, option%ioread_group_id, ierr)
 
   ! Read the dataset collectively
-  call scorpio_read_dataset( data, SCORPIO_DOUBLE, ndims, dataset_dims, data_dims, & 
+  call fscorpio_read_dataset( data, SCORPIO_DOUBLE, ndims, dataset_dims, data_dims, & 
             file_id, dataset_name, option%ioread_group_id, SCORPIO_NONUNIFORM_CONTIGUOUS_READ, ierr)
   
   data_dims(1) = data_dims(1) + data_dims(2)
@@ -305,7 +305,7 @@ subroutine HDF5ReadDatasetReal2D(filename,dataset_name,read_option,option, &
   dataset_dims(1) = dataset_dims(1) - dataset_dims(2)
 
   ! Close file
-  call scorpio_close_file( file_id, option%ioread_group_id, ierr)  
+  call fscorpio_close_file( file_id, option%ioread_group_id, ierr)  
 
 end subroutine HDF5ReadDatasetReal2D
 #endif
@@ -347,8 +347,8 @@ function HDF5GroupExists(filename,group_name,option)
   ! Open file collectively
   filename = trim(filename) // CHAR(0)
   group_name = trim(group_name) // CHAR(0)
-  call scorpio_open_file(filename, option%ioread_group_id, SCORPIO_FILE_READONLY, file_id, ierr)
-  call scorpio_group_exists(group_name, file_id, option%ioread_group_id, ierr)
+  call fscorpio_open_file(filename, option%ioread_group_id, SCORPIO_FILE_READONLY, file_id, ierr)
+  call fscorpio_group_exists(group_name, file_id, option%ioread_group_id, ierr)
   group_exists = (ierr == 1);
 
   if (group_exists) then
@@ -363,7 +363,7 @@ function HDF5GroupExists(filename,group_name,option)
   endif
   call printMsg(option)
 
-  call scorpio_close_file( file_id, option%ioread_group_id, ierr)  
+  call fscorpio_close_file( file_id, option%ioread_group_id, ierr)  
 #else
   ! open the file
   call h5open_f(hdf5_err)

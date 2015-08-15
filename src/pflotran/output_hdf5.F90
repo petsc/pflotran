@@ -176,7 +176,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
     ! create a group for the coordinates data set
 #if defined(SCORPIO_WRITE)
     string = "Coordinates" // CHAR(0)
-    call scorpio_create_dataset_group(pio_dataset_groupid, string, file_id, &
+    call fscorpio_create_dataset_group(pio_dataset_groupid, string, file_id, &
                                         option%iowrite_group_id, ierr)
         ! set grp_id here
         ! As we already created the group, we will use file_id as group_id
@@ -217,7 +217,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
     !GEH - Structured Grid Dependence - End
 
 #if defined(SCORPIO_WRITE)
-    call scorpio_close_dataset_group(pio_dataset_groupid, file_id, &
+    call fscorpio_close_dataset_group(pio_dataset_groupid, file_id, &
                                         option%iowrite_group_id, ierr)
 #else
     call h5gclose_f(grp_id,hdf5_err)
@@ -235,7 +235,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
 #if defined(SCORPIO_WRITE)
   string = trim(string) //CHAR(0)
     ! This opens existing dataset and creates it if needed
-  call scorpio_create_dataset_group(pio_dataset_groupid, string, file_id, &
+  call fscorpio_create_dataset_group(pio_dataset_groupid, string, file_id, &
                                         option%iowrite_group_id, ierr)
   grp_id = file_id
 #else
@@ -375,7 +375,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
   call VecDestroy(global_vec_vz,ierr);CHKERRQ(ierr)
 
 #if defined(SCORPIO_WRITE)
-    call scorpio_close_dataset_group(pio_dataset_groupid, file_id, &
+    call fscorpio_close_dataset_group(pio_dataset_groupid, file_id, &
             option%iowrite_group_id, ierr)
 #else
     call h5gclose_f(grp_id,hdf5_err)
@@ -483,13 +483,13 @@ subroutine OutputHDF5OpenFile(option, output_option, var_list_type, file_id, &
 #if defined(SCORPIO_WRITE)
   if (.not.first) then
     filename = trim(filename) // CHAR(0)
-    call scorpio_open_file(filename, option%iowrite_group_id, &
+    call fscorpio_open_file(filename, option%iowrite_group_id, &
                               SCORPIO_FILE_READWRITE, file_id, ierr)
     if (file_id == -1) first = PETSC_TRUE
   endif
   if (first) then
     filename = trim(filename) // CHAR(0)
-    call scorpio_open_file(filename, option%iowrite_group_id, &
+    call fscorpio_open_file(filename, option%iowrite_group_id, &
                               SCORPIO_FILE_CREATE, file_id, ierr)
   endif
 
@@ -559,7 +559,7 @@ subroutine OutputHDF5CloseFile(option, file_id)
   PetscErrorCode :: ierr
 
 #if defined(SCORPIO_WRITE)
-  call scorpio_close_file(file_id, option%iowrite_group_id, ierr)
+  call fscorpio_close_file(file_id, option%iowrite_group_id, ierr)
 #else
   call h5fclose_f(file_id, hdf5_err)
   call h5close_f(hdf5_err)
@@ -1604,7 +1604,7 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
   endif
 
   call PetscLogEventBegin(logging%event_h5dwrite_f,ierr);CHKERRQ(ierr)
-  call scorpio_write_dataset(array, SCORPIO_DOUBLE, rank, globaldims, dims, &
+  call fscorpio_write_dataset(array, SCORPIO_DOUBLE, rank, globaldims, dims, &
        file_id, name, option%iowrite_group_id, SCORPIO_NONUNIFORM_CONTIGUOUS_WRITE, &
        ierr)
   call PetscLogEventEnd(logging%event_h5dwrite_f,ierr);CHKERRQ(ierr)
