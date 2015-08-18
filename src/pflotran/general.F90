@@ -3764,6 +3764,8 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   PetscReal, parameter :: inf_temp_tol = 1.d-5
   PetscReal, parameter :: inf_sat_tol = 1.d-6
   PetscReal, parameter :: inf_xmol_tol = 1.d-6
+  !geh: note the scaling by 0.d0 several lines down which prevent false 
+  !     convergence
   PetscReal, parameter :: inf_norm_update_tol(3,3) = &
     reshape([inf_pres_tol,inf_xmol_tol,inf_temp_tol, &
              inf_pres_tol,inf_pres_tol,inf_temp_tol, &
