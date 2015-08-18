@@ -1,0 +1,437 @@
+#Description: 3D test problem for testing chemical reactions
+#             based on chemistry from Hammond and Lichtner, WRR, 2010
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
+#=========================== regression =======================================
+skip
+REGRESSION
+  CELLS_PER_PROCESS 2
+  CELLS
+    29
+  /
+END
+noskip
+
+#=========================== flow mode ========================================
+
+#=========================== chemistry ========================================
+CHEMISTRY
+  PRIMARY_SPECIES
+  Tracer
+  Tracer2
+  /
+  OUTPUT
+    All
+    TOTAL
+  /
+END
+
+#=========================== solver options ===================================
+TIMESTEPPER FLOW
+  TS_ACCELERATION 8
+END
+
+skip
+NEWTON_SOLVER FLOW
+END
+
+LINEAR_SOLVER FLOW
+  KSP_TYPE PREONLY
+  PC_TYPE LU
+END
+
+NEWTON_SOLVER TRANSPORT
+END
+
+LINEAR_SOLVER TRANSPORT
+  KSP_TYPE PREONLY
+  PC_TYPE LU
+END
+noskip
+
+#=========================== discretization ===================================
+GRID
+  TYPE structured
+  ORIGIN 0.d0 0.d0 0.d0
+  NXYZ 5 4 3
+  DXYZ
+    10. 11. 12. 13. 14.
+    13. 12. 11. 10.
+    15. 20. 25.
+  /
+END
+
+#=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+#=========================== datasets =========================================
+skip
+DATASET U
+  HDF5_DATASET_NAME U
+  FILENAME datasets.h5
+END
+
+DATASET Calcite
+  HDF5_DATASET_NAME Calcite
+  FILENAME datasets.h5
+END
+noskip
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+  CHARACTERISTIC_CURVES sf1
+  PERMEABILITY
+    PERM_X 1.d-12
+    PERM_Y 1.d-12
+    PERM_Z 1.d-13
+  /
+END
+
+MATERIAL_PROPERTY soil2
+  ID 2
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+  CHARACTERISTIC_CURVES sf2
+  PERMEABILITY
+    PERM_X 1.d-11
+    PERM_Y 1.d-11
+    PERM_Z 1.d-12
+  /
+END
+
+MATERIAL_PROPERTY soil3
+  ID 3
+  POROSITY 0.2d0
+  TORTUOSITY 1.d0
+  CHARACTERISTIC_CURVES sf3
+  PERMEABILITY
+    PERM_X 1.d-10
+    PERM_Y 1.d-10
+    PERM_Z 1.d-11
+  /
+END
+
+MATERIAL_PROPERTY soil4
+  ID 4
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+  CHARACTERISTIC_CURVES sf4
+  PERMEABILITY
+    PERM_X 1.d-9
+    PERM_Y 1.d-9
+    PERM_Z 1.d-10
+  /
+END
+
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES sf1
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    M 0.286
+    ALPHA  1.9401d-4
+    LIQUID_RESIDUAL_SATURATION 0.115
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.286
+    LIQUID_RESIDUAL_SATURATION 0.115
+  /
+END
+
+CHARACTERISTIC_CURVES sf2
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    M 0.486
+    ALPHA  3.8801d-4
+    LIQUID_RESIDUAL_SATURATION 0.110
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.486
+    LIQUID_RESIDUAL_SATURATION 0.110
+  /
+END
+
+CHARACTERISTIC_CURVES sf3
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    M 0.541
+    ALPHA 1.0211d-4
+    LIQUID_RESIDUAL_SATURATION 0.118
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.541
+    LIQUID_RESIDUAL_SATURATION 0.118
+  /
+END
+
+CHARACTERISTIC_CURVES sf4
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    M 0.527
+    ALPHA 5.1054d-5
+    LIQUID_RESIDUAL_SATURATION 0.143
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.527
+    LIQUID_RESIDUAL_SATURATION 0.143
+  /
+END
+
+#=========================== output options ===================================
+OUTPUT
+#  TIMES d 0.001 0.01 0.1 1. 10.
+#  PERIODIC TIME 1 d
+  FORMAT TECPLOT BLOCK
+  FORMAT HDF5
+  VELOCITY_AT_CENTER
+END
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 2.d-6 d
+  INITIAL_TIMESTEP_SIZE 1.d-6 d
+  MAXIMUM_TIMESTEP_SIZE 10.d0 d
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    60.d0 46.d0 60.d0
+  /
+END
+
+REGION top
+  FACE TOP
+  COORDINATES
+    0.d0 0.d0 60.d0
+    60.d0 46.d0 60.d0
+  /
+END
+
+REGION bottom
+  FACE BOTTOM
+  COORDINATES
+    0.d0 0.d0 0.d0
+    60.d0 46.d0 0.d0
+  /
+END
+
+REGION west
+  FACE WEST
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 46.d0 60.d0
+  /
+END
+
+REGION east
+  FACE EAST
+  COORDINATES
+    60.d0 0.d0 0.d0
+    60.d0 46.d0 60.d0
+  /
+END
+
+REGION north
+  FACE NORTH
+  COORDINATES
+    0.d0 46.d0 0.d0
+    60.d0 46.d0 60.d0
+  /
+END
+
+REGION south
+  FACE SOUTH
+  COORDINATES
+    0.d0 0.d0 0.d0
+    60.d0 0.d0 60.d0
+  /
+END
+
+REGION plume
+  BLOCK 2 3 2 3 2 3
+END
+
+REGION well
+  BLOCK 4 4 2 3 3 3
+END
+
+#=========================== flow conditions ==================================
+FLOW_CONDITION initial
+  TYPE
+    PRESSURE hydrostatic
+  /
+  DATUM 0.d0 0.d0 35.d0
+  GRADIENT
+    PRESSURE -1.6666667d-2 0.d0 0.d0
+  /
+  PRESSURE 101325 ! Pa
+END
+
+FLOW_CONDITION east
+  TYPE
+    PRESSURE hydrostatic
+  /
+  INTERPOLATION LINEAR
+  DATUM LIST
+    TIME_UNITS d
+    0.d0 0.d0 0.d0 34.d0
+    10.d0 0.d0 0.d0 39.d0
+    50.d0 0.d0 0.d0 33.d0
+    100.d0 0.d0 0.d0 34.d0
+  /
+  PRESSURE 101325 ! Pa
+END
+
+FLOW_CONDITION recharge
+  TYPE
+    FLUX neumann
+  /
+  FLUX 5.d0 cm/yr
+END
+
+FLOW_CONDITION injection_well
+  TYPE
+    RATE scaled_volumetric_rate
+  /
+  RATE 1 m^3/hr
+END
+
+#=========================== transport conditions =============================
+TRANSPORT_CONDITION columbia_river
+  TYPE dirichlet_zero_gradient
+  CONSTRAINT_LIST
+    0.d0 river_water
+  /
+END
+
+TRANSPORT_CONDITION groundwater
+  TYPE dirichlet_zero_gradient
+  CONSTRAINT_LIST
+    0.d0 groundwater
+  /
+END
+
+TRANSPORT_CONDITION tracer_pulse
+  TYPE dirichlet
+  TIME_UNITS d
+  CONSTRAINT_LIST
+    0.d0 well_tracer
+    10.d0 groundwater
+  /
+END
+
+TRANSPORT_CONDITION rainwater
+  TYPE dirichlet
+  CONSTRAINT_LIST
+    0.d0 groundwater
+  /
+END
+
+TRANSPORT_CONDITION source_zone
+  TYPE dirichlet
+  CONSTRAINT_LIST
+    0.d0 U_source
+  /
+END
+
+#=========================== transport constraints ============================
+CONSTRAINT groundwater
+  CONCENTRATIONS
+    Tracer   1.e-7            F
+    Tracer2  1.e-7            F
+  /
+END
+
+CONSTRAINT U_source
+  CONCENTRATIONS
+    Tracer   1.e-7            F
+    Tracer2  1.e-7            F
+  /
+END
+
+CONSTRAINT river_water
+  CONCENTRATIONS
+    Tracer   1.e-3            F
+    Tracer2  1.e-7            F
+  /
+END
+
+CONSTRAINT well_tracer
+  CONCENTRATIONS
+    Tracer   1.e-7            F
+    Tracer2  1.e-3            F
+  /
+END
+
+#=========================== condition couplers ===============================
+# initial condition
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  TRANSPORT_CONDITION groundwater
+  REGION all
+END
+
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  TRANSPORT_CONDITION source_zone
+  REGION plume
+END
+
+# west boundary condition
+BOUNDARY_CONDITION west
+  FLOW_CONDITION initial
+  TRANSPORT_CONDITION groundwater
+  REGION west
+END
+
+# east boundary condition
+BOUNDARY_CONDITION east
+  FLOW_CONDITION east
+  TRANSPORT_CONDITION columbia_river
+  REGION east
+END
+
+# top boundary condition
+BOUNDARY_CONDITION top
+  FLOW_CONDITION recharge
+  TRANSPORT_CONDITION rainwater
+  REGION top
+END
+
+# well source/sink
+SOURCE_SINK well
+  FLOW_CONDITION injection_well
+  TRANSPORT_CONDITION tracer_pulse
+  REGION well
+END
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  MATERIAL ./543.h5
+END
+
+#=========================== checkpoint / restart =============================
+CHECKPOINT 
+  PERIODIC TIMESTEP 1
+  FORMAT HDF5
+  FORMAT BINARY
+END
+
+RESTART 543_flow_and_tracer-1.chk
+
+END_SUBSURFACE
