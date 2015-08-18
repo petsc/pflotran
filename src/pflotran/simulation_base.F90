@@ -106,6 +106,7 @@ subroutine SimulationBaseInitializeRun(this)
 
   use Logging_module
   use Option_module
+  use hdf5
 
   implicit none
   
@@ -113,6 +114,11 @@ subroutine SimulationBaseInitializeRun(this)
 
   class(simulation_base_type) :: this
 
+#if defined(SCORPIO_WRITE)
+  integer :: chk_grp_id
+#else
+  integer(HID_T) :: chk_grp_id
+#endif
   PetscViewer :: viewer
   PetscErrorCode :: ierr
   
@@ -122,7 +128,15 @@ subroutine SimulationBaseInitializeRun(this)
   
   if (associated(this%process_model_coupler_list)) then
     if (this%option%restart_flag) then
-      call this%process_model_coupler_list%Restart(viewer)
+      if (index(this%option%restart_filename,'.chk') > 0) then
+        call this%process_model_coupler_list%RestartBinary(viewer)
+      elseif (index(this%option%restart_filename,'.h5') > 0) then
+        call this%process_model_coupler_list%RestartHDF5(chk_grp_id)
+      else
+        this%option%io_buffer = 'Unknown restart filename format. ' // &
+        'Only *.chk and *.h5 supported.'
+        call printErrMsg(this%option)
+      endif
     endif
   
     ! initialize performs overwrite of restart, if applicable
@@ -175,8 +189,17 @@ subroutine ExecuteRun(this)
   ! Author: Glenn Hammond
   ! Date: 06/11/13
   ! 
+#if  !defined(PETSC_HAVE_HDF5)
+  implicit none
+  class(simulation_base_type) :: this
+  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
+        'write HDF5 formatted checkpoint file. Darn.'
+  stop
+#else
+
   use Waypoint_module
   use Timestepper_Base_class, only : TS_CONTINUE
+  use hdf5
 
   implicit none
   
@@ -186,6 +209,11 @@ subroutine ExecuteRun(this)
   PetscReal :: sync_time
   type(waypoint_type), pointer :: cur_waypoint
   PetscViewer :: viewer
+#if defined(SCORPIO_WRITE)
+  integer :: chk_grp_id
+#else
+  integer(HID_T) :: chk_grp_id
+#endif
   
 #ifdef DEBUG
   call printMsg(this%option,'SimulationBaseExecuteRun()')
@@ -205,8 +233,12 @@ subroutine ExecuteRun(this)
     cur_waypoint => cur_waypoint%next
   enddo
   if (this%option%checkpoint_flag) then
-    call this%process_model_coupler_list%Checkpoint(viewer,-1)
+    call this%process_model_coupler_list%CheckpointBinary(viewer,-1)
+    if (this%option%checkpoint_format_hdf5) then
+      call this%process_model_coupler_list%CheckpointHDF5(chk_grp_id,-1)
+    endif
   endif
+#endif
   
 end subroutine ExecuteRun
 

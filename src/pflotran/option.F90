@@ -166,6 +166,8 @@ module Option_module
     character(len=MAXSTRINGLENGTH) :: input_filename
     PetscBool :: checkpoint_flag
     PetscInt :: checkpoint_frequency
+    PetscBool :: checkpoint_format_binary
+    PetscBool :: checkpoint_format_hdf5
     
     PetscLogDouble :: start_time
     PetscBool :: wallclock_stop_flag
@@ -515,6 +517,8 @@ subroutine OptionInitRealization(option)
   option%restart_time = UNINITIALIZED_DOUBLE
   option%checkpoint_flag = PETSC_FALSE
   option%checkpoint_frequency = huge(option%checkpoint_frequency)
+  option%checkpoint_format_binary = PETSC_TRUE
+  option%checkpoint_format_hdf5 = PETSC_FALSE
   
   option%start_time = 0.d0
   option%wallclock_stop_flag = PETSC_FALSE

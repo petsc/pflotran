@@ -154,6 +154,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   endif
   if (associated(pm_rt)) then
     pmc_subsurface => PMCSubsurfaceCreate()
+    pmc_subsurface%name = 'PMCSubsurfaceTransport'
     pmc_subsurface%option => option
     pmc_subsurface%pms => pm_rt
     pmc_subsurface%pm_ptr%ptr => pm_rt
