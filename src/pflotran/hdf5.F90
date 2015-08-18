@@ -36,7 +36,7 @@ module HDF5_module
             HDF5ReadIntegerArray, &
             HDF5ReadRealArray, &
             HDF5WriteStructDataSetFromVec, &
-            HDF5WriteUnstructuredDataSetFromVec, &
+            HDF5WriteDataSetFromVec, &
             HDF5ReadDataSetInVec, &
             HDF5WriteStructuredDataSet, &
             HDF5ReadRegionFromFile, &       
@@ -2682,11 +2682,11 @@ end subroutine HDF5WriteStructDataSetFromVec
 
 ! ************************************************************************** !
 
-subroutine HDF5WriteUnstructuredDataSetFromVec(name,option,vec,file_id,data_type)
+subroutine HDF5WriteDataSetFromVec(name,option,vec,file_id,data_type)
   ! 
   ! This routine writes data from a PETSc Vec to HDF5 file for unstructured
   ! grids.
-  ! subroutine HDF5WriteUnstructuredDataSetFromVec(name,realization,vec,file_id,data_type)
+  ! subroutine HDF5WriteDataSetFromVec(name,realization,vec,file_id,data_type)
   ! 
   ! Author: Gautam Bisht, ORNL
   ! Date: 05/31/12
@@ -2815,7 +2815,7 @@ subroutine HDF5WriteUnstructuredDataSetFromVec(name,option,vec,file_id,data_type
   call h5dclose_f(data_set_id,hdf5_err)
   call h5sclose_f(file_space_id,hdf5_err)
   
-end subroutine HDF5WriteUnstructuredDataSetFromVec
+end subroutine HDF5WriteDataSetFromVec
 
 ! ************************************************************************** !
 

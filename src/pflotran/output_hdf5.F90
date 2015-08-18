@@ -611,7 +611,7 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
 #endif
 
   use hdf5
-  use HDF5_module, only : HDF5WriteUnstructuredDataSetFromVec
+  use HDF5_module, only : HDF5WriteDataSetFromVec
   use HDF5_Aux_module
   
   implicit none
@@ -821,10 +821,10 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
           string = trim(string) // ' [' // trim(word) // ']'
         endif
         if (cur_variable%iformat == 0) then
-          call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+          call HDF5WriteDataSetFromVec(string,option, &
                                               natural_vec,grp_id,H5T_NATIVE_DOUBLE)
         else
-          call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+          call HDF5WriteDataSetFromVec(string,option, &
                                               natural_vec,grp_id,H5T_NATIVE_INTEGER)
         endif
         att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
@@ -847,7 +847,7 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
 
           call DiscretizationGlobalToNatural(discretization,field%avg_vars_vec(ivar), &
                                             natural_vec,ONEDOF)
-          call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+          call HDF5WriteDataSetFromVec(string,option, &
                                             natural_vec,grp_id,H5T_NATIVE_DOUBLE)
           att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
           if (option%myrank == option%io_rank) then
@@ -890,7 +890,7 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
     string = "Liquid X-Velocity [m_per_" // trim(output_option%tunit) // "]"
     call DiscretizationGlobalToNatural(discretization,global_vec_vx, &
                                        natural_vec,ONEDOF)
-    call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+    call HDF5WriteDataSetFromVec(string,option, &
                                               natural_vec,grp_id,H5T_NATIVE_DOUBLE)
     att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
     if (option%myrank == option%io_rank) then
@@ -900,7 +900,7 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
     string = "Liquid Y-Velocity [m_per_" // trim(output_option%tunit) // "]"
     call DiscretizationGlobalToNatural(discretization,global_vec_vy, &
                                        natural_vec,ONEDOF)
-    call HDF5WriteUnstructuredDataSetFromVec(string,option,natural_vec,grp_id, &
+    call HDF5WriteDataSetFromVec(string,option,natural_vec,grp_id, &
                                              H5T_NATIVE_DOUBLE)
     att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
     if (option%myrank == option%io_rank) then
@@ -910,7 +910,7 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
     string = "Liquid Z-Velocity [m_per_" // trim(output_option%tunit) // "]"
     call DiscretizationGlobalToNatural(discretization,global_vec_vz, &
                                        natural_vec,ONEDOF)
-    call HDF5WriteUnstructuredDataSetFromVec(string,option,natural_vec,grp_id, &
+    call HDF5WriteDataSetFromVec(string,option,natural_vec,grp_id, &
                                              H5T_NATIVE_DOUBLE)
     att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
     if (option%myrank == option%io_rank) then
@@ -925,7 +925,7 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
         string = "Gas X-Velocity [m_per_" // trim(output_option%tunit) // "]"
         call DiscretizationGlobalToNatural(discretization,global_vec_vx, &
                                            natural_vec,ONEDOF)
-        call HDF5WriteUnstructuredDataSetFromVec(string,option,natural_vec,grp_id, &
+        call HDF5WriteDataSetFromVec(string,option,natural_vec,grp_id, &
                                                  H5T_NATIVE_DOUBLE)
         att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
         if (option%myrank == option%io_rank) then
@@ -935,7 +935,7 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
         string = "Gas Y-Velocity [m_per_" // trim(output_option%tunit) // "]"
         call DiscretizationGlobalToNatural(discretization,global_vec_vy, &
                                            natural_vec,ONEDOF)
-        call HDF5WriteUnstructuredDataSetFromVec(string,option,natural_vec,grp_id, &
+        call HDF5WriteDataSetFromVec(string,option,natural_vec,grp_id, &
                                                  H5T_NATIVE_DOUBLE)
         att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
         if (option%myrank == option%io_rank) then
@@ -945,7 +945,7 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
         string = "Gas Z-Velocity [m_per_" // trim(output_option%tunit) // "]"
         call DiscretizationGlobalToNatural(discretization,global_vec_vz, &
                                            natural_vec,ONEDOF)
-        call HDF5WriteUnstructuredDataSetFromVec(string,option,natural_vec,grp_id, &
+        call HDF5WriteDataSetFromVec(string,option,natural_vec,grp_id, &
                                                  H5T_NATIVE_DOUBLE)
         att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
         if (option%myrank == option%io_rank) then
@@ -1033,7 +1033,7 @@ subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
 #endif
 
   use hdf5
-  use HDF5_module, only : HDF5WriteUnstructuredDataSetFromVec
+  use HDF5_module, only : HDF5WriteDataSetFromVec
   use HDF5_Aux_module
   
   implicit none
@@ -1251,10 +1251,10 @@ subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
           string = trim(string) // ' [' // trim(word) // ']'
         endif
         if (cur_variable%iformat == 0) then
-          call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+          call HDF5WriteDataSetFromVec(string,option, &
                                               natural_vec,grp_id,H5T_NATIVE_DOUBLE)
         else
-          call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+          call HDF5WriteDataSetFromVec(string,option, &
                                               natural_vec,grp_id,H5T_NATIVE_INTEGER)
         endif
         att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
@@ -1277,7 +1277,7 @@ subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
 
           call DiscretizationGlobalToNatural(discretization,field%avg_vars_vec(ivar), &
                                             natural_vec,ONEDOF)
-          call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+          call HDF5WriteDataSetFromVec(string,option, &
                                             natural_vec,grp_id,H5T_NATIVE_DOUBLE)
           att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
           if (option%myrank == option%io_rank .and. option%print_explicit_primal_grid) then

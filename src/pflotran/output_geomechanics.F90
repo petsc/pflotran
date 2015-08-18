@@ -1220,7 +1220,7 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
 #endif
 
   use hdf5
-  use HDF5_module, only : HDF5WriteUnstructuredDataSetFromVec
+  use HDF5_module, only : HDF5WriteDataSetFromVec
   use HDF5_Aux_module
   
   implicit none
@@ -1429,10 +1429,10 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
           string = trim(string) // ' [' // trim(word) // ']'
         endif
         if (cur_variable%iformat == 0) then
-          call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+          call HDF5WriteDataSetFromVec(string,option, &
                                           natural_vec,grp_id,H5T_NATIVE_DOUBLE)
         else
-          call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+          call HDF5WriteDataSetFromVec(string,option, &
                                           natural_vec,grp_id,H5T_NATIVE_INTEGER)
         endif
         att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
@@ -1458,7 +1458,7 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
           call GeomechDiscretizationGlobalToNatural(geomech_discretization, &
                                             field%avg_vars_vec(ivar), &
                                             natural_vec,ONEDOF)
-          call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+          call HDF5WriteDataSetFromVec(string,option, &
                                           natural_vec,grp_id,H5T_NATIVE_DOUBLE)
           att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
           if (option%myrank == option%io_rank) then
@@ -1506,7 +1506,7 @@ subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
   ! 
 
   use hdf5
-  use HDF5_module, only : HDF5WriteUnstructuredDataSetFromVec
+  use HDF5_module, only : HDF5WriteDataSetFromVec
   use Geomechanics_Realization_class
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
@@ -1683,21 +1683,21 @@ subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
   ! X coord
   string = "X" // CHAR(0)
   
-  call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+  call HDF5WriteDataSetFromVec(string,option, &
                                            global_x_vertex_vec, &
                                            file_id,H5T_NATIVE_DOUBLE)
 
   ! Y coord
   string = "Y" // CHAR(0)
   
-  call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+  call HDF5WriteDataSetFromVec(string,option, &
                                            global_y_vertex_vec, &
                                            file_id,H5T_NATIVE_DOUBLE)
                                            
   ! Z coord
   string = "Z" // CHAR(0)
   
-  call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+  call HDF5WriteDataSetFromVec(string,option, &
                                            global_z_vertex_vec, &
                                            file_id,H5T_NATIVE_DOUBLE) 
 

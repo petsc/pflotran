@@ -1163,7 +1163,7 @@ subroutine PMRTCheckpointHDF5(this, pm_grp_id)
                                MINERAL_VOLUME_FRACTION
   use hdf5
   use Checkpoint_module, only: CheckPointWriteIntDatasetHDF5
-  use HDF5_module, only : HDF5WriteUnstructuredDataSetFromVec
+  use HDF5_module, only : HDF5WriteDataSetFromVec
 
   implicit none
 
@@ -1252,7 +1252,7 @@ subroutine PMRTCheckpointHDF5(this, pm_grp_id)
     call DiscretizationGlobalToNatural(realization%discretization, field%tran_xx, &
                                         natural_vec, NTRANDOF)
     dataset_name = "Primary_Variable" // CHAR(0)
-    call HDF5WriteUnstructuredDataSetFromVec(dataset_name, option, natural_vec, &
+    call HDF5WriteDataSetFromVec(dataset_name, option, natural_vec, &
            pm_grp_id, H5T_NATIVE_DOUBLE)
     call VecDestroy(natural_vec, ierr); CHKERRQ(ierr)
 
@@ -1273,7 +1273,7 @@ subroutine PMRTCheckpointHDF5(this, pm_grp_id)
                                         natural_vec, NTRANDOF)
         write(dataset_name,*) i
         dataset_name = 'Aq_comp_' // trim(adjustl(dataset_name))
-        call HDF5WriteUnstructuredDataSetFromVec(dataset_name, option, natural_vec, &
+        call HDF5WriteDataSetFromVec(dataset_name, option, natural_vec, &
            pm_grp_id, H5T_NATIVE_DOUBLE)
       enddo
 
@@ -1284,7 +1284,7 @@ subroutine PMRTCheckpointHDF5(this, pm_grp_id)
                                         natural_vec, NTRANDOF)
         write(dataset_name,*) i
         dataset_name = 'Eq_cplx_' // trim(adjustl(dataset_name))
-        call HDF5WriteUnstructuredDataSetFromVec(dataset_name, option, natural_vec, &
+        call HDF5WriteDataSetFromVec(dataset_name, option, natural_vec, &
            pm_grp_id, H5T_NATIVE_DOUBLE)
       enddo
     endif
@@ -1298,7 +1298,7 @@ subroutine PMRTCheckpointHDF5(this, pm_grp_id)
                                         natural_vec, NTRANDOF)
         write(dataset_name,*) i
         dataset_name = 'Kinetic_mineral_' // trim(adjustl(dataset_name))
-        call HDF5WriteUnstructuredDataSetFromVec(dataset_name, option, natural_vec, &
+        call HDF5WriteDataSetFromVec(dataset_name, option, natural_vec, &
            pm_grp_id, H5T_NATIVE_DOUBLE)
       enddo
     endif

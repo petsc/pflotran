@@ -4744,7 +4744,7 @@ subroutine RTCheckpointKineticSorptionHDF5(realization, pm_grp_id, checkpoint)
   use Field_module
   use hdf5
   use Discretization_module
-  use HDF5_module, only : HDF5WriteUnstructuredDataSetFromVec, &
+  use HDF5_module, only : HDF5WriteDataSetFromVec, &
                           HDF5ReadDataSetInVec
 
   type(realization_type) :: realization
@@ -4822,7 +4822,7 @@ subroutine RTCheckpointKineticSorptionHDF5(realization, pm_grp_id, checkpoint)
             dataset_name = trim(adjustl(dataset_name)) // trim(adjustl(string)) // 'rxn_'
             write(string,*) irate
             dataset_name = trim(adjustl(dataset_name)) // trim(adjustl(string)) // 'rate'
-            call HDF5WriteUnstructuredDataSetFromVec(dataset_name, option, natural_vec, &
+            call HDF5WriteDataSetFromVec(dataset_name, option, natural_vec, &
                   pm_grp_id, H5T_NATIVE_DOUBLE)
 
           else

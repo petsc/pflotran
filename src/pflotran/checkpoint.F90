@@ -1258,7 +1258,7 @@ subroutine CheckpointFlowProcessModelHDF5(pm_grp_id, realization)
   use Variables_module, only : POROSITY, PERMEABILITY_X, PERMEABILITY_Y, &
                                PERMEABILITY_Z
   use hdf5
-  use HDF5_module, only : HDF5WriteUnstructuredDataSetFromVec
+  use HDF5_module, only : HDF5WriteDataSetFromVec
   implicit none
 
 #include "finclude/petscvec.h"
@@ -1295,7 +1295,7 @@ subroutine CheckpointFlowProcessModelHDF5(pm_grp_id, realization)
                                        natural_vec, NFLOWDOF)
 
     dataset_name = "Primary_Variable" // CHAR(0)
-    call HDF5WriteUnstructuredDataSetFromVec(dataset_name, option, natural_vec, &
+    call HDF5WriteDataSetFromVec(dataset_name, option, natural_vec, &
          pm_grp_id, H5T_NATIVE_DOUBLE)
     call VecDestroy(natural_vec, ierr);CHKERRQ(ierr)
 
@@ -1318,7 +1318,7 @@ subroutine CheckpointFlowProcessModelHDF5(pm_grp_id, realization)
                                            natural_vec, ONEDOF)
 
         dataset_name = "Secondary_Variable" // CHAR(0)
-        call HDF5WriteUnstructuredDataSetFromVec(dataset_name, option, natural_vec, &
+        call HDF5WriteDataSetFromVec(dataset_name, option, natural_vec, &
             pm_grp_id, H5T_NATIVE_DOUBLE)
        case default
     end select
@@ -1333,7 +1333,7 @@ subroutine CheckpointFlowProcessModelHDF5(pm_grp_id, realization)
     call DiscretizationGlobalToNatural(discretization, global_vec, &
                                        natural_vec, ONEDOF)
     dataset_name = "Porosity" // CHAR(0)
-    call HDF5WriteUnstructuredDataSetFromVec(dataset_name, option, natural_vec, &
+    call HDF5WriteDataSetFromVec(dataset_name, option, natural_vec, &
                                              pm_grp_id, H5T_NATIVE_DOUBLE)
 
     call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
@@ -1343,7 +1343,7 @@ subroutine CheckpointFlowProcessModelHDF5(pm_grp_id, realization)
     call DiscretizationGlobalToNatural(discretization, global_vec, &
                                        natural_vec, ONEDOF)
     dataset_name = "Permeability_X" // CHAR(0)
-    call HDF5WriteUnstructuredDataSetFromVec(dataset_name, option, natural_vec, &
+    call HDF5WriteDataSetFromVec(dataset_name, option, natural_vec, &
                                              pm_grp_id, H5T_NATIVE_DOUBLE)
 
     call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
@@ -1353,7 +1353,7 @@ subroutine CheckpointFlowProcessModelHDF5(pm_grp_id, realization)
     call DiscretizationGlobalToNatural(discretization, global_vec, &
                                        natural_vec, ONEDOF)
     dataset_name = "Permeability_Y" // CHAR(0)
-    call HDF5WriteUnstructuredDataSetFromVec(dataset_name, option, natural_vec, &
+    call HDF5WriteDataSetFromVec(dataset_name, option, natural_vec, &
                                              pm_grp_id, H5T_NATIVE_DOUBLE)
 
     call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
@@ -1363,7 +1363,7 @@ subroutine CheckpointFlowProcessModelHDF5(pm_grp_id, realization)
     call DiscretizationGlobalToNatural(discretization, global_vec, &
                                        natural_vec, ONEDOF)
     dataset_name = "Permeability_Z" // CHAR(0)
-    call HDF5WriteUnstructuredDataSetFromVec(dataset_name, option, natural_vec, &
+    call HDF5WriteDataSetFromVec(dataset_name, option, natural_vec, &
                                              pm_grp_id, H5T_NATIVE_DOUBLE)
 
     call VecDestroy(global_vec, ierr);CHKERRQ(ierr)
