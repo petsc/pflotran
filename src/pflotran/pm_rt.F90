@@ -55,6 +55,7 @@ module PM_RT_class
     procedure, public :: CheckpointBinary => PMRTCheckpointBinary
     procedure, public :: CheckpointHDF5 => PMRTCheckpointHDF5
     procedure, public :: RestartBinary => PMRTRestartBinary
+    procedure, public :: RestartHDF5 => PMRTRestartHDF5
     procedure, public :: Destroy => PMRTDestroy
   end type pm_rt_type
   
@@ -1315,6 +1316,206 @@ subroutine PMRTCheckpointHDF5(this, pm_grp_id)
 #endif
 
 end subroutine PMRTCheckpointHDF5
+
+! ************************************************************************** !
+
+subroutine PMRTRestartHDF5(this, pm_grp_id)
+  ! 
+  ! Checkpoints flow reactive transport process model
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 07/30/15
+  ! 
+
+#if  !defined(PETSC_HAVE_HDF5)
+  implicit none
+  class(pm_rt_type) :: this
+  integer :: pm_grp_id
+  type(option_type) :: option
+  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
+        'write HDF5 formatted checkpoint file. Darn.'
+  stop
+#else
+
+  use Option_module
+  use Realization_class
+  use Realization_Base_class
+  use Field_module
+  use Discretization_module
+  use Grid_module
+  use Reactive_Transport_module, only : RTCheckpointKineticSorptionHDF5
+  use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
+  use Variables_module, only : PRIMARY_ACTIVITY_COEF, &
+                               SECONDARY_ACTIVITY_COEF, &
+                               MINERAL_VOLUME_FRACTION
+  use hdf5
+  use Checkpoint_module, only: CheckPointReadIntDatasetHDF5
+  use HDF5_module, only : HDF5ReadDataSetInVec
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  class(pm_rt_type) :: this
+#if defined(SCORPIO_WRITE)
+  integer :: pm_grp_id
+#else
+  integer(HID_T) :: pm_grp_id
+#endif
+
+#if defined(SCORPIO_WRITE)
+  integer, pointer :: dims(:)
+  integer, pointer :: start(:)
+  integer, pointer :: stride(:)
+  integer, pointer :: length(:)
+#else
+  integer(HSIZE_T), pointer :: dims(:)
+  integer(HSIZE_T), pointer :: start(:)
+  integer(HSIZE_T), pointer :: stride(:)
+  integer(HSIZE_T), pointer :: length(:)
+#endif
+
+  PetscMPIInt :: dataset_rank
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+  PetscInt, pointer :: int_array(:)
+
+  class(realization_type), pointer :: realization
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(discretization_type), pointer :: discretization
+  type(grid_type), pointer :: grid
+  Vec :: local_vec
+  Vec :: global_vec
+  Vec :: natural_vec
+  PetscInt :: i
+  PetscInt :: checkpoint_activity_coefs
+  PetscErrorCode :: ierr
+
+  realization => this%realization
+  option => realization%option
+  field => realization%field
+  discretization => realization%discretization
+  grid => realization%patch%grid
+
+  allocate(start(1))
+  allocate(dims(1))
+  allocate(length(1))
+  allocate(stride(1))
+  allocate(int_array(1))
+
+  dataset_rank = 1
+  dims(1) = ONE_INTEGER
+  start(1) = 0
+  length(1) = ONE_INTEGER
+  stride(1) = ONE_INTEGER
+
+  dataset_name = "Checkpoint_Activity_Coefs" // CHAR(0)
+  call CheckPointReadIntDatasetHDF5(pm_grp_id, dataset_name, dataset_rank, &
+                                     dims, start, length, stride, int_array, option)
+  checkpoint_activity_coefs = int_array(1)
+  
+  dataset_name = "NDOF" // CHAR(0)
+  int_array(1) = option%ntrandof
+  call CheckPointReadIntDatasetHDF5(pm_grp_id, dataset_name, dataset_rank, &
+                                    dims, start, length, stride, int_array, option)
+  option%ntrandof = int_array(1)
+  
+  !geh: %ndof should be pushed down to the base class, but this is not possible
+  !     as long as option%ntrandof is used.
+
+  if (option%ntrandof > 0) then
+
+    call DiscretizationCreateVector(discretization, NTRANDOF, &
+                                     natural_vec, NATURAL, option)
+    dataset_name = "Primary_Variable" // CHAR(0)
+    call HDF5ReadDataSetInVec(dataset_name, option, natural_vec, &
+                             pm_grp_id, H5T_NATIVE_DOUBLE)
+    call DiscretizationNaturalToGlobal(discretization, natural_vec, field%tran_xx, &
+                                       NTRANDOF)
+    call DiscretizationGlobalToLocal(discretization,field%tran_xx, &
+                                    field%tran_xx_loc,NTRANDOF)
+    call VecCopy(field%tran_xx,field%tran_yy,ierr);CHKERRQ(ierr)
+    call VecDestroy(natural_vec, ierr); CHKERRQ(ierr)
+
+    ! create a global vec for reading
+    call DiscretizationCreateVector(discretization,ONEDOF, &
+                                    global_vec,GLOBAL,option)
+    call DiscretizationCreateVector(discretization, ONEDOF, &
+                                    natural_vec, NATURAL, option)
+    call DiscretizationCreateVector(discretization,ONEDOF,local_vec, &
+                                    LOCAL,option)
+
+    if (realization%reaction%checkpoint_activity_coefs .and. &
+        realization%reaction%act_coef_update_frequency /= &
+        ACT_COEF_FREQUENCY_OFF) then
+
+      do i = 1, realization%reaction%naqcomp
+        write(dataset_name,*) i
+        dataset_name = 'Aq_comp_' // trim(adjustl(dataset_name))
+        call HDF5ReadDataSetInVec(dataset_name, option, natural_vec, &
+           pm_grp_id, H5T_NATIVE_DOUBLE)
+
+        call DiscretizationNaturalToGlobal(discretization, natural_vec, &
+                                           global_vec, NTRANDOF)
+        call DiscretizationGlobalToLocal(discretization, global_vec, &
+                                         local_vec, ONEDOF)
+        call RealizationSetVariable(realization, local_vec, LOCAL, &
+                                    PRIMARY_ACTIVITY_COEF,i)
+      enddo
+
+      do i = 1, realization%reaction%neqcplx
+        write(dataset_name,*) i
+        dataset_name = 'Eq_cplx_' // trim(adjustl(dataset_name))
+        call HDF5ReadDataSetInVec(dataset_name, option, natural_vec, &
+           pm_grp_id, H5T_NATIVE_DOUBLE)
+
+        call DiscretizationNaturalToGlobal(discretization, natural_vec, &
+                                           global_vec,NTRANDOF)
+        call DiscretizationGlobalToLocal(discretization, global_vec, &
+                                         local_vec, ONEDOF)
+        call RealizationSetVariable(realization, local_vec, LOCAL, &
+                                   SECONDARY_ACTIVITY_COEF, i)
+      enddo
+    endif
+
+    ! mineral volume fractions for kinetic minerals
+    if (realization%reaction%mineral%nkinmnrl > 0) then
+      do i = 1, realization%reaction%mineral%nkinmnrl
+        write(dataset_name,*) i
+        dataset_name = 'Kinetic_mineral_' // trim(adjustl(dataset_name))
+        call HDF5ReadDataSetInVec(dataset_name, option, natural_vec, &
+           pm_grp_id, H5T_NATIVE_DOUBLE)
+
+        call DiscretizationNaturalToGlobal(discretization, natural_vec, &
+                                           global_vec, NTRANDOF)
+        call DiscretizationGlobalToLocal(discretization, global_vec, &
+                                         local_vec, ONEDOF)
+        call RealizationSetVariable(realization, local_vec, LOCAL, &
+                                   MINERAL_VOLUME_FRACTION,i)
+      enddo
+    endif
+
+    if (realization%reaction%surface_complexation%nkinmrsrfcplxrxn > 0 .and. &
+        .not.option%transport%no_checkpoint_kinetic_sorption) then
+      ! PETSC_TRUE flag indicates write to file
+      call RTCheckpointKineticSorptionHDF5(realization, pm_grp_id, PETSC_TRUE)
+    endif
+
+    call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
+    call VecDestroy(natural_vec,ierr);CHKERRQ(ierr)
+
+   endif
+
+  deallocate(start)
+  deallocate(dims)
+  deallocate(length)
+  deallocate(stride)
+  deallocate(int_array)
+
+#endif
+
+end subroutine PMRTRestartHDF5
 
 ! ************************************************************************** !
 

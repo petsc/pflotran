@@ -53,6 +53,7 @@ module PM_Base_class
     procedure, public :: CheckpointBinary => PMBaseCheckpointBinary
     procedure, public :: CheckpointHDF5 => PMBaseCheckpointHDF5
     procedure, public :: RestartBinary => PMBaseCheckpointBinary
+    procedure, public :: RestartHDF5 => PMBaseCheckpointHDF5
   end type pm_base_type
   
   type, public :: pm_base_header_type

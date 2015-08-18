@@ -4744,7 +4744,8 @@ subroutine RTCheckpointKineticSorptionHDF5(realization, pm_grp_id, checkpoint)
   use Field_module
   use hdf5
   use Discretization_module
-  use HDF5_module, only : HDF5WriteUnstructuredDataSetFromVec
+  use HDF5_module, only : HDF5WriteUnstructuredDataSetFromVec, &
+                          HDF5ReadDataSetInVec
 
   type(realization_type) :: realization
 #if defined(SCORPIO_WRITE)
@@ -4803,6 +4804,8 @@ subroutine RTCheckpointKineticSorptionHDF5(realization, pm_grp_id, checkpoint)
       do irxn = 1, reaction%surface_complexation%nkinmrsrfcplxrxn
         do irate = 1, reaction%surface_complexation%kinmr_nrate(irxn)
           if (checkpoint) then
+
+            ! Write in a HDF5
             call VecGetArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
             do local_id = 1, grid%nlmax
               vec_p(local_id) = &
@@ -4821,9 +4824,32 @@ subroutine RTCheckpointKineticSorptionHDF5(realization, pm_grp_id, checkpoint)
             dataset_name = trim(adjustl(dataset_name)) // trim(adjustl(string)) // 'rate'
             call HDF5WriteUnstructuredDataSetFromVec(dataset_name, option, natural_vec, &
                   pm_grp_id, H5T_NATIVE_DOUBLE)
+
           else
-            write(*,*)'In RTCheckpointKineticSorptionHDF5: Something went wrong.'
-            stop
+
+            ! Read from a HDF5
+            write(string,*) icomp
+            dataset_name = 'Kinetic_sorption_' // trim(adjustl(string)) // 'comp_'
+            write(string,*) irxn
+            dataset_name = trim(adjustl(dataset_name)) // trim(adjustl(string)) // 'rxn_'
+            write(string,*) irate
+            dataset_name = trim(adjustl(dataset_name)) // trim(adjustl(string)) // 'rate'
+
+            call HDF5ReadDataSetInVec(dataset_name, option, natural_vec, &
+                                      pm_grp_id, H5T_NATIVE_DOUBLE)
+            call DiscretizationNaturalToGlobal(realization%discretization, natural_vec, &
+                                               field%work, ONEDOF)
+
+            if (.not.option%transport%no_restart_kinetic_sorption) then
+              call VecGetArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
+              do local_id = 1, grid%nlmax
+                rt_auxvars(grid%nL2G(local_id))% &
+                  kinmr_total_sorb(icomp,irate,irxn) = &
+                    vec_p(local_id)
+              enddo
+              call VecRestoreArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
+            endif
+
           endif
         enddo
       enddo

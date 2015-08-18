@@ -106,6 +106,7 @@ subroutine SimulationBaseInitializeRun(this)
 
   use Logging_module
   use Option_module
+  use hdf5
 
   implicit none
   
@@ -113,6 +114,11 @@ subroutine SimulationBaseInitializeRun(this)
 
   class(simulation_base_type) :: this
 
+#if defined(SCORPIO_WRITE)
+  integer :: chk_grp_id
+#else
+  integer(HID_T) :: chk_grp_id
+#endif
   PetscViewer :: viewer
   PetscErrorCode :: ierr
   
@@ -122,7 +128,15 @@ subroutine SimulationBaseInitializeRun(this)
   
   if (associated(this%process_model_coupler_list)) then
     if (this%option%restart_flag) then
-      call this%process_model_coupler_list%RestartBinary(viewer)
+      if (index(this%option%restart_filename,'.chk') > 0) then
+        call this%process_model_coupler_list%RestartBinary(viewer)
+      elseif (index(this%option%restart_filename,'.h5') > 0) then
+        call this%process_model_coupler_list%RestartHDF5(chk_grp_id)
+      else
+        this%option%io_buffer = 'Unknown restart filename format. ' // &
+        'Only *.chk and *.h5 supported.'
+        call printErrMsg(this%option)
+      endif
     endif
   
     ! initialize performs overwrite of restart, if applicable
