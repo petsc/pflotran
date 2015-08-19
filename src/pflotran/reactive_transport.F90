@@ -2978,7 +2978,7 @@ subroutine RTResidualEquilibrateCO2(r,realization)
       else
         call Henry_duan_sun(tc,pg*1D-5,henry,lngamco2,option%m_nacl,option%m_nacl)
       endif
-      call Henry_duan_sun(tc,pg*1.D-5,henry,lngamco2,m_na,m_cl)
+!     call Henry_duan_sun(tc,pg*1.D-5,henry,lngamco2,m_na,m_cl)
 
 !     print *,'check_EOSeq: ',local_id,jco2,reaction%ncomp, &
 !         global_auxvars(ghosted_id)%sat(GAS_PHASE), &
