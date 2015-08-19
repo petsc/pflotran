@@ -151,6 +151,24 @@
        41:  -2.2930102261398E-17
        61:  -1.1389506737736E-13
        81:  -6.3914672424614E-12
+-- GENERIC: Quartz SI --
+      Max:   9.9995378835865E-01
+      Min:   9.9990795420158E-01
+     Mean:   9.9991292508985E-01
+        1:   9.9990795421281E-01
+       21:   9.9990795420464E-01
+       41:   9.9990795420754E-01
+       61:   9.9990801260012E-01
+       81:   9.9991434975772E-01
+-- GENERIC: Calcite SI --
+      Max:   9.9999999999298E-01
+      Min:   9.9753756879404E-07
+     Mean:   6.6329123026907E-01
+        1:   9.9753756880172E-07
+       21:   9.9753757193844E-07
+       41:   9.9999999997707E-01
+       61:   9.9999988610493E-01
+       81:   9.9999360853276E-01
 -- DISCRETE: Material ID --
       Max:         1
       Min:         1
@@ -161,7 +179,7 @@
        61:         1
        81:         1
 -- SOLUTION: Flow --
-   Time (seconds):   2.1523451805115E-01
+   Time (seconds):   2.1350669860840E-01
    Time Steps:          111
    Newton Iterations:          214
    Solver Iterations:          214
@@ -169,7 +187,7 @@
    Solution 2-Norm:   2.0273837676348E+06
    Residual 2-Norm:   1.3194956041028E-17
 -- SOLUTION: Transport --
-   Time (seconds):   1.0533699989319E+00
+   Time (seconds):   1.0548224449158E+00
    Time Steps:          144
    Newton Iterations:          698
    Solver Iterations:          698
