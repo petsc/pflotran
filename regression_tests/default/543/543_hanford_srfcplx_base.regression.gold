@@ -152,20 +152,6 @@
        29:   0.0000000000000E+00
         1:   0.0000000000000E+00
        31:   0.0000000000000E+00
--- GENERIC: Calcite SI --
-      Max:   1.0000054118087E+00
-      Min:   9.9978455448840E-01
-     Mean:   9.9997132672604E-01
-       29:   9.9990388970126E-01
-        1:   9.9999975370936E-01
-       31:   9.9998192248044E-01
--- GENERIC: Metatorbernite SI --
-      Max:   1.4941104220223E-01
-      Min:   1.4417851358865E-01
-     Mean:   1.4861046107584E-01
-       29:   1.4822758707398E-01
-        1:   1.4940355726726E-01
-       31:   1.4940692719221E-01
 -- CONCENTRATION: >SOH Site Density --
       Max:   1.5264000005148E+01
       Min:   1.5263539379429E+01
@@ -416,7 +402,7 @@
         1:   1.8283372331921E-02 -1.0872642071490E-03 -7.9797956837206E-04
        31:   3.1866573339345E-01  4.8193089104467E-02 -9.7825103046311E-04
 -- SOLUTION: Flow --
-   Time (seconds):   1.0189390182495E-01
+   Time (seconds):   1.0277843475342E-01
    Time Steps:           34
    Newton Iterations:           90
    Solver Iterations:           90
@@ -424,7 +410,7 @@
    Solution 2-Norm:   1.8522091616857E+06
    Residual 2-Norm:   5.1816601949947E-10
 -- SOLUTION: Transport --
-   Time (seconds):   1.5843362092972E+01
+   Time (seconds):   1.6007996320724E+01
    Time Steps:           62
    Newton Iterations:          311
    Solver Iterations:          311

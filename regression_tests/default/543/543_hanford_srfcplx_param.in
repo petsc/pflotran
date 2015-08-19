@@ -225,6 +225,7 @@ noskip
     TOTAL
     TOTAL_SORBED
     KD
+    MINERAL_SATURATION_INDEX
   /
 END
 

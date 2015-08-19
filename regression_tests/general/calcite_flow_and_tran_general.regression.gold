@@ -106,15 +106,6 @@
        41:   1.4084555743921E-16
        61:   2.6663560248608E-16
        81:   6.3625638091480E-16
--- GENERIC: Calcite SI --
-      Max:   1.0000000044819E+00
-      Min:   1.0011307663471E-06
-     Mean:   6.6011003531143E-01
-        1:   1.0011307663471E-06
-       21:   1.0011334499783E-06
-       41:   1.0000000001408E+00
-       61:   1.0000000002666E+00
-       81:   1.0000000006363E+00
 -- DISCRETE: Material ID --
       Max:         1
       Min:         1
@@ -137,7 +128,7 @@
        61:   0.0000000000000E+00  0.0000000000000E+00  0.0000000000000E+00
        81:   0.0000000000000E+00  0.0000000000000E+00  0.0000000000000E+00
 -- SOLUTION: Flow --
-   Time (seconds):   2.2882771492004E-01
+   Time (seconds):   2.2812891006470E-01
    Time Steps:          111
    Newton Iterations:          117
    Solver Iterations:          117
@@ -145,7 +136,7 @@
    Solution 2-Norm:   2.0273839734737E+06
    Residual 2-Norm:   4.9157747421818E-16
 -- SOLUTION: Transport --
-   Time (seconds):   1.0003874301910E+00
+   Time (seconds):   1.0043263435364E+00
    Time Steps:          143
    Newton Iterations:          698
    Solver Iterations:          698
