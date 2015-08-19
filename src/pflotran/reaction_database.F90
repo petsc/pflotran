@@ -2206,7 +2206,8 @@ subroutine BasisInit(reaction,option)
 
       ! geh - for now, the user must specify they want each individual
       !       mineral printed for non-kinetic reactions (e.g. for SI).
-      mineral%mnrl_print(imnrl) = cur_mineral%print_me
+      mineral%mnrl_print(imnrl) = cur_mineral%print_me .or. &
+                                  reaction%mineral%print_all
       if (cur_mineral%itype == MINERAL_KINETIC) then
         mineral%kinmnrl_names(ikinmnrl) = mineral%mineral_names(imnrl)
         mineral%kinmnrl_print(ikinmnrl) = cur_mineral%print_me .or. &

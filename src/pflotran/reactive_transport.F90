@@ -4430,14 +4430,16 @@ subroutine RTSetPlotVariables(realization)
     endif
   enddo  
   
-  do i=1,reaction%mineral%nkinmnrl
-    if (reaction%mineral%kinmnrl_print(i)) then
-      name = trim(reaction%mineral%kinmnrl_names(i)) // ' SI'
-      units = ''
-      call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
-                                   MINERAL_SATURATION_INDEX,i)    
-    endif
-  enddo
+  if (reaction%mineral%print_saturation_index) then
+    do i=1,reaction%mineral%nmnrl
+      if (reaction%mineral%mnrl_print(i)) then
+        name = trim(reaction%mineral%mineral_names(i)) // ' SI'
+        units = ''
+        call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                                     MINERAL_SATURATION_INDEX,i)    
+      endif
+    enddo
+  endif
   
   do i=1,reaction%immobile%nimmobile
     if (reaction%immobile%print_me(i)) then

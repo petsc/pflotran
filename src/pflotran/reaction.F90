@@ -3035,6 +3035,8 @@ subroutine ReactionReadOutput(reaction,input,option)
         reaction%print_all_gas_species = PETSC_TRUE
       case('MINERALS')
         reaction%mineral%print_all = PETSC_TRUE
+      case('MINERAL_SATURATION_INDEX')
+        reaction%mineral%print_saturation_index = PETSC_TRUE
       case('IMMOBILE')
         reaction%immobile%print_all = PETSC_TRUE
       case('PH')

@@ -77,6 +77,7 @@ module Reaction_Mineral_Aux_module
   
     PetscInt :: nmnrl
     PetscBool :: print_all
+    PetscBool :: print_saturation_index
     character(len=MAXWORDLENGTH), pointer :: mineral_names(:)
     
     type(mineral_rxn_type), pointer :: mineral_list
@@ -166,6 +167,7 @@ function MineralCreate()
     
   nullify(mineral%mineral_list)
   mineral%print_all = PETSC_FALSE
+  mineral%print_saturation_index = PETSC_FALSE
   
   ! for saturation states
   mineral%nmnrl = 0  
