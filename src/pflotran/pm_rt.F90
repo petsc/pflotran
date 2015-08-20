@@ -1288,7 +1288,7 @@ subroutine PMRTCheckpointHDF5(this, pm_grp_id)
         call RealizationGetVariable(realization,global_vec, &
                                     PRIMARY_ACTIVITY_COEF,i)
         call DiscretizationGlobalToNatural(realization%discretization, global_vec, &
-                                        natural_vec, NTRANDOF)
+                                        natural_vec, ONEDOF)
         write(dataset_name,*) i
         dataset_name = 'Aq_comp_' // trim(adjustl(dataset_name))
         call HDF5WriteDataSetFromVec(dataset_name, option, natural_vec, &
@@ -1299,7 +1299,7 @@ subroutine PMRTCheckpointHDF5(this, pm_grp_id)
         call RealizationGetVariable(realization,global_vec, &
                                    SECONDARY_ACTIVITY_COEF,i)
         call DiscretizationGlobalToNatural(realization%discretization, global_vec, &
-                                        natural_vec, NTRANDOF)
+                                        natural_vec, ONEDOF)
         write(dataset_name,*) i
         dataset_name = 'Eq_cplx_' // trim(adjustl(dataset_name))
         call HDF5WriteDataSetFromVec(dataset_name, option, natural_vec, &
@@ -1313,7 +1313,7 @@ subroutine PMRTCheckpointHDF5(this, pm_grp_id)
         call RealizationGetVariable(realization,global_vec, &
                                    MINERAL_VOLUME_FRACTION,i)
         call DiscretizationGlobalToNatural(realization%discretization, global_vec, &
-                                        natural_vec, NTRANDOF)
+                                        natural_vec, ONEDOF)
         write(dataset_name,*) i
         dataset_name = 'Kinetic_mineral_' // trim(adjustl(dataset_name))
         call HDF5WriteDataSetFromVec(dataset_name, option, natural_vec, &
@@ -1361,7 +1361,8 @@ subroutine PMRTRestartHDF5(this, pm_grp_id)
   use Field_module
   use Discretization_module
   use Grid_module
-  use Reactive_Transport_module, only : RTCheckpointKineticSorptionHDF5
+  use Reactive_Transport_module, only : RTCheckpointKineticSorptionHDF5, &
+                                        RTUpdateAuxVars
   use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
   use Variables_module, only : PRIMARY_ACTIVITY_COEF, &
                                SECONDARY_ACTIVITY_COEF, &
@@ -1464,9 +1465,7 @@ subroutine PMRTRestartHDF5(this, pm_grp_id)
     call DiscretizationCreateVector(discretization,ONEDOF,local_vec, &
                                     LOCAL,option)
 
-    if (realization%reaction%checkpoint_activity_coefs .and. &
-        realization%reaction%act_coef_update_frequency /= &
-        ACT_COEF_FREQUENCY_OFF) then
+    if (checkpoint_activity_coefs == ONE_INTEGER) then
 
       do i = 1, realization%reaction%naqcomp
         write(dataset_name,*) i
@@ -1475,7 +1474,7 @@ subroutine PMRTRestartHDF5(this, pm_grp_id)
            pm_grp_id, H5T_NATIVE_DOUBLE)
 
         call DiscretizationNaturalToGlobal(discretization, natural_vec, &
-                                           global_vec, NTRANDOF)
+                                           global_vec, ONEDOF)
         call DiscretizationGlobalToLocal(discretization, global_vec, &
                                          local_vec, ONEDOF)
         call RealizationSetVariable(realization, local_vec, LOCAL, &
@@ -1489,7 +1488,7 @@ subroutine PMRTRestartHDF5(this, pm_grp_id)
            pm_grp_id, H5T_NATIVE_DOUBLE)
 
         call DiscretizationNaturalToGlobal(discretization, natural_vec, &
-                                           global_vec,NTRANDOF)
+                                           global_vec, ONEDOF)
         call DiscretizationGlobalToLocal(discretization, global_vec, &
                                          local_vec, ONEDOF)
         call RealizationSetVariable(realization, local_vec, LOCAL, &
@@ -1506,7 +1505,7 @@ subroutine PMRTRestartHDF5(this, pm_grp_id)
            pm_grp_id, H5T_NATIVE_DOUBLE)
 
         call DiscretizationNaturalToGlobal(discretization, natural_vec, &
-                                           global_vec, NTRANDOF)
+                                           global_vec, ONEDOF)
         call DiscretizationGlobalToLocal(discretization, global_vec, &
                                          local_vec, ONEDOF)
         call RealizationSetVariable(realization, local_vec, LOCAL, &
@@ -1523,7 +1522,14 @@ subroutine PMRTRestartHDF5(this, pm_grp_id)
     call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
     call VecDestroy(natural_vec,ierr);CHKERRQ(ierr)
 
-   endif
+  endif
+
+  if (realization%reaction%use_full_geochemistry) then
+                                     ! cells     bcs        act coefs.
+    call RTUpdateAuxVars(realization,PETSC_FALSE,PETSC_TRUE,PETSC_FALSE)
+  endif
+  ! do not update kinetics.
+  call PMRTUpdateSolution2(this,PETSC_FALSE)
 
   deallocate(start)
   deallocate(dims)

@@ -1,0 +1,682 @@
+#Description: 3D test problem for testing chemical reactions
+#             based on chemistry from Hammond and Lichtner, WRR, 2010
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
+#=========================== regression =======================================
+REGRESSION
+  CELLS_PER_PROCESS 2
+  CELLS
+    29
+  /
+END
+
+#=========================== flow mode ========================================
+
+#=========================== chemistry ========================================
+CHEMISTRY
+  PRIMARY_SPECIES
+  H+
+  Ca++
+  Cu++
+  Mg++
+  UO2++
+  K+
+  Na+
+  HCO3-
+  Cl-
+  F-
+  HPO4--
+  NO3-
+  SO4--
+  Tracer
+  Tracer2
+  /
+  REDOX_SPECIES
+    NO3-
+  /
+  SECONDARY_SPECIES
+    OH-
+    CO3--
+    CO2(aq)
+    CaCO3(aq)
+    CaHCO3+
+    CaSO4(aq)
+    CaCl+
+    CaCl2(aq)
+    CaF+
+    CaH2PO4+
+    CaHPO4(aq)
+    CaNO3+
+    CaPO4-
+    MgCO3(aq)
+    MgHCO3+
+    MgSO4(aq)
+    MgCl+
+    MgF+
+    MgH2PO4+
+    MgHPO4(aq)
+    MgP2O7--
+    MgPO4-
+    NaCl(aq)
+    NaOH(aq)
+    NaSO4-
+    NaHCO3(aq)
+    NaNO3(aq)
+    NaF(aq)
+    NaHP2O7--
+    NaHPO4-
+    KCl(aq)
+    KHPO4-
+    KHSO4(aq)
+    KOH(aq)
+    KP2O7---
+    KSO4-
+    HSO4-
+    H2SO4(aq)
+    HCl(aq)
+    H2PO4-
+    PO4---
+    H3PO4(aq)
+    H2F2(aq)
+    H2PO3F(aq)
+    Cu(CO3)2--
+    CuCO3(OH)2--
+    CuCO3(aq)
+    CuCl+
+    CuCl2(aq)
+    CuCl4--
+    CuF+
+    CuH2PO4+
+    CuHPO4(aq)
+    CuO2--
+    CuOH+
+    CuPO4-
+    CuSO4(aq)
+    UO2OH+
+    UO2(OH)2(aq)
+    UO2(OH)3-
+    UO2(OH)4--
+    (UO2)2OH+++
+    (UO2)2(OH)2++
+    (UO2)3(OH)4++
+    (UO2)3(OH)5+
+    (UO2)3(OH)7-
+    (UO2)4(OH)7+
+    UO2CO3(aq)
+    UO2(CO3)2--
+    UO2(CO3)3----
+    (UO2)2CO3(OH)3-
+    Ca2UO2(CO3)3(aq)
+    CaUO2(CO3)3--
+    UO2NO3+
+    UO2Cl+
+    UO2Cl2(aq)
+    UO2SO4(aq)
+    UO2(SO4)2--
+    UO2F+
+    UO2F2(aq)
+    UO2F3-
+    UO2F4--
+    UO2(H2PO4)(H3PO4)+
+    UO2(H2PO4)2(aq)
+    UO2HPO4(aq)
+    UO2H2PO4+
+    UO2H3PO4++
+    UO2PO4-
+  /
+  GAS_SPECIES
+    CO2(g)
+  /
+  MINERALS
+    Calcite
+    Magnesite
+    Dolomite
+    Dolomite-dis
+    Dolomite-ord
+    Brucite
+    Nesquehonite
+    Gypsum
+    Schoepite
+    UO2CO3
+    UO2(PO3)2
+    (UO2)3(PO4)2
+    (UO2)3(PO4)2.4H2O
+    CaUO4
+    UO2SO4
+    UOF4
+    UO3.2H2O
+    UO3.0.9H2O(alpha)
+    Saleeite
+    Sylvite
+    Metatorbernite
+    Whitlockite
+    Chalcanthite
+    Brochantite
+    Tenorite
+    Malachite
+    Fluorapatite
+    Fluorite
+    Hydroxylapatite
+    Torbernite
+  /
+  MINERAL_KINETICS
+    Calcite
+      RATE_CONSTANT 1.e-12 mol/cm^2-sec
+    /
+    Metatorbernite
+      RATE_CONSTANT 2.e-17 mol/cm^2-sec
+    /
+  /
+  SORPTION
+    SURFACE_COMPLEXATION_RXN
+skip
+      SITE_FRACTION 0.02 0.02 0.02 0.02 0.02 \
+        0.02 0.02 0.02 0.02 0.02 \
+        0.02 0.02 0.02 0.02 0.02 \
+        0.02 0.02 0.02 0.02 0.02 \
+        0.02 0.02 0.02 0.02 0.02 \
+        0.02 0.02 0.02 0.02 0.02 \
+        0.02 0.02 0.02 0.02 0.02 \
+        0.02 0.02 0.02 0.02 0.02 \
+        0.02 0.02 0.02 0.02 0.02 \
+        0.02 0.02 0.02 0.02 0.02
+      RATES 2.5722E-11  8.5000E-11  1.5972E-10  2.5139E-10  3.6111E-10 \
+        4.9167E-10  6.4167E-10  8.1667E-10  1.0167E-09  1.2472E-09 \
+        1.5111E-09  1.8111E-09  2.1528E-09  2.5389E-09  2.9722E-09 \
+        3.4722E-09  4.0278E-09  4.6667E-09  5.3889E-09  6.2222E-09 \
+        7.1389E-09  8.1944E-09  9.3611E-09  1.0722E-08  1.2278E-08 \
+        1.4028E-08  1.6056E-08  1.8389E-08  2.1056E-08  2.4139E-08 \
+        2.7750E-08  3.1944E-08  3.6944E-08  4.2778E-08  4.9444E-08 \
+        5.7778E-08  6.7778E-08  8.0000E-08  9.5000E-08  1.1389E-07 \
+        1.3806E-07  1.6944E-07  2.1111E-07  2.6861E-07  3.5000E-07 \
+        4.7778E-07  6.8611E-07  1.0778E-06  2.0278E-06  6.6944E-06
+  #MULTIRATE_SCALE_FACTOR 1000.d0
+noskip
+      MINERAL Calcite
+! recall that this is being scaled by the Calcite vol frac
+      SITE >SOH 152.64d0 ! 20 m^2/g, por = 0.25
+#      SITE >SOH 15.264d0 ! 2.0 m^2/g, por = 0.25
+      COMPLEXES
+        >SOUO2OH
+        >SOHUO2CO3
+      /
+    /
+  /
+  DATABASE ../../database/hanford.dat
+  LOG_FORMULATION
+  ACTIVITY_COEFFICIENTS NEWTON_ITERATION
+  MOLAL
+  OUTPUT
+    All
+    pH
+    TOTAL
+    TOTAL_SORBED
+    KD
+  /
+END
+
+#=========================== solver options ===================================
+TIMESTEPPER FLOW
+  TS_ACCELERATION 8
+END
+
+NEWTON_SOLVER FLOW
+END
+
+skip
+LINEAR_SOLVER FLOW
+  KSP_TYPE PREONLY
+  PC_TYPE LU
+END
+noskip
+
+NEWTON_SOLVER TRANSPORT
+END
+
+skip
+LINEAR_SOLVER TRANSPORT
+  KSP_TYPE PREONLY
+  PC_TYPE LU
+END
+noskip
+
+#=========================== discretization ===================================
+GRID
+  TYPE structured
+  ORIGIN 0.d0 0.d0 0.d0
+  NXYZ 5 4 3
+  DXYZ
+    10. 11. 12. 13. 14.
+    13. 12. 11. 10.
+    15. 20. 25.
+  /
+END
+
+#=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+#=========================== datasets =========================================
+skip
+DATASET U
+  HDF5_DATASET_NAME U
+  FILENAME datasets.h5
+END
+
+DATASET Calcite
+  HDF5_DATASET_NAME Calcite
+  FILENAME datasets.h5
+END
+noskip
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+  CHARACTERISTIC_CURVES sf1
+  PERMEABILITY
+    PERM_X 1.d-12
+    PERM_Y 1.d-12
+    PERM_Z 1.d-13
+  /
+END
+
+MATERIAL_PROPERTY soil2
+  ID 2
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+  CHARACTERISTIC_CURVES sf2
+  PERMEABILITY
+    PERM_X 1.d-11
+    PERM_Y 1.d-11
+    PERM_Z 1.d-12
+  /
+END
+
+MATERIAL_PROPERTY soil3
+  ID 3
+  POROSITY 0.2d0
+  TORTUOSITY 1.d0
+  CHARACTERISTIC_CURVES sf3
+  PERMEABILITY
+    PERM_X 1.d-10
+    PERM_Y 1.d-10
+    PERM_Z 1.d-11
+  /
+END
+
+MATERIAL_PROPERTY soil4
+  ID 4
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+  CHARACTERISTIC_CURVES sf4
+  PERMEABILITY
+    PERM_X 1.d-9
+    PERM_Y 1.d-9
+    PERM_Z 1.d-10
+  /
+END
+
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES sf1
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    M 0.286
+    ALPHA  1.9401d-4
+    LIQUID_RESIDUAL_SATURATION 0.115
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.286
+    LIQUID_RESIDUAL_SATURATION 0.115
+  /
+END
+
+CHARACTERISTIC_CURVES sf2
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    M 0.486
+    ALPHA  3.8801d-4
+    LIQUID_RESIDUAL_SATURATION 0.110
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.486
+    LIQUID_RESIDUAL_SATURATION 0.110
+  /
+END
+
+CHARACTERISTIC_CURVES sf3
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    M 0.541
+    ALPHA 1.0211d-4
+    LIQUID_RESIDUAL_SATURATION 0.118
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.541
+    LIQUID_RESIDUAL_SATURATION 0.118
+  /
+END
+
+CHARACTERISTIC_CURVES sf4
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    M 0.527
+    ALPHA 5.1054d-5
+    LIQUID_RESIDUAL_SATURATION 0.143
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.527
+    LIQUID_RESIDUAL_SATURATION 0.143
+  /
+END
+
+#=========================== output options ===================================
+OUTPUT
+#  TIMES d 0.001 0.01 0.1 1. 10.
+#  PERIODIC TIME 1 d
+  FORMAT TECPLOT BLOCK
+  VELOCITY_AT_CENTER
+END
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 1.d-3 d
+  INITIAL_TIMESTEP_SIZE 1.d-6 d
+  MAXIMUM_TIMESTEP_SIZE 10.d0 d
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    60.d0 46.d0 60.d0
+  /
+END
+
+REGION top
+  FACE TOP
+  COORDINATES
+    0.d0 0.d0 60.d0
+    60.d0 46.d0 60.d0
+  /
+END
+
+REGION bottom
+  FACE BOTTOM
+  COORDINATES
+    0.d0 0.d0 0.d0
+    60.d0 46.d0 0.d0
+  /
+END
+
+REGION west
+  FACE WEST
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 46.d0 60.d0
+  /
+END
+
+REGION east
+  FACE EAST
+  COORDINATES
+    60.d0 0.d0 0.d0
+    60.d0 46.d0 60.d0
+  /
+END
+
+REGION north
+  FACE NORTH
+  COORDINATES
+    0.d0 46.d0 0.d0
+    60.d0 46.d0 60.d0
+  /
+END
+
+REGION south
+  FACE SOUTH
+  COORDINATES
+    0.d0 0.d0 0.d0
+    60.d0 0.d0 60.d0
+  /
+END
+
+REGION plume
+  BLOCK 2 3 2 3 2 3
+END
+
+REGION well
+  BLOCK 4 4 2 3 3 3
+END
+
+#=========================== flow conditions ==================================
+FLOW_CONDITION initial
+  TYPE
+    PRESSURE hydrostatic
+  /
+  DATUM 0.d0 0.d0 35.d0
+  GRADIENT
+    PRESSURE -1.6666667d-2 0.d0 0.d0
+  /
+  PRESSURE 101325 ! Pa
+END
+
+FLOW_CONDITION east
+  TYPE
+    PRESSURE hydrostatic
+  /
+  INTERPOLATION LINEAR
+  DATUM LIST
+    TIME_UNITS d
+    0.d0 0.d0 0.d0 34.d0
+    10.d0 0.d0 0.d0 39.d0
+    50.d0 0.d0 0.d0 33.d0
+    100.d0 0.d0 0.d0 34.d0
+  /
+  PRESSURE 101325 ! Pa
+END
+
+FLOW_CONDITION recharge
+  TYPE
+    FLUX neumann
+  /
+  FLUX 5.d0 cm/yr
+END
+
+FLOW_CONDITION injection_well
+  TYPE
+    RATE scaled_volumetric_rate
+  /
+  RATE 1 m^3/hr
+END
+
+#=========================== transport conditions =============================
+TRANSPORT_CONDITION columbia_river
+  TYPE dirichlet_zero_gradient
+  CONSTRAINT_LIST
+    0.d0 river_water
+  /
+END
+
+TRANSPORT_CONDITION groundwater
+  TYPE dirichlet_zero_gradient
+  CONSTRAINT_LIST
+    0.d0 groundwater
+  /
+END
+
+TRANSPORT_CONDITION tracer_pulse
+  TYPE dirichlet
+  TIME_UNITS d
+  CONSTRAINT_LIST
+    0.d0 well_tracer
+    10.d0 groundwater
+  /
+END
+
+TRANSPORT_CONDITION rainwater
+  TYPE dirichlet
+  CONSTRAINT_LIST
+    0.d0 groundwater
+  /
+END
+
+TRANSPORT_CONDITION source_zone
+  TYPE dirichlet
+  CONSTRAINT_LIST
+    0.d0 U_source
+  /
+END
+
+#=========================== transport constraints ============================
+CONSTRAINT groundwater
+  CONCENTRATIONS
+    H+       1.d-7            M Calcite
+    Ca++     1.20644e-3       T
+    Cu++     1.e-8            T
+    Mg++     5.09772e-4       T Dolomite
+    UO2++    2.4830E-11       T
+    K+       1.54789e-4       T
+    Na+      1.03498e-3       Z
+    HCO3-    2.57305e-3       T
+    Cl-      6.97741e-4       T
+    F-       2.09491e-5       T
+    HPO4--   1.e-8            M Fluorapatite
+    NO3-     4.69979e-4       T
+    SO4--    6.37961e-4       T
+    Tracer   1.e-7            F
+    Tracer2  1.e-7            F
+  /
+  MINERALS
+    Calcite        0.1   1. cm^2/cm^3
+    Metatorbernite 0.    1. cm^2/cm^3
+  /
+END
+
+CONSTRAINT U_source
+  CONCENTRATIONS
+    H+       1.d-7            M Calcite
+    Ca++     1.20644e-3       T
+    Cu++     1.e-6            T
+    Mg++     5.09772e-4       T Dolomite
+    UO2++    2.34845e-7       T
+    K+       1.54789e-4       T
+    Na+      1.03498e-3       Z
+    HCO3-    2.57305e-3       T
+    Cl-      6.97741e-4       T
+    F-       2.09491e-5       T
+    HPO4--   1.e-6            M Fluorapatite
+    NO3-     4.69979e-4       T
+    SO4--    6.37961e-4       T
+    Tracer   1.e-7            F
+    Tracer2  1.e-7            F
+  /
+  MINERALS
+    Calcite        0.1   1. cm^2/cm^3
+    Metatorbernite 1.e-4  1. cm^2/cm^3
+  /
+END
+
+CONSTRAINT river_water
+  CONCENTRATIONS
+    H+       7.8             pH
+    Ca++     4.49496e-4       T
+    Cu++     1.e-8            T
+    Mg++     1.82316e-4       T
+    UO2++    2.4830E-11       T
+    K+       1.905371e-5      T
+    Na+      1.00551e-4       Z
+    HCO3-    1.127881e-3      T
+    Cl-      3.3895e-5        T
+    F-       6.23269e-6       T
+    HPO4--   1.e-9            T
+    NO3-     1.e-5            T
+    SO4--    9.23943e-5       T
+    Tracer   1.e-3            F
+    Tracer2  1.e-7            F
+  /
+END
+
+CONSTRAINT well_tracer
+  CONCENTRATIONS
+    H+       1.d-7            M Calcite
+    Ca++     1.20644e-3       T
+    Cu++     1.e-8            T
+    Mg++     5.09772e-4       T Dolomite
+    UO2++    2.4830E-11       T
+    K+       1.54789e-4       T
+    Na+      1.03498e-3       Z
+    HCO3-    2.57305e-3       T
+    Cl-      6.97741e-4       T
+    F-       2.09491e-5       T
+    HPO4--   1.e-8            M Fluorapatite
+    NO3-     4.69979e-4       T
+    SO4--    6.37961e-4       T
+    Tracer   1.e-7            F
+    Tracer2  1.e-3            F
+  /
+END
+
+#=========================== condition couplers ===============================
+# initial condition
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  TRANSPORT_CONDITION groundwater
+  REGION all
+END
+
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  TRANSPORT_CONDITION source_zone
+  REGION plume
+END
+
+# west boundary condition
+BOUNDARY_CONDITION west
+  FLOW_CONDITION initial
+  TRANSPORT_CONDITION groundwater
+  REGION west
+END
+
+# east boundary condition
+BOUNDARY_CONDITION east
+  FLOW_CONDITION east
+  TRANSPORT_CONDITION columbia_river
+  REGION east
+END
+
+# top boundary condition
+BOUNDARY_CONDITION top
+  FLOW_CONDITION recharge
+  TRANSPORT_CONDITION rainwater
+  REGION top
+END
+
+# well source/sink
+SOURCE_SINK well
+  FLOW_CONDITION injection_well
+  TRANSPORT_CONDITION tracer_pulse
+  REGION well
+END
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  MATERIAL ./543.h5
+END
+
+#=========================== checkpoint / restart =============================
+#CHECKPOINT 10
+RESTART 543_hanford_srfcplx_base-restart.chk 0.d0
+
+END_SUBSURFACE
