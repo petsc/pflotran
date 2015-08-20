@@ -452,6 +452,8 @@ subroutine RTCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   PetscBool :: converged_due_to_residual
   PetscReal :: max_relative_change
   PetscReal :: max_scaled_residual
+  PetscInt :: converged_flag
+  PetscInt :: temp_int
   PetscErrorCode :: ierr
   
   grid => realization%patch%grid
@@ -462,7 +464,7 @@ subroutine RTCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   dX_changed = PETSC_FALSE
   X1_changed = PETSC_FALSE
   
-  option%converged = PETSC_FALSE
+  converged_flag = 0
   if (option%transport%check_post_convergence) then
     converged_due_to_rel_update = PETSC_FALSE
     converged_due_to_residual = PETSC_FALSE
@@ -483,10 +485,18 @@ subroutine RTCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
       (option%transport%inf_scaled_res_tol  > 0.d0 .and. &
        max_scaled_residual < option%transport%inf_scaled_res_tol)
     if (converged_due_to_rel_update .or. converged_due_to_residual) then
-      option%converged = PETSC_TRUE
+      converged_flag = 1
     endif
   endif
-  
+
+  ! get global minimum
+  call MPI_Allreduce(converged_flag,temp_int,ONE_INTEGER_MPI,MPI_INTEGER, &
+                     MPI_MIN,realization%option%mycomm,ierr)
+
+  option%converged = PETSC_FALSE
+  if (temp_int == 1) then
+    option%converged = PETSC_TRUE
+  endif
   
   if (option%use_mc) then  
     call SecondaryRTUpdateIterate(line_search,X0,dX,X1,dX_changed, &
