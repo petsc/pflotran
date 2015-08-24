@@ -17,16 +17,21 @@ module PM_Waste_Form_class
 
   PetscBool, public :: bypass_warning_message = PETSC_FALSE
 
-  type :: fmdm_type
+  type :: base_waste_form_type
     PetscInt :: local_id
     type(point3d_type) :: coordinate
-    PetscReal :: temperature
-    PetscReal, pointer :: concentration(:,:)
-    PetscReal :: fuel_dissolution_rate
-    PetscReal :: specific_surface_area
     PetscReal :: volume
+    PetscReal :: instantaneous_mass_rate    ! mol/sec
+    PetscReal :: cumulative_mass            ! mol
+! uncomment later on if we decide to generalize
+!    class(base_waste_form_type), pointer :: next
+  end type base_waste_form_type
+  
+  type, extends(base_waste_form_type) :: fmdm_type
+    PetscReal, pointer :: concentration(:,:)
+    PetscReal :: specific_surface_area
     PetscReal :: burnup
-    type(fmdm_type), pointer :: next
+    class(fmdm_type), pointer :: next
   end type fmdm_type
   
   type, public, extends(pm_base_type) :: pm_waste_form_type
@@ -37,17 +42,14 @@ module PM_Waste_Form_class
     procedure, public :: PMWasteFormSetRealization
   end type pm_waste_form_type
   
-  type :: glass_type
-    PetscInt :: local_id
-    type(point3d_type) :: coordinate
+  type, extends(base_waste_form_type) :: glass_type
     PetscReal :: exposure_factor
-    PetscReal :: volume
-    PetscReal :: fuel_dissolution_rate
-    type(glass_type), pointer :: next
+    PetscReal :: glass_dissolution_rate  ! kg / sec
+    class(glass_type), pointer :: next
   end type glass_type
   
   type, public, extends(pm_waste_form_type) :: pm_glass_type
-    type(glass_type), pointer :: waste_form_list
+    class(glass_type), pointer :: waste_form_list
     PetscReal :: specific_surface_area
     PetscReal :: formula_weight
     class(dataset_base_type), pointer ::  mass_fraction_dataset
@@ -66,7 +68,7 @@ module PM_Waste_Form_class
   end type pm_glass_type
   
   type, public, extends(pm_waste_form_type) :: pm_fmdm_type
-    type(fmdm_type), pointer :: waste_form_list
+    class(fmdm_type), pointer :: waste_form_list
     PetscInt :: num_grid_cells_in_waste_form
     ! mapping of fmdm species into fmdm concentration array
     PetscInt, pointer :: mapping_fmdm(:)
@@ -206,6 +208,30 @@ subroutine PMWasteFormStrip(this)
   
 end subroutine PMWasteFormStrip
 
+
+! ************************************************************************** !
+
+subroutine BaseWasteFormInit(base)
+  ! 
+  ! Initializes the base waste form data
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/20/15
+
+  implicit none
+  
+  class(base_waste_form_type) :: base
+
+  base%local_id = UNINITIALIZED_INTEGER
+  base%coordinate%x = UNINITIALIZED_DOUBLE
+  base%coordinate%y = UNINITIALIZED_DOUBLE
+  base%coordinate%z = UNINITIALIZED_DOUBLE
+  base%instantaneous_mass_rate = UNINITIALIZED_DOUBLE
+  base%cumulative_mass = UNINITIALIZED_DOUBLE
+  base%volume = UNINITIALIZED_DOUBLE
+
+end subroutine BaseWasteFormInit
+
 ! ************************************************************************** !
 
 subroutine GlassInit(glass)
@@ -217,15 +243,11 @@ subroutine GlassInit(glass)
 
   implicit none
   
-  type(glass_type) :: glass
+  class(glass_type) :: glass
 
-  glass%local_id = UNINITIALIZED_INTEGER
-  glass%coordinate%x = UNINITIALIZED_DOUBLE
-  glass%coordinate%y = UNINITIALIZED_DOUBLE
-  glass%coordinate%z = UNINITIALIZED_DOUBLE
+  call BaseWasteFormInit(glass)
   glass%exposure_factor = UNINITIALIZED_DOUBLE
-  glass%fuel_dissolution_rate = UNINITIALIZED_DOUBLE
-  glass%volume = UNINITIALIZED_DOUBLE
+  glass%glass_dissolution_rate = UNINITIALIZED_DOUBLE
   nullify(glass%next)
 
 end subroutine GlassInit
@@ -279,7 +301,7 @@ subroutine PMGlassRead(this,input)
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXSTRINGLENGTH) :: error_string
   PetscBool :: found
-  type(glass_type), pointer :: new_waste_form, prev_waste_form
+  class(glass_type), pointer :: new_waste_form, prev_waste_form
   class(dataset_ascii_type), pointer :: dataset_ascii
 
   option => this%option
@@ -430,7 +452,7 @@ subroutine PMGlassSetup(this)
   type(option_type), pointer :: option
   type(reaction_type), pointer :: reaction
   character(len=MAXWORDLENGTH) :: species_name
-  type(glass_type), pointer :: cur_waste_form, prev_waste_form, next_waste_form
+  class(glass_type), pointer :: cur_waste_form, prev_waste_form, next_waste_form
   PetscInt :: i, j, k, local_id
   PetscErrorCode :: ierr
   
@@ -509,7 +531,7 @@ recursive subroutine PMGlassInitializeRun(this)
   class(pm_glass_type) :: this
   
   IS :: is
-  type(glass_type), pointer :: cur_waste_form
+  class(glass_type), pointer :: cur_waste_form
   PetscInt :: num_waste_form_cells
   PetscInt :: i
   PetscInt :: data_mediator_species_id
@@ -589,7 +611,7 @@ subroutine PMGlassInitializeTimestep(this)
   
   class(pm_glass_type) :: this
   
-  type(glass_type), pointer :: cur_waste_form
+  class(glass_type), pointer :: cur_waste_form
   PetscReal :: rate
   PetscReal :: dV
   PetscReal, parameter :: conversion = 1.d0/(24.d0*3600.d0)
@@ -602,15 +624,10 @@ subroutine PMGlassInitializeTimestep(this)
   cur_waste_form => this%waste_form_list
   do 
     if (.not.associated(cur_waste_form)) exit
-            ! kg glass/sec
-    rate = cur_waste_form%fuel_dissolution_rate * &  ! kg glass/m^2/day
-            this%specific_surface_area * &            ! m^2/kg glass
-            cur_waste_form%exposure_factor * &        ! [-]
-            cur_waste_form%volume * &                 ! m^3 glass
-            this%glass_density * &                    ! kg glass/m^3 glass
-            conversion                                ! 1/day -> 1/sec  
-         ! kg glass/sec / kg glass/m^3 glass = m^3 glass
-    dV = rate / this%glass_density * this%option%tran_dt
+    ! m^3 glass
+    dV = cur_waste_form%glass_dissolution_rate / & ! kg glass/sec
+         this%glass_density * &                    ! kg glass/m^3 glass
+         this%option%tran_dt                       ! sec
     cur_waste_form%volume = cur_waste_form%volume - dV
     cur_waste_form => cur_waste_form%next
   enddo
@@ -651,14 +668,13 @@ subroutine PMGlassSolve(this,time,ierr)
   PetscReal :: time
   PetscErrorCode :: ierr
   
-  type(glass_type), pointer :: cur_waste_form
+  class(glass_type), pointer :: cur_waste_form
   type(grid_type), pointer :: grid
   type(global_auxvar_type), pointer :: global_auxvars(:)
-  PetscInt :: local_id
-  PetscInt :: ghosted_id  
   PetscInt :: i
-  PetscReal, pointer :: vec_p(:)       ! kmol/day -> mol/sec
-  PetscReal, parameter :: conversion = 1.d3/(24.d0*3600.d0)
+  PetscReal, pointer :: vec_p(:)            ! 1/day -> 1/sec
+  PetscReal, parameter :: time_conversion = 1.d0/(24.d0*3600.d0)
+  PetscReal :: fuel_dissolution_rate
 
   grid => this%realization%patch%grid
   global_auxvars => this%realization%patch%aux%Global%auxvars
@@ -669,22 +685,28 @@ subroutine PMGlassSolve(this,time,ierr)
   do 
     if (.not.associated(cur_waste_form)) exit
     i = i + 1
-    local_id = cur_waste_form%local_id
-    ghosted_id = grid%nL2G(local_id)
     if (cur_waste_form%volume > 0.d0) then
-      cur_waste_form%fuel_dissolution_rate = & ! kg glass/m^2/day
-        560.d0*exp(-7397.d0/(global_auxvars(ghosted_id)%temp+273.15d0))
+      fuel_dissolution_rate = & ! kg glass/m^2/day
+        560.d0*exp(-7397.d0/ &
+            (global_auxvars(grid%nL2G(cur_waste_form%local_id))%temp+273.15d0))
+      ! kg glass / sec
+      cur_waste_form%glass_dissolution_rate = &
+        fuel_dissolution_rate * &          ! kg glass (dissolving)/m^2/day
+        this%specific_surface_area * &     ! m^2/kg glass
+        cur_waste_form%exposure_factor * & ! [-]
+        cur_waste_form%volume * &          ! m^3 glass
+        this%glass_density * &             ! kg glass/m^3 glass
+        time_conversion                    ! 1/day -> 1/sec
       ! mol/sec
-      vec_p(i) = cur_waste_form%fuel_dissolution_rate * &  ! kg glass/m^2/day
-                 this%formula_weight * &                   ! kmol radionuclide/kg radionuclide
-                 this%mass_fraction_dataset%rarray(1) * &  ! kg radionuclude/kg glass
-                 this%specific_surface_area * &            ! m^2/kg glass
-                 cur_waste_form%exposure_factor * &        ! [-]
-                 cur_waste_form%volume * &                 ! m^3 glass
-                 this%glass_density * &                    ! kg glass/m^3 glass
-                 conversion                                ! kmol/day -> mol/sec
+      cur_waste_form%instantaneous_mass_rate = &
+        cur_waste_form%glass_dissolution_rate * & ! kg glass / sec
+        this%formula_weight * &                   ! kmol radionuclide/kg radionuclide
+        this%mass_fraction_dataset%rarray(1) * &  ! kg radionuclude/kg glass
+        1.d3                                      ! kmol -> mol
+      vec_p(i) = cur_waste_form%instantaneous_mass_rate    ! mol/sec
     else
-      cur_waste_form%fuel_dissolution_rate = 0.d0
+      cur_waste_form%glass_dissolution_rate = 0.d0
+      cur_waste_form%instantaneous_mass_rate = 0.d0
     endif
     cur_waste_form => cur_waste_form%next
   enddo
@@ -812,7 +834,7 @@ subroutine PMGlassStrip(this)
   implicit none
   
   class(pm_glass_type) :: this
-  type(glass_type), pointer :: cur_waste_form, prev_waste_form
+  class(glass_type), pointer :: cur_waste_form, prev_waste_form
   
   PetscInt :: i
   
@@ -859,16 +881,10 @@ subroutine FMDMInit(fmdm)
 
   implicit none
   
-  type(fmdm_type) :: fmdm
+  class(fmdm_type) :: fmdm
 
-  fmdm%local_id = UNINITIALIZED_INTEGER
-  fmdm%coordinate%x = UNINITIALIZED_DOUBLE
-  fmdm%coordinate%y = UNINITIALIZED_DOUBLE
-  fmdm%coordinate%z = UNINITIALIZED_DOUBLE
-  fmdm%temperature = UNINITIALIZED_DOUBLE
-  fmdm%fuel_dissolution_rate = UNINITIALIZED_DOUBLE
+  call BaseWasteFormInit(fmdm)  
   fmdm%specific_surface_area = UNINITIALIZED_DOUBLE
-  fmdm%volume = UNINITIALIZED_DOUBLE
   fmdm%burnup = UNINITIALIZED_DOUBLE
   nullify(fmdm%concentration)
   nullify(fmdm%next)
@@ -1076,7 +1092,7 @@ subroutine PMFMDMSetup(this)
   type(option_type), pointer :: option
   type(reaction_type), pointer :: reaction
   character(len=MAXWORDLENGTH) :: species_name
-  type(fmdm_type), pointer :: cur_waste_form, prev_waste_form, next_waste_form
+  class(fmdm_type), pointer :: cur_waste_form, prev_waste_form, next_waste_form
   PetscInt :: i, j, k, local_id
   PetscErrorCode :: ierr
   
@@ -1170,7 +1186,7 @@ recursive subroutine PMFMDMInitializeRun(this)
   class(pm_fmdm_type) :: this
   
   IS :: is
-  type(fmdm_type), pointer :: cur_waste_form
+  class(fmdm_type), pointer :: cur_waste_form
   PetscInt :: num_waste_form_cells
   PetscInt :: i
   PetscInt :: data_mediator_species_id
@@ -1277,7 +1293,6 @@ subroutine PMFMDMPreSolve(this)
   ! Date: 01/15/15
 
   use Grid_module
-  use Global_Aux_module
   use Reactive_Transport_Aux_module
 
   implicit none
@@ -1285,25 +1300,20 @@ subroutine PMFMDMPreSolve(this)
   class(pm_fmdm_type) :: this
   
   type(grid_type), pointer :: grid
-  type(global_auxvar_type), pointer :: global_auxvars(:)
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
-  type(fmdm_type), pointer :: cur_waste_form
+  class(fmdm_type), pointer :: cur_waste_form
   PetscInt :: i
   PetscInt :: icomp_fmdm
   PetscInt :: icomp_pflotran
-  PetscInt :: local_id
   PetscInt :: ghosted_id
   
   grid => this%realization%patch%grid
-  global_auxvars => this%realization%patch%aux%Global%auxvars
   rt_auxvars => this%realization%patch%aux%RT%auxvars
   
   cur_waste_form => this%waste_form_list
   do 
     if (.not.associated(cur_waste_form)) exit
-    local_id = cur_waste_form%local_id
-    ghosted_id = grid%nL2G(local_id)
-    cur_waste_form%temperature = global_auxvars(ghosted_id)%temp
+    ghosted_id = grid%nL2G(cur_waste_form%local_id)
     ! overwrite the components in this%mapping_pflotran array
     do i = 1, size(this%mapping_fmdm)
       icomp_fmdm = this%mapping_fmdm(i)
@@ -1325,6 +1335,8 @@ subroutine PMFMDMSolve(this,time,ierr)
   ! Date: 01/15/15
   !
 !  use Argonne_Mixed_Potential_module
+  use Grid_module
+  use Global_Aux_module
   
   implicit none
 
@@ -1348,14 +1360,20 @@ subroutine PMFMDMSolve(this,time,ierr)
   PetscReal :: time
   PetscErrorCode :: ierr
   
-  type(fmdm_type), pointer :: cur_waste_form
-  PetscInt :: i
+  class(fmdm_type), pointer :: cur_waste_form
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+  type(grid_type), pointer :: grid
+   PetscInt :: i
   PetscReal, pointer :: vec_p(:)       ! g(U)/m^2/yr -> mol(U)/m^2/sec
   PetscReal, parameter :: conversion = 1.d0/238.d0/(365.d0*24.d0*3600.d0)
+  PetscReal :: fuel_dissolution_rate   ! g/m^2/yr
   
   integer ( kind = 4) :: success
   logical ( kind = 4) :: initialRun
   
+  grid => this%realization%patch%grid
+  global_auxvars => this%realization%patch%aux%Global%auxvars
+ 
   if (this%initialized) then
     initialRun = PETSC_FALSE
   else
@@ -1373,21 +1391,23 @@ subroutine PMFMDMSolve(this,time,ierr)
     i = i + 1
 #ifdef FMDM_MODEL  
     call AMP_step(cur_waste_form%burnup, time, &
-                  cur_waste_form%temperature, &
+                  global_auxvars(grid%nL2G(cur_waste_form%local_id))%temp, &
                   cur_waste_form%concentration, initialRun, &
-                  cur_waste_form%fuel_dissolution_rate, success)
+                  fuel_dissolution_rate, success)
 #else
     success = 1
-    cur_waste_form%fuel_dissolution_rate = cur_waste_form%burnup
+    fuel_dissolution_rate = cur_waste_form%burnup
 #endif
     if (success == 0) then
       ierr = 1
       exit
     endif      ! mol(U)/sec
-    vec_p(i) = cur_waste_form%fuel_dissolution_rate * & ! g/m^2/yr
+    cur_waste_form%instantaneous_mass_rate = &
+               fuel_dissolution_rate * &                ! g/m^2/yr
                cur_waste_form%specific_surface_area * & ! m^2/m^3 waste
                cur_waste_form%volume * &                ! m^3 waste
                conversion                               ! g(U)/yr -> mol(U)/sec
+    vec_p(i) = cur_waste_form%instantaneous_mass_rate
     cur_waste_form => cur_waste_form%next
   enddo
   call VecRestoreArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
@@ -1564,7 +1584,7 @@ end subroutine PMFMDMFinalizeRun
 
 ! ************************************************************************** !
 
-subroutine FMDMDestroy()
+subroutine FMDMStrip(fmdm)
   ! 
   ! Initializes the fuel matrix degradation model waste form
   ! 
@@ -1574,11 +1594,11 @@ subroutine FMDMDestroy()
 
   implicit none
   
-  type(fmdm_type) :: fmdm
+  class(fmdm_type) :: fmdm
 
   call DeallocateArray(fmdm%concentration)
   
-end subroutine FMDMDestroy
+end subroutine FMDMStrip
 
 ! ************************************************************************** !
 
@@ -1593,7 +1613,7 @@ subroutine PMFMDMStrip(this)
   implicit none
   
   class(pm_fmdm_type) :: this
-  type(fmdm_type), pointer :: cur_waste_form, prev_waste_form
+  class(fmdm_type), pointer :: cur_waste_form, prev_waste_form
   
   PetscInt :: i
   
@@ -1604,7 +1624,7 @@ subroutine PMFMDMStrip(this)
     if (.not.associated(cur_waste_form)) exit
     prev_waste_form => cur_waste_form
     cur_waste_form => cur_waste_form%next
-    call DeallocateArray(prev_waste_form%concentration)
+    call FMDMStrip(prev_waste_form)
     deallocate(prev_waste_form)
     nullify(prev_waste_form)
   enddo
