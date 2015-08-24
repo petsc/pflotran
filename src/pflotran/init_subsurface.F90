@@ -464,13 +464,13 @@ subroutine InitSubsurfAssignMatProperties(realization)
       perm_xx_p(local_id) = material_property%permeability(1,1)
       perm_yy_p(local_id) = material_property%permeability(2,2)
       perm_zz_p(local_id) = material_property%permeability(3,3)
+      if (soil_compressibility_index > 0) then
+        compress_p(local_id) = material_property%soil_compressibility
+      endif
     endif
     if (associated(Material%auxvars)) then
       call MaterialAssignPropertyToAux(Material%auxvars(ghosted_id), &
                                         material_property,option)
-    endif
-    if (soil_compressibility_index > 0) then
-      compress_p(local_id) = material_property%soil_compressibility
     endif
     por0_p(local_id) = material_property%porosity
     tor0_p(local_id) = material_property%tortuosity
