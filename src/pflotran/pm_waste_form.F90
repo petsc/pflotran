@@ -101,8 +101,8 @@ module PM_Waste_Form_class
 !    procedure, public :: TimeCut => PMFMDMTimeCut
 !    procedure, public :: UpdateSolution => PMFMDMUpdateSolution
 !    procedure, public :: UpdateAuxVars => PMFMDMUpdateAuxVars
-    procedure, public :: Checkpoint => PMFMDMCheckpoint    
-    procedure, public :: Restart => PMFMDMRestart  
+    procedure, public :: CheckpointBinary => PMFMDMCheckpointBinary
+    procedure, public :: RestartBinary => PMFMDMRestartBinary
     procedure, public :: Destroy => PMFMDMDestroy
   end type pm_fmdm_type
   
@@ -1505,8 +1505,8 @@ end subroutine PMFMDMUpdateAuxVars
 
 ! ************************************************************************** !
 
-subroutine PMFMDMCheckpoint(this,viewer)
-  ! 
+subroutine PMFMDMCheckpointBinary(this,viewer)
+  !
   ! Checkpoints data associated with Subsurface PM
   ! 
   ! Author: Glenn Hammond
@@ -1518,12 +1518,12 @@ subroutine PMFMDMCheckpoint(this,viewer)
   class(pm_fmdm_type) :: this
   PetscViewer :: viewer
   
-end subroutine PMFMDMCheckpoint
+end subroutine PMFMDMCheckpointBinary
 
 ! ************************************************************************** !
 
-subroutine PMFMDMRestart(this,viewer)
-  ! 
+subroutine PMFMDMRestartBinary(this,viewer)
+  !
   ! Restarts data associated with Subsurface PM
   ! 
   ! Author: Glenn Hammond
@@ -1539,7 +1539,7 @@ subroutine PMFMDMRestart(this,viewer)
 !  call this%UpdateAuxVars()
 !  call this%UpdateSolution()
   
-end subroutine PMFMDMRestart
+end subroutine PMFMDMRestartBinary
 
 ! ************************************************************************** !
 

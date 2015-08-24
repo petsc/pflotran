@@ -215,7 +215,7 @@ noskip
       /
     /
   /
-  DATABASE ../../../database/hanford.dat
+  DATABASE ../../database/hanford.dat
   LOG_FORMULATION
   ACTIVITY_COEFFICIENTS NEWTON_ITERATION
   MOLAL
@@ -225,7 +225,6 @@ noskip
     TOTAL
     TOTAL_SORBED
     KD
-    MINERAL_SATURATION_INDEX
   /
 END
 
@@ -237,18 +236,22 @@ END
 NEWTON_SOLVER FLOW
 END
 
+skip
 LINEAR_SOLVER FLOW
   KSP_TYPE PREONLY
   PC_TYPE LU
 END
+noskip
 
 NEWTON_SOLVER TRANSPORT
 END
 
+skip
 LINEAR_SOLVER TRANSPORT
   KSP_TYPE PREONLY
   PC_TYPE LU
 END
+noskip
 
 #=========================== discretization ===================================
 GRID
@@ -268,33 +271,22 @@ FLUID_PROPERTY
 END
 
 #=========================== datasets =========================================
-DATASET initial_U
+skip
+DATASET U
   HDF5_DATASET_NAME U
-  FILENAME parameters-543.h5
+  FILENAME datasets.h5
 END
 
-DATASET initial_Calcite_vol_frac
-  HDF5_DATASET_NAME Calcite_vol_frac
-  FILENAME parameters-543.h5
+DATASET Calcite
+  HDF5_DATASET_NAME Calcite
+  FILENAME datasets.h5
 END
-
-DATASET initial_Calcite_area
-  HDF5_DATASET_NAME Calcite_area
-  FILENAME parameters-543.h5
-END
-
-DATASET Porosity
-  FILENAME parameters-543.h5
-END
-
-DATASET Permeability
-  FILENAME parameters-543.h5
-END
+noskip
 
 #=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
   ID 1
-  POROSITY DATASET Porosity
+  POROSITY 0.25d0
   TORTUOSITY 1.d0
   CHARACTERISTIC_CURVES sf1
   PERMEABILITY
@@ -310,17 +302,21 @@ MATERIAL_PROPERTY soil2
   TORTUOSITY 1.d0
   CHARACTERISTIC_CURVES sf2
   PERMEABILITY
-    DATASET Permeability
+    PERM_X 1.d-11
+    PERM_Y 1.d-11
+    PERM_Z 1.d-12
   /
 END
 
 MATERIAL_PROPERTY soil3
   ID 3
-  POROSITY DATASET Porosity
+  POROSITY 0.2d0
   TORTUOSITY 1.d0
   CHARACTERISTIC_CURVES sf3
   PERMEABILITY
-    DATASET Permeability
+    PERM_X 1.d-10
+    PERM_Y 1.d-10
+    PERM_Z 1.d-11
   /
 END
 
@@ -389,21 +385,13 @@ END
 OUTPUT
 #  TIMES d 0.001 0.01 0.1 1. 10.
 #  PERIODIC TIME 1 d
-  VARIABLES
-    LIQUID_PRESSURE
-    LIQUID_SATURATION
-    PERMEABILITY_X
-    PERMEABILITY_Y
-    PERMEABILITY_Z
-    POROSITY
-  /
   FORMAT TECPLOT BLOCK
   VELOCITY_AT_CENTER
 END
 
 #=========================== times ============================================
 TIME
-  FINAL_TIME 100.d0 d
+  FINAL_TIME 1.d-3 d
   INITIAL_TIMESTEP_SIZE 1.d-6 d
   MAXIMUM_TIMESTEP_SIZE 10.d0 d
 END
@@ -521,13 +509,6 @@ TRANSPORT_CONDITION columbia_river
   /
 END
 
-TRANSPORT_CONDITION initial_groundwater
-  TYPE dirichlet_zero_gradient
-  CONSTRAINT_LIST
-    0.d0 initial_groundwater
-  /
-END
-
 TRANSPORT_CONDITION groundwater
   TYPE dirichlet_zero_gradient
   CONSTRAINT_LIST
@@ -559,30 +540,6 @@ TRANSPORT_CONDITION source_zone
 END
 
 #=========================== transport constraints ============================
-CONSTRAINT initial_groundwater
-  CONCENTRATIONS
-    H+       1.d-7            M Calcite
-    Ca++     1.20644e-3       T
-    Cu++     1.e-8            T
-    Mg++     5.09772e-4       T Dolomite
-    UO2++    2.4830E-11       T DATASET initial_U
-    K+       1.54789e-4       T
-    Na+      1.03498e-3       Z
-    HCO3-    2.57305e-3       T
-    Cl-      6.97741e-4       T
-    F-       2.09491e-5       T
-    HPO4--   1.e-8            M Fluorapatite
-    NO3-     4.69979e-4       T
-    SO4--    6.37961e-4       T
-    Tracer   1.e-7            F
-    Tracer2  1.e-7            F
-  /
-  MINERALS
-    Calcite        DATASET initial_Calcite_vol_frac DATASET initial_Calcite_area
-    Metatorbernite 0.    1. cm^2/cm^3
-  /
-END
-
 CONSTRAINT groundwater
   CONCENTRATIONS
     H+       1.d-7            M Calcite
@@ -600,6 +557,10 @@ CONSTRAINT groundwater
     SO4--    6.37961e-4       T
     Tracer   1.e-7            F
     Tracer2  1.e-7            F
+  /
+  MINERALS
+    Calcite        0.1   1. cm^2/cm^3
+    Metatorbernite 0.    1. cm^2/cm^3
   /
 END
 
@@ -671,7 +632,7 @@ END
 # initial condition
 INITIAL_CONDITION
   FLOW_CONDITION initial
-  TRANSPORT_CONDITION initial_groundwater
+  TRANSPORT_CONDITION groundwater
   REGION all
 END
 
@@ -713,5 +674,9 @@ END
 STRATA
   MATERIAL ./543.h5
 END
+
+#=========================== checkpoint / restart =============================
+#CHECKPOINT 10
+RESTART 543_hanford_srfcplx_base-restart.h5 0.d0
 
 END_SUBSURFACE

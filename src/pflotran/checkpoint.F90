@@ -50,40 +50,43 @@ module Checkpoint_module
     end subroutine
   end interface PetscBagGetData
 
-  public :: CheckpointOpenFileForWrite, &
-            CheckPointWriteCompatibility, &
-            CheckPointReadCompatibility, &
-            CheckpointFlowProcessModel, &
-            RestartFlowProcessModel
+  public :: CheckpointOpenFileForWriteBinary, &
+            CheckPointWriteCompatibilityBinary, &
+            CheckPointReadCompatibilityBinary, &
+            CheckpointFlowProcessModelBinary, &
+            RestartFlowProcessModelBinary, &
+            RestartFlowProcessModelHDF5, &
+            CheckpointOpenFileForWriteHDF5, &
+            CheckPointWriteCompatibilityHDF5, &
+            CheckpointFlowProcessModelHDF5, &
+            CheckPointWriteIntDatasetHDF5, &
+            CheckPointReadRealDatasetHDF5, &
+            CheckPointWriteRealDatasetHDF5, &
+            CheckPointReadIntDatasetHDF5, &
+            CheckpointOpenFileForReadHDF5, &
+            CheckPointReadCompatibilityHDF5
 
 contains
 
 ! ************************************************************************** !
 
-subroutine CheckpointOpenFileForWrite(viewer,id,option,id_stamp)
-  ! 
-  ! Opens checkpoint file; sets format
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 07/26/13
+function CheckpointFilename(id, option, id_stamp)
+  !
+  ! This subroutine creates the filename of a checkpoint file without a suffix
+  !
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 07/30/15
   ! 
 
   use Option_module
   use String_module, only : StringNull
-  
-  implicit none
 
-#include "finclude/petscviewer.h"
-#include "finclude/petscbag.h"
-
-  PetscViewer :: viewer
   PetscInt :: id
   type(option_type) :: option
   character(len=MAXWORDLENGTH), optional, intent(in) :: id_stamp
-  PetscErrorCode :: ierr
-  
+  character(len=MAXSTRINGLENGTH) :: CheckpointFilename
+
   character(len=MAXWORDLENGTH) :: id_string
-  character(len=MAXSTRINGLENGTH) :: filename
 
   write(id_string,'(i8)') id
   if (present(id_stamp)) then
@@ -95,9 +98,41 @@ subroutine CheckpointOpenFileForWrite(viewer,id,option,id_stamp)
   end if
   !else if (id >= 0) then --> use default id
 
-  filename = trim(option%global_prefix) // &
+  CheckpointFilename = trim(option%global_prefix) // &
        trim(option%group_prefix) // &
-       '-' // trim(adjustl(id_string)) // '.chk'
+       '-' // trim(adjustl(id_string))
+
+  CheckpointFilename = adjustl(CheckpointFilename)
+
+  end function CheckpointFilename
+
+! ************************************************************************** !
+
+subroutine CheckpointOpenFileForWriteBinary(viewer,id,option,id_stamp)
+  ! 
+  ! Opens checkpoint file; sets format
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/26/13
+  ! 
+
+  use Option_module
+
+  implicit none
+
+#include "finclude/petscviewer.h"
+#include "finclude/petscbag.h"
+
+  PetscViewer :: viewer
+  PetscInt :: id
+  type(option_type) :: option
+  character(len=MAXWORDLENGTH), optional, intent(in) :: id_stamp
+  PetscErrorCode :: ierr
+  
+  character(len=MAXSTRINGLENGTH) :: filename
+
+  filename = CheckpointFilename(id,option,id_stamp)
+  filename = trim(filename) // '.chk'
 
   !geh: To skip .info file, need to split PetscViewerBinaryOpen() 
   !     into the routines it calls so that PetscViewerBinarySkipInfo()
@@ -115,11 +150,11 @@ subroutine CheckpointOpenFileForWrite(viewer,id,option,id_stamp)
     trim(adjustl(filename))
   call printMsg(option)
 
-end subroutine CheckpointOpenFileForWrite
+end subroutine CheckpointOpenFileForWriteBinary
 
 ! ************************************************************************** !
 
-subroutine CheckpointWriteCompatibility(viewer,option)
+subroutine CheckPointWriteCompatibilityBinary(viewer,option)
   ! 
   ! Writes a PetscBag holding the version number and the size of a
   ! complex extended class to ensure that the size of the class matches.
@@ -173,11 +208,11 @@ subroutine CheckpointWriteCompatibility(viewer,option)
   call PetscBagView(bag,viewer,ierr);CHKERRQ(ierr)
   call PetscBagDestroy(bag,ierr);CHKERRQ(ierr)
 
-end subroutine CheckpointWriteCompatibility
+end subroutine CheckPointWriteCompatibilityBinary
 
 ! ************************************************************************** !
 
-subroutine CheckpointReadCompatibility(viewer,option)
+subroutine CheckPointReadCompatibilityBinary(viewer,option)
   ! 
   ! Reads in a PetscBag holding the version number and the size of a
   ! complex extended class to ensure that the size of the class matches.
@@ -250,11 +285,11 @@ subroutine CheckpointReadCompatibility(viewer,option)
 
   call PetscBagDestroy(bag,ierr);CHKERRQ(ierr)
 
-end subroutine CheckpointReadCompatibility
+end subroutine CheckPointReadCompatibilityBinary
 
 ! ************************************************************************** !
 
-subroutine CheckpointFlowProcessModel(viewer,realization)
+subroutine CheckpointFlowProcessModelBinary(viewer,realization)
   ! 
   ! Checkpoints flow process model vectors
   ! 
@@ -344,11 +379,11 @@ subroutine CheckpointFlowProcessModel(viewer,realization)
     call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
   endif  
   
-end subroutine CheckpointFlowProcessModel
+end subroutine CheckpointFlowProcessModelBinary
 
 ! ************************************************************************** !
 
-subroutine RestartFlowProcessModel(viewer,realization)
+subroutine RestartFlowProcessModelBinary(viewer,realization)
   ! 
   ! Restarts flow process model
   ! 
@@ -451,6 +486,1060 @@ subroutine RestartFlowProcessModel(viewer,realization)
     call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
   endif  
   
-end subroutine RestartFlowProcessModel
+end subroutine RestartFlowProcessModelBinary
+
+! ************************************************************************** !
+
+subroutine CheckpointOpenFileForWriteHDF5(file_id, grp_id, id, option, id_stamp)
+  !
+  ! Opens checkpoint file; sets format
+  !
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 07/30/15
+  !
+
+  use Option_module
+
+#if  !defined(PETSC_HAVE_HDF5)
+  implicit none
+
+  PetscInt :: id
+  integer, intent(out) :: file_id
+  integer:: prop_id
+  integer,intent(out):: grp_id
+  type(option_type) :: option
+  character(len=MAXWORDLENGTH), optional, intent(in) :: id_stamp
+  PetscErrorCode :: ierr
+
+  call printMsg(option,'')
+  write(option%io_buffer, &
+        '("PFLOTRAN must be compiled with HDF5 to &
+        &write HDF5 formatted checkpoint file. Darn.")')
+  call printErrMsg(option)
+
+#else
+
+  use hdf5
+
+  implicit none
+
+  PetscInt :: id
+  type(option_type) :: option
+  character(len=MAXWORDLENGTH), optional, intent(in) :: id_stamp
+
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXSTRINGLENGTH) :: filename
+  PetscErrorCode :: ierr
+  PetscMPIInt :: hdf5_err
+
+#if defined(SCORPIO_WRITE)
+  integer, intent(out) :: file_id
+  integer:: prop_id
+  integer,intent(out):: grp_id
+#else
+  integer(HID_T), intent(out) :: file_id
+  integer(HID_T) :: prop_id
+  integer(HID_T), intent(out) :: grp_id
+#endif
+
+  filename = CheckpointFilename(id, option, id_stamp)
+  filename = trim(filename) // '.h5'
+
+#if defined(SCORPIO_WRITE)
+    filename = trim(filename) // CHAR(0)
+    call scorpio_open_file(filename, option%iowrite_group_id, &
+                              SCORPIO_FILE_CREATE, file_id, ierr)
+#else
+
+    ! initialize fortran interface
+  call h5open_f(hdf5_err)
+
+  call h5pcreate_f(H5P_FILE_ACCESS_F, prop_id, hdf5_err)
+#ifndef SERIAL_HDF5
+  call h5pset_fapl_mpio_f(prop_id, option%mycomm, MPI_INFO_NULL, hdf5_err)
+#endif
+  call h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, hdf5_err, &
+                   H5P_DEFAULT_F, prop_id)
+  call h5pclose_f(prop_id, hdf5_err)
+
+#endif
+
+  string = "Checkpoint"
+  call h5gcreate_f(file_id, string, grp_id, hdf5_err, OBJECT_NAMELEN_DEFAULT_F)
+
+  write(option%io_buffer,'(" --> Dump checkpoint file: ", a64)') &
+    trim(adjustl(filename))
+  call printMsg(option)
+#endif
+
+end subroutine CheckpointOpenFileForWriteHDF5
+
+! ************************************************************************** !
+
+subroutine CheckpointOpenFileForReadHDF5(filename, file_id, grp_id, option)
+  !
+  ! Opens HDF5 checkpoint file for reading
+  !
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 08/09/15
+  !
+
+  use Option_module
+
+#if  !defined(PETSC_HAVE_HDF5)
+  implicit none
+
+  character(len=MAXSTRINGLENGTH),intent(in) :: filename
+  integer, intent(out) :: file_id
+  integer,intent(out):: grp_id
+  type(option_type) :: option
+
+  call printMsg(option,'')
+  write(option%io_buffer, &
+        '("PFLOTRAN must be compiled with HDF5 to &
+        &write HDF5 formatted checkpoint file. Darn.")')
+  call printErrMsg(option)
+
+#else
+
+  use hdf5
+
+  implicit none
+
+  character(len=MAXSTRINGLENGTH),intent(in) :: filename
+  type(option_type) :: option
+
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscErrorCode :: ierr
+  PetscMPIInt :: hdf5_err
+
+#if defined(SCORPIO)
+  integer, intent(out) :: file_id
+  integer:: prop_id
+  integer,intent(out):: grp_id
+#else
+  integer(HID_T), intent(out) :: file_id
+  integer(HID_T) :: prop_id
+  integer(HID_T), intent(out) :: grp_id
+#endif
+
+#if defined(SCORPIO)
+  write(option%io_buffer, &
+        '("Checkpoint from HDF5 not supported for SCORPIO. Darn.")')
+  call printErrMsg(option)
+#else
+
+  ! initialize fortran interface
+  call h5open_f(hdf5_err)
+
+  call h5pcreate_f(H5P_FILE_ACCESS_F, prop_id, hdf5_err)
+#ifndef SERIAL_HDF5
+  call h5pset_fapl_mpio_f(prop_id, option%mycomm, MPI_INFO_NULL, hdf5_err)
+#endif
+  call h5fopen_f(filename, H5F_ACC_RDONLY_F, file_id, hdf5_err, prop_id)
+  call h5pclose_f(prop_id, hdf5_err)
+
+  string = "Checkpoint"
+  call h5gopen_f(file_id, string, grp_id, hdf5_err)
+
+#endif
+
+#endif
+
+end subroutine CheckpointOpenFileForReadHDF5
+
+! ************************************************************************** !
+
+subroutine CheckPointWriteIntDatasetHDF5(chk_grp_id, dataset_name, dataset_rank, &
+     dims, start, length, stride, data_int_array, option)
+  !
+  ! Within a HDF5 group (chk_grp_id), creates a new dataset (named dataset_name)
+  ! and writes integer data type.
+  !
+  ! Author: Gautam Bisht
+  ! Date: 07/30/15
+  ! 
+#if  !defined(PETSC_HAVE_HDF5)
+  use Option_module
+  implicit none
+  integer :: chk_grp_id
+  PetscMPIInt :: dataset_rank
+  integer, pointer :: dims(:)
+  integer, pointer :: start(:)
+  integer, pointer :: stride(:)
+  integer, pointer :: length(:)
+  PetscInt, pointer :: data_int_array(:)
+  type(option_type) :: option
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+
+  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
+        'write HDF5 formatted checkpoint file. Darn.'
+  stop
+
+#else
+
+  use Option_module
+  use hdf5
+  use HDF5_module, only : trick_hdf5
+  
+  implicit none
+
+#include "finclude/petscviewer.h"
+#include "finclude/petscbag.h"
+
+#if defined(SCORPIO_WRITE)
+  integer :: chk_grp_id
+  PetscMPIInt :: dataset_rank
+  integer, pointer :: dims(:)
+  integer, pointer :: start(:)
+  integer, pointer :: stride(:)
+  integer, pointer :: length(:)
+#else
+  integer(HID_T) :: chk_grp_id
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+  PetscMPIInt :: dataset_rank
+  integer(HSIZE_T), pointer :: dims(:)
+  integer(HSIZE_T), pointer :: start(:)
+  integer(HSIZE_T), pointer :: stride(:)
+  integer(HSIZE_T), pointer :: length(:)
+#endif
+  type(option_type) :: option
+
+  integer(HID_T) :: data_set_id
+  integer(HID_T) :: grp_space_id
+  integer(HID_T) :: memory_space_id
+  integer(HID_T) :: prop_id
+  PetscErrorCode :: hdf5_err
+  PetscErrorCode :: hdf5_flag
+  PetscMPIInt, parameter :: ON=1, OFF=0
+
+  PetscInt, pointer :: data_int_array(:)
+
+  call h5screate_simple_f(dataset_rank, dims, memory_space_id, hdf5_err, dims)
+
+  dataset_name = trim(adjustl(dataset_name)) // CHAR(0)
+
+  call h5eset_auto_f(OFF, hdf5_err)
+  call h5dopen_f(chk_grp_id, dataset_name, data_set_id, hdf5_err)
+  hdf5_flag = hdf5_err
+  call h5eset_auto_f(ON, hdf5_err)
+
+  if (hdf5_flag < 0) then
+    call h5pcreate_f(H5P_DATASET_CREATE_F, prop_id, hdf5_err)
+    call h5screate_simple_f(dataset_rank, dims, grp_space_id, hdf5_err, dims)
+    call h5dcreate_f(chk_grp_id, dataset_name, H5T_NATIVE_INTEGER, grp_space_id, &
+                     data_set_id, hdf5_err, prop_id)
+    call h5pclose_f(prop_id, hdf5_err)
+  else
+    call h5dget_space_f(data_set_id, grp_space_id, hdf5_err)
+  endif
+
+  call h5sselect_hyperslab_f(grp_space_id, H5S_SELECT_SET_F, start, length, &
+                             hdf5_err, stride, stride)
+
+  ! write the data
+  call h5pcreate_f(H5P_DATASET_XFER_F, prop_id, hdf5_err)
+#ifndef SERIAL_HDF5
+  if (trick_hdf5) then
+    call h5pset_dxpl_mpio_f(prop_id, H5FD_MPIO_INDEPENDENT_F, &
+                            hdf5_err)
+  else
+    call h5pset_dxpl_mpio_f(prop_id, H5FD_MPIO_COLLECTIVE_F, &
+                            hdf5_err)
+  endif
+#endif
+
+  call h5dwrite_f(data_set_id, H5T_NATIVE_INTEGER, data_int_array, dims, &
+                  hdf5_err, memory_space_id, grp_space_id, prop_id)
+
+  call h5sclose_f(memory_space_id, hdf5_err)
+  call h5sclose_f(grp_space_id, hdf5_err)
+  call h5pclose_f(prop_id, hdf5_err)
+  call h5dclose_f(data_set_id, hdf5_err)
+#endif
+
+end subroutine CheckPointWriteIntDatasetHDF5
+
+! ************************************************************************** !
+
+subroutine CheckPointWriteRealDatasetHDF5(chk_grp_id, dataset_name, dataset_rank, &
+     dims, start, length, stride, data_real_array, option)
+  !
+  ! Within a HDF5 group (chk_grp_id), creates a new dataset (named dataset_name)
+  ! and writes integer data type.
+  !
+  ! Author: Gautam Bisht
+  ! Date: 07/30/15
+  ! 
+#if  !defined(PETSC_HAVE_HDF5)
+  use Option_module
+  implicit none
+  integer :: chk_grp_id
+  PetscMPIInt :: dataset_rank
+  integer, pointer :: dims(:)
+  integer, pointer :: start(:)
+  integer, pointer :: stride(:)
+  integer, pointer :: length(:)
+  PetscReal, pointer :: data_real_array(:)
+  type(option_type) :: option
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+
+  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
+        'write HDF5 formatted checkpoint file. Darn.'
+  stop
+
+#else
+
+  use Option_module
+  use hdf5
+  use HDF5_module, only : trick_hdf5
+  
+  implicit none
+
+#include "finclude/petscviewer.h"
+#include "finclude/petscbag.h"
+
+#if defined(SCORPIO_WRITE)
+  integer :: chk_grp_id
+  PetscMPIInt :: dataset_rank
+  integer, pointer :: dims(:)
+  integer, pointer :: start(:)
+  integer, pointer :: stride(:)
+  integer, pointer :: length(:)
+#else
+  integer(HID_T) :: chk_grp_id
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+  PetscMPIInt :: dataset_rank
+  integer(HSIZE_T), pointer :: dims(:)
+  integer(HSIZE_T), pointer :: start(:)
+  integer(HSIZE_T), pointer :: stride(:)
+  integer(HSIZE_T), pointer :: length(:)
+#endif
+  type(option_type) :: option
+
+  integer(HID_T) :: data_set_id
+  integer(HID_T) :: grp_space_id
+  integer(HID_T) :: memory_space_id
+  integer(HID_T) :: prop_id
+  PetscErrorCode :: hdf5_err
+  PetscErrorCode :: hdf5_flag
+  PetscMPIInt, parameter :: ON=1, OFF=0
+
+  PetscReal, pointer :: data_real_array(:)
+
+  call h5screate_simple_f(dataset_rank, dims, memory_space_id, hdf5_err, dims)
+
+  dataset_name = trim(adjustl(dataset_name)) // CHAR(0)
+
+  call h5eset_auto_f(OFF, hdf5_err)
+  call h5dopen_f(chk_grp_id, dataset_name, data_set_id, hdf5_err)
+  hdf5_flag = hdf5_err
+  call h5eset_auto_f(ON, hdf5_err)
+
+  if (hdf5_flag < 0) then
+    call h5pcreate_f(H5P_DATASET_CREATE_F, prop_id, hdf5_err)
+    call h5screate_simple_f(dataset_rank, dims, grp_space_id, hdf5_err, dims)
+    call h5dcreate_f(chk_grp_id, dataset_name, H5T_NATIVE_DOUBLE, grp_space_id, &
+                     data_set_id, hdf5_err, prop_id)
+    call h5pclose_f(prop_id, hdf5_err)
+  else
+    call h5dget_space_f(data_set_id, grp_space_id, hdf5_err)
+  endif
+
+  call h5sselect_hyperslab_f(grp_space_id, H5S_SELECT_SET_F, start, length, &
+                             hdf5_err, stride, stride)
+
+  ! write the data
+  call h5pcreate_f(H5P_DATASET_XFER_F, prop_id, hdf5_err)
+#ifndef SERIAL_HDF5
+  if (trick_hdf5) then
+    call h5pset_dxpl_mpio_f(prop_id, H5FD_MPIO_INDEPENDENT_F, &
+                            hdf5_err)
+  else
+    call h5pset_dxpl_mpio_f(prop_id, H5FD_MPIO_COLLECTIVE_F, &
+                            hdf5_err)
+  endif
+#endif
+
+  call h5dwrite_f(data_set_id, H5T_NATIVE_DOUBLE, data_real_array, dims, &
+                  hdf5_err, memory_space_id, grp_space_id, prop_id)
+
+  call h5sclose_f(memory_space_id, hdf5_err)
+  call h5sclose_f(grp_space_id, hdf5_err)
+  call h5pclose_f(prop_id, hdf5_err)
+  call h5dclose_f(data_set_id, hdf5_err)
+#endif
+
+end subroutine CheckPointWriteRealDatasetHDF5
+
+! ************************************************************************** !
+
+subroutine CheckPointReadIntDatasetHDF5(chk_grp_id, dataset_name, dataset_rank, &
+     dims, start, length, stride, data_int_array, option)
+  !
+  ! Within a HDF5 group (chk_grp_id), reads data from a dataset (named dataset_name)
+  !
+  ! Author: Gautam Bisht
+  ! Date: 08/16/15
+  ! 
+#if  !defined(PETSC_HAVE_HDF5)
+  use Option_module
+  implicit none
+  integer :: chk_grp_id
+  PetscMPIInt :: dataset_rank
+  integer, pointer :: dims(:)
+  integer, pointer :: start(:)
+  integer, pointer :: stride(:)
+  integer, pointer :: length(:)
+  PetscInt, pointer :: data_int_array(:)
+  type(option_type) :: option
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+
+  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
+        'write HDF5 formatted checkpoint file. Darn.'
+  stop
+
+#else
+
+  use Option_module
+  use hdf5
+  use HDF5_module, only : trick_hdf5
+  
+  implicit none
+
+
+#if defined(SCORPIO_WRITE)
+  integer :: chk_grp_id
+  PetscMPIInt :: dataset_rank
+  integer, pointer :: dims(:)
+  integer, pointer :: start(:)
+  integer, pointer :: stride(:)
+  integer, pointer :: length(:)
+#else
+  integer(HID_T) :: chk_grp_id
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+  PetscMPIInt :: dataset_rank
+  integer(HSIZE_T), pointer :: dims(:)
+  integer(HSIZE_T), pointer :: start(:)
+  integer(HSIZE_T), pointer :: stride(:)
+  integer(HSIZE_T), pointer :: length(:)
+#endif
+  type(option_type) :: option
+
+  integer(HID_T) :: data_set_id
+  integer(HID_T) :: grp_space_id
+  integer(HID_T) :: memory_space_id
+  integer(HID_T) :: prop_id
+  PetscErrorCode :: hdf5_err
+  PetscErrorCode :: hdf5_flag
+  PetscMPIInt, parameter :: ON=1, OFF=0
+
+  PetscInt, pointer :: data_int_array(:)
+
+  call h5screate_simple_f(dataset_rank, dims, memory_space_id, hdf5_err, dims)
+
+  dataset_name = trim(adjustl(dataset_name)) // CHAR(0)
+
+  call h5eset_auto_f(OFF, hdf5_err)
+  call h5dopen_f(chk_grp_id, dataset_name, data_set_id, hdf5_err)
+  hdf5_flag = hdf5_err
+  call h5eset_auto_f(ON, hdf5_err)
+
+  call h5dget_space_f(data_set_id, grp_space_id, hdf5_err)
+
+  call h5sselect_hyperslab_f(grp_space_id, H5S_SELECT_SET_F, start, length, &
+                             hdf5_err, stride, stride)
+
+  ! write the data
+  call h5pcreate_f(H5P_DATASET_XFER_F, prop_id, hdf5_err)
+#ifndef SERIAL_HDF5
+  if (trick_hdf5) then
+    call h5pset_dxpl_mpio_f(prop_id, H5FD_MPIO_INDEPENDENT_F, &
+                            hdf5_err)
+  else
+    call h5pset_dxpl_mpio_f(prop_id, H5FD_MPIO_COLLECTIVE_F, &
+                            hdf5_err)
+  endif
+#endif
+
+  call h5dread_f(data_set_id, H5T_NATIVE_INTEGER, data_int_array, dims, &
+                  hdf5_err, memory_space_id, grp_space_id, prop_id)
+
+  call h5sclose_f(memory_space_id, hdf5_err)
+  call h5sclose_f(grp_space_id, hdf5_err)
+  call h5pclose_f(prop_id, hdf5_err)
+  call h5dclose_f(data_set_id, hdf5_err)
+#endif
+
+end subroutine CheckPointReadIntDatasetHDF5
+
+! ************************************************************************** !
+
+subroutine CheckPointReadRealDatasetHDF5(chk_grp_id, dataset_name, dataset_rank, &
+     dims, start, length, stride, data_real_array, option)
+  !
+  ! Within a HDF5 group (chk_grp_id), reads data from a dataset (named dataset_name)
+  !
+  ! Author: Gautam Bisht
+  ! Date: 08/16/15
+  ! 
+#if  !defined(PETSC_HAVE_HDF5)
+  use Option_module
+  implicit none
+  integer :: chk_grp_id
+  PetscMPIInt :: dataset_rank
+  integer, pointer :: dims(:)
+  integer, pointer :: start(:)
+  integer, pointer :: stride(:)
+  integer, pointer :: length(:)
+  PetscReal, pointer :: data_real_array(:)
+  type(option_type) :: option
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+
+  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
+        'write HDF5 formatted checkpoint file. Darn.'
+  stop
+
+#else
+
+  use Option_module
+  use hdf5
+  use HDF5_module, only : trick_hdf5
+  
+  implicit none
+
+
+#if defined(SCORPIO_WRITE)
+  integer :: chk_grp_id
+  PetscMPIInt :: dataset_rank
+  integer, pointer :: dims(:)
+  integer, pointer :: start(:)
+  integer, pointer :: stride(:)
+  integer, pointer :: length(:)
+#else
+  integer(HID_T) :: chk_grp_id
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+  PetscMPIInt :: dataset_rank
+  integer(HSIZE_T), pointer :: dims(:)
+  integer(HSIZE_T), pointer :: start(:)
+  integer(HSIZE_T), pointer :: stride(:)
+  integer(HSIZE_T), pointer :: length(:)
+#endif
+  type(option_type) :: option
+
+  integer(HID_T) :: data_set_id
+  integer(HID_T) :: grp_space_id
+  integer(HID_T) :: memory_space_id
+  integer(HID_T) :: prop_id
+  PetscErrorCode :: hdf5_err
+  PetscErrorCode :: hdf5_flag
+  PetscMPIInt, parameter :: ON=1, OFF=0
+
+  PetscReal, pointer :: data_real_array(:)
+
+  call h5screate_simple_f(dataset_rank, dims, memory_space_id, hdf5_err, dims)
+
+  dataset_name = trim(adjustl(dataset_name)) // CHAR(0)
+
+  call h5eset_auto_f(OFF, hdf5_err)
+  call h5dopen_f(chk_grp_id, dataset_name, data_set_id, hdf5_err)
+  hdf5_flag = hdf5_err
+  call h5eset_auto_f(ON, hdf5_err)
+
+  call h5dget_space_f(data_set_id, grp_space_id, hdf5_err)
+
+  call h5sselect_hyperslab_f(grp_space_id, H5S_SELECT_SET_F, start, length, &
+                             hdf5_err, stride, stride)
+
+  ! write the data
+  call h5pcreate_f(H5P_DATASET_XFER_F, prop_id, hdf5_err)
+#ifndef SERIAL_HDF5
+  if (trick_hdf5) then
+    call h5pset_dxpl_mpio_f(prop_id, H5FD_MPIO_INDEPENDENT_F, &
+                            hdf5_err)
+  else
+    call h5pset_dxpl_mpio_f(prop_id, H5FD_MPIO_COLLECTIVE_F, &
+                            hdf5_err)
+  endif
+#endif
+
+  call h5dread_f(data_set_id, H5T_NATIVE_DOUBLE, data_real_array, dims, &
+                  hdf5_err, memory_space_id, grp_space_id, prop_id)
+
+  call h5sclose_f(memory_space_id, hdf5_err)
+  call h5sclose_f(grp_space_id, hdf5_err)
+  call h5pclose_f(prop_id, hdf5_err)
+  call h5dclose_f(data_set_id, hdf5_err)
+#endif
+
+end subroutine CheckPointReadRealDatasetHDF5
+
+! ************************************************************************** !
+
+subroutine CheckPointWriteCompatibilityHDF5(chk_grp_id, option)
+  !
+  ! Write the PFLOTRAN checkpoint version number. The purpose of this is to
+  ! catch incompatibility.
+  !
+  ! Author: Gautam Bisht
+  ! Date: 08/30/15
+  !
+#if  !defined(PETSC_HAVE_HDF5)
+  use Option_module
+  implicit none
+  integer :: chk_grp_id
+  type(option_type) :: option
+  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
+        'write HDF5 formatted checkpoint file. Darn.'
+  stop
+#else
+  use Option_module
+  use hdf5
+
+  implicit none
+
+#include "finclude/petscviewer.h"
+#include "finclude/petscbag.h"
+
+#if defined(SCORPIO_WRITE)
+  integer :: chk_grp_id
+  integer, pointer :: dims(:)
+  integer, pointer :: start(:)
+  integer, pointer :: stride(:)
+  integer, pointer :: length(:)
+#else
+  integer(HID_T) :: chk_grp_id
+  integer(HSIZE_T), pointer :: dims(:)
+  integer(HSIZE_T), pointer :: start(:)
+  integer(HSIZE_T), pointer :: stride(:)
+  integer(HSIZE_T), pointer :: length(:)
+#endif
+  type(option_type) :: option
+
+
+  PetscMPIInt :: dataset_rank
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+  PetscInt, pointer :: int_array(:)
+
+  dataset_name = "Revision Number" // CHAR(0)
+
+  allocate(start(1))
+  allocate(dims(1))
+  allocate(length(1))
+  allocate(stride(1))
+  allocate(int_array(1))
+
+  dataset_rank = 1
+  dims(1) = ONE_INTEGER
+  start(1) = 0
+  length(1) = ONE_INTEGER
+  stride(1) = ONE_INTEGER
+
+  int_array(1) = CHECKPOINT_REVISION_NUMBER
+
+  call CheckPointWriteIntDatasetHDF5(chk_grp_id, dataset_name, dataset_rank, &
+     dims, start, length, stride, int_array, option)
+
+  deallocate(start)
+  deallocate(dims)
+  deallocate(length)
+  deallocate(stride)
+  deallocate(int_array)
+#endif
+
+end subroutine CheckPointWriteCompatibilityHDF5
+
+! ************************************************************************** !
+
+subroutine CheckPointReadCompatibilityHDF5(chk_grp_id, option)
+  !
+  ! Reads the PFLOTRAN checkpoint version number. The purpose of this is to
+  ! catch incompatibility.
+  !
+  ! Author: Gautam Bisht
+  ! Date: 08/16/15
+  !
+#if  !defined(PETSC_HAVE_HDF5)
+  use Option_module
+  implicit none
+  integer :: chk_grp_id
+  type(option_type) :: option
+  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
+        'write HDF5 formatted checkpoint file. Darn.'
+  stop
+#else
+  use Option_module
+  use hdf5
+
+  implicit none
+
+#if defined(SCORPIO_WRITE)
+  integer :: chk_grp_id
+  integer, pointer :: dims(:)
+  integer, pointer :: start(:)
+  integer, pointer :: stride(:)
+  integer, pointer :: length(:)
+#else
+  integer(HID_T) :: chk_grp_id
+  integer(HSIZE_T), pointer :: dims(:)
+  integer(HSIZE_T), pointer :: start(:)
+  integer(HSIZE_T), pointer :: stride(:)
+  integer(HSIZE_T), pointer :: length(:)
+#endif
+  type(option_type) :: option
+
+
+  PetscMPIInt :: dataset_rank
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+  PetscInt, pointer :: int_array(:)
+  character(len=MAXWORDLENGTH) :: word, word2
+
+  dataset_name = "Revision Number" // CHAR(0)
+
+  allocate(start(1))
+  allocate(dims(1))
+  allocate(length(1))
+  allocate(stride(1))
+  allocate(int_array(1))
+
+  dataset_rank = 1
+  dims(1) = ONE_INTEGER
+  start(1) = 0
+  length(1) = ONE_INTEGER
+  stride(1) = ONE_INTEGER
+
+  call CheckPointReadIntDatasetHDF5(chk_grp_id, dataset_name, dataset_rank, &
+       dims, start, length, stride, int_array, option)
+  
+  if (int_array(1) /= CHECKPOINT_REVISION_NUMBER) then
+    write(word,*) int_array(1)
+    write(word2,*) CHECKPOINT_REVISION_NUMBER
+    option%io_buffer = 'Incorrect checkpoint file format (' // &
+      trim(adjustl(word)) // ' vs ' // &
+      trim(adjustl(word2)) // ').'
+    call printErrMsg(option)
+  endif
+
+  deallocate(start)
+  deallocate(dims)
+  deallocate(length)
+  deallocate(stride)
+  deallocate(int_array)
+#endif
+
+end subroutine CheckPointReadCompatibilityHDF5
+
+! ************************************************************************** !
+
+subroutine CheckpointFlowProcessModelHDF5(pm_grp_id, realization)
+  !
+  ! Checkpoints flow process model vectors
+  !
+  ! Author: Glenn Hammond
+  ! Date: 07/26/13
+  !
+
+#if  !defined(PETSC_HAVE_HDF5)
+  use Realization_class
+  implicit none
+  integer :: pm_grp_id
+  class(realization_type) :: realization
+  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
+        'write HDF5 formatted checkpoint file. Darn.'
+  stop
+#else
+
+  use Option_module
+  use Realization_class
+  use Field_module
+  use Discretization_module
+  use Grid_module
+  use Material_module
+  use Variables_module, only : POROSITY, PERMEABILITY_X, PERMEABILITY_Y, &
+                               PERMEABILITY_Z
+  use hdf5
+  use HDF5_module, only : HDF5WriteDataSetFromVec
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+#if defined(SCORPIO_WRITE)
+  integer :: pm_grp_id
+#else
+  integer(HID_T) :: pm_grp_id
+#endif
+  class(realization_type) :: realization
+  PetscErrorCode :: ierr
+
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(discretization_type), pointer :: discretization
+  type(grid_type), pointer :: grid
+  Vec :: global_vec
+  Vec :: natural_vec
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+
+  option => realization%option
+  field => realization%field
+  discretization => realization%discretization
+  grid => realization%patch%grid
+
+  global_vec = 0
+
+  if (option%nflowdof > 0) then
+     call DiscretizationCreateVector(realization%discretization, NFLOWDOF, &
+                                    natural_vec, NATURAL, option)
+
+    call DiscretizationGlobalToNatural(discretization, field%flow_xx, &
+                                       natural_vec, NFLOWDOF)
+
+    dataset_name = "Primary_Variable" // CHAR(0)
+    call HDF5WriteDataSetFromVec(dataset_name, option, natural_vec, &
+         pm_grp_id, H5T_NATIVE_DOUBLE)
+    call VecDestroy(natural_vec, ierr);CHKERRQ(ierr)
+
+    call DiscretizationCreateVector(realization%discretization, ONEDOF, &
+                                    global_vec, GLOBAL,option)
+     call DiscretizationCreateVector(realization%discretization, ONEDOF, &
+                                    natural_vec, NATURAL, option)
+
+    ! If we are running with multiple phases, we need to dump the vector
+    ! that indicates what phases are present, as well as the 'var' vector
+    ! that holds variables derived from the primary ones via the translator.
+    select case(option%iflowmode)
+      case(MPH_MODE,TH_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
+           FLASH2_MODE,G_MODE)
+
+        call DiscretizationLocalToGlobal(realization%discretization, &
+                                         field%iphas_loc,global_vec,ONEDOF)
+
+        call DiscretizationGlobalToNatural(discretization, global_vec, &
+                                           natural_vec, ONEDOF)
+
+        dataset_name = "Secondary_Variable" // CHAR(0)
+        call HDF5WriteDataSetFromVec(dataset_name, option, natural_vec, &
+            pm_grp_id, H5T_NATIVE_DOUBLE)
+       case default
+    end select
+
+    ! Porosity and permeability.
+    ! (We only write diagonal terms of the permeability tensor for now,
+    ! since we have yet to add the full-tensor formulation.)
+    call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                 field%work_loc,POROSITY,ZERO_INTEGER)
+    call DiscretizationLocalToGlobal(discretization,field%work_loc, &
+                                     global_vec,ONEDOF)
+    call DiscretizationGlobalToNatural(discretization, global_vec, &
+                                       natural_vec, ONEDOF)
+    dataset_name = "Porosity" // CHAR(0)
+    call HDF5WriteDataSetFromVec(dataset_name, option, natural_vec, &
+                                             pm_grp_id, H5T_NATIVE_DOUBLE)
+
+    call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                  field%work_loc,PERMEABILITY_X,ZERO_INTEGER)
+    call DiscretizationLocalToGlobal(discretization,field%work_loc, &
+                                      global_vec,ONEDOF)
+    call DiscretizationGlobalToNatural(discretization, global_vec, &
+                                       natural_vec, ONEDOF)
+    dataset_name = "Permeability_X" // CHAR(0)
+    call HDF5WriteDataSetFromVec(dataset_name, option, natural_vec, &
+                                             pm_grp_id, H5T_NATIVE_DOUBLE)
+
+    call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                  field%work_loc,PERMEABILITY_Y,ZERO_INTEGER)
+    call DiscretizationLocalToGlobal(discretization,field%work_loc, &
+                                      global_vec,ONEDOF)
+    call DiscretizationGlobalToNatural(discretization, global_vec, &
+                                       natural_vec, ONEDOF)
+    dataset_name = "Permeability_Y" // CHAR(0)
+    call HDF5WriteDataSetFromVec(dataset_name, option, natural_vec, &
+                                             pm_grp_id, H5T_NATIVE_DOUBLE)
+
+    call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                  field%work_loc,PERMEABILITY_Z,ZERO_INTEGER)
+    call DiscretizationLocalToGlobal(discretization,field%work_loc, &
+                                      global_vec,ONEDOF)
+    call DiscretizationGlobalToNatural(discretization, global_vec, &
+                                       natural_vec, ONEDOF)
+    dataset_name = "Permeability_Z" // CHAR(0)
+    call HDF5WriteDataSetFromVec(dataset_name, option, natural_vec, &
+                                             pm_grp_id, H5T_NATIVE_DOUBLE)
+
+    call VecDestroy(global_vec, ierr);CHKERRQ(ierr)
+    call VecDestroy(natural_vec, ierr);CHKERRQ(ierr)
+ end if
+#endif
+
+end subroutine CheckpointFlowProcessModelHDF5
+
+! ************************************************************************** !
+
+subroutine RestartFlowProcessModelHDF5(pm_grp_id, realization)
+  !
+  ! Restarts flow process model vectors
+  !
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 08/16/2015
+  !
+
+#if  !defined(PETSC_HAVE_HDF5)
+  use Realization_class
+  implicit none
+  integer :: pm_grp_id
+  class(realization_type) :: realization
+  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
+        'write HDF5 formatted checkpoint file. Darn.'
+  stop
+#else
+
+  use Option_module
+  use Realization_class
+  use Field_module
+  use Discretization_module
+  use Grid_module
+  use Global_module
+  use Material_module
+  use Variables_module, only : POROSITY, PERMEABILITY_X, PERMEABILITY_Y, &
+                               PERMEABILITY_Z, STATE
+  use hdf5
+  use HDF5_module, only : HDF5ReadDataSetInVec
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+#if defined(SCORPIO_WRITE)
+  integer :: pm_grp_id
+#else
+  integer(HID_T) :: pm_grp_id
+#endif
+  class(realization_type) :: realization
+  PetscErrorCode :: ierr
+
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(discretization_type), pointer :: discretization
+  type(grid_type), pointer :: grid
+  Vec :: global_vec
+  Vec :: natural_vec
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+
+  option => realization%option
+  field => realization%field
+  discretization => realization%discretization
+  grid => realization%patch%grid
+
+  global_vec = 0
+
+  if (option%nflowdof > 0) then
+    call DiscretizationCreateVector(realization%discretization, NFLOWDOF, &
+                                    natural_vec, NATURAL, option)
+
+    dataset_name = "Primary_Variable" // CHAR(0)
+    call HDF5ReadDataSetInVec(dataset_name, option, natural_vec, &
+         pm_grp_id, H5T_NATIVE_DOUBLE)
+
+    call DiscretizationNaturalToGlobal(discretization, natural_vec, field%flow_xx, &
+                                       NFLOWDOF)
+    call DiscretizationGlobalToLocal(discretization,field%flow_xx, &
+                                     field%flow_xx_loc,NFLOWDOF)
+    call VecCopy(field%flow_xx,field%flow_yy,ierr);CHKERRQ(ierr)
+    
+    call VecDestroy(natural_vec, ierr);CHKERRQ(ierr)
+
+    call DiscretizationCreateVector(realization%discretization, ONEDOF, &
+                                    global_vec, GLOBAL,option)
+    call DiscretizationCreateVector(realization%discretization, ONEDOF, &
+                                    natural_vec, NATURAL, option)
+
+    ! If we are running with multiple phases, we need to dump the vector
+    ! that indicates what phases are present, as well as the 'var' vector
+    ! that holds variables derived from the primary ones via the translator.
+    select case(option%iflowmode)
+      case(MPH_MODE,TH_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
+           FLASH2_MODE,G_MODE)
+
+        dataset_name = "Secondary_Variable" // CHAR(0)
+        call HDF5ReadDataSetInVec(dataset_name, option, natural_vec, &
+             pm_grp_id, H5T_NATIVE_DOUBLE)
+
+        call DiscretizationNaturalToGlobal(discretization, natural_vec, global_vec, &
+                                           ONEDOF)
+
+        call DiscretizationGlobalToLocal(realization%discretization, &
+                                         global_vec, field%iphas_loc, ONEDOF)
+
+        call VecCopy(field%iphas_loc,field%iphas_old_loc,ierr);CHKERRQ(ierr)
+        call DiscretizationLocalToLocal(discretization,field%iphas_loc, &
+                                        field%iphas_old_loc,ONEDOF)
+
+        if (option%iflowmode == G_MODE) then
+          ! need to copy iphase into global_auxvar%istate
+          call GlobalSetAuxVarVecLoc(realization,field%iphas_loc,STATE, &
+                                     ZERO_INTEGER)
+        endif
+        if (option%iflowmode == MPH_MODE) then
+        ! set vardof vec in mphase
+        endif
+        if (option%iflowmode == IMS_MODE) then
+        ! set vardof vec in mphase
+        endif
+        if (option%iflowmode == FLASH2_MODE) then
+        ! set vardof vec in mphase
+        endif
+
+     case default
+    end select
+
+    ! Porosity and permeability.
+    ! (We only write diagonal terms of the permeability tensor for now,
+    ! since we have yet to add the full-tensor formulation.)
+    dataset_name = "Porosity" // CHAR(0)
+    call HDF5ReadDataSetInVec(dataset_name, option, natural_vec, &
+                              pm_grp_id, H5T_NATIVE_DOUBLE)
+    call DiscretizationNaturalToGlobal(discretization, natural_vec, global_vec, &
+                                       ONEDOF)
+    call DiscretizationGlobalToLocal(discretization, global_vec, field%work_loc, &
+                                     ONEDOF)
+    call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                 field%work_loc,POROSITY,ZERO_INTEGER)
+
+    dataset_name = "Permeability_X" // CHAR(0)
+    call HDF5ReadDataSetInVec(dataset_name, option, natural_vec, &
+                              pm_grp_id, H5T_NATIVE_DOUBLE)
+    call DiscretizationNaturalToGlobal(discretization, natural_vec, global_vec, &
+                                       ONEDOF)
+    call DiscretizationGlobalToLocal(discretization, global_vec, field%work_loc, &
+                                     ONEDOF)
+    call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                 field%work_loc,PERMEABILITY_X,ZERO_INTEGER)
+
+    dataset_name = "Permeability_Y" // CHAR(0)
+    call HDF5ReadDataSetInVec(dataset_name, option, natural_vec, &
+                              pm_grp_id, H5T_NATIVE_DOUBLE)
+    call DiscretizationNaturalToGlobal(discretization, natural_vec, global_vec, &
+                                       ONEDOF)
+    call DiscretizationGlobalToLocal(discretization, global_vec, field%work_loc, &
+                                     ONEDOF)
+    call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                 field%work_loc,PERMEABILITY_Y,ZERO_INTEGER)
+
+    dataset_name = "Permeability_Z" // CHAR(0)
+    call HDF5ReadDataSetInVec(dataset_name, option, natural_vec, &
+                              pm_grp_id, H5T_NATIVE_DOUBLE)
+    call DiscretizationNaturalToGlobal(discretization, natural_vec, global_vec, &
+                                       ONEDOF)
+    call DiscretizationGlobalToLocal(discretization, global_vec, field%work_loc, &
+                                     ONEDOF)
+    call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                 field%work_loc,PERMEABILITY_Z,ZERO_INTEGER)
+
+    call VecDestroy(global_vec, ierr);CHKERRQ(ierr)
+    call VecDestroy(natural_vec, ierr);CHKERRQ(ierr)
+ end if
+#endif
+
+end subroutine RestartFlowProcessModelHDF5
 
 end module Checkpoint_module

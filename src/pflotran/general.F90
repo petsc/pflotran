@@ -3764,6 +3764,8 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   PetscReal, parameter :: inf_temp_tol = 1.d-5
   PetscReal, parameter :: inf_sat_tol = 1.d-6
   PetscReal, parameter :: inf_xmol_tol = 1.d-6
+  !geh: note the scaling by 0.d0 several lines down which prevent false 
+  !     convergence
   PetscReal, parameter :: inf_norm_update_tol(3,3) = &
     reshape([inf_pres_tol,inf_xmol_tol,inf_temp_tol, &
              inf_pres_tol,inf_pres_tol,inf_temp_tol, &
@@ -3823,16 +3825,11 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
         inf_norm_residual(idof,istate) = max(inf_norm_residual(idof,istate), &
                                              dabs(R))
         if (general_tough2_conv_criteria) then
-#ifdef WRONG
-          if (accum_p2(ival) < general_tough2_itol_scaled_res_e2) then
-            R_A = dabs(R/general_tough2_itol_scaled_res_e2)
-#else
           !geh: scale by t_over_v to match TOUGH2 residual units. see equation
           !     B.5 of TOUGH2 user manual (LBNL-43134)
           t_over_v = option%flow_dt/material_auxvars(ghosted_id)%volume
           if (accum_p2(ival)*t_over_v < general_tough2_itol_scaled_res_e2) then
             R_A = dabs(R*t_over_v)
-#endif
           else
             R_A = dabs(R/accum_p2(ival))
           endif

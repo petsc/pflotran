@@ -41,9 +41,11 @@ module PM_Subsurface_class
     procedure, public :: AcceptSolution => PMSubsurfaceAcceptSolution
 !    procedure, public :: TimeCut => PMSubsurfaceTimeCut
 !    procedure, public :: UpdateSolution => PMSubsurfaceUpdateSolution
-    procedure, public :: UpdateAuxVars => PMSubsurfaceUpdateAuxVars
-    procedure, public :: Checkpoint => PMSubsurfaceCheckpoint    
-    procedure, public :: Restart => PMSubsurfaceRestart  
+    procedure, public :: UpdateAuxvars => PMSubsurfaceUpdateAuxvars
+    procedure, public :: CheckpointBinary => PMSubsurfaceCheckpointBinary
+    procedure, public :: CheckpointHDF5 => PMSubsurfaceCheckpointHDF5
+    procedure, public :: RestartBinary => PMSubsurfaceRestartBinary
+    procedure, public :: RestartHDF5 => PMSubsurfaceRestartHDF5
 !    procedure, public :: Destroy => PMSubsurfaceDestroy
   end type pm_subsurface_type
   
@@ -56,8 +58,10 @@ module PM_Subsurface_class
             PMSubsurfaceUpdateSolution, &
             PMSubsurfaceUpdatePropertiesNI, &
             PMSubsurfaceTimeCut, &
-            PMSubsurfaceCheckpoint, &
-            PMSubsurfaceRestart, &
+            PMSubsurfaceCheckpointBinary, &
+            PMSubsurfaceCheckpointHDF5, &
+            PMSubsurfaceRestartBinary, &
+            PMSubsurfaceRestartHDF5, &
             PMSubsurfaceDestroy
   
 contains
@@ -515,7 +519,7 @@ end subroutine PMSubsurfaceUpdateAuxVars
 
 ! ************************************************************************** !
 
-subroutine PMSubsurfaceCheckpoint(this,viewer)
+subroutine PMSubsurfaceCheckpointBinary(this,viewer)
   ! 
   ! Checkpoints data associated with Subsurface PM
   ! 
@@ -530,13 +534,13 @@ subroutine PMSubsurfaceCheckpoint(this,viewer)
   class(pm_subsurface_type) :: this
   PetscViewer :: viewer
   
-  call CheckpointFlowProcessModel(viewer,this%realization) 
+  call CheckpointFlowProcessModelBinary(viewer,this%realization) 
   
-end subroutine PMSubsurfaceCheckpoint
+end subroutine PMSubsurfaceCheckpointBinary
 
 ! ************************************************************************** !
 
-subroutine PMSubsurfaceRestart(this,viewer)
+subroutine PMSubsurfaceRestartBinary(this,viewer)
   ! 
   ! Restarts data associated with Subsurface PM
   ! 
@@ -551,11 +555,85 @@ subroutine PMSubsurfaceRestart(this,viewer)
   class(pm_subsurface_type) :: this
   PetscViewer :: viewer
   
-  call RestartFlowProcessModel(viewer,this%realization)
+  call RestartFlowProcessModelBinary(viewer,this%realization)
   call this%UpdateAuxVars()
   call this%UpdateSolution()
   
-end subroutine PMSubsurfaceRestart
+end subroutine PMSubsurfaceRestartBinary
+
+! ************************************************************************** !
+
+subroutine PMSubsurfaceCheckpointHDF5(this, pm_grp_id)
+  !
+  ! Checkpoints data associated with Subsurface PM
+  !
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 07/30/15
+
+#if  !defined(PETSC_HAVE_HDF5)
+  implicit none
+  class(pm_subsurface_type) :: this
+  integer :: pm_grp_id
+  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
+        'write HDF5 formatted checkpoint file. Darn.'
+  stop
+#else
+
+  use Checkpoint_module
+  use hdf5
+
+  implicit none
+
+  class(pm_subsurface_type) :: this
+#if defined(SCORPIO_WRITE)
+  integer :: pm_grp_id
+#else
+  integer(HID_T) :: pm_grp_id
+#endif
+
+  call CheckpointFlowProcessModelHDF5(pm_grp_id, this%realization)
+
+#endif
+
+end subroutine PMSubsurfaceCheckpointHDF5
+
+! ************************************************************************** !
+
+subroutine PMSubsurfaceRestartHDF5(this, pm_grp_id)
+  !
+  ! Checkpoints data associated with Subsurface PM
+  !
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 07/30/15
+
+#if  !defined(PETSC_HAVE_HDF5)
+  implicit none
+  class(pm_subsurface_type) :: this
+  integer :: pm_grp_id
+  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
+        'write HDF5 formatted checkpoint file. Darn.'
+  stop
+#else
+
+  use Checkpoint_module
+  use hdf5
+
+  implicit none
+
+  class(pm_subsurface_type) :: this
+#if defined(SCORPIO_WRITE)
+  integer :: pm_grp_id
+#else
+  integer(HID_T) :: pm_grp_id
+#endif
+
+  call RestartFlowProcessModelHDF5(pm_grp_id, this%realization)
+  call this%UpdateAuxVars()
+  call this%UpdateSolution()
+
+#endif
+
+end subroutine PMSubsurfaceRestartHDF5
 
 ! ************************************************************************** !
 

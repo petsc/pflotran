@@ -47,7 +47,8 @@ module Reactive_Transport_module
             RTCheckUpdatePre, &
             RTCheckUpdatePost, &
             RTJumpStartKineticSorption, &
-            RTCheckpointKineticSorption, &
+            RTCheckpointKineticSorptionBinary, &
+            RTCheckpointKineticSorptionHDF5, &
             RTExplicitAdvection, &
             RTClearActivityCoefficients
   
@@ -451,6 +452,8 @@ subroutine RTCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   PetscBool :: converged_due_to_residual
   PetscReal :: max_relative_change
   PetscReal :: max_scaled_residual
+  PetscInt :: converged_flag
+  PetscInt :: temp_int
   PetscErrorCode :: ierr
   
   grid => realization%patch%grid
@@ -461,7 +464,7 @@ subroutine RTCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   dX_changed = PETSC_FALSE
   X1_changed = PETSC_FALSE
   
-  option%converged = PETSC_FALSE
+  converged_flag = 0
   if (option%transport%check_post_convergence) then
     converged_due_to_rel_update = PETSC_FALSE
     converged_due_to_residual = PETSC_FALSE
@@ -482,10 +485,18 @@ subroutine RTCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
       (option%transport%inf_scaled_res_tol  > 0.d0 .and. &
        max_scaled_residual < option%transport%inf_scaled_res_tol)
     if (converged_due_to_rel_update .or. converged_due_to_residual) then
-      option%converged = PETSC_TRUE
+      converged_flag = 1
     endif
   endif
-  
+
+  ! get global minimum
+  call MPI_Allreduce(converged_flag,temp_int,ONE_INTEGER_MPI,MPI_INTEGER, &
+                     MPI_MIN,realization%option%mycomm,ierr)
+
+  option%converged = PETSC_FALSE
+  if (temp_int == 1) then
+    option%converged = PETSC_TRUE
+  endif
   
   if (option%use_mc) then  
     call SecondaryRTUpdateIterate(line_search,X0,dX,X1,dX_changed, &
@@ -2977,7 +2988,7 @@ subroutine RTResidualEquilibrateCO2(r,realization)
       else
         call Henry_duan_sun(tc,pg*1D-5,henry,lngamco2,option%m_nacl,option%m_nacl)
       endif
-      call Henry_duan_sun(tc,pg*1.D-5,henry,lngamco2,m_na,m_cl)
+!     call Henry_duan_sun(tc,pg*1.D-5,henry,lngamco2,m_na,m_cl)
 
 !     print *,'check_EOSeq: ',local_id,jco2,reaction%ncomp, &
 !         global_auxvars(ghosted_id)%sat(GAS_PHASE), &
@@ -4429,14 +4440,16 @@ subroutine RTSetPlotVariables(realization)
     endif
   enddo  
   
-  do i=1,reaction%mineral%nmnrl
-    if (reaction%mineral%mnrl_print(i)) then
-      name = trim(reaction%mineral%kinmnrl_names(i)) // ' SI'
-      units = ''
-      call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
-                                   MINERAL_SATURATION_INDEX,i)    
-    endif
-  enddo
+  if (reaction%mineral%print_saturation_index) then
+    do i=1,reaction%mineral%nmnrl
+      if (reaction%mineral%mnrl_print(i)) then
+        name = trim(reaction%mineral%mineral_names(i)) // ' SI'
+        units = ''
+        call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                                     MINERAL_SATURATION_INDEX,i)    
+      endif
+    enddo
+  endif
   
   do i=1,reaction%immobile%nimmobile
     if (reaction%immobile%print_me(i)) then
@@ -4620,7 +4633,7 @@ end subroutine RTJumpStartKineticSorption
 
 ! ************************************************************************** !
 
-subroutine RTCheckpointKineticSorption(realization,viewer,checkpoint)
+subroutine RTCheckpointKineticSorptionBinary(realization,viewer,checkpoint)
   ! 
   ! Checkpoints expliclity stored sorbed
   ! concentrations
@@ -4706,7 +4719,160 @@ subroutine RTCheckpointKineticSorption(realization,viewer,checkpoint)
     endif
   enddo
 
-end subroutine RTCheckpointKineticSorption
+end subroutine RTCheckpointKineticSorptionBinary
+
+! ************************************************************************** !
+
+subroutine RTCheckpointKineticSorptionHDF5(realization, pm_grp_id, checkpoint)
+  !
+  ! Checkpoints expliclity stored sorbed
+  ! concentrations
+  !
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 07/30/15
+  !
+
+#if  !defined(PETSC_HAVE_HDF5)
+  use Realization_class
+  use Option_module
+
+  implicit none
+
+  type(realization_type) :: realization
+  integer :: pm_grp_id
+  PetscBool :: checkpoint
+
+  PetscErrorCode :: ierr
+
+  call printMsg(realization%option,'')
+  write(realization%option%io_buffer, &
+        '("PFLOTRAN must be compiled with HDF5 to &
+        &write HDF5 formatted checkpoint file. Darn.")')
+  call printErrMsg(realization%option)
+
+#else
+
+  use Realization_class
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Field_module
+  use hdf5
+  use Discretization_module
+  use HDF5_module, only : HDF5WriteDataSetFromVec, &
+                          HDF5ReadDataSetInVec
+
+  type(realization_type) :: realization
+#if defined(SCORPIO_WRITE)
+  integer :: pm_grp_id
+#else
+  integer(HID_T) :: pm_grp_id
+#endif
+  PetscBool :: checkpoint
+
+  type(option_type), pointer :: option
+  type(reaction_type), pointer :: reaction
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch
+  type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
+  PetscReal, pointer :: vec_p(:)
+
+  Vec :: natural_vec
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+
+  PetscBool :: checkpoint_flag(realization%reaction%naqcomp)
+  PetscInt :: i, j, irxn, icomp, icplx, ncomp, ncplx, irate, ikinmrrxn
+  PetscInt :: local_id
+  PetscErrorCode :: ierr
+
+  option => realization%option
+  reaction => realization%reaction
+  field => realization%field
+  patch => realization%patch
+  
+  checkpoint_flag = PETSC_FALSE
+
+  call DiscretizationCreateVector(realization%discretization, ONEDOF, &
+                                  natural_vec, NATURAL, option)
+
+  ! Loop over sorption reactions to find the necessary components
+
+  do ikinmrrxn = 1, reaction%surface_complexation%nkinmrsrfcplxrxn
+    irxn = reaction%surface_complexation%kinmrsrfcplxrxn_to_srfcplxrxn(ikinmrrxn)
+    ncplx = reaction%surface_complexation%srfcplxrxn_to_complex(0,irxn)
+    do j = 1, ncplx
+      icplx = reaction%surface_complexation%srfcplxrxn_to_complex(j,irxn)
+      ncomp = reaction%surface_complexation%srfcplxspecid(0,icplx)
+      do i = 1, ncomp
+        icomp = reaction%surface_complexation%srfcplxspecid(i,icplx)
+        checkpoint_flag(icomp) = PETSC_TRUE
+      enddo
+    enddo
+  enddo
+
+  rt_auxvars => patch%aux%RT%auxvars
+  grid => patch%grid
+  do icomp = 1, reaction%naqcomp
+    if (checkpoint_flag(icomp)) then
+      do irxn = 1, reaction%surface_complexation%nkinmrsrfcplxrxn
+        do irate = 1, reaction%surface_complexation%kinmr_nrate(irxn)
+          if (checkpoint) then
+
+            ! Write in a HDF5
+            call VecGetArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
+            do local_id = 1, grid%nlmax
+              vec_p(local_id) = &
+                rt_auxvars(grid%nL2G(local_id))% &
+                  kinmr_total_sorb(icomp,irate,irxn)
+            enddo
+            call VecRestoreArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
+
+            call DiscretizationGlobalToNatural(realization%discretization, field%work, &
+                                        natural_vec, NTRANDOF)
+            write(string,*) icomp
+            dataset_name = 'Kinetic_sorption_' // trim(adjustl(string)) // 'comp_'
+            write(string,*) irxn
+            dataset_name = trim(adjustl(dataset_name)) // trim(adjustl(string)) // 'rxn_'
+            write(string,*) irate
+            dataset_name = trim(adjustl(dataset_name)) // trim(adjustl(string)) // 'rate'
+            call HDF5WriteDataSetFromVec(dataset_name, option, natural_vec, &
+                  pm_grp_id, H5T_NATIVE_DOUBLE)
+
+          else
+
+            ! Read from a HDF5
+            write(string,*) icomp
+            dataset_name = 'Kinetic_sorption_' // trim(adjustl(string)) // 'comp_'
+            write(string,*) irxn
+            dataset_name = trim(adjustl(dataset_name)) // trim(adjustl(string)) // 'rxn_'
+            write(string,*) irate
+            dataset_name = trim(adjustl(dataset_name)) // trim(adjustl(string)) // 'rate'
+
+            call HDF5ReadDataSetInVec(dataset_name, option, natural_vec, &
+                                      pm_grp_id, H5T_NATIVE_DOUBLE)
+            call DiscretizationNaturalToGlobal(realization%discretization, natural_vec, &
+                                               field%work, ONEDOF)
+
+            if (.not.option%transport%no_restart_kinetic_sorption) then
+              call VecGetArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
+              do local_id = 1, grid%nlmax
+                rt_auxvars(grid%nL2G(local_id))% &
+                  kinmr_total_sorb(icomp,irate,irxn) = &
+                    vec_p(local_id)
+              enddo
+              call VecRestoreArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
+            endif
+
+          endif
+        enddo
+      enddo
+    endif
+  enddo
+#endif
+
+end subroutine RTCheckpointKineticSorptionHDF5
 
 ! ************************************************************************** !
 

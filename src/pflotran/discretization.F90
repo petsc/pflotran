@@ -74,7 +74,8 @@ module Discretization_module
             DiscretizationCreateDMs,&
             DiscretizationGetDMPtrFromIndex, &
             DiscretizationUpdateTVDGhosts, &
-            DiscretAOApplicationToPetsc
+            DiscretAOApplicationToPetsc, &
+            DiscretizationPrintInfo
   
 contains
 

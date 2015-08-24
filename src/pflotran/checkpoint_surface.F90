@@ -54,9 +54,9 @@ module Checkpoint_Surface_module
 
   private
 
-  public :: SurfaceCheckpoint, SurfaceRestart
-  public :: SurfaceCheckpointProcessModel, &
-            SurfaceRestartProcessModel
+  public :: SurfaceCheckpointBinary, SurfaceRestartBinary
+  public :: SurfaceCheckpointProcessModelBinary, &
+            SurfaceRestartProcessModelBinary
 
 #include "finclude/petscsys.h"
 #include "finclude/petscvec.h"
@@ -83,9 +83,9 @@ contains
 
 ! ************************************************************************** !
 
-subroutine SurfaceCheckpoint(surf_realization, &
-                             surf_flow_prev_dt, &
-                             id)
+subroutine SurfaceCheckpointBinary(surf_realization, &
+                                   surf_flow_prev_dt, &
+                                   id)
   ! 
   ! This subroutine writes a checkpoint file for surface realization.
   ! 
@@ -203,11 +203,11 @@ subroutine SurfaceCheckpoint(surf_realization, &
         '("      Seconds to write to checkpoint file: ", f10.2)') tend-tstart
   call printMsg(option)
 
-end subroutine SurfaceCheckpoint
+end subroutine SurfaceCheckpointBinary
 
 ! ************************************************************************** !
 
-subroutine SurfaceRestart(surf_realization, surf_flow_prev_dt, surf_flow_read)
+subroutine SurfaceRestartBinary(surf_realization, surf_flow_prev_dt, surf_flow_read)
   ! 
   ! This subroutine restarts surface-realization simulation by reading a
   ! checkpoint file.
@@ -351,7 +351,7 @@ subroutine SurfaceRestart(surf_realization, surf_flow_prev_dt, surf_flow_read)
   call printMsg(option)
 
 
-end subroutine SurfaceRestart
+end subroutine SurfaceRestartBinary
 
 ! ************************************************************************** !
 
@@ -423,7 +423,7 @@ end subroutine SurfCheckpointRegisterBagHeader
 
 ! ************************************************************************** !
 
-subroutine SurfaceCheckpointProcessModel(viewer, surf_realization)
+subroutine SurfaceCheckpointProcessModelBinary(viewer, surf_realization)
   ! 
   ! This subroutine writes a checkpoint file for surface realization using
   ! process model approach.
@@ -482,11 +482,11 @@ subroutine SurfaceCheckpointProcessModel(viewer, surf_realization)
     call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
   endif
 
-end subroutine SurfaceCheckpointProcessModel
+end subroutine SurfaceCheckpointProcessModelBinary
 
 ! ************************************************************************** !
 
-subroutine SurfaceRestartProcessModel(viewer,surf_realization)
+subroutine SurfaceRestartProcessModelBinary(viewer,surf_realization)
   ! 
   ! This subroutine reads a checkpoint file for surface realization using
   ! process model approach.
@@ -540,6 +540,6 @@ subroutine SurfaceRestartProcessModel(viewer,surf_realization)
     call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
   endif
 
-end subroutine SurfaceRestartProcessModel
+end subroutine SurfaceRestartProcessModelBinary
 
 end module Checkpoint_Surface_module

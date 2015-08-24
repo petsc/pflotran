@@ -154,6 +154,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   endif
   if (associated(pm_rt)) then
     pmc_subsurface => PMCSubsurfaceCreate()
+    pmc_subsurface%name = 'PMCSubsurfaceTransport'
     pmc_subsurface%option => option
     pmc_subsurface%pms => pm_rt
     pmc_subsurface%pm_ptr%ptr => pm_rt
@@ -673,6 +674,7 @@ subroutine InitSubsurfaceSimulation(simulation)
   ! 
 
   use Realization_class
+  use Discretization_module
   use Option_module
   use Output_module, only : Output
   use Output_Aux_module
@@ -770,6 +772,9 @@ subroutine InitSubsurfaceSimulation(simulation)
   endif
   call RegressionCreateMapping(simulation%regression,realization)
 ! end from old Init()
+
+  call DiscretizationPrintInfo(realization%discretization, &
+                               realization%patch%grid,option)
   
   simulation%waypoint_list => RealizCreateSyncWaypointList(realization)
 
@@ -828,20 +833,10 @@ subroutine InitSubsurfaceSimulation(simulation)
         cur_process_model%output_option => realization%output_option
         call cur_process_model%Setup()
         if (associated(cur_process_model_coupler%timestepper)) then
-          ! Until classes are resolved as user-defined contexts in PETSc, 
-          ! we cannot use SetupSolvers.  Therefore, everything has to be
-          ! explicitly defined here.  This may be easier in the long
-          ! run as it creates an intermediate refactor in pulling 
-          ! functionality in Init() into the factories - geh
-#if 0        
           select type(ts => cur_process_model_coupler%timestepper)
             class is(timestepper_BE_type)
-              call cur_process_model%SetupSolvers(ts%solver)
-          end select
-#endif
-          select type(ts => cur_process_model_coupler%timestepper)
-            class is(timestepper_BE_type)
-              call SNESGetLineSearch(ts%solver%snes,linesearch,ierr);CHKERRQ(ierr)
+              call SNESGetLineSearch(ts%solver%snes,linesearch, &
+                                     ierr);CHKERRQ(ierr)
               ! Post
               select type(cur_process_model)
                 ! flow solutions
@@ -849,14 +844,14 @@ subroutine InitSubsurfaceSimulation(simulation)
                   if (ts%solver%check_post_convergence) then
                     call SNESLineSearchSetPostCheck(linesearch, &
                                                     PMCheckUpdatePostPtr, &
-                                               cur_process_model_coupler%pm_ptr, &
+                                             cur_process_model_coupler%pm_ptr, &
                                                     ierr);CHKERRQ(ierr)
                   endif
                 class is(pm_rt_type)
                   if (ts%solver%check_post_convergence .or. option%use_mc) then
                     call SNESLineSearchSetPostCheck(linesearch, &
                                                     PMCheckUpdatePostPtr, &
-                                               cur_process_model_coupler%pm_ptr, &
+                                             cur_process_model_coupler%pm_ptr, &
                                                     ierr);CHKERRQ(ierr)
                   endif
               end select
@@ -867,13 +862,13 @@ subroutine InitSubsurfaceSimulation(simulation)
                       dabs(option%saturation_change_limit) > 0.d0) then
                     call SNESLineSearchSetPreCheck(linesearch, &
                                                    PMCheckUpdatePrePtr, &
-                                               cur_process_model_coupler%pm_ptr, &
+                                             cur_process_model_coupler%pm_ptr, &
                                                    ierr);CHKERRQ(ierr)
                   endif              
                 class is(pm_general_type)
                   call SNESLineSearchSetPreCheck(linesearch, &
                                                  PMCheckUpdatePrePtr, &
-                                               cur_process_model_coupler%pm_ptr, &
+                                             cur_process_model_coupler%pm_ptr, &
                                                  ierr);CHKERRQ(ierr)
                 class is(pm_th_type)
                   if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
@@ -881,34 +876,17 @@ subroutine InitSubsurfaceSimulation(simulation)
                       dabs(option%temperature_change_limit) > 0.d0) then
                     call SNESLineSearchSetPreCheck(linesearch, &
                                                    PMCheckUpdatePrePtr, &
-                                               cur_process_model_coupler%pm_ptr, &
+                                             cur_process_model_coupler%pm_ptr, &
                                                    ierr);CHKERRQ(ierr)
                   endif 
                 class is(pm_rt_type)
                   if (realization%reaction%check_update) then
                     call SNESLineSearchSetPreCheck(linesearch, &
                                                    PMCheckUpdatePrePtr, &
-                                               cur_process_model_coupler%pm_ptr, &
+                                             cur_process_model_coupler%pm_ptr, &
                                                    ierr);CHKERRQ(ierr)
                   endif
                 class default
-              end select
-          end select
-          select type(cur_process_model)
-            class default
-              select type(ts => cur_process_model_coupler%timestepper)
-                class is(timestepper_BE_type)
-                  call SNESSetFunction(ts%solver%snes, &
-                                       cur_process_model%residual_vec, &
-                                       PMResidual, &
-                                       cur_process_model, &
-                                       ierr);CHKERRQ(ierr)
-                  call SNESSetJacobian(ts%solver%snes, &
-                                       ts%solver%J, &
-                                       ts%solver%Jpre, &
-                                       PMJacobian, &
-                                       cur_process_model, &
-                                       ierr);CHKERRQ(ierr)
               end select
           end select
         endif ! if associated(cur_process_model_coupler%timestepper)
