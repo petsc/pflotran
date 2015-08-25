@@ -215,4 +215,5 @@ clean-tests :
 	-rm -f wipp/nuts/case3-int.dat
 	-rm -f wipp/nuts/case4r1_modified-int.dat
 	-rm -f wipp/bragflo/gas_generation_2d-np4.h5
+	-rm -f default/543/543_hanford_srfcplx_base*.h5
 
