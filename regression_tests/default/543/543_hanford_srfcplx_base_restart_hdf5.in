@@ -382,13 +382,12 @@ OUTPUT
 #  TIMES d 0.001 0.01 0.1 1. 10.
 #  PERIODIC TIME 1 d
   FORMAT TECPLOT BLOCK
-#  FORMAT HDF5
   VELOCITY_AT_CENTER
 END
 
 #=========================== times ============================================
 TIME
-  FINAL_TIME 100.d0 d
+  FINAL_TIME 1.d-3 d
   INITIAL_TIMESTEP_SIZE 1.d-6 d
   MAXIMUM_TIMESTEP_SIZE 10.d0 d
 END
@@ -673,10 +672,7 @@ STRATA
 END
 
 #=========================== checkpoint / restart =============================
-CHECKPOINT
-  PERIODIC TIMESTEP 10
-  FORMAT BINARY
-  FORMAT HDF5
-END
+#CHECKPOINT 10
+RESTART 543_hanford_srfcplx_base-restart.h5 0.d0
 
 END_SUBSURFACE
