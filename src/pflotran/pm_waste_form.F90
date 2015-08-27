@@ -1235,7 +1235,7 @@ subroutine PMFMDMRead(this,input)
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXSTRINGLENGTH) :: error_string
   PetscBool :: found
-  type(waste_form_fmdm_type), pointer :: new_waste_form, prev_waste_form
+  class(waste_form_fmdm_type), pointer :: new_waste_form, prev_waste_form
 
   option => this%option
   
@@ -1369,11 +1369,22 @@ subroutine PMFMDMSetup(this)
   type(option_type), pointer :: option
   type(reaction_type), pointer :: reaction
   character(len=MAXWORDLENGTH) :: species_name
+  class(waste_form_fmdm_type), pointer :: cur_waste_form
   
   option => this%realization%option
   reaction => this%realization%reaction
   
   call PMWFBaseSetup(this)
+
+  cur_waste_form => WFFMDMCast(this%waste_form_list)
+  do 
+    if (.not.associated(cur_waste_form)) exit
+    ! allocate concentration array
+    allocate(cur_waste_form%concentration(this%num_concentrations, &
+                                          this%num_grid_cells_in_waste_form))
+    cur_waste_form%concentration = 1.d-20
+    cur_waste_form => WFFMDMCast(cur_waste_form%next)
+  enddo
     
   ! set up indexing of solute concentrations
   species_name = 'O2(aq)'
