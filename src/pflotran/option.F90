@@ -537,8 +537,6 @@ subroutine OptionInitRealization(option)
   option%overwrite_restart_transport = PETSC_FALSE
   option%overwrite_restart_flow = PETSC_FALSE
 
-  option%flow_time = 0.d0
-  option%tran_time = 0.d0
   option%time = 0.d0
   option%flow_dt = 0.d0
   option%tran_dt = 0.d0

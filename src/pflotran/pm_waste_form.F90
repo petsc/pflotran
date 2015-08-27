@@ -17,39 +17,37 @@ module PM_Waste_Form_class
 
   PetscBool, public :: bypass_warning_message = PETSC_FALSE
 
-  type :: base_waste_form_type
+  type :: waste_form_base_type
     PetscInt :: local_id
     type(point3d_type) :: coordinate
     PetscReal :: volume
     PetscReal :: instantaneous_mass_rate    ! mol/sec
     PetscReal :: cumulative_mass            ! mol
-! uncomment later on if we decide to generalize
-!    class(base_waste_form_type), pointer :: next
-  end type base_waste_form_type
+    class(waste_form_base_type), pointer :: next
+  end type waste_form_base_type
   
-  type, extends(base_waste_form_type) :: fmdm_type
+  type, extends(waste_form_base_type) :: waste_form_fmdm_type
     PetscReal, pointer :: concentration(:,:)
     PetscReal :: specific_surface_area
     PetscReal :: burnup
-    class(fmdm_type), pointer :: next
-  end type fmdm_type
+  end type waste_form_fmdm_type
+  
+  type, extends(waste_form_base_type) :: waste_form_glass_type
+    PetscReal :: exposure_factor
+    PetscReal :: glass_dissolution_rate  ! kg / sec
+  end type waste_form_glass_type
   
   type, public, extends(pm_base_type) :: pm_waste_form_type
     class(realization_type), pointer :: realization
     character(len=MAXWORDLENGTH) :: data_mediator_species
     class(data_mediator_vec_type), pointer :: data_mediator
+    class(waste_form_base_type), pointer :: waste_form_list
+    PetscBool :: print_mass_balance
   contains
     procedure, public :: PMWasteFormSetRealization
   end type pm_waste_form_type
   
-  type, extends(base_waste_form_type) :: glass_type
-    PetscReal :: exposure_factor
-    PetscReal :: glass_dissolution_rate  ! kg / sec
-    class(glass_type), pointer :: next
-  end type glass_type
-  
-  type, public, extends(pm_waste_form_type) :: pm_glass_type
-    class(glass_type), pointer :: waste_form_list
+  type, public, extends(pm_waste_form_type) :: pm_waste_form_glass_type
     PetscReal :: specific_surface_area
     PetscReal :: formula_weight
     class(dataset_base_type), pointer ::  mass_fraction_dataset
@@ -57,18 +55,17 @@ module PM_Waste_Form_class
   contains
     procedure, public :: Setup => PMGlassSetup
     procedure, public :: Read => PMGlassRead
-    procedure, public :: InitializeRun => PMGlassInitializeRun
-    procedure, public :: InitializeTimestep => PMGlassInitializeTimestep
+    procedure, public :: InitializeRun => PMWFGlassInitializeRun
+    procedure, public :: InitializeTimestep => PMWFGlassInitializeTimestep
     procedure, public :: FinalizeTimestep => PMGlassFinalizeTimestep
     procedure, public :: UpdateSolution => PMGlassUpdateSolution
     procedure, public :: Solve => PMGlassSolve
     procedure, public :: Checkpoint => PMGlassCheckpoint    
     procedure, public :: Restart => PMGlassRestart  
     procedure, public :: Destroy => PMGlassDestroy
-  end type pm_glass_type
+  end type pm_waste_form_glass_type
   
-  type, public, extends(pm_waste_form_type) :: pm_fmdm_type
-    class(fmdm_type), pointer :: waste_form_list
+  type, public, extends(pm_waste_form_type) :: pm_waste_form_fmdm_type
     PetscInt :: num_grid_cells_in_waste_form
     ! mapping of fmdm species into fmdm concentration array
     PetscInt, pointer :: mapping_fmdm(:)
@@ -106,7 +103,7 @@ module PM_Waste_Form_class
     procedure, public :: CheckpointBinary => PMFMDMCheckpointBinary
     procedure, public :: RestartBinary => PMFMDMRestartBinary
     procedure, public :: Destroy => PMFMDMDestroy
-  end type pm_fmdm_type
+  end type pm_waste_form_fmdm_type
   
   public :: PMFMDMCreate, &
             PMFMDMSetup, &
@@ -132,6 +129,7 @@ subroutine PMWasteFormInit(this)
   nullify(this%realization)
   nullify(this%data_mediator)
   this%data_mediator_species = ''
+  this%print_mass_balance = PETSC_FALSE
 
 end subroutine PMWasteFormInit
 
@@ -143,10 +141,8 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
   ! Reads input file parameters associated with the waste form process model
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15, 07/20/15
+  ! Date: 08/26/15
   use Input_Aux_module
-  use String_module
-  use Utility_module
   use Option_module
   
   implicit none
@@ -164,6 +160,8 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
     case('DATA_MEDIATOR_SPECIES')
       call InputReadWord(input,option,this%data_mediator_species,PETSC_TRUE)
       call InputErrorMsg(input,option,'data_mediator_species',error_string)
+    case('PRINT_MASS_BALANCE')
+      this%print_mass_balance = PETSC_TRUE
     case default
       found = PETSC_FALSE
   end select
@@ -175,7 +173,7 @@ end subroutine PMWasteFormReadSelectCase
 subroutine PMWasteFormSetRealization(this,realization)
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 08/26/15
 
   use Realization_class
 
@@ -191,13 +189,100 @@ end subroutine PMWasteFormSetRealization
 
 ! ************************************************************************** !
 
+ subroutine PMWFInitializeRun(this)
+  ! 
+  ! IInitializes the process model for the simulation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/25/15
+  use Reaction_Aux_module
+  use Realization_Base_class
+  
+  implicit none
+
+#include "finclude/petscis.h"
+#include "finclude/petscis.h90"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  class(pm_waste_form_type) :: this
+  
+  IS :: is
+  class(waste_form_base_type), pointer :: cur_waste_form
+  PetscInt :: num_waste_form_cells
+  PetscInt :: i
+  PetscInt :: data_mediator_species_id
+  PetscInt, allocatable :: waste_form_cell_ids(:)
+  PetscErrorCode :: ierr
+  
+  ! restart
+  if (this%option%restart_flag .and. &
+      this%option%overwrite_restart_transport) then
+  endif
+  
+  if (.not.this%option%restart_flag) then
+    call PMWFBaseOutputHeader(this)
+    call PMWFBaseOutput(this)
+  endif
+
+  data_mediator_species_id = &
+    GetPrimarySpeciesIDFromName(this%data_mediator_species, &
+                                this%realization%reaction,this%option)
+  ! set up mass transfer
+  call RealizCreateTranMassTransferVec(this%realization)
+  this%data_mediator => DataMediatorVecCreate()
+  call this%data_mediator%AddToList(this%realization%tran_data_mediator_list)
+  ! create a Vec sized by # waste packages * # primary dofs influenced by 
+  ! waste package
+  ! count of waste form cells
+  cur_waste_form => this%waste_form_list
+  num_waste_form_cells = 0
+  do
+    if (.not.associated(cur_waste_form)) exit
+    num_waste_form_cells = num_waste_form_cells + 1
+    cur_waste_form => cur_waste_form%next
+  enddo
+  call VecCreateSeq(PETSC_COMM_SELF,num_waste_form_cells, &
+                    this%data_mediator%vec,ierr);CHKERRQ(ierr)
+  call VecSetFromOptions(this%data_mediator%vec,ierr);CHKERRQ(ierr)
+
+  if (num_waste_form_cells > 0) then
+    allocate(waste_form_cell_ids(num_waste_form_cells))
+    waste_form_cell_ids = 0
+    cur_waste_form => this%waste_form_list
+    i = 0
+    do
+      if (.not.associated(cur_waste_form)) exit
+      i = i + 1
+      waste_form_cell_ids(i) = cur_waste_form%local_id
+      cur_waste_form => cur_waste_form%next
+    enddo                             ! zero-based indexing
+    waste_form_cell_ids(:) = waste_form_cell_ids(:) - 1
+    waste_form_cell_ids(:) = waste_form_cell_ids(:) + &
+                             this%realization%patch%grid%global_offset
+    waste_form_cell_ids(:) = waste_form_cell_ids(:) * this%option%ntrandof
+    waste_form_cell_ids(:) = waste_form_cell_ids(:)  + &
+                             data_mediator_species_id - 1
+  endif
+  call ISCreateGeneral(this%option%mycomm,num_waste_form_cells, &
+                       waste_form_cell_ids,PETSC_COPY_VALUES,is, &
+                       ierr);CHKERRQ(ierr)
+  if (allocated(waste_form_cell_ids)) deallocate(waste_form_cell_ids)
+  call VecScatterCreate(this%data_mediator%vec,PETSC_NULL_OBJECT, &
+                        this%realization%field%tran_r,is, &
+                        this%data_mediator%scatter_ctx,ierr);CHKERRQ(ierr)
+  call ISDestroy(is,ierr);CHKERRQ(ierr)
+  
+end subroutine PMWFInitializeRun
+  
+! ************************************************************************** !
+
 subroutine PMWasteFormStrip(this)
   ! 
   ! Destroys a waste form process model
   ! 
   ! Author: Glenn Hammond
-  ! Date: 07/20/15
-  use Utility_module, only : DeallocateArray
+  ! Date: 08/26/15
 
   implicit none
   
@@ -211,46 +296,352 @@ end subroutine PMWasteFormStrip
 
 ! ************************************************************************** !
 
-subroutine BaseWasteFormInit(base)
+subroutine WasteFormBaseInit(base)
   ! 
   ! Initializes the base waste form data
   ! 
   ! Author: Glenn Hammond
-  ! Date: 07/20/15
+  ! Date: 08/26/15
 
   implicit none
   
-  class(base_waste_form_type) :: base
+  class(waste_form_base_type) :: base
 
   base%local_id = UNINITIALIZED_INTEGER
   base%coordinate%x = UNINITIALIZED_DOUBLE
   base%coordinate%y = UNINITIALIZED_DOUBLE
   base%coordinate%z = UNINITIALIZED_DOUBLE
-  base%instantaneous_mass_rate = UNINITIALIZED_DOUBLE
-  base%cumulative_mass = UNINITIALIZED_DOUBLE
+  base%instantaneous_mass_rate = 0.d0
+  base%cumulative_mass = 0.d0
   base%volume = UNINITIALIZED_DOUBLE
 
-end subroutine BaseWasteFormInit
+end subroutine WasteFormBaseInit
 
 ! ************************************************************************** !
 
-subroutine GlassInit(glass)
+subroutine PMWFBaseSetup(this)
+  ! 
+  ! Maps waste forms to grid cells
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/26/15
+
+  use Grid_module
+  use Grid_Structured_module
+  use Grid_Unstructured_module
+  use Option_module
+
+  implicit none
+  
+  class(pm_waste_form_type) :: this
+  
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  class(waste_form_base_type), pointer :: cur_waste_form, prev_waste_form, &
+                                          next_waste_form
+  PetscInt :: i, j, k, local_id
+  PetscErrorCode :: ierr
+  
+  grid => this%realization%patch%grid
+  option => this%realization%option
+  
+  nullify(prev_waste_form)
+  cur_waste_form => this%waste_form_list
+  do
+    if (.not.associated(cur_waste_form)) exit
+    local_id = -1
+    select case(grid%itype)
+      case(STRUCTURED_GRID)
+        call StructGridGetIJKFromCoordinate(grid%structured_grid, &
+                                            cur_waste_form%coordinate%x, &
+                                            cur_waste_form%coordinate%y, &
+                                            cur_waste_form%coordinate%z, &
+                                            i,j,k)
+        if (i > 0 .and. j > 0 .and. k > 0) then
+          local_id = i + (j-1)*grid%structured_grid%nlx + &
+                      (k-1)*grid%structured_grid%nlxy
+        endif
+      case(IMPLICIT_UNSTRUCTURED_GRID)
+        call UGridGetCellFromPoint(cur_waste_form%coordinate%x, &
+                                   cur_waste_form%coordinate%y, &
+                                   cur_waste_form%coordinate%z, &
+                                   grid%unstructured_grid,option,local_id)
+      case default
+          option%io_buffer = 'Only STRUCTURED_GRID and ' // &
+            'IMPLICIT_UNSTRUCTURED_GRID types supported in PMGlass.'
+          call printErrMsg(option)
+    end select
+    if (local_id > 0) then
+      cur_waste_form%local_id = local_id
+      prev_waste_form => cur_waste_form
+      cur_waste_form => cur_waste_form%next
+    else
+      ! remove waste form
+      next_waste_form => cur_waste_form%next
+      if (associated(prev_waste_form)) then
+        prev_waste_form%next => next_waste_form
+      else
+        this%waste_form_list => next_waste_form
+      endif
+      deallocate(cur_waste_form)
+      cur_waste_form => next_waste_form
+    endif
+  enddo
+  
+end subroutine PMWFBaseSetup
+
+! ************************************************************************** !
+
+subroutine PMWFBaseOutput(this)
+  ! 
+  ! Maps waste forms to grid cells
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/26/15
+
+  use Option_module
+  use Output_Aux_module
+
+  implicit none
+  
+  class(pm_waste_form_type) :: this
+  
+  type(option_type), pointer :: option
+  type(output_option_type), pointer :: output_option
+  class(waste_form_base_type), pointer :: cur_waste_form
+  character(len=MAXSTRINGLENGTH) :: filename
+  PetscInt :: fid
+  
+  if (.not.associated(this%waste_form_list)) return
+  
+100 format(2es16.8)
+
+  option => this%realization%option
+  output_option => this%realization%output_option
+  
+  fid = 86
+  filename = PMWFOutputFilename(option)
+  open(unit=fid,file=filename,action="write",status="old", &
+       position="append")
+
+  ! this time is set at the end of the reactive transport step
+  write(fid,100,advance="no") option%time / output_option%tconv
+  
+  cur_waste_form => this%waste_form_list
+  do
+    if (.not.associated(cur_waste_form)) exit
+    write(fid,100,advance="no") cur_waste_form%cumulative_mass, &
+                                cur_waste_form%instantaneous_mass_rate * &
+                                output_option%tconv
+!    call cur_waste_form%Output()
+    cur_waste_form => cur_waste_form%next
+  enddo
+  close(fid)
+  
+end subroutine PMWFBaseOutput
+
+! ************************************************************************** !
+
+function PMWFOutputFilename(option)
+  ! 
+  ! Maps waste forms to grid cells
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/26/15
+
+  use Option_module
+
+  implicit none
+  
+  type(option_type), pointer :: option
+  character(len=MAXSTRINGLENGTH) :: PMWFOutputFilename
+  character(len=MAXWORDLENGTH) :: word
+
+  write(word,'(i6)') option%myrank
+  PMWFOutputFilename = trim(option%global_prefix) // &
+                       trim(option%group_prefix) // &
+                       '-wf_mass-' // trim(adjustl(word)) // '.dat'
+  
+end function PMWFOutputFilename  
+
+! ************************************************************************** !
+
+subroutine PMWFBaseOutputHeader(this)
+  ! 
+  ! Maps waste forms to grid cells
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/26/15
+
+  use Output_Aux_module
+  use Grid_module
+  use Utility_module, only : BestFloat
+  
+  implicit none
+  
+  class(pm_waste_form_type) :: this
+  
+  type(output_option_type), pointer :: output_option
+  type(grid_type), pointer :: grid
+  class(waste_form_base_type), pointer :: cur_waste_form
+  character(len=MAXSTRINGLENGTH) :: cell_string
+  character(len=MAXWORDLENGTH) :: x_string, y_string, z_string
+  character(len=MAXWORDLENGTH) :: units_string, variable_string
+  character(len=MAXSTRINGLENGTH) :: filename
+  PetscInt :: fid
+  PetscInt :: icolumn
+  
+  output_option => this%realization%output_option
+  grid => this%realization%patch%grid
+  
+  fid = 86
+  filename = PMWFOutputFilename(this%option)
+  open(unit=fid,file=filename,action="write",status="replace")  
+  
+  if (output_option%print_column_ids) then
+    icolumn = 1
+  else
+    icolumn = -1
+  endif 
+  variable_string = 'Mass Flux'
+  
+  write(fid,'(a)',advance="no") ' "Time [' // trim(output_option%tunit) // ']"'
+
+  cur_waste_form => this%waste_form_list
+  do
+    if (.not.associated(cur_waste_form)) exit
+    ! cell natural id
+    write(cell_string,*) grid%nG2A(grid%nL2G(cur_waste_form%local_id))
+    cell_string = ' (' // trim(adjustl(cell_string)) // ')'
+    ! coordinate of waste form
+    x_string = BestFloat(cur_waste_form%coordinate%x,1.d4,1.d-2)
+    y_string = BestFloat(cur_waste_form%coordinate%y,1.d4,1.d-2)
+    z_string = BestFloat(cur_waste_form%coordinate%z,1.d4,1.d-2)
+    cell_string = trim(cell_string) // &
+             ' (' // trim(adjustl(x_string)) // &
+             ' ' // trim(adjustl(y_string)) // &
+             ' ' // trim(adjustl(z_string)) // ')'
+    ! cumulative
+    units_string = 'mol'
+    call OutputWriteToHeader(fid,variable_string,units_string, &
+                             cell_string,icolumn)
+    ! instantaneous
+    units_string = 'mol/' // trim(adjustl(output_option%tunit))
+    call OutputWriteToHeader(fid,variable_string,units_string, &
+                             cell_string,icolumn)
+!    call cur_waste_form%OutputHeader()
+    cur_waste_form => cur_waste_form%next
+  enddo
+  
+  close(fid)
+  
+end subroutine PMWFBaseOutputHeader
+
+! ************************************************************************** !
+
+subroutine PMWFInitializeTimestep(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/26/15
+  use Dataset_module
+  
+  implicit none
+  
+  class(pm_waste_form_type) :: this
+
+  class(waste_form_base_type), pointer :: cur_waste_form
+  PetscReal :: dt
+
+  dt = this%option%tran_dt
+  ! update cumulative values
+  cur_waste_form => this%waste_form_list
+  do
+    if (.not.associated(cur_waste_form)) exit
+    cur_waste_form%cumulative_mass = cur_waste_form%cumulative_mass + &
+                                   cur_waste_form%instantaneous_mass_rate * dt
+    cur_waste_form => cur_waste_form%next
+  enddo  
+
+  if (this%print_mass_balance) then
+    call PMWFBaseOutput(this)
+  endif
+
+end subroutine PMWFInitializeTimestep
+
+! ************************************************************************** !
+
+subroutine WFGlassInit(glass)
   ! 
   ! Initializes the fuel matrix degradation model waste form
   ! 
   ! Author: Glenn Hammond
-  ! Date: 07/20/15
-
+  ! Date: 08/26/15
   implicit none
   
-  class(glass_type) :: glass
+  class(waste_form_glass_type) :: glass
 
-  call BaseWasteFormInit(glass)
+  call WasteFormBaseInit(glass)
   glass%exposure_factor = UNINITIALIZED_DOUBLE
   glass%glass_dissolution_rate = UNINITIALIZED_DOUBLE
   nullify(glass%next)
 
-end subroutine GlassInit
+end subroutine WFGlassInit
+
+! ************************************************************************** !
+
+function WFGlassCast(this)
+  ! 
+  ! Casts waste_form_base_type to waste_form_glass_type
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/26/15
+
+  implicit none
+  
+  class(waste_form_base_type), pointer :: this
+  
+  class(waste_form_glass_type), pointer :: WFGlassCast
+  
+  nullify(WFGlassCast)
+  if (associated(this)) then
+    select type(this)
+      class is(waste_form_glass_type)
+        WFGlassCast => this
+      class default
+        print *, 'Wrong class in WFGlassCast'
+        stop
+    end select
+  endif
+
+end function WFGlassCast
+
+! ************************************************************************** !
+
+function WFFMDMCast(this)
+  ! 
+  ! Casts waste_form_base_type to waste_form_glass_type
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/26/15
+
+  implicit none
+  
+  class(waste_form_base_type), pointer :: this
+  
+  class(waste_form_fmdm_type), pointer :: WFFMDMCast
+  
+  nullify(WFFMDMCast)
+  if (associated(this)) then
+    select type(this)
+      class is(waste_form_fmdm_type)
+        WFFMDMCast => this
+      class default
+        print *, 'Wrong class in WFGlassCast'
+        stop
+    end select
+  endif
+
+end function WFFMDMCast
 
 ! ************************************************************************** !
 
@@ -259,11 +650,11 @@ function PMGlassCreate()
   ! Creates the Glass waste form process model
   ! 
   ! Author: Glenn Hammond
-  ! Date: 07/20/15
+  ! Date: 08/26/15
 
   implicit none
   
-  class(pm_glass_type), pointer :: PMGlassCreate
+  class(pm_waste_form_glass_type), pointer :: PMGlassCreate
   
   allocate(PMGlassCreate)
   call PMWasteFormInit(PMGlassCreate)
@@ -282,7 +673,7 @@ subroutine PMGlassRead(this,input)
   ! Reads input file parameters associated with the waste form process model
   ! 
   ! Author: Glenn Hammond
-  ! Date: 07/20/15
+  ! Date: 08/26/15
 
   use Input_Aux_module
   use String_module
@@ -293,7 +684,7 @@ subroutine PMGlassRead(this,input)
   
   implicit none
   
-  class(pm_glass_type) :: this
+  class(pm_waste_form_glass_type) :: this
   type(input_type) :: input
   
   type(option_type), pointer :: option
@@ -301,7 +692,7 @@ subroutine PMGlassRead(this,input)
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXSTRINGLENGTH) :: error_string
   PetscBool :: found
-  class(glass_type), pointer :: new_waste_form, prev_waste_form
+  class(waste_form_glass_type), pointer :: new_waste_form, prev_waste_form
   class(dataset_ascii_type), pointer :: dataset_ascii
 
   option => this%option
@@ -328,7 +719,7 @@ subroutine PMGlassRead(this,input)
       case('WASTE_FORM')
         error_string = 'GLASS,WASTE_FORM'
         allocate(new_waste_form)
-        call GlassInit(new_waste_form)
+        call WFGlassInit(new_waste_form)
         do
           call InputReadPflotranString(input,option)
           if (InputError(input)) exit
@@ -436,88 +827,25 @@ subroutine PMGlassSetup(this)
   ! Initializes variables associated with subsurface process models
   ! 
   ! Author: Glenn Hammond
-  ! Date: 07/20/15
-
-  use Grid_module
-  use Grid_Structured_module
-  use Grid_Unstructured_module
-  use Reaction_Aux_module
-  use Option_module
+  ! Date: 08/26/15
 
   implicit none
   
-  class(pm_glass_type) :: this
+  class(pm_waste_form_glass_type) :: this
   
-  type(grid_type), pointer :: grid
-  type(option_type), pointer :: option
-  type(reaction_type), pointer :: reaction
-  character(len=MAXWORDLENGTH) :: species_name
-  class(glass_type), pointer :: cur_waste_form, prev_waste_form, next_waste_form
-  PetscInt :: i, j, k, local_id
-  PetscErrorCode :: ierr
-  
-  grid => this%realization%patch%grid
-  option => this%realization%option
-  reaction => this%realization%reaction
-  
-  nullify(prev_waste_form)
-  cur_waste_form => this%waste_form_list
-  do
-    if (.not.associated(cur_waste_form)) exit
-    local_id = -1
-    select case(grid%itype)
-      case(STRUCTURED_GRID)
-        call StructGridGetIJKFromCoordinate(grid%structured_grid, &
-                                            cur_waste_form%coordinate%x, &
-                                            cur_waste_form%coordinate%y, &
-                                            cur_waste_form%coordinate%z, &
-                                            i,j,k)
-        if (i > 0 .and. j > 0 .and. k > 0) then
-          local_id = i + (j-1)*grid%structured_grid%nlx + &
-                      (k-1)*grid%structured_grid%nlxy
-        endif
-      case(IMPLICIT_UNSTRUCTURED_GRID)
-        call UGridGetCellFromPoint(cur_waste_form%coordinate%x, &
-                                   cur_waste_form%coordinate%y, &
-                                   cur_waste_form%coordinate%z, &
-                                   grid%unstructured_grid,option,local_id)
-      case default
-          option%io_buffer = 'Only STRUCTURED_GRID and ' // &
-            'IMPLICIT_UNSTRUCTURED_GRID types supported in PMGlass.'
-          call printErrMsg(option)
-    end select
-    if (local_id > 0) then
-      cur_waste_form%local_id = local_id
-      prev_waste_form => cur_waste_form
-      cur_waste_form => cur_waste_form%next
-    else
-      ! remove waste form
-      next_waste_form => cur_waste_form%next
-      if (associated(prev_waste_form)) then
-        prev_waste_form%next => next_waste_form
-      else
-        this%waste_form_list => next_waste_form
-      endif
-      deallocate(cur_waste_form)
-      cur_waste_form => next_waste_form
-    endif
-  enddo
+  call PMWFBaseSetup(this)
   
 end subroutine PMGlassSetup
 
 ! ************************************************************************** !
 
-recursive subroutine PMGlassInitializeRun(this)
+recursive subroutine PMWFGlassInitializeRun(this)
   ! 
-  ! Initializes the time stepping
+  ! Initializes the process model for the simulation
   ! 
   ! Author: Glenn Hammond
-  ! Date: 07/20/15
+  ! Date: 08/26/15
 
-  use Communicator_Base_module
-  use Reaction_Aux_module
-  use Realization_Base_class
-  use Data_Mediator_Vec_class
   use Dataset_module
   use Time_Storage_module
   
@@ -528,90 +856,38 @@ recursive subroutine PMGlassInitializeRun(this)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-  class(pm_glass_type) :: this
+  class(pm_waste_form_glass_type) :: this
   
-  IS :: is
-  class(glass_type), pointer :: cur_waste_form
-  PetscInt :: num_waste_form_cells
-  PetscInt :: i
-  PetscInt :: data_mediator_species_id
-  PetscInt, allocatable :: waste_form_cell_ids(:)
-  PetscReal :: time
   type(time_storage_type), pointer :: null_time_storage
   PetscErrorCode :: ierr
+  
+  call PMWFInitializeRun(this)
   
   ! restart
   if (this%option%restart_flag .and. &
       this%option%overwrite_restart_transport) then
   endif
 
-  data_mediator_species_id = &
-    GetPrimarySpeciesIDFromName(this%data_mediator_species, &
-                                this%realization%reaction,this%option)
   nullify(null_time_storage)
   call DatasetVerify(this%mass_fraction_dataset,null_time_storage,this%option)
-  ! set up mass transfer
-  call RealizCreateTranMassTransferVec(this%realization)
-  this%data_mediator => DataMediatorVecCreate()
-  call this%data_mediator%AddToList(this%realization%tran_data_mediator_list)
-  ! create a Vec sized by # waste packages * # primary dofs influenced by 
-  ! waste package
-  ! count of waste form cells
-  cur_waste_form => this%waste_form_list
-  num_waste_form_cells = 0
-  do
-    if (.not.associated(cur_waste_form)) exit
-    num_waste_form_cells = num_waste_form_cells + 1
-    cur_waste_form => cur_waste_form%next
-  enddo
-  call VecCreateSeq(PETSC_COMM_SELF,num_waste_form_cells, &
-                    this%data_mediator%vec,ierr);CHKERRQ(ierr)
-  call VecSetFromOptions(this%data_mediator%vec,ierr);CHKERRQ(ierr)
 
-  if (num_waste_form_cells > 0) then
-    allocate(waste_form_cell_ids(num_waste_form_cells))
-    waste_form_cell_ids = 0
-    cur_waste_form => this%waste_form_list
-    i = 0
-    do
-      if (.not.associated(cur_waste_form)) exit
-      i = i + 1
-      waste_form_cell_ids(i) = cur_waste_form%local_id
-      cur_waste_form => cur_waste_form%next
-    enddo                             ! zero-based indexing
-    waste_form_cell_ids(:) = waste_form_cell_ids(:) - 1
-    waste_form_cell_ids(:) = waste_form_cell_ids(:) + &
-                             this%realization%patch%grid%global_offset
-    waste_form_cell_ids(:) = waste_form_cell_ids(:) * this%option%ntrandof
-    waste_form_cell_ids(:) = waste_form_cell_ids(:)  + &
-                             data_mediator_species_id - 1
-  endif
-  call ISCreateGeneral(this%option%mycomm,num_waste_form_cells, &
-                       waste_form_cell_ids,PETSC_COPY_VALUES,is, &
-                       ierr);CHKERRQ(ierr)
-  if (allocated(waste_form_cell_ids)) deallocate(waste_form_cell_ids)
-  call VecScatterCreate(this%data_mediator%vec,PETSC_NULL_OBJECT, &
-                        this%realization%field%tran_r,is, &
-                        this%data_mediator%scatter_ctx,ierr);CHKERRQ(ierr)
-  call ISDestroy(is,ierr);CHKERRQ(ierr)
-  
   call PMGlassSolve(this,0.d0,ierr)
   
-end subroutine PMGlassInitializeRun
+end subroutine PMWFGlassInitializeRun
 
 ! ************************************************************************** !
 
-subroutine PMGlassInitializeTimestep(this)
+subroutine PMWFGlassInitializeTimestep(this)
   ! 
   ! Author: Glenn Hammond
-  ! Date: 07/20/15
+  ! Date: 08/26/15
   use Dataset_module
   
   implicit none
   
-  class(pm_glass_type) :: this
+  class(pm_waste_form_glass_type) :: this
   
-  class(glass_type), pointer :: cur_waste_form
+  class(waste_form_glass_type), pointer :: cur_waste_form
   PetscReal :: rate
   PetscReal :: dV
   PetscReal, parameter :: conversion = 1.d0/(24.d0*3600.d0)
@@ -620,8 +896,11 @@ subroutine PMGlassInitializeTimestep(this)
     write(*,'(/,2("=")," GLASS MODEL ",65("="))')
   endif
   
+  ! due to output witin, must be called prior to update
+  call PMWFInitializeTimestep(this)
+
   ! update mass balances after transport step
-  cur_waste_form => this%waste_form_list
+  cur_waste_form => WFGlassCast(this%waste_form_list)
   do 
     if (.not.associated(cur_waste_form)) exit
     ! m^3 glass
@@ -629,23 +908,23 @@ subroutine PMGlassInitializeTimestep(this)
          this%glass_density * &                    ! kg glass/m^3 glass
          this%option%tran_dt                       ! sec
     cur_waste_form%volume = cur_waste_form%volume - dV
-    cur_waste_form => cur_waste_form%next
+    cur_waste_form => WFGlassCast(cur_waste_form%next)
   enddo
   
   call DatasetUpdate(this%mass_fraction_dataset,this%option%time,this%option)
 
-end subroutine PMGlassInitializeTimestep
+end subroutine PMWFGlassInitializeTimestep
 
 ! ************************************************************************** !
 
 subroutine PMGlassPreSolve(this)
   ! 
   ! Author: Glenn Hammond
-  ! Date: 07/20/15
+  ! Date: 08/26/15
 
   implicit none
   
-  class(pm_glass_type) :: this
+  class(pm_waste_form_glass_type) :: this
   
 end subroutine PMGlassPreSolve
 
@@ -654,7 +933,7 @@ end subroutine PMGlassPreSolve
 subroutine PMGlassSolve(this,time,ierr)
   ! 
   ! Author: Glenn Hammond
-  ! Date: 07/20/15
+  ! Date: 08/26/15
   !
   use Grid_module
   use Global_Aux_module
@@ -664,11 +943,11 @@ subroutine PMGlassSolve(this,time,ierr)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-  class(pm_glass_type) :: this
+  class(pm_waste_form_glass_type) :: this
   PetscReal :: time
   PetscErrorCode :: ierr
   
-  class(glass_type), pointer :: cur_waste_form
+  class(waste_form_glass_type), pointer :: cur_waste_form
   type(grid_type), pointer :: grid
   type(global_auxvar_type), pointer :: global_auxvars(:)
   PetscInt :: i
@@ -680,7 +959,7 @@ subroutine PMGlassSolve(this,time,ierr)
   global_auxvars => this%realization%patch%aux%Global%auxvars
 
   call VecGetArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
-  cur_waste_form => this%waste_form_list
+  cur_waste_form => WFGlassCast(this%waste_form_list)
   i = 0
   do 
     if (.not.associated(cur_waste_form)) exit
@@ -708,7 +987,7 @@ subroutine PMGlassSolve(this,time,ierr)
       cur_waste_form%glass_dissolution_rate = 0.d0
       cur_waste_form%instantaneous_mass_rate = 0.d0
     endif
-    cur_waste_form => cur_waste_form%next
+    cur_waste_form => WFGlassCast(cur_waste_form%next)
   enddo
   
   call VecRestoreArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
@@ -720,11 +999,11 @@ end subroutine PMGlassSolve
 subroutine PMGlassFinalizeTimestep(this)
   ! 
   ! Author: Glenn Hammond
-  ! Date: 07/20/15
+  ! Date: 08/26/15
 
   implicit none
   
-  class(pm_glass_type) :: this
+  class(pm_waste_form_glass_type) :: this
   
 end subroutine PMGlassFinalizeTimestep
 
@@ -733,11 +1012,11 @@ end subroutine PMGlassFinalizeTimestep
 subroutine PMGlassUpdateSolution(this)
   ! 
   ! Author: Glenn Hammond
-  ! Date: 07/20/15
+  ! Date: 08/26/15
 
   implicit none
   
-  class(pm_glass_type) :: this
+  class(pm_waste_form_glass_type) :: this
   
   PetscErrorCode :: ierr
   
@@ -750,11 +1029,11 @@ end subroutine PMGlassUpdateSolution
 subroutine PMGlassUpdateAuxVars(this)
   ! 
   ! Author: Glenn Hammond
-  ! Date: 07/20/15
+  ! Date: 08/26/15
 
   implicit none
   
-  class(pm_glass_type) :: this
+  class(pm_waste_form_glass_type) :: this
 
   this%option%io_buffer = 'PMGlassUpdateAuxVars() must be extended.'
   call printErrMsg(this%option)
@@ -768,12 +1047,12 @@ subroutine PMGlassCheckpoint(this,viewer)
   ! Checkpoints data associated with Subsurface PM
   ! 
   ! Author: Glenn Hammond
-  ! Date: 07/20/15
+  ! Date: 08/26/15
 
   implicit none
 #include "finclude/petscviewer.h"      
 
-  class(pm_glass_type) :: this
+  class(pm_waste_form_glass_type) :: this
   PetscViewer :: viewer
   
 end subroutine PMGlassCheckpoint
@@ -785,12 +1064,12 @@ subroutine PMGlassRestart(this,viewer)
   ! Restarts data associated with Subsurface PM
   ! 
   ! Author: Glenn Hammond
-  ! Date: 07/20/15
+  ! Date: 08/26/15
 
   implicit none
 #include "finclude/petscviewer.h"      
 
-  class(pm_glass_type) :: this
+  class(pm_waste_form_glass_type) :: this
   PetscViewer :: viewer
   
 !  call RestartFlowProcessModel(viewer,this%realization)
@@ -806,11 +1085,11 @@ recursive subroutine PMGlassFinalizeRun(this)
   ! Finalizes the time stepping
   ! 
   ! Author: Glenn Hammond
-  ! Date: 07/20/15
+  ! Date: 08/26/15
   
   implicit none
   
-  class(pm_glass_type) :: this
+  class(pm_waste_form_glass_type) :: this
   
   ! do something here
   
@@ -827,25 +1106,26 @@ subroutine PMGlassStrip(this)
   ! Destroys strips Glass process model
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
-  use Utility_module, only : DeallocateArray
+  ! Date: 08/26/15
+
   use Dataset_module
 
   implicit none
   
-  class(pm_glass_type) :: this
-  class(glass_type), pointer :: cur_waste_form, prev_waste_form
+  class(pm_waste_form_glass_type) :: this
+  
+  class(waste_form_glass_type), pointer :: cur_waste_form, prev_waste_form
   
   PetscInt :: i
   
   call PMWasteFormStrip(this)
   call DatasetDestroy(this%mass_fraction_dataset)
 
-  cur_waste_form => this%waste_form_list
+  cur_waste_form => WFGlassCast(this%waste_form_list)
   do
     if (.not.associated(cur_waste_form)) exit
     prev_waste_form => cur_waste_form
-    cur_waste_form => cur_waste_form%next
+    cur_waste_form => WFGlassCast(cur_waste_form%next)
     deallocate(prev_waste_form)
     nullify(prev_waste_form)
   enddo
@@ -860,11 +1140,11 @@ subroutine PMGlassDestroy(this)
   ! Destroys Glass process model
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 08/26/15
 
   implicit none
   
-  class(pm_glass_type) :: this
+  class(pm_waste_form_glass_type) :: this
   
   call PMGlassStrip(this)
   
@@ -872,24 +1152,24 @@ end subroutine PMGlassDestroy
   
 ! ************************************************************************** !
 
-subroutine FMDMInit(fmdm)
+subroutine WFFMDMInit(fmdm)
   ! 
   ! Initializes the fuel matrix degradation model waste form
   ! 
   ! Author: Glenn Hammond
-  ! Date: 05/05/2015
+  ! Date: 08/26/15
 
   implicit none
   
-  class(fmdm_type) :: fmdm
+  class(waste_form_fmdm_type) :: fmdm
 
-  call BaseWasteFormInit(fmdm)  
+  call WasteFormBaseInit(fmdm)  
   fmdm%specific_surface_area = UNINITIALIZED_DOUBLE
   fmdm%burnup = UNINITIALIZED_DOUBLE
   nullify(fmdm%concentration)
   nullify(fmdm%next)
   
-end subroutine FMDMInit
+end subroutine WFFMDMInit
 
 ! ************************************************************************** !
 
@@ -898,11 +1178,11 @@ function PMFMDMCreate()
   ! Creates the FMDM waste form process model
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 08/26/15
 
   implicit none
   
-  class(pm_fmdm_type), pointer :: PMFMDMCreate
+  class(pm_waste_form_fmdm_type), pointer :: PMFMDMCreate
   
   allocate(PMFMDMCreate)
   call PMWasteFormInit(PMFMDMCreate)
@@ -939,7 +1219,8 @@ subroutine PMFMDMRead(this,input)
   ! Reads input file parameters associated with the waste form process model
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 08/26/15
+
   use Input_Aux_module
   use String_module
   use Utility_module
@@ -947,14 +1228,14 @@ subroutine PMFMDMRead(this,input)
   
   implicit none
   
-  class(pm_fmdm_type) :: this
+  class(pm_waste_form_fmdm_type) :: this
   type(input_type) :: input
   
   type(option_type), pointer :: option
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXSTRINGLENGTH) :: error_string
   PetscBool :: found
-  type(fmdm_type), pointer :: new_waste_form, prev_waste_form
+  type(waste_form_fmdm_type), pointer :: new_waste_form, prev_waste_form
 
   option => this%option
   
@@ -989,7 +1270,7 @@ subroutine PMFMDMRead(this,input)
       case('WASTE_FORM')
         error_string = 'FMDM,WASTE_FORM'
         allocate(new_waste_form)
-        call FMDMInit(new_waste_form)
+        call WFFMDMInit(new_waste_form)
         do
           call InputReadPflotranString(input,option)
           if (InputError(input)) exit
@@ -1076,77 +1357,24 @@ subroutine PMFMDMSetup(this)
   ! Initializes variables associated with subsurface process models
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 08/26/15
 
-  use Grid_module
-  use Grid_Structured_module
-  use Grid_Unstructured_module
   use Reaction_Aux_module
   use Option_module
 
   implicit none
   
-  class(pm_fmdm_type) :: this
+  class(pm_waste_form_fmdm_type) :: this
   
-  type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(reaction_type), pointer :: reaction
   character(len=MAXWORDLENGTH) :: species_name
-  class(fmdm_type), pointer :: cur_waste_form, prev_waste_form, next_waste_form
-  PetscInt :: i, j, k, local_id
-  PetscErrorCode :: ierr
   
-  grid => this%realization%patch%grid
   option => this%realization%option
   reaction => this%realization%reaction
   
-  nullify(prev_waste_form)
-  cur_waste_form => this%waste_form_list
-  do
-    if (.not.associated(cur_waste_form)) exit
-    local_id = -1
-    select case(grid%itype)
-      case(STRUCTURED_GRID)
-        call StructGridGetIJKFromCoordinate(grid%structured_grid, &
-                                            cur_waste_form%coordinate%x, &
-                                            cur_waste_form%coordinate%y, &
-                                            cur_waste_form%coordinate%z, &
-                                            i,j,k)
-        if (i > 0 .and. j > 0 .and. k > 0) then
-          local_id = i + (j-1)*grid%structured_grid%nlx + &
-                      (k-1)*grid%structured_grid%nlxy
-        endif
-      case(IMPLICIT_UNSTRUCTURED_GRID)
-        call UGridGetCellFromPoint(cur_waste_form%coordinate%x, &
-                                   cur_waste_form%coordinate%y, &
-                                   cur_waste_form%coordinate%z, &
-                                   grid%unstructured_grid,option,local_id)
-      case default
-          option%io_buffer = 'Only STRUCTURED_GRID and ' // &
-            'IMPLICIT_UNSTRUCTURED_GRID types supported in PMFMDM.'
-          call printErrMsg(option)
-    end select
-    if (local_id > 0) then
-      cur_waste_form%local_id = local_id
-      ! allocate concentration array
-      allocate(cur_waste_form%concentration(this%num_concentrations, &
-                                            this%num_grid_cells_in_waste_form))
-      cur_waste_form%concentration = 1.d-20
-      prev_waste_form => cur_waste_form
-      cur_waste_form => cur_waste_form%next
-    else
-      ! remove waste form
-      next_waste_form => cur_waste_form%next
-      if (associated(prev_waste_form)) then
-        prev_waste_form%next => next_waste_form
-      else
-        this%waste_form_list => next_waste_form
-      endif
-      deallocate(cur_waste_form)
-      cur_waste_form => next_waste_form
-    endif
-  enddo
-  
+  call PMWFBaseSetup(this)
+    
   ! set up indexing of solute concentrations
   species_name = 'O2(aq)'
   this%mapping_fmdm_to_pflotran(this%iO2) = &
@@ -1167,14 +1395,10 @@ end subroutine PMFMDMSetup
 
 recursive subroutine PMFMDMInitializeRun(this)
   ! 
-  ! Initializes the time stepping
+  ! Initializes the process model for the simulation
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15 
-  use Communicator_Base_module
-  use Reaction_Aux_module
-  use Realization_Base_class
-  use Data_Mediator_Vec_class
+  ! Date: 08/26/15
   
   implicit none
 
@@ -1183,14 +1407,8 @@ recursive subroutine PMFMDMInitializeRun(this)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-  class(pm_fmdm_type) :: this
+  class(pm_waste_form_fmdm_type) :: this
   
-  IS :: is
-  class(fmdm_type), pointer :: cur_waste_form
-  PetscInt :: num_waste_form_cells
-  PetscInt :: i
-  PetscInt :: data_mediator_species_id
-  PetscInt, allocatable :: waste_form_cell_ids(:)
   PetscReal :: time
   PetscErrorCode :: ierr
   
@@ -1211,56 +1429,9 @@ recursive subroutine PMFMDMInitializeRun(this)
   if (this%option%restart_flag .and. &
       this%option%overwrite_restart_transport) then
   endif
-
-  data_mediator_species_id = &
-    GetPrimarySpeciesIDFromName(this%data_mediator_species, &
-                                this%realization%reaction,this%option)
   
-  ! set up mass transfer
-  call RealizCreateTranMassTransferVec(this%realization)
-  this%data_mediator => DataMediatorVecCreate()
-  call this%data_mediator%AddToList(this%realization%tran_data_mediator_list)
-  ! create a Vec sized by # waste packages * # primary dofs influenced by 
-  ! waste package
-  ! count of waste form cells
-  cur_waste_form => this%waste_form_list
-  num_waste_form_cells = 0
-  do
-    if (.not.associated(cur_waste_form)) exit
-    num_waste_form_cells = num_waste_form_cells + 1
-    cur_waste_form => cur_waste_form%next
-  enddo
-  call VecCreateSeq(PETSC_COMM_SELF,num_waste_form_cells, &
-                    this%data_mediator%vec,ierr);CHKERRQ(ierr)
-  call VecSetFromOptions(this%data_mediator%vec,ierr);CHKERRQ(ierr)
+  call PMWFInitializeRun(this)
 
-  if (num_waste_form_cells > 0) then
-    allocate(waste_form_cell_ids(num_waste_form_cells))
-    waste_form_cell_ids = 0
-    cur_waste_form => this%waste_form_list
-    i = 0
-    do
-      if (.not.associated(cur_waste_form)) exit
-      i = i + 1
-      waste_form_cell_ids(i) = cur_waste_form%local_id
-      cur_waste_form => cur_waste_form%next
-    enddo                             ! zero-based indexing
-    waste_form_cell_ids(:) = waste_form_cell_ids(:) - 1
-    waste_form_cell_ids(:) = waste_form_cell_ids(:) + &
-                             this%realization%patch%grid%global_offset
-    waste_form_cell_ids(:) = waste_form_cell_ids(:) * this%option%ntrandof
-    waste_form_cell_ids(:) = waste_form_cell_ids(:)  + &
-                             data_mediator_species_id - 1
-  endif
-  call ISCreateGeneral(this%option%mycomm,num_waste_form_cells, &
-                       waste_form_cell_ids,PETSC_COPY_VALUES,is, &
-                       ierr);CHKERRQ(ierr)
-  if (allocated(waste_form_cell_ids)) deallocate(waste_form_cell_ids)
-  call VecScatterCreate(this%data_mediator%vec,PETSC_NULL_OBJECT, &
-                        this%realization%field%tran_r,is, &
-                        this%data_mediator%scatter_ctx,ierr);CHKERRQ(ierr)
-  call ISDestroy(is,ierr);CHKERRQ(ierr)
-  
   time = 0.d0
   call PMFMDMSolve(this,time,ierr)  
 
@@ -1271,17 +1442,18 @@ end subroutine PMFMDMInitializeRun
 subroutine PMFMDMInitializeTimestep(this)
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 08/26/15
 
-  use Global_module
-  
   implicit none
   
-  class(pm_fmdm_type) :: this
+  class(pm_waste_form_fmdm_type) :: this
 
   if (this%option%print_screen_flag) then
     write(*,'(/,2("=")," FUEL MATRIX DEGRADATION MODEL ",47("="))')
   endif
+
+  ! due to output witin, must be called prior to update
+  call PMWFInitializeTimestep(this)
 
 end subroutine PMFMDMInitializeTimestep
 
@@ -1290,18 +1462,18 @@ end subroutine PMFMDMInitializeTimestep
 subroutine PMFMDMPreSolve(this)
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 08/26/15
 
   use Grid_module
   use Reactive_Transport_Aux_module
 
   implicit none
   
-  class(pm_fmdm_type) :: this
+  class(pm_waste_form_fmdm_type) :: this
   
   type(grid_type), pointer :: grid
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
-  class(fmdm_type), pointer :: cur_waste_form
+  class(waste_form_fmdm_type), pointer :: cur_waste_form
   PetscInt :: i
   PetscInt :: icomp_fmdm
   PetscInt :: icomp_pflotran
@@ -1310,7 +1482,7 @@ subroutine PMFMDMPreSolve(this)
   grid => this%realization%patch%grid
   rt_auxvars => this%realization%patch%aux%RT%auxvars
   
-  cur_waste_form => this%waste_form_list
+  cur_waste_form => WFFMDMCast(this%waste_form_list)
   do 
     if (.not.associated(cur_waste_form)) exit
     ghosted_id = grid%nL2G(cur_waste_form%local_id)
@@ -1322,7 +1494,7 @@ subroutine PMFMDMPreSolve(this)
         ! the 1 in the second index if for the liquid phase
         rt_auxvars(ghosted_id)%total(icomp_pflotran,1)
     enddo
-    cur_waste_form => cur_waste_form%next
+    cur_waste_form => WFFMDMCast(cur_waste_form%next)
   enddo
   
 end subroutine PMFMDMPreSolve
@@ -1332,7 +1504,7 @@ end subroutine PMFMDMPreSolve
 subroutine PMFMDMSolve(this,time,ierr)
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 08/26/15
   !
 !  use Argonne_Mixed_Potential_module
   use Grid_module
@@ -1356,11 +1528,11 @@ subroutine PMFMDMSolve(this,time,ierr)
     end subroutine
   end interface  
 
-  class(pm_fmdm_type) :: this
+  class(pm_waste_form_fmdm_type) :: this
   PetscReal :: time
   PetscErrorCode :: ierr
   
-  class(fmdm_type), pointer :: cur_waste_form
+  class(waste_form_fmdm_type), pointer :: cur_waste_form
   type(global_auxvar_type), pointer :: global_auxvars(:)
   type(grid_type), pointer :: grid
    PetscInt :: i
@@ -1384,7 +1556,7 @@ subroutine PMFMDMSolve(this,time,ierr)
   ierr = 0
   call PMFMDMPreSolve(this)
   call VecGetArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
-  cur_waste_form => this%waste_form_list
+  cur_waste_form => WFFMDMCast(this%waste_form_list)
   i = 0
   do 
     if (.not.associated(cur_waste_form)) exit
@@ -1408,7 +1580,7 @@ subroutine PMFMDMSolve(this,time,ierr)
                cur_waste_form%volume * &                ! m^3 waste
                conversion                               ! g(U)/yr -> mol(U)/sec
     vec_p(i) = cur_waste_form%instantaneous_mass_rate
-    cur_waste_form => cur_waste_form%next
+    cur_waste_form => WFFMDMCast(cur_waste_form%next)
   enddo
   call VecRestoreArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
   
@@ -1421,11 +1593,11 @@ subroutine PMFMDMPostSolve(this)
   ! PMFMDMUpdatePostSolve:
   ! 
   ! Author: Glenn Hammond
-  ! Date: 03/14/13
+  ! Date: 08/26/15
   ! 
   implicit none
   
-  class(pm_fmdm_type) :: this
+  class(pm_waste_form_fmdm_type) :: this
   
 end subroutine PMFMDMPostSolve
 
@@ -1434,11 +1606,11 @@ end subroutine PMFMDMPostSolve
 function PMFMDMAcceptSolution(this)
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 08/26/15
 
   implicit none
   
-  class(pm_fmdm_type) :: this
+  class(pm_waste_form_fmdm_type) :: this
   
   PetscBool :: PMFMDMAcceptSolution
   
@@ -1454,11 +1626,11 @@ subroutine PMFMDMUpdatePropertiesTS(this)
   ! Updates parameters/properties at each Newton iteration
   !
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 08/26/15
 
   implicit none
   
-  class(pm_fmdm_type) :: this
+  class(pm_waste_form_fmdm_type) :: this
   
 !  call RealizationUpdatePropertiesNI(this%realization)
 
@@ -1469,11 +1641,11 @@ end subroutine PMFMDMUpdatePropertiesTS
 subroutine PMFMDMTimeCut(this)
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15 
+  ! Date: 08/26/15
   
   implicit none
   
-  class(pm_fmdm_type) :: this
+  class(pm_waste_form_fmdm_type) :: this
   
   PetscErrorCode :: ierr
   
@@ -1484,11 +1656,11 @@ end subroutine PMFMDMTimeCut
 subroutine PMFMDMFinalizeTimestep(this)
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 08/26/15
 
   implicit none
   
-  class(pm_fmdm_type) :: this
+  class(pm_waste_form_fmdm_type) :: this
   
 end subroutine PMFMDMFinalizeTimestep
 
@@ -1497,11 +1669,11 @@ end subroutine PMFMDMFinalizeTimestep
 subroutine PMFMDMUpdateSolution(this)
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 08/26/15
 
   implicit none
   
-  class(pm_fmdm_type) :: this
+  class(pm_waste_form_fmdm_type) :: this
   
   PetscErrorCode :: ierr
 
@@ -1512,11 +1684,11 @@ end subroutine PMFMDMUpdateSolution
 subroutine PMFMDMUpdateAuxVars(this)
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 08/26/15
 
   implicit none
   
-  class(pm_fmdm_type) :: this
+  class(pm_waste_form_fmdm_type) :: this
 
   this%option%io_buffer = 'PMFMDMUpdateAuxVars() must be extended.'
   call printErrMsg(this%option)
@@ -1530,12 +1702,12 @@ subroutine PMFMDMCheckpointBinary(this,viewer)
   ! Checkpoints data associated with Subsurface PM
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 08/26/15
 
   implicit none
 #include "finclude/petscviewer.h"      
 
-  class(pm_fmdm_type) :: this
+  class(pm_waste_form_fmdm_type) :: this
   PetscViewer :: viewer
   
 end subroutine PMFMDMCheckpointBinary
@@ -1547,12 +1719,12 @@ subroutine PMFMDMRestartBinary(this,viewer)
   ! Restarts data associated with Subsurface PM
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 08/26/15
 
   implicit none
 #include "finclude/petscviewer.h"      
 
-  class(pm_fmdm_type) :: this
+  class(pm_waste_form_fmdm_type) :: this
   PetscViewer :: viewer
   
 !  call RestartFlowProcessModel(viewer,this%realization)
@@ -1568,11 +1740,11 @@ recursive subroutine PMFMDMFinalizeRun(this)
   ! Finalizes the time stepping
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 08/26/15
   
   implicit none
   
-  class(pm_fmdm_type) :: this
+  class(pm_waste_form_fmdm_type) :: this
   
   ! do something here
   
@@ -1584,21 +1756,21 @@ end subroutine PMFMDMFinalizeRun
 
 ! ************************************************************************** !
 
-subroutine FMDMStrip(fmdm)
+subroutine WFFMDMStrip(fmdm)
   ! 
   ! Initializes the fuel matrix degradation model waste form
   ! 
   ! Author: Glenn Hammond
-  ! Date: 05/05/2015
+  ! Date: 08/26/15
   use Utility_module, only : DeallocateArray
 
   implicit none
   
-  class(fmdm_type) :: fmdm
+  class(waste_form_fmdm_type) :: fmdm
 
   call DeallocateArray(fmdm%concentration)
   
-end subroutine FMDMStrip
+end subroutine WFFMDMStrip
 
 ! ************************************************************************** !
 
@@ -1607,24 +1779,24 @@ subroutine PMFMDMStrip(this)
   ! Destroys strips FMDM process model
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 08/26/15
   use Utility_module, only : DeallocateArray
 
   implicit none
   
-  class(pm_fmdm_type) :: this
-  class(fmdm_type), pointer :: cur_waste_form, prev_waste_form
+  class(pm_waste_form_fmdm_type) :: this
+  class(waste_form_fmdm_type), pointer :: cur_waste_form, prev_waste_form
   
   PetscInt :: i
   
   call PMWasteFormStrip(this)
   
-  cur_waste_form => this%waste_form_list
+  cur_waste_form => WFFMDMCast(this%waste_form_list)
   do
     if (.not.associated(cur_waste_form)) exit
     prev_waste_form => cur_waste_form
-    cur_waste_form => cur_waste_form%next
-    call FMDMStrip(prev_waste_form)
+    cur_waste_form => WFFMDMCast(cur_waste_form%next)
+    call WFFMDMStrip(prev_waste_form)
     deallocate(prev_waste_form)
     nullify(prev_waste_form)
   enddo
@@ -1643,11 +1815,11 @@ subroutine PMFMDMDestroy(this)
   ! Destroys FMDM process model
   ! 
   ! Author: Glenn Hammond
-  ! Date: 01/15/15
+  ! Date: 08/26/15
 
   implicit none
   
-  class(pm_fmdm_type) :: this
+  class(pm_waste_form_fmdm_type) :: this
   
   call PMFMDMStrip(this)
   

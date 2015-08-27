@@ -179,9 +179,9 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   call InitSubsurfaceReadInput(simulation)
   if (associated(pm_waste_form)) then
     select type(pm_waste_form)
-      class is (pm_fmdm_type)
+      class is (pm_waste_form_fmdm_type)
         string = 'FMDM'
-      class is (pm_glass_type)
+      class is (pm_waste_form_glass_type)
         string = 'GLASS'
     end select
     call InputFindStringInFile(realization%input,option,string)
@@ -209,9 +209,9 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
     pmc_third_party%realization => realization
     ! set up logging stage
     select type(pm_waste_form)
-      class is (pm_fmdm_type)
+      class is (pm_waste_form_fmdm_type)
         string = 'FMDM'
-      class is (pm_glass_type)
+      class is (pm_waste_form_glass_type)
         string = 'GLASS'
     end select
     call LoggingCreateStage(string,pmc_third_party%stage)
