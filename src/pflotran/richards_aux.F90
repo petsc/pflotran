@@ -29,11 +29,14 @@ module Richards_Aux_module
     PetscReal :: dsat_dp
     PetscReal :: dden_dp
 
-    PetscReal :: P_min
-    PetscReal :: P_max
-    PetscReal :: coeff_for_cubic_approx(4)
-    PetscReal :: range_for_linear_approx(4)
-    PetscBool :: bcflux_default_scheme
+    ! OLD-VAR-NAMES            = NEW-VAR
+    ! ------------------------------------------------
+    ! P_min                    = vars_for_sflow(1)
+    ! P_max                    = vars_for_sflow(2)
+    ! coeff_for_cubic_approx   = vars_for_sflow(3:6)
+    ! range_for_linear_approx  = vars_for_sflow(7:10)
+    ! bcflux_default_scheme    = vars_for_sflow(11)
+    PetscReal, pointer :: vars_for_sflow(:)
 
   end type richards_auxvar_type
   
@@ -132,11 +135,12 @@ subroutine RichardsAuxVarInit(auxvar,option)
   auxvar%dsat_dp = 0.d0
   auxvar%dden_dp = 0.d0
 
-  auxvar%P_min = 0.d0
-  auxvar%P_max = 0.d0
-  auxvar%coeff_for_cubic_approx(:) = 0.d0
-  auxvar%range_for_linear_approx(:) = 0.d0
-  auxvar%bcflux_default_scheme = PETSC_FALSE
+  if (option%surf_flow_on) then
+    allocate(auxvar%vars_for_sflow(11))
+    auxvar%vars_for_sflow(:) = 0.d0
+  else
+    nullify(auxvar%vars_for_sflow)
+  endif
   
 
 end subroutine RichardsAuxVarInit
@@ -175,11 +179,8 @@ subroutine RichardsAuxVarCopy(auxvar,auxvar2,option)
   auxvar2%dsat_dp = auxvar%dsat_dp
   auxvar2%dden_dp = auxvar%dden_dp
  
-  auxvar2%P_min = auxvar%P_min
-  auxvar2%P_max = auxvar%P_max
-  auxvar2%coeff_for_cubic_approx(:) = auxvar%coeff_for_cubic_approx(:)
-  auxvar2%range_for_linear_approx(:) = auxvar%range_for_linear_approx(:)
-  auxvar2%bcflux_default_scheme = auxvar%bcflux_default_scheme
+  if (option%surf_flow_on) &
+    auxvar2%vars_for_sflow(:) = auxvar%vars_for_sflow(:)
 
 end subroutine RichardsAuxVarCopy
 

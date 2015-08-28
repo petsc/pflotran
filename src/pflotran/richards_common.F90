@@ -668,34 +668,35 @@ subroutine RichardsBCFluxDerivative(ibndtype,auxvars, &
 
           ! If running with surface-flow model, ensure (darcy_velocity*dt) does
           ! not exceed depth of standing water.
-          if (.not. rich_auxvar_dn%bcflux_default_scheme) then
+          if (option%surf_flow_on) then
+          if (rich_auxvar_dn%vars_for_sflow(11) == 0.d0) then
             if (pressure_bc_type == HET_SURF_SEEPAGE_BC .and. option%surf_flow_on) then
               call EOSWaterdensity(option%reference_temperature, &
                                    option%reference_pressure,rho,dum1,ierr)
 
-              if (global_auxvar_dn%pres(1) <= rich_auxvar_dn%P_min) then
-              
+              if (global_auxvar_dn%pres(1) <= rich_auxvar_dn%vars_for_sflow(1)) then
+
                 ! Linear approximation
-                call Interpolate(rich_auxvar_dn%range_for_linear_approx(2), &
-                                 rich_auxvar_dn%range_for_linear_approx(1), &
+                call Interpolate(rich_auxvar_dn%vars_for_sflow(8), &
+                                 rich_auxvar_dn%vars_for_sflow(7), &
                                  global_auxvar_dn%pres(1), &
-                                 rich_auxvar_dn%range_for_linear_approx(4), &
-                                 rich_auxvar_dn%range_for_linear_approx(3), &
+                                 rich_auxvar_dn%vars_for_sflow(10), &
+                                 rich_auxvar_dn%vars_for_sflow(9), &
                                  q_approx)
                 v_darcy = q_approx/area
                 q       = q_approx
 
-                dP_lin = rich_auxvar_dn%range_for_linear_approx(2) - &
-                         rich_auxvar_dn%range_for_linear_approx(1)
-                dq_lin = rich_auxvar_dn%range_for_linear_approx(4) - &
-                         rich_auxvar_dn%range_for_linear_approx(3)
+                dP_lin = rich_auxvar_dn%vars_for_sflow(8) - &
+                         rich_auxvar_dn%vars_for_sflow(7)
+                dq_lin = rich_auxvar_dn%vars_for_sflow(10) - &
+                         rich_auxvar_dn%vars_for_sflow(9)
                 dq_dp_dn = dq_lin/dP_lin
 
               else
-                if (global_auxvar_dn%pres(1) <= rich_auxvar_dn%P_max) then
+                if (global_auxvar_dn%pres(1) <= rich_auxvar_dn%vars_for_sflow(2)) then
 
                   ! Cubic approximation
-                  call CubicPolynomialEvaluate(rich_auxvar_dn%coeff_for_cubic_approx, &
+                  call CubicPolynomialEvaluate(rich_auxvar_dn%vars_for_sflow(3:6), &
                                                global_auxvar_dn%pres(1) - option%reference_pressure, &
                                                q_approx, dq_approx)
                   v_darcy = q_approx/area
@@ -704,6 +705,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,auxvars, &
                 endif
               endif
             endif
+          endif
           endif
 
         endif
@@ -962,30 +964,30 @@ subroutine RichardsBCFlux(ibndtype,auxvars, &
           call EOSWaterdensity(option%reference_temperature, &
                                option%reference_pressure,rho,dum1,ierr)
 
-          if (.not. rich_auxvar_dn%bcflux_default_scheme) then
-            if (global_auxvar_dn%pres(1) <= rich_auxvar_dn%P_min) then
+          if (rich_auxvar_dn%vars_for_sflow(11) == 0.d0) then
+            if (global_auxvar_dn%pres(1) <= rich_auxvar_dn%vars_for_sflow(1)) then
 
-              if (rich_auxvar_dn%range_for_linear_approx(1) == -99999.d0) then
+              if (rich_auxvar_dn%vars_for_sflow(7) == -99999.d0) then
                 call printErrMsg(option,'Coeffs for linear approx for darcy flux not set')
               endif
 
               ! Linear approximation
-              call Interpolate(rich_auxvar_dn%range_for_linear_approx(2), &
-                               rich_auxvar_dn%range_for_linear_approx(1), &
+              call Interpolate(rich_auxvar_dn%vars_for_sflow(8), &
+                               rich_auxvar_dn%vars_for_sflow(7), &
                                global_auxvar_dn%pres(1), &
-                               rich_auxvar_dn%range_for_linear_approx(4), &
-                               rich_auxvar_dn%range_for_linear_approx(3), &
+                               rich_auxvar_dn%vars_for_sflow(2), &
+                               rich_auxvar_dn%vars_for_sflow(1), &
                                q_approx)
               v_darcy = q_approx/area
 
-            else if (global_auxvar_dn%pres(1) <= rich_auxvar_dn%P_max) then
+            else if (global_auxvar_dn%pres(1) <= rich_auxvar_dn%vars_for_sflow(2)) then
 
-              if (rich_auxvar_dn%coeff_for_cubic_approx(1) == -99999.d0) then
+              if (rich_auxvar_dn%vars_for_sflow(3) == -99999.d0) then
                 call printErrMsg(option,'Coeffs for cubic approx for darcy flux not set')
               endif
 
               ! Cubic approximation
-              call CubicPolynomialEvaluate(rich_auxvar_dn%coeff_for_cubic_approx, &
+              call CubicPolynomialEvaluate(rich_auxvar_dn%vars_for_sflow(3:6), &
                                            global_auxvar_dn%pres(1) - option%reference_pressure, &
                                            q_approx, dq_approx)
               v_darcy = q_approx/area
