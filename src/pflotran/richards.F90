@@ -2652,9 +2652,9 @@ subroutine RichardsComputeCoeffsForSurfFlux(realization)
         rich_auxvar_dn => rich_auxvars(ghosted_id)
 
         if (xx_p(ghosted_id) > 101000.d0) then
-          rich_auxvar_dn%bcflux_default_scheme = PETSC_TRUE
+          rich_auxvar_dn%vars_for_sflow(11) = 1.d0
         else
-          rich_auxvar_dn%bcflux_default_scheme = PETSC_FALSE
+          rich_auxvar_dn%vars_for_sflow(11) = 0.d0
         endif
 
         ! Step-1: Find P_max/P_min for polynomial curve
@@ -2664,7 +2664,7 @@ subroutine RichardsComputeCoeffsForSurfFlux(realization)
 
         material_auxvar_dn => material_auxvars(ghosted_id)
 
-        rich_auxvar_dn%coeff_for_cubic_approx(:) = -99999.d0
+        rich_auxvar_dn%vars_for_sflow(3:6) = -99999.d0
 
         dist = cur_connection_set%dist(:,iconn)
 
@@ -2751,33 +2751,33 @@ subroutine RichardsComputeCoeffsForSurfFlux(realization)
             dq_dp_dn = Dq*(dukvr_dp_dn*dphi + ukvr*dphi_dp_dn)*area
 
             ! Values of function at min/max
-            rich_auxvar_dn%coeff_for_cubic_approx(1) = 0.99d0*q_allowable
-            rich_auxvar_dn%coeff_for_cubic_approx(2) = q
+            rich_auxvar_dn%vars_for_sflow(3) = 0.99d0*q_allowable
+            rich_auxvar_dn%vars_for_sflow(4) = q
 
             ! Values of function derivatives at min/max
             slope = min(-0.01d0*q_allowable/P_min, -1.d-8)
             slope = -0.01d0*q_allowable/P_min
 
-            rich_auxvar_dn%coeff_for_cubic_approx(3) = slope
-            rich_auxvar_dn%coeff_for_cubic_approx(4) = dq_dp_dn
+            rich_auxvar_dn%vars_for_sflow(5) = slope
+            rich_auxvar_dn%vars_for_sflow(6) = dq_dp_dn
 
-            rich_auxvar_dn%P_min = P_min
-            rich_auxvar_dn%P_max = P_max
+            rich_auxvar_dn%vars_for_sflow(1) = P_min
+            rich_auxvar_dn%vars_for_sflow(2) = P_max
 
-            call CubicPolynomialSetup(rich_auxvar_dn%P_min - option%reference_pressure, &
-                                      rich_auxvar_dn%P_max - option%reference_pressure, &
-                                      rich_auxvar_dn%coeff_for_cubic_approx)
+            call CubicPolynomialSetup(P_min - option%reference_pressure, &
+                                      P_max - option%reference_pressure, &
+                                      rich_auxvar_dn%vars_for_sflow(3:6))
 
             ! Step-4: Save values for linear approximation
-            rich_auxvar_dn%range_for_linear_approx(1) = 0.01d0*q_allowable/slope + P_min
+            rich_auxvar_dn%vars_for_sflow(7) = 0.01d0*q_allowable/slope + P_min
             if (q_allowable == 0.d0) then
-              rich_auxvar_dn%range_for_linear_approx(1) = 0.d0
+              rich_auxvar_dn%vars_for_sflow(7) = 0.d0
             else
-              rich_auxvar_dn%range_for_linear_approx(1) = P_min + 0.01d0*q_allowable/slope
+              rich_auxvar_dn%vars_for_sflow(7) = P_min + 0.01d0*q_allowable/slope
             endif
-            rich_auxvar_dn%range_for_linear_approx(2) = P_min
-            rich_auxvar_dn%range_for_linear_approx(3) = q_allowable
-            rich_auxvar_dn%range_for_linear_approx(4) = 0.99d0*q_allowable
+            rich_auxvar_dn%vars_for_sflow(8) = P_min
+            rich_auxvar_dn%vars_for_sflow(9) = q_allowable
+            rich_auxvar_dn%vars_for_sflow(10) = 0.99d0*q_allowable
 
           endif
 
