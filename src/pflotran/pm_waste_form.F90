@@ -221,8 +221,8 @@ end subroutine PMWasteFormSetRealization
   endif
   
   if (.not.this%option%restart_flag) then
-    call PMWFBaseOutputHeader(this)
-    call PMWFBaseOutput(this)
+    call PMWFOutputHeader(this)
+    call PMWFOutput(this)
   endif
 
   data_mediator_species_id = &
@@ -392,7 +392,7 @@ end subroutine PMWFBaseSetup
 
 ! ************************************************************************** !
 
-subroutine PMWFBaseOutput(this)
+subroutine PMWFOutput(this)
   ! 
   ! Maps waste forms to grid cells
   ! 
@@ -414,7 +414,7 @@ subroutine PMWFBaseOutput(this)
   
   if (.not.associated(this%waste_form_list)) return
   
-100 format(2es16.8)
+100 format(100es16.8)
 
   option => this%realization%option
   output_option => this%realization%output_option
@@ -433,18 +433,22 @@ subroutine PMWFBaseOutput(this)
     write(fid,100,advance="no") cur_waste_form%cumulative_mass, &
                                 cur_waste_form%instantaneous_mass_rate * &
                                 output_option%tconv
-!    call cur_waste_form%Output()
+    select type(cur_waste_form)
+      class is (waste_form_glass_type)
+        write(fid,100,advance="no") cur_waste_form%volume
+      class is (waste_form_fmdm_type)
+    end select
     cur_waste_form => cur_waste_form%next
   enddo
   close(fid)
   
-end subroutine PMWFBaseOutput
+end subroutine PMWFOutput
 
 ! ************************************************************************** !
 
 function PMWFOutputFilename(option)
   ! 
-  ! Maps waste forms to grid cells
+  ! Generates filename for waste form output
   ! 
   ! Author: Glenn Hammond
   ! Date: 08/26/15
@@ -466,9 +470,9 @@ end function PMWFOutputFilename
 
 ! ************************************************************************** !
 
-subroutine PMWFBaseOutputHeader(this)
+subroutine PMWFOutputHeader(this)
   ! 
-  ! Maps waste forms to grid cells
+  ! Writes header for waste form output file
   ! 
   ! Author: Glenn Hammond
   ! Date: 08/26/15
@@ -529,13 +533,20 @@ subroutine PMWFBaseOutputHeader(this)
     units_string = 'mol/' // trim(adjustl(output_option%tunit))
     call OutputWriteToHeader(fid,variable_string,units_string, &
                              cell_string,icolumn)
-!    call cur_waste_form%OutputHeader()
+    select type(cur_waste_form)
+      class is (waste_form_glass_type)
+        variable_string = 'WF Volume'
+        units_string = 'm^3'
+        call OutputWriteToHeader(fid,variable_string,units_string, &
+                                 cell_string,icolumn)
+      class is (waste_form_fmdm_type)
+    end select
     cur_waste_form => cur_waste_form%next
   enddo
   
   close(fid)
   
-end subroutine PMWFBaseOutputHeader
+end subroutine PMWFOutputHeader
 
 ! ************************************************************************** !
 
@@ -563,7 +574,7 @@ subroutine PMWFInitializeTimestep(this)
   enddo  
 
   if (this%print_mass_balance) then
-    call PMWFBaseOutput(this)
+    call PMWFOutput(this)
   endif
 
 end subroutine PMWFInitializeTimestep
