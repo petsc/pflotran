@@ -932,25 +932,27 @@ recursive subroutine PMCBaseRestartBinary(this,viewer)
     call PetscBagDestroy(bag,ierr);CHKERRQ(ierr)
   endif
   
-  call this%timestepper%RestartBinary(viewer,this%option)
-  if (Initialized(this%option%restart_time)) then
-    ! simply a flag to set time back to zero, no matter what the restart
-    ! time is set to.
-    call this%timestepper%Reset()
-    ! note that this sets the target time back to zero.
+  if (associated(this%timestepper)) then
+    call this%timestepper%RestartBinary(viewer,this%option)
+    if (Initialized(this%option%restart_time)) then
+      ! simply a flag to set time back to zero, no matter what the restart
+      ! time is set to.
+      call this%timestepper%Reset()
+      ! note that this sets the target time back to zero.
+    endif
+  
+    ! Point cur_waypoint to the correct waypoint.
+    !geh: there is a problem here in that the timesteppers "prev_waypoint"
+    !     may not be set correctly if the time step does not converge. See
+    !     top of TimestepperBaseSetTargetTime().
+    call WaypointSkipToTime(this%timestepper%cur_waypoint, &
+                            this%timestepper%target_time)
+    !geh: this is a bit of a kludge.  Need to use the timestepper target time
+    !     directly.  Time is needed to update boundary conditions within 
+    !     this%UpdateSolution
+    this%option%time = this%timestepper%target_time
   endif
   
-  ! Point cur_waypoint to the correct waypoint.
-  !geh: there is a problem here in that the timesteppers "prev_waypoint"
-  !     may not be set correctly if the time step does not converge. See
-  !     top of TimestepperBaseSetTargetTime().
-  call WaypointSkipToTime(this%timestepper%cur_waypoint, &
-                          this%timestepper%target_time)
-  !geh: this is a bit of a kludge.  Need to use the timestepper target time
-  !     directly.  Time is needed to update boundary conditions within 
-  !     this%UpdateSolution
-  this%option%time = this%timestepper%target_time
-
   cur_pm => this%pms
   do
     if (.not.associated(cur_pm)) exit
@@ -1185,25 +1187,27 @@ recursive subroutine PMCBaseRestartHDF5(this, chk_grp_id)
 
   endif
 
-  call this%timestepper%RestartHDF5(pmc_grp_id, this%option)
+  if (associated(this%timestepper)) then
+    call this%timestepper%RestartHDF5(pmc_grp_id, this%option)
 
-  if (Initialized(this%option%restart_time)) then
-    ! simply a flag to set time back to zero, no matter what the restart
-    ! time is set to.
-    call this%timestepper%Reset()
-    ! note that this sets the target time back to zero.
+    if (Initialized(this%option%restart_time)) then
+      ! simply a flag to set time back to zero, no matter what the restart
+      ! time is set to.
+      call this%timestepper%Reset()
+      ! note that this sets the target time back to zero.
+    endif
+
+    ! Point cur_waypoint to the correct waypoint.
+    !geh: there is a problem here in that the timesteppers "prev_waypoint"
+    !     may not be set correctly if the time step does not converge. See
+    !     top of TimestepperBaseSetTargetTime().
+    call WaypointSkipToTime(this%timestepper%cur_waypoint, &
+                            this%timestepper%target_time)
+    !geh: this is a bit of a kludge.  Need to use the timestepper target time
+    !     directly.  Time is needed to update boundary conditions within
+    !     this%UpdateSolution
+    this%option%time = this%timestepper%target_time
   endif
-
-  ! Point cur_waypoint to the correct waypoint.
-  !geh: there is a problem here in that the timesteppers "prev_waypoint"
-  !     may not be set correctly if the time step does not converge. See
-  !     top of TimestepperBaseSetTargetTime().
-  call WaypointSkipToTime(this%timestepper%cur_waypoint, &
-                          this%timestepper%target_time)
-  !geh: this is a bit of a kludge.  Need to use the timestepper target time
-  !     directly.  Time is needed to update boundary conditions within
-  !     this%UpdateSolution
-  this%option%time = this%timestepper%target_time
 
   cur_pm => this%pms
   do
