@@ -60,7 +60,8 @@ end function ConvergenceContextCreate
 
 ! ************************************************************************** !
 
-subroutine ConvergenceTest(snes_,it,xnorm,unorm,fnorm,reason,context,ierr)
+subroutine ConvergenceTest(snes_,i_iteration,xnorm,unorm,fnorm,reason,context, &
+                           ierr)
   ! 
   ! User defined convergence test
   ! 
@@ -71,7 +72,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,unorm,fnorm,reason,context,ierr)
   implicit none
   
   SNES :: snes_
-  PetscInt :: it
+  PetscInt :: i_iteration
   PetscReal :: xnorm ! 2-norm of updated solution
   PetscReal :: unorm ! 2-norm of update. PETSc refers to this as snorm
   PetscReal :: fnorm ! 2-norm of updated residual
@@ -166,14 +167,14 @@ subroutine ConvergenceTest(snes_,it,xnorm,unorm,fnorm,reason,context,ierr)
     endif
   endif
 
-  !geh: We must check the convergence here as it initializes
+  !geh: We must check the convergence here as i_iteration initializes
   !     snes->ttol for subsequent iterations.
-  call SNESConvergedDefault(snes_,it,xnorm,unorm,fnorm,reason, &
+  call SNESConvergedDefault(snes_,i_iteration,xnorm,unorm,fnorm,reason, &
                             PETSC_NULL_OBJECT,ierr);CHKERRQ(ierr)
 #if 0
-  if (it == 0 .and. &
+  if (i_iteration == 0 .and. &
       option%print_screen_flag .and. solver%print_convergence) then
-    write(*,'(i3," 2r:",es9.2)') it, fnorm
+    write(*,'(i3," 2r:",es9.2)') i_iteration, fnorm
   endif
 #endif
 
@@ -208,8 +209,12 @@ subroutine ConvergenceTest(snes_,it,xnorm,unorm,fnorm,reason,context,ierr)
 
     call VecNorm(residual_vec,NORM_INFINITY,inorm_residual,ierr);CHKERRQ(ierr)
 
-    call SNESGetSolutionUpdate(snes_,update_vec,ierr);CHKERRQ(ierr)
-    call VecNorm(update_vec,NORM_INFINITY,inorm_update,ierr);CHKERRQ(ierr)
+    if (i_iteration > 0) then
+      call SNESGetSolutionUpdate(snes_,update_vec,ierr);CHKERRQ(ierr)
+      call VecNorm(update_vec,NORM_INFINITY,inorm_update,ierr);CHKERRQ(ierr)
+    else
+      inorm_update = 0.d0
+    endif
 
     if (inorm_residual < solver%newton_inf_res_tol) then
       reason = 10
@@ -218,7 +223,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,unorm,fnorm,reason,context,ierr)
 !        reason = 0
     endif
 
-    if (inorm_update < solver%newton_inf_upd_tol .and. it > 0) then
+    if (inorm_update < solver%newton_inf_upd_tol .and. i_iteration > 0) then
       reason = 11
     endif
     
@@ -229,7 +234,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,unorm,fnorm,reason,context,ierr)
     ! This is to check if the secondary continuum residual convergences
     ! for nonlinear problems specifically transport
     if (solver%itype == TRANSPORT_CLASS .and. option%use_mc .and. &
-       reason > 0 .and. it > 0) then
+       reason > 0 .and. i_iteration > 0) then
       if (option%infnorm_res_sec < solver%newton_inf_res_tol_sec) then
         sec_reason = 1
       else
@@ -238,7 +243,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,unorm,fnorm,reason,context,ierr)
     endif
     
     ! force the minimum number of iterations
-    if (it < solver%newton_min_iterations) then
+    if (i_iteration < solver%newton_min_iterations) then
       reason = 0
     endif
 
@@ -279,17 +284,19 @@ subroutine ConvergenceTest(snes_,it,xnorm,unorm,fnorm,reason,context,ierr)
                 & " ir:",es9.2, &
                 & " iu:",es9.2, &
                 & " irsec:",es9.2, &
-                & " rsn: ",a, ", ",a)') it, fnorm, xnorm, unorm, inorm_residual, &
-                                inorm_update, option%infnorm_res_sec, &
-                                trim(string), trim(sec_string)
+                & " rsn: ",a, ", ",a)') &
+                i_iteration, fnorm, xnorm, unorm, inorm_residual, &
+                inorm_update, option%infnorm_res_sec, &
+                trim(string), trim(sec_string)
       else
         write(*,'(i3," 2r:",es9.2, &
                 & " 2x:",es9.2, &
                 & " 2u:",es9.2, &
                 & " ir:",es9.2, &
                 & " iu:",es9.2, &
-                & " rsn: ",a)') it, fnorm, xnorm, unorm, inorm_residual, &
-                                inorm_update, trim(string)        
+                & " rsn: ",a)') &
+                i_iteration, fnorm, xnorm, unorm, inorm_residual, &
+                inorm_update, trim(string)        
       endif
     endif
   else
@@ -297,7 +304,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,unorm,fnorm,reason,context,ierr)
     ! This is to check if the secondary continuum residual convergences
     ! for nonlinear problems specifically transport
     if (solver%itype == TRANSPORT_CLASS .and. option%use_mc .and. &
-       reason > 0 .and. it > 0) then
+       reason > 0 .and. i_iteration > 0) then
       if (option%infnorm_res_sec < solver%newton_inf_res_tol_sec) then
         reason = 13
       else
@@ -306,7 +313,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,unorm,fnorm,reason,context,ierr)
     endif
     
     ! force the minimum number of iterations
-    if (it < solver%newton_min_iterations) then
+    if (i_iteration < solver%newton_min_iterations) then
       reason = 0
     endif
 
@@ -335,7 +342,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,unorm,fnorm,reason,context,ierr)
       write(*,'(i3," 2r:",es10.2, &
               & " 2u:",es10.2, &
               & 32x, &
-              & " rsn: ",a)') it, fnorm, unorm, trim(string)
+              & " rsn: ",a)') i_iteration, fnorm, unorm, trim(string)
       if (solver%print_linear_iterations) then
         call KSPGetIterationNumber(solver%ksp,i,ierr);CHKERRQ(ierr)
         write(option%io_buffer,'("   Linear Solver Iterations: ",i6)') i
@@ -491,7 +498,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,unorm,fnorm,reason,context,ierr)
 
       print *
       print *, 'reason: ', reason, ' - ', trim(string)
-      print *, 'SNES iteration :', it
+      print *, 'SNES iteration :', i_iteration
       call SNESGetKSP(snes_,ksp,ierr);CHKERRQ(ierr)
       call KSPGetIterationNumber(ksp,i,ierr);CHKERRQ(ierr)
       print *, 'KSP iterations :', i
