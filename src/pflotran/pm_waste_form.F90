@@ -18,7 +18,8 @@ module PM_Waste_Form_class
   PetscBool, public :: bypass_warning_message = PETSC_FALSE
 
   type :: waste_form_base_type
-    PetscInt :: local_id
+    PetscInt :: id
+    PetscInt :: local_cell_id
     type(point3d_type) :: coordinate
     PetscReal :: volume
     PetscReal :: instantaneous_mass_rate    ! mol/sec
@@ -254,7 +255,7 @@ end subroutine PMWasteFormSetRealization
     do
       if (.not.associated(cur_waste_form)) exit
       i = i + 1
-      waste_form_cell_ids(i) = cur_waste_form%local_id
+      waste_form_cell_ids(i) = cur_waste_form%local_cell_id
       cur_waste_form => cur_waste_form%next
     enddo                             ! zero-based indexing
     waste_form_cell_ids(:) = waste_form_cell_ids(:) - 1
@@ -307,7 +308,8 @@ subroutine WasteFormBaseInit(base)
   
   class(waste_form_base_type) :: base
 
-  base%local_id = UNINITIALIZED_INTEGER
+  base%id = UNINITIALIZED_INTEGER
+  base%local_cell_id = UNINITIALIZED_INTEGER
   base%coordinate%x = UNINITIALIZED_DOUBLE
   base%coordinate%y = UNINITIALIZED_DOUBLE
   base%coordinate%z = UNINITIALIZED_DOUBLE
@@ -340,15 +342,18 @@ subroutine PMWFBaseSetup(this)
   class(waste_form_base_type), pointer :: cur_waste_form, prev_waste_form, &
                                           next_waste_form
   PetscInt :: i, j, k, local_id
+  PetscInt :: waste_form_id
   PetscErrorCode :: ierr
   
   grid => this%realization%patch%grid
   option => this%realization%option
   
+  waste_form_id = 0
   nullify(prev_waste_form)
   cur_waste_form => this%waste_form_list
   do
     if (.not.associated(cur_waste_form)) exit
+    waste_form_id = waste_form_id + 1
     local_id = -1
     select case(grid%itype)
       case(STRUCTURED_GRID)
@@ -372,7 +377,8 @@ subroutine PMWFBaseSetup(this)
           call printErrMsg(option)
     end select
     if (local_id > 0) then
-      cur_waste_form%local_id = local_id
+      cur_waste_form%id = waste_form_id
+      cur_waste_form%local_cell_id = local_id
       prev_waste_form => cur_waste_form
       cur_waste_form => cur_waste_form%next
     else
@@ -515,7 +521,7 @@ subroutine PMWFOutputHeader(this)
   do
     if (.not.associated(cur_waste_form)) exit
     ! cell natural id
-    write(cell_string,*) grid%nG2A(grid%nL2G(cur_waste_form%local_id))
+    write(cell_string,*) grid%nG2A(grid%nL2G(cur_waste_form%local_cell_id))
     cell_string = ' (' // trim(adjustl(cell_string)) // ')'
     ! coordinate of waste form
     x_string = BestFloat(cur_waste_form%coordinate%x,1.d4,1.d-2)
@@ -978,7 +984,7 @@ subroutine PMGlassSolve(this,time,ierr)
     if (cur_waste_form%volume > 0.d0) then
       fuel_dissolution_rate = & ! kg glass/m^2/day
         560.d0*exp(-7397.d0/ &
-            (global_auxvars(grid%nL2G(cur_waste_form%local_id))%temp+273.15d0))
+            (global_auxvars(grid%nL2G(cur_waste_form%local_cell_id))%temp+273.15d0))
       ! kg glass / sec
       cur_waste_form%glass_dissolution_rate = &
         fuel_dissolution_rate * &          ! kg glass (dissolving)/m^2/day
@@ -1059,6 +1065,8 @@ subroutine PMGlassCheckpoint(this,viewer)
   ! 
   ! Author: Glenn Hammond
   ! Date: 08/26/15
+  !
+  use Option_module
 
   implicit none
 #include "finclude/petscviewer.h"      
@@ -1066,6 +1074,32 @@ subroutine PMGlassCheckpoint(this,viewer)
   class(pm_waste_form_glass_type) :: this
   PetscViewer :: viewer
   
+  class(waste_form_base_type), pointer :: cur_waste_form
+  PetscInt :: maximum_waste_form_id
+  PetscInt :: local_waste_form_count
+  PetscInt :: temp_int
+  
+  Vec :: local, global
+  PetscErrorCode :: ierr
+  
+  this%option%io_buffer = 'PMGlassCheckpoint not implemented.'
+  call printErrMsg(this%option)
+  
+  ! calculate maximum waste form id
+  maximum_waste_form_id = 0
+  local_waste_form_count = 0
+  cur_waste_form => this%waste_form_list
+  do
+    if (.not.associated(cur_waste_form)) exit
+    local_waste_form_count = local_waste_form_count + 1
+    maximum_waste_form_id = max(maximum_waste_form_id,cur_waste_form%id)
+    cur_waste_form => cur_waste_form%next
+  enddo
+  call MPI_Allreduce(maximum_waste_form_id,temp_int,ONE_INTEGER_MPI, &
+                     MPIU_INTEGER,MPI_MAX,this%option%mycomm,ierr)
+!  call VecCreateMPI(this%option%mycomm,local_waste_form_count,PETSC_DETERMINE,ierr)
+  
+                     
 end subroutine PMGlassCheckpoint
 
 ! ************************************************************************** !
@@ -1083,6 +1117,8 @@ subroutine PMGlassRestart(this,viewer)
   class(pm_waste_form_glass_type) :: this
   PetscViewer :: viewer
   
+  this%option%io_buffer = 'PMGlassRestart not implemented.'
+  call printErrMsg(this%option)
 !  call RestartFlowProcessModel(viewer,this%realization)
 !  call this%UpdateAuxVars()
 !  call this%UpdateSolution()
@@ -1507,7 +1543,7 @@ subroutine PMFMDMPreSolve(this)
   cur_waste_form => WFFMDMCast(this%waste_form_list)
   do 
     if (.not.associated(cur_waste_form)) exit
-    ghosted_id = grid%nL2G(cur_waste_form%local_id)
+    ghosted_id = grid%nL2G(cur_waste_form%local_cell_id)
     ! overwrite the components in this%mapping_pflotran array
     do i = 1, size(this%mapping_fmdm)
       icomp_fmdm = this%mapping_fmdm(i)
@@ -1585,7 +1621,7 @@ subroutine PMFMDMSolve(this,time,ierr)
     i = i + 1
 #ifdef FMDM_MODEL  
     call AMP_step(cur_waste_form%burnup, time, &
-                  global_auxvars(grid%nL2G(cur_waste_form%local_id))%temp, &
+                  global_auxvars(grid%nL2G(cur_waste_form%local_cell_id))%temp, &
                   cur_waste_form%concentration, initialRun, &
                   fuel_dissolution_rate, success)
 #else
