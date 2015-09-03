@@ -1910,13 +1910,6 @@ def main(options):
             # get the relative file name
             filename = os.path.basename(config_file)
 
-            # check whether the config file with the same name has been run
-            if filename in report:
-                print("ERROR: Config file '%s' already exists elsewhere." %
-                      filename)
-                print("Please choose an different name for the config file.")
-                sys.exit(1)
-
             test_manager.generate_tests(filename,
                                         options.suites,
                                         options.tests,
@@ -1942,7 +1935,8 @@ def main(options):
                                    options.check_only,
                                    testlog)
 
-            report[filename] = test_manager.run_status()
+            report_entry = config_file.split('regression_tests/')[1]
+            report[report_entry] = test_manager.run_status()
             os.chdir(root_dir)
         except Exception as error:
             message = txtwrap.fill(
