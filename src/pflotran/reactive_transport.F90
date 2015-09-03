@@ -333,6 +333,7 @@ subroutine RTCheckUpdatePre(line_search,C,dC,changed,realization,ierr)
   use Realization_class
   use Grid_module
   use Option_module
+  use Reaction_Aux_module
  
   implicit none
   
@@ -345,6 +346,7 @@ subroutine RTCheckUpdatePre(line_search,C,dC,changed,realization,ierr)
   PetscReal, pointer :: C_p(:)
   PetscReal, pointer :: dC_p(:)
   type(grid_type), pointer :: grid
+  type(reaction_type), pointer :: reaction
   PetscReal :: ratio, min_ratio
   PetscReal, parameter :: min_allowable_scale = 1.d-10
   character(len=MAXSTRINGLENGTH) :: string
@@ -352,12 +354,13 @@ subroutine RTCheckUpdatePre(line_search,C,dC,changed,realization,ierr)
   PetscErrorCode :: ierr
   
   grid => realization%patch%grid
+  reaction => realization%reaction
   
   call VecGetArrayF90(dC,dC_p,ierr);CHKERRQ(ierr)
 
-  if (realization%reaction%use_log_formulation) then
+  if (reaction%use_log_formulation) then
     ! C and dC are actually lnC and dlnC
-    dC_p = dsign(1.d0,dC_p)*min(dabs(dC_p),realization%reaction%max_dlnC)
+    dC_p = dsign(1.d0,dC_p)*min(dabs(dC_p),reaction%max_dlnC)
     ! at this point, it does not matter whether "changed" is set to true, 
     ! since it is not checkied in PETSc.  Thus, I don't want to spend 
     ! time checking for changes and performing an allreduce for log 
@@ -366,44 +369,53 @@ subroutine RTCheckUpdatePre(line_search,C,dC,changed,realization,ierr)
     call VecGetLocalSize(C,n,ierr);CHKERRQ(ierr)
     call VecGetArrayReadF90(C,C_p,ierr);CHKERRQ(ierr)
     
-    ! C^p+1 = C^p - dC^p
-    ! if dC is positive and abs(dC) larger than C
-    ! we need to scale the update
+    if (Initialized(reaction%truncated_concentration)) then
+      dC_p = min(dC_p,C_p-reaction%truncated_concentration)
+    else
+      ! C^p+1 = C^p - dC^p
+      ! if dC is positive and abs(dC) larger than C
+      ! we need to scale the update
+      
+      ! compute smallest ratio of C to dC
+#if 0
+      min_ratio = 1.d0/maxval(dC_p/C_p)
+#else
+      min_ratio = 1.d20 ! large number
+      do i = 1, n
+        if (C_p(i) <= dC_p(i)) then
+          ratio = abs(C_p(i)/dC_p(i))
+          if (ratio < min_ratio) min_ratio = ratio
+        endif
+      enddo
+#endif
+      ratio = min_ratio
     
-    ! compute smallest ratio of C to dC
-    min_ratio = 1.d20 ! large number
-    do i = 1, n
-      if (C_p(i) <= dC_p(i)) then
-        ratio = abs(C_p(i)/dC_p(i))
-        if (ratio < min_ratio) min_ratio = ratio
-      endif
-    enddo
-    ratio = min_ratio
-    
-    ! get global minimum
-    call MPI_Allreduce(ratio,min_ratio,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
-                       MPI_MIN,realization%option%mycomm,ierr)
+      ! get global minimum
+      call MPI_Allreduce(ratio,min_ratio,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
+                         MPI_MIN,realization%option%mycomm,ierr)
                        
-    ! scale if necessary
-    if (min_ratio < 1.d0) then
-      if (min_ratio < realization%option%min_allowable_scale) then
-        write(string,'(es9.3)') min_ratio
-        string = 'The update of primary species concentration is being ' // &
-          'scaled by a very small value (i.e. ' // &
-          trim(adjustl(string)) // &
-          ') to prevent negative concentrations.  This value is too ' // &
-          'small and will likely cause the solver to mistakenly ' // &
-          'converge based on the infinity norm of the update vector. ' // &
-          'In this case, it is recommended that you use the ' // &
-          'LOG_FORMULATION for chemistry. If that does not work, please ' // &
-          'send your input deck to pflotran-dev@googlegroups.com and ' // &
-          'ask for help.'
-        realization%option%io_buffer = string
-        call printErrMsg(realization%option)
+      ! scale if necessary
+      if (min_ratio < 1.d0) then
+        if (min_ratio < realization%option%min_allowable_scale) then
+          write(string,'(es9.3)') min_ratio
+          string = 'The update of primary species concentration is being ' // &
+            'scaled by a very small value (i.e. ' // &
+            trim(adjustl(string)) // &
+            ') to prevent negative concentrations.  This value is too ' // &
+            'small and will likely cause the solver to mistakenly ' // &
+            'converge based on the infinity norm of the update vector. ' // &
+            'In this case, it is recommended that you use the ' // &
+            'LOG_FORMULATION for chemistry or truncate concentrations ' // &
+            '(TRUNCATE_CONCENTRATION <float> in CHEMISTRY block). ' // &
+            'If that does not work, please send your input deck to ' // &
+            'pflotran-dev@googlegroups.com and ask for help.'
+          realization%option%io_buffer = string
+          call printErrMsg(realization%option)
+        endif
+        ! scale by 0.99 to make the update slightly smaller than the min_ratio
+        dC_p = dC_p*min_ratio*0.99d0
+        changed = PETSC_TRUE
       endif
-      ! scale by 0.99 to make the update slightly smaller than the min_ratio
-      dC_p = dC_p*min_ratio*0.99d0
-      changed = PETSC_TRUE
     endif
     call VecRestoreArrayReadF90(C,C_p,ierr);CHKERRQ(ierr)
   endif
@@ -473,11 +485,11 @@ subroutine RTCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
     max_relative_change = maxval(dabs(dX_p(:)/X0_p(:)))
     call VecRestoreArrayReadF90(dX,dX_p,ierr);CHKERRQ(ierr)
     call VecRestoreArrayReadF90(X0,X0_p,ierr);CHKERRQ(ierr)
-    call VecGetArrayReadF90(field%flow_r,r_p,ierr);CHKERRQ(ierr)
-    call VecGetArrayReadF90(field%flow_accum,accum_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayReadF90(field%tran_r,r_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayReadF90(field%tran_accum,accum_p,ierr);CHKERRQ(ierr)
     max_scaled_residual = maxval(dabs(r_p(:)/accum_p(:)))
-    call VecRestoreArrayReadF90(field%flow_r,r_p,ierr);CHKERRQ(ierr)
-    call VecRestoreArrayReadF90(field%flow_accum,accum_p,ierr);CHKERRQ(ierr)
+    call VecRestoreArrayReadF90(field%tran_r,r_p,ierr);CHKERRQ(ierr)
+    call VecRestoreArrayReadF90(field%tran_accum,accum_p,ierr);CHKERRQ(ierr)
     converged_due_to_rel_update = &
       (option%transport%inf_rel_update_tol > 0.d0 .and. &
        max_relative_change < option%transport%inf_rel_update_tol)
