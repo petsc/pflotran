@@ -392,16 +392,30 @@ S_j &\eq \text{source/sink term for aqueous species } j\\
 %-----------------------------------------------------------------------------
 \section{Description of Input Deck}
 
-\subsection{MODE}
-\begin{frame}[fragile,containsverbatim]\frametitle{MODE}
+\subsection{SIMULATION}
+\begin{frame}[fragile,containsverbatim]\frametitle{SIMULATION}
 
 \begin{itemize}
   \item Single-phase variably saturated flow
+  \item Conservative solute transport
 \end{itemize}
 
 \begin{semiverbatim}
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
 
-MODE RICHARDS
+SUBSURFACE
+  ...
+END_SUBSURFACE
 \end{semiverbatim}
 
 \end{frame}
@@ -498,7 +512,7 @@ MATERIAL_PROPERTY soil3
   ID 3
   POROSITY 0.25d0
   TORTUOSITY 0.5d0
-  SATURATION_FUNCTION sf1
+  CHARACTERISTIC_CURVES cc1
   PERMEABILITY        \bluecomment{! diagonal permeability tensor}
     PERM_X 5.d-11     \bluecomment{!   x component}
     PERM_Y 5.d-11     \bluecomment{!   y component}
@@ -510,22 +524,27 @@ END
 \end{frame}
 
 %-----------------------------------------------------------------------------
-\subsection{SATURATION\_FUNCTION}
+\subsection{CHARACTERISTIC\_CURVES}
 
-\begin{frame}[fragile]\frametitle{SATURATION\_FUNCTION}
+\begin{frame}[fragile]\frametitle{CHARACTERISTIC\_CURVES}
 
 \begin{itemize}
-\item Add van Genuchten parameters
-\item Assume Mualem permeability (default)
+\item van Genuchten saturation function
+\item Mualem relative permeability
 \end{itemize}
 
 \begin{semiverbatim}
-SATURATION_FUNCTION sf1
-  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-  RESIDUAL_SATURATION 0.1d0
-  LAMBDA 0.5d0     \bluecomment{! van Genuchten m in n = 1/(1-m)}
-  ALPHA 1.d-4      \bluecomment{! [Pa^-1]}
-  MAX_CAPILLARY_PRESSURE 1.d8
+CHARACTERISTIC_CURVES cc1
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    ALPHA  1.d-4
+    M 0.5d0
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+    MAX_CAPILLARY_PRESSURE 1.d8
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.5d0
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+  /
 END
 \end{semiverbatim}
 
@@ -579,7 +598,7 @@ END
 
 FLOW_CONDITION initial
   TYPE
-    PRESSURE hydrostatic  \bluecomment{! hydrostatic condition}
+    PRESSURE HYDROSTATIC  \bluecomment{! hydrostatic condition}
   /
   DATUM 0.d0 0.d0 90.d0   \bluecomment{! point in space}
   GRADIENT
@@ -592,9 +611,9 @@ END
 
 FLOW_CONDITION river
   TYPE
-    PRESSURE seepage     \bluecomment{! seepage face condition}
+    PRESSURE SEEPAGE     \bluecomment{! seepage face condition}
   /
-  INTERPOLATION linear   \bluecomment{! dataset time interpolation}
+  INTERPOLATION LINEAR   \bluecomment{! dataset time interpolation}
   CYCLIC                 \bluecomment{! cycle dataset}
   DATUM FILE river_stage.txt  \bluecomment{! read transient datum}
   PRESSURE 101325.d0          \bluecomment{!    dataset from file}
@@ -615,12 +634,12 @@ END
 \newpage
 FLOW_CONDITION recharge
   TYPE
-    FLUX neumann
+    FLUX NEUMANN
   /
   FLUX LIST
     TIME_UNITS yr
     DATA_UNITS cm/yr
-    0.d0 25.d0  
+    0.d0 25.d0
     1.d0 23.d0
     ...
     4.d0 24.d0
@@ -631,14 +650,14 @@ END
 \newpage
 FLOW_CONDITION injection
   TYPE                           \bluecomment{! volumetric flow}
-    RATE scaled_volumetric_rate  \bluecomment{!   rate scaled by}
+    RATE SCALED_VOLUMETRIC_RATE  \bluecomment{!   rate scaled by}
   /                              \bluecomment{!   f(permeability)}
   RATE 1.d5 m^3/day  \bluecomment{! flow rate 10,000 [m^3/day]}
-END    
+END
 
 FLOW_CONDITION extraction
   TYPE
-    RATE scaled_volumetric_rate
+    RATE SCALED_VOLUMETRIC_RATE
   /
   RATE -1.d5 m^3/day  \bluecomment{! flow rate -10,000 [m^3/day]}
 END                   \bluecomment{! negative rate = extraction}
@@ -664,14 +683,14 @@ END                   \bluecomment{! negative rate = extraction}
 \begin{semiverbatim}
 
 TRANSPORT_CONDITION initial      \bluecomment{! previous approach}
-  TYPE dirichlet_zero_gradient
+  TYPE DIRICHLET_ZERO_GRADIENT
   \magentacomment{CONSTRAINT_LIST       \bluecomment{! list of constraints}
     0.d0 initial  }
   /
 END
 
 TRANSPORT_CONDITION initial      \bluecomment{! embedded approach}
-  TYPE dirichlet_zero_gradient
+  TYPE DIRICHLET_ZERO_GRADIENT
   \magentacomment{CONSTRAINT initial
     CONCENTRATIONS      \bluecomment{! single constraint @ time 0.}
       Tracer  1.d-10 T  \bluecomment{! background concentration set}
@@ -686,7 +705,7 @@ END
 {\small
 \begin{semiverbatim}
 TRANSPORT_CONDITION west
-  TYPE dirichlet_zero_gradient
+  TYPE DIRICHLET_ZERO_GRADIENT
   CONSTRAINT west
     CONCENTRATIONS
       Tracer  1.d-10 T
@@ -696,7 +715,7 @@ TRANSPORT_CONDITION west
 END
 
 TRANSPORT_CONDITION injection
-  TYPE dirichlet_zero_gradient
+  TYPE DIRICHLET_ZERO_GRADIENT
   CONSTRAINT injection
     CONCENTRATIONS
       Tracer  1.d0   T
@@ -933,4 +952,4 @@ RESTART restart.chk \redcomment{0.d0}  \bluecomment{! reset time to 0.}
 
 \end{frame}
 
-\end{document} 
+\end{document}

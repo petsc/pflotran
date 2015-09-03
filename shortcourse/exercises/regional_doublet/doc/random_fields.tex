@@ -149,7 +149,7 @@ Steps for incorporating random fields:
 
 \begin{frame}[fragile,containsverbatim]\frametitle{DATASET}
 
-\begin{itemize} 
+\begin{itemize}
   \item \verb=perm_field.h5= contains HDF5 Datasets \verb=Permeability1=, \dots, \verb=Permeability10=
 \end{itemize}
 
@@ -176,8 +176,8 @@ MATERIAL_PROPERTY soil3
   ID 3
   POROSITY 0.25d0
   TORTUOSITY 0.5d0
-  SATURATION_FUNCTION sf1
-  PERMEABILITY       
+  SATURATION_FUNCTION cc1
+  PERMEABILITY
     \magentacomment{DATASET perm_field}      \bluecomment{! name of data set}
     \magentacomment{VERTICAL_ANISOTROPY_RATIO 0.1}
   /
@@ -196,26 +196,26 @@ END
     \item 2 processor groups (simultaneous simulations)
     \item 4 core per simulation
   \end{itemize}
-  
+
 \end{itemize}
 
 \begin{semiverbatim}
-mpirun -n 8 pflotran 
-  -pflotranin stochastic_regional_model.in 
-  -stochastic 
-  -num_realizations 10 
-  -num_groups 2 
+mpirun -n 8 pflotran
+  -pflotranin stochastic_regional_model.in
+  -stochastic
+  -num_realizations 10
+  -num_groups 2
   -screen_output=no
 \end{semiverbatim}
 
 or to run a single realization (e.g. \#5)
 
 \begin{semiverbatim}
-mpirun -n 8 pflotran 
-  -pflotranin stochastic_regional_model.in 
+mpirun -n 8 pflotran
+  -pflotranin stochastic_regional_model.in
   -realization_id 5
 \end{semiverbatim}
 
 \end{frame}
 
-\end{document} 
+\end{document}

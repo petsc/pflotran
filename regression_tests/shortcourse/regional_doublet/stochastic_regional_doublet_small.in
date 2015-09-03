@@ -53,7 +53,7 @@ END
 
 #=========================== discretization ===================================
 GRID
-  TYPE structured
+  TYPE STRUCTURED
   NXYZ 10 5 4
   BOUNDS
     0.d0 0.d0 0.d0
@@ -294,9 +294,9 @@ END
 #=========================== flow conditions ==================================
 FLOW_CONDITION initial
   TYPE
-    PRESSURE hydrostatic
+    PRESSURE HYDROSTATIC
   /
-  INTERPOLATION linear
+  INTERPOLATION LINEAR
   DATUM 0.d0 0.d0 90.d0
   GRADIENT
     PRESSURE -0.002 0. 0.
@@ -306,9 +306,9 @@ END
 
 FLOW_CONDITION river
   TYPE
-    PRESSURE seepage
+    PRESSURE SEEPAGE
   /
-  INTERPOLATION linear
+  INTERPOLATION LINEAR
   CYCLIC
   DATUM FILE ./river_stage.txt
   PRESSURE 101325.d0
@@ -316,7 +316,7 @@ END
 
 FLOW_CONDITION recharge
   TYPE
-    FLUX neumann
+    FLUX NEUMANN
   /
   FLUX LIST
     TIME_UNITS yr
@@ -332,21 +332,21 @@ END
 
 FLOW_CONDITION injection
   TYPE
-    RATE scaled_volumetric_rate
+    RATE SCALED_VOLUMETRIC_RATE
   /
   RATE 1.d5 m^3/day
 END
 
 FLOW_CONDITION extraction
   TYPE
-    RATE scaled_volumetric_rate
+    RATE SCALED_VOLUMETRIC_RATE
   /
   RATE -1.d5 m^3/day
 END
 
 #=========================== transport conditions =============================
 TRANSPORT_CONDITION initial
-  TYPE dirichlet_zero_gradient
+  TYPE DIRICHLET_ZERO_GRADIENT
   CONSTRAINT initial
     CONCENTRATIONS
       Tracer  1.d-10 T
@@ -356,7 +356,7 @@ TRANSPORT_CONDITION initial
 END
 
 TRANSPORT_CONDITION west
-  TYPE dirichlet_zero_gradient
+  TYPE DIRICHLET_ZERO_GRADIENT
   CONSTRAINT west
     CONCENTRATIONS
       Tracer  1.d-10 T
@@ -366,7 +366,7 @@ TRANSPORT_CONDITION west
 END
 
 TRANSPORT_CONDITION injection
-  TYPE dirichlet_zero_gradient
+  TYPE DIRICHLET_ZERO_GRADIENT
   CONSTRAINT injection
     CONCENTRATIONS
       Tracer  1.d0   T

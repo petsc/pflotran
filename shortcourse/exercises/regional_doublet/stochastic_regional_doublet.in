@@ -1,9 +1,18 @@
 #Description: 3D groundwater flow and solute transport
 
-#=========================== flow mode ========================================
-MODE RICHARDS
-#CHECKPOINT 1000000
-#RESTART restart.chk
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
 
 #=========================== chemistry ========================================
 CHEMISTRY
@@ -32,7 +41,7 @@ END
 
 #=========================== discretization ===================================
 GRID
-  TYPE structured
+  TYPE STRUCTURED
   NXYZ 100 51 20
   BOUNDS
     0.d0 0.d0 0.d0
@@ -58,7 +67,7 @@ MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.25d0
   TORTUOSITY 0.5d0
-  SATURATION_FUNCTION sf1
+  CHARACTERISTIC_CURVES cc1
   PERMEABILITY
     PERM_X 1.d-10
     PERM_Y 1.d-10
@@ -70,7 +79,7 @@ MATERIAL_PROPERTY soil2
   ID 2
   POROSITY 0.35d0
   TORTUOSITY 0.5d0
-  SATURATION_FUNCTION sf1
+  CHARACTERISTIC_CURVES cc1
   PERMEABILITY       
     DATASET perm_field
     VERTICAL_ANISOTROPY_RATIO 0.1
@@ -81,7 +90,7 @@ MATERIAL_PROPERTY soil3
   ID 3
   POROSITY 0.25d0
   TORTUOSITY 0.5d0
-  SATURATION_FUNCTION sf1
+  CHARACTERISTIC_CURVES cc1
   PERMEABILITY
     PERM_X 5.d-11
     PERM_Y 5.d-11
@@ -93,7 +102,7 @@ MATERIAL_PROPERTY soil4
   ID 4
   POROSITY 0.2d0
   TORTUOSITY 0.5d0
-  SATURATION_FUNCTION sf1
+  CHARACTERISTIC_CURVES cc1
   PERMEABILITY
     PERM_X 1.d-10
     PERM_Y 1.d-10
@@ -102,13 +111,17 @@ MATERIAL_PROPERTY soil4
 END
 
 #=========================== saturation functions =============================
-SATURATION_FUNCTION sf1
-  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-  RESIDUAL_SATURATION 0.1d0
-  LAMBDA 0.5d0
-  ALPHA 1.d-4
-  MAX_CAPILLARY_PRESSURE 1.d8
-
+CHARACTERISTIC_CURVES cc1
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    ALPHA  1.d-4
+    M 0.5d0
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+    MAX_CAPILLARY_PRESSURE 1.d8
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.5d0
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+  /
 END
 
 #=========================== output options ===================================
@@ -267,9 +280,9 @@ END
 #=========================== flow conditions ==================================
 FLOW_CONDITION initial
   TYPE
-    PRESSURE hydrostatic
+    PRESSURE HYDROSTATIC
   /
-  INTERPOLATION linear
+  INTERPOLATION LINEAR
   DATUM 0.d0 0.d0 90.d0
   GRADIENT
     PRESSURE -0.002 0. 0.
@@ -279,9 +292,9 @@ END
 
 FLOW_CONDITION river
   TYPE
-    PRESSURE seepage
+    PRESSURE SEEPAGE
   /
-  INTERPOLATION linear
+  INTERPOLATION LINEAR
   CYCLIC
   DATUM FILE river_stage.txt
   PRESSURE 101325.d0
@@ -289,7 +302,7 @@ END
 
 FLOW_CONDITION recharge
   TYPE
-    FLUX neumann
+    FLUX NEUMANN
   /
   FLUX LIST
     TIME_UNITS yr
@@ -305,21 +318,21 @@ END
 
 FLOW_CONDITION injection
   TYPE
-    RATE scaled_volumetric_rate
+    RATE SCALED_VOLUMETRIC_RATE
   /
   RATE 1.d5 m^3/day
 END
 
 FLOW_CONDITION extraction
   TYPE
-    RATE scaled_volumetric_rate
+    RATE SCALED_VOLUMETRIC_RATE
   /
   RATE -1.d5 m^3/day
 END
 
 #=========================== transport conditions =============================
 TRANSPORT_CONDITION initial
-  TYPE dirichlet_zero_gradient
+  TYPE DIRICHLET_ZERO_GRADIENT
   CONSTRAINT initial
     CONCENTRATIONS
       Tracer  1.d-10 T
@@ -329,7 +342,7 @@ TRANSPORT_CONDITION initial
 END
 
 TRANSPORT_CONDITION west
-  TYPE dirichlet_zero_gradient
+  TYPE DIRICHLET_ZERO_GRADIENT
   CONSTRAINT west
     CONCENTRATIONS
       Tracer  1.d-10 T
@@ -339,7 +352,7 @@ TRANSPORT_CONDITION west
 END
 
 TRANSPORT_CONDITION injection
-  TYPE dirichlet_zero_gradient
+  TYPE DIRICHLET_ZERO_GRADIENT
   CONSTRAINT injection
     CONCENTRATIONS
       Tracer  1.d0   T
@@ -412,3 +425,4 @@ STRATA
   MATERIAL soil4
 END
 
+END_SUBSURFACE
